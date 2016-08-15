@@ -1,0 +1,132 @@
+/*
+ * SPLog.cpp
+ *
+ *  Created on: 22 апр. 2016 г.
+ *      Author: sbkarr
+ */
+
+#include "SPCommon.h"
+#include "SPLog.h"
+
+NS_SP_EXT_BEGIN(log)
+
+static const constexpr int MAX_LOG_FUNC = 16;
+
+static CustomLog::log_fn s_logFuncArr[MAX_LOG_FUNC] = { 0 };
+static std::atomic<int> s_logFuncCount;
+static std::mutex s_logFuncMutex;
+
+static void DefaultLog2(const char *tag, const char *text, size_t len) {
+	std::cerr << '[' << tag << "] ";
+	std::cerr.write(text, len);
+	std::cerr.flush();
+}
+
+static void DefaultLog(const char *tag, CustomLog::Type t, CustomLog::VA &va) {
+	if (t == CustomLog::Text) {
+		DefaultLog2(tag, va.text.text, va.text.len);
+	} else {
+		char stackBuf[1_KiB];
+		int size = vsnprintf(stackBuf, size_t(1_KiB - 1), va.format.format, va.format.args);
+		if (size > int(1_KiB - 1)) {
+			char *buf = new char[size + 1];
+			size = vsnprintf(buf, size_t(size), va.format.format, va.format.args);
+			DefaultLog2(tag, buf, size);
+			delete [] buf;
+		} else if (size >= 0) {
+			DefaultLog2(tag, stackBuf, size);
+		} else {
+			DefaultLog2(tag, "Log error", 9);
+		}
+	}
+}
+
+static void __log3(const char *tag, CustomLog::Type t, CustomLog::VA &va) {
+	int count = s_logFuncCount.load();
+	if (count == 0) {
+		DefaultLog(tag, t, va);
+	} else {
+		s_logFuncMutex.lock();
+		count = s_logFuncCount.load();
+		for (int i = 0; i < count; i++) {
+			s_logFuncArr[i](tag, t, va);
+		}
+		s_logFuncMutex.unlock();
+	}
+}
+
+static void CustomLog_insert(CustomLog::log_fn fn) {
+	s_logFuncMutex.lock();
+	if (s_logFuncCount.load() < MAX_LOG_FUNC) {
+		s_logFuncArr[s_logFuncCount] = fn;
+		++ s_logFuncCount;
+	}
+	s_logFuncMutex.unlock();
+}
+
+static void CustomLog_remove(CustomLog::log_fn fn) {
+	s_logFuncMutex.lock();
+	int count = s_logFuncCount.load();
+	for (int i = 0; i < count; i++) {
+		if (s_logFuncArr[i] == fn) {
+			if (i != count - 1) {
+				memmove(&s_logFuncArr[i], &s_logFuncArr[i + 1], (count - i - 1) * sizeof(CustomLog::log_fn));
+			}
+			-- s_logFuncCount;
+			break;
+		}
+	}
+	s_logFuncMutex.unlock();
+}
+
+CustomLog::CustomLog(log_fn fn) : fn(fn) {
+	if (fn) {
+		CustomLog_insert(fn);
+	}
+}
+
+CustomLog::~CustomLog() {
+	if (fn) {
+		CustomLog_remove(fn);
+	}
+}
+
+CustomLog::CustomLog(CustomLog && other) : fn(other.fn) {
+	other.fn = nullptr;
+}
+CustomLog& CustomLog::operator=(CustomLog && other) {
+	fn = other.fn;
+	other.fn = nullptr;
+	return *this;
+}
+
+void format(const char *tag, const char *fmt, ...) {
+	CustomLog::VA va;
+    va_start(va.format.args, fmt);
+    va.format.format = fmt;
+
+	__log3(tag, CustomLog::Format, va);
+
+    va_end(va.format.args);
+}
+
+void text(const char *tag, const char *text, size_t len) {
+	if (len == maxOf<size_t>()) {
+		len = strlen(text);
+	}
+	CustomLog::VA va;
+	va.text.text = text;
+	va.text.len = len;
+	__log3(tag, CustomLog::Text, va);
+}
+void text(const String &tag, const char *t, size_t len) {
+	text(tag.c_str(), t, len);
+}
+void text(const char *tag, const String &t) {
+	text(tag, t.c_str(), t.size());
+}
+void text(const String &tag, const String &t) {
+	text(tag.c_str(), t.c_str(), t.size());
+}
+
+NS_SP_EXT_END(log)

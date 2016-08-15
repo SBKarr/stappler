@@ -1,0 +1,433 @@
+//
+//  SPData.cpp
+//  stappler
+//
+//  Created by SBKarr on 18.07.14.
+//  Copyright (c) 2014 SBKarr. All rights reserved.
+//
+
+#include "SPCommon.h"
+#include "SPData.h"
+#include "SPCharReader.h"
+#include "SPFilesystem.h"
+#include "SPString.h"
+#include "SPThreadLocal.h"
+#include "SPDataStream.h"
+
+NS_SP_EXT_BEGIN(data)
+
+String writeJson(const data::Value &data, bool pretty);
+bool writeJson(std::ostream &stream, const data::Value &data, bool pretty);
+bool saveJson(const data::Value &data, const String &file, bool pretty);
+
+Bytes writeCbor(const data::Value &data);
+bool writeCbor(std::ostream &stream, const data::Value &data);
+bool saveCbor(const data::Value &data, const String &file);
+
+Value readJson(const CharReaderBase &r);
+Value readCbor(const Bytes &data);
+
+String toString(const data::Value &data, bool pretty) {
+	return writeJson(data, pretty);
+}
+Bytes write(const data::Value &data, EncodeFormat fmt) {
+	if (fmt.isRaw()) {
+		switch (fmt.format) {
+		case EncodeFormat::Json: {
+			String s = writeJson(data, false);
+			Bytes ret; ret.reserve(s.length());
+			ret.assign(s.begin(), s.end());
+			return ret;
+		}
+			break;
+		case EncodeFormat::Pretty: {
+			String s = writeJson(data, true);
+			Bytes ret; ret.reserve(s.length());
+			ret.assign(s.begin(), s.end());
+			return ret;
+		}
+			break;
+		case EncodeFormat::Cbor:
+		case EncodeFormat::DefaultFormat:
+			return writeCbor(data);
+			break;
+		}
+	}
+	return Bytes();
+}
+
+bool write(std::ostream &stream, const data::Value &data, EncodeFormat fmt) {
+	if (fmt.isRaw()) {
+		switch (fmt.format) {
+		case EncodeFormat::Json:
+			return writeJson(stream, data, false);
+			break;
+		case EncodeFormat::Pretty:
+			return writeJson(stream, data, true);
+			break;
+		case EncodeFormat::Cbor:
+		case EncodeFormat::DefaultFormat:
+			return writeCbor(stream, data);
+			break;
+		}
+	}
+	return false;
+}
+
+bool save(const data::Value &data, const String &file, EncodeFormat fmt) {
+	const String &path = filepath::absolute(file, true);
+	if (fmt.format == EncodeFormat::DefaultFormat) {
+		auto ext = filepath::lastExtension(path);
+		if (ext == "json") {
+			fmt.format = EncodeFormat::Json;
+		} else {
+			fmt.format = EncodeFormat::Cbor;
+		}
+	}
+	if (fmt.isRaw()) {
+		switch (fmt.format) {
+		case EncodeFormat::Json:
+			return saveJson(data, path, false);
+			break;
+		case EncodeFormat::Pretty:
+			return saveJson(data, path, true);
+			break;
+		case EncodeFormat::Cbor:
+		case EncodeFormat::DefaultFormat:
+			return saveCbor(data, path);
+			break;
+		}
+	}
+	return false;
+}
+
+enum class DataFormat {
+	Json,
+	Cbor,
+	LZ4,
+	LZ4HC,
+	Encrypt,
+};
+
+DataFormat detectDataFormat(const Bytes &data) {
+	if (data.size() > 3 && data[0] == 0xd9 && data[1] == 0xd9 && data[2] == 0xf7) {
+		return DataFormat::Cbor;
+	} else {
+		return DataFormat::Json;
+	}
+}
+
+Value read(const String &string, const String &key) {
+	CharReaderBase r(string);
+	return readJson(r);
+}
+
+Value read(const Bytes &vec, const String &key) {
+	auto ff = detectDataFormat(vec);
+	switch (ff) {
+	case DataFormat::Cbor:
+		return readCbor(vec);
+		break;
+	case DataFormat::Json:
+		return readJson(CharReaderBase((char *)vec.data(), vec.size()));
+		break;
+	default:
+		break;
+	}
+	return Value();
+}
+
+Value readFile(const String &file, const String &key) {
+	Stream stream;
+	filesystem::readFile(stream, file);
+	return std::move(stream.data());
+}
+
+Value parseCommandLineOptions(int argc, const char * argv[],
+		const Function<int (Value &ret, char c, const char *str)> &switchCallback,
+		const Function<int (Value &ret, const String &str, int argc, const char * argv[])> &stringCallback) {
+	if (argc == 0) {
+		return Value();
+	}
+
+	Value ret;
+	auto &args = ret.setValue(Value(Value::Type::ARRAY), "args");
+
+	int i = argc;
+	while (i > 0) {
+		const char *value = argv[argc - i];
+		char quoted = 0;
+		if (value[0] == '\'' || value[0] == '"') {
+			quoted = value[0];
+			value ++;
+		}
+		if (value[0] == '-') {
+			if (value[1] == '-') {
+				if (stringCallback) {
+					i -= (stringCallback(ret, &value[2], i - 1, &argv[argc - i + 1]) - 1);
+				} else {
+					i -= 1;
+				}
+			} else {
+				if (switchCallback) {
+					const char *str = &value[1];
+					while (str[0] != 0) {
+						str += switchCallback(ret, str[0], &str[1]);
+					}
+				}
+			}
+		} else {
+			if (quoted > 0) {
+				size_t len = strlen(value);
+				if (len > 0 && value[len - 1] == quoted) {
+					-- len;
+				}
+				args.addString(String(value, len));
+			} else {
+				if (i == argc) {
+					args.addString(filesystem_native::nativeToPosix(value));
+				} else {
+					args.addString(value);
+				}
+			}
+		}
+		i --;
+	}
+
+	return ret;
+}
+
+Value parseCommandLineOptions(int argc, const char16_t * wargv[],
+		const Function<int (Value &ret, char c, const char *str)> &switchCallback,
+		const Function<int (Value &ret, const String &str, int argc, const char * argv[])> &stringCallback) {
+	Vector<String> vec; vec.reserve(argc);
+	Vector<const char *> argv; argv.reserve(argc);
+	for (int i = 0; i < argc; ++ i) {
+		vec.push_back(string::toUtf8(wargv[i]));
+		argv.push_back(vec.back().c_str());
+	}
+
+	return parseCommandLineOptions(argc, argv.data(), switchCallback, stringCallback);
+}
+
+Transform::Transform() { }
+
+Transform::Transform(const Transform &t) : order(t.order), map(t.map), subtransforms(t.subtransforms) { }
+Transform::Transform(Transform &&t) : order(std::move(t.order)), map(std::move(t.map)), subtransforms(std::move(t.subtransforms)) { }
+
+Transform & Transform::operator=(const Transform &t) {
+	map = t.map;
+	subtransforms = t.subtransforms;
+	return *this;
+}
+Transform & Transform::operator=(Transform &&t) {
+	map = std::move(t.map);
+	subtransforms = std::move(t.subtransforms);
+	return *this;
+}
+
+data::Value &Transform::transform(data::Value &value) const {
+	Vector<data::Value *> stack;
+	makeTransform(value, stack);
+	return value;
+}
+
+Transform Transform::reverse() const {
+	if (empty()) {
+		return Transform();
+	}
+	Transform ret;
+	Vector<Pair<const String *, Transform *>> stack;
+	makeReverse(ret, stack);
+	return ret;
+}
+
+data::Value Transform::data() const {
+	data::Value ret;
+	for (auto &ord : order) {
+		if (ord.second == Mode::Map) {
+			auto m = map.find(ord.first);
+			if (m != map.end()) {
+				auto &arr = ret.setValue(Value(Value::Type::ARRAY), m->first);
+				for (auto &obj : m->second) {
+					arr.addString(obj);
+				}
+			}
+		} else {
+			auto s = subtransforms.find(ord.first);
+			if (s != subtransforms.end()) {
+				ret.setValue(s->second.data(), s->first);
+			}
+		}
+	}
+
+	return ret;
+}
+
+bool Transform::empty() const {
+	return map.empty() && subtransforms.empty();
+}
+
+String Transform::transformKey(const String &key) const {
+	auto it = map.find(key);
+	if (it != map.end() && it->second.size() == 1) {
+		return it->second.front();
+	}
+	return String();
+}
+
+void Transform::performTransform(data::Value &value, Vector<data::Value *> &stack, const Pair<String, Vector<String>> &it) const {
+	if (value.hasValue(it.first)) {
+		if (it.second.empty()) {
+			value.erase(it.first);
+		} else if (it.second.size() == 1) {
+			if (it.second.front().empty()) {
+				value.erase(it.first);
+			} else if (it.first != it.second.front()) {
+				value.setValue(std::move(value.getValue(it.first)), it.second.front());
+				value.erase(it.first);
+			}
+		} else {
+			if (it.first != it.second.front()) {
+				data::Value *target = &value;
+				size_t size = it.second.size();
+				size_t stackLevel = 0;
+				size_t i = 0;
+				while (i < size && it.second.at(i).empty()) {
+					++ stackLevel;
+					++ i;
+				}
+				if (stackLevel <= stack.size() && i < size) {
+					if (stackLevel > 0) {
+						target = stack.at(stack.size() - stackLevel);
+					}
+
+					auto &key = it.second.at(i);
+					for (; i < size - 1; i++) {
+						auto &val = target->getValue(key);
+						if (val.isDictionary()) {
+							target = &val;
+						} else if (val.isNull()) {
+							target = &target->setValue(Value(Value::Type::DICTIONARY), key);
+						} else {
+							break;
+						}
+					}
+
+					if (i == size - 1) {
+						target->setValue(std::move(value.getValue(it.first)), it.second.back());
+						value.erase(it.first);
+					}
+				}
+			}
+		}
+	}
+}
+
+void Transform::performTransform(data::Value &value, Vector<data::Value *> &stack, const Pair<String, Transform> &it) const {
+	stack.push_back(&value);
+	auto & val = value.getValue(it.first);
+	if (val.isDictionary()) {
+		it.second.makeTransform(val, stack);
+	}
+	stack.pop_back();
+}
+void Transform::makeTransform(data::Value &value, Vector<data::Value *> &stack) const {
+	for (auto &ord : order) {
+		if (ord.second == Mode::Map) {
+			auto m = map.find(ord.first);
+			if (m != map.end()) {
+				performTransform(value, stack, *m);
+			}
+		} else {
+			auto s = subtransforms.find(ord.first);
+			if (s != subtransforms.end()) {
+				performTransform(value, stack, *s);
+			}
+		}
+	}
+}
+
+void Transform::performReverse(Transform &ret, Vector<Pair<const String *, Transform *>> &stack,
+		const Pair<String, Vector<String>> &it) const {
+	if (it.second.size() == 1) {
+		ret.map.emplace(it.second.front(), Vector<String>{it.first});
+		ret.order.emplace_back(pair(it.second.front(), Mode::Map));
+	} else if (it.second.size() > 1) {
+		size_t size = it.second.size();
+		size_t i = 0;
+		size_t stackLevel = 0;
+		Transform *target = &ret;
+		Vector<String> vec; vec.reserve(size);
+		while (i < size && it.second.at(i).empty()) {
+			++ stackLevel;
+			++ i;
+			if (stackLevel <= stack.size()) {
+				vec.emplace_back(*stack.at(stack.size() - stackLevel).first);
+			}
+		}
+		if (stackLevel <= stack.size() && i < size) {
+			if (stackLevel > 0) {
+				target = stack.at(stack.size() - stackLevel).second;
+			}
+			for (; i < size - 1; ++ i) {
+				auto &key = it.second.at(i);
+				auto it = target->subtransforms.find(key);
+				if (it != target->subtransforms.end()) {
+					target = &it->second;
+				} else {
+					auto em_it = target->subtransforms.emplace(key, Transform()).first;
+					target->order.emplace_back(pair(key, Mode::Sub));
+					target = &em_it->second;
+				}
+				vec.push_back(String());
+			}
+
+			if (i == size - 1) {
+				std::reverse(vec.begin(), vec.end());
+				vec.push_back(it.first);
+				target->map.emplace(it.second.back(), std::move(vec));
+				target->order.emplace_back(pair(it.second.back(), Mode::Map));
+			}
+		}
+	}
+}
+void Transform::performReverse(Transform &ret, Vector<Pair<const String *, Transform *>> &stack,
+		const Pair<String, Transform> &it) const {
+	stack.push_back(pair(&it.first, &ret));
+	bool emplaced = false;
+	auto t = ret.subtransforms.find(it.first);
+	if (t == ret.subtransforms.end()) {
+		t = ret.subtransforms.emplace(it.first, Transform()).first;
+		emplaced = true;
+	}
+
+	it.second.makeReverse(t->second, stack);
+	if (t->second.map.empty() && t->second.subtransforms.empty()) {
+		ret.subtransforms.erase(t);
+	} else if (emplaced) {
+		ret.order.emplace_back(pair(t->first, Mode::Sub));
+	}
+
+	stack.pop_back();
+}
+
+void Transform::makeReverse(Transform &ret, Vector<Pair<const String *, Transform *>> &stack) const {
+	for (auto it = order.rbegin(); it != order.rend(); ++it) {
+		if (it->second == Mode::Map) {
+			auto m = map.find(it->first);
+			if (m != map.end()) {
+				performReverse(ret, stack, *m);
+			}
+		} else {
+			auto s = subtransforms.find(it->first);
+			if (s != subtransforms.end()) {
+				performReverse(ret, stack, *s);
+			}
+		}
+	}
+}
+
+int EncodeFormat::EncodeStreamIndex = std::ios_base::xalloc();
+
+NS_SP_EXT_END(data)

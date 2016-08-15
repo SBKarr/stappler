@@ -1,0 +1,15 @@
+<resources>
+    <color name="color_appbar">@android:color/white</color>
+    <color name="color_statusbar">@android:color/transparent</color>
+    
+	<style name="Theme.Stappler" parent="Theme.AppCompat.Light.DarkActionBar">
+	    <!-- Set AppCompat’s actionBarStyle -->
+	    <!-- <item name="actionBarStyle">@style/MyActionBarStyle</item> -->
+	
+	    <!-- Set AppCompat’s color theming attrs -->
+	    <item name="colorPrimary">@color/color_appbar</item>
+	    <item name="colorPrimaryDark">@color/color_statusbar</item>
+	    <item name="android:windowTranslucentStatus">true</item>
+	    <!-- The rest of your attributes -->
+	</style>
+</resources>

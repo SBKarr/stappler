@@ -1,0 +1,23 @@
+STAPPLER_ROOT = ../..
+
+LOCAL_OUTDIR := bin
+LOCAL_OUTPUT_EXECUTABLE := $(LOCAL_OUTDIR)/spbackups
+
+LOCAL_TOOLKIT := cli
+
+LOCAL_ROOT = .
+
+LOCAL_SRCS_DIRS :=
+LOCAL_SRCS_OBJS :=
+
+LOCAL_INCLUDES_DIRS :=
+LOCAL_INCLUDES_OBJS :=
+
+LOCAL_MAIN := main.cpp
+
+LOCAL_LIBS =
+
+#.local_prebuild:
+#	@echo test
+
+include $(STAPPLER_ROOT)/make/local.mk

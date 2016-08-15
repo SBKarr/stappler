@@ -1,0 +1,469 @@
+//
+//  SPUnicode.cpp
+//  stappler
+//
+//  Created by SBKarr on 2/15/14.
+//  Copyright (c) 2014 SBKarr. All rights reserved.
+//
+
+#include "SPCommon.h"
+#include "SPString.h"
+#include "SPUnicode.h"
+
+NS_SP_EXT_BEGIN(string)
+
+static const char * const sp_uppercase_set = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
+static const char * const sp_lowercase_set = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя";
+
+static const char16_t * const sp_uppercase_set_16 = u"АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
+static const char16_t * const sp_lowercase_set_16 = u"абвгдеёжзийклмнопрстуфхцчшщъыьэюя";
+
+inline size_t Utf8CharLength(const uint8_t *ptr, uint8_t &mask) SPUNUSED;
+
+static inline int sp_str_ind(const char *str, char b, char c) {
+	int i = 0;
+	while (str[0] != 0) {
+		if (str[1] != 0 && str[0] == b && str[1] == c) {
+			return i;
+		}
+		++ i; ++ str;
+	}
+	return -1;
+}
+
+char16_t tolower(char16_t c) {
+	if (c < 128) {
+		return (char16_t) ::tolower(c);
+	} else {
+		size_t index = 0;
+		const char16_t *str = sp_uppercase_set_16;
+		while (*str != 0) {
+			if (*str == c) {
+				return sp_lowercase_set_16[index];
+			}
+			index ++;
+			str ++;
+		}
+		return c;
+	}
+}
+
+char16_t toupper(char16_t c) {
+	if (c < 128) {
+		return (char16_t) ::toupper(c);
+	} else {
+		size_t index = 0;
+		const char16_t *str = sp_lowercase_set_16;
+		while (*str != 0) {
+			if (*str == c) {
+				return sp_uppercase_set_16[index];
+			}
+			index ++;
+			str ++;
+		}
+		return c;
+	}
+}
+
+WideString &tolower(WideString &str) {
+	size_t len = str.length();
+	for (size_t i = 0; i < len; i++) {
+		str[i] = tolower(str[i]);
+	}
+	return str;
+}
+
+WideString &toupper(WideString &str) {
+	size_t len = str.length();
+	for (size_t i = 0; i < len; i++) {
+		str[i] = toupper(str[i]);
+	}
+	return str;
+}
+
+String &tolower(String &str) {
+	size_t len = str.length();
+	char b = 0, c = 0;
+	for (size_t i = 0; i < len; i++) {
+		b = c;
+		c = str[i];
+		if (b != 0 && (b & (0x80))) {
+			int ind = sp_str_ind(sp_uppercase_set, b, c);
+			if (ind >= 0 && ind % 2 == 0) {
+				str[i-1] = sp_lowercase_set[ind];
+				str[i] = sp_lowercase_set[ind + 1];
+			} else {
+				str[i] = ::tolower(c);
+			}
+		} else {
+			str[i] = ::tolower(c);
+		}
+	}
+	return str;
+}
+String &toupper(String &str) {
+	size_t len = str.length();
+	char b = 0, c = 0;
+	for (size_t i = 0; i < len; i++) {
+		b = c;
+		c = str[i];
+		if (b != 0 && (b & (0x80))) {
+			int ind = sp_str_ind(sp_lowercase_set, b, c);
+			if (ind >= 0 && ind % 2 == 0) {
+				str[i-1] = sp_uppercase_set[ind];
+				str[i] = sp_uppercase_set[ind + 1];
+			} else {
+				str[i] = ::toupper(c);
+			}
+		} else {
+			str[i] = ::toupper(c);
+		}
+	}
+	return str;
+}
+
+WideString tolower(const WideString &str) {
+	WideString ret; ret.reserve(str.size());
+	for (auto &c : str) {
+		ret.push_back(tolower(c));
+	}
+	return ret;
+}
+
+WideString toupper(const WideString &str) {
+	WideString ret; ret.reserve(str.size());
+	for (auto &c : str) {
+		ret.push_back(toupper(c));
+	}
+	return ret;
+}
+
+String tolower(const String &str) {
+	String ret; ret.reserve(str.size());
+	char b = 0;
+	for (auto &c : str) {
+		if (b != 0 && (b & (0x80))) {
+			int ind = sp_str_ind(sp_uppercase_set, b, c);
+			if (ind >= 0 && ind % 2 == 0) {
+				ret.pop_back();
+				ret.push_back(sp_lowercase_set[ind]);
+				ret.push_back(sp_lowercase_set[ind + 1]);
+			} else {
+				ret.push_back(::tolower(c));
+			}
+		} else {
+			ret.push_back(::tolower(c));
+		}
+		b = c;
+	}
+	return ret;
+}
+String toupper(const String &str) {
+	String ret; ret.reserve(str.size());
+	char b = 0;
+	for (auto &c : str) {
+		if (b != 0 && (b & (0x80))) {
+			int ind = sp_str_ind(sp_lowercase_set, b, c);
+			if (ind >= 0 && ind % 2 == 0) {
+				ret.pop_back();
+				ret.push_back(sp_uppercase_set[ind]);
+				ret.push_back(sp_uppercase_set[ind + 1]);
+			} else {
+				ret.push_back(::toupper(c));
+			}
+		} else {
+			ret.push_back(::toupper(c));
+		}
+		b = c;
+	}
+	return ret;
+}
+
+static inline uint32_t Utf8Get(char_const_ptr_ref_t ptr) {
+	uint8_t len = 0;
+	auto ret = unicode::utf8Decode(ptr, len);
+	ptr += len;
+	return ret;
+}
+
+template <class T> static inline T Utf8NextChar(T p) {
+	return (p + unicode::utf8_length_data[((const uint8_t *)p)[0]]);
+}
+
+template <class T> static inline T Utf8NextChar(T p, size_t &counter) {
+	auto l = unicode::utf8_length_data[ ((const uint8_t *)p)[0] ];
+	counter += l;
+	return (p + l);
+}
+static char16_t Utf8DecodeHtml(char_const_ptr_t ptr, uint32_t len) {
+	if (ptr[0] == '#') {
+		if (len > 1 && (ptr[1] == 'x' || ptr[1] == 'X')) {
+			return (char16_t)strtol((char_const_ptr_t)(ptr + 2), nullptr, 16);
+		}
+		return (char16_t)strtol((char_const_ptr_t)(ptr + 1), nullptr, 10);
+	} else if (strncmp((char_const_ptr_t)ptr, "amp", len) == 0) {
+		return '&';
+	} else if (strncmp((char_const_ptr_t)ptr, "nbsp", len) == 0) {
+		return 0xA0;
+	} else if (strncmp((char_const_ptr_t)ptr, "lt", len) == 0) {
+		return '<';
+	} else if (strncmp((char_const_ptr_t)ptr, "gt", len) == 0) {
+		return '>';
+	} else if (strncmp((char_const_ptr_t)ptr, "shy", len) == 0) {
+		return (char16_t)0x00AD;
+	}
+	return 0;
+}
+
+static char16_t Utf8GetHtml(char_const_ptr_ref_t utf8) {
+	if (utf8[0] == '&') {
+		uint32_t len = 0;
+		while (utf8[len] && utf8[len] != ';' && len < 10) {
+			len ++;
+		}
+
+		char16_t c = 0;
+		if (utf8[len] == ';' && len > 2) {
+			c = Utf8DecodeHtml(utf8 + 1, len - 2);
+		}
+
+		if (c == 0) {
+			return Utf8Get(utf8);
+		} else {
+			utf8 += (len + 1);
+			return c;
+		}
+	} else {
+		return Utf8Get(utf8);
+	}
+}
+
+static inline size_t Utf8SymbolsCount(const String &str) {
+	size_t counter = 0;
+	char_const_ptr_t ptr = str.c_str();
+	do {
+		ptr = Utf8NextChar(ptr, counter);
+	} while (ptr[0] != 0);
+	return counter;
+}
+
+static inline size_t Utf8SymbolsCountHtml(const String &str) {
+	size_t counter = 0;
+	char_const_ptr_t ptr = str.c_str();
+	do {
+		if (ptr[0] == '&') {
+			uint8_t len = 0;
+			while (ptr[len] && ptr[len] != ';' && len < 10) {
+				len ++;
+			}
+
+			if (ptr[len] == ';' && len > 2) {
+				counter ++;
+				ptr += len;
+			} else if (ptr[len] == 0) {
+				ptr += len;
+			} else {
+				ptr = Utf8NextChar(ptr, counter);
+			}
+		} else {
+			ptr = Utf8NextChar(ptr, counter);
+		}
+	} while (ptr[0] != 0);
+	return counter;
+}
+
+bool isspace(char ch) {
+	return ::isspace(ch) != 0;
+}
+
+bool isspace(char16_t ch) {
+    return  (ch >= 0x0009 && ch <= 0x000D) || ch == 0x0020 || ch == 0x0085 || ch == 0x00A0 || ch == 0x1680
+    || (ch >= 0x2000 && ch <= 0x200A) || ch == 0x2028 || ch == 0x2029 || ch == 0x202F
+    ||  ch == 0x205F || ch == 0x3000;
+}
+
+bool isspace(const char *ch) {
+	if (ch[0] == 0) {
+		return false;
+	}
+
+	uint8_t first = reinterpretValue<uint8_t>(ch[0]);
+	if (first <= 127) {
+		return isspace((char)(ch[0] & 0xFF));
+	} else {
+		return isspace(unicode::utf8Decode(ch));
+	}
+}
+
+Pair<char16_t, uint8_t> read(char_const_ptr_t ptr) {
+	uint8_t mask;
+	uint8_t len = unicode::utf8DecodeLength(*ptr, mask);
+	uint32_t ret = ptr[0] & mask;
+	for (uint8_t c = 1; c < len; ++c) {
+		if ((ptr[c] & 0xc0) != 0x80) { ret = 0; break; }
+		ret <<= 6; ret |= (ptr[c] & 0x3f);
+	}
+	return pair((char16_t)ret, len);
+}
+
+WideString toUtf16(const String &utf8_str) {
+	WideString utf16_str; utf16_str.reserve(Utf8SymbolsCount(utf8_str));
+	auto ptr = (char_const_ptr_t)utf8_str.c_str();
+
+	while (ptr[0] != 0) {
+		utf16_str.push_back((char16_t)Utf8Get(ptr));
+	}
+
+    return utf16_str;
+}
+WideString toUtf16(const char *str) {
+	WideString utf16_str; utf16_str.reserve(std::char_traits<char>::length(str));
+	auto ptr = str;
+	while (ptr[0] != 0) {
+		utf16_str.push_back((char16_t)Utf8Get(ptr));
+	}
+    return utf16_str;
+}
+WideString toUtf16Html(const String &utf8_str) {
+	WideString utf16_str; utf16_str.reserve(Utf8SymbolsCountHtml(utf8_str));
+	auto ptr = (char_const_ptr_t)utf8_str.c_str();
+
+	while (ptr[0] != 0) {
+		utf16_str.push_back((char16_t)Utf8GetHtml(ptr));
+	}
+
+    return utf16_str;
+}
+
+String toUtf8(const WideString &str) {
+	return toUtf8(str.data(), str.size());
+}
+String toUtf8(const char16_t *str, size_t ilen) {
+	size_t nlen = (ilen == 0)?std::char_traits<char16_t>::length(str):ilen;
+	size_t len = 0;
+	for (size_t i = 0; i < nlen; ++ i) {
+		len += unicode::utf8EncodeLength(str[i]);
+	}
+
+	String ret; ret.reserve(len);
+	for (size_t i = 0; i < nlen; ++ i) {
+		unicode::utf8Encode(ret, str[i]);
+	}
+
+	return ret;
+}
+String toUtf8(char16_t c) {
+	String ret; ret.reserve(unicode::utf8EncodeLength(c));
+	unicode::utf8Encode(ret, c);
+	return ret;
+}
+
+//static constexpr const char16_t utf8_small[64] = {
+//	u'А', u'Б', u'В', u'Г', u'Д', u'Е', u'Ж', u'З', u'И', u'Й', u'К', u'Л', u'М', u'Н', u'О', u'П',
+//	u'Р', u'С', u'Т', u'У', u'Ф', u'Х', u'Ц', u'Ч', u'Ш', u'Щ', u'Ъ', u'Ы', u'Ь', u'Э', u'Ю', u'Я',
+//	u'а', u'б', u'в', u'г', u'д', u'е', u'ж', u'з', u'и', u'й', u'к', u'л', u'м', u'н', u'о', u'п',
+//	u'р', u'с', u'т', u'у', u'ф', u'х', u'ц', u'ч', u'ш', u'щ', u'ъ', u'ы', u'ь', u'э', u'ю', u'я',
+//};
+
+static constexpr const uint8_t koi8r_small[64] = {
+	0xE1, 0xE2, 0xF7, 0xE7, 0xE4, 0xE5, 0xF6, 0xFA, 0xE9, 0xEA, 0xEB, 0xEC, 0xED, 0xEE, 0xEF, 0xF0,
+	0xF2, 0xF3, 0xF4, 0xF5, 0xE6, 0xE8, 0xE3, 0xFE, 0xFB, 0xFD, 0xFF, 0xF9, 0xF8, 0xFC, 0xE0, 0xF1,
+	0xC1, 0xC2, 0xD7, 0xC7, 0xC4, 0xC5, 0xD6, 0xDA, 0xC9, 0xCA, 0xCB, 0xCC, 0xCD, 0xCE, 0xCF, 0xD0,
+	0xD2, 0xD3, 0xD4, 0xD5, 0xC6, 0xC8, 0xC3, 0xDE, 0xDB, 0xDD, 0xDF, 0xD9, 0xD8, 0xDC, 0xC0, 0xD1,
+};
+
+static inline char charToKoi8r(char16_t c) {
+	if (c <= 0x7f) {
+		return char(c & 0xFF);
+	} else if (c >= u'а' && c <= u'я') {
+		return char(koi8r_small[c - u'а' + 32]);
+	} else if (c >= u'А' && c <= u'Я') {
+		return char(koi8r_small[c - u'A']);
+	} else {
+		switch (c) {
+		case 0x2500: return char(0x80); break;
+		case 0x2502: return char(0x81); break;
+		case 0x250C: return char(0x82); break;
+		case 0x2510: return char(0x83); break;
+		case 0x2514: return char(0x84); break;
+		case 0x2518: return char(0x85); break;
+		case 0x251C: return char(0x86); break;
+		case 0x2524: return char(0x87); break;
+		case 0x252C: return char(0x88); break;
+		case 0x2534: return char(0x89); break;
+		case 0x253C: return char(0x8A); break;
+		case 0x2580: return char(0x8B); break;
+		case 0x2584: return char(0x8C); break;
+		case 0x2588: return char(0x8D); break;
+		case 0x258C: return char(0x8E); break;
+		case 0x2590: return char(0x8F); break;
+
+		case 0x2591: return char(0x90); break;
+		case 0x2592: return char(0x91); break;
+		case 0x2593: return char(0x92); break;
+		case 0x2320: return char(0x93); break;
+		case 0x25A0: return char(0x94); break;
+		case 0x2219: return char(0x95); break;
+		case 0x221A: return char(0x96); break;
+		case 0x2248: return char(0x97); break;
+		case 0x2264: return char(0x98); break;
+		case 0x2265: return char(0x99); break;
+		case 0x00A0: return char(0x9A); break;
+		case 0x2321: return char(0x9B); break;
+		case 0x00B0: return char(0x9C); break;
+		case 0x00B2: return char(0x9D); break;
+		case 0x00B7: return char(0x9E); break;
+		case 0x00F7: return char(0x9F); break;
+
+		case 0x2550: return char(0xA0); break;
+		case 0x2551: return char(0xA1); break;
+		case 0x2552: return char(0xA2); break;
+		case 0x0451: return char(0xA3); break;
+		case 0x2553: return char(0xA4); break;
+		case 0x2554: return char(0xA5); break;
+		case 0x2555: return char(0xA6); break;
+		case 0x2556: return char(0xA7); break;
+		case 0x2557: return char(0xA8); break;
+		case 0x2558: return char(0xA9); break;
+		case 0x2559: return char(0xAA); break;
+		case 0x255A: return char(0xAB); break;
+		case 0x255B: return char(0xAC); break;
+		case 0x255C: return char(0xAD); break;
+		case 0x255D: return char(0xAE); break;
+		case 0x255E: return char(0xAF); break;
+
+		case 0x255F: return char(0xB0); break;
+		case 0x2560: return char(0xB1); break;
+		case 0x2561: return char(0xB2); break;
+		case 0x0401: return char(0xB3); break;
+		case 0x2562: return char(0xB4); break;
+		case 0x2563: return char(0xB5); break;
+		case 0x2564: return char(0xB6); break;
+		case 0x2565: return char(0xB7); break;
+		case 0x2566: return char(0xB8); break;
+		case 0x2567: return char(0xB9); break;
+		case 0x2568: return char(0xBA); break;
+		case 0x2569: return char(0xBB); break;
+		case 0x256A: return char(0xBC); break;
+		case 0x256B: return char(0xBD); break;
+		case 0x256C: return char(0xBE); break;
+		case 0x00A9: return char(0xBF); break;
+		default: break;
+		}
+	}
+	return ' ';
+}
+
+String toKoi8r(const WideString &str) {
+	return toKoi8r(str.data(), str.size());
+}
+String toKoi8r(const char16_t *str, size_t ilen) {
+	size_t nlen = (ilen == 0)?std::char_traits<char16_t>::length(str):ilen;
+	String ret; ret.resize(nlen);
+	for (size_t i = 0; i < nlen; ++ i) {
+		ret[i] = charToKoi8r(char16_t(str[i]));
+	}
+	return ret;
+}
+
+NS_SP_EXT_END(string)

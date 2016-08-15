@@ -1,0 +1,102 @@
+/*
+ * SPCharGroup.cpp
+ *
+ *  Created on: 25 июля 2015 г.
+ *      Author: sbkarr
+ */
+
+#include "SPCommon.h"
+#include "SPCharGroup.h"
+
+NS_SP_BEGIN
+
+using CharGroupId = chars::CharGroupId;
+using CharGroupMask = chars::CharGroupId;
+
+bool inCharGroup(CharGroupId mask, char16_t c) {
+	switch (mask) {
+	case CharGroupId::None: return false; break;
+	case CharGroupId::PunctuationBasic: return chars::CharGroup<char16_t, CharGroupId::PunctuationBasic>::match(c); break;
+	case CharGroupId::Numbers: return chars::CharGroup<char16_t, CharGroupId::Numbers>::match(c); break;
+	case CharGroupId::Latin: return chars::CharGroup<char16_t, CharGroupId::Latin>::match(c); break;
+	case CharGroupId::Cyrillic: return chars::CharGroup<char16_t, CharGroupId::Cyrillic>::match(c); break;
+	case CharGroupId::Currency: return chars::CharGroup<char16_t, CharGroupId::Currency>::match(c); break;
+	case CharGroupId::GreekBasic: return chars::CharGroup<char16_t, CharGroupId::GreekBasic>::match(c); break;
+	case CharGroupId::Math: return chars::CharGroup<char16_t, CharGroupId::Math>::match(c); break;
+	case CharGroupId::Arrows: return chars::CharGroup<char16_t, CharGroupId::Arrows>::match(c); break;
+	case CharGroupId::Fractionals: return chars::CharGroup<char16_t, CharGroupId::Fractionals>::match(c); break;
+	case CharGroupId::LatinSuppl1: return chars::CharGroup<char16_t, CharGroupId::LatinSuppl1>::match(c); break;
+	case CharGroupId::PunctuationAdvanced: return chars::CharGroup<char16_t, CharGroupId::PunctuationAdvanced>::match(c); break;
+	case CharGroupId::GreekAdvanced: return chars::CharGroup<char16_t, CharGroupId::GreekAdvanced>::match(c); break;
+	case CharGroupId::WhiteSpace: return chars::CharGroup<char16_t, CharGroupId::WhiteSpace>::match(c); break;
+	case CharGroupId::Controls: return chars::CharGroup<char16_t, CharGroupId::Controls>::match(c); break;
+	case CharGroupId::NonPrintable: return chars::CharGroup<char16_t, CharGroupId::NonPrintable>::match(c); break;
+	case CharGroupId::LatinLowercase: return chars::CharGroup<char16_t, CharGroupId::LatinLowercase>::match(c); break;
+	case CharGroupId::LatinUppercase: return chars::CharGroup<char16_t, CharGroupId::LatinUppercase>::match(c); break;
+	case CharGroupId::Alphanumeric: return chars::CharGroup<char16_t, CharGroupId::Alphanumeric>::match(c); break;
+	case CharGroupId::Hexadecimial: return chars::CharGroup<char16_t, CharGroupId::Hexadecimial>::match(c); break;
+	case CharGroupId::Base64: return chars::CharGroup<char16_t, CharGroupId::Base64>::match(c); break;
+	case CharGroupId::BreakableWhiteSpace: return chars::CharGroup<char16_t, CharGroupId::BreakableWhiteSpace>::match(c); break;
+	case CharGroupId::OpticalAlignmentSpecial: return chars::CharGroup<char16_t, CharGroupId::OpticalAlignmentSpecial>::match(c); break;
+	case CharGroupId::OpticalAlignmentBullet: return chars::CharGroup<char16_t, CharGroupId::OpticalAlignmentBullet>::match(c); break;
+	}
+	return false;
+}
+
+bool inCharGroupMask(CharGroupMask mask, char16_t c) {
+	for (size_t i = 1; i < sizeof(CharGroupMask) * 8; i++) {
+		CharGroupMask val = CharGroupMask(1 << i);
+		if ((mask & val) != CharGroupMask::None) {
+			if (inCharGroup(mask, c)) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+WideString getCharGroup(CharGroupMask mask) {
+	Set<char16_t> set;
+
+	for (size_t i = 1; i < sizeof(CharGroupMask) * 8; i++) {
+		CharGroupMask val = CharGroupMask(1 << i);
+		if ((mask & val) != CharGroupMask::None) {
+			switch ((CharGroupId)val) {
+			case CharGroupId::None: break;
+			case CharGroupId::PunctuationBasic: chars::CharGroup<char16_t, CharGroupId::PunctuationBasic>::get(set); break;
+			case CharGroupId::Numbers: chars::CharGroup<char16_t, CharGroupId::Numbers>::get(set); break;
+			case CharGroupId::Latin: chars::CharGroup<char16_t, CharGroupId::Latin>::get(set); break;
+			case CharGroupId::Cyrillic: chars::CharGroup<char16_t, CharGroupId::Cyrillic>::get(set); break;
+			case CharGroupId::Currency: chars::CharGroup<char16_t, CharGroupId::Currency>::get(set); break;
+			case CharGroupId::GreekBasic: chars::CharGroup<char16_t, CharGroupId::GreekBasic>::get(set); break;
+			case CharGroupId::Math: chars::CharGroup<char16_t, CharGroupId::Math>::get(set); break;
+			case CharGroupId::Arrows: chars::CharGroup<char16_t, CharGroupId::Arrows>::get(set); break;
+			case CharGroupId::Fractionals: chars::CharGroup<char16_t, CharGroupId::Fractionals>::get(set); break;
+			case CharGroupId::LatinSuppl1: chars::CharGroup<char16_t, CharGroupId::LatinSuppl1>::get(set); break;
+			case CharGroupId::PunctuationAdvanced: chars::CharGroup<char16_t, CharGroupId::PunctuationAdvanced>::get(set); break;
+			case CharGroupId::GreekAdvanced: chars::CharGroup<char16_t, CharGroupId::GreekAdvanced>::get(set); break;
+			case CharGroupId::WhiteSpace: chars::CharGroup<char16_t, CharGroupId::WhiteSpace>::get(set); break;
+			case CharGroupId::Controls: chars::CharGroup<char16_t, CharGroupId::Controls>::get(set); break;
+			case CharGroupId::NonPrintable: chars::CharGroup<char16_t, CharGroupId::NonPrintable>::get(set); break;
+			case CharGroupId::LatinLowercase: chars::CharGroup<char16_t, CharGroupId::LatinLowercase>::get(set); break;
+			case CharGroupId::LatinUppercase: chars::CharGroup<char16_t, CharGroupId::LatinUppercase>::get(set); break;
+			case CharGroupId::Alphanumeric: chars::CharGroup<char16_t, CharGroupId::Alphanumeric>::get(set); break;
+			case CharGroupId::Hexadecimial: chars::CharGroup<char16_t, CharGroupId::Hexadecimial>::get(set); break;
+			case CharGroupId::Base64: chars::CharGroup<char16_t, CharGroupId::Base64>::get(set); break;
+			case CharGroupId::BreakableWhiteSpace: chars::CharGroup<char16_t, CharGroupId::BreakableWhiteSpace>::get(set); break;
+			case CharGroupId::OpticalAlignmentSpecial: chars::CharGroup<char16_t, CharGroupId::OpticalAlignmentSpecial>::get(set); break;
+			case CharGroupId::OpticalAlignmentBullet: chars::CharGroup<char16_t, CharGroupId::OpticalAlignmentBullet>::get(set); break;
+			}
+		}
+	}
+
+	WideString ret;
+	ret.reserve(set.size());
+	for (auto &c : set) {
+		ret.push_back(c);
+	}
+
+	return ret;
+}
+
+NS_SP_END

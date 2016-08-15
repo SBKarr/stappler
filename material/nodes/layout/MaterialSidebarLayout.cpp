@@ -1,0 +1,307 @@
+/*
+ * MaterialSidebarLayout.cpp
+ *
+ *  Created on: 09 сент. 2015 г.
+ *      Author: sbkarr
+ */
+
+#include "Material.h"
+#include "MaterialSidebarLayout.h"
+#include "MaterialNode.h"
+
+#include "SPLayer.h"
+#include "SPGestureListener.h"
+#include "SPProgressAction.h"
+
+#include "2d/CCActionEase.h"
+
+NS_MD_BEGIN
+
+#define SHOW_ACTION_TAG 154
+#define HIDE_ACTION_TAG 155
+
+bool SidebarLayout::init(Position pos) {
+	if (!Layout::init()) {
+		return false;
+	}
+
+	_position = pos;
+
+	_listener = construct<gesture::Listener>();
+	_listener->setTouchFilter([this] (const cocos2d::Vec2 &loc, const stappler::gesture::Listener::DefaultTouchFilter &) -> bool {
+		if (isNodeEnabled() || (isNodeVisible() && _swallowTouches)) {
+			return true;
+		} else {
+			auto pos = convertToNodeSpace(loc);
+			if (node::isTouched(_node, loc)) {
+				return true;
+			}
+			if (_edgeSwipeEnabled) {
+				if ((_position == Left && pos.x < 16.0f) || (_position == Right && pos.x > _contentSize.width - 16.0f)) {
+					return true;
+				}
+			}
+			return false;
+		}
+	});
+	_listener->setPressCallback([this] (stappler::gesture::Event ev, const stappler::gesture::Press &p) -> bool {
+		if (isNodeEnabled() && !node::isTouched(_node, p.location())) {
+			if (ev == stappler::gesture::Event::Ended) {
+				hide();
+			}
+			return true;
+		}
+		return false;
+	});
+	_listener->setSwipeCallback([this] (stappler::gesture::Event ev, const stappler::gesture::Swipe &s) -> bool {
+		if (!isNodeEnabled() && !_edgeSwipeEnabled) {
+			return false;
+		}
+
+    	if (ev == gesture::Event::Began) {
+			auto loc = convertToNodeSpace(s.location());
+    		if (fabsf(s.delta.y) < fabsf(s.delta.x) && !node::isTouched(_node, s.location())) {
+    			stopNodeActions();
+				onSwipeDelta(s.delta.x / stappler::screen::density());
+				return true;
+    		}
+    		return false;
+    	} else if (ev == gesture::Event::Activated) {
+			onSwipeDelta(s.delta.x / stappler::screen::density());
+    		return true;
+    	} else {
+    		onSwipeFinished(s.velocity.x / stappler::screen::density());
+    		return true;
+    	}
+
+		return true;
+	});
+	addComponent(_listener);
+
+	_background = construct<Layer>(material::Color::Grey_500);
+	_background->setAnchorPoint(cocos2d::Vec2(0.0f, 0.0f));
+	_background->setVisible(false);
+	_background->setOpacity(_backgroundPassiveOpacity);
+	addChild(_background);
+
+	return true;
+}
+
+void SidebarLayout::onContentSizeDirty() {
+	Layout::onContentSizeDirty();
+
+	_background->setContentSize(_contentSize);
+
+	stopNodeActions();
+
+	if (_widthCallback) {
+		_nodeWidth = _widthCallback(_contentSize);
+	}
+
+	_node->setContentSize(cocos2d::Size(_nodeWidth, _contentSize.height));
+	if (_position == Left) {
+		_node->setPosition(0.0f, 0.0f);
+	} else {
+		_node->setPosition(_contentSize.width, 0.0f);
+	}
+
+	setProgress(0.0f);
+}
+
+void SidebarLayout::setNode(MaterialNode *n, int zOrder) {
+	if (_node) {
+		_node->removeFromParent();
+		_node = nullptr;
+	}
+	_node = n;
+	addChild(_node, zOrder);
+	_contentSizeDirty = true;
+}
+MaterialNode *SidebarLayout::getNode() const {
+	return _node;
+}
+
+void SidebarLayout::setNodeWidth(float value) {
+	_nodeWidth = value;
+}
+float SidebarLayout::getNodeWidth() const {
+	return _nodeWidth;
+}
+
+void SidebarLayout::setNodeWidthCallback(const WidthCallback &cb) {
+	_widthCallback = cb;
+}
+const SidebarLayout::WidthCallback &SidebarLayout::getNodeWidthCallback() const {
+	return _widthCallback;
+}
+
+void SidebarLayout::setSwallowTouches(bool value) {
+	_swallowTouches = value;
+}
+bool SidebarLayout::isSwallowTouches() const {
+	return _swallowTouches;
+}
+
+void SidebarLayout::setEdgeSwipeEnabled(bool value) {
+	_edgeSwipeEnabled = value;
+	if (isNodeVisible()) {
+		_listener->setSwallowTouches(value);
+	}
+}
+bool SidebarLayout::isEdgeSwipeEnabled() const {
+	return _edgeSwipeEnabled;
+}
+
+void SidebarLayout::setBackgroundColor(const Color &c) {
+	_background->setColor(c);
+}
+
+void SidebarLayout::setBackgroundActiveOpacity(uint8_t value) {
+	_backgroundActiveOpacity = value;
+	_background->setOpacity(progress(_backgroundPassiveOpacity, _backgroundActiveOpacity, getProgress()));
+}
+void SidebarLayout::setBackgroundPassiveOpacity(uint8_t value) {
+	_backgroundPassiveOpacity = value;
+	_background->setOpacity(progress(_backgroundPassiveOpacity, _backgroundActiveOpacity, getProgress()));
+}
+
+void SidebarLayout::show() {
+	stopActionByTag(HIDE_ACTION_TAG);
+	if (getActionByTag(SHOW_ACTION_TAG) == nullptr) {
+		auto a = cocos2d::EaseCubicActionOut::create(construct<ProgressAction>(
+				progress(0.5f, 0.0f, getProgress()), getProgress(), 1.0f,
+				[this] (ProgressAction *a, float progress) {
+			setProgress(progress);
+		}));
+		a->setTag(SHOW_ACTION_TAG);
+		runAction(a);
+	}
+}
+void SidebarLayout::hide(float factor) {
+	stopActionByTag(SHOW_ACTION_TAG);
+	if (getActionByTag(HIDE_ACTION_TAG) == nullptr) {
+		if (factor <= 1.0f) {
+			auto a = cocos2d::EaseCubicActionIn::create(construct<ProgressAction>(
+					progress(0.0f, 0.5f / factor, getProgress()), getProgress(), 0.0f,
+					[this] (ProgressAction *a, float progress) {
+				setProgress(progress);
+			}));
+			a->setTag(HIDE_ACTION_TAG);
+			runAction(a);
+		} else {
+			auto a = cocos2d::EaseQuadraticActionIn::create(construct<ProgressAction>(
+					progress(0.0f, 0.5f / factor, getProgress()), getProgress(), 0.0f,
+					[this] (ProgressAction *a, float progress) {
+				setProgress(progress);
+			}));
+			a->setTag(HIDE_ACTION_TAG);
+			runAction(a);
+		}
+	}
+}
+
+float SidebarLayout::getProgress() const {
+	if (_node) {
+		return (_position == Left)?(1.0f - _node->getAnchorPoint().x):(_node->getAnchorPoint().x);
+	}
+	return 0.0f;
+}
+void SidebarLayout::setProgress(float value) {
+	auto prev = getProgress();
+	if (_node && value != getProgress()) {
+		_node->setAnchorPoint(cocos2d::Vec2((_position == Left)?(1.0f - value):(value), 0.0f));
+		if (value == 0.0f) {
+			if (_node->isVisible()) {
+				_node->setVisible(false);
+				onNodeVisible(false);
+			}
+		} else {
+			if (!_node->isVisible()) {
+				_node->setVisible(true);
+				onNodeVisible(true);
+			}
+
+			if (value == 1.0f && prev != 1.0f) {
+				onNodeEnabled(true);
+			} else if (value != 1.0f && prev == 1.0f) {
+				onNodeEnabled(false);
+			}
+		}
+
+		_background->setOpacity(progress(_backgroundPassiveOpacity, _backgroundActiveOpacity, value));
+		if (!_background->isVisible() && _background->getOpacity() > 0) {
+			_background->setVisible(true);
+		}
+	}
+}
+
+void SidebarLayout::onSwipeDelta(float value) {
+	float d = value / _nodeWidth;
+
+	float progress = getProgress() - d * (_position==Left ? -1 : 1);
+	if (progress >= 1.0f) {
+		progress = 1.0f;
+	} else if (progress <= 0.0f) {
+		progress = 0.0f;
+	}
+
+	setProgress(progress);
+}
+
+void SidebarLayout::onSwipeFinished(float value) {
+	float v = value / _nodeWidth;
+	auto t = fabsf(v) / (5000 / _nodeWidth);
+	auto d = v * t - (5000.0f * t * t / _nodeWidth) / 2.0f;
+
+	float progress = getProgress() - d * (_position==Left ? -1 : 1);
+
+	if (progress > 0.5) {
+		show();
+	} else {
+		hide(1.0f + fabsf(d) * 2.0f);
+	}
+}
+
+bool SidebarLayout::isNodeVisible() const {
+	return getProgress() > 0.0f;
+}
+bool SidebarLayout::isNodeEnabled() const {
+	return getProgress() == 1.0f;
+}
+
+void SidebarLayout::setNodeVisibleCallback(const BoolCallback &cb) {
+	_visibleCallback = cb;
+}
+void SidebarLayout::setNodeEnabledCallback(const BoolCallback &cb) {
+	_enabledCallback = cb;
+}
+
+void SidebarLayout::onNodeEnabled(bool value) {
+	if (_enabledCallback) {
+		_enabledCallback(value);
+	}
+}
+void SidebarLayout::onNodeVisible(bool value) {
+	if (value) {
+		if (_swallowTouches) {
+			_listener->setSwallowTouches(true);
+		}
+		if (_backgroundPassiveOpacity == 0) {
+			_background->setVisible(false);
+		}
+	} else {
+		_background->setVisible(true);
+		_listener->setSwallowTouches(false);
+	}
+
+	if (_visibleCallback) {
+		_visibleCallback(value);
+	}
+}
+
+void SidebarLayout::stopNodeActions() {
+	stopActionByTag(SHOW_ACTION_TAG);
+	stopActionByTag(HIDE_ACTION_TAG);
+}
+
+NS_MD_END

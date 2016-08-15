@@ -1,0 +1,82 @@
+/*
+ * MaterialFlexibleLayout.h
+ *
+ *  Created on: 17 марта 2015 г.
+ *      Author: sbkarr
+ */
+
+#ifndef LIBS_MATERIAL_NODES_LAYOUT_MATERIALFLEXIBLELAYOUT_H_
+#define LIBS_MATERIAL_NODES_LAYOUT_MATERIALFLEXIBLELAYOUT_H_
+
+#include "MaterialLayout.h"
+
+NS_MD_BEGIN
+
+class FlexibleLayout : public Layout {
+public:
+	using HeightFunction = std::function<std::pair<float, float>()>; // pair< min, max >
+
+	virtual bool init() override;
+	virtual void onContentSizeDirty() override;
+
+	virtual void setBaseNode(stappler::ScrollView *node, int zOrder = 2);
+	virtual void setFlexibleNode(cocos2d::Node *, int zOrder = 3);
+
+	virtual void setFlexibleAutoComplete(bool value);
+
+	virtual void setFlexibleMinHeight(float height);
+	virtual float getFlexibleMinHeight() const;
+
+	virtual void setFlexibleMaxHeight(float height);
+	virtual float getFlexibleMaxHeight() const;
+
+	virtual void setFlexibleHeightFunction(const HeightFunction &);
+	virtual const HeightFunction &getFlexibleHeightFunction() const;
+
+	virtual void onScroll(float delta, bool finished);
+
+	virtual void setStatusBarTracked(bool value);
+	virtual bool isStatusBarTracked() const;
+
+	virtual void setStatusBarBackgroundColor(const Color &);
+	virtual const cocos2d::Color3B &getStatusBarBackgroundColor() const;
+
+	virtual float getFlexibleLevel() const;
+	virtual void setFlexibleLevel(float value);
+	virtual void setFlexibleLevelAnimated(float value, float duration);
+	virtual void setFlexibleHeight(float value);
+
+	virtual void setBaseNodePadding(float);
+	virtual float getBaseNodePadding() const;
+
+	float getCurrentFlexibleHeight() const;
+	float getCurrentFlexibleMax() const;
+
+	virtual void onPush(ContentLayer *l, bool replace) override;
+	virtual void onForegroundTransitionBegan(ContentLayer *l, Layout *overlay) override;
+
+protected:
+	float getStatusBarHeight() const;
+	void onStatusBarHeight(float);
+
+	static constexpr int AutoCompleteTag() { return 5; }
+
+	float _flexibleAutoComplete = true;
+	float _flexibleLevel = 1.0f;
+	float _flexibleMinHeight = 0.0f;
+	float _flexibleMaxHeight = 0.0f;
+	float _baseNodePadding = 8.0f;
+
+	HeightFunction _flexibleHeightFunction = nullptr;
+
+	cocos2d::Node *_flexibleNode = nullptr;
+	stappler::ScrollView *_baseNode = nullptr;
+
+	stappler::Layer *_statusBar = nullptr;
+	bool _statusBarTracked = false;
+	float _statusBarHeight = nan();
+};
+
+NS_MD_END
+
+#endif /* LIBS_MATERIAL_NODES_LAYOUT_MATERIALFLEXIBLELAYOUT_H_ */
