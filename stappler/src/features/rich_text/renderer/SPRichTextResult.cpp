@@ -52,6 +52,18 @@ void Result::pushObject(Object &&obj) {
 	}
 }
 
+void Result::pushIndex(const String &str, const Vec2 &pos) {
+	_index.emplace(str, pos);
+}
+
+void Result::finalize() {
+	if (_media.flags & RenderFlag::NoHeightCheck) {
+		_numPages = 1;
+	} else {
+		_numPages = size_t(ceilf(_size.height / _media.surfaceSize.height));
+	}
+}
+
 void Result::setBackgroundColor(const cocos2d::Color4B &c) {
 	_background = c;
 }
@@ -67,7 +79,7 @@ void Result::setContentSize(const cocos2d::Size &s) {
 		_media.surfaceSize.height = _size.height;
 	}
 
-	_numPages = (size_t)ceilf(_size.height / _media.surfaceSize.height);
+	_numPages = size_t(ceilf(_size.height / _media.surfaceSize.height)) + 1;
 }
 const cocos2d::Size &Result::getContentSize() const {
 	return _size;
@@ -83,6 +95,10 @@ const Vector<Object> & Result::getObjects() const {
 
 const Vector<Object> & Result::getRefs() const {
 	return _refs;
+}
+
+const Map<String, Vec2> & Result::getIndex() const {
+	return _index;
 }
 
 size_t Result::getNumPages() const {
@@ -103,7 +119,7 @@ Result::PageData Result::getPageData(Renderer *r, size_t idx, float offset) cons
 			return PageData{Margin(), Rect(0, surfaceSize.height * idx + offset, surfaceSize.width, _size.height - surfaceSize.height * idx),
 					Rect(0, surfaceSize.height * idx, surfaceSize.width, _size.height - surfaceSize.height * idx),
 					idx, false};
-		} else if (idx >= _numPages) {
+		} else if (idx >= _numPages - 1) {
 			return PageData{Margin(), Rect::ZERO, Rect::ZERO, idx, false};
 		} else {
 			return PageData{Margin(), Rect(0, surfaceSize.height * idx + offset, surfaceSize.width, surfaceSize.height),

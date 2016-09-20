@@ -38,12 +38,11 @@ public:
 	inline void offset(size_t l) { if (l > len) { len = 0; } else { ptr += l; len -= l; } }
 
 	inline bool compare(const CharType *d, size_t l) const { return (l == len && memcmp(ptr, d, l) == 0); }
+	inline bool compare(const CharType *d) const { return compare(d, std::char_traits<CharType>::length(d)); }
 	inline bool prefix(const CharType *d, size_t l) const { return (l <= len && memcmp(ptr, d, l) == 0); }
 
-	inline const CharType *getPtr() const { return ptr; }
 	inline const CharType *data() const { return ptr; }
 
-	inline size_t getLength() const { return len; }
 	inline size_t size() const { return len; }
 
 	inline bool is(const CharType &c) const { return len > 0 && *ptr == c; };
@@ -53,6 +52,10 @@ public:
 	inline bool operator < (const size_t &val) const { return len < val; }
 	inline bool operator <= (const size_t &val) const { return len <= val; }
 
+	inline const CharType & front() const { return *ptr; }
+	inline const CharType & back() const { return ptr[len - 1]; }
+
+	inline const CharType & at(const size_t &s) const { return ptr[s]; }
 	inline const CharType & operator[] (const size_t &s) const { return ptr[s]; }
 
 	inline void clear() { len = 0; }

@@ -137,6 +137,7 @@ public:
 	const String & getUniqueId() const;
 	const String & getModificationTime() const;
 	const String & getCoverFile() const;
+	const String & getTocFile() const;
 
 	bool isFileExists(const String &path, const String &root) const;
 	size_t getFileSize(const String &path, const String &root) const;
@@ -161,6 +162,7 @@ protected:
 	FilePtr _file = nullptr;
 	String _rootFile;
 	String _rootPath;
+	String _tocFile;
 
 	String _uniqueId;
 	String _modified;

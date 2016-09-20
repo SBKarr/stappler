@@ -66,7 +66,7 @@ inline void JsonDecoder::parseBufferString(String &ref) {
 #undef Z16
 	if (r.is('"')) { r ++; }
 	auto s = r.readUntil<StringSepChars>();
-	ref.assign(s.getPtr(), s.getLength());
+	ref.assign(s.data(), s.size());
 	while (!r.empty() && !r.is('"')) {
 		if (r.is('\\')) {
 			++ r;
@@ -84,15 +84,15 @@ inline void JsonDecoder::parseBufferString(String &ref) {
 			}
 		}
 		auto s = r.readUntil<StringSepChars>();
-		ref.append(s.getPtr(), s.getLength());
+		ref.append(s.data(), s.size());
 	}
 	if (r.is('"')) { ++ r; }
 }
 
 inline void JsonDecoder::parseJsonNumber(Value &result) {
 	char *end = nullptr;
-	double d = strtod(r.getPtr(), &end);
-	size_t size = end - r.getPtr();
+	double d = strtod(r.data(), &end);
+	size_t size = end - r.data();
 
 	r += size;
 

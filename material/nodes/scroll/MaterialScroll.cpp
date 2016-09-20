@@ -171,16 +171,18 @@ void Scroll::setSource(Source *c) {
 
 		_invalidateAfter = stappler::Time::now();
 
-		_controller->clear();
+		if (!_contentSize.equals(Size::ZERO)) {
+			_controller->clear();
 
-		if (isVertical()) {
-			_controller->addItem(std::bind(&Scroll::onLoaderRequest, this, Request::Reset), _loaderSize, 0.0f);
-		} else {
-			auto size = _contentSize.width - _paddingGlobal.left - _loaderSize;
-			_controller->addItem(std::bind(&Scroll::onLoaderRequest, this, Request::Reset), MAX(_loaderSize, size), 0.0f);
+			if (isVertical()) {
+				_controller->addItem(std::bind(&Scroll::onLoaderRequest, this, Request::Reset), _loaderSize, 0.0f);
+			} else {
+				auto size = _contentSize.width - _paddingGlobal.left - _loaderSize;
+				_controller->addItem(std::bind(&Scroll::onLoaderRequest, this, Request::Reset), MAX(_loaderSize, size), 0.0f);
+			}
+
+			setScrollPosition(0.0f);
 		}
-
-		setScrollPosition(0.0f);
 	}
 }
 
@@ -266,6 +268,10 @@ void Scroll::setLoaderCallback(const LoaderCallback &cb) {
 }
 
 void Scroll::onSourceDirty() {
+	if ((isVertical() && _contentSize.height == 0.0f) || (!isVertical() && _contentSize.width == 0.0f)) {
+		return;
+	}
+
 	if (!_listener || _items.size() == 0) {
 		_controller->clear();
 		if (isVertical()) {

@@ -64,6 +64,11 @@ public:
 
 	Node(Style &&style, WideString &&);
 
+	template <typename Name, typename Id>
+	Node(Name &&htmlName, Id &&htmlId)
+	: _htmlId(std::forward<Id>(htmlId))
+	, _htmlName(std::forward<Name>(htmlName)) { }
+
 	template <typename Name, typename Id, typename TStyle>
 	Node(Name &&htmlName, Id &&htmlId, TStyle &&style, AttrMap &&map)
 	: _htmlId(std::forward<Id>(htmlId))

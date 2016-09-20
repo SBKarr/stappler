@@ -704,4 +704,8 @@ const Map<storage::Scheme *, Server::ResourceScheme> &Server::getResources() con
 	return _config->resources;
 }
 
+const Map<String, std::pair<Server::HandlerCallback, data::Value>> &Server::getRequestHandlers() const {
+	return _config->requests;
+}
+
 NS_SA_END

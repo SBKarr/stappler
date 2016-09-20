@@ -29,6 +29,9 @@ bool SidebarLayout::init(Position pos) {
 
 	_listener = construct<gesture::Listener>();
 	_listener->setTouchFilter([this] (const cocos2d::Vec2 &loc, const stappler::gesture::Listener::DefaultTouchFilter &) -> bool {
+		if (!_node) {
+			return false;
+		}
 		if (isNodeEnabled() || (isNodeVisible() && _swallowTouches)) {
 			return true;
 		} else {
@@ -98,11 +101,13 @@ void SidebarLayout::onContentSizeDirty() {
 		_nodeWidth = _widthCallback(_contentSize);
 	}
 
-	_node->setContentSize(cocos2d::Size(_nodeWidth, _contentSize.height));
-	if (_position == Left) {
-		_node->setPosition(0.0f, 0.0f);
-	} else {
-		_node->setPosition(_contentSize.width, 0.0f);
+	if (_node) {
+		_node->setContentSize(cocos2d::Size(_nodeWidth, _contentSize.height));
+		if (_position == Left) {
+			_node->setPosition(0.0f, 0.0f);
+		} else {
+			_node->setPosition(_contentSize.width, 0.0f);
+		}
 	}
 
 	setProgress(0.0f);

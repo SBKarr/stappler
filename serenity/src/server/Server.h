@@ -77,6 +77,7 @@ public:
 
 	const Map<String, storage::Scheme *> &getSchemes() const;
 	const Map<storage::Scheme *, ResourceScheme> &getResources() const;
+	const Map<String, std::pair<HandlerCallback, data::Value>> &getRequestHandlers() const;
 
 public: // httpd server info
 	apr::weak_string getDefaultName() const;

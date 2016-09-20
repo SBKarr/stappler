@@ -171,17 +171,29 @@ bool Builder::initLayout(Layout &l, const Vec2 &parentPos, const Size &parentSiz
 		}
 	}
 
-	applyVerticalMargin(l, l.size.width, collapsableMarginTop, parentPos.y);
-	if (isnan(parentPos.y)) {
-		l.position = Vec2(parentPos.x + l.margin.left + l.padding.left, l.margin.top + l.padding.top);
+	if (l.style.marginTop.metric == style::Size::Metric::Percent && l.style.marginTop.value < 0) {
+		l.position = Vec2(parentPos.x + l.margin.left + l.padding.left, parentPos.y + l.padding.top);
 	} else {
-		l.position = Vec2(parentPos.x + l.margin.left + l.padding.left, parentPos.y + l.margin.top + l.padding.top);
+		applyVerticalMargin(l, l.size.width, collapsableMarginTop, parentPos.y);
+		if (isnan(parentPos.y)) {
+			l.position = Vec2(parentPos.x + l.margin.left + l.padding.left, l.margin.top + l.padding.top);
+		} else {
+			l.position = Vec2(parentPos.x + l.margin.left + l.padding.left, parentPos.y + l.margin.top + l.padding.top);
+		}
 	}
 
 	return true;
 }
 
 bool Builder::finalizeLayout(Layout &l, const Vec2 &parentPos, float collapsableMarginTop) {
+	if (l.style.marginTop.metric == style::Size::Metric::Percent && l.style.marginTop.value < 0) {
+		applyVerticalMargin(l, l.size.height, collapsableMarginTop, parentPos.y);
+		if (isnan(parentPos.y)) {
+			l.position = Vec2(parentPos.x + l.margin.left + l.padding.left, l.margin.top + l.padding.top);
+		} else {
+			l.position = Vec2(parentPos.x + l.margin.left + l.padding.left, parentPos.y + l.margin.top + l.padding.top);
+		}
+	}
 	if ((_media.flags & RenderFlag::PaginatedLayout) && !l.disablePageBreak) {
 		const float pageHeight = _media.surfaceSize.height;
 		if (l.style.pageBreakInside == style::PageBreak::Avoid) {
@@ -574,6 +586,10 @@ void Builder::processOutline(Layout &l) {
 }
 
 void Builder::processBackground(Layout &l, float parentPosY) {
+	if (l.node && (l.node->getHtmlName() == "body" || l.node->getHtmlName() == "html")) {
+		return;
+	}
+
 	auto style = l.node->getStyle().compileBackground(this);
 	auto &attr = l.node->getAttributes();
 	if (style.backgroundImage.empty()) {

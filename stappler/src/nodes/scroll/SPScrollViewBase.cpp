@@ -435,7 +435,6 @@ float ScrollViewBase::getScrollRelativePosition() const {
 		return _savedRelativePosition;
 	}
 
-
 	float areaSize = getScrollableAreaSize();
 	float areaOffset = getScrollableAreaOffset();
 	float size = getScrollSize();
@@ -744,7 +743,7 @@ void ScrollViewBase::updateScrollBounds() {
 
 	if (!isnan(_savedRelativePosition)) {
 		float value = _savedRelativePosition;
-		_savedRelativePosition = std::numeric_limits<float>::quiet_NaN();
+		_savedRelativePosition = nan();
 		setScrollRelativePosition(value);
 	}
 

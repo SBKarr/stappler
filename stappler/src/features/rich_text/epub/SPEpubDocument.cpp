@@ -9,6 +9,7 @@
 #include "SPEpubDocument.h"
 #include "SPEpubReader.h"
 #include "SPLocale.h"
+#include "SPHtmlParser.h"
 
 NS_EPUB_BEGIN
 
@@ -21,6 +22,11 @@ Document::Document() { }
 bool Document::init(const FilePath &path) {
 	_info = Rc<Info>::create(path.get());
 	if (_info && _info->valid()) {
+		auto &tocFile = _info->getTocFile();
+		if (!tocFile.empty()) {
+			readTocFile(tocFile);
+		}
+
 		// preprocess css
 		auto &manifest = _info->getManifest();
 		for (auto &it : manifest) {
@@ -170,7 +176,7 @@ String Document::getLanguage() const {
 void Document::processHtml(const String &path, const CharReaderBase &html, bool linear) {
 	epub::Reader r;
 	Vector<Pair<String, String>> meta;
-	_content.emplace_back(rich_text::HtmlPage{path, rich_text::Node(), rich_text::HtmlPage::FontMap{}, linear});
+	_content.emplace_back(rich_text::HtmlPage{path, rich_text::Node("html", path), rich_text::HtmlPage::FontMap{}, linear});
 	rich_text::HtmlPage &c = _content.back();
 
 	if (r.readHtml(c, html, _cssStrings, _mediaQueries, meta, _css)) {
@@ -178,6 +184,283 @@ void Document::processHtml(const String &path, const CharReaderBase &html, bool 
 	} else {
 		_content.pop_back();
 	}
+}
+
+void Document::readTocFile(const String &fileName) {
+	auto &manifest = _info->getManifest();
+	auto fileIt = manifest.find(fileName);
+	if (fileIt == manifest.end()) {
+		return;
+	}
+
+	const ManifestFile &file = fileIt->second;
+	if (file.mime == "application/x-dtbncx+xml") {
+		readNcxNav(file.path);
+	} else if (file.mime == "application/xhtml+xml" || file.mime == "application/xhtml" || file.mime == "text/html") {
+		readXmlNav(file.path);
+	}
+}
+
+void Document::readNcxNav(const String &filePath) {
+	auto toc = _info->getFileData(filePath, "");
+	struct NcxReader {
+		using Parser = html::Parser<NcxReader>;
+		using Tag = Parser::Tag;
+		using StringReader = Parser::StringReader;
+
+		enum Section {
+			None,
+			Ncx,
+			Head,
+			DocTitle,
+			NavMap,
+			NavPoint,
+			NavPointLabel,
+		} section = None;
+
+		Info *info;
+		String path;
+		Vector<ContentRecord *> contents;
+
+		NcxReader(Info *info, const String &path, ContentRecord *c) : info(info), path(path) { contents.push_back(c); }
+
+		inline void onTagAttribute(Parser &p, Tag &tag, StringReader &name, StringReader &value) {
+			switch (section) {
+			case NavPoint:
+				if (tag.name.compare("content") && name.compare("src")) {
+					contents.back()->href = info->resolvePath(value.str(), path);
+				}
+				break;
+			default: break;
+			}
+		}
+
+		inline void onPushTag(Parser &p, Tag &tag) {
+			switch (section) {
+			case None:
+				if (tag.name.compare("ncx")) {
+					section = Ncx;
+				}
+				break;
+			case Ncx:
+				if (tag.name.compare("head")) {
+					section = Head;
+				} else if (tag.name.compare("doctitle")) {
+					section = DocTitle;
+				} else if (tag.name.compare("navmap")) {
+					section = NavMap;
+				}
+				break;
+			case Head: break;
+			case DocTitle: break;
+			case NavMap:
+				if (tag.name.compare("navpoint")) {
+					section = NavPoint;
+					contents.back()->childs.emplace_back(ContentRecord());
+					contents.emplace_back(&contents.back()->childs.back());
+				}
+				break;
+			case NavPoint:
+				if (tag.name.compare("navpoint")) {
+					section = NavPoint;
+					contents.back()->childs.emplace_back(ContentRecord());
+					contents.emplace_back(&contents.back()->childs.back());
+				} else if (tag.name.compare("navlabel")) {
+					section = NavPointLabel;
+				}
+				break;
+			default: break;
+			}
+		}
+
+		inline void onPopTag(Parser &p, Tag &tag) {
+			switch (section) {
+			case None: break;
+			case Ncx:
+				if (tag.name.compare("ncx")) {
+					section = None;
+				}
+				break;
+			case Head:
+				if (tag.name.compare("head")) {
+					section = Ncx;
+				}
+				break;
+			case DocTitle:
+				if (tag.name.compare("doctitle")) {
+					section = Ncx;
+				}
+				break;
+			case NavMap:
+				if (tag.name.compare("navmap")) {
+					section = Ncx;
+				}
+				break;
+			case NavPoint:
+				if (tag.name.compare("navpoint")) {
+					contents.pop_back();
+					if (p.tagStack.at(p.tagStack.size() - 2).name.compare("navmap")) {
+						section = NavMap;
+					}
+				}
+				break;
+			case NavPointLabel:
+				if (tag.name.compare("navlabel")) {
+					section = NavPoint;
+				}
+				break;
+			default: break;
+			}
+		}
+
+		inline void onTagContent(Parser &p, Tag &tag, StringReader &s) {
+			switch (section) {
+			case DocTitle:
+			case NavPointLabel:
+				if (tag.name.compare("text")) {
+					contents.back()->label = s.str();
+					string::trim(contents.back()->label);
+				}
+				break;
+			default: break;
+			}
+		}
+	} r(_info, filePath, &_contents);
+
+	html::parse(r, CharReaderUtf8((const char *)toc.data(), toc.size()));
+
+	auto data = encodeContents(_contents);
+}
+
+void Document::readXmlNav(const String &filePath) {
+	auto toc = _info->getFileData(filePath, "");
+	struct TocReader {
+		using Parser = html::Parser<TocReader>;
+		using Tag = Parser::Tag;
+		using StringReader = Parser::StringReader;
+
+		enum Section {
+			None,
+			PreNav,
+			Nav,
+			Heading,
+			Ol,
+			Li,
+		} section = None;
+
+		Info *info;
+		String path;
+		Vector<ContentRecord *> contents;
+
+		TocReader(Info *info, const String &path, ContentRecord *c) : info(info), path(path) { contents.push_back(c); }
+
+		inline void onTagAttribute(Parser &p, Tag &tag, StringReader &name, StringReader &value) {
+			switch (section) {
+			case None:
+				if (tag.name.compare("nav") && name.compare("epub:type") && value.compare("toc")) {
+					section = PreNav;
+				}
+				break;
+			case Li:
+				if (tag.name.compare("a") && name.compare("href")) {
+					contents.back()->href = info->resolvePath(value.str(), path);
+				}
+				break;
+			case Heading:
+				if (name.compare("title") || name.compare("alt")) {
+					contents.back()->label += value.str();
+				}
+				break;
+			default: break;
+			}
+		}
+
+		inline void onPushTag(Parser &p, Tag &tag) {
+			switch (section) {
+			case PreNav:
+				if (tag.name.compare("nav")) {
+					section = Nav;
+				}
+				break;
+			case Nav:
+				if (tag.name.compare("h1") || tag.name.compare("h2") || tag.name.compare("h3")
+						|| tag.name.compare("h4") || tag.name.compare("h5") || tag.name.compare("h6")) {
+					section = Heading;
+				} else if (tag.name.compare("ol")) {
+					section = Ol;
+				}
+				break;
+			case Ol:
+				if (tag.name.compare("li")) {
+					section = Li;
+					contents.back()->childs.emplace_back(ContentRecord());
+					contents.emplace_back(&contents.back()->childs.back());
+				}
+			case Li:
+				if (tag.name.compare("a") || tag.name.compare("span")) {
+					section = Heading;
+				} else if (tag.name.compare("ol")) {
+					section = Ol;
+				}
+				break;
+			default: break;
+			}
+		}
+
+		inline void onPopTag(Parser &p, Tag &tag) {
+			switch (section) {
+			case Nav:
+				if (tag.name.compare("nav")) {
+					section = None;
+				}
+				break;
+			case Heading:
+			case Ol:
+				if (tag.name.compare("h1") || tag.name.compare("h2") || tag.name.compare("h3")
+						|| tag.name.compare("h4") || tag.name.compare("h5") || tag.name.compare("h6")
+						|| tag.name.compare("ol") || tag.name.compare("a") || tag.name.compare("span")) {
+					auto &last = p.tagStack.at(p.tagStack.size() - 2);
+					if (last.name.compare("nav")) {
+						section = Nav;
+					} else if (last.name.compare("li")) {
+						section = Li;
+					}
+				}
+				break;
+			case Li:
+				if (tag.name.compare("li")) {
+					contents.pop_back();
+					section = Ol;
+				}
+				break;
+			default: break;
+			}
+		}
+
+		inline void onTagContent(Parser &p, Tag &tag, StringReader &s) {
+			switch (section) {
+			case Heading:
+				contents.back()->label += s.str();
+				break;
+			default: break;
+			}
+		}
+	} r(_info, filePath, &_contents);
+
+	html::parse(r, CharReaderUtf8((const char *)toc.data(), toc.size()));
+}
+
+data::Value Document::encodeContents(const ContentRecord &rec) {
+	data::Value ret;
+	ret.setString(rec.label, "label");
+	ret.setString(rec.href, "href");
+	if (!rec.childs.empty()) {
+		data::Value &childs = ret.emplace("childs");
+		for (auto &it : rec.childs) {
+			childs.addValue(encodeContents(it));
+		}
+	}
+	return ret;
 }
 
 NS_EPUB_END

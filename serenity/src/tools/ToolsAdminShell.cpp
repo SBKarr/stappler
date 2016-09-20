@@ -14,7 +14,7 @@
 
 NS_SA_EXT_BEGIN(tools)
 
-class SchellSocketHandler : public websocket::Handler, ReaderClassBase<CharReaderBase> {
+class SchellSocketHandler : public websocket::Handler, ReaderClassBase<char> {
 public:
 	enum class ShellMode {
 		Plain,
@@ -135,6 +135,21 @@ public:
 		return true;
 	}
 
+	bool onHandlers(CharReaderBase &r) {
+		auto serv = _request.server();
+		auto &h = serv.getRequestHandlers();
+
+		data::Value ret;
+		for (auto &it : h) {
+			auto &v = ret.emplace();
+			v.setString(it.first, "path");
+			v.setValue(it.second.second, "data");
+		}
+
+		sendData(ret);
+		return true;
+	}
+
 	bool onCommand(CharReaderBase &r) {
 		auto cmd = r.readUntil<Group<GroupId::WhiteSpace>>();
 		r.skipChars<Group<GroupId::WhiteSpace>>();
@@ -167,6 +182,8 @@ public:
 			apr::ostringstream resp;
 			resp << "Users on socket: " << _manager->size();
 			send(resp.weak());
+		} else if (cmd == "handlers") {
+			return onHandlers(r);
 		}
 		return true;
 	}

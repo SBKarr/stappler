@@ -469,6 +469,8 @@ void DrawerCanvas::drawBackgroundColor(const cocos2d::Rect &bbox, const Backgrou
 
 void DrawerCanvas::drawBackground(const cocos2d::Rect &bbox, const Background &bg) {
 	if (thumb) {
+		helper_color(canvas, Color4B(127, 127, 127, 127));
+		helper_rectangle(canvas, bbox, texRect, density, draw::Style::Fill);
 		return;
 	}
 	if (bg.backgroundColor.a != 0) {

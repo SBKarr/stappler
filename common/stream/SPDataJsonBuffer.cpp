@@ -45,7 +45,7 @@ inline data::Value &JsonBuffer::emplaceDict() {
 
 inline void JsonBuffer::writeString(data::Value &val, const Reader &r) {
 	val._type = Value::Type::CHARSTRING;
-	val.strVal = new String(r.getPtr(), r.getLength());
+	val.strVal = new String(r.data(), r.size());
 }
 
 inline void JsonBuffer::writeNumber(data::Value &val, double d) {
@@ -104,7 +104,7 @@ void JsonBuffer::flushString(const Reader &r) {
 		state = State::ArrayNext;
 		break;
 	case State::DictKey:
-		key.assign(r.getPtr(), r.getLength());
+		key.assign(r.data(), r.size());
 		state = State::DictKeyValueSep;
 		break;
 	case State::DictValue:
@@ -120,7 +120,7 @@ void JsonBuffer::flushString(const Reader &r) {
 
 void JsonBuffer::flushNumber(const Reader &r) {
 	char *end = nullptr;
-	double d = strtod(r.getPtr(), &end);
+	double d = strtod(r.data(), &end);
 
 	switch (state) {
 	case State::None:
@@ -132,7 +132,7 @@ void JsonBuffer::flushNumber(const Reader &r) {
 		state = State::ArrayNext;
 		break;
 	case State::DictKey:
-		key.assign(r.getPtr(), r.getLength());
+		key.assign(r.data(), r.size());
 		state = State::DictKeyValueSep;
 		break;
 	case State::DictValue:
@@ -157,7 +157,7 @@ void JsonBuffer::flushPlain(const Reader &r) {
 		state = State::ArrayNext;
 		break;
 	case State::DictKey:
-		key.assign(r.getPtr(), r.getLength());
+		key.assign(r.data(), r.size());
 		state = State::DictKeyValueSep;
 		break;
 	case State::DictValue:
@@ -190,7 +190,7 @@ bool JsonBuffer::parseString(Reader &r, bool tryWhole) {
 					literal = Literal::None;
 					return true;
 				} else {
-					buf.put(s.getPtr(), s.getLength());
+					buf.put(s.data(), s.size());
 				}
 			}
 			if (r.is('\\')) {
@@ -258,7 +258,7 @@ bool JsonBuffer::parseNumber(Reader &r, bool tryWhole) {
 			literal = Literal::None;
 			return true;
 		} else {
-			buf.put(e.getPtr(), e.getLength());
+			buf.put(e.data(), e.size());
 		}
 	}
 	if (r.empty()) {
@@ -277,7 +277,7 @@ bool JsonBuffer::parsePlain(Reader &r, bool tryWhole) {
 			literal = Literal::None;
 			return true;
 		} else {
-			buf.put(e.getPtr(), e.getLength());
+			buf.put(e.data(), e.size());
 		}
 	}
 	if (r.empty()) {

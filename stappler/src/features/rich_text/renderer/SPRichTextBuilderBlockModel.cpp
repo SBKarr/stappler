@@ -131,9 +131,9 @@ bool Builder::processFloatNode(Layout &l, const Node &node, BlockStyle &&blockMo
 	FloatContext f{ &newL, pageBreak?_media.surfaceSize.height:nan() };
 	_floatStack.push_back(&f);
 	if (processNode(newL, pos, l.size, 0.0f)) {
-		//newL.setBoundPosition(pos);
 		FontStyle s = node.getStyle().compileFontStyle(this);
-		if (currF->pushFloatingNode(l, newL, pos)) {
+		Vec2 p = pos;
+		if (currF->pushFloatingNode(l, newL, p)) {
 			l.layouts.emplace_back(std::move(newL));
 		}
 	}

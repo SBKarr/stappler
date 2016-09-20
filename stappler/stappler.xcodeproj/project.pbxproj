@@ -114,13 +114,9 @@
 		844635A01B1EC01900CA9857 /* libfreetype.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8446359B1B1EC01900CA9857 /* libfreetype.a */; };
 		844635A11B1EC01900CA9857 /* libjpeg.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8446359C1B1EC01900CA9857 /* libjpeg.a */; };
 		844635A21B1EC01900CA9857 /* libpng.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8446359D1B1EC01900CA9857 /* libpng.a */; };
-		844635A41B1EC03600CA9857 /* libcurl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8446359A1B1EC01900CA9857 /* libcurl.a */; };
 		844635A51B1EC03C00CA9857 /* libjpeg.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8446359C1B1EC01900CA9857 /* libjpeg.a */; };
 		844635A61B1EC03F00CA9857 /* libpng.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8446359D1B1EC01900CA9857 /* libpng.a */; };
 		844635AD1B1EC12700CA9857 /* libcurl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 844635A91B1EC12700CA9857 /* libcurl.a */; };
-		844635AE1B1EC12700CA9857 /* libglfw3.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 844635AA1B1EC12700CA9857 /* libglfw3.a */; };
-		844635AF1B1EC12700CA9857 /* libjpeg.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 844635AB1B1EC12700CA9857 /* libjpeg.a */; };
-		844635B01B1EC12700CA9857 /* libpng.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 844635AC1B1EC12700CA9857 /* libpng.a */; };
 		844637531B1EE7FE00CA9857 /* SPIOSLoaderView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 844637521B1EE7FE00CA9857 /* SPIOSLoaderView.mm */; };
 		847576CB1BE8A14600445A50 /* SPTimeout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 847576C91BE8A14600445A50 /* SPTimeout.cpp */; };
 		847BB9D31C4505B000B3B701 /* SPDataCborBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 847BB9C81C4505B000B3B701 /* SPDataCborBuffer.cpp */; };
@@ -568,13 +564,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				844635A41B1EC03600CA9857 /* libcurl.a in Frameworks */,
-				844635AE1B1EC12700CA9857 /* libglfw3.a in Frameworks */,
 				844635AD1B1EC12700CA9857 /* libcurl.a in Frameworks */,
 				844635A51B1EC03C00CA9857 /* libjpeg.a in Frameworks */,
 				844635A61B1EC03F00CA9857 /* libpng.a in Frameworks */,
-				844635AF1B1EC12700CA9857 /* libjpeg.a in Frameworks */,
-				844635B01B1EC12700CA9857 /* libpng.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1664,13 +1656,13 @@
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				HEADER_SEARCH_PATHS = "$(inherited)";
 				IPHONEOS_DEPLOYMENT_TARGET = 5.1.1;
-				LIBRARY_SEARCH_PATHS = "$(SRCROOT)/../libs/prebuild/mac";
+				LIBRARY_SEARCH_PATHS = "$(SRCROOT)/../libs/mac/x86_64/lib";
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = "stappler Mac";
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
-				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../libs/freetype2/ios $(SRCROOT)/../libs/lua/** $(SRCROOT)/../cocos2d/external/png/ios $(SRCROOT)/../cocos2d/external/jpeg/ios $(SRCROOT)/../cocos2d/cocos/platform/mac $(SRCROOT)/../cocos2d/cocos/platform/desktop $(SRCROOT)/../cocos2d/external/tinyxml2 $(SRCROOT)/../cocos2d/external/xxhash $(SRCROOT)/../cocos2d/external/unzip $(SRCROOT)/../cocos2d/cocos/platform/apple $(SRCROOT)/../cocos2d/cocos/platform $(SRCROOT)/../cocos2d/external/ConvertUTF";
+				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../libs/mac/x86_64/include $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/png/ios $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/jpeg/ios $(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform/mac $(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform/desktop $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/tinyxml2 $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/xxhash $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/unzip $(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform/apple $(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/ConvertUTF";
 				USE_HEADERMAP = NO;
 				VALIDATE_PRODUCT = NO;
 				VALID_ARCHS = x86_64;
@@ -1697,12 +1689,12 @@
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				HEADER_SEARCH_PATHS = "$(inherited)";
 				IPHONEOS_DEPLOYMENT_TARGET = 5.1.1;
-				LIBRARY_SEARCH_PATHS = "$(SRCROOT)/../libs/prebuild/mac";
+				LIBRARY_SEARCH_PATHS = "$(SRCROOT)/../libs/mac/x86_64/lib";
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = "stappler Mac";
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
-				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../libs/freetype2/ios $(SRCROOT)/../libs/lua/** $(SRCROOT)/../cocos2d/external/png/ios $(SRCROOT)/../cocos2d/external/jpeg/ios $(SRCROOT)/../cocos2d/cocos/platform/mac $(SRCROOT)/../cocos2d/cocos/platform/desktop $(SRCROOT)/../cocos2d/external/tinyxml2 $(SRCROOT)/../cocos2d/external/xxhash $(SRCROOT)/../cocos2d/external/unzip $(SRCROOT)/../cocos2d/cocos/platform/apple $(SRCROOT)/../cocos2d/cocos/platform $(SRCROOT)/../cocos2d/external/ConvertUTF";
+				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../libs/mac/x86_64/include $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/png/ios $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/jpeg/ios $(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform/mac $(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform/desktop $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/tinyxml2 $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/xxhash $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/unzip $(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform/apple $(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/ConvertUTF";
 				USE_HEADERMAP = NO;
 				VALIDATE_PRODUCT = NO;
 				VALID_ARCHS = x86_64;
@@ -1734,13 +1726,13 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../cocos2d/cocos\"",
-					"\"$(SRCROOT)/../cocos2d/extensions\"",
-					"\"$(SRCROOT)/../cocos2d/external\"",
-					"\"$(SRCROOT)/../cocos2d/cocos/audio/include\"",
-					"\"$(SRCROOT)/../cocos2d/cocos/platform\"",
-					"\"$(SRCROOT)/../cocos2d/cocos/base\"",
-					"\"$(SRCROOT)/../cocos2d/cocos/math\"",
+					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos\"",
+					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/extensions\"",
+					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/external\"",
+					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/audio/include\"",
+					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform\"",
+					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/base\"",
+					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/math\"",
 					"\"$(SRCROOT)/src\"/**",
 					"\"$(SRCROOT)/../common\"/**",
 				);
@@ -1775,13 +1767,13 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../cocos2d/cocos\"",
-					"\"$(SRCROOT)/../cocos2d/extensions\"",
-					"\"$(SRCROOT)/../cocos2d/external\"",
-					"\"$(SRCROOT)/../cocos2d/cocos/audio/include\"",
-					"\"$(SRCROOT)/../cocos2d/cocos/platform\"",
-					"\"$(SRCROOT)/../cocos2d/cocos/base\"",
-					"\"$(SRCROOT)/../cocos2d/cocos/math\"",
+					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos\"",
+					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/extensions\"",
+					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/external\"",
+					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/audio/include\"",
+					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform\"",
+					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/base\"",
+					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/math\"",
 					"\"$(SRCROOT)/src\"/**",
 					"\"$(SRCROOT)/../common\"/**",
 				);
@@ -1824,7 +1816,7 @@
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
-				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../cocos2d/cocos/platform/ios $(SRCROOT)/../cocos2d/cocos/platform/apple $(SRCROOT)/../libs/SPWebView $(SRCROOT)/../cocos2d/external/xxhash $(SRCROOT)/../cocos2d/external/jpeg/ios $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include/cairo $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include/curl $(SRCROOT)/../cocos2d/external/unzip $(SRCROOT)/../cocos2d/external/tinyxml2";
+				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform/ios $(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform/apple $(SRCROOT)/../libs/SPWebView $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/xxhash $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/jpeg/ios $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include/cairo $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include/curl $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/unzip $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/tinyxml2";
 				USE_HEADERMAP = NO;
 				VALIDATE_PRODUCT = NO;
 				VALID_ARCHS = "armv7 armv7s arm64";
@@ -1859,7 +1851,7 @@
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
-				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../cocos2d/cocos/platform/ios $(SRCROOT)/../cocos2d/cocos/platform/apple $(SRCROOT)/../libs/SPWebView $(SRCROOT)/../cocos2d/external/xxhash $(SRCROOT)/../cocos2d/external/jpeg/ios $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include/cairo $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include/curl $(SRCROOT)/../cocos2d/external/unzip $(SRCROOT)/../cocos2d/external/tinyxml2";
+				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform/ios $(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform/apple $(SRCROOT)/../libs/SPWebView $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/xxhash $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/jpeg/ios $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include/cairo $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include/curl $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/unzip $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/tinyxml2";
 				USE_HEADERMAP = NO;
 				VALIDATE_PRODUCT = NO;
 				VALID_ARCHS = "armv7 armv7s arm64";

@@ -64,6 +64,7 @@
 #include <iterator>
 #include <algorithm>
 #include <tuple>
+#include <cmath>
 #include <float.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -463,6 +464,32 @@ struct ValueWrapper {
 
 	T value;
 };
+
+/*
+ * 		Invoker/CallTest macro
+ */
+
+#define InvokerCallTest_MakeInvoker(Module, Name) \
+	template <typename T, bool Value> struct Module ## _ ## Name; \
+	template <typename T> struct Module ## _ ## Name <T, false> { \
+		template <typename ... Args> static inline void call(T &t, Args && ...args) { } \
+	}; \
+	template <typename T> struct Module ## _ ## Name <T, true> { \
+		template <typename ... Args> static inline void call(T &t, Args && ...args) { t.Name(std::forward<Args>(args)...);} \
+	};
+
+#define InvokerCallTest_MakeCallTest(Name, Success, Failure) \
+	private: \
+		template <typename C> static Success CallTest_ ## Name( typeof(&C::Name) ); \
+		template <typename C> static Failure CallTest_ ## Name(...); \
+	public: \
+		static const bool hasMethod_ ## Name = sizeof(CallTest_ ## Name<T>(0)) == sizeof(success);
+
+#define InvokerCallTest_MakeCallMethod(Module, Name, Type) \
+	template <typename ... Args> \
+	static inline void Name(Type &t, Args && ... args) { \
+		Module ## _ ## Name <Type, sizeof(CallTest_ ## Name<Type>(0)) == sizeof(success)>::call(t, std::forward<Args>(args)...); \
+	}
 
 NS_SP_END
 

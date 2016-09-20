@@ -214,7 +214,7 @@ bool Url::parseInternal(const String &str) {
 				} else {
 					return false;
 				}
-				_port = StringToNumber<uint32_t>(port.getPtr(), nullptr);
+				_port = StringToNumber<uint32_t>(port.data(), nullptr);
 				s = tmpS;
 				if (s.is('/')) {
 					++ s;
@@ -316,7 +316,7 @@ bool Url::parseInternal(const String &str) {
 			++ s;
 			auto port = s.readChars<Range<'0', '9'>>();
 			if (!port.empty()) {
-				_port = StringToNumber<uint32_t>(port.getPtr(), nullptr);
+				_port = StringToNumber<uint32_t>(port.data(), nullptr);
 			} else {
 				return false;
 			}

@@ -179,6 +179,72 @@ String toupper(const String &str) {
 	return ret;
 }
 
+void toupper_buf(char16_t *str, size_t len) {
+	if (len == maxOf<size_t>()) {
+		len = std::char_traits<char16_t>::length(str);
+	}
+
+	for (size_t i = 0; i < len; i++) {
+		str[i] = toupper(str[i]);
+	}
+}
+
+void toupper_buf(char *str, size_t len) {
+	if (len == maxOf<size_t>()) {
+		len = std::char_traits<char>::length(str);
+	}
+
+	char b = 0, c = 0;
+	for (size_t i = 0; i < len; i++) {
+		b = c;
+		c = str[i];
+		if (b != 0 && (b & (0x80))) {
+			int ind = sp_str_ind(sp_lowercase_set, b, c);
+			if (ind >= 0 && ind % 2 == 0) {
+				str[i-1] = sp_uppercase_set[ind];
+				str[i] = sp_uppercase_set[ind + 1];
+			} else {
+				str[i] = ::toupper(c);
+			}
+		} else {
+			str[i] = ::toupper(c);
+		}
+	}
+}
+
+void tolower_buf(char16_t *str, size_t len) {
+	if (len == maxOf<size_t>()) {
+		len = std::char_traits<char16_t>::length(str);
+	}
+
+	for (size_t i = 0; i < len; i++) {
+		str[i] = tolower(str[i]);
+	}
+}
+
+void tolower_buf(char *str, size_t len) {
+	if (len == maxOf<size_t>()) {
+		len = std::char_traits<char>::length(str);
+	}
+
+	char b = 0, c = 0;
+	for (size_t i = 0; i < len; i++) {
+		b = c;
+		c = str[i];
+		if (b != 0 && (b & (0x80))) {
+			int ind = sp_str_ind(sp_uppercase_set, b, c);
+			if (ind >= 0 && ind % 2 == 0) {
+				str[i-1] = sp_lowercase_set[ind];
+				str[i] = sp_lowercase_set[ind + 1];
+			} else {
+				str[i] = ::tolower(c);
+			}
+		} else {
+			str[i] = ::tolower(c);
+		}
+	}
+}
+
 static inline uint32_t Utf8Get(char_const_ptr_ref_t ptr) {
 	uint8_t len = 0;
 	auto ret = unicode::utf8Decode(ptr, len);

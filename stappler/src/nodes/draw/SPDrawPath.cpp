@@ -17,11 +17,8 @@ NS_SP_EXT_BEGIN(draw)
 #define SP_PATH_LOG(...)
 //#define SP_PATH_LOG(...) stappler::logTag("Path Debug", __VA_ARGS__)
 
-class SVGPathReader : public ReaderClassBase<CharReaderBase> {
+class SVGPathReader : public ReaderClassBase<char> {
 public:
-	using Vec2 = cocos2d::Vec2;
-	using Mat4 = cocos2d::Mat4;
-
 	static bool readFile(Path *p, const std::string &str) {
 		if (!str.empty()) {
 			auto content = filesystem::readTextFile(str);

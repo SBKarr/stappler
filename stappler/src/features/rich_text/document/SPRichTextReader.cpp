@@ -115,6 +115,13 @@ Reader::Tag Reader::onTag(StringReader &tag) {
 				}
 				ret.style.push_back(pair(name, value));
 			});
+		} else if (paramName == "href") {
+			auto ref = parser::readHtmlTagParamValue(tag);
+			if (!ref.empty() && ref.front() != '#' && ref.find("://") == String::npos && !_path.empty()) {
+				ret.attributes.emplace(paramName, filepath::reconstructPath(filepath::merge(filepath::root(_path), ref)));
+			} else if (!ref.empty()) {
+				ret.attributes.emplace(paramName, std::move(ref));
+			}
 		} else if (paramName == "class") {
 			paramValue = parser::readHtmlTagParamValue(tag);
 			string::split(string::tolower(paramValue), " ", [&ret] (const CharReaderBase &r) {
@@ -256,6 +263,9 @@ void Reader::onPushTag(Tag &tag) {
 			auto &node = _nodeStack.back()->pushNode(tag.name, tag.id, _styleStack.back(), std::move(tag.attributes));
 			SP_RTREADER_LOG("'%s'", tag.name.c_str());
 			_nodeStack.push_back(&node);
+		} else if (tag.type == Tag::Markup && tag.name == "body") {
+			auto &body = _nodeStack.front();
+			body->pushStyle(_styleStack.back());
 		}
 	}
 }

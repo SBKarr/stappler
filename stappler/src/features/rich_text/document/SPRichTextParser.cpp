@@ -25,7 +25,7 @@ namespace parser {
 	String readCssIdentifier(StringReader &s, char finisher);
 
 	template <char16_t F>
-	String readCssMediaQuery(StringReader &s, char finisher);
+	String readCssMediaQuery(const String &, StringReader &s, char finisher);
 
 	template <char16_t F>
 	String readCssValue(StringReader &s, char finisher);
@@ -178,9 +178,13 @@ namespace parser {
 	}
 
 	template <char16_t F>
-	String readCssMediaQuery(StringReader &s, char finisher) {
+	String readCssMediaQuery(const String &selector, StringReader &s, char finisher) {
+		String ret;
+		if (selector.size() > "@media "_len) {
+			ret += selector.substr("@media "_len);
+		}
 		checkCssComments(s);
-		String ret = s.readUntil<Chars<'{', F>>().str();
+		ret += s.readUntil<Chars<'{', F>>().str();
 		if (s.is('{')) {
 			string::trim(ret);
 			string::tolower(ret);
@@ -377,9 +381,9 @@ namespace parser {
 				continue;
 			}
 
-			if (selector == "@media" && !hasMediaQuery) {
+			if (selector.compare(0, "@media"_len, "@media") == 0 && !hasMediaQuery) {
 				hasMediaQuery = true;
-				String q = parser::readCssMediaQuery<'<'>(s, '<');
+				String q = parser::readCssMediaQuery<'<'>(selector, s, '<');
 				mediaQuery.parse(q, [&] (CssStringId id, const String &str) {
 					reader.addCssString(id, str);
 				});

@@ -48,6 +48,12 @@ public:
 		Set<char16_t> set;
 	};
 
+	struct ContentRecord {
+		String label;
+		String href;
+		Vector<ContentRecord> childs;
+	};
+
 	using FontConfig = Map<String, FontConfigValue>;
 	using CssStrings = Map<CssStringId, String>;
 	using MediaQueries = Vector<style::MediaQuery>;
@@ -93,6 +99,7 @@ public:
 
 	const ImageMap & getImages() const;
 	const GalleryMap & getGalleryMap() const;
+	const ContentRecord & getTableOfContents() const;
 
 protected:
 	Bytes readData(size_t offset, size_t len);
@@ -128,6 +135,8 @@ protected:
 	Bytes _data;
 	String _filePath;
 	String _contentType;
+
+	ContentRecord _contents;
 };
 
 NS_SP_EXT_END(rich_text)

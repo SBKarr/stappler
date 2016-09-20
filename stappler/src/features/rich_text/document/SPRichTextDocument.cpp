@@ -453,6 +453,10 @@ const Document::GalleryMap & Document::getGalleryMap() const {
 	return _gallery;
 }
 
+const Document::ContentRecord & Document::getTableOfContents() const {
+	return _contents;
+}
+
 const Node *Document::getNodeById(const String &str) const {
 	auto it = _ids.find(str);
 	if (it != _ids.end()) {
@@ -705,7 +709,7 @@ void Document::processCss(const String &path, const CharReaderBase &str) {
 void Document::processHtml(const String &path, const CharReaderBase &html, bool linear) {
 	Reader r;
 	Vector<Pair<String, String>> meta;
-	_content.emplace_back(HtmlPage{path, Node(), HtmlPage::FontMap{}, linear});
+	_content.emplace_back(HtmlPage{path, Node("html", path), HtmlPage::FontMap{}, linear});
 	HtmlPage &c = _content.back();
 
 	if (r.readHtml(c, html, _cssStrings, _mediaQueries, meta, _css)) {

@@ -50,6 +50,12 @@ public: // meta
 protected:
 	virtual void processHtml(const String &, const CharReaderBase &, bool linear = true) override;
 
+	void readTocFile(const String &);
+	void readNcxNav(const String &filePath);
+	void readXmlNav(const String &filePath);
+
+	data::Value encodeContents(const ContentRecord &);
+
 	Rc<Info> _info;
 };
 

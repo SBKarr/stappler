@@ -153,9 +153,16 @@ void Builder::buildBlockModel() {
 	if (!l.layouts.empty()) {
 		addLayoutObjects(l);
 	}
+	_result->finalize();
 }
 
 void Builder::addLayoutObjects(Layout &l) {
+	if (l.node) {
+		if (!l.node->getHtmlId().empty()) {
+			_result->pushIndex(l.node->getHtmlId(), l.position);
+		}
+	}
+
 	if (!l.preObjects.empty()) {
 		for (auto &it : l.preObjects) {
 			it.bbox.origin += l.position;

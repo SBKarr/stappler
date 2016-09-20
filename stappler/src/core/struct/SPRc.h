@@ -111,7 +111,7 @@ public:
 	}
 
 	static inline Self alloc() {
-		return  Self(new Type(), true);
+		return Self(new Type(), true);
 	}
 
 	inline Rc() : _ptr(nullptr) { }

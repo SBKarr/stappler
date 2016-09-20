@@ -62,14 +62,12 @@ inline auto CharReader_readNumber(const_char16_ptr &ptr, size_t &len) -> T {
 	return val;
 }
 
-template <typename R, typename CharType = typename R::CharType>
+template <typename CharType>
 struct ReaderClassBase {
-	using Reader = R;
-
-	template <char16_t ... Args>
+	template <CharType ... Args>
 	using Chars = chars::Chars<CharType, Args...>;
 
-	template <char16_t First, char16_t Last>
+	template <CharType First, CharType Last>
 	using Range = chars::Chars<CharType, First, Last>;
 
 	using GroupId = chars::CharGroupId;
@@ -408,12 +406,12 @@ protected: // char-matching inline functions
 
 inline std::basic_ostream<char> &
 operator << (std::basic_ostream<char> & os, const CharReaderBase & str) {
-	return os.write(str.getPtr(), str.getLength());
+	return os.write(str.data(), str.size());
 }
 
 inline std::basic_ostream<char> &
 operator << (std::basic_ostream<char> & os, const CharReaderUtf8 & str) {
-	return os.write(str.getPtr(), str.getLength());
+	return os.write(str.data(), str.size());
 }
 
 NS_SP_END

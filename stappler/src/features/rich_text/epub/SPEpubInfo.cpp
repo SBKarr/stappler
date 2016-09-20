@@ -10,6 +10,7 @@
 #include "SPFilesystem.h"
 #include "SPBitmap.h"
 #include "SPLocale.h"
+#include "SPHtmlParser.h"
 
 #include "unzip.h"
 #include "tinyxml2.h"
@@ -149,7 +150,7 @@ Info::~Info() {
 
 Info::Info(Info && doc)
 : _file(doc._file), _rootFile(std::move(doc._rootFile))
-, _rootPath(std::move(doc._rootPath)), _uniqueId(std::move(doc._uniqueId))
+, _rootPath(std::move(doc._rootPath)), _tocFile(std::move(doc._tocFile)), _uniqueId(std::move(doc._uniqueId))
 , _modified(std::move(doc._modified)), _coverFile(std::move(doc._coverFile))
 , _manifest(std::move(doc._manifest)), _spine(std::move(doc._spine))
 , _meta(std::move(doc._meta))  {
@@ -160,6 +161,7 @@ Info & Info::operator=(Info && doc) {
 	_file = doc._file;
 	_rootFile = std::move(doc._rootFile);
 	_rootPath = std::move(doc._rootPath);
+	_tocFile = std::move(doc._tocFile);
 	_uniqueId = std::move(doc._uniqueId);
 	_modified = std::move(doc._modified);
 	_coverFile = std::move(doc._coverFile);
@@ -387,23 +389,28 @@ Map<String, ManifestFile> Info::getFileList(FilePtr file) {
 	return ret;
 }
 
+
 String Info::getRootPath() {
 	String ret;
 	auto container = openFile("META-INF/container.xml");
 	if (!container.empty()) {
-		tinyxml2::XMLDocument xmlDoc;
-		if (xmlDoc.Parse((const char *)container.data(), container.size()) == tinyxml2::XML_SUCCESS) {
-			if (auto root = xmlDoc.RootElement()) {
-				if (auto rootfiles = root->FirstChildElement("rootfiles")) {
-					if (auto rootfile = rootfiles->FirstChildElement("rootfile")) {
-						auto filePath = rootfile->Attribute("full-path");
-						if (filePath) {
-							ret = filePath;
-						}
-					}
+		struct EpubXmlContentReader {
+			using Parser = html::Parser<EpubXmlContentReader>;
+			using Tag = Parser::Tag;
+			using StringReader = Parser::StringReader;
+
+			inline void onTagAttribute(Parser &p, Tag &tag, StringReader &name, StringReader &value) {
+				if (tag.name.compare("rootfile") && name.compare("full-path")) {
+					result = value.str();
+					p.cancel();
 				}
 			}
-		}
+
+			String result;
+		} r;
+
+		html::parse(r, CharReaderUtf8((const char *)container.data(), container.size()));
+		return r.result;
 	}
 	return ret;
 }
@@ -579,6 +586,18 @@ void Info::processPublication() {
 				}
 			}
 		} else if (strcmp(node->Value(), "spine") == 0 || strcmp(node->Value(), "opf:spine") == 0) {
+			if (auto el = node->ToElement()) {
+				auto attr = el->Attribute("toc");
+				if (!attr) {
+					attr = el->Attribute("opf:toc");
+				}
+				if (attr) {
+					auto it = manifestIds.find(attr);
+					if (it != manifestIds.end()) {
+						_tocFile = it->second->path;
+					}
+				}
+			}
 			for (auto mdnode = node->FirstChild(); mdnode != nullptr; mdnode = mdnode->NextSibling()) {
 				if (auto el = mdnode->ToElement()) {
 					String name(mdnode->Value());
@@ -672,11 +691,25 @@ void Info::processPublication() {
 		}
 	}
 
+	String coverFile, tocFile;
 	for (auto &it : _manifest) {
 		if (it.second.props.find("cover-image") != it.second.props.end()) {
-			_coverFile = it.second.path;
+			coverFile = it.second.path;
+		}
+		if (it.second.props.find("nav") != it.second.props.end()) {
+			tocFile = it.second.path;
+		}
+		if (!coverFile.empty() && !tocFile.empty()) {
 			break;
 		}
+	}
+
+	if (!coverFile.empty()) {
+		_coverFile = coverFile;
+	}
+
+	if (!tocFile.empty()) {
+		_tocFile = tocFile;
 	}
 }
 
@@ -697,6 +730,9 @@ const String & Info::getModificationTime() const {
 }
 const String & Info::getCoverFile() const {
 	return _coverFile;
+}
+const String & Info::getTocFile() const {
+	return _tocFile;
 }
 
 bool Info::isFileExists(const String &path, const String &root) const {

@@ -77,13 +77,19 @@ char16_t tolower(char16_t);
 
 WideString &toupper(WideString &str);
 WideString toupper(const WideString &str);
+void toupper_buf(char16_t *, size_t len = maxOf<size_t>());
+
 String &toupper(String &str);
 String toupper(const String &str);
+void toupper_buf(char *, size_t len = maxOf<size_t>());
 
 WideString &tolower(WideString &str);
 WideString tolower(const WideString &str);
+void tolower_buf(char16_t *, size_t len = maxOf<size_t>());
+
 String &tolower(String &str);
 String tolower(const String &str);
+void tolower_buf(char *, size_t len = maxOf<size_t>());
 
 bool isspace(char ch);
 bool isspace(char16_t ch);

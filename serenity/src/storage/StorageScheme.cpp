@@ -19,6 +19,8 @@ Scheme::Scheme(const String &name, std::initializer_list<Field> il) :  Scheme(na
 		auto &name = it.getName();
 		fields.emplace(name, std::move(const_cast<Field &>(it)));
 	}
+
+	updateLimits();
 }
 
 void Scheme::define(std::initializer_list<Field> il) {

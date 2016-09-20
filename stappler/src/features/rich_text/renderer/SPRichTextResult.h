@@ -32,6 +32,8 @@ public:
 	Document *getDocument() const;
 
 	void pushObject(Object &&);
+	void pushIndex(const String &, const Vec2 &);
+	void finalize();
 
 	void setBackgroundColor(const Color4B &c);
 	const Color4B & getBackgroundColor() const;
@@ -43,6 +45,7 @@ public:
 
 	const Vector<Object> & getObjects() const;
 	const Vector<Object> & getRefs() const;
+	const Map<String, Vec2> & getIndex() const;
 	size_t getNumPages() const;
 
 	PageData getPageData(Renderer *r, size_t idx, float offset) const;
@@ -53,6 +56,7 @@ protected:
 
 	Vector<Object> _objects;
 	Vector<Object> _refs;
+	Map<String, Vec2> _index;
 
 	Color4B _background;
 

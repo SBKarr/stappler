@@ -293,10 +293,10 @@ void CborDecoder::decodeNegativeInt(uint8_t type, Value &v) {
 void CborDecoder::decodeByteString(uint8_t type, Value &v) {
 	if (type != toInt(Flags::UndefinedLength)) {
 		auto size = readIntValue(type);
-		size = min(r.getLength(), (size_t)size);
+		size = min(r.size(), (size_t)size);
 		if (!_filterSkip) {
 			v._type = Value::Type::BYTESTRING;
-			v.bytesVal = new Bytes(r.getPtr(), r.getPtr() + size);
+			v.bytesVal = new Bytes(r.data(), r.data() + size);
 		}
 		r.offset(size);
 	} else {
@@ -314,10 +314,10 @@ void CborDecoder::decodeByteString(uint8_t type, Value &v) {
 			}
 
 			tmpSize = ret.size();
-			size = min(r.getLength(), size);
+			size = min(r.size(), size);
 			if (!_filterSkip) {
 				ret.resize(tmpSize + size);
-				memcpy(ret.data() + tmpSize, r.getPtr(), size);
+				memcpy(ret.data() + tmpSize, r.data(), size);
 			}
 			r.offset(size);
 		} while (type != toInt(Flags::UndefinedLength));
@@ -331,10 +331,10 @@ void CborDecoder::decodeByteString(uint8_t type, Value &v) {
 void CborDecoder::decodeCharString(uint8_t type, Value &v) {
 	if (type != toInt(Flags::UndefinedLength)) {
 		auto size = readIntValue(type);
-		size = min(r.getLength(), (size_t)size);
+		size = min(r.size(), (size_t)size);
 		if (!_filterSkip) {
 			v._type = Value::Type::CHARSTRING;
-			v.strVal = new String((char *)r.getPtr(), size);
+			v.strVal = new String((char *)r.data(), size);
 		}
 		r.offset(size);
 	} else {
@@ -352,10 +352,10 @@ void CborDecoder::decodeCharString(uint8_t type, Value &v) {
 			}
 
 			tmpSize = ret.length();
-			size = min(r.getLength(), size);
+			size = min(r.size(), size);
 			if (!_filterSkip) {
 				ret.resize(tmpSize + size);
-				memcpy((void *)(ret.data() + tmpSize), r.getPtr(), size);
+				memcpy((void *)(ret.data() + tmpSize), r.data(), size);
 			}
 			r.offset(size);
 		} while (type != toInt(Flags::UndefinedLength));
@@ -498,7 +498,7 @@ void CborDecoder::decodeMap(uint8_t type, data::Value &ret) {
 				_filterSkip = f;
 			} else {
 				auto size = readIntValue(type);
-				key = CharReaderBase((char *)r.getPtr(), size);
+				key = CharReaderBase((char *)r.data(), size);
 				r += size;
 			}
 			break;
@@ -510,7 +510,7 @@ void CborDecoder::decodeMap(uint8_t type, data::Value &ret) {
 				_filterSkip = f;
 			} else {
 				auto size = readIntValue(type);
-				key = CharReaderBase((char *)r.getPtr(), size);
+				key = CharReaderBase((char *)r.data(), size);
 				r += size;
 			}
 			break;

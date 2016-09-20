@@ -37,7 +37,7 @@ inline void CborBuffer::emplaceDouble(data::Value &val, double value) {
 }
 inline void CborBuffer::emplaceCharString(data::Value &val, Reader &r, size_t size) {
 	val._type = Value::Type::CHARSTRING;
-	val.strVal = new String((const char *)r.getPtr(), size);
+	val.strVal = new String((const char *)r.data(), size);
 	r += size;
 }
 inline void CborBuffer::emplaceByteString(data::Value &val, Reader &r, size_t size) {

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function build() {
-	cd build/ios
+	cd ios
 	./jpeg-ios.sh
 	./libpng-ios.sh
 	./curl-ios.sh
@@ -13,12 +13,12 @@ function build() {
 }
 
 function export_dir() {
-	rm -f ios/$1/include/png*
-	mv ios/$1/include/libpng16/* ios/$1/include
+	mv -f ios/$1/include/libpng16/* ios/$1/include
 	mv ios/$1/include/freetype2/* ios/$1/include
 }
 
 function export_lib() {
+	mkdir -p lib
 	lipo -create -output lib/$1.a \
 		ios/x86_64/lib/$1.a \
 		ios/i386/lib/$1.a \
