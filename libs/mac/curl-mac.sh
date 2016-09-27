@@ -49,7 +49,8 @@ cd $LIBNAME
 	--enable-shared=no \
 	--enable-static=yes \
 	--with-zlib \
-	--with-mbedtls \
+	--with-darwinssl \
+	--enable-threaded-resolver \
 	--without-ca-path \
 	--without-ca-fallback \
 	--without-ca-bundle \

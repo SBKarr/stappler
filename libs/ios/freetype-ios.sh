@@ -45,8 +45,8 @@ cd -
 rm -rf $LIBNAME
 }
 
-Compile i386 4.2 $SDK_INCLUDE_SIM $SYSROOT_SIM i386-apple-darwin
-Compile x86_64 4.2 $SDK_INCLUDE_SIM $SYSROOT_SIM x86_64-apple-darwin
-Compile armv7 4.2 $SDK_INCLUDE_OS $SYSROOT_OS armv7-apple-darwin
-Compile armv7s 5.0 $SDK_INCLUDE_OS $SYSROOT_OS armv7s-apple-darwin
+Compile i386 6.0 $SDK_INCLUDE_SIM $SYSROOT_SIM i386-apple-darwin
+Compile x86_64 6.0 $SDK_INCLUDE_SIM $SYSROOT_SIM x86_64-apple-darwin
+Compile armv7 6.0 $SDK_INCLUDE_OS $SYSROOT_OS armv7-apple-darwin
+Compile armv7s 6.0 $SDK_INCLUDE_OS $SYSROOT_OS armv7s-apple-darwin
 Compile arm64 6.0 $SDK_INCLUDE_OS $SYSROOT_OS arm-apple-darwin

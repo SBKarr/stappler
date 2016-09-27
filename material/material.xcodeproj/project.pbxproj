@@ -399,7 +399,7 @@
 		2966C07318ADFB2B00F7F478 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0700;
+				LastUpgradeCheck = 0800;
 				ORGANIZATIONNAME = SBKarr;
 			};
 			buildConfigurationList = 2966C07618ADFB2B00F7F478 /* Build configuration list for PBXProject "material" */;
@@ -481,13 +481,18 @@
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					NDEBUG,
@@ -503,15 +508,15 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../cocos2d/cocos\"",
-					"\"$(SRCROOT)/../cocos2d/extensions\"",
-					"\"$(SRCROOT)/../cocos2d/external\"",
-					"$(SRCROOT)/../cocos2d/cocos/platform/ios",
+					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos\"",
+					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/extensions\"",
+					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/external\"",
+					"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform/ios",
 					"\"$(SRCROOT)/../stappler/src\"/**",
 					"\"$(SRCROOT)/../common\"/**",
 					"\"$(SRCROOT)\"",
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 			};
@@ -530,12 +535,17 @@
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = YES;
 				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					NDEBUG,
 					USE_FILE32API,
@@ -549,15 +559,15 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../cocos2d/cocos\"",
-					"\"$(SRCROOT)/../cocos2d/extensions\"",
-					"\"$(SRCROOT)/../cocos2d/external\"",
-					"$(SRCROOT)/../cocos2d/cocos/platform/ios",
+					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos\"",
+					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/extensions\"",
+					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/external\"",
+					"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform/ios",
 					"\"$(SRCROOT)/../stappler/src\"/**",
 					"\"$(SRCROOT)/../common\"/**",
 					"\"$(SRCROOT)\"",
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 5.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				SDKROOT = iphoneos;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -577,7 +587,7 @@
 					CC_TARGET_OS_IPHONE,
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				IPHONEOS_DEPLOYMENT_TARGET = 5.1.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = material;
 				SKIP_INSTALL = YES;
@@ -598,7 +608,7 @@
 					CC_TARGET_OS_IPHONE,
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				IPHONEOS_DEPLOYMENT_TARGET = 5.1.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = material;
 				SKIP_INSTALL = YES;

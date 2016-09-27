@@ -47,9 +47,6 @@ static void __log2(const char *tag, const char *text, unsigned long len) {
 
 #if ANDROID
 	__android_log_print(ANDROID_LOG_DEBUG, tag, "%s", str.c_str());
-#elif __apple__
-	fprintf(stdout, "%s\n", buf);
-	fflush(stdout);
 #else
 	fwrite(str.c_str(), str.length(), 1, stdout);
 	fflush(stdout);
@@ -61,16 +58,30 @@ void __stappler_log(const char *tag, CustomLog::Type t, CustomLog::VA &va) {
 	if (t == CustomLog::Text) {
 		__log2(tag, va.text.text, va.text.len);
 	} else {
-		char stackBuf[1_KiB];
+#if __APPLE__
+		va_list tmpList;
+		va_copy(tmpList, va.format.args);
+		int size = vsnprintf(nullptr, 0, va.format.format, tmpList);
+		va_end(tmpList);
+
+		char *buf = new char[size + 1];
+		memset(buf, 0, size + 1);
+		size = vsnprintf(buf, size_t(size), va.format.format, va.format.args);
+		__log2(tag, buf, size);
+		delete [] buf;
+#else
+		char stackBuf[1_KiB] = { 0 };
 		int size = vsnprintf(stackBuf, size_t(1_KiB - 1), va.format.format, va.format.args);
 		if (size > int(1_KiB - 1)) {
 			char *buf = new char[size + 1];
+			memset(buf, 0, size + 1);
 			size = vsnprintf(buf, size_t(size), va.format.format, va.format.args);
 			__log2(tag, buf, size);
 			delete [] buf;
 		} else {
 			__log2(tag, stackBuf, size);
 		}
+#endif
 	}
 #endif // DEBUG
 }

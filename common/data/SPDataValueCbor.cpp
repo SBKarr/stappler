@@ -292,7 +292,7 @@ void CborDecoder::decodeNegativeInt(uint8_t type, Value &v) {
 }
 void CborDecoder::decodeByteString(uint8_t type, Value &v) {
 	if (type != toInt(Flags::UndefinedLength)) {
-		auto size = readIntValue(type);
+		auto size = size_t(readIntValue(type));
 		size = min(r.size(), (size_t)size);
 		if (!_filterSkip) {
 			v._type = Value::Type::BYTESTRING;
@@ -330,7 +330,7 @@ void CborDecoder::decodeByteString(uint8_t type, Value &v) {
 
 void CborDecoder::decodeCharString(uint8_t type, Value &v) {
 	if (type != toInt(Flags::UndefinedLength)) {
-		auto size = readIntValue(type);
+		auto size = size_t(readIntValue(type));
 		size = min(r.size(), (size_t)size);
 		if (!_filterSkip) {
 			v._type = Value::Type::CHARSTRING;
@@ -380,7 +380,7 @@ void CborDecoder::decodeArray(uint8_t type, data::Value &ret) {
 
 	size_t size = maxOf<size_t>();
 	if (type != toInt(Flags::UndefinedLength)) {
-		size = readIntValue(type);
+		size = size_t(readIntValue(type));
 	} else {
 		type = 0;
 	}
@@ -456,7 +456,7 @@ void CborDecoder::decodeMap(uint8_t type, data::Value &ret) {
 
 	size_t size = maxOf<size_t>();
 	if (type != toInt(Flags::UndefinedLength)) {
-		size = readIntValue(type);
+		size = size_t(readIntValue(type));
 	} else {
 		type = 0;
 	}
@@ -497,7 +497,7 @@ void CborDecoder::decodeMap(uint8_t type, data::Value &ret) {
 				decode(majorType, type, ret);
 				_filterSkip = f;
 			} else {
-				auto size = readIntValue(type);
+				auto size = size_t(readIntValue(type));
 				key = CharReaderBase((char *)r.data(), size);
 				r += size;
 			}
@@ -509,7 +509,7 @@ void CborDecoder::decodeMap(uint8_t type, data::Value &ret) {
 				decode(majorType, type, ret);
 				_filterSkip = f;
 			} else {
-				auto size = readIntValue(type);
+				auto size = size_t(readIntValue(type));
 				key = CharReaderBase((char *)r.data(), size);
 				r += size;
 			}

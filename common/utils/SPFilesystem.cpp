@@ -102,7 +102,7 @@ size_t ifile::seek(int64_t offset, io::Seek s) {
 
 
 			if (offset != 0 || s != io::Seek::Current) {
-				if (fseek(_nativeFile, offset, whence) != 0) {
+				if (fseek(_nativeFile, long(offset), whence) != 0) {
 					return maxOf<size_t>();
 				}
 			}

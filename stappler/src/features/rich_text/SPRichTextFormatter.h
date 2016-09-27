@@ -11,7 +11,8 @@
 #include "SPRichTextRendererTypes.h"
 #include "SPFont.h"
 #include "base/CCVector.h"
-#include "hyphen.h"
+
+typedef struct _HyphenDict HyphenDict;
 
 NS_SP_EXT_BEGIN(rich_text)
 

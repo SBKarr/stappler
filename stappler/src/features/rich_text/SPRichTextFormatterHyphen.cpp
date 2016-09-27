@@ -1,6 +1,7 @@
 #include "SPDefine.h"
 #include "SPRichTextFormatter.h"
 #include "SPFilesystem.h"
+#include "hyphen.h"
 
 NS_SP_EXT_BEGIN(rich_text)
 
@@ -47,7 +48,7 @@ Vector<uint8_t> HyphenMap::makeWordHyphens(const char16_t *ptr, size_t len) {
 		char ** rep = nullptr;
 		int * pos = nullptr;
 		int * cut = nullptr;
-		hnj_hyphen_hyphenate2(dict, word.data(), word.size(), buf.data(), nullptr, &rep, &pos, &cut);
+		hnj_hyphen_hyphenate2(dict, word.data(), int(word.size()), buf.data(), nullptr, &rep, &pos, &cut);
 
 		Vector<uint8_t> ret;
 		uint8_t i = 0;

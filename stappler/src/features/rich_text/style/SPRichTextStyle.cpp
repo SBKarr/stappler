@@ -160,12 +160,14 @@ ParameterList getStyleForTag(const String &tag, Tag::Type type) {
 	} else if (tag == "li") {
 		style.data.push_back(Parameter::create<ParameterName::Display>(Display::ListItem));
 	} else if (tag == "ol") {
+		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Block));
 		style.data.push_back(Parameter::create<ParameterName::ListStyleType>(ListStyleType::Decimal));
 		style.data.push_back(Parameter::create<ParameterName::PaddingLeft>(Size(36, Size::Metric::Px)));
 		style.data.push_back(Parameter::create<ParameterName::MarginTop>(Size(10, Size::Metric::Px)));
 		style.data.push_back(Parameter::create<ParameterName::MarginBottom>(Size(10, Size::Metric::Px)));
 		style.data.push_back(Parameter::create<ParameterName::XListStyleOffset>(Size(16, Size::Metric::Px)));
 	} else if (tag == "ul") {
+		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Block));
 		style.data.push_back(Parameter::create<ParameterName::ListStyleType>(ListStyleType::Disc));
 		style.data.push_back(Parameter::create<ParameterName::PaddingLeft>(Size(36, Size::Metric::Px)));
 		style.data.push_back(Parameter::create<ParameterName::MarginTop>(Size(10, Size::Metric::Px)));

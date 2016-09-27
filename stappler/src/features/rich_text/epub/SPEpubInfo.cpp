@@ -115,7 +115,7 @@ bool Info::isEpub(const String &path) {
 						if (info.uncompressed_size >= "application/epub+zip"_len) {
 							if (cocos2d::unzOpenCurrentFile(filePtr) == UNZ_OK) {
 								Bytes buf; buf.resize("application/epub+zip"_len);
-								auto lread = cocos2d::unzReadCurrentFile(filePtr, buf.data(), info.uncompressed_size);
+								auto lread = cocos2d::unzReadCurrentFile(filePtr, buf.data(), unsigned(info.uncompressed_size));
 								if (lread == "application/epub+zip"_len) {
 									if (memcmp(buf.data(), "application/epub+zip", "application/epub+zip"_len) == 0) {
 										ret = true;
@@ -200,7 +200,7 @@ Bytes Info::openFile(const ManifestFile &file) const {
 	if (cocos2d::unzGoToFilePos64(_file, &pos) == UNZ_OK) {
 		if (cocos2d::unzOpenCurrentFile(_file) == UNZ_OK) {
 			ret.resize(file.size);
-			if (cocos2d::unzReadCurrentFile(_file, ret.data(), file.size) != (int)file.size) {
+			if (cocos2d::unzReadCurrentFile(_file, ret.data(), unsigned(file.size)) != (int)file.size) {
 				ret.clear();
 			}
 			cocos2d::unzCloseCurrentFile(_file);
@@ -538,6 +538,157 @@ void Info::processPublication() {
 		return;
 	}
 
+	struct Reader {
+		using Parser = html::Parser<Reader>;
+		using Tag = Parser::Tag;
+		using StringReader = Parser::StringReader;
+
+		enum Section {
+			None,
+			Package,
+			Metadata,
+			Manifest,
+			Spine
+		} section = None;
+
+		inline void onBeginTag(Parser &p, Tag &tag) {
+			switch (section) {
+			case Metadata:
+				if (tag.name.is("dc:")) {
+					metaProps.emplace_back();
+					auto &prop = metaProps.back();
+					prop.prop = String(tag.name.data() + 3, tag.name.size() - 3);
+				} else if (tag.name.compare("meta") || tag.name.compare("opf:meta")) {
+					metaRefine.emplace_back();
+				}
+				break;
+			default: break;
+			}
+			log::format("onBeginTag", "%s", tag.name.str().c_str());
+		}
+
+		inline void onEndTag(Parser &p, Tag &tag) {
+			log::format("onEndTag", "%s", tag.name.str().c_str());
+		}
+
+		inline void onTagAttribute(Parser &p, Tag &tag, StringReader &name, StringReader &value) {
+			switch (section) {
+			case None:
+				if (tag.name.compare("package") || tag.name.compare("opf:package")) {
+					if (name.compare("version")) {
+						version = value.str();
+					} else if (name.compare("unique-identifier")) {
+						uid = value.str();
+					}
+				}
+				break;
+			case Metadata:
+				if (tag.name.is("dc:")) {
+					if (name.compare("id")) {
+						auto &prop = metaProps.back();
+						prop.id = value.str();
+					} else if (name.compare("lang") || name.compare("xml-lang")) {
+						prop.lang = locale::common(value.str());
+					}
+				} else if (tag.name.compare("meta") || tag.name.compare("opf:meta")) {
+					MetaRefine &meta = metaRefine.back();
+					if (name.compare("id")) {
+						meta.id = value.str();
+					} else if (name.compare("property") || name.compare("name")) {
+						meta.name = value.str();
+					} else if (name.compare("scheme")) {
+						meta.scheme = value.str();
+					} else if (name.compare("xml:lang")) {
+						meta.lang = value.str();
+					} else if (name.compare("content")) {
+						meta.value = value.str();
+					}
+				}
+				break;
+			default: break;
+			}
+			log::format("onTagAttribute", "%s: %s = %s", tag.name.str().c_str(), name.str().c_str(), value.str().c_str());
+		}
+
+		inline void onPushTag(Parser &p, Tag &tag) {
+			switch (section) {
+			case None:
+				if (tag.name.compare("package") || tag.name.compare("opf:package")) {
+					section = Package;
+				}
+				break;
+			case Package:
+				if (tag.name.compare("metadata") || tag.name.compare("opf:metadata")) {
+					section = Metadata;
+				} else if (tag.name.compare("manifest") || tag.name.compare("opf:manifest")) {
+					section = Manifest;
+				} else if (tag.name.compare("spine") || tag.name.compare("opf:spine")) {
+					section = Spine;
+				}
+				break;
+			default: break;
+			}
+			log::format("onPushTag", "%s", tag.name.str().c_str());
+		}
+
+		inline void onPopTag(Parser &p, Tag &tag) {
+			switch (section) {
+			case Package:
+				if (tag.name.compare("package") || tag.name.compare("opf:package")) {
+					section = None;
+				}
+				break;
+			case Metadata:
+				if (tag.name.compare("metadata") || tag.name.compare("opf:metadata")) {
+					section = Package;
+				}
+				break;
+			case Manifest:
+				if (tag.name.compare("manifest") || tag.name.compare("opf:manifest")) {
+					section = Package;
+				}
+				break;
+			case Spine:
+				if (tag.name.compare("spine") || tag.name.compare("opf:spine")) {
+					section = Package;
+				}
+				break;
+			default: break;
+			}
+			log::format("onPopTag", "%s", tag.name.str().c_str());
+		}
+
+		inline void onInlineTag(Parser &p, Tag &tag) {
+			log::format("onInlineTag", "%s", tag.name.str().c_str());
+		}
+
+		inline void onTagContent(Parser &p, Tag &tag, StringReader &s) {
+			switch (section) {
+			case Metadata:
+				if (tag.name.is("dc:")) {
+					auto &prop = metaProps.back();
+					prop.value = s.str();
+					string::trim(prop.value);
+				} else if (tag.name.compare("meta")) {
+					auto &meta = metaRefine.back();
+					meta.value = s.str();
+					string::trim(meta.value);
+				}
+				break;
+			default: break;
+			}
+			log::format("onTagContent", "%s: %s", tag.name.str().c_str(), s.str().c_str());
+		}
+
+		String version;
+		String uid;
+
+		Vector<MetaRefine> metaRefine;
+		Vector<MetaProp> metaProps;
+	} r;
+
+	html::parse<html::Tag>(r, CharReaderBase((const char *)opf.data(), opf.size()));
+
 	tinyxml2::XMLDocument xmlDoc;
 	if (xmlDoc.Parse((const char *)opf.data(), opf.size()) != tinyxml2::XML_SUCCESS) {
 		return;
@@ -798,7 +949,7 @@ template <>
 struct ProducerTraits<epub::DocumentFile> {
 	using type = epub::DocumentFile;
 	static size_t ReadFn(void *ptr, uint8_t *buf, size_t nbytes) {
-		auto val = cocos2d::unzReadCurrentFile(((type *)ptr)->file, buf, nbytes);
+		auto val = cocos2d::unzReadCurrentFile(((type *)ptr)->file, buf, unsigned(nbytes));
 		if (val > 0) {
 			((type *)ptr)->pos += val;
 			return val;
@@ -819,13 +970,13 @@ struct ProducerTraits<epub::DocumentFile> {
 		}
 
 		if (pos == (int64_t)file->pos) {
-			return pos;
+			return size_t(pos);
 		} else {
 			uint8_t buf[1_KiB] = { 0 };
-			size_t offset = pos - file->pos;
+			size_t offset = size_t(pos) - file->pos;
 			while (offset > 0) {
 				auto readLen = std::min(offset, size_t(1_KiB));
-				if (cocos2d::unzReadCurrentFile(file->file, buf, readLen) != (int)readLen) {
+				if (cocos2d::unzReadCurrentFile(file->file, buf, unsigned(readLen)) != (int)readLen) {
 					break;
 				}
 				file->pos += readLen;
@@ -837,7 +988,7 @@ struct ProducerTraits<epub::DocumentFile> {
 	}
 	static size_t TellFn(void *ptr) {
 		auto file = ((type *)ptr);
-		return cocos2d::unztell64(file->file);
+		return size_t(cocos2d::unztell64(file->file));
 	}
 };
 

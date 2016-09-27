@@ -1240,7 +1240,7 @@ void Scheme::Internal::runCommandCallback(Scheme::Command *cmd, data::Value &res
 		break;
 	case Command::Count:
 		if (cmd->_callback.count && result.isArray()) {
-			cmd->_callback.count(result.getValue(0).getInteger("COUNT(*)"));
+			cmd->_callback.count(size_t(result.getValue(0).getInteger("COUNT(*)")));
 		}
 		break;
 	case Command::Insert:

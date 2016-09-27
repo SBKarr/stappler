@@ -24,7 +24,7 @@ Asset::Asset(const data::Value &val, const DownloadCallback &dcb) {
 		if (it.first == "id") {
 			_id = reinterpretValue<uint64_t>(it.second.getInteger());
 		} else if (it.first == "size") {
-			_size = it.second.getInteger();
+			_size = size_t(it.second.getInteger());
 		} else if (it.first == "mtime") {
 			_mtime = it.second.getInteger();
 		} else if (it.first == "touch") {

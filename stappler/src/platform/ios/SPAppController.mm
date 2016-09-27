@@ -25,6 +25,7 @@
 #import "SPAppController.h"
 #import "CCEAGLView-ios.h"
 #import "SPRootViewController.h"
+#import <UserNotifications/UserNotifications.h>
 
 #include "SPScreen.h"
 #include "SPDevice.h"
@@ -56,10 +57,7 @@ NS_SP_PLATFORM_END
 }
 
 - (void)registerForRemoteNotification:(UIApplication *)application forNewsttand:(BOOL)isNewsstand {
-    auto flags = (UIRemoteNotificationTypeSound | UIRemoteNotificationTypeBadge | UIRemoteNotificationTypeAlert);
-    if (isNewsstand == YES) {
-        flags |= UIRemoteNotificationTypeNewsstandContentAvailability;
-    }
+    auto flags = (UNAuthorizationOptionSound | UNAuthorizationOptionBadge | UNAuthorizationOptionAlert);
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 80000
     if ([application respondsToSelector:@selector(registerUserNotificationSettings:)]) {
         UIUserNotificationSettings *settings = [UIUserNotificationSettings settingsForTypes:flags categories:nil];
@@ -91,9 +89,7 @@ NS_SP_PLATFORM_END
 
     // Use RootViewController manage CCEAGLView
     _viewController = [self createRootViewController];
-    _viewController.wantsFullScreenLayout = YES;
     _viewController.view = eaglView;
-
 
     // Set RootViewController to window
     if ( [[UIDevice currentDevice].systemVersion floatValue] < 6.0) {

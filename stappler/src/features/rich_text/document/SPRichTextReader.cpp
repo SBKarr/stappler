@@ -73,6 +73,19 @@ Reader::Style Reader::specializeStyle(const Tag &tag, const Style &parentStyle) 
 	return style;
 }
 
+static String encodePathString(const String &str) {
+	String ret; ret.reserve(str.size());
+	for (auto &c : str) {
+		auto b = tolower(c);
+		if ((b >= 'a' && b <= 'z') || (b >= '0' && b <= '9') || b == '_') {
+			ret.push_back(b);
+		} else if (b == '-' || b == '/' || b == '\\') {
+			ret.push_back('_');
+		}
+	}
+	return ret;
+}
+
 Reader::Tag Reader::onTag(StringReader &tag) {
 	Tag ret;
 	ret.name = parser::readHtmlTagName(tag);
@@ -196,13 +209,14 @@ Reader::Tag Reader::onTag(StringReader &tag) {
 			}
 		}
 	} else if ((ret.type == Tag::Image || ret.xType == "image") && ret.id.empty()) {
-		ret.id = toString("__id__", _pseudoId);
+		ret.id = toString("__id__", _pseudoId, "__", encodePathString(_path));
 		_pseudoId ++;
 	}
 
 	if (ret.xType == "image") {
 		ret.attributes.emplace("href", toString("#", ret.id));
-	} else if (ret.name == "img") {
+	}
+	if (ret.name == "img") {
 		auto it = ret.attributes.find("src");
 		if (it != ret.attributes.end()) {
 			if (!it->second.empty()) {
@@ -212,22 +226,24 @@ Reader::Tag Reader::onTag(StringReader &tag) {
 				}
 			}
 
-			auto & src = it->second;
-			auto pos = src.rfind("?");
-			if (pos != String::npos && pos != src.length() - 1) {
-				auto opts = src.substr(pos + 1);
-				StringReader s(opts);
-				StringReader opt = s.readUntil<Chars<'&', ';'>>();
-				while (!opt.empty()) {
-					if (opt == "preview") {
-						if (getRootXType(_tagStack) != "image") {
-							auto target = toString("#", ret.id);
-							ret.attributes.emplace("href", toString("#", ret.id));
+			if (ret.xType != "image") {
+				auto & src = it->second;
+				auto pos = src.rfind("?");
+				if (pos != String::npos && pos != src.length() - 1) {
+					auto opts = src.substr(pos + 1);
+					StringReader s(opts);
+					StringReader opt = s.readUntil<Chars<'&', ';'>>();
+					while (!opt.empty()) {
+						if (opt == "preview") {
+							if (getRootXType(_tagStack) != "image") {
+								auto target = toString("#", ret.id);
+								ret.attributes.emplace("href", toString("#", ret.id));
+							}
+							break;
+						} else {
+							s.skipChars<Chars<'&', ';'>>();
+							opt = s.readUntil<Chars<'&', ';'>>();
 						}
-						break;
-					} else {
-						s.skipChars<Chars<'&', ';'>>();
-						opt = s.readUntil<Chars<'&', ';'>>();
 					}
 				}
 			}

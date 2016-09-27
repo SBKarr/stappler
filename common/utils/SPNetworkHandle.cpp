@@ -577,7 +577,7 @@ bool NetworkHandle::perform() {
 	}
 
 	if (CURLE_RANGE_ERROR == _errorCode && _method == Method::Get) {
-		size_t allowedRange = getReceivedHeaderInt("X-Range");
+		size_t allowedRange = size_t(getReceivedHeaderInt("X-Range"));
 		if (allowedRange == inputPos) {
 			if (!_silent) {
 				log::text("CURL", "Get 0-range is not an error, fixed error code to CURLE_OK");
@@ -604,7 +604,7 @@ bool NetworkHandle::perform() {
         	SP_NETWORK_LOG("performed: %d %s %ld", (int)_method, _url.c_str(), _responseCode);
 
 	        if (_responseCode == 416) {
-	        	size_t allowedRange = getReceivedHeaderInt("X-Range");
+	        	size_t allowedRange = size_t(getReceivedHeaderInt("X-Range"));
 				if (allowedRange == inputPos) {
 					_responseCode = 200;
 					if (!_silent) {

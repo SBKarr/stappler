@@ -11,6 +11,7 @@
 #include "math/CCGeometry.h"
 #include "SPIOSVersions.h"
 
+#import "SPRootViewController.h"
 #import <UIKit/UIKit.h>
 
 NS_SP_PLATFORM_BEGIN
@@ -22,14 +23,16 @@ namespace statusbar {
 		bool hidden = ([UIApplication sharedApplication].statusBarHidden);
 		if (hidden == enabled) {
 			UIWindow *window = [UIApplication sharedApplication].keyWindow;
-			UIViewController *rootViewController = window.rootViewController;
-			if (enabled) {
-				if ([rootViewController respondsToSelector:@selector(showStatusBar)]) {
-					[rootViewController performSelector:@selector(showStatusBar)];
-				}
-			} else {
-				if ([rootViewController respondsToSelector:@selector(hideStatusBar)]) {
-					[rootViewController performSelector:@selector(hideStatusBar)];
+			SPRootViewController *rootViewController = (SPRootViewController *)window.rootViewController;
+			if (rootViewController) {
+				if (enabled) {
+					if ([rootViewController respondsToSelector:@selector(showStatusBar)]) {
+						[rootViewController performSelector:@selector(showStatusBar)];
+					}
+				} else {
+					if ([rootViewController respondsToSelector:@selector(hideStatusBar)]) {
+						[rootViewController performSelector:@selector(hideStatusBar)];
+					}
 				}
 			}
 		}
@@ -40,22 +43,22 @@ namespace statusbar {
 	void _setColor(_StatusBarColor color) {
 		if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"7.0")) {
 			UIWindow *window = [UIApplication sharedApplication].keyWindow;
-			UIViewController *rootViewController = window.rootViewController;
-			switch (color) {
+			SPRootViewController *rootViewController = (SPRootViewController *)window.rootViewController;
+			if (rootViewController) {
+				switch (color) {
 				case _StatusBarColor::Black:
 					if ([rootViewController respondsToSelector:@selector(setStatusBarBlack)]) {
 						[rootViewController performSelector:@selector(setStatusBarBlack)];
 					}
 					break;
-
 				case _StatusBarColor::Light:
 					if ([rootViewController respondsToSelector:@selector(setStatusBarLight)]) {
 						[rootViewController performSelector:@selector(setStatusBarLight)];
 					}
 					break;
-
 				default:
 					break;
+				}
 			}
 		}
 	}

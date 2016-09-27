@@ -30,5 +30,9 @@
 }
 
 - (BOOL) prefersStatusBarHidden;
+- (void) showStatusBar;
+- (void) hideStatusBar;
+- (void) setStatusBarBlack;
+- (void) setStatusBarLight;
 
 @end

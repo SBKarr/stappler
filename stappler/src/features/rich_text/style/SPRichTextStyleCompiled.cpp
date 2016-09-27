@@ -739,7 +739,7 @@ namespace style {
 				stream << "max-resolution: ";
 				writeStyle(stream, it.value.sizeValue);
 				break;
-			case ParameterName::MediaOption: break;
+			case ParameterName::MediaOption:
 				stream << "media-option: ";
 				writeStyle(stream, it.value.stringId, iface);
 				break;

@@ -48,7 +48,7 @@ bool isdir_fn(const String &path) {
 size_t size_fn(const String &path) {
 	struct stat s;
 	if (stat(path.c_str(), &s) == 0) {
-        return s.st_size;
+        return size_t(s.st_size);
     } else {
         return 0;
     }

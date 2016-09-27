@@ -223,7 +223,7 @@ struct Layout {
 
 	Rc<InlineContext> context;
 	Vector<Layout> inlineBlockLayouts;
-	uint32_t charBinding = 0;
+	size_t charBinding = 0;
 	bool disablePageBreak = false;
 
 	Layout();

@@ -230,7 +230,7 @@ void Source::setCategoryBounds(Id & first, size_t & count, uint32_t l, bool subc
 		lowerBound += offset;
 	}
 
-	offset = first.get() - lowerBound;
+	offset = size_t(first.get()) - lowerBound;
 	first = Id(lowerBound);
 	count += offset; // increment size to match new bound
 
@@ -286,7 +286,7 @@ bool Source::getItemData(const DataCallback &cb, Id n, uint32_t l, bool subcats)
 		return getItemData(cb, Id(n));
 	} else {
 		if (!_subCats.empty() && n < Id(_subCats.size())) {
-			return _subCats.at(n.get());
+			return _subCats.at(size_t(n.get()));
 		}
 
 		return getItemData(cb, n - Id(_subCats.size()));
@@ -296,11 +296,11 @@ bool Source::getItemData(const DataCallback &cb, Id n, uint32_t l, bool subcats)
 size_t Source::getSliceData(const BatchCallback &cb, Id first, size_t count, uint32_t l, bool subcats) {
 	SliceRequest *req = new SliceRequest(cb);
 
-	size_t f = first.get();
+	size_t f = size_t(first.get());
 	onSlice(req->vec, f, count, l, subcats);
 
 	if (!req->vec.empty()) {
-		return req->request(first.get());
+		return req->request(size_t(first.get()));
 	} else {
 		delete req;
 		return 0;
@@ -330,7 +330,7 @@ std::pair<Source *, bool> Source::getItemCategory(Id n, uint32_t l, bool subcats
 		return std::make_pair(this, false);
 	} else {
 		if (!_subCats.empty() && n.get() < (size_t)_subCats.size()) {
-			return std::make_pair(_subCats.at(n.get()), true);
+			return std::make_pair(_subCats.at(size_t(n.get())), true);
 		}
 
 		return std::make_pair(this, false);

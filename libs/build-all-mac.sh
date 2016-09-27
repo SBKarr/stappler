@@ -4,13 +4,11 @@ function build() {
 	cd mac
 	./jpeg-mac.sh
 	./libpng-mac.sh
-	./mbedtls-mac.sh
 	./curl-mac.sh
 	./pixman-mac.sh
 	./cairo-mac.sh
 	./freetype-mac.sh
 	./sqlite-mac.sh
-	./glfw-mac.sh
 	./hyphen-mac.sh
 	cd -
 }

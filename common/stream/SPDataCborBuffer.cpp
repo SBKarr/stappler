@@ -255,20 +255,20 @@ bool CborBuffer::parse(Reader &r, size_t s) {
 		}
 		break;
 	case Literal::ByteSize:
-		remains = readInt(r, s);
+		remains = size_t(readInt(r, s));
 		literal = Literal::Bytes;
 		break;
 	case Literal::CharSize:
-		remains = readInt(r, s);
+		remains = size_t(readInt(r, s));
 		literal = Literal::Chars;
 		break;
 	case Literal::ArraySize:
-		stack.back().second = readInt(r, s);
+		stack.back().second = size_t(readInt(r, s));
 		literal = Literal::None;
 		state = State::Array;
 		break;
 	case Literal::DictSize:
-		stack.back().second = readInt(r, s);
+		stack.back().second = size_t(readInt(r, s));
 		literal = Literal::None;
 		state = State::DictKey;
 		break;
@@ -327,7 +327,7 @@ bool CborBuffer::readSequenceHead(Reader &r) {
 
 bool CborBuffer::readSequenceSize(Reader &r, bool tryWhole) {
 	if (tryWhole && r >= remains) {
-		remains = readInt(r, remains);
+		remains = size_t(readInt(r, remains));
 		sequence = Sequence::Value;
 		return true;
 	}
@@ -341,7 +341,7 @@ bool CborBuffer::readSequenceSize(Reader &r, bool tryWhole) {
 	}
 
 	auto tmp = buf.get<Reader>();
-	remains = readInt(tmp, tmp.size());
+	remains = size_t(readInt(tmp, tmp.size()));
 	sequence = Sequence::Value;
 	buf.clear();
 	return true;
