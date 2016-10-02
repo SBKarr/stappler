@@ -13,7 +13,6 @@
 #include "SPHtmlParser.h"
 
 #include "unzip.h"
-#include "tinyxml2.h"
 
 NS_EPUB_BEGIN
 
@@ -219,6 +218,7 @@ data::Value Info::encode() const {
 	ret.setString(_modified, "modified");
 	ret.setString(_rootFile, "rootFile");
 	ret.setString(_coverFile, "coverFile");
+	ret.setString(_tocFile, "tocFile");
 
 	auto & meta = ret.emplace("meta");
 	auto & raw = meta.emplace("raw");
@@ -227,11 +227,14 @@ data::Value Info::encode() const {
 		if (!it.id.empty()) {
 			val.setString(it.id, "id");
 		}
-		if (!it.prop.empty()) {
-			val.setString(it.prop, "prop");
+		if (!it.name.empty()) {
+			val.setString(it.name, "name");
 		}
 		if (!it.value.empty()) {
 			val.setString(it.value, "value");
+		}
+		if (!it.scheme.empty()) {
+			val.setString(it.scheme, "scheme");
 		}
 		if (!it.extra.empty()) {
 			auto & ex = val.emplace("extra");
@@ -415,123 +418,6 @@ String Info::getRootPath() {
 	return ret;
 }
 
-static void DocumentInfo_updateMeta(Vector<MetaProp> &meta, const String &id,
-		const String &prop, const String &value, const String &scheme, const String &lang) {
-	for (auto &it : meta) {
-		if (it.id == id) {
-			it.extra.emplace_back(MetaRefine{id, prop, value, scheme, lang});
-			break;
-		}
-	}
-}
-
-static void DocumentInfo_updateDoc(Vector<MetaRefine> &doc, const String &id,
-		const String &prop, const String &value, const String &scheme, const String &lang) {
-	for (auto &it : doc) {
-		if (it.id == id) {
-			it.extra.emplace_back(MetaRefine{id, prop, value, scheme, lang});
-			break;
-		}
-	}
-}
-
-static void DocumentInfo_parseMetaNode(Vector<MetaRefine> &doc, Vector<MetaProp> &meta,
-		Map<String, tinyxml2::XMLElement *>&ids, tinyxml2::XMLElement *node) {
-	String id;
-	if (auto idStr = node->Attribute("id")) {
-		id = idStr;
-		ids.emplace(idStr, node);
-	}
-
-	String name(node->Value());
-	if (name.compare(0, 3, "dc:") == 0) {
-		if (auto child = node->FirstChild()) {
-			if (auto textNode =child->ToText()) {
-				auto lang = node->Attribute("xml:lang");
-				meta.emplace_back(MetaProp{id, name.substr(3), textNode->Value(), locale::common(lang?lang:""), { }});
-			}
-		}
-	} else if (name == "meta" || name == "opf:meta") {
-		auto refines = node->Attribute("refines");
-		if (auto child = node->FirstChild()) {
-			if (auto textNode = child->ToText()) {
-				auto value = textNode->Value();
-				if (value) {
-					auto prop = node->Attribute("property");
-					auto scheme = node->Attribute("scheme");
-					auto lang = node->Attribute("xml:lang");
-					if (refines && refines[0] != 0) {
-						String idStr(refines + 1);
-						auto idIt = ids.find(idStr);
-						if (idIt != ids.end()) {
-							if (strcmp(idIt->second->Value(), "meta") == 0) {
-								DocumentInfo_updateDoc(doc, idStr, prop?prop:"", value?value:"",
-										scheme?scheme:"", locale::common(lang?lang:""));
-							} else {
-								DocumentInfo_updateMeta(meta, idStr, prop?prop:"", value?value:"",
-										scheme?scheme:"", locale::common(lang?lang:""));
-							}
-						}
-					} else {
-						doc.emplace_back(MetaRefine{id, prop?prop:"", value?value:"",
-								scheme?scheme:"", locale::common(lang?lang:""), { }});
-					}
-				}
-			}
-		}
-	}
-}
-
-static void DocumentInfo_parseManifestNode(const String &root, Map<String, ManifestFile> &manifest,
-		Map<String, const ManifestFile *> &manifestIds, tinyxml2::XMLElement *node) {
-	auto id = node->Attribute("id");
-	auto href = node->Attribute("href");
-	auto mediaType = node->Attribute("media-type");
-	auto properties = node->Attribute("properties");
-
-	if (id && href && mediaType) {
-		String path(root); path.append("/").append(href);
-		auto fileIt = manifest.find(path);
-		if (fileIt != manifest.end()) {
-			fileIt->second.id = id;
-			fileIt->second.mime = mediaType;
-
-			if (properties) {
-				string::split(String(properties), " ", [&] (const CharReaderBase &r) {
-					fileIt->second.props.insert(r.str());
-				});
-			}
-
-			manifestIds.emplace(id, &fileIt->second);
-
-			// verify mime
-			auto &m = fileIt->second.mime;
-			if (m == "text/html" || m.compare(0, "application/xhtml"_len, "application/xhtml") == 0) {
-				fileIt->second.type = ManifestFile::Source;
-			} else if (m == "text/css") {
-				fileIt->second.type = ManifestFile::Css;
-			}
-		}
-	}
-}
-
-static void DocumentInfo_parseSpineNode(const Map<String, const ManifestFile *> &manifestIds,
-		Vector<SpineFile> &spine, tinyxml2::XMLElement *node) {
-	auto idref  = node->Attribute("idref");
-	auto linear = node->Attribute("linear");
-	auto properties = node->Attribute("properties");
-
-	if (idref) {
-		auto itemIt = manifestIds.find(idref);
-		if (itemIt != manifestIds.end()) {
-			spine.emplace_back(SpineFile{
-				itemIt->second,
-				(properties?string::splitToSet(properties, " "):Set<String>()),
-				(linear && strcmp(linear, "no") == 0)?false:true});
-		}
-	}
-}
-
 void Info::processPublication() {
 	auto opf = openFile(_rootFile);
 	if (opf.empty()) {
@@ -543,6 +429,20 @@ void Info::processPublication() {
 		using Tag = Parser::Tag;
 		using StringReader = Parser::StringReader;
 
+		struct Item {
+			String id;
+			String href;
+			String type;
+			String props;
+
+			void clear() {
+				id.clear();
+				href.clear();
+				type.clear();
+				props.clear();
+			}
+		} item;
+
 		enum Section {
 			None,
 			Package,
@@ -551,24 +451,34 @@ void Info::processPublication() {
 			Spine
 		} section = None;
 
+		Reader(String *rootPath, Map<String, ManifestFile> *manifest, Vector<SpineFile> *spineVec)
+		: rootPath(rootPath), manifest(manifest), spineVec(spineVec) {}
+
 		inline void onBeginTag(Parser &p, Tag &tag) {
 			switch (section) {
 			case Metadata:
 				if (tag.name.is("dc:")) {
 					metaProps.emplace_back();
 					auto &prop = metaProps.back();
-					prop.prop = String(tag.name.data() + 3, tag.name.size() - 3);
+					prop.name = String(tag.name.data() + 3, tag.name.size() - 3);
 				} else if (tag.name.compare("meta") || tag.name.compare("opf:meta")) {
-					metaRefine.emplace_back();
+					metaProps.emplace_back();
+				}
+				break;
+			case Manifest:
+				if (tag.name.compare("item") || tag.name.compare("opf:item")) {
+					item.clear();
+				}
+				break;
+			case Spine:
+				if (tag.name.compare("itemref") || tag.name.compare("opf:itemref")) {
+					spineVec->emplace_back();
+					SpineFile &spine = spineVec->back();
+					spine.linear = true;
 				}
 				break;
 			default: break;
 			}
-			log::format("onBeginTag", "%s", tag.name.str().c_str());
-		}
-
-		inline void onEndTag(Parser &p, Tag &tag) {
-			log::format("onEndTag", "%s", tag.name.str().c_str());
 		}
 
 		inline void onTagAttribute(Parser &p, Tag &tag, StringReader &name, StringReader &value) {
@@ -582,32 +492,71 @@ void Info::processPublication() {
 					}
 				}
 				break;
+			case Package:
+				if ((tag.name.compare("spine") || tag.name.compare("opf:spine")) && (name.compare("toc") || name.compare("opf:toc"))) {
+					auto it = manifestIds.find(value.str());
+					if (it != manifestIds.end()) {
+						tocFile = it->second->path;
+					}
+				}
+				break;
 			case Metadata:
 				if (tag.name.is("dc:")) {
+					auto &prop = metaProps.back();
 					if (name.compare("id")) {
-						auto &prop = metaProps.back();
 						prop.id = value.str();
 					} else if (name.compare("lang") || name.compare("xml-lang")) {
 						prop.lang = locale::common(value.str());
+					} else if (name.compare("scheme") || name.compare("opf:scheme")) {
+						prop.scheme = value.str();
 					}
 				} else if (tag.name.compare("meta") || tag.name.compare("opf:meta")) {
-					MetaRefine &meta = metaRefine.back();
+					MetaProp &meta = metaProps.back();
 					if (name.compare("id")) {
 						meta.id = value.str();
 					} else if (name.compare("property") || name.compare("name")) {
 						meta.name = value.str();
-					} else if (name.compare("scheme")) {
+					} else if (name.compare("scheme") || name.compare("opf:scheme")) {
 						meta.scheme = value.str();
 					} else if (name.compare("xml:lang")) {
 						meta.lang = value.str();
 					} else if (name.compare("content")) {
 						meta.value = value.str();
+					} else if (name.compare("refines")) {
+						meta.refines = value.str();
+					}
+				}
+				break;
+			case Manifest:
+				if (tag.name.compare("item") || tag.name.compare("opf:item")) {
+					if (name.compare("id")) {
+						item.id = value.str();
+					} else if (name.compare("href")) {
+						item.href = value.str();
+					} else if (name.compare("media-type")) {
+						item.type = value.str();
+					} else if (name.compare("properties")) {
+						item.props = value.str();
+					}
+				}
+				break;
+			case Spine:
+				if (tag.name.compare("itemref") || tag.name.compare("opf:itemref")) {
+					SpineFile &spine = spineVec->back();
+					if (name.compare("idref")) {
+						auto itemIt = manifestIds.find(value.str());
+						if (itemIt != manifestIds.end()) {
+							spine.entry = itemIt->second;
+						}
+					} else if (name.compare("linear") && value.compare("no")) {
+						spine.linear = false;
+					} else if (name.compare("properties")) {
+						spine.props = string::splitToSet(value.str(), " ");
 					}
 				}
 				break;
 			default: break;
 			}
-			log::format("onTagAttribute", "%s: %s = %s", tag.name.str().c_str(), name.str().c_str(), value.str().c_str());
 		}
 
 		inline void onPushTag(Parser &p, Tag &tag) {
@@ -628,7 +577,41 @@ void Info::processPublication() {
 				break;
 			default: break;
 			}
-			log::format("onPushTag", "%s", tag.name.str().c_str());
+		}
+
+		void updateMeta(MetaProp &prop, const String &key) {
+			auto metaIt = metaIds.find(key);
+			if (metaIt != metaIds.end()) {
+				MetaProp *refined = nullptr;
+				Vector<size_t> path = metaIt->second;
+				for (auto &it : path) {
+					if (refined == nullptr) {
+						refined = &metaProps.at(it);
+					} else {
+						refined = &refined->extra.at(it);
+					}
+				}
+				if (refined) {
+					refined->extra.emplace_back(std::move(prop));
+					auto &ref = refined->extra.back();
+					if (!ref.id.empty()) {
+						path.push_back(refined->extra.size() - 1);
+						metaIds.emplace(ref.id, std::move(path));
+					}
+				}
+			}
+		}
+
+		inline void popMetaTag() {
+			MetaProp &prop = metaProps.back();
+			if (!prop.refines.empty()) {
+				updateMeta(prop, prop.refines.substr(1));
+				metaProps.pop_back();
+			} else {
+				if (!prop.id.empty()) {
+					metaIds.emplace(prop.id, Vector<size_t>{metaProps.size() - 1});
+				}
+			}
 		}
 
 		inline void onPopTag(Parser &p, Tag &tag) {
@@ -641,6 +624,8 @@ void Info::processPublication() {
 			case Metadata:
 				if (tag.name.compare("metadata") || tag.name.compare("opf:metadata")) {
 					section = Package;
+				} else if (tag.name.is("dc:") || tag.name.compare("meta") || tag.name.compare("opf:meta")) {
+					popMetaTag();
 				}
 				break;
 			case Manifest:
@@ -655,118 +640,90 @@ void Info::processPublication() {
 				break;
 			default: break;
 			}
-			log::format("onPopTag", "%s", tag.name.str().c_str());
+		}
+
+		inline void onManifestTag() {
+			if (!item.id.empty() && !item.href.empty() && !item.type.empty()) {
+				String path(*rootPath); path.append("/").append(item.href);
+				auto fileIt = manifest->find(path);
+				if (fileIt != manifest->end()) {
+					fileIt->second.id = std::move(item.id);
+					fileIt->second.mime = std::move(item.type);
+					if (!item.props.empty()) {
+						string::split(item.props, " ", [&fileIt] (const CharReaderBase &r) {
+							fileIt->second.props.insert(r.str());
+						});
+					}
+					manifestIds.emplace(fileIt->second.id, &fileIt->second);
+					auto &m = fileIt->second.mime;
+					if (m == "text/html" || m.compare(0, "application/xhtml"_len, "application/xhtml") == 0) {
+						fileIt->second.type = ManifestFile::Source;
+					} else if (m == "text/css") {
+						fileIt->second.type = ManifestFile::Css;
+					}
+				}
+			}
 		}
 
 		inline void onInlineTag(Parser &p, Tag &tag) {
-			log::format("onInlineTag", "%s", tag.name.str().c_str());
+			switch (section) {
+			case Metadata:
+				if (tag.name.is("dc:") || tag.name.compare("meta") || tag.name.compare("opf:meta")) {
+					popMetaTag();
+				}
+				break;
+			case Manifest:
+				if (tag.name.compare("item") || tag.name.compare("opf:item")) {
+					onManifestTag();
+				}
+				break;
+			case Spine:
+				if (tag.name.compare("itemref") || tag.name.compare("opf:itemref")) {
+					SpineFile &spine = spineVec->back();
+					if (!spine.entry) {
+						spineVec->pop_back();
+					}
+				}
+				break;
+			default: break;
+			}
 		}
 
 		inline void onTagContent(Parser &p, Tag &tag, StringReader &s) {
 			switch (section) {
 			case Metadata:
-				if (tag.name.is("dc:")) {
+				if (tag.name.is("dc:") || tag.name.compare("meta") || tag.name.compare("opf:meta")) {
 					auto &prop = metaProps.back();
 					prop.value = s.str();
 					string::trim(prop.value);
-				} else if (tag.name.compare("meta")) {
-					auto &meta = metaRefine.back();
-					meta.value = s.str();
-					string::trim(meta.value);
 				}
 				break;
 			default: break;
 			}
-			log::format("onTagContent", "%s: %s", tag.name.str().c_str(), s.str().c_str());
 		}
 
 		String version;
 		String uid;
+		String tocFile;
 
-		Vector<MetaRefine> metaRefine;
 		Vector<MetaProp> metaProps;
-	} r;
+		Map<String, Vector<size_t>> metaIds;
+		Map<String, const ManifestFile *> manifestIds;
 
-	html::parse<html::Tag>(r, CharReaderBase((const char *)opf.data(), opf.size()));
+		String *rootPath = nullptr;
+		Map<String, ManifestFile> *manifest = nullptr;
+		Vector<SpineFile> *spineVec = nullptr;
+	} r(&_rootPath, &_manifest, &_spine);
 
-	tinyxml2::XMLDocument xmlDoc;
-	if (xmlDoc.Parse((const char *)opf.data(), opf.size()) != tinyxml2::XML_SUCCESS) {
-		return;
-	}
+	html::parse<Reader, html::Tag>(r, CharReaderUtf8((const char *)opf.data(), opf.size()));
 
-	auto root = xmlDoc.RootElement();
-
-	if (!root) {
-		return;
-	}
-
-	Map<String, tinyxml2::XMLElement *> ids;
-	Vector<MetaRefine> metaDoc;
-	Vector<MetaProp> metaProps;
-	Map<String, ManifestFile> &manifest = _manifest;
-	Vector<SpineFile> &spine = _spine;
-
-	Map<String, const ManifestFile *> manifestIds;
-
-	String version(root->Attribute("version"));
-	String uid(root->Attribute("unique-identifier"));
-	if (auto idStr = root->Attribute("id")) {
-		ids.emplace(idStr, root);
-	}
-
-	if (version.empty() || uid.empty()) {
-		return;
-	}
-
-	for (auto node = root->FirstChild(); node != nullptr; node = node->NextSibling()) {
-		if (node->ToComment()) {
-			// skip comments
-		} else if (strcmp(node->Value(), "metadata") == 0 || strcmp(node->Value(), "opf:metadata") == 0) {
-			for (auto mdnode = node->FirstChild(); mdnode != nullptr; mdnode = mdnode->NextSibling()) {
-				if (auto el = mdnode->ToElement()) {
-					DocumentInfo_parseMetaNode(metaDoc, metaProps, ids, el);
-				}
-			}
-		} else if (strcmp(node->Value(), "manifest") == 0 || strcmp(node->Value(), "opf:manifest") == 0) {
-			for (auto mdnode = node->FirstChild(); mdnode != nullptr; mdnode = mdnode->NextSibling()) {
-				if (auto el = mdnode->ToElement()) {
-					String name(mdnode->Value());
-					if (name == "item" || name == "opf:item") {
-						DocumentInfo_parseManifestNode(_rootPath, manifest, manifestIds, el);
-					}
-				}
-			}
-		} else if (strcmp(node->Value(), "spine") == 0 || strcmp(node->Value(), "opf:spine") == 0) {
-			if (auto el = node->ToElement()) {
-				auto attr = el->Attribute("toc");
-				if (!attr) {
-					attr = el->Attribute("opf:toc");
-				}
-				if (attr) {
-					auto it = manifestIds.find(attr);
-					if (it != manifestIds.end()) {
-						_tocFile = it->second->path;
-					}
-				}
-			}
-			for (auto mdnode = node->FirstChild(); mdnode != nullptr; mdnode = mdnode->NextSibling()) {
-				if (auto el = mdnode->ToElement()) {
-					String name(mdnode->Value());
-					if (name == "itemref" || name == "opf:itemref") {
-						DocumentInfo_parseSpineNode(manifestIds, spine, el);
-					}
-				}
-			}
-		}
-	}
-
-	_meta.meta = std::move(metaProps);
+	_meta.meta = std::move(r.metaProps);
 	for (auto &it : _meta.meta) {
-		if (it.id == uid) {
+		if (it.id == r.uid) {
 			_uniqueId = it.value;
 		}
 
-		if (it.prop == "title") {
+		if (it.name == "title") {
 			_meta.titles.emplace_back(TitleMeta{it.value});
 			TitleMeta &title = _meta.titles.back();
 
@@ -795,11 +752,9 @@ void Info::processPublication() {
 					}
 				}
 			}
-		}
-
-		if (it.prop == "contributor" || it.prop == "creator") {
+		} else if (it.name == "contributor" || it.name == "creator") {
 			_meta.authors.emplace_back(AuthorMeta{it.value,
-				(it.prop == "contributor")?AuthorMeta::Contributor:AuthorMeta::Creator});
+				(it.name == "contributor")?AuthorMeta::Contributor:AuthorMeta::Creator});
 
 			AuthorMeta &author = _meta.authors.back();
 
@@ -815,11 +770,7 @@ void Info::processPublication() {
 					author.roleScheme = eit.scheme;
 				}
 			}
-		}
-	}
-
-	for (auto &it : metaDoc) {
-		if (it.name == "dcterms:modified") {
+		} else if (it.name == "dcterms:modified") {
 			_modified = it.value;
 		} else if (it.name == "belongs-to-collection") {
 			_meta.collections.emplace_back(CollectionMeta{it.value});
@@ -861,6 +812,8 @@ void Info::processPublication() {
 
 	if (!tocFile.empty()) {
 		_tocFile = tocFile;
+	} else {
+		_tocFile = r.tocFile;
 	}
 }
 

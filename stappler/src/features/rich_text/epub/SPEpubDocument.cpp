@@ -166,7 +166,7 @@ String Document::getCreators() const {
 String Document::getLanguage() const {
 	auto &meta = _info->getMeta();
 	for (auto &it : meta.meta) {
-		if (it.prop == "language") {
+		if (it.name == "language") {
 			return locale::common(it.value);
 		}
 	}

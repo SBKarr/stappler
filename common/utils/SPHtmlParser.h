@@ -61,6 +61,9 @@ InvokerCallTest_MakeInvoker(Html, onPushTag);
 InvokerCallTest_MakeInvoker(Html, onPopTag);
 InvokerCallTest_MakeInvoker(Html, onInlineTag);
 InvokerCallTest_MakeInvoker(Html, onTagContent);
+InvokerCallTest_MakeInvoker(Html, onReadTagName);
+InvokerCallTest_MakeInvoker(Html, onReadAttributeName);
+InvokerCallTest_MakeInvoker(Html, onReadAttributeValue);
 
 template <typename T>
 struct ParserTraits {
@@ -74,6 +77,9 @@ struct ParserTraits {
 	InvokerCallTest_MakeCallTest(onPopTag, success, failure);
 	InvokerCallTest_MakeCallTest(onInlineTag, success, failure);
 	InvokerCallTest_MakeCallTest(onTagContent, success, failure);
+	InvokerCallTest_MakeCallTest(onReadTagName, success, failure);
+	InvokerCallTest_MakeCallTest(onReadAttributeName, success, failure);
+	InvokerCallTest_MakeCallTest(onReadAttributeValue, success, failure);
 
 public:
 	InvokerCallTest_MakeCallMethod(Html, onBeginTag, T);
@@ -83,6 +89,9 @@ public:
 	InvokerCallTest_MakeCallMethod(Html, onPopTag, T);
 	InvokerCallTest_MakeCallMethod(Html, onInlineTag, T);
 	InvokerCallTest_MakeCallMethod(Html, onTagContent, T);
+	InvokerCallTest_MakeCallMethod(Html, onReadTagName, T);
+	InvokerCallTest_MakeCallMethod(Html, onReadAttributeName, T);
+	InvokerCallTest_MakeCallMethod(Html, onReadAttributeValue, T);
 };
 
 struct Tag : public ReaderClassBase<char16_t> {
@@ -169,7 +178,7 @@ struct Parser : public ReaderClassBase<char16_t> {
 				}
 				++ current; // drop '>'
 			} else {
-				auto name = TagType::readName(current);
+				auto name = onReadTagName(current);
 				if (name.empty()) { // found tag without readable name
 					current.skipUntil<Chars<'>'>>();
 					if (current.is('>')) {
@@ -205,12 +214,12 @@ struct Parser : public ReaderClassBase<char16_t> {
 					attrName.clear();
 					attrValue.clear();
 
-					attrName = TagType::readAttrName(current);
+					attrName = onReadAttributeName(current);
 					if (attrName.empty()) {
 						continue;
 					}
 
-					attrValue = TagType::readAttrValue(current);
+					attrValue = onReadAttributeValue(current);
 					onTagAttribute(tag, attrName, attrValue);
 				}
 
@@ -243,6 +252,36 @@ struct Parser : public ReaderClassBase<char16_t> {
 		}
 
 		return !canceled;
+	}
+
+	inline StringReader onReadTagName(StringReader &str) {
+		if (Traits::hasMethod_onReadTagName) {
+			StringReader ret(str);
+			Traits::onReadTagName(*reader, *this, ret);
+			return ret;
+		} else {
+			return TagType::readName(str);
+		}
+	}
+
+	inline StringReader onReadAttributeName(StringReader &str) {
+		if (Traits::hasMethod_onReadAttributeName) {
+			StringReader ret(str);
+			Traits::onReadAttributeName(*reader, *this, ret);
+			return ret;
+		} else {
+			return TagType::readAttrName(str);
+		}
+	}
+
+	inline StringReader onReadAttributeValue(StringReader &str) {
+		if (Traits::hasMethod_onReadAttributeValue) {
+			StringReader ret(str);
+			Traits::onReadAttributeValue(*reader, *this, ret);
+			return ret;
+		} else {
+			return TagType::readAttrValue(str);
+		}
 	}
 
 	inline void onBeginTag(TagType &tag) { Traits::onBeginTag(*reader, *this, tag); }

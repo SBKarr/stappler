@@ -15,21 +15,14 @@
 
 NS_EPUB_BEGIN
 
-struct MetaRefine {
+struct MetaProp {
 	String id;
 	String name;
 	String value;
 	String scheme;
 	String lang;
-	Vector<MetaRefine> extra;
-};
-
-struct MetaProp {
-	String id;
-	String prop;
-	String value;
-	String lang;
-	Vector<MetaRefine> extra;
+	String refines;
+	Vector<MetaProp> extra;
 };
 
 struct CollectionMeta {

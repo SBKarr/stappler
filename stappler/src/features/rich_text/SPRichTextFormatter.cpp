@@ -507,6 +507,15 @@ bool Formatter::pushLineBreak() {
 
 			c.posX = lineX;
 			lineX += c.xAdvance();
+
+			for (size_t i = wordEnd; i < charNum; ++i) {
+				CharSpec &c = chars->at(i);
+				if (c.display == CharSpec::Block) {
+					if (c.height() > currentLineHeight) {
+						currentLineHeight = c.height();
+					}
+				}
+			}
 		}
 	} else {
 		// we can wrap the word
@@ -524,6 +533,14 @@ bool Formatter::pushLineBreak() {
 			}
 		}
 		firstInLine = wordStart;
+		for (size_t i = firstInLine; i < charNum; ++i) {
+			CharSpec &c = chars->at(i);
+			if (c.display == CharSpec::Block) {
+				if (c.height() > currentLineHeight) {
+					currentLineHeight = c.height();
+				}
+			}
+		}
 
 		uint16_t originOffset = getOriginPosition(wordStart);
 

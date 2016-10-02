@@ -92,6 +92,7 @@ class CharReaderDefault : public BytesReader<_CharType, _Container> {
 public:
 	using Self = CharReaderDefault;
 
+	using MatchCharType = _CharType;
 	using CharType = _CharType;
 	using ContainerType = _Container;
 
@@ -241,6 +242,8 @@ using CharReaderUcs2 = CharReaderDefault<char16_t, WideString>;
 class CharReaderUtf8 : public BytesReader<char, String> {
 public:
 	using Self = CharReaderUtf8;
+	using MatchCharType = char16_t;
+	using CharType = char;
 
 	CharReaderUtf8() : BytesReader("", 0) { }
 	explicit CharReaderUtf8(const String &str) : BytesReader(str.c_str(), str.length()) { }
