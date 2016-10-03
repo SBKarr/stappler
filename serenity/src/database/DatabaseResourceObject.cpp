@@ -190,7 +190,7 @@ bool Resolver::ResourceReslist::prepareCreate() {
 }
 data::Value Resolver::ResourceReslist::performCreateObject(data::Value &data, apr::array<InputFile> &files, const data::Value &extra) {
 	// single object
-	if (data.isDictionary()) {
+	if (data.isDictionary() || data.empty()) {
 		if (extra.isDictionary()) {
 			for (auto & it : extra.asDict()) {
 				data.setValue(it.second, it.first);
