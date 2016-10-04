@@ -74,9 +74,9 @@ public:
 		}
 	}
 
-	void renderIcons(const std::map<std::string, std::string> &icons, uint16_t numCols, uint16_t numRows, data::Value &arr) {
+	void renderIcons(const Map<String, String> *icons, uint16_t numCols, uint16_t numRows, data::Value &arr) {
 		uint16_t c, r, i = 0;
-		for (auto &it : icons) {
+		for (auto &it : (*icons)) {
 			c = i % numCols;
 			r = i / numCols;
 
@@ -166,7 +166,7 @@ public:
 			return nullptr;
 		}
 
-		cocos2d::Map<std::string, Icon *> icons;
+		Map<String, Icon> icons;
 
 		float density = stappler::screen::density();
 
@@ -177,9 +177,7 @@ public:
 			uint16_t id = it.getInteger("id");
 			std::string name = it.getString("name");
 
-			Icon *icon = new Icon(id, x, y, cfg.iconWidth, cfg.iconHeight, density, img);
-			icons.insert(name, icon);
-			icon->release();
+			icons.emplace(name, Icon(id, x, y, cfg.iconWidth, cfg.iconHeight, density, img));
 		}
 
 		auto set = new IconSet(std::move(cfg), std::move(icons), img);
@@ -195,7 +193,7 @@ public:
 
 		IconSet *ret = nullptr;
 
-		if (auto data = validateCache(cacheFile, texFile, cfg.version, cfg.data.size())) {
+		if (auto data = validateCache(cacheFile, texFile, cfg.version, cfg.data->size())) {
 			ret = readIconSet(texFile, data, std::move(cfg));
 			if (ret) {
 				return ret;
@@ -204,7 +202,7 @@ public:
 
 		// generate icons texture
 
-		size_t count = cfg.data.size();
+		size_t count = cfg.data->size();
 		size_t globalSquare = count * (cfg.iconWidth * cfg.iconHeight);
 
 		size_t sq2 = 1; uint16_t h = 1; uint16_t w = 1;
@@ -220,6 +218,7 @@ public:
 		}
 
 		data::Value iconsArray(data::Value::Type::ARRAY);
+		iconsArray.getArray().reserve(cfg.data->size());
 
 		uint32_t texWidth = w;
 		uint32_t texHeight = rows * cfg.iconHeight;
@@ -234,7 +233,7 @@ public:
 		data.setValue(std::move(iconsArray), "icons");
 		data.setInteger(IconSetGenerator::EngineVersion(), "engineVersion");
 		data.setInteger(cfg.version, "version");
-		data.setInteger(cfg.data.size(), "count");
+		data.setInteger(cfg.data->size(), "count");
 		data.setString(cfg.name, "name");
 		data::save(data, cacheFile);
 

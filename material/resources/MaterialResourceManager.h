@@ -10,10 +10,9 @@
 
 #include "Material.h"
 #include "MaterialFont.h"
-#include "MaterialIcon.h"
-
 #include "base/CCVector.h"
 #include "base/CCMap.h"
+#include "MaterialIconSprite.h"
 
 #include "SPEventHeader.h"
 #include "SPEventHandler.h"
@@ -57,7 +56,7 @@ public:
 	const material::Font * getSystemFont(Font::Type type) const;
 	material::FontSet *getSystemFontSet() const;
 
-	stappler::Icon *getIcon(IconName name);
+	Icon getIcon(IconName name);
 
 protected:
 	void update();
@@ -71,8 +70,6 @@ protected:
 
 	Rc<stappler::IconSet>_iconSet;
 	Rc<material::FontSet>_systemFonts;
-
-	std::map<IconName, std::string> _iconNames;
 
 	float _systemFontScale = 1.0f;
 	float _textFontScale = 1.0f;

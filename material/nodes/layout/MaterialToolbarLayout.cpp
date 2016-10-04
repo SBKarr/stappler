@@ -120,9 +120,9 @@ void ToolbarLayout::setMaxToolbarHeight(float portrait, float landscape) {
 }
 
 void ToolbarLayout::onToolbarNavButton() {
-	if (_toolbar->getNavButtonIcon() == DynamicIcon::Name::Navigation && _toolbar->getNavButtonIconProgress() > 0.0f) {
+	if (_toolbar->getNavButtonIcon() == IconName::Dynamic_Navigation && _toolbar->getNavButtonIconProgress() > 0.0f) {
 		onBackButton();
-	} else if (_toolbar->getNavButtonIcon() == DynamicIcon::Name::Navigation && _toolbar->getNavButtonIconProgress() == 0.0f) {
+	} else if (_toolbar->getNavButtonIcon() == IconName::Dynamic_Navigation && _toolbar->getNavButtonIconProgress() == 0.0f) {
 		runAction(action::callback(0.15f, [] {
 			material::Scene::getRunningScene()->getNavigationLayer()->show();
 		}));
@@ -136,7 +136,7 @@ Toolbar *ToolbarLayout::setupToolbar(Toolbar *toolbar) {
 		toolbar->setShadowZIndex(1.5f);
 		toolbar->setMaxActionIcons(2);
 		toolbar->setTitle("Title");
-		toolbar->setNavButtonIcon(material::DynamicIcon::Name::Navigation);
+		toolbar->setNavButtonIcon(material::IconName::Dynamic_Navigation);
 		toolbar->setNavCallback(std::bind(&ToolbarLayout::onToolbarNavButton, this));
 		return toolbar;
 	} else {
@@ -194,7 +194,7 @@ void ToolbarLayout::onBackground(ContentLayer *l, Layout *overlay) {
 
 	auto nextToolbar = next->getToolbar();
 
-	if (_toolbar->getNavButtonIcon() == DynamicIcon::Name::Navigation
+	if (_toolbar->getNavButtonIcon() == IconName::Dynamic_Navigation
 			&& _toolbar->getNavButtonIcon() == nextToolbar->getNavButtonIcon()) {
 		auto p = _toolbar->getNavButtonIconProgress();
 		if (p < 1.0f) {
@@ -227,7 +227,7 @@ void ToolbarLayout::onForeground(ContentLayer *l, Layout *overlay) {
 	}
 
 	auto nextToolbar = next->getToolbar();
-	if (_toolbar->getNavButtonIcon() == DynamicIcon::Name::Navigation
+	if (_toolbar->getNavButtonIcon() == IconName::Dynamic_Navigation
 			&& _toolbar->getNavButtonIcon() == nextToolbar->getNavButtonIcon()) {
 		if (_forwardProgress) {
 			_toolbar->setNavButtonIconProgress(0.0f, 0.35f);

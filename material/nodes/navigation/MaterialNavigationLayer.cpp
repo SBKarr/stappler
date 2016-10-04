@@ -5,10 +5,10 @@
  *      Author: sbkarr
  */
 
+#include <MaterialIconSprite.h>
 #include "Material.h"
 #include "MaterialNavigationLayer.h"
 
-#include "MaterialIcon.h"
 #include "MaterialColors.h"
 #include "MaterialLabel.h"
 #include "MaterialImage.h"

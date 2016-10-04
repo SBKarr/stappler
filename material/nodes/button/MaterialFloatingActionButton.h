@@ -13,9 +13,6 @@
 
 NS_MD_BEGIN
 
-class StaticIcon;
-class Label;
-
 class FloatingActionButton : public MaterialNode {
 public:
 	using TapCallback = std::function<void()>;
@@ -24,7 +21,7 @@ public:
 	virtual void onContentSizeDirty() override;
     virtual void setBackgroundColor(const Color &) override;
 
-	virtual StaticIcon *getIcon() const;
+	virtual IconSprite *getIcon() const;
 	virtual Label *getLabel() const;
 	virtual stappler::draw::PathNode *getPathNode() const;
 
@@ -79,7 +76,7 @@ protected:
 	Color _progressColor = Color::Black;
 	float _progressWidth = 4.0f;
 
-	StaticIcon *_icon = nullptr;
+	IconSprite *_icon = nullptr;
 	Label *_label = nullptr;
 	stappler::draw::PathNode *_drawNode = nullptr;
 };

@@ -57,9 +57,8 @@ class ResizeBy;
 
 enum class IconName : uint32_t;
 
-class StaticIcon;
-class DynamicIcon;
-class DynamicIconProgress;
+class IconSprite;
+class IconProgress;
 
 class Color;
 
@@ -67,8 +66,7 @@ class MaterialNode;
 class MaterialImage;
 
 class Button;
-class ButtonStaticIcon;
-class ButtonDynamicIcon;
+class ButtonIcon;
 class ButtonLabel;
 class ButtonLabelSelector;
 class ButtonLabelIcon;

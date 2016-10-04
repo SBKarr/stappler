@@ -23,7 +23,7 @@ public:
 
 protected:
 	Time _textureTime;
-	material::DynamicIcon *_loader = nullptr;
+	IconSprite *_loader = nullptr;
 };
 
 class GalleryScroll : public cocos2d::Node {

@@ -5,10 +5,10 @@
  *      Author: sbkarr
  */
 
+#include <MaterialIconSprite.h>
 #include "Material.h"
 #include "MaterialMenu.h"
 
-#include "MaterialIcon.h"
 #include "MaterialFont.h"
 #include "MaterialLabel.h"
 #include "MaterialMenuSource.h"

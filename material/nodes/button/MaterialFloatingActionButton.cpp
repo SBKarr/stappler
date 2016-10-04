@@ -5,9 +5,9 @@
  *      Author: sbkarr
  */
 
+#include <MaterialIconSprite.h>
 #include "Material.h"
 #include "MaterialFloatingActionButton.h"
-#include "MaterialIcon.h"
 #include "MaterialLabel.h"
 #include "SPProgressAction.h"
 
@@ -56,8 +56,8 @@ bool FloatingActionButton::init(const TapCallback &tapCallback, const TapCallbac
 	_drawNode->setAntialiased(true);
 	addChild(_drawNode, 31);
 
-	_icon = construct<StaticIcon>();
-	_icon->setAnchorPoint(cocos2d::Vec2(0.5f, 0.5f));
+	_icon = construct<IconSprite>();
+	_icon->setAnchorPoint(Vec2(0.5f, 0.5f));
 	_icon->setNormalized(false);
 	addChild(_icon, 1);
 
@@ -92,7 +92,7 @@ void FloatingActionButton::setBackgroundColor(const Color &c) {
 	_icon->setColor(c.text());
 }
 
-StaticIcon *FloatingActionButton::getIcon() const {
+IconSprite *FloatingActionButton::getIcon() const {
 	return _icon;
 }
 Label *FloatingActionButton::getLabel() const {

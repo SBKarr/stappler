@@ -27,7 +27,7 @@ class MenuSource;
 class MenuSourceItem;
 class MenuSourceButton;
 
-class MenuSourceItem : public stappler::data::Subscription {
+class MenuSourceItem : public data::Subscription {
 public:
 	enum class Type {
 		Separator,
@@ -85,7 +85,7 @@ protected:
 	FactoryFunction _function = nullptr;
 };
 
-class MenuSource : public stappler::data::Subscription {
+class MenuSource : public data::Subscription {
 public:
 	typedef std::function<void (Button *b, MenuSourceButton *)> Callback;
 

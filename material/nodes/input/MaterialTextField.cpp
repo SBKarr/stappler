@@ -220,6 +220,9 @@ void TextField::releaseInput() {
 bool TextField::isPlaceholderEnabled() const {
 	return !_string.empty();
 }
+bool TextField::empty() const {
+	return _string.empty();
+}
 
 bool TextField::onPressBegin(const Vec2 &vec) {
 	return true;

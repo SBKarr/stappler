@@ -40,6 +40,18 @@ ResourceManager *ResourceManager::getInstance() {
 }
 
 ResourceManager::ResourceManager() {
+	locale::define("ru-ru", {
+		pair("SystemSearch", "Найти"),
+		pair("SystemFontSize", "Размер шрифта"),
+		pair("SystemTheme", "Оформление"),
+	});
+
+	locale::define("en-us", {
+		pair("SystemSearch", "Search"),
+		pair("SystemFontSize", "Font size"),
+		pair("SystemTheme", "Theme"),
+	});
+
 	stappler::storage::get("Material.ResourceManager", [this] (const std::string &key, stappler::data::Value &value) {
 		if (value.isDictionary()) {
 			float systemFontScale = value.getDouble("SystemFontScale");
@@ -71,16 +83,15 @@ ResourceManager::ResourceManager() {
 
 		update();
 	});
-
-	_iconNames = getMaterialIconsNames();
 }
 
 ResourceManager::~ResourceManager() { }
 
 void ResourceManager::update() {
     float density = stappler::screen::density();
-    stappler::IconSet::generate(stappler::IconSet::Config{"material", getMaterialIconVersion(), getMaterialIconSources(),
-    	48, 48, (uint16_t)(24 * density), (uint16_t)(24 * density)}, [this] (stappler::IconSet *set) {
+    const auto &m = getMaterialIconSources();
+    stappler::IconSet::generate(stappler::IconSet::Config{"material", getMaterialIconVersion(), &m,
+    	48, 48, (uint16_t)(24 * density), (uint16_t)(24 * density)}, [this] (IconSet *set) {
     		_iconSet = set;
     		if (_iconSet && _systemFonts) {
     			_init = true;
@@ -188,14 +199,15 @@ material::FontSet *ResourceManager::getSystemFontSet() const {
 	return _systemFonts;
 }
 
-stappler::Icon *ResourceManager::getIcon(IconName name) {
-	auto it = _iconNames.find(name);
-	if (it != _iconNames.end()) {
+Icon ResourceManager::getIcon(IconName name) {
+	auto &names = getMaterialIconNames();
+	auto it = names.find(name);
+	if (it != names.end()) {
 		if (_iconSet) {
 			return _iconSet->getIcon(it->second);
 		}
 	}
-	return nullptr;
+	return Icon();
 }
 
 NS_MD_END

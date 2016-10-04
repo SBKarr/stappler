@@ -35,8 +35,8 @@ protected:
 
 	Label *_menuNameLabel = nullptr;
 	Label *_menuValueLabel = nullptr;
-	StaticIcon *_menuNameIcon = nullptr;
-	StaticIcon *_menuValueIcon = nullptr;
+	IconSprite *_menuNameIcon = nullptr;
+	IconSprite *_menuValueIcon = nullptr;
 
 	Menu *_menu = nullptr;
 };

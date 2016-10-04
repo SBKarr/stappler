@@ -48,10 +48,10 @@ function get_cairo() {
 }
 
 function get_freetype() {
-	wget http://download.savannah.gnu.org/releases/freetype/freetype-2.6.5.tar.gz
-	tar -xzf freetype-2.6.5.tar.gz
-	rm freetype-2.6.5.tar.gz
-	mv freetype-2.6.5 freetype
+	wget http://ftp.acc.umu.se/mirror/gnu.org/savannah//freetype/freetype-2.7.tar.gz
+	tar -xzf freetype-2.7.tar.gz
+	rm freetype-2.7.tar.gz
+	mv freetype-2.7 freetype
 }
 
 function get_sqlite() {

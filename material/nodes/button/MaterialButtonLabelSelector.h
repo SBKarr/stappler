@@ -13,7 +13,7 @@
 
 NS_MD_BEGIN
 
-class ButtonLabelSelector : public ButtonStaticIcon {
+class ButtonLabelSelector : public ButtonIcon {
 public:
 	virtual bool init(const TapCallback &tapCallback = nullptr, const TapCallback &longTapCallback = nullptr) override;
 	virtual void onContentSizeDirty() override;

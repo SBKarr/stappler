@@ -47,7 +47,7 @@ bool Toolbar::init() {
 
 	auto color = Color::Grey_500;
 
-	_navButton = ButtonDynamicIcon::create(DynamicIcon::Name::Empty, std::bind(&Toolbar::onNavTapped, this));
+	_navButton = construct<ButtonIcon>(IconName::Empty, std::bind(&Toolbar::onNavTapped, this));
 	_navButton->setStyle(color.text() == Color::White?Button::FlatWhite:Button::FlatBlack);
 	_navButton->setIconColor(color.text());
 	addChild(_navButton, 1);
@@ -84,11 +84,11 @@ MenuSource * Toolbar::getTitleMenuSource() const {
 	return _title->getMenuSource();
 }
 
-void Toolbar::setNavButtonIcon(DynamicIcon::Name name) {
+void Toolbar::setNavButtonIcon(IconName name) {
 	_navButton->setIconName(name);
 	_contentSizeDirty = true;
 }
-DynamicIcon::Name Toolbar::getNavButtonIcon() const {
+IconName Toolbar::getNavButtonIcon() const {
 	return _navButton->getIconName();
 }
 
@@ -200,7 +200,7 @@ bool Toolbar::isSwallowTouches() const {
 	return _listener->isEnabled();
 }
 
-ButtonDynamicIcon *Toolbar::getNavNode() const {
+ButtonIcon *Toolbar::getNavNode() const {
 	return _navButton;
 }
 ButtonLabelSelector *Toolbar::getTitleNode() const {
@@ -235,7 +235,7 @@ void Toolbar::updateMenu() {
 			auto btnSrc = dynamic_cast<MenuSourceButton *>(item);
 			if (btnSrc->getNameIcon() != IconName::None) {
 				if (iconsCount < _maxActionIcons) {
-					ButtonStaticIcon *btn = construct<ButtonStaticIcon>();
+					ButtonIcon *btn = construct<ButtonIcon>();
 					btn->setMenuSourceButton(btnSrc);
 					_iconsComposer->addChild(btn);
 					_icons.push_back(btn);
@@ -251,7 +251,7 @@ void Toolbar::updateMenu() {
 	}
 
 	if (_extensionMenuSource || extMenuSource->count() > 0) {
-		ButtonStaticIcon *btn = construct<ButtonStaticIcon>(IconName::Navigation_more_vert);
+		ButtonIcon *btn = construct<ButtonIcon>(IconName::Navigation_more_vert);
 		btn->setMenuSource((_extensionMenuSource != nullptr)?_extensionMenuSource:extMenuSource);
 		_icons.push_back(btn);
 		_iconsComposer->addChild(btn);
@@ -267,42 +267,32 @@ void Toolbar::layoutSubviews() {
 	float baseline = getBaseLine();
 
 	_iconsComposer->setContentSize(_contentSize);
-	if (_navButton->getIconName() != DynamicIcon::Name::Empty && _navButton->getIconName() != DynamicIcon::Name::None) {
-		_navButton->setContentSize(cocos2d::Size(48, 48));
-		_navButton->setAnchorPoint(cocos2d::Vec2(0.5, 0.5));
-		_navButton->setPosition(cocos2d::Vec2(32, baseline));
+	if (_navButton->getIconName() != IconName::Empty && _navButton->getIconName() != IconName::None) {
+		_navButton->setContentSize(Size(48, 48));
+		_navButton->setAnchorPoint(Vec2(0.5, 0.5));
+		_navButton->setPosition(Vec2(32, baseline));
 		_navButton->setVisible(true);
 	} else {
 		_navButton->setVisible(false);
 	}
 
-	auto labelWidth = _contentSize.width - 16.0f;
-	if (_navButton->isVisible()) {
-		labelWidth -= 64.0f;
-	} else {
-		labelWidth -= 16.0f;
-	}
-	if (_icons.size() > 0) {
-		auto icons = _icons.size();
-		float w = (56 * (icons) - (_hasExtMenu?24:0));
-		labelWidth -= w;
-	}
+	auto labelWidth = getLabelWidth();
 	_title->setWidth(labelWidth);
-	_title->setContentSize(cocos2d::Size(_title->getContentSize().width, 48));
-	_title->setAnchorPoint(cocos2d::Vec2(0, 0.5));
-	_title->setPosition(cocos2d::Vec2(_navButton->isVisible()?64:16, baseline));
+	_title->setContentSize(Size(_title->getContentSize().width, 48));
+	_title->setAnchorPoint(Vec2(0, 0.5));
+	_title->setPosition(Vec2(_navButton->isVisible()?64:16, baseline));
 
 	if (_icons.size() > 0) {
 		auto pos = _contentSize.width - 56 * (_icons.size() - 1) - (_hasExtMenu?8:36);
 		for (auto &it : _icons) {
-			it->setContentSize(cocos2d::Size(48, 48));
-			it->setAnchorPoint(cocos2d::Vec2(0.5, 0.5));
-			it->setPosition(cocos2d::Vec2(pos, baseline));
+			it->setContentSize(Size(48, 48));
+			it->setAnchorPoint(Vec2(0.5, 0.5));
+			it->setPosition(Vec2(pos, baseline));
 			pos += 56;
 		}
 		if (_hasExtMenu) {
-			_icons.back()->setContentSize(cocos2d::Size(24, 48));
-			_icons.back()->setPosition(cocos2d::Vec2(_contentSize.width - 24, baseline));
+			_icons.back()->setContentSize(Size(24, 48));
+			_icons.back()->setPosition(Vec2(_contentSize.width - 24, baseline));
 		}
 	}
 
@@ -310,7 +300,7 @@ void Toolbar::layoutSubviews() {
 }
 
 void Toolbar::onNavTapped() {
-	if (_navButton->getIconName() == DynamicIcon::Name::Navigation) {
+	if (_navButton->getIconName() == IconName::Dynamic_Navigation) {
 		if (!_navCallback) {
 			if (_navButton->getIconProgress() == 0.0f) {
 				material::Scene::getRunningScene()->getNavigationLayer()->show();
@@ -329,6 +319,21 @@ float Toolbar::getBaseLine() const {
 	} else {
 		return _basicHeight / 2;
 	}
+}
+
+float Toolbar::getLabelWidth() const {
+	auto labelWidth = _contentSize.width - 16.0f;
+	if (_navButton->isVisible()) {
+		labelWidth -= 64.0f;
+	} else {
+		labelWidth -= 16.0f;
+	}
+	if (_icons.size() > 0) {
+		auto icons = _icons.size();
+		float w = (56 * (icons) - (_hasExtMenu?24:0));
+		labelWidth -= w;
+	}
+	return labelWidth;
 }
 
 NS_MD_END

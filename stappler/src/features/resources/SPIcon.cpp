@@ -14,19 +14,14 @@
 
 NS_SP_BEGIN
 
+Icon::Icon() : _id(0), _x(0), _y(0), _width(0), _height(0), _density(0.0f) { }
+
 Icon::Icon(uint16_t id, uint16_t x, uint16_t y, uint16_t width, uint16_t height, float density, Image *image)
 : _id(id), _x(x), _y(y), _width(width), _height(height), _density(density) {
 	_image = image;
-	if (_image) {
-		_image->retain();
-	}
 }
 
-Icon::~Icon() {
-	if (_image) {
-		_image->release();
-	}
-}
+Icon::~Icon() { }
 
 cocos2d::Texture2D *Icon::getTexture() const {
 	auto tex = getImage()->retainTexture();
@@ -42,7 +37,7 @@ void IconSet::generate(Config &&cfg, const std::function<void(IconSet *)> &callb
 	resource::generateIconSet(std::move(cfg), callback);
 }
 
-IconSet::IconSet(Config &&cfg, cocos2d::Map<std::string, Icon *> &&icons, Image *image)
+IconSet::IconSet(Config &&cfg, Map<String, Icon> &&icons, Image *image)
 : _config(std::move(cfg)), _image(image), _icons(std::move(icons)) {
 	_image->retainData();
 
@@ -54,10 +49,10 @@ IconSet::~IconSet() {
 	_image->releaseData();
 }
 
-Icon *IconSet::getIcon(const std::string &key) const {
+Icon IconSet::getIcon(const std::string &key) const {
 	auto it = _icons.find(key);
 	if (it == _icons.end()) {
-		return nullptr;
+		return Icon();
 	}
 	return it->second;
 }

@@ -11,7 +11,7 @@
 NS_MD_BEGIN
 
 bool ButtonLabelSelector::init(const TapCallback &tapCallback, const TapCallback &longTapCallback) {
-	if (!ButtonStaticIcon::init(IconName::Navigation_arrow_drop_down, tapCallback, longTapCallback)) {
+	if (!ButtonIcon::init(IconName::Navigation_arrow_drop_down, tapCallback, longTapCallback)) {
 		return false;
 	}
 
@@ -27,14 +27,14 @@ bool ButtonLabelSelector::init(const TapCallback &tapCallback, const TapCallback
 	return true;
 }
 void ButtonLabelSelector::onContentSizeDirty() {
-	ButtonStaticIcon::onContentSizeDirty();
+	ButtonIcon::onContentSizeDirty();
 
 	_label->setPosition(8, _contentSize.height/2);
 	_icon->setPosition(_contentSize.width - 12, _contentSize.height/2);
 }
 
 void ButtonLabelSelector::setMenuSource(MenuSource *source) {
-	ButtonStaticIcon::setMenuSource(source);
+	ButtonIcon::setMenuSource(source);
 	if (_floatingMenuSource) {
 		_icon->setVisible(true);
 		_contentSizeDirty = true;

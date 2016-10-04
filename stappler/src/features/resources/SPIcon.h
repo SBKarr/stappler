@@ -13,9 +13,11 @@
 
 NS_SP_BEGIN
 
-class Icon : public cocos2d::Ref {
+class Icon {
 public:
+	Icon();
 	Icon(uint16_t id, uint16_t x, uint16_t y, uint16_t width, uint16_t height, float density, Image *tex);
+
 	virtual ~Icon();
 
 	inline uint16_t getId() const { return _id; }
@@ -27,6 +29,19 @@ public:
 	cocos2d::Texture2D *getTexture() const;
 	cocos2d::Rect getTextureRect() const;
 
+	operator bool() const {
+		return bool(_image);
+	}
+
+	bool operator == (const Icon &v) {
+		return v._id == _id && v._x == _x && v._y == _y && v._width == _width && v._height == _height
+				&& v._density == _density && v._image == _image;
+	}
+
+	bool operator != (const Icon &v) {
+		return !(*this == v);
+	}
+
 private:
 	uint16_t _id;
 	uint16_t _x;
@@ -34,7 +49,7 @@ private:
 	uint16_t _width;
 	uint16_t _height;
 	float _density;
-	Image *_image;
+	Rc<Image> _image;
 };
 
 class IconSet : public cocos2d::Ref {
@@ -43,7 +58,7 @@ public:
 	struct Config {
 		std::string name;
 		uint16_t version;
-		std::map<std::string, std::string> data;
+		const Map<String, String> * data;
 		uint16_t originalWidth;
 		uint16_t originalHeight;
 		uint16_t iconWidth;
@@ -52,9 +67,9 @@ public:
 
 	static void generate(Config &&, const Callback &callback);
 
-	Icon *getIcon(const std::string &) const;
+	Icon getIcon(const std::string &) const;
 
-	IconSet(Config &&, cocos2d::Map<std::string, Icon *> &&icons, Image *image);
+	IconSet(Config &&, Map<String, Icon> &&icons, Image *image);
 	~IconSet();
 
 	uint16_t getOriginalWidth() const { return _config.originalWidth; }
@@ -71,7 +86,7 @@ protected:
 	uint16_t _texHeight = 0;
 
 	Rc<Image>_image = nullptr;
-	cocos2d::Map<std::string, Icon *> _icons;
+	Map<String, Icon> _icons;
 };
 
 NS_SP_END

@@ -8,8 +8,8 @@
 #ifndef LIBS_MATERIAL_NODES_TOOLBAR_MATERIALTOOLBAR_H_
 #define LIBS_MATERIAL_NODES_TOOLBAR_MATERIALTOOLBAR_H_
 
+#include "../../resources/MaterialIconSprite.h"
 #include "MaterialNode.h"
-#include "MaterialIcon.h"
 #include "MaterialMenuSource.h"
 #include "SPDataListener.h"
 
@@ -27,8 +27,8 @@ public:
 	virtual void setTitleMenuSource(MenuSource *);
 	virtual MenuSource * getTitleMenuSource() const;
 
-	virtual void setNavButtonIcon(DynamicIcon::Name);
-	virtual DynamicIcon::Name getNavButtonIcon() const;
+	virtual void setNavButtonIcon(IconName);
+	virtual IconName getNavButtonIcon() const;
 
 	virtual void setNavButtonIconProgress(float value, float anim);
 	virtual float getNavButtonIconProgress() const;
@@ -63,7 +63,7 @@ public:
 	virtual void setBarCallback(const std::function<void()> &);
 	virtual const std::function<void()> & getBarCallback() const;
 
-	ButtonDynamicIcon *getNavNode() const;
+	ButtonIcon *getNavNode() const;
 	ButtonLabelSelector *getTitleNode() const;
 
 protected:
@@ -71,13 +71,14 @@ protected:
 	virtual void layoutSubviews();
 	virtual void onNavTapped();
 	virtual float getBaseLine() const;
+	virtual float getLabelWidth() const;
 
-	ButtonDynamicIcon *_navButton = nullptr;
+	ButtonIcon *_navButton = nullptr;
 	ButtonLabelSelector *_title = nullptr;
 
 	size_t _maxActionIcons = 3;
 
-	std::vector<ButtonStaticIcon *> _icons;
+	std::vector<ButtonIcon *> _icons;
 	cocos2d::Node *_iconsComposer = nullptr;
 
 	data::Listener<MenuSource> _actionMenuSource;

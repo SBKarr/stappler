@@ -26,12 +26,30 @@
 	</natures>
 	<filteredResources>
 		<filter>
-			<id>1471684313979</id>
+			<id>1475854145607</id>
 			<name></name>
 			<type>10</type>
 			<matcher>
 				<id>org.eclipse.ui.ide.multiFilter</id>
 				<arguments>1.0-name-matches-false-false-build</arguments>
+			</matcher>
+		</filter>
+		<filter>
+			<id>1475854145610</id>
+			<name></name>
+			<type>10</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.multiFilter</id>
+				<arguments>1.0-name-matches-false-false-android</arguments>
+			</matcher>
+		</filter>
+		<filter>
+			<id>1475854186145</id>
+			<name>libs</name>
+			<type>10</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.multiFilter</id>
+				<arguments>1.0-name-matches-false-false-android</arguments>
 			</matcher>
 		</filter>
 	</filteredResources>

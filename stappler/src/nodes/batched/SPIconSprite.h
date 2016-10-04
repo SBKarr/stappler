@@ -17,13 +17,14 @@ class IconSprite : public DynamicSprite {
 public:
 	virtual ~IconSprite() { }
 
-	virtual bool init(Icon *icon);
+	virtual bool init();
+	virtual bool init(const Icon &icon);
 
-	virtual void setIcon(Icon *icon);
-	virtual Icon *getIcon() const;
+	virtual void setIcon(const Icon &icon);
+	virtual const Icon &getIcon() const;
 
 protected:
-	Rc<Icon> _icon = nullptr;
+	Icon _icon;
 };
 
 NS_SP_END

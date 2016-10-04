@@ -11,7 +11,7 @@
 NS_MD_BEGIN
 
 bool ButtonLabelIcon::init(const TapCallback &tapCallback, const TapCallback &longTapCallback) {
-	if (!ButtonStaticIcon::init(IconName::Empty, tapCallback, longTapCallback)) {
+	if (!ButtonIcon::init(IconName::Empty, tapCallback, longTapCallback)) {
 		return false;
 	}
 
@@ -28,7 +28,7 @@ bool ButtonLabelIcon::init(const TapCallback &tapCallback, const TapCallback &lo
 	return true;
 }
 void ButtonLabelIcon::onContentSizeDirty() {
-	ButtonStaticIcon::onContentSizeDirty();
+	ButtonIcon::onContentSizeDirty();
 
 	_icon->setPosition(24, _contentSize.height/2);
 	_label->setPosition(48, _contentSize.height/2);

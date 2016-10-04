@@ -5,10 +5,10 @@
  *      Author: sbkarr
  */
 
+#include <MaterialIconSprite.h>
 #include "Material.h"
 #include "MaterialMenuButton.h"
 
-#include "MaterialIcon.h"
 #include "MaterialResourceManager.h"
 #include "MaterialMenu.h"
 #include "MaterialLabel.h"
@@ -47,12 +47,12 @@ bool MenuButton::init() {
 	_menuValueLabel->setLocaleEnabled(true);
 	addChild(_menuValueLabel);
 
-	_menuNameIcon = construct<StaticIcon>();
+	_menuNameIcon = construct<IconSprite>();
 	_menuNameIcon->setVisible(false);
 	_menuNameIcon->setAnchorPoint(cocos2d::Vec2(0, 0.5));
 	addChild(_menuNameIcon);
 
-	_menuValueIcon = construct<StaticIcon>();
+	_menuValueIcon = construct<IconSprite>();
 	_menuValueIcon->setVisible(false);
 	_menuValueIcon->setAnchorPoint(cocos2d::Vec2(1, 0.5));
 	addChild(_menuValueIcon);

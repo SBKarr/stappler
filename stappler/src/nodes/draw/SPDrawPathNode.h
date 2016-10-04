@@ -39,7 +39,7 @@ public:
 protected:
 	friend class Path;
 
-    void updateCanvas();
+	virtual void updateCanvas();
     cairo_t *acquireDrawContext(uint32_t w, uint32_t h, Format fmt);
     cocos2d::Texture2D *generateTexture(cocos2d::Texture2D *tex);
     void releaseCanvasCache();

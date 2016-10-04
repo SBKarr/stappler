@@ -13,7 +13,7 @@
 
 NS_MD_BEGIN
 
-class Label : public stappler::RichLabel {
+class Label : public RichLabel {
 public:
 	virtual bool init(const Font *, Alignment = Alignment::Left, float = 0);
 	virtual bool init(Font::Type, Alignment = Alignment::Left, float = 0);

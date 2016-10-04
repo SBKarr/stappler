@@ -156,7 +156,7 @@ public:
 	virtual void onExit() override;
 
 protected:
-	DynamicIcon *_icon = nullptr;
+	IconSprite *_icon = nullptr;
 	std::function<void()> _callback = nullptr;
 };
 

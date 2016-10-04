@@ -5,9 +5,9 @@
  *      Author: sbkarr
  */
 
+#include <MaterialIconSprite.h>
 #include "Material.h"
 #include "MaterialScrollSlice.h"
-#include "MaterialIcon.h"
 #include "SPThread.h"
 
 #include "SPScrollController.h"

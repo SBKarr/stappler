@@ -16,6 +16,9 @@ enum class IconName : uint32_t {
 	None = 0,
 	Empty,
 
+	Dynamic_Navigation,
+	Dynamic_Loader,
+
 	Image_exposure_zero,
 	Image_flash_off,
 	Image_brightness_5,
@@ -825,8 +828,8 @@ enum class IconName : uint32_t {
 	Stappler_layout_horizontal,
 };
 
-std::map<std::string, std::string> getMaterialIconSources();
-std::map<IconName, std::string> getMaterialIconsNames();
+const Map<String, String> & getMaterialIconSources();
+const Map<IconName, String> & getMaterialIconNames();
 uint16_t getMaterialIconVersion();
 
 NS_MD_END

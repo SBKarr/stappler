@@ -132,11 +132,6 @@ void DynamicSprite::onContentSizeDirty() {
 			_textureRect.origin.y = (_textureRect.size.height - _contentSize.height * scale) * _autofitPos.y;
 			_textureRect.size.height = _contentSize.height * scale;
 		}
-
-		/*stappler::log("\ncontentSize: %f %f;\nglobalSize: %f %f;\ntextureOrigin: %f %f;\ntextureSizeInView: %f %f;\ntextureRect: %f %f %f %f;\n",
-				_contentSize.width, _contentSize.height, size.width, size.height,
-				_textureOrigin.x, _textureOrigin.y, _textureSize.width, _textureSize.height,
-				_textureRect.origin.x, _textureRect.origin.y, _textureRect.size.width, _textureRect.size.height);*/
 	}
 
 	updateQuads();

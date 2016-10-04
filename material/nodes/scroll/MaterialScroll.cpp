@@ -5,10 +5,9 @@
  *      Author: sbkarr
  */
 
+#include <MaterialIconSprite.h>
 #include "Material.h"
 #include "MaterialScroll.h"
-#include "MaterialIcon.h"
-
 #include "SPScrollController.h"
 #include "SPDataListener.h"
 #include "SPThread.h"
@@ -32,7 +31,7 @@ bool Scroll::Loader::init(const std::function<void()> &cb, const Color &c) {
 
 	setColor(c);
 
-	_icon = DynamicIcon::defaultIcon(DynamicIcon::Name::Loader);
+	_icon = construct<IconSprite>(IconName::Dynamic_Loader);
 	_icon->setContentSize(cocos2d::Size(36.0f, 36.0f));
 	_icon->setAnchorPoint(cocos2d::Vec2(0.5f, 0.5f));
 	addChild(_icon);

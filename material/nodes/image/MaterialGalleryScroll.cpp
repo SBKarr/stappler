@@ -5,10 +5,9 @@
  *      Author: sbkarr
  */
 
+#include <MaterialIconSprite.h>
 #include "Material.h"
 #include "MaterialGalleryScroll.h"
-
-#include "MaterialIcon.h"
 
 #include "SPScrollView.h"
 #include "SPTextureCache.h"
@@ -32,7 +31,7 @@ bool GalleryImage::init(const std::string &file, const ImageCallback &cb) {
 
 	_gestureListener->setEnabled(false);
 
-	_loader = material::DynamicIcon::defaultIcon(material::DynamicIcon::Name::Loader);
+	_loader = construct<IconSprite>(IconName::Dynamic_Loader);
 	_loader->setAnchorPoint(Vec2(0.5f, 0.5f));
 	_loader->setContentSize(Size(48.0f, 48.0f));
 	addChild(_loader);

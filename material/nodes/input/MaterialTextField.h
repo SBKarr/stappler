@@ -48,13 +48,13 @@ public:
 	virtual void setErrorColor(const Color &);
 	virtual const Color &getErrorColor() const;
 
-	virtual void setString(const std::u16string &);
-	virtual void setString(const std::string &);
-	virtual const std::u16string &getString() const;
+	virtual void setString(const WideString &);
+	virtual void setString(const String &);
+	virtual const WideString &getString() const;
 
-	virtual void setPlaceholder(const std::u16string &);
-	virtual void setPlaceholder(const std::string &);
-	virtual const std::u16string &getPlaceholder() const;
+	virtual void setPlaceholder(const WideString &);
+	virtual void setPlaceholder(const String &);
+	virtual const WideString &getPlaceholder() const;
 
 	virtual void setInputFilter(const InputFilter &);
 	virtual void setInputFilter(InputFilter &&);
@@ -76,6 +76,7 @@ public:
 	virtual void releaseInput();
 
 	virtual bool isPlaceholderEnabled() const;
+	virtual bool empty() const;
 
 protected:
 	virtual bool onPressBegin(const Vec2 &);

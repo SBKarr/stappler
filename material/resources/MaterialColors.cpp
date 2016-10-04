@@ -372,6 +372,141 @@ MD_COLOR_SPEC_BASE_DEFINE(BlueGrey, 18,
 Color Color::White(0xFFFFFF, (int16_t)19 * 16 + 0);
 Color Color::Black(0x000000, (int16_t)19 * 16 + 1);
 
+
+struct _ColorHsl {
+	float h;
+	float s;
+	float l;
+};
+
+static _ColorHsl rgb_to_hsl(uint32_t color) {
+	_ColorHsl ret;
+    float
+        r = float((color >> (2 * 8)) & maxOf<uint8_t>()) / maxOf<uint8_t>(),
+        g = float((color >> (1 * 8)) & maxOf<uint8_t>()) / maxOf<uint8_t>(),
+        b = float((color >> (0 * 8)) & maxOf<uint8_t>()) / maxOf<uint8_t>();
+
+    float
+        maxv = std::max(std::max(r, g), b),
+        minv = std::min(std::min(r, g), b),
+		d = maxv - minv;
+
+    ret.l = (maxv + minv) / 2;
+
+    if (maxv != minv) {
+    	ret.s = ret.l > 0.5f ? d / (2 - maxv - minv) : d / (maxv + minv);
+        if (maxv == r) {
+        	ret.h = (g - b) / d + (g < b ? 6 : 0);
+        } else if (maxv == g) {
+        	ret.h = (b - r) / d + 2;
+        } else if (maxv == b) {
+        	ret.h = (r - g) / d + 4;
+        }
+        ret.h /= 6;
+    }
+    return ret;
+}
+
+static float hue_to_rgb(float v1, float v2, float vH) {
+	if (vH < 0)
+		vH += 1;
+
+	if (vH > 1)
+		vH -= 1;
+
+	if ((6 * vH) < 1)
+		return (v1 + (v2 - v1) * 6 * vH);
+
+	if ((2 * vH) < 1)
+		return v2;
+
+	if ((3 * vH) < 2)
+		return (v1 + (v2 - v1) * ((2.0f / 3) - vH) * 6);
+
+	return v1;
+}
+
+static uint32_t hsl_to_rgb(const _ColorHsl &color, uint32_t source) {
+	uint8_t r = 0;
+	uint8_t g = 0;
+	uint8_t b = 0;
+
+	if (color.s == 0.0f) {
+		r = g = b = (uint8_t)(color.l * 255);
+	} else {
+		float v1, v2;
+		const float hue = color.h;
+
+		v2 = (color.l < 0.5) ? (color.l * (1 + color.s)) : ((color.l + color.s) - (color.l * color.s));
+		v1 = 2 * color.l - v2;
+
+		r = (uint8_t)(255 * hue_to_rgb(v1, v2, hue + (1.0f / 3)));
+		g = (uint8_t)(255 * hue_to_rgb(v1, v2, hue));
+		b = (uint8_t)(255 * hue_to_rgb(v1, v2, hue - (1.0f / 3)));
+	}
+
+    return (uint32_t(r) << (2 * 8)) |
+           (uint32_t(g) << (1 * 8)) |
+           (uint32_t(b) << (0 * 8)) |
+           (uint32_t((source >> (3 * 8)) & maxOf<uint8_t>()) << (3 * 8));
+}
+
+static uint32_t make_lighter(uint32_t color, uint8_t index) {
+    _ColorHsl hsl = rgb_to_hsl(color);
+
+    const float tmp = (1.0f - hsl.l) * 11.0f;
+    if (tmp < 0.5f || tmp >= 10.5f) {
+    	return color;
+    }
+    uint8_t id = uint8_t(roundf(tmp)) - 1;
+	if (id < index) {
+		id = 0;
+	} else {
+		id = (id + 10 - index) % 10 + 1;
+	}
+	hsl.l = 1.0f - (id + 1) / 11.0f;
+
+    return hsl_to_rgb(hsl, color);
+}
+static uint32_t make_darker(uint32_t color, uint8_t index) {
+    _ColorHsl hsl = rgb_to_hsl(color);
+
+    const float tmp = (1.0f - hsl.l) * 11.0f;
+    if (tmp < 0.5f || tmp >= 10.5f) {
+    	return color;
+    }
+
+    uint8_t id = uint8_t(roundf(tmp)) - 1;
+	if (id + index > 9) {
+		id = 9;
+	} else {
+		id = (id + 10 + index) % 10;
+	}
+	hsl.l = 1.0f - (id + 1) / 11.0f;
+
+    return hsl_to_rgb(hsl, color);
+}
+
+static uint32_t make_specific(uint32_t color, uint8_t index) {
+    _ColorHsl hsl = rgb_to_hsl(color);
+
+    if (index == 10) {
+    	index = 1;
+    } else if (index == 11) {
+    	index = 2;
+    } else if (index == 12) {
+    	index = 4;
+    } else if (index == 13) {
+    	index = 7;
+    } else {
+    	index = 5;
+    }
+
+	hsl.l = 1.0f - (index + 1) / 11.0f;
+
+    return hsl_to_rgb(hsl, color);
+}
+
 std::map<int16_t, Color> *s_colors = nullptr;
 
 Color Color::getById(int16_t index) {
@@ -439,7 +574,7 @@ Color Color::next() {
 
 Color Color::lighter(uint8_t index) {
 	if (_index == -1) {
-		return Color(0);
+		return Color(make_lighter(_value, index));
 	}
 
 	if (index > 0 && _index == Color::Black._index) {
@@ -467,7 +602,7 @@ Color Color::lighter(uint8_t index) {
 }
 Color Color::darker(uint8_t index) {
 	if (_index == -1) {
-		return Color(0);
+		return Color(make_darker(_value, index));
 	}
 
 	if (index > 0 && _index == Color::White._index) {
@@ -496,14 +631,14 @@ Color Color::darker(uint8_t index) {
 
 Color Color::medium() {
 	if (_index == -1) {
-		return Color(0);
+		return make_specific(_value, 5);
 	}
 	uint16_t color = _index &0xFFF0;
 	return getById(color | 5);
 }
 Color Color::specific(uint8_t index) {
 	if (_index == -1) {
-		return Color(0);
+		return make_specific(_value, index);
 	}
 	uint16_t color = _index &0xFFF0;
 	return getById(color | index);
