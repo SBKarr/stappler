@@ -235,7 +235,7 @@ bool NetworkHandle::setupCurl(CURL *curl, char *errorBuffer) {
 	SETOPT(check, curl, CURLOPT_USE_SSL, CURLUSESSL_TRY);
 
 	SETOPT(check, curl, CURLOPT_NOSIGNAL, 1);
-	SETOPT(check, curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+	SETOPT(check, curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_WHATEVER);
 
 	SETOPT(check, curl, CURLOPT_ERRORBUFFER, errorBuffer);
 	SETOPT(check, curl, CURLOPT_TIMEOUT, SP_NW_READ_TIMEOUT);
