@@ -5,8 +5,8 @@
  *      Author: sbkarr
  */
 
-#include <MaterialIconSprite.h>
 #include "Material.h"
+#include "MaterialIconSprite.h"
 #include "MaterialColors.h"
 #include "MaterialResourceManager.h"
 #include "2d/CCSprite.h"

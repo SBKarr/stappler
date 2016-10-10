@@ -20,14 +20,21 @@ namespace interaction {
 		if (strncmp(url.c_str(), "https://itunes.apple.com", 24) == 0) {
 			[[UIApplication sharedApplication] openURL:urlObj];
 		} else if (urlObj) {
-			SPWebViewController *wvc = [[SPWebViewController alloc] initWithURL:urlObj isExternal:external?YES:NO];
-			UIViewController *vc;
-			vc = [UIApplication sharedApplication].keyWindow.rootViewController;
-			if (!vc) {
-				vc = (UIViewController *)[[[UIApplication sharedApplication].keyWindow.subviews objectAtIndex:0] nextResponder];
-			}
-			wvc.modalTransitionStyle = UIModalTransitionStyleFlipHorizontal;
-			presentViewController(vc, wvc);
+            
+            if ([urlObj.host hasPrefix:@"www.youtube"] || [urlObj.host hasPrefix:@"youtube"] || [urlObj.host hasPrefix:@"youtu.be"]) {
+                NSURL *theURL = [[NSURL alloc] initWithScheme:@"https" host:@"www.youtube-nocookie.com" path:[NSString stringWithFormat:@"%@?rel=0&autoplay=1&showsearch=0&showinfo=0", urlObj.path]];
+                [[UIApplication sharedApplication] openURL:theURL];
+            } else {
+                SPWebViewController *wvc = [[SPWebViewController alloc] initWithURL:urlObj isExternal:external?YES:NO];
+                UIViewController *vc;
+                vc = [UIApplication sharedApplication].keyWindow.rootViewController;
+                if (!vc) {
+                    vc = (UIViewController *)[[[UIApplication sharedApplication].keyWindow.subviews objectAtIndex:0] nextResponder];
+                }
+                wvc.modalTransitionStyle = UIModalTransitionStyleFlipHorizontal;
+                presentViewController(vc, wvc);
+            }
+            
 		}
 	}
 	void _makePhoneCall(const std::string &str) {

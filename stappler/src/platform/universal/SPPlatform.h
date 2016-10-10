@@ -112,6 +112,11 @@ namespace storekit {
 }
 #endif
 
+namespace debug {
+	void _init(const String &addr = String(), data::EncodeFormat fmt = data::EncodeFormat::Cbor);
+	void _backtrace(StringStream &);
+}
+
 NS_SP_PLATFORM_END
 
 #endif

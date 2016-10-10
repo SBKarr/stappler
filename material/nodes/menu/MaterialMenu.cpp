@@ -5,8 +5,8 @@
  *      Author: sbkarr
  */
 
-#include <MaterialIconSprite.h>
 #include "Material.h"
+#include "MaterialIconSprite.h"
 #include "MaterialMenu.h"
 
 #include "MaterialFont.h"

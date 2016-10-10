@@ -79,6 +79,19 @@ void Source::addFontFace(const String &family, style::FontFace &&face) {
 	it->second.emplace_back(std::move(face));
 }
 
+void Source::addFontFace(const HtmlPage::FontMap &m) {
+	for (auto &m_it : m) {
+		auto it = _defaultFontFaces.find(m_it.first);
+		if (it == _defaultFontFaces.end()) {
+			_defaultFontFaces.emplace(m_it.first, m_it.second);
+		} else {
+			for (auto &v_it : m_it.second) {
+				it->second.emplace_back(v_it);
+			}
+		}
+	}
+}
+
 Document *Source::getDocument() const {
 	return _document;
 }

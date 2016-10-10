@@ -41,6 +41,7 @@ public:
 	virtual bool init(Asset *a, bool enabled = true);
 
 	void addFontFace(const String &family, style::FontFace &&);
+	void addFontFace(const HtmlPage::FontMap &);
 
 	Document *getDocument() const;
 	Asset *getAsset() const;

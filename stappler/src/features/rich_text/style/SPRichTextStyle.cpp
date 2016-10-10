@@ -110,7 +110,7 @@ ParameterList getStyleForTag(const String &tag, Tag::Type type) {
 		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Block));
 	}
 
-	if (tag == "span" || tag == "a" || tag == "strong" || tag == "em" || tag == "nobr"
+	if (tag == "span" || tag == "strong" || tag == "em" || tag == "nobr"
 			|| tag == "sub" || tag == "sup" || tag == "inf" || tag == "b"
 			|| tag == "i" || tag == "u" || tag == "nobr") {
 		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Inline));

@@ -11,6 +11,7 @@
 		293729FA1D2A9C8D00D850A3 /* SPFilesystemNativePosix.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 293729F61D2A9C8D00D850A3 /* SPFilesystemNativePosix.cpp */; };
 		293729FB1D2A9C8D00D850A3 /* SPLog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 293729F71D2A9C8D00D850A3 /* SPLog.cpp */; };
 		293729FC1D2A9C8D00D850A3 /* SPLog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 293729F71D2A9C8D00D850A3 /* SPLog.cpp */; };
+		298436861DABDD0A00B411D7 /* SPSignalHandler.mm in Sources */ = {isa = PBXBuildFile; fileRef = 298436851DABDD0A00B411D7 /* SPSignalHandler.mm */; };
 		298EBD4A1D9AEA0300C8B057 /* NSStringPunycodeAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = 298EBD471D9AEA0300C8B057 /* NSStringPunycodeAdditions.m */; };
 		298EBD4B1D9AEA0300C8B057 /* SPWebViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 298EBD491D9AEA0300C8B057 /* SPWebViewController.mm */; };
 		29D45C5B1D224DE00041FA68 /* SPLocale.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29D45C591D224DE00041FA68 /* SPLocale.cpp */; };
@@ -19,8 +20,6 @@
 		29DFCABC1D0990D900AAD2E5 /* SPUrlencodeParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29DFCAB91D0990D900AAD2E5 /* SPUrlencodeParser.cpp */; };
 		29DFCABF1D0990FB00AAD2E5 /* SPNetworkDataTask.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29DFCABD1D0990FB00AAD2E5 /* SPNetworkDataTask.cpp */; };
 		29DFCAC01D0990FB00AAD2E5 /* SPNetworkDataTask.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29DFCABD1D0990FB00AAD2E5 /* SPNetworkDataTask.cpp */; };
-		29FCA78F1D9AD3D1008E8671 /* SPHtmlParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29FCA78D1D9AD3D1008E8671 /* SPHtmlParser.cpp */; };
-		29FCA7901D9AD3D1008E8671 /* SPHtmlParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29FCA78D1D9AD3D1008E8671 /* SPHtmlParser.cpp */; };
 		29FCA7BE1D9AD40D008E8671 /* SPRichTextDocument.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29FCA7931D9AD40D008E8671 /* SPRichTextDocument.cpp */; };
 		29FCA7BF1D9AD40D008E8671 /* SPRichTextNode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29FCA7951D9AD40D008E8671 /* SPRichTextNode.cpp */; };
 		29FCA7C01D9AD40D008E8671 /* SPRichTextParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29FCA7971D9AD40D008E8671 /* SPRichTextParser.cpp */; };
@@ -89,6 +88,8 @@
 		84337FE71CC24EA700546216 /* SPIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84337FE11CC24EA700546216 /* SPIO.cpp */; };
 		84337FF21CC25A7D00546216 /* SPDrawCanvas.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84337FF01CC25A7D00546216 /* SPDrawCanvas.cpp */; };
 		843380101CC272BF00546216 /* SPIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84337FE11CC24EA700546216 /* SPIO.cpp */; };
+		8445A3921DAB73E5006FF988 /* SPHtmlParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8445A3901DAB73E5006FF988 /* SPHtmlParser.cpp */; };
+		8445A3931DAB73E5006FF988 /* SPHtmlParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8445A3901DAB73E5006FF988 /* SPHtmlParser.cpp */; };
 		844635791B1EBDE300CA9857 /* SPError.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8EE1B1D888D00C0175B /* SPError.cpp */; };
 		8446357C1B1EBDFC00CA9857 /* SPEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8E21B1D888D00C0175B /* SPEvent.cpp */; };
 		8446357D1B1EBE0000CA9857 /* SPEventDispatcher.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8E41B1D888D00C0175B /* SPEventDispatcher.cpp */; };
@@ -234,6 +235,7 @@
 		293729F61D2A9C8D00D850A3 /* SPFilesystemNativePosix.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPFilesystemNativePosix.cpp; sourceTree = "<group>"; };
 		293729F71D2A9C8D00D850A3 /* SPLog.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPLog.cpp; sourceTree = "<group>"; };
 		293729F81D2A9C8D00D850A3 /* SPLog.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPLog.h; sourceTree = "<group>"; };
+		298436851DABDD0A00B411D7 /* SPSignalHandler.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SPSignalHandler.mm; sourceTree = "<group>"; };
 		298EBD461D9AEA0300C8B057 /* NSStringPunycodeAdditions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NSStringPunycodeAdditions.h; sourceTree = "<group>"; };
 		298EBD471D9AEA0300C8B057 /* NSStringPunycodeAdditions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = NSStringPunycodeAdditions.m; sourceTree = "<group>"; };
 		298EBD481D9AEA0300C8B057 /* SPWebViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPWebViewController.h; sourceTree = "<group>"; };
@@ -244,8 +246,6 @@
 		29DFCABA1D0990D900AAD2E5 /* SPUrlencodeParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPUrlencodeParser.h; sourceTree = "<group>"; };
 		29DFCABD1D0990FB00AAD2E5 /* SPNetworkDataTask.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPNetworkDataTask.cpp; sourceTree = "<group>"; };
 		29DFCABE1D0990FB00AAD2E5 /* SPNetworkDataTask.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPNetworkDataTask.h; sourceTree = "<group>"; };
-		29FCA78D1D9AD3D1008E8671 /* SPHtmlParser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPHtmlParser.cpp; sourceTree = "<group>"; };
-		29FCA78E1D9AD3D1008E8671 /* SPHtmlParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPHtmlParser.h; sourceTree = "<group>"; };
 		29FCA7931D9AD40D008E8671 /* SPRichTextDocument.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextDocument.cpp; sourceTree = "<group>"; };
 		29FCA7941D9AD40D008E8671 /* SPRichTextDocument.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextDocument.h; sourceTree = "<group>"; };
 		29FCA7951D9AD40D008E8671 /* SPRichTextNode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextNode.cpp; sourceTree = "<group>"; };
@@ -343,6 +343,8 @@
 		84337FE61CC24EA700546216 /* SPIOProducer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIOProducer.h; sourceTree = "<group>"; };
 		84337FF01CC25A7D00546216 /* SPDrawCanvas.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDrawCanvas.cpp; sourceTree = "<group>"; };
 		84337FF11CC25A7D00546216 /* SPDrawCanvas.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDrawCanvas.h; sourceTree = "<group>"; };
+		8445A3901DAB73E5006FF988 /* SPHtmlParser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPHtmlParser.cpp; sourceTree = "<group>"; };
+		8445A3911DAB73E5006FF988 /* SPHtmlParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPHtmlParser.h; sourceTree = "<group>"; };
 		844637521B1EE7FE00CA9857 /* SPIOSLoaderView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SPIOSLoaderView.mm; sourceTree = "<group>"; };
 		844637541B1EE83200CA9857 /* SPIOSLoaderView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SPIOSLoaderView.h; sourceTree = "<group>"; };
 		847576C81BE8A13B00445A50 /* SPActions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPActions.h; sourceTree = "<group>"; };
@@ -386,7 +388,6 @@
 		84A6E8E71B1D888D00C0175B /* SPEventHandler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPEventHandler.h; sourceTree = "<group>"; };
 		84A6E8E81B1D888D00C0175B /* SPEventHeader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPEventHeader.cpp; sourceTree = "<group>"; };
 		84A6E8E91B1D888D00C0175B /* SPEventHeader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPEventHeader.h; sourceTree = "<group>"; };
-		84A6E8EA1B1D888D00C0175B /* SPEventProtocol.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPEventProtocol.h; sourceTree = "<group>"; };
 		84A6E8EB1B1D888D00C0175B /* SPConfig.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPConfig.h; sourceTree = "<group>"; };
 		84A6E8EC1B1D888D00C0175B /* SPDefault.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDefault.h; sourceTree = "<group>"; };
 		84A6E8ED1B1D888D00C0175B /* SPDefine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDefine.h; sourceTree = "<group>"; };
@@ -588,15 +589,6 @@
 			path = locale;
 			sourceTree = "<group>";
 		};
-		29FCA78C1D9AD3D1008E8671 /* html */ = {
-			isa = PBXGroup;
-			children = (
-				29FCA78D1D9AD3D1008E8671 /* SPHtmlParser.cpp */,
-				29FCA78E1D9AD3D1008E8671 /* SPHtmlParser.h */,
-			);
-			path = html;
-			sourceTree = "<group>";
-		};
 		29FCA7911D9AD40D008E8671 /* rich_text */ = {
 			isa = PBXGroup;
 			children = (
@@ -701,7 +693,6 @@
 			children = (
 				84080DBC1C1982EE00723732 /* core */,
 				84080DC61C1982EF00723732 /* data */,
-				29FCA78C1D9AD3D1008E8671 /* html */,
 				84337FE01CC24EA700546216 /* io */,
 				84080E2B1C19832000723732 /* platform */,
 				847BB9C61C4505B000B3B701 /* stream */,
@@ -776,6 +767,8 @@
 				84080DEF1C1982EF00723732 /* SPFilesystem.h */,
 				84080DF01C1982EF00723732 /* SPHalfFloat.cpp */,
 				84080DF11C1982EF00723732 /* SPHalfFloat.h */,
+				8445A3901DAB73E5006FF988 /* SPHtmlParser.cpp */,
+				8445A3911DAB73E5006FF988 /* SPHtmlParser.h */,
 				84FEA25E1C43C12F00DA61E0 /* SPNetworkHandle.cpp */,
 				84FEA25F1C43C12F00DA61E0 /* SPNetworkHandle.h */,
 				84080DF21C1982EF00723732 /* SPTime.cpp */,
@@ -927,7 +920,6 @@
 				84A6E8E71B1D888D00C0175B /* SPEventHandler.h */,
 				84A6E8E81B1D888D00C0175B /* SPEventHeader.cpp */,
 				84A6E8E91B1D888D00C0175B /* SPEventHeader.h */,
-				84A6E8EA1B1D888D00C0175B /* SPEventProtocol.h */,
 			);
 			path = event;
 			sourceTree = "<group>";
@@ -1186,6 +1178,7 @@
 				8410B3EC1C04355700208BA5 /* SPRootViewController.mm */,
 				844637521B1EE7FE00CA9857 /* SPIOSLoaderView.mm */,
 				844637541B1EE83200CA9857 /* SPIOSLoaderView.h */,
+				298436851DABDD0A00B411D7 /* SPSignalHandler.mm */,
 			);
 			path = ios;
 			sourceTree = "<group>";
@@ -1362,7 +1355,7 @@
 				84080E141C1982EF00723732 /* SPCharGroup.cpp in Sources */,
 				844635901B1EBECE00CA9857 /* SPClipboard.mm in Sources */,
 				844635911B1EBED400CA9857 /* SPDevice.mm in Sources */,
-				29FCA7901D9AD3D1008E8671 /* SPHtmlParser.cpp in Sources */,
+				8445A3931DAB73E5006FF988 /* SPHtmlParser.cpp in Sources */,
 				84080E281C1982EF00723732 /* SPTime.cpp in Sources */,
 				84FEA2611C43C12F00DA61E0 /* SPNetworkHandle.cpp in Sources */,
 				293729FA1D2A9C8D00D850A3 /* SPFilesystemNativePosix.cpp in Sources */,
@@ -1399,6 +1392,7 @@
 				8424E9241B5665E700901ED1 /* SPResourceFreeType.cpp in Sources */,
 				29FCA7C31D9AD40D008E8671 /* SPEpubDocument.cpp in Sources */,
 				29D45C5B1D224DE00041FA68 /* SPLocale.cpp in Sources */,
+				298436861DABDD0A00B411D7 /* SPSignalHandler.mm in Sources */,
 				29DFCABF1D0990FB00AAD2E5 /* SPNetworkDataTask.cpp in Sources */,
 				84A6EA2C1B1D888D00C0175B /* SPDevice.mm in Sources */,
 				84080E031C1982EF00723732 /* SPDataValueCbor.cpp in Sources */,
@@ -1418,7 +1412,6 @@
 				84A6EA061B1D888D00C0175B /* SPTextureCache.cpp in Sources */,
 				84A6E9DD1B1D888D00C0175B /* SPEventHeader.cpp in Sources */,
 				84A6EA4A1B1D888D00C0175B /* SPDevice.cpp in Sources */,
-				29FCA78F1D9AD3D1008E8671 /* SPHtmlParser.cpp in Sources */,
 				84A6E9EF1B1D888D00C0175B /* SPNetworkDownload.cpp in Sources */,
 				84080E1D1C1982EF00723732 /* SPUnicode.cpp in Sources */,
 				84A6E9DA1B1D888D00C0175B /* SPEvent.cpp in Sources */,
@@ -1457,6 +1450,7 @@
 				84337FE71CC24EA700546216 /* SPIO.cpp in Sources */,
 				84080DFF1C1982EF00723732 /* SPDataBuffer.cpp in Sources */,
 				29FCA7C71D9AD40D008E8671 /* SPRichTextRendererTypes.cpp in Sources */,
+				8445A3921DAB73E5006FF988 /* SPHtmlParser.cpp in Sources */,
 				84FEA2601C43C12F00DA61E0 /* SPNetworkHandle.cpp in Sources */,
 				84A6E9D61B1D888D00C0175B /* SPEventListener.cpp in Sources */,
 				84A6EA161B1D888D00C0175B /* SPDraw.cpp in Sources */,
