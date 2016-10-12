@@ -15,7 +15,7 @@
 
 NS_MD_BEGIN
 
-bool TextField::init(const Font *font, float width) {
+bool TextField::init(FontType font, float width) {
 	if (!Node::init()) {
 		return false;
 	}
@@ -55,7 +55,7 @@ bool TextField::init(const Font *font, float width) {
 
 	_cursorLayer = construct<Layer>(material::Color::Grey_500);
 	_cursorLayer->setVisible(false);
-	_cursorLayer->setContentSize(Size(1.0f, font->getFont()->getHeight() / _label->getDensity()));
+	_cursorLayer->setContentSize(Size(1.0f, _label->getFontHeight() / _label->getDensity()));
 	_cursorLayer->setAnchorPoint(Vec2(0.0f, 0.0f));
 	_cursorLayer->setOpacity(127);
 	addChild(_cursorLayer, 1);
@@ -267,7 +267,7 @@ void TextField::onError(Error) {
 }
 
 void TextField::updateSize() {
-	auto labelHeight = _label->getFont()->getHeight() / _label->getDensity();
+	auto labelHeight = _label->getFontHeight() / _label->getDensity();
 	if (!_label->empty()) {
 		labelHeight = _label->getContentSize().height;
 	}
@@ -282,7 +282,7 @@ void TextField::updateCursor() {
 			charIndex = 0;
 		}
 
-		Vec2 pos = _label->getCursorPosition(RichLabel::CharIndex(charIndex));
+		Vec2 pos; // = _label->getCursorPosition(RichLabel::CharIndex(charIndex));
 		if (pos != Vec2::ZERO) {
 			_cursorLayer->setPosition(pos + _label->getPosition() - Vec2(0.0f, _label->getContentSize().height));
 		} else {
@@ -305,14 +305,6 @@ bool TextField::updateString(const std::u16string &str, const Cursor &c) {
 			onError(Error::InvalidChar);
 			_handler.setString(_string, _cursor);
 			return false;
-		}
-		if (auto font = _label->getFont()) {
-			auto c = font->getChar(it);
-			if (!c) {
-				onError(Error::InvalidChar);
-				_handler.setString(_string, _cursor);
-				return false;
-			}
 		}
 	}
 
@@ -347,7 +339,7 @@ void TextField::updateFocus() {
 	if (_string.empty() || !_enabled) {
 		_label->setOpacity(127);
 	} else {
-		_label->setOpacity(_label->getMaterialFont()->getOpacity());
+		_label->setOpacity(222);
 	}
 
 	if (_handler.isActive()) {

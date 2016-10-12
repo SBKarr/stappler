@@ -6,6 +6,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.microedition.khronos.egl.EGL10;
+import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.egl.EGLContext;
+import javax.microedition.khronos.egl.EGLDisplay;
+
 import org.cocos2dx.lib.Cocos2dxActivity;
 import org.cocos2dx.lib.Cocos2dxHelper;
 import org.stappler.downloads.Manager;
@@ -198,15 +203,54 @@ public class Activity extends Cocos2dxActivity {
 		super.onDestroy();
 	}
 
+	protected EGLContext _offscreenContext = null;
+	protected EGL10 _egl = null;
+	protected EGLDisplay _display = null;
+	protected EGLConfig _config = null;
+
 	@Override
 	public void setContentView(View view) {
+		mGLSurfaceView.setEGLContextFactory(new EGLContextFactory() {
+            @Override
+            public void destroyContext(EGL10 egl, EGLDisplay display, EGLContext context) {
+            	egl.eglDestroyContext(display, _offscreenContext);
+                egl.eglDestroyContext(display, context);
+            }
+
+            @Override
+            public EGLContext createContext(final EGL10 egl, final EGLDisplay display,
+                    final EGLConfig eglConfig) {
+
+            	EGLContext renderContext = egl.eglCreateContext(display, eglConfig,
+                        EGL10.EGL_NO_CONTEXT, null);
+
+            	_egl = egl;
+            	_config = eglConfig;
+                _offscreenContext = egl.eglCreateContext(display, eglConfig, renderContext, null);
+                return renderContext;
+            }
+        });
+
 		FrameLayout layout = (FrameLayout)view;
-		
+
 		_splashScreen = new LoaderView(this);
 
 		layout.addView(_splashScreen);
 
 		super.setContentView(layout);
+	}
+
+	void enableOffscreenContext() {
+		int pbufferAttribs[] = { EGL10.EGL_WIDTH, 1, EGL10.EGL_HEIGHT, 1, EGL14.EGL_TEXTURE_TARGET,
+                EGL14.EGL_NO_TEXTURE, EGL14.EGL_TEXTURE_FORMAT, EGL14.EGL_NO_TEXTURE,
+                EGL10.EGL_NONE };
+        _localSurface = egl.eglCreatePbufferSurface(_display, _config, pbufferAttribs);
+        _egl.eglMakeCurrent(_display, _localSurface, _localSurface, _offscreenContext);
+	}
+	
+	void disableOffscreenContext() {
+		_localSurface = null;
+		_egl.eglMakeCurrent(_display, null, null, null);
 	}
 	
 	public void showSplashProgress() {
@@ -472,6 +516,8 @@ public class Activity extends Cocos2dxActivity {
 			}
 		});
 	}
+	
+	public void 
 	
     static {
          System.loadLibrary("apps");

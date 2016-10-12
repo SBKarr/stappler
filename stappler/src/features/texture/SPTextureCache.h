@@ -12,6 +12,14 @@
 #include "SPEventHandler.h"
 #include "base/CCMap.h"
 
+
+NS_CC_BEGIN
+
+class GLView;
+
+NS_CC_END
+
+
 NS_SP_BEGIN
 
 class TextureCache : public EventHandler {
@@ -25,6 +33,8 @@ public:
 	static TextureCache *getInstance();
 	static Thread &thread();
 
+	~TextureCache();
+
 	void update(float dt);
 
 	void addTexture(const std::string &, const Callback & = nullptr, bool forceReload = false);
@@ -32,11 +42,48 @@ public:
 
 	bool hasTexture(const std::string &path);
 
+	void uploadBitmap(Bitmap &&, const Function<void(cocos2d::Texture2D *)> &, Ref * = nullptr);
+	void uploadBitmap(Vector<Bitmap> &&tex, const Function<void(Vector<Rc<cocos2d::Texture2D>> &&tex)> &, Ref * = nullptr);
+
+	/* add texture, that was manually loaded, into cache, useful to ensure cache reloading */
+	void addLoadedTexture(const String &, cocos2d::Texture2D *);
+	void removeLoadedTexture(const String &);
+
+	bool makeCurrentContext();
+	void freeCurrentContext();
+
+	template <typename T>
+	auto performWithGL(const T &t) {
+		struct ContextHolder {
+			ContextHolder(TextureCache *c) : cache(c) {
+				enabled = cache->makeCurrentContext();
+			}
+			~ContextHolder() {
+				if (enabled) {
+					cache->freeCurrentContext();
+				}
+			}
+
+			bool enabled = false;
+			TextureCache *cache;
+		} holder(this);
+
+		if (holder.enabled) {
+			return t();
+		} else {
+			return decltype(t())();
+		}
+	}
+
 protected:
 	TextureCache();
 
 	void registerWithDispatcher();
 	void unregisterWithDispatcher();
+
+	void uploadTextureBackground(Rc<cocos2d::Texture2D> &, const Bitmap &);
+	void uploadTextureBackground(Vector<Rc<cocos2d::Texture2D>> &, const Vector<Bitmap> &);
+	void initThread(cocos2d::GLView *);
 
 	bool _registred = false;
 	cocos2d::Map<std::string, cocos2d::Texture2D *> _textures;

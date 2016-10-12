@@ -20,13 +20,6 @@
 
 NS_MD_BEGIN
 
-class StaticIcon;
-class Button;
-
-class MenuSource;
-class MenuSourceItem;
-class MenuSourceButton;
-
 class MenuSourceItem : public data::Subscription {
 public:
 	enum class Type {

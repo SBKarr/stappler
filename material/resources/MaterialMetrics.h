@@ -36,6 +36,10 @@ inline float menuFirstLeftKeyline(MenuMetrics);
 inline float menuSecondLeftKeyline(MenuMetrics);
 inline float menuRightKeyline(MenuMetrics);
 
+inline float tabMinWidth() { return 72.0f; }
+inline float tabMaxWidth() { return 264.0f; }
+inline float tabHeight() { return 48.0f; }
+
 }
 
 NS_MD_END

@@ -9,7 +9,6 @@
 #include "MaterialButton.h"
 
 #include "MaterialColors.h"
-#include "MaterialFont.h"
 #include "MaterialLabel.h"
 #include "MaterialMenuSource.h"
 #include "MaterialFloatingMenu.h"
@@ -150,7 +149,7 @@ void Button::onLongPress() {
 bool Button::onPressEnd() {
 	animateDeselection();
 	if (_floatingMenuSource) {
-		construct<FloatingMenu>(_floatingMenuSource, _touchPoint);
+		onOpenMenuSource();
 	}
 	if (_tapCallback) {
 		_tapCallback();
@@ -160,6 +159,10 @@ bool Button::onPressEnd() {
 void Button::onPressCancel() {
 	animateDeselection();
 	dropSpawn();
+}
+
+void Button::onOpenMenuSource() {
+	construct<FloatingMenu>(_floatingMenuSource, _touchPoint);
 }
 
 void Button::setEnabled(bool value) {

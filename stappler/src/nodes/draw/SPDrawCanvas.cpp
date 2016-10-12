@@ -102,7 +102,7 @@ cocos2d::Texture2D * Canvas::updateTexture(cocos2d::Texture2D *tex) {
 
 	if (!tex || !match(tex->getPixelsWide(), tex->getPixelsHigh(), _format) || tex->getPixelFormat() != fmt) {
 		tex = new cocos2d::Texture2D();
-		tex->initWithData(_data, _dataLen, fmt, _width, _height, _stride, cocos2d::Size(_width, _height));
+		tex->initWithData(_data, _dataLen, fmt, _width, _height, _stride);
 	} else {
 		tex->updateWithData(_data, 0, 0, _width, _height, _stride);
 	}

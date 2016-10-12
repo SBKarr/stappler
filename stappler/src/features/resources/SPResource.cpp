@@ -19,7 +19,6 @@
 
 NS_SP_EXT_BEGIN(resource)
 
-IconSet *generateFromSVGIcons(IconSet::Config &&cfg);
 FontSet *generateFromConfig(FontSet::Config &&cfg, const cocos2d::Map<std::string, Asset *> &assets);
 
 static Thread s_resourceThread("ResourceLibraryThread");
@@ -27,26 +26,6 @@ static Thread s_resourceThread("ResourceLibraryThread");
 std::string getFontAssetPath(const std::string &url) {
 	std::string dir = filesystem::cachesPath("font_assets");
 	return toString(dir, "/", string::stdlibHashUnsigned(url), ".asset");
-}
-
-void generateIconSet(IconSet::Config &&cfg, const IconSet::Callback &callback) {
-	auto &thread = s_resourceThread;
-
-	IconSet::Config *cfgPtr = new (IconSet::Config) (std::move(cfg));
-	IconSet **newSet = new (IconSet *)(nullptr);
-	thread.perform([newSet, cfgPtr] (cocos2d::Ref *) -> bool {
-		*newSet = generateFromSVGIcons(std::move(*cfgPtr));
-		return true;
-	}, [newSet, cfgPtr, callback] (cocos2d::Ref *, bool) {
-		if (*newSet) {
-			if (callback) {
-				callback(*newSet);
-			}
-			(*newSet)->release();
-		}
-		delete newSet;
-		delete cfgPtr;
-	});
 }
 
 void requestFontSet(FontSet::Config &&cfg, const FontSet::Callback &callback, cocos2d::Map<std::string, Asset *> &&a) {

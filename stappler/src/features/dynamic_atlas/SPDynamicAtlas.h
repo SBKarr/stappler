@@ -18,7 +18,7 @@ NS_SP_BEGIN
 
 class DynamicAtlas : public cocos2d::Ref, EventHandler {
 public:
-	using QuadArraySet = std::set<DynamicQuadArray *>;
+	using QuadArraySet = Set<Rc<DynamicQuadArray>>;
 
 	DynamicAtlas();
     virtual ~DynamicAtlas();
@@ -33,7 +33,8 @@ public:
     cocos2d::Texture2D* getTexture() const;
     void setTexture(cocos2d::Texture2D* texture);
 
-    const std::set<DynamicQuadArray *> &getQuads();
+    const QuadArraySet &getQuads() const;
+    QuadArraySet &getQuads();
 
     void clear();
     void addQuadArray(DynamicQuadArray *);
@@ -66,7 +67,7 @@ protected:
     inline void swapBuffer() { _index = _useBufferSwapping?((_index + 1) % 2):_index; }
 
     bool _useBufferSwapping = true;
-    std::vector<GLushort> _indices;
+    Vector<GLushort> _indices;
     QuadArraySet _quads;
     Buffer _buffers[2];
 

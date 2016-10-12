@@ -31,8 +31,7 @@ public:
 	virtual void setLabelOpacity(uint8_t);
 	virtual uint8_t getLabelOpacity();
 
-	virtual void setFont(const Font *fnt);
-	virtual const Font *getFont() const;
+	virtual void setFont(FontType fnt);
 
 protected:
 	Label *_label = nullptr;

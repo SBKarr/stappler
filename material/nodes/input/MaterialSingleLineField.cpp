@@ -14,7 +14,7 @@
 
 NS_MD_BEGIN
 
-bool SingleLineField::init(const Font *font, float width) {
+bool SingleLineField::init(FontType font, float width) {
 	if (!TextField::init(font, width)) {
 		return false;
 	}

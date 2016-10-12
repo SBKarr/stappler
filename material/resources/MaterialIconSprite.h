@@ -46,7 +46,7 @@ protected:
 	class NavIcon;
 	class CircleLoaderIcon;
 
-	virtual void updateCanvas();
+	virtual void updateCanvas() override;
 	virtual void setDynamicIcon(DynamicIcon *);
 	virtual void setStaticIcon(IconName);
 

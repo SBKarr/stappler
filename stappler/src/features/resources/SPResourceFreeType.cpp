@@ -276,139 +276,139 @@ public:
 	};
 };
 
-class FreeTypeLibrary {
-public:
-	struct FontStruct {
-		String file;
-		Bytes data;
-	};
+struct FontStruct {
+	String file;
+	Bytes data;
+};
 
-	using FontStructMap = Map<String, FontStruct>;
-	using FontFaceMap = Map<String, FT_Face>;
-	using FontFacePriority = std::vector<std::pair<String, uint16_t>>;
-	using FontCharPair = std::pair<Font::Char, FT_Face>;
-	using FontCharsVec = std::vector<FontCharPair>;
-	using FontCharsMap = Map<String, std::pair<FT_Face, FontCharsVec>>;
+using FontStructMap = Map<String, FontStruct>;
+using FontFaceMap = Map<String, FT_Face>;
+using FontFacePriority = std::vector<std::pair<String, uint16_t>>;
+using FontCharPair = std::pair<Font::Char, FT_Face>;
+using FontCharsVec = std::vector<FontCharPair>;
+using FontCharsMap = Map<String, std::pair<FT_Face, FontCharsVec>>;
 
-	struct FontSetCache {
-		std::set<std::string> files;
-		FontStructMap openedFiles;
-		FontFaceMap openedFaces;
+struct FontSetCache {
+	Set<String> files;
+	FontStructMap openedFiles;
+	FontFaceMap openedFaces;
 
-		FontSet::Config const & config;
-		AssetMap const & assets;
+	FontSet::Config const & config;
+	AssetMap const & assets;
 
-		FT_Library FTlibrary;
+	FT_Library FTlibrary;
 
-		FT_Face openFontFace(const std::vector<uint8_t> &data, const std::string &font, uint16_t fontSize) {
-			FT_Face face;
+	FT_Face openFontFace(const std::vector<uint8_t> &data, const std::string &font, uint16_t fontSize) {
+		FT_Face face;
 
-			if (data.empty()) {
-				log::format("Font", "fail to load data from %s", font.c_str());
-				return nullptr;
-			}
-
-			FT_Error err = FT_Err_Ok;
-
-			err = FT_New_Memory_Face(FTlibrary, data.data(), data.size(), 0, &face );
-			if (err != FT_Err_Ok) {
-				log::format("Font", "fail to load font face: %d (\"%s\")", err, sp_FT_Err_Desc(err).c_str());
-				return nullptr;
-			}
-
-			//we want to use unicode
-			err = FT_Select_Charmap(face, FT_ENCODING_UNICODE);
-			if (err != FT_Err_Ok) {
-				FT_Done_Face(face);
-				log::format("Font", "fail to select charmap: %d (\"%s\")", err, sp_FT_Err_Desc(err).c_str());
-				return nullptr;
-			}
-
-			// set the requested font size
-			err = FT_Set_Pixel_Sizes(face, fontSize, fontSize);
-			if (err != FT_Err_Ok) {
-				FT_Done_Face(face);
-				log::format("Font", "fail to set font size: %d (\"%s\")", err, sp_FT_Err_Desc(err).c_str());
-				return nullptr;
-			}
-
-			if (face) {
-				openedFaces.insert(std::make_pair(font, face));
-			}
-			return face;
+		if (data.empty()) {
+			log::format("Font", "fail to load data from %s", font.c_str());
+			return nullptr;
 		}
 
-		FontStructMap::iterator processFile(Bytes && data, const std::string &file, Asset *asset) {
-			if (data.size() < 12) {
-				return openedFiles.end();
-			}
-			auto it = openedFiles.find(file);
-			if (it == openedFiles.end()) {
-				return openedFiles.insert(std::make_pair(file, FontStruct{file, std::move(data)})).first;
-			} else {
-				return it;
-			}
+		FT_Error err = FT_Err_Ok;
+
+		err = FT_New_Memory_Face(FTlibrary, data.data(), data.size(), 0, &face );
+		if (err != FT_Err_Ok) {
+			log::format("Font", "fail to load font face: %d (\"%s\")", err, sp_FT_Err_Desc(err).c_str());
+			return nullptr;
 		}
 
-		FontStructMap::iterator openFile(const std::string &name, const std::string &file) {
-			auto it = openedFiles.find(file);
-			if (it != openedFiles.end()) {
-				return it;
-			} else {
-				if (resource::isReceiptUrl(file)) {
-					auto assetIt = assets.find(file);
-					if (assetIt == assets.end()) {
-						return openedFiles.end();
-					} else {
-						auto a = assetIt->second;
-						auto path = a->getFilePath();
-						if (files.find(path) == files.end()) {
-							files.insert(path);
-							return processFile(filesystem::readFile(path), file, a);
-						}
-					}
-				} else if (files.find(file) == files.end()) {
-					if (config.receiptCallback) {
-						Bytes res = config.receiptCallback(file);
-						if (!res.empty()) {
-							files.insert(file);
-							return processFile(std::move(res), file, nullptr);
-						}
-					}
-					files.insert(file);
-					return processFile(filesystem::readFile(file), file, nullptr);
-				}
-			}
+		//we want to use unicode
+		err = FT_Select_Charmap(face, FT_ENCODING_UNICODE);
+		if (err != FT_Err_Ok) {
+			FT_Done_Face(face);
+			log::format("Font", "fail to select charmap: %d (\"%s\")", err, sp_FT_Err_Desc(err).c_str());
+			return nullptr;
+		}
+
+		// set the requested font size
+		err = FT_Set_Pixel_Sizes(face, fontSize, fontSize);
+		if (err != FT_Err_Ok) {
+			FT_Done_Face(face);
+			log::format("Font", "fail to set font size: %d (\"%s\")", err, sp_FT_Err_Desc(err).c_str());
+			return nullptr;
+		}
+
+		if (face) {
+			openedFaces.insert(std::make_pair(font, face));
+		}
+		return face;
+	}
+
+	FontStructMap::iterator processFile(Bytes && data, const std::string &file, Asset *asset) {
+		if (data.size() < 12) {
 			return openedFiles.end();
 		}
+		auto it = openedFiles.find(file);
+		if (it == openedFiles.end()) {
+			return openedFiles.insert(std::make_pair(file, FontStruct{file, std::move(data)})).first;
+		} else {
+			return it;
+		}
+	}
 
-		FT_Face getFace(const std::string &file, uint16_t size) {
-			std::string fontname = toString(file, ":", size);
-			auto it = openedFaces.find(fontname);
-			if (it != openedFaces.end()) {
-				return it->second;
-			} else {
-				auto fileIt = openFile(fontname, file);
-				if (fileIt == openedFiles.end()) {
-					return nullptr;
+	FontStructMap::iterator openFile(const std::string &name, const std::string &file) {
+		auto it = openedFiles.find(file);
+		if (it != openedFiles.end()) {
+			return it;
+		} else {
+			if (resource::isReceiptUrl(file)) {
+				auto assetIt = assets.find(file);
+				if (assetIt == assets.end()) {
+					return openedFiles.end();
 				} else {
-					return openFontFace(fileIt->second.data, fontname, size);
+					auto a = assetIt->second;
+					auto path = a->getFilePath();
+					if (files.find(path) == files.end()) {
+						files.insert(path);
+						return processFile(filesystem::readFile(path), file, a);
+					}
 				}
+			} else if (files.find(file) == files.end()) {
+				if (config.receiptCallback) {
+					Bytes res = config.receiptCallback(file);
+					if (!res.empty()) {
+						files.insert(file);
+						return processFile(std::move(res), file, nullptr);
+					}
+				}
+				files.insert(file);
+				return processFile(filesystem::readFile(file), file, nullptr);
 			}
 		}
+		return openedFiles.end();
+	}
 
-		FontSetCache(const FontSet::Config &cfg, const AssetMap &assets, FT_Library lib)
-		: config(cfg), assets(assets), FTlibrary(lib) { }
-
-		~FontSetCache() {
-			for (auto &it : openedFaces) {
-				if (it.second) {
-					FT_Done_Face(it.second);
-				}
+	FT_Face getFace(const std::string &file, uint16_t size) {
+		std::string fontname = toString(file, ":", size);
+		auto it = openedFaces.find(fontname);
+		if (it != openedFaces.end()) {
+			return it->second;
+		} else {
+			auto fileIt = openFile(fontname, file);
+			if (fileIt == openedFiles.end()) {
+				return nullptr;
+			} else {
+				return openFontFace(fileIt->second.data, fontname, size);
 			}
 		}
-	};
+	}
 
+	FontSetCache(const FontSet::Config &cfg, const AssetMap &assets, FT_Library lib)
+	: config(cfg), assets(assets), FTlibrary(lib) { }
+
+	~FontSetCache() {
+		for (auto &it : openedFaces) {
+			if (it.second) {
+				FT_Done_Face(it.second);
+			}
+		}
+	}
+};
+
+class FreeTypeLibrary {
+public:
 	static std::u16string getCharGroupString(FontRequest::CharGroup mask) {
 		return u" " + getCharGroup(mask);
 	}

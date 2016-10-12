@@ -56,8 +56,7 @@ void CustomCornerSprite::Texture::reload() {
 	}
 
 	if (data != nullptr) {
-		_tex->initWithData(data, size * size, cocos2d::Texture2D::PixelFormat::A8,
-				size, size, cocos2d::Size(size, size));
+		_tex->initWithData(data, size * size, cocos2d::Texture2D::PixelFormat::A8, size, size);
 		delete [] data;
 	}
 }
@@ -263,7 +262,7 @@ void CustomCornerSprite::updateSprites() {
 		quadsCount = 6;
 	}
 
-	_quads.resize(quadsCount);
+	_quads->resize(quadsCount);
 
 	size_t quadId = 0;
 
@@ -304,20 +303,20 @@ void CustomCornerSprite::updateSprites() {
 
 				spritePos = texturePositionForGrid(i, j, contentScaleX / _density, contentScaleY / _density, expX * _density, expY * _density);
 
-				_quads.setTextureRect(quadId, texRect, atlasWidth, atlasHeight, flippedX, flippedY);
-				_quads.setGeometry(quadId, spritePos, cocos2d::Size(texRect.size.width * scaleX, texRect.size.height * scaleY), _positionZ);
-				_quads.setColor(quadId, color4);
+				_quads->setTextureRect(quadId, texRect, atlasWidth, atlasHeight, flippedX, flippedY);
+				_quads->setGeometry(quadId, spritePos, cocos2d::Size(texRect.size.width * scaleX, texRect.size.height * scaleY), _positionZ);
+				_quads->setColor(quadId, color4);
 
 				quadId ++;
 			}
 		}
 	} else {
-		_quads.setTextureRect(0, cocos2d::Rect(0.0f, 0.0f, 1.0f, 1.0f), 1.0f, 1.0f, false, false);
-		_quads.setGeometry(0, cocos2d::Vec2(0.0f, 0.0f), _contentSize, _positionZ);
-		_quads.setColor(0, color4);
+		_quads->setTextureRect(0, cocos2d::Rect(0.0f, 0.0f, 1.0f, 1.0f), 1.0f, 1.0f, false, false);
+		_quads->setGeometry(0, cocos2d::Vec2(0.0f, 0.0f), _contentSize, _positionZ);
+		_quads->setColor(0, color4);
 	}
 
-	_quads.shrinkToFit();
+	_quads->shrinkToFit();
 }
 
 NS_SP_END

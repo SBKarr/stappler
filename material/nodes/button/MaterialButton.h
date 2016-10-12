@@ -87,6 +87,8 @@ protected:
 
 	virtual void onLightLevel() override;
 
+	virtual void onOpenMenuSource();
+
 	std::function<void()> _tapCallback = nullptr;
 	std::function<void()> _longTapCallback = nullptr;
 	TouchFilter _touchFilter = nullptr;

@@ -110,15 +110,15 @@ void Layer::updateSprites() {
 	    }
 	}
 
-	_quads.resize(1);
-	_quads.setTextureRect(0, cocos2d::Rect(0.0f, 0.0f, 1.0f, 1.0f), 1.0f, 1.0f, false, false);
-	_quads.setGeometry(0, cocos2d::Vec2(0.0f, 0.0f), _contentSize, _positionZ);
-	_quads.setColor(0, color);
-	_quads.shrinkToFit();
+	_quads->resize(1);
+	_quads->setTextureRect(0, cocos2d::Rect(0.0f, 0.0f, 1.0f, 1.0f), 1.0f, 1.0f, false, false);
+	_quads->setGeometry(0, cocos2d::Vec2(0.0f, 0.0f), _contentSize, _positionZ);
+	_quads->setColor(0, color);
+	_quads->shrinkToFit();
 }
 
 void Layer::updateColor() {
-	if (!_quads.empty()) {
+	if (!_quads->empty()) {
 		cocos2d::Color4B color[4];
 		for (int i = 0; i < 4; i++) {
 			color[i] = cocos2d::Color4B(
@@ -133,8 +133,8 @@ void Layer::updateColor() {
 		    }
 		}
 
-		for (size_t i = 0; i < _quads.size(); i++) {
-			_quads.setColor(i, color);
+		for (size_t i = 0; i < _quads->size(); i++) {
+			_quads->setColor(i, color);
 		}
 	}
 }

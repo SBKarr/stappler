@@ -18,7 +18,7 @@ public:
 	using Handler = ime::Handler;
 	using Cursor = ime::Cursor;
 
-	virtual bool init(const Font *, float width = 0) override;
+	virtual bool init(FontType, float width = 0) override;
 	virtual void onContentSizeDirty() override;
 
 	virtual void setInputCallback(const Callback &);

@@ -24,6 +24,7 @@ bool FloatingMenu::init(MenuSource *source, const cocos2d::Vec2 &globalOrigin, B
 		return false;
 	}
 
+	_binding = b;
 	_origin = globalOrigin;
 	setMenuButtonCallback(std::bind(&FloatingMenu::onMenuButton, this, std::placeholders::_1));
 
@@ -51,6 +52,7 @@ bool FloatingMenu::init(MenuSource *source, const cocos2d::Vec2 &globalOrigin, B
 			setPositionX(origin.x);
 			setAnchorPoint(cocos2d::Vec2(rel, 1.0f));
 		}
+		setContentSize(cocos2d::Size(1, 1));
 	} else if (b == Binding::OriginLeft) {
 		if (origin.x - incr / 4 < w) {
 			setAnchorPoint(cocos2d::Vec2(0, 1.0f));
@@ -59,6 +61,7 @@ bool FloatingMenu::init(MenuSource *source, const cocos2d::Vec2 &globalOrigin, B
 			setAnchorPoint(cocos2d::Vec2(1, 1.0f));
 			setPositionX(origin.x);
 		}
+		setContentSize(cocos2d::Size(w, 1));
 	} else if (b == Binding::OriginRight) {
 		if (size.width - origin.x - incr / 4 < w) {
 			setAnchorPoint(cocos2d::Vec2(1, 1.0f));
@@ -67,6 +70,7 @@ bool FloatingMenu::init(MenuSource *source, const cocos2d::Vec2 &globalOrigin, B
 			setAnchorPoint(cocos2d::Vec2(0, 1.0f));
 			setPositionX(origin.x);
 		}
+		setContentSize(cocos2d::Size(w, 1));
 	}
 
 	if (h > origin.y - incr / 4) {
@@ -88,8 +92,7 @@ bool FloatingMenu::init(MenuSource *source, const cocos2d::Vec2 &globalOrigin, B
 	_root = root;
 	_fullSize = cocos2d::Size(w, h);
 	_scroll->setVisible(false);
-	setContentSize(cocos2d::Size(1, 1));
-	setShadowZIndex(2.0f);
+	setShadowZIndex(1.5f);
 
 	_foreground->pushNode(this, std::bind(&FloatingMenu::close, this));
 
@@ -104,7 +107,7 @@ bool FloatingMenu::init(MenuSource *source, const cocos2d::Vec2 &globalOrigin, B
 void FloatingMenu::close() {
 	stopAllActions();
 	_scroll->setVisible(false);
-	auto a = construct<ResizeTo>(0.25, cocos2d::Size(1, 1));
+	auto a = construct<ResizeTo>(0.25, (_binding == Binding::Relative?Size(1, 1):Size(_fullSize.width, 1)));
 	runAction(cocos2d::Sequence::createWithTwoActions(a, cocos2d::CallFunc::create([this] {
 		_foreground->popNode(this);
 	})));
@@ -114,7 +117,7 @@ void FloatingMenu::closeRecursive() {
 	if (_root) {
 		stopAllActions();
 		_scroll->setVisible(false);
-		auto a = construct<ResizeTo>(0.15, cocos2d::Size(1, 1));
+		auto a = construct<ResizeTo>(0.15, (_binding == Binding::Relative?Size(1, 1):Size(_fullSize.width, 1)));
 		runAction(cocos2d::Sequence::createWithTwoActions(a, cocos2d::CallFunc::create([this] {
 			_foreground->popNode(this);
 			if (_root) {
@@ -140,7 +143,7 @@ void FloatingMenu::onCapturedTap() {
 
 float FloatingMenu::getMenuWidth(MenuSource *source) {
 	auto metrics = getMetrics();
-	auto font = Font::systemFont(Font::Type::System_Subhead);
+	auto font = FontType::Subhead;
 
 	float minWidth = 0;
 	auto &items = source->getItems();
@@ -152,8 +155,8 @@ float FloatingMenu::getMenuWidth(MenuSource *source) {
 			}
 		} else if (item->getType() == MenuSourceItem::Type::Button) {
 			auto btn = static_cast<MenuSourceButton *>(item);
-			float nameLen = stappler::RichLabel::getStringWidth(font->getFont(), btn->getName());
-			float valueLen = stappler::RichLabel::getStringWidth(font->getFont(), btn->getValue());
+			float nameLen = Label::getStringWidth(font, btn->getName());
+			float valueLen = Label::getStringWidth(font, btn->getValue());
 
 			float offset = metrics::menuFirstLeftKeyline(metrics);
 			if (btn->getNameIcon() != IconName::None) {

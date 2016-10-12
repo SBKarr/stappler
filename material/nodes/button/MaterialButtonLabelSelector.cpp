@@ -17,9 +17,8 @@ bool ButtonLabelSelector::init(const TapCallback &tapCallback, const TapCallback
 
 	_icon->setVisible(false);
 
-	auto font = Font::systemFont(Font::Type::System_Title);
-	_label = construct<Label>(font);
-	_label->setAnchorPoint(cocos2d::Vec2(0, 0.5));
+	_label = construct<Label>(FontType::Title);
+	_label->setAnchorPoint(Vec2(0, 0.5));
 	_label->setMaxLines(1);
 	_label->setHyphens(stappler::RichLabel::Style::Hyphens::None);
 	addChild(_label);
@@ -82,18 +81,14 @@ const cocos2d::Color3B &ButtonLabelSelector::getLabelColor() const {
 	return _label->getColor();
 }
 
-void ButtonLabelSelector::setFont(const Font *fnt) {
-	_label->setMaterialFont(fnt);
+void ButtonLabelSelector::setFont(FontType fnt) {
+	_label->setFont(fnt);
 	_label->updateLabel();
 	if (!_icon->isVisible()) {
 		setContentSize(cocos2d::Size(_label->getContentSize().width + 16, _contentSize.height));
 	} else {
 		setContentSize(cocos2d::Size(_label->getContentSize().width + 32, _contentSize.height));
 	}
-}
-
-const Font *ButtonLabelSelector::getFont() const {
-	return _label->getMaterialFont();
 }
 
 void ButtonLabelSelector::setLabelOpacity(uint8_t value) {

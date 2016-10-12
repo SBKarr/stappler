@@ -46,7 +46,7 @@ bool ForegroundLayer::init() {
 	_snackbar->setAnchorPoint(cocos2d::Vec2(0.5f, 0.0f));
 	_snackbar->setColor(material::Color::Grey_900);
 
-	_snackbarLabel = construct<Label>(Font::systemFont(Font::Type::System_Body_2));
+	_snackbarLabel = construct<Label>(FontType::Body_2);
 	_snackbarLabel->setAnchorPoint(cocos2d::Vec2(0.0f, 0.0f));
 	_snackbarLabel->setColor(material::Color::Grey_200);
 	_snackbar->addChild(_snackbarLabel, 1);

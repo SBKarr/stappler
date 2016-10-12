@@ -99,6 +99,9 @@ namespace render {
 	void _framePerformed();
 	void _blockRendering();
 	void _unblockRendering();
+
+	bool _enableOffscreenContext();
+	void _disableOffscreenContext();
 }
 
 #if (SP_INTERNAL_STOREKIT_ENABLED)

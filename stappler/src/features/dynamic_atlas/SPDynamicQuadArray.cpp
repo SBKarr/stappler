@@ -147,6 +147,26 @@ void DynamicQuadArray::setColor(size_t index, cocos2d::Color4B colors[4]) {
 
 	_quadsDirty = true;
 }
+
+void DynamicQuadArray::setColor3B(size_t index, const cocos2d::Color3B &color) {
+	cocos2d::V3F_C4B_T2F_Quad &q = _quads[index];
+	q.bl.colors.r = color.r; q.bl.colors.g = color.g; q.bl.colors.b = color.b;
+	q.br.colors.r = color.r; q.br.colors.g = color.g; q.br.colors.b = color.b;
+	q.tl.colors.r = color.r; q.tl.colors.g = color.g; q.tl.colors.b = color.b;
+	q.tr.colors.r = color.r; q.tr.colors.g = color.g; q.tr.colors.b = color.b;
+
+	_quadsDirty = true;
+}
+void DynamicQuadArray::setOpacity(size_t index, const uint8_t &o) {
+	cocos2d::V3F_C4B_T2F_Quad &q = _quads[index];
+	q.bl.colors.a = o;
+	q.br.colors.a = o;
+	q.tl.colors.a = o;
+	q.tr.colors.a = o;
+
+	_quadsDirty = true;
+}
+
 void DynamicQuadArray::setNormalizedGeometry(size_t index, const cocos2d::Vec2 &pos, float positionZ,
 		const cocos2d::Rect &rect, float texWidth, float texHeight, bool flippedX, bool flippedY, bool rotated) {
 	float texLeft = rect.origin.x / texWidth;
@@ -278,7 +298,7 @@ bool DynamicQuadArray::drawChar(const Font::CharSpec &c, uint16_t xOffset, uint1
 		posY = yOffset + ((flip)?(-c.posY):c.posY) + c.uCharPtr->yOffset + c.uCharPtr->font->getDescender();
 	}
 
-	setGeometry(id, cocos2d::Vec2(posX, posY), cocos2d::Size(width, height), 0.0f);
+	setGeometry(id, Vec2(posX, posY), Size(width, height), 0.0f);
 	setColor(id, c.color);
 
 	if (c.underline > 0) {
@@ -290,6 +310,26 @@ bool DynamicQuadArray::drawChar(const Font::CharSpec &c, uint16_t xOffset, uint1
 		}
 		drawRect(posX, posY,
 				c.uCharPtr->xAdvance, c.uCharPtr->font->getUnderlineThickness() * c.underline, c.color, texWidth, texHeight);
+	}
+	_quadsDirty = true;
+	return true;
+}
+
+bool DynamicQuadArray::drawChar(const font::Metrics &m, const font::CharLayout &l, const font::CharTexture &t, uint16_t charX, uint16_t charY,
+		const Color4B &color, uint8_t underline, float texWidth, float texHeight) {
+	_quads.emplace_back();
+	const auto id = _quads.size() - 1;
+
+	const uint16_t width = t.width;
+	const uint16_t height = t.height;
+
+	setTextureRect(id, Rect(t.x, t.y, t.width, t.height), texWidth, texHeight, false, false);
+
+	setGeometry(id, Vec2(charX + l.xOffset, charY - (l.yOffset + height) - m.descender), Size(width, height), 0.0f);
+	setColor(id, color);
+
+	if (underline > 0) {
+		drawRect(charX, charY - m.underlinePosition - m.underlineThickness * underline, l.xAdvance, m.underlineThickness * underline, color, texWidth, texHeight);
 	}
 	_quadsDirty = true;
 	return true;

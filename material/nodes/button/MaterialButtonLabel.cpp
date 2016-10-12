@@ -15,14 +15,13 @@ bool ButtonLabel::init(const TapCallback &tapCallback, const TapCallback &longTa
 		return false;
 	}
 
-	auto font = Font::systemFont(Font::Type::System_Button);
-	_label = construct<Label>(font);
+	_label = construct<Label>(FontType::Button);
 	_label->setAnchorPoint(cocos2d::Vec2(0, 0.5));
 	_label->setMaxLines(1);
 	_label->setHyphens(stappler::RichLabel::Style::Hyphens::None);
 	addChild(_label);
 
-	setContentSize(Size(0.0f, font->getFont()->getHeight() / _label->getDensity() + 12.0f));
+	setContentSize(Size(0.0f, _label->getFontHeight() / _label->getDensity() + 12.0f));
 
 	return true;
 }
@@ -66,16 +65,7 @@ uint8_t ButtonLabel::getLabelOpacity() {
 	return _label->getOpacity();
 }
 
-void ButtonLabel::setFont(const Font *fnt) {
-	_label->setMaterialFont(fnt);
-	_label->updateLabel();
-	setContentSize(cocos2d::Size(_label->getContentSize().width + 16, _contentSize.height));
-}
-const Font *ButtonLabel::getFont() const {
-	return _label->getMaterialFont();
-}
-
-void ButtonLabel::setCustomFont(stappler::Font *fnt) {
+void ButtonLabel::setFont(FontType fnt) {
 	_label->setFont(fnt);
 	_label->updateLabel();
 	setContentSize(cocos2d::Size(_label->getContentSize().width + 16, _contentSize.height));

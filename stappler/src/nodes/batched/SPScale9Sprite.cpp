@@ -229,7 +229,7 @@ void Scale9Sprite::updateSprites() {
 		quadsCount = 6;
 	}
 
-	_quads.resize(quadsCount);
+	_quads->resize(quadsCount);
 
 	for (int tag = 0; tag < 9; tag++) {
 		visible = true;
@@ -261,13 +261,13 @@ void Scale9Sprite::updateSprites() {
 			texRect = textureRectForGrid(i, j);
 			spritePos = texturePositionForGrid(i, j, contentScaleX, contentScaleY);
 
-			_quads.setTextureRect(quadId, texRect, atlasWidth, atlasHeight, _flipX, _flipY);
-			_quads.setGeometry(quadId, spritePos, cocos2d::Size(texRect.size.width * scaleX, texRect.size.height * scaleY), _positionZ);
-			_quads.setColor(quadId, color4);
+			_quads->setTextureRect(quadId, texRect, atlasWidth, atlasHeight, _flipX, _flipY);
+			_quads->setGeometry(quadId, spritePos, cocos2d::Size(texRect.size.width * scaleX, texRect.size.height * scaleY), _positionZ);
+			_quads->setColor(quadId, color4);
 
 			quadId ++;
 		}
 	}
 
-	_quads.shrinkToFit();
+	_quads->shrinkToFit();
 }

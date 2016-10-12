@@ -676,7 +676,9 @@ namespace style {
 		FontWeight fontWeight = FontWeight::Normal;
 		FontStretch fontStretch = FontStretch::Normal;
 
-		FontFace() { }
+		String getConfigName(const String &family, uint8_t size) const;
+
+		FontFace() = default;
 
 		FontFace(String && src, FontStyle style = FontStyle::Normal,
 				FontWeight weight = FontWeight::Normal, FontStretch stretch = FontStretch::Normal)
@@ -704,6 +706,8 @@ namespace style {
 	bool readStyleMargin(const String &origStr, Size &top, Size &right, Size &bottom, Size &left);
 
 	bool readMediaParameter(Vector<Parameter> &params, const String &name, const String &value, const CssStringFunction &cb);
+
+	String getFontConfigName(const String &, uint8_t, FontStyle, FontWeight, FontStretch, FontVariant, bool caps);
 }
 
 NS_SP_EXT_END(rich_text)

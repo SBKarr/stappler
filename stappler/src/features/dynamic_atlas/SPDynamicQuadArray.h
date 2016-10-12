@@ -12,10 +12,10 @@
 
 NS_SP_BEGIN
 
-class DynamicQuadArray {
+class DynamicQuadArray : public Ref {
 public:
-	using iterator = std::vector<cocos2d::V3F_C4B_T2F_Quad>::iterator;
-	using const_iterator = std::vector<cocos2d::V3F_C4B_T2F_Quad>::const_iterator;
+	using iterator = Vector<cocos2d::V3F_C4B_T2F_Quad>::iterator;
+	using const_iterator = Vector<cocos2d::V3F_C4B_T2F_Quad>::const_iterator;
 
 public:
 	void clear();
@@ -33,6 +33,9 @@ public:
 	void setGeometry(size_t index, const cocos2d::Vec2 &pos, const cocos2d::Size &size, float positionZ);
 	void setColor(size_t index, const cocos2d::Color4B &color);
 	void setColor(size_t index, cocos2d::Color4B colors[4]);
+
+	void setColor3B(size_t index, const cocos2d::Color3B &color);
+	void setOpacity(size_t index, const uint8_t &o);
 
 	void setNormalizedGeometry(size_t index, const cocos2d::Vec2 &pos, float positionZ,
 			const cocos2d::Rect &, float texWidth, float texHeight, bool flippedX, bool flippedY, bool rotated = false);
@@ -69,17 +72,20 @@ public:
 	bool drawRect(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const cocos2d::Color4B &color, float texWidth, float texHeight);
 	bool drawChar(const Font::CharSpec &c, uint16_t xOffset, uint16_t yOffset, bool flip, float texWidth, float texHeight, bool invert);
 
+	bool drawChar(const font::Metrics &m, const font::CharLayout &l, const font::CharTexture &t, uint16_t charX, uint16_t charY,
+			const Color4B &color, uint8_t underline, float texWidth, float texHeight);
+
 	size_t getQuadsCount(const std::vector<Font::CharSpec> &);
 	bool drawChars(const std::vector<Font::CharSpec> &, uint16_t xOffset = 0, uint16_t yOffset = 0, bool flip = false, bool invert = false);
 	bool drawCharsInvert(const std::vector<Font::CharSpec> &, uint16_t yOffset);
 
 protected:
-	std::vector<cocos2d::V3F_C4B_T2F_Quad> _quads;
+	Vector<cocos2d::V3F_C4B_T2F_Quad> _quads;
 
 	size_t _savedSize = 0;
 	size_t _savedCapacity = 0;
 	bool _quadsDirty = true;
-	cocos2d::Mat4 _transform = cocos2d::Mat4::IDENTITY;
+	Mat4 _transform = Mat4::IDENTITY;
 };
 
 NS_SP_END

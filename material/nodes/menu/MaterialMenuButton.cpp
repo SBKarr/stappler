@@ -26,8 +26,6 @@ bool MenuButton::init() {
 		return false;
 	}
 
-	auto font = ResourceManager::getInstance()->getSystemFont(Font::Type::System_Subhead);
-
 	setStyle(Button::Style::FlatBlack);
 	setTapCallback(std::bind(&MenuButton::onButton, this));
 	setSpawnDelay(0.1f);
@@ -35,26 +33,26 @@ bool MenuButton::init() {
 
 	//_background->setVisible(false);
 
-	_menuNameLabel = construct<Label>(font);
+	_menuNameLabel = construct<Label>(FontType::Subhead);
 	_menuNameLabel->setVisible(false);
-	_menuNameLabel->setAnchorPoint(cocos2d::Vec2(0, 0.5f));
+	_menuNameLabel->setAnchorPoint(Vec2(0, 0.5f));
 	_menuNameLabel->setLocaleEnabled(true);
 	addChild(_menuNameLabel);
 
-	_menuValueLabel = construct<Label>(font);
+	_menuValueLabel = construct<Label>(FontType::Subhead);
 	_menuValueLabel->setVisible(false);
-	_menuValueLabel->setAnchorPoint(cocos2d::Vec2(1.0f, 0.5f));
+	_menuValueLabel->setAnchorPoint(Vec2(1.0f, 0.5f));
 	_menuValueLabel->setLocaleEnabled(true);
 	addChild(_menuValueLabel);
 
 	_menuNameIcon = construct<IconSprite>();
 	_menuNameIcon->setVisible(false);
-	_menuNameIcon->setAnchorPoint(cocos2d::Vec2(0, 0.5));
+	_menuNameIcon->setAnchorPoint(Vec2(0, 0.5));
 	addChild(_menuNameIcon);
 
 	_menuValueIcon = construct<IconSprite>();
 	_menuValueIcon->setVisible(false);
-	_menuValueIcon->setAnchorPoint(cocos2d::Vec2(1, 0.5));
+	_menuValueIcon->setAnchorPoint(Vec2(1, 0.5));
 	addChild(_menuValueIcon);
 
 	onLightLevel();
@@ -87,10 +85,10 @@ void MenuButton::layoutSubviews() {
 	}
 	auto menuMetrics = menu->getMetrics();
 
-	auto font = Font::systemFont((menuMetrics == MenuMetrics::Navigation)?Font::Type::System_Body_1:Font::Type::System_Subhead);
+	auto font = (menuMetrics == MenuMetrics::Navigation)?FontType::Body_1:FontType::Subhead;
 
-	_menuNameLabel->setMaterialFont(font);
-	_menuValueLabel->setMaterialFont(font);
+	_menuNameLabel->setFont(font);
+	_menuValueLabel->setFont(font);
 
 	_menuNameLabel->setVisible(false);
 	_menuValueLabel->setVisible(false);

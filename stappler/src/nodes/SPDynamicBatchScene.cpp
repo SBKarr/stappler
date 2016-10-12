@@ -98,14 +98,14 @@ protected:
 			*cmdIt = &a.cmd;
 
 			auto &quads = origCmd->getAtlas()->getQuads();
-			for (auto &it : quads) {
+			for (auto it : quads) {
 				it->updateTransform(origCmd->getTransform());
 				a.set.insert(it);
 			}
 		}
 
 		auto &quads = cmd->getAtlas()->getQuads();
-		for (auto &it : quads) {
+		for (auto it : quads) {
 			it->updateTransform(cmd->getTransform());
 			a.set.insert(it);
 		}

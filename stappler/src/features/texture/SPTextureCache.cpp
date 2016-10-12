@@ -10,16 +10,21 @@
 #include "base/CCDirector.h"
 #include "base/CCScheduler.h"
 #include "platform/CCImage.h"
+#include "platform/CCGLView.h"
+#include "renderer/CCTexture2D.h"
 
 #include "SPThread.h"
 #include "SPDevice.h"
 #include "SPFilesystem.h"
 #include "SPAsset.h"
+#include "SPImage.h"
+
+#include "SPPlatform.h"
 
 NS_SP_BEGIN
 
+static Thread s_textureCacheThread("TextureCacheThread");
 static TextureCache *s_sharedTextureCache = nullptr;
-Thread s_textureCacheThread("TextureCacheThread");
 
 TextureCache *TextureCache::getInstance() {
 	if (!s_sharedTextureCache) {
@@ -29,6 +34,9 @@ TextureCache *TextureCache::getInstance() {
 }
 
 Thread &TextureCache::thread() {
+	if (!s_sharedTextureCache) {
+		s_sharedTextureCache = new TextureCache();
+	}
 	return s_textureCacheThread;
 }
 
@@ -81,44 +89,39 @@ void TextureCache::addTexture(const std::string &file, const Callback &cb, bool 
 		_callbackMap.insert(std::make_pair(file, vec));
 
 		auto &thread = s_textureCacheThread;
-        auto imagePtr = new (std::nothrow) (cocos2d::Image *)(nullptr);
-		thread.perform([file, imagePtr] (cocos2d::Ref *) -> bool {
-			auto image = new cocos2d::Image();
-	        if (image && !image->initWithImageFile(file)) {
-	        	delete image;
-	        } else {
-	        	(*imagePtr) = image;
-	        }
+        auto imagePtr = new Rc<cocos2d::Texture2D>;
+		thread.perform([this, file, imagePtr] (cocos2d::Ref *) -> bool {
+			Bitmap bitmap(filesystem::readFile(file));
+			if (bitmap) {
+				performWithGL([&] {
+					auto tex = Rc<cocos2d::Texture2D>::alloc();
+					tex->initWithData(bitmap.dataPtr(), bitmap.size(), Image::getPixelFormat(bitmap.format()), bitmap.width(), bitmap.height());
+					if (bitmap.alpha() == Bitmap::Alpha::Premultiplied) {
+						tex->setPremultipliedAlpha(true);
+					}
+					*imagePtr = tex;
+				});
+			}
 			return true;
 		}, [this, file, imagePtr] (cocos2d::Ref *, bool) {
 			auto image = *imagePtr;
 			if (image) {
-				cocos2d::Texture2D *texture = nullptr;
 				auto texIt = _textures.find(file);
 				if (texIt != _textures.end()) {
 					_texturesScore.erase(texIt->second);
-					texture = texIt->second;
-					texture->retain(); // retain to match extra-counter state after new
-				} else {
-					texture = new (std::nothrow) cocos2d::Texture2D();
 				}
 
-				texture->initWithImage(image);
-
-				_textures.insert(file, texture);
-				_texturesScore.insert(std::make_pair(texture, std::make_pair(GetDelayTime(), file)));
+				_textures.insert(file, image);
+				_texturesScore.insert(std::make_pair(image, std::make_pair(GetDelayTime(), file)));
 
 				auto it = _callbackMap.find(file);
 				if (it != _callbackMap.end()) {
 					for (auto &cb : it->second) {
-						cb(texture);
+						cb(image);
 					}
 				}
 				_callbackMap.erase(it);
-
-				texture->release();
 	            registerWithDispatcher();
-	            image->release();
 	        } else {
 				auto it = _callbackMap.find(file);
 				if (it != _callbackMap.end()) {
@@ -163,12 +166,16 @@ bool TextureCache::hasTexture(const std::string &path) {
 TextureCache::TextureCache() {
 	onEvent(Device::onAndroidReset, [this] (const Event *) {
 		for (auto &it : _textures) {
-			cocos2d::Image image;
-	        image.initWithImageFile(it.first);
-	        it.second->initWithImage(&image);
+			Bitmap bitmap(filesystem::readFile(it.first));
+			it.second->initWithData(bitmap.dataPtr(), bitmap.size(), Image::getPixelFormat(bitmap.format()), bitmap.width(), bitmap.height());
+			if (bitmap.alpha() == Bitmap::Alpha::Premultiplied) {
+				it.second->setPremultipliedAlpha(true);
+			}
 		}
 	});
 }
+
+TextureCache::~TextureCache() { }
 
 void TextureCache::registerWithDispatcher() {
 	if (!_registred) {
@@ -186,6 +193,75 @@ void TextureCache::unregisterWithDispatcher() {
 		sc->unscheduleUpdate(this);
 		_registred = false;
 	}
+}
+
+
+void TextureCache::uploadBitmap(Bitmap && bmp, const Function<void(cocos2d::Texture2D *)> &cb, Ref *ref) {
+	auto bmpPtr = new Bitmap(std::move(bmp));
+	auto texPtr = new Rc<cocos2d::Texture2D>;
+
+	s_textureCacheThread.perform([this, bmpPtr, texPtr] (Ref *) -> bool {
+		performWithGL([&] {
+			uploadTextureBackground(*texPtr, *bmpPtr);
+		});
+		return true;
+	}, [bmpPtr, texPtr, cb] (Ref *, bool) {
+		cb(*texPtr);
+		delete texPtr;
+		delete bmpPtr;
+	}, ref);
+}
+
+void TextureCache::uploadBitmap(Vector<Bitmap> &&bmp, const Function<void(Vector<Rc<cocos2d::Texture2D>> &&tex)> &cb, Ref *ref) {
+	auto bmpPtr = new Vector<Bitmap>(std::move(bmp));
+	auto texPtr = new Vector<Rc<cocos2d::Texture2D>>;
+
+	s_textureCacheThread.perform([this, bmpPtr, texPtr] (Ref *) -> bool {
+		performWithGL([&] {
+			uploadTextureBackground(*texPtr, *bmpPtr);
+		});
+		return true;
+	}, [bmpPtr, texPtr, cb] (Ref *, bool) {
+		cb(std::move(*texPtr));
+		delete texPtr;
+		delete bmpPtr;
+	}, ref);
+}
+
+void TextureCache::uploadTextureBackground(Rc<cocos2d::Texture2D> &tex, const Bitmap &bmp) {
+	tex = Rc<cocos2d::Texture2D>::alloc();
+	tex->initWithData(bmp.dataPtr(), bmp.size(), Image::getPixelFormat(bmp.format()), bmp.width(), bmp.height());
+	glFinish();
+}
+
+void TextureCache::uploadTextureBackground(Vector<Rc<cocos2d::Texture2D>> &texs, const Vector<Bitmap> &bmps) {
+	for (auto &it : bmps) {
+		Rc<cocos2d::Texture2D> newTex = Rc<cocos2d::Texture2D>::alloc();
+		newTex->initWithDataThreadSafe(it.dataPtr(), it.size(), Image::getPixelFormat(it.format()), it.width(), it.height(), 0);
+		texs.emplace_back(std::move(newTex));
+	}
+}
+
+void TextureCache::addLoadedTexture(const String &str, cocos2d::Texture2D *tex) {
+	_textures.insert(str, tex);
+}
+void TextureCache::removeLoadedTexture(const String &str) {
+	_textures.erase(str);
+}
+
+bool TextureCache::makeCurrentContext() {
+#ifdef DEBUG
+	assert(s_textureCacheThread.isOnThisThread());
+#endif
+	return platform::render::_enableOffscreenContext();
+}
+void TextureCache::freeCurrentContext() {
+#ifdef DEBUG
+	assert(s_textureCacheThread.isOnThisThread());
+#endif
+	glFinish();
+
+	platform::render::_disableOffscreenContext();
 }
 
 NS_SP_END

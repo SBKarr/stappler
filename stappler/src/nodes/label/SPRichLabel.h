@@ -102,12 +102,16 @@ public: /* constructors/destructors, basic functions */
 
 	static rich_text::TextStyle getDefaultStyle();
 
-	static cocos2d::Size getLabelSize(Font *, const std::string &, float w = 0.0f,
-			Alignment = Alignment::Left, float density = 0.0f, const rich_text::TextStyle & = getDefaultStyle());
-	static cocos2d::Size getLabelSize(Font *, const std::u16string &, float w = 0.0f,
-			Alignment = Alignment::Left, float density = 0.0f, const rich_text::TextStyle & = getDefaultStyle());
+	static WideString getLocalizedString(const String &);
+	static WideString getLocalizedString(const WideString &);
 
-	static float getStringWidth(Font *, const std::string &, float density = 0.0f);
+	static cocos2d::Size getLabelSize(Font *, const String &, float w = 0.0f, Alignment = Alignment::Left,
+			float density = 0.0f, const rich_text::TextStyle & = getDefaultStyle(), bool localized = false);
+	static cocos2d::Size getLabelSize(Font *, const WideString &, float w = 0.0f, Alignment = Alignment::Left,
+			float density = 0.0f, const rich_text::TextStyle & = getDefaultStyle(), bool localized = false);
+
+	static float getStringWidth(Font *, const String &, float density = 0.0f, bool localized = false);
+	static float getStringWidth(Font *, const WideString &, float density = 0.0f, bool localized = false);
 
     virtual ~RichLabel();
 

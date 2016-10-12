@@ -217,7 +217,7 @@ static cocos2d::Texture2D *loadTexture(const void *data, size_t size, Image::For
 	if (data && size > 0) {
 		auto tex = new cocos2d::Texture2D();
 		cocos2d::Texture2D::PixelFormat format = Image::getPixelFormat(f);
-		if (!tex->initWithData(data, size, format, w, h, cocos2d::Size(w, h))) {
+		if (!tex->initWithData(data, size, format, w, h)) {
 			delete tex;
 			tex = nullptr;
 		} else {
@@ -291,8 +291,7 @@ void Image::reloadTexture() {
 
 	if (_bmp) {
 		cocos2d::Texture2D::PixelFormat format = getPixelFormat(_bmp.format());
-		_texture->initWithData(_bmp.data().data(), _bmp.size(), format,
-				_bmp.width(), _bmp.height(), cocos2d::Size(_bmp.width(), _bmp.height()));
+		_texture->initWithData(_bmp.data().data(), _bmp.size(), format, _bmp.width(), _bmp.height());
 	}
 	if (retained) {
 		releaseData();

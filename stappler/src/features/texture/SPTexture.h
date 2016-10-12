@@ -150,7 +150,7 @@ cocos2d::Texture2D *Texture<T>::generateTexture() const {
 	}
 	cocos2d::Texture2D *tex = new cocos2d::Texture2D();
 	if (tex->initWithData(reinterpret_cast<const void *>(_data), getBytesPerPixel() * _width * _height,
-			convertPixelFormat(getFormat()), _width, _height, cocos2d::Size(_width, _height))) {
+			convertPixelFormat(getFormat()), _width, _height)) {
 		tex->setAliasTexParameters();
 		tex->autorelease();
 		return tex;

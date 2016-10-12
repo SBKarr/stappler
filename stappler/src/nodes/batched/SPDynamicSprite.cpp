@@ -63,8 +63,7 @@ bool DynamicSprite::init(const Bitmap &bmp, const Rect &rect, float density) {
 
 
 	auto tex = Rc<cocos2d::Texture2D>::alloc();
-	tex->initWithData(bmp.dataPtr(), bmp.size(), Image::getPixelFormat(bmp.format()), bmp.width(), bmp.height(),
-			Size(bmp.width(), bmp.height()));
+	tex->initWithData(bmp.dataPtr(), bmp.size(), Image::getPixelFormat(bmp.format()), bmp.width(), bmp.height());
 
 	return init(tex, texRect, density);
 }
@@ -93,7 +92,7 @@ void DynamicSprite::onContentSizeDirty() {
 	DynamicBatchNode::onContentSizeDirty();
 
 	if (!_texture) {
-    	_quads.clear();
+    	_quads->clear();
 		return;
 	} else if (_autofit == Autofit::None) {
 		_textureOrigin = cocos2d::Vec2::ZERO;
@@ -175,8 +174,7 @@ void DynamicSprite::setTexture(const Bitmap &bmp, const Rect &rect) {
 	}
 
 	auto tex = Rc<cocos2d::Texture2D>::alloc();
-	tex->initWithData(bmp.dataPtr(), bmp.size(), Image::getPixelFormat(bmp.format()), bmp.width(), bmp.height(),
-			Size(bmp.width(), bmp.height()));
+	tex->initWithData(bmp.dataPtr(), bmp.size(), Image::getPixelFormat(bmp.format()), bmp.width(), bmp.height());
 
 	setTexture(tex, texRect);
 }
@@ -188,7 +186,7 @@ cocos2d::Texture2D *DynamicSprite::getTexture() const {
 void DynamicSprite::updateQuads() {
     auto tex = getTexture();
     if (!tex) {
-    	_quads.clear();
+    	_quads->clear();
     	return;
     }
 
@@ -202,17 +200,17 @@ void DynamicSprite::updateQuads() {
 		color4.b *= _displayedOpacity/255.0f;
     }
 
-	_quads.resize(1);
+	_quads->resize(1);
 
 	if (!_normalized) {
-		_quads.setTextureRect(0, _textureRect, atlasWidth, atlasHeight, _flippedX, _flippedY, _rotated);
-		_quads.setGeometry(0, _textureOrigin, _textureSize, _positionZ);
+		_quads->setTextureRect(0, _textureRect, atlasWidth, atlasHeight, _flippedX, _flippedY, _rotated);
+		_quads->setGeometry(0, _textureOrigin, _textureSize, _positionZ);
 	} else {
-		_quads.setNormalizedGeometry(0, cocos2d::Vec2::ZERO, _positionZ, _textureRect,
+		_quads->setNormalizedGeometry(0, cocos2d::Vec2::ZERO, _positionZ, _textureRect,
 				atlasWidth, atlasHeight, _flippedX, _flippedY, _rotated);
 	}
 
-	_quads.setColor(0, color4);
+	_quads->setColor(0, color4);
 }
 
 void DynamicSprite::setFlippedX(bool value) {

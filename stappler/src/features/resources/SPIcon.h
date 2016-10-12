@@ -16,18 +16,17 @@ NS_SP_BEGIN
 class Icon {
 public:
 	Icon();
-	Icon(uint16_t id, uint16_t x, uint16_t y, uint16_t width, uint16_t height, float density, Image *tex);
+	Icon(uint16_t id, uint16_t x, uint16_t y, uint16_t width, uint16_t height, float density, cocos2d::Texture2D *tex);
 
 	virtual ~Icon();
 
 	inline uint16_t getId() const { return _id; }
 	inline uint16_t getWidth() const { return _width; }
 	inline uint16_t getHeight() const { return _height; }
-	inline Image *getImage() const { return _image; }
 	inline float getDensity() const { return _density; }
 
-	cocos2d::Texture2D *getTexture() const;
-	cocos2d::Rect getTextureRect() const;
+	cocos2d::Texture2D *getTexture() const { return _image; }
+	Rect getTextureRect() const;
 
 	operator bool() const {
 		return bool(_image);
@@ -49,7 +48,7 @@ private:
 	uint16_t _width;
 	uint16_t _height;
 	float _density;
-	Rc<Image> _image;
+	Rc<cocos2d::Texture2D> _image;
 };
 
 class IconSet : public cocos2d::Ref {
@@ -69,7 +68,7 @@ public:
 
 	Icon getIcon(const std::string &) const;
 
-	IconSet(Config &&, Map<String, Icon> &&icons, Image *image);
+	IconSet(Config &&, Map<String, Icon> &&icons, cocos2d::Texture2D *image);
 	~IconSet();
 
 	uint16_t getOriginalWidth() const { return _config.originalWidth; }
@@ -80,12 +79,14 @@ public:
 	const std::string &getName() const { return _config.name; }
 	uint16_t getVersion() const { return _config.version; }
 
+	cocos2d::Texture2D *getTexture() const { return _image; }
+
 protected:
 	Config _config;
 	uint16_t _texWidth = 0;
 	uint16_t _texHeight = 0;
 
-	Rc<Image>_image = nullptr;
+	Rc<cocos2d::Texture2D> _image;
 	Map<String, Icon> _icons;
 };
 

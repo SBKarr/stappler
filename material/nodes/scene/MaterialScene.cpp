@@ -297,8 +297,7 @@ void Scene::updateStatsLabel() {
 		}
 
 		if (!_stats) {
-			auto font = Font::systemFont(Font::Type::System_Caption);
-			_stats = construct<Label>(font);
+			_stats = construct<Label>(FontType::Caption);
 			_stats->setAnchorPoint(cocos2d::Vec2(0, 0));
 			_stats->setScale(stappler::screen::density());
 			addChild(_stats, INT_MAX - 1);

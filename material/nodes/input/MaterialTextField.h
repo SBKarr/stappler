@@ -32,7 +32,7 @@ public:
 	};
 
 public:
-	virtual bool init(const Font *, float width);
+	virtual bool init(FontType, float width);
 	virtual void onContentSizeDirty() override;
 	virtual void onExit() override;
 

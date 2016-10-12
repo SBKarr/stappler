@@ -627,7 +627,7 @@ void Drawer::draw(uint8_t *data) const {
 void Drawer::onDrawed(uint8_t *data) {
 	if (data) {
 		auto tex = new cocos2d::Texture2D();
-		tex->initWithData(data, _stride * _height, cocos2d::Texture2D::PixelFormat::RGBA8888, _width, _height, _stride, cocos2d::Size(_width, _height));
+		tex->initWithData(data, _stride * _height, cocos2d::Texture2D::PixelFormat::RGBA8888, _width, _height, _stride);
 		tex->autorelease();
 		tex->setAliasTexParameters();
 		_callback(tex);

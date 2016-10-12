@@ -248,6 +248,25 @@ namespace render {
 			_loop->start();
 		}
 	}
+
+	bool _enableOffscreenContext() {
+		if (!ThreadManager::isMainThread()) {
+			JNIEnv *env = stappler::spjni::getJniEnv();
+			auto activity = stappler::spjni::getActivity(env);
+			auto activityClass = env->GetObjectClass(activity);
+			auto enableOffscreenContext = spjni::getMethodID(env, activityClass, "enableOffscreenContext", "()V");
+			env->CallVoidMethod(activity, enableOffscreenContext);
+			return true;
+		}
+		return false;
+	}
+	void _disableOffscreenContext() {
+		JNIEnv *env = stappler::spjni::getJniEnv();
+		auto activity = stappler::spjni::getActivity(env);
+		auto activityClass = env->GetObjectClass(activity);
+		auto disableOffscreenContext = spjni::getMethodID(env, activityClass, "disableOffscreenContext", "()V");
+		env->CallVoidMethod(activity, disableOffscreenContext);
+	}
 }
 
 NS_SP_PLATFORM_END

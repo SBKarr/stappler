@@ -68,18 +68,27 @@ template <typename CharType, CharType ... Args>
 struct Chars {
 	static inline bool match(CharType c) SPINLINE;
 	static inline void get(Set<CharType> &) SPINLINE;
+
+	template <typename Func>
+	static inline void foreach(const Func &) SPINLINE;
 };
 
 template <typename CharType, CharType First, CharType Last>
 struct Range {
 	static inline bool match(CharType c) SPINLINE;
 	static inline void get(Set<CharType> &) SPINLINE;
+
+	template <typename Func>
+	static inline void foreach(const Func &) SPINLINE;
 };
 
 template <typename CharType, typename ...Args>
 struct Compose {
 	static inline bool match(CharType c) SPINLINE;
 	static inline void get(Set<CharType> &) SPINLINE;
+
+	template <typename Func>
+	static inline void foreach(const Func &) SPINLINE;
 };
 
 
@@ -136,7 +145,8 @@ template <>
 struct CharGroup<char16_t, CharGroupId::PunctuationBasic> : Compose<char16_t,
 		Range<char16_t, u'\u0021', u'\u002F'>,
 		Range<char16_t, u'\u003A', u'\u0040'>,
-		Range<char16_t, u'\u005B', u'\u007F'>,
+		Range<char16_t, u'\u005B', u'\u0060'>,
+		Range<char16_t, u'\u007B', u'\u007E'>,
 		Range<char16_t, u'\u00A1', u'\u00BF'>,
 		Chars<char16_t, u'\u00AD', u'\u2013', u'\u2014', u'\u2019', u'\u201c', u'\u201d', u'\u2116'>
 > { };
@@ -291,6 +301,16 @@ public:
 	template <typename CharType, typename ...Args>
 	static inline void getCompose(Set<CharType> &) SPINLINE;
 
+
+	template <typename CharType, typename Func, CharType ... Args>
+	static inline void foreachChar(const Func &) SPINLINE;
+
+	template <typename CharType, typename Func, CharType First, CharType Last>
+	static inline void foreachPair(const Func &) SPINLINE;
+
+	template <typename CharType, typename Func, typename ...Args>
+	static inline void foreachCompose(const Func &) SPINLINE;
+
 private:
 	template <typename CharType, CharType T>
 	static inline bool _matchChar(CharType c) SPINLINE;
@@ -316,6 +336,19 @@ private:
 
 	template <typename CharType, typename T, typename T1, typename ... Args>
 	static inline void _getCompose(Set<CharType> &) SPINLINE;
+
+
+	template <typename CharType, typename Func, CharType T>
+	static inline void _foreachChar(const Func &) SPINLINE;
+
+	template <typename CharType, typename Func, CharType T, CharType T1, CharType ... Args>
+	static inline void _foreachChar(const Func &) SPINLINE;
+
+	template <typename CharType, typename Func, typename T>
+	static inline void _foreachCompose(const Func &) SPINLINE;
+
+	template <typename CharType, typename Func, typename T, typename T1, typename ... Args>
+	static inline void _foreachCompose(const Func &) SPINLINE;
 };
 
 template <typename CharType, CharType ... Args>
@@ -328,6 +361,12 @@ inline void Chars<CharType, Args...>::get(Set<CharType> &s) {
 	MatchTraits::getChar<CharType, Args...>(s);
 }
 
+template <typename CharType, CharType ... Args>
+template <typename Func>
+inline void Chars<CharType, Args...>::foreach(const Func &f) {
+	MatchTraits::foreachChar<CharType, Func, Args...>(f);
+}
+
 template <typename CharType, CharType First, CharType Last>
 inline bool Range<CharType, First, Last>::match(CharType c) {
 	return MatchTraits::matchPair<CharType, First, Last>(c);
@@ -336,6 +375,12 @@ inline bool Range<CharType, First, Last>::match(CharType c) {
 template <typename CharType, CharType First, CharType Last>
 inline void Range<CharType, First, Last>::get(Set<CharType> &s) {
 	MatchTraits::getPair<CharType, First, Last>(s);
+}
+
+template <typename CharType, CharType First, CharType Last>
+template <typename Func>
+inline void Range<CharType, First, Last>::foreach(const Func &f) {
+	MatchTraits::foreachPair<CharType, Func, First, Last>(f);
 }
 
 template <typename CharType, typename ...Args>
@@ -348,46 +393,11 @@ inline void Compose<CharType, Args...>::get(Set<CharType> &s) {
 	MatchTraits::getCompose<CharType, Args...>(s);
 }
 
-template <typename CharType, CharType C>
-inline bool MatchTraits::_matchChar(CharType c) {
-	SPCHARMATCHING_LOG("Match char %d %d %d", C, c, C == c);
-	return C == c;
-}
-
-template <typename CharType, CharType T, CharType T2, CharType ... Args>
-inline bool MatchTraits::_matchChar(CharType c) {
-	return _matchChar<CharType, T>(c) || _matchChar<CharType, T2, Args...>(c);
-}
-
-template <typename CharType, CharType ... Args>
-inline bool MatchTraits::matchChar(CharType c) {
-	return _matchChar<CharType, Args...>(c);
-}
-
-template <typename CharType, CharType First, CharType Last>
-inline bool MatchTraits::matchPair(CharType c) {
-	SPCHARMATCHING_LOG("Match range %d - %d :  %d %d", First, Last, c, First <= c && c <= Last);
-	return First <= c && c <= Last;
-}
-
-template <typename CharType, typename C>
-inline bool MatchTraits::_matchCompose(CharType c) {
-	return C::match(c);
-}
-
-template <typename CharType, typename T, typename T1, typename ... Args>
-inline bool MatchTraits::_matchCompose(CharType c) {
-	return _matchCompose<CharType, T>(c) || _matchCompose<CharType, T1, Args...>(c);
-}
-
 template <typename CharType, typename ... Args>
-inline bool MatchTraits::matchCompose(CharType c) {
-	SPCHARMATCHING_LOG("begin compose %d", c);
-	auto ret = _matchCompose<CharType, Args...>(c);
-	SPCHARMATCHING_LOG("end compose %d %d", c, ret);
-	return ret;
+template <typename Func>
+inline void Compose<CharType, Args...>::foreach(const Func &f) {
+	MatchTraits::foreachCompose<CharType, Func, Args...>(f);
 }
-
 
 template <typename CharType, CharType ... Args>
 inline void MatchTraits::getChar(Set<CharType> &s) {
@@ -404,6 +414,63 @@ inline void MatchTraits::getPair(Set<CharType> &s) {
 template <typename CharType, typename ...Args>
 inline void MatchTraits::getCompose(Set<CharType> &s) {
 	_getCompose<CharType, Args...>(s);
+}
+
+template <typename CharType, CharType ... Args>
+inline bool MatchTraits::matchChar(CharType c) {
+	return _matchChar<CharType, Args...>(c);
+}
+
+template <typename CharType, CharType First, CharType Last>
+inline bool MatchTraits::matchPair(CharType c) {
+	SPCHARMATCHING_LOG("Match range %d - %d :  %d %d", First, Last, c, First <= c && c <= Last);
+	return First <= c && c <= Last;
+}
+
+template <typename CharType, typename ... Args>
+inline bool MatchTraits::matchCompose(CharType c) {
+	SPCHARMATCHING_LOG("begin compose %d", c);
+	auto ret = _matchCompose<CharType, Args...>(c);
+	SPCHARMATCHING_LOG("end compose %d %d", c, ret);
+	return ret;
+}
+
+template <typename CharType, typename Func, CharType ... Args>
+inline void MatchTraits::foreachChar(const Func &f) {
+	return _foreachChar<CharType, Func, Args...>(f);
+}
+
+template <typename CharType, typename Func, CharType First, CharType Last>
+inline void MatchTraits::foreachPair(const Func &f) {
+	for (CharType c = First; c <= Last; c++) {
+		f(c);
+	}
+}
+
+template <typename CharType, typename Func, typename ... Args>
+inline void MatchTraits::foreachCompose(const Func &f) {
+	_foreachCompose<CharType, Func, Args...>(f);
+}
+
+template <typename CharType, CharType C>
+inline bool MatchTraits::_matchChar(CharType c) {
+	SPCHARMATCHING_LOG("Match char %d %d %d", C, c, C == c);
+	return C == c;
+}
+
+template <typename CharType, CharType T, CharType T2, CharType ... Args>
+inline bool MatchTraits::_matchChar(CharType c) {
+	return _matchChar<CharType, T>(c) || _matchChar<CharType, T2, Args...>(c);
+}
+
+template <typename CharType, typename C>
+inline bool MatchTraits::_matchCompose(CharType c) {
+	return C::match(c);
+}
+
+template <typename CharType, typename T, typename T1, typename ... Args>
+inline bool MatchTraits::_matchCompose(CharType c) {
+	return _matchCompose<CharType, T>(c) || _matchCompose<CharType, T1, Args...>(c);
 }
 
 template <typename CharType, CharType T>
@@ -426,6 +493,29 @@ template <typename CharType, typename T, typename T1, typename ... Args>
 inline void MatchTraits::_getCompose(Set<CharType> &s) {
 	_getCompose<CharType, T>(s);
 	_getCompose<CharType, T1, Args...>(s);
+}
+
+
+template <typename CharType, typename Func, CharType T>
+inline void MatchTraits::_foreachChar(const Func &f) {
+	f(T);
+}
+
+template <typename CharType, typename Func, CharType T, CharType T1, CharType ... Args>
+inline void MatchTraits::_foreachChar(const Func &f) {
+	_foreachChar<CharType, Func, T>(f);
+	_foreachChar<CharType, Func, T1, Args...>(f);
+}
+
+template <typename CharType, typename Func, typename T>
+inline void MatchTraits::_foreachCompose(const Func &f) {
+	T::foreach(f);
+}
+
+template <typename CharType, typename Func, typename T, typename T1, typename ... Args>
+inline void MatchTraits::_foreachCompose(const Func &f) {
+	_foreachCompose<CharType, Func, T>(f);
+	_foreachCompose<CharType, Func, T1, Args...>(f);
 }
 
 NS_SP_EXT_END(chars)

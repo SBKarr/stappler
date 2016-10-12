@@ -343,6 +343,8 @@ void IconSprite::setDynamicIcon(DynamicIcon *i) {
 			addPath(it);
 		}
 		_dynamicIcon->redraw(0.0f, 0.0f);
+	} else {
+		setTexture(nullptr);
 	}
 	setProgress(0.0f);
 }

@@ -15,15 +15,14 @@ bool ButtonLabelIcon::init(const TapCallback &tapCallback, const TapCallback &lo
 		return false;
 	}
 
-	auto font = Font::systemFont(Font::Type::System_Button);
-	_label = construct<Label>(font);
-	_label->setAnchorPoint(cocos2d::Vec2(0, 0.5));
+	_label = construct<Label>(FontType::Button);
+	_label->setAnchorPoint(Vec2(0, 0.5));
 	_label->setMaxLines(1);
 	_label->setHyphens(stappler::RichLabel::Style::Hyphens::None);
 	addChild(_label);
 
-	_icon->setOpacity(font->getOpacity());
-	setContentSize(Size(0.0f, font->getFont()->getHeight() / _label->getDensity() + 12.0f));
+	_icon->setOpacity(_label->getOpacity());
+	setContentSize(Size(0.0f, _label->getFontHeight() / _label->getDensity() + 12.0f));
 
 	return true;
 }
@@ -62,15 +61,11 @@ const cocos2d::Color3B &ButtonLabelIcon::getLabelColor() const {
 	return _label->getColor();
 }
 
-void ButtonLabelIcon::setFont(const Font *fnt) {
-	_icon->setOpacity(fnt->getOpacity());
-	_label->setMaterialFont(fnt);
+void ButtonLabelIcon::setFont(FontType fnt) {
+	_label->setFont(fnt);
 	_label->updateLabel();
+	_icon->setOpacity(_label->getOpacity());
 	setContentSize(cocos2d::Size(_label->getContentSize().width + 56, _contentSize.height));
-}
-
-const Font *ButtonLabelIcon::getFont() const {
-	return _label->getMaterialFont();
 }
 
 void ButtonLabelIcon::setLabelOpacity(uint8_t value) {

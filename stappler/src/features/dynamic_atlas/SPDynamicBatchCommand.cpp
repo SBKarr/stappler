@@ -54,7 +54,7 @@ void DynamicBatchCommand::execute() {
 	// Set material
 	if (!_batch) {
 		auto &quads = _textureAtlas->getQuads();
-		for (auto &it : quads) {
+		for (auto it : quads) {
 			it->updateTransform(Mat4::IDENTITY);
 		}
 	}

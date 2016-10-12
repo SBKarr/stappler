@@ -17,6 +17,7 @@
 #include "SPDevice.h"
 #include "SPStorage.h"
 #include "SPString.h"
+#include "SPFilesystem.h"
 
 #include "platform/CCImage.h"
 #include "renderer/CCTexture2D.h"
@@ -24,10 +25,6 @@
 NS_MD_BEGIN
 
 SP_DECLARE_EVENT(ResourceManager, "Material", onLoaded);
-SP_DECLARE_EVENT(ResourceManager, "Material", onSystemFonts);
-SP_DECLARE_EVENT(ResourceManager, "Material", onSystemFontsReload);
-SP_DECLARE_EVENT(ResourceManager, "Material", onTextFonts);
-SP_DECLARE_EVENT(ResourceManager, "Material", onTextFontsReload);
 SP_DECLARE_EVENT(ResourceManager, "Material", onLightLevel);
 
 static ResourceManager *s_instance = nullptr;
@@ -44,28 +41,59 @@ ResourceManager::ResourceManager() {
 		pair("SystemSearch", "Найти"),
 		pair("SystemFontSize", "Размер шрифта"),
 		pair("SystemTheme", "Оформление"),
+		pair("SystemMore", "Ещё"),
 	});
 
 	locale::define("en-us", {
 		pair("SystemSearch", "Search"),
 		pair("SystemFontSize", "Font size"),
 		pair("SystemTheme", "Theme"),
+		pair("SystemMore", "More"),
+	});
+
+	using namespace font;
+	_source = Rc<Source>::create(Source::FontFaceMap{
+		pair("default", Vector<FontFace>{
+			FontFace("Roboto-Black.woff", FontStyle::Normal, FontWeight::W800),
+			FontFace("Roboto-BlackItalic.woff", FontStyle::Italic, FontWeight::W800),
+			FontFace("Roboto-Bold.woff", FontStyle::Normal, FontWeight::W700),
+			FontFace("Roboto-BoldItalic.woff", FontStyle::Italic, FontWeight::W700),
+			FontFace("RobotoCondensed-Bold.woff", FontStyle::Normal, FontWeight::W700, FontStretch::Condensed),
+			FontFace("RobotoCondensed-BoldItalic.woff", FontStyle::Italic, FontWeight::W700, FontStretch::Condensed),
+			FontFace("RobotoCondensed-Italic.woff", FontStyle::Italic, FontWeight::Normal, FontStretch::Condensed),
+			FontFace("RobotoCondensed-Light.woff", FontStyle::Normal, FontWeight::W200, FontStretch::Condensed),
+			FontFace("RobotoCondensed-LightItalic.woff", FontStyle::Italic, FontWeight::W200, FontStretch::Condensed),
+			FontFace("RobotoCondensed-Regular.woff", FontStyle::Normal, FontWeight::Normal, FontStretch::Condensed),
+			FontFace("Roboto-Italic.woff", FontStyle::Italic),
+			FontFace("Roboto-Light.woff", FontStyle::Normal, FontWeight::W200),
+			FontFace("Roboto-LightItalic.woff", FontStyle::Italic, FontWeight::W200),
+			FontFace("Roboto-Medium.woff", FontStyle::Normal, FontWeight::W500),
+			FontFace("Roboto-MediumItalic.woff", FontStyle::Italic, FontWeight::W500),
+			FontFace("Roboto-Regular.woff"),
+			FontFace("Roboto-Thin.woff", FontStyle::Normal, FontWeight::W100),
+			FontFace("Roboto-ThinItalic.woff", FontStyle::Italic, FontWeight::W100)
+		})
+	}, [this] (const String &file) -> Bytes {
+		if (filesystem::exists(file)) {
+			return filesystem::readFile(file);
+		}
+
+		auto path = filepath::merge("fonts/", file);
+		if (filesystem::exists(path)) {
+			return filesystem::readFile(path);
+		}
+
+		path = filepath::merge("common/fonts/", file);
+		if (filesystem::exists(path)) {
+			return filesystem::readFile(path);
+		}
+
+		return Bytes();
 	});
 
 	stappler::storage::get("Material.ResourceManager", [this] (const std::string &key, stappler::data::Value &value) {
 		if (value.isDictionary()) {
-			float systemFontScale = value.getDouble("SystemFontScale");
-			float textFontScale = value.getDouble("TextFontScale");
 			LightLevel level = (LightLevel)value.getInteger("LightLevel", (int)LightLevel::Normal);
-
-			if (systemFontScale != 0.0) {
-				_systemFontScale = systemFontScale;
-			}
-
-			if (textFontScale != 0.0) {
-				_textFontScale = textFontScale;
-			}
-
 			_lightLevel = level;
 
 			if (value.isString("Locale") && value.isBool("LocaleCustom")) {
@@ -93,74 +121,21 @@ void ResourceManager::update() {
     stappler::IconSet::generate(stappler::IconSet::Config{"material", getMaterialIconVersion(), &m,
     	48, 48, (uint16_t)(24 * density), (uint16_t)(24 * density)}, [this] (IconSet *set) {
     		_iconSet = set;
-    		if (_iconSet && _systemFonts) {
+    		if (_iconSet) {
     			_init = true;
     			ResourceManager::onLoaded(this);
     		}
     	});
-
-    std::string systemFontsName = toString(std::fixed, "material.SystemFonts.", density * _systemFontScale);
-
-    stappler::FontSet::generate(stappler::FontSet::Config(systemFontsName, 2, FontSet::getRequest(density * _systemFontScale)),
-    		[this] (stappler::FontSet *set) {
-		_systemFonts = Rc<material::FontSet>::create(set);
-		if (_iconSet && _systemFonts) {
-			_init = true;
-			ResourceManager::onLoaded(this);
-		}
-    });
-}
-
-void ResourceManager::updateSystemFonts() {
-    float density = stappler::Screen::getInstance()->getDensity();
-
-    std::string systemFontsName = toString(std::fixed, "material.SystemFonts.", density * _systemFontScale);
-    stappler::FontSet::generate(stappler::FontSet::Config(systemFontsName, 2, FontSet::getRequest(density * _systemFontScale)),
-    		[this] (stappler::FontSet *set) {
-		_systemFonts = Rc<material::FontSet>::create(set);
-		onSystemFonts(this);
-		saveUserData();
-    });
-
-	onSystemFontsReload(this);
-}
-
-void ResourceManager::updateTextFonts() {
-	onTextFontsReload(this);
-	onTextFonts(this);
-	saveUserData();
 }
 
 void ResourceManager::saveUserData() {
-	stappler::data::Value val(stappler::data::Value::Type::DICTIONARY);
+	data::Value val(stappler::data::Value::Type::DICTIONARY);
 
-	val.setDouble(_systemFontScale, "SystemFontScale");
-	val.setDouble(_textFontScale, "TextFontScale");
 	val.setInteger((int)_lightLevel, "LightLevel");
 	val.setString(_locale, "Locale");
 	val.setBool(_localeCustom, "LocaleCustom");
 
-	stappler::storage::set("Material.ResourceManager", val);
-}
-
-void ResourceManager::setSystemFontScale(float scale) {
-	if (scale != _systemFontScale) {
-		_systemFontScale = scale;
-		updateSystemFonts();
-	}
-}
-float ResourceManager::getSystemFontScale() const {
-	return _systemFontScale;
-}
-
-void ResourceManager::setTextFontScale(float scale) {
-	if (scale != _textFontScale) {
-		_textFontScale = scale;
-		updateTextFonts();
-	}
-}
-float ResourceManager::getTextFontScale() const {
-	return _textFontScale;
+	storage::set("Material.ResourceManager", val);
 }
 
 void ResourceManager::setLightLevel(LightLevel value) {
@@ -170,6 +145,7 @@ void ResourceManager::setLightLevel(LightLevel value) {
 		saveUserData();
 	}
 }
+
 ResourceManager::LightLevel ResourceManager::getLightLevel() const {
 	return _lightLevel;
 }
@@ -191,12 +167,8 @@ bool ResourceManager::isLoaded() {
 	return _init;
 }
 
-const material::Font * ResourceManager::getSystemFont(Font::Type type) const {
-	return _systemFonts->getFont(type);
-}
-
-material::FontSet *ResourceManager::getSystemFontSet() const {
-	return _systemFonts;
+font::Source *ResourceManager::getFontSource() const {
+	return _source;
 }
 
 Icon ResourceManager::getIcon(IconName name) {

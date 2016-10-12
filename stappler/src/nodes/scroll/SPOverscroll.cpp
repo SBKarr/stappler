@@ -80,8 +80,7 @@ cocos2d::Texture2D *Overscroll::generateTexture(uint32_t width, uint32_t height,
 	}
 
 	if (data != nullptr) {
-		tex->initWithData(data, width * height, cocos2d::Texture2D::PixelFormat::A8,
-				width, height, cocos2d::Size(width, height));
+		tex->initWithData(data, width * height, cocos2d::Texture2D::PixelFormat::A8, width, height);
 		delete [] data;
 	}
 
@@ -229,7 +228,7 @@ void Overscroll::updateProgress() {
 
 void Overscroll::updateSprites() {
 	if (_width == 0 || _height == 0) {
-		_quads.resize(0);
+		_quads->resize(0);
 		return;
 	}
 
@@ -246,7 +245,7 @@ void Overscroll::updateSprites() {
 		color4.b *= _displayedOpacity/255.0f;
     }
 
-	_quads.resize(3);
+	_quads->resize(3);
 
 	cocos2d::Rect texRect;
 	cocos2d::Size blockSize;
@@ -309,12 +308,12 @@ void Overscroll::updateSprites() {
 			}
 		}
 
-		_quads.setTextureRect(i, texRect, atlasWidth, atlasHeight, flipX, flipY, rotated);
-		_quads.setGeometry(i, blockPos, blockSize, _positionZ);
-		_quads.setColor(i, color4);
+		_quads->setTextureRect(i, texRect, atlasWidth, atlasHeight, flipX, flipY, rotated);
+		_quads->setGeometry(i, blockPos, blockSize, _positionZ);
+		_quads->setColor(i, color4);
 	}
 
-	_quads.shrinkToFit();
+	_quads->shrinkToFit();
 }
 
 NS_SP_END

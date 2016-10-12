@@ -9,7 +9,6 @@
 #include "MaterialIconSprite.h"
 #include "MaterialMenu.h"
 
-#include "MaterialFont.h"
 #include "MaterialLabel.h"
 #include "MaterialMenuSource.h"
 #include "MaterialMenuSeparator.h"

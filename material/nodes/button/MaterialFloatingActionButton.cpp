@@ -49,8 +49,8 @@ bool FloatingActionButton::init(const TapCallback &tapCallback, const TapCallbac
 	_longTapCallback = longTapCallback;
 
 	_drawNode = construct<draw::PathNode>(48.0f * 2, 48.0f * 2, stappler::draw::Format::RGBA8888);
-	_drawNode->setAnchorPoint(cocos2d::Vec2(0.5f, 0.5f));
-	_drawNode->setPosition(cocos2d::Vec2(0.0f, 0.0f));
+	_drawNode->setAnchorPoint(Vec2(0.5f, 0.5f));
+	_drawNode->setPosition(Vec2(0.0f, 0.0f));
 	_drawNode->setColor(Color::White);
 	_drawNode->setScale(1.0f / stappler::screen::density());
 	_drawNode->setAntialiased(true);
@@ -61,12 +61,12 @@ bool FloatingActionButton::init(const TapCallback &tapCallback, const TapCallbac
 	_icon->setNormalized(false);
 	addChild(_icon, 1);
 
-	_label = construct<Label>(Font::systemFont(Font::Type::System_Caption));
-	_label->setAnchorPoint(cocos2d::Vec2(0.5f, 0.5f));
+	_label = construct<Label>(FontType::Caption);
+	_label->setAnchorPoint(Vec2(0.5f, 0.5f));
 	_label->setOpacity(222);
 	addChild(_label, 2);
 
-	setContentSize(cocos2d::Size(48.0f, 48.0));
+	setContentSize(Size(48.0f, 48.0));
 	setShadowZIndex(5.0f);
 
 	updateEnabled();
@@ -121,7 +121,7 @@ void FloatingActionButton::setProgress(float value) {
 
 			_progressPath->clear();
 			_progressPath->setStyle(stappler::draw::Path::Style::Stroke);
-			_progressPath->addArc(cocos2d::Rect(26, 26, 44, 44), -90_to_rad, 360_to_rad * _progress);
+			_progressPath->addArc(Rect(26, 26, 44, 44), -90_to_rad, 360_to_rad * _progress);
 		}
 	}
 }
@@ -252,7 +252,7 @@ void FloatingActionButton::animateSelection() {
 	if (!_tapAnimationPath) {
 		_tapAnimationPath = construct<draw::Path>();
 		_tapAnimationPath->setStyle(stappler::draw::Path::Style::Fill);
-		_tapAnimationPath->setFillColor(cocos2d::Color4B(Color::White, 32));
+		_tapAnimationPath->setFillColor(Color4B(Color::White, 32));
 		_drawNode->addPath(_tapAnimationPath);
 	}
 

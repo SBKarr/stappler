@@ -36,8 +36,9 @@ protected:
 	virtual void onMenuButton(MenuButton *btn);
 
 	ForegroundLayer *_foreground = nullptr;
-	cocos2d::Vec2 _origin;
-	cocos2d::Size _fullSize;
+	Vec2 _origin;
+	Size _fullSize;
+	Binding _binding;
 	FloatingMenu *_root = nullptr;
 };
 

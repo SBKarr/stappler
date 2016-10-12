@@ -261,4 +261,13 @@ struct Handler;
 
 NS_SP_EXT_END(ime)
 
+
+NS_SP_EXT_BEGIN(font)
+
+class FontLayout;
+class FontTexture;
+class Source;
+
+NS_SP_EXT_END(font)
+
 #endif /* LIBS_STAPPLER_CORE_SPFORWARD_H_ */

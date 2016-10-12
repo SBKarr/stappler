@@ -31,8 +31,13 @@
 #include "SPDataSubscription.h"
 #include "SPDataListener.h"
 #include "SPCharGroup.h"
+#include "SPRichTextStyle.h"
+#include "SPRichTextNode.h"
+#include "SPDynamicTexture.h"
 #include "base/CCMap.h"
 #include "base/CCVector.h"
+
+#include <mutex>
 
 NS_SP_BEGIN
 
@@ -262,11 +267,11 @@ public:
 	using Callback = std::function<void(FontSet *)>;
 	using ReceiptCallback = std::function<Bytes(const String &)>;
 	struct Config {
-		std::string name;
+		String name;
 		uint16_t version;
 		bool dynamic;
 
-		std::vector<FontRequest> requests;
+		Vector<FontRequest> requests;
 		ReceiptCallback receiptCallback;
 
 		Config(const std::vector<FontRequest> &vec, const ReceiptCallback & = nullptr);
@@ -350,5 +355,238 @@ protected:
 };
 
 NS_SP_END
+
+NS_SP_EXT_BEGIN(font)
+
+using FontFace = rich_text::style::FontFace;
+using FontParameters = rich_text::style::FontStyleParameters;
+
+using FontStyle = rich_text::style::FontStyle;
+using FontWeight = rich_text::style::FontWeight;
+using FontStretch = rich_text::style::FontStretch;
+using ReceiptCallback = Function<Bytes(const String &)>;
+
+struct Metrics {
+	uint16_t size = 0;
+	uint16_t height = 0;
+	int16_t ascender = 0;
+	int16_t descender = 0;
+	int16_t underlinePosition = 0;
+	int16_t underlineThickness = 0;
+};
+
+struct CharLayout {
+	char16_t charID = 0;
+	int16_t xOffset = 0;
+	int16_t yOffset = 0;
+	uint16_t xAdvance = 0;
+
+	operator char16_t() const { return charID; }
+};
+
+struct CharSpec { // 8 bytes
+	char16_t charID = 0;
+	uint16_t pos = 0;
+	uint16_t advance = 0;
+	enum Display : uint16_t {
+		Char,
+		Block,
+		Hidden
+	} display = Char;
+};
+
+struct FontCharString {
+	void addChar(char16_t);
+	void addString(const String &);
+	void addString(const WideString &);
+	void addString(const char16_t *, size_t);
+
+	Vector<char16_t> chars;
+};
+
+struct FontData {
+	uint16_t getHeight() const;
+	int16_t getAscender() const;
+	int16_t getDescender() const;
+
+	CharLayout getChar(char16_t c) const;
+
+	uint16_t xAdvance(char16_t c) const;
+	int16_t kerningAmount(char16_t first, char16_t second) const;
+
+	Metrics metrics;
+	Vector<CharLayout> chars;
+	Map<uint32_t, int16_t> kerning;
+};
+
+class FontLayout : public Ref {
+public:
+	using Data = FontData;
+
+	FontLayout(const String &name, const String &family, uint8_t size, const FontFace &, const ReceiptCallback &, float);
+
+	/* addString functions will update layout data from its font face
+	 * this call may be very expensive */
+
+	void addString(const String &);
+	void addString(const WideString &);
+	void addString(const char16_t *, size_t);
+
+	void addString(const FontCharString &);
+
+	Arc<Data> getData() const;
+
+	const String &getName() const;
+	const ReceiptCallback &getCallback() const;
+	const FontFace &getFontFace() const;
+
+	uint16_t getSize() const;
+
+protected:
+	static Metrics requestMetrics(const Vector<String> &, uint16_t, const ReceiptCallback &);
+	static Arc<Data> requestLayoutUpgrade(const Vector<String> &, const Arc<Data> &, const Vector<char16_t> &, const ReceiptCallback &);
+
+	void merge(const Vector<char16_t> &);
+
+	float _density;
+	String _name;
+	String _family;
+	uint8_t _size;
+	FontFace _face;
+	Arc<Data> _data;
+	ReceiptCallback _callback = nullptr;
+};
+
+struct CharTexture {
+	char16_t charID = 0;
+	uint16_t x = 0;
+	uint16_t y = 0;
+	uint16_t width = 0;
+	uint16_t height = 0;
+	uint8_t texture = maxOf<uint8_t>();
+
+	operator char16_t() const { return charID; }
+};
+
+class Source : public Ref, public EventHandler {
+public:
+	// when layout was updated, you should recalculate all labels positions and sizes
+	// maybe, it's simplier just rebuild your layout?
+	static EventHeader onLayoutUpdated;
+
+	// when texture was updated, all labels should recalculate quads arrays
+	static EventHeader onTextureUpdated;
+
+	using FontFaceMap = Map<String, Vector<FontFace>>;
+
+	static size_t getFontFaceScore(const FontParameters &label, const FontFace &file);
+
+	~Source();
+
+	/* face map and scale is persistent within source,
+	 * you should create another source object, if you want another map or scale */
+	bool init(FontFaceMap &&, const ReceiptCallback &, float scale = 1.0f); // reinit is not allowed
+
+	Arc<FontLayout> getLayout(const FontParameters &); // returns persistent ptr, Layout will be created if needed
+	Arc<FontLayout> getLayout(const String &); // returns persistent ptr
+
+	template <typename ... Args>
+	Arc<FontLayout> getLayout(const String &family, uint8_t size, Args && ... args) {
+		FontParameters p;
+		p.fontFamily = family;
+		p.fontSize = size;
+		readParameters(p, std::forward<Args>(args)...);
+		return getLayout(p);
+	}
+
+	Map<String, Arc<FontLayout>> getLayoutMap();
+
+	float getFontScale() const;
+	void update(float dt);
+
+	String getFamilyName(uint32_t id) const;
+
+	void addTextureString(const String &, const String &);
+	void addTextureString(const String &, const WideString &);
+	void addTextureString(const String &, const char16_t *, size_t);
+
+	const Vector<char16_t> & addTextureChars(const String &, const Vector<CharSpec> &);
+	const Vector<char16_t> & addTextureChars(const String &, const Vector<CharSpec> &, uint32_t start, uint32_t count);
+
+	Vector<char16_t> &getTextureLayout(const String &);
+	cocos2d::Texture2D *getTexture(uint8_t) const;
+	const Vector<Rc<cocos2d::Texture2D>> &getTextures() const;
+
+	uint32_t getVersion() const;
+
+	bool isTextureRequestValid(uint32_t) const;
+	bool isDirty() const;
+
+protected:
+	void readParameter(FontParameters &p, FontStyle style) {
+		p.fontStyle = style;
+	}
+	void readParameter(FontParameters &p, FontWeight weight) {
+		p.fontWeight = weight;
+	}
+	void readParameter(FontParameters &p, FontStretch stretch) {
+		p.fontStretch = stretch;
+	}
+
+	template <typename T, typename ... Args>
+	void readParameters(FontParameters &p, T && t, Args && ... args) {
+		readParameter(p, t);
+		readParameters(p, std::forward<Args>(args)...);
+	}
+
+	template <typename T>
+	void readParameters(FontParameters &p, T && t) {
+		readParameter(p, t);
+	}
+
+	FontFace * getFontFace(const String &name, const FontParameters &);
+
+	void onTextureResult(Vector<Rc<cocos2d::Texture2D>> &&);
+
+	void updateTexture(uint32_t, const Map<String, Vector<char16_t>> &);
+	void cleanup();
+
+	FontFaceMap _fontFaces; // persistent face map
+	float _fontScale = 1.0f; // persistent scale value
+	Map<uint32_t, String> _families;
+
+	std::mutex _mutex;
+	Map<String, Arc<FontLayout>> _layouts;
+	ReceiptCallback _callback = nullptr;
+
+	bool _dirty = false;
+	Vector<Rc<cocos2d::Texture2D>> _textures;
+	Map<String, Vector<char16_t>> _textureLayouts;
+
+	std::atomic<uint32_t> _version;
+};
+
+
+inline bool operator< (const CharTexture &t, const CharTexture &c) { return t.charID < c.charID; }
+inline bool operator> (const CharTexture &t, const CharTexture &c) { return t.charID > c.charID; }
+inline bool operator<= (const CharTexture &t, const CharTexture &c) { return t.charID <= c.charID; }
+inline bool operator>= (const CharTexture &t, const CharTexture &c) { return t.charID >= c.charID; }
+
+inline bool operator< (const CharTexture &t, const char16_t &c) { return t.charID < c; }
+inline bool operator> (const CharTexture &t, const char16_t &c) { return t.charID > c; }
+inline bool operator<= (const CharTexture &t, const char16_t &c) { return t.charID <= c; }
+inline bool operator>= (const CharTexture &t, const char16_t &c) { return t.charID >= c; }
+
+inline bool operator< (const CharLayout &l, const CharLayout &c) { return l.charID < c.charID; }
+inline bool operator> (const CharLayout &l, const CharLayout &c) { return l.charID > c.charID; }
+inline bool operator<= (const CharLayout &l, const CharLayout &c) { return l.charID <= c.charID; }
+inline bool operator>= (const CharLayout &l, const CharLayout &c) { return l.charID >= c.charID; }
+
+inline bool operator< (const CharLayout &l, const char16_t &c) { return l.charID < c; }
+inline bool operator> (const CharLayout &l, const char16_t &c) { return l.charID > c; }
+inline bool operator<= (const CharLayout &l, const char16_t &c) { return l.charID <= c; }
+inline bool operator>= (const CharLayout &l, const char16_t &c) { return l.charID >= c; }
+
+NS_SP_EXT_END(font)
 
 #endif

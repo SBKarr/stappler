@@ -9,7 +9,6 @@
 #include "MaterialSearchToolbar.h"
 #include "MaterialSingleLineField.h"
 #include "MaterialButtonIcon.h"
-#include "MaterialFont.h"
 
 NS_MD_BEGIN
 
@@ -18,7 +17,7 @@ bool SearchToolbar::init() {
 		return false;
 	}
 
-	_searchInput = construct<SingleLineField>(Font::systemFont(Font::Type::System_Title));
+	_searchInput = construct<SingleLineField>(FontType::Title);
 	addChild(_searchInput);
 
 	_searchIcon = construct<ButtonIcon>(IconName::Navigation_close, std::bind(&SearchToolbar::onSearchIconButton, this));

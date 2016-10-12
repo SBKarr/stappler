@@ -19,8 +19,12 @@
 
 NS_SP_BEGIN
 
-float RichLabel::getStringWidth(Font *font, const std::string &str, float density) {
-	if (!font || str.empty()) {
+float RichLabel::getStringWidth(Font *font, const std::string &str, float density, bool localized) {
+	return getStringWidth(font, string::toUtf16(str), density, localized);
+}
+
+float RichLabel::getStringWidth(Font *font, const WideString &s, float density, bool localized) {
+	if (!font || s.empty()) {
 		return 0.0f;
 	}
 
@@ -28,16 +32,21 @@ float RichLabel::getStringWidth(Font *font, const std::string &str, float densit
 		density = screen::density();
 	}
 
-	std::u16string u16str = string::toUtf16(str);
 	CharVec vec;
-	vec.reserve(u16str.length());
-
 	rich_text::style::TextLayoutParameters baseParams;
 	baseParams.whiteSpace = rich_text::style::WhiteSpace::Pre;
 
 	rich_text::Formatter fmt(font->getFontSet(), &vec, nullptr, density);
 	fmt.begin(0, 0);
-	fmt.read(font, baseParams, u16str);
+	if (localized && locale::hasLocaleTags(s.data(), s.size())) {
+		auto u16str = locale::resolveLocaleTags(s.data(), s.size());
+		vec.reserve(u16str.size());
+		fmt.read(font, baseParams, u16str);
+	} else {
+		vec.reserve(s.size());
+		fmt.read(font, baseParams, s);
+	}
+
 	fmt.finalize();
 
 	return fmt.getWidth() / density;
@@ -82,14 +91,24 @@ rich_text::TextStyle RichLabel::getDefaultStyle() {
 	return ret;
 }
 
-cocos2d::Size RichLabel::getLabelSize(Font *f, const std::string &s, float w, Alignment a, float density, const rich_text::TextStyle &style) {
+WideString RichLabel::getLocalizedString(const String &s) {
+	return getLocalizedString(string::toUtf16(s));
+}
+WideString RichLabel::getLocalizedString(const WideString &s) {
+	if (locale::hasLocaleTags(s.data(), s.size())) {
+		return locale::resolveLocaleTags(s.data(), s.size());
+	}
+	return s;
+}
+
+cocos2d::Size RichLabel::getLabelSize(Font *f, const std::string &s, float w, Alignment a, float density, const rich_text::TextStyle &style, bool localized) {
 	if (s.empty()) {
 		return cocos2d::Size(0.0f, 0.0f);
 	}
-	return getLabelSize(f, string::toUtf16(s), w, a, density, style);
+	return getLabelSize(f, string::toUtf16(s), w, a, density, style, localized);
 }
 
-cocos2d::Size RichLabel::getLabelSize(Font *f, const std::u16string &s, float w, Alignment a, float density, const rich_text::TextStyle &style) {
+cocos2d::Size RichLabel::getLabelSize(Font *f, const std::u16string &s, float w, Alignment a, float density, const rich_text::TextStyle &style, bool localized) {
 	if (density == 0) {
 		density = screen::density();
 	}
@@ -98,13 +117,21 @@ cocos2d::Size RichLabel::getLabelSize(Font *f, const std::u16string &s, float w,
 		return cocos2d::Size(0.0f, 0.0f);
 	}
 
-	std::vector< Font::CharSpec > chars;
+
+	CharVec chars;
 	rich_text::Formatter fmt(f->getFontSet(), &chars, nullptr, density);
 	fmt.setWidth((uint16_t)roundf(w * density));
 	fmt.setTextAlignment(a);
 
 	fmt.begin(0);
-	fmt.read(f, style, s);
+	if (localized && locale::hasLocaleTags(s.data(), s.size())) {
+		auto u16str = locale::resolveLocaleTags(s.data(), s.size());
+		chars.reserve(u16str.size());
+		fmt.read(f, style, u16str);
+	} else {
+		chars.reserve(s.size());
+		fmt.read(f, style, s);
+	}
 	fmt.finalize();
 
 	return cocos2d::Size(fmt.getWidth() / density, fmt.getHeight() / density);
@@ -142,7 +169,7 @@ bool RichLabel::init(Font *font, const std::string &str, float width, Alignment 
 
 void RichLabel::updateLabel() {
 	if (!_baseFont || !_texture) {
-		_quads.clear();
+		_quads->clear();
 		return;
 	}
 
@@ -250,8 +277,8 @@ void RichLabel::updateLabel() {
 	_charsWidth = formatter.getWidth();
 	_charsHeight = formatter.getHeight();
 
-	_quads.clear();
-	_quads.drawCharsInvert(_chars, _charsHeight);
+	_quads->clear();
+	_quads->drawCharsInvert(_chars, _charsHeight);
 
 	setContentSize(cocos2d::Size(_charsWidth / _density, _charsHeight / _density));
 

@@ -86,6 +86,7 @@ public:
 	inline unsigned int getWidth() const { return _bmp.width(); }
 	inline unsigned int getHeight() const { return _bmp.height(); }
 	inline const std::vector<uint8_t> &getData() const { return _bmp.data(); }
+	inline const Bitmap &getBitmap() const { return _bmp; }
 
 	const std::string &getFilename() { return _filename; }
 

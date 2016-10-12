@@ -36,7 +36,7 @@ protected:
 	struct AtlasCacheNode {
 		Rc<DynamicAtlas> atlas;
 		DynamicBatchCommand cmd;
-		std::set<DynamicQuadArray *> set;
+		Set<Rc<DynamicQuadArray>> set;
 		bool cmdInit;
 
 		AtlasCacheNode(Rc<DynamicAtlas> &&atlas);

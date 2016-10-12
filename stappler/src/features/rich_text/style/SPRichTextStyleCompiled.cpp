@@ -756,6 +756,21 @@ namespace style {
 		return stream.str();
 	}
 	String FontStyleParameters::getConfigName(bool caps) const {
+		return getFontConfigName(fontFamily, fontSize, fontStyle, fontWeight, fontStretch, fontVariant, caps);
+	}
+
+	FontStyleParameters FontStyleParameters::getSmallCaps() const {
+		FontStyleParameters ret = *this;
+		ret.fontSize -= ret.fontSize / 5;
+		return ret;
+	}
+
+	String FontFace::getConfigName(const String &family, uint8_t size) const {
+		return getFontConfigName(family, size, fontStyle, fontWeight, fontStretch, FontVariant::Normal, false);
+	}
+
+	String getFontConfigName(const String &fontFamily, uint8_t fontSize, FontStyle fontStyle, FontWeight fontWeight,
+			FontStretch fontStretch, FontVariant fontVariant, bool caps) {
 		auto size = fontSize;
 		String name = fontFamily;
 		if (caps && fontVariant == style::FontVariant::SmallCaps) {
@@ -812,11 +827,6 @@ namespace style {
 		return name;
 	}
 
-	FontStyleParameters FontStyleParameters::getSmallCaps() const {
-		FontStyleParameters ret = *this;
-		ret.fontSize -= ret.fontSize / 5;
-		return ret;
-	}
 }
 
 NS_SP_EXT_END(rich_text)

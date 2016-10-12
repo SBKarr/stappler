@@ -24,7 +24,7 @@
 
 NS_SP_BEGIN
 
-static void DynamicAtlas_fillBuffer(const std::set<DynamicQuadArray *> &quads, size_t bufferSize) {
+static void DynamicAtlas_fillBuffer(const Set<Rc<DynamicQuadArray>> &quads, size_t bufferSize) {
 	if (bufferSize <= 0) {
 		return;
 	}
@@ -96,7 +96,10 @@ void DynamicAtlas::setTexture(cocos2d::Texture2D * var) {
     _texture = var;
 }
 
-const std::set<DynamicQuadArray *> &DynamicAtlas::getQuads() {
+const DynamicAtlas::QuadArraySet &DynamicAtlas::getQuads() const {
+	return _quads;
+}
+DynamicAtlas::QuadArraySet &DynamicAtlas::getQuads() {
 	return _quads;
 }
 
@@ -168,7 +171,7 @@ void DynamicAtlas::listenRendererRecreated() {
 
 	_dirty = true;
 
-	for (auto &it : _quads) {
+	for (auto it : _quads) {
 		it->setDirty();
 	}
 }
@@ -293,7 +296,7 @@ void DynamicAtlas::onCapacityDirty(size_t newSize) {
 		} else {
 			setup();
 		}
-		for (auto &it : _quads) {
+		for (auto it : _quads) {
 			it->dropDirty();
 		}
 	} else {
@@ -311,7 +314,7 @@ void DynamicAtlas::onQuadsDirty() {
 
     CHECK_GL_ERROR_DEBUG();
 
-	for (auto &it : _quads) {
+	for (auto it : _quads) {
 		it->dropDirty();
 	}
 
@@ -359,7 +362,7 @@ void DynamicAtlas::visit() {
 	} else if (isQuadsDirty || isSizeDirty) {
 		onQuadsDirty();
 	} else {
-		for (auto &it : _quads) {
+		for (auto it : _quads) {
 			it->dropDirty();
 		}
 	}
