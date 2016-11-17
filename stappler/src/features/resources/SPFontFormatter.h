@@ -49,6 +49,40 @@ struct RangeSpec { // 20-24 bytes
 
 class FormatSpec : public Ref {
 public:
+	struct RangeLineIterator {
+		Vector< RangeSpec >::const_iterator range;
+		Vector< LineSpec >::const_iterator line;
+
+		uint32_t start() const {
+			return std::max(range->start, line->start);
+		}
+		uint32_t count() const {
+			return std::min(range->start + range->count, line->start + line->count) - start();
+		}
+
+		RangeLineIterator &operator++() {
+			const auto rangeEnd = range->start + range->count;
+			const auto lineEnd = line->start + line->count;
+			if (rangeEnd < lineEnd) {
+				++ range;
+			} else if (rangeEnd > lineEnd) {
+				++ line;
+			} else {
+				++ range;
+				++ line;
+			}
+
+			return *this;
+		}
+
+		bool operator==(const RangeLineIterator &other) const {
+			return other.line == line && other.range == range;
+		}
+		bool operator!=(const RangeLineIterator &other) const {
+			return !(*this == other);
+		}
+	};
+
 	Vector< RangeSpec > ranges;
 	Vector< CharSpec > chars;
 	Vector< LineSpec > lines;
@@ -64,6 +98,11 @@ public:
 	bool init(size_t, size_t = 1);
 	void reserve(size_t, size_t = 1);
 	void clear();
+
+	const LineSpec *getLine(size_t) const;
+
+	RangeLineIterator begin() const;
+	RangeLineIterator end() const;
 };
 
 class HyphenMap : public Ref {

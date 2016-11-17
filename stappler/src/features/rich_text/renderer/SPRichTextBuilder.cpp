@@ -10,7 +10,7 @@
 
 #include "SPResource.h"
 #include "SPRichTextBuilder.h"
-#include "SPRichTextFormatter.h"
+#include "SPFontFormatter.h"
 
 #include "SPRichTextResult.h"
 #include "SPString.h"
@@ -44,7 +44,7 @@ String Builder::getCssString(CssStringId id) const {
 	return "";
 }
 
-Builder::Builder(Document *doc, const MediaParameters &media, FontSet *cfg, const Vector<String> &spine) {
+Builder::Builder(Document *doc, const MediaParameters &media, font::Source *cfg, const Vector<String> &spine) {
 	_document = doc;
 	_media = media;
 	_fontSet = cfg;
@@ -62,16 +62,12 @@ void Builder::setMargin(const Margin &m) {
 	_margin = m;
 }
 
-void Builder::setHyphens(rich_text::HyphenMap *map) {
+void Builder::setHyphens(font::HyphenMap *map) {
 	_hyphens = map;
 }
 
 Result *Builder::getResult() const {
 	return _result;
-}
-
-Font *Builder::getFont(const FontStyle &cfg) {
-	return _fontSet->getFont(cfg.getConfigName());
 }
 
 const MediaParameters &Builder::getMedia() const {
@@ -81,7 +77,7 @@ const MediaParameters &Builder::getMedia() const {
 Document *Builder::getDocument() const {
 	return _document;
 }
-FontSet *Builder::getFontSet() const {
+font::Source *Builder::getFontSet() const {
 	return _fontSet;
 }
 

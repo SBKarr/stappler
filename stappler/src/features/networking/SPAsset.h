@@ -13,10 +13,49 @@
 #include "SPEventHandler.h"
 #include "SPData.h"
 #include "SPSyncRWLock.h"
+#include "SPFilesystem.h"
 
 NS_SP_BEGIN
 
-class AssetDownload;
+class AssetFile : public Ref {
+public:
+	~AssetFile();
+
+	bool init(Asset *);
+
+	Bytes readFile() const;
+	filesystem::ifile open() const;
+
+	void remove();
+
+	bool match(const Asset *) const;
+	bool exists() const { return _exists; }
+	operator bool() const { return _exists; }
+
+	uint64_t getCTime() const { return _ctime; }
+	uint64_t getMTime() const { return _mtime; }
+	uint64_t getAssetId() const { return _id; }
+	size_t getSize() const { return _size; }
+
+	const String & getPath() const { return _path; }
+	const String & getUrl() const { return _url; }
+	const String & getContentType() const { return _contentType; }
+	const String & getETag() const { return _etag; }
+
+protected:
+	friend class Asset;
+
+	bool _exists = false;
+	uint64_t _ctime = 0;
+	uint64_t _mtime = 0;
+	uint64_t _id = 0;
+	size_t _size = 0;
+
+	String _url;
+	String _path;
+	String _contentType;
+	String _etag;
+};
 
 class Asset : public SyncRWLock {
 public:
@@ -83,6 +122,8 @@ public:
 
 	bool isStorageDirty() const { return _storageDirty; }
 	void setStorageDirty(bool value) { _storageDirty = value; }
+
+	Rc<AssetFile> cloneFile();
 
 protected:
 	friend class AssetLibrary;

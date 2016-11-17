@@ -255,12 +255,16 @@ apr_status_t OutputFilter::func(ap_filter_t *f, apr_bucket_brigade *bb) {
 bool OutputFilter::readRequestLine(Reader &r) {
 	while (!r.empty()) {
 		if (_isWhiteSpace) {
-			_buffer << r.readChars<Reader::CharGroup<chars::CharGroupId::WhiteSpace>>();
-			if (!r.empty() && !r.is<chars::CharGroupId::WhiteSpace>()) {
-				_isWhiteSpace = false;
-			} else {
-				continue;
+			auto tmp = r.readChars<Reader::CharGroup<chars::CharGroupId::WhiteSpace>>();
+			_buffer << tmp;
+			auto tmp2 = tmp.readUntil<Reader::Chars<'\n'>>();
+			if (tmp2.is('\n')) {
+				return true;
 			}
+			if (r.empty()) {
+				return false;
+			}
+			_isWhiteSpace = false;
 		}
 		if (_subState == State::Protocol) {
 			_buffer << r.readUntil<Reader::CharGroup<chars::CharGroupId::WhiteSpace>>();
@@ -284,14 +288,14 @@ bool OutputFilter::readRequestLine(Reader &r) {
 			_statusText = statusText.str();
 			string::trim(_statusText);
 			_buffer << statusText;
-			if (r.is('\n')) {
-				++ r;
-				_buffer << '\n';
-				_state = State::Headers;
-				_subState = State::HeaderName;
-				_isWhiteSpace = true;
-				return true;
-			}
+		}
+		if (r.is('\n') || r.is('\r')) {
+			++ r;
+			_buffer << r.readChars<Reader::Chars<'\n', '\r'>>();
+			_state = State::Headers;
+			_subState = State::HeaderName;
+			_isWhiteSpace = true;
+			return true;
 		}
 	}
 	return false;

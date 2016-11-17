@@ -23,6 +23,9 @@ static inline WideString & rtrim(WideString &s) {
 }
 
 String &trim(String &s) {
+	if (s.empty()) {
+		return s;
+	}
 	auto ptr = s.c_str();
 	size_t len = s.length();
 
@@ -57,7 +60,13 @@ String &trim(String &s) {
 	}
 	return s;
 }
-WideString &trim(WideString &s) { return ltrim(rtrim(s)); }
+
+WideString &trim(WideString &s) {
+	if (s.empty()) {
+		return s;
+	}
+	return ltrim(rtrim(s));
+}
 
 static inline bool isUrlencodeChar(char c) {
     if (('a' <= c && c <= 'z') ||

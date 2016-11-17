@@ -54,7 +54,7 @@ static void __log2(const char *tag, const char *text, unsigned long len) {
 }
 
 void __stappler_log(const char *tag, CustomLog::Type t, CustomLog::VA &va) {
-#if DEBUG
+//#if DEBUG || ANDROID
 	if (t == CustomLog::Text) {
 		__log2(tag, va.text.text, va.text.len);
 	} else {
@@ -83,7 +83,7 @@ void __stappler_log(const char *tag, CustomLog::Type t, CustomLog::VA &va) {
 		}
 #endif
 	}
-#endif // DEBUG
+//#endif // DEBUG
 }
 
 NS_SP_EXT_END(log)

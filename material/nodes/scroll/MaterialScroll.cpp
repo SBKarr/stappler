@@ -8,6 +8,7 @@
 #include "Material.h"
 #include "MaterialIconSprite.h"
 #include "MaterialScroll.h"
+#include "MaterialResourceManager.h"
 #include "SPScrollController.h"
 #include "SPDataListener.h"
 #include "SPThread.h"
@@ -16,8 +17,6 @@
 #include <unistd.h>
 
 NS_MD_BEGIN
-
-static Thread s_sliceScrollThread("MaterialSliceScrollThread");
 
 bool Scroll::Loader::init(const std::function<void()> &cb, const Color &c) {
 	if (!cocos2d::Node::init()) {
@@ -429,7 +428,7 @@ void Scroll::onSliceData(DataMap &val, Time time, Request type) {
 	auto itemPtr = new ItemMap();
 	auto dataPtr = new DataMap(std::move(val));
 	auto handlerPtr = new Rc<Handler>(onHandler());
-	s_sliceScrollThread.perform([this, handlerPtr, itemPtr, dataPtr, time, type] (cocos2d::Ref *) -> bool {
+	ResourceManager::thread().perform([this, handlerPtr, itemPtr, dataPtr, time, type] (cocos2d::Ref *) -> bool {
 		(*itemPtr) = (*handlerPtr)->run(type, std::move(*dataPtr));
 		auto interval = Time::now() - time;
 		if (interval < _minLoadTime && type != Request::Update) {

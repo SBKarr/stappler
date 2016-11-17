@@ -35,293 +35,7 @@
 #include "SPDynamicBatchScene.h"
 #include "SPTextureCache.h"
 
-NS_SP_BEGIN
-
-Font::Font(const std::string &name, Metrics &&metrics, CharSet &&chars, KerningMap &&kerning, Image *image)
-: _name(name), _metrics(std::move(metrics)), _chars(std::move(chars)), _kerning(std::move(kerning)), _image(image) {
-	for (auto &c : _chars) {
-		const_cast<Font::Char &>(c).font = this;
-	}
-}
-
-Font::~Font() { }
-
-cocos2d::Texture2D *Font::getTexture() const {
-	auto tex = getImage()->retainTexture();
-	tex->setAliasTexParameters();
-	return tex;
-}
-
-int16_t Font::kerningAmount(uint16_t first, uint16_t second) const {
-	uint32_t key = (first << 16) | (second & 0xffff);
-	auto it = _kerning.find(key);
-	if (it != _kerning.end()) {
-		return it->second;
-	}
-	return 0;
-}
-
-void Font::setFontSet(FontSet *set) {
-	_fontSet = set;
-}
-
-FontRequest::FontRequest(const std::string &name, uint16_t size, const std::u16string &chars)
-: name(name), size(size), chars(chars), charGroupMask(CharGroup::None) { }
-
-FontRequest::FontRequest(const std::string &name, const std::string &file, uint16_t size)
-: name(name), size(size), receipt{file}, charGroupMask(CharGroup::None)  { }
-
-FontRequest::FontRequest(const std::string &name, const std::string &file, uint16_t size, const std::u16string &chars)
-: name(name), size(size), chars(chars), receipt{file}, charGroupMask(CharGroup::None) { }
-
-FontRequest::FontRequest(const std::string &name, const std::string &file, uint16_t size, CharGroup mask)
-: name(name), size(size), receipt{file}, charGroupMask(mask) { }
-
-FontRequest::FontRequest(const std::string &name, Receipt &&receipt, uint16_t size, const std::u16string &chars)
-: name(name), size(size), chars(chars), receipt(std::move(receipt)), charGroupMask(CharGroup::None) { }
-
-FontSource::FontSource() { }
-
-FontSource::~FontSource() { }
-
-bool FontSource::init(const std::string &name, uint16_t v, const std::vector<FontRequest> &req, const ReceiptCallback &cb, bool w) {
-	_name = name;
-	_version = v;
-	_requests = req;
-	return init(cb, w);
-}
-
-bool FontSource::init(const std::string &name, uint16_t v, std::vector<FontRequest> &&req, const ReceiptCallback &cb, bool w) {
-	_name = name;
-	_version = v;
-	_requests = std::move(req);
-	return init(cb, w);
-}
-
-bool FontSource::init(const std::vector<FontRequest> &req, const ReceiptCallback &cb, bool w) {
-	_requests = req;
-	return init(cb, w);
-}
-
-bool FontSource::init(std::vector<FontRequest> &&req, const ReceiptCallback &cb, bool w) {
-	_requests = std::move(req);
-	return init(cb, w);
-}
-
-bool FontSource::init(const ReceiptCallback &cb, bool wait) {
-	_waitForAllAssets = wait;
-	_receiptCallback = cb;
-	updateRequest();
-
-	onEvent(Device::onNetwork, [this] (const Event *) {
-		if (Device::getInstance()->isNetworkOnline()) {
-			for (auto &it : _assets) {
-				if (it->isDownloadAvailable()) {
-					it->download();
-				}
-			}
-		}
-	});
-
-	return true;
-}
-
-void FontSource::setRequest(const std::vector<FontRequest> &req) {
-	_requests = req;
-	updateRequest();
-}
-
-void FontSource::setRequest(std::vector<FontRequest> &&req) {
-	_requests = req;
-	updateRequest();
-}
-
-FontSet *FontSource::getFontSet() const {
-	return _fontSet;
-}
-
-void FontSource::onAssets(const std::vector<Asset *> &assets) {
-	auto oldAssets = std::move(_assets);
-	_assets.clear();
-	for (auto &it : assets) {
-		_assets.emplace_back(std::bind(&FontSource::onAssetUpdated, this, it), it);
-		if (it->isDownloadAvailable()) {
-			it->download();
-		}
-	}
-	if (getReferenceCount() > 1) {
-		if (!_waitForAllAssets || _assets.empty()) {
-			updateFontSet();
-		} else {
-			bool update = true;
-			for (auto &it : _assets) {
-				if (!it->isReadAvailable()) {
-					update = false;
-					break;
-				}
-			}
-			if (update) {
-				updateFontSet();
-			}
-		}
-	}
-	release();
-}
-
-void FontSource::onAssetUpdated(Asset *a) {
-	bool downloadReady = true;
-	for (auto &it : _assets) {
-		if (it->isDownloadInProgress() || it->isWriteLocked() || !it->isReadAvailable()) {
-			downloadReady = false;
-			break;
-		}
-	}
-
-	if (downloadReady) {
-		bool assetModified = false;
-		for (auto &it : _assets) {
-			auto assetIt = _runningAssets.find(it);
-			if (assetIt == _runningAssets.end()
-					|| assetIt->second.first != it->getETag()
-					|| assetIt->second.second != it->getMTime()) {
-				assetModified = true;
-				break;
-			}
-		}
-		if (assetModified) {
-			_runningAssets.clear();
-			for (auto &it : _assets) {
-				_runningAssets.insert(std::make_pair(it, std::make_pair(it->getETag(), it->getMTime())));
-			}
-			updateFontSet();
-		}
-	}
-}
-
-void FontSource::onFontSet(FontSet *set) {
-	if (set != _fontSet) {
-		_inUpdate = false;
-		_fontSet = set;
-		setDirty();
-	}
-}
-
-void FontSource::updateFontSet() {
-	if (!_requests.empty()) {
-		retain();
-		FontSet::generate(_name.empty()?FontSet::Config(_requests, _receiptCallback):FontSet::Config(_name, _version, _requests, _receiptCallback),
-				[this] (FontSet *set) {
-			onFontSet(set);
-			release();
-		});
-	}
-}
-
-void FontSource::updateRequest() {
-	_inUpdate = true;
-	_urls = resource::getRequestsUrls(_requests);
-	if (_urls.empty()) {
-		updateFontSet();
-	} else {
-		retain();
-		resource::acquireFontAsset(_urls, std::bind(&FontSource::onAssets, this, std::placeholders::_1));
-	}
-}
-
-
-FontSet::Config::Config(const std::vector<FontRequest> &vec, const ReceiptCallback &cb)
-: name(""), version(0), dynamic(true), requests(vec), receiptCallback(cb) { }
-
-FontSet::Config::Config(std::vector<FontRequest> &&vec, const ReceiptCallback &cb)
-: name(""), version(0), dynamic(true), requests(std::move(vec)), receiptCallback(cb) { }
-
-FontSet::Config::Config(const std::string &name, uint16_t v, std::vector<FontRequest> &&vec, const ReceiptCallback &cb)
-: name(name), version(v), dynamic(false), requests(vec), receiptCallback(cb) { }
-
-FontSet::Config::Config(const std::string &name, uint16_t v, const std::vector<FontRequest> &vec, const ReceiptCallback &cb)
-: name(name), version(v), dynamic(false), requests(std::move(vec)), receiptCallback(cb) { }
-
-
-void FontSet::generate(Config &&cfg, const Callback &callback) {
-	resource::generateFontSet(std::move(cfg), callback);
-}
-
-Font *FontSet::getFont(const std::string &key) const {
-	auto it = _fonts.find(key);
-	if (it == _fonts.end()) {
-		auto aliasedKey = getFontNameForAlias(key);
-		if (!aliasedKey.empty()) {
-			it = _fonts.find(aliasedKey);
-			if (it != _fonts.end()) {
-				return it->second;
-			}
-		}
-		return nullptr;
-	}
-	return it->second;
-}
-
-std::string FontSet::getFontNameForAlias(const std::string &alias) const {
-	auto it = _aliases.find(alias);
-	if (it == _aliases.end()) {
-		return "";
-	}
-	return it->second;
-}
-
-FontSet::FontSet(Config &&cfg, cocos2d::Map<std::string, Font *> &&fonts, Image *image)
-: _config(std::move(cfg)), _image(image), _fonts(std::move(fonts)) {
-	for (auto &it : _fonts) {
-		it.second->setFontSet(this);
-	}
-
-	for (auto &it : _config.requests) {
-		for (auto &alias : it.aliases) {
-			_aliases.insert(std::make_pair(alias, it.name));
-		}
-	}
-}
-
-FontSet::~FontSet() {
-	for (auto &it : _fonts) {
-		if (it.second->getFontSet() == this) {
-			it.second->setFontSet(nullptr);
-		}
-	}
-}
-
-NS_SP_END
-
 NS_SP_EXT_BEGIN(font)
-
-size_t Source::getFontFaceScore(const FontParameters &params, const FontFace &face) {
-	using namespace rich_text;
-	size_t ret = 0;
-	if (face.fontStyle == style::FontStyle::Normal) {
-		ret += 1;
-	}
-	if (face.fontWeight == style::FontWeight::Normal) {
-		ret += 1;
-	}
-	if (face.fontStretch == style::FontStretch::Normal) {
-		ret += 1;
-	}
-
-	if (face.fontStyle == params.fontStyle && (face.fontStyle == style::FontStyle::Oblique || face.fontStyle == style::FontStyle::Italic)) {
-		ret += 100;
-	} else if ((face.fontStyle == style::FontStyle::Oblique || face.fontStyle == style::FontStyle::Italic)
-			&& (params.fontStyle == style::FontStyle::Oblique || params.fontStyle == style::FontStyle::Italic)) {
-		ret += 75;
-	}
-
-	auto weightDiff = (int)toInt(style::FontWeight::W900) - abs((int)toInt(params.fontWeight) - (int)toInt(face.fontWeight));
-	ret += weightDiff * 10;
-
-	auto stretchDiff = (int)toInt(style::FontStretch::UltraExpanded) - abs((int)toInt(params.fontStretch) - (int)toInt(face.fontStretch));
-	ret += stretchDiff * 5;
-
-	return ret;
-}
 
 void FontCharString::addChar(char16_t c) {
 	auto it = std::lower_bound(chars.begin(), chars.end(), c);
@@ -385,10 +99,10 @@ int16_t FontData::kerningAmount(char16_t first, char16_t second) const {
 	return 0;
 }
 
-FontLayout::FontLayout(const String &name, const String &family, uint8_t size, const FontFace &face, const ReceiptCallback &cb, float d)
-: _density(d), _name(name), _family(family), _size(size), _face(face), _callback(cb) {
+FontLayout::FontLayout(const Source * source, const String &name, const String &family, uint8_t size, const FontFace &face, const ReceiptCallback &cb, float d)
+: _density(d), _name(name), _family(family), _size(size), _face(face), _callback(cb), _source(source) {
 	_data = Arc<Data>::create();
-	_data->metrics = requestMetrics(face.src, uint16_t(roundf(size * d)), _callback);
+	_data->metrics = requestMetrics(_source, face.src, uint16_t(roundf(size * d)), _callback);
 }
 
 void FontLayout::addString(const String &str) {
@@ -413,6 +127,10 @@ void FontLayout::addString(const FontCharString &str) {
 	merge(str.chars);
 }
 
+void FontLayout::addSortedChars(const Vector<char16_t> &vec) {
+	merge(vec);
+}
+
 void FontLayout::merge(const Vector<char16_t> &chars) {
 	Arc<Data> data = _data;
 	while (true) {
@@ -425,7 +143,7 @@ void FontLayout::merge(const Vector<char16_t> &chars) {
 		if (charsToUpdate.empty()) {
 			return;
 		}
-		Arc<Data> newData = requestLayoutUpgrade(_face.src, data, charsToUpdate, _callback);
+		Arc<Data> newData = requestLayoutUpgrade(_source, _face.src, data, charsToUpdate, _callback);
 		if (_data.compare_swap(data, std::move(newData))) {
 			return;
 		}
@@ -439,6 +157,9 @@ Arc<FontLayout::Data> FontLayout::getData() const {
 const String &FontLayout::getName() const {
 	return _name;
 }
+const String &FontLayout::getFamily() const {
+	return _family;
+}
 
 const ReceiptCallback &FontLayout::getCallback() const {
 	return _callback;
@@ -447,24 +168,115 @@ const ReceiptCallback &FontLayout::getCallback() const {
 const FontFace &FontLayout::getFontFace() const {
 	return _face;
 }
+float FontLayout::getDensity() const {
+	return _density;
+}
+uint8_t FontLayout::getOriginalSize() const {
+	return _size;
+}
 
 uint16_t FontLayout::getSize() const {
 	return roundf(_size * _density);
 }
 
-SP_DECLARE_EVENT(Source, "DynamicFontSource", onLayoutUpdated);
+FontParameters FontLayout::getStyle() const {
+	return _face.getStyle(_family, _size);
+}
+
+
 SP_DECLARE_EVENT(Source, "DynamicFontSource", onTextureUpdated);
 
+size_t Source::getFontFaceScore(const FontParameters &params, const FontFace &face) {
+	using namespace rich_text;
+	size_t ret = 0;
+	if (face.fontStyle == style::FontStyle::Normal) {
+		ret += 1;
+	}
+	if (face.fontWeight == style::FontWeight::Normal) {
+		ret += 1;
+	}
+	if (face.fontStretch == style::FontStretch::Normal) {
+		ret += 1;
+	}
+
+	if (face.fontStyle == params.fontStyle && (face.fontStyle == style::FontStyle::Oblique || face.fontStyle == style::FontStyle::Italic)) {
+		ret += 100;
+	} else if ((face.fontStyle == style::FontStyle::Oblique || face.fontStyle == style::FontStyle::Italic)
+			&& (params.fontStyle == style::FontStyle::Oblique || params.fontStyle == style::FontStyle::Italic)) {
+		ret += 75;
+	}
+
+	auto weightDiff = (int)toInt(style::FontWeight::W900) - abs((int)toInt(params.fontWeight) - (int)toInt(face.fontWeight));
+	ret += weightDiff * 10;
+
+	auto stretchDiff = (int)toInt(style::FontStretch::UltraExpanded) - abs((int)toInt(params.fontStretch) - (int)toInt(face.fontStretch));
+	ret += stretchDiff * 5;
+
+	return ret;
+}
+
+Bytes Source::acquireFontData(const Source *source, const String &path, const ReceiptCallback &cb) {
+	if (cb) {
+		Bytes ret = cb(source, path);
+		if (!ret.empty()) {
+			return ret;
+		}
+	}
+	if (!resource::isReceiptUrl(path)) {
+		if (filesystem::exists(path) && !filesystem::isdir(path)) {
+			return filesystem::readFile(path);
+		}
+		auto &dirs = source->getSearchDirs();
+		for (auto &it : dirs) {
+			auto ipath = filepath::merge(it, path);
+			if (filesystem::exists(ipath) && !filesystem::isdir(ipath)) {
+				return filesystem::readFile(ipath);
+			}
+		}
+	} else {
+		auto &map = source->getAssetMap();
+		auto it = map.find(path);
+		if (it != map.end()) {
+			return it->second->readFile();
+		}
+	}
+	return Bytes();
+}
+
 Source::~Source() {
-	cocos2d::Director::getInstance()->getScheduler()->unscheduleUpdate(this);
+	unschedule();
 	cleanup();
 }
 
-bool Source::init(FontFaceMap &&map, const ReceiptCallback &cb, float scale) {
+void Source::schedule() {
+	if (!_scheduled) {
+		cocos2d::Director::getInstance()->getScheduler()->scheduleUpdate(this, 0, false);
+		_scheduled = true;
+	}
+}
+
+void Source::unschedule() {
+	if (_scheduled) {
+		_scheduled = false;
+		cocos2d::Director::getInstance()->getScheduler()->unscheduleUpdate(this);
+	}
+}
+
+void Source::preloadChars(const FontParameters &style, const Vector<char16_t> &chars) {
+	auto l = getLayout(style);
+	if (l) {
+		l->addSortedChars(chars);
+		addTextureString(l->getName(), chars.data(), chars.size());
+	}
+}
+
+bool Source::init(FontFaceMap &&map, const ReceiptCallback &cb, float scale, SearchDirs &&dirs, AssetMap &&assets, bool scheduled) {
 	_fontFaces = std::move(map);
 	_fontScale = scale;
 	_callback = cb;
 	_version = 0;
+	_assets = std::move(assets);
+	_searchDirs = std::move(dirs);
 	for (auto &it : _fontFaces) {
 		auto &family = it.first;
 		_families.emplace(hash::hash32(family.c_str(), family.size()), family);
@@ -477,7 +289,10 @@ bool Source::init(FontFaceMap &&map, const ReceiptCallback &cb, float scale) {
 		_dirty = true;
 	});
 
-	cocos2d::Director::getInstance()->getScheduler()->scheduleUpdate(this, 0, false);
+	if (scheduled) {
+		schedule();
+	}
+
 	return true;
 }
 
@@ -495,7 +310,9 @@ Arc<FontLayout> Source::getLayout(const FontParameters &style) {
 		_mutex.lock();
 		auto l_it = _layouts.find(name);
 		if (l_it == _layouts.end()) {
-			ret = (_layouts.emplace(name, Arc<FontLayout>::create(name, family, style.fontSize, *face, _callback, screen::density() * _fontScale)).first->second);
+			ret = (_layouts.emplace(name, Arc<FontLayout>::create(this, name, family, style.fontSize, *face,
+					std::bind(&Source::acquireFontData, std::placeholders::_1, std::placeholders::_2, _callback),
+					screen::density() * _fontScale)).first->second);
 		} else {
 			ret = (l_it->second);
 		}
@@ -511,6 +328,37 @@ Arc<FontLayout> Source::getLayout(const String &name) {
 	auto l_it = _layouts.find(name);
 	if (l_it != _layouts.end()) {
 		ret = (l_it->second);
+	}
+	_mutex.unlock();
+	return ret;
+}
+
+bool Source::hasLayout(const FontParameters &style) {
+	bool ret = false;
+	auto family = style.fontFamily;
+	if (family.empty()) {
+		family = "default";
+	}
+
+	auto face = getFontFace(family, style);
+	if (face) {
+		auto name = face->getConfigName(family, style.fontSize);
+		_mutex.lock();
+		auto l_it = _layouts.find(name);
+		if (l_it != _layouts.end()) {
+			ret = true;
+		}
+		_mutex.unlock();
+	}
+	return ret;
+}
+
+bool Source::hasLayout(const String &name) {
+	bool ret = false;
+	_mutex.lock();
+	auto l_it = _layouts.find(name);
+	if (l_it != _layouts.end()) {
+		ret = true;
 	}
 	_mutex.unlock();
 	return ret;
@@ -545,14 +393,29 @@ FontFace * Source::getFontFace(const String &name, const FontParameters &it) {
 		}
 	}
 
+	if (!face) {
+		family = "default";
+		auto f_it = _fontFaces.find(family);
+		if (f_it != _fontFaces.end()) {
+			auto &faces = f_it->second;
+			for (auto &face_it : faces) {
+				auto newScore = getFontFaceScore(it, face_it);
+				if (newScore >= score) {
+					score = newScore;
+					face = &face_it;
+				}
+			}
+		}
+	}
+
 	return face;
 }
 
 void Source::update(float dt) {
 	if (_dirty) {
 		auto v = (++ _version);
-		updateTexture(v, _textureLayouts);
 		_dirty = false;
+		updateTexture(v, _textureLayouts);
 	}
 }
 
@@ -617,6 +480,11 @@ Vector<char16_t> &Source::getTextureLayout(const String &layout) {
 	}
 	return it->second;
 }
+
+const Map<String, Vector<char16_t>> &Source::getTextureLayoutMap() const {
+	return _textureLayouts;
+}
+
 cocos2d::Texture2D *Source::getTexture(uint8_t idx) const {
 	return _textures.at(idx);
 }
@@ -638,6 +506,22 @@ void Source::onTextureResult(Vector<Rc<cocos2d::Texture2D>> &&tex) {
 	}
 }
 
+void Source::onTextureResult(Map<String, Vector<char16_t>> &&map, Vector<Rc<cocos2d::Texture2D>> &&tex) {
+	if (_dirty) {
+		_textureLayouts = std::move(map);
+		_textures = std::move(tex);
+
+		onTextureUpdated(this);
+
+		Thread::onMainThread([] {
+			// old textures can be cached in autobatching materials, so, better to clean them up
+			if (auto scene = dynamic_cast<DynamicBatchScene *>(cocos2d::Director::getInstance()->getRunningScene())) {
+				scene->clearCachedMaterials();
+			}
+		});
+	}
+}
+
 uint32_t Source::getVersion() const {
 	return _version.load();
 }
@@ -648,6 +532,286 @@ bool Source::isTextureRequestValid(uint32_t v) const {
 
 bool Source::isDirty() const {
 	return _dirty;
+}
+
+const Source::SearchDirs &Source::getSearchDirs() const {
+	return _searchDirs;
+}
+
+const Source::AssetMap &Source::getAssetMap() const {
+	return _assets;
+}
+
+SP_DECLARE_EVENT(Controller, "DynamicFontController", onUpdate);
+SP_DECLARE_EVENT(Controller, "DynamicFontController", onSource);
+
+void Controller::mergeFontFace(FontFaceMap &target, const FontFaceMap &map) {
+	for (auto &m_it : map) {
+		auto it = target.find(m_it.first);
+		if (it == target.end()) {
+			target.emplace(m_it.first, m_it.second);
+		} else {
+			for (auto &v_it : m_it.second) {
+				it->second.emplace_back(v_it);
+			}
+		}
+	}
+}
+
+Controller::~Controller() {
+	cocos2d::Director::getInstance()->getScheduler()->unscheduleUpdate(this);
+}
+
+bool Controller::init(FontFaceMap && map, Vector<String> && searchDir, const ReceiptCallback &cb) {
+	if (_fontFaces.empty()) {
+		_fontFaces = std::move(map);
+	} else {
+		mergeFontFace(_fontFaces, map);
+	}
+	_searchDir = std::move(searchDir);
+
+	_callback = cb;
+	_dirty = true;
+	_dirtyFlags = DirtyFontFace;
+
+	cocos2d::Director::getInstance()->getScheduler()->scheduleUpdate(this, 0, false);
+
+	return true;
+}
+
+bool Controller::init(FontFaceMap && map, Vector<String> && searchDir, float scale, const ReceiptCallback &cb) {
+	if (_fontFaces.empty()) {
+		_fontFaces = std::move(map);
+	} else {
+		mergeFontFace(_fontFaces, map);
+	}
+	_searchDir = std::move(searchDir);
+
+	_callback = cb;
+	_scale = scale;
+	_dirty = true;
+	_dirtyFlags = DirtyFontFace;
+
+	cocos2d::Director::getInstance()->getScheduler()->scheduleUpdate(this, 0, false);
+
+	return true;
+}
+
+void Controller::setSearchDirs(Vector<String> && map) {
+	_searchDir = std::move(map);
+	_dirtyFlags |= DirtySearchDirs;
+	_dirty = true;
+}
+void Controller::addSearchDir(const Vector<String> &map) {
+	for (auto &it : map) {
+		_searchDir.push_back(it);
+	}
+	_dirtyFlags |= DirtySearchDirs;
+	_dirty = true;
+}
+void Controller::addSearchDir(const String &it) {
+	_searchDir.push_back(it);
+	_dirtyFlags |= DirtySearchDirs;
+	_dirty = true;
+}
+const Vector<String> &Controller::getSearchDir() const {
+	return _searchDir;
+}
+
+void Controller::setFontFaceMap(FontFaceMap && map) {
+	_fontFaces = std::move(map);
+	_dirty = true;
+	_dirtyFlags |= DirtyFontFace;
+}
+void Controller::addFontFaceMap(const FontFaceMap & map) {
+	mergeFontFace(_fontFaces, map);
+	_dirtyFlags |= DirtyFontFace;
+	_dirty = true;
+}
+void Controller::addFontFace(const String &family, FontFace &&face) {
+	auto it = _fontFaces.find(family);
+	if (it == _fontFaces.end()) {
+		it = _fontFaces.emplace(family, Vector<FontFace>()).first;
+	}
+
+	it->second.emplace_back(std::move(face));
+	_dirtyFlags |= DirtyFontFace;
+	_dirty = true;
+}
+const Controller::FontFaceMap &Controller::getFontFaceMap() const {
+	return _fontFaces;
+}
+
+void Controller::setFontScale(float value) {
+	if (_scale != value) {
+		_scale = value;
+		_dirty = true;
+	}
+}
+float Controller::getFontScale() const {
+	return _scale;
+}
+
+void Controller::setReceiptCallback(const ReceiptCallback &cb) {
+	_callback = cb;
+	_dirty = true;
+	_dirtyFlags |= DirtyReceiptCallback;
+}
+const ReceiptCallback & Controller::getReceiptCallback() const {
+	return _callback;
+}
+
+void Controller::update(float dt) {
+	if (_dirty) {
+		onUpdate(this);
+		updateSource();
+	}
+}
+
+bool Controller::empty() const {
+	return _source != nullptr;
+}
+
+Source * Controller::getSource() const {
+	return _source;
+}
+
+void Controller::updateSource() {
+	_urls.clear();
+
+	for (auto &f_it : _fontFaces) {
+		for (auto &vec_it : f_it.second) {
+			for (auto &src : vec_it.src) {
+				if (resource::isReceiptUrl(src)) {
+					_urls.insert(src);
+				}
+			}
+		}
+	}
+
+	if (_urls.empty()) {
+		performSourceUpdate();
+	} else {
+		retain();
+		resource::acquireFontAsset(_urls, std::bind(&Controller::onAssets, this, std::placeholders::_1));
+	}
+
+	_dirty = false;
+}
+
+void Controller::performSourceUpdate() {
+	if (_assets.empty()) {
+		onSourceUpdated(makeSource(AssetMap()));
+	} else {
+		const AssetMap *currentMap = nullptr;
+		if (_source) {
+			currentMap = &_source->getAssetMap();
+		}
+
+		AssetMap assets;
+		bool assetsDirty = false;
+		for (auto &a : _assets) {
+			if (a->isReadAvailable() && a->tryReadLock(this)) {
+				if (currentMap) {
+					auto it = currentMap->find(a->getUrl());
+					if (it != currentMap->end()) {
+						if (it->second->match(a)) {
+							assets.emplace(a->getUrl(), it->second);
+							continue;
+						}
+					}
+				}
+				auto file = a->cloneFile();
+				if (file) {
+					assets.emplace(a->getUrl(), std::move(file));
+					assetsDirty = true;
+				}
+				a->releaseReadLock(this);
+			}
+		}
+
+		if (!assetsDirty && currentMap) {
+			assetsDirty = (currentMap->size() != assets.size());
+		}
+
+		if (!assetsDirty && _dirtyFlags == DirtyAssets) {
+			_dirty = false;
+			_dirtyFlags = None;
+			return;
+		}
+
+		if (_dirtyFlags & DirtyFontFace) {
+			onSourceUpdated(makeSource(std::move(assets)));
+		} else {
+			auto source = makeSource(std::move(assets));
+			if (_source) {
+				// we can clone layouts form previous source
+				source->clone(_source, [this] (Source *source) {
+					onSourceUpdated(source);
+				});
+			} else {
+				onSourceUpdated(source);
+			}
+		}
+	}
+
+	_dirty = false;
+	_dirtyFlags = None;
+}
+
+Rc<Source> Controller::makeSource(AssetMap && map) {
+	return Rc<Source>::create(FontFaceMap(_fontFaces), _callback, _scale, SearchDirs(_searchDir), std::move(map));
+}
+
+void Controller::onSourceUpdated(Source *s) {
+	_source = s;
+	setDirty();
+	onSource(this, s);
+}
+
+void Controller::onAssets(const Vector<Asset *> &assets) {
+	auto oldAssets = std::move(_assets);
+	_assets.clear();
+	for (auto &it : assets) {
+		_assets.emplace_back(std::bind(&Controller::onAssetUpdated, this, it), it);
+		if (it->isDownloadAvailable()) {
+			it->download();
+		}
+	}
+	if (getReferenceCount() > 1) {
+		if (_assets.empty()) {
+			_dirtyFlags |= DirtyAssets;
+			performSourceUpdate();
+		} else {
+			bool update = true;
+			for (auto &it : _assets) {
+				if (!it->isReadAvailable()) {
+					update = false;
+					break;
+				}
+			}
+			if (update) {
+				_dirtyFlags |= DirtyAssets;
+				performSourceUpdate();
+			}
+		}
+	}
+	release();
+}
+
+void Controller::onAssetUpdated(Asset *a) {
+	bool downloadReady = true;
+	for (auto &it : _assets) {
+		if (it->isDownloadInProgress() || it->isWriteLocked() || !it->isReadAvailable()) {
+			downloadReady = false;
+			break;
+		}
+	}
+
+	if (downloadReady) {
+		_dirtyFlags |= DirtyAssets;
+		performSourceUpdate();
+	}
 }
 
 NS_SP_EXT_END(font)

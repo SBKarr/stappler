@@ -11,7 +11,7 @@
 NS_SP_EXT_BEGIN(rich_text)
 
 Object::Value::Value() {
-	memset(this, 0, sizeof(Value));
+	memset((void*)this, 0, sizeof(Value));
 }
 
 Object::Value::Value(Ref &&v) : ref(std::move(v)) { }
@@ -113,12 +113,12 @@ Outline Outline::border(const OutlineStyle &style, float swidth, float emBase, f
 
 static Rect getLabelLineStartRect(const Label &l, uint16_t lineId, float density, uint16_t c) {
 	Rect rect;
-	auto &line = l.lines.at(lineId);
-	if (line.second > 0) {
-		auto firstChar = l.chars.at(MAX(line.first, c));
-		auto lastChar = l.chars.at(line.first + line.second - 1);
-		rect.origin = Vec2((firstChar.posX) / density, (firstChar.posY) / density - line.height / density);
-		rect.size = Size((lastChar.posX + lastChar.xAdvance() - firstChar.posX) / density, line.height / density);
+	const font::LineSpec &line = l._format.lines.at(lineId);
+	if (line.count > 0) {
+		const font::CharSpec & firstChar = l._format.chars.at(MAX(line.start, c));
+		const font::CharSpec & lastChar = l._format.chars.at(line.start + line.count - 1);
+		rect.origin = Vec2((firstChar.pos) / density, (line.pos) / density - line.height / density);
+		rect.size = Size((lastChar.pos + lastChar.advance - firstChar.pos) / density, line.height / density);
 	}
 
 	return rect;
@@ -126,54 +126,54 @@ static Rect getLabelLineStartRect(const Label &l, uint16_t lineId, float density
 
 static Rect getLabelLineEndRect(const Label &l, uint16_t lineId, float density, uint16_t c) {
 	Rect rect;
-	auto &line = l.lines.at(lineId);
-	if (line.second > 0) {
-		auto firstChar = l.chars.at(line.first);
-		auto lastChar = l.chars.at(MIN(line.first + line.second - 1, c));
-		rect.origin = Vec2((firstChar.posX) / density, (firstChar.posY) / density - line.height / density);
-		rect.size = Size((lastChar.posX + lastChar.xAdvance() - firstChar.posX) / density, line.height / density);
+	const font::LineSpec &line = l._format.lines.at(lineId);
+	if (line.count > 0) {
+		const font::CharSpec & firstChar = l._format.chars.at(line.start);
+		const font::CharSpec & lastChar = l._format.chars.at(MIN(line.start + line.count - 1, c));
+		rect.origin = Vec2((firstChar.pos) / density, (line.pos) / density - line.height / density);
+		rect.size = Size((lastChar.pos + lastChar.advance - firstChar.pos) / density, line.height / density);
 	}
 	return rect;
 }
 
 static cocos2d::Rect getCharsRect(const Label &l, uint16_t lineId, uint16_t firstCharId, uint16_t lastCharId, float density) {
 	Rect rect;
-	auto &line = l.lines.at(lineId);
-	auto firstChar = l.chars.at(firstCharId);
-	auto lastChar = l.chars.at(lastCharId);
-	rect.origin = Vec2((firstChar.posX) / density, (firstChar.posY) / density - line.height / density);
-	rect.size = Size((lastChar.posX + lastChar.xAdvance() - firstChar.posX) / density, line.height / density);
+	const font::LineSpec & line = l._format.lines.at(lineId);
+	const font::CharSpec & firstChar = l._format.chars.at(firstCharId);
+	const font::CharSpec & lastChar = l._format.chars.at(lastCharId);
+	rect.origin = Vec2((firstChar.pos) / density, (line.pos) / density - line.height / density);
+	rect.size = Size((lastChar.pos + lastChar.advance - firstChar.pos) / density, line.height / density);
 	return rect;
 }
 
 Rect Label::getLineRect(uint16_t lineId, float density, const Vec2 &origin) {
-	if (lineId >= lines.size()) {
+	if (lineId >= _format.lines.size()) {
 		return Rect::ZERO;
 	}
-	return getLineRect(lines[lineId], density, origin);
+	return getLineRect(_format.lines[lineId], density, origin);
 }
 
-Rect Label::getLineRect(const Formatter::LineSpec &line, float density, const Vec2 &origin) {
+Rect Label::getLineRect(const font::LineSpec &line, float density, const Vec2 &origin) {
 	Rect rect;
-	if (line.second > 0) {
-		auto firstChar = chars.at(line.first);
-		auto lastChar = chars.at(line.first + line.second - 1);
-		rect.origin = Vec2((firstChar.posX) / density + origin.x, (firstChar.posY) / density - line.height / density + origin.y);
-		rect.size = Size((lastChar.posX + lastChar.xAdvance() - firstChar.posX) / density, line.height / density);
+	if (line.count > 0) {
+		const font::CharSpec & firstChar = _format.chars.at(line.start);
+		const font::CharSpec & lastChar = _format.chars.at(line.start + line.count - 1);
+		rect.origin = Vec2((firstChar.pos) / density + origin.x, (line.pos) / density - line.height / density + origin.y);
+		rect.size = Size((lastChar.pos + lastChar.advance - firstChar.pos) / density, line.height / density);
 	}
 	return rect;
 }
 
 uint16_t Label::getLineForCharId(uint16_t id) {
 	uint16_t n = 0;
-	for (auto &it : lines) {
-		if (id >= it.first && id < it.first + it.second) {
+	for (auto &it : _format.lines) {
+		if (id >= it.start && id < it.start + it.count) {
 			return n;
 		}
 		n++;
 	}
-	if (n >= lines.size()) {
-		n = lines.size() - 1;
+	if (n >= _format.lines.size()) {
+		n = _format.lines.size() - 1;
 	}
 	return n;
 }
@@ -449,8 +449,8 @@ bool FloatContext::pushFloatingNodeToNewStack(Layout &lo, Layout &l, FloatStack 
 	return true;
 }
 
-InlineContext::InlineContext(FontSet *set, float density)
-: reader(set, &(label.chars), &(label.lines), density) { }
+InlineContext::InlineContext(font::Source *set, float density)
+: reader(set, &(label._format), density) { }
 
 void InlineContext::pushNode(const Node *node, const NodeCallback &cb) {
 	if (!finalized) {
@@ -494,7 +494,7 @@ void InlineContext::finalize() {
 }
 void InlineContext::reset() {
 	finalized = false;
-	reader.reset(&(label.chars), &(label.lines));
+	reader.reset(&label._format);
 }
 
 NS_SP_EXT_END(rich_text)

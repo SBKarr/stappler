@@ -41,8 +41,8 @@
 		844637221B1EDCC500CA9857 /* MaterialMetrics.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 844636F01B1EDCC500CA9857 /* MaterialMetrics.cpp */; };
 		844637241B1EDCC500CA9857 /* MaterialResize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 844636F51B1EDCC500CA9857 /* MaterialResize.cpp */; };
 		844637251B1EDCC500CA9857 /* MaterialResourceManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 844636F71B1EDCC500CA9857 /* MaterialResourceManager.cpp */; };
-		844637261B1EDCC500CA9857 /* MaterialFont.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 844636FA1B1EDCC500CA9857 /* MaterialFont.cpp */; };
-		844637271B1EDCC500CA9857 /* MaterialLabel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 844636FC1B1EDCC500CA9857 /* MaterialLabel.cpp */; };
+		849E37DD1DDB681100CB045E /* MaterialLabel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 849E37DB1DDB681100CB045E /* MaterialLabel.cpp */; };
+		849E37EF1DDB71EE00CB045E /* MaterialUserFontConfig.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 849E37ED1DDB71EE00CB045E /* MaterialUserFontConfig.cpp */; };
 		84EA86441BB16FF200FB1276 /* MaterialSidebarLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84EA86401BB16FF200FB1276 /* MaterialSidebarLayout.cpp */; };
 		84EA86451BB16FF200FB1276 /* MaterialToolbarLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84EA86421BB16FF200FB1276 /* MaterialToolbarLayout.cpp */; };
 		84F5BC691C0700EE00F4CF4F /* MaterialImageLayer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84F5BC671C0700EE00F4CF4F /* MaterialImageLayer.cpp */; };
@@ -131,12 +131,12 @@
 		844636F61B1EDCC500CA9857 /* MaterialResize.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialResize.h; sourceTree = "<group>"; };
 		844636F71B1EDCC500CA9857 /* MaterialResourceManager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialResourceManager.cpp; sourceTree = "<group>"; };
 		844636F81B1EDCC500CA9857 /* MaterialResourceManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialResourceManager.h; sourceTree = "<group>"; };
-		844636FA1B1EDCC500CA9857 /* MaterialFont.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialFont.cpp; sourceTree = "<group>"; };
-		844636FB1B1EDCC500CA9857 /* MaterialFont.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialFont.h; sourceTree = "<group>"; };
-		844636FC1B1EDCC500CA9857 /* MaterialLabel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialLabel.cpp; sourceTree = "<group>"; };
-		844636FD1B1EDCC500CA9857 /* MaterialLabel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialLabel.h; sourceTree = "<group>"; };
 		846690021BBAC83700612268 /* material-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "material-Prefix.pch"; sourceTree = SOURCE_ROOT; };
 		846690031BBAC86D00612268 /* Material.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Material.h; sourceTree = "<group>"; };
+		849E37DB1DDB681100CB045E /* MaterialLabel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialLabel.cpp; sourceTree = "<group>"; };
+		849E37DC1DDB681100CB045E /* MaterialLabel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialLabel.h; sourceTree = "<group>"; };
+		849E37ED1DDB71EE00CB045E /* MaterialUserFontConfig.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialUserFontConfig.cpp; sourceTree = "<group>"; };
+		849E37EE1DDB71EE00CB045E /* MaterialUserFontConfig.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialUserFontConfig.h; sourceTree = "<group>"; };
 		84EA86401BB16FF200FB1276 /* MaterialSidebarLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialSidebarLayout.cpp; sourceTree = "<group>"; };
 		84EA86411BB16FF200FB1276 /* MaterialSidebarLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialSidebarLayout.h; sourceTree = "<group>"; };
 		84EA86421BB16FF200FB1276 /* MaterialToolbarLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialToolbarLayout.cpp; sourceTree = "<group>"; };
@@ -165,7 +165,6 @@
 				844636981B1EDCC500CA9857 /* data */,
 				844636AC1B1EDCC500CA9857 /* nodes */,
 				844636E91B1EDCC500CA9857 /* resources */,
-				844636F91B1EDCC500CA9857 /* typography */,
 				846690021BBAC83700612268 /* material-Prefix.pch */,
 				846690031BBAC86D00612268 /* Material.h */,
 			);
@@ -340,6 +339,8 @@
 				844636EF1B1EDCC500CA9857 /* MaterialIconSources.h */,
 				8445A38D1DAB72A6006FF988 /* MaterialIconSprite.cpp */,
 				8445A38E1DAB72A6006FF988 /* MaterialIconSprite.h */,
+				849E37DB1DDB681100CB045E /* MaterialLabel.cpp */,
+				849E37DC1DDB681100CB045E /* MaterialLabel.h */,
 				844636F01B1EDCC500CA9857 /* MaterialMetrics.cpp */,
 				844636F11B1EDCC500CA9857 /* MaterialMetrics.h */,
 				844636F21B1EDCC500CA9857 /* MaterialMetricsInline.h */,
@@ -347,19 +348,10 @@
 				844636F61B1EDCC500CA9857 /* MaterialResize.h */,
 				844636F71B1EDCC500CA9857 /* MaterialResourceManager.cpp */,
 				844636F81B1EDCC500CA9857 /* MaterialResourceManager.h */,
+				849E37ED1DDB71EE00CB045E /* MaterialUserFontConfig.cpp */,
+				849E37EE1DDB71EE00CB045E /* MaterialUserFontConfig.h */,
 			);
 			path = resources;
-			sourceTree = "<group>";
-		};
-		844636F91B1EDCC500CA9857 /* typography */ = {
-			isa = PBXGroup;
-			children = (
-				844636FA1B1EDCC500CA9857 /* MaterialFont.cpp */,
-				844636FB1B1EDCC500CA9857 /* MaterialFont.h */,
-				844636FC1B1EDCC500CA9857 /* MaterialLabel.cpp */,
-				844636FD1B1EDCC500CA9857 /* MaterialLabel.h */,
-			);
-			path = typography;
 			sourceTree = "<group>";
 		};
 		84F5BC661C0700EE00F4CF4F /* image */ = {
@@ -436,8 +428,8 @@
 				844637061B1EDCC500CA9857 /* MaterialImage.cpp in Sources */,
 				8446370E1B1EDCC500CA9857 /* MaterialFloatingMenu.cpp in Sources */,
 				844637141B1EDCC500CA9857 /* MaterialLinearProgress.cpp in Sources */,
+				849E37DD1DDB681100CB045E /* MaterialLabel.cpp in Sources */,
 				29DFCAC31D09915000AAD2E5 /* MaterialGalleryScroll.cpp in Sources */,
-				844637261B1EDCC500CA9857 /* MaterialFont.cpp in Sources */,
 				844637221B1EDCC500CA9857 /* MaterialMetrics.cpp in Sources */,
 				844637181B1EDCC500CA9857 /* MaterialForegroundLayer.cpp in Sources */,
 				8446371A1B1EDCC500CA9857 /* MaterialScroll.cpp in Sources */,
@@ -455,8 +447,8 @@
 				8441FB3C1BB3D6CE009DC87A /* MaterialScrollSlice.cpp in Sources */,
 				844637071B1EDCC500CA9857 /* MaterialNode.cpp in Sources */,
 				8446370B1B1EDCC500CA9857 /* MaterialFloatingActionButton.cpp in Sources */,
-				844637271B1EDCC500CA9857 /* MaterialLabel.cpp in Sources */,
 				8446371F1B1EDCC500CA9857 /* MaterialColors.cpp in Sources */,
+				849E37EF1DDB71EE00CB045E /* MaterialUserFontConfig.cpp in Sources */,
 				844637211B1EDCC500CA9857 /* MaterialIconSources.cpp in Sources */,
 				844637101B1EDCC500CA9857 /* MaterialMenuButton.cpp in Sources */,
 				844637091B1EDCC500CA9857 /* MaterialButtonIcon.cpp in Sources */,

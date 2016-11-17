@@ -15,19 +15,12 @@
 NS_SP_EXT_BEGIN(resource)
 
 void generateIconSet(IconSet::Config &&, const IconSet::Callback &callback);
-void generateFontSet(FontSet::Config &&, const FontSet::Callback &callback);
 
-void acquireFontAsset(const std::set<std::string> &urls, const std::function<void(const std::vector<Asset *> &)> &);
+void acquireFontAsset(const Set<String> &urls, const Function<void(const Vector<Asset *> &)> &);
 
-std::set<std::string> getConfigUrls(const FontSet::Config &);
-std::set<std::string> getRequestsUrls(const std::vector<FontRequest> &);
-std::set<std::string> getRequestUrls(const FontRequest &);
-std::set<std::string> getReceiptUrls(const FontRequest::Receipt &);
-bool isReceiptUrl(const std::string &);
+bool isReceiptUrl(const String &);
 
 Thread &thread();
-
-uint64_t getReceiptHash(const FontRequest::Receipt &r,  const cocos2d::Map<std::string, Asset *> &assets);
 
 void setFallbackFont(const std::string &);
 const std::string &getFallbackFont();

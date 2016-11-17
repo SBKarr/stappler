@@ -72,9 +72,6 @@ protected:
 
 	virtual std::pair<float, float> onToolbarHeight();
 
-	float _toolbarMinLandscape = 0.0f, _toolbarMinPortrait = 0.0f;
-	float _toolbarMaxLandscape = nan(), _toolbarMaxPortrait = nan();
-
 	bool _flexibleToolbar = true;
 	bool _forwardProgress = false;
 

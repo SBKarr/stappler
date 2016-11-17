@@ -135,6 +135,13 @@ bool DynamicBatchScene::init() {
 void DynamicBatchScene::visit(cocos2d::Renderer *r, const Mat4& t, uint32_t f, ZPath &zPath) {
 	onFrameBegin(this);
 
+	if (_clearDelay == 1) {
+		_shouldClear = true;
+		_clearDelay = 0;
+	} else if (_clearDelay > 0) {
+		-- _clearDelay;
+	}
+
 	if (_batchingEnabled) {
 		for (auto &it : _map) {
 			it.second.cmdInit = false;
@@ -196,8 +203,12 @@ bool DynamicBatchScene::isBatchingEnabled() const {
 	return _batchingEnabled;
 }
 
-void DynamicBatchScene::clearCachedMaterials() {
-	_shouldClear = true;
+void DynamicBatchScene::clearCachedMaterials(bool force) {
+	if (force) {
+		_shouldClear = true;
+	} else {
+		_clearDelay = 10;
+	}
 }
 
 NS_SP_END

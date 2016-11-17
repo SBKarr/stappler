@@ -8,17 +8,9 @@
 #ifndef LIBS_STAPPLER_FEATURES_TEXTURE_SPTEXTURECACHE_H_
 #define LIBS_STAPPLER_FEATURES_TEXTURE_SPTEXTURECACHE_H_
 
-#include "SPDefine.h"
+#include "SPGLProgramSet.h"
 #include "SPEventHandler.h"
 #include "base/CCMap.h"
-
-
-NS_CC_BEGIN
-
-class GLView;
-
-NS_CC_END
-
 
 NS_SP_BEGIN
 
@@ -26,18 +18,23 @@ class TextureCache : public EventHandler {
 public:
 	static constexpr float GetDelayTime() { return 1.0f; }
 
-	using Callback = std::function<void(cocos2d::Texture2D *)>;
-	using CallbackVec = std::vector<Callback>;
-	using CallbackMap = std::map<std::string, CallbackVec>;
+	using Callback = Function<void(cocos2d::Texture2D *)>;
+	using CallbackVec = Vector<Callback>;
+	using CallbackMap = Map<String, CallbackVec>;
 
 	static TextureCache *getInstance();
 	static Thread &thread();
 
+	static Rc<cocos2d::Texture2D> uploadTexture(const Bitmap &);
+
 	~TextureCache();
+
+	GLProgramSet *getBatchPrograms() const;
+	GLProgramSet *getRawPrograms() const;
 
 	void update(float dt);
 
-	void addTexture(const std::string &, const Callback & = nullptr, bool forceReload = false);
+	void addTexture(const String &, const Callback & = nullptr, bool forceReload = false);
 	void addTexture(Asset *, const Callback & = nullptr, bool forceReload = false);
 
 	bool hasTexture(const std::string &path);
@@ -83,12 +80,15 @@ protected:
 
 	void uploadTextureBackground(Rc<cocos2d::Texture2D> &, const Bitmap &);
 	void uploadTextureBackground(Vector<Rc<cocos2d::Texture2D>> &, const Vector<Bitmap> &);
-	void initThread(cocos2d::GLView *);
 
+	uint32_t _contextRetained = 0;
 	bool _registred = false;
-	cocos2d::Map<std::string, cocos2d::Texture2D *> _textures;
-	std::map<cocos2d::Texture2D *, std::pair<float, std::string>> _texturesScore;
+	cocos2d::Map<String, cocos2d::Texture2D *> _textures;
+	Map<cocos2d::Texture2D *, std::pair<float, String>> _texturesScore;
 	CallbackMap _callbackMap;
+
+	Rc<GLProgramSet> _batchDrawing;
+	Rc<GLProgramSet> _rawDrawing;
 };
 
 NS_SP_END

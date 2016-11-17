@@ -25,9 +25,9 @@ public:
 		bool isSplit;
 	};
 
-	Result(const MediaParameters &, FontSet *cfg, Document *doc);
+	Result(const MediaParameters &, font::Source *cfg, Document *doc);
 
-	FontSet *getFontSet() const;
+	font::Source *getFontSet() const;
 	const MediaParameters &getMedia() const;
 	Document *getDocument() const;
 
@@ -60,7 +60,7 @@ protected:
 
 	Color4B _background;
 
-	Rc<FontSet> _fontSet;
+	Rc<font::Source> _fontSet;
 	Rc<Document> _document;
 
 	size_t _numPages = 1;

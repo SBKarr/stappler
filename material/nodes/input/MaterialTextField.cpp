@@ -49,7 +49,7 @@ bool TextField::init(FontType font, float width) {
 	_label = construct<Label>(font);
 	_label->setWidth(_width);
 	_label->setMaxLines(1);
-	_label->setVerticalAlign(RichLabel::Style::VerticalAlign::Baseline);
+	_label->setVerticalAlign(Label::VerticalAlign::Baseline);
 	_label->setAnchorPoint(Vec2(0.0f, 1.0f));
 	addChild(_label, 2);
 

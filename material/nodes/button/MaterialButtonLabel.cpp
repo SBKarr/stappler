@@ -18,7 +18,7 @@ bool ButtonLabel::init(const TapCallback &tapCallback, const TapCallback &longTa
 	_label = construct<Label>(FontType::Button);
 	_label->setAnchorPoint(cocos2d::Vec2(0, 0.5));
 	_label->setMaxLines(1);
-	_label->setHyphens(stappler::RichLabel::Style::Hyphens::None);
+	_label->setHyphens(Label::Hyphens::None);
 	addChild(_label);
 
 	setContentSize(Size(0.0f, _label->getFontHeight() / _label->getDensity() + 12.0f));

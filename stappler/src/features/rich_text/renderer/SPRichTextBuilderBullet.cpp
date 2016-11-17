@@ -176,17 +176,17 @@ void Builder::drawListItemBullet(Layout &l, float parentPosY) {
 	FontStyle fStyle = l.node->getStyle().compileFontStyle(this);
 	ParagraphStyle pStyle = l.node->getStyle().compileParagraphLayout(this);
 	pStyle.textIndent.value = 0.0f; pStyle.textIndent.metric = style::Size::Metric::Px;
-	auto baseFont = getFont(fStyle);
+	auto baseFont = _fontSet->getLayout(fStyle)->getData();
 
 	Label label;
-	Formatter reader(getFontSet(), &(label.chars), &(label.lines), _media.density);
+	Formatter reader(getFontSet(), &label._format, _media.density);
 	reader.setOpticalAlignment(false);
 	initFormatter(l, pStyle, parentPosY, reader, true);
 
 	if (parent && parent->listItem != Layout::ListNone) {
 		TextStyle textStyle = l.node->getStyle().compileTextLayout(this);
 		WideString str = getListItemString(parent, l);
-		reader.read(baseFont, textStyle, str, 0, 0);
+		reader.read(fStyle, textStyle, str, 0, 0);
 	}
 
 	reader.finalize();
@@ -197,7 +197,7 @@ void Builder::drawListItemBullet(Layout &l, float parentPosY) {
 	float x = 0, w = _media.surfaceSize.width;
 	std::tie(x, w) = getFloatBounds(&l, origin.y / density, finalHeight);
 
-	l.postObjects.emplace_back(Rect(x - l.position.x - finalWidth - pStyle.listOffset.computeValue(l.size.width, baseFont->getHeight()),
+	l.postObjects.emplace_back(Rect(x - l.position.x - finalWidth - pStyle.listOffset.computeValue(l.size.width, baseFont->metrics.height),
 			origin.y / density - l.position.y, finalWidth, finalHeight), std::move(label));
 }
 

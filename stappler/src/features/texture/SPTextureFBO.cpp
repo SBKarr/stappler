@@ -152,26 +152,4 @@ bool TextureFBO::drawOutline(uint16_t x, uint16_t y, uint16_t width, uint16_t he
 	return false;
 }
 
-bool TextureFBO::drawChar(const Font::CharSpec &c, uint16_t xOffset, uint16_t yOffset, bool flip) {
-	auto id = _quads.emplace();
-
-	uint16_t width = c.uCharPtr->width();
-	uint16_t height = c.uCharPtr->height();
-
-	_quads.setTextureRect(id, c.uCharPtr->rect, _image->getWidth(), _image->getHeight(), false, true);
-
-	auto posX = xOffset + c.posX + c.uCharPtr->xOffset;
-	auto posY = yOffset + ((flip)?(-c.posY):c.posY) + c.uCharPtr->yOffset + c.uCharPtr->font->getDescender();
-
-	_quads.setGeometry(id, cocos2d::Vec2(posX, posY), cocos2d::Size(width, height), 0.0f);
-	_quads.setColor(id, c.color);
-
-	if (c.underline > 0) {
-		drawRect(xOffset + c.posX, yOffset + ((flip)?(-c.posY):c.posY) + c.uCharPtr->font->getUnderlinePosition(),
-				c.uCharPtr->xAdvance, c.uCharPtr->font->getUnderlineThickness() * c.underline, c.color);
-	}
-
-	return true;
-}
-
 NS_SP_END

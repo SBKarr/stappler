@@ -148,11 +148,13 @@ void Button::onLongPress() {
 }
 bool Button::onPressEnd() {
 	animateDeselection();
-	if (_floatingMenuSource) {
-		onOpenMenuSource();
-	}
-	if (_tapCallback) {
-		_tapCallback();
+	if (_enabled) {
+		if (_floatingMenuSource) {
+			onOpenMenuSource();
+		}
+		if (_tapCallback) {
+			_tapCallback();
+		}
 	}
 	return true;
 }

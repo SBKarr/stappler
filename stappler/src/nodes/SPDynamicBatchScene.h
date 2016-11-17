@@ -28,7 +28,7 @@ public:
     virtual void setBatchingEnabled(bool value);
     virtual bool isBatchingEnabled() const;
 
-    virtual void clearCachedMaterials();
+    virtual void clearCachedMaterials(bool force = false);
 
 protected:
     friend class DynamicBatchSceneRenderer;
@@ -45,6 +45,7 @@ protected:
 	virtual AtlasCacheNode &getAtlasForMaterial(uint32_t id, DynamicBatchCommand *cmd);
 
 	bool _batchingEnabled = true;
+	size_t _clearDelay = 0;
 	bool _shouldClear = false;
 	std::map<uint32_t, AtlasCacheNode> _map;
 };

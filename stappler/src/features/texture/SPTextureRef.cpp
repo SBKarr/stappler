@@ -114,9 +114,6 @@ cocos2d::Texture2D *TextureRef::generateTexture() const { return _interface->gen
 bool TextureRef::drawRect(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const cocos2d::Color4B &color) {
 	return _interface->drawRect(x, y, width, height, color);
 }
-bool TextureRef::drawChar(const Font::CharSpec &c, uint16_t xOffset, uint16_t yOffset, bool flip) {
-	return _interface->drawChar(c, xOffset, yOffset, flip);
-}
 bool TextureRef::drawOutline(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t outline, const cocos2d::Color4B &color) {
 	return _interface->drawOutline(x, y, width, height, outline, color);
 }

@@ -13,6 +13,7 @@
 #include "SPGLProgramSet.h"
 #include "SPLayer.h"
 #include "SPEventListener.h"
+#include "SPTextureCache.h"
 
 #include "renderer/CCGLProgram.h"
 #include "renderer/CCGLProgramState.h"
@@ -32,7 +33,6 @@ bool DynamicLabel::init(Source *source, const DescriptionStyle &style, const Str
 
     auto el = Rc<EventListener>::create();
     el->onEventWithObject(Source::onTextureUpdated, source, std::bind(&DynamicLabel::onTextureUpdated, this));
-    el->onEventWithObject(Source::onLayoutUpdated, source, std::bind(&DynamicLabel::onLayoutUpdated, this));
     addComponent(el);
 
     _listener = el;
@@ -130,7 +130,7 @@ void DynamicLabel::updateLabel() {
 			if (_maxChars > 0 && drawedChars + len > _maxChars) {
 				len = _maxChars - drawedChars;
 			}
-			if (!formatter.read(params.getFontStyle(), params.getTextStyle(), start, len)) {
+			if (!formatter.read(params.font, params.text, start, len)) {
 				drawedChars += len;
 				break;
 			}
@@ -138,7 +138,7 @@ void DynamicLabel::updateLabel() {
 			if (_maxChars > 0 && drawedChars + len > _maxChars) {
 				len = _maxChars - drawedChars;
 			}
-			if (!formatter.read(params.getFontStyle(), params.getTextStyle(), start, len)) {
+			if (!formatter.read(params.font, params.text, start, len)) {
 				drawedChars += len;
 				break;
 			}
@@ -162,10 +162,10 @@ void DynamicLabel::visit(cocos2d::Renderer *r, const Mat4& t, uint32_t f, ZPath 
 	}
 
 	if (_formatDirty) {
-		updateQuads();
-	} else if (_colorDirty) {
+		updateQuads(f);
+	}
+	if (_colorDirty) {
 		updateColorQuads();
-		_colorDirty = false;
 	}
 	LayeredBatchNode::visit(r, t, f, zPath);
 }
@@ -191,7 +191,7 @@ void DynamicLabel::updateColorQuads() {
 		for (size_t i = 0; i < _textures.size(); ++ i) {
 			DynamicQuadArray * quads = _textures[i].quads;
 			auto &cMap = _colorMap[i];
-			if (quads->size() == cMap.size() * 2) {
+			if (quads->size() * 2 == cMap.size()) {
 				for (size_t j = 0; j < quads->size(); ++j) {
 					if (!cMap[j * 2]) { quads->setColor3B(j, _displayedColor); }
 					if (!cMap[j * 2 + 1]) { quads->setOpacity(j, _displayedOpacity); }
@@ -199,6 +199,7 @@ void DynamicLabel::updateColorQuads() {
 			}
 		}
 	}
+	_colorDirty = false;
 }
 
 void DynamicLabel::setDensity(float density) {
@@ -225,10 +226,10 @@ uint16_t DynamicLabel::getFontHeight() const {
 }
 
 cocos2d::GLProgramState *DynamicLabel::getProgramStateA8() const {
-	return cocos2d::GLProgramState::getOrCreateWithGLProgram(GLProgramSet::getInstance()->getProgram(GLProgramSet::DynamicBatchA8Highp));
+	return cocos2d::GLProgramState::getOrCreateWithGLProgram(TextureCache::getInstance()->getBatchPrograms()->getProgram(GLProgramSet::DynamicBatchA8Highp));
 }
 
-void DynamicLabel::updateQuads() {
+void DynamicLabel::updateQuads(uint32_t f) {
 	if (!_source) {
 		return;
 	}
@@ -243,8 +244,12 @@ void DynamicLabel::updateQuads() {
 	}
 
 	if (!_source->isDirty() && !_source->getTextures().empty()) {
-		_quadRequestTime = Time::now();
-		updateQuadsBackground(_source, _format);
+		if (f & FLAGS_FORCE_RENDERING) {
+			updateQuadsForeground(_source, _format);
+		} else {
+			_quadRequestTime = Time::now();
+			updateQuadsBackground(_source, _format);
+		}
 	}
 
 	_formatDirty = false;
@@ -260,6 +265,11 @@ void DynamicLabel::onLayoutUpdated() {
 
 void DynamicLabel::onQuads(const Time &t, const Vector<Rc<cocos2d::Texture2D>> &newTex,
 		Vector<Rc<DynamicQuadArray>> &&newQuads, Vector<Vector<bool>> &&cMap) {
+
+	//log::format("Label", "onQuads %p %lu %s", this, _updateCount, _string8.c_str());
+
+	++ _updateCount;
+
 	if (t < _quadRequestTime) {
 		return;
 	}

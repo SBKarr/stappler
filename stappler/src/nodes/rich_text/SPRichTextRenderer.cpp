@@ -25,10 +25,18 @@ NS_SP_EXT_BEGIN(rich_text)
 static constexpr const float PAGE_SPLIT_COEF = (4.0f / 3.0f);
 static constexpr const float PAGE_SPLIT_WIDTH = (800.0f);
 
+Renderer::~Renderer() {
+	if (_drawer) {
+		_drawer->free();
+	}
+}
+
 bool Renderer::init(const Vector<String> &ids) {
 	if (!Component::init()) {
 		return false;
 	}
+
+	_drawer = Rc<Drawer>::create();
 
 	_source.setCallback(std::bind(&Renderer::onSource, this));
 
@@ -44,6 +52,9 @@ void Renderer::onVisit(cocos2d::Renderer *r, const Mat4& t, uint32_t f, const ZP
 	Component::onVisit(r, t, f, zPath);
 	if (_renderingDirty && !_renderingInProgress && _enabled && _source) {
 		requestRendering();
+	}
+	if (_drawer) {
+		_drawer->update();
 	}
 }
 
@@ -69,6 +80,10 @@ Document *Renderer::getDocument() const {
 
 Result *Renderer::getResult() const {
 	return _result;
+}
+
+Drawer *Renderer::getDrawer() const {
+	return _drawer;
 }
 
 MediaResolver Renderer::getMediaResolver(const Vector<String> &opts) const {
@@ -172,7 +187,7 @@ void Renderer::setScriptingValue(style::Scripting value) {
 		_renderingDirty = true;
 	}
 }
-void Renderer::setHyphens(rich_text::HyphenMap *map) {
+void Renderer::setHyphens(font::HyphenMap *map) {
 	_hyphens = map;
 }
 
@@ -214,6 +229,7 @@ bool Renderer::hasFlag(RenderFlag::Flag flag) const {
 void Renderer::onSource() {
 	auto s = getSource();
 	if (s && s->isReady()) {
+		_drawer->clearCache();
 		_renderingDirty = true;
 		requestRendering();
 	}
@@ -223,10 +239,10 @@ bool Renderer::requestRendering() {
 	if (!_enabled || _renderingInProgress || _surfaceSize.equals(cocos2d::Size::ZERO) || !s) {
 		return false;
 	}
-	FontSet *fontSet = nullptr;
+	font::Source *fontSet = nullptr;
 	Document *document = nullptr;
 	if (s->isReady()) {
-		fontSet = s->getFontSet();
+		fontSet = s->getSource();
 		document = s->getDocument();
 	}
 

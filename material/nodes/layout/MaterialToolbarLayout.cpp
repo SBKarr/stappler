@@ -101,21 +101,11 @@ bool ToolbarLayout::getFlexibleToolbar() const {
 }
 
 void ToolbarLayout::setMinToolbarHeight(float portrait, float landscape) {
-	_toolbarMinPortrait = portrait;
-	if (isnan(landscape)) {
-		_toolbarMinLandscape = portrait;
-	} else {
-		_toolbarMinLandscape = landscape;
-	}
+	_toolbar->setMinToolbarHeight(portrait, landscape);
 	_contentSizeDirty = true;
 }
 void ToolbarLayout::setMaxToolbarHeight(float portrait, float landscape) {
-	_toolbarMaxPortrait = portrait;
-	if (isnan(landscape)) {
-		_toolbarMaxLandscape = portrait;
-	} else {
-		_toolbarMaxLandscape = landscape;
-	}
+	_toolbar->setMaxToolbarHeight(portrait, landscape);
 	_contentSizeDirty = true;
 }
 
@@ -132,40 +122,19 @@ void ToolbarLayout::onToolbarNavButton() {
 Toolbar *ToolbarLayout::setupToolbar(Toolbar *toolbar) {
 	if (!toolbar) {
 		toolbar = construct<material::Toolbar>();
-		toolbar->setColor(material::Color::Grey_300);
-		toolbar->setShadowZIndex(1.5f);
-		toolbar->setMaxActionIcons(2);
-		toolbar->setTitle("Title");
-		toolbar->setNavButtonIcon(material::IconName::Dynamic_Navigation);
-		toolbar->setNavCallback(std::bind(&ToolbarLayout::onToolbarNavButton, this));
-		return toolbar;
-	} else {
-		return toolbar;
 	}
+	toolbar->setColor(material::Color::Grey_300);
+	toolbar->setShadowZIndex(1.5f);
+	toolbar->setMaxActionIcons(2);
+	toolbar->setTitle("Title");
+	toolbar->setNavButtonIcon(material::IconName::Dynamic_Navigation);
+	toolbar->setNavCallback(std::bind(&ToolbarLayout::onToolbarNavButton, this));
+	return toolbar;
 }
 
 std::pair<float, float> ToolbarLayout::onToolbarHeight() {
-	float min, max;
-	if (_contentSize.width > _contentSize.height) { // landscape
-		min = _toolbarMinLandscape;
-		max = _toolbarMaxLandscape;
-	} else { //portrait;
-		min = _toolbarMinPortrait;
-		max = _toolbarMaxPortrait;
-	}
-
-	if (isnan(max)) {
-		max = material::metrics::appBarHeight();
-	}
-	_toolbar->setBasicHeight(material::metrics::appBarHeight());
-
-	if (_flexibleToolbar) {
-		return std::make_pair(min, max);
-	} else {
-		return std::make_pair(max, max);
-	}
+	return _toolbar->onToolbarHeight(_flexibleToolbar);
 }
-
 
 void ToolbarLayout::onPush(ContentLayer *l, bool replace) {
 	FlexibleLayout::onPush(l, replace);

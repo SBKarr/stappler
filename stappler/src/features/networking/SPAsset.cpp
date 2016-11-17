@@ -19,6 +19,64 @@
 
 NS_SP_BEGIN
 
+bool AssetFile::init(Asset *a) {
+	if (!a->tryReadLock(this)) {
+		return false;
+	}
+
+	_mtime = a->getMTime();
+	_id = a->getId();
+	_size = a->getSize();
+	_url = a->getUrl();
+	_contentType = a->getContentType();
+	_etag = a->getETag();
+
+	_path = toString(a->getFilePath(), ".", _ctime);
+	filesystem::copy(a->getFilePath(), _path);
+	a->releaseReadLock(this);
+
+	_exists = filesystem::exists(_path);
+	if (_exists) {
+		_ctime = filesystem::ctime(_path);
+		AssetLibrary::getInstance()->addAssetFile(_path, _url, _id, _ctime);
+		return true;
+	}
+
+	return false;
+}
+
+AssetFile::~AssetFile() {
+	remove();
+}
+
+Bytes AssetFile::readFile() const {
+	if (_exists) {
+		return filesystem::readFile(_path);
+	}
+	return Bytes();
+}
+filesystem::ifile AssetFile::open() const {
+	if (_exists) {
+		return filesystem::openForReading(_path);
+	}
+	return filesystem::ifile();
+}
+
+void AssetFile::remove() {
+	if (_exists) {
+		filesystem::remove(_path);
+		AssetLibrary::getInstance()->removeAssetFile(_path);
+		_exists = false;
+	}
+}
+
+bool AssetFile::match(const Asset *a) const {
+	if (a->getId() == _id && a->getMTime() == _mtime && a->getETag() == _etag && a->getContentType() == _contentType && a->getSize() == _size) {
+		return true;
+	}
+	return false;
+}
+
 Asset::Asset(const data::Value &val, const DownloadCallback &dcb) {
 	for (auto &it : val.asDict()) {
 		if (it.first == "id") {
@@ -232,6 +290,13 @@ void Asset::touch() {
 void Asset::syncWithNetwork() {
 	auto d = Rc<AssetDownload>::create(this, AssetDownload::CacheRequest);
 	d->run();
+}
+
+Rc<AssetFile> Asset::cloneFile() {
+	if (_lock == Lock::Read || _lock == Lock::None) {
+		return Rc<AssetFile>::create(this);
+	}
+	return Rc<AssetFile>();
 }
 
 NS_SP_END

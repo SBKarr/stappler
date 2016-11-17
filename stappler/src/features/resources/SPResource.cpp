@@ -19,8 +19,6 @@
 
 NS_SP_EXT_BEGIN(resource)
 
-FontSet *generateFromConfig(FontSet::Config &&cfg, const cocos2d::Map<std::string, Asset *> &assets);
-
 static Thread s_resourceThread("ResourceLibraryThread");
 
 std::string getFontAssetPath(const std::string &url) {
@@ -28,72 +26,9 @@ std::string getFontAssetPath(const std::string &url) {
 	return toString(dir, "/", string::stdlibHashUnsigned(url), ".asset");
 }
 
-void requestFontSet(FontSet::Config &&cfg, const FontSet::Callback &callback, cocos2d::Map<std::string, Asset *> &&a) {
-	auto &thread = s_resourceThread;
-	auto *cfgPtr = new (FontSet::Config) (std::move(cfg));
-	auto *assets = new cocos2d::Map<std::string, Asset *>();
-	FontSet **newSet = new (FontSet *)(nullptr);
-
-	for (auto &it : a) {
-		if (it.second->tryReadLock(cfgPtr)) {
-			assets->insert(it.first, it.second);
-		}
-	}
-
-	thread.perform([newSet, cfgPtr, assets] (cocos2d::Ref *) -> bool {
-		(*newSet) = generateFromConfig(std::move(*cfgPtr), *assets);
-		return true;
-	}, [newSet, cfgPtr, callback, assets] (cocos2d::Ref *, bool) {
-		if (*newSet) {
-			if (callback) {
-				callback(*newSet);
-			}
-			(*newSet)->release();
-		}
-		for (auto &it : *assets) {
-			it.second->releaseReadLock(cfgPtr);
-		}
-		delete assets;
-		delete newSet;
-		delete cfgPtr;
-	});
-}
-
-void generateFontSet(FontSet::Config &&cfg, const FontSet::Callback &callback) {
-	auto &thread = s_resourceThread;
-	if (thread.isOnThisThread()) {
-		FontSet *newSet = generateFromConfig(std::move(cfg), cocos2d::Map<std::string, Asset *>());
-		if (callback && newSet) {
-			callback(newSet);
-		}
-		if (newSet) {
-			newSet->release();
-		}
-	} else {
-
-		auto urls = getConfigUrls(cfg);
-		if (urls.empty()) {
-			requestFontSet(std::move(cfg), callback, cocos2d::Map<std::string, Asset *>());
-		} else {
-			auto *cfgPtr = new (FontSet::Config) (std::move(cfg));
-			acquireFontAsset(urls, [cfgPtr, callback] (const std::vector<Asset *> &vec) {
-				cocos2d::Map<std::string, Asset *> assets;
-				for (auto &a : vec) {
-					if (a->isReadAvailable() && !a->isWriteLocked()) {
-						assets.insert(a->getUrl(), a);
-					}
-				}
-
-				requestFontSet(std::move(*cfgPtr), callback, std::move(assets));
-				delete cfgPtr;
-			});
-		}
-	}
-}
-
-void acquireFontAsset(const std::set<std::string> &urls, const std::function<void(const std::vector<Asset *> &)> &cb) {
+void acquireFontAsset(const Set<String> &urls, const Function<void(const Vector<Asset *> &)> &cb) {
 	filesystem::mkdir(filesystem::cachesPath("font_assets"));
-	std::vector<AssetLibrary::AssetRequest> vec;
+	Vector<AssetLibrary::AssetRequest> vec;
 	for (auto &it : urls) {
 		vec.push_back(AssetLibrary::AssetRequest(nullptr, it, getFontAssetPath(it)));
 	}
@@ -101,61 +36,23 @@ void acquireFontAsset(const std::set<std::string> &urls, const std::function<voi
 }
 
 
-std::set<std::string> getConfigUrls(const FontSet::Config &cfg) {
-	return getRequestsUrls(cfg.requests);
-}
-
-std::set<std::string> getRequestsUrls(const std::vector<FontRequest> &vec) {
-	std::set<std::string> ret;
-	for (auto &req : vec) {
-		for (auto &r : req.receipt) {
-			if (isReceiptUrl(r)) {
-				ret.insert(r);
-			}
-		}
-	}
-	return ret;
-}
-
-std::set<std::string> getRequestUrls(const FontRequest &req) {
-	return getReceiptUrls(req.receipt);
-}
-
-std::set<std::string> getReceiptUrls(const FontRequest::Receipt &r) {
-	std::set<std::string> ret;
-	for (auto &sources : r) {
-		if (isReceiptUrl(sources)) {
-			ret.insert(sources);
-		}
-	}
-	return ret;
-}
-
 bool isReceiptUrl(const std::string &str) {
-	return str.compare(0, 7, "http://") == 0 || str.compare(0, 8, "https://") == 0;
+	return str.compare(0, 7, "http://") == 0 || str.compare(0, 8, "https://") == 0
+			|| str.compare(0, 6, "ftp://") == 0 || str.compare(0, 7, "ftps://") == 0;
 }
 
 Thread &thread() {
 	return s_resourceThread;
 }
 
-uint64_t getReceiptHash(const FontRequest::Receipt &r,  const cocos2d::Map<std::string, Asset *> &assets) {
-	StringStream str;
-	for (auto &it : r) {
-		if (resource::isReceiptUrl(it)) {
-			auto assetIt = assets.find(it);
-			if (assetIt != assets.end()) {
-				str << it << ":" << assetIt->second->getETag() << ":" << assetIt->second->getMTime() << ";";
-			}
-		} else {
-			str << it << ";";
-		}
-	}
-	auto fallback = getFallbackFont();
-	if (!fallback.empty()) {
-		str << fallback << ";";
-	}
-	return string::stdlibHashUnsigned(str.str());
+static String s_fallbackFont;
+
+void setFallbackFont(const String &str) {
+	s_fallbackFont = str;
+}
+
+const String &getFallbackFont() {
+	return s_fallbackFont;
 }
 
 NS_SP_EXT_END(resource)

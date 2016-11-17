@@ -152,6 +152,7 @@ MenuSource * MenuSourceButton::getNextMenu() const {
 void MenuSourceButton::setSelected(bool value) {
 	if (_selected != value) {
 		_selected = value;
+		setDirty();
 	}
 }
 bool MenuSourceButton::isSelected() const {

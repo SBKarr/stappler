@@ -20,9 +20,6 @@ LabelParameters::DescriptionStyle::DescriptionStyle() {
 	text.whiteSpace = rich_text::style::WhiteSpace::PreWrap;
 }
 
-const LabelParameters::FontParameters &LabelParameters::DescriptionStyle::getFontStyle() const { return font; }
-const LabelParameters::TextParameters &LabelParameters::DescriptionStyle::getTextStyle() const { return text; }
-
 String LabelParameters::DescriptionStyle::getConfigName(bool caps) const {
 	return font.getConfigName(caps);
 }
@@ -45,6 +42,13 @@ LabelParameters::DescriptionStyle LabelParameters::DescriptionStyle::merge(Sourc
 		}
 	}
 	return ret;
+}
+
+bool LabelParameters::DescriptionStyle::operator == (const DescriptionStyle &style) const {
+	return font == style.font && text == style.text && colorDirty == style.colorDirty && opacityDirty == style.opacityDirty;
+}
+bool LabelParameters::DescriptionStyle::operator != (const DescriptionStyle &style) const {
+	return !((*this) == style);
 }
 
 LabelParameters::Style::Value::Value() {

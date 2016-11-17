@@ -14,6 +14,7 @@
 
 #include "SPGestureListener.h"
 #include "SPDataListener.h"
+#include "SPScreen.h"
 
 NS_MD_BEGIN
 
@@ -334,6 +335,65 @@ float Toolbar::getLabelWidth() const {
 		labelWidth -= w;
 	}
 	return labelWidth;
+}
+
+std::pair<float, float> Toolbar::onToolbarHeight(bool flexible) {
+	float min, max;
+	if (_contentSize.width > _contentSize.height) { // landscape
+		min = _toolbarMinLandscape;
+		max = _toolbarMaxLandscape;
+	} else { //portrait;
+		min = _toolbarMinPortrait;
+		max = _toolbarMaxPortrait;
+	}
+
+	if (isnan(max)) {
+		max = getDefaultToolbarHeight();
+	}
+	setBasicHeight(material::metrics::appBarHeight());
+
+	if (flexible) {
+		return std::make_pair(min, max);
+	} else {
+		return std::make_pair(max, max);
+	}
+}
+
+float Toolbar::getDefaultToolbarHeight() const {
+	return material::metrics::appBarHeight();
+}
+
+void Toolbar::setMinToolbarHeight(float portrait, float landscape) {
+	_toolbarMinPortrait = portrait;
+	if (isnan(landscape)) {
+		_toolbarMinLandscape = portrait;
+	} else {
+		_toolbarMinLandscape = landscape;
+	}
+}
+
+void Toolbar::setMaxToolbarHeight(float portrait, float landscape) {
+	_toolbarMaxPortrait = portrait;
+	if (isnan(landscape)) {
+		_toolbarMaxLandscape = portrait;
+	} else {
+		_toolbarMaxLandscape = landscape;
+	}
+}
+
+float Toolbar::getMinToolbarHeight() const {
+	if (Screen::getInstance()->getOrientation().isLandscape()) {
+		return _toolbarMinLandscape;
+	} else {
+		return _toolbarMinPortrait;
+	}
+}
+float Toolbar::getMaxToolbarHeight() const {
+	if (Screen::getInstance()->getOrientation().isLandscape()) {
+		return _toolbarMaxLandscape;
+	} else {
+		return _toolbarMaxPortrait;
+	}
 }
 
 NS_MD_END

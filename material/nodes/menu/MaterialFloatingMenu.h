@@ -14,6 +14,8 @@ NS_MD_BEGIN
 
 class FloatingMenu : public Menu {
 public:
+	using CloseCallback = Function<void ()>;
+
 	enum class Binding {
 		Relative,
 		OriginLeft,
@@ -22,24 +24,29 @@ public:
 
 	virtual bool init(MenuSource *source, const cocos2d::Vec2 &, Binding = Binding::Relative, FloatingMenu *root = nullptr);
 
+	virtual void setCloseCallback(const CloseCallback &);
+	virtual const CloseCallback & getCloseCallback() const;
+
 	virtual void close();
 	virtual void closeRecursive();
 
 	virtual void onEnter() override;
 	virtual void onExit() override;
 
+	virtual void onMenuButton(MenuButton *btn);
+
 protected:
 	virtual void onCapturedTap();
 	virtual float getMenuWidth(MenuSource *source);
 	virtual float getMenuHeight(MenuSource *source);
 	virtual void layoutSubviews() override;
-	virtual void onMenuButton(MenuButton *btn);
 
 	ForegroundLayer *_foreground = nullptr;
 	Vec2 _origin;
 	Size _fullSize;
 	Binding _binding;
 	FloatingMenu *_root = nullptr;
+	CloseCallback _closeCallback = nullptr;
 };
 
 NS_MD_END

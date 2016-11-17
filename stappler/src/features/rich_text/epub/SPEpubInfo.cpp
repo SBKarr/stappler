@@ -115,7 +115,7 @@ bool Info::isEpub(const String &path) {
 							if (cocos2d::unzOpenCurrentFile(filePtr) == UNZ_OK) {
 								Bytes buf; buf.resize("application/epub+zip"_len);
 								auto lread = cocos2d::unzReadCurrentFile(filePtr, buf.data(), unsigned(info.uncompressed_size));
-								if (lread == "application/epub+zip"_len) {
+								if (size_t(lread) >= "application/epub+zip"_len) {
 									if (memcmp(buf.data(), "application/epub+zip", "application/epub+zip"_len) == 0) {
 										ret = true;
 									}

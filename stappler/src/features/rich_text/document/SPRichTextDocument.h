@@ -61,6 +61,7 @@ public:
 	using GalleryMap = Map<String, Vector<String>>;
 	using NamedStyles = Map<String, style::ParameterList>;
 	using CssMap = Map<String, style::CssData>;
+	using FontFaceMap = Map<String, Vector<style::FontFace>>;
 
 	static String getImageName(const String &);
 	static Vector<String> getImageOptions(const String &);
@@ -75,12 +76,11 @@ public:
 
 	virtual bool prepare();
 
+	virtual const FontFaceMap &getFontFaces() const;
+
 	virtual bool isFileExists(const String &) const;
 	virtual Bytes getFileData(const String &);
 	virtual Bitmap getImageBitmap(const String &, const Bitmap::StrideFn &fn = nullptr);
-
-	void setDefaultFontFaces(const HtmlPage::FontMap &);
-	void setDefaultFontFaces(HtmlPage::FontMap &&);
 
 	const Node &getRoot() const;
 	const Vector<HtmlPage> &getContent() const;
@@ -109,28 +109,15 @@ protected:
 	virtual void processMeta(HtmlPage &c, const Vector<Pair<String, String>> &);
 	void updateNodes();
 
-	void processLists(FontConfig &, const Node &, const HtmlPage::FontMap &);
-	void processList(FontConfig &, style::ListStyleType, const style::FontStyleParameters &, const HtmlPage::FontMap &);
-
-	void processSpans(FontConfig &, const Node &, const HtmlPage::FontMap &);
-	void processSpan(FontConfig &, const Node &, const style::FontStyleParameters &, const HtmlPage::FontMap &);
-
-	void forEachFontStyle(const style::ParameterList &style, const Function<void(const style::FontStyleParameters &)> &);
-
-	Vector<const style::FontFace *> selectFontFace(const style::FontStyleParameters &params, const HtmlPage::FontMap &page, const HtmlPage::FontMap &def);
-
 	CssStrings _cssStrings;
 	MediaQueries _mediaQueries;
 
-	HtmlPage::FontMap _defaultFontFaces;
-	FontConfig _fontConfig;
-	Set<String> _fontFamily;
 	ImageMap _images;
-
 	GalleryMap _gallery;
 	Map<String, Node *> _ids;
 	Vector<HtmlPage> _content;
 	CssMap _css;
+	FontFaceMap _fontFaces;
 
 	Bytes _data;
 	String _filePath;

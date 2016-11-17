@@ -22,41 +22,33 @@ bool Builder::processInlineNode(Layout &l, const Node &node, BlockStyle &&style,
 	const float density = _media.density;
 	const Style &nodeStyle = node.getStyle();
 	auto fstyle = nodeStyle.compileFontStyle(this);
-	auto font = getFont(fstyle);
+	auto font = _fontSet->getLayout(fstyle)->getData();
 	if (!font) {
 		return false;
 	}
 
-	auto front = (uint16_t)((style.marginLeft.computeValue(l.size.width, font->getHeight() / density, true)
-			+ style.paddingLeft.computeValue(l.size.width, font->getHeight() / density, true)) * density);
-	auto back = (uint16_t)((style.marginRight.computeValue(l.size.width, font->getHeight() / density, true)
-			+ style.paddingRight.computeValue(l.size.width, font->getHeight() / density, true)) * density);
+	auto front = (uint16_t)((style.marginLeft.computeValue(l.size.width, font->metrics.height / density, true)
+			+ style.paddingLeft.computeValue(l.size.width, font->metrics.height / density, true)) * density);
+	auto back = (uint16_t)((style.marginRight.computeValue(l.size.width, font->metrics.height / density, true)
+			+ style.paddingRight.computeValue(l.size.width, font->metrics.height / density, true)) * density);
 
 	uint16_t firstCharId = 0, lastCharId = 0;
 	auto textStyle = nodeStyle.compileTextLayout(this);
 
-	firstCharId = ctx.label.chars.size();
+	firstCharId = ctx.label._format.chars.size();
 
-	if (fstyle.fontVariant == style::FontVariant::SmallCaps && textStyle.textTransform != style::TextTransform::Uppercase) {
-		auto altFont =  _fontSet->getFont(fstyle.getConfigName(true));
-		if (altFont) {
-			ctx.reader.read(font, altFont, textStyle, node.getValue(), front, back);
-		}
-	} else {
-		ctx.reader.read(font, textStyle, node.getValue(), front, back);
-	}
-
+	ctx.reader.read(fstyle, textStyle, node.getValue(), front, back);
 	ctx.pushNode(&node, [&] (InlineContext &ctx) {
-		lastCharId = (ctx.label.chars.size() > 0)?(ctx.label.chars.size() - 1):0;
+		lastCharId = (ctx.label._format.chars.size() > 0)?(ctx.label._format.chars.size() - 1):0;
 
-		while (firstCharId < ctx.label.chars.size() && ctx.label.chars.at(firstCharId).charId() == ' ') {
+		while (firstCharId < ctx.label._format.chars.size() && ctx.label._format.chars.at(firstCharId).charID == ' ') {
 			firstCharId ++;
 		}
-		while (lastCharId < ctx.label.chars.size() && lastCharId >= firstCharId && ctx.label.chars.at(lastCharId).charId() == ' ') {
+		while (lastCharId < ctx.label._format.chars.size() && lastCharId >= firstCharId && ctx.label._format.chars.at(lastCharId).charID == ' ') {
 			lastCharId --;
 		}
 
-		if (ctx.label.chars.size() > lastCharId && firstCharId <= lastCharId) {
+		if (ctx.label._format.chars.size() > lastCharId && firstCharId <= lastCharId) {
 			auto hrefIt = node.getAttributes().find("href");
 			if (hrefIt != node.getAttributes().end() && !hrefIt->second.empty()) {
 				ctx.refPos.push_back(InlineContext::RefPosInfo{firstCharId, lastCharId, hrefIt->second});
@@ -66,11 +58,11 @@ bool Builder::processInlineNode(Layout &l, const Node &node, BlockStyle &&style,
 			if (outline.outlineStyle != style::BorderStyle::None) {
 				ctx.outlinePos.emplace_back(InlineContext::OutlinePosInfo{
 					firstCharId, lastCharId,
-					outline.outlineStyle, outline.outlineWidth.computeValue(1.0f, font->getHeight() / density, true), outline.outlineColor});
+					outline.outlineStyle, outline.outlineWidth.computeValue(1.0f, font->metrics.height / density, true), outline.outlineColor});
 			}
 
 			float bwidth = 0.0f;
-			Border border = Border::border(outline, l.size.width, font->getHeight() / density, bwidth);
+			Border border = Border::border(outline, l.size.width, font->metrics.height / density, bwidth);
 			if (border.getNumLines() > 0) {
 				ctx.borderPos.emplace_back(InlineContext::BorderPosInfo{firstCharId, lastCharId, std::move(border), bwidth});
 			}
@@ -79,10 +71,10 @@ bool Builder::processInlineNode(Layout &l, const Node &node, BlockStyle &&style,
 			if (background.backgroundColor.a != 0 || !background.backgroundImage.empty()) {
 				ctx.backgroundPos.push_back(InlineContext::BackgroundPosInfo{firstCharId, lastCharId, background,
 					Padding(
-							style.paddingTop.computeValue(l.size.width, font->getHeight() / density, true),
-							style.paddingRight.computeValue(l.size.width, font->getHeight() / density, true),
-							style.paddingBottom.computeValue(l.size.width, font->getHeight() / density, true),
-							style.paddingLeft.computeValue(l.size.width, font->getHeight() / density, true))});
+							style.paddingTop.computeValue(l.size.width, font->metrics.height / density, true),
+							style.paddingRight.computeValue(l.size.width, font->metrics.height / density, true),
+							style.paddingBottom.computeValue(l.size.width, font->metrics.height / density, true),
+							style.paddingLeft.computeValue(l.size.width, font->metrics.height / density, true))});
 			}
 		}
 	});
@@ -108,7 +100,7 @@ bool Builder::processInlineBlockNode(Layout &l, const Node &node, BlockStyle && 
 		const float density = _media.density;
 		const Style &nodeStyle = node.getStyle();
 		auto fstyle = nodeStyle.compileFontStyle(this);
-		auto font = getFont(fstyle);
+		auto font = _fontSet->hasLayout(fstyle);
 		if (!font) {
 			return false;
 		}
@@ -116,8 +108,8 @@ bool Builder::processInlineBlockNode(Layout &l, const Node &node, BlockStyle && 
 		auto textStyle = nodeStyle.compileTextLayout(this);
 		auto bbox = ref.getBoundingBox();
 
-		if (ctx.reader.read(font, textStyle, uint16_t(bbox.size.width * density), uint16_t(bbox.size.height * density))) {
-			ref.charBinding = (ctx.label.chars.size() > 0)?(ctx.label.chars.size() - 1):0;
+		if (ctx.reader.read(fstyle, textStyle, uint16_t(bbox.size.width * density), uint16_t(bbox.size.height * density))) {
+			ref.charBinding = (ctx.label._format.ranges.size() > 0)?(ctx.label._format.ranges.size() - 1):0;
 		}
 	}
 	return true;

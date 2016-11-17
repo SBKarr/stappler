@@ -112,10 +112,6 @@ class AssetRef;
 class AssetDownload;
 class AssetLibrary;
 
-class Font;
-class FontSet;
-class FontSource;
-
 class Icon;
 class IconSet;
 
@@ -149,8 +145,6 @@ class RoundedSprite;
 class Scale9Sprite;
 class ShadowSprite;
 class NetworkSprite;
-
-class RichLabel;
 
 class Overscroll;
 class ScrollViewBase;
@@ -224,7 +218,6 @@ NS_SP_EXT_END(storage)
 NS_SP_EXT_BEGIN(rich_text)
 
 class Formatter;
-class HyphenMap;
 class Document;
 class Result;
 class Node;
@@ -264,9 +257,17 @@ NS_SP_EXT_END(ime)
 
 NS_SP_EXT_BEGIN(font)
 
+struct Metrics;
+struct CharLayout;
+struct CharSpec;
+struct FontCharString;
+struct FontData;
 class FontLayout;
-class FontTexture;
+struct CharTexture;
+
 class Source;
+class Controller;
+class HyphenMap;
 
 NS_SP_EXT_END(font)
 

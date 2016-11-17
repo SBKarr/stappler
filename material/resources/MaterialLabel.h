@@ -8,7 +8,6 @@
 #ifndef CLASSES_MATERIAL_TYPOGRAPHY_MATERIALLABEL_H_
 #define CLASSES_MATERIAL_TYPOGRAPHY_MATERIALLABEL_H_
 
-#include "SPRichLabel.h"
 #include "SPDynamicLabel.h"
 #include "Material.h"
 
@@ -40,16 +39,27 @@ enum class FontType {
 class Label : public DynamicLabel {
 public:
 	static DescriptionStyle getFontStyle(FontType);
+	static DescriptionStyle getFontStyle(const String &);
+
+	static void preloadChars(FontType, const Vector<char16_t> &);
+	static void preloadChars(const String &, const Vector<char16_t> &);
 
 	static Size getLabelSize(FontType, const String &, float w = 0.0f, float density = 0.0f, bool localized = false);
 	static Size getLabelSize(FontType, const WideString &, float w = 0.0f, float density = 0.0f, bool localized = false);
+	static Size getLabelSize(const String &, const String &, float w = 0.0f, float density = 0.0f, bool localized = false);
+	static Size getLabelSize(const String &, const WideString &, float w = 0.0f, float density = 0.0f, bool localized = false);
+	static Size getLabelSize(const DescriptionStyle &, const WideString &, float w = 0.0f, float density = 0.0f, bool localized = false);
 
 	static float getStringWidth(FontType, const String &, float density = 0.0f, bool localized = false);
 	static float getStringWidth(FontType, const WideString &, float density = 0.0f, bool localized = false);
+	static float getStringWidth(const String &, const String &, float density = 0.0f, bool localized = false);
+	static float getStringWidth(const String &, const WideString &, float density = 0.0f, bool localized = false);
+	static float getStringWidth(const DescriptionStyle &, const WideString &, float density = 0.0f, bool localized = false);
 
 	virtual ~Label();
 
 	virtual bool init(FontType, Alignment = Alignment::Left, float = 0);
+	virtual bool init(const String &, Alignment = Alignment::Left, float = 0);
 	virtual bool init(const DescriptionStyle &, Alignment = Alignment::Left, float = 0);
 
 	virtual void setFont(FontType);
@@ -70,6 +80,7 @@ public:
 	virtual const Color &getWashedColor() const;
 
 protected:
+	virtual void onUserFont();
 	virtual void onLightLevel();
 
 	EventListener *_lightLevelListener = nullptr;

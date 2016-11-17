@@ -46,6 +46,8 @@ protected:
 	class NavIcon;
 	class CircleLoaderIcon;
 
+	virtual cocos2d::GLProgramState *getProgramStateI8() const override;
+
 	virtual void updateCanvas() override;
 	virtual void setDynamicIcon(DynamicIcon *);
 	virtual void setStaticIcon(IconName);

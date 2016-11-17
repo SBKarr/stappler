@@ -12,6 +12,7 @@
 #include "platform/CCFileUtils.h"
 #include "SPJNI.h"
 #include "SPTime.h"
+#include "SPThreadManager.h"
 
 #define MAIN_LOOP_FRAME_TIME 16000
 #define MAIN_LOOP_FRAME_PAUSE 500000
@@ -250,7 +251,7 @@ namespace render {
 	}
 
 	bool _enableOffscreenContext() {
-		if (!ThreadManager::isMainThread()) {
+		if (!ThreadManager::getInstance()->isMainThread()) {
 			JNIEnv *env = stappler::spjni::getJniEnv();
 			auto activity = stappler::spjni::getActivity(env);
 			auto activityClass = env->GetObjectClass(activity);

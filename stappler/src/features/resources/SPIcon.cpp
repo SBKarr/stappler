@@ -49,7 +49,7 @@ public:
 			return;
 		}
 
-		path->setFillColor(Color4B(0, 0, 0, 0));
+		path->setFillColor(Color4B(255, 255, 255, 255));
 
 		cairo_t * cr = nullptr;
 		if (_canvas) {
@@ -250,10 +250,9 @@ protected:
 	IconSetGenerator() {
 		_cachePath = filesystem::writablePath("iconsets_cache");
 		filesystem::mkdir(_cachePath);
-
 	}
 
-	std::string _cachePath;
+	String _cachePath;
 };
 
 IconSet *generateFromSVGIcons(IconSet::Config &&cfg) {
@@ -273,7 +272,7 @@ void generateIconSet(IconSet::Config &&cfg, const IconSet::Callback &callback) {
 	}, [newSet, cfgPtr, callback] (cocos2d::Ref *, bool) {
 		if (*newSet) {
 			if (callback) {
-				auto filename = IconSetGenerator::getIconSetFilename(*cfgPtr) + ".png";
+				auto filename = IconSetGenerator::getIconSetFilename((*newSet)->getConfig()) + ".png";
 				TextureCache::getInstance()->addLoadedTexture(filename, (*newSet)->getTexture());
 				callback(*newSet);
 			}

@@ -12,6 +12,7 @@
 #include "SPRichTextSource.h"
 #include "SPRichTextRendererTypes.h"
 #include "SPRichTextResult.h"
+#include "SPRichTextDrawer.h"
 
 NS_SP_EXT_BEGIN(rich_text)
 
@@ -19,6 +20,8 @@ class Renderer : public cocos2d::Component {
 public:
 	using RenderingCallback = Function<void(Result *, bool started)>;
 	using Source = rich_text::Source;
+
+	virtual ~Renderer();
 
 	virtual bool init(const Vector<String> &ids = {});
 	virtual void onContentSizeDirty() override;
@@ -29,9 +32,9 @@ public:
 
 	virtual Document *getDocument() const;
 	virtual Result *getResult() const;
+	virtual Drawer *getDrawer() const;
 
 	virtual MediaResolver getMediaResolver(const Vector<String> & = {}) const;
-
 
 public: /* media type resolver */
 	void setSurfaceSize(const Size &size);
@@ -50,7 +53,7 @@ public: /* media type resolver */
 	void setHoverValue(style::Hover value);
 	void setLightLevelValue(style::LightLevel value);
 	void setScriptingValue(style::Scripting value);
-	void setHyphens(rich_text::HyphenMap *);
+	void setHyphens(font::HyphenMap *);
 
 	void setPageMargin(const Margin &);
 
@@ -80,8 +83,9 @@ protected:
 	Vector<String> _ids;
 	Size _surfaceSize;
 	MediaParameters _media;
-	Rc<Result>_result;
-	Rc<rich_text::HyphenMap> _hyphens;
+	Rc<Result> _result;
+	Rc<Drawer> _drawer;
+	Rc<font::HyphenMap> _hyphens;
 	RenderingCallback _renderingCallback = nullptr;
 };
 

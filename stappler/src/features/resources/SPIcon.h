@@ -71,6 +71,8 @@ public:
 	IconSet(Config &&, Map<String, Icon> &&icons, cocos2d::Texture2D *image);
 	~IconSet();
 
+	const Config &getConfig() const { return _config; }
+
 	uint16_t getOriginalWidth() const { return _config.originalWidth; }
 	uint16_t getOriginalHeight() const { return _config.originalHeight; }
 	uint16_t getIconHeight() const { return _config.iconHeight; }

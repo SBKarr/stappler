@@ -17,7 +17,6 @@
 #include "SPLayer.h"
 #include "SPScreen.h"
 #include "SPActions.h"
-#include "SPRichLabel.h"
 
 #include "2d/CCActionInterval.h"
 #include "base/CCDirector.h"
@@ -47,6 +46,7 @@ bool View::Page::init(const PageData &data, float d) {
 
 	_sprite = construct<DynamicSprite>(nullptr, Rect::ZERO, d);
 	_sprite->setNormalized(true);
+	_sprite->setFlippedY(true);
 	_sprite->setOpacity(0);
 	_sprite->setContentSize(_data.texRect.size);
 	_sprite->setPosition(Vec2(_data.margin.left, _data.margin.bottom));
@@ -111,7 +111,7 @@ void View::setLayout(Layout l) {
 	}
 }
 
-void View::setHyphens(rich_text::HyphenMap *map) {
+void View::setHyphens(font::HyphenMap *map) {
 	_renderer->setHyphens(map);
 }
 
@@ -331,6 +331,7 @@ View::PageData View::getPageData(size_t idx) const {
 cocos2d::Node * View::onPageNode(size_t idx) {
 	auto source = _renderer->getSource();
 	auto result = _renderer->getResult();
+	auto drawer = _renderer->getDrawer();
 	PageData data = getPageData(idx);
 
 	if (result->getMedia().flags & RenderFlag::PaginatedLayout) {
@@ -338,7 +339,7 @@ cocos2d::Node * View::onPageNode(size_t idx) {
 		if (idx < result->getNumPages()) {
 			page->retain();
 
-			construct<Drawer>(source, result, data.texRect, [this, page] (cocos2d::Texture2D *tex) {
+			drawer->draw(source, result, data.texRect, [this, page] (cocos2d::Texture2D *tex) {
 				if (page->isRunning()) {
 					page->setTexture(tex);
 				}
@@ -350,10 +351,11 @@ cocos2d::Node * View::onPageNode(size_t idx) {
 	} else {
 		auto sprite = construct<DynamicSprite>(nullptr, Rect::ZERO, result->getMedia().density);
 		sprite->setNormalized(true);
+		sprite->setFlippedY(true);
 		sprite->setOpacity(0);
 		sprite->retain();
 
-		construct<Drawer>(source, result, data.texRect, [this, sprite] (cocos2d::Texture2D *tex) {
+		drawer->draw(source, result, data.texRect, [this, sprite] (cocos2d::Texture2D *tex) {
 			if (sprite->isRunning()) {
 				sprite->setTexture(tex);
 				sprite->runAction(cocos2d::FadeIn::create(0.1f));

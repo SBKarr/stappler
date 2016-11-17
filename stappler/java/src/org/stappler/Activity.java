@@ -10,8 +10,12 @@ import javax.microedition.khronos.egl.EGL10;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.egl.EGLContext;
 import javax.microedition.khronos.egl.EGLDisplay;
+import javax.microedition.khronos.egl.EGLSurface;
+
+import android.opengl.GLSurfaceView.EGLContextFactory;
 
 import org.cocos2dx.lib.Cocos2dxActivity;
+import org.cocos2dx.lib.Cocos2dxGLSurfaceView;
 import org.cocos2dx.lib.Cocos2dxHelper;
 import org.stappler.downloads.Manager;
 import org.stappler.gcm.PlayServices;
@@ -205,32 +209,49 @@ public class Activity extends Cocos2dxActivity {
 
 	protected EGLContext _offscreenContext = null;
 	protected EGL10 _egl = null;
+	protected EGLSurface _localSurface = null;
 	protected EGLDisplay _display = null;
-	protected EGLConfig _config = null;
+
+	private static int EGL_CONTEXT_CLIENT_VERSION = 0x3098;
+
+	@Override
+	public Cocos2dxGLSurfaceView onCreateView() {
+		Cocos2dxGLSurfaceView view = new Cocos2dxGLSurfaceView(this);
+
+		view.setEGLContextFactory(new EGLContextFactory() {
+			@Override
+			public void destroyContext(EGL10 egl, EGLDisplay display, EGLContext context) {
+				egl.eglDestroySurface(display, _localSurface);
+				egl.eglDestroyContext(display, _offscreenContext);
+				egl.eglDestroyContext(display, context);
+
+				_display = null;
+				_offscreenContext = null;
+				_localSurface = null;
+			}
+			@Override
+			public EGLContext createContext(final EGL10 egl, final EGLDisplay display,
+											final EGLConfig eglConfig) {
+
+				EGLContext renderContext = egl.eglCreateContext(display, eglConfig,
+						EGL10.EGL_NO_CONTEXT, new int[] { EGL_CONTEXT_CLIENT_VERSION, 2, EGL10.EGL_NONE } );
+
+				int pbufferAttribs[] = { EGL10.EGL_WIDTH, 1, EGL10.EGL_HEIGHT, 1, EGL10.EGL_NONE };
+				_localSurface = egl.eglCreatePbufferSurface(display, eglConfig, pbufferAttribs);
+				_offscreenContext = egl.eglCreateContext(display, eglConfig, renderContext,
+						new int[] { EGL_CONTEXT_CLIENT_VERSION, 2, EGL10.EGL_NONE } );
+
+				_egl = egl;
+				_display = display;
+				return renderContext;
+			}
+		});
+
+		return view;
+	}
 
 	@Override
 	public void setContentView(View view) {
-		mGLSurfaceView.setEGLContextFactory(new EGLContextFactory() {
-            @Override
-            public void destroyContext(EGL10 egl, EGLDisplay display, EGLContext context) {
-            	egl.eglDestroyContext(display, _offscreenContext);
-                egl.eglDestroyContext(display, context);
-            }
-
-            @Override
-            public EGLContext createContext(final EGL10 egl, final EGLDisplay display,
-                    final EGLConfig eglConfig) {
-
-            	EGLContext renderContext = egl.eglCreateContext(display, eglConfig,
-                        EGL10.EGL_NO_CONTEXT, null);
-
-            	_egl = egl;
-            	_config = eglConfig;
-                _offscreenContext = egl.eglCreateContext(display, eglConfig, renderContext, null);
-                return renderContext;
-            }
-        });
-
 		FrameLayout layout = (FrameLayout)view;
 
 		_splashScreen = new LoaderView(this);
@@ -241,16 +262,19 @@ public class Activity extends Cocos2dxActivity {
 	}
 
 	void enableOffscreenContext() {
-		int pbufferAttribs[] = { EGL10.EGL_WIDTH, 1, EGL10.EGL_HEIGHT, 1, EGL14.EGL_TEXTURE_TARGET,
-                EGL14.EGL_NO_TEXTURE, EGL14.EGL_TEXTURE_FORMAT, EGL14.EGL_NO_TEXTURE,
-                EGL10.EGL_NONE };
-        _localSurface = egl.eglCreatePbufferSurface(_display, _config, pbufferAttribs);
-        _egl.eglMakeCurrent(_display, _localSurface, _localSurface, _offscreenContext);
+		try {
+			_egl.eglMakeCurrent(_display, _localSurface, _localSurface, _offscreenContext);
+		} catch (Exception e) {
+			e.printStackTrace(System.out);
+		}
 	}
 	
 	void disableOffscreenContext() {
-		_localSurface = null;
-		_egl.eglMakeCurrent(_display, null, null, null);
+		try {
+			_egl.eglMakeCurrent(_display, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_SURFACE, EGL10.EGL_NO_CONTEXT);
+		} catch (Exception e) {
+			e.printStackTrace(System.out);
+		}
 	}
 	
 	public void showSplashProgress() {
@@ -260,7 +284,7 @@ public class Activity extends Cocos2dxActivity {
         		if (_splashScreen != null) {
         			_splashScreen.showProgress();
         		}
-            }
+			}
 		});
 	}
 
@@ -516,8 +540,6 @@ public class Activity extends Cocos2dxActivity {
 			}
 		});
 	}
-	
-	public void 
 	
     static {
          System.loadLibrary("apps");

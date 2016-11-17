@@ -12,33 +12,57 @@
 #include "SPFilesystem.h"
 #include "SPThread.h"
 #include "SPString.h"
+#include "SPTextureCache.h"
 #include "SPEpubDocument.h"
 
 NS_SP_EXT_BEGIN(rich_text)
 
 SP_DECLARE_EVENT(Source, "RichTextSource", onError);
-SP_DECLARE_EVENT(Source, "RichTextSource", onUpdate);
-SP_DECLARE_EVENT(Source, "RichTextSource", onAsset);
+SP_DECLARE_EVENT(Source, "RichTextSource", onDocument);
 
-Source::~Source() {
-}
+Source::~Source() { }
 
-bool Source::init(const StringDocument &str) {
-	if (!FontSource::init()) {
+bool Source::init() {
+	if (!font::Controller::init(FontFaceMap(), {"fonts/", "common/fonts/"}, [this] (const font::Source *s, const String &str) -> Bytes {
+		if (str.compare(0, "document://"_len, "document://") == 0) {
+			auto doc = getDocument();
+			if (doc) {
+				return doc->getFileData(str.substr("document://"_len));
+			}
+		} else if (str.compare(0, "local://"_len, "local://") == 0) {
+			auto path = str.substr("local://"_len);
+			if (filesystem::exists(path)) {
+				return filesystem::readFile(path);
+			} else if (filesystem::exists("fonts/" + path)) {
+				return filesystem::readFile("fonts/" + path);
+			} else if (filesystem::exists("common/fonts/" + path)) {
+				return filesystem::readFile("common/fonts/" + path);
+			}
+		}
+		return Bytes();
+	})) {
 		return false;
 	}
 
 	_documentAsset.setCallback(std::bind(&Source::onDocumentAssetUpdated, this, std::placeholders::_1));
+
+	return true;
+}
+
+bool Source::init(const StringDocument &str) {
+	if (!init()) {
+		return false;
+	}
+
 	_string = str.get();
 	updateDocument();
 	return true;
 }
 bool Source::init(const FilePath &file) {
-	if (!FontSource::init()) {
+	if (!init()) {
 		return false;
 	}
 
-	_documentAsset.setCallback(std::bind(&Source::onDocumentAssetUpdated, this, std::placeholders::_1));
 	_file = file.get();
 	updateDocument();
 	return true;
@@ -46,11 +70,10 @@ bool Source::init(const FilePath &file) {
 
 bool Source::init(const String &url, const String &path,
 		TimeInterval ttl, const String &cacheDir, const Asset::DownloadCallback &cb) {
-	if (!FontSource::init()) {
+	if (!init()) {
 		return false;
 	}
 
-	_documentAsset.setCallback(std::bind(&Source::onDocumentAssetUpdated, this, std::placeholders::_1));
 	retain();
 	AssetLibrary::getInstance()->getAsset([this] (Asset *a) {
 		onDocumentAsset(a);
@@ -60,36 +83,13 @@ bool Source::init(const String &url, const String &path,
 	return true;
 }
 bool Source::init(Asset *a, bool enabled) {
-	if (!FontSource::init()) {
+	if (!init()) {
 		return false;
 	}
 
 	_enabled = enabled;
-	_documentAsset.setCallback(std::bind(&Source::onDocumentAssetUpdated, this, std::placeholders::_1));
 	onDocumentAsset(a);
 	return true;
-}
-
-void Source::addFontFace(const String &family, style::FontFace &&face) {
-	auto it = _defaultFontFaces.find(family);
-	if (it == _defaultFontFaces.end()) {
-		it = _defaultFontFaces.emplace(family, Vector<style::FontFace>()).first;
-	}
-
-	it->second.emplace_back(std::move(face));
-}
-
-void Source::addFontFace(const HtmlPage::FontMap &m) {
-	for (auto &m_it : m) {
-		auto it = _defaultFontFaces.find(m_it.first);
-		if (it == _defaultFontFaces.end()) {
-			_defaultFontFaces.emplace(m_it.first, m_it.second);
-		} else {
-			for (auto &v_it : m_it.second) {
-				it->second.emplace_back(v_it);
-			}
-		}
-	}
 }
 
 Document *Source::getDocument() const {
@@ -100,7 +100,7 @@ Asset *Source::getAsset() const {
 }
 
 bool Source::isReady() const {
-	return _document && _fontSet;
+	return _document;
 }
 
 bool Source::isActual() const {
@@ -166,17 +166,6 @@ bool Source::isEnabled() const {
 	return _enabled;
 }
 
-void Source::setFontScale(float value) {
-	if (value != _fontScale) {
-		_fontScale = value;
-		updateFontSource();
-	}
-}
-
-float Source::getFontScale() const {
-	return _fontScale;
-}
-
 void Source::onDocumentAsset(Asset *a) {
 	_documentAsset = a;
 	if (_documentAsset) {
@@ -186,7 +175,7 @@ void Source::onDocumentAsset(Asset *a) {
 	}
 }
 
-void Source::onDocumentAssetUpdated(Subscription::Flags f) {
+void Source::onDocumentAssetUpdated(data::Subscription::Flags f) {
 	if (f.hasFlag((uint8_t)Asset::DownloadFailed)) {
 		onError(this, Error::NetworkError);
 	}
@@ -203,7 +192,7 @@ void Source::onDocumentAssetUpdated(Subscription::Flags f) {
 		_loadedAssetMTime = 0;
 		tryLoadDocument();
 	}
-	onAsset(this, _documentAsset.get());
+	onDocument(this, _documentAsset.get());
 }
 
 static bool Source_tryLockAsset(Asset *a, uint64_t mtime, Source *source) {
@@ -223,11 +212,11 @@ void Source::tryLoadDocument() {
 		assetLocked = true;
 	}
 
-	if (_name.empty() && _file.empty() && !assetLocked) {
+	if (_file.empty() && !assetLocked) {
 		return;
 	}
 
-	auto &thread = resource::thread();
+	auto &thread = TextureCache::thread();
 	Rc<Document> *doc = new Rc<Document>(nullptr);
 
 	auto filename = (assetLocked)?_documentAsset->getFilePath():_file;
@@ -249,40 +238,22 @@ void Source::tryLoadDocument() {
 			_documentAsset->releaseReadLock(this);
 		}
 		if (success && *doc) {
-			onDocument(*doc);
+			onDocumentLoaded(*doc);
 		}
 		delete doc;
 	}, this);
 }
 
-void Source::onDocument(Document *doc) {
+void Source::onDocumentLoaded(Document *doc) {
 	if (_document != doc) {
 		_document = doc;
 		if (_document) {
-			_receiptCallback = [this, doc] (const String &str) -> Bytes {
-				return onReceiptFile(doc, str);
-			};
-			updateFontSource();
+			_dirty = true;
+			_dirtyFlags = DirtyFontFace;
+			updateSource();
 		} else {
-			_receiptCallback = nullptr;
-			onUpdate(this);
+			onDocument(this);
 		}
-	}
-}
-
-void Source::updateFontSource() {
-	if (_document) {
-		Vector<FontRequest> reqVec;
-		auto docConfig = _document->getFontConfig();
-
-		for (auto &it : docConfig) {
-			auto &style = it.second;
-			FontRequest req(it.first, (uint16_t)roundf(style.style.fontSize * screen::density() * _fontScale), it.second.chars);
-			req.receipt = onFontRequest(style);
-			reqVec.push_back(std::move(req));
-		}
-
-		setRequest(std::move(reqVec));
 	}
 }
 
@@ -294,14 +265,13 @@ void Source::updateDocument() {
 	tryLoadDocument();
 }
 
-void Source::onFontSet(FontSet *set) {
-	FontSource::onFontSet(set);
-	onUpdate(this);
-}
-
-void Source::updateRequest() {
-	FontSource::updateRequest();
-	onUpdate(this);
+Rc<font::Source> Source::makeSource(AssetMap && map) {
+	if (_document) {
+		FontFaceMap faceMap(_fontFaces);
+		mergeFontFace(faceMap, _document->getFontFaces());
+		return Rc<font::Source>::create(std::move(faceMap), _callback, _scale, SearchDirs(_searchDir), std::move(map));
+	}
+	return Rc<font::Source>::create(FontFaceMap(_fontFaces), _callback, _scale, SearchDirs(_searchDir), std::move(map));
 }
 
 Rc<Document> Source::openDocument(const String &path, const String &ct) {
@@ -312,49 +282,11 @@ Rc<Document> Source::openDocument(const String &path, const String &ct) {
 		ret = Rc<Document>::create(FilePath(path), ct);
 	}
 	if (ret) {
-		ret->setDefaultFontFaces(_defaultFontFaces);
 		if (ret->prepare()) {
 			return ret;
 		}
 	}
 	return Rc<Document>();
-}
-
-FontRequest::Receipt Source::onFontRequest(const Document::FontConfigValue &style) {
-	FontRequest::Receipt ret;
-	if (!style.face.empty()) {
-		for (auto faceIt = style.face.rbegin(); faceIt != style.face.rend(); faceIt ++) {
-			auto &srcs = (*faceIt)->src;
-			for (auto it = srcs.rbegin(); it != srcs.rend(); it ++) {
-				ret.push_back(*it);
-			}
-		}
-	}
-	return ret;
-}
-
-Bytes Source::onReceiptFile(Document *doc, const String &str) {
-	if (str.compare(0, "document://"_len, "document://") == 0) {
-		return doc->getFileData(str.substr("document://"_len));
-	} else if (str.compare(0, "local://"_len, "local://") == 0) {
-		auto path = str.substr("local://"_len);
-		if (filesystem::exists(path)) {
-			return filesystem::readFile(path);
-		} else if (filesystem::exists("fonts/" + path)) {
-			return filesystem::readFile("fonts/" + path);
-		} else if (filesystem::exists("common/fonts/" + path)) {
-			return filesystem::readFile("common/fonts/" + path);
-		}
-	} else {
-		if (filesystem::exists(str)) {
-			return filesystem::readFile(str);
-		} else if (filesystem::exists(filepath::merge("fonts/", str))) {
-			return filesystem::readFile(filepath::merge("fonts/", str));
-		} else if (filesystem::exists(filepath::merge("common/fonts/", str))) {
-			return filesystem::readFile(filepath::merge("common/fonts/", str));
-		}
-	}
-	return Bytes();
 }
 
 NS_SP_EXT_END(rich_text)

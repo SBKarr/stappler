@@ -8,7 +8,7 @@
 #ifndef LIBS_MATERIAL_NODES_TOOLBAR_MATERIALTOOLBAR_H_
 #define LIBS_MATERIAL_NODES_TOOLBAR_MATERIALTOOLBAR_H_
 
-#include "../../resources/MaterialIconSprite.h"
+#include "MaterialIconSprite.h"
 #include "MaterialNode.h"
 #include "MaterialMenuSource.h"
 #include "SPDataListener.h"
@@ -66,7 +66,17 @@ public:
 	ButtonIcon *getNavNode() const;
 	ButtonLabelSelector *getTitleNode() const;
 
+	virtual std::pair<float, float> onToolbarHeight(bool);
+
+	virtual void setMinToolbarHeight(float portrait, float landscape = nan());
+	virtual void setMaxToolbarHeight(float portrait, float landscape = nan());
+
+	virtual float getMinToolbarHeight() const;
+	virtual float getMaxToolbarHeight() const;
+
+	virtual float getDefaultToolbarHeight() const;
 protected:
+
 	virtual void updateMenu();
 	virtual void layoutSubviews();
 	virtual void onNavTapped();
@@ -93,6 +103,9 @@ protected:
 
 	cocos2d::Component *_listener = nullptr;
 	Color _textColor;
+
+	float _toolbarMinLandscape = 0.0f, _toolbarMinPortrait = 0.0f;
+	float _toolbarMaxLandscape = nan(), _toolbarMaxPortrait = nan();
 };
 
 NS_MD_END

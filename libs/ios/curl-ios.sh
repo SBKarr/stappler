@@ -1,6 +1,6 @@
 #!/bin/sh
 
-CFLAGS="-pipe -Os -gdwarf-2"
+CFLAGS="-pipe -Os -gdwarf-2 -Werror=partial-availability"
 ORIGPATH=$PATH
 LIBNAME=curl
 ROOT=`pwd`

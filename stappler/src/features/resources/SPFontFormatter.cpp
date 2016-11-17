@@ -628,20 +628,20 @@ bool Formatter::read(const FontParameters &f, const TextParameters &s, const cha
 				if (caps != true) {
 					caps = true;
 					if (blockSize > 0) {
-						readWithRange(RangeSpec{uint32_t(output->chars.size()), 0, secondary, Color4B(s.color, s.opacity), h,
+						readWithRange(RangeSpec{uint32_t(output->chars.size()), 0, primary, Color4B(s.color, s.opacity), h,
 							((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign},
-								capsParams, str + blockStart, blockSize, frontOffset, backOffset);
+								s, str + blockStart, blockSize, frontOffset, backOffset);
 					}
 					blockStart = idx;
 					blockSize = 0;
 				}
 			} else {
 				if (caps != false) {
-					caps = true;
+					caps = false;
 					if (blockSize > 0) {
-						readWithRange(RangeSpec{uint32_t(output->chars.size()), 0, primary, Color4B(s.color, s.opacity), h,
+						readWithRange(RangeSpec{uint32_t(output->chars.size()), 0, secondary, Color4B(s.color, s.opacity), h,
 							((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign},
-								s, str + blockStart, blockSize, frontOffset, backOffset);
+								capsParams, str + blockStart, blockSize, frontOffset, backOffset);
 					}
 					blockStart = idx;
 					blockSize = 0;
@@ -674,7 +674,7 @@ bool Formatter::read(const FontParameters &f, const TextParameters &s, uint16_t 
 
 	auto primary = source->getLayout(f);
 
-	return readWithRange(RangeSpec{uint32_t(output->chars.size()), 0, primary, Color4B(s.color, s.opacity), primary->getData()->getHeight(),
+	return readWithRange(RangeSpec{uint32_t(output->chars.size()), 0, primary, Color4B(s.color, s.opacity), blockHeight,
 		((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign},
 			s, blockWidth, blockHeight);
 }
@@ -729,8 +729,10 @@ bool Formatter::readWithRange(RangeSpec && range, const TextParameters &s, const
 		readChars(r);
 	}
 
-	range.count = output->chars.size() - range.start;
-	output->ranges.emplace_back(std::move(range));
+	range.count = uint32_t(output->chars.size() - range.start);
+	if (range.count > 0) {
+		output->ranges.emplace_back(std::move(range));
+	}
 	lineX += backOffset;
 
 	return true;
@@ -785,7 +787,7 @@ bool Formatter::readWithRange(RangeSpec &&range, const TextParameters &s, uint16
 		}
 	}
 
-	range.count = output->chars.size() - range.start;
+	range.count = uint32_t(output->chars.size() - range.start);
 	output->ranges.emplace_back(std::move(range));
 
 	return true;
@@ -794,6 +796,20 @@ bool Formatter::readWithRange(RangeSpec &&range, const TextParameters &s, uint16
 void Formatter::finalize() {
 	if (firstInLine < charNum) {
 		pushLine(false);
+	}
+
+	auto chars = output->chars.size();
+	if (chars > 0 && output->ranges.size() > 0 && output->lines.size() > 0) {
+		auto &lastRange = output->ranges.back();
+		auto &lastLine = output->lines.back();
+
+		if (lastLine.start + lastLine.count != chars) {
+			lastLine.count = uint32_t(chars - lastLine.start);
+		}
+
+		if (lastRange.start + lastRange.count != chars) {
+			lastRange.count = uint32_t(chars - lastRange.start);
+		}
 	}
 
 	output->width = getWidth();
@@ -873,6 +889,24 @@ void FormatSpec::clear() {
 	chars.clear();
 	lines.clear();
 	ranges.clear();
+}
+
+const LineSpec *FormatSpec::getLine(size_t idx) const {
+	const LineSpec *ret = nullptr;
+	for (const LineSpec &it : lines) {
+		if (it.start <= idx && it.start + it.count > idx) {
+			ret = &it;
+		}
+	}
+	return ret;
+}
+
+FormatSpec::RangeLineIterator FormatSpec::begin() const {
+	return RangeLineIterator{ranges.begin(), lines.begin()};
+}
+
+FormatSpec::RangeLineIterator FormatSpec::end() const {
+	return RangeLineIterator{ranges.end(), lines.end()};
 }
 
 bool HyphenMap::init() {

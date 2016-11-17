@@ -10,6 +10,7 @@
 #include "SPEpubReader.h"
 #include "SPLocale.h"
 #include "SPHtmlParser.h"
+#include "SPFont.h"
 
 NS_EPUB_BEGIN
 
@@ -180,6 +181,7 @@ void Document::processHtml(const String &path, const CharReaderBase &html, bool 
 	rich_text::HtmlPage &c = _content.back();
 
 	if (r.readHtml(c, html, _cssStrings, _mediaQueries, meta, _css)) {
+		font::Controller::mergeFontFace(_fontFaces, c.fonts);
 		processMeta(c, meta);
 	} else {
 		_content.pop_back();

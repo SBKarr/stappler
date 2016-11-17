@@ -22,14 +22,14 @@
 
 NS_SP_EXT_BEGIN(rich_text)
 
-Result::Result(const MediaParameters &media, FontSet *cfg, Document *doc) {
+Result::Result(const MediaParameters &media, font::Source *cfg, Document *doc) {
 	_media = media;
 	_fontSet = cfg;
 	_document = doc;
 	_size = _media.surfaceSize;
 }
 
-FontSet *Result::getFontSet() const {
+font::Source *Result::getFontSet() const {
 	return _fontSet;
 }
 

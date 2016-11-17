@@ -78,6 +78,12 @@ bool Builder::initLayout(Layout &l, const Vec2 &parentPos, const Size &parentSiz
 			} else if (isnan(height)) {
 				height = width * (float(size.second) / float(size.first));
 			}
+
+			if (width > parentSize.width) {
+				auto scale = parentSize.width / width;
+				width *= scale;
+				height *= scale;
+			}
 		}
 
 		if (_media.flags & RenderFlag::PaginatedLayout) {
@@ -266,11 +272,11 @@ void Builder::initFormatter(Layout &l, const ParagraphStyle &pStyle, float paren
 	}
 
 	FontStyle fStyle = l.node->getStyle().compileFontStyle(this);
-	auto baseFont = getFont(fStyle);
+	auto baseFont = _fontSet->getLayout(fStyle)->getData();
 	float density = _media.density;
 	float lineHeightMod = 1.0f;
 	bool lineHeightIsAbsolute = false;
-	uint16_t lineHeight = baseFont->getHeight();
+	uint16_t lineHeight = baseFont->metrics.height;
 	uint16_t width = (uint16_t)roundf(l.size.width * density);
 
 	if (pStyle.lineHeight.metric == style::Size::Metric::Em
@@ -285,7 +291,7 @@ void Builder::initFormatter(Layout &l, const ParagraphStyle &pStyle, float paren
 	}
 
 	if (!lineHeightIsAbsolute) {
-		lineHeight = (uint16_t) (baseFont->getHeight() * lineHeightMod);
+		lineHeight = (uint16_t) (baseFont->metrics.height * lineHeightMod);
 	}
 
 	reader.setLinePositionCallback(std::bind(&Builder::getTextPosition, this, &l,
@@ -304,13 +310,13 @@ void Builder::initFormatter(Layout &l, const ParagraphStyle &pStyle, float paren
 	if (_hyphens) {
 		reader.setHyphens(_hyphens);
 	}
-	reader.begin((uint16_t)roundf(pStyle.textIndent.computeValue(l.size.width, baseFont->getHeight() / density, true) * density), 0);
+	reader.begin((uint16_t)roundf(pStyle.textIndent.computeValue(l.size.width, baseFont->metrics.height / density, true) * density), 0);
 
 	if (initial && parent && parent->listItem != Layout::ListNone && l.style.display == style::Display::ListItem
 			&& l.style.listStylePosition == style::ListStylePosition::Inside) {
 		auto textStyle = l.node->getStyle().compileTextLayout(this);
 		WideString str = getListItemString(parent, l);
-		reader.read(baseFont, textStyle, str, 0, 0);
+		reader.read(fStyle, textStyle, str, 0, 0);
 	}
 }
 
@@ -342,7 +348,7 @@ float Builder::fixLabelPagination(Layout &l, Label &label) {
 	if ((_media.flags & RenderFlag::PaginatedLayout) && !l.disablePageBreak) {
 		const Vec2 origin(l.origin.x  / density, l.origin.y / density);
 		const float pageHeight = _media.surfaceSize.height;
-		for (auto &it : label.lines) {
+		for (auto &it : label._format.lines) {
 			Rect rect = label.getLineRect(it, density, origin);
 			if (!rect.equals(Rect::ZERO)) {
 				rect.origin.y += offset / density;
@@ -355,10 +361,8 @@ float Builder::fixLabelPagination(Layout &l, Label &label) {
 				}
 			}
 
-			if (offset > 0 && it.second > 0) {
-				for (auto i = it.first; i < it.first + it.second; ++ i) {
-					label.chars[i].posY += offset;
-				}
+			if (offset > 0 && it.count > 0) {
+				it.pos += offset;
 			}
 		}
 	}
@@ -399,9 +403,13 @@ float Builder::freeInlineContext(Layout &l) {
 	if (!l.inlineBlockLayouts.empty()) {
 		const Vec2 origin(l.origin.x  / density, l.origin.y / density);
 		for (Layout &it : l.inlineBlockLayouts) {
-			auto &c = ctx->label.chars.at(it.charBinding);
-			it.setBoundPosition(origin + Vec2(c.posX / density, (c.posY - c.height()) / density));
-			l.layouts.emplace_back(std::move(it));
+			const font::RangeSpec &r = ctx->label._format.ranges.at(it.charBinding);
+			const font::CharSpec &c = ctx->label._format.chars.at(r.start + r.count - 1);
+			auto line = ctx->label._format.getLine(r.start + r.count - 1);
+			if (line) {
+				it.setBoundPosition(origin + Vec2(c.pos / density, (line->pos - r.height) / density));
+				l.layouts.emplace_back(std::move(it));
+			}
 		}
 
 		l.inlineBlockLayouts.clear();

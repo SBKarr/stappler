@@ -649,7 +649,11 @@ Color Color::specific(Level tone) {
 }
 
 std::string Color::name() const {
-	return rich_text::mdcolors::getName(_value);
+	auto ret = rich_text::mdcolors::getName(_value);
+	if (ret.empty()) {
+		ret = toString("rgb(", uint32_t(_value >> 16 & 0xFF), ", ", uint32_t(_value >> 8 & 0xFF), ", ", uint32_t(_value & 0xFF));
+	}
+	return ret;
 }
 
 static uint32_t readHashColor(const std::string &origStr) {

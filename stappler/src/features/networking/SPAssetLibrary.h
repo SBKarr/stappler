@@ -75,6 +75,10 @@ public:
 	bool isLiveAsset(const std::string &url, const std::string &path) const;
 
 	void updateAssets();
+
+	void addAssetFile(const String &, const String &, uint64_t asset, uint64_t ctime);
+	void removeAssetFile(const String &);
+
 protected:
 	friend class Asset;
 
@@ -111,6 +115,7 @@ protected:
 	std::mutex _mutex;
 
 	storage::Scheme _assetsClass;
+	storage::Scheme _stateClass;
 
 	bool _correctionNegative = false;
 	TimeInterval _correctionTime;

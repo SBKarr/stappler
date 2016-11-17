@@ -18,7 +18,7 @@ bool ButtonLabelIcon::init(const TapCallback &tapCallback, const TapCallback &lo
 	_label = construct<Label>(FontType::Button);
 	_label->setAnchorPoint(Vec2(0, 0.5));
 	_label->setMaxLines(1);
-	_label->setHyphens(stappler::RichLabel::Style::Hyphens::None);
+	_label->setHyphens(Label::Hyphens::None);
 	addChild(_label);
 
 	_icon->setOpacity(_label->getOpacity());

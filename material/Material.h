@@ -46,8 +46,6 @@
 
 NS_MD_BEGIN
 
-class Font;
-class FontSet;
 class Label;
 
 class ResourceManager;
@@ -103,6 +101,7 @@ class ScrollHandlerSlice;
 class ScrollHandlerGrid;
 
 class Toolbar;
+class TabToolbar;
 
 class FontSizeMenuButton;
 class LightLevelMenuButton;

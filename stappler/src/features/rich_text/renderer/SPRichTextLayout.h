@@ -11,7 +11,7 @@
 #include "SPRichTextStyle.h"
 #include "SPFont.h"
 #include "SPPadding.h"
-#include "SPRichTextFormatter.h"
+#include "SPFontFormatter.h"
 
 NS_SP_EXT_BEGIN(rich_text)
 
@@ -26,7 +26,7 @@ struct Outline {
 		Color4B color;
 
 		bool compare(const Params &p) const { return p.style == style && p.width == width && p.color == color; }
-		bool isVisible() const { return style != style::BorderStyle::None && width >= 1.0f && color.a > 0; }
+		bool isVisible() const { return style != style::BorderStyle::None && width >= 0.5f && color.a > 0; }
 	};
 
 	static Outline border(const OutlineStyle &, float width, float emBase, float &borderWidth);
@@ -75,12 +75,11 @@ using Border = Outline;
 using Background = BackgroundStyle;
 
 struct Label {
-	Vector< Font::CharSpec > chars;
-	Vector< Formatter::LineSpec > lines;
+	font::FormatSpec _format;
 	float height = 0.0f;
 
 	Rect getLineRect(uint16_t lineId, float density, const Vec2 & = Vec2());
-	Rect getLineRect(const Formatter::LineSpec &, float density, const Vec2 & = Vec2());
+	Rect getLineRect(const font::LineSpec &, float density, const Vec2 & = Vec2());
 
 	uint16_t getLineForCharId(uint16_t id);
 	Vector<Rect> getLabelRects(uint16_t first, uint16_t last, float density, const Vec2 & = Vec2(), const Padding &p = Padding());
@@ -180,12 +179,12 @@ struct InlineContext {
 	uint16_t lineHeight = 0;
 
 	Label label;
-	Formatter reader;
+	font::Formatter reader;
 	bool finalized = false;
 
 	Vector<Pair<const Node *, NodeCallback>> nodes;
 
-	InlineContext(FontSet *, float);
+	InlineContext(font::Source *, float);
 
 	void pushNode(const Node *, const NodeCallback &);
 	void popNode(const Node *);

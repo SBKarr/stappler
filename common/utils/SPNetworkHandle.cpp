@@ -753,19 +753,22 @@ size_t NetworkHandle::writeData(char *data, size_t size) {
 size_t NetworkHandle::writeHeaders(const char *data, size_t size) {
 	CharReaderBase reader(data, size);
 
-	if (_method != Method::Smtp) {
-		if (!reader.is("HTTP/")) {
-			auto name = reader.readUntil<CharReaderBase::Chars<':'>>();
-			reader ++;
+	if (!reader.is("\r\n")) {
+		if (_method != Method::Smtp) {
+			if (!reader.is("HTTP/")) {
+				auto name = reader.readUntil<CharReaderBase::Chars<':'>>();
+				reader ++;
 
-			auto nameStr = name.str(); string::trim(nameStr); string::tolower(nameStr);
-			auto valueStr = reader.str(); string::trim(valueStr);
+				auto nameStr = name.str(); string::trim(nameStr); string::tolower(nameStr);
+				auto valueStr = reader.str(); string::trim(valueStr);
 
-			_parsedHeaders.emplace(std::move(nameStr), std::move(valueStr));
+				_parsedHeaders.emplace(std::move(nameStr), std::move(valueStr));
+			}
 		}
+
+		_recievedHeaders.push_back(String(data, size));
 	}
 
-	_recievedHeaders.push_back(String(data, size));
     return size;
 }
 

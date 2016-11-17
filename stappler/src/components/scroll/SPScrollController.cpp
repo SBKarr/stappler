@@ -325,6 +325,7 @@ void ScrollController::setScrollRelativeValue(float value) {
 void ScrollController::addScrollNode(Item &it) {
 	if (it.node) {
 		_scroll->addScrollNode(it.node, it.pos, it.size, it.zIndex);
+		it.node->pushForceRendering();
 	}
 }
 

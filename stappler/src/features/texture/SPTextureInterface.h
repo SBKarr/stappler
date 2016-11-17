@@ -109,9 +109,6 @@ public:
 
 	virtual bool drawRect(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const cocos2d::Color4B &) = 0;
 	virtual bool drawOutline(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t outline, const cocos2d::Color4B &color) = 0;
-
-	virtual bool drawChar(const Font::CharSpec &, uint16_t xOffset = 0, uint16_t yOffset = 0, bool flip = false) = 0;
-	virtual bool drawChars(const std::vector<Font::CharSpec> &, int16_t xOffset = 0, int16_t yOffset = 0, bool flip = false);
 };
 
 NS_SP_END

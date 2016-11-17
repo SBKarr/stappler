@@ -43,7 +43,6 @@ Thread &TextureCache::thread() {
 void TextureCache::update(float dt) {
 	std::map<std::string, cocos2d::Texture2D *> release;
 	for (auto &it : _texturesScore) {
-		//log("%u %s", it.first->getReferenceCount(), filepath::name(it.second.second).c_str());
 		if (it.first->getReferenceCount() > 1) {
 			it.second.first = GetDelayTime();
 		} else {
@@ -63,6 +62,13 @@ void TextureCache::update(float dt) {
 	if (_textures.empty()) {
 		unregisterWithDispatcher();
 	}
+}
+
+GLProgramSet *TextureCache::getBatchPrograms() const {
+	return _batchDrawing;
+}
+GLProgramSet *TextureCache::getRawPrograms() const {
+	return _rawDrawing;
 }
 
 void TextureCache::addTexture(const std::string &file, const Callback &cb, bool forceReload) {
@@ -101,6 +107,8 @@ void TextureCache::addTexture(const std::string &file, const Callback &cb, bool 
 					}
 					*imagePtr = tex;
 				});
+			} else {
+				log::format("TextureCache", "fail to open bitmap: %s", file.c_str());
 			}
 			return true;
 		}, [this, file, imagePtr] (cocos2d::Ref *, bool) {
@@ -164,14 +172,20 @@ bool TextureCache::hasTexture(const std::string &path) {
 }
 
 TextureCache::TextureCache() {
+	_batchDrawing = Rc<GLProgramSet>::create(GLProgramSet::DrawNodeSet);
+	_rawDrawing = Rc<GLProgramSet>::create(GLProgramSet::RawDrawingSet);
+
 	onEvent(Device::onAndroidReset, [this] (const Event *) {
 		for (auto &it : _textures) {
 			Bitmap bitmap(filesystem::readFile(it.first));
-			it.second->initWithData(bitmap.dataPtr(), bitmap.size(), Image::getPixelFormat(bitmap.format()), bitmap.width(), bitmap.height());
+			it.second->initWithDataThreadSafe(bitmap.dataPtr(), bitmap.size(), Image::getPixelFormat(bitmap.format()), bitmap.width(), bitmap.height(), 0);
 			if (bitmap.alpha() == Bitmap::Alpha::Premultiplied) {
 				it.second->setPremultipliedAlpha(true);
 			}
 		}
+
+		_batchDrawing->reloadPrograms();
+		_rawDrawing->reloadPrograms();
 	});
 }
 
@@ -194,7 +208,6 @@ void TextureCache::unregisterWithDispatcher() {
 		_registred = false;
 	}
 }
-
 
 void TextureCache::uploadBitmap(Bitmap && bmp, const Function<void(cocos2d::Texture2D *)> &cb, Ref *ref) {
 	auto bmpPtr = new Bitmap(std::move(bmp));
@@ -229,16 +242,12 @@ void TextureCache::uploadBitmap(Vector<Bitmap> &&bmp, const Function<void(Vector
 }
 
 void TextureCache::uploadTextureBackground(Rc<cocos2d::Texture2D> &tex, const Bitmap &bmp) {
-	tex = Rc<cocos2d::Texture2D>::alloc();
-	tex->initWithData(bmp.dataPtr(), bmp.size(), Image::getPixelFormat(bmp.format()), bmp.width(), bmp.height());
-	glFinish();
+	tex = uploadTexture(bmp);
 }
 
 void TextureCache::uploadTextureBackground(Vector<Rc<cocos2d::Texture2D>> &texs, const Vector<Bitmap> &bmps) {
 	for (auto &it : bmps) {
-		Rc<cocos2d::Texture2D> newTex = Rc<cocos2d::Texture2D>::alloc();
-		newTex->initWithDataThreadSafe(it.dataPtr(), it.size(), Image::getPixelFormat(it.format()), it.width(), it.height(), 0);
-		texs.emplace_back(std::move(newTex));
+		texs.emplace_back(uploadTexture(it));
 	}
 }
 
@@ -253,15 +262,37 @@ bool TextureCache::makeCurrentContext() {
 #ifdef DEBUG
 	assert(s_textureCacheThread.isOnThisThread());
 #endif
-	return platform::render::_enableOffscreenContext();
+	if (_contextRetained == 0) {
+		++ _contextRetained;
+		return platform::render::_enableOffscreenContext();
+	} else {
+		++ _contextRetained;
+		return true;
+	}
 }
 void TextureCache::freeCurrentContext() {
 #ifdef DEBUG
 	assert(s_textureCacheThread.isOnThisThread());
 #endif
-	glFinish();
+	if (_contextRetained > 0) {
+		-- _contextRetained;
+		if (_contextRetained == 0) {
+			glFinish();
+			platform::render::_disableOffscreenContext();
+		}
+	}
+}
 
-	platform::render::_disableOffscreenContext();
+Rc<cocos2d::Texture2D> TextureCache::uploadTexture(const Bitmap &bmp) {
+	return getInstance()->performWithGL([&] () -> Rc<cocos2d::Texture2D> {
+		if (bmp) {
+			auto ret = Rc<cocos2d::Texture2D>::alloc();
+			ret->initWithDataThreadSafe(bmp.dataPtr(), bmp.size(), Image::getPixelFormat(bmp.format()), bmp.width(), bmp.height(), 0);
+			ret->setPremultipliedAlpha(bmp.alpha() == Bitmap::Alpha::Premultiplied);
+			return ret;
+		}
+		return nullptr;
+	});
 }
 
 NS_SP_END

@@ -12,16 +12,18 @@
 #include "SPRichTextDocument.h"
 #include "SPRichTextLayout.h"
 #include "SPRichTextResult.h"
-#include "SPRichTextFormatter.h"
+#include "SPFontFormatter.h"
 
 NS_SP_EXT_BEGIN(rich_text)
 
 class Builder : public RendererInterface {
 public:
-	Builder(Document *, const MediaParameters &, FontSet *set, const Vector<String> & = Vector<String>());
+	using Formatter = font::Formatter;
+
+	Builder(Document *, const MediaParameters &, font::Source *set, const Vector<String> & = Vector<String>());
 	~Builder();
 
-	void setHyphens(rich_text::HyphenMap *);
+	void setHyphens(font::HyphenMap *);
 	void setMargin(const Margin &);
 
 	void render();
@@ -33,12 +35,10 @@ public:
 
 	void resolveMediaQueries(const Vector<style::MediaQuery> &);
 
-	Font *getFont(const FontStyle &);
-
 	const MediaParameters &getMedia() const;
 
 	Document *getDocument() const;
-	FontSet *getFontSet() const;
+	font::Source *getFontSet() const;
 
 protected:
 	void generateFontConfig();
@@ -98,14 +98,14 @@ protected:
 
 	Rc<Document>_document;
 	Rc<Result>_result;
-	Rc<FontSet>_fontSet;
+	Rc<font::Source>_fontSet;
 
 	Vector<bool> _mediaQueries;
 	Vector<String> _spine;
 
 	Vector<Layout *> _layoutStack;
 	Vector<FloatContext *> _floatStack;
-	Rc<rich_text::HyphenMap> _hyphens;
+	Rc<font::HyphenMap> _hyphens;
 };
 
 NS_SP_EXT_END(rich_text)

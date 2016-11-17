@@ -100,34 +100,35 @@ void DynamicQuadArray::setTexturePoints(size_t index, const cocos2d::Vec2 &bl, c
 }
 
 void DynamicQuadArray::setGeometry(size_t index, const cocos2d::Vec2 &pos, const cocos2d::Size &size, float positionZ) {
-    float x1 = pos.x;
-    float y1 = pos.y;
+	const float x1 = pos.x;
+	const float y1 = pos.y;
 
-    float x2 = x1 + size.width;
-    float y2 = y1 + size.height;
-    float x = _transform.m[12];
-    float y = _transform.m[13];
+	const float x2 = x1 + size.width;
+	const float y2 = y1 + size.height;
+	const float x = _transform.m[12];
+	const float y = _transform.m[13];
 
-    float cr = _transform.m[0];
-    float sr = _transform.m[1];
-    float cr2 = _transform.m[5];
-    float sr2 = -_transform.m[4];
-    float ax = x1 * cr - y1 * sr2 + x;
-    float ay = x1 * sr + y1 * cr2 + y;
+	const float cr = _transform.m[0];
+	const float sr = _transform.m[1];
+	const float cr2 = _transform.m[5];
+	const float sr2 = -_transform.m[4];
 
-    float bx = x2 * cr - y1 * sr2 + x;
-    float by = x2 * sr + y1 * cr2 + y;
+	const float ax = x1 * cr - y1 * sr2 + x;
+	const float ay = x1 * sr + y1 * cr2 + y;
 
-    float cx = x2 * cr - y2 * sr2 + x;
-    float cy = x2 * sr + y2 * cr2 + y;
+	const float bx = x2 * cr - y1 * sr2 + x;
+	const float by = x2 * sr + y1 * cr2 + y;
 
-    float dx = x1 * cr - y2 * sr2 + x;
-    float dy = x1 * sr + y2 * cr2 + y;
+	const float cx = x2 * cr - y2 * sr2 + x;
+	const float cy = x2 * sr + y2 * cr2 + y;
 
-    _quads[index].bl.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(ax), RENDER_IN_SUBPIXEL(ay), positionZ );
-    _quads[index].br.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(bx), RENDER_IN_SUBPIXEL(by), positionZ );
-    _quads[index].tl.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(dx), RENDER_IN_SUBPIXEL(dy), positionZ );
-    _quads[index].tr.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(cx), RENDER_IN_SUBPIXEL(cy), positionZ );
+	const float dx = x1 * cr - y2 * sr2 + x;
+	const float dy = x1 * sr + y2 * cr2 + y;
+
+	_quads[index].bl.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(ax), RENDER_IN_SUBPIXEL(ay), positionZ);
+	_quads[index].br.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(bx), RENDER_IN_SUBPIXEL(by), positionZ);
+	_quads[index].tl.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(dx), RENDER_IN_SUBPIXEL(dy), positionZ);
+	_quads[index].tr.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(cx), RENDER_IN_SUBPIXEL(cy), positionZ);
 
 	_quadsDirty = true;
 }
@@ -202,34 +203,35 @@ void DynamicQuadArray::setNormalizedGeometry(size_t index, const cocos2d::Vec2 &
 		_quads[index].tr.texCoords.v = texBottom;
 	}
 
-    float x1 = pos.x;
-    float y1 = pos.y;
+	const float x1 = pos.x;
+	const float y1 = pos.y;
 
-    float x2 = x1 + rect.size.width;
-    float y2 = y1 + rect.size.height;
-    float x = _transform.m[12];
-    float y = _transform.m[13];
+	const float x2 = x1 + rect.size.width;
+	const float y2 = y1 + rect.size.height;
+	const float x = _transform.m[12];
+	const float y = _transform.m[13];
 
-    float cr = _transform.m[0];
-    float sr = _transform.m[1];
-    float cr2 = _transform.m[5];
-    float sr2 = -_transform.m[4];
-    float ax = x1 * cr - y1 * sr2 + x;
-    float ay = x1 * sr + y1 * cr2 + y;
+	const float cr = _transform.m[0];
+	const float sr = _transform.m[1];
+	const float cr2 = _transform.m[5];
+	const float sr2 = -_transform.m[4];
 
-    float bx = x2 * cr - y1 * sr2 + x;
-    float by = x2 * sr + y1 * cr2 + y;
+	const float ax = x1 * cr - y1 * sr2 + x;
+	const float ay = x1 * sr + y1 * cr2 + y;
 
-    float cx = x2 * cr - y2 * sr2 + x;
-    float cy = x2 * sr + y2 * cr2 + y;
+	const float bx = x2 * cr - y1 * sr2 + x;
+	const float by = x2 * sr + y1 * cr2 + y;
 
-    float dx = x1 * cr - y2 * sr2 + x;
-    float dy = x1 * sr + y2 * cr2 + y;
+	const float cx = x2 * cr - y2 * sr2 + x;
+	const float cy = x2 * sr + y2 * cr2 + y;
 
-    _quads[index].bl.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(ax), RENDER_IN_SUBPIXEL(ay), positionZ );
-    _quads[index].br.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(bx), RENDER_IN_SUBPIXEL(by), positionZ );
-    _quads[index].tl.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(dx), RENDER_IN_SUBPIXEL(dy), positionZ );
-    _quads[index].tr.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(cx), RENDER_IN_SUBPIXEL(cy), positionZ );
+	const float dx = x1 * cr - y2 * sr2 + x;
+	const float dy = x1 * sr + y2 * cr2 + y;
+
+	_quads[index].bl.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(ax), RENDER_IN_SUBPIXEL(ay), positionZ );
+	_quads[index].br.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(bx), RENDER_IN_SUBPIXEL(by), positionZ );
+	_quads[index].tl.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(dx), RENDER_IN_SUBPIXEL(dy), positionZ );
+	_quads[index].tr.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(cx), RENDER_IN_SUBPIXEL(cy), positionZ );
 
 	_quadsDirty = true;
 }
@@ -246,7 +248,7 @@ void DynamicQuadArray::updateTransform(const cocos2d::Mat4 &t) {
 		_transform = t;
 		return;
 	}
-	if (!_quads.empty()) {
+	if (!_quads.empty() && !_transform.isIdentity()) {
 		_transform.inverse();
 		for (auto &it : _quads) {
 			_transform.transformPoint(&it.bl.vertices);
@@ -258,7 +260,7 @@ void DynamicQuadArray::updateTransform(const cocos2d::Mat4 &t) {
 	_transform = t;
 	_quadsDirty = true;
 
-	if (!_quads.empty()) {
+	if (!_quads.empty() && !_transform.isIdentity()) {
 		for (auto &it : _quads) {
 			_transform.transformPoint(&it.bl.vertices);
 			_transform.transformPoint(&it.br.vertices);
@@ -280,41 +282,6 @@ bool DynamicQuadArray::drawRect(uint16_t x, uint16_t y, uint16_t width, uint16_t
 	return true;
 }
 
-bool DynamicQuadArray::drawChar(const Font::CharSpec &c, uint16_t xOffset, uint16_t yOffset,
-		bool flip, float texWidth, float texHeight, bool invert) {
-	_quads.emplace_back();
-	auto id = _quads.size() - 1;
-
-	uint16_t width = c.uCharPtr->width();
-	uint16_t height = c.uCharPtr->height();
-
-	setTextureRect(id, c.uCharPtr->rect, texWidth, texHeight, false, flip);
-
-	int32_t posX = xOffset + c.posX + c.uCharPtr->xOffset;
-	int32_t posY = 0;
-	if (invert) {
-		posY = yOffset - ((flip)?(-c.posY):c.posY) - (c.uCharPtr->yOffset + height) - c.uCharPtr->font->getDescender();
-	} else {
-		posY = yOffset + ((flip)?(-c.posY):c.posY) + c.uCharPtr->yOffset + c.uCharPtr->font->getDescender();
-	}
-
-	setGeometry(id, Vec2(posX, posY), Size(width, height), 0.0f);
-	setColor(id, c.color);
-
-	if (c.underline > 0) {
-		posX = xOffset + c.posX;
-		if (invert) {
-			posY = yOffset - ((flip)?(-c.posY):c.posY) - c.uCharPtr->font->getUnderlinePosition() - c.uCharPtr->font->getUnderlineThickness() * c.underline;
-		} else {
-			posY = yOffset + ((flip)?(-c.posY):c.posY) + c.uCharPtr->font->getUnderlinePosition();
-		}
-		drawRect(posX, posY,
-				c.uCharPtr->xAdvance, c.uCharPtr->font->getUnderlineThickness() * c.underline, c.color, texWidth, texHeight);
-	}
-	_quadsDirty = true;
-	return true;
-}
-
 bool DynamicQuadArray::drawChar(const font::Metrics &m, const font::CharLayout &l, const font::CharTexture &t, uint16_t charX, uint16_t charY,
 		const Color4B &color, uint8_t underline, float texWidth, float texHeight) {
 	_quads.emplace_back();
@@ -328,48 +295,11 @@ bool DynamicQuadArray::drawChar(const font::Metrics &m, const font::CharLayout &
 	setGeometry(id, Vec2(charX + l.xOffset, charY - (l.yOffset + height) - m.descender), Size(width, height), 0.0f);
 	setColor(id, color);
 
-	if (underline > 0) {
-		drawRect(charX, charY - m.underlinePosition - m.underlineThickness * underline, l.xAdvance, m.underlineThickness * underline, color, texWidth, texHeight);
-	}
+	/*if (underline > 0) {
+		drawRect(charX, charY, l.xAdvance, m.height * underline / 16.0f, color, texWidth, texHeight);
+	}*/
 	_quadsDirty = true;
 	return true;
-}
-
-size_t DynamicQuadArray::getQuadsCount(const std::vector<Font::CharSpec> &chars) {
-	size_t quadsSize = 0;
-	for (auto &it : chars) {
-		if (it.drawable() && (it.uCharPtr->rect.size.width == 0.0f || it.uCharPtr->rect.size.height == 0.0f)) {
-			quadsSize ++;
-			if (it.underline > 0) {
-				quadsSize ++;
-			}
-		}
-	}
-	return quadsSize;
-}
-bool DynamicQuadArray::drawCharsInvert(const std::vector<Font::CharSpec> &vec, uint16_t yOffset) {
-	return drawChars(vec, 0, yOffset, false, true);
-}
-
-bool DynamicQuadArray::drawChars(const std::vector<Font::CharSpec> &vec, uint16_t xOffset, uint16_t yOffset, bool flip, bool invert) {
-	resize(getQuadsCount(vec));
-	bool ret = true;
-	if (!vec.empty()) {
-		auto image = vec.front().uCharPtr->getFont()->getImage();
-		float texWidth = image->getWidth();
-		float texHeight = image->getHeight();
-
-		for (auto &it : vec) {
-			if (it.drawable() && it.uCharPtr->width() > 0 && it.uCharPtr->height() > 0) {
-				if (!drawChar(it, xOffset, yOffset, flip, texWidth, texHeight, invert)) {
-					ret = false;
-					break;
-				}
-			}
-		}
-	}
-
-	return ret;
 }
 
 NS_SP_END

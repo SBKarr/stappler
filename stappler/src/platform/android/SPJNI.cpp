@@ -447,6 +447,7 @@ JObjectLocalRef getService(Service serv, JNIEnv *pEnv) {
 	}
 
 	if (method.empty() || param.empty()) {
+		log::text("SPJNI", "No method or parameter");
 		return nullptr;
 	}
 
@@ -454,6 +455,11 @@ JObjectLocalRef getService(Service serv, JNIEnv *pEnv) {
 	auto methodId = getMethodID(pEnv, getClassID(pEnv, activity), method, param);
 	if (methodId) {
 		ret = pEnv->CallObjectMethod(activity, methodId);
+		if (!ret) {
+			log::format("SPJNI", "Empty result for method: %s (%s)", method.c_str(), param.c_str());
+		}
+	} else {
+		log::format("SPJNI", "No methodID: %s (%s)", method.c_str(), param.c_str());
 	}
 
 	return JObjectLocalRef(pEnv, ret);

@@ -49,23 +49,23 @@ public:
 	virtual void removeHandlerNode(EventHandlerNode *handler);
 
 	EventHandlerNode * onEvent(const EventHeader &h, Callback callback, bool destroyAfterEvent = false);
-	EventHandlerNode * onEventWithObject(const EventHeader &h, cocos2d::Ref *obj, Callback callback, bool destroyAfterEvent = false);
+	EventHandlerNode * onEventWithObject(const EventHeader &h, Ref *obj, Callback callback, bool destroyAfterEvent = false);
 
 	virtual void retainInterface();
 	virtual void releaseInterface();
 private:
-	std::set<EventHandlerNode *> _handlers;
+	Set<EventHandlerNode *> _handlers;
 };
 
 class EventHandlerNode {
 public:
 	using Callback = std::function<void(const Event *)>;
 
-	static EventHandlerNode * onEvent(const EventHeader &header, cocos2d::Ref *ref, Callback callback, EventHandlerInterface *obj, bool destroyAfterEvent);
+	static EventHandlerNode * onEvent(const EventHeader &header, Ref *ref, Callback callback, EventHandlerInterface *obj, bool destroyAfterEvent);
 
 	void setSupport(EventHandlerInterface *);
 
-	bool shouldRecieveEventWithObject(EventHeader::EventID eventID, cocos2d::Ref *object) const {
+	bool shouldRecieveEventWithObject(EventHeader::EventID eventID, Ref *object) const {
 		return _eventID == eventID && (!_obj || object == _obj);
 	};
 
@@ -76,13 +76,13 @@ public:
 	~EventHandlerNode();
 
 private:
-	EventHandlerNode(const EventHeader &header, cocos2d::Ref *ref, Callback callback, EventHandlerInterface *obj, bool destroyAfterEvent);
+	EventHandlerNode(const EventHeader &header, Ref *ref, Callback callback, EventHandlerInterface *obj, bool destroyAfterEvent);
 
 	bool _destroyAfterEvent = false;
 
 	EventHeader::EventID _eventID;
 	Callback _callback;
-	cocos2d::Ref *_obj = nullptr;
+	Ref *_obj = nullptr;
 
 	std::atomic<EventHandlerInterface *>_support;
 };

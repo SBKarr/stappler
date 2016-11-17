@@ -50,11 +50,15 @@ public:
 			auto env = spjni::getJniEnv();
 			auto storeKit = spjni::getService(spjni::Service::StoreKit, env);
 			auto storeKitClass = spjni::getClassID(env, storeKit);
-
-			jmethodID startSetup = spjni::getMethodID(env, storeKitClass, "startSetup", "()V");
-			if (startSetup) {
-				env->CallVoidMethod(storeKit, startSetup);
+			if (!storeKitClass) {
+				log::text("StoreKit", "test");
+			} else {
+				jmethodID startSetup = spjni::getMethodID(env, storeKitClass, "startSetup", "()V");
+				if (startSetup) {
+					env->CallVoidMethod(storeKit, startSetup);
+				}
 			}
+
 			return true;
 		});
 

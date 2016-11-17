@@ -51,7 +51,6 @@ public:
 
 	virtual bool drawRect(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const cocos2d::Color4B &);
 	virtual bool drawOutline(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t outline, const cocos2d::Color4B &);
-	virtual bool drawChar(const Font::CharSpec &, uint16_t xOffset = 0, uint16_t yOffset = 0, bool flip = false);
 
 	bool downsample(uint16_t width, uint16_t height);
 	bool downsample(uint16_t width, uint16_t height, Texture<T> &);
@@ -210,25 +209,6 @@ bool Texture<T>::drawOutline(uint16_t posX, uint16_t posY, uint16_t width, uint1
 		}
 	}
 
-	return true;
-}
-
-template <class T>
-bool Texture<T>::drawChar(const Font::CharSpec &c, uint16_t xOffset, uint16_t yOffset, bool flip) {
-	const auto posX = xOffset + c.posX + c.uCharPtr->xOffset;
-	const auto posY = yOffset + ((flip)?(-c.posY):c.posY) + c.uCharPtr->yOffset + c.uCharPtr->font->getDescender();
-
-	const uint16_t width = c.uCharPtr->width();
-	const uint16_t height = c.uCharPtr->height();
-	const uint16_t texX = c.uCharPtr->x();
-	const uint16_t texY = c.uCharPtr->y();
-
-	const auto img = c.uCharPtr->getFont()->getImage();
-	if (width > 0 && height > 0) {
-		Texture<PixelA8> charTex(img->getWidth(), img->getWidth(), img->getData().data(),
-				texX, texY, width, height);
-		merge(posX, posY, charTex, c.color);
-	}
 	return true;
 }
 

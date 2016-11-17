@@ -20,7 +20,7 @@ bool ButtonLabelSelector::init(const TapCallback &tapCallback, const TapCallback
 	_label = construct<Label>(FontType::Title);
 	_label->setAnchorPoint(Vec2(0, 0.5));
 	_label->setMaxLines(1);
-	_label->setHyphens(stappler::RichLabel::Style::Hyphens::None);
+	_label->setHyphens(Label::Hyphens::None);
 	addChild(_label);
 
 	return true;

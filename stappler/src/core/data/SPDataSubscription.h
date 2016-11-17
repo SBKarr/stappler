@@ -12,7 +12,7 @@
 
 NS_SP_EXT_BEGIN(data)
 
-class Subscription : public cocos2d::Ref {
+class Subscription : public Ref {
 public:
 	using Id = ValueWrapper<uint64_t, class IdClassFlag>;
 

@@ -30,9 +30,6 @@ struct FontStruct {
 using FontStructMap = Map<String, FontStruct>;
 using FontFaceMap = Map<String, FT_Face>;
 using FontFacePriority = Vector<Pair<String, uint16_t>>;
-using FontCharPair = Pair<Font::Char, FT_Face>;
-using FontCharsVec = Vector<FontCharPair>;
-using FontCharsMap = Map<String, Pair<FT_Face, FontCharsVec>>;
 
 struct UVec2 {
 	uint16_t x;
@@ -58,20 +55,20 @@ public:
 	void update();
 	Time getTimer() const;
 
-	Metrics requestMetrics(const Vector<String> &srcs, uint16_t size, const ReceiptCallback &cb);
-	Arc<FontLayout::Data> requestLayoutUpgrade(const Vector<String> &, const Arc<FontLayout::Data> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb);
+	Metrics requestMetrics(const Source *, const Vector<String> &srcs, uint16_t size, const ReceiptCallback &cb);
+	Arc<FontLayout::Data> requestLayoutUpgrade(const Source *, const Vector<String> &, const Arc<FontLayout::Data> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb);
 
-	bool updateTextureWithSource(uint32_t v, Source *source, Map<String, Vector<char16_t>> &l, Vector<Rc<cocos2d::Texture2D>> &t);
+	bool updateTextureWithSource(uint32_t v, Source *source, const Map<String, Vector<char16_t>> &l, Vector<Rc<cocos2d::Texture2D>> &t);
 
 protected:
 	FT_Face openFontFace(const Bytes &data, const String &font, uint16_t fontSize);
 	FontStructMap::iterator processFile(Bytes && data, const String &file);
-	FontStructMap::iterator openFile(const ReceiptCallback &cb, const String &name, const String &file);
-	FT_Face getFace(const ReceiptCallback &cb, const String &file, uint16_t size);
+	FontStructMap::iterator openFile(const Source *source, const ReceiptCallback &cb, const String &name, const String &file);
+	FT_Face getFace(const Source *source, const ReceiptCallback &cb, const String &file, uint16_t size);
 
 	Metrics getMetrics(FT_Face face, uint16_t);
 
-	void requestCharUpdate(const ReceiptCallback &cb, const Vector<String> &, uint16_t size, Vector<FT_Face> &, Vector<CharLayout> &, char16_t);
+	void requestCharUpdate(const Source *, const ReceiptCallback &cb, const Vector<String> &, uint16_t size, Vector<FT_Face> &, Vector<CharLayout> &, char16_t);
 	bool getKerning(const Vector<FT_Face> &faces, char16_t first, char16_t second, int16_t &value);
 
 	void drawCharOnBitmap(cocos2d::Texture2D *bmp, const URect &, FT_Bitmap *bitmap);
@@ -85,6 +82,8 @@ protected:
 	FT_Library FTlibrary = nullptr;
 };
 
+using FontTextureLayout = Map<String, Vector<CharTexture>>;
+
 class FontLibrary {
 public:
 	static FontLibrary *getInstance();
@@ -94,21 +93,26 @@ public:
 
 	Arc<FontLibraryCache> getCache();
 
-	void cleanupSource(Source *);
+	Vector<size_t> getQuadsCount(const FormatSpec *format, const Map<String, Vector<CharTexture>> &layouts, size_t texSize);
 
-	Vector<size_t> getQuadsCount(FormatSpec *format, const Map<String, Vector<CharTexture>> &layouts, size_t texSize);
-
-	bool writeTextureQuads(uint32_t v, Source *, FormatSpec *, const Vector<Rc<cocos2d::Texture2D>> &,
+	bool writeTextureQuads(uint32_t v, Source *, const FormatSpec *, const Vector<Rc<cocos2d::Texture2D>> &,
 			Vector<Rc<DynamicQuadArray>> &, Vector<Vector<bool>> &);
 
+	bool writeTextureRects(uint32_t v, Source *, const FormatSpec *, float scale, Vector<Rect> &);
+
 	bool isSourceRequestValid(Source *, uint32_t);
-	Map<Source *, Map<String, Vector<CharTexture>>> &getSources();
+
+	void cleanupSource(Source *);
+	Arc<FontTextureLayout> getSourceLayout(Source *);
+	void setSourceLayout(Source *, FontTextureLayout &&);
 
 protected:
 	std::mutex _mutex;
 	Time _timer = 0;
 	Map<uint64_t, Arc<FontLibraryCache>> _cache;
-	Map<Source *, Map<String, Vector<CharTexture>>> _sources;
+
+	std::mutex _sourcesMutex;
+	Map<Source *, Arc<FontTextureLayout>> _sources;
 
 	static FontLibrary *s_instance;
 	static std::mutex s_mutex;
@@ -172,9 +176,9 @@ Time FontLibraryCache::getTimer() const {
 	return timer;
 }
 
-Metrics FontLibraryCache::requestMetrics(const Vector<String> &srcs, uint16_t size, const ReceiptCallback &cb) {
+Metrics FontLibraryCache::requestMetrics(const Source *source, const Vector<String> &srcs, uint16_t size, const ReceiptCallback &cb) {
 	for (auto &it : srcs) {
-		if (auto face = getFace(cb, it, size)) {
+		if (auto face = getFace(source, cb, it, size)) {
 			return getMetrics(face, size);
 		}
 	}
@@ -219,7 +223,7 @@ static void addCharGroup(Vector<char16_t> &vec, chars::CharGroupId id) {
 	}
 }
 
-void FontLibraryCache::requestCharUpdate(const ReceiptCallback &cb, const Vector<String> &srcs, uint16_t size,
+void FontLibraryCache::requestCharUpdate(const Source *source, const ReceiptCallback &cb, const Vector<String> &srcs, uint16_t size,
 		Vector<FT_Face> &faces, Vector<CharLayout> &layout, char16_t theChar) {
 	for (uint32_t i = 0; i <= srcs.size(); ++ i) {
 		FT_Face face = nullptr;
@@ -227,9 +231,9 @@ void FontLibraryCache::requestCharUpdate(const ReceiptCallback &cb, const Vector
 			face = faces.at(i);
 		} else {
 			if (i < srcs.size()) {
-				faces.push_back(getFace(cb, srcs.at(i), size));
+				faces.push_back(getFace(source, cb, srcs.at(i), size));
 			} else {
-				faces.push_back(getFace(cb, resource::getFallbackFont(), size));
+				faces.push_back(getFace(source, cb, resource::getFallbackFont(), size));
 			}
 			face = faces.back();
 		}
@@ -297,8 +301,8 @@ void FontLibraryCache::drawCharOnBitmap(cocos2d::Texture2D *bmp, const URect &re
 	}
 }
 
-Arc<FontLayout::Data> FontLibraryCache::requestLayoutUpgrade(const Vector<String> &srcs, const Arc<FontLayout::Data> &data,
-		const Vector<char16_t> &chars, const ReceiptCallback &cb) {
+Arc<FontLayout::Data> FontLibraryCache::requestLayoutUpgrade(const Source *source, const Vector<String> &srcs,
+		const Arc<FontLayout::Data> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
 	Arc<FontLayout::Data> ret;
 	if (!data || data->metrics.size == 0) {
 		return data;
@@ -338,7 +342,7 @@ Arc<FontLayout::Data> FontLibraryCache::requestLayoutUpgrade(const Vector<String
 
 		// calculate layouts
 		for (auto &c : charsToUpdate) {
-			requestCharUpdate(cb, srcs, ret->metrics.size, faces, ret->chars, c);
+			requestCharUpdate(source, cb, srcs, ret->metrics.size, faces, ret->chars, c);
 		}
 
 		// kerning
@@ -404,7 +408,7 @@ FontStructMap::iterator FontLibraryCache::processFile(Bytes && data, const Strin
 	}
 }
 
-FontStructMap::iterator FontLibraryCache::openFile(const ReceiptCallback &cb, const String &name, const String &file) {
+FontStructMap::iterator FontLibraryCache::openFile(const Source *source, const ReceiptCallback &cb, const String &name, const String &file) {
 	auto it = openedFiles.find(file);
 	if (it != openedFiles.end()) {
 		return it;
@@ -412,7 +416,7 @@ FontStructMap::iterator FontLibraryCache::openFile(const ReceiptCallback &cb, co
 		if (files.find(file) == files.end()) {
 			files.insert(file);
 			if (cb) {
-				auto data = cb(file);
+				auto data = cb(source, file);
 				if (!data.empty()) {
 					return processFile(std::move(data), file);
 				}
@@ -423,13 +427,13 @@ FontStructMap::iterator FontLibraryCache::openFile(const ReceiptCallback &cb, co
 	return openedFiles.end();
 }
 
-FT_Face FontLibraryCache::getFace(const ReceiptCallback &cb, const String &file, uint16_t size) {
+FT_Face FontLibraryCache::getFace(const Source *source, const ReceiptCallback &cb, const String &file, uint16_t size) {
 	std::string fontname = toString(file, ":", size);
 	auto it = openedFaces.find(fontname);
 	if (it != openedFaces.end()) {
 		return it->second;
 	} else {
-		auto fileIt = openFile(cb, fontname, file);
+		auto fileIt = openFile(source, cb, fontname, file);
 		if (fileIt == openedFiles.end()) {
 			return nullptr;
 		} else {
@@ -450,15 +454,35 @@ Metrics FontLibraryCache::getMetrics(FT_Face face, uint16_t size) {
 }
 
 
-Map<Source *, Map<String, Vector<CharTexture>>> &FontLibrary::getSources() {
-	return _sources;
-}
 
 void FontLibrary::cleanupSource(Source *source) {
+	_sourcesMutex.lock();
 	_sources.erase(source);
+	_sourcesMutex.unlock();
+}
+Arc<FontTextureLayout> FontLibrary::getSourceLayout(Source *source) {
+	Arc<FontTextureLayout> ret;
+	_sourcesMutex.lock();
+	auto it = _sources.find(source);
+	if (it != _sources.end()) {
+		ret = it->second;
+	}
+	_sourcesMutex.unlock();
+	return ret;
+}
+void FontLibrary::setSourceLayout(Source *source, FontTextureLayout &&map) {
+	Arc<FontTextureLayout> ret;
+	_sourcesMutex.lock();
+	auto it = _sources.find(source);
+	if (it != _sources.end()) {
+		it->second = Arc<FontTextureLayout>::create(std::move(map));
+	} else {
+		_sources.emplace(source, Arc<FontTextureLayout>::create(std::move(map)));
+	}
+	_sourcesMutex.unlock();
 }
 
-Vector<size_t> FontLibrary::getQuadsCount(FormatSpec *format, const Map<String, Vector<CharTexture>> &layouts, size_t texSize) {
+Vector<size_t> FontLibrary::getQuadsCount(const FormatSpec *format, const Map<String, Vector<CharTexture>> &layouts, size_t texSize) {
 	Vector<size_t> ret; ret.resize(texSize);
 
 	auto count = format->chars.size();
@@ -492,7 +516,7 @@ Vector<size_t> FontLibrary::getQuadsCount(FormatSpec *format, const Map<String, 
 	return ret;
 }
 
-bool FontLibrary::writeTextureQuads(uint32_t v, Source *source, FormatSpec *format, const Vector<Rc<cocos2d::Texture2D>> &texs,
+bool FontLibrary::writeTextureQuads(uint32_t v, Source *source, const FormatSpec *format, const Vector<Rc<cocos2d::Texture2D>> &texs,
 		Vector<Rc<DynamicQuadArray>> &quads, Vector<Vector<bool>> &colorMap) {
 	colorMap.resize(texs.size());
 
@@ -500,12 +524,8 @@ bool FontLibrary::writeTextureQuads(uint32_t v, Source *source, FormatSpec *form
 		return false;
 	}
 
-	auto sourceIt = _sources.find(source);
-	if (sourceIt == _sources.end()) {
-		return false;
-	}
-
-	auto &layouts = sourceIt->second;
+	auto layoutsRef = getSourceLayout(source);
+	auto &layouts = *layoutsRef;
 
 	quads.reserve(texs.size());
 	for (size_t i = 0; i < texs.size(); ++ i) {
@@ -514,8 +534,8 @@ bool FontLibrary::writeTextureQuads(uint32_t v, Source *source, FormatSpec *form
 
 	auto sizes = getQuadsCount(format, layouts, texs.size());
 	for (size_t i = 0; i < sizes.size(); ++ i) {
-		quads[i]->resize(sizes[i]);
-		colorMap[i].reserve(sizes[i]);
+		quads[i]->setCapacity(sizes[i]);
+		colorMap[i].reserve(sizes[i] * 2);
 	}
 
 	auto range = format->ranges.begin();
@@ -552,7 +572,7 @@ bool FontLibrary::writeTextureQuads(uint32_t v, Source *source, FormatSpec *form
 
 		if (charIdx >= line->start + line->count) {
 			++ line;
-			while (line->count == 0) {
+			while (line->count == 0 && line != format->lines.end()) {
 				++ line;
 			}
 		}
@@ -565,8 +585,9 @@ bool FontLibrary::writeTextureQuads(uint32_t v, Source *source, FormatSpec *form
 			if (texIt != texVec->end() && texIt->charID == c.charID && charIt != charVec->end() && charIt->charID == c.charID && texIt->texture != maxOf<uint8_t>()) {
 				DynamicQuadArray *quad = quads[texIt->texture];
 				cocos2d::Texture2D * tex = texs[texIt->texture];
-				colorMap[texIt->texture].push_back(range->colorDirty);
-				colorMap[texIt->texture].push_back(range->opacityDirty);
+				auto &cMap = colorMap[texIt->texture];
+				cMap.push_back(range->colorDirty);
+				cMap.push_back(range->opacityDirty);
 				switch (range->align) {
 				case font::VerticalAlign::Sub:
 					quad->drawChar(*metrics, *charIt, *texIt, c.pos, format->height - line->pos - metrics->descender / 2, range->color, range->underline, tex->getPixelsWide(), tex->getPixelsHigh());
@@ -585,6 +606,75 @@ bool FontLibrary::writeTextureQuads(uint32_t v, Source *source, FormatSpec *form
 	return true;
 }
 
+bool FontLibrary::writeTextureRects(uint32_t v, Source *source, const FormatSpec *format, float scale, Vector<Rect> &rects) {
+	if (!isSourceRequestValid(source, v)) {
+		return false;
+	}
+
+	auto layoutsRef = getSourceLayout(source);
+	auto &layouts = *layoutsRef;
+
+	auto range = format->ranges.begin();
+	auto line = format->lines.begin();
+	auto count = format->chars.size();
+	auto texVecIt = layouts.find(range->layout->getName());
+	if (texVecIt == layouts.end()) {
+		return false;
+	}
+	const Vector<font::CharTexture> *texVec = &texVecIt->second;
+	Arc<font::FontData> data = range->layout->getData();
+	const font::Metrics *metrics = &data->metrics;
+	const Vector<font::CharLayout> *charVec = &data->chars;
+
+	for (uint32_t charIdx = 0; charIdx < count; ++ charIdx) {
+		if (charIdx >= range->start + range->count) {
+			++ range;
+			while (range->count == 0) {
+				++ range;
+			}
+			texVecIt = layouts.find(range->layout->getName());
+			if (texVecIt == layouts.end()) {
+				return false;
+			}
+			texVec = &texVecIt->second;
+			data = range->layout->getData();
+			metrics = &data->metrics;
+			charVec = &data->chars;
+		}
+
+		if (charIdx >= line->start + line->count) {
+			++ line;
+			while (line->count == 0) {
+				++ line;
+			}
+		}
+
+		const font::CharSpec &c = format->chars[charIdx];
+		if (c.display == font::CharSpec::Char) {
+			auto texIt = std::lower_bound(texVec->begin(), texVec->end(), c.charID);
+			auto charIt = std::lower_bound(charVec->begin(), charVec->end(), c.charID);
+
+			if (texIt != texVec->end() && texIt->charID == c.charID && charIt != charVec->end() && charIt->charID == c.charID && texIt->texture != maxOf<uint8_t>()) {
+				const auto posX = c.pos + charIt->xOffset;
+				const auto posY = format->height - line->pos - (charIt->yOffset + texIt->height) - metrics->descender;
+				switch (range->align) {
+				case font::VerticalAlign::Sub:
+					rects.emplace_back(posX * scale, (posY - metrics->descender / 2) * scale, texIt->width * scale, texIt->height * scale);
+					break;
+				case font::VerticalAlign::Super:
+					rects.emplace_back(posX * scale, (posY - metrics->ascender / 2) * scale, texIt->width * scale, texIt->height * scale);
+					break;
+				default:
+					rects.emplace_back(posX * scale, posY * scale, texIt->width * scale, texIt->height * scale);
+					break;
+				}
+			}
+		}
+	}
+
+	return true;
+}
+
 bool FontLibrary::isSourceRequestValid(Source *source, uint32_t v) {
 	if (!source->isTextureRequestValid(v)) {
 		_sources.erase(source);
@@ -594,15 +684,12 @@ bool FontLibrary::isSourceRequestValid(Source *source, uint32_t v) {
 	return true;
 }
 
-bool FontLibraryCache::updateTextureWithSource(uint32_t v, Source *source, Map<String, Vector<char16_t>> &l, Vector<Rc<cocos2d::Texture2D>> &t) {
+bool FontLibraryCache::updateTextureWithSource(uint32_t v, Source *source, const Map<String, Vector<char16_t>> &l, Vector<Rc<cocos2d::Texture2D>> &t) {
 	if (!library->isSourceRequestValid(source, v)) {
 		return false;
 	}
 
-	auto &sources = library->getSources();
-	sources.erase(source);
-	auto it = sources.emplace(source, Map<String, Vector<CharTexture>>()).first;
-	auto &sourceRef = it->second;
+	Map<String, Vector<CharTexture>> sourceRef;
 	size_t count = 0;
 	Vector<FontLayoutData> names; names.reserve(l.size());
 	for (auto &it : l) {
@@ -637,9 +724,9 @@ bool FontLibraryCache::updateTextureWithSource(uint32_t v, Source *source, Map<S
 					face = faces.at(i);
 				} else {
 					if (i < srcs.size()) {
-						faces.push_back(getFace(cb, srcs.at(i), size));
+						faces.push_back(getFace(source, cb, srcs.at(i), size));
 					} else {
-						faces.push_back(getFace(cb, resource::getFallbackFont(), size));
+						faces.push_back(getFace(source, cb, resource::getFallbackFont(), size));
 					}
 					face = faces.back();
 				}
@@ -780,6 +867,8 @@ bool FontLibraryCache::updateTextureWithSource(uint32_t v, Source *source, Map<S
 	if (!library->isSourceRequestValid(source, v)) {
 		return false;
 	}
+
+	library->setSourceLayout(source, std::move(sourceRef));
 	return true;
 }
 
@@ -843,35 +932,92 @@ Arc<FontLibraryCache> FontLibrary::getCache() {
 	return ret;
 }
 
-Metrics FontLayout::requestMetrics(const Vector<String> &srcs, uint16_t size, const ReceiptCallback &cb) {
+Metrics FontLayout::requestMetrics(const Source *source, const Vector<String> &srcs, uint16_t size, const ReceiptCallback &cb) {
 	auto cache = FontLibrary::getInstance()->getCache();
-	return cache->requestMetrics(srcs, size, cb);
+	return cache->requestMetrics(source, srcs, size, cb);
 }
 
-Arc<FontLayout::Data> FontLayout::requestLayoutUpgrade(const Vector<String> &srcs, const Arc<Data> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
+Arc<FontLayout::Data> FontLayout::requestLayoutUpgrade(const Source *source, const Vector<String> &srcs, const Arc<Data> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
 	auto cache = FontLibrary::getInstance()->getCache();
-	return cache->requestLayoutUpgrade(srcs, data, chars, cb);
+	return cache->requestLayoutUpgrade(source, srcs, data, chars, cb);
 }
 
 
-void Source::updateTexture(uint32_t v, const Map<String, Vector<char16_t>> &l) {
-	auto lPtr = new Map<String, Vector<char16_t>>(l);
+void Source::clone(Source *source, const Function<void(Source *)> &cb) {
+	if (source->getLayoutMap().empty()) {
+		if (cb) {
+			cb(this);
+		}
+	}
+	auto lPtr = new Map<String, Arc<FontLayout>>(source->getLayoutMap());
+	auto tlPtr = new Map<String, Vector<char16_t>>(source->getTextureLayoutMap());
 	auto tPtr = new Vector<Rc<cocos2d::Texture2D>>();
+	auto sPtr = new Rc<Source>(source);
 
 	auto &thread = TextureCache::thread();
-	thread.perform([this, lPtr, tPtr, v] (Ref *) -> bool {
+	thread.perform([this, sPtr, lPtr, tlPtr, tPtr] (Ref *) -> bool {
+		Vector<char16_t> vec;;
+		for (auto &it : (*lPtr)) {
+			const Arc<FontLayout> &l = it.second;
+			auto style = l->getStyle();
+			auto data = l->getData();
+			vec.clear();
+			if (vec.capacity() < data->chars.size()) {
+				vec.reserve(data->chars.size());
+			}
+			for (auto &c : data->chars) {
+				vec.emplace_back(c);
+			}
+
+			getLayout(style)->addSortedChars(vec);
+		}
+
 		auto ret = TextureCache::getInstance()->performWithGL([&] {
 			auto cache = FontLibrary::getInstance()->getCache();
-			return cache->updateTextureWithSource(v, this, *lPtr, *tPtr);
+			return cache->updateTextureWithSource(_version.load(), this, *tlPtr, *tPtr);
 		});
 		delete lPtr;
 		return ret;
-	}, [this, tPtr] (Ref *, bool success) {
+	}, [this, tlPtr, tPtr, sPtr, cb] (Ref *, bool success) {
 		if (success) {
-			onTextureResult(std::move(*tPtr));
+			onTextureResult(std::move(*tlPtr), std::move(*tPtr));
+			if (cb) {
+				cb(this);
+			}
 		}
+		delete tlPtr;
 		delete tPtr;
+		delete sPtr;
 	}, this);
+}
+
+void Source::updateTexture(uint32_t v, const Map<String, Vector<char16_t>> &l) {
+	auto &thread = TextureCache::thread();
+	if (thread.isOnThisThread()) {
+		Vector<Rc<cocos2d::Texture2D>> tPtr;
+		TextureCache::getInstance()->performWithGL([&] {
+			auto cache = FontLibrary::getInstance()->getCache();
+			if (cache->updateTextureWithSource(v, this, l, tPtr)) {
+				onTextureResult(std::move(tPtr));
+			}
+		});
+	} else {
+		auto lPtr = new Map<String, Vector<char16_t>>(l);
+		auto tPtr = new Vector<Rc<cocos2d::Texture2D>>();
+		thread.perform([this, lPtr, tPtr, v] (Ref *) -> bool {
+			auto ret = TextureCache::getInstance()->performWithGL([&] {
+				auto cache = FontLibrary::getInstance()->getCache();
+				return cache->updateTextureWithSource(v, this, *lPtr, *tPtr);
+			});
+			delete lPtr;
+			return ret;
+		}, [this, tPtr] (Ref *, bool success) {
+			if (success) {
+				onTextureResult(std::move(*tPtr));
+			}
+			delete tPtr;
+		}, this);
+	}
 }
 
 void Source::cleanup() {
@@ -1015,6 +1161,44 @@ void DynamicLabel::updateQuadsBackground(Source *source, FormatSpec *format) {
 		delete qPtr;
 		delete cPtr;
 	}, this);
+}
+
+void DynamicLabel::updateQuadsForeground(Source *source, const FormatSpec *format) {
+	auto v = source->getVersion();
+	auto time = Time::now();
+
+	Vector<Rc<cocos2d::Texture2D>> tPtr(source->getTextures());
+	Vector<Rc<DynamicQuadArray>> qPtr;
+	Vector<Vector<bool>> cPtr;
+
+	auto cache = font::FontLibrary::getInstance();
+	if (cache->writeTextureQuads(v, source, format, tPtr, qPtr, cPtr)) {
+		onQuads(time, tPtr, std::move(qPtr), std::move(cPtr));
+	}
+}
+
+void DynamicLabel::makeLabelQuads(Source *source, const FormatSpec *format,
+		const Function<void(const TextureVec &newTex, QuadVec &&newQuads, ColorMapVec &&cMap)> &cb) {
+	auto v = source->getVersion();
+
+	auto &tPtr = source->getTextures();
+	Vector<Rc<DynamicQuadArray>> qPtr;
+	Vector<Vector<bool>> cPtr;
+
+	auto cache = font::FontLibrary::getInstance();
+	if (cache->writeTextureQuads(v, source, format, tPtr, qPtr, cPtr)) {
+		cb(tPtr, std::move(qPtr), std::move(cPtr));
+	}
+}
+
+void DynamicLabel::makeLabelRects(Source *source, const FormatSpec *format, float scale, const Function<void(const Vector<Rect> &)> &cb) {
+	auto v = source->getVersion();
+	Vector<Rect> rects; rects.reserve(format->chars.size());
+
+	auto cache = font::FontLibrary::getInstance();
+	if (cache->writeTextureRects(v, source, format, scale, rects)) {
+		cb(rects);
+	}
 }
 
 NS_SP_END

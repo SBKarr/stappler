@@ -678,6 +678,8 @@ namespace style {
 
 		String getConfigName(const String &family, uint8_t size) const;
 
+		FontStyleParameters getStyle(const String &family, uint8_t size) const;
+
 		FontFace() = default;
 
 		FontFace(String && src, FontStyle style = FontStyle::Normal,

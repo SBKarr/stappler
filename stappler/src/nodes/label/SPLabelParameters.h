@@ -82,7 +82,13 @@ public:
 			Param(const FontFamily &val) : name(Name::FontFamily) { value.fontFamily = val.get(); }
 		};
 
-		template <class T> static Style create(const T & value) { Style s; s.set(value); return s; }
+		Style() { }
+		Style(const Style &) = default;
+		Style(Style &&) = default;
+		Style & operator=(const Style &) = default;
+		Style & operator=(Style &&) = default;
+
+		template <class T> Style(const T & value) { params.push_back(value); }
 		template <class T> Style & set(const T &value) { set(Param(value), true); return *this; }
 
 		void set(const Param &, bool force = false);
@@ -113,12 +119,43 @@ public:
 
 		DescriptionStyle();
 
-		const FontParameters &getFontStyle() const;
-		const TextParameters &getTextStyle() const;
-
 		String getConfigName(bool caps) const;
 
 		DescriptionStyle merge(Source *, const Style &style) const;
+
+		bool operator == (const DescriptionStyle &) const;
+		bool operator != (const DescriptionStyle &) const;
+
+		template <typename ... Args>
+		static DescriptionStyle construct(const String &family, uint8_t size, Args && ... args) {
+			DescriptionStyle p;
+			p.font.fontFamily = family;
+			p.font.fontSize = size;
+			readParameters(p, std::forward<Args>(args)...);
+			return p;
+		}
+
+		static void readParameter(DescriptionStyle &p, TextTransform value) { p.text.textTransform = value; }
+		static void readParameter(DescriptionStyle &p, TextDecoration value) { p.text.textDecoration = value; }
+		static void readParameter(DescriptionStyle &p, Hyphens value) { p.text.hyphens = value; }
+		static void readParameter(DescriptionStyle &p, VerticalAlign value) { p.text.verticalAlign = value; }
+		static void readParameter(DescriptionStyle &p, Opacity value) { p.text.opacity = value.get(); }
+		static void readParameter(DescriptionStyle &p, const Color3B &value) { p.text.color = value; }
+		static void readParameter(DescriptionStyle &p, FontSize value) { p.font.fontSize = value.get(); }
+		static void readParameter(DescriptionStyle &p, FontStyle value) { p.font.fontStyle = value; }
+		static void readParameter(DescriptionStyle &p, FontWeight value) { p.font.fontWeight = value; }
+		static void readParameter(DescriptionStyle &p, FontStretch value) { p.font.fontStretch = value; }
+
+		template <typename T, typename ... Args>
+		static void readParameters(DescriptionStyle &p, T && t, Args && ... args) {
+			readParameter(p, t);
+			readParameters(p, std::forward<Args>(args)...);
+		}
+
+		template <typename T>
+		static void readParameters(DescriptionStyle &p, T && t) {
+			readParameter(p, t);
+		}
 	};
 
 	using StyleVec = Vector< StyleSpec >;

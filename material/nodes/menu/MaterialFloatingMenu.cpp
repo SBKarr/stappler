@@ -104,11 +104,21 @@ bool FloatingMenu::init(MenuSource *source, const cocos2d::Vec2 &globalOrigin, B
 	return true;
 }
 
+void FloatingMenu::setCloseCallback(const CloseCallback &cb) {
+	_closeCallback = cb;
+}
+const FloatingMenu::CloseCallback & FloatingMenu::getCloseCallback() const {
+	return _closeCallback;
+}
+
 void FloatingMenu::close() {
 	stopAllActions();
 	_scroll->setVisible(false);
 	auto a = construct<ResizeTo>(0.25, (_binding == Binding::Relative?Size(1, 1):Size(_fullSize.width, 1)));
 	runAction(cocos2d::Sequence::createWithTwoActions(a, cocos2d::CallFunc::create([this] {
+		if (_closeCallback) {
+			_closeCallback();
+		}
 		_foreground->popNode(this);
 	})));
 }

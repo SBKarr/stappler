@@ -15,7 +15,7 @@ NS_MD_BEGIN
 
 DynamicLabel::DescriptionStyle Label::getFontStyle(FontType t) {
 	DescriptionStyle ret;
-	ret.font.fontFamily = "default";
+	ret.font.fontFamily = "system";
 	switch (t) {
 	case FontType::Headline:
 		ret.font.fontSize = 24;
@@ -76,22 +76,59 @@ DynamicLabel::DescriptionStyle Label::getFontStyle(FontType t) {
 	return ret;
 }
 
+DynamicLabel::DescriptionStyle Label::getFontStyle(const String &name) {
+	return ResourceManager::getInstance()->getFontStyle(name);
+}
+
+static font::Source *Label_getSourceForStyle(const DynamicLabel::DescriptionStyle &style) {
+	auto m = ResourceManager::getInstance();
+	if (style.font.fontFamily == "system") {
+		return m->getSystemFontSource();
+	} else {
+		return m->getUserFontSource();
+	}
+}
+
+void Label::preloadChars(FontType type, const Vector<char16_t> &chars) {
+	auto style = getFontStyle(type);
+	auto source = ResourceManager::getInstance()->getSystemFontSource();
+	source->preloadChars(style.font, chars);
+}
+void Label::preloadChars(const String &type, const Vector<char16_t> &chars) {
+
+}
+
 Size Label::getLabelSize(FontType t, const String &str, float w, float density, bool localized) {
-	return getLabelSize(t, string::toUtf16(str), w, density, localized);
+	return getLabelSize(getFontStyle(t), string::toUtf16(str), w, density, localized);
 }
 Size Label::getLabelSize(FontType t, const WideString &str, float w, float density, bool localized) {
-	auto source = ResourceManager::getInstance()->getFontSource();
-	auto style = getFontStyle(t);
-	return DynamicLabel::getLabelSize(source, style, str, w, density, localized);
+	return getLabelSize(getFontStyle(t), str, w, density, localized);
+}
+
+Size Label::getLabelSize(const String &style, const String &str, float w, float density, bool localized) {
+	return getLabelSize(getFontStyle(style), string::toUtf16(str), w, density, localized);
+}
+Size Label::getLabelSize(const String &style, const WideString &str, float w, float density, bool localized) {
+	return getLabelSize(getFontStyle(style), str, w, density, localized);
+}
+Size Label::getLabelSize(const DescriptionStyle &style, const WideString &str, float w, float density, bool localized) {
+	return DynamicLabel::getLabelSize(Label_getSourceForStyle(style), style, str, w, density, localized);
 }
 
 float Label::getStringWidth(FontType t, const String &str, float density, bool localized) {
-	return getStringWidth(t, string::toUtf16(str), density, localized);
+	return getStringWidth(getFontStyle(t), string::toUtf16(str), density, localized);
 }
 float Label::getStringWidth(FontType t, const WideString &str, float density, bool localized) {
-	auto source = ResourceManager::getInstance()->getFontSource();
-	auto style = getFontStyle(t);
-	return DynamicLabel::getStringWidth(source, style, str, density, localized);
+	return getStringWidth(getFontStyle(t), str, density, localized);
+}
+float Label::getStringWidth(const String &t, const String &str, float density, bool localized) {
+	return getStringWidth(getFontStyle(t), string::toUtf16(str), density, localized);
+}
+float Label::getStringWidth(const String &t, const WideString &str, float density, bool localized) {
+	return getStringWidth(getFontStyle(t), str, density, localized);
+}
+float Label::getStringWidth(const DescriptionStyle &style, const WideString &str, float density, bool localized) {
+	return DynamicLabel::getStringWidth(Label_getSourceForStyle(style), style, str, density, localized);
 }
 
 Label::~Label() { }
@@ -99,11 +136,16 @@ Label::~Label() { }
 bool Label::init(FontType t, Alignment a, float w) {
 	return init(getFontStyle(t), a, w);
 }
+bool Label::init(const String &str, Alignment a, float w) {
+	return init(getFontStyle(str), a, w);
+}
 bool Label::init(const DescriptionStyle &style, Alignment a, float w) {
-	auto source = ResourceManager::getInstance()->getFontSource();
+	auto source = Label_getSourceForStyle(style);
 	if (!DynamicLabel::init(source, style, "", w, a)) {
 		return false;
 	}
+
+	_listener->onEvent(ResourceManager::onUserFont, std::bind(&Label::onUserFont, this));
 
 	return true;
 }
@@ -113,9 +155,15 @@ void Label::setFont(FontType t) {
 }
 
 void Label::setStyle(const DescriptionStyle &style) {
-	_style = style;
-    setOpacity(_style.text.opacity);
-	_labelDirty = true;
+	if (style != _style) {
+		auto source = Label_getSourceForStyle(style);
+		if (source != _source) {
+			setSource(source);
+		}
+		_style = style;
+		setOpacity(_style.text.opacity);
+		_labelDirty = true;
+	}
 }
 
 void Label::onEnter() {
@@ -165,6 +213,12 @@ void Label::setWashedColor(const Color &c) {
 }
 const Color &Label::getWashedColor() const {
 	return _washedColor;
+}
+
+void Label::onUserFont() {
+	if (_style.font.fontFamily != "system") {
+		setSource(ResourceManager::getInstance()->getUserFontSource());
+	}
 }
 
 void Label::onLightLevel() {

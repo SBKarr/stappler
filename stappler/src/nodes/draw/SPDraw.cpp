@@ -7,7 +7,7 @@
 
 #include "SPDefine.h"
 #include "SPDraw.h"
-#include "SPGLProgramSet.h"
+#include "SPTextureCache.h"
 
 #include "renderer/CCGLProgram.h"
 #include "renderer/CCGLProgramCache.h"
@@ -15,7 +15,7 @@
 NS_SP_EXT_BEGIN(draw)
 
 cocos2d::GLProgram *getA8Program() {
-	return GLProgramSet::getInstance()->getProgram(GLProgramSet::DrawNodeA8);
+	return TextureCache::getInstance()->getBatchPrograms()->getProgram(GLProgramSet::DrawNodeA8);
 }
 
 cocos2d::GLProgram *getRGBA8888Program() {

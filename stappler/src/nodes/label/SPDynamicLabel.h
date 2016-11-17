@@ -19,6 +19,13 @@ public:
 	using FormatSpec = font::FormatSpec;
 	using LineSpec = font::LineSpec;
 
+	using TextureVec = Vector<Rc<cocos2d::Texture2D>>;
+	using QuadVec = Vector<Rc<DynamicQuadArray>>;
+	using ColorMapVec = Vector<Vector<bool>>;
+
+	static void makeLabelQuads(Source *, const FormatSpec *, const Function<void(const TextureVec &newTex, QuadVec &&newQuads, ColorMapVec &&cMap)> &);
+	static void makeLabelRects(Source *, const FormatSpec *, float scale, const Function<void(const Vector<Rect> &)> &);
+
     virtual ~DynamicLabel();
 
     virtual bool init(Source *, const DescriptionStyle &, const String & = "", float w = 0.0f, Alignment = Alignment::Left, float d = 0.0f);
@@ -40,7 +47,7 @@ public:
 	virtual uint16_t getFontHeight() const;
 
 protected:
-	virtual void updateQuads();
+	virtual void updateQuads(uint32_t f);
 	virtual void onTextureUpdated();
 	virtual void onLayoutUpdated();
 	virtual void updateColor() override;
@@ -48,6 +55,7 @@ protected:
 	virtual cocos2d::GLProgramState *getProgramStateA8() const override;
 
 	virtual void updateQuadsBackground(Source *, FormatSpec *);
+	virtual void updateQuadsForeground(Source *, const FormatSpec *);
 	virtual void onQuads(const Time &, const Vector<Rc<cocos2d::Texture2D>> &newTex,
 			Vector<Rc<DynamicQuadArray>> &&newQuads, Vector<Vector<bool>> &&cMap);
 
@@ -60,6 +68,8 @@ protected:
 	bool _formatDirty = true;
 	bool _colorDirty = false;
 	bool _inUpdate = false;
+
+	size_t _updateCount = 0;
 };
 
 NS_SP_END

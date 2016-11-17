@@ -9,6 +9,7 @@
 #include "SPBatchNodeBase.h"
 
 #include "SPGLProgramSet.h"
+#include "SPTextureCache.h"
 
 #include "renderer/CCRenderer.h"
 #include "renderer/CCTexture2D.h"
@@ -79,10 +80,10 @@ cocos2d::GLProgramState *BatchNodeBase::getProgramStateA8() const {
 	return cocos2d::GLProgramState::getOrCreateWithGLProgramName(cocos2d::GLProgram::SHADER_NAME_POSITION_TEXTURE_A8_COLOR);
 }
 cocos2d::GLProgramState *BatchNodeBase::getProgramStateI8() const {
-	return cocos2d::GLProgramState::getOrCreateWithGLProgram(GLProgramSet::getInstance()->getProgram(GLProgramSet::DynamicBatchI8));
+	return cocos2d::GLProgramState::getOrCreateWithGLProgram(TextureCache::getInstance()->getBatchPrograms()->getProgram(GLProgramSet::DynamicBatchI8));
 }
 cocos2d::GLProgramState *BatchNodeBase::getProgramStateAI88() const {
-	return cocos2d::GLProgramState::getOrCreateWithGLProgram(GLProgramSet::getInstance()->getProgram(GLProgramSet::DynamicBatchAI88));
+	return cocos2d::GLProgramState::getOrCreateWithGLProgram(TextureCache::getInstance()->getBatchPrograms()->getProgram(GLProgramSet::DynamicBatchAI88));
 }
 cocos2d::GLProgramState *BatchNodeBase::getProgramStateFullColor() const {
 	return cocos2d::GLProgramState::getOrCreateWithGLProgramName(cocos2d::GLProgram::SHADER_NAME_POSITION_TEXTURE_COLOR);

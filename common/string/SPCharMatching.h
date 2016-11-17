@@ -71,6 +71,22 @@ struct Chars {
 
 	template <typename Func>
 	static inline void foreach(const Func &) SPINLINE;
+
+	static inline Set<CharType> toSet() {
+		Set<CharType> ret;
+		foreach([&] (char16_t c) {
+			ret.insert(c);
+		});
+		return ret;
+	}
+
+	static inline Vector<CharType> toVector() {
+		Vector<CharType> ret;
+		foreach([&] (char16_t c) {
+			ret.push_back(c);
+		});
+		return ret;
+	}
 };
 
 template <typename CharType, CharType First, CharType Last>
@@ -80,6 +96,22 @@ struct Range {
 
 	template <typename Func>
 	static inline void foreach(const Func &) SPINLINE;
+
+	static inline Set<CharType> toSet() {
+		Set<CharType> ret;
+		foreach([&] (char16_t c) {
+			ret.insert(c);
+		});
+		return ret;
+	}
+
+	static inline Vector<CharType> toVector() {
+		Vector<CharType> ret;
+		foreach([&] (char16_t c) {
+			ret.push_back(c);
+		});
+		return ret;
+	}
 };
 
 template <typename CharType, typename ...Args>
@@ -89,6 +121,22 @@ struct Compose {
 
 	template <typename Func>
 	static inline void foreach(const Func &) SPINLINE;
+
+	static inline Set<CharType> toSet() {
+		Set<CharType> ret;
+		foreach([&] (char16_t c) {
+			ret.insert(c);
+		});
+		return ret;
+	}
+
+	static inline Vector<CharType> toVector() {
+		Vector<CharType> ret;
+		foreach([&] (char16_t c) {
+			ret.push_back(c);
+		});
+		return ret;
+	}
 };
 
 
@@ -292,16 +340,6 @@ public:
 	static inline bool matchCompose(CharType c) SPINLINE;
 
 
-	template <typename CharType, CharType ... Args>
-	static inline void getChar(Set<CharType> &) SPINLINE;
-
-	template <typename CharType, CharType First, CharType Last>
-	static inline void getPair(Set<CharType> &) SPINLINE;
-
-	template <typename CharType, typename ...Args>
-	static inline void getCompose(Set<CharType> &) SPINLINE;
-
-
 	template <typename CharType, typename Func, CharType ... Args>
 	static inline void foreachChar(const Func &) SPINLINE;
 
@@ -325,19 +363,6 @@ private:
 	static inline bool _matchCompose(CharType c) SPINLINE;
 
 
-	template <typename CharType, CharType T>
-	static inline void _getChar(Set<CharType> &) SPINLINE;
-
-	template <typename CharType, CharType T, CharType T1, CharType ... Args>
-	static inline void _getChar(Set<CharType> &) SPINLINE;
-
-	template <typename CharType, typename T>
-	static inline void _getCompose(Set<CharType> &) SPINLINE;
-
-	template <typename CharType, typename T, typename T1, typename ... Args>
-	static inline void _getCompose(Set<CharType> &) SPINLINE;
-
-
 	template <typename CharType, typename Func, CharType T>
 	static inline void _foreachChar(const Func &) SPINLINE;
 
@@ -358,7 +383,9 @@ inline bool Chars<CharType, Args...>::match(CharType c) {
 
 template <typename CharType, CharType ... Args>
 inline void Chars<CharType, Args...>::get(Set<CharType> &s) {
-	MatchTraits::getChar<CharType, Args...>(s);
+	foreach([&] (char16_t c) {
+		s.insert(c);
+	});
 }
 
 template <typename CharType, CharType ... Args>
@@ -374,7 +401,9 @@ inline bool Range<CharType, First, Last>::match(CharType c) {
 
 template <typename CharType, CharType First, CharType Last>
 inline void Range<CharType, First, Last>::get(Set<CharType> &s) {
-	MatchTraits::getPair<CharType, First, Last>(s);
+	foreach([&] (char16_t c) {
+		s.insert(c);
+	});
 }
 
 template <typename CharType, CharType First, CharType Last>
@@ -390,30 +419,15 @@ inline bool Compose<CharType, Args...>::match(CharType c) {
 
 template <typename CharType, typename ... Args>
 inline void Compose<CharType, Args...>::get(Set<CharType> &s) {
-	MatchTraits::getCompose<CharType, Args...>(s);
+	foreach([&] (char16_t c) {
+		s.insert(c);
+	});
 }
 
 template <typename CharType, typename ... Args>
 template <typename Func>
 inline void Compose<CharType, Args...>::foreach(const Func &f) {
 	MatchTraits::foreachCompose<CharType, Func, Args...>(f);
-}
-
-template <typename CharType, CharType ... Args>
-inline void MatchTraits::getChar(Set<CharType> &s) {
-	_getChar<CharType, Args...>(s);
-}
-
-template <typename CharType, CharType First, CharType Last>
-inline void MatchTraits::getPair(Set<CharType> &s) {
-	for (CharType c = First; c <= Last; c++) {
-		s.insert(c);
-	}
-}
-
-template <typename CharType, typename ...Args>
-inline void MatchTraits::getCompose(Set<CharType> &s) {
-	_getCompose<CharType, Args...>(s);
 }
 
 template <typename CharType, CharType ... Args>
@@ -471,28 +485,6 @@ inline bool MatchTraits::_matchCompose(CharType c) {
 template <typename CharType, typename T, typename T1, typename ... Args>
 inline bool MatchTraits::_matchCompose(CharType c) {
 	return _matchCompose<CharType, T>(c) || _matchCompose<CharType, T1, Args...>(c);
-}
-
-template <typename CharType, CharType T>
-inline void MatchTraits::_getChar(Set<CharType> &s) {
-	s.insert(T);
-}
-
-template <typename CharType, CharType T, CharType T1, CharType ... Args>
-inline void MatchTraits::_getChar(Set<CharType> &s) {
-	_getChar<CharType, T>(s);
-	_getChar<CharType, T1, Args...>(s);
-}
-
-template <typename CharType, typename T>
-inline void MatchTraits::_getCompose(Set<CharType> &s) {
-	T::get(s);
-}
-
-template <typename CharType, typename T, typename T1, typename ... Args>
-inline void MatchTraits::_getCompose(Set<CharType> &s) {
-	_getCompose<CharType, T>(s);
-	_getCompose<CharType, T1, Args...>(s);
 }
 
 

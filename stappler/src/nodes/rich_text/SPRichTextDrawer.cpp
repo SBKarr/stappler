@@ -8,347 +8,287 @@
 #include "SPDefine.h"
 #include "SPRichTextDrawer.h"
 #include "SPTexture.h"
+#include "SPDynamicLabel.h"
 
+#include "renderer/ccGLStateCache.h"
 #include "renderer/CCTexture2D.h"
 #include "platform/CCImage.h"
+#include "base/CCConfiguration.h"
 #include "base/CCDirector.h"
 #include "base/CCScheduler.h"
 
 #include "SPBitmap.h"
 #include "SPString.h"
 #include "SPDrawCanvas.h"
-
-#include "cairo.h"
+#include "SPTextureCache.h"
 
 NS_SP_EXT_BEGIN(rich_text)
 
-struct DrawerCanvas;
-struct DrawerCache;
+class Request : public cocos2d::Ref {
+public:
+	using Callback = std::function<void(cocos2d::Texture2D *)>;
 
-Thread s_softwareRendererThread("RichTextSoftwareRenderer");
+	// draw normal texture
+	bool init(Drawer *, Source *, Result *, const Rect &, const Callback &, cocos2d::Ref *);
 
-struct DrawerCanvas {
-	DrawerCanvas(cairo_t *c, Source *s, const cocos2d::Rect &rect, float d, uint16_t width, uint16_t height, uint8_t *data, float scale, bool thumb);
+	// draw thumbnail texture, where scale < 1.0f - resample coef
+	bool init(Drawer *, Source *, Result *, const Rect &, float, const Callback &, cocos2d::Ref *);
+
+protected:
+	void onAssetCaptured();
+
+	void draw(cocos2d::Texture2D *);
+	void onDrawed(cocos2d::Texture2D *);
 
 	Rect getRect(const Rect &) const;
 
 	void drawRef(const cocos2d::Rect &bbox);
-	void drawOutline(const cocos2d::Rect &bbox, const Outline &);
-	void drawBitmap(const cocos2d::Rect &bbox, const Bitmap &bmp, cairo_surface_t *surf, const Background &bg);
-	void drawBackgroundImage(const cocos2d::Rect &bbox, const Background &bg);
-	void drawBackgroundColor(const cocos2d::Rect &bbox, const Background &bg);
-	void drawBackground(const cocos2d::Rect &bbox, const Background &bg);
-	void drawLabel(const cocos2d::Rect &bbox, const Label &l);
+	void drawOutline(const Rect &bbox, const Outline &);
+	void drawBitmap(const Rect &bbox, cocos2d::Texture2D *bmp, const Background &bg);
+	void drawBackgroundImage(const Rect &bbox, const Background &bg);
+	void drawBackgroundColor(const Rect &bbox, const Background &bg);
+	void drawBackground(const Rect &bbox, const Background &bg);
+	void drawLabel(const Rect &bbox, const Label &l);
 	void drawObject(const Object &obj);
 
-	cairo_t *canvas;
-	Source *source;
-	const cocos2d::Rect &texRect;
-	float density;
-	float scale;
-	bool thumb;
-	Texture<PixelRGBA8888> tex;
-	bool highlightRefs = false;
+	Rect _rect;
+	float _scale = 1.0f;
+	float _density = 1.0f;
+	bool _isThumbnail = false;
+	bool _highlightRefs = false;
+
+	uint16_t _width = 0;
+	uint16_t _height = 0;
+	uint16_t _stride = 0;
+
+	Rc<Drawer> _drawer;
+	Rc<Result> _result;
+	Rc<Source> _source;
+	Rc<font::Source> _font;
+
+	Callback _callback = nullptr;
+	Rc<cocos2d::Ref> _ref = nullptr;
 };
 
-static DrawerCache * s_cache = nullptr;
-static bool s_cacheScheduled = false;
-static bool s_cacheUpdated = true;
+// draw normal texture
+bool Request::init(Drawer *drawer, Source *source, Result *result, const Rect &rect, const Callback &cb, cocos2d::Ref *ref) {
+	if (!cb) {
+		return false;
+	}
 
-struct DrawerCache {
-	static void schedule();
-	static DrawerCache *getInstance();
+	_rect = rect;
+	_density = result->getMedia().density;
+	_drawer = drawer;
+	_source = source;
+	_result = result;
+	_ref = ref;
+	_callback = cb;
 
-	std::string getKey(const std::string &, Document *);
-	void addBitmap(const std::string &str, Document *doc, const Rc<Bitmap> &bmp);
-	Rc<Bitmap> getBitmap(const std::string &str, Document *doc);
-	void update();
+	_width = (uint16_t)ceilf(_rect.size.width * _result->getMedia().density);
+	_height = (uint16_t)ceilf(_rect.size.height * _result->getMedia().density);
+	_source->retainReadLock(this, std::bind(&Request::onAssetCaptured, this));
+	return true;
+}
 
-	std::map<std::string, std::pair<Rc<Bitmap>, Time>> map;
-};
+// draw thumbnail texture, where scale < 1.0f - resample coef
+bool Request::init(Drawer *drawer, Source *source, Result *result, const Rect &rect, float scale, const Callback &cb, cocos2d::Ref *ref) {
+	if (!cb) {
+		return false;
+	}
 
-void DrawerCache::schedule() {
-	if (s_cacheScheduled) {
+	_rect = rect;
+	_scale = scale;
+	_density = result->getMedia().density * scale;
+	_isThumbnail = true;
+	_drawer = drawer;
+	_source = source;
+	_result = result;
+	_ref = ref;
+	_callback = cb;
+
+	_width = (uint16_t)ceilf(_rect.size.width * _result->getMedia().density * _scale);
+	_height = (uint16_t)ceilf(_rect.size.height * _result->getMedia().density * _scale);
+	_source->retainReadLock(this, std::bind(&Request::onAssetCaptured, this));
+	return true;
+}
+
+void Request::onAssetCaptured() {
+	if (!_source->isActual()) {
+		_callback(nullptr);
+		_source->getAsset()->releaseReadLock(this);
 		return;
 	}
 
-	auto s = cocos2d::Director::getInstance()->getScheduler();
-	s->schedule([] (float t) {
-		if (!s_cacheUpdated) {
+	_font = _source->getSource();
+	_font->unschedule();
+
+	Rc<cocos2d::Texture2D> *ptr = new Rc<cocos2d::Texture2D>(nullptr);
+
+	TextureCache::thread().perform([this, ptr] (Ref *) -> bool {
+		TextureCache::getInstance()->performWithGL([&] {
+			auto tex = Rc<cocos2d::Texture2D>::create(cocos2d::Texture2D::PixelFormat::RGBA8888, _width, _height);
+			draw( tex );
+			*ptr = tex;
+		});
+		return true;
+	}, [this, ptr] (Ref *, bool) {
+		onDrawed(*ptr);
+		_source->releaseReadLock(this);
+		delete ptr;
+	}, this);
+}
+
+void Request::draw(cocos2d::Texture2D *data) {
+	if (!_isThumbnail) {
+		auto bg = _result->getBackgroundColor();
+		if (bg.a == 0) {
+			bg.r = 255;
+			bg.g = 255;
+			bg.b = 255;
+		}
+		if (!_drawer->begin(data, bg)) {
 			return;
 		}
-
-		s_cacheUpdated = false;
-		s_softwareRendererThread.perform(std::bind([] () -> bool {
-			DrawerCache::getInstance()->update();
-			return true;
-		}), std::bind([] {
-			s_cacheUpdated = true;
-		}));
-	}, s, 1.0f, false, "SP.DrawerCache");
-	s_cacheScheduled = true;
-}
-
-DrawerCache *DrawerCache::getInstance() {
-	if (!s_cache) {
-		s_cache = new DrawerCache;
-	}
-	return s_cache;
-}
-
-std::string DrawerCache::getKey(const std::string &str, Document *doc) {
-	return toString("0x", (ptrdiff_t)doc, ":", str);
-}
-
-void DrawerCache::addBitmap(const std::string &str, Document *doc, const Rc<Bitmap> &bmp) {
-	std::string key = getKey(str, doc);
-	map.insert(std::make_pair(key, std::make_pair(bmp, Time::now())));
-	//log("added bitmap %s", key.c_str());
-}
-
-Rc<Bitmap> DrawerCache::getBitmap(const std::string &str, Document *doc) {
-	std::string key = getKey(str, doc);
-	auto it = map.find(key);
-	if (it != map.end()) {
-		//log("updated bitmap %s", key.c_str());
-		it->second.second = Time::now();
-		return it->second.first;
-	}
-	return nullptr;
-}
-
-void DrawerCache::update() {
-	if (map.empty()) {
-		return;
-	}
-
-	auto time = Time::now();
-	std::vector<std::string> keys;
-	for (auto &it : map) {
-		if (it.second.second - time > TimeInterval::seconds(6)) {
-			keys.push_back(it.first);
+	} else {
+		if (!_drawer->begin(data, Color4B(0, 0, 0, 0))) {
+			return;
 		}
 	}
 
-	for (auto &it : keys) {
-		map.erase(it);
-		//log("removed bitmap %s", it.c_str());
-	}
-}
-
-DrawerCanvas::DrawerCanvas(cairo_t *c, Source *s, const cocos2d::Rect &rect, float d, uint16_t width, uint16_t height, uint8_t *data, float sc, bool t)
-: canvas(c), source(s), texRect(rect), density(d * sc), scale(sc), thumb(t), tex(width, height, data, Texture<PixelRGBA8888>::DataPolicy::Borrowing) { }
-
-Rect DrawerCanvas::getRect(const Rect &rect) const {
-	return Rect(
-			(rect.origin.x - texRect.origin.x) * density,
-			(rect.origin.y - texRect.origin.y) * density,
-			rect.size.width * density,
-			rect.size.height * density);
-}
-
-static void helper_rectangle(cairo_t *cr, const Rect &rect, const Rect &tex, float density, draw::Style s) {
-	cairo_rectangle(cr, (rect.origin.x - tex.origin.x) * density, (rect.origin.y - tex.origin.y) * density,
-			rect.size.width * density, rect.size.height * density);
-	switch (s) {
-	case draw::Style::Fill:
-		cairo_fill(cr);
-		break;
-	case draw::Style::Stroke:
-		cairo_stroke(cr);
-		break;
-	case draw::Style::FillAndStroke:
-		cairo_fill_preserve(cr);
-		cairo_stroke(cr);
-		break;
-	}
-}
-
-static void helper_color(cairo_t *cr, const Color4B &color) {
-	cairo_set_source_rgba(cr, color.b / 255.0, color.g / 255.0, color.r / 255.0, color.a / 255.0);
-}
-
-void DrawerCanvas::drawRef(const cocos2d::Rect &bbox) {
-	if (thumb) {
-		return;
-	}
-	if (highlightRefs) {
-		auto rect = getRect(bbox);
-
-		helper_color(canvas, Color4B(127, 255, 0, 64));
-		helper_rectangle(canvas, bbox, texRect, density, draw::Style::Fill);
-	}
-}
-
-static void DrawerCanvas_prepareOutline(cairo_t *canvas, const Outline::Params &outline, float density) {
-	double dashes[] = { 0.0, 0.0 };
-	int ndash = sizeof (dashes)/sizeof(dashes[0]);
-	switch (outline.style) {
-	case style::BorderStyle::Solid:
-		cairo_set_dash (canvas, nullptr, 0, 0.0);
-		cairo_set_line_cap(canvas, CAIRO_LINE_CAP_BUTT);
-		break;
-	case style::BorderStyle::Dotted:
-		dashes[0] = 1.0f * density; dashes[1] = outline.width * density * 2;
-		cairo_set_dash (canvas, dashes, ndash, outline.width * density / 2);
-		cairo_set_line_cap(canvas, CAIRO_LINE_CAP_ROUND);
-		break;
-	case style::BorderStyle::Dashed:
-		dashes[0] = outline.width * density * 4.0f; dashes[1] = outline.width * density;
-		cairo_set_dash (canvas, dashes, ndash, outline.width * density / 2);
-		cairo_set_line_cap(canvas, CAIRO_LINE_CAP_BUTT);
-		break;
-	default:
-		break;
-	}
-	helper_color(canvas, outline.color);
-	cairo_set_line_width(canvas, outline.width * density);
-}
-
-void DrawerCanvas::drawOutline(const cocos2d::Rect &bbox, const Outline &outline) {
-	if (thumb) {
-		return;
-	}
-	bool drawLines = true;
-	auto lines = outline.getNumLines();
-	if (outline.isMono()) {
-		if (lines == 4) {
-			DrawerCanvas_prepareOutline(canvas, outline.top, density);
-			helper_rectangle(canvas, bbox, texRect, density, draw::Style::Stroke);
-			drawLines = false;
-		} else if (lines == 3) {
-			if (!outline.hasTopLine()) {
-				DrawerCanvas_prepareOutline(canvas, outline.left, density);
-				cairo_move_to (canvas, (bbox.origin.x - texRect.origin.x) * density + bbox.size.width * density, (bbox.origin.y - texRect.origin.y) * density);
-				cairo_rel_line_to (canvas, 0, bbox.size.height * density);
-				cairo_rel_line_to (canvas, -bbox.size.width * density, 0);
-				cairo_rel_line_to (canvas, 0, -bbox.size.height * density);
-				cairo_stroke(canvas);
-			} else if (!outline.hasRightLine()) {
-				DrawerCanvas_prepareOutline(canvas, outline.top, density);
-				cairo_move_to (canvas, (bbox.origin.x - texRect.origin.x) * density + bbox.size.width * density, (bbox.origin.y - texRect.origin.y) * density + bbox.size.height * density);
-				cairo_rel_line_to (canvas, -bbox.size.width * density, 0);
-				cairo_rel_line_to (canvas, 0, -bbox.size.height * density);
-				cairo_rel_line_to (canvas, bbox.size.width * density, 0);
-				cairo_stroke(canvas);
-			} else if (!outline.hasBottomLine()) {
-				DrawerCanvas_prepareOutline(canvas, outline.top, density);
-				cairo_move_to (canvas, (bbox.origin.x - texRect.origin.x) * density, (bbox.origin.y - texRect.origin.y) * density + bbox.size.height * density);
-				cairo_rel_line_to (canvas, 0, -bbox.size.height * density);
-				cairo_rel_line_to (canvas, bbox.size.width * density, 0);
-				cairo_rel_line_to (canvas, 0, bbox.size.height * density);
-				cairo_stroke(canvas);
-			} else if (!outline.hasLeftLine()) {
-				DrawerCanvas_prepareOutline(canvas, outline.top, density);
-				cairo_move_to (canvas, (bbox.origin.x - texRect.origin.x) * density, (bbox.origin.y - texRect.origin.y) * density);
-				cairo_rel_line_to (canvas, bbox.size.width * density, 0);
-				cairo_rel_line_to (canvas, 0, bbox.size.height * density);
-				cairo_rel_line_to (canvas, -bbox.size.width * density, 0);
-				cairo_stroke(canvas);
-			}
-			drawLines = false;
-		} else if (lines == 2) {
-			if (!((outline.hasBottomLine() && outline.hasTopLine()) || (outline.hasLeftLine() && outline.hasRightLine()))) {
-				if (outline.hasBottomLine() && outline.hasRightLine()) {
-					DrawerCanvas_prepareOutline(canvas, outline.bottom, density);
-					cairo_move_to (canvas, (bbox.origin.x - texRect.origin.x) * density + bbox.size.width * density, (bbox.origin.y - texRect.origin.y) * density);
-					cairo_rel_line_to (canvas, 0, bbox.size.height * density);
-					cairo_rel_line_to (canvas, -bbox.size.width * density, 0);
-					cairo_stroke(canvas);
-				} else if (outline.hasRightLine() && outline.hasTopLine()) {
-					DrawerCanvas_prepareOutline(canvas, outline.right, density);
-					cairo_move_to (canvas, (bbox.origin.x - texRect.origin.x) * density, (bbox.origin.y - texRect.origin.y) * density);
-					cairo_rel_line_to (canvas, bbox.size.width * density, 0);
-					cairo_rel_line_to (canvas, 0, bbox.size.height * density);
-					cairo_stroke(canvas);
-				} else if (outline.hasTopLine() && outline.hasLeftLine()) {
-					DrawerCanvas_prepareOutline(canvas, outline.top, density);
-					cairo_move_to (canvas, (bbox.origin.x - texRect.origin.x) * density, (bbox.origin.y - texRect.origin.y) * density + bbox.size.height * density);
-					cairo_rel_line_to (canvas, 0, -bbox.size.height * density);
-					cairo_rel_line_to (canvas, bbox.size.width * density, 0);
-					cairo_stroke(canvas);
-				} else if (outline.hasLeftLine() && outline.hasBottomLine()) {
-					DrawerCanvas_prepareOutline(canvas, outline.left, density);
-					cairo_move_to (canvas, (bbox.origin.x - texRect.origin.x) * density + bbox.size.width * density, (bbox.origin.y - texRect.origin.y) * density + bbox.size.height * density);
-					cairo_rel_line_to (canvas, -bbox.size.width * density, 0);
-					cairo_rel_line_to (canvas, 0, -bbox.size.height * density);
-					cairo_stroke(canvas);
+	Vector<const Object *> drawObjects;
+	auto &objs = _result->getObjects();
+	for (auto &obj : objs) {
+		if (obj.bbox.intersectsRect(_rect)) {
+			drawObjects.push_back(&obj);
+			if (obj.type == Object::Type::Label) {
+				const Label &l = obj.value.label;
+				for (auto &it : l._format.ranges) {
+					_font->addTextureChars(it.layout->getName(), l._format.chars, it.start, it.count);
 				}
-				drawLines = false;
+			} else if (obj.type == Object::Type::Background) {
+				const Background &bg = obj.value.background;
+				if (!bg.backgroundImage.empty()) {
+					auto &src = bg.backgroundImage;
+					auto document = _source->getDocument();
+					if (document->hasImage(src)) {
+						auto bmp = _drawer->getBitmap(src);
+						if (!bmp) {
+							Bitmap bmpSource(_source->getDocument()->getImageBitmap(src));
+							if (bmpSource) {
+								auto tex = TextureCache::uploadTexture(bmpSource);
+								_drawer->addBitmap(src, tex);
+							}
+						}
+					}
+				}
 			}
 		}
 	}
 
-	if (drawLines) {
+	if (_font->isDirty()) {
+		_font->update(0.0f);
+	}
+
+	for (auto &obj : drawObjects) {
+		drawObject(*obj);
+	}
+
+	_drawer->end();
+}
+
+Rect Request::getRect(const Rect &rect) const {
+	return Rect(
+			(rect.origin.x - _rect.origin.x) * _density,
+			(rect.origin.y - _rect.origin.y) * _density,
+			rect.size.width * _density,
+			rect.size.height * _density);
+}
+
+void Request::drawRef(const Rect &bbox) {
+	if (_isThumbnail) {
+		return;
+	}
+	if (_highlightRefs) {
+		_drawer->setColor(Color4B(127, 255, 0, 64));
+		_drawer->drawRectangle(getRect(bbox), draw::Style::Fill);
+	}
+}
+
+static void DrawerCanvas_prepareOutline(Drawer *canvas, const Outline::Params &outline, float density) {
+	canvas->setColor(outline.color);
+	canvas->setLineWidth(std::max(outline.width * density, 1.0f));
+}
+
+void Request::drawOutline(const Rect &bbox, const Outline &outline) {
+	if (_isThumbnail) {
+		return;
+	}
+	if (outline.isMono()) {
+		DrawerCanvas_prepareOutline(_drawer, outline.top, _density);
+		_drawer->drawRectangleOutline(getRect(bbox),
+				outline.hasTopLine(), outline.hasRightLine(), outline.hasBottomLine(), outline.hasLeftLine());
+	} else {
 		if (outline.hasTopLine()) {
-			DrawerCanvas_prepareOutline(canvas, outline.top, density);
-			cairo_move_to (canvas, (bbox.origin.x - texRect.origin.x) * density, (bbox.origin.y - texRect.origin.y) * density);
-			cairo_rel_line_to (canvas, bbox.size.width * density, 0);
-			cairo_stroke(canvas);
+			DrawerCanvas_prepareOutline(_drawer, outline.top, _density);
+			_drawer->drawRectangleOutline(getRect(bbox), true, false, false, false);
 		}
 		if (outline.hasRightLine()) {
-			DrawerCanvas_prepareOutline(canvas, outline.right, density);
-			cairo_move_to (canvas, (bbox.origin.x - texRect.origin.x) * density + bbox.size.width * density, (bbox.origin.y - texRect.origin.y) * density);
-			cairo_rel_line_to (canvas, 0, bbox.size.height * density);
-			cairo_stroke(canvas);
+			DrawerCanvas_prepareOutline(_drawer, outline.right, _density);
+			_drawer->drawRectangleOutline(getRect(bbox), false, true, false, false);
 		}
 		if (outline.hasBottomLine()) {
-			DrawerCanvas_prepareOutline(canvas, outline.bottom, density);
-			cairo_move_to (canvas, (bbox.origin.x - texRect.origin.x) * density, (bbox.origin.y - texRect.origin.y) * density + bbox.size.height * density);
-			cairo_rel_line_to (canvas, bbox.size.width * density, 0);
-			cairo_stroke(canvas);
+			DrawerCanvas_prepareOutline(_drawer, outline.bottom, _density);
+			_drawer->drawRectangleOutline(getRect(bbox), false, false, true, false);
 		}
 		if (outline.hasLeftLine()) {
-			DrawerCanvas_prepareOutline(canvas, outline.left, density);
-			cairo_move_to (canvas, (bbox.origin.x - texRect.origin.x) * density, (bbox.origin.y - texRect.origin.y) * density);
-			cairo_rel_line_to (canvas, 0, bbox.size.height * density);
-			cairo_stroke(canvas);
+			DrawerCanvas_prepareOutline(_drawer, outline.left, _density);
+			_drawer->drawRectangleOutline(getRect(bbox), false, false, false, true);
 		}
 	}
-	cairo_set_line_width(canvas, 1.0f * density);
-	cairo_set_dash (canvas, nullptr, 0, 0.0);
-	cairo_set_line_cap(canvas, CAIRO_LINE_CAP_BUTT);
 }
 
-void DrawerCanvas::drawBitmap(const cocos2d::Rect &origBbox, const Bitmap &bmp, cairo_surface_t *surf, const Background &bg) {
-	cocos2d::Rect bbox = origBbox;
+void Request::drawBitmap(const Rect &origBbox, cocos2d::Texture2D *bmp, const Background &bg) {
+	Rect bbox = origBbox;
 	float coverRatio = 1.0f, containRatio = 1.0f;
-	cocos2d::Size coverSize, containSize;
+	Size coverSize, containSize;
 
-	coverRatio = MAX(bbox.size.width / bmp.width(), bbox.size.height / bmp.height());
-	containRatio = MIN(bbox.size.width / bmp.width(), bbox.size.height / bmp.height());
+	auto w = bmp->getPixelsWide();
+	auto h = bmp->getPixelsHigh();
 
-	coverSize = cocos2d::Size(bmp.width() * coverRatio, bmp.height() * coverRatio);
-	containSize = cocos2d::Size(bmp.width() * containRatio, bmp.height() * containRatio);
+	coverRatio = MAX(bbox.size.width / w, bbox.size.height / h);
+	containRatio = MIN(bbox.size.width / w, bbox.size.height / h);
 
-	float width = 0.0f, height = 0.0f;
+	coverSize = Size(w * coverRatio, h * coverRatio);
+	containSize = Size(w * containRatio, h * containRatio);
+
+	float boxWidth = 0.0f, boxHeight = 0.0f;
 	switch (bg.backgroundSizeWidth.metric) {
-	case style::Size::Metric::Contain: width = containSize.width; break;
-	case style::Size::Metric::Cover: width = coverSize.width; break;
-	case style::Size::Metric::Percent: width = bbox.size.width * bg.backgroundSizeWidth.value; break;
-	case style::Size::Metric::Px: width = bg.backgroundSizeWidth.value; break;
-	default: width = bbox.size.width; break;
+	case style::Size::Metric::Contain: boxWidth = containSize.width; break;
+	case style::Size::Metric::Cover: boxWidth = coverSize.width; break;
+	case style::Size::Metric::Percent: boxWidth = bbox.size.width * bg.backgroundSizeWidth.value; break;
+	case style::Size::Metric::Px: boxWidth = bg.backgroundSizeWidth.value; break;
+	default: boxWidth = bbox.size.width; break;
 	}
 
 	switch (bg.backgroundSizeHeight.metric) {
-	case style::Size::Metric::Contain: height = containSize.height; break;
-	case style::Size::Metric::Cover: height = coverSize.height; break;
-	case style::Size::Metric::Percent: height = bbox.size.height * bg.backgroundSizeHeight.value; break;
-	case style::Size::Metric::Px: height = bg.backgroundSizeHeight.value; break;
-	default: height = bbox.size.height; break;
+	case style::Size::Metric::Contain: boxHeight = containSize.height; break;
+	case style::Size::Metric::Cover: boxHeight = coverSize.height; break;
+	case style::Size::Metric::Percent: boxHeight = bbox.size.height * bg.backgroundSizeHeight.value; break;
+	case style::Size::Metric::Px: boxHeight = bg.backgroundSizeHeight.value; break;
+	default: boxHeight = bbox.size.height; break;
 	}
 
 	if (bg.backgroundSizeWidth.metric == style::Size::Metric::Auto
 			&& bg.backgroundSizeHeight.metric == style::Size::Metric::Auto) {
-		width = bmp.width();
-		height = bmp.height();
+		boxWidth = w;
+		boxHeight = h;
 	} else if (bg.backgroundSizeWidth.metric == style::Size::Metric::Auto) {
-		width = height * ((float)bmp.width() / (float)bmp.height());
+		boxWidth = boxHeight * ((float)w / (float)h);
 	} else if (bg.backgroundSizeHeight.metric == style::Size::Metric::Auto) {
-		height = width * ((float)bmp.height() / (float)bmp.width());
+		boxHeight = boxWidth * ((float)h / (float)w);
 	}
 
-	float availableWidth = bbox.size.width - width, availableHeight = bbox.size.height - height;
+	float availableWidth = bbox.size.width - boxWidth, availableHeight = bbox.size.height - boxHeight;
 	float xOffset = 0.0f, yOffset = 0.0f;
 
 	switch (bg.backgroundPositionX.metric) {
@@ -363,114 +303,51 @@ void DrawerCanvas::drawBitmap(const cocos2d::Rect &origBbox, const Bitmap &bmp, 
 	default: yOffset = availableHeight / 2.0f; break;
 	}
 
-	cocos2d::Rect contentBox(0, 0, bmp.width(), bmp.height());
+	Rect contentBox(0, 0, w, h);
 
-	if (width < bbox.size.width) {
-		bbox.size.width = width;
+	if (boxWidth < bbox.size.width) {
+		bbox.size.width = boxWidth;
 		bbox.origin.x += xOffset;
-	} else if (width > bbox.size.width) {
-		contentBox.size.width *= bbox.size.width / width;
-		contentBox.origin.x -= xOffset * (contentBox.size.width / bbox.size.width);
+	} else if (boxWidth > bbox.size.width) {
+		contentBox.size.width = bbox.size.width * w / boxWidth;
+		contentBox.origin.x -= xOffset * (w / boxWidth);
 	}
 
-	if (height < bbox.size.height) {
-		bbox.size.height = height;
+	if (boxHeight < bbox.size.height) {
+		bbox.size.height = boxHeight;
 		bbox.origin.y += yOffset;
-	} else if (height > bbox.size.height) {
-		contentBox.size.height *= bbox.size.height / height;
-		contentBox.origin.y -= yOffset * (contentBox.size.height / bbox.size.height);
+	} else if (boxHeight > bbox.size.height) {
+		contentBox.size.height = bbox.size.height * h / boxHeight;
+		contentBox.origin.y -= yOffset * (h / boxHeight);
 	}
 
 	bbox = getRect(bbox);
-
-
-	cairo_matrix_t save_matrix;
-	cairo_get_matrix(canvas, &save_matrix);
-
-	cairo_rectangle(canvas, bbox.origin.x, bbox.origin.y, bbox.size.width, bbox.size.height);
-	cairo_clip(canvas);
-
-	cairo_translate(canvas, bbox.getMidX(), bbox.getMidY());
-	cairo_scale(canvas, bbox.size.width / contentBox.size.width, bbox.size.height / contentBox.size.height);
-	cairo_set_source_surface(canvas, surf, -(float)bmp.width() / 2.0f, -(float)bmp.height() / 2.0f);
-	cairo_paint(canvas);
-
-	cairo_reset_clip(canvas);
-	cairo_set_matrix(canvas, &save_matrix);
+	_drawer->drawTexture(bbox, bmp, contentBox);
 }
 
-void DrawerCanvas::drawBackgroundImage(const cocos2d::Rect &bbox, const Background &bg) {
+void Request::drawBackgroundImage(const cocos2d::Rect &bbox, const Background &bg) {
 	auto src = bg.backgroundImage;
-	auto document = source->getDocument();
+	auto document = _source->getDocument();
 	if (!document->hasImage(src)) {
 		return;
 	}
 
-	auto bmp = DrawerCache::getInstance()->getBitmap(src, document);
-	if (!bmp) {
-		auto strideFn = [] (Bitmap::Format f, uint32_t width) -> uint32_t {
-			switch (f) {
-			case Bitmap::Format::A8:
-			case Bitmap::Format::I8:
-				return cairo_format_stride_for_width(CAIRO_FORMAT_A8, width);
-				break;
-			case Bitmap::Format::IA88: return 0; break;
-			case Bitmap::Format::RGB888: return 0; break;
-			case Bitmap::Format::RGBA8888:
-				return cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, width);
-				break;
-			}
-			return 0;
-		};
-
-		Bitmap bmpSource(document->getImageBitmap(src, strideFn));
-		if (!bmpSource) {
-			return;
-		}
-
-		// IA88 is not supported by cairo
-		if (bmpSource.format() == Bitmap::Format::IA88 || bmpSource.format() == Bitmap::Format::RGB888) {
-			bmpSource.convert(Bitmap::Format::RGBA8888, strideFn);
-		}
-
-		if (bmpSource.empty()) {
-			return;
-		}
-
-		bmp = Rc<Bitmap>::create(std::move(bmpSource));
-		DrawerCache::getInstance()->addBitmap(src, document,  bmp);
+	auto bmp = _drawer->getBitmap(src);
+	if (bmp) {
+		drawBitmap(bbox, bmp, bg);
 	}
-
-	auto imgData = bmp->dataPtr();
-
-	cairo_format_t imgColorType = CAIRO_FORMAT_ARGB32;
-
-	switch (bmp->format()) {
-	case Bitmap::Format::A8: imgColorType = CAIRO_FORMAT_A8; break;
-	case Bitmap::Format::I8: imgColorType = CAIRO_FORMAT_A8; break;
-	case Bitmap::Format::RGB888: imgColorType = CAIRO_FORMAT_RGB24; break;
-	case Bitmap::Format::RGBA8888: imgColorType = CAIRO_FORMAT_ARGB32; break;
-	default: return; break;
-	}
-
-	cairo_surface_t *surf = cairo_image_surface_create_for_data(imgData, imgColorType,
-			bmp->width(), bmp->height(), bmp->stride());
-
-	drawBitmap(bbox, *bmp, surf, bg);
-
-	cairo_surface_destroy(surf);
 }
 
-void DrawerCanvas::drawBackgroundColor(const cocos2d::Rect &bbox, const Background &bg) {
+void Request::drawBackgroundColor(const Rect &bbox, const Background &bg) {
 	auto &color = bg.backgroundColor;
-	helper_color(canvas, color);
-	helper_rectangle(canvas, bbox, texRect, density, draw::Style::Fill);
+	_drawer->setColor(color);
+	_drawer->drawRectangle(getRect(bbox), draw::Style::Fill);
 }
 
-void DrawerCanvas::drawBackground(const cocos2d::Rect &bbox, const Background &bg) {
-	if (thumb) {
-		helper_color(canvas, Color4B(127, 127, 127, 127));
-		helper_rectangle(canvas, bbox, texRect, density, draw::Style::Fill);
+void Request::drawBackground(const Rect &bbox, const Background &bg) {
+	if (_isThumbnail) {
+		_drawer->setColor(Color4B(127, 127, 127, 127));
+		_drawer->drawRectangle(getRect(bbox), draw::Style::Fill);
 		return;
 	}
 	if (bg.backgroundColor.a != 0) {
@@ -481,34 +358,20 @@ void DrawerCanvas::drawBackground(const cocos2d::Rect &bbox, const Background &b
 	}
 }
 
-void DrawerCanvas::drawLabel(const cocos2d::Rect &bbox, const Label &l) {
-	if (l.chars.empty()) {
+void Request::drawLabel(const cocos2d::Rect &bbox, const Label &l) {
+	if (l._format.chars.empty()) {
 		return;
 	}
 
-	const float xOffset = (bbox.origin.x - texRect.origin.x) * density;
-	const float yOffset = (bbox.origin.y - texRect.origin.y) * density;
-
-	if (thumb) {
-		helper_color(canvas, Color4B(127, 127, 127, 127));
-		for (auto &c : l.chars) {
-			if (c.drawable()) {
-				const float posX = xOffset + (c.posX + c.uCharPtr->xOffset) * scale;
-				const float posY = yOffset + (c.posY + c.uCharPtr->yOffset + c.uCharPtr->font->getDescender()) * scale;
-
-				const float width = c.uCharPtr->width() * scale;
-				const float height = c.uCharPtr->height() * scale;
-
-				cairo_rectangle(canvas, posX, posY, width, height);
-				cairo_fill(canvas);
-			}
-		}
+	if (_isThumbnail) {
+		_drawer->setColor(Color4B(127, 127, 127, 127));
+		_drawer->drawCharRects(_font, l._format, getRect(bbox), _scale);
 	} else {
-		tex.drawChars(l.chars, xOffset, yOffset, false);
+		_drawer->drawChars(_font, l._format, getRect(bbox));
 	}
 }
 
-void DrawerCanvas::drawObject(const Object &obj) {
+void Request::drawObject(const Object &obj) {
 	switch (obj.type) {
 	case Object::Type::Background: drawBackground(obj.bbox, obj.value.background); break;
 	case Object::Type::Label: drawLabel(obj.bbox, obj.value.label); break;
@@ -518,120 +381,591 @@ void DrawerCanvas::drawObject(const Object &obj) {
 	}
 }
 
-Thread &Drawer::thread() {
-	return s_softwareRendererThread;
+void Request::onDrawed(cocos2d::Texture2D *data) {
+	if (data) {
+		_callback(data);
+	}
 }
 
-Drawer::~Drawer() { }
-Drawer::Drawer() { }
-
-bool Drawer::init(Source *source, Result *result, const Rect &rect, const Callback &cb, cocos2d::Ref *ref) {
-	if (!cb) {
-		return false;
-	}
-
-	DrawerCache::schedule();
-
-	_rect = rect;
-	_source = source;
-	_result = result;
-	_ref = ref;
-	_callback = cb;
-
-	_width = (uint16_t)ceilf(_rect.size.width * _result->getMedia().density);
-	_height = (uint16_t)ceilf(_rect.size.height * _result->getMedia().density);
-	_stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, _width);
-
-	_source->retainReadLock(this, std::bind(&Drawer::onAssetCaptured, this));
+bool Drawer::init() {
+	TextureCache::thread().perform([this] (stappler::Ref *) -> bool {
+		TextureCache::getInstance()->performWithGL([&] {
+			glGenFramebuffers(1, &_fbo);
+			glGenBuffers(2, _drawBufferVBO);
+		});
+		return true;
+	}, nullptr, this);
 	return true;
 }
 
-bool Drawer::init(Source *source, Result *result, const Rect &rect, float scale, const Callback &cb, cocos2d::Ref *ref) {
-	if (!cb) {
+void Drawer::free() {
+	TextureCache::thread().perform([this] (stappler::Ref *) -> bool {
+		TextureCache::getInstance()->performWithGL([&] {
+			cleanup();
+			if (_drawBufferVBO[0] != 0) {
+				glDeleteBuffers(1, &_drawBufferVBO[0]);
+			}
+			if (_drawBufferVBO[1] != 0) {
+				glDeleteBuffers(1, &_drawBufferVBO[1]);
+			}
+			if (_fbo != 0) {
+			    glDeleteFramebuffers(1, &_fbo);
+			}
+		});
+		return true;
+	}, nullptr, this);
+}
+
+// draw normal texture
+bool Drawer::draw(Source *s, Result *res, const Rect &r, const Callback &cb, cocos2d::Ref *ref) {
+	return construct<Request>(this, s, res, r, cb, ref);
+}
+
+// draw thumbnail texture, where scale < 1.0f - resample coef
+bool Drawer::thumbnail(Source *s, Result *res, const Rect &r, float scale, const Callback &cb, cocos2d::Ref *ref) {
+	return construct<Request>(this, s, res, r, scale, cb, ref);
+}
+
+static inline int32_t sp_gcd (int16_t a, int16_t b) {
+	int32_t c;
+	while ( a != 0 ) {
+		c = a; a = b%a;  b = c;
+	}
+	return b;
+}
+
+bool Drawer::begin(cocos2d::Texture2D * tex, const Color4B &clearColor) {
+	if (_fbo == 0) {
 		return false;
 	}
+	_width = tex->getPixelsWide();
+	_height = tex->getPixelsHigh();
 
-	DrawerCache::schedule();
+	tex->setAliasTexParameters();
 
-	_rect = rect;
-	_scale = scale;
-	_isThumbnail = true;
-	_source = source;
-	_result = result;
-	_ref = ref;
-	_callback = cb;
+	int32_t gcd = sp_gcd(_width, _height);
+	int32_t dw = (int32_t)_width / gcd;
+	int32_t dh = (int32_t)_height / gcd;
+	int32_t dwh = gcd * dw * dh;
 
-	_width = (uint16_t)ceilf(_rect.size.width * _result->getMedia().density * _scale);
-	_height = (uint16_t)ceilf(_rect.size.height * _result->getMedia().density * _scale);
-	_stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, _width);
+	float mod = 1.0f;
+	while (dwh * mod > 16384) {
+		mod /= 2.0f;
+	}
 
-	_source->retainReadLock(this, std::bind(&Drawer::onAssetCaptured, this));
+	_projection = Mat4::IDENTITY;
+	_projection.scale(dh * mod, dw * mod, -1.0);
+	_projection.m[12] = -dwh * mod / 2.0f;
+	_projection.m[13] = -dwh * mod / 2.0f;
+	_projection.m[14] = dwh * mod / 2.0f - 1;
+	_projection.m[15] = dwh * mod / 2.0f + 1;
+	_projection.m[11] = -1.0f;
+
+	glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex->getName(), 0);
+	glViewport(0, 0, (GLsizei)_width, (GLsizei)_height);
+
+	glClearColor(clearColor.r / 255.0f, clearColor.g / 255.0f, clearColor.b / 255.0f, clearColor.a / 255.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
 	return true;
 }
 
-void Drawer::onAssetCaptured() {
-	if (!_source->isActual()) {
-		_callback(nullptr);
-		_source->getAsset()->releaseReadLock(this);
+void Drawer::end() {
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	cleanup();
+}
+
+void Drawer::cleanup() {
+	bindTexture(0);
+	useProgram(0);
+	enableVertexAttribs(0);
+}
+
+void Drawer::bindTexture(GLuint value) {
+	if (_currentTexture != value) {
+		_currentTexture = value;
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, value);
+	}
+}
+
+void Drawer::useProgram(GLuint value) {
+	if (_currentProgram != value) {
+		_currentProgram = value;
+		glUseProgram(value);
+	}
+}
+
+void Drawer::enableVertexAttribs(uint32_t flags) {
+	for (int i = 0; i < 16; i++) {
+		unsigned int bit = 1 << i;
+		bool enabled = (flags & bit) != 0;
+		bool enabledBefore = (_attributeFlags & bit) != 0;
+		if (enabled != enabledBefore) {
+			if (enabled) {
+				glEnableVertexAttribArray(i);
+			} else {
+				glDisableVertexAttribArray(i);
+			}
+		}
+	}
+    _attributeFlags = flags;
+}
+
+void Drawer::blendFunc(GLenum sfactor, GLenum dfactor) {
+	if (sfactor != _blendingSource || dfactor != _blendingDest) {
+		_blendingSource = sfactor;
+		_blendingDest = dfactor;
+		if (sfactor == GL_ONE && dfactor == GL_ZERO) {
+			glDisable(GL_BLEND);
+		} else {
+			glEnable(GL_BLEND);
+			glBlendFunc(sfactor, dfactor);
+		}
+	}
+}
+
+void Drawer::blendFunc(const cocos2d::BlendFunc &func) {
+	blendFunc(func.src, func.dst);
+}
+
+void Drawer::drawResizeBuffer(size_t count) {
+	if (count <= _drawBufferSize) {
 		return;
 	}
 
-	uint8_t **ptr = new (uint8_t *)(nullptr);
+    Vector<GLushort> indices;
+    indices.reserve(count * 6);
 
-	s_softwareRendererThread.perform([this, ptr] (cocos2d::Ref *) -> bool {
-		(*ptr) = new uint8_t[_stride * _height];
-		memset((*ptr), 0, _stride * _height * sizeof(uint8_t));
-		draw( (*ptr) );
-		return true;
-	}, [this, ptr] (cocos2d::Ref *, bool) {
-		onDrawed(*ptr);
-		_source->releaseReadLock(this);
-		delete [] (*ptr);
-		delete ptr;
-	}, this);
+    for (size_t i= 0; i < count; i++) {
+        indices.push_back( i*4 + 0 );
+        indices.push_back( i*4 + 1 );
+        indices.push_back( i*4 + 2 );
+
+        indices.push_back( i*4 + 3 );
+        indices.push_back( i*4 + 2 );
+        indices.push_back( i*4 + 1 );
+    }
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _drawBufferVBO[1]);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, (sizeof(GLushort) * count * 6), (const GLvoid *) indices.data(), GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
-void Drawer::draw(uint8_t *data) const {
-	auto canvas = Rc<draw::Canvas>::create(data, _width, _height, _stride, draw::Format::RGBA8888);
+void Drawer::setLineWidth(float value) {
+	if (value != _lineWidth) {
+		_lineWidth = value;
+	}
+}
 
-	if (!_isThumbnail) {
-		auto bg = _result->getBackgroundColor();
-		if (bg.a == 0) {
-			bg.r = 255;
-			bg.g = 255;
-			bg.b = 255;
-		}
-		canvas->clear(bg);
+void Drawer::setColor(const Color4B &color) {
+	if (color != _color) {
+		_color = color;
+	}
+}
+
+void Drawer::drawRectangle(const Rect &bbox, draw::Style style) {
+	switch (style) {
+	case draw::Style::Fill:
+		drawRectangleFill(bbox);
+		break;
+	case draw::Style::Stroke:
+		drawRectangleOutline(bbox);
+		break;
+	case draw::Style::FillAndStroke:
+		drawRectangleFill(bbox);
+		drawRectangleOutline(bbox);
+		break;
+	}
+}
+
+void Drawer::drawRectangleFill(const Rect &bbox) {
+	auto c = TextureCache::getInstance();
+	auto programs = c->getRawPrograms();
+	auto p = programs->getProgram(GLProgramSet::RawRect);
+
+	bindTexture(0);
+	blendFunc(cocos2d::BlendFunc::ALPHA_NON_PREMULTIPLIED);
+
+	Mat4 transform;
+	transform.m[0] = 1.0f;
+	transform.m[5] = 1.0f;
+	transform.m[10] = 1.0f;
+	transform.m[12] = bbox.origin.x;
+	transform.m[13] = _height - bbox.origin.y - bbox.size.height;
+
+	transform = _projection * transform;
+
+	useProgram(p->getProgram());
+	p->setUniformLocationWith4f(p->getUniformLocationForName(cocos2d::GLProgram::UNIFORM_AMBIENT_COLOR),
+			_color.r / 255.0f, _color.g / 255.0f, _color.b / 255.0f, _color.a / 255.0f);
+	p->setUniformLocationWithMatrix4fv(p->getUniformLocationForName(cocos2d::GLProgram::UNIFORM_MVP_MATRIX),
+			transform.m, 1);
+	p->setUniformLocationWith2f(p->getUniformLocationForName("u_size"), GLfloat(bbox.size.width / 2.0f + 0.5f), GLfloat(bbox.size.height / 2.0f + 0.5f));
+	p->setUniformLocationWith2f(p->getUniformLocationForName("u_position"), GLfloat(bbox.origin.x - 0.5f), GLfloat(_height - bbox.origin.y - bbox.size.height - 0.5f));
+
+	GLfloat vertices[] = { -1.5f, -1.5f, bbox.size.width + 1.5f, -1.5f, -1.5f, bbox.size.height + 1.5f, bbox.size.width + 1.5f, bbox.size.height + 1.5f};
+
+	enableVertexAttribs(cocos2d::GL::VERTEX_ATTRIB_FLAG_POSITION);
+	glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_POSITION, 2, GL_FLOAT, GL_FALSE, 0, vertices);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	CHECK_GL_ERROR_DEBUG();
+}
+
+void Drawer::drawRectangleOutline(const Rect &bbox) {
+	drawRectangleOutline(bbox, true, true, true, true);
+}
+
+void Drawer::drawRectangleOutline(const Rect &bbox, bool top, bool right, bool bottom, bool left) {
+	Vector<GLfloat> vertices; vertices.reserve(6 * 8 * 2);
+
+	auto c = TextureCache::getInstance();
+	auto programs = c->getRawPrograms();
+	auto p = programs->getProgram(GLProgramSet::RawRectBorder);
+
+	bindTexture(0);
+	blendFunc(cocos2d::BlendFunc::ALPHA_NON_PREMULTIPLIED);
+
+	Mat4 transform;
+	transform.m[0] = 1.0f;
+	transform.m[5] = 1.0f;
+	transform.m[10] = 1.0f;
+	transform.m[12] = bbox.origin.x + 1.0f;
+	transform.m[13] = _height - bbox.origin.y - bbox.size.height + 1.0f;
+
+	transform = _projection * transform;
+
+	useProgram(p->getProgram());
+	p->setUniformLocationWith4f(p->getUniformLocationForName(cocos2d::GLProgram::UNIFORM_AMBIENT_COLOR),
+			_color.r / 255.0f, _color.g / 255.0f, _color.b / 255.0f, _color.a / 255.0f);
+	p->setUniformLocationWithMatrix4fv(p->getUniformLocationForName(cocos2d::GLProgram::UNIFORM_MVP_MATRIX),
+			transform.m, 1);
+	p->setUniformLocationWith2f(p->getUniformLocationForName("u_size"), GLfloat(bbox.size.width / 2.0f + 0.5f), GLfloat(bbox.size.height / 2.0f + 0.5f));
+	p->setUniformLocationWith2f(p->getUniformLocationForName("u_position"), GLfloat(bbox.origin.x - 0.5f), GLfloat(_height - bbox.origin.y - bbox.size.height - 0.5f));
+	p->setUniformLocationWith1f(p->getUniformLocationForName("u_border"), GLfloat(_lineWidth / 2.0f));
+
+    const float inc = _lineWidth/2.0f + 2.0f;
+
+
+    if (left && bottom) {
+    	vertices.push_back(-inc);	vertices.push_back(-inc);
+    	vertices.push_back(inc);	vertices.push_back(-inc);
+    	vertices.push_back(-inc);	vertices.push_back(inc);
+    	vertices.push_back(inc);	vertices.push_back(-inc);
+    	vertices.push_back(-inc);	vertices.push_back(inc);
+    	vertices.push_back(inc);	vertices.push_back(inc);
+    }
+
+    if (left) {
+    	vertices.push_back(-inc);	vertices.push_back(inc);
+    	vertices.push_back(inc);	vertices.push_back(inc);
+    	vertices.push_back(-inc);	vertices.push_back(bbox.size.height - inc);
+    	vertices.push_back(inc);	vertices.push_back(inc);
+    	vertices.push_back(-inc);	vertices.push_back(bbox.size.height - inc);
+    	vertices.push_back(inc);	vertices.push_back(bbox.size.height - inc);
+    }
+
+    if (left && top) {
+    	vertices.push_back(-inc);	vertices.push_back(bbox.size.height - inc);
+    	vertices.push_back(inc);	vertices.push_back(bbox.size.height - inc);
+    	vertices.push_back(-inc);	vertices.push_back(bbox.size.height + inc);
+    	vertices.push_back(inc);	vertices.push_back(bbox.size.height - inc);
+    	vertices.push_back(-inc);	vertices.push_back(bbox.size.height + inc);
+    	vertices.push_back(inc);	vertices.push_back(bbox.size.height + inc);
+    }
+
+    if (top) {
+    	vertices.push_back(inc);					vertices.push_back(bbox.size.height - inc);
+    	vertices.push_back(inc);					vertices.push_back(bbox.size.height + inc);
+    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(bbox.size.height + inc);
+    	vertices.push_back(inc);					vertices.push_back(bbox.size.height - inc);
+    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(bbox.size.height + inc);
+    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(bbox.size.height - inc);
+    }
+
+    if (top && right) {
+    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(bbox.size.height + inc);
+    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(bbox.size.height - inc);
+    	vertices.push_back(bbox.size.width + inc);	vertices.push_back(bbox.size.height + inc);
+    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(bbox.size.height - inc);
+    	vertices.push_back(bbox.size.width + inc);	vertices.push_back(bbox.size.height + inc);
+    	vertices.push_back(bbox.size.width + inc);	vertices.push_back(bbox.size.height - inc);
+    }
+
+    if (right) {
+    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(bbox.size.height - inc);
+    	vertices.push_back(bbox.size.width + inc);	vertices.push_back(bbox.size.height - inc);
+    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(inc);
+    	vertices.push_back(bbox.size.width + inc);	vertices.push_back(bbox.size.height - inc);
+    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(inc);
+    	vertices.push_back(bbox.size.width + inc);	vertices.push_back(inc);
+    }
+
+    if (right && bottom) {
+    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(inc);
+    	vertices.push_back(bbox.size.width + inc);	vertices.push_back(inc);
+    	vertices.push_back(bbox.size.width + inc);	vertices.push_back(-inc);
+    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(inc);
+    	vertices.push_back(bbox.size.width + inc);	vertices.push_back(-inc);
+    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(-inc);
+    }
+
+    if (bottom) {
+    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(inc);
+    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(-inc);
+    	vertices.push_back(inc);					vertices.push_back(-inc);
+    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(inc);
+    	vertices.push_back(inc);					vertices.push_back(-inc);
+    	vertices.push_back(inc);					vertices.push_back(inc);
+    }
+
+	enableVertexAttribs(cocos2d::GL::VERTEX_ATTRIB_FLAG_POSITION);
+	glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_POSITION, 2, GL_FLOAT, GL_FALSE, 0, vertices.data());
+	glDrawArrays(GL_TRIANGLES, 0, GLint(vertices.size()));
+	CHECK_GL_ERROR_DEBUG();
+}
+
+void Drawer::drawTexture(const Rect &bbox, cocos2d::Texture2D *tex, const Rect &texRect) {
+	auto c = TextureCache::getInstance();
+	auto programs = c->getRawPrograms();
+	auto p = programs->getProgram(GLProgramSet::RawTexture);
+
+	auto w = tex->getPixelsWide();
+	auto h = tex->getPixelsHigh();
+
+	Mat4 transform;
+	transform.m[0] = 1.0f;
+	transform.m[5] = 1.0f;
+	transform.m[10] = 1.0f;
+	transform.m[12] = bbox.origin.x;
+	transform.m[13] = _height - bbox.origin.y - bbox.size.height;
+
+	transform = _projection * transform;
+
+	bindTexture(tex->getName());
+	useProgram(p->getProgram());
+    p->setUniformLocationWithMatrix4fv(p->getUniformLocationForName(cocos2d::GLProgram::UNIFORM_MVP_MATRIX), transform.m, 1);
+
+    GLfloat coordinates[] = {
+    		(texRect.origin.x / w) , ((texRect.origin.y + texRect.size.height) / h),
+			((texRect.origin.x + texRect.size.width) / w), ((texRect.origin.y + texRect.size.height) / h),
+			(texRect.origin.x / w), (texRect.origin.y / h),
+			((texRect.origin.x + texRect.size.width) / w), (texRect.origin.y / h) };
+
+    GLfloat vertices[] = {
+		0.0f, 0.0f,
+		bbox.size.width, 0.0f,
+		0.0f, bbox.size.height,
+		bbox.size.width, bbox.size.height,
+    };
+	if (!tex->hasPremultipliedAlpha()) {
+		blendFunc(cocos2d::BlendFunc::ALPHA_NON_PREMULTIPLIED);
 	} else {
-		canvas->clear(Color4B(0, 0, 0, 0));
+		blendFunc(cocos2d::BlendFunc::ALPHA_PREMULTIPLIED);
 	}
 
-	DrawerCanvas drawer(canvas->getContext(), _source, _rect, _result->getMedia().density, _width, _height, data, _scale, _isThumbnail);
+    enableVertexAttribs( cocos2d::GL::VERTEX_ATTRIB_FLAG_POSITION | cocos2d::GL::VERTEX_ATTRIB_FLAG_TEX_COORD );
+    glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_POSITION, 2, GL_FLOAT, GL_FALSE, 0, vertices);
+    glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_TEX_COORD, 2, GL_FLOAT, GL_FALSE, 0, coordinates);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	CHECK_GL_ERROR_DEBUG();
+}
 
-	if (!_isThumbnail) {
-		_result->getFontSet()->getImage()->retainData();
+void Drawer::drawCharRects(Font *f, const font::FormatSpec &format, const Rect & bbox, float scale) {
+	DynamicLabel::makeLabelRects(f, &format, scale, [&] (const Vector<Rect> &rects) {
+		drawRects(bbox, rects);
+	});
+}
+
+void Drawer::drawRects(const Rect &bbox, const Vector<Rect> &rects) {
+	Vector<GLfloat> vertices; vertices.reserve(rects.size() * 12);
+
+	auto c = TextureCache::getInstance();
+	auto programs = c->getRawPrograms();
+	auto p = programs->getProgram(GLProgramSet::RawRects);
+
+	bindTexture(0);
+	blendFunc(cocos2d::BlendFunc::ALPHA_NON_PREMULTIPLIED);
+
+	Mat4 transform;
+	transform.m[0] = 1.0f;
+	transform.m[5] = 1.0f;
+	transform.m[10] = 1.0f;
+	transform.m[12] = bbox.origin.x;
+	transform.m[13] = _height - bbox.origin.y - bbox.size.height;
+
+	transform = _projection * transform;
+
+	useProgram(p->getProgram());
+	p->setUniformLocationWith4f(p->getUniformLocationForName(cocos2d::GLProgram::UNIFORM_AMBIENT_COLOR),
+			_color.r / 255.0f, _color.g / 255.0f, _color.b / 255.0f, _color.a / 255.0f);
+	p->setUniformLocationWithMatrix4fv(p->getUniformLocationForName(cocos2d::GLProgram::UNIFORM_MVP_MATRIX),
+			transform.m, 1);
+
+	for (auto &it : rects) {
+    	vertices.push_back(it.origin.x);					vertices.push_back(it.origin.y);
+    	vertices.push_back(it.origin.x + it.size.width);	vertices.push_back(it.origin.y);
+    	vertices.push_back(it.origin.x);					vertices.push_back(it.origin.y + it.size.height);
+    	vertices.push_back(it.origin.x + it.size.width);	vertices.push_back(it.origin.y + it.size.height);
 	}
 
-	auto &objs = _result->getObjects();
-	for (auto &obj : objs) {
-		if (obj.bbox.intersectsRect(_rect)) {
-			drawer.drawObject(obj);
-		}
-	}
+	drawResizeBuffer(rects.size());
 
-	if (!_isThumbnail) {
-		_result->getFontSet()->getImage()->releaseData();
+	glBindBuffer(GL_ARRAY_BUFFER, _drawBufferVBO[0]);
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_DYNAMIC_DRAW);
+
+	enableVertexAttribs(cocos2d::GL::VERTEX_ATTRIB_FLAG_POSITION);
+	glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_POSITION, 2, GL_FLOAT, GL_FALSE, 0, 0);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _drawBufferVBO[1]);
+	glDrawElements(GL_TRIANGLES, (GLsizei) rects.size() * 6, GL_UNSIGNED_SHORT, (GLvoid *) (0));
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	CHECK_GL_ERROR_DEBUG();
+}
+
+void Drawer::drawChars(Font *f, const font::FormatSpec &format, const Rect & bbox) {
+	DynamicLabel::makeLabelQuads(f, &format,
+			[&] (const DynamicLabel::TextureVec &newTex, DynamicLabel::QuadVec &&newQuads, DynamicLabel::ColorMapVec &&cMap) {
+		drawCharsQuads(newTex, std::move(newQuads), bbox);
+	});
+
+	drawCharsEffects(f, format, bbox);
+}
+
+void Drawer::drawCharsQuads(const Vector<Rc<cocos2d::Texture2D>> &tex, Vector<Rc<DynamicQuadArray>> &&quads, const Rect & bbox) {
+	bindTexture(0);
+
+	for (size_t i = 0; i < quads.size(); ++ i) {
+		drawCharsQuads(tex[i], quads[i], bbox);
 	}
 }
 
-void Drawer::onDrawed(uint8_t *data) {
-	if (data) {
-		auto tex = new cocos2d::Texture2D();
-		tex->initWithData(data, _stride * _height, cocos2d::Texture2D::PixelFormat::RGBA8888, _width, _height, _stride);
-		tex->autorelease();
-		tex->setAliasTexParameters();
-		_callback(tex);
+void Drawer::drawCharsQuads(cocos2d::Texture2D *tex, DynamicQuadArray *quads, const Rect & bbox) {
+	auto c = TextureCache::getInstance();
+	auto programs = c->getRawPrograms();
+	auto p = programs->getProgram(GLProgramSet::DynamicBatchA8Highp);
+	useProgram(p->getProgram());
+
+	Mat4 transform;
+	transform.m[0] = 1.0f;
+	transform.m[5] = 1.0f;
+	transform.m[10] = 1.0f;
+	transform.m[12] = bbox.origin.x;
+	transform.m[13] = _height - bbox.origin.y - bbox.size.height;
+
+	transform = _projection * transform;
+
+    p->setUniformLocationWithMatrix4fv(p->getUniformLocationForName(cocos2d::GLProgram::UNIFORM_MVP_MATRIX), transform.m, 1);
+
+	bindTexture(tex->getName());
+
+	auto count = quads->size();
+	size_t bufferSize = sizeof(cocos2d::V3F_C4B_T2F_Quad) * count;
+
+	drawResizeBuffer(count);
+
+	glBindBuffer(GL_ARRAY_BUFFER, _drawBufferVBO[0]);
+	glBufferData(GL_ARRAY_BUFFER, bufferSize, quads->getData(), GL_DYNAMIC_DRAW);
+
+    blendFunc(cocos2d::BlendFunc::ALPHA_NON_PREMULTIPLIED);
+	enableVertexAttribs(cocos2d::GL::VERTEX_ATTRIB_FLAG_POS_COLOR_TEX);
+
+	glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE,
+			sizeof(cocos2d::V3F_C4B_T2F), (GLvoid*) offsetof(cocos2d::V3F_C4B_T2F, vertices));
+
+	glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE,
+			sizeof(cocos2d::V3F_C4B_T2F), (GLvoid*) offsetof(cocos2d::V3F_C4B_T2F, colors));
+
+	glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_TEX_COORD, 2, GL_FLOAT, GL_FALSE,
+			sizeof(cocos2d::V3F_C4B_T2F), (GLvoid*) offsetof(cocos2d::V3F_C4B_T2F, texCoords));
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _drawBufferVBO[1]);
+
+	glDrawElements(GL_TRIANGLES, (GLsizei) count * 6, GL_UNSIGNED_SHORT, (GLvoid *) (0));
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+	CHECK_GL_ERROR_DEBUG();
+}
+
+void Drawer::drawCharsEffects(Font *font, const font::FormatSpec &format, const Rect &bbox) {
+	for (auto it = format.begin(); it != format.end(); ++ it) {
+		if (it.count() > 0 && it.range->underline > 0) {
+			const font::CharSpec &firstChar = format.chars[it.start()];
+			const font::CharSpec &lastChar = format.chars[it.start() + it.count() - 1];
+
+			auto color = it.range->color;
+			color.a = uint8_t(0.75f * color.a);
+			setColor(color);
+			drawRectangleFill(Rect(bbox.origin.x + firstChar.pos, bbox.origin.y + it.line->pos - it.range->layout->getData()->metrics.height / 8.0f,
+					lastChar.pos + lastChar.advance - firstChar.pos, it.range->layout->getData()->metrics.height / 16.0f));
+		}
 	}
+}
+
+void Drawer::update() {
+	if (!_cacheUpdated) {
+		return;
+	}
+
+	if (Time::now() - _updated > TimeInterval::seconds(1)) {
+		_cacheUpdated = false;
+		TextureCache::thread().perform([this] (stappler::Ref *) -> bool {
+			TextureCache::getInstance()->performWithGL([&] {
+				performUpdate();
+			});
+			return true;
+		}, [this] (stappler::Ref *, bool) {
+			_cacheUpdated = true;
+			_updated = Time::now();
+		});
+	}
+}
+
+void Drawer::clearCache() {
+	TextureCache::thread().perform([this] (stappler::Ref *) -> bool {
+		TextureCache::getInstance()->performWithGL([&] {
+			_cache.clear();
+		});
+		return true;
+	});
+}
+
+void Drawer::performUpdate() {
+	if (_cache.empty()) {
+		return;
+	}
+
+	auto time = Time::now();
+	Vector<String> keys;
+	for (auto &it : _cache) {
+		if (it.second.second - time > TimeInterval::seconds(6)) {
+			keys.push_back(it.first);
+		}
+	}
+
+	for (auto &it : keys) {
+		_cache.erase(it);
+	}
+}
+
+void Drawer::addBitmap(const String &str, cocos2d::Texture2D *bmp) {
+	_cache.emplace(str, pair(bmp, Time::now()));
+}
+
+cocos2d::Texture2D *Drawer::getBitmap(const std::string &key) {
+	auto it = _cache.find(key);
+	if (it != _cache.end()) {
+		it->second.second = Time::now();
+		return it->second.first;
+	}
+	return nullptr;
+}
+
+Thread &Drawer::thread() {
+	return TextureCache::thread();
 }
 
 NS_SP_EXT_END(rich_text)

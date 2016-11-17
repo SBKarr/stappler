@@ -40,7 +40,7 @@ public:
 
     virtual void onContentSizeDirty() override;
 
-    virtual void setHyphens(rich_text::HyphenMap *);
+    virtual void setHyphens(font::HyphenMap *);
 
 	virtual void setSource(Source *);
 	virtual Source *getSource() const;

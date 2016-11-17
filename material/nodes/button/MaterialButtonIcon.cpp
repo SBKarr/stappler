@@ -22,6 +22,8 @@ bool ButtonIcon::init(IconName name, const TapCallback &tapCallback, const TapCa
 	_icon->setAnchorPoint(cocos2d::Vec2(0.5f, 0.5f));
 	addChild(_icon);
 
+	setContentSize(_icon->getContentSize());
+
 	return true;
 }
 

@@ -36,8 +36,6 @@
 		29FCA7CB1D9AD40D008E8671 /* SPRichTextBuilderLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29FCA7AE1D9AD40D008E8671 /* SPRichTextBuilderLayout.cpp */; };
 		29FCA7CC1D9AD40D008E8671 /* SPRichTextLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29FCA7AF1D9AD40D008E8671 /* SPRichTextLayout.cpp */; };
 		29FCA7CD1D9AD40D008E8671 /* SPRichTextResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29FCA7B11D9AD40D008E8671 /* SPRichTextResult.cpp */; };
-		29FCA7CE1D9AD40D008E8671 /* SPRichTextFormatter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29FCA7B31D9AD40D008E8671 /* SPRichTextFormatter.cpp */; };
-		29FCA7CF1D9AD40D008E8671 /* SPRichTextFormatterHyphen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29FCA7B51D9AD40D008E8671 /* SPRichTextFormatterHyphen.cpp */; };
 		29FCA7D01D9AD40D008E8671 /* SPRichTextStyle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29FCA7B71D9AD40D008E8671 /* SPRichTextStyle.cpp */; };
 		29FCA7D11D9AD40D008E8671 /* SPRichTextStyleColors.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29FCA7B91D9AD40D008E8671 /* SPRichTextStyleColors.cpp */; };
 		29FCA7D21D9AD40D008E8671 /* SPRichTextStyleCompiled.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29FCA7BA1D9AD40D008E8671 /* SPRichTextStyleCompiled.cpp */; };
@@ -81,15 +79,10 @@
 		8410B3ED1C04355700208BA5 /* SPRootViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8410B3EC1C04355700208BA5 /* SPRootViewController.mm */; };
 		8410B3F01C04390900208BA5 /* SPAppController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8410B3EF1C04390900208BA5 /* SPAppController.mm */; };
 		8424E9221B5665E700901ED1 /* SPResource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8424E91D1B5665E700901ED1 /* SPResource.cpp */; };
-		8424E9231B5665E700901ED1 /* SPResourceFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8424E91F1B5665E700901ED1 /* SPResourceFile.cpp */; };
-		8424E9241B5665E700901ED1 /* SPResourceFreeType.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8424E9201B5665E700901ED1 /* SPResourceFreeType.cpp */; };
-		8424E9251B5665E700901ED1 /* SPResourceIcon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8424E9211B5665E700901ED1 /* SPResourceIcon.cpp */; };
 		842E720B1CE9E0F500E9B10E /* SPStapplerLog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84D970331CE9C19800C1B5F5 /* SPStapplerLog.cpp */; };
 		84337FE71CC24EA700546216 /* SPIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84337FE11CC24EA700546216 /* SPIO.cpp */; };
 		84337FF21CC25A7D00546216 /* SPDrawCanvas.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84337FF01CC25A7D00546216 /* SPDrawCanvas.cpp */; };
 		843380101CC272BF00546216 /* SPIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84337FE11CC24EA700546216 /* SPIO.cpp */; };
-		8445A3921DAB73E5006FF988 /* SPHtmlParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8445A3901DAB73E5006FF988 /* SPHtmlParser.cpp */; };
-		8445A3931DAB73E5006FF988 /* SPHtmlParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8445A3901DAB73E5006FF988 /* SPHtmlParser.cpp */; };
 		844635791B1EBDE300CA9857 /* SPError.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8EE1B1D888D00C0175B /* SPError.cpp */; };
 		8446357C1B1EBDFC00CA9857 /* SPEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8E21B1D888D00C0175B /* SPEvent.cpp */; };
 		8446357D1B1EBE0000CA9857 /* SPEventDispatcher.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8E41B1D888D00C0175B /* SPEventDispatcher.cpp */; };
@@ -126,6 +119,15 @@
 		847BB9DA1C4505B000B3B701 /* SPDataJsonBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 847BB9CE1C4505B000B3B701 /* SPDataJsonBuffer.cpp */; };
 		847BB9DB1C4505B000B3B701 /* SPDataStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 847BB9D01C4505B000B3B701 /* SPDataStream.cpp */; };
 		847BB9DC1C4505B000B3B701 /* SPDataStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 847BB9D01C4505B000B3B701 /* SPDataStream.cpp */; };
+		849E37C91DDB63FF00CB045E /* SPFontFormatter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 849E37C61DDB63FF00CB045E /* SPFontFormatter.cpp */; };
+		849E37CA1DDB63FF00CB045E /* SPFontLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 849E37C81DDB63FF00CB045E /* SPFontLayout.cpp */; };
+		849E37CF1DDB644A00CB045E /* SPDynamicLabel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 849E37CB1DDB644A00CB045E /* SPDynamicLabel.cpp */; };
+		849E37D01DDB644A00CB045E /* SPLabelParameters.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 849E37CD1DDB644A00CB045E /* SPLabelParameters.cpp */; };
+		849E37D31DDB64D800CB045E /* SPGLProgramSet.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 849E37D11DDB64D800CB045E /* SPGLProgramSet.cpp */; };
+		849E37E91DDB717C00CB045E /* SPBatchNodeBase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 849E37E71DDB717C00CB045E /* SPBatchNodeBase.cpp */; };
+		849E37EC1DDB71C300CB045E /* SPLayeredBatchNode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 849E37EA1DDB71C300CB045E /* SPLayeredBatchNode.cpp */; };
+		849E37F21DDB725B00CB045E /* SPHtmlParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 849E37F01DDB725B00CB045E /* SPHtmlParser.cpp */; };
+		849E37F31DDB725B00CB045E /* SPHtmlParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 849E37F01DDB725B00CB045E /* SPHtmlParser.cpp */; };
 		849E9D851B43B332004E502B /* SPDataSource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 849E9D831B43B332004E502B /* SPDataSource.cpp */; };
 		84A6E9CD1B1D888D00C0175B /* SPAccelerated.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8C21B1D888D00C0175B /* SPAccelerated.cpp */; };
 		84A6E9CE1B1D888D00C0175B /* SPFadeTo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8C41B1D888D00C0175B /* SPFadeTo.cpp */; };
@@ -143,7 +145,6 @@
 		84A6E9E51B1D888D00C0175B /* SPDynamicAtlas.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9061B1D888D00C0175B /* SPDynamicAtlas.cpp */; };
 		84A6E9E61B1D888D00C0175B /* SPDynamicBatchCommand.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9081B1D888D00C0175B /* SPDynamicBatchCommand.cpp */; };
 		84A6E9E81B1D888D00C0175B /* SPDynamicQuadArray.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E90C1B1D888D00C0175B /* SPDynamicQuadArray.cpp */; };
-		84A6E9E91B1D888D00C0175B /* SPGLProgramSet.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E90E1B1D888D00C0175B /* SPGLProgramSet.cpp */; };
 		84A6E9EB1B1D888D00C0175B /* SPIME.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9141B1D888D00C0175B /* SPIME.cpp */; };
 		84A6E9EC1B1D888D00C0175B /* SPAsset.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9171B1D888D00C0175B /* SPAsset.cpp */; };
 		84A6E9ED1B1D888D00C0175B /* SPAssetDownload.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9191B1D888D00C0175B /* SPAssetDownload.cpp */; };
@@ -174,7 +175,6 @@
 		84A6EA161B1D888D00C0175B /* SPDraw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E97C1B1D888D00C0175B /* SPDraw.cpp */; };
 		84A6EA171B1D888D00C0175B /* SPDrawPath.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E97E1B1D888D00C0175B /* SPDrawPath.cpp */; };
 		84A6EA181B1D888D00C0175B /* SPDrawPathNode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9801B1D888D00C0175B /* SPDrawPathNode.cpp */; };
-		84A6EA191B1D888D00C0175B /* SPRichLabel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9831B1D888D00C0175B /* SPRichLabel.cpp */; };
 		84A6EA1A1B1D888D00C0175B /* SPOverscroll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9861B1D888D00C0175B /* SPOverscroll.cpp */; };
 		84A6EA1B1B1D888D00C0175B /* SPScrollView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9881B1D888D00C0175B /* SPScrollView.cpp */; };
 		84A6EA1C1B1D888D00C0175B /* SPScrollViewBase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E98A1B1D888D00C0175B /* SPScrollViewBase.cpp */; };
@@ -275,9 +275,6 @@
 		29FCA7B01D9AD40D008E8671 /* SPRichTextLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextLayout.h; sourceTree = "<group>"; };
 		29FCA7B11D9AD40D008E8671 /* SPRichTextResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextResult.cpp; sourceTree = "<group>"; };
 		29FCA7B21D9AD40D008E8671 /* SPRichTextResult.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextResult.h; sourceTree = "<group>"; };
-		29FCA7B31D9AD40D008E8671 /* SPRichTextFormatter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextFormatter.cpp; sourceTree = "<group>"; };
-		29FCA7B41D9AD40D008E8671 /* SPRichTextFormatter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextFormatter.h; sourceTree = "<group>"; };
-		29FCA7B51D9AD40D008E8671 /* SPRichTextFormatterHyphen.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextFormatterHyphen.cpp; sourceTree = "<group>"; };
 		29FCA7B71D9AD40D008E8671 /* SPRichTextStyle.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextStyle.cpp; sourceTree = "<group>"; };
 		29FCA7B81D9AD40D008E8671 /* SPRichTextStyle.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextStyle.h; sourceTree = "<group>"; };
 		29FCA7B91D9AD40D008E8671 /* SPRichTextStyleColors.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextStyleColors.cpp; sourceTree = "<group>"; };
@@ -332,9 +329,6 @@
 		8410B3EF1C04390900208BA5 /* SPAppController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SPAppController.mm; sourceTree = "<group>"; };
 		8424E91D1B5665E700901ED1 /* SPResource.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPResource.cpp; sourceTree = "<group>"; };
 		8424E91E1B5665E700901ED1 /* SPResource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPResource.h; sourceTree = "<group>"; };
-		8424E91F1B5665E700901ED1 /* SPResourceFile.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPResourceFile.cpp; sourceTree = "<group>"; };
-		8424E9201B5665E700901ED1 /* SPResourceFreeType.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPResourceFreeType.cpp; sourceTree = "<group>"; };
-		8424E9211B5665E700901ED1 /* SPResourceIcon.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPResourceIcon.cpp; sourceTree = "<group>"; };
 		84337FE11CC24EA700546216 /* SPIO.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPIO.cpp; sourceTree = "<group>"; };
 		84337FE21CC24EA700546216 /* SPIO.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIO.h; sourceTree = "<group>"; };
 		84337FE31CC24EA700546216 /* SPIOBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIOBuffer.h; sourceTree = "<group>"; };
@@ -343,8 +337,6 @@
 		84337FE61CC24EA700546216 /* SPIOProducer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIOProducer.h; sourceTree = "<group>"; };
 		84337FF01CC25A7D00546216 /* SPDrawCanvas.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDrawCanvas.cpp; sourceTree = "<group>"; };
 		84337FF11CC25A7D00546216 /* SPDrawCanvas.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDrawCanvas.h; sourceTree = "<group>"; };
-		8445A3901DAB73E5006FF988 /* SPHtmlParser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPHtmlParser.cpp; sourceTree = "<group>"; };
-		8445A3911DAB73E5006FF988 /* SPHtmlParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPHtmlParser.h; sourceTree = "<group>"; };
 		844637521B1EE7FE00CA9857 /* SPIOSLoaderView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SPIOSLoaderView.mm; sourceTree = "<group>"; };
 		844637541B1EE83200CA9857 /* SPIOSLoaderView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SPIOSLoaderView.h; sourceTree = "<group>"; };
 		847576C81BE8A13B00445A50 /* SPActions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPActions.h; sourceTree = "<group>"; };
@@ -362,6 +354,21 @@
 		847BB9D01C4505B000B3B701 /* SPDataStream.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDataStream.cpp; sourceTree = "<group>"; };
 		847BB9D11C4505B000B3B701 /* SPDataStream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDataStream.h; sourceTree = "<group>"; };
 		847BB9D21C4505B000B3B701 /* SPTransferBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPTransferBuffer.h; sourceTree = "<group>"; };
+		849E37C61DDB63FF00CB045E /* SPFontFormatter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPFontFormatter.cpp; sourceTree = "<group>"; };
+		849E37C71DDB63FF00CB045E /* SPFontFormatter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPFontFormatter.h; sourceTree = "<group>"; };
+		849E37C81DDB63FF00CB045E /* SPFontLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPFontLayout.cpp; sourceTree = "<group>"; };
+		849E37CB1DDB644A00CB045E /* SPDynamicLabel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDynamicLabel.cpp; sourceTree = "<group>"; };
+		849E37CC1DDB644A00CB045E /* SPDynamicLabel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDynamicLabel.h; sourceTree = "<group>"; };
+		849E37CD1DDB644A00CB045E /* SPLabelParameters.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPLabelParameters.cpp; sourceTree = "<group>"; };
+		849E37CE1DDB644A00CB045E /* SPLabelParameters.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPLabelParameters.h; sourceTree = "<group>"; };
+		849E37D11DDB64D800CB045E /* SPGLProgramSet.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPGLProgramSet.cpp; sourceTree = "<group>"; };
+		849E37D21DDB64D800CB045E /* SPGLProgramSet.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPGLProgramSet.h; sourceTree = "<group>"; };
+		849E37E71DDB717C00CB045E /* SPBatchNodeBase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPBatchNodeBase.cpp; sourceTree = "<group>"; };
+		849E37E81DDB717C00CB045E /* SPBatchNodeBase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPBatchNodeBase.h; sourceTree = "<group>"; };
+		849E37EA1DDB71C300CB045E /* SPLayeredBatchNode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPLayeredBatchNode.cpp; sourceTree = "<group>"; };
+		849E37EB1DDB71C300CB045E /* SPLayeredBatchNode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPLayeredBatchNode.h; sourceTree = "<group>"; };
+		849E37F01DDB725B00CB045E /* SPHtmlParser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPHtmlParser.cpp; sourceTree = "<group>"; };
+		849E37F11DDB725B00CB045E /* SPHtmlParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPHtmlParser.h; sourceTree = "<group>"; };
 		849E9D831B43B332004E502B /* SPDataSource.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDataSource.cpp; sourceTree = "<group>"; };
 		849E9D841B43B332004E502B /* SPDataSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDataSource.h; sourceTree = "<group>"; };
 		84A6E8C21B1D888D00C0175B /* SPAccelerated.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPAccelerated.cpp; sourceTree = "<group>"; };
@@ -393,20 +400,12 @@
 		84A6E8ED1B1D888D00C0175B /* SPDefine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDefine.h; sourceTree = "<group>"; };
 		84A6E8EE1B1D888D00C0175B /* SPError.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPError.cpp; sourceTree = "<group>"; };
 		84A6E8EF1B1D888D00C0175B /* SPError.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPError.h; sourceTree = "<group>"; };
-		84A6E9001B1D888D00C0175B /* DrawNodeA8.frag */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = DrawNodeA8.frag; sourceTree = "<group>"; };
-		84A6E9011B1D888D00C0175B /* DrawNodeA8.vert */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = DrawNodeA8.vert; sourceTree = "<group>"; };
-		84A6E9021B1D888D00C0175B /* DynamicBatchAI88.frag */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = DynamicBatchAI88.frag; sourceTree = "<group>"; };
-		84A6E9031B1D888D00C0175B /* DynamicBatchAI88.vert */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = DynamicBatchAI88.vert; sourceTree = "<group>"; };
-		84A6E9041B1D888D00C0175B /* DynamicBatchI8.frag */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = DynamicBatchI8.frag; sourceTree = "<group>"; };
-		84A6E9051B1D888D00C0175B /* DynamicBatchI8.vert */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = DynamicBatchI8.vert; sourceTree = "<group>"; };
 		84A6E9061B1D888D00C0175B /* SPDynamicAtlas.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDynamicAtlas.cpp; sourceTree = "<group>"; };
 		84A6E9071B1D888D00C0175B /* SPDynamicAtlas.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDynamicAtlas.h; sourceTree = "<group>"; };
 		84A6E9081B1D888D00C0175B /* SPDynamicBatchCommand.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDynamicBatchCommand.cpp; sourceTree = "<group>"; };
 		84A6E9091B1D888D00C0175B /* SPDynamicBatchCommand.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDynamicBatchCommand.h; sourceTree = "<group>"; };
 		84A6E90C1B1D888D00C0175B /* SPDynamicQuadArray.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDynamicQuadArray.cpp; sourceTree = "<group>"; };
 		84A6E90D1B1D888D00C0175B /* SPDynamicQuadArray.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDynamicQuadArray.h; sourceTree = "<group>"; };
-		84A6E90E1B1D888D00C0175B /* SPGLProgramSet.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPGLProgramSet.cpp; sourceTree = "<group>"; };
-		84A6E90F1B1D888D00C0175B /* SPGLProgramSet.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPGLProgramSet.h; sourceTree = "<group>"; };
 		84A6E9141B1D888D00C0175B /* SPIME.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPIME.cpp; sourceTree = "<group>"; };
 		84A6E9151B1D888D00C0175B /* SPIME.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIME.h; sourceTree = "<group>"; };
 		84A6E9171B1D888D00C0175B /* SPAsset.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPAsset.cpp; sourceTree = "<group>"; };
@@ -470,8 +469,6 @@
 		84A6E97F1B1D888D00C0175B /* SPDrawPath.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDrawPath.h; sourceTree = "<group>"; };
 		84A6E9801B1D888D00C0175B /* SPDrawPathNode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDrawPathNode.cpp; sourceTree = "<group>"; };
 		84A6E9811B1D888D00C0175B /* SPDrawPathNode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDrawPathNode.h; sourceTree = "<group>"; };
-		84A6E9831B1D888D00C0175B /* SPRichLabel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichLabel.cpp; sourceTree = "<group>"; };
-		84A6E9841B1D888D00C0175B /* SPRichLabel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichLabel.h; sourceTree = "<group>"; };
 		84A6E9861B1D888D00C0175B /* SPOverscroll.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPOverscroll.cpp; sourceTree = "<group>"; };
 		84A6E9871B1D888D00C0175B /* SPOverscroll.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPOverscroll.h; sourceTree = "<group>"; };
 		84A6E9881B1D888D00C0175B /* SPScrollView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPScrollView.cpp; sourceTree = "<group>"; };
@@ -513,8 +510,6 @@
 		84A6E9CC1B1D888D00C0175B /* SPScreenOrientation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPScreenOrientation.h; sourceTree = "<group>"; };
 		84AA9F9F1BD4A95C00DD650A /* SPDynamicBatchScene.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDynamicBatchScene.cpp; sourceTree = "<group>"; };
 		84AA9FA01BD4A95C00DD650A /* SPDynamicBatchScene.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDynamicBatchScene.h; sourceTree = "<group>"; };
-		84AABE201B200D8500A39409 /* DynamicBatchA8Highp.frag */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.glsl; path = DynamicBatchA8Highp.frag; sourceTree = "<group>"; };
-		84AABE211B200D8500A39409 /* DynamicBatchA8Highp.vert */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.glsl; path = DynamicBatchA8Highp.vert; sourceTree = "<group>"; };
 		84D970331CE9C19800C1B5F5 /* SPStapplerLog.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPStapplerLog.cpp; sourceTree = "<group>"; };
 		84D970361CE9C46B00C1B5F5 /* SPSha2.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPSha2.cpp; sourceTree = "<group>"; };
 		84EA85D81BB1665800FB1276 /* SPForward.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SPForward.h; sourceTree = "<group>"; };
@@ -596,9 +591,6 @@
 				29FCA79D1D9AD40D008E8671 /* epub */,
 				29FCA7A41D9AD40D008E8671 /* internal */,
 				29FCA7A91D9AD40D008E8671 /* renderer */,
-				29FCA7B31D9AD40D008E8671 /* SPRichTextFormatter.cpp */,
-				29FCA7B41D9AD40D008E8671 /* SPRichTextFormatter.h */,
-				29FCA7B51D9AD40D008E8671 /* SPRichTextFormatterHyphen.cpp */,
 				29FCA7B61D9AD40D008E8671 /* style */,
 			);
 			path = rich_text;
@@ -767,8 +759,8 @@
 				84080DEF1C1982EF00723732 /* SPFilesystem.h */,
 				84080DF01C1982EF00723732 /* SPHalfFloat.cpp */,
 				84080DF11C1982EF00723732 /* SPHalfFloat.h */,
-				8445A3901DAB73E5006FF988 /* SPHtmlParser.cpp */,
-				8445A3911DAB73E5006FF988 /* SPHtmlParser.h */,
+				849E37F01DDB725B00CB045E /* SPHtmlParser.cpp */,
+				849E37F11DDB725B00CB045E /* SPHtmlParser.h */,
 				84FEA25E1C43C12F00DA61E0 /* SPNetworkHandle.cpp */,
 				84FEA25F1C43C12F00DA61E0 /* SPNetworkHandle.h */,
 				84080DF21C1982EF00723732 /* SPTime.cpp */,
@@ -944,32 +936,14 @@
 		84A6E8FE1B1D888D00C0175B /* dynamic_atlas */ = {
 			isa = PBXGroup;
 			children = (
-				84A6E8FF1B1D888D00C0175B /* shaders */,
 				84A6E9061B1D888D00C0175B /* SPDynamicAtlas.cpp */,
 				84A6E9071B1D888D00C0175B /* SPDynamicAtlas.h */,
 				84A6E9081B1D888D00C0175B /* SPDynamicBatchCommand.cpp */,
 				84A6E9091B1D888D00C0175B /* SPDynamicBatchCommand.h */,
 				84A6E90C1B1D888D00C0175B /* SPDynamicQuadArray.cpp */,
 				84A6E90D1B1D888D00C0175B /* SPDynamicQuadArray.h */,
-				84A6E90E1B1D888D00C0175B /* SPGLProgramSet.cpp */,
-				84A6E90F1B1D888D00C0175B /* SPGLProgramSet.h */,
 			);
 			path = dynamic_atlas;
-			sourceTree = "<group>";
-		};
-		84A6E8FF1B1D888D00C0175B /* shaders */ = {
-			isa = PBXGroup;
-			children = (
-				84A6E9001B1D888D00C0175B /* DrawNodeA8.frag */,
-				84A6E9011B1D888D00C0175B /* DrawNodeA8.vert */,
-				84AABE201B200D8500A39409 /* DynamicBatchA8Highp.frag */,
-				84AABE211B200D8500A39409 /* DynamicBatchA8Highp.vert */,
-				84A6E9021B1D888D00C0175B /* DynamicBatchAI88.frag */,
-				84A6E9031B1D888D00C0175B /* DynamicBatchAI88.vert */,
-				84A6E9041B1D888D00C0175B /* DynamicBatchI8.frag */,
-				84A6E9051B1D888D00C0175B /* DynamicBatchI8.vert */,
-			);
-			path = shaders;
 			sourceTree = "<group>";
 		};
 		84A6E9131B1D888D00C0175B /* ime */ = {
@@ -1005,13 +979,13 @@
 			children = (
 				84A6E9221B1D888D00C0175B /* SPFont.cpp */,
 				84A6E9231B1D888D00C0175B /* SPFont.h */,
+				849E37C61DDB63FF00CB045E /* SPFontFormatter.cpp */,
+				849E37C71DDB63FF00CB045E /* SPFontFormatter.h */,
+				849E37C81DDB63FF00CB045E /* SPFontLayout.cpp */,
 				84A6E9251B1D888D00C0175B /* SPIcon.cpp */,
 				84A6E9261B1D888D00C0175B /* SPIcon.h */,
 				8424E91D1B5665E700901ED1 /* SPResource.cpp */,
 				8424E91E1B5665E700901ED1 /* SPResource.h */,
-				8424E91F1B5665E700901ED1 /* SPResourceFile.cpp */,
-				8424E9201B5665E700901ED1 /* SPResourceFreeType.cpp */,
-				8424E9211B5665E700901ED1 /* SPResourceIcon.cpp */,
 			);
 			path = resources;
 			sourceTree = "<group>";
@@ -1040,6 +1014,8 @@
 		84A6E9521B1D888D00C0175B /* texture */ = {
 			isa = PBXGroup;
 			children = (
+				849E37D11DDB64D800CB045E /* SPGLProgramSet.cpp */,
+				849E37D21DDB64D800CB045E /* SPGLProgramSet.h */,
 				84A6E9531B1D888D00C0175B /* SPTexture.cpp */,
 				84A6E9541B1D888D00C0175B /* SPTexture.h */,
 				84A6E9551B1D888D00C0175B /* SPTextureCache.cpp */,
@@ -1092,6 +1068,8 @@
 		84A6E9671B1D888D00C0175B /* batched */ = {
 			isa = PBXGroup;
 			children = (
+				849E37E71DDB717C00CB045E /* SPBatchNodeBase.cpp */,
+				849E37E81DDB717C00CB045E /* SPBatchNodeBase.h */,
 				84A6E96B1B1D888D00C0175B /* SPCustomCornerSprite.cpp */,
 				84A6E96C1B1D888D00C0175B /* SPCustomCornerSprite.h */,
 				84A6E96D1B1D888D00C0175B /* SPDynamicBatchNode.cpp */,
@@ -1102,6 +1080,8 @@
 				84A6E9721B1D888D00C0175B /* SPIconSprite.h */,
 				84A6E9731B1D888D00C0175B /* SPLayer.cpp */,
 				84A6E9741B1D888D00C0175B /* SPLayer.h */,
+				849E37EA1DDB71C300CB045E /* SPLayeredBatchNode.cpp */,
+				849E37EB1DDB71C300CB045E /* SPLayeredBatchNode.h */,
 				84A6E9751B1D888D00C0175B /* SPRoundedSprite.cpp */,
 				84A6E9761B1D888D00C0175B /* SPRoundedSprite.h */,
 				84A6E9771B1D888D00C0175B /* SPScale9Sprite.cpp */,
@@ -1130,8 +1110,10 @@
 		84A6E9821B1D888D00C0175B /* label */ = {
 			isa = PBXGroup;
 			children = (
-				84A6E9831B1D888D00C0175B /* SPRichLabel.cpp */,
-				84A6E9841B1D888D00C0175B /* SPRichLabel.h */,
+				849E37CB1DDB644A00CB045E /* SPDynamicLabel.cpp */,
+				849E37CC1DDB644A00CB045E /* SPDynamicLabel.h */,
+				849E37CD1DDB644A00CB045E /* SPLabelParameters.cpp */,
+				849E37CE1DDB644A00CB045E /* SPLabelParameters.h */,
 			);
 			path = label;
 			sourceTree = "<group>";
@@ -1355,7 +1337,7 @@
 				84080E141C1982EF00723732 /* SPCharGroup.cpp in Sources */,
 				844635901B1EBECE00CA9857 /* SPClipboard.mm in Sources */,
 				844635911B1EBED400CA9857 /* SPDevice.mm in Sources */,
-				8445A3931DAB73E5006FF988 /* SPHtmlParser.cpp in Sources */,
+				849E37F31DDB725B00CB045E /* SPHtmlParser.cpp in Sources */,
 				84080E281C1982EF00723732 /* SPTime.cpp in Sources */,
 				84FEA2611C43C12F00DA61E0 /* SPNetworkHandle.cpp in Sources */,
 				293729FA1D2A9C8D00D850A3 /* SPFilesystemNativePosix.cpp in Sources */,
@@ -1387,9 +1369,7 @@
 			files = (
 				842E720B1CE9E0F500E9B10E /* SPStapplerLog.cpp in Sources */,
 				298EBD4B1D9AEA0300C8B057 /* SPWebViewController.mm in Sources */,
-				8424E9231B5665E700901ED1 /* SPResourceFile.cpp in Sources */,
 				84A6E9E51B1D888D00C0175B /* SPDynamicAtlas.cpp in Sources */,
-				8424E9241B5665E700901ED1 /* SPResourceFreeType.cpp in Sources */,
 				29FCA7C31D9AD40D008E8671 /* SPEpubDocument.cpp in Sources */,
 				29D45C5B1D224DE00041FA68 /* SPLocale.cpp in Sources */,
 				298436861DABDD0A00B411D7 /* SPSignalHandler.mm in Sources */,
@@ -1412,10 +1392,10 @@
 				84A6EA061B1D888D00C0175B /* SPTextureCache.cpp in Sources */,
 				84A6E9DD1B1D888D00C0175B /* SPEventHeader.cpp in Sources */,
 				84A6EA4A1B1D888D00C0175B /* SPDevice.cpp in Sources */,
+				849E37CA1DDB63FF00CB045E /* SPFontLayout.cpp in Sources */,
 				84A6E9EF1B1D888D00C0175B /* SPNetworkDownload.cpp in Sources */,
 				84080E1D1C1982EF00723732 /* SPUnicode.cpp in Sources */,
 				84A6E9DA1B1D888D00C0175B /* SPEvent.cpp in Sources */,
-				84A6EA191B1D888D00C0175B /* SPRichLabel.cpp in Sources */,
 				847BB9D91C4505B000B3B701 /* SPDataJsonBuffer.cpp in Sources */,
 				84A6E9D01B1D888D00C0175B /* SPGestureListener.cpp in Sources */,
 				84A6E9CE1B1D888D00C0175B /* SPFadeTo.cpp in Sources */,
@@ -1425,6 +1405,7 @@
 				84A6EA331B1D888D00C0175B /* SPStatusBar.mm in Sources */,
 				849E9D851B43B332004E502B /* SPDataSource.cpp in Sources */,
 				84FDCD461BF1C37400C56046 /* SPDelayedReleaser.cpp in Sources */,
+				849E37E91DDB717C00CB045E /* SPBatchNodeBase.cpp in Sources */,
 				293729F91D2A9C8D00D850A3 /* SPFilesystemNativePosix.cpp in Sources */,
 				29FCA7C41D9AD40D008E8671 /* SPEpubInfo.cpp in Sources */,
 				84A6EA341B1D888D00C0175B /* SPStoreKit.mm in Sources */,
@@ -1438,6 +1419,7 @@
 				29FCA7BF1D9AD40D008E8671 /* SPRichTextNode.cpp in Sources */,
 				84A6E9CD1B1D888D00C0175B /* SPAccelerated.cpp in Sources */,
 				84A6EA121B1D888D00C0175B /* SPLayer.cpp in Sources */,
+				849E37CF1DDB644A00CB045E /* SPDynamicLabel.cpp in Sources */,
 				29FCA7C01D9AD40D008E8671 /* SPRichTextParser.cpp in Sources */,
 				29FCA7D01D9AD40D008E8671 /* SPRichTextStyle.cpp in Sources */,
 				84080E111C1982EF00723732 /* SPBase64.cpp in Sources */,
@@ -1446,11 +1428,11 @@
 				84EA86491BB1787A00FB1276 /* SPProgressAction.cpp in Sources */,
 				8410B3F01C04390900208BA5 /* SPAppController.mm in Sources */,
 				84A6EA2F1B1D888D00C0175B /* SPIME.mm in Sources */,
+				849E37EC1DDB71C300CB045E /* SPLayeredBatchNode.cpp in Sources */,
 				29FCA7C61D9AD40D008E8671 /* SPRichTextMultipartParser.cpp in Sources */,
 				84337FE71CC24EA700546216 /* SPIO.cpp in Sources */,
 				84080DFF1C1982EF00723732 /* SPDataBuffer.cpp in Sources */,
 				29FCA7C71D9AD40D008E8671 /* SPRichTextRendererTypes.cpp in Sources */,
-				8445A3921DAB73E5006FF988 /* SPHtmlParser.cpp in Sources */,
 				84FEA2601C43C12F00DA61E0 /* SPNetworkHandle.cpp in Sources */,
 				84A6E9D61B1D888D00C0175B /* SPEventListener.cpp in Sources */,
 				84A6EA161B1D888D00C0175B /* SPDraw.cpp in Sources */,
@@ -1463,7 +1445,7 @@
 				84FDCD481BF1C37400C56046 /* SPSyncRWLock.cpp in Sources */,
 				84A6EA081B1D888D00C0175B /* SPTextureRef.cpp in Sources */,
 				84A6EA071B1D888D00C0175B /* SPTextureFBO.cpp in Sources */,
-				8424E9251B5665E700901ED1 /* SPResourceIcon.cpp in Sources */,
+				849E37D01DDB644A00CB045E /* SPLabelParameters.cpp in Sources */,
 				84080E291C1982EF00723732 /* SPUrl.cpp in Sources */,
 				84FEA2561C43BB4F00DA61E0 /* SPSocketServer.cpp in Sources */,
 				84A6EA031B1D888D00C0175B /* SPStoreKit.cpp in Sources */,
@@ -1485,15 +1467,15 @@
 				84F636B81C16CF0D0021A2F4 /* SPDataValueNetwork.cpp in Sources */,
 				84AA9FA11BD4A95C00DD650A /* SPDynamicBatchScene.cpp in Sources */,
 				84A6E9E61B1D888D00C0175B /* SPDynamicBatchCommand.cpp in Sources */,
-				29FCA7CE1D9AD40D008E8671 /* SPRichTextFormatter.cpp in Sources */,
 				84A6EA1A1B1D888D00C0175B /* SPOverscroll.cpp in Sources */,
 				29FCA7BE1D9AD40D008E8671 /* SPRichTextDocument.cpp in Sources */,
 				84A6E9F21B1D888D00C0175B /* SPIcon.cpp in Sources */,
-				84A6E9E91B1D888D00C0175B /* SPGLProgramSet.cpp in Sources */,
 				84A6EA301B1D888D00C0175B /* SPInteraction.mm in Sources */,
+				849E37C91DDB63FF00CB045E /* SPFontFormatter.cpp in Sources */,
 				84A6E9CF1B1D888D00C0175B /* SPGestureData.cpp in Sources */,
 				29FCA7DD1D9AD427008E8671 /* SPRichTextRenderer.cpp in Sources */,
 				29FCA7DC1D9AD427008E8671 /* SPRichTextDrawer.cpp in Sources */,
+				849E37F21DDB725B00CB045E /* SPHtmlParser.cpp in Sources */,
 				84A6EA2B1B1D888D00C0175B /* SPClipboard.mm in Sources */,
 				84337FF21CC25A7D00546216 /* SPDrawCanvas.cpp in Sources */,
 				84080E271C1982EF00723732 /* SPTime.cpp in Sources */,
@@ -1510,11 +1492,11 @@
 				84A6EA021B1D888D00C0175B /* SPStorage.cpp in Sources */,
 				29FCA7C11D9AD40D008E8671 /* SPRichTextReader.cpp in Sources */,
 				84A6E9DC1B1D888D00C0175B /* SPEventHandler.cpp in Sources */,
+				849E37D31DDB64D800CB045E /* SPGLProgramSet.cpp in Sources */,
 				84A6E9F11B1D888D00C0175B /* SPFont.cpp in Sources */,
 				84A6EA151B1D888D00C0175B /* SPShadowSprite.cpp in Sources */,
 				84080E251C1982EF00723732 /* SPHalfFloat.cpp in Sources */,
 				84A6EA041B1D888D00C0175B /* SPStoreProduct.cpp in Sources */,
-				29FCA7CF1D9AD40D008E8671 /* SPRichTextFormatterHyphen.cpp in Sources */,
 				84A6E9D21B1D888D00C0175B /* SPScrollController.cpp in Sources */,
 				84A6EA101B1D888D00C0175B /* SPDynamicSprite.cpp in Sources */,
 				84080E231C1982EF00723732 /* SPFilesystem.cpp in Sources */,

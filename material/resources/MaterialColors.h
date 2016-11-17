@@ -99,7 +99,7 @@ public:
 	}
 
 	inline bool operator != (const Color &other) const {
-		return _value == other._value;
+		return _value != other._value;
 	}
 
 	inline uint8_t r() const { return (_value >> 16) & 0xFF; }

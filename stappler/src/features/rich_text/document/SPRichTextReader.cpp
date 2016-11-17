@@ -540,10 +540,6 @@ void Reader::onCss(const String & href) {
 				nit->second.merge(it.second);
 			}
 		}
-
-		for (auto &it : cssIt->second.fonts) {
-			_fonts.emplace(it.first, it.second);
-		}
 	}
 }
 

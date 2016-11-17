@@ -769,6 +769,16 @@ namespace style {
 		return getFontConfigName(family, size, fontStyle, fontWeight, fontStretch, FontVariant::Normal, false);
 	}
 
+	FontStyleParameters FontFace::getStyle(const String &family, uint8_t size) const {
+		FontStyleParameters ret;
+		ret.fontFamily = family;
+		ret.fontSize = size;
+		ret.fontStretch = fontStretch;
+		ret.fontStyle = fontStyle;
+		ret.fontWeight = fontWeight;
+		return ret;
+	}
+
 	String getFontConfigName(const String &fontFamily, uint8_t fontSize, FontStyle fontStyle, FontWeight fontWeight,
 			FontStretch fontStretch, FontVariant fontVariant, bool caps) {
 		auto size = fontSize;

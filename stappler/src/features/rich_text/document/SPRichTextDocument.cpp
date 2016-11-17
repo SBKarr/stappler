@@ -12,7 +12,7 @@
 #include "SPFilesystem.h"
 
 #include "SPRichTextReader.h"
-
+#include "SPRichTextSource.h"
 #include "SPRichTextRendererTypes.h"
 #include "SPRichTextMultipartParser.h"
 
@@ -43,129 +43,6 @@ protected:
 	Document *doc = nullptr;
 	const Vector<MediaQueryId> *media;
 };
-
-static style::FontStyleParameters Document_compileFont(
-		Document *doc,
-		const style::ParameterList &spanStyle,
-		const Vector<MediaQueryId> &media) {
-	Document_RenderInterface iface(doc, &media);
-	return spanStyle.compileFontStyle(&iface);
-}
-
-static bool Document_addStyle(Vector<style::FontStyleParameters> &vec, const style::FontStyleParameters &style) {
-	for (auto &it : vec) {
-		if (it == style) {
-			return false;
-		}
-	}
-	vec.push_back(style);
-	return true;
-}
-
-static bool gen_comb_norep_lex_init(Vector<MediaQueryId> &vector, MediaQueryId n, MediaQueryId k) {
-	for(MediaQueryId j = 0; j < k; j++) {
-		vector.push_back(j);
-	}
-
-	return true;
-}
-
-static bool gen_comb_norep_lex_next(Vector<MediaQueryId> &vector, MediaQueryId n, MediaQueryId k) {
-	int32_t j; //index
-	if (vector[k - 1] < n - 1) {
-		vector[k - 1] ++;
-		return true;
-	}
-
-	for (j = k - 2; j >= 0; j--) {
-		if (vector[j] < n - k + j) {
-			break;
-		}
-	}
-
-	if(j < 0) {
-		return false;
-	}
-
-	vector[j]++;
-	while(j < k - 1) {
-		vector[j + 1] = vector[j] + 1;
-		j++;
-	}
-
-	return true;
-}
-
-static size_t Document_fontFaceScore(const style::FontStyleParameters &params, const style::FontFace &face) {
-	size_t ret = 0;
-	if (face.fontStyle == style::FontStyle::Normal) {
-		ret += 1;
-	}
-	if (face.fontWeight == style::FontWeight::Normal) {
-		ret += 1;
-	}
-	if (face.fontStretch == style::FontStretch::Normal) {
-		ret += 1;
-	}
-
-	if (face.fontStyle == params.fontStyle && (face.fontStyle == style::FontStyle::Oblique || face.fontStyle == style::FontStyle::Italic)) {
-		ret += 100;
-	} else if ((face.fontStyle == style::FontStyle::Oblique || face.fontStyle == style::FontStyle::Italic)
-			&& (params.fontStyle == style::FontStyle::Oblique || params.fontStyle == style::FontStyle::Italic)) {
-		ret += 75;
-	}
-
-	auto weightDiff = (int)toInt(style::FontWeight::W900) - abs((int)toInt(params.fontWeight) - (int)toInt(face.fontWeight));
-	ret += weightDiff * 10;
-
-	auto stretchDiff = (int)toInt(style::FontStretch::UltraExpanded) - abs((int)toInt(params.fontStretch) - (int)toInt(face.fontStretch));
-	ret += stretchDiff * 5;
-
-	return ret;
-}
-
-static const style::FontFace *Document_selectFontFaceName(const String &name, const style::FontStyleParameters &params, const HtmlPage::FontMap &page, const HtmlPage::FontMap &def) {
-	const style::FontFace *ret = nullptr;
-	size_t retScore = 0;
-
-	auto faceIt = page.find(name);
-	if (faceIt != page.end()) {
-		for (auto &fit : faceIt->second) {
-			auto fscore = Document_fontFaceScore(params, fit);
-			if (fscore > retScore) {
-				ret = &fit;
-				retScore = fscore;
-			}
-		}
-	}
-
-	faceIt = def.find(name);
-	if (faceIt != def.end()) {
-		for (auto &fit : faceIt->second) {
-			auto fscore = Document_fontFaceScore(params, fit);
-			if (fscore > retScore) {
-				ret = &fit;
-				retScore = fscore;
-			}
-		}
-	}
-
-	if (retScore == 0) {
-		return nullptr;
-	}
-
-	if (ret) {
-		SP_RTDOC_LOG("FontFace: %s : select %s : %lu", params.getConfigName().c_str(), ret->src.front().c_str(), retScore);
-	}
-
-	return ret;
-}
-
-static void Document_initFontSet(const FontStyle &style, Set<char16_t> &set) {
-	set.insert(u' ');
-	set.insert(char16_t(0x00AD));
-	set.insert(char16_t(8226));
-}
 
 Document::Image::Image(const MultipartParser::Image &img)
 : type(Type::Embed), width(img.width), height(img.height), offset(img.offset), length(img.length)
@@ -295,6 +172,9 @@ Bytes Document::readData(size_t offset, size_t len) {
 	return Bytes();
 }
 
+const Document::FontFaceMap &Document::getFontFaces() const {
+	return _fontFaces;
+}
 bool Document::isFileExists(const String &name) const {
 	auto imageIt = _images.find(name);
 	if (imageIt != _images.end()) {
@@ -336,17 +216,9 @@ Bitmap Document::getImageBitmap(const String &name, const Bitmap::StrideFn &fn) 
 	return Bitmap();
 }
 
-void Document::setDefaultFontFaces(const HtmlPage::FontMap &map) {
-	_defaultFontFaces = map;
-}
-void Document::setDefaultFontFaces(HtmlPage::FontMap &&map) {
-	_defaultFontFaces = std::move(map);
-}
-
 Document::~Document() { }
 
 void Document::updateNodes() {
-	_fontConfig.clear();
 	_ids.clear();
 
 	NodeId nextId = 0;
@@ -359,34 +231,7 @@ void Document::updateNodes() {
 				SP_RTDOC_LOG("id : %s", node.getHtmlId().c_str());
 			}
 			nextId ++;
-
-			processLists(_fontConfig, node, it.fonts);
-			processSpans(_fontConfig, node, it.fonts);
 		});
-	}
-
-	// default chars
-	FontStyle defStyle; defStyle.fontFamily = "default";
-	auto name = defStyle.getConfigName();
-	auto fontsIt = _fontConfig.find(name);
-	if (fontsIt == _fontConfig.end()) {
-		fontsIt = _fontConfig.emplace(name, FontConfigValue{defStyle, selectFontFace(defStyle, _defaultFontFaces, _defaultFontFaces)}).first;
-		Document_initFontSet(defStyle, fontsIt->second.set);
-	}
-
-	auto &set = fontsIt->second.set;
-	for (auto c = u'0'; c <= u'9'; ++ c) {
-		set.insert(c);
-	}
-
-	for (auto &it : _fontConfig) {
-		it.second.chars.reserve(it.second.set.size() + 1);
-		for (auto &c : it.second.set) {
-			it.second.chars.push_back(c);
-		}
-		it.second.set.clear();
-
-		SP_RTDOC_LOG("%s: %s", it.first.c_str(), string::toUtf8(it.second.chars).c_str());
 	}
 }
 
@@ -412,10 +257,6 @@ const Vector<style::MediaQuery> &Document::getMediaQueries() const {
 }
 const Map<CssStringId, String> &Document::getCssStrings() const {
 	return _cssStrings;
-}
-
-const Document::FontConfig &Document::getFontConfig() const {
-	return _fontConfig;
 }
 
 bool Document::resolveMediaQuery(MediaQueryId queryId) const {
@@ -465,245 +306,10 @@ const Node *Document::getNodeById(const String &str) const {
 	return nullptr;
 }
 
-Vector<const style::FontFace *> Document::selectFontFace(const style::FontStyleParameters &params, const HtmlPage::FontMap &page, const HtmlPage::FontMap &def) {
-	Vector<const style::FontFace *> ret;
-
-	string::split(params.fontFamily, ",", [&] (const CharReaderBase &ir) {
-		CharReaderBase r(ir);
-		r.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
-		if (r[0] == '"') {
-			++ r;
-			auto str = r.readUntil<CharReaderBase::Chars<'"'>>();
-			if (!str.empty()) {
-				const style::FontFace *fc = Document_selectFontFaceName(str.str(), params, page, def);
-				if (fc) {
-					ret.push_back(fc);
-				}
-			}
-		} else if (r[0] == '\'') {
-			++ r;
-			auto str = r.readUntil<CharReaderBase::Chars<'\''>>();
-			if (!str.empty()) {
-				const style::FontFace *fc = Document_selectFontFaceName(str.str(), params, page, def);
-				if (fc) {
-					ret.push_back(fc);
-				}
-			}
-		} else {
-			auto str = r.readUntil<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
-			if (!str.empty()) {
-				const style::FontFace *fc = Document_selectFontFaceName(str.str(), params, page, def);
-				if (fc) {
-					ret.push_back(fc);
-				}
-			}
-		}
-	});
-	if (params.fontFamily != "default") {
-		auto dfc = Document_selectFontFaceName("default", params, page, def);
-		if (dfc) {
-			ret.push_back(dfc);
-		}
-	}
-	return ret;
-}
-
-void Document::processLists(FontConfig &fonts, const Node &node, const HtmlPage::FontMap &fontFaces) {
-	auto display = node.getStyle().get(style::ParameterName::Display);
-	if (display.empty()) {
-		return;
-	}
-
-	if (node.getHtmlName() == "ul" || node.getHtmlName() == "ol") {
-		auto &nodes = node.getNodes();
-		for (auto &nit : nodes) {
-			auto &style = nit.getStyle();
-			auto d = style.get(style::ParameterName::Display);
-			auto l = style.get(style::ParameterName::ListStyleType);
-			for (auto &dit : d) {
-				if (dit.value.display == style::Display::ListItem) {
-					for (auto &lit : l) {
-						auto t = lit.value.listStyleType;
-						if (t != style::ListStyleType::None) {
-							forEachFontStyle(style, [&] (const style::FontStyleParameters &params) {
-								processList(fonts, t, params, fontFaces);
-							});
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
-void Document::processList(FontConfig &fonts, style::ListStyleType t, const style::FontStyleParameters &params, const HtmlPage::FontMap &fontFaces) {
-	auto name = params.getConfigName();
-	auto fontsIt = fonts.find(name);
-	if (fontsIt == fonts.end()) {
-		fontsIt = fonts.emplace(name, FontConfigValue{params, selectFontFace(params, fontFaces, _defaultFontFaces)}).first;
-		Document_initFontSet(params, fontsIt->second.set);
-	}
-
-	if (params.listStyleType != style::ListStyleType::None) {
-		auto &chars = fontsIt->second.set;
-		switch (params.listStyleType) {
-		case style::ListStyleType::None: break;
-		case style::ListStyleType::Circle: chars.insert(char16_t(8226)); break;
-		case style::ListStyleType::Disc: chars.insert(char16_t(9702)); break;
-		case style::ListStyleType::Square: chars.insert(char16_t(9632)); break;
-		case style::ListStyleType::XMdash: chars.insert(char16_t(8212)); break;
-		case style::ListStyleType::Decimal:
-		case style::ListStyleType::DecimalLeadingZero: for (char16_t i = u'0'; i <= u'9'; i ++) { chars.insert(i); } break;
-		case style::ListStyleType::LowerAlpha: for (char16_t i = u'a'; i <= u'z'; i ++) { chars.insert(i); } break;
-		case style::ListStyleType::LowerGreek: for (char16_t i = 0x03B1; i <= 0x03C9; i ++) { chars.insert(i); } break;
-		case style::ListStyleType::LowerRoman: for (char16_t i = 0x2170; i <= 0x217F; i ++) { chars.insert(i); } break;
-		case style::ListStyleType::UpperAlpha: for (char16_t i = u'A'; i <= u'Z'; i ++) { chars.insert(i); } break;
-		case style::ListStyleType::UpperRoman: for (char16_t i = 0x2160; i <= 0x216F; i ++) { chars.insert(i); } break;
-		}
-
-		chars.insert(u'.');
-		chars.insert(u'-');
-	}
-}
-
-void Document::processSpans(FontConfig &fonts, const Node &node, const HtmlPage::FontMap &fontFaces) {
-	forEachFontStyle(node.getStyle(), [&] (const style::FontStyleParameters &params) {
-		processSpan(fonts, node, params, fontFaces);
-	});
-}
-
-void Document::processSpan(FontConfig &fonts, const Node &node, const style::FontStyleParameters &params, const HtmlPage::FontMap &fontFaces) {
-	auto name = params.getConfigName();
-	auto fontsIt = fonts.find(name);
-	if (fontsIt == fonts.end()) {
-		fontsIt = fonts.emplace(name, FontConfigValue{params, selectFontFace(params, fontFaces, _defaultFontFaces)}).first;
-		Document_initFontSet(params, fontsIt->second.set);
-	}
-
-	auto altFontsIt = fonts.end();
-	if (params.fontVariant == style::FontVariant::SmallCaps) {
-		auto altName = params.getConfigName(true);
-		altFontsIt = fonts.find(altName);
-		if (altFontsIt == fonts.end()) {
-			auto capsParams = params.getSmallCaps();
-			altFontsIt = fonts.emplace(altName, FontConfigValue{capsParams, selectFontFace(capsParams, fontFaces, _defaultFontFaces)}).first;
-			Document_initFontSet(capsParams, altFontsIt->second.set);
-		}
-	}
-
-	auto &value = node.getValue();
-	auto &chars = fontsIt->second.set;
-	for (auto &c : value) {
-		auto transforms = node.getStyle().get(style::ParameterName::TextTransform);
-		bool ucase = false; bool lcase = false;
-		for (auto &it : transforms) {
-			if (it.value.textTransform == style::TextTransform::Lowercase) {
-				lcase = true;
-			} else if (it.value.textTransform == style::TextTransform::Uppercase) {
-				ucase = true;
-			}
-		}
-
-		if (!string::isspace(c)) {
-			if (params.fontVariant == style::FontVariant::SmallCaps) {
-				if (lcase) {
-					altFontsIt->second.set.insert(string::toupper(c));
-				}
-				if (ucase) {
-					chars.insert(string::toupper(c));
-				}
-				if (c == string::toupper(c)) {
-					chars.insert(c);
-				} else if (!lcase) {
-					altFontsIt->second.set.insert(string::toupper(c));
-				}
-			} else {
-				chars.insert(c);
-				if (lcase && ucase) {
-					auto l = string::tolower(c);
-					auto u = string::toupper(c);
-					if (l != c) {
-						chars.insert(l);
-					}
-					if (u != c) {
-						chars.insert(u);
-					}
-				} else if (lcase) {
-					auto l = string::tolower(c);
-					if (l != c) {
-						chars.insert(l);
-					}
-				} else if (ucase) {
-					auto u = string::toupper(c);
-					if (u != c) {
-						chars.insert(u);
-					}
-				}
-			}
-		}
-	}
-}
-
-void Document::forEachFontStyle(const style::ParameterList &spanStyle, const Function<void(const style::FontStyleParameters &)> &cb) {
-	auto families = spanStyle.get(style::ParameterName::FontFamily);
-	auto sizes = spanStyle.get(style::ParameterName::FontSize);
-	auto styles = spanStyle.get(style::ParameterName::FontStyle);
-	auto weights = spanStyle.get(style::ParameterName::FontWeight);
-	auto variant = spanStyle.get(style::ParameterName::FontVariant);
-
-	Set<MediaQueryId> mediaQueries;
-
-	for (auto &it : families) {
-		_fontFamily.insert(getCssString(it.value.stringId));
-		if (it.mediaQuery != MediaQueryNone()) {
-			mediaQueries.insert(it.mediaQuery);
-		}
-	}
-	for (auto &it : sizes) { if (it.mediaQuery != MediaQueryNone()) { mediaQueries.insert(it.mediaQuery); } }
-	for (auto &it : styles) { if (it.mediaQuery != MediaQueryNone()) { mediaQueries.insert(it.mediaQuery); } }
-	for (auto &it : weights) { if (it.mediaQuery != MediaQueryNone()) { mediaQueries.insert(it.mediaQuery); } }
-	for (auto &it : variant) { if (it.mediaQuery != MediaQueryNone()) { mediaQueries.insert(it.mediaQuery); } }
-
-	mediaQueries.erase(MediaQueryNone());
-
-	// fill default
-	Vector<FontStyle> processedStyles;
-	Vector<MediaQueryId> currentMedia;
-	Vector<MediaQueryId> mediaVec;
-	Vector<MediaQueryId> compiledVec;
-
-	for (auto &it : mediaQueries) {
-		mediaVec.push_back(it);
-	}
-
-	auto style = Document_compileFont(this, spanStyle, compiledVec);
-	if (Document_addStyle(processedStyles, style)) {
-		cb(style);
-	}
-
-	MediaQueryId n = mediaQueries.size();
-	for (MediaQueryId i = 0; i < mediaQueries.size(); i++) {
-		MediaQueryId k = i + 1;
-		currentMedia.clear();
-		if (bool genRes = gen_comb_norep_lex_init(currentMedia, n, k)) {
-			while(genRes) {
-				compiledVec.clear();
-				for (auto &it : currentMedia) {
-					compiledVec.push_back(mediaVec[it]);
-				}
-				style = Document_compileFont(this, spanStyle, compiledVec);
-				if (Document_addStyle(processedStyles, style)) {
-					cb(style);
-				}
-				genRes = gen_comb_norep_lex_next(currentMedia, n, k);
-			 }
-		}
-	}
-}
-
 void Document::processCss(const String &path, const CharReaderBase &str) {
 	Reader r;
-	_css.emplace(path, r.readCss(path, str, _cssStrings, _mediaQueries));
+	auto it = _css.emplace(path, r.readCss(path, str, _cssStrings, _mediaQueries)).first;
+	Source::mergeFontFace(_fontFaces, it->second.fonts);
 }
 
 void Document::processHtml(const String &path, const CharReaderBase &html, bool linear) {
@@ -713,6 +319,7 @@ void Document::processHtml(const String &path, const CharReaderBase &html, bool 
 	HtmlPage &c = _content.back();
 
 	if (r.readHtml(c, html, _cssStrings, _mediaQueries, meta, _css)) {
+		Source::mergeFontFace(_fontFaces, c.fonts);
 		processMeta(c, meta);
 	} else {
 		_content.pop_back();

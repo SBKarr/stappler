@@ -173,6 +173,12 @@ public:
 		return *this;
 	}
 
+	inline void swap(Self & other) {
+		auto ptr = _ptr;
+		_ptr = other._ptr;
+		other._ptr = ptr;
+	}
+
 	inline Base * operator->() { return _Rc_PtrCast<Base, Type>::cast(_ptr); }
 	inline const Base * operator->() const { return _Rc_PtrCast<Base, Type>::cast(_ptr); }
 

@@ -70,7 +70,13 @@ AssetLibrary::AssetLibrary()
 		storage::Scheme::Field("cache", storage::Scheme::Type::Text),
 		storage::Scheme::Field("contentType", storage::Scheme::Type::Text),
 		storage::Scheme::Field("etag", storage::Scheme::Type::Text),
-}, {}, getAssetStorage())) {
+}, {}, getAssetStorage()))
+, _stateClass(storage::Scheme("stappler_asset_state", {
+		storage::Scheme::Field("path", storage::Scheme::Type::Text, storage::Scheme::PrimaryKey),
+		storage::Scheme::Field("url", storage::Scheme::Type::Text),
+		storage::Scheme::Field("ctime", storage::Scheme::Type::Integer, 0, 8),
+		storage::Scheme::Field("asset", storage::Scheme::Type::Integer),
+}, {},  getAssetStorage())) {
 }
 
 void AssetLibrary::init() {
@@ -132,9 +138,11 @@ void AssetLibrary::cleanup() {
 		return;
 	}
 
+	auto time = getCorrectTime().toMicroseconds();
+
 	auto q = toString("SELECT path FROM ", _assetsClass.getName(),
 			" WHERE download == 0 AND ttl != 0 AND (touch + ttl) < ",
-			getCorrectTime().toMicroseconds(), ";");
+			time, ";");
 	_assetsClass.perform(q, [this] (data::Value &val) {
 		if (val.isArray()) {
 			for (auto &it : val.asArray()) {
@@ -150,10 +158,20 @@ void AssetLibrary::cleanup() {
 			}
 		}
 	});
-
 	_assetsClass.perform(toString("DELETE FROM ", _assetsClass.getName(),
 			" WHERE download == 0 AND ttl != 0 AND touch + ttl * 2 < ",
-			+ getCorrectTime().toMicroseconds(), ";"));
+			+ time, ";"));
+
+
+	_stateClass.perform(toString("SELECT * FROM ", _stateClass.getName(), ";"), [this] (data::Value &val) {
+		if (val.isArray()) {
+			for (auto &it : val.asArray()) {
+				auto path = filepath::absolute(it.getString("path"));
+				filesystem::remove(path);
+			}
+		}
+	});
+	_stateClass.perform(toString("DELETE FROM ", _stateClass.getName(), ";"));
 }
 
 void AssetLibrary::startDownload(AssetDownload *d) {
@@ -181,6 +199,18 @@ void AssetLibrary::updateAssets() {
 	for (auto &it : _assets) {
 		it.second->checkFile();
 	}
+}
+
+void AssetLibrary::addAssetFile(const String &path, const String &url, uint64_t asset, uint64_t ctime) {
+	_stateClass.insert(data::Value({
+		pair("path", data::Value(path)),
+		pair("url", data::Value(url)),
+		pair("ctime", data::Value(int64_t(ctime))),
+		pair("asset", data::Value(int64_t(asset))),
+	}))->perform();
+}
+void AssetLibrary::removeAssetFile(const String &path) {
+	_stateClass.remove()->select(path)->perform();
 }
 
 Time AssetLibrary::getCorrectTime() const {
