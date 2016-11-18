@@ -5,15 +5,21 @@
  *      Author: sbkarr
  */
 
-#ifndef STAPPLER_SRC_NODES_DRAW_SPDRAWCANVAS_H_
-#define STAPPLER_SRC_NODES_DRAW_SPDRAWCANVAS_H_
+#ifndef STAPPLER_SRC_NODES_DRAW_SPDRAWCANVASNANOVG_H_
+#define STAPPLER_SRC_NODES_DRAW_SPDRAWCANVASNANOVG_H_
 
-#include "SPDraw.h"
+#include "SPDrawCanvas.h"
+
+#if SP_NANOVG
+
+typedef struct NVGcontext NVGcontext;
 
 NS_SP_EXT_BEGIN(draw)
 
-class Canvas : public cocos2d::Ref {
+class CanvasNanoVG : public Canvas {
 public:
+	virtual ~CanvasNanoVG();
+
 	virtual bool init();
 
 	virtual void begin(cocos2d::Texture2D *, const Color4B &);
@@ -42,10 +48,17 @@ public:
 	virtual void pathFillStroke(const Color4B &fill, const Color4B &stroke);
 
 protected:
-	uint32_t _width = 0;
-	uint32_t _height = 0;
+	NVGcontext *_context = nullptr;
+
+	GLint _oldFbo = 0;
+	GLuint _fbo = 0;
+	GLuint _rbo = 0;
+
+	float _pathX = 0, _pathY = 0;
 };
 
 NS_SP_EXT_END(draw)
 
-#endif /* STAPPLER_SRC_NODES_DRAW_SPDRAWCANVAS_H_ */
+#endif // SP_NANOVG
+
+#endif /* STAPPLER_SRC_NODES_DRAW_SPDRAWCANVASNANOVG_H_ */

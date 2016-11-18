@@ -755,6 +755,75 @@ namespace style {
 		}
 		return stream.str();
 	}
+
+	FontStyleParameters FontStyleParameters::create(const String &str) {
+		FontStyleParameters ret;
+
+		enum State {
+			Family,
+			Size,
+			Style,
+			Weight,
+			Stretch,
+			Overflow,
+		} state = Family;
+
+		string::split(str, ".", [&] (const CharReaderBase &ir) {
+			CharReaderBase r(ir);
+			switch (state) {
+			case Family:
+				ret.fontFamily = r.str();
+				state = Size;
+				break;
+			case Size:
+				if (r.is("xxs")) { ret.fontSize = style::FontSize::XXSmall; }
+				else if (r.is("xs")) { ret.fontSize = style::FontSize::XSmall; }
+				else if (r.is("s")) { ret.fontSize = style::FontSize::Small; }
+				else if (r.is("m")) { ret.fontSize = style::FontSize::Medium; }
+				else if (r.is("l")) {ret.fontSize = style::FontSize::Large; }
+				else if (r.is("xl")) { ret.fontSize = style::FontSize::XLarge; }
+				else if (r.is("xxl")) { ret.fontSize = style::FontSize::XXLarge; }
+				else { ret.fontSize = uint8_t(r.readInteger()); }
+				state = Style;
+				break;
+			case Style:
+				if (r.is("i")) { ret.fontStyle = style::FontStyle::Italic; }
+				else if (r.is("o")) { ret.fontStyle = style::FontStyle::Oblique; }
+				else if (r.is("n")) { ret.fontStyle = style::FontStyle::Normal; }
+				state = Weight;
+				break;
+			case Weight:
+				if (r.is("n")) { ret.fontWeight = style::FontWeight::Normal; }
+				else if (r.is("b")) { ret.fontWeight = style::FontWeight::Bold; }
+				else if (r.is("100")) { ret.fontWeight = style::FontWeight::W100; }
+				else if (r.is("200")) { ret.fontWeight = style::FontWeight::W200; }
+				else if (r.is("300")) { ret.fontWeight = style::FontWeight::W300; }
+				else if (r.is("400")) { ret.fontWeight = style::FontWeight::W400; }
+				else if (r.is("500")) { ret.fontWeight = style::FontWeight::W500; }
+				else if (r.is("600")) { ret.fontWeight = style::FontWeight::W600; }
+				else if (r.is("700")) { ret.fontWeight = style::FontWeight::W700; }
+				else if (r.is("800")) { ret.fontWeight = style::FontWeight::W800; }
+				else if (r.is("900")) { ret.fontWeight = style::FontWeight::W900; }
+				state = Stretch;
+				break;
+			case Stretch:
+				if (r.is("n")) { ret.fontStretch = style::FontStretch::Normal; }
+				else if (r.is("ucd")) { ret.fontStretch = style::FontStretch::UltraCondensed; }
+				else if (r.is("ecd")) { ret.fontStretch = style::FontStretch::ExtraCondensed; }
+				else if (r.is("cd")) { ret.fontStretch = style::FontStretch::Condensed; }
+				else if (r.is("scd")) { ret.fontStretch = style::FontStretch::SemiCondensed; }
+				else if (r.is("sex")) { ret.fontStretch = style::FontStretch::SemiExpanded; }
+				else if (r.is("ex")) { ret.fontStretch = style::FontStretch::Expanded; }
+				else if (r.is("eex")) { ret.fontStretch = style::FontStretch::ExtraExpanded; }
+				else if (r.is("uex")) { ret.fontStretch = style::FontStretch::UltraExpanded; }
+				state = Overflow;
+				break;
+			default: break;
+			}
+		});
+		return ret;
+	}
+
 	String FontStyleParameters::getConfigName(bool caps) const {
 		return getFontConfigName(fontFamily, fontSize, fontStyle, fontWeight, fontStretch, fontVariant, caps);
 	}
@@ -797,9 +866,9 @@ namespace style {
 		} else if (size == style::FontSize::Large) {
 			name += ".l";
 		} else if (size == style::FontSize::XLarge) {
-			name += ".x";
+			name += ".xl";
 		} else if (size == style::FontSize::XXLarge) {
-			name += ".xx";
+			name += ".xxl";
 		} else {
 			name += "." + toString(size);
 		}
@@ -824,14 +893,14 @@ namespace style {
 
 		switch (fontStretch) {
 		case style::FontStretch::Normal: name += ".n"; break;
-		case style::FontStretch::UltraCondensed: name += ".uc"; break;
-		case style::FontStretch::ExtraCondensed: name += ".ec"; break;
-		case style::FontStretch::Condensed: name += ".c"; break;
-		case style::FontStretch::SemiCondensed: name += ".sc"; break;
-		case style::FontStretch::SemiExpanded: name += ".se"; break;
-		case style::FontStretch::Expanded: name += ".e"; break;
-		case style::FontStretch::ExtraExpanded: name += ".ee"; break;
-		case style::FontStretch::UltraExpanded: name += ".ue"; break;
+		case style::FontStretch::UltraCondensed: name += ".ucd"; break;
+		case style::FontStretch::ExtraCondensed: name += ".ecd"; break;
+		case style::FontStretch::Condensed: name += ".cd"; break;
+		case style::FontStretch::SemiCondensed: name += ".scd"; break;
+		case style::FontStretch::SemiExpanded: name += ".sex"; break;
+		case style::FontStretch::Expanded: name += ".ex"; break;
+		case style::FontStretch::ExtraExpanded: name += ".eex"; break;
+		case style::FontStretch::UltraExpanded: name += ".uex"; break;
 		}
 
 		return name;

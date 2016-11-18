@@ -196,7 +196,11 @@ void Builder::processChilds(Layout &l, const Vector<const Node *> &nodes, bool p
 	float collapsableMarginTop = l.collapsableMarginTop;
 	float height = 0;
 	_layoutStack.push_back(&l);
-	for (auto &newNode : nodes) {
+
+	l.layoutContext = (l.context && !l.context->finalized)?style::Display::Inline:style::Display::RunIn;
+	for (auto it = nodes.begin(); it != nodes.end(); ++ it) {
+		l.layoutContext = getLayoutContext(nodes, it, l.layoutContext);
+		auto newNode = *it;
 		if (pageBreak) {
 			if (!l.layouts.empty()) {
 				doPageBreak(&l.layouts.back(), pos);

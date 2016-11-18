@@ -22,16 +22,69 @@ size_t Consumer::write(const Buffer &buf) const {
 	return write_ptr(ptr, buf.data(), buf.size());
 }
 
+size_t read(const Producer &from, const Function<void(const Buffer &)> &f) {
+	StackBuffer<(size_t)1_KiB> buf;
+	size_t ret = 0;
+	size_t cap = buf.capacity();
+	size_t c = cap;
+	while (cap == c) {
+		c = from.read(buf, cap);
+		if (c > 0) {
+			ret += c;
+			if (f) {
+				f(buf);
+			}
+		}
+	}
+	return ret;
+}
+
+size_t read(const Producer &from, const Buffer &buf, const Function<void(const Buffer &)> &f) {
+	size_t ret = 0;
+	size_t cap = buf.capacity();
+	size_t c = cap;
+	while (cap == c) {
+		c = from.read(buf, cap);
+		if (c > 0) {
+			ret += c;
+			if (f) {
+				f(buf);
+			}
+		}
+	}
+	return ret;
+}
+
 size_t read(const Producer &from, const Consumer &to) {
 	StackBuffer<(size_t)1_KiB> buf;
-	return io::read(from, to, buf, nullptr);
+	size_t ret = 0;
+	size_t cap = buf.capacity();
+	size_t c = cap;
+	while (cap == c) {
+		c = from.read(buf, cap);
+		if (c > 0) {
+			ret += c;
+			to.write(buf);
+		}
+	}
+	return ret;
 }
 size_t read(const Producer &from, const Consumer &to, const Function<void(const Buffer &)> &f) {
 	StackBuffer<(size_t)1_KiB> buf;
 	return io::read(from, to, buf, f);
 }
 size_t read(const Producer &from, const Consumer &to, const Buffer & buf) {
-	return io::read(from, to, buf, nullptr);
+	size_t ret = 0;
+	size_t cap = buf.capacity();
+	size_t c = cap;
+	while (cap == c) {
+		c = from.read(buf, cap);
+		if (c > 0) {
+			ret += c;
+			to.write(buf);
+		}
+	}
+	return ret;
 }
 size_t read(const Producer &from, const Consumer &to, const Buffer & buf, const Function<void(const Buffer &)> &f) {
 	size_t ret = 0;

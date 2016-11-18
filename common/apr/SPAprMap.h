@@ -187,12 +187,20 @@ public:
 
 	template< class... Args >
 	Pair<iterator,bool> emplace( Args&&... args ) {
-		return try_emplace(std::forward<Args>(args)...);
+		auto ret = try_emplace(std::forward<Args>(args)...);
+		if (!ret.second) {
+			do_assign(ret.first, std::forward<Args>(args)...);
+		}
+		return ret;
 	}
 
 	template <class... Args>
 	iterator emplace_hint( const_iterator hint, Args&&... args ) {
-		return try_emplace(hint, std::forward<Args>(args)...);
+		auto ret = _tree.emplace_hint(hint, std::forward<Args>(args)...);
+		if (!ret.second) {
+			do_assign(ret.first, std::forward<Args>(args)...);
+		}
+		return ret.first;
 	}
 
 
@@ -254,6 +262,11 @@ protected:
 	template <class A, class B>
 	iterator do_insert( const_iterator hint, Pair<A, B> && value ) {
 		return emplace_hint(hint, std::move(value.first), std::move(value.second));
+	}
+
+	template <class T, class ... Args>
+	void do_assign( iterator it, T &&, Args && ... args) {
+		it->second = Value(std::forward<Args>(args)...);
 	}
 
 	rbtree::Tree<Key, Pair<const Key, Value>, Comp> _tree;

@@ -693,4 +693,38 @@ style::Display Builder::getLayoutContext(const Node &node) const {
 	return style::Display::Block;
 }
 
+static style::Display getNodeDisplay(const Builder *b, const Node &node) {
+	auto d = node.getStyle().get(style::ParameterName::Display, b);
+	if (!d.empty()) {
+		return d.back().value.display;
+	}
+	return style::Display::RunIn;
+}
+
+style::Display Builder::getLayoutContext(const Vector<const Node *> &nodes, Vector<const Node *>::const_iterator it, style::Display def) const {
+	if (def == style::Display::Inline) {
+		if (it != nodes.end()) {
+			auto node = *it;
+			auto d = getNodeDisplay(this, *node);
+			if (d == style::Display::Block || d == style::Display::ListItem) {
+				return d;
+			}
+		}
+		return style::Display::Inline;
+	} else {
+		for (; it != nodes.end(); ++it) {
+			auto node = *it;
+			auto d = getNodeDisplay(this, *node);
+			if (d == style::Display::Inline || d == style::Display::InlineBlock) {
+				return style::Display::Inline;
+			} else if (d == style::Display::Block) {
+				return style::Display::Block;
+			} else if (d == style::Display::ListItem) {
+				return style::Display::ListItem;
+			}
+		}
+		return style::Display::Block;
+	}
+}
+
 NS_SP_EXT_END(rich_text)

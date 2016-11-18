@@ -14,7 +14,11 @@
 NS_SA_BEGIN
 
 static Vector<String> parsePath(const String &path) {
-	auto pathVec = string::split(path, "/");
+	auto delim = "/";
+	if (!path.empty() && path.front() == ':') {
+		delim = ":";
+	}
+	auto pathVec = string::split(path, delim);
 	while (!pathVec.empty() && pathVec.back().empty()) {
 		pathVec.pop_back();
 	}
@@ -154,7 +158,32 @@ static bool getOrderResource(storage::Resolver *resv, Vector<String> &path) {
 		auto &n = path.back();
 		if (valid::validateNumber(n)) {
 			if (resv->order(field->getName(), ord)) {
-				return resv->limit((uint64_t)apr_strtoi64(n.c_str(), nullptr, 10));
+				auto ret = resv->limit((uint64_t)apr_strtoi64(n.c_str(), nullptr, 10));
+				path.pop_back();
+				return ret;
+			} else {
+				return false;
+			}
+		}
+	}
+
+	return resv->order(field->getName(), ord);
+}
+
+static bool getOrderResource(storage::Resolver *resv, Vector<String> &path, const String &fieldName, storage::Ordering ord) {
+	auto field = resv->getSchemeField(fieldName);
+	if (!field || !field->isIndexed()) {
+		messages::error("ResourceResolver", "invalid 'order' query");
+		return false;
+	}
+
+	if (!path.empty()) {
+		auto &n = path.back();
+		if (valid::validateNumber(n)) {
+			if (resv->order(field->getName(), ord)) {
+				auto ret = resv->limit((uint64_t)apr_strtoi64(n.c_str(), nullptr, 10));
+				path.pop_back();
+				return ret;
 			} else {
 				return false;
 			}
@@ -293,6 +322,14 @@ static Resource *parseResource(storage::Resolver *resv, Vector<String> &path) {
 				}
 			} else if (filter == "order") {
 				if (!getOrderResource(resv, path)) {
+					return nullptr;
+				}
+			} else if (filter.size() > 2 && filter.front() == '+') {
+				if (!getOrderResource(resv, path, filter.substr(1), storage::Ordering::Ascending)) {
+					return nullptr;
+				}
+			} else if (filter.size() > 2 && filter.front() == '-') {
+				if (!getOrderResource(resv, path, filter.substr(1), storage::Ordering::Descending)) {
 					return nullptr;
 				}
 			} else if (filter == "limit") {

@@ -677,7 +677,7 @@ protected:
 		// full-scan
 		if (!d.current) { d.current = root(); }
 	    /* find where node belongs */
-	    return getInsertPositionUnique_search(d);;
+	    return getInsertPositionUnique_search(d);
 	}
 
 	template <typename ... Args> Pair<Node<Value> *,bool>

@@ -12,6 +12,8 @@
 
 NS_SP_EXT_BEGIN(draw)
 
+class CanvasNanoVG;
+
 class Path : public cocos2d::Ref {
 public:
 	using Style = draw::Style;
@@ -55,7 +57,6 @@ public:
 		this->arcTo(center.x, center.y, radius, radius, startAngleInRadians, sweepAngleInRadians, 0.0f);
 	}
 
-	void beginPath();
 	void closePath();
 
 	void addRect(const cocos2d::Rect& rect);
@@ -91,12 +92,11 @@ public:
 
 	bool empty() const;
 
-	void drawOn(cairo_t *) const;
+	void drawOn(draw::Canvas *) const;
 
 protected:
 	struct Command {
 		enum Type {
-			BeginPath,
 			MoveTo,
 			LineTo,
 			QuadTo,
@@ -166,9 +166,6 @@ protected:
 		}
 		static Command MakeArcTo(float rx, float ry, float rotation, bool largeFlag, bool sweepFlag, float x, float y) {
 			return Command(AltArcTo,rx, ry, rotation, largeFlag, sweepFlag, x, y);
-		}
-		static Command MakeBeginPath() {
-			return Command(BeginPath);
 		}
 		static Command MakeClosePath() {
 			return Command(ClosePath);

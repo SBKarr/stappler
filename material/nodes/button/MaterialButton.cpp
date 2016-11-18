@@ -356,7 +356,6 @@ stappler::draw::Path * Button::beginSpawn() {
 		_animationNode->setColor((_style == FlatWhite)?(Color::White):(Color::Black));
 		_animationNode->setOpacity(_animationOpacity);
 		_animationNode->setAntialiased(true);
-		_animationNode->acquireCache();
 		addChild(_animationNode, 1);
 	}
 

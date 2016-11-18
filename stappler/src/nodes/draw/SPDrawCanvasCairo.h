@@ -5,15 +5,20 @@
  *      Author: sbkarr
  */
 
-#ifndef STAPPLER_SRC_NODES_DRAW_SPDRAWCANVAS_H_
-#define STAPPLER_SRC_NODES_DRAW_SPDRAWCANVAS_H_
+#ifndef STAPPLER_SRC_NODES_DRAW_SPDRAWCANVASCAIRO_H_
+#define STAPPLER_SRC_NODES_DRAW_SPDRAWCANVASCAIRO_H_
 
-#include "SPDraw.h"
+#include "SPDrawCanvas.h"
+
+typedef struct _cairo_surface cairo_surface_t;
+typedef struct _cairo cairo_t;
 
 NS_SP_EXT_BEGIN(draw)
 
-class Canvas : public cocos2d::Ref {
+class CanvasCairo : public Canvas {
 public:
+	virtual ~CanvasCairo();
+
 	virtual bool init();
 
 	virtual void begin(cocos2d::Texture2D *, const Color4B &);
@@ -42,10 +47,14 @@ public:
 	virtual void pathFillStroke(const Color4B &fill, const Color4B &stroke);
 
 protected:
-	uint32_t _width = 0;
-	uint32_t _height = 0;
+	bool _begin = false;
+	Format _format = Format::A8;
+
+	cairo_surface_t *_surface = nullptr;
+	cairo_t *_context = nullptr;
+	cocos2d::Texture2D *_texture = nullptr;
 };
 
 NS_SP_EXT_END(draw)
 
-#endif /* STAPPLER_SRC_NODES_DRAW_SPDRAWCANVAS_H_ */
+#endif /* STAPPLER_SRC_NODES_DRAW_SPDRAWCANVASCAIRO_H_ */

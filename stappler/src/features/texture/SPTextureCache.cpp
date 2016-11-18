@@ -72,6 +72,9 @@ GLProgramSet *TextureCache::getRawPrograms() const {
 }
 
 void TextureCache::addTexture(const std::string &file, const Callback &cb, bool forceReload) {
+	if (file.empty()) {
+		return;
+	}
 	if (!forceReload) {
 		auto it = _textures.find(file);
 		if (it != _textures.end()) {
@@ -178,9 +181,12 @@ TextureCache::TextureCache() {
 	onEvent(Device::onAndroidReset, [this] (const Event *) {
 		for (auto &it : _textures) {
 			Bitmap bitmap(filesystem::readFile(it.first));
-			it.second->initWithDataThreadSafe(bitmap.dataPtr(), bitmap.size(), Image::getPixelFormat(bitmap.format()), bitmap.width(), bitmap.height(), 0);
-			if (bitmap.alpha() == Bitmap::Alpha::Premultiplied) {
-				it.second->setPremultipliedAlpha(true);
+			if (bitmap) {
+				//log::format("Texture", "%s", it.first.c_str());
+				it.second->initWithDataThreadSafe(bitmap.dataPtr(), bitmap.size(), it.second->getPixelFormat(), bitmap.width(), bitmap.height(), 0);
+				if (bitmap.alpha() == Bitmap::Alpha::Premultiplied) {
+					it.second->setPremultipliedAlpha(true);
+				}
 			}
 		}
 

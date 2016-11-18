@@ -10,7 +10,7 @@
 
 #include "SPDrawPath.h"
 #include "SPDynamicSprite.h"
-#include "SPDrawCanvas.h"
+#include "SPDrawCanvasNanoVG.h"
 
 NS_SP_EXT_BEGIN(draw)
 
@@ -30,9 +30,6 @@ public:
 
     const cocos2d::Vector<Path *> &getPaths() const;
 
-    virtual void acquireCache();
-    virtual void releaseCache();
-
     virtual uint32_t getBaseWidth();
     virtual uint32_t getBaseHeight();
 
@@ -40,9 +37,7 @@ protected:
 	friend class Path;
 
 	virtual void updateCanvas();
-    cairo_t *acquireDrawContext(uint32_t w, uint32_t h, Format fmt);
-    cocos2d::Texture2D *generateTexture(cocos2d::Texture2D *tex);
-    void releaseCanvasCache();
+	Rc<cocos2d::Texture2D> generateTexture(cocos2d::Texture2D *tex, uint32_t w, uint32_t h, Format fmt);
 
 	bool _pathsDirty = true;
 	bool _isAntialiased = false;
@@ -52,7 +47,6 @@ protected:
 	uint32_t _baseHeight = 0;
 	Format _format = Format::A8;
 	Rc<Canvas> _canvas;
-	uint32_t _useCache = 0;
 };
 
 NS_SP_EXT_END(draw)

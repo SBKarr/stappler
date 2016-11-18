@@ -103,6 +103,10 @@ void ParameterList::set(const Parameter &p, bool force) {
 ParameterList getStyleForTag(const String &tag, Tag::Type type) {
 	ParameterList style;
 
+	if (tag == "div") {
+		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Block));
+	}
+
 	if (tag == "p" || tag == "h1" || tag == "h2" || tag == "h3" || tag == "h4" || tag == "h5" || tag == "h6") {
 		style.data.push_back(Parameter::create<ParameterName::MarginTop>(Size(10, Size::Metric::Px)));
 		style.data.push_back(Parameter::create<ParameterName::MarginBottom>(Size(10, Size::Metric::Px)));

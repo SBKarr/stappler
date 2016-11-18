@@ -371,7 +371,7 @@ bool Formatter::pushLine(uint16_t first, uint16_t len, bool forceAlign) {
 	firstInLine = charNum;
 	wordWrapPos = firstInLine;
 	bufferedSpace = false;
-	currentLineHeight = lineHeight;
+	currentLineHeight = min(rangeLineHeight, lineHeight);
 	parseFontLineHeight(rangeLineHeight);
 	width = defaultWidth;
 	if (defaultWidth >= primaryData->getHeight()) {
@@ -748,7 +748,6 @@ bool Formatter::readWithRange(RangeSpec &&range, const TextParameters &s, uint16
 		bufferedSpace = false;
 	}
 
-	parseFontLineHeight(rangeLineHeight);
 
 	textStyle = s;
 	parseWhiteSpace(textStyle.whiteSpace);
@@ -763,9 +762,11 @@ bool Formatter::readWithRange(RangeSpec &&range, const TextParameters &s, uint16
 			if (!pushLine(true)) {
 				return false;
 			}
+			lineX = 0;
 		}
 	}
 
+	parseFontLineHeight(rangeLineHeight);
 	if (currentLineHeight < blockHeight) {
 		currentLineHeight = blockHeight;
 	}
@@ -834,6 +835,7 @@ void Formatter::reset(FormatSpec *o) {
 	charNum = 0;
 	lineHeight = 0;
 	currentLineHeight = 0;
+	rangeLineHeight = 0;
 
 	lineHeightMod = 1.0f;
 	lineHeightIsAbsolute = false;

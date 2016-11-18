@@ -10,8 +10,7 @@
 #include "SPTime.h"
 #include "SPEventListener.h"
 #include "SPDevice.h"
-
-#include "cairo.h"
+#include "SPDrawCanvasCairo.h"
 
 NS_SP_EXT_BEGIN(draw)
 
@@ -90,21 +89,11 @@ const cocos2d::Vector<Path *> &PathNode::getPaths() const {
 	return _paths;
 }
 
-void PathNode::acquireCache() {
-	_useCache++;
-}
-void PathNode::releaseCache() {
-	if (_useCache > 0) {
-		_useCache--;
-	}
-	if (_useCache == 0) {
-		if (_canvas) {
-			_canvas = nullptr;
-		}
-	}
-}
-
 void PathNode::updateCanvas() {
+	if (!_canvas) {
+		_canvas.set(Rc<CanvasCairo>::create());
+	}
+
 	auto &size = _contentSize;
 	uint32_t width = ceilf(size.width * _density);
 	uint32_t height = ceilf(size.height * _density);
@@ -115,56 +104,38 @@ void PathNode::updateCanvas() {
 		return;
 	}
 
-	auto cr = acquireDrawContext(width, height, _format);
-	cairo_scale(cr, (float)width / (float)_baseWidth, (float)height / (float)_baseHeight);
+	auto tex = generateTexture(getTexture(), width, height, _format);
+	_canvas->begin(tex, Color4B(0, 0, 0, 0));
+	_canvas->scale((float)width / (float)_baseWidth, (float)height / (float)_baseHeight);
 	for (auto path : _paths) {
 		path->_dirty = false;
-		path->drawOn(cr);
+		path->drawOn(_canvas);
 	}
 
-	cocos2d::Texture2D *tex = generateTexture(getTexture());
+	_canvas->end();
+
 	if (tex != getTexture()) {
 		setTexture(tex);
-		setTextureRect(cocos2d::Rect(0, 0, width, height));
-
-		tex->release();
+		setTextureRect(Rect(0, 0, width, height));
 	}
 
 	_pathsDirty = false;
-
-	releaseCanvasCache();
 }
 
-cairo_t *PathNode::acquireDrawContext(uint32_t w, uint32_t h, Format fmt) {
-	if (_canvas && _canvas->match(w, h, fmt)) {
-		return _canvas->acquireContext();
+Rc<cocos2d::Texture2D> PathNode::generateTexture(cocos2d::Texture2D *tex, uint32_t w, uint32_t h, Format fmt) {
+	if (tex && tex->getPixelsHigh() == int(h) && tex->getPixelsWide() == int(w)
+			&& (fmt == Format::A8 && tex->getPixelFormat() == cocos2d::Texture2D::PixelFormat::A8)
+			&& (fmt == Format::RGBA8888 && tex->getPixelFormat() == cocos2d::Texture2D::PixelFormat::RGBA8888)) {
+		return tex;
 	}
-
-	if (_canvas) {
-		_canvas = nullptr;
-	}
-
-	_canvas = Rc<Canvas>::create(w, h, fmt);
-	return _canvas->acquireContext();
-}
-
-cocos2d::Texture2D *PathNode::generateTexture(cocos2d::Texture2D *tex) {
-	auto outtex = _canvas->generateTexture(tex);
+	auto outtex = Rc<cocos2d::Texture2D>::create(
+			(fmt == Format::A8?cocos2d::Texture2D::PixelFormat::A8:cocos2d::Texture2D::PixelFormat::RGBA8888), w, h);
 	if (_isAntialiased) {
 		outtex->setAntiAliasTexParameters();
 	} else {
 		outtex->setAliasTexParameters();
 	}
 	return outtex;
-}
-
-void PathNode::releaseCanvasCache() {
-	if (_canvas) {
-		_canvas->releaseContext();
-		if (_useCache == 0) {
-			_canvas = nullptr;
-		}
-	}
 }
 
 uint32_t PathNode::getBaseWidth() {

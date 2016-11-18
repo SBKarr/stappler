@@ -448,6 +448,8 @@ namespace style {
 		using FontStyle = style::FontStyle;
 		using FontWeight = style::FontWeight;
 
+		static FontStyleParameters create(const String &);
+
 		FontStyle fontStyle = FontStyle::Normal;
 		FontWeight fontWeight = FontWeight::Normal;
 		FontStretch fontStretch = FontStretch::Normal;

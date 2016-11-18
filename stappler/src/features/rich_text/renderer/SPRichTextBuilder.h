@@ -78,6 +78,7 @@ protected:
 	WideString getListItemString(Layout *parent, Layout &l);
 	int64_t getListItemCount(const Node &node);
 	style::Display getLayoutContext(const Node &node) const;
+	style::Display getLayoutContext(const Vector<const Node *> &, Vector<const Node *>::const_iterator, style::Display) const;
 
 	void initFormatter(Layout &, const ParagraphStyle &, float, Formatter &, bool initial);
 	InlineContext &makeInlineContext(Layout &l, float parentPosY);

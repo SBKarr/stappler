@@ -18,7 +18,8 @@ STAPPLER_SRCS_DIRS += \
 	$(COCOS2D_STAPPLER_SRCS_DIRS)
 
 STAPPLER_SRCS_OBJS += \
-	$(COCOS2D_STAPPLER_SRCS_OBJS)
+	$(COCOS2D_STAPPLER_SRCS_OBJS) \
+	libs/src/nanovg/src/nanovg.c
 
 STAPPLER_INCLUDES_DIRS += \
 	common \
@@ -27,7 +28,8 @@ STAPPLER_INCLUDES_DIRS += \
 STAPPLER_INCLUDES_OBJS += \
 	$(COCOS2D_STAPPLER_INCLUDES_OBJS) \
 	$(OSTYPE_INCLUDE) \
-	$(OSTYPE_INCLUDE)/cairo
+	$(OSTYPE_INCLUDE)/cairo \
+	$(GLOBAL_ROOT)/libs/src/nanovg/src
 
 
 ifeq ($(shell uname -o),Cygwin)

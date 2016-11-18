@@ -11,11 +11,10 @@
 #include "SPFilesystem.h"
 #include "SPResource.h"
 #include "SPThread.h"
-#include "SPDrawCanvas.h"
+#include "SPDrawCanvasCairo.h"
 #include "SPDrawPathNode.h"
 #include "SPTextureCache.h"
 #include "renderer/CCTexture2D.h"
-#include "cairo.h"
 
 NS_SP_EXT_BEGIN(resource)
 
@@ -31,14 +30,16 @@ public:
 		_originalWidth = originalWidth;
 		_originalHeight = originalHeight;
 
-		_canvas = Rc<draw::Canvas>::create(_canvasWidth, _canvasHeight, draw::Format::A8);
-
-		auto cr = _canvas->getContext();
-		cairo_scale(cr, (float)_canvasWidth / (float)_originalWidth, (float)_canvasHeight / (float)_originalHeight);
-		cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 1.0);
+		_canvas.set(Rc<draw::CanvasCairo>::create());
 	}
 
-	void renderIcon(const std::string &data, uint16_t column, uint16_t row) {
+	void renderIcon(const String &data, uint16_t column, uint16_t row) {
+		uint32_t xOffset = column * _canvasWidth;
+		uint32_t yOffset = row * _canvasHeight;
+
+		_canvas->save();
+		_canvas->translate(xOffset, yOffset);
+
 		Rc<draw::Path> path;
 		if (data.compare(0, 7, "path://") == 0) {
 			path = Rc<draw::Path>::create(data.substr(7));
@@ -50,64 +51,32 @@ public:
 		}
 
 		path->setFillColor(Color4B(255, 255, 255, 255));
+		path->drawOn(_canvas);
 
-		cairo_t * cr = nullptr;
-		if (_canvas) {
-			cr = _canvas->getContext();
-		}
-
-		if (cr) {
-			path->drawOn(cr);
-
-			auto data = _canvas->data();
-			uint32_t xOffset = column * _canvasWidth;
-			uint32_t yOffset = row * _canvasHeight;
-
-			for (uint32_t i = 0; i < _canvasWidth; i++) {
-				for (uint32_t j = 0; j < _canvasHeight; j++) {
-					uint32_t pos = j * _canvasWidth + i;
-					int bufferPos = ((yOffset + j) * _bufferWidth + i + xOffset);
-					_buffer[bufferPos] = data[pos];
-				}
-			}
-
-			_canvas->clear();
-		}
+		_canvas->restore();
 	}
 
-	void renderIcons(const Map<String, String> *icons, uint16_t numCols, uint16_t numRows, data::Value &arr) {
+	void renderIcons(cocos2d::Texture2D *tex, const Map<String, String> *source, uint16_t numCols, uint16_t numRows, Map<String, Icon> &icons) {
+		_canvas->begin(tex, Color4B(0, 0, 0, 0));
+		_canvas->scale((float)_canvasWidth / (float)_originalWidth, (float)_canvasHeight / (float)_originalHeight);
+
 		uint16_t c, r, i = 0;
-		for (auto &it : (*icons)) {
+		for (auto &it : (*source)) {
 			c = i % numCols;
 			r = i / numCols;
 
-			data::Value val;
-			val.setInteger(i, "id");
-			val.setInteger(c * _canvasWidth, "x");
-			val.setInteger(r * _canvasHeight, "y");
-			val.setString(it.first, "name");
-
-			arr.addValue(std::move(val));
-
+			icons.emplace(it.first, Icon(i, c * _canvasWidth, r * _canvasHeight, _canvasWidth, _canvasHeight, _density, tex));
 			renderIcon(it.second, c, r);
 
 			i++;
+			//break;
 		}
-	}
 
-	void setBuffer(uint8_t *buffer, size_t bufferLength, uint32_t width, uint32_t height) {
-		_buffer = buffer;
-		_bufferWidth = width;
-		_bufferHeight = height;
-		_bufferLength = bufferLength;
+		_canvas->end();
 	}
 
 protected:
-	uint8_t *_buffer = nullptr;
-	size_t _bufferLength = 0;
-
-	uint32_t _bufferWidth = 0;
-	uint32_t _bufferHeight = 0;
+	float _density = stappler::screen::density();
 
 	uint32_t _originalWidth = 0;
 	uint32_t _originalHeight = 0;
@@ -129,84 +98,7 @@ public:
 		return s_iconGeneratorInstance;
 	}
 
-	static String getIconSetFilename(const IconSet::Config &cfg) {
-		return toString(filesystem::writablePath("iconsets_cache"), "/", cfg.name, ".", cfg.originalWidth, "x", cfg.originalWidth,
-				".", cfg.iconWidth, "x", cfg.iconHeight);
-	}
-
-	data::Value validateCache(const std::string &cacheFile, const std::string &texFile, uint16_t version, size_t count) {
-		if (!filesystem::exists(texFile) || !filesystem::exists(cacheFile)) {
-			return data::Value();
-		}
-		data::Value data = data::readFile(cacheFile);
-		if (!data.isDictionary()
-				|| (uint16_t)data.getInteger("engineVersion") != IconSetGenerator::EngineVersion()
-				|| (uint16_t)data.getInteger("version") != version
-				|| (size_t)data.getInteger("count") != count) {
-
-			filesystem::remove(cacheFile);
-			filesystem::remove(texFile);
-
-			return data::Value();
-		}
-
-		auto &arr = data.getValue("icons");
-		if (!arr.isArray() || arr.size() != count) {
-			filesystem::remove(cacheFile);
-			filesystem::remove(texFile);
-
-			return data::Value();
-		}
-
-		return data;
-	}
-
-	IconSet *readIconSet(const std::string &texFile, const data::Value &data, IconSet::Config &&cfg) {
-		Bitmap bitmap(filesystem::readFile(texFile));
-		if (!bitmap) {
-			return nullptr;
-		}
-
-		cocos2d::Texture2D *tex = new cocos2d::Texture2D();
-		tex->initWithDataThreadSafe(bitmap.dataPtr(), bitmap.size(), cocos2d::Texture2D::PixelFormat::A8, bitmap.width(), bitmap.height(), 0);
-		tex->setAliasTexParameters();
-
-		Map<String, Icon> icons;
-
-		float density = stappler::screen::density();
-
-		auto &arr = data.getValue("icons");
-		for (auto &it : arr.asArray()) {
-			uint16_t x = it.getInteger("x");
-			uint16_t y = it.getInteger("y");
-			uint16_t id = it.getInteger("id");
-			std::string name = it.getString("name");
-
-			icons.emplace(name, Icon(id, x, y, cfg.iconWidth, cfg.iconHeight, density, tex));
-		}
-
-		auto set = new IconSet(std::move(cfg), std::move(icons), tex);
-		tex->release();
-		return set;
-	}
-
 	IconSet *generateFromSVGIcons(IconSet::Config &&cfg) {
-		std::string filename = getIconSetFilename(cfg);
-
-		std::string texFile = filename + ".png";
-		std::string cacheFile = filename + ".cache.json";
-
-		IconSet *ret = nullptr;
-
-		if (auto data = validateCache(cacheFile, texFile, cfg.version, cfg.data->size())) {
-			ret = readIconSet(texFile, data, std::move(cfg));
-			if (ret) {
-				return ret;
-			}
-		}
-
-		// generate icons texture
-
 		size_t count = cfg.data->size();
 		size_t globalSquare = count * (cfg.iconWidth * cfg.iconHeight);
 
@@ -222,35 +114,30 @@ public:
 			rows ++;
 		}
 
-		data::Value iconsArray(data::Value::Type::ARRAY);
-		iconsArray.getArray().reserve(cfg.data->size());
-
 		uint32_t texWidth = w;
 		uint32_t texHeight = rows * cfg.iconHeight;
 
-		std::vector<uint8_t> buffer; buffer.resize(texWidth * texHeight);
+		Map<String, Icon> icons;
+		Rc<cocos2d::Texture2D> tex = Rc<cocos2d::Texture2D>::create(cocos2d::Texture2D::PixelFormat::A8, texWidth, texHeight);
+		tex->setAliasTexParameters();
+
+
 		IconSetRenderer renderer(cfg.iconWidth, cfg.iconHeight, cfg.originalWidth, cfg.originalHeight);
-		renderer.setBuffer(buffer.data(), texWidth * texHeight, texWidth, texHeight);
-		renderer.renderIcons(cfg.data, cols, rows, iconsArray);
+		renderer.renderIcons(tex, cfg.data, cols, rows, icons);
 
-		data::Value data;
-		data.setValue(std::move(iconsArray), "icons");
-		data.setInteger(IconSetGenerator::EngineVersion(), "engineVersion");
-		data.setInteger(cfg.version, "version");
-		data.setInteger(cfg.data->size(), "count");
-		data.setString(cfg.name, "name");
-		data::save(data, cacheFile);
+		/*const cocos2d::Texture2D::PixelFormatInfo& info = cocos2d::Texture2D::_pixelFormatInfoTables.at(tex->getPixelFormat());
 
-		Bitmap::savePng(texFile, buffer.data(), texWidth, texHeight, Image::Format::A8);
+		Bytes buf; buf.resize(texWidth * texHeight);
+		glBindTexture(GL_TEXTURE_2D, tex->getName());
+		glGetTexImage(GL_TEXTURE_2D, 0, info.format, info.type, buf.data());
+		glBindTexture(GL_TEXTURE_2D, 0);
+		Bitmap::savePng(toString(Time::now().toMicroseconds(), ".png"), buf.data(), texWidth, texHeight, Bitmap::Format::A8);*/
 
-		return readIconSet(texFile, data, std::move(cfg));
+		return new IconSet(std::move(cfg), std::move(icons), tex);
 	}
 
 protected:
-	IconSetGenerator() {
-		_cachePath = filesystem::writablePath("iconsets_cache");
-		filesystem::mkdir(_cachePath);
-	}
+	IconSetGenerator() { }
 
 	String _cachePath;
 };
@@ -263,7 +150,7 @@ void generateIconSet(IconSet::Config &&cfg, const IconSet::Callback &callback) {
 	auto &thread = TextureCache::thread();
 
 	IconSet::Config *cfgPtr = new (IconSet::Config) (std::move(cfg));
-	IconSet **newSet = new (IconSet *)(nullptr);
+	auto newSet = new Rc<IconSet>(nullptr);
 	thread.perform([newSet, cfgPtr] (cocos2d::Ref *) -> bool {
 		TextureCache::getInstance()->performWithGL([&] {
 			*newSet = generateFromSVGIcons(std::move(*cfgPtr));
@@ -272,11 +159,8 @@ void generateIconSet(IconSet::Config &&cfg, const IconSet::Callback &callback) {
 	}, [newSet, cfgPtr, callback] (cocos2d::Ref *, bool) {
 		if (*newSet) {
 			if (callback) {
-				auto filename = IconSetGenerator::getIconSetFilename((*newSet)->getConfig()) + ".png";
-				TextureCache::getInstance()->addLoadedTexture(filename, (*newSet)->getTexture());
 				callback(*newSet);
 			}
-			(*newSet)->release();
 		}
 		delete newSet;
 		delete cfgPtr;
@@ -310,10 +194,7 @@ IconSet::IconSet(Config &&cfg, Map<String, Icon> &&icons, cocos2d::Texture2D *im
 	_texHeight = _image->getPixelsHigh();
 }
 
-IconSet::~IconSet() {
-	auto filename = resource::IconSetGenerator::getIconSetFilename(_config) + ".png";
-	TextureCache::getInstance()->removeLoadedTexture(filename);
-}
+IconSet::~IconSet() { }
 
 Icon IconSet::getIcon(const std::string &key) const {
 	auto it = _icons.find(key);

@@ -56,7 +56,6 @@ bool IconProgress::init(float duration, float targetProgress) {
 void IconProgress::startWithTarget(cocos2d::Node *t) {
 	if (auto target = dynamic_cast<IconSprite *>(t)) {
     	_sourceProgress = target->getProgress();
-    	target->acquireCache();
 	}
 	ActionInterval::startWithTarget(t);
 }
@@ -68,9 +67,6 @@ void IconProgress::update(float time) {
 }
 
 void IconProgress::stop() {
-	if (auto target = dynamic_cast<IconSprite *>(_target)) {
-    	target->releaseCache();
-	}
 	cocos2d::ActionInterval::stop();
 }
 

@@ -699,6 +699,14 @@ bool FontLibraryCache::updateTextureWithSource(uint32_t v, Source *source, const
 		for (auto &c : it.second) {
 			lRef.push_back(CharTexture{c});
 		}
+
+		auto layout = source->getLayout(it.first);
+		if (!layout) {
+			auto params = font::FontParameters::create(it.first);
+			layout = source->getLayout(params);
+			layout->addSortedChars(it.second);
+		}
+
 		names.push_back(FontLayoutData{source->getLayout(it.first), &lRef, Vector<FT_Face>()});
 		count += it.second.size();
 	}

@@ -9,8 +9,7 @@
 #include "SPDrawPath.h"
 #include "SPDrawPathNode.h"
 #include "SPFilesystem.h"
-
-#include "cairo.h"
+#include "SPDrawCanvas.h"
 
 NS_SP_EXT_BEGIN(draw)
 
@@ -551,11 +550,6 @@ void Path::arcTo(float xc, float yc, float rx, float ry, float angle1, float ang
 	setDirty();
 }
 
-void Path::beginPath() {
-	_commands.emplace_back(Command::MakeBeginPath());
-	setDirty();
-}
-
 void Path::closePath() {
 	_commands.emplace_back(Command::MakeClosePath());
 	setDirty();
@@ -579,7 +573,6 @@ void Path::addCircle(float x, float y, float radius) {
 	closePath();
 }
 void Path::addArc(const cocos2d::Rect& oval, float startAngle, float sweepAngle) {
-	beginPath();
 	arcTo(oval.getMidX(), oval.getMidY(), oval.size.width/2, oval.size.height/2, startAngle, sweepAngle, 0.0f);
 }
 /*
@@ -665,100 +658,34 @@ bool Path::empty() const {
 	return _commands.empty();
 }
 
-void helper_quadratic_to (cairo_t *cr, float x1, float y1, float x2, float y2) {
-	double x0, y0;
-	cairo_get_current_point (cr, &x0, &y0);
-	cairo_curve_to (cr,
-		2.0 / 3.0 * x1 + 1.0 / 3.0 * x0,
-		2.0 / 3.0 * y1 + 1.0 / 3.0 * y0,
-		2.0 / 3.0 * x1 + 1.0 / 3.0 * x2,
-		2.0 / 3.0 * y1 + 1.0 / 3.0 * y2,
-		x2, y2);
-}
+void Path::drawOn(draw::Canvas *ctx) const {
+	ctx->save();
+	ctx->setAntialiasing(_isAntialiased);
+	ctx->setLineWidth(_strokeWidth);
 
-void helper_arc_to (cairo_t *cr, float xc, float yc, float rx, float ry, float startAngle, float sweepAngle, float rotation) {
-	cairo_matrix_t save_matrix;
-	cairo_get_matrix(cr, &save_matrix);
-	cairo_translate(cr, xc, yc);
-	if (rx > ry) {
-		cairo_scale(cr, ry / rx, 1.0);
-	} else if (rx < ry) {
-		cairo_scale(cr, 1.0, rx / ry);
-	}
-	if (rotation != 0.0f) {
-		cairo_rotate(cr, rotation);
-	}
-	if (sweepAngle >= 0.0f) {
-		cairo_arc(cr, 0.0, 0.0, std::min(rx, ry), startAngle, startAngle + sweepAngle);
-	} else {
-		cairo_arc_negative(cr, 0.0, 0.0, std::min(rx, ry), startAngle, startAngle + sweepAngle);
-	}
-	cairo_set_matrix(cr, &save_matrix);
-}
-
-void helper_alt_arc_to (cairo_t *cr, float rx, float ry, float angle, bool largeArc, bool sweep, float x, float y) {
-	double _x, _y;
-	cairo_get_current_point (cr, &_x, &_y);
-
-	rx = fabsf(rx); ry = fabsf(ry);
-
-	cocos2d::Mat4 transform(cocos2d::Mat4::IDENTITY); Mat4::createRotationZ(angle, &transform);
-	cocos2d::Mat4 inverse = transform; inverse.transpose();
-
-	Vec2 vDash(cocos2d::PointApplyTransform(Vec2((_x - x) / 2, (_y - y) / 2), inverse));
-	float lambda = (vDash.x * vDash.x) / (rx * rx) + (vDash.y * vDash.y) / (ry * ry);
-	if (lambda > 1.0f) {
-		rx = sqrtf(lambda) * rx; ry = sqrtf(lambda) * ry;
-		vDash = Vec2(cocos2d::PointApplyTransform(Vec2((_x - x) / 2, (_y - y) / 2), inverse));
-	}
-
-	float rx_y1_ = (rx * rx * vDash.y * vDash.y);
-	float ry_x1_ = (ry * ry * vDash.x * vDash.x);
-	float cst = sqrtf(((rx * rx * ry * ry) - rx_y1_ - ry_x1_) / (rx_y1_ + ry_x1_));
-
-	Vec2 cDash((largeArc != sweep ? 1.0f : -1.0f) * cst * rx * vDash.y / ry,
-			(largeArc != sweep ? 1.0f : -1.0f) * - cst * ry * vDash.x / rx);
-
-	float cx = cDash.x + (_x + x) / 2;
-	float cy = cDash.y + (_y + y) / 2;
-
-	float startAngle = Vec2::angle(Vec2(1.0f, 0.0f), Vec2((vDash.x - cDash.x) / rx, (vDash.y - cDash.y) / ry));
-	float sweepAngle = Vec2::angle(Vec2((vDash.x - cDash.x) / rx, (vDash.y - cDash.y) / ry),
-			Vec2((-vDash.x - cDash.x) / rx, (-vDash.y - cDash.y) / ry));
-
-	helper_arc_to(cr, cx, cy, rx, ry, startAngle, sweepAngle, angle);
-}
-
-void Path::drawOn(cairo_t *ctx) const {
-	cairo_save(ctx);
-	cairo_set_antialias(ctx, (_isAntialiased?CAIRO_ANTIALIAS_GOOD:CAIRO_ANTIALIAS_NONE));
-	cairo_set_line_width(ctx, _strokeWidth);
-
+	ctx->pathBegin();
 	for (auto &it : _commands) {
 		switch (it.type) {
 		case Command::MoveTo:
-			cairo_move_to(ctx, it.moveTo.x, it.moveTo.y);
+			ctx->pathMoveTo(it.moveTo.x, it.moveTo.y);
 			break;
 		case Command::LineTo:
-			cairo_line_to(ctx, it.lineTo.x, it.lineTo.y);
+			ctx->pathLineTo(it.lineTo.x, it.lineTo.y);
 			break;
 		case Command::QuadTo:
-			helper_quadratic_to(ctx, it.quadTo.x1, it.quadTo.y1, it.quadTo.x2, it.quadTo.y2);
+			ctx->pathQuadTo(it.quadTo.x1, it.quadTo.y1, it.quadTo.x2, it.quadTo.y2);
 			break;
 		case Command::CubicTo:
-			cairo_curve_to(ctx, it.cubicTo.x1, it.cubicTo.y1, it.cubicTo.x2, it.cubicTo.y2, it.cubicTo.x3, it.cubicTo.y3);
+			ctx->pathCubicTo(it.cubicTo.x1, it.cubicTo.y1, it.cubicTo.x2, it.cubicTo.y2, it.cubicTo.x3, it.cubicTo.y3);
 			break;
 		case Command::ArcTo:
-			helper_arc_to(ctx, it.arcTo.xc, it.arcTo.yc, it.arcTo.rx, it.arcTo.ry, it.arcTo.startAngle, it.arcTo.sweepAngle, it.arcTo.rotation);
+			ctx->pathArcTo(it.arcTo.xc, it.arcTo.yc, it.arcTo.rx, it.arcTo.ry, it.arcTo.startAngle, it.arcTo.sweepAngle, it.arcTo.rotation);
 			break;
 		case Command::AltArcTo:
-			helper_alt_arc_to(ctx, it.altArcTo.rx, it.altArcTo.ry, it.altArcTo.rotation, it.altArcTo.largeFlag, it.altArcTo.sweepFlag, it.altArcTo.x, it.altArcTo.y);
+			ctx->pathAltArcTo(it.altArcTo.rx, it.altArcTo.ry, it.altArcTo.rotation, it.altArcTo.largeFlag, it.altArcTo.sweepFlag, it.altArcTo.x, it.altArcTo.y);
 			break;
 		case Command::ClosePath:
-			cairo_close_path(ctx);
-			break;
-		case Command::BeginPath:
-			cairo_new_sub_path(ctx);
+			ctx->pathClose();
 			break;
 		default: break;
 		}
@@ -766,22 +693,17 @@ void Path::drawOn(cairo_t *ctx) const {
 
 	switch (_style) {
 	case Style::Fill:
-		cairo_set_source_rgba(ctx, _fillColor.r / 255.0, _fillColor.g / 255.0, _fillColor.b / 255.0, _fillColor.a / 255.0);
-		cairo_fill(ctx);
+		ctx->pathFill(_fillColor);
 		break;
 	case Style::Stroke:
-		cairo_set_source_rgba(ctx, _strokeColor.r / 255.0, _strokeColor.g / 255.0, _strokeColor.b / 255.0, _strokeColor.a / 255.0);
-		cairo_stroke(ctx);
+		ctx->pathStroke(_strokeColor);
 		break;
 	case Style::FillAndStroke:
-		cairo_set_source_rgba(ctx, _fillColor.r / 255.0, _fillColor.g / 255.0, _fillColor.b / 255.0, _fillColor.a / 255.0);
-		cairo_fill_preserve(ctx);
-		cairo_set_source_rgba(ctx, _strokeColor.r / 255.0, _strokeColor.g / 255.0, _strokeColor.b / 255.0, _strokeColor.a / 255.0);
-		cairo_stroke(ctx);
+		ctx->pathFillStroke(_fillColor, _strokeColor);
 		break;
 	}
 
-	cairo_restore(ctx);
+	ctx->restore();
 }
 
 void Path::remove() {
