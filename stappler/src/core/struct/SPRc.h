@@ -325,35 +325,27 @@ public:
 	inline Arc() : _ptr(nullptr) { }
 	inline Arc(const nullptr_t &) : _ptr(nullptr) { }
 
-	inline Arc(const Pointer &value) : _ptr(value) {
-		if (value) { value->retain(); }
-		_ptr.store(value);
-	}
-
 	inline ~Arc() {
-		auto ptr = _ptr.load();
-		if (ptr) { ptr->release(); }
+		if (_ptr) { _ptr->release(); }
 		_ptr = nullptr;
 	}
 
 	inline void set(const Pointer &value) {
-		auto ptr = _ptr.load();
-		if (ptr) { ptr->release(); }
 		if (value) { value->retain(); }
+		if (_ptr) { _ptr->release(); }
 		_ptr = value;
 	}
 
 	inline Base *get() const {
-		const Pointer p = _ptr.load();
-		if (p) {
-			return &(p->get());
+		if (_ptr) {
+			return &(_ptr->get());
 		}
 		return nullptr;
 	}
 
 	inline operator Base * () { return get(); }
 	inline operator Base * () const { return get(); }
-	inline operator bool () const { return _ptr.load() != nullptr && !_ptr.load()->empty(); }
+	inline operator bool () const { return _ptr != nullptr && !_ptr->empty(); }
 
 	inline Arc &operator = (const Pointer &value) {
 		set(value);
@@ -361,16 +353,14 @@ public:
 	}
 
 	inline Arc &operator = (const nullptr_t &) {
-		auto ptr = _ptr.load();
-		if (ptr) { ptr->release(); }
+		if (_ptr) { _ptr->release(); }
 		_ptr = nullptr;
 		return *this;
 	}
 
 	inline Arc(const Self &other) {
-		_ptr = other._ptr.load();
-		auto ptr = _ptr.load();
-		if (ptr) { ptr->retain(); }
+		_ptr = other._ptr;
+		if (_ptr) { _ptr->retain(); }
 	}
 	inline Arc & operator = (const Self &other) {
 		set(other._ptr);
@@ -378,83 +368,52 @@ public:
 	}
 
 	inline Arc(Self &&other) {
-		_ptr = other._ptr.load();
+		_ptr = other._ptr;
 		other._ptr = nullptr;
 	}
 	inline Arc & operator = (Self &&other) {
-		_ptr = other._ptr.load();
+		_ptr = other._ptr;
 		other._ptr = nullptr;
 		return *this;
 	}
 
-	inline Self copy() const {
-		return Self::create(*get());
-	}
+	inline Base * operator->() { return &(_ptr->get()); }
+	inline const Base * operator->() const { return &(_ptr->get()); }
 
-	inline bool compare_swap(Self &expected, const Self &desired) {
-		auto curr = _ptr.load();
-		auto exp = expected._ptr.load();
-		if (_ptr.compare_exchange_strong(exp, desired._ptr.load())) {
-			auto ptr = _ptr.load();
-			if (ptr) { ptr->retain(); }
-			if (curr) { curr->release(); }
-			return true;
-		} else {
-			expected.set(exp);
-			return false;
-		}
-	}
+	inline bool operator == (const Self & other) const { return _ptr == other._ptr; }
+	inline bool operator == (const Base * & other) const { return _ptr == other; }
+	inline bool operator == (typename std::remove_const<Base>::type * other) const { return _ptr == other; }
+	inline bool operator == (const std::nullptr_t other) const { return _ptr == other; }
 
-	inline bool compare_swap(Self &expected, Self &&desired) {
-		auto curr = _ptr.load();
-		auto exp = expected._ptr.load();
-		if (_ptr.compare_exchange_strong(exp, desired._ptr.load())) {
-			desired._ptr = nullptr;
-			if (curr) { curr->release(); }
-			return true;
-		} else {
-			expected.set(exp);
-			return false;
-		}
-	}
+	inline bool operator != (const Self & other) const { return _ptr != other._ptr.load(); }
+	inline bool operator != (const Base * & other) const { return _ptr != other; }
+	inline bool operator != (typename std::remove_const<Base>::type * other) const { return _ptr != other; }
+	inline bool operator != (const std::nullptr_t other) const { return _ptr != other; }
 
-	inline Base * operator->() { return &(_ptr.load()->get()); }
-	inline const Base * operator->() const { return &(_ptr.load()->get()); }
+	inline bool operator > (const Self & other) const { return _ptr > other._ptr; }
+	inline bool operator > (const Base * other) const { return _ptr > other; }
+	inline bool operator > (typename std::remove_const<Base>::type * other) const { return _ptr > other; }
+	inline bool operator > (const std::nullptr_t other) const { return _ptr > other; }
 
-	inline bool operator == (const Self & other) const { return _ptr.load() == other._ptr.load(); }
-	inline bool operator == (const Base * & other) const { return _ptr.load() == other; }
-	inline bool operator == (typename std::remove_const<Base>::type * other) const { return _ptr.load() == other; }
-	inline bool operator == (const std::nullptr_t other) const { return _ptr.load() == other; }
+	inline bool operator < (const Self & other) const { return _ptr < other._ptr; }
+	inline bool operator < (const Base * other) const { return _ptr < other; }
+	inline bool operator < (typename std::remove_const<Base>::type * other) const { return _ptr < other; }
+	inline bool operator < (const std::nullptr_t other) const { return _ptr < other; }
 
-	inline bool operator != (const Self & other) const { return _ptr.load() != other._ptr.load(); }
-	inline bool operator != (const Base * & other) const { return _ptr.load() != other; }
-	inline bool operator != (typename std::remove_const<Base>::type * other) const { return _ptr.load() != other; }
-	inline bool operator != (const std::nullptr_t other) const { return _ptr.load() != other; }
+	inline bool operator >= (const Self & other) const { return _ptr >= other._ptr.load(); }
+	inline bool operator >= (const Base * other) const { return _ptr >= other; }
+	inline bool operator >= (typename std::remove_const<Base>::type * other) const { return _ptr >= other; }
+	inline bool operator >= (const std::nullptr_t other) const { return _ptr >= other; }
 
-	inline bool operator > (const Self & other) const { return _ptr.load() > other._ptr.load(); }
-	inline bool operator > (const Base * other) const { return _ptr.load() > other; }
-	inline bool operator > (typename std::remove_const<Base>::type * other) const { return _ptr.load() > other; }
-	inline bool operator > (const std::nullptr_t other) const { return _ptr.load() > other; }
-
-	inline bool operator < (const Self & other) const { return _ptr.load() < other._ptr.load(); }
-	inline bool operator < (const Base * other) const { return _ptr.load() < other; }
-	inline bool operator < (typename std::remove_const<Base>::type * other) const { return _ptr.load() < other; }
-	inline bool operator < (const std::nullptr_t other) const { return _ptr.load() < other; }
-
-	inline bool operator >= (const Self & other) const { return _ptr.load() >= other._ptr.load(); }
-	inline bool operator >= (const Base * other) const { return _ptr.load() >= other; }
-	inline bool operator >= (typename std::remove_const<Base>::type * other) const { return _ptr.load() >= other; }
-	inline bool operator >= (const std::nullptr_t other) const { return _ptr.load() >= other; }
-
-	inline bool operator <= (const Self & other) const { return _ptr.load() <= other._ptr.load(); }
-	inline bool operator <= (const Base * other) const { return _ptr.load() <= other; }
-	inline bool operator <= (typename std::remove_const<Base>::type * other) const { return _ptr.load() <= other; }
-	inline bool operator <= (const std::nullptr_t other) const { return _ptr.load() <= other; }
+	inline bool operator <= (const Self & other) const { return _ptr <= other._ptr; }
+	inline bool operator <= (const Base * other) const { return _ptr <= other; }
+	inline bool operator <= (typename std::remove_const<Base>::type * other) const { return _ptr <= other; }
+	inline bool operator <= (const std::nullptr_t other) const { return _ptr <= other; }
 
 private:
 	// unsafe
 	inline Arc(Pointer value, bool v) : _ptr(value) { }
-	std::atomic<Pointer> _ptr;
+	Pointer _ptr;
 };
 
 NS_SP_END

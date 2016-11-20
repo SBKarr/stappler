@@ -119,7 +119,7 @@ public:
 
 	void addSortedChars(const Vector<char16_t> &); // should be sorted vector
 
-	Arc<Data> getData() const;
+	Arc<Data> getData();
 
 	const String &getName() const;
 	const String &getFamily() const;
@@ -146,6 +146,7 @@ protected:
 	Arc<Data> _data;
 	ReceiptCallback _callback = nullptr;
 	const Source * _source = nullptr;
+	std::mutex _mutex;
 };
 
 struct CharTexture {

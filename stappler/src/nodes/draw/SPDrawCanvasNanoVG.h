@@ -55,6 +55,7 @@ protected:
 	GLuint _rbo = 0;
 
 	float _pathX = 0, _pathY = 0;
+	bool _revertWinding = false;
 };
 
 NS_SP_EXT_END(draw)

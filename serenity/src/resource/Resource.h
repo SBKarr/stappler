@@ -37,6 +37,9 @@ public:
 	static Resource *resolve(storage::Adapter *a, storage::Scheme *scheme, const String &path, const data::TransformMap * = nullptr);
 	static Resource *resolve(storage::Adapter *a, storage::Scheme *scheme, const String &path, data::Value & sub, const data::TransformMap * = nullptr);
 
+	/* PathVec should be inverted (so, first selectors should be last in vector */
+	static Resource *resolve(storage::Adapter *a, storage::Scheme *scheme, Vector<String> &path);
+
 	virtual ~Resource() { }
 	Resource(Scheme *, storage::Adapter *);
 

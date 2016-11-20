@@ -38,7 +38,7 @@ CanvasNanoVG::~CanvasNanoVG() {
 }
 
 bool CanvasNanoVG::init() {
-	_context = nvgCreateGLES2(NVG_ANTIALIAS);
+	_context = nvgCreateGLES2(0);
 	glGenFramebuffers(1, &_fbo);
 	glGenRenderbuffers(1, &_rbo);
 
@@ -115,6 +115,7 @@ void CanvasNanoVG::setLineWidth(float value) {
 }
 
 void CanvasNanoVG::pathBegin() {
+	_revertWinding = false;
 	_pathX = 0.0f; _pathY = 0.0f;
 	nvgBeginPath(_context);
 }
@@ -125,6 +126,11 @@ void CanvasNanoVG::pathClose() {
 }
 
 void CanvasNanoVG::pathMoveTo(float x, float y) {
+	if (_revertWinding) {
+		nvgPathWinding(_context, NVG_HOLE);
+	} else {
+		_revertWinding = true;
+	}
 	_pathX = x; _pathY = y;
 	nvgMoveTo(_context, x, y);
 }
@@ -285,11 +291,13 @@ void CanvasNanoVG::pathAltArcTo(float rx, float ry, float rotx, bool fa, bool fs
 void CanvasNanoVG::pathFill(const Color4B &fill) {
 	nvgFillColor(_context, nvgRGBA(fill.r, fill.g, fill.b, fill.a));
 	nvgFill(_context);
+	_revertWinding = false;
 }
 
 void CanvasNanoVG::pathStroke(const Color4B &stroke) {
 	nvgStrokeColor(_context, nvgRGBA(stroke.r, stroke.g, stroke.b, stroke.a));
 	nvgStroke(_context);
+	_revertWinding = false;
 }
 
 void CanvasNanoVG::pathFillStroke(const Color4B &fill, const Color4B &stroke) {
@@ -297,6 +305,7 @@ void CanvasNanoVG::pathFillStroke(const Color4B &fill, const Color4B &stroke) {
 	nvgFill(_context);
 	nvgStrokeColor(_context, nvgRGBA(stroke.r, stroke.g, stroke.b, stroke.a));
 	nvgStroke(_context);
+	_revertWinding = false;
 }
 
 NS_SP_EXT_END(draw)

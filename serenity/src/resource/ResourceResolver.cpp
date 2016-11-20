@@ -193,6 +193,27 @@ static bool getOrderResource(storage::Resolver *resv, Vector<String> &path, cons
 	return resv->order(field->getName(), ord);
 }
 
+static bool getOrderResource(storage::Resolver *resv, Vector<String> &path, const String &name, storage::Ordering ord) {
+	auto field = resv->getSchemeField(name);
+	if (!field || !field->isIndexed()) {
+		messages::error("ResourceResolver", "invalid 'order' query");
+		return false;
+	}
+
+	if (!path.empty()) {
+		auto &n = path.back();
+		if (valid::validateNumber(n)) {
+			if (resv->order(field->getName(), ord)) {
+				return resv->limit((uint64_t)apr_strtoi64(n.c_str(), nullptr, 10));
+			} else {
+				return false;
+			}
+		}
+	}
+
+	return resv->order(field->getName(), ord);
+}
+
 static bool getLimitResource(storage::Resolver *resv, Vector<String> &path, bool &isSingleObject) {
 	if (path.size() < 1) {
 		messages::error("ResourceResolver", "invalid 'limit' query");
@@ -348,6 +369,14 @@ static Resource *parseResource(storage::Resolver *resv, Vector<String> &path) {
 				if (!getLastResource(resv, path, isSingleObject)) {
 					return nullptr;
 				}
+			} else if (filter.size() > 2 && filter.front() == '+') {
+				if (!getOrderResource(resv, path, filter.substr(1), storage::Ordering::Ascending)) {
+					return nullptr;
+				}
+			} else if (filter.size() > 2 && filter.front() == '-') {
+				if (!getOrderResource(resv, path, filter.substr(1), storage::Ordering::Descending)) {
+					return nullptr;
+				}
 			} else {
 				messages::error("ResourceResolver", "Invalid query", data::Value(filter));
 				return nullptr;
@@ -442,6 +471,11 @@ Resource *Resource::resolve(storage::Adapter *a, storage::Scheme *scheme, const 
 		}
 	}
 
+	return getResolvedResource(resolver, pathVec);
+}
+
+Resource *Resource::resolve(storage::Adapter *a, storage::Scheme *scheme, Vector<String> &pathVec) {
+	auto resolver = a->createResolver(scheme, nullptr);
 	return getResolvedResource(resolver, pathVec);
 }
 

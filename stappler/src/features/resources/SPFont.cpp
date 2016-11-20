@@ -132,7 +132,7 @@ void FontLayout::addSortedChars(const Vector<char16_t> &vec) {
 }
 
 void FontLayout::merge(const Vector<char16_t> &chars) {
-	Arc<Data> data = _data;
+	Arc<Data> data(getData());
 	while (true) {
 		Vector<char16_t> charsToUpdate; charsToUpdate.reserve(chars.size());
 		for (auto &it : chars) {
@@ -144,14 +144,23 @@ void FontLayout::merge(const Vector<char16_t> &chars) {
 			return;
 		}
 		Arc<Data> newData = requestLayoutUpgrade(_source, _face.src, data, charsToUpdate, _callback);
-		if (_data.compare_swap(data, std::move(newData))) {
-			return;
+
+		_mutex.lock();
+		if (_data == data) {
+			_data = newData;
+		} else {
+			data = _data;
 		}
+		_mutex.unlock();
 	}
 }
 
-Arc<FontLayout::Data> FontLayout::getData() const {
-	return _data;
+Arc<FontLayout::Data> FontLayout::getData() {
+	Arc<FontLayout::Data> ret;
+	_mutex.lock();
+	ret = _data;
+	_mutex.unlock();
+	return ret;
 }
 
 const String &FontLayout::getName() const {

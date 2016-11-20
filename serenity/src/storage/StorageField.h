@@ -201,7 +201,7 @@ public:
 		virtual void hash(apr::ostringstream &stream, ValidationLevel l) const;
 
 		data::Value def;
-		apr::string name;
+		String name;
 		Flags flags = Flags::None;
 		Type type = Type::None;
 		Transform transform = Transform::None;

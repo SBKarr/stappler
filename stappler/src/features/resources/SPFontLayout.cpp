@@ -541,12 +541,13 @@ bool FontLibrary::writeTextureQuads(uint32_t v, Source *source, const FormatSpec
 	auto range = format->ranges.begin();
 	auto line = format->lines.begin();
 	auto count = format->chars.size();
-	auto texVecIt = layouts.find(range->layout->getName());
+	Arc<font::FontLayout> layout(range->layout);
+	auto texVecIt = layouts.find(layout->getName());
 	if (texVecIt == layouts.end()) {
 		return false;
 	}
 	const Vector<font::CharTexture> *texVec = &texVecIt->second;
-	Arc<font::FontData> data = range->layout->getData();
+	Arc<font::FontData> data = layout->getData();
 	const font::Metrics *metrics = &data->metrics;
 	const Vector<font::CharLayout> *charVec = &data->chars;
 
@@ -560,12 +561,13 @@ bool FontLibrary::writeTextureQuads(uint32_t v, Source *source, const FormatSpec
 			while (range->count == 0) {
 				++ range;
 			}
-			texVecIt = layouts.find(range->layout->getName());
+			layout = range->layout;
+			texVecIt = layouts.find(layout->getName());
 			if (texVecIt == layouts.end()) {
 				return false;
 			}
 			texVec = &texVecIt->second;
-			data = range->layout->getData();
+			data = layout->getData();
 			metrics = &data->metrics;
 			charVec = &data->chars;
 		}
@@ -617,12 +619,13 @@ bool FontLibrary::writeTextureRects(uint32_t v, Source *source, const FormatSpec
 	auto range = format->ranges.begin();
 	auto line = format->lines.begin();
 	auto count = format->chars.size();
-	auto texVecIt = layouts.find(range->layout->getName());
+	Arc<font::FontLayout> layout(range->layout);
+	auto texVecIt = layouts.find(layout->getName());
 	if (texVecIt == layouts.end()) {
 		return false;
 	}
 	const Vector<font::CharTexture> *texVec = &texVecIt->second;
-	Arc<font::FontData> data = range->layout->getData();
+	Arc<font::FontData> data = layout->getData();
 	const font::Metrics *metrics = &data->metrics;
 	const Vector<font::CharLayout> *charVec = &data->chars;
 
@@ -632,12 +635,13 @@ bool FontLibrary::writeTextureRects(uint32_t v, Source *source, const FormatSpec
 			while (range->count == 0) {
 				++ range;
 			}
-			texVecIt = layouts.find(range->layout->getName());
+			layout = range->layout;
+			texVecIt = layouts.find(layout->getName());
 			if (texVecIt == layouts.end()) {
 				return false;
 			}
 			texVec = &texVecIt->second;
-			data = range->layout->getData();
+			data = layout->getData();
 			metrics = &data->metrics;
 			charVec = &data->chars;
 		}
@@ -966,7 +970,7 @@ void Source::clone(Source *source, const Function<void(Source *)> &cb) {
 	thread.perform([this, sPtr, lPtr, tlPtr, tPtr] (Ref *) -> bool {
 		Vector<char16_t> vec;;
 		for (auto &it : (*lPtr)) {
-			const Arc<FontLayout> &l = it.second;
+			Arc<FontLayout> l(it.second);
 			auto style = l->getStyle();
 			auto data = l->getData();
 			vec.clear();
