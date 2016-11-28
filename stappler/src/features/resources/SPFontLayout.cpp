@@ -199,6 +199,8 @@ static chars::CharGroupId getCharGroupForChar(char16_t c) {
 		return CharGroupId::GreekBasic;
 	} else if (CharGroup<char16_t, CharGroupId::Math>::match(c)) {
 		return CharGroupId::Math;
+	} else if (CharGroup<char16_t, CharGroupId::TextPunctuation>::match(c)) {
+		return CharGroupId::TextPunctuation;
 	}
 	return CharGroupId::None;
 }
@@ -219,6 +221,7 @@ static void addCharGroup(Vector<char16_t> &vec, chars::CharGroupId id) {
 	case CharGroupId::Currency: CharGroup<char16_t, CharGroupId::Currency>::foreach(f); break;
 	case CharGroupId::GreekBasic: CharGroup<char16_t, CharGroupId::GreekBasic>::foreach(f); break;
 	case CharGroupId::Math: CharGroup<char16_t, CharGroupId::Math>::foreach(f); break;
+	case CharGroupId::TextPunctuation: CharGroup<char16_t, CharGroupId::TextPunctuation>::foreach(f); break;
 	default: break;
 	}
 }
@@ -256,8 +259,14 @@ void FontLibraryCache::requestCharUpdate(const Source *source, const ReceiptCall
 					static_cast<int16_t>(face->glyph->metrics.horiBearingX >> 6),
 					static_cast<int16_t>(- (face->glyph->metrics.horiBearingY >> 6)),
 					static_cast<uint16_t>(face->glyph->metrics.horiAdvance >> 6)});
+				return;
 			}
 		}
+	}
+
+	auto it = std::lower_bound(layout.begin(), layout.end(), theChar);
+	if (it == layout.end() || *it != theChar) {
+		layout.insert(it, CharLayout{theChar, 0, 0, 0});
 	}
 }
 
@@ -301,25 +310,31 @@ void FontLibraryCache::drawCharOnBitmap(cocos2d::Texture2D *bmp, const URect &re
 	}
 }
 
+void FontLibraryCache_addChar(Vector<char16_t> &charsToUpdate, const Arc<FontLayout::Data> &data, const Vector<char16_t> &chars, char16_t theChar) {
+	auto spaceIt = std::lower_bound(chars.begin(), chars.end(), theChar);
+	if (spaceIt == chars.end() || *spaceIt != theChar) {
+		auto spaceDataIt = std::lower_bound(data->chars.begin(), data->chars.end(), theChar);
+		if (spaceDataIt == data->chars.end() || spaceDataIt->charID != theChar) {
+			charsToUpdate.push_back(theChar);
+		}
+	}
+}
+
 Arc<FontLayout::Data> FontLibraryCache::requestLayoutUpgrade(const Source *source, const Vector<String> &srcs,
 		const Arc<FontLayout::Data> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
 	Arc<FontLayout::Data> ret;
 	if (!data || data->metrics.size == 0) {
 		return data;
 	} else {
-		ret = data.copy();
+		ret = Arc<FontLayout::Data>::create(*(data.get()));
 
 		Vector<char16_t> charsToUpdate;
 
 		uint32_t mask = 0;
 
-		auto spaceIt = std::lower_bound(chars.begin(), chars.end(), char16_t(' '));
-		if (spaceIt == chars.end() || *spaceIt != ' ') {
-			auto spaceDataIt = std::lower_bound(data->chars.begin(), data->chars.end(), char16_t(' '));
-			if (spaceDataIt == data->chars.end() || spaceDataIt->charID == ' ') {
-				charsToUpdate.push_back(' ');
-			}
-		}
+		FontLibraryCache_addChar(charsToUpdate, data, chars, char16_t(' '));
+		FontLibraryCache_addChar(charsToUpdate, data, chars, char16_t('\n'));
+		FontLibraryCache_addChar(charsToUpdate, data, chars, char16_t('\r'));
 
 		for (auto &c : chars) {
 			auto g = getCharGroupForChar(c);
@@ -592,10 +607,10 @@ bool FontLibrary::writeTextureQuads(uint32_t v, Source *source, const FormatSpec
 				cMap.push_back(range->opacityDirty);
 				switch (range->align) {
 				case font::VerticalAlign::Sub:
-					quad->drawChar(*metrics, *charIt, *texIt, c.pos, format->height - line->pos - metrics->descender / 2, range->color, range->underline, tex->getPixelsWide(), tex->getPixelsHigh());
+					quad->drawChar(*metrics, *charIt, *texIt, c.pos, format->height - line->pos + metrics->descender / 2, range->color, range->underline, tex->getPixelsWide(), tex->getPixelsHigh());
 					break;
 				case font::VerticalAlign::Super:
-					quad->drawChar(*metrics, *charIt, *texIt, c.pos, format->height - line->pos - metrics->ascender / 2, range->color, range->underline, tex->getPixelsWide(), tex->getPixelsHigh());
+					quad->drawChar(*metrics, *charIt, *texIt, c.pos, format->height - line->pos + metrics->ascender / 2, range->color, range->underline, tex->getPixelsWide(), tex->getPixelsHigh());
 					break;
 				default:
 					quad->drawChar(*metrics, *charIt, *texIt, c.pos, format->height - line->pos, range->color, range->underline, tex->getPixelsWide(), tex->getPixelsHigh());
@@ -663,10 +678,10 @@ bool FontLibrary::writeTextureRects(uint32_t v, Source *source, const FormatSpec
 				const auto posY = format->height - line->pos - (charIt->yOffset + texIt->height) - metrics->descender;
 				switch (range->align) {
 				case font::VerticalAlign::Sub:
-					rects.emplace_back(posX * scale, (posY - metrics->descender / 2) * scale, texIt->width * scale, texIt->height * scale);
+					rects.emplace_back(posX * scale, (posY + metrics->descender / 2) * scale, texIt->width * scale, texIt->height * scale);
 					break;
 				case font::VerticalAlign::Super:
-					rects.emplace_back(posX * scale, (posY - metrics->ascender / 2) * scale, texIt->width * scale, texIt->height * scale);
+					rects.emplace_back(posX * scale, (posY + metrics->ascender / 2) * scale, texIt->width * scale, texIt->height * scale);
 					break;
 				default:
 					rects.emplace_back(posX * scale, posY * scale, texIt->width * scale, texIt->height * scale);

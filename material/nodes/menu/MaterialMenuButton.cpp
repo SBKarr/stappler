@@ -72,6 +72,7 @@ void MenuButton::setMenuSourceItem(MenuSourceItem *iitem) {
 void MenuButton::setMenu(Menu *m) {
 	_menu = m;
 }
+
 Menu *MenuButton::getMenu() {
 	return _menu;
 }

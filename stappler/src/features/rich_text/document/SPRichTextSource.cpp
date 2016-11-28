@@ -206,6 +206,9 @@ static bool Source_tryLockAsset(Asset *a, uint64_t mtime, Source *source) {
 }
 
 void Source::tryLoadDocument() {
+	if (!_enabled) {
+		return;
+	}
 	bool assetLocked = false;
 	if (Source_tryLockAsset(_documentAsset, _loadedAssetMTime, this)) {
 		_loadedAssetMTime = _documentAsset->getMTime();
@@ -232,7 +235,7 @@ void Source::tryLoadDocument() {
 			*doc = openDocument(filename, ct);
 		}
 		return true;
-	}, [this, doc, assetLocked] (cocos2d::Ref *, bool success) {
+	}, [this, doc, assetLocked, filename] (cocos2d::Ref *, bool success) {
 		_documentLoading = false;
 		if (assetLocked) {
 			_documentAsset->releaseReadLock(this);
@@ -251,9 +254,8 @@ void Source::onDocumentLoaded(Document *doc) {
 			_dirty = true;
 			_dirtyFlags = DirtyFontFace;
 			updateSource();
-		} else {
-			onDocument(this);
 		}
+		onDocument(this);
 	}
 }
 

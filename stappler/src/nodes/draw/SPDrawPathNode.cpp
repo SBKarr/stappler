@@ -106,12 +106,14 @@ void PathNode::updateCanvas() {
 
 	auto tex = generateTexture(getTexture(), width, height, _format);
 	_canvas->begin(tex, Color4B(0, 0, 0, 0));
+	_canvas->save();
 	_canvas->scale((float)width / (float)_baseWidth, (float)height / (float)_baseHeight);
 	for (auto path : _paths) {
 		path->_dirty = false;
 		path->drawOn(_canvas);
 	}
 
+	_canvas->restore();
 	_canvas->end();
 
 	if (tex != getTexture()) {

@@ -26,14 +26,14 @@ bool RoundedProgress::init(Layout l) {
 	_line->setAnchorPoint(cocos2d::Vec2(0, 0));
 	_line->setColor(Color::Grey_500);
 	_line->setOpacity(255);
-	addChild(_line);
+	addChild(_line, 1);
 
 	_bar = construct<RoundedSprite>(0);
 	_bar->setPosition(cocos2d::Vec2(0, 0));
 	_bar->setAnchorPoint(cocos2d::Vec2(0, 0));
 	_bar->setColor(Color::Black);
 	_bar->setOpacity(255);
-	addChild(_bar);
+	addChild(_bar, 2);
 
 	return true;
 }

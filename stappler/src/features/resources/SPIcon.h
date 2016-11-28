@@ -51,7 +51,7 @@ private:
 	Rc<cocos2d::Texture2D> _image;
 };
 
-class IconSet : public cocos2d::Ref {
+class IconSet : public cocos2d::Ref, public EventHandler {
 public:
 	using Callback = std::function<void(IconSet *)>;
 	struct Config {
@@ -70,6 +70,8 @@ public:
 
 	IconSet(Config &&, Map<String, Icon> &&icons, cocos2d::Texture2D *image);
 	~IconSet();
+
+	void reload();
 
 	const Config &getConfig() const { return _config; }
 

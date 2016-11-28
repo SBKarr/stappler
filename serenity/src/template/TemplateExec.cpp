@@ -494,10 +494,12 @@ bool Exec::execPathObject(ReaderVec &path, ReaderVecIt &pathIt, Variable &var) {
 				var.value = &var.value->getValue(name);
 				var.scheme = nullptr;
 			}
+		} else if (name == "__oid" && var.value->isInteger("__oid")) {
+			var.value = &var.value->getValue("__oid");
+			var.scheme = nullptr;
 		} else {
 			return false;
 		}
-
 	}
 	return true;
 }

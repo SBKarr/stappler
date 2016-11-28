@@ -14,6 +14,7 @@
 #include "SPDrawCanvasCairo.h"
 #include "SPDrawPathNode.h"
 #include "SPTextureCache.h"
+#include "SPDevice.h"
 #include "renderer/CCTexture2D.h"
 
 NS_SP_EXT_BEGIN(resource)
@@ -38,7 +39,7 @@ public:
 		uint32_t yOffset = row * _canvasHeight;
 
 		_canvas->save();
-		_canvas->translate(xOffset, yOffset);
+		_canvas->translate(xOffset / ((float)_canvasWidth / (float)_originalWidth), yOffset / ((float)_canvasHeight / (float)_originalHeight));
 
 		Rc<draw::Path> path;
 		if (data.compare(0, 7, "path://") == 0) {
@@ -69,7 +70,6 @@ public:
 			renderIcon(it.second, c, r);
 
 			i++;
-			//break;
 		}
 
 		_canvas->end();
@@ -121,12 +121,10 @@ public:
 		Rc<cocos2d::Texture2D> tex = Rc<cocos2d::Texture2D>::create(cocos2d::Texture2D::PixelFormat::A8, texWidth, texHeight);
 		tex->setAliasTexParameters();
 
-
 		IconSetRenderer renderer(cfg.iconWidth, cfg.iconHeight, cfg.originalWidth, cfg.originalHeight);
 		renderer.renderIcons(tex, cfg.data, cols, rows, icons);
 
 		/*const cocos2d::Texture2D::PixelFormatInfo& info = cocos2d::Texture2D::_pixelFormatInfoTables.at(tex->getPixelFormat());
-
 		Bytes buf; buf.resize(texWidth * texHeight);
 		glBindTexture(GL_TEXTURE_2D, tex->getName());
 		glGetTexImage(GL_TEXTURE_2D, 0, info.format, info.type, buf.data());
@@ -158,6 +156,10 @@ void generateIconSet(IconSet::Config &&cfg, const IconSet::Callback &callback) {
 		return true;
 	}, [newSet, cfgPtr, callback] (cocos2d::Ref *, bool) {
 		if (*newSet) {
+			IconSet * set = *newSet;
+			set->onEvent(Device::onAndroidReset, [set] (const Event *ev) {
+				set->reload();
+			});
 			if (callback) {
 				callback(*newSet);
 			}
@@ -195,6 +197,29 @@ IconSet::IconSet(Config &&cfg, Map<String, Icon> &&icons, cocos2d::Texture2D *im
 }
 
 IconSet::~IconSet() { }
+
+
+void IconSet::reload() {
+	size_t count = _config.data->size();
+	size_t globalSquare = count * (_config.iconWidth * _config.iconHeight);
+
+	size_t sq2 = 1; uint16_t h = 1; uint16_t w = 1;
+	for (bool s = true ;sq2 < globalSquare; sq2 *= 2, s = !s) {
+		if (s) { w *= 2; } else { h *= 2; }
+	}
+
+	uint32_t cols = w / _config.iconWidth;
+	uint32_t rows = (uint32_t)(count / cols + 1);
+
+	while (rows * cols < count) {
+		rows ++;
+	}
+
+	_image->init(cocos2d::Texture2D::PixelFormat::A8, w, rows * _config.iconHeight);
+
+	resource::IconSetRenderer renderer(_config.iconWidth, _config.iconHeight, _config.originalWidth, _config.originalHeight);
+	renderer.renderIcons(_image, _config.data, cols, rows, _icons);
+}
 
 Icon IconSet::getIcon(const std::string &key) const {
 	auto it = _icons.find(key);

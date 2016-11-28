@@ -206,11 +206,13 @@ void Formatter::pushLineFiller(bool replaceLastChar) {
 		return;
 	}
 
-	CharSpec spec{_fillerChar, lineX, charDef.xAdvance};
+	;
 	if (replaceLastChar && !output->chars.empty()) {
-		output->chars.back() = std::move(spec);
+		auto &b = output->chars.back();
+		b.charID = _fillerChar;
+		b.advance = charDef.xAdvance;
 	} else {
-		output->chars.push_back(std::move(spec));
+		output->chars.emplace_back(CharSpec{_fillerChar, lineX, charDef.xAdvance});
 		charNum ++;
 	}
 }

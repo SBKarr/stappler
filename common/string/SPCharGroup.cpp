@@ -39,6 +39,7 @@ bool inCharGroup(CharGroupId mask, char16_t c) {
 	case CharGroupId::BreakableWhiteSpace: return chars::CharGroup<char16_t, CharGroupId::BreakableWhiteSpace>::match(c); break;
 	case CharGroupId::OpticalAlignmentSpecial: return chars::CharGroup<char16_t, CharGroupId::OpticalAlignmentSpecial>::match(c); break;
 	case CharGroupId::OpticalAlignmentBullet: return chars::CharGroup<char16_t, CharGroupId::OpticalAlignmentBullet>::match(c); break;
+	case CharGroupId::TextPunctuation: return chars::CharGroup<char16_t, CharGroupId::TextPunctuation>::match(c); break;
 	}
 	return false;
 }
@@ -86,6 +87,7 @@ WideString getCharGroup(CharGroupMask mask) {
 			case CharGroupId::BreakableWhiteSpace: chars::CharGroup<char16_t, CharGroupId::BreakableWhiteSpace>::get(set); break;
 			case CharGroupId::OpticalAlignmentSpecial: chars::CharGroup<char16_t, CharGroupId::OpticalAlignmentSpecial>::get(set); break;
 			case CharGroupId::OpticalAlignmentBullet: chars::CharGroup<char16_t, CharGroupId::OpticalAlignmentBullet>::get(set); break;
+			case CharGroupId::TextPunctuation: chars::CharGroup<char16_t, CharGroupId::TextPunctuation>::get(set); break;
 			}
 		}
 	}

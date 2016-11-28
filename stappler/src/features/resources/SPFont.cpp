@@ -143,11 +143,13 @@ void FontLayout::merge(const Vector<char16_t> &chars) {
 		if (charsToUpdate.empty()) {
 			return;
 		}
-		Arc<Data> newData = requestLayoutUpgrade(_source, _face.src, data, charsToUpdate, _callback);
 
+		Arc<Data> newData(requestLayoutUpgrade(_source, _face.src, data, charsToUpdate, _callback));
 		_mutex.lock();
 		if (_data == data) {
 			_data = newData;
+			_mutex.unlock();
+			return;
 		} else {
 			data = _data;
 		}

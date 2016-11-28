@@ -55,6 +55,8 @@ enum class CharGroupId : uint32_t {
 	BreakableWhiteSpace = 1 << 21,
 	OpticalAlignmentSpecial = 1 << 22,
 	OpticalAlignmentBullet = 1 << 23,
+
+	TextPunctuation = 1 << 24,
 };
 
 SP_DEFINE_ENUM_AS_MASK(CharGroupId)
@@ -186,6 +188,11 @@ struct CharGroup<char, CharGroupId::Hexadecimial> : Compose<char,
 template <>
 struct CharGroup<char, CharGroupId::Base64> : Compose<char,
 		Range<char, '0', '9'>, Range<char, 'A', 'Z'>, Range<char, 'a', 'z'>, Chars<char, '=', '/'>
+> { };
+
+template <>
+struct CharGroup<char, CharGroupId::TextPunctuation> : Compose<char,
+		Chars<char, '=', '/', '(', ')', '.', ',', '-', '\'', '"', ':', ';', '?', '!', '@', '#', '$', '%', '^', '*', '\\', '_', '+', '[', ']'>
 > { };
 
 
@@ -326,6 +333,13 @@ template <>
 struct CharGroup<char16_t, CharGroupId::OpticalAlignmentBullet> : Compose<char16_t,
 		Range<char16_t, u'0', u'9'>,
 		Chars<char16_t, u'—', u'–', u'―', u'•', u'‣', u'⁃', u'-', u'*', u'◦', u'■', u'.', u',', u')'>
+> { };
+
+template <>
+struct CharGroup<char16_t, CharGroupId::TextPunctuation> : Compose<char16_t,
+		Chars<char16_t, u'=', u'/', u'(', u')', u'.', u',', u'-', u'\'', u'"'
+		, u':', u';', u'?', u'!', u'@', u'#', u'$', u'%', u'^', u'*', u'\\'
+		, u'_', u'+', u'[', u']', u'«', u'»'>
 > { };
 
 class MatchTraits {

@@ -193,27 +193,6 @@ static bool getOrderResource(storage::Resolver *resv, Vector<String> &path, cons
 	return resv->order(field->getName(), ord);
 }
 
-static bool getOrderResource(storage::Resolver *resv, Vector<String> &path, const String &name, storage::Ordering ord) {
-	auto field = resv->getSchemeField(name);
-	if (!field || !field->isIndexed()) {
-		messages::error("ResourceResolver", "invalid 'order' query");
-		return false;
-	}
-
-	if (!path.empty()) {
-		auto &n = path.back();
-		if (valid::validateNumber(n)) {
-			if (resv->order(field->getName(), ord)) {
-				return resv->limit((uint64_t)apr_strtoi64(n.c_str(), nullptr, 10));
-			} else {
-				return false;
-			}
-		}
-	}
-
-	return resv->order(field->getName(), ord);
-}
-
 static bool getLimitResource(storage::Resolver *resv, Vector<String> &path, bool &isSingleObject) {
 	if (path.size() < 1) {
 		messages::error("ResourceResolver", "invalid 'limit' query");

@@ -23,6 +23,7 @@
 #include "SPAprTable.h"
 #include "SPAprUri.h"
 #include "SPAprUuid.h"
+#include "SPAprMutex.h"
 
 #include "SPData.h"
 
