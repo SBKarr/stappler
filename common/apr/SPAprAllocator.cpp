@@ -11,6 +11,36 @@
 #ifdef SPAPR
 NS_SP_EXT_BEGIN(apr)
 
+
+MemPool::MemPool() : MemPool(AllocStack::get().top()) { }
+MemPool::MemPool(apr_pool_t *p) {
+	apr_pool_create(&_pool, p);
+}
+MemPool::~MemPool() {
+	if (_pool) {
+		apr_pool_destroy(_pool);
+	}
+}
+
+MemPool::MemPool(MemPool &&other) {
+	_pool = other._pool;
+	other._pool = nullptr;
+}
+MemPool & MemPool::operator=(MemPool &&other) {
+	if (_pool) {
+		apr_pool_destroy(_pool);
+	}
+	_pool = other._pool;
+	other._pool = nullptr;
+	return *this;
+}
+
+void MemPool::free() {
+	if (_pool) {
+		apr_pool_destroy(_pool);
+	}
+}
+
 void sa_alloc_stack_server_destructor(void *) {
 	// unused for now
 }

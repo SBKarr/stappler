@@ -33,10 +33,10 @@ public:
 	void removeHandler(Handler *);
 
 protected:
-	apr_thread_mutex_t *_mutex = nullptr;
+	apr_pool_t *_pool;
+	apr::mutex _mutex;
 	std::atomic<size_t> _count;
 	Vector<Handler *> _handlers;
-	apr_pool_t *_pool;
 };
 
 class Handler : public AllocPool {
@@ -253,7 +253,7 @@ protected:
 	StatusCode _clientCloseCode;
 	StatusCode _serverCloseCode;
 
-	apr_thread_mutex_t *_broadcastMutex = nullptr;
+	apr::mutex _broadcastMutex;
 	apr_pool_t *_broadcastsPool = nullptr;
 	Vector<data::Value> *_broadcastsMessages = nullptr;
 };

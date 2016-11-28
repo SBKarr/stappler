@@ -158,6 +158,8 @@ public: /* request params setters */
 	int sendFile(String && path, size_t cacheTimeInSeconds = maxOf<size_t>());
 	int sendFile(String && path, String && contentType, size_t cacheTimeInSeconds = maxOf<size_t>());
 
+	void runTemplate(String && path, const Function<void(tpl::Exec &, Request &)> &);
+
 	apr::string getFullHostname(int port = -1);
 
 public: /* input config */
@@ -218,6 +220,8 @@ public: /* engine and errors */
 
 	void addErrorMessage(data::Value &&);
 	void addDebugMessage(data::Value &&);
+
+	void addCleanup(const Function<void()> &);
 
 protected:
 	struct Config;

@@ -72,13 +72,12 @@ static uint8_t FrameWriter_getOpcodeFromType(Handler::FrameType opcode) {
 Handler::Handler(Manager *m, const Request &req, TimeInterval ttl, size_t max)
 : _request(req), _connection(req.connection()), _manager(m), _ttl(ttl)
 , _reader(req, _connection.pool(), max), _writer(req, _connection.pool())
-, _clientCloseCode(StatusCode::None), _serverCloseCode(StatusCode::Auto) {
+, _clientCloseCode(StatusCode::None), _serverCloseCode(StatusCode::Auto)
+, _broadcastMutex(_connection.pool()) {
 	_socket = (apr_socket_t *)ap_get_module_config (req.request()->connection->conn_config, &core_module);
 
 	apr_pool_t *pool = _connection.pool();
 	apr_pollset_create(&_poll, 1, pool, APR_POLLSET_WAKEABLE | APR_POLLSET_NOCOPY);
-
-	apr_thread_mutex_create(&_broadcastMutex, APR_THREAD_MUTEX_DEFAULT, pool);
 
 	if (_poll && _socket && _manager && _broadcastMutex) {
 		memset(&_pollfd, 0, sizeof(apr_pollfd_t));
@@ -254,7 +253,7 @@ storage::Adapter *Handler::storage() const {
 
 void Handler::receiveBroadcast(const data::Value &data) {
 	if (_valid) {
-		apr_thread_mutex_lock(_broadcastMutex);
+		_broadcastMutex.lock();
 		if (!_broadcastsPool) {
 			apr_pool_create(&_broadcastsPool, _connection.pool());
 		}
@@ -267,7 +266,7 @@ void Handler::receiveBroadcast(const data::Value &data) {
 				_broadcastsMessages->emplace_back(data);
 			}, _broadcastsPool);
 		}
-		apr_thread_mutex_unlock(_broadcastMutex);
+		_broadcastMutex.unlock();
 		apr_pollset_wakeup(_poll);
 	}
 }
@@ -276,7 +275,7 @@ bool Handler::processBroadcasts() {
 	apr_pool_t *pool = nullptr;
 	Vector<data::Value> * vec = nullptr;
 
-	apr_thread_mutex_lock(_broadcastMutex);
+	_broadcastMutex.lock();
 
 	pool = _broadcastsPool;
 	vec = _broadcastsMessages;
@@ -284,7 +283,7 @@ bool Handler::processBroadcasts() {
 	_broadcastsPool = nullptr;
 	_broadcastsMessages = nullptr;
 
-	apr_thread_mutex_unlock(_broadcastMutex);
+	_broadcastMutex.unlock();
 
 	bool ret = true;
 	if (pool) {
@@ -904,12 +903,8 @@ bool Handler::FrameWriter::addFrameOffset(const uint8_t *head, size_t nhead, con
 	return false;
 }
 
-Manager::Manager() : _pool(getCurrentPool()) {
-	apr_thread_mutex_create(&_mutex, APR_THREAD_MUTEX_DEFAULT, _pool);
-}
-Manager::~Manager() {
-	apr_thread_mutex_destroy(_mutex);
-}
+Manager::Manager() : _pool(getCurrentPool()), _mutex(_pool) { }
+Manager::~Manager() { }
 
 Handler * Manager::onAccept(const Request &req) {
 	return nullptr;
@@ -924,11 +919,11 @@ size_t Manager::size() const {
 
 void Manager::receiveBroadcast(const data::Value &val) {
 	if (onBroadcast(val)) {
-		apr_thread_mutex_lock(_mutex);
+		_mutex.lock();
 		for (auto &it : _handlers) {
 			it->receiveBroadcast(val);
 		}
-		apr_thread_mutex_unlock(_mutex);
+		_mutex.unlock();
 	}
 }
 
@@ -984,14 +979,14 @@ int Manager::accept(Request &req) {
 }
 
 void Manager::addHandler(Handler * h) {
-	apr_thread_mutex_lock(_mutex);
+	_mutex.lock();
 	_handlers.emplace_back(h);
 	++ _count;
-	apr_thread_mutex_unlock(_mutex);
+	_mutex.unlock();
 }
 
 void Manager::removeHandler(Handler * h) {
-	apr_thread_mutex_lock(_mutex);
+	_mutex.lock();
 	auto it = _handlers.begin();
 	while (it != _handlers.end() && *it != h) {
 		++ it;
@@ -1000,7 +995,7 @@ void Manager::removeHandler(Handler * h) {
 		_handlers.erase(it);
 	}
 	-- _count;
-	apr_thread_mutex_unlock(_mutex);
+	_mutex.unlock();
 }
 
 NS_SA_EXT_END(websocket)

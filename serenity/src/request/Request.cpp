@@ -15,6 +15,7 @@
 #include "Session.h"
 
 #include "Output.h"
+#include "TemplateCache.h"
 
 APLOG_USE_MODULE(serenity);
 
@@ -482,6 +483,19 @@ void Request::addDebugMessage(data::Value &&val) {
 	}
 }
 
+static apr_status_t sa_request_custom_cleanup(void *ptr) {
+	if (ptr) {
+		auto ref = (Function<void()> *)ptr;
+		(*ref)();
+	}
+	return APR_SUCCESS;
+}
+
+void Request::addCleanup(const Function<void()> &cb) {
+	auto ref = new (pool()) Function<void()>(cb);
+	apr_pool_cleanup_register(pool(), ref, &sa_request_custom_cleanup, &apr_pool_cleanup_null);
+}
+
 bool Request::isAdministrative() {
 	bool isAuthorized = (getUser() && getUser()->isAdmin());
 	if (isAuthorized) {
@@ -553,6 +567,11 @@ apr::string Request::getFullHostname(int port) {
 	}
 
 	return ret.str();
+}
+
+void Request::runTemplate(String && path, const Function<void(tpl::Exec &, Request &)> &cb) {
+	auto cache = server().getTemplateCache();
+	cache->runTemplate(path, *this, cb);
 }
 
 NS_SA_END

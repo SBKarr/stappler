@@ -30,6 +30,7 @@
 #include "ResourceHandler.h"
 #include "WebSocket.h"
 #include "Tools.h"
+#include "TemplateCache.h"
 
 APLOG_USE_MODULE(serenity);
 
@@ -258,6 +259,7 @@ struct Server::Config : public AllocPool {
 
 	Time lastDatabaseCleanup;
 	int64_t broadcastId = 0;
+	tpl::Cache _templateCache;
 };
 
 void * Server::merge(void *base, void *add) {
@@ -467,6 +469,10 @@ bool Server::isSessionSecure() const {
 	return _config->isSessionSecure;
 }
 
+tpl::Cache *Server::getTemplateCache() const {
+	return &_config->_templateCache;
+}
+
 const apr::string &Server::getNamespace() const {
 	return _config->serverNamespace;
 }
@@ -508,6 +514,7 @@ void Server::onHeartBeat() {
 			_config->broadcastId = h.processBroadcasts(*this, _config->broadcastId);
 			root->dbdClose(_server, dbd);
 		}
+		_config->_templateCache.update();
 	});
 }
 

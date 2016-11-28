@@ -5,6 +5,7 @@
  *      Author: sbkarr
  */
 
+#include "SPCommon.h"
 #include "SPHtmlParser.h"
 
 NS_SP_EXT_BEGIN(html)

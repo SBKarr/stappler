@@ -154,6 +154,14 @@ class Manager;
 NS_SA_EXT_END(websocket)
 
 
+NS_SA_EXT_BEGIN(tpl)
+
+class Cache;
+class Exec;
+
+NS_SA_EXT_END(tpl)
+
+
 NS_SA_EXT_BEGIN(messages)
 
 /* Serenity cross-server messaging interface

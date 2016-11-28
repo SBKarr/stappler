@@ -40,6 +40,27 @@ struct AllocPool {
 	}
 };
 
+class MemPool {
+public:
+	MemPool();
+	MemPool(apr_pool_t *);
+	~MemPool();
+
+	MemPool(const MemPool &) = delete;
+	MemPool & operator=(const MemPool &) = delete;
+
+	MemPool(MemPool &&);
+	MemPool & operator=(MemPool &&);
+
+	operator apr_pool_t *() { return _pool; }
+	apr_pool_t *pool() const { return _pool; }
+
+	void free();
+
+protected:
+	apr_pool_t *_pool = nullptr;
+};
+
 NS_SP_EXT_END(apr)
 
 #endif

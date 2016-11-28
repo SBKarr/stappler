@@ -101,8 +101,8 @@ protected:
 	apr_thread_t *_timerThread = nullptr;
 	apr_time_t _timerValue = 0;
 
-	ap_log_writer_init *_defaultInit;
-	ap_log_writer *_defaultWriter;
+	ap_log_writer_init *_defaultInit = nullptr;
+	ap_log_writer *_defaultWriter = nullptr;
 
 #if DEBUG
 	bool _debug = true;
