@@ -27,7 +27,6 @@ THE SOFTWARE.
 #include "SPFont.h"
 
 #include "SPFilesystem.h"
-#include "SPImage.h"
 #include "SPString.h"
 #include "SPThread.h"
 #include "SPData.h"

@@ -177,8 +177,10 @@ void MaterialNode::setShadowZIndexAnimated(float value, float duration) {
 	if (_shadowIndex != value) {
 		stopActionByTag(1);
 		auto a = ShadowAction::create(duration, value);
-		a->setTag(1);
-		runAction(a);
+		if (a) {
+			a->setTag(1);
+			runAction(a);
+		}
 	}
 }
 

@@ -57,11 +57,11 @@ bool MultipartParser::parse(const uint8_t *d, size_t l, bool files) {
 }
 
 /* read content only */
-bool MultipartParser::parse(const Bytes &vec, const String &contentType, bool files) {
-	return parse(vec.data(), vec.size(), contentType, files);
+bool MultipartParser::parse(const Bytes &vec, const String &ct, bool files) {
+	return parse(vec.data(), vec.size(), ct, files);
 }
-bool MultipartParser::parse(const uint8_t *d, size_t l, const String &contentType, bool files) {
-    Reader r(contentType.c_str(), contentType.length());
+bool MultipartParser::parse(const uint8_t *d, size_t l, const String &ct, bool files) {
+    Reader r(ct.c_str(), ct.length());
 	if (!parseContentType(r)) {
 		return false;
 	}

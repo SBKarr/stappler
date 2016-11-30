@@ -42,7 +42,7 @@ inline void split(const String &str, const String &delim, T && callback) {
 	size_t start = 0;
 	size_t pos = 0;
 	for (pos = str.find(delim, start); pos != String::npos; start = pos + delim.length(), pos = str.find(delim, start)) {
-		if (pos - start > 0) {
+		if (pos != start) {
 			callback(CharReaderBase(str.data() + start, pos - start));
 		}
 	}

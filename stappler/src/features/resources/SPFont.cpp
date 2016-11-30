@@ -25,7 +25,6 @@ THE SOFTWARE.
 
 #include "SPDefine.h"
 #include "SPFont.h"
-#include "SPImage.h"
 #include "renderer/CCTexture2D.h"
 #include "SPFilesystem.h"
 #include "SPAsset.h"

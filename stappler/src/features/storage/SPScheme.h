@@ -136,6 +136,8 @@ public:
 		Field(Field &&other);
 		Field &operator= (Field &&other);
 
+		Field(const Field &other) = delete;
+		Field &operator= (const Field &other) = delete;
 	protected:
 		friend class Scheme;
 		friend class Internal;
@@ -268,6 +270,9 @@ protected:
 
 		Filter(Filter &&other);
 		Filter &operator= (Filter &&other);
+
+		Filter(const Filter &other) = delete;
+		Filter &operator= (const Filter &other) = delete;
 
 		~Filter();
 

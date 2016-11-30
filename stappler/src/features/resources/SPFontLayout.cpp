@@ -24,6 +24,7 @@ THE SOFTWARE.
 **/
 
 #include "SPDefine.h"
+#include "SPBitmap.h"
 #include "SPFont.h"
 #include "SPResource.h"
 #include "SPFilesystem.h"
@@ -300,7 +301,7 @@ static Pair<FT_Face, int> getFaceForChar(const Vector<FT_Face> &faces, char16_t 
 
 bool FontLibraryCache::getKerning(const Vector<FT_Face> &faces, char16_t first, char16_t second, int16_t &value) {
 	auto firstFace = getFaceForChar(faces, first);
-	auto secondFace = getFaceForChar(faces, first);
+	auto secondFace = getFaceForChar(faces, second);
 	if (firstFace.first && firstFace.first == secondFace.first && FT_HAS_KERNING(firstFace.first)) {
 		const FT_Face face = firstFace.first;
 		const int glyph1 = firstFace.second;
@@ -1089,7 +1090,7 @@ void LayoutBitmap::draw(const URect &rect, FT_Bitmap *bitmap) {
 			int pos = j * bitmap->width + i;
 			int bufferPos = ((yOffset + j) * _width + i + xOffset);
 			if (bitmap->pixel_mode == FT_PIXEL_MODE_MONO) {
-				data[bufferPos] = (bitmap->buffer[pos / 8] & (1 << pos % 8))?255:0;
+				data[bufferPos] = (bitmap->buffer[pos / 8] & (1 << (pos % 8)))?255:0;
 			} else if (bitmap->pixel_mode == FT_PIXEL_MODE_GRAY) {
 				data[bufferPos] = bitmap->buffer[pos];
 			}

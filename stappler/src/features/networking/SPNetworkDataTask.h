@@ -33,7 +33,7 @@ public:
 	NetworkDataTask();
     virtual ~NetworkDataTask();
 
-    virtual bool init(Method method, const std::string &url, const data::Value &data = data::Value(), data::EncodeFormat = data::EncodeFormat::Cbor);
+    virtual bool init(Method method, const String &url, const data::Value &data = data::Value(), data::EncodeFormat = data::EncodeFormat::Cbor);
 
 	const data::Value &getData() const;
 	data::Value &getData();

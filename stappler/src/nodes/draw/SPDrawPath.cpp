@@ -396,7 +396,7 @@ protected:
 	}
 
 	bool readEllipticalArcArg(float &_rx, float &_ry, float &_xAxisRotation,
-			bool &_largeArc, bool &_sweep, float &_x, float &_y) {
+			bool &_largeArc, bool &_sweep, float &_dx, float &_dy) {
 		float rx, ry, xAxisRotation, x, y;
 		bool largeArc, sweep;
 
@@ -431,8 +431,8 @@ protected:
 		_xAxisRotation = xAxisRotation;
 		_largeArc = largeArc;
 		_sweep = sweep;
-		_x = x;
-		_y = y;
+		_dx = x;
+		_dy = y;
 
 		return true;
 	}

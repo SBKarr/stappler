@@ -204,6 +204,7 @@ public:
 		for (auto it = first; it != last; it ++) {
 			_mem.emplace_back_unsafe(*it);
 		}
+		return *this;
 	}
 	basic_string& append (InitializerList<charT> il) {
 		_mem.reserve(il.size() + _mem.size(), true);
@@ -247,6 +248,7 @@ public:
 		for (auto it = first; it != last; it ++) {
 			_mem.emplace_back_unsafe(*it);
 		}
+		return *this;
 	}
 
 	basic_string& assign (InitializerList<charT> il) {

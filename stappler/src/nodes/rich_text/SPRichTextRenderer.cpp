@@ -267,10 +267,6 @@ bool Renderer::requestRendering() {
 	if (fontSet && document) {
 		_media.fontScale = s->getFontScale();
 		Builder * impl = new Builder(document, _media, fontSet, _ids);
-		if (!impl) {
-			return false;
-		}
-
 		impl->setHyphens(_hyphens);
 		_renderingInProgress = true;
 		if (_renderingCallback) {

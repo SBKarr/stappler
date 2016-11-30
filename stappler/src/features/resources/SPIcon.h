@@ -23,8 +23,9 @@ THE SOFTWARE.
 #ifndef LIBS_STAPPLER_FEATURES_ICONS_SPICON_H_
 #define LIBS_STAPPLER_FEATURES_ICONS_SPICON_H_
 
-#include "SPImage.h"
+#include "SPEventHandler.h"
 #include "base/CCMap.h"
+#include "renderer/CCTexture2D.h"
 
 NS_SP_BEGIN
 

@@ -167,7 +167,7 @@ void Root::onChildInit() {
 }
 
 void Root::onHeartBeat() {
-	if (!_rootServerContext || !this) {
+	if (!_rootServerContext) {
 		return;
 	}
 

@@ -25,7 +25,7 @@ THE SOFTWARE.
 
 #include "SPRichTextNode.h"
 #include "SPRichTextMultipartParser.h"
-#include "SPImage.h"
+#include "SPBitmap.h"
 
 #include "base/CCMap.h"
 

@@ -34,8 +34,8 @@ Scheme::Scheme(const String &ns) : name(ns) { }
 
 Scheme::Scheme(const String &name, std::initializer_list<Field> il) :  Scheme(name) {
 	for (auto &it : il) {
-		auto &name = it.getName();
-		fields.emplace(name, std::move(const_cast<Field &>(it)));
+		auto &fname = it.getName();
+		fields.emplace(fname, std::move(const_cast<Field &>(it)));
 	}
 
 	updateLimits();
@@ -43,7 +43,7 @@ Scheme::Scheme(const String &name, std::initializer_list<Field> il) :  Scheme(na
 
 void Scheme::define(std::initializer_list<Field> il) {
 	for (auto &it : il) {
-		auto &name = it.getName();
+		auto &fname = it.getName();
 		if (it.getType() == Type::Image) {
 			auto image = static_cast<const FieldImage *>(it.getSlot());
 			auto &thumbnails = image->thumbnails;
@@ -52,7 +52,7 @@ void Scheme::define(std::initializer_list<Field> il) {
 				((FieldImage *)(new_f->second.getSlot()))->primary = false;
 			}
 		}
-		fields.emplace(name, std::move(const_cast<Field &>(it)));
+		fields.emplace(fname, std::move(const_cast<Field &>(it)));
 	}
 
 	updateLimits();
@@ -133,8 +133,8 @@ const Field *Scheme::getForeignLink(const Field &f) const {
 	}
 	return nullptr;
 }
-const Field *Scheme::getForeignLink(const String &name) const {
-	auto f = getField(name);
+const Field *Scheme::getForeignLink(const String &fname) const {
+	auto f = getField(fname);
 	if (f) {
 		return getForeignLink(*f);
 	}
@@ -367,10 +367,10 @@ data::Value Scheme::update(Adapter *adapter, const data::Value & obj, const data
 void Scheme::mergeValues(const Field &f, data::Value &original, data::Value &newVal) {
 	if (f.getType() == Type::Extra) {
 		if (newVal.isDictionary()) {
-			auto &fields = static_cast<const FieldExtra *>(f.getSlot())->fields;
+			auto &extraFields = static_cast<const FieldExtra *>(f.getSlot())->fields;
 			for (auto &it : newVal.asDict()) {
-				auto f_it = fields.find(it.first);
-				if (f_it != fields.end()) {
+				auto f_it = extraFields.find(it.first);
+				if (f_it != extraFields.end()) {
 					if (!it.second.isNull()) {
 						if (auto &val = original.getValue(it.first)) {
 							mergeValues(f_it->second, val, it.second);
@@ -578,8 +578,8 @@ data::Value &Scheme::transform(data::Value &d, TransformAction a) {
 	auto &dict = d.asDict();
 	auto it = dict.begin();
 	while (it != dict.end()) {
-		auto &name = it->first;
-		auto f_it = fields.find(name);
+		auto &fname = it->first;
+		auto f_it = fields.find(fname);
 		if (f_it == fields.end()
 				|| (f_it->second.hasFlag(Flags::ReadOnly) && a != TransformAction::ProtectedCreate && a != TransformAction::ProtectedUpdate)
 				|| f_it->second.isFile()) {

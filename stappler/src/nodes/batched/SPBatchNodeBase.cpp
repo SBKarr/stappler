@@ -45,7 +45,7 @@ bool BatchNodeBase::init(float density) {
 		return false;
 	}
 
-	if (density == 0) {
+	if (density == 0.0f) {
 		density = stappler::screen::density();
 	}
 	_density = density;

@@ -298,7 +298,7 @@ Map<String, String> writeImages(const Field &f, InputFile &file) {
 
 	    Image * image = ReadImage(info, ex);
 
-	    if (ex->severity > ErrorException) {
+	    if (ex && ex->severity > ErrorException) {
 	    	messages::error("Storage", "Fail to open image", data::Value(ex->description));
 	    } else {
 		    if (needResize) {

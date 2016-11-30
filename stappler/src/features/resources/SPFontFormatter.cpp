@@ -160,8 +160,8 @@ Arc<FontLayout> Formatter::getLayout(uint16_t pos) const {
 	return primaryFont;
 }
 
-uint16_t Formatter::getAdvance(const CharSpec &c) const {
-	return c.advance;
+uint16_t Formatter::getAdvance(const CharSpec &ch) const {
+	return ch.advance;
 }
 
 uint16_t Formatter::getAdvance(uint16_t pos) const {
@@ -172,27 +172,27 @@ uint16_t Formatter::getAdvance(uint16_t pos) const {
 	}
 }
 
-inline uint16_t Formatter::getAdvancePosition(const CharSpec &c) const {
-	return c.pos + c.advance;
+inline uint16_t Formatter::getAdvancePosition(const CharSpec &ch) const {
+	return ch.pos + ch.advance;
 }
 
 inline uint16_t Formatter::getAdvancePosition(uint16_t pos) const {
 	return (pos < output->chars.size())?getAdvancePosition(output->chars.at(pos)):(uint16_t)0;
 }
 
-inline uint16_t Formatter::getOriginPosition(const CharSpec &c) const {
-	return c.pos;
+inline uint16_t Formatter::getOriginPosition(const CharSpec &ch) const {
+	return ch.pos;
 }
 
 inline uint16_t Formatter::getOriginPosition(uint16_t pos) const {
 	return (pos < output->chars.size())?getOriginPosition(output->chars.at(pos)):(uint16_t)0;
 }
 
-bool Formatter::isSpecial(char16_t c) const {
+bool Formatter::isSpecial(char16_t ch) const {
 	if (!opticalAlignment) {
 		return false;
 	}
-	return chars::CharGroup<char16_t, chars::CharGroupId::OpticalAlignmentSpecial>::match(c);
+	return chars::CharGroup<char16_t, chars::CharGroupId::OpticalAlignmentSpecial>::match(ch);
 }
 
 uint16_t Formatter::checkBullet(uint16_t first, uint16_t len) const {
@@ -202,10 +202,10 @@ uint16_t Formatter::checkBullet(uint16_t first, uint16_t len) const {
 
 	uint16_t offset = 0;
 	for (uint16_t i = first; i < first + len - 1; i++) {
-		auto c = output->chars.at(i).charID;
-		if (chars::CharGroup<char16_t, chars::CharGroupId::OpticalAlignmentBullet>::match(c)) {
+		auto ch = output->chars.at(i).charID;
+		if (chars::CharGroup<char16_t, chars::CharGroupId::OpticalAlignmentBullet>::match(ch)) {
 			offset ++;
-		} else if (string::isspace(c) && offset >= 1) {
+		} else if (string::isspace(ch) && offset >= 1) {
 			return offset + 1;
 		} else {
 			break;
@@ -224,31 +224,30 @@ void Formatter::pushLineFiller(bool replaceLastChar) {
 		return;
 	}
 
-	;
 	if (replaceLastChar && !output->chars.empty()) {
-		auto &b = output->chars.back();
-		b.charID = _fillerChar;
-		b.advance = charDef.xAdvance;
+		auto &bc = output->chars.back();
+		bc.charID = _fillerChar;
+		bc.advance = charDef.xAdvance;
 	} else {
 		output->chars.emplace_back(CharSpec{_fillerChar, lineX, charDef.xAdvance});
 		charNum ++;
 	}
 }
 
-bool Formatter::pushChar(char16_t c) {
+bool Formatter::pushChar(char16_t ch) {
 	if (textStyle.textTransform == TextTransform::Uppercase) {
-		c = string::toupper(c);
+		ch = string::toupper(ch);
 	} else if (textStyle.textTransform == TextTransform::Lowercase) {
-		c = string::tolower(c);
+		ch = string::tolower(ch);
 	}
 
-	CharLayout charDef = primaryData->getChar(c);
+	CharLayout charDef = primaryData->getChar(ch);
 
 	if (charDef.charID == 0) {
-		if (c == (char16_t)0x00AD) {
+		if (ch == (char16_t)0x00AD) {
 			charDef = primaryData->getChar('-');
 		} else {
-			log::format("RichTextFormatter", "%s: Attempted to use undefined character: %d '%s'", primaryFont->getName().c_str(), c, string::toUtf8(c).c_str());
+			log::format("RichTextFormatter", "%s: Attempted to use undefined character: %d '%s'", primaryFont->getName().c_str(), ch, string::toUtf8(ch).c_str());
 			return true;
 		}
 	}
@@ -259,14 +258,14 @@ bool Formatter::pushChar(char16_t c) {
 
 	auto posX = lineX;
 
-	CharSpec spec{c, posX, charDef.xAdvance, CharSpec::Display::Char};
+	CharSpec spec{ch, posX, charDef.xAdvance, CharSpec::Display::Char};
 
-	if (c == (char16_t)0x00AD) {
+	if (ch == (char16_t)0x00AD) {
 		if (textStyle.hyphens == Hyphens::Manual || textStyle.hyphens == Hyphens::Auto) {
 			wordWrapPos = charNum + 1;
 		}
 		spec.display = CharSpec::Display::Hidden;
-	} else if (c == u'-' || c == u'+' || c == u'*' || c == u'/' || c == u'\\') {
+	} else if (ch == u'-' || ch == u'+' || ch == u'*' || ch == u'/' || ch == u'\\') {
 		auto pos = charNum;
 		while(pos > firstInLine && (!string::isspace(output->chars.at(pos - 1).charID))) {
 			pos --;
@@ -281,7 +280,7 @@ bool Formatter::pushChar(char16_t c) {
 		}
 		lineX = newlineX;
 	} else if (charDef) {
-		if (charNum == firstInLine && isSpecial(c)) {
+		if (charNum == firstInLine && isSpecial(ch)) {
 			spec.pos -= charDef.xAdvance / 2;
 			lineX += charDef.xAdvance / 2;
 		} else {
@@ -311,8 +310,8 @@ bool Formatter::pushSpace(bool wrap) {
 
 uint16_t Formatter::getLineAdvancePos(uint16_t lastPos) {
 	auto &origChar = output->chars.at(lastPos);
-	auto c = origChar.charID;
-	if (c == ' ' && lastPos > firstInLine) {
+	auto ch = origChar.charID;
+	if (ch == ' ' && lastPos > firstInLine) {
 		lastPos --;
 	}
 	if (lastPos < firstInLine) {
@@ -321,9 +320,9 @@ uint16_t Formatter::getLineAdvancePos(uint16_t lastPos) {
 
 	auto a = getAdvancePosition(lastPos);
 	auto &lastChar = output->chars.at(lastPos);
-	c = lastChar.charID;
-	if (isSpecial(c)) {
-		if (c == '.' || c == ',') {
+	ch = lastChar.charID;
+	if (isSpecial(ch)) {
+		if (ch == '.' || ch == ',') {
 			a -= lastChar.advance;
 		} else {
 			a -= lastChar.advance / 2;
@@ -357,22 +356,22 @@ bool Formatter::pushLine(uint16_t first, uint16_t len, bool forceAlign) {
 			int16_t joffset = (advance > width + lineOffset)?(width + lineOffset - advance):offsetLeft;
 			uint16_t spacesCount = 0;
 			if (first == 0) {
-				auto b = checkBullet(first, len);
-				first += b;
-				len -= b;
+				auto bc = checkBullet(first, len);
+				first += bc;
+				len -= bc;
 			}
 
 			for (uint16_t i = first; i < first + len - 1; i++) {
-				auto c = output->chars.at(i).charID;
-				if (string::isspace(c) && c != '\n') {
+				auto ch = output->chars.at(i).charID;
+				if (string::isspace(ch) && ch != '\n') {
 					spacesCount ++;
 				}
 			}
 
 			int16_t offset = 0;
 			for (uint16_t i = first; i < first + len; i++) {
-				auto c = output->chars.at(i).charID;
-				if (string::isspace(c) && c != '\n' && spacesCount > 0) {
+				auto ch = output->chars.at(i).charID;
+				if (string::isspace(ch) && ch != '\n' && spacesCount > 0) {
 					offset += joffset / spacesCount;
 					joffset -= joffset / spacesCount;
 					spacesCount --;
@@ -451,19 +450,19 @@ bool Formatter::pushLineBreak() {
 			firstInLine = wordEnd;
 			wordWrapPos = wordEnd;
 
-			auto &c = output->chars.at(wordEnd);
+			auto &ch = output->chars.at(wordEnd);
 
-			c.pos = lineX;
-			lineX += c.advance;
+			ch.pos = lineX;
+			lineX += ch.advance;
 
 			updateLineHeight(wordEnd, charNum);
 		}
 	} else {
 		// we can wrap the word
-		auto &c = output->chars.at((wordWrapPos - 1));
-		if (!string::isspace(c.charID)) {
-			if (c.display == CharSpec::Hidden) {
-				c.display = CharSpec::Char;
+		auto &ch = output->chars.at((wordWrapPos - 1));
+		if (!string::isspace(ch.charID)) {
+			if (ch.display == CharSpec::Hidden) {
+				ch.display = CharSpec::Char;
 			}
 			if (!pushLine(firstInLine, (wordWrapPos) - firstInLine, true)) {
 				return false;
@@ -477,9 +476,9 @@ bool Formatter::pushLineBreak() {
 
 		uint16_t originOffset = getOriginPosition(wordStart);
 
-		auto &b = output->chars.at((wordStart));
-		if (isSpecial(b.charID)) {
-			originOffset += b.advance / 2;
+		auto &bc = output->chars.at((wordStart));
+		if (isSpecial(bc.charID)) {
+			originOffset += bc.advance / 2;
 		}
 
 		if (originOffset > lineOffset) {

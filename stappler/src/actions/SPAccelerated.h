@@ -86,7 +86,7 @@ public:
 	virtual void setCallback(std::function<void(cocos2d::Node *)> callback);
 
 protected:
-	float _duration;
+	float _accDuration;
 
 	float _acceleration;
 

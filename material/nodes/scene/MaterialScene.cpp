@@ -33,6 +33,7 @@ THE SOFTWARE.
 #include "base/CCDirector.h"
 #include "base/CCMap.h"
 #include "renderer/CCRenderer.h"
+#include "renderer/ccGLStateCache.h"
 #include "2d/CCRenderTexture.h"
 
 #include "2d/CCLayer.h"
@@ -42,6 +43,7 @@ THE SOFTWARE.
 #include "SPDevice.h"
 #include "SPDrawPath.h"
 #include "SPDrawPathNode.h"
+#include "SPBitmap.h"
 
 #include "MaterialBackgroundLayer.h"
 #include "MaterialForegroundLayer.h"
@@ -52,7 +54,6 @@ THE SOFTWARE.
 #include "MaterialLabel.h"
 
 #include "SPFilesystem.h"
-#include "SPImage.h"
 #include "SPString.h"
 
 using namespace stappler::gesture;
@@ -505,9 +506,40 @@ void Scene::takeScreenshoot() {
     stappler::filesystem::mkdir(path);
     path += toString("/", stappler::Time::now().toMilliseconds(), ".png");
 
-    stappler::Image::savePng(path, rt->getSprite()->getTexture());
+    saveScreenshot(path, rt->getSprite()->getTexture());
 
     _foreground->setSnackbarString("Screenshot saved to " + path);
+}
+
+void Scene::saveScreenshot(const String &filename, cocos2d::Texture2D *tex) {
+#if (ANDROID || __APPLE__)
+#else
+	auto name = tex->getName();
+	auto format = tex->getPixelFormat();
+	const cocos2d::Texture2D::PixelFormatInfo& info = cocos2d::Texture2D::_pixelFormatInfoTables.at(format);
+	if (info.type != GL_UNSIGNED_BYTE) {
+		return;
+	}
+
+	uint8_t bytesPerPixel = info.bpp / 8;
+	size_t size = tex->getPixelsHigh() * tex->getPixelsWide() * bytesPerPixel;
+	uint8_t *data = new uint8_t[size];
+
+	cocos2d::GL::bindTexture2D(name);
+	glGetTexImage(GL_TEXTURE_2D, 0, info.format, info.type, data);
+
+	if (bytesPerPixel == 1) {
+		Bitmap::savePng(filename, data, tex->getPixelsWide(), tex->getPixelsHigh(), Bitmap::Format::A8, true);
+	} else if (bytesPerPixel == 2) {
+		Bitmap::savePng(filename, data, tex->getPixelsWide(), tex->getPixelsHigh(), Bitmap::Format::IA88, true);
+	} else if (bytesPerPixel == 3) {
+		Bitmap::savePng(filename, data, tex->getPixelsWide(), tex->getPixelsHigh(), Bitmap::Format::RGB888, true);
+	} else if (bytesPerPixel == 4) {
+		Bitmap::savePng(filename, data, tex->getPixelsWide(), tex->getPixelsHigh(), Bitmap::Format::RGBA8888, true);
+	}
+
+	delete [] data;
+#endif
 }
 
 void Scene::onLightLevel() {

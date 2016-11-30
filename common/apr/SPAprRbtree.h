@@ -972,7 +972,7 @@ protected:
 			return 0;
 		} else {
 			size_t ret = 1;
-			const_node_ptr next = nullptr, current = nullptr;
+			const_node_ptr next, current;
 
 			current = c;
     		next = static_cast<const_node_ptr> (NodeBase::decrement(current));

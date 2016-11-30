@@ -409,8 +409,7 @@ bool Reader::readHtml(HtmlPage &page, const CharReaderBase &str, CssStrings &str
 
 	ret.pushStyle(style::getStyleForTag("body", style::Tag::Markup));
 	_nodeStack.push_back(&ret);
-	_origin = StringReader(str.data(), str.size());
-	_current = StringReader(str.data(), str.size());
+	_current = _origin = StringReader(str.data(), str.size());
 
 	while (true) {
 		auto prefix = _current.readUntil<Chars<'<'>>();
@@ -496,8 +495,7 @@ style::CssData Reader::readCss(const String &path, const CharReaderBase &str, Cs
 	_cssStrings = &strings;
 	_mediaQueries = &queries;
 
-	_origin = StringReader(str.data(), str.size());
-	_current = StringReader(str.data(), str.size());
+	_current = _origin = StringReader(str.data(), str.size());
 	parser::readStyleTag(*this, _current, _fonts);
 	Reader_resolveFontPaths(_path, _fonts);
 	return style::CssData{std::move(_namedStyles), std::move(_fonts)};

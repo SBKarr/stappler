@@ -223,23 +223,25 @@ void Resource::resolveResult(Scheme *s, data::Value &obj, size_t depth) {
 			} else if (type == storage::Type::Set && fobj.isInteger()
 					&& (_resolveOptions & ResolveOptions::Sets) != ResolveOptions::None) {
 				auto next = static_cast<const storage::FieldObject *>(f.getSlot());
-				auto perms = isSchemeAllowed(next->scheme, AccessControl::Read);
-				if (next && perms != AccessControl::Restrict) {
-					resolveSet(s, id, f, next->scheme, obj);
-					if (fobj.isArray()) {
-						data::Value arr;
-						for (auto &sit : fobj.asArray()) {
-							if (sit.isDictionary()) {
-								if (perms == AccessControl::Full || isObjectAllowed(next->scheme, AccessControl::Read, sit)) {
-									auto id = sit.getInteger("__oid");
-									if (_resolveObjects.insert(id).second == false) {
-										sit.setInteger(id);
+				if (next) {
+					auto perms = isSchemeAllowed(next->scheme, AccessControl::Read);
+					if (perms != AccessControl::Restrict) {
+						resolveSet(s, id, f, next->scheme, obj);
+						if (fobj.isArray()) {
+							data::Value arr;
+							for (auto &sit : fobj.asArray()) {
+								if (sit.isDictionary()) {
+									if (perms == AccessControl::Full || isObjectAllowed(next->scheme, AccessControl::Read, sit)) {
+										auto id = sit.getInteger("__oid");
+										if (_resolveObjects.insert(id).second == false) {
+											sit.setInteger(id);
+										}
+										arr.addValue(std::move(sit));
 									}
-									arr.addValue(std::move(sit));
 								}
 							}
+							fobj = std::move(arr);
 						}
-						fobj = std::move(arr);
 					}
 				}
 			} else if (type == storage::Type::Array && fobj.isInteger()

@@ -290,8 +290,8 @@ void Handler::receiveBroadcast(const data::Value &data) {
 }
 
 bool Handler::processBroadcasts() {
-	apr_pool_t *pool = nullptr;
-	Vector<data::Value> * vec = nullptr;
+	apr_pool_t *pool;
+	Vector<data::Value> * vec;
 
 	_broadcastMutex.lock();
 
@@ -339,7 +339,7 @@ bool Handler::processSocket(const apr_pollfd_t *fd) {
 
 static apr_status_t Handler_readSocket_request(Request &req, apr_bucket_brigade *bb, apr_pool_t *pool, char *buf, size_t *len) {
 	auto r = req.request();
-    apr_status_t rv;
+    apr_status_t rv = APR_SUCCESS;
     apr_size_t readbufsiz = *len;
 
     ap_filter_t *f = r->input_filters;
@@ -402,17 +402,17 @@ bool Handler::readSocket(const apr_pollfd_t *fd) {
 }
 
 bool Handler::writeSocket(const apr_pollfd_t *fd) {
-	if (!_writer.empty()) {
-		apr_status_t err = APR_SUCCESS;
-		while (err == APR_SUCCESS && !_writer.empty()) {
-			size_t len = _writer.getReadyLength();
-			uint8_t *buf = _writer.getReadyBytes();
-			auto bb = _writer.getReadyBrigade(_request);
+	while (!_writer.empty()) {
+		size_t len = _writer.getReadyLength();
+		uint8_t *buf = _writer.getReadyBytes();
+		auto bb = _writer.getReadyBrigade(_request);
 
-			writeToSocket(bb, buf, len);
-
+		if (!writeToSocket(bb, buf, len)) {
 			_writer.drop(buf, len);
+			break;
 		}
+
+		_writer.drop(buf, len);
 	}
 
 	if (_writer.empty()) {
@@ -530,7 +530,8 @@ bool Handler::onControlFrame(FrameType type, const StackBuffer<128> &b) {
 
 Handler::FrameReader::FrameReader(const Request &req, apr_pool_t *p, size_t maxFrameSize)
 : fin(false), masked(false), status(Status::Head), error(Error::None), type(FrameType::None), extra(0)
-, mask(0) , size(0), max(maxFrameSize), pool(nullptr), bucket_alloc(nullptr), tmpbb(nullptr) {
+, mask(0) , size(0), max(maxFrameSize), frame(Frame{false, FrameType::None, Bytes(), 0, 0})
+, pool(nullptr), bucket_alloc(nullptr), tmpbb(nullptr) {
 	apr_pool_create(&pool, p);
 	if (!pool) {
 		error = Error::NotInitialized;

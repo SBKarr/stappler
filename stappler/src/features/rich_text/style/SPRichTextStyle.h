@@ -598,7 +598,7 @@ namespace style {
 		Size outlineWidth;
 		Color4B outlineColor;
 
-		inline bool operator == (const OutlineParameters &other) const { return memcmp(this, &other, sizeof(InlineModelParameters)) == 0; }
+		inline bool operator == (const OutlineParameters &other) const { return memcmp(this, &other, sizeof(OutlineParameters)) == 0; }
 		inline bool operator != (const OutlineParameters &other) const { return !(*this == other); }
 	};
 

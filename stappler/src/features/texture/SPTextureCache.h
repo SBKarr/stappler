@@ -25,7 +25,10 @@ THE SOFTWARE.
 
 #include "SPGLProgramSet.h"
 #include "SPEventHandler.h"
+#include "SPBitmap.h"
+
 #include "base/CCMap.h"
+#include "renderer/CCTexture2D.h"
 
 NS_SP_BEGIN
 
@@ -41,6 +44,7 @@ public:
 	static Thread &thread();
 
 	static Rc<cocos2d::Texture2D> uploadTexture(const Bitmap &);
+	static cocos2d::Texture2D::PixelFormat getPixelFormat(Bitmap::Format fmt);
 
 	~TextureCache();
 

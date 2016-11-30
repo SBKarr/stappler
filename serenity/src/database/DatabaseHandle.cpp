@@ -902,7 +902,7 @@ uint64_t Handle::selectId(const String &query) {
 		while (apr_dbd_get_row(handle->driver, currentPool, res, &row, -1) == 0) {
 			auto ptr = apr_dbd_get_entry(handle->driver, row, 0);
 			ret = StringToNumber<uint64_t>(ptr, nullptr);
-			break;
+			break; // we only need first row
 		}
 		return ret;
 	} else {

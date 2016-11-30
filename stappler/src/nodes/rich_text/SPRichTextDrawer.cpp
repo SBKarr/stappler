@@ -25,7 +25,6 @@ THE SOFTWARE.
 
 #include "SPDefine.h"
 #include "SPRichTextDrawer.h"
-#include "SPTexture.h"
 #include "SPDynamicLabel.h"
 
 #include "renderer/ccGLStateCache.h"
@@ -267,7 +266,7 @@ void Request::drawOutline(const Rect &bbox, const Outline &outline) {
 
 void Request::drawBitmap(const Rect &origBbox, cocos2d::Texture2D *bmp, const Background &bg) {
 	Rect bbox = origBbox;
-	float coverRatio = 1.0f, containRatio = 1.0f;
+	float coverRatio, containRatio;
 	Size coverSize, containSize;
 
 	auto w = bmp->getPixelsWide();

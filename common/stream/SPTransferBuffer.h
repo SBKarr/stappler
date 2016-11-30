@@ -63,6 +63,9 @@ public:
 		return *this;
 	}
 
+	TransferBuffer(const TransferBuffer &) = delete;
+	TransferBuffer & operator=(const TransferBuffer &) = delete;
+
 	void swap(TransferBuffer &other) {
 		streambuf_type::swap(other);
 		std::swap(transfer, other.transfer);

@@ -404,7 +404,6 @@ void CborDecoder::decodeArray(uint8_t type, data::Value &ret) {
 	}
 
 	MajorTypeEncoded majorType = MajorTypeEncoded::Simple;
-	type = toInt(Flags::UndefinedLength);
 	if (size > 0) {
 		type = r.readUnsigned();
 		majorType = (MajorTypeEncoded)(type & toInt(Flags::MajorTypeMaskEncoded));
@@ -480,7 +479,6 @@ void CborDecoder::decodeMap(uint8_t type, data::Value &ret) {
 	}
 
 	MajorTypeEncoded majorType = MajorTypeEncoded::Simple;
-	type = toInt(Flags::UndefinedLength);
 	if (size > 0) {
 		type = r.readUnsigned();
 		majorType = (MajorTypeEncoded)(type & toInt(Flags::MajorTypeMaskEncoded));

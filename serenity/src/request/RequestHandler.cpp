@@ -148,7 +148,7 @@ int DataHandler::onTranslateName(Request &rctx) {
 	}
 
 	if ((rctx.getMethod() == Request::Get && (_allow & AllowMethod::Get) != AllowMethod::None)
-			|| (rctx.getMethod() == Request::Delete && (_allow & AllowMethod::Get) != AllowMethod::Delete)) {
+			|| (rctx.getMethod() == Request::Delete && (_allow & AllowMethod::Delete) != AllowMethod::None)) {
 		bool result = false;
 		data::Value data;
 

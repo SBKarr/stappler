@@ -86,7 +86,7 @@ Time Time::now() {
 #else
 	gettimeofday(&t0, NULL);
 #endif
-	return Time((t0.tv_sec * 1000000LL + t0.tv_usec));
+	return Time(t0.tv_sec * 1000000LL + t0.tv_usec);
 #endif
 }
 

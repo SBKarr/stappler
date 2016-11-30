@@ -161,6 +161,7 @@ public:
 		memmove(((T *)_header->elts + pos + 1), ((T *)_header->elts + pos), (_header->nelts - 1 - pos) * sizeof(T));
 
 		new ((T *)_header->elts + pos) T(std::forward<Args>(args)...);
+		return iterator((T*)_header->elts + pos);
 	}
 
 	iterator insert( const_iterator pos, const T& value ) {

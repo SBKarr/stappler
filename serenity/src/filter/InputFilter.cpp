@@ -59,8 +59,8 @@ void InputFile::close() {
 	file.close_remove();
 }
 
-bool InputFile::save(const apr::string &path) const {
-	return const_cast<apr::file &>(file).close_rename(filesystem::cachesPath(path).c_str());
+bool InputFile::save(const String &ipath) const {
+	return const_cast<apr::file &>(file).close_rename(filesystem::cachesPath(ipath).c_str());
 }
 
 InputParser::InputParser(const InputConfig &cfg, size_t len)
@@ -215,8 +215,7 @@ InputFilter::InputFilter(const Request &r, Accept a) : _body() {
 }
 
 int InputFilter::init(ap_filter_t *f) {
-	_time = Time::now();
-	_startTime = Time::now();
+	_startTime =_time = Time::now();
 	_isStarted = true;
 
 	if (_accept == Accept::Multipart) {

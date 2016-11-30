@@ -210,7 +210,7 @@ public:
 	const uint8_t *data() const { return _buf.data(); }
 
 	size_t put(const uint8_t *ptr, size_t s) {
-		if (s > Size - _size) {
+		if (s + _size > Size) {
 			s = Size - _size;
 		}
 

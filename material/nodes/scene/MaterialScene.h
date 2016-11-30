@@ -115,6 +115,8 @@ protected:
 	void onBackKeyPressed();
 	void takeScreenshoot();
 
+	void saveScreenshot(const String &, cocos2d::Texture2D *);
+
 	ForegroundLayer *_foreground = nullptr;
 	NavigationLayer *_navigation = nullptr;
 	ContentLayer *_content = nullptr;

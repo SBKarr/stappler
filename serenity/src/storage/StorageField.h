@@ -373,27 +373,27 @@ struct FieldArray : Field::Slot {
 };
 
 template <typename ... Args> Field Field::Data(String && name, Args && ... args) {
-	auto slot = new Field::Slot(std::move(name), Type::Data);
-	Slot::init<Field::Slot>(*slot, std::forward<Args>(args)...);
-	return Field(slot);
+	auto newSlot = new Field::Slot(std::move(name), Type::Data);
+	Slot::init<Field::Slot>(*newSlot, std::forward<Args>(args)...);
+	return Field(newSlot);
 }
 
 template <typename ... Args> Field Field::Integer(String && name, Args && ... args) {
-	auto slot = new Field::Slot(std::move(name), Type::Integer);
-	Slot::init<Field::Slot>(*slot, std::forward<Args>(args)...);
-	return Field(slot);
+	auto newSlot = new Field::Slot(std::move(name), Type::Integer);
+	Slot::init<Field::Slot>(*newSlot, std::forward<Args>(args)...);
+	return Field(newSlot);
 }
 
 template <typename ... Args> Field Field::Float(String && name, Args && ... args) {
-	auto slot = new Field::Slot(std::move(name), Type::Float);
-	Slot::init<Field::Slot>(*slot, std::forward<Args>(args)...);
-	return Field(slot);
+	auto newSlot = new Field::Slot(std::move(name), Type::Float);
+	Slot::init<Field::Slot>(*newSlot, std::forward<Args>(args)...);
+	return Field(newSlot);
 }
 
 template <typename ... Args> Field Field::Boolean(String && name, Args && ... args) {
-	auto slot = new Field::Slot(std::move(name), Type::Boolean);
-	Slot::init<Field::Slot>(*slot, std::forward<Args>(args)...);
-	return Field(slot);
+	auto newSlot = new Field::Slot(std::move(name), Type::Boolean);
+	Slot::init<Field::Slot>(*newSlot, std::forward<Args>(args)...);
+	return Field(newSlot);
 }
 
 template <typename ... Args> Field Field::Text(String && name, Args && ... args) {

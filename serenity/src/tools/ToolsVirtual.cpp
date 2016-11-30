@@ -45,7 +45,7 @@ struct VirtualFilesystemHandle {
 	}
 
 	size_t count;
-	Rec table[255];
+	Rec table[255] = { };
 };
 
 static VirtualFilesystemHandle s_handle;

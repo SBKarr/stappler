@@ -216,8 +216,10 @@ void MenuButton::updateFromSource() {
 
 void MenuButton::setEnabled(bool value) {
 	bool enabled = (_source && (_source->getCallback() != nullptr || _source->getNextMenu() != nullptr));
-	if (!value || (enabled && value)) {
+	if (enabled && value) {
 		Button::setEnabled(value);
+	} else {
+		Button::setEnabled(false);
 	}
 }
 

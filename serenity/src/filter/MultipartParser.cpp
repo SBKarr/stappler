@@ -45,32 +45,32 @@ MultipartParser::MultipartParser(const InputConfig &c, size_t s, const char *b)
 }
 
 data::Value * MultipartParser::flushVarName(Reader &r) {
-	VarState state = VarState::Key;
+	VarState cstate = VarState::Key;
 	data::Value *current = nullptr;
 	while (!r.empty()) {
 		Reader str = r.readUntil<chars::Chars<char, '[', ']'>>();
-		current = flushString(str, current, state);
+		current = flushString(str, current, cstate);
 		if (!current) {
 			break;
 		}
 		if (!r.empty()) {
-			switch (state) {
+			switch (cstate) {
 			case VarState::Key:
 				switch (r[0]) {
-				case '[': 			state = VarState::SubKey; break;
-				default: 			state = VarState::End; break;
+				case '[': 			cstate = VarState::SubKey; break;
+				default: 			cstate = VarState::End; break;
 				}
 				break;
 			case VarState::SubKey:
 				switch (r[0]) {
-				case ']': 			state = VarState::SubKeyEnd; break;
-				default: 			state = VarState::End; break;
+				case ']': 			cstate = VarState::SubKeyEnd; break;
+				default: 			cstate = VarState::End; break;
 				}
 				break;
 			case VarState::SubKeyEnd:
 				switch (r[0]) {
-				case '[': 			state = VarState::SubKey; break;
-				default: 			state = VarState::End; break;
+				case '[': 			cstate = VarState::SubKey; break;
+				default: 			cstate = VarState::End; break;
 				}
 				break;
 			default:

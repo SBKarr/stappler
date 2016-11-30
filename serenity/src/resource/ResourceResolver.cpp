@@ -310,7 +310,7 @@ static Resource *parseResource(storage::Resolver *resv, Vector<String> &path) {
 		path.pop_back();
 
 		if (!isSingleObject) {
-			if (filter.compare(0, 2, "id") == 0 && !isSingleObject) {
+			if (filter.compare(0, 2, "id") == 0) {
 				if (uint64_t id = (uint64_t) apr_atoi64(filter.data() + 2)) {
 					if (!resv->selectById(id)) {
 						return nullptr;
@@ -319,7 +319,7 @@ static Resource *parseResource(storage::Resolver *resv, Vector<String> &path) {
 				} else {
 					return nullptr;
 				}
-			} else if (filter.compare(0, 6, "named-") == 0 && !isSingleObject) {
+			} else if (filter.compare(0, 6, "named-") == 0) {
 				String name = filter.substr(6);
 				if (valid::validateIdentifier(name)) {
 					if (!resv->selectByAlias(name)) {

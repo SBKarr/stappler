@@ -26,7 +26,6 @@ THE SOFTWARE.
 #include "SPRichTextRendererTypes.h"
 #include "SPRichTextLayout.h"
 #include "base/CCVector.h"
-#include "SPTextureRef.h"
 
 NS_SP_EXT_BEGIN(rich_text)
 

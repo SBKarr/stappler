@@ -143,9 +143,9 @@ void PathNode::updateCanvas() {
 }
 
 Rc<cocos2d::Texture2D> PathNode::generateTexture(cocos2d::Texture2D *tex, uint32_t w, uint32_t h, Format fmt) {
-	if (tex && tex->getPixelsHigh() == int(h) && tex->getPixelsWide() == int(w)
-			&& (fmt == Format::A8 && tex->getPixelFormat() == cocos2d::Texture2D::PixelFormat::A8)
-			&& (fmt == Format::RGBA8888 && tex->getPixelFormat() == cocos2d::Texture2D::PixelFormat::RGBA8888)) {
+	if (tex && tex->getPixelsHigh() == int(h) && tex->getPixelsWide() == int(w) &&
+			((fmt == Format::A8 && tex->getPixelFormat() == cocos2d::Texture2D::PixelFormat::A8)
+					|| (fmt == Format::RGBA8888 && tex->getPixelFormat() == cocos2d::Texture2D::PixelFormat::RGBA8888))) {
 		return tex;
 	}
 	auto outtex = Rc<cocos2d::Texture2D>::create(
@@ -162,7 +162,7 @@ uint32_t PathNode::getBaseWidth() {
 	return _baseWidth;
 }
 uint32_t PathNode::getBaseHeight() {
-	return _baseWidth;
+	return _baseHeight;
 }
 
 NS_SP_EXT_END(draw)

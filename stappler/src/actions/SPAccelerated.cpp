@@ -212,7 +212,7 @@ cocos2d::ActionInterval *Accelerated::createWithBounds(float acceleration, const
 		float dist = fabsf(v) * t - fabsf(acceleration) * t * t * 0.5;
 
 		if (velocity.y > 0) {
-			if (pos == end) {
+			if (fabs(pos - end) < std::numeric_limits<float>::epsilon()) {
 				return nullptr;
 			} else if (pos + dist < end) {
 				return createDecceleration(cocos2d::Vec2(0, 1), from, velocity.y, -acceleration);
@@ -220,7 +220,7 @@ cocos2d::ActionInterval *Accelerated::createWithBounds(float acceleration, const
 				return createAccelerationTo(from, cocos2d::Vec2(from.x, end), v, -acceleration);
 			}
 		} else {
-			if (pos == start) {
+			if (fabs(pos - start) < std::numeric_limits<float>::epsilon()) {
 				return nullptr;
 			} else if (pos - dist > start) {
 				return createDecceleration(cocos2d::Vec2(0, -1), from, velocity.y, -acceleration);
@@ -241,7 +241,7 @@ cocos2d::ActionInterval *Accelerated::createWithBounds(float acceleration, const
 		float dist = v * t - fabsf(acceleration) * t * t * 0.5;
 
 		if (velocity.x > 0) {
-			if (pos == end) {
+			if (fabs(pos - end) < std::numeric_limits<float>::epsilon()) {
 				return nullptr;
 			} else if (pos + dist < end) {
 				return createDecceleration(cocos2d::Vec2(1, 0), from, v, -acceleration);
@@ -249,7 +249,7 @@ cocos2d::ActionInterval *Accelerated::createWithBounds(float acceleration, const
 				return createAccelerationTo(from, cocos2d::Vec2(end, from.y), v, -acceleration);
 			}
 		} else {
-			if (pos == start) {
+			if (fabs(pos - start) < std::numeric_limits<float>::epsilon()) {
 				return nullptr;
 			} else if (pos - dist > start) {
 				return createDecceleration(cocos2d::Vec2(-1, 0), from, v, -acceleration);
@@ -344,7 +344,7 @@ cocos2d::ActionInterval *Accelerated::createWithBounds(float acceleration, const
 }
 
 cocos2d::Vec2 Accelerated::computeEndPoint() {
-	return _startPoint + (_normalPoint * ((_startVelocity * _duration) + (_acceleration * _duration * _duration * 0.5)));
+	return _startPoint + (_normalPoint * ((_startVelocity * _accDuration) + (_acceleration * _accDuration * _accDuration * 0.5)));
 }
 
 cocos2d::Vec2 Accelerated::computeNormalPoint() {
@@ -352,7 +352,7 @@ cocos2d::Vec2 Accelerated::computeNormalPoint() {
 }
 
 float Accelerated::computeEndVelocity() {
-	return _startVelocity + _acceleration * _duration;
+	return _startVelocity + _acceleration * _accDuration;
 }
 
 Accelerated *Accelerated::createDecceleration(const Vec2 &normal, const Vec2 &startPoint, float startVelocity, float acceleration) {
@@ -370,9 +370,9 @@ bool Accelerated::initDecceleration(const Vec2 &normal, const Vec2 &startPoint, 
 		return false;
 	}
 
-	_duration = startVelocity / acceleration;
+	_accDuration = startVelocity / acceleration;
 
-	if (!ActionInterval::initWithDuration(_duration)) {
+	if (!ActionInterval::initWithDuration(_accDuration)) {
 		return false;
 	}
 
@@ -387,10 +387,10 @@ bool Accelerated::initDecceleration(const Vec2 &normal, const Vec2 &startPoint, 
 
 	SP_ACCELERATED_LOG("%s %d Acceleration:%f velocity:%f->%f duration:%f position:(%f %f)->(%f %f)",
 			__FUNCTION__, __LINE__,
-			_acceleration, _startVelocity, _endVelocity, _duration,
+			_acceleration, _startVelocity, _endVelocity, _accDuration,
 			_startPoint.x, _startPoint.y, _endPoint.x, _endPoint.y);
 
-	if (isnan(_endPoint.x) || isnan(_endPoint.y) || isnan(_duration)) {
+	if (isnan(_endPoint.x) || isnan(_endPoint.y) || isnan(_accDuration)) {
 		SP_ACCELERATED_LOG("Failed!");
 		return false;
 	}
@@ -409,18 +409,18 @@ bool Accelerated::initDecceleration(const Vec2 & startPoint, const Vec2 & endPoi
 	float distance = startPoint.distance(endPoint);
 	acceleration = fabsf(acceleration);
 
-	if (distance == 0.0f) {
-		_duration = 0.0f;
+	if (fabs(distance) < std::numeric_limits<float>::epsilon()) {
+		_accDuration = 0.0f;
 	} else {
-		_duration =  sqrtf((distance * 2.0f) / acceleration);
+		_accDuration =  sqrtf((distance * 2.0f) / acceleration);
 	}
 
-	if (!ActionInterval::initWithDuration(_duration)) {
+	if (!ActionInterval::initWithDuration(_accDuration)) {
 		return false;
 	}
 
 	_acceleration = -acceleration;
-	_startVelocity = _duration * acceleration;
+	_startVelocity = _accDuration * acceleration;
 	_endVelocity = 0;
 
 	_startPoint = startPoint;
@@ -429,10 +429,10 @@ bool Accelerated::initDecceleration(const Vec2 & startPoint, const Vec2 & endPoi
 
 	SP_ACCELERATED_LOG("%s %d Acceleration:%f velocity:%f->%f duration:%f position:(%f %f)->(%f %f)",
 			__FUNCTION__, __LINE__,
-			_acceleration, _startVelocity, _endVelocity, _duration,
+			_acceleration, _startVelocity, _endVelocity, _accDuration,
 			_startPoint.x, _startPoint.y, _endPoint.x, _endPoint.y);
 
-	if (isnan(_endPoint.x) || isnan(_endPoint.y) || isnan(_duration)) {
+	if (isnan(_endPoint.x) || isnan(_endPoint.y) || isnan(_accDuration)) {
 		SP_ACCELERATED_LOG("Failed!");
 		return false;
 	}
@@ -450,14 +450,14 @@ Accelerated *Accelerated::createAccelerationTo( const Vec2 & normal, const Vec2 
 
 bool Accelerated::initAccelerationTo(const Vec2 & normal, const Vec2 & startPoint, float startVelocity, float endVelocity, float acceleration) {
 
-	_duration = (endVelocity - startVelocity) / acceleration;
+	_accDuration = (endVelocity - startVelocity) / acceleration;
 
-	if (_duration < 0) {
+	if (_accDuration < 0) {
 		SP_ACCELERATED_LOG("AccelerationTo failed: velocity:(%f:%f) acceleration:%f", startVelocity, endVelocity, acceleration);
 		return false;
 	}
 
-	if (!ActionInterval::initWithDuration(_duration)) {
+	if (!ActionInterval::initWithDuration(_accDuration)) {
 		return false;
 	}
 
@@ -472,10 +472,10 @@ bool Accelerated::initAccelerationTo(const Vec2 & normal, const Vec2 & startPoin
 
 	SP_ACCELERATED_LOG("%s %d Acceleration:%f velocity:%f->%f duration:%f position:(%f %f)->(%f %f)",
 			__FUNCTION__, __LINE__,
-			_acceleration, _startVelocity, _endVelocity, _duration,
+			_acceleration, _startVelocity, _endVelocity, _accDuration,
 			_startPoint.x, _startPoint.y, _endPoint.x, _endPoint.y);
 
-	if (isnan(_endPoint.x) || isnan(_endPoint.y) || isnan(_duration)) {
+	if (isnan(_endPoint.x) || isnan(_endPoint.y) || isnan(_accDuration)) {
 		SP_ACCELERATED_LOG("Failed!");
 		return false;
 	}
@@ -496,7 +496,7 @@ bool Accelerated::initAccelerationTo(const Vec2 & startPoint, const Vec2 & endPo
 	float distance = - endPoint.getDistance(startPoint);
 	float d = startVelocity * startVelocity - 2 * acceleration * distance;
 
-	if (distance == 0.0f) {
+	if (fabs(distance) < std::numeric_limits<float>::epsilon()) {
 		SP_ACCELERATED_LOG("zero distance");
 	}
 
@@ -510,22 +510,22 @@ bool Accelerated::initAccelerationTo(const Vec2 & startPoint, const Vec2 & endPo
 
 
 	if (distance != 0.0f) {
-		_duration = t1 < 0 ? t2 : (t2 < 0 ? t1 : MIN(t1, t2));
-		if (isnan(_duration)) {
-			_duration = 0.0f;
+		_accDuration = t1 < 0 ? t2 : (t2 < 0 ? t1 : MIN(t1, t2));
+		if (isnan(_accDuration)) {
+			_accDuration = 0.0f;
 		}
 	} else {
-		_duration = 0.0f;
+		_accDuration = 0.0f;
 	}
 
-	if (_duration < 0) {
+	if (_accDuration < 0) {
 		if (d < 0) {
-			SP_ACCELERATED_LOG("AccelerationTo failed: acceleration:%f velocity:%f duration:%f", acceleration, startVelocity, _duration);
+			SP_ACCELERATED_LOG("AccelerationTo failed: acceleration:%f velocity:%f duration:%f", acceleration, startVelocity, _accDuration);
 			return false;
 		}
 	}
 
-	if (!ActionInterval::initWithDuration(_duration)) {
+	if (!ActionInterval::initWithDuration(_accDuration)) {
 		return false;
 	}
 
@@ -539,10 +539,10 @@ bool Accelerated::initAccelerationTo(const Vec2 & startPoint, const Vec2 & endPo
 
 	SP_ACCELERATED_LOG("%s %d Acceleration:%f velocity:%f->%f duration:%f position:(%f %f)->(%f %f)",
 			__FUNCTION__, __LINE__,
-			_acceleration, _startVelocity, _endVelocity, _duration,
+			_acceleration, _startVelocity, _endVelocity, _accDuration,
 			_startPoint.x, _startPoint.y, _endPoint.x, _endPoint.y);
 
-	if (isnan(_endPoint.x) || isnan(_endPoint.y) || isnan(_duration)) {
+	if (isnan(_endPoint.x) || isnan(_endPoint.y) || isnan(_accDuration)) {
 		SP_ACCELERATED_LOG("Failed!");
 		return false;
 	}
@@ -560,9 +560,9 @@ Accelerated *Accelerated::createWithDuration(float duration, const Vec2 &normal,
 
 bool Accelerated::initWithDuration(float duration, const Vec2 &normal, const Vec2 &startPoint, float startVelocity, float acceleration) {
 
-	_duration = duration;
+	_accDuration = duration;
 
-	if (!ActionInterval::initWithDuration(_duration)) {
+	if (!ActionInterval::initWithDuration(_accDuration)) {
 		return false;
 	}
 
@@ -577,10 +577,10 @@ bool Accelerated::initWithDuration(float duration, const Vec2 &normal, const Vec
 
 	SP_ACCELERATED_LOG("%s %d Acceleration:%f velocity:%f->%f duration:%f position:(%f %f)->(%f %f)",
 			__FUNCTION__, __LINE__,
-			_acceleration, _startVelocity, _endVelocity, _duration,
+			_acceleration, _startVelocity, _endVelocity, _accDuration,
 			_startPoint.x, _startPoint.y, _endPoint.x, _endPoint.y);
 
-	if (isnan(_endPoint.x) || isnan(_endPoint.y) || isnan(_duration)) {
+	if (isnan(_endPoint.x) || isnan(_endPoint.y) || isnan(_accDuration)) {
 		SP_ACCELERATED_LOG("Failed!");
 		return false;
 	}
@@ -589,11 +589,11 @@ bool Accelerated::initWithDuration(float duration, const Vec2 &normal, const Vec
 }
 
 float Accelerated::getDuration() const {
-	return _duration;
+	return _accDuration;
 }
 
 cocos2d::Vec2 Accelerated::getPosition(float timePercent) const {
-	float t = timePercent * _duration;
+	float t = timePercent * _accDuration;
 	return _startPoint + _normalPoint * ((_startVelocity * t) + (_acceleration * t * t * 0.5));
 }
 
@@ -624,18 +624,18 @@ float Accelerated::getCurrentVelocity() const {
 void Accelerated::startWithTarget(cocos2d::Node *target) {
 	cocos2d::ActionInterval::startWithTarget(target);
 	SP_ACCELERATED_LOG("Acceleration:%f velocity:%f->%f duration:%f position:(%f %f)->(%f %f)",
-			_acceleration, _startVelocity, _endVelocity, _duration,
+			_acceleration, _startVelocity, _endVelocity, _accDuration,
 			_startPoint.x, _startPoint.y, _endPoint.x, _endPoint.y);
 }
 
 cocos2d::ActionInterval* Accelerated::clone() const {
 	auto copy = new Accelerated();
-    copy->initWithDuration(_duration, _normalPoint, _startPoint, _startVelocity, _acceleration);
+    copy->initWithDuration(_accDuration, _normalPoint, _startPoint, _startVelocity, _acceleration);
     return copy;
 }
 
 cocos2d::ActionInterval* Accelerated::reverse(void) const {
-    return Accelerated::createWithDuration(_duration, - _normalPoint,
+    return Accelerated::createWithDuration(_accDuration, - _normalPoint,
 										   _endPoint, _endVelocity, _acceleration);
 }
 

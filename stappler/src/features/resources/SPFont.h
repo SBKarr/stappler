@@ -23,7 +23,6 @@ THE SOFTWARE.
 #ifndef _SPFont_h_
 #define _SPFont_h_
 
-#include "SPImage.h"
 #include "SPEventHandler.h"
 #include "SPDataSubscription.h"
 #include "SPDataListener.h"

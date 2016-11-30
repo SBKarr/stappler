@@ -45,7 +45,20 @@ EventHeader::EventHeader(const std::string &catName, const std::string &eventNam
 : EventHeader(string::hash32(catName), eventName) { }
 
 EventHeader::EventHeader(const EventHeader &other) : _category(other._category), _id(other._id), _name(other._name) { }
-EventHeader::EventHeader(EventHeader &&other) : _category(other._category), _id(other._id), _name(other._name) { }
+EventHeader::EventHeader(EventHeader &&other) : _category(other._category), _id(other._id), _name(std::move(other._name)) { }
+
+EventHeader &EventHeader::operator=(const EventHeader &other) {
+	_category = other._category;
+	_id = other._id;
+	_name = other._name;
+	return *this;
+}
+EventHeader &EventHeader::operator=(EventHeader &&other) {
+	_category = other._category;
+	_id = other._id;
+	_name = std::move(other._name);
+	return *this;
+}
 
 EventHeader::~EventHeader() {
 	EventDispatcher::getInstance()->removeEventHeader(this);

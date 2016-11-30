@@ -29,13 +29,12 @@ THE SOFTWARE.
 #include "base/CCScheduler.h"
 #include "platform/CCImage.h"
 #include "platform/CCGLView.h"
-#include "renderer/CCTexture2D.h"
 
 #include "SPThread.h"
 #include "SPDevice.h"
 #include "SPFilesystem.h"
 #include "SPAsset.h"
-#include "SPImage.h"
+#include "SPBitmap.h"
 
 #include "SPPlatform.h"
 
@@ -89,6 +88,29 @@ GLProgramSet *TextureCache::getRawPrograms() const {
 	return _rawDrawing;
 }
 
+cocos2d::Texture2D::PixelFormat TextureCache::getPixelFormat(Bitmap::Format fmt) {
+	switch (fmt) {
+	case Bitmap::Format::A8:
+		return cocos2d::Texture2D::PixelFormat::A8;
+		break;
+	case Bitmap::Format::I8:
+		return cocos2d::Texture2D::PixelFormat::I8;
+		break;
+	case Bitmap::Format::IA88:
+		return cocos2d::Texture2D::PixelFormat::AI88;
+		break;
+	case Bitmap::Format::RGBA8888:
+		return cocos2d::Texture2D::PixelFormat::RGBA8888;
+		break;
+	case Bitmap::Format::RGB888:
+		return cocos2d::Texture2D::PixelFormat::RGB888;
+		break;
+	default:
+		break;
+	}
+	return cocos2d::Texture2D::PixelFormat::AUTO;
+}
+
 void TextureCache::addTexture(const std::string &file, const Callback &cb, bool forceReload) {
 	if (file.empty()) {
 		return;
@@ -122,7 +144,7 @@ void TextureCache::addTexture(const std::string &file, const Callback &cb, bool 
 			if (bitmap) {
 				performWithGL([&] {
 					auto tex = Rc<cocos2d::Texture2D>::alloc();
-					tex->initWithData(bitmap.dataPtr(), bitmap.size(), Image::getPixelFormat(bitmap.format()), bitmap.width(), bitmap.height());
+					tex->initWithData(bitmap.dataPtr(), bitmap.size(), getPixelFormat(bitmap.format()), bitmap.width(), bitmap.height());
 					if (bitmap.alpha() == Bitmap::Alpha::Premultiplied) {
 						tex->setPremultipliedAlpha(true);
 					}
@@ -311,7 +333,7 @@ Rc<cocos2d::Texture2D> TextureCache::uploadTexture(const Bitmap &bmp) {
 	return getInstance()->performWithGL([&] () -> Rc<cocos2d::Texture2D> {
 		if (bmp) {
 			auto ret = Rc<cocos2d::Texture2D>::alloc();
-			ret->initWithDataThreadSafe(bmp.dataPtr(), bmp.size(), Image::getPixelFormat(bmp.format()), bmp.width(), bmp.height(), 0);
+			ret->initWithDataThreadSafe(bmp.dataPtr(), bmp.size(), getPixelFormat(bmp.format()), bmp.width(), bmp.height(), 0);
 			ret->setPremultipliedAlpha(bmp.alpha() == Bitmap::Alpha::Premultiplied);
 			return ret;
 		}

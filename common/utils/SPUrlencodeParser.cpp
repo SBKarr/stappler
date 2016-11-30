@@ -184,7 +184,7 @@ size_t UrlencodeParser::read(const uint8_t * s, size_t count) {
 	return count;
 }
 
-data::Value *UrlencodeParser::flushString(CharReaderBase &r, data::Value *current, VarState state) {
+data::Value *UrlencodeParser::flushString(CharReaderBase &r, data::Value *cur, VarState varState) {
 	String str;
 #if SPAPR
 	str.assign_weak(r.data(), r.size());
@@ -193,48 +193,48 @@ data::Value *UrlencodeParser::flushString(CharReaderBase &r, data::Value *curren
 	str = string::urldecode(r.str());
 #endif
 
-	switch (state) {
+	switch (varState) {
 	case VarState::Key:
 		if (!str.empty()) {
 			if (target->hasValue(str)) {
-				current = &target->getValue(str);
+				cur = &target->getValue(str);
 			} else {
-				current = &target->setValue(data::Value(true), str);
+				cur = &target->setValue(data::Value(true), str);
 			}
 		}
 		break;
 	case VarState::SubKey:
-		if (current) {
+		if (cur) {
 			if (str.empty()) {
-				if (!current->isArray()) {
-					current->setArray(data::Array());
+				if (!cur->isArray()) {
+					cur->setArray(data::Array());
 				}
-				current = &current->addValue(data::Value(true));
+				cur = &cur->addValue(data::Value(true));
 			} else {
-				if (!current->isDictionary()) {
-					current->setDict(data::Dictionary());
+				if (!cur->isDictionary()) {
+					cur->setDict(data::Dictionary());
 				}
-				if (current->hasValue(str)) {
-					current = &current->getValue(str);
+				if (cur->hasValue(str)) {
+					cur = &cur->getValue(str);
 				} else {
-					current = &current->setValue(data::Value(true), str);
+					cur = &cur->setValue(data::Value(true), str);
 				}
 			}
 		}
 		break;
 	case VarState::Value:
-		if (current) {
+		if (cur) {
 			if (!str.empty()) {
-				current->setString(str);
+				cur->setString(str);
 			}
-			current = nullptr;
+			cur = nullptr;
 		}
 		break;
 	default:
 		break;
 	}
 
-	return current;
+	return cur;
 }
 
 NS_SP_END

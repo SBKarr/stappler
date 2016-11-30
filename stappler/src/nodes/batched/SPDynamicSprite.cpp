@@ -81,7 +81,7 @@ bool DynamicSprite::init(const Bitmap &bmp, const Rect &rect, float density) {
 
 
 	auto tex = Rc<cocos2d::Texture2D>::alloc();
-	tex->initWithData(bmp.dataPtr(), bmp.size(), Image::getPixelFormat(bmp.format()), bmp.width(), bmp.height());
+	tex->initWithData(bmp.dataPtr(), bmp.size(), TextureCache::getPixelFormat(bmp.format()), bmp.width(), bmp.height());
 
 	return init(tex, texRect, density);
 }
@@ -192,7 +192,7 @@ void DynamicSprite::setTexture(const Bitmap &bmp, const Rect &rect) {
 	}
 
 	auto tex = Rc<cocos2d::Texture2D>::alloc();
-	tex->initWithData(bmp.dataPtr(), bmp.size(), Image::getPixelFormat(bmp.format()), bmp.width(), bmp.height());
+	tex->initWithData(bmp.dataPtr(), bmp.size(), TextureCache::getPixelFormat(bmp.format()), bmp.width(), bmp.height());
 
 	setTexture(tex, texRect);
 }

@@ -76,7 +76,6 @@ protected:
 
     bool _progressDirty = true;
 
-    float _density = 1.0f;
 	float _progress = 0.0f;
 	stappler::Time _delayStart;
 

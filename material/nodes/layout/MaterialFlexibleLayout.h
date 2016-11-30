@@ -76,7 +76,7 @@ protected:
 
 	static constexpr int AutoCompleteTag() { return 5; }
 
-	float _flexibleAutoComplete = true;
+	bool _flexibleAutoComplete = true;
 	float _flexibleLevel = 1.0f;
 	float _flexibleMinHeight = 0.0f;
 	float _flexibleMaxHeight = 0.0f;

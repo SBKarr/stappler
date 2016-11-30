@@ -168,17 +168,9 @@ bool View::isObjectTapped(const Vec2 & loc, const Object &obj) const {
 	}
 }
 
-void View::onObjectPressBegin(const Vec2 &, const Object &obj) {
-	if (obj.type == Object::Type::Ref) {
-		//log("ref: %s", obj.value.ref.target.c_str());
-	}
-}
+void View::onObjectPressBegin(const Vec2 &, const Object &obj) { }
 
-void View::onObjectPressEnd(const Vec2 &, const Object &obj) {
-	if (obj.type == Object::Type::Ref) {
-		//log("ref: %s", obj.value.ref.target.c_str());
-	}
-}
+void View::onObjectPressEnd(const Vec2 &, const Object &obj) { }
 
 bool View::onPressBegin(const Vec2 &vec) {
 	ScrollView::onPressBegin(vec);
@@ -425,7 +417,7 @@ cocos2d::ActionInterval *View::onSwipeFinalizeAction(float velocity) {
 			_movementAction = Accelerated::createAccelerationTo(from, to, fabsf(velocity), -fabsf(acceleration));
 
 			auto overscrollPath = path + ((velocity < 0)?(distance):(-distance));
-			if (overscrollPath) {
+			if (fabs(overscrollPath) < std::numeric_limits<float>::epsilon()) {
 				auto cb = cocos2d::CallFunc::create(std::bind(&View::onOverscroll, this, overscrollPath));
 				a = cocos2d::Sequence::createWithTwoActions(_movementAction, cb);
 			}

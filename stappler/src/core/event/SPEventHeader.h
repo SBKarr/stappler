@@ -56,6 +56,9 @@ public:
 	EventHeader(const EventHeader &other);
 	EventHeader(EventHeader &&other);
 
+	EventHeader &operator=(const EventHeader &other);
+	EventHeader &operator=(EventHeader &&other);
+
 	Category getCategory() const;
 	EventID getEventID() const;
 	const std::string &getName() const;
@@ -145,7 +148,7 @@ protected:
 
 	Category _category = 0;
 	EventID _id = 0;
-	std::string _name;
+	String _name;
 };
 
 NS_SP_END

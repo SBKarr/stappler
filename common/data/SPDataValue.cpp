@@ -291,7 +291,7 @@ bool Value::operator== (double v) const {
 	if (_type == Type::ARRAY || _type == Type::DICTIONARY) {
 		return false;
 	} else {
-		return v == asDouble();
+		return fabs(v - asDouble()) < std::numeric_limits<double>::epsilon();
 	}
 }
 
@@ -425,16 +425,10 @@ Value& Value::addArray() {
 	return addValue(Value(Array()));
 }
 Array &Value::getArray() {
-	if (_type == Type::ARRAY) {
-		return *arrayVal;
-	}
-	return const_cast<Array &>(ArrayNull);
+	return asArray();
 }
 const Array &Value::getArray() const {
-	if (_type == Type::ARRAY) {
-		return *arrayVal;
-	}
-	return ArrayNull;
+	return asArray();
 }
 bool Value::operator!= (const Array &v) const {
 	return !(*this == v);
@@ -489,16 +483,10 @@ Value& Value::addDict() {
 	return addValue(Value(Dictionary()));
 }
 Dictionary &Value::getDict() {
-	if (_type == Type::DICTIONARY) {
-		return *dictVal;
-	}
-	return const_cast<Dictionary &>(DictionaryNull);
+	return asDict();
 }
 const Dictionary &Value::getDict() const {
-	if (_type == Type::DICTIONARY) {
-		return *dictVal;
-	}
-	return DictionaryNull;
+	return asDict();
 }
 bool Value::operator!= (const Dictionary &v) const {
 	return !(*this == v);

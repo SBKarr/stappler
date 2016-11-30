@@ -289,7 +289,7 @@ public:
 	ofstream & operator=(const ofstream&) = delete;
 
 	ofstream(ofstream && rhs, const allocator_type &alloc = allocator_type())
-	: ostream_type(std::move(rhs)), _buf(std::move(_buf), alloc) {
+	: ostream_type(std::move(rhs)), _buf(std::move(rhs._buf), alloc) {
 		ostream_type::set_rdbuf(&_buf);
 	}
 

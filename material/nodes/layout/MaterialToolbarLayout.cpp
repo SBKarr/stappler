@@ -65,10 +65,7 @@ void ToolbarLayout::onContentSizeDirty() {
 
 	if (!_flexibleToolbar && _baseNode) {
 		stappler::Padding padding;
-		if (_baseNode) {
-			padding = _baseNode->getPadding();
-		}
-
+		padding = _baseNode->getPadding();
 		_baseNode->setAnchorPoint(cocos2d::Vec2(0, 0));
 		_baseNode->setPosition(0, 0);
 		_baseNode->setContentSize(Size(_contentSize.width, _contentSize.height - getCurrentFlexibleMax() - 0.0f));
@@ -163,8 +160,8 @@ void ToolbarLayout::onPush(ContentLayer *l, bool replace) {
 		}
 
 		auto toolbar = prev->getToolbar();
-		auto prog = toolbar->getNavButtonIconProgress();
 		if (_toolbar && toolbar && toolbar->getNavButtonIconProgress() > 0.0f) {
+			auto prog = toolbar->getNavButtonIconProgress();
 			_toolbar->setNavButtonIconProgress(prog, 0.0f);
 			_toolbar->setNavButtonIconProgress(0.0f, progress(0.0f, 0.35f, prog));
 		}

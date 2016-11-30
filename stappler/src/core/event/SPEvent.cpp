@@ -56,7 +56,7 @@ bool Event::is(const EventHeader &eventHeader) const {
 }
 
 bool Event::operator == (const EventHeader &eventHeader) const {
-	return _header.getEventID() == eventHeader.getEventID();
+	return is(eventHeader);
 }
 
 #if SP_EVENT_RTTI

@@ -147,9 +147,9 @@ bool Expression::readOperandValue(Node *current, CharReaderBase &r, Op op) {
 	return ret;
 }
 
-bool Expression::readExpression(Node **node, CharReaderBase &r, bool root) {
+bool Expression::readExpression(Node **node, CharReaderBase &r, bool isRoot) {
 	bool braced = false;
-	if (!root && r.is('(')) {
+	if (!isRoot && r.is('(')) {
 		++ r;
 		r.skipChars<Group<GroupId::WhiteSpace>>();
 		braced = true;

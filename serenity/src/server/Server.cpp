@@ -98,7 +98,7 @@ struct Server::Config : public AllocPool {
 #endif
 	}
 
-	void onHandler(Server &serv, const String &name, const String &ifile, const String &symbol, const data::Value &data) {
+	void onHandler(Server &serv, const String &name, const String &ifile, const String &symbol, const data::Value &handlerData) {
 		String file;
 		if (!sourceRoot.empty()) {
 			file = filepath::absolute(filepath::merge(sourceRoot, ifile));
@@ -121,7 +121,7 @@ struct Server::Config : public AllocPool {
 			/* loading was successful, export main symbol */
 			err = apr_dso_sym(&sym, obj, symbol.c_str());
 			if (err == APR_SUCCESS) {
-				auto h = ((ServerComponent::Symbol) sym)(serv, name, data);
+				auto h = ((ServerComponent::Symbol) sym)(serv, name, handlerData);
 				if (h) {
 					components.emplace(name, h);
 				} else {
@@ -149,9 +149,9 @@ struct Server::Config : public AllocPool {
 				auto & name = it.getString("name");
 				auto & file = it.getString("file");
 				auto & symbol = it.getString("symbol");
-				auto & data = it.getValue("data");
+				auto & handlerData = it.getValue("data");
 
-				onHandler(serv, name, file, symbol, data);
+				onHandler(serv, name, file, symbol, handlerData);
 			}
 		}
 	}
@@ -580,7 +580,7 @@ int Server::onRequest(Request &req) {
 			// preflight request (for CORS implementation)
 			int preflight = h->onRequestRecieved(req, subPath, ret->second.second);
 			if (preflight > 0 || preflight == DONE) { // cors error or successful preflight
-				ap_send_interim_response(req.request(), true);
+				ap_send_interim_response(req.request(), 1);
 				return preflight;
 			}
 			req.setRequestHandler(h);

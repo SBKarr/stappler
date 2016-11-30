@@ -25,7 +25,6 @@ THE SOFTWARE.
 
 #include "SPDefine.h"
 #include "SPDynamicQuadArray.h"
-#include "SPImage.h"
 
 #if CC_SPRITEBATCHNODE_RENDER_SUBPIXEL
 #define RENDER_IN_SUBPIXEL

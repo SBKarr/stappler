@@ -25,7 +25,6 @@ THE SOFTWARE.
 
 #include "SPDefine.h"
 #include "SPIcon.h"
-#include "SPImage.h"
 #include "SPFilesystem.h"
 #include "SPResource.h"
 #include "SPThread.h"

@@ -34,8 +34,6 @@ THE SOFTWARE.
 #include "SPThread.h"
 #include "SPScreen.h"
 
-#include "SPTextureFBO.h"
-
 #include "renderer/CCTexture2D.h"
 
 NS_SP_EXT_BEGIN(rich_text)
