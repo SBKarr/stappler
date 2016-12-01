@@ -106,6 +106,7 @@ public: // internal, use with care
 
 	virtual void setScrollRelativePosition(float value);
 	virtual float getScrollRelativePosition() const;
+	virtual float getScrollRelativePosition(float pos) const;
 
 	virtual void setScrollPosition(float pos);
 	virtual float getScrollPosition() const;
@@ -119,6 +120,8 @@ protected:
 
 	virtual void onDelta(float delta);
 	virtual void onOverscrollPerformed(float velocity, float pos, float boundary);
+
+	virtual void onSwipeBegin();
 	virtual bool onSwipe(float delta, float velocity, bool ended);
 	virtual void onAnimationFinished();
 

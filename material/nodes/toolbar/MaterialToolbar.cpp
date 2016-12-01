@@ -143,9 +143,7 @@ MenuSource * Toolbar::getActionMenuSource() const {
 }
 void Toolbar::setExtensionMenuSource(MenuSource *source) {
 	if (source != _extensionMenuSource) {
-		CC_SAFE_RELEASE(_extensionMenuSource);
 		_extensionMenuSource = source;
-		CC_SAFE_RETAIN(_extensionMenuSource);
 		_contentSizeDirty = true;
 	}
 }
@@ -219,6 +217,16 @@ bool Toolbar::isSwallowTouches() const {
 	return _listener->isEnabled();
 }
 
+void Toolbar::setMinified(bool value) {
+	if (_minified != value) {
+		_minified = value;
+		updateToolbarBasicHeight();
+	}
+}
+bool Toolbar::isMinified() const {
+	return _minified;
+}
+
 ButtonIcon *Toolbar::getNavNode() const {
 	return _navButton;
 }
@@ -271,7 +279,7 @@ void Toolbar::updateMenu() {
 
 	if (_extensionMenuSource || extMenuSource->count() > 0) {
 		ButtonIcon *btn = construct<ButtonIcon>(IconName::Navigation_more_vert);
-		btn->setMenuSource((_extensionMenuSource != nullptr)?_extensionMenuSource:extMenuSource);
+		btn->setMenuSource((_extensionMenuSource != nullptr)?_extensionMenuSource.get():extMenuSource);
 		_icons.push_back(btn);
 		_iconsComposer->addChild(btn);
 		_hasExtMenu = true;
@@ -283,36 +291,51 @@ void Toolbar::updateMenu() {
 void Toolbar::layoutSubviews() {
 	updateMenu();
 
+	if (_minified) {
+		_title->setFont(FontType::Body_1);
+	} else {
+		_title->setFont(FontType::Title);
+	}
+
+	auto op = _minified ? 128 : 222;
+
 	float baseline = getBaseLine();
 
 	_iconsComposer->setContentSize(_contentSize);
 	if (_navButton->getIconName() != IconName::Empty && _navButton->getIconName() != IconName::None) {
-		_navButton->setContentSize(Size(48, 48));
+		_navButton->setContentSize(Size(48, std::min(48.0f, _basicHeight)));
 		_navButton->setAnchorPoint(Vec2(0.5, 0.5));
 		_navButton->setPosition(Vec2(32, baseline));
 		_navButton->setVisible(true);
+		_navButton->setIconOpacity(op);
 	} else {
 		_navButton->setVisible(false);
 	}
 
 	auto labelWidth = getLabelWidth();
 	_title->setWidth(labelWidth);
-	_title->setContentSize(Size(_title->getContentSize().width, 48));
+	_title->setContentSize(Size(_title->getContentSize().width, std::min(48.0f, _basicHeight)));
 	_title->setAnchorPoint(Vec2(0, 0.5));
 	_title->setPosition(Vec2(_navButton->isVisible()?64:16, baseline));
 
 	if (_icons.size() > 0) {
 		auto pos = _contentSize.width - 56 * (_icons.size() - 1) - (_hasExtMenu?8:36);
 		for (auto &it : _icons) {
-			it->setContentSize(Size(48, 48));
+			it->setContentSize(Size(48, std::min(48.0f, _basicHeight)));
 			it->setAnchorPoint(Vec2(0.5, 0.5));
 			it->setPosition(Vec2(pos, baseline));
 			pos += 56;
 		}
 		if (_hasExtMenu) {
-			_icons.back()->setContentSize(Size(24, 48));
+			_icons.back()->setContentSize(Size(24, std::min(48.0f, _basicHeight)));
 			_icons.back()->setPosition(Vec2(_contentSize.width - 24, baseline));
 		}
+	}
+
+	if (_basicHeight < 48.0f) {
+		_title->setFont(material::FontType::Body_1);
+	} else {
+		_title->setFont(material::FontType::Title);
 	}
 
 	setTextColor(_textColor);
@@ -355,9 +378,13 @@ float Toolbar::getLabelWidth() const {
 	return labelWidth;
 }
 
-std::pair<float, float> Toolbar::onToolbarHeight(bool flexible) {
+void Toolbar::updateToolbarBasicHeight() {
+	setBasicHeight(getDefaultToolbarHeight());
+}
+
+std::pair<float, float> Toolbar::onToolbarHeight(bool flexible, bool landscape) {
 	float min, max;
-	if (_contentSize.width > _contentSize.height) { // landscape
+	if (landscape) { // landscape
 		min = _toolbarMinLandscape;
 		max = _toolbarMaxLandscape;
 	} else { //portrait;
@@ -368,7 +395,8 @@ std::pair<float, float> Toolbar::onToolbarHeight(bool flexible) {
 	if (isnan(max)) {
 		max = getDefaultToolbarHeight();
 	}
-	setBasicHeight(material::metrics::appBarHeight());
+
+	updateToolbarBasicHeight();
 
 	if (flexible) {
 		return std::make_pair(min, max);
@@ -378,7 +406,11 @@ std::pair<float, float> Toolbar::onToolbarHeight(bool flexible) {
 }
 
 float Toolbar::getDefaultToolbarHeight() const {
-	return material::metrics::appBarHeight();
+	 if (_minified) {
+		return material::metrics::miniBarHeight();
+	} else {
+		return material::metrics::appBarHeight();
+	}
 }
 
 void Toolbar::setMinToolbarHeight(float portrait, float landscape) {

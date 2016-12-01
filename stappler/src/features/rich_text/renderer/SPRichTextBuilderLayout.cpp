@@ -1,4 +1,3 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
@@ -328,6 +327,7 @@ void Builder::initFormatter(Layout &l, const ParagraphStyle &pStyle, float paren
 	if (_hyphens) {
 		reader.setHyphens(_hyphens);
 	}
+
 	reader.begin((uint16_t)roundf(pStyle.textIndent.computeValue(l.size.width, baseFont->metrics.height / density, true) * density), 0);
 
 	if (initial && parent && parent->listItem != Layout::ListNone && l.style.display == style::Display::ListItem
@@ -338,7 +338,7 @@ void Builder::initFormatter(Layout &l, const ParagraphStyle &pStyle, float paren
 	}
 }
 
-InlineContext &Builder::makeInlineContext(Layout &l, float parentPosY) {
+InlineContext &Builder::makeInlineContext(Layout &l, float parentPosY, const Node &node) {
 	if (l.context && !l.context->finalized) {
 		return *l.context.get();
 	}
@@ -353,6 +353,14 @@ InlineContext &Builder::makeInlineContext(Layout &l, float parentPosY) {
 	}
 
 	l.origin = Vec2(roundf(l.position.x * density), roundf((parentPosY) * density));
+
+	size_t count = 0, nodes = 0;
+	node.foreach([&] (const Node &node, size_t level) {
+		count += node.getValue().size();
+		++ nodes;
+	});
+
+	l.context->reader.getOutput()->reserve(count, nodes);
 
 	ParagraphStyle pStyle = l.node->getStyle().compileParagraphLayout(this);
 	initFormatter(l, pStyle, parentPosY, l.context->reader, initial);

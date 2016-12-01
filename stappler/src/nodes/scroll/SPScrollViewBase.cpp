@@ -74,10 +74,7 @@ bool ScrollViewBase::init(Layout layout) {
 				return false;
 			}
 
-			_root->stopAllActions();
-			_movementAction = nullptr;
-			_animationAction = nullptr;
-			_movement = Movement::Manual;
+			onSwipeBegin();
 
     		if (_layout == Vertical) {
         		return onSwipe(s.delta.y / _globalScale.y, s.velocity.y / _globalScale.y, false);
@@ -453,6 +450,10 @@ float ScrollViewBase::getScrollRelativePosition() const {
 		return _savedRelativePosition;
 	}
 
+	return getScrollRelativePosition(getScrollPosition());
+}
+
+float ScrollViewBase::getScrollRelativePosition(float pos) const {
 	float areaSize = getScrollableAreaSize();
 	float areaOffset = getScrollableAreaOffset();
 	float size = getScrollSize();
@@ -463,8 +464,6 @@ float ScrollViewBase::getScrollRelativePosition() const {
 
 	if (!isnan(areaSize) && !isnan(areaOffset)) {
 		float liveSize = areaSize + paddingFront + paddingBack - size;
-		float pos = getScrollPosition();
-
 		return (pos - areaOffset + paddingFront) / liveSize;
 	}
 
@@ -567,6 +566,13 @@ void ScrollViewBase::onOverscrollPerformed(float velocity, float pos, float boun
 			_root->runAction(_animationAction);
 		}
 	}
+}
+
+void ScrollViewBase::onSwipeBegin() {
+	_root->stopAllActions();
+	_movementAction = nullptr;
+	_animationAction = nullptr;
+	_movement = Movement::Manual;
 }
 
 bool ScrollViewBase::onSwipe(float delta, float velocity, bool ended) {

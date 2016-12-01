@@ -148,7 +148,7 @@ Toolbar *ToolbarLayout::setupToolbar(Toolbar *toolbar) {
 }
 
 std::pair<float, float> ToolbarLayout::onToolbarHeight() {
-	return _toolbar->onToolbarHeight(_flexibleToolbar);
+	return _toolbar->onToolbarHeight(_flexibleToolbar, _contentSize.width > _contentSize.height);
 }
 
 void ToolbarLayout::onPush(ContentLayer *l, bool replace) {

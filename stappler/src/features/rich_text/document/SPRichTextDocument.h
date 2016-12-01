@@ -116,6 +116,8 @@ public:
 	const GalleryMap & getGalleryMap() const;
 	const ContentRecord & getTableOfContents() const;
 
+	size_t getSizeInMemory();
+
 protected:
 	Bytes readData(size_t offset, size_t len);
 

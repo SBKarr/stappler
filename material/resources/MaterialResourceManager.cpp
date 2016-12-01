@@ -68,6 +68,8 @@ ResourceManager::ResourceManager() {
 		pair("SystemFontSize", "Размер шрифта"),
 		pair("SystemTheme", "Оформление"),
 		pair("SystemMore", "Ещё"),
+		pair("Shortcut:Megabytes", "Мб"),
+		pair("Shortcut:Pages", "с"),
 	});
 
 	locale::define("en-us", {
@@ -75,6 +77,8 @@ ResourceManager::ResourceManager() {
 		pair("SystemFontSize", "Font size"),
 		pair("SystemTheme", "Theme"),
 		pair("SystemMore", "More"),
+		pair("Shortcut:Megabytes", "Mb"),
+		pair("Shortcut:Pages", "p"),
 	});
 
 	using namespace font;

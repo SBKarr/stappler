@@ -60,6 +60,7 @@ bool View::Page::init(const PageData &data, float d) {
 	_background->setColor(Color3B(128, 128, 128));
 	_background->setAnchorPoint(Vec2(0, 0));
 	_background->setPosition(Vec2(0, 0));
+	_background->setVisible(false);
 	addChild(_background, -1);
 
 	_sprite = construct<DynamicSprite>(nullptr, Rect::ZERO, d);
@@ -112,7 +113,7 @@ bool View::init(Layout l, Source *source, const Vector<String> &ids) {
 	_background->setPosition(Vec2(0, 0));
 	addChild(_background, -1);
 
-	_pageMargin = Margin(8.0f, 18.0f);
+	_pageMargin = Margin(8.0f, 8.0f);
 
 	if (source) {
 		setSource(source);
@@ -172,6 +173,11 @@ void View::onObjectPressBegin(const Vec2 &, const Object &obj) { }
 
 void View::onObjectPressEnd(const Vec2 &, const Object &obj) { }
 
+void View::onSwipeBegin() {
+	ScrollView::onSwipeBegin();
+	_gestureStart = getScrollPosition();
+}
+
 bool View::onPressBegin(const Vec2 &vec) {
 	ScrollView::onPressBegin(vec);
 	auto res = _renderer->getResult();
@@ -197,6 +203,7 @@ bool View::onPressBegin(const Vec2 &vec) {
 bool View::onPressEnd(const Vec2 &vec, const TimeInterval &r) {
 	ScrollView::onPressEnd(vec, r);
 	if (_layout == Horizontal && _movement == Movement::None) {
+		_gestureStart = nan();
 		onSwipe(0.0f, 0.0f, true);
 	}
 
@@ -304,10 +311,11 @@ void View::onRenderer(Result *res, bool) {
 
 void View::onPageData(Result *res, float contentOffset) {
 	auto surface = res->getSurfaceSize();
-	if (res->getMedia().flags & RenderFlag::PaginatedLayout) {
+	auto &media = res->getMedia();
+	if (media.flags & RenderFlag::PaginatedLayout) {
 		auto num = res->getNumPages();
-		bool isSplitted = _renderer->isPageSplitted();
-		auto page = Size(surface.width + _renderer->getPageMargin().horizontal(), surface.height + _renderer->getPageMargin().vertical());
+		bool isSplitted = media.flags & RenderFlag::SplitPages;
+		auto page = Size(surface.width + res->getMedia().pageMargin.horizontal(), surface.height + res->getMedia().pageMargin.vertical());
 		for (size_t i = 0; i < num; ++ i) {
 			_controller->addItem(std::bind(&View::onPageNode, this, i), page.width, page.width * i);
 		}
@@ -335,7 +343,7 @@ void View::onPageData(Result *res, float contentOffset) {
 }
 
 View::PageData View::getPageData(size_t idx) const {
-	return _renderer->getResult()->getPageData(_renderer, idx, _objectsOffset);
+	return _renderer->getResult()->getPageData(idx, _objectsOffset);
 }
 
 cocos2d::Node * View::onPageNode(size_t idx) {
@@ -345,7 +353,7 @@ cocos2d::Node * View::onPageNode(size_t idx) {
 	PageData data = getPageData(idx);
 
 	if (result->getMedia().flags & RenderFlag::PaginatedLayout) {
-		auto page = construct<Page>(data, result->getMedia().density);
+		auto page = onConstructPageNode(data, result->getMedia().density);
 		if (idx < result->getNumPages()) {
 			page->retain();
 
@@ -377,6 +385,10 @@ cocos2d::Node * View::onPageNode(size_t idx) {
 	}
 }
 
+View::Page *View::onConstructPageNode(const PageData &data, float density) {
+	return construct<Page>(data, density);
+}
+
 cocos2d::ActionInterval *View::onSwipeFinalizeAction(float velocity) {
 	if (_layout == Layout::Vertical) {
 		return ScrollView::onSwipeFinalizeAction(velocity);
@@ -402,6 +414,21 @@ cocos2d::ActionInterval *View::onSwipeFinalizeAction(float velocity) {
 	float pos = getScrollPosition();
 	float duration = fabsf(velocity / acceleration);
 	float path = velocity * duration + acceleration * duration * duration * 0.5f;
+	float newPos = pos + path;
+	float segment = _contentSize.width;
+	int num = roundf(newPos / segment);
+
+	if (!isnan(_gestureStart)) {
+		int prev = roundf(_gestureStart / segment);
+		if (num - prev < -1) {
+			num = prev - 1;
+		}
+		if (num - prev > 1) {
+			num = prev + 1;
+		}
+		_gestureStart = nan();
+	}
+	newPos = num * segment;
 
 	if (!isnan(boundary)) {
 		auto from = _root->getPosition();
@@ -413,7 +440,7 @@ cocos2d::ActionInterval *View::onSwipeFinalizeAction(float velocity) {
 			return nullptr;
 		}
 
-		if ((velocity > 0 && pos + path > boundary) || (velocity < 0 && pos + path < boundary)) {
+		if ((velocity > 0 && newPos > boundary) || (velocity < 0 && newPos < boundary)) {
 			_movementAction = Accelerated::createAccelerationTo(from, to, fabsf(velocity), -fabsf(acceleration));
 
 			auto overscrollPath = path + ((velocity < 0)?(distance):(-distance));
@@ -425,12 +452,8 @@ cocos2d::ActionInterval *View::onSwipeFinalizeAction(float velocity) {
 	}
 
 	if (!_movementAction) {
-		float newPos = pos + path;
-		float segment = _contentSize.width;
-
-		int num = roundf(newPos / segment);
 		auto from = _root->getPosition();
-		auto to = getPointForScrollPosition(num * segment);
+		auto to = getPointForScrollPosition(newPos);
 
 		return Accelerated::createBounce(fabsf(acceleration), from, to, Vec2(-velocity, 0.0f), 25000);
 	}

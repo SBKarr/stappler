@@ -121,6 +121,8 @@ class ScrollHandlerFixed;
 class ScrollHandlerSlice;
 class ScrollHandlerGrid;
 
+class TabBar;
+
 class Toolbar;
 class TabToolbar;
 

@@ -38,6 +38,7 @@ namespace metrics {
 bool isTouchDevice();
 bool isTablet();
 float appBarHeight();
+float miniBarHeight();
 
 inline float horizontalIncrement();
 

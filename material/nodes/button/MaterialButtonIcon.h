@@ -42,6 +42,9 @@ public:
 	virtual void setIconColor(const Color &);
 	virtual const cocos2d::Color3B &getIconColor() const;
 
+	virtual void setIconOpacity(uint8_t);
+	virtual uint8_t getIconOpacity() const;
+
 	virtual IconSprite *getIcon() const;
 
 protected:

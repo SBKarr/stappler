@@ -36,6 +36,8 @@ public:
 	using RenderingCallback = Function<void(Result *, bool started)>;
 	using Source = rich_text::Source;
 
+	static bool shouldSplitPages(const Size &);
+
 	virtual ~Renderer();
 
 	virtual bool init(const Vector<String> &ids = {});

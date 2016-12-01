@@ -33,9 +33,10 @@ namespace RenderFlag {
 using Mask = uint32_t;
 enum Flag : Mask {
 	NoImages = 1 << 0, // do not render images
-	NoHeightCheck = 2 << 0, // disable re-rendering when viewport height is changed
-	RenderById = 3 << 0, // render nodes by html id instead of spine name
-	PaginatedLayout = 4 << 0, // render as book pages instead of html linear layout
+	NoHeightCheck = 1 << 1, // disable re-rendering when viewport height is changed
+	RenderById = 1 << 2, // render nodes by html id instead of spine name
+	PaginatedLayout = 1 << 3, // render as book pages instead of html linear layout
+	SplitPages = 1 << 4, // render as book pages instead of html linear layout
 };
 }
 
@@ -56,6 +57,8 @@ struct MediaParameters {
 	RenderFlag::Mask flags = 0;
 
 	Map<CssStringId, String> _options;
+
+	Margin pageMargin;
 
 	void addOption(const String &);
 	void removeOption(const String &);

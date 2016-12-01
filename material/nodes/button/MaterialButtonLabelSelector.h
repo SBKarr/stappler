@@ -48,6 +48,8 @@ public:
 
 	virtual void setFont(FontType fnt);
 
+	virtual Label * getLabel() const;
+
 protected:
 	Label *_label = nullptr;
 };

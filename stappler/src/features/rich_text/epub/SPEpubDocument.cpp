@@ -349,7 +349,9 @@ void Document::readNcxNav(const String &filePath) {
 
 	html::parse(r, CharReaderUtf8((const char *)toc.data(), toc.size()));
 
-	auto data = encodeContents(_contents);
+	if (_contents.label.empty()) {
+		_contents.label = getTitle();
+	}
 }
 
 void Document::readXmlNav(const String &filePath) {
@@ -468,6 +470,10 @@ void Document::readXmlNav(const String &filePath) {
 	} r(_info, filePath, &_contents);
 
 	html::parse(r, CharReaderUtf8((const char *)toc.data(), toc.size()));
+
+	if (_contents.label.empty()) {
+		_contents.label = getTitle();
+	}
 }
 
 data::Value Document::encodeContents(const ContentRecord &rec) {

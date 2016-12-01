@@ -66,7 +66,25 @@ Builder::Builder(Document *doc, const MediaParameters &media, font::Source *cfg,
 	_document = doc;
 	_media = media;
 	_fontSet = cfg;
-	_result = new Result(_media, _fontSet, _document);
+
+	if ((_media.flags & RenderFlag::PaginatedLayout)) {
+		Margin extra(0);
+		bool isSplitted = _media.flags & RenderFlag::SplitPages;
+		if (isSplitted) {
+			extra.left = 7 * _media.fontScale;
+			extra.right = 7 * _media.fontScale;
+		} else {
+			extra.left = 3 * _media.fontScale;
+			extra.right = 3 * _media.fontScale;
+		}
+
+		_media.pageMargin.left += extra.left;
+		_media.pageMargin.right += extra.right;
+
+		_media.surfaceSize.width -= (extra.left + extra.right);
+	}
+
+	_result = Rc<Result>::create(_media, _fontSet, _document);
 	_spine = spine;
 
 	if ((_media.flags & RenderFlag::PaginatedLayout) && _media.mediaType == style::MediaType::Screen) {
@@ -168,6 +186,8 @@ void Builder::buildBlockModel() {
 		addLayoutObjects(l);
 	}
 	_result->finalize();
+
+	// log::format("ReaderTime", "%lu", _readerAccum.toMicroseconds());
 }
 
 void Builder::addLayoutObjects(Layout &l) {
@@ -198,6 +218,10 @@ void Builder::addLayoutObjects(Layout &l) {
 			_result->pushObject(std::move(it));
 		}
 	}
+}
+
+TimeInterval Builder::getReaderTime() const {
+	return _readerAccum;
 }
 
 void Builder::processChilds(Layout &l, const Node &node) {

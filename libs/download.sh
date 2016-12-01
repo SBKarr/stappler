@@ -12,10 +12,10 @@ function get_jpeg() {
 }
 
 function get_png() {
-	wget http://prdownloads.sourceforge.net/libpng/libpng-1.6.24.tar.gz
-	tar -xzf libpng-1.6.24.tar.gz
-	rm libpng-1.6.24.tar.gz
-	mv libpng-1.6.24 libpng
+	wget http://prdownloads.sourceforge.net/libpng/libpng-1.6.26.tar.gz
+	tar -xzf libpng-1.6.26.tar.gz
+	rm libpng-1.6.26.tar.gz
+	mv libpng-1.6.26 libpng
 }
 
 function get_mbedtls() {

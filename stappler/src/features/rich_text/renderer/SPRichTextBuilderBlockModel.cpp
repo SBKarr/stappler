@@ -35,7 +35,7 @@ NS_SP_EXT_BEGIN(rich_text)
 bool Builder::processInlineNode(Layout &l, const Node &node, BlockStyle &&style, const Vec2 &pos) {
 	SP_RTBUILDER_LOG("paragraph style: %s", node.getStyle().css(this).c_str());
 
-	InlineContext &ctx = makeInlineContext(l, pos.y);
+	InlineContext &ctx = makeInlineContext(l, pos.y, node);
 
 	const float density = _media.density;
 	const Style &nodeStyle = node.getStyle();
@@ -55,7 +55,10 @@ bool Builder::processInlineNode(Layout &l, const Node &node, BlockStyle &&style,
 
 	firstCharId = ctx.label._format.chars.size();
 
+	// Time now = Time::now();
 	ctx.reader.read(fstyle, textStyle, node.getValue(), front, back);
+	//_readerAccum += (Time::now() - now);
+
 	ctx.pushNode(&node, [&] (InlineContext &ctx) {
 		lastCharId = (ctx.label._format.chars.size() > 0)?(ctx.label._format.chars.size() - 1):0;
 
@@ -113,7 +116,7 @@ bool Builder::processInlineBlockNode(Layout &l, const Node &node, BlockStyle && 
 		l.inlineBlockLayouts.emplace_back(std::move(newL));
 		Layout &ref = l.inlineBlockLayouts.back();
 
-		InlineContext &ctx = makeInlineContext(l, pos.y);
+		InlineContext &ctx = makeInlineContext(l, pos.y, node);
 
 		const float density = _media.density;
 		const Style &nodeStyle = node.getStyle();
@@ -209,7 +212,7 @@ bool Builder::processNode(Layout &l, const Vec2 &origin, const Size &size, float
 
 		if (l.style.display == style::Display::ListItem) {
 			if (l.style.listStylePosition == style::ListStylePosition::Inside) {
-				makeInlineContext(l, origin.y);
+				makeInlineContext(l, origin.y, *l.node);
 			}
 		}
 

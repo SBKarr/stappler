@@ -101,12 +101,18 @@ const cocos2d::Color3B &ButtonLabelSelector::getLabelColor() const {
 
 void ButtonLabelSelector::setFont(FontType fnt) {
 	_label->setFont(fnt);
-	_label->updateLabel();
+	if (_label->isLabelDirty()) {
+		_label->updateLabel();
+	}
 	if (!_icon->isVisible()) {
 		setContentSize(cocos2d::Size(_label->getContentSize().width + 16, _contentSize.height));
 	} else {
 		setContentSize(cocos2d::Size(_label->getContentSize().width + 32, _contentSize.height));
 	}
+}
+
+Label * ButtonLabelSelector::getLabel() const {
+	return _label;
 }
 
 void ButtonLabelSelector::setLabelOpacity(uint8_t value) {

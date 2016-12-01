@@ -258,13 +258,12 @@ bool Formatter::pushChar(char16_t ch) {
 
 	auto posX = lineX;
 
-	CharSpec spec{ch, posX, charDef.xAdvance, CharSpec::Display::Char};
+	CharSpec spec{ch, posX, charDef.xAdvance};
 
 	if (ch == (char16_t)0x00AD) {
 		if (textStyle.hyphens == Hyphens::Manual || textStyle.hyphens == Hyphens::Auto) {
 			wordWrapPos = charNum + 1;
 		}
-		spec.display = CharSpec::Display::Hidden;
 	} else if (ch == u'-' || ch == u'+' || ch == u'*' || ch == u'/' || ch == u'\\') {
 		auto pos = charNum;
 		while(pos > firstInLine && (!string::isspace(output->chars.at(pos - 1).charID))) {
@@ -461,9 +460,6 @@ bool Formatter::pushLineBreak() {
 		// we can wrap the word
 		auto &ch = output->chars.at((wordWrapPos - 1));
 		if (!string::isspace(ch.charID)) {
-			if (ch.display == CharSpec::Hidden) {
-				ch.display = CharSpec::Char;
-			}
 			if (!pushLine(firstInLine, (wordWrapPos) - firstInLine, true)) {
 				return false;
 			}
@@ -647,8 +643,9 @@ bool Formatter::read(const FontParameters &f, const TextParameters &s, const cha
 				if (caps != true) {
 					caps = true;
 					if (blockSize > 0) {
-						readWithRange(RangeSpec{uint32_t(output->chars.size()), 0, primary, Color4B(s.color, s.opacity), h,
-							((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign},
+						readWithRange(RangeSpec{false, false,
+							((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign,
+							uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), h, primary},
 								s, str + blockStart, blockSize, frontOffset, backOffset);
 					}
 					blockStart = idx;
@@ -658,8 +655,9 @@ bool Formatter::read(const FontParameters &f, const TextParameters &s, const cha
 				if (caps != false) {
 					caps = false;
 					if (blockSize > 0) {
-						readWithRange(RangeSpec{uint32_t(output->chars.size()), 0, secondary, Color4B(s.color, s.opacity), h,
-							((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign},
+						readWithRange(RangeSpec{false, false,
+							((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign,
+							uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), h, secondary},
 								capsParams, str + blockStart, blockSize, frontOffset, backOffset);
 					}
 					blockStart = idx;
@@ -670,18 +668,21 @@ bool Formatter::read(const FontParameters &f, const TextParameters &s, const cha
 		}
 		if (blockSize > 0) {
 			if (caps) {
-				return readWithRange(RangeSpec{uint32_t(output->chars.size()), 0, secondary, Color4B(s.color, s.opacity), h,
-					((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign},
+				return readWithRange(RangeSpec{false, false,
+					((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign,
+					uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), h, secondary},
 						capsParams, str + blockStart, blockSize, frontOffset, backOffset);
 			} else {
-				return readWithRange(RangeSpec{uint32_t(output->chars.size()), 0, primary, Color4B(s.color, s.opacity), h,
-					((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign},
+				return readWithRange(RangeSpec{false, false,
+					((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign,
+					uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), h, primary},
 						s, str + blockStart, blockSize, frontOffset, backOffset);
 			}
 		}
 	} else {
-		return readWithRange(RangeSpec{uint32_t(output->chars.size()), 0, primary, Color4B(s.color, s.opacity), h,
-			((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign},
+		return readWithRange(RangeSpec{false, false,
+			((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign,
+			uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), h, primary},
 				s, str, len, frontOffset, backOffset);
 	}
 
@@ -693,8 +694,9 @@ bool Formatter::read(const FontParameters &f, const TextParameters &s, uint16_t 
 
 	auto primary = source->getLayout(f);
 
-	return readWithRange(RangeSpec{uint32_t(output->chars.size()), 0, primary, Color4B(s.color, s.opacity), blockHeight,
-		((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign},
+	return readWithRange(RangeSpec{false, false,
+		((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign,
+		uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), blockHeight, primary},
 			s, blockWidth, blockHeight);
 }
 
@@ -796,7 +798,7 @@ bool Formatter::readWithRange(RangeSpec &&range, const TextParameters &s, uint16
 		lineX += lineOffset;
 	}
 
-	CharSpec spec{char16_t(0xFFFF), lineX, blockWidth, CharSpec::Display::Block};
+	CharSpec spec{char16_t(0xFFFF), lineX, blockWidth};
 	lineX += spec.advance;
 	charNum ++;
 	output->chars.push_back(std::move(spec));
@@ -878,6 +880,9 @@ uint16_t Formatter::getLineHeight() const {
 	return lineHeight;
 }
 
+FormatSpec *Formatter::getOutput() const {
+	return output;
+}
 
 FormatSpec::FormatSpec() { }
 

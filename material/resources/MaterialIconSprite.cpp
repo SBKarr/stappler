@@ -363,6 +363,7 @@ void IconSprite::setDynamicIcon(DynamicIcon *i) {
 		_dynamicIcon->redraw(0.0f, 0.0f);
 	} else {
 		setTexture(nullptr);
+		_dynamicIcon = i;
 	}
 	setProgress(0.0f);
 }

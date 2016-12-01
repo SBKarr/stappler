@@ -75,13 +75,16 @@ public:
 	virtual void setSwallowTouches(bool value);
 	virtual bool isSwallowTouches() const;
 
+	virtual void setMinified(bool);
+	virtual bool isMinified() const;
+
 	virtual void setBarCallback(const std::function<void()> &);
 	virtual const std::function<void()> & getBarCallback() const;
 
 	ButtonIcon *getNavNode() const;
 	ButtonLabelSelector *getTitleNode() const;
 
-	virtual std::pair<float, float> onToolbarHeight(bool);
+	virtual std::pair<float, float> onToolbarHeight(bool flex, bool landscape);
 
 	virtual void setMinToolbarHeight(float portrait, float landscape = nan());
 	virtual void setMaxToolbarHeight(float portrait, float landscape = nan());
@@ -90,13 +93,15 @@ public:
 	virtual float getMaxToolbarHeight() const;
 
 	virtual float getDefaultToolbarHeight() const;
-protected:
 
+protected:
 	virtual void updateMenu();
 	virtual void layoutSubviews();
 	virtual void onNavTapped();
 	virtual float getBaseLine() const;
 	virtual float getLabelWidth() const;
+
+	virtual void updateToolbarBasicHeight();
 
 	ButtonIcon *_navButton = nullptr;
 	ButtonLabelSelector *_title = nullptr;
@@ -107,7 +112,7 @@ protected:
 	cocos2d::Node *_iconsComposer = nullptr;
 
 	data::Listener<MenuSource> _actionMenuSource;
-	MenuSource *_extensionMenuSource = nullptr;
+	Rc<MenuSource> _extensionMenuSource;
 
 	std::function<void()> _navCallback = nullptr;
 	std::function<void()> _barCallback = nullptr;
@@ -115,6 +120,7 @@ protected:
 	float _basicHeight = 64.0f;
 	bool _splitActionMenu = true;
 	bool _hasExtMenu = false;
+	bool _minified = false;
 
 	cocos2d::Component *_listener = nullptr;
 	Color _textColor;

@@ -81,6 +81,8 @@ protected:
 	virtual void onObjectPressBegin(const Vec2 &, const Object &); // called with original world location
 	virtual void onObjectPressEnd(const Vec2 &, const Object &); // called with original world location
 
+	virtual void onSwipeBegin() override;
+
 	virtual bool onPressBegin(const Vec2 &) override;
 	virtual bool onPressEnd(const Vec2 &, const TimeInterval &) override;
 	virtual bool onPressCancel(const Vec2 &, const TimeInterval &) override;
@@ -90,6 +92,8 @@ protected:
 	virtual void onPageData(Result *, float offset);
 	virtual PageData getPageData(size_t) const;
 	virtual cocos2d::Node * onPageNode(size_t);
+
+	virtual Page *onConstructPageNode(const PageData &, float);
 
 	virtual cocos2d::ActionInterval *onSwipeFinalizeAction(float velocity) override;
 
@@ -104,6 +108,7 @@ protected:
 
 	Vector<PageData> _pages;
 	float _objectsOffset = 0.0f;
+	float _gestureStart = nan();
 };
 
 NS_SP_EXT_END(rich_text)

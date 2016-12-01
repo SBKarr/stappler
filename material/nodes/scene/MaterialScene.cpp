@@ -477,7 +477,7 @@ void Scene::takeScreenshoot() {
 
     director->pushMatrix(cocos2d::MATRIX_STACK_TYPE::MATRIX_STACK_MODELVIEW);
 
-	auto rt = cocos2d::RenderTexture::create(size.width, size.height, cocos2d::Texture2D::PixelFormat::RGB888, GL_STENCIL_INDEX8);
+	auto rt = cocos2d::RenderTexture::create(size.width, size.height, cocos2d::Texture2D::PixelFormat::RGBA8888, GL_STENCIL_INDEX8);
 
     cocos2d::Camera* defaultCamera = nullptr;
     for (const auto& camera : _cameras) {
@@ -500,11 +500,13 @@ void Scene::takeScreenshoot() {
     }
     cocos2d::Camera::setVisitingCamera(nullptr);
 
-    renderer->render();
-
     auto path = stappler::filesystem::writablePath("screenshots");
     stappler::filesystem::mkdir(path);
     path += toString("/", stappler::Time::now().toMilliseconds(), ".png");
+
+    //rt->saveToFile(path);
+
+    renderer->render();
 
     saveScreenshot(path, rt->getSprite()->getTexture());
 

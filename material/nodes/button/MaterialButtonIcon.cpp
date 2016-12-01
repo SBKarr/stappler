@@ -78,6 +78,13 @@ const cocos2d::Color3B &ButtonIcon::getIconColor() const {
 	return _icon->getColor();
 }
 
+void ButtonIcon::setIconOpacity(uint8_t op) {
+	_icon->setOpacity(op);
+}
+uint8_t ButtonIcon::getIconOpacity() const {
+	return _icon->getOpacity();
+}
+
 IconSprite *ButtonIcon::getIcon() const {
 	return _icon;
 }

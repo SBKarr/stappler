@@ -55,6 +55,8 @@ public:
 	Document *getDocument() const;
 	font::Source *getFontSet() const;
 
+	TimeInterval getReaderTime() const;
+
 protected:
 	void generateFontConfig();
 	void buildBlockModel();
@@ -96,7 +98,7 @@ protected:
 	style::Display getLayoutContext(const Vector<const Node *> &, Vector<const Node *>::const_iterator, style::Display) const;
 
 	void initFormatter(Layout &, const ParagraphStyle &, float, Formatter &, bool initial);
-	InlineContext &makeInlineContext(Layout &l, float parentPosY);
+	InlineContext &makeInlineContext(Layout &l, float parentPosY, const Node &node);
 	float fixLabelPagination(Layout &l, Label &label);
 
 	// Завершает рисование строковых элементов и подготавливает их к переносу в укладку
@@ -122,6 +124,7 @@ protected:
 	Vector<Layout *> _layoutStack;
 	Vector<FloatContext *> _floatStack;
 	Rc<font::HyphenMap> _hyphens;
+	TimeInterval _readerAccum;
 };
 
 NS_SP_EXT_END(rich_text)

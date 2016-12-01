@@ -295,6 +295,7 @@ Rc<font::Source> Source::makeSource(AssetMap && map) {
 }
 
 Rc<Document> Source::openDocument(const String &path, const String &ct) {
+	Time now = Time::now();
 	Rc<Document> ret;
 	if (epub::Document::isEpub(path)) {
 		ret.set(Rc<epub::Document>::create(FilePath(path)));
@@ -303,6 +304,7 @@ Rc<Document> Source::openDocument(const String &path, const String &ct) {
 	}
 	if (ret) {
 		if (ret->prepare()) {
+			log::format("Profiling", "Document loading: %lu", (Time::now() - now).toMicroseconds());
 			return ret;
 		}
 	}

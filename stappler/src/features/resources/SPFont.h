@@ -67,11 +67,6 @@ struct CharSpec { // 8 bytes
 	char16_t charID = 0;
 	uint16_t pos = 0;
 	uint16_t advance = 0;
-	enum Display : uint16_t {
-		Char,
-		Block,
-		Hidden
-	} display = Char;
 };
 
 struct FontCharString {

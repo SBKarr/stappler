@@ -58,6 +58,11 @@ float appBarHeight() {
 		return 56;
 	}
 }
+
+float miniBarHeight() {
+	return 28.0f;
+}
+
 }
 
 NS_MD_END

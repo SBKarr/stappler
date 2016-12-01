@@ -109,8 +109,8 @@ class TabBarButton : public Button {
 public:
 	using TabButtonCallback = Function<void(Button *, MenuSourceButton *)>;
 
-	virtual bool init(MenuSourceButton *, const TabButtonCallback &cb, TabBar::ButtonStyle, bool wrapped);
-	virtual bool init(MenuSource *, const TabButtonCallback &cb, TabBar::ButtonStyle, bool wrapped);
+	virtual bool init(MenuSourceButton *, const TabButtonCallback &cb, TabBar::ButtonStyle, bool swallow, bool wrapped);
+	virtual bool init(MenuSource *, const TabButtonCallback &cb, TabBar::ButtonStyle, bool swallow, bool wrapped);
 
 	virtual void onContentSizeDirty() override;
 
@@ -119,7 +119,7 @@ public:
 	virtual void setTabSelected(bool);
 
 protected:
-	virtual void initialize(const TabButtonCallback &, TabBar::ButtonStyle, bool wrapped);
+	virtual void initialize(const TabButtonCallback &, TabBar::ButtonStyle, bool swallow, bool wrapped);
 
 	virtual void updateFromSource() override;
 	virtual void onOpenMenuSource() override;

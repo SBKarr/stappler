@@ -43,6 +43,15 @@ NS_SP_EXT_BEGIN(rich_text)
 static constexpr const float PAGE_SPLIT_COEF = (4.0f / 3.0f);
 static constexpr const float PAGE_SPLIT_WIDTH = (800.0f);
 
+
+bool Renderer::shouldSplitPages(const Size &s) {
+	float coef = s.width / s.height;
+	if (coef >= PAGE_SPLIT_COEF && s.width > PAGE_SPLIT_WIDTH) {
+		return true;
+	}
+	return false;
+}
+
 Renderer::~Renderer() {
 	if (_drawer) {
 		_drawer->free();
@@ -119,8 +128,7 @@ void Renderer::onContentSizeDirty() {
 	_isPageSplitted = false;
 	if (hasFlag(RenderFlag::PaginatedLayout)) {
 		Size s = _owner->getContentSize();
-		float coef = s.width / s.height;
-		if (coef >= PAGE_SPLIT_COEF && s.width > PAGE_SPLIT_WIDTH) {
+		if (shouldSplitPages(s)) {
 			s.width /= 2.0f;
 			_isPageSplitted = true;
 		}
@@ -265,8 +273,14 @@ bool Renderer::requestRendering() {
 	}
 
 	if (fontSet && document) {
-		_media.fontScale = s->getFontScale();
-		Builder * impl = new Builder(document, _media, fontSet, _ids);
+		auto media = _media;
+		media.fontScale = s->getFontScale();
+		media.pageMargin = _pageMargin;
+		if (_isPageSplitted) {
+			media.flags |= RenderFlag::SplitPages;
+		}
+
+		Builder * impl = new Builder(document, media, fontSet, _ids);
 		impl->setHyphens(_hyphens);
 		_renderingInProgress = true;
 		if (_renderingCallback) {
@@ -276,10 +290,15 @@ bool Renderer::requestRendering() {
 		retain();
 		auto &thread = resource::thread();
 		thread.perform([impl] (cocos2d::Ref *) -> bool {
+			// auto now = Time::now();
 			impl->render();
+			// TimeInterval all = (Time::now() - now);
+			// log::format("Profiling", "Result rendering: %lu (%lu reader %lu other)", all.toMicroseconds(),
+			//		impl->getReaderTime().toMicroseconds(), (all - impl->getReaderTime()).toMicroseconds());
 			return true;
 		}, [this, impl] (cocos2d::Ref *, bool) {
 			auto result = impl->getResult();
+			//log::format("Result size:", "%lu %d %d %d", result->getSizeInMemory(), sizeof(font::CharSpec), sizeof(font::LineSpec), sizeof(font::RangeSpec));
 			if (result) {
 				onResult(result);
 			}

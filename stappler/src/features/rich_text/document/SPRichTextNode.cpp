@@ -134,6 +134,11 @@ void Node::foreach(const ForeachIter &onNode) {
 	foreach(onNode, 0);
 }
 
+void Node::foreach(const ForeachConstIter &onNode) const {
+	onNode(*this, 0);
+	foreach(onNode, 0);
+}
+
 void Node::dropValue() {
 	if (!_value.empty()) {
 		Style s;
@@ -146,7 +151,14 @@ void Node::dropValue() {
 	}
 }
 
-void Node::foreach(const ForeachIter &onNode, int level) {
+void Node::foreach(const ForeachIter &onNode, size_t level) {
+	for (auto &it : _nodes) {
+		onNode(it, level + 1);
+		it.foreach(onNode, level + 1);
+	}
+}
+
+void Node::foreach(const ForeachConstIter &onNode, size_t level) const {
 	for (auto &it : _nodes) {
 		onNode(it, level + 1);
 		it.foreach(onNode, level + 1);

@@ -37,6 +37,7 @@ public:
 	using Style = style::ParameterList;
 
 	using ForeachIter = Function<void(Node &, size_t level)>;
+	using ForeachConstIter = Function<void(const Node &, size_t level)>;
 
 	template <typename Name, typename Id, typename TStyle>
 	Node & pushNode(Name &&htmlName, Id &&htmlId, TStyle &&style, AttrMap &&map) {
@@ -68,6 +69,7 @@ public:
 	inline operator bool () const { return !empty(); }
 
 	void foreach(const ForeachIter &);
+	void foreach(const ForeachConstIter &) const;
 
 public:
 	Node();
@@ -93,7 +95,8 @@ public:
 
 protected:
 	void dropValue();
-	void foreach(const ForeachIter &, int level);
+	void foreach(const ForeachIter &, size_t level);
+	void foreach(const ForeachConstIter &, size_t level) const;
 
 	NodeId _nodeId = NodeIdNone();
 	String _htmlId;

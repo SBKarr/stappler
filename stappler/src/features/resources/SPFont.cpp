@@ -421,6 +421,10 @@ FontFace * Source::getFontFace(const String &name, const FontParameters &it) {
 	return face;
 }
 
+float Source::getFontScale() const {
+	return _fontScale;
+}
+
 void Source::update(float dt) {
 	if (_dirty) {
 		auto v = (++ _version);

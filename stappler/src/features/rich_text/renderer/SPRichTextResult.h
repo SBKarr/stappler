@@ -39,7 +39,16 @@ public:
 		bool isSplit;
 	};
 
-	Result(const MediaParameters &, font::Source *cfg, Document *doc);
+	struct BoundIndex {
+		size_t idx = maxOf<int64_t>();
+		float start;
+		float end;
+		int64_t page;
+		String label;
+		String href;
+	};
+
+	bool init(const MediaParameters &, font::Source *cfg, Document *doc);
 
 	font::Source *getFontSet() const;
 	const MediaParameters &getMedia() const;
@@ -59,17 +68,25 @@ public:
 
 	const Vector<Object> & getObjects() const;
 	const Vector<Object> & getRefs() const;
+	const Vector<BoundIndex> & getBounds() const;
 	const Map<String, Vec2> & getIndex() const;
 	size_t getNumPages() const;
 
-	PageData getPageData(Renderer *r, size_t idx, float offset) const;
+	PageData getPageData(size_t idx, float offset) const;
+
+	BoundIndex getBoundsForPosition(float) const;
+
+	size_t getSizeInMemory() const;
 
 protected:
+	void processContents(const Document::ContentRecord & rec);
+
 	MediaParameters _media;
 	Size _size;
 
 	Vector<Object> _objects;
 	Vector<Object> _refs;
+	Vector<BoundIndex> _bounds;
 	Map<String, Vec2> _index;
 
 	Color4B _background;
@@ -78,7 +95,6 @@ protected:
 	Rc<Document> _document;
 
 	size_t _numPages = 1;
-
 };
 
 NS_SP_EXT_END(rich_text)

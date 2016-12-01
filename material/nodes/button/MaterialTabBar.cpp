@@ -40,9 +40,9 @@ THE SOFTWARE.
 
 NS_MD_BEGIN
 
-void TabBarButton::initialize(const TabButtonCallback &cb, TabBar::ButtonStyle style, bool wrapped) {
+void TabBarButton::initialize(const TabButtonCallback &cb, TabBar::ButtonStyle style, bool swallow, bool wrapped) {
 	_tabButtonCallback = cb;
-	setSwallowTouches(false);
+	setSwallowTouches(swallow);
 
 	_tabStyle = style;
 	_wrapped = wrapped;
@@ -56,22 +56,22 @@ void TabBarButton::initialize(const TabButtonCallback &cb, TabBar::ButtonStyle s
 	addChild(_icon, 2);
 }
 
-bool TabBarButton::init(MenuSourceButton *btn, const TabButtonCallback &cb, TabBar::ButtonStyle style, bool wrapped) {
+bool TabBarButton::init(MenuSourceButton *btn, const TabButtonCallback &cb, TabBar::ButtonStyle style, bool swallow, bool wrapped) {
 	if (!Button::init(std::bind(&TabBarButton::onTabButton, this))) {
 		return false;
 	}
 
-	initialize(cb, style, wrapped);
+	initialize(cb, style, swallow, wrapped);
 	setMenuSourceButton(btn);
 	return true;
 }
 
-bool TabBarButton::init(MenuSource *source, const TabButtonCallback &cb, TabBar::ButtonStyle style, bool wrapped) {
+bool TabBarButton::init(MenuSource *source, const TabButtonCallback &cb, TabBar::ButtonStyle style, bool swallow, bool wrapped) {
 	if (!Button::init(nullptr)) {
 		return false;
 	}
 
-	initialize(cb, style, wrapped);
+	initialize(cb, style, swallow, wrapped);
 
 	_label->setString("SystemMore"_locale);
 	_icon->setIconName(IconName::Navigation_more_vert);
@@ -510,11 +510,11 @@ cocos2d::Node *TabBar::onItem(MenuSourceButton *btn, bool wrapped) {
 	if (btn) {
 		ret = construct<TabBarButton>(btn, [this] (Button *b, MenuSourceButton *btn) {
 			onTabButton(b, btn);
-		}, _buttonStyle, wrapped);
+		}, _buttonStyle, _barStyle == BarStyle::Layout, wrapped);
 	} else {
 		ret = construct<TabBarButton>(_extra, [this] (Button *b, MenuSourceButton *btn) {
 			onTabButton(b, btn);
-		}, _buttonStyle, wrapped);
+		}, _buttonStyle, _barStyle == BarStyle::Layout, wrapped);
 	}
 
 	if (ret) {

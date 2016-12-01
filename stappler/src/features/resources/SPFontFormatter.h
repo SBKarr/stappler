@@ -47,19 +47,19 @@ struct LineSpec { // 12 bytes
 	uint16_t height = 0;
 };
 
-struct RangeSpec { // 20-24 bytes
-	uint32_t start = 0;
-	uint32_t count = 0;
-
-	Arc<FontLayout> layout;
-
-	Color4B color;
-	uint16_t height = 0;
+struct RangeSpec { // 32 bytes
+	bool colorDirty = false;
+	bool opacityDirty = false;
 	uint8_t underline = 0;
 	VerticalAlign align = VerticalAlign::Baseline;
 
-	bool colorDirty = false;
-	bool opacityDirty = false;
+	uint32_t start = 0;
+	uint32_t count = 0;
+
+	Color4B color;
+	uint16_t height = 0;
+
+	Arc<FontLayout> layout;
 };
 
 class FormatSpec : public Ref {
@@ -167,6 +167,8 @@ public:
 	uint16_t getWidth() const;
 	uint16_t getMaxLineX() const;
 	uint16_t getLineHeight() const;
+
+	FormatSpec *getOutput() const;
 
 protected:
 	bool isSpecial(char16_t c) const;
