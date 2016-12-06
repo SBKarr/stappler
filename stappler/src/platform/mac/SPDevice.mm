@@ -24,9 +24,31 @@ THE SOFTWARE.
 **/
 
 #include "SPPlatform.h"
+#include "platform/CCDevice.h"
+
+#include "SPPlatform.h"
 #include "SPScreenOrientation.h"
 
 #include "math/CCGeometry.h"
+
+#import <Foundation/Foundation.h>
+
+#if (MACOSX)
+
+#ifndef SP_RESTRICT
+NS_SP_PLATFORM_BEGIN
+
+namespace desktop {
+	void setScreenSize(const cocos2d::Size &size);
+	cocos2d::Size getScreenSize();
+	bool isTablet();
+	std::string getPackageName();
+	float getDensity();
+	std::string getUserLanguage();
+}
+
+NS_SP_PLATFORM_END
+#endif
 
 NS_SP_PLATFORM_BEGIN
 
@@ -82,7 +104,26 @@ namespace device {
 
 		return std::make_pair(totalSpace, totalFreeSpace);
 	}
+
+	int _dpi() {
+#ifdef SP_RESTRICT
+		return 92;
+#else
+		return 92 * desktop::getDensity();
+#endif
+	}
+
+	float _density() {
+#ifdef SP_RESTRICT
+		return 1.0f;
+#else
+		return desktop::getDensity();
+#endif
+	}
+
 	void _onDirectorStarted() { }
 }
 
 NS_SP_PLATFORM_END
+
+#endif

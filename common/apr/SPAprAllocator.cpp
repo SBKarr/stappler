@@ -59,6 +59,12 @@ void MemPool::free() {
 	}
 }
 
+void MemPool::clear() {
+	if (_pool) {
+		apr_pool_clear(_pool);
+	}
+}
+
 void sa_alloc_stack_server_destructor(void *) {
 	// unused for now
 }
@@ -121,8 +127,8 @@ server_rec *AllocStack::server() const {
 	if (auto s = getServerFromContext(l))  {
 		return s;
 	} else {
-		for (size_t i = 0; i < _logs.size; i++) {
-			if (auto s = getServerFromContext(_logs.data[i]))  {
+		for (size_t i = _logs.size; i > 0; i--) {
+			if (auto s = getServerFromContext(_logs.data[i-1]))  {
 				return s;
 			}
 		}

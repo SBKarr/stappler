@@ -243,7 +243,7 @@ bool JsonBuffer::parseString(Reader &r, bool tryWhole) {
 				uint32_t c = 0;
 				auto e = buf.pop(4);
 				for (int i = 0; i < 4; i++) {
-					c = c << 4 | string::hexToChar( e[0] );
+					c = (c << 4) | (string::hexToChar( e[0] ) & 0xF);
 					++ e;
 				}
 

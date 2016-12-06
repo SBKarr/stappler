@@ -25,12 +25,13 @@ THE SOFTWARE.
 
 #include "SPPlatform.h"
 
+#if (MACOSX)
 
 NS_SP_PLATFORM_BEGIN
 
 namespace clipboard {
 	bool _isAvailable() {
-		return NO;
+		return false;
 	}
 
 	std::string _getString() {
@@ -42,3 +43,5 @@ namespace clipboard {
 }
 
 NS_SP_PLATFORM_END
+
+#endif

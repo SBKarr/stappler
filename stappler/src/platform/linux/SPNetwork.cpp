@@ -27,6 +27,8 @@ THE SOFTWARE.
 #include "SPPlatform.h"
 #include "SPThread.h"
 
+#if (LINUX)
+
 NS_SP_PLATFORM_BEGIN
 
 namespace network {
@@ -42,3 +44,5 @@ namespace network {
 }
 
 NS_SP_PLATFORM_END
+
+#endif

@@ -26,6 +26,8 @@ THE SOFTWARE.
 #include "SPDefine.h"
 #include "SPPlatform.h"
 
+#if (LINUX)
+
 NS_SP_PLATFORM_BEGIN
 
 namespace clipboard {
@@ -42,3 +44,5 @@ namespace clipboard {
 }
 
 NS_SP_PLATFORM_END
+
+#endif

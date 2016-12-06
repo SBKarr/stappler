@@ -27,6 +27,8 @@ THE SOFTWARE.
 #include "SPPlatform.h"
 #include "SPThread.h"
 
+#if (LINUX)
+
 NS_SP_PLATFORM_BEGIN
 
 namespace interaction {
@@ -56,3 +58,5 @@ namespace interaction {
 }
 
 NS_SP_PLATFORM_END
+
+#endif

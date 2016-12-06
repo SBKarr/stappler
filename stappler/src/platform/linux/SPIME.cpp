@@ -26,6 +26,8 @@ THE SOFTWARE.
 #include "SPDefine.h"
 #include "SPPlatform.h"
 
+#if (LINUX)
+
 NS_SP_PLATFORM_BEGIN
 
 namespace ime {
@@ -56,3 +58,5 @@ namespace ime {
 }
 
 NS_SP_PLATFORM_END
+
+#endif

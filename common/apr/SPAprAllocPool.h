@@ -71,6 +71,7 @@ public:
 	apr_pool_t *pool() const { return _pool; }
 
 	void free();
+	void clear();
 
 protected:
 	apr_pool_t *_pool = nullptr;

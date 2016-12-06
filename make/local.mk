@@ -42,6 +42,10 @@ BUILD_SRCS := \
 	$(foreach dir,$(LOCAL_SRCS_DIRS),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.c*')) \
 	$(addprefix $(LOCAL_ROOT)/,$(LOCAL_SRCS_OBJS))
 
+ifeq ($(OBJC),1)
+BUILD_SRCS += $(foreach dir,$(LOCAL_SRCS_DIRS),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.mm'))
+endif
+
 BUILD_INCLUDES := \
 	$(foreach dir,$(LOCAL_INCLUDES_DIRS),$(shell find $(LOCAL_ROOT)/$(dir) -type d)) \
 	$(addprefix $(LOCAL_ROOT)/,$(LOCAL_INCLUDES_OBJS)) \
@@ -52,6 +56,7 @@ BUILD_INCLUDES := \
 BUILD_SRCS := $(realpath $(BUILD_SRCS))
 BUILD_SRCS := $(BUILD_SRCS:.c=.o)
 BUILD_SRCS := $(BUILD_SRCS:.cpp=.o)
+BUILD_SRCS := $(BUILD_SRCS:.mm=.o)
 
 BUILD_OBJS := $(addprefix $(BUILD_OUTDIR),$(BUILD_SRCS))
 
@@ -59,6 +64,7 @@ ifdef LOCAL_MAIN
 BUILD_MAIN_SRC := $(realpath $(addprefix $(LOCAL_ROOT)/,$(LOCAL_MAIN)))
 BUILD_MAIN_SRC := $(BUILD_MAIN_SRC:.c=.o)
 BUILD_MAIN_SRC := $(BUILD_MAIN_SRC:.cpp=.o)
+BUILD_MAIN_SRC := $(BUILD_MAIN_SRC:.mm=.o)
 BUILD_MAIN_OBJ := $(addprefix $(BUILD_OUTDIR),$(BUILD_MAIN_SRC))
 else
 BUILD_MAIN_OBJ := 
@@ -137,6 +143,9 @@ $(LOCAL_OUTPUT_LIBRARY): $(BUILD_OBJS)
 	$(GLOBAL_QUIET_LINK) $(GLOBAL_CPP) -shared  $(BUILD_OBJS) $(BUILD_LIBS) $(TOOLKIT_LIB_FLAGS) $(OSTYPE_EXEC_FLAGS) -o $(LOCAL_OUTPUT_LIBRARY)
 
 $(BUILD_OUTDIR)/%.o: /%.cpp
+	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(BUILD_OUTDIR)/$*.d $(BUILD_CXXFLAGS) -c -o $@ `$(GLOBAL_ROOT)/convert-path.sh $<`
+
+$(BUILD_OUTDIR)/%.o: /%.mm
 	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(BUILD_OUTDIR)/$*.d $(BUILD_CXXFLAGS) -c -o $@ `$(GLOBAL_ROOT)/convert-path.sh $<`
 
 $(BUILD_OUTDIR)/%.o: $(LOCAL_ROOT)/%.c

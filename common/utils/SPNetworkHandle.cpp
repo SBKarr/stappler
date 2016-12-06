@@ -571,6 +571,7 @@ bool NetworkHandle::perform() {
     }
 
 	_debugData.clear();
+	_parsedHeaders.clear();
 	_recievedHeaders.clear();
 
     _errorCode = curl_easy_perform(curl);

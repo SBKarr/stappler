@@ -30,7 +30,7 @@ THE SOFTWARE.
 #include "CCGLViewImpl-desktop.h"
 #include "base/CCDirector.h"
 
-//#if (LINUX)
+#if (LINUX)
 
 NS_SP_PLATFORM_BEGIN
 
@@ -58,10 +58,8 @@ namespace render {
 		static_cast<cocos2d::GLViewImpl *>(view)->disableOffscreenContext();
 	}
 #endif
-
-
 }
 
 NS_SP_PLATFORM_END
 
-//#endif
+#endif

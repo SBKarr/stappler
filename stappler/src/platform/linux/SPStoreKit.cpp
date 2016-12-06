@@ -38,6 +38,8 @@ THE SOFTWARE.
 #include "SPStorage.h"
 #include "SPScheme.h"
 
+#if (LINUX)
+
 #ifndef SP_RESTRICT
 NS_SP_BEGIN
 
@@ -430,4 +432,5 @@ namespace storekit {
 }
 
 NS_SP_PLATFORM_END
+#endif
 #endif

@@ -29,24 +29,37 @@ THE SOFTWARE.
 #include "platform/CCPlatformConfig.h"
 #include "base/CCDirector.h"
 
+#if (MACOSX)
+
 NS_SP_PLATFORM_BEGIN
 
 namespace ime {
-	void _updateCursor(size_t pos, size_t len) {
-
+	std::function<void(bool)> _enabledCallback;
+	
+	void setEnabledCallback(const std::function<void(bool)> &f) {
+		_enabledCallback = f;
 	}
-
-	void _updateText(const std::u16string &str, size_t pos, size_t len) {
-
-	}
-
-	void _runWithText(const std::u16string &str, size_t pos, size_t len) {
+	void _updateCursor(uint32_t pos, uint32_t len) {
 		
 	}
-
+	
+	void _updateText(const std::u16string &str, uint32_t pos, uint32_t len) {
+		
+	}
+	
+	void _runWithText(const std::u16string &str, uint32_t pos, uint32_t len) {
+		if (_enabledCallback) {
+			_enabledCallback(true);
+		}
+	}
+	
 	void _cancel() {
-		
+		if (_enabledCallback) {
+			_enabledCallback(false);
+		}
 	}
 }
 
 NS_SP_PLATFORM_END
+
+#endif

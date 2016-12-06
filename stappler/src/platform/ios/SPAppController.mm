@@ -25,12 +25,15 @@ THE SOFTWARE.
 
 #import "SPAppController.h"
 #import "CCEAGLView-ios.h"
+#import "CCGLViewImpl-ios.h"
+#import "CCApplication-ios.h"
 #import "SPRootViewController.h"
 #import <UserNotifications/UserNotifications.h>
 
 #include "SPScreen.h"
 #include "SPDevice.h"
 #include "SPPlatform.h"
+#include "base/CCDirector.h"
 
 NS_SP_PLATFORM_BEGIN
 

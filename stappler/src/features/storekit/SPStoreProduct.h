@@ -49,7 +49,7 @@ public:
 	bool available = false;
 	bool validated = false;
 
-#if (ANDROID || LINUX || __MINGW32__)
+#if (ANDROID || LINUX || __MINGW32__ || MACOSX)
 	std::string token = "";
 	std::string signature = "";
 

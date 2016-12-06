@@ -148,7 +148,7 @@ void Device::init() {
 #endif
 
 #if (COCOS2D_DEBUG && CC_TARGET_PLATFORM == CC_PLATFORM_IOS)
-	log("%s", stappler::filesystem::writablePath().c_str());
+	log::text("WritablePath", stappler::filesystem::writablePath());
 #endif
 }
 

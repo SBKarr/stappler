@@ -24,7 +24,10 @@ THE SOFTWARE.
 **/
 
 #include "SPCommon.h"
-#include "SPPlatform.h"
+#include "SPCommonPlatform.h"
+
+#if (MACOSX)
+
 #include "SPFilesystem.h"
 
 #import <Foundation/Foundation.h>
@@ -100,3 +103,5 @@ namespace filesystem {
 }
 
 NS_SP_PLATFORM_END
+
+#endif

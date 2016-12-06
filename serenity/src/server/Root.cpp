@@ -190,9 +190,10 @@ void Root::onServerChildInit(apr_pool_t *p, server_rec* s) {
 		_rootServerContext = s;
 		auto serv = _rootServerContext;
 		while (serv) {
+			server_rec *servPtr = serv.server();
 			AllocStack::perform([&] {
 				serv.onChildInit();
-			}, serv.server());
+			}, servPtr);
 			serv = serv.next();
 		}
 

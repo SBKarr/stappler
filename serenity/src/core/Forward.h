@@ -265,4 +265,12 @@ void setNotifications(apr_pool_t *, const Function<void(data::Value &&)> &error,
 NS_SA_EXT_END(messages)
 
 
+NS_SA_EXT_BEGIN(network)
+
+class Handle;
+class Mail;
+
+NS_SA_EXT_END(network)
+
+
 #endif /* SERENITY_SRC_CORE_FORWARD_H_ */

@@ -26,6 +26,8 @@ THE SOFTWARE.
 #include "SPPlatform.h"
 #include "SPThread.h"
 
+#if (MACOSX)
+
 #import <sys/socket.h>
 #import <netinet/in.h>
 #import <SystemConfiguration/SystemConfiguration.h>
@@ -98,3 +100,5 @@ namespace network {
 }
 
 NS_SP_PLATFORM_END
+
+#endif

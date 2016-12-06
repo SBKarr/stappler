@@ -92,8 +92,10 @@ $(MATERIAL_OUTPUT_STATIC) : $(MATERIAL_H_GCH) $(MATERIAL_GCH) $(MATERIAL_OBJS)
 
 libmaterial: .prebuild_material .prebuild_stappler $(MATERIAL_OUTPUT) $(MATERIAL_OUTPUT_STATIC)
 
+libmaterial_static: .prebuild_material .prebuild_stappler $(MATERIAL_OUTPUT_STATIC)
+
 .prebuild_material:
 	@echo "=== Build libmaterial ==="
 	@$(GLOBAL_MKDIR) $(MATERIAL_DIRS)
 
-.PHONY: .prebuild_material libmaterial
+.PHONY: .prebuild_material libmaterial libmaterial_static

@@ -117,7 +117,7 @@ inline void utf8EncodeBuf(char *ptr, char16_t c) {
 		ptr[0] = 0xc0 | (c >> 6);
 		ptr[1] = 0x80 | (c & 0x3f);
 	} else {
-		ptr[0] = 0xc0 | (c >> 12);
+		ptr[0] = 0xe0 | (c >> 12);
 		ptr[1] = 0x80 | (c >> 6 & 0x3f);
 		ptr[2] = 0x80 | (c & 0x3f);
 	}
@@ -132,7 +132,7 @@ inline uint8_t utf8Encode(String &str, char16_t c) {
 		str.push_back((char)(0x80 | (c & 0x3f)));
 		return 2;
 	} else {
-		str.push_back((char)(0xc0 | (c >> 12)));
+		str.push_back((char)(0xe0 | (c >> 12)));
 		str.push_back((char)(0x80 | (c >> 6 & 0x3f)));
 		str.push_back((char)(0x80 | (c & 0x3f)));
 		return 3;

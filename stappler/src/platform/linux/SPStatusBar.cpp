@@ -28,6 +28,8 @@ THE SOFTWARE.
 #include "SPDevice.h"
 #include "math/CCGeometry.h"
 
+#if (LINUX)
+
 NS_SP_PLATFORM_BEGIN
 
 namespace statusbar {
@@ -65,3 +67,5 @@ namespace statusbar {
 }
 
 NS_SP_PLATFORM_END
+
+#endif

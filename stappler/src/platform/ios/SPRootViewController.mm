@@ -26,7 +26,9 @@ THE SOFTWARE.
 #import "SPRootViewController.h"
 #import "SPIOSLoaderView.h"
 #import "CCEAGLView-ios.h"
+#include "CCApplication-ios.h"
 #include "SPScreen.h"
+#include "base/CCDirector.h"
 
 @implementation SPRootViewController {
 	BOOL _statusBarHidden;

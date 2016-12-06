@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "SPPlatform.h"
 #include "SPThreadManager.h"
 #include "CCGLViewImpl-ios.h"
+#include "base/CCDirector.h"
 
 NS_SP_PLATFORM_BEGIN
 

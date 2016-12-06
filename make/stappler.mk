@@ -38,8 +38,7 @@ STAPPLER_SRCS_DIRS += \
 	$(COCOS2D_STAPPLER_SRCS_DIRS)
 
 STAPPLER_SRCS_OBJS += \
-	$(COCOS2D_STAPPLER_SRCS_OBJS) \
-	libs/src/nanovg/src/nanovg.c
+	$(COCOS2D_STAPPLER_SRCS_OBJS)
 
 STAPPLER_INCLUDES_DIRS += \
 	common \
@@ -48,21 +47,35 @@ STAPPLER_INCLUDES_DIRS += \
 STAPPLER_INCLUDES_OBJS += \
 	$(COCOS2D_STAPPLER_INCLUDES_OBJS) \
 	$(OSTYPE_INCLUDE) \
-	$(OSTYPE_INCLUDE)/cairo \
-	$(GLOBAL_ROOT)/libs/src/nanovg/src
+	$(OSTYPE_INCLUDE)/cairo
 
+ifdef ANDROID_ARCH
 
-ifeq ($(shell uname -o),Cygwin)
+STAPPLER_SRCS_DIRS += $(COCOS2D_ROOT)/cocos/platform/android stappler/src/platform/android
+
+else ifdef IOS_ARCH
+
+STAPPLER_SRCS_DIRS += $(COCOS2D_ROOT)/cocos/platform/ios $(COCOS2D_ROOT)/cocos/platform/apple stappler/src/platform/ios
+
+else
+
+ifeq ($(shell uname),Darwin)
+STAPPLER_SRCS_DIRS += $(COCOS2D_ROOT)/cocos/platform/mac $(COCOS2D_ROOT)/cocos/platform/apple stappler/src/platform/mac
+ifndef LOCAL_MAIN
+STAPPLER_SRCS_DIRS += stappler/src/platform/mac_main
+endif
+else ifeq ($(shell uname -o),Cygwin)
 STAPPLER_SRCS_DIRS += $(COCOS2D_ROOT)/cocos/platform/win32 stappler/src/platform/win32
 ifndef LOCAL_MAIN
 STAPPLER_SRCS_DIRS += stappler/src/platform/win32_main
 endif
 else
 STAPPLER_SRCS_DIRS += $(COCOS2D_ROOT)/cocos/platform/linux stappler/src/platform/linux
-STAPPLER_INCLUDES_OBJS += $(OSTYPE_INCLUDE)/freetype2/linux
 ifndef LOCAL_MAIN
 STAPPLER_SRCS_DIRS += stappler/src/platform/linux_main
 endif
+endif
+
 endif
 
 
@@ -72,6 +85,10 @@ STAPPLER_SRCS := \
 	$(foreach dir,$(STAPPLER_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.c*')) \
 	$(addprefix $(GLOBAL_ROOT)/,$(STAPPLER_SRCS_OBJS))
 
+ifeq ($(OBJC),1)
+STAPPLER_SRCS += $(foreach dir,$(STAPPLER_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.mm'))
+endif
+
 STAPPLER_INCLUDES := \
 	$(foreach dir,$(STAPPLER_INCLUDES_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -type d)) \
 	$(addprefix $(GLOBAL_ROOT)/,$(STAPPLER_INCLUDES_OBJS))
@@ -80,7 +97,7 @@ STAPPLER_GCH := $(addprefix $(GLOBAL_ROOT)/,$(STAPPLER_PRECOMPILED_HEADERS))
 STAPPLER_H_GCH := $(patsubst $(GLOBAL_ROOT)/%,$(STAPPLER_OUTPUT_DIR)/include/%,$(STAPPLER_GCH))
 STAPPLER_GCH := $(addsuffix .gch,$(STAPPLER_H_GCH))
 
-STAPPLER_OBJS := $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(patsubst $(GLOBAL_ROOT)/%,$(STAPPLER_OUTPUT_DIR)/%,$(STAPPLER_SRCS))))
+STAPPLER_OBJS := $(patsubst %.mm,%.o,$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(patsubst $(GLOBAL_ROOT)/%,$(STAPPLER_OUTPUT_DIR)/%,$(STAPPLER_SRCS)))))
 STAPPLER_DIRS := $(sort $(dir $(STAPPLER_OBJS))) $(sort $(dir $(STAPPLER_GCH)))
 
 STAPPLER_INPUT_CFLAGS := $(addprefix -I,$(sort $(dir $(STAPPLER_GCH)))) $(addprefix -I,$(STAPPLER_INCLUDES))  -DCC_STATIC
@@ -101,6 +118,9 @@ $(STAPPLER_OUTPUT_DIR)/include/%.h.gch: $(STAPPLER_OUTPUT_DIR)/include/%.h
 $(STAPPLER_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.cpp $(STAPPLER_H_GCH) $(STAPPLER_GCH)
 	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(STAPPLER_OUTPUT_DIR)/$*.d $(STAPPLER_CXXFLAGS) -c -o $@ $<
 
+$(STAPPLER_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.mm $(STAPPLER_H_GCH) $(STAPPLER_GCH)
+	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(STAPPLER_OUTPUT_DIR)/$*.d $(STAPPLER_CXXFLAGS) -c -o $@ $<
+
 $(STAPPLER_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.c $(STAPPLER_H_GCH) $(STAPPLER_GCH)
 	$(GLOBAL_QUIET_CC) $(GLOBAL_CC) -MMD -MP -MF $(STAPPLER_OUTPUT_DIR)/$*.d $(STAPPLER_CFLAGS) -c -o $@ $<
 
@@ -112,8 +132,10 @@ $(STAPPLER_OUTPUT_STATIC) : $(STAPPLER_H_GCH) $(STAPPLER_GCH) $(STAPPLER_OBJS)
 
 libstappler: .prebuild_stappler $(STAPPLER_OUTPUT) $(STAPPLER_OUTPUT_STATIC)
 
+libstappler_static: .prebuild_stappler $(STAPPLER_OUTPUT_STATIC)
+
 .prebuild_stappler:
 	@echo "=== Build libstappler ==="
 	@$(GLOBAL_MKDIR) $(STAPPLER_DIRS)
 
-.PHONY: .prebuild_stappler libstappler
+.PHONY: .prebuild_stappler libstappler libstappler_static

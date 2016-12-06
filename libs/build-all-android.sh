@@ -12,9 +12,9 @@ TOOLCHAINS_DIR=`pwd`/android/toolchains
 rm -rf $TOOLCHAINS_DIR
 mkdir -p $TOOLCHAINS_DIR
 
-$NDK/build/tools/make_standalone_toolchain.py --arch=arm --api 9 --install-dir=$TOOLCHAINS_DIR/armeabi
-$NDK/build/tools/make_standalone_toolchain.py --arch=arm --api 14 --install-dir=$TOOLCHAINS_DIR/armeabi-v7a
-$NDK/build/tools/make_standalone_toolchain.py --arch=x86 --api 14 --install-dir=$TOOLCHAINS_DIR/x86
+$NDK/build/tools/make_standalone_toolchain.py --arch=arm --api 14 --stl=libc++ --install-dir=$TOOLCHAINS_DIR/armeabi
+$NDK/build/tools/make_standalone_toolchain.py --arch=arm --api 14 --stl=libc++ --install-dir=$TOOLCHAINS_DIR/armeabi-v7a
+$NDK/build/tools/make_standalone_toolchain.py --arch=x86 --api 14 --stl=libc++ --install-dir=$TOOLCHAINS_DIR/x86
 
 }
 
@@ -56,4 +56,8 @@ fi
 if [ "$1" == "export" ]; then
 echo "Export files..."
 export_files
+fi
+
+if [ "$1" == "toolchains" ]; then
+make_toolchains
 fi

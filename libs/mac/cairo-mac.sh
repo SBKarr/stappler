@@ -10,8 +10,9 @@ cd $LIBNAME
 
 ../../src/$LIBNAME/configure \
 	CC="clang" CFLAGS="-Os -DCAIRO_NO_MUTEX -fPIC" \
-	CPP="clang -E" CPPFLAGS="-I`pwd`/../$1/include" \
+	CPP="clang -E" CPPFLAGS="-I`pwd`/../$1/include -I`pwd`/../$1/include/pixman-1" \
 	LDFLAGS="-L`pwd`/../$1/lib" \
+	PKG_CONFIG_PATH="`pwd`/../$1/lib/pkgconfig" \
 	--includedir=`pwd`/../$1/include \
 	--libdir=`pwd`/../$1/lib \
 	--prefix=`pwd` \

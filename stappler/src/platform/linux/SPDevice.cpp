@@ -31,6 +31,8 @@ THE SOFTWARE.
 
 #include "math/CCGeometry.h"
 
+#if (LINUX)
+
 #ifndef SP_RESTRICT
 NS_SP_PLATFORM_BEGIN
 
@@ -146,3 +148,5 @@ namespace device {
 }
 
 NS_SP_PLATFORM_END
+
+#endif

@@ -40,7 +40,7 @@ public:
 	};
 
 	struct BoundIndex {
-		size_t idx = maxOf<int64_t>();
+		size_t idx = maxOf<size_t>();
 		float start;
 		float end;
 		int64_t page;

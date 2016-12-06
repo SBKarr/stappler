@@ -426,6 +426,8 @@ void Request::setContentEncoding(apr::string &&str) {
 }
 void Request::setFilename(apr::string &&str) {
 	_request->filename = str.data();
+	_request->canonical_filename = _request->filename;
+	apr_stat(&_request->finfo, _request->filename, APR_FINFO_NORM, pool());
 	str.force_clear();
 }
 

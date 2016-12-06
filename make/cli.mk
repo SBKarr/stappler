@@ -38,6 +38,7 @@ CLI_SRCS_DIRS += \
 	stappler/src/features/threads \
 	stappler/src/platform/universal \
 	stappler/src/platform/linux \
+	stappler/src/platform/mac \
 	$(COCOS2D_CLI_SRCS_DIRS)
 
 CLI_SRCS_OBJS += \
@@ -57,6 +58,10 @@ CLI_SRCS := \
 	$(foreach dir,$(CLI_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.c*')) \
 	$(addprefix $(GLOBAL_ROOT)/,$(CLI_SRCS_OBJS))
 
+ifeq ($(OBJC),1)
+CLI_SRCS += $(foreach dir,$(CLI_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.mm'))
+endif
+
 CLI_INCLUDES := \
 	$(foreach dir,$(CLI_INCLUDES_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -type d)) \
 	$(addprefix $(GLOBAL_ROOT)/,$(CLI_INCLUDES_OBJS))
@@ -64,7 +69,7 @@ CLI_INCLUDES := \
 CLI_GCH := $(addsuffix .gch,$(addprefix $(GLOBAL_ROOT)/,$(CLI_PRECOMPILED_HEADERS)))
 CLI_GCH := $(patsubst $(GLOBAL_ROOT)/%,$(CLI_OUTPUT_DIR)/include/%,$(CLI_GCH))
 
-CLI_OBJS := $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(patsubst $(GLOBAL_ROOT)/%,$(CLI_OUTPUT_DIR)/%,$(CLI_SRCS))))
+CLI_OBJS := $(patsubst %.mm,%.o,$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(patsubst $(GLOBAL_ROOT)/%,$(CLI_OUTPUT_DIR)/%,$(CLI_SRCS)))))
 CLI_DIRS := $(sort $(dir $(CLI_OBJS))) $(sort $(dir $(CLI_GCH)))
 
 CLI_INPUT_CFLAGS := $(addprefix -I,$(sort $(dir $(CLI_GCH)))) $(addprefix -I,$(CLI_INCLUDES))
@@ -80,6 +85,9 @@ $(CLI_OUTPUT_DIR)/include/%.gch: $(GLOBAL_ROOT)/%
 	@cp -f $< $(CLI_OUTPUT_DIR)/include/$*
 
 $(CLI_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.cpp $(CLI_GCH)
+	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(CLI_OUTPUT_DIR)/$*.d $(CLI_CXXFLAGS) -c -o $@ $<
+
+$(CLI_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.mm $(CLI_GCH)
 	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(CLI_OUTPUT_DIR)/$*.d $(CLI_CXXFLAGS) -c -o $@ $<
 
 $(CLI_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.c $(CLI_GCH)
