@@ -24,7 +24,7 @@ THE SOFTWARE.
 #define CLASSES_MATERIAL_NODES_MATERIALNODE_H_
 
 #include "Material.h"
-#include "2d/CCLayer.h"
+#include "2d/CCNode.h"
 #include "SPDataSource.h"
 
 NS_MD_BEGIN
@@ -59,15 +59,15 @@ public:
     virtual const data::Value &getUserData() const;
 
 public:
-    cocos2d::Size getContentSizeWithPadding() const;
-    cocos2d::Vec2 getAnchorPositionWithPadding() const;
-    cocos2d::Rect getContentRect() const;
+    Size getContentSizeWithPadding() const;
+    Vec2 getAnchorPositionWithPadding() const;
+    Rect getContentRect() const;
 
-    cocos2d::Size getContentSizeForAmbientShadow(float index) const;
-    cocos2d::Vec2 getPositionForAmbientShadow(float index) const;
+    Size getContentSizeForAmbientShadow(float index) const;
+    Vec2 getPositionForAmbientShadow(float index) const;
 
-    cocos2d::Size getContentSizeForKeyShadow(float index) const;
-    cocos2d::Vec2 getPositionForKeyShadow(float index) const;
+    Size getContentSizeForKeyShadow(float index) const;
+    Vec2 getPositionForKeyShadow(float index) const;
 
     stappler::ShadowSprite *getAmbientShadow() const { return _ambientShadow; }
     stappler::ShadowSprite *getKeyShadow() const { return _keyShadow; }

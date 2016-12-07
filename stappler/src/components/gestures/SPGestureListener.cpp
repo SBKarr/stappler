@@ -366,12 +366,12 @@ void Listener::setTapCallback(const Callback<Tap> &cb) {
 	}
 }
 
-void Listener::setPressCallback(const Callback<Press> &cb) {
+void Listener::setPressCallback(const Callback<Press> &cb, TimeInterval interval, bool continuous) {
 	_onPress = cb;
 	auto type = Type::Press;
 	if (cb) {
 		if (!hasGesture(type)) {
-			auto rec = Rc<PressRecognizer>::create();
+			auto rec = Rc<PressRecognizer>::create(interval, continuous);
 			rec->setCallback(std::bind(&Listener::onPress, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 			setRecognizer(rec, type);
 		}

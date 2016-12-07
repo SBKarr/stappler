@@ -60,6 +60,7 @@ CLI_SRCS := \
 
 ifeq ($(OBJC),1)
 CLI_SRCS += $(foreach dir,$(CLI_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.mm'))
+CLI_SRCS += $(addprefix $(GLOBAL_ROOT)/,$(COCOS2D_ROOT)/cocos/platform/apple/CCFileUtils-apple.mm)
 endif
 
 CLI_INCLUDES := \

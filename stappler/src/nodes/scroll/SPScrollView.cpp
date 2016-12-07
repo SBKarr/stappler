@@ -42,7 +42,7 @@ bool ScrollView::init(Layout l) {
 	_indicator->setOpacity(0);
 	_indicator->setColor(Color3B(127, 127, 127));
 	_indicator->setAnchorPoint(Vec2(1, 0));
-	addChild(_indicator, 2);
+	addChild(_indicator, 11);
 
 	_overflowFront = construct<Overscroll>();
 	addChild(_overflowFront, 12);

@@ -126,15 +126,15 @@ public:
 	inline Level level() const { return (_index == -1)?Level::Unknown:((Level)(_index & 0x0F)); }
 	inline Tone tone() const { return (_index == -1)?Tone::Unknown:((Tone)((_index & 0xFFF0) / 16)); }
 
-	Color previous();
-	Color next();
+	Color previous() const;
+	Color next() const;
 
-	Color lighter(uint8_t index = 1);
-	Color darker(uint8_t index = 1);
+	Color lighter(uint8_t index = 1) const;
+	Color darker(uint8_t index = 1) const;
 
-	Color medium();
-	Color specific(uint8_t index);
-	Color specific(Level l);
+	Color medium() const;
+	Color specific(uint8_t index) const;
+	Color specific(Level l) const;
 
 	Color(Tone, Level);
 	Color(uint32_t value);

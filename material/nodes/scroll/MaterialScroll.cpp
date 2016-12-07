@@ -108,6 +108,13 @@ uint64_t Scroll::Item::getId() const {
 	return _id;
 }
 
+void Scroll::Item::setControllerId(size_t value) {
+	_controllerId = value;
+}
+size_t Scroll::Item::getControllerId() const {
+	return _controllerId;
+}
+
 bool Scroll::Handler::init(Scroll *s) {
 	_size = s->getContentSize();
 	_layout = s->getLayout();
@@ -528,8 +535,8 @@ void Scroll::updateItems() {
 		}
 
 		for (auto &it : _items) {
-			_controller->addItem(std::bind(&Scroll::onItemRequest, this, it.second.get(), it.first),
-					it.second->getContentSize(), it.second->getPosition());
+			it.second->setControllerId(_controller->addItem(std::bind(&Scroll::onItemRequest, this, std::placeholders::_1, it.first),
+					it.second->getContentSize(), it.second->getPosition()));
 		}
 
 		if (_items.rbegin()->first.get() < _itemsCount - 1) {
@@ -555,9 +562,14 @@ Scroll::Handler *Scroll::onHandler() {
 	return _handlerCallback(this);
 }
 
-MaterialNode *Scroll::onItemRequest(Item *item, Source::Id id) {
-	if (_itemCallback) {
-		return _itemCallback(item);
+MaterialNode *Scroll::onItemRequest(const ScrollController::Item &item, Source::Id id) {
+	if ((isVertical() && item.size.height > 0.0f) || (isHorizontal() && item.size.width > 0)) {
+		auto it = _items.find(id);
+		if (it != _items.end()) {
+			if (_itemCallback) {
+				return _itemCallback(it->second);
+			}
+		}
 	}
 	return nullptr;
 }

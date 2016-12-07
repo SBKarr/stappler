@@ -52,14 +52,14 @@ bool ScrollViewBase::init(Layout layout) {
     	if (ev == gesture::Event::Began) {
     		return onPressBegin(s.location());
     	} else if (ev == gesture::Event::Activated) {
-    		return onLongPress(s.location(), s.time);
+    		return onLongPress(s.location(), s.time, s.count);
     	} else if (ev == gesture::Event::Ended) {
     		return onPressEnd(s.location(), s.time);
     	} else if (ev == gesture::Event::Cancelled) {
     		return onPressCancel(s.location(), s.time);
     	}
     	return false;
-    });
+    }, TimeInterval::milliseconds(499), true);
     l->setSwipeCallback([this] (gesture::Event ev, const gesture::Swipe &s) -> bool {
     	if (ev == gesture::Event::Began) {
     		auto cs = (_layout == Vertical)?(_contentSize.height):(_contentSize.width);
@@ -100,6 +100,7 @@ bool ScrollViewBase::init(Layout layout) {
     });
     l->setMouseWheelCallback([this] (gesture::Event ev, const gesture::Wheel &w) -> bool {
     	auto pos = getScrollPosition();
+		onSwipeBegin();
 		if (_layout == Vertical) {
 			onDelta(w.amount.y * 100.0f / _globalScale.y);
 		} else {
@@ -802,7 +803,8 @@ bool ScrollViewBase::onPressBegin(const Vec2 &) {
 	onAnimationFinished();
 	return false;
 }
-bool ScrollViewBase::onLongPress(const Vec2 &, const TimeInterval &) {
+bool ScrollViewBase::onLongPress(const Vec2 &, const TimeInterval &time, int count) {
+	log::format("LongPress", "%lu %d", time.msec(), count);
 	return true;
 }
 bool ScrollViewBase::onPressEnd(const Vec2 &, const TimeInterval &) {

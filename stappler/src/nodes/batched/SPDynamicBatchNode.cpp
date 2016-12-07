@@ -57,7 +57,7 @@ DynamicAtlas* DynamicBatchNode::getAtlas(void) {
 }
 
 void DynamicBatchNode::updateColor() {
-	if (!_quads->empty()) {
+	if (_quads && !_quads->empty()) {
 	    cocos2d::Color4B color4( _displayedColor.r, _displayedColor.g, _displayedColor.b, _displayedOpacity );
 
 	    // special opacity for premultiplied textures
@@ -98,7 +98,7 @@ void DynamicBatchNode::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &tr
 		}
 	}
 
-	if (!_textureAtlas || !_texture) {
+	if (!_textureAtlas) {
 		return;
 	}
 

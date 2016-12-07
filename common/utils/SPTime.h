@@ -48,6 +48,11 @@ public:
 	uint64_t toSeconds() const;
 	float toFloatSeconds() const;
 
+	uint64_t mksec() const;
+	uint64_t msec() const;
+	uint64_t sec() const;
+	float fsec() const;
+
 	void setMicroseconds(uint64_t);
 	void setMilliseconds(uint64_t);
 	void setSeconds(time_t);
@@ -107,6 +112,11 @@ public:
 	uint64_t toMicroseconds() const;
 	uint64_t toMilliseconds() const;
 	uint64_t toSeconds() const;
+
+	uint64_t mksec() const;
+	uint64_t msec() const;
+	uint64_t sec() const;
+	float fsec() const;
 
 	void setMicroseconds(uint64_t);
 	void setMilliseconds(uint64_t);

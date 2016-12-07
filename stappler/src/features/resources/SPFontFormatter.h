@@ -118,6 +118,8 @@ public:
 
 	RangeLineIterator begin() const;
 	RangeLineIterator end() const;
+
+	WideString str(bool filterAlign = true) const;
 };
 
 class HyphenMap : public Ref {
@@ -230,7 +232,7 @@ protected:
 	uint16_t defaultWidth = 0;
 	uint16_t width = 0;
 	uint16_t lineOffset = 0;
-	uint16_t lineX = 0;
+	int16_t lineX = 0;
 	uint16_t lineY = 0;
 
 	uint16_t maxLineX = 0;

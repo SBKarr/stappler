@@ -45,7 +45,7 @@ public: // aliases
 public: // callbacks
 	void setTouchCallback(const Callback<Touch> &);
 	void setTapCallback(const Callback<Tap> &);
-	void setPressCallback(const Callback<Press> &);
+	void setPressCallback(const Callback<Press> &, TimeInterval = TimeInterval::milliseconds(350), bool continuous = false);
 	void setSwipeCallback(const Callback<Swipe> &, float threshold = nan(), bool sendThreshold = true);
 	void setPinchCallback(const Callback<Pinch> &);
 	void setRotateCallback(const Callback<Rotate> &);

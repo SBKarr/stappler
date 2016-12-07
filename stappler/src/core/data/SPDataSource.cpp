@@ -286,7 +286,7 @@ bool Source::getItemData(const DataCallback &cb, Id n, uint32_t l, bool subcats)
 		for (auto &cat : _subCats) {
 			if (subcats) {
 				if (n.empty()) {
-					return getItemData(cb, Self);
+					return cat->getItemData(cb, Self);
 				} else {
 					n --;
 				}
@@ -304,10 +304,52 @@ bool Source::getItemData(const DataCallback &cb, Id n, uint32_t l, bool subcats)
 		return getItemData(cb, Id(n));
 	} else {
 		if (!_subCats.empty() && n < Id(_subCats.size())) {
-			return _subCats.at(size_t(n.get()));
+			return _subCats.at(size_t(n.get()))->getItemData(cb, Self);
 		}
 
 		return getItemData(cb, n - Id(_subCats.size()));
+	}
+}
+
+void Source::removeItem(Id index) {
+	if (index.get() >= _orphanCount && index != Self) {
+		return;
+	}
+
+	if (_removeCallback && index != Self) {
+		if (_removeCallback(index)) {
+			_orphanCount -= 1;
+		}
+	}
+}
+
+void Source::removeItem(Id n, uint32_t l, bool subcats) {
+	if (l > 0) {
+		for (auto &cat : _subCats) {
+			if (subcats) {
+				if (n.empty()) {
+					cat->removeItem(Self);
+				} else {
+					n --;
+				}
+			}
+			auto c = Id(cat->getCount(l - 1, subcats));
+			if (n < c) {
+				cat->removeItem(n, l - 1, subcats);
+			} else {
+				n -= c;
+			}
+		}
+	}
+
+	if (!subcats) {
+		removeItem(Id(n));
+	} else {
+		if (!_subCats.empty() && n < Id(_subCats.size())) {
+			_subCats.at(size_t(n.get()))->removeItem(Self);
+		}
+
+		removeItem(n - Id(_subCats.size()));
 	}
 }
 

@@ -48,8 +48,10 @@ void DynamicBatchCommand::init(float g, GLProgram *p, BlendFunc f, DynamicAtlas 
 	CCASSERT(p, "shader cannot be nill");
 	CCASSERT(a, "textureAtlas cannot be nill");
 
+	auto tex = a->getTexture();
 	_globalOrder = g;
-	_textureID = a->getTexture()->getName();
+
+	_textureID = tex?tex->getName():0;
 	_blendType = f;
 	_shader = p;
 

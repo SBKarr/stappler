@@ -583,25 +583,26 @@ Color::Color(Tone tone, Level level) {
 	*this = getById((int16_t)tone * 16 | (int16_t)level);
 }
 
-Color Color::previous() {
+Color Color::previous() const {
 	return lighter(1);
 }
-Color Color::next() {
+Color Color::next() const {
 	return darker(1);
 }
 
-Color Color::lighter(uint8_t index) {
+Color Color::lighter(uint8_t index) const {
 	if (_index == -1) {
 		return Color(make_lighter(_value, index));
 	}
 
-	if (index > 0 && _index == Color::Black._index) {
-		_index = Color::Grey_900._index;
+	auto targetIndex = _index;
+	if (index > 0 && targetIndex == Color::Black._index) {
+		targetIndex = Color::Grey_900._index;
 		index --;
 	}
 
-	uint16_t color = _index & 0xFFF0;
-	uint16_t id = _index & 0x0F;
+	uint16_t color = targetIndex & 0xFFF0;
+	uint16_t id = targetIndex & 0x0F;
 	if (id >= 0 && id <= 9) {
         if (id < index) {
             return getById(color | 0);
@@ -618,18 +619,19 @@ Color Color::lighter(uint8_t index) {
 		return Color(0);
 	}
 }
-Color Color::darker(uint8_t index) {
+Color Color::darker(uint8_t index) const {
 	if (_index == -1) {
 		return Color(make_darker(_value, index));
 	}
 
+	auto targetIndex = _index;
 	if (index > 0 && _index == Color::White._index) {
-		_index = Color::Grey_50._index;
+		targetIndex = Color::Grey_50._index;
 		index --;
 	}
 
-	uint16_t color = _index &0xFFF0;
-	uint16_t id = _index & 0x0F;
+	uint16_t color = targetIndex &0xFFF0;
+	uint16_t id = targetIndex & 0x0F;
 	if (id >= 0 && id <= 9) {
         if (id + index >= 9) {
             return getById(color | 9);
@@ -647,14 +649,14 @@ Color Color::darker(uint8_t index) {
 	}
 }
 
-Color Color::medium() {
+Color Color::medium() const {
 	if (_index == -1) {
 		return make_specific(_value, 5);
 	}
 	uint16_t color = _index &0xFFF0;
 	return getById(color | 5);
 }
-Color Color::specific(uint8_t index) {
+Color Color::specific(uint8_t index) const {
 	if (_index == -1) {
 		return make_specific(_value, index);
 	}
@@ -662,7 +664,7 @@ Color Color::specific(uint8_t index) {
 	return getById(color | index);
 }
 
-Color Color::specific(Level tone) {
+Color Color::specific(Level tone) const {
 	return specific((uint8_t)tone);
 }
 

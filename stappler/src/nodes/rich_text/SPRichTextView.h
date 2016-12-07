@@ -74,6 +74,8 @@ public:
 	virtual bool showNextPage();
 	virtual bool showPrevPage();
 
+	virtual float getObjectsOffset() const;
+
 protected:
 	virtual Vec2 convertToObjectSpace(const Vec2 &) const;
 	virtual bool isObjectActive(const Object &) const;

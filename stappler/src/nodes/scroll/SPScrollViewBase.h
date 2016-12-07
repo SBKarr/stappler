@@ -134,7 +134,7 @@ protected:
 	virtual void fixPosition();
 
 	virtual bool onPressBegin(const Vec2 &);
-	virtual bool onLongPress(const Vec2 &, const TimeInterval &);
+	virtual bool onLongPress(const Vec2 &, const TimeInterval &, int count);
 	virtual bool onPressEnd(const Vec2 &, const TimeInterval &);
 	virtual bool onPressCancel(const Vec2 &, const TimeInterval &);
 

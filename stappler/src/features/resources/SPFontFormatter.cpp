@@ -425,7 +425,7 @@ void Formatter::updateLineHeight(uint16_t first, uint16_t last) {
 }
 
 bool Formatter::pushLineBreak() {
-	if (output->chars.back().charID == ' ') {
+	if (chars::CharGroup<char16_t, chars::CharGroupId::WhiteSpace>::match(output->chars.back().charID)) {
 		return true;
 	}
 
@@ -933,6 +933,23 @@ FormatSpec::RangeLineIterator FormatSpec::begin() const {
 
 FormatSpec::RangeLineIterator FormatSpec::end() const {
 	return RangeLineIterator{ranges.end(), lines.end()};
+}
+
+WideString FormatSpec::str(bool filter) const {
+	WideString ret; ret.reserve(chars.size());
+	for (auto it = begin(); it != end(); ++ it) {
+		const RangeSpec &range = *it.range;
+		if (!filter || range.align == VerticalAlign::Baseline) {
+			size_t end = it.start() + it.count();
+			for (size_t i = it.start(); i != end; ++ i) {
+				const auto &spec = chars[i];
+				if (spec.charID != char16_t(0xAD)) {
+					ret.push_back(spec.charID);
+				}
+			}
+		}
+	}
+	return ret;
 }
 
 bool HyphenMap::init() {

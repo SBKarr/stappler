@@ -41,6 +41,8 @@ public:
 	using DataCallback = std::function<void(data::Value &)>;
 	using DataSourceCallback = std::function<void(const DataCallback &, Id)>;
 
+	using RemoveSourceCallback = std::function<bool(Id)>;
+
 	template <class T, class... Args>
 	bool init(const T &t, Args&&... args) {
 		auto ret = initValue(t);
@@ -65,6 +67,9 @@ public:
 	bool getItemData(const DataCallback &, Id index);
 	bool getItemData(const DataCallback &, Id index, uint32_t l, bool subcats = false);
 	size_t getSliceData(const BatchCallback &, Id first, size_t count, uint32_t l = 0, bool subcats = false);
+
+	void removeItem(Id index);
+	void removeItem(Id index, uint32_t l, bool subcats = false);
 
 	std::pair<Source *, bool> getItemCategory(Id itemId, uint32_t l, bool subcats = false);
 
@@ -112,6 +117,7 @@ protected:
 
 	DataSourceCallback _sourceCallback = nullptr;
 	BatchSourceCallback _batchCallback = nullptr;
+	RemoveSourceCallback _removeCallback = nullptr;
 };
 
 NS_SP_EXT_END(data)

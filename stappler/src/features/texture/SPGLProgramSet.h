@@ -35,17 +35,18 @@ public:
 		DynamicBatchI8 = 1 << 1,
 		DynamicBatchAI88 = 1 << 2,
 		DynamicBatchA8Highp = 1 << 3, // for font on high-density screens
+		DynamicBatchColor = 1 << 4,
 
-		RawTexture = 1 << 4,
-		RawTextureColor = 1 << 5,
-		RawTextureColorA8 = 1 << 6,
-		RawTextureColorA8Highp = 1 << 7,
+		RawTexture = 1 << 5,
+		RawTextureColor = 1 << 6,
+		RawTextureColorA8 = 1 << 7,
+		RawTextureColorA8Highp = 1 << 8,
 
-		RawRect = 1 << 8,
-		RawRectBorder = 1 << 9,
-		RawRects = 1 << 10,
+		RawRect = 1 << 9,
+		RawRectBorder = 1 << 10,
+		RawRects = 1 << 11,
 
-		DrawNodeSet = DrawNodeA8 | DynamicBatchI8 | DynamicBatchAI88 | DynamicBatchA8Highp,
+		DrawNodeSet = DrawNodeA8 | DynamicBatchI8 | DynamicBatchAI88 | DynamicBatchA8Highp | DynamicBatchColor,
 		RawDrawingSet = RawTexture | DynamicBatchA8Highp | RawRect | RawRectBorder | RawRects,
 	};
 

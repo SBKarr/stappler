@@ -83,25 +83,22 @@ Gradient::Gradient(ColorRef bl, ColorRef br, ColorRef tl, ColorRef tr) {
 	colors[3] = tr;
 }
 
-static Rc<CustomCornerSprite::Texture> s_layerTexture = nullptr;
-
 bool Layer::init(const cocos2d::Color4B &c) {
-	if (!CustomCornerSprite::init(0, 1.0f)) {
+	if (!DynamicBatchNode::init()) {
 		return false;
 	}
 
 	setColor(cocos2d::Color3B(c));
 	setOpacity(c.a);
 
+	updateBlendFunc(nullptr);
+
 	return true;
 }
 
-Rc<CustomCornerSprite::Texture> Layer::generateTexture(uint32_t size) {
-	if (!s_layerTexture) {
-		s_layerTexture = Rc<CustomCornerSprite::Texture>::create(0);
-	}
-
-	return s_layerTexture;
+void Layer::onContentSizeDirty() {
+	DynamicBatchNode::onContentSizeDirty();
+	updateSprites();
 }
 
 void Layer::setGradient(const Gradient &g) {

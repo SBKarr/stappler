@@ -41,16 +41,17 @@ struct Gradient {
 	cocos2d::Color4B colors[4]; // bl - br - tl - tr
 };
 
-class Layer : public CustomCornerSprite {
+class Layer: public DynamicBatchNode {
 public:
-    virtual bool init(const cocos2d::Color4B & = cocos2d::Color4B(255, 255, 255, 255));
+	virtual bool init(const cocos2d::Color4B & = cocos2d::Color4B(255, 255, 255, 255));
 
-    virtual void setGradient(const Gradient &);
-    virtual const Gradient &getGradient() const;
+	virtual void onContentSizeDirty() override;
 
-	virtual Rc<Texture> generateTexture(uint32_t size) override;
+	virtual void setGradient(const Gradient &);
+	virtual const Gradient &getGradient() const;
+
 protected:
-	virtual void updateSprites() override;
+	virtual void updateSprites();
 	virtual void updateColor() override;
 
 	Gradient _gradient;

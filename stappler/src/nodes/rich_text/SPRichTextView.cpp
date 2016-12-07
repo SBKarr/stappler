@@ -158,12 +158,10 @@ bool View::isObjectActive(const Object &obj) const {
 
 bool View::isObjectTapped(const Vec2 & loc, const Object &obj) const {
 	if (obj.type == Object::Type::Ref) {
-		Rect bbox = obj.bbox;
-		bbox.origin.x -= 8.0f;
-		bbox.origin.y -= 8.0f;
-		bbox.size.width += 16.0f;
-		bbox.size.height += 16.0f;
-		return bbox.containsPoint(loc);
+		if (loc.x >= obj.bbox.getMinX() - 8.0f && loc.x <= obj.bbox.getMaxX() + 8.0f && loc.y >= obj.bbox.getMinY() - 8.0f && loc.y <= obj.bbox.getMaxY() + 8.0f) {
+			return true;
+		}
+		return false;
 	} else {
 		return obj.bbox.containsPoint(loc);
 	}
@@ -531,6 +529,10 @@ bool View::showPrevPage() {
 		return true;
 	}
 	return false;
+}
+
+float View::getObjectsOffset() const {
+	return _objectsOffset;
 }
 
 NS_SP_EXT_END(rich_text)

@@ -40,7 +40,7 @@ bool BackgroundLayer::init() {
 	_layer->setOpacity(255);
 	_layer->setPosition(0, 0);
 	_layer->setAnchorPoint(cocos2d::Vec2(0, 0));
-	addChild(_layer, 0);
+	addChild(_layer, -1);
 
 	_sprite = cocos2d::Sprite::create();
 	_sprite->setVisible(false);

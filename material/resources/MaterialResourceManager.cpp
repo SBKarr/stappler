@@ -68,6 +68,8 @@ ResourceManager::ResourceManager() {
 		pair("SystemFontSize", "Размер шрифта"),
 		pair("SystemTheme", "Оформление"),
 		pair("SystemMore", "Ещё"),
+		pair("SystemRestore", "Восстановить"),
+		pair("SystemRemoved", "Удалено"),
 		pair("Shortcut:Megabytes", "Мб"),
 		pair("Shortcut:Pages", "с"),
 	});
@@ -77,6 +79,8 @@ ResourceManager::ResourceManager() {
 		pair("SystemFontSize", "Font size"),
 		pair("SystemTheme", "Theme"),
 		pair("SystemMore", "More"),
+		pair("SystemRestore", "Restore"),
+		pair("SystemRemoved", "Removed"),
 		pair("Shortcut:Megabytes", "Mb"),
 		pair("Shortcut:Pages", "p"),
 	});

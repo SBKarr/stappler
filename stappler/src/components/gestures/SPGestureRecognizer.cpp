@@ -30,7 +30,8 @@ THE SOFTWARE.
 
 #define SP_TAP_GESTURE_DISTANCE_ALLOWED (16.0f * stappler::screen::density())
 #define SP_TAP_GESTURE_DISTANCE_MULTI 64.0f
-#define SP_TAP_GESTURE_INTERVAL_ALLOWED (TimeInterval::microseconds(350000ULL)) // in microseconds
+#define SP_TAP_GESTURE_INTERVAL_ALLOWED_INT (350000ULL)
+#define SP_TAP_GESTURE_INTERVAL_ALLOWED (TimeInterval::microseconds(SP_TAP_GESTURE_INTERVAL_ALLOWED_INT)) // in microseconds
 
 NS_SP_EXT_BEGIN(gesture)
 
@@ -145,11 +146,11 @@ cocos2d::Touch *Recognizer::getTouchById(int id, int *index) {
 }
 
 
-cocos2d::Vec2 Recognizer::getLocation() const {
+Vec2 Recognizer::getLocation() const {
 	if (_touches.size() > 0) {
 		return _touches.back()->getLocation();
 	} else {
-		return cocos2d::Vec2::ZERO;
+		return Vec2::ZERO;
 	}
 }
 
@@ -238,7 +239,7 @@ void TapRecognizer::cancel() {
 	_lastTapTime.clear();
 }
 
-cocos2d::Vec2 TapRecognizer::getLocation() {
+Vec2 TapRecognizer::getLocation() {
 	return _gesture.touch.startPoint;
 }
 
@@ -323,11 +324,20 @@ PressRecognizer::PressRecognizer() {
 	_notified = true;
 }
 
+bool PressRecognizer::init(TimeInterval interval, bool continuous) {
+	if (!Recognizer::init()) {
+		return false;
+	}
+	_interval = interval;
+	_continuous = continuous;
+	return true;
+}
+
 void PressRecognizer::setCallback(const Callback &func) {
 	_callback = func;
 }
 
-cocos2d::Vec2 PressRecognizer::getLocation() {
+Vec2 PressRecognizer::getLocation() {
 	return _gesture.touch.startPoint;
 }
 
@@ -338,10 +348,11 @@ void PressRecognizer::cancel() {
 }
 
 void PressRecognizer::update(float dt) {
-	if (!_notified && _lastTime && _touches.size() > 0) {
+	if ((!_notified || _continuous) && _lastTime && _touches.size() > 0) {
 		auto time = Time::now() - _lastTime;
-		if (time > SP_TAP_GESTURE_INTERVAL_ALLOWED) {
+		if (_gesture.time.mksec() / _interval.mksec() != time.mksec() / _interval.mksec()) {
 			_gesture.time = time;
+			++ _gesture.count;
 			_event = Event::Activated;
 			if (_callback) {
 				_callback(this, _event, _gesture);
@@ -430,7 +441,7 @@ void SwipeRecognizer::cancel() {
 	_lastTime.clear();
 	_currentTouch = nullptr;
 }
-cocos2d::Vec2 SwipeRecognizer::getLocation() {
+Vec2 SwipeRecognizer::getLocation() {
 	return _gesture.location();
 }
 
@@ -483,8 +494,8 @@ bool SwipeRecognizer::renewTouch(cocos2d::Touch *touch) {
 		}
 
 		if (_touches.size() == 1) {
-			cocos2d::Vec2 current = _currentTouch->getLocation();
-			cocos2d::Vec2 prev = (_swipeBegin)?_currentTouch->getPreviousLocation():_currentTouch->getStartLocation();
+			Vec2 current = _currentTouch->getLocation();
+			Vec2 prev = (_swipeBegin)?_currentTouch->getPreviousLocation():_currentTouch->getStartLocation();
 
 			_gesture.firstTouch = _currentTouch;
 			_gesture.firstTouch.prevPoint = prev;
@@ -520,7 +531,7 @@ bool SwipeRecognizer::renewTouch(cocos2d::Touch *touch) {
 				float velX = _velocityX.step(_gesture.delta.x * tm);
 				float velY = _velocityY.step(_gesture.delta.y * tm);
 
-				_gesture.velocity = cocos2d::Vec2(velX, velY);
+				_gesture.velocity = Vec2(velX, velY);
 
 				_event = Event::Activated;
 				if (_callback) {
@@ -534,11 +545,11 @@ bool SwipeRecognizer::renewTouch(cocos2d::Touch *touch) {
 				auto firstTouch = _touches.at(0);
 				auto secondTouch = _touches.at(1);
 
-				cocos2d::Vec2 currentFirst = firstTouch->getLocation();
-				cocos2d::Vec2 prevFirst = (_swipeBegin)?firstTouch->getPreviousLocation():firstTouch->getStartLocation();
+				Vec2 currentFirst = firstTouch->getLocation();
+				Vec2 prevFirst = (_swipeBegin)?firstTouch->getPreviousLocation():firstTouch->getStartLocation();
 
-				cocos2d::Vec2 currentSecond = secondTouch->getLocation();
-				cocos2d::Vec2 prevSecond = (_swipeBegin)?secondTouch->getPreviousLocation():secondTouch->getStartLocation();
+				Vec2 currentSecond = secondTouch->getLocation();
+				Vec2 prevSecond = (_swipeBegin)?secondTouch->getPreviousLocation():secondTouch->getStartLocation();
 
 				_gesture.firstTouch = firstTouch;
 				_gesture.firstTouch.prevPoint = prevFirst;
@@ -575,7 +586,7 @@ bool SwipeRecognizer::renewTouch(cocos2d::Touch *touch) {
 					float velX = _velocityX.step(_gesture.delta.x * tm);
 					float velY = _velocityY.step(_gesture.delta.y * tm);
 
-					_gesture.velocity = cocos2d::Vec2(velX, velY);
+					_gesture.velocity = Vec2(velX, velY);
 
 					_event = Event::Activated;
 					if (_callback) {
@@ -604,10 +615,10 @@ void PinchRecognizer::setCallback(const Callback &func) {
 	_callback = func;
 }
 
-cocos2d::Vec2 PinchRecognizer::getLocation() {
+Vec2 PinchRecognizer::getLocation() {
 	if (_touches.size() == 2) {
-		cocos2d::Vec2 first = _touches.at(0)->getLocation();
-		cocos2d::Vec2 second = _touches.at(1)->getLocation();
+		Vec2 first = _touches.at(0)->getLocation();
+		Vec2 second = _touches.at(1)->getLocation();
 		return first.getMidpoint(second);
 	} else {
 		return Recognizer::getLocation();
@@ -698,7 +709,7 @@ void WheelRecognizer::onMouseScroll(cocos2d::EventMouse *ev) {
 	_gesture.position.startPoint = ev->getStartLocation();
 	_gesture.position.id = 0;
 
-	_gesture.amount = cocos2d::Vec2(ev->getScrollX(), ev->getScrollY());
+	_gesture.amount = Vec2(ev->getScrollX(), ev->getScrollY());
 
 	_event = Event::Activated;
 	if (_callback) {

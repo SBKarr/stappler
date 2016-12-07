@@ -53,6 +53,19 @@ float TimeInterval::toFloatSeconds() const {
 	return _value / 1000000.0f;
 }
 
+uint64_t TimeInterval::mksec() const {
+	return _value;
+}
+uint64_t TimeInterval::msec() const {
+	return _value / 1000ULL;
+}
+uint64_t TimeInterval::sec() const {
+	return _value / 1000000ULL;
+}
+float TimeInterval::fsec() const {
+	return _value / 1000000.0f;
+}
+
 void TimeInterval::setMicroseconds(uint64_t v) {
 	_value = v;
 }
@@ -108,6 +121,19 @@ uint64_t Time::toMilliseconds() const {
 }
 uint64_t Time::toSeconds() const {
 	return _value / 1000000ULL;
+}
+
+uint64_t Time::mksec() const {
+	return _value;
+}
+uint64_t Time::msec() const {
+	return _value / 1000ULL;
+}
+uint64_t Time::sec() const {
+	return _value / 1000000ULL;
+}
+float Time::fsec() const {
+	return _value / 1000000.0f;
 }
 
 void Time::setMicroseconds(uint64_t v) {

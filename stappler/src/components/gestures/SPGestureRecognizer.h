@@ -55,7 +55,7 @@ public:
     bool isSuccessful() const;
 
 	virtual void update(float dt);
-	virtual cocos2d::Vec2 getLocation() const;
+	virtual Vec2 getLocation() const;
 	virtual void cancel();
 
 protected:
@@ -105,7 +105,7 @@ public:
 
 	void setCallback(const Callback &func);
 
-	virtual cocos2d::Vec2 getLocation();
+	virtual Vec2 getLocation();
 	virtual void update(float dt) override;
 	virtual void cancel() override;
 
@@ -132,9 +132,11 @@ public:
 	PressRecognizer();
 	virtual ~PressRecognizer() { }
 
+	virtual bool init(TimeInterval interval, bool continuous);
+
 	void setCallback(const Callback &func);
 
-	virtual cocos2d::Vec2 getLocation();
+	virtual Vec2 getLocation();
 	virtual void update(float dt) override;
 	virtual void cancel() override;
 
@@ -150,6 +152,9 @@ protected:
 
 	Press _gesture;
 	Callback _callback;
+
+	TimeInterval _interval;
+	bool _continuous = false;
 };
 
 class SwipeRecognizer : public Recognizer {
@@ -164,7 +169,7 @@ public:
 
 	void setCallback(const Callback &func);
 
-	virtual cocos2d::Vec2 getLocation();
+	virtual Vec2 getLocation();
 	virtual void cancel() override;
 
 	virtual bool isTouchSupported() const override { return true; }
@@ -197,7 +202,7 @@ public:
 
 	void setCallback(const Callback &func);
 
-	virtual cocos2d::Vec2 getLocation();
+	virtual Vec2 getLocation();
 	virtual void cancel() override;
 
 	virtual bool isTouchSupported() const override { return true; }
@@ -224,7 +229,7 @@ public:
 
 	void setCallback(const Callback &func);
 
-	virtual cocos2d::Vec2 getLocation();
+	virtual Vec2 getLocation();
 	virtual void update(float dt) override;
 	virtual void cancel() override;
 

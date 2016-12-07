@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include "MaterialNode.h"
 #include "SPDataSource.h"
 #include "SPDataListener.h"
+#include "SPScrollController.h"
 
 NS_MD_BEGIN
 
@@ -123,7 +124,7 @@ protected:
 
 	virtual void updateItems();
 	virtual Handler *onHandler();
-	virtual MaterialNode *onItemRequest(Item *, Source::Id);
+	virtual MaterialNode *onItemRequest(const ScrollController::Item &, Source::Id);
 	virtual Loader *onLoaderRequest(Request type);
 
 	virtual void onOverscroll(float delta) override;
@@ -175,7 +176,7 @@ protected:
 	std::function<void()> _callback = nullptr;
 };
 
-class Scroll::Item : public cocos2d::Ref {
+class Scroll::Item : public Ref {
 public:
 	virtual ~Item() { }
 	virtual bool init(data::Value &&val, const Vec2 &, const Size &size);
@@ -190,14 +191,18 @@ public:
 	virtual void setId(uint64_t);
 	virtual uint64_t getId() const;
 
+	virtual void setControllerId(size_t);
+	virtual size_t getControllerId() const;
+
 protected:
 	uint64_t _id = 0;
 	Size _size;
 	Vec2 _position;
 	data::Value _data;
+	size_t _controllerId = 0;
 };
 
-class Scroll::Handler : public cocos2d::Ref {
+class Scroll::Handler : public Ref {
 public:
 	using Request = Scroll::Request;
 	using DataMap = Scroll::DataMap;

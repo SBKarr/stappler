@@ -34,9 +34,10 @@ bool ButtonLabel::init(const TapCallback &tapCallback, const TapCallback &longTa
 	}
 
 	_label = construct<Label>(FontType::Button);
-	_label->setAnchorPoint(cocos2d::Vec2(0, 0.5));
+	_label->setAnchorPoint(cocos2d::Vec2(0.5f, 0.5f));
 	_label->setMaxLines(1);
 	_label->setHyphens(Label::Hyphens::None);
+	_label->setLocaleEnabled(true);
 	addChild(_label);
 
 	setContentSize(Size(0.0f, _label->getFontHeight() / _label->getDensity() + 12.0f));
@@ -46,7 +47,7 @@ bool ButtonLabel::init(const TapCallback &tapCallback, const TapCallback &longTa
 void ButtonLabel::onContentSizeDirty() {
 	Button::onContentSizeDirty();
 
-	_label->setPosition(8, _contentSize.height/2);
+	_label->setPosition(_contentSize.width/2, _contentSize.height/2);
 }
 
 void ButtonLabel::setString(const std::string &str) {
@@ -87,6 +88,10 @@ void ButtonLabel::setFont(FontType fnt) {
 	_label->setFont(fnt);
 	_label->updateLabel();
 	setContentSize(cocos2d::Size(_label->getContentSize().width + 16, _contentSize.height));
+}
+
+Label *ButtonLabel::getlabel() const {
+	return _label;
 }
 
 NS_MD_END

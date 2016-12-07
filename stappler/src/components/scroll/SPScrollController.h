@@ -55,7 +55,7 @@ public:
 	virtual void onContentSizeDirty() override;
 
 	/// Scroll view callbacks handlers
-	virtual void onScrollPosition();
+	virtual void onScrollPosition(bool force = false);
 	virtual void onScroll(float delta, bool eneded);
 	virtual void onOverscroll(float delta);
 
@@ -95,6 +95,9 @@ public:
 
 	virtual size_t getItemIndex(cocos2d::Node *);
 
+	const Vector<Item> &getItems() const;
+	Vector<Item> &getItems();
+
 	virtual void removeItem(size_t);
 
 	virtual void setScrollRelativeValue(float value);
@@ -125,7 +128,7 @@ protected:
 	float _currentPosition = 0.0f;
 	float _currentSize = 0.0f;
 
-	std::vector<Item> _nodes;
+	Vector<Item> _nodes;
 
 	bool _infoDirty = true;
 };

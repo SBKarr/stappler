@@ -91,9 +91,19 @@ void BatchNodeBase::updateBlendFunc(cocos2d::Texture2D *tex) {
 	        _blendFunc = cocos2d::BlendFunc::ALPHA_PREMULTIPLIED;
 	        setOpacityModifyRGB(true);
 	    }
+	} else {
+		cocos2d::GLProgramState *newState = getProgramStateColor();
+		if (!getGLProgram() || newState->getGLProgram()->getProgram() != getGLProgram()->getProgram()) {
+		    setGLProgramState(newState);
+		}
+        _blendFunc = cocos2d::BlendFunc::ALPHA_NON_PREMULTIPLIED;
+		setOpacityModifyRGB(false);
 	}
 }
 
+cocos2d::GLProgramState *BatchNodeBase::getProgramStateColor() const {
+	return cocos2d::GLProgramState::getOrCreateWithGLProgram(TextureCache::getInstance()->getBatchPrograms()->getProgram(GLProgramSet::DynamicBatchColor));
+}
 cocos2d::GLProgramState *BatchNodeBase::getProgramStateA8() const {
 	return cocos2d::GLProgramState::getOrCreateWithGLProgramName(cocos2d::GLProgram::SHADER_NAME_POSITION_TEXTURE_A8_COLOR);
 }

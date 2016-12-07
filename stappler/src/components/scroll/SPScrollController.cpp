@@ -62,7 +62,7 @@ void ScrollController::onContentSizeDirty() {
 	}
 }
 
-void ScrollController::onScrollPosition() {
+void ScrollController::onScrollPosition(bool force) {
 	if (!_scroll || !_root) {
 		return;
 	}
@@ -73,7 +73,7 @@ void ScrollController::onScrollPosition() {
 		return;
 	}
 
-	if (_infoDirty) {
+	if (_infoDirty || force) {
 		float start = nan();
 		float end = nan();
 		float size = 0;
@@ -262,6 +262,14 @@ size_t ScrollController::getItemIndex(cocos2d::Node *node) {
 		idx++;
 	}
 	return std::numeric_limits<size_t>::max();
+}
+
+const Vector<ScrollController::Item> &ScrollController::getItems() const {
+	return _nodes;
+}
+
+Vector<ScrollController::Item> &ScrollController::getItems() {
+	return _nodes;
 }
 
 void ScrollController::removeItem(size_t n) {

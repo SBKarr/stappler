@@ -121,6 +121,8 @@ class ScrollHandlerFixed;
 class ScrollHandlerSlice;
 class ScrollHandlerGrid;
 
+class RecyclerScroll;
+
 class TabBar;
 
 class Toolbar;

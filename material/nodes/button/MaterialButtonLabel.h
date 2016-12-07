@@ -47,6 +47,8 @@ public:
 
 	virtual void setFont(FontType fnt);
 
+	virtual Label *getlabel() const;
+
 protected:
 	Label *_label = nullptr;
 };

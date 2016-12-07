@@ -404,7 +404,9 @@ void DynamicAtlas::drawQuads() {
     }
 
     if (drawBuffer().setup) {
-        cocos2d::GL::bindTexture2D(_texture->getName());
+    	if (_texture) {
+            cocos2d::GL::bindTexture2D(_texture->getName());
+    	}
 
         if (cocos2d::Configuration::getInstance()->supportsShareableVAO()) {
             cocos2d::GL::bindVAO(drawBuffer().vao);

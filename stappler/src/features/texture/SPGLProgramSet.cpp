@@ -81,6 +81,19 @@ void main() {
 }
 )Shader";
 
+auto frag_Color = R"Shader(
+#ifdef GL_ES
+precision lowp float;
+#endif
+
+varying vec4 v_fragmentColor;
+varying vec2 v_texCoord;
+
+void main() {
+    gl_FragColor = v_fragmentColor;
+}
+)Shader";
+
 auto frag_TextureColor = R"Shader(
 #ifdef GL_ES
 precision lowp float;
@@ -142,6 +155,22 @@ void main() {
 	gl_Position = CC_MVPMatrix * a_position;
 	v_fragmentColor = a_color;
 	v_texCoord = a_texCoord;
+}
+)Shader";
+
+auto vert_Color = R"Shader(
+attribute vec4 a_position;
+attribute vec4 a_color;
+
+#ifdef GL_ES
+varying lowp vec4 v_fragmentColor;
+#else
+varying vec4 v_fragmentColor;
+#endif
+
+void main() {
+	gl_Position = CC_MVPMatrix * a_position;
+	v_fragmentColor = a_color;
 }
 )Shader";
 
@@ -284,6 +313,9 @@ auto DynamicBatchAI88_vert = vert_TextureColorViewProjection;
 auto DynamicBatchA8Highp_frag = frag_TextureColorA8Highp;
 auto DynamicBatchA8Highp_vert = vert_TextureColorViewProjectionHighp;
 
+auto DynamicBatchColor_frag = frag_Color;
+auto DynamicBatchColor_vert = vert_Color;
+
 auto RawTexture_frag = frag_Texture;
 auto RawTexture_vert = vert_Texture;
 
@@ -328,6 +360,8 @@ static void GLProgramSet_reloadPrograms(const Map<GLProgramSet::Program, Rc<coco
 			GLProgramSet_loadProgram(it.second, shaders::DynamicBatchAI88_vert, shaders::DynamicBatchAI88_frag); break;
 		case GLProgramSet::DynamicBatchA8Highp:
 			GLProgramSet_loadProgram(it.second, shaders::DynamicBatchA8Highp_vert, shaders::DynamicBatchA8Highp_frag); break;
+		case GLProgramSet::DynamicBatchColor:
+			GLProgramSet_loadProgram(it.second, shaders::DynamicBatchColor_vert, shaders::DynamicBatchColor_frag); break;
 		case GLProgramSet::RawTexture:
 			GLProgramSet_loadProgram(it.second, shaders::RawTexture_vert, shaders::RawTexture_frag); break;
 		case GLProgramSet::RawTextureColor:
@@ -352,6 +386,7 @@ bool GLProgramSet::init() {
 	_programs.emplace(DynamicBatchI8, Rc<cocos2d::GLProgram>::alloc());
 	_programs.emplace(DynamicBatchAI88, Rc<cocos2d::GLProgram>::alloc());
 	_programs.emplace(DynamicBatchA8Highp, Rc<cocos2d::GLProgram>::alloc());
+	_programs.emplace(DynamicBatchColor, Rc<cocos2d::GLProgram>::alloc());
 	_programs.emplace(RawTexture, Rc<cocos2d::GLProgram>::alloc());
 	_programs.emplace(RawTextureColor, Rc<cocos2d::GLProgram>::alloc());
 	_programs.emplace(RawTextureColorA8, Rc<cocos2d::GLProgram>::alloc());
@@ -370,6 +405,7 @@ bool GLProgramSet::init(uint32_t mask) {
 	if (mask & DynamicBatchI8) { _programs.emplace(DynamicBatchI8, Rc<cocos2d::GLProgram>::alloc()); }
 	if (mask & DynamicBatchAI88) { _programs.emplace(DynamicBatchAI88, Rc<cocos2d::GLProgram>::alloc()); }
 	if (mask & DynamicBatchA8Highp) { _programs.emplace(DynamicBatchA8Highp, Rc<cocos2d::GLProgram>::alloc()); }
+	if (mask & DynamicBatchColor) { _programs.emplace(DynamicBatchColor, Rc<cocos2d::GLProgram>::alloc()); }
 	if (mask & RawTexture) { _programs.emplace(RawTexture, Rc<cocos2d::GLProgram>::alloc()); }
 	if (mask & RawTextureColor) { _programs.emplace(RawTextureColor, Rc<cocos2d::GLProgram>::alloc()); }
 	if (mask & RawTextureColorA8) { _programs.emplace(RawTextureColorA8, Rc<cocos2d::GLProgram>::alloc()); }

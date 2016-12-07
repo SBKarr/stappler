@@ -93,11 +93,11 @@ struct Label {
 	font::FormatSpec _format;
 	float height = 0.0f;
 
-	Rect getLineRect(uint16_t lineId, float density, const Vec2 & = Vec2());
-	Rect getLineRect(const font::LineSpec &, float density, const Vec2 & = Vec2());
+	Rect getLineRect(uint16_t lineId, float density, const Vec2 & = Vec2()) const;
+	Rect getLineRect(const font::LineSpec &, float density, const Vec2 & = Vec2()) const;
 
-	uint16_t getLineForCharId(uint16_t id);
-	Vector<Rect> getLabelRects(uint16_t first, uint16_t last, float density, const Vec2 & = Vec2(), const Padding &p = Padding());
+	uint16_t getLineForCharId(uint16_t id) const;
+	Vector<Rect> getLabelRects(uint16_t first, uint16_t last, float density, const Vec2 & = Vec2(), const Padding &p = Padding()) const;
 };
 
 struct Object {

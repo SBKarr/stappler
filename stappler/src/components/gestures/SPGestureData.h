@@ -33,9 +33,9 @@ NS_SP_EXT_BEGIN(gesture)
 ///  INT_MAX	- touch was unregistered in system, but still has valid points
 struct Touch {
     int id = -1;
-    cocos2d::Vec2 startPoint;
-    cocos2d::Vec2 prevPoint;
-    cocos2d::Vec2 point;
+    Vec2 startPoint;
+    Vec2 prevPoint;
+    Vec2 point;
 
     Touch &operator=(cocos2d::Touch *);
     Touch(cocos2d::Touch *);
@@ -44,8 +44,8 @@ struct Touch {
 
     operator bool() const;
 
-    const cocos2d::Vec2 &location() const;
-    std::string description() const;
+    const Vec2 &location() const;
+    String description() const;
     void cleanup();
 };
 
@@ -53,36 +53,37 @@ struct Tap {
 	Touch touch;
 	int count = 0;
 
-    const cocos2d::Vec2 &location() const;
-    std::string description() const;
+    const Vec2 &location() const;
+    String description() const;
     void cleanup();
 };
 
 struct Press {
 	Touch touch;
 	TimeInterval time;
+	int count = 0;
 
-    const cocos2d::Vec2 &location() const;
-    std::string description() const;
+    const Vec2 &location() const;
+    String description() const;
     void cleanup();
 };
 
 struct Swipe {
 	Touch firstTouch;
 	Touch secondTouch;
-	cocos2d::Vec2 midpoint;
-	cocos2d::Vec2 delta;
-	cocos2d::Vec2 velocity;
+	Vec2 midpoint;
+	Vec2 delta;
+	Vec2 velocity;
 
-    const cocos2d::Vec2 &location() const;
-    std::string description() const;
+    const Vec2 &location() const;
+    String description() const;
     void cleanup();
 };
 
 struct Pinch {
 	Touch first;
 	Touch second;
-	cocos2d::Vec2 center;
+	Vec2 center;
 	float startDistance = 0.0f;
 	float prevDistance = 0.0f;
 	float distance = 0.0f;
@@ -90,29 +91,29 @@ struct Pinch {
 	float velocity = 0.0f;
 
 	void set(cocos2d::Touch *, cocos2d::Touch *, float vel);
-    const cocos2d::Vec2 &location() const;
-    std::string description() const;
+    const Vec2 &location() const;
+    String description() const;
     void cleanup();
 };
 
 struct Rotate {
 	Touch first;
 	Touch second;
-	cocos2d::Vec2 center;
+	Vec2 center;
 	float startAngle;
 	float prevAngle;
 	float angle;
 	float velocity;
 
-    const cocos2d::Vec2 &location() const;
+    const Vec2 &location() const;
     void cleanup();
 };
 
 struct Wheel {
 	Touch position;
-	cocos2d::Vec2 amount;
+	Vec2 amount;
 
-    const cocos2d::Vec2 &location() const;
+    const Vec2 &location() const;
     void cleanup();
 };
 
@@ -144,6 +145,8 @@ enum class Event {
 	 * on Rotate - any of two touches was moved, rotation angle was changed
 	 */
 	Activated,
+	Moved = Activated,
+	OnLongPress = Activated,
 
 	/** Action was successfully ended, no recognition errors was occurred */
 	Ended,

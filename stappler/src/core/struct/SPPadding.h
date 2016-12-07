@@ -84,15 +84,12 @@ struct Padding {
 
 	inline bool operator == (const Padding &p) const {
 		return fabsf(top - p.top) < std::numeric_limits<float>::epsilon()
-				&& fabsf(bottom- p.bottom) < std::numeric_limits<float>::epsilon()
-				&& fabsf(left- p.left) < std::numeric_limits<float>::epsilon()
-				&& fabsf(right- p.right) < std::numeric_limits<float>::epsilon();
+				&& fabsf(bottom - p.bottom) < std::numeric_limits<float>::epsilon()
+				&& fabsf(left - p.left) < std::numeric_limits<float>::epsilon()
+				&& fabsf(right - p.right) < std::numeric_limits<float>::epsilon();
 	}
 	inline bool operator != (const Padding &p) const {
-		return fabsf(top - p.top) >= std::numeric_limits<float>::epsilon()
-				&& fabsf(bottom- p.bottom) >= std::numeric_limits<float>::epsilon()
-				&& fabsf(left- p.left) >= std::numeric_limits<float>::epsilon()
-				&& fabsf(right- p.right) >= std::numeric_limits<float>::epsilon();
+		return !(*this == p);
 	}
 
 	inline Padding & operator *= (const float &v) { top *= v; right *= v; bottom *= v; left *= v; return *this; }

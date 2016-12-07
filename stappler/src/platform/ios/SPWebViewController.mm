@@ -388,7 +388,8 @@ stappler::EventHeader stappler::WebViewHandle::onClosed("WebView", "WebView.onCl
         currentRequest = request;
     } else if ([scheme isEqual:[NSString stringWithUTF8String:stappler::Device::getInstance()->getBundleName().c_str()]]) {
         [self dismissWebView];
-        [[UIApplication sharedApplication] openURL:request.URL];
+//[[UIApplication sharedApplication] openURL:request.URL];
+        stappler::Device::getInstance()->processLaunchUrl(request.URL.absoluteString.UTF8String);
         return NO;
     }
     

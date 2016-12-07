@@ -103,7 +103,7 @@ bool MaterialNode::init() {
 	_backgroundClipper->setAnchorPoint(cocos2d::Vec2(0, 0));
 	_backgroundClipper->setPosition(0, 0);
 	_backgroundClipper->setOpacity(255);
-	_backgroundClipper->setColor(Color::White);
+	_backgroundClipper->setColor(Color::Black);
 
 	_shadowClipper = construct<ClippingNode>(_backgroundClipper);
 	_shadowClipper->setAnchorPoint(cocos2d::Vec2(0, 0));

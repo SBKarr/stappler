@@ -44,12 +44,13 @@ public:
 	virtual bool isNormalized() const;
 	virtual void setNormalized(bool value);
 
-    virtual void setDensity(float density);
-    virtual float getDensity() const;
+	virtual void setDensity(float density);
+	virtual float getDensity() const;
 
 protected:
-	void updateBlendFunc(cocos2d::Texture2D *);
+	virtual void updateBlendFunc(cocos2d::Texture2D *);
 
+	virtual cocos2d::GLProgramState *getProgramStateColor() const;
 	virtual cocos2d::GLProgramState *getProgramStateA8() const;
 	virtual cocos2d::GLProgramState *getProgramStateI8() const;
 	virtual cocos2d::GLProgramState *getProgramStateAI88() const;
@@ -59,7 +60,7 @@ protected:
 	bool _normalized = false;
 
 	cocos2d::BlendFunc _blendFunc;
-    float _density = 1.0f;
+	float _density = 1.0f;
 };
 
 NS_SP_END

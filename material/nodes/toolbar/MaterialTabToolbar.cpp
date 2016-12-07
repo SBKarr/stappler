@@ -113,7 +113,7 @@ float TabToolbar::getBaseLine() const {
 	if (_contentSize.height - _basicHeight >= 48.0f) {
 		return _contentSize.height - _basicHeight / 2;
 	} else {
-		return 48.0f + _basicHeight / 2;
+		return _contentSize.height - material::metrics::appBarHeight() / 2.0f;
 	}
 }
 
