@@ -33,6 +33,10 @@ bool Timeout::init(float duration, const std::function<void()> &cb) {
 	return initWithTwoActions(cocos2d::DelayTime::create(duration), cocos2d::CallFunc::create(cb));
 }
 
+bool Timeout::init(float duration, cocos2d::FiniteTimeAction *a) {
+	return initWithTwoActions(cocos2d::DelayTime::create(duration), a);
+}
+
 bool Timeout::init(cocos2d::FiniteTimeAction *a, const std::function<void()> &cb) {
 	return initWithTwoActions(a, cocos2d::CallFunc::create(cb));
 }

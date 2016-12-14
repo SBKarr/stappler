@@ -53,23 +53,23 @@ bool Builder::processInlineNode(Layout &l, const Node &node, BlockStyle &&style,
 	uint16_t firstCharId = 0, lastCharId = 0;
 	auto textStyle = nodeStyle.compileTextLayout(this);
 
-	firstCharId = ctx.label._format.chars.size();
+	firstCharId = ctx.label.format.chars.size();
 
 	// Time now = Time::now();
 	ctx.reader.read(fstyle, textStyle, node.getValue(), front, back);
 	//_readerAccum += (Time::now() - now);
 
 	ctx.pushNode(&node, [&] (InlineContext &ctx) {
-		lastCharId = (ctx.label._format.chars.size() > 0)?(ctx.label._format.chars.size() - 1):0;
+		lastCharId = (ctx.label.format.chars.size() > 0)?(ctx.label.format.chars.size() - 1):0;
 
-		while (firstCharId < ctx.label._format.chars.size() && ctx.label._format.chars.at(firstCharId).charID == ' ') {
+		while (firstCharId < ctx.label.format.chars.size() && ctx.label.format.chars.at(firstCharId).charID == ' ') {
 			firstCharId ++;
 		}
-		while (lastCharId < ctx.label._format.chars.size() && lastCharId >= firstCharId && ctx.label._format.chars.at(lastCharId).charID == ' ') {
+		while (lastCharId < ctx.label.format.chars.size() && lastCharId >= firstCharId && ctx.label.format.chars.at(lastCharId).charID == ' ') {
 			lastCharId --;
 		}
 
-		if (ctx.label._format.chars.size() > lastCharId && firstCharId <= lastCharId) {
+		if (ctx.label.format.chars.size() > lastCharId && firstCharId <= lastCharId) {
 			auto hrefIt = node.getAttributes().find("href");
 			if (hrefIt != node.getAttributes().end() && !hrefIt->second.empty()) {
 				ctx.refPos.push_back(InlineContext::RefPosInfo{firstCharId, lastCharId, hrefIt->second});
@@ -130,7 +130,7 @@ bool Builder::processInlineBlockNode(Layout &l, const Node &node, BlockStyle && 
 		auto bbox = ref.getBoundingBox();
 
 		if (ctx.reader.read(fstyle, textStyle, uint16_t(bbox.size.width * density), uint16_t(bbox.size.height * density))) {
-			ref.charBinding = (ctx.label._format.ranges.size() > 0)?(ctx.label._format.ranges.size() - 1):0;
+			ref.charBinding = (ctx.label.format.ranges.size() > 0)?(ctx.label.format.ranges.size() - 1):0;
 		}
 	}
 	return true;

@@ -185,6 +185,11 @@ void CanvasCairo::pathArcTo(float xc, float yc, float rx, float ry, float startA
 	cairo_set_matrix(_context, &save_matrix);
 }
 
+static float CanvasCairo_angle(const Vec2& v1, const Vec2& v2) {
+    float dz = v1.x * v2.y - v1.y * v2.x;
+    return atan2f(dz, Vec2::dot(v1, v2));
+}
+
 void CanvasCairo::pathAltArcTo(float rx, float ry, float angle, bool largeArc, bool sweep, float x, float y) {
 	double _x, _y;
 	cairo_get_current_point (_context, &_x, &_y);
@@ -206,16 +211,39 @@ void CanvasCairo::pathAltArcTo(float rx, float ry, float angle, bool largeArc, b
 	float cst = sqrtf(((rx * rx * ry * ry) - rx_y1_ - ry_x1_) / (rx_y1_ + ry_x1_));
 
 	Vec2 cDash((largeArc != sweep ? 1.0f : -1.0f) * cst * rx * vDash.y / ry,
-			(largeArc != sweep ? 1.0f : -1.0f) * - cst * ry * vDash.x / rx);
+			(largeArc != sweep ? -1.0f : 1.0f) * cst * ry * vDash.x / rx);
 
 	float cx = cDash.x + (_x + x) / 2;
 	float cy = cDash.y + (_y + y) / 2;
 
-	float startAngle = Vec2::angle(Vec2(1.0f, 0.0f), Vec2((vDash.x - cDash.x) / rx, (vDash.y - cDash.y) / ry));
-	float sweepAngle = Vec2::angle(Vec2((vDash.x - cDash.x) / rx, (vDash.y - cDash.y) / ry),
+	float startAngle = CanvasCairo_angle(Vec2(1.0f, 0.0f), Vec2((vDash.x - cDash.x) / rx, (vDash.y - cDash.y) / ry));
+	float sweepAngle = CanvasCairo_angle(Vec2((vDash.x - cDash.x) / rx, (vDash.y - cDash.y) / ry),
 			Vec2((-vDash.x - cDash.x) / rx, (-vDash.y - cDash.y) / ry));
 
-	pathArcTo(cx, cy, rx, ry, startAngle, sweepAngle, angle);
+	cairo_matrix_t save_matrix;
+	cairo_get_matrix(_context, &save_matrix);
+	cairo_translate(_context, cx, cy);
+	if (rx > ry) {
+		cairo_scale(_context, ry / rx, 1.0);
+	} else if (rx < ry) {
+		cairo_scale(_context, 1.0, rx / ry);
+	}
+	if (angle != 0.0f) {
+		cairo_rotate(_context, angle);
+	}
+
+	if (largeArc) {
+		sweepAngle = std::max(fabsf(sweepAngle), float(M_PI * 2 - fabsf(sweepAngle)));
+	} else {
+		sweepAngle = std::min(fabsf(sweepAngle), float(M_PI * 2 - fabsf(sweepAngle)));
+	}
+
+	if (sweep) {
+		cairo_arc(_context, 0.0, 0.0, std::min(rx, ry), startAngle, startAngle + sweepAngle);
+	} else {
+		cairo_arc_negative(_context, 0.0, 0.0, std::min(rx, ry), startAngle, startAngle - sweepAngle);
+	}
+	cairo_set_matrix(_context, &save_matrix);
 }
 
 void CanvasCairo::pathFill(const Color4B &fill) {

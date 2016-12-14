@@ -59,7 +59,7 @@ Scroll::ItemMap ScrollHandlerGrid::run(Request t, DataMap &&data) {
 		cols = 1;
 	}
 	auto cellWidth = (_autoPaddings?(MIN(_cellMinWidth, size.width / cols)):(size.width / cols));
-	auto cellHeight = cellWidth / _cellAspectRatio;
+	auto cellHeight = (_fixedHeight?_cellHeight:cellWidth / _cellAspectRatio);
 
 	_currentCellSize = cocos2d::Size(cellWidth, cellHeight);
 	_currentCols = (uint32_t)cols;
@@ -78,6 +78,11 @@ void ScrollHandlerGrid::setCellMinWidth(float v) {
 
 void ScrollHandlerGrid::setCellAspectRatio(float v) {
 	_cellAspectRatio = v;
+	_fixedHeight = false;
+}
+void ScrollHandlerGrid::setCellHeight(float v) {
+	_cellHeight = v;
+	_fixedHeight = true;
 }
 
 void ScrollHandlerGrid::setAutoPaddings(bool value) {

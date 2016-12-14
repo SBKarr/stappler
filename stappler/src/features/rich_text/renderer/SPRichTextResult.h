@@ -33,8 +33,8 @@ class Result : public cocos2d::Ref {
 public:
 	struct PageData {
 		Margin margin;
-		Rect viewRect;
-		Rect texRect;
+		Rect viewRect; // rectangle in scroll view
+		Rect texRect; // rectangle in prepared layout
 		size_t num;
 		bool isSplit;
 	};

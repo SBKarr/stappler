@@ -181,8 +181,8 @@ void Request::draw(cocos2d::Texture2D *data) {
 			drawObjects.push_back(&obj);
 			if (obj.type == Object::Type::Label) {
 				const Label &l = obj.value.label;
-				for (auto &it : l._format.ranges) {
-					_font->addTextureChars(it.layout->getName(), l._format.chars, it.start, it.count);
+				for (auto &it : l.format.ranges) {
+					_font->addTextureChars(it.layout->getName(), l.format.chars, it.start, it.count);
 				}
 			} else if (obj.type == Object::Type::Background) {
 				const Background &bg = obj.value.background;
@@ -378,15 +378,15 @@ void Request::drawBackground(const Rect &bbox, const Background &bg) {
 }
 
 void Request::drawLabel(const cocos2d::Rect &bbox, const Label &l) {
-	if (l._format.chars.empty()) {
+	if (l.format.chars.empty()) {
 		return;
 	}
 
 	if (_isThumbnail) {
 		_drawer->setColor(Color4B(127, 127, 127, 127));
-		_drawer->drawCharRects(_font, l._format, getRect(bbox), _scale);
+		_drawer->drawCharRects(_font, l.format, getRect(bbox), _scale);
 	} else {
-		_drawer->drawChars(_font, l._format, getRect(bbox));
+		_drawer->drawChars(_font, l.format, getRect(bbox));
 	}
 }
 

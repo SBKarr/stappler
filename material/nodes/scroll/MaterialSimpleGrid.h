@@ -36,6 +36,7 @@ public:
 
 	virtual void setCellMinWidth(float v);
 	virtual void setCellAspectRatio(float v);
+	virtual void setCellHeight(float v);
 
 	virtual void setAutoPaddings(bool);
 	virtual bool isAutoPaddings() const;
@@ -44,10 +45,13 @@ protected:
 	virtual Rc<Scroll::Item> onItem(data::Value &&, Scroll::Source::Id);
 
 	bool _autoPaddings = false;
+	bool _fixedHeight = false;
 	float _currentWidth = 0.0f;
 
 	float _cellAspectRatio = 1.0f;
 	float _cellMinWidth = 1.0f;
+
+	float _cellHeight = 0.0f;
 
 	float _widthPadding = 0.0f;
 	Padding _padding;

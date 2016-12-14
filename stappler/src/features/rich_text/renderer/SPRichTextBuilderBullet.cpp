@@ -197,7 +197,7 @@ void Builder::drawListItemBullet(Layout &l, float parentPosY) {
 	auto baseFont = _fontSet->getLayout(fStyle)->getData();
 
 	Label label;
-	Formatter reader(getFontSet(), &label._format, _media.density);
+	Formatter reader(getFontSet(), &label.format, _media.density);
 	reader.setOpticalAlignment(false);
 	initFormatter(l, pStyle, parentPosY, reader, true);
 

@@ -59,43 +59,14 @@ bool ScrollViewBase::init(Layout layout) {
     		return onPressCancel(s.location(), s.time);
     	}
     	return false;
-    }, TimeInterval::milliseconds(499), true);
+    }, TimeInterval::milliseconds(425), true);
     l->setSwipeCallback([this] (gesture::Event ev, const gesture::Swipe &s) -> bool {
     	if (ev == gesture::Event::Began) {
-    		auto cs = (_layout == Vertical)?(_contentSize.height):(_contentSize.width);
-    		auto length = getScrollLength();
-			if (!isnan(length) && cs >= length) {
-		        return false;
-			}
-
-			if (_layout == Vertical && fabsf(s.delta.y * 2.0f) <= fabsf(s.delta.x)) {
-				return false;
-			} else if (_layout == Horizontal && fabsf(s.delta.x * 2.0f) <= fabsf(s.delta.y)) {
-				return false;
-			}
-
-			onSwipeBegin();
-
-    		if (_layout == Vertical) {
-        		return onSwipe(s.delta.y / _globalScale.y, s.velocity.y / _globalScale.y, false);
-    		} else {
-        		return onSwipe(- s.delta.x / _globalScale.x, - s.velocity.x / _globalScale.x, false);
-    		}
-
-			return true;
+    		return onSwipeEventBegin(s.location(), s.delta, s.velocity);
     	} else if (ev == gesture::Event::Activated) {
-    		if (_layout == Vertical) {
-        		return onSwipe(s.delta.y / _globalScale.y, s.velocity.y / _globalScale.y, false);
-    		} else {
-        		return onSwipe(- s.delta.x / _globalScale.x, - s.velocity.x / _globalScale.x, false);
-    		}
+    		return onSwipeEvent(s.location(), s.delta, s.velocity);
     	} else {
-			_movement = Movement::None;
-    		if (_layout == Vertical) {
-        		return onSwipe(0, s.velocity.y / _globalScale.y, true);
-    		} else {
-        		return onSwipe(0, - s.velocity.x / _globalScale.x, true);
-    		}
+    		return onSwipeEventEnd(s.location(), s.delta, s.velocity);
     	}
     });
     l->setMouseWheelCallback([this] (gesture::Event ev, const gesture::Wheel &w) -> bool {
@@ -566,6 +537,46 @@ void ScrollViewBase::onOverscrollPerformed(float velocity, float pos, float boun
 			_animationAction = cocos2d::Sequence::createWithTwoActions(a, b);
 			_root->runAction(_animationAction);
 		}
+	}
+}
+
+
+bool ScrollViewBase::onSwipeEventBegin(const Vec2 &loc, const Vec2 &delta, const Vec2 &velocity) {
+	auto cs = (_layout == Vertical)?(_contentSize.height):(_contentSize.width);
+	auto length = getScrollLength();
+	if (!isnan(length) && cs >= length) {
+		return false;
+	}
+
+	if (_layout == Vertical && fabsf(delta.y * 2.0f) <= fabsf(delta.x)) {
+		return false;
+	} else if (_layout == Horizontal && fabsf(delta.x * 2.0f) <= fabsf(delta.y)) {
+		return false;
+	}
+
+	onSwipeBegin();
+
+	if (_layout == Vertical) {
+		return onSwipe(delta.y / _globalScale.y, velocity.y / _globalScale.y, false);
+	} else {
+		return onSwipe(- delta.x / _globalScale.x, - velocity.x / _globalScale.x, false);
+	}
+
+	return true;
+}
+bool ScrollViewBase::onSwipeEvent(const Vec2 &loc, const Vec2 &delta, const Vec2 &velocity) {
+	if (_layout == Vertical) {
+		return onSwipe(delta.y / _globalScale.y, velocity.y / _globalScale.y, false);
+	} else {
+		return onSwipe(- delta.x / _globalScale.x, - velocity.x / _globalScale.x, false);
+	}
+}
+bool ScrollViewBase::onSwipeEventEnd(const Vec2 &loc, const Vec2 &d, const Vec2 &velocity) {
+	_movement = Movement::None;
+	if (_layout == Vertical) {
+		return onSwipe(0, velocity.y / _globalScale.y, true);
+	} else {
+		return onSwipe(0, - velocity.x / _globalScale.x, true);
 	}
 }
 

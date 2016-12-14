@@ -90,7 +90,7 @@ using Border = Outline;
 using Background = BackgroundStyle;
 
 struct Label {
-	font::FormatSpec _format;
+	font::FormatSpec format;
 	float height = 0.0f;
 
 	Rect getLineRect(uint16_t lineId, float density, const Vec2 & = Vec2()) const;

@@ -75,6 +75,8 @@ public: // options
 	void setPriority(int32_t value);
 	int32_t getPriority();
 
+	void cancel();
+
 public: // overrides
 	virtual ~Listener();
 	virtual bool init() override;

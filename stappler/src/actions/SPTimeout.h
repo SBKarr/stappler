@@ -31,6 +31,7 @@ NS_SP_BEGIN
 class Timeout : public cocos2d::Sequence {
 public:
 	virtual bool init(float duration, const std::function<void()> &);
+	virtual bool init(float duration, cocos2d::FiniteTimeAction *a);
 	virtual bool init(cocos2d::FiniteTimeAction *a, const std::function<void()> &);
 };
 

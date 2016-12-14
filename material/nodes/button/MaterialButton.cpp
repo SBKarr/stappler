@@ -258,6 +258,10 @@ const cocos2d::Vec2 &Button::getTouchPoint() const {
 	return _touchPoint;
 }
 
+void Button::cancel() {
+	static_cast<gesture::Listener *>(_listener)->cancel();
+}
+
 void Button::animateSelection() {
 	if (!_selected) {
 		stopActionByTag(2);

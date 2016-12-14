@@ -952,6 +952,75 @@ WideString FormatSpec::str(bool filter) const {
 	return ret;
 }
 
+Pair<uint32_t, uint32_t> FormatSpec::selectWord(uint32_t origin) const {
+	Pair<uint32_t, uint32_t> ret(origin, origin);
+	auto next = origin;
+	while (ret.second + 1 < chars.size() && !string::isspace(chars[ret.second + 1].charID)) {
+		++ ret.second;
+	}
+	while (ret.first > 0 && !string::isspace(chars[ret.first - 1].charID)) {
+		-- ret.first;
+	}
+	return ret;
+}
+
+uint32_t FormatSpec::selectChar(int32_t x, int32_t y, SelectMode mode) const {
+	int32_t yDistance = maxOf<int32_t>();
+	const LineSpec *pLine = nullptr;
+	if (!lines.empty()) {
+		for (auto &l : lines) {
+			int32_t dst = maxOf<int32_t>();
+			switch (mode) {
+			case Center:
+				dst = abs(y - (l.pos - l.height / 2));
+				break;
+			case Prefix:
+			case Suffix:
+				dst = abs(y - l.pos);
+				break;
+			};
+			if (dst < yDistance) {
+				pLine = &l;
+				yDistance = dst;
+			} else {
+				break;
+			}
+		}
+	}
+
+	if (!pLine || yDistance > pLine->height) {
+		return maxOf<uint32_t>();
+	}
+
+	int32_t xDistance = maxOf<int32_t>();
+	const CharSpec *pChar = nullptr;
+	uint32_t charNumber = pLine->start;
+	for (size_t i = pLine->start; i < pLine->start + pLine->count; ++ i) {
+		auto &c = chars[i];
+		if (c.charID != char16_t(0xAD) && !string::isspace(c.charID)) {
+			int32_t dst = maxOf<int32_t>();
+			switch (mode) {
+			case Center: dst = abs(x - (c.pos + c.advance / 2)); break;
+			case Prefix: dst = abs(x - c.pos); break;
+			case Suffix: dst = abs(x - (c.pos + c.advance)); break;
+			};
+			if (dst < xDistance) {
+				pChar = &c;
+				xDistance = dst;
+				charNumber = i;
+			} else {
+				break;
+			}
+		}
+	}
+
+	if (!pChar || xDistance > pChar->advance) {
+		return maxOf<uint32_t>();
+	}
+
+	return charNumber;
+}
+
 bool HyphenMap::init() {
 	return true;
 }

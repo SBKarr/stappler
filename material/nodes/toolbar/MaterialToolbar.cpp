@@ -352,6 +352,8 @@ void Toolbar::onNavTapped() {
 		} else {
 			_navCallback();
 		}
+	} else  if (_navCallback) {
+		_navCallback();
 	}
 }
 

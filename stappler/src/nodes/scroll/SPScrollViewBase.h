@@ -115,11 +115,14 @@ public: // internal, use with care
 
 	virtual void setScrollDirty(bool value);
 	virtual void updateScrollBounds();
-protected:
-	// returns position min and max in current size (for 0;1000 with size=768 it min = 0; max = (1000 - 768)
 
+protected: // common overload points
 	virtual void onDelta(float delta);
 	virtual void onOverscrollPerformed(float velocity, float pos, float boundary);
+
+	virtual bool onSwipeEventBegin(const Vec2 &loc, const Vec2 &d, const Vec2 &v);
+	virtual bool onSwipeEvent(const Vec2 &loc, const Vec2 &d, const Vec2 &v);
+	virtual bool onSwipeEventEnd(const Vec2 &loc, const Vec2 &d, const Vec2 &v);
 
 	virtual void onSwipeBegin();
 	virtual bool onSwipe(float delta, float velocity, bool ended);

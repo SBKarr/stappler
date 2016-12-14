@@ -120,6 +120,16 @@ public:
 	RangeLineIterator end() const;
 
 	WideString str(bool filterAlign = true) const;
+	Pair<uint32_t, uint32_t> selectWord(uint32_t originChar) const;
+
+	enum SelectMode {
+		Center,
+		Prefix,
+		Suffix
+	};
+
+	// on error maxOf<uint32_t> returned
+	uint32_t selectChar(int32_t x, int32_t y, SelectMode = Center) const;
 };
 
 class HyphenMap : public Ref {

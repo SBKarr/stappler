@@ -70,6 +70,9 @@ public:
 	virtual void setNodeVisibleCallback(const BoolCallback &);
 	virtual void setNodeEnabledCallback(const BoolCallback &);
 
+	virtual void setEnabled(bool value);
+	virtual bool isEnabled() const;
+
 protected:
 	virtual void setProgress(float);
 

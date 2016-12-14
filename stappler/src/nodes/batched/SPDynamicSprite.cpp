@@ -79,7 +79,6 @@ bool DynamicSprite::init(const Bitmap &bmp, const Rect &rect, float density) {
 		texRect = rect;
 	}
 
-
 	auto tex = Rc<cocos2d::Texture2D>::alloc();
 	tex->initWithData(bmp.dataPtr(), bmp.size(), TextureCache::getPixelFormat(bmp.format()), bmp.width(), bmp.height());
 
@@ -229,6 +228,13 @@ void DynamicSprite::updateQuads() {
 	}
 
 	_quads->setColor(0, color4);
+}
+
+cocos2d::GLProgramState *DynamicSprite::getProgramStateI8() const {
+	return getProgramStateFullColor();
+}
+cocos2d::GLProgramState *DynamicSprite::getProgramStateAI88() const {
+	return getProgramStateFullColor();
 }
 
 void DynamicSprite::setFlippedX(bool value) {

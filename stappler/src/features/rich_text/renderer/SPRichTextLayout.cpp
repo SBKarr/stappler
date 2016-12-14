@@ -131,10 +131,10 @@ Outline Outline::border(const OutlineStyle &style, float swidth, float emBase, f
 
 static Rect getLabelLineStartRect(const Label &l, uint16_t lineId, float density, uint16_t c) {
 	Rect rect;
-	const font::LineSpec &line = l._format.lines.at(lineId);
+	const font::LineSpec &line = l.format.lines.at(lineId);
 	if (line.count > 0) {
-		const font::CharSpec & firstChar = l._format.chars.at(MAX(line.start, c));
-		const font::CharSpec & lastChar = l._format.chars.at(line.start + line.count - 1);
+		const font::CharSpec & firstChar = l.format.chars.at(MAX(line.start, c));
+		const font::CharSpec & lastChar = l.format.chars.at(line.start + line.count - 1);
 		rect.origin = Vec2((firstChar.pos) / density, (line.pos) / density - line.height / density);
 		rect.size = Size((lastChar.pos + lastChar.advance - firstChar.pos) / density, line.height / density);
 	}
@@ -144,10 +144,10 @@ static Rect getLabelLineStartRect(const Label &l, uint16_t lineId, float density
 
 static Rect getLabelLineEndRect(const Label &l, uint16_t lineId, float density, uint16_t c) {
 	Rect rect;
-	const font::LineSpec &line = l._format.lines.at(lineId);
+	const font::LineSpec &line = l.format.lines.at(lineId);
 	if (line.count > 0) {
-		const font::CharSpec & firstChar = l._format.chars.at(line.start);
-		const font::CharSpec & lastChar = l._format.chars.at(MIN(line.start + line.count - 1, c));
+		const font::CharSpec & firstChar = l.format.chars.at(line.start);
+		const font::CharSpec & lastChar = l.format.chars.at(MIN(line.start + line.count - 1, c));
 		rect.origin = Vec2((firstChar.pos) / density, (line.pos) / density - line.height / density);
 		rect.size = Size((lastChar.pos + lastChar.advance - firstChar.pos) / density, line.height / density);
 	}
@@ -156,26 +156,26 @@ static Rect getLabelLineEndRect(const Label &l, uint16_t lineId, float density, 
 
 static cocos2d::Rect getCharsRect(const Label &l, uint16_t lineId, uint16_t firstCharId, uint16_t lastCharId, float density) {
 	Rect rect;
-	const font::LineSpec & line = l._format.lines.at(lineId);
-	const font::CharSpec & firstChar = l._format.chars.at(firstCharId);
-	const font::CharSpec & lastChar = l._format.chars.at(lastCharId);
+	const font::LineSpec & line = l.format.lines.at(lineId);
+	const font::CharSpec & firstChar = l.format.chars.at(firstCharId);
+	const font::CharSpec & lastChar = l.format.chars.at(lastCharId);
 	rect.origin = Vec2((firstChar.pos) / density, (line.pos) / density - line.height / density);
 	rect.size = Size((lastChar.pos + lastChar.advance - firstChar.pos) / density, line.height / density);
 	return rect;
 }
 
 Rect Label::getLineRect(uint16_t lineId, float density, const Vec2 &origin) const {
-	if (lineId >= _format.lines.size()) {
+	if (lineId >= format.lines.size()) {
 		return Rect::ZERO;
 	}
-	return getLineRect(_format.lines[lineId], density, origin);
+	return getLineRect(format.lines[lineId], density, origin);
 }
 
 Rect Label::getLineRect(const font::LineSpec &line, float density, const Vec2 &origin) const {
 	Rect rect;
 	if (line.count > 0) {
-		const font::CharSpec & firstChar = _format.chars.at(line.start);
-		const font::CharSpec & lastChar = _format.chars.at(line.start + line.count - 1);
+		const font::CharSpec & firstChar = format.chars.at(line.start);
+		const font::CharSpec & lastChar = format.chars.at(line.start + line.count - 1);
 		rect.origin = Vec2((firstChar.pos) / density + origin.x, (line.pos) / density - line.height / density + origin.y);
 		rect.size = Size((lastChar.pos + lastChar.advance - firstChar.pos) / density, line.height / density);
 	}
@@ -184,14 +184,14 @@ Rect Label::getLineRect(const font::LineSpec &line, float density, const Vec2 &o
 
 uint16_t Label::getLineForCharId(uint16_t id) const {
 	uint16_t n = 0;
-	for (auto &it : _format.lines) {
+	for (auto &it : format.lines) {
 		if (id >= it.start && id < it.start + it.count) {
 			return n;
 		}
 		n++;
 	}
-	if (n >= _format.lines.size()) {
-		n = _format.lines.size() - 1;
+	if (n >= format.lines.size()) {
+		n = format.lines.size() - 1;
 	}
 	return n;
 }
@@ -468,7 +468,7 @@ bool FloatContext::pushFloatingNodeToNewStack(Layout &lo, Layout &l, FloatStack 
 }
 
 InlineContext::InlineContext(font::Source *set, float density)
-: reader(set, &(label._format), density) { }
+: reader(set, &(label.format), density) { }
 
 void InlineContext::pushNode(const Node *node, const NodeCallback &cb) {
 	if (!finalized) {
@@ -512,7 +512,7 @@ void InlineContext::finalize() {
 }
 void InlineContext::reset() {
 	finalized = false;
-	reader.reset(&label._format);
+	reader.reset(&label.format);
 }
 
 NS_SP_EXT_END(rich_text)

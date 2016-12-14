@@ -138,40 +138,76 @@ void IconSprite::NavIcon::onAdded() {
 void IconSprite::NavIcon::redraw(float pr, float diff) {
 	float p = pr;
 
-	_top->clear();
-	_top->moveTo( progress(2.0f, 13.0f, p),				progress(5.0f, 3.0f, p) );
-	_top->lineTo( progress(2.0f, 13.0f - (float)M_SQRT2, p),	progress(7.0f, 3.0f + (float)M_SQRT2, p) );
-	_top->lineTo( progress(22.0f, 22.0f - (float)M_SQRT2, p),	progress(7.0f, 12.0f + (float)M_SQRT2, p) );
-	_top->lineTo( progress(22.0f, 22.0f, p),			progress(5.0f, 12.0f, p) );
-	_top->setFillColor(cocos2d::Color4B(0, 0, 0, 255));
-	_top->closePath();
+	if (p <= 1.0f) {
+		_top->clear();
+		_top->moveTo( progress(2.0f, 13.0f, p),				progress(5.0f, 3.0f, p) );
+		_top->lineTo( progress(2.0f, 13.0f - (float)M_SQRT2, p),	progress(7.0f, 3.0f + (float)M_SQRT2, p) );
+		_top->lineTo( progress(22.0f, 22.0f - (float)M_SQRT2, p),	progress(7.0f, 12.0f + (float)M_SQRT2, p) );
+		_top->lineTo( progress(22.0f, 22.0f, p),			progress(5.0f, 12.0f, p) );
+		_top->setFillColor(cocos2d::Color4B(0, 0, 0, 255));
+		_top->closePath();
 
-	_center->clear();
-	_center->moveTo( progress(2.0f, 3.0f, p), 11 );
-	_center->lineTo( progress(22.0f, 20.0f, p), 11 );
-	_center->lineTo( progress(22.0f, 20.0f, p), 13 );
-	_center->lineTo( progress(2.0f, 3.0f, p), 13 );
-	_center->setFillColor(cocos2d::Color4B(0, 0, 0, 255));
-	_center->closePath();
+		_center->clear();
+		_center->moveTo( progress(2.0f, 3.0f, p), 11 );
+		_center->lineTo( progress(22.0f, 20.0f, p), 11 );
+		_center->lineTo( progress(22.0f, 20.0f, p), 13 );
+		_center->lineTo( progress(2.0f, 3.0f, p), 13 );
+		_center->setFillColor(cocos2d::Color4B(0, 0, 0, 255));
+		_center->closePath();
 
-	_bottom->clear();
-	_bottom->moveTo( progress(2.0f, 13.0f - (float)M_SQRT2, p),	progress(17.0f, 21.0f - (float)M_SQRT2, p) );
-	_bottom->lineTo( progress(22.0f, 22.0f - (float)M_SQRT2, p),	progress(17.0f, 12.0f - (float)M_SQRT2, p) );
-	_bottom->lineTo( progress(22.0f, 22.0f, p),				progress(19.0f, 12.0f, p) );
-	_bottom->lineTo( progress(2.0f, 13.0f, p),				progress(19.0f, 21.0f, p) );
-	_bottom->setFillColor(cocos2d::Color4B(0, 0, 0, 255));
-	_bottom->closePath();
+		_bottom->clear();
+		_bottom->moveTo( progress(2.0f, 13.0f - (float)M_SQRT2, p),	progress(17.0f, 21.0f - (float)M_SQRT2, p) );
+		_bottom->lineTo( progress(22.0f, 22.0f - (float)M_SQRT2, p),	progress(17.0f, 12.0f - (float)M_SQRT2, p) );
+		_bottom->lineTo( progress(22.0f, 22.0f, p),				progress(19.0f, 12.0f, p) );
+		_bottom->lineTo( progress(2.0f, 13.0f, p),				progress(19.0f, 21.0f, p) );
+		_bottom->setFillColor(cocos2d::Color4B(0, 0, 0, 255));
+		_bottom->closePath();
 
-	float rotation = _owner->getRotation();
+		float rotation = _owner->getRotation();
 
-	if (pr == 0.0f) {
-		_owner->setRotation(0);
-	} else if (pr == 1.0f) {
-		_owner->setRotation(180);
-	} else if ((diff < 0 && fabsf(rotation) == 180) || rotation < 0) {
-		_owner->setRotation(progress(0, -180, pr));
-	} else if ((diff > 0 && rotation == 0) || rotation > 0) {
-		_owner->setRotation(progress(0, 180, pr));
+		if (pr == 0.0f) {
+			_owner->setRotation(0);
+		} else if (pr == 1.0f) {
+			_owner->setRotation(180);
+		} else if ((diff < 0 && fabsf(rotation) == 180) || rotation < 0) {
+			_owner->setRotation(progress(0, -180, pr));
+		} else if ((diff > 0 && rotation == 0) || rotation > 0) {
+			_owner->setRotation(progress(0, 180, pr));
+		}
+	} else {
+		p = p - 1.0f;
+
+		_top->clear();
+		_top->moveTo( 13.0f, progress(3.0f, 4.0f, p) );
+		_top->lineTo( progress(13.0f - (float)M_SQRT2, 11.0f, p), progress(3.0f + (float)M_SQRT2, 4.0f, p) );
+		_top->lineTo( progress(22.0f - (float)M_SQRT2, 11.0f, p), progress(12.0f + (float)M_SQRT2, 12.0f, p) );
+		_top->lineTo( progress(22.0f, 13.0f, p), 12.0f );
+		_top->setFillColor(cocos2d::Color4B(0, 0, 0, 255));
+		_top->closePath();
+
+		_center->clear();
+		_center->moveTo( progress(3.0f, 4.0f, p), 11 );
+		_center->lineTo( progress(20.0f, 20.0f, p), 11 );
+		_center->lineTo( progress(20.0f, 20.0f, p), 13 );
+		_center->lineTo( progress(3.0f, 4.0f, p), 13 );
+		_center->setFillColor(cocos2d::Color4B(0, 0, 0, 255));
+		_center->closePath();
+
+		_bottom->clear();
+		_bottom->moveTo( progress(13.0f - (float)M_SQRT2, 11.0f, p), progress(21.0f - (float)M_SQRT2, 20.0f, p) );
+		_bottom->lineTo( progress(22.0f - (float)M_SQRT2, 11.0f, p), progress(12.0f - (float)M_SQRT2, 12.0f, p) );
+		_bottom->lineTo( progress(22.0f, 13.0f, p), 12.0f );
+		_bottom->lineTo( 13.0f, progress(21.0f, 20.0f, p) );
+		_bottom->setFillColor(cocos2d::Color4B(0, 0, 0, 255));
+		_bottom->closePath();
+
+		if (p == 0.0f) {
+			_owner->setRotation(180);
+		} else if (p == 1.0f) {
+			_owner->setRotation(45);
+		} else {
+			_owner->setRotation(progress(180, 45, p));
+		}
 	}
 }
 

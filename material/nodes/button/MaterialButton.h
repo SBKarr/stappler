@@ -80,6 +80,8 @@ public:
 
 	virtual const cocos2d::Vec2 & getTouchPoint() const;
 
+	virtual void cancel();
+
 protected:
 	virtual void animateSelection();
 	virtual void animateDeselection();

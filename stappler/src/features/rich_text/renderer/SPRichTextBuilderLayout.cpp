@@ -374,7 +374,7 @@ float Builder::fixLabelPagination(Layout &l, Label &label) {
 	if ((_media.flags & RenderFlag::PaginatedLayout) && !l.disablePageBreak) {
 		const Vec2 origin(l.origin.x  / density, l.origin.y / density);
 		const float pageHeight = _media.surfaceSize.height;
-		for (auto &it : label._format.lines) {
+		for (auto &it : label.format.lines) {
 			Rect rect = label.getLineRect(it, density, origin);
 			if (!rect.equals(Rect::ZERO)) {
 				rect.origin.y += offset / density;
@@ -429,9 +429,9 @@ float Builder::freeInlineContext(Layout &l) {
 	if (!l.inlineBlockLayouts.empty()) {
 		const Vec2 origin(l.origin.x  / density, l.origin.y / density);
 		for (Layout &it : l.inlineBlockLayouts) {
-			const font::RangeSpec &r = ctx->label._format.ranges.at(it.charBinding);
-			const font::CharSpec &c = ctx->label._format.chars.at(r.start + r.count - 1);
-			auto line = ctx->label._format.getLine(r.start + r.count - 1);
+			const font::RangeSpec &r = ctx->label.format.ranges.at(it.charBinding);
+			const font::CharSpec &c = ctx->label.format.chars.at(r.start + r.count - 1);
+			auto line = ctx->label.format.getLine(r.start + r.count - 1);
 			if (line) {
 				it.setBoundPosition(origin + Vec2(c.pos / density, (line->pos - r.height) / density));
 				l.layouts.emplace_back(std::move(it));

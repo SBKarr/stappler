@@ -292,6 +292,13 @@ bool SidebarLayout::isNodeEnabled() const {
 	return getProgress() == 1.0f;
 }
 
+void SidebarLayout::setEnabled(bool value) {
+	_listener->setEnabled(value);
+}
+bool SidebarLayout::isEnabled() const {
+	return _listener->isEnabled();
+}
+
 void SidebarLayout::setNodeVisibleCallback(const BoolCallback &cb) {
 	_visibleCallback = cb;
 }

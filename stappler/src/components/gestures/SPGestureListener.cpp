@@ -140,6 +140,12 @@ int32_t Listener::getPriority() {
 	return _priority;
 }
 
+void Listener::cancel() {
+	for (auto &it : _recognizers) {
+		it.second->cancel();
+	}
+}
+
 void Listener::setSwallowTouches(bool value) {
 	if (_touchListener->isSwallowTouches() != value) {
 		_touchListener->setSwallowTouches(value);

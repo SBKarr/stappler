@@ -204,7 +204,7 @@ size_t Result::getSizeInMemory() const {
 	auto ret = sizeof(Result) + _objects.capacity() * sizeof(Object) + _refs.capacity() * sizeof(Object);
 	for (const Object &it : _objects) {
 		if (it.type == Object::Type::Label) {
-			const auto &f = it.value.label._format;
+			const auto &f = it.value.label.format;
 			ret += (f.chars.capacity() * sizeof(font::CharSpec)
 					+ f.lines.capacity() + sizeof(font::LineSpec)
 					+ f.ranges.capacity() + sizeof(font::RangeSpec));

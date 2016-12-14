@@ -27,32 +27,36 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(locale)
 
-using LocaleInitList = std::initializer_list<std::pair<std::string, std::string>>;
-using StringMap = std::unordered_map<std::string, std::string>;
-using LocaleMap = std::unordered_map<std::string, StringMap>;
+using LocaleInitList = std::initializer_list<std::pair<String, String>>;
+using StringMap = std::unordered_map<String, String>;
+using LocaleMap = std::unordered_map<String, StringMap>;
 using NumRule = std::function<uint8_t(int64_t)>;
 
 extern EventHeader onLocale;
 
-void define(const std::string &locale, LocaleInitList &&);
-std::string string(const std::string &);
-std::string numeric(const std::string &, size_t);
+struct Initializer {
+	Initializer(const String &locale, LocaleInitList &&);
+};
 
-void setDefault(const std::string &);
-const std::string &getDefault();
+void define(const String &locale, LocaleInitList &&);
+String string(const String &);
+String numeric(const String &, size_t);
 
-void setLocale(const std::string &);
-const std::string &getLocale();
+void setDefault(const String &);
+const String &getDefault();
 
-void setNumRule(const std::string &, const NumRule &);
+void setLocale(const String &);
+const String &getLocale();
+
+void setNumRule(const String &, const NumRule &);
 
 bool hasLocaleTags(const char16_t *, size_t);
 std::u16string resolveLocaleTags(const char16_t *, size_t);
 
-std::string language(const std::string &locale);
+String language(const String &locale);
 
 // convert locale name to common form ('en-us', 'ru-ru', 'fr-fr')
-std::string common(const std::string &locale);
+String common(const String &locale);
 
 NS_SP_EXT_END(locale)
 
