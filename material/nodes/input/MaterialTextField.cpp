@@ -29,10 +29,13 @@ THE SOFTWARE.
 
 #include "SPLayer.h"
 #include "SPString.h"
-#include "SPTimeout.h"
+
+#include "SPDrawPath.h"
+#include "SPDrawPathNode.h"
+#include "SPActions.h"
 
 NS_MD_BEGIN
-
+/*
 bool TextField::init(FontType font, float width) {
 	if (!Node::init()) {
 		return false;
@@ -62,6 +65,18 @@ bool TextField::init(FontType font, float width) {
 			return onPressEnd(g.location());
 		}
 	});
+	_gestureListener->setSwipeCallback([this] (gesture::Event ev, const gesture::Swipe &s) {
+		if (ev == gesture::Event::Began) {
+			if (onSwipeBegin(s.location())) {
+				return onSwipe(s.location(), s.delta / screen::density());
+			}
+			return false;
+		} else if (ev == gesture::Event::Activated) {
+			return onSwipe(s.location(), s.delta / screen::density());
+		} else {
+			return onSwipeEnd(s.velocity / screen::density());
+		}
+	});
 	addComponent(_gestureListener);
 
 	_label = construct<Label>(font);
@@ -75,13 +90,28 @@ bool TextField::init(FontType font, float width) {
 	_cursorLayer->setVisible(false);
 	_cursorLayer->setContentSize(Size(1.0f, _label->getFontHeight() / _label->getDensity()));
 	_cursorLayer->setAnchorPoint(Vec2(0.0f, 0.0f));
-	_cursorLayer->setOpacity(127);
+	_cursorLayer->setOpacity(222);
 	addChild(_cursorLayer, 1);
 
 	_background = construct<Layer>(material::Color::Red_50);
 	_background->setAnchorPoint(Vec2(0.0f, 0.0f));
 	_background->setVisible(false);
 	addChild(_background, 0);
+
+	auto path = Rc<draw::Path>::create();
+	path->moveTo(12.0f, 0.0f);
+	path->lineTo(5.0f, 7.0f);
+	path->arcTo(7.0f * sqrt(2.0f), 7.0f * sqrt(2.0f), 0.0f, true, false, 19.0f, 7.0f);
+	path->closePath();
+
+	_cursorPointer = construct<draw::PathNode>(24, 24);
+	_cursorPointer->setContentSize(Size(20.0f, 20.0f));
+	_cursorPointer->setColor(material::Color::Grey_500);
+	_cursorPointer->addPath(path);
+	_cursorPointer->setAnchorPoint(Vec2(0.5f, 1.25f));
+	_cursorPointer->setOpacity(222);
+	_cursorPointer->setVisible(false);
+	addChild(_cursorPointer, 3);
 
 	updateSize();
 
@@ -236,7 +266,7 @@ void TextField::releaseInput() {
 }
 
 bool TextField::isPlaceholderEnabled() const {
-	return !_string.empty();
+	return _string.empty();
 }
 bool TextField::empty() const {
 	return _string.empty();
@@ -253,14 +283,65 @@ bool TextField::onPressEnd(const Vec2 &vec) {
 	if (!_handler.isActive() && node::isTouched(this, vec)) {
 		acquireInput();
 		return true;
-	} else if (_handler.isActive() && !node::isTouched(this, vec, 16.0f)) {
-		releaseInput();
+	} else if (_handler.isActive()) {
+		if (!node::isTouched(this, vec, 16.0f)) {
+			releaseInput();
+		} else if (!empty() && !_cursorPoinerEnabled) {
+			auto chIdx = _label->getCharIndex(_label->convertToNodeSpace(vec));
+
+			if (chIdx.first != maxOf<uint32_t>()) {
+				if (chIdx.second) {
+					setCursor(Cursor(chIdx.first + 1));
+				} else {
+					setCursor(Cursor(chIdx.first));
+				}
+			}
+			_cursorPointer->setVisible(true);
+			scheduleCursorPointer();
+		}
 		return true;
 	}
 	return false;
 }
 bool TextField::onPressCancel(const Vec2 &vec) {
 	return true;
+}
+
+bool TextField::onSwipeBegin(const Vec2 &vec) {
+	if (_handler.isInputEnabled() && _cursorPointer->isVisible() && node::isTouched(_cursorPointer, vec, 4.0f)) {
+		unscheduleCursorPointer();
+		_cursorPoinerEnabled = true;
+		return true;
+	}
+	return false;
+}
+
+bool TextField::onSwipe(const Vec2 &vec, const Vec2 &) {
+	if (_cursorPoinerEnabled) {
+		auto pos = _label->convertToNodeSpace(vec) + Vec2(0.0f, _cursorPointer->getContentSize().height * 3.0f / 4.0f);
+
+		auto chIdx = _label->getCharIndex(pos);
+		if (chIdx.first != maxOf<uint32_t>()) {
+			auto cursorIdx = chIdx.first;
+			if (chIdx.second) {
+				++ cursorIdx;
+			}
+
+			if (_cursor.start != cursorIdx) {
+				setCursor(Cursor(cursorIdx));
+			}
+		}
+		return true;
+	}
+	return false;
+}
+
+bool TextField::onSwipeEnd(const Vec2 &) {
+	if (_cursorPoinerEnabled) {
+		_cursorPoinerEnabled = false;
+		scheduleCursorPointer();
+	}
+	return false;
 }
 
 void TextField::onText(const std::u16string &str, const Cursor &c) {
@@ -300,12 +381,19 @@ void TextField::updateCursor() {
 			charIndex = 0;
 		}
 
-		Vec2 pos; // = _label->getCursorPosition(RichLabel::CharIndex(charIndex));
-		if (pos != Vec2::ZERO) {
-			_cursorLayer->setPosition(pos + _label->getPosition() - Vec2(0.0f, _label->getContentSize().height));
+		Vec2 cpos;
+		if (empty()) {
+			cpos = _padding.getTopLeft(_contentSize) - Vec2(0.0f, _cursorLayer->getContentSize().height);
 		} else {
-			_cursorLayer->setPosition(_padding.getTopLeft(_contentSize) - Vec2(0.0f, _cursorLayer->getContentSize().height));
+			Vec2 pos = _label->getCursorPosition(charIndex);
+			if (pos != Vec2::ZERO) {
+				cpos = pos + _label->getPosition() - Vec2(0.0f, _label->getContentSize().height);
+			} else {
+				cpos = _padding.getTopLeft(_contentSize) - Vec2(0.0f, _cursorLayer->getContentSize().height);
+			}
 		}
+		_cursorLayer->setPosition(cpos);
+		_cursorPointer->setPosition(cpos);
 	}
 }
 
@@ -362,9 +450,11 @@ void TextField::updateFocus() {
 
 	if (_handler.isActive()) {
 		_cursorLayer->setColor(_normalColor);
+		_cursorPointer->setColor(_normalColor);
 		_cursorLayer->setVisible(true);
 	} else {
 		_cursorLayer->setColor(Color::Grey_500);
+		_cursorPointer->setColor(Color::Grey_500);
 		_cursorLayer->setVisible(false);
 	}
 }
@@ -393,4 +483,15 @@ void TextField::hideLastChar() {
 	}
 }
 
+void TextField::scheduleCursorPointer() {
+	stopAllActionsByTag("TextFieldCursorPointer"_tag);
+	runAction(action::callback(7.5f, [this] {
+		_cursorPointer->setVisible(false);
+	}), "TextFieldCursorPointer"_tag);
+}
+
+void TextField::unscheduleCursorPointer() {
+	stopAllActionsByTag("TextFieldCursorPointer"_tag);
+}
+*/
 NS_MD_END

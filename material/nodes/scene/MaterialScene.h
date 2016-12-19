@@ -30,7 +30,6 @@ THE SOFTWARE.
 #include "MaterialNavigationLayer.h"
 #include "MaterialForegroundLayer.h"
 #include "SPDynamicBatchScene.h"
-#include <set>
 
 /* Default scene layout:
  *
@@ -64,7 +63,7 @@ public:
 	virtual void onEnterTransitionDidFinish() override;
 	virtual void onExitTransitionDidStart() override;
 
-	virtual const cocos2d::Size &getViewSize() const;
+	virtual const Size &getViewSize() const;
 
 	virtual ForegroundLayer *getForegroundLayer() const;
 	virtual NavigationLayer *getNavigationLayer() const;
@@ -91,11 +90,16 @@ public:
 	virtual void pushContentNode(Layout *, cocos2d::FiniteTimeAction *enterTransition = nullptr, cocos2d::FiniteTimeAction *exitTransition = nullptr);
 	virtual void popContentNode(Layout *);
 
-	virtual void pushForegroundNode(cocos2d::Node *, const std::function<void()> & = nullptr);
+	virtual void pushFloatNode(cocos2d::Node *, int);
+	virtual void popFloatNode(cocos2d::Node *);
+
+	virtual void pushForegroundNode(cocos2d::Node *, const Function<void()> & = nullptr);
 	virtual void popForegroundNode(cocos2d::Node *);
 
 	virtual void setNavigationMenuSource(material::MenuSource *);
-	virtual void setSnackbarString(const std::string &, const Color & = Color::White);
+	virtual void setSnackbarString(const String &, const Color & = Color::White);
+
+	virtual Vec2 convertToScene(const Vec2 &) const;
 
 protected:
 	virtual ForegroundLayer *createForegroundLayer();
@@ -119,11 +123,12 @@ protected:
 
 	ForegroundLayer *_foreground = nullptr;
 	NavigationLayer *_navigation = nullptr;
+	cocos2d::Node *_floating = nullptr;
 	ContentLayer *_content = nullptr;
 	BackgroundLayer *_background = nullptr;
 
 	Label *_stats = nullptr;
-	cocos2d::LayerColor *_statsColor = nullptr;
+	Layer *_statsColor = nullptr;
 
 	bool _autoLightLevel = false;
 	bool _visualizeTouches = false;
@@ -131,10 +136,11 @@ protected:
 	bool _registred = false;
 
 	bool _contentCaptured = false;
-	std::set<cocos2d::Node *> _contentCaptureNodes;
+	Set<cocos2d::Node *> _contentCaptureNodes;
 
 	cocos2d::Node *_touchesNode = nullptr;
-	std::map<int, cocos2d::Node *> _touchesNodes;
+	Map<int, cocos2d::Node *> _touchesNodes;
+	Vector<cocos2d::GroupCommand> _group;
 
 	bool _contentCapturing = false;
 };

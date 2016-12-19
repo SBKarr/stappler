@@ -37,8 +37,8 @@ THE SOFTWARE.
 #include "base/CCDirector.h"
 #include "SPDataListener.h"
 
-#define MATERIAL_SHADOW_AMBIENT_MOD 4.0f
-#define MATERIAL_SHADOW_KEY_MOD 7.0f
+#define MATERIAL_SHADOW_AMBIENT_MOD 6.0f
+#define MATERIAL_SHADOW_KEY_MOD 9.0f
 
 NS_MD_BEGIN
 
@@ -93,20 +93,20 @@ bool MaterialNode::init() {
 	}
 
 	_background = construct<RoundedSprite>((uint32_t)_borderRadius, stappler::screen::density());
-	_background->setAnchorPoint(cocos2d::Vec2(0, 0));
+	_background->setAnchorPoint(Vec2(0, 0));
 	_background->setPosition(0, 0);
 	_background->setOpacity(255);
 	_background->setColor(Color::White);
 	addChild(_background, 0);
 
 	_backgroundClipper = construct<RoundedSprite>((uint32_t)_borderRadius, stappler::screen::density());
-	_backgroundClipper->setAnchorPoint(cocos2d::Vec2(0, 0));
+	_backgroundClipper->setAnchorPoint(Vec2(0, 0));
 	_backgroundClipper->setPosition(0, 0);
 	_backgroundClipper->setOpacity(255);
 	_backgroundClipper->setColor(Color::Black);
 
 	_shadowClipper = construct<ClippingNode>(_backgroundClipper);
-	_shadowClipper->setAnchorPoint(cocos2d::Vec2(0, 0));
+	_shadowClipper->setAnchorPoint(Vec2(0, 0));
 	_shadowClipper->setPosition(0, 0);
 	_shadowClipper->setAlphaThreshold(1.0f);
 	_shadowClipper->setInverted(true);
@@ -117,17 +117,19 @@ bool MaterialNode::init() {
 	setCascadeOpacityEnabled(true);
 
 	ignoreAnchorPointForPosition(false);
-	setAnchorPoint(cocos2d::Vec2(0, 0));
+	setAnchorPoint(Vec2(0, 0));
 
-	_ambientShadow = construct<ShadowSprite>(_shadowIndex * MATERIAL_SHADOW_AMBIENT_MOD);
+	_ambientShadow = construct<ShadowSprite>(_shadowIndex * MATERIAL_SHADOW_AMBIENT_MOD + _borderRadius,
+			std::max(0.0f, _borderRadius - (_shadowIndex) * MATERIAL_SHADOW_AMBIENT_MOD));
 	_ambientShadow->setOpacity(64);
-	_ambientShadow->setAnchorPoint(cocos2d::Vec2(0, 0));
+	_ambientShadow->setAnchorPoint(Vec2(0, 0));
 	_ambientShadow->setVisible(false);
 	_shadowClipper->addChild(_ambientShadow, -1);
 
-	_keyShadow = construct<ShadowSprite>(_shadowIndex * MATERIAL_SHADOW_KEY_MOD);
+	_keyShadow = construct<ShadowSprite>(_shadowIndex * MATERIAL_SHADOW_KEY_MOD + _borderRadius,
+			std::max(0.0f, _borderRadius - (_shadowIndex) * MATERIAL_SHADOW_KEY_MOD));
 	_keyShadow->setOpacity(128);
-	_keyShadow->setAnchorPoint(cocos2d::Vec2(0, 0));
+	_keyShadow->setAnchorPoint(Vec2(0, 0));
 	_keyShadow->setVisible(false);
 	_shadowClipper->addChild(_keyShadow, -2);
 
@@ -155,8 +157,10 @@ void MaterialNode::setShadowZIndex(float value) {
 	if (_shadowIndex != value) {
 		_shadowIndex = value;
 
-		_ambientShadow->setTextureSize((_shadowIndex) * MATERIAL_SHADOW_AMBIENT_MOD  + _borderRadius);
-		_keyShadow->setTextureSize((_shadowIndex) * MATERIAL_SHADOW_KEY_MOD + _borderRadius);
+		_ambientShadow->setTextureSize((_shadowIndex) * MATERIAL_SHADOW_AMBIENT_MOD + _borderRadius,
+				std::max(0.0f, _borderRadius - (_shadowIndex) * MATERIAL_SHADOW_AMBIENT_MOD));
+		_keyShadow->setTextureSize((_shadowIndex) * MATERIAL_SHADOW_KEY_MOD + _borderRadius,
+				std::max(0.0f, _borderRadius - (_shadowIndex) * MATERIAL_SHADOW_KEY_MOD));
 
 		if (value == 0.0f) {
 			_ambientShadow->setVisible(false);
@@ -191,8 +195,10 @@ void MaterialNode::setBorderRadius(uint32_t value) {
 		_background->setTextureSize((uint32_t)_borderRadius);
 		_backgroundClipper->setTextureSize((uint32_t)_borderRadius);
 
-		_ambientShadow->setTextureSize((_shadowIndex) * MATERIAL_SHADOW_AMBIENT_MOD  + _borderRadius);
-		_keyShadow->setTextureSize((_shadowIndex) * MATERIAL_SHADOW_KEY_MOD + _borderRadius);
+		_ambientShadow->setTextureSize((_shadowIndex) * MATERIAL_SHADOW_AMBIENT_MOD + _borderRadius,
+				std::max(0.0f, _borderRadius - (_shadowIndex) * MATERIAL_SHADOW_AMBIENT_MOD));
+		_keyShadow->setTextureSize((_shadowIndex) * MATERIAL_SHADOW_KEY_MOD + _borderRadius,
+				std::max(0.0f, _borderRadius - (_shadowIndex) * MATERIAL_SHADOW_KEY_MOD));
 
 		_contentSizeDirty = true;
 	}
@@ -205,7 +211,7 @@ void MaterialNode::setBackgroundColor(const Color &c) {
 	_background->setColor(c);
 	_backgroundClipper->setColor(c);
 }
-const cocos2d::Color3B &MaterialNode::getBackgroundColor() const {
+const Color3B &MaterialNode::getBackgroundColor() const {
 	return _background->getColor();
 }
 
@@ -276,54 +282,54 @@ void MaterialNode::updateColor() {
 
 void MaterialNode::onDataRecieved(stappler::data::Value &) { }
 
-cocos2d::Size MaterialNode::getContentSizeWithPadding() const {
-	return cocos2d::Size(MAX(_contentSize.width - _padding.left - _padding.right, 0),
+Size MaterialNode::getContentSizeWithPadding() const {
+	return Size(MAX(_contentSize.width - _padding.left - _padding.right, 0),
 			MAX(_contentSize.height - _padding.top - _padding.bottom, 0));
 }
-cocos2d::Vec2 MaterialNode::getAnchorPositionWithPadding() const {
-	return cocos2d::Vec2(_padding.left, _padding.bottom);
+Vec2 MaterialNode::getAnchorPositionWithPadding() const {
+	return Vec2(_padding.left, _padding.bottom);
 }
 
-cocos2d::Rect MaterialNode::getContentRect() const {
-	return cocos2d::Rect(getAnchorPositionWithPadding(), getContentSizeWithPadding());
+Rect MaterialNode::getContentRect() const {
+	return Rect(getAnchorPositionWithPadding(), getContentSizeWithPadding());
 }
 
-cocos2d::Size MaterialNode::getContentSizeForAmbientShadow(float index) const {
+Size MaterialNode::getContentSizeForAmbientShadow(float index) const {
 	float ambientSeed = index * MATERIAL_SHADOW_AMBIENT_MOD;
 	auto ambientSize = getContentSizeWithPadding();
 	ambientSize.width += ambientSeed;
 	ambientSize.height += ambientSeed;
 	return ambientSize;
 }
-cocos2d::Vec2 MaterialNode::getPositionForAmbientShadow(float index) const {
+Vec2 MaterialNode::getPositionForAmbientShadow(float index) const {
 	float ambientSeed = index * MATERIAL_SHADOW_AMBIENT_MOD;
-	return cocos2d::Vec2(-ambientSeed / 2 + _padding.left, -ambientSeed / 2 + _padding.bottom);
+	return Vec2(-ambientSeed / 2 + _padding.left, -ambientSeed / 2 + _padding.bottom);
 }
 
-cocos2d::Size MaterialNode::getContentSizeForKeyShadow(float index) const {
+Size MaterialNode::getContentSizeForKeyShadow(float index) const {
 	float keySeed = index * MATERIAL_SHADOW_KEY_MOD;
 	auto keySize = getContentSizeWithPadding();
 	keySize.width += keySeed;
 	keySize.height += keySeed;
 	return keySize;
 }
-cocos2d::Vec2 MaterialNode::getPositionForKeyShadow(float index) const {
-	cocos2d::Vec2 vec = convertToWorldSpace(cocos2d::Vec2(_contentSize.width / 2, _contentSize.height / 2));
-	cocos2d::Size screenSize = cocos2d::Director::getInstance()->getWinSize();
-	cocos2d::Vec2 lightSource(screenSize.width / 2, screenSize.height);
-	cocos2d::Vec2 normal = lightSource - vec;
+Vec2 MaterialNode::getPositionForKeyShadow(float index) const {
+	Vec2 vec = convertToWorldSpace(Vec2(_contentSize.width / 2, _contentSize.height / 2));
+	Size screenSize = cocos2d::Director::getInstance()->getWinSize();
+	Vec2 lightSource(screenSize.width / 2, screenSize.height);
+	Vec2 normal = lightSource - vec;
 	normal.normalize();
 
-	normal = normal - cocos2d::Vec2(0, -1);
+	normal = normal - Vec2(0, -1);
 
 	float keySeed = index * MATERIAL_SHADOW_KEY_MOD;
-	return cocos2d::Vec2(-keySeed / 2 + _padding.left, -keySeed / 2 + _padding.bottom) - normal * _shadowIndex * 0.5;
+	return Vec2(-keySeed / 2 + _padding.left, -keySeed / 2 + _padding.bottom) - normal * _shadowIndex * 0.5;
 }
 
 uint8_t MaterialNode::getOpacityForAmbientShadow(float value) const {
-	uint8_t ret = (value < 2.0)?(value * 0.5f * 168.0f):168;
+	uint8_t ret = 72;
 	auto size = getContentSizeForAmbientShadow(value);
-	auto texSize = _ambientShadow->getTextureSize();
+	auto texSize = _ambientShadow->getTextureSize() - _ambientShadow->getTextureRadius();
 	float min = MIN(size.width, size.height) - texSize;
 	if (min < 0) {
 		ret = 0;
@@ -333,9 +339,9 @@ uint8_t MaterialNode::getOpacityForAmbientShadow(float value) const {
 	return ret;
 }
 uint8_t MaterialNode::getOpacityForKeyShadow(float value) const {
-	uint8_t ret = (value < 2.0)?(value * 0.5f * 200.0f):200;
+	uint8_t ret = 128;
 	auto size = getContentSizeForKeyShadow(value);
-	auto texSize = _keyShadow->getTextureSize();
+	auto texSize = _keyShadow->getTextureSize() - _keyShadow->getTextureRadius();
 	float min = MIN(size.width, size.height) - texSize;
 	if (min < 0) {
 		ret = 0;

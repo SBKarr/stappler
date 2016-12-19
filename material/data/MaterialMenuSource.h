@@ -74,9 +74,9 @@ class MenuSourceCustom : public MenuSourceItem {
 public:
 	using FactoryFunction = std::function<cocos2d::Node *()>;
 
-	virtual bool init();
+	virtual bool init() override;
 	virtual bool init(float h, const FactoryFunction &func, bool relative = false);
-	virtual MenuSourceItem * copy();
+	virtual MenuSourceItem * copy() override;
 
 	virtual float getHeight() const;
 	virtual const FactoryFunction & getFactoryFunction() const;
@@ -125,8 +125,8 @@ public:
 	virtual ~MenuSourceButton();
 
 	virtual bool init(const std::string &, IconName, const Callback &);
-	virtual bool init();
-	virtual MenuSourceItem * copy();
+	virtual bool init() override;
+	virtual MenuSourceItem * copy() override;
 
 	virtual void setName(const std::string &);
 	virtual const std::string & getName() const;

@@ -179,23 +179,25 @@ void Request::draw(cocos2d::Texture2D *data) {
 	for (auto &obj : objs) {
 		if (obj.bbox.intersectsRect(_rect)) {
 			drawObjects.push_back(&obj);
-			if (obj.type == Object::Type::Label) {
-				const Label &l = obj.value.label;
-				for (auto &it : l.format.ranges) {
-					_font->addTextureChars(it.layout->getName(), l.format.chars, it.start, it.count);
-				}
-			} else if (obj.type == Object::Type::Background) {
-				const Background &bg = obj.value.background;
-				if (!bg.backgroundImage.empty()) {
-					auto &src = bg.backgroundImage;
-					auto document = _source->getDocument();
-					if (document->hasImage(src)) {
-						auto bmp = _drawer->getBitmap(src);
-						if (!bmp) {
-							Bitmap bmpSource(_source->getDocument()->getImageBitmap(src));
-							if (bmpSource) {
-								auto tex = TextureCache::uploadTexture(bmpSource);
-								_drawer->addBitmap(src, tex);
+			if (!_isThumbnail) {
+				if (obj.type == Object::Type::Label) {
+					const Label &l = obj.value.label;
+					for (auto &it : l.format.ranges) {
+						_font->addTextureChars(it.layout->getName(), l.format.chars, it.start, it.count);
+					}
+				} else if (obj.type == Object::Type::Background) {
+					const Background &bg = obj.value.background;
+					if (!bg.backgroundImage.empty()) {
+						auto &src = bg.backgroundImage;
+						auto document = _source->getDocument();
+						if (document->hasImage(src)) {
+							auto bmp = _drawer->getBitmap(src);
+							if (!bmp) {
+								Bitmap bmpSource = document->getImageBitmap(src, nullptr);
+								if (bmpSource) {
+									auto tex = TextureCache::uploadTexture(bmpSource);
+									_drawer->addBitmap(src, tex);
+								}
 							}
 						}
 					}

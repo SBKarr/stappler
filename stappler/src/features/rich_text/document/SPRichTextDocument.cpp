@@ -234,8 +234,6 @@ Bitmap Document::getImageBitmap(const String &name, const Bitmap::StrideFn &fn) 
 	return Bitmap();
 }
 
-Document::~Document() { }
-
 void Document::updateNodes() {
 	_ids.clear();
 
@@ -275,10 +273,6 @@ const Vector<style::MediaQuery> &Document::getMediaQueries() const {
 }
 const Map<CssStringId, String> &Document::getCssStrings() const {
 	return _cssStrings;
-}
-
-bool Document::resolveMediaQuery(MediaQueryId queryId) const {
-	return false;
 }
 
 String Document::getCssString(CssStringId id) const {

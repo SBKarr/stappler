@@ -40,11 +40,22 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
+// full localized string
 inline std::string operator"" _locale ( const char* str, std::size_t len) {
 	std::string ret;
 	ret.reserve(len + "@Locale:"_len);
 	ret.append("@Locale:");
 	ret.append(str, len);
+	return ret;
+}
+
+// localized token
+inline std::string operator"" _token ( const char* str, std::size_t len) {
+	std::string ret;
+	ret.reserve(len + 2);
+	ret.append("%");
+	ret.append(str, len);
+	ret.append("%");
 	return ret;
 }
 

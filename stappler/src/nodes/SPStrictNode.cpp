@@ -105,6 +105,8 @@ void StrictNode::onAfterDraw() {
 	} else {
 		glDisable(GL_SCISSOR_TEST);
 	}
+
+	_scissorRestored = false;
 }
 
 bool StrictNode::init() {

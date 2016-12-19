@@ -25,20 +25,39 @@ THE SOFTWARE.
 
 #include "SPDefine.h"
 #include "SPPlatform.h"
+#include "base/CCDirector.h"
+#include "CCGLViewImpl-desktop.h"
 
 NS_SP_PLATFORM_BEGIN
 
 namespace clipboard {
+#if SP_RESTRICT
+	bool _isAvailable() { return false; }
+	String _getString() { return String(); }
+	void _copyString(const String &value) { }
+#else
 	bool _isAvailable() {
+		auto view = dynamic_cast<cocos2d::GLViewImpl *>(cocos2d::Director::getInstance()->getOpenGLView());
+		if (view) {
+			return !view->getClipboardString().empty();
+		}
 		return false;
 	}
 
-	std::string _getString() {
-		return "";
+	String _getString() {
+		auto view = dynamic_cast<cocos2d::GLViewImpl *>(cocos2d::Director::getInstance()->getOpenGLView());
+		if (view) {
+			return view->getClipboardString();
+		}
+		return String();
 	}
-	void _copyString(const std::string &value) {
-
+	void _copyString(const String &value) {
+		auto view = dynamic_cast<cocos2d::GLViewImpl *>(cocos2d::Director::getInstance()->getOpenGLView());
+		if (view) {
+			view->setClipboardString(value);
+		}
 	}
+#endif
 }
 
 NS_SP_PLATFORM_END

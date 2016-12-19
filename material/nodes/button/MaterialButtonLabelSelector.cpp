@@ -73,7 +73,7 @@ void ButtonLabelSelector::setString(const std::string &str) {
 	}
 }
 const std::string &ButtonLabelSelector::getString() const {
-	return _label->getString();
+	return _label->getString8();
 }
 
 void ButtonLabelSelector::setWidth(float value) {

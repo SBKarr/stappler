@@ -33,7 +33,7 @@ THE SOFTWARE.
 NS_MD_BEGIN
 
 bool ContentLayer::init() {
-	if (!cocos2d::Layer::init()) {
+	if (!Node::init()) {
 		return false;
 	}
 
@@ -54,7 +54,7 @@ bool ContentLayer::init() {
 }
 
 void ContentLayer::onContentSizeDirty() {
-	Layer::onContentSizeDirty();
+	Node::onContentSizeDirty();
 	for (auto &node : _nodes) {
 		node->setAnchorPoint(Vec2(0.5f, 0.5f));
 		node->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);

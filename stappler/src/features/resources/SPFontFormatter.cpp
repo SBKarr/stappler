@@ -917,14 +917,111 @@ void FormatSpec::clear() {
 	ranges.clear();
 }
 
-const LineSpec *FormatSpec::getLine(size_t idx) const {
+Pair<uint32_t, FormatSpec::SelectMode> FormatSpec::getChar(int32_t x, int32_t y, SelectMode mode) const {
+	int32_t yDistance = maxOf<int32_t>();
+	const LineSpec *pLine = nullptr;
+	if (!lines.empty()) {
+		for (auto &l : lines) {
+			int32_t dst = maxOf<int32_t>();
+			switch (mode) {
+			case Center:
+				dst = abs(y - (l.pos - l.height / 2));
+				break;
+			case Best:
+				dst = abs(y - (l.pos - l.height * 3 / 4));
+				break;
+			case Prefix:
+			case Suffix:
+				dst = abs(y - (l.pos - l.height));
+				break;
+			};
+			if (dst < yDistance) {
+				pLine = &l;
+				yDistance = dst;
+			} else {
+				break;
+			}
+		}
+	}
+
+	if (!pLine || yDistance > pLine->height) {
+		return pair(maxOf<uint32_t>(), mode);
+	}
+
+	SelectMode nextMode = mode;
+	int32_t xDistance = maxOf<int32_t>();
+	const CharSpec *pChar = nullptr;
+	uint32_t charNumber = pLine->start;
+	for (uint32_t i = pLine->start; i < pLine->start + pLine->count; ++ i) {
+		auto &c = chars[i];
+		if (c.charID != char16_t(0xAD) && !string::isspace(c.charID)) {
+			int32_t dst = maxOf<int32_t>();
+			SelectMode dstMode = mode;
+			switch (mode) {
+			case Center: dst = abs(x - (c.pos + c.advance / 2)); break;
+			case Prefix: dst = abs(x - c.pos); break;
+			case Suffix: dst = abs(x - (c.pos + c.advance)); break;
+			case Best: {
+				int32_t prefixDst = abs(x - c.pos);
+				int32_t suffixDst = abs(x - (c.pos + c.advance));
+				if (prefixDst <= suffixDst) {
+					dst = prefixDst; dstMode = Prefix;
+				} else {
+					dst = suffixDst; dstMode = Suffix;
+				}
+			} break;
+			};
+			if (dst < xDistance) {
+				pChar = &c;
+				xDistance = dst;
+				charNumber = i;
+				nextMode = dstMode;
+			} else {
+				break;
+			}
+		}
+	}
+
+	if ((mode == Best || mode == Suffix) && pLine == &(lines.back())) {
+		auto c = chars.back();
+		int32_t dst = abs(x - (c.pos + c.advance));
+		if (dst < xDistance) {
+			pChar = &c;
+			xDistance = dst;
+			charNumber = chars.size() - 1;
+			nextMode = Suffix;
+		}
+	}
+
+	if (!pChar || xDistance > pChar->advance * 2) {
+		return pair(maxOf<uint32_t>(), mode);
+	}
+
+	return pair(charNumber, nextMode);
+}
+
+const LineSpec *FormatSpec::getLine(uint32_t idx) const {
 	const LineSpec *ret = nullptr;
 	for (const LineSpec &it : lines) {
 		if (it.start <= idx && it.start + it.count > idx) {
 			ret = &it;
+			break;
 		}
 	}
 	return ret;
+}
+uint32_t FormatSpec::getLineNumber(uint32_t id) const {
+	uint16_t n = 0;
+	for (auto &it : lines) {
+		if (id >= it.start && id < it.start + it.count) {
+			return n;
+		}
+		n++;
+	}
+	if (n >= lines.size()) {
+		n = lines.size() - 1;
+	}
+	return n;
 }
 
 FormatSpec::RangeLineIterator FormatSpec::begin() const {
@@ -941,7 +1038,7 @@ WideString FormatSpec::str(bool filter) const {
 		const RangeSpec &range = *it.range;
 		if (!filter || range.align == VerticalAlign::Baseline) {
 			size_t end = it.start() + it.count();
-			for (size_t i = it.start(); i != end; ++ i) {
+			for (size_t i = it.start(); i <= end; ++ i) {
 				const auto &spec = chars[i];
 				if (spec.charID != char16_t(0xAD)) {
 					ret.push_back(spec.charID);
@@ -952,9 +1049,63 @@ WideString FormatSpec::str(bool filter) const {
 	return ret;
 }
 
+WideString FormatSpec::str(uint32_t s_start, uint32_t s_end, size_t maxWords, bool ellipsis, bool filter) const {
+	WideString ret; ret.reserve(s_end - s_start + 2);
+	if (ellipsis && s_start > 0) {
+		ret.push_back(u'…');
+		ret.push_back(u' ');
+	}
+	auto it = begin();
+	while (it.end() < s_start) {
+		++ it;
+	}
+
+	size_t counter = 0;
+	for (; it != end(); ++ it) {
+		const RangeSpec &range = *it.range;
+		if (!filter || range.align == VerticalAlign::Baseline) {
+			size_t _end = std::min(it.end(), s_end);
+			size_t _start = std::max(it.start(), s_start);
+			if (maxWords != maxOf<size_t>()) {
+				for (size_t i = _start; i <= _end; ++ i) {
+					const auto &spec = chars[i];
+					if (spec.charID != char16_t(0xAD)) {
+						ret.push_back(spec.charID);
+						if (string::isspace(spec.charID)) {
+							++ counter;
+							if (counter >= maxWords) {
+								break;
+							}
+						}
+					}
+				}
+				if (counter >= maxWords) {
+					ret.push_back(u'…');
+					break;
+				}
+			} else {
+				for (size_t i = _start; i <= _end; ++ i) {
+					const auto &spec = chars[i];
+					if (spec.charID != char16_t(0xAD)) {
+						ret.push_back(spec.charID);
+					}
+				}
+			}
+			if (it.end() >= s_end) {
+				if (s_end < chars.size()  - 1) {
+					ret.push_back(u' ');
+					ret.push_back(u'…');
+				}
+				break;
+			}
+		}
+	}
+
+	return ret;
+}
+
 Pair<uint32_t, uint32_t> FormatSpec::selectWord(uint32_t origin) const {
 	Pair<uint32_t, uint32_t> ret(origin, origin);
-	auto next = origin;
 	while (ret.second + 1 < chars.size() && !string::isspace(chars[ret.second + 1].charID)) {
 		++ ret.second;
 	}
@@ -965,60 +1116,7 @@ Pair<uint32_t, uint32_t> FormatSpec::selectWord(uint32_t origin) const {
 }
 
 uint32_t FormatSpec::selectChar(int32_t x, int32_t y, SelectMode mode) const {
-	int32_t yDistance = maxOf<int32_t>();
-	const LineSpec *pLine = nullptr;
-	if (!lines.empty()) {
-		for (auto &l : lines) {
-			int32_t dst = maxOf<int32_t>();
-			switch (mode) {
-			case Center:
-				dst = abs(y - (l.pos - l.height / 2));
-				break;
-			case Prefix:
-			case Suffix:
-				dst = abs(y - l.pos);
-				break;
-			};
-			if (dst < yDistance) {
-				pLine = &l;
-				yDistance = dst;
-			} else {
-				break;
-			}
-		}
-	}
-
-	if (!pLine || yDistance > pLine->height) {
-		return maxOf<uint32_t>();
-	}
-
-	int32_t xDistance = maxOf<int32_t>();
-	const CharSpec *pChar = nullptr;
-	uint32_t charNumber = pLine->start;
-	for (size_t i = pLine->start; i < pLine->start + pLine->count; ++ i) {
-		auto &c = chars[i];
-		if (c.charID != char16_t(0xAD) && !string::isspace(c.charID)) {
-			int32_t dst = maxOf<int32_t>();
-			switch (mode) {
-			case Center: dst = abs(x - (c.pos + c.advance / 2)); break;
-			case Prefix: dst = abs(x - c.pos); break;
-			case Suffix: dst = abs(x - (c.pos + c.advance)); break;
-			};
-			if (dst < xDistance) {
-				pChar = &c;
-				xDistance = dst;
-				charNumber = i;
-			} else {
-				break;
-			}
-		}
-	}
-
-	if (!pChar || xDistance > pChar->advance) {
-		return maxOf<uint32_t>();
-	}
-
-	return charNumber;
+	return getChar(x, y, mode).first;
 }
 
 bool HyphenMap::init() {
@@ -1101,6 +1199,114 @@ String HyphenMap::convertWord(HyphenDict *dict, const char16_t *ptr, size_t len)
 
 		return String();
 	}
+}
+
+static Rect getLabelLineStartRect(const FormatSpec &f, uint16_t lineId, float density, uint32_t c) {
+	Rect rect;
+	const font::LineSpec &line = f.lines.at(lineId);
+	if (line.count > 0) {
+		const font::CharSpec & firstChar = f.chars.at(std::max(line.start, c));
+		const font::CharSpec & lastChar = f.chars.at(line.start + line.count - 1);
+		rect.origin = Vec2((firstChar.pos) / density, (line.pos) / density - line.height / density);
+		rect.size = Size((lastChar.pos + lastChar.advance - firstChar.pos) / density, line.height / density);
+	}
+
+	return rect;
+}
+
+static Rect getLabelLineEndRect(const FormatSpec &f, uint16_t lineId, float density, uint32_t c) {
+	Rect rect;
+	const font::LineSpec &line = f.lines.at(lineId);
+	if (line.count > 0) {
+		const font::CharSpec & firstChar = f.chars.at(line.start);
+		const font::CharSpec & lastChar = f.chars.at(std::min(line.start + line.count - 1, c));
+		rect.origin = Vec2((firstChar.pos) / density, (line.pos) / density - line.height / density);
+		rect.size = Size((lastChar.pos + lastChar.advance - firstChar.pos) / density, line.height / density);
+	}
+	return rect;
+}
+
+static Rect getCharsRect(const FormatSpec &f, uint32_t lineId, uint32_t firstCharId, uint32_t lastCharId, float density) {
+	Rect rect;
+	const font::LineSpec & line = f.lines.at(lineId);
+	const font::CharSpec & firstChar = f.chars.at(firstCharId);
+	const font::CharSpec & lastChar = f.chars.at(lastCharId);
+	rect.origin = Vec2((firstChar.pos) / density, (line.pos) / density - line.height / density);
+	rect.size = Size((lastChar.pos + lastChar.advance - firstChar.pos) / density, line.height / density);
+	return rect;
+}
+
+Rect FormatSpec::getLineRect(uint32_t lineId, float density, const Vec2 &origin) const {
+	if (lineId >= lines.size()) {
+		return Rect::ZERO;
+	}
+	return getLineRect(lines[lineId], density, origin);
+}
+
+Rect FormatSpec::getLineRect(const LineSpec &line, float density, const Vec2 &origin) const {
+	Rect rect;
+	if (line.count > 0) {
+		const font::CharSpec & firstChar = chars.at(line.start);
+		const font::CharSpec & lastChar = chars.at(line.start + line.count - 1);
+		rect.origin = Vec2((firstChar.pos) / density + origin.x, (line.pos) / density - line.height / density + origin.y);
+		rect.size = Size((lastChar.pos + lastChar.advance - firstChar.pos) / density, line.height / density);
+	}
+	return rect;
+}
+
+Vector<Rect> FormatSpec::getLabelRects(uint32_t firstCharId, uint32_t lastCharId, float density, const Vec2 &origin, const Padding &p) const {
+	auto &l = *this;
+	Vector<Rect> ret;
+
+	auto firstLine = getLineNumber(firstCharId);
+	auto lastLine = getLineNumber(lastCharId);
+
+	if (firstLine == lastLine) {
+		auto rect = getCharsRect(*this, firstLine, firstCharId, lastCharId, density);
+		rect.origin.x += origin.x - p.left;
+		rect.origin.y += origin.y - p.top;
+		rect.size.width += p.left + p.right;
+		rect.size.height += p.bottom + p.top;
+		if (!rect.equals(cocos2d::Rect::ZERO)) {
+			ret.push_back(rect);
+		}
+	} else {
+		auto first = getLabelLineStartRect(*this, firstLine, density, firstCharId);
+		if (!first.equals(cocos2d::Rect::ZERO)) {
+			first.origin.x += origin.x;
+			first.origin.y += origin.y;
+			if (first.origin.x - p.left < 0.0f) {
+				first.size.width += (first.origin.x);
+				first.origin.x = 0.0f;
+			} else {
+				first.origin.x -= p.left;
+				first.size.width += p.left;
+			}
+			first.origin.y -= p.top;
+			first.size.height += p.bottom + p.top;
+			ret.push_back(first);
+		}
+
+		for (auto i = firstLine + 1; i < lastLine; i++) {
+			auto rect = getLineRect(i, density);
+			rect.origin.x += origin.x;
+			rect.origin.y += origin.y - p.top;
+			rect.size.height += p.bottom + p.top;
+			if (!rect.equals(cocos2d::Rect::ZERO)) {
+				ret.push_back(rect);
+			}
+		}
+
+		auto last = getLabelLineEndRect(*this, lastLine, density, lastCharId);
+		if (!last.equals(cocos2d::Rect::ZERO)) {
+			last.origin.x += origin.x;
+			last.origin.y += origin.y - p.top;
+			last.size.width += p.right;
+			last.size.height += p.bottom + p.top;
+			ret.push_back(last);
+		}
+	}
+	return ret;
 }
 
 NS_SP_EXT_END(font)

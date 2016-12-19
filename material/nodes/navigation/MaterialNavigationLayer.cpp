@@ -60,7 +60,7 @@ float NavigationLayer::getDesignWidth() {
 
 	const auto &frameSize = director->getOpenGLView()->getFrameSize();
 	auto density = screen->getDensity();
-	auto size = cocos2d::Size(frameSize.width / density, frameSize.height / density);
+	auto size = Size(frameSize.width / density, frameSize.height / density);
 
 	return MIN(size.width - 56, 64 * 5);
 }
@@ -75,7 +75,7 @@ bool NavigationLayer::init() {
 	addComponent(el);
 
 	_navigation = construct<Menu>();
-	_navigation->setAnchorPoint(cocos2d::Vec2(0, 0));
+	_navigation->setAnchorPoint(Vec2(0, 0));
 	_navigation->setShadowZIndex(2.0f);
 	_navigation->setMetrics(MenuMetrics::Navigation);
 	_navigation->setMenuButtonCallback([this] (MenuButton *b) {
@@ -87,7 +87,7 @@ bool NavigationLayer::init() {
 
 	_statusBarLayer = construct<stappler::Layer>();
 	_statusBarLayer->setColor(Color::Grey_500);
-	_statusBarLayer->setAnchorPoint(cocos2d::Vec2(0.0f, 1.0f));
+	_statusBarLayer->setAnchorPoint(Vec2(0.0f, 1.0f));
 	_navigation->addChild(_statusBarLayer, 100);
 
 	setNode(_navigation, 1);
@@ -119,8 +119,8 @@ void NavigationLayer::onContentSizeDirty() {
 		_statusBarLayer->setVisible(false);
 	} else {
 		_statusBarLayer->setVisible(true);
-		_statusBarLayer->setContentSize(cocos2d::Size(_nodeWidth, statusBar));
-		_statusBarLayer->setPosition(cocos2d::Size(0, _contentSize.height));
+		_statusBarLayer->setContentSize(Size(_nodeWidth, statusBar));
+		_statusBarLayer->setPosition(Size(0, _contentSize.height));
 	}
 
 	_navigation->getScroll()->setPadding(stappler::Padding().setTop(statusBar));

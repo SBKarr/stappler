@@ -37,15 +37,15 @@ NS_SP_BEGIN
  */
 class Scale9Sprite : public DynamicBatchNode {
 public:
-	virtual bool init(cocos2d::Texture2D *tex, cocos2d::Rect capInsets = cocos2d::Rect::ZERO);
-	virtual bool init(cocos2d::Texture2D *tex, cocos2d::Rect rect, cocos2d::Rect capInsets);
+	virtual bool init(cocos2d::Texture2D *tex, Rect capInsets = cocos2d::Rect::ZERO);
+	virtual bool init(cocos2d::Texture2D *tex, Rect rect, Rect capInsets);
 	virtual bool init(cocos2d::Texture2D *tex, float insetLeft, float insetTop, float insetRight, float insetBottom);
 
     virtual void onContentSizeDirty() override;
 
-    virtual void setTexture(cocos2d::Texture2D *texture, const cocos2d::Rect &rect = cocos2d::Rect::ZERO);
-    virtual void setTextureRect(const cocos2d::Rect &rect);
-    virtual void setInsets(const cocos2d::Rect &capInsets);
+    virtual void setTexture(cocos2d::Texture2D *texture, const Rect &rect = Rect::ZERO);
+    virtual void setTextureRect(const Rect &rect);
+    virtual void setInsets(const Rect &capInsets);
 
 	virtual void setFlippedX(bool flipX);
 	virtual bool isFlippedX() const { return _flipX; }
@@ -54,17 +54,17 @@ public:
 	virtual bool isFlippedY() const { return _flipY; }
 
 protected:
-	cocos2d::Rect textureRectForGrid(int i, int j);
-	cocos2d::Vec2 texturePositionForGrid(int i, int j, float csx, float csy);
+	Rect textureRectForGrid(int i, int j);
+	Vec2 texturePositionForGrid(int i, int j, float csx, float csy);
 
     void updateRects();
     void updateSprites();
 
-	cocos2d::Rect _textureRect = cocos2d::Rect::ZERO;
-    cocos2d::Rect _drawRect = cocos2d::Rect::ZERO;
-    cocos2d::Rect _insetRect = cocos2d::Rect::ZERO;
-	cocos2d::Rect _capInsets = cocos2d::Rect::ZERO;
-	cocos2d::Size _minContentSize = cocos2d::Size::ZERO;
+	Rect _textureRect = cocos2d::Rect::ZERO;
+    Rect _drawRect = cocos2d::Rect::ZERO;
+    Rect _insetRect = cocos2d::Rect::ZERO;
+	Rect _capInsets = cocos2d::Rect::ZERO;
+	Size _minContentSize = cocos2d::Size::ZERO;
 
 	float _globalScaleX = 1;
 	float _globalScaleY = 1;

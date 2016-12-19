@@ -75,8 +75,8 @@ public:
 protected:
 	void updateQuads();
 
-	virtual cocos2d::GLProgramState *getProgramStateI8() const;
-	virtual cocos2d::GLProgramState *getProgramStateAI88() const;
+	virtual cocos2d::GLProgramState *getProgramStateI8() const override;
+	virtual cocos2d::GLProgramState *getProgramStateAI88() const override;
 
 	bool _flippedX = false;
 	bool _flippedY = false;

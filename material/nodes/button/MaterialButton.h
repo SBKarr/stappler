@@ -47,6 +47,9 @@ public:
 	virtual void setStyle(Style style);
 	virtual Style getStyle() const;
 
+	virtual void setPriority(int32_t value);
+	virtual int32_t getPriority() const;
+
 	virtual void setTapCallback(const TapCallback & tapCallback);
 	virtual void setLongTapCallback(const TapCallback & longTapCallback);
 	virtual void setTouchFilter(const TouchFilter &);
@@ -82,6 +85,8 @@ public:
 
 	virtual void cancel();
 
+	virtual gesture::Listener * getListener() const;
+
 protected:
 	virtual void animateSelection();
 	virtual void animateDeselection();
@@ -109,12 +114,12 @@ protected:
 	std::function<void()> _tapCallback = nullptr;
 	std::function<void()> _longTapCallback = nullptr;
 	TouchFilter _touchFilter = nullptr;
-	cocos2d::Component *_listener = nullptr;
+	gesture::Listener *_listener = nullptr;
 
 	stappler::draw::PathNode *_animationNode = nullptr;
 	uint32_t _animationCount = 0;
 
-	cocos2d::Vec2 _touchPoint;
+	Vec2 _touchPoint;
 
 	Style _style = FlatBlack;
 

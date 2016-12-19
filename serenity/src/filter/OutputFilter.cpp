@@ -92,7 +92,7 @@ apr_status_t OutputFilter::func(ap_filter_t *f, apr_bucket_brigade *bb) {
 	if (_seenEOS) {
 		return APR_SUCCESS;
 	}
-	if (_skipFilter || _state == State::Body) {
+	if (_skipFilter || _state == State::Body || f->r->proto_num == 9) {
 		return ap_pass_brigade(f->next, bb);
 	}
     conn_rec *c =  f->c;
@@ -297,6 +297,8 @@ bool OutputFilter::readRequestLine(Reader &r) {
 			_statusText = statusText.str();
 			string::trim(_statusText);
 			_buffer << statusText;
+		} else {
+			r.readUntil<Reader::Chars<'\n', '\r'>>();
 		}
 		if (r.is('\n') || r.is('\r')) {
 			++ r;

@@ -74,19 +74,8 @@ public:
 		auto &rg = (*_renderGroups);
 		for (auto &it : rg) {
 			auto &q = it.getSubQueue(cocos2d::RenderQueue::GLOBALZ_ZERO);
-			auto begin = q.begin();
-			while (begin != q.end() && (*begin)->getType() == cocos2d::RenderCommand::Type::CUSTOM_COMMAND) {
-				++ begin;
-			}
-
-			auto end = q.rbegin();
-			while (end != q.rend() && (*end)->getType() == cocos2d::RenderCommand::Type::CUSTOM_COMMAND) {
-				++ end;
-			}
-
-
-			if (!q.empty() && begin < end.base()) {
-				std::stable_sort(begin, end.base(), CommandZPathCompare());
+			if (!q.empty()) {
+				std::stable_sort(q.begin(), q.end(), CommandZPathCompare());
 				update(transform, id, q);
 			}
 			id ++;

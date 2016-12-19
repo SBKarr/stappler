@@ -111,7 +111,7 @@ bool Source::init(Asset *a, bool enabled) {
 }
 
 Document *Source::getDocument() const {
-	return _document;
+	return static_cast<Document *>(_document.get());
 }
 Asset *Source::getAsset() const {
 	return _documentAsset;
@@ -176,7 +176,7 @@ void Source::setEnabled(bool val) {
 	if (_enabled != val) {
 		_enabled = val;
 		if (_enabled) {
-			onDocumentAssetUpdated(data::Subscription::Flag((uint8_t)Asset::FileUpdated));
+			onDocumentAssetUpdated(data::Subscription::Flag((uint8_t)Asset::CacheDataUpdated));
 		}
 	}
 }
@@ -206,11 +206,14 @@ void Source::onDocumentAssetUpdated(data::Subscription::Flags f) {
 	}
 	if (_loadedAssetMTime < _documentAsset->getMTime()) {
 		tryLoadDocument();
-	} else if (f.initial() || f.hasFlag((uint8_t)Asset::Update::FileUpdated)) {
+	} else if ((f.initial() && _loadedAssetMTime == 0) || f.hasFlag((uint8_t)Asset::Update::FileUpdated)) {
 		_loadedAssetMTime = 0;
 		tryLoadDocument();
 	}
-	onDocument(this, _documentAsset.get());
+
+	if (f.hasFlag((uint8_t)Asset::FileUpdated) || f.hasFlag((uint8_t)Asset::DownloadSuccessful) || f.hasFlag((uint8_t)Asset::DownloadFailed)) {
+		onDocument(this, _documentAsset.get());
+	}
 }
 
 static bool Source_tryLockAsset(Asset *a, uint64_t mtime, Source *source) {
@@ -295,7 +298,6 @@ Rc<font::Source> Source::makeSource(AssetMap && map) {
 }
 
 Rc<Document> Source::openDocument(const String &path, const String &ct) {
-	Time now = Time::now();
 	Rc<Document> ret;
 	if (epub::Document::isEpub(path)) {
 		ret.set(Rc<epub::Document>::create(FilePath(path)));
@@ -304,7 +306,6 @@ Rc<Document> Source::openDocument(const String &path, const String &ct) {
 	}
 	if (ret) {
 		if (ret->prepare()) {
-			log::format("Profiling", "Document loading: %lu", (Time::now() - now).toMicroseconds());
 			return ret;
 		}
 	}

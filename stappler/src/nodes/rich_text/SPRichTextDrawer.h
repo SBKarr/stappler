@@ -39,6 +39,8 @@ public:
 
 	static Thread &thread();
 
+	~Drawer() { }
+
 	bool init();
 	void free();
 

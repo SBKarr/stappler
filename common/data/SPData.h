@@ -27,7 +27,7 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(data)
 
-using DataCallback = Function<void(data::Value &)>;
+using DataCallback = Function<void(data::Value &&)>;
 
 struct EncodeFormat {
 	static int EncodeStreamIndex;

@@ -85,7 +85,7 @@ bool FloatingActionButton::init(const TapCallback &tapCallback, const TapCallbac
 	addChild(_label, 2);
 
 	setContentSize(Size(48.0f, 48.0));
-	setShadowZIndex(5.0f);
+	setShadowZIndex(2.0f);
 
 	updateEnabled();
 
@@ -224,13 +224,15 @@ void FloatingActionButton::clearAnimations() {
 	}
 }
 
+
 uint8_t FloatingActionButton::getOpacityForAmbientShadow(float value) const {
-	return (value < 2.0)?(value * 0.5f * 128.0f):128;
+	return 72;
 }
 
 uint8_t FloatingActionButton::getOpacityForKeyShadow(float value) const {
-	return (value < 2.0)?(value * 0.5f * 192.0f):192;
+	return 128;
 }
+
 
 void FloatingActionButton::updateEnabled() {
 	if ((_longTapCallback || _tapCallback) && _enabled) {

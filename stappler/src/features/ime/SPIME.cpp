@@ -251,8 +251,10 @@ const ime::Cursor &IMEImpl::getCursor() const {
 }
 
 void IMEImpl::cancel() {
+	stappler::log::format("IMEImpl", "cancel %d", _running);
 	if (_running) {
 		platform::ime::_cancel();
+		setInputEnabled(false);
 		if (_handler && _handler->onEnded) {
 			_handler->onEnded();
 		}
@@ -276,6 +278,7 @@ bool IMEImpl::hasText() {
 
 void IMEImpl::setInputEnabled(bool enabled) {
 	if (_isInputEnabled != enabled) {
+		stappler::log::format("IMEImpl", "onInputEnabled %d %d %p", _isInputEnabled, enabled);
 		_isInputEnabled = enabled;
 		if (_handler && _handler->onInput) {
 			_handler->onInput(enabled);
@@ -367,6 +370,11 @@ Handler::~Handler() {
 	if (isActive()) {
 		cancel();
 	}
+}
+
+
+bool isInputEnabled() {
+	return IMEImpl::getInstance()->isInputEnabled();
 }
 
 }

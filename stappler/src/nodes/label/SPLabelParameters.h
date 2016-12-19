@@ -24,11 +24,10 @@ THE SOFTWARE.
 #define STAPPLER_SRC_NODES_LABEL_SPLABELPARAMETERS_H_
 
 #include "SPFont.h"
-#include "base/ccTypes.h"
 
 NS_SP_BEGIN
 
-class LabelParameters : public cocos2d::LabelProtocol {
+class LabelParameters {
 public:
 	using FontParameters = rich_text::style::FontStyleParameters;
 	using TextParameters = rich_text::style::TextLayoutParameters;
@@ -186,14 +185,16 @@ public:
 	static float getStringWidth(Source *, const DescriptionStyle &, const WideString &, float density = 0.0f, bool localized = false);
 
 public:
+	virtual ~LabelParameters();
+
 	virtual bool isLabelDirty() const;
 	virtual StyleVec compileStyle() const;
 
 public:
-    virtual void setString(const String &newString) override;
+    virtual void setString(const String &newString);
     virtual void setString(const WideString &newString);
-    virtual const String &getString(void) const override;
-    virtual const WideString &getString16(void) const;
+    virtual const WideString &getString() const;
+    virtual const String &getString8() const;
 
 	virtual void erase16(size_t start = 0, size_t len = WideString::npos);
 	virtual void erase8(size_t start = 0, size_t len = String::npos);

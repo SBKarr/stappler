@@ -59,14 +59,14 @@ public:
 
 	virtual ~EventHandler();
 
-	virtual void addHandlerNode(EventHandlerNode *handler);
-	virtual void removeHandlerNode(EventHandlerNode *handler);
+	virtual void addHandlerNode(EventHandlerNode *handler) override;
+	virtual void removeHandlerNode(EventHandlerNode *handler) override;
 
 	EventHandlerNode * onEvent(const EventHeader &h, Callback callback, bool destroyAfterEvent = false);
 	EventHandlerNode * onEventWithObject(const EventHeader &h, Ref *obj, Callback callback, bool destroyAfterEvent = false);
 
-	virtual void retainInterface();
-	virtual void releaseInterface();
+	virtual void retainInterface() override;
+	virtual void releaseInterface() override;
 private:
 	Set<EventHandlerNode *> _handlers;
 };

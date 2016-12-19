@@ -132,7 +132,7 @@ public:
 		auto features = new std::map<std::string, data::Value>();
 		auto &thread = storage::thread(_handle);
 		thread.perform([this, features] (Ref *obj) -> bool {
-			_products.get([&] (data::Value &d) {
+			_products.get([&] (data::Value &&d) {
 				if (d.isArray()) {
 					for (auto &it : d.getArray()) {
 						if (it.isDictionary() && it.getBool("purchased")) {
@@ -278,7 +278,7 @@ public:
 		auto &thread = storage::thread(_handle);
 		thread.perform([this, productId, data] (Ref *obj) -> bool {
 			bool ret = false;
-			_products.get([&] (data::Value &d) {
+			_products.get([&] (data::Value &&d) {
 				if (d.isArray()) {
 					auto &p = d.getValue(0);
 					if (p.isDictionary()) {
@@ -331,7 +331,7 @@ public:
 		thread.perform([this, val, features] (Ref *) -> bool {
 			for (auto &it : val) {
 				data::Value info;
-				_products.get([&] (data::Value &d) {
+				_products.get([&] (data::Value &&d) {
 					if (d.isArray()) {
 						info = std::move(d.getValue(0));
 					}

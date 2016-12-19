@@ -23,22 +23,36 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "SPDefine.h"
-#include "SPTimeout.h"
-#include "2d/CCActionInstant.h"
+#include "SPMemLeaks.h"
 
-NS_SP_BEGIN
+NS_SP_EXT_BEGIN(memleak)
 
-bool Timeout::init(float duration, const std::function<void()> &cb) {
-	return initWithTwoActions(cocos2d::DelayTime::create(duration), cocos2d::CallFunc::create(cb));
+static std::mutex s_mutex;
+static std::map<Ref *, Time> s_map;
+
+void store(Ref *ptr) {
+	s_mutex.lock();
+	s_map.emplace(ptr, Time::now());
+	s_mutex.unlock();
+}
+void release(Ref *ptr) {
+	s_mutex.lock();
+	s_map.erase(ptr);
+	s_mutex.unlock();
+}
+void check(const std::function<void(Ref *, Time)> &cb) {
+	s_mutex.lock();
+	for (auto &it : s_map) {
+		cb(it.first, it.second);
+	}
+	s_mutex.unlock();
+}
+size_t count() {
+	size_t ret = 0;
+	s_mutex.lock();
+	ret = s_map.size();
+	s_mutex.unlock();
+	return ret;
 }
 
-bool Timeout::init(float duration, cocos2d::FiniteTimeAction *a) {
-	return initWithTwoActions(cocos2d::DelayTime::create(duration), a);
-}
-
-bool Timeout::init(cocos2d::FiniteTimeAction *a, const std::function<void()> &cb) {
-	return initWithTwoActions(a, cocos2d::CallFunc::create(cb));
-}
-
-NS_SP_END
+NS_SP_EXT_END(memleak)

@@ -13,9 +13,11 @@ xcuserdata
 /libs/src
 /libs/stappler-cocos2d-x
 /libs/android/toolchains
+/libs/android/arm64-v8a
 /libs/android/armeabi
 /libs/android/armeabi-v7a
 /libs/android/x86
+/libs/android/x86_64
 /libs/linux/x86_64
 /libs/mac/x86_64
 /libs/win32/x86_64

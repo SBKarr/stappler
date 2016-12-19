@@ -61,6 +61,7 @@ void FontCharString::addString(const char16_t *str, size_t len) {
 	}
 }
 
+FontData::~FontData() { }
 uint16_t FontData::getHeight() const {
 	return metrics.height;
 }
@@ -103,6 +104,8 @@ FontLayout::FontLayout(const Source * source, const String &name, const String &
 	_data = Arc<Data>::create();
 	_data->metrics = requestMetrics(_source, face.src, uint16_t(roundf(size * d)), _callback);
 }
+
+FontLayout::~FontLayout() { }
 
 void FontLayout::addString(const String &str) {
 	addString(string::toUtf16(str));

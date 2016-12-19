@@ -23,9 +23,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
+#include <MaterialLineField.h>
 #include "Material.h"
 #include "MaterialSearchToolbar.h"
-#include "MaterialSingleLineField.h"
 #include "MaterialButtonIcon.h"
 
 NS_MD_BEGIN
@@ -35,8 +35,8 @@ bool SearchToolbar::init() {
 		return false;
 	}
 
-	_searchInput = construct<SingleLineField>(FontType::Title);
-	addChild(_searchInput);
+	//_searchInput = construct<LineField>(FontType::Title);
+	//addChild(_searchInput);
 
 	_searchIcon = construct<ButtonIcon>(IconName::Navigation_close, std::bind(&SearchToolbar::onSearchIconButton, this));
 	addChild(_searchIcon, 1);
@@ -52,7 +52,7 @@ void SearchToolbar::onContentSizeDirty() {
 }
 
 void SearchToolbar::setPlaceholder(const String &str) {
-	_searchInput->setPlaceholder(str);
+	//_searchInput->setPlaceholder(str);
 }
 
 void SearchToolbar::layoutSubviews() {
@@ -61,9 +61,9 @@ void SearchToolbar::layoutSubviews() {
 	float baseline = getBaseLine();
 	auto labelWidth = getLabelWidth();
 
-	_searchInput->setContentSize(Size(labelWidth, 48.0f));
-	_searchInput->setAnchorPoint(Vec2(0, 0.5));
-	_searchInput->setPosition(Vec2(_navButton->isVisible()?64:16, baseline));
+	//_searchInput->setContentSize(Size(labelWidth, 48.0f));
+	//_searchInput->setAnchorPoint(Vec2(0, 0.5));
+	//_searchInput->setPosition(Vec2(_navButton->isVisible()?64:16, baseline));
 
 	if (_inSearchMode) {
 		_navButton->setIconName(IconName::Action_search);

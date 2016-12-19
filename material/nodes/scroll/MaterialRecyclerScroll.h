@@ -126,7 +126,7 @@ protected:
 
 	virtual void afterCleanup();
 	virtual void updateNodes();
-	virtual void onItemRemoved(const Item *);
+	virtual void onItemsRemoved(const Vector<Rc<Item>> &);
 
 	String _placeholderText;
 	String _placeholderButton;

@@ -75,8 +75,8 @@ public:
 
 	operator bool () const { return _document != nullptr; }
 
-	virtual bool resolveMediaQuery(MediaQueryId queryId) const;
-	virtual String getCssString(CssStringId) const;
+	virtual bool resolveMediaQuery(MediaQueryId queryId) const override;
+	virtual String getCssString(CssStringId) const override;
 protected:
 	Vector<bool> _media;
 	Rc<Document> _document;

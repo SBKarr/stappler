@@ -43,7 +43,6 @@ public:
 	};
 
 	using StringDocument = ValueWrapper<String, class DocumentStringDocumentTag>;
-	using FontConfigStyle = Document::FontConfigValue;
 
 	virtual ~Source();
 
@@ -78,7 +77,7 @@ protected:
 	virtual void tryLoadDocument();
 	virtual void updateDocument();
 
-	virtual Rc<font::Source> makeSource(AssetMap &&);
+	virtual Rc<font::Source> makeSource(AssetMap &&) override;
 
 	virtual Rc<Document> openDocument(const String &path, const String &ct);
 

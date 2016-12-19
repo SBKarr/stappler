@@ -75,15 +75,14 @@ public:
 		PrimaryKey = 4,
 	};
 
-	typedef std::function<void(data::Value &)> DataCallback;
-	typedef std::function<void(size_t)> CountCallback;
-	typedef std::function<void(bool)> SuccessCallback;
+	using DataCallback = data::DataCallback;
+	using CountCallback = std::function<void(size_t)>;
+	using SuccessCallback = std::function<void(bool)>;
 
-	typedef std::initializer_list<Field> FieldsList;
-	typedef std::initializer_list<std::pair<std::string, std::string>> AliasesList;
+	using FieldsList = std::initializer_list<Field>;
+	using AliasesList = std::initializer_list<std::pair<std::string, std::string>>;
 
 public:
-
 	Scheme();
 
 	Scheme(const std::string &name, FieldsList &&, AliasesList && = {}, Handle * = nullptr);

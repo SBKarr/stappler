@@ -41,7 +41,7 @@ struct Cursor {
 	Cursor(CursorPosition pos, CursorLength len) : start(pos.get()), length(len.get()) { }
 	Cursor(CursorPosition first, CursorPosition last)
 	: start(MIN(first.get(), last.get()))
-	, length((first > last)?(first - last).get():(last - first).get()) { }
+	, length(((first > last)?(first - last).get():(last - first).get()) + 1) { }
 };
 
 struct Handler {
@@ -68,6 +68,8 @@ struct Handler {
 
 	~Handler();
 };
+
+bool isInputEnabled();
 
 NS_SP_EXT_END(ime)
 

@@ -28,7 +28,7 @@ THE SOFTWARE.
 #include "SPIME.h"
 
 NS_MD_BEGIN
-
+/*
 class TextField : public cocos2d::Node {
 public:
 	using Handler = ime::Handler;
@@ -51,11 +51,6 @@ public:
 	virtual void onContentSizeDirty() override;
 	virtual void onExit() override;
 
-	virtual void setWidth(float);
-	virtual float getWidth() const;
-
-	virtual void setPadding(const Padding &);
-	virtual const Padding &getPadding() const;
 
 	virtual void setNormalColor(const Color &);
 	virtual const Color &getNormalColor() const;
@@ -75,29 +70,20 @@ public:
 	virtual void setInputFilter(InputFilter &&);
 	virtual const InputFilter &getInputFilter() const;
 
-	virtual void setMaxChars(size_t);
-	virtual size_t getMaxChars() const;
-
-	virtual void setCursor(const Cursor &);
-	virtual const Cursor &getCursor() const;
-
-	virtual void setPasswordMode(PasswordMode);
-	virtual PasswordMode getPasswordMode();
-
-	virtual void setEnabled(bool);
-	virtual bool isEnabled() const;
-
 	virtual void acquireInput();
 	virtual void releaseInput();
 
 	virtual bool isPlaceholderEnabled() const;
-	virtual bool empty() const;
 
 protected:
 	virtual bool onPressBegin(const Vec2 &);
 	virtual bool onLongPress(const Vec2 &);
 	virtual bool onPressEnd(const Vec2 &);
 	virtual bool onPressCancel(const Vec2 &);
+
+	virtual bool onSwipeBegin(const Vec2 &);
+	virtual bool onSwipe(const Vec2 &, const Vec2 &);
+	virtual bool onSwipeEnd(const Vec2 &);
 
 	virtual void onText(const std::u16string &, const Cursor &);
 	virtual void onKeyboard(bool, const Rect &, float);
@@ -113,6 +99,9 @@ protected:
 
 	virtual void showLastChar();
 	virtual void hideLastChar();
+
+	virtual void scheduleCursorPointer();
+	virtual void unscheduleCursorPointer();
 
 	Color _normalColor = Color::Blue_500;
 	Color _errorColor = Color::Red_500;
@@ -136,8 +125,11 @@ protected:
 	Padding _padding = Padding(12.0f, 0.0f);
 	PasswordMode _password;
 	InputFilter _inputFilter = nullptr;
-};
 
+	bool _cursorPoinerEnabled = false;
+	draw::PathNode *_cursorPointer = nullptr;
+};
+*/
 NS_MD_END
 
 #endif /* MATERIAL_NODES_INPUT_MATERIALTEXTFIELD_H_ */

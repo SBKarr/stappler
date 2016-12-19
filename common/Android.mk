@@ -8,7 +8,6 @@ LOCAL_MODULE_FILENAME := libcommon
 LOCAL_SRC_FILES := \
 		$(shell find $(LOCAL_PATH)/core -name *.cpp) \
 		$(shell find $(LOCAL_PATH)/data -name *.cpp) \
-		$(shell find $(LOCAL_PATH)/html -name *.cpp) \
 		$(shell find $(LOCAL_PATH)/stream -name *.cpp) \
 		$(shell find $(LOCAL_PATH)/string -name *.cpp) \
 		$(shell find $(LOCAL_PATH)/threads -name *.cpp) \

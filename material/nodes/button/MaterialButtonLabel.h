@@ -31,10 +31,14 @@ NS_MD_BEGIN
 class ButtonLabel : public Button {
 public:
 	virtual bool init(const TapCallback &tapCallback = nullptr, const TapCallback &longTapCallback = nullptr) override;
+	virtual bool init(FontType, const TapCallback &tapCallback = nullptr, const TapCallback &longTapCallback = nullptr);
 	virtual void onContentSizeDirty() override;
 
 	virtual void setString(const std::string &);
 	virtual const std::string &getString() const;
+
+	virtual void setLabelPadding(const Padding &);
+	virtual const Padding &getLabelPadding() const;
 
 	virtual void setWidth(float value);
 	virtual float getWidth() const;
@@ -50,7 +54,10 @@ public:
 	virtual Label *getlabel() const;
 
 protected:
+	virtual void updatePadding();
+
 	Label *_label = nullptr;
+	Padding _labelPadding = Padding(6.0f, 8.0f);
 };
 
 NS_MD_END

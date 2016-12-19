@@ -216,7 +216,7 @@ public class Cocos2dxGLSurfaceView extends GLSurfaceView {
 			requestFocus();
 		}
 	}
-	
+
 	public void finalizeInput() {
 		if (_inputEnabled) {
 			_inputEnabled = false;

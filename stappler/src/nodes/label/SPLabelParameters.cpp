@@ -398,11 +398,12 @@ void LabelParameters::setString(const WideString &newString) {
     _labelDirty = true;
 }
 
-const String &LabelParameters::getString() const {
-	return _string8;
-}
-const WideString &LabelParameters::getString16() const {
+const WideString &LabelParameters::getString() const {
 	return _string16;
+}
+
+const String &LabelParameters::getString8() const {
+	return _string8;
 }
 
 void LabelParameters::erase16(size_t start, size_t len) {
@@ -497,6 +498,8 @@ void LabelParameters::setStyles(const StyleVec &vec) {
 	_styles = vec;
 	_labelDirty = true;
 }
+
+LabelParameters::~LabelParameters() { }
 
 bool LabelParameters::isLabelDirty() const {
 	return _labelDirty;

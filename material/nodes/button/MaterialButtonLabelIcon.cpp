@@ -57,7 +57,7 @@ void ButtonLabelIcon::setString(const std::string &str) {
 	setContentSize(cocos2d::Size(_label->getContentSize().width + 56, _contentSize.height));
 }
 const std::string &ButtonLabelIcon::getString() const {
-	return _label->getString();
+	return _label->getString8();
 }
 
 void ButtonLabelIcon::setWidth(float value) {

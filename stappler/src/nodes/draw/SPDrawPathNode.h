@@ -34,7 +34,7 @@ public:
 	virtual ~PathNode();
 
 	virtual bool init(uint32_t width, uint32_t height, Format fmt = Format::A8);
-    virtual void visit(cocos2d::Renderer *renderer, const cocos2d::Mat4 &parentTransform, uint32_t parentFlags, ZPath &zPath) override;
+    virtual void visit(cocos2d::Renderer *renderer, const Mat4 &parentTransform, uint32_t parentFlags, ZPath &zPath) override;
 
     virtual void addPath(Path *path);
     virtual void removePath(Path *path);

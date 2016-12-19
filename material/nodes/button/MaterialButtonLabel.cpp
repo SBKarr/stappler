@@ -28,22 +28,27 @@ THE SOFTWARE.
 
 NS_MD_BEGIN
 
-bool ButtonLabel::init(const TapCallback &tapCallback, const TapCallback &longTapCallback) {
+bool ButtonLabel::init(FontType fnt, const TapCallback &tapCallback, const TapCallback &longTapCallback) {
 	if (!Button::init(tapCallback, longTapCallback)) {
 		return false;
 	}
 
-	_label = construct<Label>(FontType::Button);
+	_label = construct<Label>(fnt);
 	_label->setAnchorPoint(cocos2d::Vec2(0.5f, 0.5f));
 	_label->setMaxLines(1);
 	_label->setHyphens(Label::Hyphens::None);
 	_label->setLocaleEnabled(true);
+	_label->setTextTransform(Label::TextTransform::Uppercase);
 	addChild(_label);
 
-	setContentSize(Size(0.0f, _label->getFontHeight() / _label->getDensity() + 12.0f));
+	setContentSize(Size(_labelPadding.horizontal(), _label->getFontHeight() / _label->getDensity() + _labelPadding.vertical()));
 
 	return true;
 }
+bool ButtonLabel::init(const TapCallback &tapCallback, const TapCallback &longTapCallback) {
+	return init(FontType::Button, tapCallback, longTapCallback);
+}
+
 void ButtonLabel::onContentSizeDirty() {
 	Button::onContentSizeDirty();
 
@@ -52,18 +57,31 @@ void ButtonLabel::onContentSizeDirty() {
 
 void ButtonLabel::setString(const std::string &str) {
 	_label->setString(str);
-	_label->updateLabel();
-	setContentSize(cocos2d::Size(_label->getContentSize().width + 16, _contentSize.height));
+	if (_label->isLabelDirty()) {
+		_label->updateLabel();
+		updatePadding();
+	}
 }
 const std::string &ButtonLabel::getString() const {
-	return _label->getString();
+	return _label->getString8();
+}
+
+void ButtonLabel::setLabelPadding(const Padding &p) {
+	if (_labelPadding != p) {
+		_labelPadding = p;
+		updatePadding();
+	}
+}
+
+const Padding &ButtonLabel::getLabelPadding() const {
+	return _labelPadding;
 }
 
 void ButtonLabel::setWidth(float value) {
 	if (value != getWidth()) {
 		_label->setWidth(value);
 		_label->updateLabel();
-		setContentSize(cocos2d::Size(_label->getContentSize().width + 16, _contentSize.height));
+		updatePadding();
 	}
 }
 float ButtonLabel::getWidth() const {
@@ -86,12 +104,19 @@ uint8_t ButtonLabel::getLabelOpacity() {
 
 void ButtonLabel::setFont(FontType fnt) {
 	_label->setFont(fnt);
-	_label->updateLabel();
-	setContentSize(cocos2d::Size(_label->getContentSize().width + 16, _contentSize.height));
+	if (_label->isLabelDirty()) {
+		_label->updateLabel();
+		updatePadding();
+	}
 }
 
 Label *ButtonLabel::getlabel() const {
 	return _label;
+}
+
+void ButtonLabel::updatePadding() {
+	setContentSize(Size(_label->getContentSize().width + _labelPadding.horizontal(),
+			_label->getFontHeight() / _label->getDensity() + _labelPadding.vertical()));
 }
 
 NS_MD_END

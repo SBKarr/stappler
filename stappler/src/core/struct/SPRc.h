@@ -156,7 +156,7 @@ public:
 	inline operator bool () const { return _ptr; }
 
 	template <typename B, typename std::enable_if<std::is_convertible<Base *, B*>{}>::type* = nullptr>
-	inline operator Rc<B> () { return Rc<B>(get()); }
+	inline operator Rc<B> () { return Rc<B>(static_cast<B *>(get())); }
 
 	inline Rc &operator = (const Pointer &value) {
 		set(value);
@@ -183,6 +183,7 @@ public:
 		other._ptr = nullptr;
 	}
 	inline Rc & operator = (Self &&other) {
+		if (_ptr) { _ptr->release(); }
 		_ptr = other._ptr;
 		other._ptr = nullptr;
 		return *this;
@@ -301,7 +302,7 @@ struct AtomicSmartRef {
 	}
 
 	inline void release() {
-		if (_refCount.fetch_sub(1) == 0) {
+		if (_refCount.fetch_sub(1) == 1) {
 			delete this;
 		}
 	}
@@ -387,6 +388,7 @@ public:
 		other._ptr = nullptr;
 	}
 	inline Arc & operator = (Self &&other) {
+        if (_ptr) { _ptr->release(); }
 		_ptr = other._ptr;
 		other._ptr = nullptr;
 		return *this;

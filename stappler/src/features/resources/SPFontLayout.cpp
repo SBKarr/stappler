@@ -587,6 +587,9 @@ bool FontLibrary::writeTextureQuads(uint32_t v, Source *source, const FormatSpec
 	}
 
 	auto layoutsRef = getSourceLayout(source);
+	if (!layoutsRef) {
+		return false;
+	}
 	auto &layouts = *layoutsRef;
 
 	quads.reserve(texs.size());
@@ -668,6 +671,10 @@ bool FontLibrary::writeTextureRects(uint32_t v, Source *source, const FormatSpec
 	rects.reserve(format->chars.size());
 
 	auto layoutsRef = getSourceLayout(source);
+	if (!layoutsRef) {
+		return false;
+	}
+
 	auto &layouts = *layoutsRef;
 
 	const RangeSpec *targetRange = nullptr;

@@ -122,6 +122,13 @@ Button::Style Button::getStyle() const {
 	return _style;
 }
 
+void Button::setPriority(int32_t value) {
+	_listener->setPriority(value);
+}
+int32_t Button::getPriority() const {
+	return _listener->getPriority();
+}
+
 void Button::setTapCallback(const TapCallback & tapCallback) {
 	_tapCallback = tapCallback;
 	updateEnabled();
@@ -260,6 +267,10 @@ const cocos2d::Vec2 &Button::getTouchPoint() const {
 
 void Button::cancel() {
 	static_cast<gesture::Listener *>(_listener)->cancel();
+}
+
+gesture::Listener * Button::getListener() const {
+	return _listener;
 }
 
 void Button::animateSelection() {

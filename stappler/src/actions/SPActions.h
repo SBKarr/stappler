@@ -30,52 +30,51 @@ THE SOFTWARE.
 #include "SPAccelerated.h"
 #include "SPProgressAction.h"
 #include "SPFadeTo.h"
-#include "SPTimeout.h"
 
 NS_SP_EXT_BEGIN(action)
 
-template <class F>
-inline cocos2d::FiniteTimeAction *sequence(F *f) {
-    static_assert(std::is_convertible<F *, cocos2d::FiniteTimeAction *>::value, "Invalid Type for sequence<VA>!");
+using CallbackFunction = Function<void()>;
 
-	return f;
+inline cocos2d::FiniteTimeAction *_sequencable(cocos2d::FiniteTimeAction *a) {
+	return a;
 }
 
-template <class F, class S, class... Args>
-inline cocos2d::FiniteTimeAction *sequence(F *f, S *s, Args&&... args) {
-    static_assert(std::is_convertible<F *, cocos2d::FiniteTimeAction *>::value, "Invalid Type for sequence<VA>!");
-    static_assert(std::is_convertible<S *, cocos2d::FiniteTimeAction *>::value, "Invalid Type for sequence<VA>!");
+inline cocos2d::FiniteTimeAction *_sequencable(float d) {
+	return cocos2d::DelayTime::create(d);
+}
 
-	auto seq = cocos2d::Sequence::createWithTwoActions(f, s);
-
-	return sequence(seq, args...);
+inline cocos2d::FiniteTimeAction *_sequencable(const CallbackFunction &cb) {
+	return cocos2d::CallFunc::create(cb);
 }
 
 template <class F>
-inline cocos2d::FiniteTimeAction *spawn(F *f) {
-    static_assert(std::is_convertible<F *, cocos2d::FiniteTimeAction *>::value, "Invalid Type for spawn<VA>!");
-
-	return f;
+inline cocos2d::FiniteTimeAction *sequence(const F &f) {
+	return _sequencable(f);
 }
 
 template <class F, class S, class... Args>
-inline cocos2d::FiniteTimeAction *spawn(F *f, S *s, Args&&... args) {
-    static_assert(std::is_convertible<F *, cocos2d::FiniteTimeAction *>::value, "Invalid Type for spawn<VA>!");
-    static_assert(std::is_convertible<S *, cocos2d::FiniteTimeAction *>::value, "Invalid Type for spawn<VA>!");
+inline cocos2d::FiniteTimeAction *sequence(const F &f, const S &s, Args&&... args) {
+	return sequence(cocos2d::Sequence::createWithTwoActions(_sequencable(f), _sequencable(s)), args...);
+}
 
-	auto seq = cocos2d::Spawn::createWithTwoActions(f, s);
+template <class F>
+inline cocos2d::FiniteTimeAction *spawn(const F &f) {
+	return _sequencable(f);
+}
 
-	return spawn(seq, args...);
+template <class F, class S, class... Args>
+inline cocos2d::FiniteTimeAction *spawn(const F &f, const S &s, Args&&... args) {
+	return spawn(cocos2d::Spawn::createWithTwoActions(_sequencable(f), _sequencable(s)), args...);
 }
 
 template <class... Args>
 inline cocos2d::FiniteTimeAction *callback(float duration, Args&&... args) {
-	return construct<Timeout>(duration, args...);
+	return sequence(duration, args...);
 }
 
 template <class... Args>
 inline cocos2d::FiniteTimeAction *callback(cocos2d::FiniteTimeAction *a, Args&&... args) {
-	return construct<Timeout>(a, args...);
+	return sequence(a, args...);
 }
 
 NS_SP_EXT_END(action)

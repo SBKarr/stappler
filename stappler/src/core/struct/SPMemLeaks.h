@@ -20,21 +20,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef STAPPLER_SRC_ACTIONS_SPTIMEOUT_H_
-#define STAPPLER_SRC_ACTIONS_SPTIMEOUT_H_
+#ifndef STAPPLER_SRC_CORE_STRUCT_SPMEMLEAKS_H_
+#define STAPPLER_SRC_CORE_STRUCT_SPMEMLEAKS_H_
 
 #include "SPDefine.h"
-#include "2d/CCActionInterval.h"
 
-NS_SP_BEGIN
+NS_SP_EXT_BEGIN(memleak)
 
-class Timeout : public cocos2d::Sequence {
-public:
-	virtual bool init(float duration, const std::function<void()> &);
-	virtual bool init(float duration, cocos2d::FiniteTimeAction *a);
-	virtual bool init(cocos2d::FiniteTimeAction *a, const std::function<void()> &);
-};
+void store(Ref *);
+void release(Ref *);
+void check(const std::function<void(Ref *, Time)> &);
+size_t count();
 
-NS_SP_END
+NS_SP_EXT_END(memleak)
 
-#endif /* STAPPLER_SRC_ACTIONS_SPTIMEOUT_H_ */
+#endif /* STAPPLER_SRC_CORE_STRUCT_SPMEMLEAKS_H_ */

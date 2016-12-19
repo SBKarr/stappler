@@ -74,6 +74,9 @@ public:
 		uint32_t count() const {
 			return std::min(range->start + range->count, line->start + line->count) - start();
 		}
+		uint32_t end() const {
+			return std::min(range->start + range->count, line->start + line->count);
+		}
 
 		RangeLineIterator &operator++() {
 			const auto rangeEnd = range->start + range->count;
@@ -114,22 +117,31 @@ public:
 	void reserve(size_t, size_t = 1);
 	void clear();
 
-	const LineSpec *getLine(size_t) const;
+	enum SelectMode {
+		Center,
+		Prefix,
+		Suffix,
+		Best,
+	};
+
+	// on error maxOf<uint32_t> returned
+	Pair<uint32_t, SelectMode> getChar(int32_t x, int32_t y, SelectMode = Center) const;
+	const LineSpec *getLine(uint32_t charIndex) const;
+	uint32_t getLineNumber(uint32_t charIndex) const;
 
 	RangeLineIterator begin() const;
 	RangeLineIterator end() const;
 
 	WideString str(bool filterAlign = true) const;
+	WideString str(uint32_t, uint32_t, size_t maxWords = maxOf<size_t>(), bool ellipsis = true, bool filterAlign = true) const;
 	Pair<uint32_t, uint32_t> selectWord(uint32_t originChar) const;
-
-	enum SelectMode {
-		Center,
-		Prefix,
-		Suffix
-	};
-
-	// on error maxOf<uint32_t> returned
 	uint32_t selectChar(int32_t x, int32_t y, SelectMode = Center) const;
+
+	Rect getLineRect(uint32_t lineId, float density, const Vec2 & = Vec2()) const;
+	Rect getLineRect(const font::LineSpec &, float density, const Vec2 & = Vec2()) const;
+
+	uint16_t getLineForCharId(uint32_t id) const;
+	Vector<Rect> getLabelRects(uint32_t first, uint32_t last, float density, const Vec2 & = Vec2(), const Padding &p = Padding()) const;
 };
 
 class HyphenMap : public Ref {

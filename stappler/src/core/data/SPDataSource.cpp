@@ -59,7 +59,7 @@ struct Source::SliceRequest : public Ref {
 			off += it.len;
 			auto ptr = &it;
 			auto cat = it.cat;
-			
+
 			retain();
 			cat->retain();
 			cat->onSliceRequest([this, ptr, cat] (std::map<Id, data::Value> &val) {
@@ -123,17 +123,17 @@ struct Source::BatchRequest {
 
 		requests += vec.size();
 		for (auto &it : vec) {
-			scb([this, it] (data::Value &val) {
+			scb([this, it] (data::Value &&val) {
 				if (val.isArray()) {
-					onData(it, val.getValue(0));
+					onData(it, std::move(val.getValue(0)));
 				} else {
-					onData(it, val);
+					onData(it, std::move(val));
 				}
 			}, it);
 		}
 	}
 
-	void onData(Id id, data::Value &val) {
+	void onData(Id id, data::Value &&val) {
 		map.insert(std::make_pair(id, std::move(val)));
 		requests --;
 
@@ -274,7 +274,7 @@ bool Source::getItemData(const DataCallback &cb, Id index) {
 	}
 
 	if (index == Self && _data) {
-		cb(_data);
+		cb(data::Value(_data));
 	}
 
 	_sourceCallback(cb, index);
@@ -311,31 +311,38 @@ bool Source::getItemData(const DataCallback &cb, Id n, uint32_t l, bool subcats)
 	}
 }
 
-void Source::removeItem(Id index) {
+bool Source::removeItem(Id index, const data::Value &v) {
 	if (index.get() >= _orphanCount && index != Self) {
-		return;
+		return false;
 	}
 
 	if (_removeCallback && index != Self) {
-		if (_removeCallback(index)) {
+		if (_removeCallback(index, v)) {
 			_orphanCount -= 1;
+			return true;
 		}
 	}
+	return false;
 }
 
-void Source::removeItem(Id n, uint32_t l, bool subcats) {
+bool Source::removeItem(Id n, const data::Value &v, uint32_t l, bool subcats) {
 	if (l > 0) {
-		for (auto &cat : _subCats) {
+		for (auto catIt = _subCats.begin(); catIt != _subCats.end(); ++ catIt) {
+			auto &cat = *catIt;
 			if (subcats) {
 				if (n.empty()) {
-					cat->removeItem(Self);
+					if (cat->removeItem(Self, v)) {
+						_subCats.erase(catIt);
+						return true;
+					}
+					return false;
 				} else {
 					n --;
 				}
 			}
 			auto c = Id(cat->getCount(l - 1, subcats));
 			if (n < c) {
-				cat->removeItem(n, l - 1, subcats);
+				return cat->removeItem(n, v, l - 1, subcats);
 			} else {
 				n -= c;
 			}
@@ -343,13 +350,13 @@ void Source::removeItem(Id n, uint32_t l, bool subcats) {
 	}
 
 	if (!subcats) {
-		removeItem(Id(n));
+		return removeItem(Id(n), v);
 	} else {
 		if (!_subCats.empty() && n < Id(_subCats.size())) {
-			_subCats.at(size_t(n.get()))->removeItem(Self);
+			_subCats.at(size_t(n.get()))->removeItem(Self, v);
 		}
 
-		removeItem(n - Id(_subCats.size()));
+		return removeItem(n - Id(_subCats.size()), v);
 	}
 }
 
@@ -438,7 +445,7 @@ void Source::onSlice(std::vector<Slice> &vec, size_t &first, size_t &count, uint
 void Source::onSliceRequest(const BatchCallback &cb, Id::Type first, size_t size) {
 	if (first == Self.get()) {
 		if (!_data) {
-			_sourceCallback([this, cb] (data::Value &val) {
+			_sourceCallback([this, cb] (data::Value &&val) {
 				std::map<Id, data::Value> map;
 				if (val.isArray()) {
 					map.insert(std::make_pair(Self, std::move(val.getValue(0))));

@@ -290,15 +290,10 @@ bool Renderer::requestRendering() {
 		retain();
 		auto &thread = resource::thread();
 		thread.perform([impl] (cocos2d::Ref *) -> bool {
-			// auto now = Time::now();
 			impl->render();
-			// TimeInterval all = (Time::now() - now);
-			// log::format("Profiling", "Result rendering: %lu (%lu reader %lu other)", all.toMicroseconds(),
-			//		impl->getReaderTime().toMicroseconds(), (all - impl->getReaderTime()).toMicroseconds());
 			return true;
 		}, [this, impl] (cocos2d::Ref *, bool) {
 			auto result = impl->getResult();
-			//log::format("Result size:", "%lu %d %d %d", result->getSizeInMemory(), sizeof(font::CharSpec), sizeof(font::LineSpec), sizeof(font::RangeSpec));
 			if (result) {
 				onResult(result);
 			}

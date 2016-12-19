@@ -49,7 +49,7 @@ public:
     virtual uint32_t getBorderRadius() const;
 
     virtual void setBackgroundColor(const Color &);
-    virtual const cocos2d::Color3B &getBackgroundColor() const;
+    virtual const Color3B &getBackgroundColor() const;
 
     virtual void setBackgroundVisible(bool value);
     virtual bool isBackgroundVisible() const;

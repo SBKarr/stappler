@@ -70,6 +70,9 @@ ResourceManager::ResourceManager() {
 		pair("SystemMore", "Ещё"),
 		pair("SystemRestore", "Восстановить"),
 		pair("SystemRemoved", "Удалено"),
+		pair("SystemCopy", "Копировать"),
+		pair("SystemCut", "Вырезать"),
+		pair("SystemPaste", "Вставить"),
 		pair("Shortcut:Megabytes", "Мб"),
 		pair("Shortcut:Pages", "с"),
 	});
@@ -81,6 +84,9 @@ ResourceManager::ResourceManager() {
 		pair("SystemMore", "More"),
 		pair("SystemRestore", "Restore"),
 		pair("SystemRemoved", "Removed"),
+		pair("SystemCopy", "Copy"),
+		pair("SystemCut", "Cut"),
+		pair("SystemPaste", "Paste"),
 		pair("Shortcut:Megabytes", "Mb"),
 		pair("Shortcut:Pages", "p"),
 	});

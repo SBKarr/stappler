@@ -89,7 +89,12 @@ void __stappler_log(const char *tag, CustomLog::Type t, CustomLog::VA &va) {
 		delete [] buf;
 #else
 		char stackBuf[1_KiB] = { 0 };
-		int size = vsnprintf(stackBuf, size_t(1_KiB - 1), va.format.format, va.format.args);
+
+		va_list tmpList;
+		va_copy(tmpList, va.format.args);
+		int size = vsnprintf(stackBuf, size_t(1_KiB - 1), va.format.format, tmpList);
+		va_end(tmpList);
+
 		if (size > int(1_KiB - 1)) {
 			char *buf = new char[size + 1];
 			memset(buf, 0, size + 1);

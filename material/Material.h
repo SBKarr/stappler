@@ -68,6 +68,7 @@ THE SOFTWARE.
 NS_MD_BEGIN
 
 class Label;
+class InputLabel;
 
 class ResourceManager;
 
@@ -140,7 +141,9 @@ class ImageLayer;
 
 class Switch;
 class TextField;
-class SingleLineField;
+class InputField;
+class InputMenu;
+class LineField;
 
 class GalleryScroll;
 class GalleryImage;

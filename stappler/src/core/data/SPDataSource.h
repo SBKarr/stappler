@@ -38,10 +38,10 @@ public:
 	using BatchCallback = std::function<void(std::map<Id, data::Value> &)>;
 	using BatchSourceCallback = std::function<void(const BatchCallback &, Id::Type first, size_t size)>;
 
-	using DataCallback = std::function<void(data::Value &)>;
+	using DataCallback = data::DataCallback;
 	using DataSourceCallback = std::function<void(const DataCallback &, Id)>;
 
-	using RemoveSourceCallback = std::function<bool(Id)>;
+	using RemoveSourceCallback = std::function<bool(Id, const data::Value &)>;
 
 	template <class T, class... Args>
 	bool init(const T &t, Args&&... args) {
@@ -68,8 +68,8 @@ public:
 	bool getItemData(const DataCallback &, Id index, uint32_t l, bool subcats = false);
 	size_t getSliceData(const BatchCallback &, Id first, size_t count, uint32_t l = 0, bool subcats = false);
 
-	void removeItem(Id index);
-	void removeItem(Id index, uint32_t l, bool subcats = false);
+	bool removeItem(Id index, const data::Value &);
+	bool removeItem(Id index, const data::Value &, uint32_t l, bool subcats = false);
 
 	std::pair<Source *, bool> getItemCategory(Id itemId, uint32_t l, bool subcats = false);
 

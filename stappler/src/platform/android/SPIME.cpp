@@ -88,7 +88,9 @@ void Java_org_cocos2dx_lib_Cocos2dxGLSurfaceView_nativeTextChanged(JNIEnv *pEnv,
 }
 
 void Java_org_cocos2dx_lib_Cocos2dxGLSurfaceView_onInputEnabled(JNIEnv *pEnv, jobject self, jboolean value) {
+	stappler::log::format("IME", "onInputEnabled %d", value);
 	stappler::Thread::onMainThread([value] () {
+		stappler::log::format("IME", "Thread onInputEnabled %d", value);
 		stappler::platform::ime::native::setInputEnabled(value);
 	});
 	stappler::platform::render::_requestRender();
@@ -106,7 +108,9 @@ void Java_org_cocos2dx_lib_Cocos2dxGLSurfaceView_onKeyboardNotification(JNIEnv *
 }
 
 void Java_org_cocos2dx_lib_Cocos2dxGLSurfaceView_onCancelInput(JNIEnv *pEnv, jobject self) {
+	stappler::log::text("IME", "onCancelInput");
 	stappler::Thread::onMainThread([] () {
+		stappler::log::text("IME", "Thread onCancelInput");
 		stappler::platform::ime::native::cancel();
 	});
 	stappler::platform::render::_requestRender();

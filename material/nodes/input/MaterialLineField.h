@@ -20,35 +20,55 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef MATERIAL_NODES_INPUT_MATERIALSINGLELINEFIELD_H_
-#define MATERIAL_NODES_INPUT_MATERIALSINGLELINEFIELD_H_
+#ifndef MATERIAL_NODES_INPUT_MATERIALLINEFIELD_H_
+#define MATERIAL_NODES_INPUT_MATERIALLINEFIELD_H_
 
-#include "MaterialTextField.h"
+#include "MaterialInputField.h"
 
 NS_MD_BEGIN
 
-class SingleLineField : public TextField {
+class LineField : public InputField {
 public:
-	using Callback = std::function<void()>;
-	using Handler = ime::Handler;
-	using Cursor = ime::Cursor;
-
-	virtual bool init(FontType, float width = 0) override;
+	virtual bool init(FontType) override;
 	virtual void onContentSizeDirty() override;
 
-	virtual void setInputCallback(const Callback &);
-	virtual const Callback &getInputCallback() const;
+	virtual void setPadding(const Padding &);
+	virtual const Padding &getPadding() const;
+
+	virtual bool onSwipeBegin(const Vec2 &) override;
+	virtual bool onSwipe(const Vec2 &, const Vec2 &) override;
+	virtual bool onSwipeEnd(const Vec2 &) override;
+
+	virtual void update(float dt) override;
 
 protected:
 	virtual void onError(Error) override;
+	virtual void onInput() override;
+	virtual void onActivated(bool) override;
+	virtual void onCursor(const Cursor &) override;
+	virtual void onPointer(bool) override;
+	virtual bool onInputString(const WideString &str, const Cursor &c) override;
 
-	virtual void updateFocus() override;
-	virtual bool updateString(const std::u16string &str, const Cursor &c) override;
+	virtual void updateMenu();
 
+	enum Adjust {
+		None,
+		Left,
+		Right
+	};
+
+	virtual void runAdjust(float);
+	virtual void scheduleAdjust(Adjust, const Vec2 &, float pos);
+
+	Adjust _adjust = None;
+	Vec2 _adjustValue;
+	float _adjustPosition = 0.0f;
+
+	bool _swipeCaptured = false;
+	Padding _padding = Padding(12.0f, 8.0f);
 	Layer *_underlineLayer = nullptr;
-	Callback _onInput;
 };
 
 NS_MD_END
 
-#endif /* MATERIAL_NODES_INPUT_MATERIALSINGLELINEFIELD_H_ */
+#endif /* MATERIAL_NODES_INPUT_MATERIALLINEFIELD_H_ */

@@ -27,25 +27,27 @@ THE SOFTWARE.
 #include "MaterialBackgroundLayer.h"
 #include "MaterialColors.h"
 
+#include "SPLayer.h"
+#include "SPDynamicSprite.h"
 #include "2d/CCSprite.h"
 
 NS_MD_BEGIN
 
 bool BackgroundLayer::init() {
-	if (!cocos2d::Layer::init()) {
+	if (!Node::init()) {
 		return false;
 	}
 
-	_layer = cocos2d::LayerColor::create(Color::Grey_50);
+	_layer = construct<Layer>(Color::Grey_50);
 	_layer->setOpacity(255);
 	_layer->setPosition(0, 0);
-	_layer->setAnchorPoint(cocos2d::Vec2(0, 0));
+	_layer->setAnchorPoint(Vec2(0, 0));
 	addChild(_layer, -1);
 
-	_sprite = cocos2d::Sprite::create();
+	_sprite = construct<DynamicSprite>();
 	_sprite->setVisible(false);
 	_sprite->setPosition(0, 0);
-	_sprite->setAnchorPoint(cocos2d::Vec2(0, 0));
+	_sprite->setAnchorPoint(Vec2(0, 0));
 	_sprite->setFlippedY(true);
 	addChild(_sprite, 1);
 
@@ -53,11 +55,10 @@ bool BackgroundLayer::init() {
 }
 
 void BackgroundLayer::onContentSizeDirty() {
-	Layer::onContentSizeDirty();
+	Node::onContentSizeDirty();
 
 	_layer->setContentSize(_contentSize);
 	_sprite->setContentSize(_contentSize);
-	_sprite->setScale(1.0f / getScale());
 }
 
 void BackgroundLayer::setTexture(cocos2d::Texture2D *tex) {
@@ -65,7 +66,7 @@ void BackgroundLayer::setTexture(cocos2d::Texture2D *tex) {
 		_layer->setVisible(false);
 		_sprite->setVisible(true);
 		_sprite->setTexture(tex);
-		_sprite->setTextureRect(cocos2d::Rect(0, 0, tex->getContentSize().width, tex->getContentSize().height));
+		_sprite->setTextureRect(Rect(0, 0, tex->getContentSize().width, tex->getContentSize().height));
 	} else {
 		_layer->setVisible(true);
 		_sprite->setVisible(false);
@@ -73,7 +74,7 @@ void BackgroundLayer::setTexture(cocos2d::Texture2D *tex) {
 	}
 }
 
-void BackgroundLayer::setColor(const cocos2d::Color3B &c) {
+void BackgroundLayer::setColor(const Color &c) {
 	_layer->setColor(c);
 }
 

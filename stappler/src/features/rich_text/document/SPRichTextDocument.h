@@ -31,7 +31,7 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(rich_text)
 
-class Document : public Ref, public RendererInterface {
+class Document : public Ref {
 public:
 	struct Image {
 		enum Type {
@@ -56,20 +56,12 @@ public:
 		Image(uint16_t width, uint16_t height, size_t size, const String &path);
 	};
 
-	struct FontConfigValue {
-		style::FontStyleParameters style;
-		Vector<const style::FontFace *> face;
-		WideString chars;
-		Set<char16_t> set;
-	};
-
 	struct ContentRecord {
 		String label;
 		String href;
 		Vector<ContentRecord> childs;
 	};
 
-	using FontConfig = Map<String, FontConfigValue>;
 	using CssStrings = Map<CssStringId, String>;
 	using MediaQueries = Vector<style::MediaQuery>;
 	using ImageMap = Map<String, Image>;
@@ -81,21 +73,22 @@ public:
 	static String getImageName(const String &);
 	static Vector<String> getImageOptions(const String &);
 
-public:
 	Document();
-	virtual ~Document();
+
+	virtual ~Document() { }
 
 	virtual bool init(const String &);
 	virtual bool init(const FilePath &, const String & = "");
 	virtual bool init(const Bytes &, const String & = "");
 
-	virtual bool prepare();
-
-	virtual const FontFaceMap &getFontFaces() const;
-
 	virtual bool isFileExists(const String &) const;
 	virtual Bytes getFileData(const String &);
 	virtual Bitmap getImageBitmap(const String &, const Bitmap::StrideFn &fn = nullptr);
+
+	String getCssString(CssStringId) const;
+	const FontFaceMap &getFontFaces() const;
+
+	bool prepare();
 
 	const Node &getRoot() const;
 	const Vector<HtmlPage> &getContent() const;
@@ -104,10 +97,6 @@ public:
 
 	const Vector<style::MediaQuery> &getMediaQueries() const;
 	const CssStrings &getCssStrings() const;
-	const FontConfig &getFontConfig() const;
-
-	virtual bool resolveMediaQuery(MediaQueryId queryId) const;
-	virtual String getCssString(CssStringId) const;
 
 	bool hasImage(const String &) const;
 	Pair<uint16_t, uint16_t> getImageSize(const String &) const;
@@ -115,8 +104,6 @@ public:
 	const ImageMap & getImages() const;
 	const GalleryMap & getGalleryMap() const;
 	const ContentRecord & getTableOfContents() const;
-
-	size_t getSizeInMemory();
 
 protected:
 	Bytes readData(size_t offset, size_t len);

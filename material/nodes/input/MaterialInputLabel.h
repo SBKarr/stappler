@@ -1,0 +1,184 @@
+/**
+Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+**/
+
+#ifndef MATERIAL_NODES_INPUT_MATERIALINPUTLABEL_H_
+#define MATERIAL_NODES_INPUT_MATERIALINPUTLABEL_H_
+
+#include "MaterialLabel.h"
+#include "SPDynamicBatchNode.h"
+#include "SPIME.h"
+
+NS_MD_BEGIN
+
+enum class InputError {
+	OverflowChars,
+	InvalidChar,
+};
+
+class InputLabelDelegate {
+public:
+	using Error = InputError;
+	using Handler = ime::Handler;
+	using Cursor = ime::Cursor;
+
+	virtual ~InputLabelDelegate();
+	virtual bool onInputChar(char16_t);
+	virtual bool onInputString(const WideString &str, const Cursor &c);
+
+	virtual void onCursor(const Cursor &);
+	virtual void onInput();
+
+	virtual void onActivated(bool);
+	virtual void onError(Error);
+
+	virtual void onPointer(bool);
+};
+
+class InputLabel : public Label {
+public:
+	enum class PasswordMode {
+		ShowAll,
+		ShowChar,
+		ShowNone,
+	};
+
+	using Error = InputError;
+	using Handler = ime::Handler;
+	using Cursor = ime::Cursor;
+
+	class Selection : public DynamicBatchNode {
+	public:
+		virtual ~Selection();
+		virtual bool init() override;
+		virtual void clear();
+		virtual void emplaceRect(const Rect &);
+		virtual void updateColor() override;
+	};
+
+public:
+	virtual bool init(FontType, float w = 0);
+	virtual bool init(const String &, float w = 0);
+	virtual bool init(const DescriptionStyle &, float w = 0);
+
+	virtual void onContentSizeDirty() override;
+	virtual void onExit() override;
+
+	virtual Vec2 getCursorMarkPosition() const;
+
+	virtual void setCursorColor(const Color &);
+	virtual const Color &getCursorColor() const;
+
+	virtual void setString(const WideString &) override;
+	virtual void setString(const String &) override;
+	virtual const WideString &getString() const override;
+
+	virtual void setPlaceholder(const WideString &);
+	virtual void setPlaceholder(const String &);
+	virtual const WideString &getPlaceholder() const;
+
+	virtual void setCursor(const Cursor &);
+	virtual const Cursor &getCursor() const;
+
+	virtual void setPasswordMode(PasswordMode);
+	virtual PasswordMode getPasswordMode();
+
+	virtual void setDelegate(InputLabelDelegate *);
+	virtual InputLabelDelegate *getDelegate() const;
+
+	virtual void setEnabled(bool);
+	virtual bool isEnabled() const;
+
+	virtual void setRangeAllowed(bool);
+	virtual bool isRangeAllowed() const;
+
+	virtual void setCursorAnchor(float);
+	virtual float getCursorAnchor() const;
+
+	virtual void acquireInput();
+	virtual void releaseInput();
+
+	virtual bool empty() const override;
+	virtual bool isActive() const;
+	virtual bool isPointerEnabled() const;
+
+public:
+	virtual bool onPressBegin(const Vec2 &);
+	virtual bool onLongPress(const Vec2 &, const TimeInterval &, int count);
+	virtual bool onPressEnd(const Vec2 &);
+	virtual bool onPressCancel(const Vec2 &);
+
+	virtual bool onSwipeBegin(const Vec2 &);
+	virtual bool onSwipe(const Vec2 &, const Vec2 &);
+	virtual bool onSwipeEnd(const Vec2 &);
+
+protected:
+	virtual void onText(const WideString &, const Cursor &);
+	virtual void onKeyboard(bool, const Rect &, float);
+	virtual void onInput(bool);
+	virtual void onEnded();
+
+	virtual void onError(Error);
+
+	virtual void updateCursor();
+	virtual bool updateString(const WideString &str, const Cursor &c);
+	virtual void updateFocus();
+
+	virtual void showLastChar();
+	virtual void hideLastChar();
+
+	virtual void scheduleCursorPointer();
+	virtual void unscheduleCursorPointer();
+
+	virtual void setPointerEnabled(bool);
+	virtual void updatePointer();
+
+	bool _enabled = true;
+	bool _inputEnabled = false;
+	bool _rangeAllowed = true;
+	bool _isLongPress = false;
+	bool _pointerEnabled = false;
+
+	float _cursorAnchor = 1.0f;
+
+	Color _cursorColor = Color::Blue_500;
+
+	WideString _inputPlaceholder;
+	WideString _inputString;
+
+	draw::PathNode * _selectedCursor = nullptr;
+	Layer *_cursorLayer = nullptr;
+	draw::PathNode *_cursorPointer = nullptr;
+	draw::PathNode *_cursorStart = nullptr;
+	draw::PathNode *_cursorEnd = nullptr;
+
+	Selection *_cursorSelection = nullptr;
+
+	Cursor _cursor;
+	Handler _handler;
+
+	PasswordMode _password = PasswordMode::ShowAll;
+	InputLabelDelegate *_delegate = nullptr;
+};
+
+NS_MD_END
+
+#endif /* MATERIAL_NODES_INPUT_MATERIALINPUTLABEL_H_ */

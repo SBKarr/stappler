@@ -417,7 +417,7 @@ void RecyclerScroll::removeRecyclerNode(Item *item, cocos2d::Node *node) {
 	for (auto &it : items) {
 		if (it.node == node) {
 			offset += it.size.height;
-			vec.emplace_back(ItemRects{it.pos.y, it.size.height, it.pos.y - offset, 0, &it});
+			vec.emplace_back(ItemRects{it.pos.y, it.size.height, std::max(0.0f, it.pos.y - offset), 0, &it});
 		} else {
 			vec.emplace_back(ItemRects{it.pos.y, it.size.height, it.pos.y - offset, it.size.height, &it});
 		}
@@ -488,7 +488,7 @@ void RecyclerScroll::performCleanup() {
 			RecyclerNode *n = dynamic_cast<RecyclerNode *>(it.node);
 			if (n && n->isRemoved()) {
 				offset += it.size.height;
-				vec.emplace_back(ItemRects{it.pos.y, it.size.height, it.pos.y - offset, 0, &it});
+				vec.emplace_back(ItemRects{it.pos.y, it.size.height, std::max(0.0f, it.pos.y - offset), 0, &it});
 				removedItems.push_back(n->getItem());
 				continue;
 			}
@@ -623,30 +623,38 @@ void RecyclerScroll::afterCleanup() {
 		citems.erase(citems.begin() + *rem_it);
 	}
 
-	auto rbegin = _items.rbegin();
-	while(idOffset > 0) {
-		++ rbegin;
-		-- idOffset;
+	onItemsRemoved(removedItems);
+
+	if (!_items.empty()) {
+		/*auto rbegin = _items.rbegin();
+		while(idOffset > 0) {
+			++ rbegin;
+			-- idOffset;
+		}*/
+
+
+		//_items.erase(++ rbegin.base(), _items.end());
+
+		_currentSliceStart = Source::Id(_items.begin()->first);
+		_currentSliceLen = (size_t)_items.rbegin()->first.get() + 1 - (size_t)_currentSliceStart.get();
+
+		_itemsCount -= controllerItemToRemove.size();
+	} else {
+		onItemsRemoved(removedItems);
+		_currentSliceStart = Source::Id(0);
+		_currentSliceLen = 0;
+		_itemsCount = 0;
 	}
-
-	for (auto &r_it : removedItems) {
-		onItemRemoved(r_it);
-	}
-
-	_items.erase(++ rbegin.base(), _items.end());
-
-	_currentSliceStart = Source::Id(_items.begin()->first);
-	_currentSliceLen = (size_t)_items.rbegin()->first.get() + 1 - (size_t)_currentSliceStart.get();
-
-	_itemsCount -= controllerItemToRemove.size();
 
 	_controller->onScrollPosition(true);
 	updateIndicatorPosition();
 }
 
-void RecyclerScroll::onItemRemoved(const Item *item) {
+void RecyclerScroll::onItemsRemoved(const Vector<Rc<Item>> &items) {
 	if (_listener) {
-		_listener->removeItem(Source::Id(item->getId()), _categoryLookupLevel, _itemsForSubcats);
+		for (auto it = items.rbegin(); it != items.rend(); it ++) {
+			_listener->removeItem(Source::Id((*it)->getId()), (*it)->getData(), _categoryLookupLevel, _itemsForSubcats);
+		}
 	}
 }
 

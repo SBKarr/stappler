@@ -183,8 +183,8 @@ float FloatingMenu::getMenuWidth(MenuSource *source) {
 			}
 		} else if (item->getType() == MenuSourceItem::Type::Button) {
 			auto btn = static_cast<MenuSourceButton *>(item);
-			float nameLen = Label::getStringWidth(font, btn->getName());
-			float valueLen = Label::getStringWidth(font, btn->getValue());
+			float nameLen = Label::getStringWidth(font, btn->getName(), 0.0f, true);
+			float valueLen = Label::getStringWidth(font, btn->getValue(), 0.0f, true);
 
 			float offset = metrics::menuFirstLeftKeyline(metrics);
 			if (btn->getNameIcon() != IconName::None) {

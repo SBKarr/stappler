@@ -56,10 +56,18 @@ public:
 
 	virtual void setDensity(float value) override;
 
+	virtual size_t getCharsCount() const;
 	virtual size_t getLinesCount() const;
 	virtual LineSpec getLine(uint32_t num) const;
 
 	virtual uint16_t getFontHeight() const;
+
+	virtual Vec2 getCursorPosition(uint32_t charIndex, bool prefix = true) const;
+
+	// returns character index in FormatSpec for position in label or maxOf<uint32_t>()
+	// pair.second - true if index match suffix or false if index match prefix
+	// use convertToNodeSpace to get position
+	virtual Pair<uint32_t, bool> getCharIndex(const Vec2 &) const;
 
 protected:
 	virtual void updateQuads(uint32_t f);

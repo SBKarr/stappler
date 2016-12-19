@@ -30,6 +30,7 @@ THE SOFTWARE.
 #include "SPLayer.h"
 #include "SPGestureListener.h"
 #include "SPProgressAction.h"
+#include "SPIME.h"
 
 #include "2d/CCActionEase.h"
 
@@ -48,6 +49,9 @@ bool SidebarLayout::init(Position pos) {
 	_listener = construct<gesture::Listener>();
 	_listener->setTouchFilter([this] (const cocos2d::Vec2 &loc, const stappler::gesture::Listener::DefaultTouchFilter &) -> bool {
 		if (!_node) {
+			return false;
+		}
+		if (ime::isInputEnabled()) {
 			return false;
 		}
 		if (isNodeEnabled() || (isNodeVisible() && _swallowTouches)) {

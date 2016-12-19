@@ -95,6 +95,9 @@ const std::string &ToolbarLayout::getTitle() const {
 
 void ToolbarLayout::setToolbarColor(const Color &c) {
 	_toolbar->setColor(c);
+	if (_statusBarTracked) {
+		setStatusBarBackgroundColor(c.darker(2));
+	}
 }
 void ToolbarLayout::setToolbarColor(const Color &c, const Color &text) {
 	_toolbar->setColor(c);

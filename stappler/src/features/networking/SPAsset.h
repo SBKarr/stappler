@@ -74,7 +74,7 @@ protected:
 class Asset : public SyncRWLock {
 public:
     enum Update : uint8_t {
-    	CacheDataUpdated = 1,
+    	CacheDataUpdated = 2,
     	FileUpdated,
 		DownloadStarted,
 		DownloadProgress,

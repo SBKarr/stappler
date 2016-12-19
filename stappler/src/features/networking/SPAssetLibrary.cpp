@@ -108,7 +108,7 @@ void AssetLibrary::init() {
 		}, getAssetStorage());
 
 		data::Value data;
-		_assetsClass.get([&data] (data::Value &d) {
+		_assetsClass.get([&data] (data::Value &&d) {
 			if (!d.isArray()) {
 				return;
 			}
@@ -160,7 +160,7 @@ void AssetLibrary::cleanup() {
 	auto q = toString("SELECT path FROM ", _assetsClass.getName(),
 			" WHERE download == 0 AND ttl != 0 AND (touch + ttl) < ",
 			time, ";");
-	_assetsClass.perform(q, [this] (data::Value &val) {
+	_assetsClass.perform(q, [this] (data::Value &&val) {
 		if (val.isArray()) {
 			for (auto &it : val.asArray()) {
 				auto path = filepath::absolute(it.getString("path"));
@@ -180,7 +180,7 @@ void AssetLibrary::cleanup() {
 			+ time, ";"));
 
 
-	_stateClass.perform(toString("SELECT * FROM ", _stateClass.getName(), ";"), [this] (data::Value &val) {
+	_stateClass.perform(toString("SELECT * FROM ", _stateClass.getName(), ";"), [this] (data::Value &&val) {
 		if (val.isArray()) {
 			for (auto &it : val.asArray()) {
 				auto path = filepath::absolute(it.getString("path"));
@@ -300,7 +300,7 @@ bool AssetLibrary::getAsset(const AssetCallback &cb, const std::string &url,
 		Asset ** assetPtr = new (Asset *) (nullptr);
 		thread.perform([this, assetPtr, id, url, path, cache, ttl, dcb] (cocos2d::Ref *) -> bool {
 			data::Value data;
-			_assetsClass.get([&data] (data::Value &d) {
+			_assetsClass.get([&data] (data::Value &&d) {
 				if (d.isArray() && d.size() > 0) {
 					data = std::move(d.getValue(0));
 				}
@@ -429,7 +429,7 @@ bool AssetLibrary::getAssets(const std::vector<AssetRequest> &vec, const AssetVe
 
 void AssetLibrary::performGetAssets(std::vector<Asset *> &assetsVec, const std::vector<AssetRequest> &requests) {
 	data::Value data;
-	auto cmd = _assetsClass.get([&data] (data::Value &d) {
+	auto cmd = _assetsClass.get([&data] (data::Value &&d) {
 		if (d.isArray() && d.size() > 0) {
 			data = std::move(d);
 		}

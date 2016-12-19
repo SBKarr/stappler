@@ -30,20 +30,20 @@ THE SOFTWARE.
 
 USING_NS_SP;
 
-bool Scale9Sprite::init(cocos2d::Texture2D *tex, cocos2d::Rect capInsets) {
-	return init(tex, cocos2d::Rect::ZERO, capInsets);
+bool Scale9Sprite::init(cocos2d::Texture2D *tex, Rect capInsets) {
+	return init(tex, Rect::ZERO, capInsets);
 }
 
 bool Scale9Sprite::init(cocos2d::Texture2D *tex, float insetLeft, float insetTop, float insetRight, float insetBottom) {
-	return init(tex, cocos2d::Rect::ZERO, cocos2d::Rect(insetLeft, insetBottom, insetRight, insetTop));
+	return init(tex, Rect::ZERO, Rect(insetLeft, insetBottom, insetRight, insetTop));
 }
 
-bool Scale9Sprite::init(cocos2d::Texture2D *tex, cocos2d::Rect rect, cocos2d::Rect capInsets) {
+bool Scale9Sprite::init(cocos2d::Texture2D *tex, Rect rect, Rect capInsets) {
 	if (!DynamicBatchNode::init(tex)) {
 		return false;
 	}
 
-	if (rect.equals(cocos2d::Rect::ZERO)) {
+	if (rect.equals(Rect::ZERO)) {
 		rect.size = getTexture()->getContentSize();
 	}
 	_textureRect = rect;
@@ -75,20 +75,20 @@ void Scale9Sprite::setFlippedY(bool flipY) {
 	}
 }
 
-void Scale9Sprite::setTexture(cocos2d::Texture2D *texture, const cocos2d::Rect &rect) {
+void Scale9Sprite::setTexture(cocos2d::Texture2D *texture, const Rect &rect) {
 	_contentSizeDirty = true;
 	DynamicBatchNode::setTexture(texture);
-	if (rect.equals(cocos2d::Rect::ZERO)) {
-		setTextureRect(cocos2d::Rect(0, 0, texture->getContentSize().width, texture->getContentSize().height));
+	if (rect.equals(Rect::ZERO)) {
+		setTextureRect(Rect(0, 0, texture->getContentSize().width, texture->getContentSize().height));
 	} else {
 		setTextureRect(rect);
 	}
 }
-void Scale9Sprite::setTextureRect(const cocos2d::Rect &rect) {
+void Scale9Sprite::setTextureRect(const Rect &rect) {
 	_textureRect = rect;
 	_contentSizeDirty = true;
 }
-void Scale9Sprite::setInsets(const cocos2d::Rect &capInsets) {
+void Scale9Sprite::setInsets(const Rect &capInsets) {
 	_capInsets = capInsets;
 	_contentSizeDirty = true;
 }
@@ -105,8 +105,8 @@ void Scale9Sprite::setInsets(const cocos2d::Rect &capInsets) {
  **/
 
 
-cocos2d::Rect Scale9Sprite::textureRectForGrid(int i, int j) {
-	cocos2d::Rect rect = cocos2d::Rect::ZERO;
+Rect Scale9Sprite::textureRectForGrid(int i, int j) {
+	Rect rect = Rect::ZERO;
 
 	if (i == 2) {
 		rect.origin.y = _textureRect.origin.y;
@@ -134,8 +134,8 @@ cocos2d::Rect Scale9Sprite::textureRectForGrid(int i, int j) {
 	return rect;
 }
 
-cocos2d::Vec2 Scale9Sprite::texturePositionForGrid(int i, int j, float csx, float csy) {
-	cocos2d::Vec2 point = cocos2d::Vec2::ZERO;
+Vec2 Scale9Sprite::texturePositionForGrid(int i, int j, float csx, float csy) {
+	Vec2 point = Vec2::ZERO;
 
 	if (_flipY) {
 		i = 2 - i;
@@ -181,12 +181,12 @@ cocos2d::Vec2 Scale9Sprite::texturePositionForGrid(int i, int j, float csx, floa
 }
 
 void Scale9Sprite::updateRects() {
-	_insetRect = cocos2d::Rect(_textureRect.origin.x + _capInsets.origin.x,
+	_insetRect = Rect(_textureRect.origin.x + _capInsets.origin.x,
 								 _textureRect.origin.y + _capInsets.origin.y,
 								 _textureRect.size.width - _capInsets.size.width - _capInsets.origin.x,
 								 _textureRect.size.height - _capInsets.size.height - _capInsets.origin.y);
 
-	_drawRect = cocos2d::Rect(_insetRect.origin.x, _insetRect.origin.y,
+	_drawRect = Rect(_insetRect.origin.x, _insetRect.origin.y,
 								_contentSize.width - (_textureRect.size.width - _insetRect.size.width),
 								_contentSize.height - (_textureRect.size.height - _insetRect.size.height));
 
@@ -201,7 +201,7 @@ void Scale9Sprite::updateRects() {
 		_drawRect.size.height = 0;
 	}
 	
-	_minContentSize = cocos2d::Size(_capInsets.origin.x + _capInsets.size.width, _capInsets.origin.y + _capInsets.size.height);
+	_minContentSize = Size(_capInsets.origin.x + _capInsets.size.width, _capInsets.origin.y + _capInsets.size.height);
 }
 
 void Scale9Sprite::updateSprites() {
@@ -223,14 +223,14 @@ void Scale9Sprite::updateSprites() {
     bool visible;
 	float scaleX, scaleY;
 
-    cocos2d::Rect texRect;
-    cocos2d::Vec2 spritePos;
+    Rect texRect;
+    Vec2 spritePos;
 
     auto tex = getTexture();
     float atlasWidth = (float)tex->getPixelsWide();
     float atlasHeight = (float)tex->getPixelsHigh();
 
-    cocos2d::Color4B color4( _displayedColor.r, _displayedColor.g, _displayedColor.b, _displayedOpacity );
+    Color4B color4( _displayedColor.r, _displayedColor.g, _displayedColor.b, _displayedOpacity );
 	if (_opacityModifyRGB) {
 		color4.r *= _displayedOpacity/255.0f;
 		color4.g *= _displayedOpacity/255.0f;
@@ -279,7 +279,7 @@ void Scale9Sprite::updateSprites() {
 			spritePos = texturePositionForGrid(i, j, contentScaleX, contentScaleY);
 
 			_quads->setTextureRect(quadId, texRect, atlasWidth, atlasHeight, _flipX, _flipY);
-			_quads->setGeometry(quadId, spritePos, cocos2d::Size(texRect.size.width * scaleX, texRect.size.height * scaleY), _positionZ);
+			_quads->setGeometry(quadId, spritePos, Size(texRect.size.width * scaleX, texRect.size.height * scaleY), _positionZ);
 			_quads->setColor(quadId, color4);
 
 			quadId ++;

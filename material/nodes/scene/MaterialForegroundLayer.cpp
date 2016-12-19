@@ -29,20 +29,17 @@ THE SOFTWARE.
 #include "MaterialLabel.h"
 #include "SPGestureListener.h"
 #include "SPLayer.h"
-
-#include "2d/CCActionInstant.h"
-#include "2d/CCActionInterval.h"
-#include "2d/CCActionEase.h"
+#include "SPActions.h"
 
 NS_MD_BEGIN
 
 bool ForegroundLayer::init() {
-	if (!cocos2d::Layer::init()) {
+	if (!Node::init()) {
 		return false;
 	}
 
 	auto l = construct<gesture::Listener>();
-	l->setTouchFilter([] (const cocos2d::Vec2 &, const stappler::gesture::Listener::DefaultTouchFilter &) -> bool {
+	l->setTouchFilter([] (const Vec2 &, const stappler::gesture::Listener::DefaultTouchFilter &) -> bool {
 		return true;
 	});
 	l->setTouchCallback([] (stappler::gesture::Event, const stappler::gesture::Touch &) -> bool {
@@ -61,11 +58,11 @@ bool ForegroundLayer::init() {
 	addComponent(l);
 
 	_snackbar = construct<stappler::Layer>();
-	_snackbar->setAnchorPoint(cocos2d::Vec2(0.5f, 0.0f));
+	_snackbar->setAnchorPoint(Vec2(0.5f, 0.0f));
 	_snackbar->setColor(material::Color::Grey_900);
 
 	_snackbarLabel = construct<Label>(FontType::Body_2);
-	_snackbarLabel->setAnchorPoint(cocos2d::Vec2(0.0f, 0.0f));
+	_snackbarLabel->setAnchorPoint(Vec2(0.0f, 0.0f));
 	_snackbarLabel->setColor(material::Color::Grey_200);
 	_snackbar->addChild(_snackbarLabel, 1);
 
@@ -77,7 +74,7 @@ bool ForegroundLayer::init() {
 }
 
 void ForegroundLayer::onContentSizeDirty() {
-	Layer::onContentSizeDirty();
+	Node::onContentSizeDirty();
 	if (!_nodes.empty()) {
 		for (auto &it : _nodes) {
 			it->retain();
@@ -102,8 +99,8 @@ void ForegroundLayer::onContentSizeDirty() {
 
 	_snackbar->stopAllActions();
 	_snackbar->setVisible(false);
-	_snackbar->setContentSize(cocos2d::Size(MIN(_contentSize.width, 536.0f), 48.0f));
-	_snackbar->setPosition(cocos2d::Vec2(_contentSize.width / 2, -48.0f));
+	_snackbar->setContentSize(Size(std::min(_contentSize.width, 536.0f), 48.0f));
+	_snackbar->setPosition(Vec2(_contentSize.width / 2, -48.0f));
 	_snackbarLabel->setString("");
 
 	for (auto &it : _pendingPush) {
@@ -113,22 +110,22 @@ void ForegroundLayer::onContentSizeDirty() {
 }
 
 void ForegroundLayer::onEnter() {
-	cocos2d::Layer::onEnter();
+	Node::onEnter();
 	if (!_nodes.empty()) {
 		_listener->setEnabled(true);
 	}
 }
 void ForegroundLayer::onExit() {
-	cocos2d::Layer::onExit();
+	Node::onExit();
 	_listener->setEnabled(false);
 }
 
-void ForegroundLayer::pushNode(cocos2d::Node *node, const std::function<void()> &func) {
+void ForegroundLayer::pushNode(cocos2d::Node *node, const Function<void()> &func) {
 	if (node && !node->isRunning() && _pendingPush.find(node) == _pendingPush.end()) {
 		node->retain();
 		_listener->setEnabled(true);
 		_pendingPush.insert(node);
-		runAction(cocos2d::Sequence::createWithTwoActions(cocos2d::DelayTime::create(0.3f), cocos2d::CallFunc::create([this, node, func] {
+		runAction(action::callback(0.3f, [this, node, func] {
 			if (!_nodes.empty()) {
 				int zIndex = -(int)_nodes.size();
 				for (auto node : _nodes) {
@@ -150,7 +147,7 @@ void ForegroundLayer::pushNode(cocos2d::Node *node, const std::function<void()> 
 			}
 			_pendingPush.erase(node);
 			node->release();
-		})));
+		}));
 	}
 }
 void ForegroundLayer::popNode(cocos2d::Node *node) {
@@ -179,13 +176,13 @@ void ForegroundLayer::popNode(cocos2d::Node *node) {
 	node->release();
 }
 
-bool ForegroundLayer::onPressBegin(const cocos2d::Vec2 &loc) {
+bool ForegroundLayer::onPressBegin(const Vec2 &loc) {
 	if (!_nodes.empty()) {
 		_pressNode = _nodes.back();
 	}
 	return true;
 }
-bool ForegroundLayer::onPressEnd(const cocos2d::Vec2 &loc) {
+bool ForegroundLayer::onPressEnd(const Vec2 &loc) {
 	if (_pressNode && !stappler::node::isTouched(_pressNode, loc)) {
 		auto cbIt = _callbacks.find(_pressNode);
 		if (cbIt != _callbacks.end()) {
@@ -212,7 +209,7 @@ bool ForegroundLayer::isActive() const {
 	return !_nodes.empty();
 }
 
-void ForegroundLayer::setSnackbarString(const std::string &str, const Color &color) {
+void ForegroundLayer::setSnackbarString(const String &str, const Color &color) {
 	_snackbar->stopAllActions();
 	_snackbarString = str;
 	if (!_snackbar->isVisible()) {
@@ -223,41 +220,39 @@ void ForegroundLayer::setSnackbarString(const std::string &str, const Color &col
 		});
 	}
 }
-const std::string &ForegroundLayer::getSnackbarString() const {
+const String &ForegroundLayer::getSnackbarString() const {
 	return _snackbarString;
 }
 
-void ForegroundLayer::setSnackbarStringInternal(const std::string &str, const Color &color) {
+void ForegroundLayer::setSnackbarStringInternal(const String &str, const Color &color) {
 	_snackbar->setVisible(true);
 	_snackbar->setOpacity(255);
 	_snackbarLabel->setString(str);
 	_snackbarLabel->setWidth(_snackbar->getContentSize().width - 48.0f);
 	_snackbarLabel->setColor(color);
 	_snackbarLabel->updateLabel();
-	_snackbarLabel->setPosition(cocos2d::Vec2(24.0f, 16.0f));
-	_snackbar->setContentSize(cocos2d::Size(_snackbar->getContentSize().width, _snackbarLabel->getContentSize().height + 32.0f));
-	_snackbar->setPosition(cocos2d::Size(_contentSize.width / 2, -_snackbar->getContentSize().height));
-	_snackbar->runAction(
-			cocos2d::Sequence::create(cocos2d::EaseQuarticActionOut::create(cocos2d::MoveTo::create(0.25f, cocos2d::Vec2(_contentSize.width / 2, 0))),
-					cocos2d::DelayTime::create(4.0f), cocos2d::CallFunc::create(std::bind(&ForegroundLayer::hideSnackbar, this, nullptr)), nullptr));
+	_snackbarLabel->setPosition(Vec2(24.0f, 16.0f));
+	_snackbar->setContentSize(Size(_snackbar->getContentSize().width, _snackbarLabel->getContentSize().height + 32.0f));
+	_snackbar->setPosition(Size(_contentSize.width / 2, -_snackbar->getContentSize().height));
+	_snackbar->runAction(action::sequence(cocos2d::MoveTo::create(0.25f, Vec2(_contentSize.width / 2, 0)), 4.0f, std::bind(&ForegroundLayer::hideSnackbar, this, nullptr)));
 }
 
-void ForegroundLayer::hideSnackbar(const std::function<void()> &cb) {
+void ForegroundLayer::hideSnackbar(const Function<void()> &cb) {
 	if (!cb) {
-		_snackbar->runAction(cocos2d::Sequence::createWithTwoActions(
-				cocos2d::EaseQuarticActionIn::create(cocos2d::MoveTo::create(0.25f, cocos2d::Vec2(_contentSize.width / 2, -_snackbar->getContentSize().height))),
-				cocos2d::CallFunc::create(std::bind(&ForegroundLayer::onSnackbarHidden, this))));
+		_snackbar->runAction(action::sequence(
+				cocos2d::EaseQuarticActionIn::create(cocos2d::MoveTo::create(0.25f, Vec2(_contentSize.width / 2, -_snackbar->getContentSize().height))),
+				std::bind(&ForegroundLayer::onSnackbarHidden, this)));
 	} else {
-		_snackbar->runAction(cocos2d::Sequence::createWithTwoActions(
-				cocos2d::EaseQuarticActionIn::create(cocos2d::MoveTo::create(0.25f, cocos2d::Vec2(_contentSize.width / 2, -_snackbar->getContentSize().height))),
-				cocos2d::CallFunc::create(cb)));
+		_snackbar->runAction(action::sequence(
+				cocos2d::EaseQuarticActionIn::create(cocos2d::MoveTo::create(0.25f, Vec2(_contentSize.width / 2, -_snackbar->getContentSize().height))),
+				cb));
 	}
 }
 
 void ForegroundLayer::onSnackbarHidden() {
 	_snackbar->stopAllActions();
 	_snackbar->setVisible(false);
-	_snackbar->setPosition(cocos2d::Vec2(_contentSize.width / 2, -_snackbar->getContentSize().height));
+	_snackbar->setPosition(Vec2(_contentSize.width / 2, -_snackbar->getContentSize().height));
 	_snackbarLabel->setString("");
 }
 

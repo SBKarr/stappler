@@ -227,6 +227,9 @@ void DynamicLabel::setDensity(float density) {
 	}
 }
 
+size_t DynamicLabel::getCharsCount() const {
+	return _format?_format->chars.size():0;
+}
 size_t DynamicLabel::getLinesCount() const {
 	return _format?_format->lines.size():0;
 }
@@ -262,12 +265,12 @@ void DynamicLabel::updateQuads(uint32_t f) {
 	}
 
 	if (!_source->isDirty() && !_source->getTextures().empty()) {
-		if (f & FLAGS_FORCE_RENDERING) {
+		//if (f & FLAGS_FORCE_RENDERING) {
 			updateQuadsForeground(_source, _format);
-		} else {
-			_quadRequestTime = Time::now();
-			updateQuadsBackground(_source, _format);
-		}
+		//} else {
+		//	_quadRequestTime = Time::now();
+		//	updateQuadsBackground(_source, _format);
+		//}
 	}
 
 	_formatDirty = false;
@@ -275,6 +278,7 @@ void DynamicLabel::updateQuads(uint32_t f) {
 
 void DynamicLabel::onTextureUpdated() {
 	_formatDirty = true;
+	_textures.clear();
 }
 
 void DynamicLabel::onLayoutUpdated() {
@@ -323,6 +327,33 @@ void DynamicLabel::onQuads(const Time &t, const Vector<Rc<cocos2d::Texture2D>> &
 	_colorMap = std::move(cMap);
 
 	updateColorQuads();
+}
+
+Vec2 DynamicLabel::getCursorPosition(uint32_t charIndex, bool front) const {
+	if (_format) {
+		if (charIndex < _format->chars.size()) {
+			auto &c = _format->chars[charIndex];
+			auto line = _format->getLine(charIndex);
+			return Vec2( (front ? c.pos : c.pos + c.advance) / _density, _contentSize.height - line->pos / _density);
+		} else if (charIndex >= _format->chars.size() && charIndex != 0) {
+			auto &c = _format->chars.back();
+			auto &l = _format->lines.back();
+			return Vec2( (c.pos + c.advance) / _density, _contentSize.height - l.pos / _density);
+		}
+	}
+
+	return Vec2::ZERO;
+}
+
+Pair<uint32_t, bool> DynamicLabel::getCharIndex(const Vec2 &pos) const {
+	auto ret = _format->getChar(pos.x * _density, pos.y * _density, FormatSpec::Best);
+	if (ret.first == maxOf<uint32_t>()) {
+		return pair(maxOf<uint32_t>(), false);
+	} else if (ret.second == FormatSpec::Prefix) {
+		return pair(ret.first, false);
+	} else {
+		return pair(ret.first, true);
+	}
 }
 
 NS_SP_END

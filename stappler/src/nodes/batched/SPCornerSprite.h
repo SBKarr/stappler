@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef LIBS_STAPPLER_NODES_BATCHED_SPCUSTOMCORNERSPRITE_H_
-#define LIBS_STAPPLER_NODES_BATCHED_SPCUSTOMCORNERSPRITE_H_
+#ifndef STAPPLER_SRC_NODES_BATCHED_SPCORNERSPRITE_H_
+#define STAPPLER_SRC_NODES_BATCHED_SPCORNERSPRITE_H_
 
 #include "SPDynamicBatchNode.h"
 
@@ -29,11 +29,34 @@ NS_SP_BEGIN
 
 /** Custom corner sprite - extremely fast (low-level) implementation of Scale-9
  * it uses generated corner texture to fill content space as scale-9
- *
- * You can implement your own texture generator (like in ShadowSprite or RoundedSprite)
  */
 
-class CustomCornerSprite : public DynamicBatchNode {
+class CornerSprite : public DynamicBatchNode {
+public:
+    virtual ~CornerSprite();
+
+    virtual bool init(cocos2d::Texture2D *tex, float density = 0.0f) override;
+    virtual void onContentSizeDirty() override;
+
+    virtual void setDrawCenter(bool value);
+	virtual bool isDegenerate() const;
+
+protected:
+	virtual Rect textureRectForGrid(int i, int j);
+	virtual Vec2 texturePositionForGrid(int i, int j, float csx, float csy, float expx, float expy);
+
+	virtual bool textureFlipX(int i, int j);
+	virtual bool textureFlipY(int i, int j);
+
+	virtual void updateSprites();
+
+	Size _texContentSize = Size::ZERO;
+	Size _minContentSize = Size::ZERO;
+
+	bool _drawCenter = true;
+};
+
+class CustomCornerSprite : public CornerSprite {
 public:
 	class Texture : public Ref, EventHandler {
 	public:
@@ -56,36 +79,21 @@ public:
     virtual ~CustomCornerSprite();
 
     virtual bool init(uint32_t size, float density = 0.0f);
-    virtual void onContentSizeDirty() override;
     virtual void setDensity(float density) override;
 
     virtual void setTextureSize(uint32_t size);
     virtual uint32_t getTextureSize() const;
 
     virtual uint32_t getDensityTextureSize() const;
-
-    virtual void setDrawCenter(bool value);
+	virtual bool isDegenerate() const override;
 
 protected:
 	virtual Rc<Texture> generateTexture(uint32_t size);
 
-	virtual cocos2d::Rect textureRectForGrid(int i, int j);
-	virtual cocos2d::Vec2 texturePositionForGrid(int i, int j, float csx, float csy, float expx, float expy);
-
-	virtual bool textureFlipX(int i, int j);
-	virtual bool textureFlipY(int i, int j);
-
-	virtual void updateSprites();
-
     uint32_t _textureSize = 0;
-
-	cocos2d::Size _texContentSize = cocos2d::Size::ZERO;
-	cocos2d::Size _minContentSize = cocos2d::Size::ZERO;
-
 	Rc<Texture> _customTexture = nullptr;
-	bool _drawCenter = true;
 };
 
 NS_SP_END
 
-#endif /* LIBS_STAPPLER_NODES_BATCHED_SPCUSTOMCORNERSPRITE_H_ */
+#endif /* STAPPLER_SRC_NODES_BATCHED_SPCORNERSPRITE_H_ */

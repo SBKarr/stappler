@@ -73,9 +73,9 @@ public:
 
 	virtual ~Label();
 
-	virtual bool init(FontType, Alignment = Alignment::Left, float = 0);
-	virtual bool init(const String &, Alignment = Alignment::Left, float = 0);
-	virtual bool init(const DescriptionStyle &, Alignment = Alignment::Left, float = 0);
+	virtual bool init(FontType, Alignment = Alignment::Left, float w = 0);
+	virtual bool init(const String &, Alignment = Alignment::Left, float w = 0);
+	virtual bool init(const DescriptionStyle &, Alignment = Alignment::Left, float w = 0);
 
 	virtual void setFont(FontType);
     virtual void setStyle(const DescriptionStyle &) override;

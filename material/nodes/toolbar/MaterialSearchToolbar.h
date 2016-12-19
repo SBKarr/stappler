@@ -43,7 +43,7 @@ protected:
 	virtual void layoutSubviews() override;
 
 	ButtonIcon *_searchIcon = nullptr;
-	SingleLineField *_searchInput = nullptr;
+	LineField *_searchInput = nullptr;
 	bool _presistentSearch = false;
 	bool _inSearchMode = false;
 };

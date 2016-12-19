@@ -100,7 +100,6 @@ using OutlineStyle = style::OutlineParameters;
 
 class RendererInterface {
 public:
-	virtual ~RendererInterface() { }
 	virtual bool resolveMediaQuery(MediaQueryId queryId) const = 0;
 	virtual String getCssString(CssStringId) const = 0;
 };

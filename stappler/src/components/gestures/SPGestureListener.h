@@ -36,11 +36,11 @@ public: // aliases
 	template<typename T>
 	using Callback = std::function<bool(Event, const T &)>;
 
-	using DefaultTouchFilter = std::function<bool(const cocos2d::Vec2 &)>;
-	using DefaultGestureFilter = std::function<bool(const cocos2d::Vec2 &, Type)>;
+	using DefaultTouchFilter = std::function<bool(const Vec2 &)>;
+	using DefaultGestureFilter = std::function<bool(const Vec2 &, Type)>;
 
-	using TouchFilter = std::function<bool(const cocos2d::Vec2 &, const DefaultTouchFilter &)>;
-	using GestureFilter = std::function<bool(const cocos2d::Vec2 &, Type, const DefaultGestureFilter &)>;
+	using TouchFilter = std::function<bool(const Vec2 &, const DefaultTouchFilter &)>;
+	using GestureFilter = std::function<bool(const Vec2 &, Type, const DefaultGestureFilter &)>;
 
 public: // callbacks
 	void setTouchCallback(const Callback<Touch> &);
@@ -73,7 +73,7 @@ public: // options
 	bool isSwallowTouches() const;
 
 	void setPriority(int32_t value);
-	int32_t getPriority();
+	int32_t getPriority() const;
 
 	void cancel();
 

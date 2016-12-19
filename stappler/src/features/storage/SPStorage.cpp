@@ -921,7 +921,7 @@ bool Scheme::Internal::perform(const std::string &sql, const DataCallback &cb) {
 	if (thread.isOnThisThread()) {
 		auto val = performCommand(sql);
 		if (cb) {
-			cb(val);
+			cb(std::move(val));
 		}
 	} else {
 		data::Value *val = new data::Value();
@@ -930,7 +930,7 @@ bool Scheme::Internal::perform(const std::string &sql, const DataCallback &cb) {
 			return true;
 		}, [this, cb, val] (cocos2d::Ref *, bool) {
 			if (cb) {
-				cb(*val);
+				cb(std::move(*val));
 			}
 			delete val;
 		});
@@ -1260,7 +1260,7 @@ void Scheme::Internal::runCommandCallback(Scheme::Command *cmd, data::Value &res
 	switch(cmd->_action) {
 	case Command::Get:
 		if (cmd->_callback.data) {
-			cmd->_callback.data(result);
+			cmd->_callback.data(std::move(result));
 		}
 		break;
 	case Command::Count:

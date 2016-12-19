@@ -20,28 +20,39 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef LIBS_MATERIAL_NODES_SCENE_MATERIALBACKGROUNDLAYER_H_
-#define LIBS_MATERIAL_NODES_SCENE_MATERIALBACKGROUNDLAYER_H_
+#ifndef MATERIAL_NODES_INPUT_MATERIALINPUTMENU_H_
+#define MATERIAL_NODES_INPUT_MATERIALINPUTMENU_H_
 
-#include "Material.h"
-#include "2d/CCLayer.h"
+#include "MaterialButtonLabel.h"
 
 NS_MD_BEGIN
 
-class BackgroundLayer : public cocos2d::Node {
+class InputMenu : public MaterialNode {
 public:
-	virtual bool init() override;
-	virtual void onContentSizeDirty() override;
+	using Callback = Button::TapCallback;
 
-	virtual void setTexture(cocos2d::Texture2D *);
+	virtual bool init(const Callback &cut, const Callback &copy, const Callback &paste);
+	virtual void visit(cocos2d::Renderer *, const Mat4 &, uint32_t, ZPath &) override;
 
-	virtual void setColor(const Color &);
+	virtual void setMenuSource(MenuSource *);
+	virtual MenuSource *getMenuSource() const;
+
+	virtual void setCopyMode(bool);
+	virtual bool isCopyMode() const;
+
+	virtual void updateMenu();
 
 protected:
-	Layer *_layer = nullptr;
-	DynamicSprite *_sprite = nullptr;
+	bool _isCopyMode = false;
+	bool _menuDirty = true;
+
+	Rc<MenuSource> _menuSource;
+	ButtonLabel *_buttonCut = nullptr;
+	ButtonLabel *_buttonCopy = nullptr;
+	ButtonLabel *_buttonPaste = nullptr;
+	ButtonIcon *_buttonExtra = nullptr;
 };
 
 NS_MD_END
 
-#endif /* LIBS_MATERIAL_NODES_SCENE_MATERIALBACKGROUNDLAYER_H_ */
+#endif /* MATERIAL_NODES_INPUT_MATERIALINPUTMENU_H_ */

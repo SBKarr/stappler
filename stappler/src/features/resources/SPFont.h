@@ -79,6 +79,8 @@ struct FontCharString {
 };
 
 struct FontData {
+	~FontData();
+
 	uint16_t getHeight() const;
 	int16_t getAscender() const;
 	int16_t getDescender() const;
@@ -98,6 +100,7 @@ public:
 	using Data = FontData;
 
 	FontLayout(const Source *, const String &name, const String &family, uint8_t size, const FontFace &, const ReceiptCallback &, float);
+	virtual ~FontLayout();
 
 	/* addString functions will update layout data from its font face
 	 * this call may be very expensive */

@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef LIBS_STAPPLER_NODES_BATCHED_SPLAYER_H_
 #define LIBS_STAPPLER_NODES_BATCHED_SPLAYER_H_
 
-#include "SPCustomCornerSprite.h"
+#include "SPCornerSprite.h"
 
 NS_SP_BEGIN
 

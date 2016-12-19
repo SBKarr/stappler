@@ -25,12 +25,12 @@ THE SOFTWARE.
 
 #include "Material.h"
 #include "MaterialColors.h"
-#include "2d/CCLayer.h"
+#include "2d/CCNode.h"
 #include "base/CCVector.h"
 
 NS_MD_BEGIN
 
-class ForegroundLayer : public cocos2d::Layer {
+class ForegroundLayer : public cocos2d::Node {
 public:
 	virtual bool init() override;
 	virtual void onContentSizeDirty() override;
@@ -38,32 +38,32 @@ public:
 	virtual void onEnter() override;
 	virtual void onExit() override;
 
-	virtual void pushNode(cocos2d::Node *, const std::function<void()> & = nullptr);
+	virtual void pushNode(cocos2d::Node *, const Function<void()> & = nullptr);
 	virtual void popNode(cocos2d::Node *);
 
-	virtual bool onPressBegin(const cocos2d::Vec2 &);
-	virtual bool onPressEnd(const cocos2d::Vec2 &);
+	virtual bool onPressBegin(const Vec2 &);
+	virtual bool onPressEnd(const Vec2 &);
 
 	virtual void clear();
 	virtual bool isActive() const;
 
-	virtual void setSnackbarString(const std::string &, const Color & = Color::White);
-	virtual const std::string &getSnackbarString() const;
+	virtual void setSnackbarString(const String &, const Color & = Color::White);
+	virtual const String &getSnackbarString() const;
 
 protected:
-	virtual void setSnackbarStringInternal(const std::string &, const Color &color = Color::White);
-	virtual void hideSnackbar(const std::function<void()> & = nullptr);
+	virtual void setSnackbarStringInternal(const String &, const Color &color = Color::White);
+	virtual void hideSnackbar(const Function<void()> & = nullptr);
 	virtual void onSnackbarHidden();
 
 	cocos2d::Node *_pressNode = nullptr;
 	cocos2d::Component *_listener = nullptr;
 	cocos2d::Vector<cocos2d::Node *> _nodes;
-	std::set<cocos2d::Node *> _pendingPush;
-	std::map<cocos2d::Node *, std::function<void()>> _callbacks;
+	Set<cocos2d::Node *> _pendingPush;
+	Map<cocos2d::Node *, Function<void()>> _callbacks;
 
-	stappler::Layer *_snackbar = nullptr;
+	Layer *_snackbar = nullptr;
 	Label *_snackbarLabel = nullptr;
-	std::string _snackbarString;
+	String _snackbarString;
 };
 
 NS_MD_END

@@ -129,126 +129,20 @@ Outline Outline::border(const OutlineStyle &style, float swidth, float emBase, f
 	return border;
 }
 
-static Rect getLabelLineStartRect(const Label &l, uint16_t lineId, float density, uint16_t c) {
-	Rect rect;
-	const font::LineSpec &line = l.format.lines.at(lineId);
-	if (line.count > 0) {
-		const font::CharSpec & firstChar = l.format.chars.at(MAX(line.start, c));
-		const font::CharSpec & lastChar = l.format.chars.at(line.start + line.count - 1);
-		rect.origin = Vec2((firstChar.pos) / density, (line.pos) / density - line.height / density);
-		rect.size = Size((lastChar.pos + lastChar.advance - firstChar.pos) / density, line.height / density);
-	}
-
-	return rect;
-}
-
-static Rect getLabelLineEndRect(const Label &l, uint16_t lineId, float density, uint16_t c) {
-	Rect rect;
-	const font::LineSpec &line = l.format.lines.at(lineId);
-	if (line.count > 0) {
-		const font::CharSpec & firstChar = l.format.chars.at(line.start);
-		const font::CharSpec & lastChar = l.format.chars.at(MIN(line.start + line.count - 1, c));
-		rect.origin = Vec2((firstChar.pos) / density, (line.pos) / density - line.height / density);
-		rect.size = Size((lastChar.pos + lastChar.advance - firstChar.pos) / density, line.height / density);
-	}
-	return rect;
-}
-
-static cocos2d::Rect getCharsRect(const Label &l, uint16_t lineId, uint16_t firstCharId, uint16_t lastCharId, float density) {
-	Rect rect;
-	const font::LineSpec & line = l.format.lines.at(lineId);
-	const font::CharSpec & firstChar = l.format.chars.at(firstCharId);
-	const font::CharSpec & lastChar = l.format.chars.at(lastCharId);
-	rect.origin = Vec2((firstChar.pos) / density, (line.pos) / density - line.height / density);
-	rect.size = Size((lastChar.pos + lastChar.advance - firstChar.pos) / density, line.height / density);
-	return rect;
-}
-
-Rect Label::getLineRect(uint16_t lineId, float density, const Vec2 &origin) const {
-	if (lineId >= format.lines.size()) {
-		return Rect::ZERO;
-	}
-	return getLineRect(format.lines[lineId], density, origin);
+Rect Label::getLineRect(uint32_t lineId, float density, const Vec2 &origin) const {
+	return format.getLineRect(lineId, density, origin);
 }
 
 Rect Label::getLineRect(const font::LineSpec &line, float density, const Vec2 &origin) const {
-	Rect rect;
-	if (line.count > 0) {
-		const font::CharSpec & firstChar = format.chars.at(line.start);
-		const font::CharSpec & lastChar = format.chars.at(line.start + line.count - 1);
-		rect.origin = Vec2((firstChar.pos) / density + origin.x, (line.pos) / density - line.height / density + origin.y);
-		rect.size = Size((lastChar.pos + lastChar.advance - firstChar.pos) / density, line.height / density);
-	}
-	return rect;
+	return format.getLineRect(line, density, origin);
 }
 
-uint16_t Label::getLineForCharId(uint16_t id) const {
-	uint16_t n = 0;
-	for (auto &it : format.lines) {
-		if (id >= it.start && id < it.start + it.count) {
-			return n;
-		}
-		n++;
-	}
-	if (n >= format.lines.size()) {
-		n = format.lines.size() - 1;
-	}
-	return n;
+uint32_t Label::getLineForCharId(uint32_t id) const {
+	return format.getLineNumber(id);
 }
 
-Vector<Rect> Label::getLabelRects(uint16_t firstCharId, uint16_t lastCharId, float density, const Vec2 &origin, const Padding &p) const {
-	auto &l = *this;
-	Vector<Rect> ret;
-
-	auto firstLine = getLineForCharId(firstCharId);
-	auto lastLine = getLineForCharId(lastCharId);
-
-	if (firstLine == lastLine) {
-		auto rect = getCharsRect(l, firstLine, firstCharId, lastCharId, density);
-		rect.origin.x += origin.x - p.left;
-		rect.origin.y += origin.y - p.top;
-		rect.size.width += p.left + p.right;
-		rect.size.height += p.bottom + p.top;
-		if (!rect.equals(cocos2d::Rect::ZERO)) {
-			ret.push_back(rect);
-		}
-	} else {
-		auto first = getLabelLineStartRect(l, firstLine, density, firstCharId);
-		if (!first.equals(cocos2d::Rect::ZERO)) {
-			first.origin.x += origin.x;
-			first.origin.y += origin.y;
-			if (first.origin.x - p.left < 0.0f) {
-				first.size.width += (first.origin.x);
-				first.origin.x = 0.0f;
-			} else {
-				first.origin.x -= p.left;
-				first.size.width += p.left;
-			}
-			first.origin.y -= p.top;
-			first.size.height += p.bottom + p.top;
-			ret.push_back(first);
-		}
-
-		for (auto i = firstLine + 1; i < lastLine; i++) {
-			auto rect = getLineRect(i, density);
-			rect.origin.x += origin.x;
-			rect.origin.y += origin.y - p.top;
-			rect.size.height += p.bottom + p.top;
-			if (!rect.equals(cocos2d::Rect::ZERO)) {
-				ret.push_back(rect);
-			}
-		}
-
-		auto last = getLabelLineEndRect(l, lastLine, density, lastCharId);
-		if (!last.equals(cocos2d::Rect::ZERO)) {
-			last.origin.x += origin.x;
-			last.origin.y += origin.y - p.top;
-			last.size.width += p.right;
-			last.size.height += p.bottom + p.top;
-			ret.push_back(last);
-		}
-	}
-	return ret;
+Vector<Rect> Label::getLabelRects(uint32_t firstCharId, uint32_t lastCharId, float density, const Vec2 &origin, const Padding &p) const {
+	return format.getLabelRects(firstCharId, lastCharId, density, origin, p);
 }
 
 Layout::Layout() { }

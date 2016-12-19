@@ -36,7 +36,6 @@ THE SOFTWARE.
 #include "renderer/ccGLStateCache.h"
 #include "2d/CCRenderTexture.h"
 
-#include "2d/CCLayer.h"
 #include "2d/CCCamera.h"
 #include "SPScreen.h"
 #include "SPString.h"
@@ -44,6 +43,7 @@ THE SOFTWARE.
 #include "SPDrawPath.h"
 #include "SPDrawPathNode.h"
 #include "SPBitmap.h"
+#include "SPLayer.h"
 
 #include "MaterialBackgroundLayer.h"
 #include "MaterialForegroundLayer.h"
@@ -105,14 +105,19 @@ bool Scene::init() {
 		addChild(_content, 1);
 	}
 
+	if (!_floating) {
+		_floating = cocos2d::Node::create();
+		addChild(_floating, 2);
+	}
+
 	if (!_navigation) {
 		_navigation = createNavigationLayer();
-		addChild(_navigation, 2);
+		addChild(_navigation, 3);
 	}
 
 	if (!_foreground) {
 		_foreground = createForegroundLayer();
-		addChild(_foreground, 3);
+		addChild(_foreground, 4);
 	}
 
 	return true;
@@ -156,16 +161,16 @@ void Scene::setVisualizeTouches(bool value) {
 					if (ev == stappler::gesture::Event::Began) {
 						auto d = stappler::screen::density();
 						auto node = construct<draw::PathNode>(24 * d, 24 * d);
-						node->setAnchorPoint(cocos2d::Vec2(0.5, 0.5));
+						node->setAnchorPoint(Vec2(0.5, 0.5));
 						node->setPosition(t.location());
-						node->setContentSize(cocos2d::Size(24 * d, 24 * d));
+						node->setContentSize(Size(24 * d, 24 * d));
 						node->setColor(Color::Black);
 						_touchesNode->addChild(node);
 						_touchesNodes.insert(std::make_pair(t.id, node));
 
 						auto p = Rc<draw::Path>::create();
 						p->setStyle(stappler::draw::Path::Style::Fill);
-						p->addOval(cocos2d::Rect(0, 0, 24 * d, 24 * d));
+						p->addOval(Rect(0, 0, 24 * d, 24 * d));
 						p->setFillOpacity(127);
 						node->addPath(p);
 					} else if (ev == stappler::gesture::Event::Activated) {
@@ -216,7 +221,7 @@ void Scene::onExitTransitionDidStart() {
 	updateStatsLabel();
 }
 
-const cocos2d::Size &Scene::getViewSize() const {
+const Size &Scene::getViewSize() const {
 	return _background->getContentSize();
 }
 
@@ -252,6 +257,7 @@ void Scene::layoutSubviews() {
 
 	layoutLayer(_background);
 	layoutLayer(_content);
+	layoutLayer(_floating);
 	layoutLayer(_navigation);
 	layoutLayer(_foreground);
 
@@ -272,10 +278,10 @@ void Scene::layoutLayer(cocos2d::Node *layer) {
 	float density = stappler::Screen::getInstance()->getDensity();
 
 	layer->ignoreAnchorPointForPosition(false);
-	layer->setAnchorPoint(cocos2d::Vec2(0.5, 0.5));
+	layer->setAnchorPoint(Vec2(0.5, 0.5));
 	layer->setPosition(_contentSize.width / 2, _contentSize.height / 2);
 	layer->setScale(density);
-	layer->setContentSize(cocos2d::Size(_contentSize.width / density, _contentSize.height / density));
+	layer->setContentSize(Size(_contentSize.width / density, _contentSize.height / density));
 }
 
 void Scene::update(float dt) {
@@ -317,15 +323,15 @@ void Scene::updateStatsLabel() {
 
 		if (!_stats) {
 			_stats = construct<Label>(FontType::Caption);
-			_stats->setAnchorPoint(cocos2d::Vec2(0, 0));
+			_stats->setAnchorPoint(Vec2(0, 0));
 			_stats->setScale(stappler::screen::density());
 			addChild(_stats, INT_MAX - 1);
 		}
 
 		if (!_statsColor) {
 			auto d = stappler::screen::density();
-			_statsColor = cocos2d::LayerColor::create();
-			_statsColor->setContentSize(cocos2d::Size(42 * d, 58 * d));
+			_statsColor = construct<Layer>();
+			_statsColor->setContentSize(Size(42 * d, 58 * d));
 			_statsColor->setOpacity(168);
 			_statsColor->setColor(Color::White);
 			addChild(_statsColor, INT_MAX - 2);
@@ -453,6 +459,15 @@ void Scene::popContentNode(Layout *l) {
 	_content->popNode(l);
 }
 
+void Scene::pushFloatNode(cocos2d::Node *n, int z) {
+	_floating->addChild(n, z);
+}
+void Scene::popFloatNode(cocos2d::Node *n) {
+	if (n && n->getParent() == _floating) {
+		n->removeFromParent();
+	}
+}
+
 void Scene::pushForegroundNode(cocos2d::Node *n, const std::function<void()> &cb) {
 	_foreground->pushNode(n, cb);
 }
@@ -466,6 +481,9 @@ void Scene::setNavigationMenuSource(material::MenuSource *source) {
 
 void Scene::setSnackbarString(const std::string &str, const Color &color) {
 	_foreground->setSnackbarString(str, color);
+}
+Vec2 Scene::convertToScene(const Vec2 &vec) const {
+	return _floating->convertToNodeSpace(vec);
 }
 
 void Scene::takeScreenshoot() {
@@ -493,7 +511,7 @@ void Scene::takeScreenshoot() {
 
     	rt->begin();
     	ZPath newPath;
-        visit(renderer, cocos2d::Mat4::IDENTITY, 0, newPath);
+        visit(renderer, Mat4::IDENTITY, 0, newPath);
         rt->end();
 
         director->popMatrix(cocos2d::MATRIX_STACK_TYPE::MATRIX_STACK_PROJECTION);

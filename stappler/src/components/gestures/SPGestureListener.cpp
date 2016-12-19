@@ -136,7 +136,7 @@ void Listener::setPriority(int32_t value) {
 		}
 	}
 }
-int32_t Listener::getPriority() {
+int32_t Listener::getPriority() const {
 	return _priority;
 }
 

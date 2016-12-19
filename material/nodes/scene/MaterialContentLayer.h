@@ -24,13 +24,12 @@ THE SOFTWARE.
 #define LIBS_MATERIAL_NODES_SCENE_MATERIALCONTENTLAYER_H_
 
 #include "MaterialLayout.h"
-#include "2d/CCLayer.h"
 #include "2d/CCActionInterval.h"
 #include "base/CCMap.h"
 
 NS_MD_BEGIN
 
-class ContentLayer : public cocos2d::Layer {
+class ContentLayer : public cocos2d::Node {
 public:
 	using Transition = cocos2d::FiniteTimeAction;
 
