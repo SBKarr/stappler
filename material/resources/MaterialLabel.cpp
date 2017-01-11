@@ -67,6 +67,12 @@ DynamicLabel::DescriptionStyle Label::getFontStyle(FontType t) {
 		ret.text.opacity = 222;
 		ret.text.textTransform = font::TextTransform::Uppercase;
 		break;
+	case FontType::SmallButton:
+		ret.font.fontSize = 12;
+		ret.font.fontWeight = font::FontWeight::W500;
+		ret.text.opacity = 222;
+		ret.text.textTransform = font::TextTransform::Uppercase;
+		break;
 	case FontType::Tab_Large:
 		ret.font.fontSize = 14;
 		ret.text.opacity = 222;

@@ -62,6 +62,7 @@ bool ForegroundLayer::init() {
 	_snackbar->setColor(material::Color::Grey_900);
 
 	_snackbarLabel = construct<Label>(FontType::Body_2);
+	_snackbarLabel->setLocaleEnabled(true);
 	_snackbarLabel->setAnchorPoint(Vec2(0.0f, 0.0f));
 	_snackbarLabel->setColor(material::Color::Grey_200);
 	_snackbar->addChild(_snackbarLabel, 1);

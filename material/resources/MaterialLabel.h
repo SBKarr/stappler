@@ -36,6 +36,7 @@ enum class FontType {
 	Body_2, // 14sp Regular 87%
 	Caption, // 12sp Regular 54%
 	Button, // 14sp Medium CAPS 87%
+	SmallButton, // 12sp Medium CAPS 87%
 
 	Tab_Large,
 	Tab_Large_Selected,
