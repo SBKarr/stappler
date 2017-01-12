@@ -90,6 +90,10 @@ public:
 	virtual size_t addItem(const NodeFunction &, float size, float pos, int zIndex = 0);
 	virtual size_t addItem(const NodeFunction &, float size, int zIndex = 0);
 
+	virtual size_t addPlaceholder(const Size &size, const Vec2 &pos);
+	virtual size_t addPlaceholder(float size, float pos);
+	virtual size_t addPlaceholder(float size);
+
 	virtual Item *getItem(size_t);
 	virtual Item *getItem(cocos2d::Node *);
 

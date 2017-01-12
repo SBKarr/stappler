@@ -176,6 +176,7 @@ public:
 	void setMaxWidth(uint16_t);
 	void setMaxLines(size_t);
 	void setOpticalAlignment(bool value);
+	void setEmplaceAllChars(bool value);
 	void setFillerChar(char16_t);
 	void setHyphens(HyphenMap *);
 
@@ -224,9 +225,11 @@ protected:
 	void pushLineFiller(bool replaceLastChar = false);
 	bool pushChar(char16_t c);
 	bool pushSpace(bool wrap = true);
+	bool pushTab();
 	bool pushLine(uint16_t first, uint16_t len, bool forceAlign);
 	bool pushLine(bool forceAlign);
 	bool pushLineBreak();
+	bool pushLineBreakChar();
 
 	void updateLineHeight(uint16_t first, uint16_t last);
 
@@ -247,6 +250,7 @@ protected:
 	bool collapseSpaces = true;
 	bool wordWrap = false;
 	bool opticalAlignment = true;
+	bool emplaceAllChars = false;
 
 	char16_t b = 0;
 	char16_t c = 0;

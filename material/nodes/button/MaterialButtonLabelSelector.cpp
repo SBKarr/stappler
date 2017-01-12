@@ -65,7 +65,7 @@ void ButtonLabelSelector::setMenuSource(MenuSource *source) {
 
 void ButtonLabelSelector::setString(const std::string &str) {
 	_label->setString(str);
-	_label->updateLabel();
+	_label->tryUpdateLabel();
 	if (!_icon->isVisible()) {
 		setContentSize(cocos2d::Size(_label->getContentSize().width + 16, _contentSize.height));
 	} else {
@@ -79,7 +79,7 @@ const std::string &ButtonLabelSelector::getString() const {
 void ButtonLabelSelector::setWidth(float value) {
 	if (value != getWidth()) {
 		_label->setWidth(value);
-		_label->updateLabel();
+		_label->tryUpdateLabel();
 		if (!_icon->isVisible()) {
 			setContentSize(cocos2d::Size(_label->getContentSize().width + 16, _contentSize.height));
 		} else {
@@ -101,9 +101,7 @@ const cocos2d::Color3B &ButtonLabelSelector::getLabelColor() const {
 
 void ButtonLabelSelector::setFont(FontType fnt) {
 	_label->setFont(fnt);
-	if (_label->isLabelDirty()) {
-		_label->updateLabel();
-	}
+	_label->tryUpdateLabel();
 	if (!_icon->isVisible()) {
 		setContentSize(cocos2d::Size(_label->getContentSize().width + 16, _contentSize.height));
 	} else {

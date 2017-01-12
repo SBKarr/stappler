@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "SPDefine.h"
 #include "SPScrollView.h"
+#include "SPActions.h"
 
 #include "SPOverscroll.h"
 #include "SPRoundedSprite.h"
@@ -153,7 +154,9 @@ void ScrollView::onOverscroll(float delta) {
 
 void ScrollView::onScroll(float delta, bool finished) {
 	ScrollViewBase::onScroll(delta, finished);
-	updateIndicatorPosition();
+	if (!finished) {
+		updateIndicatorPosition();
+	}
 }
 
 void ScrollView::onTap(int count, const Vec2 &loc) {
@@ -292,6 +295,85 @@ void ScrollView::setAnimationCallback(const AnimationCallback &cb) {
 
 const ScrollView::AnimationCallback &ScrollView::getAnimationCallback() const {
 	return _animationCallback;
+}
+
+void ScrollView::update(float dt) {
+	auto newpos = getScrollPosition();
+	auto factor = std::min(64.0f, _adjustValue);
+
+	switch (_adjust) {
+	case Adjust::Front:
+		newpos += (45.0f + progress(0.0f, 200.0f, factor / 32.0f)) * dt;
+		break;
+	case Adjust::Back:
+		newpos -= (45.0f + progress(0.0f, 200.0f, factor / 32.0f)) * dt;
+		break;
+	default:
+		break;
+	}
+
+	if (newpos != getScrollPosition()) {
+		if (newpos < getScrollMinPosition()) {
+			newpos = getScrollMinPosition();
+		} else if (newpos > getScrollMaxPosition()) {
+			newpos = getScrollMaxPosition();
+		}
+		_root->stopAllActionsByTag("ScrollViewAdjust"_tag);
+		setScrollPosition(newpos);
+	}
+}
+
+void ScrollView::runAdjust(float pos, float factor) {
+	auto scrollPos = getScrollPosition();
+	auto scrollSize = getScrollSize();
+	float newPos = nan();
+	if (pos < scrollPos + 64.0f) {
+		newPos = pos - 64.0f;
+	} else if (pos > scrollPos + scrollSize - 48.0f) {
+		newPos = pos - scrollSize + 48.0f;
+	}
+
+	if (!isnan(newPos)) {
+		if (newPos < getScrollMinPosition()) {
+			newPos = getScrollMinPosition();
+		} else if (newPos > getScrollMaxPosition()) {
+			newPos = getScrollMaxPosition();
+		}
+		if (_adjustValue != newPos) {
+			_adjustValue = newPos;
+			auto dist = fabsf(newPos - scrollPos);
+
+			auto t = 0.15f;
+			if (dist < 20.0f) {
+				t = 0.15f;
+			} else if (dist > 220.0f) {
+				t = 0.45f;
+			} else {
+				t = progress(0.15f, 0.45f, (dist - 20.0f) / 200.0f);
+			}
+			_root->stopAllActionsByTag("ScrollViewAdjust"_tag);
+			auto a = action::callback(cocos2d::EaseQuadraticActionInOut::create(cocos2d::MoveTo::create(t,
+					isVertical()?Vec2(_root->getPositionX(), newPos + _scrollSize):Vec2(-newPos, _root->getPositionY()))),
+					[this] { _adjustValue = nan(); });
+			_root->runAction(a, "ScrollViewAdjust"_tag);
+		}
+	}
+}
+
+void ScrollView::scheduleAdjust(Adjust a, float val) {
+	_adjustValue = val;
+	if (a != _adjust) {
+		_adjust = a;
+		switch (_adjust) {
+		case Adjust::None:
+			unscheduleUpdate();
+			_adjustValue = nan();
+			break;
+		default:
+			scheduleUpdate();
+			break;
+		}
+	}
 }
 
 NS_SP_END

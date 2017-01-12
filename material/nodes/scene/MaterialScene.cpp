@@ -44,6 +44,7 @@ THE SOFTWARE.
 #include "SPDrawPathNode.h"
 #include "SPBitmap.h"
 #include "SPLayer.h"
+#include "SPIME.h"
 
 #include "MaterialBackgroundLayer.h"
 #include "MaterialForegroundLayer.h"
@@ -78,7 +79,7 @@ bool Scene::init() {
 	if (!DynamicBatchScene::init()) {
 		return false;
 	}
-
+	//cocos2d::Director::getInstance()->setAnimationInterval(0.2f);
 	auto l = construct<EventListener>();
 	l->onEvent(stappler::Screen::onOrientation, [this] (const stappler::Event *) {
 		layoutSubviews();
@@ -434,7 +435,9 @@ void Scene::updateCapturedContent() {
 }
 
 void Scene::onBackKeyPressed() {
-	if (_foreground->isActive()) {
+	if (stappler::ime::isInputEnabled()) {
+		stappler::ime::cancel();
+	} else if (_foreground->isActive()) {
 		_foreground->clear();
 	} else if (_navigation->isNodeEnabled()) {
 		_navigation->hide();

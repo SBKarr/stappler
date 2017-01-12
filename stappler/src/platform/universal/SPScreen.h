@@ -57,21 +57,21 @@ public:
 	static Screen *getInstance();
 
 	/* Device screen size in pixels */
-    const cocos2d::Size &getScreenSize() const { return _screenSize; }
+    const Size &getScreenSize() const { return _screenSize; }
 	/* Current appliation viewport (design resolution) */
-	const cocos2d::Size &getViewportSize() const { return _viewportSize; }
-	const cocos2d::Size &getDesignResolutionSize() const { return _designResolution; }
-	const cocos2d::Size &getFrameSize() const { return _frameSize; }
+	const Size &getViewportSize() const { return _viewportSize; }
+	const Size &getDesignResolutionSize() const { return _designResolution; }
+	const Size &getFrameSize() const { return _frameSize; }
 
 	float getRealScale() const { return _realScale; }
-	const cocos2d::Size &getRealSize() const { return _realSize; }
-	cocos2d::Size getCurrentRealSize() const;
+	const Size &getRealSize() const { return _realSize; }
+	Size getCurrentRealSize() const;
 
 	int getDPI();
 	float getSizeInInches();
 
 	float getDensity() const { return _density; }
-    const cocos2d::Size &getScreenSizeInDP() const { return _screenSizeInDP; }
+    const Size &getScreenSizeInDP() const { return _screenSizeInDP; }
     DeviceType getDeviceType() const { return _device; }
     inline bool deviceIsTablet() const { return (int)_device >= (int)DeviceType::SmallTablet; }
 
@@ -107,19 +107,19 @@ public:
 
 	void update(float dt);
 
-	void setNextFrameSize(const cocos2d::Size &size);
+	void setNextFrameSize(const Size &size);
 protected:
 	Screen();
 
     void updateDesignResolution(const ScreenOrientation &o);
 	void updateOrientation(const ScreenOrientation &o, cocos2d::Scene *pScene = nullptr);
 
-	cocos2d::Size _viewportSize;
-	cocos2d::Size _screenSize;
-	cocos2d::Size _frameSize;
-	cocos2d::Size _designResolution;
-	cocos2d::Size _realSize;
-	cocos2d::Size _nextFrameSize;
+	Size _viewportSize;
+	Size _screenSize;
+	Size _frameSize;
+	Size _designResolution;
+	Size _realSize;
+	Size _nextFrameSize;
 
     ScreenOrientation _orientation;
 
@@ -132,7 +132,7 @@ protected:
 	float _transitionTime = 0.0f;
 
 	float _density = 1.0f;
-	cocos2d::Size _screenSizeInDP;
+	Size _screenSizeInDP;
 	DeviceType _device;
 };
 

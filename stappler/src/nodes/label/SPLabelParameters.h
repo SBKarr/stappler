@@ -313,6 +313,7 @@ protected:
 	size_t _maxChars = 0;
 
 	bool _opticalAlignment = false;
+	bool _emplaceAllChars = false;
 	char16_t _fillerChar = u'…';
 };
 

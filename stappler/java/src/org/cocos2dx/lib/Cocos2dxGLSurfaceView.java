@@ -37,6 +37,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowManager;
+import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.TextView;
 
@@ -133,7 +134,7 @@ public class Cocos2dxGLSurfaceView extends GLSurfaceView {
 					}
 				} else {
 					setKeyboardEnabled(true);
-					onKeyboardNotification(true, getWidth(), height);
+					onKeyboardNotification(true, getWidth(), height - statusBar);
 					if (!_inputEnabled) {
 						onInputEnabled(true);
 						_inputEnabled = true;
@@ -162,8 +163,12 @@ public class Cocos2dxGLSurfaceView extends GLSurfaceView {
 	// Getter & Setter
 	// ===========================================================
 
+	protected boolean _protectedEnvironment = false;
+	protected boolean _shouldUpdateString = false;
+
 	public void runInput(String text, int cursorStart, int cursorLen) {
 		if (mCocos2dxEditText != null) {
+			_protectedEnvironment = true;
 			if (!isFullScreenEdit()) {
 				_inputEnabled = true;
 				onInputEnabled(true);
@@ -184,26 +189,40 @@ public class Cocos2dxGLSurfaceView extends GLSurfaceView {
 			
 			final InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
 			imm.showSoftInput(mCocos2dxEditText, 0);
+			_protectedEnvironment = false;
+			if (_shouldUpdateString) {
+				onTextChanged(mCocos2dxEditText.getText().toString());
+			}
 		}
 	}
 	
 	public void updateInput(String text, int cursorStart, int cursorLen) {
 		if (mCocos2dxEditText != null) {
+			_protectedEnvironment = true;
 			mCocos2dxEditText.setText(text);
 			if (cursorLen == 0) {
 				mCocos2dxEditText.setSelection(cursorStart);
 			} else {
 				mCocos2dxEditText.setSelection(cursorStart, cursorStart + cursorLen);
 			}
+			_protectedEnvironment = false;
+			if (_shouldUpdateString) {
+				onTextChanged(mCocos2dxEditText.getText().toString());
+			}
 		}
 	}
 
 	public void updateCursor(int cursorStart, int cursorLen) {
 		if (mCocos2dxEditText != null) {
+			_protectedEnvironment = true;
 			if (cursorLen == 0) {
 				mCocos2dxEditText.setSelection(cursorStart);
 			} else {
 				mCocos2dxEditText.setSelection(cursorStart, cursorStart	+ cursorLen);
+			}
+			_protectedEnvironment = false;
+			if (_shouldUpdateString) {
+				onTextChanged(mCocos2dxEditText.getText().toString());
 			}
 		}
 	}
@@ -227,15 +246,20 @@ public class Cocos2dxGLSurfaceView extends GLSurfaceView {
 	protected native void onCancelInput();
 
 	public void onTextChanged(final String pText) {
-		boolean isFullscreen = isFullScreenEdit();
-		if (isFullscreen) {
-			onInputEnabled(true);
-		}
-		final int start = this.mCocos2dxEditText.getSelectionStart();
-		final int end = this.mCocos2dxEditText.getSelectionEnd();
-		nativeTextChanged(pText, start, end - start);
-		if (isFullscreen) {
-			onInputEnabled(false);
+		if (!_protectedEnvironment) {
+			boolean isFullscreen = isFullScreenEdit();
+			if (isFullscreen) {
+				onInputEnabled(true);
+			}
+			final int start = this.mCocos2dxEditText.getSelectionStart();
+			final int end = this.mCocos2dxEditText.getSelectionEnd();
+			nativeTextChanged(pText, start, end - start);
+			if (isFullscreen) {
+				onInputEnabled(false);
+			}
+			_shouldUpdateString = false;
+		} else {
+			_shouldUpdateString = true;
 		}
 	}
 
@@ -271,6 +295,7 @@ public class Cocos2dxGLSurfaceView extends GLSurfaceView {
 	public void setCocos2dxEditText(final Cocos2dxEditText pCocos2dxEditText) {
 		this.mCocos2dxEditText = pCocos2dxEditText;
 		if (null != this.mCocos2dxEditText && null != Cocos2dxGLSurfaceView.sCocos2dxTextInputWraper) {
+			this.mCocos2dxEditText.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI);
 			this.mCocos2dxEditText.setOnEditorActionListener(Cocos2dxGLSurfaceView.sCocos2dxTextInputWraper);
 			this.mCocos2dxEditText.setCocos2dxGLSurfaceView(this);
 			this.requestFocus();

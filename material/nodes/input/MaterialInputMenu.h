@@ -43,6 +43,8 @@ public:
 	virtual void updateMenu();
 
 protected:
+	virtual void onClipboard(bool);
+
 	bool _isCopyMode = false;
 	bool _menuDirty = true;
 

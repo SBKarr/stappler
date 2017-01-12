@@ -146,6 +146,14 @@ void Listener::cancel() {
 	}
 }
 
+void Listener::setExclusive() {
+	auto ed = cocos2d::Director::getInstance()->getEventDispatcher();
+	auto touches = _touchListener->getClaimedTouches();
+	for (auto &it : touches) {
+		ed->setTouchListenerExclusive(_touchListener, it);
+	}
+}
+
 void Listener::setSwallowTouches(bool value) {
 	if (_touchListener->isSwallowTouches() != value) {
 		_touchListener->setSwallowTouches(value);

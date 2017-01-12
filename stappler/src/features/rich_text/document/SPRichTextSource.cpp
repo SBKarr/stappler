@@ -292,9 +292,9 @@ Rc<font::Source> Source::makeSource(AssetMap && map) {
 	if (_document) {
 		FontFaceMap faceMap(_fontFaces);
 		mergeFontFace(faceMap, _document->getFontFaces());
-		return Rc<font::Source>::create(std::move(faceMap), _callback, _scale, SearchDirs(_searchDir), std::move(map));
+		return Rc<font::Source>::create(std::move(faceMap), _callback, _scale, SearchDirs(_searchDir), std::move(map), false);
 	}
-	return Rc<font::Source>::create(FontFaceMap(_fontFaces), _callback, _scale, SearchDirs(_searchDir), std::move(map));
+	return Rc<font::Source>::create(FontFaceMap(_fontFaces), _callback, _scale, SearchDirs(_searchDir), std::move(map), false);
 }
 
 Rc<Document> Source::openDocument(const String &path, const String &ct) {

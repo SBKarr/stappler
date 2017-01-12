@@ -36,11 +36,6 @@ THE SOFTWARE.
 #include "2d/CCActionInterval.h"
 #include "2d/CCTransition.h"
 
-using cocos2d::Size;
-using cocos2d::Vec2;
-using cocos2d::Vec3;
-using cocos2d::Vec4;
-
 NS_SP_BEGIN
 
 SP_DECLARE_EVENT_CLASS(Screen, onOrientation);
@@ -71,11 +66,11 @@ Screen::Screen() {
 	}
 
 	_realScale = scale;
-	_realSize = cocos2d::Size(_screenSize.width / scale, _screenSize.height / scale);
+	_realSize = Size(_screenSize.width / scale, _screenSize.height / scale);
 
 	_density = platform::device::_density();
 
-	_screenSizeInDP = cocos2d::Size(_screenSize.width / _density, _screenSize.height / _density);
+	_screenSizeInDP = Size(_screenSize.width / _density, _screenSize.height / _density);
 
 	if (_screenSizeInDP.height < 426.0f) {
 		_device = DeviceType::SmallPhone;
@@ -90,8 +85,8 @@ Screen::Screen() {
 	}
 }
 
-cocos2d::Size Screen::getCurrentRealSize() const {
-	return cocos2d::Size(_designResolution.width / _realScale, _designResolution.height / _realScale);
+Size Screen::getCurrentRealSize() const {
+	return Size(_designResolution.width / _realScale, _designResolution.height / _realScale);
 }
 
 cocos2d::Scene * Screen_getCurrentScene() {
@@ -116,7 +111,7 @@ void Screen::initScreenResolution() {
 
 void Screen::updateDesignResolution(const ScreenOrientation &o) {
 	cocos2d::GLView *view = cocos2d::Director::getInstance()->getOpenGLView();
-	cocos2d::Size currentFrameSize = view->getFrameSize();
+	Size currentFrameSize = view->getFrameSize();
 
     if (o.isLandscape()) {
 		if (currentFrameSize.width < currentFrameSize.height) {
@@ -236,7 +231,7 @@ void Screen::update(float dt) {
 		}
 	}
 
-	if (!_nextFrameSize.equals(cocos2d::Size::ZERO)) {
+	if (!_nextFrameSize.equals(Size::ZERO)) {
 	    //view->_screenSize = Size(_nextFrameSize.width, _nextFrameSize.height);
 		auto o = stappler::Screen::getInstance()->retriveCurrentOrientation();
 
@@ -246,15 +241,15 @@ void Screen::update(float dt) {
 	    } else {
 			stappler::Screen::getInstance()->setOrientation(o);
 	    }
-		_nextFrameSize = cocos2d::Size::ZERO;
+		_nextFrameSize = Size::ZERO;
 	}
 
-	if (!_isInTransition && _transitionTime == 0.0f && _nextFrameSize.equals(cocos2d::Size::ZERO)) {
+	if (!_isInTransition && _transitionTime == 0.0f && _nextFrameSize.equals(Size::ZERO)) {
 		cocos2d::Director::getInstance()->getScheduler()->unscheduleUpdate(this);
 	}
 }
 
-void Screen::setNextFrameSize(const cocos2d::Size &size) {
+void Screen::setNextFrameSize(const Size &size) {
 	cocos2d::Director::getInstance()->getScheduler()->scheduleUpdate(this, 0, false);
 	_nextFrameSize = size;
 }

@@ -63,7 +63,7 @@ SP_DECLARE_EVENT_CLASS(Device, onDeviceToken);
 SP_DECLARE_EVENT_CLASS(Device, onClipboard);
 SP_DECLARE_EVENT_CLASS(Device, onNetwork);
 SP_DECLARE_EVENT_CLASS(Device, onBackground);
-SP_DECLARE_EVENT_CLASS(Device, onDownloadVersionFailed);
+SP_DECLARE_EVENT_CLASS(Device, onFocus);
 SP_DECLARE_EVENT_CLASS(Device, onUrlOpened);
 SP_DECLARE_EVENT_CLASS(Device, onError);
 SP_DECLARE_EVENT_CLASS(Device, onRemoteNotification);
@@ -174,7 +174,7 @@ void Device::registerDeviceToken(const uint8_t *data, size_t len) {
     registerDeviceToken(base16::encode(data, len));
 }
 
-void Device::registerDeviceToken(const std::string &data) {
+void Device::registerDeviceToken(const String &data) {
 	_deviceToken = data;
 	if (!_deviceToken.empty()) {
 		onDeviceToken(this, _deviceToken);
@@ -219,15 +219,35 @@ void Device::willEnterForeground() {
 	}
 }
 
-void Device::goToUrl(const std::string &url, bool external) {
+void Device::onFocusGained() {
+	if (!_hasFocus) {
+		_hasFocus = true;
+		onFocus(this, true);
+
+		bool cb = platform::clipboard::_isAvailable();
+		if (_clipboardAvailable != cb) {
+			_clipboardAvailable = cb;
+			onClipboard(this, _clipboardAvailable);
+		}
+	}
+}
+
+void Device::onFocusLost() {
+	if (_hasFocus) {
+		_hasFocus = false;
+		onFocus(this, false);
+	}
+}
+
+void Device::goToUrl(const String &url, bool external) {
 	onUrlOpened(this, url);
 	platform::interaction::_goToUrl(url, external);
 }
-void Device::makePhoneCall(const std::string &number) {
+void Device::makePhoneCall(const String &number) {
 	onUrlOpened(this, number);
 	platform::interaction::_makePhoneCall(number);
 }
-void Device::mailTo(const std::string &address) {
+void Device::mailTo(const String &address) {
 	onUrlOpened(this, address);
 	platform::interaction::_mailTo(address);
 }
@@ -242,14 +262,14 @@ std::pair<uint64_t, uint64_t> Device::getTotalDiskSpace() {
 uint64_t Device::getApplicationDiskSpace() {
 	auto path = filesystem::writablePath(getBundleName());
 	uint64_t size = 0;
-	filesystem::ftw(path, [&size] (const std::string &path, bool isFile) {
+	filesystem::ftw(path, [&size] (const String &path, bool isFile) {
 		if (isFile) {
 			size += filesystem::size(path);
 		}
 	});
 
 	path = filesystem::cachesPath(getBundleName());
-	filesystem::ftw(path, [&size] (const std::string &path, bool isFile) {
+	filesystem::ftw(path, [&size] (const String &path, bool isFile) {
 		if (isFile) {
 			size += filesystem::size(path);
 		}
@@ -261,7 +281,7 @@ uint64_t Device::getApplicationDiskSpace() {
 int64_t Device::getApplicationVersionCode() {
 	static int64_t version = 0;
 	if (version == 0) {
-		std::string str(_applicationVersion);
+		String str(_applicationVersion);
 		int major = 0, middle = 0, minor = 0, state = 0;
 
 		for (char c : str) {
@@ -286,7 +306,7 @@ int64_t Device::getApplicationVersionCode() {
 	return version;
 }
 
-void Device::notification(const std::string &title, const std::string &text) {
+void Device::notification(const String &title, const String &text) {
 	platform::interaction::_notification(title, text);
 }
 
@@ -294,19 +314,19 @@ void Device::onDirectorStarted() {
 	platform::device::_onDirectorStarted();
 }
 
-void Device::setLaunchUrl(const std::string &url) {
+void Device::setLaunchUrl(const String &url) {
     _launchUrl = url;
 }
 
 // called, when we should open recieved url with launched application
 // produce onUrl event, url can be read from event or by getLaunchUrl()
-void Device::processLaunchUrl(const std::string &url) {
+void Device::processLaunchUrl(const String &url) {
     _launchUrl = url;
     stappler::log::format("Device", "url: %s", url.c_str());
     onLaunchUrl(this, url);
 }
 
-const std::string &Device::getLaunchUrl() const {
+const String &Device::getLaunchUrl() const {
     return _launchUrl;
 }
 
@@ -326,10 +346,10 @@ void Device::log(const char *str, size_t n) {
 bool Device::isClipboardAvailable() {
 	return _clipboardAvailable;
 }
-std::string Device::getStringFromClipboard() {
+String Device::getStringFromClipboard() {
 	return platform::clipboard::_getString();
 }
-void Device::copyStringToClipboard(const std::string &value) {
+void Device::copyStringToClipboard(const String &value) {
 	platform::clipboard::_copyString(value);
 	bool v = platform::clipboard::_isAvailable();
 	if (_clipboardAvailable != v) {
@@ -342,7 +362,7 @@ void Device::keyBackClicked() {
 	platform::interaction::_backKey();
 }
 
-void Device::error(const std::string &errorHandle, const std::string &errorMessage) {
+void Device::error(const String &errorHandle, const String &errorMessage) {
 
 }
 

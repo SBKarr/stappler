@@ -71,6 +71,17 @@ public:
 	virtual void setAnimationCallback(const AnimationCallback &);
 	virtual const AnimationCallback &getAnimationCallback() const;
 
+	virtual void update(float dt) override;
+
+	enum class Adjust {
+		None,
+		Front,
+		Back
+	};
+
+	virtual void runAdjust(float pos, float factor = 1.0f);
+	virtual void scheduleAdjust(Adjust, float value);
+
 protected:
 	virtual void onOverscroll(float delta) override;
 	virtual void onScroll(float delta, bool finished) override;
@@ -91,6 +102,9 @@ protected:
 
 	TapCallback _tapCallback = nullptr;
 	AnimationCallback _animationCallback = nullptr;
+
+	Adjust _adjust = Adjust::None;
+	float _adjustValue = 0.0f;
 };
 
 NS_SP_END

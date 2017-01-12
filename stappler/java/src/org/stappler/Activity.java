@@ -542,6 +542,6 @@ public class Activity extends Cocos2dxActivity {
 	}
 	
     static {
-         System.loadLibrary("apps");
+         System.loadLibrary("application");
     }
 }

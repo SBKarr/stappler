@@ -34,14 +34,20 @@ enum class FontType {
 	Subhead, // 16sp Regular 87%
 	Body_1, // 14sp Medium 87%
 	Body_2, // 14sp Regular 87%
+	BodySmall, // 12sp Regular 87%
 	Caption, // 12sp Regular 54%
 	Button, // 14sp Medium CAPS 87%
-	SmallButton, // 12sp Medium CAPS 87%
+	ButtonSmall, // 12sp Medium CAPS 87%
+
+	// Input = Subhead
+	InputDense, // 13sp Regular 87%
 
 	Tab_Large,
 	Tab_Large_Selected,
 	Tab_Small,
 	Tab_Small_Selected,
+
+	Input = Subhead, // 16sp Regular 87%
 
 	System_Headline = Headline, // 24sp Regular 87%
 	System_Title = Title, // 20sp Medium 87%

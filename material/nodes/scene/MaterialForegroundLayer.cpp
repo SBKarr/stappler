@@ -231,7 +231,7 @@ void ForegroundLayer::setSnackbarStringInternal(const String &str, const Color &
 	_snackbarLabel->setString(str);
 	_snackbarLabel->setWidth(_snackbar->getContentSize().width - 48.0f);
 	_snackbarLabel->setColor(color);
-	_snackbarLabel->updateLabel();
+	_snackbarLabel->tryUpdateLabel();
 	_snackbarLabel->setPosition(Vec2(24.0f, 16.0f));
 	_snackbar->setContentSize(Size(_snackbar->getContentSize().width, _snackbarLabel->getContentSize().height + 32.0f));
 	_snackbar->setPosition(Size(_contentSize.width / 2, -_snackbar->getContentSize().height));

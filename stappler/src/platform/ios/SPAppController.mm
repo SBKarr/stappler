@@ -197,7 +197,7 @@ NS_SP_PLATFORM_END
 #pragma mark Memory management
 
 - (void)applicationDidReceiveMemoryWarning:(UIApplication *)application {
-	cocos2d::Director::getInstance()->purgeCachedData();
+	cocos2d::Application::getInstance()->applicationDidReceiveMemoryWarning();
 }
 
 @end

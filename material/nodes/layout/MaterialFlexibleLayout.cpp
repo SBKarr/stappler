@@ -32,6 +32,8 @@ THE SOFTWARE.
 #include "SPLayer.h"
 #include "SPScreen.h"
 #include "SPActions.h"
+#include "SPEventListener.h"
+#include "SPIME.h"
 
 NS_MD_BEGIN
 
@@ -105,8 +107,8 @@ void FlexibleLayout::onContentSizeDirty() {
 
 	if (_baseNode) {
 		_baseNode->setAnchorPoint(cocos2d::Vec2(0, 0));
-		_baseNode->setPosition(0, 0);
-		_baseNode->setContentSize(_contentSize);
+		_baseNode->setPosition(0, 0 + _keyboardSize.height);
+		_baseNode->setContentSize(Size(_contentSize.width, _contentSize.height - _keyboardSize.height));
 		if (_baseNode->isVertical()) {
 			_baseNode->setPadding(padding.setTop(getCurrentFlexibleMax() + _baseNodePadding));
 			_baseNode->setOverscrollFrontOffset(getCurrentFlexibleHeight());
@@ -281,7 +283,7 @@ void FlexibleLayout::setFlexibleLevel(float value) {
 	auto size = _contentSize;
 	if (flexSize >= _flexibleMaxHeight && _statusBarTracked) {
 		statusBar = (flexSize - _flexibleMaxHeight);
-		_statusBar->setContentSize(cocos2d::Size(_contentSize.width, statusBar));
+		_statusBar->setContentSize(Size(_contentSize.width, statusBar));
 		size.height -= statusBar;
 		flexSize = _flexibleMaxHeight;
 		_statusBar->setVisible(true);
@@ -290,7 +292,7 @@ void FlexibleLayout::setFlexibleLevel(float value) {
 	}
 
 	_flexibleNode->setPosition(0, size.height);
-	_flexibleNode->setContentSize(cocos2d::Size(size.width, flexSize));
+	_flexibleNode->setContentSize(Size(size.width, flexSize));
 
 	_flexibleLevel = value;
 	if (_baseNode && _baseNode->isVertical()) {
@@ -408,6 +410,44 @@ void FlexibleLayout::onStatusBarHeight(float val) {
 	} else {
 		_statusBarHeight = nan();
 	}
+}
+
+void FlexibleLayout::setKeyboardTracked(bool value) {
+	if (_trackKeyboard != value) {
+		_trackKeyboard = value;
+		_keyboardEnabled = false;
+		if (!_keyboardSize.equals(Size::ZERO)) {
+			_keyboardSize = Size::ZERO;
+			_contentSizeDirty = true;
+		}
+
+		if (_trackKeyboard) {
+			_keyboardEventListener = construct<EventListener>();
+			_keyboardEventListener->onEvent(ime::onKeyboard, [this] (const Event *ev) {
+				onKeyboard(ev->getBoolValue(), ime::getKeyboardRect(), ime::getKeyboardDuration());
+			});
+			addComponent(_keyboardEventListener);
+		} else if (_keyboardEventListener) {
+			removeComponent(_keyboardEventListener);
+			_keyboardEventListener = nullptr;
+		}
+	}
+}
+bool FlexibleLayout::isKeyboardTracked() const {
+	return _trackKeyboard;
+}
+
+void FlexibleLayout::onKeyboard(bool enabled, const Rect &rect, float duration) {
+	if (_trackKeyboard && enabled) {
+		_keyboardSize = rect.size / screen::density();
+		_contentSizeDirty = true;
+		_keyboardEnabled = true;
+	} else {
+		_keyboardSize = Size::ZERO;
+		_contentSizeDirty = true;
+		_keyboardEnabled = false;
+	}
+	log::format("Keyboard", "%d %f %f - %f", enabled, rect.size.width, rect.size.height, duration);
 }
 
 NS_MD_END

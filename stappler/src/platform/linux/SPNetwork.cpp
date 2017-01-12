@@ -33,9 +33,9 @@ NS_SP_PLATFORM_BEGIN
 
 namespace network {
 	bool _init = false;
-	std::function<void(bool isOnline)> _callback;
+	Function<void(bool isOnline)> _callback;
 
-	void _setNetworkCallback(std::function<void(bool isOnline)> callback) {
+	void _setNetworkCallback(const Function<void(bool isOnline)> &callback) {
 		_callback = callback;
 	}
 	bool _isNetworkOnline() {

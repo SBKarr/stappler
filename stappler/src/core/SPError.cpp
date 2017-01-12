@@ -45,21 +45,6 @@ THE SOFTWARE.
 NS_SP_BEGIN
 
 namespace node {
-	bool isTouched(cocos2d::Node *node, const cocos2d::Vec2 &location, float padding) {
-#ifndef SP_RESTRICT
-		const cocos2d::Vec2 &point = node->convertToNodeSpace(location);
-		if (point.x > -padding && point.y > -padding
-				&& point.x < node->getContentSize().width + padding
-				&& point.y < node->getContentSize().height + padding) {
-			return true;
-		} else {
-			return false;
-		}
-#else
-		return false;
-#endif
-	}
-
 	data::Value dumpNode(cocos2d::Node *node, int depth) {
 		data::Value val;
 		val.setBool(node->isVisible(), "visible");

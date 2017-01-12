@@ -64,7 +64,7 @@ namespace network {
 		});
 	}
 
-	void _setNetworkCallback(std::function<void(bool isOnline)> callback) {
+	void _setNetworkCallback(const Function<void(bool isOnline)> &callback) {
 		if (!_init) {
 			struct sockaddr_in zeroAddress;
 			bzero(&zeroAddress, sizeof(zeroAddress));

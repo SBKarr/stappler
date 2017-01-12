@@ -130,14 +130,10 @@ stappler::EventHeader stappler::WebViewHandle::onClosed("WebView", "WebView.onCl
     if (self = [super initWithNibName:nil bundle:nil]) {
         viewTimer = [[ReaderTimer alloc] init];
 		isExternal = external;
+        
+        theURL = url;
+        isVideo = NO;
 
-        if ([url.host hasPrefix:@"www.youtube"] || [url.host hasPrefix:@"youtube"] || [url.host hasPrefix:@"youtu.be"]) {
-            theURL = [[NSURL alloc] initWithScheme:@"https" host:@"www.youtube-nocookie.com" path:[NSString stringWithFormat:@"%@?rel=0&autoplay=1&showsearch=0&showinfo=0", url.path]];
-            isVideo = YES;
-        } else {
-            theURL = url;
-            isVideo = NO;
-        }
 		handle = nullptr;
     }
     return self;

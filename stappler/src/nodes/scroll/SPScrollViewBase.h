@@ -98,6 +98,12 @@ public:
 	virtual cocos2d::Node * getFrontNode() const;
 	virtual cocos2d::Node * getBackNode() const;
 
+	virtual Vec2 convertFromScrollableSpace(const Vec2 &);
+	virtual Vec2 convertToScrollableSpace(const Vec2 &);
+
+	virtual Vec2 convertFromScrollableSpace(cocos2d::Node *, const Vec2 &);
+	virtual Vec2 convertToScrollableSpace(cocos2d::Node *, const Vec2 &);
+
 public: // internal, use with care
 	virtual float getScrollMinPosition() const; // NaN by default
 	virtual float getScrollMaxPosition() const; // NaN by default
@@ -115,6 +121,8 @@ public: // internal, use with care
 
 	virtual void setScrollDirty(bool value);
 	virtual void updateScrollBounds();
+
+	virtual void resizeNode(cocos2d::Node *, float newSize);
 
 protected: // common overload points
 	virtual void onDelta(float delta);

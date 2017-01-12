@@ -39,8 +39,7 @@ namespace interaction {
 		} else if (urlObj) {
             
             if ([urlObj.host hasPrefix:@"www.youtube"] || [urlObj.host hasPrefix:@"youtube"] || [urlObj.host hasPrefix:@"youtu.be"]) {
-                NSURL *theURL = [[NSURL alloc] initWithScheme:@"https" host:@"www.youtube-nocookie.com" path:[NSString stringWithFormat:@"%@?rel=0&autoplay=1&showsearch=0&showinfo=0", urlObj.path]];
-                [[UIApplication sharedApplication] openURL:theURL];
+                [[UIApplication sharedApplication] openURL:urlObj];
             } else {
                 SPWebViewController *wvc = [[SPWebViewController alloc] initWithURL:urlObj isExternal:external?YES:NO];
                 UIViewController *vc;

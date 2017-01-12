@@ -77,6 +77,8 @@ public: // options
 
 	void cancel();
 
+	void setExclusive();
+
 public: // overrides
 	virtual ~Listener();
 	virtual bool init() override;

@@ -26,12 +26,21 @@ THE SOFTWARE.
 #include "Material.h"
 #include "MaterialInputMenu.h"
 
+#include "SPEventListener.h"
+#include "SPDevice.h"
+
 NS_MD_BEGIN
 
 bool InputMenu::init(const Callback &cut, const Callback &copy, const Callback &paste) {
 	if (!MaterialNode::init()) {
 		return false;
 	}
+
+	auto l = Rc<EventListener>::create();
+	l->onEvent(Device::onClipboard, [this] (const Event *ev) {
+		onClipboard(ev->getBoolValue());
+	});
+	addComponent(l);
 
 	_buttonCut = construct<ButtonLabel>(FontType::Button, cut);
 	_buttonCut->setStyle(Button::Style::FlatBlack);
@@ -66,6 +75,8 @@ bool InputMenu::init(const Callback &cut, const Callback &copy, const Callback &
 	_buttonExtra->setAnchorPoint(Vec2(0.0f, 0.0f));
 	_buttonExtra->setContentSize(Size(_buttonPaste->getContentSize().height, _buttonPaste->getContentSize().height));
 	addChild(_buttonExtra);
+
+	onClipboard(Device::getInstance()->isClipboardAvailable());
 
 	setShadowZIndex(1.5f);
 
@@ -139,6 +150,10 @@ void InputMenu::setCopyMode(bool value) {
 }
 bool InputMenu::isCopyMode() const {
 	return _isCopyMode;
+}
+
+void InputMenu::onClipboard(bool value) {
+	_buttonPaste->setEnabled(value);
 }
 
 NS_MD_END

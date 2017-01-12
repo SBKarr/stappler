@@ -58,7 +58,7 @@ void ButtonLabel::onContentSizeDirty() {
 void ButtonLabel::setString(const std::string &str) {
 	_label->setString(str);
 	if (_label->isLabelDirty()) {
-		_label->updateLabel();
+		_label->tryUpdateLabel();
 		updatePadding();
 	}
 }
@@ -80,7 +80,7 @@ const Padding &ButtonLabel::getLabelPadding() const {
 void ButtonLabel::setWidth(float value) {
 	if (value != getWidth()) {
 		_label->setWidth(value);
-		_label->updateLabel();
+		_label->tryUpdateLabel();
 		updatePadding();
 	}
 }
@@ -96,16 +96,17 @@ const cocos2d::Color3B &ButtonLabel::getLabelColor() const {
 }
 
 void ButtonLabel::setLabelOpacity(uint8_t value) {
-	_label->setOpacity(value);
+	_labelOpacity = value;
+	_label->setOpacity(isEnabled() ? value : (value / 2));
 }
 uint8_t ButtonLabel::getLabelOpacity() {
-	return _label->getOpacity();
+	return _labelOpacity;
 }
 
 void ButtonLabel::setFont(FontType fnt) {
 	_label->setFont(fnt);
 	if (_label->isLabelDirty()) {
-		_label->updateLabel();
+		_label->tryUpdateLabel();
 		updatePadding();
 	}
 }
@@ -117,6 +118,12 @@ Label *ButtonLabel::getlabel() const {
 void ButtonLabel::updatePadding() {
 	setContentSize(Size(_label->getContentSize().width + _labelPadding.horizontal(),
 			_label->getFontHeight() / _label->getDensity() + _labelPadding.vertical()));
+}
+void ButtonLabel::updateEnabled() {
+	Button::updateEnabled();
+	if (_label) {
+		_label->setOpacity(isEnabled() ? _labelOpacity : (_labelOpacity / 2));
+	}
 }
 
 NS_MD_END

@@ -70,11 +70,16 @@ public:
 	virtual void onPush(ContentLayer *l, bool replace) override;
 	virtual void onForegroundTransitionBegan(ContentLayer *l, Layout *overlay) override;
 
+	virtual void setKeyboardTracked(bool);
+	virtual bool isKeyboardTracked() const;
+
 protected:
 	float getStatusBarHeight() const;
 	void onStatusBarHeight(float);
 
 	static constexpr int AutoCompleteTag() { return 5; }
+
+	virtual void onKeyboard(bool enabled, const Rect &, float duration);
 
 	bool _flexibleAutoComplete = true;
 	float _flexibleLevel = 1.0f;
@@ -90,6 +95,11 @@ protected:
 	stappler::Layer *_statusBar = nullptr;
 	bool _statusBarTracked = false;
 	float _statusBarHeight = nan();
+
+	Size _keyboardSize;
+	EventListener *_keyboardEventListener = nullptr;
+	bool _trackKeyboard = false;
+	bool _keyboardEnabled = false;
 };
 
 NS_MD_END

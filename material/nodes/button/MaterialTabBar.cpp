@@ -101,7 +101,7 @@ void TabBarButton::onContentSizeDirty() {
 		_label->setVisible(true);
 		_label->setFont(_tabSelected?FontType::Tab_Large_Selected:FontType::Tab_Large);
 		_label->setWidth(_contentSize.width - (_wrapped?32.0f:16.0f) - (_floatingMenuSource?16.0f:0.0f));
-		_label->updateLabel();
+		_label->tryUpdateLabel();
 		if (_label->getLinesCount() > 1) {
 			_label->setFont(_tabSelected?FontType::Tab_Small_Selected:FontType::Tab_Small);
 		}
@@ -129,7 +129,7 @@ void TabBarButton::onContentSizeDirty() {
 		_label->setWidth(_contentSize.width - (_wrapped?32.0f:16.0f));
 		_label->setAnchorPoint(Vec2(0.5f, 0.5f));
 		_label->setPosition(Vec2(_contentSize.width / 2.0f, _contentSize.height + 36.0f));
-		_label->updateLabel();
+		_label->tryUpdateLabel();
 		if (_label->getLinesCount() > 1) {
 			_label->setFont(_tabSelected?FontType::Tab_Small_Selected:FontType::Tab_Small);
 		}

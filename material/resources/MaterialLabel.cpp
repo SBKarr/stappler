@@ -57,6 +57,10 @@ DynamicLabel::DescriptionStyle Label::getFontStyle(FontType t) {
 		ret.font.fontSize = 14;
 		ret.text.opacity = 222;
 		break; // 14sp Regular 87%
+	case FontType::BodySmall:
+		ret.font.fontSize = 12;
+		ret.text.opacity = 222;
+		break; // 12sp Regular 87%
 	case FontType::Caption:
 		ret.font.fontSize = 12;
 		ret.text.opacity = 138;
@@ -67,12 +71,16 @@ DynamicLabel::DescriptionStyle Label::getFontStyle(FontType t) {
 		ret.text.opacity = 222;
 		ret.text.textTransform = font::TextTransform::Uppercase;
 		break;
-	case FontType::SmallButton:
+	case FontType::ButtonSmall:
 		ret.font.fontSize = 12;
 		ret.font.fontWeight = font::FontWeight::W500;
 		ret.text.opacity = 222;
 		ret.text.textTransform = font::TextTransform::Uppercase;
 		break;
+	case FontType::InputDense:
+		ret.font.fontSize = 13;
+		ret.text.opacity = 222;
+		break; // 13sp Regular 87%
 	case FontType::Tab_Large:
 		ret.font.fontSize = 14;
 		ret.text.opacity = 222;

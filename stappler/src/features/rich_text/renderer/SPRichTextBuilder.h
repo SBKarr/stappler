@@ -36,7 +36,7 @@ public:
 	using Formatter = font::Formatter;
 
 	Builder(Document *, const MediaParameters &, font::Source *set, const Vector<String> & = Vector<String>());
-	~Builder();
+	virtual ~Builder();
 
 	void setHyphens(font::HyphenMap *);
 	void setMargin(const Margin &);

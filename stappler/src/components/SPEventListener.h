@@ -45,11 +45,13 @@ public:
 
 	virtual void onEventRecieved(const Event *ev, const Callback &);
 
+	virtual void clear();
+
 	EventHandlerNode * onEvent(const EventHeader &h, const Callback &, bool destroyAfterEvent = false);
 	EventHandlerNode * onEventWithObject(const EventHeader &h, cocos2d::Ref *obj, const Callback &, bool destroyAfterEvent = false);
 
 protected:
-	std::set<EventHandlerNode *> _handlers;
+	Set<EventHandlerNode *> _handlers;
 };
 
 NS_SP_END

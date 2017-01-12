@@ -45,43 +45,45 @@ public:
 	IMEImpl();
 
 	bool hasText();
-    void insertText(const std::u16string &sInsert);
-	void textChanged(const std::u16string &text, const Cursor &);
+    void insertText(const WideString &sInsert);
+	void textChanged(const WideString &text, const Cursor &);
     void deleteBackward();
 
-	void onKeyboardShow(const cocos2d::Rect &rect, float duration);
+	void onKeyboardShow(const Rect &rect, float duration);
 	void onKeyboardHide(float duration);
 
 	void setInputEnabled(bool enabled);
 
 	void onTextChanged();
 
-	bool run(ime::Handler *, const std::u16string &str, const Cursor &);
+	bool run(ime::Handler *, const WideString &str, const Cursor &);
 
-	void setString(const std::u16string &str);
-	void setString(const std::u16string &str, const Cursor &);
+	void setString(const WideString &str);
+	void setString(const WideString &str, const Cursor &);
 	void setCursor(const Cursor &);
 
-	const std::u16string &getString() const;
+	const WideString &getString() const;
 	const Cursor &getCursor() const;
 
 	void cancel();
 
 	bool isKeyboardVisible() const;
 	bool isInputEnabled() const;
-	const cocos2d::Rect &getKeyboardRect() const;
+	float getKeyboardDuration() const;
+	const Rect &getKeyboardRect() const;
 
 	ime::Handler *getHandler() const;
 
 public:
 	ime::Handler *_handler = nullptr;
-	cocos2d::Rect _keyboardRect;
+	Rect _keyboardRect;
+	float _keyboardDuration = 0.0f;
 	bool _isInputEnabled = false;
 	bool _isKeyboardVisible = false;
 	bool _isHardwareKeyboard = false;
 	bool _running = false;
 
-	std::u16string _string;
+	WideString _string;
 	Cursor _cursor;
 };
 
@@ -102,14 +104,14 @@ IMEImpl::IMEImpl() {
 	});
 }
 
-void IMEImpl::insertText(const std::u16string &sInsert) {
+void IMEImpl::insertText(const WideString &sInsert) {
 	if (sInsert.length() > 0) {
 		if (_cursor.length > 0) {
 			_string.erase(_string.begin() + _cursor.start, _string.begin() + _cursor.start + _cursor.length);
 			_cursor.length = 0;
 		}
 
-		std::u16string sText(_string.substr(0, _cursor.start).append(sInsert));
+		WideString sText(_string.substr(0, _cursor.start).append(sInsert));
 
 		if (_cursor.start < _string.length()) {
 			sText.append(_string.substr(_cursor.start));
@@ -122,10 +124,10 @@ void IMEImpl::insertText(const std::u16string &sInsert) {
 	}
 }
 
-void IMEImpl::textChanged(const std::u16string &text, const Cursor &cursor) {
+void IMEImpl::textChanged(const WideString &text, const Cursor &cursor) {
 	if (text.length() == 0) {
 		// more effective way then reset strings
-		_string = std::u16string();
+		_string = WideString();
 		_cursor.start = 0;
 		_cursor.length = 0;
 		onTextChanged();
@@ -153,12 +155,12 @@ void IMEImpl::deleteBackward() {
 		return;
 	}
 
-	// WARN: our realisation of UTF16 does not support surrogate pairs,
+	// WARN: we use UCS-2 (UTF16 without surrogate pairs),
 	// so only one char can be safely removed
 	size_t nDeleteLen = 1;
 
 	if (_string.length() <= nDeleteLen) {
-		_string = std::u16string();
+		_string = WideString();
 		_cursor.start = 0;
 		_cursor.length = 0;
 		onTextChanged();
@@ -170,9 +172,10 @@ void IMEImpl::deleteBackward() {
 	onTextChanged();
 }
 
-void IMEImpl::onKeyboardShow(const cocos2d::Rect &rect, float duration) {
+void IMEImpl::onKeyboardShow(const Rect &rect, float duration) {
 	_keyboardRect = rect;
-	if (!_keyboardRect.equals(cocos2d::Rect::ZERO)) {
+	_keyboardDuration = duration;
+	if (!_keyboardRect.equals(Rect::ZERO)) {
 		_isKeyboardVisible = true;
 		if (_handler) {
 			_handler->onKeyboard(true, rect, duration);
@@ -181,13 +184,14 @@ void IMEImpl::onKeyboardShow(const cocos2d::Rect &rect, float duration) {
 }
 
 void IMEImpl::onKeyboardHide(float duration) {
-	if (!_keyboardRect.equals(cocos2d::Rect::ZERO)) {
+	_keyboardDuration = duration;
+	if (!_keyboardRect.equals(Rect::ZERO)) {
 		_isKeyboardVisible = false;
 		if (_handler && _handler->onKeyboard) {
-			_handler->onKeyboard(false, cocos2d::Rect::ZERO, duration);
+			_handler->onKeyboard(false, Rect::ZERO, duration);
 		}
 	}
-	_keyboardRect = cocos2d::Rect::ZERO;
+	_keyboardRect = Rect::ZERO;
 }
 
 void IMEImpl::onTextChanged() {
@@ -196,10 +200,13 @@ void IMEImpl::onTextChanged() {
 	}
 }
 
-bool IMEImpl::run(ime::Handler *h, const std::u16string &str, const Cursor &cursor) {
+bool IMEImpl::run(ime::Handler *h, const WideString &str, const Cursor &cursor) {
 	auto oldH = _handler;
 	_handler = h;
 	if (oldH) {
+		if (_running) {
+			oldH->onInput(false);
+		}
 		oldH->onEnded();
 	}
 	_cursor = cursor;
@@ -218,12 +225,15 @@ bool IMEImpl::run(ime::Handler *h, const std::u16string &str, const Cursor &curs
 #endif
 	} else {
 		platform::ime::_updateText(_string, cursor.start, cursor.length);
+		if (_running) {
+			_handler->onInput(true);
+		}
 		return false;
 	}
 	return true;
 }
 
-void IMEImpl::setString(const std::u16string &str, const Cursor &cursor) {
+void IMEImpl::setString(const WideString &str, const Cursor &cursor) {
 	_cursor = cursor;
 	_string = str;
 	if (cursor.start > str.length()) {
@@ -243,7 +253,7 @@ void IMEImpl::setCursor(const Cursor &cursor) {
 	}
 }
 
-const std::u16string &IMEImpl::getString() const {
+const WideString &IMEImpl::getString() const {
 	return _string;
 }
 const ime::Cursor &IMEImpl::getCursor() const {
@@ -251,7 +261,6 @@ const ime::Cursor &IMEImpl::getCursor() const {
 }
 
 void IMEImpl::cancel() {
-	stappler::log::format("IMEImpl", "cancel %d", _running);
 	if (_running) {
 		platform::ime::_cancel();
 		setInputEnabled(false);
@@ -260,7 +269,7 @@ void IMEImpl::cancel() {
 		}
 		_handler = nullptr;
 
-		_string = std::u16string();
+		_string = WideString();
 		_cursor.start = 0;
 		_cursor.length = 0;
 		_running = false;
@@ -269,7 +278,8 @@ void IMEImpl::cancel() {
 
 bool IMEImpl::isKeyboardVisible() const { return _isKeyboardVisible; }
 bool IMEImpl::isInputEnabled() const { return _isInputEnabled; }
-const cocos2d::Rect &IMEImpl::getKeyboardRect() const { return _keyboardRect; }
+float IMEImpl::getKeyboardDuration() const { return _keyboardDuration; }
+const Rect &IMEImpl::getKeyboardRect() const { return _keyboardRect; }
 ime::Handler *IMEImpl::getHandler() const { return _handler; }
 
 bool IMEImpl::hasText() {
@@ -278,7 +288,6 @@ bool IMEImpl::hasText() {
 
 void IMEImpl::setInputEnabled(bool enabled) {
 	if (_isInputEnabled != enabled) {
-		stappler::log::format("IMEImpl", "onInputEnabled %d %d %p", _isInputEnabled, enabled);
 		_isInputEnabled = enabled;
 		if (_handler && _handler->onInput) {
 			_handler->onInput(enabled);
@@ -289,25 +298,28 @@ void IMEImpl::setInputEnabled(bool enabled) {
 bool stappler::platform::ime::native::hasText() {
 	return IMEImpl::getInstance()->hasText();
 }
-void stappler::platform::ime::native::insertText(const std::u16string &str) {
+void stappler::platform::ime::native::insertText(const WideString &str) {
 	IMEImpl::getInstance()->insertText(str);
 }
 void stappler::platform::ime::native::deleteBackward() {
 	IMEImpl::getInstance()->deleteBackward();
 }
-void stappler::platform::ime::native::textChanged(const std::u16string &text, uint32_t cursorStart, uint32_t cursorLen) {
+void stappler::platform::ime::native::textChanged(const WideString &text, uint32_t cursorStart, uint32_t cursorLen) {
 	IMEImpl::getInstance()->textChanged(text, stappler::ime::Cursor(cursorStart, cursorLen));
 }
 
-void stappler::platform::ime::native::onKeyboardShow(const cocos2d::Rect &rect, float duration) {
+void stappler::platform::ime::native::onKeyboardShow(const Rect &rect, float duration) {
 	IMEImpl::getInstance()->onKeyboardShow(rect, duration);
+	stappler::ime::onKeyboard(nullptr, true);
 }
 void stappler::platform::ime::native::onKeyboardHide(float duration) {
 	IMEImpl::getInstance()->onKeyboardHide(duration);
+	stappler::ime::onKeyboard(nullptr, false);
 }
 
 void stappler::platform::ime::native::setInputEnabled(bool enabled) {
 	IMEImpl::getInstance()->setInputEnabled(enabled);
+	stappler::ime::onInput(nullptr, enabled);
 }
 
 void stappler::platform::ime::native::cancel() {
@@ -317,7 +329,10 @@ void stappler::platform::ime::native::cancel() {
 
 namespace ime {
 
-bool Handler::run(const std::u16string &str, const Cursor &cursor) {
+EventHeader onKeyboard("IME", "IME.onKeyboard");
+EventHeader onInput("IME", "IME.onInput");
+
+bool Handler::run(const WideString &str, const Cursor &cursor) {
 	if (!isActive()) {
 		return IMEImpl::getInstance()->run(this, str, cursor);
 	}
@@ -330,7 +345,7 @@ void Handler::cancel() {
 }
 
 // only if this handler is active
-bool Handler::setString(const std::u16string &str, const Cursor &c) {
+bool Handler::setString(const WideString &str, const Cursor &c) {
 	if (isActive()) {
 		IMEImpl::getInstance()->setString(str, c);
 		return true;
@@ -345,7 +360,7 @@ bool Handler::setCursor(const Cursor &c) {
 	return false;
 }
 
-const std::u16string &Handler::getString() const {
+const WideString &Handler::getString() const {
 	return IMEImpl::getInstance()->getString();
 }
 const Cursor &Handler::getCursor() const {
@@ -358,7 +373,7 @@ bool Handler::isInputEnabled() const {
 bool Handler::isKeyboardVisible() const {
 	return IMEImpl::getInstance()->isKeyboardVisible();
 }
-const cocos2d::Rect &Handler::getKeyboardRect() const {
+const Rect &Handler::getKeyboardRect() const {
 	return IMEImpl::getInstance()->getKeyboardRect();
 }
 
@@ -375,6 +390,20 @@ Handler::~Handler() {
 
 bool isInputEnabled() {
 	return IMEImpl::getInstance()->isInputEnabled();
+}
+
+void cancel() {
+	IMEImpl::getInstance()->cancel();
+}
+
+bool isKeyboardVisible() {
+	return IMEImpl::getInstance()->isKeyboardVisible();
+}
+float getKeyboardDuration() {
+	return IMEImpl::getInstance()->getKeyboardDuration();
+}
+Rect getKeyboardRect() {
+	return IMEImpl::getInstance()->getKeyboardRect();
 }
 
 }

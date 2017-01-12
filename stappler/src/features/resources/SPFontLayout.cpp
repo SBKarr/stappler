@@ -101,7 +101,7 @@ protected:
 	FT_Library FTlibrary = nullptr;
 };
 
-using FontTextureLayout = Map<String, Vector<CharTexture>>;
+using FontTextureLayout = Pair<uint32_t, Map<String, Vector<CharTexture>>>;
 
 class FontLibrary {
 public:
@@ -494,7 +494,9 @@ Metrics FontLibraryCache::getMetrics(FT_Face face, uint16_t size) {
 
 void FontLibrary::cleanupSource(Source *source) {
 	_sourcesMutex.lock();
-	_sources.erase(source);
+	if (_sources.erase(source) == 0) {
+		log::text("FontLibrary", "Warning: cleanup empty source!");
+	}
 	_sourcesMutex.unlock();
 }
 Arc<FontTextureLayout> FontLibrary::getSourceLayout(Source *source) {
@@ -538,7 +540,7 @@ Vector<size_t> FontLibrary::getQuadsCount(const FormatSpec *format, const Map<St
 		auto end = start + it.count();
 		if (it.line->start + it.line->count == end) {
 			const font::CharSpec &c = format->chars[end - 1];
-			if (!string::isspace(c.charID) && c.charID != char16_t(0xFFFF)) {
+			if (!string::isspace(c.charID) && c.charID != char16_t(0x0A)) {
 				const auto texIt = std::lower_bound(texVecIt->second.cbegin(), texVecIt->second.cend(), c.charID);
 				if (texIt != texVecIt->second.cend() && texIt->charID == c.charID) {
 					++ (ret[texIt->texture]);
@@ -549,9 +551,9 @@ Vector<size_t> FontLibrary::getQuadsCount(const FormatSpec *format, const Map<St
 
 		for (auto charIdx = start; charIdx < end; ++ charIdx) {
 			const font::CharSpec &c = format->chars[charIdx];
-			if (!string::isspace(c.charID) && c.charID != char16_t(0xFFFF) && c.charID != char16_t(0x00AD)) {
+			if (!string::isspace(c.charID) && c.charID != char16_t(0x0A) && c.charID != char16_t(0x00AD)) {
 				const auto texIt = std::lower_bound(texVecIt->second.cbegin(), texVecIt->second.cend(), c.charID);
-				if (texIt != texVecIt->second.cend() && texIt->charID == c.charID) {
+				if (texIt != texVecIt->second.cend() && texIt->charID == c.charID && texIt->texture != 0xFF) {
 					++ (ret[texIt->texture]);
 				}
 			}
@@ -590,7 +592,12 @@ bool FontLibrary::writeTextureQuads(uint32_t v, Source *source, const FormatSpec
 	if (!layoutsRef) {
 		return false;
 	}
-	auto &layouts = *layoutsRef;
+
+	if (layoutsRef->first != v) {
+		return false;
+	}
+
+	auto &layouts = layoutsRef->second;
 
 	quads.reserve(texs.size());
 	for (size_t i = 0; i < texs.size(); ++ i) {
@@ -636,7 +643,7 @@ bool FontLibrary::writeTextureQuads(uint32_t v, Source *source, const FormatSpec
 
 		if (it.line->start + it.line->count == end) {
 			const font::CharSpec &c = format->chars[end - 1];
-			if (!string::isspace(c.charID) && c.charID != char16_t(0xFFFF)) {
+			if (!string::isspace(c.charID) && c.charID != char16_t(0x0A)) {
 				auto texIt = std::lower_bound(texVecIt->second.cbegin(), texVecIt->second.cend(), c.charID);
 				auto charIt = std::lower_bound(charVec->cbegin(), charVec->cend(), c.charID);
 
@@ -649,7 +656,7 @@ bool FontLibrary::writeTextureQuads(uint32_t v, Source *source, const FormatSpec
 
 		for (auto charIdx = start; charIdx < end; ++ charIdx) {
 			const font::CharSpec &c = format->chars[charIdx];
-			if (!string::isspace(c.charID) && c.charID != char16_t(0xFFFF) && c.charID != char16_t(0x00AD)) {
+			if (!string::isspace(c.charID) && c.charID != char16_t(0x0A) && c.charID != char16_t(0x00AD)) {
 				auto texIt = std::lower_bound(texVecIt->second.cbegin(), texVecIt->second.cend(), c.charID);
 				auto charIt = std::lower_bound(charVec->cbegin(), charVec->cend(), c.charID);
 
@@ -675,7 +682,11 @@ bool FontLibrary::writeTextureRects(uint32_t v, Source *source, const FormatSpec
 		return false;
 	}
 
-	auto &layouts = *layoutsRef;
+	if (layoutsRef->first != v) {
+		return false;
+	}
+
+	auto &layouts = layoutsRef->second;
 
 	const RangeSpec *targetRange = nullptr;
 	Map<String, Vector<CharTexture>>::const_iterator texVecIt;
@@ -709,7 +720,7 @@ bool FontLibrary::writeTextureRects(uint32_t v, Source *source, const FormatSpec
 
 		for (auto charIdx = start; charIdx < end; ++ charIdx) {
 			const font::CharSpec &c = format->chars[charIdx];
-			if (!string::isspace(c.charID) && c.charID != char16_t(0xFFFF) && c.charID != char16_t(0x00AD)) {
+			if (!string::isspace(c.charID) && c.charID != char16_t(0x0A) && c.charID != char16_t(0x00AD)) {
 				auto texIt = std::lower_bound(texVecIt->second.cbegin(), texVecIt->second.cend(), c.charID);
 				auto charIt = std::lower_bound(charVec->cbegin(), charVec->cend(), c.charID);
 
@@ -736,12 +747,7 @@ bool FontLibrary::writeTextureRects(uint32_t v, Source *source, const FormatSpec
 }
 
 bool FontLibrary::isSourceRequestValid(Source *source, uint32_t v) {
-	if (!source->isTextureRequestValid(v)) {
-		_sources.erase(source);
-		log::format("RequestAborted", "version: %u", v);
-		return false;
-	}
-	return true;
+	return source->isTextureRequestValid(v);
 }
 
 bool FontLibraryCache::updateTextureWithSource(uint32_t v, Source *source, const Map<String, Vector<char16_t>> &l, Vector<Rc<cocos2d::Texture2D>> &t) {
@@ -922,7 +928,7 @@ bool FontLibraryCache::updateTextureWithSource(uint32_t v, Source *source, const
 					if (face->glyph->bitmap.buffer != nullptr) {
 						drawCharOnBitmap(t.at(theChar.texture), URect{theChar.x, theChar.y, theChar.width, theChar.height}, &face->glyph->bitmap);
 					} else {
-						if (!string::isspace(theChar.charID)) {
+						if (!string::isspace(theChar.charID) && theChar.charID != char16_t(0x0A)) {
 							log::format("Font", "error: no bitmap for (%d) '%s'", theChar.charID, string::toUtf8(theChar.charID).c_str());
 						}
 					}
@@ -936,7 +942,7 @@ bool FontLibraryCache::updateTextureWithSource(uint32_t v, Source *source, const
 		return false;
 	}
 
-	library->setSourceLayout(source, std::move(sourceRef));
+	library->setSourceLayout(source, FontTextureLayout(v, std::move(sourceRef)));
 	return true;
 }
 
@@ -1021,9 +1027,10 @@ void Source::clone(Source *source, const Function<void(Source *)> &cb) {
 	auto tlPtr = new Map<String, Vector<char16_t>>(source->getTextureLayoutMap());
 	auto tPtr = new Vector<Rc<cocos2d::Texture2D>>();
 	auto sPtr = new Rc<Source>(source);
+	uint32_t *vPtr = new uint32_t(0);
 
 	auto &thread = TextureCache::thread();
-	thread.perform([this, sPtr, lPtr, tlPtr, tPtr] (Ref *) -> bool {
+	thread.perform([this, sPtr, lPtr, tlPtr, tPtr, vPtr] (Ref *) -> bool {
 		Vector<char16_t> vec;;
 		for (auto &it : (*lPtr)) {
 			Arc<FontLayout> l(it.second);
@@ -1042,13 +1049,14 @@ void Source::clone(Source *source, const Function<void(Source *)> &cb) {
 
 		auto ret = TextureCache::getInstance()->performWithGL([&] {
 			auto cache = FontLibrary::getInstance()->getCache();
-			return cache->updateTextureWithSource(_version.load(), this, *tlPtr, *tPtr);
+			*vPtr = _version.load();
+			return cache->updateTextureWithSource(*vPtr, this, *tlPtr, *tPtr);
 		});
 		delete lPtr;
 		return ret;
-	}, [this, tlPtr, tPtr, sPtr, cb] (Ref *, bool success) {
+	}, [this, tlPtr, tPtr, sPtr, vPtr, cb] (Ref *, bool success) {
 		if (success) {
-			onTextureResult(std::move(*tlPtr), std::move(*tPtr));
+			onTextureResult(std::move(*tlPtr), std::move(*tPtr), *vPtr);
 			if (cb) {
 				cb(this);
 			}
@@ -1056,6 +1064,7 @@ void Source::clone(Source *source, const Function<void(Source *)> &cb) {
 		delete tlPtr;
 		delete tPtr;
 		delete sPtr;
+		delete vPtr;
 	}, this);
 }
 
@@ -1066,7 +1075,7 @@ void Source::updateTexture(uint32_t v, const Map<String, Vector<char16_t>> &l) {
 		TextureCache::getInstance()->performWithGL([&] {
 			auto cache = FontLibrary::getInstance()->getCache();
 			if (cache->updateTextureWithSource(v, this, l, tPtr)) {
-				onTextureResult(std::move(tPtr));
+				onTextureResult(std::move(tPtr), v);
 			}
 		});
 	} else {
@@ -1079,9 +1088,9 @@ void Source::updateTexture(uint32_t v, const Map<String, Vector<char16_t>> &l) {
 			});
 			delete lPtr;
 			return ret;
-		}, [this, tPtr] (Ref *, bool success) {
+		}, [this, tPtr, v] (Ref *, bool success) {
 			if (success) {
-				onTextureResult(std::move(*tPtr));
+				onTextureResult(std::move(*tPtr), v);
 			}
 			delete tPtr;
 		}, this);
@@ -1207,7 +1216,7 @@ NS_SP_EXT_END(font)
 NS_SP_BEGIN
 
 void DynamicLabel::updateQuadsBackground(Source *source, FormatSpec *format) {
-	auto v = source->getVersion();
+	auto v = source->getTextureVersion();
 	auto time = Time::now();
 	auto sourceRef = new Rc<Source>(source);
 	auto formatRef = new Rc<FormatSpec>(format);
@@ -1232,7 +1241,7 @@ void DynamicLabel::updateQuadsBackground(Source *source, FormatSpec *format) {
 }
 
 void DynamicLabel::updateQuadsForeground(Source *source, const FormatSpec *format) {
-	auto v = source->getVersion();
+	auto v = source->getTextureVersion();
 	auto time = Time::now();
 
 	Vector<Rc<cocos2d::Texture2D>> tPtr(source->getTextures());

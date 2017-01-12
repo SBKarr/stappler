@@ -44,7 +44,7 @@ public:
     virtual ~DynamicLabel();
 
     virtual bool init(Source *, const DescriptionStyle &, const String & = "", float w = 0.0f, Alignment = Alignment::Left, float d = 0.0f);
-    virtual void updateLabel();
+    virtual void tryUpdateLabel();
 
     virtual void setStyle(const DescriptionStyle &);
     virtual const DescriptionStyle &getStyle() const;
@@ -63,6 +63,7 @@ public:
 	virtual uint16_t getFontHeight() const;
 
 	virtual Vec2 getCursorPosition(uint32_t charIndex, bool prefix = true) const;
+	virtual Vec2 getCursorOrigin() const;
 
 	// returns character index in FormatSpec for position in label or maxOf<uint32_t>()
 	// pair.second - true if index match suffix or false if index match prefix
@@ -70,6 +71,7 @@ public:
 	virtual Pair<uint32_t, bool> getCharIndex(const Vec2 &) const;
 
 protected:
+    virtual void updateLabel();
 	virtual void updateQuads(uint32_t f);
 	virtual void onTextureUpdated();
 	virtual void onLayoutUpdated();

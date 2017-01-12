@@ -55,6 +55,9 @@ namespace screen {
 
 namespace node {
 	bool isTouched(cocos2d::Node *node, const cocos2d::Vec2 &point, float padding = 0);
+	bool isParent(cocos2d::Node *parent, cocos2d::Node *node);
+	Mat4 chainNodeToParent(cocos2d::Node *parent, cocos2d::Node *node, bool full = true);
+	Mat4 chainParentToNode(cocos2d::Node *parent, cocos2d::Node *node, bool full = true);
 	void dump(cocos2d::Node *node, int depth = -1);
 }
 

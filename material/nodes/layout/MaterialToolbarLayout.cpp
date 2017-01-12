@@ -32,6 +32,7 @@ THE SOFTWARE.
 #include "SPPadding.h"
 #include "SPScrollView.h"
 #include "SPActions.h"
+#include "SPIME.h"
 
 NS_MD_BEGIN
 
@@ -66,9 +67,9 @@ void ToolbarLayout::onContentSizeDirty() {
 	if (!_flexibleToolbar && _baseNode) {
 		stappler::Padding padding;
 		padding = _baseNode->getPadding();
-		_baseNode->setAnchorPoint(cocos2d::Vec2(0, 0));
-		_baseNode->setPosition(0, 0);
-		_baseNode->setContentSize(Size(_contentSize.width, _contentSize.height - getCurrentFlexibleMax() - 0.0f));
+		_baseNode->setAnchorPoint(Vec2(0, 0));
+		_baseNode->setPosition(0, 0 + _keyboardSize.height);
+		_baseNode->setContentSize(Size(_contentSize.width, _contentSize.height - _keyboardSize.height - getCurrentFlexibleMax() - 0.0f));
 		_baseNode->setPadding(padding.setTop(6.0f));
 		_baseNode->setOverscrollFrontOffset(0.0f);
 	}
@@ -228,4 +229,34 @@ void ToolbarLayout::onScroll(float delta, bool finished) {
         FlexibleLayout::onScroll(delta, finished);
     }
 }
+
+void ToolbarLayout::onKeyboard(bool enabled, const Rect &rect, float duration) {
+	FlexibleLayout::onKeyboard(enabled, rect, duration);
+	if (enabled) {
+		_savedNavCallback = _toolbar->getNavCallback();
+		_savedNavProgress = _toolbar->getNavButtonIconProgress();
+
+		_toolbar->setNavCallback(std::bind(&ToolbarLayout::closeKeyboard, this));
+		_toolbar->setNavButtonIconProgress(2.0f, 0.35f);
+
+		if (_flexibleToolbar) {
+			setFlexibleLevelAnimated(0.0f, 0.25f);
+		}
+	} else {
+		_toolbar->setNavCallback(_savedNavCallback);
+		_toolbar->setNavButtonIconProgress(_savedNavProgress, 0.35f);
+
+		_savedNavCallback = nullptr;
+		_savedNavProgress = 0.0f;
+
+		if (_flexibleToolbar) {
+			setFlexibleLevelAnimated(1.0f, 0.25f);
+		}
+	}
+}
+
+void ToolbarLayout::closeKeyboard() {
+	ime::cancel();
+}
+
 NS_MD_END

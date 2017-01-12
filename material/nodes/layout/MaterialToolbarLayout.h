@@ -80,12 +80,19 @@ public:
 	virtual void onForegroundTransitionBegan(ContentLayer *l, Layout *overlay) override;
 	virtual void onForeground(ContentLayer *l, Layout *overlay) override;
 
-    virtual void onScroll(float delta, bool finished) override;
+	virtual void onScroll(float delta, bool finished) override;
+
 protected:
 	virtual void onToolbarNavButton();
 	virtual Toolbar *setupToolbar(Toolbar *);
 
 	virtual std::pair<float, float> onToolbarHeight();
+
+	virtual void onKeyboard(bool enabled, const Rect &, float duration) override;
+	virtual void closeKeyboard();
+
+	Function<void()> _savedNavCallback;
+	float _savedNavProgress;
 
 	bool _flexibleToolbar = true;
 	bool _forwardProgress = false;

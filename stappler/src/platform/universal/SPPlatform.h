@@ -32,43 +32,43 @@ THE SOFTWARE.
 NS_SP_PLATFORM_BEGIN
 
 namespace network {
-	void _setNetworkCallback(std::function<void(bool isOnline)> callback);
+	void _setNetworkCallback(const Function<void(bool isOnline)> &callback);
 	bool _isNetworkOnline();
 }
 
 namespace device {
 	bool _isTablet();
 
-	std::string _userAgent();
-	std::string _deviceIdentifier();
-	std::string _bundleName();
+	String _userAgent();
+	String _deviceIdentifier();
+	String _bundleName();
 
-	std::string _userLanguage();
-	std::string _applicationName();
-	std::string _applicationVersion();
+	String _userLanguage();
+	String _applicationName();
+	String _applicationVersion();
 
 	int _dpi();
 	float _density();
-	cocos2d::Size _screenSize();
-	cocos2d::Size _viewportSize(const cocos2d::Size &screenSize, bool isTablet);
+	Size _screenSize();
+	Size _viewportSize(const Size &screenSize, bool isTablet);
 
-	float _statusBarHeight(const cocos2d::Size &screenSize, bool isTablet);
-	float _designScale(const cocos2d::Size &screenSize, bool isTablet);
+	float _statusBarHeight(const Size &screenSize, bool isTablet);
+	float _designScale(const Size &screenSize, bool isTablet);
 
 	const ScreenOrientation &_currentDeviceOrientation();
 
-	std::pair<uint64_t, uint64_t> _diskSpace(); // <total, free>
+	Pair<uint64_t, uint64_t> _diskSpace(); // <total, free>
 
 	void _onDirectorStarted();
 }
 
 namespace interaction {
-	void _goToUrl(const std::string &url, bool external);
-	void _makePhoneCall(const std::string &number);
-	void _mailTo(const std::string &address);
+	void _goToUrl(const String &url, bool external);
+	void _makePhoneCall(const String &number);
+	void _mailTo(const String &address);
 
 	void _backKey();
-	void _notification(const std::string &title, const std::string &text);
+	void _notification(const String &title, const String &text);
 	void _rateApplication();
 }
 
@@ -80,27 +80,27 @@ namespace statusbar {
 	void _setEnabled(bool enabled);
 	bool _isEnabled();
 	void _setColor(_StatusBarColor color);
-	float _getHeight(const cocos2d::Size &screenSize, bool isTablet);
+	float _getHeight(const Size &screenSize, bool isTablet);
 }
 
 namespace clipboard {
 	bool _isAvailable();
-	std::string _getString();
-	void _copyString(const std::string &value);
+	String _getString();
+	void _copyString(const String &value);
 }
 
 namespace ime {
 	void _updateCursor(uint32_t pos, uint32_t len);
-	void _updateText(const std::u16string &str, uint32_t pos, uint32_t len);
-	void _runWithText(const std::u16string &str, uint32_t pos, uint32_t len);
+	void _updateText(const WideString &str, uint32_t pos, uint32_t len);
+	void _runWithText(const WideString &str, uint32_t pos, uint32_t len);
 	void _cancel();
 
 	namespace native {
 		bool hasText();
-		void insertText(const std::u16string &str);
+		void insertText(const WideString &str);
 		void deleteBackward();
-		void textChanged(const std::u16string &text, uint32_t cursorStart, uint32_t cursorLen);
-		void onKeyboardShow(const cocos2d::Rect &rect, float duration);
+		void textChanged(const WideString &text, uint32_t cursorStart, uint32_t cursorLen);
+		void onKeyboardShow(const Rect &rect, float duration);
 		void onKeyboardHide(float duration);
 		void setInputEnabled(bool enabled);
 		void cancel();
@@ -120,10 +120,10 @@ namespace render {
 
 #if (SP_INTERNAL_STOREKIT_ENABLED)
 namespace storekit {
-	void _saveProducts(const std::unordered_map<std::string, StoreProduct *> &);
+	void _saveProducts(const std::unordered_map<String, StoreProduct *> &);
 	data::Value _loadProducts();
 
-	void _updateProducts(const std::vector<StoreProduct *> &);
+	void _updateProducts(const Vector<StoreProduct *> &);
 	bool _purchaseProduct(StoreProduct *product);
 	bool _restorePurchases();
 }

@@ -33,11 +33,16 @@ NS_SP_BEGIN
 EventListener::~EventListener() {
 	for (auto it : _handlers) {
 		it->setSupport(nullptr);
-		Thread::onMainThread([it] {
+	}
+
+	auto h = new Set<EventHandlerNode *>(std::move(_handlers));
+	Thread::onMainThread([h] {
+		for (auto it : (*h)) {
 			EventDispatcher::getInstance()->removeEventListner(it);
 			delete it;
-		});
-	}
+		}
+		delete h;
+	});
 }
 
 bool EventListener::init() {
@@ -46,6 +51,23 @@ bool EventListener::init() {
 	}
 
 	return true;
+}
+
+void EventListener::clear() {
+	for (auto it : _handlers) {
+		it->setSupport(nullptr);
+	}
+
+	auto h = new Set<EventHandlerNode *>(std::move(_handlers));
+	Thread::onMainThread([h] {
+		for (auto it : (*h)) {
+			EventDispatcher::getInstance()->removeEventListner(it);
+			delete it;
+		}
+		delete h;
+	}, nullptr, true);
+
+	_handlers.clear();
 }
 
 void EventListener::addHandlerNode(EventHandlerNode *handler) {

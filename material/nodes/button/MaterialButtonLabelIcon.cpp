@@ -53,7 +53,7 @@ void ButtonLabelIcon::onContentSizeDirty() {
 
 void ButtonLabelIcon::setString(const std::string &str) {
 	_label->setString(str);
-	_label->updateLabel();
+	_label->tryUpdateLabel();
 	setContentSize(cocos2d::Size(_label->getContentSize().width + 56, _contentSize.height));
 }
 const std::string &ButtonLabelIcon::getString() const {
@@ -63,7 +63,7 @@ const std::string &ButtonLabelIcon::getString() const {
 void ButtonLabelIcon::setWidth(float value) {
 	if (value != getWidth()) {
 		_label->setWidth(value);
-		_label->updateLabel();
+		_label->tryUpdateLabel();
 		setContentSize(cocos2d::Size(_label->getContentSize().width + 56, _contentSize.height));
 	}
 }
@@ -81,7 +81,7 @@ const cocos2d::Color3B &ButtonLabelIcon::getLabelColor() const {
 
 void ButtonLabelIcon::setFont(FontType fnt) {
 	_label->setFont(fnt);
-	_label->updateLabel();
+	_label->tryUpdateLabel();
 	_icon->setOpacity(_label->getOpacity());
 	setContentSize(cocos2d::Size(_label->getContentSize().width + 56, _contentSize.height));
 }

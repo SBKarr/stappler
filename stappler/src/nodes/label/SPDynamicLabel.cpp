@@ -69,6 +69,12 @@ bool DynamicLabel::init(Source *source, const DescriptionStyle &style, const Str
     return true;
 }
 
+void DynamicLabel::tryUpdateLabel() {
+	if (_labelDirty) {
+		updateLabel();
+	}
+}
+
 void DynamicLabel::setStyle(const DescriptionStyle &style) {
 	_style = style;
 
@@ -84,11 +90,13 @@ const DynamicLabel::DescriptionStyle &DynamicLabel::getStyle() const {
 
 void DynamicLabel::setSource(Source *source) {
 	if (source != _source) {
+		_listener->clear();
 		_source = source;
 		_textures.clear();
 		_colorMap.clear();
 		_format = nullptr;
 		_labelDirty = true;
+		_listener->onEventWithObject(Source::onTextureUpdated, source, std::bind(&DynamicLabel::onTextureUpdated, this));
 	}
 }
 
@@ -104,6 +112,7 @@ void DynamicLabel::updateLabel() {
 	if (_string16.empty()) {
 		_format = nullptr;
 		_formatDirty = true;
+		setContentSize(Size(0.0f, getFontHeight() / _density));
 		return;
 	}
 
@@ -121,6 +130,7 @@ void DynamicLabel::updateLabel() {
 	formatter.setMaxLines(_maxLines);
 	formatter.setOpticalAlignment(_opticalAlignment);
 	formatter.setFillerChar(_fillerChar);
+	formatter.setEmplaceAllChars(_emplaceAllChars);
 
 	if (_lineHeight != 0.0f) {
 		if (_isLineHeightAbsolute) {
@@ -167,7 +177,11 @@ void DynamicLabel::updateLabel() {
 	}
 	formatter.finalize();
 
-	setContentSize(cocos2d::Size(_format->width / _density, _format->height / _density));
+	if (_format->chars.empty()) {
+		setContentSize(Size(0.0f, getFontHeight() / _density));
+	} else {
+		setContentSize(Size(_format->width / _density, _format->height / _density));
+	}
 
 	_labelDirty = false;
 	_colorDirty = false;
@@ -175,10 +189,12 @@ void DynamicLabel::updateLabel() {
 }
 
 void DynamicLabel::visit(cocos2d::Renderer *r, const Mat4& t, uint32_t f, ZPath &zPath) {
+	if (!_visible) {
+		return;
+	}
 	if (_labelDirty) {
 		updateLabel();
 	}
-
 	if (_formatDirty) {
 		updateQuads(f);
 	}
@@ -272,13 +288,11 @@ void DynamicLabel::updateQuads(uint32_t f) {
 		//	updateQuadsBackground(_source, _format);
 		//}
 	}
-
-	_formatDirty = false;
 }
 
 void DynamicLabel::onTextureUpdated() {
 	_formatDirty = true;
-	_textures.clear();
+	//_textures.clear();
 }
 
 void DynamicLabel::onLayoutUpdated() {
@@ -290,6 +304,7 @@ void DynamicLabel::onQuads(const Time &t, const Vector<Rc<cocos2d::Texture2D>> &
 
 	//log::format("Label", "onQuads %p %lu %s", this, _updateCount, _string8.c_str());
 
+	_formatDirty = false;
 	++ _updateCount;
 
 	if (t < _quadRequestTime) {
@@ -334,19 +349,41 @@ Vec2 DynamicLabel::getCursorPosition(uint32_t charIndex, bool front) const {
 		if (charIndex < _format->chars.size()) {
 			auto &c = _format->chars[charIndex];
 			auto line = _format->getLine(charIndex);
-			return Vec2( (front ? c.pos : c.pos + c.advance) / _density, _contentSize.height - line->pos / _density);
+			if (line) {
+				return Vec2( (front ? c.pos : c.pos + c.advance) / _density, _contentSize.height - line->pos / _density);
+			}
 		} else if (charIndex >= _format->chars.size() && charIndex != 0) {
 			auto &c = _format->chars.back();
 			auto &l = _format->lines.back();
-			return Vec2( (c.pos + c.advance) / _density, _contentSize.height - l.pos / _density);
+			if (c.charID == char16_t(0x0A)) {
+				return getCursorOrigin();
+			} else {
+				return Vec2( (c.pos + c.advance) / _density, _contentSize.height - l.pos / _density);
+			}
 		}
 	}
 
 	return Vec2::ZERO;
 }
 
+Vec2 DynamicLabel::getCursorOrigin() const {
+	switch (_alignment) {
+	case Alignment::Left:
+	case Alignment::Justify:
+		return Vec2( 0.0f / _density, _contentSize.height - _format->height / _density);
+		break;
+	case Alignment::Center:
+		return Vec2( _contentSize.width * 0.5f / _density, _contentSize.height - _format->height / _density);
+		break;
+	case Alignment::Right:
+		return Vec2( _contentSize.width / _density, _contentSize.height - _format->height / _density);
+		break;
+	}
+	return Vec2::ZERO;
+}
+
 Pair<uint32_t, bool> DynamicLabel::getCharIndex(const Vec2 &pos) const {
-	auto ret = _format->getChar(pos.x * _density, pos.y * _density, FormatSpec::Best);
+	auto ret = _format->getChar(pos.x * _density, _format->height - pos.y * _density, FormatSpec::Best);
 	if (ret.first == maxOf<uint32_t>()) {
 		return pair(maxOf<uint32_t>(), false);
 	} else if (ret.second == FormatSpec::Prefix) {

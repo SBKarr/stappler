@@ -20,42 +20,31 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef MATERIAL_NODES_INPUT_MATERIALLINEFIELD_H_
-#define MATERIAL_NODES_INPUT_MATERIALLINEFIELD_H_
+#ifndef STAPPLER_SRC_PLATFORM_UNIVERSAL_SPAPPLICATION_H_
+#define STAPPLER_SRC_PLATFORM_UNIVERSAL_SPAPPLICATION_H_
 
-#include "MaterialFormField.h"
+#include "platform/CCApplication.h"
+#include "SPDefine.h"
 
-NS_MD_BEGIN
+NS_SP_BEGIN
 
-class LineField : public FormField {
+#ifndef SP_RESTRICT
+class Application : public cocos2d::Application {
 public:
-	virtual bool onSwipeBegin(const Vec2 &, const Vec2 &) override;
-	virtual bool onSwipe(const Vec2 &, const Vec2 &) override;
-	virtual bool onSwipeEnd(const Vec2 &) override;
+	Application();
+    virtual ~Application();
 
-	virtual void update(float dt) override;
+    virtual bool applicationDidFinishLaunching() override;
+    virtual void applicationDidEnterBackground() override;
+    virtual void applicationWillEnterForeground() override;
 
-protected:
-	virtual void onInput() override;
-	virtual bool onInputString(const WideString &str, const Cursor &c) override;
+    virtual void applicationFocusGained() override;
+    virtual void applicationFocusLost() override;
 
-	virtual void onMenuVisible() override;
-
-	enum Adjust {
-		None,
-		Left,
-		Right
-	};
-
-	virtual void runAdjust(float);
-	virtual void scheduleAdjust(Adjust, const Vec2 &, float pos);
-
-	Adjust _adjust = None;
-	Vec2 _adjustValue;
-	float _adjustPosition = 0.0f;
-	bool _swipeCaptured = false;
+    virtual void applicationDidReceiveMemoryWarning() override;
 };
+#endif
 
-NS_MD_END
+NS_SP_END
 
-#endif /* MATERIAL_NODES_INPUT_MATERIALLINEFIELD_H_ */
+#endif /* STAPPLER_SRC_PLATFORM_UNIVERSAL_SPAPPLICATION_H_ */

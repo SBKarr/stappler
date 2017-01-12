@@ -32,47 +32,9 @@ THE SOFTWARE.
 #include "SPString.h"
 #include "SPStrictNode.h"
 #include "SPActions.h"
+#include "SPDevice.h"
 
 NS_MD_BEGIN
-
-bool LineField::init(FontType font) {
-	if (!InputField::init(font)) {
-		return false;
-	}
-
-	_label->setCursorAnchor(1.25f);
-	_label->setAnchorPoint(Vec2(0.0f, 0.0f));
-
-	setContentSize(Size(_padding.horizontal() + 1, _label->getFontHeight() * _label->getDensity()));
-
-	_underlineLayer = construct<Layer>(material::Color::Grey_500);
-	_underlineLayer->setOpacity(64);
-	addChild(_underlineLayer, 1);
-
-	//setMaxChars(10);
-
-	return true;
-}
-
-void LineField::onContentSizeDirty() {
-	InputField::onContentSizeDirty();
-
-	_node->setContentSize(_contentSize - Size(_padding.horizontal(), _padding.vertical()));
-	_node->setPosition(_padding.left, _padding.bottom);
-
-	_label->setPosition(0, 0);
-
-	_underlineLayer->setContentSize(Size(_contentSize.width - _padding.horizontal(), 2.0f));
-	_underlineLayer->setPosition(_padding.left, _padding.bottom / 2.0f);
-
-	setMenuPosition(Vec2(_contentSize.width / 2.0f, _padding.bottom + _label->getFontHeight() / _label->getDensity() + 6.0f));
-
-	onInput();
-}
-
-void LineField::onError(Error err) {
-	_underlineLayer->setColor(_errorColor);
-}
 
 void LineField::onInput() {
 	auto labelWidth = _label->getContentSize().width;
@@ -101,55 +63,18 @@ void LineField::onInput() {
 		}
 	}
 
-	if (_label->isActive()) {
-		_underlineLayer->setOpacity(168);
-		_underlineLayer->setColor(_normalColor);
-	}
-
+	FormField::onInput();
 	runAdjust(0.0f);
 }
 
-void LineField::onActivated(bool active) {
-	InputField::onActivated(active);
-	if (_underlineLayer) {
-		if (active) {
-			_underlineLayer->setOpacity(168);
-			_underlineLayer->setColor(_normalColor);
-		} else {
-			_underlineLayer->setOpacity(64);
-			_underlineLayer->setColor(Color::Grey_500);
-		}
-	}
-}
+void LineField::onMenuVisible() {
+	auto pos = _label->getCursorMarkPosition();
+	auto &tmp = _node->getNodeToParentTransform();
+	Vec3 vec3(pos.x + _label->getPositionX(), pos.y + _label->getPositionY(), 0);
+	Vec3 ret;
+	tmp.transformPoint(vec3, &ret);
 
-void LineField::onCursor(const Cursor &c) {
-	InputField::onCursor(c);
-	/*auto labelWidth = _label->getContentSize().width;
-	auto width = _node->getContentSize().width;
-	auto cursor = _label->getCursor();*/
-	updateMenu();
-}
-
-void LineField::onPointer(bool value) {
-	InputField::onPointer(value);
-	updateMenu();
-}
-
-void LineField::updateMenu() {
-	if (_label->isPointerEnabled()) {
-		auto c = _label->getCursor();
-		_menu->setCopyMode(c.length > 0);
-		auto pos = _label->getCursorMarkPosition();
-		auto &tmp = _node->getNodeToParentTransform();
-		Vec3 vec3(pos.x + _label->getPositionX(), pos.y, 0);
-		Vec3 ret;
-		tmp.transformPoint(vec3, &ret);
-
-		_menu->setVisible(true);
-		setMenuPosition(Vec2(ret.x, _padding.bottom + _label->getFontHeight() / _label->getDensity() + 6.0f));
-	} else {
-		_menu->setVisible(false);
-	}
+	setMenuPosition(Vec2(ret.x, _label->getPositionY() + _label->getFontHeight() / _label->getDensity() + 6.0f));
 }
 
 bool LineField::onInputString(const std::u16string &nstr, const Cursor &nc) {
@@ -170,23 +95,13 @@ bool LineField::onInputString(const std::u16string &nstr, const Cursor &nc) {
 	return true;
 }
 
-void LineField::setPadding(const Padding &p) {
-	if (_padding != p) {
-		_padding = p;
-		_contentSizeDirty = true;
-	}
-}
-const Padding &LineField::getPadding() const {
-	return _padding;
-}
-
-bool LineField::onSwipeBegin(const Vec2 &loc) {
-	if (InputField::onSwipeBegin(loc)) {
+bool LineField::onSwipeBegin(const Vec2 &loc, const Vec2 &delta) {
+	if (InputField::onSwipeBegin(loc, delta)) {
 		return true;
 	}
 
 	auto size = _label->getContentSize();
-	if (size.width > _contentSize.width - _padding.horizontal()) {
+	if (size.width > _contentSize.width - _padding.horizontal() && fabsf(delta.x) > fabsf(delta.y)) {
 		_swipeCaptured = true;
 		return true;
 	}
@@ -207,23 +122,21 @@ bool LineField::onSwipe(const Vec2 &loc, const Vec2 &delta) {
 		}
 		_label->stopAllActionsByTag("LineFieldAdjust"_tag);
 		_label->setPositionX(newpos);
-		updateMenu();
 		return true;
 	} else {
-		if (InputField::onSwipe(loc, delta)) {
+		if (FormField::onSwipe(loc, delta)) {
 			auto labelWidth = _label->getContentSize().width;
 			auto width = _node->getContentSize().width;
 			if (labelWidth > width) {
 				auto pos = convertToNodeSpace(loc);
 				if (pos.x < _padding.left + 24.0f) {
-					scheduleAdjust(Left, loc, (_padding.left + 24.0f) - pos.x);
+					scheduleAdjust(Left, loc, _padding.left + 24.0f - pos.x);
 				} else if (pos.x > _contentSize.width - _padding.right - 24.0f) {
 					scheduleAdjust(Right, loc, pos.x - (_contentSize.width - _padding.right - 24.0f));
 				} else {
 					scheduleAdjust(None, loc, 0.0f);
 				}
 			}
-			updateMenu();
 			return true;
 		}
 		return false;

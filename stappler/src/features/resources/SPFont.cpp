@@ -510,9 +510,10 @@ const Vector<Rc<cocos2d::Texture2D>> &Source::getTextures() const {
 	return _textures;
 }
 
-void Source::onTextureResult(Vector<Rc<cocos2d::Texture2D>> &&tex) {
+void Source::onTextureResult(Vector<Rc<cocos2d::Texture2D>> &&tex, uint32_t v) {
 	if (!_dirty) {
 		_textures = std::move(tex);
+		_textureVersion = v;
 
 		onTextureUpdated(this);
 
@@ -523,10 +524,11 @@ void Source::onTextureResult(Vector<Rc<cocos2d::Texture2D>> &&tex) {
 	}
 }
 
-void Source::onTextureResult(Map<String, Vector<char16_t>> &&map, Vector<Rc<cocos2d::Texture2D>> &&tex) {
+void Source::onTextureResult(Map<String, Vector<char16_t>> &&map, Vector<Rc<cocos2d::Texture2D>> &&tex, uint32_t v) {
 	if (_dirty) {
 		_textureLayouts = std::move(map);
 		_textures = std::move(tex);
+		_textureVersion = v;
 
 		onTextureUpdated(this);
 
@@ -541,6 +543,10 @@ void Source::onTextureResult(Map<String, Vector<char16_t>> &&map, Vector<Rc<coco
 
 uint32_t Source::getVersion() const {
 	return _version.load();
+}
+
+uint32_t Source::getTextureVersion() const {
+	return _textureVersion;
 }
 
 bool Source::isTextureRequestValid(uint32_t v) const {

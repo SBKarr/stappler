@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define __stappler__SPIME__
 
 #include "SPDefine.h"
+#include "SPEventHeader.h"
 
 NS_SP_EXT_BEGIN(ime)
 
@@ -62,14 +63,22 @@ struct Handler {
 
 	bool isInputEnabled() const;
 	bool isKeyboardVisible() const;
-	const cocos2d::Rect &getKeyboardRect() const;
+	const Rect &getKeyboardRect() const;
 
 	bool isActive() const;
 
 	~Handler();
 };
 
+extern EventHeader onKeyboard;
+extern EventHeader onInput;
+
 bool isInputEnabled();
+void cancel();
+
+bool isKeyboardVisible();
+float getKeyboardDuration();
+Rect getKeyboardRect();
 
 NS_SP_EXT_END(ime)
 

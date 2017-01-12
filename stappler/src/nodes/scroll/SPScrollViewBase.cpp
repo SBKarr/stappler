@@ -683,7 +683,9 @@ cocos2d::ActionInterval *ScrollViewBase::onSwipeFinalizeAction(float velocity) {
 }
 
 void ScrollViewBase::onAnimationFinished() {
-	_animationDirty = true;
+	if (_movement != Movement::None) {
+		_animationDirty = true;
+	}
 	_movement = Movement::None;
 	_movementAction = nullptr;
 	_animationAction = nullptr;
@@ -787,6 +789,25 @@ void ScrollViewBase::updateScrollBounds() {
 	_root->setPositionZ(0.0f);
 }
 
+void ScrollViewBase::resizeNode(cocos2d::Node *node, float newSize) {
+	auto &items = _controller->getItems();
+
+	float offset = 0.0f;
+	for (auto &it : items) {
+		if (it.node && it.node == node) {
+			offset += (newSize - (isVertical()?it.size.height:it.size.width));
+			it.size = isVertical()?Size(it.size.width, newSize):Size(newSize, it.size.height);
+			updateScrollNode(it.node, it.pos, it.size, it.zIndex);
+		} else if (offset != 0.0f) {
+			it.pos = isVertical()?Vec2(it.pos.x, it.pos.y + offset):Size(it.pos.x + offset, it.pos.y);
+			if (it.node) {
+				updateScrollNode(it.node, it.pos, it.size, it.zIndex);
+			}
+		}
+	}
+	_controller->onScrollPosition(true);
+}
+
 void ScrollViewBase::onScroll(float delta, bool finished) {
 	if (_controller) {
 		_controller->onScroll(delta, finished);
@@ -815,7 +836,6 @@ bool ScrollViewBase::onPressBegin(const Vec2 &) {
 	return false;
 }
 bool ScrollViewBase::onLongPress(const Vec2 &, const TimeInterval &time, int count) {
-	log::format("LongPress", "%lu %d", time.msec(), count);
 	return true;
 }
 bool ScrollViewBase::onPressEnd(const Vec2 &, const TimeInterval &) {
@@ -827,6 +847,36 @@ bool ScrollViewBase::onPressCancel(const Vec2 &, const TimeInterval &) {
 
 void ScrollViewBase::onTap(int count, const Vec2 &loc) {
 
+}
+
+Vec2 ScrollViewBase::convertFromScrollableSpace(const Vec2 &pos) {
+	auto tmp = _root->getNodeToParentTransform();
+	Vec3 vec3(pos.x, pos.y, 0);
+	Vec3 ret;
+	tmp.transformPoint(vec3, &ret);
+	return Vec2(ret.x, ret.y);
+}
+Vec2 ScrollViewBase::convertToScrollableSpace(const Vec2 &pos) {
+	auto &tmp = _root->getParentToNodeTransform();
+	Vec3 vec3(pos.x, pos.y, 0);
+	Vec3 ret;
+	tmp.transformPoint(vec3, &ret);
+	return Vec2(ret.x, ret.y);
+}
+
+Vec2 ScrollViewBase::convertFromScrollableSpace(cocos2d::Node *node, const Vec2 &pos) {
+	auto tmp = node->getNodeToParentTransform() * _root->getNodeToParentTransform();
+	Vec3 vec3(pos.x, pos.y, 0);
+	Vec3 ret;
+	tmp.transformPoint(vec3, &ret);
+	return Vec2(ret.x, ret.y);
+}
+Vec2 ScrollViewBase::convertToScrollableSpace(cocos2d::Node *node, const Vec2 &pos) {
+	auto &tmp = _root->getParentToNodeTransform() * node->getParentToNodeTransform();
+	Vec3 vec3(pos.x, pos.y, 0);
+	Vec3 ret;
+	tmp.transformPoint(vec3, &ret);
+	return Vec2(ret.x, ret.y);
 }
 
 NS_SP_END

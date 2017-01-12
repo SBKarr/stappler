@@ -121,7 +121,6 @@
 		844635981B1EBEFF00CA9857 /* SPStatusBar.mm in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9C11B1D888D00C0175B /* SPStatusBar.mm */; };
 		844635991B1EBF0400CA9857 /* SPStoreKit.mm in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9C21B1D888D00C0175B /* SPStoreKit.mm */; };
 		844637531B1EE7FE00CA9857 /* SPIOSLoaderView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 844637521B1EE7FE00CA9857 /* SPIOSLoaderView.mm */; };
-		847576CB1BE8A14600445A50 /* SPTimeout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 847576C91BE8A14600445A50 /* SPTimeout.cpp */; };
 		847BB9D31C4505B000B3B701 /* SPDataCborBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 847BB9C81C4505B000B3B701 /* SPDataCborBuffer.cpp */; };
 		847BB9D41C4505B000B3B701 /* SPDataCborBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 847BB9C81C4505B000B3B701 /* SPDataCborBuffer.cpp */; };
 		847BB9D51C4505B000B3B701 /* SPDataDecompressBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 847BB9CA1C4505B000B3B701 /* SPDataDecompressBuffer.cpp */; };
@@ -152,7 +151,6 @@
 		84A6E9DC1B1D888D00C0175B /* SPEventHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8E61B1D888D00C0175B /* SPEventHandler.cpp */; };
 		84A6E9DD1B1D888D00C0175B /* SPEventHeader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8E81B1D888D00C0175B /* SPEventHeader.cpp */; };
 		84A6E9DE1B1D888D00C0175B /* SPError.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8EE1B1D888D00C0175B /* SPError.cpp */; };
-		84A6EA0E1B1D888D00C0175B /* SPCustomCornerSprite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E96B1B1D888D00C0175B /* SPCustomCornerSprite.cpp */; };
 		84A6EA0F1B1D888D00C0175B /* SPDynamicBatchNode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E96D1B1D888D00C0175B /* SPDynamicBatchNode.cpp */; };
 		84A6EA101B1D888D00C0175B /* SPDynamicSprite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E96F1B1D888D00C0175B /* SPDynamicSprite.cpp */; };
 		84A6EA111B1D888D00C0175B /* SPIconSprite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9711B1D888D00C0175B /* SPIconSprite.cpp */; };
@@ -185,6 +183,7 @@
 		84D970351CE9C19800C1B5F5 /* SPStapplerLog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84D970331CE9C19800C1B5F5 /* SPStapplerLog.cpp */; };
 		84D970371CE9C46B00C1B5F5 /* SPSha2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84D970361CE9C46B00C1B5F5 /* SPSha2.cpp */; };
 		84D970381CE9C46B00C1B5F5 /* SPSha2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84D970361CE9C46B00C1B5F5 /* SPSha2.cpp */; };
+		84E4670D1E276229005CB6BC /* SPCornerSprite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84E4670B1E276229005CB6BC /* SPCornerSprite.cpp */; };
 		84EA86491BB1787A00FB1276 /* SPProgressAction.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84EA86471BB1787A00FB1276 /* SPProgressAction.cpp */; };
 		84F636B81C16CF0D0021A2F4 /* SPDataValueNetwork.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84F636B51C16CF0D0021A2F4 /* SPDataValueNetwork.cpp */; };
 		84FDCD461BF1C37400C56046 /* SPDelayedReleaser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FDCD2F1BF1C37400C56046 /* SPDelayedReleaser.cpp */; };
@@ -374,8 +373,6 @@
 		844637521B1EE7FE00CA9857 /* SPIOSLoaderView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SPIOSLoaderView.mm; sourceTree = "<group>"; };
 		844637541B1EE83200CA9857 /* SPIOSLoaderView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SPIOSLoaderView.h; sourceTree = "<group>"; };
 		847576C81BE8A13B00445A50 /* SPActions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPActions.h; sourceTree = "<group>"; };
-		847576C91BE8A14600445A50 /* SPTimeout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPTimeout.cpp; sourceTree = "<group>"; };
-		847576CA1BE8A14600445A50 /* SPTimeout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPTimeout.h; sourceTree = "<group>"; };
 		847BB9C71C4505B000B3B701 /* SPBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPBuffer.h; sourceTree = "<group>"; };
 		847BB9C81C4505B000B3B701 /* SPDataCborBuffer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDataCborBuffer.cpp; sourceTree = "<group>"; };
 		847BB9C91C4505B000B3B701 /* SPDataCborBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDataCborBuffer.h; sourceTree = "<group>"; };
@@ -429,8 +426,6 @@
 		84A6E8ED1B1D888D00C0175B /* SPDefine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDefine.h; sourceTree = "<group>"; };
 		84A6E8EE1B1D888D00C0175B /* SPError.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPError.cpp; sourceTree = "<group>"; };
 		84A6E8EF1B1D888D00C0175B /* SPError.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPError.h; sourceTree = "<group>"; };
-		84A6E96B1B1D888D00C0175B /* SPCustomCornerSprite.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPCustomCornerSprite.cpp; sourceTree = "<group>"; };
-		84A6E96C1B1D888D00C0175B /* SPCustomCornerSprite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPCustomCornerSprite.h; sourceTree = "<group>"; };
 		84A6E96D1B1D888D00C0175B /* SPDynamicBatchNode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDynamicBatchNode.cpp; sourceTree = "<group>"; };
 		84A6E96E1B1D888D00C0175B /* SPDynamicBatchNode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDynamicBatchNode.h; sourceTree = "<group>"; };
 		84A6E96F1B1D888D00C0175B /* SPDynamicSprite.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDynamicSprite.cpp; sourceTree = "<group>"; };
@@ -492,6 +487,8 @@
 		84AA9FA01BD4A95C00DD650A /* SPDynamicBatchScene.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDynamicBatchScene.h; sourceTree = "<group>"; };
 		84D970331CE9C19800C1B5F5 /* SPStapplerLog.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPStapplerLog.cpp; sourceTree = "<group>"; };
 		84D970361CE9C46B00C1B5F5 /* SPSha2.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPSha2.cpp; sourceTree = "<group>"; };
+		84E4670B1E276229005CB6BC /* SPCornerSprite.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPCornerSprite.cpp; sourceTree = "<group>"; };
+		84E4670C1E276229005CB6BC /* SPCornerSprite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPCornerSprite.h; sourceTree = "<group>"; };
 		84EA85D81BB1665800FB1276 /* SPForward.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SPForward.h; sourceTree = "<group>"; };
 		84EA86471BB1787A00FB1276 /* SPProgressAction.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPProgressAction.cpp; sourceTree = "<group>"; };
 		84EA86481BB1787A00FB1276 /* SPProgressAction.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPProgressAction.h; sourceTree = "<group>"; };
@@ -923,8 +920,6 @@
 				84A6E8C51B1D888D00C0175B /* SPFadeTo.h */,
 				84EA86471BB1787A00FB1276 /* SPProgressAction.cpp */,
 				84EA86481BB1787A00FB1276 /* SPProgressAction.h */,
-				847576C91BE8A14600445A50 /* SPTimeout.cpp */,
-				847576CA1BE8A14600445A50 /* SPTimeout.h */,
 			);
 			path = actions;
 			sourceTree = "<group>";
@@ -1032,8 +1027,8 @@
 			children = (
 				849E37E71DDB717C00CB045E /* SPBatchNodeBase.cpp */,
 				849E37E81DDB717C00CB045E /* SPBatchNodeBase.h */,
-				84A6E96B1B1D888D00C0175B /* SPCustomCornerSprite.cpp */,
-				84A6E96C1B1D888D00C0175B /* SPCustomCornerSprite.h */,
+				84E4670B1E276229005CB6BC /* SPCornerSprite.cpp */,
+				84E4670C1E276229005CB6BC /* SPCornerSprite.h */,
 				84A6E96D1B1D888D00C0175B /* SPDynamicBatchNode.cpp */,
 				84A6E96E1B1D888D00C0175B /* SPDynamicBatchNode.h */,
 				84A6E96F1B1D888D00C0175B /* SPDynamicSprite.cpp */,
@@ -1346,6 +1341,7 @@
 				84A6E9DD1B1D888D00C0175B /* SPEventHeader.cpp in Sources */,
 				84A6EA4A1B1D888D00C0175B /* SPDevice.cpp in Sources */,
 				8422D70D1DFAB63A0001A3F8 /* SPRichTextSource.cpp in Sources */,
+				84E4670D1E276229005CB6BC /* SPCornerSprite.cpp in Sources */,
 				8422D6FD1DFAB63A0001A3F8 /* SPLocale.cpp in Sources */,
 				84080E1D1C1982EF00723732 /* SPUnicode.cpp in Sources */,
 				84A6E9DA1B1D888D00C0175B /* SPEvent.cpp in Sources */,
@@ -1398,7 +1394,6 @@
 				8422D7171DFAB63A0001A3F8 /* SPRichTextLayout.cpp in Sources */,
 				84080E131C1982EF00723732 /* SPCharGroup.cpp in Sources */,
 				8422D71C1DFAB63A0001A3F8 /* SPRichTextStyleMedia.cpp in Sources */,
-				84A6EA0E1B1D888D00C0175B /* SPCustomCornerSprite.cpp in Sources */,
 				84080E1F1C1982EF00723732 /* SPThreadLocal.cpp in Sources */,
 				84FDCD481BF1C37400C56046 /* SPSyncRWLock.cpp in Sources */,
 				8422D6F91DFAB63A0001A3F8 /* SPDynamicAtlas.cpp in Sources */,
@@ -1443,7 +1438,6 @@
 				84080E011C1982EF00723732 /* SPDataValue.cpp in Sources */,
 				8422D7101DFAB63A0001A3F8 /* SPEpubReader.cpp in Sources */,
 				84A6EA321B1D888D00C0175B /* SPRender.mm in Sources */,
-				847576CB1BE8A14600445A50 /* SPTimeout.cpp in Sources */,
 				8422D6FB1DFAB63A0001A3F8 /* SPDynamicQuadArray.cpp in Sources */,
 				84A6E9D11B1D888D00C0175B /* SPGestureRecognizer.cpp in Sources */,
 				84A6E9DC1B1D888D00C0175B /* SPEventHandler.cpp in Sources */,

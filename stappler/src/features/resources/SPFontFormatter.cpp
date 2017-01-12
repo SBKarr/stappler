@@ -69,6 +69,9 @@ void Formatter::setMaxLines(size_t value) {
 void Formatter::setOpticalAlignment(bool value) {
 	opticalAlignment = value;
 }
+void Formatter::setEmplaceAllChars(bool value) {
+	emplaceAllChars = value;
+}
 void Formatter::setFillerChar(char16_t value) {
 	_fillerChar = value;
 }
@@ -307,6 +310,22 @@ bool Formatter::pushSpace(bool wrap) {
 	return false;
 }
 
+bool Formatter::pushTab() {
+	CharLayout charDef = primaryData->getChar(' ');
+
+	auto posX = lineX;
+	auto tabPos = (lineX + charDef.xAdvance) / (charDef.xAdvance * 4) + 1;
+	lineX = tabPos * charDef.xAdvance * 4;
+
+	charNum ++;
+	output->chars.push_back(CharSpec{char16_t('\t'), posX, uint16_t(lineX - posX)});
+	if (wordWrap) {
+		wordWrapPos = charNum;
+	}
+
+	return true;
+}
+
 uint16_t Formatter::getLineAdvancePos(uint16_t lastPos) {
 	auto &origChar = output->chars.at(lastPos);
 	auto ch = origChar.charID;
@@ -464,7 +483,7 @@ bool Formatter::pushLineBreak() {
 				return false;
 			}
 		} else {
-			if (!pushLine(firstInLine, (wordWrapPos > firstInLine)?((wordWrapPos - 1) - firstInLine):0, true)) {
+			if (!pushLine(firstInLine, (wordWrapPos > firstInLine)?((wordWrapPos) - firstInLine):0, true)) {
 				return false;
 			}
 		}
@@ -489,6 +508,18 @@ bool Formatter::pushLineBreak() {
 	return true;
 }
 
+bool Formatter::pushLineBreakChar() {
+	charNum ++;
+	output->chars.push_back(CharSpec{char16_t(0x0A), lineX, 0});
+
+	if (!pushLine(false)) {
+		return false;
+	}
+	lineX = 0;
+
+	return true;
+}
+
 bool Formatter::readChars(CharReaderUcs2 &r, const Vector<uint8_t> &hyph) {
 	size_t wordPos = 0;
 	auto hIt = hyph.begin();
@@ -499,12 +530,11 @@ bool Formatter::readChars(CharReaderUcs2 &r, const Vector<uint8_t> &hyph) {
 			++ hIt;
 		}
 
-		if (c == '\n') {
+		if (c == char16_t('\n')) {
 			if (preserveLineBreaks) {
-				if (!pushLine(false)) {
+				if (!pushLineBreakChar()) {
 					return false;
 				}
-				lineX = 0;
 			} else if (collapseSpaces) {
 				if (!startWhitespace) {
 					bufferedSpace = true;
@@ -514,11 +544,22 @@ bool Formatter::readChars(CharReaderUcs2 &r, const Vector<uint8_t> &hyph) {
 			continue;
 		}
 
-		if (c < 0x20) {
+		if (c == char16_t('\t') && !collapseSpaces) {
+			if (!pushTab()) {
+				return false;
+			}
 			continue;
 		}
 
-		if (c != 0x00A0 && string::isspace(c) && collapseSpaces) {
+		if (c < char16_t(0x20)) {
+			if (emplaceAllChars) {
+				charNum ++;
+				output->chars.push_back(CharSpec{char16_t(0xFFFF), lineX, 0});
+			}
+			continue;
+		}
+
+		if (c != char16_t(0x00A0) && string::isspace(c) && collapseSpaces) {
 			if (!startWhitespace) {
 				bufferedSpace = true;
 			}
@@ -820,6 +861,10 @@ void Formatter::finalize() {
 		pushLine(false);
 	}
 
+	if (!output->chars.empty() && output->chars.back().charID == char16_t(0x0A)) {
+		pushLine(false);
+	}
+
 	auto chars = output->chars.size();
 	if (chars > 0 && output->ranges.size() > 0 && output->lines.size() > 0) {
 		auto &lastRange = output->ranges.back();
@@ -917,6 +962,10 @@ void FormatSpec::clear() {
 	ranges.clear();
 }
 
+inline static bool isSpaceOrLineBreak(char16_t c) {
+	return c == char16_t(0x0A) || string::isspace(c);
+}
+
 Pair<uint32_t, FormatSpec::SelectMode> FormatSpec::getChar(int32_t x, int32_t y, SelectMode mode) const {
 	int32_t yDistance = maxOf<int32_t>();
 	const LineSpec *pLine = nullptr;
@@ -942,9 +991,28 @@ Pair<uint32_t, FormatSpec::SelectMode> FormatSpec::getChar(int32_t x, int32_t y,
 				break;
 			}
 		}
+
+		if (chars.back().charID == char16_t(0x0A) && pLine == &lines.back() && (mode == Best || mode == Suffix)) {
+			int32_t dst = maxOf<int32_t>();
+			switch (mode) {
+			case Center:
+				dst = abs(y - (height - pLine->height / 2));
+				break;
+			case Best:
+				dst = abs(y - (height - pLine->height * 3 / 4));
+				break;
+			case Prefix:
+			case Suffix:
+				dst = abs(y - (height - pLine->height));
+				break;
+			};
+			if (dst < yDistance) {
+				return pair(chars.size() - 1, Suffix);
+			}
+		}
 	}
 
-	if (!pLine || yDistance > pLine->height) {
+	if (!pLine || yDistance > pLine->height * 3 / 2) {
 		return pair(maxOf<uint32_t>(), mode);
 	}
 
@@ -954,7 +1022,7 @@ Pair<uint32_t, FormatSpec::SelectMode> FormatSpec::getChar(int32_t x, int32_t y,
 	uint32_t charNumber = pLine->start;
 	for (uint32_t i = pLine->start; i < pLine->start + pLine->count; ++ i) {
 		auto &c = chars[i];
-		if (c.charID != char16_t(0xAD) && !string::isspace(c.charID)) {
+		if (c.charID != char16_t(0xAD) && !isSpaceOrLineBreak(c.charID)) {
 			int32_t dst = maxOf<int32_t>();
 			SelectMode dstMode = mode;
 			switch (mode) {
@@ -981,6 +1049,21 @@ Pair<uint32_t, FormatSpec::SelectMode> FormatSpec::getChar(int32_t x, int32_t y,
 			}
 		}
 	}
+	if (pLine->count && chars[pLine->start + pLine->count - 1].charID == char16_t(0x0A)) {
+		auto &c = chars[pLine->start + pLine->count - 1];
+		int32_t dst = maxOf<int32_t>();
+		switch (mode) {
+		case Prefix: dst = abs(x - c.pos); break;
+		case Best: dst = abs(x - c.pos); break;
+		default: break;
+		};
+		if (dst < xDistance) {
+			pChar = &c;
+			xDistance = dst;
+			charNumber = pLine->start + pLine->count - 1;
+			nextMode = Prefix;
+		}
+	}
 
 	if ((mode == Best || mode == Suffix) && pLine == &(lines.back())) {
 		auto c = chars.back();
@@ -988,12 +1071,12 @@ Pair<uint32_t, FormatSpec::SelectMode> FormatSpec::getChar(int32_t x, int32_t y,
 		if (dst < xDistance) {
 			pChar = &c;
 			xDistance = dst;
-			charNumber = chars.size() - 1;
+			charNumber = uint32_t(chars.size() - 1);
 			nextMode = Suffix;
 		}
 	}
 
-	if (!pChar || xDistance > pChar->advance * 2) {
+	if (!pChar) {
 		return pair(maxOf<uint32_t>(), mode);
 	}
 
@@ -1040,7 +1123,7 @@ WideString FormatSpec::str(bool filter) const {
 			size_t end = it.start() + it.count();
 			for (size_t i = it.start(); i <= end; ++ i) {
 				const auto &spec = chars[i];
-				if (spec.charID != char16_t(0xAD)) {
+				if (spec.charID != char16_t(0xAD) && spec.charID != char16_t(0xFFFF)) {
 					ret.push_back(spec.charID);
 				}
 			}
@@ -1069,7 +1152,7 @@ WideString FormatSpec::str(uint32_t s_start, uint32_t s_end, size_t maxWords, bo
 			if (maxWords != maxOf<size_t>()) {
 				for (size_t i = _start; i <= _end; ++ i) {
 					const auto &spec = chars[i];
-					if (spec.charID != char16_t(0xAD)) {
+					if (spec.charID != char16_t(0xAD) && spec.charID != char16_t(0xFFFF)) {
 						ret.push_back(spec.charID);
 						if (string::isspace(spec.charID)) {
 							++ counter;
@@ -1080,19 +1163,21 @@ WideString FormatSpec::str(uint32_t s_start, uint32_t s_end, size_t maxWords, bo
 					}
 				}
 				if (counter >= maxWords) {
-					ret.push_back(u'…');
+					if (ellipsis) {
+						ret.push_back(u'…');
+					}
 					break;
 				}
 			} else {
 				for (size_t i = _start; i <= _end; ++ i) {
 					const auto &spec = chars[i];
-					if (spec.charID != char16_t(0xAD)) {
+					if (spec.charID != char16_t(0xAD) && spec.charID != char16_t(0xFFFF)) {
 						ret.push_back(spec.charID);
 					}
 				}
 			}
 			if (it.end() >= s_end) {
-				if (s_end < chars.size()  - 1) {
+				if (s_end < chars.size()  - 1 && ellipsis) {
 					ret.push_back(u' ');
 					ret.push_back(u'…');
 				}
@@ -1106,10 +1191,10 @@ WideString FormatSpec::str(uint32_t s_start, uint32_t s_end, size_t maxWords, bo
 
 Pair<uint32_t, uint32_t> FormatSpec::selectWord(uint32_t origin) const {
 	Pair<uint32_t, uint32_t> ret(origin, origin);
-	while (ret.second + 1 < chars.size() && !string::isspace(chars[ret.second + 1].charID)) {
+	while (ret.second + 1 < chars.size() && !isSpaceOrLineBreak(chars[ret.second + 1].charID)) {
 		++ ret.second;
 	}
-	while (ret.first > 0 && !string::isspace(chars[ret.first - 1].charID)) {
+	while (ret.first > 0 && !isSpaceOrLineBreak(chars[ret.first - 1].charID)) {
 		-- ret.first;
 	}
 	return ret;
@@ -1255,7 +1340,6 @@ Rect FormatSpec::getLineRect(const LineSpec &line, float density, const Vec2 &or
 }
 
 Vector<Rect> FormatSpec::getLabelRects(uint32_t firstCharId, uint32_t lastCharId, float density, const Vec2 &origin, const Padding &p) const {
-	auto &l = *this;
 	Vector<Rect> ret;
 
 	auto firstLine = getLineNumber(firstCharId);

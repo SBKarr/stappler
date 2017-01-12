@@ -66,7 +66,7 @@ void InputLabel::Selection::clear() {
 	_quads->clear();
 }
 void InputLabel::Selection::emplaceRect(const Rect &rect) {
-	_quads->setGeometry(_quads->emplace(), Vec2(rect.origin.x, rect.origin.y), rect.size, 0.0f);
+	_quads->setGeometry(_quads->emplace(), Vec2(rect.origin.x, _contentSize.height - rect.origin.y - rect.size.height), rect.size, 0.0f);
 }
 void InputLabel::Selection::updateColor() {
 	DynamicBatchNode::updateColor();
@@ -82,6 +82,8 @@ bool InputLabel::init(const DescriptionStyle &desc, float w) {
 		return false;
 	}
 
+	_emplaceAllChars = true;
+
 	_handler.onText = std::bind(&InputLabel::onText, this, std::placeholders::_1, std::placeholders::_2);
 	_handler.onKeyboard = std::bind(&InputLabel::onKeyboard, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
 	_handler.onInput = std::bind(&InputLabel::onInput, this, std::placeholders::_1);
@@ -94,7 +96,7 @@ bool InputLabel::init(const DescriptionStyle &desc, float w) {
 	_cursorLayer->setVisible(false);
 	_cursorLayer->setContentSize(Size(1.0f, getFontHeight() / getDensity()));
 	_cursorLayer->setAnchorPoint(Vec2(0.0f, 0.0f));
-	_cursorLayer->setOpacity(222);
+	_cursorLayer->setOpacity(255);
 	node->addChild(_cursorLayer);
 
 	auto path = Rc<draw::Path>::create();
@@ -104,7 +106,7 @@ bool InputLabel::init(const DescriptionStyle &desc, float w) {
 	path->closePath();
 
 	_cursorPointer = construct<draw::PathNode>(24, 24);
-	_cursorPointer->setContentSize(Size(20.0f, 20.0f));
+	_cursorPointer->setContentSize(Size(24.0f, 24.0f));
 	_cursorPointer->setColor(material::Color::Grey_500);
 	_cursorPointer->addPath(path);
 	_cursorPointer->setAnchorPoint(Vec2(0.5f, _cursorAnchor));
@@ -120,7 +122,7 @@ bool InputLabel::init(const DescriptionStyle &desc, float w) {
 
 	_cursorStart = construct<draw::PathNode>(48, 48);
 	_cursorStart->addPath(path);
-	_cursorStart->setContentSize(Size(20.0f, 20.0f));
+	_cursorStart->setContentSize(Size(24.0f, 24.0f));
 	_cursorStart->setAnchorPoint(Vec2(1.0f, _cursorAnchor));
 	_cursorStart->setColor(Color::Blue_500);
 	_cursorStart->setOpacity(192);
@@ -135,7 +137,7 @@ bool InputLabel::init(const DescriptionStyle &desc, float w) {
 
 	_cursorEnd = construct<draw::PathNode>(48, 48);
 	_cursorEnd->addPath(path);
-	_cursorEnd->setContentSize(Size(20.0f, 20.0f));
+	_cursorEnd->setContentSize(Size(24.0f, 24.0f));
 	_cursorEnd->setAnchorPoint(Vec2(0.0f, _cursorAnchor));
 	_cursorEnd->setColor(Color::Blue_500);
 	_cursorEnd->setOpacity(192);
@@ -148,10 +150,25 @@ bool InputLabel::init(const DescriptionStyle &desc, float w) {
 	_cursorSelection->setAnchorPoint(Vec2(0.0f, 0.0f));
 	_cursorSelection->setPosition(Vec2(0.0f, 0.0f));
 	_cursorSelection->setColor(Color::Blue_500);
-	_cursorSelection->setOpacity(48);
+	_cursorSelection->setOpacity(64);
 	addChild(_cursorSelection, 3);
 
+	setOpacity(222);
+
 	return true;
+}
+
+void InputLabel::visit(cocos2d::Renderer *r, const Mat4& t, uint32_t f, ZPath &zPath) {
+	if (!_visible) {
+		return;
+	}
+	if (_cursorDirty) {
+		_cursorDirty = false;
+		if (_delegate && _inputEnabled) {
+			_delegate->onCursor(_cursor);
+		}
+	}
+	Label::visit(r, t, f, zPath);
 }
 
 void InputLabel::onContentSizeDirty() {
@@ -209,23 +226,6 @@ void InputLabel::setString(const String &str) {
 
 const WideString &InputLabel::getString() const {
 	return _inputString;
-}
-
-void InputLabel::setPlaceholder(const WideString &str) {
-	_inputPlaceholder = str;
-	if (_inputString.empty()) {
-		updateString(u"", Cursor(0, 0));
-	}
-}
-void InputLabel::setPlaceholder(const String &str) {
-	_inputPlaceholder = string::toUtf16(str);
-	if (_inputString.empty()) {
-		updateString(u"", Cursor(0, 0));
-	}
-}
-
-const WideString &InputLabel::getPlaceholder() const {
-	return _inputPlaceholder;
 }
 
 void InputLabel::setCursor(const Cursor &c) {
@@ -313,6 +313,48 @@ bool InputLabel::isPointerEnabled() const {
 	return _pointerEnabled;
 }
 
+String InputLabel::getSelectedString() const {
+	if (_cursor.length > 0) {
+		return string::toUtf8(_inputString.substr(_cursor.start, _cursor.length));
+	} else {
+		return String();
+	}
+}
+void InputLabel::pasteString(const String &str) {
+	pasteString(string::toUtf16(str));
+}
+void InputLabel::pasteString(const WideString &str) {
+	auto newString = _inputString;
+	if (_cursor.length > 0) {
+		newString.erase(_cursor.start, _cursor.length);
+		_cursor.length = 0;
+	}
+	if (_cursor.start >= newString.size()) {
+		newString.append(str);
+	} else {
+		newString.insert(_cursor.start, str);
+	}
+
+	updateString(newString, Cursor(_cursor.start + str.size()));
+	if (_handler.isActive()) {
+		_handler.setString(_inputString, _cursor);
+	}
+	setPointerEnabled(false);
+	updateCursor();
+}
+void InputLabel::eraseSelection() {
+	if (_cursor.length > 0) {
+		auto newString = _inputString;
+		newString.erase(_cursor.start, _cursor.length);
+		updateString(newString, Cursor(_cursor.start));
+		if (_handler.isActive()) {
+			_handler.setString(_inputString, _cursor);
+		}
+		setPointerEnabled(false);
+		updateCursor();
+	}
+}
+
 bool InputLabel::onPressBegin(const Vec2 &vec) {
 	if (!isEnabled()) {
 		return false;
@@ -320,7 +362,16 @@ bool InputLabel::onPressBegin(const Vec2 &vec) {
 	return true;
 }
 bool InputLabel::onLongPress(const Vec2 &vec, const TimeInterval &time, int count) {
-	if (!_rangeAllowed) {
+	if (!_rangeAllowed || _inputString.empty() || _selectedCursor != nullptr || (!_inputEnabled && ime::isInputEnabled())) {
+		return false;
+	}
+	if (_cursorPointer->isVisible() && node::isTouched(_cursorPointer, vec, 4.0f)) {
+		return false;
+	}
+	if (_cursorStart->isVisible() && node::isTouched(_cursorStart, vec, 4.0f)) {
+		return false;
+	}
+	if (_cursorEnd->isVisible() && node::isTouched(_cursorEnd, vec, 4.0f)) {
 		return false;
 	}
 
@@ -328,7 +379,7 @@ bool InputLabel::onLongPress(const Vec2 &vec, const TimeInterval &time, int coun
 		_isLongPress = true;
 		auto pos = convertToNodeSpace(vec);
 
-		auto chIdx = _format->selectChar(pos.x * _density, pos.y * _density, FormatSpec::Center);
+		auto chIdx = _format->selectChar(pos.x * _density, _format->height - pos.y * _density, FormatSpec::Center);
 		if (chIdx != maxOf<uint32_t>()) {
 			auto word = _format->selectWord(chIdx);
 			setCursor(Cursor(ime::CursorPosition(word.first), ime::CursorPosition(word.second)));
@@ -370,6 +421,8 @@ bool InputLabel::onPressEnd(const Vec2 &vec) {
 			}
 			scheduleCursorPointer();
 			return false;
+		} else if (empty() && !isPointerEnabled()) {
+			scheduleCursorPointer();
 		}
 		return true;
 	}
@@ -413,7 +466,7 @@ bool InputLabel::onSwipe(const Vec2 &vec, const Vec2 &) {
 	if (_selectedCursor) {
 		auto size = _selectedCursor->getContentSize();
 		auto anchor = _selectedCursor->getAnchorPoint();
-		auto offset = Vec2(anchor.x * size.width - size.width / 2.0f, anchor.y * size.height - size.height / 2.0f);
+		auto offset = Vec2(anchor.x * size.width - size.width / 2.0f, (anchor.y + 1.0f) * size.height);
 
 		auto locInLabel = convertToNodeSpace(vec) + offset;
 
@@ -430,14 +483,14 @@ bool InputLabel::onSwipe(const Vec2 &vec, const Vec2 &) {
 				}
 			}
 		} else if (_selectedCursor == _cursorStart) {
-			uint32_t charNumber = _format->selectChar(int32_t(roundf(locInLabel.x * _density)), int32_t(roundf(locInLabel.y * _density)), font::FormatSpec::Prefix);
+			uint32_t charNumber = _format->selectChar(int32_t(roundf(locInLabel.x * _density)), _format->height - int32_t(roundf(locInLabel.y * _density)), font::FormatSpec::Prefix);
 			if (charNumber != maxOf<uint32_t>()) {
 				if (charNumber != _cursor.start && charNumber < _cursor.start + _cursor.length) {
 					setCursor(Cursor(charNumber, (_cursor.start + _cursor.length) - charNumber));
 				}
 			}
 		} else if (_selectedCursor == _cursorEnd) {
-			uint32_t charNumber = _format->selectChar(int32_t(roundf(locInLabel.x * _density)), int32_t(roundf(locInLabel.y * _density)), font::FormatSpec::Suffix);
+			uint32_t charNumber = _format->selectChar(int32_t(roundf(locInLabel.x * _density)), _format->height - int32_t(roundf(locInLabel.y * _density)), font::FormatSpec::Suffix);
 			if (charNumber != maxOf<uint32_t>()) {
 				if (charNumber != _cursor.start + _cursor.length - 1 && charNumber >= _cursor.start) {
 					setCursor(Cursor(_cursor.start, charNumber - _cursor.start + 1));
@@ -466,10 +519,14 @@ void InputLabel::onText(const WideString &str, const Cursor &c) {
 }
 
 void InputLabel::onKeyboard(bool val, const Rect &, float) {
-	log::format("InputLabel", "onKeyboard %d", val);
+	if (val) {
+		_cursorDirty = true;
+	}
 }
 void InputLabel::onInput(bool value) {
-	log::format("InputLabel", "onInput %d", value);
+	if (_inputEnabled != value) {
+		_cursorDirty = true;
+	}
 	_inputEnabled = value;
 	updateFocus();
 	if (_delegate) {
@@ -492,12 +549,7 @@ void InputLabel::updateCursor() {
 		if (empty()) {
 			cpos = Vec2(0.0f, _contentSize.height - _cursorLayer->getContentSize().height);
 		} else {
-			Vec2 pos = getCursorPosition(_cursor.start);
-			if (pos != Vec2::ZERO) {
-				cpos = Vec2(pos.x, pos.y);
-			} else {
-				cpos = Vec2(0.0f, _contentSize.height - _cursorLayer->getContentSize().height);
-			}
+			cpos = getCursorPosition(_cursor.start);
 		}
 		_cursorLayer->setVisible(true);
 		_cursorLayer->setPosition(cpos);
@@ -554,17 +606,13 @@ bool InputLabel::updateString(const WideString &str, const Cursor &c) {
 		_inputString = str;
 		_cursor = c;
 
-		if (_inputString.empty()) {
-			Label::setString(_inputPlaceholder);
+		if (_password == PasswordMode::ShowAll) {
+			Label::setString(_inputString);
 		} else {
-			if (_password == PasswordMode::ShowAll) {
-				Label::setString(_inputString);
-			} else {
-				WideString str; str.resize(_inputString.length(), u'*');
-				Label::setString(str);
-				if (isInsert) {
-					showLastChar();
-				}
+			WideString str; str.resize(_inputString.length(), u'*');
+			Label::setString(str);
+			if (isInsert) {
+				showLastChar();
 			}
 		}
 
@@ -581,12 +629,6 @@ bool InputLabel::updateString(const WideString &str, const Cursor &c) {
 }
 
 void InputLabel::updateFocus() {
-	if (_inputString.empty() || !_enabled) {
-		setOpacity(127);
-	} else {
-		setOpacity(222);
-	}
-
 	if (_inputEnabled) {
 		_cursorLayer->setColor(_cursorColor);
 		_cursorPointer->setColor(_cursorColor);
@@ -626,7 +668,7 @@ void InputLabel::scheduleCursorPointer() {
 	setPointerEnabled(true);
 	stopAllActionsByTag("TextFieldCursorPointer"_tag);
 	if (_cursor.length == 0) {
-		runAction(action::callback(7.5f, [this] {
+		runAction(action::callback(3.5f, [this] {
 			setPointerEnabled(false);
 		}), "TextFieldCursorPointer"_tag);
 	}

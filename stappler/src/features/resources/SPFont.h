@@ -214,6 +214,7 @@ public:
 	const Vector<Rc<cocos2d::Texture2D>> &getTextures() const;
 
 	uint32_t getVersion() const;
+	uint32_t getTextureVersion() const;
 
 	bool isTextureRequestValid(uint32_t) const;
 	bool isDirty() const;
@@ -250,8 +251,8 @@ protected:
 
 	FontFace * getFontFace(const String &name, const FontParameters &);
 
-	void onTextureResult(Vector<Rc<cocos2d::Texture2D>> &&);
-	void onTextureResult(Map<String, Vector<char16_t>> &&, Vector<Rc<cocos2d::Texture2D>> &&);
+	void onTextureResult(Vector<Rc<cocos2d::Texture2D>> &&, uint32_t);
+	void onTextureResult(Map<String, Vector<char16_t>> &&, Vector<Rc<cocos2d::Texture2D>> &&, uint32_t);
 
 	void updateTexture(uint32_t, const Map<String, Vector<char16_t>> &);
 	void cleanup();
@@ -268,6 +269,7 @@ protected:
 	Vector<Rc<cocos2d::Texture2D>> _textures;
 	Map<String, Vector<char16_t>> _textureLayouts;
 
+	uint32_t _textureVersion = 0;
 	std::atomic<uint32_t> _version;
 	AssetMap _assets;
 	SearchDirs _searchDirs;

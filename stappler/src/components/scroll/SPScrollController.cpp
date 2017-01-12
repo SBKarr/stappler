@@ -233,6 +233,22 @@ size_t ScrollController::addItem(const NodeFunction &fn, float size, int zIndex)
 	return addItem(fn, size, pos, zIndex);
 }
 
+size_t ScrollController::addPlaceholder(const Size &size, const Vec2 &pos) {
+	return addItem([] (const Item &item) -> cocos2d::Node * {
+		return cocos2d::Node::create();
+	}, size, pos);
+}
+size_t ScrollController::addPlaceholder(float size, float pos) {
+	return addItem([] (const Item &item) -> cocos2d::Node * {
+		return cocos2d::Node::create();
+	}, size, pos);
+}
+size_t ScrollController::addPlaceholder(float size) {
+	return addItem([] (const Item &item) -> cocos2d::Node * {
+		return cocos2d::Node::create();
+	}, size);
+}
+
 ScrollController::Item *ScrollController::getItem(size_t n) {
 	if (n < _nodes.size()) {
 		_infoDirty = true;

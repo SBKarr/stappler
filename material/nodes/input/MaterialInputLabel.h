@@ -79,6 +79,7 @@ public:
 	virtual bool init(const String &, float w = 0);
 	virtual bool init(const DescriptionStyle &, float w = 0);
 
+	virtual void visit(cocos2d::Renderer *r, const Mat4& t, uint32_t f, ZPath &zPath) override;
 	virtual void onContentSizeDirty() override;
 	virtual void onExit() override;
 
@@ -90,10 +91,6 @@ public:
 	virtual void setString(const WideString &) override;
 	virtual void setString(const String &) override;
 	virtual const WideString &getString() const override;
-
-	virtual void setPlaceholder(const WideString &);
-	virtual void setPlaceholder(const String &);
-	virtual const WideString &getPlaceholder() const;
 
 	virtual void setCursor(const Cursor &);
 	virtual const Cursor &getCursor() const;
@@ -119,6 +116,11 @@ public:
 	virtual bool empty() const override;
 	virtual bool isActive() const;
 	virtual bool isPointerEnabled() const;
+
+	virtual String getSelectedString() const;
+	virtual void pasteString(const String &);
+	virtual void pasteString(const WideString &);
+	virtual void eraseSelection();
 
 public:
 	virtual bool onPressBegin(const Vec2 &);
@@ -156,12 +158,12 @@ protected:
 	bool _rangeAllowed = true;
 	bool _isLongPress = false;
 	bool _pointerEnabled = false;
+	bool _cursorDirty = false;
 
-	float _cursorAnchor = 1.0f;
+	float _cursorAnchor = 1.2f;
 
 	Color _cursorColor = Color::Blue_500;
 
-	WideString _inputPlaceholder;
 	WideString _inputString;
 
 	draw::PathNode * _selectedCursor = nullptr;

@@ -289,7 +289,7 @@ struct CharGroup<char16_t, CharGroupId::WhiteSpace> : Compose<char16_t,
 		Range<char16_t, u'\u0009', u'\u000D'>,
 		Range<char16_t, u'\u2000', u'\u200D'>,
 		Chars<char16_t, u'\u0020', u'\u0085', u'\u00A0', u'\u1680', u'\u2028', u'\u2029',
-				 u'\u202F', u'\u205F', u'\u2060', u'\u3000', u'\uFEFF'>
+				 u'\u202F', u'\u205F', u'\u2060', u'\u3000', u'\uFEFF', u'\uFFFF'>
 > { };
 
 template <>
@@ -300,7 +300,7 @@ struct CharGroup<char16_t, CharGroupId::NonPrintable> : Compose<char16_t,
 		Range<char16_t, u'\u0001', u'\u0020'>,
 		Range<char16_t, u'\u2000', u'\u200D'>,
 		Chars<char16_t, u'\u0020', u'\u0085', u'\u00A0', u'\u1680', u'\u2028', u'\u2029',
-				 u'\u202F', u'\u205F', u'\u2060', u'\u3000', u'\uFEFF'>
+				 u'\u202F', u'\u205F', u'\u2060', u'\u3000', u'\uFEFF', u'\uFFFF'>
 > { };
 
 template <>

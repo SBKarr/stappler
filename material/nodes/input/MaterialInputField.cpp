@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include "SPLayer.h"
 #include "SPString.h"
 #include "SPStrictNode.h"
+#include "SPDevice.h"
 
 NS_MD_BEGIN
 
@@ -43,9 +44,13 @@ bool InputField::init(FontType font) {
 	_node->setAnchorPoint(Vec2(0.0f, 0.0f));
 	_label = construct<InputLabel>(font);
 	_label->setPosition(Vec2(0.0f, 0.0f));
-	_label->setDelegate(this);
 	_node->addChild(_label);
 	addChild(_node, 1);
+
+	_placeholder = construct<Label>(font);
+	_placeholder->setPosition(Vec2(0.0f, 0.0f));
+	_placeholder->setColor(Color::Grey_500);
+	addChild(_placeholder, 1);
 
 	_menu = construct<InputMenu>(std::bind(&InputField::onMenuCut, this), std::bind(&InputField::onMenuCopy, this),
 			std::bind(&InputField::onMenuPaste, this));
@@ -73,14 +78,21 @@ bool InputField::init(FontType font) {
 	}, TimeInterval::milliseconds(425), true);
 	_gestureListener->setSwipeCallback([this] (gesture::Event ev, const gesture::Swipe &s) {
 		if (ev == gesture::Event::Began) {
-			if (onSwipeBegin(s.location())) {
-				return onSwipe(s.location(), s.delta / screen::density());
+			if (onSwipeBegin(s.location(), s.delta)) {
+				auto ret = onSwipe(s.location(), s.delta / screen::density());
+				_hasSwipe = ret;
+				updateMenu();
+				_gestureListener->setExclusive();
+				return ret;
 			}
 			return false;
 		} else if (ev == gesture::Event::Activated) {
 			return onSwipe(s.location(), s.delta / screen::density());
 		} else {
-			return onSwipeEnd(s.velocity / screen::density());
+			auto ret = onSwipeEnd(s.velocity / screen::density());
+			_hasSwipe = false;
+			updateMenu();
+			return ret;
 		}
 	});
 	addComponent(_gestureListener);
@@ -88,13 +100,29 @@ bool InputField::init(FontType font) {
 	return true;
 }
 
+void InputField::visit(cocos2d::Renderer *r, const Mat4& t, uint32_t f, ZPath &zPath) {
+	if (!_visible) {
+		return;
+	}
+
+	if (f & FLAGS_TRANSFORM_DIRTY) {
+		if (_menu->isVisible()) {
+			setMenuPosition(_menuPosition);
+		}
+	}
+
+	Node::visit(r, t, f, zPath);
+}
+
 void InputField::onEnter() {
 	Node::onEnter();
 	Scene::getRunningScene()->pushFloatNode(_menu, 1);
+	_label->setDelegate(this);
 }
 void InputField::onExit() {
-	Node::onExit();
+	_label->setDelegate(nullptr);
 	Scene::getRunningScene()->popFloatNode(_menu);
+	Node::onExit();
 }
 
 void InputField::setInputCallback(const Callback &cb) {
@@ -105,14 +133,18 @@ const InputField::Callback &InputField::getInputCallback() const {
 }
 
 void InputField::onActivated(bool value) {
-	_gestureListener->setSwallowTouches(value);
+	//_gestureListener->setSwallowTouches(value);
 }
 void InputField::onPointer(bool value) {
-	log::format("InputField", "onPointer %d", value);
+	updateMenu();
+}
+void InputField::onCursor(const Cursor &) {
+	updateMenu();
 }
 
 void InputField::setMenuPosition(const Vec2 &pos) {
 	_menu->updateMenu();
+	_menuPosition = pos;
 	auto width = _menu->getContentSize().width;
 
 	Vec2 menuPos = pos;
@@ -123,6 +155,17 @@ void InputField::setMenuPosition(const Vec2 &pos) {
 	}
 
 	menuPos =  convertToWorldSpace(menuPos) / screen::density();
+
+	auto sceneSize = Scene::getRunningScene()->getViewSize();
+	auto top = menuPos.y + _menu->getContentSize().height - (_menu->getAnchorPoint().y * _menu->getContentSize().height);
+	auto bottom = menuPos.y - (_menu->getAnchorPoint().y * _menu->getContentSize().height);
+	auto keyboardSize = ime::getKeyboardRect().size / screen::density();
+
+	if (bottom < metrics::horizontalIncrement() / 2.0f + keyboardSize.height) {
+		menuPos.y = metrics::horizontalIncrement() / 2.0f + keyboardSize.height + (_menu->getAnchorPoint().y * _menu->getContentSize().height);
+	} else if (top > sceneSize.height - metrics::horizontalIncrement()) {
+		menuPos.y = sceneSize.height - metrics::horizontalIncrement() - _menu->getContentSize().height + (_menu->getAnchorPoint().y * _menu->getContentSize().height);
+	}
 	_menu->setPosition(menuPos);
 }
 
@@ -168,13 +211,23 @@ bool InputField::empty() const {
 }
 
 void InputField::setPlaceholder(const WideString &str) {
-	_label->setPlaceholder(str);
+	_placeholder->setString(str);
 }
 void InputField::setPlaceholder(const String &str) {
-	_label->setPlaceholder(str);
+	_placeholder->setString(str);
 }
 const WideString &InputField::getPlaceholder() const {
-	return _label->getPlaceholder();
+	return _label->getString();
+}
+
+void InputField::setString(const WideString &str) {
+	_label->setString(str);
+}
+void InputField::setString(const String &str) {
+	_label->setString(str);
+}
+const WideString &InputField::getString() const {
+	return _label->getString();
 }
 
 bool InputField::onPressBegin(const Vec2 &vec) {
@@ -195,6 +248,10 @@ bool InputField::onPressEnd(const Vec2 &vec) {
 		}
 		return true;
 	} else {
+		if (node::isTouched(_placeholder, vec, 8.0f)) {
+			_label->releaseInput();
+			return true;
+		}
 		if (!_label->onPressEnd(vec)) {
 			if (!node::isTouched(_node, vec)) {
 				_label->releaseInput();
@@ -213,7 +270,7 @@ bool InputField::onPressCancel(const Vec2 &vec) {
 	return _label->onPressCancel(vec);
 }
 
-bool InputField::onSwipeBegin(const Vec2 &vec) {
+bool InputField::onSwipeBegin(const Vec2 &vec, const Vec2 &) {
 	return _label->onSwipeBegin(vec);
 }
 
@@ -226,13 +283,34 @@ bool InputField::onSwipeEnd(const Vec2 &vel) {
 }
 
 void InputField::onMenuCut() {
-	log::text("InputField", "onMenuCut");
+	Device::getInstance()->copyStringToClipboard(_label->getSelectedString());
+	_label->eraseSelection();
 }
 void InputField::onMenuCopy() {
-	log::text("InputField", "onMenuCopy");
+	Device::getInstance()->copyStringToClipboard(_label->getSelectedString());
+	_menu->setVisible(false);
 }
 void InputField::onMenuPaste() {
-	log::text("InputField", "onMenuPaste");
+	_label->pasteString(Device::getInstance()->getStringFromClipboard());
+}
+
+void InputField::updateMenu() {
+	auto c = _label->getCursor();
+	if (!_hasSwipe && _label->isPointerEnabled() && (c.length > 0 || Device::getInstance()->isClipboardAvailable())) {
+		_menu->setCopyMode(c.length > 0);
+		_menu->setVisible(true);
+		onMenuVisible();
+	} else {
+		_menu->setVisible(false);
+		onMenuHidden();
+	}
+}
+
+void InputField::onMenuVisible() {
+
+}
+void InputField::onMenuHidden() {
+
 }
 
 NS_MD_END
