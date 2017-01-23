@@ -51,9 +51,9 @@ void PrintBacktrace(int len, cocos2d::Ref *ref) {
 
     for (int i = 2; i < bt_size; i++) {
     	auto str = filepath::replace(bt_syms[i], filesystem::currentDir(), "/");
-    	//auto first = str.find('(');
-    	//auto second = str.rfind('+');
-    	//str = str.substr(first + 1, second - first - 1);
+    	auto first = str.find('(');
+    	auto second = str.rfind('+');
+    	str = str.substr(first + 1, second - first - 1);
 
     	int status = 0;
     	auto ptr = abi::__cxa_demangle (str.c_str(), nullptr, nullptr, &status);

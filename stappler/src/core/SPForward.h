@@ -58,6 +58,18 @@ using Color3B = cocos2d::Color3B;
 using Renderer = cocos2d::Renderer;
 using Ref = cocos2d::Ref;
 
+namespace Anchor {
+extern const Vec2 Middle; /** equals to Vec2(0.5, 0.5) */
+extern const Vec2 BottomLeft; /** equals to Vec2(0, 0) */
+extern const Vec2 TopLeft; /** equals to Vec2(0, 1) */
+extern const Vec2 BottomRight; /** equals to Vec2(1, 0) */
+extern const Vec2 TopRight; /** equals to Vec2(1, 1) */
+extern const Vec2 MiddleRight; /** equals to Vec2(1, 0.5) */
+extern const Vec2 MiddleLeft; /** equals to Vec2(0, 0.5) */
+extern const Vec2 MiddleTop; /** equals to Vec2(0.5, 1) */
+extern const Vec2 MiddleBottom; /** equals to Vec2(0.5, 0) */
+}
+
 NS_SP_END
 
 #include "SPRc.h"

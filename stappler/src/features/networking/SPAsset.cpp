@@ -193,7 +193,7 @@ bool Asset::isReadAvailable() const {
 	return _fileExisted && !_fileUpdate;
 }
 bool Asset::isDownloadAvailable() const {
-	return (!_fileExisted || _unupdated) && !_fileUpdate;
+	return (!_fileExisted || _unupdated) && !_fileUpdate && !_waitFileSwap;
 }
 bool Asset::isUpdateAvailable() const {
 	return _unupdated;
@@ -257,6 +257,7 @@ bool Asset::swapFiles() {
 	if (!_tempPath.empty() && filesystem::exists(_tempPath)) {
 		std::string tmp = _tempPath;
 		_tempPath.clear();
+		_waitFileSwap = true;
 		retainWriteLock((LockPtr)this, [this, tmp] {
 			_fileUpdate = true;
 			auto &thread = storage::thread();
@@ -269,6 +270,7 @@ bool Asset::swapFiles() {
 			}, [this] (cocos2d::Ref *, bool) {
 				_fileUpdate = false;
 				_unupdated = false;
+				_waitFileSwap = false;
 				_fileExisted = filesystem::exists(_path);
 				touch();
 				releaseWriteLock(this);

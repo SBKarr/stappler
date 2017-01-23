@@ -142,7 +142,13 @@ bool Builder::initLayout(Layout &l, const Vec2 &parentPos, const Size &parentSiz
 		}
 
 		if (!isnanf(maxHeight) && height > maxHeight) {
-			height = maxHeight;
+			if (l.node && l.node->getHtmlName() == "img") {
+				auto scale = maxHeight / height;
+				height = maxHeight;
+				width *= scale;
+			} else {
+				height = maxHeight;
+			}
 		}
 
 		l.minHeight = nan();
@@ -267,7 +273,7 @@ void Builder::finalizeChilds(Layout &l, float height) {
 		auto &newL = l.layouts.back();
 		float collapsableMarginBottom = MAX(newL.collapsableMarginBottom, newL.margin.bottom);
 		if (l.collapsableMarginBottom > collapsableMarginBottom) {
-			l.margin.bottom -= (l.collapsableMarginBottom - collapsableMarginBottom);
+			l.margin.bottom -= collapsableMarginBottom;
 		} else {
 			l.margin.bottom = 0;
 		}

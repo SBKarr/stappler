@@ -106,11 +106,6 @@ bool Scene::init() {
 		addChild(_content, 1);
 	}
 
-	if (!_floating) {
-		_floating = cocos2d::Node::create();
-		addChild(_floating, 2);
-	}
-
 	if (!_navigation) {
 		_navigation = createNavigationLayer();
 		addChild(_navigation, 3);
@@ -258,7 +253,6 @@ void Scene::layoutSubviews() {
 
 	layoutLayer(_background);
 	layoutLayer(_content);
-	layoutLayer(_floating);
 	layoutLayer(_navigation);
 	layoutLayer(_foreground);
 
@@ -462,13 +456,18 @@ void Scene::popContentNode(Layout *l) {
 	_content->popNode(l);
 }
 
+void Scene::pushOverlayNode(Layout *l) {
+	_content->pushOverlayNode(l);
+}
+void Scene::popOverlayNode(Layout *l) {
+	_content->popOverlayNode(l);
+}
+
 void Scene::pushFloatNode(cocos2d::Node *n, int z) {
-	_floating->addChild(n, z);
+	_foreground->pushFloatNode(n, z);
 }
 void Scene::popFloatNode(cocos2d::Node *n) {
-	if (n && n->getParent() == _floating) {
-		n->removeFromParent();
-	}
+	_foreground->popFloatNode(n);
 }
 
 void Scene::pushForegroundNode(cocos2d::Node *n, const std::function<void()> &cb) {
@@ -476,6 +475,18 @@ void Scene::pushForegroundNode(cocos2d::Node *n, const std::function<void()> &cb
 }
 void Scene::popForegroundNode(cocos2d::Node *n) {
 	_foreground->popNode(n);
+}
+
+void Scene::popNode(cocos2d::Node *node) {
+	if (node->getParent() == _foreground) {
+		_foreground->popNode(node);
+	} else if (node->getParent() == _content) {
+		if (auto l = dynamic_cast<Layout *>(node)) {
+			if (_content->popOverlayNode(l)) {
+				_content->popNode(l);
+			}
+		}
+	}
 }
 
 void Scene::setNavigationMenuSource(material::MenuSource *source) {
@@ -486,7 +497,7 @@ void Scene::setSnackbarString(const std::string &str, const Color &color) {
 	_foreground->setSnackbarString(str, color);
 }
 Vec2 Scene::convertToScene(const Vec2 &vec) const {
-	return _floating->convertToNodeSpace(vec);
+	return _foreground->convertToNodeSpace(vec);
 }
 
 void Scene::takeScreenshoot() {

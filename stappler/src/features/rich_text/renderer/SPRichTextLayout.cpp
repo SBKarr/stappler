@@ -57,7 +57,7 @@ Object::Object(const cocos2d::Rect &bbox, const Background &v) : bbox(bbox), typ
 Object::Object(const cocos2d::Rect &bbox, Background &&v) : bbox(bbox), type(Type::Background), value(std::move(v)) { }
 Object::Object(const cocos2d::Rect &bbox, Label &&v) : bbox(bbox), type(Type::Label), value(std::move(v)) { }
 
-Object::Object(Object &&other) : bbox(other.bbox), type(other.type) {
+Object::Object(Object &&other) : bbox(other.bbox), type(other.type), index(other.index) {
 	switch(other.type) {
 	case Type::Empty: break;
 	case Type::Ref: new (&value.ref) Ref(std::move(other.value.ref)); other.value.ref.~Ref(); break;
@@ -85,6 +85,7 @@ Object & Object::operator = (Object &&other) {
 	case Type::Label: new (&value.label) Label(std::move(other.value.label)); other.value.label.~Label(); break;
 	}
 	type = other.type;
+	index = other.index;
 	other.type = Type::Empty;
 	return *this;
 }
@@ -143,6 +144,10 @@ uint32_t Label::getLineForCharId(uint32_t id) const {
 
 Vector<Rect> Label::getLabelRects(uint32_t firstCharId, uint32_t lastCharId, float density, const Vec2 &origin, const Padding &p) const {
 	return format.getLabelRects(firstCharId, lastCharId, density, origin, p);
+}
+
+void Label::getLabelRects(Vector<Rect> &rect, uint32_t firstCharId, uint32_t lastCharId, float density, const Vec2 &origin, const Padding &p) const {
+	return format.getLabelRects(rect, firstCharId, lastCharId, density, origin, p);
 }
 
 Layout::Layout() { }

@@ -35,6 +35,7 @@ public:
 	using PasswordMode = InputLabel::PasswordMode;
 	using Error = InputLabel::Error;
 	using Callback = Function<void()>;
+	using CharFilter = Function<bool(char16_t)>;
 
 	virtual bool init(FontType);
 	virtual void visit(cocos2d::Renderer *r, const Mat4& t, uint32_t f, ZPath &zPath) override;
@@ -70,6 +71,11 @@ public:
 	virtual void setString(const String &);
 	virtual const WideString &getString() const;
 
+	virtual InputLabel *getLabel() const;
+
+	virtual void setCharFilter(const CharFilter &);
+	virtual const CharFilter &getCharFilter() const;
+
 public:
 	virtual bool onPressBegin(const Vec2 &);
 	virtual bool onLongPress(const Vec2 &, const TimeInterval &, int count);
@@ -85,6 +91,7 @@ public:
 	virtual void onMenuPaste();
 
 protected:
+	virtual bool onInputChar(char16_t) override;
 	virtual void onActivated(bool) override;
 	virtual void onPointer(bool) override;
 	virtual void onCursor(const Cursor &) override;
@@ -105,6 +112,7 @@ protected:
 	Label *_placeholder = nullptr;
 	Rc<InputMenu> _menu;
 	Callback _onInput;
+	CharFilter _charFilter;
 
 	Vec2 _menuPosition;
 };

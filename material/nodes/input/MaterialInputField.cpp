@@ -44,12 +44,14 @@ bool InputField::init(FontType font) {
 	_node->setAnchorPoint(Vec2(0.0f, 0.0f));
 	_label = construct<InputLabel>(font);
 	_label->setPosition(Vec2(0.0f, 0.0f));
+	_label->setCursorColor(_normalColor);
 	_node->addChild(_label);
 	addChild(_node, 1);
 
 	_placeholder = construct<Label>(font);
 	_placeholder->setPosition(Vec2(0.0f, 0.0f));
 	_placeholder->setColor(Color::Grey_500);
+	_placeholder->setLocaleEnabled(true);
 	addChild(_placeholder, 1);
 
 	_menu = construct<InputMenu>(std::bind(&InputField::onMenuCut, this), std::bind(&InputField::onMenuCopy, this),
@@ -132,6 +134,12 @@ const InputField::Callback &InputField::getInputCallback() const {
 	return _onInput;
 }
 
+bool InputField::onInputChar(char16_t c) {
+	if (_charFilter) {
+		return _charFilter(c);
+	}
+	return true;
+}
 void InputField::onActivated(bool value) {
 	//_gestureListener->setSwallowTouches(value);
 }
@@ -228,6 +236,17 @@ void InputField::setString(const String &str) {
 }
 const WideString &InputField::getString() const {
 	return _label->getString();
+}
+
+InputLabel *InputField::getLabel() const {
+	return _label;
+}
+
+void InputField::setCharFilter(const CharFilter &cb) {
+	_charFilter = cb;
+}
+const InputField::CharFilter &InputField::getCharFilter() const {
+	return _charFilter;
 }
 
 bool InputField::onPressBegin(const Vec2 &vec) {

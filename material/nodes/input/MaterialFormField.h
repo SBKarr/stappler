@@ -51,6 +51,13 @@ public:
 	virtual void setAutoAdjust(bool);
 	virtual bool isAutoAdjust() const;
 
+	// should we show empty error/counter line?
+	virtual void setFullHeight(bool);
+	virtual bool isFullHeight() const;
+
+	virtual void setError(const String &);
+	virtual const String &getError() const;
+
 protected:
 	virtual void updateLabelHeight(float = nan());
 	virtual Size getSizeForLabelWidth(float width, float labelHeight);
@@ -65,6 +72,7 @@ protected:
 	virtual void updateFormData();
 
 	bool _autoAdjust = true;
+	bool _fullHeight = false;
 	ScrollView *_adjustScroll = nullptr;
 
 	bool _dense = false;

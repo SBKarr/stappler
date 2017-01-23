@@ -170,6 +170,7 @@ protected:
 
 	bool _fileExisted = false;
 	bool _unupdated = false;
+	bool _waitFileSwap = false;
 	bool _downloadInProgress = false;
 	bool _fileUpdate = false;
 

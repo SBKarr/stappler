@@ -26,8 +26,6 @@ THE SOFTWARE.
 #include "Material.h"
 #include "MaterialContentLayer.h"
 #include "MaterialLayout.h"
-
-#include "SPGestureListener.h"
 #include "SPActions.h"
 
 NS_MD_BEGIN
@@ -36,19 +34,6 @@ bool ContentLayer::init() {
 	if (!Node::init()) {
 		return false;
 	}
-
-	auto l = construct<gesture::Listener>();
-	l->setTouchFilter([] (const cocos2d::Vec2 &, const stappler::gesture::Listener::DefaultTouchFilter &) -> bool {
-		return true;
-	});
-	l->setTouchCallback([] (stappler::gesture::Event, const stappler::gesture::Touch &) -> bool {
-		return true;
-	});
-	l->setSwallowTouches(true);
-	l->setEnabled(false);
-	addComponent(l);
-
-	_listener = l;
 
 	return true;
 }
@@ -59,6 +44,12 @@ void ContentLayer::onContentSizeDirty() {
 		node->setAnchorPoint(Vec2(0.5f, 0.5f));
 		node->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
 		node->setContentSize(_contentSize);
+	}
+
+	if (_overlay) {
+		_overlay->setAnchorPoint(Vec2(0.5f, 0.5f));
+		_overlay->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
+		_overlay->setContentSize(_contentSize);
 	}
 }
 
@@ -81,7 +72,7 @@ void ContentLayer::replaceNode(Layout *node, Transition *enterTransition) {
 		node->setAnchorPoint(Vec2(0.5f, 0.5f));
 		node->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
 		node->setContentSize(_contentSize);
-		addChild(node, 1);
+		addChild(node, -1);
 
 		for (auto &it : _nodes) {
 			if (it != node) {
@@ -112,8 +103,6 @@ void ContentLayer::replaceNode(Layout *node, Transition *enterTransition) {
 			}
 			replaceNodes();
 		}
-
-		_listener->setEnabled(true);
 	}
 }
 
@@ -135,7 +124,7 @@ void ContentLayer::pushNode(Layout *node, Transition *enterTransition, Transitio
 		node->setAnchorPoint(Vec2(0.5f, 0.5f));
 		node->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
 		node->setContentSize(_contentSize);
-		addChild(node, 1);
+		addChild(node, -1);
 
 		if (_nodes.size() > 1) {
 			_nodes.at(_nodes.size() - 2)->onBackground(this, node);
@@ -157,8 +146,6 @@ void ContentLayer::pushNode(Layout *node, Transition *enterTransition, Transitio
 			}
 			node->onPushTransitionEnded(this, false);
 		}
-
-		_listener->setEnabled(true);
 	}
 }
 
@@ -240,8 +227,6 @@ void ContentLayer::eraseNode(Layout *node) {
 
 		_exitTransitions.erase(node);
 		updateNodesVisibility();
-	} else {
-		_listener->setEnabled(false);
 	}
 }
 
@@ -311,6 +296,33 @@ bool ContentLayer::onBackButton() {
 
 size_t ContentLayer::getNodesCount() const {
 	return _nodes.size();
+}
+
+bool ContentLayer::pushOverlayNode(Layout *l) {
+	if (_overlay) {
+		_overlay->removeFromParent();
+		_overlay = nullptr;
+	}
+	_overlay = l;
+	if (_overlay) {
+		_overlay->setAnchorPoint(Vec2(0.5f, 0.5f));
+		_overlay->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
+		_overlay->setContentSize(_contentSize);
+		addChild(_overlay, 1);
+		_overlay->onPush(this, false);
+		_overlay->onPushTransitionEnded(this, false);
+	}
+	return true;
+}
+bool ContentLayer::popOverlayNode(Layout *l) {
+	if (_overlay) {
+		_overlay->onPopTransitionBegan(this, false);
+		_overlay->onPop(this, false);
+		_overlay->removeFromParent();
+		_overlay = nullptr;
+		return true;
+	}
+	return false;
 }
 
 NS_MD_END

@@ -92,7 +92,7 @@ bool InputLabel::init(const DescriptionStyle &desc, float w) {
 	auto node = construct<AlwaysDrawedNode>();
 	node->setPosition(0.0f, 0.0f);
 
-	_cursorLayer = construct<Layer>(material::Color::Grey_500);
+	_cursorLayer = construct<Layer>(Color::Grey_500);
 	_cursorLayer->setVisible(false);
 	_cursorLayer->setContentSize(Size(1.0f, getFontHeight() / getDensity()));
 	_cursorLayer->setAnchorPoint(Vec2(0.0f, 0.0f));
@@ -107,7 +107,7 @@ bool InputLabel::init(const DescriptionStyle &desc, float w) {
 
 	_cursorPointer = construct<draw::PathNode>(24, 24);
 	_cursorPointer->setContentSize(Size(24.0f, 24.0f));
-	_cursorPointer->setColor(material::Color::Grey_500);
+	_cursorPointer->setColor(Color::Grey_500);
 	_cursorPointer->addPath(path);
 	_cursorPointer->setAnchorPoint(Vec2(0.5f, _cursorAnchor));
 	_cursorPointer->setOpacity(222);
@@ -124,7 +124,7 @@ bool InputLabel::init(const DescriptionStyle &desc, float w) {
 	_cursorStart->addPath(path);
 	_cursorStart->setContentSize(Size(24.0f, 24.0f));
 	_cursorStart->setAnchorPoint(Vec2(1.0f, _cursorAnchor));
-	_cursorStart->setColor(Color::Blue_500);
+	_cursorStart->setColor(_cursorColor);
 	_cursorStart->setOpacity(192);
 	_cursorStart->setVisible(false);
 	node->addChild(_cursorStart);
@@ -139,7 +139,7 @@ bool InputLabel::init(const DescriptionStyle &desc, float w) {
 	_cursorEnd->addPath(path);
 	_cursorEnd->setContentSize(Size(24.0f, 24.0f));
 	_cursorEnd->setAnchorPoint(Vec2(0.0f, _cursorAnchor));
-	_cursorEnd->setColor(Color::Blue_500);
+	_cursorEnd->setColor(_cursorColor);
 	_cursorEnd->setOpacity(192);
 	_cursorEnd->setVisible(false);
 	node->addChild(_cursorEnd);
@@ -149,7 +149,7 @@ bool InputLabel::init(const DescriptionStyle &desc, float w) {
 	_cursorSelection = construct<Selection>();
 	_cursorSelection->setAnchorPoint(Vec2(0.0f, 0.0f));
 	_cursorSelection->setPosition(Vec2(0.0f, 0.0f));
-	_cursorSelection->setColor(Color::Blue_500);
+	_cursorSelection->setColor(_cursorColor);
 	_cursorSelection->setOpacity(64);
 	addChild(_cursorSelection, 3);
 
@@ -209,6 +209,9 @@ void InputLabel::setCursorColor(const Color &color) {
 		_cursorLayer->setColor(color);
 		_cursorPointer->setColor(color);
 	}
+	_cursorStart->setColor(color);
+	_cursorEnd->setColor(color);
+	_cursorSelection->setColor(color);
 }
 const Color &InputLabel::getCursorColor() const {
 	return _cursorColor;

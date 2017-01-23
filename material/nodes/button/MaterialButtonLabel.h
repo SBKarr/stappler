@@ -57,7 +57,7 @@ protected:
 	virtual void updatePadding();
 	virtual void updateEnabled() override;
 
-	uint8_t _labelOpacity = 0;
+	uint8_t _labelOpacity = 255;
 	Label *_label = nullptr;
 	Padding _labelPadding = Padding(6.0f, 8.0f);
 };

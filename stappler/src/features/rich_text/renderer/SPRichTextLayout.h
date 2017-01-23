@@ -98,6 +98,7 @@ struct Label {
 
 	uint32_t getLineForCharId(uint32_t id) const;
 	Vector<Rect> getLabelRects(uint32_t first, uint32_t last, float density, const Vec2 & = Vec2(), const Padding &p = Padding()) const;
+	void getLabelRects(Vector<Rect> &rect, uint32_t firstCharId, uint32_t lastCharId, float density, const Vec2 &origin, const Padding &p) const;
 };
 
 struct Object {
@@ -126,6 +127,8 @@ struct Object {
 
 		~Value();
 	} value;
+
+	size_t index = maxOf<size_t>();
 
 	~Object();
 	Object(const Rect &);

@@ -104,6 +104,8 @@
 		84337FE71CC24EA700546216 /* SPIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84337FE11CC24EA700546216 /* SPIO.cpp */; };
 		84337FF21CC25A7D00546216 /* SPDrawCanvas.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84337FF01CC25A7D00546216 /* SPDrawCanvas.cpp */; };
 		843380101CC272BF00546216 /* SPIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84337FE11CC24EA700546216 /* SPIO.cpp */; };
+		843FF7081E3B3A8D009F31F1 /* SPApplication.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 843FF7061E3B3A8D009F31F1 /* SPApplication.cpp */; };
+		843FF7231E3B3D68009F31F1 /* SPNodeExt.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 843FF7221E3B3D68009F31F1 /* SPNodeExt.cpp */; };
 		844635791B1EBDE300CA9857 /* SPError.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8EE1B1D888D00C0175B /* SPError.cpp */; };
 		8446357C1B1EBDFC00CA9857 /* SPEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8E21B1D888D00C0175B /* SPEvent.cpp */; };
 		8446357D1B1EBE0000CA9857 /* SPEventDispatcher.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8E41B1D888D00C0175B /* SPEventDispatcher.cpp */; };
@@ -370,6 +372,9 @@
 		84337FE61CC24EA700546216 /* SPIOProducer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIOProducer.h; sourceTree = "<group>"; };
 		84337FF01CC25A7D00546216 /* SPDrawCanvas.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDrawCanvas.cpp; sourceTree = "<group>"; };
 		84337FF11CC25A7D00546216 /* SPDrawCanvas.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDrawCanvas.h; sourceTree = "<group>"; };
+		843FF7061E3B3A8D009F31F1 /* SPApplication.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPApplication.cpp; sourceTree = "<group>"; };
+		843FF7071E3B3A8D009F31F1 /* SPApplication.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPApplication.h; sourceTree = "<group>"; };
+		843FF7221E3B3D68009F31F1 /* SPNodeExt.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPNodeExt.cpp; sourceTree = "<group>"; };
 		844637521B1EE7FE00CA9857 /* SPIOSLoaderView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SPIOSLoaderView.mm; sourceTree = "<group>"; };
 		844637541B1EE83200CA9857 /* SPIOSLoaderView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SPIOSLoaderView.h; sourceTree = "<group>"; };
 		847576C81BE8A13B00445A50 /* SPActions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPActions.h; sourceTree = "<group>"; };
@@ -969,6 +974,7 @@
 				84A6E8EE1B1D888D00C0175B /* SPError.cpp */,
 				84A6E8EF1B1D888D00C0175B /* SPError.h */,
 				84EA85D81BB1665800FB1276 /* SPForward.h */,
+				843FF7221E3B3D68009F31F1 /* SPNodeExt.cpp */,
 				84D970331CE9C19800C1B5F5 /* SPStapplerLog.cpp */,
 			);
 			path = core;
@@ -1146,6 +1152,8 @@
 		84A6E9C31B1D888D00C0175B /* universal */ = {
 			isa = PBXGroup;
 			children = (
+				843FF7061E3B3A8D009F31F1 /* SPApplication.cpp */,
+				843FF7071E3B3A8D009F31F1 /* SPApplication.h */,
 				84A6E9C41B1D888D00C0175B /* SPDevice.cpp */,
 				84A6E9C51B1D888D00C0175B /* SPDevice.h */,
 				84A6E9C81B1D888D00C0175B /* SPPlatform.h */,
@@ -1373,6 +1381,7 @@
 				8422D6911DFAB5810001A3F8 /* SPWebViewController.mm in Sources */,
 				84A6E9CD1B1D888D00C0175B /* SPAccelerated.cpp in Sources */,
 				84A6EA121B1D888D00C0175B /* SPLayer.cpp in Sources */,
+				843FF7231E3B3D68009F31F1 /* SPNodeExt.cpp in Sources */,
 				8422D7181DFAB63A0001A3F8 /* SPRichTextResult.cpp in Sources */,
 				849E37CF1DDB644A00CB045E /* SPDynamicLabel.cpp in Sources */,
 				84080E111C1982EF00723732 /* SPBase64.cpp in Sources */,
@@ -1397,6 +1406,7 @@
 				84080E1F1C1982EF00723732 /* SPThreadLocal.cpp in Sources */,
 				84FDCD481BF1C37400C56046 /* SPSyncRWLock.cpp in Sources */,
 				8422D6F91DFAB63A0001A3F8 /* SPDynamicAtlas.cpp in Sources */,
+				843FF7081E3B3A8D009F31F1 /* SPApplication.cpp in Sources */,
 				8422D7291DFAB6F90001A3F8 /* SPDrawCanvasCairo.cpp in Sources */,
 				849E37D01DDB644A00CB045E /* SPLabelParameters.cpp in Sources */,
 				84080E291C1982EF00723732 /* SPUrl.cpp in Sources */,

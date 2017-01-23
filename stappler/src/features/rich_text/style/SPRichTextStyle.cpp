@@ -185,15 +185,15 @@ ParameterList getStyleForTag(const String &tag, Tag::Type type) {
 		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Block));
 		style.data.push_back(Parameter::create<ParameterName::ListStyleType>(ListStyleType::Decimal));
 		style.data.push_back(Parameter::create<ParameterName::PaddingLeft>(Size(36, Size::Metric::Px)));
-		style.data.push_back(Parameter::create<ParameterName::MarginTop>(Size(10, Size::Metric::Px)));
-		style.data.push_back(Parameter::create<ParameterName::MarginBottom>(Size(10, Size::Metric::Px)));
+		style.data.push_back(Parameter::create<ParameterName::MarginTop>(Size(6, Size::Metric::Px)));
+		style.data.push_back(Parameter::create<ParameterName::MarginBottom>(Size(6, Size::Metric::Px)));
 		style.data.push_back(Parameter::create<ParameterName::XListStyleOffset>(Size(16, Size::Metric::Px)));
 	} else if (tag == "ul") {
 		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Block));
 		style.data.push_back(Parameter::create<ParameterName::ListStyleType>(ListStyleType::Disc));
 		style.data.push_back(Parameter::create<ParameterName::PaddingLeft>(Size(36, Size::Metric::Px)));
-		style.data.push_back(Parameter::create<ParameterName::MarginTop>(Size(10, Size::Metric::Px)));
-		style.data.push_back(Parameter::create<ParameterName::MarginBottom>(Size(10, Size::Metric::Px)));
+		style.data.push_back(Parameter::create<ParameterName::MarginTop>(Size(6, Size::Metric::Px)));
+		style.data.push_back(Parameter::create<ParameterName::MarginBottom>(Size(6, Size::Metric::Px)));
 		style.data.push_back(Parameter::create<ParameterName::XListStyleOffset>(Size(16, Size::Metric::Px)));
 	} else if (tag == "img") {
 		style.data.push_back(Parameter::create<ParameterName::BackgroundSizeWidth>(Size(1.0, Size::Metric::Percent)));

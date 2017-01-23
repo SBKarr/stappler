@@ -142,6 +142,7 @@ public:
 
 	uint16_t getLineForCharId(uint32_t id) const;
 	Vector<Rect> getLabelRects(uint32_t first, uint32_t last, float density, const Vec2 & = Vec2(), const Padding &p = Padding()) const;
+	void getLabelRects(Vector<Rect> &, uint32_t first, uint32_t last, float density, const Vec2 & = Vec2(), const Padding &p = Padding()) const;
 };
 
 class HyphenMap : public Ref {

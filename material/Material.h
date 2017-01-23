@@ -96,6 +96,7 @@ class Layout;
 class FlexibleLayout;
 class SidebarLayout;
 class ToolbarLayout;
+class OverlayLayout;
 
 class MenuSource;
 class MenuSourceItem;
@@ -147,6 +148,8 @@ class LineField;
 
 class GalleryScroll;
 class GalleryImage;
+
+class FormController;
 
 NS_MD_END
 

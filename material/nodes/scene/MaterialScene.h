@@ -90,11 +90,16 @@ public:
 	virtual void pushContentNode(Layout *, cocos2d::FiniteTimeAction *enterTransition = nullptr, cocos2d::FiniteTimeAction *exitTransition = nullptr);
 	virtual void popContentNode(Layout *);
 
+	virtual void pushOverlayNode(Layout *);
+	virtual void popOverlayNode(Layout *);
+
 	virtual void pushFloatNode(cocos2d::Node *, int);
 	virtual void popFloatNode(cocos2d::Node *);
 
 	virtual void pushForegroundNode(cocos2d::Node *, const Function<void()> & = nullptr);
 	virtual void popForegroundNode(cocos2d::Node *);
+
+	virtual void popNode(cocos2d::Node *);
 
 	virtual void setNavigationMenuSource(material::MenuSource *);
 	virtual void setSnackbarString(const String &, const Color & = Color::White);
@@ -123,7 +128,6 @@ protected:
 
 	ForegroundLayer *_foreground = nullptr;
 	NavigationLayer *_navigation = nullptr;
-	cocos2d::Node *_floating = nullptr;
 	ContentLayer *_content = nullptr;
 	BackgroundLayer *_background = nullptr;
 

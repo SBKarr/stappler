@@ -78,6 +78,8 @@ public:
 
 	size_t getSizeInMemory() const;
 
+	const Object *getObject(size_t size) const;
+
 protected:
 	void processContents(const Document::ContentRecord & rec);
 

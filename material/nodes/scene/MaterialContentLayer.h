@@ -41,6 +41,9 @@ public:
 	virtual void replaceTopNode(Layout *, Transition *enterTransition = nullptr, Transition *exitTransition = nullptr);
 	virtual void popNode(Layout *);
 
+	virtual bool pushOverlayNode(Layout *);
+	virtual bool popOverlayNode(Layout *);
+
 	virtual Layout *getRunningNode();
 	virtual Layout *getPrevNode();
 
@@ -55,9 +58,9 @@ protected:
 	virtual void replaceNodes();
 	virtual void updateNodesVisibility();
 
-	cocos2d::Component *_listener = nullptr;
 	cocos2d::Vector<Layout *> _nodes;
 	cocos2d::Map<Layout *, Transition *> _exitTransitions;
+	Layout *_overlay = nullptr;
 };
 
 NS_MD_END

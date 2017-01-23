@@ -326,8 +326,11 @@ void ScrollView::update(float dt) {
 void ScrollView::runAdjust(float pos, float factor) {
 	auto scrollPos = getScrollPosition();
 	auto scrollSize = getScrollSize();
+
 	float newPos = nan();
-	if (pos < scrollPos + 64.0f) {
+	if (scrollSize < 64.0f +  48.0f) {
+		newPos = ((pos - 64.0f) + (pos - scrollSize + 48.0f)) / 2.0f;
+	} else if (pos < scrollPos + 64.0f) {
 		newPos = pos - 64.0f;
 	} else if (pos > scrollPos + scrollSize - 48.0f) {
 		newPos = pos - scrollSize + 48.0f;

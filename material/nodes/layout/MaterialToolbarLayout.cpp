@@ -231,26 +231,21 @@ void ToolbarLayout::onScroll(float delta, bool finished) {
 }
 
 void ToolbarLayout::onKeyboard(bool enabled, const Rect &rect, float duration) {
+	bool tmpEnabled = _keyboardEnabled;
 	FlexibleLayout::onKeyboard(enabled, rect, duration);
-	if (enabled) {
-		_savedNavCallback = _toolbar->getNavCallback();
-		_savedNavProgress = _toolbar->getNavButtonIconProgress();
+	if (tmpEnabled != enabled) {
+		if (enabled) {
+			_savedNavCallback = _toolbar->getNavCallback();
+			_savedNavProgress = _toolbar->getNavButtonIconProgress();
 
-		_toolbar->setNavCallback(std::bind(&ToolbarLayout::closeKeyboard, this));
-		_toolbar->setNavButtonIconProgress(2.0f, 0.35f);
+			_toolbar->setNavCallback(std::bind(&ToolbarLayout::closeKeyboard, this));
+			_toolbar->setNavButtonIconProgress(2.0f, 0.35f);
+		} else {
+			_toolbar->setNavCallback(_savedNavCallback);
+			_toolbar->setNavButtonIconProgress(_savedNavProgress, 0.35f);
 
-		if (_flexibleToolbar) {
-			setFlexibleLevelAnimated(0.0f, 0.25f);
-		}
-	} else {
-		_toolbar->setNavCallback(_savedNavCallback);
-		_toolbar->setNavButtonIconProgress(_savedNavProgress, 0.35f);
-
-		_savedNavCallback = nullptr;
-		_savedNavProgress = 0.0f;
-
-		if (_flexibleToolbar) {
-			setFlexibleLevelAnimated(1.0f, 0.25f);
+			_savedNavCallback = nullptr;
+			_savedNavProgress = 0.0f;
 		}
 	}
 }

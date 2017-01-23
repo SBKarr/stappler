@@ -73,6 +73,10 @@ ResourceManager::ResourceManager() {
 		pair("SystemCopy", "Копировать"),
 		pair("SystemCut", "Вырезать"),
 		pair("SystemPaste", "Вставить"),
+
+		pair("SystemErrorOverflowChars", "Слишком много символов"),
+		pair("SystemErrorInvalidChar", "Недопустимый символ"),
+
 		pair("Shortcut:Megabytes", "Мб"),
 		pair("Shortcut:Pages", "с"),
 	});
@@ -87,6 +91,10 @@ ResourceManager::ResourceManager() {
 		pair("SystemCopy", "Copy"),
 		pair("SystemCut", "Cut"),
 		pair("SystemPaste", "Paste"),
+
+		pair("SystemErrorOverflowChars", "Too many characters"),
+		pair("SystemErrorInvalidChar", "Invalid character"),
+
 		pair("Shortcut:Megabytes", "Mb"),
 		pair("Shortcut:Pages", "p"),
 	});

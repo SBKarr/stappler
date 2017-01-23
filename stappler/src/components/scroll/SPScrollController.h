@@ -110,6 +110,11 @@ public:
 	virtual cocos2d::Node * getBackNode() const;
 	virtual cocos2d::Vector<cocos2d::Node *> getNodes();
 
+	virtual float getNextItemPosition() const;
+
+	virtual void setKeepNodes(bool);
+	virtual bool isKeepNodes() const;
+
 protected:
 	virtual void onNextObject(Item &); /// insert new object at specified position
 
@@ -135,6 +140,7 @@ protected:
 	Vector<Item> _nodes;
 
 	bool _infoDirty = true;
+	bool _keepNodes = false;
 };
 
 NS_SP_END

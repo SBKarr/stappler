@@ -34,25 +34,24 @@ namespace interaction {
 		NSString *urlString = [[NSString alloc] initWithUTF8String:url.c_str()];
 		NSURL *urlObj = [[NSURL alloc] initWithString:urlString];
 		urlString = nil;
-		if (strncmp(url.c_str(), "https://itunes.apple.com", 24) == 0) {
+		if (strncmp(url.c_str(), "https://itunes.apple.com", 24) == 0 || external) {
 			[[UIApplication sharedApplication] openURL:urlObj];
 		} else if (urlObj) {
-            
-            if ([urlObj.host hasPrefix:@"www.youtube"] || [urlObj.host hasPrefix:@"youtube"] || [urlObj.host hasPrefix:@"youtu.be"]) {
-                [[UIApplication sharedApplication] openURL:urlObj];
-            } else {
-                SPWebViewController *wvc = [[SPWebViewController alloc] initWithURL:urlObj isExternal:external?YES:NO];
-                UIViewController *vc;
-                vc = [UIApplication sharedApplication].keyWindow.rootViewController;
-                if (!vc) {
-                    vc = (UIViewController *)[[[UIApplication sharedApplication].keyWindow.subviews objectAtIndex:0] nextResponder];
-                }
-                wvc.modalTransitionStyle = UIModalTransitionStyleFlipHorizontal;
-                presentViewController(vc, wvc);
-            }
-            
+			if ([urlObj.host hasPrefix:@"www.youtube"] || [urlObj.host hasPrefix:@"youtube"] || [urlObj.host hasPrefix:@"youtu.be"]) {
+				[[UIApplication sharedApplication] openURL:urlObj];
+			} else {
+				SPWebViewController *wvc = [[SPWebViewController alloc] initWithURL:urlObj isExternal:external?YES:NO];
+				UIViewController *vc;
+				vc = [UIApplication sharedApplication].keyWindow.rootViewController;
+				if (!vc) {
+					vc = (UIViewController *)[[[UIApplication sharedApplication].keyWindow.subviews objectAtIndex:0] nextResponder];
+				}
+				wvc.modalTransitionStyle = UIModalTransitionStyleFlipHorizontal;
+				presentViewController(vc, wvc);
+			}
 		}
 	}
+
 	void _makePhoneCall(const std::string &str) {
 		NSString *number = [NSString stringWithUTF8String:str.substr(4).c_str()];
 		NSString *phoneNumber = [@"telprompt://" stringByAppendingString:[number stringByAddingPercentEscapesUsingEncoding: NSUTF8StringEncoding]];

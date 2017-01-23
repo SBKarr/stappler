@@ -153,28 +153,41 @@ void ForegroundLayer::pushNode(cocos2d::Node *node, const Function<void()> &func
 }
 void ForegroundLayer::popNode(cocos2d::Node *node) {
 	node->retain();
-	if (node == _pressNode) {
-		_pressNode = nullptr;
-	}
-	_nodes.eraseObject(node);
-	node->removeFromParent();
-	_callbacks.erase(node);
-	if (!_nodes.empty()) {
-		int zIndex = -(int)(_nodes.size() - 1);
-		for (auto node : _nodes) {
-			if (zIndex == 0) {
-				zIndex = 1;
-			}
-			node->setLocalZOrder(zIndex);
-			zIndex ++;
+	if (_nodes.find(node) != _nodes.end()) {
+		if (node == _pressNode) {
+			_pressNode = nullptr;
 		}
-	} else {
-		_listener->setEnabled(false);
-		if (auto scene = Scene::getRunningScene()) {
-			scene->releaseContentForNode(this);
-		 }
+		_nodes.eraseObject(node);
+		node->removeFromParent();
+		_callbacks.erase(node);
+		if (!_nodes.empty()) {
+			int zIndex = -(int)(_nodes.size() - 1);
+			for (auto node : _nodes) {
+				if (zIndex == 0) {
+					zIndex = 1;
+				}
+				node->setLocalZOrder(zIndex);
+				zIndex ++;
+			}
+		} else {
+			_listener->setEnabled(false);
+			if (auto scene = Scene::getRunningScene()) {
+				scene->releaseContentForNode(this);
+			 }
+		}
+	} else if (node->getParent() == this) {
+		node->removeFromParent();
 	}
 	node->release();
+}
+
+void ForegroundLayer::pushFloatNode(cocos2d::Node *n, int z) {
+	addChild(n, z);
+}
+void ForegroundLayer::popFloatNode(cocos2d::Node *n) {
+	if (n && n->getParent() == this) {
+		n->removeFromParent();
+	}
 }
 
 bool ForegroundLayer::onPressBegin(const Vec2 &loc) {

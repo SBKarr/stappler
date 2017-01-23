@@ -161,7 +161,7 @@ void ScrollController::reset(float position, float size) {
 	std::set<Item *> nodesToAdd;
 
 	for (auto &it : _nodes) {
-		if (it.node) {
+		if (it.node && (!_keepNodes || it.node->isVisible())) {
 			nodesToRemove.insert(&it);
 		}
 	}
@@ -201,6 +201,10 @@ void ScrollController::onNextObject(Item &h) {
 	if (!h.node) {
 		h.node = h.nodeFunction(h);
 		addScrollNode(h);
+	} else {
+		h.node->setVisible(true);
+		h.node->pushForceRendering();
+		_scroll->updateScrollNode(h.node, h.pos, h.size, h.zIndex);
 	}
 }
 
@@ -247,6 +251,19 @@ size_t ScrollController::addPlaceholder(float size) {
 	return addItem([] (const Item &item) -> cocos2d::Node * {
 		return cocos2d::Node::create();
 	}, size);
+}
+
+float ScrollController::getNextItemPosition() const {
+	return _scroll->getNodeScrollPosition(_nodes.back().pos) + _scroll->getNodeScrollSize(_nodes.back().size);
+}
+
+void ScrollController::setKeepNodes(bool value) {
+	if (_keepNodes != value) {
+		_keepNodes = value;
+	}
+}
+bool ScrollController::isKeepNodes() const {
+	return _keepNodes;
 }
 
 ScrollController::Item *ScrollController::getItem(size_t n) {
@@ -379,8 +396,12 @@ void ScrollController::updateScrollNode(Item &it) {
 
 void ScrollController::removeScrollNode(Item &it) {
 	if (it.node) {
-		if (_scroll->removeScrollNode(it.node)) {
-			it.node = nullptr;
+		if (!_keepNodes) {
+			if (_scroll->removeScrollNode(it.node)) {
+				it.node = nullptr;
+			}
+		} else {
+			it.node->setVisible(false);
 		}
 	}
 }

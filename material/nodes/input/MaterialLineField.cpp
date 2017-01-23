@@ -36,6 +36,10 @@ THE SOFTWARE.
 
 NS_MD_BEGIN
 
+float LineField::getMaxLabelHeight(bool dense) {
+	return dense?54.0f:64.0f;
+}
+
 void LineField::onInput() {
 	auto labelWidth = _label->getContentSize().width;
 	auto width = _node->getContentSize().width;
@@ -96,7 +100,7 @@ bool LineField::onInputString(const std::u16string &nstr, const Cursor &nc) {
 }
 
 bool LineField::onSwipeBegin(const Vec2 &loc, const Vec2 &delta) {
-	if (InputField::onSwipeBegin(loc, delta)) {
+	if (FormField::onSwipeBegin(loc, delta)) {
 		return true;
 	}
 
@@ -149,7 +153,7 @@ bool LineField::onSwipeEnd(const Vec2 &vel) {
 		return true;
 	} else {
 		scheduleAdjust(None, Vec2(0.0f, 0.0f), 0.0f);
-		return InputField::onSwipeEnd(vel);
+		return FormField::onSwipeEnd(vel);
 	}
 }
 
@@ -208,7 +212,7 @@ void LineField::update(float dt) {
 		}
 		_label->stopAllActionsByTag("LineFieldAdjust"_tag);
 		_label->setPositionX(newpos);
-		InputField::onSwipe(_adjustValue, Vec2::ZERO);
+		FormField::onSwipe(_adjustValue, Vec2::ZERO);
 	}
 }
 

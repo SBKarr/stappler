@@ -20,44 +20,44 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef MATERIAL_NODES_INPUT_MATERIALLINEFIELD_H_
-#define MATERIAL_NODES_INPUT_MATERIALLINEFIELD_H_
+#ifndef MATERIAL_NODES_FORM_MATERIALFORMCONTROLLER_H_
+#define MATERIAL_NODES_FORM_MATERIALFORMCONTROLLER_H_
 
-#include "MaterialFormField.h"
+#include "Material.h"
+#include "2d/CCComponent.h"
 
 NS_MD_BEGIN
 
-class LineField : public FormField {
+class FormController : public cocos2d::Component {
 public:
-	static float getMaxLabelHeight(bool dense = false);
+	static EventHeader onForceCollect;
+	static EventHeader onForceUpdate;
 
-	virtual bool onSwipeBegin(const Vec2 &, const Vec2 &) override;
-	virtual bool onSwipe(const Vec2 &, const Vec2 &) override;
-	virtual bool onSwipeEnd(const Vec2 &) override;
+	using SaveCallback = Function<void(const data::Value &)>;
 
-	virtual void update(float dt) override;
+	virtual bool init(const data::Value & = data::Value(), const SaveCallback & = nullptr);
+	virtual bool init(const Map<String, data::Value> &, const SaveCallback & = nullptr);
+
+	virtual void onExit() override;
+
+	virtual void setSaveCallback(const SaveCallback &);
+	virtual const SaveCallback &getSaveCallback() const;
+
+	virtual data::Value getValue(const String &) const;
+	virtual void setValue(const String &, const data::Value &);
+
+	virtual void reset();
+	virtual void reset(const data::Value &);
+	virtual void reset(const Map<String, data::Value> &);
+	virtual data::Value collect(bool force = false);
+
+	virtual void save(bool force = false);
 
 protected:
-	virtual void onInput() override;
-	virtual bool onInputString(const WideString &str, const Cursor &c) override;
-
-	virtual void onMenuVisible() override;
-
-	enum Adjust {
-		None,
-		Left,
-		Right
-	};
-
-	virtual void runAdjust(float);
-	virtual void scheduleAdjust(Adjust, const Vec2 &, float pos);
-
-	Adjust _adjust = None;
-	Vec2 _adjustValue;
-	float _adjustPosition = 0.0f;
-	bool _swipeCaptured = false;
+	SaveCallback _saveCallback;
+	Map<String, data::Value> _data;
 };
 
 NS_MD_END
 
-#endif /* MATERIAL_NODES_INPUT_MATERIALLINEFIELD_H_ */
+#endif /* MATERIAL_NODES_FORM_MATERIALFORMCONTROLLER_H_ */

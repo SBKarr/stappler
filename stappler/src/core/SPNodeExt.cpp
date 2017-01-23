@@ -35,6 +35,18 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
+namespace Anchor {
+const Vec2 Middle(0.5f, 0.5f); /** equals to Vec2(0.5, 0.5) */
+const Vec2 BottomLeft(0.0f, 0.0f); /** equals to Vec2(0, 0) */
+const Vec2 TopLeft(0.0f, 1.0f); /** equals to Vec2(0, 1) */
+const Vec2 BottomRight(1.0f, 0.0f); /** equals to Vec2(1, 0) */
+const Vec2 TopRight(1.0f, 1.0f); /** equals to Vec2(1, 1) */
+const Vec2 MiddleRight(1.0f, 0.5f); /** equals to Vec2(1, 0.5) */
+const Vec2 MiddleLeft(0.0f, 0.5f); /** equals to Vec2(0, 0.5) */
+const Vec2 MiddleTop(0.5f, 1.0f); /** equals to Vec2(0.5, 1) */
+const Vec2 MiddleBottom(0.5f, 0.0f); /** equals to Vec2(0.5, 0) */
+}
+
 namespace node {
 #ifndef SP_RESTRICT
 	bool isTouched(cocos2d::Node *node, const cocos2d::Vec2 &location, float padding) {

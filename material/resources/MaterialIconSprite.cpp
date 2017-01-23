@@ -30,6 +30,7 @@ THE SOFTWARE.
 #include "2d/CCSprite.h"
 #include "2d/CCActionEase.h"
 #include "2d/CCActionInstant.h"
+#include "2d/CCActionManager.h"
 #include "2d/CCComponent.h"
 
 #include "base/CCDirector.h"
@@ -51,14 +52,17 @@ namespace _icons {
 
 class IconProgress : public cocos2d::ActionInterval {
 public:
-    virtual bool init(float duration, float targetIndex);
-    virtual void startWithTarget(cocos2d::Node *t) override;
-    virtual void update(float time) override;
-    virtual void stop() override;
+	virtual bool init(float duration, float targetIndex);
+	virtual void startWithTarget(cocos2d::Node *t) override;
+	virtual void update(float time) override;
+	virtual void stop() override;
+
+	float getSourceProgress() const;
+	float getDestProgress() const;
 
 protected:
-    float _sourceProgress = 0;
-    float _destProgress = 0;
+	float _sourceProgress = 0;
+	float _destProgress = 0;
 };
 
 
@@ -73,7 +77,7 @@ bool IconProgress::init(float duration, float targetProgress) {
 
 void IconProgress::startWithTarget(cocos2d::Node *t) {
 	if (auto target = dynamic_cast<IconSprite *>(t)) {
-    	_sourceProgress = target->getProgress();
+    	_sourceProgress = target->getRawProgress();
 	}
 	ActionInterval::startWithTarget(t);
 }
@@ -86,6 +90,13 @@ void IconProgress::update(float time) {
 
 void IconProgress::stop() {
 	cocos2d::ActionInterval::stop();
+}
+
+float IconProgress::getSourceProgress() const {
+	return _sourceProgress;
+}
+float IconProgress::getDestProgress() const {
+	return _destProgress;
 }
 
 }
@@ -347,6 +358,16 @@ void IconSprite::setProgress(float progress) {
 	}
 }
 float IconSprite::getProgress() const {
+	auto a = _actionManager->getActionByTag("Animate"_tag, this);
+	if (auto ease = dynamic_cast<cocos2d::EaseQuadraticActionInOut *>(a)) {
+		if (auto inner = dynamic_cast<_icons::IconProgress *>(ease->getInnerAction())) {
+			return inner->getDestProgress();
+		}
+	}
+	return _progress;
+}
+
+float IconSprite::getRawProgress() const {
 	return _progress;
 }
 
@@ -365,6 +386,8 @@ void IconSprite::animate(float targetProgress, float duration) {
 			stopActionByTag("Animate"_tag);
 			setProgress(targetProgress);
 		}
+	} else {
+		stopActionByTag("Animate"_tag);
 	}
 }
 

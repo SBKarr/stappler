@@ -41,6 +41,8 @@ bool ButtonLabel::init(FontType fnt, const TapCallback &tapCallback, const TapCa
 	_label->setTextTransform(Label::TextTransform::Uppercase);
 	addChild(_label);
 
+	_labelOpacity = _label->getOpacity();
+
 	setContentSize(Size(_labelPadding.horizontal(), _label->getFontHeight() / _label->getDensity() + _labelPadding.vertical()));
 
 	return true;

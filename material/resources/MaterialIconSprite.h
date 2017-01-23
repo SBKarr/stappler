@@ -48,6 +48,7 @@ public:
 
 	virtual void setProgress(float progress);
 	virtual float getProgress() const;
+	virtual float getRawProgress() const;
 
 	virtual void animate();
 	virtual void animate(float targetProgress, float duration);

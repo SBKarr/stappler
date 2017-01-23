@@ -168,7 +168,7 @@ void Source::retainReadLock(Ref *ref, const Function<void()> &cb) {
 
 void Source::releaseReadLock(Ref *ref) {
 	if (_documentAsset) {
-		_documentAsset->releaseWriteLock(ref);
+		_documentAsset->releaseReadLock(ref);
 	}
 }
 
@@ -218,9 +218,9 @@ void Source::onDocumentAssetUpdated(data::Subscription::Flags f) {
 
 static bool Source_tryLockAsset(Asset *a, uint64_t mtime, Source *source) {
 	if (a && a->isReadAvailable() &&
-			((a->getMTime() > mtime && a->tryReadLock(source) && !a->isDownloadInProgress())
-			|| (a && a->isReadAvailable() && mtime == 0))) {
-		return true;
+			((a->getMTime() > mtime && !a->isDownloadInProgress())
+			|| mtime == 0)) {
+		return a->tryReadLock(source);
 	} else {
 		return false;
 	}

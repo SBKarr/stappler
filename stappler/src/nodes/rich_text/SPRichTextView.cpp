@@ -309,6 +309,9 @@ void View::onRenderer(Result *res, bool) {
 
 void View::onPageData(Result *res, float contentOffset) {
 	auto surface = res->getSurfaceSize();
+	if (surface.height == 0) {
+		surface.height = res->getContentSize().height;
+	}
 	auto &media = res->getMedia();
 	if (media.flags & RenderFlag::PaginatedLayout) {
 		auto num = res->getNumPages();
@@ -488,7 +491,7 @@ void View::setScrollRelativePosition(float value) {
 	auto paddingBack = (isVertical())?padding.bottom:padding.right;
 
 	if (!isnan(areaSize) && !isnan(areaOffset) && areaSize > 0) {
-		float liveSize = areaSize + paddingFront + paddingBack - size;
+		float liveSize = areaSize + paddingFront + paddingBack;
 		float pos = (value * liveSize) - paddingFront + areaOffset;
 		float segment = _contentSize.width;
 

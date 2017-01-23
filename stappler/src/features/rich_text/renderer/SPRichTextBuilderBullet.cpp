@@ -215,7 +215,7 @@ void Builder::drawListItemBullet(Layout &l, float parentPosY) {
 	float x = 0, w = _media.surfaceSize.width;
 	std::tie(x, w) = getFloatBounds(&l, origin.y / density, finalHeight);
 
-	l.postObjects.emplace_back(Rect(x - l.position.x - finalWidth - pStyle.listOffset.computeValue(l.size.width, baseFont->metrics.height),
+	l.preObjects.emplace_back(Rect(x - l.position.x - finalWidth - pStyle.listOffset.computeValue(l.size.width, baseFont->metrics.height),
 			origin.y / density - l.position.y, finalWidth, finalHeight), std::move(label));
 }
 

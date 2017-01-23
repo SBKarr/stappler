@@ -1120,7 +1120,7 @@ WideString FormatSpec::str(bool filter) const {
 	for (auto it = begin(); it != end(); ++ it) {
 		const RangeSpec &range = *it.range;
 		if (!filter || range.align == VerticalAlign::Baseline) {
-			size_t end = it.start() + it.count();
+			size_t end = it.start() + it.count() - 1;
 			for (size_t i = it.start(); i <= end; ++ i) {
 				const auto &spec = chars[i];
 				if (spec.charID != char16_t(0xAD) && spec.charID != char16_t(0xFFFF)) {
@@ -1147,7 +1147,7 @@ WideString FormatSpec::str(uint32_t s_start, uint32_t s_end, size_t maxWords, bo
 	for (; it != end(); ++ it) {
 		const RangeSpec &range = *it.range;
 		if (!filter || range.align == VerticalAlign::Baseline) {
-			size_t _end = std::min(it.end(), s_end);
+			size_t _end = std::min(it.end() - 1, s_end);
 			size_t _start = std::max(it.start(), s_start);
 			if (maxWords != maxOf<size_t>()) {
 				for (size_t i = _start; i <= _end; ++ i) {
@@ -1341,7 +1341,11 @@ Rect FormatSpec::getLineRect(const LineSpec &line, float density, const Vec2 &or
 
 Vector<Rect> FormatSpec::getLabelRects(uint32_t firstCharId, uint32_t lastCharId, float density, const Vec2 &origin, const Padding &p) const {
 	Vector<Rect> ret;
+	getLabelRects(ret, firstCharId, lastCharId, density, origin, p);
+	return ret;
+}
 
+void FormatSpec::getLabelRects(Vector<Rect> &ret, uint32_t firstCharId, uint32_t lastCharId, float density, const Vec2 &origin, const Padding &p) const {
 	auto firstLine = getLineNumber(firstCharId);
 	auto lastLine = getLineNumber(lastCharId);
 
@@ -1390,7 +1394,6 @@ Vector<Rect> FormatSpec::getLabelRects(uint32_t firstCharId, uint32_t lastCharId
 			ret.push_back(last);
 		}
 	}
-	return ret;
 }
 
 NS_SP_EXT_END(font)

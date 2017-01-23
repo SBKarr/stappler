@@ -20,44 +20,43 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef MATERIAL_NODES_INPUT_MATERIALLINEFIELD_H_
-#define MATERIAL_NODES_INPUT_MATERIALLINEFIELD_H_
+#ifndef MATERIAL_NODES_LAYOUT_MATERIALOVERLAYLAYOUT_H_
+#define MATERIAL_NODES_LAYOUT_MATERIALOVERLAYLAYOUT_H_
 
-#include "MaterialFormField.h"
+#include "MaterialLayout.h"
 
 NS_MD_BEGIN
 
-class LineField : public FormField {
+class OverlayLayout : public Layout {
 public:
-	static float getMaxLabelHeight(bool dense = false);
+	virtual bool init(const Size &);
 
-	virtual bool onSwipeBegin(const Vec2 &, const Vec2 &) override;
-	virtual bool onSwipe(const Vec2 &, const Vec2 &) override;
-	virtual bool onSwipeEnd(const Vec2 &) override;
+	virtual void onContentSizeDirty() override;
 
-	virtual void update(float dt) override;
+	virtual void pushNode(MaterialNode *);
+	virtual MaterialNode *getNode() const;
+
+	virtual void setBoundSize(const Size &);
+	virtual const Size &getBoundSize() const;
+
+	virtual void setKeyboardTracked(bool);
+	virtual bool isKeyboardTracked() const;
+
+	virtual void cancel();
 
 protected:
-	virtual void onInput() override;
-	virtual bool onInputString(const WideString &str, const Cursor &c) override;
+	virtual void onKeyboard(bool enabled, const Rect &, float duration);
 
-	virtual void onMenuVisible() override;
-
-	enum Adjust {
-		None,
-		Left,
-		Right
-	};
-
-	virtual void runAdjust(float);
-	virtual void scheduleAdjust(Adjust, const Vec2 &, float pos);
-
-	Adjust _adjust = None;
-	Vec2 _adjustValue;
-	float _adjustPosition = 0.0f;
-	bool _swipeCaptured = false;
+	bool _trackKeyboard = false;
+	bool _keyboardEnabled = false;
+	Size _keyboardSize;
+	Size _boundSize;
+	Layer *_background = nullptr;
+	MaterialNode *_node = nullptr;
+	gesture::Listener *_listener = nullptr;
+	EventListener *_keyboardEventListener = nullptr;
 };
 
 NS_MD_END
 
-#endif /* MATERIAL_NODES_INPUT_MATERIALLINEFIELD_H_ */
+#endif /* MATERIAL_NODES_LAYOUT_MATERIALOVERLAYLAYOUT_H_ */

@@ -25,20 +25,22 @@ THE SOFTWARE.
 
 #include "Material.h"
 #include "MaterialFormField.h"
+#include "MaterialFormController.h"
 
 #include "SPLayer.h"
 #include "SPStrictNode.h"
 #include "SPActions.h"
 #include "SPGestureListener.h"
+#include "SPEventListener.h"
 #include "SPScrollView.h"
 
 NS_MD_BEGIN
 
 bool FormField::init(bool dense) {
-	return init(dense);
+	return init(nullptr, "", dense);
 }
 
-bool FormField::init(FormController *c, const String &name, bool dense = false) {
+bool FormField::init(FormController *c, const String &name, bool dense) {
 	if (!InputField::init(dense?FontType::InputDense:FontType::Input)) {
 		return false;
 	}
@@ -56,8 +58,10 @@ bool FormField::init(FormController *c, const String &name, bool dense = false) 
 	addChild(_counter, 1);
 
 	_error = construct<Label>(FontType::Caption);
-	_error->setAnchorPoint(Vec2(0.0f, 1.0f));
+	_error->setAnchorPoint(Vec2(0.0f, 0.0f));
 	_error->setVisible(false);
+	_error->setLocaleEnabled(true);
+	_error->setColor(_errorColor);
 	addChild(_error, 1);
 
 	_underlineLayer = construct<Layer>(material::Color::Grey_500);
@@ -76,6 +80,7 @@ bool FormField::init(FormController *c, const String &name, bool dense = false) 
 		el->onEventWithObject(FormController::onForceUpdate, _formController, [this] (const Event *) {
 			updateFormData();
 		});
+		addComponent(el);
 	}
 
 	return true;
@@ -85,8 +90,8 @@ void FormField::onContentSizeDirty() {
 	InputField::onContentSizeDirty();
 
 	float extraLine = 0.0f;
-	if (_error->isVisible() || _counter->isVisible()) {
-		extraLine = _counter->getFontHeight() / _counter->getDensity() + 4.0f;
+	if (_fullHeight || _error->isVisible() || _counter->isVisible()) {
+		extraLine = _counter->getFontHeight() / _counter->getDensity();
 	}
 
 	_underlineLayer->setContentSize(Size(_contentSize.width - _padding.horizontal(), 2.0f));
@@ -98,8 +103,8 @@ void FormField::onContentSizeDirty() {
 	_label->setPosition(0, _node->getContentSize().height);
 	_label->tryUpdateLabel();
 
-	_error->setPosition(_padding.left, 4.0f);
-	_counter->setPosition(_contentSize.width - _padding.right, 4.0f);
+	_error->setPosition(_padding.left, 6.0f);
+	_counter->setPosition(_contentSize.width - _padding.right, 6.0f);
 
 	_placeholder->stopAllActions();
 	if (_label->empty()) {
@@ -138,7 +143,7 @@ void FormField::updateLabelHeight(float width) {
 
 Size FormField::getSizeForLabelWidth(float width, float labelHeight) {
 	return Size(width, labelHeight + _padding.vertical() + _counter->getFontHeight() / _counter->getDensity() + (_dense?4.0f:8.0f)
-			+ ((_counter->isVisible() || _error->isVisible())?(_counter->getFontHeight() / _counter->getDensity() + 4.0f):0.0f));
+			+ ((_fullHeight || _counter->isVisible() || _error->isVisible())?(_counter->getFontHeight() / _counter->getDensity()):0.0f));
 }
 
 void FormField::setMaxChars(size_t max) {
@@ -168,6 +173,15 @@ void FormField::onError(Error err) {
 	InputField::onError(err);
 	_underlineLayer->setColor(_errorColor);
 	_placeholder->setColor(_errorColor);
+
+	switch (err) {
+	case InputError::OverflowChars:
+		setError("SystemErrorOverflowChars"_locale);
+		break;
+	case InputError::InvalidChar:
+		setError("SystemErrorInvalidChar"_locale);
+		break;
+	}
 }
 
 void FormField::onInput() {
@@ -176,6 +190,7 @@ void FormField::onInput() {
 		_underlineLayer->setOpacity(168);
 		_underlineLayer->setColor(_normalColor);
 		_placeholder->setColor(_normalColor);
+		_error->setVisible(false);
 	}
 }
 
@@ -183,9 +198,11 @@ void FormField::onActivated(bool active) {
 	InputField::onActivated(active);
 	if (_underlineLayer) {
 		if (active) {
+			setError(String());
 			_underlineLayer->setOpacity(168);
 			_underlineLayer->setColor(_normalColor);
 			_placeholder->setColor(_normalColor);
+			_error->setVisible(false);
 			_placeholder->stopAllActions();
 
 			auto origPos = _placeholder->getPosition();
@@ -259,6 +276,37 @@ bool FormField::isAutoAdjust() const {
 	return _autoAdjust;
 }
 
+void FormField::setFullHeight(bool value) {
+	if (value != _fullHeight) {
+		_fullHeight = value;
+		_labelHeight = 0.0f;
+		updateLabelHeight();
+	}
+}
+bool FormField::isFullHeight() const {
+	return _fullHeight;
+}
+
+void FormField::setError(const String &str) {
+	_error->setString(str);
+	if (str.empty()) {
+		_error->setVisible(false);
+		if (_label->isActive()) {
+			_underlineLayer->setColor(_normalColor);
+			_placeholder->setColor(_normalColor);
+		} else {
+			_underlineLayer->setColor(Color::Grey_500);
+			_placeholder->setColor(Color::Grey_500);
+		}
+	} else {
+		_error->setVisible(true);
+		_underlineLayer->setColor(_errorColor);
+		_placeholder->setColor(_errorColor);
+	}
+}
+const String &FormField::getError() const {
+	return _error->getString8();
+}
 void FormField::updateAutoAdjust() {
 	_adjustScroll = nullptr;
 	if (isRunning() && _autoAdjust) {
@@ -279,8 +327,10 @@ void FormField::pushFormData() {
 	}
 }
 void FormField::updateFormData() {
-	auto value = _formController->getValue(_formName);
-	setString(value.asString());
+	if (_formController) {
+		auto value = _formController->getValue(_formName);
+		setString(value.asString());
+	}
 }
 
 NS_MD_END

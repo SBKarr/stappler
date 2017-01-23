@@ -43,6 +43,7 @@ bool Result::init(const MediaParameters &media, font::Source *cfg, Document *doc
 	_fontSet = cfg;
 	_document = doc;
 	_size = _media.surfaceSize;
+
 	return true;
 }
 
@@ -66,6 +67,7 @@ void Result::pushObject(Object &&obj) {
 		_refs.push_back(std::move(obj));
 	} else {
 		_objects.push_back(std::move(obj));
+		_objects.back().index = _objects.size() - 1;
 	}
 }
 
@@ -112,14 +114,14 @@ void Result::finalize() {
 	}
 }
 
-void Result::setBackgroundColor(const cocos2d::Color4B &c) {
+void Result::setBackgroundColor(const Color4B &c) {
 	_background = c;
 }
-const cocos2d::Color4B & Result::getBackgroundColor() const {
+const Color4B & Result::getBackgroundColor() const {
 	return _background;
 }
 
-void Result::setContentSize(const cocos2d::Size &s) {
+void Result::setContentSize(const Size &s) {
 	_size = s;
 	_size.width = _media.surfaceSize.width;
 
@@ -129,7 +131,7 @@ void Result::setContentSize(const cocos2d::Size &s) {
 
 	_numPages = size_t(ceilf(_size.height / _media.surfaceSize.height)) + 1;
 }
-const cocos2d::Size &Result::getContentSize() const {
+const Size &Result::getContentSize() const {
 	return _size;
 }
 
@@ -211,6 +213,13 @@ size_t Result::getSizeInMemory() const {
 		}
 	}
 	return ret;
+}
+
+const Object *Result::getObject(size_t size) const {
+	if (size < _objects.size()) {
+		return &_objects[size];
+	}
+	return nullptr;
 }
 
 NS_SP_EXT_END(rich_text)

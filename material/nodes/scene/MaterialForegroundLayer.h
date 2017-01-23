@@ -41,6 +41,9 @@ public:
 	virtual void pushNode(cocos2d::Node *, const Function<void()> & = nullptr);
 	virtual void popNode(cocos2d::Node *);
 
+	virtual void pushFloatNode(cocos2d::Node *, int);
+	virtual void popFloatNode(cocos2d::Node *);
+
 	virtual bool onPressBegin(const Vec2 &);
 	virtual bool onPressEnd(const Vec2 &);
 
