@@ -50,6 +50,9 @@ public:
 	virtual void setPriority(int32_t value);
 	virtual int32_t getPriority() const;
 
+	virtual void setTouchPadding(float);
+	virtual float getTouchPadding() const;
+
 	virtual void setTapCallback(const TapCallback & tapCallback);
 	virtual void setLongTapCallback(const TapCallback & longTapCallback);
 	virtual void setTouchFilter(const TouchFilter &);

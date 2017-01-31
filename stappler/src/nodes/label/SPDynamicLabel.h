@@ -44,7 +44,7 @@ public:
     virtual ~DynamicLabel();
 
     virtual bool init(Source *, const DescriptionStyle &, const String & = "", float w = 0.0f, Alignment = Alignment::Left, float d = 0.0f);
-    virtual void tryUpdateLabel();
+    virtual void tryUpdateLabel(bool force = false);
 
     virtual void setStyle(const DescriptionStyle &);
     virtual const DescriptionStyle &getStyle() const;

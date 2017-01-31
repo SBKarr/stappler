@@ -291,10 +291,50 @@ bool Handle::insertIntoArray(apr::ostringstream &query, Scheme *scheme, int64_t 
 	return false;
 }
 
+bool Handle::insertIntoRefSet(apr::ostringstream &query, Scheme *scheme, int64_t id,
+		const storage::Field *field, const Vector<uint64_t> &ids) {
+	auto fScheme = field->getForeignScheme();
+	if (!ids.empty() && fScheme) {
+		query << "INSERT INTO " << scheme->getName() << "_f_" << field->getName()
+							<< " (" << scheme->getName() << "_id, " << fScheme->getName() << "_id) VALUES ";
+		bool first = true;
+		for (auto &it : ids) {
+			if (first) { first = false; } else { query << ", "; }
+			query << "(" << id << ", " << it << ")";
+		}
+		query << " ON CONFLICT DO NOTHING;";
+		perform(query.weak());
+		return true;
+	}
+	return false;
+}
 bool Handle::patchArray(Scheme *scheme, uint64_t oid, const storage::Field *field, data::Value &d) {
 	apr::ostringstream query;
 	if (!d.isNull()) {
 		return insertIntoArray(query, scheme, oid, field, d);
+	}
+	return false;
+}
+
+bool Handle::patchRefSet(Scheme *scheme, uint64_t oid, const storage::Field *field, const Vector<uint64_t> &objsToAdd) {
+	apr::ostringstream query;
+	return insertIntoRefSet(query, scheme, oid, field, objsToAdd);
+}
+
+bool Handle::cleanupRefSet(Scheme *scheme, uint64_t oid, const storage::Field *field, const Vector<int64_t> &ids) {
+	apr::ostringstream query;
+	auto fScheme = field->getForeignScheme();
+	if (!ids.empty() && fScheme) {
+		query << "DELETE FROM " << scheme->getName() << "_f_" << field->getName()
+							<< " WHERE " << scheme->getName() << "_id=" << oid << " AND (";
+		bool first = true;
+		for (auto &it : ids) {
+			if (first) { first = false; } else { query << " OR "; }
+			query << fScheme->getName() << "_id=" << it;
+		}
+		query << ");";
+		perform(query.weak());
+		return true;
 	}
 	return false;
 }
@@ -563,7 +603,7 @@ static void Handle_writeSelectSetQuery(apr::ostringstream &query, storage::Schem
 	if (f.isReference()) {
 		auto fs = f.getForeignScheme();
 		query << "SELECT t.* FROM " << s->getName() << "_f_" << f.getName() << " s, " << fs->getName() <<
-				" t WHERE s." << s->getName() << "_id="<< oid << " t.__oid=s." << fs->getName() << "_id;";
+				" t WHERE s." << s->getName() << "_id="<< oid << " AND t.__oid=s." << fs->getName() << "_id;";
 	} else {
 		auto fs = f.getForeignScheme();
 		auto l = s->getForeignLink(f);

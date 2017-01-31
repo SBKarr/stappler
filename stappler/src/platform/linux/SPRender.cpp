@@ -24,6 +24,7 @@ THE SOFTWARE.
 **/
 
 #include "SPDefine.h"
+#include "SPScreen.h"
 #include "SPPlatform.h"
 #include "SPThreadManager.h"
 

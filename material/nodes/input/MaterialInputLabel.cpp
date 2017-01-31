@@ -218,7 +218,7 @@ const Color &InputLabel::getCursorColor() const {
 }
 
 void InputLabel::setString(const WideString &str) {
-	updateString(str, Cursor(_inputString.length(), 0));
+	updateString(str, Cursor(uint32_t(_inputString.length()), 0));
 	if (_handler.isActive()) {
 		_handler.setString(_inputString, _cursor);
 	}
@@ -241,6 +241,13 @@ void InputLabel::setCursor(const Cursor &c) {
 
 const InputLabel::Cursor &InputLabel::getCursor() const {
 	return _cursor;
+}
+
+void InputLabel::setInputType(InputType t) {
+	_inputType = t;
+}
+InputLabel::InputType InputLabel::getInputType() const {
+	return _inputType;
 }
 
 void InputLabel::setPasswordMode(PasswordMode p) {
@@ -281,6 +288,20 @@ bool InputLabel::isRangeAllowed() const {
 	return _rangeAllowed;
 }
 
+void InputLabel::setAllowMultiline(bool v) {
+	_allowMultiline = v;
+}
+bool InputLabel::isAllowMultiline() const {
+	return _allowMultiline;
+}
+
+void InputLabel::setAllowAutocorrect(bool v) {
+	_allowAutocorrect = v;
+}
+bool InputLabel::isAllowAutocorrect() const {
+	return _allowAutocorrect;
+}
+
 void InputLabel::setCursorAnchor(float value) {
 	if (_cursorAnchor != value) {
 		_cursorAnchor = value;
@@ -295,9 +316,9 @@ float InputLabel::getCursorAnchor() const {
 }
 
 void InputLabel::acquireInput() {
-	_cursor.start = getCharsCount();
+	_cursor.start = uint32_t(getCharsCount());
 	_cursor.length = 0;
-	_handler.run(_inputString, _cursor);
+	_handler.run(_inputString, _cursor, getInputTypeValue());
 	updateCursor();
 }
 void InputLabel::releaseInput() {
@@ -338,7 +359,7 @@ void InputLabel::pasteString(const WideString &str) {
 		newString.insert(_cursor.start, str);
 	}
 
-	updateString(newString, Cursor(_cursor.start + str.size()));
+	updateString(newString, Cursor(uint32_t(_cursor.start + str.size())));
 	if (_handler.isActive()) {
 		_handler.setString(_inputString, _cursor);
 	}
@@ -390,7 +411,7 @@ bool InputLabel::onLongPress(const Vec2 &vec, const TimeInterval &time, int coun
 		}
 
 	} else if (count == 3) {
-		setCursor(Cursor(0, getCharsCount()));
+		setCursor(Cursor(0, uint32_t(getCharsCount())));
 		scheduleCursorPointer();
 		return false;
 	}
@@ -400,7 +421,7 @@ bool InputLabel::onLongPress(const Vec2 &vec, const TimeInterval &time, int coun
 bool InputLabel::onPressEnd(const Vec2 &vec) {
 	if (!_handler.isActive() && node::isTouched(this, vec)) {
 		if (_isLongPress) {
-			_handler.run(_inputString, _cursor);
+			_handler.run(_inputString, _cursor, getInputTypeValue());
 			updateCursor();
 		} else {
 			acquireInput();
@@ -434,7 +455,7 @@ bool InputLabel::onPressEnd(const Vec2 &vec) {
 }
 bool InputLabel::onPressCancel(const Vec2 &vec) {
 	if (!_handler.isActive() && _isLongPress) {
-		_handler.run(_inputString, _cursor);
+		_handler.run(_inputString, _cursor, getInputTypeValue());
 		updateCursor();
 	}
 	_isLongPress = false;
@@ -609,7 +630,7 @@ bool InputLabel::updateString(const WideString &str, const Cursor &c) {
 		_inputString = str;
 		_cursor = c;
 
-		if (_password == PasswordMode::ShowAll) {
+		if (_password == PasswordMode::ShowAll || _password == PasswordMode::NotPassword) {
 			Label::setString(_inputString);
 		} else {
 			WideString str; str.resize(_inputString.length(), u'*');
@@ -707,6 +728,20 @@ void InputLabel::updatePointer() {
 		_cursorStart->setVisible(false);
 		_cursorEnd->setVisible(false);
 	}
+}
+
+int32_t InputLabel::getInputTypeValue() const {
+	int32_t ret = toInt(_inputType);
+	if (_password != PasswordMode::NotPassword) {
+		ret |= toInt(InputType::PasswordBit);
+	}
+	if (_password == PasswordMode::NotPassword && _allowAutocorrect) {
+		ret |= toInt(InputType::AutoCorrectionBit);
+	}
+	if (_allowMultiline) {
+		ret |= toInt(InputType::MultiLineBit);
+	}
+	return ret;
 }
 
 NS_MD_END

@@ -98,15 +98,15 @@ void MainLoop::init() {
 	_mksec = Time::now().toMicroseconds();
 
 	JNIEnv *env = stappler::spjni::getJniEnv();
-	auto activity = stappler::spjni::getActivity(env);
-	auto activityClass = env->GetObjectClass(activity);
+	auto & activity = stappler::spjni::getActivity(env);
+	auto activityClass = activity.get_class();
 	_renderFrame = spjni::getMethodID(env, activityClass, "renderFrame", "()V");
 	_setRenderContinuously = spjni::getMethodID(env, activityClass, "setRenderContinuously", "(Z)V");
 }
 
 void MainLoop::render() {
 	JNIEnv *env = stappler::spjni::getJniEnv();
-	auto activity = stappler::spjni::getActivity(env);
+	auto &activity = stappler::spjni::getActivity(env);
 	env->CallVoidMethod(activity, _renderFrame);
 }
 
@@ -187,7 +187,7 @@ void MainLoop::unblockRendering() {
 bool MainLoop::setRenderWhenDirty() {
 	if (!_blocked.load()) {
 		JNIEnv *env = stappler::spjni::getJniEnv();
-		auto activity = stappler::spjni::getActivity(env);
+		auto & activity = stappler::spjni::getActivity(env);
 		env->CallVoidMethod(activity, _setRenderContinuously, false);
 		_renderContinuously = false;
 		return true;
@@ -197,7 +197,7 @@ bool MainLoop::setRenderWhenDirty() {
 
 bool MainLoop::setRenderContinuously() {
 	JNIEnv *env = stappler::spjni::getJniEnv();
-	auto activity = stappler::spjni::getActivity(env);
+	auto & activity = stappler::spjni::getActivity(env);
 	env->CallVoidMethod(activity, _setRenderContinuously, true);
 	_renderContinuously = true;
 	return true;
@@ -270,8 +270,8 @@ namespace render {
 	bool _enableOffscreenContext() {
 		if (!ThreadManager::getInstance()->isMainThread()) {
 			JNIEnv *env = stappler::spjni::getJniEnv();
-			auto activity = stappler::spjni::getActivity(env);
-			auto activityClass = env->GetObjectClass(activity);
+			auto & activity = stappler::spjni::getActivity(env);
+			auto activityClass = activity.get_class();
 			auto enableOffscreenContext = spjni::getMethodID(env, activityClass, "enableOffscreenContext", "()V");
 			env->CallVoidMethod(activity, enableOffscreenContext);
 			return true;
@@ -280,8 +280,8 @@ namespace render {
 	}
 	void _disableOffscreenContext() {
 		JNIEnv *env = stappler::spjni::getJniEnv();
-		auto activity = stappler::spjni::getActivity(env);
-		auto activityClass = env->GetObjectClass(activity);
+		auto & activity = stappler::spjni::getActivity(env);
+		auto activityClass = activity.get_class();
 		auto disableOffscreenContext = spjni::getMethodID(env, activityClass, "disableOffscreenContext", "()V");
 		env->CallVoidMethod(activity, disableOffscreenContext);
 	}

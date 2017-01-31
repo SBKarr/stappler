@@ -95,7 +95,7 @@ namespace device {
 	std::pair<uint64_t, uint64_t> _diskSpace() {
 		auto env = spjni::getJniEnv();
 		auto device = spjni::getService(spjni::Service::Device, env);
-		auto deviceClass = env->GetObjectClass(device);
+		auto deviceClass = device.get_class();
 
 		uint64_t totalSpace = 0;
 	    uint64_t totalFreeSpace = 0;
@@ -116,8 +116,9 @@ namespace device {
 
 	void _onDirectorStarted() {
 		JNIEnv *env = spjni::getJniEnv();
-		if (auto activity = spjni::getActivity(env)) {
-			auto activityClass = env->GetObjectClass(activity);
+		auto &activity = spjni::getActivity(env);
+		if (!activity.empty()) {
+			auto activityClass = activity.get_class();
 			jmethodID directorStarted = spjni::getMethodID(env, activityClass, "directorStarted", "()V");
 			if (directorStarted) {
 				env->CallVoidMethod(activity, directorStarted);

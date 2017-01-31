@@ -75,6 +75,9 @@ public: // options
 	void setPriority(int32_t value);
 	int32_t getPriority() const;
 
+	void setTouchPadding(float);
+	float getTouchPadding() const;
+
 	void cancel();
 
 	void setExclusive();
@@ -93,11 +96,11 @@ public: // overrides
 	bool hasGesture(Type) const;
 
 protected:
-	bool shouldProcessTouch(const cocos2d::Vec2 &loc);
-	bool _shouldProcessTouch(const cocos2d::Vec2 &loc); // default realization
+	bool shouldProcessTouch(const Vec2 &loc);
+	bool _shouldProcessTouch(const Vec2 &loc); // default realization
 
-	bool shouldProcessGesture(const cocos2d::Vec2 &loc, Type type);
-	bool _shouldProcessGesture(const cocos2d::Vec2 &loc, Type type); // default realization
+	bool shouldProcessGesture(const Vec2 &loc, Type type);
+	bool _shouldProcessGesture(const Vec2 &loc, Type type); // default realization
 
 	bool onTouchBegan(cocos2d::Touch *pTouch);
 	void onTouchMoved(cocos2d::Touch *pTouch);
@@ -140,6 +143,7 @@ protected:
 	std::map<Type, Rc<Recognizer>> _recognizers;
 
 	int32_t _priority = 0;
+	float _touchPadding = 0.0f;
 	uint8_t _opacityFilter = 0;
 
 	bool _registred = false;

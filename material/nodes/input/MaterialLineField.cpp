@@ -88,7 +88,7 @@ bool LineField::onInputString(const std::u16string &nstr, const Cursor &nc) {
 	auto pos = std::min(str.find(u'\n'), str.find(u'\r'));
 	if (pos != std::u16string::npos) {
 		str = str.substr(0, pos);
-		c = Cursor(str.length(), 0);
+		c = Cursor(uint32_t(str.length()), 0);
 		_label->releaseInput();
 		if (_onInput) {
 			_onInput();
@@ -182,6 +182,12 @@ void LineField::scheduleAdjust(Adjust a, const Vec2 &vec, float pos) {
 		default: scheduleUpdate(); break;
 		}
 	}
+}
+
+InputLabel *LineField::makeLabel(FontType font) {
+	auto l = FormField::makeLabel(font);
+	l->setAllowMultiline(false);
+	return l;
 }
 
 void LineField::update(float dt) {

@@ -71,7 +71,7 @@ public:
 	}
 
 	/** Be sure to call supermethod when overload this method! */
-	virtual int onRequestRecieved(Request &, const String &, const data::Value &);
+	virtual int onRequestRecieved(Request &, String && origin, String && path, const data::Value &);
 
 public:
 	virtual int onPostReadRequest(Request &) { return DECLINED; }
@@ -88,7 +88,9 @@ public:
 
 protected:
 	Request _request;
+	String _originPath;
 	String _subPath;
+	Vector<String> _subPathVec;
 	data::Value _options;
 };
 

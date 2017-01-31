@@ -249,6 +249,8 @@ void View::onContentSizeDirty() {
 
 	ScrollView::onContentSizeDirty();
 	_background->setContentSize(getContentSize());
+
+	_gestureStart = nan();
 }
 
 void View::setSource(Source *source) {
@@ -445,7 +447,7 @@ cocos2d::ActionInterval *View::onSwipeFinalizeAction(float velocity) {
 			_movementAction = Accelerated::createAccelerationTo(from, to, fabsf(velocity), -fabsf(acceleration));
 
 			auto overscrollPath = path + ((velocity < 0)?(distance):(-distance));
-			if (fabs(overscrollPath) < std::numeric_limits<float>::epsilon()) {
+			if (fabs(overscrollPath) < std::numeric_limits<float>::epsilon() ) {
 				auto cb = cocos2d::CallFunc::create(std::bind(&View::onOverscroll, this, overscrollPath));
 				a = cocos2d::Sequence::createWithTwoActions(_movementAction, cb);
 			}
@@ -484,7 +486,6 @@ void View::setScrollRelativePosition(float value) {
 
 	float areaSize = getScrollableAreaSize();
 	float areaOffset = getScrollableAreaOffset();
-	float size = getScrollSize();
 
 	auto &padding = getPadding();
 	auto paddingFront = (isVertical())?padding.top:padding.left;
@@ -536,6 +537,13 @@ bool View::showPrevPage() {
 
 float View::getObjectsOffset() const {
 	return _objectsOffset;
+}
+
+void View::onPosition() {
+	ScrollView::onPosition();
+	if (_movement == Movement::None) {
+		_gestureStart = nan();
+	}
 }
 
 NS_SP_EXT_END(rich_text)

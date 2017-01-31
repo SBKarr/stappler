@@ -56,6 +56,7 @@ public:
 class InputLabel : public Label {
 public:
 	enum class PasswordMode {
+		NotPassword,
 		ShowAll,
 		ShowChar,
 		ShowNone,
@@ -64,6 +65,8 @@ public:
 	using Error = InputError;
 	using Handler = ime::Handler;
 	using Cursor = ime::Cursor;
+
+	using InputType = ime::InputType;
 
 	class Selection : public DynamicBatchNode {
 	public:
@@ -95,6 +98,9 @@ public:
 	virtual void setCursor(const Cursor &);
 	virtual const Cursor &getCursor() const;
 
+	virtual void setInputType(InputType);
+	virtual InputType getInputType() const;
+
 	virtual void setPasswordMode(PasswordMode);
 	virtual PasswordMode getPasswordMode();
 
@@ -106,6 +112,12 @@ public:
 
 	virtual void setRangeAllowed(bool);
 	virtual bool isRangeAllowed() const;
+
+	virtual void setAllowMultiline(bool);
+	virtual bool isAllowMultiline() const;
+
+	virtual void setAllowAutocorrect(bool);
+	virtual bool isAllowAutocorrect() const;
 
 	virtual void setCursorAnchor(float);
 	virtual float getCursorAnchor() const;
@@ -153,12 +165,17 @@ protected:
 	virtual void setPointerEnabled(bool);
 	virtual void updatePointer();
 
+	virtual int32_t getInputTypeValue() const;
+
 	bool _enabled = true;
 	bool _inputEnabled = false;
 	bool _rangeAllowed = true;
 	bool _isLongPress = false;
 	bool _pointerEnabled = false;
 	bool _cursorDirty = false;
+
+	bool _allowMultiline = true;
+	bool _allowAutocorrect = true;
 
 	float _cursorAnchor = 1.2f;
 
@@ -174,10 +191,11 @@ protected:
 
 	Selection *_cursorSelection = nullptr;
 
+	InputType _inputType = InputType::Default;
 	Cursor _cursor;
 	Handler _handler;
 
-	PasswordMode _password = PasswordMode::ShowAll;
+	PasswordMode _password = PasswordMode::NotPassword;
 	InputLabelDelegate *_delegate = nullptr;
 };
 

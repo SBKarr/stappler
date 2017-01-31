@@ -386,6 +386,7 @@ void LabelParameters::setString(const String &newString) {
 	_string8 = newString;
 	_string16 = string::toUtf16(newString);
     _labelDirty = true;
+    clearStyles();
 }
 
 void LabelParameters::setString(const WideString &newString) {
@@ -396,6 +397,7 @@ void LabelParameters::setString(const WideString &newString) {
 	_string8 = string::toUtf8(newString);
 	_string16 = newString;
     _labelDirty = true;
+    clearStyles();
 }
 
 const WideString &LabelParameters::getString() const {

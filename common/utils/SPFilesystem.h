@@ -81,6 +81,9 @@ time_t ctime(const String &path);
 // create dir at path (just mkdir, not mkdir -p)
 bool mkdir(const String &path);
 
+// mkdir -p (
+bool mkdir_recursive(const String &path, bool appWide = true);
+
 // touch (set mtime to now) file
 bool touch(const String &path);
 
@@ -105,19 +108,19 @@ void ftw(const String &path, const Function<void(const String &path, bool isFile
 // same as ftw, but iteration can be stopped by returning false from callback
 bool ftw_b(const String &path, const Function<bool(const String &path, bool isFile)> &, int depth = -1, bool dirFirst = false);
 
-// returns application writeable path (or path inside writeable dir, if path is set
+// returns application writable path (or path inside writable dir, if path is set
 // if relative == false - do not merge paths, if provided path is absolute
 //
-// Writeable path should be used for sharable, but not valuable contents,
+// Writable path should be used for sharable, but not valuable contents,
 // or caches, that should not be removed, when application is running or in background
-// On android, writeable path is on same drive or device, that ised for application file
-// This library use writeable path to store fonts and icons caches and assets
+// On android, writable path is on same drive or device, that used for application file
+// This library use writable path to store fonts, icons caches and assets
 String writablePath(const String &path = "", bool relative = false);
 
 // returns application documents path (or path inside documents dir, if path is set
 // if relative == false - do not merge paths, if provided path is absolute
 //
-// Documets path should be used for valuable data, like documents, created by user,
+// Documents path should be used for valuable data, like documents, created by user,
 // or content, that will be hard to recreate
 // This library stores StoreKit and purchases data in documents dir
 String documentsPath(const String &path = "", bool relative = false);
@@ -131,7 +134,7 @@ String currentDir(const String &path = "", bool relative = false);
 // returns application caches dir (or path inside caches dir, if path is set
 // if relative == false - do not merge paths, if provided path is absolute
 //
-// Caches dir used to store differen caches or content, that can be easily recreated,
+// Caches dir used to store caches or content, that can be easily recreated,
 // and that can be removed/erased, when application is active or in background
 // On android, caches will be placed on SD card, if it's available
 String cachesPath(const String &path = "", bool relative = false);

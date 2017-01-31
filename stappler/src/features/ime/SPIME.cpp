@@ -56,7 +56,7 @@ public:
 
 	void onTextChanged();
 
-	bool run(ime::Handler *, const WideString &str, const Cursor &);
+	bool run(ime::Handler *, const WideString &str, const Cursor &, int32_t type);
 
 	void setString(const WideString &str);
 	void setString(const WideString &str, const Cursor &);
@@ -83,6 +83,7 @@ public:
 	bool _isHardwareKeyboard = false;
 	bool _running = false;
 
+	int32_t _type;
 	WideString _string;
 	Cursor _cursor;
 };
@@ -200,7 +201,7 @@ void IMEImpl::onTextChanged() {
 	}
 }
 
-bool IMEImpl::run(ime::Handler *h, const WideString &str, const Cursor &cursor) {
+bool IMEImpl::run(ime::Handler *h, const WideString &str, const Cursor &cursor, int32_t type) {
 	auto oldH = _handler;
 	_handler = h;
 	if (oldH) {
@@ -211,12 +212,13 @@ bool IMEImpl::run(ime::Handler *h, const WideString &str, const Cursor &cursor) 
 	}
 	_cursor = cursor;
 	_string = str;
+	_type = type;
 	_handler = h;
 	if (cursor.start > str.length()) {
 		_cursor.start = (uint32_t)str.length();
 	}
 	if (!_running) {
-		platform::ime::_runWithText(_string, cursor.start, cursor.length);
+		platform::ime::_runWithText(_string, cursor.start, cursor.length, type);
 		_running = true;
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_IOS)
 		if (!_isKeyboardVisible) {
@@ -224,7 +226,7 @@ bool IMEImpl::run(ime::Handler *h, const WideString &str, const Cursor &cursor) 
 		}
 #endif
 	} else {
-		platform::ime::_updateText(_string, cursor.start, cursor.length);
+		platform::ime::_updateText(_string, cursor.start, cursor.length, type);
 		if (_running) {
 			_handler->onInput(true);
 		}
@@ -240,7 +242,7 @@ void IMEImpl::setString(const WideString &str, const Cursor &cursor) {
 		_cursor.start = (uint32_t)str.length();
 	}
 
-	platform::ime::_updateText(_string, cursor.start, cursor.length);
+	platform::ime::_updateText(_string, cursor.start, cursor.length, _type);
 }
 void IMEImpl::setCursor(const Cursor &cursor) {
 	_cursor = cursor;
@@ -332,9 +334,9 @@ namespace ime {
 EventHeader onKeyboard("IME", "IME.onKeyboard");
 EventHeader onInput("IME", "IME.onInput");
 
-bool Handler::run(const WideString &str, const Cursor &cursor) {
+bool Handler::run(const WideString &str, const Cursor &cursor, int32_t type) {
 	if (!isActive()) {
-		return IMEImpl::getInstance()->run(this, str, cursor);
+		return IMEImpl::getInstance()->run(this, str, cursor, type);
 	}
 	return false;
 }

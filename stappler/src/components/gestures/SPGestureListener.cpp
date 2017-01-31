@@ -34,7 +34,11 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(gesture)
 
-Listener::~Listener() { }
+Listener::~Listener() {
+	if (_registred) {
+		unregisterWithDispatcher();
+	}
+}
 
 bool Listener::init() {
 	if (!Component::init()) {
@@ -140,6 +144,15 @@ int32_t Listener::getPriority() const {
 	return _priority;
 }
 
+void Listener::setTouchPadding(float value) {
+	if (_touchPadding != value) {
+		_touchPadding = value;
+	}
+}
+float Listener::getTouchPadding() const {
+	return _touchPadding;
+}
+
 void Listener::cancel() {
 	for (auto &it : _recognizers) {
 		it.second->cancel();
@@ -172,7 +185,7 @@ uint8_t Listener::getOpacityFilter() const {
 	return _opacityFilter;
 }
 
-bool Listener::shouldProcessGesture(const cocos2d::Vec2 &loc, Type type) {
+bool Listener::shouldProcessGesture(const Vec2 &loc, Type type) {
 	if (!_gestureFilter) {
 		return _shouldProcessGesture(loc, type);
 	} else {
@@ -180,18 +193,18 @@ bool Listener::shouldProcessGesture(const cocos2d::Vec2 &loc, Type type) {
 	}
 }
 
-bool Listener::_shouldProcessGesture(const cocos2d::Vec2 &loc, Type type) {
+bool Listener::_shouldProcessGesture(const Vec2 &loc, Type type) {
 	return getOwner() && _recognizers.find(type) != _recognizers.end();
 }
 
-bool Listener::shouldProcessTouch(const cocos2d::Vec2 &loc) {
+bool Listener::shouldProcessTouch(const Vec2 &loc) {
 	if (!_touchFilter) {
 		return _shouldProcessTouch(loc);
 	} else {
 		return _touchFilter(loc, std::bind(&Listener::_shouldProcessTouch, this, loc));
 	}
 }
-bool Listener::_shouldProcessTouch(const cocos2d::Vec2 &loc) {
+bool Listener::_shouldProcessTouch(const Vec2 &loc) {
 	auto node = getOwner();
 	if (node && _running) {
 		bool visible = node->isVisible();
@@ -200,7 +213,7 @@ bool Listener::_shouldProcessTouch(const cocos2d::Vec2 &loc) {
 			visible = p->isVisible();
 			p = p->getParent();
 		}
-		if (visible && node::isTouched(node, loc) && node->getOpacity() >= _opacityFilter) {
+		if (visible && node::isTouched(node, loc, _touchPadding) && node->getOpacity() >= _opacityFilter) {
 			return true;
 		}
 	}

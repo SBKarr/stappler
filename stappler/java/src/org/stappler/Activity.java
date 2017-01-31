@@ -42,6 +42,7 @@ public class Activity extends Cocos2dxActivity {
 	protected final static String TAG = "Stappler Activity";
 
 	protected LoaderView _splashScreen = null;
+	protected boolean _directorStarted = false;
 	protected boolean _isActive = false;
 	protected boolean _statusBarVisible = true;
 
@@ -254,9 +255,10 @@ public class Activity extends Cocos2dxActivity {
 	public void setContentView(View view) {
 		FrameLayout layout = (FrameLayout)view;
 
-		_splashScreen = new LoaderView(this);
-
-		layout.addView(_splashScreen);
+		if (_directorStarted == false) {
+			_splashScreen = new LoaderView(this);
+			layout.addView(_splashScreen);
+		}
 
 		super.setContentView(layout);
 	}
@@ -405,6 +407,7 @@ public class Activity extends Cocos2dxActivity {
 		runOnUiThread(new Runnable() {
             @Override
             public void run() {
+				_directorStarted = true;
             	removeSplashScreen();
             }
 		});
@@ -418,15 +421,16 @@ public class Activity extends Cocos2dxActivity {
 		org.cocos2dx.lib.Cocos2dxGLSurfaceView.staticSetRenderContinuously(value);
 	}
 
-	public void runInput(String text, int cursorStart, int cursorLen) {
+	public void runInput(String text, int cursorStart, int cursorLen, int type) {
 		final String ftext = text;
 		final int fcursorStart = cursorStart;
 		final int fcursorLen = cursorLen;
+		final int ftype = type;
 		runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
 				if (mGLSurfaceView != null && _isActive) {
-					mGLSurfaceView.runInput(ftext, fcursorStart, fcursorLen);
+					mGLSurfaceView.runInput(ftext, fcursorStart, fcursorLen, ftype);
 				}
 
 				Activity.this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
@@ -434,15 +438,16 @@ public class Activity extends Cocos2dxActivity {
 		});
 	}
 	
-	public void updateText(String text, int cursorStart, int cursorLen) {
+	public void updateText(String text, int cursorStart, int cursorLen, int type) {
 		final String ftext = text;
 		final int fcursorStart = cursorStart;
 		final int fcursorLen = cursorLen;
+		final int ftype = type;
 		runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
 				if (mGLSurfaceView != null && _isActive) {
-					mGLSurfaceView.updateInput(ftext, fcursorStart, fcursorLen);
+					mGLSurfaceView.updateInput(ftext, fcursorStart, fcursorLen, ftype);
 				}
 			}
 		});

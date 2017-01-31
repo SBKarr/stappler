@@ -42,9 +42,7 @@ bool InputField::init(FontType font) {
 
 	_node = construct<StrictNode>();
 	_node->setAnchorPoint(Vec2(0.0f, 0.0f));
-	_label = construct<InputLabel>(font);
-	_label->setPosition(Vec2(0.0f, 0.0f));
-	_label->setCursorColor(_normalColor);
+	_label = makeLabel(font);
 	_node->addChild(_label);
 	addChild(_node, 1);
 
@@ -184,11 +182,25 @@ size_t InputField::getMaxChars() const {
 	return _label->getMaxChars();
 }
 
+void InputField::setInputType(InputType t) {
+	_label->setInputType(t);
+}
+InputField::InputType InputField::getInputType() const {
+	return _label->getInputType();
+}
+
 void InputField::setPasswordMode(PasswordMode mode) {
 	_label->setPasswordMode(mode);
 }
 InputField::PasswordMode InputField::getPasswordMode() {
 	return _label->getPasswordMode();
+}
+
+void InputField::setAllowAutocorrect(bool value) {
+	_label->setAllowAutocorrect(value);
+}
+bool InputField::isAllowAutocorrect() const {
+	return _label->isAllowAutocorrect();
 }
 
 void InputField::setEnabled(bool value) {
@@ -276,7 +288,7 @@ bool InputField::onPressEnd(const Vec2 &vec) {
 				_label->releaseInput();
 				return true;
 			} else {
-				_label->setCursor(Cursor(_label->getCharsCount()));
+				_label->setCursor(Cursor(uint32_t(_label->getCharsCount())));
 			}
 			return false;
 		} else if (_label->empty() && !node::isTouched(_node, vec)) {
@@ -330,6 +342,13 @@ void InputField::onMenuVisible() {
 }
 void InputField::onMenuHidden() {
 
+}
+
+InputLabel *InputField::makeLabel(FontType font) {
+	auto label = construct<InputLabel>(font);
+	label->setPosition(Vec2(0.0f, 0.0f));
+	label->setCursorColor(_normalColor);
+	return label;
 }
 
 NS_MD_END

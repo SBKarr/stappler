@@ -74,8 +74,8 @@ int ResourceHandler::onTranslateName(Request &rctx) {
 		return HTTP_NOT_FOUND;
 	}
 
-	User *user = nullptr;
-	if (data.isString("token")) {
+	User *user = rctx.getAuthorizedUser();
+	if (!user && data.isString("token")) {
 		user = rctx.getUser();
 	}
 
@@ -96,13 +96,13 @@ int ResourceHandler::onTranslateName(Request &rctx) {
 		_resource->setPagination(from, count);
 	}
 
-	if (_method == M_GET) {
+	if (_method == Request::Get) {
 		if (!rctx.isHeaderRequest()) {
 			return writeToRequest(rctx);
 		} else {
 			return writeInfoToReqest(rctx);
 		}
-	} else if (_method == M_DELETE) {
+	} else if (_method == Request::Delete) {
 		if (_resource->removeObject()) {
 			if (data.isString("location")) {
 				return rctx.redirectTo(String(data.getString("location")));
@@ -111,19 +111,19 @@ int ResourceHandler::onTranslateName(Request &rctx) {
 		} else {
 			return getHintedStatus(HTTP_FORBIDDEN);
 		}
-	} else if (_method == M_POST) {
+	} else if (_method == Request::Post) {
 		if (_resource->prepareCreate()) {
 			return DECLINED;
 		} else {
 			return getHintedStatus(HTTP_FORBIDDEN);
 		}
-	} else if (_method == M_PUT) {
+	} else if (_method == Request::Put) {
 		if (_resource->prepareUpdate()) {
 			return DECLINED;
 		} else {
 			return getHintedStatus(HTTP_FORBIDDEN);
 		}
-	} else if (_method == M_PATCH) {
+	} else if (_method == Request::Patch) {
 		if (_resource->prepareAppend()) {
 			return DECLINED;
 		} else {
@@ -168,7 +168,7 @@ int ResourceHandler::onHandler(Request &rctx) {
 
 void ResourceHandler::onFilterComplete(InputFilter *filter) {
 	auto rctx = filter->getRequest();
-	if (_method == M_PUT) {
+	if (_method == Request::Put) {
 			// we should update our resource
 		auto result = _resource->updateObject(filter->getData(), filter->getFiles());
 		if (result) {
@@ -178,7 +178,7 @@ void ResourceHandler::onFilterComplete(InputFilter *filter) {
 			rctx.setStatus(HTTP_BAD_REQUEST);
 			messages::error("Resource", "Fail to perform update");
 		}
-	} else if (_method == M_POST) {
+	} else if (_method == Request::Post) {
 		auto result = _resource->createObject(filter->getData(), filter->getFiles());
 		if (result) {
 			writeDataToRequest(rctx, result);
@@ -186,6 +186,15 @@ void ResourceHandler::onFilterComplete(InputFilter *filter) {
 		} else {
 			rctx.setStatus(HTTP_BAD_REQUEST);
 			messages::error("Resource", "Fail to perform create");
+		}
+	} else if (_method == Request::Patch) {
+		auto result = _resource->appendObject(filter->getData());
+		if (result) {
+			writeDataToRequest(rctx, result);
+			rctx.setStatus(HTTP_OK);
+		} else {
+			rctx.setStatus(HTTP_BAD_REQUEST);
+			messages::error("Resource", "Fail to perform append");
 		}
 	}
 }

@@ -189,18 +189,25 @@ data::Value Scheme::get(Adapter *adapter, const String &alias) {
 }
 
 data::Value Scheme::get(Adapter *adapter, const data::Value &id) {
-	if ((id.isString() && valid::validateNumber(id.getString())) || id.isInteger()) {
-		auto oid = id.getInteger();
+	if (id.isDictionary()) {
+		auto oid = id.getInteger("__oid");
 		if (oid) {
 			return get(adapter, oid);
 		}
-	}
+	} else {
+		if ((id.isString() && valid::validateNumber(id.getString())) || id.isInteger()) {
+			auto oid = id.getInteger();
+			if (oid) {
+				return get(adapter, oid);
+			}
+		}
 
-	auto &str = id.getString();
-	if (!str.empty()) {
-		return get(adapter, str);
-	}
+		auto &str = id.getString();
+		if (!str.empty()) {
+			return get(adapter, str);
+		}
 
+	}
 	return data::Value();
 }
 

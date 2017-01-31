@@ -611,7 +611,7 @@ void RecyclerScroll::afterCleanup() {
 				_items.emplace(data::Source::Id(newId), it->second);
 				citems.at(it->second->getControllerId()).nodeFunction = std::bind(&RecyclerScroll::onItemRequest, this, std::placeholders::_1, data::Source::Id(newId));
 
-				it->second->setControllerId(it->second->getControllerId() - idOffset);
+				it->second->setControllerId(size_t(it->second->getControllerId() - idOffset));
 				it = _items.erase(it);
 			} else {
 				++ it;

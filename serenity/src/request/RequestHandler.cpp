@@ -31,10 +31,12 @@ THE SOFTWARE.
 
 NS_SA_BEGIN
 
-int RequestHandler::onRequestRecieved(Request & rctx, const String &path, const data::Value &data) {
+int RequestHandler::onRequestRecieved(Request & rctx, String &&originPath, String &&path, const data::Value &data) {
 	_request = rctx;
-	_subPath = path;
+	_originPath = std::move(originPath);
+	_subPath = std::move(path);
 	_options = data;
+	_subPathVec = Url::parsePath(_subPath);
 
 	auto auth = rctx.getRequestHeaders().at("Authorization");
 	if (!auth.empty()) {

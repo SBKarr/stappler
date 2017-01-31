@@ -39,37 +39,68 @@ enum class Service {
 	Device,
 	StoreKit,
 	PlayServices,
+	AssetManager,
 };
 
 void init();
 
-jclass getClassID(JNIEnv *pEnv, const std::string &className);
-jclass getClassID(JNIEnv *pEnv, jobject obj);
+struct JClassRef {
+	JClassRef();
+	JClassRef(JNIEnv *, jclass);
+	JClassRef(jclass);
+	~JClassRef();
+
+	JClassRef(JClassRef && other);
+	JClassRef & operator = (JClassRef && other);
+
+	operator jclass () const;
+
+	JNIEnv *_env = nullptr;
+	jclass _class = nullptr;
+};
+
+struct JObjectRef {
+	enum Type {
+		Local,
+		Global,
+		WeakGlobal,
+	};
+
+	static jobject newRef(JNIEnv *env, jobject obj, Type);
+
+	JObjectRef();
+	JObjectRef(JNIEnv *env, jobject obj, Type = Local);
+	JObjectRef(jobject obj, Type = Local);
+	~JObjectRef();
+	JObjectRef(const JObjectRef & other, Type);
+	JObjectRef(const JObjectRef & other);
+	JObjectRef(JObjectRef && other);
+
+	JObjectRef & operator = (const JObjectRef & other);
+	JObjectRef & operator = (JObjectRef && other);
+	JObjectRef & operator = (const nullptr_t &);
+
+	void clear();
+	bool empty() const;
+
+	JClassRef get_class() const;
+
+	operator bool () const;
+	operator jobject () const;
+
+	JNIEnv *_env = nullptr;
+	jobject _obj = nullptr;
+	Type _type = Local;
+};
+
+JClassRef getClassID(JNIEnv *pEnv, const std::string &className);
+JClassRef getClassID(JNIEnv *pEnv, jobject obj);
 jmethodID getMethodID(JNIEnv *pEnv, jclass classID, const std::string &methodName, const std::string &paramCode);
 jmethodID getStaticMethodID(JNIEnv *pEnv, jclass classID, const std::string &methodName, const std::string &paramCode);
 JNIEnv *getJniEnv();
 
-struct JObjectLocalRef {
-	JObjectLocalRef();
-	JObjectLocalRef(JNIEnv *env, jobject obj);
-	JObjectLocalRef(jobject obj);
-	~JObjectLocalRef();
-	JObjectLocalRef(const JObjectLocalRef & other);
-	JObjectLocalRef(JObjectLocalRef && other);
-	JObjectLocalRef & operator = (const JObjectLocalRef & other);
-	JObjectLocalRef & operator = (JObjectLocalRef && other);
-	JObjectLocalRef & operator = (const nullptr_t &);
-	void clear();
-
-	operator bool () const;
-	operator jobject ();
-
-	JNIEnv *_env = nullptr;
-	jobject _obj = nullptr;
-};
-
-JObjectLocalRef getActivity(JNIEnv *pEnv = nullptr);
-JObjectLocalRef getService(Service serv, JNIEnv *pEnv = nullptr);
+const JObjectRef &getActivity(JNIEnv *pEnv = nullptr);
+JObjectRef getService(Service serv, JNIEnv *pEnv = nullptr, JObjectRef::Type = JObjectRef::Local);
 
 AAssetManager * getAssetManager(JNIEnv *pEnv = nullptr);
 

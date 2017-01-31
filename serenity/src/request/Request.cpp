@@ -89,7 +89,7 @@ struct Request::Config : public AllocPool {
 
 	apr_time_t _begin;
 
-	apr::vector<apr::string> _path;
+	Vector<String> _path;
 	data::Value _data;
 
 	Vector<data::Value> _debug;

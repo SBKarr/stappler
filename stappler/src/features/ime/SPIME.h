@@ -28,6 +28,34 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(ime)
 
+enum class InputType : int32_t {
+	Date_Date = 1,
+	Date_DateTime = 2,
+	Date_Time = 3,
+	Date = Date_DateTime,
+
+	Number_Numbers = 4,
+	Number_Decimial = 5,
+	Number_Signed = 6,
+	Number = Number_Numbers,
+
+	Phone = 7,
+
+	Text_Text = 8,
+	Text_Search = 9,
+	Text_Punctuation = 10,
+	Text_Email = 11,
+	Text_Url = 12,
+	Text = Text_Text,
+
+	Default = Text_Text,
+
+	ClassMask			= 0b00011111,
+	PasswordBit			= 0b00100000,
+	MultiLineBit		= 0b01000000,
+	AutoCorrectionBit	= 0b10000000,
+};
+
 using CursorPosition = ValueWrapper<uint32_t, class CursorPositionFlag>;
 using CursorLength = ValueWrapper<uint32_t, class CursorStartFlag>;
 
@@ -51,7 +79,7 @@ struct Handler {
 	std::function<void(bool)> onInput;
 	std::function<void()> onEnded;
 
-	bool run(const std::u16string &str = u"", const Cursor & = Cursor());
+	bool run(const std::u16string &str = u"", const Cursor & = Cursor(), int32_t = 0);
 	void cancel();
 
 	// only if this handler is active

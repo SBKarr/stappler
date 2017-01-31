@@ -91,8 +91,8 @@ namespace clipboard {
 
 namespace ime {
 	void _updateCursor(uint32_t pos, uint32_t len);
-	void _updateText(const WideString &str, uint32_t pos, uint32_t len);
-	void _runWithText(const WideString &str, uint32_t pos, uint32_t len);
+	void _updateText(const WideString &str, uint32_t pos, uint32_t len, int32_t);
+	void _runWithText(const WideString &str, uint32_t pos, uint32_t len, int32_t);
 	void _cancel();
 
 	namespace native {

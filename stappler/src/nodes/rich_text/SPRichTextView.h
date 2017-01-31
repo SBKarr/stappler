@@ -99,6 +99,8 @@ protected:
 
 	virtual cocos2d::ActionInterval *onSwipeFinalizeAction(float velocity) override;
 
+	virtual void onPosition() override;
+
 	Margin _pageMargin;
 	Renderer *_renderer = nullptr;
 	Layer *_background = nullptr;

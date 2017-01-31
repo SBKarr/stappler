@@ -344,10 +344,6 @@ constexpr typename std::underlying_type<E>::type toInt(const E &e) {
 
 template <typename T> auto StringToNumber(const char *ptr, char ** tail) -> T;
 
-template <typename T> auto StringToNumber(const std::string &str) -> T {
-	return StringToNumber<T>(str.c_str(), nullptr);
-}
-
 template <> inline auto
 StringToNumber<unsigned int>(const char *ptr, char ** tail) -> unsigned int {
 	return (unsigned int)strtoul(ptr, tail, 10);

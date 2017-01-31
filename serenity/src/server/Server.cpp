@@ -577,8 +577,12 @@ int Server::onRequest(Request &req) {
 		RequestHandler *h = ret->second.first();
 		if (h) {
 			String subPath((ret->first.back() == '/')?path.substr(ret->first.size() - 1):"");
+			String originPath = subPath.size() == 0 ? String(path) : String(ret->first);
+			if (originPath.back() == '/' && !subPath.empty()) {
+				originPath.pop_back();
+			}
 			// preflight request (for CORS implementation)
-			int preflight = h->onRequestRecieved(req, subPath, ret->second.second);
+			int preflight = h->onRequestRecieved(req, std::move(originPath), std::move(subPath), ret->second.second);
 			if (preflight > 0 || preflight == DONE) { // cors error or successful preflight
 				ap_send_interim_response(req.request(), 1);
 				return preflight;

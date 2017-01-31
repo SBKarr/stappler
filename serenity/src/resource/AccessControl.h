@@ -29,7 +29,7 @@ NS_SA_BEGIN
 
 /* Serenity resource access control concept:
  *
- * Every action with object is classified asЖ
+ * Every action with object is classified as
  *  - Create - object creation (method POST)
  *  - Append - appending subobject into array or reference set (method POST)
  *  - Read - write object's content in reqponse of request (applicable for

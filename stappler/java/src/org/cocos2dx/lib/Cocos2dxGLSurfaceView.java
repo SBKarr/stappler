@@ -30,6 +30,7 @@ import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Message;
+import android.text.InputType;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -163,10 +164,85 @@ public class Cocos2dxGLSurfaceView extends GLSurfaceView {
 	// Getter & Setter
 	// ===========================================================
 
+	private final static int InputType_Date_Date = 1;
+	private final static int InputType_Date_DateTime = 2;
+	private final static int InputType_Date_Time = 3;
+
+	private final static int InputType_Number_Numbers = 4;
+	private final static int InputType_Number_Decimial = 5;
+	private final static int InputType_Number_Signed = 6;
+
+	private final static int InputType_Phone = 7;
+
+	private final static int InputType_Text_Text = 8;
+	private final static int InputType_Text_Search = 9;
+	private final static int InputType_Text_Punctuation = 10;
+	private final static int InputType_Text_Email = 11;
+	private final static int InputType_Text_Url = 12;
+
+	private final static int InputType_ClassMask = 0x1F;
+	private final static int InputType_PasswordBit = 0x20;
+	private final static int InputType_MultiLineBit = 0x40;
+	private final static int InputType_AutoCorrectionBit = 0x80;
+
+	private int getInputTypeFromNative(int nativeValue) {
+		int cl = nativeValue & InputType_ClassMask;
+		int ret = InputType.TYPE_CLASS_TEXT;
+		if (cl == InputType_Date_Date || cl == InputType_Date_DateTime || cl == InputType_Date_Time) {
+			ret = InputType.TYPE_CLASS_DATETIME;
+			if (cl == InputType_Date_Date) {
+				ret |= InputType.TYPE_DATETIME_VARIATION_DATE;
+			} else if (cl == InputType_Date_DateTime) {
+				ret |= InputType.TYPE_DATETIME_VARIATION_NORMAL;
+			} else if (cl == InputType_Date_Time) {
+				ret |= InputType.TYPE_DATETIME_VARIATION_TIME;
+			}
+		} else if (cl == InputType_Number_Numbers || cl == InputType_Number_Decimial || cl == InputType_Number_Signed) {
+			ret = InputType.TYPE_CLASS_NUMBER;
+			if (cl == InputType_Number_Decimial) {
+				ret |= InputType.TYPE_NUMBER_FLAG_DECIMAL;
+			} else if (cl == InputType_Number_Signed) {
+				ret |= InputType.TYPE_NUMBER_FLAG_SIGNED;
+			}
+			if ((nativeValue & InputType_PasswordBit) != 0) {
+				ret |= InputType.TYPE_NUMBER_VARIATION_PASSWORD;
+			} else {
+				ret |= InputType.TYPE_NUMBER_VARIATION_NORMAL;
+			}
+		} else if (cl == InputType_Phone) {
+			ret = InputType.TYPE_CLASS_PHONE;
+		} else {
+			ret = InputType.TYPE_CLASS_TEXT;
+			if ((nativeValue & InputType_PasswordBit) != 0) {
+				ret |= InputType.TYPE_TEXT_VARIATION_PASSWORD;
+			} else if (cl == InputType_Text_Text || cl == InputType_Text_Punctuation) {
+				ret |= InputType.TYPE_TEXT_VARIATION_NORMAL;
+			} else if (cl == InputType_Text_Search) {
+				ret |= InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT;
+			} else if (cl == InputType_Text_Email) {
+				ret |= InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS;
+			} else if (cl == InputType_Text_Url) {
+				ret |= InputType.TYPE_TEXT_VARIATION_URI;
+			}
+
+			if ((nativeValue & InputType_PasswordBit) == 0) {
+				if ((nativeValue & InputType_MultiLineBit) != 0) {
+					ret |= InputType.TYPE_TEXT_FLAG_MULTI_LINE;
+				}
+				if ((nativeValue & InputType_AutoCorrectionBit) != 0) {
+					ret |= InputType.TYPE_TEXT_FLAG_AUTO_CORRECT;
+				} else {
+					ret |= InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
+				}
+			}
+		}
+		return ret;
+	}
+	
 	protected boolean _protectedEnvironment = false;
 	protected boolean _shouldUpdateString = false;
 
-	public void runInput(String text, int cursorStart, int cursorLen) {
+	public void runInput(String text, int cursorStart, int cursorLen, int type) {
 		if (mCocos2dxEditText != null) {
 			_protectedEnvironment = true;
 			if (!isFullScreenEdit()) {
@@ -175,6 +251,7 @@ public class Cocos2dxGLSurfaceView extends GLSurfaceView {
 			}
 			mCocos2dxEditText.removeTextChangedListener(Cocos2dxGLSurfaceView.sCocos2dxTextInputWraper);
 			mCocos2dxEditText.setText(text);
+			mCocos2dxEditText.setInputType(getInputTypeFromNative(type));
 			if (cursorStart > text.length()) {
 				cursorStart = text.length();
 			}
@@ -196,9 +273,10 @@ public class Cocos2dxGLSurfaceView extends GLSurfaceView {
 		}
 	}
 	
-	public void updateInput(String text, int cursorStart, int cursorLen) {
+	public void updateInput(String text, int cursorStart, int cursorLen, int type) {
 		if (mCocos2dxEditText != null) {
 			_protectedEnvironment = true;
+			mCocos2dxEditText.setInputType(getInputTypeFromNative(type));
 			mCocos2dxEditText.setText(text);
 			if (cursorLen == 0) {
 				mCocos2dxEditText.setSelection(cursorStart);

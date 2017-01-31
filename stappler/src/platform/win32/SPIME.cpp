@@ -38,11 +38,11 @@ namespace ime {
 
 	}
 
-	void _updateText(const std::u16string &str, uint32_t pos, uint32_t len) {
+	void _updateText(const std::u16string &str, uint32_t pos, uint32_t len, int32_t) {
 
 	}
 
-	void _runWithText(const std::u16string &str, uint32_t pos, uint32_t len) {
+	void _runWithText(const std::u16string &str, uint32_t pos, uint32_t len, int32_t) {
 		if (_enabledCallback) {
 			_enabledCallback(true);
 		}

@@ -43,9 +43,9 @@ namespace filesystem {
 	}
 	std::string _getCachesPath() {
 		auto env = spjni::getJniEnv();
-		auto activity = spjni::getActivity(env);
+		auto & activity = spjni::getActivity(env);
 
-		if (activity) {
+		if (!activity.empty()) {
 			auto activityClass = spjni::getClassID(env, activity);
 			if (auto getCachesPath = spjni::getMethodID(env, activityClass, "getCachesPath", "()Ljava/lang/String;")) {
 				if (auto strObj = (jstring)env->CallObjectMethod(activity, getCachesPath)) {

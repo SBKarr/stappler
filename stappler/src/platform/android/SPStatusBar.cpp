@@ -57,8 +57,8 @@ namespace statusbar {
 		}
 
 		auto env = spjni::getJniEnv();
-		auto activity = spjni::getActivity(env);
-		auto activityClass = env->GetObjectClass(activity);
+		auto & activity = spjni::getActivity(env);
+		auto activityClass = activity.get_class();
 		auto method = spjni::getMethodID(env, activityClass, "setStatusBarEnabled", "(Z)V");
 		if (method) {
 			env->CallVoidMethod(activity, method, enabled);
@@ -70,8 +70,8 @@ namespace statusbar {
 		}
 
 		auto env = spjni::getJniEnv();
-		auto activity = spjni::getActivity(env);
-		auto activityClass = env->GetObjectClass(activity);
+		auto & activity = spjni::getActivity(env);
+		auto activityClass = activity.get_class();
 		auto method = spjni::getMethodID(env, activityClass, "isStatusBarEnabled", "()Z");
 		if (method) {
 			return env->CallBooleanMethod(activity, method);
@@ -85,8 +85,8 @@ namespace statusbar {
 		}
 
 		auto env = spjni::getJniEnv();
-		auto activity = spjni::getActivity(env);
-		auto activityClass = env->GetObjectClass(activity);
+		auto & activity = spjni::getActivity(env);
+		auto activityClass = activity.get_class();
 		auto method = spjni::getMethodID(env, activityClass, "setStatusBarLight", "(Z)V");
 		if (method) {
 			env->CallVoidMethod(activity, method, lightColor);

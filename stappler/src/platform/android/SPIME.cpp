@@ -36,38 +36,38 @@ NS_SP_PLATFORM_BEGIN
 namespace ime {
 	void _updateCursor(uint32_t pos, uint32_t len) {
 		auto env = spjni::getJniEnv();
-		auto activity = spjni::getActivity();
+		auto & activity = spjni::getActivity();
 		auto activityClass = spjni::getClassID(env, activity);
 		if (auto updateCursor = spjni::getMethodID(env, activityClass, "updateCursor", "(II)V")) {
 			env->CallVoidMethod(activity, updateCursor, (int)pos, (int)len);
 		}
 	}
 
-	void _updateText(const std::u16string &str, uint32_t pos, uint32_t len) {
+	void _updateText(const std::u16string &str, uint32_t pos, uint32_t len, int32_t t) {
 		auto env = spjni::getJniEnv();
-		auto activity = spjni::getActivity();
+		auto & activity = spjni::getActivity();
 		auto activityClass = spjni::getClassID(env, activity);
-		if (auto updateText = spjni::getMethodID(env, activityClass, "updateText", "(Ljava/lang/String;II)V")) {
+		if (auto updateText = spjni::getMethodID(env, activityClass, "updateText", "(Ljava/lang/String;III)V")) {
 			jstring jstr = env->NewString((const jchar*)str.c_str(), str.length());
-			env->CallVoidMethod(activity, updateText, jstr, (int)pos, (int)len);
+			env->CallVoidMethod(activity, updateText, jstr, (int)pos, (int)len, t);
 			env->DeleteLocalRef(jstr);
 		}
 	}
 
-	void _runWithText(const std::u16string &str, uint32_t pos, uint32_t len) {
+	void _runWithText(const std::u16string &str, uint32_t pos, uint32_t len, int32_t t) {
 		auto env = spjni::getJniEnv();
-		auto activity = spjni::getActivity();
+		auto & activity = spjni::getActivity();
 		auto activityClass = spjni::getClassID(env, activity);
-		if (auto runInput = spjni::getMethodID(env, activityClass, "runInput", "(Ljava/lang/String;II)V")) {
+		if (auto runInput = spjni::getMethodID(env, activityClass, "runInput", "(Ljava/lang/String;III)V")) {
 			jstring jstr = env->NewString((const jchar*)str.c_str(), str.length());
-			env->CallVoidMethod(activity, runInput, jstr, (int)pos, (int)len);
+			env->CallVoidMethod(activity, runInput, jstr, (int)pos, (int)len, t);
 			env->DeleteLocalRef(jstr);
 		}
 	}
 
 	void _cancel() {
 		auto env = spjni::getJniEnv();
-		auto activity = spjni::getActivity();
+		auto & activity = spjni::getActivity();
 		auto activityClass = spjni::getClassID(env, activity);
 		if (auto cancelInput = spjni::getMethodID(env, activityClass, "cancelInput", "()V")) {
 			env->CallVoidMethod(activity, cancelInput);

@@ -37,6 +37,8 @@ public:
 	using Callback = Function<void()>;
 	using CharFilter = Function<bool(char16_t)>;
 
+	using InputType = ime::InputType;
+
 	virtual bool init(FontType);
 	virtual void visit(cocos2d::Renderer *r, const Mat4& t, uint32_t f, ZPath &zPath) override;
 
@@ -49,8 +51,14 @@ public:
 	virtual void setMaxChars(size_t);
 	virtual size_t getMaxChars() const;
 
+	virtual void setInputType(InputType);
+	virtual InputType getInputType() const;
+
 	virtual void setPasswordMode(PasswordMode);
 	virtual PasswordMode getPasswordMode();
+
+	virtual void setAllowAutocorrect(bool);
+	virtual bool isAllowAutocorrect() const;
 
 	virtual void setEnabled(bool);
 	virtual bool isEnabled() const;
@@ -101,6 +109,8 @@ protected:
 	virtual void updateMenu();
 	virtual void onMenuVisible();
 	virtual void onMenuHidden();
+
+	virtual InputLabel *makeLabel(FontType);
 
 	bool _hasSwipe = false;
 	Color _normalColor = Color::Blue_500;

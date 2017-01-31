@@ -60,7 +60,7 @@ void ButtonLabel::onContentSizeDirty() {
 void ButtonLabel::setString(const std::string &str) {
 	_label->setString(str);
 	if (_label->isLabelDirty()) {
-		_label->tryUpdateLabel();
+		_label->tryUpdateLabel(true);
 		updatePadding();
 	}
 }

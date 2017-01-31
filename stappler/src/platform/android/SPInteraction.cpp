@@ -35,8 +35,8 @@ NS_SP_PLATFORM_BEGIN
 namespace interaction {
 	void _goToUrl(const std::string &url, bool external) {
 		auto env = spjni::getJniEnv();
-		auto activity = spjni::getActivity(env);
-		auto activityClass = env->GetObjectClass(activity);
+		auto & activity = spjni::getActivity(env);
+		auto activityClass = activity.get_class();
 		jmethodID openWebURL = spjni::getMethodID(env, activityClass, "openWebURL", "(Ljava/lang/String;)V");
 		if (openWebURL) {
 			jstring jurl = env->NewStringUTF(url.c_str());
@@ -46,8 +46,8 @@ namespace interaction {
 	}
 	void _makePhoneCall(const std::string &str) {
 		auto env = spjni::getJniEnv();
-		auto activity = spjni::getActivity(env);
-		auto activityClass = env->GetObjectClass(activity);
+		auto & activity = spjni::getActivity(env);
+		auto activityClass = activity.get_class();
 		jmethodID openWebURL = spjni::getMethodID(env, activityClass, "openWebURL", "(Ljava/lang/String;)V");
 		if (openWebURL) {
 			jstring jurl = env->NewStringUTF(str.c_str());
@@ -57,8 +57,8 @@ namespace interaction {
 	}
 	void _mailTo(const std::string &address) {
 		auto env = spjni::getJniEnv();
-		auto activity = spjni::getActivity(env);
-		auto activityClass = env->GetObjectClass(activity);
+		auto & activity = spjni::getActivity(env);
+		auto activityClass = activity.get_class();
 		jmethodID openWebURL = spjni::getMethodID(env, activityClass, "openWebURL", "(Ljava/lang/String;)V");
 		if (openWebURL) {
 			jstring jurl = env->NewStringUTF(address.c_str());
@@ -68,8 +68,8 @@ namespace interaction {
 	}
 	void _backKey() {
 		auto env = spjni::getJniEnv();
-		auto activity = spjni::getActivity(env);
-		auto activityClass = env->GetObjectClass(activity);
+		auto & activity = spjni::getActivity(env);
+		auto activityClass = activity.get_class();
 		jmethodID perfromBackPressed = spjni::getMethodID(env, activityClass, "perfromBackPressed",
 				"()V");
 		if (perfromBackPressed) {
@@ -78,8 +78,8 @@ namespace interaction {
 	}
 	void _notification(const std::string &title, const std::string &text) {
 		auto env = spjni::getJniEnv();
-		auto activity = spjni::getActivity(env);
-		auto activityClass = env->GetObjectClass(activity);
+		auto & activity = spjni::getActivity(env);
+		auto activityClass = activity.get_class();
 		jmethodID openWebURL = spjni::getMethodID(env, activityClass, "showNotification",
 				"(Ljava/lang/String;Ljava/lang/String;)V");
 		if (openWebURL) {

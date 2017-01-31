@@ -199,7 +199,7 @@ public:
 
 class Resolver::ResourceRefSet : public ResourceSet {
 public:
-	ResourceRefSet(Scheme *s, Handle *h, Subquery *q);
+	ResourceRefSet(Scheme *s, Handle *h, Subquery *q, const Field *prop, const String &);
 
 	virtual bool prepareUpdate() override;
 	virtual bool prepareCreate() override;
@@ -208,6 +208,17 @@ public:
 	virtual data::Value updateObject(data::Value &, apr::array<InputFile> &) override;
 	virtual data::Value createObject(data::Value &, apr::array<InputFile> &) override;
 	virtual data::Value appendObject(data::Value &) override;
+
+protected:
+	uint64_t getObjectId();
+
+	data::Value doAppendObject(const data::Value &, bool cleanup);
+	data::Value doAppendObjects(const data::Value &, bool cleanup);
+
+	bool isEmptyRequest();
+
+	const Field *_field = nullptr;
+	String _fieldName;
 };
 
 NS_SA_EXT_END(database)

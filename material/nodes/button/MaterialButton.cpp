@@ -51,7 +51,7 @@ bool Button::init(const TapCallback &tapCallback, const TapCallback &longTapCall
 	}
 
 	auto l = construct<gesture::Listener>();
-	l->setGestureFilter([this] (const cocos2d::Vec2 &vec,  stappler::gesture::Type t, const  stappler::gesture::Listener::DefaultGestureFilter &def) -> bool {
+	l->setGestureFilter([this] (const Vec2 &vec,  gesture::Type t, const gesture::Listener::DefaultGestureFilter &def) -> bool {
 		if (!_touchFilter) {
 			return def(vec, t);
 		} else {
@@ -127,6 +127,13 @@ void Button::setPriority(int32_t value) {
 }
 int32_t Button::getPriority() const {
 	return _listener->getPriority();
+}
+
+void Button::setTouchPadding(float p) {
+	_listener->setTouchPadding(p);
+}
+float Button::getTouchPadding() const {
+	return _listener->getTouchPadding();
 }
 
 void Button::setTapCallback(const TapCallback & tapCallback) {

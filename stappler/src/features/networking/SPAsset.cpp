@@ -148,6 +148,8 @@ Asset::~Asset() {
 }
 
 bool Asset::download() {
+	auto tmpPath = AssetLibrary::getInstance()->getTempPath(_path);
+	filesystem::mkdir_recursive(filepath::root(tmpPath));
 	if (_downloadFunction) {
 		if (_downloadFunction(this)) {
 			_downloadInProgress = true;

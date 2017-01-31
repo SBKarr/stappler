@@ -57,70 +57,115 @@ NS_SP_PLATFORM_END
 NS_SP_BEGIN
 
 namespace spjni {
-	JObjectLocalRef::JObjectLocalRef() { }
-	JObjectLocalRef::JObjectLocalRef(JNIEnv *env, jobject obj) {
+	JClassRef::JClassRef() { }
+	JClassRef::JClassRef(JNIEnv *env, jclass c) : _env(env), _class(c) {
+		if (!_env) {
+			_env = spjni::getJniEnv();
+		}
+	}
+	JClassRef::JClassRef(jclass c) : _env(spjni::getJniEnv()), _class(c) { }
+	JClassRef::~JClassRef() {
+		if (_env && _class) {
+			_env->DeleteLocalRef(_class);
+		}
+	}
+
+	JClassRef::JClassRef(JClassRef && other) : _env(other._env), _class(other._class) {
+		other._env = nullptr;
+		other._class = nullptr;
+	}
+	JClassRef & JClassRef::operator = (JClassRef && other) {
+		_env = other._env;
+		_class = other._class;
+
+		other._env = nullptr;
+		other._class = nullptr;
+		return *this;
+	}
+
+	JClassRef::operator jclass () const {
+		return _class;
+	}
+
+	JObjectRef::JObjectRef() { }
+	JObjectRef::JObjectRef(JNIEnv *env, jobject obj, Type type) {
 		if (env) {
-			_obj = env->NewLocalRef(obj);
+			_type = type;
 			_env = env;
+			_obj = newRef(env, obj, type);
 		}
 	}
-
-	JObjectLocalRef::JObjectLocalRef(jobject obj) : JObjectLocalRef(getJniEnv(), obj) {}
-	JObjectLocalRef::~JObjectLocalRef() {
+	JObjectRef::JObjectRef(jobject obj, Type type) : JObjectRef(getJniEnv(), obj, type) {}
+	JObjectRef::~JObjectRef() {
 		clear();
 	}
-
-	JObjectLocalRef::JObjectLocalRef(const JObjectLocalRef & other) {
-		_env = other._env;
-		if (other && _env) {
-			_obj = _env->NewLocalRef(other._obj);
+	JObjectRef::JObjectRef(const JObjectRef & other, Type type) : _env(other._env), _type(type) {
+		if (!other.empty() && _env) {
+			_obj = newRef(_env, other._obj, type);
 		}
 	}
-	JObjectLocalRef::JObjectLocalRef(JObjectLocalRef && other) {
-		_env = other._env;
-		_obj = other._obj;
-
+	JObjectRef::JObjectRef(const JObjectRef & other) : JObjectRef(other, other._type) { }
+	JObjectRef::JObjectRef(JObjectRef && other) : _env(other._env), _obj(other._obj), _type(other._type) {
 		other._env = nullptr;
 		other._obj = nullptr;
 	}
 
-	JObjectLocalRef & JObjectLocalRef::operator = (const JObjectLocalRef & other) {
+	JObjectRef & JObjectRef::operator = (const JObjectRef & other) {
 		clear();
 		_env = other._env;
-		if (other && _env) {
-			_obj = _env->NewLocalRef(other._obj);
+		_type = other._type;
+		if (!other.empty() && _env) {
+			_obj = newRef(_env, other._obj, _type);
 		}
 		return *this;
 	}
-	JObjectLocalRef & JObjectLocalRef::operator = (JObjectLocalRef && other) {
+	JObjectRef & JObjectRef::operator = (JObjectRef && other) {
 		clear();
 		_env = other._env;
 		_obj = other._obj;
+		_type = other._type;
 
 		other._env = nullptr;
 		other._obj = nullptr;
 		return *this;
 	}
-
-	JObjectLocalRef & JObjectLocalRef::operator = (const nullptr_t &) {
+	JObjectRef & JObjectRef::operator = (const nullptr_t &) {
 		clear();
 		return *this;
 	}
 
-	void JObjectLocalRef::clear() {
-		if (_env && _obj) {
-			_env->DeleteLocalRef(_obj);
-			_env = nullptr;
-			_obj = nullptr;
+	jobject JObjectRef::newRef(JNIEnv *env, jobject obj, Type t) {
+		switch (t) {
+		case Local: return env->NewLocalRef(obj); break;
+		case Global: return env->NewGlobalRef(obj); break;
+		case WeakGlobal: return env->NewWeakGlobalRef(obj); break;
 		}
+		return nullptr;
+	}
+	void JObjectRef::clear() {
+		if (!empty()) {
+			switch (_type) {
+			case Local: return _env->DeleteLocalRef(_obj); break;
+			case Global: return _env->DeleteGlobalRef(_obj); break;
+			case WeakGlobal: return _env->DeleteWeakGlobalRef(_obj); break;
+			}
+		}
+		_env = nullptr;
+		_obj = nullptr;
 	}
 
-	JObjectLocalRef::operator bool () const { return _obj != nullptr; }
-	JObjectLocalRef::operator jobject () { return _obj; }
+	bool JObjectRef::empty() const {
+		return _obj == nullptr || _env == nullptr || (_type == WeakGlobal && _env->IsSameObject(_obj, NULL));
+	}
 
+	JClassRef JObjectRef::get_class() const {
+		return JClassRef(_env, _env->GetObjectClass(_obj));
+	}
+
+	JObjectRef::operator bool () const { return !empty(); }
+	JObjectRef::operator jobject () const { return _obj; }
 
 	struct SharedActivity {
-
 		SharedActivity() {}
 		~SharedActivity() {
 			auto env = getJniEnv();
@@ -148,6 +193,8 @@ namespace spjni {
 		    auto getClassLoaderMethod = pEnv->GetMethodID(classClass, "getClassLoader", "()Ljava/lang/ClassLoader;");
 
 		    auto classLoader = pEnv->CallObjectMethod(classClass, getClassLoaderMethod);
+		    pEnv->DeleteLocalRef(activityClass);
+		    pEnv->DeleteLocalRef(classClass);
 		    pEnv->ExceptionClear();
 
 		    if (classLoader) {
@@ -155,6 +202,7 @@ namespace spjni {
 			    auto classLoaderClass = pEnv->GetObjectClass(_classLoader);
 
 			    _findClassMethod = pEnv->GetMethodID(classLoaderClass, "findClass", "(Ljava/lang/String;)Ljava/lang/Class;");
+			    pEnv->DeleteLocalRef(classLoaderClass);
 		    }
 		}
 
@@ -197,15 +245,15 @@ namespace spjni {
 			_mutex.unlock();
 		}
 
-		JObjectLocalRef get(JNIEnv *pEnv = nullptr) {
+		JObjectRef get(JNIEnv *pEnv = nullptr, JObjectRef::Type type = JObjectRef::Local) {
 			if (!pEnv) {
 				pEnv = getJniEnv();
 			}
 
-			JObjectLocalRef ret;
+			JObjectRef ret;
 			_mutex.lock();
 			if (_activity) {
-				ret = JObjectLocalRef(pEnv, _activity);
+				ret = JObjectRef(pEnv, _activity, type);
 			}
 			_mutex.unlock();
 			return ret;
@@ -247,6 +295,8 @@ namespace spjni {
 	int s_screenHeight = 0;
 
 	pthread_key_t jniEnvKey;
+	pthread_key_t jniActivityKey;
+	pthread_key_t jniAssetManagerKey;
 };
 
 NS_SP_END
@@ -351,21 +401,29 @@ NS_SP_BEGIN;
 
 namespace spjni {
 
+void spjni_activity_key_destructor(void *ptr) {
+	if (ptr) {
+		delete (JObjectRef *)(ptr);
+	}
+}
+
 void init() {
 	pthread_key_create(&jniEnvKey, nullptr);
+	pthread_key_create(&jniActivityKey, &spjni_activity_key_destructor);
+	pthread_key_create(&jniAssetManagerKey, &spjni_activity_key_destructor);
 
 	_activity.init();
 }
 
-jclass getClassID(JNIEnv *pEnv, const std::string &className) {
-	return _activity.getClassId(pEnv, className);
+JClassRef getClassID(JNIEnv *pEnv, const std::string &className) {
+	return JClassRef(pEnv, _activity.getClassId(pEnv, className));
 }
 
-jclass getClassID(JNIEnv *pEnv, jobject obj) {
+JClassRef getClassID(JNIEnv *pEnv, jobject obj) {
 	if (obj) {
-	    return pEnv->GetObjectClass(obj);
+	    return JClassRef(pEnv, pEnv->GetObjectClass(obj));
 	}
-	return nullptr;
+	return JClassRef();
 }
 
 jmethodID getMethodID(JNIEnv *pEnv, jclass classID, const std::string &methodName,
@@ -430,17 +488,27 @@ JNIEnv *getJniEnv() {
 	return env;
 }
 
-JObjectLocalRef getActivity(JNIEnv *pEnv) {
-	return _activity.get(pEnv);
+const JObjectRef &getActivity(JNIEnv *pEnv) {
+	JObjectRef *activity = (JObjectRef *)pthread_getspecific(jniActivityKey);
+	if (activity == nullptr) {
+		activity = new JObjectRef(_activity.get(pEnv, JObjectRef::Type::WeakGlobal));
+        pthread_setspecific(jniActivityKey, activity);
+	}
+
+	if (activity->empty()) {
+		*activity = _activity.get(pEnv, JObjectRef::Type::WeakGlobal);
+	}
+
+	return *activity;
 }
 
-JObjectLocalRef getService(Service serv, JNIEnv *pEnv) {
+JObjectRef getService(Service serv, JNIEnv *pEnv, JObjectRef::Type type) {
 	if (!pEnv) {
 		pEnv = getJniEnv();
 	}
 
-	auto activity = getActivity(pEnv);
-	if (!activity) {
+	auto & activity = getActivity(pEnv);
+	if (activity.empty()) {
 		return nullptr;
 	}
 
@@ -467,6 +535,10 @@ JObjectLocalRef getService(Service serv, JNIEnv *pEnv) {
 		method = "getStoreKit";
 		param = "()Lorg/stappler/StoreKit;";
 		break;
+	case Service::AssetManager:
+		method = "getAssets";
+		param = "()Landroid/content/res/AssetManager;";
+		break;
 	default:
 		break;
 	}
@@ -487,7 +559,7 @@ JObjectLocalRef getService(Service serv, JNIEnv *pEnv) {
 		log::format("SPJNI", "No methodID: %s (%s)", method.c_str(), param.c_str());
 	}
 
-	return JObjectLocalRef(pEnv, ret);
+	return JObjectRef(pEnv, ret, type);
 }
 
 AAssetManager * getAssetManager(JNIEnv *pEnv) {
@@ -495,22 +567,18 @@ AAssetManager * getAssetManager(JNIEnv *pEnv) {
 		pEnv = getJniEnv();
 	}
 
-	auto activity = getActivity();
-	if (!activity) {
-		return nullptr;
+	JObjectRef *assetManager = (JObjectRef *)pthread_getspecific(jniAssetManagerKey);
+	if (assetManager == nullptr) {
+		assetManager = new JObjectRef(getService(Service::AssetManager, pEnv, JObjectRef::Type::WeakGlobal));
+        pthread_setspecific(jniAssetManagerKey, assetManager);
 	}
 
-	std::string method = "getAssets";
-	std::string param = "()Landroid/content/res/AssetManager;";
-
-	jobject ret = nullptr;
-	auto methodId = getMethodID(pEnv, getClassID(pEnv, activity), method, param);
-	if (methodId) {
-		ret = pEnv->CallObjectMethod(activity, methodId);
+	if (assetManager->empty()) {
+		*assetManager = getService(Service::AssetManager, pEnv, JObjectRef::Type::WeakGlobal);
 	}
 
-	if (ret) {
-		return AAssetManager_fromJava(pEnv, ret);
+	if (!assetManager->empty()) {
+		return AAssetManager_fromJava(pEnv, *assetManager);
 	}
 
 	return nullptr;

@@ -276,6 +276,62 @@ bool mkdir(const String &ipath) {
 	return filesystem_native::mkdir_fn(path);
 }
 
+bool mkdir_recursive(const String &ipath, bool appWide) {
+	auto path = filepath::absolute(ipath, true);
+
+	String appWideLimit;
+	if (appWide) {
+		do {
+			String testPath = cachesPath();
+			if (path.compare(0, std::min(path.size(), testPath.size()), testPath) == 0) {
+				appWideLimit = std::move(testPath);
+				break;
+			}
+
+			testPath = writablePath();
+			if (path.compare(0, std::min(path.size(), testPath.size()), testPath) == 0) {
+				appWideLimit = std::move(testPath);
+				break;
+			}
+
+			testPath = documentsPath();
+			if (path.compare(0, std::min(path.size(), testPath.size()), testPath) == 0) {
+				appWideLimit = std::move(testPath);
+				break;
+			}
+
+			testPath = currentDir();
+			if (path.compare(0, std::min(path.size(), testPath.size()), testPath) == 0) {
+				appWideLimit = std::move(testPath);
+				break;
+			}
+		} while (0);
+
+		if (appWideLimit.empty()) {
+			return false;
+		}
+	}
+
+	auto components = filepath::split(path);
+	if (!components.empty()) {
+		bool control = false;
+		String construct("/");
+		for (auto &it : components) {
+			construct.append(it);
+			if (!appWide || construct.compare(0, std::min(construct.size(), appWideLimit.size()), appWideLimit) == 0) {
+				if (control || !filesystem_native::isdir_fn(path)) {
+					control = true;
+					if (!filesystem_native::mkdir_fn(path)) {
+						return false;
+					}
+				}
+			}
+			construct.append("/");
+		}
+	}
+	return true;
+}
+
 void ftw(const String &ipath, const Function<void(const String &path, bool isFile)> &callback, int depth, bool dir_first) {
 	String path = filepath::absolute(ipath, true);
 	filesystem_native::ftw_fn(path, callback, depth, dir_first);

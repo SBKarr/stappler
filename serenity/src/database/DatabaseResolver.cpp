@@ -282,7 +282,7 @@ Resource *Resolver::getResult() {
 			if (!_subquery->subqueryField.empty() && _subquery->subquery && _subquery->subquery->scheme) {
 				auto f = _subquery->subquery->scheme->getField(_subquery->subqueryField);
 				if (f->isReference() && !_subquery->all) {
-					return new ResourceRefSet(_scheme, _handle, _subquery);
+					return new ResourceRefSet(_subquery->subquery->scheme, _handle, _subquery, f, f->getName());
 				}
 			}
 			if (_subquery->oid > 0 || !_subquery->alias.empty() || _subquery->limit == 0) {

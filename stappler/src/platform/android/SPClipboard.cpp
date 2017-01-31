@@ -34,7 +34,7 @@ namespace clipboard {
 	bool _isAvailable() {
 		auto env = spjni::getJniEnv();
 		auto clipboard = spjni::getService(spjni::Service::Clipboard, env);
-		auto clipboardClass = env->GetObjectClass(clipboard);
+		auto clipboardClass = clipboard.get_class();
 		auto method = spjni::getMethodID(env, clipboardClass, "isClipboardAvailable", "()Z");
 		if (method) {
 			return env->CallBooleanMethod(clipboard, method);
@@ -45,7 +45,7 @@ namespace clipboard {
 	std::string _getString() {
 		auto env = spjni::getJniEnv();
 		auto clipboard = spjni::getService(spjni::Service::Clipboard, env);
-		auto clipboardClass = env->GetObjectClass(clipboard);
+		auto clipboardClass = clipboard.get_class();
 		auto method = spjni::getMethodID(env, clipboardClass, "getStringFromClipboard", "()Ljava/lang/String;");
 		if (method) {
 			auto strObj = (jstring)env->CallObjectMethod(clipboard, method);
@@ -58,7 +58,7 @@ namespace clipboard {
 	void _copyString(const std::string &value) {
 		auto env = spjni::getJniEnv();
 		auto clipboard = spjni::getService(spjni::Service::Clipboard, env);
-		auto clipboardClass = env->GetObjectClass(clipboard);
+		auto clipboardClass = clipboard.get_class();
 		auto method = spjni::getMethodID(env, clipboardClass, "copyStringToClipboard", "(Ljava/lang/String;)V");
 		if (method) {
 			auto str = env->NewStringUTF(value.c_str());

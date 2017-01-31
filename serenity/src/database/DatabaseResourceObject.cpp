@@ -367,29 +367,158 @@ data::Value Resolver::ResourceSet::appendObject(data::Value &data) {
 }
 
 
-Resolver::ResourceRefSet::ResourceRefSet(Scheme *s, Handle *h, Subquery *q)
-: ResourceSet(s, h, q) { }
+Resolver::ResourceRefSet::ResourceRefSet(Scheme *s, Handle *h, Subquery *q, const Field *prop, const String &field)
+: ResourceSet(s, h, q), _field(prop), _fieldName(field) { }
 
 bool Resolver::ResourceRefSet::prepareUpdate() {
-	return false;
+	_perms = isSchemeAllowed(_scheme, Action::Update);
+	return _perms != Permission::Restrict;
 }
 bool Resolver::ResourceRefSet::prepareCreate() {
-	return false;
+	_perms = isSchemeAllowed(_scheme, Action::Append);
+	return _perms != Permission::Restrict;
 }
 bool Resolver::ResourceRefSet::prepareAppend() {
-	return false;
+	_perms = isSchemeAllowed(_scheme, Action::Append);
+	return _perms != Permission::Restrict;
 }
 bool Resolver::ResourceRefSet::removeObject() {
+	auto id = getObjectId();
+	if (id == 0) {
+		return data::Value();
+	}
+
+	if (isEmptyRequest()) {
+		_handle->clearProperty(_scheme, id, *_field);
+		return true;
+	} else {
+		auto objs = getDatabaseId(_scheme, _query);
+		if (objs.empty()) {
+			return false;
+		}
+
+		if (_handle->cleanupRefSet(_scheme, id, _field, objs)) {
+			return true;
+		}
+	}
+
 	return false;
 }
-data::Value Resolver::ResourceRefSet::updateObject(data::Value &, apr::array<InputFile> &) {
+data::Value Resolver::ResourceRefSet::updateObject(data::Value &value, apr::array<InputFile> &files) {
+	if (isEmptyRequest()) {
+		if (value.isBasicType() && !value.isNull()) {
+			return doAppendObject(value, true);
+		} else if (value.isArray()) {
+			return doAppendObjects(value, true);
+		} else if (value.isDictionary()) {
+			if (value.isArray(_fieldName)) {
+				return doAppendObjects(value.getValue(_fieldName), true);
+			} else if (value.isBasicType(_fieldName)) {
+				return doAppendObject(value.getValue(_fieldName), true);
+			}
+		}
+	} else {
+		return ResourceSet::updateObject(value, files);
+	}
 	return data::Value();
 }
-data::Value Resolver::ResourceRefSet::createObject(data::Value &, apr::array<InputFile> &) {
-	return data::Value();
+data::Value Resolver::ResourceRefSet::createObject(data::Value &value, apr::array<InputFile> &files) {
+	if (isEmptyRequest()) {
+		return appendObject(value);
+	} else {
+		return ResourceSet::createObject(value, files);
+	}
 }
-data::Value Resolver::ResourceRefSet::appendObject(data::Value &) {
-	return data::Value();
+data::Value Resolver::ResourceRefSet::appendObject(data::Value &value) {
+	if (isEmptyRequest()) {
+		if (value.isBasicType()) {
+			return doAppendObject(value, false);
+		} else if (value.isArray()) {
+			return doAppendObjects(value, false);
+		} else if (value.isDictionary()) {
+			if (value.isArray(_fieldName)) {
+				return doAppendObjects(value.getValue(_fieldName), false);
+			} else if (value.isBasicType(_fieldName)) {
+				return doAppendObject(value.getValue(_fieldName), false);
+			}
+		}
+	} else {
+		return ResourceSet::appendObject(value);
+	}
+	return data::Value(value);
+}
+
+uint64_t Resolver::ResourceRefSet::getObjectId() {
+	apr::ostringstream query;
+	Resolver::writeSubquery(query, _handle, _scheme, _query->subquery, String(), true);
+	query << ";";
+	return _handle->selectId(query.weak());
+}
+
+bool Resolver::ResourceRefSet::isEmptyRequest() {
+	if (_query && (_query->oid || !_query->alias.empty() || !_query->where.empty())) {
+		return false;
+	}
+	return true;
+}
+
+data::Value Resolver::ResourceRefSet::doAppendObject(const data::Value &val, bool cleanup) {
+	auto id = getObjectId();
+	if (id == 0) {
+		return data::Value();
+	}
+
+	data::Value ret;
+
+	_handle->performInTransaction([&] {
+		if (cleanup) {
+			_handle->clearProperty(_scheme, id, *_field);
+		}
+		int64_t pushId = 0;
+		auto refScheme = _field->getForeignScheme();
+		auto obj = refScheme->get(_handle, val);
+		if (obj) {
+			pushId = obj.getInteger("__oid");
+		}
+
+		if (pushId && _handle->patchRefSet(_scheme, id, _field, Vector<uint64_t>{uint64_t(pushId)})) {
+			ret.addInteger(pushId);
+		}
+	});
+
+	return ret;
+}
+data::Value Resolver::ResourceRefSet::doAppendObjects(const data::Value &val, bool cleanup) {
+	auto id = getObjectId();
+	if (id == 0) {
+		return data::Value();
+	}
+
+	data::Value ret;
+
+	_handle->performInTransaction([&] {
+		if (cleanup) {
+			_handle->clearProperty(_scheme, id, *_field);
+		}
+		Vector<uint64_t> ids;
+		auto refScheme = _field->getForeignScheme();
+		for (auto &it : val.asArray()) {
+			auto obj = refScheme->get(_handle, it);
+			if (obj) {
+				if (auto pushId = obj.getInteger("__oid")) {
+					ids.push_back(pushId);
+				}
+			}
+		}
+
+		if (_handle->patchRefSet(_scheme, id, _field, ids)) {
+			for (auto &it : ids) {
+				ret.addInteger(it);
+			}
+		}
+	});
+
+	return ret;
 }
 
 NS_SA_EXT_END(database)

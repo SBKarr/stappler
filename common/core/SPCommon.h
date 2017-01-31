@@ -174,6 +174,10 @@ using Set = toolkit::TypeTraits::set_type<T, Compare>;
 
 using AllocBase = toolkit::TypeTraits::allocator_base;
 
+template <typename T> auto StringToNumber(const String &str) -> T {
+	return StringToNumber<T>(str.c_str(), nullptr);
+}
+
 NS_SP_END
 
 #endif /* COMMON_CORE_SPCOMMON_H_ */

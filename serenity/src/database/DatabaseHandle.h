@@ -126,6 +126,8 @@ public:
 	virtual bool supportsAtomicPatches() const override;
 
 	bool patchArray(Scheme *, uint64_t oid, const storage::Field *, data::Value &);
+	bool patchRefSet(Scheme *, uint64_t oid, const storage::Field *, const Vector<uint64_t> &objsToAdd);
+	bool cleanupRefSet(Scheme *, uint64_t oid, const storage::Field *, const Vector<int64_t> &objsToRemove);
 
 	virtual bool setData(const String &, const data::Value &, TimeInterval = config::getKeyValueStorageTime()) override;
 	virtual data::Value getData(const String &) override;
@@ -150,6 +152,8 @@ protected:
 			const storage::FieldObject *field, const storage::Field *f, data::Value &d);
 	bool insertIntoArray(apr::ostringstream &, Scheme *s, int64_t id,
 			const storage::Field *field, data::Value &d);
+	bool insertIntoRefSet(apr::ostringstream &, Scheme *s, int64_t id,
+			const storage::Field *field, const Vector<uint64_t> &d);
 
 	bool beginTransaction(TransactionLevel l);
 	void cancelTransaction();

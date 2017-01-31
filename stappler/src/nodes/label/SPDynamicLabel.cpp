@@ -69,8 +69,11 @@ bool DynamicLabel::init(Source *source, const DescriptionStyle &style, const Str
     return true;
 }
 
-void DynamicLabel::tryUpdateLabel() {
+void DynamicLabel::tryUpdateLabel(bool force) {
 	if (_labelDirty) {
+		if (force) {
+			_textures.clear();
+		}
 		updateLabel();
 	}
 }
