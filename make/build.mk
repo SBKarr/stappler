@@ -18,16 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-ifndef GLOBAL_ROOT
-GLOBAL_ROOT = .
-endif
-
-ifndef COCOS2D_ROOT
-COCOS2D_ROOT := libs/src/stappler-cocos2d-x
-endif
-
-include $(GLOBAL_ROOT)/make/compiler.mk
-
 GLOBAL_RM ?= rm -f
 GLOBAL_CP ?= cp -f
 GLOBAL_MAKE ?= make
@@ -44,7 +34,7 @@ endif
 
 GLOBAL_CXXFLAGS := $(GLOBAL_CFLAGS) -std=gnu++14
 
-ifeq ($(shell uname -o),Cygwin)
+ifeq ($(UNAME),Cygwin)
 GLOBAL_PREBUILT_LIBS_PATH := $(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)
 else
 GLOBAL_PREBUILT_LIBS_PATH := $(realpath $(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH))
@@ -67,16 +57,16 @@ include $(GLOBAL_ROOT)/make/spmin.mk
 
 # serenity - apache httpd module. based on stappler toolkit
 include $(GLOBAL_ROOT)/make/serenity.mk
-verbose:= yes
+
 ifdef verbose
 ifneq ($(verbose),yes)
-GLOBAL_QUIET_CC = @ echo [Compile] $@ ;
-GLOBAL_QUIET_CPP = @ echo [Compile++] $@ ;
+GLOBAL_QUIET_CC = @ echo [$(notdir $(GLOBAL_CC))] $@ ;
+GLOBAL_QUIET_CPP = @ echo [$(notdir $(GLOBAL_CPP))] $@ ;
 GLOBAL_QUIET_LINK = @ echo [Link] $@ ;
 endif
 else
-GLOBAL_QUIET_CC = @ echo [Compile] $@ ;
-GLOBAL_QUIET_CPP = @ echo [Compile++] $@ ;
+GLOBAL_QUIET_CC = @ echo [$(notdir $(GLOBAL_CC))] $@ ;
+GLOBAL_QUIET_CPP = @ echo [$(notdir $(GLOBAL_CPP))] $@ ;
 GLOBAL_QUIET_LINK = @ echo [Link] $@ ;
 endif
 

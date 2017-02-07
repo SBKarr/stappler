@@ -46,22 +46,22 @@ protected:
 	};
 
 public:
-	cocos2d::Ref *getObject() const;
+	Ref *getObject() const;
 
 	const EventHeader &getHeader() const;
 	EventHeader::Category getCategory() const;
 	EventHeader::EventID getEventID() const;
 
 #if SP_EVENT_RTTI
-	const std::string &getTargetTypename() const { return _targetTypename; }
-	const std::string &getObjectTypename() const { return _objectTypename; }
+	const String &getTargetTypename() const { return _targetTypename; }
+	const String &getObjectTypename() const { return _objectTypename; }
 #endif
 
 	bool is(const EventHeader &eventHeader) const;
 	bool operator == (const EventHeader &eventHeader) const;
 
-	template <class T = cocos2d::Ref> inline T * getTarget() const {
-        static_assert(std::is_convertible<T *, cocos2d::Ref *>::value,
+	template <class T = Ref> inline T * getTarget() const {
+        static_assert(std::is_convertible<T *, Ref *>::value,
 					  "Invalid Type for stappler::Event target!");
 		return static_cast<T *>(_object);
 	}
@@ -84,12 +84,12 @@ public:
 	template <class T> inline T getObjValueImpl(const std::false_type &type) const {
         return static_cast<T>(0);
 	}
-	template <class T = cocos2d::Ref *> inline T getObjectValue() const {
-        static_assert(std::is_convertible<T, cocos2d::Ref *>::value,
+	template <class T = Ref *> inline T getObjectValue() const {
+        static_assert(std::is_convertible<T, Ref *>::value,
 					  "Invalid Type for stappler::Event target!");
-		return getObjValueImpl<T>(std::is_convertible<T, cocos2d::Ref *>());
+		return getObjValueImpl<T>(std::is_convertible<T, Ref *>());
 	}
-	inline const std::string &getStringValue() const {
+	inline const String &getStringValue() const {
 		return (_type == Type::String)?(*_value.strValue):ZERO_STRING;
 	}
 	inline const data::Value &getDataValue() const {
@@ -101,40 +101,40 @@ protected:
 		int64_t intValue;
 		double floatValue;
 		bool boolValue;
-		cocos2d::Ref *objValue;
-		const std::string *strValue;
+		Ref *objValue;
+		const String *strValue;
 		const data::Value * dataValue;
 	};
 
 #if SP_EVENT_RTTI
-	static void send(const EventHeader &header, cocos2d::Ref *object, const std::string &tname, Value val, Type type, const std::string oname);
-	static void send(const EventHeader &header, cocos2d::Ref *object, const std::string &tname, int64_t value);
-	static void send(const EventHeader &header, cocos2d::Ref *object, const std::string &tname, double value);
-	static void send(const EventHeader &header, cocos2d::Ref *object, const std::string &tname, bool value);
-	static void send(const EventHeader &header, cocos2d::Ref *object, const std::string &tname, cocos2d::Ref *value, const std::string oname);
-	static void send(const EventHeader &header, cocos2d::Ref *object, const std::string &tname, const char *value);
-	static void send(const EventHeader &header, cocos2d::Ref *object, const std::string &tname, const std::string &value);
-	static void send(const EventHeader &header, cocos2d::Ref *object, const std::string &tname);
+	static void send(const EventHeader &header, Ref *object, const String &tname, Value val, Type type, const String oname);
+	static void send(const EventHeader &header, Ref *object, const String &tname, int64_t value);
+	static void send(const EventHeader &header, Ref *object, const String &tname, double value);
+	static void send(const EventHeader &header, Ref *object, const String &tname, bool value);
+	static void send(const EventHeader &header, Ref *object, const String &tname, Ref *value, const String oname);
+	static void send(const EventHeader &header, Ref *object, const String &tname, const char *value);
+	static void send(const EventHeader &header, Ref *object, const String &tname, const String &value);
+	static void send(const EventHeader &header, Ref *object, const String &tname);
 
-	Event(const EventHeader &header, cocos2d::Ref *object, const std::string &tname, Value val, Type type, const std::string &oname);
-	Event(const EventHeader &header, cocos2d::Ref *object, const std::string &tname);
+	Event(const EventHeader &header, Ref *object, const String &tname, Value val, Type type, const String &oname);
+	Event(const EventHeader &header, Ref *object, const String &tname);
 
-	std::string _targetTypename;
-	std::string _objectTypename;
+	String _targetTypename;
+	String _objectTypename;
 #else
 
-	Event(const EventHeader &header, cocos2d::Ref *object, Value val, Type type);
-	Event(const EventHeader &header, cocos2d::Ref *object);
+	Event(const EventHeader &header, Ref *object, Value val, Type type);
+	Event(const EventHeader &header, Ref *object);
 
-	static void send(const EventHeader &header, cocos2d::Ref *object, Value val, Type type);
-	static void send(const EventHeader &header, cocos2d::Ref *object, int64_t value);
-	static void send(const EventHeader &header, cocos2d::Ref *object, double value);
-	static void send(const EventHeader &header, cocos2d::Ref *object, bool value);
-	static void send(const EventHeader &header, cocos2d::Ref *object, cocos2d::Ref *value);
-	static void send(const EventHeader &header, cocos2d::Ref *object, const char *value);
-	static void send(const EventHeader &header, cocos2d::Ref *object, const std::string &value);
-	static void send(const EventHeader &header, cocos2d::Ref *object, const data::Value &value);
-	static void send(const EventHeader &header, cocos2d::Ref *object);
+	static void send(const EventHeader &header, Ref *object, Value val, Type type);
+	static void send(const EventHeader &header, Ref *object, int64_t value);
+	static void send(const EventHeader &header, Ref *object, double value);
+	static void send(const EventHeader &header, Ref *object, bool value);
+	static void send(const EventHeader &header, Ref *object, Ref *value);
+	static void send(const EventHeader &header, Ref *object, const char *value);
+	static void send(const EventHeader &header, Ref *object, const String &value);
+	static void send(const EventHeader &header, Ref *object, const data::Value &value);
+	static void send(const EventHeader &header, Ref *object);
 #endif
 
 protected:
@@ -142,13 +142,13 @@ protected:
 
 	const EventHeader &_header;
 	Type _type = Type::None;
-	cocos2d::Ref *_object = nullptr;
+	Ref *_object = nullptr;
 	Value _value;
 
 	friend class EventHeader;
 
 private:
-	static std::string ZERO_STRING;
+	static String ZERO_STRING;
 };
 
 NS_SP_END

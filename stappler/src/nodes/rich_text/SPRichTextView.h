@@ -23,16 +23,15 @@ THE SOFTWARE.
 #ifndef LIBS_STAPPLER_NODES_RICH_TEXT_SPRICHTEXTVIEW_H_
 #define LIBS_STAPPLER_NODES_RICH_TEXT_SPRICHTEXTVIEW_H_
 
-#include "SPRichTextSource.h"
+#include "SPRichText.h"
+#include "SPLayoutSource.h"
 #include "SPScrollView.h"
-#include "SPRichTextResult.h"
 
 NS_SP_EXT_BEGIN(rich_text)
 
 class View : public ScrollView {
 public:
-	using ResultCallback = std::function<void(Result *)>;
-	using PageData = Result::PageData;
+	using ResultCallback = Function<void(Result *)>;
 
 	class Page : public cocos2d::Node {
 	public:
@@ -55,7 +54,7 @@ public:
 
     virtual void onContentSizeDirty() override;
 
-    virtual void setHyphens(font::HyphenMap *);
+    virtual void setHyphens(layout::HyphenMap *);
 
 	virtual void setSource(Source *);
 	virtual Source *getSource() const;

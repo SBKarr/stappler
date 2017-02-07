@@ -43,6 +43,16 @@ NS_SP_BEGIN
 static Thread s_textureCacheThread("TextureCacheThread");
 static TextureCache *s_sharedTextureCache = nullptr;
 
+#ifndef GL_ES_VERSION_2_0
+static uint32_t s_supportedRenderTarget = toInt(TextureCache::RenderTarget::RGBA8) | toInt(TextureCache::RenderTarget::RGB8) | toInt(TextureCache::RenderTarget::R8);
+#else
+static uint32_t s_supportedRenderTarget = 0;
+#endif
+
+bool TextureCache::isRenderTargetSupported(RenderTarget target) {
+	return (s_supportedRenderTarget & toInt(target)) != 0;
+}
+
 TextureCache *TextureCache::getInstance() {
 	if (!s_sharedTextureCache) {
 		s_sharedTextureCache = new TextureCache();
@@ -82,10 +92,19 @@ void TextureCache::update(float dt) {
 }
 
 GLProgramSet *TextureCache::getBatchPrograms() const {
-	return _batchDrawing;
+	if (s_textureCacheThread.isOnThisThread()) {
+		return _threadBatchDrawing;
+	} else {
+		return _batchDrawing;
+	}
 }
+
 GLProgramSet *TextureCache::getRawPrograms() const {
-	return _rawDrawing;
+	if (s_textureCacheThread.isOnThisThread()) {
+		return _threadRawDrawing;
+	} else {
+		return _rawDrawing;
+	}
 }
 
 cocos2d::Texture2D::PixelFormat TextureCache::getPixelFormat(Bitmap::Format fmt) {
@@ -139,7 +158,7 @@ void TextureCache::addTexture(const std::string &file, const Callback &cb, bool 
 
 		auto &thread = s_textureCacheThread;
         auto imagePtr = new Rc<cocos2d::Texture2D>;
-		thread.perform([this, file, imagePtr] (cocos2d::Ref *) -> bool {
+		thread.perform([this, file, imagePtr] (const Task &) -> bool {
 			Bitmap bitmap(filesystem::readFile(file));
 			if (bitmap) {
 				performWithGL([&] {
@@ -154,7 +173,7 @@ void TextureCache::addTexture(const std::string &file, const Callback &cb, bool 
 				log::format("TextureCache", "fail to open bitmap: %s", file.c_str());
 			}
 			return true;
-		}, [this, file, imagePtr] (cocos2d::Ref *, bool) {
+		}, [this, file, imagePtr] (const Task &, bool) {
 			auto image = *imagePtr;
 			if (image) {
 				auto texIt = _textures.find(file);
@@ -218,6 +237,21 @@ TextureCache::TextureCache() {
 	_batchDrawing = Rc<GLProgramSet>::create(GLProgramSet::DrawNodeSet);
 	_rawDrawing = Rc<GLProgramSet>::create(GLProgramSet::RawDrawingSet);
 
+#ifdef GL_ES_VERSION_2_0
+    auto ext = (char *)glGetString(GL_EXTENSIONS);
+    CharReaderBase r(ext, strlen(ext));
+
+    r.split<CharReaderBase::Chars<' '>>([this] (CharReaderBase &b) {
+    	if (b == "GL_OES_rgb8_rgba8") {
+    		s_supportedRenderTarget |= (toInt(TextureCache::RenderTarget::RGBA8) | toInt(TextureCache::RenderTarget::RGB8));
+    	} else if (b == "GL_EXT_texture_rg") {
+    		s_supportedRenderTarget |= toInt(TextureCache::RenderTarget::R8);
+    	} else if (b == "GL_ARM_rgba8") {
+    		s_supportedRenderTarget |= toInt(TextureCache::RenderTarget::RGBA8);
+    	}
+    });
+#endif
+
 	onEvent(Device::onAndroidReset, [this] (const Event *) {
 		for (auto &it : _textures) {
 			Bitmap bitmap(filesystem::readFile(it.first));
@@ -232,6 +266,22 @@ TextureCache::TextureCache() {
 
 		_batchDrawing->reloadPrograms();
 		_rawDrawing->reloadPrograms();
+
+		s_textureCacheThread.perform([this] (const Task &) -> bool {
+			performWithGL([&] {
+				_threadBatchDrawing->reloadPrograms();
+				_threadRawDrawing->reloadPrograms();
+			});
+			return true;
+		});
+	});
+
+	s_textureCacheThread.perform([this] (const Task &) -> bool {
+		performWithGL([&] {
+			_threadBatchDrawing = Rc<GLProgramSet>::create(GLProgramSet::DrawNodeSet);
+			_threadRawDrawing = Rc<GLProgramSet>::create(GLProgramSet::RawDrawingSet);
+		});
+		return true;
 	});
 }
 
@@ -259,12 +309,12 @@ void TextureCache::uploadBitmap(Bitmap && bmp, const Function<void(cocos2d::Text
 	auto bmpPtr = new Bitmap(std::move(bmp));
 	auto texPtr = new Rc<cocos2d::Texture2D>;
 
-	s_textureCacheThread.perform([this, bmpPtr, texPtr] (Ref *) -> bool {
+	s_textureCacheThread.perform([this, bmpPtr, texPtr] (const Task &) -> bool {
 		performWithGL([&] {
 			uploadTextureBackground(*texPtr, *bmpPtr);
 		});
 		return true;
-	}, [bmpPtr, texPtr, cb] (Ref *, bool) {
+	}, [bmpPtr, texPtr, cb] (const Task &, bool) {
 		cb(*texPtr);
 		delete texPtr;
 		delete bmpPtr;
@@ -275,12 +325,12 @@ void TextureCache::uploadBitmap(Vector<Bitmap> &&bmp, const Function<void(Vector
 	auto bmpPtr = new Vector<Bitmap>(std::move(bmp));
 	auto texPtr = new Vector<Rc<cocos2d::Texture2D>>;
 
-	s_textureCacheThread.perform([this, bmpPtr, texPtr] (Ref *) -> bool {
+	s_textureCacheThread.perform([this, bmpPtr, texPtr] (const Task &) -> bool {
 		performWithGL([&] {
 			uploadTextureBackground(*texPtr, *bmpPtr);
 		});
 		return true;
-	}, [bmpPtr, texPtr, cb] (Ref *, bool) {
+	}, [bmpPtr, texPtr, cb] (const Task &, bool) {
 		cb(std::move(*texPtr));
 		delete texPtr;
 		delete bmpPtr;

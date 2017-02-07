@@ -23,13 +23,12 @@ THE SOFTWARE.
 #ifndef LIBS_STAPPLER_COMPONENTS_GESTURES_SPGESTURERECOGNIZER_H_
 #define LIBS_STAPPLER_COMPONENTS_GESTURES_SPGESTURERECOGNIZER_H_
 
-#include "SPMovingAverage.h"
 #include "SPGestureData.h"
-#include "base/CCVector.h"
+#include "base/CCTouch.h"
 
 NS_SP_EXT_BEGIN(gesture)
 
-class Recognizer : public cocos2d::Ref {
+class Recognizer : public Ref {
 public:
 	virtual ~Recognizer() { }
 
@@ -69,8 +68,8 @@ protected:
 protected:
 	bool _successfulEnd = true;
 
-	cocos2d::Vector<cocos2d::Touch *> _touches;
-	ssize_t _maxTouches = 0;
+	Vector<Rc<cocos2d::Touch>> _touches;
+	size_t _maxTouches = 0;
 	Event _event = Event::Cancelled;
 };
 

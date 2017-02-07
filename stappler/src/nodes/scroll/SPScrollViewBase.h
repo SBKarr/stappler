@@ -24,7 +24,6 @@ THE SOFTWARE.
 #define LIBS_STAPPLER_NODES_SCROLL_SPSCROLLVIEWBASE_H_
 
 #include "SPStrictNode.h"
-#include "SPPadding.h"
 
 NS_SP_BEGIN
 

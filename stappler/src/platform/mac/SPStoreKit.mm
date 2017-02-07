@@ -130,8 +130,8 @@ class StoreKitLinux : public EventHandler {
 		
 		auto features = new std::map<std::string, data::Value>();
 		auto &thread = storage::thread(_handle);
-		thread.perform([this, features] (Ref *obj) -> bool {
-			_products.get([&] (data::Value &d) {
+		thread.perform([this, features] (const Task &) -> bool {
+			_products.get([&] (data::Value && d) {
 				if (d.isArray()) {
 					for (auto &it : d.getArray()) {
 						if (it.isDictionary() && it.getBool("purchased")) {
@@ -141,7 +141,7 @@ class StoreKitLinux : public EventHandler {
 				}
 			})->perform();
 			return true;
-		}, [this, features] (Ref *, bool) {
+		}, [this, features] (const Task &, bool) {
 			auto &f = *features;
 			for (auto &it : f) {
 				onTransactionRestored(it.first, it.second);
@@ -275,9 +275,9 @@ class StoreKitLinux : public EventHandler {
 		auto data = new data::Value;
 		
 		auto &thread = storage::thread(_handle);
-		thread.perform([this, productId, data] (Ref *obj) -> bool {
+		thread.perform([this, productId, data] (const Task &) -> bool {
 			bool ret = false;
-			_products.get([&] (data::Value &d) {
+			_products.get([&] (data::Value &&d) {
 				if (d.isArray()) {
 					auto &p = d.getValue(0);
 					if (p.isDictionary()) {
@@ -290,7 +290,7 @@ class StoreKitLinux : public EventHandler {
 				}
 			})->select(productId)->perform();
 			return ret;
-		}, [this, productId, data] (Ref *, bool success) {
+		}, [this, productId, data] (const Task &, bool success) {
 			if (success) {
 				onTransactionCompleted(productId, *data);
 			} else {
@@ -327,10 +327,10 @@ class StoreKitLinux : public EventHandler {
 		
 		auto features = new std::map<std::string, data::Value>();
 		auto &thread = storage::thread(_handle);
-		thread.perform([this, val, features] (Ref *) -> bool {
+		thread.perform([this, val, features] (const Task &) -> bool {
 			for (auto &it : val) {
 				data::Value info;
-				_products.get([&] (data::Value &d) {
+				_products.get([&] (data::Value &&d) {
 					if (d.isArray()) {
 						info = std::move(d.getValue(0));
 					}
@@ -351,7 +351,7 @@ class StoreKitLinux : public EventHandler {
 				}
 			}
 			return true;
-		}, [this, features] (Ref *, bool) {
+		}, [this, features] (const Task &, bool) {
 			auto &f = *features;
 			for (auto &it : f) {
 				onFeatureInfo(it.first, it.second);

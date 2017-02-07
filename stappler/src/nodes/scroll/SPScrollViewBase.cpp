@@ -32,7 +32,6 @@ THE SOFTWARE.
 #include "SPAccelerated.h"
 #include "2d/CCActionInterval.h"
 #include "2d/CCActionInstant.h"
-#include "2d/CCLayer.h"
 
 NS_SP_BEGIN
 

@@ -54,14 +54,14 @@ namespace screen {
 }
 
 namespace node {
-	bool isTouched(cocos2d::Node *node, const cocos2d::Vec2 &point, float padding = 0);
+	bool isTouched(cocos2d::Node *node, const Vec2 &point, float padding = 0);
 	bool isParent(cocos2d::Node *parent, cocos2d::Node *node);
 	Mat4 chainNodeToParent(cocos2d::Node *parent, cocos2d::Node *node, bool full = true);
 	Mat4 chainParentToNode(cocos2d::Node *parent, cocos2d::Node *node, bool full = true);
 	void dump(cocos2d::Node *node, int depth = -1);
 }
 
-inline uint8_t getIntensivityFromColor(const cocos2d::Color4B &color) {
+inline uint8_t getIntensivityFromColor(const Color4B &color) {
 	float r = color.r / 255.0;
 	float g = color.g / 255.0;
 	float b = color.b / 255.0;
@@ -69,7 +69,7 @@ inline uint8_t getIntensivityFromColor(const cocos2d::Color4B &color) {
 	return 0.2989f * r + 0.5870f * g + 0.1140f * b;
 }
 
-inline uint8_t getIntensivityFromColor(const cocos2d::Color3B &color) {
+inline uint8_t getIntensivityFromColor(const Color3B &color) {
 	float r = color.r / 255.0;
 	float g = color.g / 255.0;
 	float b = color.b / 255.0;
@@ -77,11 +77,19 @@ inline uint8_t getIntensivityFromColor(const cocos2d::Color3B &color) {
 	return 0.2989f * r + 0.5870f * g + 0.1140f * b;
 }
 
-void storeForSeconds(cocos2d::Ref *, float, const std::string & = "");
-void storeForFrames(cocos2d::Ref *, uint64_t, const std::string & = "");
-cocos2d::Ref *getStoredRef(const std::string &);
+inline int32_t sp_gcd (int16_t a, int16_t b) {
+	int32_t c;
+	while ( a != 0 ) {
+		c = a; a = b % a;  b = c;
+	}
+	return b;
+}
 
-void PrintBacktrace(int len, cocos2d::Ref * = nullptr);
+void storeForSeconds(Ref *, float, const String & = "");
+void storeForFrames(Ref *, uint64_t, const String & = "");
+Rc<Ref> getStoredRef(const String &);
+
+void PrintBacktrace(int len, Ref * = nullptr);
 
 template <typename T>
 inline void safe_retain(T *t) {

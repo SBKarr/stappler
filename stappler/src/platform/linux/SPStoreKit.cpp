@@ -131,7 +131,7 @@ public:
 
 		auto features = new std::map<std::string, data::Value>();
 		auto &thread = storage::thread(_handle);
-		thread.perform([this, features] (Ref *obj) -> bool {
+		thread.perform([this, features] (const Task &) -> bool {
 			_products.get([&] (data::Value &&d) {
 				if (d.isArray()) {
 					for (auto &it : d.getArray()) {
@@ -142,7 +142,7 @@ public:
 				}
 			})->perform();
 			return true;
-		}, [this, features] (Ref *, bool) {
+		}, [this, features] (const Task &, bool) {
 			auto &f = *features;
 			for (auto &it : f) {
 				onTransactionRestored(it.first, it.second);
@@ -276,7 +276,7 @@ public:
 		auto data = new data::Value;
 
 		auto &thread = storage::thread(_handle);
-		thread.perform([this, productId, data] (Ref *obj) -> bool {
+		thread.perform([this, productId, data] (const Task &) -> bool {
 			bool ret = false;
 			_products.get([&] (data::Value &&d) {
 				if (d.isArray()) {
@@ -291,7 +291,7 @@ public:
 				}
 			})->select(productId)->perform();
 			return ret;
-		}, [this, productId, data] (Ref *, bool success) {
+		}, [this, productId, data] (const Task &, bool success) {
 			if (success) {
 				onTransactionCompleted(productId, *data);
 			} else {
@@ -328,7 +328,7 @@ public:
 
 		auto features = new std::map<std::string, data::Value>();
 		auto &thread = storage::thread(_handle);
-		thread.perform([this, val, features] (Ref *) -> bool {
+		thread.perform([this, val, features] (const Task &) -> bool {
 			for (auto &it : val) {
 				data::Value info;
 				_products.get([&] (data::Value &&d) {
@@ -352,7 +352,7 @@ public:
 				}
 			}
 			return true;
-		}, [this, features] (Ref *, bool) {
+		}, [this, features] (const Task &, bool) {
 			auto &f = *features;
 			for (auto &it : f) {
 				onFeatureInfo(it.first, it.second);

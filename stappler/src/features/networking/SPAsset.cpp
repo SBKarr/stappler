@@ -263,13 +263,13 @@ bool Asset::swapFiles() {
 		retainWriteLock((LockPtr)this, [this, tmp] {
 			_fileUpdate = true;
 			auto &thread = storage::thread();
-			thread.perform([this, tmp] (cocos2d::Ref *) -> bool {
+			thread.perform([this, tmp] (const Task &) -> bool {
 				filesystem::remove(_path);
 				if (!_cachePath.empty()) {
 					filesystem::remove(_cachePath, true, true);
 				}
 				return filesystem::move(tmp, _path);
-			}, [this] (cocos2d::Ref *, bool) {
+			}, [this] (const Task &, bool) {
 				_fileUpdate = false;
 				_unupdated = false;
 				_waitFileSwap = false;

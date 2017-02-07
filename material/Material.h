@@ -25,7 +25,6 @@ THE SOFTWARE.
 
 #include "SPDefine.h"
 #include "SPEventHeader.h"
-/* Minimal forward declaration */
 
 #ifdef __cplusplus
 
@@ -41,31 +40,12 @@ THE SOFTWARE.
 
 #endif
 
-#define MD_COLOR_SPEC_BASE(Name) \
-	static Color Name ## _50; \
-	static Color Name ## _100; \
-	static Color Name ## _200; \
-	static Color Name ## _300; \
-	static Color Name ## _400; \
-	static Color Name ## _500; \
-	static Color Name ## _600; \
-	static Color Name ## _700; \
-	static Color Name ## _800; \
-	static Color Name ## _900;
-
-#define MD_COLOR_SPEC_ACCENT(Name) \
-	static Color Name ## _A100; \
-	static Color Name ## _A200; \
-	static Color Name ## _A400; \
-	static Color Name ## _A700;
-
-#define MD_COLOR_SPEC(Name) \
-		MD_COLOR_SPEC_BASE(Name) \
-		MD_COLOR_SPEC_ACCENT(Name)
-
 #define MD_USE_TEXT_FONTS 0
 
 NS_MD_BEGIN
+
+using Color = layout::Color;
+using LightLevel = layout::style::LightLevel;
 
 class Label;
 class InputLabel;
@@ -79,8 +59,6 @@ enum class IconName : uint32_t;
 
 class IconSprite;
 class IconProgress;
-
-class Color;
 
 class MaterialNode;
 class MaterialImage;
@@ -153,7 +131,6 @@ class FormController;
 
 NS_MD_END
 
-#include "MaterialColors.h"
 #include "MaterialMetrics.h"
 
 #endif

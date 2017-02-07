@@ -102,7 +102,7 @@ EventHandlerNode * EventListener::onEvent(const EventHeader &h, const Callback &
 	return nullptr;
 }
 
-EventHandlerNode * EventListener::onEventWithObject(const EventHeader &h, cocos2d::Ref *obj, const Callback &callback, bool destroyAfterEvent) {
+EventHandlerNode * EventListener::onEventWithObject(const EventHeader &h, layout::Ref *obj, const Callback &callback, bool destroyAfterEvent) {
 	if (callback) {
 		return EventHandlerNode::onEvent(h, obj,
 				std::bind(&EventListener::onEventRecieved, this, std::placeholders::_1,  callback),

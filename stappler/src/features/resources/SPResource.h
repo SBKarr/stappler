@@ -24,21 +24,21 @@ THE SOFTWARE.
 #define LIBS_STAPPLER_FEATURES_RESOURCES_SPRESOURCELIBRARY_H_
 
 #include "SPDefine.h"
-#include "SPFont.h"
 #include "SPIcon.h"
+#include "SPAsset.h"
 
 NS_SP_EXT_BEGIN(resource)
 
 void generateIconSet(IconSet::Config &&, const IconSet::Callback &callback);
 
-void acquireFontAsset(const Set<String> &urls, const Function<void(const Vector<Asset *> &)> &);
+void acquireFontAsset(const Set<String> &urls, const Function<void(const Vector<Rc<Asset>> &)> &);
 
 bool isReceiptUrl(const String &);
 
 Thread &thread();
 
-void setFallbackFont(const std::string &);
-const std::string &getFallbackFont();
+void setFallbackFont(const String &);
+const String &getFallbackFont();
 
 NS_SP_EXT_END(resource)
 

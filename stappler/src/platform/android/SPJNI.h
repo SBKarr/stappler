@@ -81,7 +81,10 @@ struct JObjectRef {
 	JObjectRef & operator = (const nullptr_t &);
 
 	void clear();
+	void raw_clear();
 	bool empty() const;
+
+	const Time & time() const;
 
 	JClassRef get_class() const;
 
@@ -91,6 +94,7 @@ struct JObjectRef {
 	JNIEnv *_env = nullptr;
 	jobject _obj = nullptr;
 	Type _type = Local;
+	Time _time;
 };
 
 JClassRef getClassID(JNIEnv *pEnv, const std::string &className);

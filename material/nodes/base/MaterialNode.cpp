@@ -33,7 +33,6 @@ THE SOFTWARE.
 #include "SPEventListener.h"
 
 #include "2d/CCActionInterval.h"
-#include "2d/CCLayer.h"
 #include "base/CCDirector.h"
 #include "SPDataListener.h"
 
@@ -396,13 +395,13 @@ void MaterialNode::onLightLevel() {
 	if (isAutoLightLevel()) {
 		auto level = material::ResourceManager::getInstance()->getLightLevel();
 		switch(level) {
-		case rich_text::style::LightLevel::Dim:
+		case LightLevel::Dim:
 			setBackgroundColor(_dimColor);
 			break;
-		case rich_text::style::LightLevel::Normal:
+		case LightLevel::Normal:
 			setBackgroundColor(_normalColor);
 			break;
-		case rich_text::style::LightLevel::Washed:
+		case LightLevel::Washed:
 			setBackgroundColor(_washedColor);
 			break;
 		};

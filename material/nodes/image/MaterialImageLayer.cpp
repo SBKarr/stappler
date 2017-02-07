@@ -35,9 +35,9 @@ THE SOFTWARE.
 
 NS_MD_BEGIN
 
-cocos2d::Rect ImageLayer::getCorrectRect(const cocos2d::Size &containerSize) {
-	const cocos2d::Size &parentSize = getContentSize();
-	cocos2d::Rect ret = cocos2d::Rect(parentSize.width - containerSize.width,
+Rect ImageLayer::getCorrectRect(const Size &containerSize) {
+	const Size &parentSize = getContentSize();
+	Rect ret = Rect(parentSize.width - containerSize.width,
 			parentSize.height - containerSize.height,
 			containerSize.width - parentSize.width,
 			containerSize.height - parentSize.height);
@@ -61,10 +61,10 @@ cocos2d::Rect ImageLayer::getCorrectRect(const cocos2d::Size &containerSize) {
 	return ret;
 }
 
-cocos2d::Vec2 ImageLayer::getCorrectPosition(const cocos2d::Size &containerSize,
-		cocos2d::Vec2 point) {
-	cocos2d::Vec2 ret = point;
-	cocos2d::Rect bounds = getCorrectRect(containerSize);
+Vec2 ImageLayer::getCorrectPosition(const Size &containerSize,
+		Vec2 point) {
+	Vec2 ret = point;
+	Rect bounds = getCorrectRect(containerSize);
 
 	if (ret.x < bounds.origin.x) {
 		ret.x = bounds.origin.x;
@@ -86,14 +86,14 @@ cocos2d::Vec2 ImageLayer::getCorrectPosition(const cocos2d::Size &containerSize,
 	return ret;
 }
 
-cocos2d::Size ImageLayer::getContainerSize() const {
-	return cocos2d::Size(
+Size ImageLayer::getContainerSize() const {
+	return Size(
 			_root->getContentSize().width * _root->getScaleX(),
 			_root->getContentSize().height * _root->getScaleY());
 }
 
-cocos2d::Size ImageLayer::getContainerSizeForScale(float value) const {
-	return cocos2d::Size(
+Size ImageLayer::getContainerSizeForScale(float value) const {
+	return Size(
 			_root->getContentSize().width * value,
 			_root->getContentSize().height * value);
 }
@@ -105,7 +105,7 @@ bool ImageLayer::init() {
 
 	setOpacity(255);
 	auto l = construct<gesture::Listener>();
-	l->setTouchFilter([this] (const cocos2d::Vec2 &loc, const stappler::gesture::Listener::DefaultTouchFilter &f) {
+	l->setTouchFilter([this] (const Vec2 &loc, const stappler::gesture::Listener::DefaultTouchFilter &f) {
 		return f(loc);
 	});
 	l->setTapCallback([this] (stappler::gesture::Event ev, const stappler::gesture::Tap &t) {
@@ -121,9 +121,9 @@ bool ImageLayer::init() {
 			}
 			return onSwipeBegin(s.location());
 		} else if (ev == stappler::gesture::Event::Activated) {
-			return onSwipe(cocos2d::Vec2(s.delta.x / _globalScale.x, s.delta.y / _globalScale.y));
+			return onSwipe(Vec2(s.delta.x / _globalScale.x, s.delta.y / _globalScale.y));
 		} else if (ev == stappler::gesture::Event::Ended) {
-			return onSwipeEnd(cocos2d::Vec2(s.velocity.x / _globalScale.x, s.velocity.y / _globalScale.y));
+			return onSwipeEnd(Vec2(s.velocity.x / _globalScale.x, s.velocity.y / _globalScale.y));
 
 		}
 		return true;
@@ -146,11 +146,11 @@ bool ImageLayer::init() {
 	_gestureListener = l;
 
 	_image = cocos2d::Sprite::create();
-	_image->setAnchorPoint(cocos2d::Vec2(0, 0));
+	_image->setAnchorPoint(Vec2(0, 0));
 
 	_root = Node::create();
 	_root->setCascadeOpacityEnabled(true);
-	_root->setAnchorPoint(cocos2d::Vec2(0.0f, 0.0f));
+	_root->setAnchorPoint(Vec2(0.0f, 0.0f));
 	_root->addChild(_image, 1);
 	_root->setScale(1.0f);
 	addChild(_root, 1);
@@ -163,14 +163,14 @@ bool ImageLayer::init() {
 void ImageLayer::onContentSizeDirty() {
 	cocos2d::Node::onContentSizeDirty();
 
-	const cocos2d::Size &imageSize = _image->getBoundingBox().size;
+	const Size &imageSize = _image->getBoundingBox().size;
 	_root->setContentSize(imageSize);
 
-	_minScale = MIN(
+	_minScale = std::min(
 			_contentSize.width / _image->getContentSize().width,
 			_contentSize.height / _image->getContentSize().height);
 
-	_maxScale = MAX(
+	_maxScale = std::max(
 			_image->getContentSize().width * GetMaxScaleFactor() / _contentSize.width,
 			_image->getContentSize().height * GetMaxScaleFactor() / _contentSize.height);
 
@@ -179,9 +179,9 @@ void ImageLayer::onContentSizeDirty() {
 		_root->setScale(_minScale);
 	}
 
-	cocos2d::Vec2 prevCenter = cocos2d::Vec2(_prevContentSize.width / 2.0f, _prevContentSize.height / 2.0f);
-	cocos2d::Vec2 center = cocos2d::Vec2(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
-	cocos2d::Vec2 offset = center - prevCenter;
+	Vec2 prevCenter = Vec2(_prevContentSize.width / 2.0f, _prevContentSize.height / 2.0f);
+	Vec2 center = Vec2(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
+	Vec2 offset = center - prevCenter;
 
 	_root->setPosition(getCorrectPosition(getContainerSize(), _root->getPosition() + offset));
 
@@ -195,10 +195,10 @@ void ImageLayer::onContentSizeDirty() {
 		} else if (currentScale > _maxScale) {
 			newScale = _maxScale;
 		}
-		const cocos2d::Vec2 & pos = _root->getPosition();
-		const cocos2d::Vec2 & locInParent = cocos2d::Vec2(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
+		const Vec2 & pos = _root->getPosition();
+		const Vec2 & locInParent = Vec2(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
 
-		cocos2d::Vec2 normal = (pos - locInParent) / currentScale * newScale;
+		Vec2 normal = (pos - locInParent) / currentScale * newScale;
 
 		_root->setScale(newScale);
 		_root->setPosition(getCorrectPosition(getContainerSize(), locInParent + normal));
@@ -210,22 +210,22 @@ void ImageLayer::onContentSizeDirty() {
 
 void ImageLayer::onTransformDirty() {
 	cocos2d::Node::onTransformDirty();
-	cocos2d::Vec3 scale;
+	Vec3 scale;
 	getNodeToWorldTransform().getScale(&scale);
-	_globalScale = cocos2d::Vec2(scale.x, scale.y);
+	_globalScale = Vec2(scale.x, scale.y);
 }
 
 
 void ImageLayer::setTexture(cocos2d::Texture2D *tex) {
 	_image->setTexture(tex);
-	_image->setTextureRect(cocos2d::Rect(cocos2d::Vec2(0, 0), tex->getContentSize()));
+	_image->setTextureRect(Rect(Vec2(0, 0), tex->getContentSize()));
 
 	if (_running) {
-		_minScale = MIN(
+		_minScale = std::min(
 				_contentSize.width / _image->getContentSize().width,
 				_contentSize.height / _image->getContentSize().height);
 
-		_maxScale = MAX(
+		_maxScale = std::max(
 				_image->getContentSize().width * GetMaxScaleFactor() / _contentSize.width,
 				_image->getContentSize().height * GetMaxScaleFactor() / _contentSize.height);
 
@@ -236,7 +236,7 @@ void ImageLayer::setTexture(cocos2d::Texture2D *tex) {
 	}
 }
 
-void ImageLayer::setActionCallback(const std::function<void()> &cb) {
+void ImageLayer::setActionCallback(const Function<void()> &cb) {
 	_actionCallback = cb;
 }
 
@@ -266,25 +266,25 @@ void ImageLayer::onEnterTransitionDidFinish() {
 	Node::onEnterTransitionDidFinish();
 }
 
-bool ImageLayer::onTap(const cocos2d::Vec2 &point, int count) {
+bool ImageLayer::onTap(const Vec2 &point, int count) {
 	if (count == 2) {
 		if (_root->getScale() > _minScale) {
-			cocos2d::Vec2 location = convertToNodeSpace(point);
+			Vec2 location = convertToNodeSpace(point);
 
 			float newScale = _minScale;
 			float origScale = _root->getScale();
-			const cocos2d::Vec2 & pos = _root->getPosition();
-			const cocos2d::Vec2 & locInParent = convertToNodeSpace(location);
+			const Vec2 & pos = _root->getPosition();
+			const Vec2 & locInParent = convertToNodeSpace(location);
 
-			cocos2d::Vec2 normal = (pos - locInParent) / origScale * newScale;
-			cocos2d::Vec2 newPos = getCorrectPosition(getContainerSizeForScale(newScale), locInParent + normal);
+			Vec2 normal = (pos - locInParent) / origScale * newScale;
+			Vec2 newPos = getCorrectPosition(getContainerSizeForScale(newScale), locInParent + normal);
 
 			_root->runAction(cocos2d::Spawn::createWithTwoActions(
 					cocos2d::ScaleTo::create(0.35, newScale),
 					cocos2d::MoveTo::create(0.35, newPos)
 			));
 		} else {
-			cocos2d::Vec2 location = convertToNodeSpace(point);
+			Vec2 location = convertToNodeSpace(point);
 
 			float newScale = _minScale * 2.0f * stappler::screen::density();
 			float origScale = _root->getScale();
@@ -297,11 +297,11 @@ bool ImageLayer::onTap(const cocos2d::Vec2 &point, int count) {
 				newScale = _maxScale;
 			}
 
-			const cocos2d::Vec2 & pos = _root->getPosition();
-			const cocos2d::Vec2 & locInParent = convertToNodeSpace(location);
+			const Vec2 & pos = _root->getPosition();
+			const Vec2 & locInParent = convertToNodeSpace(location);
 
-			cocos2d::Vec2 normal = (pos - locInParent) / origScale * newScale;
-			cocos2d::Vec2 newPos = getCorrectPosition(getContainerSizeForScale(newScale), locInParent + normal) * screen::density();
+			Vec2 normal = (pos - locInParent) * (newScale / origScale) * screen::density();
+			Vec2 newPos = getCorrectPosition(getContainerSizeForScale(newScale), locInParent + normal);
 
 			_root->runAction(cocos2d::Spawn::createWithTwoActions(
 					cocos2d::ScaleTo::create(0.35, newScale),
@@ -312,16 +312,16 @@ bool ImageLayer::onTap(const cocos2d::Vec2 &point, int count) {
 	return true;
 }
 
-bool ImageLayer::onSwipeBegin(const cocos2d::Vec2 &point) {
+bool ImageLayer::onSwipeBegin(const Vec2 &point) {
 	return true;
 }
-bool ImageLayer::onSwipe(const cocos2d::Vec2 &delta) {
-	const cocos2d::Vec2 &containerPosition = _root->getPosition();
+bool ImageLayer::onSwipe(const Vec2 &delta) {
+	const Vec2 &containerPosition = _root->getPosition();
 	_root->stopAllActions();
 	_root->setPosition(getCorrectPosition(getContainerSize(), containerPosition + delta));
 	return true;
 }
-bool ImageLayer::onSwipeEnd(const cocos2d::Vec2 &velocity) {
+bool ImageLayer::onSwipeEnd(const Vec2 &velocity) {
 	_root->stopAllActions();
 	auto a = stappler::Accelerated::createWithBounds(5000, _root->getPosition(), velocity, getCorrectRect(_root->getBoundingBox().size));
 	if (a) {
@@ -332,7 +332,7 @@ bool ImageLayer::onSwipeEnd(const cocos2d::Vec2 &velocity) {
 	return true;
 }
 
-bool ImageLayer::onPinch(const cocos2d::Vec2 &location, float scale, float velocity, bool isEnded) {
+bool ImageLayer::onPinch(const Vec2 &location, float scale, float velocity, bool isEnded) {
 	if (isEnded) {
 		_contentSizeDirty = true;
 		_scaleSource = 0;
@@ -354,10 +354,10 @@ bool ImageLayer::onPinch(const cocos2d::Vec2 &location, float scale, float veloc
 	}
 
 	float origScale = _root->getScaleX();
-	const cocos2d::Vec2 & pos = _root->getPosition();
-	const cocos2d::Vec2 & locInParent = convertToNodeSpace(location);
+	const Vec2 & pos = _root->getPosition();
+	const Vec2 & locInParent = convertToNodeSpace(location);
 
-	cocos2d::Vec2 normal = (pos - locInParent) / origScale * newScale;
+	Vec2 normal = (pos - locInParent) / origScale * newScale;
 
 	_root->setScale(newScale);
 	_root->setPosition(getCorrectPosition(getContainerSize(), locInParent + normal));

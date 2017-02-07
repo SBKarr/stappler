@@ -82,7 +82,7 @@ public class Observer extends FileObserver {
     	}
     	
     	downloads.put(path, download);
-    	startWatching();
+    	//startWatching();
     }
     
     public void removeDownload(Info download) {

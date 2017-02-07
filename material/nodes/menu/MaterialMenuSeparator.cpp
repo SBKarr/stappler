@@ -26,7 +26,6 @@ THE SOFTWARE.
 #include "Material.h"
 #include "MaterialMenuSeparator.h"
 #include "MaterialResourceManager.h"
-#include "MaterialColors.h"
 #include "MaterialMenu.h"
 #include "SPLayer.h"
 #include "SPDataListener.h"
@@ -97,13 +96,13 @@ void MenuSeparator::setTopLevel(bool value) {
 void MenuSeparator::onLightLevel() {
 	auto level = material::ResourceManager::getInstance()->getLightLevel();
 	switch(level) {
-	case rich_text::style::LightLevel::Dim:
+	case LightLevel::Dim:
 		_color->setColor(Color::White);
 		break;
-	case rich_text::style::LightLevel::Normal:
+	case LightLevel::Normal:
 		_color->setColor(Color::Black);
 		break;
-	case rich_text::style::LightLevel::Washed:
+	case LightLevel::Washed:
 		_color->setColor(Color::Black);
 		break;
 	};

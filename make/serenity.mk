@@ -29,6 +29,7 @@ SERENITY_OUTPUT_DIR = $(TOOLKIT_OUTPUT)/serenity
 SERENITY_OUTPUT = $(TOOLKIT_OUTPUT)/mod_serenity.so
 SERENITY_SRCS_DIRS += \
 	common \
+	serenity/apr \
 	serenity/src \
 	serenity/ext \
 
@@ -46,6 +47,7 @@ SERENITY_SRCS_OBJS += \
 SERENITY_INCLUDES_DIRS += \
 	common \
 	serenity/src \
+	serenity/apr \
 
 SERENITY_INCLUDES_OBJS += \
 	serenity/ext/cityhash

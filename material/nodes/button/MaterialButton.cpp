@@ -26,7 +26,6 @@ THE SOFTWARE.
 #include "Material.h"
 #include "MaterialButton.h"
 
-#include "MaterialColors.h"
 #include "MaterialLabel.h"
 #include "MaterialMenuSource.h"
 #include "MaterialFloatingMenu.h"
@@ -160,7 +159,7 @@ void Button::setAnimationOpacity(uint8_t value) {
 	_animationOpacity = value;
 }
 
-bool Button::onPressBegin(const cocos2d::Vec2 &location) {
+bool Button::onPressBegin(const Vec2 &location) {
 	if (!_enabled) {
 		return false;
 	}
@@ -268,7 +267,7 @@ MenuSource * Button::getMenuSource() const {
 	return _floatingMenuSource;
 }
 
-const cocos2d::Vec2 &Button::getTouchPoint() const {
+const Vec2 &Button::getTouchPoint() const {
 	return _touchPoint;
 }
 
@@ -297,24 +296,22 @@ void Button::animateSelection() {
 		runAction(a);
 	}
 
-	stappler::draw::Path **path = new (stappler::draw::Path *);
-	cocos2d::Size *size = new cocos2d::Size();
-	cocos2d::Vec2 *point = new cocos2d::Point();
+	draw::Image::PathRef *path = new draw::Image::PathRef();
+	Size *size = new Size();
+	Vec2 *point = new Vec2();
 	auto b = cocos2d::Sequence::create(cocos2d::DelayTime::create(_spawnDelay), construct<ProgressAction>(0.4, 1.0,
 			[this, path, size, point] (ProgressAction *a, float progress) {
 		updateSpawn(progress, (*path), (*size), (*point));
 	}, [this, path, size, point] (ProgressAction *a) {
 		(*path) = beginSpawn();
-		(*path)->retain();
 		if (_animationNode) {
 			(*size) = _animationNode->getContentSize();
 			(*point) = _animationNode->convertToNodeSpace(_touchPoint);
 		}
 	}, [this, path, size, point] (ProgressAction *a) {
-		(*path)->remove();
-		(*path)->release();
-		(*path) = nullptr;
-		endSpawn();
+		if (_animationNode) {
+			_animationNode->removePath((*path));
+		}
 		delete path;
 		delete size;
 		delete point;
@@ -376,7 +373,7 @@ void Button::updateSelectionProgress(float pr) {
 	}
 }
 
-stappler::draw::Path * Button::beginSpawn() {
+draw::Image::PathRef Button::beginSpawn() {
 	float downscale = 4.0f;
 	uint32_t width = _contentSize.width / downscale;
 	uint32_t height = _contentSize.height / downscale;
@@ -389,9 +386,9 @@ stappler::draw::Path * Button::beginSpawn() {
 			_animationNode = nullptr;
 		}
 		_animationNode = construct<draw::PathNode>(width, height);
-		_animationNode->setContentSize(cocos2d::Size(_contentSize.width / downscale, _contentSize.height / downscale));
-		_animationNode->setPosition(cocos2d::Vec2(0, 0));
-		_animationNode->setAnchorPoint(cocos2d::Vec2(0, 0));
+		_animationNode->setContentSize(Size(_contentSize.width / downscale, _contentSize.height / downscale));
+		_animationNode->setPosition(Vec2(0, 0));
+		_animationNode->setAnchorPoint(Vec2(0, 0));
 		_animationNode->setScale(downscale);
 		_animationNode->setColor((_style == FlatWhite)?(Color::White):(Color::Black));
 		_animationNode->setOpacity(_animationOpacity);
@@ -399,41 +396,40 @@ stappler::draw::Path * Button::beginSpawn() {
 		addChild(_animationNode, 1);
 	}
 
-	auto path = construct<draw::Path>();
-	_animationNode->addPath(path);
+	auto path = _animationNode->addPath();
 	_animationCount ++;
 
 	return path;
 }
 
-void Button::updateSpawn(float pr, stappler::draw::Path *path, const cocos2d::Size &size, const cocos2d::Point &point) {
+void Button::updateSpawn(float pr, draw::Image::PathRef &path, const Size &size, const Vec2 &point) {
+	if (_animationNode) {
+		float threshold = 0.6f;
+		float rad = 0.0f;
 
-	float threshold = 0.6f;
-	float rad = 0.0f;
-
-	if (pr > threshold) {
-		rad = MAX(size.width, size.height);
-		path->setFillOpacity(progress(255.0f, 0.0f, (pr - threshold) / (1.0 - threshold)));
-	} else {
-		if (pr < 0.2) {
-			path->setFillOpacity(progress(0, 255, pr * 10.0f));
+		if (pr > threshold) {
+			rad = std::max(size.width, size.height);
+			path.setFillOpacity(progress(255.0f, 0.0f, (pr - threshold) / (1.0 - threshold)));
 		} else {
-			path->setFillOpacity(255);
+			if (pr < 0.2) {
+				path.setFillOpacity(progress(0, 255, pr * 10.0f));
+			} else {
+				path.setFillOpacity(255);
+			}
+
+			float a = point.length();
+			float b = Vec2(point.x, size.height - point.y).length();
+			float c = Vec2(size.width - point.x, size.height - point.y).length();
+			float d = Vec2(size.width - point.x, point.y).length();
+
+			float minRad = std::min(size.width, size.height) / 8.0f;
+			float maxRad = std::max(std::max(a, b), std::max(c, d));
+
+			rad = progress(minRad, maxRad, pr / threshold);
 		}
 
-		float a = point.length();
-		float b = cocos2d::Vec2(point.x, size.height - point.y).length();
-		float c = cocos2d::Vec2(size.width - point.x, size.height - point.y).length();
-		float d = cocos2d::Vec2(size.width - point.x, point.y).length();
-
-		float minRad = MIN(size.width, size.height) / 8.0f;
-		float maxRad = MAX(MAX(a, b), MAX(c, d));
-
-		rad = progress(minRad, maxRad, pr / threshold);
+		path.clear().addCircle(point.x, size.height - point.y, rad);
 	}
-
-	path->clear();
-	path->addCircle(point.x, size.height - point.y, rad);
 }
 
 void Button::endSpawn() {
@@ -461,7 +457,7 @@ void Button::onContentSizeDirty() {
 	MaterialNode::onContentSizeDirty();
 	if (_animationNode) {
 		float downscale = 4.0f;
-		_animationNode->setContentSize(cocos2d::Size(_contentSize.width / downscale, _contentSize.height / downscale));
+		_animationNode->setContentSize(Size(_contentSize.width / downscale, _contentSize.height / downscale));
 	}
 }
 
@@ -505,13 +501,13 @@ void Button::onLightLevel() {
 	if (isAutoLightLevel() && (_style == FlatBlack || _style == FlatWhite)) {
 		auto level = material::ResourceManager::getInstance()->getLightLevel();
 		switch(level) {
-		case rich_text::style::LightLevel::Dim:
+		case layout::style::LightLevel::Dim:
 			setStyle(FlatWhite);
 			break;
-		case rich_text::style::LightLevel::Normal:
+		case layout::style::LightLevel::Normal:
 			setStyle(FlatBlack);
 			break;
-		case rich_text::style::LightLevel::Washed:
+		case layout::style::LightLevel::Washed:
 			setStyle(FlatBlack);
 			break;
 		};

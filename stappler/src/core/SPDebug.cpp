@@ -35,7 +35,7 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
-void PrintBacktrace(int len, cocos2d::Ref *ref) {
+void PrintBacktrace(int len, Ref *ref) {
     void *bt[len + 2];
     char **bt_syms;
     int bt_size;
@@ -76,7 +76,7 @@ NS_SP_END
 #else
 
 NS_SP_BEGIN
-void PrintBacktrace(int len, cocos2d::Ref *ref) {
+void PrintBacktrace(int len, Ref *ref) {
 
 }
 NS_SP_END

@@ -27,7 +27,7 @@ THE SOFTWARE.
 #include "SPDynamicLabel.h"
 #include "SPString.h"
 #include "SPLocale.h"
-#include "SPFontFormatter.h"
+#include "SLFontFormatter.h"
 #include "SPGLProgramSet.h"
 #include "SPLayer.h"
 #include "SPEventListener.h"
@@ -120,13 +120,13 @@ void DynamicLabel::updateLabel() {
 	}
 
 	_compiledStyles = compileStyle();
-	_format = Rc<FormatSpec>::create(_string16.size(), _compiledStyles.size() + 1);
+	_format = Rc<layout::FormatSpec>::create(_string16.size(), _compiledStyles.size() + 1);
 
 	_style.text.color = _displayedColor;
 	_style.text.opacity = _displayedOpacity;
-	_style.text.whiteSpace = rich_text::style::WhiteSpace::PreWrap;
+	_style.text.whiteSpace = layout::style::WhiteSpace::PreWrap;
 
-	font::Formatter formatter(_source, _format, _density);
+	layout::Formatter formatter(_source, _format, _density);
 	formatter.setWidth((uint16_t)roundf(_width * _density));
 	formatter.setTextAlignment(_alignment);
 	formatter.setMaxWidth((uint16_t)roundf(_maxWidth * _density));

@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "Material.h"
 #include "MaterialResize.h"
+#include "2d/CCNode.h"
 
 NS_MD_BEGIN
 

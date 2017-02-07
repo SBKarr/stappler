@@ -24,8 +24,6 @@ THE SOFTWARE.
 #define LIBS_STAPPLER_CORE_DATA_SPDATASOURCE_H_
 
 #include "SPData.h"
-#include "SPDataSubscription.h"
-#include "base/CCVector.h"
 
 NS_SP_EXT_BEGIN(data)
 
@@ -75,9 +73,9 @@ public:
 
 	Id getId() const;
 
-	void setSubCategories(const cocos2d::Vector<Source *> &);
-	void setSubCategories(cocos2d::Vector<Source *> &&);
-	const cocos2d::Vector<Source *> &getSubCategories() const;
+	void setSubCategories(const Vector<Rc<Source>> &);
+	void setSubCategories(Vector<Rc<Source>> &&);
+	const Vector<Rc<Source>> &getSubCategories() const;
 
 	void setChildsCount(size_t count);
 	size_t getChildsCount() const;
@@ -108,7 +106,7 @@ protected:
 
 	virtual void onSliceRequest(const BatchCallback &, Id::Type first, size_t size);
 
-	cocos2d::Vector<Source *> _subCats;
+	Vector<Rc<Source>> _subCats;
 
 	Id _categoryId;
 	size_t _count = 0;

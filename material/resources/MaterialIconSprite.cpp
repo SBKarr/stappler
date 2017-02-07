@@ -25,7 +25,6 @@ THE SOFTWARE.
 
 #include "Material.h"
 #include "MaterialIconSprite.h"
-#include "MaterialColors.h"
 #include "MaterialResourceManager.h"
 #include "2d/CCSprite.h"
 #include "2d/CCActionEase.h"
@@ -103,14 +102,14 @@ float IconProgress::getDestProgress() const {
 
 class IconSprite::DynamicIcon : public cocos2d::Component {
 public:
-	virtual void onAdded() override { Component::onAdded(); _paths.clear(); }
+	virtual void onAdded() override { Component::onAdded(); _image = Rc<draw::Image>::create(24, 24); }
 	virtual void redraw(float progress, float diff) { }
-	const cocos2d::Vector<draw::Path *> &getPaths() const { return _paths; }
+	draw::Image * getImage() const { return _image; }
 
 	virtual void animate() { }
 
 protected:
-	cocos2d::Vector<draw::Path *> _paths;
+	Rc<draw::Image> _image;
 };
 
 class IconSprite::NavIcon : public IconSprite::DynamicIcon {
@@ -120,9 +119,9 @@ public:
 
 protected:
 	float _progress = -1.0f;
-	draw::Path *_top;
-	draw::Path *_center;
-	draw::Path *_bottom;
+	draw::Image::PathRef _top;
+	draw::Image::PathRef _center;
+	draw::Image::PathRef _bottom;
 };
 
 class IconSprite::CircleLoaderIcon : public IconSprite::DynamicIcon {
@@ -132,47 +131,40 @@ public:
 	virtual void animate() override;
 
 protected:
-	draw::Path *_path = nullptr;
+	draw::Image::PathRef _path;
 };
 
 void IconSprite::NavIcon::onAdded() {
 	DynamicIcon::onAdded();
-	_top = construct<draw::Path>();
-	_center = construct<draw::Path>();
-	_bottom = construct<draw::Path>();
-
-	_paths.pushBack(_top);
-	_paths.pushBack(_bottom);
-	_paths.pushBack(_center);
+	_top = _image->addPath().setFillColor(Color4B(0, 0, 0, 255));
+	_center = _image->addPath().setFillColor(Color4B(0, 0, 0, 255));
+	_bottom = _image->addPath().setFillColor(Color4B(0, 0, 0, 255));
 }
 
 void IconSprite::NavIcon::redraw(float pr, float diff) {
 	float p = pr;
 
 	if (p <= 1.0f) {
-		_top->clear();
-		_top->moveTo( progress(2.0f, 13.0f, p),				progress(5.0f, 3.0f, p) );
-		_top->lineTo( progress(2.0f, 13.0f - (float)M_SQRT2, p),	progress(7.0f, 3.0f + (float)M_SQRT2, p) );
-		_top->lineTo( progress(22.0f, 22.0f - (float)M_SQRT2, p),	progress(7.0f, 12.0f + (float)M_SQRT2, p) );
-		_top->lineTo( progress(22.0f, 22.0f, p),			progress(5.0f, 12.0f, p) );
-		_top->setFillColor(cocos2d::Color4B(0, 0, 0, 255));
-		_top->closePath();
+		_top.clear()
+				.moveTo( progress(2.0f, 13.0f, p),						progress(5.0f, 3.0f, p) )
+				.lineTo( progress(2.0f, 13.0f - (float)M_SQRT2, p),		progress(7.0f, 3.0f + (float)M_SQRT2, p) )
+				.lineTo( progress(22.0f, 22.0f - (float)M_SQRT2, p),	progress(7.0f, 12.0f + (float)M_SQRT2, p) )
+				.lineTo( progress(22.0f, 22.0f, p),						progress(5.0f, 12.0f, p) )
+				.closePath();
 
-		_center->clear();
-		_center->moveTo( progress(2.0f, 3.0f, p), 11 );
-		_center->lineTo( progress(22.0f, 20.0f, p), 11 );
-		_center->lineTo( progress(22.0f, 20.0f, p), 13 );
-		_center->lineTo( progress(2.0f, 3.0f, p), 13 );
-		_center->setFillColor(cocos2d::Color4B(0, 0, 0, 255));
-		_center->closePath();
+		_center.clear()
+				.moveTo( progress(2.0f, 3.0f, p),	11 )
+				.lineTo( progress(22.0f, 20.0f, p), 11 )
+				.lineTo( progress(22.0f, 20.0f, p), 13 )
+				.lineTo( progress(2.0f, 3.0f, p),	13 )
+				.closePath();
 
-		_bottom->clear();
-		_bottom->moveTo( progress(2.0f, 13.0f - (float)M_SQRT2, p),	progress(17.0f, 21.0f - (float)M_SQRT2, p) );
-		_bottom->lineTo( progress(22.0f, 22.0f - (float)M_SQRT2, p),	progress(17.0f, 12.0f - (float)M_SQRT2, p) );
-		_bottom->lineTo( progress(22.0f, 22.0f, p),				progress(19.0f, 12.0f, p) );
-		_bottom->lineTo( progress(2.0f, 13.0f, p),				progress(19.0f, 21.0f, p) );
-		_bottom->setFillColor(cocos2d::Color4B(0, 0, 0, 255));
-		_bottom->closePath();
+		_bottom.clear()
+				.moveTo( progress(2.0f, 13.0f - (float)M_SQRT2, p),		progress(17.0f, 21.0f - (float)M_SQRT2, p) )
+				.lineTo( progress(22.0f, 22.0f - (float)M_SQRT2, p),	progress(17.0f, 12.0f - (float)M_SQRT2, p) )
+				.lineTo( progress(22.0f, 22.0f, p),						progress(19.0f, 12.0f, p) )
+				.lineTo( progress(2.0f, 13.0f, p),						progress(19.0f, 21.0f, p) )
+				.closePath();
 
 		float rotation = _owner->getRotation();
 
@@ -188,29 +180,26 @@ void IconSprite::NavIcon::redraw(float pr, float diff) {
 	} else {
 		p = p - 1.0f;
 
-		_top->clear();
-		_top->moveTo( 13.0f, progress(3.0f, 4.0f, p) );
-		_top->lineTo( progress(13.0f - (float)M_SQRT2, 11.0f, p), progress(3.0f + (float)M_SQRT2, 4.0f, p) );
-		_top->lineTo( progress(22.0f - (float)M_SQRT2, 11.0f, p), progress(12.0f + (float)M_SQRT2, 12.0f, p) );
-		_top->lineTo( progress(22.0f, 13.0f, p), 12.0f );
-		_top->setFillColor(cocos2d::Color4B(0, 0, 0, 255));
-		_top->closePath();
+		_top.clear()
+				.moveTo( 13.0f, progress(3.0f, 4.0f, p) )
+				.lineTo( progress(13.0f - (float)M_SQRT2, 11.0f, p), progress(3.0f + (float)M_SQRT2, 4.0f, p) )
+				.lineTo( progress(22.0f - (float)M_SQRT2, 11.0f, p), progress(12.0f + (float)M_SQRT2, 12.0f, p) )
+				.lineTo( progress(22.0f, 13.0f, p), 12.0f )
+				.closePath();
 
-		_center->clear();
-		_center->moveTo( progress(3.0f, 4.0f, p), 11 );
-		_center->lineTo( progress(20.0f, 20.0f, p), 11 );
-		_center->lineTo( progress(20.0f, 20.0f, p), 13 );
-		_center->lineTo( progress(3.0f, 4.0f, p), 13 );
-		_center->setFillColor(cocos2d::Color4B(0, 0, 0, 255));
-		_center->closePath();
+		_center.clear()
+				.moveTo( progress(3.0f, 4.0f, p), 11 )
+				.lineTo( progress(20.0f, 20.0f, p), 11 )
+				.lineTo( progress(20.0f, 20.0f, p), 13 )
+				.lineTo( progress(3.0f, 4.0f, p), 13 )
+				.closePath();
 
-		_bottom->clear();
-		_bottom->moveTo( progress(13.0f - (float)M_SQRT2, 11.0f, p), progress(21.0f - (float)M_SQRT2, 20.0f, p) );
-		_bottom->lineTo( progress(22.0f - (float)M_SQRT2, 11.0f, p), progress(12.0f - (float)M_SQRT2, 12.0f, p) );
-		_bottom->lineTo( progress(22.0f, 13.0f, p), 12.0f );
-		_bottom->lineTo( 13.0f, progress(21.0f, 20.0f, p) );
-		_bottom->setFillColor(cocos2d::Color4B(0, 0, 0, 255));
-		_bottom->closePath();
+		_bottom.clear()
+				.moveTo( progress(13.0f - (float)M_SQRT2, 11.0f, p), progress(21.0f - (float)M_SQRT2, 20.0f, p) )
+				.lineTo( progress(22.0f - (float)M_SQRT2, 11.0f, p), progress(12.0f - (float)M_SQRT2, 12.0f, p) )
+				.lineTo( progress(22.0f, 13.0f, p), 12.0f )
+				.lineTo( 13.0f, progress(21.0f, 20.0f, p) )
+				.closePath();
 
 		if (p == 0.0f) {
 			_owner->setRotation(180);
@@ -224,10 +213,7 @@ void IconSprite::NavIcon::redraw(float pr, float diff) {
 
 void IconSprite::CircleLoaderIcon::onAdded() {
 	DynamicIcon::onAdded();
-	_path = construct<draw::Path>();
-	_path->setStyle(stappler::draw::Path::Style::Stroke);
-	_path->setStrokeWidth(2.0f);
-	_paths.pushBack(_path);
+	_path = _image->addPath(draw::Path().setStyle(stappler::draw::Path::Style::Stroke).setStrokeWidth(2.0f));
 }
 
 void IconSprite::CircleLoaderIcon::redraw(float pr, float diff) {
@@ -243,8 +229,7 @@ void IconSprite::CircleLoaderIcon::redraw(float pr, float diff) {
 		arcLen = progress(230_to_rad, 20_to_rad, (p - 0.5f) * 2.0f);
 	}
 
-	_path->clear();
-	_path->addArc(cocos2d::Rect(4, 4, 16, 16), arcStart, arcLen);
+	_path.clear().addArc(cocos2d::Rect(4, 4, 16, 16), arcStart, arcLen);
 }
 
 void IconSprite::CircleLoaderIcon::animate() {
@@ -395,9 +380,9 @@ cocos2d::GLProgramState *IconSprite::getProgramStateI8() const {
 	return getProgramStateA8();
 }
 
-void IconSprite::updateCanvas() {
+void IconSprite::updateCanvas(layout::Subscription::Flags f) {
 	if (isDynamic()) {
-		PathNode::updateCanvas();
+		PathNode::updateCanvas(f);
 	}
 }
 
@@ -415,10 +400,7 @@ void IconSprite::setDynamicIcon(DynamicIcon *i) {
 	if (i) {
 		addComponent(i);
 		_dynamicIcon = i;
-		auto &childs = _dynamicIcon->getPaths();
-		for (auto &it : childs) {
-			addPath(it);
-		}
+		setImage(_dynamicIcon->getImage());
 		_dynamicIcon->redraw(0.0f, 0.0f);
 	} else {
 		setTexture(nullptr);
@@ -431,6 +413,7 @@ void IconSprite::setStaticIcon(IconName name) {
 	setDynamicIcon(nullptr);
 	auto icon = ResourceManager::getInstance()->getIcon(name);
 	if (icon) {
+		setImage(nullptr);
 		setTexture(icon.getTexture());
 		setTextureRect(icon.getTextureRect());
 		setDensity(icon.getDensity());

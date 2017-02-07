@@ -159,7 +159,7 @@ struct ByteOrder {
 		Big,
 		Little,
 		Network = Big,
-#if (__i386__) || (_M_IX86) || (__x86_64__) || (_M_X64) || (__arm__) || (_M_ARM) || (__arm64__) || (__arm64)
+#if (__i386__) || (_M_IX86) || (__x86_64__) || (_M_X64) || (__arm__) || (_M_ARM) || (__arm64__) || (__arm64) || defined (__aarch64__)
 		Host = Little,
 #else
 		Host = Big,

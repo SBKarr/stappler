@@ -509,7 +509,7 @@ void StoreKitIOS::validateSubscriptionReceipt(StoreProduct *product, bool sandbo
 	
 	SPSTOREKIT_LOG("validateSubscriptionReceipt: %s", product->productId.c_str());
 	
-	auto task = construct<NetworkTask>(NetworkTask::Method::Post, (sandbox?_debugUrl:_releaseUrl));
+	auto task = Rc<NetworkTask>::create(NetworkTask::Method::Post, (sandbox?_debugUrl:_releaseUrl));
 	auto buf = new data::JsonBuffer;
 	
 	std::string data;
@@ -526,7 +526,7 @@ void StoreKitIOS::validateSubscriptionReceipt(StoreProduct *product, bool sandbo
 		return size;
 	});
 	
-	task->addCompleteCallback([this, buf, product] (cocos2d::Ref *, bool) {
+	task->addCompleteCallback([this, buf, product] (const Task &, bool) {
 		auto & value = buf->data();
 		if (value) {
 			auto status = value.getInteger("status");

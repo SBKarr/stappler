@@ -38,22 +38,22 @@ public:
 	};
 
 public:
-	using Callback = std::function<void(cocos2d::Texture2D *)>;
+	using Callback = Function<void(cocos2d::Texture2D *)>;
 
 	virtual bool init(cocos2d::Texture2D *tex = nullptr, const Rect & = Rect::ZERO, float density = 0.0f);
-	virtual bool init(const std::string &, const Rect & = Rect::ZERO, float density = 0.0f);
+	virtual bool init(const String &, const Rect & = Rect::ZERO, float density = 0.0f);
 	virtual bool init(const Bitmap &, const Rect & = Rect::ZERO, float density = 0.0f);
 
 	virtual void onContentSizeDirty() override;
 	virtual void setDensity(float value) override;
 
 	virtual void setTexture(cocos2d::Texture2D *tex, const Rect & = Rect::ZERO);
-	virtual void setTexture(const std::string &, const Rect & = Rect::ZERO);
+	virtual void setTexture(const String &, const Rect & = Rect::ZERO);
 	virtual void setTexture(const Bitmap &, const Rect & = Rect::ZERO);
 	virtual cocos2d::Texture2D *getTexture() const override;
 
-	virtual void setTextureRect(const cocos2d::Rect &);
-	virtual const cocos2d::Rect &getTextureRect() const;
+	virtual void setTextureRect(const Rect &);
+	virtual const Rect &getTextureRect() const;
 
 	virtual void setFlippedX(bool value);
 	virtual bool isFlippedX() const;
@@ -67,8 +67,8 @@ public:
 	virtual void setAutofit(Autofit);
 	virtual Autofit getAutofit() const;
 
-	virtual void setAutofitPosition(const cocos2d::Vec2 &);
-	virtual const cocos2d::Vec2 &getAutofitPosition() const;
+	virtual void setAutofitPosition(const Vec2 &);
+	virtual const Vec2 &getAutofitPosition() const;
 
 	virtual void setCallback(const Callback &func);
 
@@ -82,13 +82,13 @@ protected:
 	bool _flippedY = false;
 	bool _rotated = false;
 
-	cocos2d::Rect _textureRect;
+	Rect _textureRect;
 
-	Autofit _autofit;
-	cocos2d::Vec2 _autofitPos = cocos2d::Vec2(0.5f, 0.5f);
+	Autofit _autofit = Autofit::None;
+	Vec2 _autofitPos = Vec2(0.5f, 0.5f);
 
-	cocos2d::Vec2 _textureOrigin;
-	cocos2d::Size _textureSize;
+	Vec2 _textureOrigin;
+	Size _textureSize;
 
 	Callback _callback = nullptr;
 	Time _textureTime;

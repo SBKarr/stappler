@@ -25,7 +25,6 @@ THE SOFTWARE.
 
 #include "Material.h"
 #include "MaterialBackgroundLayer.h"
-#include "MaterialColors.h"
 
 #include "SPLayer.h"
 #include "SPDynamicSprite.h"

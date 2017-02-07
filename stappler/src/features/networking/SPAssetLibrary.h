@@ -25,46 +25,42 @@ THE SOFTWARE.
 
 #include "SPEventHeader.h"
 #include "SPScheme.h"
-
-#include "base/CCMap.h"
+#include "SPAsset.h"
 
 NS_SP_BEGIN
 
-class Asset;
-class AssetDownload;
-
-class AssetLibrary : public cocos2d::Ref {
+class AssetLibrary : public Ref {
 public:
 	static EventHeader onLoaded;
 
 	struct AssetRequest;
 
-	using AssetCallback = std::function<void (Asset *)>;
+	using AssetCallback = Function<void (Asset *)>;
 
-	using AssetVec = std::vector<Asset *>;
-	using AssetVecCallback = std::function<void (const AssetVec &)>;
+	using AssetVec = Vector<Rc<Asset>>;
+	using AssetVecCallback = Function<void (const AssetVec &)>;
 
-	using AssetRequestVec = std::vector<AssetRequest>;
-	using AssetMultiRequestVec = std::vector<std::pair<AssetRequestVec, AssetVecCallback>>;
+	using AssetRequestVec = Vector<AssetRequest>;
+	using AssetMultiRequestVec = Vector<Pair<AssetRequestVec, AssetVecCallback>>;
 
-    using DownloadCallback = std::function<bool(Asset *)>;
-	using Assets = std::map<uint64_t, Asset *>;
-	using Downloads = cocos2d::Map<Asset *, AssetDownload *>;
+    using DownloadCallback = Function<bool(Asset *)>;
+	using Assets = Map<uint64_t, Asset *>;
+	using Downloads = Map<Asset *, Rc<AssetDownload>>;
 
-	using CallbackVec = std::vector<AssetCallback>;
-	using CallbacksList = std::map<uint64_t, CallbackVec>;
+	using CallbackVec = Vector<AssetCallback>;
+	using CallbacksList = Map<uint64_t, CallbackVec>;
 
 	struct AssetRequest {
 		AssetCallback callback;
 		uint64_t id;
-		std::string url;
-		std::string path;
+		String url;
+		String path;
 		TimeInterval ttl;
-		std::string cacheDir;
+		String cacheDir;
 		DownloadCallback download;
 
-		AssetRequest(const AssetCallback &, const std::string &url, const std::string &path,
-				TimeInterval ttl = TimeInterval(), const std::string &cacheDir = "", const DownloadCallback & = nullptr);
+		AssetRequest(const AssetCallback &, const String &url, const String &path,
+				TimeInterval ttl = TimeInterval(), const String &cacheDir = "", const DownloadCallback & = nullptr);
 	};
 
 public:
@@ -73,20 +69,20 @@ public:
 	void setServerDate(const Time &t);
 
 	/* get asset from db, new asset is autoreleased */
-	bool getAsset(const AssetCallback &cb, const std::string &url, const std::string &path,
-			TimeInterval ttl = TimeInterval(), const std::string &cacheDir = "", const DownloadCallback & = nullptr);
+	bool getAsset(const AssetCallback &cb, const String &url, const String &path,
+			TimeInterval ttl = TimeInterval(), const String &cacheDir = "", const DownloadCallback & = nullptr);
 
 	bool getAssets(const AssetRequestVec &, const AssetVecCallback & = nullptr);
 
-	Asset *acquireLiveAsset(const std::string &url, const std::string &path);
+	Asset *acquireLiveAsset(const String &url, const String &path);
 
 	bool isLoaded() const { return _loaded; }
-	uint64_t getAssetId(const std::string &url, const std::string &path) const;
+	uint64_t getAssetId(const String &url, const String &path) const;
 
-	std::string getTempPath(const std::string &) const;
+	String getTempPath(const String &) const;
 
 	bool isLiveAsset(uint64_t) const;
-	bool isLiveAsset(const std::string &url, const std::string &path) const;
+	bool isLiveAsset(const String &url, const String &path) const;
 
 	void updateAssets();
 
@@ -112,14 +108,14 @@ protected:
 
 	Time getCorrectTime() const;
 	Asset *getLiveAsset(uint64_t id) const;
-	Asset *getLiveAsset(const std::string &, const std::string &) const;
+	Asset *getLiveAsset(const String &, const String &) const;
 
 	void onAssetCreated(Asset *);
 
 	friend class storage::Handle;
 	static void importAssetData(data::Value &);
 
-	void performGetAssets(std::vector<Asset *> &, const std::vector<AssetRequest> &);
+	void performGetAssets(AssetVec &, const std::vector<AssetRequest> &);
 
 	bool _loaded = false;
 

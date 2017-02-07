@@ -89,50 +89,50 @@ bool EventHeader::operator == (const Event &event) const {
 }
 
 #if SP_EVENT_RTTI
-void EventHeader::send(cocos2d::Ref *object, const std::string &tname, int64_t value) const {
+void EventHeader::send(Ref *object, const std::string &tname, int64_t value) const {
 	Event::send(*this, object, tname, value);
 }
-void EventHeader::send(cocos2d::Ref *object, const std::string &tname, double value) const {
+void EventHeader::send(Ref *object, const std::string &tname, double value) const {
 	Event::send(*this, object, tname, value);
 }
-void EventHeader::send(cocos2d::Ref *object, const std::string &tname, bool value) const {
+void EventHeader::send(Ref *object, const std::string &tname, bool value) const {
 	Event::send(*this, object, tname, value);
 }
-void EventHeader::send(cocos2d::Ref *object, const std::string &tname, cocos2d::Ref *value, const std::string &oname) const {
+void EventHeader::send(Ref *object, const std::string &tname, Ref *value, const std::string &oname) const {
 	Event::send(*this, object, tname, value, oname);
 }
-void EventHeader::send(cocos2d::Ref *object, const std::string &tname, const char *value) const {
+void EventHeader::send(Ref *object, const std::string &tname, const char *value) const {
 	Event::send(*this, object, tname, value);
 }
-void EventHeader::send(cocos2d::Ref *object, const std::string &tname, const std::string &value) const {
+void EventHeader::send(Ref *object, const std::string &tname, const std::string &value) const {
 	Event::send(*this, object, tname, value);
 }
-void EventHeader::send(cocos2d::Ref *object, const std::string &tname) const {
+void EventHeader::send(Ref *object, const std::string &tname) const {
 	Event::send(*this, object, tname);
 }
 #else
-void EventHeader::send(cocos2d::Ref *object, int64_t value) const {
+void EventHeader::send(Ref *object, int64_t value) const {
 	Event::send(*this, object, value);
 }
-void EventHeader::send(cocos2d::Ref *object, double value) const {
+void EventHeader::send(Ref *object, double value) const {
 	Event::send(*this, object, value);
 }
-void EventHeader::send(cocos2d::Ref *object, bool value) const {
+void EventHeader::send(Ref *object, bool value) const {
 	Event::send(*this, object, value);
 }
-void EventHeader::send(cocos2d::Ref *object, cocos2d::Ref *value) const {
+void EventHeader::send(Ref *object, Ref *value) const {
 	Event::send(*this, object, value);
 }
-void EventHeader::send(cocos2d::Ref *object, const char *value) const {
+void EventHeader::send(Ref *object, const char *value) const {
 	Event::send(*this, object, value);
 }
-void EventHeader::send(cocos2d::Ref *object, const std::string &value) const {
+void EventHeader::send(Ref *object, const std::string &value) const {
 	Event::send(*this, object, value);
 }
-void EventHeader::send(cocos2d::Ref *object, const data::Value &value) const {
+void EventHeader::send(Ref *object, const data::Value &value) const {
 	Event::send(*this, object, value);
 }
-void EventHeader::send(cocos2d::Ref *object) const {
+void EventHeader::send(Ref *object) const {
 	Event::send(*this, object);
 }
 #endif

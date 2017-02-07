@@ -25,7 +25,6 @@ THE SOFTWARE.
 
 #include "SPDefine.h"
 #include "SPThreadManager.h"
-#include "SPThreadLocal.h"
 #include "SPThread.h"
 
 #include "base/CCDirector.h"
@@ -151,7 +150,7 @@ bool ThreadManager::isMainThread() {
 	return _threadId == thisThread;
 }
 
-void ThreadManager::performOnMainThread(const Callback &func, cocos2d::Ref *target, bool onNextFrame) {
+void ThreadManager::performOnMainThread(const Callback &func, Ref *target, bool onNextFrame) {
 	if ((isMainThread() || _singleThreaded) && !onNextFrame) {
 		func();
 	} else {
@@ -346,7 +345,7 @@ void Thread::perform(Rc<Task> &&task, int tag) {
     task->setTag(tag);
     perform(std::move(task));
 }
-void Thread::perform(const ExecuteCallback &exec, const CompleteCallback &complete, cocos2d::Ref *obj) {
+void Thread::perform(const ExecuteCallback &exec, const CompleteCallback &complete, Ref *obj) {
 	perform(Rc<Task>::create(exec, complete, obj));
 }
 

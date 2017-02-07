@@ -24,21 +24,18 @@ THE SOFTWARE.
 #define CLASSES_MATERIAL_MATERIALRESOURCEMANAGER_H_
 
 #include "Material.h"
-#include "base/CCVector.h"
-#include "base/CCMap.h"
 #include "MaterialIconSprite.h"
 #include "MaterialUserFontConfig.h"
 
 #include "SPEventHeader.h"
 #include "SPEventHandler.h"
-#include "SPRichTextStyle.h"
 #include "SPLabelParameters.h"
 
 NS_MD_BEGIN
 
 class ResourceManager : public Ref, EventHandler {
 public:
-	using LightLevel = rich_text::style::LightLevel;
+	using LightLevel = layout::style::LightLevel;
 	using UserFontStyle = LabelParameters::DescriptionStyle;
 	using FontStyleMap = Map<String, UserFontStyle>;
 
@@ -62,10 +59,10 @@ public:
 	const String &getLocale() const;
 
 	bool isLoaded();
-	font::Source *getSystemFontSource() const;
+	font::FontSource *getSystemFontSource() const;
 	Icon getIcon(IconName name);
 
-	font::Source *getUserFontSource() const;
+	font::FontSource *getUserFontSource() const;
 	UserFontStyle getFontStyle(const String &) const;
 
 	void addUserFontFaceMap(const UserFontConfig::FontFaceMap & map);
@@ -90,7 +87,7 @@ protected:
 	bool _localeCustom = false;
 
 	Rc<IconSet>_iconSet;
-	Rc<font::Source> _source;
+	Rc<font::FontSource> _source;
 	Rc<UserFontConfig> _textFont;
 
 	LightLevel _lightLevel = LightLevel::Normal;

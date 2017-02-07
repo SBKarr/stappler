@@ -25,7 +25,6 @@ THE SOFTWARE.
 
 #include "Material.h"
 #include "MaterialScene.h"
-#include "MaterialColors.h"
 
 #include "SPGestureListener.h"
 #include "SPEventListener.h"
@@ -40,7 +39,6 @@ THE SOFTWARE.
 #include "SPScreen.h"
 #include "SPString.h"
 #include "SPDevice.h"
-#include "SPDrawPath.h"
 #include "SPDrawPathNode.h"
 #include "SPBitmap.h"
 #include "SPLayer.h"
@@ -164,11 +162,11 @@ void Scene::setVisualizeTouches(bool value) {
 						_touchesNode->addChild(node);
 						_touchesNodes.insert(std::make_pair(t.id, node));
 
-						auto p = Rc<draw::Path>::create();
-						p->setStyle(stappler::draw::Path::Style::Fill);
-						p->addOval(Rect(0, 0, 24 * d, 24 * d));
-						p->setFillOpacity(127);
-						node->addPath(p);
+						draw::Path p;
+						p.setStyle(stappler::draw::Path::Style::Fill)
+								.addOval(Rect(0, 0, 24 * d, 24 * d))
+								.setFillOpacity(127);
+						node->addPath(std::move(p));
 					} else if (ev == stappler::gesture::Event::Activated) {
 						auto it = _touchesNodes.find(t.id);
 						if (it != _touchesNodes.end()) {
@@ -580,11 +578,11 @@ void Scene::onLightLevel() {
 	if (_autoLightLevel) {
 		auto level = material::ResourceManager::getInstance()->getLightLevel();
 		switch(level) {
-		case rich_text::style::LightLevel::Dim:
+		case LightLevel::Dim:
 			_background->setColor(Color(0x303030));
 			break;
-		case rich_text::style::LightLevel::Normal:
-		case rich_text::style::LightLevel::Washed:
+		case LightLevel::Normal:
+		case LightLevel::Washed:
 			_background->setColor(Color::Grey_50);
 			break;
 		};

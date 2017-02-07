@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,10 +23,8 @@ THE SOFTWARE.
 #ifndef LIBS_STAPPLER_FEATURES_RICH_TEXT_SPRICHTEXTRENDERER_H_
 #define LIBS_STAPPLER_FEATURES_RICH_TEXT_SPRICHTEXTRENDERER_H_
 
+#include "SPRichText.h"
 #include "2d/CCComponent.h"
-#include "SPRichTextSource.h"
-#include "SPRichTextRendererTypes.h"
-#include "SPRichTextResult.h"
 #include "SPRichTextDrawer.h"
 
 NS_SP_EXT_BEGIN(rich_text)
@@ -34,7 +32,6 @@ NS_SP_EXT_BEGIN(rich_text)
 class Renderer : public cocos2d::Component {
 public:
 	using RenderingCallback = Function<void(Result *, bool started)>;
-	using Source = rich_text::Source;
 
 	static bool shouldSplitPages(const Size &);
 
@@ -48,7 +45,7 @@ public:
 	virtual Source *getSource() const;
 
 	virtual Document *getDocument() const;
-	virtual Result *getResult() const;
+	virtual layout::Result *getResult() const;
 	virtual Drawer *getDrawer() const;
 
 	virtual MediaResolver getMediaResolver(const Vector<String> & = {}) const;
@@ -64,13 +61,13 @@ public: /* media type resolver */
 	void setDpi(int dpi);
 	void setDensity(float density);
 
-	void setMediaType(style::MediaType value);
-	void setOrientationValue(style::Orientation value);
-	void setPointerValue(style::Pointer value);
-	void setHoverValue(style::Hover value);
-	void setLightLevelValue(style::LightLevel value);
-	void setScriptingValue(style::Scripting value);
-	void setHyphens(font::HyphenMap *);
+	void setMediaType(layout::style::MediaType value);
+	void setOrientationValue(layout::style::Orientation value);
+	void setPointerValue(layout::style::Pointer value);
+	void setHoverValue(layout::style::Hover value);
+	void setLightLevelValue(layout::style::LightLevel value);
+	void setScriptingValue(layout::style::Scripting value);
+	void setHyphens(layout::HyphenMap *);
 
 	void setPageMargin(const Margin &);
 
@@ -78,9 +75,9 @@ public: /* media type resolver */
 	void removeOption(const String &);
 	bool hasOption(const String &) const;
 
-	void addFlag(RenderFlag::Flag flag);
-	void removeFlag(RenderFlag::Flag flag);
-	bool hasFlag(RenderFlag::Flag flag) const;
+	void addFlag(layout::RenderFlag::Flag flag);
+	void removeFlag(layout::RenderFlag::Flag flag);
+	bool hasFlag(layout::RenderFlag::Flag flag) const;
 
 public: /* font routines */
 	virtual void setRenderingCallback(const RenderingCallback &);
@@ -100,9 +97,9 @@ protected:
 	Vector<String> _ids;
 	Size _surfaceSize;
 	MediaParameters _media;
-	Rc<Result> _result;
+	Rc<layout::Result> _result;
 	Rc<Drawer> _drawer;
-	Rc<font::HyphenMap> _hyphens;
+	Rc<layout::HyphenMap> _hyphens;
 	RenderingCallback _renderingCallback = nullptr;
 };
 

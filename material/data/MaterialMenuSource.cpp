@@ -31,16 +31,16 @@ NS_MD_BEGIN
 bool MenuSourceItem::init() {
 	return true;
 }
-MenuSourceItem * MenuSourceItem::copy() {
-	auto ret = construct<MenuSourceItem>();
+Rc<MenuSourceItem> MenuSourceItem::copy() {
+	auto ret = Rc<MenuSourceItem>::create();
 	ret->setCustomData(_customData);
 	return ret;
 }
-void MenuSourceItem::setCustomData(const stappler::data::Value &val) {
+void MenuSourceItem::setCustomData(const data::Value &val) {
 	_customData = val;
 	setDirty();
 }
-void MenuSourceItem::setCustomData(stappler::data::Value &&val) {
+void MenuSourceItem::setCustomData(data::Value &&val) {
 	_customData = std::move(val);
 	setDirty();
 }
@@ -96,8 +96,8 @@ bool MenuSourceButton::init() {
 	return true;
 }
 
-MenuSourceItem * MenuSourceButton::copy() {
-	auto ret = construct<MenuSourceButton>();
+Rc<MenuSourceItem> MenuSourceButton::copy() {
+	auto ret = Rc<MenuSourceButton>::create();
 	ret->setName(_name);
 	ret->setNameIcon(_nameIcon);
 	ret->setValue(_name);
@@ -196,8 +196,8 @@ bool MenuSourceCustom::init(float h, const FactoryFunction &func, bool relative)
 	return true;
 }
 
-MenuSourceItem * MenuSourceCustom::copy() {
-	auto ret = construct<MenuSourceCustom>(_height, _function, _relativeHeight);
+Rc<MenuSourceItem> MenuSourceCustom::copy() {
+	auto ret = Rc<MenuSourceCustom>::create(_height, _function, _relativeHeight);
 	ret->setCustomData(_customData);
 	return ret;
 }
@@ -225,8 +225,8 @@ bool MenuSourceCustom::isRelativeHeight() const {
 
 MenuSource::~MenuSource() { }
 
-MenuSource *MenuSource::copy() {
-	MenuSource *ret = construct<MenuSource>();
+Rc<MenuSource> MenuSource::copy() {
+	auto ret = Rc<MenuSource>::create();
 	for (auto &it : _items) {
 		ret->addItem(it->copy());
 	}
@@ -235,28 +235,28 @@ MenuSource *MenuSource::copy() {
 
 void MenuSource::addItem(MenuSourceItem *item) {
 	if (item) {
-		_items.pushBack(item);
+		_items.emplace_back(item);
 		setDirty();
 	}
 }
 
-MenuSourceButton * MenuSource::addButton(const std::string &str, const Callback &cb) {
-	auto item = construct<MenuSourceButton>(str, IconName::None, cb);
+Rc<MenuSourceButton> MenuSource::addButton(const String &str, const Callback &cb) {
+	auto item = Rc<MenuSourceButton>::create(str, IconName::None, cb);
 	addItem(item);
 	return item;
 }
-MenuSourceButton * MenuSource::addButton(const std::string &str, IconName name, const Callback &cb) {
-	auto item = construct<MenuSourceButton>(str, name, cb);
+Rc<MenuSourceButton> MenuSource::addButton(const String &str, IconName name, const Callback &cb) {
+	auto item = Rc<MenuSourceButton>::create(str, name, cb);
 	addItem(item);
 	return item;
 }
-MenuSourceCustom * MenuSource::addCustom(float h, const MenuSourceCustom::FactoryFunction &func, bool rel) {
-	auto item = construct<MenuSourceCustom>(h, func, rel);
+Rc<MenuSourceCustom> MenuSource::addCustom(float h, const MenuSourceCustom::FactoryFunction &func, bool rel) {
+	auto item = Rc<MenuSourceCustom>::create(h, func, rel);
 	addItem(item);
 	return item;
 }
-MenuSourceItem * MenuSource::addSeparator() {
-	MenuSourceItem *item = construct<MenuSourceItem>();
+Rc<MenuSourceItem> MenuSource::addSeparator() {
+	auto item = Rc<MenuSourceItem>::create();
 	addItem(item);
 	return item;
 }
@@ -270,7 +270,7 @@ uint32_t MenuSource::count() {
 	return (uint32_t)_items.size();
 }
 
-const cocos2d::Vector<MenuSourceItem *> &MenuSource::getItems() {
+const Vector<Rc<MenuSourceItem>> &MenuSource::getItems() {
 	return _items;
 }
 

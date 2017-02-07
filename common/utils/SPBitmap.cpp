@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include "SPBitmap.h"
 #include "SPBuffer.h"
 
+#include "SPCommonPlatform.h"
 #include "SPFilesystem.h"
 #include "SPDataReader.h"
 #include "SPString.h"
@@ -269,9 +270,9 @@ bool Bitmap::getImageSize(const String &path, size_t &width, size_t &height) {
 
 bool Bitmap::getImageSize(const io::Producer &file, size_t &width, size_t &height) {
 	StackBuffer<256> data;
-    if (file.seekAndRead(0, data, 30) < 30) {
-    	return false;
-    }
+	if (file.seekAndRead(0, data, 30) < 30) {
+		return false;
+	}
 
 	if (isPng(data.data(), data.size()) && data.size() >= 24) {
 		auto reader = DataReader<ByteOrder::Network>(data.data() + 16, 8);
@@ -279,15 +280,15 @@ bool Bitmap::getImageSize(const io::Producer &file, size_t &width, size_t &heigh
 		width = reader.readUnsigned32();
 		height = reader.readUnsigned32();
 
-	    return true;
-	} else if(isJpg(data.data(), data.size())) {
+		return true;
+	} else if (isJpg(data.data(), data.size())) {
 		size_t offset = 2;
 		uint16_t len = 0;
 		uint8_t marker = 0;
 
 		auto reader = DataReader<ByteOrder::Network>(data.data() + 2, data.size() - 2);
-		while (reader.is((uint8_t)0xFF)) {
-			++ reader;
+		while (reader.is((uint8_t) 0xFF)) {
+			++reader;
 		}
 
 		marker = reader.readUnsigned();
@@ -304,8 +305,8 @@ bool Bitmap::getImageSize(const io::Producer &file, size_t &width, size_t &heigh
 			if (data.size() >= 12) {
 				reader = data.get<DataReader<ByteOrder::Network>>();
 
-				while (reader.is((uint8_t)0xFF)) {
-					++ reader;
+				while (reader.is((uint8_t) 0xFF)) {
+					++reader;
 				}
 
 				marker = reader.readUnsigned();
@@ -317,7 +318,7 @@ bool Bitmap::getImageSize(const io::Producer &file, size_t &width, size_t &heigh
 		}
 
 		if (reader >= 5 && marker >= 0xC0 && marker <= 0xCF) {
-			++ reader;
+			++reader;
 			height = reader.readUnsigned16();
 			width = reader.readUnsigned16();
 			return true;
@@ -330,14 +331,14 @@ bool Bitmap::getImageSize(const io::Producer &file, size_t &width, size_t &heigh
 		width = reader.readUnsigned16();
 		height = reader.readUnsigned16();
 
-	    return true;
+		return true;
 	} else if (isWebp(data.data(), data.size())) {
 		auto reader = DataReader<ByteOrder::Little>(data.data() + 26, 4);
 
 		width = reader.readUnsigned16();
 		height = reader.readUnsigned16();
 
-	    return true;
+		return true;
 	} else if (isTiff(data.data(), data.size())) {
 		if (memcmp(data.data(), "II", 2) == 0) {
 			if (Bitmap_getTiffImageSize<DataReader<ByteOrder::Little>>(data, file, width, height)) {
@@ -348,6 +349,25 @@ bool Bitmap::getImageSize(const io::Producer &file, size_t &width, size_t &heigh
 				return true;
 			}
 		}
+	}
+
+	return false;
+}
+
+bool Bitmap::isImage(const String &path, bool readable) {
+	auto file = filesystem::openForReading(path);
+	return isImage(file, readable);
+}
+bool Bitmap::isImage(const io::Producer &file, bool readable) {
+	StackBuffer<16> data;
+    if (file.seekAndRead(0, data, 16) < 16) {
+    	return false;
+    }
+
+	if (isPng(data.data(), data.size()) || isJpg(data.data(), data.size())) {
+	    return true;
+	} else if (!readable && (isGif(data.data(), data.size()) || isWebp(data.data(), data.size()) || isTiff(data.data(), data.size()))) {
+		return true;
 	}
 
     return false;
@@ -537,6 +557,14 @@ static bool loadPng(const uint8_t *inputData, size_t size,
 	state.data = inputData;
 	state.offset = 0;
 
+	;
+#ifdef PNG_ARM_NEON_API_SUPPORTED
+#if PNG_ARM_NEON_OPT == 1
+	if (platform::proc::_isArmNeonSupported()) {
+		png_set_option(png_ptr, PNG_ARM_NEON, PNG_OPTION_ON);
+	}
+#endif
+#endif
 	png_set_read_fn(png_ptr,(png_voidp)&state, Bitmap_readDynamicData);
     png_read_info(png_ptr, info_ptr);
 

@@ -36,7 +36,7 @@ THE SOFTWARE.
 
 NS_MD_BEGIN
 
-bool Scroll::Loader::init(const std::function<void()> &cb, const Color &c) {
+bool Scroll::Loader::init(const Function<void()> &cb, const Color &c) {
 	if (!cocos2d::Node::init()) {
 		return false;
 	}
@@ -49,8 +49,8 @@ bool Scroll::Loader::init(const std::function<void()> &cb, const Color &c) {
 	setColor(c);
 
 	_icon = construct<IconSprite>(IconName::Dynamic_Loader);
-	_icon->setContentSize(cocos2d::Size(36.0f, 36.0f));
-	_icon->setAnchorPoint(cocos2d::Vec2(0.5f, 0.5f));
+	_icon->setContentSize(Size(36.0f, 36.0f));
+	_icon->setAnchorPoint(Vec2(0.5f, 0.5f));
 	addChild(_icon);
 
 	return true;
@@ -453,7 +453,7 @@ void Scroll::onSliceData(DataMap &val, Time time, Request type) {
 	auto itemPtr = new ItemMap();
 	auto dataPtr = new DataMap(std::move(val));
 	auto handlerPtr = new Rc<Handler>(onHandler());
-	ResourceManager::thread().perform([this, handlerPtr, itemPtr, dataPtr, time, type] (cocos2d::Ref *) -> bool {
+	ResourceManager::thread().perform([this, handlerPtr, itemPtr, dataPtr, time, type] (const Task &) -> bool {
 		(*itemPtr) = (*handlerPtr)->run(type, std::move(*dataPtr));
 		auto interval = Time::now() - time;
 		if (interval < _minLoadTime && type != Request::Update) {
@@ -464,7 +464,7 @@ void Scroll::onSliceData(DataMap &val, Time time, Request type) {
 			it.second->setId(it.first.get());
 		}
 		return true;
-	}, [this, handlerPtr, itemPtr, dataPtr, time, type] (cocos2d::Ref *, bool) {
+	}, [this, handlerPtr, itemPtr, dataPtr, time, type] (const Task &, bool) {
 		onSliceItems(std::move(*itemPtr), time, type);
 		delete handlerPtr;
 		delete itemPtr;

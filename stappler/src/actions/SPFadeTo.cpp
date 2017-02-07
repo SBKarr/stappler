@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "SPDefine.h"
 #include "SPFadeTo.h"
+#include "2d/CCNode.h"
 
 NS_SP_BEGIN
 

@@ -25,7 +25,7 @@ THE SOFTWARE.
 
 #include "SPDefine.h"
 #include "SPLabelParameters.h"
-#include "SPFontFormatter.h"
+#include "SLFontFormatter.h"
 #include "SPLocale.h"
 
 NS_SP_BEGIN
@@ -35,7 +35,7 @@ LabelParameters::DescriptionStyle::DescriptionStyle() {
 	font.fontSize = 14;
 	text.opacity = 222;
 	text.color = Color3B::BLACK;
-	text.whiteSpace = rich_text::style::WhiteSpace::PreWrap;
+	text.whiteSpace = layout::style::WhiteSpace::PreWrap;
 }
 
 String LabelParameters::DescriptionStyle::getConfigName(bool caps) const {
@@ -121,8 +121,8 @@ float LabelParameters::getStringWidth(Source *source, const DescriptionStyle &st
 		density = screen::density();
 	}
 
-	font::FormatSpec spec;
-	font::Formatter fmt(source, &spec, density);
+	layout::FormatSpec spec;
+	layout::Formatter fmt(source, &spec, density);
 	fmt.begin(0, 0);
 
 	if (localized && locale::hasLocaleTags(str.data(), str.size())) {
@@ -156,8 +156,8 @@ Size LabelParameters::getLabelSize(Source *source, const DescriptionStyle &style
 	}
 
 
-	font::FormatSpec spec;
-	font::Formatter fmt(source, &spec, density);
+	layout::FormatSpec spec;
+	layout::Formatter fmt(source, &spec, density);
 	fmt.setWidth((uint16_t)roundf(w * density));
 	fmt.begin(0, 0);
 

@@ -44,7 +44,7 @@ public:
     TaskStack();
     void update(float dt);
     void push(Rc<Task> &&task);
-	void push(const Callback &func, cocos2d::Ref *target = nullptr);
+	void push(const Callback &func, Ref *target = nullptr);
 };
 
 NS_SP_END

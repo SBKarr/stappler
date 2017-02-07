@@ -33,7 +33,7 @@ THE SOFTWARE.
 NS_MD_BEGIN
 
 bool UserFontConfig::init(FontFaceMap && map, float scale) {
-	if (!font::Controller::init(std::move(map), { "fonts/", "common/fonts/" }, scale, nullptr)) {
+	if (!font::FontController::init(std::move(map), { "fonts/", "common/fonts/" }, scale, nullptr)) {
 		return false;
 	}
 
@@ -49,12 +49,12 @@ UserFontConfig::Source * UserFontConfig::getSafeSource() const {
 }
 
 void UserFontConfig::onSourceUpdated(Source *source) {
-	font::Controller::onSourceUpdated(source);
+	font::FontController::onSourceUpdated(source);
 	auto ptr = new Rc<Source>(source);
-	ResourceManager::thread().perform([this, ptr] (Ref *) -> bool {
+	ResourceManager::thread().perform([this, ptr] (const Task &) -> bool {
 		_threadSource.swap(*ptr); // no retain/release
 		return true;
-	}, [this, ptr] (Ref *, bool) {
+	}, [this, ptr] (const Task &, bool) {
 		delete ptr;
 	});
 	ResourceManager::onUserFont(ResourceManager::getInstance(), this);

@@ -52,7 +52,7 @@ protected:
 	virtual void runAdjust(float);
 	virtual void scheduleAdjust(Adjust, const Vec2 &, float pos);
 
-	virtual InputLabel *makeLabel(FontType);
+	virtual InputLabel *makeLabel(FontType) override;
 
 	Adjust _adjust = None;
 	Vec2 _adjustValue;

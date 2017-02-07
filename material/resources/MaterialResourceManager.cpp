@@ -100,7 +100,7 @@ ResourceManager::ResourceManager() {
 	});
 
 	using namespace font;
-	_source = Rc<Source>::create(Source::FontFaceMap{
+	_source = Rc<FontSource>::create(FontSource::FontFaceMap{
 		pair("system", Vector<FontFace>{
 			FontFace("Roboto-Black.woff", FontStyle::Normal, FontWeight::W800),
 			FontFace("Roboto-BlackItalic.woff", FontStyle::Italic, FontWeight::W800),
@@ -123,7 +123,7 @@ ResourceManager::ResourceManager() {
 		})
 	}, nullptr, 1.0f, Vector<String>{ "fonts/", "common/fonts/" });
 
-	_textFont = Rc<UserFontConfig>::create(Source::FontFaceMap{
+	_textFont = Rc<UserFontConfig>::create(FontSource::FontFaceMap{
 		pair("default", Vector<FontFace>{
 			FontFace("Roboto-Black.woff", FontStyle::Normal, FontWeight::W800),
 			FontFace("Roboto-BlackItalic.woff", FontStyle::Italic, FontWeight::W800),
@@ -228,7 +228,7 @@ bool ResourceManager::isLoaded() {
 	return _init;
 }
 
-font::Source *ResourceManager::getSystemFontSource() const {
+font::FontSource *ResourceManager::getSystemFontSource() const {
 	return _source;
 }
 
@@ -243,7 +243,7 @@ Icon ResourceManager::getIcon(IconName name) {
 	return Icon();
 }
 
-font::Source *ResourceManager::getUserFontSource() const {
+font::FontSource *ResourceManager::getUserFontSource() const {
 	return _textFont->getSafeSource();
 }
 

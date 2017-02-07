@@ -420,7 +420,7 @@ Task::~Task() { }
 bool Task::prepare() const {
 	if (!_prepare.empty()) {
 		for (auto i : _prepare) {
-			if (i && !i(_target)) {
+			if (i && !i(*this)) {
 				return false;
 			}
 		}
@@ -432,7 +432,7 @@ bool Task::prepare() const {
 bool Task::execute() {
 	if (!_execute.empty()) {
 		for (auto i : _execute) {
-			if (i && !i(_target)) {
+			if (i && !i(*this)) {
 				return false;
 			}
 		}
@@ -444,7 +444,7 @@ bool Task::execute() {
 void Task::onComplete() {
 	if (!_complete.empty()) {
 		for (auto i : _complete) {
-			i(_target, isSuccessful());
+			i(*this, isSuccessful());
 		}
 	}
 }

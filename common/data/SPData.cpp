@@ -28,7 +28,6 @@ THE SOFTWARE.
 #include "SPCharReader.h"
 #include "SPFilesystem.h"
 #include "SPString.h"
-#include "SPThreadLocal.h"
 #include "SPDataStream.h"
 
 NS_SP_EXT_BEGIN(data)

@@ -37,7 +37,7 @@ CanvasCairo::~CanvasCairo() {
 		_context = nullptr;
 	}
 	if (_surface) {
-		cairo_surface_finish(_surface);
+		cairo_surface_destroy(_surface);
 		_surface = nullptr;
 	}
 }
@@ -68,7 +68,7 @@ void CanvasCairo::begin(cocos2d::Texture2D *tex, const Color4B &color) {
 			_context = nullptr;
 		}
 		if (_surface) {
-			cairo_surface_finish(_surface);
+			cairo_surface_destroy(_surface);
 			_surface = nullptr;
 		}
 
@@ -118,6 +118,15 @@ void CanvasCairo::scale(float sx, float sy) {
 	cairo_scale(_context, sx, sy);
 }
 
+void CanvasCairo::transform(const Mat4 &t) {
+	Vec3 _translate;
+	Vec3 _scale;
+	t.decompose(&_scale, nullptr, &_translate);
+
+	scale(_scale.x, _scale.y);
+	translate(_translate.x, _translate.y);
+}
+
 void CanvasCairo::save() {
 	cairo_save(_context);
 }
@@ -164,7 +173,7 @@ void CanvasCairo::pathQuadTo(float x1, float y1, float x2, float y2) {
 void CanvasCairo::pathCubicTo(float x1, float y1, float x2, float y2, float x3, float y3) {
 	cairo_curve_to(_context, x1, y1, x2, y2, x3, y3);
 }
-
+/*
 void CanvasCairo::pathArcTo(float xc, float yc, float rx, float ry, float startAngle, float sweepAngle, float rotation) {
 	cairo_matrix_t save_matrix;
 	cairo_get_matrix(_context, &save_matrix);
@@ -184,13 +193,13 @@ void CanvasCairo::pathArcTo(float xc, float yc, float rx, float ry, float startA
 	}
 	cairo_set_matrix(_context, &save_matrix);
 }
-
+*/
 static float CanvasCairo_angle(const Vec2& v1, const Vec2& v2) {
     float dz = v1.x * v2.y - v1.y * v2.x;
     return atan2f(dz, Vec2::dot(v1, v2));
 }
 
-void CanvasCairo::pathAltArcTo(float rx, float ry, float angle, bool largeArc, bool sweep, float x, float y) {
+void CanvasCairo::pathArcTo(float rx, float ry, float angle, bool largeArc, bool sweep, float x, float y) {
 	double _x, _y;
 	cairo_get_current_point (_context, &_x, &_y);
 
@@ -220,6 +229,8 @@ void CanvasCairo::pathAltArcTo(float rx, float ry, float angle, bool largeArc, b
 	float sweepAngle = CanvasCairo_angle(Vec2((vDash.x - cDash.x) / rx, (vDash.y - cDash.y) / ry),
 			Vec2((-vDash.x - cDash.x) / rx, (-vDash.y - cDash.y) / ry));
 
+	//log::format("Angles", "\nvDash: %f %f\ncst: %f\ncDash: %f %f\nc: %f %f\n%f %f", vDash.x, vDash.y, cst, cDash.x, cDash.y, cx, cy, startAngle, sweepAngle);
+
 	cairo_matrix_t save_matrix;
 	cairo_get_matrix(_context, &save_matrix);
 	cairo_translate(_context, cx, cy);
@@ -247,19 +258,20 @@ void CanvasCairo::pathAltArcTo(float rx, float ry, float angle, bool largeArc, b
 }
 
 void CanvasCairo::pathFill(const Color4B &fill) {
-	cairo_set_source_rgba(_context, fill.r / 255.0, fill.g / 255.0, fill.b / 255.0, fill.a / 255.0);
+	cairo_set_fill_rule(_context, _currentPath->getWindingRule() == layout::Path::Winding::EvenOdd?CAIRO_FILL_RULE_EVEN_ODD:CAIRO_FILL_RULE_WINDING);
+	cairo_set_source_rgba(_context, fill.b / 255.0, fill.g / 255.0, fill.r / 255.0, fill.a / 255.0);
 	cairo_fill(_context);
 }
 
 void CanvasCairo::pathStroke(const Color4B &stroke) {
-	cairo_set_source_rgba(_context, stroke.r / 255.0, stroke.g / 255.0, stroke.b / 255.0, stroke.a / 255.0);
+	cairo_set_source_rgba(_context, stroke.b / 255.0, stroke.g / 255.0, stroke.r / 255.0, stroke.a / 255.0);
 	cairo_stroke(_context);
 }
 
 void CanvasCairo::pathFillStroke(const Color4B &fill, const Color4B &stroke) {
-	cairo_set_source_rgba(_context, fill.r / 255.0, fill.g / 255.0, fill.b / 255.0, fill.a / 255.0);
+	cairo_set_source_rgba(_context, fill.b / 255.0, fill.g / 255.0, fill.r / 255.0, fill.a / 255.0);
 	cairo_fill_preserve(_context);
-	cairo_set_source_rgba(_context, stroke.r / 255.0, stroke.g / 255.0, stroke.b / 255.0, stroke.a / 255.0);
+	cairo_set_source_rgba(_context, stroke.b / 255.0, stroke.g / 255.0, stroke.r / 255.0, stroke.a / 255.0);
 	cairo_stroke(_context);
 }
 

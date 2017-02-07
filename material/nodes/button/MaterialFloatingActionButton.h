@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "MaterialNode.h"
 #include "MaterialIconSources.h"
+#include "SPDrawPathNode.h"
 
 NS_MD_BEGIN
 
@@ -82,18 +83,18 @@ protected:
 	TapCallback _longTapCallback = nullptr;
 	cocos2d::Component *_listener = nullptr;
 
-	stappler::draw::Path *_tapAnimationPath = nullptr;
+	draw::Image::PathRef _tapAnimationPath;
 
 	uint8_t _iconOpacity = 255;
 
 	float _progress = 0.0f;
-	stappler::draw::Path *_progressPath = nullptr;
+	draw::Image::PathRef _progressPath;
 	Color _progressColor = Color::Black;
 	float _progressWidth = 4.0f;
 
 	IconSprite *_icon = nullptr;
 	Label *_label = nullptr;
-	stappler::draw::PathNode *_drawNode = nullptr;
+	draw::PathNode *_drawNode = nullptr;
 };
 
 NS_MD_END

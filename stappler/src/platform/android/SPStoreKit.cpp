@@ -63,7 +63,7 @@ public:
 	virtual ~StoreKitAndroid() { }
 
 	void init() {
-		sStoreKitThread.perform([] (cocos2d::Ref *obj) -> bool {
+		sStoreKitThread.perform([] (const Task & obj) -> bool {
 			auto env = spjni::getJniEnv();
 			auto storeKit = spjni::getService(spjni::Service::StoreKit, env);
 			auto storeKitClass = spjni::getClassID(env, storeKit);
@@ -125,7 +125,7 @@ public:
 		if (!_init) {
 			return false;
 		}
-		sStoreKitThread.perform([] (cocos2d::Ref *obj) -> bool {
+		sStoreKitThread.perform([] (const Task & ) -> bool {
 			auto env = spjni::getJniEnv();
 			auto storeKit = spjni::getService(spjni::Service::StoreKit, env);
 			if (!storeKit) {
@@ -360,7 +360,7 @@ public:
 			}
 		}
 
-		sStoreKitThread.perform([subs, products] (cocos2d::Ref *obj) -> bool {
+		sStoreKitThread.perform([subs, products] (const Task & ) -> bool {
 			auto env = spjni::getJniEnv();
 			auto storeKit = spjni::getService(spjni::Service::StoreKit, env);
 			if (!storeKit) {

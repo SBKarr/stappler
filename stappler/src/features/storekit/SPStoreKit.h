@@ -31,7 +31,7 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
-class StoreKit : public cocos2d::Ref, public EventHandler {
+class StoreKit : public Ref, public EventHandler {
 public:
 	// product data was updated
 	static EventHeader onProductUpdate;

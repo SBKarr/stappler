@@ -132,7 +132,7 @@ public class Manager {
 	    downloadObserver = new Observer(this, targetDir.getAbsolutePath());
 	    
 	    if (isStarted) {
-	    	downloadObserver.startWatching();
+	    	//downloadObserver.startWatching();
 	    }
 	}
 	
@@ -190,7 +190,7 @@ public class Manager {
 	public void resume() {
 		if (activity != null) {
 		    if (!isStarted) {
-		    	downloadObserver.startWatching();
+		    	//downloadObserver.startWatching();
 		    	isStarted = true;
 		    }
 		}

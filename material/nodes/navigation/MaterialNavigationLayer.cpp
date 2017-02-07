@@ -27,7 +27,6 @@ THE SOFTWARE.
 #include "MaterialIconSprite.h"
 #include "MaterialNavigationLayer.h"
 
-#include "MaterialColors.h"
 #include "MaterialLabel.h"
 #include "MaterialImage.h"
 #include "MaterialButton.h"
@@ -43,7 +42,6 @@ THE SOFTWARE.
 #include "SPAccelerated.h"
 #include "SPGestureListener.h"
 #include "SPLayer.h"
-#include "SPPadding.h"
 #include "SPScrollView.h"
 #include "SPEventListener.h"
 
@@ -162,11 +160,11 @@ void NavigationLayer::onNodeVisible(bool value) {
 void NavigationLayer::onLightLevel() {
 	auto level = ResourceManager::getInstance()->getLightLevel();
 	switch(level) {
-	case rich_text::style::LightLevel::Dim:
+	case layout::style::LightLevel::Dim:
 		setStatusBarColor(Color::Black);
 		break;
-	case rich_text::style::LightLevel::Normal:
-	case rich_text::style::LightLevel::Washed:
+	case layout::style::LightLevel::Normal:
+	case layout::style::LightLevel::Washed:
 		setStatusBarColor(Color::Grey_400);
 		break;
 	};

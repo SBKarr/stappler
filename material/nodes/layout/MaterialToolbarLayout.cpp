@@ -29,7 +29,6 @@ THE SOFTWARE.
 #include "MaterialMenuSource.h"
 #include "MaterialMetrics.h"
 #include "MaterialScene.h"
-#include "SPPadding.h"
 #include "SPScrollView.h"
 #include "SPActions.h"
 #include "SPIME.h"
@@ -44,7 +43,7 @@ bool ToolbarLayout::init(Toolbar *toolbar) {
 	_toolbar = setupToolbar(toolbar);
 	setFlexibleNode(_toolbar);
 
-	auto actions = construct<material::MenuSource>();
+	auto actions = Rc<material::MenuSource>::create();
 	_toolbar->setActionMenuSource(actions);
 
 	setFlexibleHeightFunction([this] () -> std::pair<float, float> {

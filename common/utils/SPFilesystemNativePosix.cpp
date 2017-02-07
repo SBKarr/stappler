@@ -110,11 +110,11 @@ void ftw_fn(const String &path, const Function<void(const String &path, bool isF
 					ftw_fn(newPath, callback, depth - 1, dirFirst);
 				}
 			}
-			closedir(dp);
 		}
 		if (!dirFirst) {
 			callback(path, false);
 		}
+		closedir(dp);
 	}
 }
 bool ftw_b_fn(const String &path, const Function<bool(const String &path, bool isFile)> &callback, int depth, bool dirFirst) {

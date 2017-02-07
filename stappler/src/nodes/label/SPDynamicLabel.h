@@ -25,14 +25,14 @@ THE SOFTWARE.
 
 #include "SPLayeredBatchNode.h"
 #include "SPLabelParameters.h"
-#include "SPFontFormatter.h"
+#include "SLFontFormatter.h"
 
 NS_SP_BEGIN
 
 class DynamicLabel : public LayeredBatchNode, public LabelParameters {
 public:
-	using FormatSpec = font::FormatSpec;
-	using LineSpec = font::LineSpec;
+	using FormatSpec = layout::FormatSpec;
+	using LineSpec = layout::LineSpec;
 
 	using TextureVec = Vector<Rc<cocos2d::Texture2D>>;
 	using QuadVec = Vector<Rc<DynamicQuadArray>>;

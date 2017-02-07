@@ -24,7 +24,6 @@ THE SOFTWARE.
 #define LIBS_MATERIAL_NODES_SCENE_MATERIALSCENE_H_
 
 #include "Material.h"
-#include "MaterialColors.h"
 #include "MaterialContentLayer.h"
 #include "MaterialBackgroundLayer.h"
 #include "MaterialNavigationLayer.h"

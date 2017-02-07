@@ -49,6 +49,10 @@ namespace filesystem {
 	void _close(void *);
 }
 
+namespace proc {
+	bool _isArmNeonSupported();
+}
+
 NS_SP_PLATFORM_END
 
 #endif /* COMMON_PLATFORM_SPCOMMONPLATFORM_H_ */

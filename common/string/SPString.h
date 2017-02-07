@@ -220,50 +220,51 @@ struct Sha256 {
 	_Sha256Ctx ctx;
 };
 
-inline constexpr char charToHex(char c) {
-	if (c < 10) return '0' + c;
-	if (c >= 10 && c < 16) return 'A' + c - 10;
-	return 0;
-}
-
-inline constexpr char hexToChar(char h) {
-	if (h >= '0' && h <= '9') return h - '0';
-	if (h >= 'a' && h <= 'f') return h - 'a' + 10;
-	if (h >= 'A' && h <= 'F') return h - 'A' + 10;
-	return 0;
-}
-
 NS_SP_EXT_END(string)
+
+
+NS_SP_BEGIN
+
+struct CoderSource {
+	CoderSource(const uint8_t *d, size_t len) : data(d, len) { }
+	CoderSource(const char *d, size_t len) : data((uint8_t *)d, len) { }
+	CoderSource(const Bytes &d) : data(d.data(), d.size()) { }
+	CoderSource(const String &d) : data((uint8_t *)d.data(), d.size()) { }
+
+	CoderSource(const BytesReader<uint8_t, Bytes> &d) : data(d.data(), d.size()) { }
+	CoderSource(const BytesReader<char, String> &d) : data((uint8_t *)d.data(), d.size()) { }
+
+	template <size_t Size>
+	CoderSource(const std::array<uint8_t, Size> &d) : data(d.data(), Size) { }
+
+	DataReader<ByteOrder::Network> data;
+
+	CoderSource(const CoderSource &) = delete;
+	CoderSource(CoderSource &&) = delete;
+
+	CoderSource& operator=(const CoderSource &) = delete;
+	CoderSource& operator=(CoderSource &&) = delete;
+};
+
+NS_SP_END
 
 
 NS_SP_EXT_BEGIN(base16)
 
+const char *charToHex(const char &c);
+uint8_t hexToChar(const char &c);
+uint8_t hexToChar(const char &c, const char &d);
+
 size_t encodeSize(size_t);
 size_t decodeSize(size_t);
 
-String encode(const uint8_t *data, size_t len);
-String encode(const Bytes &data);
-String encode(const String &data);
-String encode(const DataReader<ByteOrder::Network> &data);
+String encode(const CoderSource &source);
+void encode(std::basic_ostream<char> &stream, const CoderSource &source);
+size_t encode(char *, size_t bsize, const CoderSource &source);
 
-template <size_t Size>
-String encode(const std::array<uint8_t, Size> &data) {
-	return encode(data.data(), Size);
-}
-
-void encode(std::basic_ostream<char> &stream, const Bytes &data);
-void encode(std::basic_ostream<char> &stream, const String &data);
-void encode(std::basic_ostream<char> &stream, const uint8_t *data, size_t len);
-void encode(std::basic_ostream<char> &stream, const DataReader<ByteOrder::Network> &data);
-
-template <size_t Size>
-void encode(std::basic_ostream<char> &stream, const std::array<uint8_t, Size> &data) {
-	encode(stream, data.data(), Size);
-}
-
-Bytes decode(const char *data, size_t len);
-Bytes decode(const String &data);
-Bytes decode(const CharReaderBase &data);
+Bytes decode(const CoderSource &source);
+void decode(std::basic_ostream<char> &stream, const CoderSource &source);
+size_t decode(uint8_t *, size_t bsize, const CoderSource &source);
 
 NS_SP_EXT_END(base16)
 

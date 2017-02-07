@@ -23,19 +23,18 @@ THE SOFTWARE.
 #ifndef LIBS_STAPPLER_NODES_RICH_TEXT_SPRICHTEXTDRAWER_H_
 #define LIBS_STAPPLER_NODES_RICH_TEXT_SPRICHTEXTDRAWER_H_
 
-#include "SPRichTextLayout.h"
-#include "SPRichTextSource.h"
-#include "SPRichTextResult.h"
+#include "SLDraw.h"
+#include "SPRichText.h"
 #include "SPThread.h"
-#include "SPDraw.h"
+#include "SPDrawGLCacheNode.h"
 
 NS_SP_EXT_BEGIN(rich_text)
 
-class Drawer : public cocos2d::Ref {
+class Drawer : public Ref, public draw::GLCacheNode {
 public:
 	using ObjectVec = std::vector<Object>;
 	using Callback = std::function<void(cocos2d::Texture2D *)>;
-	using Font = font::Source;
+	using Font = font::FontSource;
 
 	static Thread &thread();
 
@@ -61,12 +60,10 @@ public:
 	bool begin(cocos2d::Texture2D *, const Color4B &);
 	void end();
 
-	void cleanup();
-
 	void setColor(const Color4B &);
 	void setLineWidth(float);
 
-	void drawRectangle(const Rect &, draw::Style);
+	void drawRectangle(const Rect &, layout::DrawStyle);
 	void drawRectangleFill(const Rect &);
 	void drawRectangleOutline(const Rect &);
 	void drawRectangleOutline(const Rect &, bool top, bool right, bool bottom, bool left);
@@ -83,12 +80,6 @@ protected:
 	void drawCharsEffects(Font *, const font::FormatSpec &, const Rect & bbox);
 	void drawCharsQuads(cocos2d::Texture2D *, DynamicQuadArray *, const Rect & bbox);
 
-	void bindTexture(GLuint);
-	void useProgram(GLuint);
-	void enableVertexAttribs(uint32_t);
-	void blendFunc(GLenum sfactor, GLenum dfactor);
-	void blendFunc(const cocos2d::BlendFunc &);
-
 	void drawResizeBuffer(size_t count);
 
 	Mat4 _projection;
@@ -102,14 +93,6 @@ protected:
 
 	Color4B _color = Color4B(0, 0, 0, 0);
 	float _lineWidth = 1.0f;
-
-	uint32_t _attributeFlags = 0;
-
-	GLuint _currentTexture = 0;
-	GLuint _currentProgram = 0;
-
-	GLenum _blendingSource;
-	GLenum _blendingDest;
 
 	Time _updated;
 	bool _cacheUpdated = false;

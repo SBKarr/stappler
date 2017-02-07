@@ -26,11 +26,13 @@ CLI_FLAGS := -DSP_RESTRICT -DSP_DRAW=0 -DSP_NO_STOREKIT -DCC_STATIC
 
 CLI_PRECOMPILED_HEADERS += \
 	stappler/src/core/SPDefine.h \
+	layout/SPLayout.h \
 	common/core/SPCore.h \
 	common/core/SPCommon.h
 
 CLI_SRCS_DIRS += \
 	common \
+	layout/types \
 	stappler/src/core \
 	stappler/src/features/ime \
 	stappler/src/features/networking \
@@ -42,10 +44,12 @@ CLI_SRCS_DIRS += \
 	$(COCOS2D_CLI_SRCS_DIRS)
 
 CLI_SRCS_OBJS += \
+	layout/style/SLStyleColors.cpp \
 	$(COCOS2D_CLI_SRCS_OBJS)
 
 CLI_INCLUDES_DIRS += \
 	common \
+	layout \
 	stappler/src
 
 CLI_INCLUDES_OBJS += \

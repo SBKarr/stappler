@@ -67,7 +67,7 @@ void text(const String &, const String &);
 
 #define SPASSERT(cond, msg) do { \
 	if (!(cond)) { \
-		if (strlen(msg)) { stappler::logTag("Assert", "%s", msg);} \
+		if (strlen(msg)) { stappler::log::format("Assert", "%s", msg);} \
 		assert(cond); \
 	} \
 } while (0)

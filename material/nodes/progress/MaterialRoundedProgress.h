@@ -24,7 +24,6 @@ THE SOFTWARE.
 #define LIBS_MATERIAL_NODES_PROGRESS_MATERIALROUNDEDPROGRESS_H_
 
 #include "Material.h"
-#include "MaterialColors.h"
 #include "2d/CCNode.h"
 
 NS_MD_BEGIN

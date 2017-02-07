@@ -201,6 +201,10 @@ public:
 	bool empty() const { return _size == 0; }
 	bool full() const { return _size == Size; }
 
+	void soft_clear() {
+		_size = 0;
+	}
+
 	void clear() {
 		memset(_buf.data(), 0, Size);
 		_size = 0;

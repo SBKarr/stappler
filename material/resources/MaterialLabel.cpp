@@ -25,7 +25,6 @@ THE SOFTWARE.
 
 #include "Material.h"
 #include "MaterialLabel.h"
-#include "MaterialColors.h"
 #include "MaterialResourceManager.h"
 #include "SPEventListener.h"
 
@@ -112,7 +111,7 @@ DynamicLabel::DescriptionStyle Label::getFontStyle(const String &name) {
 	return ResourceManager::getInstance()->getFontStyle(name);
 }
 
-static font::Source *Label_getSourceForStyle(const DynamicLabel::DescriptionStyle &style) {
+static font::FontSource *Label_getSourceForStyle(const DynamicLabel::DescriptionStyle &style) {
 	auto m = ResourceManager::getInstance();
 	if (style.font.fontFamily == "system") {
 		return m->getSystemFontSource();
@@ -257,13 +256,13 @@ void Label::onLightLevel() {
 	if (isAutoLightLevel()) {
 		auto level = material::ResourceManager::getInstance()->getLightLevel();
 		switch(level) {
-		case rich_text::style::LightLevel::Dim:
+		case LightLevel::Dim:
 			setColor(_dimColor);
 			break;
-		case rich_text::style::LightLevel::Normal:
+		case LightLevel::Normal:
 			setColor(_normalColor);
 			break;
-		case rich_text::style::LightLevel::Washed:
+		case LightLevel::Washed:
 			setColor(_washedColor);
 			break;
 		};

@@ -247,6 +247,10 @@ constexpr unsigned long long int operator"" _KiB ( unsigned long long int val ) 
 constexpr char16_t operator"" _c16 (unsigned long long int val) { return (char16_t)val; }
 constexpr char operator"" _c8 (unsigned long long int val) { return (char)val; }
 
+template <typename T>
+constexpr auto to_rad(T val) -> T {
+	return T(val) * T(M_PI) / T(180);
+}
 
 NS_SP_BEGIN
 
@@ -324,7 +328,7 @@ template <class T> inline T progress(const T &a, const T &b, float p) { return (
 
 template <class T, class V>
 struct _ValueReinterpretator {
-	inline static T reinterpret(V v) { T ret; memcpy(&ret, &v, sizeof(T)); return ret; }
+	inline static T reinterpret(V v) { return reinterpret_cast<T &>(v); }
 };
 
 template <class T>
@@ -413,7 +417,7 @@ template <typename T> inline auto GetErrorValue() -> T { return _ErrorValue<T>::
 	inline bool operator == (const std::underlying_type<Type>::type &l, const Type &r) { return l == toInt(r); } \
 	inline bool operator != (const Type &l, const std::underlying_type<Type>::type &r) { return toInt(l) != r; } \
 	inline bool operator != (const std::underlying_type<Type>::type &l, const Type &r) { return l != toInt(r); } \
-
+	inline Type operator~(const Type &t) { return Type(~toInt(t)); }
 
 /*
  *   Value wrapper

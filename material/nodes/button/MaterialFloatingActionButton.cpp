@@ -130,16 +130,12 @@ void FloatingActionButton::setProgress(float value) {
 			_progressPath = nullptr;
 		} else if (_progress != 0.0f) {
 			if (!_progressPath) {
-				_progressPath = construct<draw::Path>();
-				_progressPath->setStrokeColor(Color4B(_progressColor, 222));
-				_progressPath->setStrokeWidth(_progressWidth);
-				_progressPath->setAntialiased(true);
-				_drawNode->addPath(_progressPath);
+				_progressPath = _drawNode->addPath().setStrokeColor(Color4B(_progressColor, 222)).setStrokeWidth(_progressWidth);
 			}
 
-			_progressPath->clear();
-			_progressPath->setStyle(stappler::draw::Path::Style::Stroke);
-			_progressPath->addArc(Rect(26, 26, 44, 44), -90_to_rad, 360_to_rad * _progress);
+			_progressPath.clear()
+					.setStyle(draw::Path::Style::Stroke)
+					.addArc(Rect(26, 26, 44, 44), -90_to_rad, 360_to_rad * _progress);
 		}
 	}
 }
@@ -156,14 +152,14 @@ bool FloatingActionButton::isEnabled() const {
 void FloatingActionButton::setProgressColor(const Color &c) {
 	_progressColor = c;
 	if (_progressPath) {
-		_progressPath->setStrokeColor(c);
+		_progressPath.setStrokeColor(c);
 	}
 }
 
 void FloatingActionButton::setProgressWidth(float f) {
 	_progressWidth = f;
 	if (_progressPath) {
-		_progressPath->setStrokeWidth(f);
+		_progressPath.setStrokeWidth(f);
 	}
 }
 
@@ -270,19 +266,14 @@ void FloatingActionButton::onPressCancel() {
 
 void FloatingActionButton::animateSelection() {
 	if (!_tapAnimationPath) {
-		_tapAnimationPath = construct<draw::Path>();
-		_tapAnimationPath->setStyle(stappler::draw::Path::Style::Fill);
-		_tapAnimationPath->setFillColor(Color4B(Color::White, 32));
-		_drawNode->addPath(_tapAnimationPath);
+		_tapAnimationPath = _drawNode->addPath().setStyle(draw::Path::Style::Fill).setFillColor(Color4B(Color::White, 32));
 	}
 
-	_tapAnimationPath->clear();
+	_tapAnimationPath.clear();
 	stopActionByTag(123);
 	auto a = construct<ProgressAction>(0.15, [this] (ProgressAction *a, float time) {
 		if (_tapAnimationPath) {
-			_tapAnimationPath->clear();
-			_tapAnimationPath->setFillOpacity(32);
-			_tapAnimationPath->addCircle(48.0f, 48.0f, 24.0f + (24.0f * time));
+			_tapAnimationPath.clear().setFillOpacity(32).addCircle(48.0f, 48.0f, 24.0f + (24.0f * time));
 		}
 	});
 	a->setTag(123);
@@ -293,7 +284,7 @@ void FloatingActionButton::animateDeselection() {
 	stopActionByTag(123);
 	auto a = construct<ProgressAction>(0.25, [this] (ProgressAction *a, float time) {
 		if (_tapAnimationPath) {
-			_tapAnimationPath->setFillOpacity(32 * (1.0f - time));
+			_tapAnimationPath.setFillOpacity(32 * (1.0f - time));
 		}
 	}, nullptr, [this] (ProgressAction *a) {
 		if (_tapAnimationPath) {

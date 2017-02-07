@@ -213,7 +213,7 @@ bool TabBar::init(material::MenuSource *source, ButtonStyle button, BarStyle bar
 	if (_source) {
 		size_t idx = 0;
 		for (auto &it : _source->getItems()) {
-			if (auto btn = dynamic_cast<MenuSourceButton *>(it)) {
+			if (auto btn = dynamic_cast<MenuSourceButton *>(it.get())) {
 				if (btn->isSelected()) {
 					_selectedIndex = idx;
 					break;
@@ -269,7 +269,7 @@ void TabBar::onContentSizeDirty() {
 
 	auto &items = _source->getItems();
 	for (auto &item : items) {
-		if (auto btn = dynamic_cast<MenuSourceButton *>(item)) {
+		if (auto btn = dynamic_cast<MenuSourceButton *>(item.get())) {
 			bool wrapped = false;
 			auto w = getItemSize(btn->getName());
 			if (w > metrics::tabMaxWidth()) {
@@ -282,7 +282,7 @@ void TabBar::onContentSizeDirty() {
 	}
 
 	float extraWidth = metrics::tabMinWidth();
-	MenuSource *extraSource = nullptr;
+	Rc<MenuSource> extraSource;
 	if ((_barStyle == BarStyle::Layout) && width > _contentSize.width) {
 		width = 0.0f;
 		ItemData *prev = nullptr;
@@ -292,7 +292,7 @@ void TabBar::onContentSizeDirty() {
 				it.primary = false;
 			} else {
 				if (width + it.width > _contentSize.width) {
-					extraSource = construct<MenuSource>();
+					extraSource = Rc<MenuSource>::create();
 					extraSource->addItem(prev->button);
 					extraSource->addItem(it.button);
 					prev->primary = false;
@@ -394,7 +394,7 @@ void TabBar::setMenuSource(MenuSource *source) {
 		if (_source) {
 			size_t idx = 0;
 			for (auto &it : _source->getItems()) {
-				if (auto btn = dynamic_cast<MenuSourceButton *>(it)) {
+				if (auto btn = dynamic_cast<MenuSourceButton *>(it.get())) {
 					if (btn->isSelected()) {
 						_selectedIndex = idx;
 						break;
@@ -486,7 +486,7 @@ void TabBar::onMenuSource() {
 	_buttonCount = 0;
 	auto &items = _source->getItems();
 	for (auto &item : items) {
-		if (dynamic_cast<MenuSourceButton *>(item)) {
+		if (dynamic_cast<MenuSourceButton *>(item.get())) {
 			++ _buttonCount;
 		}
 	}
@@ -528,7 +528,7 @@ cocos2d::Node *TabBar::onItem(MenuSourceButton *btn, bool wrapped) {
 void TabBar::onTabButton(Button *b, MenuSourceButton *btn) {
 	auto &items = _source->getItems();
 	for (auto &it : items) {
-		auto b = dynamic_cast<MenuSourceButton *>(it);
+		auto b = dynamic_cast<MenuSourceButton *>(it.get());
 		b->setSelected(false);
 	}
 	btn->setSelected(true);
@@ -608,7 +608,7 @@ void TabBar::setSelectedIndex(size_t nidx) {
 
 		size_t idx = 0;
 		for (auto &it : items) {
-			if (auto b = dynamic_cast<MenuSourceButton *>(it)) {
+			if (auto b = dynamic_cast<MenuSourceButton *>(it.get())) {
 				if (idx == nidx) {
 					b->setSelected(true);
 					setSelectedTabIndex(idx);

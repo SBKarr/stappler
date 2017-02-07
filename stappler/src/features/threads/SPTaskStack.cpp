@@ -68,7 +68,7 @@ void TaskStack::push(Rc<Task> &&task) {
 }
 
 void TaskStack::push(const Callback & func, Ref *target) {
-	push(Rc<Task>::create([func] (Ref *obj, bool success) {
+	push(Rc<Task>::create([func] (const Task &, bool success) {
 		if (success) { func(); }
 	}, target));
 }

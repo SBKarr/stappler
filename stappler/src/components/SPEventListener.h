@@ -48,7 +48,7 @@ public:
 	virtual void clear();
 
 	EventHandlerNode * onEvent(const EventHeader &h, const Callback &, bool destroyAfterEvent = false);
-	EventHandlerNode * onEventWithObject(const EventHeader &h, cocos2d::Ref *obj, const Callback &, bool destroyAfterEvent = false);
+	EventHandlerNode * onEventWithObject(const EventHeader &h, layout::Ref *obj, const Callback &, bool destroyAfterEvent = false);
 
 protected:
 	Set<EventHandlerNode *> _handlers;

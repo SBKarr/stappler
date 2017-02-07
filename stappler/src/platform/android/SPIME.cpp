@@ -99,7 +99,7 @@ void Java_org_cocos2dx_lib_Cocos2dxGLSurfaceView_onInputEnabled(JNIEnv *pEnv, jo
 void Java_org_cocos2dx_lib_Cocos2dxGLSurfaceView_onKeyboardNotification(JNIEnv *pEnv, jobject self, jboolean value, jfloat width, jfloat height) {
 	stappler::Thread::onMainThread([value, width, height] () {
 		if (value) {
-			stappler::platform::ime::native::onKeyboardShow(cocos2d::Rect(0, 0, width, height), 0);
+			stappler::platform::ime::native::onKeyboardShow(stappler::Rect(0, 0, width, height), 0);
 		} else {
 			stappler::platform::ime::native::onKeyboardHide(0);
 		}

@@ -80,7 +80,7 @@ bool Recognizer::addTouch(cocos2d::Touch *touch) {
 				return false;
 			}
 		}
-		_touches.pushBack(touch);
+		_touches.emplace_back(touch);
 		return true;
 	} else {
 		return false;
@@ -124,7 +124,7 @@ bool Recognizer::renewTouch(cocos2d::Touch *touch) {
 	int index = -1;
 	cocos2d::Touch *pTouch = getTouchById(touch->getID(), &index);
 	if (pTouch && index >= 0) {
-		_touches.replace(index, touch);
+		_touches[index] = touch;
 		return true;
 	} else {
 		return false;
@@ -132,7 +132,7 @@ bool Recognizer::renewTouch(cocos2d::Touch *touch) {
 }
 
 cocos2d::Touch *Recognizer::getTouchById(int id, int *index) {
-	cocos2d::Touch *pTouch = NULL; ssize_t i = 0;
+	cocos2d::Touch *pTouch = NULL; size_t i = 0;
 	for (i = 0; i < _touches.size(); i ++) {
 		pTouch = _touches.at(i);
 		if (pTouch->getID() == id) {
@@ -144,7 +144,6 @@ cocos2d::Touch *Recognizer::getTouchById(int id, int *index) {
 	}
 	return NULL;
 }
-
 
 Vec2 Recognizer::getLocation() const {
 	if (_touches.size() > 0) {

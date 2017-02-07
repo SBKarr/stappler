@@ -33,50 +33,44 @@ NS_SP_BEGIN
 struct _DelayedReleaser {
 	void update(float dt);
 
-	inline void releaseAfterTime(cocos2d::Ref *, float, const std::string &name);
-	inline void releaseAfterFrames(cocos2d::Ref *, uint64_t, const std::string &name);
+	inline void releaseAfterTime(Ref *, float, const String &name);
+	inline void releaseAfterFrames(Ref *, uint64_t, const String &name);
 
 	inline void registerWithDispatcher();
 	inline void unregisterWithDispatcher();
 
-	inline void storeRef(cocos2d::Ref *, const std::string &name);
-	inline void removeRef(cocos2d::Ref *);
-	inline cocos2d::Ref *getRef(const std::string &name) const;
+	inline void storeRef(Ref *, const String &name);
+	inline void removeRef(Ref *);
+	inline Rc<Ref> getRef(const String &name) const;
 
 	bool _registred = false;
-	std::map<cocos2d::Ref *, uint64_t> _frames;
-	std::map<cocos2d::Ref *, std::string> _names;
-	std::map<std::string, cocos2d::Ref *> _refs;
+	Map<Ref *, uint64_t> _frames;
+	Map<Ref *, String> _names;
+	Map<String, Rc<Ref>> _refs;
 };
 
-static _DelayedReleaser * s_delayedReleaser = nullptr;
+static _DelayedReleaser s_delayedReleaser;
 
-void storeForSeconds(cocos2d::Ref *ref, float t, const std::string &name) {
+void storeForSeconds(Ref *ref, float t, const String &name) {
 	if (ref) {
-		if (!s_delayedReleaser) {
-			s_delayedReleaser = new _DelayedReleaser();
-		}
-		s_delayedReleaser->releaseAfterFrames(ref, (uint64_t)ceilf(fabsf(t) * 60.0f), name);
+		s_delayedReleaser.releaseAfterFrames(ref, (uint64_t)ceilf(fabsf(t) * 60.0f), name);
 	}
 }
-void storeForFrames(cocos2d::Ref *ref, uint64_t f, const std::string &name) {
+void storeForFrames(Ref *ref, uint64_t f, const String &name) {
 	if (ref) {
-		if (!s_delayedReleaser) {
-			s_delayedReleaser = new _DelayedReleaser();
-		}
-		s_delayedReleaser->releaseAfterFrames(ref, f, name);
+		s_delayedReleaser.releaseAfterFrames(ref, f, name);
 	}
 }
 
-cocos2d::Ref *getStoredRef(const std::string &name) {
-	if (!name.empty() && s_delayedReleaser) {
-		return s_delayedReleaser->getRef(name);
+Rc<Ref> getStoredRef(const String &name) {
+	if (!name.empty()) {
+		return s_delayedReleaser.getRef(name);
 	}
 	return nullptr;
 }
 
 void _DelayedReleaser::update(float dt) {
-	std::vector<cocos2d::Ref *> releaseFrames;
+	Vector<Ref *> releaseFrames;
 	auto itFrames = _frames.begin();
 	while (itFrames != _frames.end()) {
 		if (itFrames->first->getReferenceCount() == 1) {
@@ -91,7 +85,6 @@ void _DelayedReleaser::update(float dt) {
 	for (auto &it : releaseFrames) {
 		removeRef(it);
 		_frames.erase(it);
-		it->release();
 	}
 	releaseFrames.clear();
 
@@ -100,10 +93,9 @@ void _DelayedReleaser::update(float dt) {
 	}
 }
 
-inline void _DelayedReleaser::releaseAfterFrames(cocos2d::Ref *ref, uint64_t f, const std::string &name) {
+inline void _DelayedReleaser::releaseAfterFrames(Ref *ref, uint64_t f, const String &name) {
 	auto it = _frames.find(ref);
 	if (it == _frames.end()) {
-		ref->retain();
 		_frames.insert(std::make_pair(ref, f));
 		if (!name.empty()) {
 			storeRef(ref, name);
@@ -135,18 +127,18 @@ inline void _DelayedReleaser::unregisterWithDispatcher() {
 #endif
 }
 
-inline void _DelayedReleaser::storeRef(cocos2d::Ref *ref, const std::string &name) {
-	_names.insert(std::make_pair(ref, name));
-	_refs.insert(std::make_pair(name, ref));
+inline void _DelayedReleaser::storeRef(Ref *ref, const String &name) {
+	_names.emplace(ref, name);
+	_refs.emplace(name, ref);
 }
-inline void _DelayedReleaser::removeRef(cocos2d::Ref *ref) {
+inline void _DelayedReleaser::removeRef(Ref *ref) {
 	auto it = _names.find(ref);
 	if (it != _names.end()) {
 		_refs.erase(it->second);
 		_names.erase(it);
 	}
 }
-inline cocos2d::Ref *_DelayedReleaser::getRef(const std::string &name) const {
+inline Rc<Ref> _DelayedReleaser::getRef(const String &name) const {
 	auto it = _refs.find(name);
 	if (it != _refs.end()) {
 		return it->second;

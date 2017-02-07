@@ -29,24 +29,24 @@ NS_SP_BEGIN
 
 class LabelParameters {
 public:
-	using FontParameters = rich_text::style::FontStyleParameters;
-	using TextParameters = rich_text::style::TextLayoutParameters;
+	using FontParameters = layout::style::FontStyleParameters;
+	using TextParameters = layout::style::TextLayoutParameters;
 
-	using TextTransform = rich_text::style::TextTransform;
-	using TextDecoration = rich_text::style::TextDecoration;
-	using Hyphens = rich_text::style::Hyphens;
-	using VerticalAlign = rich_text::style::VerticalAlign;
+	using TextTransform = layout::style::TextTransform;
+	using TextDecoration = layout::style::TextDecoration;
+	using Hyphens = layout::style::Hyphens;
+	using VerticalAlign = layout::style::VerticalAlign;
 
-	using FontStyle = rich_text::style::FontStyle;
-	using FontWeight = rich_text::style::FontWeight;
-	using FontStretch = rich_text::style::FontStretch;
+	using FontStyle = layout::style::FontStyle;
+	using FontWeight = layout::style::FontWeight;
+	using FontStretch = layout::style::FontStretch;
 
 	using Opacity = ValueWrapper<uint8_t, class OpacityTag>;
 	using FontSize = ValueWrapper<uint8_t, class FontSizeTag>;
 	using FontFamily = ValueWrapper<uint32_t, class FontFamilyTag>;
 
-	using Source = font::Source;
-	using Alignment = rich_text::style::TextAlign;
+	using Source = font::FontSource;
+	using Alignment = layout::style::TextAlign;
 
 	struct Style {
 		enum class Name : uint16_t {

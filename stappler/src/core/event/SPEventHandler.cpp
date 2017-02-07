@@ -65,28 +65,28 @@ EventHandlerNode * EventHandler::onEvent(const EventHeader &h, Callback callback
 	return EventHandlerNode::onEvent(h, nullptr, callback, this, destroyAfterEvent);
 }
 
-EventHandlerNode * EventHandler::onEventWithObject(const EventHeader &h, cocos2d::Ref *obj, Callback callback, bool destroyAfterEvent) {
+EventHandlerNode * EventHandler::onEventWithObject(const EventHeader &h, Ref *obj, Callback callback, bool destroyAfterEvent) {
 	return EventHandlerNode::onEvent(h, obj, callback, this, destroyAfterEvent);
 }
 
 void EventHandler::retainInterface() {
-	if (auto ref = dynamic_cast<cocos2d::Ref *>(this)) {
+	if (auto ref = dynamic_cast<Ref *>(this)) {
 		ref->retain();
 	}
 }
 void EventHandler::releaseInterface() {
-	if (auto ref = dynamic_cast<cocos2d::Ref *>(this)) {
+	if (auto ref = dynamic_cast<Ref *>(this)) {
 		ref->release();
 	}
 }
 
-EventHandlerNode * EventHandlerNode::onEvent(const EventHeader &header, cocos2d::Ref *ref, Callback callback, EventHandlerInterface *obj, bool destroyAfterEvent) {
+EventHandlerNode * EventHandlerNode::onEvent(const EventHeader &header, Ref *ref, Callback callback, EventHandlerInterface *obj, bool destroyAfterEvent) {
 	auto h = new EventHandlerNode(header, ref, callback, obj, destroyAfterEvent);
 	obj->addHandlerNode(h);
 	return h;
 }
 
-EventHandlerNode::EventHandlerNode(const EventHeader &header, cocos2d::Ref *ref, Callback callback, EventHandlerInterface *obj, bool destroyAfterEvent)
+EventHandlerNode::EventHandlerNode(const EventHeader &header, Ref *ref, Callback callback, EventHandlerInterface *obj, bool destroyAfterEvent)
 : _destroyAfterEvent(destroyAfterEvent)
 , _eventID(header.getEventID())
 , _callback(callback)

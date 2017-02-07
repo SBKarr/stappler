@@ -177,12 +177,12 @@ float FloatingMenu::getMenuWidth(MenuSource *source) {
 	auto &items = source->getItems();
 	for (auto &item : items) {
 		if (item->getType() == MenuSourceItem::Type::Custom) {
-			float w = static_cast<MenuSourceCustom *>(item)->getMinWidth();
+			float w = static_cast<MenuSourceCustom *>(item.get())->getMinWidth();
 			if (w > minWidth) {
 				minWidth = w;
 			}
 		} else if (item->getType() == MenuSourceItem::Type::Button) {
-			auto btn = static_cast<MenuSourceButton *>(item);
+			auto btn = static_cast<MenuSourceButton *>(item.get());
 			float nameLen = Label::getStringWidth(font, btn->getName(), 0.0f, true);
 			float valueLen = Label::getStringWidth(font, btn->getValue(), 0.0f, true);
 
@@ -225,7 +225,7 @@ float FloatingMenu::getMenuHeight(MenuSource *source) {
 	auto &items = source->getItems();
 	for (auto &item : items) {
 		if (item->getType() == MenuSourceItem::Type::Custom) {
-			height += static_cast<MenuSourceCustom *>(item)->getHeight();
+			height += static_cast<MenuSourceCustom *>(item.get())->getHeight();
 		} else if (item->getType() == MenuSourceItem::Type::Button) {
 			height += metrics::menuItemHeight(getMetrics());
 		} else {
@@ -243,7 +243,7 @@ void FloatingMenu::layoutSubviews() {
 	if (_menu) {
 		auto &items = _menu->getItems();
 		for (auto &item : items) {
-			item->setDirty();
+			item.get()->setDirty();
 		}
 	}
 }

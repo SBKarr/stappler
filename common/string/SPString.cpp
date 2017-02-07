@@ -104,8 +104,7 @@ String urlencode(const String &data) {
 	for (auto &c : data) {
         if (isUrlencodeChar(c)) {
         	ret.push_back('%');
-        	ret.push_back(charToHex((char)(c >> 4) & 0x0F));
-        	ret.push_back(charToHex((char)(c & 0x0F)));
+        	ret.append(base16::charToHex(c), 2);
         } else {
         	ret.push_back(c);
         }
@@ -118,8 +117,7 @@ String urlencode(const Bytes &data) {
 	for (auto &c : data) {
         if (isUrlencodeChar(c)) {
         	ret.push_back('%');
-        	ret.push_back(charToHex((char)(c >> 4) & 0x0F));
-        	ret.push_back(charToHex((char)(c & 0x0F)));
+        	ret.append(base16::charToHex(c), 2);
         } else {
         	ret.push_back(c);
         }
@@ -139,7 +137,7 @@ String urldecode(const String &str) {
 			CharReaderBase hex(r.data() + 1, 2);
 			hex.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::Hexadecimial>>();
 			if (hex.empty()) {
-				ret.push_back((string::hexToChar(r[1]) << 4) | string::hexToChar(r[2]));
+				ret.push_back(base16::hexToChar(r[1], r[2]));
 			} else {
 				ret.append(r.data(), 3);
 			}

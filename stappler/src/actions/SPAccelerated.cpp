@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "SPDefine.h"
 #include "SPAccelerated.h"
+#include "2d/CCNode.h"
 
 #define SP_ACCELERATED_LOG(...)
 //#define SP_ACCELERATED_LOG(...) stappler::log(__VA_ARGS__)

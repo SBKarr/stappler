@@ -25,13 +25,6 @@ THE SOFTWARE.
 
 #include "MaterialIconSources.h"
 #include "SPData.h"
-#include "SPDataSubscription.h"
-#include "base/CCRef.h"
-#include "base/CCVector.h"
-
-#include <vector>
-#include <functional>
-#include <initializer_list>
 
 NS_MD_BEGIN
 
@@ -43,14 +36,14 @@ public:
 		Custom,
 	};
 
-	using AttachCallback = std::function<void(MenuSourceItem *, cocos2d::Node *)>;
+	using AttachCallback = Function<void(MenuSourceItem *, cocos2d::Node *)>;
 
 	virtual bool init();
-	virtual MenuSourceItem * copy();
+	virtual Rc<MenuSourceItem> copy();
 
-	virtual void setCustomData(const stappler::data::Value &);
-	virtual void setCustomData(stappler::data::Value &&);
-	virtual const stappler::data::Value &getCustomData() const;
+	virtual void setCustomData(const data::Value &);
+	virtual void setCustomData(data::Value &&);
+	virtual const data::Value &getCustomData() const;
 
 	virtual void setAttachCallback(const AttachCallback &);
 	virtual void setDetachCallback(const AttachCallback &);
@@ -64,7 +57,7 @@ public:
 
 protected:
 	Type _type = Type::Separator;
-	stappler::data::Value _customData;
+	data::Value _customData;
 
 	AttachCallback _attachCallback;
 	AttachCallback _detachCallback;
@@ -72,11 +65,11 @@ protected:
 
 class MenuSourceCustom : public MenuSourceItem {
 public:
-	using FactoryFunction = std::function<cocos2d::Node *()>;
+	using FactoryFunction = Function<cocos2d::Node *()>;
 
 	virtual bool init() override;
 	virtual bool init(float h, const FactoryFunction &func, bool relative = false);
-	virtual MenuSourceItem * copy() override;
+	virtual Rc<MenuSourceItem> copy() override;
 
 	virtual float getHeight() const;
 	virtual const FactoryFunction & getFactoryFunction() const;
@@ -95,27 +88,27 @@ protected:
 
 class MenuSource : public data::Subscription {
 public:
-	typedef std::function<void (Button *b, MenuSourceButton *)> Callback;
+	typedef Function<void (Button *b, MenuSourceButton *)> Callback;
 
 	virtual bool init() { return true; }
 	virtual ~MenuSource();
 
-	MenuSource *copy();
+	Rc<MenuSource> copy();
 
 	void addItem(MenuSourceItem *);
-	MenuSourceButton * addButton(const std::string &, const Callback & = nullptr);
-	MenuSourceButton * addButton(const std::string &, IconName, const Callback & = nullptr);
-	MenuSourceCustom * addCustom(float h, const MenuSourceCustom::FactoryFunction &func, bool rel = false);
-	MenuSourceItem * addSeparator();
+	Rc<MenuSourceButton> addButton(const String &, const Callback & = nullptr);
+	Rc<MenuSourceButton> addButton(const String &, IconName, const Callback & = nullptr);
+	Rc<MenuSourceCustom> addCustom(float h, const MenuSourceCustom::FactoryFunction &func, bool rel = false);
+	Rc<MenuSourceItem> addSeparator();
 
 	void clear();
 
 	uint32_t count();
 
-	const cocos2d::Vector<MenuSourceItem *> &getItems();
+	const Vector<Rc<MenuSourceItem>> &getItems();
 
 protected:
-	cocos2d::Vector<MenuSourceItem *> _items;
+	Vector<Rc<MenuSourceItem>> _items;
 };
 
 class MenuSourceButton : public MenuSourceItem {
@@ -126,7 +119,7 @@ public:
 
 	virtual bool init(const std::string &, IconName, const Callback &);
 	virtual bool init() override;
-	virtual MenuSourceItem * copy() override;
+	virtual Rc<MenuSourceItem> copy() override;
 
 	virtual void setName(const std::string &);
 	virtual const std::string & getName() const;

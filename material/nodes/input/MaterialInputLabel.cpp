@@ -29,7 +29,6 @@ THE SOFTWARE.
 #include "SPLayer.h"
 #include "SPString.h"
 
-#include "SPDrawPath.h"
 #include "SPDrawPathNode.h"
 #include "SPActions.h"
 #include "SPStrictNode.h"
@@ -99,29 +98,25 @@ bool InputLabel::init(const DescriptionStyle &desc, float w) {
 	_cursorLayer->setOpacity(255);
 	node->addChild(_cursorLayer);
 
-	auto path = Rc<draw::Path>::create();
-	path->moveTo(12.0f, 0.0f);
-	path->lineTo(5.0f, 7.0f);
-	path->arcTo(7.0f * sqrt(2.0f), 7.0f * sqrt(2.0f), 0.0f, true, false, 19.0f, 7.0f);
-	path->closePath();
-
 	_cursorPointer = construct<draw::PathNode>(24, 24);
 	_cursorPointer->setContentSize(Size(24.0f, 24.0f));
 	_cursorPointer->setColor(Color::Grey_500);
-	_cursorPointer->addPath(path);
+	_cursorPointer->addPath(draw::Path()
+		.moveTo(12.0f, 0.0f)
+		.lineTo(5.0f, 7.0f)
+		.arcTo(7.0f * sqrt(2.0f), 7.0f * sqrt(2.0f), 0.0f, true, false, 19.0f, 7.0f)
+		.closePath());
 	_cursorPointer->setAnchorPoint(Vec2(0.5f, _cursorAnchor));
 	_cursorPointer->setOpacity(222);
 	_cursorPointer->setVisible(false);
 	node->addChild(_cursorPointer);
 
-	path = Rc<draw::Path>::create();
-	path->moveTo(48, 0);
-	path->lineTo(24, 0);
-	path->arcTo(24, 24, 0, true, false, 48, 24);
-	path->closePath();
-
 	_cursorStart = construct<draw::PathNode>(48, 48);
-	_cursorStart->addPath(path);
+	_cursorStart->addPath(draw::Path()
+		.moveTo(48, 0)
+		.lineTo(24, 0)
+		.arcTo(24, 24, 0, true, false, 48, 24)
+		.closePath());
 	_cursorStart->setContentSize(Size(24.0f, 24.0f));
 	_cursorStart->setAnchorPoint(Vec2(1.0f, _cursorAnchor));
 	_cursorStart->setColor(_cursorColor);
@@ -129,14 +124,12 @@ bool InputLabel::init(const DescriptionStyle &desc, float w) {
 	_cursorStart->setVisible(false);
 	node->addChild(_cursorStart);
 
-	path = Rc<draw::Path>::create();
-	path->moveTo(0, 0);
-	path->lineTo(0, 24);
-	path->arcTo(24, 24, 0, true, false, 24, 0);
-	path->closePath();
-
 	_cursorEnd = construct<draw::PathNode>(48, 48);
-	_cursorEnd->addPath(path);
+	_cursorEnd->addPath(draw::Path()
+		.moveTo(0, 0)
+		.lineTo(0, 24)
+		.arcTo(24, 24, 0, true, false, 24, 0)
+		.closePath());
 	_cursorEnd->setContentSize(Size(24.0f, 24.0f));
 	_cursorEnd->setAnchorPoint(Vec2(0.0f, _cursorAnchor));
 	_cursorEnd->setColor(_cursorColor);

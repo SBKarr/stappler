@@ -70,13 +70,13 @@ bool SyncRWLock::isLocked() const {
 	return _lock != Lock::None;
 }
 
-bool SyncRWLock::retainReadLock(cocos2d::Ref *ref, const LockAcquiredCallback &cb) {
+bool SyncRWLock::retainReadLock(Ref *ref, const LockAcquiredCallback &cb) {
 	ref->retain();
 	return retainReadLock((LockPtr)ref, std::bind(&SyncRWLock::onReferenceLocked, this, ref, cb));
 }
 
 // retains ref until callback is called
-bool SyncRWLock::retainWriteLock(cocos2d::Ref *ref, const LockAcquiredCallback &cb) {
+bool SyncRWLock::retainWriteLock(Ref *ref, const LockAcquiredCallback &cb) {
 	ref->retain();
 	return retainWriteLock((LockPtr)ref, std::bind(&SyncRWLock::onReferenceLocked, this, ref, cb));
 }
@@ -124,7 +124,7 @@ void SyncRWLock::queueLock(LockPtr ptr, const LockAcquiredCallback &cb, Lock val
 	}
 }
 
-void SyncRWLock::onReferenceLocked(cocos2d::Ref *ref, const LockAcquiredCallback &cb) {
+void SyncRWLock::onReferenceLocked(Ref *ref, const LockAcquiredCallback &cb) {
 	cb();
 	ref->release();
 }

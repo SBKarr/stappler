@@ -25,7 +25,6 @@ THE SOFTWARE.
 
 #include "SPCommon.h"
 #include "SPNetworkHandle.h"
-#include "SPThreadLocal.h"
 #include "SPFilesystem.h"
 #include "SPCharReader.h"
 #include "SPString.h"
@@ -38,7 +37,9 @@ THE SOFTWARE.
 #include <curl/curl.h>
 
 #define SP_NW_CONNECT_TIMEOUT 20
-#define SP_NW_READ_TIMEOUT 60
+#define SP_NW_READ_TIMEOUT 30
+#define SP_NW_LOW_SPEED_TIME 20
+#define SP_NW_LOW_SPEED_LIMIT 20_KiB
 #define SP_NETWORK_PROGRESS_TIMEOUT stappler::TimeInterval::microseconds(250000ull)
 
 #define SP_NETWORK_LOG(...)
@@ -256,7 +257,9 @@ bool NetworkHandle::setupCurl(CURL *curl, char *errorBuffer) {
 	SETOPT(check, curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_WHATEVER);
 
 	SETOPT(check, curl, CURLOPT_ERRORBUFFER, errorBuffer);
-	SETOPT(check, curl, CURLOPT_TIMEOUT, SP_NW_READ_TIMEOUT);
+	SETOPT(check, curl, CURLOPT_LOW_SPEED_TIME, SP_NW_LOW_SPEED_TIME);
+	SETOPT(check, curl, CURLOPT_LOW_SPEED_LIMIT, SP_NW_LOW_SPEED_LIMIT);
+	//SETOPT(check, curl, CURLOPT_TIMEOUT, SP_NW_READ_TIMEOUT);
 	SETOPT(check, curl, CURLOPT_CONNECTTIMEOUT, SP_NW_CONNECT_TIMEOUT);
 
 #if (DEBUG)
@@ -642,7 +645,7 @@ bool NetworkHandle::perform() {
         }
 	} else {
 		if (!_silent) {
-	    	log::format("CURL", "fail to perform %s: %s", _url.c_str(), errorBuffer);
+	    	log::format("CURL", "fail to perform %s: (%ld) %s",  _url.c_str(), _errorCode, errorBuffer);
 		}
 		_error = errorBuffer;
 		success = false;

@@ -34,7 +34,6 @@ THE SOFTWARE.
 #include "SPEvent.h"
 
 #include "2d/CCActionInterval.h"
-#include "2d/CCTransition.h"
 
 NS_SP_BEGIN
 
@@ -93,11 +92,6 @@ cocos2d::Scene * Screen_getCurrentScene() {
     cocos2d::Scene *scene = cocos2d::Director::getInstance()->getNextScene();
     if (!scene) {
         scene = cocos2d::Director::getInstance()->getRunningScene();
-    }
-
-    cocos2d::TransitionScene *transitionScene = dynamic_cast<cocos2d::TransitionScene *>(scene);
-    if (transitionScene) {
-    	scene = transitionScene->getInScene();
     }
 
     return scene;

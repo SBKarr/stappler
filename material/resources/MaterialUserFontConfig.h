@@ -28,9 +28,9 @@ THE SOFTWARE.
 
 NS_MD_BEGIN
 
-class UserFontConfig : public font::Controller {
+class UserFontConfig : public font::FontController {
 public:
-	using Source = font::Source;
+	using Source = font::FontSource;
 	using FontParameters = font::FontParameters;
 	using FontFace = font::FontFace;
 

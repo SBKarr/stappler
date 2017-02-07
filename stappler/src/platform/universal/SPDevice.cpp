@@ -171,7 +171,7 @@ void Device::setScissorAvailable(bool value) {
 }
 
 void Device::registerDeviceToken(const uint8_t *data, size_t len) {
-    registerDeviceToken(base16::encode(data, len));
+    registerDeviceToken(base16::encode(CoderSource(data, len)));
 }
 
 void Device::registerDeviceToken(const String &data) {

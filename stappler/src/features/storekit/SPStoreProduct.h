@@ -28,7 +28,7 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
-class StoreProduct : public cocos2d::Ref {
+class StoreProduct : public Ref {
 public:
 	data::Value encode();
 	data::Value info();

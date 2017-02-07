@@ -240,14 +240,8 @@ bool JsonBuffer::parseString(Reader &r, bool tryWhole) {
 			buf.putc(r[0]);
 			++ r;
 			{
-				uint32_t c = 0;
 				auto e = buf.pop(4);
-				for (int i = 0; i < 4; i++) {
-					c = (c << 4) | (string::hexToChar( e[0] ) & 0xF);
-					++ e;
-				}
-
-				buf.putc((char16_t)c);
+				buf.putc(char16_t(base16::hexToChar(e[0], e[1]) << 8 | base16::hexToChar(e[2], e[3]) ));
 			}
 			literal = Literal::String;
 			break;

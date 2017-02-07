@@ -24,9 +24,9 @@ THE SOFTWARE.
 #define CLASSES_MATERIAL_NODES_MATERIALBUTTON_H_
 
 #include "MaterialNode.h"
-#include "MaterialColors.h"
 #include "MaterialLabel.h"
 #include "MaterialMenuSource.h"
+#include "SPDrawPathNode.h"
 
 NS_MD_BEGIN
 
@@ -61,7 +61,7 @@ public:
 	virtual void setGesturePriority(int32_t);
 	virtual void setAnimationOpacity(uint8_t);
 
-	virtual bool onPressBegin(const cocos2d::Vec2 &location);
+	virtual bool onPressBegin(const Vec2 &location);
     virtual void onLongPress();
 	virtual bool onPressEnd();
 	virtual void onPressCancel();
@@ -84,7 +84,7 @@ public:
 	virtual void setMenuSourceButton(MenuSourceButton *);
 	virtual MenuSourceButton *getMenuSourceButton() const;
 
-	virtual const cocos2d::Vec2 & getTouchPoint() const;
+	virtual const Vec2 & getTouchPoint() const;
 
 	virtual void cancel();
 
@@ -99,8 +99,8 @@ protected:
 	virtual void endSelection();
 	virtual float getSelectionProgress() const;
 
-	virtual stappler::draw::Path * beginSpawn();
-	virtual void updateSpawn(float progress, stappler::draw::Path *path, const cocos2d::Size &size, const cocos2d::Point &point);
+	virtual draw::Image::PathRef beginSpawn();
+	virtual void updateSpawn(float progress, draw::Image::PathRef & path, const Size &size, const Vec2 &point);
 	virtual void endSpawn();
 	virtual void dropSpawn();
 
@@ -114,12 +114,12 @@ protected:
 
 	virtual void onOpenMenuSource();
 
-	std::function<void()> _tapCallback = nullptr;
-	std::function<void()> _longTapCallback = nullptr;
+	Function<void()> _tapCallback = nullptr;
+	Function<void()> _longTapCallback = nullptr;
 	TouchFilter _touchFilter = nullptr;
 	gesture::Listener *_listener = nullptr;
 
-	stappler::draw::PathNode *_animationNode = nullptr;
+	draw::PathNode *_animationNode = nullptr;
 	uint32_t _animationCount = 0;
 
 	Vec2 _touchPoint;

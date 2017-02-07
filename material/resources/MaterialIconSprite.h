@@ -24,7 +24,6 @@ THE SOFTWARE.
 #define CLASSES_MATERIAL_MATERIALICON_H_
 
 #include "SPDrawPathNode.h"
-#include "MaterialColors.h"
 #include "MaterialIconSources.h"
 
 #include "2d/CCActionInterval.h"
@@ -64,7 +63,7 @@ protected:
 
 	virtual cocos2d::GLProgramState *getProgramStateI8() const override;
 
-	virtual void updateCanvas() override;
+	virtual void updateCanvas(layout::Subscription::Flags f) override;
 	virtual void setDynamicIcon(DynamicIcon *);
 	virtual void setStaticIcon(IconName);
 

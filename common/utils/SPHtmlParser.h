@@ -64,10 +64,11 @@ struct Reader {
 };
  */
 
+template <typename StringReader>
 struct Tag;
 
-template <typename ReaderType, typename TagType = html::Tag>
-void parse(ReaderType &r, const CharReaderUtf8 &s);
+template <typename ReaderType, typename StringReader = CharReaderUtf8, typename TagType = html::Tag<StringReader>>
+void parse(ReaderType &r, const StringReader &s);
 
 InvokerCallTest_MakeInvoker(Html, onBeginTag);
 InvokerCallTest_MakeInvoker(Html, onEndTag);
@@ -109,14 +110,18 @@ public:
 	InvokerCallTest_MakeCallMethod(Html, onReadAttributeValue, T);
 };
 
+template <typename StringReader>
+auto Tag_readName(StringReader &is) -> StringReader;
+
+template <typename StringReader>
+auto Tag_readAttrName(StringReader &s) -> StringReader;
+
+template <typename StringReader>
+auto Tag_readAttrValue(StringReader &s) -> StringReader;
+
+template <typename __StringReader>
 struct Tag : public ReaderClassBase<char16_t> {
-	using StringReader = CharReaderUtf8;
-
-	static void readQuotedString(StringReader &s, StringStream &str, char quoted);
-
-	static StringReader readName(StringReader &is);
-	static StringReader readAttrName(StringReader &s);
-	static StringReader readAttrValue(StringReader &s);
+	using StringReader = __StringReader;
 
 	Tag(const StringReader &name) : name(name) {
 		if (name.is('!')) {
@@ -133,10 +138,24 @@ struct Tag : public ReaderClassBase<char16_t> {
 	bool closable = true;
 };
 
-template <typename ReaderType, typename TagType = Tag, typename Traits = ParserTraits<ReaderType>>
-struct Parser : public ReaderClassBase<char16_t> {
-	using StringReader = CharReaderUtf8;
+template <typename ReaderType, typename __StringReader = CharReaderUtf8, typename TagType = Tag<__StringReader>, typename Traits = ParserTraits<ReaderType>>
+struct Parser {
+	using StringReader = __StringReader;
+	using CharType = typename StringReader::MatchCharType;
 	using Tag = TagType;
+
+	template <CharType ... Args>
+	using Chars = chars::Chars<CharType, Args...>;
+
+	template <CharType First, CharType Last>
+	using Range = chars::Chars<CharType, First, Last>;
+
+	using GroupId = chars::CharGroupId;
+
+	template <GroupId G>
+	using Group = chars::CharGroup<CharType, G>;
+
+	using LtChar = Chars<'<'>;
 
 	Parser(ReaderType &r) : reader(&r) { }
 
@@ -148,12 +167,13 @@ struct Parser : public ReaderClassBase<char16_t> {
 	bool parse(const StringReader &r) {
 		current = r;
 		while (!current.empty()) {
-			auto prefix = current.readUntil<Chars<u'<'>>(); // move to next tag
+			auto prefix = current.template readUntil<LtChar>(); // move to next tag
 			if (!prefix.empty()) {
 				if (!tagStack.empty()) {
 					onTagContent(tagStack.back(), prefix);
 				} else {
-					TagType t{StringReader()};
+					StringReader r;;
+					Tag t(r);
 					onTagContent(t, prefix);
 				}
 			}
@@ -166,7 +186,7 @@ struct Parser : public ReaderClassBase<char16_t> {
 			if (current.is('/')) { // close some parsed tag
 				++ current; // drop '/'
 
-				auto tag = current.readUntil<Chars<'>'>>();
+				auto tag = current.template readUntil<Chars<'>'>>();
 				if (!tag.empty() && current.is('>') && !tagStack.empty()) {
 					auto it = tagStack.end();
 					do {
@@ -195,7 +215,7 @@ struct Parser : public ReaderClassBase<char16_t> {
 			} else {
 				auto name = onReadTagName(current);
 				if (name.empty()) { // found tag without readable name
-					current.skipUntil<Chars<'>'>>();
+					current.template skipUntil<Chars<'>'>>();
 					if (current.is('>')) {
 						current ++;
 					}
@@ -213,7 +233,7 @@ struct Parser : public ReaderClassBase<char16_t> {
 				}
 
 				if (name.is('!')) {
-					current.skipUntil<Chars<'>'>>();
+					current.template skipUntil<Chars<'>'>>();
 					if (current.is('>')) {
 						++ current;
 					}
@@ -242,7 +262,7 @@ struct Parser : public ReaderClassBase<char16_t> {
 					tag.setClosable(false);
 				}
 
-				current.skipUntil<Chars<'>'>>();
+				current.template skipUntil<Chars<'>'>>();
 				if (current.is('>')) {
 					++ current;
 				}
@@ -275,7 +295,7 @@ struct Parser : public ReaderClassBase<char16_t> {
 			Traits::onReadTagName(*reader, *this, ret);
 			return ret;
 		} else {
-			return TagType::readName(str);
+			return Tag_readName(str);
 		}
 	}
 
@@ -285,7 +305,7 @@ struct Parser : public ReaderClassBase<char16_t> {
 			Traits::onReadAttributeName(*reader, *this, ret);
 			return ret;
 		} else {
-			return TagType::readAttrName(str);
+			return Tag_readAttrName(str);
 		}
 	}
 
@@ -295,7 +315,7 @@ struct Parser : public ReaderClassBase<char16_t> {
 			Traits::onReadAttributeValue(*reader, *this, ret);
 			return ret;
 		} else {
-			return TagType::readAttrValue(str);
+			return Tag_readAttrValue(str);
 		}
 	}
 
@@ -313,9 +333,9 @@ struct Parser : public ReaderClassBase<char16_t> {
 	Vector<TagType> tagStack;
 };
 
-template <typename ReaderType, typename TagType>
-void parse(ReaderType &r, const CharReaderUtf8 &s) {
-	html::Parser<ReaderType, TagType> p(r);
+template <typename ReaderType, typename StringReader, typename TagType>
+void parse(ReaderType &r, const StringReader &s) {
+	html::Parser<ReaderType, StringReader, TagType> p(r);
 	p.parse(s);
 }
 

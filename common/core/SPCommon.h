@@ -63,6 +63,7 @@ struct TypeTraits {
 	using output_file_stream = std::ofstream;
 
 	using allocator_base = AllocBase;
+	using mutex_type = std::mutex;
 
 	template <typename T, typename Compare = std::less<T>>
 	using set_type = std::set<T, Compare>;
@@ -109,6 +110,7 @@ struct TypeTraits {
 	using output_file_stream = apr::ofstream;
 
 	using allocator_base = apr::AllocPool;
+	using mutex_type = apr::mutex;
 
 	template <typename T, typename Compare = std::less<>>
 	using set_type = apr::set<T, Compare>;
@@ -173,10 +175,13 @@ template <typename T, typename Compare = std::less<void>>
 using Set = toolkit::TypeTraits::set_type<T, Compare>;
 
 using AllocBase = toolkit::TypeTraits::allocator_base;
+using Mutex = toolkit::TypeTraits::mutex_type;
 
 template <typename T> auto StringToNumber(const String &str) -> T {
 	return StringToNumber<T>(str.c_str(), nullptr);
 }
+
+using FilePath = ValueWrapper<String, class FilePathTag>;
 
 NS_SP_END
 

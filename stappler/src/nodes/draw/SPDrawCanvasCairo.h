@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef STAPPLER_SRC_NODES_DRAW_SPDRAWCANVASCAIRO_H_
 #define STAPPLER_SRC_NODES_DRAW_SPDRAWCANVASCAIRO_H_
 
-#include "SPDrawCanvas.h"
+#include "SPDrawPathNode.h"
 
 typedef struct _cairo_surface cairo_surface_t;
 typedef struct _cairo cairo_t;
@@ -34,32 +34,32 @@ class CanvasCairo : public Canvas {
 public:
 	virtual ~CanvasCairo();
 
-	virtual bool init();
+	virtual bool init() override;
 
-	virtual void begin(cocos2d::Texture2D *, const Color4B &);
-	virtual void end();
+	virtual void begin(cocos2d::Texture2D *, const Color4B &) override;
+	virtual void end() override;
 
-	virtual void scale(float sx, float sy);
-	virtual void translate(float tx, float ty);
+	virtual void scale(float sx, float sy) override;
+	virtual void translate(float tx, float ty) override;
+	virtual void transform(const Mat4 &) override;
 
-	virtual void save();
-	virtual void restore();
+	virtual void save() override;
+	virtual void restore() override;
 
-	virtual void setAntialiasing(bool);
-	virtual void setLineWidth(float);
+	virtual void setAntialiasing(bool) override;
+	virtual void setLineWidth(float) override;
 
-	virtual void pathBegin();
-	virtual void pathClose();
-	virtual void pathMoveTo(float x, float y);
-	virtual void pathLineTo(float x, float y);
-	virtual void pathQuadTo(float x1, float y1, float x2, float y2);
-	virtual void pathCubicTo(float x1, float y1, float x2, float y2, float x3, float y3);
-	virtual void pathArcTo(float xc, float yc, float rx, float ry, float startAngle, float sweepAngle, float rotation);
-	virtual void pathAltArcTo(float rx, float ry, float angle, bool largeArc, bool sweep, float x, float y);
+	virtual void pathBegin() override;
+	virtual void pathClose() override;
+	virtual void pathMoveTo(float x, float y) override;
+	virtual void pathLineTo(float x, float y) override;
+	virtual void pathQuadTo(float x1, float y1, float x2, float y2) override;
+	virtual void pathCubicTo(float x1, float y1, float x2, float y2, float x3, float y3) override;
+	virtual void pathArcTo(float rx, float ry, float angle, bool largeArc, bool sweep, float x, float y) override;
 
-	virtual void pathFill(const Color4B &);
-	virtual void pathStroke(const Color4B &);
-	virtual void pathFillStroke(const Color4B &fill, const Color4B &stroke);
+	virtual void pathFill(const Color4B &) override;
+	virtual void pathStroke(const Color4B &) override;
+	virtual void pathFillStroke(const Color4B &fill, const Color4B &stroke) override;
 
 protected:
 	bool _begin = false;

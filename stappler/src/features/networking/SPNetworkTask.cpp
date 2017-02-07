@@ -34,8 +34,6 @@ THE SOFTWARE.
 #include "SPThreadManager.h"
 #include "SPString.h"
 
-#include "SPThreadLocal.h"
-
 #ifndef SP_NETWORK_THREADS
 #define SP_NETWORK_THREADS 3
 #endif

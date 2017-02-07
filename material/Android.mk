@@ -2,18 +2,15 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
+include $(LOCAL_PATH)/../build/android/export.mk
 LOCAL_MODULE := material_static
-LOCAL_MODULE_FILENAME := material
-LOCAL_SRC_FILES := \
-		$(shell find $(LOCAL_PATH) -name "*.cpp")
+LOCAL_MODULE_FILENAME := libmaterial
 
-LOCAL_EXPORT_C_INCLUDES := $(shell find $(LOCAL_PATH) -type d)
+LOCAL_SRC_FILES := $(LOCAL_PATH)/../build/android/$(BUILD_TYPE)/$(TARGET_ARCH_ABI)/libmaterial.a
 
-LOCAL_C_INCLUDES := $(shell find $(LOCAL_PATH) -type d)
+LOCAL_EXPORT_C_INCLUDES :=  $(patsubst ./%,$(SP_PATH)/%,$(MATERIAL_INCLUDES))
 
-LOCAL_STATIC_LIBRARIES := stappler_static
+include $(PREBUILT_STATIC_LIBRARY)
 
-include $(BUILD_STATIC_LIBRARY)
-
-$(call import-module,stappler/src)
+$(call import-module,stappler)
 $(call import-module,libs)

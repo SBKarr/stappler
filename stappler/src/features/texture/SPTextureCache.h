@@ -36,9 +36,18 @@ class TextureCache : public EventHandler {
 public:
 	static constexpr float GetDelayTime() { return 1.0f; }
 
+	enum class RenderTarget : uint32_t {
+		RGBA8 = 1 << 0, // 32-bit full-color
+		RGB8 = 1 << 1, // 24-bit RGB
+		RG8 = 1 << 2, // 16-bit two-channel
+		R8 = 1 << 3, // 8-bit single-channel
+	};
+
 	using Callback = Function<void(cocos2d::Texture2D *)>;
 	using CallbackVec = Vector<Callback>;
 	using CallbackMap = Map<String, CallbackVec>;
+
+	static bool isRenderTargetSupported(RenderTarget);
 
 	static TextureCache *getInstance();
 	static Thread &thread();
@@ -108,6 +117,9 @@ protected:
 
 	Rc<GLProgramSet> _batchDrawing;
 	Rc<GLProgramSet> _rawDrawing;
+
+	Rc<GLProgramSet> _threadBatchDrawing;
+	Rc<GLProgramSet> _threadRawDrawing;
 };
 
 NS_SP_END

@@ -25,7 +25,6 @@ THE SOFTWARE.
 
 #include "Material.h"
 #include "MaterialLinearProgress.h"
-#include "MaterialColors.h"
 
 #include "SPProgressAction.h"
 

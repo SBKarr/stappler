@@ -112,13 +112,13 @@ public:
 	using ContainerType = _Container;
 
 	template <CharType ... Args>
-	using Chars = chars::Chars<CharType, Args...>;
+	using MatchChars = chars::Chars<CharType, Args...>;
 
 	template <char First, char Last>
-	using Range = chars::Range<CharType, First, Last>;
+	using MatchRange = chars::Range<CharType, First, Last>;
 
 	template <chars::CharGroupId Group>
-	using CharGroup = chars::CharGroup<CharType, Group>;
+	using MatchCharGroup = chars::CharGroup<CharType, Group>;
 
 	CharReaderDefault() : BytesReader<_CharType, _Container>(nullptr, 0) { }
 	explicit CharReaderDefault(const ContainerType &str) : BytesReader<_CharType, _Container>(str.c_str(), str.length()) { }
@@ -156,7 +156,7 @@ public:
 	inline bool is() const { return this->len > 0 && *this->ptr ==C; }
 
 	template <chars::CharGroupId G>
-	inline bool is() const { return this->len > 0 && CharGroup<G>::match(*this->ptr); }
+	inline bool is() const { return this->len > 0 && MatchCharGroup<G>::match(*this->ptr); }
 
 	template <typename M>
 	inline bool is() const { return this->len > 0 && M::match(*this->ptr); }
@@ -166,82 +166,126 @@ public:
 	int64_t readInteger() { return CharReader_readNumber<int64_t>(this->ptr, this->len); }
 
 public:
-    template <typename... Args> void skipChars() {
-    	size_t offset = 0;
-    	while (this->len > offset && match<Args...>(this->ptr[offset])) {
-    		++ offset;
-    	}
-    	this->len -= offset; this->ptr += offset;
-    }
+	template<typename ... Args> void skipChars() {
+		size_t offset = 0;
+		while (this->len > offset && match<Args...>(this->ptr[offset])) {
+			++offset;
+		}
+		this->len -= offset;
+		this->ptr += offset;
+	}
 
-    template <typename... Args> void skipUntil() {
-    	size_t offset = 0;
-    	while (this->len > offset && !match<Args...>(this->ptr[offset])) {
-    		++ offset;
-    	}
-    	this->len -= offset; this->ptr += offset;
-    }
+	template<typename ... Args> void skipUntil() {
+		size_t offset = 0;
+		while (this->len > offset && !match<Args...>(this->ptr[offset])) {
+			++offset;
+		}
+		this->len -= offset;
+		this->ptr += offset;
+	}
 
-    template <typename... Args> Self readChars() {
-    	if (!this->ptr) {
-    		return Self(nullptr, 0);
-    	}
+	template<typename ... Args> Self readChars() {
+		if (!this->ptr) {
+			return Self(nullptr, 0);
+		}
 
-    	auto newPtr = this->ptr;
-    	size_t newLen = 0;
-    	while (this->len > newLen && match<Args...>(this->ptr[newLen])) {
-    		++ newLen;
-    	}
+		auto newPtr = this->ptr;
+		size_t newLen = 0;
+		while (this->len > newLen && match<Args...>(this->ptr[newLen])) {
+			++newLen;
+		}
 
-    	this->ptr += newLen; this->len -= newLen;
-    	return Self(newPtr, newLen);
-    }
+		this->ptr += newLen;
+		this->len -= newLen;
+		return Self(newPtr, newLen);
+	}
 
-    template <typename... Args> Self readUntil() {
-    	if (!this->ptr) {
-    		return Self(nullptr, 0);
-    	}
+	template<typename ... Args> Self readUntil() {
+		if (!this->ptr) {
+			return Self(nullptr, 0);
+		}
 
-    	auto newPtr = this->ptr;
-    	size_t newLen = 0;
-    	while (this->len > newLen && !match<Args...>(this->ptr[newLen])) {
-    		++ newLen;
-    	}
+		auto newPtr = this->ptr;
+		size_t newLen = 0;
+		while (this->len > newLen && !match<Args...>(this->ptr[newLen])) {
+			++newLen;
+		}
 
-    	this->ptr += newLen; this->len -= newLen;
-    	return Self(newPtr, newLen);
-    }
+		this->ptr += newLen;
+		this->len -= newLen;
+		return Self(newPtr, newLen);
+	}
 
-    bool skipString(const ContainerType &str) {
-    	if (!this->ptr) { return false; }
-    	if (*this == str) {
-    		this->ptr += str.length();
-    		this->len -= str.length();
-    		return true;
-    	}
-    	return false;
-    }
-    bool skipUntilString(const ContainerType &str, bool stopBeforeString = true) {
-    	if (!this->ptr) { return false; }
+	bool skipString(const ContainerType &str) {
+		if (!this->ptr) {
+			return false;
+		}
+		if (*this == str) {
+			this->ptr += str.length();
+			this->len -= str.length();
+			return true;
+		}
+		return false;
+	}
+	bool skipUntilString(const ContainerType &str, bool stopBeforeString = true) {
+		if (!this->ptr) {
+			return false;
+		}
 
-    	while (this->len >= 1 && *this != str) { this->ptr += 1; this->len -= 1; }
-    	if (this->len > 0 && *this->ptr != 0 && !stopBeforeString) {
-    		skipString(str);
-    	}
+		while (this->len >= 1 && *this != str) {
+			this->ptr += 1;
+			this->len -= 1;
+		}
+		if (this->len > 0 && *this->ptr != 0 && !stopBeforeString) {
+			skipString(str);
+		}
 
-    	return this->len > 0 && *this->ptr != 0;
-    }
-    Self readUntilString(const ContainerType &str) {
-    	if (!this->ptr) { return Self(nullptr, 0); }
+		return this->len > 0 && *this->ptr != 0;
+	}
+	Self readUntilString(const ContainerType &str) {
+		if (!this->ptr) {
+			return Self(nullptr, 0);
+		}
 
-    	auto newPtr = this->ptr;
-    	size_t newLen = 0;
+		auto newPtr = this->ptr;
+		size_t newLen = 0;
 
-    	while (this->ptr[0] && this->len >= 1 && *this != str) {
-    		this->ptr += 1; this->len -= 1; newLen += 1;
-    	}
+		while (this->ptr[0] && this->len >= 1 && *this != str) {
+			this->ptr += 1;
+			this->len -= 1;
+			newLen += 1;
+		}
 
-    	return Self(newPtr, newLen);
+		return Self(newPtr, newLen);
+	}
+
+	template<typename Separator, typename Callback> void split(const Callback &cb) const {
+		Self str(*this);
+		while (!str.empty()) {
+			str.skipChars<Separator>();
+			auto tmp = str.readUntil<Separator>();
+			if (!tmp.empty()) {
+				cb(tmp);
+			}
+		}
+	}
+
+	template<typename ... Args> void trimChars() {
+		this->skipChars<Args...>();
+		if (!this->empty()) {
+			while (this->len > 0 && match<Args...>(this->ptr[this->len - 1])) {
+				-- this->len;
+			}
+		}
+	}
+
+    template <typename... Args> void trimUntil() {
+		this->skipUntil<Args...>();
+		if (!this->empty()) {
+			while (this->len > 0 && !match<Args...>(this->ptr[this->len - 1])) {
+				-- this->len;
+			}
+		}
     }
 
 protected:
@@ -259,6 +303,15 @@ public:
 	using Self = CharReaderUtf8;
 	using MatchCharType = char16_t;
 	using CharType = char;
+
+	template <CharType ... Args>
+	using MatchChars = chars::Chars<MatchCharType, Args...>;
+
+	template <char First, char Last>
+	using MatchRange = chars::Range<MatchCharType, First, Last>;
+
+	template <chars::CharGroupId Group>
+	using MatchCharGroup = chars::CharGroup<MatchCharType, Group>;
 
 	CharReaderUtf8() : BytesReader("", 0) { }
 	explicit CharReaderUtf8(const String &str) : BytesReader(str.c_str(), str.length()) { }
@@ -333,89 +386,153 @@ public:
 	int64_t readInteger() { return CharReader_readNumber<int64_t>(ptr, len); }
 
 public:
-    template <typename... Args> void skipChars() {
-    	uint8_t clen = 0;
-    	size_t offset = 0;
-    	while (len > offset && match<Args...>(unicode::utf8Decode(ptr + offset, clen))) {
-    		offset += clen;
-    	}
-    	len -= offset; ptr += offset;
-    }
+	template<typename ... Args> void skipChars() {
+		uint8_t clen = 0;
+		size_t offset = 0;
+		while (len > offset && match<Args...>(unicode::utf8Decode(ptr + offset, clen))) {
+			offset += clen;
+		}
+		len -= offset;
+		ptr += offset;
+	}
 
-    template <typename... Args> void skipUntil() {
-    	uint8_t clen = 0;
-    	size_t offset = 0;
-    	while (len > offset && !match<Args...>(unicode::utf8Decode(ptr + offset, clen))) {
-    		offset += clen;
-    	}
-    	len -= offset; ptr += offset;
-    }
+	template<typename ... Args> void skipUntil() {
+		uint8_t clen = 0;
+		size_t offset = 0;
+		while (len > offset && !match<Args...>(unicode::utf8Decode(ptr + offset, clen))) {
+			offset += clen;
+		}
+		len -= offset;
+		ptr += offset;
+	}
 
-    template <typename... Args> Self readChars() {
-    	if (!ptr) {
-    		return Self(nullptr, 0);
-    	}
+	template<typename ... Args> Self readChars() {
+		if (!ptr) {
+			return Self(nullptr, 0);
+		}
 
-    	uint8_t clen = 0;
-    	auto newPtr = ptr;
-    	size_t newLen = 0;
-    	while (len > newLen && match<Args...>(unicode::utf8Decode(ptr + newLen, clen))) {
-    		newLen += clen;
-    	}
+		uint8_t clen = 0;
+		auto newPtr = ptr;
+		size_t newLen = 0;
+		while (len > newLen && match<Args...>(unicode::utf8Decode(ptr + newLen, clen))) {
+			newLen += clen;
+		}
 
-    	ptr += newLen; len -= newLen;
-    	return Self(newPtr, newLen);
-    }
+		ptr += newLen;
+		len -= newLen;
+		return Self(newPtr, newLen);
+	}
 
-    template <typename... Args> Self readUntil() {
-    	if (!ptr) {
-    		return Self(nullptr, 0);
-    	}
+	template<typename ... Args> Self readUntil() {
+		if (!ptr) {
+			return Self(nullptr, 0);
+		}
 
-    	uint8_t clen = 0;
-    	auto newPtr = ptr;
-    	size_t newLen = 0;
-    	while (len > newLen && !match<Args...>(unicode::utf8Decode(ptr + newLen, clen))) {
-    		newLen += clen;
-    	}
+		uint8_t clen = 0;
+		auto newPtr = ptr;
+		size_t newLen = 0;
+		while (len > newLen && !match<Args...>(unicode::utf8Decode(ptr + newLen, clen))) {
+			newLen += clen;
+		}
 
-    	ptr += newLen; len -= newLen;
-    	return Self(newPtr, newLen);
-    }
+		ptr += newLen;
+		len -= newLen;
+		return Self(newPtr, newLen);
+	}
 
-    bool skipString(const String &str) {
-    	if (!ptr) { return false; }
-    	if (*this == str) {
-    		ptr += str.length();
-    		len -= str.length();
-    		return true;
-    	}
-    	return false;
-    }
-    bool skipUntilString(const String &str, bool stopBeforeString = true) {
-    	if (!ptr) { return false; }
+	bool skipString(const String &str) {
+		if (!ptr) {
+			return false;
+		}
+		if (*this == str) {
+			ptr += str.length();
+			len -= str.length();
+			return true;
+		}
+		return false;
+	}
+	bool skipUntilString(const String &str, bool stopBeforeString = true) {
+		if (!ptr) {
+			return false;
+		}
 
-    	while (len >= 1 && *this != str) { ++(*this); }
-    	if (len > 0 && *ptr != 0 && !stopBeforeString) {
-    		skipString(str);
-    	}
+		while (len >= 1 && *this != str) {
+			++(*this);
+		}
+		if (len > 0 && *ptr != 0 && !stopBeforeString) {
+			skipString(str);
+		}
 
-    	return len > 0 && *ptr != 0;
-    }
-    Self readUntilString(const String &str) {
-    	if (!ptr) { return Self(nullptr, 0); }
+		return len > 0 && *ptr != 0;
+	}
+	Self readUntilString(const String &str) {
+		if (!ptr) {
+			return Self(nullptr, 0);
+		}
 
-    	auto newPtr = ptr;
-    	size_t newLen = 0;
+		auto newPtr = ptr;
+		size_t newLen = 0;
 
-    	while (ptr[0] && len >= 1 && *this != str) {
-    		ptr += 1; len -= 1; newLen += 1;
-    	}
+		while (ptr[0] && len >= 1 && *this != str) {
+			ptr += 1;
+			len -= 1;
+			newLen += 1;
+		}
 
-    	return Self(newPtr, newLen);
+		return Self(newPtr, newLen);
+	}
+
+	template<typename Separator, typename Callback> void split(const Callback &cb) const {
+		Self str(*this);
+		while (!str.empty()) {
+			str.skipChars<Separator>();
+			auto tmp = str.readUntil<Separator>();
+			if (!tmp.empty()) {
+				cb(tmp);
+			}
+		}
+	}
+
+	template<typename ... Args> void trimChars() {
+		this->skipChars<Args...>();
+		if (!this->empty()) {
+			uint8_t clen = 0;
+			while (this->len > 0 && rv_match_utf8<Args...>(this->ptr, this->len, clen)) {
+				if (clen > 0) {
+					this->len -= clen;
+				} else {
+					return;
+				}
+			}
+		}
+	}
+
+    template <typename... Args> void trimUntil() {
+		this->skipUntil<Args...>();
+		if (!this->empty()) {
+			uint8_t clen = 0;
+			while (this->len > 0 && !rv_match_utf8<Args...>(this->ptr, this->len, clen)) {
+				if (clen > 0) {
+					this->len -= clen;
+				} else {
+					return;
+				}
+			}
+		}
     }
 
 protected: // char-matching inline functions
+    template  <typename ...Args>
+	inline bool rv_match_utf8 (CharType *ptr, size_t len, uint8_t &offset) {
+		while (len > 0) {
+			if (!unicode::isUtf8Surrogate(ptr[len - 1])) {
+				return match<Args...>(unicode::utf8Decode(ptr + len - 1, offset));
+			}
+		}
+		offset = 0;
+    	return false;
+	}
+
 	template <typename ...Args>
 	inline bool match (char16_t c) {
 		return chars::Compose<char16_t, Args...>::match(c);

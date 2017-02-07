@@ -165,7 +165,7 @@ protected:
 class Scroll::Loader : public cocos2d::Node {
 public:
 	virtual ~Loader() { }
-	virtual bool init(const std::function<void()> &, const Color &);
+	virtual bool init(const Function<void()> &, const Color &);
 	virtual void onContentSizeDirty() override;
 
 	virtual void onEnter() override;
@@ -173,7 +173,7 @@ public:
 
 protected:
 	IconSprite *_icon = nullptr;
-	std::function<void()> _callback = nullptr;
+	Function<void()> _callback = nullptr;
 };
 
 class Scroll::Item : public Ref {

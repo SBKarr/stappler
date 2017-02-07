@@ -23,13 +23,14 @@ THE SOFTWARE.
 #ifndef LIBS_STAPPLER_COMPONENTS_SPDATALISTENER_H_
 #define LIBS_STAPPLER_COMPONENTS_SPDATALISTENER_H_
 
-#include "SPDataSubscription.h"
+#include "SPDefine.h"
+#include "SLSubscription.h"
 #include "base/CCDirector.h"
 #include "base/CCScheduler.h"
 
 NS_SP_EXT_BEGIN(data)
 
-template <class T = Subscription>
+template <class T = layout::Subscription>
 class Listener {
 public:
 	using Callback = std::function<void(Subscription::Flags)>;

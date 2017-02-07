@@ -30,9 +30,9 @@ NS_SP_BEGIN
 
 class Thread {
 public:
-	using Callback = std::function<void()>;
-	using ExecuteCallback = std::function<bool(Ref *)>;
-	using CompleteCallback = std::function<void(Ref *, bool)>;
+	using Callback = Function<void()>;
+	using ExecuteCallback = Function<bool(const Task &)>;
+	using CompleteCallback = Function<void(const Task &, bool)>;
 
 	/*
 	 If current thread is main thread: executes function/task

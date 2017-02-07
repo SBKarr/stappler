@@ -34,29 +34,36 @@ THE SOFTWARE.
 NS_SP_PLATFORM_BEGIN
 
 namespace ime {
-	std::function<void(bool)> _enabledCallback;
-	
-	void setEnabledCallback(const std::function<void(bool)> &f) {
+	Function<void(bool)> _enabledCallback;
+
+	void setEnabledCallback(const Function<void(bool)> &f) {
 		_enabledCallback = f;
 	}
 	void _updateCursor(uint32_t pos, uint32_t len) {
-		
+
 	}
-	
-	void _updateText(const std::u16string &str, uint32_t pos, uint32_t len) {
-		
+
+	void _updateText(const WideString &str, uint32_t pos, uint32_t len, int32_t) {
+
 	}
-	
-	void _runWithText(const std::u16string &str, uint32_t pos, uint32_t len) {
+
+	void _runWithText(const WideString &str, uint32_t pos, uint32_t len, int32_t) {
 		if (_enabledCallback) {
 			_enabledCallback(true);
 		}
+#ifndef SP_RESTRICT
+		auto size = Screen::getInstance()->getFrameSize();
+		native::onKeyboardShow(Rect(0, 0, size.width, size.height * 0.55f), 0.0f);
+#endif
 	}
-	
+
 	void _cancel() {
 		if (_enabledCallback) {
 			_enabledCallback(false);
 		}
+#ifndef SP_RESTRICT
+		native::onKeyboardHide(0.0f);
+#endif
 	}
 }
 

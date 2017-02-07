@@ -27,16 +27,11 @@ THE SOFTWARE.
 #include "SPRichTextDrawer.h"
 #include "SPDynamicLabel.h"
 
-#include "renderer/ccGLStateCache.h"
 #include "renderer/CCTexture2D.h"
-#include "platform/CCImage.h"
-#include "base/CCConfiguration.h"
-#include "base/CCDirector.h"
-#include "base/CCScheduler.h"
+#include "renderer/ccGLStateCache.h"
 
 #include "SPBitmap.h"
 #include "SPString.h"
-#include "SPDrawCanvas.h"
 #include "SPTextureCache.h"
 
 NS_SP_EXT_BEGIN(rich_text)
@@ -59,7 +54,7 @@ protected:
 
 	Rect getRect(const Rect &) const;
 
-	void drawRef(const cocos2d::Rect &bbox);
+	void drawRef(const Rect &bbox);
 	void drawOutline(const Rect &bbox, const Outline &);
 	void drawBitmap(const Rect &bbox, cocos2d::Texture2D *bmp, const Background &bg);
 	void drawBackgroundImage(const Rect &bbox, const Background &bg);
@@ -81,7 +76,7 @@ protected:
 	Rc<Drawer> _drawer;
 	Rc<Result> _result;
 	Rc<Source> _source;
-	Rc<font::Source> _font;
+	Rc<FontSource> _font;
 
 	Callback _callback = nullptr;
 	Rc<cocos2d::Ref> _ref = nullptr;
@@ -141,7 +136,7 @@ void Request::onAssetCaptured() {
 
 	Rc<cocos2d::Texture2D> *ptr = new Rc<cocos2d::Texture2D>(nullptr);
 
-	TextureCache::thread().perform([this, ptr] (Ref *) -> bool {
+	TextureCache::thread().perform([this, ptr] (const Task &) -> bool {
 		TextureCache::getInstance()->performWithGL([&] {
 			//auto now = Time::now();
 			auto tex = Rc<cocos2d::Texture2D>::create(cocos2d::Texture2D::PixelFormat::RGBA8888, _width, _height);
@@ -150,7 +145,7 @@ void Request::onAssetCaptured() {
 			//log::format("Profiling", "Texture rendering: %lu", (Time::now() - now).toMicroseconds());
 		});
 		return true;
-	}, [this, ptr] (Ref *, bool) {
+	}, [this, ptr] (const Task &, bool) {
 		onDrawed(*ptr);
 		_source->releaseReadLock(this);
 		delete ptr;
@@ -229,7 +224,7 @@ void Request::drawRef(const Rect &bbox) {
 	}
 	if (_highlightRefs) {
 		_drawer->setColor(Color4B(127, 255, 0, 64));
-		_drawer->drawRectangle(getRect(bbox), draw::Style::Fill);
+		_drawer->drawRectangle(getRect(bbox), layout::DrawStyle::Fill);
 	}
 }
 
@@ -282,28 +277,28 @@ void Request::drawBitmap(const Rect &origBbox, cocos2d::Texture2D *bmp, const Ba
 
 	float boxWidth = 0.0f, boxHeight = 0.0f;
 	switch (bg.backgroundSizeWidth.metric) {
-	case style::Size::Metric::Contain: boxWidth = containSize.width; break;
-	case style::Size::Metric::Cover: boxWidth = coverSize.width; break;
-	case style::Size::Metric::Percent: boxWidth = bbox.size.width * bg.backgroundSizeWidth.value; break;
-	case style::Size::Metric::Px: boxWidth = bg.backgroundSizeWidth.value; break;
+	case layout::style::Metric::Units::Contain: boxWidth = containSize.width; break;
+	case layout::style::Metric::Units::Cover: boxWidth = coverSize.width; break;
+	case layout::style::Metric::Units::Percent: boxWidth = bbox.size.width * bg.backgroundSizeWidth.value; break;
+	case layout::style::Metric::Units::Px: boxWidth = bg.backgroundSizeWidth.value; break;
 	default: boxWidth = bbox.size.width; break;
 	}
 
 	switch (bg.backgroundSizeHeight.metric) {
-	case style::Size::Metric::Contain: boxHeight = containSize.height; break;
-	case style::Size::Metric::Cover: boxHeight = coverSize.height; break;
-	case style::Size::Metric::Percent: boxHeight = bbox.size.height * bg.backgroundSizeHeight.value; break;
-	case style::Size::Metric::Px: boxHeight = bg.backgroundSizeHeight.value; break;
+	case layout::style::Metric::Units::Contain: boxHeight = containSize.height; break;
+	case layout::style::Metric::Units::Cover: boxHeight = coverSize.height; break;
+	case layout::style::Metric::Units::Percent: boxHeight = bbox.size.height * bg.backgroundSizeHeight.value; break;
+	case layout::style::Metric::Units::Px: boxHeight = bg.backgroundSizeHeight.value; break;
 	default: boxHeight = bbox.size.height; break;
 	}
 
-	if (bg.backgroundSizeWidth.metric == style::Size::Metric::Auto
-			&& bg.backgroundSizeHeight.metric == style::Size::Metric::Auto) {
+	if (bg.backgroundSizeWidth.metric == layout::style::Metric::Units::Auto
+			&& bg.backgroundSizeHeight.metric == layout::style::Metric::Units::Auto) {
 		boxWidth = w;
 		boxHeight = h;
-	} else if (bg.backgroundSizeWidth.metric == style::Size::Metric::Auto) {
+	} else if (bg.backgroundSizeWidth.metric == layout::style::Metric::Units::Auto) {
 		boxWidth = boxHeight * ((float)w / (float)h);
-	} else if (bg.backgroundSizeHeight.metric == style::Size::Metric::Auto) {
+	} else if (bg.backgroundSizeHeight.metric == layout::style::Metric::Units::Auto) {
 		boxHeight = boxWidth * ((float)h / (float)w);
 	}
 
@@ -311,14 +306,14 @@ void Request::drawBitmap(const Rect &origBbox, cocos2d::Texture2D *bmp, const Ba
 	float xOffset = 0.0f, yOffset = 0.0f;
 
 	switch (bg.backgroundPositionX.metric) {
-	case style::Size::Metric::Percent: xOffset = availableWidth * bg.backgroundPositionX.value; break;
-	case style::Size::Metric::Px: xOffset = bg.backgroundPositionX.value; break;
+	case layout::style::Metric::Units::Percent: xOffset = availableWidth * bg.backgroundPositionX.value; break;
+	case layout::style::Metric::Units::Px: xOffset = bg.backgroundPositionX.value; break;
 	default: xOffset = availableWidth / 2.0f; break;
 	}
 
 	switch (bg.backgroundPositionY.metric) {
-	case style::Size::Metric::Percent: yOffset = availableHeight * bg.backgroundPositionY.value; break;
-	case style::Size::Metric::Px: yOffset = bg.backgroundPositionY.value; break;
+	case layout::style::Metric::Units::Percent: yOffset = availableHeight * bg.backgroundPositionY.value; break;
+	case layout::style::Metric::Units::Px: yOffset = bg.backgroundPositionY.value; break;
 	default: yOffset = availableHeight / 2.0f; break;
 	}
 
@@ -360,13 +355,13 @@ void Request::drawBackgroundImage(const cocos2d::Rect &bbox, const Background &b
 void Request::drawBackgroundColor(const Rect &bbox, const Background &bg) {
 	auto &color = bg.backgroundColor;
 	_drawer->setColor(color);
-	_drawer->drawRectangle(getRect(bbox), draw::Style::Fill);
+	_drawer->drawRectangle(getRect(bbox), layout::DrawStyle::Fill);
 }
 
 void Request::drawBackground(const Rect &bbox, const Background &bg) {
 	if (_isThumbnail) {
 		_drawer->setColor(Color4B(127, 127, 127, 127));
-		_drawer->drawRectangle(getRect(bbox), draw::Style::Fill);
+		_drawer->drawRectangle(getRect(bbox), layout::DrawStyle::Fill);
 		return;
 	}
 	if (bg.backgroundColor.a != 0) {
@@ -407,7 +402,7 @@ void Request::onDrawed(cocos2d::Texture2D *data) {
 }
 
 bool Drawer::init() {
-	TextureCache::thread().perform([this] (stappler::Ref *) -> bool {
+	TextureCache::thread().perform([this] (const Task &) -> bool {
 		TextureCache::getInstance()->performWithGL([&] {
 			glGenFramebuffers(1, &_fbo);
 			glGenBuffers(2, _drawBufferVBO);
@@ -418,7 +413,7 @@ bool Drawer::init() {
 }
 
 void Drawer::free() {
-	TextureCache::thread().perform([this] (stappler::Ref *) -> bool {
+	TextureCache::thread().perform([this] (const Task &) -> bool {
 		TextureCache::getInstance()->performWithGL([&] {
 			cleanup();
 			if (_drawBufferVBO[0] != 0) {
@@ -443,14 +438,6 @@ bool Drawer::draw(Source *s, Result *res, const Rect &r, const Callback &cb, coc
 // draw thumbnail texture, where scale < 1.0f - resample coef
 bool Drawer::thumbnail(Source *s, Result *res, const Rect &r, float scale, const Callback &cb, cocos2d::Ref *ref) {
 	return construct<Request>(this, s, res, r, scale, cb, ref);
-}
-
-static inline int32_t sp_gcd (int16_t a, int16_t b) {
-	int32_t c;
-	while ( a != 0 ) {
-		c = a; a = b%a;  b = c;
-	}
-	return b;
 }
 
 bool Drawer::begin(cocos2d::Texture2D * tex, const Color4B &clearColor) {
@@ -494,60 +481,6 @@ void Drawer::end() {
 	cleanup();
 }
 
-void Drawer::cleanup() {
-	bindTexture(0);
-	useProgram(0);
-	enableVertexAttribs(0);
-}
-
-void Drawer::bindTexture(GLuint value) {
-	if (_currentTexture != value) {
-		_currentTexture = value;
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, value);
-	}
-}
-
-void Drawer::useProgram(GLuint value) {
-	if (_currentProgram != value) {
-		_currentProgram = value;
-		glUseProgram(value);
-	}
-}
-
-void Drawer::enableVertexAttribs(uint32_t flags) {
-	for (int i = 0; i < 16; i++) {
-		unsigned int bit = 1 << i;
-		bool enabled = (flags & bit) != 0;
-		bool enabledBefore = (_attributeFlags & bit) != 0;
-		if (enabled != enabledBefore) {
-			if (enabled) {
-				glEnableVertexAttribArray(i);
-			} else {
-				glDisableVertexAttribArray(i);
-			}
-		}
-	}
-    _attributeFlags = flags;
-}
-
-void Drawer::blendFunc(GLenum sfactor, GLenum dfactor) {
-	if (sfactor != _blendingSource || dfactor != _blendingDest) {
-		_blendingSource = sfactor;
-		_blendingDest = dfactor;
-		if (sfactor == GL_ONE && dfactor == GL_ZERO) {
-			glDisable(GL_BLEND);
-		} else {
-			glEnable(GL_BLEND);
-			glBlendFunc(sfactor, dfactor);
-		}
-	}
-}
-
-void Drawer::blendFunc(const cocos2d::BlendFunc &func) {
-	blendFunc(func.src, func.dst);
-}
-
 void Drawer::drawResizeBuffer(size_t count) {
 	if (count <= _drawBufferSize) {
 		return;
@@ -583,17 +516,19 @@ void Drawer::setColor(const Color4B &color) {
 	}
 }
 
-void Drawer::drawRectangle(const Rect &bbox, draw::Style style) {
+void Drawer::drawRectangle(const Rect &bbox, layout::DrawStyle style) {
 	switch (style) {
-	case draw::Style::Fill:
+	case layout::DrawStyle::Fill:
 		drawRectangleFill(bbox);
 		break;
-	case draw::Style::Stroke:
+	case layout::DrawStyle::Stroke:
 		drawRectangleOutline(bbox);
 		break;
-	case draw::Style::FillAndStroke:
+	case layout::DrawStyle::FillAndStroke:
 		drawRectangleFill(bbox);
 		drawRectangleOutline(bbox);
+		break;
+	default:
 		break;
 	}
 }
@@ -933,12 +868,12 @@ void Drawer::update() {
 
 	if (Time::now() - _updated > TimeInterval::seconds(1)) {
 		_cacheUpdated = false;
-		TextureCache::thread().perform([this] (stappler::Ref *) -> bool {
+		TextureCache::thread().perform([this] (const Task &) -> bool {
 			TextureCache::getInstance()->performWithGL([&] {
 				performUpdate();
 			});
 			return true;
-		}, [this] (stappler::Ref *, bool) {
+		}, [this] (const Task &, bool) {
 			_cacheUpdated = true;
 			_updated = Time::now();
 		});
@@ -946,7 +881,7 @@ void Drawer::update() {
 }
 
 void Drawer::clearCache() {
-	TextureCache::thread().perform([this] (stappler::Ref *) -> bool {
+	TextureCache::thread().perform([this] (const Task &) -> bool {
 		TextureCache::getInstance()->performWithGL([&] {
 			_cache.clear();
 		});

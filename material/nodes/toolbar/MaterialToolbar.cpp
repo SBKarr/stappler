@@ -255,11 +255,11 @@ void Toolbar::updateMenu() {
 
 	size_t iconsCount = 0;
 	auto &menuItems = _actionMenuSource->getItems();
-	auto extMenuSource = construct<MenuSource>();
+	auto extMenuSource = Rc<MenuSource>::create();
 
 	for (auto &item : menuItems) {
 		if (item->getType() == MenuSourceItem::Type::Button) {
-			auto btnSrc = dynamic_cast<MenuSourceButton *>(item);
+			auto btnSrc = dynamic_cast<MenuSourceButton *>(item.get());
 			if (btnSrc->getNameIcon() != IconName::None) {
 				if (iconsCount < _maxActionIcons) {
 					ButtonIcon *btn = construct<ButtonIcon>();
@@ -279,7 +279,7 @@ void Toolbar::updateMenu() {
 
 	if (_extensionMenuSource || extMenuSource->count() > 0) {
 		ButtonIcon *btn = construct<ButtonIcon>(IconName::Navigation_more_vert);
-		btn->setMenuSource((_extensionMenuSource != nullptr)?_extensionMenuSource.get():extMenuSource);
+		btn->setMenuSource((_extensionMenuSource != nullptr)?_extensionMenuSource.get():extMenuSource.get());
 		_icons.push_back(btn);
 		_iconsComposer->addChild(btn);
 		_hasExtMenu = true;

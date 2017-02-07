@@ -35,8 +35,6 @@ THE SOFTWARE.
 #include "SPStorage.h"
 #include "SPFilesystem.h"
 
-#include "base/CCVector.h"
-
 NS_SP_BEGIN
 
 SP_DECLARE_EVENT_CLASS(AssetLibrary, onLoaded);
@@ -101,8 +99,8 @@ void AssetLibrary::init() {
 	Downloads *downloads = new Downloads();
 
 	auto &thread = storage::thread(getAssetStorage());
-	thread.perform([this, downloads] (cocos2d::Ref *) -> bool {
-		storage::get("SP.AssetLibrary.Time", [this] (const std::string &key, data::Value &value) {
+	thread.perform([this, downloads] (const Task &) -> bool {
+		storage::get("SP.AssetLibrary.Time", [this] (const String &key, data::Value &value) {
 			_correctionTime.setMicroseconds(value.getInteger("time"));
 			_correctionNegative = value.getBool("negative");
 		}, getAssetStorage());
@@ -119,10 +117,10 @@ void AssetLibrary::init() {
 		restoreDownloads(data, *downloads);
 		cleanup();
 		return true;
-	}, [this, downloads] (cocos2d::Ref *, bool) {
+	}, [this, downloads] (const Task &, bool) {
 		for (auto &it : *downloads) {
 			_assets.insert(std::make_pair(it.first->getId(), it.first));
-			_downloads.insert(it.first, it.second);
+			_downloads.emplace(it.first, it.second);
 			startDownload(it.second);
 		}
 		delete downloads;
@@ -144,7 +142,7 @@ void AssetLibrary::restoreDownloads(data::Value &d, Downloads &downloads) {
 				Asset *a = new Asset(it, nullptr);
 				touchAsset(a);
 				auto d = Rc<AssetDownload>::create(a, tmpPath);
-				downloads.insert(a, d);
+				downloads.emplace(a, d);
 			}
 		}
 	}
@@ -201,14 +199,14 @@ void AssetLibrary::removeDownload(AssetDownload *d) {
 	_downloads.erase(a);
 }
 
-std::string AssetLibrary::getTempPath(const std::string &path) const {
+String AssetLibrary::getTempPath(const String &path) const {
 	return path + ".tmp";
 }
 
 bool AssetLibrary::isLiveAsset(uint64_t id) const {
 	return getLiveAsset(id) != nullptr;
 }
-bool AssetLibrary::isLiveAsset(const std::string &url, const std::string &path) const {
+bool AssetLibrary::isLiveAsset(const String &url, const String &path) const {
 	return getLiveAsset(url, path) != nullptr;
 }
 
@@ -249,11 +247,11 @@ Asset *AssetLibrary::getLiveAsset(uint64_t id) const {
 	return nullptr;
 }
 
-Asset *AssetLibrary::getLiveAsset(const std::string &url, const std::string &path) const {
+Asset *AssetLibrary::getLiveAsset(const String &url, const String &path) const {
 	return getLiveAsset(getAssetId(url, path));
 }
 
-uint64_t AssetLibrary::getAssetId(const std::string &url, const std::string &path) const {
+uint64_t AssetLibrary::getAssetId(const String &url, const String &path) const {
 	return string::stdlibHashUnsigned(url +"|"+ filepath::canonical(path));
 }
 
@@ -274,8 +272,8 @@ void AssetLibrary::setServerDate(const Time &serv) {
 	storage::set("SP.AssetLibrary.Time", std::move(d), nullptr, getAssetStorage());
 }
 
-bool AssetLibrary::getAsset(const AssetCallback &cb, const std::string &url,
-		const std::string &path, TimeInterval ttl, const std::string &cache, const DownloadCallback &dcb) {
+bool AssetLibrary::getAsset(const AssetCallback &cb, const String &url,
+		const String &path, TimeInterval ttl, const String &cache, const DownloadCallback &dcb) {
 	if (!_loaded) {
 		_tmpRequests.push_back(AssetRequest(cb, url, path, ttl, cache, dcb));
 		return true;
@@ -298,7 +296,7 @@ bool AssetLibrary::getAsset(const AssetCallback &cb, const std::string &url,
 
 		auto &thread = storage::thread(getAssetStorage());
 		Asset ** assetPtr = new (Asset *) (nullptr);
-		thread.perform([this, assetPtr, id, url, path, cache, ttl, dcb] (cocos2d::Ref *) -> bool {
+		thread.perform([this, assetPtr, id, url, path, cache, ttl, dcb] (const Task &) -> bool {
 			data::Value data;
 			_assetsClass.get([&data] (data::Value &&d) {
 				if (d.isArray() && d.size() > 0) {
@@ -323,9 +321,8 @@ bool AssetLibrary::getAsset(const AssetCallback &cb, const std::string &url,
 
 			(*assetPtr) = new Asset(data, dcb);
 			return true;
-		}, [this, assetPtr] (cocos2d::Ref *, bool) {
+		}, [this, assetPtr] (const Task &, bool) {
 			onAssetCreated(*assetPtr);
-			(*assetPtr)->autorelease();
 			delete assetPtr;
 		}, this);
 	}
@@ -333,8 +330,8 @@ bool AssetLibrary::getAsset(const AssetCallback &cb, const std::string &url,
 	return true;
 }
 
-AssetLibrary::AssetRequest::AssetRequest(const AssetCallback &cb, const std::string &url, const std::string &path,
-		TimeInterval ttl, const std::string &cacheDir, const DownloadCallback &dcb)
+AssetLibrary::AssetRequest::AssetRequest(const AssetCallback &cb, const String &url, const String &path,
+		TimeInterval ttl, const String &cacheDir, const DownloadCallback &dcb)
 : callback(cb), id(AssetLibrary::getInstance()->getAssetId(url, path))
 , url(url), path(path), ttl(ttl), cacheDir(cacheDir), download(dcb) { }
 
@@ -350,11 +347,11 @@ bool AssetLibrary::getAssets(const std::vector<AssetRequest> &vec, const AssetVe
 		return true;
 	}
 
-	ssize_t assetCount = (ssize_t)vec.size();
-	auto requests = new std::vector<AssetRequest>;
-	cocos2d::Vector<Asset *> *retVec = nullptr;
+	size_t assetCount = vec.size();
+	auto requests = new Vector<AssetRequest>;
+	AssetVec *retVec = nullptr;
 	if (cb) {
-		retVec = new cocos2d::Vector<Asset *>;
+		retVec = new AssetVec;
 	}
 	for (auto &it : vec) {
 		uint64_t id = it.id;
@@ -363,7 +360,7 @@ bool AssetLibrary::getAssets(const std::vector<AssetRequest> &vec, const AssetVe
 				it.callback(a);
 			}
 			if (retVec) {
-				retVec->pushBack(a);
+				retVec->emplace_back(a);
 			}
 		} else {
 			auto cbit = _callbacks.find(id);
@@ -371,9 +368,9 @@ bool AssetLibrary::getAssets(const std::vector<AssetRequest> &vec, const AssetVe
 				cbit->second.push_back(it.callback);
 				if (cb && retVec) {
 					cbit->second.push_back([cb, retVec, assetCount] (Asset *a) {
-						retVec->pushBack(a);
+						retVec->emplace_back(a);
 						if (retVec->size() == assetCount) {
-							cb(retVec->vector());
+							cb(*retVec);
 							delete retVec;
 						}
 					});
@@ -390,7 +387,7 @@ bool AssetLibrary::getAssets(const std::vector<AssetRequest> &vec, const AssetVe
 	if (requests->empty()) {
 		if (cb && retVec) {
 			if (retVec->size() == assetCount) {
-				cb(retVec->vector());
+				cb(*retVec);
 				delete retVec;
 			}
 		}
@@ -399,26 +396,23 @@ bool AssetLibrary::getAssets(const std::vector<AssetRequest> &vec, const AssetVe
 	}
 
 	auto &thread = storage::thread(getAssetStorage());
-	auto assetsVec = new std::vector<Asset *>;
-	thread.perform([this, assetsVec, requests] (cocos2d::Ref *) -> bool {
+	auto assetsVec = new AssetVec;
+	thread.perform([this, assetsVec, requests] (const Task &) -> bool {
 		performGetAssets(*assetsVec, *requests);
 
 		return true;
-	}, [this, assetsVec, requests, retVec, assetCount, cb] (cocos2d::Ref *, bool) {
+	}, [this, assetsVec, requests, retVec, assetCount, cb] (const Task &, bool) {
 		for (auto &it : (*assetsVec)) {
 			if (retVec) {
-				retVec->pushBack(it);
+				retVec->emplace_back(it);
 			}
 			onAssetCreated(it);
 		}
 		if (cb && retVec) {
 			if (retVec->size() == assetCount) {
-				cb(retVec->vector());
+				cb(*retVec);
 				delete retVec;
 			}
-		}
-		for (auto &it : (*assetsVec)) {
-			it->release();
 		}
 		delete requests;
 		delete assetsVec;
@@ -427,7 +421,7 @@ bool AssetLibrary::getAssets(const std::vector<AssetRequest> &vec, const AssetVe
 	return true;
 }
 
-void AssetLibrary::performGetAssets(std::vector<Asset *> &assetsVec, const std::vector<AssetRequest> &requests) {
+void AssetLibrary::performGetAssets(AssetVec &assetsVec, const Vector<AssetRequest> &requests) {
 	data::Value data;
 	auto cmd = _assetsClass.get([&data] (data::Value &&d) {
 		if (d.isArray() && d.size() > 0) {
@@ -478,7 +472,7 @@ void AssetLibrary::performGetAssets(std::vector<Asset *> &assetsVec, const std::
 	}
 }
 
-Asset *AssetLibrary::acquireLiveAsset(const std::string &url, const std::string &path) {
+Asset *AssetLibrary::acquireLiveAsset(const String &url, const String &path) {
 	uint64_t id = getAssetId(url, path);
 	return getLiveAsset(id);
 }
@@ -510,7 +504,7 @@ bool AssetLibrary::downloadAsset(Asset *asset) {
 	if (it == _downloads.end()) {
 		if (Device::getInstance()->isNetworkOnline()) {
 			auto d = Rc<AssetDownload>::create(asset, getTempPath(asset->getFilePath()));
-			_downloads.insert(asset, d);
+			_downloads.emplace(asset, d);
 			startDownload(d);
 			return true;
 		}

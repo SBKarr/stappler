@@ -23,40 +23,37 @@ THE SOFTWARE.
 #ifndef LIBS_STAPPLER_CORE_SPFORWARD_H_
 #define LIBS_STAPPLER_CORE_SPFORWARD_H_
 
-#include "SPCommon.h"
-
-#include "SPLog.h"
-#include "SPTime.h"
-#include "SPData.h"
-
-#include "math/CCGeometry.h"
-#include "base/ccTypes.h"
+#include "SPLayout.h"
 #include "platform/CCStdC.h"
 
 NS_CC_BEGIN
 
 class Renderer;
-class Ref;
+class Node;
 
 NS_CC_END
 
 NS_SP_BEGIN
 
-using Vec2 = cocos2d::Vec2;
-using Vec3 = cocos2d::Vec3;
-using Vec4 = cocos2d::Vec4;
-using Size = cocos2d::Size;
-using Rect = cocos2d::Rect;
+using Vec2 = layout::Vec2;
+using Vec3 = layout::Vec3;
+using Vec4 = layout::Vec4;
+using Size = layout::Size;
+using Rect = layout::Rect;
 
-using Mat4 = cocos2d::Mat4;
-using Quaternion = cocos2d::Quaternion;
+using Mat4 = layout::Mat4;
+using Quaternion = layout::Quaternion;
 
-using Color4B = cocos2d::Color4B;
-using Color4F = cocos2d::Color4F;
-using Color3B = cocos2d::Color3B;
+using Color4B = layout::Color4B;
+using Color4F = layout::Color4F;
+using Color3B = layout::Color3B;
 
 using Renderer = cocos2d::Renderer;
-using Ref = cocos2d::Ref;
+
+using Padding = layout::Padding;
+using Margin = layout::Margin;
+
+using MovingAverage = layout::MovingAverage;
 
 namespace Anchor {
 extern const Vec2 Middle; /** equals to Vec2(0.5, 0.5) */
@@ -70,12 +67,15 @@ extern const Vec2 MiddleTop; /** equals to Vec2(0.5, 1) */
 extern const Vec2 MiddleBottom; /** equals to Vec2(0.5, 0) */
 }
 
-NS_SP_END
+using Ref = layout::Ref;
 
-#include "SPRc.h"
-#include "SPPadding.h"
-#include "SPMovingAverage.h"
-#include "SPString.h"
+template <typename T>
+using Rc = layout::Rc<T>;
+
+template <typename T>
+using Arc = layout::Arc<T>;
+
+NS_SP_END
 
 NS_CC_BEGIN
 
@@ -149,12 +149,6 @@ class ScreenOrientation;
 class StoreKit;
 class StoreProduct;
 
-class Image;
-class TextureInterface;
-template <class T> class Texture;
-class TextureFBO;
-class TextureRef;
-
 class DynamicAtlas;
 class DynamicBatchCommand;
 class DynamicMaterial;
@@ -191,8 +185,6 @@ class FadeOut;
 class ProgressAction;
 class Timeout;
 
-using FilePath = ValueWrapper<String, class FilePathTag>;
-
 NS_SP_END
 
 
@@ -200,8 +192,8 @@ NS_SP_EXT_BEGIN(data)
 
 class Source;
 
-class Subscription;
-template <class T> class Binding;
+using Subscription = layout::Subscription;
+template <class T> using Binding = layout::Binding<T>;
 template <class T> class Listener;
 
 NS_SP_EXT_END(data)
@@ -244,20 +236,6 @@ NS_SP_EXT_END(storage)
 
 NS_SP_EXT_BEGIN(rich_text)
 
-class Formatter;
-class Document;
-class Result;
-class Node;
-class Reader;
-class Source;
-
-struct MultipartParser;
-struct MediaParameters;
-class MediaResolver;
-
-struct Object;
-struct Layout;
-
 class Renderer;
 class View;
 class Drawer;
@@ -267,9 +245,7 @@ NS_SP_EXT_END(rich_text)
 
 NS_SP_EXT_BEGIN(draw)
 
-class Path;
 class PathNode;
-class Canvas;
 
 NS_SP_EXT_END(draw)
 
@@ -284,17 +260,8 @@ NS_SP_EXT_END(ime)
 
 NS_SP_EXT_BEGIN(font)
 
-struct Metrics;
-struct CharLayout;
-struct CharSpec;
-struct FontCharString;
-struct FontData;
-class FontLayout;
-struct CharTexture;
-
-class Source;
+class FontSource;
 class Controller;
-class HyphenMap;
 
 NS_SP_EXT_END(font)
 

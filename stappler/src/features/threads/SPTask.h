@@ -28,16 +28,16 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
-class Task : public cocos2d::Ref {
+class Task : public Ref {
 public: /* typedefs */
 	/* Function to be executed in init phase */
-	using PrepareCallback = std::function<bool(Ref *)>;
+	using PrepareCallback = Function<bool(const Task &)>;
 
 	/* Function to be executed in other thread */
-	using ExecuteCallback = std::function<bool(Ref *)>;
+	using ExecuteCallback = Function<bool(const Task &)>;
 
 	/* Function to be executed after task is performed */
-	using CompleteCallback = std::function<void(Ref *, bool)>;
+	using CompleteCallback = Function<void(const Task &, bool)>;
 
 public: /* interface */
 	/* creates empty task with only complete function to be used as callback from other thread */
@@ -70,6 +70,9 @@ public: /* interface */
 	/* get task priority */
     int getPriority()  const{ return _priority; }
 
+    /* get assigned target */
+    Ref *getTarget() const { return _target; }
+
 public: /* behavior */
 	/* used by task manager to set success state */
     void setSuccessful(bool value) { _isSuccessful = value; }
@@ -97,9 +100,9 @@ protected:
 
 	Rc<Ref> _target;
 
-	std::vector<PrepareCallback> _prepare;
-	std::vector<ExecuteCallback> _execute;
-	std::vector<CompleteCallback> _complete;
+	Vector<PrepareCallback> _prepare;
+	Vector<ExecuteCallback> _execute;
+	Vector<CompleteCallback> _complete;
 };
 
 NS_SP_END

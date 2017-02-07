@@ -29,6 +29,7 @@ THE SOFTWARE.
 #include "SPResource.h"
 #include "SPThread.h"
 #include "SPDrawCanvasCairo.h"
+#include "SPDrawCanvasLibtess2.h"
 #include "SPDrawPathNode.h"
 #include "SPTextureCache.h"
 #include "SPDevice.h"
@@ -48,6 +49,8 @@ public:
 		_originalWidth = originalWidth;
 		_originalHeight = originalHeight;
 
+		_time = Time::now();
+		//_canvas.set(Rc<draw::CanvasLibtess2>::create());
 		_canvas.set(Rc<draw::CanvasCairo>::create());
 	}
 
@@ -58,18 +61,18 @@ public:
 		_canvas->save();
 		_canvas->translate(xOffset / ((float)_canvasWidth / (float)_originalWidth), yOffset / ((float)_canvasHeight / (float)_originalHeight));
 
-		Rc<draw::Path> path;
+		layout::Path path;
 		if (data.compare(0, 7, "path://") == 0) {
-			path = Rc<draw::Path>::create(data.substr(7));
+			path.init(data.substr(7));
 		} else {
-			path = Rc<draw::Path>::create(FilePath(data));
+			path.init(FilePath(data));
 		}
 		if (!path) {
 			return;
 		}
 
-		path->setFillColor(Color4B(255, 255, 255, 255));
-		path->drawOn(_canvas);
+		path.setFillColor(Color4B(0, 0, 0, 255));
+		_canvas->draw(path);
 
 		_canvas->restore();
 	}
@@ -90,6 +93,8 @@ public:
 		}
 
 		_canvas->end();
+		tex->setAntiAliasTexParameters();
+		log::format("Icons", "%lu", (Time::now() - _time).toMicroseconds());
 	}
 
 protected:
@@ -101,6 +106,7 @@ protected:
 	uint32_t _canvasWidth = 0;
 	uint32_t _canvasHeight = 0;
 
+	Time _time;
 	Rc<draw::Canvas> _canvas;
 };
 
@@ -136,7 +142,6 @@ public:
 
 		Map<String, Icon> icons;
 		Rc<cocos2d::Texture2D> tex = Rc<cocos2d::Texture2D>::create(cocos2d::Texture2D::PixelFormat::A8, texWidth, texHeight);
-		tex->setAliasTexParameters();
 
 		IconSetRenderer renderer(cfg.iconWidth, cfg.iconHeight, cfg.originalWidth, cfg.originalHeight);
 		renderer.renderIcons(tex, cfg.data, cols, rows, icons);
@@ -166,12 +171,12 @@ void generateIconSet(IconSet::Config &&cfg, const IconSet::Callback &callback) {
 
 	IconSet::Config *cfgPtr = new (IconSet::Config) (std::move(cfg));
 	auto newSet = new Rc<IconSet>(nullptr);
-	thread.perform([newSet, cfgPtr] (cocos2d::Ref *) -> bool {
+	thread.perform([newSet, cfgPtr] (const Task &) -> bool {
 		TextureCache::getInstance()->performWithGL([&] {
 			*newSet = generateFromSVGIcons(std::move(*cfgPtr));
 		});
 		return true;
-	}, [newSet, cfgPtr, callback] (cocos2d::Ref *, bool) {
+	}, [newSet, cfgPtr, callback] (const Task &, bool) {
 		if (*newSet) {
 			IconSet * set = *newSet;
 			set->onEvent(Device::onAndroidReset, [set] (const Event *ev) {

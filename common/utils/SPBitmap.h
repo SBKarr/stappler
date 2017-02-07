@@ -49,6 +49,9 @@ public:
 	static bool getImageSize(const String &file, size_t &width, size_t &height);
 	static bool getImageSize(const io::Producer &file, size_t &width, size_t &height);
 
+	static bool isImage(const String &file, bool readable = true);
+	static bool isImage(const io::Producer &file, bool readable = true);
+
 	static bool isGif(const uint8_t * data, size_t dataLen);
 	static bool isPng(const uint8_t * data, size_t dataLen);
 	static bool isJpg(const uint8_t * data, size_t dataLen);

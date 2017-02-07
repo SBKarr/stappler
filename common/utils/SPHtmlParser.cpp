@@ -28,39 +28,47 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(html)
 
-using HtmlIdentifier = chars::Compose<char16_t,
+using HtmlIdentifier16 = chars::Compose<char16_t,
 		chars::Range<char16_t, u'0', u'9'>,
 		chars::Range<char16_t, u'A', u'Z'>,
 		chars::Range<char16_t, u'a', u'z'>,
 		chars::Chars<char16_t, u'_', u'-', u'!', u'/', u':'>
 >;
 
-Tag::StringReader Tag::readName(StringReader &is) {
-	StringReader s = is;
-	s.skipUntil<HtmlIdentifier, Chars<'>', '?'>>();
-	StringReader name(s.readChars<HtmlIdentifier, Chars<'?'>>());
+using HtmlIdentifier8 = chars::Compose<char,
+		chars::Range<char, u'0', u'9'>,
+		chars::Range<char, u'A', u'Z'>,
+		chars::Range<char, u'a', u'z'>,
+		chars::Chars<char, u'_', u'-', u'!', u'/', u':'>
+>;
+
+
+template <> CharReaderUtf8 Tag_readName<CharReaderUtf8>(CharReaderUtf8 &is) {
+	CharReaderUtf8 s = is;
+	s.skipUntil<HtmlIdentifier16, CharReaderUtf8::MatchChars<'>', '?'>>();
+	CharReaderUtf8 name(s.readChars<HtmlIdentifier16, CharReaderUtf8::MatchChars<'?'>>());
 	string::tolower_buf((char *)name.data(), name.size());
 	if (name.size() > 1 && name.back() == '/') {
 		name.set(name.data(), name.size() - 1);
 		is += (is.size() - s.size() - 1);
 	} else {
-		s.skipUntil<HtmlIdentifier, Chars<'>'>>();
+		s.skipUntil<HtmlIdentifier16, CharReaderUtf8::MatchChars<'>'>>();
 		is = s;
 	}
 	return name;
 }
 
-Tag::StringReader Tag::readAttrName(StringReader &s) {
-	s.skipUntil<HtmlIdentifier>();
-	StringReader name(s.readChars<HtmlIdentifier>());
+template <> CharReaderUtf8 Tag_readAttrName<CharReaderUtf8>(CharReaderUtf8 &s) {
+	s.skipUntil<HtmlIdentifier16>();
+	CharReaderUtf8 name(s.readChars<HtmlIdentifier16>());
 	string::tolower_buf((char *)name.data(), name.size());
 	return name;
 }
 
-Tag::StringReader Tag::readAttrValue(StringReader &s) {
+template <> CharReaderUtf8 Tag_readAttrValue<CharReaderUtf8>(CharReaderUtf8 &s) {
 	if (!s.is('=')) {
-		s.skipUntil<HtmlIdentifier>();
-		return StringReader();
+		s.skipUntil<HtmlIdentifier16>();
+		return CharReaderUtf8();
 	}
 
 	s ++;
@@ -68,27 +76,141 @@ Tag::StringReader Tag::readAttrValue(StringReader &s) {
 	if (s.is('"') || s.is('\'')) {
 		quoted = s[0];
 		s ++;
-		StringReader tmp = s;
+		CharReaderUtf8 tmp = s;
 		while (!s.empty() && !s.is(quoted)) {
 			if (quoted == '"') {
-				s.skipUntil<Chars<u'\\', u'"'>>();
+				s.skipUntil<CharReaderUtf8::MatchChars<u'\\', u'"'>>();
 			} else {
-				s.skipUntil<Chars<u'\\', u'\''>>();
+				s.skipUntil<CharReaderUtf8::MatchChars<u'\\', u'\''>>();
 			}
 			if (s.is('\\')) {
 				s += 2;
 			}
 		}
 
-		StringReader ret(tmp.data(), tmp.size() - s.size());
+		CharReaderUtf8 ret(tmp.data(), tmp.size() - s.size());
 		if (s.is(quoted)) {
 			s ++;
 		}
-		s.skipUntil<HtmlIdentifier, Chars<'>'>>();
+		s.skipUntil<HtmlIdentifier16, CharReaderUtf8::MatchChars<'>'>>();
 		return ret;
 	}
 
-	return s.readChars<HtmlIdentifier>();
+	return s.readChars<HtmlIdentifier16>();
+}
+
+
+template <> CharReaderBase Tag_readName<CharReaderBase>(CharReaderBase &is) {
+	CharReaderBase s = is;
+	s.skipUntil<HtmlIdentifier8, CharReaderBase::MatchChars<'>', '?'>>();
+	CharReaderBase name(s.readChars<HtmlIdentifier8, CharReaderBase::MatchChars<'?'>>());
+	string::tolower_buf((char *)name.data(), name.size());
+	if (name.size() > 1 && name.back() == '/') {
+		name.set(name.data(), name.size() - 1);
+		is += (is.size() - s.size() - 1);
+	} else {
+		s.skipUntil<HtmlIdentifier8, CharReaderBase::MatchChars<'>'>>();
+		is = s;
+	}
+	return name;
+}
+
+template <> CharReaderBase Tag_readAttrName<CharReaderBase>(CharReaderBase &s) {
+	s.skipUntil<HtmlIdentifier8>();
+	CharReaderBase name(s.readChars<HtmlIdentifier8>());
+	string::tolower_buf((char *)name.data(), name.size());
+	return name;
+}
+
+template <> CharReaderBase Tag_readAttrValue<CharReaderBase>(CharReaderBase &s) {
+	if (!s.is('=')) {
+		s.skipUntil<HtmlIdentifier8>();
+		return CharReaderBase();
+	}
+
+	s ++;
+	char quoted = 0;
+	if (s.is('"') || s.is('\'')) {
+		quoted = s[0];
+		s ++;
+		CharReaderBase tmp = s;
+		while (!s.empty() && !s.is(quoted)) {
+			if (quoted == '"') {
+				s.skipUntil<CharReaderBase::MatchChars<'\\', '"'>>();
+			} else {
+				s.skipUntil<CharReaderBase::MatchChars<'\\', '\''>>();
+			}
+			if (s.is('\\')) {
+				s += 2;
+			}
+		}
+
+		CharReaderBase ret(tmp.data(), tmp.size() - s.size());
+		if (s.is(quoted)) {
+			s ++;
+		}
+		s.skipUntil<HtmlIdentifier8, CharReaderBase::MatchChars<'>'>>();
+		return ret;
+	}
+
+	return s.readChars<HtmlIdentifier8>();
+}
+
+
+template <> CharReaderUcs2 Tag_readName<CharReaderUcs2>(CharReaderUcs2 &is) {
+	CharReaderUcs2 s = is;
+	s.skipUntil<HtmlIdentifier16, CharReaderUcs2::MatchChars<u'>', u'?'>>();
+	CharReaderUcs2 name(s.readChars<HtmlIdentifier16, CharReaderUcs2::MatchChars<u'?'>>());
+	string::tolower_buf((char *)name.data(), name.size());
+	if (name.size() > 1 && name.back() == '/') {
+		name.set(name.data(), name.size() - 1);
+		is += (is.size() - s.size() - 1);
+	} else {
+		s.skipUntil<HtmlIdentifier16, CharReaderUcs2::MatchChars<u'>'>>();
+		is = s;
+	}
+	return name;
+}
+
+template <> CharReaderUcs2 Tag_readAttrName<CharReaderUcs2>(CharReaderUcs2 &s) {
+	s.skipUntil<HtmlIdentifier16>();
+	CharReaderUcs2 name(s.readChars<HtmlIdentifier16>());
+	string::tolower_buf((char *)name.data(), name.size());
+	return name;
+}
+
+template <> CharReaderUcs2 Tag_readAttrValue<CharReaderUcs2>(CharReaderUcs2 &s) {
+	if (!s.is('=')) {
+		s.skipUntil<HtmlIdentifier16>();
+		return CharReaderUcs2();
+	}
+
+	s ++;
+	char quoted = 0;
+	if (s.is('"') || s.is('\'')) {
+		quoted = s[0];
+		s ++;
+		CharReaderUcs2 tmp = s;
+		while (!s.empty() && !s.is(quoted)) {
+			if (quoted == '"') {
+				s.skipUntil<CharReaderUcs2::MatchChars<u'\\', u'"'>>();
+			} else {
+				s.skipUntil<CharReaderUcs2::MatchChars<u'\\', u'\''>>();
+			}
+			if (s.is('\\')) {
+				s += 2;
+			}
+		}
+
+		CharReaderUcs2 ret(tmp.data(), tmp.size() - s.size());
+		if (s.is(quoted)) {
+			s ++;
+		}
+		s.skipUntil<HtmlIdentifier16, CharReaderUcs2::MatchChars<u'>'>>();
+		return ret;
+	}
+
+	return s.readChars<HtmlIdentifier16>();
 }
 
 NS_SP_EXT_END(html)

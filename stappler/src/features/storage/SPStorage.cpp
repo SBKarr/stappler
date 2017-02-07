@@ -95,7 +95,7 @@ private:
 	Thread _thread;
 };
 
-class Scheme::Internal : public cocos2d::Ref {
+class Scheme::Internal : public Ref {
 public:
 	static Internal *create(const std::string &name, FieldsList &&list, AliasesList &&aliases, Handle *storage);
 
@@ -175,10 +175,10 @@ void get(const std::string &key, KeyDataCallback callback, Handle *storage) {
 		callback(key, val);
 	} else {
 		data::Value *val = new data::Value();
-		thread.perform([key, val, storage] (cocos2d::Ref *) -> bool {
+		thread.perform([key, val, storage] (const Task &) -> bool {
 			*val = data::read(storage->getData(key));
 			return true;
-		}, [key, val, callback] (cocos2d::Ref *, bool) {
+		}, [key, val, callback] (const Task &, bool) {
 			callback(key, *val);
 			delete val;
 		});
@@ -198,10 +198,10 @@ void set(const std::string &key, const data::Value &value, KeyDataCallback callb
 		}
 	} else {
 		data::Value *val = new data::Value(value);
-		thread.perform([key, val, storage] (cocos2d::Ref *) -> bool {
+		thread.perform([key, val, storage] (const Task &) -> bool {
 			storage->updateData(key, data::toString(*val));
 			return true;
-		}, [key, val, callback] (cocos2d::Ref *, bool) {
+		}, [key, val, callback] (const Task &, bool) {
 			if (callback) {
 				callback(key, *val);
 			}
@@ -222,10 +222,10 @@ void set(const std::string &key, data::Value &&value, KeyDataCallback callback, 
 		}
 	} else {
 		data::Value *val = new data::Value(std::move(value));
-		thread.perform([key, val, storage] (cocos2d::Ref *) -> bool {
+		thread.perform([key, val, storage] (const Task &) -> bool {
 			storage->updateData(key, data::toString(*val));
 			return true;
-		}, [key, val, callback] (cocos2d::Ref *, bool) {
+		}, [key, val, callback] (const Task &, bool) {
 			if (callback) {
 				callback(key, *val);
 			}
@@ -245,10 +245,10 @@ void remove(const std::string &key, KeyCallback callback, Handle *storage) {
 			callback(key);
 		}
 	} else {
-		thread.perform([key, storage] (cocos2d::Ref *) -> bool {
+		thread.perform([key, storage] (const Task &) -> bool {
 			storage->removeData(key);
 			return true;
-		}, [key, callback] (cocos2d::Ref *, bool) {
+		}, [key, callback] (const Task &, bool) {
 			if (callback) {
 				callback(key);
 			}
@@ -630,7 +630,7 @@ bool Scheme::Internal::initialize() {
 	std::string createCmd = getCreationCommand();
 	auto storage = _storage;
 	auto &thread = _storage->getThread();
-	thread.perform([storage, createCmd, this] (cocos2d::Ref *) -> bool {
+	thread.perform([storage, createCmd, this] (const Task &) -> bool {
 		// check if table exists
 		auto q = toString("SELECT count(*) as num FROM sqlite_master WHERE type='table' AND name='", _name, "'");
 		auto val = storage->perform(q, true);
@@ -902,10 +902,10 @@ bool Scheme::Internal::perform(Scheme::Command *cmd) {
 		runCommandCallback(cmd, val);
 	} else {
 		data::Value *val = new data::Value();
-		thread.perform([this, cmd, val] (cocos2d::Ref *) -> bool {
+		thread.perform([this, cmd, val] (const Task &) -> bool {
 			*val = performCommand(cmd);
 			return true;
-		}, [this, cmd, val] (cocos2d::Ref *, bool) {
+		}, [this, cmd, val] (const Task &, bool) {
 			runCommandCallback(cmd, *val);
 			delete val;
 		});
@@ -925,10 +925,10 @@ bool Scheme::Internal::perform(const std::string &sql, const DataCallback &cb) {
 		}
 	} else {
 		data::Value *val = new data::Value();
-		thread.perform([this, sql, val] (cocos2d::Ref *) -> bool {
+		thread.perform([this, sql, val] (const Task &) -> bool {
 			*val = performCommand(sql);
 			return true;
-		}, [this, cb, val] (cocos2d::Ref *, bool) {
+		}, [this, cb, val] (const Task &, bool) {
 			if (cb) {
 				cb(std::move(*val));
 			}
@@ -1279,6 +1279,7 @@ void Scheme::Internal::runCommandCallback(Scheme::Command *cmd, data::Value &res
 		}
 		break;
 	}
+	delete cmd;
 }
 
 #if (SP_STORAGE_DEBUG)

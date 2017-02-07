@@ -238,7 +238,7 @@ static const char* s_hexTable[256] = {
     "fc", "fd", "fe", "ff"
 };
 
-static const char s_decTable[256] = {
+static uint8_t s_decTable[256] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0,
 	0, 10, 11, 12, 13, 14, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -252,13 +252,21 @@ static const char s_decTable[256] = {
 size_t encodeSize(size_t length) { return length * 2; }
 size_t decodeSize(size_t length) { return length / 2; }
 
-String encode(const uint8_t *buffer, size_t length) { return base16::encode(Reader(buffer, length)); }
-String encode(const Bytes &input) { return stappler::base16::encode(Reader(input.data(), input.size())); }
-String encode(const String &input) { return stappler::base16::encode(Reader((const uint8_t *)input.data(), input.size())); }
+const char *charToHex(const char &c) {
+	return s_hexTable[reinterpret_cast<const uint8_t &>(c)];
+}
 
-String encode(const Reader &data) {
-	Reader inputBuffer(data);
-	auto length = inputBuffer.size();
+uint8_t hexToChar(const char &c) {
+	return s_decTable[reinterpret_cast<const uint8_t &>(c)];
+}
+
+uint8_t hexToChar(const char &c, const char &d) {
+	return (hexToChar(c) << 4) | hexToChar(d);
+}
+
+String encode(const CoderSource &source) {
+	Reader inputBuffer(source.data);
+	const auto length = inputBuffer.size();
 
 #if SPAPR
 	String output; output.resize(length * 2);
@@ -274,33 +282,64 @@ String encode(const Reader &data) {
 
     return output;
 }
-
-void encode(Stream &stream, const Bytes &data) { return base16::encode(stream, Reader(data.data(), data.size())); }
-void encode(Stream &stream, const String &data) { return base16::encode(stream, Reader((const uint8_t *)data.data(), data.size())); }
-void encode(Stream &stream, const uint8_t *data, size_t len) { return base16::encode(stream, Reader(data, len)); }
-void encode(Stream &stream, const Reader &data) {
-	Reader inputBuffer(data);
-	auto length = inputBuffer.size();
+void encode(std::basic_ostream<char> &stream, const CoderSource &source) {
+	Reader inputBuffer(source.data);
+	const auto length = inputBuffer.size();
     for (size_t i = 0; i < length; ++i) {
     	stream << s_hexTable[inputBuffer[i]];
     }
 }
+size_t encode(char *buf, size_t bsize, const CoderSource &source) {
+	Reader inputBuffer(source.data);
+	const auto length = inputBuffer.size();
 
+	size_t bytes = 0;
+    for (size_t i = 0; i < length; ++i) {
+    	if (bytes + 2 <= bsize) {
+        	memcpy(buf + i * 2, s_hexTable[inputBuffer[i]], 2);
+        	bytes += 2;
+    	} else {
+    		break;
+    	}
+    }
+    return bytes;
+}
 
-Bytes decode(const char *data, size_t len) { return stappler::base16::decode(CharReaderBase(data, len)); }
-Bytes decode(const String &input) { return stappler::base16::decode(CharReaderBase(input.data(), input.size())); }
-Bytes decode(const CharReaderBase &data) {
-	CharReaderBase inputBuffer(data);
-	auto length = inputBuffer.size();
+Bytes decode(const CoderSource &source) {
+	const auto length = source.data.size();
 
 	Bytes outputBuffer; outputBuffer.reserve(length / 2);
 	for (size_t i = 0; i < length; i += 2) {
-		char a = s_decTable[(unsigned char)inputBuffer[i]];
-		char b = s_decTable[(unsigned char)inputBuffer[i + 1]];
-
-		outputBuffer.push_back((a << 4) | b);
+		outputBuffer.push_back(
+				(s_decTable[source.data[i]] << 4)
+					| s_decTable[source.data[i + 1]]);
 	}
 	return outputBuffer;
+}
+void decode(std::basic_ostream<char> &stream, const CoderSource &source) {
+	const auto length = source.data.size();
+
+	for (size_t i = 0; i < length; i += 2) {
+		stream << char(
+				(s_decTable[source.data[i]] << 4)
+					| s_decTable[source.data[i + 1]]);
+	}
+}
+size_t decode(uint8_t *buf, size_t bsize, const CoderSource &source) {
+	const auto length = source.data.size();
+
+	size_t bytes = 0;
+	for (size_t i = 0; i < length; i += 2) {
+		if (bytes + 1 <= bsize) {
+			buf[bytes] = uint8_t(
+					(s_decTable[source.data[i]] << 4)
+						| s_decTable[source.data[i + 1]]);
+			++ bytes;
+		} else {
+			break;
+		}
+	}
+	return bytes;
 }
 
 NS_SP_EXT_END(base16)

@@ -25,7 +25,7 @@ THE SOFTWARE.
 
 #include "SPDefine.h"
 #include "SPRichTextRenderer.h"
-#include "SPRichTextDocument.h"
+#include "SPScrollViewBase.h"
 
 #include "SPFilesystem.h"
 #include "SPThread.h"
@@ -34,8 +34,8 @@ THE SOFTWARE.
 
 #include "2d/CCNode.h"
 
-#include "SPRichTextBuilder.h"
-#include "SPRichTextResult.h"
+#include "SLBuilder.h"
+#include "SLResult.h"
 #include "SPString.h"
 
 NS_SP_EXT_BEGIN(rich_text)
@@ -85,14 +85,14 @@ void Renderer::onVisit(cocos2d::Renderer *r, const Mat4& t, uint32_t f, const ZP
 	}
 }
 
-void Renderer::setSource(Source *source) {
+void Renderer::setSource(layout::Source *source) {
 	if (_source != source) {
 		_source = source;
 		_renderingDirty = true;
 	}
 }
 
-Renderer::Source *Renderer::getSource() const {
+Source *Renderer::getSource() const {
 	return _source;
 }
 
@@ -126,23 +126,30 @@ MediaResolver Renderer::getMediaResolver(const Vector<String> &opts) const {
 
 void Renderer::onContentSizeDirty() {
 	_isPageSplitted = false;
-	if (hasFlag(RenderFlag::PaginatedLayout)) {
-		Size s = _owner->getContentSize();
-		if (shouldSplitPages(s)) {
-			s.width /= 2.0f;
+	auto size = _owner->getContentSize();
+	auto scroll = dynamic_cast<ScrollViewBase *>(_owner);
+	if (scroll) {
+		auto &padding = scroll->getPadding();
+		if (scroll->isVertical()) {
+			size.width -= padding.horizontal();
+		}
+	}
+	if (hasFlag(layout::RenderFlag::PaginatedLayout)) {
+		if (shouldSplitPages(size)) {
+			size.width /= 2.0f;
 			_isPageSplitted = true;
 		}
-		s.width -= _pageMargin.horizontal();
-		s.height -= _pageMargin.vertical();
-		setSurfaceSize(s);
+		size.width -= _pageMargin.horizontal();
+		size.height -= _pageMargin.vertical();
+		setSurfaceSize(size);
 	} else {
-		setSurfaceSize(_owner->getContentSize());
+		setSurfaceSize(size);
 	}
 }
 
 void Renderer::setSurfaceSize(const Size &size) {
 	if (!_surfaceSize.equals(size)) {
-		if (hasFlag(RenderFlag::PaginatedLayout) || !hasFlag(RenderFlag::NoHeightCheck) || size.width != _surfaceSize.width) {
+		if (hasFlag(layout::RenderFlag::PaginatedLayout) || !hasFlag(layout::RenderFlag::NoHeightCheck) || size.width != _surfaceSize.width) {
 			_renderingDirty = true;
 		}
 		_surfaceSize = size;
@@ -177,37 +184,37 @@ void Renderer::setDensity(float density) {
 	}
 }
 
-void Renderer::setMediaType(style::MediaType value) {
+void Renderer::setMediaType(layout::style::MediaType value) {
 	if (_media.mediaType != value) {
 		_media.mediaType = value;
 		_renderingDirty = true;
 	}
 }
-void Renderer::setOrientationValue(style::Orientation value) {
+void Renderer::setOrientationValue(layout::style::Orientation value) {
 	if (_media.orientation != value) {
 		_media.orientation = value;
 		_renderingDirty = true;
 	}
 }
-void Renderer::setPointerValue(style::Pointer value) {
+void Renderer::setPointerValue(layout::style::Pointer value) {
 	if (_media.pointer != value) {
 		_media.pointer = value;
 		_renderingDirty = true;
 	}
 }
-void Renderer::setHoverValue(style::Hover value) {
+void Renderer::setHoverValue(layout::style::Hover value) {
 	if (_media.hover != value) {
 		_media.hover = value;
 		_renderingDirty = true;
 	}
 }
-void Renderer::setLightLevelValue(style::LightLevel value) {
+void Renderer::setLightLevelValue(layout::style::LightLevel value) {
 	if (_media.lightLevel != value) {
 		_media.lightLevel = value;
 		_renderingDirty = true;
 	}
 }
-void Renderer::setScriptingValue(style::Scripting value) {
+void Renderer::setScriptingValue(layout::style::Scripting value) {
 	if (_media.scripting != value) {
 		_media.scripting = value;
 		_renderingDirty = true;
@@ -220,7 +227,7 @@ void Renderer::setHyphens(font::HyphenMap *map) {
 void Renderer::setPageMargin(const Margin &margin) {
 	if (_pageMargin != margin) {
 		_pageMargin = margin;
-		if (hasFlag(RenderFlag::PaginatedLayout)) {
+		if (hasFlag(layout::RenderFlag::PaginatedLayout)) {
 			_renderingDirty = true;
 		}
 	}
@@ -240,16 +247,16 @@ bool Renderer::hasOption(const String &str) const {
 	return _media.hasOption(str);
 }
 
-void Renderer::addFlag(RenderFlag::Flag flag) {
-	_media.flags |= (RenderFlag::Mask)flag;
+void Renderer::addFlag(layout::RenderFlag::Flag flag) {
+	_media.flags |= (layout::RenderFlag::Mask)flag;
 	_renderingDirty = true;
 }
-void Renderer::removeFlag(RenderFlag::Flag flag) {
-	_media.flags &= ~ (RenderFlag::Mask)flag;
+void Renderer::removeFlag(layout::RenderFlag::Flag flag) {
+	_media.flags &= ~ (layout::RenderFlag::Mask)flag;
 	_renderingDirty = true;
 }
-bool Renderer::hasFlag(RenderFlag::Flag flag) const {
-	return _media.flags & (RenderFlag::Mask)flag;
+bool Renderer::hasFlag(layout::RenderFlag::Flag flag) const {
+	return _media.flags & (layout::RenderFlag::Mask)flag;
 }
 
 void Renderer::onSource() {
@@ -265,7 +272,7 @@ bool Renderer::requestRendering() {
 	if (!_enabled || _renderingInProgress || _surfaceSize.equals(cocos2d::Size::ZERO) || !s) {
 		return false;
 	}
-	font::Source *fontSet = nullptr;
+	FontSource *fontSet = nullptr;
 	Document *document = nullptr;
 	if (s->isReady()) {
 		fontSet = s->getSource();
@@ -277,10 +284,10 @@ bool Renderer::requestRendering() {
 		media.fontScale = s->getFontScale();
 		media.pageMargin = _pageMargin;
 		if (_isPageSplitted) {
-			media.flags |= RenderFlag::SplitPages;
+			media.flags |= layout::RenderFlag::SplitPages;
 		}
 
-		Builder * impl = new Builder(document, media, fontSet, _ids);
+		layout::Builder * impl = new layout::Builder(document, media, fontSet, _ids);
 		impl->setHyphens(_hyphens);
 		_renderingInProgress = true;
 		if (_renderingCallback) {
@@ -289,10 +296,10 @@ bool Renderer::requestRendering() {
 
 		retain();
 		auto &thread = resource::thread();
-		thread.perform([impl] (cocos2d::Ref *) -> bool {
+		thread.perform([impl] (const Task &) -> bool {
 			impl->render();
 			return true;
-		}, [this, impl] (cocos2d::Ref *, bool) {
+		}, [this, impl] (const Task &, bool) {
 			auto result = impl->getResult();
 			if (result) {
 				onResult(result);
@@ -324,7 +331,7 @@ void Renderer::setRenderingCallback(const RenderingCallback &cb) {
 }
 
 void Renderer::pushVersionOptions() {
-	auto v = RTEngineVersion();
+	auto v = layout::EngineVersion();
 	for (uint32_t i = 0; i <= v; i++) {
 		addOption(toString("stappler-v", i, "-plus"));
 	}

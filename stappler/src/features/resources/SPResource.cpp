@@ -43,7 +43,7 @@ std::string getFontAssetPath(const std::string &url) {
 	return toString(dir, "/", string::stdlibHashUnsigned(url), ".asset");
 }
 
-void acquireFontAsset(const Set<String> &urls, const Function<void(const Vector<Asset *> &)> &cb) {
+void acquireFontAsset(const Set<String> &urls, const Function<void(const Vector<Rc<Asset>> &)> &cb) {
 	filesystem::mkdir(filesystem::cachesPath("font_assets"));
 	Vector<AssetLibrary::AssetRequest> vec;
 	for (auto &it : urls) {

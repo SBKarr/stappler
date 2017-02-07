@@ -26,7 +26,7 @@ THE SOFTWARE.
 #include "SPDefine.h"
 #include "SPRichTextView.h"
 #include "SPRichTextRenderer.h"
-#include "SPRichTextLayout.h"
+#include "SLLayout.h"
 
 #include "SPScrollController.h"
 #include "SPRichTextDrawer.h"
@@ -153,11 +153,11 @@ Vec2 View::convertToObjectSpace(const Vec2 &vec) const {
 }
 
 bool View::isObjectActive(const Object &obj) const {
-	return obj.type == Object::Type::Ref;
+	return obj.type == layout::Object::Type::Ref;
 }
 
 bool View::isObjectTapped(const Vec2 & loc, const Object &obj) const {
-	if (obj.type == Object::Type::Ref) {
+	if (obj.type == layout::Object::Type::Ref) {
 		if (loc.x >= obj.bbox.getMinX() - 8.0f && loc.x <= obj.bbox.getMaxX() + 8.0f && loc.y >= obj.bbox.getMinY() - 8.0f && loc.y <= obj.bbox.getMaxY() + 8.0f) {
 			return true;
 		}
@@ -234,12 +234,12 @@ bool View::onPressCancel(const Vec2 &vec, const TimeInterval &r) {
 
 void View::onContentSizeDirty() {
 	if (_layout == Layout::Horizontal) {
-		if (!_renderer->hasFlag(rich_text::RenderFlag::PaginatedLayout)) {
-			_renderer->addFlag(rich_text::RenderFlag::PaginatedLayout);
+		if (!_renderer->hasFlag(layout::RenderFlag::PaginatedLayout)) {
+			_renderer->addFlag(layout::RenderFlag::PaginatedLayout);
 		}
 	} else {
-		if (_renderer->hasFlag(rich_text::RenderFlag::PaginatedLayout)) {
-			_renderer->removeFlag(rich_text::RenderFlag::PaginatedLayout);
+		if (_renderer->hasFlag(layout::RenderFlag::PaginatedLayout)) {
+			_renderer->removeFlag(layout::RenderFlag::PaginatedLayout);
 		}
 	}
 
@@ -315,9 +315,9 @@ void View::onPageData(Result *res, float contentOffset) {
 		surface.height = res->getContentSize().height;
 	}
 	auto &media = res->getMedia();
-	if (media.flags & RenderFlag::PaginatedLayout) {
+	if (media.flags & layout::RenderFlag::PaginatedLayout) {
 		auto num = res->getNumPages();
-		bool isSplitted = media.flags & RenderFlag::SplitPages;
+		bool isSplitted = media.flags & layout::RenderFlag::SplitPages;
 		auto page = Size(surface.width + res->getMedia().pageMargin.horizontal(), surface.height + res->getMedia().pageMargin.vertical());
 		for (size_t i = 0; i < num; ++ i) {
 			_controller->addItem(std::bind(&View::onPageNode, this, i), page.width, page.width * i);
@@ -345,7 +345,7 @@ void View::onPageData(Result *res, float contentOffset) {
 	}
 }
 
-View::PageData View::getPageData(size_t idx) const {
+PageData View::getPageData(size_t idx) const {
 	return _renderer->getResult()->getPageData(idx, _objectsOffset);
 }
 
@@ -355,7 +355,7 @@ cocos2d::Node * View::onPageNode(size_t idx) {
 	auto drawer = _renderer->getDrawer();
 	PageData data = getPageData(idx);
 
-	if (result->getMedia().flags & RenderFlag::PaginatedLayout) {
+	if (result->getMedia().flags & layout::RenderFlag::PaginatedLayout) {
 		auto page = onConstructPageNode(data, result->getMedia().density);
 		if (idx < result->getNumPages()) {
 			page->retain();

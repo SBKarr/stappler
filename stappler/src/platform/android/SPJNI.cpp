@@ -57,6 +57,8 @@ NS_SP_PLATFORM_END
 NS_SP_BEGIN
 
 namespace spjni {
+	std::atomic<uint64_t> _resetTime;
+
 	JClassRef::JClassRef() { }
 	JClassRef::JClassRef(JNIEnv *env, jclass c) : _env(env), _class(c) {
 		if (!_env) {
@@ -87,8 +89,8 @@ namespace spjni {
 		return _class;
 	}
 
-	JObjectRef::JObjectRef() { }
-	JObjectRef::JObjectRef(JNIEnv *env, jobject obj, Type type) {
+	JObjectRef::JObjectRef() : _time(Time::now()) { }
+	JObjectRef::JObjectRef(JNIEnv *env, jobject obj, Type type) : _time(Time::now()) {
 		if (env) {
 			_type = type;
 			_env = env;
@@ -99,13 +101,13 @@ namespace spjni {
 	JObjectRef::~JObjectRef() {
 		clear();
 	}
-	JObjectRef::JObjectRef(const JObjectRef & other, Type type) : _env(other._env), _type(type) {
+	JObjectRef::JObjectRef(const JObjectRef & other, Type type) : _env(other._env), _type(type), _time(Time::now()) {
 		if (!other.empty() && _env) {
 			_obj = newRef(_env, other._obj, type);
 		}
 	}
 	JObjectRef::JObjectRef(const JObjectRef & other) : JObjectRef(other, other._type) { }
-	JObjectRef::JObjectRef(JObjectRef && other) : _env(other._env), _obj(other._obj), _type(other._type) {
+	JObjectRef::JObjectRef(JObjectRef && other) : _env(other._env), _obj(other._obj), _type(other._type), _time(other._time) {
 		other._env = nullptr;
 		other._obj = nullptr;
 	}
@@ -114,6 +116,7 @@ namespace spjni {
 		clear();
 		_env = other._env;
 		_type = other._type;
+		_time = Time::now();
 		if (!other.empty() && _env) {
 			_obj = newRef(_env, other._obj, _type);
 		}
@@ -124,6 +127,7 @@ namespace spjni {
 		_env = other._env;
 		_obj = other._obj;
 		_type = other._type;
+		_time = other._time;
 
 		other._env = nullptr;
 		other._obj = nullptr;
@@ -143,19 +147,27 @@ namespace spjni {
 		return nullptr;
 	}
 	void JObjectRef::clear() {
-		if (!empty()) {
+		if (_obj != nullptr && _env != nullptr) {
 			switch (_type) {
-			case Local: return _env->DeleteLocalRef(_obj); break;
-			case Global: return _env->DeleteGlobalRef(_obj); break;
-			case WeakGlobal: return _env->DeleteWeakGlobalRef(_obj); break;
+				case Local: return _env->DeleteLocalRef(_obj); break;
+				case Global: return _env->DeleteGlobalRef(_obj); break;
+				case WeakGlobal: return _env->DeleteWeakGlobalRef(_obj); break;
 			}
 		}
+		_env = nullptr;
+		_obj = nullptr;
+	}
+	void JObjectRef::raw_clear() {
 		_env = nullptr;
 		_obj = nullptr;
 	}
 
 	bool JObjectRef::empty() const {
 		return _obj == nullptr || _env == nullptr || (_type == WeakGlobal && _env->IsSameObject(_obj, NULL));
+	}
+
+	const Time & JObjectRef::time() const {
+		return _time;
 	}
 
 	JClassRef JObjectRef::get_class() const {
@@ -243,6 +255,8 @@ namespace spjni {
 			}
 
 			_mutex.unlock();
+
+			_resetTime.store(Time::now().toMicroseconds());
 		}
 
 		JObjectRef get(JNIEnv *pEnv = nullptr, JObjectRef::Type type = JObjectRef::Local) {
@@ -385,7 +399,7 @@ void Java_org_cocos2dx_lib_Cocos2dxRenderer_nativeInit(JNIEnv*  env, jobject thi
 }
 
 void Java_org_cocos2dx_lib_Cocos2dxRenderer_nativeOnSurfaceChanged(JNIEnv*  env, jobject thiz, jint w, jint h) {
-    auto view = cocos2d::Director::sharedDirector()->getOpenGLView();
+    auto view = cocos2d::Director::getInstance()->getOpenGLView();
     auto screen = stappler::Screen::getInstance();
     view->setFrameSize(w, h);
     auto o = ((w < h)? stappler::ScreenOrientation::Portrait:stappler::ScreenOrientation::Landscape);
@@ -403,7 +417,9 @@ namespace spjni {
 
 void spjni_activity_key_destructor(void *ptr) {
 	if (ptr) {
-		delete (JObjectRef *)(ptr);
+		JObjectRef *ref = (JObjectRef *)ptr;
+		ref->raw_clear(); // causes memory leak, but JNI memory cleared when JNIEnv is reloaded
+		delete ref;
 	}
 }
 
@@ -476,11 +492,11 @@ JNIEnv *getJniEnv() {
     jint ret = jvm->GetEnv((void**)&env, JNI_VERSION_1_4);
 
     switch (ret) {
-    case JNI_OK :
+    case JNI_OK:
         // Success!
         pthread_setspecific(jniEnvKey, env);
         return env;
-    default :
+    default:
     	stappler::log::format("JNI", "Failed to get the environment using GetEnv()");
         return nullptr;
     }
@@ -493,6 +509,11 @@ const JObjectRef &getActivity(JNIEnv *pEnv) {
 	if (activity == nullptr) {
 		activity = new JObjectRef(_activity.get(pEnv, JObjectRef::Type::WeakGlobal));
         pthread_setspecific(jniActivityKey, activity);
+	} else {
+		uint64_t t = _resetTime.load();
+		if (t > activity->time()) {
+			*activity = JObjectRef(_activity.get(pEnv, JObjectRef::Type::WeakGlobal));
+		}
 	}
 
 	if (activity->empty()) {
@@ -571,6 +592,11 @@ AAssetManager * getAssetManager(JNIEnv *pEnv) {
 	if (assetManager == nullptr) {
 		assetManager = new JObjectRef(getService(Service::AssetManager, pEnv, JObjectRef::Type::WeakGlobal));
         pthread_setspecific(jniAssetManagerKey, assetManager);
+	} else {
+		uint64_t t = _resetTime.load();
+		if (t > assetManager->time()) {
+			*assetManager = JObjectRef(getService(Service::AssetManager, pEnv, JObjectRef::Type::WeakGlobal));
+		}
 	}
 
 	if (assetManager->empty()) {

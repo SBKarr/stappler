@@ -27,6 +27,10 @@ BUILD_OUTDIR := $(LOCAL_OUTDIR)/objs
 GLOBAL_ROOT := $(STAPPLER_ROOT)
 GLOBAL_OUTPUT := $(BUILD_OUTDIR)
 
+ifndef COCOS2D_ROOT
+COCOS2D_ROOT := libs/src/stappler-cocos2d-x
+endif
+
 include $(GLOBAL_ROOT)/make/compiler.mk
 
 ifdef RELEASE
@@ -70,9 +74,9 @@ else
 BUILD_MAIN_OBJ := 
 endif
 
-ifndef LOCAL_TOOLKIT_OUTPUT
-TOOLKIT_OUTPUT := $(GLOBAL_ROOT)/build
-else
+ifdef LOCAL_TOOLKIT_OUTPUT
+#TOOLKIT_OUTPUT := $(GLOBAL_ROOT)/build
+#else
 TOOLKIT_OUTPUT := $(LOCAL_TOOLKIT_OUTPUT)
 endif
 

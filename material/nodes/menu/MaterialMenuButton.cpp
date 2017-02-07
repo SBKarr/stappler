@@ -30,7 +30,6 @@ THE SOFTWARE.
 #include "MaterialResourceManager.h"
 #include "MaterialMenu.h"
 #include "MaterialLabel.h"
-#include "MaterialColors.h"
 #include "MaterialScene.h"
 #include "MaterialFloatingMenu.h"
 
@@ -226,21 +225,21 @@ void MenuButton::setEnabled(bool value) {
 void MenuButton::onLightLevel() {
 	auto level = material::ResourceManager::getInstance()->getLightLevel();
 	switch(level) {
-	case rich_text::style::LightLevel::Dim:
+	case LightLevel::Dim:
 		setStyle(Button::Style::FlatWhite);
 		_menuNameLabel->setColor(Color::White);
 		_menuValueLabel->setColor(Color::White);
 		_menuNameIcon->setColor(Color::White);
 		_menuValueIcon->setColor(Color::White);
 		break;
-	case rich_text::style::LightLevel::Normal:
+	case LightLevel::Normal:
 		setStyle(Button::Style::FlatBlack);
 		_menuNameLabel->setColor(Color::Black);
 		_menuValueLabel->setColor(Color::Black);
 		_menuNameIcon->setColor(Color::Black);
 		_menuValueIcon->setColor(Color::Black);
 		break;
-	case rich_text::style::LightLevel::Washed:
+	case LightLevel::Washed:
 		setStyle(Button::Style::FlatBlack);
 		_menuNameLabel->setColor(Color::Black);
 		_menuValueLabel->setColor(Color::Black);

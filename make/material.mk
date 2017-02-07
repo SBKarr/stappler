@@ -25,6 +25,7 @@ MATERIAL_OUTPUT_STATIC = $(TOOLKIT_OUTPUT)/libmaterial.a
 MATERIAL_PRECOMPILED_HEADERS += \
 	material/Material.h \
 	stappler/src/core/SPDefine.h \
+	layout/SPLayout.h \
 	common/core/SPCore.h \
 	common/core/SPCommon.h
 
@@ -36,12 +37,12 @@ MATERIAL_SRCS_OBJS +=
 MATERIAL_INCLUDES_DIRS += \
 	material \
 	common \
+	layout \
 	stappler/src
 
 MATERIAL_INCLUDES_OBJS += \
 	$(COCOS2D_STAPPLER_INCLUDES_OBJS) \
 	$(OSTYPE_INCLUDE) \
-	$(OSTYPE_INCLUDE)/freetype2 \
 	$(OSTYPE_INCLUDE)/cairo
 
 MATERIAL_LIBS := -L$(OSTYPE_PREBUILT_PATH) $(OSTYPE_STAPPLER_LIBS)

@@ -90,12 +90,8 @@ inline void JsonDecoder::parseBufferString(String &ref) {
 			++ r;
 			if (r.is('u')) {
 				++ r;
-				uint32_t c = 0;
-				for (int i = 0; i < 4; i++) {
-					c = c << 4 | string::hexToChar(r[0]);
-					++ r;
-				}
-				unicode::utf8Encode(ref, (char16_t)c);
+				unicode::utf8Encode(ref, char16_t(base16::hexToChar(r[0], r[1]) << 8 | base16::hexToChar(r[2], r[3]) ));
+				r += 4;
 			} else {
 				ref.push_back(escape[(uint8_t)r[0]]);
 				++ r;

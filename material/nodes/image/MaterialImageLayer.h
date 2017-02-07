@@ -44,24 +44,24 @@ public:
 	virtual void onEnterTransitionDidFinish() override;
 
 	virtual void setTexture(cocos2d::Texture2D *tex);
-	virtual void setActionCallback(const std::function<void()> &);
+	virtual void setActionCallback(const Function<void()> &);
 
 	virtual Vec2 getTexturePosition() const;
 public:
-	virtual bool onTap(const cocos2d::Vec2 &point, int count);
+	virtual bool onTap(const Vec2 &point, int count);
 
-	virtual bool onSwipeBegin(const cocos2d::Vec2 &point);
-	virtual bool onSwipe(const cocos2d::Vec2 &delta);
-	virtual bool onSwipeEnd(const cocos2d::Vec2 &velocity);
+	virtual bool onSwipeBegin(const Vec2 &point);
+	virtual bool onSwipe(const Vec2 &delta);
+	virtual bool onSwipeEnd(const Vec2 &velocity);
 
-	virtual bool onPinch(const cocos2d::Vec2 &point, float scale, float velocity, bool isEnded);
+	virtual bool onPinch(const Vec2 &point, float scale, float velocity, bool isEnded);
 
 protected:
-	cocos2d::Rect getCorrectRect(const cocos2d::Size &containerSize);
-	cocos2d::Vec2 getCorrectPosition(const cocos2d::Size &containerSize, cocos2d::Vec2 point);
+	Rect getCorrectRect(const Size &containerSize);
+	Vec2 getCorrectPosition(const Size &containerSize, Vec2 point);
 
-	cocos2d::Size getContainerSize() const;
-	cocos2d::Size getContainerSizeForScale(float value) const;
+	Size getContainerSize() const;
+	Size getContainerSizeForScale(float value) const;
 
 protected:
 	cocos2d::Component *_gestureListener = nullptr;
@@ -69,8 +69,8 @@ protected:
 	cocos2d::Node *_root = nullptr;
 	cocos2d::Sprite *_image = nullptr;
 
-	cocos2d::Size _prevContentSize;
-    cocos2d::Vec2 _globalScale; // values to scale input gestures
+	Size _prevContentSize;
+    Vec2 _globalScale; // values to scale input gestures
 
 	float _minScale = 0.0f;
 	float _maxScale = 0.0f;
@@ -79,7 +79,7 @@ protected:
 	bool _hasPinch = false;
 	bool _textureDirty = false;
 
-	std::function<void()> _actionCallback = nullptr;
+	Function<void()> _actionCallback = nullptr;
 };
 
 NS_MD_END

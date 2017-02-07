@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,210 +25,407 @@ THE SOFTWARE.
 
 #include "SPDefine.h"
 #include "SPFont.h"
-#include "renderer/CCTexture2D.h"
-#include "SPFilesystem.h"
-#include "SPAsset.h"
-#include "SPDevice.h"
-#include "SPResource.h"
-#include "SPThread.h"
-#include "SPDynamicBatchScene.h"
+#include "SPThreadManager.h"
 #include "SPTextureCache.h"
+#include "SPResource.h"
+#include "SPDynamicLabel.h"
+#include "SPDevice.h"
+#include "SPDynamicBatchScene.h"
+#include "base/CCDirector.h"
+#include "renderer/CCTexture2D.h"
 
 NS_SP_EXT_BEGIN(font)
 
-void FontCharString::addChar(char16_t c) {
-	auto it = std::lower_bound(chars.begin(), chars.end(), c);
-	if (it == chars.end() || *it != c) {
-		chars.insert(it, c);
+class FontLibrary;
+class FontLibraryCache;
+
+class FontLibraryCache : public layout::FreeTypeInterface {
+public:
+	FontLibraryCache(const String &, FontLibrary *);
+
+	void update();
+	Time getTimer() const;
+
+protected:
+	FontLibrary *library;
+	Time timer;
+};
+
+class FontLibrary {
+public:
+	static FontLibrary *getInstance();
+	FontLibrary();
+	~FontLibrary();
+	void update(float dt);
+
+	Arc<FontLibraryCache> getCache();
+
+	Vector<size_t> getQuadsCount(const layout::FormatSpec *format, const Map<String, Vector<CharTexture>> &layouts, size_t texSize);
+
+	bool writeTextureQuads(uint32_t v, FontSource *, const layout::FormatSpec *, const Vector<Rc<cocos2d::Texture2D>> &,
+			Vector<Rc<DynamicQuadArray>> &, Vector<Vector<bool>> &);
+
+	bool writeTextureRects(uint32_t v, FontSource *, const layout::FormatSpec *, float scale, Vector<Rect> &);
+
+	bool isSourceRequestValid(layout::FontSource *, uint32_t);
+
+	void cleanupSource(FontSource *);
+	Arc<layout::FontTextureLayout> getSourceLayout(FontSource *);
+	void setSourceLayout(FontSource *, layout::FontTextureLayout &&);
+
+protected:
+	void writeTextureQuad(const layout::FormatSpec *format, const layout::Metrics &m, const layout::CharSpec &c, const layout::CharLayout &l, const layout::CharTexture &t,
+			const layout::RangeSpec &range, const layout::LineSpec &line, Vector<bool> &cMap, const cocos2d::Texture2D *tex, DynamicQuadArray *quad);
+
+	std::mutex _mutex;
+	Time _timer = 0;
+	Map<uint64_t, Arc<FontLibraryCache>> _cache;
+
+	std::mutex _sourcesMutex;
+	Map<FontSource *, Arc<layout::FontTextureLayout>> _sources;
+
+	static FontLibrary *s_instance;
+	static std::mutex s_mutex;
+};
+
+FontLibraryCache::FontLibraryCache(const String &str, FontLibrary *lib) : FreeTypeInterface(str), library(lib), timer(Time::now()) { }
+
+void FontLibraryCache::update() {
+	timer = Time::now();
+}
+
+Time FontLibraryCache::getTimer() const {
+	return timer;
+}
+
+FontLibrary *FontLibrary::s_instance = nullptr;
+std::mutex FontLibrary::s_mutex;
+
+void FontLibrary::cleanupSource(FontSource *source) {
+	_sourcesMutex.lock();
+	if (_sources.erase(source) == 0) {
+		log::text("FontLibrary", "Warning: cleanup empty source!");
 	}
+	_sourcesMutex.unlock();
 }
 
-void FontCharString::addString(const String &str) {
-	addString(string::toUtf16(str));
-}
-
-void FontCharString::addString(const WideString &str) {
-	addString(str.data(), str.size());
-}
-
-void FontCharString::addString(const char16_t *str, size_t len) {
-	for (size_t i = 0; i < len; ++ i) {
-		const char16_t &c = str[i];
-		auto it = std::lower_bound(chars.begin(), chars.end(), c);
-		if (it == chars.end() || *it != c) {
-			chars.insert(it, c);
-		}
+Arc<layout::FontTextureLayout> FontLibrary::getSourceLayout(FontSource *source) {
+	Arc<layout::FontTextureLayout> ret;
+	_sourcesMutex.lock();
+	auto it = _sources.find(source);
+	if (it != _sources.end()) {
+		ret = it->second;
 	}
+	_sourcesMutex.unlock();
+	return ret;
 }
 
-FontData::~FontData() { }
-uint16_t FontData::getHeight() const {
-	return metrics.height;
-}
-int16_t FontData::getAscender() const {
-	return metrics.ascender;
-}
-int16_t FontData::getDescender() const {
-	return metrics.descender;
-}
-
-CharLayout FontData::getChar(char16_t c) const {
-	auto it = std::lower_bound(chars.begin(), chars.end(), c);
-	if (it != chars.end() && *it == c) {
-		return *it;
+void FontLibrary::setSourceLayout(FontSource *source, layout::FontTextureLayout &&map) {
+	Arc<layout::FontTextureLayout> ret;
+	_sourcesMutex.lock();
+	auto it = _sources.find(source);
+	if (it != _sources.end()) {
+		it->second = Arc<layout::FontTextureLayout>::create(std::move(map));
 	} else {
-		return CharLayout{0};
+		_sources.emplace(source, Arc<layout::FontTextureLayout>::create(std::move(map)));
 	}
+	_sourcesMutex.unlock();
 }
 
-uint16_t FontData::xAdvance(char16_t c) const {
-	auto it = std::lower_bound(chars.begin(), chars.end(), c);
-	if (it != chars.end() && *it == c) {
-		return it->xAdvance;
-	} else {
-		return 0;
+bool FontLibrary::isSourceRequestValid(layout::FontSource *source, uint32_t v) {
+	return source->isTextureRequestValid(v);
+}
+
+FontLibrary *FontLibrary::getInstance() {
+	s_mutex.lock();
+	if (!s_instance) {
+		s_instance = new FontLibrary;
 	}
+	s_mutex.unlock();
+	return s_instance;
 }
 
-int16_t FontData::kerningAmount(char16_t first, char16_t second) const {
-	uint32_t key = (first << 16) | (second & 0xffff);
-	auto it = kerning.find(key);
-	if (it != kerning.end()) {
-		return it->second;
-	}
-	return 0;
+FontLibrary::FontLibrary() {
+	Thread::onMainThread([this] {
+		auto scheduler = cocos2d::Director::getInstance()->getScheduler();
+		scheduler->scheduleUpdate(this, 0, false);
+	});
+	_timer = Time::now();
 }
 
-FontLayout::FontLayout(const Source * source, const String &name, const String &family, uint8_t size, const FontFace &face, const ReceiptCallback &cb, float d)
-: _density(d), _name(name), _family(family), _size(size), _face(face), _callback(cb), _source(source) {
-	_data = Arc<Data>::create();
-	_data->metrics = requestMetrics(_source, face.src, uint16_t(roundf(size * d)), _callback);
+FontLibrary::~FontLibrary() {
+	cocos2d::Director::getInstance()->getScheduler()->unscheduleUpdate(this);
 }
 
-FontLayout::~FontLayout() { }
+void FontLibrary::update(float dt) {
+	auto now = Time::now();
+	if (now - _timer > TimeInterval::seconds(1)) {
+		_timer = Time::now();
 
-void FontLayout::addString(const String &str) {
-	addString(string::toUtf16(str));
-}
-void FontLayout::addString(const WideString &str) {
-	addString(str.data(), str.size());
-}
-void FontLayout::addString(const char16_t *str, size_t len) {
-	Vector<char16_t> chars;
-	for (size_t i = 0; i < len; ++ i) {
-		const char16_t &c = str[i];
-		auto it = std::lower_bound(chars.begin(), chars.end(), c);
-		if (it == chars.end() || *it != c) {
-			chars.insert(it, c);
-		}
-	}
+		_mutex.lock();
 
-	merge(chars);
-}
-void FontLayout::addString(const FontCharString &str) {
-	merge(str.chars);
-}
+		Vector<uint64_t> expired;
 
-void FontLayout::addSortedChars(const Vector<char16_t> &vec) {
-	merge(vec);
-}
-
-void FontLayout::merge(const Vector<char16_t> &chars) {
-	Arc<Data> data(getData());
-	while (true) {
-		Vector<char16_t> charsToUpdate; charsToUpdate.reserve(chars.size());
-		for (auto &it : chars) {
-			if (!std::binary_search(data->chars.begin(), data->chars.end(), CharLayout{it})) {
-				charsToUpdate.push_back(it);
+		for (auto &it : _cache) {
+			if (now - it.second->getTimer() < TimeInterval::seconds(1)) {
+				expired.emplace_back(it.first);
 			}
 		}
-		if (charsToUpdate.empty()) {
-			return;
+
+		for (auto &it : expired) {
+			_cache.erase(it);
 		}
 
-		Arc<Data> newData(requestLayoutUpgrade(_source, _face.src, data, charsToUpdate, _callback));
-		_mutex.lock();
-		if (_data == data) {
-			_data = newData;
-			_mutex.unlock();
-			return;
-		} else {
-			data = _data;
-		}
 		_mutex.unlock();
 	}
 }
 
-Arc<FontLayout::Data> FontLayout::getData() {
-	Arc<FontLayout::Data> ret;
+Arc<FontLibraryCache> FontLibrary::getCache() {
+	Arc<FontLibraryCache> ret;
 	_mutex.lock();
-	ret = _data;
+	auto id = ThreadManager::getInstance()->getNativeThreadId();
+	auto it = _cache.find(id);
+	if (it != _cache.end()) {
+		ret = it->second;
+		ret->update();
+	} else {
+		ret = _cache.emplace(id, Arc<FontLibraryCache>::create(resource::getFallbackFont(), this)).first->second;
+	}
+
 	_mutex.unlock();
 	return ret;
 }
 
-const String &FontLayout::getName() const {
-	return _name;
-}
-const String &FontLayout::getFamily() const {
-	return _family;
-}
+Vector<size_t> FontLibrary::getQuadsCount(const layout::FormatSpec *format, const Map<String, Vector<CharTexture>> &layouts, size_t texSize) {
+	Vector<size_t> ret; ret.resize(texSize);
 
-const ReceiptCallback &FontLayout::getCallback() const {
-	return _callback;
-}
+	const layout::RangeSpec *targetRange = nullptr;
+	Map<String, Vector<CharTexture>>::const_iterator texVecIt;
 
-const FontFace &FontLayout::getFontFace() const {
-	return _face;
-}
-float FontLayout::getDensity() const {
-	return _density;
-}
-uint8_t FontLayout::getOriginalSize() const {
-	return _size;
-}
+	for (auto it = format->begin(); it != format->end(); ++ it) {
+		if (&(*it.range) != targetRange) {
+			targetRange = &(*it.range);
+			texVecIt = layouts.find(it.range->layout->getName());
+			if (texVecIt == layouts.cend()) {
+				return Vector<size_t>();
+			}
+		}
 
-uint16_t FontLayout::getSize() const {
-	return roundf(_size * _density);
-}
+		const auto start = it.start();
+		auto end = start + it.count();
+		if (it.line->start + it.line->count == end) {
+			const layout::CharSpec &c = format->chars[end - 1];
+			if (!string::isspace(c.charID) && c.charID != char16_t(0x0A)) {
+				const auto texIt = std::lower_bound(texVecIt->second.cbegin(), texVecIt->second.cend(), c.charID);
+				if (texIt != texVecIt->second.cend() && texIt->charID == c.charID) {
+					++ (ret[texIt->texture]);
+				}
+			}
+			end -= 1;
+		}
 
-FontParameters FontLayout::getStyle() const {
-	return _face.getStyle(_family, _size);
-}
-
-
-SP_DECLARE_EVENT(Source, "DynamicFontSource", onTextureUpdated);
-
-size_t Source::getFontFaceScore(const FontParameters &params, const FontFace &face) {
-	using namespace rich_text;
-	size_t ret = 0;
-	if (face.fontStyle == style::FontStyle::Normal) {
-		ret += 1;
+		for (auto charIdx = start; charIdx < end; ++ charIdx) {
+			const layout::CharSpec &c = format->chars[charIdx];
+			if (!string::isspace(c.charID) && c.charID != char16_t(0x0A) && c.charID != char16_t(0x00AD)) {
+				const auto texIt = std::lower_bound(texVecIt->second.cbegin(), texVecIt->second.cend(), c.charID);
+				if (texIt != texVecIt->second.cend() && texIt->charID == c.charID && texIt->texture != 0xFF) {
+					++ (ret[texIt->texture]);
+				}
+			}
+		}
 	}
-	if (face.fontWeight == style::FontWeight::Normal) {
-		ret += 1;
-	}
-	if (face.fontStretch == style::FontStretch::Normal) {
-		ret += 1;
-	}
-
-	if (face.fontStyle == params.fontStyle && (face.fontStyle == style::FontStyle::Oblique || face.fontStyle == style::FontStyle::Italic)) {
-		ret += 100;
-	} else if ((face.fontStyle == style::FontStyle::Oblique || face.fontStyle == style::FontStyle::Italic)
-			&& (params.fontStyle == style::FontStyle::Oblique || params.fontStyle == style::FontStyle::Italic)) {
-		ret += 75;
-	}
-
-	auto weightDiff = (int)toInt(style::FontWeight::W900) - abs((int)toInt(params.fontWeight) - (int)toInt(face.fontWeight));
-	ret += weightDiff * 10;
-
-	auto stretchDiff = (int)toInt(style::FontStretch::UltraExpanded) - abs((int)toInt(params.fontStretch) - (int)toInt(face.fontStretch));
-	ret += stretchDiff * 5;
 
 	return ret;
 }
 
-Bytes Source::acquireFontData(const Source *source, const String &path, const ReceiptCallback &cb) {
+void FontLibrary::writeTextureQuad(const layout::FormatSpec *format, const layout::Metrics &m, const layout::CharSpec &c, const layout::CharLayout &l, const layout::CharTexture &t,
+		const layout::RangeSpec &range, const layout::LineSpec &line, Vector<bool> &cMap, const cocos2d::Texture2D *tex, DynamicQuadArray *quad) {
+	cMap.push_back(range.colorDirty);
+	cMap.push_back(range.opacityDirty);
+	switch (range.align) {
+	case layout::VerticalAlign::Sub:
+		quad->drawChar(m, l, t, c.pos, format->height - line.pos + m.descender / 2, range.color, range.underline, tex->getPixelsWide(), tex->getPixelsHigh());
+		break;
+	case layout::VerticalAlign::Super:
+		quad->drawChar(m, l, t, c.pos, format->height - line.pos + m.ascender / 2, range.color, range.underline, tex->getPixelsWide(), tex->getPixelsHigh());
+		break;
+	default:
+		quad->drawChar(m, l, t, c.pos, format->height - line.pos, range.color, range.underline, tex->getPixelsWide(), tex->getPixelsHigh());
+		break;
+	}
+}
+
+bool FontLibrary::writeTextureQuads(uint32_t v, FontSource *source, const layout::FormatSpec *format, const Vector<Rc<cocos2d::Texture2D>> &texs,
+		Vector<Rc<DynamicQuadArray>> &quads, Vector<Vector<bool>> &colorMap) {
+	colorMap.resize(texs.size());
+
+	if (!isSourceRequestValid(source, v)) {
+		return false;
+	}
+
+	auto layoutsRef = getSourceLayout(source);
+	if (!layoutsRef) {
+		return false;
+	}
+
+	if (layoutsRef->first != v) {
+		return false;
+	}
+
+	auto &layouts = layoutsRef->second;
+
+	quads.reserve(texs.size());
+	for (size_t i = 0; i < texs.size(); ++ i) {
+		quads.push_back(Rc<DynamicQuadArray>::alloc());
+	}
+
+	auto sizes = getQuadsCount(format, layouts, texs.size());
+	for (size_t i = 0; i < sizes.size(); ++ i) {
+		quads[i]->setCapacity(sizes[i]);
+		colorMap[i].reserve(sizes[i] * 2);
+	}
+
+
+	const layout::RangeSpec *targetRange = nullptr;
+	Map<String, Vector<CharTexture>>::const_iterator texVecIt;
+	Arc<layout::FontLayout> layout;
+	Arc<layout::FontData> data;
+	const layout::Metrics *metrics;
+	const Vector<layout::CharLayout> *charVec;
+
+	for (auto it = format->begin(); it != format->end(); ++ it) {
+		if (it.count() == 0) {
+			continue;
+		}
+
+		if (&(*it.range) != targetRange) {
+			if (!isSourceRequestValid(source, v)) {
+				return false;
+			}
+			targetRange = &(*it.range);
+			layout = targetRange->layout;
+			texVecIt = layouts.find(layout->getName());
+			if (texVecIt == layouts.end()) {
+				return false;
+			}
+			data = layout->getData();
+			metrics = &data->metrics;
+			charVec = &data->chars;
+		}
+
+		const auto start = it.start();
+		auto end = start + it.count();
+
+		if (it.line->start + it.line->count == end) {
+			const layout::CharSpec &c = format->chars[end - 1];
+			if (!string::isspace(c.charID) && c.charID != char16_t(0x0A)) {
+				auto texIt = std::lower_bound(texVecIt->second.cbegin(), texVecIt->second.cend(), c.charID);
+				auto charIt = std::lower_bound(charVec->cbegin(), charVec->cend(), c.charID);
+
+				if (texIt != texVecIt->second.end() && texIt->charID == c.charID && charIt != charVec->end() && charIt->charID == c.charID && texIt->texture != maxOf<uint8_t>()) {
+					writeTextureQuad(format, *metrics, c, *charIt, *texIt, *it.range, *it.line, colorMap[texIt->texture], texs[texIt->texture], quads[texIt->texture]);
+				}
+			}
+			end -= 1;
+		}
+
+		for (auto charIdx = start; charIdx < end; ++ charIdx) {
+			const layout::CharSpec &c = format->chars[charIdx];
+			if (!string::isspace(c.charID) && c.charID != char16_t(0x0A) && c.charID != char16_t(0x00AD)) {
+				auto texIt = std::lower_bound(texVecIt->second.cbegin(), texVecIt->second.cend(), c.charID);
+				auto charIt = std::lower_bound(charVec->cbegin(), charVec->cend(), c.charID);
+
+				if (texIt != texVecIt->second.end() && texIt->charID == c.charID && charIt != charVec->end() && charIt->charID == c.charID && texIt->texture != maxOf<uint8_t>()) {
+					writeTextureQuad(format, *metrics, c, *charIt, *texIt, *it.range, *it.line, colorMap[texIt->texture], texs[texIt->texture], quads[texIt->texture]);
+				}
+			}
+		}
+	}
+
+	return true;
+}
+
+bool FontLibrary::writeTextureRects(uint32_t v, FontSource *source, const layout::FormatSpec *format, float scale, Vector<Rect> &rects) {
+	if (!isSourceRequestValid(source, v)) {
+		return false;
+	}
+
+	rects.reserve(format->chars.size());
+
+	auto layoutsRef = getSourceLayout(source);
+	if (!layoutsRef) {
+		return false;
+	}
+
+	if (layoutsRef->first != v) {
+		return false;
+	}
+
+	auto &layouts = layoutsRef->second;
+
+	const layout::RangeSpec *targetRange = nullptr;
+	Map<String, Vector<CharTexture>>::const_iterator texVecIt;
+	Arc<layout::FontLayout> layout;
+	Arc<layout::FontData> data;
+	const layout::Metrics *metrics;
+	const Vector<layout::CharLayout> *charVec;
+
+	for (auto it = format->begin(); it != format->end(); ++ it) {
+		if (it.count() == 0) {
+			continue;
+		}
+
+		if (&(*it.range) != targetRange) {
+			if (!isSourceRequestValid(source, v)) {
+				return false;
+			}
+			targetRange = &(*it.range);
+			layout = targetRange->layout;
+			texVecIt = layouts.find(layout->getName());
+			if (texVecIt == layouts.end()) {
+				return false;
+			}
+			data = layout->getData();
+			metrics = &data->metrics;
+			charVec = &data->chars;
+		}
+
+		const auto start = it.start();
+		const auto end = start + it.count();
+
+		for (auto charIdx = start; charIdx < end; ++ charIdx) {
+			const layout::CharSpec &c = format->chars[charIdx];
+			if (!string::isspace(c.charID) && c.charID != char16_t(0x0A) && c.charID != char16_t(0x00AD)) {
+				auto texIt = std::lower_bound(texVecIt->second.cbegin(), texVecIt->second.cend(), c.charID);
+				auto charIt = std::lower_bound(charVec->cbegin(), charVec->cend(), c.charID);
+
+				if (texIt != texVecIt->second.end() && texIt->charID == c.charID && charIt != charVec->end() && charIt->charID == c.charID && texIt->texture != maxOf<uint8_t>()) {
+					const auto posX = c.pos + charIt->xOffset;
+					const auto posY = format->height - it.line->pos - (charIt->yOffset + texIt->height) - metrics->descender;
+					switch (it.range->align) {
+					case layout::VerticalAlign::Sub:
+						rects.emplace_back(posX * scale, (posY + metrics->descender / 2) * scale, texIt->width * scale, texIt->height * scale);
+						break;
+					case layout::VerticalAlign::Super:
+						rects.emplace_back(posX * scale, (posY + metrics->ascender / 2) * scale, texIt->width * scale, texIt->height * scale);
+						break;
+					default:
+						rects.emplace_back(posX * scale, posY * scale, texIt->width * scale, texIt->height * scale);
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	return true;
+}
+
+
+SP_DECLARE_EVENT(FontSource, "DynamicFontSource", onTextureUpdated);
+
+Bytes FontSource::acquireFontData(const layout::FontSource *lsource, const String &path, const layout::ReceiptCallback &cb) {
+	auto source = static_cast<const FontSource *>(lsource);
 	if (cb) {
 		Bytes ret = cb(source, path);
 		if (!ret.empty()) {
@@ -256,50 +453,35 @@ Bytes Source::acquireFontData(const Source *source, const String &path, const Re
 	return Bytes();
 }
 
-Source::~Source() {
-	unschedule();
-	cleanup();
-}
-
-void Source::schedule() {
-	if (!_scheduled) {
-		cocos2d::Director::getInstance()->getScheduler()->scheduleUpdate(this, 0, false);
-		_scheduled = true;
+bool FontSource::init(FontFaceMap &&map, const ReceiptCallback &cb, float scale, SearchDirs &&dirs, AssetMap &&assets, bool scheduled) {
+	if (!layout::FontSource::init(std::move(map),
+			std::bind(&FontSource::acquireFontData, std::placeholders::_1, std::placeholders::_2, cb),
+			scale, std::move(dirs))) {
+		return false;
 	}
-}
 
-void Source::unschedule() {
-	if (_scheduled) {
-		_scheduled = false;
-		cocos2d::Director::getInstance()->getScheduler()->unscheduleUpdate(this);
-	}
-}
+	_density = screen::density();
 
-void Source::preloadChars(const FontParameters &style, const Vector<char16_t> &chars) {
-	auto l = getLayout(style);
-	if (l) {
-		l->addSortedChars(chars);
-		addTextureString(l->getName(), chars.data(), chars.size());
-	}
-}
+	_updateCallback = [this] (uint32_t v, const Map<String, Vector<char16_t>> &m) {
+		updateTexture(v, m);
+	};
 
-bool Source::init(FontFaceMap &&map, const ReceiptCallback &cb, float scale, SearchDirs &&dirs, AssetMap &&assets, bool scheduled) {
-	_fontFaces = std::move(map);
-	_fontScale = scale;
-	_callback = cb;
-	_version = 0;
+	_metricCallback = [this] (const layout::FontSource *source, const Vector<String> &srcs, uint16_t size, const ReceiptCallback &cb) {
+		return requestMetrics(source, srcs, size, cb);
+	};
+
+	_layoutCallback = [this] (const layout::FontSource *source, const Vector<String> &srcs, const Arc<FontData> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
+		return requestLayoutUpgrade(source, srcs, data, chars, cb);
+	};
+
 	_assets = std::move(assets);
-	_searchDirs = std::move(dirs);
-	for (auto &it : _fontFaces) {
-		auto &family = it.first;
-		_families.emplace(hash::hash32(family.c_str(), family.size()), family);
-	}
 
 	onEvent(Device::onAndroidReset, [this] (const Event *) {
 		for (auto &it : _textures) {
 			it->init(it->getPixelFormat(), it->getPixelsWide(), it->getPixelsHigh());
 		}
 		_dirty = true;
+		log::text("FontSource", "onAndroidReset");
 	});
 
 	if (scheduled) {
@@ -309,211 +491,43 @@ bool Source::init(FontFaceMap &&map, const ReceiptCallback &cb, float scale, Sea
 	return true;
 }
 
-Arc<FontLayout> Source::getLayout(const FontParameters &style) {
-	Arc<FontLayout> ret = nullptr;
-
-	auto family = style.fontFamily;
-	if (family.empty()) {
-		family = "default";
-	}
-
-	auto face = getFontFace(family, style);
-	if (face) {
-		auto name = face->getConfigName(family, style.fontSize);
-		_mutex.lock();
-		auto l_it = _layouts.find(name);
-		if (l_it == _layouts.end()) {
-			ret = (_layouts.emplace(name, Arc<FontLayout>::create(this, name, family, style.fontSize, *face,
-					std::bind(&Source::acquireFontData, std::placeholders::_1, std::placeholders::_2, _callback),
-					screen::density() * _fontScale)).first->second);
-		} else {
-			ret = (l_it->second);
-		}
-		_mutex.unlock();
-	}
-
-	return ret;
+FontSource::~FontSource() {
+	unschedule();
+	cleanup();
 }
 
-Arc<FontLayout> Source::getLayout(const String &name) {
-	Arc<FontLayout> ret = nullptr;
-	_mutex.lock();
-	auto l_it = _layouts.find(name);
-	if (l_it != _layouts.end()) {
-		ret = (l_it->second);
-	}
-	_mutex.unlock();
-	return ret;
+void FontSource::update(float dt) {
+	layout::FontSource::update();
 }
 
-bool Source::hasLayout(const FontParameters &style) {
-	bool ret = false;
-	auto family = style.fontFamily;
-	if (family.empty()) {
-		family = "default";
-	}
-
-	auto face = getFontFace(family, style);
-	if (face) {
-		auto name = face->getConfigName(family, style.fontSize);
-		_mutex.lock();
-		auto l_it = _layouts.find(name);
-		if (l_it != _layouts.end()) {
-			ret = true;
-		}
-		_mutex.unlock();
-	}
-	return ret;
-}
-
-bool Source::hasLayout(const String &name) {
-	bool ret = false;
-	_mutex.lock();
-	auto l_it = _layouts.find(name);
-	if (l_it != _layouts.end()) {
-		ret = true;
-	}
-	_mutex.unlock();
-	return ret;
-}
-
-Map<String, Arc<FontLayout>> Source::getLayoutMap() {
-	Map<String, Arc<FontLayout>> ret;
-	_mutex.lock();
-	ret = _layouts;
-	_mutex.unlock();
-	return ret;
-}
-
-FontFace * Source::getFontFace(const String &name, const FontParameters &it) {
-	size_t score = 0;
-	FontFace *face = nullptr;
-
-	auto family = it.fontFamily;
-	if (family.empty()) {
-		family = "default";
-	}
-
-	auto f_it = _fontFaces.find(family);
-	if (f_it != _fontFaces.end()) {
-		auto &faces = f_it->second;
-		for (auto &face_it : faces) {
-			auto newScore = getFontFaceScore(it, face_it);
-			if (newScore >= score) {
-				score = newScore;
-				face = &face_it;
-			}
-		}
-	}
-
-	if (!face) {
-		family = "default";
-		auto f_it = _fontFaces.find(family);
-		if (f_it != _fontFaces.end()) {
-			auto &faces = f_it->second;
-			for (auto &face_it : faces) {
-				auto newScore = getFontFaceScore(it, face_it);
-				if (newScore >= score) {
-					score = newScore;
-					face = &face_it;
-				}
-			}
-		}
-	}
-
-	return face;
-}
-
-float Source::getFontScale() const {
-	return _fontScale;
-}
-
-void Source::update(float dt) {
-	if (_dirty) {
-		auto v = (++ _version);
-		_dirty = false;
-		updateTexture(v, _textureLayouts);
+void FontSource::schedule() {
+	if (!_scheduled) {
+		cocos2d::Director::getInstance()->getScheduler()->scheduleUpdate(this, 0, false);
+		_scheduled = true;
 	}
 }
 
-String Source::getFamilyName(uint32_t id) const {
-	auto it = _families.find(id);
-	if (it != _families.end()) {
-		return it->second;
-	}
-	return String();
-}
-
-void Source::addTextureString(const String &layout, const String &str) {
-	addTextureString(layout, string::toUtf16Html(str));
-}
-void Source::addTextureString(const String &layout, const WideString &str) {
-	addTextureString(layout, str.data(), str.size());
-}
-void Source::addTextureString(const String &layout, const char16_t *str, size_t len) {
-	auto &vec = getTextureLayout(layout);
-	for (size_t i = 0; i < len; ++i) {
-		const char16_t &c = str[i];
-		auto char_it = std::lower_bound(vec.begin(), vec.end(), c);
-		if (char_it == vec.end() || *char_it != c) {
-			vec.emplace(char_it, c);
-			_dirty = true;
-		}
+void FontSource::unschedule() {
+	if (_scheduled) {
+		_scheduled = false;
+		cocos2d::Director::getInstance()->getScheduler()->unscheduleUpdate(this);
 	}
 }
 
-const Vector<char16_t> & Source::addTextureChars(const String &layout, const Vector<CharSpec> &l) {
-	auto &vec = getTextureLayout(layout);
-	for (auto &it : l) {
-		const char16_t &c = it.charID;
-		auto char_it = std::lower_bound(vec.begin(), vec.end(), c);
-		if (char_it == vec.end() || *char_it != c) {
-			vec.emplace(char_it, c);
-			_dirty = true;
-		}
-	}
-	return vec;
+void FontSource::cleanup() {
+	FontSource *s = this;
+	auto &thread = TextureCache::thread();
+	thread.perform([s] (const Task &) -> bool {
+		auto cache = FontLibrary::getInstance();
+		cache->cleanupSource(s);
+		return true;
+	});
 }
 
-const Vector<char16_t> & Source::addTextureChars(const String &layout, const Vector<CharSpec> &l, uint32_t start, uint32_t count) {
-	auto &vec = getTextureLayout(layout);
-	const uint32_t end = start + count;
-	for (uint32_t i = start; i < end; ++ i) {
-		const char16_t &c = l[i].charID;
-		auto char_it = std::lower_bound(vec.begin(), vec.end(), c);
-		if (char_it == vec.end() || *char_it != c) {
-			vec.emplace(char_it, c);
-			_dirty = true;
-		}
-	}
-	return vec;
-}
-
-Vector<char16_t> &Source::getTextureLayout(const String &layout) {
-	auto it = _textureLayouts.find(layout);
-	if (it == _textureLayouts.end()) {
-		it = _textureLayouts.emplace(layout, Vector<char16_t>()).first;
-		it->second.reserve(128);
-	}
-	return it->second;
-}
-
-const Map<String, Vector<char16_t>> &Source::getTextureLayoutMap() const {
-	return _textureLayouts;
-}
-
-cocos2d::Texture2D *Source::getTexture(uint8_t idx) const {
-	return _textures.at(idx);
-}
-
-const Vector<Rc<cocos2d::Texture2D>> &Source::getTextures() const {
-	return _textures;
-}
-
-void Source::onTextureResult(Vector<Rc<cocos2d::Texture2D>> &&tex, uint32_t v) {
+void FontSource::onTextureResult(Vector<Rc<cocos2d::Texture2D>> &&tex, uint32_t v) {
 	if (!_dirty) {
+		onResult(v);
 		_textures = std::move(tex);
-		_textureVersion = v;
 
 		onTextureUpdated(this);
 
@@ -524,76 +538,194 @@ void Source::onTextureResult(Vector<Rc<cocos2d::Texture2D>> &&tex, uint32_t v) {
 	}
 }
 
-void Source::onTextureResult(Map<String, Vector<char16_t>> &&map, Vector<Rc<cocos2d::Texture2D>> &&tex, uint32_t v) {
-	if (_dirty) {
-		_textureLayouts = std::move(map);
-		_textures = std::move(tex);
-		_textureVersion = v;
+void FontSource::onTextureResult(Map<String, Vector<char16_t>> &&map, Vector<Rc<cocos2d::Texture2D>> &&tex, uint32_t v) {
+	onResult(v);
+	_textureLayouts = std::move(map);
+	_textures = std::move(tex);
 
-		onTextureUpdated(this);
+	onTextureUpdated(this);
 
-		Thread::onMainThread([] {
-			// old textures can be cached in autobatching materials, so, better to clean them up
-			if (auto scene = dynamic_cast<DynamicBatchScene *>(cocos2d::Director::getInstance()->getRunningScene())) {
-				scene->clearCachedMaterials();
+	Thread::onMainThread([] {
+		// old textures can be cached in autobatching materials, so, better to clean them up
+		if (auto scene = dynamic_cast<DynamicBatchScene *>(cocos2d::Director::getInstance()->getRunningScene())) {
+			scene->clearCachedMaterials();
+		}
+	});
+}
+
+void FontSource::updateTexture(uint32_t v, const Map<String, Vector<char16_t>> &l) {
+	auto &thread = TextureCache::thread();
+	if (thread.isOnThisThread()) {
+		Vector<Rc<cocos2d::Texture2D>> tPtr;
+		TextureCache::getInstance()->performWithGL([&] {
+			layout::FreeTypeInterface::FontTextureInterface iface;
+			iface.emplaceTexture = [&] (uint16_t w, uint16_t h) -> size_t {
+				tPtr.emplace_back(Rc<cocos2d::Texture2D>::create(cocos2d::Texture2D::PixelFormat::A8, w, h));
+				tPtr.back()->updateWithData("\xFF", w-1, h-1, 1, 1);
+				tPtr.back()->setAliasTexParameters();
+				return tPtr.size() - 1;
+			};
+			iface.draw = [&] (size_t idx, const void *data, uint16_t offsetX, uint16_t offsetY, uint16_t width, uint16_t height) -> bool {
+				cocos2d::Texture2D * t = tPtr.at(idx);
+				t->updateWithData(data, offsetX, offsetY, width, height);
+				return true;
+			};
+
+			auto lib = FontLibrary::getInstance();
+			auto cache = lib->getCache();
+			auto ret = cache->updateTextureWithSource(v, this, l, iface);
+			if (!ret.empty()) {
+				lib->setSourceLayout(this, pair(v, std::move(ret)));
+				onTextureResult(std::move(tPtr), v);
 			}
 		});
+	} else {
+		auto lPtr = new Map<String, Vector<char16_t>>(l);
+		auto tPtr = new Vector<Rc<cocos2d::Texture2D>>();
+		thread.perform([this, lPtr, tPtr, v] (const Task &) -> bool {
+			auto ret = TextureCache::getInstance()->performWithGL([&] {
+				layout::FreeTypeInterface::FontTextureInterface iface;
+				iface.emplaceTexture = [tPtr] (uint16_t w, uint16_t h) -> size_t {
+					tPtr->emplace_back(Rc<cocos2d::Texture2D>::create(cocos2d::Texture2D::PixelFormat::A8, w, h));
+					tPtr->back()->updateWithData("\xFF", w-1, h-1, 1, 1);
+					tPtr->back()->setAliasTexParameters();
+					return tPtr->size() - 1;
+				};
+				iface.draw = [tPtr] (size_t idx, const void *data, uint16_t offsetX, uint16_t offsetY, uint16_t width, uint16_t height) -> bool {
+					cocos2d::Texture2D * t = tPtr->at(idx);
+					t->updateWithData(data, offsetX, offsetY, width, height);
+					return true;
+				};
+
+				auto lib = FontLibrary::getInstance();
+				auto cache = lib->getCache();
+				auto uret = cache->updateTextureWithSource(v, this, *lPtr, iface);
+				if (!uret.empty()) {
+					lib->setSourceLayout(this, pair(v, std::move(uret)));
+					return true;
+				}
+				return false;
+			});
+			delete lPtr;
+			return ret;
+		}, [this, tPtr, v] (const Task &, bool success) {
+			if (success) {
+				onTextureResult(std::move(*tPtr), v);
+			}
+			delete tPtr;
+		}, this);
 	}
 }
 
-uint32_t Source::getVersion() const {
-	return _version.load();
+void FontSource::clone(FontSource *source, const Function<void(FontSource *)> &cb) {
+	if (source->getLayoutMap().empty()) {
+		if (cb) {
+			cb(this);
+		}
+	}
+	auto lPtr = new Map<String, Arc<FontLayout>>(source->getLayoutMap());
+	auto tlPtr = new Map<String, Vector<char16_t>>(source->getTextureLayoutMap());
+	auto tPtr = new Vector<Rc<cocos2d::Texture2D>>();
+	auto sPtr = new Rc<FontSource>(source);
+	uint32_t *vPtr = new uint32_t(0);
+
+	auto &thread = TextureCache::thread();
+	thread.perform([this, sPtr, lPtr, tlPtr, tPtr, vPtr] (const Task &) -> bool {
+		Vector<char16_t> vec;;
+		for (auto &it : (*lPtr)) {
+			Arc<FontLayout> l(it.second);
+			auto style = l->getStyle();
+			auto data = l->getData();
+			vec.clear();
+			if (vec.capacity() < data->chars.size()) {
+				vec.reserve(data->chars.size());
+			}
+			for (auto &c : data->chars) {
+				vec.emplace_back(c);
+			}
+
+			getLayout(style)->addSortedChars(vec);
+		}
+
+		auto ret = TextureCache::getInstance()->performWithGL([&] {
+			layout::FreeTypeInterface::FontTextureInterface iface;
+			iface.emplaceTexture = [tPtr] (uint16_t w, uint16_t h) -> size_t {
+				tPtr->emplace_back(Rc<cocos2d::Texture2D>::create(cocos2d::Texture2D::PixelFormat::A8, w, h));
+				tPtr->back()->updateWithData("\xFF", w-1, h-1, 1, 1);
+				tPtr->back()->setAliasTexParameters();
+				return tPtr->size() - 1;
+			};
+			iface.draw = [tPtr] (size_t idx, const void *data, uint16_t offsetX, uint16_t offsetY, uint16_t width, uint16_t height) -> bool {
+				cocos2d::Texture2D * t = tPtr->at(idx);
+				t->updateWithData(data, offsetX, offsetY, width, height);
+				return true;
+			};
+
+			auto lib = FontLibrary::getInstance();
+			auto cache = lib->getCache();
+			*vPtr = _version.load();
+			auto ret = cache->updateTextureWithSource(*vPtr, this, *tlPtr, iface);
+			if (!ret.empty()) {
+				lib->setSourceLayout(this, pair(*vPtr, std::move(ret)));
+				return true;
+			}
+			return false;
+		});
+		delete lPtr;
+		return ret;
+	}, [this, tlPtr, tPtr, sPtr, vPtr, cb] (const Task &, bool success) {
+		if (success) {
+			onTextureResult(std::move(*tlPtr), std::move(*tPtr), *vPtr);
+			if (cb) {
+				cb(this);
+			}
+		}
+		delete tlPtr;
+		delete tPtr;
+		delete sPtr;
+		delete vPtr;
+	}, this);
 }
 
-uint32_t Source::getTextureVersion() const {
-	return _textureVersion;
+Metrics FontSource::requestMetrics(const layout::FontSource *source, const Vector<String> &srcs, uint16_t size, const ReceiptCallback &cb) {
+	auto cache = FontLibrary::getInstance()->getCache();
+	return cache->requestMetrics(source, srcs, size, cb);
 }
 
-bool Source::isTextureRequestValid(uint32_t v) const {
-	return _version.load() == v;
+Arc<FontData> FontSource::requestLayoutUpgrade(const layout::FontSource *source, const Vector<String> &srcs, const Arc<FontData> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
+	auto cache = FontLibrary::getInstance()->getCache();
+	return cache->requestLayoutUpgrade(source, srcs, data, chars, cb);
 }
 
-bool Source::isDirty() const {
-	return _dirty;
-}
-
-const Source::SearchDirs &Source::getSearchDirs() const {
-	return _searchDirs;
-}
-
-const Source::AssetMap &Source::getAssetMap() const {
+const FontSource::AssetMap &FontSource::getAssetMap() const {
 	return _assets;
 }
 
-SP_DECLARE_EVENT(Controller, "DynamicFontController", onUpdate);
-SP_DECLARE_EVENT(Controller, "DynamicFontController", onSource);
-
-void Controller::mergeFontFace(FontFaceMap &target, const FontFaceMap &map) {
-	for (auto &m_it : map) {
-		auto it = target.find(m_it.first);
-		if (it == target.end()) {
-			target.emplace(m_it.first, m_it.second);
-		} else {
-			for (auto &v_it : m_it.second) {
-				it->second.emplace_back(v_it);
-			}
-		}
-	}
+cocos2d::Texture2D *FontSource::getTexture(uint8_t idx) const {
+	return _textures.at(idx);
 }
 
-Controller::~Controller() {
+const Vector<Rc<cocos2d::Texture2D>> &FontSource::getTextures() const {
+	return _textures;
+}
+
+SP_DECLARE_EVENT(FontController, "DynamicFontController", onUpdate);
+SP_DECLARE_EVENT(FontController, "DynamicFontController", onSource);
+
+FontController::~FontController() {
 	cocos2d::Director::getInstance()->getScheduler()->unscheduleUpdate(this);
 }
 
-bool Controller::init(FontFaceMap && map, Vector<String> && searchDir, const ReceiptCallback &cb) {
+bool FontController::init(FontFaceMap && map, Vector<String> && searchDir, const ReceiptCallback &cb, bool scheduled) {
 	if (_fontFaces.empty()) {
 		_fontFaces = std::move(map);
 	} else {
-		mergeFontFace(_fontFaces, map);
+		FontSource::mergeFontFace(_fontFaces, map);
 	}
 	_searchDir = std::move(searchDir);
 
 	_callback = cb;
+	_scheduled = scheduled;
 	_dirty = true;
 	_dirtyFlags = DirtyFontFace;
 
@@ -602,15 +734,16 @@ bool Controller::init(FontFaceMap && map, Vector<String> && searchDir, const Rec
 	return true;
 }
 
-bool Controller::init(FontFaceMap && map, Vector<String> && searchDir, float scale, const ReceiptCallback &cb) {
+bool FontController::init(FontFaceMap && map, Vector<String> && searchDir, float scale, const ReceiptCallback &cb, bool scheduled) {
 	if (_fontFaces.empty()) {
 		_fontFaces = std::move(map);
 	} else {
-		mergeFontFace(_fontFaces, map);
+		FontSource::mergeFontFace(_fontFaces, map);
 	}
 	_searchDir = std::move(searchDir);
 
 	_callback = cb;
+	_scheduled = scheduled;
 	_scale = scale;
 	_dirty = true;
 	_dirtyFlags = DirtyFontFace;
@@ -620,38 +753,38 @@ bool Controller::init(FontFaceMap && map, Vector<String> && searchDir, float sca
 	return true;
 }
 
-void Controller::setSearchDirs(Vector<String> && map) {
+void FontController::setSearchDirs(Vector<String> && map) {
 	_searchDir = std::move(map);
 	_dirtyFlags |= DirtySearchDirs;
 	_dirty = true;
 }
-void Controller::addSearchDir(const Vector<String> &map) {
+void FontController::addSearchDir(const Vector<String> &map) {
 	for (auto &it : map) {
 		_searchDir.push_back(it);
 	}
 	_dirtyFlags |= DirtySearchDirs;
 	_dirty = true;
 }
-void Controller::addSearchDir(const String &it) {
+void FontController::addSearchDir(const String &it) {
 	_searchDir.push_back(it);
 	_dirtyFlags |= DirtySearchDirs;
 	_dirty = true;
 }
-const Vector<String> &Controller::getSearchDir() const {
+const Vector<String> &FontController::getSearchDir() const {
 	return _searchDir;
 }
 
-void Controller::setFontFaceMap(FontFaceMap && map) {
+void FontController::setFontFaceMap(FontFaceMap && map) {
 	_fontFaces = std::move(map);
 	_dirty = true;
 	_dirtyFlags |= DirtyFontFace;
 }
-void Controller::addFontFaceMap(const FontFaceMap & map) {
-	mergeFontFace(_fontFaces, map);
+void FontController::addFontFaceMap(const FontFaceMap & map) {
+	FontSource::mergeFontFace(_fontFaces, map);
 	_dirtyFlags |= DirtyFontFace;
 	_dirty = true;
 }
-void Controller::addFontFace(const String &family, FontFace &&face) {
+void FontController::addFontFace(const String &family, FontFace &&face) {
 	auto it = _fontFaces.find(family);
 	if (it == _fontFaces.end()) {
 		it = _fontFaces.emplace(family, Vector<FontFace>()).first;
@@ -661,45 +794,45 @@ void Controller::addFontFace(const String &family, FontFace &&face) {
 	_dirtyFlags |= DirtyFontFace;
 	_dirty = true;
 }
-const Controller::FontFaceMap &Controller::getFontFaceMap() const {
+const FontController::FontFaceMap &FontController::getFontFaceMap() const {
 	return _fontFaces;
 }
 
-void Controller::setFontScale(float value) {
+void FontController::setFontScale(float value) {
 	if (_scale != value) {
 		_scale = value;
 		_dirty = true;
 	}
 }
-float Controller::getFontScale() const {
+float FontController::getFontScale() const {
 	return _scale;
 }
 
-void Controller::setReceiptCallback(const ReceiptCallback &cb) {
+void FontController::setReceiptCallback(const ReceiptCallback &cb) {
 	_callback = cb;
 	_dirty = true;
 	_dirtyFlags |= DirtyReceiptCallback;
 }
-const ReceiptCallback & Controller::getReceiptCallback() const {
+const ReceiptCallback & FontController::getReceiptCallback() const {
 	return _callback;
 }
 
-void Controller::update(float dt) {
+void FontController::update(float dt) {
 	if (_dirty) {
 		onUpdate(this);
 		updateSource();
 	}
 }
 
-bool Controller::empty() const {
+bool FontController::empty() const {
 	return _source != nullptr;
 }
 
-Source * Controller::getSource() const {
+FontSource * FontController::getSource() const {
 	return _source;
 }
 
-void Controller::updateSource() {
+void FontController::updateSource() {
 	_urls.clear();
 
 	for (auto &f_it : _fontFaces) {
@@ -716,13 +849,13 @@ void Controller::updateSource() {
 		performSourceUpdate();
 	} else {
 		retain();
-		resource::acquireFontAsset(_urls, std::bind(&Controller::onAssets, this, std::placeholders::_1));
+		resource::acquireFontAsset(_urls, std::bind(&FontController::onAssets, this, std::placeholders::_1));
 	}
 
 	_dirty = false;
 }
 
-void Controller::performSourceUpdate() {
+void FontController::performSourceUpdate() {
 	if (_assets.empty()) {
 		onSourceUpdated(makeSource(AssetMap()));
 	} else {
@@ -766,10 +899,10 @@ void Controller::performSourceUpdate() {
 		if (_dirtyFlags & DirtyFontFace) {
 			onSourceUpdated(makeSource(std::move(assets)));
 		} else {
-			auto source = makeSource(std::move(assets));
+			auto source = makeSource(std::move(assets), _source == nullptr);
 			if (_source) {
 				// we can clone layouts form previous source
-				source->clone(_source, [this] (Source *source) {
+				source->clone(_source, [this] (FontSource *source) {
 					onSourceUpdated(source);
 				});
 			} else {
@@ -782,23 +915,26 @@ void Controller::performSourceUpdate() {
 	_dirtyFlags = None;
 }
 
-Rc<Source> Controller::makeSource(AssetMap && map) {
-	return Rc<Source>::create(FontFaceMap(_fontFaces), _callback, _scale, SearchDirs(_searchDir), std::move(map));
+Rc<FontSource> FontController::makeSource(AssetMap && map, bool schedule) {
+	return Rc<FontSource>::create(FontFaceMap(_fontFaces), _callback, _scale, SearchDirs(_searchDir), std::move(map), _scheduled && schedule);
 }
 
-void Controller::onSourceUpdated(Source *s) {
+void FontController::onSourceUpdated(FontSource *s) {
 	_source = s;
+	if (_source && _scheduled) {
+		_source->schedule();
+	}
 	setDirty();
 	onSource(this, s);
 }
 
-void Controller::onAssets(const Vector<Asset *> &assets) {
+void FontController::onAssets(const Vector<Rc<Asset>> &assets) {
 	auto oldAssets = std::move(_assets);
 	_assets.clear();
 	for (auto &it : assets) {
-		_assets.emplace_back(std::bind(&Controller::onAssetUpdated, this, it), it);
+		_assets.emplace_back(std::bind(&FontController::onAssetUpdated, this, it), it);
 		if (it->isDownloadAvailable()) {
-			it->download();
+			it.get()->download();
 		}
 	}
 	if (getReferenceCount() > 1) {
@@ -822,7 +958,7 @@ void Controller::onAssets(const Vector<Asset *> &assets) {
 	release();
 }
 
-void Controller::onAssetUpdated(Asset *a) {
+void FontController::onAssetUpdated(Asset *a) {
 	bool downloadReady = true;
 	for (auto &it : _assets) {
 		if (it->isDownloadInProgress() || it->isWriteLocked() || !it->isReadAvailable()) {
@@ -838,3 +974,71 @@ void Controller::onAssetUpdated(Asset *a) {
 }
 
 NS_SP_EXT_END(font)
+
+
+NS_SP_BEGIN
+
+void DynamicLabel::updateQuadsBackground(Source *source, FormatSpec *format) {
+	auto v = source->getTextureVersion();
+	auto time = Time::now();
+	auto sourceRef = new Rc<Source>(source);
+	auto formatRef = new Rc<FormatSpec>(format);
+	auto tPtr = new Vector<Rc<cocos2d::Texture2D>>(source->getTextures());
+	auto qPtr = new Vector<Rc<DynamicQuadArray>>();
+	auto cPtr = new Vector<Vector<bool>>();
+
+	auto &thread = TextureCache::thread();
+	thread.perform([this, sourceRef, formatRef, tPtr, qPtr, cPtr, v] (const Task &) -> bool {
+		auto cache = font::FontLibrary::getInstance();
+		return cache->writeTextureQuads(v, *sourceRef, *formatRef, *tPtr, *qPtr, *cPtr);
+	}, [this, time, sourceRef, formatRef, tPtr, qPtr, cPtr] (const Task &, bool success) {
+		if (success) {
+			onQuads(time, *tPtr, std::move(*qPtr), std::move(*cPtr));
+		}
+		delete sourceRef;
+		delete formatRef;
+		delete tPtr;
+		delete qPtr;
+		delete cPtr;
+	}, this);
+}
+
+void DynamicLabel::updateQuadsForeground(Source *source, const FormatSpec *format) {
+	auto v = source->getTextureVersion();
+	auto time = Time::now();
+
+	Vector<Rc<cocos2d::Texture2D>> tPtr(source->getTextures());
+	Vector<Rc<DynamicQuadArray>> qPtr;
+	Vector<Vector<bool>> cPtr;
+
+	auto cache = font::FontLibrary::getInstance();
+	if (cache->writeTextureQuads(v, source, format, tPtr, qPtr, cPtr)) {
+		onQuads(time, tPtr, std::move(qPtr), std::move(cPtr));
+	}
+}
+
+void DynamicLabel::makeLabelQuads(Source *source, const FormatSpec *format,
+		const Function<void(const TextureVec &newTex, QuadVec &&newQuads, ColorMapVec &&cMap)> &cb) {
+	auto v = source->getVersion();
+
+	auto &tPtr = source->getTextures();
+	Vector<Rc<DynamicQuadArray>> qPtr;
+	Vector<Vector<bool>> cPtr;
+
+	auto cache = font::FontLibrary::getInstance();
+	if (cache->writeTextureQuads(v, source, format, tPtr, qPtr, cPtr)) {
+		cb(tPtr, std::move(qPtr), std::move(cPtr));
+	}
+}
+
+void DynamicLabel::makeLabelRects(Source *source, const FormatSpec *format, float scale, const Function<void(const Vector<Rect> &)> &cb) {
+	auto v = source->getVersion();
+	Vector<Rect> rects;
+
+	auto cache = font::FontLibrary::getInstance();
+	if (cache->writeTextureRects(v, source, format, scale, rects)) {
+		cb(rects);
+	}
+}
+
+NS_SP_END

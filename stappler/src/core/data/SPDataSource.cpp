@@ -151,7 +151,7 @@ void Source::clear() {
 }
 
 void Source::addSubcategry(Source *cat) {
-	_subCats.pushBack(cat);
+	_subCats.emplace_back(cat);
 	_count += cat->getGlobalCount();
 	setDirty();
 }
@@ -189,15 +189,15 @@ Source::Id Source::getId() const {
 	return _categoryId;
 }
 
-void Source::setSubCategories(cocos2d::Vector<Source *> &&vec) {
+void Source::setSubCategories(Vector<Rc<Source>> &&vec) {
 	_subCats = std::move(vec);
 	setDirty();
 }
-void Source::setSubCategories(const cocos2d::Vector<Source *> &vec) {
+void Source::setSubCategories(const Vector<Rc<Source>> &vec) {
 	_subCats = vec;
 	setDirty();
 }
-const cocos2d::Vector<Source *> &Source::getSubCategories() const {
+const Vector<Rc<Source>> &Source::getSubCategories() const {
 	return _subCats;
 }
 

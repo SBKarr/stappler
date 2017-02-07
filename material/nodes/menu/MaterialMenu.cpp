@@ -142,7 +142,7 @@ void Menu::rebuildMenu() {
 				return btn;
 			}, metrics::menuItemHeight(_metrics));
 		} else if (item->getType() == MenuSourceItem::Type::Custom) {
-			auto customItem = static_cast<MenuSourceCustom *>(item);
+			auto customItem = static_cast<MenuSourceCustom *>(item.get());
 			auto func = customItem->getFactoryFunction();
 			if (func) {
 				float height = customItem->getHeight();
@@ -203,13 +203,13 @@ stappler::ScrollView *Menu::getScroll() const {
 void Menu::onLightLevel() {
 	auto level = material::ResourceManager::getInstance()->getLightLevel();
 	switch(level) {
-	case rich_text::style::LightLevel::Dim:
+	case LightLevel::Dim:
 		setBackgroundColor(material::Color(0x484848));
 		break;
-	case rich_text::style::LightLevel::Normal:
+	case LightLevel::Normal:
 		setBackgroundColor(material::Color::White);
 		break;
-	case rich_text::style::LightLevel::Washed:
+	case LightLevel::Washed:
 		setBackgroundColor(material::Color::White);
 		break;
 	};

@@ -24,9 +24,7 @@ THE SOFTWARE.
 #define LIBS_MATERIAL_NODES_SCENE_MATERIALFOREGROUNDLAYER_H_
 
 #include "Material.h"
-#include "MaterialColors.h"
 #include "2d/CCNode.h"
-#include "base/CCVector.h"
 
 NS_MD_BEGIN
 

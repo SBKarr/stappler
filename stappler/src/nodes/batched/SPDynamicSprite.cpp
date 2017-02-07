@@ -37,13 +37,13 @@ bool DynamicSprite::init(cocos2d::Texture2D *tex, const Rect &rect, float densit
 	}
 
 	if (rect.equals(Rect::ZERO) && tex) {
-		_textureRect = cocos2d::Rect(0, 0, tex->getPixelsWide(), tex->getPixelsHigh());
+		_textureRect = Rect(0, 0, tex->getPixelsWide(), tex->getPixelsHigh());
 	} else {
 		_textureRect = rect;
 	}
 
 	if (_autofit == Autofit::None) {
-		setContentSize(cocos2d::Size(_textureRect.size.width / _density, _textureRect.size.height / _density));
+		setContentSize(Size(_textureRect.size.width / _density, _textureRect.size.height / _density));
 	}
 
 	return true;
@@ -74,7 +74,7 @@ bool DynamicSprite::init(const std::string &file, const Rect &rect, float densit
 bool DynamicSprite::init(const Bitmap &bmp, const Rect &rect, float density) {
 	Rect texRect;
 	if (rect.equals(Rect::ZERO)) {
-		texRect = cocos2d::Rect(0, 0, bmp.width(), bmp.height());
+		texRect = Rect(0, 0, bmp.width(), bmp.height());
 	} else {
 		texRect = rect;
 	}
@@ -85,10 +85,10 @@ bool DynamicSprite::init(const Bitmap &bmp, const Rect &rect, float density) {
 	return init(tex, texRect, density);
 }
 
-void DynamicSprite::setTextureRect(const cocos2d::Rect &rect) {
+void DynamicSprite::setTextureRect(const Rect &rect) {
 	auto tex = getTexture();
-	if (rect.equals(cocos2d::Rect::ZERO) && tex) {
-		_textureRect = cocos2d::Rect(0, 0, tex->getPixelsHigh(), tex->getPixelsWide());
+	if (rect.equals(Rect::ZERO) && tex) {
+		_textureRect = Rect(0, 0, tex->getPixelsHigh(), tex->getPixelsWide());
 		_contentSizeDirty = true;
 	} else {
 		if (!_textureRect.equals(rect)) {
@@ -97,11 +97,11 @@ void DynamicSprite::setTextureRect(const cocos2d::Rect &rect) {
 		}
 	}
 	if (_autofit == Autofit::None) {
-		setContentSize(cocos2d::Size(_textureRect.size.width / _density, _textureRect.size.height / _density));
+		setContentSize(Size(_textureRect.size.width / _density, _textureRect.size.height / _density));
 	}
 }
 
-const cocos2d::Rect &DynamicSprite::getTextureRect() const {
+const Rect &DynamicSprite::getTextureRect() const {
 	return _textureRect;
 }
 
@@ -112,14 +112,14 @@ void DynamicSprite::onContentSizeDirty() {
     	_quads->clear();
 		return;
 	} else if (_autofit == Autofit::None) {
-		_textureOrigin = cocos2d::Vec2::ZERO;
+		_textureOrigin = Vec2::ZERO;
 		_textureSize = _contentSize;
 	} else {
 		auto size = _texture->getContentSize();
 
-		_textureOrigin = cocos2d::Vec2::ZERO;
+		_textureOrigin = Vec2::ZERO;
 		_textureSize = _contentSize;
-		_textureRect = cocos2d::Rect(0, 0, size.width, size.height);
+		_textureRect = Rect(0, 0, size.width, size.height);
 
 		float scale = 1.0f;
 		if (_autofit == Autofit::Width) {
@@ -127,12 +127,12 @@ void DynamicSprite::onContentSizeDirty() {
 		} else if (_autofit == Autofit::Height) {
 			scale = size.height / _contentSize.height;
 		} else if (_autofit == Autofit::Contain) {
-			scale = MAX(size.width / _contentSize.width, size.height / _contentSize.height);
+			scale = std::max(size.width / _contentSize.width, size.height / _contentSize.height);
 		} else if (_autofit == Autofit::Cover) {
-			scale = MIN(size.width / _contentSize.width, size.height / _contentSize.height);
+			scale = std::min(size.width / _contentSize.width, size.height / _contentSize.height);
 		}
 
-		auto texSizeInView = cocos2d::Size(size.width / scale, size.height / scale);
+		auto texSizeInView = Size(size.width / scale, size.height / scale);
 		if (texSizeInView.width < _contentSize.width) {
 			_textureSize.width -= (_contentSize.width - texSizeInView.width);
 			_textureOrigin.x = (_contentSize.width - texSizeInView.width) * _autofitPos.x;
@@ -156,8 +156,8 @@ void DynamicSprite::onContentSizeDirty() {
 void DynamicSprite::setTexture(cocos2d::Texture2D *tex, const Rect &rect) {
 	if (_texture != tex) {
 		DynamicBatchNode::setTexture(tex);
-		if (rect.equals(cocos2d::Rect::ZERO) && tex) {
-			_textureRect = cocos2d::Rect(0, 0, tex->getPixelsWide(), tex->getPixelsHigh());
+		if (rect.equals(Rect::ZERO) && tex) {
+			_textureRect = Rect(0, 0, tex->getPixelsWide(), tex->getPixelsHigh());
 			_contentSizeDirty = true;
 		} else {
 			_textureRect = rect;
@@ -185,7 +185,7 @@ void DynamicSprite::setTexture(const std::string &file, const Rect &rect) {
 void DynamicSprite::setTexture(const Bitmap &bmp, const Rect &rect) {
 	Rect texRect;
 	if (rect.equals(Rect::ZERO)) {
-		texRect = cocos2d::Rect(0, 0, bmp.width(), bmp.height());
+		texRect = Rect(0, 0, bmp.width(), bmp.height());
 	} else {
 		texRect = rect;
 	}
@@ -201,21 +201,21 @@ cocos2d::Texture2D *DynamicSprite::getTexture() const {
 }
 
 void DynamicSprite::updateQuads() {
-    auto tex = getTexture();
-    if (!tex) {
-    	_quads->clear();
-    	return;
-    }
+	auto tex = getTexture();
+	if (!tex) {
+		_quads->clear();
+		return;
+	}
 
-    float atlasWidth = (float)tex->getPixelsWide();
-    float atlasHeight = (float)tex->getPixelsHigh();
+	const float atlasWidth = (float) tex->getPixelsWide();
+	const float atlasHeight = (float) tex->getPixelsHigh();
 
-    cocos2d::Color4B color4( _displayedColor.r, _displayedColor.g, _displayedColor.b, _displayedOpacity );
+	Color4B color4(_displayedColor.r, _displayedColor.g, _displayedColor.b, _displayedOpacity);
 	if (_opacityModifyRGB) {
-		color4.r *= _displayedOpacity/255.0f;
-		color4.g *= _displayedOpacity/255.0f;
-		color4.b *= _displayedOpacity/255.0f;
-    }
+		color4.r *= _displayedOpacity / 255.0f;
+		color4.g *= _displayedOpacity / 255.0f;
+		color4.b *= _displayedOpacity / 255.0f;
+	}
 
 	_quads->resize(1);
 
@@ -223,7 +223,7 @@ void DynamicSprite::updateQuads() {
 		_quads->setTextureRect(0, _textureRect, atlasWidth, atlasHeight, _flippedX, _flippedY, _rotated);
 		_quads->setGeometry(0, _textureOrigin, _textureSize, _positionZ);
 	} else {
-		_quads->setNormalizedGeometry(0, cocos2d::Vec2::ZERO, _positionZ, _textureRect,
+		_quads->setNormalizedGeometry(0, Vec2::ZERO, _positionZ, _textureRect,
 				atlasWidth, atlasHeight, _flippedX, _flippedY, _rotated);
 	}
 
@@ -261,7 +261,7 @@ void DynamicSprite::setDensity(float value) {
 	if (_density != value) {
 		DynamicBatchNode::setDensity(value);
 		if (_autofit == Autofit::None) {
-			setContentSize(cocos2d::Size(_textureRect.size.width / _density, _textureRect.size.height / _density));
+			setContentSize(Size(_textureRect.size.width / _density, _textureRect.size.height / _density));
 		}
 	}
 }
@@ -286,13 +286,13 @@ DynamicSprite::Autofit DynamicSprite::getAutofit() const {
 	return _autofit;
 }
 
-void DynamicSprite::setAutofitPosition(const cocos2d::Vec2 &vec) {
+void DynamicSprite::setAutofitPosition(const Vec2 &vec) {
 	if (!_autofitPos.equals(vec)) {
 		_autofitPos = vec;
 		_contentSizeDirty = true;
 	}
 }
-const cocos2d::Vec2 &DynamicSprite::getAutofitPosition() const {
+const Vec2 &DynamicSprite::getAutofitPosition() const {
 	return _autofitPos;
 }
 
