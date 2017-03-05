@@ -23,8 +23,8 @@ THE SOFTWARE.
 #ifndef LIBS_MATERIAL_NODES_BUTTON_MATERIALFLOATINGACTIONBUTTON_H_
 #define LIBS_MATERIAL_NODES_BUTTON_MATERIALFLOATINGACTIONBUTTON_H_
 
+#include "MaterialIconStorage.h"
 #include "MaterialNode.h"
-#include "MaterialIconSources.h"
 #include "SPDrawPathNode.h"
 
 NS_MD_BEGIN

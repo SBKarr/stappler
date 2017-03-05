@@ -33,21 +33,25 @@ public:
 	enum Program : uint32_t {
 		DrawNodeA8 = 1 << 0,
 		DynamicBatchI8 = 1 << 1,
-		DynamicBatchAI88 = 1 << 2,
-		DynamicBatchA8Highp = 1 << 3, // for font on high-density screens
-		DynamicBatchColor = 1 << 4,
+		DynamicBatchR8ToA8 = 1 << 2,
+		DynamicBatchAI88 = 1 << 3,
+		DynamicBatchA8Highp = 1 << 4, // for font on high-density screens
+		DynamicBatchColor = 1 << 5,
 
-		RawTexture = 1 << 5,
-		RawTextureColor = 1 << 6,
-		RawTextureColorA8 = 1 << 7,
-		RawTextureColorA8Highp = 1 << 8,
+		RawTexture = 1 << 6,
+		RawTextureColor = 1 << 7,
+		RawTextureColorA8 = 1 << 8,
+		RawTextureColorA8Highp = 1 << 9,
 
-		RawRect = 1 << 9,
-		RawRectBorder = 1 << 10,
-		RawRects = 1 << 11,
+		RawRect = 1 << 10,
+		RawRectBorder = 1 << 11,
+		RawRects = 1 << 12,
+		RawAAMaskR = 1 << 13,
+		RawAAMaskRGBA = 1 << 14,
 
-		DrawNodeSet = DrawNodeA8 | DynamicBatchI8 | DynamicBatchAI88 | DynamicBatchA8Highp | DynamicBatchColor,
-		RawDrawingSet = RawTexture | DynamicBatchA8Highp | RawRect | RawRectBorder | RawRects,
+		DrawNodeSet = DrawNodeA8 | DynamicBatchI8 | DynamicBatchAI88 | DynamicBatchA8Highp | DynamicBatchColor | DynamicBatchR8ToA8,
+		RawDrawingSet = RawTexture | DynamicBatchA8Highp | RawRect | RawRectBorder | RawRects | RawAAMaskR | RawAAMaskRGBA,
+		DynamicBatchR8ToI8 = DynamicBatchI8,
 	};
 
 	bool init();

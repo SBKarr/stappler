@@ -20,7 +20,8 @@
 
 OSTYPE_PREBUILT_PATH := libs/ios/$(IOS_ARCH)/lib
 OSTYPE_INCLUDE :=  libs/ios/$(IOS_ARCH)/include
-OSTYPE_CFLAGS := -DIOS -Wall -Wno-overloaded-virtual -fPIC -frtti -DUSE_FILE32API -DCC_TARGET_OS_IPHONE -arch $(IOS_ARCH) -isysroot $(SYSROOT) -miphoneos-version-min=$(MIN_IOS_VERSION)
+OSTYPE_CFLAGS := -DIOS -Wall -fPIC -DUSE_FILE32API -DCC_TARGET_OS_IPHONE -arch $(IOS_ARCH) -isysroot $(SYSROOT) -miphoneos-version-min=$(MIN_IOS_VERSION)
+OSTYPE_CPPFLAGS := -Wno-overloaded-virtual -frtti
 OSTYPE_COMMON_LIBS :=
 OSTYPE_CLI_LIBS :=
 OSTYPE_STAPPLER_LIBS :=

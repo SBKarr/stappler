@@ -343,6 +343,13 @@ namespace cbor {
 		w.emplace(data.data(), size);
 	}
 
+	template <class Writer>
+	inline void _writeBytes(Writer &w, const DataReader<ByteOrder::Network> &data) {
+		auto size = data.size();
+		_writeInt(w, size, MajorTypeEncoded::ByteString);
+		w.emplace(data.data(), size);
+	}
+
 	Bytes writeCborArray(const Value &);
 	Bytes writeCborArray(const Array &);
 
@@ -351,6 +358,66 @@ namespace cbor {
 
 	Value readCborArray(const Bytes &, size_t start = 0, size_t end = maxOf<size_t>());
 	Value readCborObject(const Bytes &, const String &filter = "");
+
+	template <class Writer>
+	inline void _writeNumber(Writer &w, float n) {
+		if (n == roundf(n)) {
+			_writeInt(w, int64_t(n));
+		} else {
+			_writeFloat(w, n);
+		}
+	};
+
+	inline uint64_t _readIntValue(DataReader<ByteOrder::Network> &r, uint8_t type) {
+		if (type < toInt(Flags::MaxAdditionalNumber)) {
+			return type;
+		} else if (type == toInt(Flags::AdditionalNumber8Bit)) {
+			return r.readUnsigned();
+		} else if (type == toInt(Flags::AdditionalNumber16Bit)) {
+			return r.readUnsigned16();
+		} else if (type == toInt(Flags::AdditionalNumber32Bit)) {
+			return r.readUnsigned32();
+		} else if (type == toInt(Flags::AdditionalNumber64Bit)) {
+			return r.readUnsigned64();
+		} else {
+			return 0;
+		}
+	}
+
+	inline int64_t _readInt(DataReader<ByteOrder::Network> &r) {
+		uint8_t type = r.readUnsigned();
+		MajorTypeEncoded majorType = (MajorTypeEncoded)(type & toInt(Flags::MajorTypeMaskEncoded));;
+		type = type & toInt(Flags::AdditionalInfoMask);
+
+		switch(majorType) {
+		case MajorTypeEncoded::Unsigned: return _readIntValue(r, type); break;
+		case MajorTypeEncoded::Negative: return (-1 - _readIntValue(r, type)); break;
+		default: break;
+		}
+		return 0;
+	}
+
+	inline float _readNumber(DataReader<ByteOrder::Network> &r) {
+		uint8_t type = r.readUnsigned();
+		MajorTypeEncoded majorType = (MajorTypeEncoded)(type & toInt(Flags::MajorTypeMaskEncoded));;
+		type = type & toInt(Flags::AdditionalInfoMask);
+
+		switch(majorType) {
+		case MajorTypeEncoded::Unsigned: return _readIntValue(r, type); break;
+		case MajorTypeEncoded::Negative: return (-1 - _readIntValue(r, type)); break;
+		case MajorTypeEncoded::Simple:
+			if (type == toInt(Flags::AdditionalFloat16Bit)) {
+				return r.readFloat16();
+			} else if (type == toInt(Flags::AdditionalFloat32Bit)) {
+				return r.readFloat32();
+			} else if (type == toInt(Flags::AdditionalFloat64Bit)) {
+				return r.readFloat64();
+			}
+			break;
+		default: break;
+		}
+		return 0.0f;
+	}
 }
 
 NS_SP_EXT_END(data)

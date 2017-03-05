@@ -45,7 +45,10 @@ static void DefaultLog(const char *tag, CustomLog::Type t, CustomLog::VA &va) {
 		DefaultLog2(tag, va.text.text, va.text.len);
 	} else {
 		char stackBuf[1_KiB];
-		int size = vsnprintf(stackBuf, size_t(1_KiB - 1), va.format.format, va.format.args);
+		va_list tmpList;
+		va_copy(tmpList, va.format.args);
+		int size = vsnprintf(stackBuf, size_t(1_KiB - 1), va.format.format, tmpList);
+		va_end(tmpList);
 		if (size > int(1_KiB - 1)) {
 			char *buf = new char[size + 1];
 			size = vsnprintf(buf, size_t(size), va.format.format, va.format.args);

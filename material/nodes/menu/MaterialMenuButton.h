@@ -35,6 +35,10 @@ public:
 	virtual void onContentSizeDirty() override;
 	virtual void setEnabled(bool value) override;
 
+	// should button wrap or truncate name label on overflow
+	virtual void setWrapName(bool);
+	virtual bool isWrapName() const;
+
 	virtual void setMenuSourceItem(MenuSourceItem *item) override;
 
 	virtual void setMenu(Menu *) override;
@@ -54,6 +58,7 @@ protected:
 	IconSprite *_menuValueIcon = nullptr;
 
 	Menu *_menu = nullptr;
+	bool _wrapName = true;
 };
 
 NS_MD_END

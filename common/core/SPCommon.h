@@ -49,7 +49,12 @@ NS_SP_EXT_BEGIN(toolkit)
 template <typename T>
 struct BytesContainer;
 
-struct AllocBase { };
+struct AllocBase {
+	void * operator new (size_t size)  throw() { return ::operator new(size); }
+	void * operator new (size_t size, const std::nothrow_t& tag) { return ::operator new(size); }
+	void * operator new (size_t size, void* ptr) { return ::operator new(size, ptr); }
+	void operator delete(void *ptr) { return ::operator delete(ptr); }
+};
 
 struct TypeTraits {
 	using string_type = std::string;
@@ -92,6 +97,7 @@ NS_SP_EXT_END(toolkit)
 #include "SPAprFileStream.h"
 #include "SPAprSet.h"
 #include "SPAprMap.h"
+#include "SPAprMutex.h"
 
 NS_SP_EXT_BEGIN(toolkit)
 

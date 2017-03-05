@@ -232,8 +232,6 @@ struct CborDecoder {
 		stack.reserve(10);
 	}
 
-	inline uint64_t readIntValue(uint8_t type) SPINLINE;
-
 	void decodePositiveInt(uint8_t type, Value &);
 	void decodeNegativeInt(uint8_t type, Value &);
 	void decodeByteString(uint8_t type, Value &);
@@ -278,31 +276,15 @@ struct CborDecoder {
 	bool _filterSkip = false;
 };
 
-inline uint64_t CborDecoder::readIntValue(uint8_t type) {
-	if (type < toInt(Flags::MaxAdditionalNumber)) {
-		return type;
-	} else if (type == toInt(Flags::AdditionalNumber8Bit)) {
-		return r.readUnsigned();
-	} else if (type == toInt(Flags::AdditionalNumber16Bit)) {
-		return r.readUnsigned16();
-	} else if (type == toInt(Flags::AdditionalNumber32Bit)) {
-		return r.readUnsigned32();
-	} else if (type == toInt(Flags::AdditionalNumber64Bit)) {
-		return r.readUnsigned64();
-	} else {
-		return 0;
-	}
-}
-
 void CborDecoder::decodePositiveInt(uint8_t type, Value &v) {
-	auto value = readIntValue(type);
+	auto value = _readIntValue(r, type);
 	if (!_filterSkip) {
 		v._type = Value::Type::INTEGER;
 		v.intVal = (int64_t)value;
 	}
 }
 void CborDecoder::decodeNegativeInt(uint8_t type, Value &v) {
-	auto value = readIntValue(type);
+	auto value = _readIntValue(r, type);
 	if (!_filterSkip) {
 		v._type = Value::Type::INTEGER;
 		v.intVal = (int64_t)(-1 - value);
@@ -310,7 +292,7 @@ void CborDecoder::decodeNegativeInt(uint8_t type, Value &v) {
 }
 void CborDecoder::decodeByteString(uint8_t type, Value &v) {
 	if (type != toInt(Flags::UndefinedLength)) {
-		auto size = size_t(readIntValue(type));
+		auto size = size_t(_readIntValue(r, type));
 		size = min(r.size(), (size_t)size);
 		if (!_filterSkip) {
 			v._type = Value::Type::BYTESTRING;
@@ -348,7 +330,7 @@ void CborDecoder::decodeByteString(uint8_t type, Value &v) {
 
 void CborDecoder::decodeCharString(uint8_t type, Value &v) {
 	if (type != toInt(Flags::UndefinedLength)) {
-		auto size = size_t(readIntValue(type));
+		auto size = size_t(_readIntValue(r, type));
 		size = min(r.size(), (size_t)size);
 		if (!_filterSkip) {
 			v._type = Value::Type::CHARSTRING;
@@ -398,7 +380,7 @@ void CborDecoder::decodeArray(uint8_t type, data::Value &ret) {
 
 	size_t size = maxOf<size_t>();
 	if (type != toInt(Flags::UndefinedLength)) {
-		size = size_t(readIntValue(type));
+		size = size_t(_readIntValue(r, type));
 	} else {
 		type = 0;
 	}
@@ -473,7 +455,7 @@ void CborDecoder::decodeMap(uint8_t type, data::Value &ret) {
 
 	size_t size = maxOf<size_t>();
 	if (type != toInt(Flags::UndefinedLength)) {
-		size = size_t(readIntValue(type));
+		size = size_t(_readIntValue(r, type));
 	} else {
 		type = 0;
 	}
@@ -499,11 +481,11 @@ void CborDecoder::decodeMap(uint8_t type, data::Value &ret) {
 
 		switch(majorType) {
 		case MajorTypeEncoded::Unsigned:
-			parsedKey = stappler::toString(readIntValue(type));
+			parsedKey = stappler::toString(_readIntValue(r, type));
 			key = CharReaderBase(parsedKey);
 			break;
 		case MajorTypeEncoded::Negative:
-			parsedKey = stappler::toString((int64_t)(-1 - readIntValue(type)));
+			parsedKey = stappler::toString((int64_t)(-1 - _readIntValue(r, type)));
 			key = CharReaderBase(parsedKey);
 			break;
 		case MajorTypeEncoded::ByteString:
@@ -513,7 +495,7 @@ void CborDecoder::decodeMap(uint8_t type, data::Value &ret) {
 				decode(majorType, type, ret);
 				_filterSkip = f;
 			} else {
-				auto size = size_t(readIntValue(type));
+				auto size = size_t(_readIntValue(r, type));
 				key = CharReaderBase((char *)r.data(), size);
 				r += size;
 			}
@@ -525,7 +507,7 @@ void CborDecoder::decodeMap(uint8_t type, data::Value &ret) {
 				decode(majorType, type, ret);
 				_filterSkip = f;
 			} else {
-				auto size = size_t(readIntValue(type));
+				auto size = size_t(_readIntValue(r, type));
 				key = CharReaderBase((char *)r.data(), size);
 				r += size;
 			}
@@ -603,7 +585,7 @@ void CborDecoder::decodeMap(uint8_t type, data::Value &ret) {
 	_filterString = filterString;
 }
 void CborDecoder::decodeTaggedValue(uint8_t type, Value &ret) {
-	/* auto tagValue = */ readIntValue(type);
+	/* auto tagValue = */ _readIntValue(r, type);
 	decode(ret);
 }
 

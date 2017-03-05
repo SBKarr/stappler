@@ -36,7 +36,8 @@ ANDROID_TOOLCHAIN := $(GLOBAL_ROOT)/libs/android/toolchains/$(ANDROID_ARCH)
 
 OSTYPE_PREBUILT_PATH := libs/android/$(ANDROID_ARCH)/lib
 OSTYPE_INCLUDE :=  libs/android/$(ANDROID_ARCH)/include
-OSTYPE_CFLAGS := -DANDROID -Wall -Wno-overloaded-virtual -fPIC -frtti -DUSE_FILE32API --sysroot $(ANDROID_TOOLCHAIN)/sysroot -I$(NDK)/sources/android/cpufeatures
+OSTYPE_CFLAGS := -DANDROID -Wall -fPIC -DUSE_FILE32API --sysroot $(ANDROID_TOOLCHAIN)/sysroot -I$(NDK)/sources/android/cpufeatures
+OSTYPE_CPPFLAGS := -Wno-overloaded-virtual -frtti
 OSTYPE_COMMON_LIBS := 
 OSTYPE_CLI_LIBS := 
 OSTYPE_STAPPLER_LIBS := 
@@ -60,5 +61,5 @@ TOOLKIT_OUTPUT := $(TOOLKIT_OUTPUT)/android/release/$(ANDROID_ARCH)
 GLOBAL_CFLAGS := -O2 -DNDEBUG $(OSTYPE_CFLAGS) $(GLOBAL_CFLAGS)
 else
 TOOLKIT_OUTPUT := $(TOOLKIT_OUTPUT)/android/debug/$(ANDROID_ARCH)
-GLOBAL_CFLAGS := -g -DDEBUG -DCOCOS2D_DEBUG=1 $(OSTYPE_CFLAGS) $(GLOBAL_CFLAGS)
+GLOBAL_CFLAGS := -g -O2 -DDEBUG -DCOCOS2D_DEBUG=1 $(OSTYPE_CFLAGS) $(GLOBAL_CFLAGS)
 endif

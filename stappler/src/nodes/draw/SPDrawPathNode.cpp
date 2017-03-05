@@ -29,15 +29,11 @@ THE SOFTWARE.
 #include "SPEventListener.h"
 #include "SPDevice.h"
 #include "SPTextureCache.h"
-#include "SPDrawCanvasLibtess2.h"
-#include "SPDrawCanvasCairo.h"
+#include "SPDrawCanvas.h"
 #include "renderer/CCGLProgramCache.h"
 #include "renderer/CCGLProgram.h"
 
 NS_SP_EXT_BEGIN(draw)
-
-void Canvas::begin(cocos2d::Texture2D *, const Color4B &) { }
-void Canvas::end() { }
 
 cocos2d::GLProgram *getA8Program() {
 	return TextureCache::getInstance()->getBatchPrograms()->getProgram(GLProgramSet::DrawNodeA8);
@@ -190,7 +186,8 @@ void PathNode::updateCanvas(layout::Subscription::Flags f) {
 	}
 
 	if (!_canvas) {
-		_canvas.set(Rc<CanvasCairo>::create());
+		_canvas.set(Rc<Canvas>::create());
+		_canvas->setQuality(1.75f /*Canvas::QualityHigh*/);
 	}
 
 	auto &size = _contentSize;
@@ -237,10 +234,9 @@ void PathNode::updateCanvas(layout::Subscription::Flags f) {
 
 	auto currentTex = getTexture();
 	if (!f.empty() || !currentTex || (uint32_t)currentTex->getPixelsWide() != width || (uint32_t)currentTex->getPixelsHigh() != height) {
-		auto tex = generateTexture(getTexture(), width, height, _format);
+		auto tex = generateTexture(getTexture(), width, height, _format, true);
 		_canvas->begin(tex, Color4B(0, 0, 0, 0));
 		_canvas->save();
-		_canvas->setAntialiasing(_image->isAntialiased());
 		_canvas->translate(offsetX, offsetY);
 		_canvas->scale(scaleX, scaleY);
 
@@ -252,20 +248,29 @@ void PathNode::updateCanvas(layout::Subscription::Flags f) {
 		_canvas->restore();
 		_canvas->end();
 
+		/*const cocos2d::Texture2D::PixelFormatInfo& info = cocos2d::Texture2D::_pixelFormatInfoTables.at(tex->getPixelFormat());
+		Bytes buf; buf.resize(tex->getPixelsWide() * tex->getPixelsHigh() * tex->getBitsPerPixelForFormat(tex->getPixelFormat()));
+		glBindTexture(GL_TEXTURE_2D, tex->getName());
+		glGetTexImage(GL_TEXTURE_2D, 0, info.format, info.type, buf.data());
+		glBindTexture(GL_TEXTURE_2D, 0);
+		Bitmap::savePng(toString(Time::now().toMicroseconds(), ".png"), buf.data(), tex->getPixelsWide(), tex->getPixelsHigh(),
+				_format==Format::A8?Bitmap::Format::A8:Bitmap::Format::RGBA8888);*/
+
 		if (tex != getTexture()) {
 			setTexture(tex);
 		}
 	}
 }
 
-Rc<cocos2d::Texture2D> PathNode::generateTexture(cocos2d::Texture2D *tex, uint32_t w, uint32_t h, Format fmt) {
+Rc<cocos2d::Texture2D> PathNode::generateTexture(cocos2d::Texture2D *tex, uint32_t w, uint32_t h, Format fmt, bool renderTargetRequired) {
 	if (tex && tex->getPixelsHigh() == int(h) && tex->getPixelsWide() == int(w) &&
-			((fmt == Format::A8 && tex->getPixelFormat() == cocos2d::Texture2D::PixelFormat::A8)
-					|| (fmt == Format::RGBA8888 && tex->getPixelFormat() == cocos2d::Texture2D::PixelFormat::RGBA8888))) {
+			((fmt == Format::A8 && tex->getReferenceFormat() == cocos2d::Texture2D::PixelFormat::A8)
+					|| (fmt == Format::RGBA8888 && tex->getReferenceFormat() == cocos2d::Texture2D::PixelFormat::RGBA8888))) {
 		return tex;
 	}
 	auto outtex = Rc<cocos2d::Texture2D>::create(
-			(fmt == Format::A8?cocos2d::Texture2D::PixelFormat::A8:cocos2d::Texture2D::PixelFormat::RGBA8888), w, h);
+			(fmt == Format::A8?cocos2d::Texture2D::PixelFormat::A8:cocos2d::Texture2D::PixelFormat::RGBA8888),
+			w, h, renderTargetRequired?cocos2d::Texture2D::InitAs::RenderTarget:cocos2d::Texture2D::InitAs::DataTexture);
 	outtex->setAliasTexParameters();
 	return outtex;
 }

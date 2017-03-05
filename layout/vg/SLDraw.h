@@ -24,8 +24,26 @@ THE SOFTWARE.
 #define LAYOUT_VG_SLDRAW_H_
 
 #include "SPLayout.h"
+#include "SLTesselator.h"
 
 NS_LAYOUT_BEGIN
+
+enum class Winding {
+	NonZero,
+	EvenOdd,
+};
+
+enum class LineCup {
+	Butt,
+	Round,
+	Square
+};
+
+enum class LineJoin {
+	Miter,
+	Round,
+	Bevel
+};
 
 enum class DrawStyle {
 	None = 0,
@@ -36,14 +54,73 @@ enum class DrawStyle {
 
 SP_DEFINE_ENUM_AS_MASK(DrawStyle)
 
-size_t drawQuadBezier(Vector<float> &verts, float distanceError, float angularError,
-		float x0, float y0, float x1, float y1, float x2, float y2);
+struct LineDrawer {
+	using Style = DrawStyle;
 
-size_t drawCubicBezier(Vector<float> &verts, float distanceError, float angularError,
-		float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3);
+	LineDrawer();
+	LineDrawer(Style s, float e);
+	LineDrawer(Style s, float e, float width, bool optimizeFill = false);
 
-size_t drawArc(Vector<float> &verts, float distanceError, float angularError,
-		float x0, float y0, float rx, float ry, float angle, bool largeArc, bool sweep, float x, float y);
+	void setStyle(Style s, float e);
+	void setStyle(Style s, float e, float width, bool optimizeFill = false);
+
+	void reserve(size_t);
+	void clear();
+
+	void drawQuadBezier(float x0, float y0, float x1, float y1, float x2, float y2);
+	void drawCubicBezier(float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3);
+	void drawArc(float x0, float y0, float rx, float ry, float angle, bool largeArc, bool sweep, float x, float y);
+
+	void pushLine(float x, float y);
+	void pushOutline(float x, float y);
+	void push(float x, float y);
+
+	bool empty() const { return line.empty() && outline.empty(); }
+	bool isStroke() const { return toInt(style & Style::Stroke); }
+	bool isFill() const { return toInt(style & Style::Fill); }
+
+	Style style = Style::None;
+
+	float approxError = 0.0f;
+	float distanceError = 0.0f;
+	float angularError = 0.0f;
+
+	Vector<float> line; // verts on approximated line
+	Vector<float> outline; // verts on outline
+
+	bool debug = false;
+};
+
+struct StrokeDrawer {
+	StrokeDrawer();
+	StrokeDrawer(const Color4B &, float w, LineJoin join, LineCup cup, float l = 4.0f);
+
+	void setStyle(const Color4B &, float w, LineJoin join, LineCup cup, float l = 4.0f);
+	void setAntiAliased(float v);
+
+	void draw(const Vector<float> &points, bool closed);
+
+	void processLineCup(float cx, float cy, float x, float y, bool inverse);
+	void processLine(float x0, float y0, float cx, float cy, float x1, float y1);
+
+	void clear();
+
+	bool empty() const { return outline.empty() /*outer.empty() && inner.empty()*/; }
+
+	bool closed;
+	LineJoin lineJoin;
+	LineCup lineCup;
+	float width;
+	float miterLimit;
+	TESSColor color;
+
+	bool antialiased;
+	float antialiasingValue;
+
+	Vector<TESSPoint> outline;
+	Vector<TESSPoint> outer;
+	Vector<TESSPoint> inner;
+};
 
 NS_LAYOUT_END
 

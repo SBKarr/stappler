@@ -23,10 +23,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
+#include "MaterialIconStorage.h"
 #include "Material.h"
 #include "MaterialResourceManager.h"
-#include "MaterialIconSources.h"
-
 #include "SPLocale.h"
 #include "SPData.h"
 #include "SPScreen.h"
@@ -146,6 +145,8 @@ ResourceManager::ResourceManager() {
 		})
 	}, 1.0f);
 
+	_iconStorage = Rc<IconStorage>::create(stappler::screen::density());
+
 	stappler::storage::get("Material.ResourceManager", [this] (const std::string &key, stappler::data::Value &value) {
 		if (value.isDictionary()) {
 			float textFontScale = value.getDouble("TextFontScale", 1.0f);
@@ -169,24 +170,11 @@ ResourceManager::ResourceManager() {
 			locale::setLocale(_locale);
 		}
 
-		update();
+		ResourceManager::onLoaded(this);
 	});
 }
 
 ResourceManager::~ResourceManager() { }
-
-void ResourceManager::update() {
-    float density = stappler::screen::density();
-    const auto &m = getMaterialIconSources();
-    stappler::IconSet::generate(stappler::IconSet::Config{"material", getMaterialIconVersion(), &m,
-    	48, 48, (uint16_t)(24 * density), (uint16_t)(24 * density)}, [this] (IconSet *set) {
-    		_iconSet = set;
-    		if (_iconSet) {
-    			_init = true;
-    			ResourceManager::onLoaded(this);
-    		}
-    	});
-}
 
 void ResourceManager::saveUserData() {
 	data::Value val(stappler::data::Value::Type::DICTIONARY);
@@ -232,15 +220,8 @@ font::FontSource *ResourceManager::getSystemFontSource() const {
 	return _source;
 }
 
-Icon ResourceManager::getIcon(IconName name) {
-	auto &names = getMaterialIconNames();
-	auto it = names.find(name);
-	if (it != names.end()) {
-		if (_iconSet) {
-			return _iconSet->getIcon(it->second);
-		}
-	}
-	return Icon();
+IconStorage *ResourceManager::getIconStorage() const {
+	return _iconStorage;
 }
 
 font::FontSource *ResourceManager::getUserFontSource() const {

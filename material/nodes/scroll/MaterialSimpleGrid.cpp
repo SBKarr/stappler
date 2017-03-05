@@ -97,7 +97,7 @@ Rc<Scroll::Item> ScrollHandlerGrid::onItem(data::Value &&data, Scroll::Source::I
 	Scroll::Source::Id::Type row = id.get() / _currentCols;
 	Scroll::Source::Id::Type col = id.get() % _currentCols;
 
-	Vec2 pos(col * _currentCellSize.width + _widthPadding, row * _currentCellSize.height);
+	Vec2 pos(col * _currentCellSize.width /*+ _widthPadding*/, row * _currentCellSize.height);
 
 	return Rc<Scroll::Item>::create(std::move(data), pos, _currentCellSize);
 }

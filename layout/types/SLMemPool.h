@@ -28,59 +28,108 @@ THE SOFTWARE.
 
 NS_LAYOUT_BEGIN
 
+template <bool Reallocatable = true>
+struct MemBuffer;
+
+template <>
+struct MemBuffer<true> : AllocBase {
+	static uint32_t block_size(void *ptr) {
+		return ( (uint32_t *)((uint8_t *)ptr - 0x8) )[0];
+	}
+
+	MemBuffer(void *t, uint32_t s, uint8_t *b) : allocated(s), offset(0), target(t), data(b) { }
+
+	uint32_t remains() const { return allocated - offset; }
+	uint32_t size() const { return offset; }
+	uint32_t capacity() const { return allocated; }
+	void clear() { offset = 0; }
+
+	void *alloc(size_t s) {
+		auto ret = &data[offset];
+		*((uint32_t *)ret) = s;
+		offset += s + 0x8;
+		return ret + 0x8;
+	}
+
+	uint32_t allocated;
+	uint32_t offset;
+	void *target;
+	uint8_t *data;
+};
+
+template <>
+struct MemBuffer<false> : AllocBase {
+	static uint32_t block_size(void *ptr) {
+		return maxOf<uint32_t>();
+	}
+
+	MemBuffer(void *t, uint32_t s, uint8_t *b) : allocated(s), offset(0), target(t), data(b) { }
+
+	uint32_t remains() const { return allocated - offset; }
+	uint32_t size() const { return offset; }
+	uint32_t capacity() const { return allocated; }
+	void clear() { offset = 0; }
+
+	void *alloc(size_t s) {
+		auto ret = &data[offset];
+		offset += s;
+		return ret;
+	}
+
+	uint32_t allocated;
+	uint32_t offset;
+	void *target;
+	uint8_t *data;
+};
+
 /**
  *  Simple block-based memory pool
  *  can be used to optimize allocation for small memory blocks
  */
-template <size_t BlockSize = 256_KiB, bool Reallocatable = true>
+template <bool Reallocatable = true>
 class MemPool : public Ref {
 public:
-	using MemBuffer = StackBuffer<BlockSize - sizeof(size_t)>; // exact 8_KiB, for page boundary
+	using Buffer = MemBuffer<Reallocatable>;
+
+	MemBuffer<Reallocatable> *allocate_buffer(size_t s) {
+		uint8_t * mem = (uint8_t *)AllocBase::operator new(s);
+		uint8_t * memAlign = (uint8_t *)(intptr_t(mem + 0xF) & ~0xF);
+		size_t offset = (memAlign - mem) + ((sizeof(MemBuffer<Reallocatable>) + 0xF) & ~0xF);
+		return new (mem) MemBuffer<Reallocatable>(mem, s - offset, mem + offset);
+	}
+
+	void deallocate_buffer(MemBuffer<Reallocatable> *buf) {
+		AllocBase::operator delete(buf->target);
+	}
 
 	MemPool() {
-		_memPool.emplace_back(new MemBuffer);
+		slots[0] = allocate_buffer(16_KiB);
+		allocatedSlots = 1;
 	}
 
 	~MemPool() {
-		for (auto &it : _memPool) {
-			delete it;
+		for (size_t i = 0; i < allocatedSlots; ++i) {
+			deallocate_buffer(slots[i]);
 		}
 	}
 
 	void *allocate(uint32_t size) {
-		if (size > (BlockSize - sizeof(size_t))) {
-			return nullptr;
-		}
-
-		auto b = _memPool.at(_poolBufferIdx);
+		size = (size + 0xF) & ~0xF; // align
+		auto & b = slots[targetSlot];
 		if (b->remains() < size) {
-			++ _poolBufferIdx;
-			if (_poolBufferIdx >= _memPool.size()) {
-				_memPool.emplace_back(new MemBuffer);
-				b = _memPool.back();
-			} else {
-				b = _memPool.at(_poolBufferIdx);
+			++ targetSlot;
+			if (targetSlot >= allocatedSlots) {
+				slots[targetSlot] = allocate_buffer(16_KiB << targetSlot);
+				++ allocatedSlots;
 			}
-		}
-
-		// we store block size at negative offset in allocated memory to allow reallocations
-		if (Reallocatable) {
-			size_t blockSize = size + sizeof(uint32_t);
-			auto ret = b->prepare_preserve(blockSize);
-			b->save(ret, blockSize);
-			((uint32_t *)ret)[0] = size;
-			return ret + sizeof(uint32_t);
+			return allocate(size);
 		} else {
-			size_t blockSize = size;
-			auto ret = b->prepare_preserve(blockSize);
-			b->save(ret, blockSize);
-			return ret;
+			return b->alloc(size);
 		}
 	}
 
-	template<class = typename std::enable_if<Reallocatable>::type >
 	void *reallocate(void *ptr, uint32_t newSize) {
-		auto origSize = ( (uint32_t *)((uint8_t *)ptr - sizeof(uint32_t)) )[0];
+		auto origSize = Buffer::block_size(ptr);
 		if (origSize == maxOf<uint32_t>()) {
 			return nullptr;
 		}
@@ -98,24 +147,40 @@ public:
 
 	void free(void *) { }
 	void clear() {
-		_poolBufferIdx = 0;
-		for (auto &it : _memPool) {
-			it->soft_clear();
+		targetSlot = 0;
+		for (size_t i = 0; i < allocatedSlots; ++i) {
+			slots[i]->clear();
 		}
 	}
 
 	size_t allocated() const {
 		size_t size = 0;
-		for (auto &it : _memPool) {
-			size += it->size();
+		for (size_t i = 0; i < allocatedSlots; ++i) {
+			size += slots[i]->size();
 		}
 		return size;
 	}
 
+	size_t capacity() const {
+		size_t size = 0;
+		for (size_t i = 0; i < allocatedSlots; ++i) {
+			size += slots[i]->capacity();
+		}
+		return size;
+	}
+
+	uint8_t target_slot() const {
+		return targetSlot;
+	}
+
+	uint8_t allocated_slot() const {
+		return allocatedSlots;
+	}
+
 protected:
-	// new use heap pointer to avoid vector preallocations and reallocations
-	Vector<MemBuffer *> _memPool;
-	size_t _poolBufferIdx = 0;
+	std::array<Buffer *, 16> slots;
+	uint8_t allocatedSlots = 0;
+	uint8_t targetSlot = 0;
 };
 
 NS_LAYOUT_END

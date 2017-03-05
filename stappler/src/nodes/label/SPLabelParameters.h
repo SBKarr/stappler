@@ -227,6 +227,7 @@ public:
     void setAlignment(Alignment alignment);
 	Alignment getAlignment() const;
 
+	// line width for line wrapping
     void setWidth(float width);
 	float getWidth() const;
 
@@ -265,6 +266,7 @@ public:
 	float getLineHeight() const;
 	bool isLineHeightAbsolute() const;
 
+	// line width for truncating label without wrapping
 	void setMaxWidth(float);
 	float getMaxWidth() const;
 

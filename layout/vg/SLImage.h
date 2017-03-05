@@ -117,6 +117,8 @@ public:
 		operator bool() const;
 
 		void invalidate();
+
+		Path *getPath() const;
 	protected:
 		friend class Image;
 		PathRef(Image *, Path *, size_t);

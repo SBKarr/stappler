@@ -70,14 +70,18 @@ void BatchNodeBase::updateBlendFunc(cocos2d::Texture2D *tex) {
 		auto glProgramName = getGLProgram()->getProgram();
 		auto pixelFormat = tex->getPixelFormat();
 		cocos2d::GLProgramState *newState = nullptr;
-		if (pixelFormat == cocos2d::Texture2D::PixelFormat::A8) {
-			newState = getProgramStateA8();
-		} else if (pixelFormat == cocos2d::Texture2D::PixelFormat::I8) {
-			newState = getProgramStateI8();
-		} else if (pixelFormat == cocos2d::Texture2D::PixelFormat::AI88) {
-			newState = getProgramStateAI88();
-		} else {
-			newState = getProgramStateFullColor();
+		switch (pixelFormat) {
+		case cocos2d::Texture2D::PixelFormat::A8: newState = getProgramStateA8(); break;
+		case cocos2d::Texture2D::PixelFormat::I8: newState = getProgramStateI8(); break;
+		case cocos2d::Texture2D::PixelFormat::R8:
+			switch (tex->getReferenceFormat()) {
+			case cocos2d::Texture2D::PixelFormat::A8: newState = getProgramStateR8ToA8(); break;
+			case cocos2d::Texture2D::PixelFormat::I8: newState = getProgramStateR8ToI8(); break;
+			default: newState = getProgramStateFullColor(); break;
+			}
+			break;
+		case cocos2d::Texture2D::PixelFormat::AI88: newState = getProgramStateAI88(); break;
+		default: newState = getProgramStateFullColor(); break;
 		}
 
 		if (newState->getGLProgram()->getProgram() != glProgramName) {
@@ -109,6 +113,12 @@ cocos2d::GLProgramState *BatchNodeBase::getProgramStateA8() const {
 }
 cocos2d::GLProgramState *BatchNodeBase::getProgramStateI8() const {
 	return cocos2d::GLProgramState::getOrCreateWithGLProgram(TextureCache::getInstance()->getBatchPrograms()->getProgram(GLProgramSet::DynamicBatchI8));
+}
+cocos2d::GLProgramState *BatchNodeBase::getProgramStateR8ToA8() const {
+	return cocos2d::GLProgramState::getOrCreateWithGLProgram(TextureCache::getInstance()->getBatchPrograms()->getProgram(GLProgramSet::DynamicBatchR8ToA8));
+}
+cocos2d::GLProgramState *BatchNodeBase::getProgramStateR8ToI8() const {
+	return cocos2d::GLProgramState::getOrCreateWithGLProgram(TextureCache::getInstance()->getBatchPrograms()->getProgram(GLProgramSet::DynamicBatchR8ToI8));
 }
 cocos2d::GLProgramState *BatchNodeBase::getProgramStateAI88() const {
 	return cocos2d::GLProgramState::getOrCreateWithGLProgram(TextureCache::getInstance()->getBatchPrograms()->getProgram(GLProgramSet::DynamicBatchAI88));

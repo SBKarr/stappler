@@ -1095,8 +1095,8 @@ data::Value Handle::getData(const String &key) {
 	apr::ostringstream query;
 	query << "SELECT data FROM __sessions WHERE name=";
 	query << "E'\\\\x";
-	base16::encode(query, "kvs:");
-	base16::encode(query, key);
+	base16::encode(query, CoderSource("kvs:"));
+	base16::encode(query, CoderSource(key));
 	query << '\'' << ";";
 
 	auto res = select(query.weak());
@@ -1111,8 +1111,8 @@ bool Handle::setData(const String &key, const data::Value &data, TimeInterval ma
 	apr::ostringstream query;
 	query << "INSERT INTO __sessions  (name, mtime, maxage, data) VALUES (";
 	query << "E'\\\\x";
-	base16::encode(query, "kvs:");
-	base16::encode(query, key);
+	base16::encode(query, CoderSource("kvs:"));
+	base16::encode(query, CoderSource(key));
 	query << '\'' << ", " << Time::now().toSeconds() << ", " << maxage.toSeconds() << ", ";
 	writeQueryBinaryData(query, data::write(data, data::EncodeFormat::Cbor));
 	query << ") ON CONFLICT (name) DO UPDATE SET mtime=EXCLUDED.mtime, maxage=EXCLUDED.maxage, data=EXCLUDED.data;";
@@ -1353,7 +1353,7 @@ int64_t Handle::processBroadcasts(Server &serv, int64_t value) {
 				auto &msgStr = it.at(2);
 				Bytes msgData;
 				if (msgStr.compare(0, 2, "\\x") == 0) {
-					msgData = base16::decode(msgStr.c_str() + 2, msgStr.size() - 2);
+					msgData = base16::decode(CoderSource(msgStr.c_str() + 2, msgStr.size() - 2));
 				}
 
 				if (!msgData.empty()) {

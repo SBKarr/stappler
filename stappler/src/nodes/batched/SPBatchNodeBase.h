@@ -53,6 +53,8 @@ protected:
 	virtual cocos2d::GLProgramState *getProgramStateColor() const;
 	virtual cocos2d::GLProgramState *getProgramStateA8() const;
 	virtual cocos2d::GLProgramState *getProgramStateI8() const;
+	virtual cocos2d::GLProgramState *getProgramStateR8ToA8() const;
+	virtual cocos2d::GLProgramState *getProgramStateR8ToI8() const;
 	virtual cocos2d::GLProgramState *getProgramStateAI88() const;
 	virtual cocos2d::GLProgramState *getProgramStateFullColor() const;
 

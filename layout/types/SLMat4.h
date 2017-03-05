@@ -23,6 +23,7 @@
 #ifndef LAYOUT_TYPES_SLMAT4_H_
 #define LAYOUT_TYPES_SLMAT4_H_
 
+#include "SLVec2.h"
 #include "SLVec3.h"
 #include "SLVec4.h"
 
@@ -782,6 +783,15 @@ public:
     inline void transformPoint(const Vec3& point, Vec3* dst) const { assert(dst); transformVector(point.x, point.y, point.z, 1.0f, dst); }
 
     /**
+     * Transforms the specified point by this matrix, and stores
+     * the result in dst.
+     *
+     * @param point The point to transform.
+     * @param dst A vector to store the transformed point in.
+     */
+    inline Vec2 transformPoint(const Vec2& point) const;
+
+    /**
      * Transforms the specified vector by this matrix by
      * treating the fourth (w) coordinate as zero.
      *
@@ -940,11 +950,13 @@ public:
      */
     inline Mat4& operator*=(const Mat4& mat);
 
+    inline bool operator==(const Mat4 &) const;
+    inline bool operator!=(const Mat4 &) const;
+
     /** equals to a matrix full of zeros */
     static const Mat4 ZERO;
     /** equals to the identity matrix */
     static const Mat4 IDENTITY;
-
 private:
 
     static void createBillboardHelper(const Vec3& objectPosition, const Vec3& cameraPosition,

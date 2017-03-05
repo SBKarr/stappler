@@ -196,7 +196,7 @@ void SidebarLayout::show() {
 	stopActionByTag(HIDE_ACTION_TAG);
 	if (getActionByTag(SHOW_ACTION_TAG) == nullptr) {
 		auto a = cocos2d::EaseCubicActionOut::create(construct<ProgressAction>(
-				progress(0.5f, 0.0f, getProgress()), getProgress(), 1.0f,
+				progress(0.35f, 0.0f, getProgress()), getProgress(), 1.0f,
 				[this] (ProgressAction *a, float progress) {
 			setProgress(progress);
 		}));
@@ -209,7 +209,7 @@ void SidebarLayout::hide(float factor) {
 	if (getActionByTag(HIDE_ACTION_TAG) == nullptr) {
 		if (factor <= 1.0f) {
 			auto a = cocos2d::EaseCubicActionIn::create(construct<ProgressAction>(
-					progress(0.0f, 0.5f / factor, getProgress()), getProgress(), 0.0f,
+					progress(0.0f, 0.35f / factor, getProgress()), getProgress(), 0.0f,
 					[this] (ProgressAction *a, float progress) {
 				setProgress(progress);
 			}));
@@ -217,7 +217,7 @@ void SidebarLayout::hide(float factor) {
 			runAction(a);
 		} else {
 			auto a = cocos2d::EaseQuadraticActionIn::create(construct<ProgressAction>(
-					progress(0.0f, 0.5f / factor, getProgress()), getProgress(), 0.0f,
+					progress(0.0f, 0.35f / factor, getProgress()), getProgress(), 0.0f,
 					[this] (ProgressAction *a, float progress) {
 				setProgress(progress);
 			}));

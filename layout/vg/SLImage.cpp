@@ -283,7 +283,7 @@ struct SvgReader {
 		} else if (tag.name.compare("polygon")) {
 			tag.shape = SvgTag::Polygon;
 		}
-		log::format("onBeginTag", "%s", tag.name.str().c_str());
+		//log::format("onBeginTag", "%s", tag.name.str().c_str());
 	}
 
 	inline void onEndTag(Parser &p, Tag &tag) {
@@ -324,7 +324,102 @@ struct SvgReader {
 			break;
 		}
 
-		log::format("onEndTag", "%s", tag.name.str().c_str());
+		//log::format("onEndTag", "%s", tag.name.str().c_str());
+	}
+
+	inline void onStyleParameter(Tag &tag, StringReader &name, StringReader &value) {
+		if (name.compare("fill")) {
+			if (value.compare("none")) {
+				tag.path.setStyle(tag.path.getStyle() & (~DrawStyle::Fill));
+			} else {
+				Color3B color;
+				if (style::readColor(value, color)) {
+					tag.path.setFillColor(color, true);
+					tag.path.setStyle(tag.path.getStyle() | DrawStyle::Fill);
+				}
+			}
+		} else if (name.compare("fill-rule")) {
+			if (value.compare("nonzero")) {
+				tag.path.setWindingRule(Winding::NonZero);
+			} else if (value.compare("evenodd")) {
+				tag.path.setWindingRule(Winding::EvenOdd);
+			}
+		} else if (name.compare("fill-opacity")) {
+			const float op = value.readFloat();
+			if (!IsErrorValue(op)) {
+				if (op <= 0.0f) {
+					tag.path.setFillOpacity(0);
+				} else if (op >= 1.0f) {
+					tag.path.setFillOpacity(255);
+				} else {
+					tag.path.setFillOpacity(255 * op);
+				}
+			}
+		} else if (name.compare("stroke")) {
+			if (value.compare("none")) {
+				tag.path.setStyle(tag.path.getStyle() & (~DrawStyle::Stroke));
+			} else {
+				Color3B color;
+				if (style::readColor(value, color)) {
+					tag.path.setStrokeColor(color, true);
+					tag.path.setStyle(tag.path.getStyle() | DrawStyle::Stroke);
+				}
+			}
+		} else if (name.compare("stroke-opacity")) {
+			const float op = value.readFloat();
+			if (!IsErrorValue(op)) {
+				if (op <= 0.0f) {
+					tag.path.setStrokeOpacity(0);
+				} else if (op >= 1.0f) {
+					tag.path.setStrokeOpacity(255);
+				} else {
+					tag.path.setStrokeOpacity(255 * op);
+				}
+			}
+		} else if (name.compare("stroke-width")) {
+			auto val = svg_readCoordValue(value, _squareLength);
+			if (!isnan(val)) {
+				tag.path.setStrokeWidth(val);
+				tag.path.setStyle(tag.path.getStyle() | DrawStyle::Stroke);
+			}
+		} else if (name.compare("stroke-linecap")) {
+			if (value.compare("butt")) {
+				tag.path.setLineCup(LineCup::Butt);
+			} else if (value.compare("round")) {
+				tag.path.setLineCup(LineCup::Round);
+			} else if (value.compare("square")) {
+				tag.path.setLineCup(LineCup::Square);
+			}
+		} else if (name.compare("stroke-linejoin")) {
+			if (value.compare("miter")) {
+				tag.path.setLineJoin(LineJoin::Miter);
+			} else if (value.compare("round")) {
+				tag.path.setLineJoin(LineJoin::Round);
+			} else if (value.compare("bevel")) {
+				tag.path.setLineJoin(LineJoin::Bevel);
+			}
+		} else if (name.compare("stroke-miterlimit")) {
+			const float op = value.readFloat();
+			if (!IsErrorValue(op) && op > 1.0f) {
+				tag.path.setMiterLimit(op);
+			}
+		}
+	}
+
+	inline void onStyle(Tag &tag, StringReader &value) {
+		while (!value.empty()) {
+			auto n = value.readUntil<StringReader::Chars<':'>>();
+			if (value.is(':')) {
+				++ value;
+				auto v = value.readUntil<StringReader::Chars<';'>>();
+				if (value.is(';')) {
+					++ value;
+				}
+				if (!n.empty() && !v.empty()) {
+					onStyleParameter(tag, n, v);
+				}
+			}
+		}
 	}
 
 	inline void onTagAttribute(Parser &p, Tag &tag, StringReader &name, StringReader &value) {
@@ -346,88 +441,14 @@ struct SvgReader {
 			}
 		}
 
-		if (name.compare("fill")) {
-			if (value.compare("none")) {
-				tag.path.setStyle(tag.path.getStyle() & (~DrawStyle::Fill));
-			} else {
-				Color3B color;
-				if (style::readColor(value, color)) {
-					tag.path.setFillColor(color, true);
-					tag.path.setStyle(tag.path.getStyle() | DrawStyle::Fill);
-				}
-			}
-		} else if (name.compare("fill-rule")) {
-			if (value.compare("nonzero")) {
-				tag.path.setWindingRule(Path::Winding::NonZero);
-			} else if (value.compare("evenodd")) {
-				tag.path.setWindingRule(Path::Winding::EvenOdd);
-			}
-			tag.path.setStyle(tag.path.getStyle() | DrawStyle::Fill);
-		} else if (name.compare("fill-opacity")) {
-			const float op = value.readFloat();
-			if (!IsErrorValue(op)) {
-				if (op <= 0.0f) {
-					tag.path.setFillOpacity(0);
-				} else if (op >= 1.0f) {
-					tag.path.setFillOpacity(255);
-					tag.path.setStyle(tag.path.getStyle() | DrawStyle::Fill);
-				} else {
-					tag.path.setFillOpacity(255 * op);
-					tag.path.setStyle(tag.path.getStyle() | DrawStyle::Fill);
-				}
-			}
-		} else if (name.compare("stroke")) {
-			if (value.compare("none")) {
-				tag.path.setStyle(tag.path.getStyle() & (~DrawStyle::Stroke));
-			} else {
-				Color3B color;
-				if (style::readColor(value, color)) {
-					tag.path.setStrokeColor(color, true);
-					tag.path.setStyle(tag.path.getStyle() | DrawStyle::Stroke);
-				}
-			}
-		} else if (name.compare("stroke-opacity")) {
-			const float op = value.readFloat();
-			if (!IsErrorValue(op)) {
-				if (op <= 0.0f) {
-					tag.path.setStrokeOpacity(0);
-				} else if (op >= 1.0f) {
-					tag.path.setStrokeOpacity(255);
-					tag.path.setStyle(tag.path.getStyle() | DrawStyle::Stroke);
-				} else {
-					tag.path.setStrokeOpacity(255 * op);
-					tag.path.setStyle(tag.path.getStyle() | DrawStyle::Stroke);
-				}
-			}
-		} else if (name.compare("stroke-width")) {
-			auto val = svg_readCoordValue(value, _squareLength);
-			if (!isnan(val)) {
-				tag.path.setStrokeWidth(val);
-				tag.path.setStyle(tag.path.getStyle() | DrawStyle::Stroke);
-			}
-		} else if (name.compare("stroke-linecap")) {
-			if (value.compare("butt")) {
-				tag.path.setLineCup(Path::LineCup::Butt);
-			} else if (value.compare("round")) {
-				tag.path.setLineCup(Path::LineCup::Round);
-			} else if (value.compare("square")) {
-				tag.path.setLineCup(Path::LineCup::Square);
-			}
-		} else if (name.compare("stroke-linejoin")) {
-			if (value.compare("miter")) {
-				tag.path.setLineJoin(Path::LineJoin::Miter);
-			} else if (value.compare("round")) {
-				tag.path.setLineJoin(Path::LineJoin::Round);
-			} else if (value.compare("bevel")) {
-				tag.path.setLineJoin(Path::LineJoin::Bevel);
-			}
-		} else if (name.compare("stroke-miterlimit")) {
-			const float op = value.readFloat();
-			if (!IsErrorValue(op) && op > 1.0f) {
-				tag.path.setMiterLimit(op);
-			}
+		if (name.compare("fill") || name.compare("fill-rule") || name.compare("fill-opacity") || name.compare("stroke")
+				|| name.compare("stroke-opacity") || name.compare("stroke-width") || name.compare("stroke-linecap")
+				|| name.compare("stroke-linejoin") || name.compare("stroke-miterlimit")) {
+			onStyleParameter(tag, name, value);
 		} else if (name.compare("transform")) {
 			tag.path.applyTransform(svg_parseTransform(value));
+		} else if (name.compare("style")) {
+			onStyle(tag, value);
 		} else {
 			switch (tag.shape) {
 			case SvgTag::Rect:
@@ -490,21 +511,21 @@ struct SvgReader {
 				break;
 			}
 		}
-		log::format("onTagAttribute", "%s: %s = %s", tag.name.str().c_str(), name.str().c_str(), value.str().c_str());
+		//log::format("onTagAttribute", "%s: %s = %s", tag.name.str().c_str(), name.str().c_str(), value.str().c_str());
 	}
 
 	inline void onPushTag(Parser &p, Tag &tag) {
-		log::format("onPushTag", "%s", tag.name.str().c_str());
+		//log::format("onPushTag", "%s", tag.name.str().c_str());
 	}
 
 	inline void onPopTag(Parser &p, Tag &tag) {
-		log::format("onPopTag", "%s", tag.name.str().c_str());
+		//log::format("onPopTag", "%s", tag.name.str().c_str());
 	}
 
 	inline void onInlineTag(Parser &p, Tag &tag) {
 		if (!tag.path.empty()) {
 			_paths.emplace_back(std::move(tag.path));
-			log::format("onInlineTag", "%s", tag.name.str().c_str());
+			//log::format("onInlineTag", "%s", tag.name.str().c_str());
 		}
 	}
 
@@ -517,8 +538,8 @@ struct SvgReader {
 
 static bool Image_detectSvg(const CharReaderBase &buf) {
 	CharReaderBase str(buf);
-	str.readUntilString("<svg ");
-	if (!str.empty()) {
+	str.skipUntilString("<svg", false);
+	if (!str.empty() && str.is<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>()) {
 		str.readUntilString("xmlns=");
 		if (str.is("xmlns=")) {
 			str += "xmlns="_len;
@@ -965,6 +986,10 @@ void Image::PathRef::invalidate() {
 }
 Image::PathRef::operator bool() const {
 	return valid() && !empty();
+}
+
+Path *Image::PathRef::getPath() const {
+	return path;
 }
 
 NS_LAYOUT_END

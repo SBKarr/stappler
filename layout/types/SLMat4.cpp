@@ -854,12 +854,20 @@ void Mat4::set(float m11, float m12, float m13, float m14, float m21, float m22,
 void Mat4::set(float a, float b, float c, float d, float e, float f) {
 	m[0]  = a;
 	m[1]  = b;
-
+    m[2]  = 0;
+    m[3]  = 0;
 	m[4]  = c;
 	m[5]  = d;
-
+    m[6]  = 0;
+    m[7]  = 0;
+    m[8]  = 0;
+    m[9]  = 0;
+    m[10] = 1;
+    m[11] = 0;
 	m[12] = e;
 	m[13] = f;
+    m[14] = 0;
+    m[15] = 1;
 }
 
 void Mat4::set(const float* mat)
@@ -902,6 +910,13 @@ void Mat4::transformVector(Vec3* vector) const
 {
     assert(vector);
     transformVector(vector->x, vector->y, vector->z, 0.0f, vector);
+}
+
+Vec2 Mat4::transformPoint(const Vec2& point) const {
+	Vec4 ret;
+
+    MathUtil::transformVec4(m, point.x, point.y, 1.0f, 1.0f, (float*)(&ret));
+    return Vec2(ret.x, ret.y);
 }
 
 void Mat4::transformVector(const Vec3& vector, Vec3* dst) const

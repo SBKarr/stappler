@@ -32,7 +32,9 @@ CLI_PRECOMPILED_HEADERS += \
 
 CLI_SRCS_DIRS += \
 	common \
+	layout/style \
 	layout/types \
+	layout/vg \
 	stappler/src/core \
 	stappler/src/features/ime \
 	stappler/src/features/networking \
@@ -44,7 +46,9 @@ CLI_SRCS_DIRS += \
 	$(COCOS2D_CLI_SRCS_DIRS)
 
 CLI_SRCS_OBJS += \
-	layout/style/SLStyleColors.cpp \
+	layout/document/SLNode.cpp \
+	layout/document/SLParser.cpp \
+	layout/document/SLReader.cpp \
 	$(COCOS2D_CLI_SRCS_OBJS)
 
 CLI_INCLUDES_DIRS += \

@@ -37,10 +37,7 @@ THE SOFTWARE.
 #include "SPProgressAction.h"
 #include "SPGestureListener.h"
 #include "SPDataListener.h"
-
-#include "2d/CCActionInterval.h"
-#include "2d/CCActionInstant.h"
-#include "2d/CCActionEase.h"
+#include "SPActions.h"
 
 NS_MD_BEGIN
 
@@ -299,11 +296,11 @@ void Button::animateSelection() {
 	draw::Image::PathRef *path = new draw::Image::PathRef();
 	Size *size = new Size();
 	Vec2 *point = new Vec2();
-	auto b = cocos2d::Sequence::create(cocos2d::DelayTime::create(_spawnDelay), construct<ProgressAction>(0.4, 1.0,
+	auto b = action::sequence(_spawnDelay, construct<ProgressAction>(0.4, 1.0,
 			[this, path, size, point] (ProgressAction *a, float progress) {
-		updateSpawn(progress, (*path), (*size), (*point));
+		//updateSpawn(progress, (*path), (*size), (*point));
 	}, [this, path, size, point] (ProgressAction *a) {
-		(*path) = beginSpawn();
+		//(*path) = beginSpawn();
 		if (_animationNode) {
 			(*size) = _animationNode->getContentSize();
 			(*point) = _animationNode->convertToNodeSpace(_touchPoint);
@@ -312,12 +309,12 @@ void Button::animateSelection() {
 		if (_animationNode) {
 			_animationNode->removePath((*path));
 		}
+		//endSpawn();
 		delete path;
 		delete size;
 		delete point;
-	}), nullptr);
-	b->setTag(3);
-	runAction(b);
+	}));
+	runAction(b, 3);
 }
 
 void Button::animateDeselection() {
@@ -382,6 +379,7 @@ draw::Image::PathRef Button::beginSpawn() {
 		// do nothing, our node is perfect
 	} else {
 		if (_animationNode) {
+			log::text("Button", "dropSpawn");
 			_animationNode->removeFromParent();
 			_animationNode = nullptr;
 		}
@@ -409,10 +407,10 @@ void Button::updateSpawn(float pr, draw::Image::PathRef &path, const Size &size,
 
 		if (pr > threshold) {
 			rad = std::max(size.width, size.height);
-			path.setFillOpacity(progress(255.0f, 0.0f, (pr - threshold) / (1.0 - threshold)));
+			path.setFillOpacity(uint8_t(progress(255.0f, 0.0f, (pr - threshold) / (1.0 - threshold))));
 		} else {
 			if (pr < 0.2) {
-				path.setFillOpacity(progress(0, 255, pr * 10.0f));
+				path.setFillOpacity(uint8_t(progress(0, 255, pr * 5.0f)));
 			} else {
 				path.setFillOpacity(255);
 			}

@@ -228,6 +228,7 @@ NS_SP_BEGIN
 struct CoderSource {
 	CoderSource(const uint8_t *d, size_t len) : data(d, len) { }
 	CoderSource(const char *d, size_t len) : data((uint8_t *)d, len) { }
+	CoderSource(const char *d) : data((uint8_t *)d, strlen(d)) { }
 	CoderSource(const Bytes &d) : data(d.data(), d.size()) { }
 	CoderSource(const String &d) : data((uint8_t *)d.data(), d.size()) { }
 

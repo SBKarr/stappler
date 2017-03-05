@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef MATERIAL_SRC_DATA_MATERIALMENUSOURCE_H_
 #define MATERIAL_SRC_DATA_MATERIALMENUSOURCE_H_
 
-#include "MaterialIconSources.h"
+#include "MaterialIconStorage.h"
 #include "SPData.h"
 
 NS_MD_BEGIN

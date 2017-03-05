@@ -60,7 +60,8 @@ public:
 
 	bool isLoaded();
 	font::FontSource *getSystemFontSource() const;
-	Icon getIcon(IconName name);
+
+	IconStorage *getIconStorage() const;
 
 	font::FontSource *getUserFontSource() const;
 	UserFontStyle getFontStyle(const String &) const;
@@ -80,13 +81,12 @@ public:
 	float getUserFontScale() const;
 
 protected:
-	void update();
 	void saveUserData();
 
 	String _locale;
 	bool _localeCustom = false;
 
-	Rc<IconSet>_iconSet;
+	Rc<IconStorage> _iconStorage;
 	Rc<font::FontSource> _source;
 	Rc<UserFontConfig> _textFont;
 

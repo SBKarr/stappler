@@ -24,12 +24,9 @@ THE SOFTWARE.
 #define LIBS_STAPPLER_FEATURES_RESOURCES_SPRESOURCELIBRARY_H_
 
 #include "SPDefine.h"
-#include "SPIcon.h"
 #include "SPAsset.h"
 
 NS_SP_EXT_BEGIN(resource)
-
-void generateIconSet(IconSet::Config &&, const IconSet::Callback &callback);
 
 void acquireFontAsset(const Set<String> &urls, const Function<void(const Vector<Rc<Asset>> &)> &);
 

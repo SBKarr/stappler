@@ -17,6 +17,7 @@ void GLCacheNode::cleanup() {
 	bindTexture(0);
 	useProgram(0);
 	enableVertexAttribs(0);
+	blendFunc(cocos2d::BlendFunc::DISABLE);
 
 	if (ThreadManager::getInstance()->isMainThread()) {
 		cocos2d::Director::getInstance()->setViewport();

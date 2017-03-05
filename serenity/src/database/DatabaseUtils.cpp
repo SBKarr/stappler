@@ -110,13 +110,13 @@ data::Value parseQueryResultValue(const storage::Field &f, String &str) {
 		break;
 	case storage::Type::Bytes:
 		if (str.compare(0, 2, "\\x") == 0) {
-			return data::Value(base16::decode(str.c_str() + 2, str.size() - 2));
+			return data::Value(base16::decode(CoderSource(str.c_str() + 2, str.size() - 2)));
 		}
 		break;
 	case storage::Type::Data:
 	case storage::Type::Extra:
 		if (str.compare(0, 2, "\\x") == 0) {
-			return data::Value(data::read(base16::decode(str.c_str() + 2, str.size() - 2)));
+			return data::Value(data::read(base16::decode(CoderSource(str.c_str() + 2, str.size() - 2))));
 		}
 		break;
 	default:

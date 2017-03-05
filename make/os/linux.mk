@@ -20,9 +20,10 @@
 
 OSTYPE_PREBUILT_PATH := libs/linux/x86_64/lib
 OSTYPE_INCLUDE :=  libs/linux/x86_64/include
-OSTYPE_CFLAGS := -DLINUX -Wall -Wno-overloaded-virtual -fPIC -frtti
+OSTYPE_CFLAGS := -DLINUX -Wall -fPIC
+OSTYPE_CPPFLAGS :=  -Wno-overloaded-virtual -frtti
 OSTYPE_COMMON_LIBS := -lpthread -l:libcurl.a -l:libmbedtls.a -l:libmbedx509.a -l:libmbedcrypto.a -l:libpng.a -l:libjpeg.a -lz
 OSTYPE_CLI_LIBS += $(OSTYPE_COMMON_LIBS) -l:libsqlite3.a -ldl
-OSTYPE_STAPPLER_LIBS += $(OSTYPE_CLI_LIBS) -l:libhyphen.a -l:libglfw3.a -l:libcairo.a -l:libpixman-1.a -l:libfreetype.a -l:libtess2.a -lGLEW -lGL -lXxf86vm -lX11 -lXrandr -lXi -lXinerama -lXcursor
+OSTYPE_STAPPLER_LIBS += $(OSTYPE_CLI_LIBS) -l:libhyphen.a -l:libglfw3.a -l:libfreetype.a -lGLEW -lGL -lXxf86vm -lX11 -lXrandr -lXi -lXinerama -lXcursor
 OSTYPE_LDFLAGS := -Wl,-z,defs -rdynamic
 OSTYPE_EXEC_FLAGS :=

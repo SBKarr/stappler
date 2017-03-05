@@ -44,6 +44,7 @@ THE SOFTWARE.
 #include "renderer/ccGLStateCache.h"
 
 #include "SPScreen.h"
+#include "SPEventListener.h"
 
 NS_MD_BEGIN
 
@@ -250,6 +251,13 @@ bool IconSprite::init(IconName name) {
 		return false;
 	}
 
+	auto l = Rc<EventListener>::create();
+	l->onEvent(IconStorage::onUpdate, [this] (const Event *) {
+		onUpdate();
+	});
+	addComponent(l);
+	_listener = l;
+
 	setCascadeColorEnabled(true);
 	setCascadeOpacityEnabled(true);
 	setContentSize(Size(24.0f, 24.0f));
@@ -262,6 +270,13 @@ bool IconSprite::init(IconName name, uint32_t w, uint32_t h) {
 	if (!PathNode::init(w, h, draw::Format::A8)) {
 		return false;
 	}
+
+	auto l = Rc<EventListener>::create();
+	l->onEvent(IconStorage::onUpdate, [this] (const Event *) {
+		onUpdate();
+	});
+	addComponent(l);
+	_listener = l;
 
 	setCascadeColorEnabled(true);
 	setCascadeOpacityEnabled(true);
@@ -411,12 +426,27 @@ void IconSprite::setDynamicIcon(DynamicIcon *i) {
 
 void IconSprite::setStaticIcon(IconName name) {
 	setDynamicIcon(nullptr);
-	auto icon = ResourceManager::getInstance()->getIcon(name);
+	auto storage = ResourceManager::getInstance()->getIconStorage();
+	storage->addIcon(name);
+	auto icon = storage->getIcon(name);
 	if (icon) {
 		setImage(nullptr);
-		setTexture(icon.getTexture());
-		setTextureRect(icon.getTextureRect());
-		setDensity(icon.getDensity());
+		setTexture(storage->getTexture());
+		setTextureRect(icon->getTextureRect());
+		setDensity(icon->getDensity());
+	}
+}
+
+void IconSprite::onUpdate() {
+	switch (_iconName) {
+	case IconName::Dynamic_Navigation:
+	case IconName::Dynamic_Loader:
+	case IconName::None:
+	case IconName::Empty:
+		break;
+	default:
+		setStaticIcon(_iconName);
+		break;
 	}
 }
 

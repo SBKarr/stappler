@@ -48,7 +48,7 @@ static apr::string &apr_decodeString_inPlace(apr::string &str) {
 			++ readPtr; -- readLen; code2 = * readPtr;
 			++ readPtr; -- readLen;
 
-			*writePtr = string::hexToChar(code1) << 4 | string::hexToChar(code2);
+			*writePtr = base16::hexToChar(code1) << 4 | base16::hexToChar(code2);
 			++ writePtr; ++ writeLen;
 		}
 	}

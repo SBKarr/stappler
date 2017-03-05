@@ -50,30 +50,33 @@ static void DynamicAtlas_fillBuffer(const Set<Rc<DynamicQuadArray>> &quads, size
 	bool vao = cocos2d::Configuration::getInstance()->supportsShareableVAO();
 	void *buf = nullptr;
 
-	if (vao) {
-		glBufferData(GL_ARRAY_BUFFER, bufferSize, nullptr, GL_DYNAMIC_DRAW);
-		buf = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-	} else {
-		buf = malloc(bufferSize);
-	}
-
 	size_t offset = 0;
-	for (auto &it : quads) {
-		size_t size = it->size();
-		if (size > 0) {
-			auto data = it->getData();
-			memcpy((uint8_t *) buf + sizeof(cocos2d::V3F_C4B_T2F_Quad) * offset, (void *) data,
-					sizeof(cocos2d::V3F_C4B_T2F_Quad) * size);
+	glBufferData(GL_ARRAY_BUFFER, bufferSize, nullptr, GL_DYNAMIC_DRAW);
+	if (vao) {
+		buf = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+		for (auto &it : quads) {
+			size_t size = it->size();
+			if (size > 0) {
+				auto data = it->getData();
+				memcpy((uint8_t *) buf + sizeof(cocos2d::V3F_C4B_T2F_Quad) * offset, (void *) data,
+						sizeof(cocos2d::V3F_C4B_T2F_Quad) * size);
 
-			offset += size;
+				offset += size;
+			}
+		}
+		glUnmapBuffer(GL_ARRAY_BUFFER);
+	} else {
+		for (auto &it : quads) {
+			size_t size = it->size();
+			if (size > 0) {
+				auto data = it->getData();
+				glBufferSubData(GL_ARRAY_BUFFER, sizeof(cocos2d::V3F_C4B_T2F_Quad) * offset,
+						sizeof(cocos2d::V3F_C4B_T2F_Quad) * size, (void *) data);
+				offset += size;
+			}
 		}
 	}
 
-	if (vao) {
-		glUnmapBuffer(GL_ARRAY_BUFFER);
-	} else {
-		glBufferData(GL_ARRAY_BUFFER, bufferSize, buf, GL_DYNAMIC_DRAW);
-	}
     CHECK_GL_ERROR_DEBUG();
 }
 

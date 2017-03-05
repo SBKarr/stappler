@@ -84,4 +84,13 @@ inline const Vec4 operator*(const Mat4& m, const Vec4& v) {
 	return x;
 }
 
+
+inline bool Mat4::operator==(const Mat4 &t) const {
+	return memcmp(this, &t, sizeof(Mat4)) == 0;
+
+}
+inline bool Mat4::operator!=(const Mat4 &t) const {
+	return memcmp(this, &t, sizeof(Mat4)) != 0;
+}
+
 NS_LAYOUT_END

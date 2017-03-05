@@ -24,43 +24,90 @@ THE SOFTWARE.
 #define LAYOUT_VG_SLCANVAS_H_
 
 #include "SLPath.h"
+#include "SLTesselator.h"
+#include "SLMemPool.h"
 
 NS_LAYOUT_BEGIN
 
 class Canvas : public Ref {
 public:
+	/* Approximation quality defines how percisely original curves will be approximated with lines
+	 * Extreme values (Worst/Perfect) should be used only for special cases
+	 * In most cases Low is enought to draw simple vector objects (like material icons)
+	 *
+	 * In Stappler, PathNode uses High quality, renderer for material icons uses Low
+	 */
+
+	constexpr static float QualityWorst = 0.25f;
+	constexpr static float QualityLow = 0.75f;
+	constexpr static float QualityNormal = 1.25f;
+	constexpr static float QualityHigh = 1.75f;
+	constexpr static float QualityPerfect = 2.25f;
+
 	virtual bool init();
 
-	virtual void draw(const Path &);
+	virtual void flush();
 
-	virtual void scale(float sx, float sy);
-	virtual void translate(float tx, float ty);
-	virtual void transform(const Mat4 &);
+	void setQuality(float value);
+	float getQuality() const;
 
-	virtual void save();
-	virtual void restore();
+	void beginBatch();
+	void endBatch();
 
-	virtual void setAntialiasing(bool);
-	virtual void setLineWidth(float);
-	virtual void setPathStyle(DrawStyle);
+	void draw(const Path &);
+	void draw(const Path &, const Mat4 &, bool force = false);
+	void draw(const Path &, float tx, float ty);
 
-	virtual void pathBegin();
-	virtual void pathClose();
-	virtual void pathMoveTo(float x, float y);
-	virtual void pathLineTo(float x, float y);
-	virtual void pathQuadTo(float x1, float y1, float x2, float y2);
-	virtual void pathCubicTo(float x1, float y1, float x2, float y2, float x3, float y3);
-	virtual void pathArcTo(float rx, float ry, float angle, bool largeArc, bool sweep, float x, float y);
+	void scale(float sx, float sy);
+	void translate(float tx, float ty);
+	void transform(const Mat4 &);
 
-	virtual void pathFill(const Color4B &);
-	virtual void pathStroke(const Color4B &);
-	virtual void pathFillStroke(const Color4B &fill, const Color4B &stroke);
+	void save();
+	void restore();
+
+	void setLineWidth(float);
+
+	void pathBegin(const Path &);
+	void pathEnd(const Path &);
+
+	void pathMoveTo(const Path &, float x, float y);
+	void pathLineTo(const Path &, float x, float y);
+	void pathQuadTo(const Path &, float x1, float y1, float x2, float y2);
+	void pathCubicTo(const Path &, float x1, float y1, float x2, float y2, float x3, float y3);
+	void pathArcTo(const Path &, float rx, float ry, float angle, bool largeArc, bool sweep, float x, float y);
+	void pathClose(const Path &);
 
 protected:
-	const Path *_currentPath = nullptr;
-	DrawStyle _pathStyle = DrawStyle::Fill;
+	void initPath(const Path &);
+	void finalizePath(const Path &);
+
+	void pushContour(const Path &, bool closed);
+	void clearTess();
+
+	TESSalloc _tessAlloc;
+
+	TESStesselator *_fillTess = nullptr;
+	Vector<TESStesselator *> _tess;
+	Vector<StrokeDrawer> _stroke;
+	MemPool<false> _pool;
+
+	Mat4 _transform;
+	Vector<Mat4> _states;
+	Vector<Mat4> _batchStates;
+	LineDrawer _line;
+
+	size_t _vertexCount = 0;
 	uint32_t _width = 0;
 	uint32_t _height = 0;
+	bool _isBatch = false;
+	float _lineWidth = 1.0f;
+	float _approxScale = 1.0f;
+	float _quality = 0.5f; // approximation level (more is better)
+	float _pathX = 0.0f;
+	float _pathY = 0.0f;
+
+	TimeInterval _subAccum;
+	DrawStyle _pathStyle = DrawStyle::None;
 };
 
 NS_LAYOUT_END

@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "SPLayout.h"
 #include "SLPath.h"
 #include "SPFilesystem.h"
+#include "SPDataCbor.h"
 
 NS_LAYOUT_BEGIN
 
@@ -349,11 +350,11 @@ protected:
 		_b = false;
 		_x = x;
 		_y = y;
-		if (!_pathStarted) {
+		//if (!_pathStarted) {
 			_sx = _x;
 			_sy = _y;
 			_pathStarted = true;
-		}
+		//}
 
 		SP_PATH_LOG("M %f %f", _x, _y);
 		path->moveTo(x, y);
@@ -517,6 +518,7 @@ protected:
 
 Path::Path() { }
 Path::Path(size_t count) {
+	_points.reserve(count * 3);
 	_commands.reserve(count);
 }
 
@@ -545,36 +547,99 @@ bool Path::init(FilePath &&str) {
 	return true;
 }
 
+bool Path::init(const uint8_t *data, size_t len) {
+	float x1, y1, x2, y2, x3, y3;
+	uint8_t tmp;
+
+	DataReader<ByteOrder::Network> reader(data, len);
+
+	auto size = data::cbor::_readInt(reader);
+	_commands.reserve(size);
+	_points.reserve(size * 3);
+	for (; size != 0; --size) {
+		auto cmd = data::cbor::_readInt(reader);
+		switch (uint8_t(cmd)) {
+		case toInt(Command::MoveTo):
+			x1 = data::cbor::_readNumber(reader);
+			y1 = data::cbor::_readNumber(reader);
+			moveTo(x1, y1);
+			break;
+		case toInt(Command::LineTo):
+			x1 = data::cbor::_readNumber(reader);
+			y1 = data::cbor::_readNumber(reader);
+			lineTo(x1, y1);
+			break;
+		case toInt(Command::QuadTo):
+			x1 = data::cbor::_readNumber(reader);
+			y1 = data::cbor::_readNumber(reader);
+			x2 = data::cbor::_readNumber(reader);
+			y2 = data::cbor::_readNumber(reader);
+			quadTo(x1, y1, x2, y2);
+			break;
+		case toInt(Command::CubicTo):
+			x1 = data::cbor::_readNumber(reader);
+			y1 = data::cbor::_readNumber(reader);
+			x2 = data::cbor::_readNumber(reader);
+			y2 = data::cbor::_readNumber(reader);
+			x3 = data::cbor::_readNumber(reader);
+			y3 = data::cbor::_readNumber(reader);
+			cubicTo(x1, y1, x2, y2, x3, y3);
+			break;
+		case toInt(Command::ArcTo):
+			x1 = data::cbor::_readNumber(reader);
+			y1 = data::cbor::_readNumber(reader);
+			x2 = data::cbor::_readNumber(reader);
+			y2 = data::cbor::_readNumber(reader);
+			x3 = data::cbor::_readNumber(reader);
+			tmp = data::cbor::_readInt(reader);
+			arcTo(x1, y1, x3, tmp & 1, tmp & 2, x2, y2);
+			break;
+		default: break;
+		}
+	}
+	return true;
+}
+
 size_t Path::count() const {
 	return _commands.size();
 }
 
 Path & Path::moveTo(float x, float y) {
-	_commands.emplace_back(Command::MakeMoveTo(x, y));
+	_commands.emplace_back(Command::MoveTo);
+	_points.emplace_back(x, y);
 	return *this;
 }
 
 Path & Path::lineTo(float x, float y) {
-	_commands.emplace_back(Command::MakeLineTo(x, y));
+	_commands.emplace_back(Command::LineTo);
+	_points.emplace_back(x, y);
 	return *this;
 }
 
 Path & Path::quadTo(float x1, float y1, float x2, float y2) {
-	_commands.emplace_back(Command::MakeQuadTo(x1, y1, x2, y2));
+	_commands.emplace_back(Command::QuadTo);
+	_points.emplace_back(x1, y1);
+	_points.emplace_back(x2, y2);
 	return *this;
 }
 
 Path & Path::cubicTo(float x1, float y1, float x2, float y2, float x3, float y3) {
-	_commands.emplace_back(Command::MakeCubicTo(x1, y1, x2, y2, x3, y3));
+	_commands.emplace_back(Command::CubicTo);
+	_points.emplace_back(x1, y1);
+	_points.emplace_back(x2, y2);
+	_points.emplace_back(x3, y3);
 	return *this;
 }
 
 Path & Path::arcTo(float rx, float ry, float angle, bool largeFlag, bool sweepFlag, float x, float y) {
-	_commands.emplace_back(Command::MakeArcTo(rx, ry, angle, largeFlag, sweepFlag, x, y));
+	_commands.emplace_back(Command::ArcTo);
+	_points.emplace_back(rx, ry);
+	_points.emplace_back(x, y);
+	_points.emplace_back(angle, largeFlag, sweepFlag);
 	return *this;
 }
 Path & Path::closePath() {
-	_commands.emplace_back(Command::MakeClosePath());
+	_commands.emplace_back(Command::ClosePath);
 	return *this;
 }
 
@@ -590,25 +655,25 @@ Path & Path::addRect(float x, float y, float width, float height) {
 	return *this;
 }
 Path & Path::addOval(const Rect& oval) {
-	Vec2 r(oval.size.width / 2.0f, oval.size.height / 2.0f);
-	moveTo(oval.getMaxX(), oval.getMidY());
-	arcTo(r.x, r.y, 0, true, false, oval.getMinX(), oval.getMidY());
-	arcTo(r.x, r.y, 0, true, false, oval.getMaxX(), oval.getMidY());
-	closePath();
+	addEllipse(oval.getMidX(), oval.getMidY(), oval.size.width / 2.0f, oval.size.height / 2.0f);
 	return *this;
 }
 Path & Path::addCircle(float x, float y, float radius) {
 	moveTo(x + radius, y);
-	arcTo(radius, radius, 0, true, false, x - radius, y);
-	arcTo(radius, radius, 0, true, false, x + radius, y);
+	arcTo(radius, radius, 0, false, false, x, y - radius);
+	arcTo(radius, radius, 0, false, false, x - radius, y);
+	arcTo(radius, radius, 0, false, false, x, y + radius);
+	arcTo(radius, radius, 0, false, false, x + radius, y);
 	closePath();
 	return *this;
 }
 
 Path & Path::addEllipse(float x, float y, float rx, float ry) {
 	moveTo(x + rx, y);
-	arcTo(rx, ry, 0, true, false, x - rx, y);
-	arcTo(rx, ry, 0, true, false, x + rx, y);
+	arcTo(rx, ry, 0, false, false, x, y - ry);
+	arcTo(rx, ry, 0, false, false, x - rx, y);
+	arcTo(rx, ry, 0, false, false, x, y + ry);
+	arcTo(rx, ry, 0, false, false, x + rx, y);
 	closePath();
 	return *this;
 }
@@ -720,7 +785,7 @@ Path &Path::setWindingRule(Winding value) {
 	_params.winding = value;
 	return *this;
 }
-Path::Winding Path::getWindingRule() const {
+Winding Path::getWindingRule() const {
 	return _params.winding;
 }
 
@@ -728,7 +793,7 @@ Path &Path::setLineCup(LineCup value) {
 	_params.lineCup = value;
 	return *this;
 }
-Path::LineCup Path::getLineCup() const {
+LineCup Path::getLineCup() const {
 	return _params.lineCup;
 }
 
@@ -736,7 +801,7 @@ Path &Path::setLineJoin(LineJoin value) {
 	_params.lineJoin = value;
 	return *this;
 }
-Path::LineJoin Path::getLineJoin() const {
+LineJoin Path::getLineJoin() const {
 	return _params.lineJoin;
 }
 
@@ -757,6 +822,14 @@ Path::Style Path::getStyle() const {
 	return _params.style;
 }
 
+Path &Path::setAntialiased(bool val) {
+	_params.isAntialiased = val;
+	return *this;
+}
+bool Path::isAntialiased() const {
+	return _params.isAntialiased;
+}
+
 Path & Path::setTransform(const Mat4 &t) {
 	_params.transform = t;
 	return *this;
@@ -772,6 +845,7 @@ const Mat4 &Path::getTransform() const {
 Path & Path::clear() {
 	if (!empty()) {
 		_commands.clear();
+		_points.clear();
 	}
 	return *this;
 }
@@ -799,6 +873,125 @@ bool Path::empty() const {
 
 const Vector<Path::Command> &Path::getCommands() const {
 	return _commands;
+}
+
+const Vector<Path::CommandData> &Path::getPoints() const {
+	return _points;
+}
+
+
+class PathBinaryEncoder {
+public: // utility
+	PathBinaryEncoder(Bytes *b) : buffer(b) { }
+
+	void emplace(uint8_t c) {
+		buffer->emplace_back(c);
+	}
+
+	void emplace(const uint8_t *buf, size_t size) {
+		size_t tmpSize = buffer->size();
+		buffer->resize(tmpSize + size);
+		memcpy(buffer->data() + tmpSize, buf, size);
+	}
+
+private:
+	Bytes *buffer;
+};
+
+
+Bytes Path::encode() const {
+	Bytes ret; ret.reserve(_commands.size() * sizeof(Command) + _points.size() * sizeof(CommandData) + 2 * (sizeof(size_t) + 1));
+	PathBinaryEncoder enc(&ret);
+
+	data::cbor::_writeInt(enc, _commands.size());
+	auto d = _points.data();
+	for (auto &it : _commands) {
+		data::cbor::_writeInt(enc, toInt(it));
+		switch (it) {
+		case Command::MoveTo:
+		case Command::LineTo:
+			data::cbor::_writeNumber(enc, d[0].p.x);
+			data::cbor::_writeNumber(enc, d[0].p.y);
+			++ d;
+			break;
+		case Command::QuadTo:
+			data::cbor::_writeNumber(enc, d[0].p.x);
+			data::cbor::_writeNumber(enc, d[0].p.y);
+			data::cbor::_writeNumber(enc, d[1].p.x);
+			data::cbor::_writeNumber(enc, d[1].p.y);
+			d += 2;
+			break;
+		case Command::CubicTo:
+			data::cbor::_writeNumber(enc, d[0].p.x);
+			data::cbor::_writeNumber(enc, d[0].p.y);
+			data::cbor::_writeNumber(enc, d[1].p.x);
+			data::cbor::_writeNumber(enc, d[1].p.y);
+			data::cbor::_writeNumber(enc, d[2].p.x);
+			data::cbor::_writeNumber(enc, d[2].p.y);
+			d += 3;
+			break;
+		case Command::ArcTo:
+			data::cbor::_writeNumber(enc, d[0].p.x);
+			data::cbor::_writeNumber(enc, d[0].p.y);
+			data::cbor::_writeNumber(enc, d[1].p.x);
+			data::cbor::_writeNumber(enc, d[1].p.y);
+			data::cbor::_writeNumber(enc, d[2].f.v);
+			data::cbor::_writeInt(enc, (uint8_t(d[2].f.a) << 1) | uint8_t(d[2].f.b));
+			d += 3;
+			break;
+		default: break;
+		}
+	}
+
+	return ret;
+}
+
+String Path::toString() const {
+	StringStream stream;
+
+	auto d = _points.data();
+	for (auto &it : _commands) {
+		switch (it) {
+		case Command::MoveTo:
+			stream << "M " << d[0].p.x << "," << d[0].p.y << " ";
+			++ d;
+			break;
+		case Command::LineTo:
+			stream << "L " << d[0].p.x << "," << d[0].p.y << " ";
+			++ d;
+			break;
+		case Command::QuadTo:
+			stream << "Q " << d[0].p.x << "," << d[0].p.y << " "
+					<< d[1].p.x << "," << d[1].p.y << " ";
+			d += 2;
+			break;
+		case Command::CubicTo:
+			stream << "C " << d[0].p.x << "," << d[0].p.y << " "
+					<< d[1].p.x << "," << d[1].p.y << " "
+					<< d[2].p.x << "," << d[2].p.y << " ";
+			d += 3;
+			break;
+		case Command::ArcTo:
+			stream << "A " << d[0].p.x << "," << d[0].p.y << " "
+					<< d[2].f.v << " " << int(d[2].f.a) << " " << int(d[2].f.b) << " "
+					<< d[1].p.x << "," << d[1].p.y << " ";
+			d += 3;
+			break;
+		case Command::ClosePath:
+			stream << "Z ";
+			break;
+		default: break;
+		}
+	}
+
+	return stream.str();
+}
+
+size_t Path::commandsCount() const {
+	return _commands.size();
+}
+size_t Path::dataCount() const {
+	return _points.size();
 }
 
 NS_LAYOUT_END

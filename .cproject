@@ -257,6 +257,7 @@
 		<configuration configurationName="Serenity">
 			<resource resourceType="PROJECT" workspacePath="/libstappler"/>
 		</configuration>
+		<configuration configurationName="IOS"/>
 		<configuration configurationName="Default">
 			<resource resourceType="PROJECT" workspacePath="/stappler-cli"/>
 		</configuration>

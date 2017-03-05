@@ -22,7 +22,8 @@ ifeq ($(UNAME),Darwin)
 
 OSTYPE_PREBUILT_PATH := libs/mac/x86_64/lib
 OSTYPE_INCLUDE :=  libs/mac/x86_64/include
-OSTYPE_CFLAGS := -DMACOSX  -DUSE_FILE32API -Wall -Wno-overloaded-virtual -fPIC -frtti
+OSTYPE_CFLAGS := -DMACOSX  -DUSE_FILE32API -Wall -fPIC
+OSTYPE_CPPFLAGS :=  -Wno-overloaded-virtual -frtti
 OSTYPE_COMMON_LIBS := -lpthread \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libcurl.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libpng.a \
@@ -36,8 +37,6 @@ OSTYPE_CLI_LIBS += $(OSTYPE_COMMON_LIBS) \
 OSTYPE_STAPPLER_LIBS += $(OSTYPE_CLI_LIBS) \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libhyphen.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libglfw3.a \
-	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libcairo.a \
-	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libpixman-1.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libfreetype.a \
 	-framework OpenGL -framework CoreGraphics -framework Cocoa -framework IOKit -framework CoreVideo
 

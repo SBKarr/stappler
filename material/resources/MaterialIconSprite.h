@@ -20,16 +20,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef CLASSES_MATERIAL_MATERIALICON_H_
-#define CLASSES_MATERIAL_MATERIALICON_H_
+#ifndef MATERIAL_RESOURCES_MATERIALICONSPRITE_H_
+#define MATERIAL_RESOURCES_MATERIALICONSPRITE_H_
 
 #include "SPDrawPathNode.h"
-#include "MaterialIconSources.h"
-
 #include "2d/CCActionInterval.h"
+#include "MaterialIconStorage.h"
 #include "renderer/CCCustomCommand.h"
-
-#include "SPIconSprite.h"
 
 NS_MD_BEGIN
 
@@ -67,11 +64,14 @@ protected:
 	virtual void setDynamicIcon(DynamicIcon *);
 	virtual void setStaticIcon(IconName);
 
+	virtual void onUpdate();
+
 	float _progress = 0.0f;
 	IconName _iconName = IconName::None;
 	DynamicIcon *_dynamicIcon = nullptr;
+	EventListener *_listener = nullptr;
 };
 
 NS_MD_END
 
-#endif /* CLASSES_MATERIAL_MATERIALICON_H_ */
+#endif /* MATERIAL_RESOURCES_MATERIALICONSPRITE_H_ */

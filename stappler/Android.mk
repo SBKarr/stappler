@@ -16,10 +16,7 @@ LOCAL_WHOLE_STATIC_LIBRARIES := \
 	cocos_freetype2_static \
 	sqlite_static \
 	curl_static \
-	cairo_static \
-	pixman_static \
 	hyphen_static \
-	libtess2_static \
 	cpufeatures
 
 LOCAL_EXPORT_LDLIBS := -lGLESv2 -lEGL -llog -lz -landroid

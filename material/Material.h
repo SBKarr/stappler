@@ -55,7 +55,7 @@ class ResourceManager;
 class ResizeTo;
 class ResizeBy;
 
-enum class IconName : uint32_t;
+enum class IconName : uint16_t;
 
 class IconSprite;
 class IconProgress;

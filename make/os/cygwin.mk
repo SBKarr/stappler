@@ -22,10 +22,11 @@ ifeq ($(UNAME),Cygwin)
 
 OSTYPE_PREBUILT_PATH := libs/win32/x86_64/lib
 OSTYPE_INCLUDE := libs/win32/x86_64/include
-OSTYPE_CFLAGS := -DCYGWIN -Wall -Wno-overloaded-virtual -frtti -D_WIN32 -DGLEW_STATIC
+OSTYPE_CFLAGS := -DCYGWIN -Wall -D_WIN32 -DGLEW_STATIC
+OSTYPE_CPPFLAGS := -Wno-overloaded-virtual -frtti
 OSTYPE_COMMON_LIBS := -static -lpng -ljpeg -lcurl -lmbedx509 -lmbedtls -lmbedcrypto -lz -lws2_32
 OSTYPE_CLI_LIBS += $(OSTYPE_COMMON_LIBS) -lsqlite3
-OSTYPE_STAPPLER_LIBS += $(OSTYPE_CLI_LIBS) -lsqlite3 -lglfw3 -lglew32 -lopengl32 -lGdi32 -lcairo -lpixman-1 -lfreetype
+OSTYPE_STAPPLER_LIBS += $(OSTYPE_CLI_LIBS) -lsqlite3 -lglfw3 -lglew32 -lopengl32 -lGdi32 -lfreetype
 OSTYPE_LDFLAGS := -municode
 OSTYPE_EXEC_FLAGS := -static-libgcc -static-libstdc++
 

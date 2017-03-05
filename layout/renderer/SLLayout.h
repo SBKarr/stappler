@@ -34,8 +34,8 @@ struct Link {
 
 struct Outline {
 	struct Params {
-		style::BorderStyle style;
-		float width;
+		style::BorderStyle style = style::BorderStyle::None;
+		float width = 0.0f;
 		Color4B color;
 
 		bool compare(const Params &p) const { return p.style == style && p.width == width && p.color == color; }

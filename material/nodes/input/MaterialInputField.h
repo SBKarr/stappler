@@ -84,6 +84,9 @@ public:
 	virtual void setCharFilter(const CharFilter &);
 	virtual const CharFilter &getCharFilter() const;
 
+	virtual void acquireInput();
+	virtual void releaseInput();
+
 public:
 	virtual bool onPressBegin(const Vec2 &);
 	virtual bool onLongPress(const Vec2 &, const TimeInterval &, int count);

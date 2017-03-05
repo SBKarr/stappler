@@ -261,6 +261,13 @@ const InputField::CharFilter &InputField::getCharFilter() const {
 	return _charFilter;
 }
 
+void InputField::acquireInput() {
+	_label->acquireInput();
+}
+void InputField::releaseInput() {
+	_label->releaseInput();
+}
+
 bool InputField::onPressBegin(const Vec2 &vec) {
 	return _label->onPressBegin(vec);
 }

@@ -29,23 +29,6 @@ NS_LAYOUT_BEGIN
 
 class Path : public Ref {
 public:
-	enum class Winding {
-		NonZero,
-		EvenOdd,
-	};
-
-	enum class LineCup {
-		Butt,
-		Round,
-		Square
-	};
-
-	enum class LineJoin {
-		Miter,
-		Round,
-		Bevel
-	};
-
 	using Style = DrawStyle;
 
 	struct Params {
@@ -59,73 +42,31 @@ public:
 		LineCup lineCup = LineCup::Butt;
 		LineJoin lineJoin = LineJoin::Miter;
 		float miterLimit = 4.0f;
+		bool isAntialiased = true;
 	};
 
-	struct Command {
-		enum Type {
-			MoveTo,
-			LineTo,
-			QuadTo,
-			CubicTo,
-			ArcTo,
-			ClosePath,
-		} type;
+	union CommandData {
+		struct {
+			float x;
+			float y;
+		} p;
+		struct {
+			float v;
+			bool a;
+			bool b;
+		} f;
 
-		union {
-			struct {
-				float x, y;
-			} moveTo;
+		CommandData(float x, float y) { p.x = x; p.y = y; }
+		CommandData(float r, bool a, bool b) { f.v = r; f.a = a; f.b = b; }
+	};
 
-			struct {
-				float x, y;
-			} lineTo;
-
-			struct {
-				float x1, y1, x2, y2;
-			} quadTo;
-
-			struct {
-				float x1, y1, x2, y2, x3, y3;
-			} cubicTo;
-
-			struct {
-				float rx, ry, rotation, x, y;
-				bool largeFlag, sweepFlag;
-			} arcTo;
-		};
-
-		Command(Type t) : type(t) { }
-		Command(Type t, float x, float y) : type(t) {
-			switch (t) {
-			case MoveTo: moveTo.x = x; moveTo.y = y; break;
-			case LineTo: lineTo.x = x; lineTo.y = y; break;
-			default: break;
-			}
-		}
-
-		Command(Type t, float x1, float y1, float x2, float y2) : type(t), quadTo{x1, y1, x2, y2} { }
-		Command(Type t, float x1, float y1, float x2, float y2, float x3, float y3) : type(t), cubicTo{x1, y1, x2, y2, x3, y3} { }
-		Command(Type t, float rx, float ry, float rotation, bool largeFlag, bool sweepFlag, float x, float y)
-		: type(t), arcTo{rx, ry, rotation, x, y, largeFlag, sweepFlag} { }
-
-		static Command MakeMoveTo(float x, float y) {
-			return Command(MoveTo, x, y);
-		}
-		static Command MakeLineTo(float x, float y) {
-			return Command(LineTo, x, y);
-		}
-		static Command MakeQuadTo(float x1, float y1, float x2, float y2) {
-			return Command(QuadTo, x1, y1, x2, y2);
-		}
-		static Command MakeCubicTo(float x1, float y1, float x2, float y2, float x3, float y3) {
-			return Command(CubicTo, x1, y1, x2, y2, x3, y3);
-		}
-		static Command MakeArcTo(float rx, float ry, float rotation, bool largeFlag, bool sweepFlag, float x, float y) {
-			return Command(ArcTo, rx, ry, rotation, largeFlag, sweepFlag, x, y);
-		}
-		static Command MakeClosePath() {
-			return Command(ClosePath);
-		}
+	enum class Command : uint8_t { // use hint to decode data from `_points` vector
+		MoveTo, // (x, y)
+		LineTo, // (x, y)
+		QuadTo, // (x1, y1) (x2, y2)
+		CubicTo, // (x1, y1) (x2, y2) (x3, y3)
+		ArcTo, // (rx, ry), (x, y), (rotation, largeFlag, sweepFlag)
+		ClosePath, // nothing
 	};
 
 	Path();
@@ -135,6 +76,7 @@ public:
 	bool init(const String &);
 	bool init(const CharReaderBase &);
 	bool init(FilePath &&);
+	bool init(const uint8_t *, size_t);
 
 	size_t count() const;
 
@@ -172,10 +114,7 @@ public:
 	Path & addCircle(float x, float y, float radius);
 	Path & addEllipse(float x, float y, float rx, float ry);
 	Path & addArc(const Rect& oval, float startAngleInRadians, float sweepAngleInRadians);
-
 	Path & addRect(float x, float y, float width, float height, float rx, float ry);
-	//void addRoundRect(const cocos2d::Rect& rect, float rx, float ry);
-	//void addPoly(const cocos2d::Vec2 pts[], int count, bool close);
 
 	Path & setFillColor(const Color4B &color);
 	Path & setFillColor(const Color3B &color, bool preserveOpacity = false);
@@ -211,6 +150,9 @@ public:
 	Path & setStyle(Style s);
 	Style getStyle() const;
 
+	Path &setAntialiased(bool);
+	bool isAntialiased() const;
+
 	Path & setTransform(const Mat4 &);
 	Path & applyTransform(const Mat4 &);
 	const Mat4 &getTransform() const;
@@ -226,10 +168,18 @@ public:
 	bool empty() const;
 
 	const Vector<Command> &getCommands() const;
+	const Vector<CommandData> &getPoints() const;
 
 	operator bool() const { return !empty(); }
 
+	Bytes encode() const;
+	String toString() const;
+
+	size_t commandsCount() const;
+	size_t dataCount() const;
+
 protected:
+	Vector<CommandData> _points;
 	Vector<Command> _commands;
 	uint32_t _tag = 0;
 	Params _params;

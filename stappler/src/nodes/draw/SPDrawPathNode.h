@@ -23,8 +23,7 @@ THE SOFTWARE.
 #ifndef STAPPLER_SRC_DRAW_SPPATHNODE_H_
 #define STAPPLER_SRC_DRAW_SPPATHNODE_H_
 
-#include "SLCanvas.h"
-#include "SLImage.h"
+#include "SPDrawCanvas.h"
 #include "SPDynamicSprite.h"
 
 NS_SP_EXT_BEGIN(draw)
@@ -32,12 +31,6 @@ NS_SP_EXT_BEGIN(draw)
 using Path = layout::Path;
 using Style = layout::DrawStyle;
 using Image = layout::Image;
-
-class Canvas : public layout::Canvas {
-public:
-	virtual void begin(cocos2d::Texture2D *, const Color4B &);
-	virtual void end();
-};
 
 enum class Format {
 	A8,
@@ -91,7 +84,7 @@ public:
 protected:
 	virtual void updateCanvas(layout::Subscription::Flags f);
 
-	Rc<cocos2d::Texture2D> generateTexture(cocos2d::Texture2D *tex, uint32_t w, uint32_t h, Format fmt);
+	Rc<cocos2d::Texture2D> generateTexture(cocos2d::Texture2D *tex, uint32_t w, uint32_t h, Format fmt, bool renderTargetRequired);
 
 	bool _pathsDirty = false;
 	uint16_t _baseWidth = 0;

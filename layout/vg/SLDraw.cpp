@@ -25,6 +25,9 @@ THE SOFTWARE.
 
 #include "SPLayout.h"
 #include "SLDraw.h"
+#include "SLTesselator.h"
+
+TESS_OPTIMIZE
 
 NS_LAYOUT_BEGIN
 
@@ -36,21 +39,74 @@ constexpr size_t getMaxRecursionDepth() { return 16; }
 // http://www.diva-portal.org/smash/get/diva2:565821/FULLTEXT01.pdf
 // https://www.w3.org/TR/SVG/implnote.html#ArcImplementationNotes
 
-static inline float dist_sq(float x1, float y1, float x2, float y2) {
+static inline float draw_approx_err_sq(float e) {
+	e = (1.0f / e);
+	return e * e;
+}
+
+static inline float draw_dist_sq(float x1, float y1, float x2, float y2) {
 	const float dx = x2 - x1, dy = y2 - y1;
 	return dx * dx + dy * dy;
 }
 
-static inline float angle(float v1_x, float v1_y, float v2_x, float v2_y) {
+static inline float draw_angle(float v1_x, float v1_y, float v2_x, float v2_y) {
 	return atan2f(v1_x * v2_y - v1_y * v2_x, v1_x * v2_x + v1_y * v2_y);
 }
 
-static size_t drawQuadBezierRecursive(Vector<float> &verts, float d_err, float a_err, float x0, float y0, float x1, float y1, float x2, float y2, size_t depth) {
-	if (depth >= getMaxRecursionDepth()) {
-		return 0;
-	}
+static inline float draw_length(float x0, float y0) {
+	return sqrtf(x0 * x0 + y0 * y0);
+}
 
-	size_t ret = 0;
+struct EllipseData {
+	float cx;
+	float cy;
+	float rx;
+	float ry;
+	float r_sq;
+	float cos_phi;
+	float sin_phi;
+};
+
+LineDrawer::LineDrawer() { }
+LineDrawer::LineDrawer(Style s, float e) {
+	setStyle(s, e);
+}
+
+LineDrawer::LineDrawer(Style s, float e, float w, bool optimizeFill) {
+	setStyle(s, e, w, optimizeFill);
+}
+
+void LineDrawer::setStyle(Style s, float e) {
+	style = s;
+	approxError = distanceError = draw_approx_err_sq(e);
+	angularError = 0.0f;
+}
+
+void LineDrawer::setStyle(Style s, float e, float w, bool optimizeFill) {
+	style = s;
+	if (isStroke()) {
+		approxError = draw_approx_err_sq(optimizeFill?(e / 2.0):(e));
+		if (w > 1.0f) {
+			distanceError = draw_approx_err_sq(e * log2f(w));
+		} else {
+			distanceError = draw_approx_err_sq(e);
+		}
+		angularError = 0.5f;
+	} else {
+		approxError = distanceError = draw_approx_err_sq(e);
+		angularError = 0.0f;
+	}
+}
+
+void LineDrawer::reserve(size_t size) {
+	line.reserve(size * 2);
+	outline.reserve(size * 2);
+}
+
+static void drawQuadBezierRecursive(LineDrawer &drawer, float x0, float y0, float x1, float y1, float x2, float y2, size_t depth, bool fill) {
+	if (depth >= getMaxRecursionDepth()) {
+		return;
+	}
 
 	const float x01_mid = (x0 + x1) / 2, y01_mid = (y0 + y1) / 2; // between 0 and 1
 	const float x12_mid = (x1 + x2) / 2, y12_mid = (y1 + y2) / 2; // between 1 and 2
@@ -60,18 +116,21 @@ static size_t drawQuadBezierRecursive(Vector<float> &verts, float d_err, float a
 	const float d = fabsf(((x1 - x2) * dy - (y1 - y2) * dx));
 
 	if (d > std::numeric_limits<float>::epsilon()) { // Regular case
-		if (d * d <= d_err * (dx * dx + dy * dy)) {
-			if (a_err < std::numeric_limits<float>::epsilon()) {
-				verts.push_back((x1 + x_mid) / 2);
-				verts.push_back((y1 + y_mid) / 2);
-				ret = 1;
+		const float d_sq = (d * d) / (dx * dx + dy * dy);
+		if (fill && d_sq <= drawer.approxError) {
+			drawer.pushLine((x1 + x_mid) / 2, (y1 + y_mid) / 2);
+			fill = false;
+		}
+		if (d_sq <= drawer.distanceError) {
+			if (drawer.angularError < std::numeric_limits<float>::epsilon()) {
+				drawer.push((x1 + x_mid) / 2, (y1 + y_mid) / 2);
+				return;
 			} else {
 				// Curvature condition  (we need it for offset curve)
 				const float da = fabsf(atan2f(y2 - y1, x2 - x1) - atan2f(y1 - y0, x1 - x0));
-				if (std::min(da, float(2 * M_PI - da)) < a_err) {
-					verts.push_back((x1 + x_mid) / 2);
-					verts.push_back((y1 + y_mid) / 2);
-					ret = 1;
+				if (std::min(da, float(2 * M_PI - da)) < drawer.angularError) {
+					drawer.push((x1 + x_mid) / 2, (y1 + y_mid) / 2);
+					return;
 				}
 			}
 		}
@@ -79,53 +138,38 @@ static size_t drawQuadBezierRecursive(Vector<float> &verts, float d_err, float a
 		float sd;
 		const float da = dx * dx + dy * dy;
 		if (da == 0) {
-			sd = dist_sq(x0, y0, x1, y1);
+			sd = draw_dist_sq(x0, y0, x1, y1);
 		} else {
 			sd = ((x1 - x0) * dx + (y1 - y0) * dy) / da;
 			if(sd > 0 && sd < 1) {
-				return 0; // degraded case
+				return; // degraded case
 			}
 			if(sd <= 0) {
-				sd = dist_sq(x1, y1, x0, y0);
+				sd = draw_dist_sq(x1, y1, x0, y0);
 			} else if(sd >= 1) {
-				sd = dist_sq(x1, y1, x2, y2);
+				sd = draw_dist_sq(x1, y1, x2, y2);
 			} else {
-				sd = dist_sq(x1, y1, x0 + sd * dx, y0 + sd * dy);
+				sd = draw_dist_sq(x1, y1, x0 + sd * dx, y0 + sd * dy);
 			}
 		}
-		if (sd < d_err) {
-			verts.push_back(x1);
-			verts.push_back(y1);
-			ret = 1;
+		if (fill && sd < drawer.approxError) {
+			drawer.pushLine(x1, y1);
+			fill = false;
+		}
+		if (sd < drawer.distanceError) {
+			drawer.push(x1, y1);
+			return;
 		}
 	}
 
-	if (ret) {
-		return ret;
-	} else {
-		return drawQuadBezierRecursive(verts, d_err, a_err, x0, y0, x01_mid, y01_mid, x_mid, y_mid, depth + 1)
-				+ drawQuadBezierRecursive(verts, d_err, a_err, x_mid, y_mid, x12_mid, y12_mid, x2, y2, depth + 1);
-	}
+	drawQuadBezierRecursive(drawer, x0, y0, x01_mid, y01_mid, x_mid, y_mid, depth + 1, fill);
+	drawQuadBezierRecursive(drawer, x_mid, y_mid, x12_mid, y12_mid, x2, y2, depth + 1, fill);
 }
 
-
-size_t drawQuadBezier(Vector<float> &verts, float factor, float angle, float x0, float y0, float x1, float y1, float x2, float y2) {
-	size_t count = 2;
-	verts.push_back(x0); verts.push_back(y0);
-
-	const float err = (1.0f / factor);
-	count += drawQuadBezierRecursive(verts, err * err, angle, x0, y0, x1, y1, x2, y2, 0);
-
-	verts.push_back(x2); verts.push_back(y2);
-	return count;
-}
-
-static size_t drawCubicBezierRecursive(Vector<float> &verts, float d_err, float a_err, float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3, size_t depth) {
+static void drawCubicBezierRecursive(LineDrawer &drawer, float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3, size_t depth, bool fill) {
 	if (depth >= getMaxRecursionDepth()) {
-		return 0;
+		return;
 	}
-
-	size_t ret = 0;
 
     const float x01_mid = (x0 + x1) / 2, y01_mid = (y0 + y1) / 2; // between 0 and 1
     const float x12_mid = (x1 + x2) / 2, y12_mid = (y1 + y2) / 2; // between 1 and 2
@@ -144,46 +188,63 @@ static size_t drawCubicBezierRecursive(Vector<float> &verts, float d_err, float 
 	const bool significantPoint2 = d2 > std::numeric_limits<float>::epsilon();
 
 	if (significantPoint1 && significantPoint1) {
-        if((d1 + d2) * (d1 + d2) <= d_err * (dx * dx + dy * dy)) {
-            if(a_err < std::numeric_limits<float>::epsilon()) {
-    			verts.push_back(x12_mid); verts.push_back(y12_mid);
-    			ret = 1;
+		const float d_sq = ((d1 + d2) * (d1 + d2)) / (dx * dx + dy * dy);
+
+		if (fill && d_sq <= drawer.approxError) {
+			drawer.pushLine(x12_mid, y12_mid);
+			fill = false;
+		}
+        if (d_sq <= drawer.distanceError) {
+            if (drawer.angularError < std::numeric_limits<float>::epsilon()) {
+            	drawer.push(x12_mid, y12_mid);
+            	return;
             }
 
             const float tmp = atan2(y2 - y1, x2 - x1);
             const float da1 = fabs(tmp - atan2(y1 - y0, x1 - x0));
             const float da2 = fabs(atan2(y3 - y2, x3 - x2) - tmp);
-            if(std::min(da1, float(2 * M_PI - da1)) + std::min(da2, float(2 * M_PI - da2)) < a_err) {
-    			verts.push_back(x12_mid); verts.push_back(y12_mid);
-    			ret = 1;
+            const float da = std::min(da1, float(2 * M_PI - da1)) + std::min(da2, float(2 * M_PI - da2));
+            if (da < drawer.angularError) {
+            	drawer.push(x12_mid, y12_mid);
+            	return;
             }
         }
 	} else if (significantPoint1) {
-        if (d1 * d1 <= d_err * (dx * dx + dy * dy)) {
-            if (a_err < std::numeric_limits<float>::epsilon()) {
-    			verts.push_back(x12_mid); verts.push_back(y12_mid);
-    			ret = 1;
+		const float d_sq = (d1 * d1) / (dx * dx + dy * dy);
+        if (fill && d_sq <= drawer.approxError) {
+			drawer.pushLine(x12_mid, y12_mid);
+			fill = false;
+        }
+        if (d_sq <= drawer.distanceError) {
+            if (drawer.angularError < std::numeric_limits<float>::epsilon()) {
+            	drawer.push(x12_mid, y12_mid);
+            	return;
             } else {
                 const float da = fabsf(atan2f(y2 - y1, x2 - x1) - atan2f(y1 - y0, x1 - x0));
-                if (std::min(da, float(2 * M_PI - da)) < a_err) {
-        			verts.push_back(x1); verts.push_back(y1);
-        			verts.push_back(x2); verts.push_back(y2);
-        			ret = 2;
+                if (std::min(da, float(2 * M_PI - da)) < drawer.angularError) {
+                	drawer.push(x1, y1);
+                	drawer.push(x2, y2);
+                	return;
                 }
             }
 
         }
 	} else if (significantPoint2) {
-        if(d2 * d2 <= d_err * (dx * dx + dy * dy)) {
-            if(a_err < std::numeric_limits<float>::epsilon()) {
-    			verts.push_back(x12_mid); verts.push_back(y12_mid);
-    			ret = 1;
+		const float d_sq = (d2 * d2) / (dx * dx + dy * dy);
+        if (fill && d_sq <= drawer.approxError) {
+			drawer.pushLine(x12_mid, y12_mid);
+			fill = false;
+        }
+        if (d_sq <= drawer.distanceError) {
+            if (drawer.angularError < std::numeric_limits<float>::epsilon()) {
+            	drawer.push(x12_mid, y12_mid);
+            	return;
             } else {
                 const float da = fabsf(atan2f(y3 - y2, x3 - x2) - atan2f(y2 - y1, x2 - x1));
-                if (std::min(da, float(2 * M_PI - da)) < a_err) {
-        			verts.push_back(x1); verts.push_back(y1);
-        			verts.push_back(x2); verts.push_back(y2);
-        			ret = 2;
+                if (std::min(da, float(2 * M_PI - da)) < drawer.angularError) {
+                	drawer.push(x1, y1);
+                	drawer.push(x2, y2);
+                	return;
                 }
             }
         }
@@ -191,79 +252,60 @@ static size_t drawCubicBezierRecursive(Vector<float> &verts, float d_err, float 
 		float sd1, sd2;
         const float k = dx * dx + dy * dy;
         if (k == 0) {
-        	sd1 = dist_sq(x0, y0, x1, y1);
-        	sd2 = dist_sq(x3, y3, x2, y2);
+        	sd1 = draw_dist_sq(x0, y0, x1, y1);
+        	sd2 = draw_dist_sq(x3, y3, x2, y2);
         } else {
             sd1 = ((x1 - x0) * dx + (y1 - y0) * dy) / k;
             sd2 = ((x2 - x0) * dx + (y2 - y0) * dy) / k;
             if (sd1 > 0 && sd1 < 1 && sd2 > 0 && sd2 < 1) {
-                return 0;
+                return;
             }
 
             if (sd1 <= 0) {
-            	sd1 = dist_sq(x1, y1, x0, y0);
+            	sd1 = draw_dist_sq(x1, y1, x0, y0);
             } else if (sd1 >= 1) {
-            	sd1 = dist_sq(x1, y1, x3, y3);
+            	sd1 = draw_dist_sq(x1, y1, x3, y3);
             } else {
-            	sd1 = dist_sq(x1, y1, x0 + d1 * dx, y0 + d1 * dy);
+            	sd1 = draw_dist_sq(x1, y1, x0 + d1 * dx, y0 + d1 * dy);
             }
 
 			if (sd2 <= 0) {
-				sd2 = dist_sq(x2, y2, x0, y0);
+				sd2 = draw_dist_sq(x2, y2, x0, y0);
 			} else if (sd2 >= 1) {
-				sd2 = dist_sq(x2, y2, x3, y3);
+				sd2 = draw_dist_sq(x2, y2, x3, y3);
 			} else {
-				sd2 = dist_sq(x2, y2, x0 + d2 * dx, y0 + d2 * dy);
+				sd2 = draw_dist_sq(x2, y2, x0 + d2 * dx, y0 + d2 * dy);
 			}
         }
         if (sd1 > sd2) {
-            if (sd1 < d_err) {
-    			verts.push_back(x1); verts.push_back(y1);
-    			ret = 1;
+            if (fill && sd1 < drawer.approxError) {
+    			drawer.pushLine(x1, y1);
+    			fill = false;
+            }
+            if (sd1 < drawer.distanceError) {
+            	drawer.push(x1, y1);
+            	return;
             }
         } else {
-            if (sd2 < d_err) {
-    			verts.push_back(x2); verts.push_back(y2);
-    			ret = 1;
+            if (fill && sd2 < drawer.approxError) {
+    			drawer.pushLine(x2, y2);
+    			fill = false;
+            }
+            if (sd2 < drawer.distanceError) {
+            	drawer.push(x2, y2);
+            	return;
             }
         }
 	}
 
-	if (ret) {
-		return ret;
-	} else {
-		return drawCubicBezierRecursive(verts, d_err, a_err, x0, y0, x01_mid, y01_mid, x012_mid, y012_mid, x_mid, y_mid, depth + 1)
-				+ drawCubicBezierRecursive(verts, d_err, a_err, x_mid, y_mid, x123_mid, y123_mid, x23_mid, y23_mid, x3, y3, depth + 1);
-	}
+	drawCubicBezierRecursive(drawer, x0, y0, x01_mid, y01_mid, x012_mid, y012_mid, x_mid, y_mid, depth + 1, fill);
+	drawCubicBezierRecursive(drawer, x_mid, y_mid, x123_mid, y123_mid, x23_mid, y23_mid, x3, y3, depth + 1, fill);
 }
 
-size_t drawCubicBezier(Vector<float> &verts, float factor, float angle, float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3) {
-	size_t count = 2;
-	verts.push_back(x0); verts.push_back(y0);
-
-	const float err = (1.0f / factor);
-	count += drawCubicBezierRecursive(verts, err * err, angle, x0, y0, x1, y1, x2, y2, x3, y3, 0);
-
-	verts.push_back(x3); verts.push_back(y3);
-	return count;
-}
-
-struct EllipseData {
-	float cx;
-	float cy;
-	float rx;
-	float ry;
-	float cos_phi;
-	float sin_phi;
-};
-
-static size_t drawArcRecursive(Vector<float> &verts, float d_err, float a_err, const EllipseData &e, float startAngle, float sweepAngle, float x0, float y0, float x1, float y1, size_t depth) {
-
+static void drawArcRecursive(LineDrawer &drawer, const EllipseData &e, float startAngle, float sweepAngle, float x0, float y0, float x1, float y1, size_t depth, bool fill) {
 	if (depth >= getMaxRecursionDepth()) {
-		return 0;
+		return;
 	}
-
-	size_t ret = 0;
 
     const float x01_mid = (x0 + x1) / 2, y01_mid = (y0 + y1) / 2;
 
@@ -273,41 +315,41 @@ static size_t drawArcRecursive(Vector<float> &verts, float d_err, float a_err, c
 	const float sx = e.cx - (sx_ * e.cos_phi - sy_ * e.sin_phi);
 	const float sy = e.cy + (sx_ * e.sin_phi + sy_ * e.cos_phi);
 
-	const float d = dist_sq(x01_mid, y01_mid, sx, sy);
+	const float d = draw_dist_sq(x01_mid, y01_mid, sx, sy);
 
-	/*log::format("Subdivide", "%f -> %f %f     %f / %f / %f (%f %f / %f %f / %f %f) %f - %lu",
-			(startAngle + n_sweep) * 180.0f / M_PI, sx_ / e.rx, sy_ / e.ry,
-			startAngle * 180.0f / M_PI, (startAngle + n_sweep) * 180.0f / M_PI, (startAngle + sweepAngle) * 180.0f / M_PI,
-			x0, y0, sx, sy, x1, y1, d, depth);*/
+	if (fill && d < drawer.approxError) {
+        drawer.pushLine(sx, sy);
+        fill = false;
+	}
 
-	if (d < d_err) {
-		//if (a_err < std::numeric_limits<float>::epsilon()) {
-			verts.push_back(sx); verts.push_back(sy);
-			ret = 1;
-		/*} else {
-			if (fabsf(float(startAngle - M_PI/2)) < std::numeric_limits<float>::epsilon())
-			const float tg0 = (ry / rx) / tanf(startAngle);
-			const float tg1 = (ry / rx) / tanf(startAngle + sweepAngle);
-
-			// Curvature condition  (we need it for offset curve)
-			const float da = fabsf(atan2f(y2 - y1, x2 - x1) - atan2f(y1 - y0, x1 - x0));
-			if (std::min(da, float(2 * M_PI - da)) < a_err) {
-				verts.push_back((x1 + x_mid) / 2);
-				verts.push_back((y1 + y_mid) / 2);
-				ret = 1;
+	if (d < drawer.distanceError) {
+		if (drawer.angularError < std::numeric_limits<float>::epsilon()) {
+			drawer.push(sx, sy);
+			return;
+		} else {
+			const float y0_x0 = y0 / x0;
+			const float y1_x1 = y1 / x1;
+			const float da = fabs(atanf( e.r_sq * (y1_x1 - y0_x0) / (e.r_sq * e.r_sq * y0_x0 * y1_x1) ));
+			if (da < drawer.angularError) {
+				drawer.push(sx, sy);
+				return;
 			}
-		}*/
+		}
 	}
 
-	if (ret) {
-		return ret;
-	} else {
-		return drawArcRecursive(verts, d_err, a_err, e, startAngle, n_sweep, x0, y0, sx, sy, depth + 1)
-				+ drawArcRecursive(verts, d_err, a_err, e, startAngle + n_sweep, n_sweep, sx, sy, x1, y1, depth + 1);
-	}
+	drawArcRecursive(drawer, e, startAngle, n_sweep, x0, y0, sx, sy, depth + 1, fill);
+	drawArcRecursive(drawer, e, startAngle + n_sweep, n_sweep, sx, sy, x1, y1, depth + 1, fill);
 }
 
-size_t drawArc(Vector<float> &verts, float factor, float a_err, float x0, float y0, float rx, float ry, float phi, bool largeArc, bool sweep, float x1, float y1) {
+void LineDrawer::drawQuadBezier(float x0, float y0, float x1, float y1, float x2, float y2) {
+	drawQuadBezierRecursive(*this, x0, y0, x1, y1, x2, y2, 0, style == Style::FillAndStroke);
+	push(x2, y2);
+}
+void LineDrawer::drawCubicBezier(float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3) {
+	drawCubicBezierRecursive(*this, x0, y0, x1, y1, x2, y2, x3, y3, 0, style == Style::FillAndStroke);
+	push(x3, y3);
+}
+void LineDrawer::drawArc(float x0, float y0, float rx, float ry, float phi, bool largeArc, bool sweep, float x1, float y1) {
 	rx = fabsf(rx); ry = fabsf(ry);
 
 	const float sin_phi = sinf(phi), cos_phi = cosf(phi);
@@ -331,27 +373,225 @@ size_t drawArc(Vector<float> &verts, float factor, float a_err, float x0, float 
 	const float cx = cx_ * cos_phi - cy_ * sin_phi + (x0 + x1) / 2;
 	const float cy = cx_ * sin_phi + cy_ * cos_phi + (y0 + y1) / 2;
 
-	const float startAngle = angle(1.0f, 0.0f, - (x1_ - cx_) / rx, (y1_ - cy_) / ry);
-	float sweepAngle = angle((x1_ - cx_) / rx, (y1_ - cy_) / ry, (-x1_ - cx_) / rx, (-y1_ - cy_) / ry);
+	const float startAngle = draw_angle(1.0f, 0.0f, - (x1_ - cx_) / rx, (y1_ - cy_) / ry);
+	float sweepAngle = draw_angle((x1_ - cx_) / rx, (y1_ - cy_) / ry, (-x1_ - cx_) / rx, (-y1_ - cy_) / ry);
 
 	sweepAngle = (largeArc)
 			? std::max(fabsf(sweepAngle), float(M_PI * 2 - fabsf(sweepAngle)))
 			: std::min(fabsf(sweepAngle), float(M_PI * 2 - fabsf(sweepAngle)));
 
-	size_t count = 2;
-	verts.push_back(x0); verts.push_back(y0);
-
 	if (rx > std::numeric_limits<float>::epsilon() && ry > std::numeric_limits<float>::epsilon()) {
-		const float err = (1.0f / factor);
-
-		EllipseData d{ cx, cy, rx, ry, cos_phi, sin_phi };
-
-		count += drawArcRecursive(verts, err * err, a_err, d, startAngle, (sweep ? -1.0f : 1.0f) * sweepAngle, x0, y0, x1, y1, 0);
+		EllipseData d{ cx, cy, rx, ry, (rx * rx) / (ry * ry), cos_phi, sin_phi };
+		drawArcRecursive(*this, d, startAngle, (sweep ? -1.0f : 1.0f) * sweepAngle, x0, y0, x1, y1, 0, (style & Style::FillAndStroke) != 0);
 	}
 
-	verts.push_back(x1); verts.push_back(y1);
+	push(x1, y1);
+}
 
-	return count;
+void LineDrawer::clear() {
+	line.clear();
+	outline.clear();
+}
+
+void LineDrawer::pushLine(float x, float y) {
+	line.push_back(x); line.push_back(y);
+}
+
+void LineDrawer::pushOutline(float x, float y) {
+	outline.push_back(x); outline.push_back(y);
+}
+
+void LineDrawer::push(float x, float y) {
+	switch (style) {
+	case Style::Fill:
+		line.push_back(x); line.push_back(y);
+		break;
+	case Style::Stroke:
+	case Style::FillAndStroke:
+		outline.push_back(x); outline.push_back(y);
+		break;
+	default: break;
+	}
+}
+
+StrokeDrawer::StrokeDrawer()
+: closed(false), lineJoin(LineJoin::Miter), lineCup(LineCup::Butt), width(1.0f)
+, miterLimit(4.0f), antialiased(false), antialiasingValue(0.0f) { }
+
+StrokeDrawer::StrokeDrawer(const Color4B &c, float w, LineJoin join, LineCup cup, float l) {
+	setStyle(c, w, join, cup, l);
+}
+
+void StrokeDrawer::setStyle(const Color4B &c, float w, LineJoin j, LineCup cup, float l) {
+	color = TESSColor{c.r, c.g, c.b, c.a};
+	width = w / 2.0f; // we use half-width in calculations
+	lineJoin = j;
+	lineCup = cup;
+	miterLimit = l;
+	closed = false;
+}
+
+void StrokeDrawer::setAntiAliased(float v) {
+	if (v == 0.0f) {
+		antialiased = false;
+	} else {
+		antialiased = true;
+		antialiasingValue = 1.0f / v;
+	}
+}
+
+void StrokeDrawer::draw(const Vector<float> &points, bool isClosed) {
+	outline.clear(); outline.reserve(points.size() + 2);
+	if (antialiased) {
+		inner.clear(); inner.reserve(points.size() + 2);
+		outer.clear(); outer.reserve(points.size() + 2);
+	}
+
+	auto size = points.size() / 2;
+	if (size < 2) {
+		return;
+	}
+
+	if (size > 1 && !isClosed) {
+		// check if contour was closed without close command
+		if (fabsf(points[0] - points[(size - 1) * 2]) < std::numeric_limits<float>::epsilon()
+				&& fabsf(points[1] - points[(size - 1) * 2 + 1]) < std::numeric_limits<float>::epsilon()) {
+			isClosed = true;
+		}
+	}
+
+	closed = isClosed;
+
+	if (isClosed) {
+		auto start = points.data();
+		auto ptr = points.data();
+		for (size_t i = 0; i < size - 2; ++ i) {
+			processLine(*(ptr), *(ptr + 1), *(ptr + 2), *(ptr + 3), *(ptr + 4), *(ptr + 5));
+			ptr += 2;
+		}
+
+		processLine(*(ptr), *(ptr + 1), *(ptr + 2), *(ptr + 3), *(start), *(start + 1));
+		ptr += 2;
+		processLine(*(ptr), *(ptr + 1), *(start), *(start + 1), *(start + 2), *(start + 3));
+
+		outline.push_back(outline[0]);
+		outline.push_back(outline[1]);
+
+		if (antialiased) {
+			inner.push_back(inner[0]);
+			inner.push_back(inner[1]);
+			outer.push_back(outer[0]);
+			outer.push_back(outer[1]);
+		}
+	} else {
+		processLineCup(points[0], points[1], points[2], points[3], false);
+		for (size_t i = 0; i < size - 2; ++ i) {
+			auto ptr = points.data() + 2 * i;
+			processLine(*(ptr), *(ptr + 1), *(ptr + 2), *(ptr + 3), *(ptr + 4), *(ptr + 5));
+		}
+		processLineCup(points[(size - 1) * 2], points[(size - 1) * 2 + 1], points[(size - 2) * 2], points[(size - 2) * 2 + 1], true);
+	}
+}
+
+void StrokeDrawer::processLineCup(float cx, float cy, float x, float y, bool inverse) {
+	const float x0 = x - cx;
+	const float y0 = y - cy;
+	const float len = draw_length(x0, y0); // for normalization
+
+	const float nx = x0 / len;
+	const float ny = y0 / len;
+
+	const float x1 = ny;
+	const float y1 = nx;
+
+	if (antialiased) {
+		const float offset = (width - antialiasingValue / 2.0f);
+
+		const float x1_out = cx + x1 * offset, y1_out = cy - y1 * offset;
+		const float x1_inn = cx - x1 * offset, y1_inn = cy + y1 * offset;
+
+		const float apnx = antialiasingValue * (x1 + y1);
+		const float apny = antialiasingValue * (y1 - x1);
+
+		const float annx = antialiasingValue * (x1 - y1);
+		const float anny = antialiasingValue * (y1 + x1);
+
+		if (inverse) {
+			outline.push_back(TESSPoint{x1_inn, y1_inn, color});
+			inner.push_back(outline.back());
+			inner.push_back(TESSPoint{x1_inn - apnx, y1_inn + apny, TESSColor{color.r, color.g, color.b, 0}});
+
+			outline.push_back(TESSPoint{x1_out, y1_out, color});
+			outer.push_back(outline.back());
+			outer.push_back(TESSPoint{x1_out + annx, y1_out - anny, TESSColor{color.r, color.g, color.b, 0}});
+
+			inner.push_back(outer[outer.size() - 2]);
+			inner.push_back(outer[outer.size() - 1]);
+		} else {
+			outline.push_back(TESSPoint{x1_out, y1_out, color});
+			inner.push_back(outline.back());
+			inner.push_back(TESSPoint{x1_out + annx, y1_out - anny, TESSColor{color.r, color.g, color.b, 0}});
+
+			outer.push_back(inner[inner.size() - 2]);
+			outer.push_back(inner[inner.size() - 1]);
+
+			outline.push_back(TESSPoint{x1_inn, y1_inn, color});
+			outer.push_back(outline.back());
+			outer.push_back(TESSPoint{x1_inn - apnx, y1_inn + apny, TESSColor{color.r, color.g, color.b, 0}});
+		}
+	} else {
+		if (inverse) {
+			outline.push_back(TESSPoint{cx - x1 * width, cy + y1 * width, color});
+			outline.push_back(TESSPoint{cx + x1 * width, cy - y1 * width, color});
+		} else {
+			outline.push_back(TESSPoint{cx + x1 * width, cy - y1 * width, color});
+			outline.push_back(TESSPoint{cx - x1 * width, cy + y1 * width, color});
+		}
+	}
+}
+
+void StrokeDrawer::processLine(float _x0, float _y0, float cx, float cy, float _x1, float _y1) {
+	const float x0 = _x0 - cx;
+	const float y0 = _y0 - cy;
+	const float x1 = _x1 - cx;
+	const float y1 = _y1 - cy;
+
+	const float a = draw_angle(x0, y0, x1, y1); // -PI; PI
+
+	const float n0 = sqrtf(x0 * x0 + y0 * y0);
+	if (n0 < std::numeric_limits<float>::epsilon()) {
+		return ;
+	}
+
+	const float nx = x0 / n0;
+	const float ny = y0 / n0;
+
+	const float sinAngle = sinf(a / 2.0f);
+	const float cosAngle = cosf(a / 2.0f);
+
+	const float tx = nx * cosAngle - ny * sinAngle;
+	const float ty = ny * cosAngle + nx * sinAngle;
+
+	if (antialiased) {
+		const float offset = (width - antialiasingValue / 2.0f) / sinAngle;
+		const float offsetAA = (width + antialiasingValue / 2.0f) / sinAngle;
+
+		outline.push_back(TESSPoint{cx + tx * offset, cy + ty * offset, color});
+		inner.push_back(outline.back());
+		inner.push_back(TESSPoint{cx + tx * offsetAA, cy + ty * offsetAA, TESSColor{color.r, color.g, color.b, 0}});
+
+		outline.push_back(TESSPoint{cx - tx * offset, cy - ty * offset, color});
+		outer.push_back(outline.back());
+		outer.push_back(TESSPoint{cx - tx * offsetAA, cy - ty * offsetAA, TESSColor{color.r, color.g, color.b, 0}});
+	} else {
+		const float offset = width / sinAngle;
+		outline.push_back(TESSPoint{cx + tx * offset, cy + ty * offset, color});
+		outline.push_back(TESSPoint{cx - tx * offset, cy - ty * offset, color});
+	}
+}
+
+void StrokeDrawer::clear() {
+	outline.clear();
 }
 
 NS_LAYOUT_END

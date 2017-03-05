@@ -48,8 +48,6 @@ bool MenuButton::init() {
 	setSpawnDelay(0.1f);
 	setSwallowTouches(false);
 
-	//_background->setVisible(false);
-
 	_menuNameLabel = construct<Label>(FontType::Subhead);
 	_menuNameLabel->setVisible(false);
 	_menuNameLabel->setAnchorPoint(Vec2(0, 0.5f));
@@ -119,7 +117,7 @@ void MenuButton::layoutSubviews() {
 		auto nameIcon = _source->getNameIcon();
 		if (nameIcon != IconName::None) {
 			_menuNameIcon->setIconName(nameIcon);
-			_menuNameIcon->setPosition(cocos2d::Vec2(namePos, height / 2));
+			_menuNameIcon->setPosition(Vec2(namePos, height / 2));
 			_menuNameIcon->setVisible(true);
 			_menuNameIcon->setOpacity((enabled) ? 222 : 138);
 
@@ -131,7 +129,7 @@ void MenuButton::layoutSubviews() {
 		auto name = _source->getName();
 		if (!name.empty()) {
 			_menuNameLabel->setString(name);
-			_menuNameLabel->setPosition(cocos2d::Vec2(namePos, height / 2));
+			_menuNameLabel->setPosition(Vec2(namePos, height / 2));
 			_menuNameLabel->setVisible(true);
 			_menuNameLabel->setOpacity((enabled) ? 222 : 138);
 		} else {
@@ -140,7 +138,7 @@ void MenuButton::layoutSubviews() {
 
 		if (_source->getNextMenu()) {
 			_menuValueIcon->setIconName(IconName::Navigation_arrow_drop_down);
-			_menuValueIcon->setPosition(cocos2d::Vec2(_contentSize.width - 8, height / 2));
+			_menuValueIcon->setPosition(Vec2(_contentSize.width - 8, height / 2));
 			_menuValueIcon->setVisible(true);
 			_menuValueIcon->setRotated(true);
 		} else {
@@ -151,7 +149,7 @@ void MenuButton::layoutSubviews() {
 		if (!_source->getValue().empty() && !_menuValueIcon->isVisible()) {
 			_menuValueLabel->setVisible(true);
 			_menuValueLabel->setString(_source->getValue());
-			_menuValueLabel->setPosition(cocos2d::Vec2(_contentSize.width - 16, height / 2));
+			_menuValueLabel->setPosition(Vec2(_contentSize.width - 16, height / 2));
 			_menuValueLabel->setOpacity((enabled) ? 222 : 138);
 		} else {
 			_menuValueLabel->setVisible(false);
@@ -161,7 +159,7 @@ void MenuButton::layoutSubviews() {
 			&& !_menuValueLabel->isVisible() && !_menuValueIcon->isVisible()) {
 
 			_menuValueIcon->setIconName(_source->getValueIcon());
-			_menuValueIcon->setPosition(cocos2d::Vec2(_contentSize.width - 16, height / 2));
+			_menuValueIcon->setPosition(Vec2(_contentSize.width - 16, height / 2));
 			_menuValueIcon->setVisible(true);
 			_menuValueIcon->setOpacity((enabled) ? 222 : 138);
 		}
@@ -174,12 +172,32 @@ void MenuButton::layoutSubviews() {
 
 		setEnabled(enabled && _menu->isEnabled());
 	}
+
+	if (_menuNameLabel->isVisible()) {
+		float width = _contentSize.width - _menuNameLabel->getPositionX() - 16.0f;
+		if (_menuValueLabel->isVisible()) {
+			_menuValueLabel->tryUpdateLabel();
+		}
+
+		if (_menuValueLabel->isVisible() && _menuValueLabel->getContentSize().width > 0.0f) {
+			width = _menuValueLabel->getPositionX() - _menuNameLabel->getPositionX() - _menuValueLabel->getContentSize().width - 8.0f;
+		} else if (_menuValueIcon->isVisible()) {
+			width = _menuValueIcon->getPositionX() - _menuNameLabel->getPositionX() - _menuValueIcon->getContentSize().width - 8.0f;
+		}
+
+		if (width > 0.0f) {
+			if (_wrapName) {
+				_menuNameLabel->setWidth(width);
+			} else {
+				_menuNameLabel->setMaxWidth(width);
+			}
+		}
+	}
 }
 
 void MenuButton::onButton() {
 	if (_source) {
-		auto menu = getMenu();
-		CC_SAFE_RETAIN(menu);
+		Rc<Menu> menu = getMenu();
 
 		if (auto cb = _source->getCallback()) {
 			cb(this, _source);
@@ -188,8 +206,8 @@ void MenuButton::onButton() {
 			auto scene = Scene::getRunningScene();
 			auto size = scene->getContentSize();
 
-			auto posLeft = convertToWorldSpace(cocos2d::Vec2(0, _contentSize.height));
-			auto posRight = convertToWorldSpace(cocos2d::Vec2(_contentSize.width, _contentSize.height));
+			auto posLeft = convertToWorldSpace(Vec2(0, _contentSize.height));
+			auto posRight = convertToWorldSpace(Vec2(_contentSize.width, _contentSize.height));
 
 			float pointLeft = posLeft.x;
 			float pointRight = size.width - posRight.x;
@@ -204,7 +222,6 @@ void MenuButton::onButton() {
 		}
 		if (menu) {
 			menu->onMenuButtonPressed(this);
-			menu->release();
 		}
 	}
 }
@@ -220,6 +237,16 @@ void MenuButton::setEnabled(bool value) {
 	} else {
 		Button::setEnabled(false);
 	}
+}
+
+void MenuButton::setWrapName(bool value) {
+	if (value != _wrapName) {
+		_wrapName = value;
+		_contentSizeDirty = true;
+	}
+}
+bool MenuButton::isWrapName() const {
+	return _wrapName;
 }
 
 void MenuButton::onLightLevel() {

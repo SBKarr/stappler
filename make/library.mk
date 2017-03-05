@@ -23,7 +23,7 @@ GLOBAL_ROOT = .
 endif
 
 ifndef COCOS2D_ROOT
-COCOS2D_ROOT := libs/src/stappler-cocos2d-x
+COCOS2D_ROOT := libs/external/stappler-cocos2d-x
 endif
 
 include $(GLOBAL_ROOT)/make/compiler.mk
