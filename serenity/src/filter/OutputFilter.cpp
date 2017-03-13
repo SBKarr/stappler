@@ -196,6 +196,9 @@ apr_status_t OutputFilter::func(ap_filter_t *f, apr_bucket_brigade *bb) {
 						apr::ostringstream output(dataBuf, len);
 
 						output << _responseLine;
+						if (_responseLine.back() != '\n') {
+							output << '\n';
+						}
 						for (auto &it : _headers) {
 							output << it.key << ": " << it.val << "\r\n";
 						}
