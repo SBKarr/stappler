@@ -366,7 +366,7 @@ template <> size_t ReadFunction(apr::basic_file &f, uint8_t *buf, size_t nbytes)
 }
 
 template <> size_t SeekFunction(apr::basic_file &f, int64_t offset, Seek s) {
-	std::ios_base::seekdir d;
+	std::ios_base::seekdir d = std::ios_base::beg;
 	switch(s) {
 	case Seek::Set: d = std::ios_base::beg; break;
 	case Seek::Current: d = std::ios_base::cur; break;

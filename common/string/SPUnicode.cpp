@@ -379,7 +379,7 @@ bool isspace(const char *ch) {
 }
 
 Pair<char16_t, uint8_t> read(char_const_ptr_t ptr) {
-	uint8_t mask;
+	uint8_t mask = 0;
 	uint8_t len = unicode::utf8DecodeLength(*ptr, mask);
 	uint32_t ret = ptr[0] & mask;
 	for (uint8_t c = 1; c < len; ++c) {

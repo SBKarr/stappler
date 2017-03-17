@@ -328,7 +328,7 @@ template <class T> inline T progress(const T &a, const T &b, float p) { return (
 
 template <class T, class V>
 struct _ValueReinterpretator {
-	inline static T reinterpret(V v) { return reinterpret_cast<T &>(v); }
+	inline static T reinterpret(V v) { T ret; memcpy(&ret, &v, sizeof(V)); return ret; } // follow strict aliasing rules
 };
 
 template <class T>
