@@ -100,6 +100,7 @@ namespace ime {
 		void insertText(const WideString &str);
 		void deleteBackward();
 		void textChanged(const WideString &text, uint32_t cursorStart, uint32_t cursorLen);
+		void cursorChanged(uint32_t cursorStart, uint32_t cursorLen);
 		void onKeyboardShow(const Rect &rect, float duration);
 		void onKeyboardHide(float duration);
 		void setInputEnabled(bool enabled);

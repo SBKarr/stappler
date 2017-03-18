@@ -47,6 +47,8 @@ protected:
 	void setUniformColor(cocos2d::GLProgram *, const Color4B &);
 	void setUniformTransform(cocos2d::GLProgram *,const Mat4 &);
 
+	bool _valid = false;
+
 	cocos2d::GLProgram *_drawProgram = nullptr;
 	cocos2d::GLProgram *_aaProgram = nullptr;
 

@@ -120,10 +120,10 @@ Url &Url::clear() {
 	return *this;
 }
 
-using Scheme =  chars::Compose<char, chars::CharGroup<char, chars::CharGroupId::Alphanumeric>, chars::Chars<char, '+', '-', '.'>>;
-using Ipv6 =  chars::Compose<char, chars::CharGroup<char, chars::CharGroupId::Hexadecimial>, chars::Chars<char, ':'>>;
+using Scheme =  chars::Compose<char, chars::CharGroup<char, CharGroupId::Alphanumeric>, chars::Chars<char, '+', '-', '.'>>;
+using Ipv6 =  chars::Compose<char, chars::CharGroup<char, CharGroupId::Hexadecimial>, chars::Chars<char, ':'>>;
 
-using Unreserved = chars::Compose<char, chars::CharGroup<char, chars::CharGroupId::Alphanumeric>, chars::Chars<char, '-', '.', '_', '~', '%'>>;
+using Unreserved = chars::Compose<char, chars::CharGroup<char, CharGroupId::Alphanumeric>, chars::Chars<char, '-', '.', '_', '~', '%'>>;
 using SubDelim = chars::Chars<char, '!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '='>;
 using GenDelim = chars::Chars<char, ':', '/', '?', '#', '[', ']', '@'>;
 
@@ -131,7 +131,7 @@ using UnreservedUni = chars::Compose<char, Unreserved, chars::UniChar>;
 
 static bool validateScheme(const CharReaderBase &r) {
 	auto cpy = r;
-	if (cpy.is<chars::CharGroup<char, chars::CharGroupId::Alphanumeric>>()) {
+	if (cpy.is<chars::CharGroup<char, CharGroupId::Alphanumeric>>()) {
 		cpy ++;
 		cpy.skipChars<Scheme>();
 		if (cpy.empty()) {

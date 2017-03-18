@@ -56,6 +56,7 @@ GLOBAL_CPP := clang++
 else
 GLOBAL_CPP := clang++-$(CLANG)
 endif # ifeq ($(CLANG),1)
+OSTYPE_GCHFLAGS := -x c++-header
 else
 ifdef MINGW
 GLOBAL_CPP := $(MINGW)-g++
@@ -73,6 +74,7 @@ GLOBAL_CC := clang
 else
 GLOBAL_CC := clang-$(CLANG)
 endif # ifeq ($(CLANG),1)
+OSTYPE_GCHFLAGS := -x c++-header
 else
 ifdef MINGW
 GLOBAL_CC := $(MINGW)-gcc

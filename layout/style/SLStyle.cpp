@@ -302,7 +302,7 @@ static bool ParameterList_readBorderWidth(ParameterList &list, const CharReaderB
 
 template <style::ParameterName Style, style::ParameterName Color, style::ParameterName Width>
 static void ParameterList_readBorder(ParameterList &list, const CharReaderBase &value, MediaQueryId mediaQuary) {
-	value.split<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>([&] (const CharReaderBase &str) {
+	value.split<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>([&] (const CharReaderBase &str) {
 		if (!ParameterList_readBorderStyle<Style>(list, str, mediaQuary)) {
 			if (!ParameterList_readBorderColor<Color>(list, str, mediaQuary)) {
 				ParameterList_readBorderWidth<Width>(list, str, mediaQuary);
@@ -314,7 +314,7 @@ static void ParameterList_readBorder(ParameterList &list, const CharReaderBase &
 template <typename T, typename Getter>
 static void ParameterList_readQuadValue(const CharReaderBase &value, T &top, T &right, T &bottom, T &left, const Getter &g) {
 	int count = 0;
-	value.split<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>([&] (const CharReaderBase &r) {
+	value.split<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>([&] (const CharReaderBase &r) {
 		count ++;
 		if (count == 1) {
 			top = right = bottom = left = g(r);
@@ -487,7 +487,7 @@ void ParameterList::read(const String &name, const CharReaderBase &value, MediaQ
 			set<ParameterName::ListStylePosition>(ListStylePosition::Outside, mediaQuary);
 		}
 	} else if (name == "list-style") {
-		value.split<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>([&] (const CharReaderBase &r) {
+		value.split<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>([&] (const CharReaderBase &r) {
 			if (!ParameterList_readListStyleType(*this, r, mediaQuary)) {
 				if (r.compare("inside")) {
 					set<ParameterName::ListStylePosition>(ListStylePosition::Inside, mediaQuary);
@@ -892,7 +892,7 @@ void ParameterList::read(const String &name, const CharReaderBase &value, MediaQ
 		BorderStyle style = BorderStyle::None;
 		Metric width(0.0f, Metric::Units::Px);
 		Color4B color(0, 0, 0, 0);
-		value.split<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>([&] (const CharReaderBase &r) {
+		value.split<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>([&] (const CharReaderBase &r) {
 			if (r.compare("solid")) {
 				style = BorderStyle::Solid;
 			} else if (r.compare("dotted")) {

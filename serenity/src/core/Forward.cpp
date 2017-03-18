@@ -33,10 +33,10 @@ THE SOFTWARE.
 
 NS_SA_EXT_BEGIN(idn)
 
-using HostUnicodeChars = chars::Compose<char, chars::CharGroup<char, chars::CharGroupId::Alphanumeric>,
+using HostUnicodeChars = chars::Compose<char, chars::CharGroup<char, CharGroupId::Alphanumeric>,
 		chars::Chars<char, '.', '-'>, chars::Range<char, 128, 255>>;
 
-using HostAsciiChars = chars::Compose<char, chars::CharGroup<char, chars::CharGroupId::Alphanumeric>,
+using HostAsciiChars = chars::Compose<char, chars::CharGroup<char, CharGroupId::Alphanumeric>,
 		chars::Chars<char, '.', '-'>>;
 
 String toAscii(const String &source, bool validate) {
@@ -97,11 +97,11 @@ bool validateIdentifier(const String &str) {
 	}
 
 	CharReaderBase r(str);
-	if (!r.is<chars::Compose<char, chars::CharGroup<char, chars::CharGroupId::Alphanumeric>, chars::Chars<char, '_'>>>()) {
+	if (!r.is<chars::Compose<char, chars::CharGroup<char, CharGroupId::Alphanumeric>, chars::Chars<char, '_'>>>()) {
 		return false;
 	}
 
-	r.skipChars<chars::CharGroup<char, chars::CharGroupId::Alphanumeric>, chars::Chars<char, '_', '-', '.', '@'>>();
+	r.skipChars<chars::CharGroup<char, CharGroupId::Alphanumeric>, chars::Chars<char, '_', '-', '.', '@'>>();
 	if (!r.empty()) {
 		return false;
 	}
@@ -309,7 +309,7 @@ bool validateHexadecimial(const String &str) {
 	}
 
 	CharReaderBase r(str);
-	r.skipChars<chars::CharGroup<char, chars::CharGroupId::Hexadecimial>>();
+	r.skipChars<chars::CharGroup<char, CharGroupId::Hexadecimial>>();
 	if (!r.empty()) {
 		return false;
 	}
@@ -323,7 +323,7 @@ bool validateBase64(const String &str) {
 	}
 
 	CharReaderBase r(str);
-	r.skipChars<chars::CharGroup<char, chars::CharGroupId::Base64>>();
+	r.skipChars<chars::CharGroup<char, CharGroupId::Base64>>();
 	if (!r.empty()) {
 		return false;
 	}

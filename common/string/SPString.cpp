@@ -135,7 +135,7 @@ String urldecode(const String &str) {
 
 		if (r.is('%') && r > 2) {
 			CharReaderBase hex(r.data() + 1, 2);
-			hex.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::Hexadecimial>>();
+			hex.skipChars<CharReaderBase::CharGroup<CharGroupId::Hexadecimial>>();
 			if (hex.empty()) {
 				ret.push_back(base16::hexToChar(r[1], r[2]));
 			} else {

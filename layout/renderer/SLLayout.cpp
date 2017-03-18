@@ -101,10 +101,6 @@ bool Object::isExternal() const {
 	return (type == Type::Background && !value.background.backgroundImage.empty());
 }
 
-bool Object::isEmpty() const {
-	return (type == Type::Empty);
-}
-
 Outline Outline::border(const OutlineStyle &style, const Size &vp, float swidth, float emBase, float &borderWidth) {
 	Border border;
 	if (style.borderTopStyle != style::BorderStyle::None) {

@@ -50,6 +50,10 @@ SPMIN_INCLUDES := \
 SPMIN_GCH := $(addsuffix .gch,$(addprefix $(GLOBAL_ROOT)/,$(SPMIN_PRECOMPILED_HEADERS)))
 SPMIN_GCH := $(patsubst $(GLOBAL_ROOT)/%,$(SPMIN_OUTPUT_DIR)/include/%,$(SPMIN_GCH))
 
+SPMIN_GCH := $(addprefix $(GLOBAL_ROOT)/,$(SPMIN_PRECOMPILED_HEADERS))
+SPMIN_H_GCH := $(patsubst $(GLOBAL_ROOT)/%,$(SPMIN_OUTPUT_DIR)/include/%,$(SPMIN_GCH))
+SPMIN_GCH := $(addsuffix .gch,$(SPMIN_H_GCH))
+
 SPMIN_OBJS := $(patsubst %.mm,%.o,$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(patsubst $(GLOBAL_ROOT)/%,$(SPMIN_OUTPUT_DIR)/%,$(SPMIN_SRCS)))))
 SPMIN_DIRS := $(sort $(dir $(SPMIN_OBJS))) $(sort $(dir $(SPMIN_GCH)))
 
@@ -61,21 +65,23 @@ SPMIN_CFLAGS := $(GLOBAL_CFLAGS) $(SPMIN_FLAGS) $(SPMIN_INPUT_CFLAGS)
 -include $(patsubst %.o,%.d,$(SPMIN_OBJS))
 -include $(patsubst %.gch,%.d,$(SPMIN_GCH))
 
-$(SPMIN_OUTPUT_DIR)/include/%.gch: $(GLOBAL_ROOT)/%
-	@$(GLOBAL_MKDIR) $(dir $(SPMIN_OUTPUT_DIR)/include/$*)
-	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(SPMIN_OUTPUT_DIR)/include/$*.d $(SPMIN_CXXFLAGS) -c -o $@ $<
-	@cp -f $< $(SPMIN_OUTPUT_DIR)/include/$*
+$(SPMIN_OUTPUT_DIR)/include/%.h : $(GLOBAL_ROOT)/%.h
+	@$(GLOBAL_MKDIR) $(dir $(SPMIN_OUTPUT_DIR)/include/$*.h)
+	@cp -f $< $(SPMIN_OUTPUT_DIR)/include/$*.h
+
+$(SPMIN_OUTPUT_DIR)/include/%.h.gch: $(SPMIN_OUTPUT_DIR)/include/%.h
+	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) $(OSTYPE_GCHFLAGS) -MMD -MP -MF $(SPMIN_OUTPUT_DIR)/include/$*.d $(SPMIN_CXXFLAGS) -c -o $@ $<
 
 $(SPMIN_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.cpp $(SPMIN_GCH)
 	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(SPMIN_OUTPUT_DIR)/$*.d $(SPMIN_CXXFLAGS) -c -o $@ $<
 
 $(SPMIN_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.mm $(SPMIN_GCH)
-	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(SPMIN_OUTPUT_DIR)/$*.d $(SPMIN_CXXFLAGS) -c -o $@ $<
+	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(SPMIN_OUTPUT_DIR)/$*.d $(SPMIN_CXXFLAGS) -fobjc-arc -c -o $@ $<
 
 $(SPMIN_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.c $(SPMIN_GCH)
 	$(GLOBAL_QUIET_CC) $(GLOBAL_CC) -MMD -MP -MF $(SPMIN_OUTPUT_DIR)/$*.d $(SPMIN_CFLAGS) -c -o $@ $<
 
-$(SPMIN_OUTPUT): $(SPMIN_GCH) $(SPMIN_OBJS)
+$(SPMIN_OUTPUT): $(SPMIN_H_GCH) $(SPMIN_GCH) $(SPMIN_OBJS)
 	$(GLOBAL_QUIET_LINK) $(GLOBAL_CPP)  $(SPMIN_OBJS) $(SPMIN_LIBS) -shared $(OSTYPE_LDFLAGS) -o $(SPMIN_OUTPUT)
 
 $(SPMIN_OUTPUT_STATIC) : $(SPMIN_H_GCH) $(SPMIN_GCH) $(SPMIN_OBJS)

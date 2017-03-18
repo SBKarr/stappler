@@ -147,7 +147,12 @@ struct Object {
 	bool isTransparent() const;
 	bool isDrawable() const;
 	bool isExternal() const;
-	bool isEmpty() const;
+
+	bool isEmpty() const { return (type == Type::Empty); }
+	bool isLabel() const { return type == Type::Label; }
+	bool isBackground() const { return type == Type::Background; }
+	bool isOutline() const { return type == Type::Outline; }
+	bool isLink() const { return type == Type::Link; }
 };
 
 using FloatStack = Vector< Rect >;

@@ -298,9 +298,9 @@ void Button::animateSelection() {
 	Vec2 *point = new Vec2();
 	auto b = action::sequence(_spawnDelay, construct<ProgressAction>(0.4, 1.0,
 			[this, path, size, point] (ProgressAction *a, float progress) {
-		//updateSpawn(progress, (*path), (*size), (*point));
+		updateSpawn(progress, (*path), (*size), (*point));
 	}, [this, path, size, point] (ProgressAction *a) {
-		//(*path) = beginSpawn();
+		(*path) = beginSpawn();
 		if (_animationNode) {
 			(*size) = _animationNode->getContentSize();
 			(*point) = _animationNode->convertToNodeSpace(_touchPoint);
@@ -309,7 +309,7 @@ void Button::animateSelection() {
 		if (_animationNode) {
 			_animationNode->removePath((*path));
 		}
-		//endSpawn();
+		endSpawn();
 		delete path;
 		delete size;
 		delete point;

@@ -30,7 +30,6 @@ typedef struct _HyphenDict HyphenDict;
 
 NS_LAYOUT_BEGIN
 
-using CharGroupId = chars::CharGroupId;
 using TextParameters = style::TextLayoutParameters;
 using TextAlign = style::TextAlign;
 using WhiteSpace = style::WhiteSpace;

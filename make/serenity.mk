@@ -96,7 +96,7 @@ $(SERENITY_OUTPUT_DIR)/include/%.h : $(GLOBAL_ROOT)/%.h
 	@cp -f $< $(SERENITY_OUTPUT_DIR)/include/$*.h
 
 $(SERENITY_OUTPUT_DIR)/include/%.h.gch: $(SERENITY_OUTPUT_DIR)/include/%.h
-	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(SERENITY_OUTPUT_DIR)/include/$*.h.d $(SERENITY_CXXFLAGS) -c -o $@ $<
+	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) $(OSTYPE_GCHFLAGS) -MMD -MP -MF $(SERENITY_OUTPUT_DIR)/include/$*.h.d $(SERENITY_CXXFLAGS) -c -o $@ $<
 
 $(GLOBAL_ROOT)/serenity/gen/__Virtual.cpp: $(SERENITY_VIRTUAL_SRCS)
 	@mkdir -p $(GLOBAL_ROOT)/serenity/gen

@@ -144,7 +144,7 @@ stappler::EventHeader stappler::WebViewHandle::onClosed("WebView", "WebView.onCl
 	
     [[NSURLCache sharedURLCache] removeAllCachedResponses];
 	
-	self.view.backgroundColor = [UIColor scrollViewTexturedBackgroundColor];
+	self.view.backgroundColor = [UIColor groupTableViewBackgroundColor];
     self.view.multipleTouchEnabled = YES;
     
     CGRect webViewRect = self.view.bounds;

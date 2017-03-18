@@ -44,7 +44,7 @@ struct MemBuffer<true> : AllocBase {
 	uint32_t capacity() const { return allocated; }
 	void clear() { offset = 0; }
 
-	void *alloc(size_t s) {
+	void *alloc(uint32_t s) {
 		auto ret = &data[offset];
 		*((uint32_t *)ret) = s;
 		offset += s + 0x8;
@@ -70,7 +70,7 @@ struct MemBuffer<false> : AllocBase {
 	uint32_t capacity() const { return allocated; }
 	void clear() { offset = 0; }
 
-	void *alloc(size_t s) {
+	void *alloc(uint32_t s) {
 		auto ret = &data[offset];
 		offset += s;
 		return ret;
@@ -91,11 +91,11 @@ class MemPool : public Ref {
 public:
 	using Buffer = MemBuffer<Reallocatable>;
 
-	MemBuffer<Reallocatable> *allocate_buffer(size_t s) {
+	MemBuffer<Reallocatable> *allocate_buffer(uint32_t s) {
 		uint8_t * mem = (uint8_t *)AllocBase::operator new(s);
 		uint8_t * memAlign = (uint8_t *)(intptr_t(mem + 0xF) & ~0xF);
-		size_t offset = (memAlign - mem) + ((sizeof(MemBuffer<Reallocatable>) + 0xF) & ~0xF);
-		return new (mem) MemBuffer<Reallocatable>(mem, s - offset, mem + offset);
+		uint32_t offset = uint32_t((memAlign - mem) + ((sizeof(MemBuffer<Reallocatable>) + 0xF) & ~0xF));
+		return new (mem) MemBuffer<Reallocatable>(mem, uint32_t(s - offset), mem + offset);
 	}
 
 	void deallocate_buffer(MemBuffer<Reallocatable> *buf) {
@@ -119,7 +119,7 @@ public:
 		if (b->remains() < size) {
 			++ targetSlot;
 			if (targetSlot >= allocatedSlots) {
-				slots[targetSlot] = allocate_buffer(16_KiB << targetSlot);
+				slots[targetSlot] = allocate_buffer(uint32_t(16_KiB << targetSlot));
 				++ allocatedSlots;
 			}
 			return allocate(size);

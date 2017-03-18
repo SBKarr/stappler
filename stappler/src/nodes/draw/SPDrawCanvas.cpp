@@ -81,16 +81,20 @@ void Canvas::begin(cocos2d::Texture2D *tex, const Color4B &color) {
 	}
 
 	if (uint32_t(w) != _width || uint32_t(h) != _height) {
+		GLint oldRbo = 0;
+		glGetIntegerv(GL_RENDERBUFFER_BINDING, &oldRbo);
 		_width = w;
 		_height = h;
 		glBindRenderbuffer(GL_RENDERBUFFER, _rbo);
 		glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, _width, _height);
-		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+		glBindRenderbuffer(GL_RENDERBUFFER, oldRbo);
+	    CHECK_GL_ERROR_DEBUG();
 	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex->getName(), 0);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, _rbo);
+    CHECK_GL_ERROR_DEBUG();
 
 	auto check = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	switch (check) {
@@ -112,6 +116,7 @@ void Canvas::begin(cocos2d::Texture2D *tex, const Color4B &color) {
 		break;
 #endif
 	case GL_FRAMEBUFFER_COMPLETE:
+		_valid = true;
 		//log::format("Framebuffer", "GL_FRAMEBUFFER_COMPLETE");
 		break;
 	case 0:
@@ -122,54 +127,66 @@ void Canvas::begin(cocos2d::Texture2D *tex, const Color4B &color) {
 		break;
 	}
 
-	glViewport(0, 0, (GLsizei)_width, (GLsizei)_height);
-	glClearColor(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	if (_valid) {
+		glViewport(0, 0, (GLsizei)_width, (GLsizei)_height);
+		glClearColor(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-	int32_t gcd = sp_gcd(_width, _height);
-	int32_t dw = (int32_t)_width / gcd;
-	int32_t dh = (int32_t)_height / gcd;
-	int32_t dwh = gcd * dw * dh;
+		int32_t gcd = sp_gcd(_width, _height);
+		int32_t dw = (int32_t)_width / gcd;
+		int32_t dh = (int32_t)_height / gcd;
+		int32_t dwh = gcd * dw * dh;
 
-	float mod = 1.0f;
-	while (dwh * mod > 8_KiB) {
-		mod /= 2.0f;
+		float mod = 1.0f;
+		while (dwh * mod > 8_KiB) {
+			mod /= 2.0f;
+		}
+
+		_viewTransform = Mat4::IDENTITY;
+		_viewTransform.scale(dh * mod, dw * mod, -1.0);
+		_viewTransform.m[12] = -dwh * mod / 2.0f;
+		_viewTransform.m[13] = -dwh * mod / 2.0f;
+		_viewTransform.m[14] = dwh * mod / 2.0f - 1;
+		_viewTransform.m[15] = dwh * mod / 2.0f + 1;
+		_viewTransform.m[11] = -1.0f;
+
+		_transform = Mat4::IDENTITY;
+
+		_line.reserve(256);
+
+		_drawProgram = TextureCache::getInstance()->getRawPrograms()->getProgram(GLProgramSet::RawRects);
+		_aaProgram = TextureCache::getInstance()->getRawPrograms()->getProgram(
+				_internalFormat == cocos2d::Texture2D::PixelFormat::R8?GLProgramSet::RawAAMaskR:GLProgramSet::RawAAMaskRGBA);
+
+		_vertexBufferSize = 0;
+		_indexBufferSize = 0;
+		_uniformColorDraw = Color4B(0, 0, 0, 0);
+		_uniformColorAA = Color4B(0, 0, 0, 0);
+
+		_uniformTransformDraw = Mat4::ZERO;
+		_uniformTransformAA = Mat4::ZERO;
+
+		_subAccum.clear();
+		_tessAccum.clear();
+		_glAccum.clear();
+		_contourVertex = 0;
+		_fillVertex = 0;
+
+	    CHECK_GL_ERROR_DEBUG();
+
+	} else {
+		glBindFramebuffer(GL_FRAMEBUFFER, _oldFbo);
 	}
-
-	_viewTransform = Mat4::IDENTITY;
-	_viewTransform.scale(dh * mod, dw * mod, -1.0);
-	_viewTransform.m[12] = -dwh * mod / 2.0f;
-	_viewTransform.m[13] = -dwh * mod / 2.0f;
-	_viewTransform.m[14] = dwh * mod / 2.0f - 1;
-	_viewTransform.m[15] = dwh * mod / 2.0f + 1;
-	_viewTransform.m[11] = -1.0f;
-
-	_transform = Mat4::IDENTITY;
-
-	_line.reserve(256);
-
-	_drawProgram = TextureCache::getInstance()->getRawPrograms()->getProgram(GLProgramSet::RawRects);
-	_aaProgram = TextureCache::getInstance()->getRawPrograms()->getProgram(
-			_internalFormat == cocos2d::Texture2D::PixelFormat::R8?GLProgramSet::RawAAMaskR:GLProgramSet::RawAAMaskRGBA);
-
-	_vertexBufferSize = 0;
-	_indexBufferSize = 0;
-	_uniformColorDraw = Color4B(0, 0, 0, 0);
-	_uniformColorAA = Color4B(0, 0, 0, 0);
-
-	_uniformTransformDraw = Mat4::ZERO;
-	_uniformTransformAA = Mat4::ZERO;
-
-	_subAccum.clear();
-	_tessAccum.clear();
-	_glAccum.clear();
-	_contourVertex = 0;
-	_fillVertex = 0;
 }
 
 void Canvas::end() {
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
-	glBindFramebuffer(GL_FRAMEBUFFER, _oldFbo);
+	if (_valid) {
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, _oldFbo);
+	    CHECK_GL_ERROR_DEBUG();
+	}
+
+	_valid = false;
 
 	//log::format("CanvasTiming", "sub: %llu, tess: %llu, gl: %llu, Vertex: %u %u", _subAccum.toMicroseconds(), _tessAccum.toMicroseconds(),
 	//		_glAccum.toMicroseconds(), _fillVertex, _contourVertex);
@@ -178,10 +195,14 @@ void Canvas::end() {
 }
 
 void Canvas::flush() {
+	if (!_valid) {
+		return;
+	}
+
 	Time t = Time::now();
 
 	if (!_tess.empty()) {
-		if (TESSResult * res = tessVecResultTriangles(_tess.data(), _tess.size())) {
+		if (TESSResult * res = tessVecResultTriangles(_tess.data(), int(_tess.size()))) {
 			auto verts = res->contour.vertexBuffer;
 			auto nverts = res->contour.vertexCount;
 
@@ -309,7 +330,7 @@ void Canvas::flush() {
 		for (auto & it : _stroke) {
 			if (!it.antialiased) {
 				auto s = it.outline.size();
-				glDrawArrays(GL_TRIANGLE_STRIP, offset, s);
+				glDrawArrays(GL_TRIANGLE_STRIP, GLint(offset), GLint(s));
 				offset += s;
 			} else {
 				glEnable(GL_STENCIL_TEST);
@@ -319,18 +340,18 @@ void Canvas::flush() {
 				glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
 				auto s = it.outline.size();
-				glDrawArrays(GL_TRIANGLE_STRIP, offset, s);
+				glDrawArrays(GL_TRIANGLE_STRIP, GLint(offset), GLint(s));
 				offset += s;
 
 				glStencilFunc(GL_NOTEQUAL, 1, 1);
 				glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 
 				s = it.inner.size();
-				glDrawArrays(GL_TRIANGLE_STRIP, offset, s);
+				glDrawArrays(GL_TRIANGLE_STRIP, GLint(offset), GLint(s));
 				offset += s;
 
 				s = it.outer.size();
-				glDrawArrays(GL_TRIANGLE_STRIP, offset, s);
+				glDrawArrays(GL_TRIANGLE_STRIP, GLint(offset), GLint(s));
 				offset += s;
 
 				glDisable(GL_STENCIL_TEST);

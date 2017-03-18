@@ -76,18 +76,6 @@ void __stappler_log(const char *tag, CustomLog::Type t, CustomLog::VA &va) {
 	if (t == CustomLog::Text) {
 		__log2(tag, va.text.text, va.text.len);
 	} else {
-#if __APPLE__
-		va_list tmpList;
-		va_copy(tmpList, va.format.args);
-		int size = vsnprintf(nullptr, 0, va.format.format, tmpList);
-		va_end(tmpList);
-
-		char *buf = new char[size + 1];
-		memset(buf, 0, size + 1);
-		size = vsnprintf(buf, size_t(size), va.format.format, va.format.args);
-		__log2(tag, buf, size);
-		delete [] buf;
-#else
 		char stackBuf[1_KiB] = { 0 };
 
 		va_list tmpList;
@@ -104,7 +92,6 @@ void __stappler_log(const char *tag, CustomLog::Type t, CustomLog::VA &va) {
 		} else {
 			__log2(tag, stackBuf, size);
 		}
-#endif
 	}
 #endif // DEBUG
 }

@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef COMMON_STRING_SPBYTESREADER_H_
 #define COMMON_STRING_SPBYTESREADER_H_
 
-#include "SPCharMatching.h"
+#include "SPCharGroup.h"
 
 NS_SP_BEGIN
 
@@ -39,7 +39,7 @@ public:
 	template <char First, char Last>
 	using Range = chars::Range<CharType, First, Last>;
 
-	template <chars::CharGroupId Group>
+	template <CharGroupId Group>
 	using CharGroup = chars::CharGroup<CharType, Group>;
 
 	inline BytesReader() : ptr(nullptr), len(0) { }

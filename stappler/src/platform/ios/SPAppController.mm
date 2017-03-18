@@ -35,6 +35,14 @@ THE SOFTWARE.
 #include "SPPlatform.h"
 #include "base/CCDirector.h"
 
+NS_CC_BEGIN
+
+struct CCEAGLViewStorage {
+	CCEAGLView *view;
+};
+
+NS_CC_END
+
 NS_SP_PLATFORM_BEGIN
 
 namespace interaction {
@@ -52,8 +60,8 @@ NS_SP_PLATFORM_END
     stappler::platform::interaction::_setAppId(appId);
 }
 
-- (SPRootViewController *)createRootViewController {
-    return [[SPRootViewController alloc] initWithNibName:nil bundle:nil];
+- (SPRootViewController *)createRootViewController:(nonnull UIWindow *)w {
+	return [[SPRootViewController alloc] initWithWindow:w];
 }
 
 - (void)registerForRemoteNotification:(UIApplication *)application {
@@ -61,18 +69,10 @@ NS_SP_PLATFORM_END
 }
 
 - (void)registerForRemoteNotification:(UIApplication *)application forNewsttand:(BOOL)isNewsstand {
-    auto flags = (UNAuthorizationOptionSound | UNAuthorizationOptionBadge | UNAuthorizationOptionAlert);
-#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 80000
-    if ([application respondsToSelector:@selector(registerUserNotificationSettings:)]) {
-        UIUserNotificationSettings *settings = [UIUserNotificationSettings settingsForTypes:flags categories:nil];
-        [application registerUserNotificationSettings:settings];
-        [application registerForRemoteNotifications];
-    } else {
-        [application registerForRemoteNotificationTypes:flags];
-    }
-#else
-    [application registerForRemoteNotificationTypes:flags];
-#endif
+	auto flags = (UNAuthorizationOptionSound | UNAuthorizationOptionBadge | UNAuthorizationOptionAlert);
+	UIUserNotificationSettings *settings = [UIUserNotificationSettings settingsForTypes:flags categories:nil];
+	[application registerUserNotificationSettings:settings];
+	[application registerForRemoteNotifications];
 }
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
@@ -81,33 +81,16 @@ NS_SP_PLATFORM_END
 		
     window = [[UIWindow alloc] initWithFrame: [[UIScreen mainScreen] bounds]];
 
-    // Init the CCEAGLView
-    CCEAGLView *eaglView = [CCEAGLView viewWithFrame: [window bounds]
-                                     pixelFormat: kEAGLColorFormatRGBA8
-                                     depthFormat: GL_DEPTH24_STENCIL8_OES
-                              preserveBackbuffer: NO
-                                      sharegroup: nil
-                                   multiSampling: NO
-                                 numberOfSamples: 0];
-	[eaglView setMultipleTouchEnabled:YES];
-
     // Use RootViewController manage CCEAGLView
-    _viewController = [self createRootViewController];
-    _viewController.view = eaglView;
+	_viewController = [self createRootViewController:window];
 
-    // Set RootViewController to window
-    if ( [[UIDevice currentDevice].systemVersion floatValue] < 6.0) {
-		[window addSubview: _viewController.view];
-    } else {
-        [window setRootViewController:_viewController];
-    }
-
+	[window setRootViewController:_viewController];
     [window makeKeyAndVisible];
 
     [[UIApplication sharedApplication] setStatusBarHidden:true];
 
     // IMPORTANT: Setting the GLView should be done after creating the RootViewController
-    cocos2d::GLView *glview = cocos2d::GLViewImpl::createWithEAGLView((__bridge void *)eaglView);
+    cocos2d::GLView *glview = cocos2d::GLViewImpl::createWithEAGLView(new cocos2d::CCEAGLViewStorage{_viewController.glview});
     cocos2d::Director::getInstance()->setOpenGLView(glview);
 
 	if (auto screen = stappler::Screen::getInstance()) {

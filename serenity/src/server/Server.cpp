@@ -325,7 +325,7 @@ void Server::setSourceRoot(const apr::string &file) {
 }
 void Server::addHanderSource(const apr::string &str) {
 	CharReaderBase r(str);
-	r.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
+	r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
 
 	CharReaderBase handlerParams;
 	if (r.is('"')) {
@@ -335,7 +335,7 @@ void Server::addHanderSource(const apr::string &str) {
 			++ r;
 		}
 	} else {
-		handlerParams = r.readUntil<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
+		handlerParams = r.readUntil<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
 	}
 
 	CharReaderBase name, file, symbol;
@@ -353,7 +353,7 @@ void Server::addHanderSource(const apr::string &str) {
 		data::Value &data = h.emplace("data");
 
 		while (!r.empty()) {
-			r.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
+			r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
 			CharReaderBase params, n, v;
 			if (r.is('"')) {
 				++ r;
@@ -362,7 +362,7 @@ void Server::addHanderSource(const apr::string &str) {
 					++ r;
 				}
 			} else {
-				params = r.readUntil<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
+				params = r.readUntil<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
 			}
 
 			if (!params.empty()) {
@@ -382,7 +382,7 @@ void Server::addHanderSource(const apr::string &str) {
 
 void Server::setSessionParams(const apr::string &str) {
 	CharReaderBase r(str);
-	r.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
+	r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
 	while (!r.empty()) {
 		CharReaderBase params, n, v;
 		if (r.is('"')) {
@@ -392,7 +392,7 @@ void Server::setSessionParams(const apr::string &str) {
 				++ r;
 			}
 		} else {
-			params = r.readUntil<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
+			params = r.readUntil<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
 		}
 
 		if (!params.empty()) {
@@ -405,7 +405,7 @@ void Server::setSessionParams(const apr::string &str) {
 			}
 		}
 
-		r.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
+		r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
 	}
 }
 

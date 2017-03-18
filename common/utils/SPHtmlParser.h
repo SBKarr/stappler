@@ -150,7 +150,7 @@ struct Parser {
 	template <CharType First, CharType Last>
 	using Range = chars::Chars<CharType, First, Last>;
 
-	using GroupId = chars::CharGroupId;
+	using GroupId = CharGroupId;
 
 	template <GroupId G>
 	using Group = chars::CharGroup<CharType, G>;

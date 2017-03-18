@@ -192,17 +192,17 @@ MultipartParser::Reader MultipartParser::readLine() {
 }
 
 bool MultipartParser::parseContentType(Reader &r) {
-    r.skipChars<Reader::CharGroup<chars::CharGroupId::WhiteSpace>>();
+    r.skipChars<Reader::CharGroup<CharGroupId::WhiteSpace>>();
 	if (r.empty()) {
 		return false;
 	}
 
-    auto ct = r.readUntil<Reader::CharGroup<chars::CharGroupId::WhiteSpace>, Reader::Chars<';'>>();
+    auto ct = r.readUntil<Reader::CharGroup<CharGroupId::WhiteSpace>, Reader::Chars<';'>>();
     if (!ct.is("multipart/mixed") && !ct.is("multipart/form-data")) {
         return false;
     }
 
-    r.skipChars<Reader::CharGroup<chars::CharGroupId::WhiteSpace>, Reader::Chars<';'>>();
+    r.skipChars<Reader::CharGroup<CharGroupId::WhiteSpace>, Reader::Chars<';'>>();
     if (!r.is("boundary=")) {
         return false;
     }
@@ -214,10 +214,10 @@ bool MultipartParser::parseContentType(Reader &r) {
 }
 
 bool MultipartParser::parseFileContentType(Reader &r) {
-    r.skipChars<Reader::CharGroup<chars::CharGroupId::WhiteSpace>>();
+    r.skipChars<Reader::CharGroup<CharGroupId::WhiteSpace>>();
 
-    auto ct = r.readUntil<Reader::CharGroup<chars::CharGroupId::WhiteSpace>, Reader::Chars<';'>>();
-    r.skipChars<Reader::CharGroup<chars::CharGroupId::WhiteSpace>, Reader::Chars<';'>>();
+    auto ct = r.readUntil<Reader::CharGroup<CharGroupId::WhiteSpace>, Reader::Chars<';'>>();
+    r.skipChars<Reader::CharGroup<CharGroupId::WhiteSpace>, Reader::Chars<';'>>();
 	if (r.empty()) {
 		fileContentType = ct.str();
 		return true;
@@ -238,7 +238,7 @@ bool MultipartParser::parseFileContentType(Reader &r) {
                 height = (uint16_t)val;
             }
         }
-        r.skipChars<Reader::CharGroup<chars::CharGroupId::WhiteSpace>, Reader::Chars<';'>>();
+        r.skipChars<Reader::CharGroup<CharGroupId::WhiteSpace>, Reader::Chars<';'>>();
 	}
 
 	if (width && height) {
@@ -260,7 +260,7 @@ bool MultipartParser::parseFileContentLength(Reader &r) {
 }
 
 bool MultipartParser::parseFileContentDisposition(Reader &r) {
-	r.skipChars<Reader::CharGroup<chars::CharGroupId::WhiteSpace>, Reader::Chars<';'>>();
+	r.skipChars<Reader::CharGroup<CharGroupId::WhiteSpace>, Reader::Chars<';'>>();
 	if (r.empty()) { return true; }
 
 	Reader name;
@@ -272,11 +272,11 @@ bool MultipartParser::parseFileContentDisposition(Reader &r) {
 				++ r;
 				name = r.readUntil<Reader::Chars<'"'>>();
 			} else {
-				name = r.readUntil<Reader::CharGroup<chars::CharGroupId::WhiteSpace>, Reader::Chars<';'>>();
+				name = r.readUntil<Reader::CharGroup<CharGroupId::WhiteSpace>, Reader::Chars<';'>>();
 			}
 		}
 		r.skipUntil<Reader::Chars<';'>>();
-		r.skipChars<Reader::CharGroup<chars::CharGroupId::WhiteSpace>, Reader::Chars<';'>>();
+		r.skipChars<Reader::CharGroup<CharGroupId::WhiteSpace>, Reader::Chars<';'>>();
 	}
 
 	if (!name.empty()) {
@@ -287,8 +287,8 @@ bool MultipartParser::parseFileContentDisposition(Reader &r) {
 }
 
 bool MultipartParser::parseFileContentEncoding(Reader &r) {
-	r.skipChars<Reader::CharGroup<chars::CharGroupId::WhiteSpace>>();
-	auto enc = r.readUntil<Reader::CharGroup<chars::CharGroupId::WhiteSpace>, Reader::Chars<';'>>();
+	r.skipChars<Reader::CharGroup<CharGroupId::WhiteSpace>>();
+	auto enc = r.readUntil<Reader::CharGroup<CharGroupId::WhiteSpace>, Reader::Chars<';'>>();
 	if (!enc.empty()) {
 		fileEncoding = enc.str();
 		return true;

@@ -69,7 +69,7 @@ struct LayoutNode {
 	void finalize(uint8_t tex);
 };
 
-static chars::CharGroupId getCharGroupForChar(char16_t c) {
+static CharGroupId getCharGroupForChar(char16_t c) {
 	using namespace chars;
 	if (CharGroup<char16_t, CharGroupId::Numbers>::match(c)) {
 		return CharGroupId::Numbers;
@@ -89,7 +89,7 @@ static chars::CharGroupId getCharGroupForChar(char16_t c) {
 	return CharGroupId::None;
 }
 
-static void addCharGroup(Vector<char16_t> &vec, chars::CharGroupId id) {
+static void addCharGroup(Vector<char16_t> &vec, CharGroupId id) {
 	using namespace chars;
 	auto f = [&vec] (char16_t c) {
 		auto it = std::lower_bound(vec.begin(), vec.end(), c);
@@ -439,7 +439,7 @@ Arc<FontLayout::Data> FreeTypeInterface::requestLayoutUpgrade(const FontSource *
 
 		for (auto &c : chars) {
 			auto g = getCharGroupForChar(c);
-			if (g != chars::CharGroupId::None) {
+			if (g != CharGroupId::None) {
 				if ((mask & toInt(g)) == 0) {
 					mask |= toInt(g);
 					addCharGroup(charsToUpdate, g);

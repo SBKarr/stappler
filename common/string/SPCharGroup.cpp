@@ -28,8 +28,8 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
-using CharGroupId = chars::CharGroupId;
-using CharGroupMask = chars::CharGroupId;
+using CharGroupId = CharGroupId;
+using CharGroupMask = CharGroupId;
 
 bool inCharGroup(CharGroupId mask, char16_t c) {
 	switch (mask) {

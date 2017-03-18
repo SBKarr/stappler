@@ -24,7 +24,6 @@ THE SOFTWARE.
 #define __stappler__SPString__
 
 #include "SPToString.h"
-#include "SPCharMatching.h"
 #include "SPDataReader.h"
 #include "SPCharReader.h"
 

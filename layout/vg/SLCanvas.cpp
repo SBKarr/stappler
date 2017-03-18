@@ -266,7 +266,7 @@ void Canvas::clearTess() {
 void Canvas::pushContour(const Path &path, bool closed) {
 	if ((path.getStyle() & layout::Path::Style::Fill) != 0) {
 		if (_fillTess && !_line.line.empty()) {
-			tessAddContour(_fillTess, _line.line.data(), _line.line.size() / 2);
+			tessAddContour(_fillTess, _line.line.data(), int(_line.line.size() / 2));
 			_vertexCount += _line.line.size() / 2;
 		}
 	}

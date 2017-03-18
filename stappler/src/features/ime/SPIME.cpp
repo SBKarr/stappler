@@ -47,6 +47,7 @@ public:
 	bool hasText();
     void insertText(const WideString &sInsert);
 	void textChanged(const WideString &text, const Cursor &);
+	void cursorChanged(const Cursor &);
     void deleteBackward();
 
 	void onKeyboardShow(const Rect &rect, float duration);
@@ -73,6 +74,9 @@ public:
 	const Rect &getKeyboardRect() const;
 
 	ime::Handler *getHandler() const;
+	
+	WideString *getNativeStringPointer();
+	Cursor *getNativeCursorPointer();
 
 public:
 	ime::Handler *_handler = nullptr;
@@ -136,6 +140,11 @@ void IMEImpl::textChanged(const WideString &text, const Cursor &cursor) {
 	}
 
 	_string = text;
+	_cursor = cursor;
+	onTextChanged();
+}
+
+void IMEImpl::cursorChanged(const Cursor &cursor) {
 	_cursor = cursor;
 	onTextChanged();
 }
@@ -297,6 +306,13 @@ void IMEImpl::setInputEnabled(bool enabled) {
 	}
 }
 
+WideString *IMEImpl::getNativeStringPointer() {
+	return &_string;
+}
+ime::Cursor *IMEImpl::getNativeCursorPointer() {
+	return &_cursor;
+}
+
 bool stappler::platform::ime::native::hasText() {
 	return IMEImpl::getInstance()->hasText();
 }
@@ -308,6 +324,9 @@ void stappler::platform::ime::native::deleteBackward() {
 }
 void stappler::platform::ime::native::textChanged(const WideString &text, uint32_t cursorStart, uint32_t cursorLen) {
 	IMEImpl::getInstance()->textChanged(text, stappler::ime::Cursor(cursorStart, cursorLen));
+}
+void stappler::platform::ime::native::cursorChanged(uint32_t cursorStart, uint32_t cursorLen) {
+	IMEImpl::getInstance()->cursorChanged(stappler::ime::Cursor(cursorStart, cursorLen));
 }
 
 void stappler::platform::ime::native::onKeyboardShow(const Rect &rect, float duration) {
@@ -408,6 +427,13 @@ Rect getKeyboardRect() {
 	return IMEImpl::getInstance()->getKeyboardRect();
 }
 
+WideString *getNativeStringPointer() {
+	return IMEImpl::getInstance()->getNativeStringPointer();
+}
+Cursor *getNativeCursorPointer() {
+	return IMEImpl::getInstance()->getNativeCursorPointer();
+}
+	
 }
 
 NS_SP_END

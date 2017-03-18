@@ -85,7 +85,7 @@ static void setHslColor(Color3B &color, float h, float sl, float l) {
 
 static bool readColorDigits(const CharReaderBase &origStr, float *b, int num, bool isRgb) {
 	CharReaderBase str(origStr);
-	str.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
+	str.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
 	if (!str.is('(')) {
 		return false;
 	}
@@ -116,7 +116,7 @@ static bool readColorDigits(const CharReaderBase &origStr, float *b, int num, bo
 			b[i] = b[i] * 255.0f; // translate alpha to (0-255)
 		}
 
-		str.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
+		str.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
 
 		if (str.empty()) {
 			return false;
@@ -131,7 +131,7 @@ static bool readColorDigits(const CharReaderBase &origStr, float *b, int num, bo
 			} else if ((!isRgb && i == 0) || i == 3) {
 				return false; // for H in HSL and any alpha percent values is denied
 			}
-			str.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
+			str.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
 		} else if (!isRgb && (i == 1 || i == 2) && !str.is('%')) {
 			return false; // for S and L in HSL only percent values allowed
 		}
@@ -140,7 +140,7 @@ static bool readColorDigits(const CharReaderBase &origStr, float *b, int num, bo
 			return false;
 		}
 
-		str.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
+		str.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
 
 		if (str.is(')') && i == num - 1) {
 			return true;

@@ -72,7 +72,7 @@ void File::push(const CharReaderBase &ir, ChunkType type) {
 		_stack.back()->chunks.emplace_back(Chunk{Text, ir.str()});
 	} else {
 		CharReaderBase r(ir);
-		r.skipChars<Group<chars::CharGroupId::WhiteSpace>>();
+		r.skipChars<Group<CharGroupId::WhiteSpace>>();
 		if (r.is('=')) {
 			++ r;
 			_stack.back()->chunks.emplace_back(Chunk{Output, r.str()});

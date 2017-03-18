@@ -41,12 +41,12 @@ int RequestHandler::onRequestRecieved(Request & rctx, String &&originPath, Strin
 	auto auth = rctx.getRequestHeaders().at("Authorization");
 	if (!auth.empty()) {
 		CharReaderBase r(auth);
-		r.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
-		auto method = r.readUntil<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>().str();
+		r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+		auto method = r.readUntil<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>().str();
 		string::tolower(method);
 		auto userIp = rctx.getUseragentIp();
 		if (method == "basic" && (rctx.isSecureConnection() || strncmp(userIp.c_str(), "127.", 4) == 0 || userIp == "::1")) {
-			r.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
+			r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
 			auto str = base64::decode(r);
 			CharReaderBase source((const char *)str.data(), str.size());
 			CharReaderBase user = source.readUntil<CharReaderBase::Chars<':'>>();

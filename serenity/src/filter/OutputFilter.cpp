@@ -267,7 +267,7 @@ apr_status_t OutputFilter::func(ap_filter_t *f, apr_bucket_brigade *bb) {
 bool OutputFilter::readRequestLine(Reader &r) {
 	while (!r.empty()) {
 		if (_isWhiteSpace) {
-			auto tmp = r.readChars<Reader::CharGroup<chars::CharGroupId::WhiteSpace>>();
+			auto tmp = r.readChars<Reader::CharGroup<CharGroupId::WhiteSpace>>();
 			_buffer << tmp;
 			auto tmp2 = tmp.readUntil<Reader::Chars<'\n'>>();
 			if (tmp2.is('\n')) {
@@ -279,8 +279,8 @@ bool OutputFilter::readRequestLine(Reader &r) {
 			_isWhiteSpace = false;
 		}
 		if (_subState == State::Protocol) {
-			_buffer << r.readUntil<Reader::CharGroup<chars::CharGroupId::WhiteSpace>>();
-			if (r.is<chars::CharGroupId::WhiteSpace>()) {
+			_buffer << r.readUntil<Reader::CharGroup<CharGroupId::WhiteSpace>>();
+			if (r.is<CharGroupId::WhiteSpace>()) {
 				_nameBuffer.clear();
 				_isWhiteSpace = true;
 				_subState = State::Code;
@@ -289,7 +289,7 @@ bool OutputFilter::readRequestLine(Reader &r) {
 			auto b = r.readChars<Reader::Range<'0', '9'>>();
 			_nameBuffer << b;
 			_buffer << b;
-			if (r.is<chars::CharGroupId::WhiteSpace>()) {
+			if (r.is<CharGroupId::WhiteSpace>()) {
 				_nameBuffer << '\0';
 				_responseCode = apr_strtoi64(_nameBuffer.data(), NULL, 0);
 				_isWhiteSpace = true;

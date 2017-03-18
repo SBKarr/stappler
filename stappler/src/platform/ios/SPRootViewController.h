@@ -20,11 +20,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#import <UIKit/UIKit.h>
+#import "CCEAGLView-ios.h"
 
 @interface SPRootViewController : UIViewController {
 
 }
+
++(NSString*)getLaunchImageName;
+
+- (id) initWithWindow:(UIWindow *)window;
+
+- (CCEAGLView *) glview;
+
+- (void) cancelLoaderLiew;
 
 - (BOOL) prefersStatusBarHidden;
 - (void) showStatusBar;

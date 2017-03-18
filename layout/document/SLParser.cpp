@@ -468,14 +468,14 @@ namespace parser {
 
 	CharReaderBase resolveCssString(const CharReaderBase &origStr) {
 		CharReaderBase str(origStr);
-		str.trimChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
+		str.trimChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
 
 		CharReaderBase tmp(str);
 		tmp.trimUntil<CharReaderBase::Chars<'(', '"', '\''>>();
 		if (tmp.size() > 2) {
 			if (tmp.is('(') && tmp.back() == ')') {
 				tmp = CharReaderBase(tmp.data() + 1, tmp.size() - 2);
-				tmp.trimChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
+				tmp.trimChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
 				return tmp;
 			} else if (tmp.is('"') && tmp.back() == '"') {
 				return CharReaderBase(tmp.data() + 1, tmp.size() - 2);

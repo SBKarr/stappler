@@ -34,7 +34,7 @@ THE SOFTWARE.
 
 + (void) setAppId: (nonnull NSString *)appId;
 
-- (nonnull SPRootViewController *)createRootViewController;
+- (nonnull SPRootViewController *)createRootViewController:(nonnull UIWindow *)w;
 
 - (void)registerForRemoteNotification:(nonnull UIApplication *)application;
 - (void)registerForRemoteNotification:(nonnull UIApplication *)application forNewsttand:(BOOL)isNewsstand;

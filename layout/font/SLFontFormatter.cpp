@@ -197,7 +197,7 @@ bool Formatter::isSpecial(char16_t ch) const {
 	if (!opticalAlignment) {
 		return false;
 	}
-	return chars::CharGroup<char16_t, chars::CharGroupId::OpticalAlignmentSpecial>::match(ch);
+	return chars::CharGroup<char16_t, CharGroupId::OpticalAlignmentSpecial>::match(ch);
 }
 
 uint16_t Formatter::checkBullet(uint16_t first, uint16_t len) const {
@@ -208,7 +208,7 @@ uint16_t Formatter::checkBullet(uint16_t first, uint16_t len) const {
 	uint16_t offset = 0;
 	for (uint16_t i = first; i < first + len - 1; i++) {
 		auto ch = output->chars.at(i).charID;
-		if (chars::CharGroup<char16_t, chars::CharGroupId::OpticalAlignmentBullet>::match(ch)) {
+		if (chars::CharGroup<char16_t, CharGroupId::OpticalAlignmentBullet>::match(ch)) {
 			offset ++;
 		} else if (string::isspace(ch) && offset >= 1) {
 			return offset + 1;
@@ -446,7 +446,7 @@ void Formatter::updateLineHeight(uint16_t first, uint16_t last) {
 }
 
 bool Formatter::pushLineBreak() {
-	if (chars::CharGroup<char16_t, chars::CharGroupId::WhiteSpace>::match(output->chars.back().charID)) {
+	if (chars::CharGroup<char16_t, CharGroupId::WhiteSpace>::match(output->chars.back().charID)) {
 		return true;
 	}
 
@@ -778,13 +778,13 @@ bool Formatter::readWithRange(RangeSpec && range, const TextParameters &s, const
 	CharReaderUcs2 r(str, len);
 	if (textStyle.hyphens == Hyphens::Auto && _hyphens) {
 		while (!r.empty()) {
-			CharReaderUcs2 tmp = r.readUntil<CharReaderUcs2::CharGroup<chars::CharGroupId::Latin>,
-					CharReaderUcs2::CharGroup<chars::CharGroupId::Cyrillic>>();
+			CharReaderUcs2 tmp = r.readUntil<CharReaderUcs2::CharGroup<CharGroupId::Latin>,
+					CharReaderUcs2::CharGroup<CharGroupId::Cyrillic>>();
 			if (!tmp.empty()) {
 				readChars(tmp);
 			}
-			tmp = r.readChars<CharReaderUcs2::CharGroup<chars::CharGroupId::Latin>,
-					CharReaderUcs2::CharGroup<chars::CharGroupId::Cyrillic>>();
+			tmp = r.readChars<CharReaderUcs2::CharGroup<CharGroupId::Latin>,
+					CharReaderUcs2::CharGroup<CharGroupId::Cyrillic>>();
 			if (!tmp.empty()) {
 				readChars(tmp, _hyphens->makeWordHyphens(tmp));
 			}

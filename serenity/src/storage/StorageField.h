@@ -99,6 +99,7 @@ enum class ValidationLevel {
 enum class Linkage {
 	Auto,
 	Manual,
+	None,
 };
 
 using MinLength = ValueWrapper<size_t, class MinLengthTag>; // min utf8 length for string

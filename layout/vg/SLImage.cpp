@@ -59,14 +59,14 @@ NS_LAYOUT_BEGIN
 static Mat4 svg_parseTransform(CharReaderBase &r) {
 	Mat4 ret(Mat4::IDENTITY);
 	while (!r.empty()) {
-		r.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
+		r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
 		if (r == "matrix(") {
 			r += "matrix("_len;
 			float values[6] = { 0 };
 
 			uint16_t i = 0;
 			for (; i < 6; ++ i) {
-				r.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
+				r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
 				values[i] = r.readFloat();
 				if (IsErrorValue(values[i])) {
 					break;
@@ -83,13 +83,13 @@ static Mat4 svg_parseTransform(CharReaderBase &r) {
 			r += "translate("_len;
 
 			float tx = 0.0f, ty = 0.0f;
-			r.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
+			r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
 			tx = r.readFloat();
 			if (IsErrorValue(tx)) {
 				break;
 			}
 
-			r.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
+			r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
 			if (!r.is(')')) {
 				ty = r.readFloat();
 				if (IsErrorValue(ty)) {
@@ -104,13 +104,13 @@ static Mat4 svg_parseTransform(CharReaderBase &r) {
 			r += "scale("_len;
 
 			float sx = 0.0f, sy = 0.0f;
-			r.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
+			r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
 			sx = r.readFloat();
 			if (IsErrorValue(sx)) {
 				break;
 			}
 
-			r.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
+			r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
 			if (!r.is(')')) {
 				sy = r.readFloat();
 				if (IsErrorValue(sy)) {
@@ -126,20 +126,20 @@ static Mat4 svg_parseTransform(CharReaderBase &r) {
 			float angle = 0.0f;
 			float cx = 0.0f, cy = 0.0f;
 
-			r.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
+			r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
 			angle = r.readFloat();
 			if (IsErrorValue(angle)) {
 				break;
 			}
 
-			r.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
+			r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
 			if (!r.is(')')) {
 				cx = r.readFloat();
 				if (IsErrorValue(cx)) {
 					break;
 				}
 
-				r.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
+				r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
 				cy = r.readFloat();
 				if (IsErrorValue(cx)) {
 					break;
@@ -163,7 +163,7 @@ static Mat4 svg_parseTransform(CharReaderBase &r) {
 			r += "skewX("_len;
 
 			float angle = 0.0f;
-			r.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
+			r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
 			angle = r.readFloat();
 			if (IsErrorValue(angle)) {
 				break;
@@ -174,7 +174,7 @@ static Mat4 svg_parseTransform(CharReaderBase &r) {
 			r += "skewY("_len;
 
 			float angle = 0.0f;
-			r.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
+			r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
 			angle = r.readFloat();
 			if (IsErrorValue(angle)) {
 				break;
@@ -182,7 +182,7 @@ static Mat4 svg_parseTransform(CharReaderBase &r) {
 
 			ret *= Mat4(1, tanf(to_rad(angle)), 0, 1, 0, 0);
 		}
-		r.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>();
+		r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
 		if (!r.is(')')) {
 			break;
 		} else {
@@ -212,13 +212,13 @@ static float svg_readCoordValue(CharReaderBase &source, float origin) {
 static void svg_readPointCoords(Path &target, CharReaderBase &source) {
 	float x, y;
 	while (!source.empty()) {
-		source.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
+		source.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
 		x = source.readFloat();
 		if (IsErrorValue(x)) {
 			return;
 		}
 
-		source.skipChars<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
+		source.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
 		y = source.readFloat();
 		if (IsErrorValue(y)) {
 			return;
@@ -539,7 +539,7 @@ struct SvgReader {
 static bool Image_detectSvg(const CharReaderBase &buf) {
 	CharReaderBase str(buf);
 	str.skipUntilString("<svg", false);
-	if (!str.empty() && str.is<CharReaderBase::CharGroup<chars::CharGroupId::WhiteSpace>>()) {
+	if (!str.empty() && str.is<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>()) {
 		str.readUntilString("xmlns=");
 		if (str.is("xmlns=")) {
 			str += "xmlns="_len;

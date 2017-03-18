@@ -14,9 +14,6 @@
 		298436861DABDD0A00B411D7 /* SPSignalHandler.mm in Sources */ = {isa = PBXBuildFile; fileRef = 298436851DABDD0A00B411D7 /* SPSignalHandler.mm */; };
 		29DFCABB1D0990D900AAD2E5 /* SPUrlencodeParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29DFCAB91D0990D900AAD2E5 /* SPUrlencodeParser.cpp */; };
 		29DFCABC1D0990D900AAD2E5 /* SPUrlencodeParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29DFCAB91D0990D900AAD2E5 /* SPUrlencodeParser.cpp */; };
-		29FCA7DC1D9AD427008E8671 /* SPRichTextDrawer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29FCA7D61D9AD427008E8671 /* SPRichTextDrawer.cpp */; };
-		29FCA7DD1D9AD427008E8671 /* SPRichTextRenderer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29FCA7D81D9AD427008E8671 /* SPRichTextRenderer.cpp */; };
-		29FCA7DE1D9AD427008E8671 /* SPRichTextView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 29FCA7DA1D9AD427008E8671 /* SPRichTextView.cpp */; };
 		8406FE9F1C180137001B1A8E /* SPDataValueNetwork.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84F636B51C16CF0D0021A2F4 /* SPDataValueNetwork.cpp */; };
 		84080DFD1C1982EF00723732 /* SPData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84080DC71C1982EF00723732 /* SPData.cpp */; };
 		84080DFE1C1982EF00723732 /* SPData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84080DC71C1982EF00723732 /* SPData.cpp */; };
@@ -36,8 +33,6 @@
 		84080E1A1C1982EF00723732 /* SPString.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84080DDF1C1982EF00723732 /* SPString.cpp */; };
 		84080E1D1C1982EF00723732 /* SPUnicode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84080DE41C1982EF00723732 /* SPUnicode.cpp */; };
 		84080E1E1C1982EF00723732 /* SPUnicode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84080DE41C1982EF00723732 /* SPUnicode.cpp */; };
-		84080E1F1C1982EF00723732 /* SPThreadLocal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84080DE71C1982EF00723732 /* SPThreadLocal.cpp */; };
-		84080E201C1982EF00723732 /* SPThreadLocal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84080DE71C1982EF00723732 /* SPThreadLocal.cpp */; };
 		84080E231C1982EF00723732 /* SPFilesystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84080DEE1C1982EF00723732 /* SPFilesystem.cpp */; };
 		84080E241C1982EF00723732 /* SPFilesystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84080DEE1C1982EF00723732 /* SPFilesystem.cpp */; };
 		84080E251C1982EF00723732 /* SPHalfFloat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84080DF01C1982EF00723732 /* SPHalfFloat.cpp */; };
@@ -65,31 +60,7 @@
 		8422D7021DFAB63A0001A3F8 /* SPNetworkDownload.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6A91DFAB63A0001A3F8 /* SPNetworkDownload.cpp */; };
 		8422D7031DFAB63A0001A3F8 /* SPNetworkTask.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6AB1DFAB63A0001A3F8 /* SPNetworkTask.cpp */; };
 		8422D7041DFAB63A0001A3F8 /* SPFont.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6AE1DFAB63A0001A3F8 /* SPFont.cpp */; };
-		8422D7051DFAB63A0001A3F8 /* SPFontFormatter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6B01DFAB63A0001A3F8 /* SPFontFormatter.cpp */; };
-		8422D7061DFAB63A0001A3F8 /* SPFontLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6B21DFAB63A0001A3F8 /* SPFontLayout.cpp */; };
-		8422D7071DFAB63A0001A3F8 /* SPIcon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6B31DFAB63A0001A3F8 /* SPIcon.cpp */; };
 		8422D7081DFAB63A0001A3F8 /* SPResource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6B51DFAB63A0001A3F8 /* SPResource.cpp */; };
-		8422D7091DFAB63A0001A3F8 /* SPRichTextDocument.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6B91DFAB63A0001A3F8 /* SPRichTextDocument.cpp */; };
-		8422D70A1DFAB63A0001A3F8 /* SPRichTextNode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6BB1DFAB63A0001A3F8 /* SPRichTextNode.cpp */; };
-		8422D70B1DFAB63A0001A3F8 /* SPRichTextParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6BD1DFAB63A0001A3F8 /* SPRichTextParser.cpp */; };
-		8422D70C1DFAB63A0001A3F8 /* SPRichTextReader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6BF1DFAB63A0001A3F8 /* SPRichTextReader.cpp */; };
-		8422D70D1DFAB63A0001A3F8 /* SPRichTextSource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6C11DFAB63A0001A3F8 /* SPRichTextSource.cpp */; };
-		8422D70E1DFAB63A0001A3F8 /* SPEpubDocument.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6C41DFAB63A0001A3F8 /* SPEpubDocument.cpp */; };
-		8422D70F1DFAB63A0001A3F8 /* SPEpubInfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6C61DFAB63A0001A3F8 /* SPEpubInfo.cpp */; };
-		8422D7101DFAB63A0001A3F8 /* SPEpubReader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6C81DFAB63A0001A3F8 /* SPEpubReader.cpp */; };
-		8422D7111DFAB63A0001A3F8 /* SPRichTextMultipartParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6CB1DFAB63A0001A3F8 /* SPRichTextMultipartParser.cpp */; };
-		8422D7121DFAB63A0001A3F8 /* SPRichTextRendererTypes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6CD1DFAB63A0001A3F8 /* SPRichTextRendererTypes.cpp */; };
-		8422D7131DFAB63A0001A3F8 /* SPRichTextBuilder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6D01DFAB63A0001A3F8 /* SPRichTextBuilder.cpp */; };
-		8422D7141DFAB63A0001A3F8 /* SPRichTextBuilderBlockModel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6D21DFAB63A0001A3F8 /* SPRichTextBuilderBlockModel.cpp */; };
-		8422D7151DFAB63A0001A3F8 /* SPRichTextBuilderBullet.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6D31DFAB63A0001A3F8 /* SPRichTextBuilderBullet.cpp */; };
-		8422D7161DFAB63A0001A3F8 /* SPRichTextBuilderLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6D41DFAB63A0001A3F8 /* SPRichTextBuilderLayout.cpp */; };
-		8422D7171DFAB63A0001A3F8 /* SPRichTextLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6D51DFAB63A0001A3F8 /* SPRichTextLayout.cpp */; };
-		8422D7181DFAB63A0001A3F8 /* SPRichTextResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6D71DFAB63A0001A3F8 /* SPRichTextResult.cpp */; };
-		8422D7191DFAB63A0001A3F8 /* SPRichTextStyle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6DA1DFAB63A0001A3F8 /* SPRichTextStyle.cpp */; };
-		8422D71A1DFAB63A0001A3F8 /* SPRichTextStyleColors.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6DC1DFAB63A0001A3F8 /* SPRichTextStyleColors.cpp */; };
-		8422D71B1DFAB63A0001A3F8 /* SPRichTextStyleCompiled.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6DD1DFAB63A0001A3F8 /* SPRichTextStyleCompiled.cpp */; };
-		8422D71C1DFAB63A0001A3F8 /* SPRichTextStyleMedia.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6DE1DFAB63A0001A3F8 /* SPRichTextStyleMedia.cpp */; };
-		8422D71D1DFAB63A0001A3F8 /* SPRichTextStyleValues.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6E01DFAB63A0001A3F8 /* SPRichTextStyleValues.cpp */; };
 		8422D71E1DFAB63A0001A3F8 /* SPStorage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6E31DFAB63A0001A3F8 /* SPStorage.cpp */; };
 		8422D71F1DFAB63A0001A3F8 /* SPStoreKit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6E61DFAB63A0001A3F8 /* SPStoreKit.cpp */; };
 		8422D7201DFAB63A0001A3F8 /* SPStoreProduct.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6E81DFAB63A0001A3F8 /* SPStoreProduct.cpp */; };
@@ -99,10 +70,8 @@
 		8422D7241DFAB63A0001A3F8 /* SPTaskStack.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6F31DFAB63A0001A3F8 /* SPTaskStack.cpp */; };
 		8422D7251DFAB63A0001A3F8 /* SPThreadHandlerIOS.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6F61DFAB63A0001A3F8 /* SPThreadHandlerIOS.mm */; };
 		8422D7261DFAB63A0001A3F8 /* SPThreadManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D6F71DFAB63A0001A3F8 /* SPThreadManager.cpp */; };
-		8422D7291DFAB6F90001A3F8 /* SPDrawCanvasCairo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8422D7271DFAB6F90001A3F8 /* SPDrawCanvasCairo.cpp */; };
 		842E720B1CE9E0F500E9B10E /* SPStapplerLog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84D970331CE9C19800C1B5F5 /* SPStapplerLog.cpp */; };
 		84337FE71CC24EA700546216 /* SPIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84337FE11CC24EA700546216 /* SPIO.cpp */; };
-		84337FF21CC25A7D00546216 /* SPDrawCanvas.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84337FF01CC25A7D00546216 /* SPDrawCanvas.cpp */; };
 		843380101CC272BF00546216 /* SPIO.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84337FE11CC24EA700546216 /* SPIO.cpp */; };
 		843FF7081E3B3A8D009F31F1 /* SPApplication.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 843FF7061E3B3A8D009F31F1 /* SPApplication.cpp */; };
 		843FF7231E3B3D68009F31F1 /* SPNodeExt.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 843FF7221E3B3D68009F31F1 /* SPNodeExt.cpp */; };
@@ -122,7 +91,6 @@
 		844635971B1EBEF900CA9857 /* SPRender.mm in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9C01B1D888D00C0175B /* SPRender.mm */; };
 		844635981B1EBEFF00CA9857 /* SPStatusBar.mm in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9C11B1D888D00C0175B /* SPStatusBar.mm */; };
 		844635991B1EBF0400CA9857 /* SPStoreKit.mm in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9C21B1D888D00C0175B /* SPStoreKit.mm */; };
-		844637531B1EE7FE00CA9857 /* SPIOSLoaderView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 844637521B1EE7FE00CA9857 /* SPIOSLoaderView.mm */; };
 		847BB9D31C4505B000B3B701 /* SPDataCborBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 847BB9C81C4505B000B3B701 /* SPDataCborBuffer.cpp */; };
 		847BB9D41C4505B000B3B701 /* SPDataCborBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 847BB9C81C4505B000B3B701 /* SPDataCborBuffer.cpp */; };
 		847BB9D51C4505B000B3B701 /* SPDataDecompressBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 847BB9CA1C4505B000B3B701 /* SPDataDecompressBuffer.cpp */; };
@@ -133,6 +101,94 @@
 		847BB9DA1C4505B000B3B701 /* SPDataJsonBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 847BB9CE1C4505B000B3B701 /* SPDataJsonBuffer.cpp */; };
 		847BB9DB1C4505B000B3B701 /* SPDataStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 847BB9D01C4505B000B3B701 /* SPDataStream.cpp */; };
 		847BB9DC1C4505B000B3B701 /* SPDataStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 847BB9D01C4505B000B3B701 /* SPDataStream.cpp */; };
+		8483CF2A1E8D171000D6B836 /* SPReceiptValidation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF291E8D171000D6B836 /* SPReceiptValidation.cpp */; };
+		8483CF3A1E8D176400D6B836 /* SPDrawCanvas.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF2C1E8D176400D6B836 /* SPDrawCanvas.cpp */; };
+		8483CF3B1E8D176400D6B836 /* SPDrawGLCacheNode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF2E1E8D176400D6B836 /* SPDrawGLCacheNode.cpp */; };
+		8483CF3C1E8D176400D6B836 /* SPDrawPathNode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF301E8D176400D6B836 /* SPDrawPathNode.cpp */; };
+		8483CF3D1E8D176400D6B836 /* SPRichTextDrawer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF341E8D176400D6B836 /* SPRichTextDrawer.cpp */; };
+		8483CF3E1E8D176400D6B836 /* SPRichTextRenderer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF361E8D176400D6B836 /* SPRichTextRenderer.cpp */; };
+		8483CF3F1E8D176400D6B836 /* SPRichTextView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF381E8D176400D6B836 /* SPRichTextView.cpp */; };
+		8483CFA21E8D178600D6B836 /* SLDocument.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF421E8D178600D6B836 /* SLDocument.cpp */; };
+		8483CFA31E8D178600D6B836 /* SLDocument.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF421E8D178600D6B836 /* SLDocument.cpp */; };
+		8483CFA41E8D178600D6B836 /* SLNode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF441E8D178600D6B836 /* SLNode.cpp */; };
+		8483CFA51E8D178600D6B836 /* SLNode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF441E8D178600D6B836 /* SLNode.cpp */; };
+		8483CFA61E8D178600D6B836 /* SLParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF461E8D178600D6B836 /* SLParser.cpp */; };
+		8483CFA71E8D178600D6B836 /* SLParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF461E8D178600D6B836 /* SLParser.cpp */; };
+		8483CFA81E8D178600D6B836 /* SLReader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF481E8D178600D6B836 /* SLReader.cpp */; };
+		8483CFA91E8D178600D6B836 /* SLReader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF481E8D178600D6B836 /* SLReader.cpp */; };
+		8483CFAA1E8D178600D6B836 /* SLFont.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF4B1E8D178600D6B836 /* SLFont.cpp */; };
+		8483CFAB1E8D178600D6B836 /* SLFont.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF4B1E8D178600D6B836 /* SLFont.cpp */; };
+		8483CFAC1E8D178600D6B836 /* SLFontFormatter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF4D1E8D178600D6B836 /* SLFontFormatter.cpp */; };
+		8483CFAD1E8D178600D6B836 /* SLFontFormatter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF4D1E8D178600D6B836 /* SLFontFormatter.cpp */; };
+		8483CFAE1E8D178600D6B836 /* SLFontLibrary.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF4F1E8D178600D6B836 /* SLFontLibrary.cpp */; };
+		8483CFAF1E8D178600D6B836 /* SLFontLibrary.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF4F1E8D178600D6B836 /* SLFontLibrary.cpp */; };
+		8483CFB01E8D178600D6B836 /* SLMultipartParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF521E8D178600D6B836 /* SLMultipartParser.cpp */; };
+		8483CFB11E8D178600D6B836 /* SLMultipartParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF521E8D178600D6B836 /* SLMultipartParser.cpp */; };
+		8483CFB21E8D178600D6B836 /* SLRendererTypes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF541E8D178600D6B836 /* SLRendererTypes.cpp */; };
+		8483CFB31E8D178600D6B836 /* SLRendererTypes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF541E8D178600D6B836 /* SLRendererTypes.cpp */; };
+		8483CFB41E8D178600D6B836 /* SLBuilder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF571E8D178600D6B836 /* SLBuilder.cpp */; };
+		8483CFB51E8D178600D6B836 /* SLBuilder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF571E8D178600D6B836 /* SLBuilder.cpp */; };
+		8483CFB61E8D178600D6B836 /* SLBuilderBlockModel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF591E8D178600D6B836 /* SLBuilderBlockModel.cpp */; };
+		8483CFB71E8D178600D6B836 /* SLBuilderBlockModel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF591E8D178600D6B836 /* SLBuilderBlockModel.cpp */; };
+		8483CFB81E8D178600D6B836 /* SLBuilderBullet.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF5A1E8D178600D6B836 /* SLBuilderBullet.cpp */; };
+		8483CFB91E8D178600D6B836 /* SLBuilderBullet.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF5A1E8D178600D6B836 /* SLBuilderBullet.cpp */; };
+		8483CFBA1E8D178600D6B836 /* SLBuilderLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF5B1E8D178600D6B836 /* SLBuilderLayout.cpp */; };
+		8483CFBB1E8D178600D6B836 /* SLBuilderLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF5B1E8D178600D6B836 /* SLBuilderLayout.cpp */; };
+		8483CFBC1E8D178600D6B836 /* SLLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF5C1E8D178600D6B836 /* SLLayout.cpp */; };
+		8483CFBD1E8D178600D6B836 /* SLLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF5C1E8D178600D6B836 /* SLLayout.cpp */; };
+		8483CFBE1E8D178600D6B836 /* SLResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF5E1E8D178600D6B836 /* SLResult.cpp */; };
+		8483CFBF1E8D178600D6B836 /* SLResult.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF5E1E8D178600D6B836 /* SLResult.cpp */; };
+		8483CFC01E8D178600D6B836 /* SLStyle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF621E8D178600D6B836 /* SLStyle.cpp */; };
+		8483CFC11E8D178600D6B836 /* SLStyle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF621E8D178600D6B836 /* SLStyle.cpp */; };
+		8483CFC21E8D178600D6B836 /* SLStyleColors.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF641E8D178600D6B836 /* SLStyleColors.cpp */; };
+		8483CFC31E8D178600D6B836 /* SLStyleColors.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF641E8D178600D6B836 /* SLStyleColors.cpp */; };
+		8483CFC41E8D178600D6B836 /* SLStyleCompiled.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF651E8D178600D6B836 /* SLStyleCompiled.cpp */; };
+		8483CFC51E8D178600D6B836 /* SLStyleCompiled.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF651E8D178600D6B836 /* SLStyleCompiled.cpp */; };
+		8483CFC61E8D178600D6B836 /* SLStyleMedia.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF661E8D178600D6B836 /* SLStyleMedia.cpp */; };
+		8483CFC71E8D178600D6B836 /* SLStyleMedia.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF661E8D178600D6B836 /* SLStyleMedia.cpp */; };
+		8483CFC81E8D178600D6B836 /* SLStyleValues.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF681E8D178600D6B836 /* SLStyleValues.cpp */; };
+		8483CFC91E8D178600D6B836 /* SLStyleValues.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF681E8D178600D6B836 /* SLStyleValues.cpp */; };
+		8483CFCA1E8D178600D6B836 /* SLColor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF6A1E8D178600D6B836 /* SLColor.cpp */; };
+		8483CFCB1E8D178600D6B836 /* SLColor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF6A1E8D178600D6B836 /* SLColor.cpp */; };
+		8483CFCC1E8D178600D6B836 /* SLGeometry.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF6C1E8D178600D6B836 /* SLGeometry.cpp */; };
+		8483CFCD1E8D178600D6B836 /* SLGeometry.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF6C1E8D178600D6B836 /* SLGeometry.cpp */; };
+		8483CFCE1E8D178600D6B836 /* SLMat4.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF6E1E8D178600D6B836 /* SLMat4.cpp */; };
+		8483CFCF1E8D178600D6B836 /* SLMat4.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF6E1E8D178600D6B836 /* SLMat4.cpp */; };
+		8483CFD01E8D178600D6B836 /* SLMathUtil.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF721E8D178600D6B836 /* SLMathUtil.cpp */; };
+		8483CFD11E8D178600D6B836 /* SLMathUtil.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF721E8D178600D6B836 /* SLMathUtil.cpp */; };
+		8483CFD21E8D178600D6B836 /* SLQuaternion.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF7B1E8D178600D6B836 /* SLQuaternion.cpp */; };
+		8483CFD31E8D178600D6B836 /* SLQuaternion.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF7B1E8D178600D6B836 /* SLQuaternion.cpp */; };
+		8483CFD41E8D178600D6B836 /* SLRef.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF7E1E8D178600D6B836 /* SLRef.cpp */; };
+		8483CFD51E8D178600D6B836 /* SLRef.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF7E1E8D178600D6B836 /* SLRef.cpp */; };
+		8483CFD61E8D178600D6B836 /* SLSubscription.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF801E8D178600D6B836 /* SLSubscription.cpp */; };
+		8483CFD71E8D178600D6B836 /* SLSubscription.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF801E8D178600D6B836 /* SLSubscription.cpp */; };
+		8483CFD81E8D178600D6B836 /* SLVec2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF821E8D178600D6B836 /* SLVec2.cpp */; };
+		8483CFD91E8D178600D6B836 /* SLVec2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF821E8D178600D6B836 /* SLVec2.cpp */; };
+		8483CFDA1E8D178600D6B836 /* SLVec3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF851E8D178600D6B836 /* SLVec3.cpp */; };
+		8483CFDB1E8D178600D6B836 /* SLVec3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF851E8D178600D6B836 /* SLVec3.cpp */; };
+		8483CFDC1E8D178600D6B836 /* SLVec4.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF881E8D178600D6B836 /* SLVec4.cpp */; };
+		8483CFDD1E8D178600D6B836 /* SLVec4.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF881E8D178600D6B836 /* SLVec4.cpp */; };
+		8483CFDE1E8D178600D6B836 /* SLCanvas.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF8C1E8D178600D6B836 /* SLCanvas.cpp */; };
+		8483CFDF1E8D178600D6B836 /* SLCanvas.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF8C1E8D178600D6B836 /* SLCanvas.cpp */; };
+		8483CFE01E8D178600D6B836 /* SLDraw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF8E1E8D178600D6B836 /* SLDraw.cpp */; };
+		8483CFE11E8D178600D6B836 /* SLDraw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF8E1E8D178600D6B836 /* SLDraw.cpp */; };
+		8483CFE21E8D178600D6B836 /* SLImage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF901E8D178600D6B836 /* SLImage.cpp */; };
+		8483CFE31E8D178600D6B836 /* SLImage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF901E8D178600D6B836 /* SLImage.cpp */; };
+		8483CFE41E8D178600D6B836 /* SLPath.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF921E8D178600D6B836 /* SLPath.cpp */; };
+		8483CFE51E8D178600D6B836 /* SLPath.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF921E8D178600D6B836 /* SLPath.cpp */; };
+		8483CFE61E8D178600D6B836 /* SLTessDict.c in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF951E8D178600D6B836 /* SLTessDict.c */; };
+		8483CFE71E8D178600D6B836 /* SLTessDict.c in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF951E8D178600D6B836 /* SLTessDict.c */; };
+		8483CFE81E8D178600D6B836 /* SLTessGeom.c in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF981E8D178600D6B836 /* SLTessGeom.c */; };
+		8483CFE91E8D178600D6B836 /* SLTessGeom.c in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF981E8D178600D6B836 /* SLTessGeom.c */; };
+		8483CFEA1E8D178600D6B836 /* SLTessMesh.c in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF9A1E8D178600D6B836 /* SLTessMesh.c */; };
+		8483CFEB1E8D178600D6B836 /* SLTessMesh.c in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF9A1E8D178600D6B836 /* SLTessMesh.c */; };
+		8483CFEC1E8D178600D6B836 /* SLTessPriorityq.c in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF9C1E8D178600D6B836 /* SLTessPriorityq.c */; };
+		8483CFED1E8D178600D6B836 /* SLTessPriorityq.c in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF9C1E8D178600D6B836 /* SLTessPriorityq.c */; };
+		8483CFEE1E8D178600D6B836 /* SLTessSweep.c in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF9E1E8D178600D6B836 /* SLTessSweep.c */; };
+		8483CFEF1E8D178600D6B836 /* SLTessSweep.c in Sources */ = {isa = PBXBuildFile; fileRef = 8483CF9E1E8D178600D6B836 /* SLTessSweep.c */; };
+		8483CFF01E8D178600D6B836 /* SLTessTess.c in Sources */ = {isa = PBXBuildFile; fileRef = 8483CFA01E8D178600D6B836 /* SLTessTess.c */; };
+		8483CFF11E8D178600D6B836 /* SLTessTess.c in Sources */ = {isa = PBXBuildFile; fileRef = 8483CFA01E8D178600D6B836 /* SLTessTess.c */; };
+		8483CFF41E8D194500D6B836 /* SPLayoutSource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8483CFF21E8D194500D6B836 /* SPLayoutSource.cpp */; };
 		849E37CF1DDB644A00CB045E /* SPDynamicLabel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 849E37CB1DDB644A00CB045E /* SPDynamicLabel.cpp */; };
 		849E37D01DDB644A00CB045E /* SPLabelParameters.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 849E37CD1DDB644A00CB045E /* SPLabelParameters.cpp */; };
 		849E37E91DDB717C00CB045E /* SPBatchNodeBase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 849E37E71DDB717C00CB045E /* SPBatchNodeBase.cpp */; };
@@ -147,7 +203,6 @@
 		84A6E9D11B1D888D00C0175B /* SPGestureRecognizer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8CC1B1D888D00C0175B /* SPGestureRecognizer.cpp */; };
 		84A6E9D21B1D888D00C0175B /* SPScrollController.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8CF1B1D888D00C0175B /* SPScrollController.cpp */; };
 		84A6E9D61B1D888D00C0175B /* SPEventListener.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8D71B1D888D00C0175B /* SPEventListener.cpp */; };
-		84A6E9D91B1D888D00C0175B /* SPDataSubscription.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8DF1B1D888D00C0175B /* SPDataSubscription.cpp */; };
 		84A6E9DA1B1D888D00C0175B /* SPEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8E21B1D888D00C0175B /* SPEvent.cpp */; };
 		84A6E9DB1B1D888D00C0175B /* SPEventDispatcher.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8E41B1D888D00C0175B /* SPEventDispatcher.cpp */; };
 		84A6E9DC1B1D888D00C0175B /* SPEventHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8E61B1D888D00C0175B /* SPEventHandler.cpp */; };
@@ -155,14 +210,10 @@
 		84A6E9DE1B1D888D00C0175B /* SPError.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E8EE1B1D888D00C0175B /* SPError.cpp */; };
 		84A6EA0F1B1D888D00C0175B /* SPDynamicBatchNode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E96D1B1D888D00C0175B /* SPDynamicBatchNode.cpp */; };
 		84A6EA101B1D888D00C0175B /* SPDynamicSprite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E96F1B1D888D00C0175B /* SPDynamicSprite.cpp */; };
-		84A6EA111B1D888D00C0175B /* SPIconSprite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9711B1D888D00C0175B /* SPIconSprite.cpp */; };
 		84A6EA121B1D888D00C0175B /* SPLayer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9731B1D888D00C0175B /* SPLayer.cpp */; };
 		84A6EA131B1D888D00C0175B /* SPRoundedSprite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9751B1D888D00C0175B /* SPRoundedSprite.cpp */; };
 		84A6EA141B1D888D00C0175B /* SPScale9Sprite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9771B1D888D00C0175B /* SPScale9Sprite.cpp */; };
 		84A6EA151B1D888D00C0175B /* SPShadowSprite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9791B1D888D00C0175B /* SPShadowSprite.cpp */; };
-		84A6EA161B1D888D00C0175B /* SPDraw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E97C1B1D888D00C0175B /* SPDraw.cpp */; };
-		84A6EA171B1D888D00C0175B /* SPDrawPath.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E97E1B1D888D00C0175B /* SPDrawPath.cpp */; };
-		84A6EA181B1D888D00C0175B /* SPDrawPathNode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9801B1D888D00C0175B /* SPDrawPathNode.cpp */; };
 		84A6EA1A1B1D888D00C0175B /* SPOverscroll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9861B1D888D00C0175B /* SPOverscroll.cpp */; };
 		84A6EA1B1B1D888D00C0175B /* SPScrollView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E9881B1D888D00C0175B /* SPScrollView.cpp */; };
 		84A6EA1C1B1D888D00C0175B /* SPScrollViewBase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84A6E98A1B1D888D00C0175B /* SPScrollViewBase.cpp */; };
@@ -188,6 +239,57 @@
 		84E4670D1E276229005CB6BC /* SPCornerSprite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84E4670B1E276229005CB6BC /* SPCornerSprite.cpp */; };
 		84EA86491BB1787A00FB1276 /* SPProgressAction.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84EA86471BB1787A00FB1276 /* SPProgressAction.cpp */; };
 		84F636B81C16CF0D0021A2F4 /* SPDataValueNetwork.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84F636B51C16CF0D0021A2F4 /* SPDataValueNetwork.cpp */; };
+		84FA3B461E8EA74A002D0F73 /* MaterialMenuSource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3ACF1E8EA74A002D0F73 /* MaterialMenuSource.cpp */; };
+		84FA3B471E8EA74A002D0F73 /* MaterialImage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3AD41E8EA74A002D0F73 /* MaterialImage.cpp */; };
+		84FA3B481E8EA74A002D0F73 /* MaterialNode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3AD61E8EA74A002D0F73 /* MaterialNode.cpp */; };
+		84FA3B491E8EA74A002D0F73 /* MaterialButton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3AD91E8EA74A002D0F73 /* MaterialButton.cpp */; };
+		84FA3B4A1E8EA74A002D0F73 /* MaterialButtonIcon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3ADB1E8EA74A002D0F73 /* MaterialButtonIcon.cpp */; };
+		84FA3B4B1E8EA74A002D0F73 /* MaterialButtonLabel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3ADD1E8EA74A002D0F73 /* MaterialButtonLabel.cpp */; };
+		84FA3B4C1E8EA74A002D0F73 /* MaterialButtonLabelIcon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3ADF1E8EA74A002D0F73 /* MaterialButtonLabelIcon.cpp */; };
+		84FA3B4D1E8EA74A002D0F73 /* MaterialButtonLabelSelector.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3AE11E8EA74A002D0F73 /* MaterialButtonLabelSelector.cpp */; };
+		84FA3B4E1E8EA74A002D0F73 /* MaterialFloatingActionButton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3AE31E8EA74A002D0F73 /* MaterialFloatingActionButton.cpp */; };
+		84FA3B4F1E8EA74A002D0F73 /* MaterialTabBar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3AE51E8EA74A002D0F73 /* MaterialTabBar.cpp */; };
+		84FA3B501E8EA74A002D0F73 /* MaterialGalleryScroll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3AE81E8EA74A002D0F73 /* MaterialGalleryScroll.cpp */; };
+		84FA3B511E8EA74A002D0F73 /* MaterialImageLayer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3AEA1E8EA74A002D0F73 /* MaterialImageLayer.cpp */; };
+		84FA3B521E8EA74A002D0F73 /* MaterialFormController.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3AED1E8EA74A002D0F73 /* MaterialFormController.cpp */; };
+		84FA3B531E8EA74A002D0F73 /* MaterialFormField.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3AEF1E8EA74A002D0F73 /* MaterialFormField.cpp */; };
+		84FA3B541E8EA74A002D0F73 /* MaterialInputField.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3AF11E8EA74A002D0F73 /* MaterialInputField.cpp */; };
+		84FA3B551E8EA74A002D0F73 /* MaterialInputLabel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3AF31E8EA74A002D0F73 /* MaterialInputLabel.cpp */; };
+		84FA3B561E8EA74A002D0F73 /* MaterialInputMenu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3AF51E8EA74A002D0F73 /* MaterialInputMenu.cpp */; };
+		84FA3B571E8EA74A002D0F73 /* MaterialLineField.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3AF71E8EA74A002D0F73 /* MaterialLineField.cpp */; };
+		84FA3B581E8EA74A002D0F73 /* MaterialSwitch.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3AF91E8EA74A002D0F73 /* MaterialSwitch.cpp */; };
+		84FA3B591E8EA74A002D0F73 /* MaterialTextField.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3AFB1E8EA74A002D0F73 /* MaterialTextField.cpp */; };
+		84FA3B5A1E8EA74A002D0F73 /* MaterialFlexibleLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3AFE1E8EA74A002D0F73 /* MaterialFlexibleLayout.cpp */; };
+		84FA3B5B1E8EA74A002D0F73 /* MaterialLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B001E8EA74A002D0F73 /* MaterialLayout.cpp */; };
+		84FA3B5C1E8EA74A002D0F73 /* MaterialOverlayLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B021E8EA74A002D0F73 /* MaterialOverlayLayout.cpp */; };
+		84FA3B5D1E8EA74A002D0F73 /* MaterialSidebarLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B041E8EA74A002D0F73 /* MaterialSidebarLayout.cpp */; };
+		84FA3B5E1E8EA74A002D0F73 /* MaterialToolbarLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B061E8EA74A002D0F73 /* MaterialToolbarLayout.cpp */; };
+		84FA3B5F1E8EA74A002D0F73 /* MaterialFloatingMenu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B091E8EA74A002D0F73 /* MaterialFloatingMenu.cpp */; };
+		84FA3B601E8EA74A002D0F73 /* MaterialMenu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B0B1E8EA74A002D0F73 /* MaterialMenu.cpp */; };
+		84FA3B611E8EA74A002D0F73 /* MaterialMenuButton.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B0D1E8EA74A002D0F73 /* MaterialMenuButton.cpp */; };
+		84FA3B621E8EA74A002D0F73 /* MaterialMenuSeparator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B101E8EA74A002D0F73 /* MaterialMenuSeparator.cpp */; };
+		84FA3B631E8EA74A002D0F73 /* MaterialNavigationLayer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B131E8EA74A002D0F73 /* MaterialNavigationLayer.cpp */; };
+		84FA3B641E8EA74A002D0F73 /* MaterialLinearProgress.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B161E8EA74A002D0F73 /* MaterialLinearProgress.cpp */; };
+		84FA3B651E8EA74A002D0F73 /* MaterialRoundedProgress.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B181E8EA74A002D0F73 /* MaterialRoundedProgress.cpp */; };
+		84FA3B661E8EA74A002D0F73 /* MaterialBackgroundLayer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B1B1E8EA74A002D0F73 /* MaterialBackgroundLayer.cpp */; };
+		84FA3B671E8EA74A002D0F73 /* MaterialContentLayer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B1D1E8EA74A002D0F73 /* MaterialContentLayer.cpp */; };
+		84FA3B681E8EA74A002D0F73 /* MaterialForegroundLayer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B1F1E8EA74A002D0F73 /* MaterialForegroundLayer.cpp */; };
+		84FA3B691E8EA74A002D0F73 /* MaterialScene.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B211E8EA74A002D0F73 /* MaterialScene.cpp */; };
+		84FA3B6A1E8EA74A002D0F73 /* MaterialRecyclerScroll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B241E8EA74A002D0F73 /* MaterialRecyclerScroll.cpp */; };
+		84FA3B6B1E8EA74A002D0F73 /* MaterialScroll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B261E8EA74A002D0F73 /* MaterialScroll.cpp */; };
+		84FA3B6C1E8EA74A002D0F73 /* MaterialScrollFixed.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B281E8EA74A002D0F73 /* MaterialScrollFixed.cpp */; };
+		84FA3B6D1E8EA74A002D0F73 /* MaterialScrollSlice.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B2A1E8EA74A002D0F73 /* MaterialScrollSlice.cpp */; };
+		84FA3B6E1E8EA74A002D0F73 /* MaterialSimpleGrid.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B2C1E8EA74A002D0F73 /* MaterialSimpleGrid.cpp */; };
+		84FA3B6F1E8EA74A002D0F73 /* MaterialSearchToolbar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B2F1E8EA74A002D0F73 /* MaterialSearchToolbar.cpp */; };
+		84FA3B701E8EA74A002D0F73 /* MaterialTabToolbar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B311E8EA74A002D0F73 /* MaterialTabToolbar.cpp */; };
+		84FA3B711E8EA74A002D0F73 /* MaterialToolbar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B331E8EA74A002D0F73 /* MaterialToolbar.cpp */; };
+		84FA3B721E8EA74A002D0F73 /* MaterialIconSprite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B371E8EA74A002D0F73 /* MaterialIconSprite.cpp */; };
+		84FA3B731E8EA74A002D0F73 /* MaterialIconStorage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B391E8EA74A002D0F73 /* MaterialIconStorage.cpp */; };
+		84FA3B741E8EA74A002D0F73 /* MaterialLabel.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B3B1E8EA74A002D0F73 /* MaterialLabel.cpp */; };
+		84FA3B751E8EA74A002D0F73 /* MaterialMetrics.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B3D1E8EA74A002D0F73 /* MaterialMetrics.cpp */; };
+		84FA3B761E8EA74A002D0F73 /* MaterialResize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B401E8EA74A002D0F73 /* MaterialResize.cpp */; };
+		84FA3B771E8EA74A002D0F73 /* MaterialResourceManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B421E8EA74A002D0F73 /* MaterialResourceManager.cpp */; };
+		84FA3B781E8EA74A002D0F73 /* MaterialUserFontConfig.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FA3B441E8EA74A002D0F73 /* MaterialUserFontConfig.cpp */; };
 		84FDCD461BF1C37400C56046 /* SPDelayedReleaser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FDCD2F1BF1C37400C56046 /* SPDelayedReleaser.cpp */; };
 		84FDCD471BF1C37400C56046 /* SPDelayedReleaser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FDCD2F1BF1C37400C56046 /* SPDelayedReleaser.cpp */; };
 		84FDCD481BF1C37400C56046 /* SPSyncRWLock.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 84FDCD331BF1C37400C56046 /* SPSyncRWLock.cpp */; };
@@ -226,12 +328,6 @@
 		298436851DABDD0A00B411D7 /* SPSignalHandler.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SPSignalHandler.mm; sourceTree = "<group>"; };
 		29DFCAB91D0990D900AAD2E5 /* SPUrlencodeParser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPUrlencodeParser.cpp; sourceTree = "<group>"; };
 		29DFCABA1D0990D900AAD2E5 /* SPUrlencodeParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPUrlencodeParser.h; sourceTree = "<group>"; };
-		29FCA7D61D9AD427008E8671 /* SPRichTextDrawer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextDrawer.cpp; sourceTree = "<group>"; };
-		29FCA7D71D9AD427008E8671 /* SPRichTextDrawer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextDrawer.h; sourceTree = "<group>"; };
-		29FCA7D81D9AD427008E8671 /* SPRichTextRenderer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextRenderer.cpp; sourceTree = "<group>"; };
-		29FCA7D91D9AD427008E8671 /* SPRichTextRenderer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextRenderer.h; sourceTree = "<group>"; };
-		29FCA7DA1D9AD427008E8671 /* SPRichTextView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextView.cpp; sourceTree = "<group>"; };
-		29FCA7DB1D9AD427008E8671 /* SPRichTextView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextView.h; sourceTree = "<group>"; };
 		8405681719B7FBE40004A760 /* libstappler Mac.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libstappler Mac.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		84080DBD1C1982EE00723732 /* SPCommon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPCommon.h; sourceTree = "<group>"; };
 		84080DBE1C1982EE00723732 /* SPCore.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPCore.h; sourceTree = "<group>"; };
@@ -251,8 +347,6 @@
 		84080DE31C1982EF00723732 /* SPToString.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPToString.h; sourceTree = "<group>"; };
 		84080DE41C1982EF00723732 /* SPUnicode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPUnicode.cpp; sourceTree = "<group>"; };
 		84080DE51C1982EF00723732 /* SPUnicode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPUnicode.h; sourceTree = "<group>"; };
-		84080DE71C1982EF00723732 /* SPThreadLocal.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPThreadLocal.cpp; sourceTree = "<group>"; };
-		84080DE81C1982EF00723732 /* SPThreadLocal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPThreadLocal.h; sourceTree = "<group>"; };
 		84080DEC1C1982EF00723732 /* SPByteOrder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPByteOrder.h; sourceTree = "<group>"; };
 		84080DED1C1982EF00723732 /* SPDataReader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDataReader.h; sourceTree = "<group>"; };
 		84080DEE1C1982EF00723732 /* SPFilesystem.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPFilesystem.cpp; sourceTree = "<group>"; };
@@ -299,49 +393,8 @@
 		8422D6AC1DFAB63A0001A3F8 /* SPNetworkTask.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPNetworkTask.h; sourceTree = "<group>"; };
 		8422D6AE1DFAB63A0001A3F8 /* SPFont.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPFont.cpp; sourceTree = "<group>"; };
 		8422D6AF1DFAB63A0001A3F8 /* SPFont.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPFont.h; sourceTree = "<group>"; };
-		8422D6B01DFAB63A0001A3F8 /* SPFontFormatter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPFontFormatter.cpp; sourceTree = "<group>"; };
-		8422D6B11DFAB63A0001A3F8 /* SPFontFormatter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPFontFormatter.h; sourceTree = "<group>"; };
-		8422D6B21DFAB63A0001A3F8 /* SPFontLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPFontLayout.cpp; sourceTree = "<group>"; };
-		8422D6B31DFAB63A0001A3F8 /* SPIcon.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPIcon.cpp; sourceTree = "<group>"; };
-		8422D6B41DFAB63A0001A3F8 /* SPIcon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIcon.h; sourceTree = "<group>"; };
 		8422D6B51DFAB63A0001A3F8 /* SPResource.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPResource.cpp; sourceTree = "<group>"; };
 		8422D6B61DFAB63A0001A3F8 /* SPResource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPResource.h; sourceTree = "<group>"; };
-		8422D6B91DFAB63A0001A3F8 /* SPRichTextDocument.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextDocument.cpp; sourceTree = "<group>"; };
-		8422D6BA1DFAB63A0001A3F8 /* SPRichTextDocument.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextDocument.h; sourceTree = "<group>"; };
-		8422D6BB1DFAB63A0001A3F8 /* SPRichTextNode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextNode.cpp; sourceTree = "<group>"; };
-		8422D6BC1DFAB63A0001A3F8 /* SPRichTextNode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextNode.h; sourceTree = "<group>"; };
-		8422D6BD1DFAB63A0001A3F8 /* SPRichTextParser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextParser.cpp; sourceTree = "<group>"; };
-		8422D6BE1DFAB63A0001A3F8 /* SPRichTextParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextParser.h; sourceTree = "<group>"; };
-		8422D6BF1DFAB63A0001A3F8 /* SPRichTextReader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextReader.cpp; sourceTree = "<group>"; };
-		8422D6C01DFAB63A0001A3F8 /* SPRichTextReader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextReader.h; sourceTree = "<group>"; };
-		8422D6C11DFAB63A0001A3F8 /* SPRichTextSource.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextSource.cpp; sourceTree = "<group>"; };
-		8422D6C21DFAB63A0001A3F8 /* SPRichTextSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextSource.h; sourceTree = "<group>"; };
-		8422D6C41DFAB63A0001A3F8 /* SPEpubDocument.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPEpubDocument.cpp; sourceTree = "<group>"; };
-		8422D6C51DFAB63A0001A3F8 /* SPEpubDocument.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPEpubDocument.h; sourceTree = "<group>"; };
-		8422D6C61DFAB63A0001A3F8 /* SPEpubInfo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPEpubInfo.cpp; sourceTree = "<group>"; };
-		8422D6C71DFAB63A0001A3F8 /* SPEpubInfo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPEpubInfo.h; sourceTree = "<group>"; };
-		8422D6C81DFAB63A0001A3F8 /* SPEpubReader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPEpubReader.cpp; sourceTree = "<group>"; };
-		8422D6C91DFAB63A0001A3F8 /* SPEpubReader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPEpubReader.h; sourceTree = "<group>"; };
-		8422D6CB1DFAB63A0001A3F8 /* SPRichTextMultipartParser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextMultipartParser.cpp; sourceTree = "<group>"; };
-		8422D6CC1DFAB63A0001A3F8 /* SPRichTextMultipartParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextMultipartParser.h; sourceTree = "<group>"; };
-		8422D6CD1DFAB63A0001A3F8 /* SPRichTextRendererTypes.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextRendererTypes.cpp; sourceTree = "<group>"; };
-		8422D6CE1DFAB63A0001A3F8 /* SPRichTextRendererTypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextRendererTypes.h; sourceTree = "<group>"; };
-		8422D6D01DFAB63A0001A3F8 /* SPRichTextBuilder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextBuilder.cpp; sourceTree = "<group>"; };
-		8422D6D11DFAB63A0001A3F8 /* SPRichTextBuilder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextBuilder.h; sourceTree = "<group>"; };
-		8422D6D21DFAB63A0001A3F8 /* SPRichTextBuilderBlockModel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextBuilderBlockModel.cpp; sourceTree = "<group>"; };
-		8422D6D31DFAB63A0001A3F8 /* SPRichTextBuilderBullet.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextBuilderBullet.cpp; sourceTree = "<group>"; };
-		8422D6D41DFAB63A0001A3F8 /* SPRichTextBuilderLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextBuilderLayout.cpp; sourceTree = "<group>"; };
-		8422D6D51DFAB63A0001A3F8 /* SPRichTextLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextLayout.cpp; sourceTree = "<group>"; };
-		8422D6D61DFAB63A0001A3F8 /* SPRichTextLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextLayout.h; sourceTree = "<group>"; };
-		8422D6D71DFAB63A0001A3F8 /* SPRichTextResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextResult.cpp; sourceTree = "<group>"; };
-		8422D6D81DFAB63A0001A3F8 /* SPRichTextResult.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextResult.h; sourceTree = "<group>"; };
-		8422D6DA1DFAB63A0001A3F8 /* SPRichTextStyle.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextStyle.cpp; sourceTree = "<group>"; };
-		8422D6DB1DFAB63A0001A3F8 /* SPRichTextStyle.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextStyle.h; sourceTree = "<group>"; };
-		8422D6DC1DFAB63A0001A3F8 /* SPRichTextStyleColors.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextStyleColors.cpp; sourceTree = "<group>"; };
-		8422D6DD1DFAB63A0001A3F8 /* SPRichTextStyleCompiled.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextStyleCompiled.cpp; sourceTree = "<group>"; };
-		8422D6DE1DFAB63A0001A3F8 /* SPRichTextStyleMedia.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextStyleMedia.cpp; sourceTree = "<group>"; };
-		8422D6DF1DFAB63A0001A3F8 /* SPRichTextStyleParameters.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = SPRichTextStyleParameters.hpp; sourceTree = "<group>"; };
-		8422D6E01DFAB63A0001A3F8 /* SPRichTextStyleValues.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextStyleValues.cpp; sourceTree = "<group>"; };
 		8422D6E21DFAB63A0001A3F8 /* SPScheme.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPScheme.h; sourceTree = "<group>"; };
 		8422D6E31DFAB63A0001A3F8 /* SPStorage.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPStorage.cpp; sourceTree = "<group>"; };
 		8422D6E41DFAB63A0001A3F8 /* SPStorage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPStorage.h; sourceTree = "<group>"; };
@@ -362,21 +415,15 @@
 		8422D6F61DFAB63A0001A3F8 /* SPThreadHandlerIOS.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SPThreadHandlerIOS.mm; sourceTree = "<group>"; };
 		8422D6F71DFAB63A0001A3F8 /* SPThreadManager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPThreadManager.cpp; sourceTree = "<group>"; };
 		8422D6F81DFAB63A0001A3F8 /* SPThreadManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPThreadManager.h; sourceTree = "<group>"; };
-		8422D7271DFAB6F90001A3F8 /* SPDrawCanvasCairo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDrawCanvasCairo.cpp; sourceTree = "<group>"; };
-		8422D7281DFAB6F90001A3F8 /* SPDrawCanvasCairo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDrawCanvasCairo.h; sourceTree = "<group>"; };
 		84337FE11CC24EA700546216 /* SPIO.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPIO.cpp; sourceTree = "<group>"; };
 		84337FE21CC24EA700546216 /* SPIO.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIO.h; sourceTree = "<group>"; };
 		84337FE31CC24EA700546216 /* SPIOBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIOBuffer.h; sourceTree = "<group>"; };
 		84337FE41CC24EA700546216 /* SPIOCommon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIOCommon.h; sourceTree = "<group>"; };
 		84337FE51CC24EA700546216 /* SPIOConsumer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIOConsumer.h; sourceTree = "<group>"; };
 		84337FE61CC24EA700546216 /* SPIOProducer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIOProducer.h; sourceTree = "<group>"; };
-		84337FF01CC25A7D00546216 /* SPDrawCanvas.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDrawCanvas.cpp; sourceTree = "<group>"; };
-		84337FF11CC25A7D00546216 /* SPDrawCanvas.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDrawCanvas.h; sourceTree = "<group>"; };
 		843FF7061E3B3A8D009F31F1 /* SPApplication.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPApplication.cpp; sourceTree = "<group>"; };
 		843FF7071E3B3A8D009F31F1 /* SPApplication.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPApplication.h; sourceTree = "<group>"; };
 		843FF7221E3B3D68009F31F1 /* SPNodeExt.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPNodeExt.cpp; sourceTree = "<group>"; };
-		844637521B1EE7FE00CA9857 /* SPIOSLoaderView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SPIOSLoaderView.mm; sourceTree = "<group>"; };
-		844637541B1EE83200CA9857 /* SPIOSLoaderView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SPIOSLoaderView.h; sourceTree = "<group>"; };
 		847576C81BE8A13B00445A50 /* SPActions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPActions.h; sourceTree = "<group>"; };
 		847BB9C71C4505B000B3B701 /* SPBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPBuffer.h; sourceTree = "<group>"; };
 		847BB9C81C4505B000B3B701 /* SPDataCborBuffer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDataCborBuffer.cpp; sourceTree = "<group>"; };
@@ -390,6 +437,111 @@
 		847BB9D01C4505B000B3B701 /* SPDataStream.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDataStream.cpp; sourceTree = "<group>"; };
 		847BB9D11C4505B000B3B701 /* SPDataStream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDataStream.h; sourceTree = "<group>"; };
 		847BB9D21C4505B000B3B701 /* SPTransferBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPTransferBuffer.h; sourceTree = "<group>"; };
+		8483CF291E8D171000D6B836 /* SPReceiptValidation.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPReceiptValidation.cpp; sourceTree = "<group>"; };
+		8483CF2C1E8D176400D6B836 /* SPDrawCanvas.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDrawCanvas.cpp; sourceTree = "<group>"; };
+		8483CF2D1E8D176400D6B836 /* SPDrawCanvas.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDrawCanvas.h; sourceTree = "<group>"; };
+		8483CF2E1E8D176400D6B836 /* SPDrawGLCacheNode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDrawGLCacheNode.cpp; sourceTree = "<group>"; };
+		8483CF2F1E8D176400D6B836 /* SPDrawGLCacheNode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDrawGLCacheNode.h; sourceTree = "<group>"; };
+		8483CF301E8D176400D6B836 /* SPDrawPathNode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDrawPathNode.cpp; sourceTree = "<group>"; };
+		8483CF311E8D176400D6B836 /* SPDrawPathNode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDrawPathNode.h; sourceTree = "<group>"; };
+		8483CF331E8D176400D6B836 /* SPRichText.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichText.h; sourceTree = "<group>"; };
+		8483CF341E8D176400D6B836 /* SPRichTextDrawer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextDrawer.cpp; sourceTree = "<group>"; };
+		8483CF351E8D176400D6B836 /* SPRichTextDrawer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextDrawer.h; sourceTree = "<group>"; };
+		8483CF361E8D176400D6B836 /* SPRichTextRenderer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextRenderer.cpp; sourceTree = "<group>"; };
+		8483CF371E8D176400D6B836 /* SPRichTextRenderer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextRenderer.h; sourceTree = "<group>"; };
+		8483CF381E8D176400D6B836 /* SPRichTextView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRichTextView.cpp; sourceTree = "<group>"; };
+		8483CF391E8D176400D6B836 /* SPRichTextView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPRichTextView.h; sourceTree = "<group>"; };
+		8483CF421E8D178600D6B836 /* SLDocument.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLDocument.cpp; sourceTree = "<group>"; };
+		8483CF431E8D178600D6B836 /* SLDocument.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLDocument.h; sourceTree = "<group>"; };
+		8483CF441E8D178600D6B836 /* SLNode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLNode.cpp; sourceTree = "<group>"; };
+		8483CF451E8D178600D6B836 /* SLNode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLNode.h; sourceTree = "<group>"; };
+		8483CF461E8D178600D6B836 /* SLParser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLParser.cpp; sourceTree = "<group>"; };
+		8483CF471E8D178600D6B836 /* SLParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLParser.h; sourceTree = "<group>"; };
+		8483CF481E8D178600D6B836 /* SLReader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLReader.cpp; sourceTree = "<group>"; };
+		8483CF491E8D178600D6B836 /* SLReader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLReader.h; sourceTree = "<group>"; };
+		8483CF4B1E8D178600D6B836 /* SLFont.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLFont.cpp; sourceTree = "<group>"; };
+		8483CF4C1E8D178600D6B836 /* SLFont.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLFont.h; sourceTree = "<group>"; };
+		8483CF4D1E8D178600D6B836 /* SLFontFormatter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLFontFormatter.cpp; sourceTree = "<group>"; };
+		8483CF4E1E8D178600D6B836 /* SLFontFormatter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLFontFormatter.h; sourceTree = "<group>"; };
+		8483CF4F1E8D178600D6B836 /* SLFontLibrary.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLFontLibrary.cpp; sourceTree = "<group>"; };
+		8483CF501E8D178600D6B836 /* SLFontLibrary.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLFontLibrary.h; sourceTree = "<group>"; };
+		8483CF521E8D178600D6B836 /* SLMultipartParser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLMultipartParser.cpp; sourceTree = "<group>"; };
+		8483CF531E8D178600D6B836 /* SLMultipartParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLMultipartParser.h; sourceTree = "<group>"; };
+		8483CF541E8D178600D6B836 /* SLRendererTypes.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLRendererTypes.cpp; sourceTree = "<group>"; };
+		8483CF551E8D178600D6B836 /* SLRendererTypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLRendererTypes.h; sourceTree = "<group>"; };
+		8483CF571E8D178600D6B836 /* SLBuilder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLBuilder.cpp; sourceTree = "<group>"; };
+		8483CF581E8D178600D6B836 /* SLBuilder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLBuilder.h; sourceTree = "<group>"; };
+		8483CF591E8D178600D6B836 /* SLBuilderBlockModel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLBuilderBlockModel.cpp; sourceTree = "<group>"; };
+		8483CF5A1E8D178600D6B836 /* SLBuilderBullet.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLBuilderBullet.cpp; sourceTree = "<group>"; };
+		8483CF5B1E8D178600D6B836 /* SLBuilderLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLBuilderLayout.cpp; sourceTree = "<group>"; };
+		8483CF5C1E8D178600D6B836 /* SLLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLLayout.cpp; sourceTree = "<group>"; };
+		8483CF5D1E8D178600D6B836 /* SLLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLLayout.h; sourceTree = "<group>"; };
+		8483CF5E1E8D178600D6B836 /* SLResult.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLResult.cpp; sourceTree = "<group>"; };
+		8483CF5F1E8D178600D6B836 /* SLResult.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLResult.h; sourceTree = "<group>"; };
+		8483CF601E8D178600D6B836 /* SPLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPLayout.h; sourceTree = "<group>"; };
+		8483CF621E8D178600D6B836 /* SLStyle.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLStyle.cpp; sourceTree = "<group>"; };
+		8483CF631E8D178600D6B836 /* SLStyle.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLStyle.h; sourceTree = "<group>"; };
+		8483CF641E8D178600D6B836 /* SLStyleColors.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLStyleColors.cpp; sourceTree = "<group>"; };
+		8483CF651E8D178600D6B836 /* SLStyleCompiled.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLStyleCompiled.cpp; sourceTree = "<group>"; };
+		8483CF661E8D178600D6B836 /* SLStyleMedia.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLStyleMedia.cpp; sourceTree = "<group>"; };
+		8483CF671E8D178600D6B836 /* SLStyleParameters.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = SLStyleParameters.hpp; sourceTree = "<group>"; };
+		8483CF681E8D178600D6B836 /* SLStyleValues.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLStyleValues.cpp; sourceTree = "<group>"; };
+		8483CF6A1E8D178600D6B836 /* SLColor.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLColor.cpp; sourceTree = "<group>"; };
+		8483CF6B1E8D178600D6B836 /* SLColor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLColor.h; sourceTree = "<group>"; };
+		8483CF6C1E8D178600D6B836 /* SLGeometry.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLGeometry.cpp; sourceTree = "<group>"; };
+		8483CF6D1E8D178600D6B836 /* SLGeometry.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLGeometry.h; sourceTree = "<group>"; };
+		8483CF6E1E8D178600D6B836 /* SLMat4.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLMat4.cpp; sourceTree = "<group>"; };
+		8483CF6F1E8D178600D6B836 /* SLMat4.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLMat4.h; sourceTree = "<group>"; };
+		8483CF701E8D178600D6B836 /* SLMat4.inl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = SLMat4.inl.hpp; sourceTree = "<group>"; };
+		8483CF711E8D178600D6B836 /* SLMathBase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLMathBase.h; sourceTree = "<group>"; };
+		8483CF721E8D178600D6B836 /* SLMathUtil.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLMathUtil.cpp; sourceTree = "<group>"; };
+		8483CF731E8D178600D6B836 /* SLMathUtil.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLMathUtil.h; sourceTree = "<group>"; };
+		8483CF741E8D178600D6B836 /* SLMathUtil.inl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = SLMathUtil.inl.hpp; sourceTree = "<group>"; };
+		8483CF751E8D178600D6B836 /* SLMathUtilNeon.inl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = SLMathUtilNeon.inl.hpp; sourceTree = "<group>"; };
+		8483CF761E8D178600D6B836 /* SLMathUtilNeon64.inl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = SLMathUtilNeon64.inl.hpp; sourceTree = "<group>"; };
+		8483CF771E8D178600D6B836 /* SLMathUtilSSE.inl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = SLMathUtilSSE.inl.hpp; sourceTree = "<group>"; };
+		8483CF781E8D178600D6B836 /* SLMemPool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLMemPool.h; sourceTree = "<group>"; };
+		8483CF791E8D178600D6B836 /* SLMovingAverage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLMovingAverage.h; sourceTree = "<group>"; };
+		8483CF7A1E8D178600D6B836 /* SLPadding.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLPadding.h; sourceTree = "<group>"; };
+		8483CF7B1E8D178600D6B836 /* SLQuaternion.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLQuaternion.cpp; sourceTree = "<group>"; };
+		8483CF7C1E8D178600D6B836 /* SLQuaternion.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLQuaternion.h; sourceTree = "<group>"; };
+		8483CF7D1E8D178600D6B836 /* SLQuaternion.inl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = SLQuaternion.inl.hpp; sourceTree = "<group>"; };
+		8483CF7E1E8D178600D6B836 /* SLRef.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLRef.cpp; sourceTree = "<group>"; };
+		8483CF7F1E8D178600D6B836 /* SLRef.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLRef.h; sourceTree = "<group>"; };
+		8483CF801E8D178600D6B836 /* SLSubscription.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLSubscription.cpp; sourceTree = "<group>"; };
+		8483CF811E8D178600D6B836 /* SLSubscription.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLSubscription.h; sourceTree = "<group>"; };
+		8483CF821E8D178600D6B836 /* SLVec2.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLVec2.cpp; sourceTree = "<group>"; };
+		8483CF831E8D178600D6B836 /* SLVec2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLVec2.h; sourceTree = "<group>"; };
+		8483CF841E8D178600D6B836 /* SLVec2.inl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = SLVec2.inl.hpp; sourceTree = "<group>"; };
+		8483CF851E8D178600D6B836 /* SLVec3.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLVec3.cpp; sourceTree = "<group>"; };
+		8483CF861E8D178600D6B836 /* SLVec3.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLVec3.h; sourceTree = "<group>"; };
+		8483CF871E8D178600D6B836 /* SLVec3.inl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = SLVec3.inl.hpp; sourceTree = "<group>"; };
+		8483CF881E8D178600D6B836 /* SLVec4.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLVec4.cpp; sourceTree = "<group>"; };
+		8483CF891E8D178600D6B836 /* SLVec4.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLVec4.h; sourceTree = "<group>"; };
+		8483CF8A1E8D178600D6B836 /* SLVec4.inl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = SLVec4.inl.hpp; sourceTree = "<group>"; };
+		8483CF8C1E8D178600D6B836 /* SLCanvas.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLCanvas.cpp; sourceTree = "<group>"; };
+		8483CF8D1E8D178600D6B836 /* SLCanvas.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLCanvas.h; sourceTree = "<group>"; };
+		8483CF8E1E8D178600D6B836 /* SLDraw.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLDraw.cpp; sourceTree = "<group>"; };
+		8483CF8F1E8D178600D6B836 /* SLDraw.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLDraw.h; sourceTree = "<group>"; };
+		8483CF901E8D178600D6B836 /* SLImage.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLImage.cpp; sourceTree = "<group>"; };
+		8483CF911E8D178600D6B836 /* SLImage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLImage.h; sourceTree = "<group>"; };
+		8483CF921E8D178600D6B836 /* SLPath.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SLPath.cpp; sourceTree = "<group>"; };
+		8483CF931E8D178600D6B836 /* SLPath.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLPath.h; sourceTree = "<group>"; };
+		8483CF951E8D178600D6B836 /* SLTessDict.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = SLTessDict.c; sourceTree = "<group>"; };
+		8483CF961E8D178600D6B836 /* SLTessDict.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLTessDict.h; sourceTree = "<group>"; };
+		8483CF971E8D178600D6B836 /* SLTesselator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLTesselator.h; sourceTree = "<group>"; };
+		8483CF981E8D178600D6B836 /* SLTessGeom.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = SLTessGeom.c; sourceTree = "<group>"; };
+		8483CF991E8D178600D6B836 /* SLTessGeom.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLTessGeom.h; sourceTree = "<group>"; };
+		8483CF9A1E8D178600D6B836 /* SLTessMesh.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = SLTessMesh.c; sourceTree = "<group>"; };
+		8483CF9B1E8D178600D6B836 /* SLTessMesh.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLTessMesh.h; sourceTree = "<group>"; };
+		8483CF9C1E8D178600D6B836 /* SLTessPriorityq.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = SLTessPriorityq.c; sourceTree = "<group>"; };
+		8483CF9D1E8D178600D6B836 /* SLTessPriorityq.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLTessPriorityq.h; sourceTree = "<group>"; };
+		8483CF9E1E8D178600D6B836 /* SLTessSweep.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = SLTessSweep.c; sourceTree = "<group>"; };
+		8483CF9F1E8D178600D6B836 /* SLTessSweep.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLTessSweep.h; sourceTree = "<group>"; };
+		8483CFA01E8D178600D6B836 /* SLTessTess.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = SLTessTess.c; sourceTree = "<group>"; };
+		8483CFA11E8D178600D6B836 /* SLTessTess.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLTessTess.h; sourceTree = "<group>"; };
+		8483CFF21E8D194500D6B836 /* SPLayoutSource.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPLayoutSource.cpp; sourceTree = "<group>"; };
+		8483CFF31E8D194500D6B836 /* SPLayoutSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPLayoutSource.h; sourceTree = "<group>"; };
 		849E37CB1DDB644A00CB045E /* SPDynamicLabel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDynamicLabel.cpp; sourceTree = "<group>"; };
 		849E37CC1DDB644A00CB045E /* SPDynamicLabel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDynamicLabel.h; sourceTree = "<group>"; };
 		849E37CD1DDB644A00CB045E /* SPLabelParameters.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPLabelParameters.cpp; sourceTree = "<group>"; };
@@ -416,8 +568,6 @@
 		84A6E8D01B1D888D00C0175B /* SPScrollController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPScrollController.h; sourceTree = "<group>"; };
 		84A6E8D71B1D888D00C0175B /* SPEventListener.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPEventListener.cpp; sourceTree = "<group>"; };
 		84A6E8D81B1D888D00C0175B /* SPEventListener.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPEventListener.h; sourceTree = "<group>"; };
-		84A6E8DF1B1D888D00C0175B /* SPDataSubscription.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDataSubscription.cpp; sourceTree = "<group>"; };
-		84A6E8E01B1D888D00C0175B /* SPDataSubscription.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDataSubscription.h; sourceTree = "<group>"; };
 		84A6E8E21B1D888D00C0175B /* SPEvent.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPEvent.cpp; sourceTree = "<group>"; };
 		84A6E8E31B1D888D00C0175B /* SPEvent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPEvent.h; sourceTree = "<group>"; };
 		84A6E8E41B1D888D00C0175B /* SPEventDispatcher.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPEventDispatcher.cpp; sourceTree = "<group>"; };
@@ -435,8 +585,6 @@
 		84A6E96E1B1D888D00C0175B /* SPDynamicBatchNode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDynamicBatchNode.h; sourceTree = "<group>"; };
 		84A6E96F1B1D888D00C0175B /* SPDynamicSprite.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDynamicSprite.cpp; sourceTree = "<group>"; };
 		84A6E9701B1D888D00C0175B /* SPDynamicSprite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDynamicSprite.h; sourceTree = "<group>"; };
-		84A6E9711B1D888D00C0175B /* SPIconSprite.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPIconSprite.cpp; sourceTree = "<group>"; };
-		84A6E9721B1D888D00C0175B /* SPIconSprite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIconSprite.h; sourceTree = "<group>"; };
 		84A6E9731B1D888D00C0175B /* SPLayer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPLayer.cpp; sourceTree = "<group>"; };
 		84A6E9741B1D888D00C0175B /* SPLayer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPLayer.h; sourceTree = "<group>"; };
 		84A6E9751B1D888D00C0175B /* SPRoundedSprite.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPRoundedSprite.cpp; sourceTree = "<group>"; };
@@ -445,12 +593,6 @@
 		84A6E9781B1D888D00C0175B /* SPScale9Sprite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPScale9Sprite.h; sourceTree = "<group>"; };
 		84A6E9791B1D888D00C0175B /* SPShadowSprite.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPShadowSprite.cpp; sourceTree = "<group>"; };
 		84A6E97A1B1D888D00C0175B /* SPShadowSprite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPShadowSprite.h; sourceTree = "<group>"; };
-		84A6E97C1B1D888D00C0175B /* SPDraw.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDraw.cpp; sourceTree = "<group>"; };
-		84A6E97D1B1D888D00C0175B /* SPDraw.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDraw.h; sourceTree = "<group>"; };
-		84A6E97E1B1D888D00C0175B /* SPDrawPath.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDrawPath.cpp; sourceTree = "<group>"; };
-		84A6E97F1B1D888D00C0175B /* SPDrawPath.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDrawPath.h; sourceTree = "<group>"; };
-		84A6E9801B1D888D00C0175B /* SPDrawPathNode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDrawPathNode.cpp; sourceTree = "<group>"; };
-		84A6E9811B1D888D00C0175B /* SPDrawPathNode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDrawPathNode.h; sourceTree = "<group>"; };
 		84A6E9861B1D888D00C0175B /* SPOverscroll.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPOverscroll.cpp; sourceTree = "<group>"; };
 		84A6E9871B1D888D00C0175B /* SPOverscroll.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPOverscroll.h; sourceTree = "<group>"; };
 		84A6E9881B1D888D00C0175B /* SPScrollView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPScrollView.cpp; sourceTree = "<group>"; };
@@ -498,6 +640,112 @@
 		84EA86471BB1787A00FB1276 /* SPProgressAction.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPProgressAction.cpp; sourceTree = "<group>"; };
 		84EA86481BB1787A00FB1276 /* SPProgressAction.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPProgressAction.h; sourceTree = "<group>"; };
 		84F636B51C16CF0D0021A2F4 /* SPDataValueNetwork.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDataValueNetwork.cpp; sourceTree = "<group>"; };
+		84FA3ACF1E8EA74A002D0F73 /* MaterialMenuSource.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialMenuSource.cpp; sourceTree = "<group>"; };
+		84FA3AD01E8EA74A002D0F73 /* MaterialMenuSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialMenuSource.h; sourceTree = "<group>"; };
+		84FA3AD11E8EA74A002D0F73 /* Material.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Material.h; path = ../material/Material.h; sourceTree = "<group>"; };
+		84FA3AD41E8EA74A002D0F73 /* MaterialImage.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialImage.cpp; sourceTree = "<group>"; };
+		84FA3AD51E8EA74A002D0F73 /* MaterialImage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialImage.h; sourceTree = "<group>"; };
+		84FA3AD61E8EA74A002D0F73 /* MaterialNode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialNode.cpp; sourceTree = "<group>"; };
+		84FA3AD71E8EA74A002D0F73 /* MaterialNode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialNode.h; sourceTree = "<group>"; };
+		84FA3AD91E8EA74A002D0F73 /* MaterialButton.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialButton.cpp; sourceTree = "<group>"; };
+		84FA3ADA1E8EA74A002D0F73 /* MaterialButton.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialButton.h; sourceTree = "<group>"; };
+		84FA3ADB1E8EA74A002D0F73 /* MaterialButtonIcon.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialButtonIcon.cpp; sourceTree = "<group>"; };
+		84FA3ADC1E8EA74A002D0F73 /* MaterialButtonIcon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialButtonIcon.h; sourceTree = "<group>"; };
+		84FA3ADD1E8EA74A002D0F73 /* MaterialButtonLabel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialButtonLabel.cpp; sourceTree = "<group>"; };
+		84FA3ADE1E8EA74A002D0F73 /* MaterialButtonLabel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialButtonLabel.h; sourceTree = "<group>"; };
+		84FA3ADF1E8EA74A002D0F73 /* MaterialButtonLabelIcon.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialButtonLabelIcon.cpp; sourceTree = "<group>"; };
+		84FA3AE01E8EA74A002D0F73 /* MaterialButtonLabelIcon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialButtonLabelIcon.h; sourceTree = "<group>"; };
+		84FA3AE11E8EA74A002D0F73 /* MaterialButtonLabelSelector.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialButtonLabelSelector.cpp; sourceTree = "<group>"; };
+		84FA3AE21E8EA74A002D0F73 /* MaterialButtonLabelSelector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialButtonLabelSelector.h; sourceTree = "<group>"; };
+		84FA3AE31E8EA74A002D0F73 /* MaterialFloatingActionButton.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialFloatingActionButton.cpp; sourceTree = "<group>"; };
+		84FA3AE41E8EA74A002D0F73 /* MaterialFloatingActionButton.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialFloatingActionButton.h; sourceTree = "<group>"; };
+		84FA3AE51E8EA74A002D0F73 /* MaterialTabBar.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialTabBar.cpp; sourceTree = "<group>"; };
+		84FA3AE61E8EA74A002D0F73 /* MaterialTabBar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialTabBar.h; sourceTree = "<group>"; };
+		84FA3AE81E8EA74A002D0F73 /* MaterialGalleryScroll.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialGalleryScroll.cpp; sourceTree = "<group>"; };
+		84FA3AE91E8EA74A002D0F73 /* MaterialGalleryScroll.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialGalleryScroll.h; sourceTree = "<group>"; };
+		84FA3AEA1E8EA74A002D0F73 /* MaterialImageLayer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialImageLayer.cpp; sourceTree = "<group>"; };
+		84FA3AEB1E8EA74A002D0F73 /* MaterialImageLayer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialImageLayer.h; sourceTree = "<group>"; };
+		84FA3AED1E8EA74A002D0F73 /* MaterialFormController.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialFormController.cpp; sourceTree = "<group>"; };
+		84FA3AEE1E8EA74A002D0F73 /* MaterialFormController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialFormController.h; sourceTree = "<group>"; };
+		84FA3AEF1E8EA74A002D0F73 /* MaterialFormField.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialFormField.cpp; sourceTree = "<group>"; };
+		84FA3AF01E8EA74A002D0F73 /* MaterialFormField.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialFormField.h; sourceTree = "<group>"; };
+		84FA3AF11E8EA74A002D0F73 /* MaterialInputField.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialInputField.cpp; sourceTree = "<group>"; };
+		84FA3AF21E8EA74A002D0F73 /* MaterialInputField.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialInputField.h; sourceTree = "<group>"; };
+		84FA3AF31E8EA74A002D0F73 /* MaterialInputLabel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialInputLabel.cpp; sourceTree = "<group>"; };
+		84FA3AF41E8EA74A002D0F73 /* MaterialInputLabel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialInputLabel.h; sourceTree = "<group>"; };
+		84FA3AF51E8EA74A002D0F73 /* MaterialInputMenu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialInputMenu.cpp; sourceTree = "<group>"; };
+		84FA3AF61E8EA74A002D0F73 /* MaterialInputMenu.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialInputMenu.h; sourceTree = "<group>"; };
+		84FA3AF71E8EA74A002D0F73 /* MaterialLineField.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialLineField.cpp; sourceTree = "<group>"; };
+		84FA3AF81E8EA74A002D0F73 /* MaterialLineField.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialLineField.h; sourceTree = "<group>"; };
+		84FA3AF91E8EA74A002D0F73 /* MaterialSwitch.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialSwitch.cpp; sourceTree = "<group>"; };
+		84FA3AFA1E8EA74A002D0F73 /* MaterialSwitch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialSwitch.h; sourceTree = "<group>"; };
+		84FA3AFB1E8EA74A002D0F73 /* MaterialTextField.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialTextField.cpp; sourceTree = "<group>"; };
+		84FA3AFC1E8EA74A002D0F73 /* MaterialTextField.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialTextField.h; sourceTree = "<group>"; };
+		84FA3AFE1E8EA74A002D0F73 /* MaterialFlexibleLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialFlexibleLayout.cpp; sourceTree = "<group>"; };
+		84FA3AFF1E8EA74A002D0F73 /* MaterialFlexibleLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialFlexibleLayout.h; sourceTree = "<group>"; };
+		84FA3B001E8EA74A002D0F73 /* MaterialLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialLayout.cpp; sourceTree = "<group>"; };
+		84FA3B011E8EA74A002D0F73 /* MaterialLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialLayout.h; sourceTree = "<group>"; };
+		84FA3B021E8EA74A002D0F73 /* MaterialOverlayLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialOverlayLayout.cpp; sourceTree = "<group>"; };
+		84FA3B031E8EA74A002D0F73 /* MaterialOverlayLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialOverlayLayout.h; sourceTree = "<group>"; };
+		84FA3B041E8EA74A002D0F73 /* MaterialSidebarLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialSidebarLayout.cpp; sourceTree = "<group>"; };
+		84FA3B051E8EA74A002D0F73 /* MaterialSidebarLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialSidebarLayout.h; sourceTree = "<group>"; };
+		84FA3B061E8EA74A002D0F73 /* MaterialToolbarLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialToolbarLayout.cpp; sourceTree = "<group>"; };
+		84FA3B071E8EA74A002D0F73 /* MaterialToolbarLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialToolbarLayout.h; sourceTree = "<group>"; };
+		84FA3B091E8EA74A002D0F73 /* MaterialFloatingMenu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialFloatingMenu.cpp; sourceTree = "<group>"; };
+		84FA3B0A1E8EA74A002D0F73 /* MaterialFloatingMenu.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialFloatingMenu.h; sourceTree = "<group>"; };
+		84FA3B0B1E8EA74A002D0F73 /* MaterialMenu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialMenu.cpp; sourceTree = "<group>"; };
+		84FA3B0C1E8EA74A002D0F73 /* MaterialMenu.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialMenu.h; sourceTree = "<group>"; };
+		84FA3B0D1E8EA74A002D0F73 /* MaterialMenuButton.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialMenuButton.cpp; sourceTree = "<group>"; };
+		84FA3B0E1E8EA74A002D0F73 /* MaterialMenuButton.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialMenuButton.h; sourceTree = "<group>"; };
+		84FA3B0F1E8EA74A002D0F73 /* MaterialMenuItemInterface.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialMenuItemInterface.h; sourceTree = "<group>"; };
+		84FA3B101E8EA74A002D0F73 /* MaterialMenuSeparator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialMenuSeparator.cpp; sourceTree = "<group>"; };
+		84FA3B111E8EA74A002D0F73 /* MaterialMenuSeparator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialMenuSeparator.h; sourceTree = "<group>"; };
+		84FA3B131E8EA74A002D0F73 /* MaterialNavigationLayer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialNavigationLayer.cpp; sourceTree = "<group>"; };
+		84FA3B141E8EA74A002D0F73 /* MaterialNavigationLayer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialNavigationLayer.h; sourceTree = "<group>"; };
+		84FA3B161E8EA74A002D0F73 /* MaterialLinearProgress.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialLinearProgress.cpp; sourceTree = "<group>"; };
+		84FA3B171E8EA74A002D0F73 /* MaterialLinearProgress.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialLinearProgress.h; sourceTree = "<group>"; };
+		84FA3B181E8EA74A002D0F73 /* MaterialRoundedProgress.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialRoundedProgress.cpp; sourceTree = "<group>"; };
+		84FA3B191E8EA74A002D0F73 /* MaterialRoundedProgress.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialRoundedProgress.h; sourceTree = "<group>"; };
+		84FA3B1B1E8EA74A002D0F73 /* MaterialBackgroundLayer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialBackgroundLayer.cpp; sourceTree = "<group>"; };
+		84FA3B1C1E8EA74A002D0F73 /* MaterialBackgroundLayer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialBackgroundLayer.h; sourceTree = "<group>"; };
+		84FA3B1D1E8EA74A002D0F73 /* MaterialContentLayer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialContentLayer.cpp; sourceTree = "<group>"; };
+		84FA3B1E1E8EA74A002D0F73 /* MaterialContentLayer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialContentLayer.h; sourceTree = "<group>"; };
+		84FA3B1F1E8EA74A002D0F73 /* MaterialForegroundLayer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialForegroundLayer.cpp; sourceTree = "<group>"; };
+		84FA3B201E8EA74A002D0F73 /* MaterialForegroundLayer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialForegroundLayer.h; sourceTree = "<group>"; };
+		84FA3B211E8EA74A002D0F73 /* MaterialScene.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialScene.cpp; sourceTree = "<group>"; };
+		84FA3B221E8EA74A002D0F73 /* MaterialScene.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialScene.h; sourceTree = "<group>"; };
+		84FA3B241E8EA74A002D0F73 /* MaterialRecyclerScroll.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialRecyclerScroll.cpp; sourceTree = "<group>"; };
+		84FA3B251E8EA74A002D0F73 /* MaterialRecyclerScroll.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialRecyclerScroll.h; sourceTree = "<group>"; };
+		84FA3B261E8EA74A002D0F73 /* MaterialScroll.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialScroll.cpp; sourceTree = "<group>"; };
+		84FA3B271E8EA74A002D0F73 /* MaterialScroll.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialScroll.h; sourceTree = "<group>"; };
+		84FA3B281E8EA74A002D0F73 /* MaterialScrollFixed.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialScrollFixed.cpp; sourceTree = "<group>"; };
+		84FA3B291E8EA74A002D0F73 /* MaterialScrollFixed.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialScrollFixed.h; sourceTree = "<group>"; };
+		84FA3B2A1E8EA74A002D0F73 /* MaterialScrollSlice.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialScrollSlice.cpp; sourceTree = "<group>"; };
+		84FA3B2B1E8EA74A002D0F73 /* MaterialScrollSlice.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialScrollSlice.h; sourceTree = "<group>"; };
+		84FA3B2C1E8EA74A002D0F73 /* MaterialSimpleGrid.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialSimpleGrid.cpp; sourceTree = "<group>"; };
+		84FA3B2D1E8EA74A002D0F73 /* MaterialSimpleGrid.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialSimpleGrid.h; sourceTree = "<group>"; };
+		84FA3B2F1E8EA74A002D0F73 /* MaterialSearchToolbar.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialSearchToolbar.cpp; sourceTree = "<group>"; };
+		84FA3B301E8EA74A002D0F73 /* MaterialSearchToolbar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialSearchToolbar.h; sourceTree = "<group>"; };
+		84FA3B311E8EA74A002D0F73 /* MaterialTabToolbar.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialTabToolbar.cpp; sourceTree = "<group>"; };
+		84FA3B321E8EA74A002D0F73 /* MaterialTabToolbar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialTabToolbar.h; sourceTree = "<group>"; };
+		84FA3B331E8EA74A002D0F73 /* MaterialToolbar.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialToolbar.cpp; sourceTree = "<group>"; };
+		84FA3B341E8EA74A002D0F73 /* MaterialToolbar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialToolbar.h; sourceTree = "<group>"; };
+		84FA3B361E8EA74A002D0F73 /* MaterialIconNames.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialIconNames.h; sourceTree = "<group>"; };
+		84FA3B371E8EA74A002D0F73 /* MaterialIconSprite.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialIconSprite.cpp; sourceTree = "<group>"; };
+		84FA3B381E8EA74A002D0F73 /* MaterialIconSprite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialIconSprite.h; sourceTree = "<group>"; };
+		84FA3B391E8EA74A002D0F73 /* MaterialIconStorage.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialIconStorage.cpp; sourceTree = "<group>"; };
+		84FA3B3A1E8EA74A002D0F73 /* MaterialIconStorage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialIconStorage.h; sourceTree = "<group>"; };
+		84FA3B3B1E8EA74A002D0F73 /* MaterialLabel.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialLabel.cpp; sourceTree = "<group>"; };
+		84FA3B3C1E8EA74A002D0F73 /* MaterialLabel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialLabel.h; sourceTree = "<group>"; };
+		84FA3B3D1E8EA74A002D0F73 /* MaterialMetrics.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialMetrics.cpp; sourceTree = "<group>"; };
+		84FA3B3E1E8EA74A002D0F73 /* MaterialMetrics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialMetrics.h; sourceTree = "<group>"; };
+		84FA3B3F1E8EA74A002D0F73 /* MaterialMetricsInline.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialMetricsInline.h; sourceTree = "<group>"; };
+		84FA3B401E8EA74A002D0F73 /* MaterialResize.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialResize.cpp; sourceTree = "<group>"; };
+		84FA3B411E8EA74A002D0F73 /* MaterialResize.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialResize.h; sourceTree = "<group>"; };
+		84FA3B421E8EA74A002D0F73 /* MaterialResourceManager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialResourceManager.cpp; sourceTree = "<group>"; };
+		84FA3B431E8EA74A002D0F73 /* MaterialResourceManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialResourceManager.h; sourceTree = "<group>"; };
+		84FA3B441E8EA74A002D0F73 /* MaterialUserFontConfig.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MaterialUserFontConfig.cpp; sourceTree = "<group>"; };
+		84FA3B451E8EA74A002D0F73 /* MaterialUserFontConfig.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MaterialUserFontConfig.h; sourceTree = "<group>"; };
 		84FB2EDB1BC7BF1F000F2F2F /* SPDataListener.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPDataListener.h; sourceTree = "<group>"; };
 		84FDCD2F1BF1C37400C56046 /* SPDelayedReleaser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPDelayedReleaser.cpp; sourceTree = "<group>"; };
 		84FDCD301BF1C37400C56046 /* SPMovingAverage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPMovingAverage.h; sourceTree = "<group>"; };
@@ -545,19 +793,6 @@
 			path = src;
 			sourceTree = "<group>";
 		};
-		29FCA7D51D9AD427008E8671 /* rich_text */ = {
-			isa = PBXGroup;
-			children = (
-				29FCA7D61D9AD427008E8671 /* SPRichTextDrawer.cpp */,
-				29FCA7D71D9AD427008E8671 /* SPRichTextDrawer.h */,
-				29FCA7D81D9AD427008E8671 /* SPRichTextRenderer.cpp */,
-				29FCA7D91D9AD427008E8671 /* SPRichTextRenderer.h */,
-				29FCA7DA1D9AD427008E8671 /* SPRichTextView.cpp */,
-				29FCA7DB1D9AD427008E8671 /* SPRichTextView.h */,
-			);
-			path = rich_text;
-			sourceTree = "<group>";
-		};
 		84080DB61C1982EE00723732 /* common */ = {
 			isa = PBXGroup;
 			children = (
@@ -567,7 +802,6 @@
 				84080E2B1C19832000723732 /* platform */,
 				847BB9C61C4505B000B3B701 /* stream */,
 				84080DD71C1982EF00723732 /* string */,
-				84080DE61C1982EF00723732 /* threads */,
 				84080DEB1C1982EF00723732 /* utils */,
 			);
 			name = common;
@@ -612,15 +846,6 @@
 				84080DE51C1982EF00723732 /* SPUnicode.h */,
 			);
 			path = string;
-			sourceTree = "<group>";
-		};
-		84080DE61C1982EF00723732 /* threads */ = {
-			isa = PBXGroup;
-			children = (
-				84080DE71C1982EF00723732 /* SPThreadLocal.cpp */,
-				84080DE81C1982EF00723732 /* SPThreadLocal.h */,
-			);
-			path = threads;
 			sourceTree = "<group>";
 		};
 		84080DEB1C1982EF00723732 /* utils */ = {
@@ -676,7 +901,6 @@
 				8422D69D1DFAB63A0001A3F8 /* locale */,
 				8422D6A01DFAB63A0001A3F8 /* networking */,
 				8422D6AD1DFAB63A0001A3F8 /* resources */,
-				8422D6B71DFAB63A0001A3F8 /* rich_text */,
 				8422D6E11DFAB63A0001A3F8 /* storage */,
 				8422D6E51DFAB63A0001A3F8 /* storekit */,
 				8422D6EA1DFAB63A0001A3F8 /* texture */,
@@ -741,98 +965,12 @@
 			children = (
 				8422D6AE1DFAB63A0001A3F8 /* SPFont.cpp */,
 				8422D6AF1DFAB63A0001A3F8 /* SPFont.h */,
-				8422D6B01DFAB63A0001A3F8 /* SPFontFormatter.cpp */,
-				8422D6B11DFAB63A0001A3F8 /* SPFontFormatter.h */,
-				8422D6B21DFAB63A0001A3F8 /* SPFontLayout.cpp */,
-				8422D6B31DFAB63A0001A3F8 /* SPIcon.cpp */,
-				8422D6B41DFAB63A0001A3F8 /* SPIcon.h */,
+				8483CFF21E8D194500D6B836 /* SPLayoutSource.cpp */,
+				8483CFF31E8D194500D6B836 /* SPLayoutSource.h */,
 				8422D6B51DFAB63A0001A3F8 /* SPResource.cpp */,
 				8422D6B61DFAB63A0001A3F8 /* SPResource.h */,
 			);
 			path = resources;
-			sourceTree = "<group>";
-		};
-		8422D6B71DFAB63A0001A3F8 /* rich_text */ = {
-			isa = PBXGroup;
-			children = (
-				8422D6B81DFAB63A0001A3F8 /* document */,
-				8422D6C31DFAB63A0001A3F8 /* epub */,
-				8422D6CA1DFAB63A0001A3F8 /* internal */,
-				8422D6CF1DFAB63A0001A3F8 /* renderer */,
-				8422D6D91DFAB63A0001A3F8 /* style */,
-			);
-			path = rich_text;
-			sourceTree = "<group>";
-		};
-		8422D6B81DFAB63A0001A3F8 /* document */ = {
-			isa = PBXGroup;
-			children = (
-				8422D6B91DFAB63A0001A3F8 /* SPRichTextDocument.cpp */,
-				8422D6BA1DFAB63A0001A3F8 /* SPRichTextDocument.h */,
-				8422D6BB1DFAB63A0001A3F8 /* SPRichTextNode.cpp */,
-				8422D6BC1DFAB63A0001A3F8 /* SPRichTextNode.h */,
-				8422D6BD1DFAB63A0001A3F8 /* SPRichTextParser.cpp */,
-				8422D6BE1DFAB63A0001A3F8 /* SPRichTextParser.h */,
-				8422D6BF1DFAB63A0001A3F8 /* SPRichTextReader.cpp */,
-				8422D6C01DFAB63A0001A3F8 /* SPRichTextReader.h */,
-				8422D6C11DFAB63A0001A3F8 /* SPRichTextSource.cpp */,
-				8422D6C21DFAB63A0001A3F8 /* SPRichTextSource.h */,
-			);
-			path = document;
-			sourceTree = "<group>";
-		};
-		8422D6C31DFAB63A0001A3F8 /* epub */ = {
-			isa = PBXGroup;
-			children = (
-				8422D6C41DFAB63A0001A3F8 /* SPEpubDocument.cpp */,
-				8422D6C51DFAB63A0001A3F8 /* SPEpubDocument.h */,
-				8422D6C61DFAB63A0001A3F8 /* SPEpubInfo.cpp */,
-				8422D6C71DFAB63A0001A3F8 /* SPEpubInfo.h */,
-				8422D6C81DFAB63A0001A3F8 /* SPEpubReader.cpp */,
-				8422D6C91DFAB63A0001A3F8 /* SPEpubReader.h */,
-			);
-			path = epub;
-			sourceTree = "<group>";
-		};
-		8422D6CA1DFAB63A0001A3F8 /* internal */ = {
-			isa = PBXGroup;
-			children = (
-				8422D6CB1DFAB63A0001A3F8 /* SPRichTextMultipartParser.cpp */,
-				8422D6CC1DFAB63A0001A3F8 /* SPRichTextMultipartParser.h */,
-				8422D6CD1DFAB63A0001A3F8 /* SPRichTextRendererTypes.cpp */,
-				8422D6CE1DFAB63A0001A3F8 /* SPRichTextRendererTypes.h */,
-			);
-			path = internal;
-			sourceTree = "<group>";
-		};
-		8422D6CF1DFAB63A0001A3F8 /* renderer */ = {
-			isa = PBXGroup;
-			children = (
-				8422D6D01DFAB63A0001A3F8 /* SPRichTextBuilder.cpp */,
-				8422D6D11DFAB63A0001A3F8 /* SPRichTextBuilder.h */,
-				8422D6D21DFAB63A0001A3F8 /* SPRichTextBuilderBlockModel.cpp */,
-				8422D6D31DFAB63A0001A3F8 /* SPRichTextBuilderBullet.cpp */,
-				8422D6D41DFAB63A0001A3F8 /* SPRichTextBuilderLayout.cpp */,
-				8422D6D51DFAB63A0001A3F8 /* SPRichTextLayout.cpp */,
-				8422D6D61DFAB63A0001A3F8 /* SPRichTextLayout.h */,
-				8422D6D71DFAB63A0001A3F8 /* SPRichTextResult.cpp */,
-				8422D6D81DFAB63A0001A3F8 /* SPRichTextResult.h */,
-			);
-			path = renderer;
-			sourceTree = "<group>";
-		};
-		8422D6D91DFAB63A0001A3F8 /* style */ = {
-			isa = PBXGroup;
-			children = (
-				8422D6DA1DFAB63A0001A3F8 /* SPRichTextStyle.cpp */,
-				8422D6DB1DFAB63A0001A3F8 /* SPRichTextStyle.h */,
-				8422D6DC1DFAB63A0001A3F8 /* SPRichTextStyleColors.cpp */,
-				8422D6DD1DFAB63A0001A3F8 /* SPRichTextStyleCompiled.cpp */,
-				8422D6DE1DFAB63A0001A3F8 /* SPRichTextStyleMedia.cpp */,
-				8422D6DF1DFAB63A0001A3F8 /* SPRichTextStyleParameters.hpp */,
-				8422D6E01DFAB63A0001A3F8 /* SPRichTextStyleValues.cpp */,
-			);
-			path = style;
 			sourceTree = "<group>";
 		};
 		8422D6E11DFAB63A0001A3F8 /* storage */ = {
@@ -915,6 +1053,194 @@
 			path = stream;
 			sourceTree = "<group>";
 		};
+		8483CF2B1E8D176400D6B836 /* draw */ = {
+			isa = PBXGroup;
+			children = (
+				8483CF2C1E8D176400D6B836 /* SPDrawCanvas.cpp */,
+				8483CF2D1E8D176400D6B836 /* SPDrawCanvas.h */,
+				8483CF2E1E8D176400D6B836 /* SPDrawGLCacheNode.cpp */,
+				8483CF2F1E8D176400D6B836 /* SPDrawGLCacheNode.h */,
+				8483CF301E8D176400D6B836 /* SPDrawPathNode.cpp */,
+				8483CF311E8D176400D6B836 /* SPDrawPathNode.h */,
+			);
+			path = draw;
+			sourceTree = "<group>";
+		};
+		8483CF321E8D176400D6B836 /* rich_text */ = {
+			isa = PBXGroup;
+			children = (
+				8483CF331E8D176400D6B836 /* SPRichText.h */,
+				8483CF341E8D176400D6B836 /* SPRichTextDrawer.cpp */,
+				8483CF351E8D176400D6B836 /* SPRichTextDrawer.h */,
+				8483CF361E8D176400D6B836 /* SPRichTextRenderer.cpp */,
+				8483CF371E8D176400D6B836 /* SPRichTextRenderer.h */,
+				8483CF381E8D176400D6B836 /* SPRichTextView.cpp */,
+				8483CF391E8D176400D6B836 /* SPRichTextView.h */,
+			);
+			path = rich_text;
+			sourceTree = "<group>";
+		};
+		8483CF401E8D178600D6B836 /* layout */ = {
+			isa = PBXGroup;
+			children = (
+				8483CF411E8D178600D6B836 /* document */,
+				8483CF4A1E8D178600D6B836 /* font */,
+				8483CF511E8D178600D6B836 /* internal */,
+				8483CF561E8D178600D6B836 /* renderer */,
+				8483CF601E8D178600D6B836 /* SPLayout.h */,
+				8483CF611E8D178600D6B836 /* style */,
+				8483CF691E8D178600D6B836 /* types */,
+				8483CF8B1E8D178600D6B836 /* vg */,
+			);
+			name = layout;
+			path = ../layout;
+			sourceTree = "<group>";
+		};
+		8483CF411E8D178600D6B836 /* document */ = {
+			isa = PBXGroup;
+			children = (
+				8483CF421E8D178600D6B836 /* SLDocument.cpp */,
+				8483CF431E8D178600D6B836 /* SLDocument.h */,
+				8483CF441E8D178600D6B836 /* SLNode.cpp */,
+				8483CF451E8D178600D6B836 /* SLNode.h */,
+				8483CF461E8D178600D6B836 /* SLParser.cpp */,
+				8483CF471E8D178600D6B836 /* SLParser.h */,
+				8483CF481E8D178600D6B836 /* SLReader.cpp */,
+				8483CF491E8D178600D6B836 /* SLReader.h */,
+			);
+			path = document;
+			sourceTree = "<group>";
+		};
+		8483CF4A1E8D178600D6B836 /* font */ = {
+			isa = PBXGroup;
+			children = (
+				8483CF4B1E8D178600D6B836 /* SLFont.cpp */,
+				8483CF4C1E8D178600D6B836 /* SLFont.h */,
+				8483CF4D1E8D178600D6B836 /* SLFontFormatter.cpp */,
+				8483CF4E1E8D178600D6B836 /* SLFontFormatter.h */,
+				8483CF4F1E8D178600D6B836 /* SLFontLibrary.cpp */,
+				8483CF501E8D178600D6B836 /* SLFontLibrary.h */,
+			);
+			path = font;
+			sourceTree = "<group>";
+		};
+		8483CF511E8D178600D6B836 /* internal */ = {
+			isa = PBXGroup;
+			children = (
+				8483CF521E8D178600D6B836 /* SLMultipartParser.cpp */,
+				8483CF531E8D178600D6B836 /* SLMultipartParser.h */,
+				8483CF541E8D178600D6B836 /* SLRendererTypes.cpp */,
+				8483CF551E8D178600D6B836 /* SLRendererTypes.h */,
+			);
+			path = internal;
+			sourceTree = "<group>";
+		};
+		8483CF561E8D178600D6B836 /* renderer */ = {
+			isa = PBXGroup;
+			children = (
+				8483CF571E8D178600D6B836 /* SLBuilder.cpp */,
+				8483CF581E8D178600D6B836 /* SLBuilder.h */,
+				8483CF591E8D178600D6B836 /* SLBuilderBlockModel.cpp */,
+				8483CF5A1E8D178600D6B836 /* SLBuilderBullet.cpp */,
+				8483CF5B1E8D178600D6B836 /* SLBuilderLayout.cpp */,
+				8483CF5C1E8D178600D6B836 /* SLLayout.cpp */,
+				8483CF5D1E8D178600D6B836 /* SLLayout.h */,
+				8483CF5E1E8D178600D6B836 /* SLResult.cpp */,
+				8483CF5F1E8D178600D6B836 /* SLResult.h */,
+			);
+			path = renderer;
+			sourceTree = "<group>";
+		};
+		8483CF611E8D178600D6B836 /* style */ = {
+			isa = PBXGroup;
+			children = (
+				8483CF621E8D178600D6B836 /* SLStyle.cpp */,
+				8483CF631E8D178600D6B836 /* SLStyle.h */,
+				8483CF641E8D178600D6B836 /* SLStyleColors.cpp */,
+				8483CF651E8D178600D6B836 /* SLStyleCompiled.cpp */,
+				8483CF661E8D178600D6B836 /* SLStyleMedia.cpp */,
+				8483CF671E8D178600D6B836 /* SLStyleParameters.hpp */,
+				8483CF681E8D178600D6B836 /* SLStyleValues.cpp */,
+			);
+			path = style;
+			sourceTree = "<group>";
+		};
+		8483CF691E8D178600D6B836 /* types */ = {
+			isa = PBXGroup;
+			children = (
+				8483CF6A1E8D178600D6B836 /* SLColor.cpp */,
+				8483CF6B1E8D178600D6B836 /* SLColor.h */,
+				8483CF6C1E8D178600D6B836 /* SLGeometry.cpp */,
+				8483CF6D1E8D178600D6B836 /* SLGeometry.h */,
+				8483CF6E1E8D178600D6B836 /* SLMat4.cpp */,
+				8483CF6F1E8D178600D6B836 /* SLMat4.h */,
+				8483CF701E8D178600D6B836 /* SLMat4.inl.hpp */,
+				8483CF711E8D178600D6B836 /* SLMathBase.h */,
+				8483CF721E8D178600D6B836 /* SLMathUtil.cpp */,
+				8483CF731E8D178600D6B836 /* SLMathUtil.h */,
+				8483CF741E8D178600D6B836 /* SLMathUtil.inl.hpp */,
+				8483CF751E8D178600D6B836 /* SLMathUtilNeon.inl.hpp */,
+				8483CF761E8D178600D6B836 /* SLMathUtilNeon64.inl.hpp */,
+				8483CF771E8D178600D6B836 /* SLMathUtilSSE.inl.hpp */,
+				8483CF781E8D178600D6B836 /* SLMemPool.h */,
+				8483CF791E8D178600D6B836 /* SLMovingAverage.h */,
+				8483CF7A1E8D178600D6B836 /* SLPadding.h */,
+				8483CF7B1E8D178600D6B836 /* SLQuaternion.cpp */,
+				8483CF7C1E8D178600D6B836 /* SLQuaternion.h */,
+				8483CF7D1E8D178600D6B836 /* SLQuaternion.inl.hpp */,
+				8483CF7E1E8D178600D6B836 /* SLRef.cpp */,
+				8483CF7F1E8D178600D6B836 /* SLRef.h */,
+				8483CF801E8D178600D6B836 /* SLSubscription.cpp */,
+				8483CF811E8D178600D6B836 /* SLSubscription.h */,
+				8483CF821E8D178600D6B836 /* SLVec2.cpp */,
+				8483CF831E8D178600D6B836 /* SLVec2.h */,
+				8483CF841E8D178600D6B836 /* SLVec2.inl.hpp */,
+				8483CF851E8D178600D6B836 /* SLVec3.cpp */,
+				8483CF861E8D178600D6B836 /* SLVec3.h */,
+				8483CF871E8D178600D6B836 /* SLVec3.inl.hpp */,
+				8483CF881E8D178600D6B836 /* SLVec4.cpp */,
+				8483CF891E8D178600D6B836 /* SLVec4.h */,
+				8483CF8A1E8D178600D6B836 /* SLVec4.inl.hpp */,
+			);
+			path = types;
+			sourceTree = "<group>";
+		};
+		8483CF8B1E8D178600D6B836 /* vg */ = {
+			isa = PBXGroup;
+			children = (
+				8483CF8C1E8D178600D6B836 /* SLCanvas.cpp */,
+				8483CF8D1E8D178600D6B836 /* SLCanvas.h */,
+				8483CF8E1E8D178600D6B836 /* SLDraw.cpp */,
+				8483CF8F1E8D178600D6B836 /* SLDraw.h */,
+				8483CF901E8D178600D6B836 /* SLImage.cpp */,
+				8483CF911E8D178600D6B836 /* SLImage.h */,
+				8483CF921E8D178600D6B836 /* SLPath.cpp */,
+				8483CF931E8D178600D6B836 /* SLPath.h */,
+				8483CF941E8D178600D6B836 /* tess */,
+			);
+			path = vg;
+			sourceTree = "<group>";
+		};
+		8483CF941E8D178600D6B836 /* tess */ = {
+			isa = PBXGroup;
+			children = (
+				8483CF951E8D178600D6B836 /* SLTessDict.c */,
+				8483CF961E8D178600D6B836 /* SLTessDict.h */,
+				8483CF971E8D178600D6B836 /* SLTesselator.h */,
+				8483CF981E8D178600D6B836 /* SLTessGeom.c */,
+				8483CF991E8D178600D6B836 /* SLTessGeom.h */,
+				8483CF9A1E8D178600D6B836 /* SLTessMesh.c */,
+				8483CF9B1E8D178600D6B836 /* SLTessMesh.h */,
+				8483CF9C1E8D178600D6B836 /* SLTessPriorityq.c */,
+				8483CF9D1E8D178600D6B836 /* SLTessPriorityq.h */,
+				8483CF9E1E8D178600D6B836 /* SLTessSweep.c */,
+				8483CF9F1E8D178600D6B836 /* SLTessSweep.h */,
+				8483CFA01E8D178600D6B836 /* SLTessTess.c */,
+				8483CFA11E8D178600D6B836 /* SLTessTess.h */,
+			);
+			path = tess;
+			sourceTree = "<group>";
+		};
 		84A6E8C11B1D888D00C0175B /* actions */ = {
 			isa = PBXGroup;
 			children = (
@@ -986,8 +1312,6 @@
 				84FB2EDB1BC7BF1F000F2F2F /* SPDataListener.h */,
 				849E9D831B43B332004E502B /* SPDataSource.cpp */,
 				849E9D841B43B332004E502B /* SPDataSource.h */,
-				84A6E8DF1B1D888D00C0175B /* SPDataSubscription.cpp */,
-				84A6E8E01B1D888D00C0175B /* SPDataSubscription.h */,
 				84F636B51C16CF0D0021A2F4 /* SPDataValueNetwork.cpp */,
 			);
 			path = data;
@@ -1012,10 +1336,10 @@
 			isa = PBXGroup;
 			children = (
 				84A6E9671B1D888D00C0175B /* batched */,
-				84A6E97B1B1D888D00C0175B /* draw */,
 				84A6E9821B1D888D00C0175B /* label */,
-				29FCA7D51D9AD427008E8671 /* rich_text */,
 				84A6E9851B1D888D00C0175B /* scroll */,
+				8483CF2B1E8D176400D6B836 /* draw */,
+				8483CF321E8D176400D6B836 /* rich_text */,
 				84A6E98C1B1D888D00C0175B /* SPClippingNode.cpp */,
 				84A6E98D1B1D888D00C0175B /* SPClippingNode.h */,
 				84AA9F9F1BD4A95C00DD650A /* SPDynamicBatchScene.cpp */,
@@ -1039,8 +1363,6 @@
 				84A6E96E1B1D888D00C0175B /* SPDynamicBatchNode.h */,
 				84A6E96F1B1D888D00C0175B /* SPDynamicSprite.cpp */,
 				84A6E9701B1D888D00C0175B /* SPDynamicSprite.h */,
-				84A6E9711B1D888D00C0175B /* SPIconSprite.cpp */,
-				84A6E9721B1D888D00C0175B /* SPIconSprite.h */,
 				84A6E9731B1D888D00C0175B /* SPLayer.cpp */,
 				84A6E9741B1D888D00C0175B /* SPLayer.h */,
 				849E37EA1DDB71C300CB045E /* SPLayeredBatchNode.cpp */,
@@ -1053,23 +1375,6 @@
 				84A6E97A1B1D888D00C0175B /* SPShadowSprite.h */,
 			);
 			path = batched;
-			sourceTree = "<group>";
-		};
-		84A6E97B1B1D888D00C0175B /* draw */ = {
-			isa = PBXGroup;
-			children = (
-				84A6E97C1B1D888D00C0175B /* SPDraw.cpp */,
-				84A6E97D1B1D888D00C0175B /* SPDraw.h */,
-				84337FF01CC25A7D00546216 /* SPDrawCanvas.cpp */,
-				84337FF11CC25A7D00546216 /* SPDrawCanvas.h */,
-				84A6E97E1B1D888D00C0175B /* SPDrawPath.cpp */,
-				84A6E97F1B1D888D00C0175B /* SPDrawPath.h */,
-				84A6E9801B1D888D00C0175B /* SPDrawPathNode.cpp */,
-				84A6E9811B1D888D00C0175B /* SPDrawPathNode.h */,
-				8422D7271DFAB6F90001A3F8 /* SPDrawCanvasCairo.cpp */,
-				8422D7281DFAB6F90001A3F8 /* SPDrawCanvasCairo.h */,
-			);
-			path = draw;
 			sourceTree = "<group>";
 		};
 		84A6E9821B1D888D00C0175B /* label */ = {
@@ -1119,12 +1424,11 @@
 				84A6E9A71B1D888D00C0175B /* SPIOSVersions.h */,
 				84A6E9A81B1D888D00C0175B /* SPNetwork.mm */,
 				84A6E9A91B1D888D00C0175B /* SPRender.mm */,
+				8483CF291E8D171000D6B836 /* SPReceiptValidation.cpp */,
 				84A6E9AA1B1D888D00C0175B /* SPStatusBar.mm */,
 				84A6E9AB1B1D888D00C0175B /* SPStoreKit.mm */,
 				8410B3EB1C04355700208BA5 /* SPRootViewController.h */,
 				8410B3EC1C04355700208BA5 /* SPRootViewController.mm */,
-				844637521B1EE7FE00CA9857 /* SPIOSLoaderView.mm */,
-				844637541B1EE83200CA9857 /* SPIOSLoaderView.h */,
 				298436851DABDD0A00B411D7 /* SPSignalHandler.mm */,
 				8422D68C1DFAB5810001A3F8 /* NSStringPunycodeAdditions.h */,
 				8422D68D1DFAB5810001A3F8 /* NSStringPunycodeAdditions.m */,
@@ -1165,6 +1469,234 @@
 			path = universal;
 			sourceTree = "<group>";
 		};
+		84FA3AC91E8EA724002D0F73 /* material */ = {
+			isa = PBXGroup;
+			children = (
+				84FA3ACE1E8EA74A002D0F73 /* data */,
+				84FA3AD11E8EA74A002D0F73 /* Material.h */,
+				84FA3AD21E8EA74A002D0F73 /* nodes */,
+				84FA3B351E8EA74A002D0F73 /* resources */,
+			);
+			name = material;
+			sourceTree = "<group>";
+		};
+		84FA3ACE1E8EA74A002D0F73 /* data */ = {
+			isa = PBXGroup;
+			children = (
+				84FA3ACF1E8EA74A002D0F73 /* MaterialMenuSource.cpp */,
+				84FA3AD01E8EA74A002D0F73 /* MaterialMenuSource.h */,
+			);
+			name = data;
+			path = ../material/data;
+			sourceTree = "<group>";
+		};
+		84FA3AD21E8EA74A002D0F73 /* nodes */ = {
+			isa = PBXGroup;
+			children = (
+				84FA3AD31E8EA74A002D0F73 /* base */,
+				84FA3AD81E8EA74A002D0F73 /* button */,
+				84FA3AE71E8EA74A002D0F73 /* image */,
+				84FA3AEC1E8EA74A002D0F73 /* input */,
+				84FA3AFD1E8EA74A002D0F73 /* layout */,
+				84FA3B081E8EA74A002D0F73 /* menu */,
+				84FA3B121E8EA74A002D0F73 /* navigation */,
+				84FA3B151E8EA74A002D0F73 /* progress */,
+				84FA3B1A1E8EA74A002D0F73 /* scene */,
+				84FA3B231E8EA74A002D0F73 /* scroll */,
+				84FA3B2E1E8EA74A002D0F73 /* toolbar */,
+			);
+			name = nodes;
+			path = ../material/nodes;
+			sourceTree = "<group>";
+		};
+		84FA3AD31E8EA74A002D0F73 /* base */ = {
+			isa = PBXGroup;
+			children = (
+				84FA3AD41E8EA74A002D0F73 /* MaterialImage.cpp */,
+				84FA3AD51E8EA74A002D0F73 /* MaterialImage.h */,
+				84FA3AD61E8EA74A002D0F73 /* MaterialNode.cpp */,
+				84FA3AD71E8EA74A002D0F73 /* MaterialNode.h */,
+			);
+			path = base;
+			sourceTree = "<group>";
+		};
+		84FA3AD81E8EA74A002D0F73 /* button */ = {
+			isa = PBXGroup;
+			children = (
+				84FA3AD91E8EA74A002D0F73 /* MaterialButton.cpp */,
+				84FA3ADA1E8EA74A002D0F73 /* MaterialButton.h */,
+				84FA3ADB1E8EA74A002D0F73 /* MaterialButtonIcon.cpp */,
+				84FA3ADC1E8EA74A002D0F73 /* MaterialButtonIcon.h */,
+				84FA3ADD1E8EA74A002D0F73 /* MaterialButtonLabel.cpp */,
+				84FA3ADE1E8EA74A002D0F73 /* MaterialButtonLabel.h */,
+				84FA3ADF1E8EA74A002D0F73 /* MaterialButtonLabelIcon.cpp */,
+				84FA3AE01E8EA74A002D0F73 /* MaterialButtonLabelIcon.h */,
+				84FA3AE11E8EA74A002D0F73 /* MaterialButtonLabelSelector.cpp */,
+				84FA3AE21E8EA74A002D0F73 /* MaterialButtonLabelSelector.h */,
+				84FA3AE31E8EA74A002D0F73 /* MaterialFloatingActionButton.cpp */,
+				84FA3AE41E8EA74A002D0F73 /* MaterialFloatingActionButton.h */,
+				84FA3AE51E8EA74A002D0F73 /* MaterialTabBar.cpp */,
+				84FA3AE61E8EA74A002D0F73 /* MaterialTabBar.h */,
+			);
+			path = button;
+			sourceTree = "<group>";
+		};
+		84FA3AE71E8EA74A002D0F73 /* image */ = {
+			isa = PBXGroup;
+			children = (
+				84FA3AE81E8EA74A002D0F73 /* MaterialGalleryScroll.cpp */,
+				84FA3AE91E8EA74A002D0F73 /* MaterialGalleryScroll.h */,
+				84FA3AEA1E8EA74A002D0F73 /* MaterialImageLayer.cpp */,
+				84FA3AEB1E8EA74A002D0F73 /* MaterialImageLayer.h */,
+			);
+			path = image;
+			sourceTree = "<group>";
+		};
+		84FA3AEC1E8EA74A002D0F73 /* input */ = {
+			isa = PBXGroup;
+			children = (
+				84FA3AED1E8EA74A002D0F73 /* MaterialFormController.cpp */,
+				84FA3AEE1E8EA74A002D0F73 /* MaterialFormController.h */,
+				84FA3AEF1E8EA74A002D0F73 /* MaterialFormField.cpp */,
+				84FA3AF01E8EA74A002D0F73 /* MaterialFormField.h */,
+				84FA3AF11E8EA74A002D0F73 /* MaterialInputField.cpp */,
+				84FA3AF21E8EA74A002D0F73 /* MaterialInputField.h */,
+				84FA3AF31E8EA74A002D0F73 /* MaterialInputLabel.cpp */,
+				84FA3AF41E8EA74A002D0F73 /* MaterialInputLabel.h */,
+				84FA3AF51E8EA74A002D0F73 /* MaterialInputMenu.cpp */,
+				84FA3AF61E8EA74A002D0F73 /* MaterialInputMenu.h */,
+				84FA3AF71E8EA74A002D0F73 /* MaterialLineField.cpp */,
+				84FA3AF81E8EA74A002D0F73 /* MaterialLineField.h */,
+				84FA3AF91E8EA74A002D0F73 /* MaterialSwitch.cpp */,
+				84FA3AFA1E8EA74A002D0F73 /* MaterialSwitch.h */,
+				84FA3AFB1E8EA74A002D0F73 /* MaterialTextField.cpp */,
+				84FA3AFC1E8EA74A002D0F73 /* MaterialTextField.h */,
+			);
+			path = input;
+			sourceTree = "<group>";
+		};
+		84FA3AFD1E8EA74A002D0F73 /* layout */ = {
+			isa = PBXGroup;
+			children = (
+				84FA3AFE1E8EA74A002D0F73 /* MaterialFlexibleLayout.cpp */,
+				84FA3AFF1E8EA74A002D0F73 /* MaterialFlexibleLayout.h */,
+				84FA3B001E8EA74A002D0F73 /* MaterialLayout.cpp */,
+				84FA3B011E8EA74A002D0F73 /* MaterialLayout.h */,
+				84FA3B021E8EA74A002D0F73 /* MaterialOverlayLayout.cpp */,
+				84FA3B031E8EA74A002D0F73 /* MaterialOverlayLayout.h */,
+				84FA3B041E8EA74A002D0F73 /* MaterialSidebarLayout.cpp */,
+				84FA3B051E8EA74A002D0F73 /* MaterialSidebarLayout.h */,
+				84FA3B061E8EA74A002D0F73 /* MaterialToolbarLayout.cpp */,
+				84FA3B071E8EA74A002D0F73 /* MaterialToolbarLayout.h */,
+			);
+			path = layout;
+			sourceTree = "<group>";
+		};
+		84FA3B081E8EA74A002D0F73 /* menu */ = {
+			isa = PBXGroup;
+			children = (
+				84FA3B091E8EA74A002D0F73 /* MaterialFloatingMenu.cpp */,
+				84FA3B0A1E8EA74A002D0F73 /* MaterialFloatingMenu.h */,
+				84FA3B0B1E8EA74A002D0F73 /* MaterialMenu.cpp */,
+				84FA3B0C1E8EA74A002D0F73 /* MaterialMenu.h */,
+				84FA3B0D1E8EA74A002D0F73 /* MaterialMenuButton.cpp */,
+				84FA3B0E1E8EA74A002D0F73 /* MaterialMenuButton.h */,
+				84FA3B0F1E8EA74A002D0F73 /* MaterialMenuItemInterface.h */,
+				84FA3B101E8EA74A002D0F73 /* MaterialMenuSeparator.cpp */,
+				84FA3B111E8EA74A002D0F73 /* MaterialMenuSeparator.h */,
+			);
+			path = menu;
+			sourceTree = "<group>";
+		};
+		84FA3B121E8EA74A002D0F73 /* navigation */ = {
+			isa = PBXGroup;
+			children = (
+				84FA3B131E8EA74A002D0F73 /* MaterialNavigationLayer.cpp */,
+				84FA3B141E8EA74A002D0F73 /* MaterialNavigationLayer.h */,
+			);
+			path = navigation;
+			sourceTree = "<group>";
+		};
+		84FA3B151E8EA74A002D0F73 /* progress */ = {
+			isa = PBXGroup;
+			children = (
+				84FA3B161E8EA74A002D0F73 /* MaterialLinearProgress.cpp */,
+				84FA3B171E8EA74A002D0F73 /* MaterialLinearProgress.h */,
+				84FA3B181E8EA74A002D0F73 /* MaterialRoundedProgress.cpp */,
+				84FA3B191E8EA74A002D0F73 /* MaterialRoundedProgress.h */,
+			);
+			path = progress;
+			sourceTree = "<group>";
+		};
+		84FA3B1A1E8EA74A002D0F73 /* scene */ = {
+			isa = PBXGroup;
+			children = (
+				84FA3B1B1E8EA74A002D0F73 /* MaterialBackgroundLayer.cpp */,
+				84FA3B1C1E8EA74A002D0F73 /* MaterialBackgroundLayer.h */,
+				84FA3B1D1E8EA74A002D0F73 /* MaterialContentLayer.cpp */,
+				84FA3B1E1E8EA74A002D0F73 /* MaterialContentLayer.h */,
+				84FA3B1F1E8EA74A002D0F73 /* MaterialForegroundLayer.cpp */,
+				84FA3B201E8EA74A002D0F73 /* MaterialForegroundLayer.h */,
+				84FA3B211E8EA74A002D0F73 /* MaterialScene.cpp */,
+				84FA3B221E8EA74A002D0F73 /* MaterialScene.h */,
+			);
+			path = scene;
+			sourceTree = "<group>";
+		};
+		84FA3B231E8EA74A002D0F73 /* scroll */ = {
+			isa = PBXGroup;
+			children = (
+				84FA3B241E8EA74A002D0F73 /* MaterialRecyclerScroll.cpp */,
+				84FA3B251E8EA74A002D0F73 /* MaterialRecyclerScroll.h */,
+				84FA3B261E8EA74A002D0F73 /* MaterialScroll.cpp */,
+				84FA3B271E8EA74A002D0F73 /* MaterialScroll.h */,
+				84FA3B281E8EA74A002D0F73 /* MaterialScrollFixed.cpp */,
+				84FA3B291E8EA74A002D0F73 /* MaterialScrollFixed.h */,
+				84FA3B2A1E8EA74A002D0F73 /* MaterialScrollSlice.cpp */,
+				84FA3B2B1E8EA74A002D0F73 /* MaterialScrollSlice.h */,
+				84FA3B2C1E8EA74A002D0F73 /* MaterialSimpleGrid.cpp */,
+				84FA3B2D1E8EA74A002D0F73 /* MaterialSimpleGrid.h */,
+			);
+			path = scroll;
+			sourceTree = "<group>";
+		};
+		84FA3B2E1E8EA74A002D0F73 /* toolbar */ = {
+			isa = PBXGroup;
+			children = (
+				84FA3B2F1E8EA74A002D0F73 /* MaterialSearchToolbar.cpp */,
+				84FA3B301E8EA74A002D0F73 /* MaterialSearchToolbar.h */,
+				84FA3B311E8EA74A002D0F73 /* MaterialTabToolbar.cpp */,
+				84FA3B321E8EA74A002D0F73 /* MaterialTabToolbar.h */,
+				84FA3B331E8EA74A002D0F73 /* MaterialToolbar.cpp */,
+				84FA3B341E8EA74A002D0F73 /* MaterialToolbar.h */,
+			);
+			path = toolbar;
+			sourceTree = "<group>";
+		};
+		84FA3B351E8EA74A002D0F73 /* resources */ = {
+			isa = PBXGroup;
+			children = (
+				84FA3B361E8EA74A002D0F73 /* MaterialIconNames.h */,
+				84FA3B371E8EA74A002D0F73 /* MaterialIconSprite.cpp */,
+				84FA3B381E8EA74A002D0F73 /* MaterialIconSprite.h */,
+				84FA3B391E8EA74A002D0F73 /* MaterialIconStorage.cpp */,
+				84FA3B3A1E8EA74A002D0F73 /* MaterialIconStorage.h */,
+				84FA3B3B1E8EA74A002D0F73 /* MaterialLabel.cpp */,
+				84FA3B3C1E8EA74A002D0F73 /* MaterialLabel.h */,
+				84FA3B3D1E8EA74A002D0F73 /* MaterialMetrics.cpp */,
+				84FA3B3E1E8EA74A002D0F73 /* MaterialMetrics.h */,
+				84FA3B3F1E8EA74A002D0F73 /* MaterialMetricsInline.h */,
+				84FA3B401E8EA74A002D0F73 /* MaterialResize.cpp */,
+				84FA3B411E8EA74A002D0F73 /* MaterialResize.h */,
+				84FA3B421E8EA74A002D0F73 /* MaterialResourceManager.cpp */,
+				84FA3B431E8EA74A002D0F73 /* MaterialResourceManager.h */,
+				84FA3B441E8EA74A002D0F73 /* MaterialUserFontConfig.cpp */,
+				84FA3B451E8EA74A002D0F73 /* MaterialUserFontConfig.h */,
+			);
+			name = resources;
+			path = ../material/resources;
+			sourceTree = "<group>";
+		};
 		84FDCD2B1BF1C37400C56046 /* struct */ = {
 			isa = PBXGroup;
 			children = (
@@ -1183,8 +1715,10 @@
 		C38C194617AD018200FCE223 = {
 			isa = PBXGroup;
 			children = (
+				84FA3AC91E8EA724002D0F73 /* material */,
 				C38557ED19A9D8590031F6B1 /* StoreKit.framework */,
 				84080DB61C1982EE00723732 /* common */,
+				8483CF401E8D178600D6B836 /* layout */,
 				299C05911978F484009F005F /* src */,
 				C38C195017AD018200FCE223 /* Products */,
 				C38C196017AD02C900FCE223 /* stappler-Prefix.pch */,
@@ -1270,46 +1804,85 @@
 			buildActionMask = 2147483647;
 			files = (
 				84080E001C1982EF00723732 /* SPDataBuffer.cpp in Sources */,
+				8483CFDD1E8D178600D6B836 /* SLVec4.cpp in Sources */,
 				8406FE9F1C180137001B1A8E /* SPDataValueNetwork.cpp in Sources */,
 				844635791B1EBDE300CA9857 /* SPError.cpp in Sources */,
+				8483CFD11E8D178600D6B836 /* SLMathUtil.cpp in Sources */,
+				8483CFB91E8D178600D6B836 /* SLBuilderBullet.cpp in Sources */,
 				84FDCD471BF1C37400C56046 /* SPDelayedReleaser.cpp in Sources */,
 				84D970381CE9C46B00C1B5F5 /* SPSha2.cpp in Sources */,
+				8483CFBB1E8D178600D6B836 /* SLBuilderLayout.cpp in Sources */,
+				8483CFAF1E8D178600D6B836 /* SLFontLibrary.cpp in Sources */,
+				8483CFC31E8D178600D6B836 /* SLStyleColors.cpp in Sources */,
+				8483CFE71E8D178600D6B836 /* SLTessDict.c in Sources */,
+				8483CFCD1E8D178600D6B836 /* SLGeometry.cpp in Sources */,
 				84080E441C1E83FE00723732 /* SPBitmap.cpp in Sources */,
 				84080E121C1982EF00723732 /* SPBase64.cpp in Sources */,
 				8446357C1B1EBDFC00CA9857 /* SPEvent.cpp in Sources */,
+				8483CFB51E8D178600D6B836 /* SLBuilder.cpp in Sources */,
+				8483CFBD1E8D178600D6B836 /* SLLayout.cpp in Sources */,
+				8483CFE91E8D178600D6B836 /* SLTessGeom.c in Sources */,
 				84080E021C1982EF00723732 /* SPDataValue.cpp in Sources */,
+				8483CFAB1E8D178600D6B836 /* SLFont.cpp in Sources */,
 				8446357D1B1EBE0000CA9857 /* SPEventDispatcher.cpp in Sources */,
+				8483CFEB1E8D178600D6B836 /* SLTessMesh.c in Sources */,
 				84080DFE1C1982EF00723732 /* SPData.cpp in Sources */,
+				8483CFEF1E8D178600D6B836 /* SLTessSweep.c in Sources */,
 				8446357E1B1EBE0800CA9857 /* SPEventHandler.cpp in Sources */,
 				84080E1A1C1982EF00723732 /* SPString.cpp in Sources */,
 				8446357F1B1EBE0F00CA9857 /* SPEventHeader.cpp in Sources */,
+				8483CFE51E8D178600D6B836 /* SLPath.cpp in Sources */,
 				84080E041C1982EF00723732 /* SPDataValueCbor.cpp in Sources */,
 				84080E241C1982EF00723732 /* SPFilesystem.cpp in Sources */,
 				847BB9DC1C4505B000B3B701 /* SPDataStream.cpp in Sources */,
 				84080E261C1982EF00723732 /* SPHalfFloat.cpp in Sources */,
 				84080E351C19832000723732 /* SPFilesystem.mm in Sources */,
+				8483CFF11E8D178600D6B836 /* SLTessTess.c in Sources */,
 				84080E061C1982EF00723732 /* SPDataValueJson.cpp in Sources */,
 				847BB9D41C4505B000B3B701 /* SPDataCborBuffer.cpp in Sources */,
+				8483CFD31E8D178600D6B836 /* SLQuaternion.cpp in Sources */,
+				8483CFBF1E8D178600D6B836 /* SLResult.cpp in Sources */,
 				8446358C1B1EBEA300CA9857 /* SPDevice.cpp in Sources */,
 				843380101CC272BF00546216 /* SPIO.cpp in Sources */,
+				8483CFB71E8D178600D6B836 /* SLBuilderBlockModel.cpp in Sources */,
 				8446358E1B1EBEAE00CA9857 /* SPScreen.cpp in Sources */,
 				8446358F1B1EBEB300CA9857 /* SPScreenOrientation.cpp in Sources */,
 				84080E141C1982EF00723732 /* SPCharGroup.cpp in Sources */,
+				8483CFC11E8D178600D6B836 /* SLStyle.cpp in Sources */,
+				8483CFDF1E8D178600D6B836 /* SLCanvas.cpp in Sources */,
+				8483CFCB1E8D178600D6B836 /* SLColor.cpp in Sources */,
 				844635901B1EBECE00CA9857 /* SPClipboard.mm in Sources */,
+				8483CFDB1E8D178600D6B836 /* SLVec3.cpp in Sources */,
+				8483CFA31E8D178600D6B836 /* SLDocument.cpp in Sources */,
+				8483CFED1E8D178600D6B836 /* SLTessPriorityq.c in Sources */,
 				844635911B1EBED400CA9857 /* SPDevice.mm in Sources */,
+				8483CFD71E8D178600D6B836 /* SLSubscription.cpp in Sources */,
 				849E37F31DDB725B00CB045E /* SPHtmlParser.cpp in Sources */,
 				84080E281C1982EF00723732 /* SPTime.cpp in Sources */,
 				84FEA2611C43C12F00DA61E0 /* SPNetworkHandle.cpp in Sources */,
 				293729FA1D2A9C8D00D850A3 /* SPFilesystemNativePosix.cpp in Sources */,
+				8483CFB11E8D178600D6B836 /* SLMultipartParser.cpp in Sources */,
+				8483CFC51E8D178600D6B836 /* SLStyleCompiled.cpp in Sources */,
+				8483CFAD1E8D178600D6B836 /* SLFontFormatter.cpp in Sources */,
+				8483CFCF1E8D178600D6B836 /* SLMat4.cpp in Sources */,
 				84080E1E1C1982EF00723732 /* SPUnicode.cpp in Sources */,
+				8483CFA51E8D178600D6B836 /* SLNode.cpp in Sources */,
+				8483CFA91E8D178600D6B836 /* SLReader.cpp in Sources */,
 				844635941B1EBEE400CA9857 /* SPIME.mm in Sources */,
+				8483CFE11E8D178600D6B836 /* SLDraw.cpp in Sources */,
 				84080E2A1C1982EF00723732 /* SPUrl.cpp in Sources */,
 				844635951B1EBEEA00CA9857 /* SPInteraction.mm in Sources */,
 				84FDCD491BF1C37400C56046 /* SPSyncRWLock.cpp in Sources */,
+				8483CFD91E8D178600D6B836 /* SLVec2.cpp in Sources */,
 				844635961B1EBEF300CA9857 /* SPNetwork.mm in Sources */,
 				847BB9DA1C4505B000B3B701 /* SPDataJsonBuffer.cpp in Sources */,
+				8483CFE31E8D178600D6B836 /* SLImage.cpp in Sources */,
+				8483CFA71E8D178600D6B836 /* SLParser.cpp in Sources */,
+				8483CFC91E8D178600D6B836 /* SLStyleValues.cpp in Sources */,
+				8483CFB31E8D178600D6B836 /* SLRendererTypes.cpp in Sources */,
+				8483CFC71E8D178600D6B836 /* SLStyleMedia.cpp in Sources */,
 				29DFCABC1D0990D900AAD2E5 /* SPUrlencodeParser.cpp in Sources */,
-				84080E201C1982EF00723732 /* SPThreadLocal.cpp in Sources */,
+				8483CFD51E8D178600D6B836 /* SLRef.cpp in Sources */,
 				293729FC1D2A9C8D00D850A3 /* SPLog.cpp in Sources */,
 				847BB9D61C4505B000B3B701 /* SPDataDecompressBuffer.cpp in Sources */,
 				84D970351CE9C19800C1B5F5 /* SPStapplerLog.cpp in Sources */,
@@ -1331,37 +1904,52 @@
 				84080E031C1982EF00723732 /* SPDataValueCbor.cpp in Sources */,
 				84A6EA1E1B1D888D00C0175B /* SPNetworkSprite.cpp in Sources */,
 				8410B3ED1C04355700208BA5 /* SPRootViewController.mm in Sources */,
-				8422D70C1DFAB63A0001A3F8 /* SPRichTextReader.cpp in Sources */,
-				8422D7071DFAB63A0001A3F8 /* SPIcon.cpp in Sources */,
+				8483CFD41E8D178600D6B836 /* SLRef.cpp in Sources */,
+				8483CFE41E8D178600D6B836 /* SLPath.cpp in Sources */,
+				8483CFC01E8D178600D6B836 /* SLStyle.cpp in Sources */,
+				8483CFF41E8D194500D6B836 /* SPLayoutSource.cpp in Sources */,
+				84FA3B6A1E8EA74A002D0F73 /* MaterialRecyclerScroll.cpp in Sources */,
+				8483CF2A1E8D171000D6B836 /* SPReceiptValidation.cpp in Sources */,
+				84FA3B611E8EA74A002D0F73 /* MaterialMenuButton.cpp in Sources */,
 				84D970371CE9C46B00C1B5F5 /* SPSha2.cpp in Sources */,
 				293729FB1D2A9C8D00D850A3 /* SPLog.cpp in Sources */,
+				8483CFE81E8D178600D6B836 /* SLTessGeom.c in Sources */,
+				8483CFC61E8D178600D6B836 /* SLStyleMedia.cpp in Sources */,
+				84FA3B4B1E8EA74A002D0F73 /* MaterialButtonLabel.cpp in Sources */,
 				8422D6901DFAB5810001A3F8 /* NSStringPunycodeAdditions.m in Sources */,
 				8422D7031DFAB63A0001A3F8 /* SPNetworkTask.cpp in Sources */,
+				84FA3B531E8EA74A002D0F73 /* MaterialFormField.cpp in Sources */,
 				84A6EA4C1B1D888D00C0175B /* SPScreen.cpp in Sources */,
 				8422D7221DFAB63A0001A3F8 /* SPTextureCache.cpp in Sources */,
+				8483CFAC1E8D178600D6B836 /* SLFontFormatter.cpp in Sources */,
+				84FA3B571E8EA74A002D0F73 /* MaterialLineField.cpp in Sources */,
 				8422D71F1DFAB63A0001A3F8 /* SPStoreKit.cpp in Sources */,
 				84A6EA4D1B1D888D00C0175B /* SPScreenOrientation.cpp in Sources */,
-				8422D71D1DFAB63A0001A3F8 /* SPRichTextStyleValues.cpp in Sources */,
-				8422D7131DFAB63A0001A3F8 /* SPRichTextBuilder.cpp in Sources */,
 				8422D7021DFAB63A0001A3F8 /* SPNetworkDownload.cpp in Sources */,
 				8422D6FA1DFAB63A0001A3F8 /* SPDynamicBatchCommand.cpp in Sources */,
 				84A6EA1D1B1D888D00C0175B /* SPClippingNode.cpp in Sources */,
+				8483CFB61E8D178600D6B836 /* SLBuilderBlockModel.cpp in Sources */,
+				84FA3B511E8EA74A002D0F73 /* MaterialImageLayer.cpp in Sources */,
 				84A6E9DD1B1D888D00C0175B /* SPEventHeader.cpp in Sources */,
 				84A6EA4A1B1D888D00C0175B /* SPDevice.cpp in Sources */,
-				8422D70D1DFAB63A0001A3F8 /* SPRichTextSource.cpp in Sources */,
+				84FA3B621E8EA74A002D0F73 /* MaterialMenuSeparator.cpp in Sources */,
 				84E4670D1E276229005CB6BC /* SPCornerSprite.cpp in Sources */,
 				8422D6FD1DFAB63A0001A3F8 /* SPLocale.cpp in Sources */,
+				84FA3B6D1E8EA74A002D0F73 /* MaterialScrollSlice.cpp in Sources */,
+				8483CFDE1E8D178600D6B836 /* SLCanvas.cpp in Sources */,
+				8483CF3C1E8D176400D6B836 /* SPDrawPathNode.cpp in Sources */,
+				84FA3B651E8EA74A002D0F73 /* MaterialRoundedProgress.cpp in Sources */,
+				8483CFEA1E8D178600D6B836 /* SLTessMesh.c in Sources */,
+				84FA3B601E8EA74A002D0F73 /* MaterialMenu.cpp in Sources */,
 				84080E1D1C1982EF00723732 /* SPUnicode.cpp in Sources */,
 				84A6E9DA1B1D888D00C0175B /* SPEvent.cpp in Sources */,
 				847BB9D91C4505B000B3B701 /* SPDataJsonBuffer.cpp in Sources */,
-				8422D7051DFAB63A0001A3F8 /* SPFontFormatter.cpp in Sources */,
-				8422D70F1DFAB63A0001A3F8 /* SPEpubInfo.cpp in Sources */,
-				8422D70E1DFAB63A0001A3F8 /* SPEpubDocument.cpp in Sources */,
+				8483CFE61E8D178600D6B836 /* SLTessDict.c in Sources */,
+				84FA3B691E8EA74A002D0F73 /* MaterialScene.cpp in Sources */,
 				84A6E9D01B1D888D00C0175B /* SPGestureListener.cpp in Sources */,
-				8422D7121DFAB63A0001A3F8 /* SPRichTextRendererTypes.cpp in Sources */,
-				8422D7111DFAB63A0001A3F8 /* SPRichTextMultipartParser.cpp in Sources */,
-				8422D71B1DFAB63A0001A3F8 /* SPRichTextStyleCompiled.cpp in Sources */,
 				84A6E9CE1B1D888D00C0175B /* SPFadeTo.cpp in Sources */,
+				84FA3B6E1E8EA74A002D0F73 /* MaterialSimpleGrid.cpp in Sources */,
+				84FA3B501E8EA74A002D0F73 /* MaterialGalleryScroll.cpp in Sources */,
 				84A6E9DB1B1D888D00C0175B /* SPEventDispatcher.cpp in Sources */,
 				84A6E9DE1B1D888D00C0175B /* SPError.cpp in Sources */,
 				8422D7001DFAB63A0001A3F8 /* SPAssetLibrary.cpp in Sources */,
@@ -1369,102 +1957,150 @@
 				8422D6FF1DFAB63A0001A3F8 /* SPAssetDownload.cpp in Sources */,
 				849E9D851B43B332004E502B /* SPDataSource.cpp in Sources */,
 				8422D6FC1DFAB63A0001A3F8 /* SPIME.cpp in Sources */,
+				84FA3B6F1E8EA74A002D0F73 /* MaterialSearchToolbar.cpp in Sources */,
 				84FDCD461BF1C37400C56046 /* SPDelayedReleaser.cpp in Sources */,
+				8483CFE01E8D178600D6B836 /* SLDraw.cpp in Sources */,
 				849E37E91DDB717C00CB045E /* SPBatchNodeBase.cpp in Sources */,
-				8422D7141DFAB63A0001A3F8 /* SPRichTextBuilderBlockModel.cpp in Sources */,
+				8483CFDA1E8D178600D6B836 /* SLVec3.cpp in Sources */,
 				293729F91D2A9C8D00D850A3 /* SPFilesystemNativePosix.cpp in Sources */,
-				8422D71A1DFAB63A0001A3F8 /* SPRichTextStyleColors.cpp in Sources */,
 				84A6EA341B1D888D00C0175B /* SPStoreKit.mm in Sources */,
-				84A6EA181B1D888D00C0175B /* SPDrawPathNode.cpp in Sources */,
 				84080DFD1C1982EF00723732 /* SPData.cpp in Sources */,
 				84A6EA311B1D888D00C0175B /* SPNetwork.mm in Sources */,
 				8422D6911DFAB5810001A3F8 /* SPWebViewController.mm in Sources */,
+				8483CFAE1E8D178600D6B836 /* SLFontLibrary.cpp in Sources */,
+				84FA3B781E8EA74A002D0F73 /* MaterialUserFontConfig.cpp in Sources */,
 				84A6E9CD1B1D888D00C0175B /* SPAccelerated.cpp in Sources */,
 				84A6EA121B1D888D00C0175B /* SPLayer.cpp in Sources */,
 				843FF7231E3B3D68009F31F1 /* SPNodeExt.cpp in Sources */,
-				8422D7181DFAB63A0001A3F8 /* SPRichTextResult.cpp in Sources */,
 				849E37CF1DDB644A00CB045E /* SPDynamicLabel.cpp in Sources */,
 				84080E111C1982EF00723732 /* SPBase64.cpp in Sources */,
+				84FA3B6B1E8EA74A002D0F73 /* MaterialScroll.cpp in Sources */,
+				84FA3B631E8EA74A002D0F73 /* MaterialNavigationLayer.cpp in Sources */,
+				8483CF3A1E8D176400D6B836 /* SPDrawCanvas.cpp in Sources */,
+				8483CFA21E8D178600D6B836 /* SLDocument.cpp in Sources */,
+				8483CFF01E8D178600D6B836 /* SLTessTess.c in Sources */,
+				8483CFC81E8D178600D6B836 /* SLStyleValues.cpp in Sources */,
 				847BB9D51C4505B000B3B701 /* SPDataDecompressBuffer.cpp in Sources */,
 				84EA86491BB1787A00FB1276 /* SPProgressAction.cpp in Sources */,
 				8410B3F01C04390900208BA5 /* SPAppController.mm in Sources */,
+				8483CFE21E8D178600D6B836 /* SLImage.cpp in Sources */,
 				84A6EA2F1B1D888D00C0175B /* SPIME.mm in Sources */,
 				849E37EC1DDB71C300CB045E /* SPLayeredBatchNode.cpp in Sources */,
-				8422D7091DFAB63A0001A3F8 /* SPRichTextDocument.cpp in Sources */,
-				8422D7191DFAB63A0001A3F8 /* SPRichTextStyle.cpp in Sources */,
+				8483CFDC1E8D178600D6B836 /* SLVec4.cpp in Sources */,
 				84337FE71CC24EA700546216 /* SPIO.cpp in Sources */,
+				84FA3B6C1E8EA74A002D0F73 /* MaterialScrollFixed.cpp in Sources */,
+				8483CFBE1E8D178600D6B836 /* SLResult.cpp in Sources */,
 				8422D7081DFAB63A0001A3F8 /* SPResource.cpp in Sources */,
 				84080DFF1C1982EF00723732 /* SPDataBuffer.cpp in Sources */,
 				84FEA2601C43C12F00DA61E0 /* SPNetworkHandle.cpp in Sources */,
+				84FA3B671E8EA74A002D0F73 /* MaterialContentLayer.cpp in Sources */,
+				8483CFB01E8D178600D6B836 /* SLMultipartParser.cpp in Sources */,
 				84A6E9D61B1D888D00C0175B /* SPEventListener.cpp in Sources */,
-				84A6EA161B1D888D00C0175B /* SPDraw.cpp in Sources */,
 				84080E431C1E83FE00723732 /* SPBitmap.cpp in Sources */,
-				8422D70A1DFAB63A0001A3F8 /* SPRichTextNode.cpp in Sources */,
-				8422D7171DFAB63A0001A3F8 /* SPRichTextLayout.cpp in Sources */,
+				84FA3B5A1E8EA74A002D0F73 /* MaterialFlexibleLayout.cpp in Sources */,
 				84080E131C1982EF00723732 /* SPCharGroup.cpp in Sources */,
-				8422D71C1DFAB63A0001A3F8 /* SPRichTextStyleMedia.cpp in Sources */,
-				84080E1F1C1982EF00723732 /* SPThreadLocal.cpp in Sources */,
+				8483CFAA1E8D178600D6B836 /* SLFont.cpp in Sources */,
 				84FDCD481BF1C37400C56046 /* SPSyncRWLock.cpp in Sources */,
+				8483CF3F1E8D176400D6B836 /* SPRichTextView.cpp in Sources */,
+				84FA3B4D1E8EA74A002D0F73 /* MaterialButtonLabelSelector.cpp in Sources */,
 				8422D6F91DFAB63A0001A3F8 /* SPDynamicAtlas.cpp in Sources */,
+				8483CF3E1E8D176400D6B836 /* SPRichTextRenderer.cpp in Sources */,
 				843FF7081E3B3A8D009F31F1 /* SPApplication.cpp in Sources */,
-				8422D7291DFAB6F90001A3F8 /* SPDrawCanvasCairo.cpp in Sources */,
 				849E37D01DDB644A00CB045E /* SPLabelParameters.cpp in Sources */,
+				84FA3B4E1E8EA74A002D0F73 /* MaterialFloatingActionButton.cpp in Sources */,
 				84080E291C1982EF00723732 /* SPUrl.cpp in Sources */,
 				84FEA2561C43BB4F00DA61E0 /* SPSocketServer.cpp in Sources */,
+				84FA3B591E8EA74A002D0F73 /* MaterialTextField.cpp in Sources */,
+				8483CFEC1E8D178600D6B836 /* SLTessPriorityq.c in Sources */,
+				84FA3B741E8EA74A002D0F73 /* MaterialLabel.cpp in Sources */,
+				8483CFD81E8D178600D6B836 /* SLVec2.cpp in Sources */,
+				84FA3B551E8EA74A002D0F73 /* MaterialInputLabel.cpp in Sources */,
+				84FA3B771E8EA74A002D0F73 /* MaterialResourceManager.cpp in Sources */,
 				84080E051C1982EF00723732 /* SPDataValueJson.cpp in Sources */,
-				84A6EA171B1D888D00C0175B /* SPDrawPath.cpp in Sources */,
 				84A6EA131B1D888D00C0175B /* SPRoundedSprite.cpp in Sources */,
+				84FA3B5E1E8EA74A002D0F73 /* MaterialToolbarLayout.cpp in Sources */,
+				8483CFB21E8D178600D6B836 /* SLRendererTypes.cpp in Sources */,
+				84FA3B4C1E8EA74A002D0F73 /* MaterialButtonLabelIcon.cpp in Sources */,
 				84A6EA2D1B1D888D00C0175B /* SPFilesystem.mm in Sources */,
 				84A6EA1C1B1D888D00C0175B /* SPScrollViewBase.cpp in Sources */,
 				8422D7231DFAB63A0001A3F8 /* SPTaskManager.cpp in Sources */,
+				8483CFA61E8D178600D6B836 /* SLParser.cpp in Sources */,
+				84FA3B4F1E8EA74A002D0F73 /* MaterialTabBar.cpp in Sources */,
 				84A6EA0F1B1D888D00C0175B /* SPDynamicBatchNode.cpp in Sources */,
 				8422D6FE1DFAB63A0001A3F8 /* SPAsset.cpp in Sources */,
+				84FA3B521E8EA74A002D0F73 /* MaterialFormController.cpp in Sources */,
 				29DFCABB1D0990D900AAD2E5 /* SPUrlencodeParser.cpp in Sources */,
+				84FA3B481E8EA74A002D0F73 /* MaterialNode.cpp in Sources */,
 				8422D7041DFAB63A0001A3F8 /* SPFont.cpp in Sources */,
+				84FA3B641E8EA74A002D0F73 /* MaterialLinearProgress.cpp in Sources */,
+				8483CFD01E8D178600D6B836 /* SLMathUtil.cpp in Sources */,
+				8483CFD21E8D178600D6B836 /* SLQuaternion.cpp in Sources */,
+				84FA3B561E8EA74A002D0F73 /* MaterialInputMenu.cpp in Sources */,
 				8422D71E1DFAB63A0001A3F8 /* SPStorage.cpp in Sources */,
-				8422D70B1DFAB63A0001A3F8 /* SPRichTextParser.cpp in Sources */,
+				84FA3B471E8EA74A002D0F73 /* MaterialImage.cpp in Sources */,
+				8483CFA81E8D178600D6B836 /* SLReader.cpp in Sources */,
 				847BB9D71C4505B000B3B701 /* SPDataDecryptBuffer.cpp in Sources */,
-				84A6E9D91B1D888D00C0175B /* SPDataSubscription.cpp in Sources */,
 				84F636B81C16CF0D0021A2F4 /* SPDataValueNetwork.cpp in Sources */,
 				8422D7261DFAB63A0001A3F8 /* SPThreadManager.cpp in Sources */,
+				8483CFEE1E8D178600D6B836 /* SLTessSweep.c in Sources */,
+				84FA3B491E8EA74A002D0F73 /* MaterialButton.cpp in Sources */,
 				84AA9FA11BD4A95C00DD650A /* SPDynamicBatchScene.cpp in Sources */,
+				84FA3B4A1E8EA74A002D0F73 /* MaterialButtonIcon.cpp in Sources */,
+				84FA3B5F1E8EA74A002D0F73 /* MaterialFloatingMenu.cpp in Sources */,
+				84FA3B731E8EA74A002D0F73 /* MaterialIconStorage.cpp in Sources */,
+				84FA3B711E8EA74A002D0F73 /* MaterialToolbar.cpp in Sources */,
+				8483CF3D1E8D176400D6B836 /* SPRichTextDrawer.cpp in Sources */,
+				8483CFA41E8D178600D6B836 /* SLNode.cpp in Sources */,
+				8483CFCA1E8D178600D6B836 /* SLColor.cpp in Sources */,
+				8483CFCE1E8D178600D6B836 /* SLMat4.cpp in Sources */,
+				84FA3B581E8EA74A002D0F73 /* MaterialSwitch.cpp in Sources */,
+				84FA3B721E8EA74A002D0F73 /* MaterialIconSprite.cpp in Sources */,
 				84A6EA1A1B1D888D00C0175B /* SPOverscroll.cpp in Sources */,
 				84A6EA301B1D888D00C0175B /* SPInteraction.mm in Sources */,
+				8483CFC21E8D178600D6B836 /* SLStyleColors.cpp in Sources */,
+				8483CFD61E8D178600D6B836 /* SLSubscription.cpp in Sources */,
 				8422D7011DFAB63A0001A3F8 /* SPNetworkDataTask.cpp in Sources */,
 				84A6E9CF1B1D888D00C0175B /* SPGestureData.cpp in Sources */,
-				29FCA7DD1D9AD427008E8671 /* SPRichTextRenderer.cpp in Sources */,
-				29FCA7DC1D9AD427008E8671 /* SPRichTextDrawer.cpp in Sources */,
+				8483CFB41E8D178600D6B836 /* SLBuilder.cpp in Sources */,
 				849E37F21DDB725B00CB045E /* SPHtmlParser.cpp in Sources */,
 				8422D7251DFAB63A0001A3F8 /* SPThreadHandlerIOS.mm in Sources */,
+				84FA3B701E8EA74A002D0F73 /* MaterialTabToolbar.cpp in Sources */,
 				84A6EA2B1B1D888D00C0175B /* SPClipboard.mm in Sources */,
-				84337FF21CC25A7D00546216 /* SPDrawCanvas.cpp in Sources */,
 				8422D7241DFAB63A0001A3F8 /* SPTaskStack.cpp in Sources */,
+				84FA3B681E8EA74A002D0F73 /* MaterialForegroundLayer.cpp in Sources */,
 				84080E271C1982EF00723732 /* SPTime.cpp in Sources */,
 				847BB9D31C4505B000B3B701 /* SPDataCborBuffer.cpp in Sources */,
 				8422D7201DFAB63A0001A3F8 /* SPStoreProduct.cpp in Sources */,
-				84A6EA111B1D888D00C0175B /* SPIconSprite.cpp in Sources */,
+				8483CF3B1E8D176400D6B836 /* SPDrawGLCacheNode.cpp in Sources */,
+				8483CFBA1E8D178600D6B836 /* SLBuilderLayout.cpp in Sources */,
 				84080E191C1982EF00723732 /* SPString.cpp in Sources */,
+				8483CFB81E8D178600D6B836 /* SLBuilderBullet.cpp in Sources */,
+				84FA3B751E8EA74A002D0F73 /* MaterialMetrics.cpp in Sources */,
+				84FA3B5C1E8EA74A002D0F73 /* MaterialOverlayLayout.cpp in Sources */,
+				84FA3B661E8EA74A002D0F73 /* MaterialBackgroundLayer.cpp in Sources */,
+				84FA3B761E8EA74A002D0F73 /* MaterialResize.cpp in Sources */,
 				84A6EA1B1B1D888D00C0175B /* SPScrollView.cpp in Sources */,
 				84080E011C1982EF00723732 /* SPDataValue.cpp in Sources */,
-				8422D7101DFAB63A0001A3F8 /* SPEpubReader.cpp in Sources */,
 				84A6EA321B1D888D00C0175B /* SPRender.mm in Sources */,
 				8422D6FB1DFAB63A0001A3F8 /* SPDynamicQuadArray.cpp in Sources */,
 				84A6E9D11B1D888D00C0175B /* SPGestureRecognizer.cpp in Sources */,
 				84A6E9DC1B1D888D00C0175B /* SPEventHandler.cpp in Sources */,
+				84FA3B461E8EA74A002D0F73 /* MaterialMenuSource.cpp in Sources */,
+				8483CFCC1E8D178600D6B836 /* SLGeometry.cpp in Sources */,
 				84A6EA151B1D888D00C0175B /* SPShadowSprite.cpp in Sources */,
 				84080E251C1982EF00723732 /* SPHalfFloat.cpp in Sources */,
 				84A6E9D21B1D888D00C0175B /* SPScrollController.cpp in Sources */,
 				8422D7211DFAB63A0001A3F8 /* SPGLProgramSet.cpp in Sources */,
 				84A6EA101B1D888D00C0175B /* SPDynamicSprite.cpp in Sources */,
-				8422D7161DFAB63A0001A3F8 /* SPRichTextBuilderLayout.cpp in Sources */,
 				84080E231C1982EF00723732 /* SPFilesystem.cpp in Sources */,
+				8483CFC41E8D178600D6B836 /* SLStyleCompiled.cpp in Sources */,
+				84FA3B541E8EA74A002D0F73 /* MaterialInputField.cpp in Sources */,
+				84FA3B5B1E8EA74A002D0F73 /* MaterialLayout.cpp in Sources */,
+				84FA3B5D1E8EA74A002D0F73 /* MaterialSidebarLayout.cpp in Sources */,
+				8483CFBC1E8D178600D6B836 /* SLLayout.cpp in Sources */,
 				84A6EA141B1D888D00C0175B /* SPScale9Sprite.cpp in Sources */,
-				29FCA7DE1D9AD427008E8671 /* SPRichTextView.cpp in Sources */,
-				844637531B1EE7FE00CA9857 /* SPIOSLoaderView.mm in Sources */,
-				8422D7151DFAB63A0001A3F8 /* SPRichTextBuilderBullet.cpp in Sources */,
 				84A6EA1F1B1D888D00C0175B /* SPStrictNode.cpp in Sources */,
 				847BB9DB1C4505B000B3B701 /* SPDataStream.cpp in Sources */,
-				8422D7061DFAB63A0001A3F8 /* SPFontLayout.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1570,15 +2206,16 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos\"",
-					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/extensions\"",
-					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/external\"",
-					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/audio/include\"",
-					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform\"",
-					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/base\"",
-					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/math\"",
+					"\"$(SRCROOT)/../libs/external/stappler-cocos2d-x/cocos\"",
+					"\"$(SRCROOT)/../libs/external/stappler-cocos2d-x/extensions\"",
+					"\"$(SRCROOT)/../libs/external/stappler-cocos2d-x/external\"",
+					"\"$(SRCROOT)/../libs/external/stappler-cocos2d-x/cocos/audio/include\"",
+					"\"$(SRCROOT)/../libs/external/stappler-cocos2d-x/cocos/platform\"",
+					"\"$(SRCROOT)/../libs/external/stappler-cocos2d-x/cocos/base\"",
+					"\"$(SRCROOT)/../libs/external/stappler-cocos2d-x/cocos/math\"",
 					"\"$(SRCROOT)/src\"/**",
 					"\"$(SRCROOT)/../common\"/**",
+					"\"$(SRCROOT)/../layout\"/**",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				LIBRARY_SEARCH_PATHS = "";
@@ -1620,15 +2257,16 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos\"",
-					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/extensions\"",
-					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/external\"",
-					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/audio/include\"",
-					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform\"",
-					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/base\"",
-					"\"$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/math\"",
+					"\"$(SRCROOT)/../libs/external/stappler-cocos2d-x/cocos\"",
+					"\"$(SRCROOT)/../libs/external/stappler-cocos2d-x/extensions\"",
+					"\"$(SRCROOT)/../libs/external/stappler-cocos2d-x/external\"",
+					"\"$(SRCROOT)/../libs/external/stappler-cocos2d-x/cocos/audio/include\"",
+					"\"$(SRCROOT)/../libs/external/stappler-cocos2d-x/cocos/platform\"",
+					"\"$(SRCROOT)/../libs/external/stappler-cocos2d-x/cocos/base\"",
+					"\"$(SRCROOT)/../libs/external/stappler-cocos2d-x/cocos/math\"",
 					"\"$(SRCROOT)/src\"/**",
 					"\"$(SRCROOT)/../common\"/**",
+					"\"$(SRCROOT)/../layout\"/**",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				LIBRARY_SEARCH_PATHS = "";
@@ -1669,7 +2307,7 @@
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
-				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform/ios $(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform/apple $(SRCROOT)/../libs/SPWebView $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/xxhash $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/jpeg/ios $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include/cairo $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include/curl $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/unzip $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/tinyxml2";
+				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../libs/external/stappler-cocos2d-x/cocos/platform/ios $(SRCROOT)/../libs/external/stappler-cocos2d-x/cocos/platform/apple $(SRCROOT)/../libs/external/stappler-cocos2d-x/external/xxhash $(SRCROOT)/../libs/external/stappler-cocos2d-x/external/jpeg/ios $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include/cairo $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include/curl $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/unzip $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/tinyxml2";
 				USE_HEADERMAP = NO;
 				VALIDATE_PRODUCT = NO;
 				VALID_ARCHS = "armv7 armv7s arm64";
@@ -1704,7 +2342,7 @@
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
-				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform/ios $(SRCROOT)/../libs/src/stappler-cocos2d-x/cocos/platform/apple $(SRCROOT)/../libs/SPWebView $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/xxhash $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/jpeg/ios $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include/cairo $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include/curl $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/unzip $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/tinyxml2";
+				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/../libs/external/stappler-cocos2d-x/cocos/platform/ios $(SRCROOT)/../libs/external/stappler-cocos2d-x/cocos/platform/apple $(SRCROOT)/../libs/external/stappler-cocos2d-x/external/xxhash $(SRCROOT)/../libs/external/stappler-cocos2d-x/external/jpeg/ios $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include/cairo $(SRCROOT)/../libs/ios/$(CURRENT_ARCH)/include/curl $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/unzip $(SRCROOT)/../libs/src/stappler-cocos2d-x/external/tinyxml2";
 				USE_HEADERMAP = NO;
 				VALIDATE_PRODUCT = NO;
 				VALID_ARCHS = "armv7 armv7s arm64";

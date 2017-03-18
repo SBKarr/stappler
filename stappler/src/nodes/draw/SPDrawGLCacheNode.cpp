@@ -23,6 +23,7 @@ void GLCacheNode::cleanup() {
 		cocos2d::Director::getInstance()->setViewport();
 		cocos2d::GL::blendResetToCache();
 	}
+    CHECK_GL_ERROR_DEBUG();
 }
 
 void GLCacheNode::bindTexture(GLuint value) {

@@ -28,7 +28,7 @@ THE SOFTWARE.
 
 #include "math/CCGeometry.h"
 #include "SPIOSVersions.h"
-#include "SPIOSLoaderView.h"
+#include "SPRootViewController.h"
 
 #include "platform/CCDevice.h"
 
@@ -146,7 +146,7 @@ namespace device {
 	}
 	
 	void _onDirectorStarted() {
-		[SPLoaderViewController cancelLoaderLiew];
+		[((SPRootViewController *)[UIApplication sharedApplication].keyWindow.rootViewController) cancelLoaderLiew];
 	}
 	
 	float _density() {

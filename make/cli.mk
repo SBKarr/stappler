@@ -75,8 +75,9 @@ CLI_INCLUDES := \
 	$(foreach dir,$(CLI_INCLUDES_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -type d)) \
 	$(addprefix $(GLOBAL_ROOT)/,$(CLI_INCLUDES_OBJS))
 
-CLI_GCH := $(addsuffix .gch,$(addprefix $(GLOBAL_ROOT)/,$(CLI_PRECOMPILED_HEADERS)))
-CLI_GCH := $(patsubst $(GLOBAL_ROOT)/%,$(CLI_OUTPUT_DIR)/include/%,$(CLI_GCH))
+CLI_GCH := $(addprefix $(GLOBAL_ROOT)/,$(CLI_PRECOMPILED_HEADERS))
+CLI_H_GCH := $(patsubst $(GLOBAL_ROOT)/%,$(CLI_OUTPUT_DIR)/include/%,$(CLI_GCH))
+CLI_GCH := $(addsuffix .gch,$(CLI_H_GCH))
 
 CLI_OBJS := $(patsubst %.mm,%.o,$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(patsubst $(GLOBAL_ROOT)/%,$(CLI_OUTPUT_DIR)/%,$(CLI_SRCS)))))
 CLI_DIRS := $(sort $(dir $(CLI_OBJS))) $(sort $(dir $(CLI_GCH)))
@@ -87,22 +88,25 @@ CLI_CXXFLAGS := $(GLOBAL_CXXFLAGS) $(CLI_FLAGS) $(CLI_INPUT_CFLAGS)
 CLI_CFLAGS := $(GLOBAL_CFLAGS) $(CLI_FLAGS) $(CLI_INPUT_CFLAGS)
 
 -include $(patsubst %.o,%.d,$(CLI_OBJS))
+-include $(patsubst %.gch,%.d,$(CLI_GCH))
 
-$(CLI_OUTPUT_DIR)/include/%.gch: $(GLOBAL_ROOT)/%
-	@$(GLOBAL_MKDIR) $(dir $(CLI_OUTPUT_DIR)/include/$*)
-	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(CLI_OUTPUT_DIR)/include/$*.d $(CLI_CXXFLAGS) -c -o $@ $<
-	@cp -f $< $(CLI_OUTPUT_DIR)/include/$*
+$(CLI_OUTPUT_DIR)/include/%.h : $(GLOBAL_ROOT)/%.h
+	@$(GLOBAL_MKDIR) $(dir $(CLI_OUTPUT_DIR)/include/$*.h)
+	@cp -f $< $(CLI_OUTPUT_DIR)/include/$*.h
+
+$(CLI_OUTPUT_DIR)/include/%.h.gch: $(CLI_OUTPUT_DIR)/include/%.h
+	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) $(OSTYPE_GCHFLAGS) -MMD -MP -MF $(CLI_OUTPUT_DIR)/include/$*.d $(CLI_CXXFLAGS) -c -o $@ $<
 
 $(CLI_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.cpp $(CLI_GCH)
 	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(CLI_OUTPUT_DIR)/$*.d $(CLI_CXXFLAGS) -c -o $@ $<
 
 $(CLI_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.mm $(CLI_GCH)
-	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(CLI_OUTPUT_DIR)/$*.d $(CLI_CXXFLAGS) -c -o $@ $<
+	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(CLI_OUTPUT_DIR)/$*.d $(CLI_CXXFLAGS) -fobjc-arc -c -o $@ $<
 
 $(CLI_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.c $(CLI_GCH)
 	$(GLOBAL_QUIET_CC) $(GLOBAL_CC) -MMD -MP -MF $(CLI_OUTPUT_DIR)/$*.d $(CLI_CFLAGS) -c -o $@ $<
 
-$(CLI_OUTPUT): $(CLI_GCH) $(CLI_OBJS)
+$(CLI_OUTPUT): $(CLI_H_GCH) $(CLI_GCH) $(CLI_OBJS)
 	$(GLOBAL_QUIET_LINK) $(GLOBAL_CPP)  $(CLI_OBJS) $(CLI_LIBS) -shared $(OSTYPE_LDFLAGS) -o $(CLI_OUTPUT)
 
 $(CLI_OUTPUT_STATIC) : $(CLI_H_GCH) $(CLI_GCH) $(CLI_OBJS)

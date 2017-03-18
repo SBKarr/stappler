@@ -46,7 +46,7 @@ using NumberChars = chars::Compose<char,
 		chars::Chars<char, '-', '+', '.', 'E', 'e'>,
 		chars::Range<char, '0', '9'>
 >;
-using PlainChars = chars::CharGroup<char, chars::CharGroupId::Alphanumeric>;
+using PlainChars = chars::CharGroup<char, CharGroupId::Alphanumeric>;
 
 inline void JsonBuffer::reset() {
 	buf.clear();

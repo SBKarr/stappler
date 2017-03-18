@@ -30,7 +30,7 @@ NS_MD_BEGIN
 
 class ScrollHandlerSlice : public Scroll::Handler {
 public:
-	using DataCallback = std::function<Rc<Scroll::Item> (ScrollHandlerSlice *h, data::Value &&, const Vec2 &)>;
+	using DataCallback = Function<Rc<Scroll::Item> (ScrollHandlerSlice *h, data::Value &&, const Vec2 &)>;
 
 	virtual ~ScrollHandlerSlice() { }
 	virtual bool init(Scroll *, const DataCallback & = nullptr);

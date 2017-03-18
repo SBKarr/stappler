@@ -74,7 +74,7 @@
 					<folderInfo id="cdt.managedbuild.toolchain.gnu.base.1433006399.1898339315." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.base.1505980677" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.base">
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.target.gnu.platform.base.2058746570" name="Debug Platform" osList="linux,hpux,aix,qnx" superClass="cdt.managedbuild.target.gnu.platform.base"/>
-							<builder arguments="APACHE_INCLUDE=${APACHE_INCLUDE} APXS=${APXS}" command="make" id="cdt.managedbuild.target.gnu.builder.base.346201422" incrementalBuildTarget=" serenity" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Gnu Make Builder" superClass="cdt.managedbuild.target.gnu.builder.base"/>
+							<builder arguments="-j4 APACHE_INCLUDE=${APACHE_INCLUDE} APXS=${APXS}" command="make" id="cdt.managedbuild.target.gnu.builder.base.346201422" incrementalBuildTarget=" serenity" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Gnu Make Builder" superClass="cdt.managedbuild.target.gnu.builder.base"/>
 							<tool id="cdt.managedbuild.tool.gnu.archiver.base.1049772104" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base"/>
 							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.base.1904106110" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.base">
 								<option id="gnu.cpp.compiler.option.include.paths.1652343140" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">

@@ -29,32 +29,49 @@ THE SOFTWARE.
 NS_SP_EXT_BEGIN(ime)
 
 enum class InputType : int32_t {
-	Date_Date = 1,
-	Date_DateTime = 2,
-	Date_Time = 3,
-	Date = Date_DateTime,
+	Empty				= 0,
+	Date_Date			= 1,
+	Date_DateTime		= 2,
+	Date_Time			= 3,
+	Date				= Date_DateTime,
 
-	Number_Numbers = 4,
-	Number_Decimial = 5,
-	Number_Signed = 6,
-	Number = Number_Numbers,
+	Number_Numbers		= 4,
+	Number_Decimial		= 5,
+	Number_Signed		= 6,
+	Number				= Number_Numbers,
 
-	Phone = 7,
+	Phone				= 7,
 
-	Text_Text = 8,
-	Text_Search = 9,
-	Text_Punctuation = 10,
-	Text_Email = 11,
-	Text_Url = 12,
-	Text = Text_Text,
+	Text_Text			= 8,
+	Text_Search			= 9,
+	Text_Punctuation	= 10,
+	Text_Email			= 11,
+	Text_Url			= 12,
+	Text				= Text_Text,
 
-	Default = Text_Text,
+	Default				= Text_Text,
 
 	ClassMask			= 0b00011111,
 	PasswordBit			= 0b00100000,
 	MultiLineBit		= 0b01000000,
 	AutoCorrectionBit	= 0b10000000,
+	
+	ReturnKeyMask		= 0b00001111 << 8,
+
+	ReturnKeyDefault	= 1 << 8,
+	ReturnKeyGo			= 2 << 8,
+	ReturnKeyGoogle		= 3 << 8,
+	ReturnKeyJoin		= 4 << 8,
+	ReturnKeyNext		= 5 << 8,
+	ReturnKeyRoute		= 6 << 8,
+	ReturnKeySearch		= 7 << 8,
+	ReturnKeySend		= 8 << 8,
+	ReturnKeyYahoo		= 9 << 8,
+	ReturnKeyDone		= 10 << 8,
+	ReturnKeyEmergencyCall = 11 << 8,
 };
+
+SP_DEFINE_ENUM_AS_MASK(InputType);
 
 using CursorPosition = ValueWrapper<uint32_t, class CursorPositionFlag>;
 using CursorLength = ValueWrapper<uint32_t, class CursorStartFlag>;
@@ -107,6 +124,9 @@ void cancel();
 bool isKeyboardVisible();
 float getKeyboardDuration();
 Rect getKeyboardRect();
+
+WideString *getNativeStringPointer();
+Cursor *getNativeCursorPointer();
 
 NS_SP_EXT_END(ime)
 

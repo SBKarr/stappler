@@ -200,7 +200,7 @@ void MultipartParser::readHeaderBegin(Reader &r) {
 			tmp = buf.get();
 		}
 
-		tmp.skipChars<Reader::CharGroup<chars::CharGroupId::WhiteSpace>>();
+		tmp.skipChars<Reader::CharGroup<CharGroupId::WhiteSpace>>();
 		if (strncasecmp(tmp.data(), "Content-Disposition", "Content-Disposition"_len) == 0) {
 			header = Header::ContentDisposition;
 		} else if (strncasecmp(tmp.data(), "Content-Type", "Content-Type"_len) == 0) {
@@ -217,8 +217,8 @@ void MultipartParser::readHeaderBegin(Reader &r) {
 		buf.put(str.data(), str.size());
 	} else if (r.is('\n')) {
 		auto tmp = buf.get();
-		str.skipChars<Reader::CharGroup<chars::CharGroupId::WhiteSpace>>();
-		tmp.skipChars<Reader::CharGroup<chars::CharGroupId::WhiteSpace>>();
+		str.skipChars<Reader::CharGroup<CharGroupId::WhiteSpace>>();
+		tmp.skipChars<Reader::CharGroup<CharGroupId::WhiteSpace>>();
 		if ((tmp.empty() || tmp.is('\r')) && (str.empty() || str.is('\r'))) {
 			state = State::Data;
 			if (!file.empty() || !type.empty()) {
@@ -267,7 +267,7 @@ void MultipartParser::readHeaderContentDisposition(Reader &r) {
 			tmp = buf.get();
 		}
 
-		tmp.skipChars<Reader::CharGroup<chars::CharGroupId::WhiteSpace>>();
+		tmp.skipChars<Reader::CharGroup<CharGroupId::WhiteSpace>>();
 		if (strncasecmp(tmp.data(), "form-data", "form-data"_len) == 0) {
 			header = Header::ContentDispositionParams;
 		} else {
@@ -452,7 +452,7 @@ void MultipartParser::readHeaderContentDispositionValue(Reader &r) {
 			header = Header::Begin; // next header
 			buf.clear();
 			r ++;
-		} else if (r.is<Reader::CharGroup<chars::CharGroupId::WhiteSpace>>()) {
+		} else if (r.is<Reader::CharGroup<CharGroupId::WhiteSpace>>()) {
 			literal = Literal::Plain;
 		}
 		break;

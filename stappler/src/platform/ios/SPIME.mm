@@ -23,6 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
+#include "SPDefine.h"
 #include "SPPlatform.h"
 #include "SPIME.h"
 #include "SPScreen.h"
@@ -40,26 +41,47 @@ THE SOFTWARE.
 #endif
 
 #if (SP_IME_DEBUG)
-#define IMELOG stappler::log
+#define IMELOG(...) stappler::log::format("IME", __VA_ARGS__)
 #else
 #define IMELOG(...)
 #endif
 
+using Cursor = stappler::ime::Cursor;
+
+@interface SPTextPosition : UITextPosition {
+	Cursor _cursor;
+}
+
+@property (nonatomic, readwrite) Cursor cursor;
+
+- (id) initWithCursor: (Cursor) c;
+
+@end
+
+@interface SPTextRange : UITextRange {
+	Cursor _cursor;
+}
+
+@property (nonatomic, readwrite) Cursor cursor;
+
+- (id) initWithCursor: (Cursor) c;
+- (BOOL) isEmpty;
+- (SPTextPosition *) start;
+- (SPTextPosition *) end;
+
+@end
 
 @interface SPNativeInputView : UIView <UIKeyInput, UITextInput> {
 	CGRect caretRect;
-    NSString *_markedText;
 	BOOL _isActive;
 	bool _statusBar;
-}
 
-@property(nonatomic, readonly) UITextPosition *beginningOfDocument;
-@property(nonatomic, readonly) UITextPosition *endOfDocument;
-@property(nonatomic, assign) id<UITextInputDelegate> inputDelegate;
-@property(nonatomic, readonly) UITextRange *markedTextRange;
-@property (nonatomic, copy) NSDictionary *markedTextStyle;
-@property(readwrite, copy) UITextRange *selectedTextRange;
-@property(nonatomic, readonly) id<UITextInputTokenizer> tokenizer;
+	std::u16string *_nativeString;
+	Cursor *_nativeCursor;
+	Cursor _markedRange;
+	Cursor _selectedRange;
+	bool _markedRangeExists;
+}
 
 - (id) initWithFrame:(CGRect)frame;
 
@@ -77,7 +99,6 @@ THE SOFTWARE.
 		if ([self respondsToSelector:@selector(setContentScaleFactor:)]) {
 			self.contentScaleFactor = [[UIScreen mainScreen] scale];
 		}
-		_markedText = nil;
 	}
     return self;
 }
@@ -200,12 +221,15 @@ THE SOFTWARE.
 #pragma mark - UIView - Responder
 
 - (BOOL)canBecomeFirstResponder {
+	IMELOG("canBecomeFirstResponder");
     return YES;
 }
 
 - (BOOL)becomeFirstResponder {
+	IMELOG("becomeFirstResponder");
 	BOOL val = [super becomeFirstResponder];
 	if (val == YES && _isActive == NO) {
+		IMELOG("becomeFirstResponder successful");
 		_isActive = val;
         stappler::platform::ime::native::setInputEnabled(true);
 		_statusBar = stappler::Screen::getInstance()->isStatusBarEnabled();
@@ -215,6 +239,7 @@ THE SOFTWARE.
 }
 
 - (void)removeFromSuperview {
+	IMELOG("removeFromSuperview");
 	[super removeFromSuperview];
 	if (_isActive == YES) {
         stappler::platform::ime::native::setInputEnabled(false);
@@ -230,18 +255,33 @@ THE SOFTWARE.
 }
 
 - (void)insertText:(NSString *)text {
-    if (nil != _markedText) {
-        _markedText = nil;
-    }
 	NSData *data = [text dataUsingEncoding:NSUTF16LittleEndianStringEncoding];
-    stappler::platform::ime::native::insertText(std::u16string((char16_t *)data.bytes, text.length));
+	
+	auto str = std::u16string((char16_t *)data.bytes, text.length);
+	_markedRange = Cursor(_nativeCursor->start, uint32_t(str.size()));
+	_markedRangeExists = true;
+	stappler::platform::ime::native::insertText(str);
+	IMELOG("insertText '%s'", text.UTF8String);
+	[self updateNativeString];
 }
 
 - (void)deleteBackward {
-    if (nil != _markedText) {
-        _markedText = nil;
-    }
-    stappler::platform::ime::native::deleteBackward();
+	_markedRangeExists = false;
+	stappler::platform::ime::native::deleteBackward();
+	IMELOG("deleteBackward");
+	[self updateNativeString];
+}
+
+- (void)updateNativeString {
+	_nativeString = stappler::ime::getNativeStringPointer();
+	_nativeCursor = stappler::ime::getNativeCursorPointer();
+}
+
+- (void)setSelectedCursor:(Cursor)c {
+	_markedRangeExists = false;
+	[self.inputDelegate selectionWillChange:self];
+	[self updateNativeString];
+	[self.inputDelegate selectionDidChange:self];
 }
 
 #pragma mark - UITextInputTrait protocol
@@ -254,34 +294,61 @@ THE SOFTWARE.
 
 #pragma mark UITextInput - properties
 
-@synthesize beginningOfDocument;
-@synthesize endOfDocument;
 @synthesize inputDelegate;
-@synthesize markedTextRange;
-@synthesize markedTextStyle;
-// @synthesize selectedTextRange;       // must implement
 @synthesize tokenizer;
+
+@synthesize autocorrectionType;
+@synthesize spellCheckingType;
+@synthesize keyboardType;
+@synthesize returnKeyType;
+
+- (UITextPosition *) beginningOfDocument {
+	IMELOG("beginningOfDocument %u", 0);
+	return [[SPTextPosition alloc] initWithCursor:Cursor(0)];
+}
+- (UITextPosition *) endOfDocument {
+	IMELOG("endOfDocument %u", uint32_t(_nativeString->size()));
+	return [[SPTextPosition alloc] initWithCursor:Cursor(uint32_t(_nativeString->size()))];
+}
 
 /* Text may have a selection, either zero-length (a caret) or ranged.  Editing operations are
  * always performed on the text from this selection.  nil corresponds to no selection. */
 - (void)setSelectedTextRange:(UITextRange *)aSelectedTextRange {
-    IMELOG("UITextRange:setSelectedTextRange");
+	Cursor c = ((SPTextRange *)aSelectedTextRange).cursor;
+	IMELOG("setSelectedTextRange %u %u", c.start, c.length);
+	stappler::platform::ime::native::cursorChanged(c.start, c.length);
 }
 
 - (UITextRange *)selectedTextRange {
-    return [[UITextRange alloc] init];
+	IMELOG("selectedTextRange %u %u", _nativeCursor->start, _nativeCursor->length);
+	return [[SPTextRange alloc] initWithCursor:Cursor(*_nativeCursor)];
 }
 
 #pragma mark UITextInput - Replacing and Returning Text
 
 - (NSString *)textInRange:(UITextRange *)range {
-    IMELOG("textInRange: %s", range.description.UTF8String);
-    return @"";
-}
-- (void)replaceRange:(UITextRange *)range withText:(NSString *)theText {
-    IMELOG("replaceRange");
+	Cursor c = ((SPTextRange *)range).cursor;
+	NSString *ret = [[NSString alloc] initWithBytes:(const void *)(_nativeString->data() + c.start) length:c.length * sizeof(char16_t) encoding:NSUTF16LittleEndianStringEncoding];
+	IMELOG("textInRange: %u %u '%s'", c.start, c.length, ret.UTF8String);
+	return ret;
 }
 
+- (void)replaceRange:(UITextRange *)range withText:(NSString *)theText {
+	Cursor c = ((SPTextRange *)range).cursor;
+	*_nativeCursor = c;
+	if (theText.length == 0) {
+		stappler::platform::ime::native::deleteBackward();
+	} else {
+		stappler::platform::ime::native::insertText(stappler::string::toUtf16(theText.UTF8String));
+	}
+    IMELOG("replaceRange %u %u '%s' %lu", c.start, c.length, theText.UTF8String, theText.length);
+}
+
+- (BOOL)shouldChangeTextInRange:(UITextRange *)range replacementText:(NSString *)text {
+	Cursor c = ((SPTextRange *)range).cursor;
+	IMELOG("shouldChangeTextInRange %u %u %lu '%s'", c.start, c.length, text.length, text.UTF8String);
+	return YES;
+}
 #pragma mark UITextInput - Working with Marked and Selected Text
 
 /* If text can be selected, it can be marked. Marked text represents provisionally
@@ -292,13 +359,18 @@ THE SOFTWARE.
  * Setting marked text either replaces the existing marked text or, if none is present,
  * inserts it from the current selection. */
 
-- (void)setMarkedTextRange:(UITextRange *)markedTextRange {
+- (void)setMarkedTextRange:(UITextRange *)range {
+	_markedRange = ((SPTextRange *)range).cursor;
+	_markedRangeExists = true;
     IMELOG("setMarkedTextRange");
 }
 
 - (UITextRange *)markedTextRange {
-    IMELOG("markedTextRange");
-    return nil; // Nil if no marked text.
+	if (_markedRangeExists) {
+		IMELOG("markedTextRange %d %u %u", _markedRangeExists, _markedRange.start, _markedRange.length);
+		return [[SPTextRange alloc] initWithCursor:_markedRange]; // Nil if no marked text.
+	}
+	return nil;
 }
 - (void)setMarkedTextStyle:(NSDictionary *)markedTextStyle {
     IMELOG("setMarkedTextStyle");
@@ -309,54 +381,80 @@ THE SOFTWARE.
     return nil;
 }
 - (void)setMarkedText:(NSString *)markedText selectedRange:(NSRange)selectedRange {
-    IMELOG("setMarkedText");
-    if (markedText == _markedText) {
-        return;
-    }
-    _markedText = markedText;
+	IMELOG("setMarkedText %s %lu %lu", markedText.UTF8String, (unsigned long)selectedRange.location, (unsigned long)selectedRange.length);
+	
+	if (_markedRangeExists && _markedRange.length > 0) {
+		*_nativeCursor = _markedRange;
+	} else {
+		_nativeCursor->length = 0;
+	}
+	auto newString = stappler::string::toUtf16(markedText.UTF8String);
+	_markedRange = Cursor(_nativeCursor->start, uint32_t(newString.size()));
+	_markedRangeExists = true;
+
+	stappler::platform::ime::native::insertText(newString);
 }
 - (void)unmarkText {
-	IMELOG("unmarkText");
-    if (nil == _markedText) {
-        return;
-    }
-	NSData *data = [_markedText dataUsingEncoding:NSUTF16LittleEndianStringEncoding];
-    stappler::platform::ime::native::insertText(std::u16string((char16_t *)data.bytes, _markedText.length));
-    _markedText = nil;
+	_markedRangeExists = false;
 }
 
 #pragma mark Methods for creating ranges and positions.
 
 - (UITextRange *)textRangeFromPosition:(UITextPosition *)fromPosition toPosition:(UITextPosition *)toPosition {
-    IMELOG("textRangeFromPosition");
-    return nil;
+	Cursor first = ((SPTextPosition *)fromPosition).cursor;
+	Cursor second = ((SPTextPosition *)toPosition).cursor;
+
+    IMELOG("textRangeFromPosition %u %u", first.start, second.start);
+    return [[SPTextRange alloc] initWithCursor:Cursor(first.start, second.start - first.start)];
 }
 - (UITextPosition *)positionFromPosition:(UITextPosition *)position offset:(NSInteger)offset {
-    IMELOG("positionFromPosition");
-    return nil;
+	Cursor first = ((SPTextPosition *)position).cursor;
+	if ((offset < 0 && std::abs(offset) > first.start) || (offset + first.start > _nativeString->size() - 1)) {
+		return nil;
+	}
+	IMELOG("positionFromPosition %u %ld %u", first.start, (long)offset, uint32_t(first.start + offset));
+    return [[SPTextPosition alloc] initWithCursor:Cursor(uint32_t(first.start + offset))];
 }
 - (UITextPosition *)positionFromPosition:(UITextPosition *)position inDirection:(UITextLayoutDirection)direction offset:(NSInteger)offset {
-    IMELOG("positionFromPosition");
-    return nil;
+	Cursor first = ((SPTextPosition *)position).cursor;
+	if ((offset < 0 && std::abs(offset) > first.start) || (offset + first.start > _nativeString->size() - 1)) {
+		return nil;
+	}
+	IMELOG("positionFromPosition2 %u %ld %u", first.start, (long)offset, uint32_t(first.start + offset));
+	return [[SPTextPosition alloc] initWithCursor:Cursor(uint32_t(first.start + offset))];
 }
 
 /* Simple evaluation of positions */
 - (NSComparisonResult)comparePosition:(UITextPosition *)position toPosition:(UITextPosition *)other {
-    IMELOG("comparePosition");
-    return (NSComparisonResult)0;
+	Cursor first = ((SPTextPosition *)position).cursor;
+	Cursor second = ((SPTextPosition *)other).cursor;
+	NSComparisonResult res;
+	if (first.start == second.start) {
+		res = NSOrderedSame;
+	} else if (first.start < second.start) {
+		res = NSOrderedDescending;
+	} else {
+		res = NSOrderedAscending;
+	}
+	IMELOG("comparePosition %u %u %ld", first.start, second.start, (long)res);
+	return res;
 }
 - (NSInteger)offsetFromPosition:(UITextPosition *)from toPosition:(UITextPosition *)toPosition {
-    IMELOG("offsetFromPosition");
-    return 0;
+	Cursor first = ((SPTextPosition *)from).cursor;
+	Cursor second = ((SPTextPosition *)toPosition).cursor;
+    IMELOG("offsetFromPosition %u %u", first.start, second.start);
+    return second.start - first.start;
 }
 
 - (UITextPosition *)positionWithinRange:(UITextRange *)range farthestInDirection:(UITextLayoutDirection)direction {
-    IMELOG("positionWithinRange");
-    return nil;
+	Cursor first = ((SPTextRange *)range).cursor;
+    IMELOG("positionWithinRange %u %u", first.start, first.length);
+    return [[SPTextPosition alloc] initWithCursor:Cursor(first.start)];
 }
 - (UITextRange *)characterRangeByExtendingPosition:(UITextPosition *)position inDirection:(UITextLayoutDirection)direction {
-    IMELOG("characterRangeByExtendingPosition");
-    return nil;
+	Cursor first = ((SPTextPosition *)position).cursor;
+    IMELOG("characterRangeByExtendingPosition %u", first.start);
+    return [[SPTextRange alloc] initWithCursor:Cursor(first.start, 1)];
 }
 
 #pragma mark Writing direction
@@ -405,6 +503,7 @@ THE SOFTWARE.
 #pragma mark - UIKeyboard notification
 
 - (void)onUIKeyboardNotification:(NSNotification *)notif {
+	IMELOG("onUIKeyboardNotification");
     NSString * type = notif.name;
 
     NSDictionary* info = [notif userInfo];
@@ -433,13 +532,17 @@ THE SOFTWARE.
 
     if (UIKeyboardWillShowNotification == type) {
         stappler::platform::ime::native::onKeyboardShow(cocos2d::Rect(rect.origin.x, rect.origin.y, rect.size.width, rect.size.height), aniDuration);
+        IMELOG("UIKeyboardWillShowNotification %f %f %f %f - %f", rect.origin.x, rect.origin.y, rect.size.width, rect.size.height, aniDuration);
     } else if (UIKeyboardDidShowNotification == type) {
+        IMELOG("UIKeyboardDidShowNotification %f", aniDuration);
         caretRect = rect;
         caretRect.origin.y = viewSize.height - (caretRect.origin.y + caretRect.size.height + [UIFont smallSystemFontSize]);
         caretRect.size.height = 0;
     } else if (UIKeyboardWillHideNotification == type) {
 		stappler::platform::ime::native::onKeyboardHide(aniDuration);
+        IMELOG("UIKeyboardWillHideNotification %f", aniDuration);
     } else if (UIKeyboardDidHideNotification == type) {
+        IMELOG("UIKeyboardDidHideNotification %f", aniDuration);
         caretRect = CGRectZero;
     }
 }
@@ -452,21 +555,149 @@ THE SOFTWARE.
 
 @end
 
+@implementation SPTextPosition
+@synthesize cursor=_cursor;
+
+- (id) initWithCursor: (stappler::ime::Cursor) c {
+	if (self = [super init]) {
+		_cursor = c;
+	}
+	return self;
+}
+
+@end
+
+
+@implementation SPTextRange
+@synthesize cursor=_cursor;
+
+- (id) initWithCursor: (stappler::ime::Cursor) c {
+	if (self = [super init]) {
+		_cursor = c;
+	}
+	return self;
+}
+
+- (BOOL) isEmpty {
+	if (_cursor.length == 0) {
+		return YES;
+	}
+	return NO;
+}
+
+- (SPTextPosition *) start {
+	IMELOG("[SPTextRange start] %u %u", _cursor.start, _cursor.length);
+	return [[SPTextPosition alloc] initWithCursor:stappler::ime::Cursor(_cursor.start, 0)];
+}
+
+- (SPTextPosition *) end {
+	IMELOG("[SPTextRange end] %u %u", _cursor.start, _cursor.length);
+	return [[SPTextPosition alloc] initWithCursor:stappler::ime::Cursor(_cursor.start + _cursor.length, 0)];
+}
+
+@end
+
 NS_SP_PLATFORM_BEGIN
 
 namespace ime {
-	UIView *_IMEView = nil;
+	using InputType = stappler::ime::InputType;
+	SPNativeInputView *_IMEView = nil;
+	int32_t _inputFlags = 0;
+	
+	void updateViewFlags(SPNativeInputView *view, int32_t t) {
+		UIReturnKeyType returnKey = UIReturnKeyDone;
+
+		InputType type = InputType(t & toInt(InputType::ClassMask));
+		switch (type) {
+			case InputType::Date_Date:
+			case InputType::Date_DateTime:
+			case InputType::Date_Time:
+				view.keyboardType = UIKeyboardTypeNumbersAndPunctuation;
+				break;
+			case InputType::Number_Numbers:
+				view.keyboardType = UIKeyboardTypeNumberPad;
+				break;
+			case InputType::Number_Decimial:
+			case InputType::Number_Signed:
+				view.keyboardType = UIKeyboardTypeNumbersAndPunctuation;
+				break;
+			case InputType::Phone:
+				view.keyboardType = UIKeyboardTypePhonePad;
+				break;
+			case InputType::Text_Text:
+				view.keyboardType = UIKeyboardTypeDefault;
+				break;
+			case InputType::Text_Search:
+				view.keyboardType = UIKeyboardTypeWebSearch;
+				returnKey = UIReturnKeySearch;
+				break;
+			case InputType::Text_Punctuation:
+				view.keyboardType = UIKeyboardTypeNumbersAndPunctuation;
+				break;
+			case InputType::Text_Email:
+				view.keyboardType = UIKeyboardTypeEmailAddress;
+				break;
+			case InputType::Text_Url:
+				view.keyboardType = UIKeyboardTypeURL;
+				returnKey = UIReturnKeyGo;
+				break;
+			default:
+				view.keyboardType = UIKeyboardTypeDefault;
+				break;
+		}
+		
+		if (t & toInt(InputType::AutoCorrectionBit)) {
+			view.autocorrectionType = UITextAutocorrectionTypeYes;
+		} else {
+			view.autocorrectionType = UITextAutocorrectionTypeNo;
+		}
+
+		if (t & toInt(InputType::PasswordBit)) {
+			view.spellCheckingType = UITextSpellCheckingTypeNo;
+		} else {
+			view.spellCheckingType = UITextSpellCheckingTypeDefault;
+		}
+
+		if (t & toInt(InputType::MultiLineBit)) {
+			returnKey = UIReturnKeyDefault;
+		} else {
+			InputType ret = InputType(t & toInt(InputType::ReturnKeyMask));
+			switch (ret) {
+			case InputType::Empty: break;
+			case InputType::ReturnKeyDefault: returnKey = UIReturnKeyDefault; break;
+			case InputType::ReturnKeyGo: returnKey = UIReturnKeyGo; break;
+			case InputType::ReturnKeyGoogle: returnKey = UIReturnKeyGoogle; break;
+			case InputType::ReturnKeyJoin: returnKey = UIReturnKeyJoin; break;
+			case InputType::ReturnKeyNext: returnKey = UIReturnKeyNext; break;
+			case InputType::ReturnKeyRoute: returnKey = UIReturnKeyRoute; break;
+			case InputType::ReturnKeySearch: returnKey = UIReturnKeySearch; break;
+			case InputType::ReturnKeySend: returnKey = UIReturnKeySend; break;
+			case InputType::ReturnKeyYahoo: returnKey = UIReturnKeyYahoo; break;
+			case InputType::ReturnKeyDone: returnKey = UIReturnKeyDone; break;
+			case InputType::ReturnKeyEmergencyCall: returnKey = UIReturnKeyEmergencyCall; break;
+			default: returnKey = UIReturnKeyDefault; break;
+			}
+		}
+
+		view.returnKeyType = returnKey;
+	}
 
 	void _updateCursor(uint32_t pos, uint32_t len) {
-
+		[_IMEView setSelectedCursor:Cursor(pos, len)];
 	}
 
 	void _updateText(const std::u16string &str, uint32_t pos, uint32_t len, int32_t t) {
-
+		IMELOG("_updateText");
+		[_IMEView resignFirstResponder];
+		updateViewFlags(_IMEView, t);
+		_inputFlags = t;
+		[_IMEView updateNativeString];
+		[_IMEView becomeFirstResponder];
 	}
 
 	void _runWithText(const std::u16string &str, uint32_t pos, uint32_t len, int32_t t) {
 		if (!_IMEView) {
+			IMELOG("_runWithText");
 			UIWindow *window = [UIApplication sharedApplication].keyWindow;
 			UIViewController *rootViewController = window.rootViewController;
 			UIView *view = rootViewController.view;
@@ -476,6 +707,9 @@ namespace ime {
 
 			_IMEView = [[SPNativeInputView alloc] initWithFrame:frame];
 			[view addSubview:_IMEView];
+			updateViewFlags(_IMEView, t);
+			_inputFlags = t;
+			[_IMEView updateNativeString];
 			[_IMEView becomeFirstResponder];
 		}
 	}

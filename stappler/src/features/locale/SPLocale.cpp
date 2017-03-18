@@ -138,7 +138,7 @@ public:
 			if (r.is('%')) {
 				++ r;
 				r.skipChars<
-					CharReaderUcs2::CharGroup<chars::CharGroupId::Alphanumeric>,
+					CharReaderUcs2::CharGroup<CharGroupId::Alphanumeric>,
 					CharReaderUcs2::Chars<':', '.', '-', '_', '[', ']', '+'>>();
 				if (r.is('%')) {
 					return true;
@@ -162,7 +162,7 @@ public:
 				if (r.is('%')) {
 					++ r;
 					auto token = r.readChars<
-						CharReaderUcs2::CharGroup<chars::CharGroupId::Alphanumeric>,
+						CharReaderUcs2::CharGroup<CharGroupId::Alphanumeric>,
 						CharReaderUcs2::Chars<':', '.', '-', '_', '[', ']', '+'>>();
 					if (r.is('%')) {
 						++ r;
@@ -183,7 +183,7 @@ public:
 								if (validate.is('-')) {
 									++ validate;
 								}
-								validate.skipChars<CharReaderUcs2::CharGroup<chars::CharGroupId::Numbers>>();
+								validate.skipChars<CharReaderUcs2::CharGroup<CharGroupId::Numbers>>();
 								if (validate.empty()) {
 									CharReaderUcs2 vtoken(token.data(), token.size() - num.size() - 1);
 									replacement = string::toUtf16(numeric(string::toUtf8(vtoken.str()), num.readInteger()));

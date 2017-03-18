@@ -28,7 +28,6 @@ THE SOFTWARE.
 
 NS_LAYOUT_BEGIN
 
-using CharGroupId = chars::CharGroupId;
 using StringReader = CharReaderUtf8;
 
 using HtmlIdentifier = chars::Compose<char16_t,

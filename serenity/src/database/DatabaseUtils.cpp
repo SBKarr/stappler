@@ -190,6 +190,39 @@ static void writeTrigger(apr::ostringstream &stream, storage::Scheme *s, const S
 			<< "\" FOR EACH ROW EXECUTE PROCEDURE " << triggerName << "_func();\n";
 }
 
+static void writeSetLinkageNoneTrigger(apr::ostringstream &stream, storage::Scheme *s, storage::FieldObject *obj, const String &triggerName) {
+	String name = s->getName() + "_f_" + obj->name;
+	auto & source = s->getName();
+	auto & target = obj->scheme->getName();
+
+	String sourceId = source + "_id";
+	String targetId = target + "_id";
+
+	stream << "CREATE OR REPLACE FUNCTION " << triggerName << "_func() RETURNS TRIGGER AS $" << triggerName
+			<< "$ BEGIN\n";
+
+	TableRec table;
+	table.cols.emplace(source + "_id", ColRec(ColRec::Type::Integer));
+	table.cols.emplace(target + "_id", ColRec(ColRec::Type::Integer));
+
+	table.constraints.emplace(name + "_ref_" + source, ConstraintRec(
+			ConstraintRec::Reference, source + "_id", source, ConstraintRec::RemovePolicy::Cascade));
+	table.constraints.emplace(name + "_ref_" + ref->getName(), ConstraintRec(
+			ConstraintRec::Reference, target + "_id", target, ConstraintRec::RemovePolicy::Cascade));
+
+	table.pkey.emplace_back(source + "_id");
+	table.pkey.emplace_back(target + "_id");
+	tables.emplace(std::move(name), std::move(table));
+
+	stream << "\t\tIF (OLD.\"" << sourceId << "\" IS NOT NULL) THEN\n"
+		<< "\t\t\tINSERT INTO __removed (__oid) VALUES (OLD.\"" << obj.getName() << "\");\n"
+		<< "\t\tEND IF;\n";
+
+	stream << "\n\tRETURN NULL;\nEND; $" << triggerName << "$ LANGUAGE plpgsql;\n"
+			<< "CREATE TRIGGER " << triggerName << " AFTER DELETE ON \"" << name
+			<< "\" FOR EACH ROW EXECUTE PROCEDURE " << triggerName << "_func();\n";
+}
+
 void TableRec::writeCompareResult(apr::ostringstream &stream,
 		Map<String, TableRec> &required, Map<String, TableRec> &existed,
 		const Map<String, storage::Scheme *> &s) {
@@ -381,7 +414,7 @@ Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, storage::S
 
 			if (type == storage::Type::Set) {
 				auto ref = static_cast<const storage::FieldObject *>(f.getSlot());
-				if (ref->onRemove == storage::RemovePolicy::Reference) {
+				if (ref->onRemove == storage::RemovePolicy::Reference || ref->linkage == storage::Linkage::None) {
 					String name = it.first + "_f_" + fit.first;
 					auto & source = it.first;
 					auto & target = ref->scheme->getName();

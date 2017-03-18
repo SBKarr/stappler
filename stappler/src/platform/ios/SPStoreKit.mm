@@ -41,8 +41,16 @@ THE SOFTWARE.
 #import <Foundation/Foundation.h>
 #import <StoreKit/StoreKit.h>
 
-//#define SPSTOREKIT_LOG(...) stappler::logTag("StoreKit", __VA_ARGS__)
+//#define SPSTOREKIT_LOG(...) stappler::log::format("StoreKit", __VA_ARGS__)
 #define SPSTOREKIT_LOG(...)
+
+NS_SP_EXT_BEGIN(platform)
+
+data::Value validateReceipt(const String &path);
+data::Value validateReceipt(const Bytes &data);
+data::Value validateReceipt(const DataReader<ByteOrder::Network> &data);
+
+NS_SP_EXT_END(platform)
 
 @interface SPStoreDelegate : NSObject<SKProductsRequestDelegate, SKPaymentTransactionObserver> @end
 
@@ -81,15 +89,8 @@ public:
 	void updateProducts(const std::vector<StoreProduct *> &);
 
 protected:
-	void saveReceipt(StoreProduct *product, NSData *receipt);
-	NSData *getReceipt(StoreProduct *product);
-
 	void validateReceipts();
-	void validateSubscriptionReceipt(StoreProduct *product);
-	void validateSubscriptionReceipt(StoreProduct *product, bool sandbox);
-	
-	void parseValidationResponse(const data::Value & data);
-	StoreProduct * parseValidationReceipt(const data::Value & data, bool override);
+	void parseValidationReceipt(const data::Value & data, Set<String> &);
 
 	NSString *getCloudName() const {
 #if (DEBUG)
@@ -219,7 +220,13 @@ static NSObject *NSObjectFromValue(const stappler::data::Value &obj) {
                 break;
 
             case SKPaymentTransactionStateFailed:
-                stappler::log::format("Store: ", "%s", transaction.error.localizedDescription.UTF8String);
+                stappler::log::format("StoreKit", "Native response: %ld : %s : %s", transaction.error.code, transaction.error.description.UTF8String, transaction.error.localizedDescription.UTF8String);
+				if (transaction.error.localizedFailureReason) {
+					stappler::log::text("StoreKit", transaction.error.localizedFailureReason.UTF8String);
+				}
+				if (transaction.error.userInfo) {
+					stappler::log::text("StoreKit", transaction.error.userInfo.description.UTF8String);
+				}
 				storeKit->onTransactionFailed(transaction);
                 break;
 
@@ -341,7 +348,7 @@ void StoreKitIOS::saveProductDictionary(const std::unordered_map<std::string, St
 	}
 
 	if (val) {
-		SPSTOREKIT_LOG("save products: %s", val.write(true).c_str());
+		// SPSTOREKIT_LOG("save products: %s", data::toString(val, true).c_str());
 		if ([_delegate iCloudAvailable] == YES) {
 			NSUbiquitousKeyValueStore *iCloudStore = [NSUbiquitousKeyValueStore defaultStore];
 			NSDictionary *dataDict = (NSDictionary *)NSObjectFromValue(val);
@@ -418,11 +425,7 @@ void StoreKitIOS::onTransactionCompleted(SKPaymentTransaction *transaction) {
 		SPSTOREKIT_LOG("onTransactionCompleted: %s", product->productId.c_str());
 		product->purchased = true;
 		if (product->isSubscription) {
-//#pragma GCC diagnostic push
-//#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-			saveReceipt(product, transaction.transactionReceipt);
-//#pragma GCC diagnostic pop
-			validateSubscriptionReceipt(product);
+			validateReceipts();
 		}
 		StoreKit::onProductUpdate(sk, product->productId);
 		StoreKit::onPurchaseCompleted(sk, product->productId);
@@ -443,11 +446,7 @@ void StoreKitIOS::onTransactionRestored(SKPaymentTransaction *transaction) {
 		SPSTOREKIT_LOG("onTransactionRestored: %s", product->productId.c_str());
 		product->purchased = true;
 		if (product->isSubscription) {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-			saveReceipt(product, transaction.transactionReceipt);
-#pragma GCC diagnostic pop
-			validateSubscriptionReceipt(product);
+			validateReceipts();
 		}
 		StoreKit::onProductUpdate(sk, product->productId);
 		StoreKit::onPurchaseCompleted(sk, product->productId);
@@ -461,168 +460,89 @@ void StoreKitIOS::onTransactionsRestored(bool success) {
 	StoreKit::onTransactionsRestored(StoreKit::getInstance(), success);
 }
 
-void StoreKitIOS::saveReceipt(StoreProduct *product, NSData *receipt) {
-	std::string path = filesystem::documentsPath("receipts");
-	filesystem::mkdir(path);
-	path += "/" + product->productId + ".receipt";
-
-	[receipt writeToFile:[NSString stringWithUTF8String:path.c_str()] atomically:NO];
-
-	if ([_delegate iCloudAvailable] == YES) {
-		NSUbiquitousKeyValueStore *iCloudStore = [NSUbiquitousKeyValueStore defaultStore];
-		[iCloudStore setData:receipt forKey:[NSString stringWithUTF8String:product->productId.c_str()]];
-		[iCloudStore synchronize];
-	}
-}
-
-NSData *StoreKitIOS::getReceipt(StoreProduct *product) {
-	if ([_delegate iCloudAvailable] == YES) {
-		NSUbiquitousKeyValueStore *iCloudStore = [NSUbiquitousKeyValueStore defaultStore];
-		NSData *data = [iCloudStore dataForKey:[NSString stringWithUTF8String:product->productId.c_str()]];
-		if (data) {
-			return data;
-		}
-	}
-
-	std::string path = filesystem::documentsPath("receipts/");
-	path.append(product->productId).append(".receipt");
-	if (filesystem::exists(path)) {
-		return [NSData dataWithContentsOfFile:[NSString stringWithUTF8String:path.c_str()]];
-	}
-	return nil;
-}
-
 void StoreKitIOS::validateReceipts() {
-	const auto &products = StoreKit::getInstance()->getProducts();
-	for (const auto & it : products) {
-		if (it.second->isSubscription) {
-			validateSubscriptionReceipt(it.second);
-		}
-	}
-}
-
-void StoreKitIOS::validateSubscriptionReceipt(StoreProduct *product, bool sandbox) {
-	NSData *receipt = getReceipt(product);
-	if (!receipt) {
-		return;
-	}
-	
-	SPSTOREKIT_LOG("validateSubscriptionReceipt: %s", product->productId.c_str());
-	
-	auto task = Rc<NetworkTask>::create(NetworkTask::Method::Post, (sandbox?_debugUrl:_releaseUrl));
-	auto buf = new data::JsonBuffer;
-	
-	std::string data;
-	data.append("{\"receipt-data\":\"");
-	data.append(base64::encode((const uint8_t *)receipt.bytes, receipt.length));
-	data.append("\" \"password\":\"");
-	data.append(StoreKit::getInstance()->getSharedSecret());
-	data.append("\"}");
-	
-	task->setSendData(std::move(data));
-	task->addHeader("Content-Type", "application/json; charset=utf-8");
-	task->setReceiveCallback([buf] (char *data, size_t size) -> size_t {
-		buf->read((const uint8_t *)data, size);
-		return size;
-	});
-	
-	task->addCompleteCallback([this, buf, product] (const Task &, bool) {
-		auto & value = buf->data();
-		if (value) {
-			auto status = value.getInteger("status");
-			if (status == 21007) {
-				validateSubscriptionReceipt(product, true); // retry with sandbox server
-			} else if (status == 21008) {
-				validateSubscriptionReceipt(product, false); // retry with production server
-			} else {
-				parseValidationResponse(value);
+	auto url = [[NSBundle mainBundle] appStoreReceiptURL];
+	auto receipt = [NSData dataWithContentsOfURL:url];
+	if (receipt) {
+		Set<String> updatedProducts;
+		Map<String, data::Value> latestReceipts;
+		auto data = platform::validateReceipt(DataReader<ByteOrder::Network>((uint8_t *)receipt.bytes, receipt.length));
+		SPSTOREKIT_LOG("appReceipt: %s", data::toString(data, true).c_str());
+		if (data.isArray("in_app")) {
+			auto &inApp = data.getArray("in_app");
+			for (auto &it : inApp) {
+				auto &productId = it.getString("product_id");
+				
+				auto latestIt = latestReceipts.find(productId);
+				if (latestIt == latestReceipts.end()) {
+					latestReceipts.emplace(productId, it);
+				} else {
+					auto date = it.getInteger("purchase_date_ms");
+					auto ldate = latestIt->second.getInteger("purchase_date_ms");
+					if (date > ldate) {
+						latestIt->second = it;
+					}
+				}
 			}
 		}
-	});
-	
-	task->run();
-}
-void StoreKitIOS::validateSubscriptionReceipt(StoreProduct *product) {
-#if (DEBUG)
-	validateSubscriptionReceipt(product, true);
-#else
-	validateSubscriptionReceipt(product, false);
-#endif
-}
 
-void StoreKitIOS::parseValidationResponse(const data::Value &data) {
-	SPSTOREKIT_LOG("parseValidationResponse: %s", data.write(true).c_str());
-	auto status = data.getInteger("status");
-
-	StoreProduct *product = nullptr;
-	std::set<std::string> products;
-	if (status == 0 || status == 21006) {
-
-		product = parseValidationReceipt(data.getValue("receipt"), false);
-		if (product) {
-			products.insert(product->productId);
+		for (auto &it : latestReceipts) {
+			parseValidationReceipt(it.second, updatedProducts);
 		}
-
-		product = parseValidationReceipt(data.getValue((status == 0)?"latest_receipt_info":"latest_expired_receipt_info"), true);
-		if (product) {
-			products.insert(product->productId);
+		
+		saveProductDictionary(StoreKit::getInstance()->getProducts());
+		
+		for (auto &it : updatedProducts) {
+			StoreKit::onProductUpdate(StoreKit::getInstance(), it);
 		}
 	}
-
-	if (product) {
-		const auto &latestRecept = data.getString("latest_receipt");
-		if (!latestRecept.empty()) {
-			const auto &receiptData = base64::decode(latestRecept);
-			saveReceipt(product, [NSData dataWithBytes:receiptData.data() length:receiptData.size()]);
-		}
-	}
-
-	for (auto &v : products) {
-		StoreKit::onProductUpdate(StoreKit::getInstance(), v);
-	}
-
-	saveProductDictionary(StoreKit::getInstance()->getProducts());
 }
 
-StoreProduct * StoreKitIOS::parseValidationReceipt(const data::Value & info, bool override) {
-	SPSTOREKIT_LOG("parseValidationReceipt: %s", info.write(true).c_str());
+void StoreKitIOS::parseValidationReceipt(const data::Value & info, Set<String> &updated) {
+	SPSTOREKIT_LOG("parseValidationReceipt: %s", data::toString(info, true).c_str());
 	if (!info.isDictionary()) {
-		return nullptr;
+		return;
 	}
 
 	const auto &ret = info.getString("product_id");
 	StoreProduct *product = StoreKit::getInstance()->getProduct(ret);
 
 	if (!product) {
-		return nullptr;
+		return;
 	}
-	
-	if (info.getValue("cancellation_date")) {
+
+	if (info.getInteger("cancellation_date_ms" > 0)) {
 		if (product->purchased) {
 			product->purchased = false;
 			product->expiration = 0;
-			saveProductDictionary(StoreKit::getInstance()->getProducts());
-			StoreKit::onProductUpdate(StoreKit::getInstance(), product->productId);
+			updated.emplace(product->productId);
 		}
-		return product; // subscription was cancelled by apple support
+		return; // subscription was cancelled by apple support
 	}
-
-	if (product->purchased) {
+	
+	if (!product->isSubscription && !product->purchased) {
+		product->purchased = true;
+		product->purchaseDate = Time::milliseconds(info.getInteger("purchase_date_ms"));
+		updated.emplace(product->productId);
+	} else if (product->purchased) {
 		auto purchaseDate = info.getInteger("original_purchase_date_ms");
 		if (purchaseDate == 0) {
 			purchaseDate = info.getInteger("purchase_date_ms");
 		}
-		if (purchaseDate != 0) {
+
+		if (purchaseDate != 0 && purchaseDate != product->purchaseDate) {
 			product->purchaseDate = Time::milliseconds(purchaseDate);
+			updated.emplace(product->productId);
 		}
 
-		auto expires = Time::milliseconds(info.getInteger("expires_date")); // to seconds
-		if (expires && product->expiration != expires) {
-			product->expiration = expires;
+		auto expires = Time::milliseconds(info.getInteger("expires_date_ms"));
+		if (expires) {
+			if (product->expiration < expires) {
+				product->expiration = expires;
+				updated.emplace(product->productId);
+			}
 		}
 	}
-
-	return product;
 }
 
 NS_SP_END

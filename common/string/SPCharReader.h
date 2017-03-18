@@ -85,7 +85,7 @@ struct ReaderClassBase {
 	template <CharType First, CharType Last>
 	using Range = chars::Chars<CharType, First, Last>;
 
-	using GroupId = chars::CharGroupId;
+	using GroupId = CharGroupId;
 
 	template <GroupId G>
 	using Group = chars::CharGroup<CharType, G>;
@@ -117,7 +117,7 @@ public:
 	template <char First, char Last>
 	using MatchRange = chars::Range<CharType, First, Last>;
 
-	template <chars::CharGroupId Group>
+	template <CharGroupId Group>
 	using MatchCharGroup = chars::CharGroup<CharType, Group>;
 
 	CharReaderDefault() : BytesReader<_CharType, _Container>(nullptr, 0) { }
@@ -155,7 +155,7 @@ public:
 	template <CharType C>
 	inline bool is() const { return this->len > 0 && *this->ptr ==C; }
 
-	template <chars::CharGroupId G>
+	template <CharGroupId G>
 	inline bool is() const { return this->len > 0 && MatchCharGroup<G>::match(*this->ptr); }
 
 	template <typename M>
@@ -310,7 +310,7 @@ public:
 	template <char First, char Last>
 	using MatchRange = chars::Range<MatchCharType, First, Last>;
 
-	template <chars::CharGroupId Group>
+	template <CharGroupId Group>
 	using MatchCharGroup = chars::CharGroup<MatchCharType, Group>;
 
 	CharReaderUtf8() : BytesReader("", 0) { }
@@ -345,7 +345,7 @@ public:
 	template <char16_t C>
 	inline bool is() const { return len > 0 && len >= unicode::utf8DecodeLength(*ptr) && unicode::utf8Decode(ptr) == C; }
 
-	template <chars::CharGroupId G>
+	template <CharGroupId G>
 	inline bool is() const { return len > 0 && len >= unicode::utf8DecodeLength(*ptr) && chars::CharGroup<char16_t, G>::match(unicode::utf8Decode(ptr)); }
 
 	template <typename M>
@@ -377,7 +377,7 @@ public:
 
 	inline bool isSpace() const {
 		auto tmp = *this;
-		tmp.skipChars<chars::CharGroup<char16_t, chars::CharGroupId::WhiteSpace>>();
+		tmp.skipChars<chars::CharGroup<char16_t, CharGroupId::WhiteSpace>>();
 		return tmp.empty();
 	}
 
