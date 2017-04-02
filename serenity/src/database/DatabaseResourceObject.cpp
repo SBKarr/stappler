@@ -67,6 +67,7 @@ bool Resolver::ResourceObject::removeObject() {
 				} else {
 					_scheme->remove(_handle, it);
 				}
+				return true;
 			});
 		}
 		return (objs.size() == 1)?ret:true;
@@ -77,7 +78,9 @@ bool Resolver::ResourceObject::removeObject() {
 				auto obj = _handle->getObject(_scheme, it, true);
 				if (obj && isObjectAllowed(_scheme, Action::Remove, obj)) {
 					_scheme->remove(_handle, it);
+					return true;
 				}
+				return false;
 			});
 		}
 		return true;
@@ -87,6 +90,8 @@ bool Resolver::ResourceObject::removeObject() {
 
 data::Value Resolver::ResourceObject::performUpdate(const Vector<int64_t> &objs, data::Value &data, apr::array<InputFile> &files) {
 	data::Value ret;
+	encodeFiles(data, files);
+
 	if (_transform) {
 		auto it = _transform->find(_scheme->getName());
 		if (it != _transform->end()) {
@@ -94,22 +99,24 @@ data::Value Resolver::ResourceObject::performUpdate(const Vector<int64_t> &objs,
 		}
 	}
 
+
 	if (_perms == Permission::Full) {
 		for (auto &it : objs) {
 			_handle->performInTransaction([&] {
-				ret.addValue(_scheme->update(_handle, it, data, files));
+				ret.addValue(_scheme->update(_handle, it, data));
+				return true;
 			});
 		}
 	} else if (_perms == Permission::Partial) {
-		apr::array<InputFile> nfiles;
-		apr::array<InputFile> &targetFiles = (objs.size() > 1?nfiles:files);
 		for (auto &it : objs) {
 			_handle->performInTransaction([&] {
 				auto obj = _handle->getObject(_scheme, it, true);
 				data::Value patch = data;
-				if (obj && isObjectAllowed(_scheme, Action::Update, obj, patch, targetFiles)) {
-					ret.addValue(_scheme->update(_handle, it, patch, targetFiles));
+				if (obj && isObjectAllowed(_scheme, Action::Update, obj, patch)) {
+					ret.addValue(_scheme->update(_handle, it, patch));
+					return true;
 				}
+				return false;
 			});
 		}
 	}
@@ -215,6 +222,8 @@ data::Value Resolver::ResourceReslist::performCreateObject(data::Value &data, ap
 			}
 		}
 
+		encodeFiles(data, files);
+
 		if (_transform) {
 			auto it = _transform->find(_scheme->getName());
 			if (it != _transform->end()) {
@@ -224,11 +233,11 @@ data::Value Resolver::ResourceReslist::performCreateObject(data::Value &data, ap
 
 		data::Value ret;
 		if (_perms == Permission::Full) {
-			ret = _scheme->create(_handle, data, files);
+			ret = _scheme->create(_handle, data);
 		} else if (_perms == Permission::Partial) {
 			data::Value val;
 			if (isObjectAllowed(_scheme, Action::Create, val, data)) {
-				ret = _scheme->create(_handle, data, files);
+				ret = _scheme->create(_handle, data);
 			}
 		}
 		auto perms = isSchemeAllowed(_scheme, Action::Read);
@@ -389,16 +398,63 @@ bool Resolver::ResourceRefSet::removeObject() {
 	}
 
 	if (isEmptyRequest()) {
-		_handle->clearProperty(_scheme, id, *_field);
-		return true;
+		if (_perms == Permission::Full) {
+			_handle->clearProperty(_scheme, id, *_field);
+			return true;
+		} else if (_perms == Permission::Partial) {
+			return _handle->performInTransaction([&] {
+				auto obj = _handle->getObject(_scheme, id, false);
+				data::Value patch;
+				patch.setValue(data::Value(), _fieldName);
+				if (isObjectAllowed(_scheme, Action::Remove, obj, patch)) {
+					if (patch.isNull(_fieldName)) {
+						_handle->clearProperty(_scheme, id, *_field);
+					} else {
+						Vector<int64_t> objs;
+						for (auto &it : patch.getArray(_fieldName)) {
+							if (it.isInteger()) {
+								objs.push_back(it.getInteger());
+							}
+						}
+						if (!_handle->cleanupRefSet(_scheme, id, _field, objs)) {
+							return false;
+						}
+					}
+				}
+				return true;
+			});
+		}
 	} else {
 		auto objs = getDatabaseId(_scheme, _query);
 		if (objs.empty()) {
 			return false;
 		}
 
-		if (_handle->cleanupRefSet(_scheme, id, _field, objs)) {
-			return true;
+		if (_perms == Permission::Full) {
+			if (_handle->cleanupRefSet(_scheme, id, _field, objs)) {
+				return true;
+			}
+		} else if (_perms == Permission::Partial) {
+			return _handle->performInTransaction([&] {
+				auto obj = _handle->getObject(_scheme, id, false);
+				data::Value patch;
+				data::Value &arr = patch.emplace(_fieldName);
+				for (auto &it : objs) {
+					arr.addInteger(it);
+				}
+				if (isObjectAllowed(_scheme, Action::Remove, obj, patch)) {
+					Vector<int64_t> objs;
+					for (auto &it : patch.getArray(_fieldName)) {
+						if (it.isInteger()) {
+							objs.push_back(it.getInteger());
+						}
+					}
+					if (!_handle->cleanupRefSet(_scheme, id, _field, objs)) {
+						return false;
+					}
+				}
+				return true;
+			});
 		}
 	}
 
@@ -411,11 +467,7 @@ data::Value Resolver::ResourceRefSet::updateObject(data::Value &value, apr::arra
 		} else if (value.isArray()) {
 			return doAppendObjects(value, true);
 		} else if (value.isDictionary()) {
-			if (value.isArray(_fieldName)) {
-				return doAppendObjects(value.getValue(_fieldName), true);
-			} else if (value.isBasicType(_fieldName)) {
-				return doAppendObject(value.getValue(_fieldName), true);
-			}
+			return doAppendObject(value, true);
 		}
 	} else {
 		return ResourceSet::updateObject(value, files);
@@ -436,16 +488,12 @@ data::Value Resolver::ResourceRefSet::appendObject(data::Value &value) {
 		} else if (value.isArray()) {
 			return doAppendObjects(value, false);
 		} else if (value.isDictionary()) {
-			if (value.isArray(_fieldName)) {
-				return doAppendObjects(value.getValue(_fieldName), false);
-			} else if (value.isBasicType(_fieldName)) {
-				return doAppendObject(value.getValue(_fieldName), false);
-			}
+			return doAppendObject(value, false);
 		}
+		return data::Value();
 	} else {
 		return ResourceSet::appendObject(value);
 	}
-	return data::Value(value);
 }
 
 uint64_t Resolver::ResourceRefSet::getObjectId() {
@@ -462,32 +510,33 @@ bool Resolver::ResourceRefSet::isEmptyRequest() {
 	return true;
 }
 
-data::Value Resolver::ResourceRefSet::doAppendObject(const data::Value &val, bool cleanup) {
-	auto id = getObjectId();
-	if (id == 0) {
-		return data::Value();
+Vector<uint64_t> Resolver::ResourceRefSet::prepareAppendList(const data::Value &patch) {
+	Vector<uint64_t> ids;
+	auto refScheme = _field->getForeignScheme();
+	if (patch.isArray() && patch.size() > 0) {
+		for (auto &it : patch.asArray()) {
+			data::Value obj;
+			if (it.isDictionary() && !it.hasValue("__oid")) {
+				obj = refScheme->create(_handle, it);
+			} else {
+				obj = refScheme->get(_handle, it);
+			}
+			if (obj) {
+				if (auto pushId = obj.getInteger("__oid")) {
+					ids.push_back(pushId);
+				}
+			}
+		}
 	}
-
-	data::Value ret;
-
-	_handle->performInTransaction([&] {
-		if (cleanup) {
-			_handle->clearProperty(_scheme, id, *_field);
-		}
-		int64_t pushId = 0;
-		auto refScheme = _field->getForeignScheme();
-		auto obj = refScheme->get(_handle, val);
-		if (obj) {
-			pushId = obj.getInteger("__oid");
-		}
-
-		if (pushId && _handle->patchRefSet(_scheme, id, _field, Vector<uint64_t>{uint64_t(pushId)})) {
-			ret.addInteger(pushId);
-		}
-	});
-
-	return ret;
+	return ids;
 }
+
+data::Value Resolver::ResourceRefSet::doAppendObject(const data::Value &val, bool cleanup) {
+	data::Value arr;
+	arr.addValue(val);
+	return doAppendObjects(arr, cleanup);
+}
+
 data::Value Resolver::ResourceRefSet::doAppendObjects(const data::Value &val, bool cleanup) {
 	auto id = getObjectId();
 	if (id == 0) {
@@ -496,27 +545,62 @@ data::Value Resolver::ResourceRefSet::doAppendObjects(const data::Value &val, bo
 
 	data::Value ret;
 
-	_handle->performInTransaction([&] {
-		if (cleanup) {
-			_handle->clearProperty(_scheme, id, *_field);
-		}
-		Vector<uint64_t> ids;
-		auto refScheme = _field->getForeignScheme();
-		for (auto &it : val.asArray()) {
-			auto obj = refScheme->get(_handle, it);
-			if (obj) {
-				if (auto pushId = obj.getInteger("__oid")) {
-					ids.push_back(pushId);
+	if (_perms == AccessControl::Full) {
+		_handle->performInTransaction([&] {
+			if (cleanup) {
+				_handle->clearProperty(_scheme, id, *_field);
+			}
+
+			Vector<uint64_t> ids = prepareAppendList(val);
+			if (_handle->patchRefSet(_scheme, id, _field, ids)) {
+				for (auto &it : ids) {
+					ret.addInteger(it);
+				}
+			} else {
+				return false;
+			}
+			return true;
+		});
+	} else {
+		_handle->performInTransaction([&] {
+			if (cleanup) {
+				auto removePerm = isSchemeAllowed(_scheme, Action::Remove);
+				if (removePerm == AccessControl::Full) {
+					_handle->clearProperty(_scheme, id, *_field);
+				} else if (removePerm == AccessControl::Partial) {
+					auto obj = _handle->getObject(_scheme, id, false);
+					data::Value patch;
+					patch.setValue(data::Value(), _fieldName);
+					if (isObjectAllowed(_scheme, Action::Remove, obj, patch)) {
+						if (patch.isNull(_fieldName)) {
+							_handle->clearProperty(_scheme, id, *_field);
+						} else {
+							return false;
+						}
+					}
+				} else {
+					return false;
 				}
 			}
-		}
 
-		if (_handle->patchRefSet(_scheme, id, _field, ids)) {
-			for (auto &it : ids) {
-				ret.addInteger(it);
+			auto obj = _handle->getObject(_scheme, id, false);
+			data::Value patch;
+			patch.setValue(val, _fieldName);
+			if (isObjectAllowed(_scheme, Action::Remove, obj, patch)) {
+				auto ids = prepareAppendList(patch.getValue(_fieldName));
+				if (_handle->patchRefSet(_scheme, id, _field, ids)) {
+					for (auto &it : ids) {
+						ret.addInteger(it);
+					}
+				} else {
+					return false;
+				}
+			} else {
+				return false;
 			}
-		}
-	});
+			return true;
+		});
+	}
 
 	return ret;
 }

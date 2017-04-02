@@ -230,7 +230,7 @@ void MultipartParser::readHeaderBegin(Reader &r) {
 					data = Data::FileAsData;
 				} else if ((config.required & InputConfig::Require::Files) != 0
 						&& (size == 0 || size < getConfig().maxFileSize)) {
-					files.emplace_back(std::move(name), std::move(type), std::move(encoding), std::move(file), size);
+					files.emplace_back(std::move(name), std::move(type), std::move(encoding), std::move(file), size, files.size());
 					data = Data::File;
 				} else {
 					data = Data::Skip;

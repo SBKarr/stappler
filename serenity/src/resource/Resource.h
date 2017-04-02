@@ -91,6 +91,8 @@ public:
 	size_t getMaxFileSize() const;
 
 protected:
+	void encodeFiles(data::Value &, apr::array<InputFile> &);
+
 	void resolveSet(Scheme *, int64_t, const storage::Field &, Scheme *next, data::Value &);
 	void resolveObject(Scheme *, int64_t, const storage::Field &, Scheme *next, data::Value &);
 	void resolveFile(Scheme *, int64_t, const storage::Field &, data::Value &);
@@ -102,7 +104,6 @@ protected:
 	Permission isSchemeAllowed(Scheme *, AccessControl::Action) const;
 	bool isObjectAllowed(Scheme *, AccessControl::Action, data::Value &) const;
 	bool isObjectAllowed(Scheme *, AccessControl::Action, data::Value &, data::Value &) const;
-	bool isObjectAllowed(Scheme *, AccessControl::Action, data::Value &, data::Value &, apr::array<InputFile> &) const;
 
 protected:
 	ResolveOptions resolveOptionForString(const String &str);

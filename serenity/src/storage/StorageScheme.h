@@ -63,16 +63,13 @@ public:
 public:// CRUD functions
 	// returns Dictionary with single object data or Null value
 	data::Value create(Adapter *, const data::Value &data, bool isProtected = false);
-	data::Value create(Adapter *, const data::Value &data, apr::array<InputFile> &files, bool isProtected = false);
 
 	data::Value get(Adapter *, uint64_t oid);
 	data::Value get(Adapter *, const String &alias);
 	data::Value get(Adapter *, const data::Value &id);
 
 	data::Value update(Adapter *, uint64_t oid, const data::Value &data, bool isProtected = false);
-	data::Value update(Adapter *, uint64_t oid, const data::Value &data, apr::array<InputFile> &files, bool isProtected = false);
 	data::Value update(Adapter *, const data::Value & obj, const data::Value &data, bool isProtected = false);
-	data::Value update(Adapter *, const data::Value & obj, const data::Value &data, apr::array<InputFile> &files, bool isProtected = false);
 
 	bool remove(Adapter *, uint64_t oid);
 
@@ -113,7 +110,7 @@ public:
 	data::Value appendProperty(Adapter *, const data::Value &, const Field &, data::Value &&);
 
 protected:
-	data::Value createFilePatch(Adapter *, apr::array<InputFile> &);
+	data::Value createFilePatch(Adapter *, const data::Value &val);
 	void purgeFilePatch(Adapter *, const data::Value &);
 	void mergeValues(const Field &f, data::Value &original, data::Value &newVal);
 

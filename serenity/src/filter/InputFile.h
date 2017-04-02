@@ -37,8 +37,9 @@ struct InputFile : public AllocPool {
 
 	size_t writeSize;
 	size_t headerSize;
+	int64_t id;
 
-	InputFile(apr::string && name, apr::string && type, apr::string && enc, apr::string && orig, size_t s);
+	InputFile(apr::string && name, apr::string && type, apr::string && enc, apr::string && orig, size_t s, int64_t id);
 	~InputFile();
 
 	bool isOpen() const;
@@ -47,6 +48,8 @@ struct InputFile : public AllocPool {
 	void close();
 
 	bool save(const apr::string &) const;
+
+	int64_t negativeId() const { return - id - 1; }
 
 	InputFile(const InputFile &) = delete;
 	InputFile(InputFile &&) = delete;

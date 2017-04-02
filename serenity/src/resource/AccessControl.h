@@ -87,7 +87,7 @@ public:
 	};
 
 	using SchemeFn = Function<Permission (User *, Scheme *, Action)>;
-	using ObjectFn = Function<bool (User *, Scheme *, Action, data::Value &, data::Value &, apr::array<InputFile> &)>;
+	using ObjectFn = Function<bool (User *, Scheme *, Action, data::Value &, data::Value &)>;
 
 	AccessControl(const SchemeFn & = nullptr, const ObjectFn & = nullptr);
 
@@ -104,7 +104,7 @@ public:
 	void setObjectCallback(Scheme *, const ObjectFn &);
 
 	Permission onScheme(User *, Scheme *, Action) const;
-	bool onObject(User *, Scheme *, Action, data::Value &, data::Value &, apr::array<InputFile> &) const;
+	bool onObject(User *, Scheme *, Action, data::Value &, data::Value &) const;
 
 protected:
 	bool useAdminPrivileges(User *) const;

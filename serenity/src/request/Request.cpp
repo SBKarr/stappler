@@ -101,6 +101,7 @@ struct Request::Config : public AllocPool {
 	Session *_session = nullptr;
 	User *_user = nullptr;
 	request_rec *_request = nullptr;
+	InputFilter *_filter = nullptr;
 };
 
 Request::Request() : _buffer(nullptr), _request(nullptr), _config(nullptr) { }
@@ -591,6 +592,13 @@ apr::string Request::getFullHostname(int port) {
 void Request::runTemplate(String && path, const Function<void(tpl::Exec &, Request &)> &cb) {
 	auto cache = server().getTemplateCache();
 	cache->runTemplate(path, *this, cb);
+}
+
+void Request::setInputFilter(InputFilter *f) {
+	_config->_filter = f;
+}
+InputFilter *Request::getInputFilter() const {
+	return _config->_filter;
 }
 
 NS_SA_END

@@ -38,7 +38,7 @@ bool Field::Slot::isProtected() const {
 bool Field::isReference() const {
 	if (slot->type == Type::Object || slot->type == Type::Set) {
 		auto ref = static_cast<const FieldObject *>(slot);
-		return ref->onRemove == RemovePolicy::Reference;
+		return ref->onRemove == RemovePolicy::Reference || ref->onRemove == RemovePolicy::StrongReference;
 	}
 	return false;
 }

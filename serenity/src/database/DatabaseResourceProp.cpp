@@ -66,6 +66,7 @@ bool Resolver::ResourceProperty::removeObject() {
 			} else {
 				_status = HTTP_FORBIDDEN;
 			}
+			return ret;
 		});
 		return ret;
 	}
@@ -133,10 +134,13 @@ data::Value Resolver::ResourceFile::updateObject(data::Value &, apr::array<Input
 		file->name = _fieldName;
 	}
 
+	data::Value patch;
+	patch.setInteger(file->negativeId(), _fieldName);
+
 	if (_perms == Permission::Full) {
 		// perform one-line update
 		if (auto id = getObjectId()) {
-			auto ret = _scheme->update(_handle, id, data::Value(), f);
+			auto ret = _scheme->update(_handle, id, patch);
 			ret = getFileForObject(ret);
 			return ret;
 		}
@@ -148,13 +152,14 @@ data::Value Resolver::ResourceFile::updateObject(data::Value &, apr::array<Input
 		data::Value ret;
 		_handle->performInTransaction([&] {
 			data::Value object(getObject(true));
-			data::Value patch;
-			if (object && isObjectAllowed(_scheme, Action::Update, object, patch, f)) {
-				ret = _scheme->update(_handle, object.getInteger("__oid"), patch, f);
+			if (object && isObjectAllowed(_scheme, Action::Update, object, patch)) {
+				ret = _scheme->update(_handle, object.getInteger("__oid"), patch);
 				ret = getFileForObject(ret);
 			} else {
 				_status = HTTP_FORBIDDEN;
+				return false;
 			}
+			return true;
 		});
 		return ret;
 	}
@@ -257,13 +262,14 @@ data::Value Resolver::ResourceArray::updateObject(data::Value &data, apr::array<
 		_handle->performInTransaction([&] {
 			data::Value object(getObject(true));
 			data::Value patch; patch.setValue(std::move(arr), _fieldName);
-			apr::array<InputFile> f;
-			if (object && isObjectAllowed(_scheme, Action::Update, object, patch, f)) {
-				ret = _scheme->update(_handle, object.getInteger("__oid"), patch, f);
+			if (object && isObjectAllowed(_scheme, Action::Update, object, patch)) {
+				ret = _scheme->update(_handle, object.getInteger("__oid"), patch);
 				ret = getArrayForObject(ret);
 			} else {
 				_status = HTTP_FORBIDDEN;
+				return false;
 			}
+			return true;
 		});
 		return ret;
 	}
@@ -305,14 +311,15 @@ data::Value Resolver::ResourceArray::createObject(data::Value &data, apr::array<
 		_handle->performInTransaction([&] {
 			data::Value object(getObject(true));
 			data::Value patch; patch.setValue(arr, _fieldName);
-			apr::array<InputFile> f;
-			if (object && object.isInteger("__oid") && isObjectAllowed(_scheme, Action::Append, object, patch, f)) {
+			if (object && object.isInteger("__oid") && isObjectAllowed(_scheme, Action::Append, object, patch)) {
 				if (_handle->patchArray(_scheme, object.getInteger("__oid"), _field, arr)) {
 					ret = std::move(arr);
 				}
 			} else {
 				_status = HTTP_FORBIDDEN;
+				return false;
 			}
+			return true;
 		});
 		return ret;
 	}

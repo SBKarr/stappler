@@ -140,14 +140,6 @@ void parseQueryResultString(data::Value &val, const storage::Field &f, String &&
 		<< "(\"" << obj->scheme->getName() << "_id\", \"" << s->getName() << "_id\") "
 		<< "VALUES (NEW.\"" << obj->name << "\", NEW.__oid);\n"
 		<< "\t\t\tEND IF;\n";
-}
-
-static void writeObjectSetRemoveTrigger(apr::ostringstream &stream, storage::Scheme *s,
-		const storage::FieldObject *obj, const storage::Field *link) {
-	stream << "\t\t\tIF (OLD.\"" << obj->name << "\" IS NOT NULL) THEN\n"
-		<< "\t\t\t\tDELETE FROM " << obj->scheme->getName() << "_f_" << link->getName() << " WHERE "
-		<< "\"" << obj->scheme->getName() << "_id\"=OLD.\"" << obj->name << "\" AND \"" << s->getName() << "_id\"=OLD.__oid;"
-		<< "\t\t\tEND IF;\n";
 }*/
 
 static void writeFileUpdateTrigger(apr::ostringstream &stream, storage::Scheme *s, const storage::Field &obj) {
@@ -161,6 +153,14 @@ static void writeFileRemoveTrigger(apr::ostringstream &stream, storage::Scheme *
 	stream << "\t\tIF (OLD.\"" << obj.getName() << "\" IS NOT NULL) THEN\n"
 		<< "\t\t\tINSERT INTO __removed (__oid) VALUES (OLD.\"" << obj.getName() << "\");\n"
 		<< "\t\tEND IF;\n";
+}
+
+static void writeObjectSetRemoveTrigger(apr::ostringstream &stream, storage::Scheme *s, const storage::FieldObject *obj) {
+	auto & source = s->getName();
+	auto & target = obj->scheme->getName();
+
+	stream << "\t\tDELETE FROM " << target << " WHERE __oid IN (SELECT " << target << "_id FROM "
+			<< s->getName() << "_f_" << obj->name << " WHERE "<< source << "_id=OLD.__oid);\n";
 }
 
 static void writeTrigger(apr::ostringstream &stream, storage::Scheme *s, const String &triggerName) {
@@ -181,45 +181,17 @@ static void writeTrigger(apr::ostringstream &stream, storage::Scheme *s, const S
 	for (auto &it : fields) {
 		if (it.second.isFile()) {
 			writeFileRemoveTrigger(stream, s, it.second);
+		} else if (it.second.getType() == storage::Type::Set) {
+			const storage::FieldObject *objSlot = static_cast<const storage::FieldObject *>(it.second.getSlot());
+			if (objSlot->onRemove == storage::RemovePolicy::StrongReference) {
+				writeObjectSetRemoveTrigger(stream, s, objSlot);
+			}
 		}
 	}
 	stream << "\tEND IF;\n\tRETURN NULL;\n";
 	stream << "\nEND; $" << triggerName << "$ LANGUAGE plpgsql;\n";
 
 	stream << "CREATE TRIGGER " << triggerName << " AFTER INSERT OR UPDATE OR DELETE ON \"" << s->getName()
-			<< "\" FOR EACH ROW EXECUTE PROCEDURE " << triggerName << "_func();\n";
-}
-
-static void writeSetLinkageNoneTrigger(apr::ostringstream &stream, storage::Scheme *s, storage::FieldObject *obj, const String &triggerName) {
-	String name = s->getName() + "_f_" + obj->name;
-	auto & source = s->getName();
-	auto & target = obj->scheme->getName();
-
-	String sourceId = source + "_id";
-	String targetId = target + "_id";
-
-	stream << "CREATE OR REPLACE FUNCTION " << triggerName << "_func() RETURNS TRIGGER AS $" << triggerName
-			<< "$ BEGIN\n";
-
-	TableRec table;
-	table.cols.emplace(source + "_id", ColRec(ColRec::Type::Integer));
-	table.cols.emplace(target + "_id", ColRec(ColRec::Type::Integer));
-
-	table.constraints.emplace(name + "_ref_" + source, ConstraintRec(
-			ConstraintRec::Reference, source + "_id", source, ConstraintRec::RemovePolicy::Cascade));
-	table.constraints.emplace(name + "_ref_" + ref->getName(), ConstraintRec(
-			ConstraintRec::Reference, target + "_id", target, ConstraintRec::RemovePolicy::Cascade));
-
-	table.pkey.emplace_back(source + "_id");
-	table.pkey.emplace_back(target + "_id");
-	tables.emplace(std::move(name), std::move(table));
-
-	stream << "\t\tIF (OLD.\"" << sourceId << "\" IS NOT NULL) THEN\n"
-		<< "\t\t\tINSERT INTO __removed (__oid) VALUES (OLD.\"" << obj.getName() << "\");\n"
-		<< "\t\tEND IF;\n";
-
-	stream << "\n\tRETURN NULL;\nEND; $" << triggerName << "$ LANGUAGE plpgsql;\n"
-			<< "CREATE TRIGGER " << triggerName << " AFTER DELETE ON \"" << name
 			<< "\" FOR EACH ROW EXECUTE PROCEDURE " << triggerName << "_func();\n";
 }
 
@@ -372,6 +344,7 @@ void TableRec::writeCompareResult(apr::ostringstream &stream,
 					break;
 				case ConstraintRec::RemovePolicy::Null:
 				case ConstraintRec::RemovePolicy::Reference:
+				case ConstraintRec::RemovePolicy::StrongReference:
 					stream << " ON DELETE SET NULL";
 					break;
 				}
@@ -414,7 +387,7 @@ Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, storage::S
 
 			if (type == storage::Type::Set) {
 				auto ref = static_cast<const storage::FieldObject *>(f.getSlot());
-				if (ref->onRemove == storage::RemovePolicy::Reference || ref->linkage == storage::Linkage::None) {
+				if (ref->onRemove == storage::RemovePolicy::Reference || ref->onRemove == storage::RemovePolicy::StrongReference) {
 					String name = it.first + "_f_" + fit.first;
 					auto & source = it.first;
 					auto & target = ref->scheme->getName();
@@ -594,7 +567,6 @@ TableRec::TableRec(Server &serv, storage::Scheme *scheme) {
 
 		switch (type) {
 		case storage::Type::None:
-		case storage::Type::Set:
 		case storage::Type::Array:
 			break;
 
@@ -626,6 +598,16 @@ TableRec::TableRec(Server &serv, storage::Scheme *scheme) {
 		case storage::Type::Image:
 			cols.emplace(it.first, ColRec(ColRec::Type::Integer, f.hasFlag(storage::Flags::Required)));
 			emplaced = true;
+			break;
+
+		case storage::Type::Set:
+			if (f.isReference()) {
+				auto objSlot = static_cast<const storage::FieldObject *>(f.getSlot());
+				if (objSlot->onRemove == storage::RemovePolicy::StrongReference) {
+					hasTriggers = true;
+					hashStream << it.first << toInt(type);
+				}
+			}
 			break;
 		}
 

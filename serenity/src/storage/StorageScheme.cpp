@@ -212,11 +212,6 @@ data::Value Scheme::get(Adapter *adapter, const data::Value &id) {
 }
 
 data::Value Scheme::create(Adapter *adapter, const data::Value &data, bool isProtected) {
-	apr::array<InputFile> files;
-	return create(adapter, data, files, isProtected);
-}
-
-data::Value Scheme::create(Adapter *adapter, const data::Value &data, apr::array<InputFile> &files, bool isProtected) {
 	if (!data.isDictionary()) {
 		messages::error("Storage", "Invalid data for object");
 		return data::Value();
@@ -239,7 +234,7 @@ data::Value Scheme::create(Adapter *adapter, const data::Value &data, apr::array
 		return data::Value();
 	}
 
-	data::Value patch(createFilePatch(adapter, files));
+	data::Value patch(createFilePatch(adapter, data));
 	if (patch.isDictionary()) {
 		for (auto &it : patch.asDict()) {
 			changeSet.setValue(it.second, it.first);
@@ -258,12 +253,7 @@ data::Value Scheme::create(Adapter *adapter, const data::Value &data, apr::array
 }
 
 data::Value Scheme::update(Adapter *adapter, uint64_t oid, const data::Value &data, bool isProtected) {
-	apr::array<InputFile> files;
-	return update(adapter, oid, data, files, isProtected);
-}
-
-data::Value Scheme::update(Adapter *adapter, uint64_t oid, const data::Value &data, apr::array<InputFile> &files, bool isProtected) {
-	if (!data.isDictionary() && files.empty()) {
+	if (!data.isDictionary()) {
 		messages::error("Storage", "Invalid data for object");
 		return data::Value();
 	}
@@ -287,7 +277,7 @@ data::Value Scheme::update(Adapter *adapter, uint64_t oid, const data::Value &da
 		return data::Value();
 	}
 
-	data::Value filePatch(createFilePatch(adapter, files));
+	data::Value filePatch(createFilePatch(adapter, data));
 	if (filePatch.isDictionary()) {
 		for (auto &it : filePatch.asDict()) {
 			changeSet.setValue(it.second, it.first);
@@ -314,10 +304,6 @@ data::Value Scheme::update(Adapter *adapter, uint64_t oid, const data::Value &da
 }
 
 data::Value Scheme::update(Adapter *adapter, const data::Value & obj, const data::Value &data, bool isProtected) {
-	apr::array<InputFile> files;
-	return update(adapter, obj, data, files, isProtected);
-}
-data::Value Scheme::update(Adapter *adapter, const data::Value & obj, const data::Value &data, apr::array<InputFile> &files, bool isProtected) {
 	if (!data.isDictionary() || !obj.isDictionary() || !obj.isInteger("__oid")) {
 		messages::error("Storage", "Invalid data for object");
 		return data::Value();
@@ -347,7 +333,7 @@ data::Value Scheme::update(Adapter *adapter, const data::Value & obj, const data
 		return data::Value();
 	}
 
-	data::Value filePatch(createFilePatch(adapter, files));
+	data::Value filePatch(createFilePatch(adapter, data));
 	if (filePatch.isDictionary()) {
 		for (auto &it : filePatch.asDict()) {
 			changeSet.setValue(it.second, it.first);
@@ -767,22 +753,23 @@ bool Scheme::validateHint(const data::Value &hint) {
 	return false;
 }
 
-data::Value Scheme::createFilePatch(Adapter *adapter, apr::array<InputFile> &files) {
+data::Value Scheme::createFilePatch(Adapter *adapter, const data::Value &val) {
 	data::Value patch;
-	for (auto &it : files) {
-		if (it.isOpen()) {
-			auto f = getField(it.name);
+	for (auto &it : val.asDict()) {
+		if (it.second.isInteger() && it.second.getInteger() < 0) {
+			auto f = getField(it.first);
 			if (f && (f->getType() == Type::File || (f->getType() == Type::Image && static_cast<const FieldImage *>(f->getSlot())->primary))) {
-				auto d = createFile(adapter, *f, it);
-				if (d.isInteger()) {
-					patch.setValue(d, f->getName());
-				} else if (d.isDictionary()) {
-					for (auto & it : d.asDict()) {
-						patch.setValue(std::move(it.second), it.first);
+				auto file = InputFilter::getFileFromContext(it.second.getInteger());
+				if (file && file->isOpen()) {
+					auto d = createFile(adapter, *f, *file);
+					if (d.isInteger()) {
+						patch.setValue(d, f->getName());
+					} else if (d.isDictionary()) {
+						for (auto & it : d.asDict()) {
+							patch.setValue(std::move(it.second), it.first);
+						}
 					}
 				}
-			} else {
-				it.close();
 			}
 		}
 	}

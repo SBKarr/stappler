@@ -87,7 +87,7 @@ enum class Transform {
 	Hexadecimial,
 	Base64,
 
-	Password,
+	Password, // deprecated
 };
 
 enum class ValidationLevel {
@@ -150,6 +150,7 @@ enum class RemovePolicy {
 	Cascade, // remove object in set or field
 	Restrict, // reject request, if object or set is not empty
 	Reference, // no linkage action, object is reference
+	StrongReference, // only for Set: no linkage action, objects will be owned
 	Null, // set object to null
 };
 
@@ -351,6 +352,9 @@ struct FieldObject : Field::Slot {
 		init<FieldObject, Args...>(*this, std::forward<Args>(args)...);
 		if (t == Type::Set && toInt(flags) & toInt(Flags::Reference)) {
 			onRemove = RemovePolicy::Reference;
+		}
+		if (t == Type::Set && (onRemove == RemovePolicy::Reference || onRemove == RemovePolicy::StrongReference)) {
+			flags |= Flags::Reference;
 		}
 	}
 

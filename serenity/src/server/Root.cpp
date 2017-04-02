@@ -304,7 +304,6 @@ int Root::onPostReadRequest(request_rec *r) {
 			return rhdl->onPostReadRequest(request);
 		}
 
-
 		return DECLINED;
 	}, r);
 }

@@ -169,7 +169,7 @@ int ResourceHandler::onHandler(Request &rctx) {
 void ResourceHandler::onFilterComplete(InputFilter *filter) {
 	auto rctx = filter->getRequest();
 	if (_method == Request::Put) {
-			// we should update our resource
+		// we should update our resource
 		auto result = _resource->updateObject(filter->getData(), filter->getFiles());
 		if (result) {
 			writeDataToRequest(rctx, result);

@@ -212,6 +212,8 @@ public:
 protected:
 	uint64_t getObjectId();
 
+	Vector<uint64_t> prepareAppendList(const data::Value &);
+
 	data::Value doAppendObject(const data::Value &, bool cleanup);
 	data::Value doAppendObjects(const data::Value &, bool cleanup);
 

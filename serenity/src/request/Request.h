@@ -238,6 +238,9 @@ public: /* engine and errors */
 
 	void addCleanup(const Function<void()> &);
 
+	void setInputFilter(InputFilter *);
+	InputFilter *getInputFilter() const;
+
 protected:
 	struct Config;
 

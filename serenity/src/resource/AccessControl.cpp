@@ -129,15 +129,15 @@ AccessControl::Permission AccessControl::onScheme(User *u, Scheme *s, Action a) 
 	}
 	return ret;
 }
-bool AccessControl::onObject(User *u, Scheme *s, Action a, data::Value &obj, data::Value &patch, apr::array<InputFile> &files) const {
+bool AccessControl::onObject(User *u, Scheme *s, Action a, data::Value &obj, data::Value &patch) const {
 	if (useAdminPrivileges(u)) {
 		return true;
 	}
 	auto objIt = _objects.find(s);
 	if (objIt != _objects.end() && objIt->second) {
-		return objIt->second(u, s, a, obj, patch, files);
+		return objIt->second(u, s, a, obj, patch);
 	} else if (_object) {
-		return _object(u, s, a, obj, patch, files);
+		return _object(u, s, a, obj, patch);
 	}
 	return true;
 }

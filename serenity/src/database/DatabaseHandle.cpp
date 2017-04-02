@@ -323,18 +323,31 @@ bool Handle::patchRefSet(Scheme *scheme, uint64_t oid, const storage::Field *fie
 
 bool Handle::cleanupRefSet(Scheme *scheme, uint64_t oid, const storage::Field *field, const Vector<int64_t> &ids) {
 	apr::ostringstream query;
-	auto fScheme = field->getForeignScheme();
+	auto objField = static_cast<const storage::FieldObject *>(field->getSlot());
+	auto fScheme = objField->scheme;
 	if (!ids.empty() && fScheme) {
-		query << "DELETE FROM " << scheme->getName() << "_f_" << field->getName()
-							<< " WHERE " << scheme->getName() << "_id=" << oid << " AND (";
-		bool first = true;
-		for (auto &it : ids) {
-			if (first) { first = false; } else { query << " OR "; }
-			query << fScheme->getName() << "_id=" << it;
+		if (objField->onRemove == storage::RemovePolicy::Reference) {
+			query << "DELETE FROM " << scheme->getName() << "_f_" << field->getName()
+								<< " WHERE " << scheme->getName() << "_id=" << oid << " AND (";
+			bool first = true;
+			for (auto &it : ids) {
+				if (first) { first = false; } else { query << " OR "; }
+				query << fScheme->getName() << "_id=" << it;
+			}
+			query << ");";
+			perform(query.weak());
+			return true;
+		} else if (objField->onRemove == storage::RemovePolicy::StrongReference) {
+			query << "DELETE FROM " << fScheme->getName() << " WHERE ";
+			bool first = true;
+			for (auto &it : ids) {
+				if (first) { first = false; } else { query << " OR "; }
+				query << "__oid=" << it;
+			}
+			query << ";";
+			perform(query.weak());
+			return true;
 		}
-		query << ");";
-		perform(query.weak());
-		return true;
 	}
 	return false;
 }
@@ -377,13 +390,15 @@ bool Handle::endTransaction() {
 	case TransactionStatus::Commit:
 		transaction = TransactionStatus::None;
 		if (perform("COMMIT") != maxOf<size_t>()) {
+			finalizeBroadcast();
 			return true;
 		}
 		break;
 	case TransactionStatus::Rollback:
 		transaction = TransactionStatus::None;
 		if (perform("ROLLBACK") != maxOf<size_t>()) {
-			return true;
+			finalizeBroadcast();
+			return false;
 		}
 		break;
 	default:
@@ -734,10 +749,28 @@ void Handle::clearProperty(Scheme *s, uint64_t oid, const Field &f) {
 		break;
 	case storage::Type::Set:
 		if (f.isReference()) {
-			query << "DELETE FROM " << s->getName() << "_f_" << f.getName() << " WHERE " << s->getName() << "_id=" << oid << ";";
-			perform(query.weak());
+			auto objField = static_cast<const storage::FieldObject *>(f.getSlot());
+			if (objField->onRemove == storage::RemovePolicy::Reference) {
+				query << "DELETE FROM " << s->getName() << "_f_" << f.getName() << " WHERE " << s->getName() << "_id=" << oid << ";";
+				perform(query.weak());
+			} else {
+				performInTransaction([&] {
+					auto obj = static_cast<const storage::FieldObject *>(f.getSlot());
+
+					auto & source = s->getName();
+					auto & target = obj->scheme->getName();
+
+					query << "DELETE FROM " << target << " WHERE __oid IN (SELECT " << target << "_id FROM "
+							<< s->getName() << "_f_" << f.getName() << " WHERE "<< source << "_id=" << oid << ");";
+					perform(query.weak());
+
+					query.clear();
+					query << "DELETE FROM " << s->getName() << "_f_" << f.getName() << " WHERE " << s->getName() << "_id=" << oid << ";";
+					perform(query.weak());
+					return true;
+				});
+			}
 		}
-		// not implemented
 		break;
 	default: {
 		data::Value patch;
@@ -1371,11 +1404,32 @@ int64_t Handle::processBroadcasts(Server &serv, int64_t value) {
 }
 
 void Handle::broadcast(const Bytes &bytes) {
-	apr::ostringstream query;
-	query << "INSERT INTO __broadcasts (date, msg) VALUES (" << apr_time_now() << ", ";
-	writeQueryBinaryData(query, bytes);
-	query << ");";
-	perform(query.weak());
+	if (transaction == TransactionStatus::None) {
+		apr::ostringstream query;
+		query << "INSERT INTO __broadcasts (date, msg) VALUES (" << apr_time_now() << ",";
+		writeQueryBinaryData(query, bytes);
+		query << ");";
+		perform(query.weak());
+	} else {
+		_bcasts.emplace_back(apr_time_now(), bytes);
+	}
+}
+
+void Handle::finalizeBroadcast() {
+	if (!_bcasts.empty()) {
+		apr::ostringstream query;
+		query << "INSERT INTO __broadcasts (date, msg) VALUES ";
+		bool first = true;
+		for (auto &it : _bcasts) {
+			if (first) { first = false; } else { query << ", "; }
+			query << "(" << it.first << ",";
+			writeQueryBinaryData(query, it.second);
+			query << ")";
+		}
+		query << ";";
+		perform(query.weak());
+		_bcasts.clear();
+	}
 }
 
 NS_SA_EXT_END(database)

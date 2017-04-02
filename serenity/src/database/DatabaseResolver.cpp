@@ -281,7 +281,12 @@ Resource *Resolver::getResult() {
 			// check for reference set
 			if (!_subquery->subqueryField.empty() && _subquery->subquery && _subquery->subquery->scheme) {
 				auto f = _subquery->subquery->scheme->getField(_subquery->subqueryField);
-				if (f->isReference() && !_subquery->all) {
+				const storage::FieldObject *objSlot = nullptr;
+				if (f->getType() == storage::Type::Set) {
+					objSlot = static_cast<const storage::FieldObject *>(f->getSlot());
+				}
+
+				if (!_subquery->all && objSlot && f->isReference()) {
 					return new ResourceRefSet(_subquery->subquery->scheme, _handle, _subquery, f, f->getName());
 				}
 			}

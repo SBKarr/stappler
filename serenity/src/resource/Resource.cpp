@@ -124,6 +124,17 @@ size_t Resource::getMaxFileSize() const {
 	return (_scheme)?_scheme->getMaxFileSize():0;
 }
 
+void Resource::encodeFiles(data::Value &data, apr::array<InputFile> &files) {
+	for (auto &it : files) {
+		const storage::Field * f = _scheme->getField(it.name);
+		if (f && f->isFile()) {
+			if (!data.hasValue(it.name)) {
+				data.setInteger(it.negativeId());
+			}
+		}
+	}
+}
+
 void Resource::resolveSet(Scheme *s, int64_t oid, const storage::Field &f, Scheme *next, data::Value &val) {
 	val.setValue(s->getProperty(_adapter, val, f), f.getName());
 }
@@ -309,17 +320,11 @@ AccessControl::Permission Resource::isSchemeAllowed(Scheme *s, AccessControl::Ac
 
 bool Resource::isObjectAllowed(Scheme *s, AccessControl::Action a, data::Value &obj) const {
 	data::Value p;
-	apr::array<InputFile> f;
-	return isObjectAllowed(s, a, obj, p, f);
+	return isObjectAllowed(s, a, obj, p);
 }
-bool Resource::isObjectAllowed(Scheme *s, AccessControl::Action a, data::Value &obj, data::Value &p) const {
-	apr::array<InputFile> f;
-	return isObjectAllowed(s, a, obj, p, f);
-}
-bool Resource::isObjectAllowed(Scheme *s, AccessControl::Action a,
-		data::Value &current, data::Value &patch, apr::array<InputFile> &f) const {
+bool Resource::isObjectAllowed(Scheme *s, AccessControl::Action a, data::Value &current, data::Value &patch) const {
 	if (_access) {
-		return _access->onObject(_user, s, a, current, patch, f);
+		return _access->onObject(_user, s, a, current, patch);
 	}
 	return (_user &&_user->isAdmin())
 			? true

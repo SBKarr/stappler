@@ -35,9 +35,9 @@ THE SOFTWARE.
 
 NS_SA_BEGIN
 
-InputFile::InputFile(apr::string &&name, apr::string && type, apr::string && enc, apr::string && orig, size_t s)
+InputFile::InputFile(apr::string &&name, apr::string && type, apr::string && enc, apr::string && orig, size_t s, int64_t id)
 : name(std::move(name)), type(std::move(type)), encoding(std::move(enc))
-, original(std::move(orig)), writeSize(0), headerSize(s) {
+, original(std::move(orig)), writeSize(0), headerSize(s), id(id) {
 	file.open_tmp(config::getUploadTmpFilePrefix(), APR_FOPEN_CREATE | APR_FOPEN_READ | APR_FOPEN_WRITE | APR_FOPEN_EXCL);
 	path.assign_weak(file.path());
 }
@@ -163,6 +163,18 @@ InputFilter::Accept getAcceptedData(const Request &req, InputFilter::Exception &
 	return ret;
 }
 
+InputFile *InputFilter::getFileFromContext(int64_t id) {
+	auto req = AllocStack::get().request();
+	if (req) {
+		Request rctx(req);
+		auto f = rctx.getInputFilter();
+		if (f) {
+			return f->getInputFile(id);
+		}
+	}
+	return nullptr;
+
+}
 InputFilter::Exception InputFilter::insert(const Request &r) {
 	return AllocStack::perform([&] () -> InputFilter::Exception {
 		Exception e = Exception::None;
@@ -173,6 +185,7 @@ InputFilter::Exception InputFilter::insert(const Request &r) {
 
 		auto f = new (r.request()->pool) InputFilter(r, accept);
 		ap_add_input_filter("Serenity::InputFilter", (void *)f, r, r.connection());
+		Request(r).setInputFilter(f);
 		return e;
 	}, r.request());
 }
@@ -368,6 +381,18 @@ data::Value & InputFilter::getData() {
 }
 apr::array<InputFile> &InputFilter::getFiles() {
 	return _parser->getFiles();
+}
+
+InputFile * InputFilter::getInputFile(int64_t idx) const {
+	if (idx < 0) {
+		idx = -(idx + 1);
+	}
+
+	auto &files = _parser->getFiles();
+	if (size_t(idx) >= files.size()) {
+		return nullptr;
+	}
+	return &files.at(size_t(idx));
 }
 
 const InputConfig & InputFilter::getConfig() const {

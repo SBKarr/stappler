@@ -75,12 +75,16 @@ public:
 	bool performInTransaction(T && t, TransactionLevel l = TransactionLevel::ReadCommited, bool acquireExisted = true) {
 		if (!acquireExisted || transaction == TransactionStatus::None) {
 			if (beginTransaction(l)) {
-				t();
+				if (!t()) {
+					cancelTransaction();
+				}
 				return endTransaction();
 			}
 		} else if (toInt(level) >= toInt(l)) {
-			t();
-			return true;
+			if (!t()) {
+				cancelTransaction();
+			}
+			return transaction != TransactionStatus::Rollback;
 		}
 		return false;
 	}
@@ -159,11 +163,15 @@ protected:
 	void cancelTransaction();
 	bool endTransaction();
 
+	void finalizeBroadcast();
+
 	apr_pool_t *pool;
 	ap_dbd_t *handle;
     PGconn *conn = nullptr;
     TransactionLevel level = TransactionLevel::ReadCommited;
     TransactionStatus transaction = TransactionStatus::None;
+
+    Vector<Pair<apr_time_t, Bytes>> _bcasts;
 };
 
 NS_SA_EXT_END(database)

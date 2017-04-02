@@ -85,6 +85,12 @@ public:
 	static void filterRegister();
 	static Exception insert(const Request &);
 
+	/* file index can be coded as ordered index or negative id
+	 * negative_id = - index - 1
+	 *
+	 * return nullptr if there is no such file */
+	static InputFile *getFileFromContext(int64_t);
+
 	apr::weak_string getContentType() const;
 
 	size_t getContentLength() const;
@@ -107,6 +113,8 @@ public:
 	const apr::ostringstream & getBody() const;
 	data::Value & getData();
 	apr::array<InputFile> &getFiles();
+
+	InputFile * getInputFile(int64_t) const;
 
 	const InputConfig & getConfig() const;
 
