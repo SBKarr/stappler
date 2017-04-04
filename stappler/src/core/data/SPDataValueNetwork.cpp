@@ -41,6 +41,7 @@ struct NetworkDataReader {
 		auto dev = Device::getInstance();
 
 		auto task = Rc<NetworkDataTask>::create(NetworkTask::Method::Get, _url);
+		task->addCompleteCallback(std::bind(&NetworkDataReader::onDownloadCompleted, this, task, std::placeholders::_2));
 		task->addHeader("X-ApplicationName", dev->getBundleName());
 		task->addHeader("X-ApplicationVersion", stappler::toString(dev->getApplicationVersionCode()));
 		t.perform(task);
