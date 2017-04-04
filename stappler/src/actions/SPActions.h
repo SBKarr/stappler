@@ -39,6 +39,11 @@ inline cocos2d::FiniteTimeAction *_sequencable(cocos2d::FiniteTimeAction *a) {
 	return a;
 }
 
+template <class F>
+inline cocos2d::FiniteTimeAction *_sequencable(const Rc<F> &f) {
+	return _sequencable(f.get());
+}
+
 inline cocos2d::FiniteTimeAction *_sequencable(float d) {
 	return cocos2d::DelayTime::create(d);
 }

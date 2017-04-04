@@ -60,6 +60,18 @@ enum class FontType {
 
 class Label : public DynamicLabel {
 public:
+	class ExternalFormatter : public DynamicLabel::ExternalFormatter {
+	public:
+		bool init(bool userFonts, float w = 0.0f);
+
+		void addString(FontType, const String &, bool localized = false);
+		void addString(FontType, const WideString &, bool localized = false);
+		void addString(const String &, const String &, bool localized = false);
+		void addString(const String &, const WideString &, bool localized = false);
+		void addString(const DescriptionStyle &, const String &, bool localized = false);
+		void addString(const DescriptionStyle &, const WideString &, bool localized = false);
+	};
+
 	static DescriptionStyle getFontStyle(FontType);
 	static DescriptionStyle getFontStyle(const String &);
 

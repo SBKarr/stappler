@@ -71,7 +71,8 @@ bool Document::init(const FilePath &path) {
 	}
 	return false;
 }
-bool Document::isFileExists(const String &path) const {
+bool Document::isFileExists(const String &ipath) const {
+	String path(resolveName(ipath));
 	auto &manifest = _info->getManifest();
 	auto fileIt = manifest.find(path);
 	if (fileIt != manifest.end()) {
@@ -79,7 +80,8 @@ bool Document::isFileExists(const String &path) const {
 	}
 	return false;
 }
-Bytes Document::getFileData(const String &path) {
+Bytes Document::getFileData(const String &ipath) {
+	String path(resolveName(ipath));
 	auto &manifest = _info->getManifest();
 	auto fileIt = manifest.find(path);
 	if (fileIt != manifest.end()) {
@@ -88,7 +90,8 @@ Bytes Document::getFileData(const String &path) {
 	}
 	return Bytes();
 }
-Bitmap Document::getImageBitmap(const String &path, const Bitmap::StrideFn &fn) {
+Bitmap Document::getImageBitmap(const String &ipath, const Bitmap::StrideFn &fn) {
+	String path(resolveName(ipath));
 	auto &manifest = _info->getManifest();
 	auto imageIt = manifest.find(path);
 	if (imageIt != manifest.end()) {

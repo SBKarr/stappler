@@ -33,8 +33,16 @@ THE SOFTWARE.
 
 NS_LAYOUT_BEGIN
 
+Formatter::Formatter(): source(nullptr), output(nullptr), density(1.0f) { }
+
 Formatter::Formatter(FontSource *s, FormatSpec *o, float density)
 : source(s), output(o), density(density) { }
+
+void Formatter::init(FontSource *s, FormatSpec *o, float d) {
+	source = s;
+	output = o;
+	density = d;
+}
 
 void Formatter::setLinePositionCallback(const LinePositionCallback &func) {
 	linePositionFunc = func;

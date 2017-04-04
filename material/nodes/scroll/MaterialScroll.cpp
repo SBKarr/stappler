@@ -141,7 +141,7 @@ bool Scroll::init(Source *source, stappler::ScrollViewBase::Layout l) {
 	_listener.setCallback(std::bind(&Scroll::onSourceDirty, this));
 	_listener = source;
 
-	auto c = construct<ScrollController>();
+	auto c = Rc<ScrollController>::create();
 	setController(c);
 
 	return true;
@@ -288,6 +288,91 @@ void Scroll::setItemCallback(const ItemCallback &cb) {
 
 void Scroll::setLoaderCallback(const LoaderCallback &cb) {
 	_loaderCallback = cb;
+}
+
+Rc<ProgressAction> Scroll::resizeNode(MaterialNode *node, float newSize, float duration, const Function<void()> &cb) {
+	return resizeNode(getItemForNode(node), newSize, duration, cb);
+}
+Rc<ProgressAction> Scroll::resizeNode(ScrollController::Item *item, float newSize, float duration, const Function<void()> &cb) {
+	if (!item) {
+		return nullptr;
+	}
+
+	auto &items = _controller->getItems();
+
+	float sourceSize = isVertical()?item->size.height:item->size.width;
+	float tergetSize = newSize;
+
+	struct ItemRects {
+		float startPos;
+		float startSize;
+		float targetPos;
+		float targetSize;
+		ScrollController::Item *item;
+	};
+
+	Vector<ItemRects> vec;
+
+	float offset = 0.0f;
+	for (auto &it : items) {
+		if (it.node && &it == item) {
+			offset += sourceSize - tergetSize;
+			vec.emplace_back(ItemRects{
+				getNodeScrollPosition(it.pos),
+				getNodeScrollSize(it.size),
+				getNodeScrollPosition(it.pos),
+				tergetSize,
+				&it});
+		} else if (offset != 0.0f) {
+			vec.emplace_back(ItemRects{
+				getNodeScrollPosition(it.pos),
+				getNodeScrollSize(it.size),
+				getNodeScrollPosition(it.pos) - offset,
+				getNodeScrollSize(it.size),
+				&it});
+		}
+	}
+
+	auto ret = Rc<ProgressAction>::create(duration, [this, vec] (ProgressAction *, float p) {
+		for (auto &it : vec) {
+			if (isVertical()) {
+				it.item->pos.y = progress(it.startPos, it.targetPos, p);
+				it.item->size.height = progress(it.startSize, it.targetSize, p);
+			} else {
+				it.item->pos.x = progress(it.startPos, it.targetPos, p);
+				it.item->size.width = progress(it.startSize, it.targetSize, p);
+			}
+			if (it.item->node) {
+				updateScrollNode(it.item->node, it.item->pos, it.item->size, it.item->zIndex);
+			}
+		}
+		_controller->onScrollPosition(true);
+	}, [] (ProgressAction *) {
+
+	}, [this, cb] (ProgressAction *) {
+		if (cb) {
+			cb();
+		}
+	});
+	ret->setForceStopCallback(true);
+	return ret;
+}
+
+Rc<ProgressAction> Scroll::removeNode(MaterialNode *node, float duration, const Function<void()> &cb) {
+	return removeNode(getItemForNode(node), duration, cb);
+}
+Rc<ProgressAction> Scroll::removeNode(ScrollController::Item *item, float duration, const Function<void()> &cb) {
+	return resizeNode(item, 0.0f, duration, [item, cb] {
+		if (item->node) {
+			if (item->node->isRunning()) {
+				item->node->removeFromParent();
+			}
+			item->node = nullptr;
+		}
+		if (cb) {
+			cb();
+		}
+	});
 }
 
 void Scroll::onSourceDirty() {
@@ -558,11 +643,11 @@ void Scroll::updateItems() {
 	_movement = b;
 }
 
-Scroll::Handler *Scroll::onHandler() {
+Rc<Scroll::Handler> Scroll::onHandler() {
 	return _handlerCallback(this);
 }
 
-MaterialNode *Scroll::onItemRequest(const ScrollController::Item &item, Source::Id id) {
+Rc<MaterialNode> Scroll::onItemRequest(const ScrollController::Item &item, Source::Id id) {
 	if ((isVertical() && item.size.height > 0.0f) || (isHorizontal() && item.size.width > 0)) {
 		auto it = _items.find(id);
 		if (it != _items.end()) {
@@ -574,14 +659,14 @@ MaterialNode *Scroll::onItemRequest(const ScrollController::Item &item, Source::
 	return nullptr;
 }
 
-Scroll::Loader *Scroll::onLoaderRequest(Request type) {
+Rc<Scroll::Loader> Scroll::onLoaderRequest(Request type) {
 	if (type == Request::Back) {
 		if (_loaderCallback) {
 			return _loaderCallback(type, [this] {
 				downloadBackSlice(_sliceSize);
 			}, _loaderColor);
 		} else {
-			return construct<Loader>([this] {
+			return Rc<Loader>::create([this] {
 				downloadBackSlice(_sliceSize);
 			}, _loaderColor);
 		}
@@ -591,7 +676,7 @@ Scroll::Loader *Scroll::onLoaderRequest(Request type) {
 				downloadFrontSlice(_sliceSize);
 			}, _loaderColor);
 		} else {
-			return construct<Loader>([this] {
+			return Rc<Loader>::create([this] {
 				downloadFrontSlice(_sliceSize);
 			}, _loaderColor);
 		}
@@ -599,7 +684,17 @@ Scroll::Loader *Scroll::onLoaderRequest(Request type) {
 		if (_loaderCallback) {
 			_loaderCallback(type, nullptr, _loaderColor);
 		} else {
-			return construct<Loader>(nullptr, _loaderColor);
+			return Rc<Loader>::create(nullptr, _loaderColor);
+		}
+	}
+	return nullptr;
+}
+
+ScrollController::Item * Scroll::getItemForNode(MaterialNode *node) const {
+	auto &items = _controller->getItems();
+	for (auto &it : items) {
+		if (it.node && it.node == node) {
+			return &it;
 		}
 	}
 	return nullptr;

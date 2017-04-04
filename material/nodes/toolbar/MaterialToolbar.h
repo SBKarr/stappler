@@ -51,14 +51,9 @@ public:
 	virtual void setMaxActionIcons(size_t value);
 	virtual size_t getMaxActionIcons() const;
 
-	virtual void setSplitActionMenu(bool value);
-	virtual bool isActionMenuSplitted() const;
-
 	virtual void setActionMenuSource(MenuSource *);
+	virtual void replaceActionMenuSource(MenuSource *, size_t maxIcons);
 	virtual MenuSource * getActionMenuSource() const;
-
-	virtual void setExtensionMenuSource(MenuSource *);
-	virtual MenuSource * getExtensionMenuSource() const;
 
 	virtual void setColor(const Color &color);
 	virtual const cocos2d::Color3B &getColor() const override;
@@ -95,11 +90,11 @@ public:
 	virtual float getDefaultToolbarHeight() const;
 
 protected:
-	virtual void updateMenu();
+	virtual void updateProgress();
+	virtual float updateMenu(cocos2d::Node *composer, MenuSource *source, size_t maxIcons);
 	virtual void layoutSubviews();
 	virtual void onNavTapped();
 	virtual float getBaseLine() const;
-	virtual float getLabelWidth() const;
 
 	virtual void updateToolbarBasicHeight();
 
@@ -107,19 +102,18 @@ protected:
 	ButtonLabelSelector *_title = nullptr;
 
 	size_t _maxActionIcons = 3;
-
-	std::vector<ButtonIcon *> _icons;
+	StrictNode *_scissorNode = nullptr;
 	cocos2d::Node *_iconsComposer = nullptr;
+	cocos2d::Node *_prevComposer = nullptr;
 
 	data::Listener<MenuSource> _actionMenuSource;
-	Rc<MenuSource> _extensionMenuSource;
 
 	std::function<void()> _navCallback = nullptr;
 	std::function<void()> _barCallback = nullptr;
 
+	float _replaceProgress = 1.0f;
 	float _basicHeight = 64.0f;
-	bool _splitActionMenu = true;
-	bool _hasExtMenu = false;
+	float _iconWidth = 0.0f;
 	bool _minified = false;
 
 	cocos2d::Component *_listener = nullptr;

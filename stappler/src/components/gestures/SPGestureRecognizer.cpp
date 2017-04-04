@@ -366,6 +366,7 @@ bool PressRecognizer::addTouch(cocos2d::Touch *touch) {
 		_gesture.cleanup();
 		_gesture.touch = touch;
 		_gesture.time.clear();
+		_gesture.limit = _interval;
 		_event = Event::Began;
 		if (_callback) {
 			_callback(this, _event, _gesture);

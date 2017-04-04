@@ -68,6 +68,7 @@ public:
 	using CssMap = Map<String, style::CssData>;
 	using FontFaceMap = Map<String, Vector<style::FontFace>>;
 
+	static String resolveName(const String &);
 	static String getImageName(const String &);
 	static Vector<String> getImageOptions(const String &);
 

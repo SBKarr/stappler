@@ -135,11 +135,11 @@ struct _Rc_PtrCast<Base, SmartRef<Base>> {
 	inline static Base *cast(SmartRef<Base> *b) { if (b != nullptr) { return b->_data.ptr(); } return nullptr; }
 };
 
-template <class Base>
+template <typename Base, typename _Type = typename std::conditional<std::is_base_of<Ref, Base>::value, Base, SmartRef<Base>>::type>
 class Rc {
 public:
-	using Type = typename std::conditional<std::is_base_of<Ref, Base>::value, Base, SmartRef<Base>>::type;
-	using Self = Rc<Base>;
+	using Type = _Type;
+	using Self = Rc<Base, _Type>;
 	using Pointer = Type *;
 
 	template <class... Args>

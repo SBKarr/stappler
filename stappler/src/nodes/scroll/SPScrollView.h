@@ -89,6 +89,7 @@ protected:
 	virtual void onAnimationFinished() override;
 
 	virtual void updateIndicatorPosition();
+	virtual void updateIndicatorPosition(cocos2d::Node *indicator, float size, float value, bool actions, float min);
 
 	Overscroll *_overflowFront = nullptr;
 	Overscroll *_overflowBack = nullptr;

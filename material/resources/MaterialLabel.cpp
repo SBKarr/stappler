@@ -129,6 +129,34 @@ void Label::preloadChars(const String &type, const Vector<char16_t> &chars) {
 
 }
 
+bool Label::ExternalFormatter::init(bool userFont, float w) {
+	auto m = ResourceManager::getInstance();
+	auto source = (userFont?m->getUserFontSource():m->getSystemFontSource());
+	if (!DynamicLabel::ExternalFormatter::init(source, w, screen::density())) {
+		return false;
+	}
+	return true;
+}
+
+void Label::ExternalFormatter::addString(FontType style, const String &str, bool localized) {
+	DynamicLabel::ExternalFormatter::addString(getFontStyle(style), string::toUtf16(str), localized);
+}
+void Label::ExternalFormatter::addString(FontType style, const WideString &str, bool localized) {
+	DynamicLabel::ExternalFormatter::addString(getFontStyle(style), str, localized);
+}
+void Label::ExternalFormatter::addString(const String &style, const String &str, bool localized) {
+	DynamicLabel::ExternalFormatter::addString(getFontStyle(style), string::toUtf16(str), localized);
+}
+void Label::ExternalFormatter::addString(const String &style, const WideString &str, bool localized) {
+	DynamicLabel::ExternalFormatter::addString(getFontStyle(style), str, localized);
+}
+void Label::ExternalFormatter::addString(const DescriptionStyle &style, const String &str, bool localized) {
+	DynamicLabel::ExternalFormatter::addString(style, string::toUtf16(str), localized);
+}
+void Label::ExternalFormatter::addString(const DescriptionStyle &style, const WideString &str, bool localized) {
+	DynamicLabel::ExternalFormatter::addString(style, str, localized);
+}
+
 Size Label::getLabelSize(FontType t, const String &str, float w, float density, bool localized) {
 	return getLabelSize(getFontStyle(t), string::toUtf16(str), w, density, localized);
 }

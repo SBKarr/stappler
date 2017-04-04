@@ -99,7 +99,7 @@ static NSUInteger adapt(unsigned delta, unsigned numpoints, BOOL firsttime) {
 + (const UTF32Char *)longCharactersWithString:(NSString *)str WithCount:(NSUInteger *)count {
 	NSData *data = [str dataUsingEncoding:UTF32_ENCODING];
 	*count = [data length] / sizeof(UTF32Char);
-	return [data bytes];
+	return (const UTF32Char *)[data bytes];
 }
 
 + (NSString *)punycodeEncodedString:(NSString *)str {

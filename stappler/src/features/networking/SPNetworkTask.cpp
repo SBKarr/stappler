@@ -55,7 +55,10 @@ bool NetworkTask::init(Method method, const std::string &url) {
 		return false;
 	}
 
-	Device::getInstance();
+	auto dev = Device::getInstance();
+
+	addHeader("X-ApplicationName", dev->getBundleName());
+	addHeader("X-ApplicationVersion", stappler::toString(dev->getApplicationVersionCode()));
 
     return true;
 }

@@ -60,6 +60,7 @@ struct Tap {
 
 struct Press {
 	Touch touch;
+	TimeInterval limit;
 	TimeInterval time;
 	int count = 0;
 

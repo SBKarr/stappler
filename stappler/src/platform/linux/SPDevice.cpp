@@ -43,6 +43,7 @@ namespace desktop {
 	String getPackageName();
 	float getDensity();
 	String getUserLanguage();
+	String getAppVersion();
 }
 
 NS_SP_PLATFORM_END
@@ -82,7 +83,11 @@ namespace device {
 		return "Linux App";
 	}
 	String _applicationVersion() {
-		return "2.0";
+#ifndef SP_RESTRICT
+		return desktop::getAppVersion();
+#else
+		return "1.0";
+#endif
 	}
 	Size _screenSize() {
 #ifndef SP_RESTRICT

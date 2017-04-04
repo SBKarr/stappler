@@ -108,9 +108,6 @@ class TabBar;
 class Toolbar;
 class TabToolbar;
 
-class FontSizeMenuButton;
-class LightLevelMenuButton;
-
 class RichTextListenerView;
 class RichTextView;
 class RichTextTooltip;

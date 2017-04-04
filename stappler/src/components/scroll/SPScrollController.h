@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "SPDefine.h"
 #include "2d/CCComponent.h"
+#include "2d/CCNode.h"
 #include "base/CCVector.h"
 
 NS_SP_BEGIN
@@ -34,7 +35,7 @@ public:
 	struct Item;
 
 	/// Callback for node creation
-	using NodeFunction = std::function<cocos2d::Node *(const Item &)>;
+	using NodeFunction = std::function<Rc<cocos2d::Node>(const Item &)>;
 
 	struct Item {
 		Item(const NodeFunction &, const Vec2 &pos, const Size &size, int zIndex);

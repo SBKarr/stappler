@@ -66,11 +66,10 @@ bool FloatingActionButton::init(const TapCallback &tapCallback, const TapCallbac
 	_tapCallback = tapCallback;
 	_longTapCallback = longTapCallback;
 
-	_drawNode = construct<draw::PathNode>(48.0f * 2, 48.0f * 2, stappler::draw::Format::RGBA8888);
+	_drawNode = construct<draw::PathNode>(48, 48, stappler::draw::Format::RGBA8888);
 	_drawNode->setAnchorPoint(Vec2(0.5f, 0.5f));
 	_drawNode->setPosition(Vec2(0.0f, 0.0f));
 	_drawNode->setColor(Color::White);
-	_drawNode->setScale(1.0f / stappler::screen::density());
 	_drawNode->setAntialiased(true);
 	addChild(_drawNode, 31);
 
@@ -98,7 +97,7 @@ void FloatingActionButton::onContentSizeDirty() {
 
 	MaterialNode::onContentSizeDirty();
 
-	_drawNode->setContentSize(_contentSize * 2 * stappler::screen::density());
+	_drawNode->setContentSize(_contentSize * 2);
 	_drawNode->setPosition(_contentSize.width / 2, _contentSize.height / 2);
 	_label->setPosition(_contentSize.width / 2, _contentSize.height / 2);
 	_icon->setPosition(_contentSize.width / 2, _contentSize.height / 2);
@@ -272,8 +271,8 @@ void FloatingActionButton::animateSelection() {
 	_tapAnimationPath.clear();
 	stopActionByTag(123);
 	auto a = construct<ProgressAction>(0.15, [this] (ProgressAction *a, float time) {
-		if (_tapAnimationPath) {
-			_tapAnimationPath.clear().setFillOpacity(32).addCircle(48.0f, 48.0f, 24.0f + (24.0f * time));
+		if (_tapAnimationPath.valid()) {
+			_tapAnimationPath.clear().setFillOpacity(64).addCircle(24.0f, 24.0f, 6.0f + (18.0f * time));
 		}
 	});
 	a->setTag(123);
@@ -284,10 +283,10 @@ void FloatingActionButton::animateDeselection() {
 	stopActionByTag(123);
 	auto a = construct<ProgressAction>(0.25, [this] (ProgressAction *a, float time) {
 		if (_tapAnimationPath) {
-			_tapAnimationPath.setFillOpacity(32 * (1.0f - time));
+			_tapAnimationPath.setFillOpacity(64 * (1.0f - time));
 		}
 	}, nullptr, [this] (ProgressAction *a) {
-		if (_tapAnimationPath) {
+		if (_tapAnimationPath.valid()) {
 			_drawNode->removePath(_tapAnimationPath);
 			_tapAnimationPath = nullptr;
 		}

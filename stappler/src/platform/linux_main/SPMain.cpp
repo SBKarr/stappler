@@ -41,6 +41,7 @@ namespace desktop {
 	bool _isFixed = false;
 	std::string _package;
 	std::string _userLanguage;
+	std::string _appVersion;
 	float _density = 1.0f;
 
 	void setScreenSize(const cocos2d::Size &size) { _screenSize = size; }
@@ -50,6 +51,7 @@ namespace desktop {
 	std::string getPackageName() { return _package; }
 	float getDensity() { return _density; }
 	std::string getUserLanguage() { return _userLanguage; }
+	std::string getAppVersion() { return _appVersion; }
 }
 
 NS_SP_PLATFORM_END
@@ -142,6 +144,7 @@ int main(int argc, char **argv)
 				if (!name.empty()) {
 					packageName = name;
 				}
+				stappler::platform::desktop::_appVersion = obj.getString("appVersion");
 			}
 		}
 	}

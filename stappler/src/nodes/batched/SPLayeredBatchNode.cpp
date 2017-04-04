@@ -44,7 +44,7 @@ void LayeredBatchNode::setTextures(const Vector<Rc<cocos2d::Texture2D>> &tex) {
 		auto size = _commands.size();
 		_commands.reserve(_textures.size());
 		for (size_t i = size; i < _textures.size(); ++ i) {
-			_commands.push_back(Rc<DynamicBatchCommand>::create());
+			_commands.push_back(RcWrap<DynamicBatchCommand>::create());
 		}
 	}
 }
@@ -59,7 +59,7 @@ void LayeredBatchNode::setTextures(const Vector<cocos2d::Texture2D *> &tex) {
 		auto size = _commands.size();
 		_commands.reserve(_textures.size());
 		for (size_t i = size; i < _textures.size(); ++ i) {
-			_commands.push_back(Rc<DynamicBatchCommand>::create());
+			_commands.push_back(RcWrap<DynamicBatchCommand>::create());
 		}
 	}
 }
@@ -75,7 +75,7 @@ void LayeredBatchNode::setTextures(const Vector<Rc<cocos2d::Texture2D>> &tex, Ve
 		auto size = _commands.size();
 		_commands.reserve(_textures.size());
 		for (size_t i = size; i < _textures.size(); ++ i) {
-			_commands.push_back(Rc<DynamicBatchCommand>::create());
+			_commands.push_back(RcWrap<DynamicBatchCommand>::create());
 		}
 	}
 }
@@ -84,7 +84,7 @@ void LayeredBatchNode::draw(cocos2d::Renderer *renderer, const Mat4 &transform, 
 	size_t i = 0;
 	for (auto &it : _textures) {
 		if (!it.atlas && it.texture) {
-			if (auto atlas = construct<DynamicAtlas>(it.texture)) {
+			if (auto atlas = Rc<DynamicAtlas>::create(it.texture)) {
 				it.atlas = atlas;
 				it.atlas->addQuadArray(it.quads);
 			}

@@ -30,7 +30,7 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
-static Map<uint32_t, ShadowSprite::Texture *> s_textures;
+static Map<uint32_t, Rc<ShadowSprite::Texture>> s_textures;
 
 static void createShadowGaussianData(uint8_t *data, uint16_t size, uint16_t radius) {
 	const uint16_t shadow = size - radius;

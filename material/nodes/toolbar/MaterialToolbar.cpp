@@ -33,12 +33,11 @@ THE SOFTWARE.
 #include "SPGestureListener.h"
 #include "SPDataListener.h"
 #include "SPScreen.h"
+#include "SPActions.h"
 
 NS_MD_BEGIN
 
-Toolbar::~Toolbar() {
-	CC_SAFE_RELEASE(_extensionMenuSource);
-}
+Toolbar::~Toolbar() { }
 
 bool Toolbar::init() {
 	if (!MaterialNode::init()) {
@@ -75,11 +74,16 @@ bool Toolbar::init() {
 	_title->setLabelColor(color.text());
 	addChild(_title);
 
+	_scissorNode = construct<StrictNode>();
+	_scissorNode->setPosition(0, 0);
+	_scissorNode->setAnchorPoint(Vec2(0, 0));
+	addChild(_scissorNode, 1);
+
 	_iconsComposer = construct<cocos2d::Node>();
 	_iconsComposer->setPosition(0, 0);
-	_iconsComposer->setAnchorPoint(cocos2d::Vec2(0, 0));
+	_iconsComposer->setAnchorPoint(Vec2(0, 0));
 	_iconsComposer->setCascadeOpacityEnabled(true);
-	addChild(_iconsComposer, 1);
+	_scissorNode->addChild(_iconsComposer, 1);
 
 	return true;
 }
@@ -126,29 +130,51 @@ size_t Toolbar::getMaxActionIcons() const {
 	return _maxActionIcons;
 }
 
-void Toolbar::setSplitActionMenu(bool value) {
-	_splitActionMenu = value;
-}
-bool Toolbar::isActionMenuSplitted() const {
-	return _splitActionMenu;
-}
-
 void Toolbar::setActionMenuSource(MenuSource *source) {
 	if (source != _actionMenuSource) {
 		_actionMenuSource = source;
 	}
 }
-MenuSource * Toolbar::getActionMenuSource() const {
-	return _actionMenuSource;
-}
-void Toolbar::setExtensionMenuSource(MenuSource *source) {
-	if (source != _extensionMenuSource) {
-		_extensionMenuSource = source;
+
+void Toolbar::replaceActionMenuSource(MenuSource *source, size_t maxIcons) {
+	stopAllActionsByTag("replaceActionMenuSource"_tag);
+	if (_prevComposer) {
+		_prevComposer->removeFromParent();
+		_prevComposer = nullptr;
+	}
+
+	_actionMenuSource = source;
+	_maxActionIcons = maxIcons;
+
+	_prevComposer = _iconsComposer;
+	float pos = -_prevComposer->getContentSize().height;
+	_iconsComposer = construct<cocos2d::Node>();
+	_iconsComposer->setPosition(0, pos);
+	_iconsComposer->setAnchorPoint(Vec2(0, 0));
+	_iconsComposer->setCascadeOpacityEnabled(true);
+	_scissorNode->addChild(_iconsComposer, 1);
+
+	float iconWidth = updateMenu(_iconsComposer, _actionMenuSource, _maxActionIcons);
+	if (iconWidth > _iconWidth) {
+		_iconWidth = iconWidth;
 		_contentSizeDirty = true;
 	}
+
+	_replaceProgress = 0.0f;
+	updateProgress();
+
+	runAction(Rc<ProgressAction>::create(0.15f, [this, pos] (ProgressAction *a, float p) {
+		_replaceProgress = p;
+		updateProgress();
+	}, nullptr, [this] (ProgressAction *) {
+		_replaceProgress = 1.0f;
+		updateProgress();
+		_contentSizeDirty = true;
+	}), "replaceActionMenuSource"_tag);
 }
-MenuSource * Toolbar::getExtensionMenuSource() const {
-	return _extensionMenuSource;
+
+MenuSource * Toolbar::getActionMenuSource() const {
+	return _actionMenuSource;
 }
 
 void Toolbar::setColor(const Color &color) {
@@ -162,9 +188,11 @@ void Toolbar::setColor(const Color &color) {
 	_title->setStyle((_textColor == Color::White)?Button::FlatWhite:Button::FlatBlack);
 	_navButton->setStyle((_textColor == Color::White)?Button::FlatWhite:Button::FlatBlack);
 
-	for (auto &it : _icons) {
-		it->setIconColor(_textColor);
-		it->setStyle((_textColor == Color::White)?Button::FlatWhite:Button::FlatBlack);
+	auto &icons = _iconsComposer->getChildren();
+	for (auto &it : icons) {
+		auto icon = static_cast<ButtonIcon *>(it);
+		icon->setIconColor(_textColor);
+		icon->setStyle((_textColor == Color::White)?Button::FlatWhite:Button::FlatBlack);
 	}
 }
 
@@ -177,9 +205,11 @@ void Toolbar::setTextColor(const Color &color) {
 	_title->setStyle((_textColor.text() == Color::Black)?Button::FlatWhite:Button::FlatBlack);
 	_navButton->setStyle((_textColor.text() == Color::White)?Button::FlatWhite:Button::FlatBlack);
 
-	for (auto &it : _icons) {
-		it->setIconColor(_textColor);
-		it->setStyle((_textColor.text() == Color::White)?Button::FlatWhite:Button::FlatBlack);
+	auto &icons = _iconsComposer->getChildren();
+	for (auto &it : icons) {
+		auto icon = static_cast<ButtonIcon *>(it);
+		icon->setIconColor(_textColor);
+		icon->setStyle((_textColor == Color::White)?Button::FlatWhite:Button::FlatBlack);
 	}
 }
 
@@ -242,54 +272,91 @@ const std::function<void()> & Toolbar::getBarCallback() const {
 	return _barCallback;
 }
 
-void Toolbar::updateMenu() {
-	for (auto &it : _icons) {
-		it->removeFromParent();
+void Toolbar::updateProgress() {
+	if (_replaceProgress == 1.0f) {
+		if (_prevComposer) {
+			_prevComposer->removeFromParent();
+			_prevComposer = nullptr;
+		}
 	}
 
-	_icons.clear();
-
-	if (!_actionMenuSource) {
-		return;
+	if (_iconsComposer) {
+		_iconsComposer->setPositionY(progress(_iconsComposer->getContentSize().height, 0.0f, _replaceProgress));
 	}
+	if (_prevComposer) {
+		_prevComposer->setPositionY(progress(0.0f, -_prevComposer->getContentSize().height, _replaceProgress));
+	}
+}
 
+float Toolbar::updateMenu(cocos2d::Node *composer, MenuSource *source, size_t maxIcons) {
+	composer->removeAllChildren();
+	composer->setContentSize(_contentSize);
+
+	float baseline = getBaseLine();
 	size_t iconsCount = 0;
-	auto &menuItems = _actionMenuSource->getItems();
 	auto extMenuSource = Rc<MenuSource>::create();
+	Vector<ButtonIcon *> icons;
+	bool hasExtMenu = false;
 
+	auto &menuItems = _actionMenuSource->getItems();
 	for (auto &item : menuItems) {
 		if (item->getType() == MenuSourceItem::Type::Button) {
 			auto btnSrc = dynamic_cast<MenuSourceButton *>(item.get());
 			if (btnSrc->getNameIcon() != IconName::None) {
-				if (iconsCount < _maxActionIcons) {
+				if (iconsCount < maxIcons) {
 					ButtonIcon *btn = construct<ButtonIcon>();
 					btn->setMenuSourceButton(btnSrc);
-					_iconsComposer->addChild(btn);
-					_icons.push_back(btn);
+					composer->addChild(btn);
+					icons.push_back(btn);
 					iconsCount ++;
-					if (!_splitActionMenu) {
-						extMenuSource->addItem(item);
-					}
-					continue;
+				} else {
+					extMenuSource->addItem(item);
 				}
 			}
 		}
-		extMenuSource->addItem(item);
 	}
 
-	if (_extensionMenuSource || extMenuSource->count() > 0) {
+	if (extMenuSource->count() > 0) {
 		ButtonIcon *btn = construct<ButtonIcon>(IconName::Navigation_more_vert);
-		btn->setMenuSource((_extensionMenuSource != nullptr)?_extensionMenuSource.get():extMenuSource.get());
-		_icons.push_back(btn);
-		_iconsComposer->addChild(btn);
-		_hasExtMenu = true;
+		btn->setMenuSource(extMenuSource);
+		icons.push_back(btn);
+		composer->addChild(btn);
+		hasExtMenu = true;
 	} else {
-		_hasExtMenu = false;
+		hasExtMenu = false;
 	}
+
+	if (icons.size() > 0) {
+		auto pos = composer->getContentSize().width - 56 * (icons.size() - 1) - (hasExtMenu?8:36);
+		for (auto &it : icons) {
+			it->setContentSize(Size(48, std::min(48.0f, _basicHeight)));
+			it->setAnchorPoint(Vec2(0.5, 0.5));
+			it->setPosition(Vec2(pos, baseline));
+			pos += 56;
+		}
+		if (hasExtMenu) {
+			icons.back()->setContentSize(Size(24, std::min(48.0f, _basicHeight)));
+			icons.back()->setPosition(Vec2(composer->getContentSize().width - 24, baseline));
+		}
+	}
+
+	if (icons.size() > 0) {
+		return (56 * (icons.size()) - (hasExtMenu?24:0));
+	}
+	return 0;
 }
 
 void Toolbar::layoutSubviews() {
-	updateMenu();
+	_scissorNode->setContentSize(_contentSize);
+
+	updateProgress();
+
+	auto iconWidth = updateMenu(_iconsComposer, _actionMenuSource, _maxActionIcons);
+	if (_replaceProgress != 1.0f && _iconWidth != 0.0f) {
+		_iconWidth = std::max(iconWidth, _iconWidth);
+	} else {
+		_iconWidth = iconWidth;
+	}
 
 	if (_minified) {
 		_title->setFont(FontType::Body_1);
@@ -312,25 +379,11 @@ void Toolbar::layoutSubviews() {
 		_navButton->setVisible(false);
 	}
 
-	auto labelWidth = getLabelWidth();
+	auto labelWidth = _contentSize.width - 16.0f - (_navButton->isVisible()?64.0f:16.0f) - _iconWidth;
 	_title->setWidth(labelWidth);
 	_title->setContentSize(Size(_title->getContentSize().width, std::min(48.0f, _basicHeight)));
 	_title->setAnchorPoint(Vec2(0, 0.5));
 	_title->setPosition(Vec2(_navButton->isVisible()?64:16, baseline));
-
-	if (_icons.size() > 0) {
-		auto pos = _contentSize.width - 56 * (_icons.size() - 1) - (_hasExtMenu?8:36);
-		for (auto &it : _icons) {
-			it->setContentSize(Size(48, std::min(48.0f, _basicHeight)));
-			it->setAnchorPoint(Vec2(0.5, 0.5));
-			it->setPosition(Vec2(pos, baseline));
-			pos += 56;
-		}
-		if (_hasExtMenu) {
-			_icons.back()->setContentSize(Size(24, std::min(48.0f, _basicHeight)));
-			_icons.back()->setPosition(Vec2(_contentSize.width - 24, baseline));
-		}
-	}
 
 	if (_basicHeight < 48.0f) {
 		_title->setFont(material::FontType::Body_1);
@@ -363,21 +416,6 @@ float Toolbar::getBaseLine() const {
 	} else {
 		return _basicHeight / 2;
 	}
-}
-
-float Toolbar::getLabelWidth() const {
-	auto labelWidth = _contentSize.width - 16.0f;
-	if (_navButton->isVisible()) {
-		labelWidth -= 64.0f;
-	} else {
-		labelWidth -= 16.0f;
-	}
-	if (_icons.size() > 0) {
-		auto icons = _icons.size();
-		float w = (56 * (icons) - (_hasExtMenu?24:0));
-		labelWidth -= w;
-	}
-	return labelWidth;
 }
 
 void Toolbar::updateToolbarBasicHeight() {

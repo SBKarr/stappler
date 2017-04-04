@@ -70,7 +70,7 @@ Document::Image::Image(uint16_t width, uint16_t height, size_t size, const Strin
 : type(Type::Embed), width(width), height(height), offset(0), length(size), name(path), ref("embed://" + path) { }
 
 String Document::getImageName(const String &name) {
-	auto src = name;
+	String src(resolveName(name));
 	auto pos = src.find('?');
 	if (pos != String::npos) {
 		src = src.substr(0, pos);
@@ -82,7 +82,8 @@ Document::Document() {
 	_mediaQueries = style::MediaQuery::getDefaultQueries(_cssStrings);
 }
 
-Vector<String> Document::getImageOptions(const String &src) {
+Vector<String> Document::getImageOptions(const String &isrc) {
+	String src(resolveName(isrc));
 	auto pos = src.find('?');
 	if (pos != String::npos && pos < src.length() - 1) {
 		Vector<String> ret;
@@ -154,6 +155,7 @@ bool Document::init(const Bytes &vec, const String &ct) {
 			for (auto &it : parser.images) {
 				String name = "embed://" + it.name;
 				SP_RTDOC_LOG("image : %s %d %d %lu %lu", it.name.c_str(), it.width, it.height, it.offset, it.length);
+
 				auto imgIt = _images.find(name);
 				if (imgIt == _images.end()) {
 					_images.insert(pair(name, it));
@@ -172,6 +174,25 @@ bool Document::prepare() {
 		return true;
 	}
 	return false;
+}
+
+String Document::resolveName(const String &str) {
+	CharReaderBase r(str);
+	r.trimChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+
+	if (r.is("url(") && r.back() == ')') {
+		r = CharReaderBase(r.data() + 4, r.size() - 5);
+	}
+
+	r.trimChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+
+	if (r.is('\'')) {
+		r.trimChars<CharReaderBase::Chars<'\''>>();
+	} else if (r.is('"')) {
+		r.trimChars<CharReaderBase::Chars<'"'>>();
+	}
+
+	return r.str();
 }
 
 Bytes Document::readData(size_t offset, size_t len) {
@@ -193,7 +214,8 @@ Bytes Document::readData(size_t offset, size_t len) {
 const Document::FontFaceMap &Document::getFontFaces() const {
 	return _fontFaces;
 }
-bool Document::isFileExists(const String &name) const {
+bool Document::isFileExists(const String &iname) const {
+	String name(resolveName(iname));
 	auto imageIt = _images.find(name);
 	if (imageIt != _images.end()) {
 		return true;
@@ -201,7 +223,8 @@ bool Document::isFileExists(const String &name) const {
 	return false;
 }
 
-Bytes Document::getFileData(const String &name) {
+Bytes Document::getFileData(const String &iname) {
+	String name(resolveName(iname));
 	auto imageIt = _images.find(name);
 	if (imageIt != _images.end()) {
 		auto &img = imageIt->second;
@@ -210,7 +233,8 @@ Bytes Document::getFileData(const String &name) {
 	return Bytes();
 }
 
-Bitmap Document::getImageBitmap(const String &name, const Bitmap::StrideFn &fn) {
+Bitmap Document::getImageBitmap(const String &iname, const Bitmap::StrideFn &fn) {
+	String name(resolveName(iname));
 	auto it = name.find('?');
 	ImageMap::const_iterator imageIt;
 	if (it != String::npos) {

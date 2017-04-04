@@ -35,7 +35,7 @@ bool Layout::onBackButton() {
 	} else {
 		auto scene = Scene::getRunningScene();
 		auto content = scene->getContentLayer();
-		if (content->getNodesCount() > 2 && content->getRunningNode() == this) {
+		if (content->getNodesCount() >= 2 && content->getRunningNode() == this) {
 			content->popLastNode();
 			return true;
 		}

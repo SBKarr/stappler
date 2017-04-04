@@ -165,8 +165,12 @@ public:
 	using LinePositionCallback = Function<Pair<uint16_t, uint16_t>(uint16_t &, uint16_t &, float density)>;
 
 public:
+	Formatter();
+
 	// You MUST ensure that source and output exists until formatter is finalized
 	Formatter(FontSource *, FormatSpec *, float density = 1.0f);
+
+	void init(FontSource *, FormatSpec *, float density = 1.0f);
 
 	void setLinePositionCallback(const LinePositionCallback &);
 	void setWidth(uint16_t width);

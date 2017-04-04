@@ -213,6 +213,9 @@ bool RecyclerNode::isRemoved() const {
 Scroll::Item *RecyclerNode::getItem() const {
 	return _item;
 }
+MaterialNode *RecyclerNode::getNode() const {
+	return _node;
+}
 
 
 void RecyclerNode::setPlaceholderText(const String &value) {
@@ -389,7 +392,7 @@ bool RecyclerScroll::init(Source *dataCategory) {
 	return true;
 }
 
-MaterialNode *RecyclerScroll::onItemRequest(const ScrollController::Item &item, Source::Id id) {
+Rc<MaterialNode> RecyclerScroll::onItemRequest(const ScrollController::Item &item, Source::Id id) {
 	auto node = Scroll::onItemRequest(item, id);
 	if (node) {
 		auto it = _items.find(id);
@@ -656,6 +659,20 @@ void RecyclerScroll::onItemsRemoved(const Vector<Rc<Item>> &items) {
 			_listener->removeItem(Source::Id((*it)->getId()), (*it)->getData(), _categoryLookupLevel, _itemsForSubcats);
 		}
 	}
+}
+
+ScrollController::Item * RecyclerScroll::getItemForNode(MaterialNode *) const {
+	auto &items = _controller->getItems();
+	for (auto &it : items) {
+		if (it.node) {
+			if (auto rnode = dynamic_cast<RecyclerNode *>(it.node)) {
+				if (rnode->getNode() == it.node) {
+					return &it;
+				}
+			}
+		}
+	}
+	return nullptr;
 }
 
 NS_MD_END

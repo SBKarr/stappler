@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "SPDataSource.h"
 #include "SPDataListener.h"
 #include "SPScrollController.h"
+#include "SPProgressAction.h"
 
 NS_MD_BEGIN
 
@@ -49,8 +50,8 @@ public:
 	using ItemMap = std::map<Source::Id, Rc<Item>>;
 	using DataMap = std::map<Source::Id, data::Value>;
 
-	using HandlerCallback = std::function<Handler * (Scroll *)>;
-	using ItemCallback = std::function<MaterialNode *(Item *)>;
+	using HandlerCallback = std::function<Rc<Handler> (Scroll *)>;
+	using ItemCallback = std::function<Rc<MaterialNode> (Item *)>;
 	using LoaderCallback = std::function<Loader *(Request, const std::function<void()> &, const Color &)>;
 
 	virtual ~Scroll() { }
@@ -104,6 +105,13 @@ public:
 	// you can use custom loader with this callback
 	virtual void setLoaderCallback(const LoaderCallback &);
 
+public:
+	virtual Rc<ProgressAction> resizeNode(MaterialNode *, float newSize, float duration, const Function<void()> &cb = nullptr);
+	virtual Rc<ProgressAction> resizeNode(ScrollController::Item *, float newSize, float duration, const Function<void()> &cb = nullptr);
+
+	virtual Rc<ProgressAction> removeNode(MaterialNode *, float duration, const Function<void()> &cb = nullptr);
+	virtual Rc<ProgressAction> removeNode(ScrollController::Item *, float duration, const Function<void()> &cb = nullptr);
+
 protected:
 	virtual void onSourceDirty();
 
@@ -123,9 +131,11 @@ protected:
 	virtual void onSliceItems(ItemMap &&, Time, Request);
 
 	virtual void updateItems();
-	virtual Handler *onHandler();
-	virtual MaterialNode *onItemRequest(const ScrollController::Item &, Source::Id);
-	virtual Loader *onLoaderRequest(Request type);
+	virtual Rc<Handler> onHandler();
+	virtual Rc<MaterialNode> onItemRequest(const ScrollController::Item &, Source::Id);
+	virtual Rc<Loader> onLoaderRequest(Request type);
+
+	virtual ScrollController::Item * getItemForNode(MaterialNode *) const;
 
 	virtual void onOverscroll(float delta) override;
 	virtual void updateIndicatorPosition() override;

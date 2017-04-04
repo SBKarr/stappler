@@ -58,8 +58,8 @@ void SearchToolbar::setPlaceholder(const String &str) {
 void SearchToolbar::layoutSubviews() {
 	Toolbar::layoutShadows();
 
-	float baseline = getBaseLine();
-	auto labelWidth = getLabelWidth();
+	//float baseline = getBaseLine();
+	//auto labelWidth = getLabelWidth();
 
 	//_searchInput->setContentSize(Size(labelWidth, 48.0f));
 	//_searchInput->setAnchorPoint(Vec2(0, 0.5));

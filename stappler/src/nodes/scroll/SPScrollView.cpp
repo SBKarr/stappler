@@ -177,14 +177,27 @@ void ScrollView::updateIndicatorPosition() {
 		return;
 	}
 
+	const float scrollWidth = _contentSize.width;
+	const float scrollHeight = _contentSize.height;
+	const float scrollLength = getScrollLength();
+
+	updateIndicatorPosition(_indicator, (isVertical()?scrollHeight:scrollWidth) / scrollLength,
+			(_scrollPosition - getScrollMinPosition()) / (getScrollMaxPosition() - getScrollMinPosition()), true, 20.0f);
+}
+
+void ScrollView::updateIndicatorPosition(cocos2d::Node *indicator, float size, float value, bool actions, float min) {
+	if (!_indicatorVisible) {
+		return;
+	}
+
 	float scrollWidth = _contentSize.width;
 	float scrollHeight = _contentSize.height;
 
 	float scrollLength = getScrollLength();
 	if (isnan(scrollLength)) {
-		_indicator->setVisible(false);
+		indicator->setVisible(false);
 	} else {
-		_indicator->setVisible(_indicatorVisible);
+		indicator->setVisible(_indicatorVisible);
 	}
 
 	auto paddingLocal = _paddingGlobal;
@@ -200,43 +213,41 @@ void ScrollView::updateIndicatorPosition() {
 
 	if (scrollLength > _scrollSize) {
 		if (isVertical()) {
-			float h = (scrollHeight - 4 - paddingLocal.top - paddingLocal.bottom) * scrollHeight / scrollLength;
-			if (h < 20) {
-				h = 20;
+			float h = (scrollHeight - 4 - paddingLocal.top - paddingLocal.bottom) * size;
+			if (h < min) {
+				h = min;
 			}
 			float r = scrollHeight - h - 4 - paddingLocal.top - paddingLocal.bottom;
-			float value = (_scrollPosition - getScrollMinPosition()) / (getScrollMaxPosition() - getScrollMinPosition());
 
-			_indicator->setContentSize(Size(3, h));
-			_indicator->setPosition(Vec2(scrollWidth - 2, paddingLocal.bottom + 2 + r * (1.0f - value)));
-			_indicator->setAnchorPoint(Vec2(1, 0));
+			indicator->setContentSize(Size(3, h));
+			indicator->setPosition(Vec2(scrollWidth - 2, paddingLocal.bottom + 2 + r * (1.0f - value)));
+			indicator->setAnchorPoint(Vec2(1, 0));
 		} else {
-			float h = (scrollWidth - 4 - paddingLocal.left - paddingLocal.right) * scrollWidth / scrollLength;
-			if (h < 20) {
-				h = 20;
+			float h = (scrollWidth - 4 - paddingLocal.left - paddingLocal.right) * size;
+			if (h < min) {
+				h = min;
 			}
 			float r = scrollWidth - h - 4 - paddingLocal.left - paddingLocal.right;
-			float value = (_scrollPosition - getScrollMinPosition()) / (getScrollMaxPosition() - getScrollMinPosition());
 
-			_indicator->setContentSize(Size(h, 3));
-			_indicator->setPosition(Vec2(paddingLocal.left + 2 + r * (value), 2));
-			_indicator->setAnchorPoint(Vec2(0, 0));
+			indicator->setContentSize(Size(h, 3));
+			indicator->setPosition(Vec2(paddingLocal.left + 2 + r * (value), 2));
+			indicator->setAnchorPoint(Vec2(0, 0));
 		}
-		if (_indicator->getOpacity() != 255) {
-			cocos2d::Action *a = _indicator->getActionByTag(19);
-			if (!a) {
-				a = cocos2d::FadeTo::create(progress(0.1f, 0.0f, _indicator->getOpacity() / 255.0f), 255);
-				a->setTag(19);
-				_indicator->runAction(a);
+		if (actions) {
+			if (indicator->getOpacity() != 255) {
+				cocos2d::Action *a = indicator->getActionByTag(19);
+				if (!a) {
+					a = cocos2d::FadeTo::create(progress(0.1f, 0.0f, indicator->getOpacity() / 255.0f), 255);
+					indicator->runAction(a, 19);
+				}
 			}
-		}
 
-		_indicator->stopActionByTag(18);
-		auto fade = cocos2d::Sequence::create(cocos2d::DelayTime::create(2.0f), cocos2d::FadeOut::create(0.25f), nullptr);
-		fade->setTag(18);
-		_indicator->runAction(fade);
+			indicator->stopActionByTag(18);
+			auto fade = action::sequence(2.0f, cocos2d::FadeOut::create(0.25f));
+			indicator->runAction(fade, 18);
+		}
 	} else {
-		_indicator->setVisible(false);
+		indicator->setVisible(false);
 	}
 }
 

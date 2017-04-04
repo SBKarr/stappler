@@ -54,6 +54,8 @@ public:
 	virtual ~PathNode();
 
 	virtual bool init(Format fmt);
+
+	/** Init with coordinate system (0 - width, 0 - height) */
 	virtual bool init(uint16_t width, uint16_t height, Format fmt = Format::A8);
 	virtual bool init(layout::Image * = nullptr, Format fmt = Format::A8);
 

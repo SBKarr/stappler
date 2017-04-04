@@ -172,6 +172,23 @@ public:
 		}
 	};
 
+	class ExternalFormatter : public Ref {
+	public:
+		bool init(Source *, float w = 0.0f, float density = 0.0f);
+
+		void reserve(size_t chars, size_t ranges = 1);
+
+		void addString(const DescriptionStyle &, const String &, bool localized = false);
+		void addString(const DescriptionStyle &, const WideString &, bool localized = false);
+
+		Size finalize();
+
+	protected:
+		layout::FormatSpec _spec;
+		layout::Formatter _formatter;
+		float _density = 1.0f;
+	};
+
 	using StyleVec = Vector< StyleSpec >;
 
 public:

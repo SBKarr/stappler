@@ -55,6 +55,7 @@ bool ProgressAction::init(float duration, float sourceProgress, float targetProg
 
 void ProgressAction::startWithTarget(cocos2d::Node *t) {
 	ActionInterval::startWithTarget(t);
+	_stopped = false;
 	if (_onStart) {
 		_onStart(this);
 	}
@@ -70,21 +71,35 @@ void ProgressAction::stop() {
 	if (_onStop) {
 		_onStop(this);
 	}
+	_stopped = true;
 	ActionInterval::stop();
+}
+
+void ProgressAction::onStopped() {
+	if (_forceStopCallback && !_stopped && _target && _onStop) {
+		_onStop(this);
+	}
 }
 
 void ProgressAction::setSourceProgress(float progress) {
 	_sourceProgress = progress;
 }
-float ProgressAction::getSourceProgress() {
+float ProgressAction::getSourceProgress() const {
 	return _sourceProgress;
 }
 
 void ProgressAction::setTargetProgress(float progress) {
 	_targetProgress = progress;
 }
-float ProgressAction::getTargetProgress() {
+float ProgressAction::getTargetProgress() const {
 	return _targetProgress;
+}
+
+void ProgressAction::setForceStopCallback(bool val) {
+	_forceStopCallback = val;
+}
+bool ProgressAction::isForceStopCallback() const {
+	return _forceStopCallback;
 }
 
 void ProgressAction::setStartCallback(const onStartCallback &cb) {

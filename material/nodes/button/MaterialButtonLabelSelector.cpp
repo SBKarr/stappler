@@ -37,6 +37,7 @@ bool ButtonLabelSelector::init(const TapCallback &tapCallback, const TapCallback
 
 	_label = construct<Label>(FontType::Title);
 	_label->setAnchorPoint(Vec2(0, 0.5));
+	_label->setLocaleEnabled(true);
 	_label->setMaxLines(1);
 	_label->setHyphens(Label::Hyphens::None);
 	addChild(_label);
@@ -65,7 +66,9 @@ void ButtonLabelSelector::setMenuSource(MenuSource *source) {
 
 void ButtonLabelSelector::setString(const std::string &str) {
 	_label->setString(str);
-	_label->tryUpdateLabel();
+	if (_label->isLabelDirty()) {
+		_label->tryUpdateLabel(true);
+	}
 	if (!_icon->isVisible()) {
 		setContentSize(cocos2d::Size(_label->getContentSize().width + 16, _contentSize.height));
 	} else {

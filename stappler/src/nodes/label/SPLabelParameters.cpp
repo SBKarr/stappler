@@ -98,6 +98,46 @@ void LabelParameters::Style::clear() {
 }
 
 
+bool LabelParameters::ExternalFormatter::init(Source *s, float w, float density) {
+	if (!s) {
+		return false;
+	}
+
+	if (density == 0.0f) {
+		_density = screen::density();
+	} else {
+		_density = density;
+	}
+
+	_formatter.init(s, &_spec, _density);
+	if (w > 0.0f) {
+		_formatter.setWidth((uint16_t)roundf(w * _density));
+	}
+	_formatter.begin(0, 0);
+	return true;
+}
+
+void LabelParameters::ExternalFormatter::reserve(size_t chars, size_t ranges) {
+	_spec.reserve(chars, ranges);
+}
+
+void LabelParameters::ExternalFormatter::addString(const DescriptionStyle &style, const String &str, bool localized) {
+	addString(style, string::toUtf16(str), localized);
+}
+void LabelParameters::ExternalFormatter::addString(const DescriptionStyle &style, const WideString &str, bool localized) {
+	if (localized && locale::hasLocaleTags(str.data(), str.size())) {
+		auto u16str = locale::resolveLocaleTags(str.data(), str.size());
+		_formatter.read(style.font, style.text, u16str.data(), u16str.size());
+	} else {
+		_formatter.read(style.font, style.text, str.data(), str.size());
+	}
+}
+
+Size LabelParameters::ExternalFormatter::finalize() {
+	_formatter.finalize();
+	return Size(_spec.width / _density, _spec.height / _density);
+}
+
 WideString LabelParameters::getLocalizedString(const String &s) {
 	return getLocalizedString(string::toUtf16(s));
 }

@@ -47,17 +47,24 @@ public:
     virtual void startWithTarget(cocos2d::Node *t) override;
     virtual void update(float time) override;
     virtual void stop() override;
+    virtual void onStopped() override;
 
     void setSourceProgress(float progress);
-    float getSourceProgress();
+    float getSourceProgress() const;
 
     void setTargetProgress(float progress);
-    float getTargetProgress();
+    float getTargetProgress() const;
+
+    void setForceStopCallback(bool);
+    bool isForceStopCallback() const;
 
     void setStartCallback(const onStartCallback &cb);
     void setUpdateCallback(const onUpdateCallback &cb);
     void setStopCallback(const onStopCallback &cb);
+
 protected:
+    bool _forceStopCallback = false;
+    bool _stopped = true;
     float _sourceProgress = 0.0f;
     float _targetProgress = 0.0f;
 

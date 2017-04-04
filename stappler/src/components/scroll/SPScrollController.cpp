@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "SPDefine.h"
 #include "SPScrollController.h"
 #include "SPScrollViewBase.h"
+#include "2d/CCNode.h"
 
 NS_SP_BEGIN
 
@@ -199,7 +200,8 @@ void ScrollController::onNextObject(Item &h) {
 	}
 
 	if (!h.node) {
-		h.node = h.nodeFunction(h);
+		auto node = h.nodeFunction(h);
+		h.node = node;
 		addScrollNode(h);
 	} else {
 		h.node->setVisible(true);
@@ -238,18 +240,18 @@ size_t ScrollController::addItem(const NodeFunction &fn, float size, int zIndex)
 }
 
 size_t ScrollController::addPlaceholder(const Size &size, const Vec2 &pos) {
-	return addItem([] (const Item &item) -> cocos2d::Node * {
-		return cocos2d::Node::create();
+	return addItem([] (const Item &item) -> Rc<cocos2d::Node> {
+		return Rc<cocos2d::Node>::create();
 	}, size, pos);
 }
 size_t ScrollController::addPlaceholder(float size, float pos) {
-	return addItem([] (const Item &item) -> cocos2d::Node * {
-		return cocos2d::Node::create();
+	return addItem([] (const Item &item) -> Rc<cocos2d::Node>  {
+		return Rc<cocos2d::Node>::create();
 	}, size, pos);
 }
 size_t ScrollController::addPlaceholder(float size) {
-	return addItem([] (const Item &item) -> cocos2d::Node * {
-		return cocos2d::Node::create();
+	return addItem([] (const Item &item) -> Rc<cocos2d::Node>  {
+		return Rc<cocos2d::Node>::create();
 	}, size);
 }
 

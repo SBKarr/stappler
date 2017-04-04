@@ -53,7 +53,7 @@ protected:
 	virtual void updateColor() override;
 
 	Vector<TextureLayer> _textures;
-	Vector<Rc<DynamicBatchCommand>> _commands;
+	Vector<RcWrap<DynamicBatchCommand>> _commands;
 };
 
 NS_SP_END

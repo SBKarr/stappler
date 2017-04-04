@@ -33,7 +33,7 @@ NS_MD_BEGIN
 class Button : public MaterialNode {
 public:
 	using TapCallback = std::function<void()>;
-	using TouchFilter = std::function<bool(const cocos2d::Vec2 &)>;
+	using TouchFilter = std::function<bool(const Vec2 &)>;
 
 	enum Style {
 		Raised,
