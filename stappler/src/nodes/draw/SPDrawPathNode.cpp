@@ -235,29 +235,23 @@ void PathNode::updateCanvas(layout::Subscription::Flags f) {
 	auto currentTex = getTexture();
 	if (!f.empty() || !currentTex || (uint32_t)currentTex->getPixelsWide() != width || (uint32_t)currentTex->getPixelsHigh() != height) {
 		auto tex = generateTexture(getTexture(), width, height, _format, true);
-		_canvas->begin(tex, Color4B(0, 0, 0, 0));
-		_canvas->save();
-		_canvas->translate(offsetX, offsetY);
-		_canvas->scale(scaleX, scaleY);
+		if (tex) {
+			_canvas->begin(tex, Color4B(0, 0, 0, 0));
+			_canvas->save();
+			_canvas->translate(offsetX, offsetY);
+			_canvas->scale(scaleX, scaleY);
 
-		auto &paths = _image->getPaths();
-		for (auto & path : paths) {
-			_canvas->draw(path);
-		}
+			auto &paths = _image->getPaths();
+			for (auto & path : paths) {
+				_canvas->draw(path);
+			}
 
-		_canvas->restore();
-		_canvas->end();
+			_canvas->restore();
+			_canvas->end();
 
-		/*const cocos2d::Texture2D::PixelFormatInfo& info = cocos2d::Texture2D::_pixelFormatInfoTables.at(tex->getPixelFormat());
-		Bytes buf; buf.resize(tex->getPixelsWide() * tex->getPixelsHigh() * tex->getBitsPerPixelForFormat(tex->getPixelFormat()));
-		glBindTexture(GL_TEXTURE_2D, tex->getName());
-		glGetTexImage(GL_TEXTURE_2D, 0, info.format, info.type, buf.data());
-		glBindTexture(GL_TEXTURE_2D, 0);
-		Bitmap::savePng(toString(Time::now().toMicroseconds(), ".png"), buf.data(), tex->getPixelsWide(), tex->getPixelsHigh(),
-				_format==Format::A8?Bitmap::Format::A8:Bitmap::Format::RGBA8888);*/
-
-		if (tex != getTexture()) {
-			setTexture(tex);
+			if (tex != getTexture()) {
+				setTexture(tex);
+			}
 		}
 	}
 }
@@ -271,7 +265,9 @@ Rc<cocos2d::Texture2D> PathNode::generateTexture(cocos2d::Texture2D *tex, uint32
 	auto outtex = Rc<cocos2d::Texture2D>::create(
 			(fmt == Format::A8?cocos2d::Texture2D::PixelFormat::A8:cocos2d::Texture2D::PixelFormat::RGBA8888),
 			w, h, renderTargetRequired?cocos2d::Texture2D::InitAs::RenderTarget:cocos2d::Texture2D::InitAs::DataTexture);
-	outtex->setAliasTexParameters();
+	if (outtex) {
+		outtex->setAliasTexParameters();
+	}
 	return outtex;
 }
 
