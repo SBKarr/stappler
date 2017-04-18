@@ -42,6 +42,7 @@ public:
 	const String & getName() const { return _name; }
 
 	storage::Scheme * exportScheme(storage::Scheme *);
+	storage::Scheme * exportScheme(const String &);
 
 protected:
 	Server _server;

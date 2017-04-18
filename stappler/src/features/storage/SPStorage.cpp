@@ -57,29 +57,29 @@ class Handle {
 public:
 	static Handle *getInstance();
 
-	Handle(const std::string &path);
-	Handle(const std::string &name, const std::string &path);
+	Handle(const String &path);
+	Handle(const String &name, const String &path);
 	~Handle();
 
 	void applyFixes();
 
 	Thread &getThread();
 
-	std::string getData(const std::string &key);
-	void updateData(const std::string &key, const std::string &value);
-	void removeData(const std::string &key);
+	String getData(const String &key);
+	void updateData(const String &key, const String &value);
+	void removeData(const String &key);
 
-	bool createClass(const std::string &cmd);
+	bool createClass(const String &cmd);
 
-	sqlite3_stmt *prepare(const std::string &zSql);
-	void release(const std::string &zSql);
+	sqlite3_stmt *prepare(const String &zSql);
+	void release(const String &zSql);
 
-	data::Value perform(const std::string &str, bool reduce = false);
+	data::Value perform(const String &str, bool reduce = false);
 	data::Value perform(sqlite3_stmt *stmt);
 
 	int getVersion() const { return _version; }
 private:
-	int prepareStmt(sqlite3_stmt **ppStmt, const std::string &zSql);
+	int prepareStmt(sqlite3_stmt **ppStmt, const String &zSql);
 
 	static Handle* s_sharedInternal;
 	static bool s_configured;
@@ -89,7 +89,7 @@ private:
 	sqlite3_stmt *_kv_select_stmt = nullptr;
 	sqlite3_stmt *_kv_remove_stmt = nullptr;
 
-	std::map<std::string, sqlite3_stmt *> _stmts;
+	std::map<String, sqlite3_stmt *> _stmts;
 
 	int _version;
 	Thread _thread;
@@ -97,51 +97,52 @@ private:
 
 class Scheme::Internal : public Ref {
 public:
-	static Internal *create(const std::string &name, FieldsList &&list, AliasesList &&aliases, Handle *storage);
+	static Internal *create(const String &name, FieldsList &&list, AliasesList &&aliases, Handle *storage);
 
 	Internal(Handle *internal);
 
-	const std::string &getName() const { return _name; }
+	const String &getName() const { return _name; }
 
-	bool init(const std::string &name, FieldsList &&list, AliasesList &&aliases);
+	bool init(const String &name, FieldsList &&list, AliasesList &&aliases);
 	bool initialize();
 
 	bool perform(Scheme::Command *cmd);
-	bool perform(const std::string &, const DataCallback &);
+	bool perform(const String &, const DataCallback &);
 
-	bool isOrderingAllowed(const std::string &origField, Flags ordering);
-	bool isFieldAllowed(const std::string &origField, Type type);
+	bool isOrderingAllowed(const String &origField, Flags ordering);
+	bool isFieldAllowed(const String &origField, Type type);
 	bool isValueAllowed(const data::Value &value);
 
-	std::string resolveAlias(const std::string &field);
+	String resolveAlias(const String &field);
 
 protected:
 	friend class Command;
 
-	void writeFieldDef(std::stringstream &stream, const Field &);
-	std::string getCreationCommand();
-	std::string getAlterCommand(const Field &);
+	void writeFieldDef(StringStream &stream, const Field &);
+	String getCreationCommand();
+	String getAlterCommand(const Field &);
 
-	bool isValueFieldAllowed(const std::string &name, const data::Value &value);
-	bool isPrimaryKey(const std::string &name);
+	bool isValueFieldAllowed(const String &name, const data::Value &value);
+	bool isPrimaryKey(const String &name);
 	bool isTypeMatched(Type type, const data::Value &value);
 
 	data::Value performCommand(Scheme::Command *cmd);
-	data::Value performCommand(const std::string &);
+	data::Value performCommand(const String &);
 	data::Value performQuery(Scheme::Command *cmd, sqlite3_stmt *stmt);
 
-	std::string buildQuery(Scheme::Command *cmd);
-	void writeMultiInsert(data::Value &value, std::stringstream &stream);
+	String buildQuery(Scheme::Command *cmd);
+	void writeMultiInsert(data::Value &value, StringStream &stream);
 
 	void bindInsertParams(sqlite3_stmt *stmt, data::Value &value, int &count);
 	void bindCommandParams(Scheme::Command *cmd, sqlite3_stmt *stmt);
 	void runCommandCallback(Scheme::Command *cmd, data::Value &result);
 
-	std::string _name;
-	std::string _primary;
-	std::string _custom;
-	std::map<std::string, Field> _fields; // fields must be in strict weak ordering to use them into prepared statements
-	std::unordered_map<std::string, std::string> _aliases;
+	bool _customIsBinary = false;
+	String _name;
+	String _primary;
+	String _custom;
+	Map<String, Field> _fields; // fields must be in strict weak ordering to use them into prepared statements
+	std::unordered_map<String, String> _aliases;
 
 	Handle *_storage = nullptr;
 };
@@ -153,7 +154,7 @@ Handle *defaultStorage() {
 	return Handle::getInstance();
 }
 
-Handle *create(const std::string &name, const std::string &filePath) {
+Handle *create(const String &name, const String &filePath) {
 	return new Handle(name, filePath);
 }
 
@@ -165,7 +166,7 @@ Thread &thread(Handle *storage) {
 	}
 }
 
-void get(const std::string &key, KeyDataCallback callback, Handle *storage) {
+void get(const String &key, KeyDataCallback callback, Handle *storage) {
 	if (!storage) {
 		storage = Handle::getInstance();
 	}
@@ -185,7 +186,7 @@ void get(const std::string &key, KeyDataCallback callback, Handle *storage) {
 	}
 }
 
-void set(const std::string &key, const data::Value &value, KeyDataCallback callback, Handle *storage) {
+void set(const String &key, const data::Value &value, KeyDataCallback callback, Handle *storage) {
 	if (!storage) {
 		storage = Handle::getInstance();
 	}
@@ -210,7 +211,7 @@ void set(const std::string &key, const data::Value &value, KeyDataCallback callb
 	}
 }
 
-void set(const std::string &key, data::Value &&value, KeyDataCallback callback, Handle *storage) {
+void set(const String &key, data::Value &&value, KeyDataCallback callback, Handle *storage) {
 	if (!storage) {
 		storage = Handle::getInstance();
 	}
@@ -234,7 +235,7 @@ void set(const std::string &key, data::Value &&value, KeyDataCallback callback, 
 	}
 }
 
-void remove(const std::string &key, KeyCallback callback, Handle *storage) {
+void remove(const String &key, KeyCallback callback, Handle *storage) {
 	if (!storage) {
 		storage = Handle::getInstance();
 	}
@@ -258,7 +259,7 @@ void remove(const std::string &key, KeyCallback callback, Handle *storage) {
 
 
 
-Scheme::Field::Field(const std::string &name, Type type, uint8_t flags, uint8_t size)
+Scheme::Field::Field(const String &name, Type type, uint8_t flags, uint8_t size)
 : name(name), type(type), size(size), flags(flags) { }
 
 Scheme::Field::Field(Field &&other)
@@ -274,14 +275,14 @@ Scheme::Field &Scheme::Field::operator= (Field &&other) {
 
 
 
-Scheme::Filter::Filter(const std::string &f, int64_t v) {
+Scheme::Filter::Filter(const String &f, int64_t v) {
 	type = Integer;
 	field = f;
 	valueInteger = v;
 }
 
-Scheme::Filter::Filter(const std::string &f, const std::string &v, bool like) {
-	type = (like)?(Like):(String);
+Scheme::Filter::Filter(const String &f, const String &v, bool like) {
+	type = (like)?(Like):(Text);
 	field = f;
 	valueString = v;
 }
@@ -297,7 +298,7 @@ Scheme::Filter &Scheme::Filter::operator= (Filter &&other) {
 	field = std::move(other.field);
 	if (type == Integer) {
 		valueInteger = other.valueInteger;
-	} else if (type == String || type == Like) {
+	} else if (type == Text || type == Like) {
 		valueString = std::move(other.valueString);
 	}
 
@@ -372,12 +373,12 @@ Scheme::Command *Scheme::Command::select(int64_t value) {
 	return filterBy(field, value);
 }
 
-Scheme::Command *Scheme::Command::select(const std::string &value) {
+Scheme::Command *Scheme::Command::select(const String &value) {
 	auto field = _scheme->_internal->_primary;
 	return filterBy(field, value);
 }
 
-Scheme::Command *Scheme::Command::filterBy(const std::string &field, int64_t value) {
+Scheme::Command *Scheme::Command::filterBy(const String &field, int64_t value) {
 	if (_action == Insert) {
 		_valid = false;
 		log::text("Storage", "Scheme command: filter is not allowed for Insert command");
@@ -392,7 +393,7 @@ Scheme::Command *Scheme::Command::filterBy(const std::string &field, int64_t val
 	return this;
 }
 
-Scheme::Command *Scheme::Command::filterBy(const std::string &field, const std::string &value) {
+Scheme::Command *Scheme::Command::filterBy(const String &field, const String &value) {
 	if (_action == Insert) {
 		_valid = false;
 		log::text("Storage", "Scheme command: filter is not allowed for Insert command");
@@ -407,7 +408,7 @@ Scheme::Command *Scheme::Command::filterBy(const std::string &field, const std::
 	return this;
 }
 
-Scheme::Command *Scheme::Command::filterLike(const std::string &field, const std::string &value) {
+Scheme::Command *Scheme::Command::filterLike(const String &field, const String &value) {
 	if (_action == Insert) {
 		_valid = false;
 		log::text("Storage", "Scheme command: filter is not allowed for Insert command");
@@ -422,7 +423,7 @@ Scheme::Command *Scheme::Command::filterLike(const std::string &field, const std
 	return this;
 }
 
-Scheme::Command *Scheme::Command::orderBy(const std::string &field, Flags orderMode) {
+Scheme::Command *Scheme::Command::orderBy(const String &field, Flags orderMode) {
 	if (_action != Get) {
 		_valid = false;
 		log::text("Storage", "Scheme command: ordering is only allowed for Get command");
@@ -470,7 +471,7 @@ bool Scheme::Command::perform() {
 
 Scheme::Scheme() : _internal(nullptr) { }
 
-Scheme::Scheme(const std::string &name, FieldsList &&list, AliasesList &&aliases, Handle *storage) {
+Scheme::Scheme(const String &name, FieldsList &&list, AliasesList &&aliases, Handle *storage) {
 	_internal = Internal::create(name, std::move(list), std::move(aliases), storage);
 	_storage = storage;
 }
@@ -507,7 +508,7 @@ Scheme &Scheme::operator= (Scheme &&other) {
 	return *this;
 }
 
-std::string Scheme::getName() const {
+String Scheme::getName() const {
 	if (_internal) {
 		return _internal->getName();
 	} else {
@@ -557,12 +558,12 @@ Scheme::Command *Scheme::remove(const SuccessCallback &cb) {
 	return cmd;
 }
 
-bool Scheme::perform(const std::string &sqlString, const DataCallback &cb) {
+bool Scheme::perform(const String &sqlString, const DataCallback &cb) {
 	return _internal->perform(sqlString, cb);
 }
 
 
-Scheme::Internal *Scheme::Internal::create(const std::string &name, FieldsList &&list, AliasesList &&aliases, Handle *internal) {
+Scheme::Internal *Scheme::Internal::create(const String &name, FieldsList &&list, AliasesList &&aliases, Handle *internal) {
 	auto pRet = new Internal(internal);
 	if (pRet->init(name, std::move(list), std::move(aliases))) {
 		return pRet;
@@ -579,13 +580,13 @@ Scheme::Internal::Internal(Handle *internal) : _custom("__data__") {
 	_storage = internal;
 }
 
-bool Scheme::Internal::init(const std::string &name, FieldsList &&list, AliasesList &&aliases) {
+bool Scheme::Internal::init(const String &name, FieldsList &&list, AliasesList &&aliases) {
 	for (auto v = list.begin(); v != list.end(); v ++) {
 		if (v->name == _custom) {
 			log::text("Storage", "Scheme: field name is matched internal custom data field name in mysterious way");
 			assert(false);
 		}
-		std::string name(v->name);
+		String name(v->name);
 		_fields.insert(std::make_pair(std::move(name), std::move(const_cast<Field &>(*v) )));
 	}
 
@@ -627,11 +628,11 @@ bool Scheme::Internal::initialize() {
 		log::format("Storage", "Scheme: WARNING: %s: no PrimaryKey defined", _name.c_str());
 	}
 
-	std::string createCmd = getCreationCommand();
 	auto storage = _storage;
 	auto &thread = _storage->getThread();
-	thread.perform([storage, createCmd, this] (const Task &) -> bool {
+	thread.perform([storage, this] (const Task &) -> bool {
 		// check if table exists
+		String createCmd = getCreationCommand();
 		auto q = toString("SELECT count(*) as num FROM sqlite_master WHERE type='table' AND name='", _name, "'");
 		auto val = storage->perform(q, true);
 
@@ -640,11 +641,15 @@ bool Scheme::Internal::initialize() {
 			val = storage->perform(q);
 
 			if (val.isArray()) {
-				std::set<std::string> fields;
+				std::set<String> fields;
 				for (auto &it : val.getArray()) {
 					auto name = it.getString("name");
 					if (!name.empty() && name != _custom) {
 						fields.insert(name);
+					} else if (name == _custom) {
+						if (it.getString("type") == "BLOB") {
+							_customIsBinary = true;
+						}
 					}
 				}
 
@@ -661,16 +666,20 @@ bool Scheme::Internal::initialize() {
 					}
 				}
 
-				storage->perform(q);
+				if (!q.empty()) {
+					storage->perform(q);
+				}
 				return true;
 			} else {
 				q = toString("DROP TABLE IF EXISTS ", _name, "'");
 				storage->perform(q);
+				_customIsBinary = true;
 				return storage->createClass(createCmd);
 			}
 
 			return false;
 		} else {
+			_customIsBinary = true;
 			return storage->createClass(createCmd);
 		}
 	}, nullptr, this);
@@ -678,7 +687,7 @@ bool Scheme::Internal::initialize() {
 	return true;
 }
 
-void Scheme::Internal::writeFieldDef(std::stringstream &sstream, const Field &field) {
+void Scheme::Internal::writeFieldDef(StringStream &sstream, const Field &field) {
 	sstream << field.name << " ";
 
 	switch (field.type) {
@@ -690,6 +699,9 @@ void Scheme::Internal::writeFieldDef(std::stringstream &sstream, const Field &fi
 		break;
 	case Type::Real:
 		sstream << "REAL";
+		break;
+	case Type::Blob:
+		sstream << "BLOB";
 		break;
 	default:
 		break;
@@ -704,8 +716,8 @@ void Scheme::Internal::writeFieldDef(std::stringstream &sstream, const Field &fi
 	}
 }
 
-std::string Scheme::Internal::getCreationCommand() {
-	std::stringstream sstream;
+String Scheme::Internal::getCreationCommand() {
+	StringStream sstream;
 	sstream << "CREATE TABLE IF NOT EXISTS " << _name << "(";
 
 	bool b = true;
@@ -722,7 +734,7 @@ std::string Scheme::Internal::getCreationCommand() {
 	if (!b) {
 		sstream << ",";
 	}
-	sstream << "\r\n    " << _custom << " TEXT";
+	sstream << "\r\n    " << _custom << " BLOB";
 	sstream << "\r\n);\r\n\r\n";
 
 	for (const auto &v : _fields) {
@@ -740,12 +752,12 @@ std::string Scheme::Internal::getCreationCommand() {
 	return sstream.str();
 }
 
-std::string Scheme::Internal::getAlterCommand(const Field &field) {
+String Scheme::Internal::getAlterCommand(const Field &field) {
 	if (field.flags & PrimaryKey) {
 		return "";
 	}
 
-	std::stringstream str;
+	StringStream str;
 	str << "ALTER TABLE " << _name << " ADD COLUMN ";
 	writeFieldDef(str, field);
 	str << ";\r\n";
@@ -763,8 +775,8 @@ std::string Scheme::Internal::getAlterCommand(const Field &field) {
 	return str.str();
 }
 
-bool Scheme::Internal::isOrderingAllowed(const std::string &origField, Flags ordering) {
-	std::string field = resolveAlias(origField);
+bool Scheme::Internal::isOrderingAllowed(const String &origField, Flags ordering) {
+	String field = resolveAlias(origField);
 	if (field.empty()) {
 		return true;
 	}
@@ -789,8 +801,8 @@ bool Scheme::Internal::isOrderingAllowed(const std::string &origField, Flags ord
 	return true;
 }
 
-bool Scheme::Internal::isFieldAllowed(const std::string &origField, Type type) {
-	std::string field = origField;
+bool Scheme::Internal::isFieldAllowed(const String &origField, Type type) {
+	String field = origField;
 	if (field.empty()) {
 		if (_primary.empty()) {
 			log::format("Storage", "Storage: %s: no primary key", _name.c_str());
@@ -848,8 +860,8 @@ bool Scheme::Internal::isValueAllowed(const data::Value &value) {
 	return false;
 }
 
-bool Scheme::Internal::isValueFieldAllowed(const std::string &name, const data::Value &value) {
-	std::string field = resolveAlias(name);
+bool Scheme::Internal::isValueFieldAllowed(const String &name, const data::Value &value) {
+	String field = resolveAlias(name);
 	auto it = _fields.find(field);
 	if (it == _fields.end()) {
 		return true;
@@ -860,7 +872,7 @@ bool Scheme::Internal::isValueFieldAllowed(const std::string &name, const data::
 	return false;
 }
 
-bool Scheme::Internal::isPrimaryKey(const std::string &name) {
+bool Scheme::Internal::isPrimaryKey(const String &name) {
 	return _primary == resolveAlias(name);
 }
 
@@ -875,13 +887,16 @@ bool Scheme::Internal::isTypeMatched(Type type, const data::Value &value) {
 	case Type::Real:
 		return value.isDouble();
 		break;
+	case Type::Blob:
+		return value.isBytes();
+		break;
 	default:
 		break;
 	}
 	return false;
 }
 
-std::string Scheme::Internal::resolveAlias(const std::string &field) {
+String Scheme::Internal::resolveAlias(const String &field) {
 	auto it = _aliases.find(field);
 	if (it != _aliases.end()) {
 		return it->second;
@@ -914,7 +929,7 @@ bool Scheme::Internal::perform(Scheme::Command *cmd) {
 	return true;
 }
 
-bool Scheme::Internal::perform(const std::string &sql, const DataCallback &cb) {
+bool Scheme::Internal::perform(const String &sql, const DataCallback &cb) {
 	auto storage = _storage;
 	auto &thread = storage->getThread();
 
@@ -976,7 +991,7 @@ data::Value Scheme::Internal::performCommand(Scheme::Command *cmd) {
 	}
 }
 
-data::Value Scheme::Internal::performCommand(const std::string &query) {
+data::Value Scheme::Internal::performCommand(const String &query) {
 	auto storage = _storage;
 	auto stmt = storage->prepare(query);
 
@@ -1000,6 +1015,8 @@ data::Value Scheme::Internal::performQuery(Scheme::Command *cmd, sqlite3_stmt *s
 			data::Value cdata;
 			if (cdataStr.isString()) {
 				cdata = data::read(cdataStr.getString());
+			} else if (cdataStr.isBytes()) {
+				cdata = data::read(cdataStr.getBytes());
 			}
 			if (cdata.isDictionary()) {
 				for (auto &i : cdata.asDict()) {
@@ -1012,8 +1029,8 @@ data::Value Scheme::Internal::performQuery(Scheme::Command *cmd, sqlite3_stmt *s
 	return arr;
 }
 
-std::string Scheme::Internal::buildQuery(Scheme::Command *cmd) {
-	std::stringstream sstream;
+String Scheme::Internal::buildQuery(Scheme::Command *cmd) {
+	StringStream sstream;
 	switch(cmd->_action) {
 	case Command::Get:
 		sstream << "SELECT * FROM " << _name;
@@ -1038,7 +1055,7 @@ std::string Scheme::Internal::buildQuery(Scheme::Command *cmd) {
 
 		bool init = false;
 		for (auto &it : cmd->_data.filters) {
-			if (it.field == _primary && (it.type == Filter::Integer || it.type == Filter::String)) {
+			if (it.field == _primary && (it.type == Filter::Integer || it.type == Filter::Text)) {
 				if (!init) {
 					sstream << " WHERE (" << it.field << "=?";
 					init = true;
@@ -1076,7 +1093,7 @@ std::string Scheme::Internal::buildQuery(Scheme::Command *cmd) {
 		}
 	} else if (cmd->_action == Command::Insert) {
 		if (!cmd->_data.value.isArray()) {
-			std::string names, values;
+			String names, values;
 			bool v = false;
 			for (auto &it : _fields) {
 				if (!v) {
@@ -1101,7 +1118,7 @@ std::string Scheme::Internal::buildQuery(Scheme::Command *cmd) {
 			if (cmd->_data.value.size() == 0) {
 				return "";
 			}
-			std::string names, values;
+			String names, values;
 			bool v = false;
 			for (auto &it : _fields) {
 				if (!v) {
@@ -1168,19 +1185,29 @@ void Scheme::Internal::bindInsertParams(sqlite3_stmt *stmt, data::Value &value, 
 	// bind defined fields in enumeration order
 	for (auto &it : _fields) {
 		if (auto val = value.getValue(it.first)) {
-			if (it.second.type == Type::Integer) {
+			switch (it.second.type) {
+			case Type::Integer:
 				sqlite3_bind_int64(stmt, count, val.getInteger());
-			} else if (it.second.type == Type::Real) {
+				break;
+			case Type::Real:
 				sqlite3_bind_double(stmt, count, val.getDouble());
-			} else if (it.second.type == Type::Text) {
-				auto str = val.getString();
-				if (!str.empty()) {
+				break;
+			case Type::Text:
+				if (!val.empty()) {
+					auto &str = val.getString();
 					sqlite3_bind_text(stmt, count, str.c_str(), (int)str.size(), SQLITE_TRANSIENT);
 				} else {
 					sqlite3_bind_null(stmt, count);
 				}
-			} else {
-				sqlite3_bind_null(stmt, count);
+				break;
+			case Type::Blob:
+				if (!val.empty()) {
+					auto &str = val.getBytes();
+					sqlite3_bind_blob(stmt, count, str.data(), (int)str.size(), SQLITE_TRANSIENT);
+				} else {
+					sqlite3_bind_null(stmt, count);
+				}
+				break;
 			}
 			count ++;
 			value.erase(it.first);
@@ -1190,13 +1217,16 @@ void Scheme::Internal::bindInsertParams(sqlite3_stmt *stmt, data::Value &value, 
 		}
 	}
 
-	data::Value customData = value.getValue(_custom);
-	if (customData.isDictionary()) {
-		value.erase(_custom);
-	}
-
-	if (customData.isString()) {
-		customData = data::read(customData.getString());
+	data::Value customData = std::move(value.getValue(_custom));
+	if (customData) {
+		if (customData.isDictionary()) {
+		} else if (customData.isString()) {
+			customData = data::read(customData.getString());
+		} else if (customData.isBytes()) {
+			customData = data::read(customData.getBytes());
+		} else {
+			customData.clear();
+		}
 		value.erase(_custom);
 	}
 
@@ -1208,7 +1238,12 @@ void Scheme::Internal::bindInsertParams(sqlite3_stmt *stmt, data::Value &value, 
 
 	// bind custom data
 	if (customData.isDictionary() && customData.size() != 0) {
-		sqlite3_bind_text(stmt, count, data::toString(customData).c_str(), -1, SQLITE_TRANSIENT);
+		if (_customIsBinary) {
+			Bytes tmp = data::write(customData, data::EncodeFormat::Cbor);
+			sqlite3_bind_blob(stmt, count, tmp.data(), tmp.size(), SQLITE_TRANSIENT);
+		} else {
+			sqlite3_bind_text(stmt, count, data::toString(customData).c_str(), -1, SQLITE_TRANSIENT);
+		}
 		count ++;
 	} else {
 		sqlite3_bind_null(stmt, count);
@@ -1222,11 +1257,11 @@ void Scheme::Internal::bindCommandParams(Scheme::Command *cmd, sqlite3_stmt *stm
 		for (auto &it : cmd->_data.filters) {
 			if (it.type == Filter::Integer) {
 				sqlite3_bind_int64(stmt, count, it.valueInteger);
-			} else if (it.type == Filter::String) {
+			} else if (it.type == Filter::Text) {
 				sqlite3_bind_text(stmt, count, it.valueString.c_str(), -1, SQLITE_TRANSIENT);
 			} else if (it.type == Filter::Like) {
 				if (_storage->getVersion() < 3007015) {
-					std::string like_stmt("%");
+					String like_stmt("%");
 					like_stmt.append(it.valueString).append("%");
 					sqlite3_bind_text(stmt, count, like_stmt.c_str(), -1, SQLITE_TRANSIENT);
 				} else {
@@ -1291,7 +1326,7 @@ static int StorageInternal_explain_result(void *, int n, char **fields, char **v
 }
 #endif
 
-int Handle::prepareStmt(sqlite3_stmt **ppStmt, const std::string &zSql) {
+int Handle::prepareStmt(sqlite3_stmt **ppStmt, const String &zSql) {
 	auto it = _stmts.find(zSql);
 	if (it != _stmts.end()) {
 		*ppStmt = it->second;
@@ -1300,7 +1335,7 @@ int Handle::prepareStmt(sqlite3_stmt **ppStmt, const std::string &zSql) {
 
 #if (SP_STORAGE_DEBUG)
 	if (zSql.substr(0, 6) == "SELECT" || zSql.substr(0, 5) == "COUNT") {
-		std::string explain = std::string("EXPLAIN QUERY PLAN ") + zSql;
+		String explain = String("EXPLAIN QUERY PLAN ") + zSql;
 		logTag("Storage-Debug", "%s", explain.c_str());
 		sqlite3_exec(_db, explain.c_str(), &StorageInternal_explain_result, this, NULL);
 	}
@@ -1322,10 +1357,10 @@ Handle *Handle::getInstance() {
 	return s_sharedInternal;
 }
 
-Handle::Handle(const std::string &path) : Handle("SqlStorageThread", path) { }
+Handle::Handle(const String &path) : Handle("SqlStorageThread", path) { }
 
-Handle::Handle(const std::string &name, const std::string &ipath) : _db(nullptr), _thread(name) {
-	std::string path = filesystem_native::posixToNative(ipath);
+Handle::Handle(const String &name, const String &ipath) : _db(nullptr), _thread(name) {
+	String path = filesystem_native::posixToNative(ipath);
 	_version = sqlite3_libversion_number();
 
 	auto cfgflag = (CC_TARGET_PLATFORM == CC_PLATFORM_IOS)?SQLITE_CONFIG_SERIALIZED:SQLITE_CONFIG_SINGLETHREAD;
@@ -1379,7 +1414,7 @@ Handle::~Handle() {
 }
 
 void Handle::applyFixes() {
-	std::string q("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='stappler_assets_v2'");
+	String q("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='stappler_assets_v2'");
 
 	bool assetsExists = false;
 	sqlite3_stmt *stmt = nullptr;
@@ -1420,7 +1455,7 @@ Thread &Handle::getThread() {
 	return _thread;
 }
 
-void Handle::updateData(const std::string &key, const std::string &value) {
+void Handle::updateData(const String &key, const String &value) {
 	int ok = SQLITE_OK;
 
 	ok = (ok == SQLITE_OK)?sqlite3_bind_text(_kv_update_stmt, 1, key.c_str(), -1, SQLITE_TRANSIENT):ok;
@@ -1434,7 +1469,7 @@ void Handle::updateData(const std::string &key, const std::string &value) {
 	sqlite3_reset(_kv_update_stmt);
 }
 
-void Handle::removeData(const std::string &key) {
+void Handle::removeData(const String &key) {
 	int ok = SQLITE_OK;
 
 	ok = (ok == SQLITE_OK)?sqlite3_bind_text(_kv_remove_stmt, 1, key.c_str(), -1, SQLITE_TRANSIENT):ok;
@@ -1447,8 +1482,8 @@ void Handle::removeData(const std::string &key) {
 	sqlite3_reset(_kv_remove_stmt);
 }
 
-std::string Handle::getData(const std::string &key) {
-	std::string ret;
+String Handle::getData(const String &key) {
+	String ret;
 	int ok = SQLITE_OK;
 
 	ok = (ok == SQLITE_OK)?sqlite3_bind_text(_kv_select_stmt, 1, key.c_str(), -1, SQLITE_TRANSIENT):ok;
@@ -1467,7 +1502,7 @@ std::string Handle::getData(const std::string &key) {
 	return ret;
 }
 
-bool Handle::createClass(const std::string &cmd) {
+bool Handle::createClass(const String &cmd) {
 	char *errorBuffer = NULL;
 	auto ok = sqlite3_exec(_db, cmd.c_str(), NULL, NULL, &errorBuffer);
 	if (errorBuffer) {
@@ -1479,7 +1514,7 @@ bool Handle::createClass(const std::string &cmd) {
 	return true;
 }
 
-sqlite3_stmt *Handle::prepare(const std::string &zSql) {
+sqlite3_stmt *Handle::prepare(const String &zSql) {
 	sqlite3_stmt *stmt = nullptr;
 	auto err = prepareStmt(&stmt, zSql);
 	if (err == SQLITE_OK) {
@@ -1490,7 +1525,7 @@ sqlite3_stmt *Handle::prepare(const std::string &zSql) {
 	}
 }
 
-void Handle::release(const std::string &zSql) {
+void Handle::release(const String &zSql) {
 	auto it = _stmts.find(zSql);
 	if (it != _stmts.end()) {
 		sqlite3_finalize(it->second);
@@ -1509,7 +1544,7 @@ static int Handle_performCallback(void *ud, int count, char **items, char **cols
 	data::Value v;
 	for (int i = 0; i < count; i++) {
 		if (items[i]) {
-			v.setString(std::string(items[i]), cols[i]);
+			v.setString(String(items[i]), cols[i]);
 		}
 	}
 
@@ -1517,7 +1552,7 @@ static int Handle_performCallback(void *ud, int count, char **items, char **cols
 	return 0;
 }
 
-data::Value Handle::perform(const std::string &str, bool reduce) {
+data::Value Handle::perform(const String &str, bool reduce) {
 	Handle_CallbackHandle h;
 	h.handle = this;
 
@@ -1569,11 +1604,11 @@ data::Value Handle::perform(sqlite3_stmt *stmt) {
 				} else if (type == SQLITE_TEXT) {
 					auto strPtr = (const char *)sqlite3_column_text(stmt, i);
 					auto strLen = sqlite3_column_bytes(stmt, i);
-					dict.setString(std::string(strPtr,strLen), name);
+					dict.setString(String(strPtr, strLen), name);
 				} else if (type == SQLITE_BLOB) {
 					auto strPtr = (const char *)sqlite3_column_text(stmt, i);
 					auto strLen = sqlite3_column_bytes(stmt, i);
-					dict.setString(std::string(strPtr,strLen), name);
+					dict.setBytes(Bytes(strPtr, strPtr + strLen), name);
 				} else if (type == SQLITE_NULL) {
 					dict.setNull(name);
 				}
@@ -1585,7 +1620,7 @@ data::Value Handle::perform(sqlite3_stmt *stmt) {
 #if (SP_STORAGE_DEBUG)
 	auto c_sql = sqlite3_sql(stmt);
 	auto len = strlen(c_sql);
-	std::string sql(c_sql , MIN(len, 60) );
+	String sql(c_sql , MIN(len, 60) );
 	logTag("Storage-Debug", "Request (%s) performed in %ld mks", sql.c_str(), time::getMicroTime() - now);
 #endif
 	return ret;

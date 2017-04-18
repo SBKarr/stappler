@@ -50,6 +50,7 @@ bool InputField::init(FontType font) {
 	_placeholder->setPosition(Vec2(0.0f, 0.0f));
 	_placeholder->setColor(Color::Grey_500);
 	_placeholder->setLocaleEnabled(true);
+	_placeholder->setStandalone(true);
 	addChild(_placeholder, 1);
 
 	_menu = construct<InputMenu>(std::bind(&InputField::onMenuCut, this), std::bind(&InputField::onMenuCopy, this),

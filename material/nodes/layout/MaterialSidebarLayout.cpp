@@ -101,6 +101,7 @@ bool SidebarLayout::init(Position pos) {
 
 		return true;
 	});
+	_listener->setSwallowTouches(true);
 	addComponent(_listener);
 
 	_background = construct<Layer>(material::Color::Grey_500);

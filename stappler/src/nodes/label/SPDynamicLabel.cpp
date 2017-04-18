@@ -246,6 +246,19 @@ void DynamicLabel::setDensity(float density) {
 	}
 }
 
+void DynamicLabel::setStandalone(bool value) {
+	if (_standalone != value) {
+		_standalone = value;
+		_standaloneTextures.clear();
+		_standaloneMap.clear();
+		_standaloneChars.clear();
+		_formatDirty = true;
+	}
+}
+bool DynamicLabel::isStandalone() const {
+	return _standalone;
+}
+
 size_t DynamicLabel::getCharsCount() const {
 	return _format?_format->chars.size():0;
 }
@@ -279,22 +292,48 @@ void DynamicLabel::updateQuads(uint32_t f) {
 		return;
 	}
 
-	for (auto &it : _format->ranges) {
-		_source->addTextureChars(it.layout->getName(), _format->chars, it.start, it.count);
-	}
+	if (!_standalone) {
+		for (auto &it : _format->ranges) {
+			_source->addTextureChars(it.layout->getName(), _format->chars, it.start, it.count);
+		}
 
-	if (!_source->isDirty() && !_source->getTextures().empty()) {
-		//if (f & FLAGS_FORCE_RENDERING) {
+		if (!_source->isDirty() && !_source->getTextures().empty()) {
 			updateQuadsForeground(_source, _format);
-		//} else {
-		//	_quadRequestTime = Time::now();
-		//	updateQuadsBackground(_source, _format);
-		//}
+		}
+	} else {
+		bool sourceDirty = false;
+		for (auto &it : _format->ranges) {
+			auto find_it = _standaloneChars.find(it.layout->getName());
+			if (find_it == _standaloneChars.end()) {
+				find_it = _standaloneChars.emplace(it.layout->getName(), Vector<char16_t>()).first;
+			}
+
+			auto &vec = find_it->second;
+			for (uint32_t i = it.start; i < it.count; ++ i) {
+				const char16_t &c = _format->chars[i].charID;
+				auto char_it = std::lower_bound(vec.begin(), vec.end(), c);
+				if (char_it == vec.end() || *char_it != c) {
+					vec.emplace(char_it, c);
+					sourceDirty = true;
+				}
+			}
+		}
+
+		if (sourceDirty) {
+			_standaloneTextures.clear();
+			_standaloneMap = _source->updateTextures(_standaloneChars, _standaloneTextures);
+		}
+
+		if (!_standaloneTextures.empty()) {
+			updateQuadsStandalone(_source, _format);
+		}
 	}
 }
 
 void DynamicLabel::onTextureUpdated() {
-	_formatDirty = true;
+	if (!_standalone) {
+		_formatDirty = true;
+	}
 	//_textures.clear();
 }
 

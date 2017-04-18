@@ -33,6 +33,7 @@ class DynamicLabel : public LayeredBatchNode, public LabelParameters {
 public:
 	using FormatSpec = layout::FormatSpec;
 	using LineSpec = layout::LineSpec;
+	using FontTextureMap = layout::FontTextureMap;
 
 	using TextureVec = Vector<Rc<cocos2d::Texture2D>>;
 	using QuadVec = Vector<Rc<DynamicQuadArray>>;
@@ -55,6 +56,11 @@ public:
 	virtual void visit(cocos2d::Renderer *r, const Mat4& t, uint32_t f, ZPath &zPath) override;
 
 	virtual void setDensity(float value) override;
+
+	/** Standalone labels use its own textures and char-to-texture maps
+	 * so, they can be rendered without delays */
+	virtual void setStandalone(bool value);
+	virtual bool isStandalone() const;
 
 	virtual size_t getCharsCount() const;
 	virtual size_t getLinesCount() const;
@@ -81,6 +87,7 @@ protected:
 
 	virtual void updateQuadsBackground(Source *, FormatSpec *);
 	virtual void updateQuadsForeground(Source *, const FormatSpec *);
+	virtual void updateQuadsStandalone(Source *, const FormatSpec *);
 	virtual void onQuads(const Time &, const Vector<Rc<cocos2d::Texture2D>> &newTex,
 			Vector<Rc<DynamicQuadArray>> &&newQuads, Vector<Vector<bool>> &&cMap);
 
@@ -90,11 +97,17 @@ protected:
 	Rc<Source> _source;
 	Rc<FormatSpec> _format;
 	Vector<Vector<bool>> _colorMap;
+
+	bool _standalone = false;
 	bool _formatDirty = true;
 	bool _colorDirty = false;
 	bool _inUpdate = false;
 
 	size_t _updateCount = 0;
+
+	Map<String, Vector<char16_t>> _standaloneChars;
+	Vector<Rc<cocos2d::Texture2D>> _standaloneTextures;
+	FontTextureMap _standaloneMap;
 };
 
 NS_SP_END

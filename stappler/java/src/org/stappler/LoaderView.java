@@ -33,44 +33,7 @@ public class LoaderView extends FrameLayout {
 		progressLayout = new RelativeLayout(ctx);
 		addView(progressLayout);
 	}
-	
-	public void showProgress() {
-		progressLayout.setBackgroundColor(0xCCCCCCCC);
 
-	    RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(
-	    		RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
-	    lp.addRule(RelativeLayout.CENTER_HORIZONTAL);
-		
-		ProgressBar progressBar = new ProgressBar(getContext(), null, android.R.attr.progressBarStyleHorizontal);
-		progressBar.setIndeterminate(true);
-		progressBar.setId(1);
-		progressLayout.addView(progressBar, lp);
-
-		
-	    RelativeLayout.LayoutParams tv1lp = new RelativeLayout.LayoutParams(
-	    		RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
-	    tv1lp.addRule(RelativeLayout.BELOW, progressBar.getId());
-
-		TextView tv1 = new TextView(getContext());
-		tv1.setGravity(Gravity.CENTER_HORIZONTAL);
-	    tv1.setText("Обновляю приложение");
-	    tv1.setId(2);
-	    tv1.setTextSize(20);
-	    progressLayout.addView(tv1, tv1lp);
-
-	    
-	    RelativeLayout.LayoutParams tv2lp = new RelativeLayout.LayoutParams(
-	    		RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
-	    tv2lp.addRule(RelativeLayout.BELOW, tv1.getId());
-
-		TextView tv2 = new TextView(getContext());
-		tv2.setGravity(Gravity.CENTER_HORIZONTAL);
-	    tv2.setText("Пожалуйста, подождите");
-	    tv2.setId(3);
-	    tv2.setTextSize(20);
-	    progressLayout.addView(tv2, tv2lp);
-	}
-	
 	protected void onLayout (boolean changed, int left, int top, int right, int bottom) {
 		super.onLayout(changed, left, top, right, bottom);
 

@@ -129,12 +129,12 @@ void FloatingActionButton::setProgress(float value) {
 			_progressPath = nullptr;
 		} else if (_progress != 0.0f) {
 			if (!_progressPath) {
-				_progressPath = _drawNode->addPath().setStrokeColor(Color4B(_progressColor, 222)).setStrokeWidth(_progressWidth);
+				_progressPath = _drawNode->addPath().setStrokeColor(Color4B(_progressColor, 222)).setStrokeWidth(_progressWidth / 2.0f);
 			}
 
 			_progressPath.clear()
 					.setStyle(draw::Path::Style::Stroke)
-					.addArc(Rect(26, 26, 44, 44), -90_to_rad, 360_to_rad * _progress);
+					.addArc(Rect(13, 13, 22, 22), -90_to_rad, 360_to_rad * _progress);
 		}
 	}
 }

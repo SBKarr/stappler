@@ -26,6 +26,8 @@ THE SOFTWARE.
 #include "Define.h"
 #include "ServerComponent.h"
 
+#include "StorageScheme.h"
+
 NS_SA_BEGIN
 
 ServerComponent::ServerComponent(Server &serv, const String &name, const data::Value &dict)
@@ -35,6 +37,10 @@ void ServerComponent::onChildInit(Server &serv) { }
 
 storage::Scheme * ServerComponent::exportScheme(storage::Scheme *scheme) {
 	return _server.exportScheme(scheme);
+}
+
+storage::Scheme * ServerComponent::exportScheme(const String &name) {
+	return _server.exportScheme(new storage::Scheme(name));
 }
 
 NS_SA_END

@@ -81,6 +81,7 @@ bool InputLabel::init(const DescriptionStyle &desc, float w) {
 		return false;
 	}
 
+	_standalone = true;
 	_emplaceAllChars = true;
 
 	_handler.onText = std::bind(&InputLabel::onText, this, std::placeholders::_1, std::placeholders::_2);

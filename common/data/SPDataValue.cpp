@@ -636,6 +636,10 @@ size_t Value::size() const {
 		return dictVal->size();
 	} else if (_type == Type::ARRAY) {
 		return arrayVal->size();
+	} else if (_type == Type::CHARSTRING) {
+		return strVal->size();
+	} else if (_type == Type::BYTESTRING) {
+		return bytesVal->size();
 	}
 	return 0;
 }
@@ -645,6 +649,10 @@ bool Value::empty() const {
 		return dictVal->empty();
 	} else if (_type == Type::ARRAY) {
 		return arrayVal->empty();
+	} else if (_type == Type::CHARSTRING) {
+		return strVal->empty();
+	} else if (_type == Type::BYTESTRING) {
+		return bytesVal->empty();
 	} else if (_type == Type::EMPTY) {
 		return true;
 	}

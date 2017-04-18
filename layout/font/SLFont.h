@@ -61,6 +61,17 @@ struct CharSpec { // 8 bytes
 	uint16_t advance = 0;
 };
 
+struct CharTexture {
+	char16_t charID = 0;
+	uint16_t x = 0;
+	uint16_t y = 0;
+	uint16_t width = 0;
+	uint16_t height = 0;
+	uint8_t texture = maxOf<uint8_t>();
+
+	operator char16_t() const { return charID; }
+};
+
 struct FontCharString {
 	void addChar(char16_t);
 	void addString(const String &);
@@ -68,6 +79,13 @@ struct FontCharString {
 	void addString(const char16_t *, size_t);
 
 	Vector<char16_t> chars;
+};
+
+using FontTextureMap = Map<String, Vector<CharTexture>>;
+
+struct FontTextureInterface {
+	Function<size_t(uint16_t, uint16_t)> emplaceTexture;
+	Function<bool(size_t, const void *data, uint16_t offsetX, uint16_t offsetY, uint16_t width, uint16_t height)> draw;
 };
 
 struct FontData {
@@ -136,17 +154,6 @@ protected:
 	UpdateCallback _updateCallback = nullptr;
 	const FontSource * _source = nullptr;
 	Mutex _mutex;
-};
-
-struct CharTexture {
-	char16_t charID = 0;
-	uint16_t x = 0;
-	uint16_t y = 0;
-	uint16_t width = 0;
-	uint16_t height = 0;
-	uint8_t texture = maxOf<uint8_t>();
-
-	operator char16_t() const { return charID; }
 };
 
 class FontSource : public Ref {

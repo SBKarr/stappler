@@ -45,7 +45,7 @@ public:
 
 	bool hasFiles() const;
 
-	const apr::map<apr::string, Field> & getFields() const;
+	const Map<String, Field> & getFields() const;
 	const Field *getField(const String &str) const;
 
 	const Field *getForeignLink(const FieldObject *f) const;
@@ -147,7 +147,7 @@ protected:
 	bool validateHint(const String &alias, const data::Value &);
 	bool validateHint(const data::Value &);
 
-	apr::map<apr::string, Field> fields;
+	Map<String, Field> fields;
 	String name;
 
 	size_t maxRequestSize = 0;

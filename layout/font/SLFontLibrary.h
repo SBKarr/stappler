@@ -38,11 +38,11 @@ struct FontStruct {
 using FontStructMap = Map<String, FontStruct>;
 using FontFaceMap = Map<String, FT_Face>;
 using FontFacePriority = Vector<Pair<String, uint16_t>>;
-using FontTextureMap = Map<String, Vector<CharTexture>>;
 using FontTextureLayout = Pair<uint32_t, FontTextureMap>;
 
 class FreeTypeInterface : public AllocBase {
 public: /* common functions */
+	using FontTextureInterface = layout::FontTextureInterface;
 
 	FreeTypeInterface(const String &);
 	~FreeTypeInterface();
@@ -64,12 +64,6 @@ public: /* fonts interface */
 	 */
 	Arc<FontLayout::Data> requestLayoutUpgrade(const FontSource *, const Vector<String> &,
 			const Arc<FontLayout::Data> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb);
-
-
-	struct FontTextureInterface {
-		Function<size_t(uint16_t, uint16_t)> emplaceTexture;
-		Function<bool(size_t, const void *data, uint16_t offsetX, uint16_t offsetY, uint16_t width, uint16_t height)> draw;
-	};
 
 	FontTextureMap updateTextureWithSource(uint32_t v, FontSource *source, const Map<String, Vector<char16_t>> &l, const FontTextureInterface &);
 
@@ -111,79 +105,6 @@ protected:
 	FontFaceMap openedFaces;
 	FT_Library FTlibrary = nullptr;
 };
-
-/*class FontLibrary;
-class FontLibraryCache {
-public:
-	FontLibraryCache(FontLibrary *);
-	~FontLibraryCache();
-
-	void clear();
-	void update();
-	Time getTimer() const;
-
-protected:
-	FT_Face openFontFace(const Bytes &data, const String &font, uint16_t fontSize);
-	FontStructMap::iterator processFile(Bytes && data, const String &file);
-	FontStructMap::iterator openFile(const Source *source, const ReceiptCallback &cb, const String &name, const String &file);
-	FT_Face getFace(const Source *source, const ReceiptCallback &cb, const String &file, uint16_t size);
-
-	Metrics getMetrics(FT_Face face, uint16_t);
-
-	void requestCharUpdate(const Source *, const ReceiptCallback &cb, const Vector<String> &, uint16_t size, Vector<FT_Face> &, Vector<CharLayout> &, char16_t);
-	bool getKerning(const Vector<FT_Face> &faces, char16_t first, char16_t second, int16_t &value);
-
-	void drawCharOnBitmap(cocos2d::Texture2D *bmp, const URect &, FT_Bitmap *bitmap);
-
-	FontLibrary *library;
-	Time timer;
-};
-
-using FontTextureLayout = Pair<uint32_t, Map<String, Vector<CharTexture>>>;
-
-struct FontLayoutData {
-	Arc<FontLayout> layout;
-	Vector<CharTexture> *chars;
-	Vector<FT_Face> faces;
-};
-
-class FontLibrary {
-public:
-	static FontLibrary *getInstance();
-	FontLibrary();
-	~FontLibrary();
-	void update(float dt);
-
-	Arc<FontLibraryCache> getCache();
-
-	Vector<size_t> getQuadsCount(const FormatSpec *format, const Map<String, Vector<CharTexture>> &layouts, size_t texSize);
-
-	bool writeTextureQuads(uint32_t v, FontSource *, const FormatSpec *, const Vector<Rc<cocos2d::Texture2D>> &,
-			Vector<Rc<DynamicQuadArray>> &, Vector<Vector<bool>> &);
-
-	bool writeTextureRects(uint32_t v, FontSource *, const FormatSpec *, float scale, Vector<Rect> &);
-
-	bool isSourceRequestValid(FontSource *, uint32_t);
-
-	void cleanupSource(FontSource *);
-	Arc<FontTextureLayout> getSourceLayout(FontSource *);
-	void setSourceLayout(FontSource *, FontTextureLayout &&);
-
-protected:
-	void writeTextureQuad(const FormatSpec *format, const font::Metrics &m, const font::CharSpec &c, const font::CharLayout &l, const font::CharTexture &t,
-			const font::RangeSpec &range, const font::LineSpec &line, Vector<bool> &cMap, const cocos2d::Texture2D *tex, DynamicQuadArray *quad);
-
-	std::mutex _mutex;
-	Time _timer = 0;
-	Map<uint64_t, Arc<FontLibraryCache>> _cache;
-
-	std::mutex _sourcesMutex;
-	Map<Source *, Arc<FontTextureLayout>> _sources;
-
-	static FontLibrary *s_instance;
-	static std::mutex s_mutex;
-};
-*/
 
 NS_LAYOUT_END
 

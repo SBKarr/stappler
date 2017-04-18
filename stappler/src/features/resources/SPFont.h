@@ -57,6 +57,8 @@ public:
 	static EventHeader onTextureUpdated;
 
 	using AssetMap = Map<String, Rc<AssetFile>>;
+	using FontTextureMap = layout::FontTextureMap;
+	using FontTextureInterface = layout::FontTextureInterface;
 
 	static Bytes acquireFontData(const layout::FontSource *, const String &, const ReceiptCallback &);
 
@@ -78,6 +80,8 @@ public:
 	void unschedule();
 
 	void cleanup();
+
+	FontTextureMap updateTextures(const Map<String, Vector<char16_t>> &l, Vector<Rc<cocos2d::Texture2D>> &);
 
 protected:
 	void updateTexture(uint32_t, const Map<String, Vector<char16_t>> &);

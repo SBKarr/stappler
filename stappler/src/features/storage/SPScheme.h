@@ -65,7 +65,8 @@ public:
 	enum class Type : uint8_t {
 		Real,
 		Integer,
-		Text
+		Text,
+		Blob
 	};
 
 	/** Modifiers for fields */
@@ -80,12 +81,12 @@ public:
 	using SuccessCallback = std::function<void(bool)>;
 
 	using FieldsList = std::initializer_list<Field>;
-	using AliasesList = std::initializer_list<std::pair<std::string, std::string>>;
+	using AliasesList = std::initializer_list<std::pair<String, String>>;
 
 public:
 	Scheme();
 
-	Scheme(const std::string &name, FieldsList &&, AliasesList && = {}, Handle * = nullptr);
+	Scheme(const String &name, FieldsList &&, AliasesList && = {}, Handle * = nullptr);
 	~Scheme();
 
 	Scheme(const Scheme &);
@@ -96,7 +97,7 @@ public:
 
 	inline operator bool() const { return _internal != nullptr; }
 
-	std::string getName() const;
+	String getName() const;
 
 	/** Returns new Get (SELECT *) command pointer
 	 * Without options this command will return all rows in table */
@@ -115,7 +116,7 @@ public:
 	 * Without options this command will remove all rows from table */
 	Command *remove(const SuccessCallback &cb = nullptr);
 
-	bool perform(const std::string &sqlString, const DataCallback &cb = nullptr);
+	bool perform(const String &sqlString, const DataCallback &cb = nullptr);
 
 protected:
 	class Filter;
@@ -130,7 +131,7 @@ public:
 	 */
 	class Field {
 	public:
-		Field(const std::string &name, Type type, uint8_t flags = 0, uint8_t size = 0);
+		Field(const String &name, Type type, uint8_t flags = 0, uint8_t size = 0);
 
 		Field(Field &&other);
 		Field &operator= (Field &&other);
@@ -141,7 +142,7 @@ public:
 		friend class Scheme;
 		friend class Internal;
 
-		std::string name;
+		String name;
 		Type type;
 		uint8_t size;
 		uint8_t flags;
@@ -176,7 +177,7 @@ public:
 			return select((int64_t)t);
 		}
 
-		Command *_select(const std::string &str) {
+		Command *_select(const String &str) {
 			return select(str);
 		}
 
@@ -186,29 +187,29 @@ public:
 		/** Adds filter, based on string primary key.
 		 * If primary key is not string, command will not be performed.
 		 * Allowed for Get, Count, Remove */
-		Command *select(const std::string &value);
+		Command *select(const String &value);
 
 		/** Adds filter, based on integer column (field=value)
 		 * If field is not integer or there is no index on
 		 * field, command will not be performed.
 		 * Allowed for Get, Count, Remove */
-		Command *filterBy(const std::string &field, int64_t value);
+		Command *filterBy(const String &field, int64_t value);
 
 		/** Adds filter, based on string column (field=value)
 		 * If field is not string or there is no index on
 		 * field, command will not be performed.
 		 * Allowed for Get, Count, Remove */
-		Command *filterBy(const std::string &field, const std::string &value);
+		Command *filterBy(const String &field, const String &value);
 
 		/** Adds filter, based on string column ( instr(field,value) )
 		 * If field is not string, command will not be performed.
 		 * Allowed for Get, Count, Remove */
-		Command *filterLike(const std::string &field, const std::string &value);
+		Command *filterLike(const String &field, const String &value);
 
 		/** Sets ordering rules to field, command will not be performed,
 		 * if there is no index on ordering field in specified direction.
 		 * Allowed for Get */
-		Command *orderBy(const std::string &field, Flags orderMode);
+		Command *orderBy(const String &field, Flags orderMode);
 
 		/** Limits number of returned rows.
 		 * Allowed for Get, Remove */
@@ -238,7 +239,7 @@ public:
 			~Callback();
 		} _callback;
 
-		std::string _order;
+		String _order;
 		Flags _orderMode = IndexDesc;
 
 		uint32_t _count = maxOf<uint32_t>();
@@ -260,12 +261,12 @@ protected:
 		enum Type : uint8_t {
 			None,
 			Integer,
-			String,
+			Text,
 			Like,
 		};
 
-		Filter(const std::string &field, int64_t value);
-		Filter(const std::string &field, const std::string &value, bool like = false);
+		Filter(const String &field, int64_t value);
+		Filter(const String &field, const String &value, bool like = false);
 
 		Filter(Filter &&other);
 		Filter &operator= (Filter &&other);
@@ -276,10 +277,10 @@ protected:
 		~Filter();
 
 		Type type = None;
-		std::string field;
+		String field;
 
 		int64_t valueInteger = 0;
-		std::string valueString;
+		String valueString;
 	};
 
 	class Internal;

@@ -364,6 +364,9 @@ float FontSource::getFontScale() const {
 void FontSource::update() {
 	if (_dirty) {
 		auto v = (++ _version);
+		if (v == maxOf<uint32_t>()) {
+			v = _version = 0;
+		}
 		_dirty = false;
 		if (_updateCallback) {
 			_updateCallback(v, _textureLayouts);
@@ -452,7 +455,7 @@ uint32_t FontSource::getTextureVersion() const {
 }
 
 bool FontSource::isTextureRequestValid(uint32_t v) const {
-	return _version.load() == v;
+	return v == maxOf<uint32_t>() ||  _version.load() == v;
 }
 
 bool FontSource::isDirty() const {

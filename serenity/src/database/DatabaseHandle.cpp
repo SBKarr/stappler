@@ -470,7 +470,9 @@ data::Value Handle::patchObject(Scheme *scheme, uint64_t oid, const data::Value 
 				data_it = data_dict.erase(data_it);
 				continue;
 			} else if (t == storage::Type::Object) {
-				postUpdate.setInteger(data_it->second.getInteger(), data_it->first);
+				if (data_it->second.isInteger()) {
+					postUpdate.setValue(data_it->second, data_it->first);
+				}
 			}
 		} else {
 			data_it = data_dict.erase(data_it);

@@ -278,17 +278,6 @@ public class Activity extends Cocos2dxActivity {
 			e.printStackTrace(System.out);
 		}
 	}
-	
-	public void showSplashProgress() {
-		runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-        		if (_splashScreen != null) {
-        			_splashScreen.showProgress();
-        		}
-			}
-		});
-	}
 
 	public void removeSplashScreen() {
 		if (_splashScreen != null) {

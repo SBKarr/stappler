@@ -65,6 +65,9 @@ public:
 	bool writeTextureQuads(uint32_t v, FontSource *, const layout::FormatSpec *, const Vector<Rc<cocos2d::Texture2D>> &,
 			Vector<Rc<DynamicQuadArray>> &, Vector<Vector<bool>> &);
 
+	bool writeTextureQuads(uint32_t v, FontSource *, const layout::FontTextureMap &, const layout::FormatSpec *,
+			const Vector<Rc<cocos2d::Texture2D>> &, Vector<Rc<DynamicQuadArray>> &, Vector<Vector<bool>> &);
+
 	bool writeTextureRects(uint32_t v, FontSource *, const layout::FormatSpec *, float scale, Vector<Rect> &);
 
 	bool isSourceRequestValid(layout::FontSource *, uint32_t);
@@ -257,8 +260,6 @@ void FontLibrary::writeTextureQuad(const layout::FormatSpec *format, const layou
 
 bool FontLibrary::writeTextureQuads(uint32_t v, FontSource *source, const layout::FormatSpec *format, const Vector<Rc<cocos2d::Texture2D>> &texs,
 		Vector<Rc<DynamicQuadArray>> &quads, Vector<Vector<bool>> &colorMap) {
-	colorMap.resize(texs.size());
-
 	if (!isSourceRequestValid(source, v)) {
 		return false;
 	}
@@ -272,8 +273,12 @@ bool FontLibrary::writeTextureQuads(uint32_t v, FontSource *source, const layout
 		return false;
 	}
 
-	auto &layouts = layoutsRef->second;
+	return writeTextureQuads(v, source, layoutsRef->second, format, texs, quads, colorMap);
+}
 
+bool FontLibrary::writeTextureQuads(uint32_t v, FontSource *source, const layout::FontTextureMap &layouts, const layout::FormatSpec *format,
+		const Vector<Rc<cocos2d::Texture2D>> &texs, Vector<Rc<DynamicQuadArray>> &quads, Vector<Vector<bool>> &colorMap) {
+	colorMap.resize(texs.size());
 	quads.reserve(texs.size());
 	for (size_t i = 0; i < texs.size(); ++ i) {
 		quads.push_back(Rc<DynamicQuadArray>::alloc());
@@ -522,6 +527,25 @@ void FontSource::cleanup() {
 		cache->cleanupSource(s);
 		return true;
 	});
+}
+
+FontSource::FontTextureMap FontSource::updateTextures(const Map<String, Vector<char16_t>> &l, Vector<Rc<cocos2d::Texture2D>> &tPtr) {
+	layout::FreeTypeInterface::FontTextureInterface iface;
+	iface.emplaceTexture = [&] (uint16_t w, uint16_t h) -> size_t {
+		tPtr.emplace_back(Rc<cocos2d::Texture2D>::create(cocos2d::Texture2D::PixelFormat::A8, w, h));
+		tPtr.back()->updateWithData("\xFF", w-1, h-1, 1, 1);
+		tPtr.back()->setAliasTexParameters();
+		return tPtr.size() - 1;
+	};
+	iface.draw = [&] (size_t idx, const void *data, uint16_t offsetX, uint16_t offsetY, uint16_t width, uint16_t height) -> bool {
+		cocos2d::Texture2D * t = tPtr.at(idx);
+		t->updateWithData(data, offsetX, offsetY, width, height);
+		return true;
+	};
+
+	auto lib = FontLibrary::getInstance();
+	auto cache = lib->getCache();
+	return cache->updateTextureWithSource(maxOf<uint32_t>(), this, l, iface);
 }
 
 void FontSource::onTextureResult(Vector<Rc<cocos2d::Texture2D>> &&tex, uint32_t v) {
@@ -1014,6 +1038,19 @@ void DynamicLabel::updateQuadsForeground(Source *source, const FormatSpec *forma
 	auto cache = font::FontLibrary::getInstance();
 	if (cache->writeTextureQuads(v, source, format, tPtr, qPtr, cPtr)) {
 		onQuads(time, tPtr, std::move(qPtr), std::move(cPtr));
+	}
+}
+
+void DynamicLabel::updateQuadsStandalone(Source *source, const FormatSpec *format) {
+	uint32_t v = maxOf<uint32_t>();
+	auto time = Time::now();
+
+	Vector<Rc<DynamicQuadArray>> qPtr;
+	Vector<Vector<bool>> cPtr;
+
+	auto cache = font::FontLibrary::getInstance();
+	if (cache->writeTextureQuads(v, source, _standaloneMap, format, _standaloneTextures, qPtr, cPtr)) {
+		onQuads(time, _standaloneTextures, std::move(qPtr), std::move(cPtr));
 	}
 }
 

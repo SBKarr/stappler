@@ -579,7 +579,7 @@ FontTextureMap FreeTypeInterface::updateTextureWithSource(uint32_t v, FontSource
 	count = layoutData.size();
 	if (square < 3_MiB) {
 		bool s = true;
-		uint16_t h = 256, w = 256; uint32_t sq2 = h * w;
+		uint16_t h = 128, w = 128; uint32_t sq2 = h * w;
 		for (; sq2 < square; sq2 *= 2, s = !s) {
 			if (s) { w *= 2; } else { h *= 2; }
 		}
