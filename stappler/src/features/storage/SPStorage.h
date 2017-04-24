@@ -47,17 +47,18 @@ THE SOFTWARE.
 NS_SP_EXT_BEGIN(storage)
 
 Handle *defaultStorage();
-Handle *create(const std::string &name, const std::string &filePath);
+Handle *create(const String &name, const String &filePath);
 
 Thread & thread(Handle * = nullptr);
 
-typedef std::function<void(const std::string &key, data::Value &value)> KeyDataCallback;
-typedef std::function<void(const std::string &key)> KeyCallback;
+using KeyDataCallback = Function<void(const String &key, data::Value && value)>;
+using KeyCallback = Function<void(const String &key)>;
 
-void get(const std::string &key, KeyDataCallback callback, Handle * = nullptr);
-void set(const std::string &key, const data::Value &value, KeyDataCallback callback = nullptr, Handle * = nullptr);
-void set(const std::string &key, data::Value &&value, KeyDataCallback callback = nullptr, Handle * = nullptr);
-void remove(const std::string &key, KeyCallback callback = nullptr, Handle * = nullptr);
+void get(const String &key, const data::DataCallback &callback, Handle * = nullptr);
+void get(const String &key, const KeyDataCallback &callback, Handle * = nullptr);
+void set(const String &key, const data::Value &value, const KeyDataCallback &callback = nullptr, Handle * = nullptr);
+void set(const String &key, data::Value &&value, const KeyDataCallback &callback = nullptr, Handle * = nullptr);
+void remove(const String &key, const KeyCallback &callback = nullptr, Handle * = nullptr);
 
 NS_SP_EXT_END(storage)
 

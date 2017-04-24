@@ -148,11 +148,11 @@ void NetworkTask::setSendData(const data::Value &data, data::EncodeFormat fmt) {
 	_handle.setSendData(data, fmt);
 }
 
-std::string NetworkTask::getReceivedHeaderString(const std::string &h) {
+std::string NetworkTask::getReceivedHeaderString(const std::string &h) const {
 	return _handle.getReceivedHeaderString(h);
 }
 
-int64_t NetworkTask::getReceivedHeaderInt(const std::string &h) {
+int64_t NetworkTask::getReceivedHeaderInt(const std::string &h) const {
 	return _handle.getReceivedHeaderInt(h);
 }
 

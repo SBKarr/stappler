@@ -75,8 +75,8 @@ public:
 	void setDebug(bool value) { _handle.setDebug(value); }
 	const std::stringstream &getDebugData() const { return _handle.getDebugData(); }
 
-	std::string getReceivedHeaderString(const std::string &h);
-	int64_t getReceivedHeaderInt(const std::string &h);
+	std::string getReceivedHeaderString(const std::string &h) const;
+	int64_t getReceivedHeaderInt(const std::string &h) const;
 
 	size_t getSize() const { return _size; }
 	int64_t getMTime() const { return _mtime; }

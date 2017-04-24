@@ -100,7 +100,7 @@ void AssetLibrary::init() {
 
 	auto &thread = storage::thread(getAssetStorage());
 	thread.perform([this, downloads] (const Task &) -> bool {
-		storage::get("SP.AssetLibrary.Time", [this] (const String &key, data::Value &value) {
+		storage::get("SP.AssetLibrary.Time", [this] (const String &key, data::Value &&value) {
 			_correctionTime.setMicroseconds(value.getInteger("time"));
 			_correctionNegative = value.getBool("negative");
 		}, getAssetStorage());

@@ -120,7 +120,7 @@ protected:
 	Color _errorColor = Color::Red_500;
 
 	gesture::Listener *_gestureListener = nullptr;
-	StrictNode *_node = nullptr;
+	InputLabelContainer *_node = nullptr;
 	InputLabel *_label = nullptr;
 	Label *_placeholder = nullptr;
 	Rc<InputMenu> _menu;

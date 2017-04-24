@@ -863,7 +863,7 @@ Pair<FILE *, size_t> NetworkHandle::openFile(const String &filename, bool readOn
     return pair(file, pos);
 }
 
-String NetworkHandle::getReceivedHeaderString(const String &ch) {
+String NetworkHandle::getReceivedHeaderString(const String &ch) const {
 	String h = string::tolower(ch);
 	auto i = _parsedHeaders.find(h);
 	if (i != _parsedHeaders.end()) {
@@ -873,7 +873,7 @@ String NetworkHandle::getReceivedHeaderString(const String &ch) {
 	}
 }
 
-int64_t NetworkHandle::getReceivedHeaderInt(const String &ch) {
+int64_t NetworkHandle::getReceivedHeaderInt(const String &ch) const {
 	String h = string::tolower(ch);
 	auto i = _parsedHeaders.find(h);
 	if (i != _parsedHeaders.end()) {

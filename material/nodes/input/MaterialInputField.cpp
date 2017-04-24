@@ -40,10 +40,10 @@ bool InputField::init(FontType font) {
 		return false;
 	}
 
-	_node = construct<StrictNode>();
+	_node = construct<InputLabelContainer>();
 	_node->setAnchorPoint(Vec2(0.0f, 0.0f));
 	_label = makeLabel(font);
-	_node->addChild(_label);
+	_node->setLabel(_label);
 	addChild(_node, 1);
 
 	_placeholder = construct<Label>(font);
@@ -53,9 +53,9 @@ bool InputField::init(FontType font) {
 	_placeholder->setStandalone(true);
 	addChild(_placeholder, 1);
 
-	_menu = construct<InputMenu>(std::bind(&InputField::onMenuCut, this), std::bind(&InputField::onMenuCopy, this),
+	_menu = Rc<InputMenu>::create(std::bind(&InputField::onMenuCut, this), std::bind(&InputField::onMenuCopy, this),
 			std::bind(&InputField::onMenuPaste, this));
-	_menu->setAnchorPoint(Vec2(0.5f, 0.0f));
+	_menu->setAnchorPoint(Anchor::MiddleBottom);
 	_menu->setVisible(false);
 
 	_gestureListener = construct<gesture::Listener>();

@@ -35,29 +35,14 @@ public:
 	virtual bool onSwipe(const Vec2 &, const Vec2 &) override;
 	virtual bool onSwipeEnd(const Vec2 &) override;
 
-	virtual void update(float dt) override;
-
 protected:
 	virtual void onInput() override;
+	virtual void onCursor(const Cursor &c) override;
 	virtual bool onInputString(const WideString &str, const Cursor &c) override;
 
 	virtual void onMenuVisible() override;
 
-	enum Adjust {
-		None,
-		Left,
-		Right
-	};
-
-	virtual void runAdjust(float);
-	virtual void scheduleAdjust(Adjust, const Vec2 &, float pos);
-
 	virtual InputLabel *makeLabel(FontType) override;
-
-	Adjust _adjust = None;
-	Vec2 _adjustValue;
-	float _adjustPosition = 0.0f;
-	bool _swipeCaptured = false;
 };
 
 NS_MD_END

@@ -359,7 +359,7 @@ Exec::Variable Exec::perform(Variable &l, Variable &r, Expression::Op op) {
 			ret.value = new data::Value(l.value->asDouble() < r.value->asDouble());
 			break;
 		case Expression::ltEq:
-		ret.value = new data::Value(l.value->asDouble() <= r.value->asDouble());
+			ret.value = new data::Value(l.value->asDouble() <= r.value->asDouble());
 			break;
 		case Expression::Gt:
 			ret.value = new data::Value(l.value->asDouble() > r.value->asDouble());
@@ -380,7 +380,7 @@ Exec::Variable Exec::perform(Variable &l, Variable &r, Expression::Op op) {
 			ret.value = new data::Value(l.value->asBool() && r.value->asBool());
 			break;
 		case Expression::Or:
-			ret.value = new data::Value(l.value->asBool() && r.value->asBool());
+			ret.value = new data::Value(l.value->asBool() || r.value->asBool());
 			break;
 		case Expression::Comma:
 			ret.value = new data::Value(l.value->asString() + r.value->asString());

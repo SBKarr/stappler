@@ -506,6 +506,46 @@ struct ValueWrapper {
 		Module ## _ ## Name <Type, sizeof(CallTest_ ## Name<Type>(0)) == sizeof(success)>::call(t, std::forward<Args>(args)...); \
 	}
 
+/*
+ * 		Extra math functions
+ */
+
+namespace math {
+
+template<class T, class Compare> constexpr inline
+const T& clamp(const T& v, const T& lo, const T& hi, Compare comp) {
+	assert( !comp(hi, lo) );
+    return comp(v, lo) ? lo : comp(hi, v) ? hi : v;
+}
+
+template<class T> constexpr inline
+const T& clamp(const T& v, const T& lo, const T& hi) {
+    return clamp( v, lo, hi, std::less<>() );
+}
+
+template<class T, class Compare> constexpr inline
+T clamp_distance(const T& v, const T& lo, const T& hi, Compare comp, const T &z) {
+	assert( !comp(hi, lo) );
+	return comp(v, lo) ? (lo - v) : comp(hi, v) ? (v - hi) : z;
+}
+
+template<class T, class Compare> constexpr inline
+T clamp_distance(const T& v, const T& lo, const T& hi, Compare comp) {
+	return clamp_distance(v, lo, hi, comp, T(0));
+}
+
+template<class T> constexpr inline
+T clamp_distance(const T& v, const T& lo, const T& hi, const T &z) {
+	return clamp_distance(v, lo, hi, std::less<>(), z);
+}
+
+template<class T> constexpr inline
+T clamp_distance(const T& v, const T& lo, const T& hi) {
+	return clamp_distance(v, lo, hi, std::less<>(), T(0));
+}
+
+}
+
 NS_SP_END
 
 #endif /* COMMON_CORE_SPCORE_H_ */

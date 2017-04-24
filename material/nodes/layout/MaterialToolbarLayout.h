@@ -54,12 +54,11 @@ public:
 		}
 	};
 
-	virtual bool init(Toolbar * = nullptr);
-	virtual void onContentSizeDirty() override;
+	virtual bool init(ToolbarBase * = nullptr);
 
 	virtual void onEnter() override;
 
-	virtual Toolbar *getToolbar() const;
+	virtual ToolbarBase *getToolbar() const;
 	virtual MenuSource *getActionMenuSource() const;
 
 	virtual void setTitle(const std::string &);
@@ -84,7 +83,7 @@ public:
 
 protected:
 	virtual void onToolbarNavButton();
-	virtual Toolbar *setupToolbar(Toolbar *);
+	virtual ToolbarBase *setupToolbar(ToolbarBase *);
 
 	virtual std::pair<float, float> onToolbarHeight();
 
@@ -94,10 +93,9 @@ protected:
 	Function<void()> _savedNavCallback;
 	float _savedNavProgress;
 
-	bool _flexibleToolbar = true;
 	bool _forwardProgress = false;
 
-	Toolbar *_toolbar = nullptr;
+	ToolbarBase *_toolbar = nullptr;
 };
 
 NS_MD_END

@@ -36,10 +36,9 @@ NS_SP_EXT_BEGIN(data)
 std::atomic<uint32_t> s_networkCounter(0);
 
 struct NetworkDataReader {
-	NetworkDataReader(const String &url, const std::function<void(data::Value &)> &cb, Thread &t, const String &key)
-	: _url(url), _key(key), _callback(cb) {
-		auto dev = Device::getInstance();
-
+	NetworkDataReader(const String &url, const Function<void(Value &)> &cb,
+			const Function<void(const NetworkDataTask &, Value &)> &ncb, Thread &t, const String &key)
+	: _url(url), _key(key), _callback(cb), _nwcallback(ncb) {
 		auto task = Rc<NetworkDataTask>::create(NetworkTask::Method::Get, _url);
 		task->addCompleteCallback(std::bind(&NetworkDataReader::onDownloadCompleted, this, task, std::placeholders::_2));
 		t.perform(task);
@@ -47,20 +46,34 @@ struct NetworkDataReader {
 
 	void onDownloadCompleted(NetworkDataTask *task, bool success) {
 		auto &data = task->getData();
-		_callback(data);
+		if (_callback) {
+			_callback(data);
+		}
+		if (_nwcallback) {
+			_nwcallback(*task, data);
+		}
 		delete this;
 	}
 
 	String _url, _key;
-	std::function<void(Value &)> _callback = nullptr;
+	Function<void(Value &)> _callback = nullptr;
+	Function<void(const NetworkDataTask &, Value &)> _nwcallback = nullptr;
 };
 
-void readUrl(const String &url, const std::function<void(Value &)> &cb, const std::string &key) {
-	new NetworkDataReader(url, cb, NetworkTask::thread(), key);
+void readUrl(const String &url, const Function<void(Value &)> &cb, const String &key) {
+	new NetworkDataReader(url, cb, nullptr, NetworkTask::thread(), key);
 }
 
-void readUrl(const String &url, const std::function<void(data::Value &)> &cb, Thread &t, const std::string &key) {
-	new NetworkDataReader(url, cb, t, key);
+void readUrl(const String &url, const Function<void(Value &)> &cb, Thread &t, const String &key) {
+	new NetworkDataReader(url, cb, nullptr, t, key);
+}
+
+void readUrl(const String &url, const Function<void(const NetworkDataTask &, Value &)> &cb, const String &key) {
+	new NetworkDataReader(url, nullptr, cb, NetworkTask::thread(), key);
+}
+
+void readUrl(const String &url, const Function<void(const NetworkDataTask &, Value &)> &cb, Thread &t, const String &key) {
+	new NetworkDataReader(url, nullptr, cb, t, key);
 }
 
 NS_SP_EXT_END(data)

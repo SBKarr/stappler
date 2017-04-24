@@ -29,12 +29,12 @@ NS_MD_BEGIN
 
 class FlexibleLayout : public Layout {
 public:
-	using HeightFunction = std::function<std::pair<float, float>()>; // pair< min, max >
+	using HeightFunction = Function<Pair<float, float>()>; // pair< min, max >
 
 	virtual bool init() override;
 	virtual void onContentSizeDirty() override;
 
-	virtual void setBaseNode(stappler::ScrollView *node, int zOrder = 2);
+	virtual void setBaseNode(ScrollView *node, int zOrder = 2);
 	virtual void setFlexibleNode(cocos2d::Node *, int zOrder = 3);
 
 	virtual void setFlexibleAutoComplete(bool value);
@@ -54,7 +54,7 @@ public:
 	virtual bool isStatusBarTracked() const;
 
 	virtual void setStatusBarBackgroundColor(const Color &);
-	virtual const cocos2d::Color3B &getStatusBarBackgroundColor() const;
+	virtual const Color3B &getStatusBarBackgroundColor() const;
 
 	virtual float getFlexibleLevel() const;
 	virtual void setFlexibleLevel(float value);
@@ -77,11 +77,16 @@ protected:
 	float getStatusBarHeight() const;
 	void onStatusBarHeight(float);
 
+	virtual void onStatusBarNode(const node::Params &);
+	virtual void onFlexibleNode(const node::Params &);
+	virtual void onBaseNode(const node::Params &, const Padding &, float offset);
+
 	static constexpr int AutoCompleteTag() { return 5; }
 
 	virtual void onKeyboard(bool enabled, const Rect &, float duration);
 
 	bool _flexibleAutoComplete = true;
+	bool _flexibleBaseNode = true;
 	float _flexibleLevel = 1.0f;
 	float _flexibleMinHeight = 0.0f;
 	float _flexibleMaxHeight = 0.0f;
@@ -90,7 +95,7 @@ protected:
 	HeightFunction _flexibleHeightFunction = nullptr;
 
 	cocos2d::Node *_flexibleNode = nullptr;
-	stappler::ScrollView *_baseNode = nullptr;
+	ScrollView *_baseNode = nullptr;
 
 	stappler::Layer *_statusBar = nullptr;
 	bool _statusBarTracked = false;

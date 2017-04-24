@@ -34,15 +34,11 @@ THE SOFTWARE.
 #define SP_INTERNAL_STOREKIT_ENABLED SP_CONFIG_STOREKIT
 #endif
 
-#ifndef SP_DRAW
-#define SP_DRAW SP_CONFIG_DRAW
-#endif
-
 NS_SP_BEGIN
 
 // full localized string
-inline std::string operator"" _locale ( const char* str, std::size_t len) {
-	std::string ret;
+inline String operator"" _locale ( const char* str, std::size_t len) {
+	String ret;
 	ret.reserve(len + "@Locale:"_len);
 	ret.append("@Locale:");
 	ret.append(str, len);
@@ -50,8 +46,8 @@ inline std::string operator"" _locale ( const char* str, std::size_t len) {
 }
 
 // localized token
-inline std::string operator"" _token ( const char* str, std::size_t len) {
-	std::string ret;
+inline String operator"" _token ( const char* str, std::size_t len) {
+	String ret;
 	ret.reserve(len + 2);
 	ret.append("%");
 	ret.append(str, len);

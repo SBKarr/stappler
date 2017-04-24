@@ -81,8 +81,8 @@ public:
 	void setSendData(const uint8_t *data, size_t size);
 	void setSendData(const data::Value &, data::EncodeFormat fmt = data::EncodeFormat());
 
-    String getReceivedHeaderString(const String &h);
-    int64_t getReceivedHeaderInt(const String &h);
+    String getReceivedHeaderString(const String &h) const;
+    int64_t getReceivedHeaderInt(const String &h) const;
 
     long getResponseCode() const { return _responseCode; }
     long getErrorCode() const { return _errorCode; }

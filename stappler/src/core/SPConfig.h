@@ -28,10 +28,4 @@ THE SOFTWARE.
  */
 #define SP_CONFIG_STOREKIT 1
 
-
-/**
- * Draw module (vector path drawing backed by skia)
- */
-#define SP_CONFIG_DRAW 0
-
 #endif

@@ -77,8 +77,9 @@ public:
 	};
 
 	using DataCallback = data::DataCallback;
-	using CountCallback = std::function<void(size_t)>;
-	using SuccessCallback = std::function<void(bool)>;
+	using CountCallback = Function<void(size_t)>;
+	using SuccessCallback = Function<void(bool)>;
+	using InsertCallback = Function<data::Value(size_t)>;
 
 	using FieldsList = std::initializer_list<Field>;
 	using AliasesList = std::initializer_list<std::pair<String, String>>;
@@ -103,6 +104,11 @@ public:
 	 * Without options this command will return all rows in table */
 	Command *get(const DataCallback & cb);
 
+	/** Returns new Get (SELECT *) command pointer
+	 * Without options this command will return all rows in table,
+	 * callback will be called for every row separately */
+	Command *getByRow(const DataCallback & cb);
+
 	/** Returns new Count (SELECT COUNT(*)) command pointer
 	 * Without options this command will return count of all rows in table */
 	Command *count(const CountCallback &cb);
@@ -111,6 +117,11 @@ public:
 	 * Without options this command will insert given object as table row */
 	Command *insert(const data::Value &val, const SuccessCallback &cb = nullptr);
 	Command *insert(data::Value &&val, const SuccessCallback &cb = nullptr);
+
+	/** Returns new Insert (UPDATE) command pointer
+	 * Without options this command will insert given object as table row */
+	Command *insertByRow(const InsertCallback & cb, size_t, const SuccessCallback & = nullptr);
+
 
 	/** Returns new Remove (DELETE) command pointer
 	 * Without options this command will remove all rows from table */
@@ -161,6 +172,12 @@ public:
 			Count,
 			Insert,
 			Remove
+		};
+
+		enum InsertMode {
+			Replace,
+			Abort,
+			Ignore
 		};
 
 		Command(Scheme *scheme, Action a);
@@ -219,6 +236,8 @@ public:
 		 * Allowed for Get, Remove */
 		Command *offset(uint32_t offset);
 
+		Command *setInsertMode(InsertMode);
+
 		/** Performs command on database asynchronously. If command contains
 		 * logical errors, returns false, command will not be performed. */
 		bool perform();
@@ -229,6 +248,8 @@ public:
 		Scheme *_scheme = nullptr;
 		Action _action = Get;
 		bool _valid = true;
+		bool _separateRows = false;
+		bool _threaded = false;
 
 		union Callback {
 			DataCallback data;
@@ -244,10 +265,15 @@ public:
 
 		uint32_t _count = maxOf<uint32_t>();
 		uint32_t _offset = maxOf<uint32_t>();
+		InsertMode _insertMode = Replace;
 
 		union Data {
 			std::vector<Filter> filters;
 			data::Value value;
+			struct {
+				InsertCallback cb;
+				size_t count;
+			} insert;
 
 			Data();
 			~Data();

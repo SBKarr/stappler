@@ -312,6 +312,12 @@ void Device::notification(const String &title, const String &text) {
 
 void Device::onDirectorStarted() {
 	platform::device::_onDirectorStarted();
+
+    auto a = platform::clipboard::_isAvailable();
+    if (a != _clipboardAvailable) {
+    	_clipboardAvailable = a;
+    	onClipboard(this, _clipboardAvailable);
+    }
 }
 
 void Device::setLaunchUrl(const String &url) {

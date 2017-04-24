@@ -79,7 +79,7 @@ bool SidebarLayout::init(Position pos) {
 		return false;
 	});
 	_listener->setSwipeCallback([this] (stappler::gesture::Event ev, const stappler::gesture::Swipe &s) -> bool {
-		if (!isNodeEnabled() && !_edgeSwipeEnabled) {
+		if (!isNodeVisible() && !_edgeSwipeEnabled) {
 			return false;
 		}
 

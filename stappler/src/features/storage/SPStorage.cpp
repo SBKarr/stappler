@@ -77,6 +77,8 @@ public:
 	data::Value perform(const String &str, bool reduce = false);
 	data::Value perform(sqlite3_stmt *stmt);
 
+	bool perform(sqlite3_stmt *stmt, const data::DataCallback &cb);
+
 	int getVersion() const { return _version; }
 private:
 	int prepareStmt(sqlite3_stmt **ppStmt, const String &zSql);
@@ -166,27 +168,31 @@ Thread &thread(Handle *storage) {
 	}
 }
 
-void get(const String &key, KeyDataCallback callback, Handle *storage) {
+void get(const String &key, const data::DataCallback &callback, Handle *storage) {
+	get(key, std::bind(callback, std::placeholders::_2), storage);
+}
+
+void get(const String &key, const KeyDataCallback &callback, Handle *storage) {
 	if (!storage) {
 		storage = Handle::getInstance();
 	}
 	auto &thread = storage->getThread();
 	if (thread.isOnThisThread()) {
 		auto val = data::read(storage->getData(key));
-		callback(key, val);
+		callback(key, std::move(val));
 	} else {
 		data::Value *val = new data::Value();
 		thread.perform([key, val, storage] (const Task &) -> bool {
 			*val = data::read(storage->getData(key));
 			return true;
 		}, [key, val, callback] (const Task &, bool) {
-			callback(key, *val);
+			callback(key, std::move(*val));
 			delete val;
 		});
 	}
 }
 
-void set(const String &key, const data::Value &value, KeyDataCallback callback, Handle *storage) {
+void set(const String &key, const data::Value &value, const KeyDataCallback &callback, Handle *storage) {
 	if (!storage) {
 		storage = Handle::getInstance();
 	}
@@ -194,8 +200,7 @@ void set(const String &key, const data::Value &value, KeyDataCallback callback, 
 	if (thread.isOnThisThread()) {
 		storage->updateData(key, data::toString(value));
 		if (callback) {
-			auto val = value;
-			callback(key, val);
+			callback(key, data::Value(value));
 		}
 	} else {
 		data::Value *val = new data::Value(value);
@@ -204,14 +209,14 @@ void set(const String &key, const data::Value &value, KeyDataCallback callback, 
 			return true;
 		}, [key, val, callback] (const Task &, bool) {
 			if (callback) {
-				callback(key, *val);
+				callback(key, std::move(*val));
 			}
 			delete val;
 		});
 	}
 }
 
-void set(const String &key, data::Value &&value, KeyDataCallback callback, Handle *storage) {
+void set(const String &key, data::Value &&value, const KeyDataCallback &callback, Handle *storage) {
 	if (!storage) {
 		storage = Handle::getInstance();
 	}
@@ -219,7 +224,7 @@ void set(const String &key, data::Value &&value, KeyDataCallback callback, Handl
 	if (thread.isOnThisThread()) {
 		storage->updateData(key, data::toString(value));
 		if (callback) {
-			callback(key, value);
+			callback(key, std::move(value));
 		}
 	} else {
 		data::Value *val = new data::Value(std::move(value));
@@ -228,14 +233,14 @@ void set(const String &key, data::Value &&value, KeyDataCallback callback, Handl
 			return true;
 		}, [key, val, callback] (const Task &, bool) {
 			if (callback) {
-				callback(key, *val);
+				callback(key, std::move(*val));
 			}
 			delete val;
 		});
 	}
 }
 
-void remove(const String &key, KeyCallback callback, Handle *storage) {
+void remove(const String &key, const KeyCallback &callback, Handle *storage) {
 	if (!storage) {
 		storage = Handle::getInstance();
 	}
@@ -361,7 +366,11 @@ Scheme::Command::~Command() {
 		_callback.success.~function();
 		break;
 	case Insert:
-		_data.value.~Value();
+		if (_separateRows) {
+			_data.insert.cb.~function();
+		} else {
+			_data.value.~Value();
+		}
 		_callback.success.~function();
 		break;
 	}
@@ -459,6 +468,16 @@ Scheme::Command *Scheme::Command::offset(uint32_t offset) {
 	return this;
 }
 
+Scheme::Command *Scheme::Command::setInsertMode(InsertMode m) {
+	if (_action != Insert) {
+		_valid = false;
+		log::text("Storage", "Scheme command: Insert Mode is only allowed for Insert command");
+		return this;
+	}
+	_insertMode = m;
+	return this;
+}
+
 bool Scheme::Command::perform() {
 	if (!_valid) {
 		log::text("Storage", "Scheme command: command is not valid");
@@ -522,6 +541,13 @@ Scheme::Command *Scheme::get(const DataCallback &cb) {
 	return cmd;
 }
 
+Scheme::Command *Scheme::getByRow(const DataCallback & cb) {
+	auto cmd = new Command(this, Command::Get);
+	cmd->_separateRows = true;
+	new (&cmd->_callback.data) DataCallback(cb);
+	return cmd;
+}
+
 Scheme::Command *Scheme::count(const CountCallback &cb) {
 	auto cmd = new Command(this, Command::Count);
 	new (&cmd->_callback.count) CountCallback(cb);
@@ -549,6 +575,15 @@ Scheme::Command *Scheme::insert(data::Value &&val, const SuccessCallback &cb) {
 		return cmd;
 	}
 	new (&cmd->_data.value) data::Value(std::move(val));
+	return cmd;
+}
+
+Scheme::Command *Scheme::insertByRow(const InsertCallback & cb, size_t c, const SuccessCallback &scb) {
+	auto cmd = new Command(this, Command::Insert);
+	cmd->_separateRows = true;
+	new (&cmd->_callback.success) SuccessCallback(scb);
+	cmd->_data.insert.count = c;
+	new (&cmd->_data.insert.cb) InsertCallback(cb);
 	return cmd;
 }
 
@@ -632,7 +667,6 @@ bool Scheme::Internal::initialize() {
 	auto &thread = _storage->getThread();
 	thread.perform([storage, this] (const Task &) -> bool {
 		// check if table exists
-		String createCmd = getCreationCommand();
 		auto q = toString("SELECT count(*) as num FROM sqlite_master WHERE type='table' AND name='", _name, "'");
 		auto val = storage->perform(q, true);
 
@@ -656,7 +690,7 @@ bool Scheme::Internal::initialize() {
 				if (fields.find(_primary) == fields.end()) {
 					q = toString("DROP TABLE IF EXISTS ", _name, "'");
 					storage->perform(q);
-					return storage->createClass(createCmd);
+					return storage->createClass(getCreationCommand());
 				}
 
 				q.clear();
@@ -674,13 +708,18 @@ bool Scheme::Internal::initialize() {
 				q = toString("DROP TABLE IF EXISTS ", _name, "'");
 				storage->perform(q);
 				_customIsBinary = true;
-				return storage->createClass(createCmd);
+				if (storage->createClass(getCreationCommand())) {
+					return true;
+				}
 			}
 
 			return false;
 		} else {
 			_customIsBinary = true;
-			return storage->createClass(createCmd);
+			if (storage->createClass(getCreationCommand())) {
+				return true;
+			}
+			return false;
 		}
 	}, nullptr, this);
 
@@ -916,6 +955,22 @@ bool Scheme::Internal::perform(Scheme::Command *cmd) {
 		auto val = performCommand(cmd);
 		runCommandCallback(cmd, val);
 	} else {
+		cmd->_threaded = true;
+		if (cmd->_action == Command::Insert && cmd->_separateRows) {
+			data::Value val;
+			for (size_t i = 0; i < cmd->_data.insert.count; ++ i) {
+				data::Value obj = cmd->_data.insert.cb(i);
+				if (obj.isDictionary() && isValueAllowed(obj)) {
+					val.addValue(obj);
+				}
+			}
+			cmd->_data.insert.cb.~function();
+			if (val.empty()) {
+				return false;
+			}
+			new (&cmd->_data.value) data::Value(std::move(val));
+			cmd->_separateRows = false;
+		}
 		data::Value *val = new data::Value();
 		thread.perform([this, cmd, val] (const Task &) -> bool {
 			*val = performCommand(cmd);
@@ -955,8 +1010,38 @@ bool Scheme::Internal::perform(const String &sql, const DataCallback &cb) {
 }
 
 data::Value Scheme::Internal::performCommand(Scheme::Command *cmd) {
-	if (cmd->_action == Command::Insert && cmd->_data.value.isArray() && cmd->_data.value.size() > 50) {
+	if (cmd->_action == Command::Insert && cmd->_separateRows) {
+		auto query = buildQuery(cmd);
+		if (!query.empty()) {
+			auto storage = _storage;
+			auto stmt = storage->prepare(query);
+			if (!stmt) {
+				return data::Value();
+			}
+
+			bool success = false;
+
+			_storage->perform("BEGIN TRANSACTION;");
+			for (size_t i = 0; i < cmd->_data.insert.count; ++ i) {
+				data::Value obj = cmd->_data.insert.cb(i);
+				if (obj.isDictionary() && isValueAllowed(obj)) {
+					int count = 1;
+					bindInsertParams(stmt, obj, count);
+					auto ret = performQuery(cmd, stmt);
+					if (ret) {
+						success = true;
+					}
+				}
+			}
+			_storage->perform("COMMIT;");
+
+			return data::Value(success);
+		} else {
+			return data::Value();
+		}
+	} else if (cmd->_action == Command::Insert && cmd->_data.value.isArray() && cmd->_data.value.size() > 50) {
 		// batch insert handling
+		_storage->perform("BEGIN TRANSACTION;");
 		data::Value val = std::move(cmd->_data.value);
 		while(val.size() > 0) {
 			if (val.size() > SP_STORAGE_BATCH_MAX) {
@@ -969,6 +1054,7 @@ data::Value Scheme::Internal::performCommand(Scheme::Command *cmd) {
 				return ret;
 			}
 		}
+		_storage->perform("COMMIT;");
 		return data::Value(true);
 	} else {
 		auto query = buildQuery(cmd);
@@ -1006,12 +1092,11 @@ data::Value Scheme::Internal::performCommand(const String &query) {
 
 data::Value Scheme::Internal::performQuery(Scheme::Command *cmd, sqlite3_stmt *stmt) {
 	auto storage = _storage;
-	data::Value arr = storage->perform(stmt);
-	// extract custom data
-	if (arr.isArray()) {
-		for (auto &it : arr.asArray()) {
-			data::Value cdataStr(std::move(it.getValue(_custom)));
-			it.erase(_custom);
+	data::Value ret;
+	auto success = storage->perform(stmt, [&] (data::Value && val) {
+		if (val.isDictionary()) {
+			data::Value cdataStr(std::move(val.getValue(_custom)));
+			val.erase(_custom);
 			data::Value cdata;
 			if (cdataStr.isString()) {
 				cdata = data::read(cdataStr.getString());
@@ -1020,13 +1105,25 @@ data::Value Scheme::Internal::performQuery(Scheme::Command *cmd, sqlite3_stmt *s
 			}
 			if (cdata.isDictionary()) {
 				for (auto &i : cdata.asDict()) {
-					it.setValue(std::move(i.second), i.first);
+					val.setValue(std::move(i.second), i.first);
 				}
 			}
 		}
-		return arr;
+
+		if (cmd && !cmd->_threaded && cmd->_separateRows && cmd->_action == Command::Get) {
+			if (cmd->_callback.data) {
+				cmd->_callback.data(std::move(val));
+			}
+		} else {
+			ret.addValue(std::move(val));
+		}
+	});
+
+	if (success && ret.empty()) {
+		ret = true;
 	}
-	return arr;
+
+	return ret;
 }
 
 String Scheme::Internal::buildQuery(Scheme::Command *cmd) {
@@ -1039,7 +1136,17 @@ String Scheme::Internal::buildQuery(Scheme::Command *cmd) {
 		sstream << "SELECT COUNT(*) FROM " << _name;
 		break;
 	case Command::Insert:
-		sstream << "REPLACE INTO " << _name;
+		switch (cmd->_insertMode) {
+		case Command::Replace:
+			sstream << "REPLACE INTO " << _name;
+			break;
+		case Command::Abort:
+			sstream << "INSERT OR ABORT INTO " << _name;
+			break;
+		case Command::Ignore:
+			sstream << "INSERT OR IGNORE INTO " << _name;
+			break;
+		}
 		break;
 	case Command::Remove:
 		sstream << "DELETE FROM " << _name;
@@ -1092,7 +1199,7 @@ String Scheme::Internal::buildQuery(Scheme::Command *cmd) {
 			}
 		}
 	} else if (cmd->_action == Command::Insert) {
-		if (!cmd->_data.value.isArray()) {
+		if (cmd->_separateRows || !cmd->_data.value.isArray()) {
 			String names, values;
 			bool v = false;
 			for (auto &it : _fields) {
@@ -1140,8 +1247,10 @@ String Scheme::Internal::buildQuery(Scheme::Command *cmd) {
 			values += "?";
 			sstream << " (" << names << ") VALUES ";
 
+			auto reps = cmd->_data.value.size();
+
 			bool s = true;
-			for (uint32_t i = 0; i < cmd->_data.value.size(); i++) {
+			for (uint32_t i = 0; i < reps; i++) {
 				if (s) {
 					s = false;
 				} else {
@@ -1295,7 +1404,15 @@ void Scheme::Internal::runCommandCallback(Scheme::Command *cmd, data::Value &res
 	switch(cmd->_action) {
 	case Command::Get:
 		if (cmd->_callback.data) {
-			cmd->_callback.data(std::move(result));
+			if (!cmd->_separateRows) {
+				cmd->_callback.data(std::move(result));
+			} else if (cmd->_threaded) {
+				if (result.isArray()) {
+					for (auto &it : result.asArray()) {
+						cmd->_callback.data(std::move(it));
+					}
+				}
+			}
 		}
 		break;
 	case Command::Count:
@@ -1573,7 +1690,18 @@ data::Value Handle::perform(const String &str, bool reduce) {
 
 data::Value Handle::perform(sqlite3_stmt *stmt) {
 	data::Value ret;
+	auto success = perform(stmt, [&] (data::Value && val) {
+		ret.addValue(std::move(val));
+	});
+	if (success && ret.empty()) {
+		ret = true;
+	}
 
+	return ret;
+}
+
+bool Handle::perform(sqlite3_stmt *stmt, const data::DataCallback &cb) {
+	bool ret = true;
 #if (SP_STORAGE_DEBUG)
 	uint64_t now = time::getMicroTime();
 #endif
@@ -1582,18 +1710,18 @@ data::Value Handle::perform(sqlite3_stmt *stmt) {
 		err = sqlite3_step(stmt);
 		if ( err != SQLITE_OK && err != SQLITE_DONE && err != SQLITE_ROW ) {
 			log::format("Storage", "SQLite: Error in query: %s\n", sqlite3_errmsg(_db)); assert(false);
+			ret = false;
 		}
 
 		int count = sqlite3_column_count(stmt);
 		if (count == 0 && err != SQLITE_ROW) {
-			ret = true;
 			break;
 		}
 
 		if (count == 0) {
-			ret.addBool(true);
+			cb(data::Value(true));
 		} else if (err == SQLITE_ROW) {
-			auto &dict = ret.addDict();
+			data::Value dict;
 			for (auto i = 0; i < count; i++) {
 				auto type = sqlite3_column_type(stmt, i);
 				auto name = sqlite3_column_name(stmt, i);
@@ -1613,6 +1741,7 @@ data::Value Handle::perform(sqlite3_stmt *stmt) {
 					dict.setNull(name);
 				}
 			}
+			cb(std::move(dict));
 		}
 	} while (err != SQLITE_OK && err != SQLITE_DONE);
 
@@ -1621,8 +1750,9 @@ data::Value Handle::perform(sqlite3_stmt *stmt) {
 	auto c_sql = sqlite3_sql(stmt);
 	auto len = strlen(c_sql);
 	String sql(c_sql , MIN(len, 60) );
-	logTag("Storage-Debug", "Request (%s) performed in %ld mks", sql.c_str(), time::getMicroTime() - now);
+	log::format("Storage", "Request (%s) performed in %ld mks", sql.c_str(), time::getMicroTime() - now);
 #endif
+
 	return ret;
 }
 

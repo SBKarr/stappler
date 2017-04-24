@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 /* this file should be included by SPDefine.h */
 #include "SPForward.h"
+#include "SPNode.h"
 
 NS_SP_BEGIN
 
@@ -42,23 +43,10 @@ inline T *construct(Args&&... args) {
 	}
 }
 
-template <class T, class... Args>
-inline T *create(Args&&... args) {
-	return construct<T, Args...>(std::forward<Args>(args)...);
-}
-
 namespace screen {
 	float density();
 	int dpi();
 	float statusBarHeight();
-}
-
-namespace node {
-	bool isTouched(cocos2d::Node *node, const Vec2 &point, float padding = 0);
-	bool isParent(cocos2d::Node *parent, cocos2d::Node *node);
-	Mat4 chainNodeToParent(cocos2d::Node *parent, cocos2d::Node *node, bool full = true);
-	Mat4 chainParentToNode(cocos2d::Node *parent, cocos2d::Node *node, bool full = true);
-	void dump(cocos2d::Node *node, int depth = -1);
 }
 
 inline uint8_t getIntensivityFromColor(const Color4B &color) {

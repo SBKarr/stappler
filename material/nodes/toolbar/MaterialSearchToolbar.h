@@ -24,28 +24,79 @@ THE SOFTWARE.
 #define MATERIAL_NODES_TOOLBAR_MATERIALSEARCHTOOLBAR_H_
 
 #include "MaterialToolbar.h"
+#include "MaterialInputLabel.h"
 
 NS_MD_BEGIN
 
-class SearchToolbar : public Toolbar {
+class SearchToolbar : public ToolbarBase, protected InputLabelDelegate {
 public:
-	virtual ~SearchToolbar() { }
+	using Handler = ime::Handler;
+	using Cursor = ime::Cursor;
 
-	virtual bool init() override;
-	virtual void onContentSizeDirty() override;
+	using Callback = Function<void(const String &)>;
+
+	enum Mode {
+		Persistent,
+		Expandable,
+	};
+
+	virtual bool init(Mode m = Mode::Persistent);
+	virtual bool init(const Callback &, Mode m = Mode::Persistent);
+
+	virtual void onEnter() override;
+	virtual void onExit() override;
+
+	virtual void setTitle(const String &) override;
+	virtual const String &getTitle() const override;
 
 	virtual void setPlaceholder(const String &);
+	virtual const String &getPlaceholder() const;
 
 	virtual void onSearchMenuButton();
 	virtual void onSearchIconButton();
 
+	virtual void setColor(const Color &color) override;
+	virtual void setTextColor(const Color &color) override;
+
 protected:
 	virtual void layoutSubviews() override;
 
-	ButtonIcon *_searchIcon = nullptr;
-	LineField *_searchInput = nullptr;
-	bool _presistentSearch = false;
-	bool _inSearchMode = false;
+	virtual bool onInputString(const WideString &str, const Cursor &c) override;
+	virtual void onInput() override;
+	virtual void onCursor(const Cursor &) override;
+	virtual void onPointer(bool) override;
+
+	virtual bool onPressBegin(const Vec2 &);
+	virtual bool onLongPress(const Vec2 &, const TimeInterval &, int count);
+	virtual bool onPressEnd(const Vec2 &);
+	virtual bool onPressCancel(const Vec2 &);
+
+	virtual bool onSwipeBegin(const Vec2 &, const Vec2 &);
+	virtual bool onSwipe(const Vec2 &, const Vec2 &);
+	virtual bool onSwipeEnd(const Vec2 &);
+
+	virtual void onClearButton();
+	virtual void onVoiceButton();
+
+	virtual void updateMenu();
+
+	virtual void onMenuCut();
+	virtual void onMenuCopy();
+	virtual void onMenuPaste();
+
+	InputLabelContainer *_node = nullptr;
+	Label *_placeholder = nullptr;
+	InputLabel *_label = nullptr;
+	InputMenu *_menu = nullptr;
+
+	Rc<MenuSource> _searchMenu;
+	Rc<MenuSource> _commonMenu;
+
+	Callback _callback;
+
+	Mode _mode = Mode::Persistent;
+	bool _hasSwipe = false;
+	bool _hasText = false;
 };
 
 NS_MD_END

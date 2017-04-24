@@ -23,6 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
+#include "SPDefine.h"
+#include "SPNode.h"
 #include "base/ccMacros.h"
 #include "platform/CCPlatformMacros.h"
 #include "base/CCDirector.h"
@@ -48,6 +50,31 @@ const Vec2 MiddleBottom(0.5f, 0.0f); /** equals to Vec2(0.5, 0) */
 }
 
 namespace node {
+
+void Params::setPosition(float x, float y) {
+	setPosition(Vec2(x, y));
+}
+
+void Params::setPosition(const Vec2 &pos) {
+	position = pos;
+	mask = Mask(mask | Mask::Position);
+}
+
+void Params::setAnchorPoint(const Vec2 &pt) {
+	anchorPoint = pt;
+	mask = Mask(mask | Mask::AnchorPoint);
+}
+
+void Params::setContentSize(const Size &size) {
+	contentSize = size;
+	mask = Mask(mask | Mask::ContentSize);
+}
+
+void Params::setVisible(bool value) {
+	visible = value;
+	mask = Mask(mask | Mask::Visibility);
+}
+
 #ifndef SP_RESTRICT
 	bool isTouched(cocos2d::Node *node, const cocos2d::Vec2 &location, float padding) {
 		const cocos2d::Vec2 &point = node->convertToNodeSpace(location);
@@ -103,13 +130,35 @@ namespace node {
 		}
 		return ret;
 	}
+
+	void Params::apply(cocos2d::Node *node) const {
+		if (mask & Mask::AnchorPoint) {
+			node->setAnchorPoint(anchorPoint);
+		}
+		if (mask & Mask::Position) {
+			node->setPosition(position);
+		}
+		if (mask & Mask::ContentSize) {
+			node->setContentSize(contentSize);
+		}
+		if (mask & Mask::Visibility) {
+			node->setVisible(visible);
+		}
+	}
+
 #else
+	void Params::apply(cocos2d::Node *) const { }
+
 	bool isTouched(cocos2d::Node *node, const cocos2d::Vec2 &location, float padding) { return false; }
 
 	bool isParent(cocos2d::Node *parent, cocos2d::Node *node) { return false; }
 	Mat4 chainNodeToParent(cocos2d::Node *parent, cocos2d::Node *node, bool all) { return Mat4::IDENTITY; }
 	Mat4 chainParentToNode(cocos2d::Node *parent, cocos2d::Node *node, bool all) { return Mat4::IDENTITY; }
 #endif
+
+	void apply(cocos2d::Node *node, const Params &params) {
+		params.apply(node);
+	}
 }
 
 NS_SP_END

@@ -105,7 +105,9 @@ class RecyclerScroll;
 
 class TabBar;
 
+class ToolbarBase;
 class Toolbar;
+class SearchToolbar;
 class TabToolbar;
 
 class RichTextListenerView;
@@ -125,6 +127,7 @@ class GalleryScroll;
 class GalleryImage;
 
 class FormController;
+class InputLabelContainer;
 
 NS_MD_END
 

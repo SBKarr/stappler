@@ -455,7 +455,11 @@ void Button::onContentSizeDirty() {
 	MaterialNode::onContentSizeDirty();
 	if (_animationNode) {
 		float downscale = 4.0f;
-		_animationNode->setContentSize(Size(_contentSize.width / downscale, _contentSize.height / downscale));
+		auto size = getContentSizeWithPadding();
+		auto pos = getAnchorPositionWithPadding();
+
+		_animationNode->setPosition(pos);
+		_animationNode->setContentSize(Size(size.width / downscale, size.height / downscale));
 	}
 }
 

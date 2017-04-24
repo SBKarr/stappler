@@ -20,34 +20,45 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef LIBS_MATERIAL_NODES_TOOLBAR_MATERIALTOOLBAR_H_
-#define LIBS_MATERIAL_NODES_TOOLBAR_MATERIALTOOLBAR_H_
+#ifndef STAPPLER_SRC_CORE_SPNODE_H_
+#define STAPPLER_SRC_CORE_SPNODE_H_
 
-#include "MaterialToolbarBase.h"
+#include "SPForward.h"
 
-NS_MD_BEGIN
+NS_SP_BEGIN
 
-class Toolbar : public ToolbarBase {
-public:
-	virtual bool init() override;
+namespace node {
+	struct Params {
+		enum Mask {
+			None = 0,
+			Position = 1 << 0,
+			ContentSize = 1 << 1,
+			AnchorPoint = 1 << 2,
+			Visibility = 1 << 3,
+		};
 
-	virtual void setTitle(const String &) override;
-	virtual const String &getTitle() const override;
+		void setPosition(float x, float y);
+		void setPosition(const Vec2 &pos);
+		void setAnchorPoint(const Vec2 &pt);
+		void setContentSize(const Size &size);
+		void setVisible(bool value);
+		void apply(cocos2d::Node *) const;
 
-	virtual void setTitleMenuSource(MenuSource *);
-	virtual MenuSource * getTitleMenuSource() const;
+		Mask mask = None;
+		Vec2 position;
+		Vec2 anchorPoint;
+		Size contentSize;
+		bool visible = false;
+	};
 
-	virtual void setColor(const Color &color) override;
-	virtual void setTextColor(const Color &color) override;
+	bool isTouched(cocos2d::Node *node, const Vec2 &point, float padding = 0);
+	bool isParent(cocos2d::Node *parent, cocos2d::Node *node);
+	Mat4 chainNodeToParent(cocos2d::Node *parent, cocos2d::Node *node, bool full = true);
+	Mat4 chainParentToNode(cocos2d::Node *parent, cocos2d::Node *node, bool full = true);
+	void dump(cocos2d::Node *node, int depth = -1);
+	void apply(cocos2d::Node *node, const Params &);
+}
 
-	ButtonLabelSelector *getTitleNode() const;
+NS_SP_END
 
-protected:
-	virtual void layoutSubviews() override;
-
-	ButtonLabelSelector *_title = nullptr;
-};
-
-NS_MD_END
-
-#endif /* LIBS_MATERIAL_NODES_TOOLBAR_MATERIALTOOLBAR_H_ */
+#endif /* STAPPLER_SRC_CORE_SPNODE_H_ */

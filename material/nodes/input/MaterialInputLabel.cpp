@@ -120,7 +120,7 @@ bool InputLabel::init(const DescriptionStyle &desc, float w) {
 		.closePath());
 	_cursorStart->setContentSize(Size(24.0f, 24.0f));
 	_cursorStart->setAnchorPoint(Vec2(1.0f, _cursorAnchor));
-	_cursorStart->setColor(_cursorColor);
+	_cursorStart->setColor(_selectionColor);
 	_cursorStart->setOpacity(192);
 	_cursorStart->setVisible(false);
 	node->addChild(_cursorStart);
@@ -133,7 +133,7 @@ bool InputLabel::init(const DescriptionStyle &desc, float w) {
 		.closePath());
 	_cursorEnd->setContentSize(Size(24.0f, 24.0f));
 	_cursorEnd->setAnchorPoint(Vec2(0.0f, _cursorAnchor));
-	_cursorEnd->setColor(_cursorColor);
+	_cursorEnd->setColor(_selectionColor);
 	_cursorEnd->setOpacity(192);
 	_cursorEnd->setVisible(false);
 	node->addChild(_cursorEnd);
@@ -197,18 +197,31 @@ Vec2 InputLabel::getCursorMarkPosition() const {
 	}
 }
 
-void InputLabel::setCursorColor(const Color &color) {
+void InputLabel::setCursorColor(const Color &color, bool pointer) {
 	_cursorColor = color;
+	_cursorLayer->setColor(color);
+	if (pointer) {
+		setPointerColor(color);
+	}
 	if (_handler.isActive()) {
 		_cursorLayer->setColor(color);
-		_cursorPointer->setColor(color);
 	}
-	_cursorStart->setColor(color);
-	_cursorEnd->setColor(color);
 	_cursorSelection->setColor(color);
 }
 const Color &InputLabel::getCursorColor() const {
 	return _cursorColor;
+}
+
+void InputLabel::setPointerColor(const Color &color) {
+	_selectionColor = color;
+	if (_handler.isActive()) {
+		_cursorPointer->setColor(color);
+	}
+	_cursorStart->setColor(color);
+	_cursorEnd->setColor(color);
+}
+const Color &InputLabel::getPointerColor() const {
+	return _selectionColor;
 }
 
 void InputLabel::setString(const WideString &str) {
@@ -373,6 +386,19 @@ void InputLabel::eraseSelection() {
 	}
 }
 
+draw::PathNode *InputLabel::getTouchedCursor(const Vec2 &vec, float padding) {
+	if (_cursorPointer->isVisible() && node::isTouched(_cursorPointer, vec, padding)) {
+		return _cursorPointer;
+	}
+	if (_cursorStart->isVisible() && node::isTouched(_cursorStart, vec, padding)) {
+		return _cursorStart;
+	}
+	if (_cursorEnd->isVisible() && node::isTouched(_cursorEnd, vec, padding)) {
+		return _cursorEnd;
+	}
+	return nullptr;
+}
+
 bool InputLabel::onPressBegin(const Vec2 &vec) {
 	if (!isEnabled()) {
 		return false;
@@ -383,13 +409,8 @@ bool InputLabel::onLongPress(const Vec2 &vec, const TimeInterval &time, int coun
 	if (!_rangeAllowed || _inputString.empty() || _selectedCursor != nullptr || (!_inputEnabled && ime::isInputEnabled())) {
 		return false;
 	}
-	if (_cursorPointer->isVisible() && node::isTouched(_cursorPointer, vec, 4.0f)) {
-		return false;
-	}
-	if (_cursorStart->isVisible() && node::isTouched(_cursorStart, vec, 4.0f)) {
-		return false;
-	}
-	if (_cursorEnd->isVisible() && node::isTouched(_cursorEnd, vec, 4.0f)) {
+
+	if (getTouchedCursor(vec) != nullptr) {
 		return false;
 	}
 
@@ -419,6 +440,17 @@ bool InputLabel::onPressEnd(const Vec2 &vec) {
 			updateCursor();
 		} else {
 			acquireInput();
+			if (!empty()) {
+				auto chIdx = getCharIndex(convertToNodeSpace(vec));
+				if (chIdx.first != maxOf<uint32_t>()) {
+					if (chIdx.second) {
+						setCursor(Cursor(chIdx.first + 1));
+					} else {
+						setCursor(Cursor(chIdx.first));
+					}
+					scheduleCursorPointer();
+				}
+			}
 		}
 		return true;
 	} else if (_handler.isActive()) {
@@ -439,7 +471,7 @@ bool InputLabel::onPressEnd(const Vec2 &vec) {
 			}
 			scheduleCursorPointer();
 			return false;
-		} else if (empty() && !isPointerEnabled()) {
+		} else if ((empty() && !isPointerEnabled()) || _selectedCursor) {
 			scheduleCursorPointer();
 		}
 		return true;
@@ -461,19 +493,10 @@ bool InputLabel::onSwipeBegin(const Vec2 &vec) {
 		return false;
 	}
 	if (_handler.isInputEnabled()) {
-		if (_cursorPointer->isVisible() && node::isTouched(_cursorPointer, vec, 4.0f)) {
+		auto c = getTouchedCursor(vec);
+		if (c != nullptr) {
 			unscheduleCursorPointer();
-			_selectedCursor = _cursorPointer;
-			return true;
-		}
-		if (_cursorStart->isVisible() && node::isTouched(_cursorStart, vec, 4.0f)) {
-			unscheduleCursorPointer();
-			_selectedCursor = _cursorStart;
-			return true;
-		}
-		if (_cursorEnd->isVisible() && node::isTouched(_cursorEnd, vec, 4.0f)) {
-			unscheduleCursorPointer();
-			_selectedCursor = _cursorEnd;
+			_selectedCursor = c;
 			return true;
 		}
 	}
@@ -526,6 +549,19 @@ bool InputLabel::onSwipeEnd(const Vec2 &) {
 		scheduleCursorPointer();
 	}
 	return false;
+}
+
+Layer *InputLabel::getCursorLayer() const {
+	return _cursorLayer;
+}
+draw::PathNode *InputLabel::getCursorPointer() const {
+	return _cursorPointer;
+}
+draw::PathNode *InputLabel::getCursorStart() const {
+	return _cursorStart;
+}
+draw::PathNode *InputLabel::getCursorEnd() const {
+	return _cursorEnd;
 }
 
 void InputLabel::onText(const WideString &str, const Cursor &c) {
@@ -649,7 +685,7 @@ bool InputLabel::updateString(const WideString &str, const Cursor &c) {
 void InputLabel::updateFocus() {
 	if (_inputEnabled) {
 		_cursorLayer->setColor(_cursorColor);
-		_cursorPointer->setColor(_cursorColor);
+		_cursorPointer->setColor(_selectionColor);
 		_cursorLayer->setVisible(true);
 	} else {
 		_cursorLayer->setColor(Color::Grey_500);
@@ -736,6 +772,219 @@ int32_t InputLabel::getInputTypeValue() const {
 		ret |= toInt(InputType::MultiLineBit);
 	}
 	return ret;
+}
+
+
+void InputLabelContainer::setLabel(InputLabel *l, int zIndex) {
+	if (_label) {
+		_label->removeFromParent();
+		_label = nullptr;
+	}
+	if (l) {
+		l->setOnTransformDirtyCallback(std::bind(&InputLabelContainer::onLabelPosition, this));
+		addChild(l, zIndex);
+		_label = l;
+	}
+}
+
+InputLabel *InputLabelContainer::getLabel() const {
+	return _label;
+}
+
+void InputLabelContainer::update(float dt) {
+	if (!_label) {
+		return;
+	}
+
+	auto labelWidth = _label->getContentSize().width;
+	auto width = _contentSize.width;
+	auto min = width - labelWidth - 2.0f;
+	auto max = 0.0f;
+	auto newpos = _label->getPositionX();
+
+	auto factor = std::min(32.0f, _adjustPosition);
+
+	switch (_adjust) {
+	case Left:
+		newpos += (45.0f + progress(0.0f, 200.0f, factor / 32.0f)) * dt;
+		break;
+	case Right:
+		newpos -= (45.0f + progress(0.0f, 200.0f, factor / 32.0f)) * dt;
+		break;
+	default:
+		break;
+	}
+
+	if (newpos != _label->getPositionX()) {
+		if (newpos < min) {
+			newpos = min;
+		} else if (newpos > max) {
+			newpos = max;
+		}
+		_label->stopAllActionsByTag("LineFieldAdjust"_tag);
+		_label->setPositionX(newpos);
+		_label->onSwipe(_adjustValue, Vec2::ZERO);
+	}
+}
+
+void InputLabelContainer::onCursor() {
+	onLabelPosition();
+}
+
+void InputLabelContainer::onInput() {
+	if (!_label) {
+		return;
+	}
+
+	auto labelWidth = _label->getContentSize().width;
+	auto width = getContentSize().width;
+	auto cursor = _label->getCursor();
+	if (cursor.start >= _label->getCharsCount()) {
+		if (labelWidth > width) {
+			runAdjust(width - labelWidth);
+			return;
+		}
+	} else {
+		auto pos = _label->getCursorMarkPosition();
+		auto labelPos = pos.x + width / 2;
+		if (labelWidth > width && labelPos > width) {
+			auto min = width - labelWidth;
+			auto max = 0.0f;
+			auto newpos = width - labelPos;
+			if (newpos < min) {
+				newpos = min;
+			} else if (newpos > max) {
+				newpos = max;
+			}
+
+			runAdjust(newpos);
+			return;
+		}
+	}
+
+	runAdjust(0.0f);
+}
+
+bool InputLabelContainer::onSwipeBegin(const Vec2 &loc, const Vec2 &delta) {
+	if (!_label) {
+		return false;
+	}
+
+	if (_label->onSwipeBegin(loc)) {
+		return true;
+	}
+
+	auto size = _label->getContentSize();
+	if (size.width > _contentSize.width && fabsf(delta.x) > fabsf(delta.y)) {
+		_swipeCaptured = true;
+		return true;
+	}
+
+	return false;
+}
+bool InputLabelContainer::onSwipe(const Vec2 &loc, const Vec2 &delta) {
+	if (!_label) {
+		return false;
+	}
+
+	if (_swipeCaptured) {
+		auto labelWidth = _label->getContentSize().width;
+		auto width = _contentSize.width;
+		auto min = width - labelWidth - 2.0f;
+		auto max = 0.0f;
+		auto newpos = _label->getPositionX() + delta.x;
+		if (newpos < min) {
+			newpos = min;
+		} else if (newpos > max) {
+			newpos = max;
+		}
+		_label->stopAllActionsByTag("LineFieldAdjust"_tag);
+		_label->setPositionX(newpos);
+		return true;
+	} else {
+		if (_label->onSwipe(loc, delta)) {
+			auto labelWidth = _label->getContentSize().width;
+			auto width = _contentSize.width;
+			if (labelWidth > width) {
+				auto pos = convertToNodeSpace(loc);
+				if (pos.x < 24.0f) {
+					scheduleAdjust(Left, loc, 24.0f - pos.x);
+				} else if (pos.x > width - 24.0f) {
+					scheduleAdjust(Right, loc, pos.x - (_contentSize.width - 24.0f));
+				} else {
+					scheduleAdjust(None, loc, 0.0f);
+				}
+			}
+			return true;
+		}
+		return false;
+	}
+}
+
+bool InputLabelContainer::onSwipeEnd(const Vec2 &vel) {
+	if (_swipeCaptured) {
+		_swipeCaptured = false;
+		return true;
+	} else {
+		scheduleAdjust(None, Vec2(0.0f, 0.0f), 0.0f);
+		return _label->onSwipeEnd(vel);
+	}
+}
+
+void InputLabelContainer::onLabelPosition() {
+	if (!_label) {
+		return;
+	}
+
+	float pos;
+	cocos2d::Node *node;
+
+	node = _label->getCursorLayer();
+	pos = node->getPositionX() + _label->getPositionX();
+	node->setOpacity(progress(255, 0, math::clamp(math::clamp_distance(pos, 0.0f, _contentSize.width) / 8.0f, 0.0f, 1.0f)));
+
+	node = _label->getCursorPointer();
+	pos = node->getPositionX() + _label->getPositionX();
+	node->setOpacity(progress(222, 0, math::clamp(math::clamp_distance(pos, 0.0f, _contentSize.width) / 8.0f, 0.0f, 1.0f)));
+
+	node = _label->getCursorStart();
+	pos = node->getPositionX() + _label->getPositionX();
+	node->setOpacity(progress(192, 0, math::clamp(math::clamp_distance(pos, 0.0f, _contentSize.width) / 8.0f, 0.0f, 1.0f)));
+
+	node = _label->getCursorLayer();
+	pos = node->getPositionX() + _label->getPositionX();
+	node->setOpacity(progress(192, 0, math::clamp(math::clamp_distance(pos, 0.0f, _contentSize.width) / 8.0f, 0.0f, 1.0f)));
+}
+
+void InputLabelContainer::runAdjust(float pos) {
+	if (!_label) {
+		return;
+	}
+
+	auto dist = fabs(_label->getPositionX() - pos);
+	auto t = 0.1f;
+	if (dist < 20.0f) {
+		t = 0.1f;
+	} else if (dist > 220.0f) {
+		t = 0.35f;
+	} else {
+		t = progress(0.1f, 0.35f, (dist - 20.0f) / 200.0f);
+	}
+	auto a = cocos2d::MoveTo::create(t, Vec2(pos, _label->getPositionY()));
+	_label->stopAllActionsByTag("LineFieldAdjust"_tag);
+	_label->runAction(a, "LineFieldAdjust"_tag);
+}
+
+void InputLabelContainer::scheduleAdjust(Adjust a, const Vec2 &vec, float pos) {
+	_adjustValue = vec;
+	_adjustPosition = pos;
+	if (a != _adjust) {
+		_adjust = a;
+		switch (_adjust) {
+		case None: unscheduleUpdate(); break;
+		default: scheduleUpdate(); break;
+		}
+	}
 }
 
 NS_MD_END

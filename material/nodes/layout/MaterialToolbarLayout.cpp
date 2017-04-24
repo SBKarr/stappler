@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "Material.h"
 #include "MaterialToolbarLayout.h"
 #include "MaterialToolbar.h"
+#include "MaterialSearchToolbar.h"
 #include "MaterialMenuSource.h"
 #include "MaterialMetrics.h"
 #include "MaterialScene.h"
@@ -35,16 +36,13 @@ THE SOFTWARE.
 
 NS_MD_BEGIN
 
-bool ToolbarLayout::init(Toolbar *toolbar) {
+bool ToolbarLayout::init(ToolbarBase *toolbar) {
 	if (!FlexibleLayout::init()) {
 		return false;
 	}
 
 	_toolbar = setupToolbar(toolbar);
 	setFlexibleNode(_toolbar);
-
-	auto actions = Rc<material::MenuSource>::create();
-	_toolbar->setActionMenuSource(actions);
 
 	setFlexibleHeightFunction([this] () -> std::pair<float, float> {
 		return onToolbarHeight();
@@ -55,30 +53,11 @@ bool ToolbarLayout::init(Toolbar *toolbar) {
 	return true;
 }
 
-void ToolbarLayout::onContentSizeDirty() {
-	auto tmp = _baseNode;
-	if (!_flexibleToolbar) {
-		_baseNode = nullptr;
-	}
-	FlexibleLayout::onContentSizeDirty();
-	_baseNode = tmp;
-
-	if (!_flexibleToolbar && _baseNode) {
-		stappler::Padding padding;
-		padding = _baseNode->getPadding();
-		_baseNode->setAnchorPoint(Vec2(0, 0));
-		_baseNode->setPosition(0, 0 + _keyboardSize.height);
-		_baseNode->setContentSize(Size(_contentSize.width, _contentSize.height - _keyboardSize.height - getCurrentFlexibleMax() - 0.0f));
-		_baseNode->setPadding(padding.setTop(6.0f));
-		_baseNode->setOverscrollFrontOffset(0.0f);
-	}
-}
-
 void ToolbarLayout::onEnter() {
 	FlexibleLayout::onEnter();
 }
 
-Toolbar *ToolbarLayout::getToolbar() const {
+ToolbarBase *ToolbarLayout::getToolbar() const {
 	return _toolbar;
 }
 
@@ -109,13 +88,13 @@ void ToolbarLayout::setMaxActions(size_t n) {
 }
 
 void ToolbarLayout::setFlexibleToolbar(bool value) {
-	if (value != _flexibleToolbar) {
-		_flexibleToolbar = value;
+	if (value != _flexibleBaseNode) {
+		_flexibleBaseNode = value;
 		_contentSizeDirty = true;
 	}
 }
 bool ToolbarLayout::getFlexibleToolbar() const {
-	return _flexibleToolbar;
+	return _flexibleBaseNode;
 }
 
 void ToolbarLayout::setMinToolbarHeight(float portrait, float landscape) {
@@ -137,21 +116,30 @@ void ToolbarLayout::onToolbarNavButton() {
 	}
 }
 
-Toolbar *ToolbarLayout::setupToolbar(Toolbar *toolbar) {
+ToolbarBase *ToolbarLayout::setupToolbar(ToolbarBase *toolbar) {
 	if (!toolbar) {
 		toolbar = construct<material::Toolbar>();
 	}
+
 	toolbar->setColor(material::Color::Grey_300);
 	toolbar->setShadowZIndex(1.5f);
 	toolbar->setMaxActionIcons(2);
-	toolbar->setTitle("Title");
-	toolbar->setNavButtonIcon(material::IconName::Dynamic_Navigation);
+
+	if (toolbar->getNavButtonIcon() == IconName::Empty || toolbar->getNavButtonIcon() == IconName::None) {
+		toolbar->setNavButtonIcon(material::IconName::Dynamic_Navigation);
+	}
+
 	toolbar->setNavCallback(std::bind(&ToolbarLayout::onToolbarNavButton, this));
+
+	if (!toolbar->getActionMenuSource()) {
+		toolbar->setActionMenuSource(Rc<material::MenuSource>::create());
+	}
+
 	return toolbar;
 }
 
 std::pair<float, float> ToolbarLayout::onToolbarHeight() {
-	return _toolbar->onToolbarHeight(_flexibleToolbar, _contentSize.width > _contentSize.height);
+	return _toolbar->onToolbarHeight(_flexibleBaseNode, _contentSize.width > _contentSize.height);
 }
 
 void ToolbarLayout::onPush(ContentLayer *l, bool replace) {
@@ -181,8 +169,7 @@ void ToolbarLayout::onBackground(ContentLayer *l, Layout *overlay) {
 
 	auto nextToolbar = next->getToolbar();
 
-	if (_toolbar->getNavButtonIcon() == IconName::Dynamic_Navigation
-			&& _toolbar->getNavButtonIcon() == nextToolbar->getNavButtonIcon()) {
+	if (_toolbar->isNavProgressSupported() && nextToolbar->isNavProgressSupported()) {
 		auto p = _toolbar->getNavButtonIconProgress();
 		if (p < 1.0f) {
 			nextToolbar->setNavButtonIconProgress(1.0f, 0.35f);
@@ -199,7 +186,7 @@ void ToolbarLayout::onBackground(ContentLayer *l, Layout *overlay) {
 }
 
 void ToolbarLayout::onForegroundTransitionBegan(ContentLayer *l, Layout *overlay) {
-	if (!_flexibleToolbar) {
+	if (!_flexibleBaseNode) {
 		_flexibleLevel = 1.0f;
 	}
 	FlexibleLayout::onForegroundTransitionBegan(l, overlay);
@@ -214,8 +201,7 @@ void ToolbarLayout::onForeground(ContentLayer *l, Layout *overlay) {
 	}
 
 	auto nextToolbar = next->getToolbar();
-	if (_toolbar->getNavButtonIcon() == IconName::Dynamic_Navigation
-			&& _toolbar->getNavButtonIcon() == nextToolbar->getNavButtonIcon()) {
+	if (_toolbar->isNavProgressSupported() && nextToolbar->isNavProgressSupported()) {
 		if (_forwardProgress) {
 			_toolbar->setNavButtonIconProgress(0.0f, 0.35f);
 			_forwardProgress = false;
@@ -224,7 +210,7 @@ void ToolbarLayout::onForeground(ContentLayer *l, Layout *overlay) {
 }
 
 void ToolbarLayout::onScroll(float delta, bool finished) {
-    if (_flexibleToolbar) {
+    if (_flexibleBaseNode) {
         FlexibleLayout::onScroll(delta, finished);
     }
 }
@@ -232,7 +218,7 @@ void ToolbarLayout::onScroll(float delta, bool finished) {
 void ToolbarLayout::onKeyboard(bool enabled, const Rect &rect, float duration) {
 	bool tmpEnabled = _keyboardEnabled;
 	FlexibleLayout::onKeyboard(enabled, rect, duration);
-	if (tmpEnabled != enabled) {
+	if (tmpEnabled != enabled && _toolbar->isNavProgressSupported()) {
 		if (enabled) {
 			_savedNavCallback = _toolbar->getNavCallback();
 			_savedNavProgress = _toolbar->getNavButtonIconProgress();

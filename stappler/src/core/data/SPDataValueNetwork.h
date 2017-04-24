@@ -24,11 +24,15 @@ THE SOFTWARE.
 #define STAPPLER_SRC_CORE_DATA_SPDATAVALUENETWORK_H_
 
 #include "SPData.h"
+#include "SPNetworkDataTask.h"
 
 NS_SP_EXT_BEGIN(data)
 
-void readUrl(const String &, const Function<void(data::Value &)> &, const String &key = "");
-void readUrl(const String &, const Function<void(data::Value &)> &, Thread &, const String &key = "");
+void readUrl(const String &, const Function<void(Value &)> &, const String &key = "");
+void readUrl(const String &, const Function<void(Value &)> &, Thread &, const String &key = "");
+
+void readUrl(const String &, const Function<void(const NetworkDataTask &, Value &)> &, const String &key = "");
+void readUrl(const String &, const Function<void(const NetworkDataTask &, Value &)> &, Thread &, const String &key = "");
 
 NS_SP_EXT_END(data)
 

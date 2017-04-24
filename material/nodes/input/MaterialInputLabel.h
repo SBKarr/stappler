@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "MaterialLabel.h"
 #include "SPDynamicBatchNode.h"
 #include "SPIME.h"
+#include "SPStrictNode.h"
 
 NS_MD_BEGIN
 
@@ -51,6 +52,38 @@ public:
 	virtual void onError(Error);
 
 	virtual void onPointer(bool);
+};
+
+class InputLabelContainer : public StrictNode {
+public:
+	virtual void setLabel(InputLabel *, int zIndex = 0);
+	virtual InputLabel *getLabel() const;
+
+	virtual void update(float dt) override;
+	virtual void onCursor();
+	virtual void onInput();
+
+	virtual bool onSwipeBegin(const Vec2 &, const Vec2 &);
+	virtual bool onSwipe(const Vec2 &, const Vec2 &);
+	virtual bool onSwipeEnd(const Vec2 &);
+
+protected:
+	enum Adjust {
+		None,
+		Left,
+		Right
+	};
+
+	virtual void onLabelPosition();
+
+	virtual void runAdjust(float);
+	virtual void scheduleAdjust(Adjust, const Vec2 &, float pos);
+
+	InputLabel *_label = nullptr;
+	Adjust _adjust = None;
+	Vec2 _adjustValue;
+	float _adjustPosition = 0.0f;
+	bool _swipeCaptured = false;
 };
 
 class InputLabel : public Label {
@@ -88,8 +121,11 @@ public:
 
 	virtual Vec2 getCursorMarkPosition() const;
 
-	virtual void setCursorColor(const Color &);
+	virtual void setCursorColor(const Color &, bool pointer = true);
 	virtual const Color &getCursorColor() const;
+
+	virtual void setPointerColor(const Color &);
+	virtual const Color &getPointerColor() const;
 
 	virtual void setString(const WideString &) override;
 	virtual void setString(const String &) override;
@@ -135,6 +171,8 @@ public:
 	virtual void eraseSelection();
 
 public:
+	virtual draw::PathNode *getTouchedCursor(const Vec2 &, float = 4.0f);
+
 	virtual bool onPressBegin(const Vec2 &);
 	virtual bool onLongPress(const Vec2 &, const TimeInterval &, int count);
 	virtual bool onPressEnd(const Vec2 &);
@@ -143,6 +181,12 @@ public:
 	virtual bool onSwipeBegin(const Vec2 &);
 	virtual bool onSwipe(const Vec2 &, const Vec2 &);
 	virtual bool onSwipeEnd(const Vec2 &);
+
+public:
+	Layer *getCursorLayer() const;
+	draw::PathNode *getCursorPointer() const;
+	draw::PathNode *getCursorStart() const;
+	draw::PathNode *getCursorEnd() const;
 
 protected:
 	virtual void onText(const WideString &, const Cursor &);
@@ -179,6 +223,7 @@ protected:
 
 	float _cursorAnchor = 1.2f;
 
+	Color _selectionColor = Color::Blue_500;
 	Color _cursorColor = Color::Blue_500;
 
 	WideString _inputString;

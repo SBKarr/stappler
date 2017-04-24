@@ -1653,6 +1653,17 @@ static uint16_t s_iconCount = 806;
 
 SP_DECLARE_EVENT_CLASS(IconStorage, onUpdate);
 
+layout::Path IconStorage::getIconPath(IconName n) {
+	auto dataIt = std::lower_bound(s_iconTable, s_iconTable + s_iconCount, n, [] (const IconDataStruct &d, IconName n) -> bool {
+		return d.name < n;
+	});
+
+	layout::Path path;
+	path.init(dataIt->data, dataIt->len);
+	path.setFillColor(Color4B(0, 0, 0, 255));
+	return path;
+}
+
 IconStorage::IconStorage() { }
 
 IconStorage::~IconStorage() {
@@ -1765,13 +1776,6 @@ static Rc<cocos2d::Texture2D> IconStorage_updateIcons(const Vector<IconName> &na
 	canvas->endBatch();
 	canvas->end();
 	tex->setAntiAliasTexParameters();
-
-	/*const cocos2d::Texture2D::PixelFormatInfo& info = cocos2d::Texture2D::_pixelFormatInfoTables.at(tex->getPixelFormat());
-	Bytes buf; buf.resize(texWidth * texHeight);
-	glBindTexture(GL_TEXTURE_2D, tex->getName());
-	glGetTexImage(GL_TEXTURE_2D, 0, info.format, info.type, buf.data());
-	glBindTexture(GL_TEXTURE_2D, 0);
-	Bitmap::savePng(toString(Time::now().toMicroseconds(), ".png"), buf.data(), texWidth, texHeight, Bitmap::Format::A8);*/
 
 	return tex;
 }

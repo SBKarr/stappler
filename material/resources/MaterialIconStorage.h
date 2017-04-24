@@ -69,6 +69,8 @@ public:
 
 	static EventHeader onUpdate;
 
+	static Path getIconPath(IconName);
+
 	IconStorage();
 	~IconStorage();
 

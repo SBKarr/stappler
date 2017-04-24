@@ -153,7 +153,7 @@ ResourceManager::ResourceManager() {
 
 	_iconStorage = Rc<IconStorage>::create(stappler::screen::density());
 
-	stappler::storage::get("Material.ResourceManager", [this] (const std::string &key, stappler::data::Value &value) {
+	storage::get("Material.ResourceManager", [this] (const String &key, data::Value &&value) {
 		if (value.isDictionary()) {
 			float textFontScale = value.getDouble("TextFontScale", 1.0f);
 			_textFont->setFontScale(textFontScale);
@@ -183,7 +183,7 @@ ResourceManager::ResourceManager() {
 ResourceManager::~ResourceManager() { }
 
 void ResourceManager::saveUserData() {
-	data::Value val(stappler::data::Value::Type::DICTIONARY);
+	data::Value val(data::Value::Type::DICTIONARY);
 
 	val.setDouble(getUserFontScale(), "TextFontScale");
 	val.setInteger((int)_lightLevel, "LightLevel");

@@ -73,7 +73,7 @@ protected:
 
 	bool _autoAdjust = true;
 	bool _fullHeight = false;
-	ScrollView *_adjustScroll = nullptr;
+	ScrollView *_adjustScroll = nullptr; // external scroll to use for vertical adjust
 
 	bool _dense = false;
 	bool _counterEnabled = false;
