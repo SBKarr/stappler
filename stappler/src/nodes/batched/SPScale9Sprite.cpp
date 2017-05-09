@@ -25,7 +25,6 @@ THE SOFTWARE.
 
 #include "SPDefine.h"
 #include "SPScale9Sprite.h"
-#include "2d/CCSprite.h"
 #include "SPFilesystem.h"
 
 USING_NS_SP;
@@ -49,10 +48,10 @@ bool Scale9Sprite::init(cocos2d::Texture2D *tex, Rect rect, Rect capInsets) {
 	_textureRect = rect;
 	_capInsets = capInsets;
 	_contentSize = _textureRect.size;
-	
+
 	setCascadeColorEnabled(true);
 	setCascadeOpacityEnabled(true);
-	
+
 	return true;
 }
 
@@ -200,20 +199,20 @@ void Scale9Sprite::updateRects() {
 	if (_globalScaleY < 1) {
 		_drawRect.size.height = 0;
 	}
-	
+
 	_minContentSize = Size(_capInsets.origin.x + _capInsets.size.width, _capInsets.origin.y + _capInsets.size.height);
 }
 
 void Scale9Sprite::updateSprites() {
 	updateRects();
-	
+
 	float contentScaleX = 1.0f;
 	float contentScaleY = 1.0f;
-	
+
 	if (_contentSize.width < _minContentSize.width) {
 		contentScaleX = _contentSize.width / _minContentSize.width;
 	}
-	
+
 	if (_contentSize.height < _minContentSize.height) {
 		contentScaleY = _contentSize.height / _minContentSize.height;
 	}

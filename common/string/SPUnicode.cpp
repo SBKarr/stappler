@@ -389,6 +389,43 @@ Pair<char16_t, uint8_t> read(char_const_ptr_t ptr) {
 	return pair((char16_t)ret, len);
 }
 
+size_t getUtf16Length(const StringView &input) {
+	StringView utf8_str(input);
+	size_t ret = 0;
+	while (!utf8_str.empty()) {
+		auto offset = unicode::utf8DecodeLength(*utf8_str.data());
+
+		utf8_str += offset;
+		ret += offset;
+	}
+
+    return ret;
+}
+size_t getUtf16Length(const String &str) {
+	return getUtf16Length(StringView(str));
+}
+size_t getUtf16Length(const char *str, size_t ilen) {
+	size_t nlen = (ilen == 0)?std::char_traits<char>::length(str):ilen;
+	return getUtf16Length(StringView(str, nlen));
+}
+
+size_t getUtf8Length(const WideStringView &istr) {
+	WideStringView str(istr);
+	size_t ret = 0;
+	while (!str.empty()) {
+		ret += unicode::utf8EncodeLength(*str.data());
+		++ str;
+	}
+	return ret;
+}
+size_t getUtf8Length(const WideString &str) {
+	return getUtf8Length(WideStringView(str));
+}
+size_t getUtf8Length(const char16_t *str, size_t ilen) {
+	size_t nlen = (ilen == 0)?std::char_traits<char16_t>::length(str):ilen;
+	return getUtf8Length(WideStringView(str, nlen));
+}
+
 WideString toUtf16(const String &utf8_str) {
 	WideString utf16_str; utf16_str.reserve(Utf8SymbolsCount(utf8_str));
 	auto ptr = (char_const_ptr_t)utf8_str.c_str();

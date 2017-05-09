@@ -89,6 +89,8 @@ public:
 	void addAssetFile(const String &, const String &, uint64_t asset, uint64_t ctime);
 	void removeAssetFile(const String &);
 
+	void finalize();
+
 protected:
 	friend class Asset;
 
@@ -113,7 +115,6 @@ protected:
 	void onAssetCreated(Asset *);
 
 	friend class storage::Handle;
-	static void importAssetData(data::Value &);
 
 	void performGetAssets(AssetVec &, const std::vector<AssetRequest> &);
 

@@ -35,14 +35,6 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(draw)
 
-cocos2d::GLProgram *getA8Program() {
-	return TextureCache::getInstance()->getBatchPrograms()->getProgram(GLProgramSet::DrawNodeA8);
-}
-
-cocos2d::GLProgram *getRGBA8888Program() {
-	return cocos2d::GLProgramCache::getInstance()->getGLProgram(cocos2d::GLProgram::SHADER_NAME_POSITION_TEXTURE_COLOR_NO_MVP);
-}
-
 PathNode::~PathNode() {
 	clear();
 }
@@ -69,12 +61,6 @@ bool PathNode::init(Image *img, Format fmt) {
 		_pathsDirty = true;
 	});
 	addComponent(l);
-
-	if (fmt == Format::A8) {
-		setGLProgram(getA8Program());
-	} else if (fmt == Format::RGBA8888) {
-		setGLProgram(getRGBA8888Program());
-	}
 
 	_baseWidth = (_image?_image->getWidth():0);
 	_baseHeight = (_image?_image->getHeight():0);
@@ -234,17 +220,21 @@ void PathNode::updateCanvas(layout::Subscription::Flags f) {
 
 	auto currentTex = getTexture();
 	if (!f.empty() || !currentTex || (uint32_t)currentTex->getPixelsWide() != width || (uint32_t)currentTex->getPixelsHigh() != height) {
-		auto tex = generateTexture(getTexture(), width, height, _format, true);
+		auto tex = generateTexture(getTexture(), width, height, _format);
 		if (tex) {
 			_canvas->begin(tex, Color4B(0, 0, 0, 0));
 			_canvas->save();
 			_canvas->translate(offsetX, offsetY);
 			_canvas->scale(scaleX, scaleY);
 
+			//_canvas->beginBatch();
+
 			auto &paths = _image->getPaths();
 			for (auto & path : paths) {
 				_canvas->draw(path);
 			}
+
+			//_canvas->endBatch();
 
 			_canvas->restore();
 			_canvas->end();
@@ -256,15 +246,11 @@ void PathNode::updateCanvas(layout::Subscription::Flags f) {
 	}
 }
 
-Rc<cocos2d::Texture2D> PathNode::generateTexture(cocos2d::Texture2D *tex, uint32_t w, uint32_t h, Format fmt, bool renderTargetRequired) {
-	if (tex && tex->getPixelsHigh() == int(h) && tex->getPixelsWide() == int(w) &&
-			((fmt == Format::A8 && tex->getReferenceFormat() == cocos2d::Texture2D::PixelFormat::A8)
-					|| (fmt == Format::RGBA8888 && tex->getReferenceFormat() == cocos2d::Texture2D::PixelFormat::RGBA8888))) {
+Rc<cocos2d::Texture2D> PathNode::generateTexture(cocos2d::Texture2D *tex, uint32_t w, uint32_t h, Format fmt) {
+	if (tex && tex->getPixelsHigh() == int(h) && tex->getPixelsWide() == int(w) && fmt == tex->getReferenceFormat()) {
 		return tex;
 	}
-	auto outtex = Rc<cocos2d::Texture2D>::create(
-			(fmt == Format::A8?cocos2d::Texture2D::PixelFormat::A8:cocos2d::Texture2D::PixelFormat::RGBA8888),
-			w, h, renderTargetRequired?cocos2d::Texture2D::InitAs::RenderTarget:cocos2d::Texture2D::InitAs::DataTexture);
+	auto outtex = Rc<cocos2d::Texture2D>::create(fmt, w, h, cocos2d::Texture2D::InitAs::RenderTarget);
 	if (outtex) {
 		outtex->setAliasTexParameters();
 	}

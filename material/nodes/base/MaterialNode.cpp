@@ -107,7 +107,6 @@ bool MaterialNode::init() {
 	_shadowClipper = construct<ClippingNode>(_backgroundClipper);
 	_shadowClipper->setAnchorPoint(Vec2(0, 0));
 	_shadowClipper->setPosition(0, 0);
-	_shadowClipper->setAlphaThreshold(1.0f);
 	_shadowClipper->setInverted(true);
 	_shadowClipper->setEnabled(false);
 	_shadowClipper->setCascadeColorEnabled(true);

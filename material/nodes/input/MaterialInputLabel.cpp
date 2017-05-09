@@ -939,21 +939,23 @@ void InputLabelContainer::onLabelPosition() {
 	float pos;
 	cocos2d::Node *node;
 
-	node = _label->getCursorLayer();
-	pos = node->getPositionX() + _label->getPositionX();
-	node->setOpacity(progress(255, 0, math::clamp(math::clamp_distance(pos, 0.0f, _contentSize.width) / 8.0f, 0.0f, 1.0f)));
+	if (_contentSize.width > 0.0f) {
+		node = _label->getCursorLayer();
+		pos = node->getPositionX() + _label->getPositionX();
+		node->setOpacity(progress(255, 0, math::clamp(math::clamp_distance(pos, 0.0f, _contentSize.width) / 8.0f, 0.0f, 1.0f)));
 
-	node = _label->getCursorPointer();
-	pos = node->getPositionX() + _label->getPositionX();
-	node->setOpacity(progress(222, 0, math::clamp(math::clamp_distance(pos, 0.0f, _contentSize.width) / 8.0f, 0.0f, 1.0f)));
+		node = _label->getCursorPointer();
+		pos = node->getPositionX() + _label->getPositionX();
+		node->setOpacity(progress(222, 0, math::clamp(math::clamp_distance(pos, 0.0f, _contentSize.width) / 8.0f, 0.0f, 1.0f)));
 
-	node = _label->getCursorStart();
-	pos = node->getPositionX() + _label->getPositionX();
-	node->setOpacity(progress(192, 0, math::clamp(math::clamp_distance(pos, 0.0f, _contentSize.width) / 8.0f, 0.0f, 1.0f)));
+		node = _label->getCursorStart();
+		pos = node->getPositionX() + _label->getPositionX();
+		node->setOpacity(progress(192, 0, math::clamp(math::clamp_distance(pos, 0.0f, _contentSize.width) / 8.0f, 0.0f, 1.0f)));
 
-	node = _label->getCursorLayer();
-	pos = node->getPositionX() + _label->getPositionX();
-	node->setOpacity(progress(192, 0, math::clamp(math::clamp_distance(pos, 0.0f, _contentSize.width) / 8.0f, 0.0f, 1.0f)));
+		node = _label->getCursorLayer();
+		pos = node->getPositionX() + _label->getPositionX();
+		node->setOpacity(progress(192, 0, math::clamp(math::clamp_distance(pos, 0.0f, _contentSize.width) / 8.0f, 0.0f, 1.0f)));
+	}
 }
 
 void InputLabelContainer::runAdjust(float pos) {

@@ -229,6 +229,7 @@ uint16_t Formatter::checkBullet(uint16_t first, uint16_t len) const {
 }
 
 void Formatter::pushLineFiller(bool replaceLastChar) {
+	output->overflow = true;
 	if (_fillerChar == 0) {
 		return;
 	}
@@ -970,6 +971,7 @@ void FormatSpec::clear() {
 	chars.clear();
 	lines.clear();
 	ranges.clear();
+	overflow = false;
 }
 
 inline static bool isSpaceOrLineBreak(char16_t c) {

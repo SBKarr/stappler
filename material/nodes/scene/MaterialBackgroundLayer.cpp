@@ -28,7 +28,6 @@ THE SOFTWARE.
 
 #include "SPLayer.h"
 #include "SPDynamicSprite.h"
-#include "2d/CCSprite.h"
 
 NS_MD_BEGIN
 

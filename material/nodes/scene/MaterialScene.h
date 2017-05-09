@@ -146,6 +146,7 @@ protected:
 	Vector<cocos2d::GroupCommand> _group;
 
 	bool _contentCapturing = false;
+	Rc<draw::Canvas> _captureCanvas;
 };
 
 NS_MD_END

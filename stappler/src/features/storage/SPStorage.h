@@ -49,6 +49,8 @@ NS_SP_EXT_BEGIN(storage)
 Handle *defaultStorage();
 Handle *create(const String &name, const String &filePath);
 
+void finalize(Handle *);
+
 Thread & thread(Handle * = nullptr);
 
 using KeyDataCallback = Function<void(const String &key, data::Value && value)>;

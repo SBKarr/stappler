@@ -57,21 +57,46 @@ void GLCacheNode::enableVertexAttribs(uint32_t flags) {
     _attributeFlags = flags;
 }
 
-void GLCacheNode::blendFunc(GLenum sfactor, GLenum dfactor) {
-	if (sfactor != _blendingSource || dfactor != _blendingDest) {
-		_blendingSource = sfactor;
-		_blendingDest = dfactor;
-		if (sfactor == GL_ONE && dfactor == GL_ZERO) {
+void GLCacheNode::setBlending(const GLBlending &b) {
+	if (b != _blending) {
+		bool funcDirty = b.separateFunc != _blending.separateFunc
+				|| (b.separateFunc && (b.colorFunc != _blending.colorFunc || b.alphaFunc != _blending.alphaFunc))
+				|| (!b.separateFunc && b.colorFunc != _blending.colorFunc);
+		bool eqDirty = b.separateEq != _blending.separateEq
+				|| (b.separateEq && (b.colorEq != _blending.colorEq || b.alphaEq != _blending.alphaEq))
+				|| (!b.separateEq && b.colorEq != _blending.colorEq);
+
+		if (b.empty()) {
 			glDisable(GL_BLEND);
 		} else {
-			glEnable(GL_BLEND);
-			glBlendFunc(sfactor, dfactor);
+			if (_blending.empty()) {
+				glEnable(GL_BLEND);
+			}
+			if (funcDirty) {
+				if (b.separateFunc) {
+					glBlendFuncSeparate(b.colorFunc.src, b.colorFunc.dst, b.alphaFunc.src, b.alphaFunc.dst);
+				} else {
+					glBlendFunc(b.colorFunc.src, b.colorFunc.dst);
+				}
+			}
+			if (eqDirty) {
+				if (b.separateEq) {
+					glBlendEquationSeparate(b.colorEqEnum(), b.alphaEqEnum());
+				} else {
+					glBlendEquation(b.colorEqEnum());
+				}
+			}
 		}
+		_blending = b;
 	}
 }
 
-void GLCacheNode::blendFunc(const cocos2d::BlendFunc &func) {
-	blendFunc(func.src, func.dst);
+void GLCacheNode::blendFunc(GLenum sfactor, GLenum dfactor) {
+	setBlending(GLBlending(BlendFunc{sfactor, dfactor}));
+}
+
+void GLCacheNode::blendFunc(const BlendFunc &func) {
+	setBlending(GLBlending(func));
 }
 
 NS_SP_EXT_END(draw)

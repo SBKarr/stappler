@@ -28,7 +28,6 @@ THE SOFTWARE.
 #include "SPTime.h"
 #include "SPDevice.h"
 
-#include "2d/CCSprite.h"
 #include "base/CCDirector.h"
 
 #include "renderer/CCRenderer.h"

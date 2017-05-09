@@ -67,7 +67,7 @@ protected:
 	cocos2d::Component *_gestureListener = nullptr;
 
 	cocos2d::Node *_root = nullptr;
-	cocos2d::Sprite *_image = nullptr;
+	DynamicSprite *_image = nullptr;
 
 	Size _prevContentSize;
     Vec2 _globalScale; // values to scale input gestures

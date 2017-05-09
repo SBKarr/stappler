@@ -38,8 +38,6 @@
 
 NS_LAYOUT_BEGIN
 
-//class Plane;
-
 /**
  * Defines a 4 x 4 floating point matrix representing a 3D transformation.
  *

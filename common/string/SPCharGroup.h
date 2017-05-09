@@ -162,7 +162,7 @@ struct CharGroup;
 
 template <>
 struct CharGroup<char, GroupId::PunctuationBasic> : Compose<char,
-		Range<char, '\x21', '\x2F'>, Range<char, '\x3A', '\x40'>, Range<char, '\x5B', '\x7F'>, Range<char, '\xA1', '\xBF'>
+		Range<char, '\x21', '\x2F'>, Range<char, '\x3A', '\x40'>, Range<char, '\x5B', '\x7F'>
 > { };
 
 template <>
@@ -173,7 +173,7 @@ struct CharGroup<char, GroupId::Latin> : Compose<char, Range<char, 'A', 'Z'>, Ra
 
 template <>
 struct CharGroup<char, GroupId::WhiteSpace> : Compose<char,
-		Range<char, '\x09', '\x0D'>, Chars<char, '\x20', '\x85', '\xA0'>
+		Range<char, '\x09', '\x0D'>, Chars<char, '\x20'>
 > { };
 
 template <>
@@ -181,7 +181,7 @@ struct CharGroup<char, GroupId::Controls> : Compose<char, Range<char, '\x01', '\
 
 template <>
 struct CharGroup<char, GroupId::NonPrintable> : Compose<char,
-		Range<char, '\x01', '\x20'>, Chars<char, '\x20', '\x85', '\xA0'>
+		Range<char, '\x01', '\x20'>, Chars<char, '\x20'>
 > { };
 
 template <>

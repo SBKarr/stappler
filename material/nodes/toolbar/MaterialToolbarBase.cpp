@@ -302,6 +302,9 @@ float ToolbarBase::updateMenu(cocos2d::Node *composer, MenuSource *source, size_
 	}
 
 	if (icons.size() > 0) {
+		if (icons.back()->getIconName() == IconName::Navigation_more_vert) {
+			hasExtMenu = true;
+		}
 		auto pos = composer->getContentSize().width - 56 * (icons.size() - 1) - (hasExtMenu?8:36);
 		for (auto &it : icons) {
 			it->setContentSize(Size(48, std::min(48.0f, _basicHeight)));

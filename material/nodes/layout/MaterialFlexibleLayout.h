@@ -48,8 +48,6 @@ public:
 	virtual void setFlexibleHeightFunction(const HeightFunction &);
 	virtual const HeightFunction &getFlexibleHeightFunction() const;
 
-	virtual void onScroll(float delta, bool finished);
-
 	virtual void setStatusBarTracked(bool value);
 	virtual bool isStatusBarTracked() const;
 
@@ -77,6 +75,7 @@ protected:
 	float getStatusBarHeight() const;
 	void onStatusBarHeight(float);
 
+	virtual void onScroll(float delta, bool finished);
 	virtual void onStatusBarNode(const node::Params &);
 	virtual void onFlexibleNode(const node::Params &);
 	virtual void onBaseNode(const node::Params &, const Padding &, float offset);

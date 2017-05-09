@@ -24,41 +24,40 @@ THE SOFTWARE.
 #define STAPPLER_SRC_CORE_SPNODE_H_
 
 #include "SPForward.h"
+#include "SPBitmap.h"
 
-NS_SP_BEGIN
+NS_SP_EXT_BEGIN(node)
 
-namespace node {
-	struct Params {
-		enum Mask {
-			None = 0,
-			Position = 1 << 0,
-			ContentSize = 1 << 1,
-			AnchorPoint = 1 << 2,
-			Visibility = 1 << 3,
-		};
-
-		void setPosition(float x, float y);
-		void setPosition(const Vec2 &pos);
-		void setAnchorPoint(const Vec2 &pt);
-		void setContentSize(const Size &size);
-		void setVisible(bool value);
-		void apply(cocos2d::Node *) const;
-
-		Mask mask = None;
-		Vec2 position;
-		Vec2 anchorPoint;
-		Size contentSize;
-		bool visible = false;
+struct Params {
+	enum Mask {
+		None = 0,
+		Position = 1 << 0,
+		ContentSize = 1 << 1,
+		AnchorPoint = 1 << 2,
+		Visibility = 1 << 3,
 	};
 
-	bool isTouched(cocos2d::Node *node, const Vec2 &point, float padding = 0);
-	bool isParent(cocos2d::Node *parent, cocos2d::Node *node);
-	Mat4 chainNodeToParent(cocos2d::Node *parent, cocos2d::Node *node, bool full = true);
-	Mat4 chainParentToNode(cocos2d::Node *parent, cocos2d::Node *node, bool full = true);
-	void dump(cocos2d::Node *node, int depth = -1);
-	void apply(cocos2d::Node *node, const Params &);
-}
+	void setPosition(float x, float y);
+	void setPosition(const Vec2 &pos);
+	void setAnchorPoint(const Vec2 &pt);
+	void setContentSize(const Size &size);
+	void setVisible(bool value);
+	void apply(cocos2d::Node *) const;
 
-NS_SP_END
+	Mask mask = None;
+	Vec2 position;
+	Vec2 anchorPoint;
+	Size contentSize;
+	bool visible = false;
+};
+
+bool isTouched(cocos2d::Node *node, const Vec2 &point, float padding = 0);
+bool isParent(cocos2d::Node *parent, cocos2d::Node *node);
+Mat4 chainNodeToParent(cocos2d::Node *parent, cocos2d::Node *node, bool full = true);
+Mat4 chainParentToNode(cocos2d::Node *parent, cocos2d::Node *node, bool full = true);
+void dump(cocos2d::Node *node, int depth = -1);
+void apply(cocos2d::Node *node, const Params &);
+
+NS_SP_EXT_END(node)
 
 #endif /* STAPPLER_SRC_CORE_SPNODE_H_ */

@@ -50,13 +50,10 @@ bool Canvas::init() {
 }
 
 void Canvas::beginBatch() {
-	//save();
-	//_transform = Mat4::IDENTITY;
 	_isBatch = true;
 }
 
 void Canvas::endBatch() {
-	//restore();
 	if (!_tess.empty()) {
 		flush();
 		_pathStyle = DrawStyle::None;

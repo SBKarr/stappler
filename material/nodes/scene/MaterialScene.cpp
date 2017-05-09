@@ -33,9 +33,7 @@ THE SOFTWARE.
 #include "base/CCMap.h"
 #include "renderer/CCRenderer.h"
 #include "renderer/ccGLStateCache.h"
-#include "2d/CCRenderTexture.h"
 
-#include "2d/CCCamera.h"
 #include "SPScreen.h"
 #include "SPString.h"
 #include "SPDevice.h"
@@ -113,6 +111,8 @@ bool Scene::init() {
 		_foreground = createForegroundLayer();
 		addChild(_foreground, 4);
 	}
+
+	_captureCanvas = Rc<draw::Canvas>::create(draw::StencilDepthFormat::Stencil8);
 
 	return true;
 }
@@ -375,53 +375,19 @@ void Scene::updateCapturedContent() {
 
 	_contentCapturing = true;
 
-    const auto& transform = getNodeToParentTransform();
-	auto director = cocos2d::Director::getInstance();
-	auto renderer = director->getRenderer();
-	auto size = getContentSize();
-
-    _content->setVisible(true);
+	_content->setVisible(true);
 	_navigation->setVisible(false);
 	_foreground->setVisible(false);
 	_background->setTexture(nullptr);
 
-	renderer->clear();
-	renderer->clearDrawStats();
-
-    director->pushMatrix(cocos2d::MATRIX_STACK_TYPE::MATRIX_STACK_MODELVIEW);
-
-	auto rt = cocos2d::RenderTexture::create(size.width, size.height, cocos2d::Texture2D::PixelFormat::RGB888, GL_STENCIL_INDEX8);
-
-    cocos2d::Camera* defaultCamera = nullptr;
-    for (const auto& camera : _cameras) {
-    	if (camera->getCameraFlag() == cocos2d::CameraFlag::DEFAULT) {
-    		defaultCamera = camera;
-    		break;
-    	}
-    }
-
-	cocos2d::Camera::setVisitingCamera(defaultCamera);
-
-	director->pushMatrix(cocos2d::MATRIX_STACK_TYPE::MATRIX_STACK_PROJECTION);
-	director->loadMatrix(cocos2d::MATRIX_STACK_TYPE::MATRIX_STACK_PROJECTION, cocos2d::Camera::getVisitingCamera()->getViewProjectionMatrix());
-
-	rt->begin();
-	ZPath newPath;
-    visit(renderer, transform, 0, newPath);
-    rt->end();
-
-	renderer->render();
-    cocos2d::Camera::setVisitingCamera(nullptr);
-
-	director->popMatrix(cocos2d::MATRIX_STACK_TYPE::MATRIX_STACK_PROJECTION);
-    director->popMatrix(cocos2d::MATRIX_STACK_TYPE::MATRIX_STACK_MODELVIEW);
+	auto tex = _captureCanvas->captureContents(this, cocos2d::Texture2D::PixelFormat::RGB888, 1.0f);
 
 	_navigation->setVisible(true);
 	_foreground->setVisible(true);
 
-    _content->setVisible(false);
+	_content->setVisible(false);
 
-    _background->setTexture(rt->getSprite()->getTexture());
+	_background->setTexture(tex);
 	_contentCaptured = true;
 	_contentCapturing = false;
 }
@@ -499,48 +465,14 @@ Vec2 Scene::convertToScene(const Vec2 &vec) const {
 }
 
 void Scene::takeScreenshoot() {
-	auto director = cocos2d::Director::getInstance();
-	auto renderer = director->getRenderer();
-	auto size = getContentSize();
+	auto path = stappler::filesystem::writablePath("screenshots");
+	stappler::filesystem::mkdir(path);
+	path += toString("/", stappler::Time::now().toMilliseconds(), ".png");
 
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	auto tex = _captureCanvas->captureContents(this, cocos2d::Texture2D::PixelFormat::RGBA8888, 1.0f);
+	saveScreenshot(path, tex);
 
-    director->pushMatrix(cocos2d::MATRIX_STACK_TYPE::MATRIX_STACK_MODELVIEW);
-
-	auto rt = cocos2d::RenderTexture::create(size.width, size.height, cocos2d::Texture2D::PixelFormat::RGBA8888, GL_STENCIL_INDEX8);
-
-    cocos2d::Camera* defaultCamera = nullptr;
-    for (const auto& camera : _cameras) {
-        if (camera->getCameraFlag() == cocos2d::CameraFlag::DEFAULT) {
-            defaultCamera = camera;
-            continue;
-        }
-    }
-    if (defaultCamera) {
-    	cocos2d::Camera::setVisitingCamera(defaultCamera);
-        director->pushMatrix(cocos2d::MATRIX_STACK_TYPE::MATRIX_STACK_PROJECTION);
-        director->loadMatrix(cocos2d::MATRIX_STACK_TYPE::MATRIX_STACK_PROJECTION, cocos2d::Camera::getVisitingCamera()->getViewProjectionMatrix());
-
-    	rt->begin();
-    	ZPath newPath;
-        visit(renderer, Mat4::IDENTITY, 0, newPath);
-        rt->end();
-
-        director->popMatrix(cocos2d::MATRIX_STACK_TYPE::MATRIX_STACK_PROJECTION);
-    }
-    cocos2d::Camera::setVisitingCamera(nullptr);
-
-    auto path = stappler::filesystem::writablePath("screenshots");
-    stappler::filesystem::mkdir(path);
-    path += toString("/", stappler::Time::now().toMilliseconds(), ".png");
-
-    //rt->saveToFile(path);
-
-    renderer->render();
-
-    saveScreenshot(path, rt->getSprite()->getTexture());
-
-    _foreground->setSnackbarString("Screenshot saved to " + path);
+	_foreground->setSnackbarString("Screenshot saved to " + path);
 }
 
 void Scene::saveScreenshot(const String &filename, cocos2d::Texture2D *tex) {

@@ -39,7 +39,7 @@ THE SOFTWARE.
 NS_SP_BEGIN
 
 DynamicBatchCommand::DynamicBatchCommand(bool b) {
-    _type = RenderCommand::Type::SP_DYNAMIC_COMMAND;
+	_type = RenderCommand::Type::SP_DYNAMIC_COMMAND;
 	func = std::bind(&DynamicBatchCommand::execute, this);
 	_batch = b;
 }

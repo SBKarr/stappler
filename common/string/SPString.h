@@ -65,6 +65,34 @@ inline Set<String> splitToSet(const String &str, const String &delim) {
 	return ret;
 }
 
+template <typename View>
+inline int __compare(const View &l, const View &r) {
+	auto __lsize = l.size();
+	auto __rsize = r.size();
+	auto __len = std::min(__lsize, __rsize);
+	auto ret = View::ContainerType::traits_type::compare(l.data(), r.data(), __len);
+	if (!ret) {
+		if (__lsize < __rsize) {
+			return -1;
+		} else if (__lsize == __rsize) {
+			return 0;
+		} else {
+			return 1;
+		}
+	}
+	return ret;
+}
+
+inline int compare(const String &l, const String &r) { return __compare(StringView(l), StringView(r)); }
+inline int compare(const String &l, const StringView &r) { return __compare(StringView(l), r); }
+inline int compare(const StringView &l, const String &r) { return __compare(l, StringView(r)); }
+inline int compare(const StringView &l, const StringView &r) { return __compare(l, r); }
+
+inline int compare(const WideString &l, const WideString &r) { return __compare(WideStringView(l), WideStringView(r)); }
+inline int compare(const WideString &l, const WideStringView &r) { return __compare(WideStringView(l), r); }
+inline int compare(const WideStringView &l, const WideString &r) { return __compare(l, WideStringView(r)); }
+inline int compare(const WideStringView &l, const WideStringView &r) { return __compare(l, r); }
+
 WideString &trim(WideString & str);
 String &trim(String &s);
 
@@ -107,6 +135,14 @@ void tolower_buf(char *, size_t len = maxOf<size_t>());
 bool isspace(char ch);
 bool isspace(char16_t ch);
 bool isspace(char_const_ptr_t ch);
+
+size_t getUtf16Length(const String &str);
+size_t getUtf16Length(const StringView &str);
+size_t getUtf16Length(const char *str, size_t len = 0);
+
+size_t getUtf8Length(const WideString &str);
+size_t getUtf8Length(const WideStringView &str);
+size_t getUtf8Length(const char16_t *str, size_t len = 0);
 
 WideString toUtf16(const String &str);
 WideString toUtf16(const char *str);

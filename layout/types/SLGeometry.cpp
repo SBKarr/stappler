@@ -239,4 +239,33 @@ Rect Rect::unionWithRect(const Rect & rect) const {
 
 const Rect Rect::ZERO = Rect(0, 0, 0, 0);
 
+Vec2 TransformPoint(const Vec2& point, const Mat4& transform) {
+	Vec3 vec(point.x, point.y, 0);
+	transform.transformPoint(&vec);
+	return Vec2(vec.x, vec.y);
+}
+
+Rect TransformRect(const Rect& rect, const Mat4& transform) {
+	const float top = rect.getMinY();
+	const float left = rect.getMinX();
+	const float right = rect.getMaxX();
+	const float bottom = rect.getMaxY();
+
+	Vec3 topLeft(left, top, 0);
+	Vec3 topRight(right, top, 0);
+	Vec3 bottomLeft(left, bottom, 0);
+	Vec3 bottomRight(right, bottom, 0);
+	transform.transformPoint(&topLeft);
+	transform.transformPoint(&topRight);
+	transform.transformPoint(&bottomLeft);
+	transform.transformPoint(&bottomRight);
+
+	const float minX = min(min(topLeft.x, topRight.x), min(bottomLeft.x, bottomRight.x));
+	const float maxX = max(max(topLeft.x, topRight.x), max(bottomLeft.x, bottomRight.x));
+	const float minY = min(min(topLeft.y, topRight.y), min(bottomLeft.y, bottomRight.y));
+	const float maxY = max(max(topLeft.y, topRight.y), max(bottomLeft.y, bottomRight.y));
+
+	return Rect(minX, minY, (maxX - minX), (maxY - minY));
+}
+
 NS_LAYOUT_END

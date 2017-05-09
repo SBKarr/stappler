@@ -52,11 +52,17 @@ public:
 	virtual void setPlaceholder(const String &);
 	virtual const String &getPlaceholder() const;
 
+	virtual void setString(const String &);
+	virtual const String &setString() const;
+
 	virtual void onSearchMenuButton();
 	virtual void onSearchIconButton();
 
 	virtual void setColor(const Color &color) override;
 	virtual void setTextColor(const Color &color) override;
+
+	virtual void acquireInput();
+	virtual void releaseInput();
 
 protected:
 	virtual void layoutSubviews() override;

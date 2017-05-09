@@ -32,23 +32,6 @@ using Path = layout::Path;
 using Style = layout::DrawStyle;
 using Image = layout::Image;
 
-enum class Format {
-	A8,
-	RGBA8888
-};
-
-inline uint8_t getSizeOfPixel(Format fmt) {
-	switch(fmt) {
-	case Format::A8: return 1; break;
-	case Format::RGBA8888: return 4; break;
-	default: return 0; break;
-	}
-	return 0;
-}
-
-cocos2d::GLProgram *getA8Program();
-cocos2d::GLProgram *getRGBA8888Program();
-
 class PathNode : public DynamicSprite {
 public:
 	virtual ~PathNode();
@@ -86,7 +69,7 @@ public:
 protected:
 	virtual void updateCanvas(layout::Subscription::Flags f);
 
-	Rc<cocos2d::Texture2D> generateTexture(cocos2d::Texture2D *tex, uint32_t w, uint32_t h, Format fmt, bool renderTargetRequired);
+	Rc<cocos2d::Texture2D> generateTexture(cocos2d::Texture2D *tex, uint32_t w, uint32_t h, Format fmt);
 
 	bool _pathsDirty = false;
 	uint16_t _baseWidth = 0;

@@ -162,6 +162,18 @@ const String &SearchToolbar::getPlaceholder() const {
 	return _placeholder->getString8();
 }
 
+void SearchToolbar::setString(const String &str) {
+	if (_label->getString8() != str) {
+		_label->setString(str);
+		if (_callback) {
+			_callback(_label->getString8());
+		}
+	}
+}
+const String &SearchToolbar::setString() const {
+	return _label->getString8();
+}
+
 void SearchToolbar::onSearchMenuButton() {
 
 }
@@ -184,6 +196,13 @@ void SearchToolbar::setTextColor(const Color &color) {
 	_label->setCursorColor(_textColor == Color::White?_textColor.darker(2):_textColor.lighter(2), false);
 	_placeholder->setColor(_textColor);
 	_placeholder->setOpacity(127);
+}
+
+void SearchToolbar::acquireInput() {
+	_label->acquireInput();
+}
+void SearchToolbar::releaseInput() {
+	_label->releaseInput();
 }
 
 void SearchToolbar::layoutSubviews() {

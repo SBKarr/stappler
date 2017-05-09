@@ -170,7 +170,7 @@ protected:
 
 	Path *getPathByRef(const PathRef &) const;
 
-	bool _isAntialiased = false;
+	bool _isAntialiased = true;
 	uint16_t _width = 0;
 	uint16_t _height = 0;
 	Vector<Path> _paths;

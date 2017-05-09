@@ -51,16 +51,16 @@ public:
 
 protected:
     //Material
-    GLuint _textureID;
-    cocos2d::GLProgram* _shader;
+    GLuint _textureID = 0;
+    cocos2d::GLProgram* _shader = nullptr;
     cocos2d::BlendFunc _blendType;
 
-    DynamicAtlas *_textureAtlas;
+    DynamicAtlas *_textureAtlas = nullptr;
 
     // ModelView transform
-    cocos2d::Mat4 _mv;
-    bool _normalized;
-    bool _batch;
+    Mat4 _mv;
+    bool _normalized = false;
+    bool _batch = false;
 };
 
 NS_SP_END

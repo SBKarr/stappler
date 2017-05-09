@@ -119,76 +119,97 @@ void DynamicLabel::updateLabel() {
 		return;
 	}
 
+	updateLabel(Rc<layout::FormatSpec>::create(_string16.size(), _compiledStyles.size() + 1));
+
+	if (_format) {
+		if (_format->chars.empty()) {
+			setContentSize(Size(0.0f, getFontHeight() / _density));
+		} else {
+			setContentSize(Size(_format->width / _density, _format->height / _density));
+		}
+
+		_labelDirty = false;
+		_colorDirty = false;
+		_formatDirty = true;
+	}
+}
+
+void DynamicLabel::updateLabel(FormatSpec *format) {
 	_compiledStyles = compileStyle();
-	_format = Rc<layout::FormatSpec>::create(_string16.size(), _compiledStyles.size() + 1);
+	_format = format;
 
 	_style.text.color = _displayedColor;
 	_style.text.opacity = _displayedOpacity;
 	_style.text.whiteSpace = layout::style::WhiteSpace::PreWrap;
 
-	layout::Formatter formatter(_source, _format, _density);
-	formatter.setWidth((uint16_t)roundf(_width * _density));
-	formatter.setTextAlignment(_alignment);
-	formatter.setMaxWidth((uint16_t)roundf(_maxWidth * _density));
-	formatter.setMaxLines(_maxLines);
-	formatter.setOpticalAlignment(_opticalAlignment);
-	formatter.setFillerChar(_fillerChar);
-	formatter.setEmplaceAllChars(_emplaceAllChars);
+	auto adjustValue = 255;
 
-	if (_lineHeight != 0.0f) {
-		if (_isLineHeightAbsolute) {
-			formatter.setLineHeightAbsolute((uint16_t)(_lineHeight * _density));
+	do {
+		if (adjustValue == 255) {
+			adjustValue = 0;
 		} else {
-			formatter.setLineHeightRelative(_lineHeight);
+			adjustValue += 1;
 		}
-	}
 
-	formatter.begin((uint16_t)roundf(_textIndent * _density));
+		_format->clear();
 
-	size_t drawedChars = 0;
-	for (auto &it : _compiledStyles) {
-		DescriptionStyle params = _style.merge(_source, it.style);
+		layout::Formatter formatter(_source, _format, _density);
+		formatter.setWidth((uint16_t)roundf(_width * _density));
+		formatter.setTextAlignment(_alignment);
+		formatter.setMaxWidth((uint16_t)roundf(_maxWidth * _density));
+		formatter.setMaxLines(_maxLines);
+		formatter.setOpticalAlignment(_opticalAlignment);
+		formatter.setFillerChar(_fillerChar);
+		formatter.setEmplaceAllChars(_emplaceAllChars);
 
-		auto start = _string16.c_str() + it.start;
-		auto len = it.length;
-
-		if (_localeEnabled && hasLocaleTags(start, len)) {
-			WideString str(resolveLocaleTags(start, len));
-
-			start = str.c_str();
-			len = str.length();
-
-			if (_maxChars > 0 && drawedChars + len > _maxChars) {
-				len = _maxChars - drawedChars;
-			}
-			if (!formatter.read(params.font, params.text, start, len)) {
-				drawedChars += len;
-				break;
-			}
-		} else {
-			if (_maxChars > 0 && drawedChars + len > _maxChars) {
-				len = _maxChars - drawedChars;
-			}
-			if (!formatter.read(params.font, params.text, start, len)) {
-				drawedChars += len;
-				break;
+		if (_lineHeight != 0.0f) {
+			if (_isLineHeightAbsolute) {
+				formatter.setLineHeightAbsolute((uint16_t)(_lineHeight * _density));
+			} else {
+				formatter.setLineHeightRelative(_lineHeight);
 			}
 		}
 
-		_format->ranges.back().colorDirty = params.colorDirty;
-		_format->ranges.back().opacityDirty = params.opacityDirty;
-	}
-	formatter.finalize();
+		formatter.begin((uint16_t)roundf(_textIndent * _density));
 
-	if (_format->chars.empty()) {
-		setContentSize(Size(0.0f, getFontHeight() / _density));
-	} else {
-		setContentSize(Size(_format->width / _density, _format->height / _density));
-	}
+		size_t drawedChars = 0;
+		for (auto &it : _compiledStyles) {
+			DescriptionStyle params = _style.merge(_source, it.style);
+			if (adjustValue > 0) {
+				params.font.fontSize -= adjustValue;
+			}
 
-	_labelDirty = false;
-	_colorDirty = false;
-	_formatDirty = true;
+			auto start = _string16.c_str() + it.start;
+			auto len = it.length;
+
+			if (_localeEnabled && hasLocaleTags(start, len)) {
+				WideString str(resolveLocaleTags(start, len));
+
+				start = str.c_str();
+				len = str.length();
+
+				if (_maxChars > 0 && drawedChars + len > _maxChars) {
+					len = _maxChars - drawedChars;
+				}
+				if (!formatter.read(params.font, params.text, start, len)) {
+					drawedChars += len;
+					break;
+				}
+			} else {
+				if (_maxChars > 0 && drawedChars + len > _maxChars) {
+					len = _maxChars - drawedChars;
+				}
+				if (!formatter.read(params.font, params.text, start, len)) {
+					drawedChars += len;
+					break;
+				}
+			}
+
+			_format->ranges.back().colorDirty = params.colorDirty;
+			_format->ranges.back().opacityDirty = params.opacityDirty;
+		}
+		formatter.finalize();
+	} while(_format->overflow && adjustValue < _adjustValue);
 }
 
 void DynamicLabel::visit(cocos2d::Renderer *r, const Mat4& t, uint32_t f, ZPath &zPath) {
@@ -257,6 +278,23 @@ void DynamicLabel::setStandalone(bool value) {
 }
 bool DynamicLabel::isStandalone() const {
 	return _standalone;
+}
+
+void DynamicLabel::setAdjustValue(uint8_t val) {
+	if (_adjustValue != val) {
+		_adjustValue = val;
+		_labelDirty = true;
+	}
+}
+uint8_t DynamicLabel::getAdjustValue() const {
+	return _adjustValue;
+}
+
+bool DynamicLabel::isOverflow() const {
+	if (_format) {
+		return _format->overflow;
+	}
+	return false;
 }
 
 size_t DynamicLabel::getCharsCount() const {

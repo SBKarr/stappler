@@ -31,26 +31,50 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(draw)
 
+using Format = cocos2d::Texture2D::PixelFormat;
+
+enum class StencilDepthFormat {
+	None,
+	Depth16,
+	Depth24,
+	Depth32f,
+	Depth24Stencil8,
+	Depth32fStencil8,
+	Stencil8,
+};
+
 class Canvas : public layout::Canvas, public GLCacheNode {
 public:
 	using Path = layout::Path;
+
 	virtual ~Canvas();
 
-	virtual bool init() override;
+	virtual bool init(StencilDepthFormat fmt = StencilDepthFormat::Stencil8);
 
-	void begin(cocos2d::Texture2D *, const Color4B &);
+	bool begin(cocos2d::Texture2D *, const Color4B &);
 	void end();
 
 	virtual void flush() override;
 
+	Rc<cocos2d::Texture2D> captureContents(cocos2d::Node *, Format, float density = 0.0f);
+
 protected:
-	void setUniformColor(cocos2d::GLProgram *, const Color4B &);
-	void setUniformTransform(cocos2d::GLProgram *,const Mat4 &);
+	void setUniformColor(const Color4B &);
+	void setUniformTransform(const Mat4 &);
+
+	void setFillBlending();
+	void setStrokeBlending();
+
+	void doSafeClear(const Color4B &color);
+	bool doUpdateAttachments(cocos2d::Texture2D *tex, uint32_t w, uint32_t h);
 
 	bool _valid = false;
 
+	StencilDepthFormat _depthFormat = StencilDepthFormat::Stencil8;
+
 	cocos2d::GLProgram *_drawProgram = nullptr;
-	cocos2d::GLProgram *_aaProgram = nullptr;
+
+	GLbitfield _clearFlags = 0;
 
 	GLint _oldFbo = 0;
 	GLuint _fbo = 0;
@@ -62,11 +86,8 @@ protected:
 	cocos2d::Texture2D::PixelFormat _internalFormat;
 	cocos2d::Texture2D::PixelFormat _referenceFormat;
 
-	Mat4 _uniformTransformDraw;
-	Color4B _uniformColorDraw;
-
-	Mat4 _uniformTransformAA;
-	Color4B _uniformColorAA;
+	Mat4 _uniformTransform;
+	Color4B _uniformColor;
 
 	size_t _vertexBufferSize = 0;
 	size_t _indexBufferSize = 0;

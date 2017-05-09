@@ -39,6 +39,7 @@ bool ButtonLabelSelector::init(const TapCallback &tapCallback, const TapCallback
 	_label->setAnchorPoint(Vec2(0, 0.5));
 	_label->setLocaleEnabled(true);
 	_label->setMaxLines(1);
+	_label->setAdjustValue(6);
 	_label->setHyphens(Label::Hyphens::None);
 	addChild(_label);
 

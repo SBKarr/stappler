@@ -64,7 +64,6 @@ public:
 	virtual void load(const data::Value &);
 
 public: // properties
-
 	virtual const ItemMap &getItems() const;
 
 	virtual void setSource(Source *);
@@ -127,7 +126,6 @@ protected:
 	virtual bool downloadBackSlice(size_t = 0);
 
 	virtual void onSliceData(DataMap &, Time, Request);
-	//virtual void onSliceThreadData(SliceDataMap &, SliceItemMap &, SliceDataCallback &, const SliceHandler &h);
 	virtual void onSliceItems(ItemMap &&, Time, Request);
 
 	virtual void updateItems();
@@ -218,9 +216,13 @@ public:
 	using DataMap = Scroll::DataMap;
 	using ItemMap = Scroll::ItemMap;
 	using Layout = Scroll::Layout;
+	using CompleteCallback = Function<void()>;
 
 	virtual ~Handler() { }
 	virtual bool init(Scroll *);
+
+	virtual void setCompleteCallback(const CompleteCallback &);
+	virtual const CompleteCallback &getCompleteCallback() const;
 
 	virtual const Size &getContentSize() const;
 	virtual Scroll * getScroll() const;
@@ -231,6 +233,7 @@ protected:
 	Size _size;
 	Layout _layout;
 	Rc<Scroll> _scroll;
+	CompleteCallback _callback;
 };
 
 NS_MD_END

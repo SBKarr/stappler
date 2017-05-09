@@ -138,11 +138,9 @@ void Request::onAssetCaptured() {
 
 	TextureCache::thread().perform([this, ptr] (const Task &) -> bool {
 		TextureCache::getInstance()->performWithGL([&] {
-			//auto now = Time::now();
-			auto tex = Rc<cocos2d::Texture2D>::create(cocos2d::Texture2D::PixelFormat::RGBA8888, _width, _height);
+			auto tex = Rc<cocos2d::Texture2D>::create(cocos2d::Texture2D::PixelFormat::RGBA8888, _width, _height, cocos2d::Texture2D::RenderTarget);
 			draw( tex );
 			*ptr = tex;
-			//log::format("Profiling", "Texture rendering: %lu", (Time::now() - now).toMicroseconds());
 		});
 		return true;
 	}, [this, ptr] (const Task &, bool) {

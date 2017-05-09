@@ -61,8 +61,6 @@ public:
 	Handle(const String &name, const String &path);
 	~Handle();
 
-	void applyFixes();
-
 	Thread &getThread();
 
 	String getData(const String &key);
@@ -158,6 +156,12 @@ Handle *defaultStorage() {
 
 Handle *create(const String &name, const String &filePath) {
 	return new Handle(name, filePath);
+}
+
+void finalize(Handle *h) {
+	if (h) {
+		delete h;
+	}
 }
 
 Thread &thread(Handle *storage) {
@@ -1034,6 +1038,7 @@ data::Value Scheme::Internal::performCommand(Scheme::Command *cmd) {
 				}
 			}
 			_storage->perform("COMMIT;");
+			_storage->release(query);
 
 			return data::Value(success);
 		} else {
@@ -1469,7 +1474,6 @@ Handle *Handle::getInstance() {
 		const auto &libpath = filesystem::writablePath("library");
 		filesystem::mkdir(libpath);
 		s_sharedInternal = new Handle(libpath + "/library.v2.db");
-		s_sharedInternal->applyFixes();
 	}
 	return s_sharedInternal;
 }
@@ -1528,44 +1532,6 @@ Handle::~Handle() {
 	}
 
 	sqlite3_close(_db);
-}
-
-void Handle::applyFixes() {
-	String q("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='stappler_assets_v2'");
-
-	bool assetsExists = false;
-	sqlite3_stmt *stmt = nullptr;
-	auto err = sqlite3_prepare_v2(_db, q.c_str(), -1, &stmt, NULL);
-	if (err == SQLITE_OK) {
-		err = sqlite3_step(stmt);
-		if (err == SQLITE_DONE || err == SQLITE_ROW) {
-			auto val = sqlite3_column_int64(stmt, 0);
-			if (val != 0) {
-				assetsExists = true;
-			}
-		}
-
-		sqlite3_finalize(stmt);
-	}
-
-	if (assetsExists) {
-		q = "SELECT * FROM stappler_assets_v2";
-		auto err = sqlite3_prepare_v2(_db, q.c_str(), -1, &stmt, NULL);
-		if (err == SQLITE_OK) {
-			auto data = perform(stmt);
-			sqlite3_finalize(stmt);
-#ifndef SP_RESTRICT
-			AssetLibrary::importAssetData(data);
-#endif
-		}
-
-		q = "DROP TABLE IF EXISTS stappler_assets_v2";
-		err = sqlite3_prepare_v2(_db, q.c_str(), -1, &stmt, NULL);
-		if (err == SQLITE_OK) {
-			sqlite3_step(stmt);
-			sqlite3_finalize(stmt);
-		}
-	}
 }
 
 Thread &Handle::getThread() {

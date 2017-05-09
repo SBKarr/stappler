@@ -26,7 +26,6 @@ THE SOFTWARE.
 #include "Material.h"
 #include "MaterialIconSprite.h"
 #include "MaterialResourceManager.h"
-#include "2d/CCSprite.h"
 #include "2d/CCActionEase.h"
 #include "2d/CCActionInstant.h"
 #include "2d/CCActionManager.h"

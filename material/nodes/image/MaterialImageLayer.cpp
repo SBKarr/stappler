@@ -26,12 +26,12 @@ THE SOFTWARE.
 #include "Material.h"
 #include "MaterialImageLayer.h"
 
-#include "2d/CCSprite.h"
 #include "2d/CCActionInterval.h"
 #include "2d/CCActionInstant.h"
 
 #include "SPAccelerated.h"
 #include "SPGestureListener.h"
+#include "SPDynamicSprite.h"
 
 NS_MD_BEGIN
 
@@ -145,7 +145,7 @@ bool ImageLayer::init() {
 	addComponent(l);
 	_gestureListener = l;
 
-	_image = cocos2d::Sprite::create();
+	_image = construct<DynamicSprite>();
 	_image->setAnchorPoint(Vec2(0, 0));
 
 	_root = Node::create();

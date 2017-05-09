@@ -609,6 +609,7 @@ Image::PathRef Image::addPath(const Path &path, uint32_t tag) {
 	if (tag) {
 		_paths.back().setTag(tag);
 	}
+	_paths.back().setAntialiased(_isAntialiased);
 	setDirty();
 	invalidateRefs();
 	return PathRef(this, &_paths.back(), _paths.size() - 1);
@@ -618,6 +619,7 @@ Image::PathRef Image::addPath(Path &&path, uint32_t tag) {
 	if (tag) {
 		_paths.back().setTag(tag);
 	}
+	_paths.back().setAntialiased(_isAntialiased);
 	setDirty();
 	invalidateRefs();
 	return PathRef(this, &_paths.back(), _paths.size() - 1);

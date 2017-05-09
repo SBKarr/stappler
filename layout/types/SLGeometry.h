@@ -206,6 +206,9 @@ public:
 	void merge(const Rect& rect);
 };
 
+Rect TransformRect(const Rect& rect, const Mat4& transform);
+Vec2 TransformPoint(const Vec2& point, const Mat4& transform);
+
 NS_LAYOUT_END
 
 #endif /* LAYOUT_TYPES_SLGEOMETRY_H_ */

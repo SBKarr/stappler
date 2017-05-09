@@ -278,7 +278,9 @@ public class Cocos2dxGLSurfaceView extends GLSurfaceView {
 			_protectedEnvironment = true;
 			mCocos2dxEditText.setInputType(getInputTypeFromNative(type));
 			mCocos2dxEditText.setText(text);
-			if (cursorLen == 0) {
+			if (text.isEmpty()) {
+				mCocos2dxEditText.setSelection(0);
+			} else if (cursorLen == 0) {
 				mCocos2dxEditText.setSelection(cursorStart);
 			} else {
 				mCocos2dxEditText.setSelection(cursorStart, cursorStart + cursorLen);

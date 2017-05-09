@@ -107,6 +107,7 @@ public:
 	uint16_t width = 0;
 	uint16_t height = 0;
 	uint16_t maxLineX = 0;
+	bool overflow = false;
 
 	FormatSpec();
 	explicit FormatSpec(size_t);

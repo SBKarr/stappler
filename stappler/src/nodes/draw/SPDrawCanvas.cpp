@@ -29,7 +29,10 @@ THE SOFTWARE.
 #include "SPTextureCache.h"
 #include "renderer/CCTexture2D.h"
 #include "renderer/ccGLStateCache.h"
+#include "renderer/CCRenderer.h"
+#include "2d/CCNode.h"
 #include "base/CCConfiguration.h"
+#include "base/CCDirector.h"
 
 TESS_OPTIMIZE
 
@@ -51,13 +54,34 @@ Canvas::~Canvas() {
 	}
 }
 
-bool Canvas::init() {
+bool Canvas::init(StencilDepthFormat fmt) {
 	if (!layout::Canvas::init()) {
 		return false;
 	}
 
+	_depthFormat = fmt;
+
+	_clearFlags = GL_COLOR_BUFFER_BIT;
+	switch (_depthFormat) {
+	case StencilDepthFormat::Depth16:
+	case StencilDepthFormat::Depth24:
+	case StencilDepthFormat::Depth32f:
+		_clearFlags |= GL_DEPTH_BUFFER_BIT;
+		break;
+	case StencilDepthFormat::Depth24Stencil8:
+	case StencilDepthFormat::Depth32fStencil8:
+		_clearFlags |= (GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		break;
+	case StencilDepthFormat::Stencil8:
+		_clearFlags |= GL_STENCIL_BUFFER_BIT;
+		break;
+	default: break;
+	}
+
 	glGenFramebuffers(1, &_fbo);
-	glGenRenderbuffers(1, &_rbo);
+	if (_depthFormat != StencilDepthFormat::None) {
+		glGenRenderbuffers(1, &_rbo);
+	}
 	glGenBuffers(2, _vbo);
 	if (_fbo != 0 && _vbo[0] != 0 && _vbo[1] != 0) {
 		return true;
@@ -66,7 +90,7 @@ bool Canvas::init() {
 	return false;
 }
 
-void Canvas::begin(cocos2d::Texture2D *tex, const Color4B &color) {
+bool Canvas::begin(cocos2d::Texture2D *tex, const Color4B &color) {
 	auto w = tex->getPixelsWide();
 	auto h = tex->getPixelsHigh();
 	_internalFormat = tex->getPixelFormat();
@@ -80,57 +104,12 @@ void Canvas::begin(cocos2d::Texture2D *tex, const Color4B &color) {
 		cocos2d::GL::bindVAO(0);
 	}
 
-	if (uint32_t(w) != _width || uint32_t(h) != _height) {
-		GLint oldRbo = 0;
-		glGetIntegerv(GL_RENDERBUFFER_BINDING, &oldRbo);
-		_width = w;
-		_height = h;
-		glBindRenderbuffer(GL_RENDERBUFFER, _rbo);
-		glRenderbufferStorage(GL_RENDERBUFFER, GL_STENCIL_INDEX8, _width, _height);
-		glBindRenderbuffer(GL_RENDERBUFFER, oldRbo);
-	    CHECK_GL_ERROR_DEBUG();
-	}
-
-	glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex->getName(), 0);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, _rbo);
-    CHECK_GL_ERROR_DEBUG();
-
-	auto check = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-	switch (check) {
-	case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
-		log::format("Framebuffer", "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT");
-		break;
-	case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
-		log::format("Framebuffer", "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT");
-		break;
-	case GL_FRAMEBUFFER_UNSUPPORTED:
-		log::format("Framebuffer", "GL_FRAMEBUFFER_UNSUPPORTED");
-		break;
-#ifndef GL_ES_VERSION_2_0
-	case GL_FRAMEBUFFER_UNDEFINED:
-		log::format("Framebuffer", "GL_FRAMEBUFFER_UNDEFINED");
-		break;
-	case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
-		log::format("Framebuffer", "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE");
-		break;
-#endif
-	case GL_FRAMEBUFFER_COMPLETE:
-		_valid = true;
-		//log::format("Framebuffer", "GL_FRAMEBUFFER_COMPLETE");
-		break;
-	case 0:
-		log::format("Framebuffer", "Success");
-		break;
-	default:
-		log::format("Framebuffer", "Undefined %d", check);
-		break;
-	}
+	_valid = doUpdateAttachments(tex, w, h);
 
 	if (_valid) {
 		glViewport(0, 0, (GLsizei)_width, (GLsizei)_height);
-		glClearColor(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+		doSafeClear(color);
 
 		int32_t gcd = sp_gcd(_width, _height);
 		int32_t dw = (int32_t)_width / gcd;
@@ -154,17 +133,13 @@ void Canvas::begin(cocos2d::Texture2D *tex, const Color4B &color) {
 
 		_line.reserve(256);
 
-		_drawProgram = TextureCache::getInstance()->getRawPrograms()->getProgram(GLProgramSet::RawRects);
-		_aaProgram = TextureCache::getInstance()->getRawPrograms()->getProgram(
+		_drawProgram = TextureCache::getInstance()->getRawPrograms()->getProgram(
 				_internalFormat == cocos2d::Texture2D::PixelFormat::R8?GLProgramSet::RawAAMaskR:GLProgramSet::RawAAMaskRGBA);
 
 		_vertexBufferSize = 0;
 		_indexBufferSize = 0;
-		_uniformColorDraw = Color4B(0, 0, 0, 0);
-		_uniformColorAA = Color4B(0, 0, 0, 0);
-
-		_uniformTransformDraw = Mat4::ZERO;
-		_uniformTransformAA = Mat4::ZERO;
+		_uniformColor = Color4B(0, 0, 0, 0);
+		_uniformTransform = Mat4::ZERO;
 
 		_subAccum.clear();
 		_tessAccum.clear();
@@ -177,6 +152,8 @@ void Canvas::begin(cocos2d::Texture2D *tex, const Color4B &color) {
 	} else {
 		glBindFramebuffer(GL_FRAMEBUFFER, _oldFbo);
 	}
+
+	return _valid;
 }
 
 void Canvas::end() {
@@ -187,9 +164,6 @@ void Canvas::end() {
 	}
 
 	_valid = false;
-
-	//log::format("CanvasTiming", "sub: %llu, tess: %llu, gl: %llu, Vertex: %u %u", _subAccum.toMicroseconds(), _tessAccum.toMicroseconds(),
-	//		_glAccum.toMicroseconds(), _fillVertex, _contourVertex);
 
 	cleanup();
 }
@@ -214,11 +188,9 @@ void Canvas::flush() {
 			_tessAccum += (Time::now() - t);
 			t = Time::now();
 
-			blendFunc(cocos2d::BlendFunc::ALPHA_NON_PREMULTIPLIED);
 			bindTexture(0);
-			useProgram(_aaProgram->getProgram());
-			setUniformTransform(_aaProgram, _transform);
-
+			useProgram(_drawProgram->getProgram());
+			setUniformTransform(_transform);
 
 			glBindBuffer(GL_ARRAY_BUFFER, _vbo[0]);
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _vbo[1]);
@@ -239,6 +211,7 @@ void Canvas::flush() {
 			enableVertexAttribs(cocos2d::GL::VERTEX_ATTRIB_FLAG_POSITION | cocos2d::GL::VERTEX_ATTRIB_FLAG_COLOR);
 
 			if (aa) {
+				setStrokeBlending();
 				glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_POSITION, 2, GL_FLOAT, GL_FALSE, sizeof(TESSPoint), 0);
 				glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE,
 						sizeof(TESSPoint), (GLvoid*) offsetof(TESSPoint, c));
@@ -266,6 +239,7 @@ void Canvas::flush() {
 
 			_fillVertex += nelts;
 
+			setFillBlending();
 			glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_POSITION, 2, GL_FLOAT, GL_FALSE, sizeof(TESSPoint), (GLvoid*)vertexBufferOffset);
 			glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE,
 					sizeof(TESSPoint), (GLvoid*) (vertexBufferOffset + offsetof(TESSPoint, c)));
@@ -287,10 +261,9 @@ void Canvas::flush() {
 
 	if (!_stroke.empty()) {
 		Time t = Time::now();
-		blendFunc(cocos2d::BlendFunc::ALPHA_NON_PREMULTIPLIED);
 		bindTexture(0);
-		useProgram(_aaProgram->getProgram());
-		setUniformTransform(_aaProgram, _transform);
+		useProgram(_drawProgram->getProgram());
+		setUniformTransform(_transform);
 
 		size_t size = 0;
 		size_t offset = 0;
@@ -304,6 +277,7 @@ void Canvas::flush() {
 
 		auto vertexBufferSize = (size * sizeof(TESSPoint));
 
+		setStrokeBlending();
 		glBindBuffer(GL_ARRAY_BUFFER, _vbo[0]);
 		glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, nullptr, GL_STATIC_DRAW);
 
@@ -399,39 +373,163 @@ static void updateUniformColor(cocos2d::GLProgram *p, cocos2d::Texture2D::PixelF
 	}
 }
 
-void Canvas::setUniformColor(cocos2d::GLProgram *p, const Color4B &color) {
-	if (p == _drawProgram) {
-		if (_uniformColorDraw != color) {
-			_uniformColorDraw = color;
-			updateUniformColor(p, _internalFormat, _referenceFormat, color);
-		}
-	} else if (p == _aaProgram) {
-		if (_uniformColorAA != color) {
-			_uniformColorAA = color;
-			updateUniformColor(p, _internalFormat, _referenceFormat, color);
-		}
-	} else {
-		updateUniformColor(p, _internalFormat, _referenceFormat, color);
+void Canvas::setUniformColor(const Color4B &color) {
+	if (_uniformColor != color) {
+		_uniformColor = color;
+		updateUniformColor(_drawProgram, _internalFormat, _referenceFormat, color);
 	}
 }
 
-void Canvas::setUniformTransform(cocos2d::GLProgram *p, const Mat4 &t) {
-	if (p == _drawProgram) {
-		if (_uniformTransformDraw != t) {
-			_uniformTransformDraw = t;
-			Mat4 mv = _viewTransform * t;
-			p->setUniformLocationWithMatrix4fv(p->getUniformLocationForName(cocos2d::GLProgram::UNIFORM_MVP_MATRIX), mv.m, 1);
-		}
-	} else if (p == _aaProgram) {
-		if (_uniformTransformAA != t) {
-			_uniformTransformAA = t;
-			Mat4 mv = _viewTransform * t;
-			p->setUniformLocationWithMatrix4fv(p->getUniformLocationForName(cocos2d::GLProgram::UNIFORM_MVP_MATRIX), mv.m, 1);
-		}
-	} else {
+void Canvas::setUniformTransform(const Mat4 &t) {
+	if (_uniformTransform != t) {
+		_uniformTransform = t;
 		Mat4 mv = _viewTransform * t;
-		p->setUniformLocationWithMatrix4fv(p->getUniformLocationForName(cocos2d::GLProgram::UNIFORM_MVP_MATRIX), mv.m, 1);
+		_drawProgram->setUniformLocationWithMatrix4fv(_drawProgram->getUniformLocationForName(cocos2d::GLProgram::UNIFORM_MVP_MATRIX), mv.m, 1);
 	}
+}
+
+void Canvas::setFillBlending() {
+	blendFunc(BlendFunc::ALPHA_NON_PREMULTIPLIED);
+}
+void Canvas::setStrokeBlending() {
+	switch (_internalFormat) {
+	case cocos2d::Texture2D::PixelFormat::R8:
+		setBlending(GLBlending(BlendFunc::ALPHA_NON_PREMULTIPLIED, GLBlending::Max));
+		break;
+	default:
+		setBlending(GLBlending(BlendFunc::ALPHA_NON_PREMULTIPLIED, GLBlending::FuncAdd, GLBlending::Max));
+		break;
+	}
+}
+
+void Canvas::doSafeClear(const Color4B &color) {
+    GLfloat oldClearColor[4] = {0.0f};
+    GLfloat oldDepthClearValue = 0.0f;
+    GLint oldStencilClearValue = 0;
+
+    // backup and set
+    if (_clearFlags & GL_COLOR_BUFFER_BIT) {
+        glGetFloatv(GL_COLOR_CLEAR_VALUE, oldClearColor);
+		glClearColor(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
+    }
+
+    if (_clearFlags & GL_DEPTH_BUFFER_BIT) {
+        glGetFloatv(GL_DEPTH_CLEAR_VALUE, &oldDepthClearValue);
+        glClearDepth(0.0f);
+    }
+
+    if (_clearFlags & GL_STENCIL_BUFFER_BIT) {
+        glGetIntegerv(GL_STENCIL_CLEAR_VALUE, &oldStencilClearValue);
+        glClearStencil(0);
+    }
+
+	glClear(_clearFlags);
+
+    if (_clearFlags & GL_COLOR_BUFFER_BIT) {
+        glClearColor(oldClearColor[0], oldClearColor[1], oldClearColor[2], oldClearColor[3]);
+    }
+    if (_clearFlags & GL_DEPTH_BUFFER_BIT) {
+        glClearDepth(oldDepthClearValue);
+    }
+    if (_clearFlags & GL_STENCIL_BUFFER_BIT) {
+        glClearStencil(oldStencilClearValue);
+    }
+}
+
+bool Canvas::doUpdateAttachments(cocos2d::Texture2D *tex, uint32_t w, uint32_t h) {
+	if (_rbo && (uint32_t(w) != _width || uint32_t(h) != _height)) {
+		GLint oldRbo = 0;
+		glGetIntegerv(GL_RENDERBUFFER_BINDING, &oldRbo);
+		_width = w;
+		_height = h;
+		glBindRenderbuffer(GL_RENDERBUFFER, _rbo);
+		GLenum fmt = GL_STENCIL_INDEX8;
+		switch (_depthFormat) {
+		case StencilDepthFormat::Depth16: fmt = GL_DEPTH_COMPONENT16; break;
+		case StencilDepthFormat::Depth24: fmt = GL_DEPTH_COMPONENT24; break;
+		case StencilDepthFormat::Depth32f: fmt = GL_DEPTH_COMPONENT32F; break;
+		case StencilDepthFormat::Depth24Stencil8: fmt = GL_DEPTH24_STENCIL8; break;
+		case StencilDepthFormat::Depth32fStencil8: fmt = GL_DEPTH32F_STENCIL8; break;
+		default: break;
+		}
+		glRenderbufferStorage(GL_RENDERBUFFER, fmt, _width, _height);
+		glBindRenderbuffer(GL_RENDERBUFFER, oldRbo);
+	    CHECK_GL_ERROR_DEBUG();
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, _fbo);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex->getName(), 0);
+
+    if (_clearFlags & GL_DEPTH_BUFFER_BIT) {
+    	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _rbo);
+    }
+
+    if (_clearFlags & GL_STENCIL_BUFFER_BIT) {
+    	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, _rbo);
+    }
+
+    CHECK_GL_ERROR_DEBUG();
+
+	auto check = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	switch (check) {
+	case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+		log::format("Framebuffer", "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT");
+		break;
+	case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+		log::format("Framebuffer", "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT");
+		break;
+	case GL_FRAMEBUFFER_UNSUPPORTED:
+		log::format("Framebuffer", "GL_FRAMEBUFFER_UNSUPPORTED");
+		break;
+#ifndef GL_ES_VERSION_2_0
+	case GL_FRAMEBUFFER_UNDEFINED:
+		log::format("Framebuffer", "GL_FRAMEBUFFER_UNDEFINED");
+		break;
+	case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
+		log::format("Framebuffer", "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE");
+		break;
+#endif
+	case GL_FRAMEBUFFER_COMPLETE:
+		return true;
+		break;
+	case 0:
+		log::format("Framebuffer", "Success");
+		break;
+	default:
+		log::format("Framebuffer", "Undefined %d", check);
+		break;
+	}
+	return false;
+}
+
+Rc<cocos2d::Texture2D> Canvas::captureContents(cocos2d::Node *node, Format fmt, float density) {
+	auto size = node->getContentSize() * density;
+	if (size.equals(Size::ZERO)) {
+		return nullptr;
+	}
+
+	auto director = cocos2d::Director::getInstance();
+	auto renderer = director->getRenderer();
+
+	renderer->clearDrawStats();
+
+	auto tex = Rc<cocos2d::Texture2D>::create(fmt, int(floorf(size.width)), int(floorf(size.height)), cocos2d::Texture2D::RenderTarget);
+	if (begin(tex, Color4B::BLACK)) {
+		director->pushMatrix(cocos2d::MATRIX_STACK_TYPE::MATRIX_STACK_MODELVIEW);
+		director->pushMatrix(cocos2d::MATRIX_STACK_TYPE::MATRIX_STACK_PROJECTION);
+		director->loadMatrix(cocos2d::MATRIX_STACK_TYPE::MATRIX_STACK_PROJECTION, _viewTransform);
+
+		Vector<int> newPath;
+		node->visit(renderer, Mat4::IDENTITY, 0, newPath);
+
+		renderer->render();
+
+		director->popMatrix(cocos2d::MATRIX_STACK_TYPE::MATRIX_STACK_PROJECTION);
+		director->popMatrix(cocos2d::MATRIX_STACK_TYPE::MATRIX_STACK_MODELVIEW);
+		end();
+	}
+
+	return tex;
 }
 
 NS_SP_EXT_END(draw)

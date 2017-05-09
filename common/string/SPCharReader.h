@@ -298,6 +298,9 @@ protected:
 using CharReaderBase = CharReaderDefault<char, String>;
 using CharReaderUcs2 = CharReaderDefault<char16_t, WideString>;
 
+using StringView = CharReaderBase;
+using WideStringView = CharReaderUcs2;
+
 class CharReaderUtf8 : public BytesReader<char, String> {
 public:
 	using Self = CharReaderUtf8;

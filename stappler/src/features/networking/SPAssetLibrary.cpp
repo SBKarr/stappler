@@ -55,20 +55,13 @@ static AssetLibrary *s_instance = nullptr;
 AssetLibrary *AssetLibrary::getInstance() {
 	if (!s_instance) {
 		s_instance = new AssetLibrary();
-		storage::defaultStorage();
 		s_instance->init();
 	}
 	return s_instance;
 }
 
-void AssetLibrary::importAssetData(data::Value &value) {
-	if (s_instance) {
-		s_instance->_assetsClass.insert(std::move(value))->perform();
-	} else {
-		s_instance = new AssetLibrary();
-		s_instance->_assetsClass.insert(std::move(value))->perform();
-		s_instance->init();
-	}
+void AssetLibrary::finalize() {
+	storage::finalize(s_assetStorage);
 }
 
 AssetLibrary::AssetLibrary()

@@ -42,16 +42,16 @@ public:
 	static void makeLabelQuads(Source *, const FormatSpec *, const Function<void(const TextureVec &newTex, QuadVec &&newQuads, ColorMapVec &&cMap)> &);
 	static void makeLabelRects(Source *, const FormatSpec *, float scale, const Function<void(const Vector<Rect> &)> &);
 
-    virtual ~DynamicLabel();
+	virtual ~DynamicLabel();
 
-    virtual bool init(Source *, const DescriptionStyle &, const String & = "", float w = 0.0f, Alignment = Alignment::Left, float d = 0.0f);
-    virtual void tryUpdateLabel(bool force = false);
+	virtual bool init(Source *, const DescriptionStyle &, const String & = "", float w = 0.0f, Alignment = Alignment::Left, float d = 0.0f);
+	virtual void tryUpdateLabel(bool force = false);
 
-    virtual void setStyle(const DescriptionStyle &);
-    virtual const DescriptionStyle &getStyle() const;
+	virtual void setStyle(const DescriptionStyle &);
+	virtual const DescriptionStyle &getStyle() const;
 
-    virtual void setSource(Source *);
-    virtual Source *getSource() const;
+	virtual void setSource(Source *);
+	virtual Source *getSource() const;
 
 	virtual void visit(cocos2d::Renderer *r, const Mat4& t, uint32_t f, ZPath &zPath) override;
 
@@ -61,6 +61,11 @@ public:
 	 * so, they can be rendered without delays */
 	virtual void setStandalone(bool value);
 	virtual bool isStandalone() const;
+
+	virtual void setAdjustValue(uint8_t);
+	virtual uint8_t getAdjustValue() const;
+
+	virtual bool isOverflow() const;
 
 	virtual size_t getCharsCount() const;
 	virtual size_t getLinesCount() const;
@@ -77,7 +82,8 @@ public:
 	virtual Pair<uint32_t, bool> getCharIndex(const Vec2 &) const;
 
 protected:
-    virtual void updateLabel();
+	virtual void updateLabel();
+	virtual void updateLabel(FormatSpec *format);
 	virtual void updateQuads(uint32_t f);
 	virtual void onTextureUpdated();
 	virtual void onLayoutUpdated();
@@ -103,6 +109,7 @@ protected:
 	bool _colorDirty = false;
 	bool _inUpdate = false;
 
+	uint8_t _adjustValue = 0;
 	size_t _updateCount = 0;
 
 	Map<String, Vector<char16_t>> _standaloneChars;

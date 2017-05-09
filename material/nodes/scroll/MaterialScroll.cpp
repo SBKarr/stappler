@@ -123,6 +123,13 @@ bool Scroll::Handler::init(Scroll *s) {
 	return true;
 }
 
+void Scroll::Handler::setCompleteCallback(const CompleteCallback &cb) {
+	_callback = cb;
+}
+const Scroll::Handler::CompleteCallback &Scroll::Handler::getCompleteCallback() const {
+	return _callback;
+}
+
 const Size &Scroll::Handler::getContentSize() const {
 	return _size;
 }
@@ -551,6 +558,12 @@ void Scroll::onSliceData(DataMap &val, Time time, Request type) {
 		return true;
 	}, [this, handlerPtr, itemPtr, dataPtr, time, type] (const Task &, bool) {
 		onSliceItems(std::move(*itemPtr), time, type);
+
+		const auto & cb = handlerPtr->get()->getCompleteCallback();
+		if (cb) {
+			cb();
+		}
+
 		delete handlerPtr;
 		delete itemPtr;
 		delete dataPtr;
@@ -740,9 +753,9 @@ void Scroll::updateIndicatorPosition() {
 			float r = scrollHeight - h - 4 - paddingLocal.top - paddingLocal.bottom;
 			float value = (_scrollPosition - min) / (max - min);
 
-			_indicator->setContentSize(cocos2d::Size(3, h));
-			_indicator->setPosition(cocos2d::Vec2(scrollWidth - 2, paddingLocal.bottom + 2 + r * (1.0f - value)));
-			_indicator->setAnchorPoint(cocos2d::Vec2(1, 0));
+			_indicator->setContentSize(Size(3, h));
+			_indicator->setPosition(Vec2(scrollWidth - 2, paddingLocal.bottom + 2 + r * (1.0f - value)));
+			_indicator->setAnchorPoint(Vec2(1, 0));
 		} else {
 			float h = (scrollWidth - 4 - paddingLocal.left - paddingLocal.right) * scrollWidth / scrollLength;
 			if (h < 20) {
@@ -751,9 +764,9 @@ void Scroll::updateIndicatorPosition() {
 			float r = scrollWidth - h - 4 - paddingLocal.left - paddingLocal.right;
 			float value = (_scrollPosition - min) / (max - min);
 
-			_indicator->setContentSize(cocos2d::Size(h, 3));
-			_indicator->setPosition(cocos2d::Vec2(paddingLocal.left + 2 + r * (value), 2));
-			_indicator->setAnchorPoint(cocos2d::Vec2(0, 0));
+			_indicator->setContentSize(Size(h, 3));
+			_indicator->setPosition(Vec2(paddingLocal.left + 2 + r * (value), 2));
+			_indicator->setAnchorPoint(Vec2(0, 0));
 		}
 		if (_indicator->getOpacity() != 255) {
 			cocos2d::Action *a = _indicator->getActionByTag(19);
