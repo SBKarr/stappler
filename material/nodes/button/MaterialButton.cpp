@@ -296,7 +296,8 @@ void Button::animateSelection() {
 	draw::Image::PathRef *path = new draw::Image::PathRef();
 	Size *size = new Size();
 	Vec2 *point = new Vec2();
-	auto b = action::sequence(_spawnDelay, construct<ProgressAction>(0.4, 1.0,
+
+	auto a = Rc<ProgressAction>::create(0.4, 1.0,
 			[this, path, size, point] (ProgressAction *a, float progress) {
 		updateSpawn(progress, (*path), (*size), (*point));
 	}, [this, path, size, point] (ProgressAction *a) {
@@ -313,7 +314,10 @@ void Button::animateSelection() {
 		delete path;
 		delete size;
 		delete point;
-	}));
+	});
+	a->setForceStopCallback(true);
+
+	auto b = action::sequence(_spawnDelay, a);
 	runAction(b, 3);
 }
 

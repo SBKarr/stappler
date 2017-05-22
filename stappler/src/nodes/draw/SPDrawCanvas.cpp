@@ -64,12 +64,9 @@ bool Canvas::init(StencilDepthFormat fmt) {
 	_clearFlags = GL_COLOR_BUFFER_BIT;
 	switch (_depthFormat) {
 	case StencilDepthFormat::Depth16:
-	case StencilDepthFormat::Depth24:
-	case StencilDepthFormat::Depth32f:
 		_clearFlags |= GL_DEPTH_BUFFER_BIT;
 		break;
 	case StencilDepthFormat::Depth24Stencil8:
-	case StencilDepthFormat::Depth32fStencil8:
 		_clearFlags |= (GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 		break;
 	case StencilDepthFormat::Stencil8:
@@ -446,10 +443,7 @@ bool Canvas::doUpdateAttachments(cocos2d::Texture2D *tex, uint32_t w, uint32_t h
 		GLenum fmt = GL_STENCIL_INDEX8;
 		switch (_depthFormat) {
 		case StencilDepthFormat::Depth16: fmt = GL_DEPTH_COMPONENT16; break;
-		case StencilDepthFormat::Depth24: fmt = GL_DEPTH_COMPONENT24; break;
-		case StencilDepthFormat::Depth32f: fmt = GL_DEPTH_COMPONENT32F; break;
 		case StencilDepthFormat::Depth24Stencil8: fmt = GL_DEPTH24_STENCIL8; break;
-		case StencilDepthFormat::Depth32fStencil8: fmt = GL_DEPTH32F_STENCIL8; break;
 		default: break;
 		}
 		glRenderbufferStorage(GL_RENDERBUFFER, fmt, _width, _height);

@@ -7,11 +7,32 @@
 
 #include "SPDrawGLCacheNode.h"
 #include "SPThreadManager.h"
+#include "base/CCConfiguration.h"
 
 #include "renderer/ccGLStateCache.h"
 #include "base/CCDirector.h"
 
 NS_SP_EXT_BEGIN(draw)
+
+GLenum GLBlending::getEnumForEq(Equation eq) {
+	switch (eq) {
+	case GLBlending::FuncAdd: return GL_FUNC_ADD; break;
+	case GLBlending::FuncSubstract: return GL_FUNC_SUBTRACT; break;
+	case GLBlending::FuncReverseSubstract: return GL_FUNC_REVERSE_SUBTRACT; break;
+#ifdef GL_MIN
+	case GLBlending::Min: return cocos2d::Configuration::getInstance()->supportsBlendMinMax()?GL_MIN:GL_FUNC_ADD; break;
+#elif GL_MIN_EXT
+	case GLBlending::Min: return cocos2d::Configuration::getInstance()->supportsBlendMinMax()?GL_MIN_EXT:GL_FUNC_ADD; break;
+#endif
+#ifdef GL_MAX
+	case GLBlending::Max: return cocos2d::Configuration::getInstance()->supportsBlendMinMax()?GL_MAX:GL_FUNC_ADD; break;
+#elif GL_MAX_EXT
+	case GLBlending::Max: return cocos2d::Configuration::getInstance()->supportsBlendMinMax()?GL_MAX_EXT:GL_FUNC_ADD; break;
+#endif
+	}
+
+	return GL_FUNC_ADD;
+}
 
 void GLCacheNode::cleanup() {
 	bindTexture(0);

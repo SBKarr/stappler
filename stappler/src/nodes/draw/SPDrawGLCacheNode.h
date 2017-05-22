@@ -25,16 +25,7 @@ struct GLBlending {
 		Max,
 	};
 
-	static GLenum getEnumForEq(Equation eq) {
-		switch (eq) {
-		case GLBlending::FuncAdd: return GL_FUNC_ADD; break;
-		case GLBlending::FuncSubstract: return GL_FUNC_SUBTRACT; break;
-		case GLBlending::FuncReverseSubstract: return GL_FUNC_REVERSE_SUBTRACT; break;
-		case GLBlending::Min: return GL_MIN; break;
-		case GLBlending::Max: return GL_MAX; break;
-		}
-		return GL_FUNC_ADD;
-	}
+	static GLenum getEnumForEq(Equation eq);
 
 	GLBlending() {
 		blendFunc(BlendFunc::DISABLE);

@@ -227,14 +227,10 @@ void PathNode::updateCanvas(layout::Subscription::Flags f) {
 			_canvas->translate(offsetX, offsetY);
 			_canvas->scale(scaleX, scaleY);
 
-			//_canvas->beginBatch();
-
 			auto &paths = _image->getPaths();
 			for (auto & path : paths) {
 				_canvas->draw(path);
 			}
-
-			//_canvas->endBatch();
 
 			_canvas->restore();
 			_canvas->end();

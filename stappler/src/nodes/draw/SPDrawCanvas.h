@@ -36,10 +36,7 @@ using Format = cocos2d::Texture2D::PixelFormat;
 enum class StencilDepthFormat {
 	None,
 	Depth16,
-	Depth24,
-	Depth32f,
 	Depth24Stencil8,
-	Depth32fStencil8,
 	Stencil8,
 };
 

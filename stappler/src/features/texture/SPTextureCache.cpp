@@ -163,7 +163,7 @@ void TextureCache::addTexture(const std::string &file, const Callback &cb, bool 
 			if (bitmap) {
 				performWithGL([&] {
 					auto tex = Rc<cocos2d::Texture2D>::alloc();
-					tex->initWithData(bitmap.dataPtr(), bitmap.size(), getPixelFormat(bitmap.format()), bitmap.width(), bitmap.height());
+					tex->initWithDataThreadSafe(bitmap.dataPtr(), bitmap.size(), getPixelFormat(bitmap.format()), bitmap.width(), bitmap.height(), 0);
 					if (bitmap.alpha() == Bitmap::Alpha::Premultiplied) {
 						tex->setPremultipliedAlpha(true);
 					}

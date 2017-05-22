@@ -283,7 +283,6 @@ struct SvgReader {
 		} else if (tag.name.compare("polygon")) {
 			tag.shape = SvgTag::Polygon;
 		}
-		//log::format("onBeginTag", "%s", tag.name.str().c_str());
 	}
 
 	inline void onEndTag(Parser &p, Tag &tag) {
@@ -323,8 +322,6 @@ struct SvgReader {
 		default:
 			break;
 		}
-
-		//log::format("onEndTag", "%s", tag.name.str().c_str());
 	}
 
 	inline void onStyleParameter(Tag &tag, StringReader &name, StringReader &value) {
@@ -511,21 +508,15 @@ struct SvgReader {
 				break;
 			}
 		}
-		//log::format("onTagAttribute", "%s: %s = %s", tag.name.str().c_str(), name.str().c_str(), value.str().c_str());
 	}
 
-	inline void onPushTag(Parser &p, Tag &tag) {
-		//log::format("onPushTag", "%s", tag.name.str().c_str());
-	}
+	inline void onPushTag(Parser &p, Tag &tag) { }
 
-	inline void onPopTag(Parser &p, Tag &tag) {
-		//log::format("onPopTag", "%s", tag.name.str().c_str());
-	}
+	inline void onPopTag(Parser &p, Tag &tag) { }
 
 	inline void onInlineTag(Parser &p, Tag &tag) {
 		if (!tag.path.empty()) {
 			_paths.emplace_back(std::move(tag.path));
-			//log::format("onInlineTag", "%s", tag.name.str().c_str());
 		}
 	}
 
@@ -676,7 +667,7 @@ void Image::removePathByTag(uint32_t tag) {
 
 void Image::clear() {
 	_paths.clear();
-	invalidateRefs();
+	clearRefs();
 	setDirty();
 }
 
@@ -708,14 +699,16 @@ void Image::addRef(PathRef *ref) {
 	_refs.emplace_back(ref);
 }
 void Image::removeRef(PathRef *ref) {
+	ref->image = nullptr;
+	ref->path = nullptr;
 	_refs.erase(std::remove(_refs.begin(), _refs.end(), ref), _refs.end());
 }
 void Image::replaceRef(PathRef *original, PathRef *target) {
 	auto it = std::find(_refs.begin(), _refs.end(), original);
 	if (it != _refs.end()) {
-		_refs[it - _refs.begin()] = target;
+		*it = target;
 	} else {
-		_refs.emplace_back(target);
+		addRef(target);
 	}
 }
 void Image::eraseRefs(size_t idx) {
@@ -729,7 +722,7 @@ void Image::eraseRefs(size_t idx) {
 	}
 
 	_refs.erase(std::remove_if(_refs.begin(), _refs.end(), [idx] (PathRef *ref) -> bool {
-		if (ref->index == idx) {
+		if (ref->image == nullptr) {
 			return true;
 		}
 		return false;
@@ -758,8 +751,8 @@ Image::PathRef::PathRef() { }
 Image::PathRef::PathRef(PathRef && ref) : index(ref.index), path(ref.path), image(ref.image) {
 	if (image) {
 		image->replaceRef(&ref, this);
-		ref.image = nullptr;
 	}
+	ref.image = nullptr;
 }
 Image::PathRef::PathRef(const PathRef &ref) : index(ref.index), path(ref.path), image(ref.image) {
 	if (image) {

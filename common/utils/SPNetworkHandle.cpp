@@ -758,7 +758,7 @@ void NetworkHandle::setSendData(const data::Value &data, data::EncodeFormat fmt)
 	_sendCallback = nullptr;
 	_sendData = data::write(data, fmt);
 	_sendSize = _sendData.size();
-	if (fmt.format == data::EncodeFormat::Cbor) {
+	if (fmt.format == data::EncodeFormat::Cbor || fmt.format == data::EncodeFormat::DefaultFormat) {
 		addHeader("Content-Type", "application/cbor");
 	} else if (fmt.format == data::EncodeFormat::Json || fmt.format == data::EncodeFormat::Pretty) {
 		addHeader("Content-Type", "application/json");

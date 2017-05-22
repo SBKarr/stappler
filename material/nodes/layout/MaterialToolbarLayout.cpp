@@ -106,8 +106,14 @@ void ToolbarLayout::setMaxToolbarHeight(float portrait, float landscape) {
 	_contentSizeDirty = true;
 }
 
+void ToolbarLayout::setPopOnNavButton(bool value) {
+	_popOnNavButton = value;
+}
+
 void ToolbarLayout::onToolbarNavButton() {
-	if (_toolbar->getNavButtonIcon() == IconName::Dynamic_Navigation && _toolbar->getNavButtonIconProgress() > 0.0f) {
+	if (_popOnNavButton) {
+		material::Scene::getRunningScene()->getContentLayer()->popNode(this);
+	} else if (_toolbar->getNavButtonIcon() == IconName::Dynamic_Navigation && _toolbar->getNavButtonIconProgress() > 0.0f) {
 		onBackButton();
 	} else if (_toolbar->getNavButtonIcon() == IconName::Dynamic_Navigation && _toolbar->getNavButtonIconProgress() == 0.0f) {
 		runAction(action::callback(0.15f, [] {
@@ -179,9 +185,7 @@ void ToolbarLayout::onBackground(ContentLayer *l, Layout *overlay) {
 			nextToolbar->setNavButtonIconProgress(1.0f, 0.0f);
 		}
 
-		nextToolbar->setNavCallback([this, next] {
-			material::Scene::getRunningScene()->getContentLayer()->popNode(next);
-		});
+		next->setPopOnNavButton(true);
 	}
 }
 

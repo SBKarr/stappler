@@ -82,6 +82,8 @@ public:
 	virtual void onScroll(float delta, bool finished) override;
 
 protected:
+	virtual void setPopOnNavButton(bool value);
+
 	virtual void onToolbarNavButton();
 	virtual ToolbarBase *setupToolbar(ToolbarBase *);
 
@@ -96,6 +98,7 @@ protected:
 	bool _forwardProgress = false;
 
 	ToolbarBase *_toolbar = nullptr;
+	bool _popOnNavButton = false;
 };
 
 NS_MD_END
