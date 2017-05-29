@@ -410,7 +410,7 @@ void ScrollViewBase::setScrollRelativePosition(float value) {
 		float liveSize = areaSize + paddingFront + paddingBack - size;
 		float pos = (value * liveSize) - paddingFront + areaOffset;
 
-		setScrollPosition(pos);
+		doSetScrollPosition(pos);
 	} else {
 		_savedRelativePosition = value;
 	}
@@ -443,14 +443,17 @@ float ScrollViewBase::getScrollRelativePosition(float pos) const {
 
 void ScrollViewBase::setScrollPosition(float pos) {
 	if (pos != _scrollPosition) {
-		if (isVertical()) {
-			_root->setPositionY(pos + _scrollSize);
-		} else {
-			_root->setPositionX(-pos);
-		}
+		doSetScrollPosition(pos);
 	}
 }
 
+void ScrollViewBase::doSetScrollPosition(float pos) {
+	if (isVertical()) {
+		_root->setPositionY(pos + _scrollSize);
+	} else {
+		_root->setPositionX(-pos);
+	}
+}
 
 float ScrollViewBase::getScrollPosition() const {
 	if (isVertical()) {

@@ -29,9 +29,11 @@ THE SOFTWARE.
 #include "SPDynamicBatchCommand.h"
 #include "SPDynamicQuadArray.h"
 #include "renderer/CCRenderer.h"
+#include "renderer/CCGroupCommand.h"
 #include "SPString.h"
 #include "SPEventListener.h"
 #include "SPDevice.h"
+#include "SPStencilCache.h"
 
 NS_SP_BEGIN
 
@@ -80,6 +82,30 @@ public:
 			}
 			id ++;
 		}
+	}
+
+	void visitQueue(const Vector<cocos2d::RenderCommand*> &q, const Function<void(DynamicBatchCommand *)> &cb) {
+		for (auto it : q) {
+			if (it) {
+				switch (it->getType()) {
+				case cocos2d::RenderCommand::Type::GROUP_COMMAND:
+			        visitQueue(
+			        		(*_renderGroups)[static_cast<cocos2d::GroupCommand*>(it)->getRenderQueueID()]
+											 .getSubQueue(cocos2d::RenderQueue::GLOBALZ_ZERO), cb);
+					break;
+				case cocos2d::RenderCommand::Type::SP_DYNAMIC_COMMAND:
+					cb(static_cast<DynamicBatchCommand *>(it));
+					break;
+				default:
+					break;
+				}
+			}
+		}
+	}
+
+	void visit(const Function<void(DynamicBatchCommand *)> &cb) {
+		auto &rg = _renderGroups->at(0);
+		visitQueue(rg.getSubQueue(cocos2d::RenderQueue::GLOBALZ_ZERO), cb);
 	}
 
 protected:
@@ -166,8 +192,48 @@ void DynamicBatchScene::visit(cocos2d::Renderer *r, const Mat4& t, uint32_t f, Z
 		}
 
 		DynamicBatchSceneRenderer sr(r, this);
+
+		_beginCommand.init(_globalZOrder, ZPath{minOf<int>()});
+		_beginCommand.func = CC_CALLBACK_0(DynamicBatchScene::onBeforeFrame, this);
+		sr.addCommand(&_beginCommand);
+
 		cocos2d::Scene::visit(&sr, t, f, zPath);
+
+		_endCommand.init(_globalZOrder, ZPath{maxOf<int>()});
+		_endCommand.func = CC_CALLBACK_0(DynamicBatchScene::onAfterFrame, this);
+		sr.addCommand(&_endCommand);
+
 		sr.update(_modelViewTransform);
+
+		if (_stencilOptEnabled) {
+			auto s = StencilCache::getInstance();
+			s->enable();
+			s->clear();
+
+			// log::text("Cmd", "Begin");
+			uint8_t stencilIdx = 0;
+			sr.visit([&] (DynamicBatchCommand *cmd) {
+				// StringStream out;
+
+				if (cmd->isStencil()) {
+					stencilIdx = cmd->makeStencil();
+				} else {
+					cmd->setStencilIndex(stencilIdx);
+				}
+
+				/* out << "stencil: " << int(cmd->getStencilIndex()) << " ";
+				out << "batch: " << cmd->isBatch() << " - ";
+
+				auto &path = cmd->getZPath();
+				for (auto &it : path) {
+					out << it << " ";
+				}
+
+				log::text("Cmd", out.str());*/
+			});
+
+			s->disable();
+		}
 
 		for (auto &it : _map) {
 			if (it.second.cmdInit && !it.second.set.empty()) {
@@ -189,7 +255,15 @@ void DynamicBatchScene::visit(cocos2d::Renderer *r, const Mat4& t, uint32_t f, Z
 			_shouldClear = false;
 		}
 	} else {
+		_beginCommand.init(_globalZOrder, ZPath{minOf<int>()});
+		_beginCommand.func = CC_CALLBACK_0(DynamicBatchScene::onBeforeFrame, this);
+		r->addCommand(&_beginCommand);
+
 		cocos2d::Scene::visit(r, t, f, zPath);
+
+		_endCommand.init(_globalZOrder, ZPath{maxOf<int>()});
+		_endCommand.func = CC_CALLBACK_0(DynamicBatchScene::onAfterFrame, this);
+		r->addCommand(&_endCommand);
 	}
 
 	onFrameEnd(this);
@@ -208,7 +282,7 @@ DynamicBatchScene::AtlasCacheNode &DynamicBatchScene::getAtlasForMaterial(uint32
 
 	if (!it->second.cmdInit) {
 		auto zPath = cmd->getZPath();
-		it->second.cmd.init(0.0f, cmd->getProgram(), cmd->getBlendFunc(), it->second.atlas, Mat4::IDENTITY, std::move(zPath), cmd->isNormalized());
+		it->second.cmd.init(0.0f, cmd->getProgram(), cmd->getBlendFunc(), it->second.atlas, Mat4::IDENTITY, std::move(zPath), cmd->isNormalized(), cmd->isStencil());
 		it->second.cmdInit = true;
 	}
 	return it->second;
@@ -227,6 +301,24 @@ void DynamicBatchScene::clearCachedMaterials(bool force) {
 	} else {
 		_clearDelay = 10;
 	}
+}
+
+void DynamicBatchScene::onBeforeFrame() {
+	_frameStart = Time::now();
+	if (_stencilOptEnabled) {
+		StencilCache::getInstance()->enable();
+	}
+}
+
+void DynamicBatchScene::onAfterFrame() {
+	if (_stencilOptEnabled) {
+		StencilCache::getInstance()->disable();
+	}
+
+	_frameTime += (Time::now() - _frameStart);
+	++ _frames;
+
+	//log::format("Frame", "%llu", _frameTime.toMicroseconds() / _frames);
 }
 
 NS_SP_END

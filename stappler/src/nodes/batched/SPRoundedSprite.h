@@ -33,11 +33,13 @@ public:
 	public:
 		virtual bool init(uint32_t size) override;
 		virtual ~RoundedTexture();
-	    virtual uint8_t *generateTexture(uint32_t size) override;
+		virtual uint8_t *generateTexture(uint32_t size) override;
 	};
 
+	virtual bool init(uint32_t size, float density = 0.0f) override;
+
 protected:
-	virtual Rc<Texture> generateTexture(uint32_t size);
+	virtual Rc<Texture> generateTexture(uint32_t size) override;
 };
 
 NS_SP_END

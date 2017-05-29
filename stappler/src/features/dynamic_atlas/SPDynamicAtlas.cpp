@@ -37,6 +37,7 @@ THE SOFTWARE.
 #include "platform/CCGL.h"
 
 #include "SPDynamicQuadArray.h"
+#include "SPStencilCache.h"
 #include "SPString.h"
 #include "SPDevice.h"
 
@@ -274,7 +275,7 @@ void DynamicAtlas::setupVBOandVAO() {
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, transferBuffer().vbo[1]);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLushort) * transferBuffer().size * 6,
-			_indices.data(), GL_STATIC_DRAW);
+			_indices.data(), GL_DYNAMIC_DRAW);
 
 	// Must unbind the VAO before changing the element buffer.
 	cocos2d::GL::bindVAO(0);
@@ -300,7 +301,7 @@ void DynamicAtlas::mapBuffers() {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, transferBuffer().vbo[1]);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, (sizeof(GLushort) * transferBuffer().size * 6), (const GLvoid *)_indices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, (sizeof(GLushort) * transferBuffer().size * 6), (const GLvoid *)_indices.data(), GL_DYNAMIC_DRAW);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     CHECK_GL_ERROR_DEBUG();
@@ -389,7 +390,7 @@ void DynamicAtlas::visit() {
 	}
 }
 
-void DynamicAtlas::drawQuads() {
+void DynamicAtlas::drawQuads(bool update) {
 	if (_quads.empty()) {
 		return;
 	}
@@ -400,7 +401,7 @@ void DynamicAtlas::drawQuads() {
 
     auto numberOfQuads = _quadsCount;
     if (!numberOfQuads) {
-        if (_useBufferSwapping) {
+        if (update && _useBufferSwapping) {
             visit();
         }
         return;
@@ -449,7 +450,7 @@ void DynamicAtlas::drawQuads() {
         CHECK_GL_ERROR_DEBUG();
     }
 
-    if (_useBufferSwapping) {
+    if (update && _useBufferSwapping) {
         visit();
     }
 }

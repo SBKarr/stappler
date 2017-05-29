@@ -58,7 +58,7 @@ DynamicAtlas* DynamicBatchNode::getAtlas(void) {
 
 void DynamicBatchNode::updateColor() {
 	if (_quads && !_quads->empty()) {
-	    cocos2d::Color4B color4( _displayedColor.r, _displayedColor.g, _displayedColor.b, _displayedOpacity );
+	    Color4B color4( _displayedColor.r, _displayedColor.g, _displayedColor.b, _displayedOpacity );
 
 	    // special opacity for premultiplied textures
 		if (_opacityModifyRGB) {
@@ -90,7 +90,7 @@ void DynamicBatchNode::setTexture(cocos2d::Texture2D *texture) {
 	}
 }
 
-void DynamicBatchNode::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &transform, uint32_t flags, const ZPath &zPath) {
+void DynamicBatchNode::draw(cocos2d::Renderer *renderer, const Mat4 &transform, uint32_t flags, const ZPath &zPath) {
 	if (!_textureAtlas) {
 		if (auto atlas = construct<DynamicAtlas>(getTexture())) {
 			_textureAtlas = atlas;
@@ -102,14 +102,16 @@ void DynamicBatchNode::draw(cocos2d::Renderer *renderer, const cocos2d::Mat4 &tr
 		return;
 	}
 
+	bool asStencil = (_displayedOpacity == 255) ? _stencil : false;
+
 	if (_normalized) {
-		cocos2d::Mat4 newMV;
+		Mat4 newMV;
 		newMV.m[12] = floorf(transform.m[12]);
 		newMV.m[13] = floorf(transform.m[13]);
 		newMV.m[14] = floorf(transform.m[14]);
-		_batchCommand.init(_globalZOrder, getGLProgram(), _blendFunc, _textureAtlas, newMV, zPath, _normalized);
+		_batchCommand.init(_globalZOrder, getGLProgram(), _blendFunc, _textureAtlas, newMV, zPath, _normalized, asStencil);
 	} else {
-		_batchCommand.init(_globalZOrder, getGLProgram(), _blendFunc, _textureAtlas, transform, zPath, _normalized);
+		_batchCommand.init(_globalZOrder, getGLProgram(), _blendFunc, _textureAtlas, transform, zPath, _normalized, asStencil);
 	}
 
 	renderer->addCommand(&_batchCommand);

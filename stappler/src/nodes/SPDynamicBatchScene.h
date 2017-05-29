@@ -59,10 +59,20 @@ protected:
 
 	virtual AtlasCacheNode &getAtlasForMaterial(uint32_t id, DynamicBatchCommand *cmd);
 
+	virtual void onBeforeFrame();
+	virtual void onAfterFrame();
+
 	bool _batchingEnabled = true;
+	bool _stencilOptEnabled = false;
 	size_t _clearDelay = 0;
 	bool _shouldClear = false;
 	std::map<uint32_t, AtlasCacheNode> _map;
+
+	cocos2d::CustomCommand _beginCommand;
+	cocos2d::CustomCommand _endCommand;
+	uint64_t _frames = 0;
+	Time _frameStart;
+	TimeInterval _frameTime;
 };
 
 NS_SP_END

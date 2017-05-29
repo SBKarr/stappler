@@ -40,7 +40,8 @@ public:
 
     bool init(cocos2d::Texture2D *texture, bool bufferSwapping = false);
 
-    void drawQuads();
+    void drawQuads(bool update = true);
+    uint8_t drawStencilQuads();
     void listenRendererRecreated();
 
     ssize_t getQuadsCount() const;

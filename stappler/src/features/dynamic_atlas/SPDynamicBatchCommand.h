@@ -35,8 +35,13 @@ public:
 
 	DynamicBatchCommand(bool b = false);
 
-    void init(float depth, GLProgram*, BlendFunc, DynamicAtlas *, const Mat4& mv, const std::vector<int> &, bool n);
+    void init(float depth, GLProgram*, BlendFunc, DynamicAtlas *, const Mat4& mv, const std::vector<int> &, bool n, bool stencil = false);
+
+    void setStencilIndex(uint8_t);
+
+    void useMaterial();
     void execute();
+    uint8_t makeStencil();
 
     GLuint getTextureId() const;
     cocos2d::GLProgram *getProgram() const;
@@ -46,8 +51,11 @@ public:
     const Mat4 &getTransform() const;
 
     bool isNormalized() const;
+    bool isStencil() const;
+    bool isBatch() const;
 
     uint32_t getMaterialId(int32_t groupId) const;
+    uint8_t getStencilIndex() const;
 
 protected:
     //Material
@@ -61,6 +69,8 @@ protected:
     Mat4 _mv;
     bool _normalized = false;
     bool _batch = false;
+    bool _stencil = false;
+    uint8_t _stencilIndex = 0;
 };
 
 NS_SP_END

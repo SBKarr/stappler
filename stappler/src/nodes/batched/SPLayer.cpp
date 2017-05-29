@@ -88,6 +88,8 @@ bool Layer::init(const cocos2d::Color4B &c) {
 		return false;
 	}
 
+	_stencil = true;
+
 	setColor(cocos2d::Color3B(c));
 	setOpacity(c.a);
 

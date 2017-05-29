@@ -140,6 +140,7 @@ protected: // common overload points
 	virtual void onScroll(float delta, bool finished);
 	virtual void onOverscroll(float delta);
 	virtual void onPosition();
+	virtual void doSetScrollPosition(float pos);
 
 	virtual void fixPosition();
 

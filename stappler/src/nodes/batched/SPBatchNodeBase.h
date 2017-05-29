@@ -60,6 +60,7 @@ protected:
 
 	bool _opacityModifyRGB = false;
 	bool _normalized = false;
+	bool _stencil = false;
 
 	cocos2d::BlendFunc _blendFunc;
 	float _density = 1.0f;

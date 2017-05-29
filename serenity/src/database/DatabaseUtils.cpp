@@ -239,6 +239,13 @@ void TableRec::writeCompareResult(apr::ostringstream &stream,
 					if (ex_col.type == ColRec::Type::None || req_type != ex_col.type) {
 						stream << "ALTER TABLE " << ex_it.first << " DROP COLUMN IF EXISTS \"" << ex_col_it.first << "\";\n";
 					} else {
+						if (ex_col.notNull != req_col.notNull) {
+							if (ex_col.notNull) {
+								stream << "ALTER TABLE " << ex_it.first << " ALTER COLUMN \"" << ex_col_it.first << "\" DROP NOT NULL;\n";
+							} else {
+								stream << "ALTER TABLE " << ex_it.first << " ALTER COLUMN \"" << ex_col_it.first << "\" SET NOT NULL;\n";
+							}
+						}
 						req_t.cols.erase(req_col_it);
 					}
 				}

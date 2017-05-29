@@ -276,7 +276,7 @@ void Canvas::flush() {
 
 		setStrokeBlending();
 		glBindBuffer(GL_ARRAY_BUFFER, _vbo[0]);
-		glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, nullptr, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, vertexBufferSize, nullptr, GL_DYNAMIC_DRAW);
 
 		for (auto & it : _stroke) {
 			auto s = it.outline.size() * sizeof(TESSPoint);

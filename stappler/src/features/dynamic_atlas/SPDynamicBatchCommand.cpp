@@ -28,6 +28,7 @@ THE SOFTWARE.
 
 #include "SPDynamicAtlas.h"
 #include "SPDynamicQuadArray.h"
+#include "SPStencilCache.h"
 
 #include "renderer/CCGLProgram.h"
 #include "renderer/CCTexture2D.h"
@@ -44,7 +45,8 @@ DynamicBatchCommand::DynamicBatchCommand(bool b) {
 	_batch = b;
 }
 
-void DynamicBatchCommand::init(float g, GLProgram *p, BlendFunc f, DynamicAtlas *a, const Mat4& mv, const std::vector<int> &zPath, bool n) {
+void DynamicBatchCommand::init(float g, GLProgram *p, BlendFunc f, DynamicAtlas *a, const Mat4& mv,
+		const std::vector<int> &zPath, bool n, bool stencil) {
 	CCASSERT(p, "shader cannot be nill");
 	CCASSERT(a, "textureAtlas cannot be nill");
 
@@ -68,10 +70,15 @@ void DynamicBatchCommand::init(float g, GLProgram *p, BlendFunc f, DynamicAtlas 
 	}
 
 	_normalized = n;
+	_stencil = stencil;
+	_stencilIndex = 0;
 }
 
-void DynamicBatchCommand::execute() {
-	// Set material
+void DynamicBatchCommand::setStencilIndex(uint8_t st) {
+	_stencilIndex = st;
+}
+
+void DynamicBatchCommand::useMaterial() {
 	if (!_batch) {
 		auto &quads = _textureAtlas->getQuads();
 		for (auto it : quads) {
@@ -83,9 +90,29 @@ void DynamicBatchCommand::execute() {
 	_shader->setUniformsForBuiltins(_mv);
 	cocos2d::GL::bindTexture2D(_textureID);
 	cocos2d::GL::blendFunc(_blendType.src, _blendType.dst);
+}
 
-	// Draw
+void DynamicBatchCommand::execute() {
+	useMaterial();
+	auto s = StencilCache::getInstance();
+	if (s->isEnabled()) {
+		if (_stencilIndex) {
+			s->enableStencilTest(StencilCache::Func::GreaterEqual, _stencilIndex);
+		} else {
+			s->disableStencilTest();
+		}
+	}
 	_textureAtlas->drawQuads();
+}
+
+uint8_t DynamicBatchCommand::makeStencil() {
+	useMaterial();
+	auto s = StencilCache::getInstance();
+	if (s->isEnabled()) {
+		_stencilIndex = s->pushStencilLayer();
+	}
+	_textureAtlas->drawQuads(false);
+	return _stencilIndex;
 }
 
 GLuint DynamicBatchCommand::getTextureId() const {
@@ -109,6 +136,14 @@ bool DynamicBatchCommand::isNormalized() const {
 	return _normalized;
 }
 
+bool DynamicBatchCommand::isStencil() const {
+	return _stencil;
+}
+
+bool DynamicBatchCommand::isBatch() const {
+	return _batch;
+}
+
 uint32_t DynamicBatchCommand::getMaterialId(int32_t groupId) const {
 	std::vector<int32_t> intArray;
 	intArray.reserve(6 + _zPath.size());
@@ -117,7 +152,7 @@ uint32_t DynamicBatchCommand::getMaterialId(int32_t groupId) const {
 	intArray.push_back( reinterpretValue<int32_t>(_textureID) );
 	intArray.push_back( reinterpretValue<int32_t>(_blendType.src) );
 	intArray.push_back( reinterpretValue<int32_t>(_blendType.dst) );
-	intArray.push_back( (int32_t)_normalized );
+	intArray.push_back( (int32_t)_normalized | ((int32_t)_stencil << 2) );
 	intArray.push_back( (int32_t)groupId );
 
 	for (auto &i : _zPath) {
@@ -125,6 +160,10 @@ uint32_t DynamicBatchCommand::getMaterialId(int32_t groupId) const {
 	}
 
 	return XXH32((const void*)intArray.data(), sizeof(int32_t) * (int32_t)intArray.size(), 0);
+}
+
+uint8_t DynamicBatchCommand::getStencilIndex() const {
+	return _stencilIndex;
 }
 
 NS_SP_END

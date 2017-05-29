@@ -498,7 +498,7 @@ void Drawer::drawResizeBuffer(size_t count) {
     }
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _drawBufferVBO[1]);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, (sizeof(GLushort) * count * 6), (const GLvoid *) indices.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, (sizeof(GLushort) * count * 6), (const GLvoid *) indices.data(), GL_DYNAMIC_DRAW);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 

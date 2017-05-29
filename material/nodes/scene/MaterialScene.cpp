@@ -363,7 +363,7 @@ void Scene::updateStatsValue() {
 				fps, "\n",
 				spf, "\n",
 				drawCalls, "\n",
-				drawVerts, "\n");
+				drawVerts);
 		_stats->setString(str);
 	}
 }

@@ -66,6 +66,16 @@ uint8_t *RoundedSprite::RoundedTexture::generateTexture(uint32_t size) {
 	return data;
 }
 
+bool RoundedSprite::init(uint32_t size, float density) {
+	if (!CustomCornerSprite::init(size, density)) {
+		return false;
+	}
+
+	_stencil = true;
+
+	return true;
+}
+
 Rc<RoundedSprite::Texture> RoundedSprite::generateTexture(uint32_t r) {
 	auto it = s_textures.find(r);
 	if (it == s_textures.end()) {

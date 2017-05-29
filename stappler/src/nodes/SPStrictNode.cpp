@@ -70,9 +70,6 @@ void StrictNode::setClipOnlyNodesBelow(bool value) {
 
 void StrictNode::onBeforeDraw() {
 	_scissorRestored = false;
-	if (!_isClippingEnabled || !Device::getInstance()->isScissorAvailable() || Screen::getInstance()->isInTransition()) {
-		return;
-	}
 	Rect frame = getViewRect();
 	auto view = Director::getInstance()->getOpenGLView();
 	if (view->isScissorEnabled()) {
@@ -95,10 +92,6 @@ void StrictNode::onBeforeDraw() {
 }
 
 void StrictNode::onAfterDraw() {
-	if (!_isClippingEnabled || !Device::getInstance()->isScissorAvailable() || Screen::getInstance()->isInTransition()) {
-		return;
-	}
-
 	if (_scissorRestored) {//restore the parent's scissor rect
 		auto view = Director::getInstance()->getOpenGLView();
 		view->setScissorInPoints(_parentScissorRect.origin.x, _parentScissorRect.origin.y, _parentScissorRect.size.width, _parentScissorRect.size.height);
@@ -121,6 +114,11 @@ bool StrictNode::init() {
 
 void StrictNode::visit(cocos2d::Renderer *renderer, const cocos2d::Mat4 &parentTransform, uint32_t parentFlags, ZPath &zPath) {
 	// quick return if not visible. children won't be drawn.
+	if (!_isClippingEnabled || !Device::getInstance()->isScissorAvailable() || Screen::getInstance()->isInTransition()) {
+		Node::visit(renderer, parentTransform, parentFlags, zPath);
+		return;
+	}
+
     if (!_visible) {
         return;
     }

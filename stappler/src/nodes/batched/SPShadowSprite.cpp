@@ -30,7 +30,7 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
-static Map<uint32_t, Rc<ShadowSprite::Texture>> s_textures;
+static Map<uint32_t, ShadowSprite::Texture *> s_textures;
 
 static void createShadowGaussianData(uint8_t *data, uint16_t size, uint16_t radius) {
 	const uint16_t shadow = size - radius;
@@ -58,12 +58,10 @@ ShadowSprite::Texture::Texture() {
 }
 
 ShadowSprite::Texture::~Texture() {
-	s_textures.erase(_radius << 16 | _size);
+	s_textures.erase(uint32_t(_radius) << 16 | uint32_t(_size));
 }
 
 bool ShadowSprite::Texture::init(uint16_t size, uint16_t radius) {
-	s_textures.insert(std::make_pair(_radius << 16 | _size, this));
-
 	_size = size;
 	_radius = radius;
 	reload();
@@ -114,9 +112,12 @@ uint16_t ShadowSprite::Texture::getRadius() const {
 }
 
 Rc<ShadowSprite::Texture> ShadowSprite::generateTexture(uint16_t size, uint16_t radius) {
-	auto it = s_textures.find(radius << 16 | size);
+	uint32_t val = uint32_t(radius) << 16 | uint32_t(size);
+	auto it = s_textures.find(val);
 	if (it == s_textures.end()) {
-		return Rc<Texture>::create(size, radius);
+		auto ret = Rc<Texture>::create(size, radius);
+		s_textures.insert(std::make_pair(val, ret));
+		return ret;
 	} else {
 		return it->second;
 	}
