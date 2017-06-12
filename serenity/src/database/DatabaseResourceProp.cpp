@@ -192,7 +192,7 @@ data::Value Resolver::ResourceFile::getFileForObject(data::Value &object) {
 		if (isObjectAllowed(_scheme, Action::Read, object)) {
 			auto id = object.getInteger(_fieldName);
 			if (id) {
-				auto fileScheme = Server(AllocStack::get().server()).getFileScheme();
+				auto fileScheme = Server(apr::pool::server()).getFileScheme();
 				data::Value ret(fileScheme->get(_handle, id));
 				_scheme = fileScheme;
 				return ret;
@@ -203,7 +203,7 @@ data::Value Resolver::ResourceFile::getFileForObject(data::Value &object) {
 }
 
 data::Value Resolver::ResourceFile::getDatabaseObject() {
-	auto fileScheme = Server(AllocStack::get().server()).getFileScheme();
+	auto fileScheme = Server(apr::pool::server()).getFileScheme();
 
 	apr::ostringstream query;
 	query << "SELECT " << fileScheme->getName() << ".* FROM " << fileScheme->getName() << ", (";

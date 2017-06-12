@@ -35,22 +35,34 @@ THE SOFTWARE.
 #include "SPFilesystem.h"
 #include "SPAsset.h"
 #include "SPBitmap.h"
+#include "SPUrl.h"
 
 #include "SPPlatform.h"
+#include "SPDataListener.h"
+#include "SPAssetLibrary.h"
 
 NS_SP_BEGIN
 
 static Thread s_textureCacheThread("TextureCacheThread");
 static TextureCache *s_sharedTextureCache = nullptr;
 
-#ifndef GL_ES_VERSION_2_0
-static uint32_t s_supportedRenderTarget = toInt(TextureCache::RenderTarget::RGBA8) | toInt(TextureCache::RenderTarget::RGB8) | toInt(TextureCache::RenderTarget::R8);
-#else
-static uint32_t s_supportedRenderTarget = 0;
-#endif
+String TextureCache::getPathForUrl(const String &url) {
+	auto dir = filesystem::writablePath("NetworkSprites");
+	filesystem::mkdir(dir);
+	return toString(dir, "/", string::stdlibHashUnsigned(url));
+}
 
-bool TextureCache::isRenderTargetSupported(RenderTarget target) {
-	return (s_supportedRenderTarget & toInt(target)) != 0;
+bool TextureCache::isCachedTextureUrl(const String &url) {
+	auto lib = AssetLibrary::getInstance();
+	auto cache = TextureCache::getInstance();
+
+	auto path = getPathForUrl(url);
+	auto assetId = lib->getAssetId(url, path);
+
+	if (lib->isLiveAsset(assetId) && cache->hasTexture(path)) {
+		return true;
+	}
+	return false;
 }
 
 TextureCache *TextureCache::getInstance() {
@@ -68,13 +80,26 @@ Thread &TextureCache::thread() {
 }
 
 void TextureCache::update(float dt) {
-	std::map<std::string, cocos2d::Texture2D *> release;
+	if (_reloadDirty) {
+		for (auto &it : _textures) {
+			Bitmap bitmap(filesystem::readFile(it.first));
+			if (bitmap) {
+				it.second->updateWithData(bitmap.dataPtr(), 0, 0, bitmap.width(), bitmap.height());
+				if (bitmap.alpha() == Bitmap::Alpha::Premultiplied) {
+					it.second->setPremultipliedAlpha(true);
+				}
+			}
+		}
+		_reloadDirty = false;
+	}
+
+	Map<String, cocos2d::Texture2D *> release;
 	for (auto &it : _texturesScore) {
 		if (it.first->getReferenceCount() > 1) {
 			it.second.first = GetDelayTime();
 		} else {
 			if (it.second.first <= 0) {
-				release.insert(std::make_pair(it.second.second, it.first));
+				release.insert(pair(it.second.second, it.first));
 			} else {
 				it.second.first -= dt;
 			}
@@ -130,10 +155,31 @@ cocos2d::Texture2D::PixelFormat TextureCache::getPixelFormat(Bitmap::Format fmt)
 	return cocos2d::Texture2D::PixelFormat::AUTO;
 }
 
-void TextureCache::addTexture(const std::string &file, const Callback &cb, bool forceReload) {
-	if (file.empty()) {
+void TextureCache::addTexture(const String &ifile, const Callback &cb, bool forceReload) {
+	if (ifile.empty()) {
 		return;
 	}
+
+	String file(ifile);
+	auto pos = file.find("://");
+	if (pos != String::npos) {
+		Url url(file);
+		if (url.getScheme() == "file" && (url.getHost() == "localhost" || url.getHost().empty())) {
+			file = String("/") + toStringConcat(url.getPath(), '/');
+		} else {
+			auto lib = AssetLibrary::getInstance();
+			auto path = getPathForUrl(file);
+			lib->getAsset([this, forceReload, cb] (Asset *a) {
+				if (a) {
+					addTexture(a, cb, forceReload);
+				} else {
+					cb(nullptr);
+				}
+			}, file, path, TimeInterval::seconds(10 * 24 * 60 * 60));
+			return;
+		}
+	}
+
 	if (!forceReload) {
 		auto it = _textures.find(file);
 		if (it != _textures.end()) {
@@ -154,7 +200,7 @@ void TextureCache::addTexture(const std::string &file, const Callback &cb, bool 
 		if (cb) {
 			vec.push_back(cb);
 		}
-		_callbackMap.insert(std::make_pair(file, vec));
+		_callbackMap.insert(pair(file, vec));
 
 		auto &thread = s_textureCacheThread;
         auto imagePtr = new Rc<cocos2d::Texture2D>;
@@ -182,7 +228,7 @@ void TextureCache::addTexture(const std::string &file, const Callback &cb, bool 
 				}
 
 				_textures.insert(file, image);
-				_texturesScore.insert(std::make_pair(image, std::make_pair(GetDelayTime(), file)));
+				_texturesScore.insert(pair(image, pair(GetDelayTime(), file)));
 
 				auto it = _callbackMap.find(file);
 				if (it != _callbackMap.end()) {
@@ -206,6 +252,40 @@ void TextureCache::addTexture(const std::string &file, const Callback &cb, bool 
 	}
 }
 
+struct TextureCacheAssetDownloader : public Ref {
+	using Callback = Function<void(cocos2d::Texture2D *)>;
+
+	bool init(Asset *a, const Callback & cb, bool forceReload) {
+		force = forceReload;
+		callback = cb;
+		listener.setCallback(std::bind(&TextureCacheAssetDownloader::onUpdate, this, std::placeholders::_1));
+		listener = a;
+		if (listener->download()) {
+			enabled = true;
+			retain();
+			return true;
+		}
+		return false;
+	}
+
+	void onUpdate(data::Subscription::Flags f) {
+		if (enabled && (f.hasFlag(uint8_t(Asset::Update::FileUpdated)) || f.hasFlag(uint8_t(Asset::Update::DownloadFailed)))) {
+			if (listener->isReadAvailable()) {
+				TextureCache::getInstance()->addAssetTexture(listener, callback, force);
+			} else {
+				callback(nullptr);
+			}
+			enabled = false;
+			release();
+		}
+	}
+
+	bool enabled = false;
+	bool force = false;
+	Callback callback;
+	data::Listener<Asset> listener;
+};
+
 void TextureCache::addTexture(Asset *a, const Callback & cb, bool forceReload) {
 	auto &file = a->getFilePath();
 	if (!forceReload) {
@@ -218,6 +298,15 @@ void TextureCache::addTexture(Asset *a, const Callback & cb, bool forceReload) {
 		}
 	}
 
+	if (a->isDownloadAvailable()) {
+		Rc<TextureCacheAssetDownloader>::create(a, cb, forceReload);
+	} else {
+		addAssetTexture(a, cb, forceReload);
+	}
+}
+
+void TextureCache::addAssetTexture(Asset *a, const Callback &cb, bool forceReload) {
+	auto &file = a->getFilePath();
 	a->retainReadLock(this, [this, a, cb, file, forceReload] {
 		addTexture(file, [this, a, cb] (cocos2d::Texture2D *tex) {
 			if (cb) {
@@ -228,7 +317,7 @@ void TextureCache::addTexture(Asset *a, const Callback & cb, bool forceReload) {
 	});
 }
 
-bool TextureCache::hasTexture(const std::string &path) {
+bool TextureCache::hasTexture(const String &path) {
 	auto it = _textures.find(path);
 	return it != _textures.end();
 }
@@ -236,45 +325,6 @@ bool TextureCache::hasTexture(const std::string &path) {
 TextureCache::TextureCache() {
 	_batchDrawing = Rc<GLProgramSet>::create(GLProgramSet::DrawNodeSet);
 	_rawDrawing = Rc<GLProgramSet>::create(GLProgramSet::RawDrawingSet);
-
-#ifdef GL_ES_VERSION_2_0
-    auto ext = (char *)glGetString(GL_EXTENSIONS);
-    CharReaderBase r(ext, strlen(ext));
-
-    r.split<CharReaderBase::Chars<' '>>([this] (CharReaderBase &b) {
-    	if (b == "GL_OES_rgb8_rgba8") {
-    		s_supportedRenderTarget |= (toInt(TextureCache::RenderTarget::RGBA8) | toInt(TextureCache::RenderTarget::RGB8));
-    	} else if (b == "GL_EXT_texture_rg") {
-    		s_supportedRenderTarget |= toInt(TextureCache::RenderTarget::R8);
-    	} else if (b == "GL_ARM_rgba8") {
-    		s_supportedRenderTarget |= toInt(TextureCache::RenderTarget::RGBA8);
-    	}
-    });
-#endif
-
-	onEvent(Device::onAndroidReset, [this] (const Event *) {
-		for (auto &it : _textures) {
-			Bitmap bitmap(filesystem::readFile(it.first));
-			if (bitmap) {
-				//log::format("Texture", "%s", it.first.c_str());
-				it.second->initWithDataThreadSafe(bitmap.dataPtr(), bitmap.size(), it.second->getPixelFormat(), bitmap.width(), bitmap.height(), 0);
-				if (bitmap.alpha() == Bitmap::Alpha::Premultiplied) {
-					it.second->setPremultipliedAlpha(true);
-				}
-			}
-		}
-
-		_batchDrawing->reloadPrograms();
-		_rawDrawing->reloadPrograms();
-
-		s_textureCacheThread.perform([this] (const Task &) -> bool {
-			performWithGL([&] {
-				_threadBatchDrawing->reloadPrograms();
-				_threadRawDrawing->reloadPrograms();
-			});
-			return true;
-		});
-	});
 
 	s_textureCacheThread.perform([this] (const Task &) -> bool {
 		performWithGL([&] {
@@ -377,6 +427,24 @@ void TextureCache::freeCurrentContext() {
 			platform::render::_disableOffscreenContext();
 		}
 	}
+}
+
+void TextureCache::reloadTextures() {
+	_batchDrawing->reloadPrograms();
+	_rawDrawing->reloadPrograms();
+
+	s_textureCacheThread.perform([this] (const Task &) -> bool {
+		performWithGL([&] {
+			_threadBatchDrawing->reloadPrograms();
+			_threadRawDrawing->reloadPrograms();
+		});
+		return true;
+	});
+
+	for (auto &it : _textures) {
+		it.second->init(it.second->getPixelFormat(), it.second->getPixelsWide(), it.second->getPixelsHigh());
+	}
+	_reloadDirty = true;
 }
 
 Rc<cocos2d::Texture2D> TextureCache::uploadTexture(const Bitmap &bmp) {

@@ -25,7 +25,6 @@ THE SOFTWARE.
 
 #include "SLPath.h"
 #include "SLTesselator.h"
-#include "SLMemPool.h"
 
 NS_LAYOUT_BEGIN
 
@@ -89,7 +88,7 @@ protected:
 	TESStesselator *_fillTess = nullptr;
 	Vector<TESStesselator *> _tess;
 	Vector<StrokeDrawer> _stroke;
-	MemPool<false> _pool;
+	memory::MemPool _pool;
 
 	Mat4 _transform;
 	Vector<Mat4> _states;

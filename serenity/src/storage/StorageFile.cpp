@@ -35,7 +35,7 @@ THE SOFTWARE.
 NS_SA_EXT_BEGIN(storage)
 
 String File::getFilesystemPath(uint64_t oid) {
-	return toString(Server(AllocStack::get().server()).getDocumentRoot(), "/uploads/", oid);
+	return toString(Server(apr::pool::server()).getDocumentRoot(), "/uploads/", oid);
 }
 
 bool File::validateFileField(const Field &field, const InputFile &file) {
@@ -158,7 +158,7 @@ bool File::validateFileField(const Field &field, const InputFile &file) {
 }
 
 data::Value File::createFile(Adapter *adapter, const Field &f, InputFile &file) {
-	auto scheme = Server(AllocStack::get().server()).getFileScheme();
+	auto scheme = Server(apr::pool::server()).getFileScheme();
 	data::Value fileData;
 	fileData.setString(file.type, "type");
 	fileData.setInteger(file.writeSize, "size");
@@ -185,7 +185,7 @@ data::Value File::createFile(Adapter *adapter, const Field &f, InputFile &file) 
 }
 
 data::Value File::createFile(Adapter *adapter, const String &type, const String &path) {
-	auto scheme = Server(AllocStack::get().server()).getFileScheme();
+	auto scheme = Server(apr::pool::server()).getFileScheme();
 	auto size = filesystem::size(path);
 
 	data::Value fileData;
@@ -381,7 +381,7 @@ bool File::purgeFile(Adapter *adapter, const Field &f, const data::Value &val) {
 	}
 
 	if (id) {
-		auto scheme = Server(AllocStack::get().server()).getFileScheme();
+		auto scheme = Server(apr::pool::server()).getFileScheme();
 		if (adapter->removeObject(scheme, id)) {
 			filesystem::remove(File::getFilesystemPath(id));
 		}
@@ -391,7 +391,7 @@ bool File::purgeFile(Adapter *adapter, const Field &f, const data::Value &val) {
 	return false;
 }
 Scheme * File::getScheme() {
-	auto serv = AllocStack::get().server();
+	auto serv = apr::pool::server();
 	if (serv) {
 		return Server(serv).getFileScheme();
 	}

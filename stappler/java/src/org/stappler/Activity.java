@@ -465,7 +465,11 @@ public class Activity extends Cocos2dxActivity {
 			}
 		});
 	}
-	
+
+	public synchronized String getWritablePath() {
+		return getFilesDir().getAbsolutePath();
+	}
+
 	protected String _externalStorageState = null;
 	protected File _documentsDir = null;
 	public synchronized String getCachesPath() {

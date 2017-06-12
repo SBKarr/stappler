@@ -31,7 +31,7 @@ THE SOFTWARE.
 NS_SA_EXT_BEGIN(storage)
 
 bool Field::Slot::isProtected() const {
-	auto req = Request(AllocStack::get().request());
+	auto req = Request(apr::pool::request());
 	return hasFlag(Flags::Protected) || (hasFlag(Flags::Admin) && req && req.isAdministrative());
 }
 

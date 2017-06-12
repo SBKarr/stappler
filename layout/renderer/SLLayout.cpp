@@ -362,8 +362,12 @@ bool FloatContext::pushFloatingNodeToNewStack(Layout &lo, Layout &l, FloatStack 
 	return true;
 }
 
-InlineContext::InlineContext(FontSource *set, float density)
-: reader(set, &(label.format), density) { }
+InlineContext::InlineContext() { }
+
+bool InlineContext::init(FontSource *set, float density) {
+	reader.init(set, &(label.format), density);
+	return true;
+}
 
 void InlineContext::pushNode(const Node *node, const NodeCallback &cb) {
 	if (!finalized) {

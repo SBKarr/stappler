@@ -28,9 +28,6 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
-using CharGroupId = CharGroupId;
-using CharGroupMask = CharGroupId;
-
 bool inCharGroup(CharGroupId mask, char16_t c) {
 	switch (mask) {
 	case CharGroupId::None: return false; break;
@@ -62,10 +59,10 @@ bool inCharGroup(CharGroupId mask, char16_t c) {
 	return false;
 }
 
-bool inCharGroupMask(CharGroupMask mask, char16_t c) {
-	for (size_t i = 1; i < sizeof(CharGroupMask) * 8; i++) {
-		CharGroupMask val = CharGroupMask(1 << i);
-		if ((mask & val) != CharGroupMask::None) {
+bool inCharGroupMask(CharGroupId mask, char16_t c) {
+	for (size_t i = 1; i < sizeof(CharGroupId) * 8; i++) {
+		CharGroupId val = CharGroupId(1 << i);
+		if ((mask & val) != CharGroupId::None) {
 			if (inCharGroup(mask, c)) {
 				return true;
 			}
@@ -74,12 +71,12 @@ bool inCharGroupMask(CharGroupMask mask, char16_t c) {
 	return false;
 }
 
-WideString getCharGroup(CharGroupMask mask) {
+WideString getCharGroup(CharGroupId mask) {
 	Set<char16_t> set;
 
-	for (size_t i = 1; i < sizeof(CharGroupMask) * 8; i++) {
-		CharGroupMask val = CharGroupMask(1 << i);
-		if ((mask & val) != CharGroupMask::None) {
+	for (size_t i = 1; i < sizeof(CharGroupId) * 8; i++) {
+		CharGroupId val = CharGroupId(1 << i);
+		if ((mask & val) != CharGroupId::None) {
 			switch ((CharGroupId)val) {
 			case CharGroupId::None: break;
 			case CharGroupId::PunctuationBasic: chars::CharGroup<char16_t, CharGroupId::PunctuationBasic>::get(set); break;

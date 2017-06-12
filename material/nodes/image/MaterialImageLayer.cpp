@@ -105,7 +105,7 @@ bool ImageLayer::init() {
 
 	setOpacity(255);
 	auto l = construct<gesture::Listener>();
-	l->setTouchFilter([this] (const Vec2 &loc, const stappler::gesture::Listener::DefaultTouchFilter &f) {
+	l->setTouchFilter([] (const Vec2 &loc, const stappler::gesture::Listener::DefaultTouchFilter &f) {
 		return f(loc);
 	});
 	l->setTapCallback([this] (stappler::gesture::Event ev, const stappler::gesture::Tap &t) {

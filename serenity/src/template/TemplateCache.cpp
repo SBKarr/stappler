@@ -56,7 +56,7 @@ time_t FileRef::getMtime() const {
 Cache::Cache() : _pool(getCurrentPool()) { }
 
 void Cache::update() {
-	AllocStack::perform([&] {
+	apr::pool::perform([&] {
 		_mutex.lock();
 		for (auto &it : _templates) {
 			auto mtime = filesystem::mtime(it.first);
@@ -109,7 +109,7 @@ FileRef *Cache::acquireTemplate(const String &path, Request &req) {
 		tpl = it->second;
 	} else {
 		tpl = openTemplate(path);
-		AllocStack::perform([&] {
+		apr::pool::perform([&] {
 			_templates.emplace(String(path), tpl);
 		}, _pool);
 	}
@@ -124,7 +124,7 @@ FileRef *Cache::acquireTemplate(const String &path, Request &req) {
 
 FileRef *Cache::openTemplate(const String &path) {
 	apr::MemPool pool(_pool);
-	return AllocStack::perform([&] {
+	return apr::pool::perform([&] {
 		return new FileRef(std::move(pool), path);
 	}, pool.pool());
 }

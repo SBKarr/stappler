@@ -25,7 +25,7 @@ THE SOFTWARE.
 
 #include "SLParser.h"
 #include "SPLayout.h"
-#include "SLStyleParameters.hpp"
+#include "SLStyle.h"
 #include "SPString.h"
 
 NS_LAYOUT_BEGIN
@@ -45,6 +45,7 @@ Tag::Type Tag::getType(const String &tagName) {
 		return style::Tag::Block;
 	}
 }
+
 
 template<> void Parameter::set<ParameterName::FontStyle, FontStyle>(const FontStyle &v) { value.fontStyle = v; }
 template<> void Parameter::set<ParameterName::FontWeight, FontWeight>(const FontWeight &v) { value.fontWeight = v; }

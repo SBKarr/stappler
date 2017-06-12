@@ -24,172 +24,98 @@ THE SOFTWARE.
 **/
 
 #include "SPCore.h"
-#include "SPAprAllocStack.h"
+#include "SPAprAllocator.h"
 
 #ifdef SPAPR
 NS_SP_EXT_BEGIN(apr)
 
+namespace pool {
 
-MemPool::MemPool() : MemPool(AllocStack::get().top()) { }
-MemPool::MemPool(apr_pool_t *p) {
-	apr_pool_create(&_pool, p);
-}
-MemPool::~MemPool() {
-	if (_pool) {
-		apr_pool_destroy(_pool);
-	}
-}
-
-MemPool::MemPool(MemPool &&other) {
-	_pool = other._pool;
-	other._pool = nullptr;
-}
-MemPool & MemPool::operator=(MemPool &&other) {
-	if (_pool) {
-		apr_pool_destroy(_pool);
-	}
-	_pool = other._pool;
-	other._pool = nullptr;
-	return *this;
-}
-
-void MemPool::free() {
-	if (_pool) {
-		apr_pool_destroy(_pool);
-	}
-}
-
-void MemPool::clear() {
-	if (_pool) {
-		apr_pool_clear(_pool);
-	}
-}
-
-void sa_alloc_stack_server_destructor(void *) {
-	// unused for now
-}
-
-void *AllocPool::operator new(size_t size) throw() {
-	return (unsigned char *)apr_pcalloc(AllocStack::get().top(), size);
-}
-
-void *AllocPool::operator new(size_t size, apr_pool_t *pool) throw() {
-	return (unsigned char *)apr_pcalloc(pool, size);;
-}
-
-void *AllocPool::operator new(size_t size, void *mem) {
-	return mem;
-}
-
-void AllocPool::operator delete(void *data) {
-	// APR doesn't require to free object's memory
-}
-
-apr_pool_t *AllocPool::getCurrentPool() {
-	return AllocStack::get().top();
-}
-
-thread_local AllocStack AllocStack::instance;
-
-// AllocatorStack uses pool to store stack itself
-AllocStack::AllocStack() { }
-
-#if DEBUG
-apr_pool_t *AllocStack::top() const {
-	if (_stack.empty()) {
-		perror("No AllocStack context!");
-		abort();
-	}
-	return _stack.get();
-}
-#endif
-
-LogContext AllocStack::log() const {
-	if (_logs.empty()) {
-		return LogContext(top());
-	} else {
-		return _logs.get();
-	}
-}
-
-static server_rec *getServerFromContext(const LogContext &l) {
-	switch (l.target) {
-	case LogContext::Target::Server: return l.server; break;
-	case LogContext::Target::Connection: return l.conn->base_server; break;
-	case LogContext::Target::Request: return l.request->server; break;
-	case LogContext::Target::Pool: return nullptr; break;
+static server_rec *getServerFromContext(pool_t *p, uint32_t tag, void *ptr) {
+	switch (tag) {
+	case uint32_t(Server): return (server_rec *)ptr; break;
+	case uint32_t(Connection): return ((conn_rec *)ptr)->base_server; break;
+	case uint32_t(Request): return ((request_rec *)ptr)->server; break;
+	case uint32_t(Pool): return nullptr; break;
 	}
 	return nullptr;
 }
 
-server_rec *AllocStack::server() const {
-	auto l = log();
-	if (auto s = getServerFromContext(l))  {
+static bool getServerFromContext(void *data, pool_t *p, uint32_t tag, void *ptr) {
+	server_rec **serv = (server_rec **)data;
+	if (auto s = getServerFromContext(p, tag, ptr)) {
+		*serv = s;
+		return false;
+	}
+	return true;
+}
+
+server_rec *server() {
+	auto l = info();
+	if (auto s = getServerFromContext(nullptr, l.first, l.second))  {
 		return s;
 	} else {
-		for (size_t i = _logs.size; i > 0; i--) {
-			if (auto s = getServerFromContext(_logs.data[i-1]))  {
-				return s;
-			}
-		}
+		server_rec *rec = nullptr;
+		foreach_info(&rec, &getServerFromContext);
+		return rec;
 	}
-	return nullptr;
 }
 
-request_rec *AllocStack::request() const {
-	auto l = log();
-	switch (l.target) {
-	case LogContext::Target::Request: return l.request; break;
+request_rec *request() {
+	auto l = info();
+	switch (l.first) {
+	case uint32_t(Request): return (request_rec *)l.second; break;
 	default: break;
 	}
 	return nullptr;
 }
 
-void AllocStack::pushPool(apr_pool_t *p) {
-	if (p) {
-		_stack.push(p);
-	}
-}
-void AllocStack::popPool() {
-	_stack.pop();
-}
-
-void AllocStack::pushLog(const LogContext &log) {
-	_logs.push(log);
-}
-
-void AllocStack::popLog() {
-	_logs.pop();
-}
-
-
-AllocStack::Context::Context(apr_pool_t *p) : stack(&AllocStack::get()), pool(p) {
-	if (pool) {
-		stack->pushPool(p);
-	}
-}
-
-AllocStack::Context::~Context() {
-	free();
-}
-
-void AllocStack::Context::free() {
-	if (pool) {
-		stack->popPool();
-		pool = nullptr;
-	}
-}
-
-AllocStack::Context::Context(Context &&ctx) : stack(ctx.stack), pool(ctx.pool) {
-	ctx.pool = nullptr;
-}
-
-AllocStack::Context& AllocStack::Context::operator=(Context &&ctx) {
-	stack = ctx.stack;
-	pool = ctx.pool;
-	ctx.pool = nullptr;
-	return *this;
 }
 
 NS_SP_EXT_END(apr)
+
+#include "SPLog.h"
+
+APLOG_USE_MODULE(serenity);
+
+NS_SP_EXT_BEGIN(log)
+
+static void __log2(const char *tag, const char *str) {
+	auto log = apr::pool::info();
+	switch (log.first) {
+	case uint32_t(apr::pool::Info::Pool):
+		ap_log_perror(APLOG_MARK, 0, 0, (apr_pool_t *)log.second, "%s: %s", tag, str);
+		break;
+	case uint32_t(apr::pool::Info::Server):
+		ap_log_error(APLOG_MARK, 0, 0, (server_rec *)log.second, "%s: %s", tag, str);
+		break;
+	case uint32_t(apr::pool::Info::Connection):
+		ap_log_cerror(APLOG_MARK, 0, 0, (conn_rec *)log.second, "%s: %s", tag, str);
+		break;
+	case uint32_t(apr::pool::Info::Request):
+		ap_log_rerror(APLOG_MARK, 0, 0, (request_rec *)log.second, "%s: %s", tag, str);
+		break;
+	}
+}
+
+static void __log(const char *tag, CustomLog::Type t, CustomLog::VA &va) {
+	if (t == CustomLog::Text) {
+		if (va.text.text && va.text.text[0] != 0) {
+			if (va.text.len != strlen(va.text.text)) {
+				auto pool = apr::pool::acquire();
+				__log2(tag, apr_pstrndup(pool, va.text.text, va.text.len));
+			} else {
+				__log2(tag, va.text.text);
+			}
+		}
+	} else {
+		auto pool = apr::pool::acquire();
+		auto str = apr_pvsprintf(pool, va.format.format, va.format.args);
+		__log2(tag, str);
+	}
+}
+
+static CustomLog AprLog(&__log);
+
+NS_SP_EXT_END(log)
 #endif

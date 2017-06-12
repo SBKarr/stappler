@@ -83,7 +83,7 @@ bool Scene::init() {
 	l->onEvent(stappler::Device::onBackKey, [this] (const stappler::Event *) {
 		onBackKeyPressed();
 	});
-	l->onEvent(stappler::Device::onAndroidReset, [this] (const stappler::Event *) {
+	l->onEvent(stappler::Device::onAndroidReset, [] (const stappler::Event *) {
 		stappler::Device::getInstance()->onDirectorStarted();
 	});
 	l->onEvent(stappler::Device::onScreenshot, [this] (const stappler::Event *) {
@@ -147,7 +147,7 @@ void Scene::setVisualizeTouches(bool value) {
 			_touchesNode->setContentSize(_contentSize);
 
 			auto touches = construct<gesture::Listener>();
-			touches->setTouchFilter([this] (const cocos2d::Vec2 &loc, const stappler::gesture::Listener::DefaultTouchFilter &) {
+			touches->setTouchFilter([] (const cocos2d::Vec2 &loc, const stappler::gesture::Listener::DefaultTouchFilter &) {
 				return true;
 			});
 			touches->setTouchCallback([this] (stappler::gesture::Event ev, const stappler::gesture::Touch &t) -> bool {

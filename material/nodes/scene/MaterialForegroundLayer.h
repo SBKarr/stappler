@@ -51,10 +51,19 @@ public:
 	virtual void setSnackbarString(const String &, const Color & = Color::White);
 	virtual const String &getSnackbarString() const;
 
+	virtual void setBackgroundOpacity(uint8_t);
+	virtual uint8_t getBackgroundOpacity() const;
+
+	virtual void setBackgroundColor(const Color &);
+	virtual const Color & getBackgroundColor() const;
+
 protected:
 	virtual void setSnackbarStringInternal(const String &, const Color &color = Color::White);
 	virtual void hideSnackbar(const Function<void()> & = nullptr);
 	virtual void onSnackbarHidden();
+
+	virtual void enableBackground();
+	virtual void disableBackground();
 
 	cocos2d::Node *_pressNode = nullptr;
 	cocos2d::Component *_listener = nullptr;
@@ -65,6 +74,11 @@ protected:
 	Layer *_snackbar = nullptr;
 	Label *_snackbarLabel = nullptr;
 	String _snackbarString;
+
+	uint8_t _backgroundOpacity = 0;
+	Color _backgroundColor = Color::Grey_500;
+	bool _backgroundEnabled = false;
+	Layer *_background = nullptr;
 };
 
 NS_MD_END

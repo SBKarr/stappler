@@ -57,6 +57,10 @@ bool PathNode::init(Image *img, Format fmt) {
 
 	auto l = Rc<EventListener>::create();
 	l->onEvent(Device::onAndroidReset, [this] (const Event *) {
+		if (_canvas) {
+			_canvas->drop();
+			_canvas = nullptr;
+		}
 		setTexture(nullptr);
 		_pathsDirty = true;
 	});

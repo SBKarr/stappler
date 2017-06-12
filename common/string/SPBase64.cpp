@@ -26,68 +26,12 @@ THE SOFTWARE.
 #include "SPCommon.h"
 #include "SPString.h"
 
-NS_SP_BEGIN
-
-namespace {
-
-using Stream = std::basic_ostream<char>;
-
-static void EncodeTarget_String_emplace(void *ptr, const char & c) { ((String *)ptr)->push_back(c); }
-static void EncodeTarget_String_reserve(void *ptr, size_t s) { ((String *)ptr)->reserve(s); }
-
-static void EncodeTarget_Stream_emplace(void *ptr, const char & c) { (*((Stream *)ptr)) << (c); }
-static void EncodeTarget_Stream_reserve(void *ptr, size_t s) { }
-
-struct EncodeTarget {
-	using emplace_fn = void (*) (void *, const char &);
-	using reserve_fn = void (*) (void *, size_t);
-
-	EncodeTarget(String &s) : _ptr(&s)
-	, _emplace(&EncodeTarget_String_emplace)
-	, _reserve(&EncodeTarget_String_reserve) { }
-	EncodeTarget(Stream &s) : _ptr(&s)
-	, _emplace(&EncodeTarget_Stream_emplace)
-	, _reserve(&EncodeTarget_Stream_reserve) { }
-
-	void emplace(const char &c) { _emplace(_ptr, c); }
-	void reserve(size_t s) { _reserve(_ptr, s); }
-
-	void *_ptr;
-	emplace_fn _emplace;
-	reserve_fn _reserve;
-};
-
-static void DecodeTarget_Bytes_emplace(void *ptr, const uint8_t & c) { ((Bytes *)ptr)->emplace_back(c); }
-static void DecodeTarget_Bytes_reserve(void *ptr, size_t s) { ((Bytes *)ptr)->reserve(s); }
-
-struct DecodeTarget {
-	using emplace_fn = void (*) (void *, const uint8_t &);
-	using reserve_fn = void (*) (void *, size_t);
-
-	DecodeTarget(Bytes &s) : _ptr(&s)
-	, _emplace(&DecodeTarget_Bytes_emplace)
-	, _reserve(&DecodeTarget_Bytes_reserve) { }
-
-	void emplace(const uint8_t &c) { _emplace(_ptr, c); }
-	void reserve(size_t s) { _reserve(_ptr, s); }
-
-	void *_ptr;
-	emplace_fn _emplace;
-	reserve_fn _reserve;
-};
-
-}
-
-NS_SP_END
-
-
 NS_SP_EXT_BEGIN(base64)
 
 using Reader = DataReader<ByteOrder::Network>;
 
 // Mapping from 6 bit pattern to ASCII character.
-static unsigned char base64EncodeLookup[65] =
-"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static const char * base64EncodeLookup = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 // Definition for "masked-out" areas of the base64DecodeLookup mapping
 #define xx 65
@@ -120,47 +64,39 @@ constexpr int Base64Unit = 4;
 size_t encodeSize(size_t l) { return ((l / BinaryUnit) + ((l % BinaryUnit) ? 1 : 0)) * Base64Unit; }
 size_t decodeSize(size_t l) { return ((l+Base64Unit-1) / Base64Unit) * BinaryUnit; }
 
-static void make_encode(EncodeTarget & output, const Reader &data) {
-	Reader inputBuffer(data);
+template <typename Callback>
+static void make_encode(const CoderSource &data, const Callback &cb) {
+	Reader inputBuffer(data.data);
 	auto length = inputBuffer.size();
 
-	// Byte accurate calculation of final buffer size
-	size_t outputBufferSize = ((length / BinaryUnit) + ((length % BinaryUnit) ? 1 : 0)) * Base64Unit;
-
-	// Include space for a terminating zero
-	output.reserve(outputBufferSize + 1);
-
 	size_t i = 0;
-
 	for (; i + BinaryUnit - 1 < length; i += BinaryUnit) {
 		// Inner loop: turn 48 bytes into 64 base64 characters
-		output.emplace(base64EncodeLookup[(inputBuffer[i] & 0xFC) >> 2]);
-		output.emplace(base64EncodeLookup[((inputBuffer[i] & 0x03) << 4) | ((inputBuffer[i + 1] & 0xF0) >> 4)]);
-		output.emplace(base64EncodeLookup[((inputBuffer[i + 1] & 0x0F) << 2) | ((inputBuffer[i + 2] & 0xC0) >> 6)]);
-		output.emplace(base64EncodeLookup[inputBuffer[i + 2] & 0x3F]);
+		cb(base64EncodeLookup[(inputBuffer[i] & 0xFC) >> 2]);
+		cb(base64EncodeLookup[((inputBuffer[i] & 0x03) << 4) | ((inputBuffer[i + 1] & 0xF0) >> 4)]);
+		cb(base64EncodeLookup[((inputBuffer[i + 1] & 0x0F) << 2) | ((inputBuffer[i + 2] & 0xC0) >> 6)]);
+		cb(base64EncodeLookup[inputBuffer[i + 2] & 0x3F]);
 	}
 
 	if (i + 1 < length) {
 		// Handle the single '=' case
-		output.emplace(base64EncodeLookup[(inputBuffer[i] & 0xFC) >> 2]);
-		output.emplace(base64EncodeLookup[((inputBuffer[i] & 0x03) << 4) | ((inputBuffer[i + 1] & 0xF0) >> 4)]);
-		output.emplace(base64EncodeLookup[(inputBuffer[i + 1] & 0x0F) << 2]);
-		output.emplace('=');
+		cb(base64EncodeLookup[(inputBuffer[i] & 0xFC) >> 2]);
+		cb(base64EncodeLookup[((inputBuffer[i] & 0x03) << 4) | ((inputBuffer[i + 1] & 0xF0) >> 4)]);
+		cb(base64EncodeLookup[(inputBuffer[i + 1] & 0x0F) << 2]);
+		cb('=');
 	} else if (i < length) {
 		// Handle the double '=' case
-		output.emplace(base64EncodeLookup[(inputBuffer[i] & 0xFC) >> 2]);
-		output.emplace(base64EncodeLookup[(inputBuffer[i] & 0x03) << 4]);
-		output.emplace('=');
-		output.emplace('=');
+		cb(base64EncodeLookup[(inputBuffer[i] & 0xFC) >> 2]);
+		cb(base64EncodeLookup[(inputBuffer[i] & 0x03) << 4]);
+		cb('=');
+		cb('=');
 	}
 }
 
-static void make_decode(DecodeTarget & outputBuffer, const CharReaderBase &data) {
-	CharReaderBase inputBuffer(data);
+template <typename Callback>
+static void make_decode(const CoderSource &data, const Callback &cb) {
+	CharReaderBase inputBuffer((char *)data.data.data(), data.data.size());
 	auto length = inputBuffer.size();
-
-	size_t outputBufferSize = ((length+Base64Unit-1) / Base64Unit) * BinaryUnit;
-	outputBuffer.reserve(outputBufferSize);
 
 	size_t i = 0;
 	while (i < length) {
@@ -179,40 +115,59 @@ static void make_decode(DecodeTarget & outputBuffer, const CharReaderBase &data)
 		}
 
 		if(accumulateIndex >= 2)
-			outputBuffer.emplace((accumulated[0] << 2) | (accumulated[1] >> 4));
+			cb((accumulated[0] << 2) | (accumulated[1] >> 4));
 		if(accumulateIndex >= 3)
-			outputBuffer.emplace((accumulated[1] << 4) | (accumulated[2] >> 2));
+			cb((accumulated[1] << 4) | (accumulated[2] >> 2));
 		if(accumulateIndex >= 4)
-			outputBuffer.emplace((accumulated[2] << 6) | accumulated[3]);
+			cb((accumulated[2] << 6) | accumulated[3]);
 	}
 }
 
-String encode(const uint8_t *buffer, size_t length) { return base64::encode(Reader(buffer, length)); }
-String encode(const Bytes &inputBuffer) { return base64::encode(Reader(inputBuffer.data(), inputBuffer.size())); }
-String encode(const String &inputBuffer) { return base64::encode(Reader((const uint8_t *)inputBuffer.data(), inputBuffer.size())); }
-String encode(const DataReader<ByteOrder::Network> &data) {
-	String output;
-	EncodeTarget target(output);
-	make_encode(target, data);
+typename memory::PoolInterface::StringType __encode_pool(const CoderSource &source) {
+	typename memory::PoolInterface::StringType output;
+	output.reserve(encodeSize(source.data.size()));
+	make_encode(source, [&] (const char &c) {
+		output.push_back(c);
+	});
 	return output;
 }
-
-void encode(Stream &stream, const Bytes &data) { base64::encode(stream, Reader(data.data(), data.size())); }
-void encode(Stream &stream, const String &data) { base64::encode(stream, Reader((const uint8_t *)data.data(), data.size())); }
-void encode(Stream &stream, const uint8_t *data, size_t len) { base64::encode(stream, Reader(data, len)); }
-void encode(Stream &stream, const Reader &data) {
-	EncodeTarget target(stream);
-	make_encode(target, data);
+typename memory::StandartInterface::StringType __encode_std(const CoderSource &source) {
+	typename memory::StandartInterface::StringType output;
+	output.reserve(encodeSize(source.data.size()));
+	make_encode(source, [&] (const char &c) {
+		output.push_back(c);
+	});
+	return output;
 }
-
-Bytes decode(const char *data, size_t len) { return base64::decode(CharReaderBase(data, len)); }
-Bytes decode(const String &input) {	return base64::decode(CharReaderBase(input.data(), input.size())); }
-Bytes decode(const CharReaderBase &data) {
-	Bytes outputBuffer;
-	DecodeTarget target(outputBuffer);
-	make_decode(target, data);
-	return outputBuffer;
+void encode(std::basic_ostream<char> &stream, const CoderSource &source) {
+	make_encode(source, [&] (const char &c) {
+		stream << c;
+	});
 }
+// size_t encode(char *, size_t bsize, const CoderSource &source) { }
+
+typename memory::PoolInterface::BytesType __decode_pool(const CoderSource &source) {
+	typename memory::PoolInterface::BytesType output;
+	output.reserve(encodeSize(source.data.size()));
+	make_decode(source, [&] (const uint8_t &c) {
+		output.emplace_back(c);
+	});
+	return output;
+}
+typename memory::StandartInterface::BytesType __decode_std(const CoderSource &source) {
+	typename memory::StandartInterface::BytesType output;
+	output.reserve(encodeSize(source.data.size()));
+	make_decode(source, [&] (const uint8_t &c) {
+		output.emplace_back(c);
+	});
+	return output;
+}
+void decode(std::basic_ostream<char> &stream, const CoderSource &source) {
+	make_decode(source, [&] (const uint8_t &c) {
+		stream << char(c);
+	});
+}
+// size_t decode(uint8_t *, size_t bsize, const CoderSource &source) { }
 
 NS_SP_EXT_END(base64)
 

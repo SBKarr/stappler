@@ -38,7 +38,7 @@ User *User::create(storage::Adapter *a, const String &name, const String &passwo
 }
 
 User *User::setup(storage::Adapter *a, const String &name, const String &password) {
-	auto s = Server(AllocStack::get().server()).getUserScheme();
+	auto s = Server(apr::pool::server()).getUserScheme();
 	if (s->count(a) == 0) {
 		return create(a, data::Value{
 			std::make_pair("name", data::Value(name)),
@@ -49,19 +49,19 @@ User *User::setup(storage::Adapter *a, const String &name, const String &passwor
 	return nullptr;
 }
 User *User::create(storage::Adapter *a, data::Value &&val) {
-	auto s = Server(AllocStack::get().server()).getUserScheme();
+	auto s = Server(apr::pool::server()).getUserScheme();
 
 	auto d = s->create(a, val);
 	return new User(std::move(d), s);
 }
 
 User *User::get(storage::Adapter *a, const String &name, const String &password) {
-	auto s = Server(AllocStack::get().server()).getUserScheme();
+	auto s = Server(apr::pool::server()).getUserScheme();
 	return a->authorizeUser(s, name, password);
 }
 
 User *User::get(storage::Adapter *a, uint64_t oid) {
-	auto s = Server(AllocStack::get().server()).getUserScheme();
+	auto s = Server(apr::pool::server()).getUserScheme();
 	auto d = s->get(a, oid);
 	if (d.isDictionary()) {
 		return new User(std::move(d), s);
@@ -71,7 +71,7 @@ User *User::get(storage::Adapter *a, uint64_t oid) {
 }
 
 bool User::remove(storage::Adapter *a, const String &name, const String &password) {
-	auto s = Server(AllocStack::get().server()).getUserScheme();
+	auto s = Server(apr::pool::server()).getUserScheme();
 	storage::Query q;
 	q.select("name", name);
 

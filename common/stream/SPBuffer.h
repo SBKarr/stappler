@@ -29,35 +29,36 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
-class Buffer : public AllocBase {
+template <typename Interface = memory::DefaultInterface>
+class BufferTemplate : public Interface::AllocBaseType {
 public:
 	using byte_type = uint8_t;
 	static constexpr size_t defsize = 256;
 
-	Buffer(size_t sz = defsize) {
+	BufferTemplate(size_t sz = defsize) {
 		_buffer.resize(sz, 0);
 		_ptr = (byte_type *)_buffer.data();
 		_end = _ptr + sz;
 	}
-	Buffer(const Buffer & rhs) : _buffer(rhs._buffer) {
+	BufferTemplate(const BufferTemplate & rhs) : _buffer(rhs._buffer) {
 		_ptr = (byte_type *)(_buffer.data() + (rhs._ptr - rhs._buffer.data()));
 		_end = (byte_type *)(_buffer.data() + _buffer.size());
 	}
-	Buffer(Buffer && rhs) {
+	BufferTemplate(BufferTemplate && rhs) {
 		auto size = rhs._ptr - rhs._buffer.data();
 		_buffer = std::move(rhs._buffer);
 		_ptr = (byte_type *)(_buffer.data() + size);
 		_end = (byte_type *)(_buffer.data() + _buffer.size());
 	}
 
-	Buffer & operator=(const Buffer & rhs) {
+	BufferTemplate & operator=(const BufferTemplate & rhs) {
 		auto size = rhs._ptr - rhs._buffer.data();
 		_buffer = rhs._buffer;
 		_ptr = (byte_type *)(_buffer.data() + size);
 		_end = (byte_type *)(_buffer.data() + _buffer.size());
 		return *this;
 	}
-	Buffer & operator=(Buffer && rhs) {
+	BufferTemplate & operator=(BufferTemplate && rhs) {
 		auto size = rhs._ptr - rhs._buffer.data();
 		_buffer = std::move(rhs._buffer);
 		_ptr = (byte_type *)(_buffer.data() + size);
@@ -165,7 +166,7 @@ protected:
 		_end = (byte_type *)(_buffer.data() + _buffer.size());
 	}
 
-	Bytes _buffer;
+	typename Interface::BytesType _buffer;
 	uint8_t *_ptr = nullptr;
 	uint8_t *_end = nullptr;
 };
@@ -254,13 +255,18 @@ protected:
 	std::array<uint8_t, Size> _buf;
 };
 
+using Buffer = BufferTemplate<memory::DefaultInterface>;
+
 NS_SP_END
 
 NS_SP_EXT_BEGIN(io)
 
+#ifndef __clang__
 template <>
-struct BufferTraits<stappler::Buffer> {
-	using type = stappler::Buffer;
+#endif
+template <typename Interface>
+struct BufferTraits<stappler::BufferTemplate<Interface>> {
+	using type = stappler::BufferTemplate<Interface>;
 
 	static uint8_t * PrepareFn(void *ptr, size_t & size) {
 		return ((type *)ptr)->prepare(size);

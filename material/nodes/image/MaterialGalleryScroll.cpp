@@ -39,7 +39,7 @@ THE SOFTWARE.
 
 NS_MD_BEGIN
 
-bool GalleryImage::init(const std::string &file, const ImageCallback &cb) {
+bool GalleryImage::init(const String &file, const ImageCallback &cb) {
 	if (!ImageLayer::init()) {
 		return false;
 	}
@@ -66,6 +66,7 @@ bool GalleryImage::init(const std::string &file, const ImageCallback &cb) {
 
 	return true;
 }
+
 void GalleryImage::onContentSizeDirty() {
 	ImageLayer::onContentSizeDirty();
 	auto size = getContentSize();
@@ -81,7 +82,13 @@ void GalleryImage::onEnter() {
 	}
 }
 
-bool GalleryScroll::init(const ImageCallback &cb, const std::vector<std::string> &vec, size_t selected) {
+void GalleryImage::setLoaderColor(const Color &c) {
+	if (_loader) {
+		_loader->setColor(c);
+	}
+}
+
+bool GalleryScroll::init(const ImageCallback &cb, const Vector<String> &vec, size_t selected) {
 	if (!Node::init()) {
 		return false;
 	}
@@ -105,7 +112,7 @@ bool GalleryScroll::init(const ImageCallback &cb, const std::vector<std::string>
 	addChild(_overscrollRight, maxOf<int>() - 2);
 
 	auto l = Rc<gesture::Listener>::create();
-	l->setTouchFilter([this] (const Vec2 &loc, const gesture::Listener::DefaultTouchFilter &f) {
+	l->setTouchFilter([] (const Vec2 &loc, const gesture::Listener::DefaultTouchFilter &f) {
 		return f(loc);
 	});
 	l->setTapCallback([this] (gesture::Event ev, const gesture::Tap &t) {
@@ -122,9 +129,9 @@ bool GalleryScroll::init(const ImageCallback &cb, const std::vector<std::string>
 			}
 			return onSwipeBegin(s.location());
 		} else if (ev == stappler::gesture::Event::Activated) {
-			return onSwipe(cocos2d::Vec2(s.delta.x / density, s.delta.y / density));
+			return onSwipe(Vec2(s.delta.x / density, s.delta.y / density));
 		} else if (ev == stappler::gesture::Event::Ended) {
-			return onSwipeEnd(cocos2d::Vec2(s.velocity.x / density, s.velocity.y / density));
+			return onSwipeEnd(Vec2(s.velocity.x / density, s.velocity.y / density));
 		}
 		return true;
 	});
@@ -172,25 +179,25 @@ void GalleryScroll::onContentSizeDirty() {
 		_secondary = nullptr;
 	}
 
-	_overscrollTop->setAnchorPoint(cocos2d::Vec2(0, 1)); // top
+	_overscrollTop->setAnchorPoint(Vec2(0, 1)); // top
 	_overscrollTop->setPosition(0, _contentSize.height - 0);
-	_overscrollTop->setContentSize(cocos2d::Size(_contentSize.width,
+	_overscrollTop->setContentSize(Size(_contentSize.width,
 			MIN(_contentSize.width * Overscroll::OverscrollScale(), Overscroll::OverscrollMaxHeight())));
 
-	_overscrollBottom->setAnchorPoint(cocos2d::Vec2(0, 0)); // bottom
+	_overscrollBottom->setAnchorPoint(Vec2(0, 0)); // bottom
 	_overscrollBottom->setPosition(0, 0);
-	_overscrollBottom->setContentSize(cocos2d::Size(_contentSize.width,
+	_overscrollBottom->setContentSize(Size(_contentSize.width,
 				MIN(_contentSize.width * Overscroll::OverscrollScale(), Overscroll::OverscrollMaxHeight())));
 
-	_overscrollLeft->setAnchorPoint(cocos2d::Vec2(0, 0)); // left
+	_overscrollLeft->setAnchorPoint(Vec2(0, 0)); // left
 	_overscrollLeft->setPosition(0, 0);
-	_overscrollLeft->setContentSize(cocos2d::Size(
+	_overscrollLeft->setContentSize(Size(
 				MIN(_contentSize.height * Overscroll::OverscrollScale(), Overscroll::OverscrollMaxHeight()),
 				_contentSize.height));
 
-	_overscrollRight->setAnchorPoint(cocos2d::Vec2(1, 0)); // right
+	_overscrollRight->setAnchorPoint(Vec2(1, 0)); // right
 	_overscrollRight->setPosition(_contentSize.width - 0, 0);
-	_overscrollRight->setContentSize(cocos2d::Size(
+	_overscrollRight->setContentSize(Size(
 				MIN(_contentSize.height * Overscroll::OverscrollScale(), Overscroll::OverscrollMaxHeight()),
 				_contentSize.height));
 }
@@ -224,21 +231,22 @@ void GalleryScroll::reset(size_t id) {
 	if (!_images.empty()) {
 		_primaryId = id;
 		_primary = construct<GalleryImage>(_images.at(id), _imageCallback);
+		_primary->setLoaderColor(_loaderColor);
 		addChild(_primary, int(_images.size() - id));
 	}
 
 	_contentSizeDirty = true;
 }
 
-bool GalleryScroll::onTap(const cocos2d::Vec2 &point, int count) {
+bool GalleryScroll::onTap(const Vec2 &point, int count) {
 	return _primary->onTap(point, count);
 }
 
-bool GalleryScroll::onSwipeBegin(const cocos2d::Vec2 &point) {
+bool GalleryScroll::onSwipeBegin(const Vec2 &point) {
 	stopAllActionsByTag("ProgressAction"_tag);
 	return _primary->onSwipeBegin(point);
 }
-bool GalleryScroll::onSwipe(const cocos2d::Vec2 &delta) {
+bool GalleryScroll::onSwipe(const Vec2 &delta) {
 	auto vec = _primary->getTexturePosition();
 	if (!isnan(vec.y)) {
 		if (vec.y == 0.0f && delta.y > 0.0f) {
@@ -263,14 +271,14 @@ bool GalleryScroll::onSwipe(const cocos2d::Vec2 &delta) {
 		return _primary->onSwipe(Vec2(0.0f, delta.y));
 	}
 }
-bool GalleryScroll::onSwipeEnd(const cocos2d::Vec2 &velocity) {
+bool GalleryScroll::onSwipeEnd(const Vec2 &velocity) {
 	if (_progress != 0.0f) {
 		onMoveEnd(velocity.x);
 	}
 	return _primary->onSwipeEnd(velocity);
 }
 
-bool GalleryScroll::onPinch(const cocos2d::Vec2 &point, float scale, float velocity, bool isEnded) {
+bool GalleryScroll::onPinch(const Vec2 &point, float scale, float velocity, bool isEnded) {
 	auto vec = _primary->getTexturePosition();
 	return _primary->onPinch(point, scale, velocity, isEnded);
 }
@@ -286,8 +294,8 @@ void GalleryScroll::onMove(float value) {
 }
 
 void GalleryScroll::onMoveEnd(float value) {
-	auto t = fabs(value / 5000.0f);
-	auto d = fabs(value * t) - t * t * 5000.0f / 2.0f;
+	auto t = fabs(value / 3000.0f);
+	auto d = fabs(value * t) - t * t * 3000.0f / 2.0f;
 
 	auto p = _progress + ((value > 0) ? (-d) : (d)) / _contentSize.width;
 
@@ -322,16 +330,19 @@ void GalleryScroll::setProgress(float value) {
 		if (!_secondary) {
 			_secondaryId = _primaryId - 1;
 			_secondary = construct<GalleryImage>(_images.at(_secondaryId), _imageCallback);
+			_secondary->setLoaderColor(_loaderColor);
 			_secondary->setAnchorPoint(Vec2(0.5f, 0.5f));
 			_secondary->setPosition(Vec2(_contentSize.width/2.0f, _contentSize.height/2.0f));
 			_secondary->setContentSize(_contentSize);
 			addChild(_secondary, int(_images.size() - _secondaryId));
 		}
 
-		_primary->removeFromParent();
-		_primaryId = _secondaryId;
-		_primary = _secondary;
-		_secondary = nullptr;
+		if (_secondary) {
+			_primary->removeFromParent();
+			_primaryId = _secondaryId;
+			_primary = _secondary;
+			_secondary = nullptr;
+		}
 
 		_primary->setPositionX(_contentSize.width/2.0f + - _progress * _contentSize.width);
 		_primary->setOpacity(255);
@@ -345,6 +356,7 @@ void GalleryScroll::setProgress(float value) {
 			_secondaryId = _primaryId + 1;
 			if (_secondaryId < _images.size()) {
 				_secondary = construct<GalleryImage>(_images.at(_secondaryId), _imageCallback);
+				_secondary->setLoaderColor(_loaderColor);
 				_secondary->setAnchorPoint(Vec2(0.5f, 0.5f));
 				_secondary->setPosition(Vec2(_contentSize.width/2.0f, _contentSize.height/2.0f));
 				_secondary->setContentSize(_contentSize);
@@ -352,10 +364,12 @@ void GalleryScroll::setProgress(float value) {
 			}
 		}
 
-		_primary->removeFromParent();
-		_primaryId = _secondaryId;
-		_primary = _secondary;
-		_secondary = nullptr;
+		if (_secondary) {
+			_primary->removeFromParent();
+			_primaryId = _secondaryId;
+			_primary = _secondary;
+			_secondary = nullptr;
+		}
 
 		_primary->setPositionX(_contentSize.width/2.0f + - _progress * _contentSize.width);
 		_primary->setOpacity(255);
@@ -386,6 +400,7 @@ void GalleryScroll::setProgress(float value) {
 
 			if (_secondaryId < _images.size()) {
 				_secondary = construct<GalleryImage>(_images.at(_secondaryId), _imageCallback);
+				_secondary->setLoaderColor(_loaderColor);
 				_secondary->setAnchorPoint(Vec2(0.5f, 0.5f));
 				_secondary->setPosition(Vec2(_contentSize.width/2.0f, _contentSize.height/2.0f));
 				_secondary->setContentSize(_contentSize);
@@ -429,6 +444,19 @@ void GalleryScroll::onOverscrollTop(float v) {
 }
 void GalleryScroll::onOverscrollBottom(float v) {
 	_overscrollBottom->incrementProgress(v / 50.0f);
+}
+
+void GalleryScroll::setLoaderColor(const Color &c) {
+	_loaderColor = c;
+	if (_primary) {
+		_primary->setLoaderColor(_loaderColor);
+	}
+	if (_secondary) {
+		_secondary->setLoaderColor(_loaderColor);
+	}
+}
+const Color &GalleryScroll::getLoaderColor() const {
+	return _loaderColor;
 }
 
 NS_MD_END

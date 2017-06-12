@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,13 +24,11 @@ THE SOFTWARE.
 #define COMMON_DATA_SPDATASTREAM_H_
 
 #include "SPIO.h"
-#include "SPData.h"
+#include "SPDataValue.h"
 #include "SPTransferBuffer.h"
 
 NS_SP_EXT_BEGIN(data)
 
-class JsonBuffer;
-class CborBuffer;
 class DecompressBuffer;
 class DecryptBuffer;
 
@@ -52,6 +50,8 @@ public:
 		Decompress,
 		Cbor,
 		Json,
+		AltCbor,
+		AltJson,
 	};
 
 	StreamBuffer();
@@ -68,8 +68,12 @@ public:
 	void clear();
 	bool empty() const;
 
-	const data::Value &data() const;
-	data::Value &data();
+	template <typename Interface = memory::DefaultInterface>
+	auto extract() -> ValueTemplate<Interface> {
+		ValueTemplate<Interface> data;
+		getData(data);
+		return data;
+	}
 
 	size_t bytesWritten() const { return _bytesWritten; }
 
@@ -82,6 +86,9 @@ protected:
 	virtual int_type overflow(int_type ch) override;
 	virtual int sync() override;
 
+	void getData(ValueTemplate<memory::PoolInterface> &);
+	void getData(ValueTemplate<memory::StandartInterface> &);
+
 	size_t _bytesWritten = 0;
 	size_t _headerBytes = 0;
 	std::array<char, 4> _header;
@@ -89,8 +96,10 @@ protected:
 	Type _type = Type::Undefined;
 
 	union {
-		JsonBuffer * _json;
-		CborBuffer * _cbor;
+		JsonBuffer<memory::DefaultInterface> * _json;
+		CborBuffer<memory::DefaultInterface> * _cbor;
+		JsonBuffer<memory::AlternativeInterface> * _altJson;
+		CborBuffer<memory::AlternativeInterface> * _altCbor;
 		DecompressBuffer * _comp;
 		DecryptBuffer * _crypt;
 	};
@@ -137,8 +146,10 @@ public:
 		return const_cast<buffer_type *>(&_morph);
 	}
 
-	const data::Value &data() const { return _morph.data(); }
-	data::Value &data() { return _morph.data(); }
+	template <typename Interface = memory::DefaultInterface>
+	auto extract() -> ValueTemplate<Interface> {
+		return _morph.extract<Interface>();
+	}
 
 protected:
 	StreamBuffer _morph;

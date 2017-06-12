@@ -576,7 +576,7 @@ data::Value &Scheme::transform(data::Value &d, TransformAction a) {
 		if (f_it == fields.end()
 				|| (f_it->second.hasFlag(Flags::ReadOnly) && a != TransformAction::ProtectedCreate && a != TransformAction::ProtectedUpdate)
 				|| f_it->second.isFile()) {
-			it = d.getDict().erase(it);
+			it = dict.erase(it);
 		} else {
 			it ++;
 		}
@@ -608,7 +608,7 @@ data::Value &Scheme::transform(data::Value &d, TransformAction a) {
 			if (it->second.isNull() && (a == TransformAction::Update || a == TransformAction::ProtectedUpdate)) {
 				it ++;
 			} else if (!field.transform(*this, it->second)) {
-				it = d.getDict().erase(it);
+				it = dict.erase(it);
 			} else {
 				it ++;
 			}
@@ -641,7 +641,7 @@ void Scheme::prepareUpdate(Adapter *, const Field &, data::Value &changeset, con
 
 data::Value Scheme::removeField(Adapter *adapter, data::Value &obj, const Field &f, const data::Value &value) {
 	if (f.isFile()) {
-		auto scheme = Server(AllocStack::get().server()).getFileScheme();
+		auto scheme = Server(apr::pool::server()).getFileScheme();
 		int64_t id = 0;
 		if (value.isInteger()) {
 			id = value.asInteger();

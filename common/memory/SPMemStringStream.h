@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,13 +20,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef COMMON_APR_SPAPRSTRINGSTREAM_H_
-#define COMMON_APR_SPAPRSTRINGSTREAM_H_
+#ifndef COMMON_MEMORY_SPMEMSTRINGSTREAM_H_
+#define COMMON_MEMORY_SPMEMSTRINGSTREAM_H_
 
-#include "SPAprString.h"
+#include "SPMemString.h"
 
-#if SPAPR
-NS_SP_EXT_BEGIN(apr)
+NS_SP_EXT_BEGIN(memory)
 
 template<typename CharType>
 class basic_ostringbuf : public std::basic_streambuf<CharType, std::char_traits<CharType>>, public AllocPool {
@@ -213,7 +212,6 @@ operator << (std::basic_ostream<CharType> & os, const basic_ostringstream<CharTy
 	return os << str.str();
 }
 
-NS_SP_EXT_END(apr)
-#endif
+NS_SP_EXT_END(memory)
 
-#endif /* COMMON_APR_SPAPRSTRINGSTREAM_H_ */
+#endif /* COMMON_MEMORY_SPMEMSTRINGSTREAM_H_ */

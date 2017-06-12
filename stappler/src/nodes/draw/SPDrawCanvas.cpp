@@ -88,6 +88,7 @@ bool Canvas::init(StencilDepthFormat fmt) {
 }
 
 bool Canvas::begin(cocos2d::Texture2D *tex, const Color4B &color) {
+	load();
 	auto w = tex->getPixelsWide();
 	auto h = tex->getPixelsHigh();
 	_internalFormat = tex->getPixelFormat();
@@ -250,6 +251,8 @@ void Canvas::flush() {
 				glDisable(GL_STENCIL_TEST);
 			}
 
+			CHECK_GL_ERROR_DEBUG();
+
 			_glAccum += (Time::now() - t);
 		} else {
 			log::text("Canvas", "fail to tesselate contour");
@@ -327,6 +330,7 @@ void Canvas::flush() {
 
 				glDisable(GL_STENCIL_TEST);
 			}
+			CHECK_GL_ERROR_DEBUG();
 		}
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -389,9 +393,16 @@ void Canvas::setFillBlending() {
 	blendFunc(BlendFunc::ALPHA_NON_PREMULTIPLIED);
 }
 void Canvas::setStrokeBlending() {
-	switch (_internalFormat) {
+	switch (_referenceFormat) {
+	case cocos2d::Texture2D::PixelFormat::A8:
 	case cocos2d::Texture2D::PixelFormat::R8:
-		setBlending(GLBlending(BlendFunc::ALPHA_NON_PREMULTIPLIED, GLBlending::Max));
+		switch (_internalFormat) {
+		case cocos2d::Texture2D::PixelFormat::R8:
+			setBlending(GLBlending(BlendFunc::ALPHA_NON_PREMULTIPLIED, GLBlending::Max));
+			break;
+		default:
+			setBlending(GLBlending(BlendFunc::ALPHA_PREMULTIPLIED, GLBlending::FuncAdd, GLBlending::Max));
+		}
 		break;
 	default:
 		setBlending(GLBlending(BlendFunc::ALPHA_NON_PREMULTIPLIED, GLBlending::FuncAdd, GLBlending::Max));
@@ -524,6 +535,21 @@ Rc<cocos2d::Texture2D> Canvas::captureContents(cocos2d::Node *node, Format fmt, 
 	}
 
 	return tex;
+}
+
+void Canvas::drop() {
+	if (_vbo[0] || _vbo[1]) {
+		_vbo[0] = 0;
+		_vbo[1] = 0;
+	}
+
+	if (_rbo) {
+		_rbo = 0;
+	}
+
+	if (_fbo) {
+		_fbo = 0;
+	}
 }
 
 NS_SP_EXT_END(draw)

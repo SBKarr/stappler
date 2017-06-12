@@ -37,6 +37,8 @@ public:
 	virtual bool init(IconName name = IconName::None);
 	virtual bool init(IconName name, uint32_t, uint32_t);
 
+	virtual void visit(cocos2d::Renderer *, const Mat4 &, uint32_t f, ZPath &) override;
+
 	virtual void onEnter() override;
 
 	virtual void setIconName(IconName name);
@@ -66,6 +68,7 @@ protected:
 
 	virtual void onUpdate();
 
+	float _diff = 0.0f;
 	float _progress = 0.0f;
 	IconName _iconName = IconName::None;
 	DynamicIcon *_dynamicIcon = nullptr;

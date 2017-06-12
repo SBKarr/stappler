@@ -23,11 +23,11 @@ THE SOFTWARE.
 #ifndef COMMON_APR_SPAPRARRAY_H_
 #define COMMON_APR_SPAPRARRAY_H_
 
-#include "SPAprAllocPool.h"
+#include "SPAprAllocator.h"
 
 #if SPAPR
 
-#include "SPAprPointerIterator.h"
+#include "SPMemPointerIterator.h"
 
 NS_SP_EXT_BEGIN(apr)
 

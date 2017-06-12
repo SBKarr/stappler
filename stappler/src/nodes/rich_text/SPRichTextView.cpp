@@ -360,7 +360,7 @@ cocos2d::Node * View::onPageNode(size_t idx) {
 		if (idx < result->getNumPages()) {
 			page->retain();
 
-			drawer->draw(source, result, data.texRect, [this, page] (cocos2d::Texture2D *tex) {
+			drawer->draw(source, result, data.texRect, [page] (cocos2d::Texture2D *tex) {
 				if (page->isRunning()) {
 					page->setTexture(tex);
 				}
@@ -376,7 +376,7 @@ cocos2d::Node * View::onPageNode(size_t idx) {
 		sprite->setOpacity(0);
 		sprite->retain();
 
-		drawer->draw(source, result, data.texRect, [this, sprite] (cocos2d::Texture2D *tex) {
+		drawer->draw(source, result, data.texRect, [sprite] (cocos2d::Texture2D *tex) {
 			if (sprite->isRunning()) {
 				sprite->setTexture(tex);
 				sprite->runAction(cocos2d::FadeIn::create(0.1f));

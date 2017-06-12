@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,83 +20,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef __stappler__SPData__
-#define __stappler__SPData__
+#ifndef COMMON_DATA_SPDATA_H_
+#define COMMON_DATA_SPDATA_H_
 
-#include "SPDataValue.h"
+#include "SPDataEncode.h"
+#include "SPDataDecode.h"
 
 NS_SP_EXT_BEGIN(data)
 
 using DataCallback = Function<void(data::Value &&)>;
-
-struct EncodeFormat {
-	static int EncodeStreamIndex;
-
-	enum Format {
-		Json				= 0b0000, // Raw JSON data, with no whitespace
-		Pretty				= 0b0001, // Pretty-printed JSON data
-		Cbor				= 0b0010, // CBOR data (http://cbor.io/, http://tools.ietf.org/html/rfc7049)
-		DefaultFormat		= 0b0011,
-	};
-
-	// We use LZ4 for compression, it's very fast to decode
-	enum Compression {
-		NoCompression		= 0b0000 << 4,
-		LowCompression		= 0b0001 << 4,
-		MediumCompression	= 0b0010 << 4,
-		HighCompression		= 0b0011 << 4, // LZ4-HC
-
-		DefaultCompress = NoCompression
-	};
-
-	enum Encryption {
-		Unencrypted			= 0b0000 << 8,
-		Encrypted			= 0b0001 << 8
-	};
-
-	EncodeFormat(Format fmt = DefaultFormat, Compression cmp = DefaultCompress, Encryption enc = Unencrypted, const String &key = "")
-	: format(fmt), compression(cmp), encryption(enc) { }
-
-	explicit EncodeFormat(int flag)
-	: format((Format)(flag & 0x0F)), compression((Compression)(flag & 0xF0))
-	, encryption((Encryption)(flag &0xF00)) { }
-
-	EncodeFormat(const EncodeFormat & other) : format(other.format), compression(other.compression)
-	, encryption(other.encryption) { }
-
-	EncodeFormat & operator=(const EncodeFormat & other) {
-		format = other.format;
-		compression = other.compression;
-		encryption = other.encryption;
-		return *this;
-	}
-
-	bool isRaw() const {
-		return compression == NoCompression && encryption == Unencrypted;
-	}
-
-	bool isTextual() const {
-		return isRaw() && (format == Json || format == Pretty);
-	}
-
-	int flag() const {
-		return (int)format | (int)compression | (int)encryption;
-	}
-
-	Format format;
-	Compression compression;
-	Encryption encryption;
-};
-
-Value readFile(const String &filename, const String &key = "");
-Value read(const String &string, const String &key = "");
-Value read(const Bytes &vec, const String &key = "");
-
-Bytes write(const data::Value &, EncodeFormat fmt = EncodeFormat());
-bool write(std::ostream &, const data::Value &, EncodeFormat fmt = EncodeFormat());
-bool save(const data::Value &, const String &file, EncodeFormat fmt = EncodeFormat());
-
-String toString(const data::Value &, bool pretty = false);
 
 // command line options parsing
 //
@@ -215,6 +147,4 @@ using TransformMap = Map<String, TransformPair>;
 
 NS_SP_EXT_END(data)
 
-#include "SPDataUtils.hpp"
-
-#endif
+#endif // COMMON_DATA_SPDATA_H_

@@ -313,6 +313,7 @@
 		<configuration configurationName="Serenity">
 			<resource resourceType="PROJECT" workspacePath="/libstappler"/>
 		</configuration>
+		<configuration configurationName="SocketTest"/>
 		<configuration configurationName="IOS"/>
 		<configuration configurationName="Default">
 			<resource resourceType="PROJECT" workspacePath="/stappler-cli"/>

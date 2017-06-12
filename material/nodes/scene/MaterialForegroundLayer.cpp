@@ -57,17 +57,26 @@ bool ForegroundLayer::init() {
 	l->setEnabled(false);
 	addComponent(l);
 
-	_snackbar = construct<stappler::Layer>();
-	_snackbar->setAnchorPoint(Vec2(0.5f, 0.0f));
-	_snackbar->setColor(material::Color::Grey_900);
+	auto snackbar = Rc<Layer>::create();
+	snackbar->setAnchorPoint(Vec2(0.5f, 0.0f));
+	snackbar->setColor(material::Color::Grey_900);
 
-	_snackbarLabel = construct<Label>(FontType::Body_2);
-	_snackbarLabel->setLocaleEnabled(true);
-	_snackbarLabel->setAnchorPoint(Vec2(0.0f, 0.0f));
-	_snackbarLabel->setColor(material::Color::Grey_200);
-	_snackbar->addChild(_snackbarLabel, 1);
+	auto snackbarLabel = Rc<Label>::create(FontType::Body_2);
+	snackbarLabel->setLocaleEnabled(true);
+	snackbarLabel->setAnchorPoint(Vec2(0.0f, 0.0f));
+	snackbarLabel->setColor(material::Color::Grey_200);
+	snackbar->addChild(snackbarLabel, 1);
 
-	addChild(_snackbar, INT_MAX - 2);
+	addChild(snackbar, INT_MAX - 2);
+
+	auto background = Rc<Layer>::create();
+	background->setColor(material::Color::Grey_500);
+	background->setVisible(false);
+	addChild(background, INT_MIN + 2);
+
+	_snackbar = snackbar;
+	_snackbarLabel = snackbarLabel;
+	_background = background;
 
 	_listener = l;
 
@@ -108,6 +117,7 @@ void ForegroundLayer::onContentSizeDirty() {
 		it->release();
 	}
 	_pendingPush.clear();
+	_background->setContentSize(_contentSize);
 }
 
 void ForegroundLayer::onEnter() {
@@ -133,6 +143,8 @@ void ForegroundLayer::pushNode(cocos2d::Node *node, const Function<void()> &func
 					node->setLocalZOrder(zIndex);
 					zIndex ++;
 				}
+			} else {
+				enableBackground();
 			}
 			_nodes.pushBack(node);
 			if (func) {
@@ -170,6 +182,7 @@ void ForegroundLayer::popNode(cocos2d::Node *node) {
 				zIndex ++;
 			}
 		} else {
+			disableBackground();
 			_listener->setEnabled(false);
 			if (auto scene = Scene::getRunningScene()) {
 				scene->releaseContentForNode(this);
@@ -238,6 +251,26 @@ const String &ForegroundLayer::getSnackbarString() const {
 	return _snackbarString;
 }
 
+void ForegroundLayer::setBackgroundOpacity(uint8_t op) {
+	_backgroundOpacity = op;
+	if (_backgroundEnabled) {
+		_background->stopAllActions();
+		_background->runAction(cocos2d::FadeTo::create(0.25f, _backgroundOpacity));
+	}
+}
+
+uint8_t ForegroundLayer::getBackgroundOpacity() const {
+	return _backgroundOpacity;
+}
+
+void ForegroundLayer::setBackgroundColor(const Color &c) {
+	_backgroundColor = c;
+	_background->setColor(c);
+}
+const Color & ForegroundLayer::getBackgroundColor() const {
+	return _backgroundColor;
+}
+
 void ForegroundLayer::setSnackbarStringInternal(const String &str, const Color &color) {
 	_snackbar->setVisible(true);
 	_snackbar->setOpacity(255);
@@ -268,6 +301,29 @@ void ForegroundLayer::onSnackbarHidden() {
 	_snackbar->setVisible(false);
 	_snackbar->setPosition(Vec2(_contentSize.width / 2, -_snackbar->getContentSize().height));
 	_snackbarLabel->setString("");
+}
+
+void ForegroundLayer::enableBackground() {
+	if (!_backgroundEnabled) {
+		_background->stopAllActions();
+		_background->setVisible(true);
+		_background->setOpacity(0);
+		if (_backgroundOpacity > 0) {
+			_background->runAction(cocos2d::FadeTo::create(0.25f, _backgroundOpacity));
+		}
+		_backgroundEnabled = true;
+	}
+}
+void ForegroundLayer::disableBackground() {
+	if (_backgroundEnabled) {
+		_background->stopAllActions();
+		if (_background->getOpacity() > 0) {
+			_background->runAction(action::sequence(cocos2d::FadeTo::create(0.25f, 0), cocos2d::Hide::create()));
+		} else {
+			_background->setVisible(false);
+		}
+		_backgroundEnabled = false;
+	}
 }
 
 NS_MD_END

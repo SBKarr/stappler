@@ -104,6 +104,10 @@ void NetworkTask::run() {
 	_networkThread.perform(this);
 }
 
+void NetworkTask::setAuthority(const String &user, const String &passwd) {
+	_handle.setAuthority(user, passwd);
+}
+
 void NetworkTask::addHeader(const std::string &header) {
 	_handle.addHeader(header);
 }

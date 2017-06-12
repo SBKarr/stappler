@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,13 +20,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef COMMON_APR_SPAPRRBTREE_H_
-#define COMMON_APR_SPAPRRBTREE_H_
+#ifndef COMMON_MEMORY_SPMEMRBTREE_H_
+#define COMMON_MEMORY_SPMEMRBTREE_H_
 
-#include "SPAprMemUtils.h"
+#include "SPMemAlloc.h"
 
-#if SPAPR
-NS_APR_BEGIN
+NS_SP_EXT_BEGIN(memory)
 
 namespace rbtree {
 
@@ -36,13 +35,27 @@ enum NodeColor : bool {
 };
 
 template <typename Value>
-using Storage = apr::Storage<Value>;
+using Storage = memory::Storage<Value>;
 
 struct NodeBase {
-	NodeBase *parent;
-	NodeBase *left;
-	NodeBase *right;
-	NodeColor color;
+	struct Flag {
+		uintptr_t color : 1;
+		uintptr_t size : (sizeof(intptr_t) * 8) - 1;
+	};
+
+	NodeBase *parent = nullptr;
+	NodeBase *left = nullptr;
+	NodeBase *right = nullptr;
+	Flag flag;
+
+	NodeBase() : flag(Flag{0, 0}) { }
+	NodeBase(NodeColor c) : flag(Flag{uintptr_t(c ? 1 : 0), 0}) { }
+
+	inline void setColor(NodeColor c) { flag.color = c ? 1 : 0; }
+	inline NodeColor getColor() const { return NodeColor(flag.color); }
+
+	inline void setSize(uintptr_t s) { flag.size = s; }
+	inline uintptr_t getSize() const { return flag.size; }
 
 	static inline NodeBase * min (NodeBase * x) {
 		while (x->left != 0) x = x->left;
@@ -263,15 +276,15 @@ public:
 
 public:
 	Tree(const Comp &comp = Comp(), const value_allocator_type &alloc = value_allocator_type())
-	: _header{nullptr,nullptr,nullptr,NodeColor::Black}, _comp(comp), _allocator(alloc), _size(0) { }
+	: _header(NodeColor::Black), _comp(comp), _allocator(alloc), _size(0) { }
 
 	Tree(const Tree &other, const value_allocator_type &alloc = value_allocator_type())
-	: _header{nullptr,nullptr,nullptr,NodeColor::Black}, _comp(other._comp), _allocator(alloc), _size(0) {
+	: _header(NodeColor::Black), _comp(other._comp), _allocator(alloc), _size(0) {
 		clone(other);
 	}
 
 	Tree(Tree &&other, const value_allocator_type &alloc = value_allocator_type())
-	: _header{nullptr,nullptr,nullptr,NodeColor::Black}, _comp(other._comp), _allocator(alloc), _size(0) {
+	: _header(NodeColor::Black), _comp(other._comp), _allocator(alloc), _size(0) {
 		if (other.get_allocator() == _allocator) {
 			_header = other._header;
 			_size = other._size;
@@ -279,7 +292,7 @@ public:
 			if (_header.left != nullptr) {
 				_header.left->parent = &_header;
 			}
-			other._header = {nullptr,nullptr,nullptr,NodeColor::Black};
+			other._header = NodeBase(NodeColor::Black);
 			other._size = 0;
 		} else {
 			clone(other);
@@ -300,7 +313,7 @@ public:
 			if (_header.left != nullptr) {
 				_header.left->parent = &_header;
 			}
-			other._header = {nullptr,nullptr,nullptr,NodeColor::Black};
+			other._header = NodeBase(NodeColor::Black);
 			other._size = 0;
 		} else {
 			clone(other);
@@ -518,7 +531,9 @@ protected:
 	constructNode(Args && ... args) {
 		Node<Value> * ret;
 		if (!_tmp) {
-			ret = node_allocator_type(_allocator).allocate(1);
+			size_t s;
+			ret = node_allocator_type(_allocator).__allocate(1, s);
+			ret->setSize(s);
 		} else {
 			ret = _tmp;
 			_tmp = nullptr;
@@ -526,7 +541,7 @@ protected:
 		ret->parent = nullptr;
 		ret->left = nullptr;
 		ret->right = nullptr;
-		ret->color = NodeColor::Red;
+		ret->setColor(NodeColor::Red);
 		_allocator.construct(ret->value.ptr(), std::forward<Args>(args)...);
 
 		return InsertData{&extract(ret->value), ret, nullptr, nullptr, false};
@@ -544,7 +559,9 @@ protected:
 	Node<Value> *constructEmplace(K &&k, Args && ... args) {
 		Node<Value> * ret;
 		if (!_tmp) {
-			ret = node_allocator_type(_allocator).allocate(1);
+			size_t s;
+			ret = node_allocator_type(_allocator).__allocate(1, s);
+			ret->setSize(s);
 		} else {
 			ret = _tmp;
 			_tmp = nullptr;
@@ -552,7 +569,7 @@ protected:
 		ret->parent = nullptr;
 		ret->left = nullptr;
 		ret->right = nullptr;
-		ret->color = NodeColor::Red;
+		ret->setColor(NodeColor::Red);
 
 		TreeKeyExtractor<Key, Value>::construct(_allocator, ret, std::forward<K>(k), std::forward<Args>(args)...);
 		return ret;
@@ -571,7 +588,7 @@ protected:
 	void destroyNode(Node<Value> *n) {
 	    _allocator.destroy(n->value.ptr());
 	    if (_tmp) {
-		    node_allocator_type(_allocator).deallocate(n, 1);
+		    node_allocator_type(_allocator).__deallocate(n, 1, n->getSize());
 	    } else {
 	    	_tmp = n;
 	    }
@@ -822,7 +839,7 @@ protected:
 	    	// if there is no replacement (we use empty leaf node as new Z),
 	    	// we run rebalance with phantom Y node, then swap data and remove links
 	    	// to phantom
-			if (y->color == NodeColor::Black) {
+			if (y->getColor() == NodeColor::Black) {
 				NodeBase::remove(&_header, y);
 			}
 
@@ -849,13 +866,13 @@ protected:
 			if (y != z) {
 				NodeBase::replace(z, y);
 			} else {
-				y->color = NodeColor::Red;
+				y->setColor(NodeColor::Red);
 			}
 
-			if (y->color == NodeColor::Black) {
+			if (y->getColor() == NodeColor::Black) {
 				NodeBase::remove(&_header, x);
 			} else {
-				x->color = NodeColor::Black;
+				x->setColor(NodeColor::Black);
 			}
 	    }
 
@@ -871,14 +888,16 @@ protected:
 			clear_visit(static_cast<Node<Value> *>(target->right));
 		}
 		_allocator.destroy(target->value.ptr());
-		node_allocator_type(_allocator).deallocate(target, 1);
+		node_allocator_type(_allocator).__deallocate(target, 1, target->getSize());
 	}
 
 	void clone_visit(const Node<Value> *source, Node<Value> *target) {
 		_allocator.construct(target->value.ptr(), source->value.ref());
-		target->color = source->color;
+		target->setColor(source->getColor());
 		if (source->left) {
-			target->left = node_allocator_type(_allocator).allocate(1);
+			size_t s;
+			target->left = node_allocator_type(_allocator).__allocate(1, s);
+			target->left->setSize(s);
 			target->left->parent = target;
 			clone_visit(static_cast<Node<Value> *>(source->left), static_cast<Node<Value> *>(target->left));
 			if (_header.parent == source->left) { // check for leftmost node
@@ -889,7 +908,9 @@ protected:
 		}
 
 		if (source->right) {
-			target->right = node_allocator_type(_allocator).allocate(1);
+			size_t s;
+			target->right = node_allocator_type(_allocator).__allocate(1, s);
+			target->right->setSize(s);
 			target->right->parent = target;
 			clone_visit(static_cast<Node<Value> *>(source->right), static_cast<Node<Value> *>(target->right));
 			if (_header.right == source->right) { // check for rightmost node
@@ -907,7 +928,9 @@ protected:
 		_size = other._size;
 		_header = other._header;
 		if (other._header.left) {
-			_header.left = node_allocator_type(_allocator).allocate(1);
+			size_t s;
+			_header.left = node_allocator_type(_allocator).__allocate(1, s);
+			_header.left->setSize(s);
 			_header.left->parent = &_header;
 			if (other._header.left == other._header.parent) {
 				_header.parent = _header.left;
@@ -996,13 +1019,12 @@ protected:
 };
 
 }
-
-NS_APR_END
+NS_SP_EXT_END(memory)
 
 #define APR_RBTREE_DEBUG 0
 #if APR_RBTREE_DEBUG
 
-NS_APR_BEGIN
+NS_SP_BEGIN_END(memory)
 
 namespace rbtree {
 
@@ -1100,10 +1122,8 @@ operator << (std::basic_ostream<CharType> & os, const TreeDebug::Validation & v)
 }
 
 }
-NS_APR_END
+NS_SP_EXT_END(memory)
 
 #endif // APR_RBTREE_DEBUG
 
-#endif // SPAPR
-
-#endif /* COMMON_APR_SPAPRRBTREE_H_ */
+#endif /* COMMON_MEMORY_SPMEMRBTREE_H_ */

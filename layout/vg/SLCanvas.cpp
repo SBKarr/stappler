@@ -31,8 +31,9 @@ TESS_OPTIMIZE
 NS_LAYOUT_BEGIN
 
 static void * staticPoolAlloc(void* userData, unsigned int size) {
-	layout::MemPool<false> *pool = (layout::MemPool<false> *)userData;
-	return pool->allocate(size);
+	memory::MemPool *pool = (memory::MemPool *)userData;
+	size_t s = size;
+	return pool->alloc(s);
 }
 
 static void staticPoolFree(void * userData, void * ptr) {
@@ -42,6 +43,8 @@ static void staticPoolFree(void * userData, void * ptr) {
 }
 
 bool Canvas::init() {
+	_pool = memory::MemPool(memory::MemPool::Unmanaged);
+
 	memset(&_tessAlloc, 0, sizeof(_tessAlloc));
 	_tessAlloc.memalloc = &staticPoolAlloc;
 	_tessAlloc.memfree = &staticPoolFree;

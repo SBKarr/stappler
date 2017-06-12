@@ -41,7 +41,7 @@ static String makeAcceptKey(const String &key) {
 	apr_sha1_update(&context, (const char *)WEBSOCKET_GUID, (unsigned int)WEBSOCKET_GUID_LEN);
 	apr_sha1_final(digest, &context);
 
-	return base64::encode(digest, APR_SHA1_DIGESTSIZE);
+	return base64::encode(CoderSource(digest, APR_SHA1_DIGESTSIZE));
 }
 
 template <typename B>
@@ -123,7 +123,7 @@ void Handler::run() {
 	apr_socket_opt_set(_socket, APR_SO_NONBLOCK, 1);
 	apr_socket_timeout_set(_socket, 0);
 
-	AllocStack::perform([&] {
+	apr::pool::perform([&] {
 		onBegin();
 	}, _reader.pool);
 
@@ -152,7 +152,7 @@ void Handler::run() {
 		}
 	}
 
-	AllocStack::perform([&] {
+	apr::pool::perform([&] {
 		onEnd();
 	}, _reader.pool);
 	apr_pool_clear(_reader.pool);
@@ -258,7 +258,7 @@ bool Handler::trySend(FrameType t, const uint8_t *bytes, size_t count) {
 }
 
 storage::Adapter *Handler::storage() const {
-	auto pool = AllocStack::get().top();
+	auto pool = apr::pool::acquire();
 
 	database::Handle *db = nullptr;
 	apr_pool_userdata_get((void **)&db, (const char *)config::getSerenityWebsocketDatabaseName(), pool);
@@ -276,7 +276,7 @@ void Handler::receiveBroadcast(const data::Value &data) {
 			apr_pool_create(&_broadcastsPool, _connection.pool());
 		}
 		if (_broadcastsPool) {
-			AllocStack::perform([&] {
+			apr::pool::perform([&] {
 				if (!_broadcastsMessages) {
 					_broadcastsMessages = new (_broadcastsPool) Vector<data::Value>(_broadcastsPool);
 				}
@@ -306,7 +306,7 @@ bool Handler::processBroadcasts() {
 	bool ret = true;
 	if (pool) {
 		apr_pool_userdata_set(this, config::getSerenityWebsocketHandleName(), nullptr, pool);
-		AllocStack::perform([&] {
+		apr::pool::perform([&] {
 			pushNotificator(pool);
 			if (vec) {
 				for (auto & it : (*vec)) {
@@ -380,7 +380,7 @@ bool Handler::readSocket(const apr_pollfd_t *fd) {
 					return false;
 				}
 			} else if (_reader.isFrameReady()) {
-				auto ret = AllocStack::perform([&] {
+				auto ret = apr::pool::perform([&] {
 					pushNotificator(_reader.pool);
 					apr_pool_userdata_set(this, config::getSerenityWebsocketHandleName(), nullptr, _reader.pool);
 					if (!onFrame(_reader.type, _reader.frame.buffer)) {
@@ -461,7 +461,7 @@ Handler::StatusCode Handler::resolveStatus(StatusCode code) {
 }
 
 void Handler::pushNotificator(apr_pool_t *pool) {
-	AllocStack::perform([&] {
+	apr::pool::perform([&] {
 		messages::setNotifications(pool, [this] (data::Value && data) {
 			send(data::Value{
 				std::make_pair("error", data::Value(std::move(data)))

@@ -173,7 +173,7 @@ void Root::onHeartBeat() {
 
 	auto serv = _rootServerContext;
 	while (serv) {
-		AllocStack::perform([&] {
+		apr::pool::perform([&] {
 			serv.onHeartBeat();
 		}, serv.server());
 		serv = serv.next();
@@ -181,7 +181,7 @@ void Root::onHeartBeat() {
 }
 
 void Root::onServerChildInit(apr_pool_t *p, server_rec* s) {
-	AllocStack::perform([&] {
+	apr::pool::perform([&] {
 		InputFilter::filterRegister();
 		OutputFilter::filterRegister();
 
@@ -191,7 +191,7 @@ void Root::onServerChildInit(apr_pool_t *p, server_rec* s) {
 		auto serv = _rootServerContext;
 		while (serv) {
 			server_rec *servPtr = serv.server();
-			AllocStack::perform([&] {
+			apr::pool::perform([&] {
 				serv.onChildInit();
 			}, servPtr);
 			serv = serv.next();
@@ -251,12 +251,12 @@ void Root::onOpenLogs(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, se
 }
 
 int Root::onPreConnection(conn_rec* c, void* csd) {
-	return AllocStack::perform([&] () -> int {
+	return apr::pool::perform([&] () -> int {
 		return DECLINED;
 	}, c);
 }
 int Root::onProcessConnection(conn_rec *c) {
-	return AllocStack::perform([&] () -> int {
+	return apr::pool::perform([&] () -> int {
 		return DECLINED;
 	}, c);
 }
@@ -288,7 +288,7 @@ const char * Root::getProtocol(const conn_rec *c) {
 
 
 int Root::onPostReadRequest(request_rec *r) {
-	return AllocStack::perform([&] () -> int {
+	return apr::pool::perform([&] () -> int {
 		OutputFilter::insert(r);
 
 		Request request(r);
@@ -309,7 +309,7 @@ int Root::onPostReadRequest(request_rec *r) {
 }
 
 int Root::onTranslateName(request_rec *r) {
-	return AllocStack::perform([&] () -> int {
+	return apr::pool::perform([&] () -> int {
 		//log("onTranslateName %s %s", r->uri, r->args);
 
 		Request request(r);
@@ -330,7 +330,7 @@ int Root::onTranslateName(request_rec *r) {
 	}, r);
 }
 int Root::onQuickHandler(request_rec *r, int v) {
-	return AllocStack::perform([&] () -> int {
+	return apr::pool::perform([&] () -> int {
 		Request request(r);
 		RequestHandler *rhdl = request.getRequestHandler();
 		if (rhdl) {
@@ -341,7 +341,7 @@ int Root::onQuickHandler(request_rec *r, int v) {
 	}, r);
 }
 void Root::onInsertFilter(request_rec *r) {
-	AllocStack::perform([&] {
+	apr::pool::perform([&] {
 		//log("onInsertFilter %s %s", r->uri, r->args);
 		Request request(r);
 
@@ -352,7 +352,7 @@ void Root::onInsertFilter(request_rec *r) {
 	}, r);
 }
 int Root::onHandler(request_rec *r) {
-	return AllocStack::perform([&] () -> int {
+	return apr::pool::perform([&] () -> int {
 		Request request(r);
 
 		RequestHandler *rhdl = request.getRequestHandler();

@@ -175,32 +175,46 @@ void ThreadManager::perform(Rc<Task> &&task) {
 		}
 		std::thread wThread(ThreadHandlerInterface::workerThread, worker);
 		wThread.detach();
-	} else {
+	} else if (task) {
 		task->setSuccessful(task->execute());
 		task->onComplete();
 	}
 }
 
 uint32_t ThreadManager::perform(Thread *thread, Rc<Task> &&task) {
-	if (thread->getId() == maxOf<uint32_t>()) {
-		thread->setId(_nextId);
-		_nextId ++;
-		CCASSERT(_nextId < (1 << 16), "YOU ARE AMAZING!!! You exceeded limit for local threads, that was 65535");
+	if (task && !_singleThreaded) {
+		if (thread->getId() == maxOf<uint32_t>()) {
+			thread->setId(_nextId);
+			_nextId ++;
+			CCASSERT(_nextId < (1 << 16), "YOU ARE AMAZING!!! You exceeded limit for local threads, that was 65535");
+		}
+		TaskManager &tm = getTaskManager(thread);
+		tm.perform(std::move(task));
+		return thread->getId();
+	} else if (task) {
+		task->setSuccessful(task->execute());
+		task->onComplete();
+		return 0;
 	}
-	TaskManager &tm = getTaskManager(thread);
-	tm.perform(std::move(task));
-	return thread->getId();
+	return 0;
 }
 
 uint32_t ThreadManager::performWithPriority(Thread *thread, Rc<Task> &&task, bool performFirst) {
-	if (thread->getId() == maxOf<uint32_t>()) {
-		thread->setId(_nextId);
-		_nextId ++;
-		CCASSERT(_nextId < (1 << 16), "YOU ARE AMAZING!!! You exceeded limit for local threads, that was 65535");
+	if (task && !_singleThreaded) {
+		if (thread->getId() == maxOf<uint32_t>()) {
+			thread->setId(_nextId);
+			_nextId ++;
+			CCASSERT(_nextId < (1 << 16), "YOU ARE AMAZING!!! You exceeded limit for local threads, that was 65535");
+		}
+		TaskManager &tm = getTaskManager(thread);
+		tm.performWithPriority(std::move(task), performFirst);
+		return thread->getId();
+	} else if (task) {
+		task->setSuccessful(task->execute());
+		task->onComplete();
+		return 0;
 	}
-	TaskManager &tm = getTaskManager(thread);
-	tm.performWithPriority(std::move(task), performFirst);
-	return thread->getId();
+	return 0;
 }
 
 void ThreadManager::setSingleThreaded(bool value) {

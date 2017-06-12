@@ -79,8 +79,8 @@ void FlexibleLayout::onContentSizeDirty() {
 	float statusBar = getStatusBarHeight();
 	if (_statusBarTracked && statusBar > 0.0f) {
 		statusBarParams.setVisible(true);
-		statusBarParams.setPosition(Vec2(0, _contentSize.height));
-		statusBarParams.setContentSize(Size(_contentSize.width, statusBar));
+		statusBarParams.setPosition(Vec2(0, _contentSize.height + 1.0f));
+		statusBarParams.setContentSize(Size(_contentSize.width, statusBar + 1.0f));
 	} else {
 		statusBarParams.setVisible(false);
 	}
@@ -89,7 +89,7 @@ void FlexibleLayout::onContentSizeDirty() {
 
 	if (flexSize >= _flexibleMaxHeight && _statusBarTracked) {
 		statusBar = (flexSize - _flexibleMaxHeight);
-		statusBarParams.setContentSize(Size(_contentSize.width, statusBar));
+		statusBarParams.setContentSize(Size(_contentSize.width, statusBar + 1.0f));
 		size.height -= statusBar;
 		flexSize = _flexibleMaxHeight;
 	} else {
@@ -294,7 +294,7 @@ void FlexibleLayout::setFlexibleLevel(float value) {
 	auto size = _contentSize;
 	if (flexSize >= _flexibleMaxHeight && _statusBarTracked) {
 		statusBar = (flexSize - _flexibleMaxHeight);
-		statusBarParams.setContentSize(Size(_contentSize.width, statusBar));
+		statusBarParams.setContentSize(Size(_contentSize.width, statusBar + 1.0f));
 		size.height -= statusBar;
 		flexSize = _flexibleMaxHeight;
 		statusBarParams.setVisible(true);

@@ -48,6 +48,8 @@ public:
 
 	virtual void run();
 
+    void setAuthority(const String &user, const String &passwd = String());
+
 	/* Adds HTTP header line to request */
     void addHeader(const std::string &header);
     void addHeader(const std::string &header, const std::string &value);

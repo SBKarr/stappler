@@ -332,7 +332,10 @@ void writeData(Request &rctx, std::basic_ostream<char> &stream, const Function<v
 
 	auto h = rctx.getRequestHeaders().at("accept");
 	if (!h.empty()) {
-		auto list = string::split(h, ",");
+		Vector<String> list;
+		string::split(h, ",", [&] (const StringView &v) {
+			list.emplace_back(v.str());
+		});
 		for (auto &it : list) {
 			if (it.compare(0, "application/cbor"_len, "application/cbor") == 0) {
 				allowCbor = true;

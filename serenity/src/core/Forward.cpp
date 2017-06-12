@@ -443,12 +443,11 @@ void _addErrorMessage(data::Value &&data) {
 			a->broadcast(bcast);
 		}
 	}
-	auto &stack = AllocStack::get();
-	Request rctx(stack.request());
+	Request rctx(apr::pool::request());
 	if (rctx) {
 		rctx.addErrorMessage(std::move(data));
 	} else {
-		auto pool = stack.top();
+		auto pool = apr::pool::acquire();
 		ErrorNotificator *err = nullptr;
 		apr_pool_userdata_get((void **)&err, "Serenity.ErrorNotificator", pool);
 		if (err && err->error) {
@@ -472,12 +471,12 @@ void _addDebugMessage(data::Value &&data) {
 			a->broadcast(bcast);
 		}
 	}
-	auto &stack = AllocStack::get();
-	Request rctx(stack.request());
+
+	Request rctx(apr::pool::request());
 	if (rctx) {
 		rctx.addDebugMessage(std::move(data));
 	} else {
-		auto pool = stack.top();
+		auto pool = apr::pool::acquire();
 		ErrorNotificator *err = nullptr;
 		apr_pool_userdata_get((void **)&err, (const char *)config::getSerenityErrorNotificatorName(), pool);
 		if (err && err->debug) {

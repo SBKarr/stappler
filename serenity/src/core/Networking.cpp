@@ -42,7 +42,7 @@ data::Value Handle::performDataQuery() {
 		return size;
 	});
 	if (perform()) {
-		return stream.data();
+		return stream.extract();
 	}
 	return data::Value();
 }

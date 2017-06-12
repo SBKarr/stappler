@@ -29,6 +29,7 @@ THE SOFTWARE.
  */
 
 #include "SPCommon.h"
+#include "SPRef.h"
 
 #ifdef __cplusplus
 
@@ -69,6 +70,8 @@ THE SOFTWARE.
 NS_LAYOUT_BEGIN
 
 constexpr uint32_t EngineVersion() { return 3; }
+
+using Ref = stappler::Ref;
 
 class Formatter;
 class Document;

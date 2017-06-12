@@ -36,7 +36,10 @@ static Vector<String> parsePath(const String &path) {
 	if (!path.empty() && path.front() == ':') {
 		delim = ":";
 	}
-	auto pathVec = string::split(path, delim);
+	Vector<String> pathVec;
+	string::split(path, delim, [&] (const StringView &v) {
+		pathVec.emplace_back(v.str());
+	});
 	while (!pathVec.empty() && pathVec.back().empty()) {
 		pathVec.pop_back();
 	}

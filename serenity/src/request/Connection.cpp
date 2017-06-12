@@ -37,7 +37,7 @@ struct Connection::Config : public AllocPool {
 		auto cfg = (Config *)ap_get_module_config(c->conn_config, &serenity_module);
 		if (cfg) { return cfg; }
 
-		return apr::AllocStack::perform([&] () -> Config * {
+		return apr::pool::perform([&] () -> Config * {
 			return new Config(c);
 		}, c);
 	}

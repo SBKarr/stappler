@@ -43,6 +43,8 @@ StreamBuffer::~StreamBuffer() {
 	switch (_type) {
 	case Type::Cbor: if (_cbor) { delete _cbor; } break;
 	case Type::Json: if (_json) { delete _json; } break;
+	case Type::AltCbor: if (_altCbor) { delete _altCbor; } break;
+	case Type::AltJson: if (_altJson) { delete _altJson; } break;
 	case Type::Decompress: if (_comp) { delete _comp; } break;
 	case Type::Decrypt: if (_crypt) { delete _crypt; } break;
 	case Type::Undefined: break;
@@ -53,6 +55,8 @@ void StreamBuffer::clear() {
 	switch (_type) {
 	case Type::Cbor: if (_cbor) { delete _cbor; _cbor = nullptr; } break;
 	case Type::Json: if (_json) { delete _json; _json = nullptr; } break;
+	case Type::AltCbor: if (_altCbor) { delete _altCbor; _altCbor = nullptr; } break;
+	case Type::AltJson: if (_altJson) { delete _altJson; _altJson = nullptr; } break;
 	case Type::Decompress: if (_comp) { delete _comp; _comp = nullptr; } break;
 	case Type::Decrypt: if (_crypt) { delete _crypt; _crypt = nullptr; } break;
 	case Type::Undefined: break;
@@ -71,6 +75,8 @@ StreamBuffer::StreamBuffer(StreamBuffer &&other)
 	switch (_type) {
 	case Type::Cbor: _cbor = other._cbor; other._cbor = nullptr; break;
 	case Type::Json: _json = other._json; other._json = nullptr; break;
+	case Type::AltCbor: _altCbor = other._altCbor; other._altCbor = nullptr; break;
+	case Type::AltJson: _altJson = other._altJson; other._altJson = nullptr; break;
 	case Type::Decompress: _comp = other._comp; other._comp = nullptr; break;
 	case Type::Decrypt: _crypt = other._crypt; other._crypt = nullptr; break;
 	case Type::Undefined: break;
@@ -93,6 +99,8 @@ StreamBuffer & StreamBuffer::operator = (StreamBuffer &&other) {
 	switch (_type) {
 	case Type::Cbor: _cbor = other._cbor; other._cbor = nullptr; break;
 	case Type::Json: _json = other._json; other._json = nullptr; break;
+	case Type::AltCbor: _altCbor = other._altCbor; other._altCbor = nullptr; break;
+	case Type::AltJson: _altJson = other._altJson; other._altJson = nullptr; break;
 	case Type::Decompress: _comp = other._comp; other._comp = nullptr; break;
 	case Type::Decrypt: _crypt = other._crypt; other._crypt = nullptr; break;
 	case Type::Undefined: break;
@@ -115,16 +123,20 @@ void StreamBuffer::swap(StreamBuffer &other) {
 	switch (_type) {
 	case Type::Cbor: selfPtr = _cbor; break;
 	case Type::Json: selfPtr = _json; break;
+	case Type::AltCbor: selfPtr = _altCbor; break;
+	case Type::AltJson: selfPtr = _altCbor; break;
 	case Type::Decompress: selfPtr = _comp; break;
 	case Type::Decrypt: selfPtr = _crypt; break;
 	case Type::Undefined: break;
 	}
 
 	switch (other._type) {
-	case Type::Cbor: otherPtr = _cbor; break;
-	case Type::Json: otherPtr = _json; break;
-	case Type::Decompress: otherPtr = _comp; break;
-	case Type::Decrypt: otherPtr = _crypt; break;
+	case Type::Cbor: otherPtr = other._cbor; break;
+	case Type::Json: otherPtr = other._json; break;
+	case Type::AltCbor: otherPtr = other._altCbor; break;
+	case Type::AltJson: otherPtr = other._altCbor; break;
+	case Type::Decompress: otherPtr = other._comp; break;
+	case Type::Decrypt: otherPtr = other._crypt; break;
 	case Type::Undefined: break;
 	}
 
@@ -134,16 +146,20 @@ void StreamBuffer::swap(StreamBuffer &other) {
 	std::swap(_type, other._type);
 
 	switch (_type) {
-	case Type::Cbor: _cbor = (CborBuffer *)otherPtr; break;
-	case Type::Json: _json = (JsonBuffer *)otherPtr; break;
+	case Type::Cbor: _cbor = (CborBuffer<memory::DefaultInterface> *)otherPtr; break;
+	case Type::Json: _json = (JsonBuffer<memory::DefaultInterface> *)otherPtr; break;
+	case Type::AltCbor: _altCbor = (CborBuffer<memory::AlternativeInterface> *)otherPtr; break;
+	case Type::AltJson: _altJson = (JsonBuffer<memory::AlternativeInterface> *)otherPtr; break;
 	case Type::Decompress: _comp = (DecompressBuffer *)otherPtr; break;
 	case Type::Decrypt: _crypt = (DecryptBuffer *)otherPtr; break;
 	case Type::Undefined: break;
 	}
 
 	switch (other._type) {
-	case Type::Cbor: other._cbor = (CborBuffer *)selfPtr; break;
-	case Type::Json: other._json = (JsonBuffer *)selfPtr; break;
+	case Type::Cbor: other._cbor = (CborBuffer<memory::DefaultInterface> *)selfPtr; break;
+	case Type::Json: other._json = (JsonBuffer<memory::DefaultInterface> *)selfPtr; break;
+	case Type::AltCbor: _altCbor = (CborBuffer<memory::AlternativeInterface> *)selfPtr; break;
+	case Type::AltJson: _altJson = (JsonBuffer<memory::AlternativeInterface> *)selfPtr; break;
 	case Type::Decompress: other._comp = (DecompressBuffer *)selfPtr; break;
 	case Type::Decrypt: other._crypt = (DecryptBuffer *)selfPtr; break;
 	case Type::Undefined: break;
@@ -154,35 +170,38 @@ bool StreamBuffer::empty() const {
 	return _type != Type::Undefined;
 }
 
-const data::Value &StreamBuffer::data() const {
+
+void StreamBuffer::getData(ValueTemplate<memory::PoolInterface> &data) {
 	switch (_type) {
-	case Type::Cbor: if (_cbor) { return _cbor->data(); } break;
-	case Type::Json: if (_json) { return _json->data(); } break;
-	case Type::Decompress: if (_comp) { return _comp->data(); } break;
-	case Type::Decrypt: if (_crypt) { return _crypt->data(); } break;
+	case Type::Cbor: if (_cbor) { data = std::move(_cbor->data()); } break;
+	case Type::Json: if (_json) { data = std::move(_json->data()); } break;
+	case Type::AltCbor: if (_cbor) { data = std::move(_altCbor->data()); } break;
+	case Type::AltJson: if (_json) { data = std::move(_altJson->data()); } break;
+	case Type::Decompress: if (_comp) { data = std::move(_comp->data()); } break;
+	case Type::Decrypt: if (_crypt) { data = std::move(_crypt->data()); } break;
 	case Type::Undefined: break;
 	}
-	return data::Value::Null;
 }
-data::Value &StreamBuffer::data() {
+void StreamBuffer::getData(ValueTemplate<memory::StandartInterface> &data) {
 	switch (_type) {
-	case Type::Cbor: if (_cbor) { return _cbor->data(); } break;
-	case Type::Json: if (_json) { return _json->data(); } break;
-	case Type::Decompress: if (_comp) { return _comp->data(); } break;
-	case Type::Decrypt: if (_crypt) { return _crypt->data(); } break;
+	case Type::Cbor: if (_cbor) { data = std::move(_cbor->data()); } break;
+	case Type::Json: if (_json) { data = std::move(_json->data()); } break;
+	case Type::AltCbor: if (_cbor) { data = std::move(_altCbor->data()); } break;
+	case Type::AltJson: if (_json) { data = std::move(_altJson->data()); } break;
+	case Type::Decompress: if (_comp) { data = std::move(_comp->data()); } break;
+	case Type::Decrypt: if (_crypt) { data = std::move(_crypt->data()); } break;
 	case Type::Undefined: break;
 	}
-	return const_cast<data::Value &>(data::Value::Null);
 }
 
 bool StreamBuffer::header(const uint8_t* s, bool send) {
 	/* there should be checkers for compressed or encrypted message */
 	if (s[0] == 0xd9 && s[1] == 0xd9 && s[2] == 0xf7) {
 		_type = Type::Cbor;
-		_cbor = new CborBuffer;
+		_cbor = new CborBuffer<memory::DefaultInterface>;
 	} else {
 		_type = Type::Json;
-		_json = new JsonBuffer;
+		_json = new JsonBuffer<memory::DefaultInterface>;
 	}
 	if (_type != Type::Undefined) {
 		if (send) {
@@ -197,6 +216,8 @@ StreamBuffer::streamsize StreamBuffer::read(const uint8_t* s, streamsize count) 
 	switch (_type) {
 	case Type::Cbor: if (_cbor) { return _cbor->read(s, count); } break;
 	case Type::Json: if (_json) { return _json->read(s, count); } break;
+	case Type::AltCbor: if (_altCbor) { return _altCbor->read(s, count); } break;
+	case Type::AltJson: if (_altJson) { return _altJson->read(s, count); } break;
 	case Type::Decompress: if (_comp) { return _comp->read(s, count); } break;
 	case Type::Decrypt: if (_crypt) { return _crypt->read(s, count); } break;
 	case Type::Undefined: break;

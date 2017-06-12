@@ -721,7 +721,7 @@ void Image::eraseRefs(size_t idx) {
 		}
 	}
 
-	_refs.erase(std::remove_if(_refs.begin(), _refs.end(), [idx] (PathRef *ref) -> bool {
+	_refs.erase(std::remove_if(_refs.begin(), _refs.end(), [] (PathRef *ref) -> bool {
 		if (ref->image == nullptr) {
 			return true;
 		}

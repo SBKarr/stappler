@@ -136,9 +136,9 @@ protected:
 
 void IconSprite::NavIcon::onAdded() {
 	DynamicIcon::onAdded();
-	_top = _image->addPath().setFillColor(Color4B(0, 0, 0, 255));
-	_center = _image->addPath().setFillColor(Color4B(0, 0, 0, 255));
-	_bottom = _image->addPath().setFillColor(Color4B(0, 0, 0, 255));
+	_top = _image->addPath().setFillColor(Color4B(255, 255, 255, 255));
+	_center = _image->addPath().setFillColor(Color4B(255, 255, 255, 255));
+	_bottom = _image->addPath().setFillColor(Color4B(255, 255, 255, 255));
 }
 
 void IconSprite::NavIcon::redraw(float pr, float diff) {
@@ -213,7 +213,7 @@ void IconSprite::NavIcon::redraw(float pr, float diff) {
 
 void IconSprite::CircleLoaderIcon::onAdded() {
 	DynamicIcon::onAdded();
-	_path = _image->addPath(draw::Path().setStyle(stappler::draw::Path::Style::Stroke).setStrokeWidth(2.0f));
+	_path = _image->addPath(draw::Path().setStyle(stappler::draw::Path::Style::Stroke).setStrokeWidth(2.0f)).setFillColor(Color4B(255, 255, 255, 255));
 }
 
 void IconSprite::CircleLoaderIcon::redraw(float pr, float diff) {
@@ -286,6 +286,14 @@ bool IconSprite::init(IconName name, uint32_t w, uint32_t h) {
 	return true;
 }
 
+void IconSprite::visit(cocos2d::Renderer *r, const Mat4 &t, uint32_t f, ZPath &z) {
+	if (_diff != 0.0f) {
+		_diff = 0.0f;
+		_dynamicIcon->redraw(_progress, _diff);
+	}
+	PathNode::visit(r, t, f, z);
+}
+
 void IconSprite::onEnter() {
 	PathNode::onEnter();
 	if (_dynamicIcon) {
@@ -346,11 +354,8 @@ bool IconSprite::isStatic() const {
 void IconSprite::setProgress(float progress) {
 	if (_dynamicIcon) {
 		if (_progress != progress) {
-			float diff = progress - _progress;
+			_diff = progress - _progress;
 			_progress = progress;
-			if (diff != 0.0f) {
-				_dynamicIcon->redraw(progress, diff);
-			}
 		}
 	} else {
 		_progress = 0.0f;

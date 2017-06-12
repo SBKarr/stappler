@@ -42,6 +42,7 @@ THE SOFTWARE.
 #include "SPStoreKit.h"
 #include "SPAssetLibrary.h"
 #include "SPThreadManager.h"
+#include "SPTextureCache.h"
 
 #include "base/CCEventDispatcher.h"
 #include "base/CCEventType.h"
@@ -129,6 +130,7 @@ Device::Device() : _deviceLog(&log::__stappler_log) {
         [this] (cocos2d::EventCustom*) {
 
         ThreadManager::getInstance()->update(0.0f);
+        TextureCache::getInstance()->reloadTextures();
     	stappler::log::text("Device", "onAndroidReset");
     	onAndroidReset(this);
     });

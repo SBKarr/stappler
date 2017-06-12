@@ -52,7 +52,10 @@ ResolveOptions Resource::resolveOptionForString(const String &str) {
 	}
 
 	ResolveOptions opts = ResolveOptions::None;
-	auto strings = string::split(str, ",");
+	Vector<String> strings;
+	string::split(str, ",", [&] (const StringView &v) {
+		strings.emplace_back(v.str());
+	});
 	for (auto &it : strings) {
 		if (it == "files") {
 			opts |= ResolveOptions::Files;

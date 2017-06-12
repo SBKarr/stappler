@@ -246,7 +246,7 @@ Bitmap Document::getImageBitmap(const String &iname, const Bitmap::StrideFn &fn)
 		auto &img = imageIt->second;
 		auto vec = readData(img.offset, img.length);
 		if (img.encoding == "base64") {
-			vec = base64::decode((const char *)vec.data(), vec.size());
+			vec = base64::decode(CoderSource(vec.data(), vec.size()));
 		}
 
 		if (vec.empty()) {

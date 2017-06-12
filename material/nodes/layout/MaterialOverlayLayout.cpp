@@ -43,7 +43,7 @@ bool OverlayLayout::init(const Size &size) {
 	_boundSize = size;
 
 	auto l = construct<gesture::Listener>();
-	l->setTouchFilter([this] (const Vec2 &loc, const gesture::Listener::DefaultTouchFilter &) -> bool {
+	l->setTouchFilter([] (const Vec2 &loc, const gesture::Listener::DefaultTouchFilter &) -> bool {
 		return true;
 	});
 	l->setPressCallback([this] (gesture::Event ev, const gesture::Press &p) -> bool {

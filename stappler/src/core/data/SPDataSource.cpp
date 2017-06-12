@@ -445,7 +445,7 @@ void Source::onSlice(std::vector<Slice> &vec, size_t &first, size_t &count, uint
 void Source::onSliceRequest(const BatchCallback &cb, Id::Type first, size_t size) {
 	if (first == Self.get()) {
 		if (!_data) {
-			_sourceCallback([this, cb] (data::Value &&val) {
+			_sourceCallback([cb] (data::Value &&val) {
 				std::map<Id, data::Value> map;
 				if (val.isArray()) {
 					map.insert(std::make_pair(Self, std::move(val.getValue(0))));

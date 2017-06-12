@@ -24,21 +24,23 @@ THE SOFTWARE.
 #define STAPPLER_SRC_FEATURES_NETWORKING_SPNETWORKDATATASK_H_
 
 #include "SPNetworkTask.h"
-#include "SPDataStream.h"
 
 NS_SP_BEGIN
 
 class NetworkDataTask : public NetworkTask {
 public:
 	NetworkDataTask();
-    virtual ~NetworkDataTask();
+	virtual ~NetworkDataTask();
 
-    virtual bool init(Method method, const String &url, const data::Value &data = data::Value(), data::EncodeFormat = data::EncodeFormat::Cbor);
+	virtual bool init(Method method, const String &url, const data::Value &data = data::Value(), data::EncodeFormat = data::EncodeFormat::Cbor);
+
+	virtual bool execute() override;
 
 	const data::Value &getData() const;
 	data::Value &getData();
+
 protected:
-	data::StreamBuffer _buffer;
+	data::Value _data;
 };
 
 NS_SP_END

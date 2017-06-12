@@ -27,6 +27,22 @@ THE SOFTWARE.
 #include "SPString.h"
 #include "SPUnicode.h"
 
+NS_SP_EXT_BEGIN(unicode)
+
+const uint8_t utf8_length_data[256] = {
+    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 1, 1
+};
+
+NS_SP_EXT_END(unicode)
+
+
 NS_SP_EXT_BEGIN(string)
 
 static const char * const sp_uppercase_set = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
@@ -37,15 +53,26 @@ static const char16_t * const sp_lowercase_set_16 = u"абвгдеёжзийкл
 
 inline size_t Utf8CharLength(const uint8_t *ptr, uint8_t &mask) SPUNUSED;
 
-static inline int sp_str_ind(const char *str, char b, char c) {
+static inline void sp_str_replace(const char *target, const char *str, char &b, char &c) {
 	int i = 0;
-	while (str[0] != 0) {
-		if (str[1] != 0 && str[0] == b && str[1] == c) {
-			return i;
+	while (str[1] != 0) {
+		if (str[0] == b && str[1] == c) {
+			if (i % 2 == 0) {
+				b = target[i];
+				c = target[i + 1];
+			}
+			return;
 		}
 		++ i; ++ str;
 	}
-	return -1;
+}
+
+void toupper(char &b, char &c) {
+	sp_str_replace(sp_uppercase_set, sp_lowercase_set, b, c);
+}
+
+void tolower(char &b, char &c) {
+	sp_str_replace(sp_lowercase_set, sp_uppercase_set, b, c);
 }
 
 char16_t tolower(char16_t c) {
@@ -82,130 +109,6 @@ char16_t toupper(char16_t c) {
 	}
 }
 
-WideString &tolower(WideString &str) {
-	size_t len = str.length();
-	for (size_t i = 0; i < len; i++) {
-		str[i] = tolower(str[i]);
-	}
-	return str;
-}
-
-WideString &toupper(WideString &str) {
-	size_t len = str.length();
-	for (size_t i = 0; i < len; i++) {
-		str[i] = toupper(str[i]);
-	}
-	return str;
-}
-
-String &tolower(String &str) {
-	size_t len = str.length();
-	char b = 0, c = 0;
-	for (size_t i = 0; i < len; i++) {
-		b = c;
-		c = str[i];
-		if (b != 0 && (b & (0x80))) {
-			int ind = sp_str_ind(sp_uppercase_set, b, c);
-			if (ind >= 0 && ind % 2 == 0) {
-				str[i-1] = sp_lowercase_set[ind];
-				str[i] = sp_lowercase_set[ind + 1];
-			} else {
-				str[i] = ::tolower(c);
-			}
-		} else {
-			str[i] = ::tolower(c);
-		}
-	}
-	return str;
-}
-String &toupper(String &str) {
-	size_t len = str.length();
-	char b = 0, c = 0;
-	for (size_t i = 0; i < len; i++) {
-		b = c;
-		c = str[i];
-		if (b != 0 && (b & (0x80))) {
-			int ind = sp_str_ind(sp_lowercase_set, b, c);
-			if (ind >= 0 && ind % 2 == 0) {
-				str[i-1] = sp_uppercase_set[ind];
-				str[i] = sp_uppercase_set[ind + 1];
-			} else {
-				str[i] = ::toupper(c);
-			}
-		} else {
-			str[i] = ::toupper(c);
-		}
-	}
-	return str;
-}
-
-WideString tolower(const WideString &str) {
-	WideString ret; ret.reserve(str.size());
-	for (auto &c : str) {
-		ret.push_back(tolower(c));
-	}
-	return ret;
-}
-
-WideString toupper(const WideString &str) {
-	WideString ret; ret.reserve(str.size());
-	for (auto &c : str) {
-		ret.push_back(toupper(c));
-	}
-	return ret;
-}
-
-String tolower(const String &str) {
-	String ret; ret.reserve(str.size());
-	char b = 0;
-	for (auto &c : str) {
-		if (b != 0 && (b & (0x80))) {
-			int ind = sp_str_ind(sp_uppercase_set, b, c);
-			if (ind >= 0 && ind % 2 == 0) {
-				ret.pop_back();
-				ret.push_back(sp_lowercase_set[ind]);
-				ret.push_back(sp_lowercase_set[ind + 1]);
-			} else {
-				ret.push_back(::tolower(c));
-			}
-		} else {
-			ret.push_back(::tolower(c));
-		}
-		b = c;
-	}
-	return ret;
-}
-String toupper(const String &str) {
-	String ret; ret.reserve(str.size());
-	char b = 0;
-	for (auto &c : str) {
-		if (b != 0 && (b & (0x80))) {
-			int ind = sp_str_ind(sp_lowercase_set, b, c);
-			if (ind >= 0 && ind % 2 == 0) {
-				ret.pop_back();
-				ret.push_back(sp_uppercase_set[ind]);
-				ret.push_back(sp_uppercase_set[ind + 1]);
-			} else {
-				ret.push_back(::toupper(c));
-			}
-		} else {
-			ret.push_back(::toupper(c));
-		}
-		b = c;
-	}
-	return ret;
-}
-
-void toupper_buf(char16_t *str, size_t len) {
-	if (len == maxOf<size_t>()) {
-		len = std::char_traits<char16_t>::length(str);
-	}
-
-	for (size_t i = 0; i < len; i++) {
-		str[i] = toupper(str[i]);
-	}
-}
-
 void toupper_buf(char *str, size_t len) {
 	if (len == maxOf<size_t>()) {
 		len = std::char_traits<char>::length(str);
@@ -215,27 +118,11 @@ void toupper_buf(char *str, size_t len) {
 	for (size_t i = 0; i < len; i++) {
 		b = c;
 		c = str[i];
-		if (b != 0 && (b & (0x80))) {
-			int ind = sp_str_ind(sp_lowercase_set, b, c);
-			if (ind >= 0 && ind % 2 == 0) {
-				str[i-1] = sp_uppercase_set[ind];
-				str[i] = sp_uppercase_set[ind + 1];
-			} else {
-				str[i] = ::toupper(c);
-			}
+		if (b & (0x80)) {
+			toupper(str[i-1], str[i]);
 		} else {
 			str[i] = ::toupper(c);
 		}
-	}
-}
-
-void tolower_buf(char16_t *str, size_t len) {
-	if (len == maxOf<size_t>()) {
-		len = std::char_traits<char16_t>::length(str);
-	}
-
-	for (size_t i = 0; i < len; i++) {
-		str[i] = tolower(str[i]);
 	}
 }
 
@@ -248,21 +135,34 @@ void tolower_buf(char *str, size_t len) {
 	for (size_t i = 0; i < len; i++) {
 		b = c;
 		c = str[i];
-		if (b != 0 && (b & (0x80))) {
-			int ind = sp_str_ind(sp_uppercase_set, b, c);
-			if (ind >= 0 && ind % 2 == 0) {
-				str[i-1] = sp_lowercase_set[ind];
-				str[i] = sp_lowercase_set[ind + 1];
-			} else {
-				str[i] = ::tolower(c);
-			}
+		if (b & (0x80)) {
+			tolower(str[i-1], str[i]);
 		} else {
 			str[i] = ::tolower(c);
 		}
 	}
 }
+void toupper_buf(char16_t *str, size_t len) {
+	if (len == maxOf<size_t>()) {
+		len = std::char_traits<char16_t>::length(str);
+	}
 
-static inline uint32_t Utf8Get(char_const_ptr_ref_t ptr) {
+	for (size_t i = 0; i < len; i++) {
+		str[i] = string::toupper(str[i]);
+	}
+}
+
+void tolower_buf(char16_t *str, size_t len) {
+	if (len == maxOf<size_t>()) {
+		len = std::char_traits<char16_t>::length(str);
+	}
+
+	for (size_t i = 0; i < len; i++) {
+		str[i] = string::tolower(str[i]);
+	}
+}
+
+char16_t utf8Decode(char_const_ptr_ref_t ptr) {
 	uint8_t len = 0;
 	auto ret = unicode::utf8Decode(ptr, len);
 	ptr += len;
@@ -275,7 +175,7 @@ template <class T> static inline T Utf8NextChar(T p) {
 
 template <class T> static inline T Utf8NextChar(T p, size_t &counter) {
 	auto l = unicode::utf8_length_data[ ((const uint8_t *)p)[0] ];
-	counter += l;
+	counter += 1;
 	return (p + l);
 }
 static char16_t Utf8DecodeHtml(char_const_ptr_t ptr, uint32_t len) {
@@ -298,7 +198,7 @@ static char16_t Utf8DecodeHtml(char_const_ptr_t ptr, uint32_t len) {
 	return 0;
 }
 
-static char16_t Utf8GetHtml(char_const_ptr_ref_t utf8) {
+char16_t utf8HtmlDecode(char_const_ptr_ref_t utf8) {
 	if (utf8[0] == '&') {
 		uint32_t len = 0;
 		while (utf8[len] && utf8[len] != ';' && len < 10) {
@@ -311,48 +211,14 @@ static char16_t Utf8GetHtml(char_const_ptr_ref_t utf8) {
 		}
 
 		if (c == 0) {
-			return Utf8Get(utf8);
+			return utf8Decode(utf8);
 		} else {
 			utf8 += (len + 1);
 			return c;
 		}
 	} else {
-		return Utf8Get(utf8);
+		return utf8Decode(utf8);
 	}
-}
-
-static inline size_t Utf8SymbolsCount(const String &str) {
-	size_t counter = 0;
-	char_const_ptr_t ptr = str.c_str();
-	do {
-		ptr = Utf8NextChar(ptr, counter);
-	} while (ptr[0] != 0);
-	return counter;
-}
-
-static inline size_t Utf8SymbolsCountHtml(const String &str) {
-	size_t counter = 0;
-	char_const_ptr_t ptr = str.c_str();
-	do {
-		if (ptr[0] == '&') {
-			uint8_t len = 0;
-			while (ptr[len] && ptr[len] != ';' && len < 10) {
-				len ++;
-			}
-
-			if (ptr[len] == ';' && len > 2) {
-				counter ++;
-				ptr += len;
-			} else if (ptr[len] == 0) {
-				ptr += len;
-			} else {
-				ptr = Utf8NextChar(ptr, counter);
-			}
-		} else {
-			ptr = Utf8NextChar(ptr, counter);
-		}
-	} while (ptr[0] != 0);
-	return counter;
 }
 
 bool isspace(char ch) {
@@ -390,91 +256,48 @@ Pair<char16_t, uint8_t> read(char_const_ptr_t ptr) {
 }
 
 size_t getUtf16Length(const StringView &input) {
-	StringView utf8_str(input);
+	size_t counter = 0;
+	char_const_ptr_t ptr = input.data();
+	const char_const_ptr_t end = ptr + input.size();
+	while (ptr < end) {
+		ptr = Utf8NextChar(ptr, counter);
+	};
+	return counter;
+}
+
+size_t getUtf16HtmlLength(const StringView &input) {
+	size_t counter = 0;
+	char_const_ptr_t ptr = input.data();
+	const char_const_ptr_t end = ptr + input.size();
+	while (ptr < end) {
+		if (ptr[0] == '&') {
+			uint8_t len = 0;
+			while (ptr[len] && ptr[len] != ';' && len < 10) {
+				len ++;
+			}
+
+			if (ptr[len] == ';' && len > 2) {
+				counter ++;
+				ptr += len;
+			} else if (ptr[len] == 0) {
+				ptr += len;
+			} else {
+				ptr = Utf8NextChar(ptr, counter);
+			}
+		} else {
+			ptr = Utf8NextChar(ptr, counter);
+		}
+	};
+	return counter;
+}
+
+size_t getUtf8Length(const WideStringView &str) {
+	const char16_t *ptr = str.data();
+	const char16_t *end = ptr + str.size();
 	size_t ret = 0;
-	while (!utf8_str.empty()) {
-		auto offset = unicode::utf8DecodeLength(*utf8_str.data());
-
-		utf8_str += offset;
-		ret += offset;
+	while (ptr < end) {
+		ret += unicode::utf8EncodeLength(*ptr++);
 	}
-
-    return ret;
-}
-size_t getUtf16Length(const String &str) {
-	return getUtf16Length(StringView(str));
-}
-size_t getUtf16Length(const char *str, size_t ilen) {
-	size_t nlen = (ilen == 0)?std::char_traits<char>::length(str):ilen;
-	return getUtf16Length(StringView(str, nlen));
-}
-
-size_t getUtf8Length(const WideStringView &istr) {
-	WideStringView str(istr);
-	size_t ret = 0;
-	while (!str.empty()) {
-		ret += unicode::utf8EncodeLength(*str.data());
-		++ str;
-	}
-	return ret;
-}
-size_t getUtf8Length(const WideString &str) {
-	return getUtf8Length(WideStringView(str));
-}
-size_t getUtf8Length(const char16_t *str, size_t ilen) {
-	size_t nlen = (ilen == 0)?std::char_traits<char16_t>::length(str):ilen;
-	return getUtf8Length(WideStringView(str, nlen));
-}
-
-WideString toUtf16(const String &utf8_str) {
-	WideString utf16_str; utf16_str.reserve(Utf8SymbolsCount(utf8_str));
-	auto ptr = (char_const_ptr_t)utf8_str.c_str();
-
-	while (ptr[0] != 0) {
-		utf16_str.push_back((char16_t)Utf8Get(ptr));
-	}
-
-    return utf16_str;
-}
-WideString toUtf16(const char *str) {
-	WideString utf16_str; utf16_str.reserve(std::char_traits<char>::length(str));
-	auto ptr = str;
-	while (ptr[0] != 0) {
-		utf16_str.push_back((char16_t)Utf8Get(ptr));
-	}
-    return utf16_str;
-}
-WideString toUtf16Html(const String &utf8_str) {
-	WideString utf16_str; utf16_str.reserve(Utf8SymbolsCountHtml(utf8_str));
-	auto ptr = (char_const_ptr_t)utf8_str.c_str();
-
-	while (ptr[0] != 0) {
-		utf16_str.push_back((char16_t)Utf8GetHtml(ptr));
-	}
-
-    return utf16_str;
-}
-
-String toUtf8(const WideString &str) {
-	return toUtf8(str.data(), str.size());
-}
-String toUtf8(const char16_t *str, size_t ilen) {
-	size_t nlen = (ilen == 0)?std::char_traits<char16_t>::length(str):ilen;
-	size_t len = 0;
-	for (size_t i = 0; i < nlen; ++ i) {
-		len += unicode::utf8EncodeLength(str[i]);
-	}
-
-	String ret; ret.reserve(len);
-	for (size_t i = 0; i < nlen; ++ i) {
-		unicode::utf8Encode(ret, str[i]);
-	}
-
-	return ret;
-}
-String toUtf8(char16_t c) {
-	String ret; ret.reserve(unicode::utf8EncodeLength(c));
-	unicode::utf8Encode(ret, c);
 	return ret;
 }
 
@@ -492,7 +315,7 @@ static constexpr const uint8_t koi8r_small[64] = {
 	0xD2, 0xD3, 0xD4, 0xD5, 0xC6, 0xC8, 0xC3, 0xDE, 0xDB, 0xDD, 0xDF, 0xD9, 0xD8, 0xDC, 0xC0, 0xD1,
 };
 
-static inline char charToKoi8r(char16_t c) {
+char charToKoi8r(char16_t c) {
 	if (c <= 0x7f) {
 		return char(c & 0xFF);
 	} else if (c >= u'а' && c <= u'я') {
@@ -572,18 +395,6 @@ static inline char charToKoi8r(char16_t c) {
 		}
 	}
 	return ' ';
-}
-
-String toKoi8r(const WideString &str) {
-	return toKoi8r(str.data(), str.size());
-}
-String toKoi8r(const char16_t *str, size_t ilen) {
-	size_t nlen = (ilen == 0)?std::char_traits<char16_t>::length(str):ilen;
-	String ret; ret.resize(nlen);
-	for (size_t i = 0; i < nlen; ++ i) {
-		ret[i] = charToKoi8r(char16_t(str[i]));
-	}
-	return ret;
 }
 
 NS_SP_EXT_END(string)

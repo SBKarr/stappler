@@ -147,7 +147,7 @@ bool AccessControl::useAdminPrivileges(User *u) const {
 		if (u && u->isAdmin()) {
 			return true;
 		} else if (!u) {
-			auto req = AllocStack::get().request();
+			auto req = apr::pool::request();
 			if (req) {
 				Request rctx(req);
 				if (rctx.isAdministrative()) {

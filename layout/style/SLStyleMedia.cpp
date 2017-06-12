@@ -25,7 +25,7 @@ THE SOFTWARE.
 
 #include "SLParser.h"
 #include "SPLayout.h"
-#include "SLStyleParameters.hpp"
+#include "SLStyle.h"
 #include "SPString.h"
 
 //#define SP_RTMEDIA_LOG(...) logTag("RTMedia", __VA_ARGS__)

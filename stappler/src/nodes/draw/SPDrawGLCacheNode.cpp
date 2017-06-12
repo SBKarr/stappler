@@ -14,6 +14,24 @@
 
 NS_SP_EXT_BEGIN(draw)
 
+GLBlending GLBlending::loadFromGL() {
+	GLint blendSrcRgb, blendSrcAlpha, blendDstRgb, blendDstAlpha, blendEqRgb, blendEqAlpha;
+
+	if (glIsEnabled(GL_BLEND)) {
+		glGetIntegerv(GL_BLEND_SRC_RGB, (GLint *) &blendSrcRgb);
+		glGetIntegerv(GL_BLEND_SRC_ALPHA, (GLint *) &blendSrcAlpha);
+		glGetIntegerv(GL_BLEND_DST_RGB, (GLint *) &blendDstRgb);
+		glGetIntegerv(GL_BLEND_DST_ALPHA, (GLint *) &blendDstAlpha);
+		glGetIntegerv(GL_BLEND_EQUATION_RGB, (GLint *) &blendEqRgb);
+		glGetIntegerv(GL_BLEND_EQUATION_ALPHA, (GLint *) &blendEqAlpha);
+
+		return GLBlending(BlendFunc{GLenum(blendSrcRgb), GLenum(blendDstRgb)}, BlendFunc{GLenum(blendSrcAlpha), GLenum(blendDstAlpha)},
+				getEqForEnum(blendEqRgb), getEqForEnum(blendEqAlpha));
+	} else {
+		return GLBlending();
+	}
+}
+
 GLenum GLBlending::getEnumForEq(Equation eq) {
 	switch (eq) {
 	case GLBlending::FuncAdd: return GL_FUNC_ADD; break;
@@ -34,17 +52,52 @@ GLenum GLBlending::getEnumForEq(Equation eq) {
 	return GL_FUNC_ADD;
 }
 
+GLBlending::Equation GLBlending::getEqForEnum(GLenum eq) {
+	switch (eq) {
+	case GL_FUNC_ADD: return GLBlending::FuncAdd; break;
+	case GL_FUNC_SUBTRACT: return GLBlending::FuncSubstract; break;
+	case GL_FUNC_REVERSE_SUBTRACT: return GLBlending::FuncReverseSubstract; break;
+#ifdef GL_MIN
+	case GL_MIN: return GLBlending::Min; break;
+#elif GL_MIN_EXT
+	case GL_MIN_EXT: return GLBlending::Min; break;
+#endif
+#ifdef GL_MAX
+	case GL_MAX: return GLBlending::Max; break;
+#elif GL_MAX_EXT
+	case GL_MAX_EXT: return GLBlending::Max; break;
+#endif
+	}
+
+	return GLBlending::FuncAdd;
+}
+
+void GLCacheNode::load() {
+	GLint currentTex, currentProg;
+	glGetIntegerv(GL_TEXTURE_BINDING_2D, (GLint *) &currentTex);
+	glGetIntegerv(GL_CURRENT_PROGRAM, (GLint *) &currentProg);
+
+	_currentTexture = _origTexture = GLuint(currentTex);
+	_currentProgram = _origProgram = GLuint(currentProg);
+	_blending = _origBlending = GLBlending::loadFromGL();
+
+	if (ThreadManager::getInstance()->isMainThread()) {
+		cocos2d::GL::enableVertexAttribs(0);
+	}
+	_attributeFlags = 0;
+}
+
 void GLCacheNode::cleanup() {
-	bindTexture(0);
-	useProgram(0);
+	bindTexture(_origTexture);
+	useProgram(_origProgram);
 	enableVertexAttribs(0);
-	blendFunc(cocos2d::BlendFunc::DISABLE);
+	setBlending(_origBlending);
+	CHECK_GL_ERROR_DEBUG();
 
 	if (ThreadManager::getInstance()->isMainThread()) {
 		cocos2d::Director::getInstance()->setViewport();
-		cocos2d::GL::blendResetToCache();
 	}
-    CHECK_GL_ERROR_DEBUG();
+	CHECK_GL_ERROR_DEBUG();
 }
 
 void GLCacheNode::bindTexture(GLuint value) {

@@ -27,19 +27,9 @@ THE SOFTWARE.
 
 #define SPCHARMATCHING_LOG(...)
 
-NS_SP_EXT_BEGIN(chars)
+NS_SP_BEGIN
 
-/* Inlined templates for char-matching
- *
- * Chars < valiable-length-char-list > - matched every character in list
- * Range < first-char, last-char > - matched all characters in specific range
- * CharGroup < GroupId > - matched specific named char group
- *
- * Compose < Chars|Range|CharGroup variable length list >
- *
- */
-
-enum class GroupId : uint32_t {
+enum class CharGroupId : uint32_t {
 	// displayable groups
 	None = 0,
 	PunctuationBasic = 1 << 1,
@@ -74,7 +64,28 @@ enum class GroupId : uint32_t {
 	TextPunctuation = 1 << 24,
 };
 
-SP_DEFINE_ENUM_AS_MASK(GroupId)
+SP_DEFINE_ENUM_AS_MASK(CharGroupId)
+
+bool inCharGroup(CharGroupId mask, char16_t);
+bool inCharGroupMask(CharGroupId mask, char16_t);
+WideString getCharGroup(CharGroupId mask);
+
+NS_SP_END
+
+
+NS_SP_EXT_BEGIN(chars)
+
+/* Inlined templates for char-matching
+ *
+ * Chars < valiable-length-char-list > - matched every character in list
+ * Range < first-char, last-char > - matched all characters in specific range
+ * CharGroup < GroupId > - matched specific named char group
+ *
+ * Compose < Chars|Range|CharGroup variable length list >
+ *
+ */
+
+using GroupId = CharGroupId;
 
 struct UniChar {
 	static inline bool match(char c) { return (c & 128) != 0; }
@@ -540,15 +551,5 @@ inline void MatchTraits::_foreachCompose(const Func &f) {
 }
 
 NS_SP_EXT_END(chars)
-
-NS_SP_BEGIN
-
-using CharGroupId = chars::GroupId;
-
-bool inCharGroup(CharGroupId mask, char16_t);
-bool inCharGroupMask(CharGroupId mask, char16_t);
-WideString getCharGroup(CharGroupId mask);
-
-NS_SP_END
 
 #endif /* COMMON_STRING_SPCHARMATCHING_H_ */

@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,25 +20,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef COMMON_APR_SPAPRSTRING_H_
-#define COMMON_APR_SPAPRSTRING_H_
+#ifndef COMMON_MEMORY_SPMEMSTRING_H_
+#define COMMON_MEMORY_SPMEMSTRING_H_
 
-#include "SPAprStorageMem.h"
-
-#if SPAPR
-
+#include "SPMemStorageMem.h"
 #include "city.h"
 
-NS_SP_EXT_BEGIN(apr)
+NS_SP_EXT_BEGIN(memory)
 
 struct char_pointer_test;
 template<typename T> struct is_char_pointer {};
-template<> struct is_char_pointer<const char *> { typedef char_pointer_test* Type; };
-template<> struct is_char_pointer<char *> { typedef char_pointer_test* Type; };
-template<> struct is_char_pointer<const char16_t *> { typedef char_pointer_test* Type; };
-template<> struct is_char_pointer<char16_t *> { typedef char_pointer_test* Type; };
-template<> struct is_char_pointer<const char32_t *> { typedef char_pointer_test* Type; };
-template<> struct is_char_pointer<char32_t *> { typedef char_pointer_test* Type; };
+template<> struct is_char_pointer<const char *> { using Type = char_pointer_test*; };
+template<> struct is_char_pointer<char *> { using Type = char_pointer_test; };
+template<> struct is_char_pointer<const char16_t *> { using Type = char_pointer_test; };
+template<> struct is_char_pointer<char16_t *> { using Type = char_pointer_test; };
+template<> struct is_char_pointer<const char32_t *> { using Type = char_pointer_test; };
+template<> struct is_char_pointer<char32_t *> { using Type = char_pointer_test; };
 
 template <typename CharType>
 class basic_string {
@@ -54,7 +51,8 @@ public:
 
 	using size_type = size_t;
 	using charT = CharType;
-	using mem_type = storage_mem<CharType>;
+	using value_type = CharType;
+	using mem_type = storage_mem<CharType, size_t(1)>;
 	using self = basic_string<CharType>;
 
 	using iterator = typename mem_type::iterator;
@@ -612,7 +610,7 @@ protected:
 	    return 0;
 	}
 
-	storage_mem<CharType> _mem;
+	mem_type _mem;
 };
 
 template< class CharT > basic_string<CharT>
@@ -914,23 +912,21 @@ using u32string = basic_string<char32_t>;
 
 using weak_string = const string;
 
-NS_SP_EXT_END(apr)
+NS_SP_EXT_END(memory)
 
-inline stappler::apr::basic_string<char> operator"" _weak ( const char* str, size_t len) {
-	stappler::apr::basic_string<char> ret;
+inline stappler::memory::basic_string<char> operator"" _weak ( const char* str, size_t len) {
+	stappler::memory::basic_string<char> ret;
 	if (str) {
 		ret.assign_weak(str, len);
 	}
 	return ret;
 }
 
-using namespace stappler;
-
 namespace std {
 
 template<>
-struct hash<apr::basic_string<char>> {
-	size_t operator() (const apr::basic_string<char> & s) const noexcept	{
+struct hash<stappler::memory::basic_string<char>> {
+	size_t operator() (const stappler::memory::basic_string<char> & s) const noexcept	{
 		if (sizeof(size_t) == 8) {
 			return CityHash64(s.data(), s.size());
 		} else {
@@ -940,8 +936,8 @@ struct hash<apr::basic_string<char>> {
 };
 
 template<>
-struct hash<apr::basic_string<char16_t>> {
-	size_t operator() (const apr::basic_string<char16_t> & s) const noexcept	{
+struct hash<stappler::memory::basic_string<char16_t>> {
+	size_t operator() (const stappler::memory::basic_string<char16_t> & s) const noexcept	{
 		if (sizeof(size_t) == 8) {
 			return CityHash64((char *)s.data(), s.size() * sizeof(char16_t));
 		} else {
@@ -952,6 +948,4 @@ struct hash<apr::basic_string<char16_t>> {
 
 }
 
-#endif
-
-#endif /* COMMON_APR_SPAPRSTRING_H_ */
+#endif /* COMMON_MEMORY_SPMEMSTRING_H_ */

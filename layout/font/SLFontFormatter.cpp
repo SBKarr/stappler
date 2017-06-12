@@ -1293,10 +1293,10 @@ void HyphenMap::purgeHyphenDicts() {
 
 String HyphenMap::convertWord(HyphenDict *dict, const char16_t *ptr, size_t len) {
 	if (dict->utf8) {
-		return string::toUtf8(ptr, len);
+		return string::toUtf8(WideStringView(ptr, len));
 	} else {
 		if (strcmp("KOI8-R", dict->cset) == 0) {
-			return string::toKoi8r(ptr, len);
+			return string::toKoi8r(WideStringView(ptr, len));
 		}
 
 		return String();

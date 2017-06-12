@@ -157,7 +157,7 @@ struct Object {
 
 using FloatStack = Vector< Rect >;
 
-struct InlineContext {
+struct InlineContext : public Ref {
 	using NodeCallback = Function<void(InlineContext &ctx)>;
 
 	struct RefPosInfo {
@@ -207,7 +207,9 @@ struct InlineContext {
 
 	Vector<Pair<const Node *, NodeCallback>> nodes;
 
-	InlineContext(FontSource *, float);
+	InlineContext();
+
+	bool init(FontSource *, float);
 
 	void pushNode(const Node *, const NodeCallback &);
 	void popNode(const Node *);

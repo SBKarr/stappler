@@ -442,6 +442,7 @@ bool Drawer::begin(cocos2d::Texture2D * tex, const Color4B &clearColor) {
 	if (_fbo == 0) {
 		return false;
 	}
+	load();
 	_width = tex->getPixelsWide();
 	_height = tex->getPixelsHigh();
 

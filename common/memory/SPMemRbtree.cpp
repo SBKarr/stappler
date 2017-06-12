@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,11 +24,10 @@ THE SOFTWARE.
 **/
 
 #include "SPCore.h"
-#include "SPAprRbtree.h"
-#include "SPAprStringStream.h"
+#include "SPMemRbtree.h"
+#include "SPMemStringStream.h"
 
-#if SPAPR
-NS_APR_BEGIN
+NS_SP_EXT_BEGIN(memory)
 
 namespace rbtree {
 
@@ -123,7 +122,7 @@ const NodeBase * NodeBase::decrement(const NodeBase *c) {
 			c = c->right;
 		}
 	} else {
-		if (c->parent && c->parent->color) {
+		if (c->parent && c->parent->getColor()) {
 			if (c->parent->right == c) {
 				c = c->parent;
 			} else {
@@ -146,7 +145,7 @@ const NodeBase * NodeBase::decrement(const NodeBase *c) {
 NodeBase *NodeBase::replace(NodeBase *old, NodeBase *n) {
 	n->left = old->left;
 	n->right = old->right;
-	n->color = old->color;
+	n->setColor(old->getColor());
 	n->parent = old->parent;
 
 	// link new with parent
@@ -213,15 +212,15 @@ void RotateRight(NodeBase * head, NodeBase * n, NodeBase * p) {
 
 void NodeBase::insert(NodeBase *head, NodeBase * n) {
     /* check Red-Black properties */
-    while (n != head->left && n->parent->color == NodeColor::Red) {
+    while (n != head->left && n->parent->getColor() == NodeColor::Red) {
     	auto p = n->parent;
     	auto g = n->parent->parent;
         if (p == g->left) {
         	NodeBase * u = g->right;
-            if (u && u->color == NodeColor::Red) {
-                p->color = NodeColor::Black;
-                u->color = NodeColor::Black;
-                g->color = NodeColor::Red;
+            if (u && u->getColor() == NodeColor::Red) {
+                p->setColor(NodeColor::Black);
+                u->setColor(NodeColor::Black);
+                g->setColor(NodeColor::Red);
                 n = g;
             } else {
                 if (n == p->right) {
@@ -229,16 +228,16 @@ void NodeBase::insert(NodeBase *head, NodeBase * n) {
                     n = n->left;
                     p = n->parent;
                 }
-                p->color = NodeColor::Black;
-                g->color = NodeColor::Red;
+                p->setColor(NodeColor::Black);
+                g->setColor(NodeColor::Red);
                 RotateRight(head, p, g);
             }
         } else {
         	NodeBase * u = g->left;
-            if (u && u->color == NodeColor::Red) {
-                p->color = NodeColor::Black;
-                u->color = NodeColor::Black;
-                g->color = NodeColor::Red;
+            if (u && u->getColor() == NodeColor::Red) {
+                p->setColor(NodeColor::Black);
+                u->setColor(NodeColor::Black);
+                g->setColor(NodeColor::Red);
                 n = g;
             } else {
                 if (n == n->parent->left) {
@@ -246,46 +245,46 @@ void NodeBase::insert(NodeBase *head, NodeBase * n) {
             		n = n->right;
                     p = n->parent;
                 }
-                p->color = NodeColor::Black;
-                g->color = NodeColor::Red;
+                p->setColor(NodeColor::Black);
+                g->setColor(NodeColor::Red);
                 RotateLeft(head, p, g);
             }
         }
     }
-    head->left->color = NodeColor::Black; // root
+    head->left->setColor(NodeColor::Black); // root
 }
 
 void NodeBase::remove(NodeBase *head, NodeBase * n) {
-	while (n != head->left && n->color == NodeColor::Black) {
+	while (n != head->left && n->getColor() == NodeColor::Black) {
 		if (n == n->parent->left) {
 			NodeBase *s = n->parent->right;
-			if (s && s->color == NodeColor::Red) {
-				n->parent->color = NodeColor::Red;
-				s->color = NodeColor::Black;
+			if (s && s->getColor() == NodeColor::Red) {
+				n->parent->setColor(NodeColor::Red);
+				s->setColor(NodeColor::Black);
 				RotateLeft(head, s, n->parent);
 				s = n->parent->right;
 			}
 			if (s) {
-				if (s->color == NodeColor::Black
-						&& (!s->left || s->left->color == NodeColor::Black)
-						&& (!s->right || s->right->color == NodeColor::Black)) {
-					s->color = NodeColor::Red;
-					if (s->parent->color == NodeColor::Red) {
-						s->parent->color = NodeColor::Black;
+				if (s->getColor() == NodeColor::Black
+						&& (!s->left || s->left->getColor() == NodeColor::Black)
+						&& (!s->right || s->right->getColor() == NodeColor::Black)) {
+					s->setColor(NodeColor::Red);
+					if (s->parent->getColor() == NodeColor::Red) {
+						s->parent->setColor(NodeColor::Black);
 						break;
 					} else {
 						n = n->parent;
 					}
 				} else {
-					if ((!s->right || s->right->color == NodeColor::Black) && (s->left && s->left->color == NodeColor::Red)) {
-						s->color = NodeColor::Red;
-						s->left->color = NodeColor::Black;
+					if ((!s->right || s->right->getColor() == NodeColor::Black) && (s->left && s->left->getColor() == NodeColor::Red)) {
+						s->setColor(NodeColor::Red);
+						s->left->setColor(NodeColor::Black);
 						RotateRight(head, s->left, s);
 						s = n->parent->right;
 					}
-					s->color = n->parent->color;
-					n->parent->color = NodeColor::Black;
-					if (s->right) s->right->color = NodeColor::Black;
+					s->setColor(n->parent->getColor());
+					n->parent->setColor(NodeColor::Black);
+					if (s->right) s->right->setColor(NodeColor::Black);
 					RotateLeft(head, s, n->parent);
 					break;
 				}
@@ -294,33 +293,33 @@ void NodeBase::remove(NodeBase *head, NodeBase * n) {
 			}
 		} else {
 			NodeBase *s = n->parent->left;
-			if (s && s->color == NodeColor::Red) {
-				n->parent->color = NodeColor::Red;
-				s->color = NodeColor::Black;
+			if (s && s->getColor() == NodeColor::Red) {
+				n->parent->setColor(NodeColor::Red);
+				s->setColor(NodeColor::Black);
 				RotateRight(head, s, n->parent);
 				s = n->parent->left;
 			}
 			if (s) {
-				if (s->color == NodeColor::Black
-						&& (!s->left || s->left->color == NodeColor::Black)
-						&& (!s->right || s->right->color == NodeColor::Black)) {
-					s->color = NodeColor::Red;
-					if (s->parent->color == NodeColor::Red) {
-						s->parent->color = NodeColor::Black;
+				if (s->getColor() == NodeColor::Black
+						&& (!s->left || s->left->getColor() == NodeColor::Black)
+						&& (!s->right || s->right->getColor() == NodeColor::Black)) {
+					s->setColor(NodeColor::Red);
+					if (s->parent->getColor() == NodeColor::Red) {
+						s->parent->setColor(NodeColor::Black);
 						break;
 					} else {
 						n = n->parent;
 					}
 				} else {
-					if ((!s->left || s->left->color == NodeColor::Black) && (s->right && s->right->color == NodeColor::Red)) {
-						s->color = NodeColor::Red;
-						s->right->color = NodeColor::Black;
+					if ((!s->left || s->left->getColor() == NodeColor::Black) && (s->right && s->right->getColor() == NodeColor::Red)) {
+						s->setColor(NodeColor::Red);
+						s->right->setColor(NodeColor::Black);
 						RotateLeft(head, s->right, s);
 						s = n->parent->left;
 					}
-					s->color = n->parent->color;
-					n->parent->color = NodeColor::Black;
-					if (s->left) s->left->color = NodeColor::Black;
+					s->setColor(n->parent->getColor());
+					n->parent->setColor(NodeColor::Black);
+					if (s->left) s->left->setColor(NodeColor::Black);
 					RotateRight(head, s, n->parent);
 					break;
 				}
@@ -329,7 +328,7 @@ void NodeBase::remove(NodeBase *head, NodeBase * n) {
 			}
 		}
 	}
-	n->color = NodeColor::Black;
+	n->setColor(NodeColor::Black);
 }
 
 #if APR_RBTREE_DEBUG
@@ -574,5 +573,4 @@ bool TreeDebug::make_hint_test(std::ostream &stream, int size) {
 
 }
 
-NS_APR_END
-#endif
+NS_SP_EXT_END(memory)

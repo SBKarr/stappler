@@ -28,16 +28,7 @@ THE SOFTWARE.
 NS_SP_EXT_BEGIN(unicode)
 
 // Length lookup table
-constexpr const uint8_t utf8_length_data[256] = {
-    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 1, 1
-};
+extern const uint8_t utf8_length_data[256];
 
 // length of utf8-encoded symbol by it's first char
 template <class T>
@@ -53,10 +44,7 @@ static constexpr inline char16_t utf8Decode(const char *ptr, uint8_t &offset);
 inline constexpr uint8_t utf8EncodeLength(char16_t c) SPINLINE;
 
 // be sure that remained space in buffer is larger then utf8EncodeLength(c)
-inline void utf8EncodeBuf(char *ptr, char16_t c) SPINLINE;
-
-// encodes UCS-2 char to String
-inline uint8_t utf8Encode(String &str, char16_t c) SPINLINE;
+inline uint8_t utf8EncodeBuf(char *ptr, char16_t c) SPINLINE;
 
 // check if char is not start of utf8 symbol
 constexpr inline bool isUtf8Surrogate(char c) SPINLINE;
@@ -110,16 +98,19 @@ inline constexpr uint8_t utf8EncodeLength(char16_t c) {
 	);
 }
 
-inline void utf8EncodeBuf(char *ptr, char16_t c) {
+inline uint8_t utf8EncodeBuf(char *ptr, char16_t c) {
 	if (c < 0x80) {
 		ptr[0] = (char)c;
+		return 1;
 	} else if (c < 0x800) {
 		ptr[0] = 0xc0 | (c >> 6);
 		ptr[1] = 0x80 | (c & 0x3f);
+		return 2;
 	} else {
 		ptr[0] = 0xe0 | (c >> 12);
 		ptr[1] = 0x80 | (c >> 6 & 0x3f);
 		ptr[2] = 0x80 | (c & 0x3f);
+		return 3;
 	}
 }
 
@@ -135,6 +126,22 @@ inline uint8_t utf8Encode(String &str, char16_t c) {
 		str.push_back((char)(0xe0 | (c >> 12)));
 		str.push_back((char)(0x80 | (c >> 6 & 0x3f)));
 		str.push_back((char)(0x80 | (c & 0x3f)));
+		return 3;
+	}
+}
+
+inline uint8_t utf8Encode(OutputStream &str, char16_t c) {
+	if (c < 0x80) {
+		str << ((char)c);
+		return 1;
+	} else if (c < 0x800) {
+		str << ((char)(0xc0 | (c >> 6)));
+		str << ((char)(0x80 | (c & 0x3f)));
+		return 2;
+	} else {
+		str << ((char)(0xe0 | (c >> 12)));
+		str << ((char)(0x80 | (c >> 6 & 0x3f)));
+		str << ((char)(0x80 | (c & 0x3f)));
 		return 3;
 	}
 }

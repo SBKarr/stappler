@@ -100,12 +100,8 @@ StencilCache *StencilCache::getInstance() {
 void StencilCache::clear() {
 	bool en = _enabled;
 
-	State saved;
-
 	auto state = saveState();
 	enable(255);
-
-
 
 	drawFullScreenQuadClearStencil(255, false);
 
@@ -113,6 +109,7 @@ void StencilCache::clear() {
 		disable();
 	}
 
+	restoreState(state);
 	_value = 0;
 }
 

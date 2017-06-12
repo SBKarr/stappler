@@ -208,8 +208,7 @@ bool Session::write() {
 		return false;
 	}
 
-	_request.setCookie(_request.server().getSessionName(), base64::encode(_cookieToken.data(), _cookieToken.size()),
-			 _maxAge);
+	_request.setCookie(_request.server().getSessionName(), base64::encode(_cookieToken), _maxAge);
 	return true;
 }
 

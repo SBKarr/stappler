@@ -580,7 +580,9 @@ JObjectRef getService(Service serv, JNIEnv *pEnv, JObjectRef::Type type) {
 		log::format("SPJNI", "No methodID: %s (%s)", method.c_str(), param.c_str());
 	}
 
-	return JObjectRef(pEnv, ret, type);
+	JObjectRef r(pEnv, ret, type);
+	pEnv->DeleteLocalRef(ret);
+	return r;
 }
 
 AAssetManager * getAssetManager(JNIEnv *pEnv) {

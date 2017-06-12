@@ -32,16 +32,16 @@ NS_SP_BEGIN
 
 class NetworkSprite : public DynamicSprite {
 public:
-	static std::string getPathForUrl(const std::string &);
-	static bool isCachedTextureUrl(const std::string &);
+	static String getPathForUrl(const String &);
+	static bool isCachedTextureUrl(const String &);
 
 	virtual ~NetworkSprite();
 
-	virtual bool init(const std::string &url, float density = 0.0f);
-    virtual void visit(cocos2d::Renderer *, const cocos2d::Mat4 &, uint32_t, ZPath &zPath) override;
+	virtual bool init(const String &url, float density = 0.0f);
+    virtual void visit(cocos2d::Renderer *, const Mat4 &, uint32_t, ZPath &zPath) override;
 
     virtual void setUrl(const std::string &, bool force = false);
-	virtual const std::string &getUrl() const;
+	virtual const String &getUrl() const;
 
 protected:
 	virtual void onAsset(Asset *, bool force);
@@ -50,8 +50,8 @@ protected:
 	virtual void updateSprite(bool force = false);
 	virtual void loadTexture();
 
-	std::string _url;
-	std::string _filePath;
+	String _url;
+	String _filePath;
 
 	bool _assetDirty = true;
 

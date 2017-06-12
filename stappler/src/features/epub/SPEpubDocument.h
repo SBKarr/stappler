@@ -71,7 +71,7 @@ protected:
 
 	data::Value encodeContents(const ContentRecord &);
 
-	layout::Rc<Info> _info;
+	Rc<Info> _info;
 };
 
 NS_EPUB_END

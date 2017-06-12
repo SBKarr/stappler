@@ -23,11 +23,13 @@ THE SOFTWARE.
 #ifndef COMMON_APR_SPAPRUUID_H_
 #define COMMON_APR_SPAPRUUID_H_
 
-#include "SPAprString.h"
+#include "SPMemString.h"
 
 #if SPAPR
 
 NS_SP_EXT_BEGIN(apr)
+
+using string = memory::string;
 
 struct uuid : AllocPool {
 	static uuid generate() {

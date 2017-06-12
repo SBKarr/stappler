@@ -471,11 +471,11 @@ bool FontSource::init(FontFaceMap &&map, const ReceiptCallback &cb, float scale,
 		updateTexture(v, m);
 	};
 
-	_metricCallback = [this] (const layout::FontSource *source, const Vector<String> &srcs, uint16_t size, const ReceiptCallback &cb) {
+	_metricCallback = [] (const layout::FontSource *source, const Vector<String> &srcs, uint16_t size, const ReceiptCallback &cb) {
 		return requestMetrics(source, srcs, size, cb);
 	};
 
-	_layoutCallback = [this] (const layout::FontSource *source, const Vector<String> &srcs, const Arc<FontData> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
+	_layoutCallback = [] (const layout::FontSource *source, const Vector<String> &srcs, const Arc<FontData> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
 		return requestLayoutUpgrade(source, srcs, data, chars, cb);
 	};
 
@@ -654,7 +654,7 @@ void FontSource::clone(FontSource *source, const Function<void(FontSource *)> &c
 	uint32_t *vPtr = new uint32_t(0);
 
 	auto &thread = TextureCache::thread();
-	thread.perform([this, sPtr, lPtr, tlPtr, tPtr, vPtr] (const Task &) -> bool {
+	thread.perform([this, lPtr, tlPtr, tPtr, vPtr] (const Task &) -> bool {
 		Vector<char16_t> vec;;
 		for (auto &it : (*lPtr)) {
 			Arc<FontLayout> l(it.second);
@@ -1012,7 +1012,7 @@ void DynamicLabel::updateQuadsBackground(Source *source, FormatSpec *format) {
 	auto cPtr = new Vector<Vector<bool>>();
 
 	auto &thread = TextureCache::thread();
-	thread.perform([this, sourceRef, formatRef, tPtr, qPtr, cPtr, v] (const Task &) -> bool {
+	thread.perform([sourceRef, formatRef, tPtr, qPtr, cPtr, v] (const Task &) -> bool {
 		auto cache = font::FontLibrary::getInstance();
 		return cache->writeTextureQuads(v, *sourceRef, *formatRef, *tPtr, *qPtr, *cPtr);
 	}, [this, time, sourceRef, formatRef, tPtr, qPtr, cPtr] (const Task &, bool success) {

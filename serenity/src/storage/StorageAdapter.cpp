@@ -55,12 +55,12 @@ Scheme *Resolver::getScheme() const {
 }
 
 Adapter *Adapter::FromContext() {
-	auto log = AllocStack::get().log();
-	if (log.target == apr::LogContext::Target::Request) {
-		return Request(log.request).storage();
-	} else if (log.target == apr::LogContext::Target::Pool) {
+	auto log = apr::pool::info();
+	if (log.first == uint32_t(apr::pool::Info::Request)) {
+		return Request((request_rec *)log.second).storage();
+	} else if (log.first == uint32_t(apr::pool::Info::Pool)) {
 		websocket::Handler *h = nullptr;
-		apr_pool_userdata_get((void **)h, config::getSerenityWebsocketHandleName(), log.pool);
+		apr_pool_userdata_get((void **)h, config::getSerenityWebsocketHandleName(), (apr_pool_t *)log.second);
 		if (h) {
 			return h->storage();
 		}

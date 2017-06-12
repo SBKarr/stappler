@@ -31,7 +31,6 @@ SERENITY_SRCS_DIRS += \
 	common \
 	serenity/apr \
 	serenity/src \
-	serenity/ext \
 
 SERENITY_PRECOMPILED_HEADERS += \
 	serenity/src/core/Define.h \

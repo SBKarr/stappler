@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "SPDefine.h"
 #include "SPNetworkDataTask.h"
+#include "SPDataStream.h"
 
 NS_SP_BEGIN
 
@@ -36,11 +37,6 @@ bool NetworkDataTask::init(Method method, const std::string &url, const data::Va
 		return false;
 	}
 
-	setReceiveCallback([this] (char *data, size_t size) -> size_t {
-		_buffer.sputn(data, size);
-		return size;
-	});
-
 	addHeader("Accept", "application/cbor, application/json");
 
 	if ((method == Method::Post || method == Method::Put) && !data.isNull()) {
@@ -50,11 +46,29 @@ bool NetworkDataTask::init(Method method, const std::string &url, const data::Va
 	return true;
 }
 
+bool NetworkDataTask::execute() {
+	data::StreamBuffer buffer;
+	auto ret = false;
+
+	setReceiveCallback([&] (char *data, size_t size) -> size_t {
+		buffer.sputn(data, size);
+		return size;
+	});
+
+	ret = NetworkTask::execute();
+
+	setReceiveCallback(nullptr);
+
+	_data = buffer.extract();
+
+	return ret;
+}
+
 const data::Value &NetworkDataTask::getData() const {
-	return _buffer.data();
+	return _data;
 }
 data::Value &NetworkDataTask::getData() {
-	return _buffer.data();
+	return _data;
 }
 
 NS_SP_END

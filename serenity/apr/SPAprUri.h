@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef COMMON_APR_SPAPRURI_H_
 #define COMMON_APR_SPAPRURI_H_
 
-#include "SPAprString.h"
+#include "SPMemString.h"
 
 #if SPAPR
 

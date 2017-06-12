@@ -116,7 +116,7 @@ struct SpineFile {
 	bool linear;
 };
 
-class Info : public layout::Ref {
+class Info : public Ref {
 public:
 	using FilePtr = void *;
 

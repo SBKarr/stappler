@@ -90,7 +90,6 @@ class AccessControl;
 class Resource;
 class ResourceHandler;
 
-using AllocStack = apr::AllocStack;
 using AllocPool = apr::AllocPool;
 
 class Session;

@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,46 +24,59 @@ THE SOFTWARE.
 **/
 
 #include "SPCommon.h"
+#include "SPRef.h"
+#include "SPTime.h"
+#include "SPLog.h"
 
-#ifndef SPAPR
+NS_SP_BEGIN
 
-NS_SP_EXT_BEGIN(data)
+Ref::Ref() : _referenceCount(1) { }// when the Ref is created, the reference count of it is 1
+Ref::~Ref() { }
 
-struct EncodingBuffer {
-	static constexpr size_t InitialBufferSize() {
-		return 1_KiB;
-	}
-
-	static void EncodingBufferDestructor(void *data) {
-		if (data) {
-			delete ((Bytes *)data);
-		}
-	}
-
-	EncodingBuffer() {
-	    pthread_key_create(&_key, &EncodingBufferDestructor);
-	}
-
-	Bytes *get() {
-		Bytes *ret = (Bytes *)pthread_getspecific(_key);
-		if (!ret) {
-			ret = new Bytes();
-			ret->reserve(InitialBufferSize());
-			pthread_setspecific(_key, ret);
-		}
-		ret->clear();
-		return ret;
-	}
-
-	pthread_key_t _key;
-};
-
-static EncodingBuffer s_buffer;
-
-Bytes *acquireBuffer() {
-	return s_buffer.get();
+void Ref::retain() {
+    SPASSERT(_referenceCount > 0, "reference count should be greater than 0");
+    ++_referenceCount;
 }
 
-NS_SP_EXT_END(data)
+void Ref::release() {
+    SPASSERT(_referenceCount > 0, "reference count should be greater than 0");
+    --_referenceCount;
 
-#endif
+    if (_referenceCount == 0) {
+        delete this;
+    }
+}
+
+namespace memleak {
+
+static std::mutex s_mutex;
+static Map<Ref *, Time> s_map;
+
+void store(Ref *ptr) {
+	s_mutex.lock();
+	s_map.emplace(ptr, Time::now());
+	s_mutex.unlock();
+}
+void release(Ref *ptr) {
+	s_mutex.lock();
+	s_map.erase(ptr);
+	s_mutex.unlock();
+}
+void check(const std::function<void(Ref *, Time)> &cb) {
+	s_mutex.lock();
+	for (auto &it : s_map) {
+		cb(it.first, it.second);
+	}
+	s_mutex.unlock();
+}
+size_t count() {
+	size_t ret = 0;
+	s_mutex.lock();
+	ret = s_map.size();
+	s_mutex.unlock();
+	return ret;
+}
+
+}
+
+NS_SP_END

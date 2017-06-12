@@ -1660,7 +1660,7 @@ layout::Path IconStorage::getIconPath(IconName n) {
 
 	layout::Path path;
 	path.init(dataIt->data, dataIt->len);
-	path.setFillColor(Color4B(0, 0, 0, 255));
+	path.setFillColor(Color4B(255, 255, 255, 255));
 	return path;
 }
 
@@ -1673,8 +1673,9 @@ IconStorage::~IconStorage() {
 bool IconStorage::init(float d) {
 	_density = d;
 	onEvent(Device::onAndroidReset, [this] (const Event *) {
+		_texture->init(cocos2d::Texture2D::PixelFormat::A8, _texture->getPixelsWide(), _texture->getPixelsHigh(),
+					cocos2d::Texture2D::InitAs::RenderTarget);
 		_dirty = true;
-		reload();
 	});
 	schedule();
 	return true;
@@ -1708,11 +1709,66 @@ void IconStorage::update(float dt) {
 	}
 }
 
-static Rc<cocos2d::Texture2D> IconStorage_updateIcons(const Vector<IconName> &names, Vector<IconStorage::Icon> &icons, float density) {
-	//Time time = Time::now();
+static void IconStorage_drawIcons(cocos2d::Texture2D *tex, const Vector<IconName> &names, Vector<IconStorage::Icon> &icons, float density) {
 	size_t count = names.size();
 	uint16_t originalWidth = 48;
 	uint16_t originalHeight = 48;
+	uint16_t iconWidth = uint16_t(24 * density);
+	uint16_t iconHeight = uint16_t(24 * density);
+
+	float scaleX = (float)iconWidth / (float)originalWidth;
+	float scaleY = (float)iconHeight / (float)originalHeight;
+
+	uint32_t cols = tex->getPixelsWide() / iconWidth;
+	uint32_t rows = (uint32_t)(names.size() / cols + 1);
+	while (rows * cols < count) {
+		rows ++;
+	}
+
+	auto canvas = Rc<draw::Canvas>::create();
+
+	canvas->setQuality(draw::Canvas::QualityLow);
+	canvas->begin(tex, Color4B(0, 0, 0, 0));
+	canvas->scale(scaleX, scaleY);
+	canvas->beginBatch();
+
+	uint16_t c, r, i = 0;
+	for (auto &it : names) {
+		c = i % cols;
+		r = i / cols;
+
+		auto iconIt = std::lower_bound(icons.begin(), icons.end(), it, [] (const IconStorage::Icon &i, IconName n) -> bool {
+			return i._name < n;
+		});
+
+		if (iconIt == icons.end() || iconIt->_name != it) {
+			auto dataIt = std::lower_bound(s_iconTable, s_iconTable + s_iconCount, it, [] (const IconDataStruct &d, IconName n) -> bool {
+				return d.name < n;
+			});
+
+			layout::Path path;
+			path.init(dataIt->data, dataIt->len);
+			path.setFillColor(Color4B(255, 255, 255, 255));
+
+			iconIt = icons.emplace(iconIt, IconStorage::Icon(it, c * iconWidth, r * iconHeight, iconWidth, iconHeight, density, std::move(path)));
+		} else {
+			iconIt->_x = c * iconWidth;
+			iconIt->_y = r * iconHeight;
+		}
+
+		canvas->draw(iconIt->_path, iconIt->_x / scaleX, iconIt->_y / scaleY);
+
+		++ i;
+	}
+
+	canvas->endBatch();
+	canvas->end();
+	tex->setAntiAliasTexParameters();
+}
+
+static Rc<cocos2d::Texture2D> IconStorage_updateIcons(const Vector<IconName> &names, Vector<IconStorage::Icon> &icons, float density) {
+	//Time time = Time::now();
+	size_t count = names.size();
 	uint16_t iconWidth = uint16_t(24 * density);
 	uint16_t iconHeight = uint16_t(24 * density);
 
@@ -1736,46 +1792,7 @@ static Rc<cocos2d::Texture2D> IconStorage_updateIcons(const Vector<IconName> &na
 	auto tex = Rc<cocos2d::Texture2D>::create(cocos2d::Texture2D::PixelFormat::A8, texWidth, texHeight,
 			cocos2d::Texture2D::InitAs::RenderTarget);
 
-	float scaleX = (float)iconWidth / (float)originalWidth;
-	float scaleY = (float)iconHeight / (float)originalHeight;
-
-	canvas->setQuality(draw::Canvas::QualityLow);
-	canvas->begin(tex, Color4B(0, 0, 0, 0));
-	canvas->scale(scaleX, scaleY);
-	canvas->beginBatch();
-
-	uint16_t c, r, i = 0;
-	for (auto &it : names) {
-		c = i % cols;
-		r = i / cols;
-
-		auto iconIt = std::lower_bound(icons.begin(), icons.end(), it, [] (const IconStorage::Icon &i, IconName n) -> bool {
-			return i._name < n;
-		});
-
-		if (iconIt == icons.end() || iconIt->_name != it) {
-			auto dataIt = std::lower_bound(s_iconTable, s_iconTable + s_iconCount, it, [] (const IconDataStruct &d, IconName n) -> bool {
-				return d.name < n;
-			});
-
-			layout::Path path;
-			path.init(dataIt->data, dataIt->len);
-			path.setFillColor(Color4B(0, 0, 0, 255));
-
-			iconIt = icons.emplace(iconIt, IconStorage::Icon(it, c * iconWidth, r * iconHeight, iconWidth, iconHeight, density, std::move(path)));
-		} else {
-			iconIt->_x = c * iconWidth;
-			iconIt->_y = r * iconHeight;
-		}
-
-		canvas->draw(iconIt->_path, iconIt->_x / scaleX, iconIt->_y / scaleY);
-
-		++ i;
-	}
-
-	canvas->endBatch();
-	canvas->end();
-	tex->setAntiAliasTexParameters();
+	IconStorage_drawIcons(tex, names, icons, density);
 
 	return tex;
 }

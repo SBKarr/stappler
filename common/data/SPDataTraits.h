@@ -27,11 +27,6 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(data)
 
-class Value;
-
-using Array = Vector<Value>;
-using Dictionary = Map<String, Value>;
-
 InvokerCallTest_MakeInvoker(Data, onNextValue);
 InvokerCallTest_MakeInvoker(Data, onKey);
 InvokerCallTest_MakeInvoker(Data, onBeginArray);

@@ -27,7 +27,6 @@ THE SOFTWARE.
 #include "DatabaseUtils.h"
 #include "DatabaseHandle.h"
 #include "StorageScheme.h"
-#include "SPAprStringStream.h"
 
 NS_SA_EXT_BEGIN(database)
 
@@ -399,8 +398,8 @@ Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, storage::S
 					auto & source = it.first;
 					auto & target = ref->scheme->getName();
 					TableRec table;
-					table.cols.emplace(source + "_id", ColRec(ColRec::Type::Integer));
-					table.cols.emplace(target + "_id", ColRec(ColRec::Type::Integer));
+					table.cols.emplace(source + "_id", ColRec(ColRec::Type::Integer, true));
+					table.cols.emplace(target + "_id", ColRec(ColRec::Type::Integer, true));
 
 					table.constraints.emplace(name + "_ref_" + source, ConstraintRec(
 							ConstraintRec::Reference, source + "_id", source, ConstraintRec::RemovePolicy::Cascade));
@@ -421,7 +420,7 @@ Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, storage::S
 					auto & source = it.first;
 
 					TableRec table;
-					table.cols.emplace("id", ColRec(ColRec::Type::Serial));
+					table.cols.emplace("id", ColRec(ColRec::Type::Serial, true));
 					table.cols.emplace(source + "_id", ColRec(ColRec::Type::Integer));
 
 					auto type = slot->tfield.getType();

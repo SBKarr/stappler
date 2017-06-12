@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,12 +20,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef SRC_STD_FUNCTION_H_
-#define SRC_STD_FUNCTION_H_
+#ifndef COMMON_MEMORY_SPMEMFUNCTION_H_
+#define COMMON_MEMORY_SPMEMFUNCTION_H_
 
-#include "SPAprAllocator.h"
+#include "SPMemAlloc.h"
 
-NS_SP_EXT_BEGIN(apr)
+NS_SP_EXT_BEGIN(memory)
 
 // Function - реализация std::function, использующая память из apr_pool_t
 // some sources from https://github.com/prograholic/blog/blob/master/cxx_function/main.cpp
@@ -248,6 +248,6 @@ private:
 	invoker_t mInvoker;
 };
 
-NS_SP_EXT_END(apr)
+NS_SP_EXT_END(memory)
 
-#endif /* SRC_STD_FUNCTION_H_ */
+#endif /* COMMON_MEMORY_SPMEMFUNCTION_H_ */

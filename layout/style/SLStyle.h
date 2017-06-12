@@ -727,6 +727,26 @@ namespace style {
 	bool readMediaParameter(Vector<Parameter> &params, const String &name, const CharReaderBase &value, const CssStringFunction &cb);
 
 	String getFontConfigName(const String &, uint8_t, FontStyle, FontWeight, FontStretch, FontVariant, bool caps);
+
+	template<ParameterName Name, class Value> Parameter Parameter::create(const Value &v, MediaQueryId query) {
+		Parameter p(Name, query);
+		p.set<Name>(v);
+		return p;
+	}
+
+	template<ParameterName Name, class Value> void ParameterList::set(const Value &value, MediaQueryId mediaQuery) {
+		if (mediaQuery != MediaQueryNone() && !isAllowedForMediaQuery(Name)) {
+			return;
+		}
+		for (auto &it : data) {
+			if (it.name == Name && it.mediaQuery == mediaQuery) {
+				it.set<Name>(value);
+				return;
+			}
+		}
+
+		data.push_back(Parameter::create<Name>(value, mediaQuery));
+	}
 }
 
 NS_LAYOUT_END

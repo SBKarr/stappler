@@ -45,7 +45,7 @@ struct Request::Config : public AllocPool {
 		auto cfg = (Config *)ap_get_module_config(r->request_config, &serenity_module);
 		if (cfg) { return cfg; }
 
-		return apr::AllocStack::perform([&] () -> Config * {
+		return apr::pool::perform([&] () -> Config * {
 			return new Config(r);
 		}, r);
 	}
@@ -163,7 +163,7 @@ Request::Buffer::streamsize Request::Buffer::xsputn(const char_type* s, streamsi
 }
 
 apr::weak_string Request::getRequestLine() const {
-	return apr::string::make_weak(_request->the_request, _request);
+	return apr::string::make_weak(_request->the_request, _request->pool);
 }
 bool Request::isSimpleRequest() const {
 	return _request->assbackwards;
@@ -197,10 +197,10 @@ int Request::getProtocolNumber() const {
 	return _request->proto_num;
 }
 apr::weak_string Request::getProtocol() const {
-	return apr::string::make_weak(_request->protocol, _request);
+	return apr::string::make_weak(_request->protocol, _request->pool);
 }
 apr::weak_string Request::getHostname() const {
-	return apr::string::make_weak(_request->hostname, _request);
+	return apr::string::make_weak(_request->hostname, _request->pool);
 }
 
 apr_time_t Request::getRequestTime() const {
@@ -208,7 +208,7 @@ apr_time_t Request::getRequestTime() const {
 }
 
 apr::weak_string Request::getStatusLine() const {
-	return apr::string::make_weak(_request->status_line, _request);
+	return apr::string::make_weak(_request->status_line, _request->pool);
 }
 int Request::getStatus() const {
 	return _request->status;
@@ -218,11 +218,11 @@ Request::Method Request::getMethod() const {
 	return Method(_request->method_number);
 }
 apr::weak_string Request::getMethodName() const {
-	return apr::string::make_weak(_request->method, _request);
+	return apr::string::make_weak(_request->method, _request->pool);
 }
 
 apr::weak_string Request::getRangeLine() const {
-	return apr::string::make_weak(_request->range, _request);
+	return apr::string::make_weak(_request->range, _request->pool);
 }
 apr_off_t Request::getContentLength() const {
 	return _request->clength;
@@ -258,42 +258,42 @@ apr::uri Request::getParsedURI() const {
 }
 
 apr::weak_string Request::getDocumentRoot() const {
-	return apr::string::make_weak(ap_context_document_root(_request), _request);
+	return apr::string::make_weak(ap_context_document_root(_request), _request->pool);
 }
 apr::weak_string Request::getContentType() const {
-	return apr::string::make_weak(_request->content_type, _request);
+	return apr::string::make_weak(_request->content_type, _request->pool);
 }
 apr::weak_string Request::getHandler() const {
-	return apr::string::make_weak(_request->handler, _request);
+	return apr::string::make_weak(_request->handler, _request->pool);
 }
 apr::weak_string Request::getContentEncoding() const {
-	return apr::string::make_weak(_request->content_encoding, _request);
+	return apr::string::make_weak(_request->content_encoding, _request->pool);
 }
 
 apr::weak_string Request::getRequestUser() const {
-	return apr::string::make_weak(_request->user, _request);
+	return apr::string::make_weak(_request->user, _request->pool);
 }
 apr::weak_string Request::getAuthType() const {
-	return apr::string::make_weak(_request->ap_auth_type, _request);
+	return apr::string::make_weak(_request->ap_auth_type, _request->pool);
 }
 
 apr::weak_string Request::getUnparsedUri() const {
-	return apr::string::make_weak(_request->unparsed_uri, _request);
+	return apr::string::make_weak(_request->unparsed_uri, _request->pool);
 }
 apr::weak_string Request::getUri() const {
-	return apr::string::make_weak(_request->uri, _request);
+	return apr::string::make_weak(_request->uri, _request->pool);
 }
 apr::weak_string Request::getFilename() const {
-	return apr::string::make_weak(_request->filename, _request);
+	return apr::string::make_weak(_request->filename, _request->pool);
 }
 apr::weak_string Request::getCanonicalFilename() const {
-	return apr::string::make_weak(_request->canonical_filename, _request);
+	return apr::string::make_weak(_request->canonical_filename, _request->pool);
 }
 apr::weak_string Request::getPathInfo() const {
-	return apr::string::make_weak(_request->path_info, _request);
+	return apr::string::make_weak(_request->path_info, _request->pool);
 }
 apr::weak_string Request::getQueryArgs() const {
-	return apr::string::make_weak(_request->args, _request);
+	return apr::string::make_weak(_request->args, _request->pool);
 }
 
 bool Request::isEosSent() const {
@@ -524,7 +524,7 @@ bool Request::isAdministrative() {
 	}
 
 	auto userIp = getUseragentIp();
-	if (isSecureConnection() || strncmp(userIp.data(), "127.", 4) == 0) {
+	if (isSecureConnection() || strncmp(userIp.data(), "127.", 4) == 0 || userIp == "::1") {
 		// try cross-server auth
 		auto headers = getRequestHeaders();
 		auto ua = headers.at("User-Agent");
@@ -544,7 +544,7 @@ bool Request::isAdministrative() {
 	}
 
 #ifdef DEBUG
-	if (_config->_data.getBool("admin")) {
+	if ((strncmp(userIp.data(), "127.", 4) == 0 || userIp == "::1") && _config->_data.getBool("admin")) {
 		isAuthorized = true;
 	}
 #endif

@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,22 +20,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef COMMON_APR_SPAPRSTORAGEMEM_H_
-#define COMMON_APR_SPAPRSTORAGEMEM_H_
+#ifndef COMMON_MEMORY_SPMEMSTORAGEMEM_H_
+#define COMMON_MEMORY_SPMEMSTORAGEMEM_H_
 
-#include "SPAprAllocator.h"
+#include "SPMemAlloc.h"
+#include "SPMemPointerIterator.h"
 
-#if SPAPR
-
-#include "SPAprPointerIterator.h"
-
-NS_SP_EXT_BEGIN(apr)
+NS_SP_EXT_BEGIN(memory)
 
 // memory block to store objects data
 // memory block always uses current context or specified allocator
 // allocator is not copied by copy or move constructors or assignment operators
 
-template <typename Type>
+template <typename Type, size_t Extra = 0>
 struct storage_mem {
 	using pointer = Type *;
 	using const_pointer = const Type *;
@@ -44,7 +41,7 @@ struct storage_mem {
 
 	using size_type = size_t;
 	using allocator = Allocator<Type>;
-	using self = storage_mem<Type>;
+	using self = storage_mem<Type, Extra>;
 
 	using iterator = pointer_iterator<Type, pointer, reference>;
 	using const_iterator = pointer_iterator<Type, const_pointer, const_reference>;
@@ -97,7 +94,7 @@ struct storage_mem {
 	~storage_mem() {
 		if (_ptr && _allocated > 0) {
 			clear();
-			_allocator.deallocate(_ptr, _allocated);
+			_allocator.deallocate(_ptr, _allocated + Extra);
 		}
 	}
 
@@ -127,10 +124,10 @@ struct storage_mem {
 				clear();
 				_allocator.deallocate(_ptr, _allocated);
 			}
-			auto newmem = max(hint + 1, size + 1);
+			auto newmem = max(hint + Extra, size + Extra);
 
 			_ptr = _allocator.__allocate(newmem);
-			_allocated = newmem - 1;
+			_allocated = newmem - Extra;
 			_allocator.copy(_ptr, ptr, size);
 			_used = size;
 			drop_unused();
@@ -163,7 +160,7 @@ struct storage_mem {
 
 	void assign_strong(pointer ptr, size_type s) {
 		_ptr = ptr;
-		_allocated = s - 1;
+		_allocated = s - Extra;
 	}
 
 	void assign_mem(pointer ptr, size_type s) {
@@ -175,7 +172,7 @@ struct storage_mem {
 	void assign_mem(pointer ptr, size_type s, size_type nalloc) {
 		_ptr = ptr;
 		_used = s;
-		_allocated = nalloc - 1;
+		_allocated = nalloc - Extra;
 	}
 
 	bool is_weak() const {
@@ -208,8 +205,8 @@ struct storage_mem {
 			emplace_back(std::forward<Args>(args)...);
 			return iterator(_ptr);
 		} else {
-			reserve(_used + 1, true);
-			memmove(_ptr + pos + 1, _ptr + pos, (_used - pos) * sizeof(Type));
+			reserve(_used + Extra, true);
+			memmove(_ptr + pos + Extra, _ptr + pos, (_used - pos) * sizeof(Type));
 			_allocator.construct(_ptr + pos, std::forward<Args>(args)...);
 			++ _used;
 			return iterator(_ptr + pos);
@@ -365,7 +362,7 @@ struct storage_mem {
 
 	void reserve(size_type s, bool grow = false) {
 		if (s > 0 && s > _allocated) {
-			auto newmem = grow ? max(s + 1, _allocated * 2 + 1) : s + 1;
+			auto newmem = grow ? max(s + Extra, _allocated * 2 + Extra) : s + Extra;
 			auto ptr = _allocator.__allocate(newmem);
 
 			if (_used > 0 && _ptr) {
@@ -377,7 +374,7 @@ struct storage_mem {
 			}
 
 			_ptr = ptr;
-			_allocated = newmem - 1;
+			_allocated = newmem - Extra;
 			drop_unused();
 		}
 	}
@@ -487,7 +484,7 @@ struct storage_mem {
 
 	void drop_unused() {
 		if (_allocated > 0 && _allocated >= _used) {
-			memset(_ptr + _used, 0, (_allocated - _used + 1) * sizeof(Type));
+			memset(_ptr + _used, 0, (_allocated - _used + Extra) * sizeof(Type));
 		}
 	}
 
@@ -499,8 +496,6 @@ struct storage_mem {
 	allocator _allocator;
 };
 
-NS_SP_EXT_END(apr)
+NS_SP_EXT_END(memory)
 
-#endif
-
-#endif /* COMMON_APR_SPAPRSTORAGEMEM_H_ */
+#endif /* COMMON_MEMORY_SPMEMSTORAGEMEM_H_ */

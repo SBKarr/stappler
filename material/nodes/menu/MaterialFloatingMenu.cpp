@@ -112,6 +112,10 @@ bool FloatingMenu::init(MenuSource *source, const cocos2d::Vec2 &globalOrigin, B
 	_scroll->setVisible(false);
 	setShadowZIndex(1.5f);
 
+	if (!_foreground->isActive()) {
+		_foreground->setBackgroundOpacity(0);
+	}
+
 	_foreground->pushNode(this, std::bind(&FloatingMenu::close, this));
 
 	auto a = construct<ResizeTo>(0.25, _fullSize);

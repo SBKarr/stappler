@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,37 +20,55 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef STAPPLER_LAYOUT_STYLE_SPLAYOUTSTYLEPARAMETERS_HPP_
-#define STAPPLER_LAYOUT_STYLE_SPLAYOUTSTYLEPARAMETERS_HPP_
+#ifndef COMMON_MEMORY_SPMEMPOOLAPI_H_
+#define COMMON_MEMORY_SPMEMPOOLAPI_H_
 
-#include "SLStyle.h"
+#include "SPCore.h"
 
-NS_LAYOUT_BEGIN
+NS_SP_EXT_BEGIN(memory)
 
-namespace style {
+#if (SPAPR)
 
-template<ParameterName Name, class Value> Parameter Parameter::create(const Value &v, MediaQueryId query) {
-	Parameter p(Name, query);
-	p.set<Name>(v);
-	return p;
+using pool_t = apr_pool_t;
+using status_t = apr_status_t;
+
+constexpr status_t SUCCESS(APR_SUCCESS);
+
+#else
+
+struct pool_t;
+using status_t = int;
+
+constexpr status_t SUCCESS(0);
+
+#endif
+
+using cleanup_fn = status_t(*)(void *);
+
+namespace pool {
+
+pool_t *acquire();
+Pair<uint32_t, void *> info();
+
+void push(pool_t *);
+void push(pool_t *, uint32_t, void * = nullptr);
+void pop();
+
+pool_t *create();
+pool_t *create(pool_t *);
+
+void destroy(pool_t *);
+void clear(pool_t *);
+
+void *alloc(pool_t *, size_t &);
+void free(pool_t *, void *ptr, size_t size);
+
+void cleanup_register(pool_t *, void *, cleanup_fn);
+
+void foreach_info(void *, bool(*)(void *, pool_t *, uint32_t, void *));
+
 }
 
-template<ParameterName Name, class Value> void ParameterList::set(const Value &value, MediaQueryId mediaQuery) {
-	if (mediaQuery != MediaQueryNone() && !isAllowedForMediaQuery(Name)) {
-		return;
-	}
-	for (auto &it : data) {
-		if (it.name == Name && it.mediaQuery == mediaQuery) {
-			it.set<Name>(value);
-			return;
-		}
-	}
+NS_SP_EXT_END(memory)
 
-	data.push_back(Parameter::create<Name>(value, mediaQuery));
-}
-
-}
-
-NS_LAYOUT_END
-
-#endif /* STAPPLER_LAYOUT_STYLE_SPLAYOUTSTYLEPARAMETERS_HPP_ */
+#endif /* SRC_MEMORY_SPMEMPOOLAPI_H_ */

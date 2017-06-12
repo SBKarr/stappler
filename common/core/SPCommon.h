@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,60 @@ THE SOFTWARE.
 #define COMMON_CORE_SPCOMMON_H_
 
 #include "SPCore.h"
+#include "SPMemFunction.h"
+#include "SPMemString.h"
+#include "SPMemVector.h"
+#include "SPMemStringStream.h"
+#include "SPMemSet.h"
+#include "SPMemMap.h"
+
+NS_SP_EXT_BEGIN(memory)
+
+struct PoolInterface : public memory::AllocPool {
+	using AllocBaseType = memory::AllocPool;
+	using StringType = memory::string;
+	using WideStringType = memory::u16string;
+	using BytesType = memory::vector<uint8_t>;
+
+	template <typename Value> using BasicStringType = memory::basic_string<Value>;
+	template <typename Value> using ArrayType = memory::vector<Value>;
+	template <typename Value> using DictionaryType = memory::map<StringType, Value>;
+	template <typename Value> using VectorType = memory::vector<Value>;
+
+	template <typename K, typename V, typename Compare = std::less<>>
+	using MapType = memory::map<K, V, Compare>;
+
+	template <typename T, typename Compare = std::less<>>
+	using SetType = memory::set<T, Compare>;
+
+	using StringStreamType = memory::ostringstream;
+
+	static bool usesMemoryPool() { return true; }
+};
+
+struct StandartInterface : public memory::AllocBase {
+	using AllocBaseType = memory::AllocBase;
+	using StringType = std::string;
+	using WideStringType = std::u16string;
+	using BytesType = std::vector<uint8_t>;
+
+	template <typename Value> using BasicStringType = std::basic_string<Value>;
+	template <typename Value> using ArrayType = std::vector<Value>;
+	template <typename Value> using DictionaryType = std::map<StringType, Value, std::less<>>;
+	template <typename Value> using VectorType = std::vector<Value>;
+
+	template <typename K, typename V, typename Compare = std::less<>>
+	using MapType = std::map<K, V, Compare>;
+
+	template <typename T, typename Compare = std::less<>>
+	using SetType = std::set<T, Compare>;
+
+	using StringStreamType = std::ostringstream;
+
+	static bool usesMemoryPool() { return false; }
+};
+
+NS_SP_EXT_END(memory)
 
 /*
  *   Toolkit-depended definition
@@ -46,20 +100,13 @@ THE SOFTWARE.
 #ifdef SPDEFAULT
 NS_SP_EXT_BEGIN(toolkit)
 
-template <typename T>
-struct BytesContainer;
-
-struct AllocBase {
-	void * operator new (size_t size)  throw() { return ::operator new(size); }
-	void * operator new (size_t size, const std::nothrow_t& tag) { return ::operator new(size); }
-	void * operator new (size_t size, void* ptr) { return ::operator new(size, ptr); }
-	void operator delete(void *ptr) { return ::operator delete(ptr); }
-};
-
 struct TypeTraits {
 	using string_type = std::string;
 	using ucs2_string_type = std::u16string;
 	using bytes_type = std::vector<uint8_t>;
+
+	template <typename T>
+	using basic_string_stream = std::basic_stringstream<T>;
 
 	using string_stream = std::stringstream;
 	using output_stream = std::ostream;
@@ -67,47 +114,41 @@ struct TypeTraits {
 	using input_file_stream = std::ifstream;
 	using output_file_stream = std::ofstream;
 
-	using allocator_base = AllocBase;
+	using allocator_base = memory::AllocBase;
 	using mutex_type = std::mutex;
 
-	template <typename T, typename Compare = std::less<T>>
+	template <typename T, typename Compare = std::less<>>
 	using set_type = std::set<T, Compare>;
 
 	template <typename T>
 	using vector_type = std::vector<T>;
 
-	template <typename K, typename V, typename Compare = std::less<K>>
+	template <typename K, typename V, typename Compare = std::less<>>
 	using map_type = std::map<K, V, Compare>;
 
 	template <class T>
 	using function_type = std::function<T>;
 
-	template <class T>
-	using bytes_container = BytesContainer<T>;
+	using primary_interface = memory::StandartInterface;
+	using secondary_interface = memory::PoolInterface;
 };
 
 NS_SP_EXT_END(toolkit)
 #else
 
-#include "SPAprAllocStack.h"
-#include "SPAprFunction.h"
-#include "SPAprString.h"
-#include "SPAprVector.h"
-#include "SPAprStringStream.h"
+#include "SPAprAllocator.h"
 #include "SPAprFileStream.h"
-#include "SPAprSet.h"
-#include "SPAprMap.h"
 #include "SPAprMutex.h"
 
 NS_SP_EXT_BEGIN(toolkit)
-
-template <typename T>
-struct BytesContainer;
 
 struct TypeTraits {
 	using string_type = apr::basic_string<char>;
 	using ucs2_string_type = apr::basic_string<char16_t>;
 	using bytes_type = apr::vector<uint8_t>;
+
+	template <typename T>
+	using basic_string_stream = apr::basic_ostringstream<T>;
 
 	using string_stream = apr::basic_ostringstream<char>;
 	using output_stream = std::ostream;
@@ -130,32 +171,19 @@ struct TypeTraits {
 	template <class T>
 	using function_type = apr::function<T>;
 
-	template <class T>
-	using bytes_container = BytesContainer<T>;
+	using primary_interface = memory::PoolInterface;
+	using secondary_interface = memory::StandartInterface;
 };
 
 NS_SP_EXT_END(toolkit)
 #endif
 
+NS_SP_EXT_BEGIN(memory)
 
-NS_SP_EXT_BEGIN(toolkit)
+using DefaultInterface = toolkit::TypeTraits::primary_interface;
+using AlternativeInterface = toolkit::TypeTraits::secondary_interface;
 
-template <>
-struct BytesContainer<char> {
-	using type = TypeTraits::string_type;
-};
-
-template <>
-struct BytesContainer<uint8_t> {
-	using type = TypeTraits::bytes_type;
-};
-
-template <>
-struct BytesContainer<char16_t> {
-	using type = TypeTraits::ucs2_string_type;
-};
-
-NS_SP_EXT_END(toolkit)
+NS_SP_EXT_END(memory)
 
 NS_SP_BEGIN
 

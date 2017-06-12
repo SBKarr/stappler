@@ -79,7 +79,7 @@ bool AuthHandler::processDataHandler(Request &rctx, data::Value &result, data::V
 			Session *session = _request.authorizeUser(user, maxAge);
 			if (session) {
 				auto &token = session->getSessionToken();
-				result.setString(base64::encode(token.data(), token.size()), "token");
+				result.setString(base64::encode(CoderSource(token.data(), token.size())), "token");
 				result.setInteger(maxAge.toSeconds(), "maxAge");
 				result.setInteger(user->getObjectId(), "userId");
 				result.setString(user->getName(), "userName");
@@ -103,7 +103,7 @@ bool AuthHandler::processDataHandler(Request &rctx, data::Value &result, data::V
 
 			if (session->touch(maxAge)) {
 				auto &token = session->getSessionToken();
-				result.setString(base64::encode(token.data(), token.size()), "token");
+				result.setString(base64::encode(CoderSource(token.data(), token.size())), "token");
 				result.setInteger(maxAge.toSeconds(), "maxAge");
 				result.setInteger(user->getObjectId(), "userId");
 				result.setString(user->getName(), "userName");

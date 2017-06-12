@@ -41,8 +41,9 @@ bool ToolbarLayout::init(ToolbarBase *toolbar) {
 		return false;
 	}
 
-	_toolbar = setupToolbar(toolbar);
-	setFlexibleNode(_toolbar);
+	auto t = setupToolbar(toolbar);
+	_toolbar = t;
+	setFlexibleNode(t);
 
 	setFlexibleHeightFunction([this] () -> std::pair<float, float> {
 		return onToolbarHeight();
@@ -122,9 +123,11 @@ void ToolbarLayout::onToolbarNavButton() {
 	}
 }
 
-ToolbarBase *ToolbarLayout::setupToolbar(ToolbarBase *toolbar) {
+Rc<ToolbarBase> ToolbarLayout::setupToolbar(ToolbarBase *iToolbar) {
+	Rc<ToolbarBase> toolbar(iToolbar);
+
 	if (!toolbar) {
-		toolbar = construct<material::Toolbar>();
+		toolbar.set(Rc<material::Toolbar>::create());
 	}
 
 	toolbar->setColor(material::Color::Grey_300);

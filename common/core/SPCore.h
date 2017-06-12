@@ -44,8 +44,6 @@ THE SOFTWARE.
 #endif
 #endif
 
-#if SPDEFAULT
-
 #include <string>
 #include <vector>
 #include <functional>
@@ -53,8 +51,6 @@ THE SOFTWARE.
 #include <fstream>
 #include <map>
 #include <set>
-
-#endif
 
 #if SPAPR
 
@@ -307,6 +303,11 @@ using InitializerList = std::initializer_list<T>;
 template <typename T = float>
 inline auto nan() -> T {
 	return NumericLimits<T>::quiet_NaN();
+}
+
+template <typename T = float>
+inline auto epsilon() -> T {
+	return NumericLimits<T>::epsilon();
 }
 
 template <typename T>

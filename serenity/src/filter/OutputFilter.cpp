@@ -41,14 +41,14 @@ void OutputFilter::filterRegister() {
 }
 
 void OutputFilter::insert(const Request &r) {
-	AllocStack::perform([&] () {
+	apr::pool::perform([&] () {
 		auto f = new (r.request()->pool) OutputFilter(r);
 		ap_add_output_filter("Serenity::OutputFilter", (void *)f, r, r.connection());
 	}, r.request());
 }
 
 apr_status_t filterFunc(ap_filter_t *f, apr_bucket_brigade *bb) {
-	return AllocStack::perform([&] () -> apr_status_t {
+	return apr::pool::perform([&] () -> apr_status_t {
 		if (APR_BRIGADE_EMPTY(bb)) {
 			return APR_SUCCESS;
 		}
@@ -62,7 +62,7 @@ apr_status_t filterFunc(ap_filter_t *f, apr_bucket_brigade *bb) {
 }
 
 int filterInit(ap_filter_t *f) {
-	return AllocStack::perform([&] () -> apr_status_t {
+	return apr::pool::perform([&] () -> apr_status_t {
 		if (f->ctx) {
 			OutputFilter *filter = (OutputFilter *) f->ctx;
 			return filter->init(f);

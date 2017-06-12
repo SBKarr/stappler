@@ -85,7 +85,7 @@ protected:
 	virtual void setPopOnNavButton(bool value);
 
 	virtual void onToolbarNavButton();
-	virtual ToolbarBase *setupToolbar(ToolbarBase *);
+	virtual Rc<ToolbarBase> setupToolbar(ToolbarBase *);
 
 	virtual std::pair<float, float> onToolbarHeight();
 

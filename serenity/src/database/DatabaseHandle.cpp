@@ -27,7 +27,6 @@ THE SOFTWARE.
 #include "DatabaseHandle.h"
 #include "DatabaseUtils.h"
 #include "StorageScheme.h"
-#include "SPAprStringStream.h"
 #include "SPFilesystem.h"
 #include "DatabaseResolver.h"
 #include "StorageFile.h"
@@ -1220,7 +1219,7 @@ User * Handle::authorizeUser(Scheme *s, const String &iname, const String &passw
 			query << "FALSE, ";
 			messages::error("Auth", "Login attempts", data::Value(config::getMaxLoginFailure() - count - 1));
 		}
-		auto req = AllocStack::get().request();
+		auto req = apr::pool::request();
 		if (req) {
 			query << "'" << escape(req->useragent_ip) << "', '" << escape(req->hostname)
 					<< "', '" << escape(req->uri) << "'";

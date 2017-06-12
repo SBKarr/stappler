@@ -47,13 +47,14 @@ public:
 	using CallbackVec = Vector<Callback>;
 	using CallbackMap = Map<String, CallbackVec>;
 
-	static bool isRenderTargetSupported(RenderTarget);
-
 	static TextureCache *getInstance();
 	static Thread &thread();
 
 	static Rc<cocos2d::Texture2D> uploadTexture(const Bitmap &);
 	static cocos2d::Texture2D::PixelFormat getPixelFormat(Bitmap::Format fmt);
+
+	static String getPathForUrl(const String &);
+	static bool isCachedTextureUrl(const String &);
 
 	~TextureCache();
 
@@ -76,6 +77,8 @@ public:
 
 	bool makeCurrentContext();
 	void freeCurrentContext();
+
+	void reloadTextures();
 
 	template <typename T>
 	auto performWithGL(const T &t) {
@@ -109,8 +112,13 @@ protected:
 	void uploadTextureBackground(Rc<cocos2d::Texture2D> &, const Bitmap &);
 	void uploadTextureBackground(Vector<Rc<cocos2d::Texture2D>> &, const Vector<Bitmap> &);
 
+	void addAssetTexture(Asset *, const Callback &, bool forceReload);
+
+	friend struct TextureCacheAssetDownloader;
+
 	uint32_t _contextRetained = 0;
 	bool _registred = false;
+	bool _reloadDirty = false;
 	cocos2d::Map<String, cocos2d::Texture2D *> _textures;
 	Map<cocos2d::Texture2D *, std::pair<float, String>> _texturesScore;
 	CallbackMap _callbackMap;

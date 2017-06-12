@@ -171,7 +171,7 @@ void AssetLibrary::cleanup() {
 			+ time, ";"));
 
 
-	_stateClass.perform(toString("SELECT * FROM ", _stateClass.getName(), ";"), [this] (data::Value &&val) {
+	_stateClass.perform(toString("SELECT * FROM ", _stateClass.getName(), ";"), [] (data::Value &&val) {
 		if (val.isArray()) {
 			for (auto &it : val.asArray()) {
 				auto path = filepath::absolute(it.getString("path"));

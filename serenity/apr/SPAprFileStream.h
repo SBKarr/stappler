@@ -24,7 +24,7 @@ THE SOFTWARE.
 #define COMMON_APR_SPAPRFILESTREAM_H_
 
 #include "SPAprAllocator.h"
-#include "SPAprString.h"
+#include "SPMemString.h"
 
 #if SPAPR
 

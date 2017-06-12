@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "Material.h"
 #include "MaterialResize.h"
 #include "2d/CCNode.h"
+#include "2d/CCTweenFunction.h"
 
 NS_MD_BEGIN
 
@@ -48,19 +49,27 @@ void ResizeTo::startWithTarget(cocos2d::Node *t) {
 void ResizeTo::update(float time) {
 	if (_target) {
 		float w = 0.0f, h = 0.0f;
-		if (_sourceSize.width > _targetSize.width) {
-			w = _sourceSize.width + (_targetSize.width - _sourceSize.width) * time * time;
+		if (_sourceSize.width != _targetSize.width && _sourceSize.height != _targetSize.height) {
+			if (_sourceSize.width > _targetSize.width) {
+				w = _sourceSize.width + (_targetSize.width - _sourceSize.width) * cocos2d::tweenfunc::quadraticIn(time);
+			} else {
+				w = _sourceSize.width + (_targetSize.width - _sourceSize.width) * cocos2d::tweenfunc::quadraticOut(time);
+			}
+
+			if (_sourceSize.height > _targetSize.height) {
+				h = _sourceSize.height + (_targetSize.height - _sourceSize.height) * cocos2d::tweenfunc::quadraticOut(time);
+			} else {
+				h = _sourceSize.height + (_targetSize.height - _sourceSize.height) * cocos2d::tweenfunc::quadraticIn(time);
+			}
+		} else if (_sourceSize.width == _targetSize.width) {
+			w = _sourceSize.width + (_targetSize.width - _sourceSize.width) * time;
+			h = _sourceSize.height + (_targetSize.height - _sourceSize.height) * cocos2d::tweenfunc::quadraticInOut(time);
 		} else {
-			w = _sourceSize.width + (_targetSize.width - _sourceSize.width) * (-time*(time-2));
+			w = _sourceSize.width + (_targetSize.width - _sourceSize.width) * cocos2d::tweenfunc::quadraticInOut(time);
+			h = _sourceSize.height + (_targetSize.height - _sourceSize.height) * time;
 		}
 
-		if (_sourceSize.height > _targetSize.height) {
-			h = _sourceSize.height + (_targetSize.height - _sourceSize.height) * (-time*(time-2));
-		} else {
-			h = _sourceSize.height + (_targetSize.height - _sourceSize.height) * time * time;
-		}
-
-		_target->setContentSize(cocos2d::Size(w, h));
+		_target->setContentSize(Size(w, h));
 	}
 }
 

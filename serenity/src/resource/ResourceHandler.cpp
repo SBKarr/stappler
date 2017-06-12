@@ -229,7 +229,7 @@ void ResourceHandler::performApiObject(Request &rctx, storage::Scheme *scheme, d
 			if (auto user = session->getUser()) {
 				if (user->isAdmin()) {
 					auto & stoken = session->getSessionToken();
-					token = string::urlencode(base64::encode(stoken.data(), stoken.size()));
+					token = string::urlencode(base64::encode(stoken));
 					remove << "&token=" << token;
 
 				}

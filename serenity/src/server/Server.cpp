@@ -72,7 +72,7 @@ struct Server::Config : public AllocPool {
 		auto cfg = (Config *)ap_get_module_config(server->module_config, &serenity_module);
 		if (cfg) { return cfg; }
 
-		return apr::AllocStack::perform([&] () -> Config * {
+		return apr::pool::perform([&] () -> Config * {
 			return new Config(server);
 		}, server);
 	}
@@ -111,7 +111,7 @@ struct Server::Config : public AllocPool {
 			return;
 		}
 
-		auto pool = AllocStack::get().top();
+		auto pool = apr::pool::acquire();
 
 		/* load new dynamic object */
 		apr_dso_handle_t *obj = NULL;
@@ -414,7 +414,7 @@ const apr::string &Server::getHandlerFile() const {
 }
 
 apr::weak_string Server::getDefaultName() const {
-	return apr::string::make_weak(_server->defn_name, _server);
+	return apr::string::make_weak(_server->defn_name, _server->process->pconf);
 }
 
 bool Server::isVirtual() const {
@@ -425,17 +425,17 @@ apr_port_t Server::getServerPort() const {
 	return _server->port;
 }
 apr::weak_string Server::getServerScheme() const {
-	return apr::string::make_weak(_server->server_scheme, _server);
+	return apr::string::make_weak(_server->server_scheme, _server->process->pconf);
 }
 apr::weak_string Server::getServerAdmin() const {
-	return apr::string::make_weak(_server->server_admin, _server);
+	return apr::string::make_weak(_server->server_admin, _server->process->pconf);
 }
 apr::weak_string Server::getServerHostname() const {
-	return apr::string::make_weak(_server->server_hostname, _server);
+	return apr::string::make_weak(_server->server_hostname, _server->process->pconf);
 }
 apr::weak_string Server::getDocumentRoot() const {
 	core_server_config *sconf = (core_server_config *)ap_get_core_module_config(_server->module_config);
-    return apr::string::make_weak(sconf->ap_document_root, _server);
+    return apr::string::make_weak(sconf->ap_document_root, _server->process->pconf);
 }
 
 apr_interval_time_t Server::getTimeout() const {
@@ -452,7 +452,7 @@ bool Server::isUsingKeepAlive() const {
 }
 
 apr::weak_string Server::getServerPath() const {
-	return apr::string::make_weak(_server->path, _server->pathlen, _server);
+	return apr::string::make_weak(_server->path, _server->pathlen, _server->process->pconf);
 }
 
 int Server::getMaxRequestLineSize() const {
@@ -510,10 +510,10 @@ auto Server_resolvePath(Map<String, T> &map, const String &path) -> typename Map
 }
 
 void Server::onHeartBeat() {
-	AllocStack::perform([&] {
+	apr::pool::perform([&] {
 		auto now = Time::now();
 		auto root = Root::getInstance();
-		auto pool = AllocStack::get().top();
+		auto pool = apr::pool::acquire();
 		if (auto dbd = root->dbdOpen(pool, _server)) {
 			database::Handle h(pool, dbd);
 			if (now - _config->lastDatabaseCleanup > TimeInterval::seconds(60)) {

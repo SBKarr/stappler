@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef COMMON_APR_SPAPRMUTEX_H_
 #define COMMON_APR_SPAPRMUTEX_H_
 
-#include "SPAprAllocPool.h"
+#include "SPAprAllocator.h"
 
 #if SPAPR
 

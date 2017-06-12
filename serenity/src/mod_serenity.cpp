@@ -32,6 +32,7 @@ static stappler::serenity::Root s_sharedServer;
 
 extern module AP_MODULE_DECLARE_DATA serenity_module;
 
+USING_NS_SP;
 USING_NS_SA;
 
 static void *mod_serenity_create_server_config(apr_pool_t *p, server_rec *s) {
@@ -40,7 +41,7 @@ static void *mod_serenity_create_server_config(apr_pool_t *p, server_rec *s) {
 	return Server(s).getConfig();
 }
 static void* mod_serenity_merge_config(apr_pool_t* pool, void* BASE, void* ADD) {
-	return AllocStack::perform([&] () -> auto {
+	return apr::pool::perform([&] () -> auto {
 		return Server::merge(BASE, ADD);
 	}, pool);
 }
@@ -79,21 +80,21 @@ static void mod_serenity_register_hooks(apr_pool_t *pool) {
 }
 
 static const char *mod_serenity_set_source_root(cmd_parms *parms, void *mconfig, const char *w) {
-	AllocStack::perform([&] {
+	apr::pool::perform([&] {
 		Server(parms->server).setSourceRoot(apr::string::make_weak(w));
 	}, parms->pool);
 	return NULL;
 }
 
 static const char *mod_serenity_add_handler_source(cmd_parms *parms, void *mconfig, const char *w) {
-	AllocStack::perform([&] {
+	apr::pool::perform([&] {
 		Server(parms->server).addHanderSource(apr::string::make_weak(w));
 	}, parms->pool);
 	return NULL;
 }
 
 static const char *mod_serenity_set_session_params(cmd_parms *parms, void *mconfig, const char *w) {
-	AllocStack::perform([&] {
+	apr::pool::perform([&] {
 		Server(parms->server).setSessionParams(apr::string::make_weak(w));
 	}, parms->pool);
 	return NULL;

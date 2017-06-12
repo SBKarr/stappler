@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,13 +20,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef COMMON_APR_SPAPRMAP_H_
-#define COMMON_APR_SPAPRMAP_H_
+#ifndef COMMON_MEMORY_SPMEMMAP_H_
+#define COMMON_MEMORY_SPMEMMAP_H_
 
-#include "SPAprRbtree.h"
+#include "SPMemRbtree.h"
 
-#if SPAPR
-NS_APR_BEGIN
+NS_SP_EXT_BEGIN(memory)
 
 template <typename Key, typename Value, typename Comp = std::less<>>
 class map : public AllocPool  {
@@ -327,7 +326,6 @@ swap(map<Key, Value, Comp>& __x, map<Key, Value, Comp>& __y) {
 	__x.swap(__y);
 }
 
-NS_APR_END
-#endif
+NS_SP_EXT_END(memory)
 
-#endif /* COMMON_APR_SPAPRMAP_H_ */
+#endif /* COMMON_MEMORY_SPMEMMAP_H_ */

@@ -93,7 +93,7 @@ void Toolbar::layoutSubviews() {
 	_title->setWidth(labelWidth);
 	_title->setContentSize(Size(_title->getContentSize().width, std::min(48.0f, _basicHeight)));
 	_title->setAnchorPoint(Vec2(0, 0.5));
-	_title->setPosition(Vec2(_navButton->isVisible()?64:16, baseline));
+	_title->setPosition(Vec2((_navButton->getIconName() != IconName::None)?64:16, baseline));
 
 	setTextColor(_textColor);
 }

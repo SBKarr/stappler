@@ -189,6 +189,13 @@ static bool valudateQueryOrFragmentString(const CharReaderBase &r) {
 	return false;
 }
 
+static bool isEmptyHostAllowed(const String &scheme) {
+	if (scheme == "file") {
+		return true;
+	}
+	return false;
+}
+
 bool Url::parseInternal(const String &str) {
 	CharReaderBase s(str);
 
@@ -294,7 +301,9 @@ bool Url::parseInternal(const String &str) {
 		auto tmp_s = s;
 		auto userInfo = tmp_s.readUntil<Chars<'@', '/'>>();
 		if (userInfo.empty()) {
-			return false;
+			if (!tmp_s.is('/') || !isEmptyHostAllowed(_scheme)) {
+				return false;
+			}
 		}
 		if (tmp_s.is('@')) {
 			auto user = userInfo.readUntil<Chars<':'>>();

@@ -35,13 +35,16 @@ public:
 	virtual void run(const char *str, size_t len) override {
 		stream.write(str, len);
 	}
-	virtual void finalize() override { }
+	virtual void finalize() override {
+		data = stream.extract();
+	}
 
 	virtual data::Value &getData() override {
-		return stream.data();
+		return data;
 	}
 
 protected:
+	data::Value data;
 	data::Stream stream;
 };
 

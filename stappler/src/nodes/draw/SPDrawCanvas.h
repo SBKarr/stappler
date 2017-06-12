@@ -55,6 +55,8 @@ public:
 
 	Rc<cocos2d::Texture2D> captureContents(cocos2d::Node *, Format, float density = 0.0f);
 
+	void drop();
+
 protected:
 	void setUniformColor(const Color4B &);
 	void setUniformTransform(const Mat4 &);

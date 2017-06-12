@@ -67,14 +67,6 @@ extern const Vec2 MiddleTop; /** equals to Vec2(0.5, 1) */
 extern const Vec2 MiddleBottom; /** equals to Vec2(0.5, 0) */
 }
 
-using Ref = layout::Ref;
-
-template <typename T>
-using Rc = layout::Rc<T, T>;
-
-template <typename T>
-using RcWrap = layout::Rc<T, typename std::conditional<std::is_base_of<Ref, T>::value, T, layout::SmartRef<T>>::type>;
-
 template <typename T>
 using Arc = layout::Arc<T>;
 

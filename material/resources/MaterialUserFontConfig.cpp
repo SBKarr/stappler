@@ -54,7 +54,7 @@ void UserFontConfig::onSourceUpdated(Source *source) {
 	ResourceManager::thread().perform([this, ptr] (const Task &) -> bool {
 		_threadSource.swap(*ptr); // no retain/release
 		return true;
-	}, [this, ptr] (const Task &, bool) {
+	}, [ptr] (const Task &, bool) {
 		delete ptr;
 	});
 	ResourceManager::onUserFont(ResourceManager::getInstance(), this);

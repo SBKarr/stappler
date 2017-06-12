@@ -256,7 +256,10 @@ size_t ScrollController::addPlaceholder(float size) {
 }
 
 float ScrollController::getNextItemPosition() const {
-	return _scroll->getNodeScrollPosition(_nodes.back().pos) + _scroll->getNodeScrollSize(_nodes.back().size);
+	if (!_nodes.empty()) {
+		return _scroll->getNodeScrollPosition(_nodes.back().pos) + _scroll->getNodeScrollSize(_nodes.back().size);
+	}
+	return 0.0f;
 }
 
 void ScrollController::setKeepNodes(bool value) {

@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,13 +20,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef COMMON_APR_SPAPRPOINTERITERATOR_H_
-#define COMMON_APR_SPAPRPOINTERITERATOR_H_
+#ifndef COMMON_MEMORY_SPMEMPOINTERITERATOR_H_
+#define COMMON_MEMORY_SPMEMPOINTERITERATOR_H_
 
 #include "SPCore.h"
 
-#if SPAPR
-NS_APR_BEGIN
+NS_SP_EXT_BEGIN(memory)
 
 template<class Type, class Pointer, class Reference>
 class pointer_iterator : public std::iterator<std::random_access_iterator_tag, Type, std::ptrdiff_t, Pointer, Reference> {
@@ -80,7 +79,6 @@ protected:
 	pointer current;
 };
 
-NS_APR_END
-#endif
+NS_SP_EXT_END(memory)
 
-#endif /* COMMON_APR_SPAPRPOINTERITERATOR_H_ */
+#endif /* COMMON_MEMORY_SPMEMPOINTERITERATOR_H_ */

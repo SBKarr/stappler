@@ -373,7 +373,7 @@ Scheme::Command::~Command() {
 		if (_separateRows) {
 			_data.insert.cb.~function();
 		} else {
-			_data.value.~Value();
+			_data.value.~ValueTemplate();
 		}
 		_callback.success.~function();
 		break;
@@ -1002,7 +1002,7 @@ bool Scheme::Internal::perform(const String &sql, const DataCallback &cb) {
 		thread.perform([this, sql, val] (const Task &) -> bool {
 			*val = performCommand(sql);
 			return true;
-		}, [this, cb, val] (const Task &, bool) {
+		}, [cb, val] (const Task &, bool) {
 			if (cb) {
 				cb(std::move(*val));
 			}

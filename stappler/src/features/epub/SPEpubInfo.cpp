@@ -569,7 +569,9 @@ void Info::processPublication() {
 					} else if (name.compare("linear") && value.compare("no")) {
 						spine.linear = false;
 					} else if (name.compare("properties")) {
-						spine.props = string::splitToSet(value.str(), " ");
+						string::split(value, " ", [&] (const StringView &str) {
+							spine.props.emplace(str.str());
+						});
 					}
 				}
 				break;

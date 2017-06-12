@@ -87,7 +87,7 @@ void ToolbarBase::onContentSizeDirty() {
 }
 
 void ToolbarBase::setTitle(const String &) { }
-const String &ToolbarBase::getTitle() const { return data::StringNull; }
+const String &ToolbarBase::getTitle() const { return data::Value::StringNull; }
 
 void ToolbarBase::setNavButtonIcon(IconName name) {
 	_navButton->setIconName(name);
@@ -147,7 +147,7 @@ void ToolbarBase::replaceActionMenuSource(MenuSource *source, size_t maxIcons) {
 	_replaceProgress = 0.0f;
 	updateProgress();
 
-	runAction(Rc<ProgressAction>::create(0.15f, [this, pos] (ProgressAction *a, float p) {
+	runAction(Rc<ProgressAction>::create(0.15f, [this] (ProgressAction *a, float p) {
 		_replaceProgress = p;
 		updateProgress();
 	}, nullptr, [this] (ProgressAction *) {
@@ -335,7 +335,6 @@ void ToolbarBase::layoutSubviews() {
 	} else {
 		_iconWidth = iconWidth;
 	}
-
 
 	auto op = _minified ? 128 : 222;
 

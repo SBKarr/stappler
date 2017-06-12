@@ -30,7 +30,7 @@ THE SOFTWARE.
 #include "SPCharReader.h"
 
 #if (SPAPR)
-#include "SPAprAllocStack.h"
+#include "SPAprAllocator.h"
 #endif
 
 #include "SPCommonPlatform.h"
@@ -372,7 +372,7 @@ static inline bool performCopy(const String &source, const String &dest) {
 	}
 	return false;
 #else
-	return apr_file_copy(source.c_str(), dest.c_str(), APR_FPROT_FILE_SOURCE_PERMS, apr::AllocStack::get().top()) == APR_SUCCESS;
+	return apr_file_copy(source.c_str(), dest.c_str(), APR_FPROT_FILE_SOURCE_PERMS, memory::pool::acquire()) == APR_SUCCESS;
 #endif
 }
 

@@ -356,7 +356,7 @@ Rc<ProgressAction> Scroll::resizeNode(ScrollController::Item *item, float newSiz
 		_controller->onScrollPosition(true);
 	}, [] (ProgressAction *) {
 
-	}, [this, cb] (ProgressAction *) {
+	}, [cb] (ProgressAction *) {
 		if (cb) {
 			cb();
 		}

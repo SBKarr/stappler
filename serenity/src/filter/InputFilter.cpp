@@ -164,7 +164,7 @@ InputFilter::Accept getAcceptedData(const Request &req, InputFilter::Exception &
 }
 
 InputFile *InputFilter::getFileFromContext(int64_t id) {
-	auto req = AllocStack::get().request();
+	auto req = apr::pool::request();
 	if (req) {
 		Request rctx(req);
 		auto f = rctx.getInputFilter();
@@ -176,7 +176,7 @@ InputFile *InputFilter::getFileFromContext(int64_t id) {
 
 }
 InputFilter::Exception InputFilter::insert(const Request &r) {
-	return AllocStack::perform([&] () -> InputFilter::Exception {
+	return apr::pool::perform([&] () -> InputFilter::Exception {
 		Exception e = Exception::None;
 		auto accept = getAcceptedData(r, e);
 		if (accept == Accept::None) {
@@ -192,7 +192,7 @@ InputFilter::Exception InputFilter::insert(const Request &r) {
 
 apr_status_t InputFilter::filterFunc(ap_filter_t *f, apr_bucket_brigade *bb,
 		ap_input_mode_t mode, apr_read_type_e block, apr_off_t readbytes) {
-	return AllocStack::perform([&] () -> apr_status_t {
+	return apr::pool::perform([&] () -> apr_status_t {
 		if (f->ctx) {
 			InputFilter *filter = (InputFilter *) f->ctx;
 			return filter->func(f, bb, mode, block, readbytes);
@@ -203,7 +203,7 @@ apr_status_t InputFilter::filterFunc(ap_filter_t *f, apr_bucket_brigade *bb,
 }
 
 int InputFilter::filterInit(ap_filter_t *f) {
-	return AllocStack::perform([&] () -> int {
+	return apr::pool::perform([&] () -> int {
 		if (f->ctx) {
 			InputFilter *filter = (InputFilter *) f->ctx;
 			return filter->init(f);

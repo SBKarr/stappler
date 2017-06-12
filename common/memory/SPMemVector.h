@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,13 +20,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef COMMON_APR_SPAPRVECTOR_H_
-#define COMMON_APR_SPAPRVECTOR_H_
+#ifndef COMMON_MEMORY_SPMEMVECTOR_H_
+#define COMMON_MEMORY_SPMEMVECTOR_H_
 
-#include "SPAprStorageMem.h"
+#include "SPMemStorageMem.h"
 
-#if SPAPR
-NS_SP_EXT_BEGIN(apr)
+NS_SP_EXT_BEGIN(memory)
 
 template <typename Type>
 class vector : public AllocPool {
@@ -301,7 +300,6 @@ swap(vector<_Tp>& __x, vector<_Tp>& __y) {
 	__x.swap(__y);
 }
 
-NS_SP_EXT_END(apr)
-#endif
+NS_SP_EXT_END(memory)
 
-#endif /* COMMON_APR_SPAPRVECTOR_H_ */
+#endif /* COMMON_MEMORY_SPMEMVECTOR_H_ */

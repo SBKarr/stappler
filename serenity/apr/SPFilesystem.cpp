@@ -35,7 +35,7 @@ NS_SP_PLATFORM_BEGIN
 
 namespace filesystem {
 	const char *getDocumentRoot() {
-		auto server = apr::AllocStack::get().server();
+		auto server = apr::pool::server();
 
 		core_server_config *sconf = (core_server_config *)ap_get_core_module_config(server->module_config);
 	    return sconf->ap_document_root;

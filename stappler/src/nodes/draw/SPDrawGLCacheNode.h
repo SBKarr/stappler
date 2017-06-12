@@ -26,6 +26,9 @@ struct GLBlending {
 	};
 
 	static GLenum getEnumForEq(Equation eq);
+	static Equation getEqForEnum(GLenum eq);
+
+	static GLBlending loadFromGL();
 
 	GLBlending() {
 		blendFunc(BlendFunc::DISABLE);
@@ -124,6 +127,7 @@ struct GLBlending {
 
 class GLCacheNode {
 public:
+	void load();
 	void cleanup();
 	void bindTexture(GLuint);
 	void useProgram(GLuint);
@@ -140,6 +144,10 @@ protected:
 	GLuint _currentProgram = 0;
 
 	GLBlending _blending;
+
+	GLuint _origTexture = 0;
+	GLuint _origProgram = 0;
+	GLBlending _origBlending;
 };
 
 NS_SP_EXT_END(draw)

@@ -29,15 +29,18 @@ NS_MD_BEGIN
 
 class GalleryImage : public ImageLayer {
 public:
-	using TextureCallback = std::function<void(cocos2d::Texture2D *)>;
-	using ImageCallback = std::function<void(const std::string &, const TextureCallback &)>;
+	using TextureCallback = Function<void(cocos2d::Texture2D *)>;
+	using ImageCallback = Function<void(const String &, const TextureCallback &)>;
 
-	virtual bool init(const std::string &, const ImageCallback &);
+	virtual bool init(const String &, const ImageCallback &);
 	virtual void onContentSizeDirty() override;
 	virtual void onEnter() override;
 
+	virtual void setLoaderColor(const Color &);
+
 protected:
 	Time _textureTime;
+
 	IconSprite *_loader = nullptr;
 };
 
@@ -50,12 +53,12 @@ public:
 		DoubleTap
 	};
 
-	using ActionCallback = std::function<void(Action)>;
-	using TextureCallback = std::function<void(cocos2d::Texture2D *)>;
-	using ImageCallback = std::function<void(const std::string &, const TextureCallback &)>;
-	using PositionCallback = std::function<void(float)>;
+	using ActionCallback = Function<void(Action)>;
+	using TextureCallback = GalleryImage::TextureCallback;
+	using ImageCallback = GalleryImage::ImageCallback;
+	using PositionCallback = Function<void(float)>;
 
-	virtual bool init(const ImageCallback &cb, const std::vector<std::string> &, size_t selected);
+	virtual bool init(const ImageCallback &cb, const Vector<String> &, size_t selected);
 	virtual void onContentSizeDirty() override;
 
 	virtual void setActionCallback(const ActionCallback &);
@@ -64,16 +67,19 @@ public:
 	virtual void setPositionCallback(const PositionCallback &);
 	virtual const PositionCallback & getPositionCallback() const;
 
+	virtual void setLoaderColor(const Color &);
+	virtual const Color &getLoaderColor() const;
+
 protected:
 	virtual void reset(size_t id);
 
-	virtual bool onTap(const cocos2d::Vec2 &point, int count);
+	virtual bool onTap(const Vec2 &point, int count);
 
-	virtual bool onSwipeBegin(const cocos2d::Vec2 &point);
-	virtual bool onSwipe(const cocos2d::Vec2 &delta);
-	virtual bool onSwipeEnd(const cocos2d::Vec2 &velocity);
+	virtual bool onSwipeBegin(const Vec2 &point);
+	virtual bool onSwipe(const Vec2 &delta);
+	virtual bool onSwipeEnd(const Vec2 &velocity);
 
-	virtual bool onPinch(const cocos2d::Vec2 &point, float scale, float velocity, bool isEnded);
+	virtual bool onPinch(const Vec2 &point, float scale, float velocity, bool isEnded);
 
 	virtual void onMove(float value);
 	virtual void onMoveEnd(float value);
@@ -86,7 +92,7 @@ protected:
 
 	bool _hasPinch = false;
 	float _progress = 0.0f; // (-1.0f; 1.0f)
-	std::vector<std::string> _images;
+	Vector<String> _images;
 
 	size_t _primaryId = 0;
 	size_t _secondaryId = 0;
@@ -104,6 +110,8 @@ protected:
 	ActionCallback _actionCallback;
 	PositionCallback _positionCallback;
 	ImageCallback _imageCallback;
+
+	Color _loaderColor = Color::Black;
 };
 
 NS_MD_END

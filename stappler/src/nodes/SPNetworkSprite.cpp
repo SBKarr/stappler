@@ -35,31 +35,20 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
-std::string NetworkSprite::getPathForUrl(const std::string &url) {
-	auto dir = filesystem::writablePath("NetworkSprites");
-	filesystem::mkdir(dir);
-	return toString(dir, "/", string::stdlibHashSigned(url));
+String NetworkSprite::getPathForUrl(const String &url) {
+	return TextureCache::getPathForUrl(url);
 }
 
-bool NetworkSprite::isCachedTextureUrl(const std::string &url) {
-	auto lib = AssetLibrary::getInstance();
-	auto cache = TextureCache::getInstance();
-
-	auto path = getPathForUrl(url);
-	auto assetId = lib->getAssetId(url, path);
-
-	if (lib->isLiveAsset(assetId) && cache->hasTexture(path)) {
-		return true;
-	}
-	return false;
+bool NetworkSprite::isCachedTextureUrl(const String &url) {
+	return TextureCache::isCachedTextureUrl(url);
 }
 
 NetworkSprite::~NetworkSprite() {
 	storeForFrames(_asset.get(), 10);
 }
 
-bool NetworkSprite::init(const std::string &url, float density) {
-	if (!DynamicSprite::init(nullptr, cocos2d::Rect::ZERO, density)) {
+bool NetworkSprite::init(const String &url, float density) {
+	if (!DynamicSprite::init(nullptr, Rect::ZERO, density)) {
 		return false;
 	}
 
@@ -69,7 +58,7 @@ bool NetworkSprite::init(const std::string &url, float density) {
 	return true;
 }
 
-void NetworkSprite::visit(cocos2d::Renderer *r, const cocos2d::Mat4 &t, uint32_t f, ZPath &zPath) {
+void NetworkSprite::visit(cocos2d::Renderer *r, const Mat4 &t, uint32_t f, ZPath &zPath) {
 	if (_assetDirty) {
 		if (AssetLibrary::getInstance()->isLoaded()) {
 			updateSprite();
@@ -79,7 +68,7 @@ void NetworkSprite::visit(cocos2d::Renderer *r, const cocos2d::Mat4 &t, uint32_t
 	DynamicSprite::visit(r, t, f, zPath);
 }
 
-void NetworkSprite::setUrl(const std::string &url, bool force) {
+void NetworkSprite::setUrl(const String &url, bool force) {
 	if (_url != url) {
 		_url = url;
 		if (force || isCachedTextureUrl(url)) {
@@ -90,7 +79,7 @@ void NetworkSprite::setUrl(const std::string &url, bool force) {
 	}
 }
 
-const std::string &NetworkSprite::getUrl() const {
+const String &NetworkSprite::getUrl() const {
 	return _url;
 }
 

@@ -27,11 +27,10 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
-template <typename _CharType, typename Container = typename toolkit::TypeTraits::bytes_container<_CharType>::type>
+template <typename _CharType>
 class BytesReader {
 public:
 	using CharType = _CharType;
-	using ContainerType = Container;
 
 	template <CharType ... Args>
 	using Chars = chars::Chars<CharType, Args...>;
@@ -42,40 +41,37 @@ public:
 	template <CharGroupId Group>
 	using CharGroup = chars::CharGroup<CharType, Group>;
 
-	inline BytesReader() : ptr(nullptr), len(0) { }
-	inline BytesReader(const CharType *p, size_t l) : ptr(p), len(l) { }
-	inline explicit BytesReader(const Container &c) : ptr(c.data()), len(c.size()) { }
+	BytesReader() : ptr(nullptr), len(0) { }
+	BytesReader(const CharType *p, size_t l) : ptr(p), len(l) { }
 
-	inline BytesReader & operator =(const Container &vec) { return set(vec); }
-	inline BytesReader & set(const Container &vec) { ptr = vec.data(); len = vec.size(); return *this; }
-	inline BytesReader & set(const uint8_t *p, size_t l) { ptr = p; len = l; return *this; }
+	BytesReader & set(const uint8_t *p, size_t l) { ptr = p; len = l; return *this; }
 
-	inline void offset(size_t l) { if (l > len) { len = 0; } else { ptr += l; len -= l; } }
+	void offset(size_t l) { if (l > len) { len = 0; } else { ptr += l; len -= l; } }
 
-	inline bool compare(const Container &d) const { return (d.size() == len && memcmp(ptr, d.data(), d.size()) == 0); }
-	inline bool compare(const CharType *d, size_t l) const { return (l == len && memcmp(ptr, d, l) == 0); }
-	inline bool compare(const CharType *d) const { return compare(d, std::char_traits<CharType>::length(d)); }
-	inline bool prefix(const CharType *d, size_t l) const { return (l <= len && memcmp(ptr, d, l) == 0); }
+	bool compare(const CharType *d, size_t l) const { return (l == len && memcmp(ptr, d, l) == 0); }
+	bool compare(const CharType *d) const { return compare(d, std::char_traits<CharType>::length(d)); }
+	bool prefix(const CharType *d, size_t l) const { return (l <= len && memcmp(ptr, d, l) == 0); }
 
-	inline const CharType *data() const { return ptr; }
+	const CharType *data() const { return ptr; }
 
-	inline size_t size() const { return len; }
+	size_t size() const { return len; }
 
-	inline bool is(const CharType &c) const { return len > 0 && *ptr == c; };
+	bool is(const CharType &c) const { return len > 0 && *ptr == c; };
 
-	inline bool operator > (const size_t &val) const { return len > val; }
-	inline bool operator >= (const size_t &val) const { return len >= val; }
-	inline bool operator < (const size_t &val) const { return len < val; }
-	inline bool operator <= (const size_t &val) const { return len <= val; }
+	bool operator > (const size_t &val) const { return len > val; }
+	bool operator >= (const size_t &val) const { return len >= val; }
+	bool operator < (const size_t &val) const { return len < val; }
+	bool operator <= (const size_t &val) const { return len <= val; }
 
-	inline const CharType & front() const { return *ptr; }
-	inline const CharType & back() const { return ptr[len - 1]; }
+	const CharType & front() const { return *ptr; }
+	const CharType & back() const { return ptr[len - 1]; }
 
-	inline const CharType & at(const size_t &s) const { return ptr[s]; }
-	inline const CharType & operator[] (const size_t &s) const { return ptr[s]; }
+	const CharType & at(const size_t &s) const { return ptr[s]; }
+	const CharType & operator[] (const size_t &s) const { return ptr[s]; }
+	const CharType & operator * () const { return *ptr; }
 
-	inline void clear() { len = 0; }
-	inline bool empty() const { return len == 0 || !ptr; }
+	void clear() { len = 0; }
+	bool empty() const { return len == 0 || !ptr; }
 
 protected:
 	const CharType *ptr;
