@@ -51,10 +51,10 @@ public:
 	using difference_type = std::ptrdiff_t;
 
 public:
-	map() : map( Comp() ) { }
+	map() noexcept : map( Comp() ) { }
 
-	explicit map(const Comp& comp, const allocator_type& alloc = allocator_type()) : _tree(comp, alloc) { }
-	explicit map(const allocator_type& alloc) : _tree(key_compare(), alloc) { }
+	explicit map(const Comp& comp, const allocator_type& alloc = allocator_type()) noexcept : _tree(comp, alloc) { }
+	explicit map(const allocator_type& alloc) noexcept : _tree(key_compare(), alloc) { }
 
 	template<class InputIterator>
 	map(InputIterator first, InputIterator last,
@@ -71,35 +71,35 @@ public:
 		}
 	}
 
-	map(const map& x) : _tree(x._tree) { }
-	map(const map& x, const allocator_type& alloc) : _tree(x._tree, alloc) { }
+	map(const map& x) noexcept : _tree(x._tree) { }
+	map(const map& x, const allocator_type& alloc) noexcept : _tree(x._tree, alloc) { }
 
-	map(map&& x) : _tree(std::move(x._tree)) { }
-	map(map&& x, const allocator_type& alloc) : _tree(std::move(x._tree), alloc) { }
+	map(map&& x) noexcept : _tree(std::move(x._tree)) { }
+	map(map&& x, const allocator_type& alloc) noexcept : _tree(std::move(x._tree), alloc) { }
 
 	map(InitializerList<value_type> il,
-	     const Comp& comp = Comp(), const allocator_type& alloc = allocator_type())
+	     const Comp& comp = Comp(), const allocator_type& alloc = allocator_type()) noexcept
 	: _tree(comp, alloc) {
 		for (auto &it : il) {
 			do_insert(std::move(const_cast<reference>(it)));
 		}
 	}
-	map(InitializerList<value_type> il, const allocator_type& alloc)
+	map(InitializerList<value_type> il, const allocator_type& alloc) noexcept
 	: _tree(key_compare(), alloc) {
 		for (auto &it : il) {
 			do_insert(std::move(const_cast<reference>(it)));
 		}
 	}
 
-	map& operator= (const map& other) {
+	map& operator= (const map& other) noexcept {
 		_tree = other._tree;
 		return *this;
 	}
-	map& operator= (map&& other) {
+	map& operator= (map&& other) noexcept {
 		_tree = std::move(other._tree);
 		return *this;
 	}
-	map& operator= (InitializerList<value_type> ilist) {
+	map& operator= (InitializerList<value_type> ilist) noexcept {
 		_tree.clear();
 		for (auto &it : ilist) {
 			do_insert(std::move(const_cast<reference>(it)));
@@ -107,9 +107,9 @@ public:
 		return *this;
 	}
 
-	allocator_type get_allocator() const { return _tree.get_allocator(); }
-	bool empty() const { return _tree.empty(); }
-	size_t size() const { return _tree.size(); }
+	allocator_type get_allocator() const noexcept { return _tree.get_allocator(); }
+	bool empty() const noexcept { return _tree.empty(); }
+	size_t size() const noexcept { return _tree.size(); }
 	void clear() { _tree.clear(); }
 
 	Value& at(const Key& key) {
@@ -134,25 +134,25 @@ public:
 		return this->try_emplace(std::move(key)).first->second;
 	}
 
-	iterator begin() { return _tree.begin(); }
-	iterator end() { return _tree.end(); }
+	iterator begin() noexcept { return _tree.begin(); }
+	iterator end() noexcept { return _tree.end(); }
 
-	const_iterator begin() const { return _tree.begin(); }
-	const_iterator end() const { return _tree.end(); }
+	const_iterator begin() const noexcept { return _tree.begin(); }
+	const_iterator end() const noexcept { return _tree.end(); }
 
-	const_iterator cbegin() const { return _tree.cbegin(); }
-	const_iterator cend() const { return _tree.cend(); }
+	const_iterator cbegin() const noexcept { return _tree.cbegin(); }
+	const_iterator cend() const noexcept { return _tree.cend(); }
 
-    reverse_iterator rbegin() { return reverse_iterator(end()); }
-    reverse_iterator rend() { return reverse_iterator(begin()); }
+    reverse_iterator rbegin() noexcept { return reverse_iterator(end()); }
+    reverse_iterator rend() noexcept { return reverse_iterator(begin()); }
 
-    const_reverse_iterator rbegin() const { return const_reverse_iterator(end()); }
-    const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
+    const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator(end()); }
+    const_reverse_iterator rend() const noexcept { return const_reverse_iterator(begin()); }
 
-    const_reverse_iterator crbegin() const { return const_reverse_iterator(cend()); }
-    const_reverse_iterator crend() const { return const_reverse_iterator(cbegin()); }
+    const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(cend()); }
+    const_reverse_iterator crend() const noexcept { return const_reverse_iterator(cbegin()); }
 
-	void swap(map &other) { _tree.swap(other._tree); }
+	void swap(map &other) noexcept { _tree.swap(other._tree); }
 
 	template <class P>
 	Pair<iterator,bool> insert( P&& value ) {
@@ -322,7 +322,7 @@ operator>=(const map<Key, Value, Comp>& __x, const map<Key, Value, Comp>& __y) {
 
 /// See std::vector::swap().
 template<typename Key, typename Value, typename Comp> inline void
-swap(map<Key, Value, Comp>& __x, map<Key, Value, Comp>& __y) {
+swap(map<Key, Value, Comp>& __x, map<Key, Value, Comp>& __y) noexcept {
 	__x.swap(__y);
 }
 

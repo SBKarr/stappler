@@ -938,7 +938,7 @@ Handle::Result Handle::select(const String &query) {
 			ret.names.emplace_back(PQfname(res, i));
 		}
 
-		ret.data.reserve(nfields);
+		ret.data.reserve(nrows);
 		for (int i = 0; i < nrows; i++) {
 			ret.data.emplace_back(Vector<String>());
 			auto &val = ret.data.back();

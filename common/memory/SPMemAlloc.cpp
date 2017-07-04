@@ -28,7 +28,7 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(memory)
 
-MemPool::MemPool() : _pool(nullptr) { }
+MemPool::MemPool() noexcept : _pool(nullptr) { }
 MemPool::MemPool(Init i) : _pool(nullptr) {
 	switch (i) {
 	case Init::Acquire: _pool = pool::acquire(); break;
@@ -39,17 +39,17 @@ MemPool::MemPool(Init i) : _pool(nullptr) {
 MemPool::MemPool(pool_t *p) {
 	_pool = pool::create(p);
 }
-MemPool::~MemPool() {
+MemPool::~MemPool() noexcept {
 	if (_pool) {
 		pool::destroy(_pool);
 	}
 }
 
-MemPool::MemPool(MemPool &&other) {
+MemPool::MemPool(MemPool &&other) noexcept {
 	_pool = other._pool;
 	other._pool = nullptr;
 }
-MemPool & MemPool::operator=(MemPool &&other) {
+MemPool & MemPool::operator=(MemPool &&other) noexcept {
 	if (_pool) {
 		pool::destroy(_pool);
 	}
@@ -81,19 +81,19 @@ void MemPool::cleanup_register(void *ptr, cleanup_fn fn) {
 	pool::cleanup_register(_pool, ptr, fn);
 }
 
-void *AllocPool::operator new(size_t size) throw() {
+void *AllocPool::operator new(size_t size) noexcept {
 	return pool::alloc(pool::acquire(), size);
 }
 
-void *AllocPool::operator new(size_t size, pool_t *pool) throw() {
+void *AllocPool::operator new(size_t size, pool_t *pool) noexcept {
 	return pool::alloc(pool, size);
 }
 
-void *AllocPool::operator new(size_t size, void *mem) {
+void *AllocPool::operator new(size_t size, void *mem) noexcept {
 	return mem;
 }
 
-void AllocPool::operator delete(void *data) {
+void AllocPool::operator delete(void *data) noexcept {
 	// APR doesn't require to free object's memory
 }
 

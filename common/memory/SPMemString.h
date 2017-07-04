@@ -37,6 +37,9 @@ template<> struct is_char_pointer<char16_t *> { using Type = char_pointer_test; 
 template<> struct is_char_pointer<const char32_t *> { using Type = char_pointer_test; };
 template<> struct is_char_pointer<char32_t *> { using Type = char_pointer_test; };
 
+template <typename CharType, typename InputIterator, bool IsIntegral>
+struct __basic_string_fill;
+
 template <typename CharType>
 class basic_string {
 public:
@@ -62,35 +65,29 @@ public:
 
 	static const size_type npos;
 
-	basic_string() : _mem() { }
-	explicit basic_string (const allocator_type& alloc) : _mem(alloc) { }
+	basic_string() noexcept : _mem() { }
+	explicit basic_string (const allocator_type& alloc) noexcept : _mem(alloc) { }
 
-	basic_string (const self& str) : _mem(str._mem) { }
-	basic_string (const self& str, const allocator_type& alloc) : _mem(str._mem, alloc) { }
+	basic_string (const self& str) noexcept : _mem(str._mem) { }
+	basic_string (const self& str, const allocator_type& alloc) noexcept : _mem(str._mem, alloc) { }
 
-	basic_string (const self& str, size_type pos, size_type len = npos, const allocator_type& alloc = allocator_type())
+	basic_string (const self& str, size_type pos, size_type len = npos, const allocator_type& alloc = allocator_type()) noexcept
 	: _mem(str._mem, pos, len, alloc) { }
 
-	basic_string(const charT* s, const allocator_type& alloc = allocator_type())
+	basic_string(const charT* s, const allocator_type& alloc = allocator_type()) noexcept
 	: _mem(s, (s?traits_type::length(s):0), alloc) { }
 
-	basic_string (const charT* s, size_type n, const allocator_type& alloc = allocator_type())
+	basic_string (const charT* s, size_type n, const allocator_type& alloc = allocator_type()) noexcept
 	: _mem(s, n, alloc) { }
 
-	basic_string (size_type n, charT c, const allocator_type& alloc = allocator_type()) : _mem(alloc) {
+	basic_string (size_type n, charT c, const allocator_type& alloc = allocator_type()) noexcept : _mem(alloc) {
 		_mem.fill(n, c);
 	}
 
 	template <class InputIterator>
-	basic_string (InputIterator first, InputIterator last, const allocator_type& alloc = allocator_type()) : _mem(alloc) {
-		auto size = std::distance(first, last);
-		_mem.reserve(size);
-		for (auto it = first; it != last; it ++) {
-			_mem.emplace_back_unsafe(*it);
-		}
-	}
+	basic_string (InputIterator first, InputIterator last, const allocator_type& alloc = allocator_type()) noexcept;
 
-	basic_string (InitializerList<charT> il, const allocator_type& alloc = allocator_type()) : _mem(alloc) {
+	basic_string (InitializerList<charT> il, const allocator_type& alloc = allocator_type()) noexcept : _mem(alloc) {
 		_mem.reserve(il.size());
 		for (auto it = il.begin(); it != il.end(); it ++) {
 			_mem.emplace_back_unsafe(*it);
@@ -98,29 +95,29 @@ public:
 	}
 
 	basic_string (basic_string&& str) noexcept : _mem(std::move(str._mem)) { }
-	basic_string (basic_string&& str, const allocator_type& alloc) : _mem(std::move(str._mem), alloc) { }
+	basic_string (basic_string&& str, const allocator_type& alloc) noexcept : _mem(std::move(str._mem), alloc) { }
 
-	basic_string& operator=( const basic_string& str ) {
+	basic_string& operator=( const basic_string& str ) noexcept {
 		_mem = str._mem;
 		return *this;
 	}
 
-	basic_string& operator=( basic_string&& str ) {
+	basic_string& operator=( basic_string&& str ) noexcept {
 		_mem = std::move(str._mem);
 		return *this;
 	}
 
-	basic_string& operator=( const charT* s ) {
+	basic_string& operator=( const charT* s ) noexcept {
 		_mem.assign(s, traits_type::length(s));
 		return *this;
 	}
 
-	basic_string& operator=( charT ch ) {
+	basic_string& operator=( charT ch ) noexcept {
 		_mem.assign(&ch, 1);
 		return *this;
 	}
 
-	basic_string& operator=( InitializerList<charT> ilist ) {
+	basic_string& operator=( InitializerList<charT> ilist ) noexcept {
 		_mem.clear();
 		_mem.reserve(ilist.size());
 		for (auto &it : ilist) {
@@ -129,51 +126,51 @@ public:
 		return *this;
 	}
 
-	allocator_type get_allocator() const { return _mem._allocator; }
+	allocator_type get_allocator() const noexcept { return _mem._allocator; }
 
-	iterator begin() { return _mem.begin(); }
-	iterator end() { return _mem.end(); }
+	iterator begin() noexcept { return _mem.begin(); }
+	iterator end() noexcept { return _mem.end(); }
 
-	const_iterator begin() const { return _mem.begin(); }
-	const_iterator end() const { return _mem.end(); }
+	const_iterator begin() const noexcept { return _mem.begin(); }
+	const_iterator end() const noexcept { return _mem.end(); }
 
-	const_iterator cbegin() const { return _mem.cbegin(); }
-	const_iterator cend() const { return _mem.cend(); }
+	const_iterator cbegin() const noexcept { return _mem.cbegin(); }
+	const_iterator cend() const noexcept { return _mem.cend(); }
 
-    reverse_iterator rbegin() { return reverse_iterator(end()); }
-    reverse_iterator rend() { return reverse_iterator(begin()); }
+    reverse_iterator rbegin() noexcept { return reverse_iterator(end()); }
+    reverse_iterator rend() noexcept { return reverse_iterator(begin()); }
 
-    const_reverse_iterator rbegin() const { return const_reverse_iterator(end()); }
-    const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
+    const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator(end()); }
+    const_reverse_iterator rend() const noexcept { return const_reverse_iterator(begin()); }
 
-    const_reverse_iterator crbegin() const { return const_reverse_iterator(cend()); }
-    const_reverse_iterator crend() const { return const_reverse_iterator(cbegin()); }
+    const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(cend()); }
+    const_reverse_iterator crend() const noexcept { return const_reverse_iterator(cbegin()); }
 
-	size_type size() const { return _mem.size(); }
-	size_type length() const { return _mem.size(); }
-	size_type capacity() const { return _mem.capacity(); }
+	size_type size() const noexcept { return _mem.size(); }
+	size_type length() const noexcept { return _mem.size(); }
+	size_type capacity() const noexcept { return _mem.capacity(); }
 
 	void reserve (size_type n = 0) { _mem.reserve(n); }
 
 	void resize (size_type n) { _mem.resize(n); }
 	void resize (size_type n, charT c) { _mem.resize(n, c); }
 
-	void clear() noexcept { _mem.clear(); }
+	void clear() { _mem.clear(); }
 	bool empty() const noexcept { return _mem.empty(); }
 
-	void shrink_to_fit() { }  // There is NO SHRINK in APR
+	void shrink_to_fit() noexcept { _mem.shrink_to_fit(); }
 
-	reference operator[] (size_type pos) { return _mem.at(pos); }
-	const_reference operator[] (size_type pos) const { return _mem.at(pos); }
+	reference operator[] (size_type pos) noexcept { return _mem.at(pos); }
+	const_reference operator[] (size_type pos) const noexcept { return _mem.at(pos); }
 
-	reference at (size_type pos) { return _mem.at(pos); }
-	const_reference at (size_type pos) const { return _mem.at(pos); }
+	reference at (size_type pos) noexcept { return _mem.at(pos); }
+	const_reference at (size_type pos) const noexcept { return _mem.at(pos); }
 
-	charT& back() { return _mem.back(); }
-	const charT& back() const { return _mem.back(); }
+	charT& back() noexcept { return _mem.back(); }
+	const charT& back() const noexcept { return _mem.back(); }
 
-	charT& front() { return _mem.front(); }
-	const charT& front() const { return _mem.front(); }
+	charT& front() noexcept { return _mem.front(); }
+	const charT& front() const noexcept { return _mem.front(); }
 
 	basic_string& append (const basic_string& str) {
 		_mem.insert_back(str._mem);
@@ -197,10 +194,14 @@ public:
 	}
 	template <class InputIterator>
 	basic_string& append (InputIterator first, InputIterator last) {
-		auto diff = last - first;
+		auto diff = std::distance(first, last);
 		_mem.reserve(_mem.size() + diff, true);
-		for (auto it = first; it != last; it ++) {
-			_mem.emplace_back_unsafe(*it);
+		for (auto it = first; it != last; ++ it) {
+			if (*it != value_type(0)) {
+				_mem.emplace_back_unsafe(*it);
+			} else {
+				break;
+			}
 		}
 		return *this;
 	}
@@ -262,15 +263,15 @@ public:
 		return *this;
 	}
 
-	void push_back(CharType c) {
+	void push_back(CharType c) noexcept {
 		_mem.emplace_back(c);
 	}
 
-	void emplace_back(CharType c) {
+	void emplace_back(CharType c) noexcept {
 		_mem.emplace_back(c);
 	}
 
-	void pop_back() {
+	void pop_back() noexcept {
 		_mem.pop_back();
 	}
 
@@ -380,16 +381,12 @@ public:
 		return *this;
 	}
 
-	void swap (basic_string& str) {
-		_mem.swap(str._mem);
-	}
-
 	const charT* c_str() const noexcept { return _mem.data(); }
 	const charT* data() const noexcept { return _mem.data(); }
 	charT* data() noexcept { return _mem.data(); }
 
 	size_type copy (charT* s, size_type len, size_type pos = 0) const {
-		len = MIN(len, _mem._used - pos);
+		len = std::min(len, _mem._used - pos);
 		memcpy(s, _mem._ptr + pos, len * sizeof(charT));
 		return len;
 	}
@@ -539,7 +536,7 @@ public: /* APR extensions */
 		return *this;
 	}
 
-	bool is_weak() const {
+	bool is_weak() const noexcept {
 		return _mem.is_weak();
 	}
 
@@ -610,8 +607,36 @@ protected:
 	    return 0;
 	}
 
+
+	template <typename C, typename I, bool B>
+	friend struct __basic_string_fill;
+
 	mem_type _mem;
 };
+
+template <typename CharType, typename InputIterator>
+struct __basic_string_fill<CharType, InputIterator, true> {
+	static void fill(basic_string<CharType> &str, InputIterator first, InputIterator last) noexcept {
+		str._mem.fill(size_t(first), CharType(last));
+	}
+};
+
+template <typename CharType, typename InputIterator>
+struct __basic_string_fill<CharType, InputIterator, false> {
+	static void fill(basic_string<CharType> &str, InputIterator first, InputIterator last) noexcept {
+		auto size = std::distance(first, last);
+		str.reserve(size);
+		for (auto it = first; it != last; it ++) {
+			str._mem.emplace_back_unsafe(*it);
+		}
+	}
+};
+
+template< class CharT >
+template <class InputIterator>
+basic_string<CharT>::basic_string (InputIterator first, InputIterator last, const allocator_type& alloc) noexcept : _mem(alloc) {
+	__basic_string_fill<CharT, InputIterator, std::is_integral<InputIterator>::value>::fill(*this, first, last);
+}
 
 template< class CharT > basic_string<CharT>
 operator+( const basic_string<CharT>& lhs, const basic_string<CharT>& rhs ) {
@@ -766,11 +791,6 @@ template< class CharT > bool operator>=( const CharT* lhs, const basic_string<Ch
 	return rhs.compare(lhs) < 0;
 }
 
-template< class T >
-void swap( basic_string<T> &lhs, basic_string<T> &rhs ) {
-	lhs.swap(rhs);
-}
-
 template<typename _CharT> typename basic_string<_CharT>::size_type
 basic_string<_CharT>:: find(const _CharT* __s, size_type __pos, size_type __n) const {
 	const size_type __size = this->size();
@@ -912,6 +932,10 @@ using u32string = basic_string<char32_t>;
 
 using weak_string = const string;
 
+template <>
+template <typename CharType>
+struct __AllocatorTriviallyMoveable<basic_string<CharType>> : std::integral_constant<bool, true> { };
+
 NS_SP_EXT_END(memory)
 
 inline stappler::memory::basic_string<char> operator"" _weak ( const char* str, size_t len) {
@@ -926,7 +950,7 @@ namespace std {
 
 template<>
 struct hash<stappler::memory::basic_string<char>> {
-	size_t operator() (const stappler::memory::basic_string<char> & s) const noexcept	{
+	size_t operator() (const stappler::memory::basic_string<char> & s) const noexcept {
 		if (sizeof(size_t) == 8) {
 			return CityHash64(s.data(), s.size());
 		} else {
@@ -937,7 +961,7 @@ struct hash<stappler::memory::basic_string<char>> {
 
 template<>
 struct hash<stappler::memory::basic_string<char16_t>> {
-	size_t operator() (const stappler::memory::basic_string<char16_t> & s) const noexcept	{
+	size_t operator() (const stappler::memory::basic_string<char16_t> & s) const noexcept {
 		if (sizeof(size_t) == 8) {
 			return CityHash64((char *)s.data(), s.size() * sizeof(char16_t));
 		} else {

@@ -37,10 +37,9 @@ public:
 	using difference_type = std::ptrdiff_t;
 	using value_type = typename std::remove_cv<Type>::type;
 
-	pointer_iterator() : current(nullptr) {}
-	pointer_iterator(const iterator&other) : current(other.current) {}
-	explicit pointer_iterator(pointer p) : current(p) {}
-	~pointer_iterator() {}
+	pointer_iterator() noexcept : current(nullptr) {}
+	pointer_iterator(const iterator&other) noexcept : current(other.current) {}
+	explicit pointer_iterator(pointer p) noexcept : current(p) {}
 
 	iterator& operator=(const iterator&other) {current = other; return *this;}
 	bool operator==(const iterator&other) const {return current == other.current;}

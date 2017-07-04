@@ -48,12 +48,12 @@ public:
 	using const_reverse_iterator = typename mem_type::const_reverse_iterator;
 
 public:
-	vector() {}
-	explicit vector( const allocator_type& alloc ) : _mem(alloc) { }
-	explicit vector( size_type count, const Type& value, const allocator_type& alloc = allocator_type()) : _mem(alloc) {
+	vector() noexcept {}
+	explicit vector( const allocator_type& alloc ) noexcept : _mem(alloc) { }
+	explicit vector( size_type count, const Type& value, const allocator_type& alloc = allocator_type()) noexcept : _mem(alloc) {
 		_mem.fill(count, value);
 	}
-	explicit vector( size_type count, const allocator_type& alloc = allocator_type() ) : _mem(alloc) {
+	explicit vector( size_type count, const allocator_type& alloc = allocator_type() ) noexcept : _mem(alloc) {
 		_mem.fill(count);
 	}
 
@@ -66,26 +66,26 @@ public:
 		}
 	}
 
-	vector( const vector& other ) : _mem(other._mem) { }
-	vector( const vector& other, const allocator_type& alloc ) : _mem(other._mem, alloc) { }
-	vector( vector&& other ) : _mem(std::move(other._mem)) { }
-	vector( vector&& other, const allocator_type& alloc ) : _mem(std::move(other._mem), alloc) { }
-	vector( InitializerList<Type> init, const allocator_type& alloc = allocator_type() ) : _mem(alloc) {
+	vector( const vector& other ) noexcept : _mem(other._mem) { }
+	vector( const vector& other, const allocator_type& alloc ) noexcept : _mem(other._mem, alloc) { }
+	vector( vector&& other ) noexcept : _mem(std::move(other._mem)) { }
+	vector( vector&& other, const allocator_type& alloc ) noexcept : _mem(std::move(other._mem), alloc) { }
+	vector( InitializerList<Type> init, const allocator_type& alloc = allocator_type() ) noexcept : _mem(alloc) {
 		_mem.reserve(init.size());
 		for (auto & it : init) {
 			_mem.emplace_back_unsafe(it);
 		}
 	}
 
-	vector& operator=( const vector& other ) {
+	vector& operator=( const vector& other ) noexcept {
 		_mem = other._mem;
 		return *this;
 	}
-	vector& operator=( vector&& other ) {
+	vector& operator=( vector&& other ) noexcept {
 		_mem = std::move(other._mem);
 		return *this;
 	}
-	vector& operator=( InitializerList<Type> init ) {
+	vector& operator=( InitializerList<Type> init ) noexcept {
 		_mem.clear();
 		_mem.reserve(init.size());
 		for (auto & it : init) {
@@ -119,44 +119,44 @@ public:
 		_mem.assign_strong(t, s);
 	}
 
-	allocator_type get_allocator() const { return _mem._allocator; }
+	allocator_type get_allocator() const noexcept { return _mem._allocator; }
 
-	reference at( size_type pos ) { return _mem.at(pos); }
-	const_reference at( size_type pos ) const { return _mem.at(pos); }
+	reference at( size_type pos ) noexcept { return _mem.at(pos); }
+	const_reference at( size_type pos ) const noexcept { return _mem.at(pos); }
 
-	reference operator[]( size_type pos ) { return _mem.at(pos); }
-	const_reference operator[]( size_type pos ) const { return _mem.at(pos); }
+	reference operator[]( size_type pos ) noexcept { return _mem.at(pos); }
+	const_reference operator[]( size_type pos ) const noexcept { return _mem.at(pos); }
 
-	reference front() { return _mem.front(); }
-	const_reference front() const { return _mem.front(); }
+	reference front() noexcept { return _mem.front(); }
+	const_reference front() const noexcept { return _mem.front(); }
 
-	reference back() { return _mem.back(); }
-	const_reference back() const { return _mem.back(); }
+	reference back() noexcept { return _mem.back(); }
+	const_reference back() const noexcept { return _mem.back(); }
 
-	pointer data() { return _mem.data(); }
-	const_pointer data() const { return _mem.data(); }
+	pointer data() noexcept { return _mem.data(); }
+	const_pointer data() const noexcept { return _mem.data(); }
 
-	iterator begin() { return _mem.begin(); }
-	iterator end() { return _mem.end(); }
+	iterator begin() noexcept { return _mem.begin(); }
+	iterator end() noexcept { return _mem.end(); }
 
-	const_iterator begin() const { return _mem.begin(); }
-	const_iterator end() const { return _mem.end(); }
+	const_iterator begin() const noexcept { return _mem.begin(); }
+	const_iterator end() const noexcept { return _mem.end(); }
 
-	const_iterator cbegin() const { return _mem.cbegin(); }
-	const_iterator cend() const { return _mem.cend(); }
+	const_iterator cbegin() const noexcept { return _mem.cbegin(); }
+	const_iterator cend() const noexcept { return _mem.cend(); }
 
-    reverse_iterator rbegin() { return reverse_iterator(end()); }
-    reverse_iterator rend() { return reverse_iterator(begin()); }
+    reverse_iterator rbegin() noexcept { return reverse_iterator(end()); }
+    reverse_iterator rend() noexcept { return reverse_iterator(begin()); }
 
-    const_reverse_iterator rbegin() const { return const_reverse_iterator(end()); }
-    const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
+    const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator(end()); }
+    const_reverse_iterator rend() const noexcept { return const_reverse_iterator(begin()); }
 
-    const_reverse_iterator crbegin() const { return const_reverse_iterator(cend()); }
-    const_reverse_iterator crend() const { return const_reverse_iterator(cbegin()); }
+    const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(cend()); }
+    const_reverse_iterator crend() const noexcept { return const_reverse_iterator(cbegin()); }
 
-	size_type size() const { return _mem.size(); }
-	size_type capacity() const { return _mem.capacity(); }
-	bool empty() const { return _mem.empty(); }
+	size_type size() const noexcept { return _mem.size(); }
+	size_type capacity() const noexcept { return _mem.capacity(); }
+	bool empty() const noexcept { return _mem.empty(); }
 	void reserve( size_type new_cap ) { _mem.reserve(new_cap); }
 	void shrink_to_fit() { }
 
@@ -217,10 +217,6 @@ public:
 		_mem.resize(count, value);
 	}
 
-	void swap( vector& other ) {
-		_mem.swap(other._mem);
-	}
-
 public:
 	static const vector make_weak(const Type *str, size_type l, const allocator_type& alloc = allocator_type()) {
 		vector ret(alloc);
@@ -235,7 +231,7 @@ public:
 		return *this;
 	}
 
-	bool is_weak() const {
+	bool is_weak() const noexcept {
 		return _mem.is_weak();
 	}
 
@@ -294,11 +290,9 @@ operator>=(const vector<_Tp>& __x, const vector<_Tp>& __y) {
 	return !(__x < __y);
 }
 
-/// See std::vector::swap().
-template<typename _Tp> inline void
-swap(vector<_Tp>& __x, vector<_Tp>& __y) {
-	__x.swap(__y);
-}
+template <>
+template <typename T>
+struct __AllocatorTriviallyMoveable<vector<T>> : std::integral_constant<bool, true> { };
 
 NS_SP_EXT_END(memory)
 

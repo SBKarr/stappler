@@ -160,7 +160,7 @@ data::Value Resolver::ResourceObject::processResultList(Scheme *s, data::Value &
 				it ++;
 			}
 		}
-		return ret;
+		return std::move(ret);
 	}
 	return data::Value();
 }

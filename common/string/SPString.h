@@ -553,12 +553,12 @@ auto toupper(const WideStringView & str) -> typename Interface::WideStringType {
 
 template <typename Interface>
 auto tolower(const StringView & str) -> typename Interface::StringType {
-	return StringTraits<Interface>::toupper(str);
+	return StringTraits<Interface>::tolower(str);
 }
 
 template <typename Interface>
 auto tolower(const WideStringView & str) -> typename Interface::WideStringType {
-	return StringTraits<Interface>::toupper(str);
+	return StringTraits<Interface>::tolower(str);
 }
 
 template <typename Interface>

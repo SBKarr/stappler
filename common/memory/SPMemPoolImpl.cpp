@@ -114,8 +114,8 @@ class AllocStack {
 public:
 	AllocStack();
 
-	pool_t *top() const { return _stack.get(); }
-	Pair<uint32_t, void *> info() const { return pair(_info.get().tag, _info.get().ptr); }
+	pool_t *top() const;
+	Pair<uint32_t, void *> info() const;
 
 	void push(pool_t *);
 	void push(pool_t *, uint32_t, void *);
@@ -132,7 +132,8 @@ protected:
 		bool empty() const { return size == 0; }
 		void push(const T &t) { data[size] = t; ++ size; }
 		void pop() { -- size; }
-		const T &get() const { return data[size - 1]; }
+		const T &get() const {
+			return data[size - 1]; }
 	};
 
 	struct Info {
@@ -145,7 +146,21 @@ protected:
 	stack<pool_t *> _stack;
 };
 
-AllocStack::AllocStack() { }
+AllocStack::AllocStack() {
+	_stack.push(nullptr);
+}
+
+pool_t *AllocStack::top() const {
+	return _stack.get();
+}
+
+Pair<uint32_t, void *> AllocStack::info() const {
+	if (_info.size == 0) {
+		return pair(0, nullptr);
+	} else {
+		return pair(_info.get().tag, _info.get().ptr);
+	}
+}
 
 void AllocStack::push(pool_t *p) {
 	if (p) {
@@ -160,7 +175,7 @@ void AllocStack::push(pool_t *p, uint32_t tag, void *ptr) {
 }
 
 void AllocStack::pop() {
-	if (_info.get().pool == _stack.get()) {
+	if (/*_info.size > 0 &&*/ _info.get().pool == _stack.get()) {
 		_info.pop();
 	}
 	_stack.pop();
@@ -823,7 +838,11 @@ pool_t *create() {
 	return pool_t::create();
 }
 pool_t *create(pool_t *p) {
-	return p->make_child();
+	if (p) {
+		return p->make_child();
+	} else {
+		return s_global_pool->make_child();
+	}
 }
 
 void destroy(pool_t *p) {

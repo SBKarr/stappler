@@ -42,46 +42,46 @@ public:
 
 	static constexpr size_type bufsize = 256;
 
-	basic_ostringbuf(size_type block = bufsize, const allocator_type &alloc = allocator_type())
+	basic_ostringbuf(size_type block = bufsize, const allocator_type &alloc = allocator_type()) noexcept
 	: _buf(alloc) {
 		_buf.resize(block, 0);
 
 	    char *base = &_buf.front();
 	    streambuf_type::setp(base, base + _buf.size() - 1); // -1 to make overflow() easier
 	}
-	basic_ostringbuf(CharType *ptr, size_type block, const allocator_type &alloc = allocator_type())
+	basic_ostringbuf(CharType *ptr, size_type block, const allocator_type &alloc = allocator_type()) noexcept
 	: _buf(alloc) {
 		_buf.assign_weak(ptr, block);
 
 	    char *base = &_buf.front();
 	    streambuf_type::setp(base, base + _buf.size() - 1); // -1 to make overflow() easier
 	}
-	basic_ostringbuf(basic_ostringbuf &&other, const allocator_type &alloc = allocator_type())
+	basic_ostringbuf(basic_ostringbuf &&other, const allocator_type &alloc = allocator_type()) noexcept
 	: _buf(std::move(other._buf), alloc)  {
 	    char *base = &_buf.front();
 		auto diff = (_buf.size() - 1) - (other.epptr() - other.pptr());
 		streambuf_type::setp(base + diff, base + _buf.size() - 1);
 	}
 
-	virtual ~basic_ostringbuf() { }
+	virtual ~basic_ostringbuf() noexcept { }
 
-	bool empty() const {
+	bool empty() const noexcept {
 		return streambuf_type::pptr() == _buf.data();
 	}
 
-	size_type size() const {
+	size_type size() const noexcept {
 		return (streambuf_type::pptr() - _buf.data());
 	}
 
-	CharType *data() {
+	CharType *data() noexcept {
 		return _buf.data();
 	}
 
-	const CharType *data() const {
+	const CharType *data() const noexcept {
 		return _buf.data();
 	}
 
-	string_type str() const {
+	string_type str() const noexcept {
 		string_type ret;
 		ret.assign(_buf.data(), size());
 		return ret;
@@ -105,7 +105,8 @@ public:
 	basic_ostringbuf(const basic_ostringbuf &) = delete;
 	basic_ostringbuf & operator = (const basic_ostringbuf &) = delete;
 
-	const allocator_type &get_allocator() const { return _buf.get_allocator(); }
+	const allocator_type &get_allocator() const noexcept { return _buf.get_allocator(); }
+
 protected:
 	void make_flush() {
 		auto diff = streambuf_type::pptr() - &_buf.front();
@@ -156,28 +157,28 @@ private:
 
 public:
 	explicit
-	basic_ostringstream(size_type block = stringbuf_type::bufsize, const allocator_type &alloc = allocator_type())
+	basic_ostringstream(size_type block = stringbuf_type::bufsize, const allocator_type &alloc = allocator_type()) noexcept
 	: ostream_type(), _buf(block, alloc) {
 		this->init(&_buf);
 	}
 
-	basic_ostringstream(CharType *ptr, size_type block, const allocator_type &alloc = allocator_type())
+	basic_ostringstream(CharType *ptr, size_type block, const allocator_type &alloc = allocator_type()) noexcept
 	: ostream_type(), _buf(ptr, block, alloc) {
 		this->init(&_buf);
 	}
 
-	basic_ostringstream(basic_ostringstream && rhs)
+	basic_ostringstream(basic_ostringstream && rhs) noexcept
 	: ostream_type(std::move(rhs)), _buf(std::move(rhs._buf)) {
 		ostream_type::set_rdbuf(&_buf);
 	}
 
-	basic_ostringstream & operator=(basic_ostringstream && rhs) {
+	basic_ostringstream & operator=(basic_ostringstream && rhs) noexcept {
 		ostream_type::operator=(std::move(rhs));
 		_buf = std::move(rhs._buf);
 		return *this;
 	}
 
-	~basic_ostringstream() {}
+	~basic_ostringstream() noexcept {}
 
 	basic_ostringstream(const basic_ostringstream &) = delete;
 	basic_ostringstream & operator=(const basic_ostringstream &) = delete;
@@ -191,18 +192,18 @@ public:
 		return const_cast<stringbuf_type *>(&_buf);
 	}
 
-	string_type str() const { return _buf.str(); }
-	string_type weak() const { return string_type::make_weak(data(), size()); }
+	string_type str() const noexcept { return _buf.str(); }
+	string_type weak() const noexcept { return string_type::make_weak(data(), size()); }
 	void clear() { _buf.clear(); }
 
-	bool empty() const { return _buf.empty(); }
-	size_t size() const { return _buf.size(); }
-	CharType *data() { return _buf.data(); }
-	const CharType *data() const { return _buf.data(); }
+	bool empty() const noexcept { return _buf.empty(); }
+	size_t size() const noexcept { return _buf.size(); }
+	CharType *data() noexcept { return _buf.data(); }
+	const CharType *data() const noexcept { return _buf.data(); }
 
 	void reserve(size_t size) { _buf.reserve(size); }
 
-	const allocator_type &get_allocator() const { return _buf.get_allocator(); }
+	const allocator_type &get_allocator() const noexcept { return _buf.get_allocator(); }
 };
 
 using ostringstream = basic_ostringstream<char>;

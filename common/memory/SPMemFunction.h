@@ -42,89 +42,6 @@ struct check_signature<Func, Ret(Args...),
         >::value, void>::type>
     : std::true_type {};
 
-template <typename UnusedType, typename UnusedSig>
-struct callback;
-
-template <typename Type, typename ReturnType, typename ... ArgumentTypes>
-struct callback<Type, ReturnType (ArgumentTypes ...)> : public AllocPool {
-	using FunctionPointer = ReturnType (*)(const void *, ArgumentTypes ...);
-	static ReturnType call(const void *ptr, ArgumentTypes ... args) {
-		return ((callback *)(ptr))->_callback(std::forward<ArgumentTypes>(args) ...);
-	}
-
-	static FunctionPointer addr() { return &call; }
-
-	callback (Type &&cb,
-			typename std::enable_if<check_signature<Type, ReturnType (ArgumentTypes ...)>::value>::type * = nullptr )
-	: _callback(std::forward<Type>(cb)) { }
-
-	ReturnType operator () (ArgumentTypes ... args) const {
-		return _callback(std::forward<ArgumentTypes>(args) ...);
-	}
-
-	Type _callback; // it should be stack lambda with selected signature
-};
-
-template <typename ReturnType, typename ... ArgumentTypes>
-struct callback<nullptr_t, ReturnType (ArgumentTypes ...)> : public AllocPool {
-	using FunctionPointer = ReturnType (*)(const void *, ArgumentTypes ...);
-	static ReturnType call(const void *ptr, ArgumentTypes ... args) {
-		return ReturnType();
-	}
-
-	static FunctionPointer addr() { return &call; }
-	callback(nullptr_t) { }
-};
-
-template <typename ... ArgumentTypes>
-struct callback<nullptr_t, void (ArgumentTypes ...)> : public AllocPool {
-	using FunctionPointer = void (*)(const void *, ArgumentTypes ...);
-	static void call(const void *ptr, ArgumentTypes ... args) { }
-
-	static FunctionPointer addr() { return &call; }
-	callback(nullptr_t) { }
-};
-
-template <typename Sig, typename Type>
-callback<Type, Sig> make_callback(Type &&t) {
-	return callback<Type, Sig>(std::forward<Type>(t));
-}
-
-template <typename UnusedSig>
-class callback_ref;
-
-template <typename ReturnType, typename ... ArgumentTypes>
-class callback_ref <ReturnType (ArgumentTypes ...)> : public AllocPool {
-public:
-	using Signature = ReturnType (ArgumentTypes ...);
-	using FunctionPointer = ReturnType (*)(const void *, ArgumentTypes ...);
-
-	callback_ref() : _objectPtr(nullptr), _functionPtr(nullptr) { }
-
-	template <typename Type>
-	callback_ref(const callback<Type, Signature> &cb)
-	: _objectPtr(&cb), _functionPtr(callback<Type, Signature>::addr()) { }
-
-	callback_ref(const void *ptr, FunctionPointer func) : _objectPtr(ptr), _functionPtr(func) { }
-
-	callback_ref(const callback_ref &ref) : _objectPtr(ref._objectPtr), _functionPtr(ref._functionPtr) { }
-	callback_ref(callback_ref &&ref) : _objectPtr(ref._objectPtr), _functionPtr(ref._functionPtr) { }
-
-	callback_ref& operator=(const callback_ref &ref) { _objectPtr = ref._objectPtr; _functionPtr = ref._functionPtr; return *this; }
-	callback_ref& operator=(callback_ref &&ref) { _objectPtr = ref._objectPtr; _functionPtr = ref._functionPtr; return *this; }
-
-	operator bool () { return _objectPtr != nullptr && _functionPtr != nullptr; }
-
-	ReturnType operator () (ArgumentTypes ... args) const {
-		return _functionPtr(_objectPtr, std::forward<ArgumentTypes>(args) ...);
-	}
-
-protected:
-	const void *_objectPtr;
-	FunctionPointer _functionPtr;
-};
-
-
 template <typename UnusedType>
 class function;
 
@@ -134,37 +51,37 @@ public:
 	using signature_type = ReturnType (ArgumentTypes ...);
 	using allocator_type = Allocator<void *>;
 
-	function(const allocator_type &alloc = allocator_type()) : mAllocator(alloc), mInvoker(nullptr) { }
+	function(const allocator_type &alloc = allocator_type()) noexcept : mAllocator(alloc), mInvoker(nullptr) { }
 
-	function(nullptr_t, const allocator_type &alloc = allocator_type()) : mAllocator(alloc), mInvoker(nullptr) { }
-	function &operator= (nullptr_t) { mInvoker = nullptr; return *this; }
+	function(nullptr_t, const allocator_type &alloc = allocator_type()) noexcept : mAllocator(alloc), mInvoker(nullptr) { }
+	function &operator= (nullptr_t) noexcept { mInvoker = nullptr; return *this; }
 
 	template <typename FunctionT>
-	function(FunctionT && f, const allocator_type &alloc = allocator_type())
+	function(FunctionT && f, const allocator_type &alloc = allocator_type()) noexcept
 		: mAllocator(alloc), mInvoker(new (alloc) free_function_holder<FunctionT>(std::forward<FunctionT>(f))) { }
 
 	template <typename FunctionT>
-	function & operator= (FunctionT f) {
+	function & operator= (FunctionT f) noexcept {
 		mInvoker = new (mAllocator) free_function_holder<FunctionT>(f);
 		return *this;
 	}
 
 
 	template <typename FunctionType, typename ClassType>
-	function(FunctionType ClassType::* f, const allocator_type &alloc = allocator_type())
+	function(FunctionType ClassType::* f, const allocator_type &alloc = allocator_type()) noexcept
 		:mAllocator(alloc),  mInvoker(new (alloc) member_function_holder<FunctionType, ArgumentTypes ...>(f)) { }
 
 	template <typename FunctionType, typename ClassType>
-	function & operator= (FunctionType ClassType::* f) {
+	function & operator= (FunctionType ClassType::* f) noexcept {
 		mInvoker = new (mAllocator) member_function_holder<FunctionType, ArgumentTypes ...>(f);
 		return *this;
 	}
 
 
-	function(const function & other, const allocator_type &alloc = allocator_type())
+	function(const function & other, const allocator_type &alloc = allocator_type()) noexcept
 	: mAllocator(alloc), mInvoker(other.mInvoker?other.mInvoker->clone(alloc):nullptr) { }
 
-	function & operator = (const function & other) {
+	function & operator = (const function & other) noexcept {
 		if (other.mInvoker) {
 			mInvoker = other.mInvoker->clone(mAllocator);
 		} else {
@@ -174,12 +91,12 @@ public:
 	}
 
 
-	function(function && other, const allocator_type &alloc = allocator_type())
+	function(function && other, const allocator_type &alloc = allocator_type()) noexcept
 	: mAllocator(alloc),
 	  mInvoker((alloc==other.mAllocator) ? other.mInvoker : (other.mInvoker?other.mInvoker->clone(mAllocator):nullptr)) {
 		other.mInvoker = nullptr;
 	}
-	function & operator = (function && other) {
+	function & operator = (function && other) noexcept {
 		mInvoker = (mAllocator==other.mAllocator) ? other.mInvoker : (other.mInvoker?other.mInvoker->clone(mAllocator):nullptr);
 		other.mInvoker = nullptr;
 		return *this;
@@ -189,13 +106,13 @@ public:
 		return mInvoker->invoke(std::forward<ArgumentTypes>(args) ...);
 	}
 
-	inline operator bool () const { return mInvoker != nullptr; }
+	inline operator bool () const noexcept { return mInvoker != nullptr; }
 
 private:
 	class function_holder_base : public AllocPool {
 	public:
-		function_holder_base() { }
-		virtual ~function_holder_base() { }
+		function_holder_base() noexcept { }
+		virtual ~function_holder_base() noexcept { }
 
 		virtual ReturnType invoke(ArgumentTypes && ... args) = 0;
 		virtual function_holder_base * clone(const allocator_type &) = 0;
@@ -204,14 +121,14 @@ private:
 		void operator = (const function_holder_base &)  = delete;
 	};
 
-	// Мы не используем умные указатели, поскольку память из apr_pool_t не требует освобождения
+	// Мы не используем умные указатели, поскольку память из pool_t не требует освобождения
 	using invoker_t = function_holder_base *;
 
 	template <typename FunctionT>
 	class free_function_holder : public function_holder_base {
 	public:
-		free_function_holder(const FunctionT &func) : function_holder_base(), mFunction(func) { }
-		free_function_holder(FunctionT &&func) : function_holder_base(), mFunction(std::move(func)) { }
+		free_function_holder(const FunctionT &func) noexcept : function_holder_base(), mFunction(func) { }
+		free_function_holder(FunctionT &&func) noexcept : function_holder_base(), mFunction(std::move(func)) { }
 
 		virtual ReturnType invoke(ArgumentTypes && ... args) override {
 			return mFunction(std::forward<ArgumentTypes>(args)...);
@@ -230,7 +147,7 @@ private:
 	public:
 		using member_function_signature_t = FunctionType ClassType::*;
 
-		member_function_holder(member_function_signature_t f) : mFunction(f) {}
+		member_function_holder(member_function_signature_t f) noexcept : mFunction(f) {}
 
 		virtual ReturnType invoke(ClassType obj, RestArgumentTypes &&... restArgs) override {
 			return (obj.*mFunction)(std::forward<RestArgumentTypes>(restArgs) ...);

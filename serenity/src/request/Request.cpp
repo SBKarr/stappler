@@ -582,7 +582,7 @@ apr::string Request::getFullHostname(int port) {
 	bool isSecure = isSecureConnection();
 	apr::ostringstream ret;
 	ret << (isSecure?"https":"http") << "://" << getHostname();
-	if ((isSecure && port != 443) || (!isSecure && port != 80)) {
+	if (port && ((isSecure && port != 443) || (!isSecure && port != 80))) {
 		ret << ':' << port;
 	}
 

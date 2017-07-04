@@ -64,12 +64,12 @@ public:
 		init(std::forward<Args>(args)...);
 	}
 
-	Transform();
-	Transform(const Transform &);
-	Transform(Transform &&);
+	Transform() noexcept;
+	Transform(const Transform &) noexcept;
+	Transform(Transform &&) noexcept;
 
-	Transform & operator=(const Transform &);
-	Transform & operator=(Transform &&);
+	Transform & operator=(const Transform &) noexcept;
+	Transform & operator=(Transform &&) noexcept;
 
 	data::Value &transform(data::Value &) const;
 	Transform reverse() const;

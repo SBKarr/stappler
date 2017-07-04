@@ -51,9 +51,9 @@ public:
 	using difference_type = std::ptrdiff_t;
 
 public:
-	set() : _tree() { }
-	explicit set (const key_compare & comp, const allocator_type & alloc = allocator_type()) : _tree(comp, alloc) { }
-	explicit set (const allocator_type & alloc) : _tree(key_compare(), alloc) { }
+	set() noexcept : _tree() { }
+	explicit set (const key_compare & comp, const allocator_type & alloc = allocator_type()) noexcept : _tree(comp, alloc) { }
+	explicit set (const allocator_type & alloc) noexcept : _tree(key_compare(), alloc) { }
 
 	template <class InputIterator>
 	set (InputIterator first, InputIterator last,
@@ -72,35 +72,35 @@ public:
 		}
 	}
 
-	set (const set& x) : _tree(x._tree) { }
-	set (const set& x, const allocator_type& alloc) : _tree(x._tree, alloc) { }
+	set (const set& x) noexcept : _tree(x._tree) { }
+	set (const set& x, const allocator_type& alloc) noexcept : _tree(x._tree, alloc) { }
 
-	set (set&& x) : _tree(std::move(x._tree)) { }
-	set (set&& x, const allocator_type& alloc) : _tree(std::move(x._tree), alloc) { }
+	set (set&& x) noexcept : _tree(std::move(x._tree)) { }
+	set (set&& x, const allocator_type& alloc) noexcept : _tree(std::move(x._tree), alloc) { }
 
 	set (InitializerList<value_type> il,
-			const key_compare& comp = key_compare(), const allocator_type& alloc = allocator_type())
+			const key_compare& comp = key_compare(), const allocator_type& alloc = allocator_type()) noexcept
 	: _tree(comp, alloc) {
 		for (auto &it : il) {
 			emplace(std::move(it));
 		}
 	}
-	set (InitializerList<value_type> il, const allocator_type& alloc)
+	set (InitializerList<value_type> il, const allocator_type& alloc) noexcept
 	: _tree(key_compare(), alloc) {
 		for (auto &it : il) {
 			emplace(std::move(it));
 		}
 	}
 
-	set& operator= (const set& other) {
+	set& operator= (const set& other) noexcept {
 		_tree = other._tree;
 		return *this;
 	}
-	set& operator= (set&& other) {
+	set& operator= (set&& other) noexcept {
 		_tree = std::move(other._tree);
 		return *this;
 	}
-	set& operator= (InitializerList<value_type> ilist) {
+	set& operator= (InitializerList<value_type> ilist) noexcept {
 		_tree.clear();
 		for (auto &it : ilist) {
 			emplace(std::move(it));
@@ -108,9 +108,9 @@ public:
 		return *this;
 	}
 
-	allocator_type get_allocator() const { return _tree.get_allocator(); }
-	bool empty() const { return _tree.empty(); }
-	size_t size() const { return _tree.size(); }
+	allocator_type get_allocator() const noexcept { return _tree.get_allocator(); }
+	bool empty() const noexcept { return _tree.empty(); }
+	size_t size() const noexcept { return _tree.size(); }
 	void clear() { _tree.clear(); }
 
 	Pair<iterator,bool> insert( const value_type& value ) {
@@ -155,25 +155,25 @@ public:
 	iterator erase( const_iterator first, const_iterator last ) { return _tree.erase(first, last); }
 	size_type erase( const key_type& key ) { return _tree.erase_unique(key); }
 
-	iterator begin() { return _tree.begin(); }
-	iterator end() { return _tree.end(); }
+	iterator begin() noexcept { return _tree.begin(); }
+	iterator end() noexcept { return _tree.end(); }
 
-	const_iterator begin() const { return _tree.begin(); }
-	const_iterator end() const { return _tree.end(); }
+	const_iterator begin() const noexcept { return _tree.begin(); }
+	const_iterator end() const noexcept { return _tree.end(); }
 
-	const_iterator cbegin() const { return _tree.cbegin(); }
-	const_iterator cend() const { return _tree.cend(); }
+	const_iterator cbegin() const noexcept { return _tree.cbegin(); }
+	const_iterator cend() const noexcept { return _tree.cend(); }
 
-    reverse_iterator rbegin() { return reverse_iterator(end()); }
-    reverse_iterator rend() { return reverse_iterator(begin()); }
+    reverse_iterator rbegin() noexcept { return reverse_iterator(end()); }
+    reverse_iterator rend() noexcept { return reverse_iterator(begin()); }
 
-    const_reverse_iterator rbegin() const { return const_reverse_iterator(end()); }
-    const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
+    const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator(end()); }
+    const_reverse_iterator rend() const noexcept { return const_reverse_iterator(begin()); }
 
-    const_reverse_iterator crbegin() const { return const_reverse_iterator(cend()); }
-    const_reverse_iterator crend() const { return const_reverse_iterator(cbegin()); }
+    const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(cend()); }
+    const_reverse_iterator crend() const noexcept { return const_reverse_iterator(cbegin()); }
 
-	void swap(set &other) {
+	void swap(set &other) noexcept {
 		_tree.swap(other._tree);
 	}
 
@@ -231,7 +231,7 @@ operator>=(const set<_Tp, Comp>& __x, const set<_Tp, Comp>& __y) {
 
 /// See std::vector::swap().
 template<typename _Tp, typename Comp> inline void
-swap(set<_Tp, Comp>& __x, set<_Tp, Comp>& __y) {
+swap(set<_Tp, Comp>& __x, set<_Tp, Comp>& __y) noexcept {
 	__x.swap(__y);
 }
 

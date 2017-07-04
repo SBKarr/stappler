@@ -249,7 +249,7 @@ void File::runConditionChunk(const Vector<Chunk> &chunks, Exec &exec, Request &r
 	for (auto &it : chunks) {
 		if (it.type == Variant) {
 			auto var = exec.exec(it.expr);
-			if (var.value && var.value->asBool()) {
+			if (var.value && (((var.value->isDictionary() || var.value->isArray()) && var.value->size() > 0) || var.value->asBool())) {
 				for (auto &c_it : it.chunks) {
 					runChunk(c_it, exec, req);
 				}

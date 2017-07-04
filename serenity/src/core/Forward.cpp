@@ -261,7 +261,7 @@ bool validateEmail(String &str) {
 		ret.append(host);
 	}
 
-	str.swap(ret);
+	str = std::move(ret);
 	return true;
 }
 
@@ -285,7 +285,7 @@ bool validateUrl(String &str) {
 	}
 
 	auto newUrl = url.get();
-	str.swap(newUrl);
+	str = std::move(newUrl);
 	return true;
 }
 

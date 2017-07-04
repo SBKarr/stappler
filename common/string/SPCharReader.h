@@ -365,7 +365,7 @@ auto CharReaderDefault<_CharType>::set(const CharType *p, size_t l)-> Self & {
 
 template <typename _CharType>
 auto CharReaderDefault<_CharType>::operator == (const Self &other) const -> bool {
-	return this->ptr == other.ptr && this->len == other.len;
+	return this->len == other.len && memcmp(this->ptr, other.ptr, other.len) == 0;
 }
 
 template <typename _CharType>

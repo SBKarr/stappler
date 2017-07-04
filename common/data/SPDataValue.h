@@ -81,12 +81,12 @@ public:
 	};
 
 public:
-	ValueTemplate();
-	ValueTemplate(Type type);
-	~ValueTemplate();
+	ValueTemplate() noexcept;
+	ValueTemplate(Type type) noexcept;
+	~ValueTemplate() noexcept;
 
-	ValueTemplate(const Self &other);
-	ValueTemplate(Self &&other);
+	ValueTemplate(const Self &other) noexcept;
+	ValueTemplate(Self &&other) noexcept;
 
 	template <typename OtherInterface>
 	ValueTemplate(const ValueTemplate<OtherInterface> &);
@@ -112,11 +112,11 @@ public:
 	explicit ValueTemplate(const DictionaryType &v) : _type(Type::DICTIONARY) { dictVal = new DictionaryType(v); }
 	explicit ValueTemplate(DictionaryType &&v) : _type(Type::DICTIONARY) { dictVal = new DictionaryType(std::move(v)); }
 
-	Self& operator= (const Self& other);
-	Self& operator= (Self&& other);
+	Self& operator= (const Self& other) noexcept;
+	Self& operator= (Self&& other) noexcept;
 
 	template <typename OtherInterface>
-	Self& operator= (const ValueTemplate<OtherInterface> &);
+	Self& operator= (const ValueTemplate<OtherInterface> &) noexcept;
 
 	Self& operator= (nullptr_t) { clear(); _type = Type::EMPTY; return *this; }
 	Self& operator= (bool v) { reset(Type::BOOLEAN); boolVal = v; return *this; }
@@ -260,7 +260,7 @@ public:
 
 	Self slice(int start, int count);
 
-	operator bool() const { return (_type != Type::EMPTY); }
+	operator bool() const noexcept { return (_type != Type::EMPTY); }
 
 	int64_t asInteger() const;
 	double asDouble() const;
@@ -274,25 +274,25 @@ public:
 	DictionaryType& asDict() { return isDictionary() ? *dictVal : const_cast<DictionaryType &>(DictionaryNull); }
 	const DictionaryType& asDict() const { return isDictionary() ? *dictVal : DictionaryNull; }
 
-	size_t size() const;
-	bool empty() const;
+	size_t size() const noexcept;
+	bool empty() const noexcept;
 	void clear();
 
 	template <class Stream, class Traits = StreamTraits<Stream>>
 	void encode(Stream &stream) const;
 
-	inline bool isNull() const { return _type == Type::EMPTY; }
-	inline bool isBasicType() const { return _type != Type::ARRAY && _type != Type::DICTIONARY; }
-	inline bool isArray() const { return _type == Type::ARRAY; }
-	inline bool isDictionary() const { return _type == Type::DICTIONARY; }
+	inline bool isNull() const noexcept { return _type == Type::EMPTY; }
+	inline bool isBasicType() const noexcept { return _type != Type::ARRAY && _type != Type::DICTIONARY; }
+	inline bool isArray() const noexcept { return _type == Type::ARRAY; }
+	inline bool isDictionary() const noexcept { return _type == Type::DICTIONARY; }
 
-	inline bool isBool() const { return _type == Type::BOOLEAN; }
-	inline bool isInteger() const { return _type == Type::INTEGER; }
-	inline bool isDouble() const { return _type == Type::DOUBLE; }
-	inline bool isString() const { return _type == Type::CHARSTRING; }
-	inline bool isBytes() const { return _type == Type::BYTESTRING; }
+	inline bool isBool() const noexcept { return _type == Type::BOOLEAN; }
+	inline bool isInteger() const noexcept { return _type == Type::INTEGER; }
+	inline bool isDouble() const noexcept { return _type == Type::DOUBLE; }
+	inline bool isString() const noexcept { return _type == Type::CHARSTRING; }
+	inline bool isBytes() const noexcept { return _type == Type::BYTESTRING; }
 
-	inline Type getType() const { return _type; }
+	inline Type getType() const noexcept { return _type; }
 
 	template <class Key> bool isNull(Key &&) const;
 	template <class Key> bool isBasicType(Key &&) const;
@@ -364,10 +364,10 @@ template <typename Interface>
 const typename ValueTemplate<Interface>::DictionaryType ValueTemplate<Interface>::DictionaryNull;
 
 template <typename Interface>
-ValueTemplate<Interface>::ValueTemplate() { }
+ValueTemplate<Interface>::ValueTemplate() noexcept { }
 
 template <typename Interface>
-ValueTemplate<Interface>::ValueTemplate(Type type) : _type(type) {
+ValueTemplate<Interface>::ValueTemplate(Type type) noexcept : _type(type) {
 	switch (type) {
 	case Type::BOOLEAN: boolVal = false; break;
 	case Type::INTEGER: intVal = int64_t(0); break;
@@ -381,13 +381,13 @@ ValueTemplate<Interface>::ValueTemplate(Type type) : _type(type) {
 }
 
 template <typename Interface>
-ValueTemplate<Interface>::~ValueTemplate() { clear(); }
+ValueTemplate<Interface>::~ValueTemplate() noexcept { clear(); }
 
 template <typename Interface>
-ValueTemplate<Interface>::ValueTemplate(const Self &other) { *this = other; }
+ValueTemplate<Interface>::ValueTemplate(const Self &other) noexcept { *this = other; }
 
 template <typename Interface>
-ValueTemplate<Interface>::ValueTemplate(Self &&other) { *this = std::move(other); }
+ValueTemplate<Interface>::ValueTemplate(Self &&other) noexcept { *this = std::move(other); }
 
 template <typename Interface>
 template <typename OtherInterface>
@@ -449,7 +449,7 @@ ValueTemplate<Interface>::ValueTemplate(InitializerList<Pair<StringType, Self>> 
 }
 
 template <typename Interface>
-auto ValueTemplate<Interface>::operator= (const Self& other) -> Self & {
+auto ValueTemplate<Interface>::operator= (const Self& other) noexcept -> Self & {
 	if (this != &other) {
 		Self mv;
 		memcpy(&mv, this, sizeof(Self));
@@ -471,7 +471,7 @@ auto ValueTemplate<Interface>::operator= (const Self& other) -> Self & {
 }
 
 template <typename Interface>
-auto ValueTemplate<Interface>::operator= (Self&& other) -> Self & {
+auto ValueTemplate<Interface>::operator= (Self&& other) noexcept -> Self & {
 	if (this != &other) {
 		Self mv;
 		memcpy(&mv, this, sizeof(Self));
@@ -484,7 +484,7 @@ auto ValueTemplate<Interface>::operator= (Self&& other) -> Self & {
 
 template <typename Interface>
 template <typename OtherInterface>
-auto ValueTemplate<Interface>::operator= (const ValueTemplate<OtherInterface> &other) -> Self & {
+auto ValueTemplate<Interface>::operator= (const ValueTemplate<OtherInterface> &other) noexcept -> Self & {
 	return *this = ValueTemplate<Interface>(other);
 }
 
@@ -626,7 +626,7 @@ auto ValueTemplate<Interface>::asBytes() const -> BytesType {
 }
 
 template <typename Interface>
-size_t ValueTemplate<Interface>::size() const {
+size_t ValueTemplate<Interface>::size() const noexcept {
 	switch (_type) {
 	case Type::DICTIONARY: return dictVal->size(); break;
 	case Type::ARRAY: return arrayVal->size(); break;
@@ -638,7 +638,7 @@ size_t ValueTemplate<Interface>::size() const {
 }
 
 template <typename Interface>
-bool ValueTemplate<Interface>::empty() const {
+bool ValueTemplate<Interface>::empty() const noexcept {
 	switch (_type) {
 	case Type::DICTIONARY: return dictVal->empty(); break;
 	case Type::ARRAY: return arrayVal->empty(); break;
@@ -1178,5 +1178,13 @@ using Array = Value::ArrayType;
 using Dictionary = Value::DictionaryType;
 
 NS_SP_EXT_END(data)
+
+
+NS_SP_EXT_BEGIN(memory)
+
+template <>
+struct __AllocatorTriviallyMoveable<data::ValueTemplate<memory::PoolInterface>> : std::integral_constant<bool, true> { };
+
+NS_SP_EXT_END(memory)
 
 #endif /* COMMON_DATA_SPDATAVALUE_H_ */

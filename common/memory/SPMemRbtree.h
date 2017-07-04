@@ -48,8 +48,8 @@ struct NodeBase {
 	NodeBase *right = nullptr;
 	Flag flag;
 
-	NodeBase() : flag(Flag{0, 0}) { }
-	NodeBase(NodeColor c) : flag(Flag{uintptr_t(c ? 1 : 0), 0}) { }
+	NodeBase() noexcept : flag(Flag{0, 0}) { }
+	NodeBase(NodeColor c) noexcept : flag(Flag{uintptr_t(c ? 1 : 0), 0}) { }
 
 	inline void setColor(NodeColor c) { flag.color = c ? 1 : 0; }
 	inline NodeColor getColor() const { return NodeColor(flag.color); }
@@ -113,21 +113,21 @@ struct TreeIterator {
 	using node_ptr = NodeBase *;
 	using link_ptr = Node<Value> *;
 
-	TreeIterator() : _node() {}
+	TreeIterator() noexcept : _node() {}
 
-	explicit TreeIterator(node_ptr x) : _node(x) {}
+	explicit TreeIterator(node_ptr x) noexcept : _node(x) {}
 
-	reference operator*() const {return *node_type::cast(_node);}
-	pointer operator->() const {return node_type::cast(_node);}
+	reference operator*() const noexcept {return *node_type::cast(_node);}
+	pointer operator->() const noexcept {return node_type::cast(_node);}
 
-	self & operator++() {_node = node_type::increment(_node); return *this;}
-	self operator++(int) {self ret = *this; _node = node_type::increment(_node); return ret;}
+	self & operator++() noexcept {_node = node_type::increment(_node); return *this;}
+	self operator++(int) noexcept {self ret = *this; _node = node_type::increment(_node); return ret;}
 
-	self & operator--() {_node = node_type::decrement(_node); return *this;}
-	self operator--(int) {self ret = *this; _node = node_type::decrement(_node); return ret;}
+	self & operator--() noexcept {_node = node_type::decrement(_node); return *this;}
+	self operator--(int) noexcept {self ret = *this; _node = node_type::decrement(_node); return ret;}
 
-	bool operator==(const self & other) const {return _node == other._node;}
-	bool operator!=(const self & other) const {return _node != other._node;}
+	bool operator==(const self & other) const noexcept {return _node == other._node;}
+	bool operator!=(const self & other) const noexcept {return _node != other._node;}
 
 	node_ptr _node;
 };
@@ -149,35 +149,35 @@ struct TreeConstIterator {
 	using node_ptr = const NodeBase *;
 	using link_ptr = const Node<Value> *;
 
-	TreeConstIterator() : _node() {}
+	TreeConstIterator() noexcept : _node() {}
 
-	explicit TreeConstIterator(node_ptr x) : _node(x) {}
+	explicit TreeConstIterator(node_ptr x) noexcept : _node(x) {}
 
-	TreeConstIterator(const iterator& it) : _node(it._node) {}
+	TreeConstIterator(const iterator& it) noexcept : _node(it._node) {}
 
-	iterator constcast() const {return iterator(const_cast<typename iterator::node_ptr>(_node));}
+	iterator constcast() const noexcept {return iterator(const_cast<typename iterator::node_ptr>(_node));}
 
-	reference operator*() const {return *node_type::cast(_node); }
-	pointer operator->() const {return node_type::cast(_node); }
+	reference operator*() const noexcept {return *node_type::cast(_node); }
+	pointer operator->() const noexcept {return node_type::cast(_node); }
 
-	self & operator++() {_node = node_type::increment(_node); return *this;}
-	self operator++(int) {self tmp = *this; _node = node_type::increment(_node); return tmp;}
+	self & operator++() noexcept {_node = node_type::increment(_node); return *this;}
+	self operator++(int) noexcept {self tmp = *this; _node = node_type::increment(_node); return tmp;}
 
-	self & operator--() {_node = node_type::decrement(_node); return *this;}
-	self operator--(int) {self tmp = *this; _node = node_type::decrement(_node); return tmp;}
+	self & operator--() noexcept {_node = node_type::decrement(_node); return *this;}
+	self operator--(int) noexcept {self tmp = *this; _node = node_type::decrement(_node); return tmp;}
 
-	bool operator==(const self & x) const {return _node == x._node;}
-	bool operator!=(const self & x) const {return _node != x._node;}
+	bool operator==(const self & x) const noexcept {return _node == x._node;}
+	bool operator!=(const self & x) const noexcept {return _node != x._node;}
 
 	node_ptr _node;
 };
 
 
 template<typename Value> inline bool
-operator==(const TreeIterator<Value> & l, const TreeConstIterator<Value> & r) { return l._node == r._node; }
+operator==(const TreeIterator<Value> & l, const TreeConstIterator<Value> & r) noexcept { return l._node == r._node; }
 
 template<typename Value> inline bool
-operator!=(const TreeIterator<Value> & l, const TreeConstIterator<Value> & r) { return l._node != r._node; }
+operator!=(const TreeIterator<Value> & l, const TreeConstIterator<Value> & r) noexcept { return l._node != r._node; }
 
 
 template <typename Key, typename Value>
@@ -185,25 +185,25 @@ struct TreeKeyExtractor;
 
 template <typename Key>
 struct TreeKeyExtractor<Key, Key> {
-	static inline const Key & extract(const Key &k) { return k; }
+	static inline const Key & extract(const Key &k) noexcept { return k; }
 
 	template <typename A, typename ... Args>
-	static inline void construct(A &alloc, Node<Key> *node, const Key &key, Args && ... args) {
+	static inline void construct(A &alloc, Node<Key> *node, const Key &key, Args && ... args) noexcept {
 		alloc.construct(node->value.ptr(), key);
 	}
 
 	template <typename A, typename ... Args>
-	static inline void construct(A &alloc, Node<Key> *node, Key &&key, Args && ... args) {
+	static inline void construct(A &alloc, Node<Key> *node, Key &&key, Args && ... args) noexcept {
 		alloc.construct(node->value.ptr(), std::move(key));
 	}
 };
 
 template <typename Key, typename Value>
 struct TreeKeyExtractor<Key, Pair<Key, Value>> {
-	static inline const Key & extract(const Pair<Key, Value> &k) { return k.first; }
+	static inline const Key & extract(const Pair<Key, Value> &k) noexcept { return k.first; }
 
 	template <typename A, typename ... Args>
-	static inline void construct(A &alloc, Node<Pair<Key, Value>> *node, const Key &k, Args && ... args) {
+	static inline void construct(A &alloc, Node<Pair<Key, Value>> *node, const Key &k, Args && ... args) noexcept {
 		alloc.construct(node->value.ptr(),
 				std::piecewise_construct,
 				std::forward_as_tuple(k),
@@ -211,7 +211,7 @@ struct TreeKeyExtractor<Key, Pair<Key, Value>> {
 	}
 
 	template <typename A, typename ... Args>
-	static inline void construct(A &alloc, Node<Pair<Key, Value>> *node, Key &&k, Args && ... args) {
+	static inline void construct(A &alloc, Node<Pair<Key, Value>> *node, Key &&k, Args && ... args) noexcept {
 		alloc.construct(node->value.ptr(),
 				std::piecewise_construct,
 				std::forward_as_tuple(std::move(k)),
@@ -221,10 +221,10 @@ struct TreeKeyExtractor<Key, Pair<Key, Value>> {
 
 template <typename Key, typename Value>
 struct TreeKeyExtractor<Key, Pair<const Key, Value>> {
-	static inline const Key & extract(const Pair<const Key, Value> &k) { return k.first; }
+	static inline const Key & extract(const Pair<const Key, Value> &k) noexcept { return k.first; }
 
 	template <typename A, typename ... Args>
-	static inline void construct(A &alloc, Node<Pair<const Key, Value>> *node, const Key &k, Args && ... args) {
+	static inline void construct(A &alloc, Node<Pair<const Key, Value>> *node, const Key &k, Args && ... args) noexcept {
 		alloc.construct(node->value.ptr(),
 				std::piecewise_construct,
 				std::forward_as_tuple(k),
@@ -232,7 +232,7 @@ struct TreeKeyExtractor<Key, Pair<const Key, Value>> {
 	}
 
 	template <typename A, typename ... Args>
-	static inline void construct(A &alloc, Node<Pair<const Key, Value>> *node, Key &&k, Args && ... args) {
+	static inline void construct(A &alloc, Node<Pair<const Key, Value>> *node, Key &&k, Args && ... args) noexcept {
 		alloc.construct(node->value.ptr(),
 				std::piecewise_construct,
 				std::forward_as_tuple(std::move(k)),
@@ -242,7 +242,7 @@ struct TreeKeyExtractor<Key, Pair<const Key, Value>> {
 
 template <typename Key, typename Comp, typename Transparent = void>
 struct TreeComparator {
-	static inline bool compare(const Key &l, const Key &r, const Comp &comp) {
+	static inline bool compare(const Key &l, const Key &r, const Comp &comp) noexcept {
 		return comp(l, r);
 	}
 };
@@ -250,7 +250,7 @@ struct TreeComparator {
 template <typename Key, typename Comp>
 struct TreeComparator<Key, Comp, typename Comp::is_transparent> {
 	template <typename A, typename B>
-	static inline bool compare(const A &l, const B &r, const Comp &comp) {
+	static inline bool compare(const A &l, const B &r, const Comp &comp) noexcept {
 		return comp(l, r);
 	}
 };
@@ -275,15 +275,15 @@ public:
 	using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
 public:
-	Tree(const Comp &comp = Comp(), const value_allocator_type &alloc = value_allocator_type())
+	Tree(const Comp &comp = Comp(), const value_allocator_type &alloc = value_allocator_type()) noexcept
 	: _header(NodeColor::Black), _comp(comp), _allocator(alloc), _size(0) { }
 
-	Tree(const Tree &other, const value_allocator_type &alloc = value_allocator_type())
+	Tree(const Tree &other, const value_allocator_type &alloc = value_allocator_type()) noexcept
 	: _header(NodeColor::Black), _comp(other._comp), _allocator(alloc), _size(0) {
 		clone(other);
 	}
 
-	Tree(Tree &&other, const value_allocator_type &alloc = value_allocator_type())
+	Tree(Tree &&other, const value_allocator_type &alloc = value_allocator_type()) noexcept
 	: _header(NodeColor::Black), _comp(other._comp), _allocator(alloc), _size(0) {
 		if (other.get_allocator() == _allocator) {
 			_header = other._header;
@@ -299,12 +299,12 @@ public:
 		}
 	}
 
-	Tree & operator = (const Tree &other) {
+	Tree & operator = (const Tree &other) noexcept {
 		clone(other);
 		return *this;
 	}
 
-	Tree & operator = (Tree &&other) {
+	Tree & operator = (Tree &&other) noexcept {
 		if (other.get_allocator() == _allocator) {
 			clear();
 			_header = other._header;
@@ -321,13 +321,13 @@ public:
 		return *this;
 	}
 
-	~Tree() {
+	~Tree() noexcept {
 		if (_size > 0) {
 			clear();
 		}
 	}
 
-	const value_allocator_type & get_allocator() const { return _allocator; }
+	const value_allocator_type & get_allocator() const noexcept { return _allocator; }
 
 	template <typename ... Args>
 	Pair<iterator,bool> emplace(Args && ... args) {
@@ -387,23 +387,23 @@ public:
 		return 0;
 	}
 
-	iterator begin() { return iterator(_header.left?left():&_header); }
-	iterator end() { return iterator(&_header); }
+	iterator begin() noexcept { return iterator(_header.left?left():&_header); }
+	iterator end() noexcept { return iterator(&_header); }
 
-	const_iterator begin() const { return const_iterator(_header.left?left():&_header); }
-	const_iterator end() const { return const_iterator(&_header); }
+	const_iterator begin() const noexcept { return const_iterator(_header.left?left():&_header); }
+	const_iterator end() const noexcept { return const_iterator(&_header); }
 
-	reverse_iterator rbegin() { return reverse_iterator(end()); }
-	reverse_iterator rend() { return reverse_iterator(begin()); }
+	reverse_iterator rbegin() noexcept { return reverse_iterator(end()); }
+	reverse_iterator rend() noexcept { return reverse_iterator(begin()); }
 
-	const_reverse_iterator rbegin() const { return const_reverse_iterator(end()); }
-	const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
+	const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator(end()); }
+	const_reverse_iterator rend() const noexcept { return const_reverse_iterator(begin()); }
 
-	const_iterator cbegin() const { return const_iterator(_header.left?left():&_header); }
-	const_iterator cend() const { return const_iterator(&_header); }
+	const_iterator cbegin() const noexcept { return const_iterator(_header.left?left():&_header); }
+	const_iterator cend() const noexcept { return const_iterator(&_header); }
 
-	const_reverse_iterator crbegin() const { return const_reverse_iterator(cend()); }
-	const_reverse_iterator crend() const { return const_reverse_iterator(cbegin()); }
+	const_reverse_iterator crbegin() const noexcept { return const_reverse_iterator(cend()); }
+	const_reverse_iterator crend() const noexcept { return const_reverse_iterator(cbegin()); }
 
 	void clear() {
 		if (_header.left) {
@@ -415,15 +415,15 @@ public:
 		_size = 0;
 	}
 
-	size_t size() const {
+	size_t size() const noexcept {
 		return _size;
 	}
 
-	bool empty() const {
+	bool empty() const noexcept {
 		return _header.left == nullptr;
 	}
 
-	void swap(Tree &other) {
+	void swap(Tree &other) noexcept {
 		std::swap(_header, other._header);
 		std::swap(_allocator, other._allocator);
 		std::swap(_size, other._size);

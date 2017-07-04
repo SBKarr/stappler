@@ -28,10 +28,10 @@ THE SOFTWARE.
 NS_SP_EXT_BEGIN(memory)
 
 struct AllocBase {
-	void * operator new (size_t size)  throw() { return ::operator new(size); }
-	void * operator new (size_t size, const std::nothrow_t& tag) { return ::operator new(size); }
-	void * operator new (size_t size, void* ptr) { return ::operator new(size, ptr); }
-	void operator delete(void *ptr) { return ::operator delete(ptr); }
+	void * operator new (size_t size) noexcept { return ::operator new(size); }
+	void * operator new (size_t size, const std::nothrow_t& tag) noexcept { return ::operator new(size); }
+	void * operator new (size_t size, void* ptr) noexcept { return ::operator new(size, ptr); }
+	void operator delete(void *ptr) noexcept { return ::operator delete(ptr); }
 };
 
 // Root class for pool allocated objects
@@ -39,10 +39,10 @@ struct AllocBase {
 struct AllocPool {
 	~AllocPool() { }
 
-	void *operator new(size_t size) throw();
-	void *operator new(size_t size, pool_t *pool) throw();
-	void *operator new(size_t size, void *mem);
-	void operator delete(void *);
+	void *operator new(size_t size) noexcept;
+	void *operator new(size_t size, pool_t *pool) noexcept;
+	void *operator new(size_t size, void *mem) noexcept;
+	void operator delete(void *) noexcept;
 
 	static pool_t *getCurrentPool();
 
@@ -68,16 +68,16 @@ public:
 		Unmanaged,
 	};
 
-	MemPool();
+	MemPool() noexcept;
 	MemPool(Init);
 	MemPool(pool_t *);
-	~MemPool();
+	~MemPool() noexcept;
 
 	MemPool(const MemPool &) = delete;
 	MemPool & operator=(const MemPool &) = delete;
 
-	MemPool(MemPool &&);
-	MemPool & operator=(MemPool &&);
+	MemPool(MemPool &&) noexcept;
+	MemPool & operator=(MemPool &&) noexcept;
 
 	operator pool_t *() { return _pool; }
 	pool_t *pool() const { return _pool; }
@@ -94,39 +94,77 @@ protected:
 	pool_t *_pool = nullptr;
 };
 
-
-template <typename T, bool, typename ...Args>
-struct __AllocatorContructor;
-
-template <typename T, typename ...Args>
-struct __AllocatorContructor<T, true, Args...> {
-	static void construct(T * p, Args &&...args) {
-		new ((T*) p) T(std::forward<Args>(args)...);
-	}
-};
-
-template <typename T, typename ...Args>
-struct __AllocatorContructor<T, false, Args...> {
-	static void construct(T * p, Args &&...args) { }
-};
-
-template <typename T, bool IsTrivialCpoy>
-struct __AllocatorCopy;
+template <typename T, bool IsTrivial>
+struct __AllocatorTraits;
 
 template <typename T>
-struct __AllocatorCopy<T, true> {
+struct __AllocatorTriviallyCopyable : std:: is_trivially_copyable<T> { };
+
+template <typename T>
+struct __AllocatorTriviallyMoveable : std::is_trivially_copyable<T> { };
+
+template <typename T>
+struct __AllocatorTraits<T, true> {
 	template <typename Alloc>
-	static void copy(T *dest, const T *source, size_t count, Alloc &alloc) {
+	static void copy(T *dest, const T *source, size_t count, Alloc &alloc) noexcept {
 		memmove(dest, source, count * sizeof(T));
 	}
+
+	template <typename Alloc>
+	static void move(T *dest, T *source, size_t count, Alloc &alloc) noexcept {
+		memmove(dest, source, count * sizeof(T));
+	}
+
+	template <typename ...Args>
+	static void construct(T * p, Args &&...args) noexcept { }
+
+	static void destroy(T *p) noexcept { }
+
+	static void destroy(T *p, size_t size) { }
 };
 
 template <typename T>
-struct __AllocatorCopy<T, false> {
+struct __AllocatorTraits<T, false> {
 	template <typename Alloc>
-	static void copy(T *dest, const T *source, size_t count, Alloc &alloc) {
-		for (size_t i = 0; i < count; i++) {
-			alloc.construct(dest + i, *(source + i));
+	static void copy(T *dest, const T *source, size_t count, Alloc &alloc) noexcept {
+		if (uintptr_t(dest) > uintptr_t(source)) {
+			for (size_t i = count; i > 0; i--) {
+				alloc.construct(dest + i - 1, *(source + i - 1));
+			}
+		} else {
+			for (size_t i = 0; i < count; i++) {
+				alloc.construct(dest + i, *(source + i));
+			}
+		}
+	}
+
+	template <typename Alloc>
+	static void move(T *dest, T *source, size_t count, Alloc &alloc) noexcept {
+		if (uintptr_t(dest) > uintptr_t(source)) {
+			for (size_t i = count; i > 0; i--) {
+				alloc.construct(dest + i - 1, std::move(*(source + i - 1)));
+				alloc.destroy(source + i - 1);
+			}
+		} else {
+			for (size_t i = 0; i < count; i++) {
+				alloc.construct(dest + i, std::move(*(source + i)));
+				alloc.destroy(source + i);
+			}
+		}
+	}
+
+	template <typename ...Args>
+	static void construct(T * p, Args &&...args) noexcept {
+		new ((T*) p) T(std::forward<Args>(args)...);
+	}
+
+	static void destroy(T *p) noexcept {
+		p->~T();
+	}
+
+	static void destroy(T *p, size_t size) {
+		for (size_t i = 0; i < size; ++i) {
+			destroy(p + i);
 		}
 	}
 };
@@ -148,14 +186,11 @@ public:
 	using size_type = size_t;
 	using difference_type = ptrdiff_t;
 
-	template <typename ...Args>
-	using contructor_type = __AllocatorContructor<T, std::is_constructible<T, Args...>::value, Args...>;
-
     template <class U> struct rebind { using other = Allocator<U>; };
 
     // Default allocator uses pool from top of thread's AllocStack
-    Allocator() : pool(pool::acquire()) { }
-    Allocator(pool_t *p) : pool(p) { }
+    Allocator() noexcept : pool(pool::acquire()) { }
+    Allocator(pool_t *p) noexcept : pool(p) { }
 
 	template<class B> Allocator(const Allocator<B> &a) : pool(a.getPool()) { }
 	template<class B> Allocator(Allocator<B> &&a) : pool(a.getPool()) { }
@@ -200,16 +235,26 @@ public:
 
 	template <typename ...Args>
 	void construct(pointer p, Args &&...args) {
-		contructor_type<Args...>::construct(p, std::forward<Args>(args)...);
+		__AllocatorTraits<T, !std::is_constructible<T, Args...>::value>::construct(p, std::forward<Args>(args)...);
 	}
 
-	void destroy(pointer p) { p->~T(); }
+	void destroy(pointer p) {
+		__AllocatorTraits<T, !std::is_destructible<T>::value>::destroy(p);
+	}
+
+	void destroy(pointer p, size_t size) {
+		__AllocatorTraits<T, !std::is_destructible<T>::value>::destroy(p, size);
+	}
 
 	operator pool_t * () const { return pool; }
 	pool_t *getPool() const { return pool; }
 
 	void copy(T *dest, const T *source, size_t count) {
-		__AllocatorCopy<T, std::is_trivially_copyable<T>::value>::copy(dest, source, count, *this);
+		__AllocatorTraits<T, __AllocatorTriviallyCopyable<T>::value>::copy(dest, source, count, *this);
+	}
+
+	void move(T *dest, T *source, size_t count) {
+		__AllocatorTraits<T, __AllocatorTriviallyMoveable<T>::value>::move(dest, source, count, *this);
 	}
 
 protected:
@@ -222,8 +267,8 @@ struct Storage {
 
 	alignas(__alignof__(Image::_value)) uint8_t _storage[sizeof(Value)];
 
-	Storage() = default;
-	Storage(nullptr_t) {}
+	Storage()  noexcept { };
+	Storage(nullptr_t)  noexcept {}
 
 	void * addr() noexcept { return static_cast<void *>(&_storage); }
 	const void * addr() const noexcept { return static_cast<const void *>(&_storage); }

@@ -85,22 +85,26 @@ void writeQueryDataValue(apr::ostringstream &query, const data::Value &val, ap_d
 data::Value parseQueryResultValue(const storage::Field &f, String &str) {
 	switch(f.getType()) {
 	case storage::Type::Integer:
-		return data::Value((int64_t)strtoll(str.c_str(), nullptr, 10));
+		if (str.c_str()) {
+			return data::Value((int64_t)strtoll(str.c_str(), nullptr, 10));
+		}
 		break;
 	case storage::Type::Object:
 	case storage::Type::Set:
 	case storage::Type::Array:
 	case storage::Type::File:
 	case storage::Type::Image:
-		if (!str.empty()) {
+		if (str.c_str()) {
 			return data::Value((int64_t)strtoll(str.c_str(), nullptr, 10));
 		}
 		break;
 	case storage::Type::Float:
-		return data::Value(strtod(str.c_str(), nullptr));
+		if (str.c_str()) {
+			return data::Value(strtod(str.c_str(), nullptr));
+		}
 		break;
 	case storage::Type::Boolean:
-		return data::Value((str.front() == 'T' || str.front() == 't')?true:false);
+		return data::Value((!str.empty() && (str.front() == 'T' || str.front() == 't'))?true:false);
 		break;
 	case storage::Type::Text:
 		if (!str.empty()) {

@@ -36,25 +36,25 @@ public:
 		using reference = data::Dictionary::iterator::reference;
 		using pointer = data::Dictionary::iterator::pointer;
 
-		Iterator() { }
-		Iterator(Scheme *scheme) : scheme(scheme), iter(scheme->_data.asDict().begin()) { skipProtected(); }
-		Iterator(Scheme *scheme, data::Dictionary::iterator iter) : scheme(scheme), iter(iter) { }
+		Iterator() noexcept { }
+		Iterator(Scheme *scheme) noexcept : scheme(scheme), iter(scheme->_data.asDict().begin()) { skipProtected(); }
+		Iterator(Scheme *scheme, data::Dictionary::iterator iter) noexcept : scheme(scheme), iter(iter) { }
 
-		Iterator(const Iterator &it) : scheme(it.scheme), iter(it.iter) { }
-		Iterator &operator= (const Iterator &it) { scheme = it.scheme; iter = it.iter; return *this; }
+		Iterator(const Iterator &it) noexcept : scheme(it.scheme), iter(it.iter) { }
+		Iterator &operator= (const Iterator &it) noexcept { scheme = it.scheme; iter = it.iter; return *this; }
 
-		reference operator*() const {return iter.operator*();}
-		pointer operator->() const {return iter.operator->();}
+		reference operator*() const noexcept {return iter.operator*();}
+		pointer operator->() const noexcept {return iter.operator->();}
 
-		Iterator & operator++() { increment(); return *this; }
-		Iterator operator++(int) { Iterator ret = *this; increment(); return ret;}
+		Iterator & operator++() noexcept { increment(); return *this; }
+		Iterator operator++(int) noexcept { Iterator ret = *this; increment(); return ret;}
 
-		bool operator==(const Iterator & other) const { return iter == other.iter; }
-		bool operator!=(const Iterator & other) const { return iter != other.iter; }
+		bool operator==(const Iterator & other) const noexcept { return iter == other.iter; }
+		bool operator!=(const Iterator & other) const noexcept { return iter != other.iter; }
 
 	protected:
-		void increment() { iter++; skipProtected(); }
-		void skipProtected() {
+		void increment() noexcept { iter++; skipProtected(); }
+		void skipProtected() noexcept {
 			if (!scheme->isProtected()) {
 				while(iter != scheme->_data.asDict().end() || scheme->isFieldProtected(iter->first)) {
 					iter++;
@@ -73,25 +73,25 @@ public:
 		using reference = data::Dictionary::const_iterator::reference;
 		using pointer = data::Dictionary::const_iterator::pointer;
 
-		ConstIterator() { }
-		ConstIterator(const Scheme *scheme) : scheme(scheme), iter(scheme->_data.asDict().begin()) { skipProtected(); }
-		ConstIterator(const Scheme *scheme, data::Dictionary::const_iterator iter) : scheme(scheme), iter(iter) { }
+		ConstIterator() noexcept { }
+		ConstIterator(const Scheme *scheme) noexcept : scheme(scheme), iter(scheme->_data.asDict().begin()) { skipProtected(); }
+		ConstIterator(const Scheme *scheme, data::Dictionary::const_iterator iter) noexcept : scheme(scheme), iter(iter) { }
 
-		ConstIterator(const ConstIterator &it) : scheme(it.scheme), iter(it.iter) { }
-		ConstIterator &operator= (const ConstIterator &it) { scheme = it.scheme; iter = it.iter; return *this; }
+		ConstIterator(const ConstIterator &it) noexcept : scheme(it.scheme), iter(it.iter) { }
+		ConstIterator &operator= (const ConstIterator &it) noexcept { scheme = it.scheme; iter = it.iter; return *this; }
 
-		reference operator*() const {return iter.operator*();}
-		pointer operator->() const {return iter.operator->();}
+		reference operator*() const noexcept { return iter.operator*(); }
+		pointer operator->() const noexcept { return iter.operator->(); }
 
-		ConstIterator & operator++() { increment(); return *this; }
-		ConstIterator operator++(int) { ConstIterator ret = *this; increment(); return ret;}
+		ConstIterator & operator++() noexcept { increment(); return *this; }
+		ConstIterator operator++(int) noexcept { ConstIterator ret = *this; increment(); return ret; }
 
-		bool operator==(const ConstIterator & other) const { return iter == other.iter; }
-		bool operator!=(const ConstIterator & other) const { return iter != other.iter; }
+		bool operator==(const ConstIterator & other) const noexcept { return iter == other.iter; }
+		bool operator!=(const ConstIterator & other) const noexcept { return iter != other.iter; }
 
 	protected:
 		void increment() { iter++; skipProtected(); }
-		void skipProtected() {
+		void skipProtected() noexcept {
 			if (!scheme->isProtected()) {
 				while(iter != scheme->_data.asDict().end() || scheme->isFieldProtected(iter->first)) {
 					iter++;
@@ -103,30 +103,30 @@ public:
 		data::Dictionary::const_iterator iter;
 	};
 
-	template <typename Scheme> static auto begin(Scheme *scheme) {
+	template <typename Scheme> static auto begin(Scheme *scheme) noexcept {
 		return Iterator<Scheme>(scheme);
 	}
-	template <typename Scheme> static auto end(Scheme *scheme) {
+	template <typename Scheme> static auto end(Scheme *scheme) noexcept {
 		return Iterator<Scheme>(scheme, scheme->getData().asDict().end());
 	}
 
-	template <typename Scheme> static auto begin(const Scheme *scheme) {
+	template <typename Scheme> static auto begin(const Scheme *scheme) noexcept {
 		return ConstIterator<Scheme>(scheme);
 	}
-	template <typename Scheme> static auto end(const Scheme *scheme) {
+	template <typename Scheme> static auto end(const Scheme *scheme) noexcept {
 		return ConstIterator<Scheme>(scheme, scheme->getData().asDict().end());
 	}
 
-	Wrapper(data::Value &&data) : _data(std::move(data)) {
+	Wrapper(data::Value &&data) noexcept : _data(std::move(data)) {
 		if (!_data.isDictionary()) {
 			_data = data::Value(data::Value::Type::DICTIONARY);
 		}
 	}
 
-	Wrapper() : _data(data::Value::Type::DICTIONARY) { }
+	Wrapper() noexcept : _data(data::Value::Type::DICTIONARY) { }
 
-	data::Value &getData() { return _data; }
-	const data::Value &getData() const { return _data; }
+	data::Value &getData() noexcept { return _data; }
+	const data::Value &getData() const noexcept { return _data; }
 
 	bool isModified() const { return _modified; }
 	void setModified(bool value) { _modified = value; }

@@ -99,17 +99,17 @@ Value parseCommandLineOptions(int argc, const char16_t * wargv[],
 	return parseCommandLineOptions(argc, argv.data(), switchCallback, stringCallback);
 }
 
-Transform::Transform() { }
+Transform::Transform() noexcept { }
 
-Transform::Transform(const Transform &t) : order(t.order), map(t.map), subtransforms(t.subtransforms) { }
-Transform::Transform(Transform &&t) : order(std::move(t.order)), map(std::move(t.map)), subtransforms(std::move(t.subtransforms)) { }
+Transform::Transform(const Transform &t) noexcept : order(t.order), map(t.map), subtransforms(t.subtransforms) { }
+Transform::Transform(Transform &&t) noexcept : order(std::move(t.order)), map(std::move(t.map)), subtransforms(std::move(t.subtransforms)) { }
 
-Transform & Transform::operator=(const Transform &t) {
+Transform & Transform::operator=(const Transform &t) noexcept {
 	map = t.map;
 	subtransforms = t.subtransforms;
 	return *this;
 }
-Transform & Transform::operator=(Transform &&t) {
+Transform & Transform::operator=(Transform &&t) noexcept {
 	map = std::move(t.map);
 	subtransforms = std::move(t.subtransforms);
 	return *this;
