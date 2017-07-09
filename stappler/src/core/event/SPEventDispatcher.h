@@ -46,11 +46,11 @@ public:
 
 	void removeAllListeners();
 
-	void dispatchEvent(const Event *ev);
+	void dispatchEvent(const Event &ev);
 
-	const std::set<const EventHeader *> &getKnownEvents();
+	const Set<const EventHeader *> &getKnownEvents();
 protected:
-	std::set<const EventHeader *> _knownEvents;
+	Set<const EventHeader *> _knownEvents;
 
 	std::unordered_map<EventHeader::EventID, std::unordered_set<const EventHandlerNode *>> _listeners;
 };

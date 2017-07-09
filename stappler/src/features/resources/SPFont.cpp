@@ -481,7 +481,7 @@ bool FontSource::init(FontFaceMap &&map, const ReceiptCallback &cb, float scale,
 
 	_assets = std::move(assets);
 
-	onEvent(Device::onAndroidReset, [this] (const Event *) {
+	onEvent(Device::onAndroidReset, [this] (const Event &) {
 		for (auto &it : _textures) {
 			it->init(it->getPixelFormat(), it->getPixelsWide(), it->getPixelsHigh());
 		}

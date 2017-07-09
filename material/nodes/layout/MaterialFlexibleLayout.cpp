@@ -43,8 +43,8 @@ bool FlexibleLayout::init() {
 	}
 
 	auto el = Rc<EventListener>::create();
-	el->onEvent(Device::onStatusBar, [this] (const Event *val) {
-		auto h = val->getFloatValue();
+	el->onEvent(Device::onStatusBar, [this] (const Event &val) {
+		auto h = val.getFloatValue();
 		onStatusBarHeight(h);
 	});
 	addComponent(el);
@@ -116,7 +116,7 @@ void FlexibleLayout::onContentSizeDirty() {
 		baseNodeParams.setContentSize(Size(_contentSize.width, _contentSize.height - _keyboardSize.height));
 	} else {
 		baseNodeParams.setContentSize(Size(_contentSize.width, _contentSize.height - _keyboardSize.height - getCurrentFlexibleMax() - 0.0f));
-		baseNodePadding = padding.setTop(6.0f);
+		baseNodePadding = padding.setTop(4.0f);
 		baseNodeOffset = 0.0f;
 	}
 
@@ -333,7 +333,7 @@ void FlexibleLayout::setFlexibleLevel(float value) {
 	Padding baseNodePadding(padding.setTop(getCurrentFlexibleMax() + _baseNodePadding));
 
 	if (!_flexibleBaseNode) {
-		baseNodePadding = padding.setTop(6.0f);
+		baseNodePadding = padding.setTop(4.0f);
 		baseNodeOffset = 0.0f;
 	}
 
@@ -471,8 +471,8 @@ void FlexibleLayout::setKeyboardTracked(bool value) {
 
 		if (_trackKeyboard) {
 			_keyboardEventListener = construct<EventListener>();
-			_keyboardEventListener->onEvent(ime::onKeyboard, [this] (const Event *ev) {
-				onKeyboard(ev->getBoolValue(), ime::getKeyboardRect(), ime::getKeyboardDuration());
+			_keyboardEventListener->onEvent(ime::onKeyboard, [this] (const Event &ev) {
+				onKeyboard(ev.getBoolValue(), ime::getKeyboardRect(), ime::getKeyboardDuration());
 			});
 			addComponent(_keyboardEventListener);
 		} else if (_keyboardEventListener) {

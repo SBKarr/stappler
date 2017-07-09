@@ -43,41 +43,35 @@ NS_SP_BEGIN
 
  */
 
-class EventHandlerInterface {
+class EventHandler {
 public:
-	virtual ~EventHandlerInterface() { }
-	virtual void addHandlerNode(EventHandlerNode *handler) = 0;
-	virtual void removeHandlerNode(EventHandlerNode *handler) = 0;
+	using Callback = Function<void(const Event &)>;
 
-	virtual void retainInterface() = 0;
-	virtual void releaseInterface() = 0;
-};
-
-class EventHandler : public EventHandlerInterface {
-public:
-	using Callback = std::function<void(const Event *)>;
-
+	EventHandler();
 	virtual ~EventHandler();
 
-	virtual void addHandlerNode(EventHandlerNode *handler) override;
-	virtual void removeHandlerNode(EventHandlerNode *handler) override;
+	void addHandlerNode(EventHandlerNode *handler);
+	void removeHandlerNode(EventHandlerNode *handler);
 
-	EventHandlerNode * onEvent(const EventHeader &h, Callback callback, bool destroyAfterEvent = false);
-	EventHandlerNode * onEventWithObject(const EventHeader &h, Ref *obj, Callback callback, bool destroyAfterEvent = false);
+	EventHandlerNode * onEvent(const EventHeader &h, Callback && callback, bool destroyAfterEvent = false);
+	EventHandlerNode * onEventWithObject(const EventHeader &h, Ref *obj, Callback && callback, bool destroyAfterEvent = false);
 
-	virtual void retainInterface() override;
-	virtual void releaseInterface() override;
+	Ref *getInterface() const;
+
+	void clearEvents();
+
 private:
+	Ref *_interface = nullptr;
 	Set<EventHandlerNode *> _handlers;
 };
 
-class EventHandlerNode {
+class EventHandlerNode : public Ref {
 public:
-	using Callback = std::function<void(const Event *)>;
+	using Callback = std::function<void(const Event &)>;
 
-	static EventHandlerNode * onEvent(const EventHeader &header, Ref *ref, Callback callback, EventHandlerInterface *obj, bool destroyAfterEvent);
+	static EventHandlerNode * onEvent(const EventHeader &header, Ref *ref, Callback && callback, EventHandler *obj, bool destroyAfterEvent);
 
-	void setSupport(EventHandlerInterface *);
+	void setSupport(EventHandler *);
 
 	bool shouldRecieveEventWithObject(EventHeader::EventID eventID, Ref *object) const {
 		return _eventID == eventID && (!_obj || object == _obj);
@@ -85,12 +79,12 @@ public:
 
 	EventHeader::EventID getEventID() const { return _eventID; }
 
-	void onEventRecieved(const Event *event) const;
+	void onEventRecieved(const Event &event) const;
 
 	~EventHandlerNode();
 
 private:
-	EventHandlerNode(const EventHeader &header, Ref *ref, Callback callback, EventHandlerInterface *obj, bool destroyAfterEvent);
+	EventHandlerNode(const EventHeader &header, Ref *ref, Callback && callback, EventHandler *obj, bool destroyAfterEvent);
 
 	bool _destroyAfterEvent = false;
 
@@ -98,7 +92,7 @@ private:
 	Callback _callback;
 	Ref *_obj = nullptr;
 
-	std::atomic<EventHandlerInterface *>_support;
+	std::atomic<EventHandler *>_support;
 };
 
 NS_SP_END

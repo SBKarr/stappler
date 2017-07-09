@@ -41,7 +41,7 @@ template <typename CharType, typename InputIterator, bool IsIntegral>
 struct __basic_string_fill;
 
 template <typename CharType>
-class basic_string {
+class basic_string : public AllocPool {
 public:
 	using allocator_type = Allocator<CharType>;
 
@@ -776,19 +776,19 @@ template< class CharT > bool operator!= ( const CharT* lhs, const basic_string<C
 }
 
 template< class CharT > bool operator< ( const CharT* lhs, const basic_string<CharT>& rhs ) {
-	return rhs.compare(lhs) >= 0;
-}
-
-template< class CharT > bool operator<= ( const CharT* lhs, const basic_string<CharT>& rhs ) {
 	return rhs.compare(lhs) > 0;
 }
 
+template< class CharT > bool operator<= ( const CharT* lhs, const basic_string<CharT>& rhs ) {
+	return rhs.compare(lhs) >= 0;
+}
+
 template< class CharT > bool operator>( const CharT* lhs, const basic_string<CharT>& rhs ) {
-	return rhs.compare(lhs) <= 0;
+	return rhs.compare(lhs) < 0;
 }
 
 template< class CharT > bool operator>=( const CharT* lhs, const basic_string<CharT>& rhs ) {
-	return rhs.compare(lhs) < 0;
+	return rhs.compare(lhs) <= 0;
 }
 
 template<typename _CharT> typename basic_string<_CharT>::size_type

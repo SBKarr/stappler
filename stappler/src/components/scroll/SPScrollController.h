@@ -38,12 +38,13 @@ public:
 	using NodeFunction = std::function<Rc<cocos2d::Node>(const Item &)>;
 
 	struct Item {
-		Item(const NodeFunction &, const Vec2 &pos, const Size &size, int zIndex);
+		Item(const NodeFunction &, const Vec2 &pos, const Size &size, int zIndex, const String &);
 
 		NodeFunction nodeFunction = nullptr;
 		Size size;
 		Vec2 pos;
 		int zIndex;
+		String name;
 
 		cocos2d::Node *node = nullptr;
 	};
@@ -63,8 +64,8 @@ public:
 	virtual float getScrollMin();
 	virtual float getScrollMax();
 
-	virtual cocos2d::Node *getRoot() const;
-	virtual ScrollViewBase *getScroll() const;
+	cocos2d::Node *getRoot() const;
+	ScrollViewBase *getScroll() const;
 
 	virtual void clear(); /// remove all items and non-strict barriers
 	virtual void update(float position, float size); /// update current scroll position and size
@@ -87,18 +88,18 @@ public:
 	float getNextSize() const { return _nextSize; }
 
 	virtual size_t size() const;
-	virtual size_t addItem(const NodeFunction &, const Size &size, const Vec2 &pos, int zIndex = 0);
-	virtual size_t addItem(const NodeFunction &, float size, float pos, int zIndex = 0);
-	virtual size_t addItem(const NodeFunction &, float size, int zIndex = 0);
+	virtual size_t addItem(const NodeFunction &, const Size &size, const Vec2 &pos, int zIndex = 0, const String &tag = String());
+	virtual size_t addItem(const NodeFunction &, float size, float pos, int zIndex = 0, const String &tag = String());
+	virtual size_t addItem(const NodeFunction &, float size, int zIndex = 0, const String &tag = String());
 
 	virtual size_t addPlaceholder(const Size &size, const Vec2 &pos);
 	virtual size_t addPlaceholder(float size, float pos);
 	virtual size_t addPlaceholder(float size);
 
-	virtual Item *getItem(size_t);
-	virtual Item *getItem(cocos2d::Node *);
+	Item *getItem(size_t);
+	Item *getItem(cocos2d::Node *);
 
-	virtual size_t getItemIndex(cocos2d::Node *);
+	size_t getItemIndex(cocos2d::Node *);
 
 	const Vector<Item> &getItems() const;
 	Vector<Item> &getItems();
@@ -107,14 +108,15 @@ public:
 
 	virtual void setScrollRelativeValue(float value);
 
-	virtual cocos2d::Node * getFrontNode() const;
-	virtual cocos2d::Node * getBackNode() const;
-	virtual cocos2d::Vector<cocos2d::Node *> getNodes();
+	cocos2d::Node * getNodeByName(const String &) const;
+	cocos2d::Node * getFrontNode() const;
+	cocos2d::Node * getBackNode() const;
+	Vector<Rc<cocos2d::Node>> getNodes() const;
 
-	virtual float getNextItemPosition() const;
+	float getNextItemPosition() const;
 
-	virtual void setKeepNodes(bool);
-	virtual bool isKeepNodes() const;
+	void setKeepNodes(bool);
+	bool isKeepNodes() const;
 
 protected:
 	virtual void onNextObject(Item &); /// insert new object at specified position

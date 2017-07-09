@@ -81,6 +81,8 @@ public:
 	// use convertToNodeSpace to get position
 	virtual Pair<uint32_t, bool> getCharIndex(const Vec2 &) const;
 
+	float getMaxLineX() const;
+
 protected:
 	virtual void updateLabel();
 	virtual void updateLabel(FormatSpec *format);

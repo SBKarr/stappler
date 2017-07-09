@@ -758,7 +758,6 @@ struct __ValueTemplateTraits<Interface, false> {
 			} else {
 				return target.dictVal->emplace(std::forward<Key>(key), std::forward<Val>(value)).first->second;
 			}
-			return target.dictVal->at(key);
 		}
 		return const_cast<ValueType &>(ValueType::Null);
 	}

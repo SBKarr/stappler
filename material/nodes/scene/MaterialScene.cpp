@@ -77,16 +77,16 @@ bool Scene::init() {
 	}
 	//cocos2d::Director::getInstance()->setAnimationInterval(0.2f);
 	auto l = construct<EventListener>();
-	l->onEvent(stappler::Screen::onOrientation, [this] (const stappler::Event *) {
+	l->onEvent(stappler::Screen::onOrientation, [this] (const Event &) {
 		layoutSubviews();
 	});
-	l->onEvent(stappler::Device::onBackKey, [this] (const stappler::Event *) {
+	l->onEvent(stappler::Device::onBackKey, [this] (const Event &) {
 		onBackKeyPressed();
 	});
-	l->onEvent(stappler::Device::onAndroidReset, [] (const stappler::Event *) {
+	l->onEvent(stappler::Device::onAndroidReset, [] (const Event &) {
 		stappler::Device::getInstance()->onDirectorStarted();
 	});
-	l->onEvent(stappler::Device::onScreenshot, [this] (const stappler::Event *) {
+	l->onEvent(stappler::Device::onScreenshot, [this] (const Event &) {
 		takeScreenshoot();
 	});
 	l->onEvent(ResourceManager::onLightLevel, std::bind(&Scene::onLightLevel, this));

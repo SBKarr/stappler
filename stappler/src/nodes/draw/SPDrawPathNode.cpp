@@ -56,7 +56,7 @@ bool PathNode::init(Image *img, Format fmt) {
 	_image = img;
 
 	auto l = Rc<EventListener>::create();
-	l->onEvent(Device::onAndroidReset, [this] (const Event *) {
+	l->onEvent(Device::onAndroidReset, [this] (const Event &) {
 		if (_canvas) {
 			_canvas->drop();
 			_canvas = nullptr;

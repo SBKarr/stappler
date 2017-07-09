@@ -320,12 +320,6 @@ operator>=(const map<Key, Value, Comp>& __x, const map<Key, Value, Comp>& __y) {
 	return !(__x < __y);
 }
 
-/// See std::vector::swap().
-template<typename Key, typename Value, typename Comp> inline void
-swap(map<Key, Value, Comp>& __x, map<Key, Value, Comp>& __y) noexcept {
-	__x.swap(__y);
-}
-
 NS_SP_EXT_END(memory)
 
 #endif /* COMMON_MEMORY_SPMEMMAP_H_ */

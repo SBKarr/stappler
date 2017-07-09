@@ -31,17 +31,17 @@ THE SOFTWARE.
 
 USING_NS_SP;
 
-EventHeader::Category EventHeader::getCategoryForName(const std::string &catName) {
+EventHeader::Category EventHeader::getCategoryForName(const String &catName) {
 	return string::hash32(catName);
 }
 
-EventHeader::EventHeader(Category cat, const std::string &name)
+EventHeader::EventHeader(Category cat, const String &name)
 : _category(cat), _name(name) {
 	assert(!name.empty());
 	_id = EventDispatcher::getInstance()->addEventHeader(this);
 }
 
-EventHeader::EventHeader(const std::string &catName, const std::string &eventName)
+EventHeader::EventHeader(const String &catName, const String &eventName)
 : EventHeader(string::hash32(catName), eventName) { }
 
 EventHeader::EventHeader(const EventHeader &other) : _category(other._category), _id(other._id), _name(other._name) { }
@@ -72,7 +72,7 @@ EventHeader::EventID EventHeader::getEventID() const {
 	return _id;
 }
 
-const std::string &EventHeader::getName() const {
+const String &EventHeader::getName() const {
 	return _name;
 }
 

@@ -33,7 +33,7 @@ USING_NS_SP;
 String Event::ZERO_STRING = "";
 
 void Event::dispatch() const {
-	EventDispatcher::getInstance()->dispatchEvent(this);
+	EventDispatcher::getInstance()->dispatchEvent(*this);
 }
 
 Ref *Event::getObject() const {

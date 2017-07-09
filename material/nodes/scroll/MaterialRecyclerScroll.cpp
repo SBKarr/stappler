@@ -397,7 +397,7 @@ Rc<MaterialNode> RecyclerScroll::onItemRequest(const ScrollController::Item &ite
 	if (node) {
 		auto it = _items.find(id);
 		if (it != _items.end()) {
-			return construct<RecyclerNode>(this, node, it->second, id);
+			return Rc<RecyclerNode>::create(this, node, it->second, id);
 		}
 	}
 	return nullptr;
@@ -443,7 +443,7 @@ void RecyclerScroll::removeRecyclerNode(Item *item, cocos2d::Node *node) {
 			it.item->pos.y = progress(it.startPos, it.targetPos, p);
 			it.item->size.height = progress(it.startSize, it.targetSize, p);
 			if (it.item->node) {
-				updateScrollNode(it.item->node, it.item->pos, it.item->size, it.item->zIndex);
+				updateScrollNode(it.item->node, it.item->pos, it.item->size, it.item->zIndex, it.item->name);
 			}
 		}
 		_controller->onScrollPosition(true);
@@ -517,7 +517,7 @@ void RecyclerScroll::performCleanup() {
 				it.item->pos.y = progress(it.startPos, it.targetPos, p);
 				it.item->size.height = progress(it.startSize, it.targetSize, p);
 				if (it.item->node) {
-					updateScrollNode(it.item->node, it.item->pos, it.item->size, it.item->zIndex);
+					updateScrollNode(it.item->node, it.item->pos, it.item->size, it.item->zIndex, it.item->name);
 				}
 			}
 			_controller->onScrollPosition(true);

@@ -72,14 +72,14 @@ void EventDispatcher::removeAllListeners() {
 	_listeners.clear();
 }
 
-void EventDispatcher::dispatchEvent(const Event *ev) {
+void EventDispatcher::dispatchEvent(const Event &ev) {
 	if (_listeners.size() > 0) {
-		auto it = _listeners.find(ev->getHeader().getEventID());
+		auto it = _listeners.find(ev.getHeader().getEventID());
 		if (it != _listeners.end() && it->second.size() != 0) {
-			std::vector<const EventHandlerNode *> listenersToExecute;
+			Vector<const EventHandlerNode *> listenersToExecute;
 			auto &listeners = it->second;
 			for (auto l : listeners) {
-				if (l->shouldRecieveEventWithObject(ev->getEventID(), ev->getObject())) {
+				if (l->shouldRecieveEventWithObject(ev.getEventID(), ev.getObject())) {
 					listenersToExecute.push_back(l);
 				}
 			}
@@ -91,6 +91,6 @@ void EventDispatcher::dispatchEvent(const Event *ev) {
 	}
 }
 
-const std::set<const EventHeader *> &EventDispatcher::getKnownEvents() {
+const Set<const EventHeader *> &EventDispatcher::getKnownEvents() {
 	return _knownEvents;
 }

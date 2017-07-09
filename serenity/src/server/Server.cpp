@@ -145,7 +145,6 @@ struct Server::Config : public AllocPool {
 	void initHandlers(Server &serv, data::Value &val) {
 		for (auto &it : val.asArray()) {
 			if (it.isDictionary()) {
-
 				auto & name = it.getString("name");
 				auto & file = it.getString("file");
 				auto & symbol = it.getString("symbol");

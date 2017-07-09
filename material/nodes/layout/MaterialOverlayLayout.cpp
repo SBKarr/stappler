@@ -59,8 +59,8 @@ bool OverlayLayout::init(const Size &size) {
 	_listener = l;
 
 	_keyboardEventListener = construct<EventListener>();
-	_keyboardEventListener->onEvent(ime::onKeyboard, [this] (const Event *ev) {
-		onKeyboard(ev->getBoolValue(), ime::getKeyboardRect(), ime::getKeyboardDuration());
+	_keyboardEventListener->onEvent(ime::onKeyboard, [this] (const Event &ev) {
+		onKeyboard(ev.getBoolValue(), ime::getKeyboardRect(), ime::getKeyboardDuration());
 	});
 	addComponent(_keyboardEventListener);
 

@@ -168,7 +168,7 @@ bool DynamicBatchScene::init() {
 	}
 
 	auto el = Rc<EventListener>::create();
-	el->onEvent(Device::onBackground, [this] (const Event *) {
+	el->onEvent(Device::onBackground, [this] (const Event &) {
 		_map.clear();
 	});
 	addComponent(el);

@@ -114,7 +114,6 @@ class EventHeader;
 class Event;
 class EventHandlerNode;
 class EventHandler;
-class EventHandlerInterface;
 
 class Bitmap;
 class SyncRWLock;

@@ -43,11 +43,12 @@ NS_SP_BEGIN
 
 class EventHeader {
 public:
-	typedef int Category;
-	typedef int EventID;
+	using Category = int;
+	using EventID = int;
 
 	static Category getCategoryForName(const String &catName);
 public:
+
 	EventHeader() = delete;
 	EventHeader(const String &catName, const String &eventName);
 	EventHeader(Category cat, const String &eventName);

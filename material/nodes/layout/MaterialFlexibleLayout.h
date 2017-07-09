@@ -89,7 +89,7 @@ protected:
 	float _flexibleLevel = 1.0f;
 	float _flexibleMinHeight = 0.0f;
 	float _flexibleMaxHeight = 0.0f;
-	float _baseNodePadding = 8.0f;
+	float _baseNodePadding = 4.0f;
 
 	HeightFunction _flexibleHeightFunction = nullptr;
 

@@ -259,8 +259,8 @@ float ScrollViewBase::getNodeScrollPosition(const Vec2 &pos) const {
 	return (isVertical())?(pos.y):(pos.x);
 }
 
-bool ScrollViewBase::addScrollNode(cocos2d::Node *node, const Vec2 & pos, const Size & size, int z) {
-	updateScrollNode(node, pos, size, z);
+bool ScrollViewBase::addScrollNode(cocos2d::Node *node, const Vec2 & pos, const Size & size, int z, const String &name) {
+	updateScrollNode(node, pos, size, z, name);
 	if (z) {
 		_root->addChild(node, z);
 	} else {
@@ -269,7 +269,7 @@ bool ScrollViewBase::addScrollNode(cocos2d::Node *node, const Vec2 & pos, const 
 	return true;
 }
 
-void ScrollViewBase::updateScrollNode(cocos2d::Node *node, const Vec2 & pos, const Size & size, int z) {
+void ScrollViewBase::updateScrollNode(cocos2d::Node *node, const Vec2 & pos, const Size & size, int z, const String &name) {
 	auto p = node->getParent();
 	if (p == _root || p == nullptr) {
 		auto cs = Size(isnan(size.width)?_root->getContentSize().width:size.width,
@@ -278,6 +278,9 @@ void ScrollViewBase::updateScrollNode(cocos2d::Node *node, const Vec2 & pos, con
 		node->setContentSize(cs);
 		node->setPosition((isVertical()?Vec2(pos.x,-pos.y):pos));
 		node->setAnchorPoint(getAnchorPointForNode());
+		if (!name.empty()) {
+			node->setName(name);
+		}
 		if (z) {
 			node->setLocalZOrder(z);
 		}
@@ -799,11 +802,11 @@ void ScrollViewBase::resizeNode(cocos2d::Node *node, float newSize) {
 		if (it.node && it.node == node) {
 			offset += (newSize - (isVertical()?it.size.height:it.size.width));
 			it.size = isVertical()?Size(it.size.width, newSize):Size(newSize, it.size.height);
-			updateScrollNode(it.node, it.pos, it.size, it.zIndex);
+			updateScrollNode(it.node, it.pos, it.size, it.zIndex, it.name);
 		} else if (offset != 0.0f) {
 			it.pos = isVertical()?Vec2(it.pos.x, it.pos.y + offset):Size(it.pos.x + offset, it.pos.y);
 			if (it.node) {
-				updateScrollNode(it.node, it.pos, it.size, it.zIndex);
+				updateScrollNode(it.node, it.pos, it.size, it.zIndex, it.name);
 			}
 		}
 	}

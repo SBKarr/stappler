@@ -85,8 +85,8 @@ public:
 	virtual float getNodeScrollSize(const Size &) const;
 	virtual float getNodeScrollPosition(const Vec2 &) const;
 
-	virtual bool addScrollNode(cocos2d::Node *, const Vec2 & pos, const Size & size, int z);
-	virtual void updateScrollNode(cocos2d::Node *, const Vec2 & pos, const Size & size, int z);
+	virtual bool addScrollNode(cocos2d::Node *, const Vec2 & pos, const Size & size, int z, const String &name);
+	virtual void updateScrollNode(cocos2d::Node *, const Vec2 & pos, const Size & size, int z, const String &name);
 	virtual bool removeScrollNode(cocos2d::Node *);
 
 	virtual float getDistanceFromStart() const;
@@ -164,12 +164,12 @@ protected:
 	float _scrollPosition = 0.0f; // current position of scrolling
 	float _scrollSize = 0.0f; // size of scrolling area
 
-	float _savedRelativePosition = std::numeric_limits<float>::quiet_NaN();
+	float _savedRelativePosition = nan();
 
-	float _scrollMin = std::numeric_limits<float>::quiet_NaN();
-	float _scrollMax = std::numeric_limits<float>::quiet_NaN();
+	float _scrollMin = nan();
+	float _scrollMax = nan();
 
-	float _maxVelocity = std::numeric_limits<float>::quiet_NaN();
+	float _maxVelocity = nan();
 
     Vec2 _globalScale; // values to scale input gestures
 

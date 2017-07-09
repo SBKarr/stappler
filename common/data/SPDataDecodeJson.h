@@ -72,7 +72,7 @@ struct Decoder : public Interface::AllocBaseType {
 	inline void parseValue(ValueType &current);
 	void parseJson(ValueType &val);
 
-	inline void push(BackType t, Value *v) {
+	inline void push(BackType t, ValueType *v) {
 		++ r;
 		back = v;
 		stack.push_back(v);
@@ -159,7 +159,7 @@ inline void Decoder<Interface>::parseValue(ValueType &current) {
 	case '"':
 		current._type = ValueType::Type::CHARSTRING;
 		parseBufferString(buf);
-		current.strVal = new String(std::move(buf));
+		current.strVal = new StringType(std::move(buf));
 		break;
 	case 't':
 		current._type = ValueType::Type::BOOLEAN;
@@ -178,7 +178,7 @@ inline void Decoder<Interface>::parseValue(ValueType &current) {
 	case '[':
 		current._type = ValueType::Type::ARRAY;
 		current.arrayVal = new typename ValueType::ArrayType();
-		current.arrayVal->reserve(10);
+		//current.arrayVal->reserve(10);
 		push(BackIsArray, &current);
 		break;
 	case '{':

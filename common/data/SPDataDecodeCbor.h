@@ -181,6 +181,27 @@ void Decoder<Interface>::decodeArray(uint8_t type, ValueType &ret) {
 }
 
 template <typename Interface>
+struct __DecoderMapReserve;
+
+template <>
+struct __DecoderMapReserve<memory::PoolInterface> {
+	using ValueType = ValueTemplate<memory::PoolInterface>;
+	using DictionaryType = typename ValueType::DictionaryType;
+
+	static void reserve(DictionaryType &dict, size_t s) {
+		dict.reserve(s);
+	}
+};
+
+template <>
+struct __DecoderMapReserve<memory::StandartInterface> {
+	using ValueType = ValueTemplate<memory::StandartInterface>;
+	using DictionaryType = typename ValueType::DictionaryType;
+
+	static void reserve(DictionaryType &dict, size_t s) { }
+};
+
+template <typename Interface>
 void Decoder<Interface>::decodeMap(uint8_t type, ValueType &ret) {
 	size_t size = maxOf<size_t>();
 	if (type != toInt(Flags::UndefinedLength)) {
@@ -201,6 +222,9 @@ void Decoder<Interface>::decodeMap(uint8_t type, ValueType &ret) {
 
 	ret._type = ValueType::Type::DICTIONARY;
 	ret.dictVal = new DictionaryType();
+	if (size != maxOf<size_t>()) {
+		__DecoderMapReserve<Interface>::reserve(*ret.dictVal, size);
+	}
 
 	while (!r.empty() && size > 0 && !(majorType == MajorTypeEncoded::Simple && type == toInt(Flags::UndefinedLength))) {
 		bool skip = false;
@@ -209,11 +233,11 @@ void Decoder<Interface>::decodeMap(uint8_t type, ValueType &ret) {
 
 		switch(majorType) {
 		case MajorTypeEncoded::Unsigned:
-			parsedKey = stappler::toString(_readIntValue(r, type));
+			parsedKey = string::ToStringTraits<Interface>::toString(_readIntValue(r, type));
 			key = CharReaderBase(parsedKey);
 			break;
 		case MajorTypeEncoded::Negative:
-			parsedKey = stappler::toString((int64_t)(-1 - _readIntValue(r, type)));
+			parsedKey = string::ToStringTraits<Interface>::toString((int64_t)(-1 - _readIntValue(r, type)));
 			key = CharReaderBase(parsedKey);
 			break;
 		case MajorTypeEncoded::ByteString:
@@ -260,9 +284,9 @@ void Decoder<Interface>::decodeMap(uint8_t type, ValueType &ret) {
 			}
 
 			if (!skip) {
-				decode(majorType, type, ret.dictVal->emplace(key.str(), ValueType::Type::EMPTY).first->second);
+				decode(majorType, type, ret.dictVal->emplace(key.str<Interface>(), ValueType::Type::EMPTY).first->second);
 			} else {
-				data::Value val;
+				ValueType val;
 				decode(majorType, type, val);
 			}
 

@@ -350,7 +350,7 @@ Rc<ProgressAction> Scroll::resizeNode(ScrollController::Item *item, float newSiz
 				it.item->size.width = progress(it.startSize, it.targetSize, p);
 			}
 			if (it.item->node) {
-				updateScrollNode(it.item->node, it.item->pos, it.item->size, it.item->zIndex);
+				updateScrollNode(it.item->node, it.item->pos, it.item->size, it.item->zIndex, it.item->name);
 			}
 		}
 		_controller->onScrollPosition(true);

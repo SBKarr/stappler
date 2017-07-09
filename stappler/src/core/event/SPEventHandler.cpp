@@ -33,17 +33,12 @@ THE SOFTWARE.
 //#define SPEVENT_LOG(...) stappler::logTag("Event", __VA_ARGS__)
 #define SPEVENT_LOG(...)
 
-USING_NS_SP;
+NS_SP_BEGIN
+
+EventHandler::EventHandler() { }
 
 EventHandler::~EventHandler() {
-	for (auto it : _handlers) {
-		it->setSupport(nullptr);
-		Thread::onMainThread([it] {
-			EventDispatcher::getInstance()->removeEventListner(it);
-			delete it;
-		});
-	}
-	SPEVENT_LOG("DestroyEventHandler");
+	clearEvents();
 }
 
 void EventHandler::addHandlerNode(EventHandlerNode *handler) {
@@ -61,57 +56,65 @@ void EventHandler::removeHandlerNode(EventHandlerNode *handler) {
 	});
 }
 
-EventHandlerNode * EventHandler::onEvent(const EventHeader &h, Callback callback, bool destroyAfterEvent) {
-	return EventHandlerNode::onEvent(h, nullptr, callback, this, destroyAfterEvent);
+EventHandlerNode * EventHandler::onEvent(const EventHeader &h, Callback && callback, bool destroyAfterEvent) {
+	return EventHandlerNode::onEvent(h, nullptr, std::move(callback), this, destroyAfterEvent);
 }
 
-EventHandlerNode * EventHandler::onEventWithObject(const EventHeader &h, Ref *obj, Callback callback, bool destroyAfterEvent) {
-	return EventHandlerNode::onEvent(h, obj, callback, this, destroyAfterEvent);
+EventHandlerNode * EventHandler::onEventWithObject(const EventHeader &h, Ref *obj, Callback && callback, bool destroyAfterEvent) {
+	return EventHandlerNode::onEvent(h, obj, std::move(callback), this, destroyAfterEvent);
 }
 
-void EventHandler::retainInterface() {
-	if (auto ref = dynamic_cast<Ref *>(this)) {
-		ref->retain();
+Ref *EventHandler::getInterface() const {
+	if (auto ref = dynamic_cast<const Ref *>(this)) {
+		return const_cast<Ref *>(ref);
 	}
+	return nullptr;
 }
-void EventHandler::releaseInterface() {
-	if (auto ref = dynamic_cast<Ref *>(this)) {
-		ref->release();
+
+void EventHandler::clearEvents() {
+	for (auto it : _handlers) {
+		it->setSupport(nullptr);
 	}
+
+	auto h = new Set<EventHandlerNode *>(std::move(_handlers));
+	Thread::onMainThread([h] {
+		for (auto it : (*h)) {
+			EventDispatcher::getInstance()->removeEventListner(it);
+			delete it;
+		}
+		delete h;
+	}, nullptr, true);
+
+	_handlers.clear();
 }
 
-EventHandlerNode * EventHandlerNode::onEvent(const EventHeader &header, Ref *ref, Callback callback, EventHandlerInterface *obj, bool destroyAfterEvent) {
-	auto h = new EventHandlerNode(header, ref, callback, obj, destroyAfterEvent);
-	obj->addHandlerNode(h);
-	return h;
+EventHandlerNode * EventHandlerNode::onEvent(const EventHeader &header, Ref *ref, Callback && callback, EventHandler *obj, bool destroyAfterEvent) {
+	if (callback) {
+		auto h = new EventHandlerNode(header, ref, std::move(callback), obj, destroyAfterEvent);
+		obj->addHandlerNode(h);
+		return h;
+	}
+	return nullptr;
 }
 
-EventHandlerNode::EventHandlerNode(const EventHeader &header, Ref *ref, Callback callback, EventHandlerInterface *obj, bool destroyAfterEvent)
-: _destroyAfterEvent(destroyAfterEvent)
-, _eventID(header.getEventID())
-, _callback(callback)
-, _obj(ref)
-, _support(obj)
- {
- }
+EventHandlerNode::EventHandlerNode(const EventHeader &header, Ref *ref, Callback && callback, EventHandler *obj, bool destroyAfterEvent)
+: _destroyAfterEvent(destroyAfterEvent), _eventID(header.getEventID()), _callback(std::move(callback)), _obj(ref), _support(obj) { }
 
-EventHandlerNode::~EventHandlerNode() {
-}
+EventHandlerNode::~EventHandlerNode() { }
 
-void EventHandlerNode::setSupport(EventHandlerInterface *s) {
+void EventHandlerNode::setSupport(EventHandler *s) {
 	_support = s;
 }
 
-void EventHandlerNode::onEventRecieved(const Event *event) const {
+void EventHandlerNode::onEventRecieved(const Event &event) const {
 	auto s = _support.load();
 	if (s) {
-		s->retainInterface();
-		if (_callback) {
-			_callback(event);
-		}
+		Rc<Ref> iface(s->getInterface());
+		_callback(event);
 		if (_destroyAfterEvent) {
 			s->removeHandlerNode(const_cast<EventHandlerNode *>(this));
 		}
-		s->releaseInterface();
 	}
 }
+
+NS_SP_END

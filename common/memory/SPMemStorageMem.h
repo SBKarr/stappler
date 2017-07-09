@@ -194,11 +194,27 @@ struct storage_mem {
 		size_type pos = it - _ptr;
 		if (_used == 0 || pos == _used) {
 			emplace_back(std::forward<Args>(args)...);
-			return iterator(_ptr);
+			return iterator(_ptr + _used - 1);
 		} else {
 			reserve(_used + 1, true);
 			_allocator.move(_ptr + pos + 1, _ptr + pos, _used - pos);
 			_allocator.construct(_ptr + pos, std::forward<Args>(args)...);
+			++ _used;
+			return iterator(_ptr + pos);
+		}
+	}
+
+	template< class... Args >
+	iterator emplace_safe( const_iterator it, Args&&... args ) {
+		size_type pos = it - _ptr;
+		if (_used == 0 || pos == _used) {
+			emplace_back(std::forward<Args>(args)...);
+			return iterator(_ptr + _used - 1);
+		} else {
+			reserve(_used + 2, true);
+			_allocator.construct(_ptr + _used + 1, std::forward<Args>(args)...);
+			_allocator.move(_ptr + pos + 1, _ptr + pos, _used - pos);
+			_allocator.move(_ptr + pos, _ptr + _used + 1, 1);
 			++ _used;
 			return iterator(_ptr + pos);
 		}

@@ -37,8 +37,8 @@ bool InputMenu::init(const Callback &cut, const Callback &copy, const Callback &
 	}
 
 	auto l = Rc<EventListener>::create();
-	l->onEvent(Device::onClipboard, [this] (const Event *ev) {
-		onClipboard(ev->getBoolValue());
+	l->onEvent(Device::onClipboard, [this] (const Event &ev) {
+		onClipboard(ev.getBoolValue());
 	});
 	addComponent(l);
 

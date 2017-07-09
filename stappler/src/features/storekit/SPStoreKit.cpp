@@ -52,7 +52,7 @@ StoreKit *StoreKit::getInstance() {
 
 StoreKit::StoreKit() {
 	updateWithData(platform::storekit::_loadProducts());
-	onEvent(Device::onNetwork, [this] (const Event *ev) {
+	onEvent(Device::onNetwork, [this] (const Event &ev) {
 		if (Device::getInstance()->isNetworkOnline()) {
 			this->updateProducts();
 		}

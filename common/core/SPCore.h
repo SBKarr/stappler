@@ -223,11 +223,19 @@ constexpr uint64_t hash64(const char* str, size_t len) {
 NS_SP_EXT_END(hash)
 
 // used for naming/hashing (like "MyTag"_tag)
-constexpr uint32_t operator"" _hash ( const char* str, size_t len) { return stappler::hash::hash32(str, len); }
-constexpr uint32_t operator"" _tag ( const char* str, size_t len) { return stappler::hash::hash32(str, len); }
+constexpr uint32_t operator"" _hash ( const char* str, size_t len) {
+	return stappler::hash::hash32(str, len);
+}
+constexpr uint32_t operator"" _tag ( const char* str, size_t len) {
+	return stappler::hash::hash32(str, len);
+}
 
-constexpr uint64_t operator"" _hash64 ( const char* str, size_t len) { return stappler::hash::hash64(str, len); }
-constexpr uint64_t operator"" _tag64 ( const char* str, size_t len) { return stappler::hash::hash64(str, len); }
+constexpr uint64_t operator"" _hash64 ( const char* str, size_t len) {
+	return stappler::hash::hash64(str, len);
+}
+constexpr uint64_t operator"" _tag64 ( const char* str, size_t len) {
+	return stappler::hash::hash64(str, len);
+}
 
 constexpr long double operator"" _to_rad ( long double val ) { return val * M_PI / 180.0; }
 constexpr long double operator"" _to_rad ( unsigned long long int val ) { return val * M_PI / 180.0; }

@@ -30,28 +30,19 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
-class EventListener : public cocos2d::Component, public EventHandlerInterface {
+class EventListener : public cocos2d::Component, public EventHandler {
 public:
-	using Callback = std::function<void (const Event *)>;
+	using Callback = Function<void (const Event &)>;
 
 	virtual ~EventListener();
 	virtual bool init() override;
 
-	virtual void addHandlerNode(EventHandlerNode *handler) override;
-	virtual void removeHandlerNode(EventHandlerNode *handler) override;
+	void onEventRecieved(const Event &ev, const Callback &);
 
-	virtual void retainInterface() override;
-	virtual void releaseInterface() override;
+	EventHandlerNode * onEvent(const EventHeader &h, Callback &&, bool destroyAfterEvent = false);
+	EventHandlerNode * onEventWithObject(const EventHeader &h, layout::Ref *obj, Callback &&, bool destroyAfterEvent = false);
 
-	virtual void onEventRecieved(const Event *ev, const Callback &);
-
-	virtual void clear();
-
-	EventHandlerNode * onEvent(const EventHeader &h, const Callback &, bool destroyAfterEvent = false);
-	EventHandlerNode * onEventWithObject(const EventHeader &h, layout::Ref *obj, const Callback &, bool destroyAfterEvent = false);
-
-protected:
-	Set<EventHandlerNode *> _handlers;
+	void clear();
 };
 
 NS_SP_END

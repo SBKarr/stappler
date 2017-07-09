@@ -102,8 +102,8 @@ IMEImpl *IMEImpl::getInstance() {
 }
 
 IMEImpl::IMEImpl() {
-	onEvent(Device::onBackground, [this] (const Event *ev) {
-		if (ev->getBoolValue()) {
+	onEvent(Device::onBackground, [this] (const Event &ev) {
+		if (ev.getBoolValue()) {
 			cancel();
 		}
 	});

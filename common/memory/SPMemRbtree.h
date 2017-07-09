@@ -37,7 +37,7 @@ enum NodeColor : bool {
 template <typename Value>
 using Storage = memory::Storage<Value>;
 
-struct NodeBase {
+struct NodeBase : public AllocPool {
 	struct Flag {
 		uintptr_t color : 1;
 		uintptr_t size : (sizeof(intptr_t) * 8) - 1;

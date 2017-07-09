@@ -171,7 +171,7 @@ public: // CBOR format impl
 
 private:
 	union {
-		Bytes *buffer;
+		typename ValueType::BytesType *buffer;
 		OutputFileStream *file;
 		OutputStream *stream;
 	};

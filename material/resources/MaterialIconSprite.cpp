@@ -251,7 +251,7 @@ bool IconSprite::init(IconName name) {
 	}
 
 	auto l = Rc<EventListener>::create();
-	l->onEvent(IconStorage::onUpdate, [this] (const Event *) {
+	l->onEvent(IconStorage::onUpdate, [this] (const Event &) {
 		onUpdate();
 	});
 	addComponent(l);
@@ -271,7 +271,7 @@ bool IconSprite::init(IconName name, uint32_t w, uint32_t h) {
 	}
 
 	auto l = Rc<EventListener>::create();
-	l->onEvent(IconStorage::onUpdate, [this] (const Event *) {
+	l->onEvent(IconStorage::onUpdate, [this] (const Event &) {
 		onUpdate();
 	});
 	addComponent(l);

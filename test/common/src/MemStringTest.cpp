@@ -259,7 +259,7 @@ struct MemStringIterTest : MemPoolTest {
 			bool b = s.size() == "exemplar"_len && strcmp(s.data(), "exemplar") == 0;
 			bool c = *s.cbegin() == 'e';
 
-			stream << s << " " << s.cbegin();
+			stream << s << " " << *s.cbegin();
 
 			return b && c;
 		});

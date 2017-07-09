@@ -30,8 +30,8 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
-ScrollController::Item::Item(const NodeFunction &f, const Vec2 &pos, const Size &size, int z)
-: nodeFunction(f), size(size), pos(pos), zIndex(z) { }
+ScrollController::Item::Item(const NodeFunction &f, const Vec2 &pos, const Size &size, int z, const String &name)
+: nodeFunction(f), size(size), pos(pos), zIndex(z), name(name) { }
 
 ScrollController::~ScrollController() { }
 
@@ -206,27 +206,27 @@ void ScrollController::onNextObject(Item &h) {
 	} else {
 		h.node->setVisible(true);
 		h.node->pushForceRendering();
-		_scroll->updateScrollNode(h.node, h.pos, h.size, h.zIndex);
+		_scroll->updateScrollNode(h.node, h.pos, h.size, h.zIndex, h.name);
 	}
 }
 
-size_t ScrollController::addItem(const NodeFunction &fn, const Size &size, const Vec2 &vec, int z) {
-	_nodes.emplace_back(fn, vec, size, z);
+size_t ScrollController::addItem(const NodeFunction &fn, const Size &size, const Vec2 &vec, int z, const String &tag) {
+	_nodes.emplace_back(fn, vec, size, z, tag);
 	_infoDirty = true;
 	return _nodes.size() - 1;
 }
 
-size_t ScrollController::addItem(const NodeFunction &fn, float size, float pos, int z) {
+size_t ScrollController::addItem(const NodeFunction &fn, float size, float pos, int z, const String &tag) {
 	if (!_scroll) {
 		return std::numeric_limits<size_t>::max();
 	}
 
-	_nodes.emplace_back(fn, _scroll->getPositionForNode(pos), _scroll->getContentSizeForNode(size), z);
+	_nodes.emplace_back(fn, _scroll->getPositionForNode(pos), _scroll->getContentSizeForNode(size), z, tag);
 	_infoDirty = true;
 	return _nodes.size() - 1;
 }
 
-size_t ScrollController::addItem(const NodeFunction &fn, float size, int zIndex) {
+size_t ScrollController::addItem(const NodeFunction &fn, float size, int zIndex, const String &tag) {
 	if (!_scroll) {
 		return std::numeric_limits<size_t>::max();
 	}
@@ -236,7 +236,7 @@ size_t ScrollController::addItem(const NodeFunction &fn, float size, int zIndex)
 		pos = _scroll->getNodeScrollPosition(_nodes.back().pos) + _scroll->getNodeScrollSize(_nodes.back().size);
 	}
 
-	return addItem(fn, size, pos, zIndex);
+	return addItem(fn, size, pos, zIndex, tag);
 }
 
 size_t ScrollController::addPlaceholder(const Size &size, const Vec2 &pos) {
@@ -388,14 +388,14 @@ void ScrollController::setScrollRelativeValue(float value) {
 
 void ScrollController::addScrollNode(Item &it) {
 	if (it.node) {
-		_scroll->addScrollNode(it.node, it.pos, it.size, it.zIndex);
+		_scroll->addScrollNode(it.node, it.pos, it.size, it.zIndex, it.name);
 		it.node->pushForceRendering();
 	}
 }
 
 void ScrollController::updateScrollNode(Item &it) {
 	if (it.node) {
-		_scroll->updateScrollNode(it.node, it.pos, it.size, it.zIndex);
+		_scroll->updateScrollNode(it.node, it.pos, it.size, it.zIndex, it.name);
 	}
 }
 
@@ -411,12 +411,20 @@ void ScrollController::removeScrollNode(Item &it) {
 	}
 }
 
-cocos2d::Vector<cocos2d::Node *> ScrollController::getNodes() {
-	cocos2d::Vector<cocos2d::Node *> ret;
+Vector<Rc<cocos2d::Node>> ScrollController::getNodes() const {
+	Vector<Rc<cocos2d::Node>> ret;
 	for (auto &it : _nodes) {
 		if (it.node) {
-			ret.pushBack(it.node);
+			ret.emplace_back(it.node);
 		}
+	}
+	return ret;
+}
+
+cocos2d::Node * ScrollController::getNodeByName(const String &str) const {
+	cocos2d::Node *ret = nullptr;
+	if (_root && !str.empty()) {
+		return _root->getChildByName(str);
 	}
 	return ret;
 }

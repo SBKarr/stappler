@@ -41,7 +41,7 @@ public:
 	pointer_iterator(const iterator&other) noexcept : current(other.current) {}
 	explicit pointer_iterator(pointer p) noexcept : current(p) {}
 
-	iterator& operator=(const iterator&other) {current = other; return *this;}
+	iterator& operator=(const iterator&other) {current = other.current; return *this;}
 	bool operator==(const iterator&other) const {return current == other.current;}
 	bool operator!=(const iterator&other) const {return current != other.current;}
 	bool operator<(const iterator&other) const {return current < other.current;}
@@ -54,9 +54,7 @@ public:
 	iterator& operator--() {--current; return *this;}
 	iterator& operator--(int) {--current; return *this;}
 	iterator& operator+= (size_type n) { current += n; return *this; }
-	iterator operator+(size_type n) const {return iterator(current + n);}
 	iterator& operator-=(size_type n) {current -= n; return *this;}
-	iterator operator-(size_type n) const {return iterator(current - n);}
 	difference_type operator-(const iterator &other) const {return current - other.current;}
 
 	reference operator*() const {return *current;}
@@ -70,9 +68,19 @@ public:
 		return pointer_iterator<value_type, const value_type *, const value_type &>(current);
 	}
 
-	operator pointer () const { return current; }
+	//operator pointer () const { return current; }
 
-	// friend iterator operator+(size_type, const iterator&); //optional
+	friend auto operator+(size_type n, const iterator &it) -> iterator {
+		return iterator(it.current + n);
+	}
+
+	friend auto operator+(const iterator &it, size_type n) -> iterator {
+		return iterator(it.current + n);
+	}
+
+	friend auto operator-(const iterator &it, size_type n) -> iterator {
+		return iterator(it.current - n);
+	}
 
 protected:
 	pointer current;

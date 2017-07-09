@@ -74,10 +74,10 @@ bool FormField::init(FormController *c, const String &name, bool dense) {
 
 	if (_formController) {
 		auto el = Rc<EventListener>::create();
-		el->onEventWithObject(FormController::onForceCollect, _formController, [this] (const Event *) {
+		el->onEventWithObject(FormController::onForceCollect, _formController, [this] (const Event &) {
 			pushFormData();
 		});
-		el->onEventWithObject(FormController::onForceUpdate, _formController, [this] (const Event *) {
+		el->onEventWithObject(FormController::onForceUpdate, _formController, [this] (const Event &) {
 			updateFormData();
 		});
 		addComponent(el);

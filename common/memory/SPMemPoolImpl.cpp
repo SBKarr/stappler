@@ -43,9 +43,45 @@ struct allocmngr_t {
 	memaddr_t *buffered = nullptr;
 	memaddr_t *free_buffered = nullptr;
 
+	void reset(pool_t *);
+
 	void *alloc(size_t &sizeInBytes);
 	void free(void *ptr, size_t sizeInBytes);
+
+#if DEBUG
+	size_t _allocated = 0;
+	size_t _returned = 0;
+	size_t _opts = 0;
+
+	void increment_alloc(size_t s) { _allocated += s; }
+	void increment_return(size_t s) { _returned += s; }
+	void increment_opts(size_t s) { _opts += s; }
+
+	size_t get_alloc() { return _allocated; }
+	size_t get_return() { return _returned; }
+	size_t get_opts() { return _opts; }
+#else
+	void increment_alloc(size_t s) { }
+	void increment_return(size_t s) { }
+	void increment_opts(size_t s) { }
+
+	size_t get_alloc() { return 0; }
+	size_t get_return() { return 0; }
+	size_t get_opts() { return 0; }
+#endif
 };
+
+void allocmngr_t::reset(pool_t *p) {
+#if DEBUG
+	_allocated = 0;
+	_returned = 0;
+	_opts = 0;
+#endif
+
+	pool = p;
+	buffered = nullptr;
+	free_buffered = nullptr;
+}
 
 void *allocmngr_t::alloc(size_t &sizeInBytes) {
 	if (buffered) {
@@ -61,6 +97,7 @@ void *allocmngr_t::alloc(size_t &sizeInBytes) {
 				c->next = free_buffered;
 				free_buffered = c;
 				sizeInBytes = c->size;
+				increment_return(sizeInBytes);
 				return c->address;
 			}
 
@@ -68,6 +105,7 @@ void *allocmngr_t::alloc(size_t &sizeInBytes) {
 			c = c->next;
 		}
 	}
+	increment_alloc(sizeInBytes);
 	return pool_palloc(pool, sizeInBytes);
 }
 
@@ -79,6 +117,7 @@ void allocmngr_t::free(void *ptr, size_t sizeInBytes) {
 		free_buffered = addr->next;
 	} else {
 		addr = (memaddr_t *)pool_palloc(pool, sizeof(memaddr_t));
+		increment_opts(sizeof(memaddr_t));
 	}
 
 	addr->size = sizeInBytes;
@@ -569,6 +608,7 @@ void *pool_t::alloc(size_t &sizeInBytes) {
 	if (sizeInBytes >= BlockThreshold) {
 		return allocmngr.alloc(sizeInBytes);
 	}
+	allocmngr.increment_alloc(sizeInBytes);
 	return palloc(sizeInBytes);
 }
 void pool_t::free(void *ptr, size_t sizeInBytes) {
@@ -649,6 +689,7 @@ void pool_t::clear() {
 	this->cleanups = nullptr;
 	this->free_cleanups = nullptr;
 
+
 	/* Find the node attached to the pool structure, reset it, make
 	 * it the active node and free the rest of the nodes.
 	 */
@@ -663,6 +704,8 @@ void pool_t::clear() {
 	this->allocator->free(active->next);
 	active->next = active;
 	active->ref = &active->next;
+
+	this->allocmngr.reset(this);
 }
 
 pool_t *pool_t::create(allocator_t *alloc) {
@@ -863,6 +906,16 @@ void cleanup_register(pool_t *p, void *ptr, status_t(*cb)(void *)) {
 	p->cleanup_register(ptr, cb);
 }
 
+size_t get_allocated_bytes(pool_t *p) {
+	return p->allocmngr.get_alloc();
+}
+size_t get_return_bytes(pool_t *p) {
+	return p->allocmngr.get_return();
+}
+size_t get_opts_bytes(pool_t *p) {
+	return p->allocmngr.get_opts();
+}
+
 }
 
 #else
@@ -905,6 +958,9 @@ void *alloc(pool_t *p, size_t &size) {
 	if (size >= BlockThreshold) {
 		return allocmngr_get(p)->alloc(size);
 	} else {
+#if DEBUG
+		allocmngr_get(p)->increment_alloc(size);
+#endif
 		return apr_palloc(p, size);
 	}
 }
@@ -916,6 +972,16 @@ void free(pool_t *p, void *ptr, size_t size) {
 
 void cleanup_register(pool_t *p, void *ptr, status_t(*cb)(void *)) {
 	apr_pool_cleanup_register(p, ptr, cb, apr_pool_cleanup_null);
+}
+
+size_t get_allocated_bytes(pool_t *p) {
+	return allocmngr_get(p)->get_alloc();
+}
+size_t get_return_bytes(pool_t *p) {
+	return allocmngr_get(p)->get_return();
+}
+size_t get_opts_bytes(pool_t *p) {
+	return allocmngr_get(p)->get_opts();
 }
 
 }

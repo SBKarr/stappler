@@ -200,10 +200,10 @@ struct PrettyEncoder : public Interface::AllocBaseType {
 template <typename Interface>
 inline void write(std::ostream &stream, const ValueTemplate<Interface> &val, bool pretty) {
 	if (pretty) {
-		PrettyEncoder<Value::InterfaceType> encoder(&stream);
+		PrettyEncoder<Interface> encoder(&stream);
 		val.encode(encoder);
 	} else {
-		RawEncoder<Value::InterfaceType> encoder(&stream);
+		RawEncoder<Interface> encoder(&stream);
 		val.encode(encoder);
 	}
 }
@@ -211,7 +211,7 @@ inline void write(std::ostream &stream, const ValueTemplate<Interface> &val, boo
 template <typename Interface>
 inline auto write(const ValueTemplate<Interface> &val, bool pretty = false) -> typename Interface::StringType {
 	typename Interface::StringStreamType stream;
-	write(stream, val, pretty);
+	write<Interface>(stream, val, pretty);
 	return stream.str();
 }
 

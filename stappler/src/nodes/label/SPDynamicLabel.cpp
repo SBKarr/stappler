@@ -473,4 +473,11 @@ Pair<uint32_t, bool> DynamicLabel::getCharIndex(const Vec2 &pos) const {
 	}
 }
 
+float DynamicLabel::getMaxLineX() const {
+	if (_format) {
+		return _format->maxLineX / _density;
+	}
+	return 0.0f;
+}
+
 NS_SP_END

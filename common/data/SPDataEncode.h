@@ -186,7 +186,7 @@ save(const ValueTemplate<Interface> &data, const String &file, EncodeFormat fmt 
 
 template <typename Interface> inline auto
 toString(const ValueTemplate<Interface> &data, bool pretty = false) -> typename ValueTemplate<Interface>::StringType  {
-	return json::write(data, pretty);
+	return json::write<Interface>(data, pretty);
 }
 
 template<typename CharT, typename Traits> inline std::basic_ostream<CharT, Traits>&

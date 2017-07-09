@@ -792,6 +792,9 @@ String name(const String &path) {
 	}
 }
 String merge(const String &root, const String &path) {
+	if (path.empty()) {
+		return root;
+	}
 	if (root.back() == '/') {
 		if (path.front() == '/') {
 			return root + path.substr(1);

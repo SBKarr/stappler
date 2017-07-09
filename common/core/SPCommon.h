@@ -30,6 +30,7 @@ THE SOFTWARE.
 #include "SPMemStringStream.h"
 #include "SPMemSet.h"
 #include "SPMemMap.h"
+#include "SPMemDict.h"
 
 NS_SP_EXT_BEGIN(memory)
 
@@ -41,7 +42,7 @@ struct PoolInterface : public memory::AllocPool {
 
 	template <typename Value> using BasicStringType = memory::basic_string<Value>;
 	template <typename Value> using ArrayType = memory::vector<Value>;
-	template <typename Value> using DictionaryType = memory::map<StringType, Value>;
+	template <typename Value> using DictionaryType = memory::dict<StringType, Value>;
 	template <typename Value> using VectorType = memory::vector<Value>;
 
 	template <typename K, typename V, typename Compare = std::less<>>

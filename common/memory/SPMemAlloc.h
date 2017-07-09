@@ -103,6 +103,11 @@ struct __AllocatorTriviallyCopyable : std:: is_trivially_copyable<T> { };
 template <typename T>
 struct __AllocatorTriviallyMoveable : std::is_trivially_copyable<T> { };
 
+template <>
+template <typename K, typename V>
+struct __AllocatorTriviallyMoveable<Pair<K, V>> : std::integral_constant<bool,
+	__AllocatorTriviallyMoveable<std::remove_cv<K>>::value && __AllocatorTriviallyMoveable<std::remove_cv<V>>::value> { };
+
 template <typename T>
 struct __AllocatorTraits<T, true> {
 	template <typename Alloc>

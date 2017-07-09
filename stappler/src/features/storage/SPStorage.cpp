@@ -44,7 +44,7 @@ THE SOFTWARE.
 #define LIBRARY_CREATE \
 "CREATE TABLE IF NOT EXISTS kvstorage (" \
 "   key TEXT PRIMARY KEY," \
-"   value TEXT" \
+"   value BLOB" \
 ");"
 
 #define LIBRARY_KV_SELECT	"SELECT value FROM kvstorage WHERE key=?;"
@@ -63,8 +63,8 @@ public:
 
 	Thread &getThread();
 
-	String getData(const String &key);
-	void updateData(const String &key, const String &value);
+	data::Value getData(const String &key);
+	void updateData(const String &key, const data::Value &value);
 	void removeData(const String &key);
 
 	bool createClass(const String &cmd);
@@ -84,6 +84,7 @@ private:
 	static Handle* s_sharedInternal;
 	static bool s_configured;
 
+	bool _kvIsBinary = false;
 	sqlite3 *_db = nullptr;
 	sqlite3_stmt *_kv_update_stmt = nullptr;
 	sqlite3_stmt *_kv_select_stmt = nullptr;
@@ -182,12 +183,12 @@ void get(const String &key, const KeyDataCallback &callback, Handle *storage) {
 	}
 	auto &thread = storage->getThread();
 	if (thread.isOnThisThread()) {
-		auto val = data::read(storage->getData(key));
+		data::Value val(storage->getData(key));
 		callback(key, std::move(val));
 	} else {
 		data::Value *val = new data::Value();
 		thread.perform([key, val, storage] (const Task &) -> bool {
-			*val = data::read(storage->getData(key));
+			*val = storage->getData(key);
 			return true;
 		}, [key, val, callback] (const Task &, bool) {
 			callback(key, std::move(*val));
@@ -202,14 +203,14 @@ void set(const String &key, const data::Value &value, const KeyDataCallback &cal
 	}
 	auto &thread = storage->getThread();
 	if (thread.isOnThisThread()) {
-		storage->updateData(key, data::toString(value));
+		storage->updateData(key, value);
 		if (callback) {
 			callback(key, data::Value(value));
 		}
 	} else {
 		data::Value *val = new data::Value(value);
 		thread.perform([key, val, storage] (const Task &) -> bool {
-			storage->updateData(key, data::toString(*val));
+			storage->updateData(key, *val);
 			return true;
 		}, [key, val, callback] (const Task &, bool) {
 			if (callback) {
@@ -226,14 +227,14 @@ void set(const String &key, data::Value &&value, const KeyDataCallback &callback
 	}
 	auto &thread = storage->getThread();
 	if (thread.isOnThisThread()) {
-		storage->updateData(key, data::toString(value));
+		storage->updateData(key, value);
 		if (callback) {
 			callback(key, std::move(value));
 		}
 	} else {
 		data::Value *val = new data::Value(std::move(value));
 		thread.perform([key, val, storage] (const Task &) -> bool {
-			storage->updateData(key, data::toString(*val));
+			storage->updateData(key, *val);
 			return true;
 		}, [key, val, callback] (const Task &, bool) {
 			if (callback) {
@@ -1516,6 +1517,21 @@ Handle::Handle(const String &name, const String &ipath) : _db(nullptr), _thread(
 	ok = (ok == SQLITE_OK)?prepareStmt(&_kv_update_stmt, LIBRARY_KV_UPDATE):ok;
 	ok = (ok == SQLITE_OK)?prepareStmt(&_kv_remove_stmt, LIBRARY_KV_REMOVE):ok;
 
+	_kvIsBinary = false;
+
+	auto q = "PRAGMA table_info(kvstorage)";
+	auto val = perform(q);
+	if (val.isArray()) {
+		for (auto &it : val.getArray()) {
+			auto name = it.getString("name");
+			if (name == "value") {
+				if (it.getString("type") == "BLOB") {
+					_kvIsBinary = true;
+				}
+			}
+		}
+	}
+
 	if( ok != SQLITE_OK) {
 		log::format("Storage", "SQLite: Error in prepared statements: %s", sqlite3_errmsg(_db));
 		assert(false);
@@ -1538,11 +1554,17 @@ Thread &Handle::getThread() {
 	return _thread;
 }
 
-void Handle::updateData(const String &key, const String &value) {
+void Handle::updateData(const String &key, const data::Value &value) {
 	int ok = SQLITE_OK;
 
-	ok = (ok == SQLITE_OK)?sqlite3_bind_text(_kv_update_stmt, 1, key.c_str(), -1, SQLITE_TRANSIENT):ok;
-	ok = (ok == SQLITE_OK)?sqlite3_bind_text(_kv_update_stmt, 2, value.c_str(), -1, SQLITE_TRANSIENT):ok;
+	Bytes b(data::write(value, _kvIsBinary?data::EncodeFormat::Cbor:data::EncodeFormat::Json));
+
+	ok = (ok == SQLITE_OK)?sqlite3_bind_text(_kv_update_stmt, 1, key.data(), key.size(), SQLITE_STATIC):ok;
+	if (_kvIsBinary) {
+		ok = (ok == SQLITE_OK)?sqlite3_bind_blob(_kv_update_stmt, 2, b.data(), b.size(), SQLITE_STATIC):ok;
+	} else {
+		ok = (ok == SQLITE_OK)?sqlite3_bind_text(_kv_update_stmt, 2, (const char *)b.data(), b.size(), SQLITE_STATIC):ok;
+	}
 	ok = (ok == SQLITE_OK)?sqlite3_step(_kv_update_stmt):ok;
 
 	if( ok != SQLITE_OK && ok != SQLITE_DONE) {
@@ -1555,7 +1577,7 @@ void Handle::updateData(const String &key, const String &value) {
 void Handle::removeData(const String &key) {
 	int ok = SQLITE_OK;
 
-	ok = (ok == SQLITE_OK)?sqlite3_bind_text(_kv_remove_stmt, 1, key.c_str(), -1, SQLITE_TRANSIENT):ok;
+	ok = (ok == SQLITE_OK)?sqlite3_bind_text(_kv_remove_stmt, 1, key.data(), key.size(), SQLITE_STATIC):ok;
 	ok = (ok == SQLITE_OK)?sqlite3_step(_kv_remove_stmt):ok;
 
 	if( ok != SQLITE_OK && ok != SQLITE_DONE) {
@@ -1565,11 +1587,11 @@ void Handle::removeData(const String &key) {
 	sqlite3_reset(_kv_remove_stmt);
 }
 
-String Handle::getData(const String &key) {
-	String ret;
+data::Value Handle::getData(const String &key) {
+	data::Value ret;
 	int ok = SQLITE_OK;
 
-	ok = (ok == SQLITE_OK)?sqlite3_bind_text(_kv_select_stmt, 1, key.c_str(), -1, SQLITE_TRANSIENT):ok;
+	ok = (ok == SQLITE_OK)?sqlite3_bind_text(_kv_select_stmt, 1, key.data(), key.size(), SQLITE_STATIC):ok;
 	ok = (ok == SQLITE_OK)?sqlite3_step(_kv_select_stmt):ok;
 
 	if ( ok != SQLITE_OK && ok != SQLITE_DONE && ok != SQLITE_ROW) {
@@ -1577,7 +1599,9 @@ String Handle::getData(const String &key) {
 	}
 
 	if ( ok == SQLITE_ROW ) {
-		ret = (const char *)sqlite3_column_text(_kv_select_stmt, 0);
+		const uint8_t *data = (const uint8_t *)sqlite3_column_blob(_kv_select_stmt, 0);
+		size_t bytes(sqlite3_column_bytes(_kv_select_stmt, 0));
+		ret = data::read(DataReader<ByteOrder::Host>(data, bytes));
 	}
 
 	sqlite3_reset(_kv_select_stmt);

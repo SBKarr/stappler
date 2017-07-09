@@ -1672,7 +1672,7 @@ IconStorage::~IconStorage() {
 
 bool IconStorage::init(float d) {
 	_density = d;
-	onEvent(Device::onAndroidReset, [this] (const Event *) {
+	onEvent(Device::onAndroidReset, [this] (const Event &) {
 		_texture->init(cocos2d::Texture2D::PixelFormat::A8, _texture->getPixelsWide(), _texture->getPixelsHigh(),
 					cocos2d::Texture2D::InitAs::RenderTarget);
 		_dirty = true;

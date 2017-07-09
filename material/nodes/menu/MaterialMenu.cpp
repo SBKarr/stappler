@@ -96,7 +96,7 @@ void Menu::setEnabled(bool value) {
 	auto nodes = _controller->getNodes();
 	if (!nodes.empty()) {
 		for (auto it : nodes) {
-			if (auto button = dynamic_cast<MenuButton *>(it)) {
+			if (auto button = dynamic_cast<MenuButton *>(it.get())) {
 				button->setEnabled(value);
 			}
 		}

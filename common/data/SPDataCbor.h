@@ -332,10 +332,10 @@ inline void _writeFloat(Writer &w, double value) {
 }
 
 template <class Writer>
-inline void _writeString(Writer &w, const String &str) {
+inline void _writeString(Writer &w, const StringView &str) {
 	auto size = str.size();
 	_writeInt(w, size, MajorTypeEncoded::CharString);
-	w.emplace((uint8_t *)str.c_str(), size);
+	w.emplace((uint8_t *)str.data(), size);
 }
 
 template <class Writer>
