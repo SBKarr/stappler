@@ -34,9 +34,15 @@ class IconSprite : public draw::PathNode {
 public:
 	virtual ~IconSprite() { }
 
-	virtual bool init(IconName name = IconName::None);
-	virtual bool init(IconName name, uint32_t, uint32_t);
+	enum class SizeHint {
+		Small,
+		Normal,
+		Large
+	};
 
+	virtual bool init(IconName name = IconName::None, SizeHint = SizeHint::Normal);
+
+	virtual void onContentSizeDirty() override;
 	virtual void visit(cocos2d::Renderer *, const Mat4 &, uint32_t f, ZPath &) override;
 
 	virtual void onEnter() override;
@@ -73,6 +79,7 @@ protected:
 	IconName _iconName = IconName::None;
 	DynamicIcon *_dynamicIcon = nullptr;
 	EventListener *_listener = nullptr;
+	IconStorage *_storage = nullptr;
 };
 
 NS_MD_END

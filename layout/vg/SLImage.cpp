@@ -577,14 +577,19 @@ Image::~Image() {
 }
 
 bool Image::init(uint16_t width, uint16_t height, const String &data) {
-	_width = width;
-	_height = height;
-
 	Path path;
 	if (!path.init(data)) {
 		return false;
 	}
+	return init(width, height, std::move(path));
+}
+
+bool Image::init(uint16_t width, uint16_t height, Path && path) {
+	_width = width;
+	_height = height;
+
 	_paths.emplace_back(std::move(path));
+
 	return true;
 }
 

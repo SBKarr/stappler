@@ -1670,7 +1670,9 @@ IconStorage::~IconStorage() {
 	unschedule();
 }
 
-bool IconStorage::init(float d) {
+bool IconStorage::init(float d, uint16_t w, int16_t h) {
+	_width = w;
+	_height = h;
 	_density = d;
 	onEvent(Device::onAndroidReset, [this] (const Event &) {
 		_texture->init(cocos2d::Texture2D::PixelFormat::A8, _texture->getPixelsWide(), _texture->getPixelsHigh(),
@@ -1709,12 +1711,12 @@ void IconStorage::update(float dt) {
 	}
 }
 
-static void IconStorage_drawIcons(cocos2d::Texture2D *tex, const Vector<IconName> &names, Vector<IconStorage::Icon> &icons, float density) {
+static void IconStorage_drawIcons(cocos2d::Texture2D *tex, const Vector<IconName> &names, Vector<IconStorage::Icon> &icons, float density, uint16_t iwidth, uint16_t iheight) {
 	size_t count = names.size();
 	uint16_t originalWidth = 48;
 	uint16_t originalHeight = 48;
-	uint16_t iconWidth = uint16_t(24 * density);
-	uint16_t iconHeight = uint16_t(24 * density);
+	uint16_t iconWidth = uint16_t(iwidth * density);
+	uint16_t iconHeight = uint16_t(iheight * density);
 
 	float scaleX = (float)iconWidth / (float)originalWidth;
 	float scaleY = (float)iconHeight / (float)originalHeight;
@@ -1766,11 +1768,11 @@ static void IconStorage_drawIcons(cocos2d::Texture2D *tex, const Vector<IconName
 	tex->setAntiAliasTexParameters();
 }
 
-static Rc<cocos2d::Texture2D> IconStorage_updateIcons(const Vector<IconName> &names, Vector<IconStorage::Icon> &icons, float density) {
+static Rc<cocos2d::Texture2D> IconStorage_updateIcons(const Vector<IconName> &names, Vector<IconStorage::Icon> &icons, float density, uint16_t iwidth, uint16_t iheight) {
 	//Time time = Time::now();
 	size_t count = names.size();
-	uint16_t iconWidth = uint16_t(24 * density);
-	uint16_t iconHeight = uint16_t(24 * density);
+	uint16_t iconWidth = uint16_t(iwidth * density);
+	uint16_t iconHeight = uint16_t(iheight * density);
 
 	size_t globalSquare = count * (iconWidth * iconHeight);
 	size_t sq2 = 1; uint16_t h = 1; uint16_t w = 1;
@@ -1792,7 +1794,7 @@ static Rc<cocos2d::Texture2D> IconStorage_updateIcons(const Vector<IconName> &na
 	auto tex = Rc<cocos2d::Texture2D>::create(cocos2d::Texture2D::PixelFormat::A8, texWidth, texHeight,
 			cocos2d::Texture2D::InitAs::RenderTarget);
 
-	IconStorage_drawIcons(tex, names, icons, density);
+	IconStorage_drawIcons(tex, names, icons, density, iwidth, iheight);
 
 	return tex;
 }
@@ -1815,7 +1817,7 @@ void IconStorage::reload() {
 	Rc<cocos2d::Texture2D> *texPtr = new Rc<cocos2d::Texture2D>;
 	thread.perform([this, icons, names, texPtr] (const Task &) -> bool {
 		TextureCache::getInstance()->performWithGL([&] {
-			*texPtr = IconStorage_updateIcons(*names, *icons, _density);
+			*texPtr = IconStorage_updateIcons(*names, *icons, _density, _width, _height);
 		});
 		return true;
 	}, [this, icons, names, texPtr] (const Task &, bool) {
@@ -1827,6 +1829,10 @@ void IconStorage::reload() {
 		delete names;
 		delete texPtr;
 	});
+}
+
+bool IconStorage::matchSize(const Size &size) const {
+	return size.width == float(_width) && size.height == float(_height);
 }
 
 void IconStorage::schedule() {

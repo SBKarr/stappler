@@ -149,7 +149,7 @@ bool PathNode::isAntialiased() const {
 
 void PathNode::setImage(Image *img) {
 	_image = img;
-	_contentSizeDirty = true;
+	_pathsDirty = true;
 	if (_image) {
 		_baseWidth = _image->getWidth();
 		_baseHeight = _image->getHeight();

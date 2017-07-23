@@ -102,6 +102,8 @@ public:
 		Style & operator=(const Style &) = default;
 		Style & operator=(Style &&) = default;
 
+		Style(std::initializer_list<Param> il) : params(il) { }
+
 		template <class T> Style(const T & value) { params.push_back(value); }
 		template <class T> Style & set(const T &value) { set(Param(value), true); return *this; }
 

@@ -59,6 +59,8 @@ public:
 	ServerComponent *getComponent(const String &) const;
 	void addComponent(const String &, ServerComponent *);
 
+	void addPreRequest(Function<int(Request &)> &&);
+
 	void addHandler(const String &, const HandlerCallback &, const data::Value & = data::Value::Null);
 	void addHandler(std::initializer_list<String>, const HandlerCallback &, const data::Value & = data::Value::Null);
 

@@ -152,6 +152,8 @@ ResourceManager::ResourceManager() {
 	}, 1.0f);
 
 	_iconStorage = Rc<IconStorage>::create(stappler::screen::density());
+	_iconStorageSmall = Rc<IconStorage>::create(stappler::screen::density(), 18, 18);
+	_iconStorageLarge = Rc<IconStorage>::create(stappler::screen::density(), 32, 32);
 
 	storage::get("Material.ResourceManager", [this] (const String &key, data::Value &&value) {
 		if (value.isDictionary()) {
@@ -226,8 +228,16 @@ font::FontSource *ResourceManager::getSystemFontSource() const {
 	return _source;
 }
 
-IconStorage *ResourceManager::getIconStorage() const {
-	return _iconStorage;
+IconStorage *ResourceManager::getIconStorage(const Size &size) const {
+	if (_iconStorage->matchSize(size)) {
+		return _iconStorage;
+	} else if (_iconStorageLarge->matchSize(size)) {
+		return _iconStorageLarge;
+	} else if (_iconStorageSmall->matchSize(size)) {
+		return _iconStorageSmall;
+	}
+
+	return nullptr;
 }
 
 font::FontSource *ResourceManager::getUserFontSource() const {

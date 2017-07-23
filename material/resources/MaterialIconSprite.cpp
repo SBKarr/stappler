@@ -245,7 +245,7 @@ void IconSprite::CircleLoaderIcon::animate() {
 	}
 }
 
-bool IconSprite::init(IconName name) {
+bool IconSprite::init(IconName name, SizeHint s) {
 	if (!PathNode::init(24, 24, draw::Format::A8)) {
 		return false;
 	}
@@ -259,31 +259,25 @@ bool IconSprite::init(IconName name) {
 
 	setCascadeColorEnabled(true);
 	setCascadeOpacityEnabled(true);
-	setContentSize(Size(24.0f, 24.0f));
+	switch (s) {
+	case SizeHint::Small: setContentSize(Size(18.0f, 18.0f)); break;
+	case SizeHint::Normal: setContentSize(Size(24.0f, 24.0f)); break;
+	case SizeHint::Large: setContentSize(Size(32.0f, 32.0f)); break;
+	}
 
 	setIconName(name);
 
 	return true;
 }
-bool IconSprite::init(IconName name, uint32_t w, uint32_t h) {
-	if (!PathNode::init(w, h, draw::Format::A8)) {
-		return false;
+
+void IconSprite::onContentSizeDirty() {
+	PathNode::onContentSizeDirty();
+	if (isStatic()) {
+		auto storage = ResourceManager::getInstance()->getIconStorage(_contentSize);
+		if (_storage != storage) {
+			setIconName(_iconName);
+		}
 	}
-
-	auto l = Rc<EventListener>::create();
-	l->onEvent(IconStorage::onUpdate, [this] (const Event &) {
-		onUpdate();
-	});
-	addComponent(l);
-	_listener = l;
-
-	setCascadeColorEnabled(true);
-	setCascadeOpacityEnabled(true);
-	setContentSize(Size(w, h));
-
-	setIconName(name);
-
-	return true;
 }
 
 void IconSprite::visit(cocos2d::Renderer *r, const Mat4 &t, uint32_t f, ZPath &z) {
@@ -400,7 +394,7 @@ cocos2d::GLProgramState *IconSprite::getProgramStateI8() const {
 }
 
 void IconSprite::updateCanvas(layout::Subscription::Flags f) {
-	if (isDynamic()) {
+	if (isDynamic() || !ResourceManager::getInstance()->getIconStorage(_contentSize)) {
 		PathNode::updateCanvas(f);
 	}
 }
@@ -429,15 +423,19 @@ void IconSprite::setDynamicIcon(DynamicIcon *i) {
 }
 
 void IconSprite::setStaticIcon(IconName name) {
-	setDynamicIcon(nullptr);
-	auto storage = ResourceManager::getInstance()->getIconStorage();
-	storage->addIcon(name);
-	auto icon = storage->getIcon(name);
-	if (icon) {
-		setImage(nullptr);
-		setTexture(storage->getTexture());
-		setTextureRect(icon->getTextureRect());
-		setDensity(icon->getDensity());
+	_storage = ResourceManager::getInstance()->getIconStorage(_contentSize);
+	if (_storage) {
+		setDynamicIcon(nullptr);
+		_storage->addIcon(name);
+		auto icon = _storage->getIcon(name);
+		if (icon) {
+			setImage(nullptr);
+			setTexture(_storage->getTexture());
+			setTextureRect(icon->getTextureRect());
+			setDensity(icon->getDensity());
+		}
+	} else {
+		setImage(Rc<layout::Image>::create(48, 48, IconStorage::getIconPath(name)));
 	}
 }
 

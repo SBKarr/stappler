@@ -74,7 +74,7 @@ public:
 	IconStorage();
 	~IconStorage();
 
-	bool init(float d);
+	bool init(float d, uint16_t = 24, int16_t = 24);
 
 	void addIcon(IconName);
 
@@ -84,11 +84,16 @@ public:
 	void update(float dt);
 	void reload();
 
+	bool matchSize(const Size &) const;
+
 protected:
 	void schedule();
 	void unschedule();
 
 	void onUpdateTexture(cocos2d::Texture2D *, Vector<Icon> &&);
+
+	uint16_t _width = 24;
+	uint16_t _height = 24;
 
 	bool _dirty = false;
 	bool _scheduled = false;

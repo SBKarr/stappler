@@ -252,6 +252,7 @@ struct Server::Config : public AllocPool {
 	String handlerFile;
 	String sourceRoot;
 	String serverNamespace;
+	Vector<Function<int(Request &)>> preRequest;
 	Map<String, ServerComponent *> components;
 	Map<String, std::pair<HandlerCallback, data::Value>> requests;
 	Map<storage::Scheme *, ResourceScheme> resources;
@@ -571,6 +572,13 @@ int Server::onRequest(Request &req) {
 		return HTTP_NOT_FOUND;
 	}
 
+	for (auto &it : _config->preRequest) {
+		auto ret = it(req);
+		if (ret == DONE || ret > 0) {
+			return ret;
+		}
+	}
+
 	auto ret = Server_resolvePath(_config->requests, path);
 	if (ret != _config->requests.end() && ret->second.first) {
 		RequestHandler *h = ret->second.first();
@@ -639,6 +647,10 @@ void Server::addComponent(const String &name, ServerComponent *comp) {
 	if (_config->childInit) {
 		comp->onChildInit(*this);
 	}
+}
+
+void Server::addPreRequest(Function<int(Request &)> &&req) {
+	_config->preRequest.emplace_back(std::move(req));
 }
 
 void Server::addHandler(const String &path, const HandlerCallback &cb, const data::Value &d) {

@@ -61,7 +61,7 @@ public:
 	bool isLoaded();
 	font::FontSource *getSystemFontSource() const;
 
-	IconStorage *getIconStorage() const;
+	IconStorage *getIconStorage(const Size &) const;
 
 	font::FontSource *getUserFontSource() const;
 	UserFontStyle getFontStyle(const String &) const;
@@ -87,6 +87,8 @@ protected:
 	bool _localeCustom = false;
 
 	Rc<IconStorage> _iconStorage;
+	Rc<IconStorage> _iconStorageSmall;
+	Rc<IconStorage> _iconStorageLarge;
 	Rc<font::FontSource> _source;
 	Rc<UserFontConfig> _textFont;
 
