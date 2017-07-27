@@ -32,7 +32,7 @@ NS_SA_EXT_BEGIN(storage)
 
 bool Field::Slot::isProtected() const {
 	auto req = Request(apr::pool::request());
-	return hasFlag(Flags::Protected) || (hasFlag(Flags::Admin) && req && req.isAdministrative());
+	return hasFlag(Flags::Protected) || (hasFlag(Flags::Admin) && (!req || !req.isAdministrative()));
 }
 
 bool Field::isReference() const {

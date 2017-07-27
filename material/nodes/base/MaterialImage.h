@@ -30,33 +30,33 @@ NS_MD_BEGIN
 
 class MaterialImage : public MaterialNode {
 public:
-	using Autofit = stappler::DynamicSprite::Autofit;
-	using ImageSizeCallback = std::function<void(uint32_t width, uint32_t height)>;
+	using Autofit = DynamicSprite::Autofit;
+	using ImageSizeCallback = Function<void(uint32_t width, uint32_t height)>;
 
 	virtual ~MaterialImage();
-	virtual bool init(const std::string &file, float density = 0.0f);
-	virtual void setContentSize(const cocos2d::Size &) override;
-	virtual void visit(cocos2d::Renderer *r, const cocos2d::Mat4 &t, uint32_t f, ZPath &zPath) override;
+	virtual bool init(const String &file = String(), float density = 0.0f);
+	virtual void setContentSize(const Size &) override;
+	virtual void visit(cocos2d::Renderer *r, const Mat4 &t, uint32_t f, ZPath &zPath) override;
 
 	virtual void onEnter() override;
 	virtual void onExit() override;
 
 	virtual void setAutofit(Autofit);
-	virtual void setAutofitPosition(const cocos2d::Vec2 &);
+	virtual void setAutofitPosition(const Vec2 &);
 
-	virtual const std::string &getUrl() const;
-	virtual void setUrl(const std::string &, bool force = false);
+	virtual const String &getUrl() const;
+	virtual void setUrl(const String &, bool force = false);
 	virtual void setImageSizeCallback(const ImageSizeCallback &);
 
-    virtual stappler::DynamicSprite * getSprite() const;
-    virtual stappler::NetworkSprite * getNetworkSprite() const;
-    virtual cocos2d::Texture2D *getTexture() const;
+	virtual DynamicSprite * getSprite() const;
+	virtual NetworkSprite * getNetworkSprite() const;
+	virtual cocos2d::Texture2D *getTexture() const;
 
 protected:
 	virtual void onNetworkSprite();
 
-	stappler::DynamicSprite *_sprite = nullptr;
-	stappler::NetworkSprite *_network = nullptr;
+	DynamicSprite *_sprite = nullptr;
+	NetworkSprite *_network = nullptr;
 
 	bool _init = false;
 

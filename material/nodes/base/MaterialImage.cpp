@@ -29,8 +29,7 @@ THE SOFTWARE.
 #include "SPDynamicSprite.h"
 #include "SPNetworkSprite.h"
 #include "SPRoundedSprite.h"
-#include "SPFadeTo.h"
-#include "2d/CCActionInstant.h"
+#include "SPActions.h"
 
 NS_MD_BEGIN
 
@@ -40,36 +39,49 @@ MaterialImage::~MaterialImage() {
 	}
 }
 
-bool MaterialImage::init(const std::string &file, float density) {
+bool MaterialImage::init(const String &file, float density) {
 	if (!MaterialNode::init()) {
 		return false;
 	}
 
 	_background->setVisible(false);
+	setCascadeColorEnabled(true);
 
-	_sprite = construct<DynamicSprite>(file, cocos2d::Rect::ZERO, density);
-	_sprite->setAnchorPoint(cocos2d::Vec2(0.0f, 0.0f));
-	_sprite->setVisible(true);
-	_sprite->setAutofit(Autofit::Contain);
-	addChild(_sprite, 0);
+	Rc<DynamicSprite> sprite;
+	if (!file.empty()) {
+		sprite = Rc<DynamicSprite>::create(file, Rect::ZERO, density);
+	} else {
+		sprite = Rc<DynamicSprite>::create(nullptr, Rect::ZERO, density);
+	}
 
-	_network = construct<NetworkSprite>("", density);
-	_network->setAnchorPoint(cocos2d::Vec2(0.0f, 0.0f));
-	_network->setOpacity(0);
-	_network->setAutofit(Autofit::Contain);
-	_network->setVisible(false);
-	addChild(_network, 1);
+	sprite->setAnchorPoint(Vec2(0.0f, 0.0f));
+	sprite->setVisible(true);
+	sprite->setAutofit(Autofit::Contain);
+	addChild(sprite, 0);
+	_sprite = sprite;
+
+	auto network = Rc<NetworkSprite>::create("", density);
+	network->setAnchorPoint(Vec2(0.0f, 0.0f));
+	network->setOpacity(0);
+	network->setAutofit(Autofit::Contain);
+	network->setVisible(false);
+	addChild(network, 1);
+	_network = network;
 
 	return true;
 }
 
-void MaterialImage::setContentSize(const cocos2d::Size &size) {
+void MaterialImage::setContentSize(const Size &size) {
 	MaterialNode::setContentSize(size);
-	_sprite->setContentSize(size);
-	_network->setContentSize(size);
+
+	_sprite->setPosition(getAnchorPositionWithPadding());
+	_sprite->setContentSize(getContentSizeWithPadding());
+
+	_network->setPosition(getAnchorPositionWithPadding());
+	_network->setContentSize(getContentSizeWithPadding());
 }
 
-void MaterialImage::visit(cocos2d::Renderer *r, const cocos2d::Mat4 &t, uint32_t f, ZPath &zPath) {
+void MaterialImage::visit(cocos2d::Renderer *r, const Mat4 &t, uint32_t f, ZPath &zPath) {
 	if (!_init) {
 		_init = true;
 		if (auto tex = getTexture()) {
@@ -111,11 +123,11 @@ void MaterialImage::setAutofitPosition(const cocos2d::Vec2 &vec) {
 	_network->setAutofitPosition(vec);
 }
 
-const std::string &MaterialImage::getUrl() const {
+const String &MaterialImage::getUrl() const {
 	return _network->getUrl();
 }
 
-void MaterialImage::setUrl(const std::string &url, bool force) {
+void MaterialImage::setUrl(const String &url, bool force) {
 	_network->setUrl(url, force);
 }
 
@@ -153,12 +165,10 @@ void MaterialImage::onNetworkSprite() {
 	} else {
 		_network->setVisible(true);
 		_network->stopActionByTag(126);
-		auto a = cocos2d::Sequence::createWithTwoActions(cocos2d::FadeIn::create(0.25f), cocos2d::CallFunc::create([this] {
+		_network->runAction(action::sequence(cocos2d::FadeIn::create(0.25f), [this] {
 			_sprite->setVisible(false);
 			_network->setVisible(true);
-		}));
-		a->setTag(126);
-		_network->runAction(a);
+		}), 126);
 	}
 	if (!tex) {
 		tex = _sprite->getTexture();

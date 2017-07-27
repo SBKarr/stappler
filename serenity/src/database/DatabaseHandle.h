@@ -168,6 +168,7 @@ protected:
 	apr_pool_t *pool;
 	ap_dbd_t *handle;
     PGconn *conn = nullptr;
+    ExecStatusType lastError = PGRES_EMPTY_QUERY;
     TransactionLevel level = TransactionLevel::ReadCommited;
     TransactionStatus transaction = TransactionStatus::None;
 

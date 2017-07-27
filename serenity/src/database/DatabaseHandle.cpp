@@ -116,11 +116,14 @@ bool Handle::init(Server &serv, const Map<String, Scheme *> &s) {
 		auto name = toString(".", Time::now().toMilliseconds(), ".update.sql");
 
 		filesystem::remove(name);
-		filesystem::write(name, (const uint8_t *)stream.data(), stream.size());
 
 		if (perform(String::make_weak(stream.data(), stream.size())) == maxOf<size_t>()) {
 			log::format("Database", "Fail to perform update %s", name.c_str());
+
+			stream << "\nError: " << lastError << "\n" << apr_dbd_error(handle->driver, handle->handle, lastError) << "\n";
 		}
+
+		filesystem::write(name, (const uint8_t *)stream.data(), stream.size());
 	}
 
 	perform("COMMIT;");
@@ -1041,6 +1044,7 @@ size_t Handle::perform(const String &query) {
 		ret = nrows;
 	}
 	if (err == PGRES_EMPTY_QUERY) {
+		lastError = err;
 		return (size_t)ret;
 	}
 	messages::error("Database", "Fail to perform query");
@@ -1049,6 +1053,8 @@ size_t Handle::perform(const String &query) {
 		std::make_pair("error", data::Value(err)),
 		std::make_pair("desc", data::Value(apr_dbd_error(handle->driver, handle->handle, err))),
 	});
+
+	lastError = err;
 
 	return maxOf<size_t>();
 }
