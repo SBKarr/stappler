@@ -322,6 +322,14 @@ namespace style {
 		Right
 	};
 
+	enum class Autofit : EnumSize {
+		None,
+		Width,
+		Height,
+		Cover,
+		Contain,
+	};
+
 	enum class ParameterName : NameSize {
 		/* css-selectors */
 
@@ -389,6 +397,7 @@ namespace style {
 		PageBreakBefore, // enum
 		PageBreakAfter, // enum
 		PageBreakInside, // enum
+		Autofit, // enum
 
 		/* media - specific */
 		MediaType = 256,
@@ -432,6 +441,7 @@ namespace style {
 		ListStyleType listStyleType;
 		ListStylePosition listStylePosition;
 		PageBreak pageBreak;
+		Autofit autofit;
 		Color3B color;
 		uint8_t fontSize;
 		uint8_t opacity;
@@ -572,6 +582,9 @@ namespace style {
 
 		String backgroundImage;
 
+		BackgroundParameters() = default;
+		BackgroundParameters(Autofit);
+
 		inline bool operator == (const BackgroundParameters &other) const {
 			return memcmp(this, &other, sizeof(BackgroundParameters) - sizeof(String)) == 0
 					&& backgroundImage == other.backgroundImage;
@@ -657,7 +670,7 @@ namespace style {
 		bool closable = false;
 		bool autoRefs = false;
 
-		operator bool() const {return !name.empty();}
+		operator bool() const { return !name.empty(); }
 
 		static Tag::Type getType(const String &tagName);
 	};

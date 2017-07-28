@@ -42,29 +42,31 @@ NS_SP_BEGIN
 DynamicLabel::~DynamicLabel() { }
 
 bool DynamicLabel::init(Source *source, const DescriptionStyle &style, const String &str, float width, Alignment alignment, float density) {
-    if (!LayeredBatchNode::init(density)) {
-    	return false;
-    }
+	_isHighPrecision = true;
 
-    _source = source;
-    _style = style;
+	if (!LayeredBatchNode::init(density)) {
+		return false;
+	}
 
-    auto el = Rc<EventListener>::create();
-    el->onEventWithObject(Source::onTextureUpdated, source, std::bind(&DynamicLabel::onTextureUpdated, this));
-    addComponent(el);
+	_source = source;
+	_style = style;
 
-    _listener = el;
+	auto el = Rc<EventListener>::create();
+	el->onEventWithObject(Source::onTextureUpdated, source, std::bind(&DynamicLabel::onTextureUpdated, this));
+	addComponent(el);
 
-    setColor(_style.text.color);
-    setOpacity(_style.text.opacity);
+	_listener = el;
 
-    setNormalized(true);
+	setColor(_style.text.color);
+	setOpacity(_style.text.opacity);
 
-    setString(str);
-    setWidth(width);
-    setAlignment(alignment);
+	setNormalized(true);
 
-    updateLabel();
+	setString(str);
+	setWidth(width);
+	setAlignment(alignment);
+
+	updateLabel();
 
     return true;
 }
@@ -314,10 +316,6 @@ DynamicLabel::LineSpec DynamicLabel::getLine(uint32_t num) const {
 
 uint16_t DynamicLabel::getFontHeight() const {
 	return const_cast<Source *>(_source.get())->getLayout(_style.font)->getData()->metrics.height;
-}
-
-cocos2d::GLProgramState *DynamicLabel::getProgramStateA8() const {
-	return cocos2d::GLProgramState::getOrCreateWithGLProgram(TextureCache::getInstance()->getBatchPrograms()->getProgram(GLProgramSet::DynamicBatchA8Highp));
 }
 
 void DynamicLabel::updateQuads(uint32_t f) {

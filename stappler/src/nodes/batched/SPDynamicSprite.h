@@ -24,20 +24,13 @@ THE SOFTWARE.
 #define LIBS_STAPPLER_NODES_BATCHED_SPDYNAMICSPRITE_H_
 
 #include "SPDynamicBatchNode.h"
+#include "SLStyle.h"
 
 NS_SP_BEGIN
 
 class DynamicSprite : public DynamicBatchNode {
 public:
-	enum class Autofit {
-		None,
-		Width,
-		Height,
-		Cover,
-		Contain,
-	};
-
-public:
+	using Autofit = layout::style::Autofit;
 	using Callback = Function<void(cocos2d::Texture2D *)>;
 
 	virtual bool init(cocos2d::Texture2D *tex = nullptr, const Rect & = Rect::ZERO, float density = 0.0f);
@@ -72,16 +65,19 @@ public:
 
 	virtual void setCallback(const Callback &func);
 
+	virtual void setTextureDensity(float);
+	virtual float getTextureDensity() const;
+
 protected:
 	void updateQuads();
 
-	virtual cocos2d::GLProgramState *getProgramStateI8() const override;
-	virtual cocos2d::GLProgramState *getProgramStateAI88() const override;
+	virtual void acquireTexture(const String &file);
+	virtual void onTextureRecieved(cocos2d::Texture2D *);
 
 	bool _flippedX = false;
 	bool _flippedY = false;
 	bool _rotated = false;
-
+	float _textureDensity = 1.0f;
 	Rect _textureRect;
 
 	Autofit _autofit = Autofit::None;

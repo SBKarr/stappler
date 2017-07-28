@@ -221,7 +221,7 @@ void Decoder<Interface>::parseJson(ValueType &val) {
 				parseBufferString(buf);
 				if (validate) {
 					auto tmp = r.readChars<StringView::Chars<':', ' ', '\n', '\r', '\t'>>();
-					tmp.skipUntil<StringView::Chars<':'>>();
+					tmp.template skipUntil<StringView::Chars<':'>>();
 					if (!tmp.is(':')) {
 						stop = true;
 						return;

@@ -54,19 +54,7 @@ bool DynamicSprite::init(const std::string &file, const Rect &rect, float densit
 		return false;
 	}
 
-	_textureTime = Time::now();
-	auto time = _textureTime;
-	retain();
-	TextureCache::getInstance()->addTexture(file, [this, time] (cocos2d::Texture2D *tex) {
-		if (time == _textureTime) {
-			if (_textureRect.equals(Rect::ZERO)) {
-				setTexture(tex);
-			} else {
-				setTexture(tex, _textureRect);
-			}
-		}
-		release();
-	});
+	acquireTexture(file);
 
 	return true;
 }
@@ -171,15 +159,8 @@ void DynamicSprite::setTexture(cocos2d::Texture2D *tex, const Rect &rect) {
 }
 
 void DynamicSprite::setTexture(const std::string &file, const Rect &rect) {
-	_textureTime = Time::now();
-	auto time = _textureTime;
-	retain();
-	TextureCache::getInstance()->addTexture(file, [this, rect, time] (cocos2d::Texture2D *tex) {
-		if (time == _textureTime) {
-			setTexture(tex, rect);
-		}
-		release();
-	});
+	_textureRect = rect;
+	acquireTexture(file);
 }
 
 void DynamicSprite::setTexture(const Bitmap &bmp, const Rect &rect) {
@@ -230,11 +211,24 @@ void DynamicSprite::updateQuads() {
 	_quads->setColor(0, color4);
 }
 
-cocos2d::GLProgramState *DynamicSprite::getProgramStateI8() const {
-	return getProgramStateFullColor();
+void DynamicSprite::acquireTexture(const String &file) {
+	_textureTime = Time::now();
+	auto time = _textureTime;
+	retain();
+	TextureCache::getInstance()->addTexture(file, _density * _textureDensity, [this, time] (cocos2d::Texture2D *tex) {
+		if (time == _textureTime) {
+			onTextureRecieved(tex);
+		}
+		release();
+	});
 }
-cocos2d::GLProgramState *DynamicSprite::getProgramStateAI88() const {
-	return getProgramStateFullColor();
+
+void DynamicSprite::onTextureRecieved(cocos2d::Texture2D *tex) {
+	if (_textureRect.equals(Rect::ZERO)) {
+		setTexture(tex);
+	} else {
+		setTexture(tex, _textureRect);
+	}
 }
 
 void DynamicSprite::setFlippedX(bool value) {
@@ -298,6 +292,14 @@ const Vec2 &DynamicSprite::getAutofitPosition() const {
 
 void DynamicSprite::setCallback(const Callback &func) {
 	_callback = func;
+}
+
+void DynamicSprite::setTextureDensity(float d) {
+	_textureDensity = d;
+}
+
+float DynamicSprite::getTextureDensity() const {
+	return _textureDensity;
 }
 
 NS_SP_END

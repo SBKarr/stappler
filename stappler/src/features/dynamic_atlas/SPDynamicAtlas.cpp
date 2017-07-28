@@ -177,7 +177,7 @@ bool DynamicAtlas::init(cocos2d::Texture2D *texture, bool bufferSwapping) {
     _texture = texture;
 
 #if CC_ENABLE_CACHE_TEXTURE_DATA
-	onEvent(Device::onAndroidReset, [this] (const Event *ev) {
+	onEvent(Device::onAndroidReset, [this] (const Event &ev) {
 		listenRendererRecreated();
 	});
 #endif

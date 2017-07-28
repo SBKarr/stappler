@@ -79,13 +79,13 @@ public:
 			return true;
 		});
 
-		onEvent(Device::onNetwork, [this] (const Event *ev) {
+		onEvent(Device::onNetwork, [this] (const Event &ev) {
 			if (Device::getInstance()->isNetworkOnline()) {
 				this->updateProducts();
 			}
 		});
 
-		onEvent(Device::onBackground, [this] (const Event *ev) {
+		onEvent(Device::onBackground, [this] (const Event &ev) {
 			if (!Device::getInstance()->isInBackground()) {
 				this->restorePurchases();
 			}
@@ -185,7 +185,6 @@ public:
 			if (status == 0 && (product->token.empty() || product->token.compare(token) == 0)) {
 				product->purchased = true;
 				product->available = true;
-#warning Undefined time scale in original code
 				product->purchaseDate = Time::milliseconds(date);
 				product->token = token;
 				if (product->isSubscription) {
@@ -284,7 +283,7 @@ public:
 			buf[i] = rand() - (RAND_MAX / 2);
 		}
 
-		return base64::encode((uint8_t *)(&buf), 16 * sizeof(int));
+		return base64::encode(CoderSource((uint8_t *)(&buf), 16 * sizeof(int)));
 	}
 
 	bool purchaseProduct(StoreProduct *product) {

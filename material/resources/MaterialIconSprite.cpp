@@ -389,10 +389,6 @@ void IconSprite::animate(float targetProgress, float duration) {
 	}
 }
 
-cocos2d::GLProgramState *IconSprite::getProgramStateI8() const {
-	return getProgramStateA8();
-}
-
 void IconSprite::updateCanvas(layout::Subscription::Flags f) {
 	if (isDynamic() || !ResourceManager::getInstance()->getIconStorage(_contentSize)) {
 		PathNode::updateCanvas(f);

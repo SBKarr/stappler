@@ -91,7 +91,6 @@ protected:
 	virtual void onLayoutUpdated();
 	virtual void updateColor() override;
 	virtual void updateColorQuads();
-	virtual cocos2d::GLProgramState *getProgramStateA8() const override;
 
 	virtual void updateQuadsBackground(Source *, FormatSpec *);
 	virtual void updateQuadsForeground(Source *, const FormatSpec *);

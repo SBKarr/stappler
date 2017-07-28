@@ -384,8 +384,8 @@ struct pool_t {
 	void cleanup_run(void *, cleanup_t::callback_t cb);
 };
 
+//constexpr size_t SIZEOF_ALLOCATOR_T ( ALIGN_DEFAULT(sizeof(allocator_t)) ); // unused
 constexpr size_t SIZEOF_MEMNODE_T ( ALIGN_DEFAULT(sizeof(memnode_t)) );
-constexpr size_t SIZEOF_ALLOCATOR_T ( ALIGN_DEFAULT(sizeof(allocator_t)) );
 constexpr size_t SIZEOF_POOL_T ( ALIGN_DEFAULT(sizeof(pool_t)) );
 
 

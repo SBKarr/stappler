@@ -695,6 +695,16 @@ namespace style {
 				case PageBreak::Right: stream << "right"; break;
 				};
 				break; // enum
+			case ParameterName::Autofit:
+				stream << "x-autofit: ";
+				switch (it.value.autofit) {
+				case Autofit::None: stream << "none"; break;
+				case Autofit::Cover: stream << "cover"; break;
+				case Autofit::Contain: stream << "contain"; break;
+				case Autofit::Width: stream << "width"; break;
+				case Autofit::Height: stream << "height"; break;
+				};
+				break; // enum
 
 			/* media - specific */
 			case ParameterName::MediaType:
@@ -862,6 +872,37 @@ namespace style {
 		FontStyleParameters ret = *this;
 		ret.fontSize -= ret.fontSize / 5;
 		return ret;
+	}
+
+	BackgroundParameters::BackgroundParameters(Autofit a) {
+		backgroundPositionX.metric = Metric::Units::Auto;
+		backgroundPositionY.metric = Metric::Units::Auto;
+		switch (a) {
+		case Autofit::Contain:
+			backgroundSizeWidth.metric = Metric::Units::Contain;
+			backgroundSizeHeight.metric = Metric::Units::Contain;
+			break;
+		case Autofit::Cover:
+			backgroundSizeWidth.metric = Metric::Units::Cover;
+			backgroundSizeHeight.metric = Metric::Units::Cover;
+			break;
+		case Autofit::Width:
+			backgroundSizeWidth.metric = Metric::Units::Percent;
+			backgroundSizeWidth.value = 1.0f;
+			backgroundSizeHeight.metric = Metric::Units::Auto;
+			break;
+		case Autofit::Height:
+			backgroundSizeWidth.metric = Metric::Units::Auto;
+			backgroundSizeHeight.metric = Metric::Units::Percent;
+			backgroundSizeHeight.value = 1.0f;
+			break;
+		case Autofit::None:
+			backgroundSizeWidth.metric = Metric::Units::Percent;
+			backgroundSizeWidth.value = 1.0f;
+			backgroundSizeHeight.metric = Metric::Units::Percent;
+			backgroundSizeHeight.value = 1.0f;
+			break;
+		}
 	}
 
 	String FontFace::getConfigName(const String &family, uint8_t size) const {

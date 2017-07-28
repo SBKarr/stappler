@@ -63,7 +63,20 @@ namespace device {
 		return "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:41.0)";
 	}
 	String _deviceIdentifier() {
-		return "linux_desktop";
+		auto path = platform::filesystem::_getCachesPath();
+		auto devIdPath = path + "/.devid";
+		if (stappler::filesystem::exists(devIdPath)) {
+			auto data = stappler::filesystem::readFile(devIdPath);
+			return base16::encode(data);
+		} else {
+			Bytes data; data.resize(16);
+			auto fp = fopen("/dev/urandom", "r");
+			fread(data.data(), 1, data.size(), fp);
+			fclose(fp);
+
+			stappler::filesystem::write(devIdPath, data);
+			return base16::encode(data);
+		}
 	}
 	String _bundleName() {
 #ifndef SP_RESTRICT

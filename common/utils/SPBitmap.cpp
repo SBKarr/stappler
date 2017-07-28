@@ -738,6 +738,9 @@ struct Bitmap_PngStruct {
 		case Bitmap::Format::RGBA8888:
 			color_type = PNG_COLOR_TYPE_RGBA;
 			break;
+		case Bitmap::Format::Auto:
+			SPASSERT(true, "Invalid color format");
+			break;
 		}
 
 	    /* Set image attributes. */
@@ -766,11 +769,13 @@ struct Bitmap_PngStruct {
 };
 
 void Bitmap::savePng(const String &filename, const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride, Format format, bool invert) {
+	SPASSERT(format != Format::Auto, "Bitmap: Format::Auto should not be used with Bitmap directly");
 	Bitmap_PngStruct s(filename);
 	s.write(data, width, height, stride, format, invert);
 }
 
 Bytes Bitmap::writePng(const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride, Format format, bool invert) {
+	SPASSERT(format != Format::Auto, "Bitmap: Format::Auto should not be used with Bitmap directly");
     Bytes state;
     Bitmap_PngStruct s(&state);
 	if (s.write(data, width, height, stride, format, invert)) {
@@ -808,6 +813,9 @@ uint8_t Bitmap::getBytesPerPixel(Format c) {
 	case Format::RGBA8888:
 		return 4;
 		break;
+	case Format::Auto:
+		return 0;
+		break;
 	}
 	return 0;
 }
@@ -824,13 +832,19 @@ Bitmap::Bitmap(const uint8_t *data, size_t size, const StrideFn &strideFn) {
 }
 
 Bitmap::Bitmap(const uint8_t *d, uint32_t width, uint32_t height, Format c, Alpha a, uint32_t stride)
-: _color(c), _alpha(a), _width(width), _height(height), _stride(max(stride, width * getBytesPerPixel(c))), _data(d, d + _stride * height) { }
+: _color(c), _alpha(a), _width(width), _height(height), _stride(max(stride, width * getBytesPerPixel(c))), _data(d, d + _stride * height) {
+	SPASSERT(c != Format::Auto, "Bitmap: Format::Auto should not be used with Bitmap directly");
+}
 
 Bitmap::Bitmap(const Bytes &d, uint32_t width, uint32_t height, Format c, Alpha a, uint32_t stride)
-: _color(c), _alpha(a), _width(width), _height(height), _stride(max(stride, width * getBytesPerPixel(c))), _data(d) { }
+: _color(c), _alpha(a), _width(width), _height(height), _stride(max(stride, width * getBytesPerPixel(c))), _data(d) {
+	SPASSERT(c != Format::Auto, "Bitmap: Format::Auto should not be used with Bitmap directly");
+}
 
 Bitmap::Bitmap(Bytes &&d, uint32_t width, uint32_t height, Format c, Alpha a, uint32_t stride)
-: _color(c), _alpha(a), _width(width), _height(height), _stride(max(stride, width * getBytesPerPixel(c))), _data(std::move(d)) { }
+: _color(c), _alpha(a), _width(width), _height(height), _stride(max(stride, width * getBytesPerPixel(c))), _data(std::move(d)) {
+	SPASSERT(c != Format::Auto, "Bitmap: Format::Auto should not be used with Bitmap directly");
+}
 
 Bitmap::Bitmap(Bitmap &&other)
 : _color(other._color), _alpha(other._alpha), _width(other._width), _height(other._height), _stride(other._stride), _data(std::move(other._data)) {
@@ -875,6 +889,7 @@ bool Bitmap::loadData(const Bytes &d, const StrideFn &strideFn) {
 }
 
 void Bitmap::loadBitmap(const uint8_t *d, uint32_t w, uint32_t h, Format c, Alpha a, uint32_t stride) {
+	SPASSERT(c != Format::Auto, "Bitmap: Format::Auto should not be used with Bitmap directly");
 	setInfo(w, h, c, a, stride);
 	_data.clear();
 	_data.resize(_stride * h);
@@ -882,16 +897,19 @@ void Bitmap::loadBitmap(const uint8_t *d, uint32_t w, uint32_t h, Format c, Alph
 }
 
 void Bitmap::loadBitmap(const Bytes &d, uint32_t w, uint32_t h, Format c, Alpha a, uint32_t stride) {
+	SPASSERT(c != Format::Auto, "Bitmap: Format::Auto should not be used with Bitmap directly");
 	setInfo(w, h, c, a, stride);
 	_data = d;
 }
 
 void Bitmap::loadBitmap(Bytes &&d, uint32_t w, uint32_t h, Format c, Alpha a, uint32_t stride) {
+	SPASSERT(c != Format::Auto, "Bitmap: Format::Auto should not be used with Bitmap directly");
 	setInfo(w, h, c, a, stride);
 	_data = std::move(d);
 }
 
 void Bitmap::alloc(uint32_t w, uint32_t h, Format c, Alpha a, uint32_t stride) {
+	SPASSERT(c != Format::Auto, "Bitmap: Format::Auto should not be used with Bitmap directly");
 	setInfo(w, h, c, a, stride);
 	_data.clear();
 	_data.resize(_stride * h);
@@ -902,6 +920,7 @@ void Bitmap::save(const String &filename) {
 }
 
 void Bitmap::setInfo(uint32_t w, uint32_t h, Format c, Alpha a, uint32_t stride) {
+	SPASSERT(c != Format::Auto, "Bitmap: Format::Auto should not be used with Bitmap directly");
 	_width = w;
 	_height = h;
 	_stride = max(stride, w * getBytesPerPixel(c));
@@ -909,11 +928,10 @@ void Bitmap::setInfo(uint32_t w, uint32_t h, Format c, Alpha a, uint32_t stride)
 	_alpha = a;
 }
 
-bool Bitmap::convert(Format color, const StrideFn &strideFn) {
-	bool ret = false;
-	Bytes out;
-	uint32_t outStride = (strideFn)?max(strideFn(color, _width), _width*getBytesPerPixel(color)):_width*getBytesPerPixel(color);
-	if (_color == color && outStride != _stride) {
+bool Bitmap::updateStride(const StrideFn &strideFn) {
+	uint32_t outStride = (strideFn) ? max(strideFn(_color, _width), _width * getBytesPerPixel(_color)):_width * getBytesPerPixel(_color);
+	if (outStride != _stride) {
+		Bytes out;
 		out.resize(_height * outStride);
 		size_t minStride = _width * getBytesPerPixel(_color);
 		for (size_t j = 0; j < _height; j ++) {
@@ -923,6 +941,21 @@ bool Bitmap::convert(Format color, const StrideFn &strideFn) {
 		_stride = outStride;
 		return true;
 	}
+	return true;
+}
+
+bool Bitmap::convert(Format color, const StrideFn &strideFn) {
+	if (color == Format::Auto) {
+		color = _color;
+	}
+	if (_color == color) {
+		return updateStride(strideFn);
+	}
+
+	bool ret = false;
+	Bytes out;
+	uint32_t outStride = (strideFn) ? max(strideFn(color, _width), _width * getBytesPerPixel(color)) : _width * getBytesPerPixel(color);
+
 	switch (_color) {
 	case Format::A8:
 		switch (color) {
@@ -931,6 +964,7 @@ bool Bitmap::convert(Format color, const StrideFn &strideFn) {
 		case Format::IA88: ret = convertData<Format::A8, Format::IA88>(_data, out, _stride, outStride); break;
 		case Format::RGB888: ret = convertData<Format::A8, Format::RGB888>(_data, out, _stride, outStride); break;
 		case Format::RGBA8888: ret = convertData<Format::A8, Format::RGBA8888>(_data, out, _stride, outStride); break;
+		case Format::Auto: return false; break;
 		}
 		break;
 	case Format::I8:
@@ -940,6 +974,7 @@ bool Bitmap::convert(Format color, const StrideFn &strideFn) {
 		case Format::IA88: ret = convertData<Format::I8, Format::IA88>(_data, out, _stride, outStride); break;
 		case Format::RGB888: ret = convertData<Format::I8, Format::RGB888>(_data, out, _stride, outStride); break;
 		case Format::RGBA8888: ret = convertData<Format::I8, Format::RGBA8888>(_data, out, _stride, outStride); break;
+		case Format::Auto: return false; break;
 		}
 		break;
 	case Format::IA88:
@@ -949,6 +984,7 @@ bool Bitmap::convert(Format color, const StrideFn &strideFn) {
 		case Format::IA88: return true; break;
 		case Format::RGB888: ret = convertData<Format::IA88, Format::RGB888>(_data, out, _stride, outStride); break;
 		case Format::RGBA8888: ret = convertData<Format::IA88, Format::RGBA8888>(_data, out, _stride, outStride); break;
+		case Format::Auto: return false; break;
 		}
 		break;
 	case Format::RGB888:
@@ -958,6 +994,7 @@ bool Bitmap::convert(Format color, const StrideFn &strideFn) {
 		case Format::IA88: ret = convertData<Format::RGB888, Format::IA88>(_data, out, _stride, outStride); break;
 		case Format::RGB888: return true; break;
 		case Format::RGBA8888: ret = convertData<Format::RGB888, Format::RGBA8888>(_data, out, _stride, outStride); break;
+		case Format::Auto: return false; break;
 		}
 		break;
 	case Format::RGBA8888:
@@ -967,8 +1004,10 @@ bool Bitmap::convert(Format color, const StrideFn &strideFn) {
 		case Format::IA88: ret = convertData<Format::RGBA8888, Format::IA88>(_data, out, _stride, outStride); break;
 		case Format::RGB888: ret = convertData<Format::RGBA8888, Format::RGB888>(_data, out, _stride, outStride); break;
 		case Format::RGBA8888: return true; break;
+		case Format::Auto: return false; break;
 		}
 		break;
+	case Format::Auto: return false; break;
 	}
 
 	if (ret) {
@@ -978,6 +1017,51 @@ bool Bitmap::convert(Format color, const StrideFn &strideFn) {
 	}
 
 	return ret;
+}
+
+bool Bitmap::truncate(Format color, const StrideFn &strideFn) {
+	if (color == Format::Auto) {
+		color = _color;
+	}
+	if (_color == color) {
+		return updateStride(strideFn);
+	}
+
+	if (getBytesPerPixel(color) == getBytesPerPixel(_color)) {
+		_color = color;
+		return true;
+	}
+
+	auto height = _height;
+	auto data = _data.data();
+	auto bppIn = getBytesPerPixel(_color);
+
+	Bytes out;
+	uint32_t outStride = (strideFn) ? max(strideFn(color, _width), _width * getBytesPerPixel(color)) : _width * getBytesPerPixel(color);
+	out.resize(height * outStride);
+	auto bppOut = getBytesPerPixel(color);
+
+	auto fillBytes = min(bppIn, bppOut);
+	auto clearBytes = bppOut - fillBytes;
+
+	for (size_t j = 0; j < height; j ++) {
+		auto inData = data + _stride * j;
+		auto outData = out.data() + outStride * j;
+	    for (size_t i = 0; i < _stride; i += bppIn) {
+	    	for (uint8_t k = 0; k < fillBytes; ++ k) {
+		        *outData++ = inData[i * bppIn + k];
+	    	}
+	    	for (uint8_t k = 0; k < clearBytes; ++ k) {
+		        *outData++ = 0;
+	    	}
+	    }
+	}
+
+	_color = color;
+	_data = std::move(out);
+	_stride = outStride;
+
+	return true;
 }
 
 NS_SP_END

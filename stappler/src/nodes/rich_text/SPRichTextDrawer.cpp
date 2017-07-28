@@ -261,14 +261,13 @@ void Request::drawOutline(const Rect &bbox, const Outline &outline) {
 
 void Request::drawBitmap(const Rect &origBbox, cocos2d::Texture2D *bmp, const Background &bg) {
 	Rect bbox = origBbox;
-	float coverRatio, containRatio;
 	Size coverSize, containSize;
 
-	auto w = bmp->getPixelsWide();
-	auto h = bmp->getPixelsHigh();
+	const auto w = bmp->getPixelsWide();
+	const auto h = bmp->getPixelsHigh();
 
-	coverRatio = MAX(bbox.size.width / w, bbox.size.height / h);
-	containRatio = MIN(bbox.size.width / w, bbox.size.height / h);
+	const float coverRatio = std::max(bbox.size.width / w, bbox.size.height / h);
+	const float containRatio = std::min(bbox.size.width / w, bbox.size.height / h);
 
 	coverSize = Size(w * coverRatio, h * coverRatio);
 	containSize = Size(w * containRatio, h * containRatio);
@@ -533,9 +532,8 @@ void Drawer::drawRectangle(const Rect &bbox, layout::DrawStyle style) {
 }
 
 void Drawer::drawRectangleFill(const Rect &bbox) {
-	auto c = TextureCache::getInstance();
-	auto programs = c->getRawPrograms();
-	auto p = programs->getProgram(GLProgramSet::RawRect);
+	auto programs = TextureCache::getInstance()->getPrograms();
+	auto p = programs->getProgram(GLProgramDesc::Default::RawRect);
 
 	bindTexture(0);
 	blendFunc(cocos2d::BlendFunc::ALPHA_NON_PREMULTIPLIED);
@@ -572,9 +570,8 @@ void Drawer::drawRectangleOutline(const Rect &bbox) {
 void Drawer::drawRectangleOutline(const Rect &bbox, bool top, bool right, bool bottom, bool left) {
 	Vector<GLfloat> vertices; vertices.reserve(6 * 8 * 2);
 
-	auto c = TextureCache::getInstance();
-	auto programs = c->getRawPrograms();
-	auto p = programs->getProgram(GLProgramSet::RawRectBorder);
+	auto programs = TextureCache::getInstance()->getPrograms();
+	auto p = programs->getProgram(GLProgramDesc::Default::RawRectBorder);
 
 	bindTexture(0);
 	blendFunc(cocos2d::BlendFunc::ALPHA_NON_PREMULTIPLIED);
@@ -679,9 +676,8 @@ void Drawer::drawRectangleOutline(const Rect &bbox, bool top, bool right, bool b
 }
 
 void Drawer::drawTexture(const Rect &bbox, cocos2d::Texture2D *tex, const Rect &texRect) {
-	auto c = TextureCache::getInstance();
-	auto programs = c->getRawPrograms();
-	auto p = programs->getProgram(GLProgramSet::RawTexture);
+	auto programs = TextureCache::getInstance()->getPrograms();
+	auto p = programs->getProgram(GLProgramDesc::Default::RawTexture);
 
 	auto w = tex->getPixelsWide();
 	auto h = tex->getPixelsHigh();
@@ -733,9 +729,8 @@ void Drawer::drawCharRects(Font *f, const font::FormatSpec &format, const Rect &
 void Drawer::drawRects(const Rect &bbox, const Vector<Rect> &rects) {
 	Vector<GLfloat> vertices; vertices.reserve(rects.size() * 12);
 
-	auto c = TextureCache::getInstance();
-	auto programs = c->getRawPrograms();
-	auto p = programs->getProgram(GLProgramSet::RawRects);
+	auto programs = TextureCache::getInstance()->getPrograms();
+	auto p = programs->getProgram(GLProgramDesc::Default::RawRects);
 
 	bindTexture(0);
 	blendFunc(cocos2d::BlendFunc::ALPHA_NON_PREMULTIPLIED);
@@ -795,9 +790,8 @@ void Drawer::drawCharsQuads(const Vector<Rc<cocos2d::Texture2D>> &tex, Vector<Rc
 }
 
 void Drawer::drawCharsQuads(cocos2d::Texture2D *tex, DynamicQuadArray *quads, const Rect & bbox) {
-	auto c = TextureCache::getInstance();
-	auto programs = c->getRawPrograms();
-	auto p = programs->getProgram(GLProgramSet::DynamicBatchA8Highp);
+	auto programs = TextureCache::getInstance()->getPrograms();
+	auto p = programs->getProgram(GLProgramDesc::Default::DynamicBatchA8Highp);
 	useProgram(p->getProgram());
 
 	Mat4 transform;

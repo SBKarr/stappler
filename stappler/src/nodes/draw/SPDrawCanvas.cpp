@@ -87,12 +87,13 @@ bool Canvas::init(StencilDepthFormat fmt) {
 	return false;
 }
 
-bool Canvas::begin(cocos2d::Texture2D *tex, const Color4B &color) {
+bool Canvas::begin(cocos2d::Texture2D *tex, const Color4B &color, bool clear) {
 	load();
 	auto w = tex->getPixelsWide();
 	auto h = tex->getPixelsHigh();
 	_internalFormat = tex->getPixelFormat();
 	_referenceFormat = tex->getReferenceFormat();
+	_premultipliedAlpha = tex->hasPremultipliedAlpha();
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &_oldFbo);
 
 	if (ThreadManager::getInstance()->isMainThread()) {
@@ -107,7 +108,9 @@ bool Canvas::begin(cocos2d::Texture2D *tex, const Color4B &color) {
 	if (_valid) {
 		glViewport(0, 0, (GLsizei)_width, (GLsizei)_height);
 
-		doSafeClear(color);
+		if (clear) {
+			doSafeClear(color);
+		}
 
 		int32_t gcd = sp_gcd(_width, _height);
 		int32_t dw = (int32_t)_width / gcd;
@@ -131,8 +134,10 @@ bool Canvas::begin(cocos2d::Texture2D *tex, const Color4B &color) {
 
 		_line.reserve(256);
 
-		_drawProgram = TextureCache::getInstance()->getRawPrograms()->getProgram(
-				_internalFormat == cocos2d::Texture2D::PixelFormat::R8?GLProgramSet::RawAAMaskR:GLProgramSet::RawAAMaskRGBA);
+		auto desc = GLProgramDesc( GLProgramDesc::Attr::MatrixMVP | GLProgramDesc::Attr::Color | GLProgramDesc::Attr::MediumP,
+				_internalFormat, _referenceFormat );
+
+		_drawProgram = TextureCache::getInstance()->getPrograms()->getProgram(desc);
 
 		_vertexBufferSize = 0;
 		_indexBufferSize = 0;
@@ -190,6 +195,7 @@ void Canvas::flush() {
 			useProgram(_drawProgram->getProgram());
 			setUniformTransform(_transform);
 
+
 			glBindBuffer(GL_ARRAY_BUFFER, _vbo[0]);
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _vbo[1]);
 
@@ -230,6 +236,8 @@ void Canvas::flush() {
 
 				glStencilFunc(GL_NOTEQUAL, 1, 1);
 				glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+
+				LOG_GL_ERROR();
 			}
 
 			elts = res->triangles.elementsBuffer;
@@ -251,7 +259,7 @@ void Canvas::flush() {
 				glDisable(GL_STENCIL_TEST);
 			}
 
-			CHECK_GL_ERROR_DEBUG();
+			LOG_GL_ERROR();
 
 			_glAccum += (Time::now() - t);
 		} else {
@@ -386,6 +394,7 @@ void Canvas::setUniformTransform(const Mat4 &t) {
 		_uniformTransform = t;
 		Mat4 mv = _viewTransform * t;
 		_drawProgram->setUniformLocationWithMatrix4fv(_drawProgram->getUniformLocationForName(cocos2d::GLProgram::UNIFORM_MVP_MATRIX), mv.m, 1);
+		LOG_GL_ERROR();
 	}
 }
 
@@ -537,6 +546,18 @@ Rc<cocos2d::Texture2D> Canvas::captureContents(cocos2d::Node *node, Format fmt, 
 	return tex;
 }
 
+Bitmap Canvas::captureTexture(cocos2d::Texture2D *tex) {
+	if (begin(tex, Color4B::BLACK, false)) {
+		auto ret = read();
+
+		end();
+
+		return ret;
+	}
+
+	return Bitmap();
+}
+
 void Canvas::drop() {
 	if (_vbo[0] || _vbo[1]) {
 		_vbo[0] = 0;
@@ -550,6 +571,100 @@ void Canvas::drop() {
 	if (_fbo) {
 		_fbo = 0;
 	}
+}
+
+Bitmap Canvas::read(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
+	bool truncate = false;
+	Bitmap::Format fmt, targetFmt;
+	Bitmap::Alpha alpha = Bitmap::Alpha::Opaque;
+	GLenum readFmt;
+	switch (_internalFormat) {
+	case cocos2d::Texture2D::PixelFormat::A8:
+		targetFmt = fmt = Bitmap::Format::A8;
+		alpha = Bitmap::Alpha::Unpremultiplied;
+		readFmt = GL_ALPHA;
+		break;
+	case cocos2d::Texture2D::PixelFormat::I8:
+		if (cocos2d::Configuration::isRenderTargetSupported(cocos2d::Configuration::RenderTarget::R8)) {
+			targetFmt = fmt = Bitmap::Format::I8;
+			readFmt = GL_RED_EXT;
+		} else {
+			targetFmt = Bitmap::Format::I8;
+			fmt = Bitmap::Format::RGB888;
+			readFmt = GL_RGB;
+		}
+		break;
+	case cocos2d::Texture2D::PixelFormat::R8:
+		if (cocos2d::Configuration::isRenderTargetSupported(cocos2d::Configuration::RenderTarget::R8)) {
+			targetFmt = fmt = Bitmap::Format::A8;
+			readFmt = GL_RED_EXT;
+		} else {
+			targetFmt = Bitmap::Format::A8;
+			fmt = Bitmap::Format::RGB888;
+			readFmt = GL_RGB;
+			truncate = true;
+		}
+		break;
+	case cocos2d::Texture2D::PixelFormat::AI88:
+		targetFmt = Bitmap::Format::IA88;
+		fmt = Bitmap::Format::RGBA8888;
+		readFmt = GL_RGBA;
+		alpha = Bitmap::Alpha::Unpremultiplied;
+		break;
+	case cocos2d::Texture2D::PixelFormat::RG88:
+		if (cocos2d::Configuration::isRenderTargetSupported(cocos2d::Configuration::RenderTarget::RG8)) {
+			targetFmt = fmt = Bitmap::Format::IA88;
+			alpha = Bitmap::Alpha::Unpremultiplied;
+			readFmt = GL_RG_EXT;
+		} else {
+			targetFmt = Bitmap::Format::IA88;
+			fmt = Bitmap::Format::RGB888;
+			readFmt = GL_RGB;
+			alpha = Bitmap::Alpha::Unpremultiplied;
+			truncate = true;
+		}
+		break;
+	case cocos2d::Texture2D::PixelFormat::RGBA8888:
+	case cocos2d::Texture2D::PixelFormat::RGBA4444:
+	case cocos2d::Texture2D::PixelFormat::RGB5A1:
+		targetFmt = fmt = Bitmap::Format::RGBA8888;
+		alpha = Bitmap::Alpha::Unpremultiplied;
+		readFmt = GL_RGBA;
+		break;
+	case cocos2d::Texture2D::PixelFormat::RGB565:
+	case cocos2d::Texture2D::PixelFormat::RGB888:
+		targetFmt = fmt = Bitmap::Format::RGB888;
+		readFmt = GL_RGB;
+		break;
+	default:
+		log::format("draw::Canvas", "Unsupported texture format: %d", (int)_internalFormat);
+		return Bitmap();
+		break;
+	}
+
+	if (alpha != Bitmap::Alpha::Opaque) {
+		if (_premultipliedAlpha) {
+			alpha = Bitmap::Alpha::Premultiplied;
+		}
+	}
+
+	Bitmap ret;
+	ret.alloc(_width, _height, fmt, alpha);
+	glReadPixels(x, y, w, h, readFmt, GL_UNSIGNED_BYTE, (GLvoid *)ret.dataPtr());
+
+	if (targetFmt != fmt) {
+		if (truncate) {
+			ret.truncate(targetFmt);
+		} else {
+			ret.convert(targetFmt);
+		}
+	}
+
+	return ret;
+}
+
+Bitmap Canvas::read() {
+	return read(0, 0, _width, _height);
 }
 
 NS_SP_EXT_END(draw)

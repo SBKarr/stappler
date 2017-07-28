@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "SPDefine.h"
 #include "SPDefine.h"
 #include "SPFilesystem.h"
+#include "platform/CCGL.h"
 
 #ifdef LINUX
 
@@ -83,3 +84,29 @@ NS_SP_END
 
 #endif
 
+NS_SP_BEGIN
+
+#ifndef SP_RESTRICT
+
+void LogOpenGLError(const char *file, size_t line, const char *func) {
+#ifdef DEBUG
+	if(GLenum __error = glGetError()) {
+		const char *desc = "unknown error";
+		switch (__error) {
+		case GL_INVALID_ENUM: desc = "GL_INVALID_ENUM"; break;
+		case GL_INVALID_VALUE: desc = "GL_INVALID_VALUE"; break;
+		case GL_INVALID_OPERATION: desc = "GL_INVALID_OPERATION"; break;
+		case GL_OUT_OF_MEMORY: desc = "GL_OUT_OF_MEMORY"; break;
+		}
+		stappler::log::format("SP-OpenGL", "%s:%d %s: error 0x%04X (%s)", file, int(line), func, __error, desc);
+	}
+#endif
+}
+
+#else
+
+void LogOpenGLError(const char *file, size_t line, const char *func) { }
+
+#endif
+
+NS_SP_END

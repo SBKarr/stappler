@@ -115,14 +115,14 @@ public:
 	Value& at(const Key& key) {
 		auto it = find(key);
 		if (it == end()) {
-			throw std::out_of_range("Invalid key for apr::map");
+			//throw std::out_of_range("Invalid key for apr::map");
 		}
 		return it->second;
 	}
 	const Value& at(const Key& key) const {
 		auto it = find(key);
 		if (it == end()) {
-			throw std::out_of_range("Invalid key for apr::map");
+			//throw std::out_of_range("Invalid key for apr::map");
 		}
 		return it->second;
 	}

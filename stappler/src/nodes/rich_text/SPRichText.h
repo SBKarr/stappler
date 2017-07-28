@@ -42,7 +42,7 @@ using Layout = layout::Layout;
 using Document = layout::Document;
 
 using Outline = layout::Outline;
-using Background = layout::Background;
+using Background = layout::BackgroundStyle;
 using Label = layout::Label;
 
 NS_SP_EXT_END(rich_text)

@@ -51,7 +51,7 @@ namespace ime {
 		}
 #ifndef SP_RESTRICT
 		auto size = Screen::getInstance()->getFrameSize();
-		native::onKeyboardShow(Rect(0, 0, size.width, size.height * 0.55f), 0.0f);
+		native::onKeyboardShow(Rect(0, 0, size.width, size.height * 0.35f), 0.0f);
 #endif
 	}
 

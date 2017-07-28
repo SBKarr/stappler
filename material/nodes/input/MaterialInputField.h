@@ -87,6 +87,8 @@ public:
 	virtual void acquireInput();
 	virtual void releaseInput();
 
+	virtual bool isInputActive() const;
+
 public:
 	virtual bool onPressBegin(const Vec2 &);
 	virtual bool onLongPress(const Vec2 &, const TimeInterval &, int count);

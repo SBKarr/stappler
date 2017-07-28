@@ -1790,7 +1790,6 @@ static Rc<cocos2d::Texture2D> IconStorage_updateIcons(const Vector<IconName> &na
 	uint32_t texWidth = w;
 	uint32_t texHeight = rows * iconHeight;
 
-	auto canvas = Rc<draw::Canvas>::create();
 	auto tex = Rc<cocos2d::Texture2D>::create(cocos2d::Texture2D::PixelFormat::A8, texWidth, texHeight,
 			cocos2d::Texture2D::InitAs::RenderTarget);
 

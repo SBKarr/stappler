@@ -82,6 +82,9 @@ public:
 	virtual void runAdjust(float pos, float factor = 1.0f);
 	virtual void scheduleAdjust(Adjust, float value);
 
+	virtual data::Value save() const;
+	virtual void load(const data::Value &);
+
 protected:
 	virtual void onOverscroll(float delta) override;
 	virtual void onScroll(float delta, bool finished) override;

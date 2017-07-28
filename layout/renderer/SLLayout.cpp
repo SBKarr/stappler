@@ -34,8 +34,8 @@ Object::Value::Value() {
 
 Object::Value::Value(Link &&v) : ref(std::move(v)) { }
 Object::Value::Value(Outline &&v) : outline(std::move(v)) { }
-Object::Value::Value(const Background &v) : background(v) { }
-Object::Value::Value(Background &&v) : background(std::move(v)) { }
+Object::Value::Value(const BackgroundStyle &v) : background(v) { }
+Object::Value::Value(BackgroundStyle &&v) : background(std::move(v)) { }
 Object::Value::Value(Label &&v) : label(std::move(v)) { }
 
 Object::Value::~Value() { }
@@ -45,7 +45,7 @@ Object::~Object() {
 	case Type::Empty: break;
 	case Type::Ref: value.ref.~Link(); break;
 	case Type::Outline: value.outline.~Outline(); break;
-	case Type::Background: value.background.~Background(); break;
+	case Type::Background: value.background.~BackgroundStyle(); break;
 	case Type::Label: value.label.~Label(); break;
 	}
 }
@@ -53,8 +53,8 @@ Object::~Object() {
 Object::Object(const Rect &bbox) : bbox(bbox), type(Type::Empty) { }
 Object::Object(const Rect &bbox, Link &&v) : bbox(bbox), type(Type::Ref), value(std::move(v)) { }
 Object::Object(const Rect &bbox, Outline &&v) : bbox(bbox), type(Type::Outline), value(std::move(v)) { }
-Object::Object(const Rect &bbox, const Background &v) : bbox(bbox), type(Type::Background), value(v) { }
-Object::Object(const Rect &bbox, Background &&v) : bbox(bbox), type(Type::Background), value(std::move(v)) { }
+Object::Object(const Rect &bbox, const BackgroundStyle &v) : bbox(bbox), type(Type::Background), value(v) { }
+Object::Object(const Rect &bbox, BackgroundStyle &&v) : bbox(bbox), type(Type::Background), value(std::move(v)) { }
 Object::Object(const Rect &bbox, Label &&v) : bbox(bbox), type(Type::Label), value(std::move(v)) { }
 
 Object::Object(Object &&other) : bbox(other.bbox), type(other.type), index(other.index) {
@@ -62,7 +62,7 @@ Object::Object(Object &&other) : bbox(other.bbox), type(other.type), index(other
 	case Type::Empty: break;
 	case Type::Ref: new (&value.ref) Link(std::move(other.value.ref)); other.value.ref.~Link(); break;
 	case Type::Outline: new (&value.outline) Outline(std::move(other.value.outline)); other.value.outline.~Outline(); break;
-	case Type::Background: new (&value.background) Background(std::move(other.value.background)); other.value.background.~Background(); break;
+	case Type::Background: new (&value.background) BackgroundStyle(std::move(other.value.background)); other.value.background.~BackgroundStyle(); break;
 	case Type::Label: new (&value.label) Label(std::move(other.value.label)); other.value.label.~Label(); break;
 	}
 	other.type = Type::Empty;
@@ -74,14 +74,14 @@ Object & Object::operator = (Object &&other) {
 	case Type::Empty: break;
 	case Type::Ref: value.ref.~Link(); break;
 	case Type::Outline: value.outline.~Outline(); break;
-	case Type::Background: value.background.~Background(); break;
+	case Type::Background: value.background.~BackgroundStyle(); break;
 	case Type::Label: value.label.~Label(); break;
 	}
 	switch(other.type) {
 	case Type::Empty: break;
 	case Type::Ref: new (&value.ref) Link(std::move(other.value.ref)); other.value.ref.~Link(); break;
 	case Type::Outline: new (&value.outline) Outline(std::move(other.value.outline)); other.value.outline.~Outline(); break;
-	case Type::Background: new (&value.background) Background(std::move(other.value.background)); other.value.background.~Background(); break;
+	case Type::Background: new (&value.background) BackgroundStyle(std::move(other.value.background)); other.value.background.~BackgroundStyle(); break;
 	case Type::Label: new (&value.label) Label(std::move(other.value.label)); other.value.label.~Label(); break;
 	}
 	type = other.type;

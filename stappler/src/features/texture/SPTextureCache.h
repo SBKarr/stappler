@@ -36,44 +36,60 @@ class TextureCache : public EventHandler {
 public:
 	static constexpr float GetDelayTime() { return 1.0f; }
 
-	enum class RenderTarget : uint32_t {
-		RGBA8 = 1 << 0, // 32-bit full-color
-		RGB8 = 1 << 1, // 24-bit RGB
-		RG8 = 1 << 2, // 16-bit two-channel
-		R8 = 1 << 3, // 8-bit single-channel
+	using BitmapFormat = Bitmap::Format;
+
+	struct TextureIndex {
+		String file;
+		BitmapFormat fmt = BitmapFormat::Auto;
+		float density = screen::density();
+
+		bool operator < (const TextureIndex &) const;
+		bool operator > (const TextureIndex &) const;
+
+		bool operator == (const TextureIndex &) const;
+		bool operator != (const TextureIndex &) const;
 	};
+
+	struct AssetDownloader;
 
 	using Callback = Function<void(cocos2d::Texture2D *)>;
 	using CallbackVec = Vector<Callback>;
-	using CallbackMap = Map<String, CallbackVec>;
+	using CallbackMap = Map<TextureIndex, CallbackVec>;
 
 	static TextureCache *getInstance();
 	static Thread &thread();
 
 	static Rc<cocos2d::Texture2D> uploadTexture(const Bitmap &);
-	static cocos2d::Texture2D::PixelFormat getPixelFormat(Bitmap::Format fmt);
+	static cocos2d::Texture2D::PixelFormat getPixelFormat(BitmapFormat fmt);
 
 	static String getPathForUrl(const String &);
 	static bool isCachedTextureUrl(const String &);
 
 	~TextureCache();
 
-	GLProgramSet *getBatchPrograms() const;
-	GLProgramSet *getRawPrograms() const;
+	GLProgramSet *getPrograms() const;
 
 	void update(float dt);
 
 	void addTexture(const String &, const Callback & = nullptr, bool forceReload = false);
-	void addTexture(Asset *, const Callback & = nullptr, bool forceReload = false);
+	void addTexture(const String &, float, const Callback & = nullptr, bool forceReload = false);
+	void addTexture(const String &, float, BitmapFormat = BitmapFormat::Auto, const Callback & = nullptr, bool forceReload = false);
 
-	bool hasTexture(const std::string &path);
+	void addTexture(Asset *, const Callback & = nullptr, bool forceReload = false);
+	void addTexture(Asset *, float, const Callback & = nullptr, bool forceReload = false);
+	void addTexture(Asset *, float, BitmapFormat = BitmapFormat::Auto, const Callback & = nullptr, bool forceReload = false);
+
+	bool hasTexture(const String &, float = screen::density(), BitmapFormat = BitmapFormat::Auto);
 
 	void uploadBitmap(Bitmap &&, const Function<void(cocos2d::Texture2D *)> &, Ref * = nullptr);
 	void uploadBitmap(Vector<Bitmap> &&tex, const Function<void(Vector<Rc<cocos2d::Texture2D>> &&tex)> &, Ref * = nullptr);
 
 	/* add texture, that was manually loaded, into cache, useful to ensure cache reloading */
 	void addLoadedTexture(const String &, cocos2d::Texture2D *);
-	void removeLoadedTexture(const String &);
+	void addLoadedTexture(const String &, float, cocos2d::Texture2D *);
+	void addLoadedTexture(const String &, float, BitmapFormat, cocos2d::Texture2D *);
+
+	void removeLoadedTexture(const String &, float = screen::density(), BitmapFormat = BitmapFormat::Auto);
 
 	bool makeCurrentContext();
 	void freeCurrentContext();
@@ -112,22 +128,23 @@ protected:
 	void uploadTextureBackground(Rc<cocos2d::Texture2D> &, const Bitmap &);
 	void uploadTextureBackground(Vector<Rc<cocos2d::Texture2D>> &, const Vector<Bitmap> &);
 
-	void addAssetTexture(Asset *, const Callback &, bool forceReload);
+	void addAssetTexture(Asset *, float, BitmapFormat, const Callback &, bool forceReload);
 
-	friend struct TextureCacheAssetDownloader;
+	void reloadTexture(cocos2d::Texture2D *, const TextureIndex &); // performed in main thread
+	Rc<cocos2d::Texture2D> loadTexture(const TextureIndex &); // performed in cache thread
 
 	uint32_t _contextRetained = 0;
 	bool _registred = false;
 	bool _reloadDirty = false;
-	cocos2d::Map<String, cocos2d::Texture2D *> _textures;
-	Map<cocos2d::Texture2D *, std::pair<float, String>> _texturesScore;
+	Map<TextureIndex, Rc<cocos2d::Texture2D>> _textures;
+	Map<cocos2d::Texture2D *, std::pair<float, TextureIndex>> _texturesScore;
 	CallbackMap _callbackMap;
 
-	Rc<GLProgramSet> _batchDrawing;
-	Rc<GLProgramSet> _rawDrawing;
+	Rc<GLProgramSet> _mainProgramSet;
+	Rc<GLProgramSet> _threadProgramSet;
 
-	Rc<GLProgramSet> _threadBatchDrawing;
-	Rc<GLProgramSet> _threadRawDrawing;
+	Rc<draw::Canvas> _vectorCanvas;
+	Rc<draw::Canvas> _threadVectorCanvas;
 };
 
 NS_SP_END

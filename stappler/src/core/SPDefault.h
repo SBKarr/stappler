@@ -78,6 +78,7 @@ void storeForFrames(Ref *, uint64_t, const String & = "");
 Rc<Ref> getStoredRef(const String &);
 
 void PrintBacktrace(int len, Ref * = nullptr);
+void LogOpenGLError(const char *file, size_t line, const char *func);
 
 template <typename T>
 inline void safe_retain(T *t) {
@@ -94,5 +95,7 @@ inline void safe_release(T *t) {
 }
 
 NS_SP_END
+
+#define LOG_GL_ERROR() do { ::stappler::LogOpenGLError(__FILE__, __LINE__, __FUNCTION__); } while (0);
 
 #endif /* LIBS_STAPPLER_CORE_SPDEFAULT_H_ */

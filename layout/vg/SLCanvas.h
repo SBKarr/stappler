@@ -23,16 +23,18 @@ THE SOFTWARE.
 #ifndef LAYOUT_VG_SLCANVAS_H_
 #define LAYOUT_VG_SLCANVAS_H_
 
-#include "SLPath.h"
+#include "SLImage.h"
 #include "SLTesselator.h"
 
 NS_LAYOUT_BEGIN
 
 class Canvas : public Ref {
 public:
-	/* Approximation quality defines how percisely original curves will be approximated with lines
+	using Autofit = style::Autofit;
+
+	/* Approximation quality defines how precisely original curves will be approximated with lines
 	 * Extreme values (Worst/Perfect) should be used only for special cases
-	 * In most cases Low is enought to draw simple vector objects (like material icons)
+	 * In most cases Low is enough to draw simple vector objects (like material icons)
 	 *
 	 * In Stappler, PathNode uses High quality, renderer for material icons uses Low
 	 */
@@ -42,6 +44,10 @@ public:
 	constexpr static float QualityNormal = 1.25f;
 	constexpr static float QualityHigh = 1.75f;
 	constexpr static float QualityPerfect = 2.25f;
+
+	static Size calculateImageBoxSize(const Rect &bbox, const Size &size, const BackgroundStyle &bg);
+	static Rect calculateImageBoxRect(const Rect &bbox, const Size &size, const BackgroundStyle &bg);
+	static Rect calculateImageContentRect(const Rect &bbox, const Size &size, const BackgroundStyle &bg);
 
 	virtual bool init();
 
@@ -53,8 +59,12 @@ public:
 	void beginBatch();
 	void endBatch();
 
+	void draw(const Image &);
+	void draw(const Image &, const Rect &);
+	void draw(const Image &, const Rect &, const BackgroundStyle &);
+
 	void draw(const Path &);
-	void draw(const Path &, const Mat4 &, bool force = false);
+	void draw(const Path &, const Mat4 &);
 	void draw(const Path &, float tx, float ty);
 
 	void scale(float sx, float sy);
@@ -77,11 +87,15 @@ public:
 	void pathClose(const Path &);
 
 protected:
+	void tryBatchPath();
+	void doDrawPath(const Path &);
+	void doDrawPath(const Path &, float tx, float ty);
 	void initPath(const Path &);
 	void finalizePath(const Path &);
 
 	void pushContour(const Path &, bool closed);
 	void clearTess();
+	void flushBatch();
 
 	TESSalloc _tessAlloc;
 
@@ -107,6 +121,8 @@ protected:
 
 	TimeInterval _subAccum;
 	DrawStyle _pathStyle = DrawStyle::None;
+
+	Mat4 _batchTransform;
 };
 
 NS_LAYOUT_END

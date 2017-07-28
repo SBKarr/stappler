@@ -23,6 +23,7 @@ THE SOFTWARE.
 #ifndef LAYOUT_VG_SLIMAGE_H_
 #define LAYOUT_VG_SLIMAGE_H_
 
+#include "SPBitmap.h"
 #include "SLPath.h"
 #include "SLSubscription.h"
 
@@ -131,12 +132,14 @@ public:
 	virtual ~Image();
 
 	static bool isSvg(const String &);
+	static bool isSvg(const Bytes &);
 	static bool isSvg(const FilePath &);
 
 	bool init(uint16_t width, uint16_t height, const String &);
 	bool init(uint16_t width, uint16_t height, Path &&);
 	bool init(uint16_t width, uint16_t height);
 	bool init(const String &);
+	bool init(const Bytes &);
 	bool init(FilePath &&);
 
 	uint16_t getWidth() const;
@@ -159,6 +162,8 @@ public:
 
 	void setAntialiased(bool value);
 	bool isAntialiased() const;
+
+	Bitmap::Format detectFormat() const;
 
 protected:
 	void invalidateRefs();

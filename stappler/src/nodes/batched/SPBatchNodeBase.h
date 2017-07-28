@@ -31,6 +31,8 @@ NS_SP_BEGIN
 
 class BatchNodeBase : public cocos2d::Node {
 public:
+	using PixelFormat = cocos2d::Texture2D::PixelFormat;
+
 	virtual ~BatchNodeBase();
 
 	virtual bool init(float density = 0.0f);
@@ -49,18 +51,12 @@ public:
 
 protected:
 	virtual void updateBlendFunc(cocos2d::Texture2D *);
-
-	virtual cocos2d::GLProgramState *getProgramStateColor() const;
-	virtual cocos2d::GLProgramState *getProgramStateA8() const;
-	virtual cocos2d::GLProgramState *getProgramStateI8() const;
-	virtual cocos2d::GLProgramState *getProgramStateR8ToA8() const;
-	virtual cocos2d::GLProgramState *getProgramStateR8ToI8() const;
-	virtual cocos2d::GLProgramState *getProgramStateAI88() const;
-	virtual cocos2d::GLProgramState *getProgramStateFullColor() const;
+	cocos2d::GLProgramState *acquireProgramState(cocos2d::Texture2D *) const;
 
 	bool _opacityModifyRGB = false;
 	bool _normalized = false;
 	bool _stencil = false;
+	bool _isHighPrecision = false;
 
 	cocos2d::BlendFunc _blendFunc;
 	float _density = 1.0f;

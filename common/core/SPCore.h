@@ -44,14 +44,6 @@ THE SOFTWARE.
 #endif
 #endif
 
-#include <string>
-#include <vector>
-#include <functional>
-#include <sstream>
-#include <fstream>
-#include <map>
-#include <set>
-
 #if SPAPR
 
 #include "apr_file_io.h"
@@ -89,6 +81,14 @@ THE SOFTWARE.
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+
+#include <string>
+#include <vector>
+#include <functional>
+#include <sstream>
+#include <fstream>
+#include <map>
+#include <set>
 
 #include <istream>
 #include <ostream>
@@ -132,6 +132,12 @@ THE SOFTWARE.
 using std::nullptr_t;
 #define isnanf(X) (isnan(X))
 
+#endif
+
+#if (__clang__)
+#define SP_TEMPLATE_MARK
+#else
+#define SP_TEMPLATE_MARK template <>
 #endif
 
 #define SPUNUSED __attribute__((unused))

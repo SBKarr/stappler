@@ -24,35 +24,32 @@ THE SOFTWARE.
 #define LIBS_MATERIAL_RESOURCES_MATERIALRESIZE_H_
 
 #include "Material.h"
-
-#include "2d/CCActionInterval.h"
+#include "SPActions.h"
 
 NS_MD_BEGIN
 
 class ResizeTo : public cocos2d::ActionInterval {
 public:
-    virtual bool init(float duration, const cocos2d::Size &size);
+	virtual bool init(float duration, const Size &size);
 
-    virtual void startWithTarget(cocos2d::Node *t) override;
-    virtual void update(float time) override;
+	virtual void startWithTarget(cocos2d::Node *t) override;
+	virtual void update(float time) override;
 
 protected:
-    cocos2d::Size _sourceSize;
-    cocos2d::Size _targetSize;
+	Size _sourceSize;
+	Size _targetSize;
 };
 
 class ResizeBy : public cocos2d::ActionInterval {
 public:
-    static ResizeBy* create(float duration, const cocos2d::Size &size);
+	virtual bool init(float duration, const Size &size);
 
-    virtual bool init(float duration, const cocos2d::Size &size);
-
-    virtual void startWithTarget(cocos2d::Node *t) override;
-    virtual void update(float time) override;
+	virtual void startWithTarget(cocos2d::Node *t) override;
+	virtual void update(float time) override;
 
 protected:
-    cocos2d::Size _sourceSize;
-    cocos2d::Size _additionalSize;
+	Size _sourceSize;
+	Size _additionalSize;
 };
 
 NS_MD_END

@@ -242,9 +242,15 @@ const WideString &InputField::getPlaceholder() const {
 }
 
 void InputField::setString(const WideString &str) {
+	if (_label->empty() != str.empty()) {
+		_contentSizeDirty = true;
+	}
 	_label->setString(str);
 }
 void InputField::setString(const String &str) {
+	if (_label->empty() != str.empty()) {
+		_contentSizeDirty = true;
+	}
 	_label->setString(str);
 }
 const WideString &InputField::getString() const {
@@ -267,6 +273,9 @@ void InputField::acquireInput() {
 }
 void InputField::releaseInput() {
 	_label->releaseInput();
+}
+bool InputField::isInputActive() const {
+	return _label->isActive();
 }
 
 bool InputField::onPressBegin(const Vec2 &vec) {

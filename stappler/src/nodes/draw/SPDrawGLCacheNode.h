@@ -12,6 +12,22 @@
 #include "base/ccTypes.h"
 #include "platform/CCGL.h"
 
+#ifndef GL_RED_EXT
+#define GL_RED_EXT GL_RED
+#endif
+
+#ifndef GL_RG_EXT
+#define GL_RG_EXT GL_RG
+#endif
+
+#ifndef GL_R8_EXT
+#define GL_R8_EXT GL_R8
+#endif
+
+#ifndef GL_RG8_EXT
+#define GL_RG8_EXT GL_RG8
+#endif
+
 NS_SP_EXT_BEGIN(draw)
 
 using BlendFunc = cocos2d::BlendFunc;

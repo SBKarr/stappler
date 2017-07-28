@@ -85,8 +85,6 @@ struct Outline {
 
 using Border = Outline;
 
-using Background = BackgroundStyle;
-
 struct Label {
 	FormatSpec format;
 	float height = 0.0f;
@@ -115,14 +113,14 @@ struct Object {
 	union Value {
 		Link ref;
 		Outline outline;
-		Background background;
+		BackgroundStyle background;
 		Label label;
 
 		Value();
 		Value(Link &&);
 		Value(Outline &&);
-		Value(const Background &);
-		Value(Background &&);
+		Value(const BackgroundStyle &);
+		Value(BackgroundStyle &&);
 		Value(Label &&);
 
 		~Value();
@@ -134,8 +132,8 @@ struct Object {
 	Object(const Rect &);
 	Object(const Rect &, Link &&);
 	Object(const Rect &, Outline &&);
-	Object(const Rect &, const Background &);
-	Object(const Rect &, Background &&);
+	Object(const Rect &, const BackgroundStyle &);
+	Object(const Rect &, BackgroundStyle &&);
 	Object(const Rect &, Label &&);
 
 	Object(Object &&);

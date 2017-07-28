@@ -60,7 +60,7 @@ static Mat4 svg_parseTransform(CharReaderBase &r) {
 	Mat4 ret(Mat4::IDENTITY);
 	while (!r.empty()) {
 		r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
-		if (r == "matrix(") {
+		if (r.is("matrix(")) {
 			r += "matrix("_len;
 			float values[6] = { 0 };
 
@@ -79,7 +79,7 @@ static Mat4 svg_parseTransform(CharReaderBase &r) {
 
 			ret *= Mat4(values[0], values[1], values[2], values[3], values[4], values[5]);
 
-		} else if (r == "translate(") {
+		} else if (r.is("translate(")) {
 			r += "translate("_len;
 
 			float tx = 0.0f, ty = 0.0f;
@@ -100,7 +100,7 @@ static Mat4 svg_parseTransform(CharReaderBase &r) {
 			ret.m[12] += tx;
 			ret.m[13] += ty;
 
-		} else if (r == "scale(") {
+		} else if (r.is("scale(")) {
 			r += "scale("_len;
 
 			float sx = 0.0f, sy = 0.0f;
@@ -120,7 +120,7 @@ static Mat4 svg_parseTransform(CharReaderBase &r) {
 
 			ret.scale(sx, (sy == 0.0f) ? sx : sy, 1.0f);
 
-		} else if (r == "rotate(") {
+		} else if (r.is("rotate(")) {
 			r += "rotate("_len;
 
 			float angle = 0.0f;
@@ -159,7 +159,7 @@ static Mat4 svg_parseTransform(CharReaderBase &r) {
 				ret.m[13] -= cy;
 			}
 
-		} else if (r == "skewX(") {
+		} else if (r.is("skewX(")) {
 			r += "skewX("_len;
 
 			float angle = 0.0f;
@@ -170,7 +170,7 @@ static Mat4 svg_parseTransform(CharReaderBase &r) {
 			}
 			ret *= Mat4(1, 0, tanf(to_rad(angle)), 1, 0, 0);
 
-		} else if (r == "skewY(") {
+		} else if (r.is("skewY(")) {
 			r += "skewY("_len;
 
 			float angle = 0.0f;
@@ -325,7 +325,21 @@ struct SvgReader {
 	}
 
 	inline void onStyleParameter(Tag &tag, StringReader &name, StringReader &value) {
-		if (name.compare("fill")) {
+		if (name.compare("opacity")) {
+			const float op = value.readFloat();
+			if (!IsErrorValue(op)) {
+				if (op <= 0.0f) {
+					tag.path.setFillOpacity(0);
+					tag.path.setStrokeOpacity(0);
+				} else if (op >= 1.0f) {
+					tag.path.setFillOpacity(255);
+					tag.path.setStrokeOpacity(255);
+				} else {
+					tag.path.setFillOpacity(255 * op);
+					tag.path.setStrokeOpacity(255 * op);
+				}
+			}
+		} else if (name.compare("fill")) {
 			if (value.compare("none")) {
 				tag.path.setStyle(tag.path.getStyle() & (~DrawStyle::Fill));
 			} else {
@@ -440,7 +454,7 @@ struct SvgReader {
 
 		if (name.compare("fill") || name.compare("fill-rule") || name.compare("fill-opacity") || name.compare("stroke")
 				|| name.compare("stroke-opacity") || name.compare("stroke-width") || name.compare("stroke-linecap")
-				|| name.compare("stroke-linejoin") || name.compare("stroke-miterlimit")) {
+				|| name.compare("stroke-linejoin") || name.compare("stroke-miterlimit") || name.compare("opacity")) {
 			onStyleParameter(tag, name, value);
 		} else if (name.compare("transform")) {
 			tag.path.applyTransform(svg_parseTransform(value));
@@ -511,7 +525,6 @@ struct SvgReader {
 	}
 
 	inline void onPushTag(Parser &p, Tag &tag) { }
-
 	inline void onPopTag(Parser &p, Tag &tag) { }
 
 	inline void onInlineTag(Parser &p, Tag &tag) {
@@ -546,6 +559,11 @@ static bool Image_detectSvg(const CharReaderBase &buf) {
 bool Image::isSvg(const String &str) {
 	return Image_detectSvg(CharReaderBase(str));
 }
+
+bool Image::isSvg(const Bytes &data) {
+	return Image_detectSvg(CharReaderBase((const char *)data.data(), data.size()));
+}
+
 bool Image::isSvg(const FilePath &file) {
 	auto d = filesystem::readFile(file.get(), 0, 512);
 	return Image_detectSvg(CharReaderBase((const char *)d.data(), d.size()));
@@ -553,14 +571,34 @@ bool Image::isSvg(const FilePath &file) {
 
 bool Image::init(const String &data) {
 	SvgReader reader;
+	reader._paths.reserve(8);
 	html::parse<SvgReader, CharReaderBase, SvgTag>(reader, CharReaderBase(data));
 
-	_width = reader._width;
-	_height = reader._height;
-	_paths = std::move(reader._paths);
+	if (!reader._paths.empty()) {
+		_width = reader._width;
+		_height = reader._height;
+		_paths = std::move(reader._paths);
+		return true;
+	}
 
-	return true;
+	return false;
 }
+
+bool Image::init(const Bytes &data) {
+	SvgReader reader;
+	reader._paths.reserve(8);
+	html::parse<SvgReader, CharReaderBase, SvgTag>(reader, CharReaderBase((const char *)data.data(), data.size()));
+
+	if (!reader._paths.empty()) {
+		_width = reader._width;
+		_height = reader._height;
+		_paths = std::move(reader._paths);
+		return true;
+	}
+
+	return false;
+}
+
 bool Image::init(FilePath &&path) {
 	return init(filesystem::readTextFile(path.get()));
 }
@@ -739,6 +777,46 @@ Path *Image::getPathByRef(const PathRef &ref) const {
 		return const_cast<Path *>(&_paths.at(ref.index));
 	}
 	return nullptr;
+}
+
+bool colorIsBlack(const Color4B &c) {
+	return c.r == 0 && c.g == 0 && c.b == 0;
+}
+bool colorIsGray(const Color4B &c) {
+	return c.r == c.g && c.b == c.r;
+}
+
+Bitmap::Format Image::detectFormat() const {
+	bool black = true;
+	bool grey = true;
+
+	for (auto &it : _paths) {
+		if ((it.getStyle() & Path::Style::Fill) != DrawStyle::None) {
+			if (!colorIsBlack(it.getFillColor())) {
+				black = false;
+			}
+			if (!colorIsGray(it.getFillColor())) {
+				black = false;
+				grey = false;
+			}
+		}
+		if ((it.getStyle() & Path::Style::Stroke) != DrawStyle::None) {
+			if (!colorIsBlack(it.getStrokeColor())) {
+				black = false;
+			}
+			if (!colorIsGray(it.getStrokeColor())) {
+				black = false;
+				grey = false;
+			}
+		}
+	}
+
+	if (black) {
+		return Bitmap::Format::A8;
+	} else if (grey) {
+		return Bitmap::Format::IA88;
+	}
+	return Bitmap::Format::RGBA8888;
 }
 
 Image::PathRef::~PathRef() {

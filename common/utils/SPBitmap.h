@@ -37,11 +37,12 @@ public:
 	};
 
 	enum class Format {
-	    A8,
-	    I8,
-	    IA88,
-	    RGB888,
-	    RGBA8888,
+		Auto, // used by application, do not use with Bitmap directly
+		A8,
+		I8,
+		IA88,
+		RGB888,
+		RGBA8888,
 	};
 
 	using StrideFn = Function<uint32_t(Format, uint32_t)>;
@@ -97,7 +98,9 @@ public:
 	uint8_t *dataPtr() { return _data.data(); }
 	const uint8_t *dataPtr() const { return _data.data(); }
 
+	bool updateStride(const StrideFn &strideFn);
 	bool convert(Format, const StrideFn &strideFn = nullptr);
+	bool truncate(Format, const StrideFn &strideFn = nullptr);
 
 	// init with jpeg or png data
 	bool loadData(const uint8_t * data, size_t dataLen, const StrideFn &strideFn = nullptr);
@@ -108,7 +111,6 @@ public:
 	void loadBitmap(const Bytes &d, uint32_t w, uint32_t h, Format c, Alpha a = Bitmap::Alpha::Unpremultiplied, uint32_t stride = 0);
 	void loadBitmap(Bytes &&d, uint32_t w, uint32_t h, Format c, Alpha a = Bitmap::Alpha::Unpremultiplied, uint32_t stride = 0);
 
-	void setInfo(uint32_t w, uint32_t h, Format c, Alpha a = Bitmap::Alpha::Unpremultiplied, uint32_t stride = 0);
 	void alloc(uint32_t w, uint32_t h, Format c, Alpha a = Bitmap::Alpha::Unpremultiplied, uint32_t stride = 0);
 
 	operator bool () const { return _data.size() != 0; }
@@ -120,6 +122,8 @@ public:
 	void save(const String &); // only png is now available
 
 protected:
+	void setInfo(uint32_t w, uint32_t h, Format c, Alpha a = Bitmap::Alpha::Unpremultiplied, uint32_t stride = 0);
+
 	Format _color = Format::RGBA8888;
 	Alpha _alpha = Alpha::Opaque;
 

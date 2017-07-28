@@ -110,6 +110,7 @@ template<> void Parameter::set<ParameterName::OutlineColor, Color4B>(const Color
 template<> void Parameter::set<ParameterName::PageBreakAfter, PageBreak>(const PageBreak &v) { value.pageBreak = v; }
 template<> void Parameter::set<ParameterName::PageBreakBefore, PageBreak>(const PageBreak &v) { value.pageBreak = v; }
 template<> void Parameter::set<ParameterName::PageBreakInside, PageBreak>(const PageBreak &v) { value.pageBreak = v; }
+template<> void Parameter::set<ParameterName::Autofit, Autofit>(const Autofit &v) { value.autofit = v; }
 
 void ParameterList::set(const Parameter &p, bool force) {
 	if (p.mediaQuery != MediaQueryNone() && !isAllowedForMediaQuery(p.name)) {

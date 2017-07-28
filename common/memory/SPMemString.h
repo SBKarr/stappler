@@ -932,7 +932,7 @@ using u32string = basic_string<char32_t>;
 
 using weak_string = const string;
 
-template <>
+SP_TEMPLATE_MARK
 template <typename CharType>
 struct __AllocatorTriviallyMoveable<basic_string<CharType>> : std::integral_constant<bool, true> { };
 

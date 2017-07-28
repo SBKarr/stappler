@@ -30,7 +30,7 @@ THE SOFTWARE.
 
 NS_MD_BEGIN
 
-bool ResizeTo::init(float duration, const cocos2d::Size &size) {
+bool ResizeTo::init(float duration, const Size &size) {
 	if (!ActionInterval::initWithDuration(duration)) {
 		return false;
 	}
@@ -73,18 +73,7 @@ void ResizeTo::update(float time) {
 	}
 }
 
-ResizeBy* ResizeBy::create(float duration, const cocos2d::Size &size) {
-	auto ret = new ResizeBy();
-	if (ret->init(duration, size)) {
-		ret->autorelease();
-		return ret;
-	} else {
-		delete ret;
-		return nullptr;
-	}
-}
-
-bool ResizeBy::init(float duration, const cocos2d::Size &size) {
+bool ResizeBy::init(float duration, const Size &size) {
 	if (!ActionInterval::initWithDuration(duration)) {
 		return false;
 	}

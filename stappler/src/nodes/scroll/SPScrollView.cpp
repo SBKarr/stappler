@@ -29,6 +29,7 @@ THE SOFTWARE.
 
 #include "SPOverscroll.h"
 #include "SPRoundedSprite.h"
+#include "SPScrollController.h"
 
 #include "2d/CCActionInterval.h"
 
@@ -386,6 +387,21 @@ void ScrollView::scheduleAdjust(Adjust a, float val) {
 		default:
 			scheduleUpdate();
 			break;
+		}
+	}
+}
+
+data::Value ScrollView::save() const {
+	data::Value ret;
+	ret.setDouble(getScrollRelativePosition(), "value");
+	return ret;
+}
+
+void ScrollView::load(const data::Value &d) {
+	if (d.isDictionary()) {
+		_savedRelativePosition = d.getDouble("value");
+		if (_controller) {
+			_controller->onScrollPosition(true);
 		}
 	}
 }

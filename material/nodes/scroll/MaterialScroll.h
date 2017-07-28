@@ -60,8 +60,8 @@ public:
     virtual void onContentSizeDirty() override;
 	virtual void reset();
 
-	virtual data::Value save() const;
-	virtual void load(const data::Value &);
+	virtual data::Value save() const override;
+	virtual void load(const data::Value &) override;
 
 public: // properties
 	virtual const ItemMap &getItems() const;

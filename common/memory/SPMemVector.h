@@ -290,7 +290,7 @@ operator>=(const vector<_Tp>& __x, const vector<_Tp>& __y) {
 	return !(__x < __y);
 }
 
-template <>
+SP_TEMPLATE_MARK
 template <typename T>
 struct __AllocatorTriviallyMoveable<vector<T>> : std::integral_constant<bool, true> { };
 

@@ -26,7 +26,7 @@ THE SOFTWARE.
 #include "SPLayout.h"
 #include "SLCanvas.h"
 
-TESS_OPTIMIZE
+//TESS_OPTIMIZE
 
 NS_LAYOUT_BEGIN
 
@@ -40,6 +40,86 @@ static void staticPoolFree(void * userData, void * ptr) {
 	// empty
 	TESS_NOTUSED(userData);
 	TESS_NOTUSED(ptr);
+}
+
+Size Canvas::calculateImageBoxSize(const Rect &bbox, const Size &size, const BackgroundStyle &bg) {
+	if (bg.backgroundSizeWidth.metric == layout::style::Metric::Units::Auto
+				&& bg.backgroundSizeHeight.metric == layout::style::Metric::Units::Auto) {
+		return bbox.size;
+	}
+
+	const float coverRatio = std::max(bbox.size.width / size.width, bbox.size.height / size.height);
+	const float containRatio = std::min(bbox.size.width / size.width, bbox.size.height / size.height);
+
+	Size coverSize(size.width * coverRatio, size.height * coverRatio);
+	Size containSize(size.width * containRatio, size.height * containRatio);
+
+	float boxWidth = 0.0f, boxHeight = 0.0f;
+	switch (bg.backgroundSizeWidth.metric) {
+	case layout::style::Metric::Units::Contain: boxWidth = containSize.width; break;
+	case layout::style::Metric::Units::Cover: boxWidth = coverSize.width; break;
+	case layout::style::Metric::Units::Percent: boxWidth = bbox.size.width * bg.backgroundSizeWidth.value; break;
+	case layout::style::Metric::Units::Px: boxWidth = bg.backgroundSizeWidth.value; break;
+	default: boxWidth = bbox.size.width; break;
+	}
+
+	switch (bg.backgroundSizeHeight.metric) {
+	case layout::style::Metric::Units::Contain: boxHeight = containSize.height; break;
+	case layout::style::Metric::Units::Cover: boxHeight = coverSize.height; break;
+	case layout::style::Metric::Units::Percent: boxHeight = bbox.size.height * bg.backgroundSizeHeight.value; break;
+	case layout::style::Metric::Units::Px: boxHeight = bg.backgroundSizeHeight.value; break;
+	default: boxHeight = bbox.size.height; break;
+	}
+
+	if (bg.backgroundSizeWidth.metric == layout::style::Metric::Units::Auto) {
+		boxWidth = boxHeight * (size.width / size.height);
+	} else if (bg.backgroundSizeHeight.metric == layout::style::Metric::Units::Auto) {
+		boxHeight = boxWidth * (size.height / size.width);
+	}
+
+	return Size(boxWidth, boxHeight);
+}
+
+Rect Canvas::calculateImageBoxRect(const Rect &bbox, const Size &size, const BackgroundStyle &bg) {
+	Size boxSize(calculateImageBoxSize(bbox, size, bg));
+
+	const float availableWidth = bbox.size.width - boxSize.width;
+	const float availableHeight = bbox.size.height - boxSize.height;
+
+	float xOffset = 0.0f, yOffset = 0.0f;
+
+	switch (bg.backgroundPositionX.metric) {
+	case layout::style::Metric::Units::Percent: xOffset = availableWidth * bg.backgroundPositionX.value; break;
+	case layout::style::Metric::Units::Px: xOffset = bg.backgroundPositionX.value; break;
+	default: xOffset = availableWidth / 2.0f; break;
+	}
+
+	switch (bg.backgroundPositionY.metric) {
+	case layout::style::Metric::Units::Percent: yOffset = availableHeight * bg.backgroundPositionY.value; break;
+	case layout::style::Metric::Units::Px: yOffset = bg.backgroundPositionY.value; break;
+	default: yOffset = availableHeight / 2.0f; break;
+	}
+
+	return Rect(bbox.origin.x + xOffset, bbox.origin.y + yOffset, boxSize.width, boxSize.height);
+}
+
+Rect Canvas::calculateImageContentRect(const Rect &bbox, const Size &size, const BackgroundStyle &bg) {
+	Rect boxRect(calculateImageBoxRect(bbox, size, bg));
+	Rect contentBox(0, 0, size.width, size.height);
+
+	if (boxRect.size.width > bbox.size.width) {
+		const float scale = size.width / boxRect.size.width;
+		contentBox.size.width = bbox.size.width * scale;
+		contentBox.origin.x += (boxRect.size.width - bbox.size.width) * scale;
+	}
+
+	if (boxRect.size.height > bbox.size.height) {
+		const float scale = size.height / boxRect.size.height;
+		contentBox.size.height = bbox.size.height * scale;
+		contentBox.origin.y += (boxRect.size.height - bbox.size.height) * scale;
+	}
+
+	return contentBox;
 }
 
 bool Canvas::init() {
@@ -58,37 +138,95 @@ void Canvas::beginBatch() {
 
 void Canvas::endBatch() {
 	if (!_tess.empty()) {
-		flush();
-		_pathStyle = DrawStyle::None;
-		clearTess();
+		flushBatch();
 		_isBatch = false;
 	}
 }
 
-void Canvas::draw(const Path &path) {
-	if (path.getTransform().isIdentity()) {
-		initPath(path);
-		auto d = path.getPoints().data();
-		for (auto &it : path.getCommands()) {
-			switch (it) {
-			case Path::Command::MoveTo: pathMoveTo(path, d[0].p.x, d[0].p.y); ++ d; break;
-			case Path::Command::LineTo: pathLineTo(path, d[0].p.x, d[0].p.y); ++ d; break;
-			case Path::Command::QuadTo: pathQuadTo(path, d[0].p.x, d[0].p.y, d[1].p.x, d[1].p.y); d += 2; break;
-			case Path::Command::CubicTo: pathCubicTo(path, d[0].p.x, d[0].p.y, d[1].p.x, d[1].p.y, d[2].p.x, d[2].p.y); d += 3; break;
-			case Path::Command::ArcTo: pathArcTo(path, d[0].p.x, d[0].p.y, d[2].f.v, d[2].f.a, d[2].f.b, d[1].p.x, d[1].p.y); d += 3; break;
-			case Path::Command::ClosePath: pathClose(path); break;
-			default: break;
-			}
-		}
-		finalizePath(path);
+void Canvas::draw(const Image &img) {
+	bool batch = false;
+	if (!_isBatch) {
+		beginBatch();
 	} else {
-		draw(path, path.getTransform(), true);
+		batch = true;
+	}
+
+	auto &paths = img.getPaths();
+	for (auto &it : paths) {
+		draw(it);
+	}
+
+	if (!batch) {
+		endBatch();
+	} else {
+		if (!_tess.empty()) {
+			flushBatch();
+		}
 	}
 }
 
-void Canvas::draw(const Path &path, const Mat4 &it, bool force) {
+void Canvas::draw(const Image &img, const Rect &rect) {
+	draw(img, rect, Autofit::Contain);
+}
+
+void Canvas::draw(const Image &img, const Rect &rect, const BackgroundStyle &bg) {
+	Size imageSize(img.getWidth(), img.getHeight());
+	Rect boxRect(calculateImageBoxRect(rect, imageSize, bg));
+
+	Mat4 t;
+	t.translate(boxRect.origin.x, boxRect.origin.y, 0.0f);
+	t.scale(boxRect.size.width / imageSize.width, boxRect.size.height / imageSize.height, 1.0f);
+
 	save();
-	transform(force?it:path.getTransform() * it);
+	transform(t);
+	draw(img);
+	restore();
+}
+
+void Canvas::draw(const Path &path) {
+	bool t = path.getTransform().isIdentity();
+	if (!t) {
+		save();
+		transform(path.getTransform());
+	}
+
+	doDrawPath(path);
+
+	if (!t) {
+		restore();
+	}
+}
+
+void Canvas::draw(const Path &path, const Mat4 &it) {
+	save();
+	transform(path.getTransform() * it);
+	doDrawPath(path);
+	restore();
+}
+
+void Canvas::draw(const Path &path, float tx, float ty) {
+	if (path.getTransform().isIdentity()) {
+		doDrawPath(path, tx, ty);
+	} else {
+		Mat4 t;
+		Mat4::createTranslation(tx, ty, 0.0f, &t);
+		draw(path, t);
+	}
+}
+
+void Canvas::tryBatchPath() {
+	if (_isBatch) {
+		if (_batchTransform.isIdentity()) {
+			_batchTransform = _transform;
+		} else if (_batchTransform != _transform) {
+			flushBatch();
+			_batchTransform = _transform;
+		}
+	}
+}
+
+void Canvas::doDrawPath(const Path &path) {
+	tryBatchPath();
 	initPath(path);
 	auto d = path.getPoints().data();
 	for (auto &it : path.getCommands()) {
@@ -103,42 +241,36 @@ void Canvas::draw(const Path &path, const Mat4 &it, bool force) {
 		}
 	}
 	finalizePath(path);
-	restore();
 }
 
-void Canvas::draw(const Path &path, float tx, float ty) {
-	if (path.getTransform().isIdentity()) {
-		initPath(path);
-		auto d = path.getPoints().data();
-		for (auto &it : path.getCommands()) {
-			switch (it) {
-			case Path::Command::MoveTo: pathMoveTo(path, d[0].p.x + tx, d[0].p.y + ty); ++ d; break;
-			case Path::Command::LineTo: pathLineTo(path, d[0].p.x + tx, d[0].p.y + ty); ++ d; break;
-			case Path::Command::QuadTo: pathQuadTo(path, d[0].p.x + tx, d[0].p.y + ty, d[1].p.x + tx, d[1].p.y + ty); d += 2; break;
-			case Path::Command::CubicTo: pathCubicTo(path, d[0].p.x + tx, d[0].p.y + ty, d[1].p.x + tx, d[1].p.y + ty, d[2].p.x + tx, d[2].p.y + ty); d += 3; break;
-			case Path::Command::ArcTo: pathArcTo(path, d[0].p.x, d[0].p.y, d[2].f.v, d[2].f.a, d[2].f.b, d[1].p.x + tx, d[1].p.y + ty); d += 3; break;
-			case Path::Command::ClosePath: pathClose(path); break;
-			default: break;
-			}
+void Canvas::doDrawPath(const Path &path, float tx, float ty) {
+	tryBatchPath();
+	initPath(path);
+	auto d = path.getPoints().data();
+	for (auto &it : path.getCommands()) {
+		switch (it) {
+		case Path::Command::MoveTo: pathMoveTo(path, d[0].p.x + tx, d[0].p.y + ty); ++ d; break;
+		case Path::Command::LineTo: pathLineTo(path, d[0].p.x + tx, d[0].p.y + ty); ++ d; break;
+		case Path::Command::QuadTo: pathQuadTo(path, d[0].p.x + tx, d[0].p.y + ty, d[1].p.x + tx, d[1].p.y + ty); d += 2; break;
+		case Path::Command::CubicTo: pathCubicTo(path, d[0].p.x + tx, d[0].p.y + ty, d[1].p.x + tx, d[1].p.y + ty, d[2].p.x + tx, d[2].p.y + ty); d += 3; break;
+		case Path::Command::ArcTo: pathArcTo(path, d[0].p.x, d[0].p.y, d[2].f.v, d[2].f.a, d[2].f.b, d[1].p.x + tx, d[1].p.y + ty); d += 3; break;
+		case Path::Command::ClosePath: pathClose(path); break;
+		default: break;
 		}
-		finalizePath(path);
-	} else {
-		Mat4 t;
-		Mat4::createTranslation(tx, ty, 0.0f, &t);
-		draw(path, t, false);
 	}
+	finalizePath(path);
 }
 
 void Canvas::initPath(const Path &path) {
 	pathBegin(path);
 	setLineWidth(path.getStrokeWidth());
 }
+
 void Canvas::finalizePath(const Path &path) {
 	pathEnd(path);
 
 	if (!_isBatch || (_pathStyle != DrawStyle::None && path.getStyle() != _pathStyle) || _vertexCount > 1800) {
-		flush();
-		clearTess();
+		flushBatch();
 	} else {
 		_pathStyle = path.getStyle();
 	}
@@ -263,10 +395,47 @@ void Canvas::clearTess() {
 	_pool.clear();
 }
 
+void Canvas::flushBatch() {
+	auto tmp = _transform;
+	if (_isBatch) {
+		_transform = _batchTransform;
+	}
+	flush();
+	clearTess();
+	_pathStyle = DrawStyle::None;
+	if (_isBatch) {
+		_transform = tmp;
+		_batchTransform = Mat4::IDENTITY;
+	}
+}
+
+static inline float draw_approx_err_sq(float e) {
+	e = (1.0f / e);
+	return e * e;
+}
+
+static inline float draw_dist_sq(float x1, float y1, float x2, float y2) {
+	const float dx = x2 - x1, dy = y2 - y1;
+	return dx * dx + dy * dy;
+}
+
 void Canvas::pushContour(const Path &path, bool closed) {
 	if ((path.getStyle() & layout::Path::Style::Fill) != 0) {
+		size_t count = _line.line.size() / 2;
+		if (closed && count >= 2) {
+			const float dist = draw_dist_sq(_line.line[0], _line.line[1], _line.line[(count - 1) * 2], _line.line[(count - 1) * 2 + 1]);
+			const float err = draw_approx_err_sq(_approxScale * _quality);
+
+			if (dist < err) {
+				-- count;
+			}
+			/*log::format("Pt", "%f %f - %f %f - %f %f", _line.line[0], _line.line[1],
+					_line.line[(count - 1) * 2], _line.line[(count - 1) * 2 + 1],
+					err, dist);*/
+		}
+
 		if (_fillTess && !_line.line.empty()) {
-			tessAddContour(_fillTess, _line.line.data(), int(_line.line.size() / 2));
+			tessAddContour(_fillTess, _line.line.data(), int(count));
 			_vertexCount += _line.line.size() / 2;
 		}
 	}

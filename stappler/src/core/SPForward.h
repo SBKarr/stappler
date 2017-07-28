@@ -240,6 +240,7 @@ NS_SP_EXT_END(rich_text)
 NS_SP_EXT_BEGIN(draw)
 
 class PathNode;
+class Canvas;
 
 NS_SP_EXT_END(draw)
 

@@ -98,7 +98,7 @@ void DynamicBatchNode::draw(cocos2d::Renderer *renderer, const Mat4 &transform, 
 		}
 	}
 
-	if (!_textureAtlas) {
+	if (!_textureAtlas || !getGLProgram()) {
 		return;
 	}
 

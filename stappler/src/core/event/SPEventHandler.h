@@ -61,7 +61,6 @@ public:
 	void clearEvents();
 
 private:
-	Ref *_interface = nullptr;
 	Set<EventHandlerNode *> _handlers;
 };
 

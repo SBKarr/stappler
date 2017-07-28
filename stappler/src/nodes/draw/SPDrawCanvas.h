@@ -48,14 +48,19 @@ public:
 
 	virtual bool init(StencilDepthFormat fmt = StencilDepthFormat::Stencil8);
 
-	bool begin(cocos2d::Texture2D *, const Color4B &);
+	bool begin(cocos2d::Texture2D *, const Color4B &, bool clear = true);
 	void end();
 
 	virtual void flush() override;
 
+	Rc<cocos2d::Texture2D> captureImage(const layout::Image &, Format = Format::A8);
 	Rc<cocos2d::Texture2D> captureContents(cocos2d::Node *, Format, float density = 0.0f);
+	Bitmap captureTexture(cocos2d::Texture2D *);
 
 	void drop();
+
+	Bitmap read(uint32_t x, uint32_t y, uint32_t w, uint32_t h);
+	Bitmap read();
 
 protected:
 	void setUniformColor(const Color4B &);
@@ -82,6 +87,7 @@ protected:
 
 	Mat4 _viewTransform;
 
+	bool _premultipliedAlpha = false;
 	cocos2d::Texture2D::PixelFormat _internalFormat;
 	cocos2d::Texture2D::PixelFormat _referenceFormat;
 

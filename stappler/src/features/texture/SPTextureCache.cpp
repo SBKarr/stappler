@@ -40,6 +40,7 @@ THE SOFTWARE.
 #include "SPPlatform.h"
 #include "SPDataListener.h"
 #include "SPAssetLibrary.h"
+#include "SPDrawCanvas.h"
 
 NS_SP_BEGIN
 
@@ -82,24 +83,18 @@ Thread &TextureCache::thread() {
 void TextureCache::update(float dt) {
 	if (_reloadDirty) {
 		for (auto &it : _textures) {
-			Bitmap bitmap(filesystem::readFile(it.first));
-			if (bitmap) {
-				it.second->updateWithData(bitmap.dataPtr(), 0, 0, bitmap.width(), bitmap.height());
-				if (bitmap.alpha() == Bitmap::Alpha::Premultiplied) {
-					it.second->setPremultipliedAlpha(true);
-				}
-			}
+			reloadTexture(it.second, it.first);
 		}
 		_reloadDirty = false;
 	}
 
-	Map<String, cocos2d::Texture2D *> release;
+	Map<TextureIndex, cocos2d::Texture2D *> release;
 	for (auto &it : _texturesScore) {
 		if (it.first->getReferenceCount() > 1) {
 			it.second.first = GetDelayTime();
 		} else {
 			if (it.second.first <= 0) {
-				release.insert(pair(it.second.second, it.first));
+				release.emplace(it.second.second, it.first);
 			} else {
 				it.second.first -= dt;
 			}
@@ -116,19 +111,11 @@ void TextureCache::update(float dt) {
 	}
 }
 
-GLProgramSet *TextureCache::getBatchPrograms() const {
+GLProgramSet *TextureCache::getPrograms() const {
 	if (s_textureCacheThread.isOnThisThread()) {
-		return _threadBatchDrawing;
+		return _threadProgramSet;
 	} else {
-		return _batchDrawing;
-	}
-}
-
-GLProgramSet *TextureCache::getRawPrograms() const {
-	if (s_textureCacheThread.isOnThisThread()) {
-		return _threadRawDrawing;
-	} else {
-		return _rawDrawing;
+		return _mainProgramSet;
 	}
 }
 
@@ -155,33 +142,40 @@ cocos2d::Texture2D::PixelFormat TextureCache::getPixelFormat(Bitmap::Format fmt)
 	return cocos2d::Texture2D::PixelFormat::AUTO;
 }
 
+
 void TextureCache::addTexture(const String &ifile, const Callback &cb, bool forceReload) {
+	addTexture(ifile, screen::density(), BitmapFormat::Auto, cb, forceReload);
+}
+void TextureCache::addTexture(const String &ifile, float density, const Callback &cb, bool forceReload) {
+	addTexture(ifile, density, BitmapFormat::Auto, cb, forceReload);
+}
+void TextureCache::addTexture(const String &ifile, float density, BitmapFormat fmt, const Callback &cb, bool forceReload) {
 	if (ifile.empty()) {
 		return;
 	}
 
-	String file(ifile);
-	auto pos = file.find("://");
+	TextureIndex index{ifile, fmt, density};
+	auto pos = index.file.find("://");
 	if (pos != String::npos) {
-		Url url(file);
+		Url url(index.file);
 		if (url.getScheme() == "file" && (url.getHost() == "localhost" || url.getHost().empty())) {
-			file = String("/") + toStringConcat(url.getPath(), '/');
+			index.file = String("/") + toStringConcat(url.getPath(), '/');
 		} else {
 			auto lib = AssetLibrary::getInstance();
-			auto path = getPathForUrl(file);
-			lib->getAsset([this, forceReload, cb] (Asset *a) {
+			auto path = getPathForUrl(index.file);
+			lib->getAsset([this, density, fmt, forceReload, cb] (Asset *a) {
 				if (a) {
-					addTexture(a, cb, forceReload);
+					addTexture(a, density, fmt, cb, forceReload);
 				} else {
 					cb(nullptr);
 				}
-			}, file, path, TimeInterval::seconds(10 * 24 * 60 * 60));
+			}, index.file, path, TimeInterval::seconds(10 * 24 * 60 * 60));
 			return;
 		}
 	}
 
 	if (!forceReload) {
-		auto it = _textures.find(file);
+		auto it = _textures.find(index);
 		if (it != _textures.end()) {
 			if (cb) {
 				cb(it->second);
@@ -190,7 +184,7 @@ void TextureCache::addTexture(const String &ifile, const Callback &cb, bool forc
 		}
 	}
 
-	auto cbIt = _callbackMap.find(file);
+	auto cbIt = _callbackMap.find(index);
 	if (cbIt != _callbackMap.end()) {
 		if (cb) {
 			cbIt->second.push_back(cb);
@@ -200,65 +194,55 @@ void TextureCache::addTexture(const String &ifile, const Callback &cb, bool forc
 		if (cb) {
 			vec.push_back(cb);
 		}
-		_callbackMap.insert(pair(file, vec));
+		_callbackMap.emplace(index, vec);
 
 		auto &thread = s_textureCacheThread;
         auto imagePtr = new Rc<cocos2d::Texture2D>;
-		thread.perform([this, file, imagePtr] (const Task &) -> bool {
-			Bitmap bitmap(filesystem::readFile(file));
-			if (bitmap) {
-				performWithGL([&] {
-					auto tex = Rc<cocos2d::Texture2D>::alloc();
-					tex->initWithDataThreadSafe(bitmap.dataPtr(), bitmap.size(), getPixelFormat(bitmap.format()), bitmap.width(), bitmap.height(), 0);
-					if (bitmap.alpha() == Bitmap::Alpha::Premultiplied) {
-						tex->setPremultipliedAlpha(true);
-					}
-					*imagePtr = tex;
-				});
-			} else {
-				log::format("TextureCache", "fail to open bitmap: %s", file.c_str());
-			}
+		thread.perform([this, index, imagePtr] (const Task &) -> bool {
+			*imagePtr = loadTexture(index);
 			return true;
-		}, [this, file, imagePtr] (const Task &, bool) {
+		}, [this, index, imagePtr] (const Task &, bool) {
 			auto image = *imagePtr;
 			if (image) {
-				auto texIt = _textures.find(file);
+				auto texIt = _textures.find(index);
 				if (texIt != _textures.end()) {
 					_texturesScore.erase(texIt->second);
 				}
 
-				_textures.insert(file, image);
-				_texturesScore.insert(pair(image, pair(GetDelayTime(), file)));
+				_textures.emplace(index, image);
+				_texturesScore.emplace(image, pair(GetDelayTime(), index));
 
-				auto it = _callbackMap.find(file);
+				auto it = _callbackMap.find(index);
 				if (it != _callbackMap.end()) {
 					for (auto &cb : it->second) {
 						cb(image);
 					}
+					_callbackMap.erase(it);
 				}
-				_callbackMap.erase(it);
 	            registerWithDispatcher();
 	        } else {
-				auto it = _callbackMap.find(file);
+				auto it = _callbackMap.find(index);
 				if (it != _callbackMap.end()) {
 					for (auto &cb : it->second) {
 						cb(nullptr);
 					}
+					_callbackMap.erase(it);
 				}
-				_callbackMap.erase(it);
 	        }
 			delete imagePtr;
 		});
 	}
 }
 
-struct TextureCacheAssetDownloader : public Ref {
+struct TextureCache::AssetDownloader : public Ref {
 	using Callback = Function<void(cocos2d::Texture2D *)>;
 
-	bool init(Asset *a, const Callback & cb, bool forceReload) {
+	bool init(Asset *a, float d, BitmapFormat fmt, const Callback & cb, bool forceReload) {
+		format = fmt;
+		density = d;
 		force = forceReload;
 		callback = cb;
-		listener.setCallback(std::bind(&TextureCacheAssetDownloader::onUpdate, this, std::placeholders::_1));
+		listener.setCallback(std::bind(&AssetDownloader::onUpdate, this, std::placeholders::_1));
 		listener = a;
 		if (listener->download()) {
 			enabled = true;
@@ -271,7 +255,7 @@ struct TextureCacheAssetDownloader : public Ref {
 	void onUpdate(data::Subscription::Flags f) {
 		if (enabled && (f.hasFlag(uint8_t(Asset::Update::FileUpdated)) || f.hasFlag(uint8_t(Asset::Update::DownloadFailed)))) {
 			if (listener->isReadAvailable()) {
-				TextureCache::getInstance()->addAssetTexture(listener, callback, force);
+				TextureCache::getInstance()->addAssetTexture(listener, density, format, callback, force);
 			} else {
 				callback(nullptr);
 			}
@@ -280,6 +264,8 @@ struct TextureCacheAssetDownloader : public Ref {
 		}
 	}
 
+	BitmapFormat format = BitmapFormat::Auto;
+	float density = screen::density();
 	bool enabled = false;
 	bool force = false;
 	Callback callback;
@@ -287,9 +273,15 @@ struct TextureCacheAssetDownloader : public Ref {
 };
 
 void TextureCache::addTexture(Asset *a, const Callback & cb, bool forceReload) {
+	addTexture(a, screen::density(), BitmapFormat::Auto, cb, forceReload);
+}
+void TextureCache::addTexture(Asset *a, float density, const Callback & cb, bool forceReload) {
+	addTexture(a, density, BitmapFormat::Auto, cb, forceReload);
+}
+void TextureCache::addTexture(Asset *a, float density, BitmapFormat fmt, const Callback & cb, bool forceReload) {
 	auto &file = a->getFilePath();
 	if (!forceReload) {
-		auto it = _textures.find(file);
+		auto it = _textures.find(TextureIndex{file, fmt, density});
 		if (it != _textures.end()) {
 			if (cb) {
 				cb(it->second);
@@ -299,16 +291,16 @@ void TextureCache::addTexture(Asset *a, const Callback & cb, bool forceReload) {
 	}
 
 	if (a->isDownloadAvailable()) {
-		Rc<TextureCacheAssetDownloader>::create(a, cb, forceReload);
+		Rc<AssetDownloader>::create(a, density, fmt, cb, forceReload);
 	} else {
-		addAssetTexture(a, cb, forceReload);
+		addAssetTexture(a, density, fmt, cb, forceReload);
 	}
 }
 
-void TextureCache::addAssetTexture(Asset *a, const Callback &cb, bool forceReload) {
+void TextureCache::addAssetTexture(Asset *a, float density, BitmapFormat fmt, const Callback &cb, bool forceReload) {
 	auto &file = a->getFilePath();
-	a->retainReadLock(this, [this, a, cb, file, forceReload] {
-		addTexture(file, [this, a, cb] (cocos2d::Texture2D *tex) {
+	a->retainReadLock(this, [this, a, density, fmt, cb, file, forceReload] {
+		addTexture(file, density, fmt, [this, a, cb] (cocos2d::Texture2D *tex) {
 			if (cb) {
 				cb(tex);
 			}
@@ -317,19 +309,17 @@ void TextureCache::addAssetTexture(Asset *a, const Callback &cb, bool forceReloa
 	});
 }
 
-bool TextureCache::hasTexture(const String &path) {
-	auto it = _textures.find(path);
+bool TextureCache::hasTexture(const String &path, float d, BitmapFormat fmt) {
+	auto it = _textures.find(TextureIndex{path, fmt, d});
 	return it != _textures.end();
 }
 
 TextureCache::TextureCache() {
-	_batchDrawing = Rc<GLProgramSet>::create(GLProgramSet::DrawNodeSet);
-	_rawDrawing = Rc<GLProgramSet>::create(GLProgramSet::RawDrawingSet);
+	_mainProgramSet = Rc<GLProgramSet>::create();
 
 	s_textureCacheThread.perform([this] (const Task &) -> bool {
 		performWithGL([&] {
-			_threadBatchDrawing = Rc<GLProgramSet>::create(GLProgramSet::DrawNodeSet);
-			_threadRawDrawing = Rc<GLProgramSet>::create(GLProgramSet::RawDrawingSet);
+			_threadProgramSet = Rc<GLProgramSet>::create();
 		});
 		return true;
 	});
@@ -398,10 +388,17 @@ void TextureCache::uploadTextureBackground(Vector<Rc<cocos2d::Texture2D>> &texs,
 }
 
 void TextureCache::addLoadedTexture(const String &str, cocos2d::Texture2D *tex) {
-	_textures.insert(str, tex);
+	addLoadedTexture(str, screen::density(), BitmapFormat::Auto, tex);
 }
-void TextureCache::removeLoadedTexture(const String &str) {
-	_textures.erase(str);
+void TextureCache::addLoadedTexture(const String &str, float d, cocos2d::Texture2D *tex) {
+	addLoadedTexture(str, d, BitmapFormat::Auto, tex);
+}
+void TextureCache::addLoadedTexture(const String &str, float d, BitmapFormat fmt, cocos2d::Texture2D *tex) {
+	_textures.emplace(TextureIndex{str, fmt, d}, tex);
+}
+
+void TextureCache::removeLoadedTexture(const String &str, float d, BitmapFormat fmt) {
+	_textures.erase(TextureIndex{str, fmt, d});
 }
 
 bool TextureCache::makeCurrentContext() {
@@ -430,13 +427,19 @@ void TextureCache::freeCurrentContext() {
 }
 
 void TextureCache::reloadTextures() {
-	_batchDrawing->reloadPrograms();
-	_rawDrawing->reloadPrograms();
+	_mainProgramSet->reloadPrograms();
+	if (_vectorCanvas) {
+		_vectorCanvas->drop();
+		_vectorCanvas = nullptr;
+	}
 
 	s_textureCacheThread.perform([this] (const Task &) -> bool {
+		if (_threadVectorCanvas) {
+			_threadVectorCanvas->drop();
+			_threadVectorCanvas = nullptr;
+		}
 		performWithGL([&] {
-			_threadBatchDrawing->reloadPrograms();
-			_threadRawDrawing->reloadPrograms();
+			_threadProgramSet->reloadPrograms();
 		});
 		return true;
 	});
@@ -457,6 +460,110 @@ Rc<cocos2d::Texture2D> TextureCache::uploadTexture(const Bitmap &bmp) {
 		}
 		return nullptr;
 	});
+}
+
+bool TextureCache::TextureIndex::operator < (const TextureIndex &other) const {
+	auto cmp = file.compare(other.file);
+	if (cmp == 0) {
+		if (fmt == other.fmt) {
+			return density < other.density;
+		} else {
+			return toInt(fmt) < toInt(other.fmt);
+		}
+	}
+	return cmp < 0;
+}
+
+bool TextureCache::TextureIndex::operator > (const TextureIndex &other) const {
+	auto cmp = file.compare(other.file);
+	if (cmp == 0) {
+		if (fmt == other.fmt) {
+			return density > other.density;
+		} else {
+			return toInt(fmt) > toInt(other.fmt);
+		}
+	}
+	return cmp > 0;
+}
+
+bool TextureCache::TextureIndex::operator == (const TextureIndex &other) const {
+	return file == other.file && fabs(density - other.density) <= std::numeric_limits<float>::epsilon() && fmt == other.fmt;
+}
+
+bool TextureCache::TextureIndex::operator != (const TextureIndex &other) const {
+	return !(*this == other);
+}
+
+void TextureCache::reloadTexture(cocos2d::Texture2D *tex, const TextureIndex &index) {
+	auto data = filesystem::readFile(index.file);
+	if (layout::Image::isSvg(data)) {
+		layout::Image img;
+		if (img.init(data)) {
+			if (!_vectorCanvas) {
+				_vectorCanvas = Rc<draw::Canvas>::create();
+			}
+			_vectorCanvas->begin(tex, Color4B());
+			_vectorCanvas->draw(img, Rect(0.0f, 0.0f, tex->getPixelsWide(), tex->getPixelsHigh()));
+			_vectorCanvas->end();
+		}
+	} else {
+		Bitmap bitmap(data);
+		if (bitmap) {
+			if (index.fmt != BitmapFormat::Auto) {
+				bitmap.convert(index.fmt);
+			}
+			tex->updateWithData(bitmap.dataPtr(), 0, 0, bitmap.width(), bitmap.height());
+			if (bitmap.alpha() == Bitmap::Alpha::Premultiplied) {
+				tex->setPremultipliedAlpha(true);
+			}
+		}
+	}
+}
+
+Rc<cocos2d::Texture2D> TextureCache::loadTexture(const TextureIndex &index) {
+	auto data = filesystem::readFile(index.file);
+	if (layout::Image::isSvg(data)) {
+		layout::Image img;
+		if (img.init(data)) {
+			BitmapFormat fmt = index.fmt;
+			if (index.fmt == BitmapFormat::Auto) {
+				fmt = img.detectFormat();
+			}
+
+			return performWithGL([&] {
+				auto tex = Rc<cocos2d::Texture2D>::create(getPixelFormat(fmt),
+						roundf(img.getWidth() * index.density), roundf(img.getHeight() * index.density),
+						cocos2d::Texture2D::InitAs::RenderTarget);
+				if (!_threadVectorCanvas) {
+					_threadVectorCanvas = Rc<draw::Canvas>::create();
+					_threadVectorCanvas->setQuality(draw::Canvas::QualityNormal);
+				}
+				_threadVectorCanvas->begin(tex, Color4B());
+				_threadVectorCanvas->draw(img, Rect(0.0f, 0.0f, tex->getPixelsWide(), tex->getPixelsHigh()));
+				_threadVectorCanvas->end();
+
+				return tex;
+			});
+		}
+	} else {
+		Bitmap bitmap(filesystem::readFile(index.file));
+		if (bitmap) {
+			if (index.fmt != BitmapFormat::Auto) {
+				bitmap.convert(index.fmt);
+			}
+			return performWithGL([&] {
+				auto tex = Rc<cocos2d::Texture2D>::alloc();
+				tex->initWithDataThreadSafe(bitmap.dataPtr(), bitmap.size(), getPixelFormat(bitmap.format()), bitmap.width(), bitmap.height(), 0);
+				if (bitmap.alpha() == Bitmap::Alpha::Premultiplied) {
+					tex->setPremultipliedAlpha(true);
+				}
+				return tex;
+			});
+		} else {
+			log::format("TextureCache", "fail to open bitmap: %s", index.file.data());
+		}
+	}
+	return nullptr;
 }
 
 NS_SP_END

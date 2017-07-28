@@ -25,46 +25,107 @@ THE SOFTWARE.
 
 #include "SPEventHandler.h"
 #include "renderer/CCGLProgram.h"
+#include "renderer/CCTexture2D.h"
 
 NS_SP_BEGIN
 
-class GLProgramSet : public Ref {
+class GLProgramDesc {
 public:
-	enum Program : uint32_t {
-		DrawNodeA8 = 1 << 0,
-		DynamicBatchI8 = 1 << 1,
-		DynamicBatchR8ToA8 = 1 << 2,
-		DynamicBatchAI88 = 1 << 3,
-		DynamicBatchA8Highp = 1 << 4, // for font on high-density screens
-		DynamicBatchColor = 1 << 5,
+	using PixelFormat = cocos2d::Texture2D::PixelFormat;
 
-		RawTexture = 1 << 6,
-		RawTextureColor = 1 << 7,
-		RawTextureColorA8 = 1 << 8,
-		RawTextureColorA8Highp = 1 << 9,
+	enum class Default : uint32_t {
+		DrawNodeA8,
+		DynamicBatchI8,
+		DynamicBatchR8ToA8,
+		DynamicBatchAI88,
+		DynamicBatchA8Highp, // for font on high-density screens
+		DynamicBatchColor,
 
-		RawRect = 1 << 10,
-		RawRectBorder = 1 << 11,
-		RawRects = 1 << 12,
-		RawAAMaskR = 1 << 13,
-		RawAAMaskRGBA = 1 << 14,
+		RawTexture,
+		RawTextureColor,
+		RawTextureColorA8,
+		RawTextureColorA8Highp,
 
-		DrawNodeSet = DrawNodeA8 | DynamicBatchI8 | DynamicBatchAI88 | DynamicBatchA8Highp | DynamicBatchColor | DynamicBatchR8ToA8,
-		RawDrawingSet = RawTexture | DynamicBatchA8Highp | RawRect | RawRectBorder | RawRects | RawAAMaskR | RawAAMaskRGBA,
-		DynamicBatchR8ToI8 = DynamicBatchI8,
+		RawRect,
+		RawRectBorder,
+		RawRects,
+		RawAAMaskR,
+		RawAAMaskRGBA,
 	};
 
-	bool init();
-	bool init(uint32_t mask);
+	enum class Attr : uint16_t {
+		None = 0,
 
-	cocos2d::GLProgram *getProgram(Program);
+		Color = 1 << 0,
+		TexCoords = 1 << 1,
+
+		HighP = 1 << 2,
+		MediumP = 1 << 3,
+
+		MatrixP = 1 << 4,
+		MatrixMVP = 1 << 5,
+
+		CustomRect = 1 << 6,
+		CustomBorder = 1 << 7,
+		CustomFill = 1 << 8,
+	};
+
+	GLProgramDesc(Default);
+	GLProgramDesc(Attr, PixelFormat internal = PixelFormat::AUTO, PixelFormat reference = PixelFormat::AUTO);
+
+	int32_t hash() const;
+
+	String makeVertex() const;
+	String makeFragment() const;
+
+	GLProgramDesc() = default;
+	GLProgramDesc(const GLProgramDesc &) = default;
+	GLProgramDesc(GLProgramDesc &&) = default;
+	GLProgramDesc &operator=(const GLProgramDesc &) = default;
+	GLProgramDesc &operator=(GLProgramDesc &&) = default;
+
+	bool operator < (const GLProgramDesc &) const;
+	bool operator > (const GLProgramDesc &) const;
+	bool operator == (const GLProgramDesc &) const;
+	bool operator != (const GLProgramDesc &) const;
+
+private:
+	enum class ColorHash : uint16_t {
+		None = 0,
+		TextureA8_Direct,
+		TextureI8_Direct,
+		Texture_Direct,
+		TextureA8_Ref,
+		TextureI8_Ref,
+		TextureAI88_Ref,
+		Draw_Direct,
+		Draw_AI88,
+		Draw_I8,
+		Draw_A8,
+	};
+
+	void set(Attr, PixelFormat internal = PixelFormat::AUTO, PixelFormat reference = PixelFormat::AUTO);
+
+	Attr flags = Attr::None;
+	ColorHash color = ColorHash::None;
+};
+
+SP_DEFINE_ENUM_AS_MASK(GLProgramDesc::Attr)
+
+class GLProgramSet : public Ref {
+public:
+	bool init();
+	// bool init(uint32_t mask);
+
+	cocos2d::GLProgram *getProgram(const GLProgramDesc &);
+	GLProgramDesc getProgramDesc(cocos2d::GLProgram *);
 
 	GLProgramSet();
 
 	void reloadPrograms();
 
 protected:
-	Map<Program, Rc<cocos2d::GLProgram>> _programs;
+	Map<GLProgramDesc, Rc<cocos2d::GLProgram>> _programs;
 };
 
 NS_SP_END
