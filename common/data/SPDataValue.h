@@ -51,6 +51,21 @@ struct __ValueTemplateTraits;
 template <typename Interface>
 class ValueTemplate;
 
+NS_SP_EXT_END(data)
+
+
+NS_SP_EXT_BEGIN(memory)
+
+template <typename Interface>
+struct mem_sso_test<data::ValueTemplate<Interface>> {
+	static constexpr bool value = true;
+};
+
+NS_SP_EXT_END(memory)
+
+
+NS_SP_EXT_BEGIN(data)
+
 template <typename Interface>
 class ValueTemplate : public Interface::AllocBaseType {
 public:

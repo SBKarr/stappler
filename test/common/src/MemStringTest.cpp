@@ -232,7 +232,7 @@ struct MemStringDataTest : MemPoolTest {
 			s.at(2) = 'x';
 
 			bool set = s.size() == "abx"_len && strcmp(s.data(), "abx") == 0;
-			bool cap = (s.capacity() == 7);
+			bool cap = (s.capacity() >= 7);
 			stream << s << " cap: " << s.capacity() << ", size: " << s.size();
 			return set && cap;
 		});
@@ -350,7 +350,8 @@ struct MemStringMetaTest : MemPoolTest {
 
 		runTest(stream, "capacity() test", count, passed, [&] {
 			String s {"Exemplar"};
-			bool t1 = s.capacity() == 8;
+			bool t1 = s.capacity() >= 8;
+			stream << s.capacity() << " ";
 
 			s += " is an example string.";
 			bool t2 = s.capacity() >= 30;

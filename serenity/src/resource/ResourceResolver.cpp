@@ -51,7 +51,7 @@ static Vector<String> parsePath(const String &path) {
 		}
 	}
 
-	return std::move(pathVec);
+	return pathVec;
 }
 
 static bool getSelectResource(storage::Resolver *resv, Vector<String> &path, bool &isSingleObject) {

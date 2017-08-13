@@ -120,6 +120,16 @@ struct __AllocatorTraits<T, true> {
 		memmove(dest, source, count * sizeof(T));
 	}
 
+	template <typename Alloc>
+	static void copy_rewrite(T *dest, size_t, const T *source, size_t count, Alloc &alloc) noexcept {
+		memmove(dest, source, count * sizeof(T));
+	}
+
+	template <typename Alloc>
+	static void move_rewrite(T *dest, size_t, T *source, size_t count, Alloc &alloc) noexcept {
+		memmove(dest, source, count * sizeof(T));
+	}
+
 	template <typename ...Args>
 	static void construct(T * p, Args &&...args) noexcept { }
 
@@ -132,7 +142,9 @@ template <typename T>
 struct __AllocatorTraits<T, false> {
 	template <typename Alloc>
 	static void copy(T *dest, const T *source, size_t count, Alloc &alloc) noexcept {
-		if (uintptr_t(dest) > uintptr_t(source)) {
+		if (dest == source) {
+			return;
+		} else if (uintptr_t(dest) > uintptr_t(source)) {
 			for (size_t i = count; i > 0; i--) {
 				alloc.construct(dest + i - 1, *(source + i - 1));
 			}
@@ -145,13 +157,73 @@ struct __AllocatorTraits<T, false> {
 
 	template <typename Alloc>
 	static void move(T *dest, T *source, size_t count, Alloc &alloc) noexcept {
-		if (uintptr_t(dest) > uintptr_t(source)) {
+		if (dest == source) {
+			return;
+		} else if (uintptr_t(dest) > uintptr_t(source)) {
 			for (size_t i = count; i > 0; i--) {
 				alloc.construct(dest + i - 1, std::move(*(source + i - 1)));
 				alloc.destroy(source + i - 1);
 			}
 		} else {
 			for (size_t i = 0; i < count; i++) {
+				alloc.construct(dest + i, std::move(*(source + i)));
+				alloc.destroy(source + i);
+			}
+		}
+	}
+
+	template <typename Alloc>
+	static void copy_rewrite(T *dest, size_t dcount, const T *source, size_t count, Alloc &alloc) noexcept {
+		if (dest == source) {
+			return;
+		} else if (uintptr_t(dest) > uintptr_t(source)) {
+			size_t i = count;
+			size_t m = std::min(count, dcount);
+			for (; i > m; i--) {
+				alloc.construct(dest + i - 1, *(source + i - 1));
+			}
+			for (; i > 0; i--) {
+				alloc.destroy(dest + i - 1);
+				alloc.construct(dest + i - 1, *(source + i - 1));
+			}
+		} else {
+			size_t i = 0;
+			size_t m = std::min(count, dcount);
+			for (; i < m; ++ i) {
+				alloc.destroy(dest + i);
+				alloc.construct(dest + i, *(source + i));
+			}
+			for (; i < count; ++ i) {
+				alloc.construct(dest + i, *(source + i));
+			}
+		}
+	}
+
+	template <typename Alloc>
+	static void move_rewrite(T *dest, size_t dcount, T *source, size_t count, Alloc &alloc) noexcept {
+		if (dest == source) {
+			return;
+		} else if (uintptr_t(dest) > uintptr_t(source)) {
+			size_t i = count;
+			size_t m = std::min(count, dcount);
+			for (; i > m; i--) {
+				alloc.construct(dest + i - 1, std::move(*(source + i - 1)));
+				alloc.destroy(source + i - 1);
+			}
+			for (; i > 0; i--) {
+				alloc.destroy(dest + i - 1);
+				alloc.construct(dest + i - 1, std::move(*(source + i - 1)));
+				alloc.destroy(source + i - 1);
+			}
+		} else {
+			size_t i = 0;
+			size_t m = std::min(count, dcount);
+			for (; i < m; ++ i) {
+				alloc.destroy(dest + i);
+				alloc.construct(dest + i, std::move(*(source + i)));
+				alloc.destroy(source + i);
+			}
+			for (; i < count; ++ i) {
 				alloc.construct(dest + i, std::move(*(source + i)));
 				alloc.destroy(source + i);
 			}
@@ -193,50 +265,65 @@ public:
 
     template <class U> struct rebind { using other = Allocator<U>; };
 
+	// default alignment for pool_t is 8-bit, so, we can store up to 3 flags in pool pointer
+
+    enum AllocFlag : uintptr_t {
+    	FirstFlag = 1,
+    	SecondFlag = 2,
+		ThirdFlag = 4,
+    	BitMask = 7,
+    };
+
+private:
+    static pool_t *pool_ptr(pool_t *p) {
+    	return (pool_t *)(uintptr_t(p) & ~toInt(BitMask));
+    }
+
+public:
     // Default allocator uses pool from top of thread's AllocStack
     Allocator() noexcept : pool(pool::acquire()) { }
     Allocator(pool_t *p) noexcept : pool(p) { }
 
-	template<class B> Allocator(const Allocator<B> &a) : pool(a.getPool()) { }
-	template<class B> Allocator(Allocator<B> &&a) : pool(a.getPool()) { }
+	template<class B> Allocator(const Allocator<B> &a) noexcept : pool(a.getPool()) { }
+	template<class B> Allocator(Allocator<B> &&a) noexcept : pool(a.getPool()) { }
 
-	template<class B> Allocator<T> & operator = (const Allocator<B> &a) { pool = a.pool; return *this; }
-	template<class B> Allocator<T> & operator = (Allocator<B> &&a) { pool = a.pool; return *this; }
+	template<class B> Allocator<T> & operator = (const Allocator<B> &a) noexcept { pool = pool_ptr(a.pool); return *this; }
+	template<class B> Allocator<T> & operator = (Allocator<B> &&a) noexcept { pool = pool_ptr(a.pool); return *this; }
 
 	T * allocate(size_t n) {
 		size_t size = sizeof(T) * n;
-		return (T *)pool::alloc(pool, size);
+		return (T *)pool::alloc(pool_ptr(pool), size);
 	}
 
 	T * __allocate(size_t &n) {
 		size_t size = sizeof(T) * n;
-		auto ptr = (T *)pool::alloc(pool, size);
+		auto ptr = (T *)pool::alloc(pool_ptr(pool), size);
 		n = size / sizeof(T);
 		return ptr;
 	}
 
 	T * __allocate(size_t n, size_t &bytes) {
 		size_t size = sizeof(T) * n;
-		auto ptr = (T *)pool::alloc(pool, size);
+		auto ptr = (T *)pool::alloc(pool_ptr(pool), size);
 		bytes = size;
 		return ptr;
 	}
 
 	void deallocate(T *t, size_t n) {
-		pool::free(pool, t, n * sizeof(T));
+		pool::free(pool_ptr(pool), t, n * sizeof(T));
 	}
 
 	void __deallocate(T *t, size_t n, size_t bytes) {
-		pool::free(pool, t, bytes);
+		pool::free(pool_ptr(pool), t, bytes);
 	}
 
-	template<class B> inline bool operator == (const Allocator<B> &p) const { return p.pool == pool; }
-	template<class B> inline bool operator != (const Allocator<B> &p) const { return p.pool != pool; }
+	template<class B> inline bool operator == (const Allocator<B> &p) const noexcept { return pool_ptr(p.pool) == pool_ptr(pool); }
+	template<class B> inline bool operator != (const Allocator<B> &p) const noexcept { return pool_ptr(p.pool) != pool_ptr(pool); }
 
-	inline pointer address(reference r) const { return &r; }
-	inline const_pointer address(const_reference r) const { return &r; }
+	inline pointer address(reference r) const noexcept { return &r; }
+	inline const_pointer address(const_reference r) const noexcept { return &r; }
 
-	size_type max_size() { return NumericLimits<size_type>::max(); }
+	size_type max_size() const noexcept { return NumericLimits<size_type>::max(); }
 
 	template <typename ...Args>
 	void construct(pointer p, Args &&...args) {
@@ -251,18 +338,29 @@ public:
 		__AllocatorTraits<T, !std::is_destructible<T>::value>::destroy(p, size);
 	}
 
-	operator pool_t * () const { return pool; }
-	pool_t *getPool() const { return pool; }
+	operator pool_t * () const noexcept { return pool_ptr(pool); }
+	pool_t *getPool() const noexcept { return pool_ptr(pool); }
 
-	void copy(T *dest, const T *source, size_t count) {
+	void copy(T *dest, const T *source, size_t count) noexcept {
 		__AllocatorTraits<T, __AllocatorTriviallyCopyable<T>::value>::copy(dest, source, count, *this);
 	}
-
-	void move(T *dest, T *source, size_t count) {
-		__AllocatorTraits<T, __AllocatorTriviallyMoveable<T>::value>::move(dest, source, count, *this);
+	void copy_rewrite(T *dest, size_t dcount, const T *source, size_t count) noexcept {
+		__AllocatorTraits<T, __AllocatorTriviallyCopyable<T>::value>::copy_rewrite(dest, dcount, source, count, *this);
 	}
 
-protected:
+	void move(T *dest, T *source, size_t count) noexcept {
+		__AllocatorTraits<T, __AllocatorTriviallyMoveable<T>::value>::move(dest, source, count, *this);
+	}
+	void move_rewrite(T *dest, size_t dcount, T *source, size_t count) noexcept {
+		__AllocatorTraits<T, __AllocatorTriviallyMoveable<T>::value>::move_rewrite(dest, dcount, source, count, *this);
+	}
+
+	bool test(AllocFlag f) const { return (uintptr_t(pool) & toInt(f)) != uintptr_t(0); }
+	void set(AllocFlag f) { pool = (pool_t *)(uintptr_t(pool) | toInt(f)); }
+	void reset(AllocFlag f) {pool = (pool_t *)(uintptr_t(pool) & ~toInt(f)); }
+	void flip(AllocFlag f) { pool = (pool_t *)(uintptr_t(pool) ^ toInt(f)); }
+
+private:
 	pool_t *pool = nullptr;
 };
 

@@ -316,16 +316,13 @@ apr::weak_string Request::getUseragentIp() const {
 
 /* request params setters */
 void Request::setDocumentRoot(apr::string &&str) {
-	ap_set_document_root(_request, str.c_str());
-	str.force_clear();
+	ap_set_document_root(_request, str.extract());
 }
 void Request::setContentType(apr::string &&str) {
-	ap_set_content_type(_request, str.c_str());
-	str.force_clear();
+	ap_set_content_type(_request, str.extract());
 }
 void Request::setHandler(apr::string &&str) {
-	_request->handler = str.c_str();
-	str.force_clear();
+	_request->handler = str.extract();
 }
 
 void Request::setCookie(const String &name, const String &value, TimeInterval maxAge, CookieFlags flags, const String &path) {
@@ -422,21 +419,18 @@ User *Request::getAuthorizedUser() const {
 }
 
 void Request::setContentEncoding(apr::string &&str) {
-	_request->content_encoding = str.c_str();
-	str.force_clear();
+	_request->content_encoding = str.extract();
 }
 void Request::setFilename(apr::string &&str) {
-	_request->filename = str.data();
+	_request->filename = str.extract();
 	_request->canonical_filename = _request->filename;
 	apr_stat(&_request->finfo, _request->filename, APR_FINFO_NORM, pool());
-	str.force_clear();
 }
 
 void Request::setStatus(int status, apr::string && str) {
 	_request->status = status;
 	if (!str.empty()) {
-		_request->status_line = str.c_str();
-		str.force_clear();
+		_request->status_line = str.extract();
 	} else {
 		_request->status_line = ap_get_status_line(status);
 	}

@@ -242,7 +242,7 @@ data::Value Scheme::create(Adapter *adapter, const data::Value &data, bool isPro
 	}
 
 	if (adapter->createObject(this, changeSet)) {
-		return std::move(changeSet);
+		return changeSet;
 	} else {
 		if (patch.isDictionary()) {
 			purgeFilePatch(adapter, patch);

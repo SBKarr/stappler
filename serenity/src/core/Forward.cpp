@@ -34,7 +34,7 @@ THE SOFTWARE.
 NS_SA_EXT_BEGIN(idn)
 
 using HostUnicodeChars = chars::Compose<char, chars::CharGroup<char, CharGroupId::Alphanumeric>,
-		chars::Chars<char, '.', '-'>, chars::Range<char, 128, 255>>;
+		chars::Chars<char, '.', '-'>, chars::Range<char, char(128), char(255)>>;
 
 using HostAsciiChars = chars::Compose<char, chars::CharGroup<char, CharGroupId::Alphanumeric>,
 		chars::Chars<char, '.', '-'>>;
@@ -169,7 +169,7 @@ bool validateEmail(String &str) {
 	using namespace chars;
 	using LocalChars = Compose<char, CharGroup<char, CharGroupId::Alphanumeric>,
 			Chars<char, '_', '-', '+', '#', '!', '$', '%', '&', '\'', '*', '/', '=', '?', '^', '`', '{', '}', '|', '~' >,
-			Range<char, 128, 255>>;
+			Range<char, char(128), char(255)>>;
 
 	using Whitespace =  CharGroup<char, CharGroupId::WhiteSpace>;
 
@@ -355,7 +355,7 @@ Bytes makePassword(const String &str, const String &key) {
 	hash_ctx.update(source);
 	hash_ctx.final(passwdKey.data() + 16);
 
-	return std::move(passwdKey);
+	return passwdKey;
 }
 
 bool validatePassord(const String &str, const Bytes &passwd, const String &key) {

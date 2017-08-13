@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define TEST_COMMON_SRC_TEST_H_
 
 #include "SPCommon.h"
+#include "SPDataValue.h"
 
 NS_SP_BEGIN
 
@@ -70,6 +71,8 @@ struct MemPoolTest : Test {
 	using Vector = memory::vector<T>;
 
 	using pool_t = memory::pool_t;
+
+	using Value = data::ValueTemplate<memory::PoolInterface>;
 
 	MemPoolTest(const stappler::String &str) : Test(str) { }
 

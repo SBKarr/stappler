@@ -92,7 +92,7 @@ data::Value Field::getTypeDesc() const {
 		}
 		break;
 	case storage::Type::Array:
-		return data::Value("array:" + static_cast<const FieldArray *>(slot)->tfield.getTypeDesc());
+		return data::Value("array:" + static_cast<const FieldArray *>(slot)->tfield.getTypeDesc().asString());
 		break;
 	case storage::Type::File: return data::Value("file"); break;
 	case storage::Type::Image: return data::Value("image"); break;

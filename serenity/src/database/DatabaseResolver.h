@@ -56,7 +56,7 @@ public:
 	virtual Resource *getResult() override;
 
 protected:
-	class Subquery;
+	struct Subquery;
 	class ResourceReslist;
 	class ResourceObject;
 	class ResourceSet;

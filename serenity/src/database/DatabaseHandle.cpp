@@ -1389,7 +1389,6 @@ int64_t Handle::processBroadcasts(Server &serv, int64_t value) {
 		for (auto &it : ret.data) {
 			if (it.size() >= 3) {
 				auto msgId = apr_strtoi64(it.front().c_str(), nullptr, 10);
-				auto msgDate = apr_strtoi64(it.at(1).c_str(), nullptr, 10);
 				auto &msgStr = it.at(2);
 				Bytes msgData;
 				if (msgStr.compare(0, 2, "\\x") == 0) {

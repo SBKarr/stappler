@@ -94,7 +94,7 @@ using AllocPool = apr::AllocPool;
 
 class Session;
 class User;
-class InputFile;
+struct InputFile;
 
 NS_SA_END
 

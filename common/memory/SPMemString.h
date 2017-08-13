@@ -126,7 +126,7 @@ public:
 		return *this;
 	}
 
-	allocator_type get_allocator() const noexcept { return _mem._allocator; }
+	allocator_type get_allocator() const noexcept { return _mem.get_allocator(); }
 
 	iterator begin() noexcept { return _mem.begin(); }
 	iterator end() noexcept { return _mem.end(); }
@@ -333,7 +333,7 @@ public:
 		return *this;
 	}
 	basic_string& replace (const_iterator i1, const_iterator i2, const basic_string& str) {
-		_mem.replace(i1 - _mem._ptr, i2 - i1, str._mem);
+		_mem.replace(i1 - _mem.data(), i2 - i1, str._mem);
 		return *this;
 	}
 
@@ -348,7 +348,7 @@ public:
 		return *this;
 	}
 	basic_string& replace (const_iterator i1, const_iterator i2, const charT* s) {
-		_mem.replace(i1 - _mem._ptr, i2 - i1, s, traits_type::length(s));
+		_mem.replace(i1 - _mem.data(), i2 - i1, s, traits_type::length(s));
 		return *this;
 	}
 
@@ -357,7 +357,7 @@ public:
 		return *this;
 	}
 	basic_string& replace (const_iterator i1, const_iterator i2, const charT* s, size_type n) {
-		_mem.replace(i1 - _mem._ptr, i2 - i1, s, n);
+		_mem.replace(i1 - _mem.data(), i2 - i1, s, n);
 		return *this;
 	}
 
@@ -366,7 +366,7 @@ public:
 		return *this;
 	}
 	basic_string& replace (const_iterator i1, const_iterator i2, size_type n, charT c) {
-		_mem.replace(i1 - _mem._ptr, i2 - i1, n, c);
+		_mem.replace(i1 - _mem.data(), i2 - i1, n, c);
 		return *this;
 	}
 
@@ -386,8 +386,8 @@ public:
 	charT* data() noexcept { return _mem.data(); }
 
 	size_type copy (charT* s, size_type len, size_type pos = 0) const {
-		len = std::min(len, _mem._used - pos);
-		memcpy(s, _mem._ptr + pos, len * sizeof(charT));
+		len = std::min(len, _mem.size() - pos);
+		memcpy(s, _mem.data() + pos, len * sizeof(charT));
 		return len;
 	}
 
@@ -576,7 +576,7 @@ public: /* APR extensions */
 	}
 
 	basic_string& assign_wrap(CharType *str, size_type l) {
-		_mem.assign_mem(str, l);
+		_mem.assign_mem(str, l, l + 1);
 		return *this;
 	}
 
@@ -585,14 +585,9 @@ public: /* APR extensions */
 		return *this;
 	}
 
-	// Force-clear is a clear function, that prevent memory to be returned
-	// to manager. It is used when string is moved into non-STL-like container
-	// e.g. apr::table.
-	//
-	// After force_clear current memory block is invalidated, so, new block
-	// will be allocated on next mutate call
-	void force_clear() {
-		_mem.force_clear();
+	// Extract should be used to capture string memory for non-STL-like container, e.g. apr::table.
+	CharType *extract() {
+		return _mem.extract();
 	}
 
 protected:
@@ -794,7 +789,7 @@ template< class CharT > bool operator>=( const CharT* lhs, const basic_string<Ch
 template<typename _CharT> typename basic_string<_CharT>::size_type
 basic_string<_CharT>:: find(const _CharT* __s, size_type __pos, size_type __n) const {
 	const size_type __size = this->size();
-	const _CharT* __data = _mem._ptr;
+	const _CharT* __data = _mem.data();
 
 	if (__n == 0) {
 		return __pos <= __size ? __pos : npos;
@@ -813,7 +808,7 @@ basic_string<_CharT>::find(_CharT __c, size_type __pos) const {
 	size_type __ret = npos;
 	const size_type __size = this->size();
 	if (__pos < __size) {
-		const _CharT* __data = _mem._ptr;
+		const _CharT* __data = _mem.data();
 		const size_type __n = __size - __pos;
 		const _CharT* __p = traits_type::find(__data + __pos, __n, __c);
 		if (__p)
@@ -827,7 +822,7 @@ basic_string<_CharT>::rfind(const _CharT* __s, size_type __pos, size_type __n) c
 	const size_type __size = this->size();
 	if (__n <= __size) {
 		__pos = min(size_type(__size - __n), __pos);
-		const _CharT* __data = _mem._ptr;
+		const _CharT* __data = _mem.data();
 		do {
 			if (traits_type::compare(__data + __pos, __s, __n) == 0)
 				return __pos;
@@ -844,7 +839,7 @@ basic_string<_CharT>::rfind(_CharT __c, size_type __pos) const {
 		if (--__size > __pos)
 			__size = __pos;
 		for (++__size; __size-- > 0; )
-			if (traits_type::eq(_mem._ptr[__size], __c))
+			if (traits_type::eq(_mem.data()[__size], __c))
 		return __size;
 	}
 	return npos;
@@ -853,7 +848,7 @@ basic_string<_CharT>::rfind(_CharT __c, size_type __pos) const {
 template<typename _CharT> typename basic_string<_CharT>::size_type
 basic_string<_CharT>::find_first_of(const _CharT* __s, size_type __pos, size_type __n) const {
 	for (; __n && __pos < this->size(); ++__pos) {
-		const _CharT* __p = traits_type::find(__s, __n, _mem._ptr[__pos]);
+		const _CharT* __p = traits_type::find(__s, __n, _mem.data()[__pos]);
 		if (__p)
 			return __pos;
 	}
@@ -867,7 +862,7 @@ basic_string<_CharT>:: find_last_of(const _CharT* __s, size_type __pos, size_typ
 		if (--__size > __pos)
 			__size = __pos;
 		do {
-			if (traits_type::find(__s, __n, _mem._ptr[__size]))
+			if (traits_type::find(__s, __n, _mem.data()[__size]))
 			return __size;
 		} while (__size-- != 0);
 	}
@@ -877,7 +872,7 @@ basic_string<_CharT>:: find_last_of(const _CharT* __s, size_type __pos, size_typ
 template<typename _CharT> typename basic_string<_CharT>::size_type
 basic_string<_CharT>::find_first_not_of(const _CharT* __s, size_type __pos, size_type __n) const  {
 	for (; __pos < this->size(); ++__pos)
-		if (!traits_type::find(__s, __n, _mem._ptr[__pos]))
+		if (!traits_type::find(__s, __n, _mem.data()[__pos]))
 			return __pos;
 	return npos;
 }
@@ -885,7 +880,7 @@ basic_string<_CharT>::find_first_not_of(const _CharT* __s, size_type __pos, size
 template<typename _CharT> typename basic_string<_CharT>::size_type
 basic_string<_CharT>::find_first_not_of(_CharT __c, size_type __pos) const {
 	for (; __pos < this->size(); ++__pos)
-		if (!traits_type::eq(_mem._ptr[__pos], __c))
+		if (!traits_type::eq(_mem.data()[__pos], __c))
 			return __pos;
 	return npos;
 }
@@ -897,7 +892,7 @@ basic_string<_CharT>:: find_last_not_of(const _CharT* __s, size_type __pos, size
 		if (--__size > __pos)
 			__size = __pos;
 		do {
-			if (!traits_type::find(__s, __n, _mem._ptr[__size]))
+			if (!traits_type::find(__s, __n, _mem.data()[__size]))
 			return __size;
 		} while (__size--);
 	}
@@ -911,7 +906,7 @@ basic_string<_CharT>::find_last_not_of(_CharT __c, size_type __pos) const {
 		if (--__size > __pos)
 			__size = __pos;
 		do {
-			if (!traits_type::eq(_mem._ptr[__size], __c))
+			if (!traits_type::eq(_mem.data()[__size], __c))
 			return __size;
 		} while (__size--);
 	}

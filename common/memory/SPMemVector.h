@@ -39,7 +39,7 @@ public:
 
 	using size_type = size_t;
 	using value_type = Type;
-	using mem_type = storage_mem<Type>;
+	using mem_type = storage_mem<Type, 0>;
 	using self = vector<Type>;
 
 	using iterator = typename mem_type::iterator;
@@ -239,7 +239,7 @@ public:
 		_mem.force_clear();
 	}
 protected:
-	storage_mem<Type> _mem;
+	mem_type _mem;
 };
 
 template<typename _Tp> inline bool

@@ -47,13 +47,6 @@ R"Html(<body onload="init();">
 	<div id="content" class="content"></div>
 </body></html>)Html";
 
-constexpr static const char * HTML_API_BEGIN = R"Html(
-	<div class="sidebar">)Html";
-
-constexpr static const char * HTML_API_END =
-R"Html(</div><div id="content" class="content"></div></body></html>)Html";
-
-
 struct HtmlJsonEncoder {
 	HtmlJsonEncoder(std::basic_ostream<char> &s, bool trackActions = false)
 	: stream(&s), trackActions(trackActions) { }

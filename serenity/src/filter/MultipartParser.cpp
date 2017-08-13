@@ -535,7 +535,7 @@ void MultipartParser::readData(Reader &r) {
 				}
 				buf.clear();
 			} else if (data == Data::FileAsData) {
-				root.setValue(std::move(dataBuf.extract()), std::move(name));
+				root.setValue(dataBuf.extract(), std::move(name));
 				dataBuf.clear();
 			}
 			match = 0;

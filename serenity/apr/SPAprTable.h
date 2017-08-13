@@ -129,9 +129,7 @@ protected:
 
 	const char *emplace_string(apr::string &&str) {
 		if (get_allocator() == str.get_allocator()) {
-			auto ret = str.data();
-			str.force_clear();
-			return ret;
+			return str.extract();
 		} else {
 			return clone_string(str);
 		}
