@@ -192,7 +192,7 @@ void Button::onPressCancel() {
 }
 
 void Button::onOpenMenuSource() {
-	construct<FloatingMenu>(_floatingMenuSource, _touchPoint);
+	FloatingMenu::push(_floatingMenuSource, _touchPoint);
 }
 
 void Button::setEnabled(bool value) {

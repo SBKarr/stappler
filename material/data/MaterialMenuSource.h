@@ -65,30 +65,31 @@ protected:
 
 class MenuSourceCustom : public MenuSourceItem {
 public:
-	using FactoryFunction = Function<cocos2d::Node *()>;
+	using FactoryFunction = Function<Rc<cocos2d::Node>()>;
+	using HeightFunction = Function<float(float)>;
 
 	virtual bool init() override;
-	virtual bool init(float h, const FactoryFunction &func, bool relative = false);
+	virtual bool init(float h, const FactoryFunction &func, float minWidth = 0.0f);
+	virtual bool init(const HeightFunction &h, const FactoryFunction &func, float minWidth = 0.0f);
+
 	virtual Rc<MenuSourceItem> copy() override;
 
-	virtual float getHeight() const;
+	virtual float getMinWidth() const;
+	virtual float getHeight(float) const;
+	virtual const HeightFunction & getHeightFunction() const;
 	virtual const FactoryFunction & getFactoryFunction() const;
 
-	virtual void setMinWidth(float w);
-	virtual float getMinWidth() const;
-
-	virtual void setRelativeHeight(bool value);
-	virtual bool isRelativeHeight() const;
 protected:
-	float _height = 0.0f;
 	float _minWidth = 0.0f;
-	bool _relativeHeight = false;
+	HeightFunction _heightFunction = nullptr;
 	FactoryFunction _function = nullptr;
 };
 
 class MenuSource : public data::Subscription {
 public:
-	typedef Function<void (Button *b, MenuSourceButton *)> Callback;
+	using Callback = Function<void (Button *b, MenuSourceButton *)>;
+	using FactoryFunction = MenuSourceCustom::FactoryFunction;
+	using HeightFunction = MenuSourceCustom::HeightFunction;
 
 	virtual bool init() { return true; }
 	virtual ~MenuSource();
@@ -98,7 +99,8 @@ public:
 	void addItem(MenuSourceItem *);
 	Rc<MenuSourceButton> addButton(const String &, const Callback & = nullptr);
 	Rc<MenuSourceButton> addButton(const String &, IconName, const Callback & = nullptr);
-	Rc<MenuSourceCustom> addCustom(float h, const MenuSourceCustom::FactoryFunction &func, bool rel = false);
+	Rc<MenuSourceCustom> addCustom(float h, const FactoryFunction &func, float minWidth = 0.0f);
+	Rc<MenuSourceCustom> addCustom(const HeightFunction &h, const FactoryFunction &func, float minWidth = 0.0f);
 	Rc<MenuSourceItem> addSeparator();
 
 	void clear();
@@ -117,15 +119,15 @@ public:
 
 	virtual ~MenuSourceButton();
 
-	virtual bool init(const std::string &, IconName, const Callback &);
+	virtual bool init(const String &, IconName, const Callback &);
 	virtual bool init() override;
 	virtual Rc<MenuSourceItem> copy() override;
 
-	virtual void setName(const std::string &);
-	virtual const std::string & getName() const;
+	virtual void setName(const String &);
+	virtual const String & getName() const;
 
-	virtual void setValue(const std::string &);
-	virtual const std::string & getValue() const;
+	virtual void setValue(const String &);
+	virtual const String & getValue() const;
 
 	virtual void setNameIcon(IconName icon);
 	virtual IconName getNameIcon() const;
@@ -141,9 +143,10 @@ public:
 
 	virtual void setSelected(bool value);
 	virtual bool isSelected() const;
+
 protected:
-	std::string _name;
-	std::string _value;
+	String _name;
+	String _value;
 
 	IconName _nameIcon = IconName::None;
 	IconName _valueIcon = IconName::None;

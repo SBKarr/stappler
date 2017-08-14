@@ -105,7 +105,9 @@ public:
 	}
 
 	void assign(allocator &a, const_pointer ptr, size_type count) {
-		reserve(a, count);
+		if (_allocated < count) {
+			reserve(a, count);
+		}
 		a.copy_rewrite(data(), size(), ptr, count);
 		if (_used > count) {
 			a.destroy(data() + count, _used - count);
@@ -115,7 +117,9 @@ public:
 	}
 
 	void move_assign(allocator &a, pointer ptr, size_type count) {
-		reserve(a, count);
+		if (_allocated < count) {
+			reserve(a, count);
+		}
 		a.move_rewrite(_ptr, _used, ptr, count);
 		if (_used > count) {
 			a.destroy(data() + count, _used - count);

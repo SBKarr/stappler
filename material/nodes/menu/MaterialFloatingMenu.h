@@ -35,9 +35,14 @@ public:
 		Relative,
 		OriginLeft,
 		OriginRight,
+		Anchor,
 	};
 
-	virtual bool init(MenuSource *source, const cocos2d::Vec2 &, Binding = Binding::Relative, FloatingMenu *root = nullptr);
+	static void push(MenuSource *source, const Vec2 &, Binding = Binding::Relative, FloatingMenu *root = nullptr);
+
+	virtual bool init(MenuSource *source, FloatingMenu *root = nullptr);
+
+	virtual void pushMenu(const Vec2 &, Binding = Binding::Relative);
 
 	virtual void setCloseCallback(const CloseCallback &);
 	virtual const CloseCallback & getCloseCallback() const;
@@ -53,13 +58,11 @@ public:
 protected:
 	virtual void onCapturedTap();
 	virtual float getMenuWidth(MenuSource *source);
-	virtual float getMenuHeight(MenuSource *source);
+	virtual float getMenuHeight(float width, MenuSource *source);
 	virtual void layoutSubviews() override;
 
-	ForegroundLayer *_foreground = nullptr;
-	Vec2 _origin;
+	Binding _binding = Binding::Relative;
 	Size _fullSize;
-	Binding _binding;
 	FloatingMenu *_root = nullptr;
 	CloseCallback _closeCallback = nullptr;
 };

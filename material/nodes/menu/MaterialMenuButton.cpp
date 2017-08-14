@@ -213,10 +213,10 @@ void MenuButton::onButton() {
 			float pointRight = size.width - posRight.x;
 
 			if (pointRight >= pointLeft) {
-				construct<FloatingMenu>(nextMenu, posRight, FloatingMenu::Binding::OriginRight,
+				FloatingMenu::push(nextMenu, posRight, FloatingMenu::Binding::OriginRight,
 						dynamic_cast<FloatingMenu *>(_menu));
 			} else {
-				construct<FloatingMenu>(nextMenu, posLeft, FloatingMenu::Binding::OriginLeft,
+				FloatingMenu::push(nextMenu, posLeft, FloatingMenu::Binding::OriginLeft,
 						dynamic_cast<FloatingMenu *>(_menu));
 			}
 		}

@@ -37,69 +37,96 @@ THE SOFTWARE.
 
 NS_MD_BEGIN
 
-bool FloatingMenu::init(MenuSource *source, const cocos2d::Vec2 &globalOrigin, Binding b, FloatingMenu *root) {
+void FloatingMenu::push(MenuSource *source, const Vec2 &globalOrigin, Binding b, FloatingMenu *root) {
+	auto m = Rc<FloatingMenu>::create(source, root);
+	m->pushMenu(globalOrigin, b);
+}
+
+bool FloatingMenu::init(MenuSource *source, FloatingMenu *root) {
 	if (!Menu::init(source)) {
 		return false;
 	}
 
-	_binding = b;
-	_origin = globalOrigin;
 	setMenuButtonCallback(std::bind(&FloatingMenu::onMenuButton, this, std::placeholders::_1));
 
-	auto scene = Scene::getRunningScene();
-	_foreground = scene->getForegroundLayer();
+	float w = getMenuWidth(source);
+	float h = getMenuHeight(w, source);
 
-	auto origin = _foreground->convertToNodeSpace(globalOrigin);
-	setPositionY(origin.y);
+	_fullSize = Size(w, h);
+	_root = root;
+	_scroll->setVisible(false);
+
+	setShadowZIndex(1.5f);
+
+	return true;
+}
+
+void FloatingMenu::pushMenu(const Vec2 &o, Binding b) {
+	_binding = b;
+
+	auto scene = Scene::getRunningScene();
+	auto f = scene->getForegroundLayer();
+
+	auto origin = f->convertToNodeSpace(o);
 
 	float incr = metrics::horizontalIncrement();
 	auto &size = scene->getViewSize();
 
-	float w = getMenuWidth(source);
-	float h = getMenuHeight(source);
-
-	if (b == Binding::Relative) {
+	switch (b) {
+	case Binding::Relative:
+		setPositionY(origin.y);
 		if (origin.x < incr / 4) {
 			setPositionX(incr / 4);
-			setAnchorPoint(cocos2d::Vec2(0, 1.0f));
+			setAnchorPoint(Vec2(0, 1.0f));
 		} else if (origin.x > size.width - incr / 4) {
 			setPositionX(size.width - incr / 4);
-			setAnchorPoint(cocos2d::Vec2(1, 1.0f));
+			setAnchorPoint(Vec2(1, 1.0f));
 		} else {
 			float rel = (origin.x - incr / 4) / (size.width - incr / 2);
 			setPositionX(origin.x);
-			setAnchorPoint(cocos2d::Vec2(rel, 1.0f));
+			setAnchorPoint(Vec2(rel, 1.0f));
 		}
-		setContentSize(cocos2d::Size(1, 1));
-	} else if (b == Binding::OriginLeft) {
-		if (origin.x - incr / 4 < w) {
-			setAnchorPoint(cocos2d::Vec2(0, 1.0f));
+		setContentSize(Size(1, 1));
+		break;
+	case Binding::OriginLeft:
+		setPositionY(origin.y);
+		if (origin.x - incr / 4 < _fullSize.width) {
+			setAnchorPoint(Vec2(0, 1.0f));
 			setPositionX(incr / 4);
 		} else {
-			setAnchorPoint(cocos2d::Vec2(1, 1.0f));
+			setAnchorPoint(Vec2(1, 1.0f));
 			setPositionX(origin.x);
 		}
-		setContentSize(cocos2d::Size(w, 1));
-	} else if (b == Binding::OriginRight) {
-		if (size.width - origin.x - incr / 4 < w) {
-			setAnchorPoint(cocos2d::Vec2(1, 1.0f));
+		setContentSize(Size(_fullSize.width, 1));
+		break;
+	case Binding::OriginRight:
+		setPositionY(origin.y);
+		if (size.width - origin.x - incr / 4 < _fullSize.width) {
+			setAnchorPoint(Vec2(1, 1.0f));
 			setPositionX(size.width - incr / 4);
 		} else {
-			setAnchorPoint(cocos2d::Vec2(0, 1.0f));
+			setAnchorPoint(Vec2(0, 1.0f));
 			setPositionX(origin.x);
 		}
-		setContentSize(cocos2d::Size(w, 1));
+		setContentSize(Size(_fullSize.width, 1));
+		break;
+	case Binding::Anchor:
+		setPosition(origin);
+
+		break;
 	}
 
-	if (h > origin.y - incr / 4) {
-		if (origin.y - incr / 4 < incr * 4) {
-			if (h > incr * 4) {
-				h = incr * 4;
-			}
+	if (b != Binding::Anchor) {
+		if (_fullSize.height > origin.y - incr / 4) {
+			if (origin.y - incr / 4 < incr * 4) {
+				if (_fullSize.height > incr * 4) {
+					_fullSize.height = incr * 4;
+				}
 
-			setPositionY(h + incr / 4);
-		} else {
-			h = origin.y - incr / 4;
+				setPositionY(_fullSize.height + incr / 4);
+			} else {
+				_fullSize.height = origin.y - incr / 4;
+			}
 		}
 	}
 
@@ -107,23 +134,16 @@ bool FloatingMenu::init(MenuSource *source, const cocos2d::Vec2 &globalOrigin, B
 		setPositionY(size.height - incr / 4);
 	}
 
-	_root = root;
-	_fullSize = cocos2d::Size(w, h);
-	_scroll->setVisible(false);
-	setShadowZIndex(1.5f);
-
-	if (!_foreground->isActive()) {
-		_foreground->setBackgroundOpacity(0);
+	if (!f->isActive()) {
+		f->setBackgroundOpacity(0);
 	}
 
-	_foreground->pushNode(this, std::bind(&FloatingMenu::close, this));
+	f->pushNode(this, std::bind(&FloatingMenu::close, this));
 
-	auto a = construct<ResizeTo>(0.25, _fullSize);
-	runAction(cocos2d::Sequence::createWithTwoActions(a, cocos2d::CallFunc::create([this] {
+	auto a = Rc<ResizeTo>::create(0.25, _fullSize);
+	runAction(action::sequence(a, [this] {
 		_scroll->setVisible(true);
-	})));
-
-	return true;
+	}));
 }
 
 void FloatingMenu::setCloseCallback(const CloseCallback &cb) {
@@ -136,26 +156,27 @@ const FloatingMenu::CloseCallback & FloatingMenu::getCloseCallback() const {
 void FloatingMenu::close() {
 	stopAllActions();
 	_scroll->setVisible(false);
-	auto a = construct<ResizeTo>(0.25, (_binding == Binding::Relative?Size(1, 1):Size(_fullSize.width, 1)));
-	runAction(cocos2d::Sequence::createWithTwoActions(a, cocos2d::CallFunc::create([this] {
+	auto a = Rc<ResizeTo>::create(0.25f, (_binding == Binding::Relative?Size(1, 1):Size(_fullSize.width, 1)));
+	runAction(action::sequence(a, [this] {
 		if (_closeCallback) {
 			_closeCallback();
 		}
-		_foreground->popNode(this);
-	})));
+		Scene::getRunningScene()->popForegroundNode(this);
+	}));
 }
 
 void FloatingMenu::closeRecursive() {
 	if (_root) {
 		stopAllActions();
 		_scroll->setVisible(false);
-		auto a = construct<ResizeTo>(0.15, (_binding == Binding::Relative?Size(1, 1):Size(_fullSize.width, 1)));
-		runAction(cocos2d::Sequence::createWithTwoActions(a, cocos2d::CallFunc::create([this] {
-			_foreground->popNode(this);
-			if (_root) {
-				_root->closeRecursive();
+		auto a = Rc<ResizeTo>::create(0.15f, (_binding == Binding::Relative?Size(1, 1):Size(_fullSize.width, 1)));
+		runAction(action::sequence(a, [this] {
+			auto r = _root;
+			Scene::getRunningScene()->popForegroundNode(this);
+			if (r) {
+				r->closeRecursive();
 			}
-		})));
+		}));
 	} else {
 		close();
 	}
@@ -212,9 +233,8 @@ float FloatingMenu::getMenuWidth(MenuSource *source) {
 		}
 	}
 
-	float incr = metrics::horizontalIncrement();
-
-	auto &size = Scene::getRunningScene()->getViewSize();
+	const float incr = metrics::horizontalIncrement();
+	const auto &size = Scene::getRunningScene()->getViewSize();
 
 	minWidth = incr * ceilf(minWidth / incr);
 	if (minWidth > size.width - incr / 2) {
@@ -224,25 +244,33 @@ float FloatingMenu::getMenuWidth(MenuSource *source) {
 	return minWidth;
 }
 
-float FloatingMenu::getMenuHeight(MenuSource *source) {
+float FloatingMenu::getMenuHeight(float width, MenuSource *source) {
 	float height = metrics::menuVerticalPadding(getMetrics()) * 2;
 	auto &items = source->getItems();
 	for (auto &item : items) {
 		if (item->getType() == MenuSourceItem::Type::Custom) {
-			height += static_cast<MenuSourceCustom *>(item.get())->getHeight();
+			height += static_cast<MenuSourceCustom *>(item.get())->getHeight(width);
 		} else if (item->getType() == MenuSourceItem::Type::Button) {
 			height += metrics::menuItemHeight(getMetrics());
 		} else {
 			height += metrics::menuVerticalPadding(getMetrics());
 		}
 	}
+
+	const float incr = metrics::horizontalIncrement();
+	const auto &size = Scene::getRunningScene()->getViewSize();
+
+	if (height > size.height - incr / 2) {
+		height = size.height - incr / 2;
+	}
+
 	return height;
 }
 
 void FloatingMenu::layoutSubviews() {
 	auto &size = _fullSize;
-	_scroll->setPosition(cocos2d::Vec2(0, size.height - metrics::menuVerticalPadding(getMetrics())));
-	_scroll->setContentSize(cocos2d::Size(size.width, size.height - metrics::menuVerticalPadding(getMetrics()) * 2));
+	_scroll->setPosition(Vec2(0, size.height - metrics::menuVerticalPadding(getMetrics())));
+	_scroll->setContentSize(Size(size.width, size.height - metrics::menuVerticalPadding(getMetrics()) * 2));
 
 	if (_menu) {
 		auto &items = _menu->getItems();
@@ -255,7 +283,7 @@ void FloatingMenu::layoutSubviews() {
 void FloatingMenu::onMenuButton(MenuButton *btn) {
 	if (!btn->getMenuSourceButton()->getNextMenu()) {
 		setEnabled(false);
-		runAction(cocos2d::Sequence::createWithTwoActions(cocos2d::DelayTime::create(0.3f), cocos2d::CallFunc::create(std::bind(&FloatingMenu::closeRecursive, this))));
+		runAction(action::sequence(0.3f, std::bind(&FloatingMenu::closeRecursive, this)));
 	}
 }
 

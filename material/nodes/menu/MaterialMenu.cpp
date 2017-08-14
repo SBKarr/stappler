@@ -53,7 +53,7 @@ bool Menu::init() {
 		return false;
 	}
 
-	auto el = construct<EventListener>();
+	auto el = Rc<EventListener>::create();
 	el->onEvent(material::ResourceManager::onLightLevel, std::bind(&Menu::onLightLevel, this));
 	addComponent(el);
 
@@ -61,12 +61,13 @@ bool Menu::init() {
 
 	_metrics = metrics::menuDefaultMetrics();
 
-	_scroll = construct<ScrollView>(stappler::ScrollViewBase::Layout::Vertical);
-	_scroll->setAnchorPoint(cocos2d::Vec2(0, 1));
-	addChild(_scroll, 1);
+	auto scroll = Rc<ScrollView>::create(ScrollView::Vertical);
+	scroll->setAnchorPoint(Vec2(0, 1));
+	addChild(scroll, 1);
+	_scroll = scroll;
 
-	_controller = construct<ScrollController>();
-	_scroll->setController(_controller);
+	_scroll->setController(Rc<ScrollController>::create());
+	_controller = _scroll->getController();
 
 	onLightLevel();
 
@@ -127,7 +128,7 @@ void Menu::rebuildMenu() {
 	auto &menuItems = _menu->getItems();
 	for (auto &item : menuItems) {
 		if (item->getType() == MenuSourceItem::Type::Separator) {
-			_controller->addItem([this, item] (const ScrollController::Item &) -> cocos2d::Node * {
+			_controller->addItem([this, item] (const ScrollController::Item &) -> Rc<cocos2d::Node> {
 				auto div = createSeparator();
 				div->setTopLevel(false);
 				div->setMenuSourceItem(item);
@@ -135,7 +136,7 @@ void Menu::rebuildMenu() {
 				return div;
 			}, metrics::menuVerticalPadding(_metrics));
 		} else if (item->getType() == MenuSourceItem::Type::Button) {
-			_controller->addItem([this, item] (const ScrollController::Item &) -> cocos2d::Node * {
+			_controller->addItem([this, item] (const ScrollController::Item &) -> Rc<cocos2d::Node> {
 				auto btn = createButton();
 				btn->setMenu(this);
 				btn->setMenuSourceItem(item);
@@ -143,15 +144,12 @@ void Menu::rebuildMenu() {
 			}, metrics::menuItemHeight(_metrics));
 		} else if (item->getType() == MenuSourceItem::Type::Custom) {
 			auto customItem = static_cast<MenuSourceCustom *>(item.get());
-			auto func = customItem->getFactoryFunction();
+			const auto &func = customItem->getFactoryFunction();
 			if (func) {
-				float height = customItem->getHeight();
-				if (customItem->isRelativeHeight()) {
-					height = _contentSize.width * height;
-				}
-				_controller->addItem([this, func, item] (const ScrollController::Item &) -> cocos2d::Node * {
+				float height = customItem->getHeight(_contentSize.width);
+				_controller->addItem([this, func, item] (const ScrollController::Item &) -> Rc<cocos2d::Node> {
 					auto node = func();
-					if (auto i = dynamic_cast<MenuItemInterface *>(node)) {
+					if (auto i = dynamic_cast<MenuItemInterface *>(node.get())) {
 						i->setMenu(this);
 						i->setMenuSourceItem(item);
 					}
@@ -163,12 +161,12 @@ void Menu::rebuildMenu() {
 	_scroll->setScrollDirty(true);
 }
 
-MenuButton *Menu::createButton() {
-	return construct<MenuButton>();
+Rc<MenuButton> Menu::createButton() {
+	return Rc<MenuButton>::create();
 }
 
-MenuSeparator *Menu::createSeparator() {
-	return construct<MenuSeparator>();
+Rc<MenuSeparator> Menu::createSeparator() {
+	return Rc<MenuSeparator>::create();
 }
 
 void Menu::onContentSizeDirty() {
@@ -178,8 +176,8 @@ void Menu::onContentSizeDirty() {
 
 void Menu::layoutSubviews() {
 	auto &size = getContentSize();
-	_scroll->setPosition(cocos2d::Vec2(0, size.height));
-	_scroll->setContentSize(cocos2d::Size(size.width, size.height));
+	_scroll->setPosition(Vec2(0, size.height));
+	_scroll->setContentSize(Size(size.width, size.height));
 }
 
 void Menu::setMenuButtonCallback(const ButtonCallback &cb) {
@@ -196,21 +194,21 @@ void Menu::onMenuButtonPressed(MenuButton *button) {
 	}
 }
 
-stappler::ScrollView *Menu::getScroll() const {
+ScrollView *Menu::getScroll() const {
 	return _scroll;
 }
 
 void Menu::onLightLevel() {
-	auto level = material::ResourceManager::getInstance()->getLightLevel();
+	auto level = ResourceManager::getInstance()->getLightLevel();
 	switch(level) {
 	case LightLevel::Dim:
-		setBackgroundColor(material::Color(0x484848));
+		setBackgroundColor(Color(0x484848));
 		break;
 	case LightLevel::Normal:
-		setBackgroundColor(material::Color::White);
+		setBackgroundColor(Color::White);
 		break;
 	case LightLevel::Washed:
-		setBackgroundColor(material::Color::White);
+		setBackgroundColor(Color::White);
 		break;
 	};
 

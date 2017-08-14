@@ -54,11 +54,12 @@ public:
 
 	virtual void onContentSizeDirty() override;
 
-	virtual stappler::ScrollView *getScroll() const;
+	virtual ScrollView *getScroll() const;
+
 protected:
 	virtual void rebuildMenu();
-	virtual MenuButton *createButton();
-	virtual MenuSeparator *createSeparator();
+	virtual Rc<MenuButton> createButton();
+	virtual Rc<MenuSeparator> createSeparator();
 
 	virtual void onLightLevel() override;
 	virtual void onSourceDirty();

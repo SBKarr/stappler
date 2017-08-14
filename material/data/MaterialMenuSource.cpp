@@ -77,7 +77,7 @@ void MenuSourceItem::setDirty() {
 
 MenuSourceButton::~MenuSourceButton() { }
 
-bool MenuSourceButton::init(const std::string &str, IconName name, const Callback &cb) {
+bool MenuSourceButton::init(const String &str, IconName name, const Callback &cb) {
 	if (!init()) {
 		return false;
 	}
@@ -109,23 +109,23 @@ Rc<MenuSourceItem> MenuSourceButton::copy() {
 	return ret;
 }
 
-void MenuSourceButton::setName(const std::string &val) {
+void MenuSourceButton::setName(const String &val) {
 	if (_name != val) {
 		_name = val;
 		setDirty();
 	}
 }
-const std::string & MenuSourceButton::getName() const {
+const String & MenuSourceButton::getName() const {
 	return _name;
 }
 
-void MenuSourceButton::setValue(const std::string &val) {
+void MenuSourceButton::setValue(const String &val) {
 	if (_value != val) {
 		_value = val;
 		setDirty();
 	}
 }
-const std::string & MenuSourceButton::getValue() const {
+const String & MenuSourceButton::getValue() const {
 	return _value;
 }
 
@@ -185,42 +185,42 @@ bool MenuSourceCustom::init() {
 	_type = Type::Custom;
 	return true;
 }
-bool MenuSourceCustom::init(float h, const FactoryFunction &func, bool relative) {
+
+bool MenuSourceCustom::init(float h, const FactoryFunction &func, float minWidth) {
+	return init([] (float h) { return h; }, func);
+}
+
+bool MenuSourceCustom::init(const HeightFunction &h, const FactoryFunction &func, float minWidth) {
 	if (!init()) {
 		return false;
 	}
 
-	_height = h;
+	_minWidth = minWidth;
+	_heightFunction = h;
 	_function = func;
-	_relativeHeight = relative;
 	return true;
 }
 
 Rc<MenuSourceItem> MenuSourceCustom::copy() {
-	auto ret = Rc<MenuSourceCustom>::create(_height, _function, _relativeHeight);
+	auto ret = Rc<MenuSourceCustom>::create(_heightFunction, _function);
 	ret->setCustomData(_customData);
 	return ret;
 }
 
-float MenuSourceCustom::getHeight() const {
-	return _height;
-}
-
-const MenuSourceCustom::FactoryFunction & MenuSourceCustom::getFactoryFunction() const {
-	return _function;
-}
-void MenuSourceCustom::setMinWidth(float w) {
-	_minWidth = w;
-}
 float MenuSourceCustom::getMinWidth() const {
 	return _minWidth;
 }
 
-void MenuSourceCustom::setRelativeHeight(bool value) {
-	_relativeHeight = value;
+float MenuSourceCustom::getHeight(float w) const {
+	return _heightFunction(w);
 }
-bool MenuSourceCustom::isRelativeHeight() const {
-	return _relativeHeight;
+
+const MenuSourceCustom::HeightFunction & MenuSourceCustom::getHeightFunction() const {
+	return _heightFunction;
+}
+
+const MenuSourceCustom::FactoryFunction & MenuSourceCustom::getFactoryFunction() const {
+	return _function;
 }
 
 MenuSource::~MenuSource() { }
@@ -250,11 +250,17 @@ Rc<MenuSourceButton> MenuSource::addButton(const String &str, IconName name, con
 	addItem(item);
 	return item;
 }
-Rc<MenuSourceCustom> MenuSource::addCustom(float h, const MenuSourceCustom::FactoryFunction &func, bool rel) {
-	auto item = Rc<MenuSourceCustom>::create(h, func, rel);
+Rc<MenuSourceCustom> MenuSource::addCustom(float h, const MenuSourceCustom::FactoryFunction &func, float w) {
+	auto item = Rc<MenuSourceCustom>::create(h, func, w);
 	addItem(item);
 	return item;
 }
+Rc<MenuSourceCustom> MenuSource::addCustom(const HeightFunction &h, const FactoryFunction &func, float w) {
+	auto item = Rc<MenuSourceCustom>::create(h, func, w);
+	addItem(item);
+	return item;
+}
+
 Rc<MenuSourceItem> MenuSource::addSeparator() {
 	auto item = Rc<MenuSourceItem>::create();
 	addItem(item);

@@ -176,19 +176,20 @@ void TabBarButton::updateFromSource() {
 }
 
 void TabBarButton::onOpenMenuSource() {
-	auto menu = construct<FloatingMenu>(_floatingMenuSource, convertToWorldSpace(Vec2(-4.0f, _contentSize.height + 8.0f)), FloatingMenu::Binding::OriginRight);
+	auto menu = Rc<FloatingMenu>::create(_floatingMenuSource);
 	if (menu) {
-		menu->setMenuButtonCallback([this, menu] (MenuButton *btn) {
+		menu->setMenuButtonCallback([this, m = menu.get()] (MenuButton *btn) {
 			if (_tabButtonCallback) {
 				_tabButtonCallback(btn, btn->getMenuSourceButton());
 			}
-			menu->onMenuButton(btn);
+			m->onMenuButton(btn);
 		});
 		setEnabled(false);
 		menu->setCloseCallback([self = Rc<TabBarButton>(this)] {
 			auto btn = self;
 			btn->setEnabled(true);
 		});
+		menu->pushMenu(convertToWorldSpace(Vec2(-4.0f, _contentSize.height + 8.0f)), FloatingMenu::Binding::OriginRight);
 	}
 }
 
