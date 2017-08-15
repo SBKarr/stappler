@@ -106,6 +106,7 @@ protected:
 	bool isObjectAllowed(Scheme *, AccessControl::Action, data::Value &, data::Value &) const;
 
 protected:
+	virtual storage::Scheme *getRequestScheme() const;
 	ResolveOptions resolveOptionForString(const String &str);
 
 	int _status = HTTP_OK;

@@ -25,7 +25,6 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "Server.h"
-#include "Couchbase.h"
 #include "Request.h"
 #include "RequestHandler.h"
 #include "Root.h"
@@ -48,24 +47,6 @@ NS_SA_BEGIN
 #define SA_SERVER_FILE_SCHEME_NAME "__files"
 #define SA_SERVER_USER_SCHEME_NAME "__users"
 
-#ifndef NOCB
-apr_status_t sa_server_cb_constructor(void **resource, void *params, apr_pool_t *pool) {
-	auto config = (couchbase::Config *)(params);
-	if (auto h = couchbase::Connection::create(pool, *config)) {
-		(*resource) = h;
-		return APR_SUCCESS;
-	}
-	return APR_EGENERAL;
-}
-
-apr_status_t sa_server_cb_destructor(void *resource, void *params, apr_pool_t *pool) {
-	if (auto h = (couchbase::Connection *)(resource)) {
-		delete h;
-	}
-	return APR_SUCCESS;
-}
-#endif
-
 struct Server::Config : public AllocPool {
 	static Config *get(server_rec *server) {
 		if (!server) { return nullptr; }
@@ -79,23 +60,6 @@ struct Server::Config : public AllocPool {
 
 	Config(server_rec *server) : serverNamespace("default") {
 		ap_set_module_config(server->module_config, &serenity_module, this);
-	}
-
-	void initCouchbase(data::Value &val) {
-#ifndef NOCB
-		couchbaseConfig.init(std::move(val));
-		apr_reslist_create(&_couchbaseConnections,
-				couchbaseConfig.min,
-				couchbaseConfig.softMax,
-				couchbaseConfig.hardMax,
-				couchbaseConfig.ttl,
-				sa_server_cb_constructor, sa_server_cb_destructor, &couchbaseConfig, getCurrentPool());
-#ifdef APR_RESLIST_CLEANUP_FIRST
-		if (_couchbaseConnections) {
-			apr_reslist_cleanup_order_set(_couchbaseConnections, APR_RESLIST_CLEANUP_FIRST);
-		}
-#endif
-#endif
 	}
 
 	void onHandler(Server &serv, const String &name, const String &ifile, const String &symbol, const data::Value &handlerData) {
@@ -207,10 +171,6 @@ struct Server::Config : public AllocPool {
 		schemes.emplace(files->getName(), files);
 
 		if (data) {
-			if (data.isDictionary("couchbase")) {
-				initCouchbase(data.getValue("couchbase"));
-			}
-
 			if (data.isArray("handlers")) {
 				initHandlers(serv, data.getValue("handlers"));
 			}
@@ -242,11 +202,6 @@ struct Server::Config : public AllocPool {
 	}
 
 	bool childInit = false;
-	apr_reslist_t *_couchbaseConnections = nullptr;
-
-#ifndef NOCB
-	couchbase::Config couchbaseConfig;
-#endif
 
 	data::Value handlers;
 	String handlerFile;
@@ -611,28 +566,6 @@ int Server::onRequest(Request &req) {
 
 	return OK;
 }
-
-#ifndef NOCB
-couchbase::Connection *Server::acquireCouchbase() {
-	if (_config->_couchbaseConnections) {
-		couchbase::Connection *h;
-		if (apr_reslist_acquire(_config->_couchbaseConnections, (void **)(&h)) == APR_SUCCESS) {
-			return h;
-		}
-	}
-	return NULL;
-}
-
-void Server::releaseCouchbase(couchbase::Connection *cb) {
-	if (cb) {
-		if (cb->shouldBeInvalidated()) {
-			apr_reslist_invalidate(_config->_couchbaseConnections, cb);
-		} else {
-			apr_reslist_release(_config->_couchbaseConnections, cb);
-		}
-	}
-}
-#endif
 
 ServerComponent *Server::getComponent(const String &name) const {
 	auto it = _config->components.find(name);

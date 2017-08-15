@@ -476,6 +476,7 @@ data::Value Resolver::ResourceRefSet::updateObject(data::Value &value, apr::arra
 }
 data::Value Resolver::ResourceRefSet::createObject(data::Value &value, apr::array<InputFile> &files) {
 	if (isEmptyRequest()) {
+		encodeFiles(value, files);
 		return appendObject(value);
 	} else {
 		return ResourceSet::createObject(value, files);
@@ -516,7 +517,7 @@ Vector<uint64_t> Resolver::ResourceRefSet::prepareAppendList(const data::Value &
 	if (patch.isArray() && patch.size() > 0) {
 		for (auto &it : patch.asArray()) {
 			data::Value obj;
-			if (it.isDictionary() && !it.hasValue("__oid")) {
+			if (it.isNull() || (it.isDictionary() && !it.hasValue("__oid"))) {
 				obj = refScheme->create(_handle, it);
 			} else {
 				obj = refScheme->get(_handle, it);
@@ -603,6 +604,10 @@ data::Value Resolver::ResourceRefSet::doAppendObjects(const data::Value &val, bo
 	}
 
 	return ret;
+}
+
+storage::Scheme *Resolver::ResourceRefSet::getRequestScheme() const {
+	return _field->getForeignScheme();
 }
 
 NS_SA_EXT_END(database)

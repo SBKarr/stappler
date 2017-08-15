@@ -219,6 +219,8 @@ protected:
 
 	bool isEmptyRequest();
 
+	virtual storage::Scheme *getRequestScheme() const;
+
 	const Field *_field = nullptr;
 	String _fieldName;
 };

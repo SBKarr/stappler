@@ -127,12 +127,6 @@ public: // httpd server info
 protected:
 	struct Config;
 
-#ifndef NOCB
-	friend class couchbase::Handle;
-	couchbase::Connection *acquireCouchbase();
-	void releaseCouchbase(couchbase::Connection *cb);
-#endif
-
 	server_rec *_server = nullptr;
 	Config *_config = nullptr;
 };

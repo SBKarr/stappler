@@ -350,7 +350,7 @@ struct FieldObject : Field::Slot {
 	template <typename ... Args>
 	FieldObject(apr::string && n, Type t, Args && ... args) : Field::Slot(std::move(n), t) {
 		init<FieldObject, Args...>(*this, std::forward<Args>(args)...);
-		if (t == Type::Set && toInt(flags) & toInt(Flags::Reference)) {
+		if (t == Type::Set && (toInt(flags) & toInt(Flags::Reference))) {
 			onRemove = RemovePolicy::Reference;
 		}
 		if (t == Type::Set && (onRemove == RemovePolicy::Reference || onRemove == RemovePolicy::StrongReference)) {

@@ -118,21 +118,30 @@ data::Value Resource::getResultObject() { return data::Value(); }
 void Resource::resolve(Scheme *, data::Value &) { }
 
 size_t Resource::getMaxRequestSize() const {
+	if (auto scheme = getRequestScheme()) {
+		return scheme->getMaxRequestSize();
+	}
 	return (_scheme)?_scheme->getMaxRequestSize():0;
 }
 size_t Resource::getMaxVarSize() const {
+	if (auto scheme = getRequestScheme()) {
+		return scheme->getMaxVarSize();
+	}
 	return (_scheme)?_scheme->getMaxVarSize():0;
 }
 size_t Resource::getMaxFileSize() const {
+	if (auto scheme = getRequestScheme()) {
+		return scheme->getMaxFileSize();
+	}
 	return (_scheme)?_scheme->getMaxFileSize():0;
 }
 
 void Resource::encodeFiles(data::Value &data, apr::array<InputFile> &files) {
 	for (auto &it : files) {
-		const storage::Field * f = _scheme->getField(it.name);
+		const storage::Field * f = getRequestScheme()->getField(it.name);
 		if (f && f->isFile()) {
 			if (!data.hasValue(it.name)) {
-				data.setInteger(it.negativeId());
+				data.setInteger(it.negativeId(), it.name);
 			}
 		}
 	}
@@ -334,6 +343,10 @@ bool Resource::isObjectAllowed(Scheme *s, AccessControl::Action a, data::Value &
 			: (a == AccessControl::Read
 					? true
 					: false);
+}
+
+storage::Scheme *Resource::getRequestScheme() const {
+	return _scheme;
 }
 
 NS_SA_END

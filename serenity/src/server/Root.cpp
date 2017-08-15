@@ -35,7 +35,6 @@ THE SOFTWARE.
 #include "SPDataStream.h"
 #include "Server.h"
 #include "StorageScheme.h"
-#include "Couchbase.h"
 
 APLOG_USE_MODULE(serenity);
 

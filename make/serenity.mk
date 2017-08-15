@@ -37,7 +37,7 @@ SERENITY_PRECOMPILED_HEADERS += \
 	common/core/SPCore.h \
 	common/core/SPCommon.h
 
-SERENITY_FLAGS := -DSPAPR -DNOCB -DNOPNG -DNOJPEG -Wsuggest-override
+SERENITY_FLAGS := -DSPAPR -DNOPNG -DNOJPEG
 
 SERENITY_SRCS_OBJS += \
 	serenity/gen/__Virtual.cpp \
