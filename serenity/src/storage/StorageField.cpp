@@ -51,7 +51,7 @@ Scheme * Field::getForeignScheme() const {
 	return nullptr;
 }
 
-bool Field::transform(Scheme &scheme, data::Value &val) const {
+bool Field::transform(const Scheme &scheme, data::Value &val) const {
 	if (slot->filter) {
 		if (!slot->filter(scheme, val)) {
 			return false;
@@ -101,7 +101,7 @@ data::Value Field::getTypeDesc() const {
 	return data::Value();
 }
 
-bool Field::Slot::transformValue(Scheme &scheme, data::Value &val) const {
+bool Field::Slot::transformValue(const Scheme &scheme, data::Value &val) const {
 	if (!val.isBasicType() && type != Type::Data) {
 		return false;
 	}
@@ -150,7 +150,7 @@ void Field::Slot::hash(apr::ostringstream &stream, ValidationLevel l) const {
 	}
 }
 
-bool FieldText::transformValue(Scheme &scheme, data::Value &val) const {
+bool FieldText::transformValue(const Scheme &scheme, data::Value &val) const {
 	switch (type) {
 	case Type::Text:
 		if (!val.isBasicType()) {
@@ -247,7 +247,7 @@ void FieldText::hash(apr::ostringstream &stream, ValidationLevel l) const {
 }
 
 
-bool FieldPassword::transformValue(Scheme &scheme, data::Value &val) const {
+bool FieldPassword::transformValue(const Scheme &scheme, data::Value &val) const {
 	if (!val.isString()) {
 		return false;
 	}
@@ -294,7 +294,7 @@ data::Value FieldExtra::getDefault() const {
 	return ret;
 }
 
-bool FieldExtra::transformValue(Scheme &scheme, data::Value &val) const {
+bool FieldExtra::transformValue(const Scheme &scheme, data::Value &val) const {
 	if (!val.isDictionary()) {
 		return false;
 	}
@@ -363,7 +363,7 @@ void FieldObject::hash(apr::ostringstream &stream, ValidationLevel l) const {
 	}
 }
 
-bool FieldArray::transformValue(Scheme &scheme, data::Value &val) const {
+bool FieldArray::transformValue(const Scheme &scheme, data::Value &val) const {
 	if (val.isArray()) {
 		if (tfield) {
 			auto &arr = val.asArray();

@@ -87,8 +87,6 @@ NS_SP_PLATFORM_END
 	[window setRootViewController:_viewController];
     [window makeKeyAndVisible];
 
-    [[UIApplication sharedApplication] setStatusBarHidden:true];
-
     // IMPORTANT: Setting the GLView should be done after creating the RootViewController
     cocos2d::GLView *glview = cocos2d::GLViewImpl::createWithEAGLView(new cocos2d::CCEAGLViewStorage{_viewController.glview});
     cocos2d::Director::getInstance()->setOpenGLView(glview);

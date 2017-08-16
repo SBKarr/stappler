@@ -213,7 +213,11 @@ using AllocBase = toolkit::TypeTraits::allocator_base;
 using Mutex = toolkit::TypeTraits::mutex_type;
 
 template <typename T> auto StringToNumber(const String &str) -> T {
-	return StringToNumber<T>(str.c_str(), nullptr);
+	return StringToNumber<T>(str.data(), nullptr);
+}
+
+template <typename T> auto StringToNumber(const char *str) -> T {
+	return StringToNumber<T>(str, nullptr);
 }
 
 using FilePath = ValueWrapper<String, class FilePathTag>;

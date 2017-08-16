@@ -106,22 +106,25 @@ bool Handle::init(Server &serv, const Map<String, Scheme *> &s) {
 		return false;
 	}
 
-	apr::ostringstream tables;
+	StringStream tables;
 	auto requiredTables = TableRec::parse(serv, s);
 	auto existedTables = TableRec::get(*this, tables);
 
 	apr::ostringstream stream;
 	TableRec::writeCompareResult(stream, requiredTables, existedTables, s);
 
-	auto name = toString(".", Time::now().toMilliseconds(), ".update.sql");
 	if (stream.size() > 3) {
+		auto name = toString(".", Time::now().toMilliseconds(), ".update.sql");
+
+		filesystem::remove(name);
+
 		if (perform(String::make_weak(stream.data(), stream.size())) == maxOf<size_t>()) {
 			log::format("Database", "Fail to perform update %s", name.c_str());
+
 			stream << "\nError: " << lastError << "\n" << apr_dbd_error(handle->driver, handle->handle, lastError) << "\n";
 		}
 
-		tables << "\n" << stream;
-		filesystem::write(name, (const uint8_t *)tables.data(), tables.size());
+		filesystem::write(name, (const uint8_t *)stream.data(), stream.size());
 	}
 
 	perform("COMMIT;");

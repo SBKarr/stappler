@@ -154,7 +154,7 @@ enum class RemovePolicy {
 	Null, // set object to null
 };
 
-using FilterFn = Function<bool(Scheme &, data::Value &)>;
+using FilterFn = Function<bool(const Scheme &, data::Value &)>;
 using DefaultFn = Function<data::Value()>;
 
 class Field : public AllocPool {
@@ -214,7 +214,7 @@ public:
 		bool isIndexed() const { return hasFlag(Flags::Indexed) || transform == Transform::Alias || type == Type::Object; }
 		bool isFile() const { return type == Type::File || type == Type::Image; }
 
-		virtual bool transformValue(Scheme &, data::Value &) const;
+		virtual bool transformValue(const Scheme &, data::Value &) const;
 		virtual void hash(apr::ostringstream &stream, ValidationLevel l) const;
 
 		data::Value def;
@@ -244,7 +244,7 @@ public:
 
 	void hash(apr::ostringstream &stream, ValidationLevel l) const { slot->hash(stream, l); }
 
-	bool transform(Scheme &, data::Value &) const;
+	bool transform(const Scheme &, data::Value &) const;
 
 	operator bool () const { return slot != nullptr; }
 
@@ -273,7 +273,7 @@ struct FieldText : Field::Slot {
 		init<FieldText, Args...>(*this, std::forward<Args>(args)...);
 	}
 
-	virtual bool transformValue(Scheme &, data::Value &) const override;
+	virtual bool transformValue(const Scheme &, data::Value &) const override;
 	virtual void hash(apr::ostringstream &stream, ValidationLevel l) const override;
 
 	size_t minLength = config::getDefaultTextMin(), maxLength = config::getDefaultTextMax();
@@ -288,7 +288,7 @@ struct FieldPassword : Field::Slot {
 		transform = Transform::Password;
 	}
 
-	virtual bool transformValue(Scheme &, data::Value &) const override;
+	virtual bool transformValue(const Scheme &, data::Value &) const override;
 	virtual void hash(apr::ostringstream &stream, ValidationLevel l) const override;
 
 	size_t minLength = config::getDefaultTextMin(), maxLength = config::getDefaultTextMax();
@@ -306,7 +306,7 @@ struct FieldExtra : Field::Slot {
 	virtual bool hasDefault() const override;
 	virtual data::Value getDefault() const override;
 
-	virtual bool transformValue(Scheme &, data::Value &) const override;
+	virtual bool transformValue(const Scheme &, data::Value &) const override;
 	virtual void hash(apr::ostringstream &stream, ValidationLevel l) const override;
 
 	apr::map<String, Field> fields;
@@ -374,7 +374,7 @@ struct FieldArray : Field::Slot {
 		init<FieldArray, Args...>(*this, std::forward<Args>(args)...);
 	}
 
-	virtual bool transformValue(Scheme &, data::Value &) const override;
+	virtual bool transformValue(const Scheme &, data::Value &) const override;
 	virtual void hash(apr::ostringstream &stream, ValidationLevel l) const override;
 
 	Field tfield;

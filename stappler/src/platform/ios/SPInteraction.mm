@@ -54,7 +54,7 @@ namespace interaction {
 
 	void _makePhoneCall(const std::string &str) {
 		NSString *number = [NSString stringWithUTF8String:str.substr(4).c_str()];
-		NSString *phoneNumber = [@"telprompt://" stringByAppendingString:[number stringByAddingPercentEscapesUsingEncoding: NSUTF8StringEncoding]];
+		NSString *phoneNumber = [@"telprompt://" stringByAppendingString:[number stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLPathAllowedCharacterSet]]];
 		[[UIApplication sharedApplication] openURL:[NSURL URLWithString:phoneNumber]];
 	}
 	void _mailTo(const std::string &address) {

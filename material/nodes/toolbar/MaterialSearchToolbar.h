@@ -55,6 +55,9 @@ public:
 	virtual void setString(const String &);
 	virtual const String &setString() const;
 
+	virtual void setAllowAutocorrect(bool);
+	virtual bool isAllowAutocorrect() const;
+
 	virtual void onSearchMenuButton();
 	virtual void onSearchIconButton();
 
@@ -63,6 +66,8 @@ public:
 
 	virtual void acquireInput();
 	virtual void releaseInput();
+
+	virtual InputLabel *getLabel() const;
 
 protected:
 	virtual void layoutSubviews() override;

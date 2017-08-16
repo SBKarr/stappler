@@ -239,6 +239,8 @@ public:
 	using size_type = typename base::size_type;
 	using allocator = typename base::allocator;
 
+	static constexpr size_type get_soo_size() { return 0; }
+
 	mem_soo_iface(const allocator &alloc) : _allocator(alloc) { }
 
 	~mem_soo_iface() noexcept { clear_dealloc(_allocator); }
@@ -312,6 +314,8 @@ public:
 
 	using large_mem = mem_large<Type, Extra>;
 	using small_mem = mem_small<Type, sizeof(large_mem)>;
+
+	static constexpr size_type get_soo_size() { return small_mem::max_capacity(); }
 
 	mem_soo_iface(const allocator &alloc) : _allocator(alloc) {
 		set_large_flag();

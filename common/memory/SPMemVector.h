@@ -116,7 +116,7 @@ public:
 	}
 
 	void assign_strong(Type *t, size_type s) {
-		_mem.assign_strong(t, s);
+		_mem.assign(t, s);
 	}
 
 	allocator_type get_allocator() const noexcept { return _mem._allocator; }

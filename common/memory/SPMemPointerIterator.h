@@ -38,30 +38,30 @@ public:
 	using value_type = typename std::remove_cv<Type>::type;
 
 	pointer_iterator() noexcept : current(nullptr) {}
-	pointer_iterator(const iterator&other) noexcept : current(other.current) {}
+	pointer_iterator(const iterator & other) noexcept : current(other.current) {}
 	explicit pointer_iterator(pointer p) noexcept : current(p) {}
 
-	iterator& operator=(const iterator&other) {current = other.current; return *this;}
-	bool operator==(const iterator&other) const {return current == other.current;}
-	bool operator!=(const iterator&other) const {return current != other.current;}
-	bool operator<(const iterator&other) const {return current < other.current;}
-	bool operator>(const iterator&other) const {return current > other.current;}
-	bool operator<=(const iterator&other) const {return current <= other.current;}
-	bool operator>=(const iterator&other) const {return current >= other.current;}
+	iterator& operator=(const iterator &other) { current = other.current; return *this; }
+	bool operator==(const iterator &other) const { return current == other.current; }
+	bool operator!=(const iterator &other) const { return current != other.current; }
+	bool operator<(const iterator &other) const { return current < other.current; }
+	bool operator>(const iterator &other) const { return current > other.current; }
+	bool operator<=(const iterator &other) const { return current <= other.current; }
+	bool operator>=(const iterator &other) const { return current >= other.current; }
 
-	iterator& operator++() {++current; return *this;}
-	iterator& operator++(int) {++current; return *this;}
-	iterator& operator--() {--current; return *this;}
-	iterator& operator--(int) {--current; return *this;}
+	iterator& operator++() { ++current; return *this; }
+	iterator operator++(int) { auto tmp = *this; ++ current; return tmp; }
+	iterator& operator--() { --current; return *this; }
+	iterator operator--(int) { auto tmp = *this; --current; return tmp; }
 	iterator& operator+= (size_type n) { current += n; return *this; }
-	iterator& operator-=(size_type n) {current -= n; return *this;}
-	difference_type operator-(const iterator &other) const {return current - other.current;}
+	iterator& operator-=(size_type n) { current -= n; return *this; }
+	difference_type operator-(const iterator &other) const { return current - other.current; }
 
-	reference operator*() const {return *current;}
-	pointer operator->() const {return current;}
-	reference operator[](size_type n) const {return *(current + n);}
+	reference operator*() const { return *current; }
+	pointer operator->() const { return current; }
+	reference operator[](size_type n) const { return *(current + n); }
 
-	size_type operator-(pointer p) const {return current - p;}
+	size_type operator-(pointer p) const { return current - p; }
 
 	// const_iterator cast
 	operator pointer_iterator<value_type, const value_type *, const value_type &> () const {

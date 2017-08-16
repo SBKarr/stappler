@@ -56,8 +56,7 @@ public:
 	using reverse_iterator = std::reverse_iterator<iterator>;
 	using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-	using large_mem = impl::mem_large<Type, Extra>;
-	using small_mem = impl::mem_small<Type, sizeof(large_mem)>;
+	using base::get_soo_size;
 
 	// default init with current context allocator or specified allocator
 	storage_mem_soo(const allocator &alloc = allocator()) noexcept : base(alloc) { }

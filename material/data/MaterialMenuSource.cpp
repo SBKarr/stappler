@@ -187,7 +187,7 @@ bool MenuSourceCustom::init() {
 }
 
 bool MenuSourceCustom::init(float h, const FactoryFunction &func, float minWidth) {
-	return init([] (float h) { return h; }, func);
+	return init([h] (float w) { return h; }, func);
 }
 
 bool MenuSourceCustom::init(const HeightFunction &h, const FactoryFunction &func, float minWidth) {

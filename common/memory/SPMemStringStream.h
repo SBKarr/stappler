@@ -27,6 +27,8 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(memory)
 
+constexpr size_t basic_ostringbuf_bufsize = 256;
+
 template<typename CharType>
 class basic_ostringbuf : public std::basic_streambuf<CharType, std::char_traits<CharType>>, public AllocPool {
 public:
@@ -36,13 +38,12 @@ public:
 	using traits_type = std::char_traits<CharType>;
 	using size_type = size_t;
 	using string_type = basic_string<CharType>;
+	using mem_type = storage_mem<CharType, 1>;
 	using char_type = CharType;
 	using int_type = typename traits_type::int_type;
 	using streambuf_type = std::basic_streambuf<CharType, std::char_traits<CharType>>;
 
-	static constexpr size_type bufsize = 256;
-
-	basic_ostringbuf(size_type block = bufsize, const allocator_type &alloc = allocator_type()) noexcept
+	basic_ostringbuf(size_type block = mem_type::get_soo_size(), const allocator_type &alloc = allocator_type()) noexcept
 	: _buf(alloc) {
 		_buf.resize(block, 0);
 
@@ -110,7 +111,7 @@ public:
 protected:
 	void make_flush() {
 		auto diff = streambuf_type::pptr() - &_buf.front();
-		_buf.resize(diff * 2);
+		_buf.resize(std::max(size_type(diff * 2), basic_ostringbuf_bufsize));
 		char *base = &_buf.front();
 		streambuf_type::setp(base + diff, base + _buf.size() - 1); // -1 to make overflow() easier
 	}
@@ -130,7 +131,7 @@ protected:
     	return 0;
     }
 
-	storage_mem<CharType> _buf;
+    mem_type _buf;
 };
 
 
@@ -157,7 +158,7 @@ private:
 
 public:
 	explicit
-	basic_ostringstream(size_type block = stringbuf_type::bufsize, const allocator_type &alloc = allocator_type()) noexcept
+	basic_ostringstream(size_type block = stringbuf_type::mem_type::get_soo_size(), const allocator_type &alloc = allocator_type()) noexcept
 	: ostream_type(), _buf(block, alloc) {
 		this->init(&_buf);
 	}

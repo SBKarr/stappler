@@ -365,4 +365,15 @@ void SearchToolbar::onMenuPaste() {
 	_label->pasteString(Device::getInstance()->getStringFromClipboard());
 }
 
+void SearchToolbar::setAllowAutocorrect(bool value) {
+	_label->setAllowAutocorrect(value);
+}
+bool SearchToolbar::isAllowAutocorrect() const {
+	return _label->isAllowAutocorrect();
+}
+
+InputLabel *SearchToolbar::getLabel() const {
+	return _label;
+}
+
 NS_MD_END

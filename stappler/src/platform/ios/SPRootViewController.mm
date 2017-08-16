@@ -182,20 +182,12 @@ THE SOFTWARE.
 
 - (void) showStatusBar {
 	_statusBarHidden = NO;
-	if ([self respondsToSelector:@selector(setNeedsStatusBarAppearanceUpdate)]) {
-		[self performSelector:@selector(setNeedsStatusBarAppearanceUpdate)];
-	} else {
-		[[UIApplication sharedApplication] setStatusBarHidden:NO withAnimation:UIStatusBarAnimationSlide];
-	}
+    [self setNeedsStatusBarAppearanceUpdate];
 }
 
 - (void) hideStatusBar {
 	_statusBarHidden = YES;
-	if ([self respondsToSelector:@selector(setNeedsStatusBarAppearanceUpdate)]) {
-		[self performSelector:@selector(setNeedsStatusBarAppearanceUpdate)];
-	} else {
-		[[UIApplication sharedApplication] setStatusBarHidden:YES withAnimation:UIStatusBarAnimationSlide];
-	}
+    [self setNeedsStatusBarAppearanceUpdate];
 }
 
 - (BOOL)prefersStatusBarHidden {
@@ -211,19 +203,13 @@ THE SOFTWARE.
 }
 
 - (void) setStatusBarBlack {
-	[[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleDefault];
 	_statusBarStyle = UIStatusBarStyleDefault;
-	if ([self respondsToSelector:@selector(setNeedsStatusBarAppearanceUpdate)]) {
-		[self performSelector:@selector(setNeedsStatusBarAppearanceUpdate)];
-	}
+    [self setNeedsStatusBarAppearanceUpdate];
 }
 
 - (void) setStatusBarLight {
-	[[UIApplication sharedApplication] setStatusBarStyle:UIStatusBarStyleLightContent];
-	_statusBarStyle = UIStatusBarStyleLightContent;
-	if ([self respondsToSelector:@selector(setNeedsStatusBarAppearanceUpdate)]) {
-		[self performSelector:@selector(setNeedsStatusBarAppearanceUpdate)];
-	}
+    _statusBarStyle = UIStatusBarStyleLightContent;
+    [self setNeedsStatusBarAppearanceUpdate];
 }
 
 +(BOOL)isDeviceiPhone {
