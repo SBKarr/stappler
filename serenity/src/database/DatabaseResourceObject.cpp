@@ -397,6 +397,8 @@ bool Resolver::ResourceRefSet::removeObject() {
 		return data::Value();
 	}
 
+	_perms = isSchemeAllowed(_scheme, Action::Remove);
+
 	if (isEmptyRequest()) {
 		if (_perms == Permission::Full) {
 			_handle->clearProperty(_scheme, id, *_field);

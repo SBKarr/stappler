@@ -95,9 +95,6 @@ void AccessControl::setObjectCallback(Scheme *s, const ObjectFn &fn) {
 }
 
 AccessControl::Permission AccessControl::onScheme(User *u, Scheme *s, Action a) const {
-	if (useAdminPrivileges(u)) {
-		return Permission::Full;
-	}
 	AccessControl::Permission ret = Permission::Restrict;
 	auto listIt = _lists.find(s);
 	if (listIt != _lists.end()) {
@@ -125,8 +122,12 @@ AccessControl::Permission AccessControl::onScheme(User *u, Scheme *s, Action a) 
 		} else if (_scheme) {
 			ret = _scheme(u, s, a);
 		}
-		return ret;
 	}
+
+	if (useAdminPrivileges(u)) {
+		return Permission::Full;
+	}
+
 	return ret;
 }
 bool AccessControl::onObject(User *u, Scheme *s, Action a, data::Value &obj, data::Value &patch) const {

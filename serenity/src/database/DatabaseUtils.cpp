@@ -467,7 +467,7 @@ Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, storage::S
 	return tables;
 }
 
-Map<String, TableRec> TableRec::get(Handle &h) {
+Map<String, TableRec> TableRec::get(Handle &h, apr::ostringstream &stream) {
 	auto tables = h.select("SELECT table_name FROM information_schema.tables "
 			"WHERE table_schema='public' AND table_type='BASE TABLE';");
 
@@ -492,6 +492,7 @@ Map<String, TableRec> TableRec::get(Handle &h) {
 
 	for (auto &it : tables.data) {
 		ret.emplace(it.at(0), TableRec());
+		stream << "TABLE " << it.at(0) << "\n";
 	}
 
 	for (auto &it : columns.data) {
@@ -517,6 +518,7 @@ Map<String, TableRec> TableRec::get(Handle &h) {
 				}
 			}
 		}
+		stream << "COLUMNS " << it.at(0) << " " << it.at(1) << " " << it.at(2) << " " << it.at(3) << "\n";
 	}
 
 	for (auto &it : constraints.data) {
@@ -530,6 +532,7 @@ Map<String, TableRec> TableRec::get(Handle &h) {
 				table.constraints.emplace(it.at(1), ConstraintRec(ConstraintRec::Reference));
 			}
 		}
+		stream << "CONSTRAINT " << it.at(0) << " " << it.at(1) << " " << it.at(2) << "\n";
 	}
 
 	for (auto &it : indexes.data) {
@@ -542,6 +545,7 @@ Map<String, TableRec> TableRec::get(Handle &h) {
 				table.indexes.emplace(name, it.at(2));
 			}
 		}
+		stream << "INDEX " << it.at(0) << " " << it.at(1) << " " << it.at(2) << "\n";
 	}
 
 	for (auto &it : triggers.data) {
@@ -551,6 +555,7 @@ Map<String, TableRec> TableRec::get(Handle &h) {
 			auto &table = f->second;
 			table.triggers.emplace(it.at(1));
 		}
+		stream << "TRIGGER " << it.at(0) << " " << it.at(1) << "\n";
 	}
 
 	return ret;
@@ -624,8 +629,8 @@ TableRec::TableRec(Server &serv, storage::Scheme *scheme) {
 		if (emplaced) {
 			if (type == storage::Type::Object) {
 				auto ref = static_cast<const storage::FieldObject *>(f.getSlot());
-				auto cname = name + "_ref_" + it.first;
 				auto & target = ref->scheme->getName();
+				auto cname = name + "_ref_" + it.first + "_" + target;
 				constraints.emplace(cname, ConstraintRec(ConstraintRec::Reference, it.first, target, ref->onRemove));
 				indexes.emplace(name + "_idx_" + it.first, it.first);
 			} else if (type == storage::Type::File || type == storage::Type::Image) {

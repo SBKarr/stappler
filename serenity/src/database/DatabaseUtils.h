@@ -69,7 +69,7 @@ struct ColRec {
 
 struct TableRec {
 	static Map<String, TableRec> parse(Server &serv, const Map<String, storage::Scheme *> &s);
-	static Map<String, TableRec> get(Handle &h);
+	static Map<String, TableRec> get(Handle &h, apr::ostringstream &stream);
 
 	static void writeCompareResult(apr::ostringstream &stream,
 			Map<String, TableRec> &required, Map<String, TableRec> &existed,

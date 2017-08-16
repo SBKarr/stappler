@@ -421,8 +421,11 @@ public:
 			return _large.extract();
 		} else {
 			auto s = _small.size();
-			auto ptr = _allocator.allocate(s);
+			auto ptr = _allocator.allocate(s + Extra);
 			_allocator.move(ptr, _small.data(), s);
+			if (Extra) {
+				memset(ptr + s, 0, Extra * sizeof(Type));
+			}
 			_small.force_clear();
 			return ptr;
 		}
