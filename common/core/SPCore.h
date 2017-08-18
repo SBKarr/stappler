@@ -163,6 +163,7 @@ using std::nullptr_t;
 
 #define NS_SP_EXTERN_BEGIN 	extern "C" {
 #define NS_SP_EXTERN_END 	}
+#define SP_EXTERN_C			extern "C"
 
 #if SPAPR
 
@@ -264,6 +265,11 @@ constexpr auto to_rad(T val) -> T {
 
 NS_SP_BEGIN
 
+using std::forward;
+using std::move;
+using std::min;
+using std::max;
+
 /*
  *   Misc templates
  *
@@ -291,18 +297,8 @@ NS_SP_BEGIN
  */
 
 template <typename... Args>
-inline auto min(Args&&... args) -> decltype(std::min(std::forward<Args>(args)...)) {
-	return std::min(std::forward<Args>(args)...);
-}
-
-template <typename... Args>
-inline auto max(Args&&... args) -> decltype(std::max(std::forward<Args>(args)...)) {
-	return std::max(std::forward<Args>(args)...);
-}
-
-template <typename... Args>
-inline auto pair(Args&&... args) -> decltype(std::make_pair(std::forward<Args>(args)...)) {
-	return std::make_pair(std::forward<Args>(args)...);
+inline auto pair(Args&&... args) -> decltype(std::make_pair(forward<Args>(args)...)) {
+	return std::make_pair(forward<Args>(args)...);
 }
 
 template <typename T, typename V>

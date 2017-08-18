@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html><head>
+	<title>Serenity Server Page</title>
+	<link rel="stylesheet" href="/__server/virtual/css/style.css" />
+	<link rel="stylesheet" href="/__server/virtual/css/kawaiJson.css" />
+	<script src="/__server/virtual/js/kawaiJson.js"></script>
+	<script src="/__server/virtual/js/shellHistory.js"></script>
+</head><body>
+	<h4>Serenity Server Page</h4>
+	{?if $setup ?}<p>Setup completed</p>
+	<p><a href="/__server/shell">Interactive server console</a></p>{?else?}<h5>Setup form:</h5>
+	<form id="setup" method="post">
+		<input id="name" type="text" name="name" placeholder="User name" value="" size="24" />
+		<input id="passwd" type="password" name="passwd" placeholder="Password" value="" size="24" />
+		<input type="submit" />
+	</form>{?end?}
+</body></html>

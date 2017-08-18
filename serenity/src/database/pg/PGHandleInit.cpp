@@ -29,7 +29,7 @@ THE SOFTWARE.
 
 NS_SA_EXT_BEGIN(pg)
 
-constexpr static uint32_t getDefaultFunctionVersion() { return 5; }
+constexpr static uint32_t getDefaultFunctionVersion() { return 6; }
 
 constexpr static const char * DATABASE_DEFAULTS = R"Sql(
 CREATE TABLE IF NOT EXISTS __objects (
@@ -73,6 +73,16 @@ CREATE TABLE IF NOT EXISTS __login (
 CREATE INDEX IF NOT EXISTS __login_user ON __login ("user");
 CREATE INDEX IF NOT EXISTS __login_date ON __login (date);)Sql";
 
+constexpr static const char * INDEX_QUERY = R"Sql(
+WITH tables AS (SELECT table_name AS name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE')
+SELECT pg_class.relname as table_name, i.relname as index_name, array_to_string(array_agg(a.attname), ', ') as column_names
+FROM pg_class INNER JOIN tables ON (tables.name = pg_class.relname), pg_class i, pg_index ix, pg_attribute a
+WHERE pg_class.oid = ix.indrelid
+	AND i.oid = ix.indexrelid
+	AND a.attrelid = pg_class.oid
+	AND a.attnum = ANY(ix.indkey)
+	AND pg_class.relkind = 'r'
+GROUP BY pg_class.relname, i.relname ORDER BY pg_class.relname, i.relname;)Sql";
 
 struct ConstraintRec {
 	enum Type {
@@ -109,15 +119,15 @@ struct ColRec {
 };
 
 struct TableRec {
-	static Map<String, TableRec> parse(Server &serv, const Map<String, storage::Scheme *> &s);
+	static Map<String, TableRec> parse(Server &serv, const Map<String, const storage::Scheme *> &s);
 	static Map<String, TableRec> get(Handle &h, apr::ostringstream &stream);
 
 	static void writeCompareResult(apr::ostringstream &stream,
 			Map<String, TableRec> &required, Map<String, TableRec> &existed,
-			const Map<String, storage::Scheme *> &s);
+			const Map<String, const storage::Scheme *> &s);
 
 	TableRec();
-	TableRec(Server &serv, storage::Scheme *scheme);
+	TableRec(Server &serv, const storage::Scheme *scheme);
 
 	Map<String, ColRec> cols;
 	Map<String, ConstraintRec> constraints;
@@ -130,20 +140,20 @@ struct TableRec {
 	bool valid = false;
 };
 
-static void writeFileUpdateTrigger(apr::ostringstream &stream, storage::Scheme *s, const storage::Field &obj) {
-	stream << "\t\tIF (OLD.\"" << obj.getName() << "\" <> NEW.\"" << obj.getName() << "\") THEN\n"
+static void writeFileUpdateTrigger(apr::ostringstream &stream, const storage::Scheme *s, const storage::Field &obj) {
+	stream << "\t\tIF (NEW.\"" << obj.getName() << "\" IS NULL OR OLD.\"" << obj.getName() << "\" <> NEW.\"" << obj.getName() << "\") THEN\n"
 		<< "\t\t\tIF (OLD.\"" << obj.getName() << "\" IS NOT NULL) THEN\n"
 		<< "\t\t\t\tINSERT INTO __removed (__oid) VALUES (OLD.\"" << obj.getName() << "\");\n"
 		<< "\t\t\tEND IF;\n\t\tEND IF;\n";
 }
 
-static void writeFileRemoveTrigger(apr::ostringstream &stream, storage::Scheme *s, const storage::Field &obj) {
+static void writeFileRemoveTrigger(apr::ostringstream &stream, const storage::Scheme *s, const storage::Field &obj) {
 	stream << "\t\tIF (OLD.\"" << obj.getName() << "\" IS NOT NULL) THEN\n"
 		<< "\t\t\tINSERT INTO __removed (__oid) VALUES (OLD.\"" << obj.getName() << "\");\n"
 		<< "\t\tEND IF;\n";
 }
 
-static void writeObjectSetRemoveTrigger(apr::ostringstream &stream, storage::Scheme *s, const storage::FieldObject *obj) {
+static void writeObjectSetRemoveTrigger(apr::ostringstream &stream, const storage::Scheme *s, const storage::FieldObject *obj) {
 	auto & source = s->getName();
 	auto & target = obj->scheme->getName();
 
@@ -151,7 +161,7 @@ static void writeObjectSetRemoveTrigger(apr::ostringstream &stream, storage::Sch
 			<< s->getName() << "_f_" << obj->name << " WHERE "<< source << "_id=OLD.__oid);\n";
 }
 
-static void writeTrigger(apr::ostringstream &stream, storage::Scheme *s, const String &triggerName) {
+static void writeTrigger(apr::ostringstream &stream, const storage::Scheme *s, const String &triggerName) {
 	auto &fields = s->getFields();
 
 	stream << "CREATE OR REPLACE FUNCTION " << triggerName << "_func() RETURNS TRIGGER AS $" << triggerName
@@ -182,7 +192,7 @@ static void writeTrigger(apr::ostringstream &stream, storage::Scheme *s, const S
 
 void TableRec::writeCompareResult(apr::ostringstream &stream,
 		Map<String, TableRec> &required, Map<String, TableRec> &existed,
-		const Map<String, storage::Scheme *> &s) {
+		const Map<String, const storage::Scheme *> &s) {
 	for (auto &ex_it : existed) {
 		auto req_it = required.find(ex_it.first);
 		if (req_it != required.end()) {
@@ -365,7 +375,7 @@ void TableRec::writeCompareResult(apr::ostringstream &stream,
 	}
 }
 
-Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, storage::Scheme *> &s) {
+Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, const storage::Scheme *> &s) {
 	Map<String, TableRec> tables;
 	for (auto &it : s) {
 		auto scheme = it.second;
@@ -483,8 +493,8 @@ Map<String, TableRec> TableRec::get(Handle &h, apr::ostringstream &stream) {
 					table.cols.emplace(it.at(1).str(), ColRec(ColRec::Type::None, !isNullable));
 				}
 			}
+			stream << "COLUMNS " << it.at(0) << " " << it.at(1) << " " << it.at(2) << " " << it.at(3) << "\n";
 		}
-		stream << "COLUMNS " << it.at(0) << " " << it.at(1) << " " << it.at(2) << " " << it.at(3) << "\n";
 	}
 	columns.clear();
 
@@ -497,21 +507,16 @@ Map<String, TableRec> TableRec::get(Handle &h, apr::ostringstream &stream) {
 			auto &table = f->second;
 			if (it.at(2) == "UNIQUE") {
 				table.constraints.emplace(it.at(1).str(), ConstraintRec(ConstraintRec::Unique));
+				stream << "CONSTRAINT " << it.at(0) << " " << it.at(1) << " " << it.at(2) << "\n";
 			} else if (it.at(2) == "FOREIGN KEY") {
 				table.constraints.emplace(it.at(1).str(), ConstraintRec(ConstraintRec::Reference));
+				stream << "CONSTRAINT " << it.at(0) << " " << it.at(1) << " " << it.at(2) << "\n";
 			}
 		}
-		stream << "CONSTRAINT " << it.at(0) << " " << it.at(1) << " " << it.at(2) << "\n";
 	}
 	constraints.clear();
 
-	Result indexes( h.performSimpleSelect(
-			"SELECT t.relname as table_name, i.relname as index_name, "
-			"		array_to_string(array_agg(a.attname), ', ') as column_names"
-			" FROM pg_class t, pg_class i, pg_index ix, pg_attribute a"
-			" WHERE t.oid = ix.indrelid AND i.oid = ix.indexrelid AND a.attrelid = t.oid"
-			"		AND a.attnum = ANY(ix.indkey) AND t.relkind = 'r'"
-			" GROUP BY t.relname, i.relname ORDER BY t.relname, i.relname;"_weak) );
+	Result indexes( h.performSimpleSelect(String::make_weak(INDEX_QUERY)));
 	for (auto it : indexes) {
 		auto tname = it.at(0).str();
 		auto f = ret.find(tname);
@@ -520,10 +525,10 @@ Map<String, TableRec> TableRec::get(Handle &h, apr::ostringstream &stream) {
 			auto name = it.at(1);
 			name.readUntilString("_idx_");
 			if (name.is("_idx_")) {
-				table.indexes.emplace(name.str(), it.at(2).str());
+				table.indexes.emplace(it.at(1).str(), it.at(2).str());
+				stream << "INDEX " << it.at(0) << " " << it.at(1) << " " << it.at(2) << "\n";
 			}
 		}
-		stream << "INDEX " << it.at(0) << " " << it.at(1) << " " << it.at(2) << "\n";
 	}
 	indexes.clear();
 
@@ -534,9 +539,9 @@ Map<String, TableRec> TableRec::get(Handle &h, apr::ostringstream &stream) {
 		auto f = ret.find(tname);
 		if (f != ret.end()) {
 			auto &table = f->second;
-			table.triggers.emplace(it.at(1));
+			table.triggers.emplace(it.at(1).str());
+			stream << "TRIGGER " << it.at(0) << " " << it.at(1) << "\n";
 		}
-		stream << "TRIGGER " << it.at(0) << " " << it.at(1) << "\n";
 	}
 	triggers.clear();
 
@@ -544,7 +549,7 @@ Map<String, TableRec> TableRec::get(Handle &h, apr::ostringstream &stream) {
 }
 
 TableRec::TableRec() : objects(false) { }
-TableRec::TableRec(Server &serv, storage::Scheme *scheme) {
+TableRec::TableRec(Server &serv, const storage::Scheme *scheme) {
 	apr::ostringstream hashStream;
 	hashStream << getDefaultFunctionVersion();
 
@@ -643,7 +648,7 @@ TableRec::TableRec(Server &serv, storage::Scheme *scheme) {
 	}
 }
 
-bool Handle::init(Server &serv, const Map<String, Scheme *> &s) {
+bool Handle::init(Server &serv, const Map<String, const Scheme *> &s) {
 	if (!performSimpleQuery(String::make_weak(DATABASE_DEFAULTS))) {
 		return false;
 	}
@@ -672,6 +677,8 @@ bool Handle::init(Server &serv, const Map<String, Scheme *> &s) {
 
 		tables << "\n" << stream;
 		filesystem::write(name, (const uint8_t *)tables.data(), tables.size());
+	} else {
+		performSimpleQuery("COMMIT;"_weak);
 	}
 
 	return true;

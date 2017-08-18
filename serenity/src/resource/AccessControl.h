@@ -66,6 +66,7 @@ public:
 		Read,
 		Update,
 		Remove,
+		Reference,
 	};
 
 	enum Permission : uint8_t {
@@ -84,10 +85,11 @@ public:
 		Permission append = Partial;
 		Permission update = Partial;
 		Permission remove = Partial;
+		Permission reference = Partial;
 	};
 
-	using SchemeFn = Function<Permission (User *, Scheme *, Action)>;
-	using ObjectFn = Function<bool (User *, Scheme *, Action, data::Value &, data::Value &)>;
+	using SchemeFn = Function<Permission (User *, const Scheme &, Action)>;
+	using ObjectFn = Function<bool (User *, const Scheme &, Action, data::Value &, data::Value &)>;
 
 	AccessControl(const SchemeFn & = nullptr, const ObjectFn & = nullptr);
 
@@ -95,29 +97,29 @@ public:
 	void setAdminPrivileges(bool);
 
 	void setDefaultList(const List & l);
-	void setList(Scheme *, const List & l);
+	void setList(const Scheme &, const List & l);
 
 	void setDefaultSchemeCallback(const SchemeFn &);
-	void setSchemeCallback(Scheme *, const SchemeFn &);
+	void setSchemeCallback(const Scheme &, const SchemeFn &);
 
 	void setDefaultObjectCallback(const ObjectFn &);
-	void setObjectCallback(Scheme *, const ObjectFn &);
+	void setObjectCallback(const Scheme &, const ObjectFn &);
 
-	Permission onScheme(User *, Scheme *, Action) const;
-	bool onObject(User *, Scheme *, Action, data::Value &, data::Value &) const;
+	Permission onScheme(User *, const Scheme &, Action) const;
+	bool onObject(User *, const Scheme &, Action, data::Value &, data::Value &) const;
 
 protected:
 	bool useAdminPrivileges(User *) const;
 
 	bool _adminPrivileges = true;
 	List _default;
-	Map<Scheme *, List> _lists;
+	Map<const Scheme *, List> _lists;
 
 	SchemeFn _scheme = nullptr;
-	Map<Scheme *, SchemeFn> _schemes;
+	Map<const Scheme *, SchemeFn> _schemes;
 
 	ObjectFn _object = nullptr;
-	Map<Scheme *, ObjectFn> _objects;
+	Map<const Scheme *, ObjectFn> _objects;
 };
 
 NS_SA_END

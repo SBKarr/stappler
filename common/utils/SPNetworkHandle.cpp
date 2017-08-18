@@ -645,7 +645,7 @@ bool NetworkHandle::perform() {
         }
 	} else {
 		if (!_silent) {
-	    	log::format("CURL", "fail to perform %s: (%ld) %s",  _url.c_str(), _errorCode, errorBuffer);
+			log::format("CURL", "fail to perform %s: (%ld) %s",  _url.c_str(), _errorCode, errorBuffer);
 		}
 		_error = errorBuffer;
 		success = false;

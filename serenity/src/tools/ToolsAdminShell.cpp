@@ -28,73 +28,132 @@ THE SOFTWARE.
 #include "User.h"
 #include "Output.h"
 #include "StorageScheme.h"
+#include "StorageAdapter.h"
 #include "Resource.h"
 
 NS_SA_EXT_BEGIN(tools)
 
-class SchellSocketHandler : public websocket::Handler, ReaderClassBase<char> {
+struct SocketCommand;
+
+class ShellSocketHandler : public websocket::Handler, ReaderClassBase<char> {
 public:
 	enum class ShellMode {
 		Plain,
 		Html,
 	};
 
-	SchellSocketHandler(Manager *m, const Request &req, User *user) : Handler(m, req, 600_sec), _user(user) {
-		sendBroadcast(data::Value{
-			std::make_pair("user", data::Value(_user->getName())),
-			std::make_pair("event", data::Value("enter")),
-		});
-	}
+	ShellSocketHandler(Manager *m, const Request &req, User *user);
 
-	bool onModeCommand(CharReaderBase &r) {
+	void setShellMode(ShellMode m) { _mode = m; }
+	ShellMode getShellMode() const { return _mode; }
+
+	User *getUser() const { return _user; }
+	const Vector<SocketCommand *> &getCommands() const { return _cmds; }
+
+	bool onCommand(StringView &r);
+
+	virtual void onBegin() override;
+
+	// Data frame was recieved from network
+	virtual bool onFrame(FrameType t, const Bytes &b) override;
+
+	// Message was recieved from broadcast
+	virtual bool onMessage(const data::Value &val) override;
+
+	void sendCmd(const StringView &v);
+	void sendError(const String &str);
+	void sendData(const data::Value & data);
+
+protected:
+	Vector<SocketCommand *> _cmds;
+	ShellMode _mode = ShellMode::Plain;
+	User *_user;
+};
+
+struct SocketCommand : AllocBase {
+	SocketCommand(const String &str) : name(str) { }
+	virtual ~SocketCommand() { }
+	virtual bool run(ShellSocketHandler &h, StringView &r) = 0;
+	virtual const String desc() const = 0;
+	virtual const String help() const = 0;
+
+	String name;
+};
+
+struct ModeCmd : SocketCommand {
+	ModeCmd() : SocketCommand("mode") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
 		if (!r.empty()) {
 			if (r.is("plain")) {
-				_mode = ShellMode::Plain;
-				send("You are now in plain text mode");
+				h.setShellMode(ShellSocketHandler::ShellMode::Plain);
+				h.send("You are now in plain text mode");
 			} else if (r.is("html")) {
-				_mode = ShellMode::Html;
-				send("You are now in <font color=\"#3f51b5\">HTML</font> mode");
+				h.setShellMode(ShellSocketHandler::ShellMode::Html);
+				h.send("You are now in <font color=\"#3f51b5\">HTML</font> mode");
 			}
 		} else {
-			if (_mode == ShellMode::Plain) {
-				send("Plain text mode");
+			if (h.getShellMode() == ShellSocketHandler::ShellMode::Plain) {
+				h.send("Plain text mode");
 			} else {
-				send("<font color=\"#3f51b5\">HTML</font> mode");
+				h.send("<font color=\"#3f51b5\">HTML</font> mode");
 			}
 		}
 		return true;
 	}
 
-	bool onDebugCommand(CharReaderBase &r) {
+	virtual const String desc() const {
+		return "plain|html - Switch socket output mode"_weak;
+	}
+	virtual const String help() const {
+		return "plain|html - Switch socket output mode"_weak;
+	}
+};
+
+struct DebugCmd : SocketCommand {
+	DebugCmd() : SocketCommand("debug") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
 		if (!r.empty()) {
 			if (r.is("on")) {
 				messages::setDebugEnabled(true);
-				send("Try to enable debug mode, wait a second, until all servers receive your message");
+				h.send("Try to enable debug mode, wait a second, until all servers receive your message");
 			} else if (r.is("off")) {
 				messages::setDebugEnabled(false);
-				send("Try to disable debug mode, wait a second, until all servers receive your message");
+				h.send("Try to disable debug mode, wait a second, until all servers receive your message");
 			}
 		} else {
 			if (messages::isDebugEnabled()) {
-				send("Debug mode: On");
+				h.send("Debug mode: On");
 			} else {
-				send("Debug mode: Off");
+				h.send("Debug mode: Off");
 			}
 		}
 		return true;
 	}
 
-	bool onListCommand(CharReaderBase &r) {
+	virtual const String desc() const {
+		return "on|off - Switch server debug mode"_weak;
+	}
+	virtual const String help() const {
+		return "on|off - Switch server debug mode"_weak;
+	}
+};
+
+struct ListCmd : SocketCommand {
+	ListCmd() : SocketCommand("list") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
 		if (r.empty()) {
 			data::Value ret;
-			auto &schemes = _request.server().getSchemes();
+			auto &schemes = h.request().server().getSchemes();
 			for (auto &it : schemes) {
 				ret.addString(it.first);
 			}
-			sendData(ret);
+			h.sendData(ret);
 		} else if (r == "all") {
 			data::Value ret;
-			auto &schemes = _request.server().getSchemes();
+			auto &schemes = h.request().server().getSchemes();
 			for (auto &it : schemes) {
 				auto &val = ret.emplace(it.first);
 				auto &fields = it.second->getFields();
@@ -102,158 +161,535 @@ public:
 					val.setValue(fit.second.getTypeDesc(), fit.first);
 				}
 			}
-			sendData(ret);
+			h.sendData(ret);
 		} else {
 			data::Value ret;
-			auto cmd = r.readUntil<Group<GroupId::WhiteSpace>>();
-			auto scheme =  _request.server().getScheme(cmd.str());
+			auto cmd = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+			auto scheme =  h.request().server().getScheme(cmd.str());
 			if (scheme) {
 				auto &fields = scheme->getFields();
 				for (auto &fit : fields) {
 					ret.setValue(fit.second.getTypeDesc(), fit.first);
 				}
-				sendData(ret);
+				h.sendData(ret);
 			}
 		}
 		return true;
 	}
 
-	bool onGetCommand(CharReaderBase &r) {
-		auto schemeName = r.readUntil<Group<GroupId::WhiteSpace>>();
-		r.skipChars<Group<GroupId::WhiteSpace>>();
-		auto path = r.readUntil<Group<GroupId::WhiteSpace>>();
-		r.skipChars<Group<GroupId::WhiteSpace>>();
-		auto resolve = r.readUntil<Group<GroupId::WhiteSpace>>();
+	virtual const String desc() const {
+		return "all|<name> - Get information about data scheme"_weak;
+	}
+	virtual const String help() const {
+		return "all|<name> - Get information about data scheme"_weak;
+	}
+};
 
-		if (!schemeName.empty() && !path.empty()) {
-			data::Value ret;
-			auto scheme =  _request.server().getScheme(schemeName.str());
-			if (scheme) {
-				Resource *r = Resource::resolve(storage(), scheme, path.str());
+struct ResourceCmd : SocketCommand {
+	ResourceCmd(const String &str) : SocketCommand(str) { }
+
+	Resource *acquireResource(ShellSocketHandler &h, const StringView &scheme, const StringView &path, const StringView &resolve) {
+		if (!scheme.empty()) {
+			auto s =  h.request().server().getScheme(scheme.str());
+			if (s) {
+				Resource *r = Resource::resolve(h.storage(), *s, path.empty()?String("/"):path.str());
 				if (r) {
-					r->setUser(_user);
+					r->setUser(h.getUser());
 					if (!resolve.empty()) {
 						r->setResolveOptions(data::Value(resolve.str()));
 					}
-
-					auto data = r->getResultObject();
-					sendData(data);
+					return r;
 				} else {
-					data::Value val;
-					val.setString("Fail to get resource", "error");
-					val.setString(path.str(), "path");
-					val.setString(schemeName.str(), "scheme");
-					sendData(val);
-
+					h.sendError(toString("Fail to resolve resource \"", path, "\" for scheme ", scheme));
 				}
+			} else {
+				h.sendError(toString("No such scheme: ", scheme));
 			}
-
+		} else {
+			h.sendError(toString("Scheme is not defined"));
 		}
+		return nullptr;
+	}
+};
+
+struct GetCmd : ResourceCmd {
+	GetCmd() : ResourceCmd("get") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		auto schemeName = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+
+		StringView path("/");
+		if (r.is('/')) {
+			path = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		}
+
+		auto resolve = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+
+		if (auto r = acquireResource(h, schemeName, path, resolve)) {
+			auto data = r->getResultObject();
+			h.sendData(data);
+		}
+		return true;
+	}
+
+	virtual const String desc() const {
+		return "<scheme> <path> <resolve> - Get data from scheme"_weak;
+	}
+	virtual const String help() const {
+		return "<scheme> <path> <resolve> - Get data from scheme"_weak;
+	}
+};
+
+struct CreateCmd : ResourceCmd {
+	CreateCmd() : ResourceCmd("create") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		auto schemeName = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+
+		StringView path("/");
+		if (r.is('/')) {
+			path = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		}
+
+		data::Value patch = (r.is('{') || r.is('[')) ? data::read(r) : Url::parseDataArgs(r, 1_KiB);
+		if (auto r = acquireResource(h, schemeName, path, StringView())) {
+			apr::array<InputFile> f;
+			if (r->prepareCreate()) {
+				auto ret = r->createObject(patch, f);
+				h.sendData(ret);
+				return true;
+			} else {
+				h.sendError(toString("Action for scheme ", schemeName, " is forbidden for ", h.getUser()->getName()));
+			}
+		}
+
+		h.sendData(patch);
+		h.sendError("Fail to create object with data:");
 
 		return true;
 	}
 
-	bool onHandlers(CharReaderBase &r) {
-		auto serv = _request.server();
-		auto &h = serv.getRequestHandlers();
+	virtual const String desc() const {
+		return "<scheme> <path> <data> - Create object for scheme"_weak;
+	}
+	virtual const String help() const {
+		return "<scheme> <path> <data> - Create object for scheme"_weak;
+	}
+};
+
+struct UpdateCmd : ResourceCmd {
+	UpdateCmd() : ResourceCmd("update") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		auto schemeName = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+
+		StringView path("/");
+		if (r.is('/')) {
+			path = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		}
+
+		data::Value patch = (r.is('{') || r.is('[')) ? data::read(r) : Url::parseDataArgs(r, 1_KiB);
+		if (auto r = acquireResource(h, schemeName, path, StringView())) {
+			apr::array<InputFile> f;
+			if (r->prepareUpdate()) {
+				auto ret = r->updateObject(patch, f);
+				h.sendData(ret);
+				return true;
+			} else {
+				h.sendError(toString("Action for scheme ", schemeName, " is forbidden for ", h.getUser()->getName()));
+			}
+		}
+
+		h.sendData(patch);
+		h.sendError("Fail to update object with data:");
+
+		return true;
+	}
+
+	virtual const String desc() const {
+		return "<scheme> <path> <data> - Update object for scheme"_weak;
+	}
+	virtual const String help() const {
+		return "<scheme> <path> <data>  - Update object for scheme"_weak;
+	}
+};
+
+struct UploadCmd : ResourceCmd {
+	UploadCmd() : ResourceCmd("upload") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		auto schemeName = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+
+		StringView path("/");
+		if (r.is('/')) {
+			path = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		}
+
+		if (auto r = acquireResource(h, schemeName, path, StringView())) {
+			if (r->prepareCreate()) {
+				Bytes bkey = valid::makeRandomBytes(8);
+				String key = base16::encode(bkey);
+
+				data::Value token {
+					pair("scheme", data::Value(schemeName)),
+					pair("path", data::Value(path)),
+					pair("resolve", data::Value("")),
+					pair("user", data::Value(h.getUser()->getObjectId())),
+				};
+
+				h.storage()->setData(key, token, TimeInterval::seconds(5));
+
+				StringStream str;
+				str << ":upload:" << data::Value{
+					pair("url", data::Value(toString(h.request().getUri(), "/upload/", key))),
+					pair("name", data::Value("content")),
+				};
+				h.send(str.str());
+				return true;
+			}
+		}
+
+		h.sendError("Fail to prepare upload");
+		return true;
+	}
+
+	virtual const String desc() const {
+		return "<scheme> <path> - Upload file for scheme resource"_weak;
+	}
+	virtual const String help() const {
+		return "<scheme> <path> - Update file for scheme resource"_weak;
+	}
+};
+
+struct AppendCmd : ResourceCmd {
+	AppendCmd() : ResourceCmd("append") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		auto schemeName = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+
+		StringView path("/");
+		if (r.is('/')) {
+			path = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		}
+
+		data::Value patch = (r.is('{') || r.is('[')) ? data::read(r) : Url::parseDataArgs(r, 1_KiB);
+		if (auto r = acquireResource(h, schemeName, path, StringView())) {
+			if (r->prepareAppend()) {
+				auto ret = r->appendObject(patch);
+				h.sendData(ret);
+				return true;
+			} else {
+				h.sendError(toString("Action for scheme ", schemeName, " is forbidden for ", h.getUser()->getName()));
+			}
+		}
+
+		h.sendData(patch);
+		h.sendError("Fail to update object with data:");
+
+		return true;
+	}
+
+	virtual const String desc() const {
+		return "<scheme> <path> <data> - Append object for scheme"_weak;
+	}
+	virtual const String help() const {
+		return "<scheme> <path> <data> - Append object for scheme"_weak;
+	}
+};
+
+struct DeleteCmd : ResourceCmd {
+	DeleteCmd() : ResourceCmd("delete") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		auto schemeName = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+
+		StringView path("/");
+		if (r.is('/')) {
+			path = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		}
+
+		if (auto r = acquireResource(h, schemeName, path, StringView())) {
+			if (r->removeObject()) {
+				h.sendData(data::Value(true));
+				return true;
+			} else {
+				h.sendError(toString("Action for scheme ", schemeName, " is forbidden for ", h.getUser()->getName()));
+			}
+		}
+
+		h.sendError("Fail to delete object");
+
+		return true;
+	}
+
+	virtual const String desc() const {
+		return "<scheme> <path> - Delete object for scheme"_weak;
+	}
+	virtual const String help() const {
+		return "<scheme> <path> - Delete object for scheme"_weak;
+	}
+};
+
+struct HandlersCmd : SocketCommand {
+	HandlersCmd() : SocketCommand("handlers") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		auto serv = h.request().server();
+		auto &hdl = serv.getRequestHandlers();
 
 		data::Value ret;
-		for (auto &it : h) {
-			auto &v = ret.emplace();
-			v.setString(it.first, "path");
-			v.setValue(it.second.second, "data");
-		}
-
-		sendData(ret);
-		return true;
-	}
-
-	bool onCommand(CharReaderBase &r) {
-		auto cmd = r.readUntil<Group<GroupId::WhiteSpace>>();
-		r.skipChars<Group<GroupId::WhiteSpace>>();
-		if (cmd == "echo") {
-			if (!r.empty()) { send(r.str()); }
-
-		} else if (cmd == "close") {
-			send("Connection will be closed by your request");
-			return false;
-
-		} else if (cmd == "mode") {
-			return onModeCommand(r);
-
-		} else if (cmd == "debug") {
-			return onDebugCommand(r);
-
-		} else if (cmd == "list") {
-			return onListCommand(r);
-
-		} else if (cmd == "get") {
-			return onGetCommand(r);
-
-		} else if (cmd == "msg") {
-			sendBroadcast(data::Value{
-				std::make_pair("user", data::Value(_user->getName())),
-				std::make_pair("event", data::Value("message")),
-				std::make_pair("message", data::Value(r.str())),
-			});
-		} else if (cmd == "count") {
-			apr::ostringstream resp;
-			resp << "Users on socket: " << _manager->size();
-			send(resp.weak());
-		} else if (cmd == "handlers") {
-			return onHandlers(r);
-		}
-		return true;
-	}
-
-	virtual void onBegin() override {
-		apr::ostringstream resp;
-		resp << "Welcome. " << _user->getName() << "!";
-		send(resp.weak());
-	}
-
-	// Data frame was recieved from network
-	virtual bool onFrame(FrameType t, const Bytes &b) override {
-		if (t == FrameType::Text) {
-			CharReaderBase r((const char *)b.data(), b.size());
-			return onCommand(r);
-		}
-		return true;
-	}
-
-	// Message was recieved from broadcast
-	virtual bool onMessage(const data::Value &val) override {
-		if (val.isBool("message")) {
-			sendData(val);
-		} else  if (val.isString("event")) {
-			auto &ev = val.getString("event");
-			if (ev == "enter") {
-				apr::ostringstream resp;
-				resp << "User " << val.getString("user") << " connected.";
-				send(resp.weak());
-			} else if (ev == "message") {
-				apr::ostringstream resp;
-				resp << "- [" << val.getString("user") << "] " << val.getString("message");
-				send(resp.weak());
+		for (auto &it : hdl) {
+			auto &v = ret.emplace(it.first);
+			if (!it.second.data.isNull()) {
+				v.setValue(it.second.data, "data");
+			}
+			if (it.second.scheme) {
+				v.setString(it.second.scheme->getName(), "scheme");
+			}
+			if (!it.second.component.empty()) {
+				v.setString(it.second.component, "component");
+			}
+			if (it.first.back() == '/') {
+				v.setBool(true, "forSubPaths");
 			}
 		}
 
+		h.sendData(ret);
 		return true;
 	}
 
-	void sendData(const data::Value & data) {
-		apr::ostringstream stream;
-		switch(_mode) {
-		case ShellMode::Plain: data::write(stream, data, data::EncodeFormat::Json); break;
-		case ShellMode::Html: output::formatJsonAsHtml(stream, data); break;
-		};
-		send(stream.weak());
+	virtual const String desc() const {
+		return " - Information about registered handlers"_weak;
+	}
+	virtual const String help() const {
+		return " - Information about registered handlers"_weak;
+	}
+};
+
+struct CloseCmd : SocketCommand {
+	CloseCmd() : SocketCommand("exit") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		h.send("Connection will be closed by your request");
+		return false;
 	}
 
-protected:
-	ShellMode _mode = ShellMode::Plain;
-	User *_user;
+	virtual const String desc() const {
+		return " - close current connection"_weak;
+	}
+	virtual const String help() const {
+		return " - close current connection"_weak;
+	}
 };
+
+struct EchoCmd : SocketCommand {
+	EchoCmd() : SocketCommand("echo") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		if (!r.empty()) { h.send(r.str()); }
+		return true;
+	}
+
+	virtual const String desc() const {
+		return "<message> - display message in current terminal"_weak;
+	}
+	virtual const String help() const {
+		return "<message> - display message in current terminal"_weak;
+	}
+};
+
+struct ParseCmd : SocketCommand {
+	ParseCmd() : SocketCommand("parse") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		data::Value patch = (r.is('{') || r.is('[')) ? data::read(r) : Url::parseDataArgs(r, 1_KiB);
+		h.sendData(patch);
+		return true;
+	}
+
+	virtual const String desc() const {
+		return "<message> - parse message as object changeset"_weak;
+	}
+	virtual const String help() const {
+		return "<message> - parse message as object changeset"_weak;
+	}
+};
+
+struct MsgCmd : SocketCommand {
+	MsgCmd() : SocketCommand("msg") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		h.sendBroadcast(data::Value{
+			std::make_pair("user", data::Value(h.getUser()->getName())),
+			std::make_pair("event", data::Value("message")),
+			std::make_pair("message", data::Value(r.str())),
+		});
+		return true;
+	}
+
+	virtual const String desc() const {
+		return "<message> - display message in all opened terminals"_weak;
+	}
+	virtual const String help() const {
+		return "<message> - display message in all opened terminals"_weak;
+	}
+};
+
+struct CountCmd : SocketCommand {
+	CountCmd() : SocketCommand("count") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		StringStream resp;
+		resp << "Users on socket: " << h.manager()->size();
+		h.send(resp.weak());
+		return true;
+	}
+
+	virtual const String desc() const {
+		return " - display number of opened terminals"_weak;
+	}
+	virtual const String help() const {
+		return " - display number of opened terminals"_weak;
+	}
+};
+
+struct HelpCmd : SocketCommand {
+	HelpCmd() : SocketCommand("help") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		auto & cmds = h.getCommands();
+		StringStream stream;
+		if (r.empty()) {
+			for (auto &it : cmds) {
+				stream << "  - " << it->name << " " << it->desc() << "\n";
+			}
+		} else {
+			for (auto &it : cmds) {
+				if (r == it->name) {
+					stream << "  - " << it->name << " " << it->desc() << "\n" << it->help();
+				}
+			}
+		}
+		h.send(stream.weak());
+		return true;
+	}
+
+	virtual const String desc() const {
+		return "<>|<cmd> - display command list or information about command"_weak;
+	}
+	virtual const String help() const {
+		return "<>|<cmd> - display command list or information about command"_weak;
+	}
+};
+
+ShellSocketHandler::ShellSocketHandler(Manager *m, const Request &req, User *user) : Handler(m, req, 600_sec), _user(user) {
+	sendBroadcast(data::Value{
+		std::make_pair("user", data::Value(_user->getName())),
+		std::make_pair("event", data::Value("enter")),
+	});
+
+	_cmds.push_back(new ListCmd());
+	_cmds.push_back(new HandlersCmd());
+	_cmds.push_back(new GetCmd());
+	_cmds.push_back(new CreateCmd());
+	_cmds.push_back(new UpdateCmd());
+	_cmds.push_back(new AppendCmd());
+	_cmds.push_back(new UploadCmd());
+	_cmds.push_back(new DeleteCmd());
+	//_cmds.push_back(new ModeCmd());
+	_cmds.push_back(new DebugCmd());
+	_cmds.push_back(new CloseCmd());
+	_cmds.push_back(new EchoCmd());
+	_cmds.push_back(new ParseCmd());
+	_cmds.push_back(new MsgCmd());
+	_cmds.push_back(new CountCmd());
+	_cmds.push_back(new HelpCmd());
+}
+
+bool ShellSocketHandler::onCommand(StringView &r) {
+	auto cmd = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+
+	for (auto &it : _cmds) {
+		if (cmd == it->name) {
+			return it->run(*this, r);
+		}
+	}
+
+	sendError("No such command, use 'help' to list available commands");
+	return true;
+}
+
+void ShellSocketHandler::onBegin() {
+	StringStream resp;
+	resp << "Serenity: Welcome. " << _user->getName() << "!";
+	send(resp.weak());
+}
+
+bool ShellSocketHandler::onFrame(FrameType t, const Bytes &b) {
+	if (t == FrameType::Text) {
+		StringView r((const char *)b.data(), b.size());
+		sendCmd(r);
+		return onCommand(r);
+	}
+	return true;
+}
+
+bool ShellSocketHandler::onMessage(const data::Value &val) {
+	if (val.isBool("message")) {
+		sendData(val);
+	} else  if (val.isString("event")) {
+		auto &ev = val.getString("event");
+		if (ev == "enter") {
+			StringStream resp;
+			resp << "User " << val.getString("user") << " connected.";
+			send(resp.weak());
+		} else if (ev == "message") {
+			StringStream resp;
+			resp << "- [" << val.getString("user") << "] " << val.getString("message");
+			send(resp.weak());
+		}
+	}
+
+	return true;
+}
+
+void ShellSocketHandler::sendCmd(const StringView &v) {
+	StringStream stream;
+	stream << _user->getName() << "@" << _request.getHostname() << ": " << v;
+	send(stream.weak());
+}
+
+void ShellSocketHandler::sendError(const String &str) {
+	StringStream stream;
+	switch(_mode) {
+	case ShellMode::Plain: stream << "Error: " << str << "\n"; break;
+	case ShellMode::Html: stream << "<span class=\"error\">Error:</span> " << str; break;
+	};
+	send(stream.weak());
+}
+
+void ShellSocketHandler::sendData(const data::Value & data) {
+	StringStream stream;
+	switch(_mode) {
+	case ShellMode::Plain: data::write(stream, data, data::EncodeFormat::Json); break;
+	case ShellMode::Html: stream << "<p>"; output::formatJsonAsHtml(stream, data); stream << "</p>"; break;
+	};
+	send(stream.weak());
+}
+
 
 ShellSocket::Handler * ShellSocket::onAccept(const Request &req) {
 	Request rctx(req);
@@ -273,7 +709,7 @@ ShellSocket::Handler * ShellSocket::onAccept(const Request &req) {
 				rctx.setStatus(HTTP_FORBIDDEN);
 			} else {
 				rctx.setUser(user);
-				return new SchellSocketHandler(this, req, user);
+				return new ShellSocketHandler(this, req, user);
 			}
 		}
 	}
@@ -286,82 +722,100 @@ bool ShellSocket::onBroadcast(const data::Value &) {
 
 int ShellGui::onPostReadRequest(Request &rctx) {
 	if (rctx.getMethod() == Request::Get) {
-		rctx << R"ShellGui(<!DOCTYPE html>
-<html><head>
-	<title>Serenity Shell</title>
-	<link rel="stylesheet" href="/__server/virtual/css/style.css" />
-	<link rel="stylesheet" href="/__server/virtual/css/kawaiJson.css" />
-	<script src="/__server/virtual/js/kawaiJson.js"></script>
-	<script src="/__server/virtual/js/shellHistory.js"></script>
-	<script type="text/javascript">
-		var ws;
-		var wsaddress = ((window.location.protocol == "https:") ? "wss:" : "ws:") + "//" + window.location.host + window.location.pathname
-		if ((typeof(WebSocket) == 'undefined') && (typeof(MozWebSocket) != 'undefined')) {
-			WebSocket = MozWebSocket;
+		if (_subPath.empty()) {
+			rctx.setContentType("text/html;charset=UTF-8");
+			rctx << VirtualFile::get("/html/shell.html");
+			return DONE;
+		} else {
+			return HTTP_NOT_FOUND;
 		}
-		function send(input) { if (ws) { ws.send(input.value); input.value = ""; } }
-		function init() {
-			document.getElementById("main").style.visibility = "hidden";
-			ShellHistory(document.getElementById("input"), send);
-		}
-
-		function connect(form) {
-			var nameEl = document.getElementById("ws_name");
-			var passwdEl = document.getElementById("ws_passwd");
-
-			var name = nameEl.value;
-			var passwd = passwdEl.value;
-
-			nameEl.value = "";
-			passwdEl.value = "";
-
-			ws = new WebSocket(wsaddress + "?name=" + name + "&passwd=" + passwd);
-			ws.onopen = function(event) {
-				document.getElementById("login").style.visibility = "hidden";
-				document.getElementById("main").style.visibility = "visible";
-				document.getElementById("connected").innerHTML = "Connected to WebSocket server";
-				document.getElementById("output").innerHTML = "";
-			};
-			ws.onmessage = function(event) {
-				var output = document.getElementById("output");
-				if (event.data[0] == '{' || event.data[0] == '[') {
-					var node = document.createElement("p");
-					var json = JSON.parse(event.data);
-					KawaiJson(node, json);
-					output.insertBefore(node, output.firstChild);
+	} else if (rctx.getMethod() == Request::Post) {
+		StringView path(_subPath);
+		if (!path.is("/upload/")) {
+			return HTTP_NOT_IMPLEMENTED;
+		} else {
+			path += "/upload/"_len;
+			auto storage = rctx.storage();
+			if (storage && !path.empty()) {
+				auto data = storage->getData(path.str());
+				if (data) {
+					storage->clearData(path.str());
 				} else {
-					output.innerHTML = "<p>" + event.data + "</p>" + output.innerHTML;
+					return HTTP_NOT_FOUND;
 				}
-			};
-			ws.onerror = function(event) { console.log(event); };
-			ws.onclose = function(event) {
-				ws = null;
-				console.log(event);
-				document.getElementById("login").style.visibility = "visible";
-				document.getElementById("main").style.visibility = "hidden";
-          		document.getElementById("connected").innerHTML = "Connection Closed";
-			}
-			return false;
-		}
 
-	</script>
-</head><body onload="init();">
-	<h4>Serenity admin shell</h4>
-	<form id="login" onsubmit="return connect(this);">
-		<input id="ws_name" type="text" name="name" placeholder="User name" value="" size="24" />
-		<input id="ws_passwd" type="password" name="passwd" placeholder="Password" value="" size="24" />
-		<input type="submit" />
-	</form>
-	<div id="connected">Not Connected</div>
-	<div id="main" style="visibility:hidden">
-		Enter Message: <input id="input" type="text" name="message" value="" size="80"/><br/>
-		Server says... <div id="output"></div>
-	</div>
-</body></html>
-)ShellGui";
-		rctx.setContentType("text/html;charset=UTF-8");
-		return DONE;
+				auto scheme = rctx.server().getScheme(data.getString("scheme"));
+				auto path = data.getString("path");
+				auto resolve = data.getString("resolve");
+				auto user = User::get(storage, data.getInteger("user"));
+				if (scheme && !path.empty() && user) {
+					if (Resource *r = Resource::resolve(storage, *scheme, path)) {
+						r->setUser(user);
+						if (!resolve.empty()) {
+							r->setResolveOptions(data::Value(resolve));
+						}
+						if (r->prepareCreate()) {
+							_resource = r;
+							return DECLINED;
+						}
+					}
+				}
+			}
+		}
+		return HTTP_NOT_FOUND;
 	}
 	return DECLINED;
 }
+
+void ShellGui::onInsertFilter(Request &rctx) {
+	if (!_resource) {
+		return;
+	}
+
+	rctx.setRequiredData(InputConfig::Require::Files);
+	rctx.setMaxRequestSize(_resource->getMaxRequestSize());
+	rctx.setMaxVarSize(_resource->getMaxVarSize());
+	rctx.setMaxFileSize(_resource->getMaxFileSize());
+
+	if (rctx.getMethod() == Request::Put || rctx.getMethod() == Request::Post) {
+		auto ex = InputFilter::insert(rctx);
+		if (ex != InputFilter::Exception::None) {
+			if (ex == InputFilter::Exception::TooLarge) {
+				rctx.setStatus(HTTP_REQUEST_ENTITY_TOO_LARGE);
+			} else if (ex == InputFilter::Exception::Unrecognized) {
+				rctx.setStatus(HTTP_UNSUPPORTED_MEDIA_TYPE);
+			}
+		}
+	}
+}
+
+int ShellGui::onHandler(Request &) {
+	return OK;
+}
+
+void ShellGui ::onFilterComplete(InputFilter *filter) {
+	Request rctx(filter->getRequest());
+	data::Value data;
+	if (_resource) {
+		data.setValue(_resource->createObject(filter->getData(), filter->getFiles()), "result");
+		data.setBool(true, "OK");
+	} else {
+		data.setBool(false, "OK");
+	}
+
+	data.setInteger(apr_time_now(), "date");
+#if DEBUG
+	auto &debug = _request.getDebugMessages();
+	if (!debug.empty()) {
+		data.setArray(debug, "debug");
+	}
+#endif
+	auto &error = _request.getErrorMessages();
+	if (!error.empty()) {
+		data.setArray(error, "errors");
+	}
+
+	_request.writeData(data, false);
+}
+
 NS_SA_EXT_END(tools)

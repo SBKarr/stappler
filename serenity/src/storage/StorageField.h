@@ -177,7 +177,7 @@ public:
 	public:
 		template <typename F, typename T>
 		static void setOptions(F &f, T && t) {
-			FieldOption<F, T>::assign(f, std::forward<T>(t));
+			FieldOption<F, typename std::remove_reference<T>::type>::assign(f, std::forward<T>(t));
 		}
 
 		template <typename F, typename T, typename ... Args>
@@ -240,7 +240,7 @@ public:
 	bool isIndexed() const { return slot->isIndexed(); }
 	bool isFile() const { return slot->isFile(); }
 	bool isReference() const;
-	Scheme * getForeignScheme() const;
+	const Scheme * getForeignScheme() const;
 
 	void hash(apr::ostringstream &stream, ValidationLevel l) const { slot->hash(stream, l); }
 
@@ -360,7 +360,7 @@ struct FieldObject : Field::Slot {
 
 	virtual void hash(apr::ostringstream &stream, ValidationLevel l) const override;
 
-	Scheme *scheme = nullptr;
+	const Scheme *scheme = nullptr;
 	RemovePolicy onRemove = RemovePolicy::Null;
 	Linkage linkage;
 	String link;
@@ -513,8 +513,11 @@ template <typename F> struct FieldOption<F, Linkage> {
 	static inline void assign(F & f, Linkage p) { f.linkage = p; }
 };
 
-template <typename F> struct FieldOption<F, Scheme * &> {
-	static inline void assign(F & f, Scheme * & s) { f.scheme = s; }
+template <typename F> struct FieldOption<F, const Scheme *> {
+	static inline void assign(F & f, const Scheme *s) { f.scheme = s; }
+};
+template <typename F> struct FieldOption<F, Scheme> {
+	static inline void assign(F & f, const Scheme &s) { f.scheme = &s; }
 };
 template <typename F> struct FieldOption<F, Field> {
 	static inline void assign(F & f, Field && s) { f.tfield = s; }

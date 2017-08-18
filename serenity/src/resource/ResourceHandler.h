@@ -29,7 +29,7 @@ NS_SA_BEGIN
 
 class ResourceHandler : public RequestHandler {
 public:
-	ResourceHandler(storage::Scheme *scheme, const data::TransformMap * = nullptr,
+	ResourceHandler(const storage::Scheme &scheme, const data::TransformMap * = nullptr,
 			AccessControl * = nullptr, const data::Value & = data::Value());
 
 	virtual bool isRequestPermitted(Request &) override;
@@ -46,8 +46,8 @@ public: // request interface
 
 protected:
 	void setFileParams(Request &rctx, const data::Value &file);
-	void performApiObject(Request &rctx, storage::Scheme *, data::Value &val);
-	void performApiFilter(Request &rctx, storage::Scheme *, data::Value &val);
+	void performApiObject(Request &rctx, const storage::Scheme &, data::Value &val);
+	void performApiFilter(Request &rctx, const storage::Scheme &, data::Value &val);
 
 	int writeDataToRequest(Request &rctx, data::Value &objs);
 	int getHintedStatus(int) const;
@@ -55,7 +55,7 @@ protected:
 	virtual Resource *getResource(Request &);
 
 	Request::Method _method = Request::Get;
-	storage::Scheme *_scheme = nullptr;
+	const storage::Scheme &_scheme;
 	const data::TransformMap * _transform = nullptr;
 	AccessControl *_access = nullptr;
 	Resource *_resource = nullptr;

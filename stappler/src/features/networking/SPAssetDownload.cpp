@@ -159,6 +159,9 @@ bool AssetDownload::executeLoop() {
 				if (filesystem::exists(getReceiveFile())) {
 					return executeLoop();
 				}
+			} else {
+				log::format("CURL", "fail to asset download %s", _handle.getUrl().data());
+				return false;
 			}
 		} else if (validate == Validation::Valid) {
 			return true;

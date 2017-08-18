@@ -23,76 +23,114 @@ THE SOFTWARE.
 #ifndef SERENITY_SRC_STORAGE_STORAGEQUERY_H_
 #define SERENITY_SRC_STORAGE_STORAGEQUERY_H_
 
+#include "SPSql.h"
 #include "Define.h"
 
 NS_SA_EXT_BEGIN(storage)
 
-enum class Comparation {
-	LessThen, // lt
-	LessOrEqual, // le
-	Equal, // eq
-	NotEqual, // neq
-	GreatherOrEqual, // ge
-	GreatherThen, // gt
-	BetweenValues, // bw  field > v1 AND field < v2
-	BetweenEquals, // be  field >= v1 AND field <= v2
-	NotBetweenValues, // nbw  field < v1 OR field > v2
-	NotBetweenEquals, // nbe  field <= v1 OR field >= v2
+using Operator = sql::Operator;
+using Comparation = sql::Comparation;
+using Ordering = sql::Ordering;
 
-};
-
-enum class Ordering {
-	Ascending,
-	Descending,
-};
-
-struct Query {
+class Query {
+public:
 	struct Select {
 		Comparation compare;
-		int64_t value1;
-		int64_t value2;
+		data::Value value1;
+		data::Value value2;
 		String field;
-		String value;
 
-		Select(const String & f, Comparation c, int64_t v1, int64_t v2)
-		: compare(c), value1(v1), value2(v2), field(f) { }
-
-		Select(const String & f, Comparation c, const String & v)
-		: compare(Comparation::Equal), value1(0), value2(0), field(f), value(v) { }
+		Select(const String & f, Comparation c, data::Value && v1, data::Value && v2);
+		Select(const String & f, Comparation c, int64_t v1, int64_t v2);
+		Select(const String & f, Comparation c, const String & v);
 	};
 
-	Vector<Select> _select;
-	Ordering _ordering = Ordering::Ascending;
-	String _orderField;
+	static Query all();
 
-	size_t _limit = maxOf<size_t>();
-	size_t _offset = 0;
+	Query & select(const String &alias);
+	Query & select(uint64_t id);
 
-	static Query all() { return Query(); }
+	Query & select(const String &f, Comparation c, int64_t v1, int64_t v2 = 0);
 
-	Query & select(const String &f, Comparation c, int64_t v1, int64_t v2 = 0) {
-		_select.emplace_back(f, c, v1, v2);
-		return *this;
-	}
+	Query & select(const String &f, const String & v);
+	Query & select(Select &&q);
 
-	Query & select(const String &f, const String & v) {
-		_select.emplace_back(f, Comparation::Equal, v);
-		return *this;
-	}
+	Query & order(const String &f, Ordering o = Ordering::Ascending);
+	Query & limit(size_t l, size_t off);
 
-	Query & order(const String &f, Ordering o = Ordering::Ascending) {
-		_orderField = f;
-		_ordering = o;
-		return *this;
-	}
+	Query & limit(size_t l);
+	Query & offset(size_t l);
 
-	Query & limit(size_t l, size_t off = 0) {
-		_limit = l;
-		_offset = off;
-		return *this;
-	}
+	bool empty() const;
 
-	bool empty() { return _select.empty(); }
+	uint64_t getSelectOid() const;
+	const String & getSelectAlias() const;
+	const Vector<Select> &getSelectList() const;
+
+	const String & getOrderField() const;
+	Ordering getOrdering() const;
+
+	size_t getLimitValue() const;
+	size_t getOffsetValue() const;
+
+	bool hasOrder() const;
+	bool hasLimit() const;
+	bool hasOffset() const;
+
+protected:
+	uint64_t selectOid = 0;
+	String selectAlias;
+	Vector<Select> selectList;
+
+	Ordering ordering = Ordering::Ascending;
+	String orderField;
+
+	size_t limitValue = maxOf<size_t>();
+	size_t offsetValue = 0;
+};
+
+class QueryList : public AllocBase {
+public:
+	struct Item {
+		const Scheme *scheme = nullptr;
+		const Field *ref = nullptr;
+		const Field *field = nullptr;
+		bool all = false;
+		Query query;
+	};
+
+	QueryList(const Scheme *);
+
+	bool selectById(const Scheme *, uint64_t);
+	bool selectByName(const Scheme *, const String &);
+	bool selectByQuery(const Scheme *, Query::Select &&);
+
+	bool order(const Scheme *, const String &f, storage::Ordering o);
+	bool first(const Scheme *, const String &f, size_t v);
+	bool last(const Scheme *, const String &f, size_t v);
+	bool limit(const Scheme *, size_t limit);
+	bool offset(const Scheme *, size_t offset);
+
+	bool setAll();
+	bool setField(const Scheme *, const Field *field);
+	bool setProperty(const Field *field);
+
+	bool isAll() const;
+	bool isRefSet() const;
+	bool isObject() const;
+	bool empty() const;
+
+	size_t size() const;
+
+	const Scheme *getPrimaryScheme() const;
+	const Scheme *getSourceScheme() const;
+	const Scheme *getScheme() const;
+	const Field *getField() const;
+
+	const Vector<Item> &getItems() const;
+
+protected:
+	Vector<Item> queries;
 };
 
 NS_SA_EXT_END(storage)

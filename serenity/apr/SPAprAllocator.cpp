@@ -41,33 +41,32 @@ static server_rec *getServerFromContext(pool_t *p, uint32_t tag, void *ptr) {
 	return nullptr;
 }
 
-static bool getServerFromContext(void *data, pool_t *p, uint32_t tag, void *ptr) {
-	server_rec **serv = (server_rec **)data;
-	if (auto s = getServerFromContext(p, tag, ptr)) {
-		*serv = s;
-		return false;
-	}
-	return true;
-}
-
 server_rec *server() {
-	auto l = info();
-	if (auto s = getServerFromContext(nullptr, l.first, l.second))  {
-		return s;
-	} else {
-		server_rec *rec = nullptr;
-		foreach_info(&rec, &getServerFromContext);
-		return rec;
-	}
+	server_rec *ret = nullptr;
+	foreach_info(&ret, [] (void *ud, pool_t *p, uint32_t tag, void *data) -> bool {
+		auto ptr = getServerFromContext(p, tag, data);
+		if (ptr) {
+			*((server_rec **)ud) = ptr;
+			return false;
+		}
+		return true;
+	});
+
+	return ret;
 }
 
 request_rec *request() {
-	auto l = info();
-	switch (l.first) {
-	case uint32_t(Request): return (request_rec *)l.second; break;
-	default: break;
-	}
-	return nullptr;
+	request_rec *ret = nullptr;
+	foreach_info(&ret, [] (void *ud, pool_t *p, uint32_t tag, void *data) -> bool {
+		if (tag == uint32_t(Request)) {
+			*((request_rec **)ud) = (request_rec *)data;
+			return false;
+		}
+
+		return true;
+	});
+
+	return ret;
 }
 
 }

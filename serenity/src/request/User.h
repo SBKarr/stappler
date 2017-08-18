@@ -37,7 +37,7 @@ public:
 	static User *get(storage::Adapter *, uint64_t oid);
 	static bool remove(storage::Adapter *, const String &name, const String &password);
 
-	User(data::Value &&, storage::Scheme *);
+	User(data::Value &&, const storage::Scheme &);
 
 	bool validatePassword(const String &passwd) const;
 	void setPassword(const String &passwd);

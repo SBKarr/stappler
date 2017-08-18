@@ -27,64 +27,96 @@ THE SOFTWARE.
 
 NS_SA_EXT_BEGIN(storage)
 
+enum class TransactionStatus {
+	None,
+	Commit,
+	Rollback,
+};
+
 class Adapter : public AllocPool {
 public:
 	static Adapter *FromContext();
 
 	virtual ~Adapter() { }
 
+public: // transactions
+	template <typename T>
+	bool performInTransaction(T && t) {
+		if (isInTransaction()) {
+			if (!t()) {
+				cancelTransaction();
+			}
+		} else {
+			if (beginTransaction()) {
+				if (!t()) {
+					cancelTransaction();
+				}
+				return endTransaction();
+			}
+		}
+		return false;
+	}
 
-	// Object CRUD
-	virtual bool createObject(Scheme *, data::Value &data) = 0;
-	virtual bool saveObject(Scheme *, uint64_t oid, const data::Value &newObject, const Vector<String> &fields) = 0;
-	virtual data::Value patchObject(Scheme *, uint64_t oid, const data::Value &data) = 0;
+public: // Object CRUD
+	virtual bool createObject(const Scheme &, data::Value &data) = 0;
+	virtual bool saveObject(const Scheme &, uint64_t oid, const data::Value &newObject, const Vector<String> &fields) = 0;
+	virtual data::Value patchObject(const Scheme &, uint64_t oid, const data::Value &data) = 0;
 
-	virtual bool removeObject(Scheme *, uint64_t oid) = 0;
-	virtual data::Value getObject(Scheme *, uint64_t, bool forUpdate) = 0;
-	virtual data::Value getObject(Scheme *, const String &, bool forUpdate) = 0;
-	virtual bool init(Server &serv, const Map<String, Scheme *> &) = 0;
+	virtual bool removeObject(const Scheme &, uint64_t oid) = 0;
+	virtual data::Value getObject(const Scheme &, uint64_t, bool forUpdate) = 0;
+	virtual data::Value getObject(const Scheme &, const String &, bool forUpdate) = 0;
+	virtual bool init(Server &serv, const Map<String, const Scheme *> &) = 0;
 
-	virtual data::Value selectObjects(Scheme *, const Query &) = 0;
-	virtual size_t countObjects(Scheme *, const Query &) = 0;
-
-
-	// Object properties CRUD
-	virtual data::Value getProperty(Scheme *, uint64_t oid, const Field &) = 0;
-	virtual data::Value getProperty(Scheme *, const data::Value &, const Field &) = 0;
-
-	virtual data::Value setProperty(Scheme *, uint64_t oid, const Field &, data::Value &&) = 0;
-	virtual data::Value setProperty(Scheme *, const data::Value &, const Field &, data::Value &&) = 0;
-
-	virtual void clearProperty(Scheme *, uint64_t oid, const Field &) = 0;
-	virtual void clearProperty(Scheme *, const data::Value &, const Field &) = 0;
-
-	virtual data::Value appendProperty(Scheme *, uint64_t oid, const Field &, data::Value &&) = 0;
-	virtual data::Value appendProperty(Scheme *, const data::Value &, const Field &, data::Value &&) = 0;
+	virtual data::Value selectObjects(const Scheme &, const Query &) = 0;
+	virtual size_t countObjects(const Scheme &, const Query &) = 0;
 
 
-	// session support
+public: // Object properties CRUD
+	virtual data::Value getProperty(const Scheme &, uint64_t oid, const Field &) = 0;
+	virtual data::Value getProperty(const Scheme &, const data::Value &, const Field &) = 0;
+
+	virtual data::Value setProperty(const Scheme &, uint64_t oid, const Field &, data::Value &&) = 0;
+	virtual data::Value setProperty(const Scheme &, const data::Value &, const Field &, data::Value &&) = 0;
+
+	virtual bool clearProperty(const Scheme &, uint64_t oid, const Field &, data::Value && = data::Value()) = 0;
+	virtual bool clearProperty(const Scheme &, const data::Value &, const Field &, data::Value && = data::Value()) = 0;
+
+	virtual data::Value appendProperty(const Scheme &, uint64_t oid, const Field &, data::Value &&) = 0;
+	virtual data::Value appendProperty(const Scheme &, const data::Value &, const Field &, data::Value &&) = 0;
+
+
+public: // session support
 	virtual data::Value getSessionData(const Bytes &) = 0;
 	virtual bool setSessionData(const Bytes &, const data::Value &, TimeInterval) = 0;
 	virtual bool clearSessionData(const Bytes &) = 0;
 
-	// resource resolver
-	virtual Resolver *createResolver(Scheme *, const data::TransformMap *map) = 0;
-
-	virtual void setMinNextOid(uint64_t) = 0;
-
-	virtual bool supportsAtomicPatches() const = 0;
-
-	// Key-Value storage
+public: // Key-Value storage
 	virtual bool setData(const String &, const data::Value &, TimeInterval = config::getKeyValueStorageTime()) = 0;
 	virtual data::Value getData(const String &) = 0;
 	virtual bool clearData(const String &) = 0;
 
-	virtual User * authorizeUser(Scheme *, const String &name, const String &password) = 0;
+	virtual User * authorizeUser(const Scheme &, const String &name, const String &password) = 0;
 
 	virtual void broadcast(const Bytes &) = 0;
 	virtual void broadcast(const data::Value &val) {
 		broadcast(data::write(val, data::EncodeFormat::Cbor));
 	}
+
+	virtual Resource *makeResource(ResourceType, QueryList &&, const Field *) = 0;
+
+public: // resource requests
+	virtual Vector<int64_t> performQueryListForIds(const QueryList &, size_t count = maxOf<size_t>()) = 0;
+	virtual data::Value performQueryList(const QueryList &, size_t count = maxOf<size_t>(), bool forUpdate = false, const Field * = nullptr) = 0;
+
+protected:
+	virtual bool beginTransaction() = 0;
+	virtual bool endTransaction() = 0;
+
+	virtual void cancelTransaction() { transactionStatus = TransactionStatus::Rollback; }
+	virtual bool isInTransaction() const { return transactionStatus != TransactionStatus::None; }
+	virtual TransactionStatus getTransactionStatus() const { return transactionStatus; }
+
+    TransactionStatus transactionStatus = TransactionStatus::None;
 };
 
 NS_SA_EXT_END(storage)

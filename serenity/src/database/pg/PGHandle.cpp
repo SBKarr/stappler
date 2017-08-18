@@ -25,6 +25,8 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "PGHandle.h"
+#include "PGQuery.h"
+#include "ResourceTemplates.h"
 
 NS_SA_EXT_BEGIN(pg)
 
@@ -42,7 +44,7 @@ struct ExecParamData {
 	const int *paramFormats = nullptr;
 
 	ExecParamData(const ExecQuery &query) {
-		auto size = query.params.size();
+		auto size = query.getParams().size();
 
 		if (size > 64) {
 			valuesVec.reserve(size);
@@ -50,8 +52,8 @@ struct ExecParamData {
 			formatsVec.reserve(size);
 
 			for (size_t i = 0; i < size; ++ i) {
-				const Bytes &d = query.params.at(i);
-				bool bin = query.binary.at(i);
+				const Bytes &d = query.getParams().at(i);
+				bool bin = query.getBinaryVec().at(i);
 				valuesVec.emplace_back((const char *)d.data());
 				sizesVec.emplace_back(int(d.size()));
 				formatsVec.emplace_back(bin);
@@ -62,8 +64,8 @@ struct ExecParamData {
 			paramFormats = formatsVec.data();
 		} else {
 			for (size_t i = 0; i < size; ++ i) {
-				const Bytes &d = query.params.at(i);
-				bool bin = query.binary.at(i);
+				const Bytes &d = query.getParams().at(i);
+				bool bin = query.getBinaryVec().at(i);
 				values[i] = (const char *)d.data();
 				sizes[i] = int(d.size());
 				formats[i] = bin;
@@ -101,26 +103,26 @@ Handle::operator bool() const {
 	return pool != nullptr && conn != nullptr;
 }
 
-bool Handle::beginTransaction(TransactionLevel l) {
+bool Handle::beginTransaction_pg(TransactionLevel l) {
 	switch (l) {
 	case TransactionLevel::ReadCommited:
 		if (performSimpleQuery("BEGIN ISOLATION LEVEL READ COMMITTED"_weak)) {
 			level = TransactionLevel::ReadCommited;
-			transaction = TransactionStatus::Commit;
+			transactionStatus = TransactionStatus::Commit;
 			return true;
 		}
 		break;
 	case TransactionLevel::RepeatableRead:
 		if (performSimpleQuery("BEGIN ISOLATION LEVEL REPEATABLE READ"_weak)) {
 			level = TransactionLevel::RepeatableRead;
-			transaction = TransactionStatus::Commit;
+			transactionStatus = TransactionStatus::Commit;
 			return true;
 		}
 		break;
 	case TransactionLevel::Serialized:
 		if (performSimpleQuery("BEGIN ISOLATION LEVEL SERIALIZABLE"_weak)) {
 			level = TransactionLevel::Serialized;
-			transaction = TransactionStatus::Commit;
+			transactionStatus = TransactionStatus::Commit;
 			return true;
 		}
 		break;
@@ -130,21 +132,21 @@ bool Handle::beginTransaction(TransactionLevel l) {
 	return false;
 }
 
-void Handle::cancelTransaction() {
-	transaction = TransactionStatus::Rollback;
+void Handle::cancelTransaction_pg() {
+	transactionStatus = TransactionStatus::Rollback;
 }
 
-bool Handle::endTransaction() {
-	switch (transaction) {
+bool Handle::endTransaction_pg() {
+	switch (transactionStatus) {
 	case TransactionStatus::Commit:
-		transaction = TransactionStatus::None;
+		transactionStatus = TransactionStatus::None;
 		if (performSimpleQuery("COMMIT"_weak)) {
 			finalizeBroadcast();
 			return true;
 		}
 		break;
 	case TransactionStatus::Rollback:
-		transaction = TransactionStatus::None;
+		transactionStatus = TransactionStatus::None;
 		if (performSimpleQuery("ROLLBACK"_weak)) {
 			finalizeBroadcast();
 			return false;
@@ -158,28 +160,25 @@ bool Handle::endTransaction() {
 
 void Handle::finalizeBroadcast() {
 	if (!_bcasts.empty()) {
-		ExecQuery query("INSERT INTO __broadcasts (date, msg) VALUES ");
-		bool first = true;
+		ExecQuery query;
+		auto vals = query.insert("__broadcasts").fields("date", "msg").values();
 		for (auto &it : _bcasts) {
-			if (first) { first = false; } else { query.query << ", "; }
-			query.query << "(" << it.first << ",";
-			query.write(std::move(it.second));
-			query.query << ")";
+			vals.values(it.first, move(it.second));
 		}
-		query.query << ";";
+		query.finalize();
 		perform(query);
 		_bcasts.clear();
 	}
 }
 
 Result Handle::select(const ExecQuery &query) {
-	if (!conn || transaction == TransactionStatus::Rollback) {
+	if (!conn || getTransactionStatus() == TransactionStatus::Rollback) {
 		return Result();
 	}
 
 	ExecParamData data(query);
-	Result res(PQexecParams(conn, query.query.weak().data(), query.params.size(), nullptr,
-			data.paramValues, data.paramLengths, data.paramFormats, 0));
+	Result res(PQexecParams(conn, query.getQuery().weak().data(), query.getParams().size(), nullptr,
+			data.paramValues, data.paramLengths, data.paramFormats, 1));
 	if (!res || !res.success()) {
 		messages::error("Database", "Fail to perform query");
 		messages::debug("Database", "Fail to perform query", res.info());
@@ -189,8 +188,8 @@ Result Handle::select(const ExecQuery &query) {
 	return res;
 }
 
-uint64_t Handle::selectId(const ExecQuery &query) {
-	if (transaction == TransactionStatus::Rollback) {
+int64_t Handle::selectId(const ExecQuery &query) {
+	if (getTransactionStatus() == TransactionStatus::Rollback) {
 		return 0;
 	}
 	Result res(select(query));
@@ -200,7 +199,7 @@ uint64_t Handle::selectId(const ExecQuery &query) {
 	return 0;
 }
 size_t Handle::perform(const ExecQuery &query) {
-	if (transaction == TransactionStatus::Rollback) {
+	if (getTransactionStatus() == TransactionStatus::Rollback) {
 		return maxOf<size_t>();
 	}
 	Result res(select(query));
@@ -227,7 +226,7 @@ data::Value Handle::select(const Field &field, const ExecQuery &query) {
 }
 
 bool Handle::performSimpleQuery(const String &query) {
-	if (transaction == TransactionStatus::Rollback) {
+	if (getTransactionStatus() == TransactionStatus::Rollback) {
 		return false;
 	}
 
@@ -237,13 +236,25 @@ bool Handle::performSimpleQuery(const String &query) {
 }
 
 Result Handle::performSimpleSelect(const String &query) {
-	if (transaction == TransactionStatus::Rollback) {
+	if (getTransactionStatus() == TransactionStatus::Rollback) {
 		return Result();
 	}
 
 	Result res(PQexec(conn, query.data()));
 	lastError = res.getError();
 	return res;
+}
+
+Resource *Handle::makeResource(ResourceType type, QueryList &&list, const Field *f) {
+	switch (type) {
+	case ResourceType::ResourceList: return new ResourceReslist(this, std::move(list));  break;
+	case ResourceType::ReferenceSet: return new ResourceRefSet(this, std::move(list)); break;
+	case ResourceType::Object: return new ResourceObject(this, std::move(list)); break;
+	case ResourceType::Set: return new ResourceSet(this, std::move(list)); break;
+	case ResourceType::File: return new ResourceFile(this, std::move(list), f); break;
+	case ResourceType::Array: return new ResourceArray(this, std::move(list), f); break;
+	}
+	return nullptr;
 }
 
 NS_SA_EXT_END(pg)

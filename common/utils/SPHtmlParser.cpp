@@ -43,11 +43,13 @@ using HtmlIdentifier8 = chars::Compose<char,
 >;
 
 
-template <> CharReaderUtf8 Tag_readName<CharReaderUtf8>(CharReaderUtf8 &is) {
+template <> CharReaderUtf8 Tag_readName<CharReaderUtf8>(CharReaderUtf8 &is, bool keepClean) {
 	CharReaderUtf8 s = is;
 	s.skipUntil<HtmlIdentifier16, CharReaderUtf8::MatchChars<'>', '?'>>();
 	CharReaderUtf8 name(s.readChars<HtmlIdentifier16, CharReaderUtf8::MatchChars<'?'>>());
-	string::tolower_buf((char *)name.data(), name.size());
+	if (!keepClean) {
+		string::tolower_buf((char *)name.data(), name.size());
+	}
 	if (name.size() > 1 && name.back() == '/') {
 		name.set(name.data(), name.size() - 1);
 		is += (is.size() - s.size() - 1);
@@ -58,14 +60,16 @@ template <> CharReaderUtf8 Tag_readName<CharReaderUtf8>(CharReaderUtf8 &is) {
 	return name;
 }
 
-template <> CharReaderUtf8 Tag_readAttrName<CharReaderUtf8>(CharReaderUtf8 &s) {
+template <> CharReaderUtf8 Tag_readAttrName<CharReaderUtf8>(CharReaderUtf8 &s, bool keepClean) {
 	s.skipUntil<HtmlIdentifier16>();
 	CharReaderUtf8 name(s.readChars<HtmlIdentifier16>());
-	string::tolower_buf((char *)name.data(), name.size());
+	if (!keepClean) {
+		string::tolower_buf((char *)name.data(), name.size());
+	}
 	return name;
 }
 
-template <> CharReaderUtf8 Tag_readAttrValue<CharReaderUtf8>(CharReaderUtf8 &s) {
+template <> CharReaderUtf8 Tag_readAttrValue<CharReaderUtf8>(CharReaderUtf8 &s, bool keepClean) {
 	if (!s.is('=')) {
 		s.skipUntil<HtmlIdentifier16>();
 		return CharReaderUtf8();
@@ -100,11 +104,13 @@ template <> CharReaderUtf8 Tag_readAttrValue<CharReaderUtf8>(CharReaderUtf8 &s) 
 }
 
 
-template <> CharReaderBase Tag_readName<CharReaderBase>(CharReaderBase &is) {
+template <> CharReaderBase Tag_readName<CharReaderBase>(CharReaderBase &is, bool keepClean) {
 	CharReaderBase s = is;
 	s.skipUntil<HtmlIdentifier8, CharReaderBase::MatchChars<'>', '?'>>();
 	CharReaderBase name(s.readChars<HtmlIdentifier8, CharReaderBase::MatchChars<'?'>>());
-	string::tolower_buf((char *)name.data(), name.size());
+	if (!keepClean) {
+		string::tolower_buf((char *)name.data(), name.size());
+	}
 	if (name.size() > 1 && name.back() == '/') {
 		name.set(name.data(), name.size() - 1);
 		is += (is.size() - s.size() - 1);
@@ -115,14 +121,16 @@ template <> CharReaderBase Tag_readName<CharReaderBase>(CharReaderBase &is) {
 	return name;
 }
 
-template <> CharReaderBase Tag_readAttrName<CharReaderBase>(CharReaderBase &s) {
+template <> CharReaderBase Tag_readAttrName<CharReaderBase>(CharReaderBase &s, bool keepClean) {
 	s.skipUntil<HtmlIdentifier8>();
 	CharReaderBase name(s.readChars<HtmlIdentifier8>());
-	string::tolower_buf((char *)name.data(), name.size());
+	if (!keepClean) {
+		string::tolower_buf((char *)name.data(), name.size());
+	}
 	return name;
 }
 
-template <> CharReaderBase Tag_readAttrValue<CharReaderBase>(CharReaderBase &s) {
+template <> CharReaderBase Tag_readAttrValue<CharReaderBase>(CharReaderBase &s, bool keepClean) {
 	if (!s.is('=')) {
 		s.skipUntil<HtmlIdentifier8>();
 		return CharReaderBase();
@@ -157,11 +165,13 @@ template <> CharReaderBase Tag_readAttrValue<CharReaderBase>(CharReaderBase &s) 
 }
 
 
-template <> CharReaderUcs2 Tag_readName<CharReaderUcs2>(CharReaderUcs2 &is) {
+template <> CharReaderUcs2 Tag_readName<CharReaderUcs2>(CharReaderUcs2 &is, bool keepClean) {
 	CharReaderUcs2 s = is;
 	s.skipUntil<HtmlIdentifier16, CharReaderUcs2::MatchChars<u'>', u'?'>>();
 	CharReaderUcs2 name(s.readChars<HtmlIdentifier16, CharReaderUcs2::MatchChars<u'?'>>());
-	string::tolower_buf((char *)name.data(), name.size());
+	if (!keepClean) {
+		string::tolower_buf((char *)name.data(), name.size());
+	}
 	if (name.size() > 1 && name.back() == '/') {
 		name.set(name.data(), name.size() - 1);
 		is += (is.size() - s.size() - 1);
@@ -172,14 +182,16 @@ template <> CharReaderUcs2 Tag_readName<CharReaderUcs2>(CharReaderUcs2 &is) {
 	return name;
 }
 
-template <> CharReaderUcs2 Tag_readAttrName<CharReaderUcs2>(CharReaderUcs2 &s) {
+template <> CharReaderUcs2 Tag_readAttrName<CharReaderUcs2>(CharReaderUcs2 &s, bool keepClean) {
 	s.skipUntil<HtmlIdentifier16>();
 	CharReaderUcs2 name(s.readChars<HtmlIdentifier16>());
-	string::tolower_buf((char *)name.data(), name.size());
+	if (!keepClean) {
+		string::tolower_buf((char *)name.data(), name.size());
+	}
 	return name;
 }
 
-template <> CharReaderUcs2 Tag_readAttrValue<CharReaderUcs2>(CharReaderUcs2 &s) {
+template <> CharReaderUcs2 Tag_readAttrValue<CharReaderUcs2>(CharReaderUcs2 &s, bool keepClean) {
 	if (!s.is('=')) {
 		s.skipUntil<HtmlIdentifier16>();
 		return CharReaderUcs2();

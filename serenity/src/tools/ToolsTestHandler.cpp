@@ -159,7 +159,7 @@ bool TestHandler::processUserTest(Request &rctx, data::Value &ret, const data::V
 	} else {
 		auto passwd = input.getString("password");
 		data::Value user(input);
-		storage::Scheme * s = rctx.server().getUserScheme();
+		auto s = rctx.server().getUserScheme();
 		user = s->create(adapter, user);
 
 		auto pswd = base64::decode(

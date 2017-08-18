@@ -59,10 +59,12 @@ void Cache::update() {
 	apr::pool::perform([&] {
 		_mutex.lock();
 		for (auto &it : _templates) {
-			auto mtime = filesystem::mtime(it.first);
-			if (mtime != it.second->getMtime()) {
-				it.second->release();
-				it.second = openTemplate(it.first);
+			if (it.second->getMtime() != 0) {
+				auto mtime = filesystem::mtime(it.first);
+				if (mtime != it.second->getMtime()) {
+					it.second->release();
+					it.second = openTemplate(it.first);
+				}
 			}
 		}
 		_mutex.unlock();
@@ -70,7 +72,7 @@ void Cache::update() {
 }
 
 void Cache::runTemplate(const String &ipath, Request &req, const RunCallback &cb) {
-	auto path = filesystem::writablePath(ipath);
+	String path = StringView(ipath).is("virtual://") ? ipath : filesystem::writablePath(ipath);
 	if (auto tpl = acquireTemplate(path, req)) {
 		auto h = req.getResponseHeaders();
 		h.emplace("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -95,7 +97,6 @@ void Cache::runTemplate(const String &ipath, Request &req, const RunCallback &cb
 			cb(exec, req);
 		}
 		tpl->getFile().run(exec, req);
-
 	}
 }
 

@@ -125,7 +125,7 @@ class Resolver;
 class Object;
 class Scheme;
 
-struct Query;
+class Query;
 class File;
 
 NS_SA_EXT_END(storage)
@@ -154,6 +154,7 @@ bool validateNumber(const String &str);
 bool validateHexadecimial(const String &str);
 bool validateBase64(const String &str);
 
+Bytes makeRandomBytes(size_t);
 Bytes makePassword(const String &str, const String &key = "");
 bool validatePassord(const String &str, const Bytes &passwd, const String &key = "");
 

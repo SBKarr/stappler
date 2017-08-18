@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include "StorageFile.h"
 #include "StorageField.h"
 #include "StorageScheme.h"
+#include "StorageAdapter.h"
 #include "InputFilter.h"
 
 #include "SPBitmap.h"
@@ -36,6 +37,16 @@ NS_SA_EXT_BEGIN(storage)
 
 String File::getFilesystemPath(uint64_t oid) {
 	return toString(Server(apr::pool::server()).getDocumentRoot(), "/uploads/", oid);
+}
+
+bool File_isImage(const String &type) {
+	return type == "image/gif"
+			|| type == "image/jpeg"
+			|| type == "image/pjpeg"
+			|| type == "image/png"
+			|| type == "image/tiff"
+			|| type == "image/webp"
+			|| type == "image/svg+xml";
 }
 
 bool File::validateFileField(const Field &field, const InputFile &file) {
@@ -83,12 +94,7 @@ bool File::validateFileField(const Field &field, const InputFile &file) {
 			return false;
 		}
 
-		if (file.type != "image/gif"
-				&& file.type != "image/jpeg"
-				&& file.type != "image/pjpeg"
-				&& file.type != "image/png"
-				&& file.type != "image/tiff"
-				&& file.type != "image/webp") {
+		if (!File_isImage(file.type)) {
 
 			messages::error("Storage", "Unknown image type for field", data::Value {
 				std::make_pair("field", data::Value(field.getName())),
@@ -163,7 +169,7 @@ data::Value File::createFile(Adapter *adapter, const Field &f, InputFile &file) 
 	fileData.setString(file.type, "type");
 	fileData.setInteger(file.writeSize, "size");
 
-	if (f.getType() == Type::Image) {
+	if (f.getType() == Type::Image || File_isImage(file.type)) {
 		size_t width = 0, height = 0;
 		if (Bitmap::getImageSize(file.file, width, height)) {
 			auto &val = fileData.emplace("image");
@@ -382,7 +388,7 @@ bool File::purgeFile(Adapter *adapter, const Field &f, const data::Value &val) {
 
 	if (id) {
 		auto scheme = Server(apr::pool::server()).getFileScheme();
-		if (adapter->removeObject(scheme, id)) {
+		if (adapter->removeObject(*scheme, id)) {
 			filesystem::remove(File::getFilesystemPath(id));
 		}
 		return true;
@@ -390,7 +396,7 @@ bool File::purgeFile(Adapter *adapter, const Field &f, const data::Value &val) {
 
 	return false;
 }
-Scheme * File::getScheme() {
+const Scheme * File::getScheme() {
 	auto serv = apr::pool::server();
 	if (serv) {
 		return Server(serv).getFileScheme();

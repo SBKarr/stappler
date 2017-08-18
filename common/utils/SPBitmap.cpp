@@ -32,6 +32,7 @@ THE SOFTWARE.
 #include "SPDataReader.h"
 #include "SPString.h"
 #include "SPLog.h"
+#include "SPHtmlParser.h"
 
 #ifndef NOJPEG
 #include "jpeglib.h"
@@ -207,8 +208,50 @@ bool convertData(const Bytes &dataVec, Bytes & out, uint32_t inStride, uint32_t 
 	return true;
 }
 
+static bool Bitmap_detectSvg(const StringView &buf, size_t &w, size_t &h) {
+	StringView str(buf);
+	str.skipUntilString("<svg", false);
+	if (!str.empty() && str.is<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>()) {
+		bool found = false;
+		bool isSvg = false;
+		uint32_t width = 0;
+		uint32_t height = 0;
+		while (!found && !str.empty()) {
+			str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+			auto key = html::Tag_readAttrName(str, true);
+			auto value = html::Tag_readAttrValue(str, true);
+			if (!key.empty() && !value.empty()) {
+				if (key == "xmlns") {
+					if (value.is("http://www.w3.org/2000/svg")) {
+						isSvg = true;
+					}
+				} else if (key == "width") {
+					width = size_t(value.readInteger());
+				} else if (key == "height") {
+					height = size_t(value.readInteger());
+				}
+				if (isSvg && width && height) {
+					found = true;
+				}
+			}
+		}
+		if (isSvg) {
+			w = width;
+			h = height;
+		}
+		return isSvg;
+	}
+
+	return false;
+}
+
+static bool Bitmap_detectSvg(const StringView &buf) {
+	size_t w = 0, h = 0;
+	return Bitmap_detectSvg(buf, w, h);
+}
+
 template <typename Reader>
-static bool Bitmap_getTiffImageSize(StackBuffer<256> &data, const io::Producer &file, size_t &width, size_t &height) {
+static bool Bitmap_getTiffImageSize(StackBuffer<512> &data, const io::Producer &file, size_t &width, size_t &height) {
 	auto reader = Reader(data.data() + 4, 4);
 	auto offset = reader.readUnsigned32();
 
@@ -269,8 +312,8 @@ bool Bitmap::getImageSize(const String &path, size_t &width, size_t &height) {
 }
 
 bool Bitmap::getImageSize(const io::Producer &file, size_t &width, size_t &height) {
-	StackBuffer<256> data;
-	if (file.seekAndRead(0, data, 30) < 30) {
+	StackBuffer<512> data;
+	if (file.seekAndRead(0, data, 512) < 30) {
 		return false;
 	}
 
@@ -349,6 +392,8 @@ bool Bitmap::getImageSize(const io::Producer &file, size_t &width, size_t &heigh
 				return true;
 			}
 		}
+	} else if (Bitmap_detectSvg(StringView((const char *)data.data(), data.size()), width, height)) {
+		return true;
 	}
 
 	return false;
@@ -424,6 +469,14 @@ bool Bitmap::isWebp(const uint8_t * data, size_t dataLen) {
 
     return memcmp(data, WEBP_RIFF, 4) == 0
         && memcmp(static_cast<const unsigned char*>(data) + 8, WEBP_WEBP, 4) == 0;
+}
+
+bool Bitmap::isSvg(const uint8_t * data, size_t dataLen) {
+	if (dataLen <= 127) {
+		return false;
+	}
+
+	return Bitmap_detectSvg(StringView((const char *)data, dataLen));
 }
 
 #ifndef NOJPEG

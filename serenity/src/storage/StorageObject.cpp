@@ -29,7 +29,7 @@ THE SOFTWARE.
 
 NS_SA_EXT_BEGIN(storage)
 
-Object::Object(data::Value &&data, Scheme *scheme) : Wrapper(std::move(data)), _scheme(scheme) {
+Object::Object(data::Value &&data, const Scheme &scheme) : Wrapper(std::move(data)), _scheme(scheme) {
 	if (!_data.isDictionary()) {
 		_data = data::Value(data::Value::Type::DICTIONARY);
 		_oid = 0;
@@ -38,7 +38,7 @@ Object::Object(data::Value &&data, Scheme *scheme) : Wrapper(std::move(data)), _
 	}
 }
 
-Scheme *Object::getScheme() const { return _scheme; }
+const Scheme &Object::getScheme() const { return _scheme; }
 uint64_t Object::getObjectId() const { return _oid; }
 
 void Object::lockProperty(const String &prop) {
@@ -52,13 +52,13 @@ bool Object::isPropertyLocked(const String &prop) const {
 }
 
 bool Object::isFieldProtected(const String &key) const {
-	return _scheme->isProtected(key);
+	return _scheme.isProtected(key);
 }
 
 bool Object::save(Adapter *adapter, bool force) {
 	if (_modified || force) {
 		_modified = false;
-		return _scheme->saveObject(adapter, this);
+		return _scheme.saveObject(adapter, this);
 	}
 	return true;
 }

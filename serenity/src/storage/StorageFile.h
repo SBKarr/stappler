@@ -45,7 +45,7 @@ public:
 	// remove file from storage and filesystem
 	static bool purgeFile(Adapter *adapter, const Field &, const data::Value &);
 
-	static Scheme *getScheme();
+	static const Scheme *getScheme();
 protected:
 };
 

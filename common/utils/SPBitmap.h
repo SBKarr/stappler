@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef LIBS_STAPPLER_CORE_STRUCT_SPBITMAP_H_
-#define LIBS_STAPPLER_CORE_STRUCT_SPBITMAP_H_
+#ifndef COMMON_UTILS_SPBITMAP_H_
+#define COMMON_UTILS_SPBITMAP_H_
 
 #include "SPCommon.h"
 #include "SPIO.h"
@@ -58,6 +58,7 @@ public:
 	static bool isJpg(const uint8_t * data, size_t dataLen);
 	static bool isTiff(const uint8_t * data, size_t dataLen);
 	static bool isWebp(const uint8_t * data, size_t dataLen);
+	static bool isSvg(const uint8_t * data, size_t dataLen);
 
 	static uint8_t getBytesPerPixel(Format);
 
@@ -135,4 +136,4 @@ protected:
 
 NS_SP_END
 
-#endif /* LIBS_STAPPLER_CORE_STRUCT_SPBITMAP_H_ */
+#endif /* COMMON_UTILS_SPBITMAP_H_ */

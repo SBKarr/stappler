@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef STAPPLER_SRC_CORE_STRUCT_SPURL_H_
-#define STAPPLER_SRC_CORE_STRUCT_SPURL_H_
+#ifndef COMMON_UTILS_SPURL_H_
+#define COMMON_UTILS_SPURL_H_
 
 #include "SPData.h"
 
@@ -51,6 +51,7 @@ public:
 	static Vector<String> parsePath(const String &);
 	static QueryVec parseArgs(const String &);
 	static data::Value parseDataArgs(const String &, size_t maxVarSize = maxOf<size_t>());
+	static data::Value parseDataArgs(const StringView &, size_t maxVarSize = maxOf<size_t>());
 
 	Url() : _port(0) { }
 	Url(const Url &u) = default;
@@ -129,4 +130,4 @@ protected:
 
 NS_SP_END
 
-#endif /* STAPPLER_SRC_CORE_STRUCT_SPURL_H_ */
+#endif /* COMMON_UTILS_SPURL_H_ */

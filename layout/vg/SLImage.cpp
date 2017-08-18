@@ -540,33 +540,17 @@ struct SvgReader {
 	Vector<Path> _paths;
 };
 
-static bool Image_detectSvg(const CharReaderBase &buf) {
-	CharReaderBase str(buf);
-	str.skipUntilString("<svg", false);
-	if (!str.empty() && str.is<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>()) {
-		str.readUntilString("xmlns=");
-		if (str.is("xmlns=")) {
-			str += "xmlns="_len;
-			if (str.is('"') || str.is('\'')) {
-				++ str;
-			}
-			return str.is("http://www.w3.org/2000/svg");
-		}
-	}
-	return false;
-}
-
 bool Image::isSvg(const String &str) {
-	return Image_detectSvg(CharReaderBase(str));
+	return Bitmap::isSvg((const uint8_t *)str.data(), str.size());
 }
 
 bool Image::isSvg(const Bytes &data) {
-	return Image_detectSvg(CharReaderBase((const char *)data.data(), data.size()));
+	return Bitmap::isSvg(data.data(), data.size());
 }
 
 bool Image::isSvg(const FilePath &file) {
 	auto d = filesystem::readFile(file.get(), 0, 512);
-	return Image_detectSvg(CharReaderBase((const char *)d.data(), d.size()));
+	return Bitmap::isSvg(d.data(), d.size());
 }
 
 bool Image::init(const String &data) {

@@ -35,7 +35,7 @@ THE SOFTWARE.
 
 NS_SA_BEGIN
 
-ResourceHandler::ResourceHandler(storage::Scheme *scheme, const data::TransformMap *t, AccessControl *a, const data::Value &val)
+ResourceHandler::ResourceHandler(const storage::Scheme &scheme, const data::TransformMap *t, AccessControl *a, const data::Value &val)
 : _scheme(scheme), _transform(t), _access(a), _value(val) { }
 
 bool ResourceHandler::isRequestPermitted(Request &rctx) {
@@ -215,7 +215,7 @@ void ResourceHandler::setFileParams(Request &rctx, const data::Value &file) {
 	rctx.setContentType(String(file.getString("type")));
 }
 
-void ResourceHandler::performApiObject(Request &rctx, storage::Scheme *scheme, data::Value &obj) {
+void ResourceHandler::performApiObject(Request &rctx, const storage::Scheme &scheme, data::Value &obj) {
 	auto id = obj.getInteger("__oid");
 	auto path = rctx.server().getResourcePath(_scheme);
 	if (!path.empty() && id > 0) {
@@ -239,7 +239,7 @@ void ResourceHandler::performApiObject(Request &rctx, storage::Scheme *scheme, d
 		obj.setValue(std::move(actions), "~ACTIONS~");
 
 		for (auto &it : obj.asDict()) {
-			auto f = scheme->getField(it.first);
+			auto f = scheme.getField(it.first);
 			if (f && f->isFile() && it.second.isInteger()) {
 				if (!token.empty()) {
 					it.second.setString(toString("~~", f->getName(), "|", path, "id", id, "/", it.first, "?token=", token));
@@ -251,7 +251,7 @@ void ResourceHandler::performApiObject(Request &rctx, storage::Scheme *scheme, d
 	}
 }
 
-void ResourceHandler::performApiFilter(Request &rctx, storage::Scheme *scheme, data::Value &val) {
+void ResourceHandler::performApiFilter(Request &rctx, const storage::Scheme &scheme, data::Value &val) {
 	if (val.isDictionary()) {
 		performApiObject(rctx, scheme, val);
 	} else if (val.isArray()) {
@@ -290,7 +290,7 @@ int ResourceHandler::writeDataToRequest(Request &rctx, data::Value &result) {
 
 int ResourceHandler::writeInfoToReqest(Request &rctx) {
 	data::Value result(_resource->getResultObject());
-	if (_resource->getScheme() == rctx.server().getFileScheme()) {
+	if (_resource->getType() == ResourceType::File) {
 		data::Value file(result.isArray()?std::move(result.getValue(0)):std::move(result));
 
 		if (!file) {
@@ -306,7 +306,7 @@ int ResourceHandler::writeInfoToReqest(Request &rctx) {
 int ResourceHandler::writeToRequest(Request &rctx) {
 	data::Value result(_resource->getResultObject());
 	if (result) {
-		if (_resource->getScheme() == rctx.server().getFileScheme()) {
+		if (_resource->getType() == ResourceType::File) {
 			data::Value file(result.isArray()?std::move(result.getValue(0)):std::move(result));
 			auto path = storage::File::getFilesystemPath((uint64_t)file.getInteger("__oid"));
 

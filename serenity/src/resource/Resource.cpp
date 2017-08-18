@@ -34,9 +34,13 @@ THE SOFTWARE.
 
 NS_SA_BEGIN
 
-Resource::Resource(Scheme *s, storage::Adapter *a) : _scheme(s), _adapter(a) { }
+Resource::Resource(ResourceType t, Adapter *a, QueryList &&list) : _type(t), _adapter(a), _queries(move(list)) { }
 
-storage::Scheme *Resource::getScheme() const { return _scheme; }
+ResourceType Resource::getType() const {
+	return _type;
+}
+
+const storage::Scheme &Resource::getScheme() const { return *_queries.getScheme(); }
 int Resource::getStatus() const { return _status; }
 
 void Resource::setTransform(const data::TransformMap *t) {
@@ -115,30 +119,21 @@ data::Value Resource::updateObject(data::Value &, apr::array<InputFile> &) { ret
 data::Value Resource::createObject(data::Value &, apr::array<InputFile> &) { return data::Value(); }
 data::Value Resource::appendObject(data::Value &) { return data::Value(); }
 data::Value Resource::getResultObject() { return data::Value(); }
-void Resource::resolve(Scheme *, data::Value &) { }
+void Resource::resolve(const Scheme &, data::Value &) { }
 
 size_t Resource::getMaxRequestSize() const {
-	if (auto scheme = getRequestScheme()) {
-		return scheme->getMaxRequestSize();
-	}
-	return (_scheme)?_scheme->getMaxRequestSize():0;
+	return getRequestScheme().getMaxRequestSize();
 }
 size_t Resource::getMaxVarSize() const {
-	if (auto scheme = getRequestScheme()) {
-		return scheme->getMaxVarSize();
-	}
-	return (_scheme)?_scheme->getMaxVarSize():0;
+	return getRequestScheme().getMaxVarSize();
 }
 size_t Resource::getMaxFileSize() const {
-	if (auto scheme = getRequestScheme()) {
-		return scheme->getMaxFileSize();
-	}
-	return (_scheme)?_scheme->getMaxFileSize():0;
+	return getRequestScheme().getMaxFileSize();
 }
 
 void Resource::encodeFiles(data::Value &data, apr::array<InputFile> &files) {
 	for (auto &it : files) {
-		const storage::Field * f = getRequestScheme()->getField(it.name);
+		const storage::Field * f = getRequestScheme().getField(it.name);
 		if (f && f->isFile()) {
 			if (!data.hasValue(it.name)) {
 				data.setInteger(it.negativeId(), it.name);
@@ -147,14 +142,14 @@ void Resource::encodeFiles(data::Value &data, apr::array<InputFile> &files) {
 	}
 }
 
-void Resource::resolveSet(Scheme *s, int64_t oid, const storage::Field &f, Scheme *next, data::Value &val) {
-	val.setValue(s->getProperty(_adapter, val, f), f.getName());
+void Resource::resolveSet(const Scheme &s, int64_t oid, const storage::Field &f, const Scheme &next, data::Value &val) {
+	val.setValue(s.getProperty(_adapter, val, f), f.getName());
 }
-void Resource::resolveObject(Scheme *s, int64_t oid, const storage::Field &f, Scheme *next, data::Value &val) {
-	val.setValue(s->getProperty(_adapter, val, f), f.getName());
+void Resource::resolveObject(const Scheme &s, int64_t oid, const storage::Field &f, const Scheme &next, data::Value &val) {
+	val.setValue(s.getProperty(_adapter, val, f), f.getName());
 }
-void Resource::resolveFile(Scheme *s, int64_t oid, const storage::Field &f, data::Value &val) {
-	val.setValue(s->getProperty(_adapter, val, f), f.getName());
+void Resource::resolveFile(const Scheme &s, int64_t oid, const storage::Field &f, data::Value &val) {
+	val.setValue(s.getProperty(_adapter, val, f), f.getName());
 	if (_transform) {
 		auto scheme = storage::File::getScheme();
 		auto it = _transform->find(scheme->getName());
@@ -163,8 +158,8 @@ void Resource::resolveFile(Scheme *s, int64_t oid, const storage::Field &f, data
 		}
 	}
 }
-void Resource::resolveArray(Scheme *s, int64_t oid, const storage::Field &f, data::Value &val) {
-	val.setValue(s->getProperty(_adapter, val, f), f.getName());
+void Resource::resolveArray(const Scheme &s, int64_t oid, const storage::Field &f, data::Value &val) {
+	val.setValue(s.getProperty(_adapter, val, f), f.getName());
 }
 
 void Resource::resolveExtra(const apr::map<String, storage::Field> &fields, data::Value &obj) {
@@ -188,14 +183,14 @@ void Resource::resolveExtra(const apr::map<String, storage::Field> &fields, data
 	}
 }
 
-void Resource::resolveResult(Scheme *s, data::Value &obj, size_t depth) {
+void Resource::resolveResult(const Scheme &s, data::Value &obj, size_t depth) {
 	int64_t id = 0;
 	do {
 		auto &dict = obj.asDict();
 		auto it = dict.begin();
 
 		while (it != dict.end()) {
-			auto f = s->getField(it->first);
+			auto f = s.getField(it->first);
 			if (it->first == "__oid") {
 				id = it->second.getInteger();
 				it ++;
@@ -211,7 +206,7 @@ void Resource::resolveResult(Scheme *s, data::Value &obj, size_t depth) {
 	} while (0);
 
 	if (depth <= _resolveDepth && _resolveOptions != ResolveOptions::None) {
-		auto & fields = s->getFields();
+		auto & fields = s.getFields();
 		for (auto &it : fields) {
 			auto &f = it.second;
 			auto type = f.getType();
@@ -228,11 +223,11 @@ void Resource::resolveResult(Scheme *s, data::Value &obj, size_t depth) {
 					&& (_resolveOptions & ResolveOptions::Objects) != ResolveOptions::None) {
 				auto next = static_cast<const storage::FieldObject *>(f.getSlot());
 				if (_resolveObjects.find(fobj.asInteger()) == _resolveObjects.end()) {
-					auto perms = isSchemeAllowed(next->scheme, AccessControl::Read);
+					auto perms = isSchemeAllowed(*(next->scheme), AccessControl::Read);
 					if (perms != AccessControl::Restrict) {
-						resolveObject(s, id, f, next->scheme, obj);
+						resolveObject(s, id, f, *(next->scheme), obj);
 						if (fobj.isDictionary()) {
-							if (perms == AccessControl::Full || isObjectAllowed(next->scheme, AccessControl::Read, fobj)) {
+							if (perms == AccessControl::Full || isObjectAllowed(*(next->scheme), AccessControl::Read, fobj)) {
 								auto id = fobj.getInteger("__oid");
 								if (_resolveObjects.insert(id).second == false) {
 									fobj.setInteger(id);
@@ -247,14 +242,14 @@ void Resource::resolveResult(Scheme *s, data::Value &obj, size_t depth) {
 					&& (_resolveOptions & ResolveOptions::Sets) != ResolveOptions::None) {
 				auto next = static_cast<const storage::FieldObject *>(f.getSlot());
 				if (next) {
-					auto perms = isSchemeAllowed(next->scheme, AccessControl::Read);
+					auto perms = isSchemeAllowed(*(next->scheme), AccessControl::Read);
 					if (perms != AccessControl::Restrict) {
-						resolveSet(s, id, f, next->scheme, obj);
+						resolveSet(s, id, f, *(next->scheme), obj);
 						if (fobj.isArray()) {
 							data::Value arr;
 							for (auto &sit : fobj.asArray()) {
 								if (sit.isDictionary()) {
-									if (perms == AccessControl::Full || isObjectAllowed(next->scheme, AccessControl::Read, sit)) {
+									if (perms == AccessControl::Full || isObjectAllowed(*(next->scheme), AccessControl::Read, sit)) {
 										auto id = sit.getInteger("__oid");
 										if (_resolveObjects.insert(id).second == false) {
 											sit.setInteger(id);
@@ -290,10 +285,10 @@ void Resource::resolveResult(Scheme *s, data::Value &obj, size_t depth) {
 				if (type ==  storage::Type::Set) {
 					auto &fobj = obj.getValue(it.first);
 					for (auto &sit : fobj.asArray()) {
-						resolveResult(next->scheme, sit, depth + 1);
+						resolveResult(*(next->scheme), sit, depth + 1);
 					}
 				} else {
-					resolveResult(next->scheme, obj.getValue(it.first), depth + 1);
+					resolveResult(*(next->scheme), obj.getValue(it.first), depth + 1);
 				}
 			}
 		}
@@ -302,7 +297,7 @@ void Resource::resolveResult(Scheme *s, data::Value &obj, size_t depth) {
 		auto &dict = obj.asDict();
 		auto it = dict.begin();
 		while (it != dict.end()) {
-			auto f = s->getField(it->first);
+			auto f = s.getField(it->first);
 			if (f && f->isFile()) {
 				it = dict.erase(it);
 			} else {
@@ -312,14 +307,14 @@ void Resource::resolveResult(Scheme *s, data::Value &obj, size_t depth) {
 	}
 
 	if (_transform) {
-		auto it = _transform->find(s->getName());
+		auto it = _transform->find(s.getName());
 		if (it != _transform->end()) {
 			it->second.output.transform(obj);
 		}
 	}
 }
 
-AccessControl::Permission Resource::isSchemeAllowed(Scheme *s, AccessControl::Action a) const {
+AccessControl::Permission Resource::isSchemeAllowed(const Scheme &s, AccessControl::Action a) const {
 	if (_access) {
 		return _access->onScheme(_user, s, a);
 	}
@@ -330,11 +325,11 @@ AccessControl::Permission Resource::isSchemeAllowed(Scheme *s, AccessControl::Ac
 					: AccessControl::Restrict);
 }
 
-bool Resource::isObjectAllowed(Scheme *s, AccessControl::Action a, data::Value &obj) const {
+bool Resource::isObjectAllowed(const Scheme &s, AccessControl::Action a, data::Value &obj) const {
 	data::Value p;
 	return isObjectAllowed(s, a, obj, p);
 }
-bool Resource::isObjectAllowed(Scheme *s, AccessControl::Action a, data::Value &current, data::Value &patch) const {
+bool Resource::isObjectAllowed(const Scheme &s, AccessControl::Action a, data::Value &current, data::Value &patch) const {
 	if (_access) {
 		return _access->onObject(_user, s, a, current, patch);
 	}
@@ -345,8 +340,8 @@ bool Resource::isObjectAllowed(Scheme *s, AccessControl::Action a, data::Value &
 					: false);
 }
 
-storage::Scheme *Resource::getRequestScheme() const {
-	return _scheme;
+const storage::Scheme &Resource::getRequestScheme() const {
+	return getScheme();
 }
 
 NS_SA_END

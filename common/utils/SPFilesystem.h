@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef __stappler__SPFilesystem__
-#define __stappler__SPFilesystem__
+#ifndef COMMON_UTILS_SPFILESYSTEM_H_
+#define COMMON_UTILS_SPFILESYSTEM_H_
 
 #include "SPIO.h"
 
@@ -292,4 +292,4 @@ struct ProducerTraits<filesystem::ifile> {
 
 NS_SP_EXT_END(io)
 
-#endif /* defined(__stappler__SPFileManager__) */
+#endif /* COMMON_UTILS_SPFILESYSTEM_H_ */

@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef COMMON_HTML_SPHTMLPARSER_H_
-#define COMMON_HTML_SPHTMLPARSER_H_
+#ifndef COMMON_UTILS_SPHTMLPARSER_H_
+#define COMMON_UTILS_SPHTMLPARSER_H_
 
 #include "SPCharReader.h"
 #include "SPString.h"
@@ -111,13 +111,13 @@ public:
 };
 
 template <typename StringReader>
-auto Tag_readName(StringReader &is) -> StringReader;
+auto Tag_readName(StringReader &is, bool keepClean = false) -> StringReader;
 
 template <typename StringReader>
-auto Tag_readAttrName(StringReader &s) -> StringReader;
+auto Tag_readAttrName(StringReader &s, bool keepClean = false) -> StringReader;
 
 template <typename StringReader>
-auto Tag_readAttrValue(StringReader &s) -> StringReader;
+auto Tag_readAttrValue(StringReader &s, bool keepClean = false) -> StringReader;
 
 template <typename __StringReader>
 struct Tag : public ReaderClassBase<char16_t> {
@@ -341,4 +341,4 @@ void parse(ReaderType &r, const StringReader &s) {
 
 NS_SP_EXT_END(html)
 
-#endif /* COMMON_HTML_SPHTMLPARSER_H_ */
+#endif /* COMMON_UTILS_SPHTMLPARSER_H_ */

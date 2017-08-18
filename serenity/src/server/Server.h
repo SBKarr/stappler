@@ -64,28 +64,37 @@ public:
 	void addHandler(const String &, const HandlerCallback &, const data::Value & = data::Value::Null);
 	void addHandler(std::initializer_list<String>, const HandlerCallback &, const data::Value & = data::Value::Null);
 
-	void addResourceHandler(const String &, storage::Scheme *, data::TransformMap * = nullptr, AccessControl * = nullptr, size_t priority = 0);
-	void addResourceHandler(const String &, storage::Scheme *, const data::Value &, data::TransformMap * = nullptr, AccessControl * = nullptr, size_t priority = 0);
+	void addResourceHandler(const String &, const storage::Scheme &, data::TransformMap * = nullptr, AccessControl * = nullptr, size_t priority = 0);
+	void addResourceHandler(const String &, const storage::Scheme &, const data::Value &, data::TransformMap * = nullptr, AccessControl * = nullptr, size_t priority = 0);
 
 	void addWebsocket(const String &, websocket::Manager *);
 
-	storage::Scheme * exportScheme(storage::Scheme *);
+	const storage::Scheme * exportScheme(const storage::Scheme &);
 
-	storage::Scheme * getScheme(const String &) const;
-	storage::Scheme * getFileScheme() const;
-	storage::Scheme * getUserScheme() const;
+	const storage::Scheme * getScheme(const String &) const;
+	const storage::Scheme * getFileScheme() const;
+	const storage::Scheme * getUserScheme() const;
 
-	String getResourcePath(storage::Scheme *) const;
+	const storage::Scheme * defineUserScheme(std::initializer_list<storage::Field> il);
+
+	String getResourcePath(const storage::Scheme &) const;
 
 	struct ResourceScheme {
-		String path;
 		size_t priority;
+		String path;
 		data::Value data;
 	};
 
-	const Map<String, storage::Scheme *> &getSchemes() const;
-	const Map<storage::Scheme *, ResourceScheme> &getResources() const;
-	const Map<String, std::pair<HandlerCallback, data::Value>> &getRequestHandlers() const;
+	struct RequestScheme {
+		String component;
+		HandlerCallback callback;
+		data::Value data;
+		const storage::Scheme *scheme;
+	};
+
+	const Map<String, const storage::Scheme *> &getSchemes() const;
+	const Map<const storage::Scheme *, ResourceScheme> &getResources() const;
+	const Map<String, RequestScheme> &getRequestHandlers() const;
 
 public: // httpd server info
 	apr::weak_string getDefaultName() const;

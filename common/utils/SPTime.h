@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef __stappler__SPTime__
-#define __stappler__SPTime__
+#ifndef COMMON_UTILS_SPTIME_H_
+#define COMMON_UTILS_SPTIME_H_
 
 #include "SPCore.h"
 
@@ -255,4 +255,4 @@ inline bool Time::operator!=(const Time& v) const { return _value != v._value; }
 
 NS_SP_END
 
-#endif /* defined(__stappler__SPTime__) */
+#endif /* COMMON_UTILS_SPTIME_H_ */

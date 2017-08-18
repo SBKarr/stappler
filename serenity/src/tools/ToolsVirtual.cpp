@@ -32,14 +32,19 @@ struct VirtualFilesystemHandle {
 	struct Rec {
 		const char *name;
 		const char *content;
+		size_t len;
 	};
 
 	VirtualFilesystemHandle() : count(0) { }
 
 	void add(const char *n, const char *c) {
+		if (strncmp(n, "serenity/virtual", "serenity/virtual"_len) == 0) {
+			n += "serenity/virtual"_len;
+		}
 		if (count < 255) {
 			table[count].name = n;
 			table[count].content = c;
+			table[count].len = strlen(c);
 			++ count;
 		}
 	}
@@ -49,6 +54,20 @@ struct VirtualFilesystemHandle {
 };
 
 static VirtualFilesystemHandle s_handle;
+
+StringView VirtualFile::get(const String &path) {
+	return get(path.data());
+}
+
+StringView VirtualFile::get(const char *path) {
+	for (size_t i = 0; i < s_handle.count; ++i) {
+		if (strcmp(path, s_handle.table[i].name) == 0) {
+			return StringView(s_handle.table[i].content, s_handle.table[i].len);
+			break;
+		}
+	}
+	return StringView();
+}
 
 VirtualFile::VirtualFile(const char *n, const char *c) : name(n), content(c) {
 	s_handle.add(n, c);
@@ -65,8 +84,10 @@ int VirtualFilesystem::onPostReadRequest(Request &rctx) {
 				rctx.setContentType("application/javascript");
 			} else if (_subPath.compare(_subPath.length() - 4, 4, ".css") == 0) {
 				rctx.setContentType("text/css");
+			} else if (_subPath.compare(_subPath.length() - 5, 5, ".html") == 0) {
+				rctx.setContentType("text/html;charset=UTF-8");
 			}
-			rctx << s_handle.table[i].content;
+			rctx << StringView(s_handle.table[i].content, s_handle.table[i].len);
 			return DONE;
 			break;
 		}

@@ -130,8 +130,8 @@ struct __AllocatorTraits<T, true> {
 		memmove(dest, source, count * sizeof(T));
 	}
 
-	template <typename ...Args>
-	static void construct(T * p, Args &&...args) noexcept { }
+	/*template <typename ...Args>
+	static void construct(T * p, Args &&...args) noexcept { }*/
 
 	static void destroy(T *p) noexcept { }
 

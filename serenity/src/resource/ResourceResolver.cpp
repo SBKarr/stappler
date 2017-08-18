@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "Resource.h"
 #include "StorageResolver.h"
 #include "StorageScheme.h"
+#include "StorageAdapter.h"
 
 NS_SA_BEGIN
 
@@ -109,9 +110,9 @@ static bool getSelectResource(storage::Resolver *resv, Vector<String> &path, boo
 			if (valid::validateNumber(cmpStr)) {
 				return resv->selectByQuery(storage::Query::Select(field->getName(), cmp, (uint64_t)apr_strtoi64(cmpStr.c_str(), nullptr, 10), 0));
 			} else if (cmpStr == "t" || cmpStr == "true") {
-				return resv->selectByQuery(storage::Query::Select(field->getName(), cmp, 1, 0));
+				return resv->selectByQuery(storage::Query::Select(field->getName(), cmp, data::Value(true), data::Value(false)));
 			} else if (cmpStr == "f" || cmpStr == "false") {
-				return resv->selectByQuery(storage::Query::Select(field->getName(), cmp, 0, 0));
+				return resv->selectByQuery(storage::Query::Select(field->getName(), cmp, data::Value(false), data::Value(false)));
 			}
 		} else if (valid::validateNumber(cmpStr) && storage::checkIfComparationIsValid(field->getType(), cmp)) {
 			return resv->selectByQuery(storage::Query::Select(field->getName(), cmp, (uint64_t)apr_strtoi64(cmpStr.c_str(), nullptr, 10), 0));
@@ -429,28 +430,28 @@ static Resource *getResolvedResource(storage::Resolver *resv, Vector<String> &pa
 	return parseResource(resv, path);
 }
 
-Resource *Resource::resolve(storage::Adapter *a, storage::Scheme *scheme, const String &path, const data::TransformMap *map) {
+Resource *Resource::resolve(storage::Adapter *a, const storage::Scheme &scheme, const String &path, const data::TransformMap *map) {
 	data::Value tmp;
 	return resolve(a, scheme, path, tmp, map);
 }
 
-Resource *Resource::resolve(storage::Adapter *a, storage::Scheme *scheme, const String &path, data::Value & sub, const data::TransformMap *map) {
+Resource *Resource::resolve(storage::Adapter *a, const storage::Scheme &scheme, const String &path, data::Value & sub, const data::TransformMap *map) {
 	auto pathVec = parsePath(path);
-	auto resolver = a->createResolver(scheme, map);
 
+	storage::Resolver resolver(a, scheme, map);
 	if (sub.isDictionary() && !sub.empty()) {
 		for (auto &it : sub.asDict()) {
-			if (auto f = resolver->getSchemeField(it.first)) {
+			if (auto f = resolver.getSchemeField(it.first)) {
 				if (f->isIndexed()) {
 					switch (f->getType()) {
 					case storage::Type::Integer:
 					case storage::Type::Boolean:
 					case storage::Type::Object:
-						resolver->selectByQuery(
+						resolver.selectByQuery(
 								storage::Query::Select(it.first, storage::Comparation::Equal, it.second.getInteger(), 0));
 						break;
 					case storage::Type::Text:
-						resolver->selectByQuery(
+						resolver.selectByQuery(
 								storage::Query::Select(it.first, storage::Comparation::Equal, it.second.getString()));
 						break;
 					default:
@@ -462,21 +463,21 @@ Resource *Resource::resolve(storage::Adapter *a, storage::Scheme *scheme, const 
 	} else if (sub.isInteger()) {
 		auto id = sub.getInteger();
 		if (id) {
-			resolver->selectById(id);
+			resolver.selectById(id);
 		}
 	} else if (sub.isString()) {
 		auto & str = sub.getString();
 		if (!str.empty()) {
-			resolver->selectByAlias(str);
+			resolver.selectByAlias(str);
 		}
 	}
 
-	return getResolvedResource(resolver, pathVec);
+	return getResolvedResource(&resolver, pathVec);
 }
 
-Resource *Resource::resolve(storage::Adapter *a, storage::Scheme *scheme, Vector<String> &pathVec) {
-	auto resolver = a->createResolver(scheme, nullptr);
-	return getResolvedResource(resolver, pathVec);
+Resource *Resource::resolve(storage::Adapter *a, const storage::Scheme &scheme, Vector<String> &pathVec) {
+	storage::Resolver resolver(a, scheme, nullptr);
+	return getResolvedResource(&resolver, pathVec);
 }
 
 NS_SA_END

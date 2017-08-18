@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include "User.h"
 #include "Server.h"
 #include "StorageScheme.h"
+#include "StorageAdapter.h"
 
 NS_SA_BEGIN
 
@@ -52,19 +53,19 @@ User *User::create(storage::Adapter *a, data::Value &&val) {
 	auto s = Server(apr::pool::server()).getUserScheme();
 
 	auto d = s->create(a, val);
-	return new User(std::move(d), s);
+	return new User(std::move(d), *s);
 }
 
 User *User::get(storage::Adapter *a, const String &name, const String &password) {
 	auto s = Server(apr::pool::server()).getUserScheme();
-	return a->authorizeUser(s, name, password);
+	return a->authorizeUser(*s, name, password);
 }
 
 User *User::get(storage::Adapter *a, uint64_t oid) {
 	auto s = Server(apr::pool::server()).getUserScheme();
 	auto d = s->get(a, oid);
 	if (d.isDictionary()) {
-		return new User(std::move(d), s);
+		return new User(std::move(d), *s);
 	}
 
 	return nullptr;
@@ -95,11 +96,11 @@ bool User::remove(storage::Adapter *a, const String &name, const String &passwor
 	return false;
 }
 
-User::User(data::Value &&d, storage::Scheme *s) : Object(std::move(d), s) { }
+User::User(data::Value &&d, const storage::Scheme &s) : Object(std::move(d), s) { }
 
 bool User::validatePassword(const String &passwd) const {
-	auto & fields = _scheme->getFields();
-	auto it = _scheme->getFields().find("password");
+	auto & fields = _scheme.getFields();
+	auto it = _scheme.getFields().find("password");
 	if (it != fields.end() && it->second.getTransform() == storage::Transform::Password) {
 		auto f = static_cast<const storage::FieldPassword *>(it->second.getSlot());
 		return valid::validatePassord(passwd, getBytes("password"), f->salt);
@@ -108,8 +109,8 @@ bool User::validatePassword(const String &passwd) const {
 }
 
 void User::setPassword(const String &passwd) {
-	auto & fields = _scheme->getFields();
-	auto it = _scheme->getFields().find("password");
+	auto & fields = _scheme.getFields();
+	auto it = _scheme.getFields().find("password");
 	if (it != fields.end() && it->second.getTransform() == storage::Transform::Password) {
 		auto f = static_cast<const storage::FieldPassword *>(it->second.getSlot());
 		setBytes(valid::makePassword(passwd, f->salt), "password");

@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "Root.h"
 #include "UrlEncodeParser.h"
 #include "SPFilesystem.h"
+#include "PGHandle.h"
 
 #include "User.h"
 #include "Session.h"
@@ -75,11 +76,11 @@ struct Request::Config : public AllocPool {
 		return _data;
 	}
 
-	database::Handle *acquireDatabase(request_rec *r) {
+	pg::Handle *acquireDatabase(request_rec *r) {
 		if (!_database) {
 			auto handle = Root::getInstance()->dbdRequestAcquire(r);
 			if (handle) {
-				_database = new database::Handle(r->pool, handle);
+				_database = new pg::Handle(r->pool, handle);
 			}
 		}
 		return _database;
@@ -96,7 +97,7 @@ struct Request::Config : public AllocPool {
 	Vector<data::Value> _errors;
 	InputConfig _config;
 
-	database::Handle *_database = nullptr;
+	pg::Handle *_database = nullptr;
 	RequestHandler *_handler = nullptr;
 	Session *_session = nullptr;
 	User *_user = nullptr;

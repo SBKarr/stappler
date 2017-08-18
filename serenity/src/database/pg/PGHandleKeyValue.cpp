@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "PGHandle.h"
+#include "PGQuery.h"
 #include "StorageFile.h"
 #include "StorageScheme.h"
 #include "User.h"
@@ -81,10 +82,11 @@ int64_t Handle::processBroadcasts(Server &serv, int64_t value) {
 	ExecQuery query;
 	int64_t maxId = value;
 	if (value <= 0) {
-		query << "SELECT last_value FROM __broadcasts_id_seq;";
+		query.select("last_value").from("__broadcasts_id_seq").finalize();
 		maxId = selectId(query);
 	} else {
-		query << "SELECT id, date, msg FROM __broadcasts WHERE id > " << value << ";";
+		query.select("id", "date", "msg").from("__broadcasts")
+				.where("id", Comparation::Equal, value).finalize();
 		Result ret(select(query));
 		for (auto it : ret) {
 			if (it.size() >= 3) {
@@ -98,45 +100,37 @@ int64_t Handle::processBroadcasts(Server &serv, int64_t value) {
 				}
 			}
 		}
-
-		query.clear();
 	}
 	return maxId;
 }
 
 void Handle::broadcast(const Bytes &bytes) {
-	if (transaction == TransactionStatus::None) {
+	if (getTransactionStatus() == TransactionStatus::None) {
 		ExecQuery query;
-		query << "INSERT INTO __broadcasts (date, msg) VALUES (" << apr_time_now() << ",";
-		query.write(Bytes(bytes));
-		query << ");";
+		query.insert("__broadcasts").fields("date", "msg").values(apr_time_now(), Bytes(bytes)).finalize();
 		perform(query);
 	} else {
 		_bcasts.emplace_back(apr_time_now(), bytes);
 	}
 }
 
-void Handle::setMinNextOid(uint64_t oid) {
-	StringStream query;
-	query << "SELECT setval('__objects___oid_seq', " << oid << ");";
-	performSimpleQuery(query.weak());
-}
-
-User * Handle::authorizeUser(Scheme *s, const String &iname, const String &password) {
+User * Handle::authorizeUser(const Scheme &s, const String &iname, const String &password) {
 	ExecQuery query;
-	query << "WITH u AS (SELECT * FROM " << s->getName() << " WHERE ";
-	String name = iname;
-	if (valid::validateEmail(name)) {
-		query << "email=";
-	} else {
-		query << "name=";
-	}
-	query.write(std::move(name));
-
-	query << "), l AS (SELECT count(*) AS failed_count FROM __login, u WHERE success=FALSE AND date>"
-			<< (Time::now() - config::getMaxAuthTime()).toSeconds() << " AND \"user\"=u.__oid) "
-			<< "SELECT l.failed_count, u.* FROM u, l;";
-
+	query.with("u", [&] (ExecQuery::GenericQuery &q) {
+		auto f = q.select().from(s.getName());
+		String name = iname;
+		if (valid::validateEmail(name)) {
+			f.where("email", Comparation::Equal, std::move(name));
+		} else {
+			f.where("name", Comparation::Equal, std::move(name));
+		}
+	}).with("l", [&] (ExecQuery::GenericQuery &q) {
+		q.select().count("failed_count").from("__login").innerJoinOn("u", [&] (ExecQuery::WhereBegin &w) {
+			w.where(ExecQuery::Field( "__login", "user"), Comparation::Equal, ExecQuery::Field("u", "__oid"))
+					.where(Operator::And, ExecQuery::Field( "__login", "success"), Comparation::Equal, data::Value(false))
+					.where(Operator::And, ExecQuery::Field( "__login", "date"), Comparation::GreatherThen, uint64_t((Time::now() - config::getMaxAuthTime()).toSeconds()));
+		});
+	}).select().from("l", "u").finalize();
 	auto res = select(query);
 	if (res.nrows() != 1) {
 		return nullptr;
@@ -151,7 +145,7 @@ User * Handle::authorizeUser(Scheme *s, const String &iname, const String &passw
 		return nullptr;
 	}
 
-	data::Value d(res.decode(*s));
+	data::Value d(res.decode(s));
 	if (d.size() != 1) {
 		return nullptr;
 	}
@@ -159,38 +153,26 @@ User * Handle::authorizeUser(Scheme *s, const String &iname, const String &passw
 	auto &ud = d.getValue(0);
 	auto &passwd = ud.getBytes("password");
 
-	auto & fields = s->getFields();
-	auto it = s->getFields().find("password");
+	auto & fields = s.getFields();
+	auto it = s.getFields().find("password");
 	if (it != fields.end() && it->second.getTransform() == storage::Transform::Password) {
 		auto f = static_cast<const storage::FieldPassword *>(it->second.getSlot());
 		User *ret = nullptr;
-
-		query.clear();
-		query << "INSERT INTO __login (\"user\", name, password, date, success, addr, host, path) VALUES ("
-				<< ud.getInteger("__oid") << ", ";
-		query.write(String(name));
-		query << ", ";
-		query.write(Bytes(passwd));
-		query << ", " << Time::now().toSeconds() << ", ";
-
+		bool success = false;
+		auto req = apr::pool::request();
 		if (valid::validatePassord(password, passwd, f->salt)) {
 			ret = new User(std::move(ud), s);
-			query << "TRUE, ";
+			success = true;
 		} else {
-			query << "FALSE, ";
 			messages::error("Auth", "Login attempts", data::Value(config::getMaxLoginFailure() - count - 1));
 		}
-		auto req = apr::pool::request();
-		if (req) {
-			query.write(String(req->useragent_ip));
-			query << ", ";
-			query.write(String(req->hostname));
-			query << ", ";
-			query.write(String(req->uri));
-		} else {
-			query << "NULL, NULL, NULL";
-		}
-		query << ");";
+
+		query.clear();
+		query.insert("__login")
+				.fields("user", "name", "password", "date", "success", "addr", "host", "path")
+				.values(ud.getInteger("__oid"), iname, passwd, Time::now().toSeconds(), data::Value(success),
+						ExecQuery::TypeString(req?req->useragent_ip:"NULL", "inet"), String(req?req->hostname:"NULL"), String(req?req->uri:"NULL"))
+				.finalize();
 		perform(query);
 		return ret;
 	}
@@ -202,70 +184,55 @@ data::Value Handle::getData(const String &key) {
 	Bytes bkey; bkey.resize(key.size() + 4);
 	memcpy(bkey.data(), "kvs:", 4);
 	memcpy(bkey.data() + 4, key.data(), key.size());
-
-	ExecQuery query("SELECT data FROM __sessions WHERE name=");
-	query.write(std::move(bkey));
-	query << ";";
-
-	auto res = select(query);
-	if (res.nrows() == 1) {
-		return data::read(res.front().toBytes(0));
-	}
-	return data::Value();
+	return getKVData(std::move(bkey));
 }
 
 bool Handle::setData(const String &key, const data::Value &data, TimeInterval maxage) {
 	Bytes bkey; bkey.resize(key.size() + 4);
 	memcpy(bkey.data(), "kvs:", 4);
 	memcpy(bkey.data() + 4, key.data(), key.size());
-
-	ExecQuery query("INSERT INTO __sessions  (name, mtime, maxage, data) VALUES (");
-	query.write(std::move(bkey));
-	query << ", " << Time::now().toSeconds() << ", " << maxage.toSeconds() << ", ";
-	query.write(data::write(data, data::EncodeFormat::Cbor));
-	query << ") ON CONFLICT (name) DO UPDATE SET mtime=EXCLUDED.mtime, maxage=EXCLUDED.maxage, data=EXCLUDED.data;";
-
-	return perform(query) != maxOf<size_t>();
+	return setKVData(std::move(bkey), data, maxage);
 }
 
 bool Handle::clearData(const String &key) {
 	Bytes bkey; bkey.resize(key.size() + 4);
 	memcpy(bkey.data(), "kvs:", 4);
 	memcpy(bkey.data() + 4, key.data(), key.size());
-
-	ExecQuery query("DELETE FROM __sessions WHERE name=");
-	query.write(std::move(bkey));
-	query << ";";
-
-	return perform(query) == 1; // one row should be affected
+	return clearKVData(std::move(bkey));
 }
 
 data::Value Handle::getSessionData(const Bytes &key) {
-	ExecQuery query("SELECT data FROM __sessions WHERE name=");
-	query.write(Bytes(key));
+	return getKVData(Bytes(key));
+}
 
+bool Handle::setSessionData(const Bytes &key, const data::Value &data, TimeInterval maxage) {
+	return setKVData(Bytes(key), data, maxage);
+}
+
+bool Handle::clearSessionData(const Bytes &key) {
+	return clearKVData(Bytes(key));
+}
+
+data::Value Handle::getKVData(Bytes &&key) {
+	ExecQuery query;
+	query.select("data").from("__sessions").where("name", Comparation::Equal, move(key)).finalize();
 	auto res = select(query);
 	if (res.nrows() == 1) {
 		return data::read(res.front().toBytes(0));
 	}
 	return data::Value();
 }
-
-bool Handle::setSessionData(const Bytes &key, const data::Value &data, TimeInterval maxage) {
-	ExecQuery query("INSERT INTO __sessions  (name, mtime, maxage, data) VALUES (");
-	query.write(Bytes(key));
-	query << ", " << Time::now().toSeconds() << ", " << maxage.toSeconds() << ", ";
-	query.write(data::write(data, data::EncodeFormat::Cbor));
-	query << ") ON CONFLICT (name) DO UPDATE SET mtime=EXCLUDED.mtime, maxage=EXCLUDED.maxage, data=EXCLUDED.data;";
-
+bool Handle::setKVData(Bytes &&key, const data::Value &data, TimeInterval maxage) {
+	ExecQuery query;
+	query.insert("__sessions").fields("name", "mtime", "maxage", "data")
+			.values(move(key), Time::now().toSeconds(), maxage.toSeconds(), data::write(data, data::EncodeFormat::Cbor))
+			.onConflict("name").doUpdate().excluded("mtime").excluded("maxage").excluded("data")
+			.finalize();
 	return perform(query) != maxOf<size_t>();
 }
-
-bool Handle::clearSessionData(const Bytes &key) {
-	ExecQuery query("DELETE FROM __sessions WHERE name=");
-	query.write(Bytes(key));
-	query << ";";
-
+bool Handle::clearKVData(Bytes &&key) {
+	ExecQuery query;
+	query.remove("__sessions").where("name", Comparation::Equal, move(key)).finalize();
 	return perform(query) == 1; // one row should be affected
 }
 

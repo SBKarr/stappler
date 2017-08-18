@@ -34,7 +34,7 @@ THE SOFTWARE.
 #include "ServerComponent.h"
 #include "StorageField.h"
 #include "StorageScheme.h"
-#include "DatabaseHandle.h"
+#include "PGHandle.h"
 #include "ResourceHandler.h"
 #include "WebSocket.h"
 #include "Tools.h"
@@ -47,7 +47,10 @@ NS_SA_BEGIN
 #define SA_SERVER_FILE_SCHEME_NAME "__files"
 #define SA_SERVER_USER_SCHEME_NAME "__users"
 
+using namespace storage;
+
 struct Server::Config : public AllocPool {
+
 	static Config *get(server_rec *server) {
 		if (!server) { return nullptr; }
 		auto cfg = (Config *)ap_get_module_config(server->module_config, &serenity_module);
@@ -64,7 +67,7 @@ struct Server::Config : public AllocPool {
 
 	void onHandler(Server &serv, const String &name, const String &ifile, const String &symbol, const data::Value &handlerData) {
 		String file;
-		if (!sourceRoot.empty()) {
+		if (!sourceRoot.empty() && ifile.front() != '/') {
 			file = filepath::absolute(filepath::merge(sourceRoot, ifile));
 		} else {
 			file = filepath::absolute(ifile);
@@ -143,32 +146,8 @@ struct Server::Config : public AllocPool {
 	}
 
 	void init(Server &serv) {
-		using namespace storage;
-		auto users = new storage::Scheme(SA_SERVER_USER_SCHEME_NAME, {
-			Field::Text("name", Transform::Alias, Flags::Required),
-			Field::Password("password", PasswordSalt(config::getDefaultPasswordSalt()), Flags::Required | Flags::Protected),
-			Field::Boolean("isAdmin", data::Value(false)),
-			Field::Extra("data", Vector<Field>{
-				Field::Text("email", Transform::Email),
-				Field::Text("public"),
-				Field::Text("desc"),
-			}),
-			Field::Text("email", Transform::Email, Flags::Unique),
-		});
-
-		auto files = new storage::Scheme(SA_SERVER_FILE_SCHEME_NAME, {
-			Field::Text("location", Transform::Url),
-			Field::Text("type", Flags::ReadOnly),
-			Field::Integer("size", Flags::ReadOnly),
-			Field::Integer("mtime", Flags::AutoMTime | Flags::ReadOnly),
-			Field::Extra("image", Vector<Field>{
-				Field::Integer("width"),
-				Field::Integer("height"),
-			})
-		});
-
-		schemes.emplace(users->getName(), users);
-		schemes.emplace(files->getName(), files);
+		schemes.emplace(userScheme.getName(), &userScheme);
+		schemes.emplace(fileScheme.getName(), &fileScheme);
 
 		if (data) {
 			if (data.isArray("handlers")) {
@@ -188,14 +167,16 @@ struct Server::Config : public AllocPool {
 	void onChildInit(Server &serv) {
 		childInit = true;
 		for (auto &it : components) {
+			currentComponent = it.second->getName();
 			it.second->onChildInit(serv);
+			currentComponent = String();
 		}
 
 		auto root = Root::getInstance();
 		auto pool = getCurrentPool();
 		auto db = root->dbdOpen(pool, serv);
 		if (db) {
-			database::Handle h(pool, db);
+			pg::Handle h(pool, db);
 			h.init(serv, schemes);
 			root->dbdClose(serv, db);
 		}
@@ -203,15 +184,39 @@ struct Server::Config : public AllocPool {
 
 	bool childInit = false;
 
+	storage::Scheme userScheme = storage::Scheme(SA_SERVER_USER_SCHEME_NAME, {
+		Field::Text("name", Transform::Alias, Flags::Required),
+		Field::Password("password", PasswordSalt(config::getDefaultPasswordSalt()), Flags::Required | Flags::Protected),
+		Field::Boolean("isAdmin", data::Value(false)),
+		Field::Extra("data", Vector<Field>{
+			Field::Text("email", Transform::Email),
+			Field::Text("public"),
+			Field::Text("desc"),
+		}),
+		Field::Text("email", Transform::Email, Flags::Unique),
+	});
+
+	storage::Scheme fileScheme = storage::Scheme(SA_SERVER_FILE_SCHEME_NAME, {
+		Field::Text("location", Transform::Url),
+		Field::Text("type", Flags::ReadOnly),
+		Field::Integer("size", Flags::ReadOnly),
+		Field::Integer("mtime", Flags::AutoMTime | Flags::ReadOnly),
+		Field::Extra("image", Vector<Field>{
+			Field::Integer("width"),
+			Field::Integer("height"),
+		})
+	});
+
 	data::Value handlers;
 	String handlerFile;
 	String sourceRoot;
 	String serverNamespace;
+	String currentComponent;
 	Vector<Function<int(Request &)>> preRequest;
 	Map<String, ServerComponent *> components;
-	Map<String, std::pair<HandlerCallback, data::Value>> requests;
-	Map<storage::Scheme *, ResourceScheme> resources;
-	Map<String, storage::Scheme *> schemes;
+	Map<String, RequestScheme> requests;
+	Map<const storage::Scheme *, ResourceScheme> resources;
+	Map<String, const storage::Scheme *> schemes;
 
 	Map<String, websocket::Manager *> websockets;
 	data::Value data;
@@ -269,7 +274,9 @@ void Server::onChildInit() {
 
 	filesystem::mkdir(filepath::merge(getDocumentRoot(), "/uploads"));
 
+	_config->currentComponent = "root";
 	tools::registerTools(config::getServerToolsPrefix(), *this);
+	_config->currentComponent = String();
 }
 
 void Server::setHandlerFile(const apr::string &file) {
@@ -470,7 +477,7 @@ void Server::onHeartBeat() {
 		auto root = Root::getInstance();
 		auto pool = apr::pool::acquire();
 		if (auto dbd = root->dbdOpen(pool, _server)) {
-			database::Handle h(pool, dbd);
+			pg::Handle h(pool, dbd);
 			if (now - _config->lastDatabaseCleanup > TimeInterval::seconds(60)) {
 				_config->lastDatabaseCleanup = now;
 				h.makeSessionsCleanup();
@@ -535,8 +542,8 @@ int Server::onRequest(Request &req) {
 	}
 
 	auto ret = Server_resolvePath(_config->requests, path);
-	if (ret != _config->requests.end() && ret->second.first) {
-		RequestHandler *h = ret->second.first();
+	if (ret != _config->requests.end() && ret->second.callback) {
+		RequestHandler *h = ret->second.callback();
 		if (h) {
 			String subPath((ret->first.back() == '/')?path.substr(ret->first.size() - 1):"");
 			String originPath = subPath.size() == 0 ? String(path) : String(ret->first);
@@ -544,7 +551,7 @@ int Server::onRequest(Request &req) {
 				originPath.pop_back();
 			}
 			// preflight request (for CORS implementation)
-			int preflight = h->onRequestRecieved(req, std::move(originPath), std::move(subPath), ret->second.second);
+			int preflight = h->onRequestRecieved(req, std::move(originPath), std::move(subPath), ret->second.data);
 			if (preflight > 0 || preflight == DONE) { // cors error or successful preflight
 				ap_send_interim_response(req.request(), 1);
 				return preflight;
@@ -588,15 +595,19 @@ void Server::addPreRequest(Function<int(Request &)> &&req) {
 
 void Server::addHandler(const String &path, const HandlerCallback &cb, const data::Value &d) {
 	if (!path.empty() && path.front() == '/') {
-		_config->requests.emplace(path, std::make_pair(cb, d));
+		_config->requests.emplace(path, RequestScheme{_config->currentComponent, cb, d});
 	}
 }
-void Server::addResourceHandler(const String &path, storage::Scheme *scheme,
+void Server::addResourceHandler(const String &path, const storage::Scheme &scheme,
 		data::TransformMap *transform, AccessControl *a, size_t priority) {
-	addHandler(path, [scheme, transform, a] () -> RequestHandler * { return new ResourceHandler(scheme, transform, a, data::Value()); });
-	auto it = _config->resources.find(scheme);
+	if (!path.empty() && path.front() == '/') {
+		_config->requests.emplace(path, RequestScheme{_config->currentComponent,
+			[s = &scheme, transform, a] () -> RequestHandler * { return new ResourceHandler(*s, transform, a, data::Value()); },
+			data::Value(), &scheme});
+	}
+	auto it = _config->resources.find(&scheme);
 	if (it == _config->resources.end()) {
-		_config->resources.emplace(scheme, ResourceScheme{path, priority, data::Value()});
+		_config->resources.emplace(&scheme, ResourceScheme{priority, path, data::Value()});
 	} else {
 		if (it->second.priority <= priority) {
 			it->second.path = path;
@@ -605,12 +616,16 @@ void Server::addResourceHandler(const String &path, storage::Scheme *scheme,
 	}
 }
 
-void Server::addResourceHandler(const String &path, storage::Scheme *scheme, const data::Value &val,
+void Server::addResourceHandler(const String &path, const storage::Scheme &scheme, const data::Value &val,
 		data::TransformMap *transform, AccessControl *a, size_t priority) {
-	addHandler(path, [scheme, transform, a, val] () -> RequestHandler * { return new ResourceHandler(scheme, transform, a, val); });
-	auto it = _config->resources.find(scheme);
+	if (!path.empty() && path.front() == '/') {
+		_config->requests.emplace(path, RequestScheme{_config->currentComponent,
+			[s = &scheme, transform, a, val] () -> RequestHandler * { return new ResourceHandler(*s, transform, a, val); },
+			data::Value(), &scheme});
+	}
+	auto it = _config->resources.find(&scheme);
 	if (it == _config->resources.end()) {
-		_config->resources.emplace(scheme, ResourceScheme{path, priority, val});
+		_config->resources.emplace(&scheme, ResourceScheme{priority, path, val});
 	} else {
 		if (it->second.priority <= priority) {
 			it->second.path = path;
@@ -623,7 +638,7 @@ void Server::addResourceHandler(const String &path, storage::Scheme *scheme, con
 void Server::addHandler(std::initializer_list<String> paths, const HandlerCallback &cb, const data::Value &d) {
 	for (auto &it : paths) {
 		if (!it.empty() && it.front() == '/') {
-			_config->requests.emplace(std::move(const_cast<String &>(it)), std::make_pair(cb, d));
+			_config->requests.emplace(std::move(const_cast<String &>(it)), RequestScheme{_config->currentComponent, cb, d});
 		}
 	}
 }
@@ -632,12 +647,12 @@ void Server::addWebsocket(const String &str, websocket::Manager *m) {
 	_config->websockets.emplace(str, m);
 }
 
-storage::Scheme * Server::exportScheme(storage::Scheme *scheme) {
-	_config->schemes.emplace(scheme->getName(), scheme);
-	return scheme;
+const storage::Scheme * Server::exportScheme(const storage::Scheme &scheme) {
+	_config->schemes.emplace(scheme.getName(), &scheme);
+	return &scheme;
 }
 
-storage::Scheme * Server::getScheme(const String &name) const {
+const storage::Scheme * Server::getScheme(const String &name) const {
 	auto it = _config->schemes.find(name);
 	if (it != _config->schemes.end()) {
 		return it->second;
@@ -645,30 +660,35 @@ storage::Scheme * Server::getScheme(const String &name) const {
 	return nullptr;
 }
 
-storage::Scheme * Server::getFileScheme() const {
+const storage::Scheme * Server::getFileScheme() const {
 	return getScheme(SA_SERVER_FILE_SCHEME_NAME);
 }
 
-storage::Scheme * Server::getUserScheme() const {
+const storage::Scheme * Server::getUserScheme() const {
 	return getScheme(SA_SERVER_USER_SCHEME_NAME);
 }
 
-String Server::getResourcePath(storage::Scheme *scheme) const {
-	auto it = _config->resources.find(scheme);
+const storage::Scheme * Server::defineUserScheme(std::initializer_list<storage::Field> il) {
+	_config->userScheme.define(il);
+	return &_config->userScheme;
+}
+
+String Server::getResourcePath(const storage::Scheme &scheme) const {
+	auto it = _config->resources.find(&scheme);
 	if (it != _config->resources.end()) {
 		return it->second.path;
 	}
 	return String();
 }
 
-const Map<String, storage::Scheme *> &Server::getSchemes() const {
+const Map<String, const storage::Scheme *> &Server::getSchemes() const {
 	return _config->schemes;
 }
-const Map<storage::Scheme *, Server::ResourceScheme> &Server::getResources() const {
+const Map<const storage::Scheme *, Server::ResourceScheme> &Server::getResources() const {
 	return _config->resources;
 }
 
-const Map<String, std::pair<Server::HandlerCallback, data::Value>> &Server::getRequestHandlers() const {
+const Map<String, Server::RequestScheme> &Server::getRequestHandlers() const {
 	return _config->requests;
 }
 

@@ -37,6 +37,7 @@ AccessControl::List AccessControl::List::permissive() {
 	ret.read = Permission::Full;
 	ret.remove = Permission::Full;
 	ret.update = Permission::Full;
+	ret.reference = Permission::Full;
 	return ret;
 }
 AccessControl::List AccessControl::List::common(Permission def) {
@@ -46,6 +47,7 @@ AccessControl::List AccessControl::List::common(Permission def) {
 	ret.read = Permission::Full;
 	ret.remove = def;
 	ret.update = def;
+	ret.reference = Permission::Full;
 	return ret;
 }
 AccessControl::List AccessControl::List::restrictive() {
@@ -55,6 +57,7 @@ AccessControl::List AccessControl::List::restrictive() {
 	ret.read = Permission::Restrict;
 	ret.remove = Permission::Restrict;
 	ret.update = Permission::Restrict;
+	ret.reference = Permission::Restrict;
 	return ret;
 }
 
@@ -68,35 +71,35 @@ void AccessControl::setAdminPrivileges(bool val) {
 void AccessControl::setDefaultList(const List & l) {
 	_default = l;
 }
-void AccessControl::setList(Scheme *s, const List & l) {
-	_lists.emplace(s, l);
+void AccessControl::setList(const Scheme &s, const List & l) {
+	_lists.emplace(&s, l);
 }
 
 void AccessControl::setDefaultSchemeCallback(const SchemeFn &fn) {
 	_scheme = fn;
 }
-void AccessControl::setSchemeCallback(Scheme *s, const SchemeFn &fn) {
+void AccessControl::setSchemeCallback(const Scheme &s, const SchemeFn &fn) {
 	if (fn) {
-		_schemes.emplace(s, fn);
+		_schemes.emplace(&s, fn);
 	} else {
-		_schemes.erase(s);
+		_schemes.erase(&s);
 	}
 }
 
 void AccessControl::setDefaultObjectCallback(const ObjectFn &fn) {
 	_object = fn;
 }
-void AccessControl::setObjectCallback(Scheme *s, const ObjectFn &fn) {
+void AccessControl::setObjectCallback(const Scheme &s, const ObjectFn &fn) {
 	if (fn) {
-		_objects.emplace(s, fn);
+		_objects.emplace(&s, fn);
 	} else {
-		_objects.erase(s);
+		_objects.erase(&s);
 	}
 }
 
-AccessControl::Permission AccessControl::onScheme(User *u, Scheme *s, Action a) const {
+AccessControl::Permission AccessControl::onScheme(User *u, const Scheme &s, Action a) const {
 	AccessControl::Permission ret = Permission::Restrict;
-	auto listIt = _lists.find(s);
+	auto listIt = _lists.find(&s);
 	if (listIt != _lists.end()) {
 		switch (a) {
 		case Action::Create: ret = listIt->second.create; break;
@@ -104,6 +107,7 @@ AccessControl::Permission AccessControl::onScheme(User *u, Scheme *s, Action a) 
 		case Action::Remove: ret = listIt->second.remove; break;
 		case Action::Update: ret = listIt->second.update; break;
 		case Action::Append: ret = listIt->second.append; break;
+		case Action::Reference: ret = listIt->second.reference; break;
 		}
 	} else {
 		switch (a) {
@@ -112,11 +116,12 @@ AccessControl::Permission AccessControl::onScheme(User *u, Scheme *s, Action a) 
 		case Action::Remove: ret = _default.remove; break;
 		case Action::Update: ret = _default.update; break;
 		case Action::Append: ret = _default.append; break;
+		case Action::Reference: ret = _default.reference; break;
 		}
 	}
 
 	if (ret == Permission::Partial) {
-		auto schemeIt = _schemes.find(s);
+		auto schemeIt = _schemes.find(&s);
 		if (schemeIt != _schemes.end() && schemeIt->second) {
 			ret = schemeIt->second(u, s, a);
 		} else if (_scheme) {
@@ -130,11 +135,11 @@ AccessControl::Permission AccessControl::onScheme(User *u, Scheme *s, Action a) 
 
 	return ret;
 }
-bool AccessControl::onObject(User *u, Scheme *s, Action a, data::Value &obj, data::Value &patch) const {
+bool AccessControl::onObject(User *u, const Scheme &s, Action a, data::Value &obj, data::Value &patch) const {
 	if (useAdminPrivileges(u)) {
 		return true;
 	}
-	auto objIt = _objects.find(s);
+	auto objIt = _objects.find(&s);
 	if (objIt != _objects.end() && objIt->second) {
 		return objIt->second(u, s, a, obj, patch);
 	} else if (_object) {

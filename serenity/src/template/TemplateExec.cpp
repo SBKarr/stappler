@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "TemplateExec.h"
+#include "StorageAdapter.h"
 
 NS_SA_EXT_BEGIN(tpl)
 
@@ -36,20 +37,20 @@ Exec::Exec() {
 	_storage = storage::Adapter::FromContext();
 }
 
-void Exec::set(const String &name, storage::Scheme *scheme) {
+void Exec::set(const String &name, const storage::Scheme *scheme) {
 	_variables.emplace(name, Variable{nullptr, scheme});
 }
 void Exec::set(const String &name, data::Value &&val) {
 	_variables.emplace(name, Variable{new data::Value(std::move(val)), nullptr});
 }
 
-void Exec::set(const String &name, data::Value &&val, storage::Scheme *scheme) {
+void Exec::set(const String &name, data::Value &&val, const storage::Scheme *scheme) {
 	_variables.emplace(name, Variable{new data::Value(std::move(val)), scheme});
 }
 void Exec::set(const String &name, const data::Value *val) {
 	_variables.emplace(name, Variable{val, nullptr});
 }
-void Exec::set(const String &name, const data::Value *val, storage::Scheme *scheme) {
+void Exec::set(const String &name, const data::Value *val, const storage::Scheme *scheme) {
 	_variables.emplace(name, Variable{val, scheme});
 }
 
@@ -536,7 +537,7 @@ Exec::Variable Exec::selectSchemeSetVariable(ReaderVec &path, ReaderVecIt &pathI
 	return Variable();
 }
 
-Exec::Variable Exec::selectSchemeByPath(ReaderVec &path, ReaderVecIt &pathIt, storage::Scheme *scheme, int64_t oid, const String &field) {
+Exec::Variable Exec::selectSchemeByPath(ReaderVec &path, ReaderVecIt &pathIt, const storage::Scheme *scheme, int64_t oid, const String &field) {
 	StringStream tmp;
 	Vector<String> pathComponents; pathComponents.reserve(10);
 	if (oid) {
@@ -560,10 +561,10 @@ Exec::Variable Exec::selectSchemeByPath(ReaderVec &path, ReaderVecIt &pathIt, st
 	}
 
 	std::reverse(pathComponents.begin(), pathComponents.end());
-	Resource *res = Resource::resolve(_storage, scheme, pathComponents);
+	Resource *res = Resource::resolve(_storage, *scheme, pathComponents);
 	if (res) {
 		res->setAccessControl(&_access);
-		return Variable{new data::Value(res->getResultObject()), res->getScheme()};
+		return Variable{new data::Value(res->getResultObject()), &res->getScheme()};
 	}
 	return Variable();
 }

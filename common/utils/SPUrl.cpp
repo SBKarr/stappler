@@ -89,17 +89,20 @@ Url::QueryVec Url::parseArgs(const String &str) {
 	return vec;
 }
 data::Value Url::parseDataArgs(const String &str, size_t maxVarSize) {
+	return parseDataArgs(StringView(str), maxVarSize);
+}
+
+data::Value Url::parseDataArgs(const StringView &str, size_t maxVarSize) {
 	if (str.empty()) {
 		return data::Value();
 	}
 	data::Value ret;
-	if (str.front() == '?' || str.front() == '&' || str.front() == ';') {
-		UrlencodeParser parser(ret, str.size() - 1, maxVarSize);
-		parser.read((const uint8_t *)str.data() + 1, str.size() - 1);
-	} else {
-		UrlencodeParser parser(ret, str.size(), maxVarSize);
-		parser.read((const uint8_t *)str.data(), str.size());
+	StringView r(str);
+	if (r.front() == '?' || r.front() == '&' || r.front() == ';') {
+		++ r;
 	}
+	UrlencodeParser parser(ret, r.size(), maxVarSize);
+	parser.read((const uint8_t *)r.data(), r.size());
 	return ret;
 }
 

@@ -35,6 +35,15 @@ THE SOFTWARE.
 
 NS_SA_BEGIN
 
+enum class ResourceType {
+	ResourceList,
+	ReferenceSet,
+	Object,
+	Set,
+	File,
+	Array
+};
+
 struct InputConfig {
 	enum class Require {
 		None = 0,

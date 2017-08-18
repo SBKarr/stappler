@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "Define.h"
 #include "SPFilesystem.h"
 #include "TemplateFile.h"
+#include "Tools.h"
 
 NS_SA_EXT_BEGIN(tpl)
 
@@ -53,17 +54,31 @@ struct TemplateFileParser : public AllocBase, public ReaderClassBase<char> {
 };
 
 File::File(const String &ipath) {
-	_root.type = Block;
-	auto path = filesystem::writablePath(ipath);
-	_mtime = filesystem::mtime(path);
-	if (_mtime) {
-		_stack.reserve(10);
-		_stack.push_back(&_root);
-		TemplateFileParser p;
-		auto file = filesystem::openForReading(path);
-		io::read(file, [&] (const io::Buffer &buf) {
-			p.parse(*this, (const char *)buf.data(), buf.size());
-		});
+	StringView view(ipath);
+	if (view.is("virtual://")) {
+		view += "virtual:/"_len;
+		_root.type = Block;
+		auto data = tools::VirtualFile::get(view.data());
+		if (!data.empty()) {
+			_mtime = 0;
+			_stack.reserve(10);
+			_stack.push_back(&_root);
+			TemplateFileParser p;
+			p.parse(*this, data.data(), data.size());
+		}
+	} else {
+		_root.type = Block;
+		auto path = filesystem::writablePath(ipath);
+		_mtime = filesystem::mtime(path);
+		if (_mtime) {
+			_stack.reserve(10);
+			_stack.push_back(&_root);
+			TemplateFileParser p;
+			auto file = filesystem::openForReading(path);
+			io::read(file, [&] (const io::Buffer &buf) {
+				p.parse(*this, (const char *)buf.data(), buf.size());
+			});
+		}
 	}
 }
 

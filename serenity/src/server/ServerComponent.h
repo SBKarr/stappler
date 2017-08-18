@@ -41,8 +41,18 @@ public:
 	const data::Value & getConfig() const { return _config; }
 	const String & getName() const { return _name; }
 
-	storage::Scheme * exportScheme(storage::Scheme *);
-	storage::Scheme * exportScheme(const String &);
+	const storage::Scheme * exportScheme(const storage::Scheme &);
+
+	template <typename Value>
+	void exportValues(Value &&val) {
+		exportScheme(val);
+	}
+
+	template <typename Value, typename ... Args>
+	void exportValues(Value &&val, Args && ... args) {
+		exportValues(forward<Value>(val));
+		exportValues(forward<Args>(args)...);
+	}
 
 protected:
 	Server _server;

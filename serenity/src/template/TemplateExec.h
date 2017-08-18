@@ -35,16 +35,16 @@ public:
 
 	struct Variable {
 		const data::Value *value = nullptr;
-		storage::Scheme *scheme = nullptr;
+		const storage::Scheme *scheme = nullptr;
 	};
 
 	Exec();
 
-	void set(const String &, storage::Scheme *);
+	void set(const String &, const storage::Scheme *);
 	void set(const String &, data::Value &&);
-	void set(const String &, data::Value &&, storage::Scheme *);
+	void set(const String &, data::Value &&, const storage::Scheme *);
 	void set(const String &, const data::Value *);
-	void set(const String &, const data::Value *, storage::Scheme *);
+	void set(const String &, const data::Value *, const storage::Scheme *);
 	void clear(const String &);
 
 	Variable getVariable(const CharReaderBase &);
@@ -63,7 +63,7 @@ protected:
 	using ReaderVecIt = Vector<CharReaderBase>::iterator;
 
 	Variable selectSchemeSetVariable(ReaderVec &path, ReaderVecIt &pathIt, const Variable &val, const storage::Field *obj);
-	Variable selectSchemeByPath(ReaderVec &path, ReaderVecIt &pathIt, storage::Scheme *scheme, int64_t oid = 0, const String &field = String());
+	Variable selectSchemeByPath(ReaderVec &path, ReaderVecIt &pathIt, const storage::Scheme *scheme, int64_t oid = 0, const String &field = String());
 
 	const data::Value * selectDataValue(const data::Value &val, CharReaderBase &r);
 

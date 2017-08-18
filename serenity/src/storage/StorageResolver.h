@@ -29,32 +29,42 @@ NS_SA_EXT_BEGIN(storage)
 
 class Resolver : public AllocPool {
 public:
-	Resolver(Scheme *scheme, const data::TransformMap *map) : _scheme(scheme), _transform(map) { }
-	virtual ~Resolver() { }
+	Resolver(Adapter *a, const Scheme &scheme, const data::TransformMap *map);
 
-	virtual bool selectById(uint64_t) = 0; // objects/id123
-	virtual bool selectByAlias(const String &) = 0; // objects/named-alias
-	virtual bool selectByQuery(Query::Select &&) = 0; // objects/select/counter/2 or objects/select/counter/bw/10/20
+	bool selectById(uint64_t); // objects/id123
+	bool selectByAlias(const String &); // objects/named-alias
+	bool selectByQuery(Query::Select &&); // objects/select/counter/2 or objects/select/counter/bw/10/20
 
-	virtual bool order(const String &f, Ordering o) = 0; // objects/order/counter/desc
-	virtual bool first(const String &f, size_t v) = 0; // objects/first/10
-	virtual bool last(const String &f, size_t v) = 0; // objects/last/10
-	virtual bool limit(size_t limit) = 0; // objects/order/counter/desc/10
-	virtual bool offset(size_t offset) = 0; // objects/order/counter/desc/10
+	bool order(const String &f, Ordering o); // objects/order/counter/desc
+	bool first(const String &f, size_t v); // objects/first/10
+	bool last(const String &f, size_t v); // objects/last/10
+	bool limit(size_t limit); // objects/order/counter/desc/10
+	bool offset(size_t offset); // objects/order/counter/desc/10
 
-	virtual bool getObject(const Field *) = 0; // objects/id123/owner
-	virtual bool getSet(const Field *) = 0; // objects/id123/childs
-	virtual bool getField(const String &, const Field *) = 0; // objects/id123/image
-	virtual bool getAll() = 0; // objects/id123/childs/all
+	bool getObject(const Field *); // objects/id123/owner
+	bool getSet(const Field *); // objects/id123/childs
+	bool getField(const String &, const Field *); // objects/id123/image
+	bool getAll(); // objects/id123/childs/all
 
-	virtual Resource *getResult() = 0;
+	Resource *getResult();
 
-	virtual const Field *getSchemeField(const String &name) const;
-	virtual Scheme *getScheme() const;
+	const Field *getSchemeField(const String &name) const;
+	const Scheme *getScheme() const;
 
 protected:
-	Scheme *_scheme;
-	const data::TransformMap *_transform;
+	enum InternalResourceType {
+		Objects,
+		File,
+		Array,
+	};
+
+	bool _all = false;
+	Adapter *_storage = nullptr;
+	const Scheme *_scheme = nullptr;
+	const data::TransformMap *_transform = nullptr;
+	InternalResourceType _type = Objects;
+	Resource *_resource = nullptr;
+	QueryList _queries;
 };
 
 NS_SA_EXT_END(storage)

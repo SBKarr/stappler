@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "Define.h"
 #include "WebSocket.h"
 #include "Root.h"
+#include "PGHandle.h"
 
 #define WEBSOCKET_GUID "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 #define WEBSOCKET_GUID_LEN "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"_len
@@ -212,7 +213,7 @@ bool Handler::send(const data::Value &data) {
 }
 
 static void Handler_makeHeader(StackBuffer<32> &buf, size_t dataSize, Handler::FrameType t) {
-	size_t sizeSize = (dataSize < 125) ? 0 : ((dataSize > (size_t)maxOf<uint16_t>())? 8 : 2);
+	size_t sizeSize = (dataSize <= 125) ? 0 : ((dataSize > (size_t)maxOf<uint16_t>())? 8 : 2);
 	size_t frameSize = 2 + sizeSize;
 
 	buf.prepare(frameSize);
@@ -260,13 +261,20 @@ bool Handler::trySend(FrameType t, const uint8_t *bytes, size_t count) {
 storage::Adapter *Handler::storage() const {
 	auto pool = apr::pool::acquire();
 
-	database::Handle *db = nullptr;
+	pg::Handle *db = nullptr;
 	apr_pool_userdata_get((void **)&db, (const char *)config::getSerenityWebsocketDatabaseName(), pool);
 	if (!db) {
-		db = new (pool) database::Handle(pool, Root::getInstance()->dbdPoolAcquire(_request.server(), pool));
+		db = new (pool) pg::Handle(pool, Root::getInstance()->dbdPoolAcquire(_request.server(), pool));
 		apr_pool_userdata_set(db, (const char *)config::getSerenityWebsocketDatabaseName(), NULL, pool);
 	}
 	return db;
+}
+
+const Request &Handler::request() const {
+	return _request;
+}
+Manager *Handler::manager() const {
+	return _manager;
 }
 
 void Handler::receiveBroadcast(const data::Value &data) {
@@ -717,6 +725,7 @@ void Handler::FrameReader::popFrame() {
 		break;
 	case Status::Body:
 		frame.buffer.force_clear();
+		frame.buffer.clear();
 		apr_brigade_cleanup(tmpbb);
 		apr_pool_clear(pool); // clear frame-related data
 	    tmpbb = apr_brigade_create(pool, bucket_alloc);

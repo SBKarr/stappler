@@ -30,9 +30,9 @@ NS_SA_EXT_BEGIN(storage)
 
 class Object : public data::Wrapper {
 public:
-	Object(data::Value &&, Scheme *);
+	Object(data::Value &&, const Scheme &);
 
-	Scheme *getScheme() const;
+	const Scheme &getScheme() const;
 	uint64_t getObjectId() const;
 
 	void lockProperty(const String &prop);
@@ -54,7 +54,7 @@ protected:
 
 	uint64_t _oid;
 	Set<String> _locked;
-	Scheme *_scheme;
+	const Scheme &_scheme;
 };
 
 NS_SA_EXT_END(storage)

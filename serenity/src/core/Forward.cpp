@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "SPString.h"
 #include "SPUrl.h"
 #include "Root.h"
+#include "StorageAdapter.h"
 
 #include <idna.h>
 
@@ -331,10 +332,16 @@ bool validateBase64(const String &str) {
 	return true;
 }
 
-void makeRandomBytes(uint8_t * buf, size_t count) {
+void makeRandomBytes_buf(uint8_t * buf, size_t count) {
 	if (apr_generate_random_bytes(buf, count) != APR_SUCCESS) {
 		ap_random_insecure_bytes(buf, count);
 	}
+}
+
+Bytes makeRandomBytes(size_t count) {
+	Bytes ret; ret.resize(count);
+	makeRandomBytes_buf(ret.data(), count);
+	return ret;
 }
 
 Bytes makePassword(const String &str, const String &key) {
@@ -345,7 +352,7 @@ Bytes makePassword(const String &str, const String &key) {
 
 	Bytes passwdKey; passwdKey.resize(16 + string::Sha512::Length);
 	passwdKey[0] = 0; passwdKey[1] = 1; // version code
-	makeRandomBytes(passwdKey.data() + 2, 14);
+	makeRandomBytes_buf(passwdKey.data() + 2, 14);
 
 	string::Sha512 hash_ctx;
 	hash_ctx.update(passwdKey.data(), 16);

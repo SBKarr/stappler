@@ -61,6 +61,24 @@ class ShellGui : public RequestHandler {
 public:
 	virtual bool isRequestPermitted(Request &) override { return true; }
 	virtual int onPostReadRequest(Request &) override;
+
+	virtual void onInsertFilter(Request &) override;
+	virtual int onHandler(Request &) override;
+
+	virtual void onFilterComplete(InputFilter *f) override;
+
+protected:
+	Resource *_resource = nullptr;
+};
+
+/* WebSocket shell interface GUI */
+class ServerGui : public DataHandler {
+public:
+	ServerGui() { _allow = AllowMethod::Get | AllowMethod::Post; _maxRequestSize = 512; }
+
+	virtual bool isRequestPermitted(Request &) override { return true; }
+	virtual int onPostReadRequest(Request &) override;
+	virtual void onFilterComplete(InputFilter *f) override;
 };
 
 class TestHandler : public DataHandler {
@@ -86,6 +104,9 @@ public:
 void registerTools(const String &prefix, Server &serv);
 
 struct VirtualFile {
+	static StringView get(const String &);
+	static StringView get(const char *);
+
 	VirtualFile(const char *, const char *);
 
 	const char *name;

@@ -120,6 +120,8 @@ public:
 
 	// get default storage adapter, that binds to current call context
 	storage::Adapter *storage() const;
+	const Request &request() const;
+	Manager *manager() const;
 
 protected:
 	friend class websocket::Manager;

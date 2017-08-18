@@ -25,13 +25,14 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "PGHandle.h"
+#include "PGQuery.h"
 #include "StorageScheme.h"
 
 NS_SA_EXT_BEGIN(pg)
 
-bool Handle::createObject(Scheme *scheme, data::Value &data) {
+bool Handle::createObject(const Scheme &scheme, data::Value &data) {
 	int64_t id = 0;
-	auto &fields = scheme->getFields();
+	auto &fields = scheme.getFields();
 	data::Value postUpdate(data::Value::Type::DICTIONARY);
 	auto &data_dict = data.asDict();
 	auto data_it = data_dict.begin();
@@ -55,93 +56,78 @@ bool Handle::createObject(Scheme *scheme, data::Value &data) {
 	}
 
 	ExecQuery query;
-	query << "INSERT INTO " << scheme->getName() << " (";
-
-	bool first = true;
+	auto ins = query.insert(scheme.getName());
 	for (auto &it : data.asDict()) {
-		if (first) { first = false; } else { query << ", "; }
-		query << "\"" << it.first << "\"";
+		ins.field(it.first);
 	}
 
-	query << ") VALUES (";
-
-	first = true;
+	auto val = ins.values();
 	for (auto &it : data.asDict()) {
-		if (first) { first = false; } else { query << ", "; }
-		auto f = scheme->getField(it.first);
-		query.write(it.second, f);
+		auto f = scheme.getField(it.first);
+		val.value(Binder::DataField{it.second, f->isDataLayout()});
 	}
 
 	if (id == 0) {
-		query << ") RETURNING __oid AS id;";
+		val.returning().field(ExecQuery::Field("__oid").as("id")).finalize();
 		if (auto id = selectId(query)) {
 			data.setInteger(id, "__oid");
 		} else {
 			return false;
 		}
 	} else {
-		query << ");";
+		val.finalize();
 		if (perform(query) != 1) {
 			return false;
 		}
 	}
 
 	if (id > 0) {
-		performPostUpdate(query, *scheme, data, id, postUpdate, false);
+		performPostUpdate(query, scheme, data, id, postUpdate, false);
 	}
 
 	return true;
 }
 
-bool Handle::saveObject(Scheme *scheme, uint64_t oid, const data::Value &data, const Vector<String> &fields) {
+bool Handle::saveObject(const Scheme &scheme, uint64_t oid, const data::Value &data, const Vector<String> &fields) {
 	if (!data.isDictionary() || data.empty()) {
 		return false;
 	}
 
 	ExecQuery query;
-	query << "UPDATE " << scheme->getName() << " SET ";
+	auto upd = query.update(scheme.getName());
 
-	bool first = true;
 	if (!fields.empty()) {
 		for (auto &it : fields) {
 			auto &val = data.getValue(it);
-			if (auto f_it = scheme->getField(it)) {
+			if (auto f_it = scheme.getField(it)) {
 				auto type = f_it->getType();
 				if (type != storage::Type::Set && type != storage::Type::Array) {
-					if (first) { first = false; } else { query << ", "; }
-					query << '"' << it << "\"=";
-					if (val.isNull()) {
-						query << "NULL";
-					} else {
-						query.write(val, f_it->isDataLayout());
-					}
+					upd.set(it, Binder::DataField{val, f_it->isDataLayout()});
 				}
 			}
 		}
 	} else {
 		for (auto &it : data.asDict()) {
-			if (auto f_it = scheme->getField(it.first)) {
+			if (auto f_it = scheme.getField(it.first)) {
 				auto type = f_it->getType();
 				if (type != storage::Type::Set && type != storage::Type::Array) {
-					if (first) { first = false; } else { query << ", "; }
-					query << '"' << it.first << "\"=";
-					query.write(it.second, f_it->isDataLayout());
+					upd.set(it.first, Binder::DataField{it.second, f_it->isDataLayout()});
 				}
 			}
 		}
 	}
 
-	query << " WHERE __oid=" << oid << ";";
+	upd.where("__oid", Comparation::Equal, oid).finalize();
 	return perform(query) == 1;
 }
 
-data::Value Handle::patchObject(Scheme *scheme, uint64_t oid, const data::Value &patch) {
+data::Value Handle::patchObject(const Scheme &scheme, uint64_t oid, const data::Value &patch) {
 	if (!patch.isDictionary() || patch.empty()) {
 		return data::Value();
 	}
 
 	data::Value data(patch);
-	auto &fields = scheme->getFields();
+	auto &fields = scheme.getFields();
 	data::Value postUpdate(data::Value::Type::DICTIONARY);
 	auto &data_dict = data.asDict();
 	auto data_it = data_dict.begin();
@@ -167,25 +153,21 @@ data::Value Handle::patchObject(Scheme *scheme, uint64_t oid, const data::Value 
 	}
 
 	ExecQuery query;
-	query << "UPDATE " << scheme->getName() << " SET ";
-
-	bool first = true;
+	auto upd = query.update(scheme.getName());
 	for (auto &it : data.asDict()) {
-		auto f_it = scheme->getField(it.first);
+		auto f_it = scheme.getField(it.first);
 		if (f_it) {
-			if (first) { first = false; } else { query << ", "; }
-			query << '"' << it.first << "\"=";
-			query.write(it.second, f_it->isDataLayout());
+			upd.set(it.first, Binder::DataField{it.second, f_it->isDataLayout()});
 		}
 	}
 
-	query << " WHERE __oid=" << oid << " RETURNING * ;";
-	auto ret = select(*scheme, query);
+	upd.where("__oid", Comparation::Equal, oid).returning().all().finalize();
+	auto ret = select(scheme, query);
 	if (ret.isArray() && ret.size() == 1) {
 		data::Value obj = std::move(ret.getValue(0));
 		int64_t id = obj.getInteger("__oid");
 		if (id > 0) {
-			performPostUpdate(query, *scheme, obj, id, postUpdate, true);
+			performPostUpdate(query, scheme, obj, id, postUpdate, true);
 		}
 
 		return obj;
@@ -193,83 +175,93 @@ data::Value Handle::patchObject(Scheme *scheme, uint64_t oid, const data::Value 
 	return data::Value();
 }
 
-bool Handle::removeObject(Scheme *scheme, uint64_t oid) {
+bool Handle::removeObject(const Scheme &scheme, uint64_t oid) {
 	ExecQuery query;
-	query << "DELETE FROM " << scheme->getName() << " WHERE __oid=" << oid << ";";
+	query.remove(scheme.getName())
+			.where("__oid", Comparation::Equal, oid).finalize();
 	return perform(query) == 1; // one row affected
 }
 
-data::Value Handle::getObject(Scheme *scheme, uint64_t oid, bool forUpdate) {
+data::Value Handle::getObject(const Scheme &scheme, uint64_t oid, bool forUpdate) {
 	ExecQuery query;
-	query << "SELECT * FROM " << scheme->getName() << " WHERE __oid=" << oid;
-	if (forUpdate) { query << " FOR UPDATE"; }
-	query << ';';
+	auto w = query.select().from(scheme.getName())
+			.where("__oid", Comparation::Equal, oid);
+	if (forUpdate) {
+		w.forUpdate();
+	}
+	w.finalize();
 
 	auto result = select(query);
 	if (result.nrows() > 0) {
-		return result.front().toData(*scheme);
+		return result.front().toData(scheme);
 	}
 	return data::Value();
 }
 
-data::Value Handle::getObject(Scheme *scheme, const String &alias, bool forUpdate) {
+data::Value Handle::getObject(const Scheme &scheme, const String &alias, bool forUpdate) {
 	ExecQuery query;
-	query << "SELECT * FROM " << scheme->getName() << " WHERE ";
-	writeAliasRequest(query, *scheme, alias);
-	if (forUpdate) { query << " FOR UPDATE"; }
-	query << ";";
+	auto w = query.select().from(scheme.getName())
+			.where();
+	query.writeAliasRequest(w, Operator::And, scheme, alias);
+	if (forUpdate) { w.forUpdate(); }
+	w.finalize();
 
 	auto result = select(query);
 	if (result.nrows() > 0) {
 		// we parse only first object in result set
 		// UNIQUE constraint for alias works on single field, not on combination of fields
 		// so, multiple result can be accessed, based on field matching
-		return result.front().toData(*scheme);
+		return result.front().toData(scheme);
 	}
 	return data::Value();
 }
 
-data::Value Handle::selectObjects(Scheme *scheme, const Query &q) {
-	auto &fields = scheme->getFields();
+data::Value Handle::selectObjects(const Scheme &scheme, const Query &q) {
+	auto &fields = scheme.getFields();
 	ExecQuery query;
-	query << "SELECT * FROM " << scheme->getName();
-	if (q._select.size() > 0) {
-		query << " WHERE ";
-		writeQueryRequest(query, *scheme, q._select);
+	auto w = query.select().from(scheme.getName()).where();
+	if (q.getSelectOid()) {
+		w.where(Operator::And, "__oid", Comparation::Equal, q.getSelectOid());
+	} else if (!q.getSelectAlias().empty()) {
+		query.writeAliasRequest(w, Operator::And, scheme, q.getSelectAlias());
+	} else if (q.getSelectList().size() > 0) {
+		query.writeQueryRequest(w, Operator::And, scheme, q.getSelectList());
 	}
 
-	if (!q._orderField.empty()) {
-		auto f_it = fields.find(q._orderField);
-		if ((f_it != fields.end() && f_it->second.isIndexed()) || q._orderField == "__oid") {
-			query << " ORDER BY \"" << q._orderField << "\" ";
-			switch (q._ordering) {
-			case storage::Ordering::Ascending: query << "ASC"; break;
-			case storage::Ordering::Descending: query << "DESC NULLS LAST"; break;
+	if (!q.getOrderField().empty()) {
+		auto f_it = fields.find(q.getOrderField());
+		if ((f_it != fields.end() && f_it->second.isIndexed()) || q.getOrderField() == "__oid") {
+			auto ord = w.order(q.getOrdering(), q.getOrderField(), q.getOrdering() == Ordering::Ascending ? sql::Nulls::None : sql::Nulls::Last);
+
+			if (q.getOffsetValue() != 0 && q.getLimitValue() != maxOf<size_t>()) {
+				ord.limit(q.getLimitValue(), q.getOffsetValue());
+			} else if (q.getLimitValue() != maxOf<size_t>()) {
+				ord.limit(q.getLimitValue());
+			} else if (q.getOffsetValue() != 0) {
+				ord.offset(q.getOffsetValue());
 			}
 		}
 	}
-
-	if (q._limit != maxOf<size_t>()) {
-		query << " LIMIT " << q._limit;
-	}
-
-	if (q._offset != 0) {
-		query << " OFFSET " << q._offset;
-	}
-
-	query << ';';
-	return select(*scheme, query);
+	w.finalize();
+	return select(scheme, query);
 }
 
-size_t Handle::countObjects(Scheme *scheme, const Query &q) {
+size_t Handle::countObjects(const Scheme &scheme, const Query &q) {
 	ExecQuery query;
-	query << "SELECT COUNT(*) AS c FROM " << scheme->getName();
-	if (q._select.size() > 0) {
-		query << " WHERE ";
-		writeQueryRequest(query, *scheme, q._select);
-	}
-	query << ";";
+	auto f = query.select().count().from(scheme.getName());
 
+	if (!q.empty()) {
+		auto w = f.where();
+		if (q.getSelectOid()) {
+			w.where(Operator::And, "__oid", Comparation::Equal, q.getSelectOid());
+		} else if (!q.getSelectAlias().empty()) {
+			query.writeAliasRequest(w, Operator::And, scheme, q.getSelectAlias());
+		} else if (q.getSelectList().size() > 0) {
+			query.writeQueryRequest(w, Operator::And, scheme, q.getSelectList());
+		}
+	}
+
+	query.finalize();
 	auto ret = select(query);
 	if (ret.nrows() > 0) {
 		return ret.front().toInteger(0);
@@ -312,121 +304,6 @@ void Handle::performPostUpdate(ExecQuery &query, const Scheme &s, Value &data, i
 			}
 		}
 	}
-}
-
-bool Handle::insertIntoSet(ExecQuery &query, const Scheme &s, int64_t id, const FieldObject &field, const Field &ref, const Value &d) {
-	if (field.type == Type::Object) {
-		if (ref.getType() == Type::Object) {
-			// object to object is not implemented
-		} else {
-			// object to set is maintained by trigger
-		}
-	} else if (field.type == Type::Set) {
-		if (ref.getType() == Type::Object) {
-			if (d.isArray() && d.getValue(0).isInteger()) {
-				query << "UPDATE " << field.scheme->getName() << " SET \"" << ref.getName() << "\"=" << id
-						<< " WHERE ";
-				auto & arr = d.asArray();
-				bool first = true;
-				for (auto & it : arr) {
-					if (it.isInteger()) {
-						if (first) { first = false; } else { query << " OR "; }
-						query << "__oid=" << it.getInteger();
-					}
-				}
-				query << ";";
-				return perform(query) != maxOf<size_t>();
-			}
-		} else {
-			// set to set is not implemented
-		}
-	}
-	return false;
-}
-
-bool Handle::insertIntoArray(ExecQuery &query, const Scheme &scheme, int64_t id, const Field &field, const Value &d) {
-	if (field.transform(scheme, const_cast<Value &>(d))) {
-		auto &arrf = static_cast<const storage::FieldArray *>(field.getSlot())->tfield;
-		if (!d.empty()) {
-			query << "INSERT INTO " << scheme.getName() << "_f_" << field.getName()
-					<< " (" << scheme.getName() << "_id, data) VALUES ";
-			bool first = true;
-			for (auto &it : d.asArray()) {
-				if (first) { first = false; } else { query << ", "; }
-				query << "(" << id << ", ";
-				query.write(it, arrf);
-				query << ")";
-			}
-			query << " ON CONFLICT DO NOTHING;";
-			return perform(query) != maxOf<size_t>();
-		} else if (d.isNull()) {
-			query << "DELETE FROM " << scheme.getName() << "_f_" << field.getName()
-					<< " WHERE " << scheme.getName() << "_id=" << id << ";";
-			return perform(query) != maxOf<size_t>();
-		}
-	}
-	return false;
-}
-
-bool Handle::insertIntoRefSet(ExecQuery &query, const Scheme &scheme, int64_t id, const Field &field, const Vector<uint64_t> &ids) {
-	auto fScheme = field.getForeignScheme();
-	if (!ids.empty() && fScheme) {
-		query << "INSERT INTO " << scheme.getName() << "_f_" << field.getName()
-							<< " (" << scheme.getName() << "_id, " << fScheme->getName() << "_id) VALUES ";
-		bool first = true;
-		for (auto &it : ids) {
-			if (first) { first = false; } else { query << ", "; }
-			query << "(" << id << ", " << it << ")";
-		}
-		query << " ON CONFLICT DO NOTHING;";
-		perform(query);
-		return true;
-	}
-	return false;
-}
-
-bool Handle::patchArray(const Scheme &scheme, uint64_t oid, const Field &field, data::Value &d) {
-	ExecQuery query;
-	if (!d.isNull()) {
-		return insertIntoArray(query, scheme, oid, field, d);
-	}
-	return false;
-}
-
-bool Handle::patchRefSet(const Scheme &scheme, uint64_t oid, const Field &field, const Vector<uint64_t> &objsToAdd) {
-	ExecQuery query;
-	return insertIntoRefSet(query, scheme, oid, field, objsToAdd);
-}
-
-bool Handle::cleanupRefSet(const Scheme &scheme, uint64_t oid, const Field &field, const Vector<int64_t> &ids) {
-	ExecQuery query;
-	auto objField = static_cast<const storage::FieldObject *>(field.getSlot());
-	auto fScheme = objField->scheme;
-	if (!ids.empty() && fScheme) {
-		if (objField->onRemove == RemovePolicy::Reference) {
-			query << "DELETE FROM " << scheme.getName() << "_f_" << field.getName()
-								<< " WHERE " << scheme.getName() << "_id=" << oid << " AND (";
-			bool first = true;
-			for (auto &it : ids) {
-				if (first) { first = false; } else { query << " OR "; }
-				query << fScheme->getName() << "_id=" << it;
-			}
-			query << ");";
-			perform(query);
-			return true;
-		} else if (objField->onRemove == RemovePolicy::StrongReference) {
-			query << "DELETE FROM " << fScheme->getName() << " WHERE ";
-			bool first = true;
-			for (auto &it : ids) {
-				if (first) { first = false; } else { query << " OR "; }
-				query << "__oid=" << it;
-			}
-			query << ";";
-			perform(query);
-			return true;
-		}
-	}
-	return false;
 }
 
 NS_SA_EXT_END(pg)

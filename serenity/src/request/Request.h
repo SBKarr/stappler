@@ -24,7 +24,7 @@ THE SOFTWARE.
 #define SERENITY_SRC_REQUEST_REQUEST_H_
 
 #include "Connection.h"
-#include "DatabaseHandle.h"
+#include "StorageAdapter.h"
 #include "SPUrl.h"
 
 NS_SA_BEGIN
@@ -48,33 +48,33 @@ public:
 	using Require = InputConfig::Require;
 
 	enum Method : int {
-		Get =                   0,
-		Put =                   1,
-		Post =                  2,
-		Delete =                3,
-		Connect =               4,
-		Options =               5,
-		Trace =                 6,
-		Patch =                 7,
-		Propfind =              8,
-		Proppatch =             9,
-		MkCol =                 10,
-		Copy =                  11,
-		Move =                  12,
-		Lock =                  13,
-		Unlock =                14,
-		VersionControl =        15,
-		Checkout =              16,
-		Uncheckout =            17,
-		Checkin =               18,
-		Update =                19,
-		Label =                 20,
-		Report =                21,
-		MkWirkspace =           22,
-		MkActivity =            23,
-		BaselineControl =       24,
-		Merge =                 25,
-		Invalid =               26,
+		Get =				M_GET,
+		Put =				M_PUT,
+		Post =				M_POST,
+		Delete =			M_DELETE,
+		Connect =			M_CONNECT,
+		Options =			M_OPTIONS,
+		Trace =				M_TRACE,
+		Patch =				M_PATCH,
+		Propfind =			M_PROPFIND,
+		Proppatch =			M_PROPPATCH,
+		MkCol =				M_MKCOL,
+		Copy =				M_COPY,
+		Move =				M_MOVE,
+		Lock =				M_LOCK,
+		Unlock =			M_UNLOCK,
+		VersionControl =	M_VERSION_CONTROL,
+		Checkout =			M_CHECKOUT,
+		Uncheckout =		M_UNCHECKOUT,
+		Checkin =			M_CHECKIN,
+		Update =			M_UPDATE,
+		Label =				M_LABEL,
+		Report =			M_REPORT,
+		MkWorkspace =		M_MKWORKSPACE,
+		MkActivity =		M_MKACTIVITY,
+		BaselineControl =	M_BASELINE_CONTROL,
+		Merge =				M_MERGE,
+		Invalid =			M_INVALID,
 	};
 
 	Request();

@@ -624,38 +624,47 @@ static uint32_t hsl_to_rgb(const _ColorHsl &color, uint32_t source) {
            (uint32_t((source >> (3 * 8)) & maxOf<uint8_t>()) << (3 * 8));
 }
 
+static float color_index_to_l(uint8_t id) {
+	return 1.0f - (id + 1.5f) / 12.0f;
+}
+
+static uint8_t color_l_to_index(float l) {
+	const float tmp = (1.0f - l) * 12.0f;
+	if (tmp < 1.0f || tmp >= 11.0f) {
+		return maxOf<uint8_t>();
+	}
+	return uint8_t(roundf(tmp - 1.5f));
+}
+
 static uint32_t make_lighter(uint32_t color, uint8_t index) {
     _ColorHsl hsl = rgb_to_hsl(color);
 
-    const float tmp = (1.0f - hsl.l) * 11.0f;
-    if (tmp < 0.5f || tmp >= 10.5f) {
+    uint8_t id = color_l_to_index(hsl.l);
+    if (id == maxOf<uint8_t>()) {
     	return color;
     }
-    uint8_t id = uint8_t(roundf(tmp)) - 1;
 	if (id < index) {
 		id = 0;
 	} else {
 		id = (id + 10 - index) % 10 + 1;
 	}
-	hsl.l = 1.0f - (id + 1) / 11.0f;
+	hsl.l = color_index_to_l(id);
 
     return hsl_to_rgb(hsl, color);
 }
 static uint32_t make_darker(uint32_t color, uint8_t index) {
     _ColorHsl hsl = rgb_to_hsl(color);
 
-    const float tmp = (1.0f - hsl.l) * 11.0f;
-    if (tmp < 0.5f || tmp >= 10.5f) {
+    uint8_t id = color_l_to_index(hsl.l);
+    if (id == maxOf<uint8_t>()) {
     	return color;
     }
-
-    uint8_t id = uint8_t(roundf(tmp)) - 1;
 	if (id + index > 9) {
 		id = 9;
 	} else {
 		id = (id + 10 + index) % 10;
 	}
-	hsl.l = 1.0f - (id + 1) / 11.0f;
+	hsl.l = color_index_to_l(id);
 
     return hsl_to_rgb(hsl, color);
 }
@@ -675,7 +684,7 @@ static uint32_t make_specific(uint32_t color, uint8_t index) {
     	index = 5;
     }
 
-	hsl.l = 1.0f - (index + 1) / 11.0f;
+	hsl.l = color_index_to_l(index);
 
     return hsl_to_rgb(hsl, color);
 }

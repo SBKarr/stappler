@@ -32,35 +32,13 @@ THE SOFTWARE.
 
 NS_SA_EXT_BEGIN(storage)
 
-const Field *Resolver::getSchemeField(const String &name) const {
-	auto scheme = getScheme();
-	auto ret = scheme->getField(name);
-	if (ret) {
-		return ret;
-	}
-	if (_transform) {
-		auto t = _transform->find(scheme->getName());
-		if (t != _transform->end()) {
-			auto &in = t->second.input;
-			auto newKey = in.transformKey(name);
-			if (!newKey.empty()) {
-				return scheme->getField(newKey);
-			}
-		}
-	}
-	return nullptr;
-}
-Scheme *Resolver::getScheme() const {
-	return _scheme;
-}
-
 Adapter *Adapter::FromContext() {
 	auto log = apr::pool::info();
 	if (log.first == uint32_t(apr::pool::Info::Request)) {
 		return Request((request_rec *)log.second).storage();
 	} else if (log.first == uint32_t(apr::pool::Info::Pool)) {
 		websocket::Handler *h = nullptr;
-		apr_pool_userdata_get((void **)h, config::getSerenityWebsocketHandleName(), (apr_pool_t *)log.second);
+		apr_pool_userdata_get((void **)&h, config::getSerenityWebsocketHandleName(), (apr_pool_t *)log.second);
 		if (h) {
 			return h->storage();
 		}

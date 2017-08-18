@@ -41,24 +41,28 @@ SP_DEFINE_ENUM_AS_MASK(ResolveOptions);
 
 class Resource : public AllocBase {
 public:
+	using Adapter = storage::Adapter;
 	using Scheme = storage::Scheme;
+	using Field = storage::Field;
 	using Object = storage::Object;
 	using File = storage::File;
 	using Query = storage::Query;
+	using QueryList = storage::QueryList;
 
 	using Permission = AccessControl::Permission;
 	using Action = AccessControl::Action;
 
-	static Resource *resolve(storage::Adapter *a, storage::Scheme *scheme, const String &path, const data::TransformMap * = nullptr);
-	static Resource *resolve(storage::Adapter *a, storage::Scheme *scheme, const String &path, data::Value & sub, const data::TransformMap * = nullptr);
+	static Resource *resolve(storage::Adapter *a, const storage::Scheme &scheme, const String &path, const data::TransformMap * = nullptr);
+	static Resource *resolve(storage::Adapter *a, const storage::Scheme &scheme, const String &path, data::Value & sub, const data::TransformMap * = nullptr);
 
 	/* PathVec should be inverted (so, first selectors should be last in vector */
-	static Resource *resolve(storage::Adapter *a, storage::Scheme *scheme, Vector<String> &path);
+	static Resource *resolve(storage::Adapter *a, const storage::Scheme &scheme, Vector<String> &path);
 
 	virtual ~Resource() { }
-	Resource(Scheme *, storage::Adapter *);
+	Resource(ResourceType, Adapter *, QueryList &&);
 
-	Scheme *getScheme() const;
+	ResourceType getType() const;
+	const Scheme &getScheme() const;
 	int getStatus() const;
 
 	void setTransform(const data::TransformMap *);
@@ -83,7 +87,7 @@ public: // common interface
 	virtual data::Value appendObject(data::Value &);
 
 	virtual data::Value getResultObject();
-	virtual void resolve(Scheme *, data::Value &); // called to apply resolve rules to object
+	virtual void resolve(const Scheme &, data::Value &); // called to apply resolve rules to object
 
 public:
 	size_t getMaxRequestSize() const;
@@ -93,33 +97,37 @@ public:
 protected:
 	void encodeFiles(data::Value &, apr::array<InputFile> &);
 
-	void resolveSet(Scheme *, int64_t, const storage::Field &, Scheme *next, data::Value &);
-	void resolveObject(Scheme *, int64_t, const storage::Field &, Scheme *next, data::Value &);
-	void resolveFile(Scheme *, int64_t, const storage::Field &, data::Value &);
-	void resolveArray(Scheme *, int64_t, const storage::Field &, data::Value &);
+	void resolveSet(const Scheme &, int64_t, const storage::Field &, const Scheme &next, data::Value &);
+	void resolveObject(const Scheme &, int64_t, const storage::Field &, const Scheme &next, data::Value &);
+	void resolveFile(const Scheme &, int64_t, const storage::Field &, data::Value &);
+	void resolveArray(const Scheme &, int64_t, const storage::Field &, data::Value &);
 	void resolveExtra(const apr::map<String, storage::Field> &fields, data::Value &it);
 
-	void resolveResult(Scheme *, data::Value &, size_t depth);
+	void resolveResult(const Scheme &, data::Value &, size_t depth);
 
-	Permission isSchemeAllowed(Scheme *, AccessControl::Action) const;
-	bool isObjectAllowed(Scheme *, AccessControl::Action, data::Value &) const;
-	bool isObjectAllowed(Scheme *, AccessControl::Action, data::Value &, data::Value &) const;
+	Permission isSchemeAllowed(const Scheme &, AccessControl::Action) const;
+	bool isObjectAllowed(const Scheme &, AccessControl::Action, data::Value &) const;
+	bool isObjectAllowed(const Scheme &, AccessControl::Action, data::Value &, data::Value &) const;
 
 protected:
-	virtual storage::Scheme *getRequestScheme() const;
+	virtual const storage::Scheme &getRequestScheme() const;
 	ResolveOptions resolveOptionForString(const String &str);
 
+	ResourceType _type = ResourceType::Object;
 	int _status = HTTP_OK;
+
+	storage::Adapter *_adapter = nullptr;
+	QueryList _queries;
+
 	User *_user = nullptr;
-	storage::Scheme *_scheme = nullptr;
 	AccessControl *_access = nullptr;
+
 	const data::TransformMap *_transform = nullptr;
 	ResolveOptions _resolveOptions = ResolveOptions::None;
 	size_t _resolveDepth = 0;
 	size_t _pageFrom = 0, _pageCount = maxOf<size_t>();
 	Set<int64_t> _resolveObjects;
 	Permission _perms = Permission::Restrict;
-	storage::Adapter *_adapter = nullptr;
 	data::Value _filterData;
 };
 

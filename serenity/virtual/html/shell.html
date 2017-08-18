@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html><head>
+	<title>Serenity Shell</title>
+	<link rel="stylesheet" href="/__server/virtual/css/style.css" />
+	<link rel="stylesheet" href="/__server/virtual/css/kawaiJson.css" />
+	<script src="/__server/virtual/js/kawaiJson.js"></script>
+	<script src="/__server/virtual/js/shellHistory.js"></script>
+	<script src="/__server/virtual/js/shell.js"></script>
+</head><body onload="init();">
+	<h4>Serenity admin shell</h4>
+	<form id="login" onsubmit="return connect(this);">
+		<input id="ws_name" type="text" name="name" placeholder="User name" value="" size="24" />
+		<input id="ws_passwd" type="password" name="passwd" placeholder="Password" value="" size="24" />
+		<input type="submit" />
+	</form>
+	<div id="connected">Not Connected</div>
+	<div id="main" style="visibility:hidden">
+		Enter Message: <input id="input" type="text" name="message" value="" size="80"/><br/>
+		Server says... <div id="output"></div>
+	</div>
+	<input id="fileSelector" type="file" style="visibility:hidden"/>
+</body></html>

@@ -43,7 +43,7 @@ bool Field::isReference() const {
 	return false;
 }
 
-Scheme * Field::getForeignScheme() const {
+const Scheme * Field::getForeignScheme() const {
 	if (slot->type == Type::Object || slot->type == Type::Set) {
 		auto ref = static_cast<const FieldObject *>(slot);
 		return ref->scheme;

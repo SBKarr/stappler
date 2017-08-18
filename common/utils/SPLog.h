@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef COMMON_CORE_SPLOG_H_
-#define COMMON_CORE_SPLOG_H_
+#ifndef COMMON_UTILS_SPLOG_H_
+#define COMMON_UTILS_SPLOG_H_
 
 #include "SPCommon.h"
 
@@ -74,4 +74,4 @@ void text(const String &, const String &);
 
 NS_SP_EXT_END(log)
 
-#endif /* COMMON_CORE_SPLOG_H_ */
+#endif /* COMMON_UTILS_SPLOG_H_ */

@@ -41,7 +41,7 @@ public:
 	bool hasAliases() const;
 
 	bool isProtected(const String &) const;
-	bool saveObject(Adapter *, Object *);
+	bool saveObject(Adapter *, Object *) const;
 
 	bool hasFiles() const;
 
@@ -62,59 +62,64 @@ public:
 
 public:// CRUD functions
 	// returns Dictionary with single object data or Null value
-	data::Value create(Adapter *, const data::Value &data, bool isProtected = false);
+	data::Value create(Adapter *, const data::Value &data, bool isProtected = false) const;
 
-	data::Value get(Adapter *, uint64_t oid);
-	data::Value get(Adapter *, const String &alias);
-	data::Value get(Adapter *, const data::Value &id);
+	data::Value get(Adapter *, uint64_t oid) const;
+	data::Value get(Adapter *, const String &alias) const;
+	data::Value get(Adapter *, const data::Value &id) const;
 
-	data::Value update(Adapter *, uint64_t oid, const data::Value &data, bool isProtected = false);
-	data::Value update(Adapter *, const data::Value & obj, const data::Value &data, bool isProtected = false);
+	data::Value update(Adapter *, uint64_t oid, const data::Value &data, bool isProtected = false) const;
+	data::Value update(Adapter *, const data::Value & obj, const data::Value &data, bool isProtected = false) const;
 
-	bool remove(Adapter *, uint64_t oid);
+	bool remove(Adapter *, uint64_t oid) const;
 
 	// returns Array with zero or more Dictionaries with object data or Null value
-	data::Value select(Adapter *, const Query &);
+	data::Value select(Adapter *, const Query &) const;
 
-	size_t count(Adapter *);
-	size_t count(Adapter *, const Query &);
-
-public:
-	data::Value getProperty(Adapter *, uint64_t oid, const String &);
-	data::Value getProperty(Adapter *, const data::Value &, const String &);
-
-	data::Value setProperty(Adapter *, uint64_t oid, const String &, data::Value &&);
-	data::Value setProperty(Adapter *, const data::Value &, const String &, data::Value &&);
-	data::Value setProperty(Adapter *, uint64_t oid, const String &, InputFile &);
-	data::Value setProperty(Adapter *, const data::Value &, const String &, InputFile &);
-
-	void clearProperty(Adapter *, uint64_t oid, const String &);
-	void clearProperty(Adapter *, const data::Value &, const String &);
-
-	data::Value appendProperty(Adapter *, uint64_t oid, const String &, data::Value &&);
-	data::Value appendProperty(Adapter *, const data::Value &, const String &, data::Value &&);
+	size_t count(Adapter *) const;
+	size_t count(Adapter *, const Query &) const;
 
 public:
-	data::Value getProperty(Adapter *, uint64_t oid, const Field &);
-	data::Value getProperty(Adapter *, const data::Value &, const Field &);
+	data::Value getProperty(Adapter *, uint64_t oid, const String &) const;
+	data::Value getProperty(Adapter *, const data::Value &, const String &) const;
 
-	data::Value setProperty(Adapter *, uint64_t oid, const Field &, data::Value &&);
-	data::Value setProperty(Adapter *, const data::Value &, const Field &, data::Value &&);
-	data::Value setProperty(Adapter *, uint64_t oid, const Field &, InputFile &);
-	data::Value setProperty(Adapter *, const data::Value &, const Field &, InputFile &);
+	data::Value setProperty(Adapter *, uint64_t oid, const String &, data::Value &&) const;
+	data::Value setProperty(Adapter *, const data::Value &, const String &, data::Value &&) const;
+	data::Value setProperty(Adapter *, uint64_t oid, const String &, InputFile &) const;
+	data::Value setProperty(Adapter *, const data::Value &, const String &, InputFile &) const;
 
-	void clearProperty(Adapter *, uint64_t oid, const Field &);
-	void clearProperty(Adapter *, const data::Value &, const Field &);
+	bool clearProperty(Adapter *, uint64_t oid, const String &) const;
+	bool clearProperty(Adapter *, const data::Value &, const String &) const;
 
-	data::Value appendProperty(Adapter *, uint64_t oid, const Field &, data::Value &&);
-	data::Value appendProperty(Adapter *, const data::Value &, const Field &, data::Value &&);
+	data::Value appendProperty(Adapter *, uint64_t oid, const String &, data::Value &&) const;
+	data::Value appendProperty(Adapter *, const data::Value &, const String &, data::Value &&) const;
+
+public:
+	data::Value getProperty(Adapter *, uint64_t oid, const Field &) const;
+	data::Value getProperty(Adapter *, const data::Value &, const Field &) const;
+
+	data::Value setProperty(Adapter *, uint64_t oid, const Field &, data::Value &&) const;
+	data::Value setProperty(Adapter *, const data::Value &, const Field &, data::Value &&) const;
+	data::Value setProperty(Adapter *, uint64_t oid, const Field &, InputFile &) const;
+	data::Value setProperty(Adapter *, const data::Value &, const Field &, InputFile &) const;
+
+	bool clearProperty(Adapter *, uint64_t oid, const Field &) const;
+	bool clearProperty(Adapter *, const data::Value &, const Field &) const;
+
+	data::Value appendProperty(Adapter *, uint64_t oid, const Field &, data::Value &&) const;
+	data::Value appendProperty(Adapter *, const data::Value &, const Field &, data::Value &&) const;
 
 protected:
-	data::Value createFilePatch(Adapter *, const data::Value &val);
-	void purgeFilePatch(Adapter *, const data::Value &);
-	void mergeValues(const Field &f, data::Value &original, data::Value &newVal);
+	data::Value createFilePatch(Adapter *, const data::Value &val) const;
+	void purgeFilePatch(Adapter *, const data::Value &) const;
+	void mergeValues(const Field &f, data::Value &original, data::Value &newVal) const;
 
-	data::Value updateObject(Adapter *, data::Value && obj, data::Value &data);
+	data::Value updateObject(Adapter *, data::Value && obj, data::Value &data) const;
+
+	void tryUpdate(Adapter *adapter, uint64_t id) const;
+	void tryUpdate(Adapter *adapter, const data::Value & obj) const;
+	data::Value patchOrUpdate(Adapter *adapter, uint64_t id, data::Value & patch) const;
+	data::Value patchOrUpdate(Adapter *adapter, const data::Value & obj, data::Value & patch) const;
 
 	// returns:
 	// - true if field was successfully removed
@@ -131,10 +136,10 @@ protected:
 		ProtectedUpdate,
 	};
 
-	data::Value &transform(data::Value &, TransformAction = TransformAction::Create);
+	data::Value &transform(data::Value &, TransformAction = TransformAction::Create) const;
 
 	// call before object is created, used for additional checking or default values
-	data::Value createFile(Adapter *, const Field &, InputFile &);
+	data::Value createFile(Adapter *, const Field &, InputFile &) const;
 
 	// call after object is created, used for custom field initialization
 	data::Value initField(Adapter *, Object *, const Field &, const data::Value &);

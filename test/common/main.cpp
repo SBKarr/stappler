@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "SPFilesystem.h"
 #include "SPData.h"
 #include "SPDataStream.h"
+#include "SPSql.h"
 
 #include "Test.h"
 
@@ -160,7 +161,77 @@ int _spMain(argc, argv) {
 		std::cout << " Options: " << stappler::data::EncodeFormat::Pretty << opts << "\n";
 	}
 
-	Test::RunAll();
+	// Test::RunAll();
+
+	sql::Query<sql::SimpleBinder> query;
+	query.select()
+			.field("field").field("field", "alias").field("database", "field", "alias")
+			.from("table").from("table")
+			.where("alias", sql::Comparation::Equal, "value")
+			.where(sql::Operator::And, "field", sql::Comparation::Equal, data::Value(1234))
+			.where(sql::Operator::Or, "field", sql::Comparation::NotEqual, data::Value(false))
+			.where(sql::Operator::Or, "time", sql::Comparation::BetweenValues, data::Value(1234), data::Value(123400))
+			.order(sql::Ordering::Descending, "field")
+			.limit(12, 16)
+			.finalize();
+	std::cout << query.getStream().str() << "\n";
+
+	query = sql::Query<sql::SimpleBinder>();
+	query.with("query", [] (sql::Query<sql::SimpleBinder>::GenericQuery &q) {
+		q.select().all().from("sqtable");
+	}).with("query", [] (sql::Query<sql::SimpleBinder>::GenericQuery &q) {
+		q.select().all().from("sqtable");
+	}).select().fields("field1", "field2").from("table")
+		.where("alias", sql::Comparation::Equal, "value")
+		.parenthesis(sql::Operator::And, [] (sql::Query<sql::SimpleBinder>::SelectWhere &q) {
+			q.where(sql::Operator::Or, "field", sql::Comparation::Equal, "value")
+					.where(sql::Operator::Or, "field", sql::Comparation::Equal, "value");
+	}).finalize();
+
+	std::cout << query.getStream().str() << "\n";
+
+	sql::Query<sql::SimpleBinder> insertQuery;
+	insertQuery.insert("table")
+			.field("field1").field("field2")
+			.values().value("test1").value("test2")
+			.values().value("test3").value("test4")
+			.finalize();
+
+	std::cout << insertQuery.getStream().str() << "\n";
+
+	insertQuery = sql::Query<sql::SimpleBinder>();
+	insertQuery.insert("table")
+			.field("field1").field("field2")
+			.values().value("test1").value("test2")
+			.onConflictDoNothing()
+			.returning().all()
+			.finalize();
+	std::cout << insertQuery.getStream().str() << "\n";
+
+	insertQuery = sql::Query<sql::SimpleBinder>();
+	insertQuery.insert("table")
+			.field("field1").field("field2").field("field3")
+			.values().value("test1").value("test2").value("test3")
+			.onConflict("field1").doUpdate().excluded("field2").def("field3")
+			.where("field1", sql::Comparation::Equal, "alias")
+			.returning().all()
+			.finalize();
+	std::cout << insertQuery.getStream().str() << "\n";
+
+	sql::Query<sql::SimpleBinder> updateQuery;
+	updateQuery.update("table", "alias")
+			.set("field1", "value1").set("field1", "value2")
+			.where("field3", sql::Comparation::NotEqual, data::Value(false))
+			.returning().all()
+			.finalize();
+	std::cout << updateQuery.getStream().str() << "\n";
+
+	sql::Query<sql::SimpleBinder> deleteQuery;
+	deleteQuery.remove("table", "alias")
+			.where("field3", sql::Comparation::NotEqual, data::Value(false))
+			.returning().all()
+			.finalize();
+	std::cout << deleteQuery.getStream().str() << "\n";
 
 	return 0;
 }

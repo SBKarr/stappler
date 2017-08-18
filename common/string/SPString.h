@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef __stappler__SPString__
-#define __stappler__SPString__
+#ifndef COMMON_STRING_SPSTRING_H_
+#define COMMON_STRING_SPSTRING_H_
 
 #include "SPDataReader.h"
 
@@ -921,4 +921,4 @@ inline uint8_t utf8Encode(OutputStream &str, char16_t c) {
 
 NS_SP_EXT_END(string)
 
-#endif /* defined(__stappler__SPString__) */
+#endif /* COMMON_STRING_SPSTRING_H_ */
