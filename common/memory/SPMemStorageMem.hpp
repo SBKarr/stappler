@@ -324,6 +324,11 @@ public:
 		}
 	}
 
+	// Копируем блок памяти внутрь структуры
+	// После вызова тип структуры всегда должен соответствовать размеру памяти
+	// (small для малых блоков, large для больших)
+	// Таким образом, чтобы assign при size <= small_mem::max_capacity() всегда приводил к использованию small
+	// Допускает self-assign, в том числе, для подмножеств себя
 	void assign(const_pointer ptr, size_type size) {
 		if (size <= small_mem::max_capacity() && (is_small() || empty())) {
 			set_small_flag();
@@ -339,41 +344,60 @@ public:
 				_large = std::move(new_large);
 			} else {
 				large_mem old_large(std::move(_large));
-				set_small_flag_force();
+				_small.force_clear();
+				set_small_flag();
 				_small.assign(_allocator, ptr, size);
+				old_large.clear_dealloc(_allocator);
 			}
 		}
 	}
 
+	// Захватываем блок памяти без контроля над выделением (или копируем малый блок в SOO)
+	// Слабая версия CoW, применять для больших неизменных блоков, выделенных сторонним аллокатором
 	void assign_weak(pointer ptr, size_type s) {
-		set_large_flag_force();
-		_large.assign_weak(ptr, s);
+		if (s <= small_mem::max_capacity()) {
+			assign(ptr, s);
+		} else {
+			set_large_flag_force();
+			_large.assign_weak(ptr, s);
+		}
 	}
 
+	// Захватываем блок памяти без контроля над выделением (или копируем малый блок в SOO)
+	// Слабая версия CoW, применять для больших неизменных блоков, выделенных сторонним аллокатором
 	void assign_weak(const_pointer ptr, size_type s) {
-		set_large_flag_force();
-		_large.assign_weak(ptr, s);
+		if (s <= small_mem::max_capacity()) {
+			assign(ptr, s);
+		} else {
+			set_large_flag_force();
+			_large.assign_weak(ptr, s);
+		}
 	}
 
+	// Захватываем блок памяти и контроль над его выделением (не используем SOO)
 	void assign_mem(pointer ptr, size_type s, size_type nalloc) {
 		set_large_flag_force();
 		_large.assign_mem(ptr, s, nalloc);
 	}
 
+	// Проверка, владеем ли блоком памяти
 	bool is_weak() const noexcept {
 		return is_large() && _large.is_weak();
 	}
 
+	// Выделяем достаточно места для хранения s объектов
+	// если grow = true - можно выделять больше памяти, чем запрошено (на вырост)
+	// Может переместить CoW блок из большой памяти в SOO-блок
 	pointer reserve(size_type s, bool grow = false) {
 		const auto _allocated = capacity();
 		const auto _used = size();
 		if (s > _allocated) {
 			if (s <= small_mem::max_capacity() && _used <= small_mem::max_capacity()) {
-				if (_allocated == 0) {
+				if (_allocated == 0) { // память пустая или CoW
 					set_small_flag();
-					if (_large.data() != nullptr) {
+					if (_large.data() != nullptr) { // CoW
 						_small.move_assign(_allocator, _large.data(), _large.size());
-					} else {
+					} else { // empty
 						_small.force_clear();
 					}
 				}
@@ -395,6 +419,8 @@ public:
 		return data();
 	}
 
+	// Удаляем содержмое строки
+	// Пустой объект всегда в large-состоянии
 	void clear() {
 		const auto _used = size();
 		const auto _allocated = capacity();
@@ -402,20 +428,29 @@ public:
 		if (_used > 0 && _allocated > 0 && _ptr) {
 			_allocator.destroy(_ptr, _used);
 		} else {
-			if (_allocated == 0 && is_large()) {
+			if (_allocated == 0 && is_large()) { // проверяем и очищаем CoW
 				_large.force_clear();
 			}
 		}
 
-		set_size(0);
-	}
-
-	void force_clear() {
 		if (is_large()) {
+			_large.set_size(0);
+		} else {
+			set_large_flag();
 			_large.force_clear();
 		}
 	}
 
+	// Сбрасываем данные, не удаляя их
+	void force_clear() {
+		if (is_small()) {
+			set_large_flag();
+		}
+		_large.force_clear();
+	}
+
+	// Извлекаем данные из объекта
+	// Объект должен остаться в пустом состоянии
 	pointer extract() {
 		if (is_large()) {
 			return _large.extract();
@@ -426,7 +461,7 @@ public:
 			if (Extra) {
 				memset(ptr + s, 0, Extra * sizeof(Type));
 			}
-			_small.force_clear();
+			force_clear();
 			return ptr;
 		}
 	}
@@ -477,16 +512,16 @@ private:
 	bool is_small() const { return this->_allocator.test(allocator::FirstFlag); }
 	bool is_large() const { return !this->_allocator.test(allocator::FirstFlag); }
 
-	void set_large_flag() { this->_allocator.reset(allocator::FirstFlag); }
+	void set_large_flag() {
+		this->_allocator.reset(allocator::FirstFlag);
+	}
 	void set_large_flag_force() {
 		clear(); // discard content
 		set_large_flag();
 	}
 
-	void set_small_flag() { this->_allocator.set(allocator::FirstFlag); }
-	void set_small_flag_force() {
-		set_small_flag();
-		_small.force_clear(); // validate that small block is valid
+	void set_small_flag() {
+		this->_allocator.set(allocator::FirstFlag);
 	}
 
 	union {
