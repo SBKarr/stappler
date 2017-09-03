@@ -476,34 +476,8 @@ void Scene::takeScreenshoot() {
 }
 
 void Scene::saveScreenshot(const String &filename, cocos2d::Texture2D *tex) {
-#if (ANDROID || __APPLE__)
-#else
-	auto name = tex->getName();
-	auto format = tex->getPixelFormat();
-	const cocos2d::Texture2D::PixelFormatInfo& info = cocos2d::Texture2D::_pixelFormatInfoTables.at(format);
-	if (info.type != GL_UNSIGNED_BYTE) {
-		return;
-	}
-
-	uint8_t bytesPerPixel = info.bpp / 8;
-	size_t size = tex->getPixelsHigh() * tex->getPixelsWide() * bytesPerPixel;
-	uint8_t *data = new uint8_t[size];
-
-	cocos2d::GL::bindTexture2D(name);
-	glGetTexImage(GL_TEXTURE_2D, 0, info.format, info.type, data);
-
-	if (bytesPerPixel == 1) {
-		Bitmap::savePng(filename, data, tex->getPixelsWide(), tex->getPixelsHigh(), Bitmap::Format::A8, true);
-	} else if (bytesPerPixel == 2) {
-		Bitmap::savePng(filename, data, tex->getPixelsWide(), tex->getPixelsHigh(), Bitmap::Format::IA88, true);
-	} else if (bytesPerPixel == 3) {
-		Bitmap::savePng(filename, data, tex->getPixelsWide(), tex->getPixelsHigh(), Bitmap::Format::RGB888, true);
-	} else if (bytesPerPixel == 4) {
-		Bitmap::savePng(filename, data, tex->getPixelsWide(), tex->getPixelsHigh(), Bitmap::Format::RGBA8888, true);
-	}
-
-	delete [] data;
-#endif
+	auto bmp = _captureCanvas->captureTexture(tex);
+	bmp.save(filename);
 }
 
 void Scene::onLightLevel() {

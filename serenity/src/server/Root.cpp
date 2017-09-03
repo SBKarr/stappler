@@ -63,12 +63,9 @@ Root *Root::getInstance() {
 Root::Root() {
     assert(! s_sharedServer);
     s_sharedServer = this;
-
-	MagickCoreGenesis((char *) NULL,MagickFalse);
 }
 
 Root::~Root() {
-	MagickCoreTerminus();
     s_sharedServer = 0;
 
     s_timerExitFlag.clear();

@@ -541,16 +541,16 @@ struct SvgReader {
 };
 
 bool Image::isSvg(const String &str) {
-	return Bitmap::isSvg((const uint8_t *)str.data(), str.size());
+	return Bitmap::check(Bitmap::FileFormat::Svg, (const uint8_t *)str.data(), str.size());
 }
 
 bool Image::isSvg(const Bytes &data) {
-	return Bitmap::isSvg(data.data(), data.size());
+	return Bitmap::check(Bitmap::FileFormat::Svg, data.data(), data.size());
 }
 
 bool Image::isSvg(const FilePath &file) {
 	auto d = filesystem::readFile(file.get(), 0, 512);
-	return Bitmap::isSvg(d.data(), d.size());
+	return Bitmap::check(Bitmap::FileFormat::Svg, d.data(), d.size());
 }
 
 bool Image::init(const String &data) {
@@ -770,7 +770,7 @@ bool colorIsGray(const Color4B &c) {
 	return c.r == c.g && c.b == c.r;
 }
 
-Bitmap::Format Image::detectFormat() const {
+Bitmap::PixelFormat Image::detectFormat() const {
 	bool black = true;
 	bool grey = true;
 
@@ -796,11 +796,11 @@ Bitmap::Format Image::detectFormat() const {
 	}
 
 	if (black) {
-		return Bitmap::Format::A8;
+		return Bitmap::PixelFormat::A8;
 	} else if (grey) {
-		return Bitmap::Format::IA88;
+		return Bitmap::PixelFormat::IA88;
 	}
-	return Bitmap::Format::RGBA8888;
+	return Bitmap::PixelFormat::RGBA8888;
 }
 
 Image::PathRef::~PathRef() {

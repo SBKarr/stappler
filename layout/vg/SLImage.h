@@ -163,7 +163,7 @@ public:
 	void setAntialiased(bool value);
 	bool isAntialiased() const;
 
-	Bitmap::Format detectFormat() const;
+	Bitmap::PixelFormat detectFormat() const;
 
 protected:
 	void invalidateRefs();

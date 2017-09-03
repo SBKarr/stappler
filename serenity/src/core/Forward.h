@@ -64,8 +64,6 @@ THE SOFTWARE.
 #define MAGICKCORE_QUANTUM_DEPTH 16
 #define MAGICKCORE_HDRI_ENABLE 0
 
-#include "magick/MagickCore.h"
-
 #define NS_SA_BEGIN				NS_SP_EXT_BEGIN(serenity)
 #define NS_SA_END				NS_SP_EXT_END(serenity)
 #define USING_NS_SA				using namespace stappler::serenity

@@ -32,6 +32,7 @@ THE SOFTWARE.
 
 #include "SPBitmap.h"
 #include "SPFilesystem.h"
+#include "SPIO.h"
 
 NS_SA_EXT_BEGIN(storage)
 
@@ -250,25 +251,24 @@ static bool getTargetImageSize(size_t W, size_t H, const MinImageSize &min, cons
 	return false;
 }
 
-String resizeImage(Map<String, String> &ret, ImageInfo * info, Image *image, size_t width, size_t height, ExceptionInfo * ex) {
-	auto newImage = ResizeImage(image, width, height, LanczosFilter, 1.0, ex);
-    if (ex->severity > ErrorException) {
-    	messages::error("Storage", "Fail to resize image", data::Value(ex->description));
-    }
-
+String resizeImage(Map<String, String> &ret, Bitmap &bmp, size_t width, size_t height) {
+	auto newImage = bmp.resample(width, height);
     if (newImage) {
-    	apr::file file; file.open_tmp(config::getUploadTmpImagePrefix(), APR_FOPEN_CREATE | APR_FOPEN_READ | APR_FOPEN_WRITE | APR_FOPEN_EXCL);
+    	apr::file file;
+    	file.open_tmp(config::getUploadTmpImagePrefix(), 0);
+    	String path(file.path());
+    	file.close();
 
-    	FILE *filePtr = fdopen(dup(file.fd()), "w");
-    	if (filePtr) {
-    	    SetImageInfoFile(info, filePtr);
-    	    WriteImage(info, newImage);
-    	    fclose(filePtr);
+    	bool ret = false;
+    	auto fmt = bmp.getOriginalFormat();
+    	if (fmt == Bitmap::FileFormat::Custom) {
+    		ret = newImage.save(bmp.getOriginalFormatName(), path);
+    	} else {
+    		ret = newImage.save(bmp.getOriginalFormat(), path);
     	}
 
-	    DestroyImage(newImage);
-	    if (filePtr) {
-		    return String(file.path());
+	    if (ret) {
+		    return String(path);
 	    }
     }
 
@@ -284,31 +284,21 @@ Map<String, String> writeImages(const Field &f, InputFile &file) {
 		return Map<String, String>();
 	}
 
-	FILE *filePtr = fdopen(dup(file.file.fd()), "r");
-	if (!filePtr) {
-		return Map<String, String>();
-	}
-
-	fseek(filePtr, 0, SEEK_SET);
-
 	Map<String, String> ret;
 
 	bool needResize = getTargetImageSize(width, height, field->minImageSize, field->maxImageSize, targetWidth, targetHeight);
 	if (needResize || field->thumbnails.size() > 0) {
-		ExceptionInfo * ex = AcquireExceptionInfo();
-		GetExceptionInfo(ex);
+		Buffer data(file.writeSize);
+		io::Producer prod(file.file);
+		prod.seek(0, io::Seek::Set);
+		prod.read(data, file.writeSize);
 
-		ImageInfo * info = AcquireImageInfo();
-		GetImageInfo(info);
-	    SetImageInfoFile(info, filePtr);
-
-	    Image * image = ReadImage(info, ex);
-
-	    if (ex && ex->severity > ErrorException) {
-	    	messages::error("Storage", "Fail to open image", data::Value(ex->description));
+		Bitmap bmp(data.data(), data.size());
+	    if (!bmp) {
+	    	messages::error("Storage", "Fail to open image");
 	    } else {
 		    if (needResize) {
-		    	auto fpath = resizeImage(ret, info, image, targetWidth, targetHeight, ex);
+		    	auto fpath = resizeImage(ret, bmp, targetWidth, targetHeight);
 		    	if (!fpath.empty()) {
 		    		ret.emplace(f.getName(), std::move(fpath));
 		    	}
@@ -321,22 +311,17 @@ Map<String, String> writeImages(const Field &f, InputFile &file) {
 			    	getTargetImageSize(width, height, MinImageSize(), MaxImageSize(it.width, it.height),
 			    			targetWidth, targetHeight);
 
-			    	auto fpath = resizeImage(ret, info, image, targetWidth, targetHeight, ex);
+			    	auto fpath = resizeImage(ret, bmp, targetWidth, targetHeight);
 			    	if (!fpath.empty()) {
 			    		ret.emplace(it.name, std::move(fpath));
 			    	}
 		    	}
 		    }
 	    }
-
-		if (image) { DestroyImage(image); }
-		if (info) { DestroyImageInfo(info); }
-		if (ex) { DestroyExceptionInfo(ex); }
 	} else {
 		ret.emplace(f.getName(), file.path);
 	}
 
-	fclose(filePtr);
 	return ret;
 }
 

@@ -575,50 +575,50 @@ void Canvas::drop() {
 
 Bitmap Canvas::read(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
 	bool truncate = false;
-	Bitmap::Format fmt, targetFmt;
+	Bitmap::PixelFormat fmt, targetFmt;
 	Bitmap::Alpha alpha = Bitmap::Alpha::Opaque;
 	GLenum readFmt;
 	switch (_internalFormat) {
 	case cocos2d::Texture2D::PixelFormat::A8:
-		targetFmt = fmt = Bitmap::Format::A8;
+		targetFmt = fmt = Bitmap::PixelFormat::A8;
 		alpha = Bitmap::Alpha::Unpremultiplied;
 		readFmt = GL_ALPHA;
 		break;
 	case cocos2d::Texture2D::PixelFormat::I8:
 		if (cocos2d::Configuration::isRenderTargetSupported(cocos2d::Configuration::RenderTarget::R8)) {
-			targetFmt = fmt = Bitmap::Format::I8;
+			targetFmt = fmt = Bitmap::PixelFormat::I8;
 			readFmt = GL_RED_EXT;
 		} else {
-			targetFmt = Bitmap::Format::I8;
-			fmt = Bitmap::Format::RGB888;
+			targetFmt = Bitmap::PixelFormat::I8;
+			fmt = Bitmap::PixelFormat::RGB888;
 			readFmt = GL_RGB;
 		}
 		break;
 	case cocos2d::Texture2D::PixelFormat::R8:
 		if (cocos2d::Configuration::isRenderTargetSupported(cocos2d::Configuration::RenderTarget::R8)) {
-			targetFmt = fmt = Bitmap::Format::A8;
+			targetFmt = fmt = Bitmap::PixelFormat::A8;
 			readFmt = GL_RED_EXT;
 		} else {
-			targetFmt = Bitmap::Format::A8;
-			fmt = Bitmap::Format::RGB888;
+			targetFmt = Bitmap::PixelFormat::A8;
+			fmt = Bitmap::PixelFormat::RGB888;
 			readFmt = GL_RGB;
 			truncate = true;
 		}
 		break;
 	case cocos2d::Texture2D::PixelFormat::AI88:
-		targetFmt = Bitmap::Format::IA88;
-		fmt = Bitmap::Format::RGBA8888;
+		targetFmt = Bitmap::PixelFormat::IA88;
+		fmt = Bitmap::PixelFormat::RGBA8888;
 		readFmt = GL_RGBA;
 		alpha = Bitmap::Alpha::Unpremultiplied;
 		break;
 	case cocos2d::Texture2D::PixelFormat::RG88:
 		if (cocos2d::Configuration::isRenderTargetSupported(cocos2d::Configuration::RenderTarget::RG8)) {
-			targetFmt = fmt = Bitmap::Format::IA88;
+			targetFmt = fmt = Bitmap::PixelFormat::IA88;
 			alpha = Bitmap::Alpha::Unpremultiplied;
 			readFmt = GL_RG_EXT;
 		} else {
-			targetFmt = Bitmap::Format::IA88;
-			fmt = Bitmap::Format::RGB888;
+			targetFmt = Bitmap::PixelFormat::IA88;
+			fmt = Bitmap::PixelFormat::RGB888;
 			readFmt = GL_RGB;
 			alpha = Bitmap::Alpha::Unpremultiplied;
 			truncate = true;
@@ -627,13 +627,13 @@ Bitmap Canvas::read(uint32_t x, uint32_t y, uint32_t w, uint32_t h) {
 	case cocos2d::Texture2D::PixelFormat::RGBA8888:
 	case cocos2d::Texture2D::PixelFormat::RGBA4444:
 	case cocos2d::Texture2D::PixelFormat::RGB5A1:
-		targetFmt = fmt = Bitmap::Format::RGBA8888;
+		targetFmt = fmt = Bitmap::PixelFormat::RGBA8888;
 		alpha = Bitmap::Alpha::Unpremultiplied;
 		readFmt = GL_RGBA;
 		break;
 	case cocos2d::Texture2D::PixelFormat::RGB565:
 	case cocos2d::Texture2D::PixelFormat::RGB888:
-		targetFmt = fmt = Bitmap::Format::RGB888;
+		targetFmt = fmt = Bitmap::PixelFormat::RGB888;
 		readFmt = GL_RGB;
 		break;
 	default:

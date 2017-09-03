@@ -119,21 +119,21 @@ GLProgramSet *TextureCache::getPrograms() const {
 	}
 }
 
-cocos2d::Texture2D::PixelFormat TextureCache::getPixelFormat(Bitmap::Format fmt) {
+cocos2d::Texture2D::PixelFormat TextureCache::getPixelFormat(Bitmap::PixelFormat fmt) {
 	switch (fmt) {
-	case Bitmap::Format::A8:
+	case Bitmap::PixelFormat::A8:
 		return cocos2d::Texture2D::PixelFormat::A8;
 		break;
-	case Bitmap::Format::I8:
+	case Bitmap::PixelFormat::I8:
 		return cocos2d::Texture2D::PixelFormat::I8;
 		break;
-	case Bitmap::Format::IA88:
+	case Bitmap::PixelFormat::IA88:
 		return cocos2d::Texture2D::PixelFormat::AI88;
 		break;
-	case Bitmap::Format::RGBA8888:
+	case Bitmap::PixelFormat::RGBA8888:
 		return cocos2d::Texture2D::PixelFormat::RGBA8888;
 		break;
-	case Bitmap::Format::RGB888:
+	case Bitmap::PixelFormat::RGB888:
 		return cocos2d::Texture2D::PixelFormat::RGB888;
 		break;
 	default:

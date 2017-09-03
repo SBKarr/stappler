@@ -76,7 +76,15 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 		Field::Integer("mtime", storage::Flags::AutoMTime | storage::Flags::Indexed),
 		Field::Integer("index", storage::Flags::Indexed),
 		Field::File("file", MaxFileSize(100_KiB)),
-		Field::Array("array", Field::Text("", storage::MaxLength(10)))
+		Field::Array("array", Field::Text("", storage::MaxLength(10))),
+
+		Field::Image("cover", storage::MaxImageSize(1080, 1080, storage::ImagePolicy::Resize), Vector<storage::Thumbnail>{
+			storage::Thumbnail("thumb", 160, 160),
+			storage::Thumbnail("cover512", 512, 512),
+			storage::Thumbnail("cover256", 256, 256),
+			storage::Thumbnail("cover128", 128, 128),
+			storage::Thumbnail("cover64", 64, 64),
+		}),
 	});
 
 	_subobjects.define({

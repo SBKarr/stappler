@@ -37,6 +37,7 @@ static std::mutex s_logFuncMutex;
 static void DefaultLog2(const char *tag, const char *text, size_t len) {
 	std::cerr << '[' << tag << "] ";
 	std::cerr.write(text, len);
+	std::cerr << '\n';
 	std::cerr.flush();
 }
 

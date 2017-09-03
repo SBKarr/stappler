@@ -18,13 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-# Serenity relies to ImageMagick (libMagickCore) for image processing
-# so, libpng and libjpeg features is disabled
-
-ifndef IMAGEMAGICK_INCLUDE
-IMAGEMAGICK_INCLUDE := /usr/include/ImageMagick
-endif
-
 ifndef APACHE_INCLUDE
 APACHE_INCLUDE := /usr/local/include/apache
 endif
@@ -41,7 +34,7 @@ SERENITY_PRECOMPILED_HEADERS += \
 	common/core/SPCore.h \
 	common/core/SPCommon.h
 
-SERENITY_FLAGS := -DSPAPR -DNOPNG -DNOJPEG
+SERENITY_FLAGS := -DSPAPR
 
 SERENITY_SRCS_OBJS += \
 	serenity/gen/__Virtual.cpp \
@@ -59,7 +52,7 @@ SERENITY_VIRTUAL_DIRS += \
 	serenity/virtual/js \
 	serenity/virtual/css \
 
-SERENITY_LIBS += -lcurl -lcrypto -lpq -lMagickCore -lidn
+SERENITY_LIBS += -L$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH) $(OSTYPE_SERENITY_LIBS) -lpq -lidn
 
 SERENITY_SRCS := \
 	$(foreach dir,$(SERENITY_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.c*')) \
@@ -73,7 +66,7 @@ SERENITY_INCLUDES := \
 	$(foreach dir,$(SERENITY_INCLUDES_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -type d)) \
 	$(addprefix $(GLOBAL_ROOT)/,$(SERENITY_INCLUDES_OBJS)) \
 	$(APACHE_INCLUDE) \
-	$(IMAGEMAGICK_INCLUDE)
+	$(GLOBAL_ROOT)/$(OSTYPE_INCLUDE)
 
 SERENITY_VIRTUAL_SRCS := \
 	$(shell find $(GLOBAL_ROOT)/serenity/virtual/js -name '*.js') \

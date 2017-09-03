@@ -154,7 +154,7 @@ static Metrics getMetrics(FT_Face face, uint16_t size) {
 }
 
 LayoutBitmap::LayoutBitmap(uint32_t w, uint32_t h) : Bitmap() {
-	alloc(w, h, Format::A8);
+	alloc(w, h, PixelFormat::A8);
 	_data.back() = 255;
 }
 

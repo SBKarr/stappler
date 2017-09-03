@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "SPCore.h"
 #include "SPMemPoolApi.h"
+#include "SPLog.h"
 
 NS_SP_EXT_BEGIN(memory)
 
@@ -898,6 +899,7 @@ void clear(pool_t *p) {
 void *alloc(pool_t *p, size_t &size) {
 	return p->alloc(size);
 }
+
 void free(pool_t *p, void *ptr, size_t size) {
 	p->free(ptr, size);
 }
@@ -987,5 +989,19 @@ size_t get_opts_bytes(pool_t *p) {
 }
 
 #endif
+
+namespace pool {
+
+void *palloc(pool_t *p, size_t size) {
+	return alloc(p, size);
+}
+void *calloc(pool_t *p, size_t count, size_t eltsize) {
+	size_t s = count * eltsize;
+	auto ptr = alloc(p, s);
+	memset(ptr, 0, s);
+	return ptr;
+}
+
+}
 
 NS_SP_EXT_END(memory)

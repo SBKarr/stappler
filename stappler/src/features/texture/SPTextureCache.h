@@ -36,7 +36,7 @@ class TextureCache : public EventHandler {
 public:
 	static constexpr float GetDelayTime() { return 1.0f; }
 
-	using BitmapFormat = Bitmap::Format;
+	using BitmapFormat = Bitmap::PixelFormat;
 
 	struct TextureIndex {
 		String file;
