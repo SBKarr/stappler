@@ -314,7 +314,7 @@ data::Value ResourceSet::createObject(data::Value &data, apr::array<InputFile> &
 		if (auto id = items.at(items.size() - 2).query.getSelectOid()) {
 			extra.setInteger(id, item.ref->getName());
 		} else {
-			auto ids = getDatabaseId(_queries);
+			auto ids = getDatabaseId(_queries, _queries.size() - 1);
 			if (ids.size() == 1) {
 				extra.setInteger(ids.front(), item.ref->getName());
 			}

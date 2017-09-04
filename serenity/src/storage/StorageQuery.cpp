@@ -139,7 +139,7 @@ QueryList::QueryList(const Scheme *scheme) {
 
 bool QueryList::selectById(const Scheme *scheme, uint64_t id) {
 	Item &b = queries.back();
-	if (b.scheme == scheme && b.query.empty()) {
+	if (b.scheme == scheme && b.query.getSelectOid() == 0 && b.query.getSelectAlias().empty()) {
 		b.query.select(id);
 		return true;
 	}
@@ -148,7 +148,7 @@ bool QueryList::selectById(const Scheme *scheme, uint64_t id) {
 
 bool QueryList::selectByName(const Scheme *scheme, const String &f) {
 	Item &b = queries.back();
-	if (b.scheme == scheme && b.query.empty()) {
+	if (b.scheme == scheme && b.query.getSelectOid() == 0 && b.query.getSelectAlias().empty()) {
 		b.query.select(f);
 		return true;
 	}
