@@ -99,7 +99,8 @@ public:
 	}
 
 	template< class InputIt >
-	void assign( InputIt first, InputIt last ) {
+	void assign( InputIt first, InputIt last ) { // @TODO: self-assign protection and modern assignment
+		_mem.clear();
 		auto size = std::distance(first, last);
 		_mem.reserve(size);
 		for (auto it = first; it != last; it ++) {
@@ -241,6 +242,8 @@ public:
 protected:
 	mem_type _mem;
 };
+
+using bytes = vector<uint8_t>;
 
 template<typename _Tp> inline bool
 operator==(const vector<_Tp>& __x, const vector<_Tp>& __y) {

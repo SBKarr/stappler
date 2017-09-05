@@ -282,8 +282,8 @@ void IconSprite::onContentSizeDirty() {
 
 void IconSprite::visit(cocos2d::Renderer *r, const Mat4 &t, uint32_t f, ZPath &z) {
 	if (_diff != 0.0f) {
-		_diff = 0.0f;
 		_dynamicIcon->redraw(_progress, _diff);
+		_diff = 0.0f;
 	}
 	PathNode::visit(r, t, f, z);
 }

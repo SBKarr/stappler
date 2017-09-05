@@ -47,6 +47,9 @@ using cleanup_fn = status_t(*)(void *);
 
 namespace pool {
 
+void initialize();
+void terminate();
+
 pool_t *acquire();
 Pair<uint32_t, void *> info();
 

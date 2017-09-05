@@ -28,40 +28,43 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(memory)
 
-MemPool::MemPool() noexcept : _pool(nullptr) { }
-MemPool::MemPool(Init i) : _pool(nullptr) {
+MemPool::MemPool() noexcept : _status(Acquire), _pool(nullptr) { }
+MemPool::MemPool(Init i) : _status(i), _pool(nullptr) {
 	switch (i) {
 	case Init::Acquire: _pool = pool::acquire(); break;
 	case Init::Managed: _pool = pool::create(pool::acquire()); break;
 	case Init::Unmanaged: _pool = pool::create(); break;
 	}
 }
-MemPool::MemPool(pool_t *p) {
+MemPool::MemPool(pool_t *p) : _status(Managed) {
 	_pool = pool::create(p);
 }
 MemPool::~MemPool() noexcept {
-	if (_pool) {
-		pool::destroy(_pool);
-	}
+	free();
 }
 
 MemPool::MemPool(MemPool &&other) noexcept {
 	_pool = other._pool;
+	_status = other._status;
 	other._pool = nullptr;
+	other._status = Acquire;
 }
 MemPool & MemPool::operator=(MemPool &&other) noexcept {
-	if (_pool) {
+	if (_pool && _status != Acquire) {
 		pool::destroy(_pool);
 	}
 	_pool = other._pool;
+	_status = other._status;
 	other._pool = nullptr;
+	other._status = Acquire;
 	return *this;
 }
 
 void MemPool::free() {
-	if (_pool) {
+	if (_pool && _status != Acquire) {
 		pool::destroy(_pool);
 	}
+	_pool = nullptr;
 }
 
 void MemPool::clear() {

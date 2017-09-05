@@ -390,7 +390,6 @@ constexpr size_t SIZEOF_MEMNODE_T ( ALIGN_DEFAULT(sizeof(memnode_t)) );
 constexpr size_t SIZEOF_POOL_T ( ALIGN_DEFAULT(sizeof(pool_t)) );
 
 
-
 allocator_t::allocator_t() {
 	buf.fill(nullptr);
 }
@@ -602,8 +601,9 @@ void allocator_t::unlock() {
 	}
 }
 
-static allocator_t s_global_allocator;
-static pool_t *s_global_pool = pool_t::create(&s_global_allocator);
+static allocator_t *s_global_allocator = nullptr;
+static pool_t *s_global_pool = nullptr;
+static int s_global_init = 0;
 
 void *pool_t::alloc(size_t &sizeInBytes) {
 	if (sizeInBytes >= BlockThreshold) {
@@ -698,14 +698,16 @@ void pool_t::clear() {
 	active->first_avail = this->self_first_avail;
 
 	if (active->next == active) {
+		this->allocmngr.reset(this);
 		return;
 	}
 
 	*active->ref = nullptr;
-	this->allocator->free(active->next);
+	if (active->next) {
+		this->allocator->free(active->next);
+	}
 	active->next = active;
 	active->ref = &active->next;
-
 	this->allocmngr.reset(this);
 }
 
@@ -742,7 +744,8 @@ pool_t::pool_t(pool_t *p, allocator_t *alloc, memnode_t *node)
 : allocator(alloc), active(node), self(node), allocmngr{this} {
 	if ((parent = p) != nullptr) {
 		std::unique_lock<allocator_t> lock(*allocator);
-		if ((sibling = parent->child) != nullptr) {
+		sibling = parent->child;
+		if (sibling != nullptr) {
 			sibling->ref = &sibling;
 		}
 
@@ -764,8 +767,10 @@ pool_t::~pool_t() {
 	/* Remove the pool from the parents child list */
 	if (this->parent) {
 		std::unique_lock<allocator_t> lock(*allocator);
-		if ((*this->ref = this->sibling) != NULL) {
-			this->sibling->ref = this->ref;
+		auto sib = this->sibling;
+		*this->ref = this->sibling;
+		if (sib != nullptr) {
+			sib->ref = this->ref;
 		}
 	}
 
@@ -878,6 +883,34 @@ void pool_t::cleanup_run(void *data, cleanup_t::callback_t cb) {
 
 namespace pool {
 
+struct StaticHolder {
+	StaticHolder() {
+		initialize();
+	}
+
+	~StaticHolder() {
+		terminate();
+	}
+} s_global_holder;
+
+void initialize() {
+	if (s_global_init == 0) {
+		if (!s_global_allocator) {
+			s_global_allocator = new allocator_t();
+		}
+		s_global_pool = pool_t::create(s_global_allocator);
+	}
+	++ s_global_init;
+}
+
+void terminate() {
+	-- s_global_init;
+	if (s_global_init == 0) {
+		pool_t::destroy(s_global_pool);
+		delete s_global_allocator;
+	}
+}
+
 pool_t *create() {
 	return pool_t::create();
 }
@@ -927,6 +960,14 @@ void *pool_palloc(pool_t *pool, size_t size) {
 }
 
 namespace pool {
+
+void initialize() {
+	apr_pool_initialize();
+}
+
+void terminate() {
+	apr_pool_terminate();
+}
 
 pool_t *create() {
 	pool_t *ret = nullptr;

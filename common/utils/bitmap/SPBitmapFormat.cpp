@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "SPDataReader.h"
 #include "SPHtmlParser.h"
 #include "SPFilesystem.h"
+#include "SPCommonPlatform.h"
 
 #include "SPBitmapFormatJpeg.hpp"
 #include "SPBitmapFormatPng.hpp"

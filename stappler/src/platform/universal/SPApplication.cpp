@@ -68,9 +68,18 @@ NS_SP_BEGIN
 
 #ifndef SP_RESTRICT
 
-Application::Application() { }
+Application::Application() {
+	memory::pool::initialize();
+	_applicationPool = memory::pool::create(memory::pool::acquire());
+	_framePool = memory::pool::create(_applicationPool);
+	memory::pool::push(_applicationPool);
+}
 
-Application::~Application() { }
+Application::~Application() {
+	memory::pool::pop();
+	memory::pool::destroy(_applicationPool);
+	memory::pool::terminate();
+}
 
 bool Application::applicationDidFinishLaunching() {
 	Device::getInstance();
@@ -110,6 +119,14 @@ void Application::applicationDidReceiveMemoryWarning() {
 		scene->clearCachedMaterials(true);
 	}
 	cocos2d::Director::getInstance()->purgeCachedData();
+}
+
+void Application::applicationFrameBegin() {
+	memory::pool::push(_framePool);
+}
+void Application::applicationFrameEnd() {
+	memory::pool::pop();
+	memory::pool::clear(_framePool);
 }
 
 #endif

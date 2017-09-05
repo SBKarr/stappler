@@ -60,7 +60,7 @@ struct AllocPool {
 	}
 };
 
-class MemPool {
+class MemPool : public AllocPool {
 public:
 	enum Init {
 		Acquire,
@@ -79,7 +79,7 @@ public:
 	MemPool(MemPool &&) noexcept;
 	MemPool & operator=(MemPool &&) noexcept;
 
-	operator pool_t *() { return _pool; }
+	operator pool_t *() const { return _pool; }
 	pool_t *pool() const { return _pool; }
 
 	void free();
@@ -90,7 +90,22 @@ public:
 
 	void cleanup_register(void *, cleanup_fn);
 
+	template <typename Callback>
+	auto performWithPool() {
+		struct Context {
+		public:
+			Context(pool_t *p) : pool(p) { pool::push(pool); }
+			~Context() { pool::pop(); }
+
+		protected:
+			pool_t *pool;
+		};
+
+		Context ctx(_pool);
+		return Callback();
+	}
 protected:
+	Init _status = Acquire;
 	pool_t *_pool = nullptr;
 };
 

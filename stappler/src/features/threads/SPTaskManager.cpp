@@ -155,13 +155,16 @@ protected:
 class TaskManager::Worker : public ThreadHandlerInterface {
 public:
 	Worker(TaskQueue *queue, uint32_t threadId, uint32_t workerId, const std::string &name)
-	: _queue(queue), _refCount(1), _shouldQuit()
-	, _managerId(threadId), _workerId(workerId), _name(name) {
+	: _queue(queue), _refCount(1), _shouldQuit() , _managerId(threadId)
+	, _workerId(workerId), _name(name), _pool(memory::pool::create(memory::pool::acquire())) {
+		memory::pool::initialize();
 		_queue->retain();
 	}
 
 	virtual ~Worker() {
 		_queue->release();
+		memory::pool::destroy(_pool);
+		memory::pool::terminate();
 	}
 
 	void retain() {
@@ -175,7 +178,11 @@ public:
 	}
 
 	bool execute(Task *task) {
-		return task->execute();
+		memory::pool::push(_pool);
+		auto ret = task->execute();
+		memory::pool::pop();
+		memory::pool::clear(_pool);
+		return ret;
 	}
 
 	virtual void threadInit() override {
@@ -218,6 +225,7 @@ protected:
 	uint32_t _managerId;
 	uint32_t _workerId;
 	std::string _name;
+	memory::pool_t *_pool;
 };
 
 NS_SP_END

@@ -58,14 +58,18 @@ public:
 
 	template <typename FunctionT>
 	function(FunctionT && f, const allocator_type &alloc = allocator_type()) noexcept
-		: mAllocator(alloc), mInvoker(new (alloc) free_function_holder<FunctionT>(std::forward<FunctionT>(f))) { }
+		: mAllocator(alloc), mInvoker(
+				new (alloc)free_function_holder<
+						typename std::remove_cv<typename std::remove_reference<FunctionT>::type>::type
+				>(std::forward<FunctionT>(f))) { }
 
 	template <typename FunctionT>
 	function & operator= (FunctionT f) noexcept {
-		mInvoker = new (mAllocator) free_function_holder<FunctionT>(f);
+		mInvoker = new (mAllocator) free_function_holder<
+				typename std::remove_cv<typename std::remove_reference<FunctionT>::type>::type
+		>(f);
 		return *this;
 	}
-
 
 	template <typename FunctionType, typename ClassType>
 	function(FunctionType ClassType::* f, const allocator_type &alloc = allocator_type()) noexcept

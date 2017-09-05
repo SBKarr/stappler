@@ -41,6 +41,9 @@ public:
 	template <CharGroupId Group>
 	using CharGroup = chars::CharGroup<CharType, Group>;
 
+	template <typename ... Args>
+	using Compose = chars::Compose<CharType, Args ...>;
+
 	BytesReader() : ptr(nullptr), len(0) { }
 	BytesReader(const CharType *p, size_t l) : ptr(p), len(l) { }
 

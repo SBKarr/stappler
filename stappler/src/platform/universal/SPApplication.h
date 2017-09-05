@@ -32,16 +32,23 @@ NS_SP_BEGIN
 class Application : public cocos2d::Application {
 public:
 	Application();
-    virtual ~Application();
+	virtual ~Application();
 
-    virtual bool applicationDidFinishLaunching() override;
-    virtual void applicationDidEnterBackground() override;
-    virtual void applicationWillEnterForeground() override;
+	virtual bool applicationDidFinishLaunching() override;
+	virtual void applicationDidEnterBackground() override;
+	virtual void applicationWillEnterForeground() override;
 
-    virtual void applicationFocusGained() override;
-    virtual void applicationFocusLost() override;
+	virtual void applicationFocusGained() override;
+	virtual void applicationFocusLost() override;
 
-    virtual void applicationDidReceiveMemoryWarning() override;
+	virtual void applicationFrameBegin() override;
+	virtual void applicationFrameEnd() override;
+
+	virtual void applicationDidReceiveMemoryWarning() override;
+
+protected:
+	memory::pool_t *_applicationPool = nullptr;
+	memory::pool_t *_framePool = nullptr;
 };
 #endif
 
