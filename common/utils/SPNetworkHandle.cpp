@@ -215,6 +215,10 @@ NetworkHandle::NetworkHandle() {
     _responseCode = -1;
     _isRequestPerformed = false;
     _error = CURLE_OK;
+
+#ifdef LINUX
+    _rootCertFile = "/etc/ssl//certs/";
+#endif
 }
 
 NetworkHandle::~NetworkHandle() { }
@@ -262,7 +266,7 @@ bool NetworkHandle::setupCurl(CURL *curl, char *errorBuffer) {
 	//SETOPT(check, curl, CURLOPT_TIMEOUT, SP_NW_READ_TIMEOUT);
 	SETOPT(check, curl, CURLOPT_CONNECTTIMEOUT, SP_NW_CONNECT_TIMEOUT);
 
-#if (DEBUG)
+#if (DEBUG || LINUX)
 	SETOPT(check, curl, CURLOPT_SSL_VERIFYPEER, 0L);
 	SETOPT(check, curl, CURLOPT_SSL_VERIFYHOST, 0L);
 #else
@@ -293,12 +297,18 @@ bool NetworkHandle::setupRootCert(CURL *curl, const String &certPath) {
 	bool check = true;
 	if (!certPath.empty()) {
 		auto &bundle = certPath;
-		String path = filepath::root(certPath);
+		if (bundle.empty() || bundle.back() != '/') {
+			String path = filepath::root(certPath);
 
-		SETOPT(check, curl, CURLOPT_CAINFO, bundle.c_str());
+			SETOPT(check, curl, CURLOPT_CAINFO, bundle.c_str());
 #ifndef ANDROID
-		SETOPT(check, curl, CURLOPT_CAPATH, path.c_str());
+			SETOPT(check, curl, CURLOPT_CAPATH, path.c_str());
 #endif
+		} else {
+			String path = bundle.substr(0, bundle.size() - 1);
+			SETOPT(check, curl, CURLOPT_CAINFO, path.c_str());
+
+		}
 	}
 	return check;
 }
