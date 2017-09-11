@@ -45,10 +45,6 @@ bool LinearProgress::init() {
 	_bar->setAnchorPoint(cocos2d::Vec2(0, 0));
 	addChild(_bar, 2);
 
-	_secondaryBar = construct<stappler::Layer>();
-	_secondaryBar->setPosition(0, 0);
-	_secondaryBar->setAnchorPoint(cocos2d::Vec2(0, 0));
-	addChild(_secondaryBar);
 	setCascadeOpacityEnabled(true);
 
 	return true;
@@ -58,21 +54,11 @@ void LinearProgress::onContentSizeDirty() {
 	layoutSubviews();
 }
 
-void LinearProgress::setDeterminate(bool value) {
-	if (value != _determinate) {
-		_determinate = value;
-		_contentSizeDirty = true;
-	}
-}
-bool LinearProgress::isDeterminate() const {
-	return _determinate;
-}
-
 void LinearProgress::setAnimated(bool value) {
 	if (_animated != value) {
 		_animated = value;
 		if (_animated) {
-			auto p = construct<ProgressAction>(2.5f, 1.0f, [this] (ProgressAction *a, float time) {
+			auto p = construct<ProgressAction>(2.0f, 1.0f, [this] (ProgressAction *a, float time) {
 				setProgress(time);
 			});
 			auto a = cocos2d::RepeatForever::create(p);
@@ -99,47 +85,37 @@ float LinearProgress::getProgress() const {
 
 void LinearProgress::layoutSubviews() {
 	_line->setContentSize(_contentSize);
-	float secondBarGrowTime = 0.15f;
-	float firstBarGrowTime = 0.2f;
-	float secondBarTime = 0.55f;
-	float secondBarSpeed = 1.25f;
-
-	if (_determinate) {
+	if (!_animated) {
 		auto barSize = cocos2d::Size(_progress * _contentSize.width, _contentSize.height);
 		_bar->setPosition(0, 0);
 		_bar->setContentSize(barSize);
-
-		_secondaryBar->setPosition(0.0f, 0.0f);
-		_secondaryBar->setContentSize(Size(0.0f, 0.0f));
 	} else {
-		_bar->setPosition(0, 0);
-		_bar->setContentSize(Size(0, 0));
-		_secondaryBar->setPosition(0, 0);
-		_secondaryBar->setContentSize(Size(0, 0));
-		if ((_progress > secondBarTime)&&(_progress < (secondBarTime+secondBarGrowTime))) {
-			_secondaryBar->setPosition(0, 0);
-			float aCoeff = (1.0f)/(secondBarGrowTime);
-			float bCoeff = (-1.0f)*aCoeff*secondBarTime;
-
-			//in secondBarTime must be null, and in secondBarTime+secondBarGrowTime content size must be _contentSize/2
-			_secondaryBar->setContentSize(cocos2d::Size((_contentSize.width/2)*((_progress*aCoeff)+bCoeff), _contentSize.height));
-		} else if (_progress >= (secondBarTime+secondBarGrowTime)) {
-			float aCoeff = (secondBarSpeed)/(1-(secondBarTime+secondBarGrowTime));
-			float bCoeff = secondBarSpeed-aCoeff;
-			_secondaryBar->setPosition((_contentSize.width*secondBarSpeed)*(aCoeff*_progress+bCoeff), 0);
-
-			float cCoeff = (-1.0f)/(1-(secondBarTime+secondBarGrowTime));
-			float dCoeff = (-1.0f)*cCoeff;
-			_secondaryBar->setContentSize(cocos2d::Size((_contentSize.width/2)*((_progress*cCoeff)+dCoeff), _contentSize.height));
-		}
-
-		if(_progress < firstBarGrowTime) {
-			_bar->setPosition(0, 0);
-			_bar->setContentSize(cocos2d::Size((_contentSize.width/2)*(_progress*(1.0f/firstBarGrowTime)), _contentSize.height));
+		const float sep = 0.60f;
+		float p = 0.0f;
+		bool invert = false;
+		if (_progress < sep) {
+			p = _progress / sep;
 		} else {
-			_bar->setPosition(_contentSize.width*(_progress-0.2f)*(1+3.0f*_progress), 0);
-			_bar->setContentSize(cocos2d::Size((_contentSize.width/2)*(0.8f+_progress), _contentSize.height));
+			p = (_progress - sep) / (1.0f - sep);
+			invert = true;
 		}
+
+		float start = 0.0f;
+		float end = _contentSize.width;
+
+		const float ePos = invert ? 0.15f : 0.45f;
+		const float sPos = invert ? 0.35f : 0.20f;
+
+		if (p < (1.0f - ePos)) {
+			end = _contentSize.width * p / (1.0f - ePos);
+		}
+
+		if (p > sPos) {
+			start = _contentSize.width * (p - sPos) / (1.0f - sPos);
+		}
+
+		_bar->setPosition(Vec2(start, 0.0f));
+		_bar->setContentSize(Size(end - start, _contentSize.height));
 	}
 }
 
@@ -153,12 +129,10 @@ void LinearProgress::setLineOpacity(uint8_t op) {
 
 void LinearProgress::setBarColor(const Color &c) {
 	_bar->setColor(c);
-	_secondaryBar->setColor(c);
 }
 
 void LinearProgress::setBarOpacity(uint8_t op) {
 	_bar->setOpacity(op);
-	_secondaryBar->setOpacity(op);
 }
 
 NS_MD_END

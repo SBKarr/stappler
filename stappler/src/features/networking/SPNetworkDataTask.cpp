@@ -32,7 +32,7 @@ NS_SP_BEGIN
 NetworkDataTask::NetworkDataTask() { }
 NetworkDataTask::~NetworkDataTask() { }
 
-bool NetworkDataTask::init(Method method, const std::string &url, const data::Value &data, data::EncodeFormat f) {
+bool NetworkDataTask::init(Method method, const String &url, const data::Value &data, data::EncodeFormat f) {
 	if (!NetworkTask::init(method, url)) {
 		return false;
 	}

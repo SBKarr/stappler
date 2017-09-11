@@ -45,7 +45,6 @@ public: // request interface
 	int writeToRequest(Request &rctx);
 
 protected:
-	void setFileParams(Request &rctx, const data::Value &file);
 	void performApiObject(Request &rctx, const storage::Scheme &, data::Value &val);
 	void performApiFilter(Request &rctx, const storage::Scheme &, data::Value &val);
 

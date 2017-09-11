@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef __stappler__SPAssetLibrary__
-#define __stappler__SPAssetLibrary__
+#ifndef STAPPLER_SRC_FEATURES_NETWORKING_SPASSETLIBRARY_H_
+#define STAPPLER_SRC_FEATURES_NETWORKING_SPASSETLIBRARY_H_
 
 #include "SPEventHeader.h"
 #include "SPScheme.h"
@@ -43,7 +43,7 @@ public:
 	using AssetRequestVec = Vector<AssetRequest>;
 	using AssetMultiRequestVec = Vector<Pair<AssetRequestVec, AssetVecCallback>>;
 
-    using DownloadCallback = Function<bool(Asset *)>;
+    using DownloadCallback = Asset::DownloadCallback;
 	using Assets = Map<uint64_t, Asset *>;
 	using Downloads = Map<Asset *, Rc<AssetDownload>>;
 
@@ -95,9 +95,10 @@ protected:
 	friend class Asset;
 
 	void removeAsset(Asset *);
-	bool downloadAsset(Asset *);
 	void saveAsset(Asset *);
 	void touchAsset(Asset *);
+
+	AssetDownload * downloadAsset(Asset *);
 
 protected:
 	AssetLibrary();
@@ -139,4 +140,4 @@ protected:
 
 NS_SP_END
 
-#endif /* defined(__stappler__SPAssetLibrary__) */
+#endif /* STAPPLER_SRC_FEATURES_NETWORKING_SPASSETLIBRARY_H_ */

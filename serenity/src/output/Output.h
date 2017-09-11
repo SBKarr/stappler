@@ -33,6 +33,10 @@ void writeData(Request &rctx, const data::Value &, bool allowJsonP = true);
 void writeData(Request &rctx, std::basic_ostream<char> &stream, const Function<void(const String &)> &ct,
 		const data::Value &, bool allowJsonP = true);
 
+// write file headers with respect for cache headers (if-none-match, if-modified-since)
+// returns true if we shoul write file data or false if we should return HTTP_NOT_MODIFIED
+bool writeFileHeaders(Request &rctx, const data::Value &, const String &convertType = String());
+
 NS_SA_EXT_END(output)
 
 #endif /* SERENITY_SRC_OUTPUT_OUTPUT_H_ */

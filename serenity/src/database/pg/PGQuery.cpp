@@ -233,16 +233,21 @@ void ExecQuery::writeQueryListItem(GenericQuery &q, const QueryList &list, size_
 	auto &items = list.getItems();
 	const QueryList::Item &item = items.at(idx);
 
-	if (idx > 0 && !item.ref) {
+	const storage::Field *sourceField = nullptr;
+	if (idx > 0) {
+		sourceField = items.at(idx - 1).field;
+	}
+
+	if (idx > 0 && !item.ref && sourceField && sourceField->getType() != storage::Type::Object) {
 		String prevSq = toString("sq", idx - 1);
 		const QueryList::Item &prevItem = items.at(idx - 1);
 		String tname = toString(prevItem.scheme->getName(), "_f_", prevItem.field->getName());
 
-		ExecQuery::Field targetIdField = ExecQuery::Field(toString(item.scheme->getName(), "_id"));
-		ExecQuery::Field sourceIdField = ExecQuery::Field(toString(prevItem.scheme->getName(), "_id"));
+		String targetIdField = toString(item.scheme->getName(), "_id");
+		String sourceIdField = toString(prevItem.scheme->getName(), "_id");
 
 		if (idOnly && item.query.empty()) { // optimize id-only empty request
-			q.select(targetIdField.as("id"))
+			q.select(ExecQuery::Field(targetIdField).as("id"))
 					.from(tname)
 					.innerJoinOn(prevSq, [&] (WhereBegin &w) {
 				w.where(sourceIdField, Comparation::Equal, ExecQuery::Field(prevSq, "id"));
@@ -251,10 +256,10 @@ void ExecQuery::writeQueryListItem(GenericQuery &q, const QueryList &list, size_
 		}
 
 		q.with(toString("sq", idx, "_ref"), [&] (GenericQuery &sq) {
-			sq.select(targetIdField.as("id"))
+			sq.select(ExecQuery::Field(targetIdField).as("id"))
 					.from(tname)
 					.innerJoinOn(prevSq, [&] (WhereBegin &w) {
-				w.where(sourceIdField, Comparation::Equal, ExecQuery::Field(prevSq, "id"));
+				w.where(ExecQuery::Field(sourceIdField), Comparation::Equal, ExecQuery::Field(prevSq, "id"));
 			});
 		});
 	}
@@ -268,7 +273,7 @@ void ExecQuery::writeQueryListItem(GenericQuery &q, const QueryList &list, size_
 			? q.select(ExecQuery::Field(schemeName, fieldName).as("id")).from(schemeName)
 			: q.select(ExecQuery::Field::all(schemeName)).from(schemeName);
 	if (idx > 0) {
-		if (item.ref) {
+		if (item.ref || !sourceField || sourceField->getType() == storage::Type::Object) {
 			ExecQuery_writeJoin(s, toString("sq", idx - 1), item.scheme->getName(), item);
 		} else {
 			ExecQuery_writeJoin(s, toString(toString("sq", idx, "_ref")), item.scheme->getName(), item);

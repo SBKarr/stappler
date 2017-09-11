@@ -28,13 +28,9 @@ THE SOFTWARE.
 #include "SPDataStream.h"
 #include "SPSql.h"
 #include "SPBitmap.h"
+#include "SPTime.h"
 
 #include "Test.h"
-
-#include <string>
-#include <unistd.h>
-#include <iostream>
-#include <fstream>
 
 static constexpr auto HELP_STRING(
 R"HelpString(sptest <options> <command>
@@ -124,6 +120,38 @@ struct UnicodeTest : Test {
 	}
 } _UnicodeTest;
 
+struct TimeTest : Test {
+	TimeTest() : Test("TimeTest") { }
+
+	virtual bool run() {
+		StringStream stream;
+
+		auto now = Time::now();
+
+		bool success = true;
+
+		for (int i = 0; i <= 10; ++ i) {
+			auto t = now + TimeInterval::milliseconds( (i == 0) ? 0 : rand());
+
+			auto ctime = t.toCTime();
+			auto http = t.toHttp();
+
+			auto t1 = Time::fromHttp(http);
+			auto t2 = Time::fromRfc(ctime);
+
+			stream << "\n\t" << t.toSeconds() << " | Rfc822: " << http << " | " << t1.toSeconds() << " " << (t1.toSeconds() == t.toSeconds());
+			stream << " | CTime: " << ctime << " | " << t2.toSeconds() << " " << (t2.toSeconds() == t.toSeconds());
+
+			if (!(t1.toSeconds() == t.toSeconds() && t2.toSeconds() == t.toSeconds())) {
+				success = false;
+			}
+		}
+
+		_desc = stream.str();
+		return success;
+	}
+} _TimeTest;
+
 NS_SP_END
 
 using namespace stappler;
@@ -162,7 +190,7 @@ int _spMain(argc, argv) {
 		std::cout << " Options: " << stappler::data::EncodeFormat::Pretty << opts << "\n";
 	}
 
-	// Test::RunAll();
+	Test::RunAll();
 
 	return 0;
 }

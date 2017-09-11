@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef COMMON_UTILS_SPTIME_H_
 #define COMMON_UTILS_SPTIME_H_
 
-#include "SPCore.h"
+#include "SPCharReader.h"
 
 NS_SP_BEGIN
 
@@ -105,6 +105,9 @@ class Time {
 public:
 	static Time now();
 
+	static Time fromHttp(const StringView &);
+	static Time fromRfc(const StringView &);
+
 	static Time microseconds(uint64_t mksec);
 	static Time milliseconds(uint64_t msec);
 	static Time seconds(time_t sec);
@@ -117,6 +120,27 @@ public:
 	uint64_t msec() const;
 	uint64_t sec() const;
 	float fsec() const;
+
+	template <typename Interface = memory::DefaultInterface>
+	auto toHttp() -> typename Interface::StringType {
+		return toRfc822<Interface>();
+	}
+
+	template <typename Interface = memory::DefaultInterface>
+	auto toRfc822() -> typename Interface::StringType {
+		using StringType = typename Interface::StringType;
+		char buf[30] = { 0 };
+		encodeRfc822(buf);
+		return StringType(buf, 29);
+	}
+
+	template <typename Interface = memory::DefaultInterface>
+	auto toCTime() -> typename Interface::StringType {
+		using StringType = typename Interface::StringType;
+		char buf[25] = { 0 };
+		encodeCTime(buf);
+		return StringType(buf, 24);
+	}
 
 	void setMicroseconds(uint64_t);
 	void setMilliseconds(uint64_t);
@@ -153,6 +177,9 @@ protected:
     friend class TimeInterval;
 
 	explicit Time(uint64_t);
+
+	void encodeRfc822(char *);
+	void encodeCTime(char *);
 
 	uint64_t _value = 0;
 };

@@ -38,7 +38,7 @@ THE SOFTWARE.
 #define SP_NETWORK_THREADS 3
 #endif
 
-NS_SP_BEGIN;
+NS_SP_BEGIN
 
 Thread NetworkTask::_networkThread("NetworkingThread", SP_NETWORK_THREADS);
 
@@ -50,7 +50,7 @@ NetworkTask::NetworkTask() { }
 
 NetworkTask::~NetworkTask() { }
 
-bool NetworkTask::init(Method method, const std::string &url) {
+bool NetworkTask::init(Method method, const String &url) {
 	if (!_handle.init(method, url)) {
 		return false;
 	}
@@ -58,18 +58,35 @@ bool NetworkTask::init(Method method, const std::string &url) {
 	auto dev = Device::getInstance();
 
 	addHeader("X-ApplicationName", dev->getBundleName());
-	addHeader("X-ApplicationVersion", stappler::toString(dev->getApplicationVersionCode()));
+	addHeader("X-ApplicationVersion", toString(dev->getApplicationVersionCode()));
 
     return true;
 }
 
 bool NetworkTask::execute() {
-    bool val = performQuery();
-    if (val) {
-        return Task::execute();
-    } else {
+	if (_mtime > 0) {
+		_handle.addHeader("If-Modified-Since", Time::microseconds(_mtime).toHttp());
+	}
+	if (!_etag.empty()) {
+		_handle.addHeader("If-None-Match", _etag);
+	}
+
+	bool val = performQuery();
+	if (val) {
+		if (_handle.getResponseCode() < 300) {
+			_mtime = Time::fromHttp(getReceivedHeaderString("Last-Modified")).toMicroseconds();
+			_etag = getReceivedHeaderString("ETag");
+		} else {
+			auto f = getReceiveFile();
+			if (!f.empty()) {
+				filesystem::remove(f);
+			}
+		}
+
+		return Task::execute();
+	} else {
 		return false;
-    }
+	}
 }
 
 bool NetworkTask::performQuery() {
@@ -78,7 +95,7 @@ bool NetworkTask::performQuery() {
 	#endif
 
 	if (_handle.getCookieFile().empty()) {
-		std::string cookies("network.cookies");
+		String cookies("network.cookies");
 		if (!ThreadManager::getInstance()->isMainThread()) {
 			auto &local = Thread::getThreadLocalStorage();
 			if (!local.isNull() && local.getBool("managed_thread")) {
@@ -89,7 +106,7 @@ bool NetworkTask::performQuery() {
 						toString(cookies, ".native.", ThreadManager::getInstance()->getNativeThreadId()));
 			}
 		} else {
-			cookies = filesystem::writablePath(std::string(cookies) + ".main");
+			cookies = filesystem::writablePath(String(cookies) + ".main");
 		}
 
 		_handle.setCookieFile(cookies);
@@ -108,11 +125,11 @@ void NetworkTask::setAuthority(const String &user, const String &passwd) {
 	_handle.setAuthority(user, passwd);
 }
 
-void NetworkTask::addHeader(const std::string &header) {
+void NetworkTask::addHeader(const String &header) {
 	_handle.addHeader(header);
 }
 
-void NetworkTask::addHeader(const std::string &header, const std::string &value) {
+void NetworkTask::addHeader(const String &header, const String &value) {
 	_handle.addHeader(header, value);
 }
 
@@ -123,27 +140,27 @@ void NetworkTask::setThreadUploadProgress(const ThreadProgressCallback &callback
 	_handle.setUploadProgress(callback);
 }
 
-void NetworkTask::setReceiveFile(const std::string &str, bool resumeDownload) {
+void NetworkTask::setReceiveFile(const String &str, bool resumeDownload) {
 	_handle.setReceiveFile(str, resumeDownload);
 }
 void NetworkTask::setReceiveCallback(const IOCallback &cb) {
 	_handle.setReceiveCallback(cb);
 }
 
-void NetworkTask::setSendFile(const std::string &str) {
+void NetworkTask::setSendFile(const String &str) {
 	_handle.setSendFile(str);
 }
 void NetworkTask::setSendCallback(const IOCallback &cb, size_t outSize) {
 	_handle.setSendCallback(cb, outSize);
 }
-void NetworkTask::setSendData(const std::string &data) {
+void NetworkTask::setSendData(const String &data) {
 	_handle.setSendData(data);
 }
 void NetworkTask::setSendData(const Bytes &data) {
 	_handle.setSendData(data);
 }
 void NetworkTask::setSendData(Bytes &&data) {
-	_handle.setSendData(std::move(data));
+	_handle.setSendData(move(data));
 }
 void NetworkTask::setSendData(const uint8_t *data, size_t size) {
 	_handle.setSendData(data, size);
@@ -152,11 +169,11 @@ void NetworkTask::setSendData(const data::Value &data, data::EncodeFormat fmt) {
 	_handle.setSendData(data, fmt);
 }
 
-std::string NetworkTask::getReceivedHeaderString(const std::string &h) const {
+String NetworkTask::getReceivedHeaderString(const String &h) const {
 	return _handle.getReceivedHeaderString(h);
 }
 
-int64_t NetworkTask::getReceivedHeaderInt(const std::string &h) const {
+int64_t NetworkTask::getReceivedHeaderInt(const String &h) const {
 	return _handle.getReceivedHeaderInt(h);
 }
 

@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef __chieftime_federal__SPAsset__
-#define __chieftime_federal__SPAsset__
+#ifndef STAPPLER_SRC_FEATURES_NETWORKING_SPASSET_H_
+#define STAPPLER_SRC_FEATURES_NETWORKING_SPASSET_H_
 
 #include "SPEventHeader.h"
 #include "SPEventHandler.h"
@@ -86,7 +86,7 @@ public:
 		Unlocked,
     };
 
-    using DownloadCallback = std::function<bool(Asset *)>;
+    using DownloadCallback = Function<bool(AssetDownload &)>;
 
 public:
 	~Asset();
@@ -101,10 +101,10 @@ public:
 
 	void setDownloadCallback(const DownloadCallback &);
 
-	const std::string &getFilePath() const { return _path; }
-	const std::string &getCachePath() const { return _cachePath; }
-	const std::string &getUrl() const { return _url; }
-    const std::string &getContentType() const { return _contentType; }
+	const String &getFilePath() const { return _path; }
+	const String &getCachePath() const { return _cachePath; }
+	const String &getUrl() const { return _url; }
+    const String &getContentType() const { return _contentType; }
 
     bool isDownloadInProgress() const { return _downloadInProgress; }
 	float getProgress() const { return _progress; }
@@ -112,7 +112,7 @@ public:
 	uint64_t getMTime() const { return _mtime; }
 	uint64_t getId() const { return _id; }
 	size_t getSize() const { return _size; }
-	const std::string getETag() const { return _etag; }
+	const String getETag() const { return _etag; }
 
 	Time getTouch() const { return _touch; }
 	TimeInterval getTtl() const { return _ttl; }
@@ -124,15 +124,13 @@ public:
 	bool isFileExists() const { return _fileExisted; }
 	bool isFileUpdate() const { return _fileUpdate; }
 
-	void onCacheData(uint64_t mtime, size_t size, const std::string &etag, const std::string &ct);
 	void onStarted();
 	void onProgress(float progress);
-	void onCompleted(bool success, const std::string &, const std::string &, bool cacheRequest);
+	void onCompleted(bool success, bool cacheRequest, const String &file, const String &ct, const String &etag, uint64_t mtime, size_t size);
 	void onFile();
 
 	void save();
 	void touch();
-	void syncWithNetwork();
 
 	bool isStorageDirty() const { return _storageDirty; }
 	void setStorageDirty(bool value) { _storageDirty = value; }
@@ -145,24 +143,24 @@ protected:
     Asset(const data::Value &, const DownloadCallback &);
 
     void update(Update);
-    bool swapFiles();
+    bool swapFiles(const String &file, const String &ct, const String &etag, uint64_t mtime, size_t size);
     void touchWithTime(Time t);
 
     virtual void onLocked(Lock) override;
 
 	uint64_t _id = 0;
 
-	std::string _url;
-	std::string _path;
-	std::string _cachePath;
-	std::string _contentType;
+	String _url;
+	String _path;
+	String _cachePath;
+	String _contentType;
 
 	Time _touch;
 	TimeInterval _ttl;
 
 	uint64_t _mtime = 0;
 	size_t _size = 0;
-	std::string _etag;
+	String _etag;
 
 	float _progress = 0;
 
@@ -174,7 +172,7 @@ protected:
 	bool _downloadInProgress = false;
 	bool _fileUpdate = false;
 
-	std::string _tempPath; // if set - we should swap files on write lock or in destructor
+	String _tempPath; // if set - we should swap files on write lock or in destructor
 	DownloadCallback _downloadFunction = nullptr;
 
 	data::Value _data;
@@ -182,4 +180,4 @@ protected:
 
 NS_SP_END
 
-#endif /* defined(__chieftime_federal__SPAsset__) */
+#endif /* STAPPLER_SRC_FEATURES_NETWORKING_SPASSET_H_ */

@@ -104,7 +104,7 @@ void AssetLibrary::init() {
 				return;
 			}
 
-			data = std::move(d);
+			data = move(d);
 		})->filterBy("download", 1)->perform();
 
 		restoreDownloads(data, *downloads);
@@ -112,7 +112,7 @@ void AssetLibrary::init() {
 		return true;
 	}, [this, downloads] (const Task &, bool) {
 		for (auto &it : *downloads) {
-			_assets.insert(std::make_pair(it.first->getId(), it.first));
+			_assets.insert(pair(it.first->getId(), it.first));
 			_downloads.emplace(it.first, it.second);
 			startDownload(it.second);
 		}
@@ -262,7 +262,7 @@ void AssetLibrary::setServerDate(const Time &serv) {
 	d.setInteger(_correctionTime.toMicroseconds(), "time");
 	d.setInteger(_correctionNegative, "negative");
 
-	storage::set("SP.AssetLibrary.Time", std::move(d), nullptr, getAssetStorage());
+	storage::set("SP.AssetLibrary.Time", move(d), nullptr, getAssetStorage());
 }
 
 bool AssetLibrary::getAsset(const AssetCallback &cb, const String &url,
@@ -285,7 +285,7 @@ bool AssetLibrary::getAsset(const AssetCallback &cb, const String &url,
 	} else {
 		CallbackVec vec;
 		vec.push_back(cb);
-		_callbacks.insert(std::make_pair(id, std::move(vec)));
+		_callbacks.insert(pair(id, move(vec)));
 
 		auto &thread = storage::thread(getAssetStorage());
 		Asset ** assetPtr = new (Asset *) (nullptr);
@@ -293,7 +293,7 @@ bool AssetLibrary::getAsset(const AssetCallback &cb, const String &url,
 			data::Value data;
 			_assetsClass.get([&data] (data::Value &&d) {
 				if (d.isArray() && d.size() > 0) {
-					data = std::move(d.getValue(0));
+					data = move(d.getValue(0));
 				}
 			})->select(id)->perform();
 
@@ -328,14 +328,14 @@ AssetLibrary::AssetRequest::AssetRequest(const AssetCallback &cb, const String &
 : callback(cb), id(AssetLibrary::getInstance()->getAssetId(url, path))
 , url(url), path(path), ttl(ttl), cacheDir(cacheDir), download(dcb) { }
 
-bool AssetLibrary::getAssets(const std::vector<AssetRequest> &vec, const AssetVecCallback &cb) {
+bool AssetLibrary::getAssets(const Vector<AssetRequest> &vec, const AssetVecCallback &cb) {
 	if (!_loaded) {
 		if (!cb) {
 			for (auto &it : vec) {
 				_tmpRequests.push_back(it);
 			}
 		} else {
-			_tmpMultiRequest.push_back(std::make_pair(vec, cb));
+			_tmpMultiRequest.push_back(pair(vec, cb));
 		}
 		return true;
 	}
@@ -371,7 +371,7 @@ bool AssetLibrary::getAssets(const std::vector<AssetRequest> &vec, const AssetVe
 			} else {
 				CallbackVec vec;
 				vec.push_back(it.callback);
-				_callbacks.insert(std::make_pair(id, std::move(vec)));
+				_callbacks.insert(pair(id, move(vec)));
 				requests->push_back(it);
 			}
 		}
@@ -418,7 +418,7 @@ void AssetLibrary::performGetAssets(AssetVec &assetsVec, const Vector<AssetReque
 	data::Value data;
 	auto cmd = _assetsClass.get([&data] (data::Value &&d) {
 		if (d.isArray() && d.size() > 0) {
-			data = std::move(d);
+			data = move(d);
 		}
 	});
 	for (auto &it : requests) {
@@ -426,11 +426,11 @@ void AssetLibrary::performGetAssets(AssetVec &assetsVec, const Vector<AssetReque
 	}
 	cmd->perform();
 
-	std::map<uint64_t, data::Value> dataMap;
+	Map<uint64_t, data::Value> dataMap;
 	if (data) {
 		for (auto &it : data.asArray()) {
 			auto id = it.getInteger("id");
-			dataMap.insert(std::make_pair(id, std::move(it)));
+			dataMap.insert(pair(id, move(it)));
 		}
 	}
 
@@ -448,7 +448,7 @@ void AssetLibrary::performGetAssets(AssetVec &assetsVec, const Vector<AssetReque
 			rdata.setInteger(getCorrectTime().toMicroseconds(), "touch");
 			data.addValue(rdata);
 		} else {
-			rdata = std::move(dataIt->second);
+			rdata = move(dataIt->second);
 		}
 
 		if (rdata.isDictionary()) {
@@ -461,7 +461,7 @@ void AssetLibrary::performGetAssets(AssetVec &assetsVec, const Vector<AssetReque
 	}
 
 	if (data.size() > 0) {
-		 _assetsClass.insert(std::move(data))->perform();
+		 _assetsClass.insert(move(data))->perform();
 	}
 }
 
@@ -472,7 +472,7 @@ Asset *AssetLibrary::acquireLiveAsset(const String &url, const String &path) {
 
 void AssetLibrary::onAssetCreated(Asset *asset) {
 	if (asset) {
-		_assets.insert(std::make_pair(asset->getId(), asset));
+		_assets.insert(pair(asset->getId(), asset));
 		auto it = _callbacks.find(asset->getId());
 		if (it != _callbacks.end()) {
 			for (auto &cb : it->second) {
@@ -492,17 +492,19 @@ void AssetLibrary::removeAsset(Asset *asset) {
 	}
 }
 
-bool AssetLibrary::downloadAsset(Asset *asset) {
+AssetDownload * AssetLibrary::downloadAsset(Asset *asset) {
 	auto it = _downloads.find(asset);
 	if (it == _downloads.end()) {
 		if (Device::getInstance()->isNetworkOnline()) {
 			auto d = Rc<AssetDownload>::create(asset, getTempPath(asset->getFilePath()));
 			_downloads.emplace(asset, d);
 			startDownload(d);
-			return true;
+			return d;
 		}
+		return nullptr;
+	} else {
+		return it->second;
 	}
-	return false;
 }
 
 void AssetLibrary::touchAsset(Asset *asset) {
@@ -526,7 +528,7 @@ void AssetLibrary::saveAsset(Asset *asset) {
 	val.setString(asset->getETag(), "etag");
 	val.setString(data::toString(asset->getData()), "data");
 
-	_assetsClass.insert(std::move(val))->perform();
+	_assetsClass.insert(move(val))->perform();
 
 	asset->setStorageDirty(false);
 }

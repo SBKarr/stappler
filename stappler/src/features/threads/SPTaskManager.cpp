@@ -156,8 +156,9 @@ class TaskManager::Worker : public ThreadHandlerInterface {
 public:
 	Worker(TaskQueue *queue, uint32_t threadId, uint32_t workerId, const std::string &name)
 	: _queue(queue), _refCount(1), _shouldQuit() , _managerId(threadId)
-	, _workerId(workerId), _name(name), _pool(memory::pool::create(memory::pool::acquire())) {
+	, _workerId(workerId), _name(name) {
 		memory::pool::initialize();
+		_pool = memory::pool::create(nullptr);
 		_queue->retain();
 	}
 

@@ -29,6 +29,7 @@ THE SOFTWARE.
 #include "InputFilter.h"
 #include "Session.h"
 #include "User.h"
+#include "Output.h"
 #include "StorageScheme.h"
 #include "StorageFile.h"
 #include "SPFilesystem.h"
@@ -203,18 +204,6 @@ Resource *ResourceHandler::getResource(Request &rctx) {
 	return Resource::resolve(rctx.storage(), _scheme, _subPath, _value, _transform);
 }
 
-void ResourceHandler::setFileParams(Request &rctx, const data::Value &file) {
-	auto h = rctx.getResponseHeaders();
-	h.emplace("X-FileModificationTime", apr_psprintf(h.get_allocator(), "%ld", file.getInteger("mtime")));
-	h.emplace("X-FileSize", apr_psprintf(h.get_allocator(), "%ld", file.getInteger("size")));
-	h.emplace("X-FileId", apr_psprintf(h.get_allocator(), "%ld",  file.getInteger("__oid")));
-	if (file.isString("location")) {
-		h.emplace("X-FileLocation", apr_psprintf(h.get_allocator(), "%s", file.getString("location").c_str()));
-	}
-	h.emplace("Content-Type", file.getString("type"));
-	rctx.setContentType(String(file.getString("type")));
-}
-
 void ResourceHandler::performApiObject(Request &rctx, const storage::Scheme &scheme, data::Value &obj) {
 	auto id = obj.getInteger("__oid");
 	auto path = rctx.server().getResourcePath(_scheme);
@@ -297,7 +286,17 @@ int ResourceHandler::writeInfoToReqest(Request &rctx) {
 			return HTTP_NOT_FOUND;
 		}
 
-		setFileParams(rctx, file);
+		auto path = storage::File::getFilesystemPath((uint64_t)file.getInteger("__oid"));
+		auto &loc = file.getString("location");
+
+		if (!filesystem::exists(path) && loc.empty()) {
+			return HTTP_NOT_FOUND;
+		}
+
+		if (!output::writeFileHeaders(rctx, file)) {
+			return HTTP_NOT_MODIFIED;
+		}
+
 		return DONE;
 	}
 
@@ -318,7 +317,10 @@ int ResourceHandler::writeToRequest(Request &rctx) {
 
 			auto &loc = file.getString("location");
 			if (filesystem::exists(path) && loc.empty()) {
-				rctx.setContentType(String(file.getString("type")));
+				if (!output::writeFileHeaders(rctx, file)) {
+					return HTTP_NOT_MODIFIED;
+				}
+
 				rctx.setFilename(std::move(path));
 				return OK;
 			}

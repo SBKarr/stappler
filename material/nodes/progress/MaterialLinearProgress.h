@@ -33,9 +33,6 @@ public:
 	virtual bool init() override;
 	virtual void onContentSizeDirty() override;
 
-	virtual void setDeterminate(bool value);
-	virtual bool isDeterminate() const;
-
 	virtual void setAnimated(bool value);
 	virtual bool isAnimated() const;
 
@@ -52,13 +49,10 @@ protected:
 	virtual void layoutSubviews();
 
 	bool _animated = false;
-	bool _determinate = true;
-
 	float _progress = 0.0f;
 
 	stappler::Layer *_line = nullptr;
 	stappler::Layer *_bar = nullptr;
-	stappler::Layer *_secondaryBar = nullptr;
 };
 
 NS_MD_END

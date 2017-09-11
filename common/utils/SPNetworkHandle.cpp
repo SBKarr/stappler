@@ -217,7 +217,7 @@ NetworkHandle::NetworkHandle() {
     _error = CURLE_OK;
 
 #ifdef LINUX
-    _rootCertFile = "/etc/ssl//certs/";
+    _rootCertFile = "/etc/ssl/certs/";
 #endif
 }
 
@@ -645,7 +645,7 @@ bool NetworkHandle::perform() {
 				}
 	        }
 
-			if (_responseCode >= 200 && _responseCode < 300) {
+			if (_responseCode >= 200 && _responseCode < 400) {
 				success = true;
 			} else {
 				success = false;

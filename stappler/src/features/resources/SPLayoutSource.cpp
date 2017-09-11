@@ -188,7 +188,7 @@ void Source::onDocumentAsset(Asset *a) {
 	_documentAsset = a;
 	if (_documentAsset) {
 		_loadedAssetMTime = 0;
-		_documentAsset->syncWithNetwork();
+		_documentAsset->download();
 		onDocumentAssetUpdated(data::Subscription::Flag((uint8_t)Asset::FileUpdated));
 	}
 }

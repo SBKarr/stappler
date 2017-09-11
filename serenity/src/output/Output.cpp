@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "Define.h"
 #include "Output.h"
 #include "StorageScheme.h"
+#include "StorageFile.h"
 
 NS_SA_EXT_BEGIN(output)
 
@@ -369,4 +370,52 @@ void writeData(Request &rctx, std::basic_ostream<char> &stream, const Function<v
 	}
 	stream.flush();
 }
+
+bool writeFileHeaders(Request &rctx, const data::Value &file, const String &convertType) {
+	auto req = rctx.request();
+	auto path = storage::File::getFilesystemPath(file.getInteger("__oid"));
+
+	req->filename = storage::File::getFilesystemPath(file.getInteger("__oid")).extract();
+
+	apr_stat(&req->finfo, req->filename, APR_FINFO_NORM, req->pool);
+	req->mtime = req->finfo.mtime;
+
+	ap_set_etag(req);
+
+	auto h = rctx.getResponseHeaders();
+	const auto tag = h.at("etag");
+
+	auto req_h = rctx.getRequestHeaders();
+	const String match = req_h.at("if-none-match");
+	const String modified = req_h.at("if-modified-since");
+	if (!match.empty() && !modified.empty()) {
+		if (tag == match && Time::fromHttp(modified).toSeconds() >= Time::microseconds(req->mtime).toSeconds()) {
+			return false;
+		}
+	} else if (!match.empty() && tag == match) {
+		return false;
+	} else if (!modified.empty() && Time::fromHttp(modified).toSeconds() >= Time::microseconds(req->mtime).toSeconds()) {
+		return false;
+	}
+
+	ap_set_last_modified(req);
+
+	h.emplace("X-FileModificationTime", toString(file.getInteger("mtime")));
+
+	if (file.isString("location")) {
+		h.emplace("X-FileLocation", file.getString("location"));
+	}
+	if (!convertType.empty()) {
+		rctx.setContentType(String(convertType));
+	} else {
+		h.emplace("X-FileSize", toString(file.getInteger("size")));
+		if (rctx.isHeaderRequest()) {
+			h.emplace("Content-Length", toString(req->finfo.size));
+		}
+		rctx.setContentType(String(file.getString("type")));
+	}
+
+	return true;
+}
+
 NS_SA_EXT_END(output)

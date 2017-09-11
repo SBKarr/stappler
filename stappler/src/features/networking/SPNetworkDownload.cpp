@@ -31,11 +31,11 @@ THE SOFTWARE.
 
 #include "platform/CCFileUtils.h"
 
-USING_NS_SP;
+NS_SP_BEGIN
 
 NetworkDownload::NetworkDownload() { }
 
-bool NetworkDownload::init(const std::string &url, const std::string &fileName) {
+bool NetworkDownload::init(const String &url, const String &fileName) {
     if (!NetworkTask::init(Method::Get, url)) {
         return false;
     }
@@ -107,3 +107,5 @@ void NetworkDownload::setProgressCallback(ProgressCallback func) {
 void NetworkDownload::setCompletedCallback(CompletedCallback func) {
 	_onCompleted = func;
 }
+
+NS_SP_END

@@ -75,6 +75,21 @@ NS_SP_END
 
 NS_SP_EXT_BEGIN(chars)
 
+template <typename CharType>
+bool isupper(CharType);
+
+template <typename CharType>
+bool islower(CharType);
+
+template <typename CharType>
+bool isdigit(CharType);
+
+template <typename CharType>
+bool isxdigit(CharType);
+
+template <typename CharType>
+bool isspace(CharType);
+
 /* Inlined templates for char-matching
  *
  * Chars < valiable-length-char-list > - matched every character in list
@@ -548,6 +563,31 @@ template <typename CharType, typename Func, typename T, typename T1, typename ..
 inline void MatchTraits::_foreachCompose(const Func &f) {
 	_foreachCompose<CharType, Func, T>(f);
 	_foreachCompose<CharType, Func, T1, Args...>(f);
+}
+
+template <typename CharType>
+inline bool isupper(CharType c) {
+	return CharGroup<CharType, GroupId::LatinUppercase>::match(c);
+}
+
+template <typename CharType>
+inline bool islower(CharType c) {
+	return CharGroup<CharType, GroupId::LatinLowercase>::match(c);
+}
+
+template <typename CharType>
+inline bool isdigit(CharType c) {
+	return CharGroup<CharType, GroupId::Numbers>::match(c);
+}
+
+template <typename CharType>
+inline bool isxdigit(CharType c) {
+	return CharGroup<CharType, GroupId::Hexadecimial>::match(c);
+}
+
+template <typename CharType>
+bool isspace(CharType c) {
+	return CharGroup<CharType, GroupId::WhiteSpace>::match(c);
 }
 
 NS_SP_EXT_END(chars)

@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -132,12 +132,16 @@ Asset::Asset(const data::Value &val, const DownloadCallback &dcb) {
 		}
 	}
 
+	if (!_cachePath.empty()) {
+		filesystem::mkdir_recursive(_cachePath);
+	}
+
 	_downloadFunction = dcb;
 
 	retain();
 	Thread::onMainThread([this] {
 		if (_fileExisted) {
-			syncWithNetwork();
+			download();
 		}
 		release();
 	});
@@ -148,21 +152,17 @@ Asset::~Asset() {
 }
 
 bool Asset::download() {
-	auto tmpPath = AssetLibrary::getInstance()->getTempPath(_path);
-	filesystem::mkdir_recursive(filepath::root(tmpPath));
-	if (_downloadFunction) {
-		if (_downloadFunction(this)) {
+	if (!_downloadInProgress) {
+		auto tmpPath = AssetLibrary::getInstance()->getTempPath(_path);
+		filesystem::mkdir_recursive(filepath::root(tmpPath));
+		if (auto d = AssetLibrary::getInstance()->downloadAsset(this)) {
+			if (_downloadFunction) {
+				_downloadFunction(*d);
+			}
 			_downloadInProgress = true;
-			_unupdated = true;
-			_progress = 0;
-			touch();
-			update(Update::DownloadStarted);
-			return true;
-		}
-	} else {
-		if (AssetLibrary::getInstance()->downloadAsset(this)) {
-			_downloadInProgress = true;
-			_unupdated = true;
+			if (!_fileExisted) {
+				_unupdated = true;
+			}
 			_progress = 0;
 			touch();
 			return true;
@@ -205,18 +205,6 @@ void Asset::setDownloadCallback(const DownloadCallback &cb) {
 	_downloadFunction = cb;
 }
 
-void Asset::onCacheData(uint64_t mtime, size_t size, const std::string &etag, const std::string &ct) {
-	if (mtime != _mtime || _size != size || (!etag.empty() && etag != _etag)) {
-		_unupdated = true;
-	}
-	_mtime = mtime;
-	_size = size;
-	if (!etag.empty()) {
-		_etag = etag;
-	}
-	_storageDirty = true;
-	save();
-}
 void Asset::onStarted() {
 	_downloadInProgress = true;
 	update(Update::DownloadStarted);
@@ -225,22 +213,27 @@ void Asset::onProgress(float progress) {
 	_progress = progress;
 	update(Update::DownloadProgress);
 }
-void Asset::onCompleted(bool success, const std::string &str, const std::string &ct, bool cacheRequest) {
+void Asset::onCompleted(bool success, bool cacheRequest, const String &file, const String &ct, const String &etag, uint64_t mtime, size_t size) {
 	if (!cacheRequest) {
 		_downloadInProgress = false;
 		if (success) {
-			_tempPath = str;
-			_contentType = ct;
-			swapFiles();
+			if (!file.empty()) {
+				swapFiles(file, ct, etag, mtime, size);
+			} else {
+				_unupdated = false;
+				touch();
+			}
 			update(Update::DownloadSuccessful);
 		} else {
-			filesystem::remove(str);
+			_unupdated = true;
+			filesystem::remove(file);
 			update(Update::DownloadFailed);
 			save();
 		}
 		update(Update::DownloadCompleted);
 	} else {
-		if (success && _unupdated && _fileExisted) {
+		if (success && _fileExisted) {
+			_unupdated = true;
 			download();
 		}
 	}
@@ -255,25 +248,31 @@ void Asset::update(Update u) {
 	setDirty(Subscription::Flag((uint8_t)u));
 }
 
-bool Asset::swapFiles() {
-	if (!_tempPath.empty() && filesystem::exists(_tempPath)) {
-		std::string tmp = _tempPath;
-		_tempPath.clear();
+bool Asset::swapFiles(const String &file, const String &ct, const String &etag, uint64_t mtime, size_t size) {
+	if (!file.empty() && filesystem::exists(file)) {
 		_waitFileSwap = true;
-		retainWriteLock((LockPtr)this, [this, tmp] {
+		retainWriteLock((LockPtr)this, [this, file, ct, etag, mtime, size] {
 			_fileUpdate = true;
+			String original = _path;
+			String cache = _cachePath;
 			auto &thread = storage::thread();
-			thread.perform([this, tmp] (const Task &) -> bool {
-				filesystem::remove(_path);
-				if (!_cachePath.empty()) {
-					filesystem::remove(_cachePath, true, true);
+			thread.perform([this, original, cache, file] (const Task &) -> bool {
+				filesystem::remove(original);
+				if (!cache.empty()) {
+					filesystem::remove(cache, true, true);
 				}
-				return filesystem::move(tmp, _path);
-			}, [this] (const Task &, bool) {
+				return filesystem::move(file, original);
+			}, [this, original, ct, etag, mtime, size] (const Task &, bool) {
 				_fileUpdate = false;
 				_unupdated = false;
 				_waitFileSwap = false;
-				_fileExisted = filesystem::exists(_path);
+				_fileExisted = filesystem::exists(original);
+
+				_contentType = ct;
+				_etag = etag;
+				_mtime = mtime;
+				_size = (size == 0) ? filesystem::size(original) : size;
+
 				touch();
 				releaseWriteLock(this);
 				onFile();
@@ -306,11 +305,6 @@ void Asset::save() {
 
 void Asset::touch() {
 	AssetLibrary::getInstance()->touchAsset(this);
-}
-
-void Asset::syncWithNetwork() {
-	auto d = Rc<AssetDownload>::create(this, AssetDownload::CacheRequest);
-	d->run();
 }
 
 Rc<AssetFile> Asset::cloneFile() {

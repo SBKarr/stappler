@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,46 +20,33 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef __stappler__SPAssetDownload__
-#define __stappler__SPAssetDownload__
+#ifndef STAPPLER_SRC_FEATURES_NETWORKING_SPASSETDOWNLOAD_H_
+#define STAPPLER_SRC_FEATURES_NETWORKING_SPASSETDOWNLOAD_H_
 
 #include "SPNetworkDownload.h"
 #include "SPAsset.h"
 
 NS_SP_BEGIN
 
-class AssetDownload : public NetworkDownload {
+class AssetDownload: public NetworkDownload {
 public:
-    enum CacheRequestType {
-    	CacheRequest
-    };
+	enum CacheRequestType {
+		CacheRequest
+	};
 
-    virtual bool init(Asset *, CacheRequestType);
-    virtual bool init(Asset *, const std::string &);
+	virtual bool init(Asset *, CacheRequestType);
+	virtual bool init(Asset *, const String &);
 
+	virtual ~AssetDownload();
 
-    virtual ~AssetDownload();
+	Asset *getAsset() const { return _asset; }
+	bool isCacheRequest() const { return _cacheRequest; }
 
-    virtual bool execute() override;
-    virtual bool performQuery() override;
+	virtual bool execute() override;
 
-    enum class Validation {
-    	Valid,
-		Invalid,
-		NotSupported,
-		Unavailable,
-    };
-
-    Validation validateDownload(bool fileOnly = false, bool bind = false);
-	void updateCache(bool bind);
-
-    Asset *getAsset() const { return _asset; }
-    bool isCacheRequest() const { return _cacheRequest; }
-
-    virtual void notifyOnCacheData(uint64_t, size_t, const std::string &, const std::string &ct, bool bind = false);
-    virtual void notifyOnStarted(bool bind = false) override;
-    virtual void notifyOnProgress(float progress, bool bind = false) override;
-    virtual void notifyOnComplete(bool success, bool bind = false) override;
+	virtual void notifyOnStarted(bool bind = false) override;
+	virtual void notifyOnProgress(float progress, bool bind = false) override;
+	virtual void notifyOnComplete(bool success, bool bind = false) override;
 protected:
 
 	bool executeLoop();
@@ -70,4 +57,4 @@ protected:
 
 NS_SP_END
 
-#endif /* defined(__stappler__SPAssetDownload__) */
+#endif /* STAPPLER_SRC_FEATURES_NETWORKING_SPASSETDOWNLOAD_H_ */

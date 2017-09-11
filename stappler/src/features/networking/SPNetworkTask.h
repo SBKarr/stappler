@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef __chiertime_federal__SPNetworkTask__
-#define __chiertime_federal__SPNetworkTask__
+#ifndef STAPPLER_SRC_FEATURES_NETWORKING_SPNETWORKTASK_H_
+#define STAPPLER_SRC_FEATURES_NETWORKING_SPNETWORKTASK_H_
 
 #include "SPTask.h"
 #include "SPThread.h"
@@ -33,8 +33,8 @@ class NetworkTask : public Task {
 public:
 	using Method = NetworkHandle::Method;
 
-	typedef std::function<int(int64_t, int64_t)> ThreadProgressCallback;
-	typedef std::function<size_t(char *data, size_t size)> IOCallback;
+	using ThreadProgressCallback = NetworkHandle::ProgressCallback;
+	using IOCallback = NetworkHandle::IOCallback;
 
 	static Thread &thread();
 
@@ -42,7 +42,7 @@ public:
     NetworkTask();
     virtual ~NetworkTask();
 
-    virtual bool init(Method method, const std::string &url);
+    virtual bool init(Method method, const String &url);
     virtual bool execute() override;
     virtual bool performQuery();
 
@@ -51,42 +51,42 @@ public:
     void setAuthority(const String &user, const String &passwd = String());
 
 	/* Adds HTTP header line to request */
-    void addHeader(const std::string &header);
-    void addHeader(const std::string &header, const std::string &value);
+    void addHeader(const String &header);
+    void addHeader(const String &header, const String &value);
 
-	void setReceiveFile(const std::string &str, bool resumeDownload);
+	void setReceiveFile(const String &str, bool resumeDownload);
 	void setReceiveCallback(const IOCallback &cb);
 
-	void setSendFile(const std::string &str);
+	void setSendFile(const String &str);
 	void setSendCallback(const IOCallback &cb, size_t outSize);
-	void setSendData(const std::string &data);
+	void setSendData(const String &data);
 	void setSendData(const Bytes &data);
 	void setSendData(Bytes &&data);
 	void setSendData(const uint8_t *data, size_t size);
 	void setSendData(const data::Value &, data::EncodeFormat fmt = data::EncodeFormat());
 
     int32_t getResponseCode() const { return (int32_t)_handle.getResponseCode(); }
-	const std::string &getUrl() const { return _handle.getUrl(); }
-    const std::string &getError() const { return _handle.getError(); }
-    const std::string &getContentType() const { return _handle.getContentType(); }
-	const std::vector<std::string> &getRecievedHeaders() const { return _handle.getRecievedHeaders(); }
+	const String &getUrl() const { return _handle.getUrl(); }
+    const String &getError() const { return _handle.getError(); }
+    const String &getContentType() const { return _handle.getContentType(); }
+	const Vector<String> &getRecievedHeaders() const { return _handle.getRecievedHeaders(); }
 
-	const std::string &getSendFile() const { return _handle.getSendFile(); }
-	const std::string &getReceiveFile() const { return _handle.getReceiveFile(); }
+	const String &getSendFile() const { return _handle.getSendFile(); }
+	const String &getReceiveFile() const { return _handle.getReceiveFile(); }
 
 	void setDebug(bool value) { _handle.setDebug(value); }
-	const std::stringstream &getDebugData() const { return _handle.getDebugData(); }
+	const StringStream &getDebugData() const { return _handle.getDebugData(); }
 
-	std::string getReceivedHeaderString(const std::string &h) const;
-	int64_t getReceivedHeaderInt(const std::string &h) const;
+	String getReceivedHeaderString(const String &h) const;
+	int64_t getReceivedHeaderInt(const String &h) const;
 
 	size_t getSize() const { return _size; }
 	int64_t getMTime() const { return _mtime; }
-	const std::string &getETag() const { return _etag; }
+	const String &getETag() const { return _etag; }
 
 	void setSize(size_t val) { _size = val; }
 	void setMTime(int64_t val) { _mtime = val; }
-	void setETag(const std::string &val) { _etag = val; }
+	void setETag(const String &val) { _etag = val; }
 
 	NetworkHandle & getHandle() { return _handle; }
 	const NetworkHandle & getHandle() const { return _handle; }
@@ -96,7 +96,7 @@ protected:
 
 	uint64_t _mtime = 0;
 	size_t _size = 0;
-	std::string _etag;
+	String _etag;
 
     void setThreadDownloadProgress(const ThreadProgressCallback &callback);
     void setThreadUploadProgress(const ThreadProgressCallback &callback);
@@ -108,4 +108,4 @@ protected:
 
 NS_SP_END
 
-#endif /* defined(__chiertime_federal__SPNetworkTask__) */
+#endif /* STAPPLER_SRC_FEATURES_NETWORKING_SPNETWORKTASK_H_ */

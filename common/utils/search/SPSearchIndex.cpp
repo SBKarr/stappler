@@ -70,8 +70,6 @@ void SearchIndex::add(const StringView &v, int64_t id, int64_t tag) {
 	} else if (canonical != origin) {
 		node.alignment = Distance(origin, canonical);
 	}
-
-	std::cout << v << "\n" << node.canonical << "\n" << node.alignment.info() << "\n";
 }
 
 SearchIndex::Result SearchIndex::performSearch(const StringView &v, size_t minMatch, const HeuristicCallback &cb) {

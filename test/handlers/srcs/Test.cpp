@@ -64,6 +64,7 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 			Field::Array("strings", Field::Text("")),
 		}),
 		Field::Set("subobjects", _subobjects),
+		Field::File("image", MaxFileSize(1_MiB)),
 		Field::Text("alias", storage::Transform::Alias),
 		Field::Integer("mtime", storage::Flags::AutoMTime | storage::Flags::Indexed),
 		Field::Integer("index", storage::Flags::Indexed),
@@ -77,6 +78,7 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 		Field::Integer("index", storage::Flags::Indexed),
 		Field::File("file", MaxFileSize(100_KiB)),
 		Field::Array("array", Field::Text("", storage::MaxLength(10))),
+		Field::Object("objectRef", _objects, Flags::Reference),
 
 		Field::Image("cover", storage::MaxImageSize(1080, 1080, storage::ImagePolicy::Resize), Vector<storage::Thumbnail>{
 			storage::Thumbnail("thumb", 160, 160),

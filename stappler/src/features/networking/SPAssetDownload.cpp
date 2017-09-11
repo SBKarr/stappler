@@ -34,7 +34,7 @@ THE SOFTWARE.
 NS_SP_BEGIN
 
 bool AssetDownload::init(Asset *a, CacheRequestType) {
-	if (!NetworkDownload::init(a->getUrl(), "")) {
+	if (!NetworkTask::init(Method::Head, a->getUrl())) {
 		return false;
 	}
 
@@ -42,26 +42,39 @@ bool AssetDownload::init(Asset *a, CacheRequestType) {
 	_asset = a;
 
 	_size = a->getSize();
-	_mtime = a->getMTime();
-	_etag = a->getETag();
+	if (a->isFileExists()) {
+		_mtime = a->getMTime();
+		_etag = a->getETag();
+	}
+
+	if (a->isFileExists()) {
+		if (_mtime > 0) {
+			_handle.addHeader("If-Modified-Since", Time::microseconds(_mtime).toHttp());
+		}
+		if (!_etag.empty()) {
+			_handle.addHeader("If-None-Match", _etag);
+		}
+	}
 
 	return true;
 }
 
 AssetDownload::~AssetDownload() { }
 
-bool AssetDownload::init(Asset *h, const std::string &file) {
-	if (!NetworkDownload::init(h->getUrl(), file)) {
+bool AssetDownload::init(Asset *a, const String &file) {
+	if (!NetworkDownload::init(a->getUrl(), file)) {
 		return false;
 	}
 
-	_asset = h;
+	_asset = a;
 
 	setReceiveFile(file, true);
 
-	_size = h->getSize();
-	_mtime = h->getMTime();
-	_etag = h->getETag();
+	_size = a->getSize();
+	if (a->isFileExists()) {
+		_mtime = a->getMTime();
+		_etag = a->getETag();
+	}
 
 	setThreadDownloadProgress([this] (int64_t total, int64_t now) -> int {
 		float progress = (float)(now) / (float)(total);
@@ -73,110 +86,19 @@ bool AssetDownload::init(Asset *h, const std::string &file) {
 }
 
 bool AssetDownload::execute() {
-	return executeLoop();
-}
-
-AssetDownload::Validation AssetDownload::validateDownload(bool fileOnly, bool bind) {
-	auto savedMethod = _handle.getMethod();
-	auto ret = Validation::Unavailable;
-	_handle.init(Method::Head, getUrl());
-	if (performQuery()) {
-		ret = Validation::Invalid;
-		uint64_t mtimeVal = (uint64_t)getReceivedHeaderInt("X-FileModificationTime");
-		size_t sizeVal = (size_t)getReceivedHeaderInt("X-FileSize");
-		std::string etag = getReceivedHeaderString("ETag");
-
-		if ((mtimeVal == 0 || sizeVal == 0) && etag.empty()) {
-			//logTag("AssetDownload", "server does not support preflight requests for url: %s", _url.c_str());
-			_handle.init(savedMethod, getUrl());
-			return Validation::NotSupported;
-		}
-
-		if (((!_etag.empty() && !etag.empty() && _etag != etag) || _size != sizeVal || _mtime != mtimeVal) && !fileOnly) {
-			//logTag("AssetDownload", "saved file is not valid");
-			_handle.setResumeDownload(false);
-
-			_size = sizeVal;
-			_mtime = mtimeVal;
-			if (!etag.empty()) {
-				_etag = etag;
-			}
-
-			notifyOnCacheData(_mtime, _size, _etag, getContentType(), bind);
-		} else {
-			if (fileOnly) {
+	if (NetworkDownload::execute()) {
+		if (_handle.getResponseCode() < 300) {
+			size_t sizeVal = (size_t)getReceivedHeaderInt("X-FileSize");
+			if (sizeVal) {
 				_size = sizeVal;
-				_mtime = mtimeVal;
-				if (!etag.empty()) {
-					_etag = etag;
-				}
-
-				notifyOnCacheData(_mtime, _size, _etag, getContentType(), bind);
 			}
-			if (_size != 0) {
-				auto size = filesystem::size(getReceiveFile());
-				if (size == _size) {
-					_handle.init(savedMethod, getUrl());
-					return Validation::Valid; // download completed and valid
-				}
-			} else {
-				_handle.init(savedMethod, getUrl());
-				return Validation::Valid; // download completed and valid
-			}
-		}
-	}
-	_handle.init(savedMethod, getUrl());
-	return ret;
-}
-
-void AssetDownload::updateCache(bool bind) {
-	auto task = new NetworkTask;
-	task->init(NetworkTask::Method::Head, getUrl());
-	task->performQuery();
-
-	auto mtime = (uint64_t)task->getReceivedHeaderInt("X-FileModificationTime");
-	auto size = (size_t)task->getReceivedHeaderInt("X-FileSize");
-	auto etag = task->getReceivedHeaderString("ETag");
-	auto ct = task->getReceivedHeaderString("Content-Type");
-
-	notifyOnCacheData(mtime, size, etag, ct, bind);
-	task->release();
-}
-
-bool AssetDownload::executeLoop() {
-	_handle.init(Method::Get, getUrl());
-	auto validate = validateDownload();
-	if (validate == Validation::Unavailable) {
-		return false;
-	}
-	if (!_cacheRequest) {
-		if (validate == Validation::NotSupported) {
-			notifyOnStarted();
-			return performQuery();
-		} else if (validate == Validation::Invalid) {
-			notifyOnStarted();
-			if (performQuery()) {
-				if (filesystem::exists(getReceiveFile())) {
-					return executeLoop();
-				}
-			} else {
-				log::format("CURL", "fail to asset download %s", _handle.getUrl().data());
-				return false;
-			}
-		} else if (validate == Validation::Valid) {
 			return true;
+		} else {
+			// cache request successful when not 304
+			return !_cacheRequest;
 		}
-
-		return false;
-	} else {
-		return true;
 	}
-}
-
-void AssetDownload::notifyOnCacheData(uint64_t id, size_t size, const std::string &etag, const std::string &ct, bool bind) {
-	Thread::onMainThread([this, id, size, etag, ct] () {
-		_asset->onCacheData(id, size, etag, ct);
-	}, bind ? this : nullptr);
+	return false;
 }
 
 void AssetDownload::notifyOnStarted(bool bind) {
@@ -197,17 +119,16 @@ void AssetDownload::notifyOnProgress(float progress, bool bind) {
 }
 void AssetDownload::notifyOnComplete(bool success, bool bind) {
 	auto ct = getReceivedHeaderString("Content-Type");
-	Thread::onMainThread([this, success, ct] () {
+	auto mtime = _mtime;
+	auto etag = _etag;
+	auto size = _size;
+	auto file = (_handle.getResponseCode() < 300) ? getReceiveFile() : String();
+	Thread::onMainThread([this, success, file, ct, mtime, etag, size] () {
 		if (_onCompleted) {
 			_onCompleted(this, success);
 		}
-		_asset->onCompleted(success, getReceiveFile(), ct, _cacheRequest);
+		_asset->onCompleted(success, _cacheRequest, file, ct, etag, mtime, size);
 	}, bind ? this : nullptr);
-}
-
-bool AssetDownload::performQuery() {
-	// bypass NetworkDownload's behavior
-	return NetworkTask::performQuery();
 }
 
 NS_SP_END
