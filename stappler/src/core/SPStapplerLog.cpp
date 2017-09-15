@@ -33,7 +33,7 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(log)
 
-using sp_log_fn = void (*) (const char *tag, const char *text, unsigned long len);
+using sp_log_fn = void (*) (const char *tag, const char *text, size_t len);
 
 static sp_log_fn sCustomFn;
 

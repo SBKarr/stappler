@@ -148,6 +148,11 @@ void SearchToolbar::onExit() {
 	ToolbarBase::onExit();
 }
 
+void SearchToolbar::setFont(material::FontType font) {
+	_label->setFont(font);
+	_placeholder->setFont(font);
+}
+
 void SearchToolbar::setTitle(const String &str) {
 	setPlaceholder(str);
 }
@@ -168,9 +173,19 @@ void SearchToolbar::setString(const String &str) {
 		if (_callback) {
 			_callback(_label->getString8());
 		}
+
+		if (!_hasText && !_label->empty()) {
+			_hasText = true;
+			_placeholder->setVisible(false);
+			replaceActionMenuSource(_searchMenu, 2);
+		} else if (_hasText && _label->empty()) {
+			_hasText = false;
+			_placeholder->setVisible(true);
+			replaceActionMenuSource(_commonMenu, 2);
+		}
 	}
 }
-const String &SearchToolbar::setString() const {
+const String &SearchToolbar::getString() const {
 	return _label->getString8();
 }
 
@@ -374,6 +389,13 @@ bool SearchToolbar::isAllowAutocorrect() const {
 
 InputLabel *SearchToolbar::getLabel() const {
 	return _label;
+}
+
+MenuSource *SearchToolbar::getSearchMenu() const {
+	return _searchMenu;
+}
+MenuSource *SearchToolbar::getCommonMenu() const {
+	return _commonMenu;
 }
 
 NS_MD_END

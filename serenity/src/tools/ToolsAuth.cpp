@@ -83,6 +83,13 @@ bool AuthHandler::processDataHandler(Request &rctx, data::Value &result, data::V
 				result.setInteger(maxAge.toSeconds(), "maxAge");
 				result.setInteger(user->getObjectId(), "userId");
 				result.setString(user->getName(), "userName");
+				if (queryData.getBool("userdata")) {
+					auto &val = result.emplace("userData");
+					for (auto &it : *user) {
+						val.setValue(it.second, it.first);
+					}
+					val.erase("password");
+				}
 				return true;
 			}
 		}
@@ -107,6 +114,13 @@ bool AuthHandler::processDataHandler(Request &rctx, data::Value &result, data::V
 				result.setInteger(maxAge.toSeconds(), "maxAge");
 				result.setInteger(user->getObjectId(), "userId");
 				result.setString(user->getName(), "userName");
+				if (queryData.getBool("userdata")) {
+					auto &val = result.emplace("userData");
+					for (auto &it : *user) {
+						val.setValue(it.second, it.first);
+					}
+					val.erase("password");
+				}
 				return true;
 			}
 		}

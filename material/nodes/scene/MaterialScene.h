@@ -105,6 +105,9 @@ public:
 
 	virtual Vec2 convertToScene(const Vec2 &) const;
 
+	virtual void pushBackButtonCallback(stappler::Ref *, const Function<void()> &);
+	virtual void popBackButtonCallback(stappler::Ref *);
+
 protected:
 	virtual ForegroundLayer *createForegroundLayer();
 	virtual NavigationLayer *createNavigationLayer();
@@ -147,6 +150,8 @@ protected:
 
 	bool _contentCapturing = false;
 	Rc<draw::Canvas> _captureCanvas;
+
+	Vector<Pair<Rc<stappler::Ref>, Function<void()>>> _backButtonStack;
 };
 
 NS_MD_END

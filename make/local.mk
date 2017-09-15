@@ -34,7 +34,11 @@ endif
 include $(GLOBAL_ROOT)/make/compiler.mk
 
 ifdef RELEASE
+ifeq ($(RELEASE),1)
 BUILD_OUTDIR := $(BUILD_OUTDIR)/$(GLOBAL_CC)/release
+else
+BUILD_OUTDIR := $(BUILD_OUTDIR)/$(GLOBAL_CC)/debug
+endif
 else
 BUILD_OUTDIR := $(BUILD_OUTDIR)/$(GLOBAL_CC)/debug
 endif
@@ -162,7 +166,7 @@ $(BUILD_OUTDIR)/%.o: /%.cpp $(TOOLKIT_H_GCH) $(TOOLKIT_GCH)
 $(BUILD_OUTDIR)/%.o: /%.mm $(TOOLKIT_H_GCH) $(TOOLKIT_GCH) 
 	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(BUILD_OUTDIR)/$*.d $(BUILD_CXXFLAGS) -c -o $@ `$(GLOBAL_ROOT)/convert-path.sh $<`
 
-$(BUILD_OUTDIR)/%.o: $(LOCAL_ROOT)/%.c $(TOOLKIT_H_GCH) $(TOOLKIT_GCH)
+$(BUILD_OUTDIR)/%.o: /%.c $(TOOLKIT_H_GCH) $(TOOLKIT_GCH)
 	$(GLOBAL_QUIET_CC) $(GLOBAL_CC) -MMD -MP -MF $(BUILD_OUTDIR)/$*.d $(BUILD_CFLAGS) -c -o $@ `$(GLOBAL_ROOT)/convert-path.sh $<`
 
 .PHONY: clean .prebuild_local .local_prebuild local .local_preclean

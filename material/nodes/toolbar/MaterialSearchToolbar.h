@@ -46,6 +46,8 @@ public:
 	virtual void onEnter() override;
 	virtual void onExit() override;
 
+	virtual void setFont(material::FontType);
+
 	virtual void setTitle(const String &) override;
 	virtual const String &getTitle() const override;
 
@@ -53,7 +55,7 @@ public:
 	virtual const String &getPlaceholder() const;
 
 	virtual void setString(const String &);
-	virtual const String &setString() const;
+	virtual const String &getString() const;
 
 	virtual void setAllowAutocorrect(bool);
 	virtual bool isAllowAutocorrect() const;
@@ -68,6 +70,8 @@ public:
 	virtual void releaseInput();
 
 	virtual InputLabel *getLabel() const;
+	virtual MenuSource *getSearchMenu() const;
+	virtual MenuSource *getCommonMenu() const;
 
 protected:
 	virtual void layoutSubviews() override;

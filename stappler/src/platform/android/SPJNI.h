@@ -21,7 +21,6 @@ THE SOFTWARE.
 **/
 
 #include "SPDefine.h"
-#include "SPDefine.h"
 
 #if (ANDROID)
 

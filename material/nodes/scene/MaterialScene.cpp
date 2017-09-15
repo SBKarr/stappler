@@ -393,7 +393,11 @@ void Scene::updateCapturedContent() {
 }
 
 void Scene::onBackKeyPressed() {
-	if (stappler::ime::isInputEnabled()) {
+	if (!_backButtonStack.empty()) {
+		auto top = _backButtonStack.back();
+		_backButtonStack.pop_back();
+		top.second();
+	} else if (stappler::ime::isInputEnabled()) {
 		stappler::ime::cancel();
 	} else if (_foreground->isActive()) {
 		_foreground->clear();
@@ -462,6 +466,20 @@ void Scene::setSnackbarString(const std::string &str, const Color &color) {
 }
 Vec2 Scene::convertToScene(const Vec2 &vec) const {
 	return _foreground->convertToNodeSpace(vec);
+}
+
+void Scene::pushBackButtonCallback(stappler::Ref *ref, const Function<void()> &cb) {
+	_backButtonStack.emplace_back(ref, cb);
+}
+void Scene::popBackButtonCallback(stappler::Ref *ref) {
+	auto it = _backButtonStack.begin();
+	while (it != _backButtonStack.end()) {
+		if (it->first == ref) {
+			it = _backButtonStack.erase(it);
+		} else {
+			++ it;
+		}
+	}
 }
 
 void Scene::takeScreenshoot() {

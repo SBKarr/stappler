@@ -338,15 +338,23 @@ const String &Device::getLaunchUrl() const {
     return _launchUrl;
 }
 
+namespace log {
+
+using sp_log_fn = void (*) (const char *tag, const char *text, size_t len);
+
+void setCustomLogFn(sp_log_fn fn);
+
+}
+
 bool Device::listen(uint16_t port) {
 	if (!_logTransferEnabled) {
-		//addLogFunc(&Device::log);
+		log::setCustomLogFn(&Device::log);
 		_logTransferEnabled = true;
 	}
 	return _serv.listen(port);
 }
 
-void Device::log(const char *str, size_t n) {
+void Device::log(const char *tag, const char *str, size_t n) {
 	auto & serv = getInstance()->_serv;
 	serv.log(str, n);
 }
