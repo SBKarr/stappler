@@ -96,8 +96,9 @@ public:
 	virtual size_t addPlaceholder(float size, float pos);
 	virtual size_t addPlaceholder(float size);
 
-	Item *getItem(size_t);
-	Item *getItem(cocos2d::Node *);
+	const Item *getItem(size_t);
+	const Item *getItem(cocos2d::Node *);
+	const Item *getItem(const String &);
 
 	size_t getItemIndex(cocos2d::Node *);
 
@@ -117,6 +118,8 @@ public:
 
 	void setKeepNodes(bool);
 	bool isKeepNodes() const;
+
+	void resizeItem(const Item *node, float newSize);
 
 protected:
 	virtual void onNextObject(Item &); /// insert new object at specified position

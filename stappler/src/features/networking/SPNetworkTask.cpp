@@ -118,7 +118,7 @@ bool NetworkTask::performQuery() {
 }
 
 void NetworkTask::run() {
-	_networkThread.perform(this);
+	getThread().perform(this);
 }
 
 void NetworkTask::setAuthority(const String &user, const String &passwd) {
@@ -175,6 +175,14 @@ String NetworkTask::getReceivedHeaderString(const String &h) const {
 
 int64_t NetworkTask::getReceivedHeaderInt(const String &h) const {
 	return _handle.getReceivedHeaderInt(h);
+}
+
+void NetworkTask::setThread(Thread &t) {
+	_customThread = &t;
+
+}
+Thread &NetworkTask::getThread() const {
+	return _customThread ? (*(const_cast<Thread *>(_customThread))):_networkThread;
 }
 
 NS_SP_END

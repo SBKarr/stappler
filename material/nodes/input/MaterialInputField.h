@@ -115,7 +115,7 @@ protected:
 	virtual void onMenuVisible();
 	virtual void onMenuHidden();
 
-	virtual InputLabel *makeLabel(FontType);
+	virtual Rc<InputLabel> makeLabel(FontType);
 
 	bool _hasSwipe = false;
 	Color _normalColor = Color::Blue_500;

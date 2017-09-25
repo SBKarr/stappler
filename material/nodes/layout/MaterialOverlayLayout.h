@@ -29,23 +29,35 @@ NS_MD_BEGIN
 
 class OverlayLayout : public Layout {
 public:
-	virtual bool init(const Size &);
+	virtual bool init(MaterialNode *, const Size &, const Function<void()> &cb = nullptr);
 
 	virtual void onContentSizeDirty() override;
 
-	virtual void pushNode(MaterialNode *);
 	virtual MaterialNode *getNode() const;
-
-	virtual void setBoundSize(const Size &);
 	virtual const Size &getBoundSize() const;
+
+	virtual void resize(const Size &, bool animated = false);
+
+	virtual void setBackgroundColor(const Color &);
+	virtual void setBackgroundOpacity(uint8_t);
 
 	virtual void setKeyboardTracked(bool);
 	virtual bool isKeyboardTracked() const;
 
 	virtual void cancel();
 
+	virtual void setOpenAnimation(const Vec2 &origin, const Function<void()> &);
+
+	virtual void onPush(ContentLayer *l, bool replace) override;
+	virtual void onPop(ContentLayer *l, bool replace) override;
+
+	virtual Rc<Transition> getDefaultEnterTransition() const override;
+	virtual Rc<Transition> getDefaultExitTransition() const override;
+
 protected:
+	virtual Size getActualSize(const Size &) const;
 	virtual void onKeyboard(bool enabled, const Rect &, float duration);
+	virtual void onResized();
 
 	bool _trackKeyboard = false;
 	bool _keyboardEnabled = false;
@@ -55,6 +67,11 @@ protected:
 	MaterialNode *_node = nullptr;
 	gesture::Listener *_listener = nullptr;
 	EventListener *_keyboardEventListener = nullptr;
+
+	bool _animationPending = false;
+	Vec2 _animationOrigin;
+	Function<void()> _animationCallback;
+	Function<void()> _cancelCallback;
 };
 
 NS_MD_END

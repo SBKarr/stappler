@@ -23,9 +23,8 @@ THE SOFTWARE.
 #ifndef LIBS_MATERIAL_NODES_SCENE_MATERIALCONTENTLAYER_H_
 #define LIBS_MATERIAL_NODES_SCENE_MATERIALCONTENTLAYER_H_
 
-#include "MaterialLayout.h"
+#include "MaterialOverlayLayout.h"
 #include "2d/CCActionInterval.h"
-#include "base/CCMap.h"
 
 NS_MD_BEGIN
 
@@ -36,13 +35,15 @@ public:
 	virtual bool init() override;
 	virtual void onContentSizeDirty() override;
 
-	virtual void replaceNode(Layout *, Transition *enterTransition = nullptr);
-	virtual void pushNode(Layout *, Transition *enterTransition = nullptr, Transition *exitTransition = nullptr);
-	virtual void replaceTopNode(Layout *, Transition *enterTransition = nullptr, Transition *exitTransition = nullptr);
+	// replaced node will be alone in stack, so, no need for exit transition
+	virtual void replaceNode(Layout *, Transition *enter = nullptr);
+	virtual void pushNode(Layout *, Transition *enter = nullptr, Transition *exit = nullptr);
+
+	virtual void replaceTopNode(Layout *, Transition *enter = nullptr, Transition *exit = nullptr);
 	virtual void popNode(Layout *);
 
-	virtual bool pushOverlayNode(Layout *);
-	virtual bool popOverlayNode(Layout *);
+	virtual bool pushOverlayNode(OverlayLayout *, Transition *enter = nullptr, Transition *exit = nullptr);
+	virtual bool popOverlayNode(OverlayLayout *);
 
 	virtual Layout *getRunningNode();
 	virtual Layout *getPrevNode();
@@ -54,13 +55,18 @@ public:
 	virtual size_t getNodesCount() const;
 
 protected:
+	virtual void pushNodeInternal(Layout *, Transition *enter, Transition *exit, const Function<void()> &cb);
+
 	virtual void eraseNode(Layout *);
+	virtual void eraseOverlay(OverlayLayout *);
 	virtual void replaceNodes();
 	virtual void updateNodesVisibility();
 
-	cocos2d::Vector<Layout *> _nodes;
-	cocos2d::Map<Layout *, Transition *> _exitTransitions;
-	Layout *_overlay = nullptr;
+	Vector<Rc<Layout>> _nodes;
+	Map<Layout *, Rc<Transition>> _nodeExit;
+
+	Vector<Rc<OverlayLayout>> _overlays;
+	Map<OverlayLayout *, Rc<Transition>> _overlayExit;
 };
 
 NS_MD_END

@@ -410,24 +410,24 @@ void Scene::onBackKeyPressed() {
 	onBackKey(this);
 }
 
-void Scene::replaceContentNode(Layout *l, cocos2d::FiniteTimeAction *enterTransition) {
-	_content->replaceNode(l, enterTransition);
+void Scene::replaceContentNode(Layout *l, Transition *enter) {
+	_content->replaceNode(l, enter);
 }
-void Scene::replaceTopContentNode(Layout *l, cocos2d::FiniteTimeAction *enterTransition, cocos2d::FiniteTimeAction *exitTransition) {
-	_content->replaceTopNode(l, enterTransition, exitTransition);
+void Scene::replaceTopContentNode(Layout *l, Transition *enter, Transition *exit) {
+	_content->replaceTopNode(l, enter, exit);
 }
 
-void Scene::pushContentNode(Layout *l, cocos2d::FiniteTimeAction *enterTransition, cocos2d::FiniteTimeAction *exitTransition) {
-	_content->pushNode(l, enterTransition, exitTransition);
+void Scene::pushContentNode(Layout *l, Transition *enter, Transition *exit) {
+	_content->pushNode(l, enter, exit);
 }
 void Scene::popContentNode(Layout *l) {
 	_content->popNode(l);
 }
 
-void Scene::pushOverlayNode(Layout *l) {
-	_content->pushOverlayNode(l);
+void Scene::pushOverlayNode(OverlayLayout *l, Transition *enter, Transition *exit) {
+	_content->pushOverlayNode(l, enter, exit);
 }
-void Scene::popOverlayNode(Layout *l) {
+void Scene::popOverlayNode(OverlayLayout *l) {
 	_content->popOverlayNode(l);
 }
 
@@ -449,10 +449,12 @@ void Scene::popNode(cocos2d::Node *node) {
 	if (node->getParent() == _foreground) {
 		_foreground->popNode(node);
 	} else if (node->getParent() == _content) {
-		if (auto l = dynamic_cast<Layout *>(node)) {
-			if (_content->popOverlayNode(l)) {
+		if (auto l = dynamic_cast<OverlayLayout *>(node)) {
+			if (!_content->popOverlayNode(l)) {
 				_content->popNode(l);
 			}
+		} else if (auto l = dynamic_cast<Layout *>(node)) {
+			_content->popNode(l);
 		}
 	}
 }

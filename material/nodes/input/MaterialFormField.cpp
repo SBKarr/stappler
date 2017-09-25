@@ -45,8 +45,7 @@ bool FormField::init(FormController *c, const String &name, bool dense) {
 		return false;
 	}
 
-	_formController = c;
-	_formName = name;
+	setName(name);
 
 	_dense = dense;
 	_padding = _dense?Padding(12.0f, 12.0f):Padding(12.0f, 16.0f);
@@ -72,16 +71,11 @@ bool FormField::init(FormController *c, const String &name, bool dense) {
 	_labelHeight = nan();
 	updateLabelHeight(1.0f + _padding.horizontal());
 
-	if (_formController) {
-		auto el = Rc<EventListener>::create();
-		el->onEventWithObject(FormController::onForceCollect, _formController, [this] (const Event &) {
-			pushFormData();
-		});
-		el->onEventWithObject(FormController::onForceUpdate, _formController, [this] (const Event &) {
-			updateFormData();
-		});
-		addComponent(el);
-	}
+	auto el = Rc<EventListener>::create();
+	addComponent(el);
+	_formEventListener = el;
+
+	setFormController(c);
 
 	return true;
 }
@@ -107,7 +101,7 @@ void FormField::onContentSizeDirty() {
 	_counter->setPosition(_contentSize.width - _padding.right, 6.0f);
 
 	_placeholder->stopAllActions();
-	if (_label->empty()) {
+	if (_label->empty() && !isInputActive()) {
 		_placeholder->setPosition(_node->getPosition());
 		_placeholder->setFontSize(_label->getFontSize());
 	} else {
@@ -190,7 +184,12 @@ void FormField::onInput() {
 		_underlineLayer->setOpacity(168);
 		_underlineLayer->setColor(_normalColor);
 		_placeholder->setColor(_normalColor);
-		_error->setVisible(false);
+		if (_formController) {
+			_formController->clearError(_name);
+		} else {
+			_error->setString("");
+			_error->setVisible(false);
+		}
 	}
 }
 
@@ -198,11 +197,14 @@ void FormField::onActivated(bool active) {
 	InputField::onActivated(active);
 	if (_underlineLayer) {
 		if (active) {
-			setError(String());
 			_underlineLayer->setOpacity(168);
-			_underlineLayer->setColor(_normalColor);
-			_placeholder->setColor(_normalColor);
-			_error->setVisible(false);
+			if (!_error->empty()) {
+				_underlineLayer->setColor(_errorColor);
+				_placeholder->setColor(_errorColor);
+			} else {
+				_underlineLayer->setColor(_normalColor);
+				_placeholder->setColor(_normalColor);
+			}
 			_placeholder->stopAllActions();
 
 			auto origPos = _placeholder->getPosition();
@@ -214,7 +216,7 @@ void FormField::onActivated(bool active) {
 		} else {
 			_underlineLayer->setOpacity(64);
 			_underlineLayer->setColor(Color::Grey_500);
-			_placeholder->setColor(Color::Grey_500);
+			_placeholder->setColor(_error->empty()?Color::Grey_500:_errorColor);
 			_placeholder->stopAllActions();
 
 			if (_label->empty()) {
@@ -234,15 +236,13 @@ void FormField::onActivated(bool active) {
 }
 
 void FormField::onEnter() {
-	InputField::onEnter();
 	updateFormData();
+	InputField::onEnter();
 	updateAutoAdjust();
 
 }
 void FormField::onExit() {
-	if (_label->isActive()) {
-		pushFormData();
-	}
+	pushFormData();
 	InputField::onExit();
 	updateAutoAdjust();
 }
@@ -288,20 +288,28 @@ bool FormField::isFullHeight() const {
 }
 
 void FormField::setError(const String &str) {
-	_error->setString(str);
-	if (str.empty()) {
-		_error->setVisible(false);
-		if (_label->isActive()) {
-			_underlineLayer->setColor(_normalColor);
-			_placeholder->setColor(_normalColor);
+	if (str != _error->getString8()) {
+		_error->setString(str);
+		if (str.empty()) {
+			_error->setVisible(false);
+			if (_label->isActive()) {
+				_underlineLayer->setColor(_normalColor);
+				_placeholder->setColor(_normalColor);
+			} else {
+				_underlineLayer->setColor(Color::Grey_500);
+				_placeholder->setColor(Color::Grey_500);
+			}
+			if (!_fullHeight) {
+				_contentSizeDirty = true;
+			}
 		} else {
-			_underlineLayer->setColor(Color::Grey_500);
-			_placeholder->setColor(Color::Grey_500);
+			if (!_fullHeight) {
+				_contentSizeDirty = true;
+			}
+			_error->setVisible(true);
+			_underlineLayer->setColor(_errorColor);
+			_placeholder->setColor(_errorColor);
 		}
-	} else {
-		_error->setVisible(true);
-		_underlineLayer->setColor(_errorColor);
-		_placeholder->setColor(_errorColor);
 	}
 }
 const String &FormField::getError() const {
@@ -321,14 +329,45 @@ void FormField::updateAutoAdjust() {
 	}
 }
 
+void FormField::setFormController(FormController *controller) {
+	if (_formController != controller) {
+		_formEventListener->clear();
+		_formController = controller;
+		if (_formController) {
+			_formEventListener->onEventWithObject(FormController::onEnabled, _formController, [this] (const Event &ev) {
+				setEnabled(ev.getBoolValue());
+			});
+			_formEventListener->onEventWithObject(FormController::onForceCollect, _formController, [this] (const Event &) {
+				pushFormData();
+			});
+			_formEventListener->onEventWithObject(FormController::onForceUpdate, _formController, [this] (const Event &) {
+				updateFormData();
+			});
+			_formEventListener->onEventWithObject(FormController::onErrors, _formController, [this] (const Event &) {
+				setError(_formController->getError(_name));
+			});
+			setEnabled(_formController->isEnabled());
+			if (isEnabled()) {
+				updateFormData();
+			}
+			setError(_formController->getError(_name));
+		} else {
+			setEnabled(true);
+		}
+	}
+}
+FormController *FormField::getFormController() const {
+	return _formController;
+}
+
 void FormField::pushFormData() {
 	if (_formController) {
-		_formController->setValue(_formName, data::Value(string::toUtf8(_label->getString())));
+		_formController->setValue(_name, data::Value(string::toUtf8(_label->getString())));
 	}
 }
 void FormField::updateFormData() {
 	if (_formController) {
-		auto value = _formController->getValue(_formName);
+		auto value = _formController->getValue(_name);
 		setString(value.asString());
 	}
 }

@@ -106,6 +106,141 @@ data::Value Url::parseDataArgs(const StringView &str, size_t maxVarSize) {
 	return ret;
 }
 
+static bool validateEmailQuotation(String &ret, CharReaderBase &r) {
+	using namespace chars;
+
+	++ r;
+	ret.push_back('"');
+	while (!r.empty() && !r.is('"')) {
+		auto pos = r.readUntil<chars::Chars<char, '"', '\\'>>();
+		if (!pos.empty()) {
+			ret.append(pos.data(), pos.size());
+		}
+
+		if (r.is('\\')) {
+			ret.push_back(r[0]);
+			++ r;
+			if (!r.empty()) {
+				ret.push_back(r[0]);
+				++ r;
+			}
+		}
+	}
+	if (r.empty()) {
+		return false;
+	} else {
+		ret.push_back('"');
+		++ r;
+		return true;
+	}
+}
+
+bool Url::validateEmail(String &str) {
+	string::trim(str);
+	if (str.back() == ')') {
+		auto pos = str.rfind('(');
+		if (pos != String::npos) {
+			str.erase(str.begin() + pos, str.end());
+		} else {
+			return false;
+		}
+	}
+	String ret; ret.reserve(str.size());
+
+	using namespace chars;
+	using LocalChars = chars::Compose<char, CharGroup<char, CharGroupId::Alphanumeric>,
+			chars::Chars<char, '_', '-', '+', '#', '!', '$', '%', '&', '\'', '*', '/', '=', '?', '^', '`', '{', '}', '|', '~' >,
+			chars::Range<char, char(128), char(255)>>;
+
+	using Whitespace =  CharGroup<char, CharGroupId::WhiteSpace>;
+
+	CharReaderBase r(str);
+	r.skipChars<Whitespace>();
+
+	if (r.is('(')) {
+		r.skipUntil<chars::Chars<char, ')'>>();
+		if (!r.is(')')) {
+			return false;
+		}
+		r ++;
+		r.skipChars<Whitespace>();
+	}
+	if (r.is('"')) {
+		if (!validateEmailQuotation(ret, r)) {
+			return false;
+		}
+	}
+
+	while (!r.empty() && !r.is('@')) {
+		auto pos = r.readChars<LocalChars>();
+		if (!pos.empty()) {
+			ret.append(pos.data(), pos.size());
+		}
+
+		if (r.is('.')) {
+			ret.push_back('.');
+			++ r;
+			if (r.is('"')) {
+				if (!validateEmailQuotation(ret, r)) {
+					return false;
+				}
+				if (!r.is('.') && !r.is('@')) {
+					return false;
+				} else if (r.is('.')) {
+					ret.push_back('.');
+					++ r;
+				}
+			} else if (!r.is<LocalChars>()) {
+				return false;
+			}
+		}
+		if (r.is('(')) {
+			r.skipUntil<chars::Chars<char, ')'>>();
+			if (!r.is(')')) {
+				return false;
+			}
+			r ++;
+			r.skipChars<Whitespace>();
+			break;
+		}
+		if (!r.is('@') && !r.is<LocalChars>()) {
+			return false;
+		}
+	}
+
+	if (r.empty() || !r.is('@')) {
+		return false;
+	}
+
+	ret.push_back('@');
+	++ r;
+	if (r.is('(')) {
+		r.skipUntil<chars::Chars<char, ')'>>();
+		if (!r.is(')')) {
+			return false;
+		}
+		r ++;
+		r.skipChars<Whitespace>();
+	}
+
+	if (r.is('[')) {
+		ret.push_back('[');
+		auto pos = r.readUntil<chars::Chars<char, ']'>>();
+		if (r.is(']')) {
+			r ++;
+			if (r.empty()) {
+				ret.append(pos.data(), pos.size());
+				ret.push_back(']');
+			}
+		}
+	} else {
+		ret.append(r.str());
+	}
+
+	str.swap(ret);
+	return true;
+}
+
 Url Url::copy() const {
 	return *this;
 }

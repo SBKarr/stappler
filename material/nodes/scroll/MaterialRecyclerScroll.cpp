@@ -332,7 +332,7 @@ bool RecyclerNode::onSwipeEnd(float velocity) {
 		updateProgress();
 	});
 
-	auto callback = action::callback(a, [this, targetProgress] {
+	auto callback = action::sequence(a, [this, targetProgress] {
 		if (_state == Enabled) {
 			if (fabs(fabs(targetProgress) - 1.0f) < std::numeric_limits<float>::epsilon()) {
 				onPrepared();
@@ -464,7 +464,7 @@ void RecyclerScroll::removeRecyclerNode(Item *item, cocos2d::Node *node) {
 
 void RecyclerScroll::scheduleCleanup() {
 	stopAllActionsByTag("CleanupDelay"_tag);
-	runAction(action::callback(5.0f, [this] {
+	runAction(action::sequence(5.0f, [this] {
 		performCleanup();
 	}), "CleanupDelay"_tag);
 }

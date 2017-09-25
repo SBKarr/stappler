@@ -72,16 +72,6 @@ inline cocos2d::FiniteTimeAction *spawn(const F &f, const S &s, Args&&... args) 
 	return spawn(cocos2d::Spawn::createWithTwoActions(_sequencable(f), _sequencable(s)), args...);
 }
 
-template <class... Args>
-inline cocos2d::FiniteTimeAction *callback(float duration, Args&&... args) {
-	return sequence(duration, args...);
-}
-
-template <class... Args>
-inline cocos2d::FiniteTimeAction *callback(cocos2d::FiniteTimeAction *a, Args&&... args) {
-	return sequence(a, args...);
-}
-
 NS_SP_EXT_END(action)
 
 #endif /* STAPPLER_SRC_ACTIONS_SPACTIONS_H_ */

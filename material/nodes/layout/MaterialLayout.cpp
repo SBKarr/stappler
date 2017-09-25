@@ -50,16 +50,43 @@ const Layout::BackButtonCallback &Layout::getBackButtonCallback() const {
 	return _backButtonCallback;
 }
 
-void Layout::onPush(ContentLayer *l, bool replace) { }
-void Layout::onPushTransitionEnded(ContentLayer *l, bool replace) { }
+void Layout::onPush(ContentLayer *l, bool replace) {
+	_inTransition = true;
+}
+void Layout::onPushTransitionEnded(ContentLayer *l, bool replace) {
+	_inTransition = false;
+	_contentSizeDirty = true;
+}
 
-void Layout::onPopTransitionBegan(ContentLayer *l, bool replace) { }
-void Layout::onPop(ContentLayer *l, bool replace) { }
+void Layout::onPopTransitionBegan(ContentLayer *l, bool replace) {
+	_inTransition = true;
+}
+void Layout::onPop(ContentLayer *l, bool replace) {
+	_inTransition = false;
+	_contentSizeDirty = true;
+}
 
-void Layout::onBackground(ContentLayer *l, Layout *overlay) { }
-void Layout::onBackgroundTransitionEnded(ContentLayer *l, Layout *overlay) { }
+void Layout::onBackground(ContentLayer *l, Layout *overlay) {
+	_inTransition = true;
+}
+void Layout::onBackgroundTransitionEnded(ContentLayer *l, Layout *overlay) {
+	_inTransition = false;
+	_contentSizeDirty = true;
+}
 
-void Layout::onForegroundTransitionBegan(ContentLayer *l, Layout *overlay) { }
-void Layout::onForeground(ContentLayer *l, Layout *overlay) { }
+void Layout::onForegroundTransitionBegan(ContentLayer *l, Layout *overlay) {
+	_inTransition = true;
+}
+void Layout::onForeground(ContentLayer *l, Layout *overlay) {
+	_inTransition = false;
+	_contentSizeDirty = true;
+}
+
+Rc<Layout::Transition> Layout::getDefaultEnterTransition() const {
+	return nullptr;
+}
+Rc<Layout::Transition> Layout::getDefaultExitTransition() const {
+	return nullptr;
+}
 
 NS_MD_END

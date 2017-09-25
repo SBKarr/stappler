@@ -195,7 +195,6 @@ void Canvas::flush() {
 			useProgram(_drawProgram->getProgram());
 			setUniformTransform(_transform);
 
-
 			glBindBuffer(GL_ARRAY_BUFFER, _vbo[0]);
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _vbo[1]);
 

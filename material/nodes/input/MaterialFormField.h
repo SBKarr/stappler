@@ -58,6 +58,9 @@ public:
 	virtual void setError(const String &);
 	virtual const String &getError() const;
 
+	virtual void setFormController(FormController *);
+	virtual FormController *getFormController() const;
+
 protected:
 	virtual void updateLabelHeight(float = nan());
 	virtual Size getSizeForLabelWidth(float width, float labelHeight);
@@ -84,8 +87,8 @@ protected:
 	SizeCallback _sizeCallback;
 	Padding _padding = Padding(12.0f, 16.0f);
 
+	EventListener *_formEventListener = nullptr;
 	FormController *_formController = nullptr;
-	String _formName;
 };
 
 NS_MD_END

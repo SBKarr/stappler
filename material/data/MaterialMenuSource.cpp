@@ -31,7 +31,7 @@ NS_MD_BEGIN
 bool MenuSourceItem::init() {
 	return true;
 }
-Rc<MenuSourceItem> MenuSourceItem::copy() {
+Rc<MenuSourceItem> MenuSourceItem::copy() const {
 	auto ret = Rc<MenuSourceItem>::create();
 	ret->setCustomData(_customData);
 	return ret;
@@ -96,7 +96,7 @@ bool MenuSourceButton::init() {
 	return true;
 }
 
-Rc<MenuSourceItem> MenuSourceButton::copy() {
+Rc<MenuSourceItem> MenuSourceButton::copy() const {
 	auto ret = Rc<MenuSourceButton>::create();
 	ret->setName(_name);
 	ret->setNameIcon(_nameIcon);
@@ -201,7 +201,7 @@ bool MenuSourceCustom::init(const HeightFunction &h, const FactoryFunction &func
 	return true;
 }
 
-Rc<MenuSourceItem> MenuSourceCustom::copy() {
+Rc<MenuSourceItem> MenuSourceCustom::copy() const {
 	auto ret = Rc<MenuSourceCustom>::create(_heightFunction, _function);
 	ret->setCustomData(_customData);
 	return ret;
@@ -225,7 +225,7 @@ const MenuSourceCustom::FactoryFunction & MenuSourceCustom::getFactoryFunction()
 
 MenuSource::~MenuSource() { }
 
-Rc<MenuSource> MenuSource::copy() {
+Rc<MenuSource> MenuSource::copy() const {
 	auto ret = Rc<MenuSource>::create();
 	for (auto &it : _items) {
 		ret->addItem(it->copy());
@@ -276,7 +276,7 @@ uint32_t MenuSource::count() {
 	return (uint32_t)_items.size();
 }
 
-const Vector<Rc<MenuSourceItem>> &MenuSource::getItems() {
+const Vector<Rc<MenuSourceItem>> &MenuSource::getItems() const {
 	return _items;
 }
 

@@ -367,7 +367,7 @@ void ScrollView::runAdjust(float pos, float factor) {
 				t = progress(0.15f, 0.45f, (dist - 20.0f) / 200.0f);
 			}
 			_root->stopAllActionsByTag("ScrollViewAdjust"_tag);
-			auto a = action::callback(cocos2d::EaseQuadraticActionInOut::create(cocos2d::MoveTo::create(t,
+			auto a = action::sequence(cocos2d::EaseQuadraticActionInOut::create(cocos2d::MoveTo::create(t,
 					isVertical()?Vec2(_root->getPositionX(), newPos + _scrollSize):Vec2(-newPos, _root->getPositionY()))),
 					[this] { _adjustValue = nan(); });
 			_root->runAction(a, "ScrollViewAdjust"_tag);

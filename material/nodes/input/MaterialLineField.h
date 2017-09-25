@@ -42,7 +42,7 @@ protected:
 
 	virtual void onMenuVisible() override;
 
-	virtual InputLabel *makeLabel(FontType) override;
+	virtual Rc<InputLabel> makeLabel(FontType) override;
 };
 
 NS_MD_END

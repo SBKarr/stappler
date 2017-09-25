@@ -136,7 +136,7 @@ void ForegroundLayer::pushNode(cocos2d::Node *node, const Function<void()> &func
 		node->retain();
 		_listener->setEnabled(true);
 		_pendingPush.insert(node);
-		runAction(action::callback(0.3f, [this, node, func] {
+		runAction(action::sequence(0.3f, [this, node, func] {
 			if (!_nodes.empty()) {
 				int zIndex = -(int)_nodes.size();
 				for (auto node : _nodes) {

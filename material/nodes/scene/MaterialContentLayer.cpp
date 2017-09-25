@@ -46,141 +46,112 @@ void ContentLayer::onContentSizeDirty() {
 		node->setContentSize(_contentSize);
 	}
 
-	if (_overlay) {
-		_overlay->setAnchorPoint(Vec2(0.5f, 0.5f));
-		_overlay->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
-		_overlay->setContentSize(_contentSize);
+	for (auto &overlay : _overlays) {
+		overlay->setAnchorPoint(Vec2(0.5f, 0.5f));
+		overlay->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
+		overlay->setContentSize(_contentSize);
 	}
 }
 
 void ContentLayer::replaceNode(Layout *node, Transition *enterTransition) {
-	if (node && !node->isRunning()) {
-		if (_nodes.empty()) {
-			pushNode(node, enterTransition);
-			return;
+	if (!node || node->isRunning()) {
+		return;
+	}
+
+	node->setAnchorPoint(Vec2(0.5f, 0.5f));
+	node->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
+	node->setContentSize(_contentSize);
+
+	auto enter = enterTransition ? Rc<Transition>(enterTransition) : node->getDefaultEnterTransition();
+
+	if (_nodes.empty()) {
+		pushNode(node, enterTransition);
+		return;
+	}
+
+	int zIndex = -(int)_nodes.size();
+	for (auto node : _nodes) {
+		node->setLocalZOrder(zIndex);
+		zIndex ++;
+	}
+
+	_nodes.push_back(node);
+
+	node->ignoreAnchorPointForPosition(false);
+	node->setAnchorPoint(Vec2(0.5f, 0.5f));
+	node->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
+	node->setContentSize(_contentSize);
+	addChild(node, -1);
+
+	for (auto &it : _nodes) {
+		if (it != node) {
+			it->onPopTransitionBegan(this, true);
+		} else {
+			it->onPush(this, true);
 		}
+	}
 
-		int zIndex = -(int)_nodes.size();
-		for (auto node : _nodes) {
-			node->setLocalZOrder(zIndex);
-			zIndex ++;
-		}
-
-		_nodes.pushBack(node);
-
-		node->ignoreAnchorPointForPosition(false);
-		node->setAnchorPoint(Vec2(0.5f, 0.5f));
-		node->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
-		node->setContentSize(_contentSize);
-		addChild(node, -1);
-
+	auto fn = [this, node] {
 		for (auto &it : _nodes) {
 			if (it != node) {
-				it->onPopTransitionBegan(this, true);
+				it->onPop(this, true);
 			} else {
-				it->onPush(this, true);
+				it->onPushTransitionEnded(this, true);
 			}
 		}
+		replaceNodes();
+	};
 
-		if (enterTransition) {
-			node->runAction(action::callback(enterTransition, [this, node] {
-				for (auto &it : _nodes) {
-					if (it != node) {
-						it->onPop(this, true);
-					} else {
-						it->onPushTransitionEnded(this, true);
-					}
-				}
-				replaceNodes();
-			}));
-		} else {
-			for (auto &it : _nodes) {
-				if (it != node) {
-					it->onPop(this, true);
-				} else {
-					it->onPushTransitionEnded(this, true);
-				}
-			}
-			replaceNodes();
-		}
+	if (enter) {
+		node->runAction(action::sequence(enter, fn));
+	} else {
+		fn();
 	}
 }
 
 void ContentLayer::pushNode(Layout *node, Transition *enterTransition, Transition *exitTransition) {
-	if (node && !node->isRunning()) {
-		if (!_nodes.empty()) {
-			int zIndex = -(int)_nodes.size();
-			for (auto node : _nodes) {
-				node->setLocalZOrder(zIndex);
-				zIndex ++;
-			}
-		}
-		_nodes.pushBack(node);
-		if (exitTransition) {
-			_exitTransitions.insert(node, exitTransition);
-		}
-
-		node->ignoreAnchorPointForPosition(false);
-		node->setAnchorPoint(Vec2(0.5f, 0.5f));
-		node->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
-		node->setContentSize(_contentSize);
-		addChild(node, -1);
-
-		if (_nodes.size() > 1) {
-			_nodes.at(_nodes.size() - 2)->onBackground(this, node);
-		}
-		node->onPush(this, false);
-
-		if (enterTransition) {
-			node->runAction(action::callback(enterTransition, [this, node] {
-				updateNodesVisibility();
-				if (_nodes.size() > 1) {
-					_nodes.at(_nodes.size() - 2)->onBackgroundTransitionEnded(this, node);
-				}
-				node->onPushTransitionEnded(this, false);
-			}));
-		} else {
-			updateNodesVisibility();
-			if (_nodes.size() > 1) {
-				_nodes.at(_nodes.size() - 2)->onBackgroundTransitionEnded(this, node);
-			}
-			node->onPushTransitionEnded(this, false);
-		}
+	if (!node || node->isRunning()) {
+		return;
 	}
+
+	node->setAnchorPoint(Vec2(0.5f, 0.5f));
+	node->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
+	node->setContentSize(_contentSize);
+
+	auto enter = enterTransition ? Rc<Transition>(enterTransition) : node->getDefaultEnterTransition();
+	auto exit = exitTransition ? Rc<Transition>(exitTransition) : node->getDefaultExitTransition();
+
+	pushNodeInternal(node, enterTransition, exitTransition, nullptr);
 }
 
 void ContentLayer::replaceTopNode(Layout *node, Transition *enterTransition, Transition *exitTransition) {
+	if (!node || node->isRunning()) {
+		return;
+	}
+
+	node->setAnchorPoint(Vec2(0.5f, 0.5f));
+	node->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
+	node->setContentSize(_contentSize);
+
+	auto enter = enterTransition ? Rc<Transition>(enterTransition) : node->getDefaultEnterTransition();
+	auto exit = exitTransition ? Rc<Transition>(exitTransition) : node->getDefaultExitTransition();
+
 	if (!_nodes.empty()) {
 		auto back = _nodes.back();
-		back->retain();
-		_nodes.popBack();
+		_nodes.pop_back();
 		back->onPopTransitionBegan(this, false);
 
-		auto tit = _exitTransitions.find(back);
-		if (tit != _exitTransitions.end()) {
-			safe_retain(node);
-			safe_retain(enterTransition);
-			safe_retain(exitTransition);
-			back->runAction(action::callback(tit->second, [this, back, node, enterTransition, exitTransition] {
-				eraseNode(back);
-				back->onPop(this, false);
-				back->release();
-				pushNode(node, enterTransition, exitTransition);
-				safe_release(node);
-				safe_release(enterTransition);
-				safe_release(exitTransition);
-			}));
-		} else {
+		// just push node, then silently remove previous
+
+		pushNodeInternal(node, enter, exit, [this, back] {
 			eraseNode(back);
 			back->onPop(this, false);
-			back->release();
-			pushNode(node, enterTransition, exitTransition);
-		}
+		});
 	}
 }
 
 void ContentLayer::popNode(Layout *node) {
-	auto it = _nodes.find(node);
+	auto it = std::find(_nodes.begin(), _nodes.end(), node);
 	if (it == _nodes.end()) {
 		return;
 	}
@@ -192,23 +163,63 @@ void ContentLayer::popNode(Layout *node) {
 	if (!_nodes.empty()) {
 		_nodes.back()->onForegroundTransitionBegan(this, node);
 	}
-	auto tit = _exitTransitions.find(node);
-	if (tit != _exitTransitions.end()) {
-		node->runAction(action::callback(tit->second, [this, node] {
-			eraseNode(node);
-			node->onPop(this, false);
-			if (!_nodes.empty()) {
-				_nodes.back()->onForeground(this, node);
-			}
-			node->release();
-		}));
-	} else {
+
+	auto fn = [this, node] {
 		eraseNode(node);
 		node->onPop(this, false);
 		if (!_nodes.empty()) {
 			_nodes.back()->onForeground(this, node);
 		}
 		node->release();
+	};
+
+	auto tit = _nodeExit.find(node);
+	if (tit != _nodeExit.end()) {
+		node->runAction(action::sequence(tit->second, fn));
+	} else {
+		fn();
+	}
+}
+
+void ContentLayer::pushNodeInternal(Layout *node, Transition *enterTransition, Transition *exitTransition, const Function<void()> &cb) {
+	if (!_nodes.empty()) {
+		int zIndex = -(int)_nodes.size();
+		for (auto node : _nodes) {
+			node->setLocalZOrder(zIndex);
+			zIndex ++;
+		}
+	}
+	_nodes.push_back(node);
+	if (exitTransition) {
+		_nodeExit.emplace(node, exitTransition);
+	}
+
+	node->ignoreAnchorPointForPosition(false);
+	node->setAnchorPoint(Vec2(0.5f, 0.5f));
+	node->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
+	node->setContentSize(_contentSize);
+	addChild(node, -1);
+
+	if (_nodes.size() > 1) {
+		_nodes.at(_nodes.size() - 2)->onBackground(this, node);
+	}
+	node->onPush(this, false);
+
+	auto fn = [this, node, cb] {
+		updateNodesVisibility();
+		if (_nodes.size() > 1) {
+			_nodes.at(_nodes.size() - 2)->onBackgroundTransitionEnded(this, node);
+		}
+		node->onPushTransitionEnded(this, false);
+		if (cb) {
+			cb();
+		}
+	};
+
+	if (enterTransition) {
+		node->runAction(action::sequence(enterTransition, fn));
+	} else {
+		fn();
 	}
 }
 
@@ -225,11 +236,24 @@ void ContentLayer::eraseNode(Layout *node) {
 			zIndex ++;
 		}
 
-		_exitTransitions.erase(node);
+		_nodeExit.erase(node);
 		updateNodesVisibility();
 	}
 }
 
+void ContentLayer::eraseOverlay(OverlayLayout *l) {
+	l->removeFromParent();
+	if (!_overlays.empty()) {
+		int zIndex = 1;
+		for (auto n : _overlays) {
+			n->setLocalZOrder(zIndex);
+			zIndex ++;
+		}
+
+		_overlayExit.erase(l);
+		updateNodesVisibility();
+	}
+}
 
 void ContentLayer::replaceNodes() {
 	if (!_nodes.empty()) {
@@ -237,7 +261,7 @@ void ContentLayer::replaceNodes() {
 		for (auto &node : vec) {
 			if (node != _nodes.back()) {
 				node->removeFromParent();
-				_exitTransitions.erase(node);
+				_nodeExit.erase(node);
 			}
 		}
 
@@ -246,7 +270,7 @@ void ContentLayer::replaceNodes() {
 }
 
 void ContentLayer::updateNodesVisibility() {
-	for (ssize_t i = 0; i < _nodes.size(); i++) {
+	for (size_t i = 0; i < _nodes.size(); i++) {
 		if (i == _nodes.size() - 1) {
 			_nodes.at(i)->setVisible(true);
 		} else {
@@ -298,31 +322,69 @@ size_t ContentLayer::getNodesCount() const {
 	return _nodes.size();
 }
 
-bool ContentLayer::pushOverlayNode(Layout *l) {
-	if (_overlay) {
-		_overlay->removeFromParent();
-		_overlay = nullptr;
+bool ContentLayer::pushOverlayNode(OverlayLayout *l, Transition *enterTransition, Transition *exitTransition) {
+	if (!l || l->isRunning()) {
+		return false;
 	}
-	_overlay = l;
-	if (_overlay) {
-		_overlay->setAnchorPoint(Vec2(0.5f, 0.5f));
-		_overlay->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
-		_overlay->setContentSize(_contentSize);
-		addChild(_overlay, 1);
-		_overlay->onPush(this, false);
-		_overlay->onPushTransitionEnded(this, false);
+
+	l->setAnchorPoint(Vec2(0.5f, 0.5f));
+	l->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
+	l->setContentSize(_contentSize);
+
+	auto enter = enterTransition ? Rc<Transition>(enterTransition) : l->getDefaultEnterTransition();
+	auto exit = exitTransition ? Rc<Transition>(exitTransition) : l->getDefaultExitTransition();
+
+	int zIndex = _overlays.size() + 1;
+
+	_overlays.push_back(l);
+	if (exit) {
+		_overlayExit.emplace(l, exit);
 	}
+
+	l->setAnchorPoint(Vec2(0.5f, 0.5f));
+	l->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
+	l->setContentSize(_contentSize);
+	addChild(l, zIndex);
+
+	l->onPush(this, false);
+
+	auto fn = [this, l] {
+		l->onPushTransitionEnded(this, false);
+	};
+
+	if (enter) {
+		l->runAction(action::sequence(enter, fn), "ContentLayer.Transition"_tag);
+	} else {
+		fn();
+	}
+
 	return true;
 }
-bool ContentLayer::popOverlayNode(Layout *l) {
-	if (_overlay) {
-		_overlay->onPopTransitionBegan(this, false);
-		_overlay->onPop(this, false);
-		_overlay->removeFromParent();
-		_overlay = nullptr;
-		return true;
+
+bool ContentLayer::popOverlayNode(OverlayLayout *l) {
+	auto it = std::find(_overlays.begin(), _overlays.end(), l);
+	if (it == _overlays.end()) {
+		return false;
 	}
-	return false;
+
+	l->retain();
+	_overlays.erase(it);
+	l->onPopTransitionBegan(this, false);
+
+	auto fn = [this, l] {
+		eraseOverlay(l);
+		l->onPop(this, false);
+		l->release();
+	};
+
+	auto tit = _overlayExit.find(l);
+	if (tit != _overlayExit.end()) {
+		l->runAction(action::sequence(tit->second, fn));
+	} else {
+		fn();
+	}
+
+	return true;
 }
 
 NS_MD_END

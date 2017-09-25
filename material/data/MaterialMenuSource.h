@@ -39,7 +39,7 @@ public:
 	using AttachCallback = Function<void(MenuSourceItem *, cocos2d::Node *)>;
 
 	virtual bool init();
-	virtual Rc<MenuSourceItem> copy();
+	virtual Rc<MenuSourceItem> copy() const;
 
 	virtual void setCustomData(const data::Value &);
 	virtual void setCustomData(data::Value &&);
@@ -72,7 +72,7 @@ public:
 	virtual bool init(float h, const FactoryFunction &func, float minWidth = 0.0f);
 	virtual bool init(const HeightFunction &h, const FactoryFunction &func, float minWidth = 0.0f);
 
-	virtual Rc<MenuSourceItem> copy() override;
+	virtual Rc<MenuSourceItem> copy() const override;
 
 	virtual float getMinWidth() const;
 	virtual float getHeight(float) const;
@@ -94,7 +94,7 @@ public:
 	virtual bool init() { return true; }
 	virtual ~MenuSource();
 
-	Rc<MenuSource> copy();
+	Rc<MenuSource> copy() const;
 
 	void addItem(MenuSourceItem *);
 	Rc<MenuSourceButton> addButton(const String &, const Callback & = nullptr);
@@ -107,7 +107,7 @@ public:
 
 	uint32_t count();
 
-	const Vector<Rc<MenuSourceItem>> &getItems();
+	const Vector<Rc<MenuSourceItem>> &getItems() const;
 
 protected:
 	Vector<Rc<MenuSourceItem>> _items;
@@ -121,7 +121,7 @@ public:
 
 	virtual bool init(const String &, IconName, const Callback &);
 	virtual bool init() override;
-	virtual Rc<MenuSourceItem> copy() override;
+	virtual Rc<MenuSourceItem> copy() const override;
 
 	virtual void setName(const String &);
 	virtual const String & getName() const;

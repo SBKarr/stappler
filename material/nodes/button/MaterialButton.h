@@ -84,6 +84,9 @@ public:
 	virtual void setMenuSourceButton(MenuSourceButton *);
 	virtual MenuSourceButton *getMenuSourceButton() const;
 
+	virtual void setFormController(FormController *);
+	virtual FormController *getFormController() const;
+
 	virtual const Vec2 & getTouchPoint() const;
 
 	virtual void cancel();
@@ -138,6 +141,9 @@ protected:
 
 	Rc<MenuSource>_floatingMenuSource;
 	data::Listener<MenuSourceButton> _source;
+
+	EventListener *_formEventListener = nullptr;
+	FormController *_formController = nullptr;
 };
 
 NS_MD_END

@@ -51,6 +51,8 @@ NS_MD_BEGIN
 
 class Scene : public DynamicBatchScene {
 public:
+	using Transition = cocos2d::FiniteTimeAction;
+
 	static stappler::EventHeader onBackKey;
 
 public:
@@ -84,13 +86,14 @@ public:
 	virtual void releaseContentForNode(cocos2d::Node *);
 	virtual bool isContentCaptured();
 
-	virtual void replaceContentNode(Layout *, cocos2d::FiniteTimeAction *enterTransition = nullptr);
-	virtual void replaceTopContentNode(Layout *, cocos2d::FiniteTimeAction *enterTransition = nullptr, cocos2d::FiniteTimeAction *exitTransition = nullptr);
-	virtual void pushContentNode(Layout *, cocos2d::FiniteTimeAction *enterTransition = nullptr, cocos2d::FiniteTimeAction *exitTransition = nullptr);
+	virtual void replaceContentNode(Layout *, Transition *enter = nullptr);
+	virtual void replaceTopContentNode(Layout *, Transition *enter = nullptr, Transition *exit = nullptr);
+
+	virtual void pushContentNode(Layout *, Transition *enter = nullptr, Transition *exit = nullptr);
 	virtual void popContentNode(Layout *);
 
-	virtual void pushOverlayNode(Layout *);
-	virtual void popOverlayNode(Layout *);
+	virtual void pushOverlayNode(OverlayLayout *, Transition *enter = nullptr, Transition *exit = nullptr);
+	virtual void popOverlayNode(OverlayLayout *);
 
 	virtual void pushFloatNode(cocos2d::Node *, int);
 	virtual void popFloatNode(cocos2d::Node *);

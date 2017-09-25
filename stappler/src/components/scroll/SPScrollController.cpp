@@ -271,7 +271,7 @@ bool ScrollController::isKeepNodes() const {
 	return _keepNodes;
 }
 
-ScrollController::Item *ScrollController::getItem(size_t n) {
+const ScrollController::Item *ScrollController::getItem(size_t n) {
 	if (n < _nodes.size()) {
 		_infoDirty = true;
 		return &_nodes[n];
@@ -279,13 +279,25 @@ ScrollController::Item *ScrollController::getItem(size_t n) {
 	return nullptr;
 }
 
-ScrollController::Item *ScrollController::getItem(cocos2d::Node *node) {
+const ScrollController::Item *ScrollController::getItem(cocos2d::Node *node) {
 	if (node) {
 		for (auto &it : _nodes) {
 			if (node == it.node) {
 				_infoDirty = true;
 				return &it;
 			}
+		}
+	}
+	return nullptr;
+}
+
+const ScrollController::Item *ScrollController::getItem(const String &str) {
+	if (str.empty()) {
+		return nullptr;
+	}
+	for (auto &it : _nodes) {
+		if (it.name == str && it.node) {
+			return &it;
 		}
 	}
 	return nullptr;
@@ -422,11 +434,15 @@ Vector<Rc<cocos2d::Node>> ScrollController::getNodes() const {
 }
 
 cocos2d::Node * ScrollController::getNodeByName(const String &str) const {
-	cocos2d::Node *ret = nullptr;
-	if (_root && !str.empty()) {
-		return _root->getChildByName(str);
+	if (str.empty()) {
+		return nullptr;
 	}
-	return ret;
+	for (auto &it : _nodes) {
+		if (it.name == str && it.node) {
+			return it.node;
+		}
+	}
+	return nullptr;
 }
 
 cocos2d::Node * ScrollController::getFrontNode() const {
@@ -458,6 +474,27 @@ cocos2d::Node * ScrollController::getBackNode() const {
 		}
 	}
 	return ret;
+}
+
+void ScrollController::resizeItem(const Item *item, float newSize) {
+	auto &items = getItems();
+
+	float offset = 0.0f;
+	for (auto &it : items) {
+		if (&it == item) {
+			offset += (newSize - _scroll->getNodeScrollSize(it.size));
+			it.size =  _scroll->isVertical()?Size(it.size.width, newSize):Size(newSize, it.size.height);
+			if (it.node) {
+				_scroll->updateScrollNode(it.node, it.pos, it.size, it.zIndex, it.name);
+			}
+		} else if (offset != 0.0f) {
+			it.pos = _scroll->isVertical()?Vec2(it.pos.x, it.pos.y + offset):Size(it.pos.x + offset, it.pos.y);
+			if (it.node) {
+				_scroll->updateScrollNode(it.node, it.pos, it.size, it.zIndex, it.name);
+			}
+		}
+	}
+	onScrollPosition(true);
 }
 
 NS_SP_END

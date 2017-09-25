@@ -117,7 +117,7 @@ void ToolbarLayout::onToolbarNavButton() {
 	} else if (_toolbar->getNavButtonIcon() == IconName::Dynamic_Navigation && _toolbar->getNavButtonIconProgress() > 0.0f) {
 		onBackButton();
 	} else if (_toolbar->getNavButtonIcon() == IconName::Dynamic_Navigation && _toolbar->getNavButtonIconProgress() == 0.0f) {
-		runAction(action::callback(0.15f, [] {
+		runAction(action::sequence(0.15f, [] {
 			material::Scene::getRunningScene()->getNavigationLayer()->show();
 		}));
 	}

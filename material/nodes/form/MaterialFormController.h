@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,8 @@ class FormController : public cocos2d::Component {
 public:
 	static EventHeader onForceCollect;
 	static EventHeader onForceUpdate;
+	static EventHeader onEnabled; // true or false
+	static EventHeader onErrors;
 
 	using SaveCallback = Function<void(const data::Value &)>;
 
@@ -39,12 +41,21 @@ public:
 	virtual bool init(const Map<String, data::Value> &, const SaveCallback & = nullptr);
 
 	virtual void onExit() override;
+	virtual void setEnabled(bool) override;
 
 	virtual void setSaveCallback(const SaveCallback &);
 	virtual const SaveCallback &getSaveCallback() const;
 
-	virtual data::Value getValue(const String &) const;
 	virtual void setValue(const String &, const data::Value &);
+	virtual data::Value getValue(const String &) const;
+
+	virtual void setErrors(const Map<String, String> &);
+	virtual void setErrors(Map<String, String> &&);
+	virtual void setError(const String &name, const String &value);
+	virtual String getError(const String &) const;
+
+	virtual void clearErrors();
+	virtual void clearError(const String &);
 
 	virtual void reset();
 	virtual void reset(const data::Value &);
@@ -56,6 +67,7 @@ public:
 protected:
 	SaveCallback _saveCallback;
 	Map<String, data::Value> _data;
+	Map<String, String> _errors;
 };
 
 NS_MD_END

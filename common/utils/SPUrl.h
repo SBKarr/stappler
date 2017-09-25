@@ -53,6 +53,8 @@ public:
 	static data::Value parseDataArgs(const String &, size_t maxVarSize = maxOf<size_t>());
 	static data::Value parseDataArgs(const StringView &, size_t maxVarSize = maxOf<size_t>());
 
+	static bool validateEmail(String &);
+
 	Url() : _port(0) { }
 	Url(const Url &u) = default;
 	Url(Url &&u) = default;

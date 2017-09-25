@@ -40,11 +40,15 @@ bool InputField::init(FontType font) {
 		return false;
 	}
 
-	_node = construct<InputLabelContainer>();
-	_node->setAnchorPoint(Vec2(0.0f, 0.0f));
-	_label = makeLabel(font);
-	_node->setLabel(_label);
-	addChild(_node, 1);
+	setCascadeOpacityEnabled(true);
+
+	auto node = Rc<InputLabelContainer>::create();
+	node->setAnchorPoint(Vec2(0.0f, 0.0f));
+	node->setLabel(makeLabel(font));
+	addChild(node, 1);
+
+	_node = node;
+	_label = node->getLabel();
 
 	_placeholder = construct<Label>(font);
 	_placeholder->setPosition(Vec2(0.0f, 0.0f));
@@ -361,8 +365,8 @@ void InputField::onMenuHidden() {
 
 }
 
-InputLabel *InputField::makeLabel(FontType font) {
-	auto label = construct<InputLabel>(font);
+Rc<InputLabel> InputField::makeLabel(FontType font) {
+	auto label = Rc<InputLabel>::create(font);
 	label->setPosition(Vec2(0.0f, 0.0f));
 	label->setCursorColor(_normalColor);
 	return label;

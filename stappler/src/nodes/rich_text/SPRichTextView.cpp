@@ -510,7 +510,7 @@ void View::setScrollRelativePosition(float value) {
 bool View::showNextPage() {
 	if (isHorizontal() && !isMoved() && !_animationAction) {
 		_movement = Movement::Auto;
-		_animationAction = action::callback(
+		_animationAction = action::sequence(
 				Accelerated::createBounce(7500, _root->getPosition(), _root->getPosition() - Vec2(_contentSize.width, 0), Vec2(0, 0)),
 				[this] {
 			onAnimationFinished();
@@ -524,7 +524,7 @@ bool View::showNextPage() {
 bool View::showPrevPage() {
 	if (isHorizontal() && !isMoved() && !_animationAction) {
 		_movement = Movement::Auto;
-		_animationAction = action::callback(
+		_animationAction = action::sequence(
 				Accelerated::createBounce(7500, _root->getPosition(), _root->getPosition() + Vec2(_contentSize.width, 0), Vec2(0, 0)),
 				[this] {
 			onAnimationFinished();

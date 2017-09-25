@@ -87,7 +87,7 @@ bool LineField::onSwipeEnd(const Vec2 &vel) {
 	return _node->onSwipeEnd(vel);
 }
 
-InputLabel *LineField::makeLabel(FontType font) {
+Rc<InputLabel> LineField::makeLabel(FontType font) {
 	auto l = FormField::makeLabel(font);
 	l->setAllowMultiline(false);
 	return l;

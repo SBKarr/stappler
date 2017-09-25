@@ -139,7 +139,7 @@ struct _Rc_PtrCast<Base, SmartRef<Base>> {
 template <typename Base, typename _Type = typename std::conditional<std::is_base_of<Ref, Base>::value, Base, SmartRef<Base>>::type>
 class RcBase {
 public:
-	using Type = _Type;
+	using Type = typename std::remove_cv<_Type>::type;
 	using Self = RcBase<Base, _Type>;
 	using Pointer = Type *;
 
@@ -180,7 +180,6 @@ public:
 		return _Rc_PtrCast<Base, Type>::cast(_ptr);
 	}
 
-	inline operator Base * () { return get(); }
 	inline operator Base * () const { return get(); }
 	inline operator bool () const { return _ptr; }
 
@@ -224,8 +223,7 @@ public:
 		other._ptr = ptr;
 	}
 
-	inline Base * operator->() { return _Rc_PtrCast<Base, Type>::cast(_ptr); }
-	inline const Base * operator->() const { return _Rc_PtrCast<Base, Type>::cast(_ptr); }
+	inline Base * operator->() const { return _Rc_PtrCast<Base, Type>::cast(_ptr); }
 
 	inline bool operator == (const Self & other) const { return _ptr == other._ptr; }
 	inline bool operator == (const Base * & other) const { return _ptr == other; }

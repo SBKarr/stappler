@@ -57,6 +57,7 @@ bool InputLabel::Selection::init() {
 	_blendFunc = cocos2d::BlendFunc::ALPHA_NON_PREMULTIPLIED;
 	setOpacityModifyRGB(false);
 	setCascadeOpacityEnabled(false);
+	updateBlendFunc(nullptr);
 
 	return true;
 }
@@ -70,6 +71,7 @@ void InputLabel::Selection::emplaceRect(const Rect &rect) {
 void InputLabel::Selection::updateColor() {
 	DynamicBatchNode::updateColor();
 }
+
 bool InputLabel::init(FontType font, float w) {
 	return init(getFontStyle(font), w);
 }
@@ -206,7 +208,7 @@ void InputLabel::setCursorColor(const Color &color, bool pointer) {
 	if (_handler.isActive()) {
 		_cursorLayer->setColor(color);
 	}
-	_cursorSelection->setColor(color);
+	//_cursorSelection->setColor(color);
 }
 const Color &InputLabel::getCursorColor() const {
 	return _cursorColor;
@@ -599,17 +601,21 @@ void InputLabel::onError(Error err) {
 
 void InputLabel::updateCursor() {
 	if (_cursor.length == 0 || empty()) {
-		Vec2 cpos;
-		if (empty()) {
-			cpos = Vec2(0.0f, _contentSize.height - _cursorLayer->getContentSize().height);
-		} else {
-			cpos = getCursorPosition(_cursor.start);
-		}
-		_cursorLayer->setVisible(true);
-		_cursorLayer->setPosition(cpos);
-		_cursorPointer->setPosition(cpos);
+		if (_enabled) {
+			Vec2 cpos;
+			if (empty()) {
+				cpos = Vec2(0.0f, _contentSize.height - _cursorLayer->getContentSize().height);
+			} else {
+				cpos = getCursorPosition(_cursor.start);
+			}
+			_cursorLayer->setVisible(true);
+			_cursorLayer->setPosition(cpos);
+			_cursorPointer->setPosition(cpos);
 
-		_cursorSelection->clear();
+			_cursorSelection->clear();
+		} else {
+			_cursorLayer->setVisible(false);
+		}
 	} else {
 		_cursorLayer->setVisible(false);
 		_cursorStart->setPosition(getCursorPosition(_cursor.start, true));
@@ -706,7 +712,7 @@ void InputLabel::showLastChar() {
 		}
 		str += _inputString.back();
 		Label::setString(str);
-		runAction(action::callback(2.0f, std::bind(&InputLabel::hideLastChar, this)), "InputLabelLastChar"_tag);
+		runAction(action::sequence(2.0f, std::bind(&InputLabel::hideLastChar, this)), "InputLabelLastChar"_tag);
 	}
 }
 
@@ -722,7 +728,7 @@ void InputLabel::scheduleCursorPointer() {
 	setPointerEnabled(true);
 	stopAllActionsByTag("TextFieldCursorPointer"_tag);
 	if (_cursor.length == 0) {
-		runAction(action::callback(3.5f, [this] {
+		runAction(action::sequence(3.5f, [this] {
 			setPointerEnabled(false);
 		}), "TextFieldCursorPointer"_tag);
 	}

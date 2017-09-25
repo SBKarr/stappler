@@ -91,12 +91,16 @@ public:
 	NetworkHandle & getHandle() { return _handle; }
 	const NetworkHandle & getHandle() const { return _handle; }
 
+	void setThread(Thread &);
+	Thread &getThread() const;
+
 protected:
 	NetworkHandle _handle;
 
 	uint64_t _mtime = 0;
 	size_t _size = 0;
 	String _etag;
+	Thread *_customThread = nullptr;
 
     void setThreadDownloadProgress(const ThreadProgressCallback &callback);
     void setThreadUploadProgress(const ThreadProgressCallback &callback);

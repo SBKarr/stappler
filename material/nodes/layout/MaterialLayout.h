@@ -31,6 +31,7 @@ NS_MD_BEGIN
 class Layout : public stappler::StrictNode {
 public:
 	using BackButtonCallback = std::function<bool()>;
+	using Transition = cocos2d::FiniteTimeAction;
 
 	virtual ~Layout() { }
 	virtual bool onBackButton();
@@ -50,7 +51,11 @@ public:
 	virtual void onForegroundTransitionBegan(ContentLayer *l, Layout *overlay);
 	virtual void onForeground(ContentLayer *l, Layout *overlay);
 
+	virtual Rc<Transition> getDefaultEnterTransition() const;
+	virtual Rc<Transition> getDefaultExitTransition() const;
+
 protected:
+	bool _inTransition = false;
 	BackButtonCallback _backButtonCallback;
 };
 

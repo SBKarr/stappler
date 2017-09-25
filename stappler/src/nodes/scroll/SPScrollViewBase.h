@@ -121,8 +121,6 @@ public: // internal, use with care
 	virtual void setScrollDirty(bool value);
 	virtual void updateScrollBounds();
 
-	virtual void resizeNode(cocos2d::Node *, float newSize);
-
 protected: // common overload points
 	virtual void onDelta(float delta);
 	virtual void onOverscrollPerformed(float velocity, float pos, float boundary);

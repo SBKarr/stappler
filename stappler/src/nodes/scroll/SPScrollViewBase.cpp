@@ -794,25 +794,6 @@ void ScrollViewBase::updateScrollBounds() {
 	_root->setPositionZ(0.0f);
 }
 
-void ScrollViewBase::resizeNode(cocos2d::Node *node, float newSize) {
-	auto &items = _controller->getItems();
-
-	float offset = 0.0f;
-	for (auto &it : items) {
-		if (it.node && it.node == node) {
-			offset += (newSize - (isVertical()?it.size.height:it.size.width));
-			it.size = isVertical()?Size(it.size.width, newSize):Size(newSize, it.size.height);
-			updateScrollNode(it.node, it.pos, it.size, it.zIndex, it.name);
-		} else if (offset != 0.0f) {
-			it.pos = isVertical()?Vec2(it.pos.x, it.pos.y + offset):Size(it.pos.x + offset, it.pos.y);
-			if (it.node) {
-				updateScrollNode(it.node, it.pos, it.size, it.zIndex, it.name);
-			}
-		}
-	}
-	_controller->onScrollPosition(true);
-}
-
 void ScrollViewBase::onScroll(float delta, bool finished) {
 	if (_controller) {
 		_controller->onScroll(delta, finished);

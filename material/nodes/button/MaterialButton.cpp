@@ -30,6 +30,7 @@ THE SOFTWARE.
 #include "MaterialMenuSource.h"
 #include "MaterialFloatingMenu.h"
 #include "MaterialResourceManager.h"
+#include "MaterialFormController.h"
 
 #include "SPDrawPathNode.h"
 #include "SPString.h"
@@ -38,6 +39,7 @@ THE SOFTWARE.
 #include "SPGestureListener.h"
 #include "SPDataListener.h"
 #include "SPActions.h"
+#include "SPEventListener.h"
 
 NS_MD_BEGIN
 
@@ -76,6 +78,10 @@ bool Button::init(const TapCallback &tapCallback, const TapCallback &longTapCall
 	_tapCallback = tapCallback;
 	_longTapCallback = longTapCallback;
 
+	auto el = Rc<EventListener>::create();
+	addComponent(el);
+	_formEventListener = el;
+
 	updateStyle();
 	updateEnabled();
 
@@ -107,7 +113,7 @@ void Button::updateStyle() {
 }
 
 void Button::updateEnabled() {
-	if ((_longTapCallback || _tapCallback || _floatingMenuSource) && _enabled) {
+	if ((_longTapCallback || _tapCallback || _floatingMenuSource) && _enabled && (!_formController || _formController->isEnabled())) {
 		_listener->setEnabled(true);
 	} else {
 		_listener->setEnabled(false);
@@ -482,6 +488,22 @@ void Button::setMenuSourceButton(MenuSourceButton *source) {
 
 MenuSourceButton *Button::getMenuSourceButton() const {
 	return _source;
+}
+
+void Button::setFormController(FormController *c) {
+	if (_formController != c) {
+		_formController = c;
+		_formEventListener->clear();
+		if (_formController) {
+			_formEventListener->onEventWithObject(FormController::onEnabled, _formController, [this] (const Event &ev) {
+				updateEnabled();
+			});
+			updateEnabled();
+		}
+	}
+}
+FormController *Button::getFormController() const {
+	return _formController;
 }
 
 void Button::updateFromSource() {
