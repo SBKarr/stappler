@@ -405,6 +405,10 @@ void ScrollViewBase::setScrollRelativePosition(float value) {
 	float areaOffset = getScrollableAreaOffset();
 	float size = getScrollSize();
 
+	if (areaSize < size) {
+		value = 0.0f;
+	}
+
 	auto &padding = getPadding();
 	auto paddingFront = (isVertical())?padding.top:padding.left;
 	auto paddingBack = (isVertical())?padding.bottom:padding.right;

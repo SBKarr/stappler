@@ -45,6 +45,8 @@ public: // transactions
 		if (isInTransaction()) {
 			if (!t()) {
 				cancelTransaction();
+			} else {
+				return true;
 			}
 		} else {
 			if (beginTransaction()) {
@@ -56,34 +58,6 @@ public: // transactions
 		}
 		return false;
 	}
-
-public: // Object CRUD
-	virtual bool createObject(const Scheme &, data::Value &data) = 0;
-	virtual bool saveObject(const Scheme &, uint64_t oid, const data::Value &newObject, const Vector<String> &fields) = 0;
-	virtual data::Value patchObject(const Scheme &, uint64_t oid, const data::Value &data) = 0;
-
-	virtual bool removeObject(const Scheme &, uint64_t oid) = 0;
-	virtual data::Value getObject(const Scheme &, uint64_t, bool forUpdate) = 0;
-	virtual data::Value getObject(const Scheme &, const String &, bool forUpdate) = 0;
-	virtual bool init(Server &serv, const Map<String, const Scheme *> &) = 0;
-
-	virtual data::Value selectObjects(const Scheme &, const Query &) = 0;
-	virtual size_t countObjects(const Scheme &, const Query &) = 0;
-
-
-public: // Object properties CRUD
-	virtual data::Value getProperty(const Scheme &, uint64_t oid, const Field &) = 0;
-	virtual data::Value getProperty(const Scheme &, const data::Value &, const Field &) = 0;
-
-	virtual data::Value setProperty(const Scheme &, uint64_t oid, const Field &, data::Value &&) = 0;
-	virtual data::Value setProperty(const Scheme &, const data::Value &, const Field &, data::Value &&) = 0;
-
-	virtual bool clearProperty(const Scheme &, uint64_t oid, const Field &, data::Value && = data::Value()) = 0;
-	virtual bool clearProperty(const Scheme &, const data::Value &, const Field &, data::Value && = data::Value()) = 0;
-
-	virtual data::Value appendProperty(const Scheme &, uint64_t oid, const Field &, data::Value &&) = 0;
-	virtual data::Value appendProperty(const Scheme &, const data::Value &, const Field &, data::Value &&) = 0;
-
 
 public: // session support
 	virtual data::Value getSessionData(const Bytes &) = 0;
@@ -107,6 +81,35 @@ public: // Key-Value storage
 public: // resource requests
 	virtual Vector<int64_t> performQueryListForIds(const QueryList &, size_t count = maxOf<size_t>()) = 0;
 	virtual data::Value performQueryList(const QueryList &, size_t count = maxOf<size_t>(), bool forUpdate = false, const Field * = nullptr) = 0;
+
+protected: // Object CRUD
+	friend class Scheme;
+
+	virtual bool createObject(const Scheme &, data::Value &data) = 0;
+	virtual bool saveObject(const Scheme &, uint64_t oid, const data::Value &newObject, const Vector<String> &fields) = 0;
+	virtual data::Value patchObject(const Scheme &, uint64_t oid, const data::Value &data) = 0;
+
+	virtual bool removeObject(const Scheme &, uint64_t oid) = 0;
+	virtual data::Value getObject(const Scheme &, uint64_t, bool forUpdate) = 0;
+	virtual data::Value getObject(const Scheme &, const String &, bool forUpdate) = 0;
+	virtual bool init(Server &serv, const Map<String, const Scheme *> &) = 0;
+
+	virtual data::Value selectObjects(const Scheme &, const Query &) = 0;
+	virtual size_t countObjects(const Scheme &, const Query &) = 0;
+
+
+protected: // Object properties CRUD
+	virtual data::Value getProperty(const Scheme &, uint64_t oid, const Field &) = 0;
+	virtual data::Value getProperty(const Scheme &, const data::Value &, const Field &) = 0;
+
+	virtual data::Value setProperty(const Scheme &, uint64_t oid, const Field &, data::Value &&) = 0;
+	virtual data::Value setProperty(const Scheme &, const data::Value &, const Field &, data::Value &&) = 0;
+
+	virtual bool clearProperty(const Scheme &, uint64_t oid, const Field &, data::Value && = data::Value()) = 0;
+	virtual bool clearProperty(const Scheme &, const data::Value &, const Field &, data::Value && = data::Value()) = 0;
+
+	virtual data::Value appendProperty(const Scheme &, uint64_t oid, const Field &, data::Value &&) = 0;
+	virtual data::Value appendProperty(const Scheme &, const data::Value &, const Field &, data::Value &&) = 0;
 
 protected:
 	virtual bool beginTransaction() = 0;

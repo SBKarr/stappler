@@ -33,6 +33,10 @@ class Manager : public AllocPool {
 public:
 	using Handler = websocket::Handler;
 
+	static apr_status_t filterFunc(ap_filter_t *f, apr_bucket_brigade *bb);
+	static int filterInit(ap_filter_t *f);
+	static void filterRegister();
+
 	Manager();
 	virtual ~Manager();
 
@@ -123,8 +127,14 @@ public:
 	const Request &request() const;
 	Manager *manager() const;
 
+	bool isEnabled() const;
+
 protected:
 	friend class websocket::Manager;
+
+	static uint8_t getOpcodeFromType(Handler::FrameType opcode);
+	static bool isControl(Handler::FrameType t);
+	static void makeHeader(StackBuffer<32> &buf, size_t dataSize, Handler::FrameType t);
 
 	void run();
 	void receiveBroadcast(const data::Value &);
@@ -136,6 +146,10 @@ protected:
 
 	bool readSocket(const apr_pollfd_t *fd);
 	bool writeSocket(const apr_pollfd_t *fd);
+
+	bool writeBrigade(apr_bucket_brigade *);
+	size_t writeNonBlock(const uint8_t *data, size_t len);
+	bool writeBrigadeCache(apr_bucket_brigade *, apr_bucket *, size_t off);
 
 	// try to write into non-blocking socket
 	bool writeToSocket(apr_bucket_brigade *pool, const uint8_t *bytes, size_t &count);
@@ -205,48 +219,46 @@ protected:
 		bool updateState();
 	};
 
-	struct WriteSlot {
-		apr_bucket_brigade *bb;
-		apr_pool_t *pool;
-		size_t size;
-		size_t item;
-		size_t offset;
-		Vector<Bytes> storage;
+	struct WriteSlot : AllocPool {
+		struct Slice {
+			uint8_t *data;
+			size_t size;
+			Slice *next;
+		};
 
-		WriteSlot(apr_pool_t *p) : bb(nullptr), pool(p), size(0), item(0), offset(0), storage(p) { }
+		apr_pool_t *pool;
+		size_t alloc = 0;
+		size_t offset = 0;
+		Slice *firstData = nullptr;
+		Slice *lastData = nullptr;
+
+		WriteSlot *next = nullptr;
+
+		WriteSlot(apr_pool_t *);
+
+		bool empty() const;
+
+		void emplace(const uint8_t *data, size_t size);
+		void pop(size_t);
+
+		uint8_t * getNextBytes() const;
+		size_t getNextLength() const;
 	};
 
 	struct FrameWriter {
-		apr_pool_t * pool;
-		Vector<WriteSlot> frames;
-		apr_bucket_brigade *tmpbb;
+		apr_pool_t *pool;
+		apr_bucket_brigade *tmpbb = nullptr;
+		WriteSlot *firstSlot = nullptr;
+		WriteSlot *lastSlot = nullptr;
 
 		FrameWriter(const Request &, apr_pool_t *);
 
 		bool empty() const; // is write queue empty?
-		size_t size() const; // size of write queue
 
-		// if write queue is filled with many frames, you should not try to add another
-		// may be, it's a user with slow connection
-		//
-		// instead, you can skip buffered frames in write queue, then add your new frame
-		// or just wait for some time, when all frames will be sent to user
+		WriteSlot *nextReadSlot() const;
+		void popReadSlot();
 
-		size_t getReadyLength();
-		uint8_t * getReadyBytes();
-		apr_bucket_brigade *getReadyBrigade(const Request &);
-		void drop(uint8_t *, size_t nbytes);
-
-		// drop all frames after the one currently processed
-		void skipBuffered();
-
-		bool addFrame(FrameType, const uint8_t *buf, size_t len);
-		bool addFrameOffset(const uint8_t *head, size_t nhead, const uint8_t *buf, size_t nbuf, size_t offset);
-
-		// adds control frame immediately after current frame
-		bool addControlFrame(FrameType, const String & = String());
-
-		uint8_t *emplaceFrame(size_t, bool first = false, size_t offset = 0);
+		WriteSlot *nextEmplaceSlot(size_t sizeOfData);
 	};
 
 	data::EncodeFormat _format = data::EncodeFormat::Json;
@@ -261,7 +273,6 @@ protected:
 	bool _ended = false;
 	bool _valid = false;
 	bool _fdchanged = false;
-	bool _ssl = false;
 
 	FrameReader _reader;
 	FrameWriter _writer;

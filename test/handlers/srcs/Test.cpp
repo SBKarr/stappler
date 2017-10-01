@@ -32,6 +32,24 @@ THE SOFTWARE.
 
 NS_SA_EXT_BEGIN(test)
 
+class TestSelectHandler : public RequestHandler {
+public:
+	virtual bool isRequestPermitted(Request & rctx) override {
+		return true;
+	}
+
+	virtual int onTranslateName(Request &rctx) {
+		auto scheme = rctx.server().getScheme("refs");
+		if (scheme) {
+			auto d = scheme->select(rctx.storage(), storage::Query::all());
+			rctx.writeData(d);
+			return DONE;
+		}
+		return HTTP_NOT_FOUND;
+	}
+protected:
+};
+
 class TestHandler : public ServerComponent {
 public:
 	TestHandler(Server &serv, const String &name, const data::Value &dict);
@@ -74,6 +92,7 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 		Field::Text("alias", storage::Transform::Alias),
 		Field::Text("text", storage::MinLength(3)),
 		Field::Set("features", _objects, RemovePolicy::StrongReference),
+		Field::Set("optionals", _objects, RemovePolicy::Reference),
 		Field::Integer("mtime", storage::Flags::AutoMTime | storage::Flags::Indexed),
 		Field::Integer("index", storage::Flags::Indexed),
 		Field::File("file", MaxFileSize(100_KiB)),
@@ -100,6 +119,8 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 void TestHandler::onChildInit(Server &serv) {
 	serv.addResourceHandler("/objects/", _objects);
 	serv.addResourceHandler("/refs/", _refs);
+
+	serv.addHandler("/handler", SA_HANDLER(TestSelectHandler));
 }
 
 extern "C" ServerComponent * CreateTestHandler(Server &serv, const String &name, const data::Value &dict) {

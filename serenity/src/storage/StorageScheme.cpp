@@ -84,7 +84,7 @@ bool Scheme::isProtected(const String &key) const {
 	return false;
 }
 
-const apr::map<apr::string, Field> & Scheme::getFields() const {
+const Map<String, Field> & Scheme::getFields() const {
 	return fields;
 }
 
@@ -177,35 +177,35 @@ bool Scheme::hasFiles() const {
 	return false;
 }
 
-data::Value Scheme::get(Adapter *adapter, uint64_t oid) const {
-	return adapter->getObject(*this, oid, false);
+data::Value Scheme::get(Adapter *adapter, uint64_t oid, bool forUpdate) const {
+	return adapter->getObject(*this, oid, forUpdate);
 }
 
-data::Value Scheme::get(Adapter *adapter, const String &alias) const {
+data::Value Scheme::get(Adapter *adapter, const String &alias, bool forUpdate) const {
 	if (!hasAliases()) {
 		return data::Value();
 	}
 
-	return adapter->getObject(*this, alias, false);
+	return adapter->getObject(*this, alias, forUpdate);
 }
 
-data::Value Scheme::get(Adapter *adapter, const data::Value &id) const {
+data::Value Scheme::get(Adapter *adapter, const data::Value &id, bool forUpdate) const {
 	if (id.isDictionary()) {
 		auto oid = id.getInteger("__oid");
 		if (oid) {
-			return get(adapter, oid);
+			return get(adapter, oid, forUpdate);
 		}
 	} else {
 		if ((id.isString() && valid::validateNumber(id.getString())) || id.isInteger()) {
 			auto oid = id.getInteger();
 			if (oid) {
-				return get(adapter, oid);
+				return get(adapter, oid, forUpdate);
 			}
 		}
 
 		auto &str = id.getString();
 		if (!str.empty()) {
-			return get(adapter, str);
+			return get(adapter, str, forUpdate);
 		}
 
 	}
@@ -235,129 +235,117 @@ data::Value Scheme::create(Adapter *adapter, const data::Value &data, bool isPro
 		return data::Value();
 	}
 
-	data::Value patch(createFilePatch(adapter, data));
-	if (patch.isDictionary()) {
-		for (auto &it : patch.asDict()) {
-			changeSet.setValue(it.second, it.first);
-		}
-	}
-
-	if (adapter->createObject(*this, changeSet)) {
-		return changeSet;
-	} else {
+	if (adapter->performInTransaction([&] () -> bool {
+		data::Value patch(createFilePatch(adapter, data));
 		if (patch.isDictionary()) {
-			purgeFilePatch(adapter, patch);
+			for (auto &it : patch.asDict()) {
+				changeSet.setValue(it.second, it.first);
+			}
 		}
+
+		if (adapter->createObject(*this, changeSet)) {
+			return true;
+		} else {
+			if (patch.isDictionary()) {
+				purgeFilePatch(adapter, patch);
+			}
+		}
+		return false;
+	})) {
+		return changeSet;
 	}
 
 	return data::Value();
 }
 
 data::Value Scheme::update(Adapter *adapter, uint64_t oid, const data::Value &data, bool isProtected) const {
-	if (!data.isDictionary()) {
-		messages::error("Storage", "Invalid data for object");
+	bool success = false;
+	data::Value changeSet;
+
+	std::tie(success, changeSet) = prepareUpdate(data, isProtected);
+	if (!success) {
 		return data::Value();
-	}
-
-	data::Value changeSet = data;
-	transform(changeSet, isProtected?TransformAction::ProtectedUpdate:TransformAction::Update);
-
-	bool stop = false;
-	for (auto &it : fields) {
-		if (changeSet.hasValue(it.first)) {
-			auto &val = changeSet.getValue(it.first);
-			if (val.isNull() && it.second.hasFlag(Flags::Required)) {
-				messages::error("Storage", "Value for required field can not be removed",
-						data::Value{ std::make_pair("field", data::Value(it.first)) });
-				stop = true;
-			}
-		}
-	}
-
-	if (stop) {
-		return data::Value();
-	}
-
-	data::Value filePatch(createFilePatch(adapter, data));
-	if (filePatch.isDictionary()) {
-		for (auto &it : filePatch.asDict()) {
-			changeSet.setValue(it.second, it.first);
-		}
 	}
 
 	data::Value ret;
-	if (isAtomicPatch(changeSet)) {
-		ret = adapter->patchObject(*this, oid, changeSet);
-	} else {
-		auto obj = adapter->getObject(*this, oid, true);
-		if (obj) {
-			ret = updateObject(adapter, std::move(obj), changeSet);
-		}
-	}
-	if (ret.isNull()) {
+	adapter->performInTransaction([&] () -> bool {
+		data::Value filePatch(createFilePatch(adapter, data));
 		if (filePatch.isDictionary()) {
-			purgeFilePatch(adapter, filePatch);
+			for (auto &it : filePatch.asDict()) {
+				changeSet.setValue(it.second, it.first);
+			}
 		}
+
 		if (changeSet.empty()) {
 			messages::error("Storage", "Empty changeset for id", data::Value{ std::make_pair("oid", data::Value((int64_t)oid)) });
-		} else {
-			messages::error("Storage", "Fail to update object for id", data::Value{ std::make_pair("oid", data::Value((int64_t)oid)) });
+			return false;
 		}
-	}
+
+		if (isAtomicPatch(changeSet)) {
+			ret = adapter->patchObject(*this, oid, changeSet);
+		} else {
+			auto obj = adapter->getObject(*this, oid, true);
+			if (obj) {
+				ret = updateObject(adapter, std::move(obj), changeSet);
+			}
+		}
+		if (ret.isNull()) {
+			if (filePatch.isDictionary()) {
+				purgeFilePatch(adapter, filePatch);
+			}
+			messages::error("Storage", "Fail to update object for id", data::Value{ std::make_pair("oid", data::Value((int64_t)oid)) });
+			return false;
+		}
+		return true;
+	});
 
 	return ret;
 }
 
 data::Value Scheme::update(Adapter *adapter, const data::Value & obj, const data::Value &data, bool isProtected) const {
-	if (!data.isDictionary() || !obj.isDictionary() || !obj.isInteger("__oid")) {
+	uint64_t oid = obj.getInteger("__oid");
+	if (!oid) {
 		messages::error("Storage", "Invalid data for object");
 		return data::Value();
 	}
 
-	uint64_t oid = obj.getInteger("__oid");
-	if (!oid) {
+	bool success = false;
+	data::Value changeSet;
+
+	std::tie(success, changeSet) = prepareUpdate(data, isProtected);
+	if (!success) {
 		return data::Value();
-	}
-
-	data::Value changeSet = data;
-	transform(changeSet, isProtected?TransformAction::ProtectedUpdate:TransformAction::Update);
-
-	bool stop = false;
-	for (auto &it : fields) {
-		if (changeSet.hasValue(it.first)) {
-			auto &val = changeSet.getValue(it.first);
-			if (val.isNull() && it.second.hasFlag(Flags::Required)) {
-				messages::error("Storage", "Value for required field can not be removed",
-						data::Value{ std::make_pair("field", data::Value(it.first)) });
-				stop = true;
-			}
-		}
-	}
-
-	if (stop) {
-		return data::Value();
-	}
-
-	data::Value filePatch(createFilePatch(adapter, data));
-	if (filePatch.isDictionary()) {
-		for (auto &it : filePatch.asDict()) {
-			changeSet.setValue(it.second, it.first);
-		}
 	}
 
 	data::Value ret;
-	if (isAtomicPatch(changeSet)) {
-		ret = adapter->patchObject(*this, oid, changeSet);
-	} else {
-		data::Value mobj(obj);
-		ret = updateObject(adapter, std::move(mobj), changeSet);
-	}
-	if (ret.isNull()) {
+	adapter->performInTransaction([&] () -> bool {
+		data::Value filePatch(createFilePatch(adapter, data));
 		if (filePatch.isDictionary()) {
-			purgeFilePatch(adapter, filePatch);
+			for (auto &it : filePatch.asDict()) {
+				changeSet.setValue(it.second, it.first);
+			}
 		}
-		messages::error("Storage", "No object for id", data::Value{ std::make_pair("oid", data::Value((int64_t)oid)) });
-	}
+
+		if (changeSet.empty()) {
+			messages::error("Storage", "Empty changeset for id", data::Value{ std::make_pair("oid", data::Value((int64_t)oid)) });
+			return false;
+		}
+
+		if (isAtomicPatch(changeSet)) {
+			ret = adapter->patchObject(*this, oid, changeSet);
+		} else {
+			data::Value mobj(obj);
+			ret = updateObject(adapter, std::move(mobj), changeSet);
+		}
+		if (ret.isNull()) {
+			if (filePatch.isDictionary()) {
+				purgeFilePatch(adapter, filePatch);
+			}
+			messages::error("Storage", "No object for id", data::Value{ std::make_pair("oid", data::Value((int64_t)oid)) });
+			return false;
+		}
+		return true;
+	});
 
 	return ret;
 }
@@ -384,6 +372,34 @@ void Scheme::mergeValues(const Field &f, data::Value &original, data::Value &new
 	} else {
 		original.setValue(std::move(newVal));
 	}
+}
+
+Pair<bool, data::Value> Scheme::prepareUpdate(const data::Value &data, bool isProtected) const {
+	if (!data.isDictionary()) {
+		messages::error("Storage", "Invalid changeset data for object");
+		return pair(false, data::Value());
+	}
+
+	data::Value changeSet = data;
+	transform(changeSet, isProtected?TransformAction::ProtectedUpdate:TransformAction::Update);
+
+	bool stop = false;
+	for (auto &it : fields) {
+		if (changeSet.hasValue(it.first)) {
+			auto &val = changeSet.getValue(it.first);
+			if (val.isNull() && it.second.hasFlag(Flags::Required)) {
+				messages::error("Storage", "Value for required field can not be removed",
+						data::Value{ std::make_pair("field", data::Value(it.first)) });
+				stop = true;
+			}
+		}
+	}
+
+	if (stop) {
+		return pair(false, data::Value());
+	}
+
+	return pair(true, changeSet);
 }
 
 data::Value Scheme::updateObject(Adapter *adapter, data::Value && obj, data::Value &changeSet) const {
@@ -502,17 +518,15 @@ data::Value Scheme::setProperty(Adapter *a, const data::Value &obj, const String
 	return setProperty(a, obj.getInteger(s), s, file);
 }
 
-bool Scheme::clearProperty(Adapter *a, uint64_t oid, const String &s) const {
-	auto f = getField(s);
-	if (f && !f->hasFlag(Flags::Required)) {
-		return a->clearProperty(*this, oid, *f);
+bool Scheme::clearProperty(Adapter *a, uint64_t oid, const String &s, data::Value && objs) const {
+	if (auto f = getField(s)) {
+		return clearProperty(a, oid, *f, move(objs));
 	}
 	return false;
 }
-bool Scheme::clearProperty(Adapter *a, const data::Value &obj, const String &s) const {
-	auto f = getField(s);
-	if (f && !f->hasFlag(Flags::Required)) {
-		return a->clearProperty(*this, obj, *f);
+bool Scheme::clearProperty(Adapter *a, const data::Value &obj, const String &s, data::Value && objs) const {
+	if (auto f = getField(s)) {
+		return clearProperty(a, obj, *f, move(objs));
 	}
 	return false;
 }
@@ -605,20 +619,20 @@ data::Value Scheme::setProperty(Adapter *a, const data::Value &obj, const Field 
 	return setProperty(a, obj.getInteger("__oid"), f, file);
 }
 
-bool Scheme::clearProperty(Adapter *a, uint64_t oid, const Field &f) const {
+bool Scheme::clearProperty(Adapter *a, uint64_t oid, const Field &f, data::Value &&objs) const {
 	if (!f.hasFlag(Flags::Required)) {
 		return a->performInTransaction([&] () -> bool {
 			tryUpdate(a, oid);
-			return a->clearProperty(*this, oid, f);
+			return a->clearProperty(*this, oid, f, move(objs));
 		});
 	}
 	return false;
 }
-bool Scheme::clearProperty(Adapter *a, const data::Value &obj, const Field &f) const {
+bool Scheme::clearProperty(Adapter *a, const data::Value &obj, const Field &f, data::Value &&objs) const {
 	if (!f.hasFlag(Flags::Required)) {
 		return a->performInTransaction([&] () -> bool {
 			tryUpdate(a, obj);
-			return a->clearProperty(*this, obj, f);
+			return a->clearProperty(*this, obj, f, move(objs));
 		});
 	}
 	return false;
@@ -723,8 +737,6 @@ data::Value Scheme::createFile(Adapter *adapter, const Field &field, InputFile &
 data::Value Scheme::initField(Adapter *, Object *, const Field &, const data::Value &) {
 	return data::Value::Null;
 }
-
-void Scheme::prepareUpdate(Adapter *, const Field &, data::Value &changeset, const data::Value &value) { }
 
 data::Value Scheme::removeField(Adapter *adapter, data::Value &obj, const Field &f, const data::Value &value) {
 	if (f.isFile()) {

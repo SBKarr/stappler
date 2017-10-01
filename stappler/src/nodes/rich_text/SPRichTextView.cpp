@@ -243,8 +243,8 @@ void View::onContentSizeDirty() {
 		}
 	}
 
-	auto m = (_layout == Layout::Horizontal)?_pageMargin:Margin();
-	m.top += _paddingGlobal.top;
+	auto m = (_layout == Layout::Horizontal)?_pageMargin:Margin(_paddingGlobal.top, 0.0f, 0.0f);
+	//m.top += (_paddingGlobal.top);
 	_renderer->setPageMargin(m);
 
 	ScrollView::onContentSizeDirty();

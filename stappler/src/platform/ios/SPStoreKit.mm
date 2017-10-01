@@ -511,7 +511,7 @@ void StoreKitIOS::parseValidationReceipt(const data::Value & info, Set<String> &
 		return;
 	}
 
-	if (info.getInteger("cancellation_date_ms" > 0)) {
+	if (info.getInteger("cancellation_date_ms") > 0) {
 		if (product->purchased) {
 			product->purchased = false;
 			product->expiration = 0;

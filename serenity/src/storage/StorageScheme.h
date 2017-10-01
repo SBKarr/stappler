@@ -64,9 +64,9 @@ public:// CRUD functions
 	// returns Dictionary with single object data or Null value
 	data::Value create(Adapter *, const data::Value &data, bool isProtected = false) const;
 
-	data::Value get(Adapter *, uint64_t oid) const;
-	data::Value get(Adapter *, const String &alias) const;
-	data::Value get(Adapter *, const data::Value &id) const;
+	data::Value get(Adapter *, uint64_t oid, bool forUpdate = false) const;
+	data::Value get(Adapter *, const String &alias, bool forUpdate = false) const;
+	data::Value get(Adapter *, const data::Value &id, bool forUpdate = false) const;
 
 	data::Value update(Adapter *, uint64_t oid, const data::Value &data, bool isProtected = false) const;
 	data::Value update(Adapter *, const data::Value & obj, const data::Value &data, bool isProtected = false) const;
@@ -88,8 +88,8 @@ public:
 	data::Value setProperty(Adapter *, uint64_t oid, const String &, InputFile &) const;
 	data::Value setProperty(Adapter *, const data::Value &, const String &, InputFile &) const;
 
-	bool clearProperty(Adapter *, uint64_t oid, const String &) const;
-	bool clearProperty(Adapter *, const data::Value &, const String &) const;
+	bool clearProperty(Adapter *, uint64_t oid, const String &, data::Value && = data::Value()) const;
+	bool clearProperty(Adapter *, const data::Value &, const String &, data::Value && = data::Value()) const;
 
 	data::Value appendProperty(Adapter *, uint64_t oid, const String &, data::Value &&) const;
 	data::Value appendProperty(Adapter *, const data::Value &, const String &, data::Value &&) const;
@@ -103,8 +103,8 @@ public:
 	data::Value setProperty(Adapter *, uint64_t oid, const Field &, InputFile &) const;
 	data::Value setProperty(Adapter *, const data::Value &, const Field &, InputFile &) const;
 
-	bool clearProperty(Adapter *, uint64_t oid, const Field &) const;
-	bool clearProperty(Adapter *, const data::Value &, const Field &) const;
+	bool clearProperty(Adapter *, uint64_t oid, const Field &, data::Value && = data::Value()) const;
+	bool clearProperty(Adapter *, const data::Value &, const Field &, data::Value && = data::Value()) const;
 
 	data::Value appendProperty(Adapter *, uint64_t oid, const Field &, data::Value &&) const;
 	data::Value appendProperty(Adapter *, const data::Value &, const Field &, data::Value &&) const;
@@ -114,6 +114,7 @@ protected:
 	void purgeFilePatch(Adapter *, const data::Value &) const;
 	void mergeValues(const Field &f, data::Value &original, data::Value &newVal) const;
 
+	Pair<bool, data::Value> prepareUpdate(const data::Value &data, bool isProtected) const;
 	data::Value updateObject(Adapter *, data::Value && obj, data::Value &data) const;
 
 	void tryUpdate(Adapter *adapter, uint64_t id) const;
@@ -143,8 +144,6 @@ protected:
 
 	// call after object is created, used for custom field initialization
 	data::Value initField(Adapter *, Object *, const Field &, const data::Value &);
-
-	void prepareUpdate(Adapter *, const Field &, data::Value &changeset, const data::Value &value);
 
 	void updateLimits();
 

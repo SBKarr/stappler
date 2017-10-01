@@ -237,7 +237,7 @@ bool Url::validateEmail(String &str) {
 		ret.append(r.str());
 	}
 
-	str.swap(ret);
+	str = move(ret);
 	return true;
 }
 

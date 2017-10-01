@@ -74,7 +74,7 @@ bool ResourceObject::removeObject() {
 		for (auto &it : objs) {
 			_adapter->performInTransaction([&] {
 				// remove with select for update
-				auto obj = _adapter->getObject(getScheme(), it, true);
+				auto obj = getScheme().get(_adapter, it, true);
 				if (obj && isObjectAllowed(getScheme(), Action::Remove, obj)) {
 					getScheme().remove(_adapter, it);
 					return true;
@@ -108,7 +108,7 @@ data::Value ResourceObject::performUpdate(const Vector<int64_t> &objs, data::Val
 	} else if (_perms == Permission::Partial) {
 		for (auto &it : objs) {
 			_adapter->performInTransaction([&] {
-				auto obj = _adapter->getObject(getScheme(), it, true);
+				auto obj = getScheme().get(_adapter, it, true);
 				data::Value patch = data;
 				if (obj && isObjectAllowed(getScheme(), Action::Update, obj, patch)) {
 					ret.addValue(getScheme().update(_adapter, it, patch));
@@ -466,7 +466,7 @@ int64_t ResourceRefSet::getObjectId() {
 
 data::Value ResourceRefSet::getObjectValue() {
 	if (!_objectValue) {
-		_objectValue = _adapter->getObject(*_sourceScheme, getObjectId(), false);
+		_objectValue = _sourceScheme->get(_adapter, getObjectId(), false);
 	}
 	return _objectValue;
 }
@@ -521,13 +521,13 @@ Vector<int64_t> ResourceRefSet::prepareAppendList(int64_t id, const data::Value 
 bool ResourceRefSet::doCleanup(int64_t id, Permission p, const Vector<int64_t> &objs) {
 	if (p == Permission::Full) {
 		if (objs.empty()) {
-			_adapter->clearProperty(*_sourceScheme, id, *_field);
+			_sourceScheme->clearProperty(_adapter, id, *_field);
 		} else {
 			data::Value objsData;
 			for (auto &it : objs) {
 				objsData.addInteger(it);
 			}
-			_adapter->clearProperty(*_sourceScheme, id, *_field, move(objsData));
+			_sourceScheme->clearProperty(_adapter, id, *_field, move(objsData));
 		}
 	} else {
 		auto obj = getObjectValue();
@@ -538,9 +538,9 @@ bool ResourceRefSet::doCleanup(int64_t id, Permission p, const Vector<int64_t> &
 		}
 		if (isObjectAllowed(*_sourceScheme, Action::Update, obj, patch)) {
 			if (patch.isNull(_field->getName())) {
-				_adapter->clearProperty(*_sourceScheme, id, *_field);
+				_sourceScheme->clearProperty(_adapter, id, *_field);
 			} else {
-				if (!_adapter->clearProperty(*_sourceScheme, id, *_field, move(patch.getValue(_field->getName())))) {
+				if (!_sourceScheme->clearProperty(_adapter, id, *_field, move(patch.getValue(_field->getName())))) {
 					return false;
 				}
 			}
@@ -598,9 +598,9 @@ bool ResourceRefSet::doAppendObjectsTransaction(data::Value &ret, const data::Va
 	}
 
 	if (cleanup) {
-		ret = _adapter->setProperty(*_sourceScheme, id, *_field, move(patch));
+		ret = _sourceScheme->setProperty(_adapter, id, *_field, move(patch));
 	} else {
-		ret = _adapter->appendProperty(*_sourceScheme, id, *_field, move(patch));
+		ret = _sourceScheme->appendProperty(_adapter, id, *_field, move(patch));
 	}
 
 	return !ret.empty();
@@ -907,7 +907,7 @@ data::Value ResourceArray::getDatabaseObject() {
 data::Value ResourceArray::getArrayForObject(data::Value &object) {
 	if (object.isDictionary()) {
 		if (isObjectAllowed(getScheme(), Action::Read, object)) {
-			return _adapter->getProperty(getScheme(), object, *_field);
+			return getScheme().getProperty(_adapter, object, *_field);
 		}
 	}
 	return data::Value();

@@ -373,7 +373,7 @@ bool File::purgeFile(Adapter *adapter, const Field &f, const data::Value &val) {
 
 	if (id) {
 		auto scheme = Server(apr::pool::server()).getFileScheme();
-		if (adapter->removeObject(*scheme, id)) {
+		if (scheme->remove(adapter, id)) {
 			filesystem::remove(File::getFilesystemPath(id));
 		}
 		return true;

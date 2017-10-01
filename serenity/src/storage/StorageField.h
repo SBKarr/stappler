@@ -358,6 +358,7 @@ struct FieldObject : Field::Slot {
 		}
 	}
 
+	virtual bool transformValue(const Scheme &, data::Value &) const override;
 	virtual void hash(apr::ostringstream &stream, ValidationLevel l) const override;
 
 	const Scheme *scheme = nullptr;

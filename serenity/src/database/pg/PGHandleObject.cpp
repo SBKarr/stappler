@@ -30,9 +30,7 @@ THE SOFTWARE.
 
 NS_SA_EXT_BEGIN(pg)
 
-bool Handle::createObject(const Scheme &scheme, data::Value &data) {
-	int64_t id = 0;
-	auto &fields = scheme.getFields();
+data::Value Handle_preparePostUpdate(data::Value &data, const Map<String, Field> &fields) {
 	data::Value postUpdate(data::Value::Type::DICTIONARY);
 	auto &data_dict = data.asDict();
 	auto data_it = data_dict.begin();
@@ -40,13 +38,11 @@ bool Handle::createObject(const Scheme &scheme, data::Value &data) {
 		auto f_it = fields.find(data_it->first);
 		if (f_it != fields.end()) {
 			auto t = f_it->second.getType();
-			if (t == Type::Array || t == Type::Set) {
+			if (t == Type::Array || t == Type::Set || (t == Type::Object && !data_it->second.isBasicType())) {
 				postUpdate.setValue(std::move(data_it->second), data_it->first);
 				data_it = data_dict.erase(data_it);
 				continue;
 			}
-		} else if (data_it->first == "__oid") {
-			id = data_it->second.getInteger();
 		} else {
 			data_it = data_dict.erase(data_it);
 			continue;
@@ -54,6 +50,14 @@ bool Handle::createObject(const Scheme &scheme, data::Value &data) {
 
 		++ data_it;
 	}
+
+	return postUpdate;
+}
+
+bool Handle::createObject(const Scheme &scheme, data::Value &data) {
+	int64_t id = 0;
+	auto &fields = scheme.getFields();
+	data::Value postUpdate(Handle_preparePostUpdate(data, fields));
 
 	ExecQuery query;
 	auto ins = query.insert(scheme.getName());
@@ -69,7 +73,8 @@ bool Handle::createObject(const Scheme &scheme, data::Value &data) {
 
 	if (id == 0) {
 		val.returning().field(ExecQuery::Field("__oid").as("id")).finalize();
-		if (auto id = selectId(query)) {
+		id = selectId(query);
+		if (id) {
 			data.setInteger(id, "__oid");
 		} else {
 			return false;
@@ -217,21 +222,28 @@ data::Value Handle::getObject(const Scheme &scheme, const String &alias, bool fo
 }
 
 data::Value Handle::selectObjects(const Scheme &scheme, const Query &q) {
+	bool empty = true;
 	auto &fields = scheme.getFields();
 	ExecQuery query;
-	auto w = query.select().from(scheme.getName()).where();
-	if (q.getSelectOid()) {
-		w.where(Operator::And, "__oid", Comparation::Equal, q.getSelectOid());
-	} else if (!q.getSelectAlias().empty()) {
-		query.writeAliasRequest(w, Operator::And, scheme, q.getSelectAlias());
-	} else if (q.getSelectList().size() > 0) {
-		query.writeQueryRequest(w, Operator::And, scheme, q.getSelectList());
+	auto s = query.select().from(scheme.getName());
+	ExecQuery::SelectWhere w(&query);
+	if (!q.empty()) {
+		empty = false;
+		w = s.where();
+		if (q.getSelectOid()) {
+			w.where(Operator::And, "__oid", Comparation::Equal, q.getSelectOid());
+		} else if (!q.getSelectAlias().empty()) {
+			query.writeAliasRequest(w, Operator::And, scheme, q.getSelectAlias());
+		} else if (q.getSelectList().size() > 0) {
+			query.writeQueryRequest(w, Operator::And, scheme, q.getSelectList());
+		}
 	}
 
 	if (!q.getOrderField().empty()) {
 		auto f_it = fields.find(q.getOrderField());
 		if ((f_it != fields.end() && f_it->second.isIndexed()) || q.getOrderField() == "__oid") {
-			auto ord = w.order(q.getOrdering(), q.getOrderField(), q.getOrdering() == Ordering::Ascending ? sql::Nulls::None : sql::Nulls::Last);
+			auto nulls = q.getOrdering() == Ordering::Ascending ? sql::Nulls::None : sql::Nulls::Last;
+			auto ord = empty ? s.order(q.getOrdering(), q.getOrderField(), nulls) : w.order(q.getOrdering(), q.getOrderField(), nulls);
 
 			if (q.getOffsetValue() != 0 && q.getLimitValue() != maxOf<size_t>()) {
 				ord.limit(q.getLimitValue(), q.getOffsetValue());
@@ -242,7 +254,7 @@ data::Value Handle::selectObjects(const Scheme &scheme, const Query &q) {
 			}
 		}
 	}
-	w.finalize();
+	s.finalize();
 	return select(scheme, query);
 }
 
@@ -272,32 +284,78 @@ size_t Handle::countObjects(const Scheme &scheme, const Query &q) {
 void Handle::performPostUpdate(ExecQuery &query, const Scheme &s, Value &data, int64_t id, const Value &upd, bool clear) {
 	query.clear();
 
-	auto &fields = s.getFields();
+	const Map<String, Field> &fields = s.getFields();
 	for (auto &it : upd.asDict()) {
 		auto f_it = fields.find(it.first);
 		if (f_it != fields.end()) {
-			if (f_it->second.getType() == storage::Type::Object || f_it->second.getType() == storage::Type::Set) {
-				auto f = static_cast<const storage::FieldObject *>(f_it->second.getSlot());
-				auto ref = s.getForeignLink(f);
-
-				if (f && ref) {
-					if (clear && it.second) {
-						data::Value val;
-						insertIntoSet(query, s, id, *f, *ref, val);
-						query.clear();
+			if (f_it->second.getType() == storage::Type::Object) {
+				int64_t targetId = 0;
+				if (it.second.isDictionary()) {
+					data::Value val(move(it.second));
+					if (auto scheme = f_it->second.getForeignScheme()) {
+						if (auto link = s.getForeignLink(f_it->second)) {
+							val.setInteger(id, link->getName());
+						}
+						val = scheme->create(this, val);
+						if (val.isInteger("__oid")) {
+							targetId = val.getInteger("__oid");
+						}
 					}
-					insertIntoSet(query, s, id, *f, *ref, it.second);
-					query.clear();
 				}
 
-				if (f_it->second.getType() == storage::Type::Object && it.second.isInteger()) {
-					data.setValue(it.second, it.first);
+				if (targetId) {
+					patchObject(s, id, data::Value{pair(f_it->first, data::Value(targetId))});
+					data.setInteger(targetId, f_it->first);
+				}
+			} else if (f_it->second.getType() == storage::Type::Set) {
+				auto f = static_cast<const storage::FieldObject *>(f_it->second.getSlot());
+				auto scheme = f_it->second.getForeignScheme();
+
+				if (f && scheme && it.second.isArray()) {
+					data::Value ret;
+					Vector<int64_t> toAdd;
+
+					if (clear && it.second) {
+						clearProperty(s, id, f_it->second, data::Value());
+					}
+
+					for (auto &arr_it : it.second.asArray()) {
+						if (arr_it.isDictionary()) {
+							data::Value val(move(arr_it));
+							if (auto link = s.getForeignLink(f_it->second)) {
+								val.setInteger(id, link->getName());
+							}
+							val = scheme->create(this, val);
+							if (val) {
+								ret.addValue(move(val));
+							}
+						} else {
+							if (auto tmp = arr_it.asInteger()) {
+								if (f_it->second.isReference()) {
+									toAdd.emplace_back(tmp);
+								} else if (auto link = s.getForeignLink(f_it->second)) {
+									if (auto val = scheme->update(this, tmp, data::Value{pair(link->getName(), data::Value(id))})) {
+										ret.addValue(move(val));
+									}
+								}
+							}
+						}
+					}
+
+					if (!toAdd.empty()) {
+						if (f_it->second.isReference()) {
+							if (patchRefSet(s, id, f_it->second, toAdd)) {
+								for (auto &add_it : toAdd) {
+									ret.addInteger(add_it);
+								}
+							}
+						}
+					}
+					data.setValue(move(ret), it.first);
 				}
 			} else if (f_it->second.getType() == storage::Type::Array) {
 				if (clear && it.second) {
-					data::Value val;
-					insertIntoArray(query, s, id, f_it->second, val);
-					query.clear();
+					clearProperty(s, id, f_it->second, data::Value());
 				}
 				insertIntoArray(query, s, id, f_it->second, it.second);
 				query.clear();

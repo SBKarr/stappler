@@ -353,6 +353,42 @@ void FieldImage::hash(apr::ostringstream &stream, ValidationLevel l) const {
 	}
 }
 
+bool FieldObject::transformValue(const Scheme &schene, data::Value &val) const {
+	switch (type) {
+	case Type::Object:
+		if (val.isBasicType()) {
+			val.setInteger(val.asInteger());
+			return true;
+		} else if (val.isDictionary()) {
+			return true; // pass to object's scheme
+		}
+		break;
+	case Type::Set:
+		if (val.isArray()) {
+			auto &arr = val.asArray();
+			auto it = arr.begin();
+			while (it != arr.end()) {
+				if (it->isBasicType()) {
+					auto tmp = it->asInteger();
+					if (tmp) {
+						it->setInteger(tmp);
+					}
+				} else if (it->isArray()) {
+					it = arr.erase(it);
+					continue;
+				}
+				++ it;
+			}
+			return true;
+		}
+		break;
+	default:
+		return false;
+		break;
+	}
+	return false;
+}
+
 void FieldObject::hash(apr::ostringstream &stream, ValidationLevel l) const {
 	Slot::hash(stream, l);
 	if (l == ValidationLevel::Full) {

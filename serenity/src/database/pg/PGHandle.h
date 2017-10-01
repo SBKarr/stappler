@@ -72,7 +72,7 @@ public: // adapter interface
 
 	virtual Resource *makeResource(ResourceType, QueryList &&, const Field *) override;
 
-public: // object interface
+protected: // object interface
 	virtual bool createObject(const Scheme &, data::Value &data) override;
 	virtual bool saveObject(const Scheme &, uint64_t oid, const data::Value &newObject, const Vector<String> &fields) override;
 	virtual data::Value patchObject(const Scheme &, uint64_t oid, const data::Value &data) override;
@@ -87,7 +87,7 @@ public: // object interface
 	bool patchRefSet(const Scheme &, uint64_t oid, const Field &, const Vector<int64_t> &objsToAdd);
 	bool cleanupRefSet(const Scheme &, uint64_t oid, const Field &, const Vector<int64_t> &objsToRemove);
 
-public: // prop interface
+protected: // prop interface
 	virtual data::Value getProperty(const Scheme &, uint64_t oid, const Field &) override;
 	virtual data::Value getProperty(const Scheme &, const data::Value &, const Field &) override;
 

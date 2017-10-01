@@ -35,6 +35,7 @@ THE SOFTWARE.
 #include "SPDataStream.h"
 #include "Server.h"
 #include "StorageScheme.h"
+#include "WebSocket.h"
 
 APLOG_USE_MODULE(serenity);
 
@@ -180,6 +181,7 @@ void Root::onServerChildInit(apr_pool_t *p, server_rec* s) {
 	apr::pool::perform([&] {
 		InputFilter::filterRegister();
 		OutputFilter::filterRegister();
+		websocket::Manager::filterRegister();
 
 		setProcPool(p);
 
