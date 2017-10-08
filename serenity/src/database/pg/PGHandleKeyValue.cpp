@@ -86,11 +86,11 @@ int64_t Handle::processBroadcasts(Server &serv, int64_t value) {
 		maxId = selectId(query);
 	} else {
 		query.select("id", "date", "msg").from("__broadcasts")
-				.where("id", Comparation::Equal, value).finalize();
+				.where("id", Comparation::GreatherThen, value).finalize();
 		Result ret(select(query));
 		for (auto it : ret) {
 			if (it.size() >= 3) {
-				auto msgId = it.front().readInteger();
+				auto msgId = it.toInteger(0);
 				Bytes msgData(it.toBytes(2));
 				if (!msgData.empty()) {
 					if (msgId > maxId) {

@@ -79,8 +79,8 @@ public:
 	ap_dbd_t * dbdPoolAcquire(server_rec *, apr_pool_t *);
 	void dbdPrepare(server_rec *, const char *, const char *);
 
-	apr::weak_string getBroadcastBindAddress() const;
-	uint16_t getBroadcastBindPort() const;
+	// apr::weak_string getBroadcastBindAddress() const;
+	// uint16_t getBroadcastBindPort() const;
 
 	bool isDebugEnabled() const;
 	void setDebugEnabled(bool);

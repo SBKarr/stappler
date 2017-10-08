@@ -30,6 +30,7 @@ NS_SP_BEGIN
 
 struct Test {
 	static bool RunAll();
+	static bool Run(const String &);
 
 	Test(const String &name);
 	virtual ~Test();

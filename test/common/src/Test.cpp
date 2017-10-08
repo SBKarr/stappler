@@ -50,6 +50,7 @@ struct TestManager {
 	double rand_double();
 
 	bool runAll() const;
+	bool run(const String &) const;
 
 	bool colorsSupported = false;
 	Set<Test *> tests;
@@ -124,8 +125,34 @@ bool TestManager::runAll() const {
 	return success;
 }
 
+bool TestManager::run(const String &str) const {
+	bool success = true;
+	for (auto &it : tests) {
+		if (it->name() == str) {
+			std::cout << format::color(format::Cyan) << format::bold() << it->name() << format::drop() << ": ";
+			if (!it->run()) {
+				success = false;
+				std::cout << format::color(format::Red) << format::bold() << "[Failed]" << format::drop();
+			} else {
+				std::cout << format::color(format::Green) << format::bold() << "[Passed]" << format::drop();
+			}
+
+			const auto &desc = it->desc();
+			if (!desc.empty()) {
+				std::cout << ": " << it->desc();
+			}
+			std::cout << "\n";
+		}
+	}
+	return success;
+}
+
 bool Test::RunAll() {
 	return TestManager::getInstance()->runAll();
+}
+
+bool Test::Run(const String &str) {
+	return TestManager::getInstance()->run(str);
 }
 
 Test::Test(const String &name) : _name(name) {

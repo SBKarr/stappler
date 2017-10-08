@@ -229,6 +229,36 @@ static void ExecQuery_writeJoin(ExecQuery::SelectFrom &s, const String &sqName, 
 	});
 }
 
+ExecQuery::Select &ExecQuery::writeSelectFields(const Scheme &scheme, ExecQuery::Select &sel, const Set<const storage::Field *> &fields, const String &source) {
+	if (!fields.empty()) {
+		sel.field(ExecQuery::Field(source, "__oid"));
+		for (auto &it : fields) {
+			auto type = it->getType();
+			if (type != storage::Type::Set && type != storage::Type::Array) {
+				sel.field(ExecQuery::Field(source, it->getName()));
+			}
+		}
+		for (auto &it : scheme.getFields()) {
+			if (it.second.hasFlag(Flags::ForceInclude) && fields.find(&it.second) == fields.end()) {
+				sel.field(ExecQuery::Field(source, it.first));
+			}
+		}
+	} else {
+		sel.field(ExecQuery::Field::all(source));
+	}
+	return sel;
+}
+
+auto ExecQuery::writeSelectFrom(GenericQuery &q, const QueryList::Item &item, bool idOnly, const String &schemeName, const String &fieldName) -> SelectFrom {
+	if (idOnly) {
+		return q.select(ExecQuery::Field(schemeName, fieldName).as("id")).from(schemeName);
+	}
+
+	auto sel = q.select();
+	auto fields = item.getQueryFields();
+	return writeSelectFields(*item.scheme, sel, fields, schemeName).from(schemeName);
+}
+
 void ExecQuery::writeQueryListItem(GenericQuery &q, const QueryList &list, size_t idx, bool idOnly, const storage::Field *field) {
 	auto &items = list.getItems();
 	const QueryList::Item &item = items.at(idx);
@@ -269,9 +299,7 @@ void ExecQuery::writeQueryListItem(GenericQuery &q, const QueryList &list, size_
 	String schemeName(item.scheme->getName());
 	String fieldName( (f && (f->getType() == Type::Object || f->isFile())) ? f->getName() : String("__oid") );
 
-	SelectFrom s = idOnly
-			? q.select(ExecQuery::Field(schemeName, fieldName).as("id")).from(schemeName)
-			: q.select(ExecQuery::Field::all(schemeName)).from(schemeName);
+	auto s = writeSelectFrom(q, item, idOnly, schemeName, fieldName);
 	if (idx > 0) {
 		if (item.ref || !sourceField || sourceField->getType() == storage::Type::Object) {
 			ExecQuery_writeJoin(s, toString("sq", idx - 1), item.scheme->getName(), item);
@@ -296,7 +324,6 @@ void ExecQuery::writeQueryList(const QueryList &list, bool idOnly, size_t count)
 
 	writeQueryListItem(q, list, i, idOnly);
 }
-
 
 void ExecQuery::writeQueryFile(const QueryList &list, const storage::Field *field) {
 	auto &items = list.getItems();

@@ -85,17 +85,19 @@ int ResourceHandler::onTranslateName(Request &rctx) {
 	_resource->setUser(user);
 	_resource->setFilterData(_value);
 
-	if (data.hasValue("resolve")) {
-		_resource->setResolveOptions(data.getValue("resolve"));
+	auto args = rctx.getQueryArgs();
+	if (!args.empty() && args.front() == '(') {
+		_resource->applyQuery(data);
+	} else {
+		if (data.hasValue("resolve")) {
+			_resource->setResolveOptions(data.getValue("resolve"));
+		}
+		if (data.hasValue("resolveDepth")) {
+			_resource->setResolveDepth(data.getInteger("resolveDepth"));
+		}
 	}
-	if (data.hasValue("resolveDepth")) {
-		_resource->setResolveDepth(data.getInteger("resolveDepth"));
-	}
-	if (data.hasValue("pageFrom") || data.hasValue("pageCount")) {
-		auto from = data.getInteger("pageFrom");
-		auto count = data.getInteger("pageCount", maxOf<size_t>());
-		_resource->setPagination(from, count);
-	}
+
+	_resource->prepare();
 
 	if (_method == Request::Get) {
 		if (!rctx.isHeaderRequest()) {

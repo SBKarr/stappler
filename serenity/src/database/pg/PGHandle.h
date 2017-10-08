@@ -88,8 +88,8 @@ protected: // object interface
 	bool cleanupRefSet(const Scheme &, uint64_t oid, const Field &, const Vector<int64_t> &objsToRemove);
 
 protected: // prop interface
-	virtual data::Value getProperty(const Scheme &, uint64_t oid, const Field &) override;
-	virtual data::Value getProperty(const Scheme &, const data::Value &, const Field &) override;
+	virtual data::Value getProperty(const Scheme &, uint64_t oid, const Field &, const Set<const Field *> &) override;
+	virtual data::Value getProperty(const Scheme &, const data::Value &, const Field &, const Set<const Field *> &) override;
 
 	virtual data::Value setProperty(const Scheme &, uint64_t oid, const Field &, data::Value &&) override;
 	virtual data::Value setProperty(const Scheme &, const data::Value &, const Field &, data::Value &&) override;

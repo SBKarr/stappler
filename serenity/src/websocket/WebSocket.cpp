@@ -407,8 +407,7 @@ bool Handler::writeBrigade(apr_bucket_brigade *bb) {
 }
 
 size_t Handler::writeNonBlock(const uint8_t *data, size_t len) {
-	auto err = apr_socket_send(_socket, (const char *)data, &len);
-
+	apr_socket_send(_socket, (const char *)data, &len);
 	return len;
 }
 

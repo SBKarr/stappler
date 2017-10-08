@@ -478,17 +478,17 @@ size_t Scheme::count(Adapter *a, const Query &q) const {
 	return a->countObjects(*this, q);
 }
 
-data::Value Scheme::getProperty(Adapter *a, uint64_t oid, const String &s) const {
+data::Value Scheme::getProperty(Adapter *a, uint64_t oid, const String &s, const Set<const Field *> &fields) const {
 	auto f = getField(s);
 	if (f) {
-		return getProperty(a, oid, *f);
+		return getProperty(a, oid, *f, fields);
 	}
 	return data::Value();
 }
-data::Value Scheme::getProperty(Adapter *a, const data::Value &obj, const String &s) const {
+data::Value Scheme::getProperty(Adapter *a, const data::Value &obj, const String &s, const Set<const Field *> &fields) const {
 	auto f = getField(s);
 	if (f) {
-		return getProperty(a, obj, *f);
+		return getProperty(a, obj, *f, fields);
 	}
 	return data::Value();
 }
@@ -546,16 +546,16 @@ data::Value Scheme::appendProperty(Adapter *a, const data::Value &obj, const Str
 	return data::Value();
 }
 
-data::Value Scheme::getProperty(Adapter *a, uint64_t oid, const Field &f) const {
-	return a->getProperty(*this, oid, f);
+data::Value Scheme::getProperty(Adapter *a, uint64_t oid, const Field &f, const Set<const Field *> &fields) const {
+	return a->getProperty(*this, oid, f, fields);
 }
-data::Value Scheme::getProperty(Adapter *a, const data::Value &obj, const Field &f) const {
+data::Value Scheme::getProperty(Adapter *a, const data::Value &obj, const Field &f, const Set<const Field *> &fields) const {
 	if (f.isSimpleLayout()) {
 		return obj.getValue(f.getName());
-	} else if (f.isFile()) {
-		return File::getData(a, obj.getInteger(f.getName()));
+	} else if (f.isFile() && fields.empty()) {
+		return File::getData(a, obj.isInteger() ? obj.asInteger() : obj.getInteger(f.getName()));
 	}
-	return a->getProperty(*this, obj, f);
+	return a->getProperty(*this, obj, f, fields);
 }
 
 data::Value Scheme::setProperty(Adapter *a, uint64_t oid, const Field &f, data::Value &&v) const {

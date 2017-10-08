@@ -482,7 +482,9 @@ protected:
 	void perform_move(mem_soo_iface &&other) {
 		if (other.is_small()) {
 			set_small_flag();
+			_small.force_clear();
 			_small.move_assign(this->_allocator, other.data(), other.size());
+			other._small.force_clear();
 		} else {
 			set_large_flag();
 			_large = std::move(other._large);

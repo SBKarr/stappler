@@ -141,12 +141,12 @@ void Root::dbdPrepare(server_rec *s, const char *l, const char *q) {
 	}
 }
 
-apr::weak_string Root::getBroadcastBindAddress() const {
+/*apr::weak_string Root::getBroadcastBindAddress() const {
 	return apr::string::make_weak(config::getBroadcastSocketAddr());
 }
 uint16_t Root::getBroadcastBindPort() const {
 	return config::getBroadcastSocketPort();
-}
+}*/
 
 bool Root::isDebugEnabled() const {
 	return _debug;

@@ -55,7 +55,11 @@ struct Request::Config : public AllocPool {
 		ap_set_module_config(r->request_config, &serenity_module, this);
 
 		if (r->args) {
-			_data = Url::parseDataArgs(String::make_weak(r->args), 1_KiB);
+			if (*r->args == '(') {
+				_data = data::read(String::make_weak(r->args));
+			} else {
+				_data = Url::parseDataArgs(String::make_weak(r->args), 1_KiB);
+			}
 		}
 
 		_path = Url::parsePath(apr::string::make_weak(r->uri));

@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef SERENITY_SRC_STORAGE_STORAGEQUERY_H_
 #define SERENITY_SRC_STORAGE_STORAGEQUERY_H_
 
-#include "SPSql.h"
+#include "SPSerenityRequest.h"
 #include "Define.h"
 
 NS_SA_EXT_BEGIN(storage)
@@ -31,62 +31,37 @@ NS_SA_EXT_BEGIN(storage)
 using Operator = sql::Operator;
 using Comparation = sql::Comparation;
 using Ordering = sql::Ordering;
+using Query = query::Query;
 
-class Query {
+class QueryFieldResolver {
 public:
-	struct Select {
-		Comparation compare;
-		data::Value value1;
-		data::Value value2;
-		String field;
+	QueryFieldResolver();
+	QueryFieldResolver(const Scheme &, const Query &, const Vector<String> &extraFields = Vector<String>());
 
-		Select(const String & f, Comparation c, data::Value && v1, data::Value && v2);
-		Select(const String & f, Comparation c, int64_t v1, int64_t v2);
-		Select(const String & f, Comparation c, const String & v);
-	};
+	const Field *getField(const String &) const;
+	const Scheme *getScheme() const;
+	const Map<String, Field> *getFields() const;
 
-	static Query all();
+	const Set<const Field *> &getResolves() const;
 
-	Query & select(const String &alias);
-	Query & select(uint64_t id);
+	QueryFieldResolver next(const String &) const;
 
-	Query & select(const String &f, Comparation c, int64_t v1, int64_t v2 = 0);
-
-	Query & select(const String &f, const String & v);
-	Query & select(Select &&q);
-
-	Query & order(const String &f, Ordering o = Ordering::Ascending);
-	Query & limit(size_t l, size_t off);
-
-	Query & limit(size_t l);
-	Query & offset(size_t l);
-
-	bool empty() const;
-
-	uint64_t getSelectOid() const;
-	const String & getSelectAlias() const;
-	const Vector<Select> &getSelectList() const;
-
-	const String & getOrderField() const;
-	Ordering getOrdering() const;
-
-	size_t getLimitValue() const;
-	size_t getOffsetValue() const;
-
-	bool hasOrder() const;
-	bool hasLimit() const;
-	bool hasOffset() const;
+	operator bool () const;
 
 protected:
-	uint64_t selectOid = 0;
-	String selectAlias;
-	Vector<Select> selectList;
+	struct Data {
+		const Scheme *scheme = nullptr;
+		const Map<String, Field> *fields = nullptr;
+		const Query::FieldsVec *include = nullptr;
+		const Query::FieldsVec *exclude = nullptr;
+		Set<const Field *> resolved;
+		Map<String, Data> next;
+	};
 
-	Ordering ordering = Ordering::Ascending;
-	String orderField;
+	QueryFieldResolver(Data *);
+	void doResolve(Data *, const Vector<String> &extraFields, uint16_t depth, uint16_t max);
 
-	size_t limitValue = maxOf<size_t>();
-	size_t offsetValue = 0;
+	Data *root = nullptr;
 };
 
 class QueryList : public AllocBase {
@@ -95,8 +70,14 @@ public:
 		const Scheme *scheme = nullptr;
 		const Field *ref = nullptr;
 		const Field *field = nullptr;
+
 		bool all = false;
+		bool resolved = false;
+
 		Query query;
+		QueryFieldResolver fields;
+
+		const Set<const Field *> &getQueryFields() const;
 	};
 
 	QueryList(const Scheme *);
@@ -120,16 +101,33 @@ public:
 	bool isObject() const;
 	bool empty() const;
 
+	bool apply(const data::Value &query);
+	void resolve(const Vector<String> &);
+
+	uint16_t getResolveDepth() const;
+	void setResolveDepth(uint16_t);
+
 	size_t size() const;
 
 	const Scheme *getPrimaryScheme() const;
 	const Scheme *getSourceScheme() const;
 	const Scheme *getScheme() const;
 	const Field *getField() const;
+	const Query &getTopQuery() const;
 
 	const Vector<Item> &getItems() const;
 
+	const Query::FieldsVec &getIncludeFields() const;
+	const Query::FieldsVec &getExcludeFields() const;
+
+	QueryFieldResolver getFields() const;
+
 protected:
+	void decodeSelect(const Scheme &, Query &, const data::Value &);
+	void decodeOrder(const Scheme &, Query &, const String &, const data::Value &);
+	bool decodeInclude(const Scheme &, Query &, const data::Value &);
+	bool decodeIncludeItem(const Scheme &, Query &, const data::Value &);
+
 	Vector<Item> queries;
 };
 

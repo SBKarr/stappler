@@ -31,7 +31,7 @@ constexpr auto getHeartbeatPause() { return 1_sec; }
 constexpr auto getHeartbeatTime() { return 2_sec; }
 
 constexpr auto getMaxAuthTime() { return 720_sec; }
-constexpr auto getMaxLoginFailure() { return 3; }
+constexpr auto getMaxLoginFailure() { return 4; }
 
 constexpr size_t getMaxVarSize() { return 255; }
 constexpr size_t getMaxRequestSize() { return 0; }
@@ -71,9 +71,9 @@ constexpr auto getWebsocketMaxBufferSlotSize() -> size_t { return 8_KiB; }
 
 // MTU configured to use local loopback interface
 // for network, you should use smaller value, like 1472 (1464 for PPPoE)
-constexpr auto getBroadcastProtocolMtu() { return 8_KiB; }
-constexpr auto getBroadcastSocketAddr() { return "127.0.21.255"; }
-constexpr uint16_t getBroadcastSocketPort() { return 21050; }
+// constexpr auto getBroadcastProtocolMtu() { return 8_KiB; }
+// constexpr auto getBroadcastSocketAddr() { return "127.0.21.255"; }
+// constexpr uint16_t getBroadcastSocketPort() { return 21050; }
 
 constexpr auto getServerToolsPrefix() { return "/__server"; }
 constexpr auto getServerToolsShell() { return "/shell"; }
@@ -84,6 +84,8 @@ constexpr auto getSerenityErrorNotificatorName() { return "Serenity.ErrorNotific
 constexpr auto getSerenityDBDHandleName() { return "Serenity.DBD.Handle"; }
 constexpr auto getSerenityWebsocketDatabaseName() { return "Serenity.Websocket.Database"; }
 constexpr auto getSerenityWebsocketHandleName() { return "Serenity.Websocket.Handle"; }
+
+constexpr uint16_t getResourceResolverMaxDepth() { return 4; }
 
 inline TimeInterval getKeyValueStorageTime() { return TimeInterval::seconds(60 * 60 * 24 * 365); } // one year
 

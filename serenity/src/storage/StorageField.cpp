@@ -61,44 +61,175 @@ bool Field::transform(const Scheme &scheme, data::Value &val) const {
 }
 
 data::Value Field::getTypeDesc() const {
-	switch (slot->type) {
-	case storage::Type::None: return data::Value("none"); break;
-	case storage::Type::Integer: return data::Value("integer"); break;
-	case storage::Type::Float: return data::Value("float"); break;
-	case storage::Type::Boolean: return data::Value("boolean"); break;
-	case storage::Type::Text: return data::Value("text"); break;
-	case storage::Type::Bytes: return data::Value("bytes"); break;
-	case storage::Type::Data: return data::Value("data"); break;
-	case storage::Type::Extra: {
-		data::Value ret(data::Value::Type::DICTIONARY);
-		for (auto &it : static_cast<const storage::FieldExtra *>(slot)->fields) {
-			ret.setValue(it.second.getTypeDesc(), it.first);
-		}
-		return data::Value{std::make_pair("extra", ret)};
+	data::Value ret;
+	if (slot->flags != Flags::None) {
+		auto &f = ret.emplace("flags");
+		if ((slot->flags & Flags::Required) != Flags::None) { f.addString("required"); }
+		if ((slot->flags & Flags::Protected) != Flags::None) { f.addString("protected"); }
+		if ((slot->flags & Flags::ReadOnly) != Flags::None) { f.addString("readonly"); }
+		if ((slot->flags & Flags::Reference) != Flags::None) { f.addString("reference"); }
+		if ((slot->flags & Flags::Unique) != Flags::None) { f.addString("unique"); }
+		if ((slot->flags & Flags::AutoNamed) != Flags::None) { f.addString("auto-named"); }
+		if ((slot->flags & Flags::AutoCTime) != Flags::None) { f.addString("auto-ctime"); }
+		if ((slot->flags & Flags::AutoMTime) != Flags::None) { f.addString("auto-mtime"); }
+		if ((slot->flags & Flags::AutoUser) != Flags::None) { f.addString("auto-user"); }
+		if ((slot->flags & Flags::Indexed) != Flags::None) { f.addString("indexed"); }
+		if ((slot->flags & Flags::Admin) != Flags::None) { f.addString("admin"); }
+		if ((slot->flags & Flags::ForceInclude) != Flags::None) { f.addString("forceinclude"); }
 	}
+
+	if (slot->transform != Transform::None) {
+		switch (slot->transform) {
+		case Transform::Text: ret.setString("text", "transform"); break;
+		case Transform::Identifier: ret.setString("identifier", "transform"); break;
+		case Transform::Alias: ret.setString("alias", "transform"); break;
+		case Transform::Url: ret.setString("url", "transform"); break;
+		case Transform::Email: ret.setString("email", "transform"); break;
+		case Transform::Number: ret.setString("number", "transform"); break;
+		case Transform::Hexadecimial: ret.setString("hexadecimal", "transform"); break;
+		case Transform::Base64: ret.setString("base64", "transform"); break;
+		case Transform::Password: ret.setString("password", "transform"); break;
+		default: break;
+		}
+	}
+
+	if (slot->defaultFn) {
+		ret.setString("(functional)", "default");
+	} else if (slot->def) {
+		ret.setValue(slot->def, "default");
+	}
+
+	switch (slot->type) {
+	case storage::Type::None: ret.setString("none", "type"); break;
+	case storage::Type::Integer: ret.setString("integer", "type"); break;
+	case storage::Type::Float: ret.setString("float", "type"); break;
+	case storage::Type::Boolean: ret.setString("boolean", "type"); break;
+	case storage::Type::Text:
+		ret.setString("text", "type");
+		if (auto t = static_cast<const FieldText *>(slot)) {
+			ret.setInteger(t->minLength, "min");
+			ret.setInteger(t->maxLength, "max");
+		}
+		break;
+	case storage::Type::Bytes:
+		ret.setString("bytes", "type");
+		if (auto t = static_cast<const FieldText *>(slot)) {
+			ret.setInteger(t->minLength, "min");
+			ret.setInteger(t->maxLength, "max");
+		}
+		break;
+	case storage::Type::Data: ret.setString("data", "type"); break;
+	case storage::Type::Extra:
+		ret.setString("extra", "type");
+		if (auto e = static_cast<const storage::FieldExtra *>(slot)) {
+			auto &f = ret.emplace("fields");
+			for (auto &it : e->fields) {
+				f.setValue(it.second.getTypeDesc(), it.first);
+			}
+		}
 		break;
 	case storage::Type::Object:
-		if (static_cast<const storage::FieldObject *>(slot)->scheme) {
-			return data::Value("object:" + static_cast<const FieldObject *>(slot)->scheme->getName());
-		} else {
-			return data::Value("object");
+		ret.setString("object", "type");
+		if (auto o = static_cast<const storage::FieldObject *>(slot)) {
+			if (o->scheme) {
+				ret.setString(o->scheme->getName(), "scheme");
+			}
+			switch (o->onRemove) {
+			case RemovePolicy::Cascade: ret.setString("cascade", "onRemove"); break;
+			case RemovePolicy::Restrict: ret.setString("cascade", "onRemove"); break;
+			case RemovePolicy::Reference: ret.setString("reference", "onRemove"); break;
+			case RemovePolicy::StrongReference: ret.setString("strongReference", "onRemove"); break;
+			case RemovePolicy::Null: ret.setString("null", "onRemove"); break;
+			}
+
+			switch (o->linkage) {
+			case Linkage::Auto: ret.setString("auto", "linkage"); break;
+			case Linkage::Manual: ret.setString("manual", "linkage"); break;
+			case Linkage::None: ret.setString("none", "linkage"); break;
+			}
 		}
 		break;
 	case storage::Type::Set:
-		if (static_cast<const storage::FieldObject *>(slot)->scheme) {
-			return data::Value("set:" + static_cast<const FieldObject *>(slot)->scheme->getName());
-		} else {
-			return data::Value("set");
+		ret.setString("set", "type");
+		if (auto o = static_cast<const storage::FieldObject *>(slot)) {
+			if (o->scheme) {
+				ret.setString(o->scheme->getName(), "scheme");
+			}
+			switch (o->onRemove) {
+			case RemovePolicy::Cascade: ret.setString("cascade", "onRemove"); break;
+			case RemovePolicy::Restrict: ret.setString("cascade", "onRemove"); break;
+			case RemovePolicy::Reference: ret.setString("reference", "onRemove"); break;
+			case RemovePolicy::StrongReference: ret.setString("strongReference", "onRemove"); break;
+			case RemovePolicy::Null: ret.setString("null", "onRemove"); break;
+			}
+
+			switch (o->linkage) {
+			case Linkage::Auto: ret.setString("auto", "linkage"); break;
+			case Linkage::Manual: ret.setString("manual", "linkage"); break;
+			case Linkage::None: ret.setString("none", "linkage"); break;
+			}
 		}
 		break;
 	case storage::Type::Array:
-		return data::Value("array:" + static_cast<const FieldArray *>(slot)->tfield.getTypeDesc().asString());
+		ret.setString("array", "type");
+		if (auto a = static_cast<const FieldArray *>(slot)) {
+			ret.setValue(a->tfield.getTypeDesc(), "field");
+		}
 		break;
-	case storage::Type::File: return data::Value("file"); break;
-	case storage::Type::Image: return data::Value("image"); break;
+	case storage::Type::File:
+		ret.setString("file", "type");
+		if (auto f = static_cast<const FieldFile *>(slot)) {
+			ret.setInteger(f->maxSize, "maxFileSize");
+			if (!f->allowedTypes.empty()) {
+				auto &t = ret.emplace("allowed");
+				for (auto &it : f->allowedTypes) {
+					t.addString(it);
+				}
+			}
+		}
+		break;
+	case storage::Type::Image:
+		if (auto f = static_cast<const FieldImage *>(slot)) {
+			if (f->primary) {
+				ret.setString("image", "type");
+				ret.setInteger(f->maxSize, "maxFileSize");
+				if (!f->allowedTypes.empty()) {
+					auto &t = ret.emplace("allowed");
+					for (auto &it : f->allowedTypes) {
+						t.addString(it);
+					}
+				}
+
+				auto &min = ret.emplace("minImageSize");
+				min.setInteger(f->minImageSize.width, "width");
+				min.setInteger(f->minImageSize.width, "height");
+				switch (f->minImageSize.policy) {
+				case ImagePolicy::Resize: min.setString("resize", "policy"); break;
+				case ImagePolicy::Reject: min.setString("resize", "policy"); break;
+				}
+
+				auto &max = ret.emplace("maxImageSize");
+				max.setInteger(f->maxImageSize.width, "width");
+				max.setInteger(f->maxImageSize.width, "height");
+				switch (f->maxImageSize.policy) {
+				case ImagePolicy::Resize: max.setString("resize", "policy"); break;
+				case ImagePolicy::Reject: max.setString("resize", "policy"); break;
+				}
+
+				if (!f->thumbnails.empty()) {
+					auto &t = ret.emplace("thumbnails");
+					for (auto &it : f->thumbnails) {
+						auto &tb = t.emplace(it.name);
+						tb.setInteger(it.width, "width");
+						tb.setInteger(it.height, "height");
+					}
+				}
+			}
+		}
+		break;
 	default: break;
 	}
-	return data::Value();
+	return ret;
 }
 
 bool Field::Slot::transformValue(const Scheme &scheme, data::Value &val) const {

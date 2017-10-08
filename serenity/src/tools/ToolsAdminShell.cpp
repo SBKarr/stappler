@@ -141,7 +141,7 @@ struct DebugCmd : SocketCommand {
 };
 
 struct ListCmd : SocketCommand {
-	ListCmd() : SocketCommand("list") { }
+	ListCmd() : SocketCommand("meta") { }
 
 	virtual bool run(ShellSocketHandler &h, StringView &r) override {
 		if (r.empty()) {
@@ -196,8 +196,13 @@ struct ResourceCmd : SocketCommand {
 				if (r) {
 					r->setUser(h.getUser());
 					if (!resolve.empty()) {
-						r->setResolveOptions(data::Value(resolve.str()));
+						if (resolve.front() == '(') {
+							r->applyQuery(data::read(resolve));
+						} else {
+							r->setResolveOptions(data::Value(resolve.str()));
+						}
 					}
+					r->prepare();
 					return r;
 				} else {
 					h.sendError(toString("Fail to resolve resource \"", path, "\" for scheme ", scheme));
@@ -226,7 +231,6 @@ struct GetCmd : ResourceCmd {
 		}
 
 		auto resolve = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-
 		if (auto r = acquireResource(h, schemeName, path, resolve)) {
 			auto data = r->getResultObject();
 			h.sendData(data);

@@ -80,8 +80,8 @@ public:// CRUD functions
 	size_t count(Adapter *, const Query &) const;
 
 public:
-	data::Value getProperty(Adapter *, uint64_t oid, const String &) const;
-	data::Value getProperty(Adapter *, const data::Value &, const String &) const;
+	data::Value getProperty(Adapter *, uint64_t oid, const String &, const Set<const Field *> & = Set<const Field *>()) const;
+	data::Value getProperty(Adapter *, const data::Value &, const String &, const Set<const Field *> & = Set<const Field *>()) const;
 
 	data::Value setProperty(Adapter *, uint64_t oid, const String &, data::Value &&) const;
 	data::Value setProperty(Adapter *, const data::Value &, const String &, data::Value &&) const;
@@ -95,8 +95,8 @@ public:
 	data::Value appendProperty(Adapter *, const data::Value &, const String &, data::Value &&) const;
 
 public:
-	data::Value getProperty(Adapter *, uint64_t oid, const Field &) const;
-	data::Value getProperty(Adapter *, const data::Value &, const Field &) const;
+	data::Value getProperty(Adapter *, uint64_t oid, const Field &, const Set<const Field *> & = Set<const Field *>()) const;
+	data::Value getProperty(Adapter *, const data::Value &, const Field &, const Set<const Field *> & = Set<const Field *>()) const;
 
 	data::Value setProperty(Adapter *, uint64_t oid, const Field &, data::Value &&) const;
 	data::Value setProperty(Adapter *, const data::Value &, const Field &, data::Value &&) const;

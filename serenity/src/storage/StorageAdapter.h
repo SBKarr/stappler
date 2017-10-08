@@ -99,8 +99,8 @@ protected: // Object CRUD
 
 
 protected: // Object properties CRUD
-	virtual data::Value getProperty(const Scheme &, uint64_t oid, const Field &) = 0;
-	virtual data::Value getProperty(const Scheme &, const data::Value &, const Field &) = 0;
+	virtual data::Value getProperty(const Scheme &, uint64_t oid, const Field &, const Set<const Field *> &) = 0;
+	virtual data::Value getProperty(const Scheme &, const data::Value &, const Field &, const Set<const Field *> &) = 0;
 
 	virtual data::Value setProperty(const Scheme &, uint64_t oid, const Field &, data::Value &&) = 0;
 	virtual data::Value setProperty(const Scheme &, const data::Value &, const Field &, data::Value &&) = 0;

@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "SPDataEncodeCbor.h"
 #include "SPDataEncodeJson.h"
+#include "SPDataEncodeSerenity.h"
 #include "SPFilesystem.h"
 
 NS_SP_EXT_BEGIN(data)
@@ -37,6 +38,8 @@ struct EncodeFormat {
 		Pretty				= 0b0001, // Pretty-printed JSON data
 		Cbor				= 0b0010, // CBOR data (http://cbor.io/, http://tools.ietf.org/html/rfc7049)
 		DefaultFormat		= 0b0011,
+		Serenity			= 0b0100,
+		SerenityPretty		= 0b0101
 	};
 
 	// We use LZ4 for compression, it's very fast to decode
@@ -98,15 +101,10 @@ struct EncodeTraits {
 	static BytesType write(const ValueType &data, EncodeFormat fmt) {
 		if (fmt.isRaw()) {
 			switch (fmt.format) {
-			case EncodeFormat::Json: {
-				String s = json::write(data, false);
-				Bytes ret; ret.reserve(s.length());
-				ret.assign(s.begin(), s.end());
-				return ret;
-			}
-				break;
-			case EncodeFormat::Pretty: {
-				String s = json::write(data, true);
+			case EncodeFormat::Json:
+			case EncodeFormat::Pretty:
+			{
+				String s = json::write(data, (fmt.format == EncodeFormat::Pretty));
 				Bytes ret; ret.reserve(s.length());
 				ret.assign(s.begin(), s.end());
 				return ret;
@@ -116,6 +114,16 @@ struct EncodeTraits {
 			case EncodeFormat::DefaultFormat:
 				return cbor::write(data);
 				break;
+
+			case EncodeFormat::Serenity:
+			case EncodeFormat::SerenityPretty:
+			{
+				String s = serenity::write(data, (fmt.format == EncodeFormat::SerenityPretty));
+				Bytes ret; ret.reserve(s.length());
+				ret.assign(s.begin(), s.end());
+				return ret;
+			}
+				break;
 			}
 		}
 		return Bytes();
@@ -124,18 +132,14 @@ struct EncodeTraits {
 	static bool write(std::ostream &stream, const ValueType &data, EncodeFormat fmt) {
 		if (fmt.isRaw()) {
 			switch (fmt.format) {
-			case EncodeFormat::Json:
-				json::write(stream, data, false);
-				return true;
-				break;
-			case EncodeFormat::Pretty:
-				json::write(stream, data, true);
-				return true;
-				break;
+			case EncodeFormat::Json: json::write(stream, data, false); return true; break;
+			case EncodeFormat::Pretty: json::write(stream, data, true); return true; break;
 			case EncodeFormat::Cbor:
 			case EncodeFormat::DefaultFormat:
 				return cbor::write(stream, data);
 				break;
+			case EncodeFormat::Serenity: serenity::write(stream, data, false); return true; break;
+			case EncodeFormat::SerenityPretty: serenity::write(stream, data, true); return true; break;
 			}
 		}
 		return false;
@@ -153,16 +157,14 @@ struct EncodeTraits {
 		}
 		if (fmt.isRaw()) {
 			switch (fmt.format) {
-			case EncodeFormat::Json:
-				return json::save(data, path, false);
-				break;
-			case EncodeFormat::Pretty:
-				return json::save(data, path, true);
-				break;
+			case EncodeFormat::Json: return json::save(data, path, false); break;
+			case EncodeFormat::Pretty: return json::save(data, path, true); break;
 			case EncodeFormat::Cbor:
 			case EncodeFormat::DefaultFormat:
 				return cbor::save(data, path);
 				break;
+			case EncodeFormat::Serenity: return serenity::save(data, path, false); break;
+			case EncodeFormat::SerenityPretty: return serenity::save(data, path, true); break;
 			}
 		}
 		return false;
@@ -187,6 +189,30 @@ save(const ValueTemplate<Interface> &data, const String &file, EncodeFormat fmt 
 template <typename Interface> inline auto
 toString(const ValueTemplate<Interface> &data, bool pretty = false) -> typename ValueTemplate<Interface>::StringType  {
 	return json::write<Interface>(data, pretty);
+}
+template <typename Interface> inline auto
+toString(const ValueTemplate<Interface> &data, EncodeFormat::Format fmt) -> typename ValueTemplate<Interface>::StringType  {
+	switch (fmt) {
+	case EncodeFormat::Json:
+		return json::write<Interface>(data, false);
+		break;
+	case EncodeFormat::Pretty:
+		return json::write<Interface>(data, true);
+		break;
+	case EncodeFormat::Cbor:
+		return base64::encode<Interface>(cbor::write(data));
+		break;
+	case EncodeFormat::DefaultFormat:
+		return json::write<Interface>(data, false);
+		break;
+	case EncodeFormat::Serenity:
+		return serenity::write<Interface>(data, false);
+		break;
+	case EncodeFormat::SerenityPretty:
+		return serenity::write<Interface>(data, true);
+		break;
+	}
+	return typename ValueTemplate<Interface>::StringType();
 }
 
 template<typename CharT, typename Traits> inline std::basic_ostream<CharT, Traits>&

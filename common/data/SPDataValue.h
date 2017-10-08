@@ -45,6 +45,13 @@ struct Decoder;
 
 }
 
+namespace serenity {
+
+template <typename Interface = memory::DefaultInterface>
+struct Decoder;
+
+}
+
 template <typename Interface, bool IsIntegral>
 struct __ValueTemplateTraits;
 
@@ -334,6 +341,9 @@ protected:
 
 	template <typename Iface>
 	friend struct json::Decoder;
+
+	template <typename Iface>
+	friend struct serenity::Decoder;
 
 	template <typename Iface, bool IsIntegral>
 	friend struct __ValueTemplateTraits;

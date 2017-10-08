@@ -26,111 +26,196 @@ THE SOFTWARE.
 #include "Define.h"
 #include "StorageQuery.h"
 #include "StorageScheme.h"
+#include "StorageFile.h"
 
 NS_SA_EXT_BEGIN(storage)
 
-Query::Select::Select(const String & f, Comparation c, data::Value && v1, data::Value && v2)
-: compare(c), value1(move(v1)), value2(move(v2)), field(f) { }
-
-Query::Select::Select(const String & f, Comparation c, int64_t v1, int64_t v2)
-: compare(c), value1(v1), value2(v2), field(f) { }
-
-Query::Select::Select(const String & f, Comparation c, const String & v)
-: compare(Comparation::Equal), value1(v), value2(0), field(f) { }
-
-Query Query::all() { return Query(); }
-
-Query & Query::select(const String &alias) {
-	selectAlias = alias;
-	return *this;
+static const Field *getFieldFormMap(const Map<String, Field> &fields, const String &name) {
+	auto it = fields.find(name);
+	if (it != fields.end()) {
+		return &it->second;
+	}
+	return nullptr;
 }
 
-Query & Query::select(uint64_t id) {
-	selectOid = id;
-	return *this;
+static const Query::FieldsVec *getFieldsVec(const Query::FieldsVec *vec, const String &name) {
+	if (vec) {
+		for (auto &it : *vec) {
+			if (it.name == name) {
+				return it.fields.empty() ? nullptr : &it.fields;
+			}
+		}
+	}
+	return nullptr;
 }
 
-Query & Query::select(const String &f, Comparation c, int64_t v1, int64_t v2) {
-	selectList.emplace_back(f, c, v1, v2);
-	return *this;
+static void QueryFieldResolver_resolveByName(Set<const Field *> &ret, const Map<String, Field> &fields, const String &name) {
+	if (!name.empty() && name.front() == '$') {
+		auto res = Query::decodeResolve(name);
+		switch (res) {
+		case query::Resolve::Files:
+			for (auto &it : fields) {
+				if (it.second.isFile()) {
+					ret.emplace(&it.second);
+				}
+			}
+			break;
+		case query::Resolve::Sets:
+			for (auto &it : fields) {
+				if (it.second.getType() == Type::Set) {
+					ret.emplace(&it.second);
+				}
+			}
+			break;
+		case query::Resolve::Objects:
+			for (auto &it : fields) {
+				if (it.second.getType() == Type::Object) {
+					ret.emplace(&it.second);
+				}
+			}
+			break;
+		case query::Resolve::Arrays:
+			for (auto &it : fields) {
+				if (it.second.getType() == Type::Array) {
+					ret.emplace(&it.second);
+				}
+			}
+			break;
+		case query::Resolve::Basics:
+			for (auto &it : fields) {
+				if (it.second.isSimpleLayout() && !it.second.isDataLayout()) {
+					ret.emplace(&it.second);
+				}
+			}
+			break;
+		case query::Resolve::Defaults:
+			for (auto &it : fields) {
+				if (it.second.isSimpleLayout()) {
+					ret.emplace(&it.second);
+				}
+			}
+			break;
+		case query::Resolve::All:
+			for (auto &it : fields) {
+				ret.emplace(&it.second);
+			}
+			break;
+		default: break;
+		}
+	} else {
+		if (auto field = getFieldFormMap(fields, name)) {
+			ret.emplace(field);
+		}
+	}
 }
 
-Query & Query::select(const String &f, const String & v) {
-	selectList.emplace_back(f, Comparation::Equal, v);
-	return *this;
+QueryFieldResolver::QueryFieldResolver() : root(nullptr) { }
+
+QueryFieldResolver::QueryFieldResolver(const Scheme &scheme, const Query &query, const Vector<String> &extraFields) {
+	root = new Data{&scheme, &scheme.getFields(), &query.getIncludeFields(), &query.getExcludeFields()};
+	doResolve(root, extraFields, 0, query.getResolveDepth());
 }
 
-Query & Query::select(Select &&q) {
-	selectList.emplace_back(std::move(q));
-	return *this;
+const Field *QueryFieldResolver::getField(const String &name) const {
+	if (root && root->fields) {
+		auto it = root->fields->find(name);
+		if (it != root->fields->end()) {
+			return &it->second;
+		}
+	}
+	return nullptr;
 }
 
-Query & Query::order(const String &f, Ordering o) {
-	orderField = f;
-	ordering = o;
-	return *this;
+const Scheme *QueryFieldResolver::getScheme() const {
+	if (root) {
+		return root->scheme;
+	}
+	return nullptr;
+}
+const Map<String, Field> *QueryFieldResolver::getFields() const {
+	if (root) {
+		return root->fields;
+	}
+	return nullptr;
 }
 
-Query & Query::limit(size_t l, size_t off) {
-	limitValue = l;
-	offsetValue = off;
-	return *this;
+const Set<const Field *> &QueryFieldResolver::getResolves() const {
+	return root->resolved;
 }
 
-Query & Query::limit(size_t l) {
-	limitValue = l;
-	return *this;
+QueryFieldResolver QueryFieldResolver::next(const String &f) const {
+	if (root) {
+		auto it = root->next.find(f);
+		if (it != root->next.end()) {
+			return QueryFieldResolver(&it->second);
+		}
+	}
+	return QueryFieldResolver();
 }
 
-Query & Query::offset(size_t l) {
-	offsetValue = l;
-	return *this;
+QueryFieldResolver::operator bool () const {
+	return root && root->scheme != nullptr && root->fields != nullptr;
 }
 
-bool Query::empty() const {
-	return selectList.empty() && selectOid == 0 && selectAlias.empty();
+QueryFieldResolver::QueryFieldResolver(Data *data) : root(data) { }
+
+void QueryFieldResolver::doResolve(Data *data, const Vector<String> &extra, uint16_t depth, uint16_t max) {
+	if (!data->fields) {
+		return;
+	}
+
+	if (data->include && !data->include->empty()) {
+		for (const Query::Field &it : *data->include) {
+			QueryFieldResolver_resolveByName(data->resolved, *data->fields, it.name);
+		}
+	} else {
+		for (auto &it : *data->fields) {
+			if (it.second.isSimpleLayout()) {
+				data->resolved.emplace(&it.second);
+			}
+		}
+	}
+
+	if (!extra.empty()) {
+		for (auto &it : extra) {
+			QueryFieldResolver_resolveByName(data->resolved, *data->fields, it);
+		}
+	}
+
+	if (data->exclude) {
+		for (const Query::Field &it : *data->exclude) {
+			if (it.fields.empty()) {
+				if (auto field = getFieldFormMap(*data->fields, it.name)) {
+					data->resolved.erase(field);
+				}
+			}
+		}
+	}
+
+	for (const Field *it : data->resolved) {
+		const Scheme *scheme = nullptr;
+		const Map<String, Field> *fields = nullptr;
+
+		if (auto s = it->getForeignScheme()) {
+			scheme = s;
+			fields = &s->getFields();
+		} else if (it->getType() == Type::Extra) {
+			scheme = data->scheme;
+			fields = &static_cast<const FieldExtra *>(it->getSlot())->fields;
+		} else if (it->isFile()) {
+			scheme = storage::File::getScheme();
+			fields = &scheme->getFields();
+		}
+		if (scheme && fields && depth < max) {
+			auto n_it = data->next.emplace(it->getName(), Data{scheme, fields, getFieldsVec(data->include, it->getName()), getFieldsVec(data->exclude, it->getName())}).first;
+			doResolve(&n_it->second, extra, depth + 1, max);
+		}
+	}
 }
 
-uint64_t Query::getSelectOid() const {
-	return selectOid;
+const Set<const Field *> &QueryList::Item::getQueryFields() const {
+	return fields.getResolves();
 }
-
-const String & Query::getSelectAlias() const {
-	return selectAlias;
-}
-
-const Vector<Query::Select> &Query::getSelectList() const {
-	return selectList;
-}
-
-const String & Query::getOrderField() const {
-	return orderField;
-}
-
-Ordering Query::getOrdering() const {
-	return ordering;
-}
-
-size_t Query::getLimitValue() const {
-	return limitValue;
-}
-
-size_t Query::getOffsetValue() const {
-	return offsetValue;
-}
-
-bool Query::hasOrder() const {
-	return !orderField.empty();
-}
-
-bool Query::hasLimit() const {
-	return limitValue != maxOf<size_t>();
-}
-
-bool Query::hasOffset() const {
-	return offsetValue != 0;
-}
-
 
 QueryList::QueryList(const Scheme *scheme) {
 	queries.reserve(4);
@@ -275,8 +360,271 @@ const Field *QueryList::getField() const {
 	return nullptr;
 }
 
+const Query &QueryList::getTopQuery() const {
+	return queries.back().query;
+}
+
 const Vector<QueryList::Item> &QueryList::getItems() const {
 	return queries;
+}
+
+void QueryList::decodeSelect(const Scheme &scheme, Query &q, const data::Value &val) {
+	if (val.isInteger()) {
+		q.select(val.asInteger());
+	} else if (val.isString()) {
+		q.select(val.getString());
+	} else if (val.isArray()) {
+		for (auto &iit : val.asArray()) {
+			if (iit.isArray() && iit.size() >= 3) {
+				auto field = iit.getValue(0).asString();
+				if (auto f = scheme.getField(field)) {
+					if (f->isIndexed()) {
+						auto cmp = iit.getValue(1).asString();
+						auto d = query::decodeComparation(cmp);
+						auto &val = iit.getValue(2);
+						if (d.second && iit.size() >= 4) {
+							auto &val2 = iit.getValue(4);
+							q.select(field, d.first, data::Value(val), val2);
+						} else {
+							q.select(field, d.first, data::Value(val), data::Value());
+						}
+					} else {
+						messages::error("QueryList", "Invalid field for select", data::Value(field));
+					}
+				} else {
+					messages::error("QueryList", "Invalid field for select", data::Value(field));
+				}
+			}
+		}
+	}
+}
+
+void QueryList::decodeOrder(const Scheme &scheme, Query &q, const String &str, const data::Value &val) {
+	String field;
+	Ordering ord = Ordering::Ascending;
+	size_t limit = maxOf<size_t>();
+	size_t offset = 0;
+	if (val.isArray() && val.size() > 0) {
+		size_t target = 1;
+		auto size = val.size();
+		field = val.getValue(0).asString();
+		if (str == "order") {
+			if (size > target) {
+				auto dir = val.getValue(target).asString();
+				if (dir == "desc") {
+					ord = Ordering::Descending;
+				}
+				++ target;
+			}
+		} else if (str == "last") {
+			ord = Ordering::Descending;
+			limit = 1;
+		} else if (str == "first") {
+			ord = Ordering::Ascending;
+			limit = 1;
+		}
+
+		if (size > target) {
+			limit = val.getInteger(target);
+			++ target;
+			if (size > target) {
+				offset = val.getInteger(target);
+				++ target;
+			}
+		}
+	} else if (val.isString()) {
+		field = val.asString();
+		if (str == "last") {
+			ord = Ordering::Descending;
+			limit = 1;
+		} else if (str == "first") {
+			ord = Ordering::Ascending;
+			limit = 1;
+		}
+	}
+	if (!field.empty()) {
+		if (auto f = scheme.getField(field)) {
+			if (f->isIndexed()) {
+				q.order(field, ord);
+				if (limit != maxOf<size_t>() && !q.hasLimit()) {
+					q.limit(limit);
+				}
+				if (offset != 0 && !q.hasOffset()) {
+					q.offset(offset);
+				}
+				return;
+			}
+		}
+	}
+	messages::error("QueryList", "Invalid field for ordering", data::Value(field));
+}
+
+const Field *QueryList_getField(const Scheme &scheme, const Field *f, const String &name) {
+	if (!f) {
+		return scheme.getField(name);
+	} else if (f->getType() == Type::Extra) {
+		auto slot = static_cast<const FieldExtra *>(f->getSlot());
+		auto it = slot->fields.find(name);
+		if (it != slot->fields.end()) {
+			return &it->second;
+		}
+	}
+	return nullptr;
+}
+
+static uint16_t QueryList_emplaceItem(const Scheme &scheme, const Field *f, Vector<Query::Field> &dec, const String &name) {
+	if (!name.empty() && name.front() == '$') {
+		dec.emplace_back(String(name));
+		return 1;
+	}
+	if (!f) {
+		if (auto field = scheme.getField(name)) {
+			dec.emplace_back(String(name));
+			return (field->isFile() || field->getForeignScheme()) ? 1 : 0;
+		}
+	} else if (f->getType() == Type::Extra) {
+		auto slot = static_cast<const FieldExtra *>(f->getSlot());
+		if (slot->fields.find(name) != slot->fields.end()) {
+			dec.emplace_back(String(name));
+			return 0;
+		}
+	}
+	if (!f) {
+		messages::error("QueryList", toString("Invalid field name in 'include' for scheme ", scheme.getName()), data::Value(name));
+	} else {
+		messages::error("QueryList",
+				toString("Invalid field name in 'include' for scheme ", scheme.getName(), " and field ", f->getName()), data::Value(name));
+	}
+	return 0;
+}
+
+static uint16_t QueryList_decodeIncludeItem(const Scheme &scheme, const Field *f, Vector<Query::Field> &dec, const data::Value &val) {
+	uint16_t depth = 0;
+	if (val.isString()) {
+		return QueryList_emplaceItem(scheme, f, dec, val.getString());
+	} else if (val.isArray()) {
+		for (auto &iit : val.asArray()) {
+			if (iit.isString()) {
+				depth = std::max(depth, QueryList_emplaceItem(scheme, f, dec, iit.getString()));
+			}
+		}
+	}
+	return depth;
+}
+
+static uint16_t QueryList_decodeInclude(const Scheme &scheme, const Field *f, Vector<Query::Field> &dec, const data::Value &val) {
+	uint16_t depth = 0;
+	if (val.isDictionary()) {
+		for (auto &it : val.asDict()) {
+			if (!it.first.empty()) {
+				if (it.second.isBool() && it.second.asBool()) {
+					QueryList_emplaceItem(scheme, f, dec, it.first);
+				} else if (it.second.isArray() || it.second.isDictionary() || it.second.isString()) {
+					if (auto target = QueryList_getField(scheme, f, it.first)) {
+						if (auto ts = target->getForeignScheme()) {
+							dec.emplace_back(String(it.first));
+							depth = std::max(depth, QueryList_decodeInclude(*ts, nullptr, dec.back().fields, it.second));
+						} else if (target->isFile()) {
+							dec.emplace_back(String(it.first));
+							depth = std::max(depth, QueryList_decodeInclude(*File::getScheme(), nullptr, dec.back().fields, it.second));
+						} else {
+							dec.emplace_back(String(it.first));
+							depth = std::max(depth, QueryList_decodeInclude(scheme, target, dec.back().fields, it.second));
+						}
+					}
+				}
+			}
+		}
+		depth = (depth + 1);
+	} else {
+		depth = std::max(depth, QueryList_decodeIncludeItem(scheme, f, dec, val));
+	}
+	return depth;
+}
+
+bool QueryList::apply(const data::Value &val) {
+	Item &item = queries.back();
+	Query &q = item.query;
+	const Scheme &scheme = *item.scheme;
+
+	for (auto &it : val.asDict()) {
+		if (it.first == "select") {
+			decodeSelect(scheme, q, it.second);
+		} else if (it.first == "order" || it.first == "last" || it.first == "first") {
+			decodeOrder(scheme, q, it.first, it.second);
+		} else if (it.first == "limit") {
+			if (it.second.isInteger()) {
+				q.limit(it.second.asInteger());
+			}
+		} else if (it.first == "offset") {
+			if (it.second.isInteger()) {
+				q.offset(it.second.asInteger());
+			}
+		} else if (it.first == "fields") {
+			Vector<Query::Field> dec;
+			q.depth(std::min(QueryList_decodeInclude(scheme, nullptr, dec, it.second), config::getResourceResolverMaxDepth()));
+			for (auto &it : dec) {
+				q.include(move(it));
+			}
+		} else if (it.first == "include") {
+			Vector<Query::Field> dec;
+			q.depth(std::min(QueryList_decodeInclude(scheme, nullptr, dec, it.second), config::getResourceResolverMaxDepth()));
+			for (auto &it : dec) {
+				q.include(move(it));
+			}
+		} else if (it.first == "exclude") {
+			Vector<Query::Field> dec;
+			q.depth(std::min(QueryList_decodeInclude(scheme, nullptr, dec, it.second), config::getResourceResolverMaxDepth()));
+			for (auto &it : dec) {
+				q.exclude(move(it));
+			}
+		} else if (it.first == "delta") {
+			if (it.second.isString()) {
+				q.delta(it.second.asString());
+			} else if (it.second.isArray()) {
+				String delta;
+				Query::DeltaMode mode = Query::DeltaMode::Minimal;
+				if (it.second.size() > 1) {
+					delta = it.second.getValue(0).asString();
+				}
+				if (it.second.size() > 2) {
+					auto m = it.second.getValue(1).asString();
+					if (m == "full") {
+						mode = Query::DeltaMode::Full;
+					}
+				}
+				if (!delta.empty()) {
+					q.delta(delta, mode);
+				}
+			}
+		}
+	}
+
+	return true;
+}
+
+void QueryList::resolve(const Vector<String> &vec) {
+	Item &b = queries.back();
+	b.fields = QueryFieldResolver(*b.scheme, b.query, vec);
+}
+
+uint16_t QueryList::getResolveDepth() const {
+	return queries.back().query.getResolveDepth();
+}
+
+void QueryList::setResolveDepth(uint16_t d) {
+	queries.back().query.depth(d);
+}
+
+const Query::FieldsVec &QueryList::getIncludeFields() const {
+	return queries.back().query.getIncludeFields();
+}
+const Query::FieldsVec &QueryList::getExcludeFields() const {
+	return queries.back().query.getExcludeFields();
+}
+
+QueryFieldResolver QueryList::getFields() const {
+	return QueryFieldResolver(queries.back().fields);
 }
 
 NS_SA_EXT_END(storage)

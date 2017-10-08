@@ -495,7 +495,7 @@ void Server::onBroadcast(const data::Value &val) {
 		return;
 	}
 
-	if (!val.isString("url") || !val.hasValue("data")) {
+	if (!val.hasValue("data")) {
 		return;
 	}
 
@@ -508,9 +508,11 @@ void Server::onBroadcast(const data::Value &val) {
 	}
 
 	auto &url = val.getString("url");
-	auto it = Server_resolvePath(_config->websockets, url);
-	if (it != _config->websockets.end() && it->second) {
-		it->second->receiveBroadcast(val.getValue("data"));
+	if (!url.empty()) {
+		auto it = Server_resolvePath(_config->websockets, url);
+		if (it != _config->websockets.end() && it->second) {
+			it->second->receiveBroadcast(val.getValue("data"));
+		}
 	}
 }
 

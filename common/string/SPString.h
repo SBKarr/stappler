@@ -114,6 +114,9 @@ auto tolower(const WideStringView & str) -> typename Interface::WideStringType;
 template <typename Interface = memory::DefaultInterface>
 auto urlencode(const StringView &data) -> typename Interface::StringType;
 
+template <typename Storage>
+void urldecode(Storage &, const StringView &str);
+
 template <typename Interface = memory::DefaultInterface>
 auto urldecode(const StringView &data) -> typename Interface::StringType;
 
@@ -706,29 +709,36 @@ auto StringTraits<Interface>::urlencode(const StringView &data) -> String {
 	return ret;
 }
 
-template <typename Interface>
-auto StringTraits<Interface>::urldecode(const StringView &str) -> String {
-	String ret; ret.reserve(str.size());
+template <typename Storage>
+inline void urldecode(Storage &storage, const StringView &str) {
+	using Value = typename Storage::value_type *;
 
-	CharReaderBase r(str);
+	storage.reserve(str.size());
+
+	StringView r(str);
 	while (!r.empty()) {
-		CharReaderBase tmp = r.readUntil<CharReaderBase::Chars<'%'>>();
-		ret.append(tmp.data(), tmp.size());
+		StringView tmp = r.readUntil<StringView::Chars<'%'>>();
+		storage.insert(storage.end(), Value(tmp.data()), Value(tmp.data() + tmp.size()));
 
 		if (r.is('%') && r > 2) {
-			CharReaderBase hex(r.data() + 1, 2);
-			hex.skipChars<CharReaderBase::CharGroup<CharGroupId::Hexadecimial>>();
+			StringView hex(r.data() + 1, 2);
+			hex.skipChars<StringView::CharGroup<CharGroupId::Hexadecimial>>();
 			if (hex.empty()) {
-				ret.push_back(base16::hexToChar(r[1], r[2]));
+				storage.push_back(base16::hexToChar(r[1], r[2]));
 			} else {
-				ret.append(r.data(), 3);
+				storage.insert(storage.end(), Value(r.data()), Value(r.data() + 3));
 			}
 			r += 3;
 		} else if (!r.empty()) {
-			ret.append(r.data(), r.size());
+			storage.insert(storage.end(), Value(r.data()), Value(r.data() + r.size()));
 		}
 	}
+}
 
+template <typename Interface>
+auto StringTraits<Interface>::urldecode(const StringView &str) -> String {
+	String ret;
+	string::urldecode(ret, str);
 	return ret;
 }
 

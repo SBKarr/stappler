@@ -71,6 +71,7 @@ enum class Flags : uint32_t {
 	AutoUser = 1 << 8, /** Property will be automatically set to current user (if available) */
 	Indexed = 1 << 9, /** Create index, that allows select queries on that field */
 	Admin = 1 << 10, /** Field can be accessed by administrative queries only */
+	ForceInclude = 1 << 11, /** field will be internally included in all queries (useful for access control) */
 };
 
 SP_DEFINE_ENUM_AS_MASK(Flags)

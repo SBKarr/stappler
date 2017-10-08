@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -50,32 +50,16 @@ const data::TransformMap *Resource::getTransform() const {
 	return _transform;
 }
 
-ResolveOptions Resource::resolveOptionForString(const String &str) {
+void Resource::resolveOptionForString(const String &str) {
 	if (str.empty()) {
-		return ResolveOptions::None;
+		return;
 	}
 
-	ResolveOptions opts = ResolveOptions::None;
-	Vector<String> strings;
 	string::split(str, ",", [&] (const StringView &v) {
-		strings.emplace_back(v.str());
+		StringView r(v);
+		r.trimChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		_extraResolves.emplace_back(toString('$', r));
 	});
-	for (auto &it : strings) {
-		if (it == "files") {
-			opts |= ResolveOptions::Files;
-		} else if (it == "sets") {
-			opts |= ResolveOptions::Sets;
-		} else if (it == "arrays") {
-			opts |= ResolveOptions::Arrays;
-		} else if (it == "all") {
-			opts |= ResolveOptions::Arrays | ResolveOptions::Files | ResolveOptions::Sets | ResolveOptions::Objects | ResolveOptions::Ids;
-		} else if (it == "objects") {
-			opts |= ResolveOptions::Objects;
-		} else if (it == "ids") {
-			opts |= ResolveOptions::Ids;
-		}
-	}
-	return opts;
 }
 
 void Resource::setAccessControl(AccessControl *a) {
@@ -89,26 +73,27 @@ void Resource::setFilterData(const data::Value &val) {
 	_filterData = val;
 }
 
-void Resource::setResolveOptions(ResolveOptions opts) {
-	_resolveOptions = opts;
-}
 void Resource::setResolveOptions(const data::Value & opts) {
 	if (opts.isArray()) {
 		for (auto &it : opts.asArray()) {
 			if (it.isString()) {
-				_resolveOptions |= resolveOptionForString(it.getString());
+				resolveOptionForString(it.getString());
 			}
 		}
 	} else if (opts.isString()) {
-		_resolveOptions |= resolveOptionForString(opts.getString());
+		resolveOptionForString(opts.getString());
 	}
 }
 void Resource::setResolveDepth(size_t size) {
-	_resolveDepth = size;
+	_queries.setResolveDepth(std::min(uint16_t(size), config::getResourceResolverMaxDepth()));
 }
-void Resource::setPagination(size_t from, size_t count) {
-	_pageFrom = from;
-	_pageCount = count;
+
+void Resource::applyQuery(const data::Value &query) {
+	_queries.apply(query);
+}
+
+void Resource::prepare() {
+	_queries.resolve(_extraResolves);
 }
 
 bool Resource::prepareUpdate() { return false; }
@@ -142,136 +127,151 @@ void Resource::encodeFiles(data::Value &data, apr::array<InputFile> &files) {
 	}
 }
 
-void Resource::resolveSet(const Scheme &s, int64_t oid, const storage::Field &f, const Scheme &next, data::Value &val) {
-	val.setValue(s.getProperty(_adapter, val, f), f.getName());
-}
-void Resource::resolveObject(const Scheme &s, int64_t oid, const storage::Field &f, const Scheme &next, data::Value &val) {
-	val.setValue(s.getProperty(_adapter, val, f), f.getName());
-}
-void Resource::resolveFile(const Scheme &s, int64_t oid, const storage::Field &f, data::Value &val) {
-	val.setValue(s.getProperty(_adapter, val, f), f.getName());
-	if (_transform) {
-		auto scheme = storage::File::getScheme();
-		auto it = _transform->find(scheme->getName());
-		if (it != _transform->end()) {
-			it->second.output.transform(val.getValue(f.getName()));
+void Resource::resolveSet(const QueryFieldResolver &res, int64_t id, const storage::Field &field, data::Value &fobj) {
+	QueryFieldResolver next(res.next(field.getName()));
+	if (next) {
+		auto perms = isSchemeAllowed(*(next.getScheme()), AccessControl::Read);
+		if (perms != AccessControl::Restrict) {
+			auto &fields = next.getResolves();
+			auto objs = res.getScheme()->getProperty(_adapter, fobj, field, fields);
+			if (objs.isArray()) {
+				data::Value arr;
+				for (auto &sit : objs.asArray()) {
+					if (sit.isDictionary()) {
+						if (perms == AccessControl::Full || isObjectAllowed(*(next.getScheme()), AccessControl::Read, sit)) {
+							auto id = sit.getInteger("__oid");
+							if (_resolveObjects.insert(id).second == false) {
+								sit.setInteger(id);
+							}
+							arr.addValue(std::move(sit));
+						}
+					}
+				}
+				fobj = std::move(arr);
+				return;
+			}
 		}
 	}
-}
-void Resource::resolveArray(const Scheme &s, int64_t oid, const storage::Field &f, data::Value &val) {
-	val.setValue(s.getProperty(_adapter, val, f), f.getName());
+	fobj = data::Value();
 }
 
-void Resource::resolveExtra(const apr::map<String, storage::Field> &fields, data::Value &obj) {
+void Resource::resolveObject(const QueryFieldResolver &res, int64_t id, const storage::Field &field, data::Value &fobj) {
+	QueryFieldResolver next(res.next(field.getName()));
+	if (next && _resolveObjects.find(fobj.asInteger()) == _resolveObjects.end()) {
+		auto perms = isSchemeAllowed(*(next.getScheme()), AccessControl::Read);
+		if (perms != AccessControl::Restrict) {
+			auto &fields = next.getResolves();
+			data::Value obj = res.getScheme()->getProperty(_adapter, fobj, field, fields);
+			if (obj.isDictionary() && (perms == AccessControl::Full || isObjectAllowed(*(next.getScheme()), AccessControl::Read, obj))) {
+				auto id = obj.getInteger("__oid");
+				if (_resolveObjects.insert(id).second == false) {
+					fobj.setInteger(id);
+				} else {
+					fobj.setValue(move(obj));
+				}
+				return;
+			}
+		}
+	}
+	fobj.setNull();
+}
+
+void Resource::resolveArray(const QueryFieldResolver &res, int64_t id, const storage::Field &field, data::Value &fobj) {
+	fobj.setValue(res.getScheme()->getProperty(_adapter, fobj, field));
+}
+
+void Resource::resolveFile(const QueryFieldResolver &res, int64_t id, const storage::Field &field, data::Value &fobj) {
+	QueryFieldResolver next(res.next(field.getName()));
+	if (next) {
+		auto perms = isSchemeAllowed(*(next.getScheme()), AccessControl::Read);
+		if (perms != AccessControl::Restrict) {
+			auto fields = next.getResolves();
+			data::Value obj = res.getScheme()->getProperty(_adapter, fobj, field, fields);
+			if (obj.isDictionary() && (perms == AccessControl::Full || isObjectAllowed(*(next.getScheme()), AccessControl::Read, obj))) {
+				fobj.setValue(move(obj));
+				return;
+			}
+		}
+	}
+	fobj.setNull();
+}
+
+static void Resource_resolveExtra(const storage::QueryFieldResolver &res, data::Value &obj) {
+	auto &fields = res.getResolves();
 	auto &dict = obj.asDict();
 	auto it = dict.begin();
 	while (it != dict.end()) {
-		auto fit = fields.find(it->first);
-		if (fit != fields.end()) {
-			auto &f = fit->second;
-			if (f.isProtected()) {
-				it = dict.erase(it);
-			} else if (f.getType() == storage::Type::Extra && it->second.isDictionary()) {
-				resolveExtra(static_cast<const storage::FieldExtra *>(f.getSlot())->fields, it->second);
-				it ++;
-			} else {
-				it ++;
+		auto f = res.getField(it->first);
+		if (!f || f->isProtected() || (fields.find(f) == fields.end())) {
+			it = dict.erase(it);
+		} else if (f->getType() == storage::Type::Extra && it->second.isDictionary()) {
+			storage::QueryFieldResolver next(res.next(it->first));
+			if (next) {
+				Resource_resolveExtra(next, it->second);
 			}
+			it ++;
 		} else {
 			it ++;
 		}
 	}
 }
 
-void Resource::resolveResult(const Scheme &s, data::Value &obj, size_t depth) {
+int64_t Resource::processResolveResult(const QueryFieldResolver &res, const Set<const Field *> &fields, data::Value &obj) {
 	int64_t id = 0;
-	do {
-		auto &dict = obj.asDict();
-		auto it = dict.begin();
+	auto &dict = obj.asDict();
+	auto it = dict.begin();
 
-		while (it != dict.end()) {
-			auto f = s.getField(it->first);
-			if (it->first == "__oid") {
-				id = it->second.getInteger();
-				it ++;
-			} else if (!f || f->isProtected()) {
-				it = dict.erase(it);
-			} else if (f->getType() == storage::Type::Extra && it->second.isDictionary()) {
-				resolveExtra(static_cast<const storage::FieldExtra *>(f->getSlot())->fields, it->second);
-				it ++;
-			} else {
-				it ++;
-			}
+	while (it != dict.end()) {
+		if (it->first == "__oid") {
+			id = it->second.asInteger();
+			it ++;
+			continue;
 		}
-	} while (0);
 
-	if (depth <= _resolveDepth && _resolveOptions != ResolveOptions::None) {
-		auto & fields = s.getFields();
+		auto f = res.getField(it->first);
+		if (!f || f->isProtected() || (fields.find(f) == fields.end())) {
+			it = dict.erase(it);
+		} else if (f->getType() == storage::Type::Extra && it->second.isDictionary()) {
+			QueryFieldResolver next(res.next(it->first));
+			if (next) {
+				Resource_resolveExtra(next, it->second);
+			}
+			it ++;
+		} else {
+			it ++;
+		}
+	}
+	return id;
+}
+
+void Resource::resolveResult(const QueryFieldResolver &res, data::Value &obj, uint16_t depth, uint16_t max) {
+	auto &searchField = res.getResolves();
+
+	int64_t id = processResolveResult(res, searchField, obj);
+
+	if (res && depth <= max) {
+		auto & fields = *res.getFields();
 		for (auto &it : fields) {
-			auto &f = it.second;
+			const Field &f = it.second;
 			auto type = f.getType();
 
-			if (!obj.hasValue(it.first) &&
-					((type == storage::Type::Object && (_resolveOptions & ResolveOptions::Objects) != ResolveOptions::None)
-					|| (type == storage::Type::Set && (_resolveOptions & ResolveOptions::Sets) != ResolveOptions::None)
-					|| (type == storage::Type::Array && (_resolveOptions & ResolveOptions::Arrays) != ResolveOptions::None))) {
+			if (f.isSimpleLayout() || searchField.find(&f) == searchField.end()) {
+				continue;
+			}
+
+			if (!obj.hasValue(it.first) && (type == storage::Type::Set || type == storage::Type::Array)) {
 				obj.setInteger(id, it.first);
 			}
 
 			auto &fobj = obj.getValue(it.first);
-			if (type == storage::Type::Object && fobj.isInteger()
-					&& (_resolveOptions & ResolveOptions::Objects) != ResolveOptions::None) {
-				auto next = static_cast<const storage::FieldObject *>(f.getSlot());
-				if (_resolveObjects.find(fobj.asInteger()) == _resolveObjects.end()) {
-					auto perms = isSchemeAllowed(*(next->scheme), AccessControl::Read);
-					if (perms != AccessControl::Restrict) {
-						resolveObject(s, id, f, *(next->scheme), obj);
-						if (fobj.isDictionary()) {
-							if (perms == AccessControl::Full || isObjectAllowed(*(next->scheme), AccessControl::Read, fobj)) {
-								auto id = fobj.getInteger("__oid");
-								if (_resolveObjects.insert(id).second == false) {
-									fobj.setInteger(id);
-								}
-							} else {
-								fobj.setNull();
-							}
-						}
-					}
-				}
-			} else if (type == storage::Type::Set && fobj.isInteger()
-					&& (_resolveOptions & ResolveOptions::Sets) != ResolveOptions::None) {
-				auto next = static_cast<const storage::FieldObject *>(f.getSlot());
-				if (next) {
-					auto perms = isSchemeAllowed(*(next->scheme), AccessControl::Read);
-					if (perms != AccessControl::Restrict) {
-						resolveSet(s, id, f, *(next->scheme), obj);
-						if (fobj.isArray()) {
-							data::Value arr;
-							for (auto &sit : fobj.asArray()) {
-								if (sit.isDictionary()) {
-									if (perms == AccessControl::Full || isObjectAllowed(*(next->scheme), AccessControl::Read, sit)) {
-										auto id = sit.getInteger("__oid");
-										if (_resolveObjects.insert(id).second == false) {
-											sit.setInteger(id);
-										}
-										arr.addValue(std::move(sit));
-									}
-								}
-							}
-							fobj = std::move(arr);
-						}
-					}
-				}
-			} else if (type == storage::Type::Array && fobj.isInteger()
-					&& (_resolveOptions & ResolveOptions::Arrays) != ResolveOptions::None) {
-				resolveArray(s, id, f, obj);
+			if (type == storage::Type::Object && fobj.isInteger()) {
+				resolveObject(res, id, f, fobj);
+			} else if (type == storage::Type::Set && fobj.isInteger()) {
+				resolveSet(res, id, f, fobj);
+			} else if (type == storage::Type::Array && fobj.isInteger()) {
+				resolveArray(res, id, f, fobj);
 			} else if ((type == storage::Type::File || type == storage::Type::Image) && fobj.isInteger()) {
-				if ((_resolveOptions & ResolveOptions::Files) != ResolveOptions::None) {
-					resolveFile(s, id, f, obj);
-				} else if ((_resolveOptions & ResolveOptions::Ids) == ResolveOptions::None) {
-					obj.erase(it.first);
-					continue;
-				}
+				resolveFile(res, id, f, fobj);
 			}
 		}
 
@@ -280,24 +280,35 @@ void Resource::resolveResult(const Scheme &s, data::Value &obj, size_t depth) {
 			auto type = f.getType();
 
 			if ((type == storage::Type::Object && obj.isDictionary(it.first)) || (type == storage::Type::Set && obj.isArray(it.first))) {
-				auto next = static_cast<const storage::FieldObject *>(f.getSlot());
-
-				if (type ==  storage::Type::Set) {
-					auto &fobj = obj.getValue(it.first);
-					for (auto &sit : fobj.asArray()) {
-						resolveResult(*(next->scheme), sit, depth + 1);
+				QueryFieldResolver next(res.next(it.first));
+				if (next) {
+					if (type ==  storage::Type::Set) {
+						auto &fobj = obj.getValue(it.first);
+						for (auto &sit : fobj.asArray()) {
+							if (sit.isDictionary()) {
+								resolveResult(next, sit, depth + 1, max);
+							}
+						}
+					} else {
+						auto &fobj = obj.getValue(it.first);
+						if (fobj.isDictionary()) {
+							resolveResult(next, fobj, depth + 1, max);
+						}
 					}
-				} else {
-					resolveResult(*(next->scheme), obj.getValue(it.first), depth + 1);
+				}
+			} else if (f.isFile() && obj.isDictionary()) {
+				auto &dict = obj.asDict();
+				auto f_it = dict.find(it.first);
+				if (f_it != dict.end() && f_it->second.isNull()) {
+					dict.erase(f_it);
 				}
 			}
 		}
-
 	} else if (obj.isDictionary()) {
 		auto &dict = obj.asDict();
 		auto it = dict.begin();
 		while (it != dict.end()) {
-			auto f = s.getField(it->first);
+			auto f = res.getField(it->first);
 			if (f && f->isFile()) {
 				it = dict.erase(it);
 			} else {
@@ -307,11 +318,15 @@ void Resource::resolveResult(const Scheme &s, data::Value &obj, size_t depth) {
 	}
 
 	if (_transform) {
-		auto it = _transform->find(s.getName());
+		auto it = _transform->find(res.getScheme()->getName());
 		if (it != _transform->end()) {
 			it->second.output.transform(obj);
 		}
 	}
+}
+
+void Resource::resolveResult(const QueryList &l, data::Value &obj) {
+	resolveResult(l.getFields(), obj, 0, l.getResolveDepth());
 }
 
 AccessControl::Permission Resource::isSchemeAllowed(const Scheme &s, AccessControl::Action a) const {

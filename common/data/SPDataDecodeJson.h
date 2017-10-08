@@ -187,7 +187,7 @@ inline void Decoder<Interface>::parseValue(ValueType &current) {
 		push(BackIsDict, &current);
 		break;
 	case 'n':
-		if (r == "nan") {
+		if (r.is("nan")) {
 			current._type = ValueType::Type::DOUBLE;
 			current.doubleVal = nan();
 			r += 3;

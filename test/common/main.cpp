@@ -190,7 +190,7 @@ int _spMain(argc, argv) {
 		std::cout << " Options: " << stappler::data::EncodeFormat::Pretty << opts << "\n";
 	}
 
-	Test::RunAll();
+	Test::Run("PoolSerenityTest");
 
 	return 0;
 }

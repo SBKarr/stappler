@@ -319,4 +319,24 @@ void Transform::makeReverse(Transform &ret, Vector<Pair<const String *, Transfor
 
 int EncodeFormat::EncodeStreamIndex = std::ios_base::xalloc();
 
+namespace serenity {
+
+bool shouldEncodePercent(char c) {
+#define V16 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+	static uint8_t s_decTable[256] = {
+		V16, V16, // 0-1, 0-F
+		1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, // 2, 0-F
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, // 3, 0-F
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 4, 0-F
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, // 5, 0-F
+		1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 6, 0-F
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, // 7, 0-F
+		V16, V16, V16, V16, V16, V16, V16, V16,
+	};
+
+	return bool(s_decTable[*((uint8_t *)(&c))]);
+}
+
+}
+
 NS_SP_EXT_END(data)

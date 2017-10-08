@@ -32,37 +32,54 @@ THE SOFTWARE.
 
 NS_SA_EXT_BEGIN(pg)
 
-static void Handle_writeSelectSetQuery(ExecQuery &query, const Scheme &s, uint64_t oid, const Field &f) {
+static void Handle_writeSelectSetQuery(ExecQuery &query, const Scheme &s, uint64_t oid, const Field &f, const Set<const Field *> &fields) {
 	auto fs = f.getForeignScheme();
 	if (f.isReference()) {
-		query.with("s", [&] (ExecQuery::GenericQuery &q) {
+		auto sel = query.with("s", [&] (ExecQuery::GenericQuery &q) {
 			q.select(ExecQuery::Field(toString(fs->getName(), "_id")).as("id"))
 					.from(toString(s.getName(), "_f_", f.getName()))
 					.where(toString(s.getName(), "_id"), Comparation::Equal, oid);
-		}).select( ExecQuery::Field::all(fs->getName()) )
-				.from(fs->getName()).innerJoinOn("s", [&] (ExecQuery::WhereBegin &q) {
-			q.where(ExecQuery::Field(fs->getName(), "__oid"), Comparation::Equal, ExecQuery::Field("s", "id"));
+		}).select();
+
+		String alias("t"); // do not touch;
+		ExecQuery::writeSelectFields(*f.getForeignScheme(), sel, fields, alias);
+
+		sel.from(ExecQuery::Field(fs->getName()).as(alias))
+				.innerJoinOn("s", [&] (ExecQuery::WhereBegin &q) {
+			q.where(ExecQuery::Field(alias, "__oid"), Comparation::Equal, ExecQuery::Field("s", "id"));
 		}).finalize();
 	} else {
 		auto l = s.getForeignLink(f);
-		query.select().from(fs->getName()).where(l->getName(), Comparation::Equal, oid).finalize();
+		auto sel = query.select();
+
+		String alias("t"); // do not touch;
+		ExecQuery::writeSelectFields(*f.getForeignScheme(), sel, fields, alias);
+
+		sel.from(ExecQuery::Field(fs->getName()).as(alias))
+				.where(l->getName(), Comparation::Equal, oid)
+				.finalize();
 	}
 }
 
-data::Value Handle::getProperty(const Scheme &s, uint64_t oid, const Field &f) {
+data::Value Handle::getProperty(const Scheme &s, uint64_t oid, const Field &f, const Set<const Field *> &fields) {
 	ExecQuery query;
 	data::Value ret;
 	switch (f.getType()) {
 	case storage::Type::File:
 	case storage::Type::Image:
-		query.with("s", [&] (ExecQuery::GenericQuery &q) {
-			q.select(f.getName()).from(s.getName()).where("__oid", Comparation::Equal, oid);
-		}).select(ExecQuery::Field::all("__files")).from("__files").innerJoinOn("s", [&] (ExecQuery::WhereBegin &q) {
-			q.where(ExecQuery::Field("__files","__oid"), Comparation::Equal, ExecQuery::Field("s", f.getName()));
-		}).finalize();
-		ret = select(*File::getScheme(), query);
-		if (ret.isArray()) {
-			ret = std::move(ret.getValue(0));
+		if (auto fs = File::getScheme()) {
+			auto sel = query.with("s", [&] (ExecQuery::GenericQuery &q) {
+				q.select(f.getName()).from(s.getName()).where("__oid", Comparation::Equal, oid);
+			}).select();
+			String alias("t"); // do not touch;
+			ExecQuery::writeSelectFields(*fs, sel, fields, alias)
+				.from(ExecQuery::Field("__files").as(alias)).innerJoinOn("s", [&] (ExecQuery::WhereBegin &q) {
+				q.where(ExecQuery::Field(alias,"__oid"), Comparation::Equal, ExecQuery::Field("s", f.getName()));
+			}).finalize();
+			ret = select(*fs, query);
+			if (ret.isArray()) {
+				ret = std::move(ret.getValue(0));
+			}
 		}
 		break;
 	case storage::Type::Array:
@@ -72,9 +89,11 @@ data::Value Handle::getProperty(const Scheme &s, uint64_t oid, const Field &f) {
 		break;
 	case storage::Type::Object:
 		if (auto fs = f.getForeignScheme()) {
-			query.with("s", [&] (ExecQuery::GenericQuery &q) {
+			auto sel = query.with("s", [&] (ExecQuery::GenericQuery &q) {
 				q.select(f.getName()).from(s.getName()).where("__oid", Comparation::Equal, oid);
-			}).select(ExecQuery::Field::all(fs->getName())).from(fs->getName()).innerJoinOn("s", [&] (ExecQuery::WhereBegin &q) {
+			}).select();
+			String alias("t"); // do not touch;
+			ExecQuery::writeSelectFields(*fs, sel, fields, alias).from(ExecQuery::Field(fs->getName()).as(alias)).innerJoinOn("s", [&] (ExecQuery::WhereBegin &q) {
 				q.where(ExecQuery::Field(fs->getName(), "__oid"), Comparation::Equal, ExecQuery::Field("s", f.getName()));
 			}).finalize();
 			ret = select(*fs, query);
@@ -85,7 +104,7 @@ data::Value Handle::getProperty(const Scheme &s, uint64_t oid, const Field &f) {
 		break;
 	case storage::Type::Set:
 		if (auto fs = f.getForeignScheme()) {
-			Handle_writeSelectSetQuery(query, s, oid, f);
+			Handle_writeSelectSetQuery(query, s, oid, f, fields);
 			ret = select(*fs, query);
 		}
 		break;
@@ -103,14 +122,25 @@ data::Value Handle::getProperty(const Scheme &s, uint64_t oid, const Field &f) {
 	return ret;
 }
 
-data::Value Handle::getProperty(const Scheme &s, const data::Value &d, const Field &f) {
+data::Value Handle::getProperty(const Scheme &s, const data::Value &d, const Field &f, const Set<const Field *> &fields) {
 	ExecQuery query;
 	data::Value ret;
-	auto oid = d.getInteger("__oid");
+	auto oid = d.isInteger() ? d.asInteger() : d.getInteger("__oid");
+	auto targetId = d.isInteger() ? d.asInteger() : d.getInteger(f.getName());
 	switch (f.getType()) {
 	case storage::Type::File:
 	case storage::Type::Image:
-		return storage::File::getData(this, d.getInteger(f.getName()));
+		if (auto fs = File::getScheme()) {
+			auto sel = query.select();
+			String alias("t"); // do not touch;
+			ExecQuery::writeSelectFields(*fs, sel, fields, alias)
+				.from(ExecQuery::Field("__files").as(alias))
+				.where(ExecQuery::Field(alias, "__oid"), Comparation::Equal, targetId).finalize();
+			ret = select(*fs, query);
+			if (ret.isArray()) {
+				ret = std::move(ret.getValue(0));
+			}
+		}
 		break;
 	case storage::Type::Array:
 		query << "SELECT data FROM " << s.getName() << "_f_" << f.getName() << " WHERE " << s.getName() << "_id=" << oid << ";";
@@ -118,7 +148,10 @@ data::Value Handle::getProperty(const Scheme &s, const data::Value &d, const Fie
 		break;
 	case storage::Type::Object:
 		if (auto fs = f.getForeignScheme()) {
-			query << "SELECT t.* FROM " << fs->getName() << " t WHERE t.__oid=" << d.getInteger(f.getName()) << ";";
+			auto sel = query.select();
+			String alias("t"); // do not touch;
+			ExecQuery::writeSelectFields(*fs, sel, fields, alias).from(ExecQuery::Field(fs->getName()).as(alias))
+					.where(ExecQuery::Field(alias, "__oid"), Comparation::Equal, targetId).finalize();
 			ret = select(*fs, query);
 			if (ret.isArray()) {
 				ret = std::move(ret.getValue(0));
@@ -127,7 +160,7 @@ data::Value Handle::getProperty(const Scheme &s, const data::Value &d, const Fie
 		break;
 	case storage::Type::Set:
 		if (auto fs = f.getForeignScheme()) {
-			Handle_writeSelectSetQuery(query, s, oid, f);
+			Handle_writeSelectSetQuery(query, s, oid, f, fields);
 			ret = select(*fs, query);
 		}
 		break;

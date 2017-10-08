@@ -123,7 +123,6 @@ class Resolver;
 class Object;
 class Scheme;
 
-class Query;
 class File;
 
 NS_SA_EXT_END(storage)

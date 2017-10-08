@@ -85,8 +85,8 @@ public:
 protected:
 	data::Value performUpdate(const Vector<int64_t> &, data::Value &, apr::array<InputFile> &);
 
-	data::Value processResultList(const Scheme &s, data::Value &ret, bool resolve);
-	bool processResultObject(Permission p, const Scheme &s, data::Value &obj, bool resolve = false);
+	data::Value processResultList(const QueryList &s, data::Value &ret);
+	bool processResultObject(Permission p, const QueryList &s, data::Value &obj);
 	data::Value getDatabaseObject();
 	Vector<int64_t> getDatabaseId(const QueryList &q, size_t count = maxOf<size_t>());
 };

@@ -28,16 +28,7 @@ THE SOFTWARE.
 
 NS_SA_BEGIN
 
-enum class ResolveOptions {
-	None = 0,
-	Files = 2,
-	Sets = 4,
-	Objects = 8,
-	Arrays = 16,
-	Ids = 32,
-};
-
-SP_DEFINE_ENUM_AS_MASK(ResolveOptions);
+using ResolveOptions = query::Resolve;
 
 class Resource : public AllocBase {
 public:
@@ -51,6 +42,8 @@ public:
 
 	using Permission = AccessControl::Permission;
 	using Action = AccessControl::Action;
+
+	using QueryFieldResolver = storage::QueryFieldResolver;
 
 	static Resource *resolve(storage::Adapter *a, const storage::Scheme &scheme, const String &path, const data::TransformMap * = nullptr);
 	static Resource *resolve(storage::Adapter *a, const storage::Scheme &scheme, const String &path, data::Value & sub, const data::TransformMap * = nullptr);
@@ -72,10 +65,12 @@ public:
 	void setUser(User *);
 	void setFilterData(const data::Value &);
 
-	void setResolveOptions(ResolveOptions opts);
 	void setResolveOptions(const data::Value & opts);
 	void setResolveDepth(size_t size);
-	void setPagination(size_t from, size_t count = maxOf<size_t>());
+
+	void applyQuery(const data::Value &);
+
+	void prepare();
 
 public: // common interface
 	virtual bool prepareUpdate();
@@ -97,13 +92,15 @@ public:
 protected:
 	void encodeFiles(data::Value &, apr::array<InputFile> &);
 
-	void resolveSet(const Scheme &, int64_t, const storage::Field &, const Scheme &next, data::Value &);
-	void resolveObject(const Scheme &, int64_t, const storage::Field &, const Scheme &next, data::Value &);
-	void resolveFile(const Scheme &, int64_t, const storage::Field &, data::Value &);
-	void resolveArray(const Scheme &, int64_t, const storage::Field &, data::Value &);
-	void resolveExtra(const apr::map<String, storage::Field> &fields, data::Value &it);
+	void resolveSet(const QueryFieldResolver &, int64_t, const storage::Field &, data::Value &);
+	void resolveObject(const QueryFieldResolver &, int64_t, const storage::Field &, data::Value &);
+	void resolveArray(const QueryFieldResolver &, int64_t, const storage::Field &, data::Value &);
+	void resolveFile(const QueryFieldResolver &, int64_t, const storage::Field &, data::Value &);
 
-	void resolveResult(const Scheme &, data::Value &, size_t depth);
+	int64_t processResolveResult(const QueryFieldResolver &res, const Set<const Field *> &, data::Value &obj);
+
+	void resolveResult(const QueryFieldResolver &res, data::Value &obj, uint16_t depth, uint16_t max);
+	void resolveResult(const QueryList &, data::Value &);
 
 	Permission isSchemeAllowed(const Scheme &, AccessControl::Action) const;
 	bool isObjectAllowed(const Scheme &, AccessControl::Action, data::Value &) const;
@@ -111,7 +108,7 @@ protected:
 
 protected:
 	virtual const storage::Scheme &getRequestScheme() const;
-	ResolveOptions resolveOptionForString(const String &str);
+	void resolveOptionForString(const String &str);
 
 	ResourceType _type = ResourceType::Object;
 	int _status = HTTP_OK;
@@ -123,12 +120,11 @@ protected:
 	AccessControl *_access = nullptr;
 
 	const data::TransformMap *_transform = nullptr;
-	ResolveOptions _resolveOptions = ResolveOptions::None;
-	size_t _resolveDepth = 0;
 	size_t _pageFrom = 0, _pageCount = maxOf<size_t>();
 	Set<int64_t> _resolveObjects;
 	Permission _perms = Permission::Restrict;
 	data::Value _filterData;
+	Vector<String> _extraResolves;
 };
 
 NS_SA_END

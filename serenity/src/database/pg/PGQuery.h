@@ -84,6 +84,8 @@ class ExecQuery : public sql::Query<Binder> {
 public:
 	using TypeString = Binder::TypeString;
 
+	static ExecQuery::Select &writeSelectFields(const Scheme &, ExecQuery::Select &sel, const Set<const storage::Field *> &fields, const String &source);
+
 	ExecQuery() = default;
 	ExecQuery(const StringView &);
 
@@ -91,6 +93,8 @@ public:
 
 	void writeAliasRequest(ExecQuery::SelectWhere &, Operator, const Scheme &s, const String &);
 	void writeQueryRequest(ExecQuery::SelectWhere &, Operator, const Scheme &s, const Vector<pg::Query::Select> &);
+
+	SelectFrom writeSelectFrom(GenericQuery &q, const QueryList::Item &item, bool idOnly, const String &schemeName, const String &fieldName);
 
 	void writeQueryReqest(ExecQuery::SelectFrom &s, const QueryList::Item &item);
 	void writeQueryListItem(GenericQuery &sq, const QueryList &list, size_t idx, bool idOnly, const storage::Field *field = nullptr);

@@ -74,7 +74,7 @@ User *User::get(storage::Adapter *a, uint64_t oid) {
 bool User::remove(storage::Adapter *a, const String &name, const String &password) {
 	auto s = Server(apr::pool::server()).getUserScheme();
 	storage::Query q;
-	q.select("name", name);
+	q.select("name", data::Value(name));
 
 	auto d = s->select(a, q);
 	if (d.size() != 1) {

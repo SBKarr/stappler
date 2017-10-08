@@ -119,7 +119,7 @@ data::Value ResourceObject::performUpdate(const Vector<int64_t> &objs, data::Val
 		}
 	}
 
-	return processResultList(getScheme(), ret, false);
+	return processResultList(_queries, ret);
 }
 
 data::Value ResourceObject::updateObject(data::Value &data, apr::array<InputFile> &files) {
@@ -143,16 +143,16 @@ data::Value ResourceObject::getResultObject() {
 		return data::Value();
 	}
 
-	return processResultList(getScheme(), ret, true);
+	return processResultList(_queries, ret);
 }
 
-data::Value ResourceObject::processResultList(const Scheme &s, data::Value &ret, bool resolve) {
-	auto perms = isSchemeAllowed(s, Action::Read);
+data::Value ResourceObject::processResultList(const QueryList &s, data::Value &ret) {
+	auto perms = isSchemeAllowed(*s.getScheme(), Action::Read);
 	if (perms != Permission::Restrict && ret.isArray()) {
 		auto &arr = ret.asArray();
 		auto it = arr.begin();
 		while (it != arr.end()) {
-			if (!processResultObject(perms, s, *it, resolve)) {
+			if (!processResultObject(perms, s, *it)) {
 				it = arr.erase(it);
 			} else {
 				it ++;
@@ -163,9 +163,9 @@ data::Value ResourceObject::processResultList(const Scheme &s, data::Value &ret,
 	return data::Value();
 }
 
-bool ResourceObject::processResultObject(Permission p, const Scheme &s, data::Value &obj, bool resolve) {
-	if (obj.isDictionary() && (p == Permission::Full || isObjectAllowed(s, Action::Read, obj))) {
-		resolveResult(s, obj, 0);
+bool ResourceObject::processResultObject(Permission p, const QueryList &s, data::Value &obj) {
+	if (obj.isDictionary() && (p == Permission::Full || isObjectAllowed(*s.getScheme(), Action::Read, obj))) {
+		resolveResult(s, obj);
 		return true;
 	}
 	return false;
@@ -177,13 +177,6 @@ data::Value ResourceObject::getDatabaseObject() {
 		_queries.limit(_queries.getScheme(), _pageCount);
 	}
 
-	//ExecQuery query;
-	//query.writeQueryList(_queries, false);
-	//query.finalize();
-
-	//messages::debug("Database", query.weak());
-	//return _adapter->select(getScheme(), query);
-
 	return _adapter->performQueryList(_queries);
 }
 
@@ -191,21 +184,6 @@ Vector<int64_t> ResourceObject::getDatabaseId(const QueryList &q, size_t count) 
 	const Vector<QueryList::Item> &items = q.getItems();
 	count = min(items.size(), count);
 
-	// can be optimized with this code, but it ignores validation of object's existence and type
-	//if (items.size() == 1 && items.back().query.getSelectOid() != 0) {
-	//	return Vector<int64_t>{int64_t(items.back().query.getSelectOid())};
-	//}
-
-	//Vector<int64_t> ret;
-	//ExecQuery query;
-	//query.writeQueryList(q, true, count);
-	//query.finalize();
-
-	//for (auto it : res) {
-	//	ret.push_back(it.toInteger(0));
-	//}
-
-	//return ret;
 	return _adapter->performQueryListForIds(q, count);
 }
 
@@ -246,7 +224,7 @@ data::Value ResourceReslist::performCreateObject(data::Value &data, apr::array<I
 			}
 		}
 		auto perms = isSchemeAllowed(getScheme(), Action::Read);
-		if (processResultObject(perms, getScheme(), ret)) {
+		if (processResultObject(perms, _queries, ret)) {
 			return ret;
 		}
 	} else if (data.isArray()) {
@@ -285,7 +263,7 @@ data::Value ResourceReslist::performCreateObject(data::Value &data, apr::array<I
 				}
 			}
 		}
-		return processResultList(getScheme(), ret, false);
+		return processResultList(_queries, ret);
 	}
 
 	return data::Value();
