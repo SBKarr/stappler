@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,47 +20,31 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef SERENITY_SRC_RESOURCE_RESOURCEHANDLER_H_
-#define SERENITY_SRC_RESOURCE_RESOURCEHANDLER_H_
+#ifndef SERENITY_SRC_RESOURCE_MULTIRESOURCEHANDLER_H_
+#define SERENITY_SRC_RESOURCE_MULTIRESOURCEHANDLER_H_
 
 #include "RequestHandler.h"
 
 NS_SA_BEGIN
 
-class ResourceHandler : public RequestHandler {
+class MultiResourceHandler : public RequestHandler {
 public:
 	using Scheme = storage::Scheme;
 	using Transform = data::TransformMap;
 
-	ResourceHandler(const Scheme &scheme, const Transform * = nullptr,
-			const AccessControl * = nullptr, const data::Value & = data::Value());
+	MultiResourceHandler(const Map<String, const Scheme *> &, const Transform * = nullptr, const AccessControl * = nullptr);
 
 	virtual bool isRequestPermitted(Request &) override;
-
 	virtual int onTranslateName(Request &) override;
-	virtual void onInsertFilter(Request &) override;
-	virtual int onHandler(Request &) override;
-
-	virtual void onFilterComplete(InputFilter *f) override;
-
-public: // request interface
-	int writeInfoToReqest(Request &rctx);
-	int writeToRequest(Request &rctx);
 
 protected:
 	int writeDataToRequest(Request &rctx, data::Value &&objs);
-	int getHintedStatus(int) const;
 
-	virtual Resource *getResource(Request &);
-
-	Request::Method _method = Request::Get;
-	const storage::Scheme &_scheme;
-	const data::TransformMap * _transform = nullptr;
+	Map<String, const Scheme *> _schemes;
+	const Transform * _transform = nullptr;
 	const AccessControl *_access = nullptr;
-	Resource *_resource = nullptr;
-	data::Value _value;
 };
 
 NS_SA_END
 
-#endif /* SERENITY_SRC_RESOURCE_RESOURCEHANDLER_H_ */
+#endif /* SERENITY_SRC_RESOURCE_MULTIRESOURCEHANDLER_H_ */

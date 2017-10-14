@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -61,7 +61,7 @@ public:
 	void setTransform(const data::TransformMap *);
 	const data::TransformMap *getTransform() const;
 
-	void setAccessControl(AccessControl *);
+	void setAccessControl(const AccessControl *);
 	void setUser(User *);
 	void setFilterData(const data::Value &);
 
@@ -117,8 +117,7 @@ protected:
 	QueryList _queries;
 
 	User *_user = nullptr;
-	AccessControl *_access = nullptr;
-
+	const AccessControl *_access = nullptr;
 	const data::TransformMap *_transform = nullptr;
 	size_t _pageFrom = 0, _pageCount = maxOf<size_t>();
 	Set<int64_t> _resolveObjects;

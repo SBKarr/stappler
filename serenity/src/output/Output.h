@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,11 @@ void formatJsonAsHtml(OutputStream &stream, const data::Value &, bool actionHand
 void writeData(Request &rctx, const data::Value &, bool allowJsonP = true);
 void writeData(Request &rctx, std::basic_ostream<char> &stream, const Function<void(const String &)> &ct,
 		const data::Value &, bool allowJsonP = true);
+
+int writeResourceFileData(Request &rctx, data::Value &&);
+int writeResourceData(Request &rctx, data::Value &&);
+
+int writeResourceFileHeader(Request &rctx, const data::Value &);
 
 // write file headers with respect for cache headers (if-none-match, if-modified-since)
 // returns true if we shoul write file data or false if we should return HTTP_NOT_MODIFIED

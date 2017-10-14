@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -188,7 +188,8 @@ struct ListCmd : SocketCommand {
 struct ResourceCmd : SocketCommand {
 	ResourceCmd(const String &str) : SocketCommand(str) { }
 
-	Resource *acquireResource(ShellSocketHandler &h, const StringView &scheme, const StringView &path, const StringView &resolve) {
+	Resource *acquireResource(ShellSocketHandler &h, const StringView &scheme, const StringView &path,
+			const StringView &resolve, const data::Value &val = data::Value()) {
 		if (!scheme.empty()) {
 			auto s =  h.request().server().getScheme(scheme.str());
 			if (s) {
@@ -201,6 +202,9 @@ struct ResourceCmd : SocketCommand {
 						} else {
 							r->setResolveOptions(data::Value(resolve.str()));
 						}
+					}
+					if (!val.empty()) {
+						r->applyQuery(val);
 					}
 					r->prepare();
 					return r;
@@ -243,6 +247,41 @@ struct GetCmd : ResourceCmd {
 	}
 	virtual const String help() const {
 		return "<scheme> <path> <resolve> - Get data from scheme"_weak;
+	}
+};
+
+struct MultiCmd : ResourceCmd {
+	MultiCmd() : ResourceCmd("multi") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		r.skipUntil<StringView::Chars<'('>>();
+		if (r.is('(')) {
+			data::Value result;
+			data::Value requests = data::read(r);
+			if (requests.isDictionary()) {
+				for (auto &it : requests.asDict()) {
+					StringView path(it.first);
+					StringView scheme = path.readUntil<StringView::Chars<'/'>>();
+					if (path.is('/')) {
+						++ path;
+					}
+
+					if (auto r = acquireResource(h, scheme, path, StringView(), it.second)) {
+						result.setValue(r->getResultObject(), it.first);
+					}
+				}
+			}
+			h.sendData(result);
+		}
+
+		return true;
+	}
+
+	virtual const String desc() const {
+		return "<request> - perform multi-request"_weak;
+	}
+	virtual const String help() const {
+		return "<request> - perform multi-request"_weak;
 	}
 };
 
@@ -607,6 +646,7 @@ ShellSocketHandler::ShellSocketHandler(Manager *m, const Request &req, User *use
 	_cmds.push_back(new ListCmd());
 	_cmds.push_back(new HandlersCmd());
 	_cmds.push_back(new GetCmd());
+	_cmds.push_back(new MultiCmd());
 	_cmds.push_back(new CreateCmd());
 	_cmds.push_back(new UpdateCmd());
 	_cmds.push_back(new AppendCmd());

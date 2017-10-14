@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,7 @@ THE SOFTWARE.
 
 NS_SA_BEGIN
 
-ResourceHandler::ResourceHandler(const storage::Scheme &scheme, const data::TransformMap *t, AccessControl *a, const data::Value &val)
+ResourceHandler::ResourceHandler(const storage::Scheme &scheme, const data::TransformMap *t, const AccessControl *a, const data::Value &val)
 : _scheme(scheme), _transform(t), _access(a), _value(val) { }
 
 bool ResourceHandler::isRequestPermitted(Request &rctx) {
@@ -175,7 +175,7 @@ void ResourceHandler::onFilterComplete(InputFilter *filter) {
 		// we should update our resource
 		auto result = _resource->updateObject(filter->getData(), filter->getFiles());
 		if (result) {
-			writeDataToRequest(rctx, result);
+			writeDataToRequest(rctx, move(result));
 			rctx.setStatus(HTTP_OK);
 		} else {
 			rctx.setStatus(HTTP_BAD_REQUEST);
@@ -184,7 +184,7 @@ void ResourceHandler::onFilterComplete(InputFilter *filter) {
 	} else if (_method == Request::Post) {
 		auto result = _resource->createObject(filter->getData(), filter->getFiles());
 		if (result) {
-			writeDataToRequest(rctx, result);
+			writeDataToRequest(rctx, move(result));
 			rctx.setStatus(HTTP_CREATED);
 		} else {
 			rctx.setStatus(HTTP_BAD_REQUEST);
@@ -193,7 +193,7 @@ void ResourceHandler::onFilterComplete(InputFilter *filter) {
 	} else if (_method == Request::Patch) {
 		auto result = _resource->appendObject(filter->getData());
 		if (result) {
-			writeDataToRequest(rctx, result);
+			writeDataToRequest(rctx, move(result));
 			rctx.setStatus(HTTP_OK);
 		} else {
 			rctx.setStatus(HTTP_BAD_REQUEST);
@@ -206,135 +206,26 @@ Resource *ResourceHandler::getResource(Request &rctx) {
 	return Resource::resolve(rctx.storage(), _scheme, _subPath, _value, _transform);
 }
 
-void ResourceHandler::performApiObject(Request &rctx, const storage::Scheme &scheme, data::Value &obj) {
-	auto id = obj.getInteger("__oid");
-	auto path = rctx.server().getResourcePath(_scheme);
-	if (!path.empty() && id > 0) {
-		data::Value actions;
-		apr::ostringstream remove;
-		remove << path << "id" << id << '|' << path << "id" << id << "?METHOD=DELETE"
-				<< "&location=" << string::urlencode(rctx.getUnparsedUri());
-
-		String token;
-		if (auto session = rctx.getSession()) {
-			if (auto user = session->getUser()) {
-				if (user->isAdmin()) {
-					auto & stoken = session->getSessionToken();
-					token = string::urlencode(base64::encode(stoken));
-					remove << "&token=" << token;
-
-				}
-			}
-		}
-		actions.setString(remove.str(), "remove");
-		obj.setValue(std::move(actions), "~ACTIONS~");
-
-		for (auto &it : obj.asDict()) {
-			auto f = scheme.getField(it.first);
-			if (f && f->isFile() && it.second.isInteger()) {
-				if (!token.empty()) {
-					it.second.setString(toString("~~", f->getName(), "|", path, "id", id, "/", it.first, "?token=", token));
-				} else {
-					it.second.setString(toString("~~", f->getName(), "|", path, "id", id, "/", it.first));
-				}
-			}
-		}
-	}
-}
-
-void ResourceHandler::performApiFilter(Request &rctx, const storage::Scheme &scheme, data::Value &val) {
-	if (val.isDictionary()) {
-		performApiObject(rctx, scheme, val);
-	} else if (val.isArray()) {
-		for (auto &it : val.asArray()) {
-			performApiObject(rctx, scheme, it);
-		}
-	}
-}
-
-int ResourceHandler::writeDataToRequest(Request &rctx, data::Value &result) {
-	auto &vars = rctx.getParsedQueryArgs();
-	data::Value data;
-
-	data.setInteger(apr_time_now(), "date");
-#if DEBUG
-	auto &debug = rctx.getDebugMessages();
-	if (!debug.empty()) {
-		data.setArray(debug, "debug");
-	}
-#endif
-	auto &error = rctx.getErrorMessages();
-	if (!error.empty()) {
-		data.setArray(error, "errors");
-	}
-
-	if (vars.getString("pretty") == "api") {
-		performApiFilter(rctx, _resource->getScheme(), result);
-	}
-
-	data.setValue(std::move(result), "result");
-	data.setBool(true, "OK");
-	rctx.writeData(data, true);
-
-	return DONE;
+int ResourceHandler::writeDataToRequest(Request &rctx, data::Value &&result) {
+	return output::writeResourceData(rctx, move(result));
 }
 
 int ResourceHandler::writeInfoToReqest(Request &rctx) {
 	data::Value result(_resource->getResultObject());
 	if (_resource->getType() == ResourceType::File) {
-		data::Value file(result.isArray()?std::move(result.getValue(0)):std::move(result));
-
-		if (!file) {
-			return HTTP_NOT_FOUND;
-		}
-
-		auto path = storage::File::getFilesystemPath((uint64_t)file.getInteger("__oid"));
-		auto &loc = file.getString("location");
-
-		if (!filesystem::exists(path) && loc.empty()) {
-			return HTTP_NOT_FOUND;
-		}
-
-		if (!output::writeFileHeaders(rctx, file)) {
-			return HTTP_NOT_MODIFIED;
-		}
-
-		return DONE;
+		return output::writeResourceFileHeader(rctx, result);
 	}
 
 	return OK;
 }
+
 int ResourceHandler::writeToRequest(Request &rctx) {
 	data::Value result(_resource->getResultObject());
 	if (result) {
 		if (_resource->getType() == ResourceType::File) {
-			data::Value file(result.isArray()?std::move(result.getValue(0)):std::move(result));
-			auto path = storage::File::getFilesystemPath((uint64_t)file.getInteger("__oid"));
-
-			auto &queryData = rctx.getParsedQueryArgs();
-			if (queryData.getBool("stat")) {
-				file.setBool(filesystem::exists(path), "exists");
-				return writeDataToRequest(rctx, file);
-			}
-
-			auto &loc = file.getString("location");
-			if (filesystem::exists(path) && loc.empty()) {
-				if (!output::writeFileHeaders(rctx, file)) {
-					return HTTP_NOT_MODIFIED;
-				}
-
-				rctx.setFilename(std::move(path));
-				return OK;
-			}
-
-			if (!loc.empty()) {
-				rctx.setFilename(nullptr);
-				return rctx.redirectTo(std::move(loc));
-			}
-
-			return HTTP_NOT_FOUND;
+			return output::writeResourceFileData(rctx, move(result));
 		} else {
-			return writeDataToRequest(rctx, result);
+			return writeDataToRequest(rctx, move(result));
 		}
 	}
 

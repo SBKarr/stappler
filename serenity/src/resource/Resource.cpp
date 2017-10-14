@@ -62,7 +62,7 @@ void Resource::resolveOptionForString(const String &str) {
 	});
 }
 
-void Resource::setAccessControl(AccessControl *a) {
+void Resource::setAccessControl(const AccessControl *a) {
 	_access = a;
 }
 void Resource::setUser(User *u) {
@@ -127,23 +127,42 @@ void Resource::encodeFiles(data::Value &data, apr::array<InputFile> &files) {
 	}
 }
 
+static bool Resource_isIdRequest(const storage::QueryFieldResolver &next) {
+	if (next.getResolves().empty()) {
+		if (auto vec = next.getIncludeVec()) {
+			if (vec->size() == 1 && vec->front().name == "$id") {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 void Resource::resolveSet(const QueryFieldResolver &res, int64_t id, const storage::Field &field, data::Value &fobj) {
 	QueryFieldResolver next(res.next(field.getName()));
 	if (next) {
 		auto perms = isSchemeAllowed(*(next.getScheme()), AccessControl::Read);
 		if (perms != AccessControl::Restrict) {
 			auto &fields = next.getResolves();
-			auto objs = res.getScheme()->getProperty(_adapter, fobj, field, fields);
+			bool idOnly = Resource_isIdRequest(next);
+
+			auto objs = idOnly
+					? res.getScheme()->getProperty(_adapter, fobj, field, Set<const Field *>{(const Field *)nullptr})
+					: res.getScheme()->getProperty(_adapter, fobj, field, fields);
 			if (objs.isArray()) {
 				data::Value arr;
 				for (auto &sit : objs.asArray()) {
 					if (sit.isDictionary()) {
 						if (perms == AccessControl::Full || isObjectAllowed(*(next.getScheme()), AccessControl::Read, sit)) {
 							auto id = sit.getInteger("__oid");
-							if (_resolveObjects.insert(id).second == false) {
-								sit.setInteger(id);
+							if (idOnly) {
+								arr.addInteger(id);
+							} else {
+								if (_resolveObjects.insert(id).second == false) {
+									sit.setInteger(id);
+								}
+								arr.addValue(std::move(sit));
 							}
-							arr.addValue(std::move(sit));
 						}
 					}
 				}
@@ -161,19 +180,23 @@ void Resource::resolveObject(const QueryFieldResolver &res, int64_t id, const st
 		auto perms = isSchemeAllowed(*(next.getScheme()), AccessControl::Read);
 		if (perms != AccessControl::Restrict) {
 			auto &fields = next.getResolves();
-			data::Value obj = res.getScheme()->getProperty(_adapter, fobj, field, fields);
-			if (obj.isDictionary() && (perms == AccessControl::Full || isObjectAllowed(*(next.getScheme()), AccessControl::Read, obj))) {
-				auto id = obj.getInteger("__oid");
-				if (_resolveObjects.insert(id).second == false) {
-					fobj.setInteger(id);
-				} else {
-					fobj.setValue(move(obj));
+			if (!Resource_isIdRequest(next)) {
+				data::Value obj = res.getScheme()->getProperty(_adapter, fobj, field, fields);
+				if (obj.isDictionary() && (perms == AccessControl::Full || isObjectAllowed(*(next.getScheme()), AccessControl::Read, obj))) {
+					auto id = obj.getInteger("__oid");
+					if (_resolveObjects.insert(id).second == false) {
+						fobj.setInteger(id);
+					} else {
+						fobj.setValue(move(obj));
+					}
+					return;
 				}
+			} else {
 				return;
 			}
 		}
+		fobj.setNull();
 	}
-	fobj.setNull();
 }
 
 void Resource::resolveArray(const QueryFieldResolver &res, int64_t id, const storage::Field &field, data::Value &fobj) {
@@ -186,9 +209,13 @@ void Resource::resolveFile(const QueryFieldResolver &res, int64_t id, const stor
 		auto perms = isSchemeAllowed(*(next.getScheme()), AccessControl::Read);
 		if (perms != AccessControl::Restrict) {
 			auto fields = next.getResolves();
-			data::Value obj = res.getScheme()->getProperty(_adapter, fobj, field, fields);
-			if (obj.isDictionary() && (perms == AccessControl::Full || isObjectAllowed(*(next.getScheme()), AccessControl::Read, obj))) {
-				fobj.setValue(move(obj));
+			if (!Resource_isIdRequest(next)) {
+				data::Value obj = res.getScheme()->getProperty(_adapter, fobj, field, fields);
+				if (obj.isDictionary() && (perms == AccessControl::Full || isObjectAllowed(*(next.getScheme()), AccessControl::Read, obj))) {
+					fobj.setValue(move(obj));
+					return;
+				}
+			} else {
 				return;
 			}
 		}

@@ -791,7 +791,7 @@ auto StringTraits<Interface>::toUtf8(char16_t c) -> String {
 
 template <typename Interface>
 auto StringTraits<Interface>::toKoi8r(const WideStringView &str) -> String {
-	String ret; ret.resize(str.size());
+	String ret; ret.reserve(str.size());
 	auto ptr = str.data();
 	auto end = ptr + str.size();
 	while (ptr < end) {

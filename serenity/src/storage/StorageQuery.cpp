@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -141,6 +141,20 @@ const Map<String, Field> *QueryFieldResolver::getFields() const {
 
 const Set<const Field *> &QueryFieldResolver::getResolves() const {
 	return root->resolved;
+}
+
+const Query::FieldsVec *QueryFieldResolver::getIncludeVec() const {
+	if (root) {
+		return root->include;
+	}
+	return nullptr;
+}
+
+const Query::FieldsVec *QueryFieldResolver::getExcludeVec() const {
+	if (root) {
+		return root->exclude;
+	}
+	return nullptr;
 }
 
 QueryFieldResolver QueryFieldResolver::next(const String &f) const {

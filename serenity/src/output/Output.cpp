@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -369,6 +369,77 @@ void writeData(Request &rctx, std::basic_ostream<char> &stream, const Function<v
 		stream << (pretty.asBool()?data::EncodeFormat::Pretty:data::EncodeFormat::Json) << data << "\r\n";
 	}
 	stream.flush();
+}
+
+int writeResourceFileData(Request &rctx, data::Value &&result) {
+	data::Value file(result.isArray()?move(result.getValue(0)):move(result));
+	auto path = storage::File::getFilesystemPath((uint64_t)file.getInteger("__oid"));
+
+	auto &queryData = rctx.getParsedQueryArgs();
+	if (queryData.getBool("stat")) {
+		file.setBool(filesystem::exists(path), "exists");
+		return writeResourceData(rctx, move(file));
+	}
+
+	auto &loc = file.getString("location");
+	if (filesystem::exists(path) && loc.empty()) {
+		if (!output::writeFileHeaders(rctx, file)) {
+			return HTTP_NOT_MODIFIED;
+		}
+
+		rctx.setFilename(std::move(path));
+		return OK;
+	}
+
+	if (!loc.empty()) {
+		rctx.setFilename(nullptr);
+		return rctx.redirectTo(std::move(loc));
+	}
+
+	return HTTP_NOT_FOUND;
+}
+
+int writeResourceData(Request &rctx, data::Value &&result) {
+	data::Value data;
+
+	data.setInteger(apr_time_now(), "date");
+#if DEBUG
+	auto &debug = rctx.getDebugMessages();
+	if (!debug.empty()) {
+		data.setArray(debug, "debug");
+	}
+#endif
+	auto &error = rctx.getErrorMessages();
+	if (!error.empty()) {
+		data.setArray(error, "errors");
+	}
+
+	data.setValue(move(result), "result");
+	data.setBool(true, "OK");
+	rctx.writeData(data, true);
+
+	return DONE;
+}
+
+int writeResourceFileHeader(Request &rctx, const data::Value &result) {
+	data::Value file(result.isArray()?std::move(result.getValue(0)):std::move(result));
+
+	if (!file) {
+		return HTTP_NOT_FOUND;
+	}
+
+	auto path = storage::File::getFilesystemPath((uint64_t)file.getInteger("__oid"));
+	auto &loc = file.getString("location");
+
+	if (!filesystem::exists(path) && loc.empty()) {
+		return HTTP_NOT_FOUND;
+	}
+
+	if (!writeFileHeaders(rctx, file)) {
+		return HTTP_NOT_MODIFIED;
+	}
+
+	return DONE;
 }
 
 bool writeFileHeaders(Request &rctx, const data::Value &file, const String &convertType) {

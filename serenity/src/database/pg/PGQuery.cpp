@@ -233,9 +233,11 @@ ExecQuery::Select &ExecQuery::writeSelectFields(const Scheme &scheme, ExecQuery:
 	if (!fields.empty()) {
 		sel.field(ExecQuery::Field(source, "__oid"));
 		for (auto &it : fields) {
-			auto type = it->getType();
-			if (type != storage::Type::Set && type != storage::Type::Array) {
-				sel.field(ExecQuery::Field(source, it->getName()));
+			if (it != nullptr) {
+				auto type = it->getType();
+				if (type != storage::Type::Set && type != storage::Type::Array) {
+					sel.field(ExecQuery::Field(source, it->getName()));
+				}
 			}
 		}
 		for (auto &it : scheme.getFields()) {

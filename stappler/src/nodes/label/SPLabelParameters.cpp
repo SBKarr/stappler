@@ -211,7 +211,7 @@ Size LabelParameters::getLabelSize(Source *source, const DescriptionStyle &style
 	}
 
 	fmt.finalize();
-	return Size(spec.width / density, spec.height / density);
+	return Size(spec.maxLineX / density, spec.height / density);
 }
 
 void LabelParameters::setAlignment(Alignment alignment) {

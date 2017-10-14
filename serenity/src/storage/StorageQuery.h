@@ -44,6 +44,9 @@ public:
 
 	const Set<const Field *> &getResolves() const;
 
+	const Query::FieldsVec *getIncludeVec() const;
+	const Query::FieldsVec *getExcludeVec() const;
+
 	QueryFieldResolver next(const String &) const;
 
 	operator bool () const;

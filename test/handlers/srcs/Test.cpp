@@ -120,6 +120,12 @@ void TestHandler::onChildInit(Server &serv) {
 	serv.addResourceHandler("/objects/", _objects);
 	serv.addResourceHandler("/refs/", _refs);
 
+	serv.addMultiResourceHandler("/multi", {
+		pair("objects", &_objects),
+		pair("refs", &_refs),
+		pair("subobjects", &_subobjects),
+	});
+
 	serv.addHandler("/handler", SA_HANDLER(TestSelectHandler));
 }
 

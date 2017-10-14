@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -64,8 +64,14 @@ public:
 	void addHandler(const String &, const HandlerCallback &, const data::Value & = data::Value::Null);
 	void addHandler(std::initializer_list<String>, const HandlerCallback &, const data::Value & = data::Value::Null);
 
-	void addResourceHandler(const String &, const storage::Scheme &, data::TransformMap * = nullptr, AccessControl * = nullptr, size_t priority = 0);
-	void addResourceHandler(const String &, const storage::Scheme &, const data::Value &, data::TransformMap * = nullptr, AccessControl * = nullptr, size_t priority = 0);
+	void addResourceHandler(const String &, const storage::Scheme &,
+			const data::TransformMap * = nullptr, const AccessControl * = nullptr, size_t priority = 0);
+
+	void addResourceHandler(const String &, const storage::Scheme &, const data::Value &,
+			const data::TransformMap * = nullptr, const AccessControl * = nullptr, size_t priority = 0);
+
+	void addMultiResourceHandler(const String &, std::initializer_list<Pair<const String, const storage::Scheme *>> &&,
+			const data::TransformMap * = nullptr, const AccessControl * = nullptr);
 
 	void addWebsocket(const String &, websocket::Manager *);
 

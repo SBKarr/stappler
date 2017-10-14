@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,7 @@ THE SOFTWARE.
 #include "StorageScheme.h"
 #include "PGHandle.h"
 #include "ResourceHandler.h"
+#include "MultiResourceHandler.h"
 #include "WebSocket.h"
 #include "Tools.h"
 #include "TemplateCache.h"
@@ -601,7 +602,7 @@ void Server::addHandler(const String &path, const HandlerCallback &cb, const dat
 	}
 }
 void Server::addResourceHandler(const String &path, const storage::Scheme &scheme,
-		data::TransformMap *transform, AccessControl *a, size_t priority) {
+		const data::TransformMap *transform, const AccessControl *a, size_t priority) {
 	if (!path.empty() && path.front() == '/') {
 		_config->requests.emplace(path, RequestScheme{_config->currentComponent,
 			[s = &scheme, transform, a] () -> RequestHandler * { return new ResourceHandler(*s, transform, a, data::Value()); },
@@ -619,7 +620,7 @@ void Server::addResourceHandler(const String &path, const storage::Scheme &schem
 }
 
 void Server::addResourceHandler(const String &path, const storage::Scheme &scheme, const data::Value &val,
-		data::TransformMap *transform, AccessControl *a, size_t priority) {
+		const data::TransformMap *transform, const AccessControl *a, size_t priority) {
 	if (!path.empty() && path.front() == '/') {
 		_config->requests.emplace(path, RequestScheme{_config->currentComponent,
 			[s = &scheme, transform, a, val] () -> RequestHandler * { return new ResourceHandler(*s, transform, a, val); },
@@ -636,6 +637,15 @@ void Server::addResourceHandler(const String &path, const storage::Scheme &schem
 	}
 }
 
+void Server::addMultiResourceHandler(const String &path, std::initializer_list<Pair<const String, const storage::Scheme *>> &&schemes,
+		const data::TransformMap *transform, const AccessControl *a) {
+	if (!path.empty() && path.front() == '/') {
+		_config->requests.emplace(path, RequestScheme{_config->currentComponent,
+			[s = Map<String, const storage::Scheme *>(move(schemes)), transform, a] () -> RequestHandler * {
+				return new MultiResourceHandler(s, transform, a);
+			}, data::Value()});
+	}
+}
 
 void Server::addHandler(std::initializer_list<String> paths, const HandlerCallback &cb, const data::Value &d) {
 	for (auto &it : paths) {
