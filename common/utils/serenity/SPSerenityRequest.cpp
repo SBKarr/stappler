@@ -78,6 +78,8 @@ Resolve Query::decodeResolve(const String &str) {
 		return Resolve::Defaults;
 	} else if (str == "$basics") {
 		return Resolve::Basics;
+	} else if (str == "$ids") {
+		return Resolve::Ids;
 	}
 	return Resolve::None;
 }

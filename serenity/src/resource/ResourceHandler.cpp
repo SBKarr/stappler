@@ -48,6 +48,11 @@ int ResourceHandler::onTranslateName(Request &rctx) {
 		return HTTP_FORBIDDEN;
 	}
 
+	if (!rctx.storage()) {
+		messages::error("ResourceHandler", "Database connection failed");
+		return HTTP_INTERNAL_SERVER_ERROR;
+	}
+
 	_method = rctx.getMethod();
 	if (_method != Request::Get && _method != Request::Post && _method != Request::Put
 			&& _method != Request::Delete && _method != Request::Patch) {
@@ -84,6 +89,13 @@ int ResourceHandler::onTranslateName(Request &rctx) {
 	_resource->setAccessControl(_access);
 	_resource->setUser(user);
 	_resource->setFilterData(_value);
+
+	if (data.hasValue("pageCount")) {
+		_resource->setPageCount(data.getInteger("pageCount"));
+	}
+	if (data.hasValue("pageFrom")) {
+		_resource->setPageFrom(data.getInteger("pageFrom"));
+	}
 
 	auto args = rctx.getQueryArgs();
 	if (!args.empty() && args.front() == '(') {

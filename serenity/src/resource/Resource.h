@@ -68,6 +68,9 @@ public:
 	void setResolveOptions(const data::Value & opts);
 	void setResolveDepth(size_t size);
 
+	void setPageFrom(size_t);
+	void setPageCount(size_t);
+
 	void applyQuery(const data::Value &);
 
 	void prepare();
@@ -119,11 +122,11 @@ protected:
 	User *_user = nullptr;
 	const AccessControl *_access = nullptr;
 	const data::TransformMap *_transform = nullptr;
-	size_t _pageFrom = 0, _pageCount = maxOf<size_t>();
 	Set<int64_t> _resolveObjects;
 	Permission _perms = Permission::Restrict;
 	data::Value _filterData;
 	Vector<String> _extraResolves;
+	ResolveOptions _resolve = ResolveOptions::None;
 };
 
 NS_SA_END

@@ -172,11 +172,6 @@ bool ResourceObject::processResultObject(Permission p, const QueryList &s, data:
 }
 
 data::Value ResourceObject::getDatabaseObject() {
-	if (_pageFrom > 0 || _pageCount != maxOf<size_t>()) {
-		_queries.offset(_queries.getScheme(), _pageFrom);
-		_queries.limit(_queries.getScheme(), _pageCount);
-	}
-
 	return _adapter->performQueryList(_queries);
 }
 
@@ -586,7 +581,7 @@ bool ResourceRefSet::doAppendObjectsTransaction(data::Value &ret, const data::Va
 
 ResourceProperty::ResourceProperty(Adapter *a, QueryList &&q, const Field *prop)
 : Resource(ResourceType::File, a, move(q)), _field(prop) {
-	// _queries.setProperty(prop);
+	_queries.setProperty(prop);
 }
 
 bool ResourceProperty::removeObject() {

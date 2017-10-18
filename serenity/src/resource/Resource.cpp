@@ -58,7 +58,9 @@ void Resource::resolveOptionForString(const String &str) {
 	string::split(str, ",", [&] (const StringView &v) {
 		StringView r(v);
 		r.trimChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-		_extraResolves.emplace_back(toString('$', r));
+		String token(toString('$', r));
+		_resolve |= Query::decodeResolve(token);
+		_extraResolves.emplace_back(move(token));
 	});
 }
 
@@ -86,6 +88,17 @@ void Resource::setResolveOptions(const data::Value & opts) {
 }
 void Resource::setResolveDepth(size_t size) {
 	_queries.setResolveDepth(std::min(uint16_t(size), config::getResourceResolverMaxDepth()));
+}
+
+void Resource::setPageFrom(size_t value) {
+	if (value > 0) {
+		_queries.offset(_queries.getScheme(), value);
+	}
+}
+void Resource::setPageCount(size_t value) {
+	if (value > 0 && value != maxOf<size_t>()) {
+		_queries.limit(_queries.getScheme(), value);
+	}
 }
 
 void Resource::applyQuery(const data::Value &query) {
@@ -127,12 +140,18 @@ void Resource::encodeFiles(data::Value &data, apr::array<InputFile> &files) {
 	}
 }
 
-static bool Resource_isIdRequest(const storage::QueryFieldResolver &next) {
+static bool Resource_isIdRequest(const storage::QueryFieldResolver &next, ResolveOptions opts, ResolveOptions target) {
 	if (next.getResolves().empty()) {
 		if (auto vec = next.getIncludeVec()) {
 			if (vec->size() == 1 && vec->front().name == "$id") {
 				return true;
 			}
+		}
+	}
+
+	if ((opts & ResolveOptions::Ids) != ResolveOptions::None) {
+		if ((opts & target) == ResolveOptions::None) {
+			return true;
 		}
 	}
 	return false;
@@ -144,7 +163,7 @@ void Resource::resolveSet(const QueryFieldResolver &res, int64_t id, const stora
 		auto perms = isSchemeAllowed(*(next.getScheme()), AccessControl::Read);
 		if (perms != AccessControl::Restrict) {
 			auto &fields = next.getResolves();
-			bool idOnly = Resource_isIdRequest(next);
+			bool idOnly = Resource_isIdRequest(next, ResolveOptions::None, ResolveOptions::Sets);
 
 			auto objs = idOnly
 					? res.getScheme()->getProperty(_adapter, fobj, field, Set<const Field *>{(const Field *)nullptr})
@@ -180,7 +199,7 @@ void Resource::resolveObject(const QueryFieldResolver &res, int64_t id, const st
 		auto perms = isSchemeAllowed(*(next.getScheme()), AccessControl::Read);
 		if (perms != AccessControl::Restrict) {
 			auto &fields = next.getResolves();
-			if (!Resource_isIdRequest(next)) {
+			if (!Resource_isIdRequest(next, _resolve, ResolveOptions::Objects)) {
 				data::Value obj = res.getScheme()->getProperty(_adapter, fobj, field, fields);
 				if (obj.isDictionary() && (perms == AccessControl::Full || isObjectAllowed(*(next.getScheme()), AccessControl::Read, obj))) {
 					auto id = obj.getInteger("__oid");
@@ -209,7 +228,7 @@ void Resource::resolveFile(const QueryFieldResolver &res, int64_t id, const stor
 		auto perms = isSchemeAllowed(*(next.getScheme()), AccessControl::Read);
 		if (perms != AccessControl::Restrict) {
 			auto fields = next.getResolves();
-			if (!Resource_isIdRequest(next)) {
+			if (!Resource_isIdRequest(next, _resolve, ResolveOptions::Files)) {
 				data::Value obj = res.getScheme()->getProperty(_adapter, fobj, field, fields);
 				if (obj.isDictionary() && (perms == AccessControl::Full || isObjectAllowed(*(next.getScheme()), AccessControl::Read, obj))) {
 					fobj.setValue(move(obj));

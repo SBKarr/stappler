@@ -257,7 +257,7 @@ auto ExecQuery::writeSelectFrom(GenericQuery &q, const QueryList::Item &item, bo
 	}
 
 	auto sel = q.select();
-	auto fields = item.getQueryFields();
+	auto &fields = item.getQueryFields();
 	return writeSelectFields(*item.scheme, sel, fields, schemeName).from(schemeName);
 }
 

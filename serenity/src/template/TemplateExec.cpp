@@ -564,6 +564,7 @@ Exec::Variable Exec::selectSchemeByPath(ReaderVec &path, ReaderVecIt &pathIt, co
 	Resource *res = Resource::resolve(_storage, *scheme, pathComponents);
 	if (res) {
 		res->setAccessControl(&_access);
+		res->prepare();
 		return Variable{new data::Value(res->getResultObject()), &res->getScheme()};
 	}
 	return Variable();

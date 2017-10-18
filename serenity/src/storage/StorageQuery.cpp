@@ -100,6 +100,13 @@ static void QueryFieldResolver_resolveByName(Set<const Field *> &ret, const Map<
 				ret.emplace(&it.second);
 			}
 			break;
+		case query::Resolve::Ids:
+			for (auto &it : fields) {
+				if (it.second.isFile() || it.second.getType() == Type::Object) {
+					ret.emplace(&it.second);
+				}
+			}
+			break;
 		default: break;
 		}
 	} else {
@@ -331,7 +338,7 @@ bool QueryList::setField(const Scheme *scheme, const Field *field) {
 }
 
 bool QueryList::setProperty(const Field *field) {
-	queries.back().field = field;
+	queries.back().query.include(Query::Field(String(field->getName())));
 	return true;
 }
 

@@ -48,6 +48,12 @@ bool AuthHandler::isRequestPermitted(Request &rctx) {
 bool AuthHandler::processDataHandler(Request &rctx, data::Value &result, data::Value &input) {
 	auto &queryData = rctx.getParsedQueryArgs();
 
+	if (!rctx.storage()) {
+		messages::error("ResourceHandler", "Database connection failed");
+		rctx.setStatus(HTTP_INTERNAL_SERVER_ERROR);
+		return false;
+	}
+
 	if (_subPath == "/login") {
 		auto &name = queryData.getString("name");
 		auto &passwd = queryData.getString("passwd");

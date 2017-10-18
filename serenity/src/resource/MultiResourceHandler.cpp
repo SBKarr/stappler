@@ -44,6 +44,11 @@ int MultiResourceHandler::onTranslateName(Request &rctx) {
 		return HTTP_FORBIDDEN;
 	}
 
+	if (!rctx.storage()) {
+		messages::error("ResourceHandler", "Database connection failed");
+		return HTTP_INTERNAL_SERVER_ERROR;
+	}
+
 	auto &data = rctx.getParsedQueryArgs();
 	User *user = rctx.getAuthorizedUser();
 	if (!user && data.isString("token")) {
