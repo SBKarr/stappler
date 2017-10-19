@@ -67,12 +67,6 @@ public:
 
 	using FieldsVec = Vector<Field>;
 
-	enum class DeltaMode {
-		None,
-		Minimal,
-		Full,
-	};
-
 	struct Select {
 		Comparation compare;
 		data::Value value1;
@@ -110,7 +104,8 @@ public:
 	Query & limit(size_t l);
 	Query & offset(size_t l);
 
-	Query & delta(const String &, DeltaMode = DeltaMode::None);
+	Query & delta(uint64_t);
+	Query & delta(const String &);
 
 	Query & include(Field &&);
 	Query & exclude(Field &&);
@@ -138,8 +133,7 @@ public:
 	bool hasDelta() const;
 	bool hasFields() const;
 
-	DeltaMode getDeltaMode() const;
-	const String &getDeltaToken() const;
+	uint64_t getDeltaToken() const;
 
 	uint16_t getResolveDepth() const;
 
@@ -159,8 +153,7 @@ protected:
 	size_t limitValue = maxOf<size_t>();
 	size_t offsetValue = 0;
 
-	DeltaMode deltaMode = DeltaMode::None;
-	String deltaToken;
+	uint64_t deltaToken;
 
 	uint16_t resolveDepth = 1;
 

@@ -40,6 +40,8 @@ public:
 protected:
 	int writeDataToRequest(Request &rctx, data::Value &&objs);
 
+	data::Value resultData;
+
 	Map<String, const Scheme *> _schemes;
 	const Transform * _transform = nullptr;
 	const AccessControl *_access = nullptr;

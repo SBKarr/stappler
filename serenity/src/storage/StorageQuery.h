@@ -35,12 +35,19 @@ using Query = query::Query;
 
 class QueryFieldResolver {
 public:
+	enum class Meta {
+		None = 0,
+		Time = 1,
+		Action = 2,
+	};
+
 	QueryFieldResolver();
 	QueryFieldResolver(const Scheme &, const Query &, const Vector<String> &extraFields = Vector<String>());
 
 	const Field *getField(const String &) const;
 	const Scheme *getScheme() const;
 	const Map<String, Field> *getFields() const;
+	Meta getMeta() const;
 
 	const Set<const Field *> &getResolves() const;
 
@@ -59,6 +66,7 @@ protected:
 		const Query::FieldsVec *exclude = nullptr;
 		Set<const Field *> resolved;
 		Map<String, Data> next;
+		Meta meta = Meta::None;
 	};
 
 	QueryFieldResolver(Data *);
@@ -66,6 +74,9 @@ protected:
 
 	Data *root = nullptr;
 };
+
+SP_DEFINE_ENUM_AS_MASK(QueryFieldResolver::Meta);
+
 
 class QueryList : public AllocBase {
 public:
@@ -104,11 +115,15 @@ public:
 	bool isObject() const;
 	bool empty() const;
 
+	bool isDeltaApplicable() const;
+
 	bool apply(const data::Value &query);
 	void resolve(const Vector<String> &);
 
 	uint16_t getResolveDepth() const;
 	void setResolveDepth(uint16_t);
+
+	void setDelta(Time);
 
 	size_t size() const;
 

@@ -24,9 +24,10 @@ THE SOFTWARE.
 **/
 
 #include "Define.h"
-#include "PGQuery.h"
+#include "PGHandle.h"
 #include "StorageField.h"
 #include "StorageScheme.h"
+#include "PGHandleTypes.h"
 
 NS_SA_EXT_BEGIN(pg)
 
@@ -313,6 +314,14 @@ void ExecQuery::writeQueryListItem(GenericQuery &q, const QueryList &list, size_
 }
 
 void ExecQuery::writeQueryList(const QueryList &list, bool idOnly, size_t count) {
+	const QueryList::Item &item = list.getItems().back();
+	if (list.isDeltaApplicable() && item.query.hasDelta()) {
+		writeQueryDelta(*item.scheme, Time::microseconds(item.query.getDeltaToken()), item.fields.getResolves(), false);
+		return;
+	} else if (item.query.hasDelta()) {
+		messages::error("Query", "Delta is not applicable for this query");
+	}
+
 	auto &items = list.getItems();
 	count = min(items.size(), count);
 
@@ -368,6 +377,33 @@ void ExecQuery::writeQueryArray(const QueryList &list, const storage::Field *fie
 	});
 }
 
+void ExecQuery::writeQueryDelta(const Scheme &scheme, const Time &time, const Set<const storage::Field *> &fields, bool idOnly) {
+	GenericQuery q(this);
+	auto s = q.with("d", [&] (ExecQuery::GenericQuery &sq) {
+		sq.select()
+			.aggregate("max", Field("time").as("time"))
+			.aggregate("max", Field("action").as("action"))
+			.field("object")
+			.from(TableRec::getNameForDelta(scheme))
+			.where("time", Comparation::GreatherThen, time.toMicroseconds())
+			.group("object")
+			.order(Ordering::Descending, "time");
+	}).select();
+	if (!idOnly) {
+		writeSelectFields(scheme, s, fields, "t");
+	} else {
+		s.field(Field("t", "__oid"));
+	}
+	s.fields(
+			Field("d", "action").as("__d_action"),
+			Field("d", "time").as("__d_time"),
+			Field("d", "object").as("__d_object"))
+		.from(Field(scheme.getName()).as("t"))
+		.rightJoinOn("d", [&] (ExecQuery::WhereBegin &w) {
+			w.where(Field("d", "object"), Comparation::Equal, Field("t", "__oid"));
+	});
+}
+
 const StringStream &ExecQuery::getQuery() const {
 	return stream;
 }
@@ -398,14 +434,36 @@ size_t ResultRow::size() const {
 }
 data::Value ResultRow::toData(const Scheme &scheme) {
 	data::Value row;
+	data::Value *deltaPtr = nullptr;
 	for (size_t i = 0; i < result->_nfields; i++) {
 		auto n = result->name(i);
-		auto f_it = scheme.getField(String::make_weak(n.data(), n.size()));
-		if (!isNull(i)) {
+		if (n == "__oid") {
+			if (!isNull(i)) {
+				row.setInteger(toInteger(i), n.str());
+			}
+		} else if (n == "__d_action") {
+			if (!deltaPtr) {
+				deltaPtr = &row.emplace("__delta");
+			}
+			switch (Handle::DeltaAction(toInteger(i))) {
+			case Handle::DeltaAction::Create: deltaPtr->setString("create", "action"); break;
+			case Handle::DeltaAction::Update: deltaPtr->setString("update", "action"); break;
+			case Handle::DeltaAction::Delete: deltaPtr->setString("delete", "action"); break;
+			case Handle::DeltaAction::Append: deltaPtr->setString("append", "action"); break;
+			case Handle::DeltaAction::Erase: deltaPtr->setString("erase", "action");  break;
+			default: break;
+			}
+		} else if (n == "__d_object") {
+			row.setInteger(toInteger(i), "__oid");
+		} else if (n == "__d_time") {
+			if (!deltaPtr) {
+				deltaPtr = &row.emplace("__delta");
+			}
+			deltaPtr->setInteger(toInteger(i), "time");
+		} else if (!isNull(i)) {
+			auto f_it = scheme.getField(String::make_weak(n.data(), n.size()));
 			if (f_it) {
 				row.setValue(toData(i, *f_it), n.str());
-			} else if (n == "__oid") {
-				row.setInteger(toInteger(i), n.str());
 			}
 		}
 	}

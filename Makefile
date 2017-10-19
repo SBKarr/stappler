@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+# Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,10 +22,13 @@ THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
 GLOBAL_ROOT := .
 
+all: libmaterial libstappler libcli libspmin
+
+install-deps-ubuntu:
+	sudo apt-get install libglew-dev libz-dev libxrandr-dev libxi-dev libxinerama-dev libxcursor-dev
+
 pvs.log:
 	pvs-studio-analyzer analyze -o pvs.log -j4
-
-all: libmaterial libstappler libcli libspmin
 
 pvs-analyzer-log: pvs.log
 	plog-converter -t errorfile pvs.log

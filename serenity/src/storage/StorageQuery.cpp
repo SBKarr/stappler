@@ -146,6 +146,10 @@ const Map<String, Field> *QueryFieldResolver::getFields() const {
 	return nullptr;
 }
 
+QueryFieldResolver::Meta QueryFieldResolver::getMeta() const {
+	return root ? root->meta : Meta::None;
+}
+
 const Set<const Field *> &QueryFieldResolver::getResolves() const {
 	return root->resolved;
 }
@@ -187,9 +191,21 @@ void QueryFieldResolver::doResolve(Data *data, const Vector<String> &extra, uint
 
 	if (data->include && !data->include->empty()) {
 		for (const Query::Field &it : *data->include) {
-			QueryFieldResolver_resolveByName(data->resolved, *data->fields, it.name);
+			if (it.name == "$meta") {
+				for (auto &f_it : it.fields) {
+					if (f_it.name == "time") {
+						data->meta |= Meta::Time;
+					} else if (f_it.name == "action") {
+						data->meta |= Meta::Action;
+					}
+				}
+			} else {
+				QueryFieldResolver_resolveByName(data->resolved, *data->fields, it.name);
+			}
 		}
-	} else {
+	}
+
+	if (!data->include || data->include->empty() || (data->include->size() == 1 && data->include->front().name == "$meta")) {
 		for (auto &it : *data->fields) {
 			if (it.second.isSimpleLayout()) {
 				data->resolved.emplace(&it.second);
@@ -357,6 +373,15 @@ bool QueryList::isObject() const {
 bool QueryList::empty() const {
 	return queries.size() == 1 && queries.front().query.empty();
 }
+
+bool QueryList::isDeltaApplicable() const {
+	const QueryList::Item &item = getItems().back();
+	if (queries.size() == 1 && !item.query.hasSelectName() && !item.query.hasSelectList()) {
+		return true;
+	}
+	return false;
+}
+
 size_t QueryList::size() const {
 	return queries.size();
 }
@@ -533,6 +558,24 @@ static uint16_t QueryList_decodeIncludeItem(const Scheme &scheme, const Field *f
 	return depth;
 }
 
+static void QueryList_decodeMeta(Vector<Query::Field> &dec, const data::Value &val) {
+	if (val.isArray()) {
+		for (auto &it : val.asArray()) {
+			auto str = it.asString();
+			if (!str.empty()) {
+				dec.emplace_back(move(str));
+			}
+		}
+	} else if (val.isDictionary()) {
+		for (auto &it : val.asDict()) {
+			dec.emplace_back(String(it.first));
+			QueryList_decodeMeta(dec.back().fields, it.second);
+		}
+	} else if (val.isString()) {
+		dec.emplace_back(val.asString());
+	}
+}
+
 static uint16_t QueryList_decodeInclude(const Scheme &scheme, const Field *f, Vector<Query::Field> &dec, const data::Value &val) {
 	uint16_t depth = 0;
 	if (val.isDictionary()) {
@@ -541,7 +584,10 @@ static uint16_t QueryList_decodeInclude(const Scheme &scheme, const Field *f, Ve
 				if (it.second.isBool() && it.second.asBool()) {
 					QueryList_emplaceItem(scheme, f, dec, it.first);
 				} else if (it.second.isArray() || it.second.isDictionary() || it.second.isString()) {
-					if (auto target = QueryList_getField(scheme, f, it.first)) {
+					if (it.first.front() == '$') {
+						dec.emplace_back(String(it.first));
+						QueryList_decodeMeta(dec.back().fields, it.second);
+					} else if (auto target = QueryList_getField(scheme, f, it.first)) {
 						if (auto ts = target->getForeignScheme()) {
 							dec.emplace_back(String(it.first));
 							depth = std::max(depth, QueryList_decodeInclude(*ts, nullptr, dec.back().fields, it.second));
@@ -602,21 +648,8 @@ bool QueryList::apply(const data::Value &val) {
 		} else if (it.first == "delta") {
 			if (it.second.isString()) {
 				q.delta(it.second.asString());
-			} else if (it.second.isArray()) {
-				String delta;
-				Query::DeltaMode mode = Query::DeltaMode::Minimal;
-				if (it.second.size() > 1) {
-					delta = it.second.getValue(0).asString();
-				}
-				if (it.second.size() > 2) {
-					auto m = it.second.getValue(1).asString();
-					if (m == "full") {
-						mode = Query::DeltaMode::Full;
-					}
-				}
-				if (!delta.empty()) {
-					q.delta(delta, mode);
-				}
+			} else if (it.second.isInteger()) {
+				q.delta(it.second.asInteger());
 			}
 		}
 	}
@@ -635,6 +668,10 @@ uint16_t QueryList::getResolveDepth() const {
 
 void QueryList::setResolveDepth(uint16_t d) {
 	queries.back().query.depth(d);
+}
+
+void QueryList::setDelta(Time d) {
+	queries.back().query.delta(d.toMicroseconds());
 }
 
 const Query::FieldsVec &QueryList::getIncludeFields() const {

@@ -42,6 +42,14 @@ Scheme::Scheme(const String &name, std::initializer_list<Field> il) :  Scheme(na
 	updateLimits();
 }
 
+void Scheme::setDelta(bool v) {
+	delta = v;
+}
+
+bool Scheme::hasDelta() const {
+	return delta;
+}
+
 void Scheme::define(std::initializer_list<Field> il) {
 	for (auto &it : il) {
 		auto &fname = it.getName();

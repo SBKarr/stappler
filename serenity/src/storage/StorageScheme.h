@@ -34,6 +34,9 @@ public:
 	Scheme(const String &name);
 	Scheme(const String &name, std::initializer_list<Field> il);
 
+	void setDelta(bool value);
+	bool hasDelta() const;
+
 	void define(std::initializer_list<Field> il);
 	void cloneFrom(Scheme *);
 
@@ -153,6 +156,8 @@ protected:
 
 	Map<String, Field> fields;
 	String name;
+
+	bool delta = false;
 
 	size_t maxRequestSize = 0;
 	size_t maxVarSize = 256;

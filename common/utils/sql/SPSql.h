@@ -75,6 +75,7 @@ public:
 	struct Select;
 	struct SelectFrom;
 	struct SelectWhere;
+	struct SelectGroup;
 	struct SelectOrder;
 	struct SelectPost;
 
@@ -226,6 +227,7 @@ public:
 		template <typename ...Args>
 		auto fields(const Field &f, Args && ... args) -> Clause &;
 		auto field(const Field &f) -> Clause &;
+		auto aggregate(const StringView &, const Field &f) -> Clause &;
 
 		using QueryHandle::QueryHandle;
 	};
@@ -270,16 +272,36 @@ public:
 		template <typename Callback>
 		auto innerJoinOn(const String &s, const Callback &cb) -> SelectFrom &;
 
+		template <typename Callback>
+		auto leftJoinOn(const String &s, const Callback &cb) -> SelectFrom &;
+
+		template <typename Callback>
+		auto rightJoinOn(const String &s, const Callback &cb) -> SelectFrom &;
+
+		template <typename Callback>
+		auto fullJoinOn(const String &s, const Callback &cb) -> SelectFrom &;
+
 		template <typename ... Args>
 		auto where(Args && ... args) -> SelectWhere;
 		auto where() -> SelectWhere;
+		auto group(const Field &) -> SelectGroup;
 		auto order(Ordering, const Field &, Nulls = Nulls::None) -> SelectOrder;
 		void forUpdate();
 
 		using QueryHandle::QueryHandle;
 	};
 
+	struct SelectGroup : QueryHandle {
+		template <typename ...Args>
+		auto fields(const Field &f, Args && ... args) -> SelectGroup &;
+		auto field(const Field &) -> SelectGroup &;
+		auto order(Ordering, const Field &, Nulls = Nulls::None) -> SelectOrder;
+
+		using QueryHandle::QueryHandle;
+	};
+
 	struct SelectWhere : WhereClause<SelectWhere> {
+		auto group(const Field &) -> SelectGroup;
 		auto order(Ordering, const Field &, Nulls = Nulls::None) -> SelectOrder;
 		void forUpdate();
 
@@ -408,6 +430,7 @@ public:
 	void writeBind(const RawString &);
 	void writeBind(const Field &);
 	void writeBind(const Field &, bool withAlias);
+	void writeBind(const StringView &func, const Field &f);
 
 	StringStream &getStream();
 
@@ -473,6 +496,16 @@ void Query<Binder>::writeBind(const Field &f, bool withAlias) {
 		stream << "\"" << f.name << "\"";
 	}
 	if (withAlias && !f.alias.empty()) {
+		stream << " AS \"" << f.alias << "\"";
+	}
+}
+
+template <typename Binder>
+void Query<Binder>::writeBind(const StringView &func, const Field &f) {
+	stream << func << "(";
+	writeBind(f, false);
+	stream << ")";
+	if (!f.alias.empty()) {
 		stream << " AS \"" << f.alias << "\"";
 	}
 }

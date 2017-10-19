@@ -102,6 +102,8 @@ public:
 	void writeQueryFile(const QueryList &query, const storage::Field *field);
 	void writeQueryArray(const QueryList &query, const storage::Field *field);
 
+	void writeQueryDelta(const Scheme &, const Time &, const Set<const storage::Field *> &fields, bool idOnly);
+
 	template <typename T>
 	friend auto & operator << (ExecQuery &query, const T &value) {
 		return query.stream << value;

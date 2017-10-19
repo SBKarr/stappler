@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "Resource.h"
 #include "AccessControl.h"
 #include "Output.h"
+#include "StorageScheme.h"
 
 NS_SA_BEGIN
 
@@ -55,7 +56,17 @@ int MultiResourceHandler::onTranslateName(Request &rctx) {
 		user = rctx.getUser();
 	}
 
+	int64_t targetDelta = 0;
+	Time deltaMax;
 	data::Value result;
+	data::Value delta;
+	Vector<Pair<String, Resource *>> resources;
+	resources.reserve(data.size());
+
+	if (data.isInteger("delta")) {
+		targetDelta = data.getInteger("delta");
+	}
+
 	for (auto &it : data.asDict()) {
 		StringView path(it.first);
 		auto scheme = path.readUntil<StringView::Chars<'/'>>();
@@ -65,20 +76,42 @@ int MultiResourceHandler::onTranslateName(Request &rctx) {
 		auto s_it = _schemes.find(scheme.str());
 		if (s_it != _schemes.end()) {
 			Resource * resource = Resource::resolve(rctx.storage(), *s_it->second, path.str(), _transform);
-
+			if (targetDelta > 0) {
+				resource->setQueryDelta(Time::microseconds(targetDelta));
+			}
 			resource->setTransform(_transform);
 			resource->setAccessControl(_access);
 			resource->setUser(user);
 			resource->applyQuery(it.second);
 			resource->prepare();
 
-			if (!rctx.isHeaderRequest()) {
-				result.setValue(resource->getResultObject(), it.first);
+			if (resource->getScheme().hasDelta()) {
+				deltaMax = max(deltaMax, resource->getSourceDelta());
+				delta.setInteger(resource->getSourceDelta().toMicroseconds(), it.first);
+			}
+
+			resources.emplace_back(it.first, resource);
+		}
+	}
+
+	if (deltaMax && delta.size() == resources.size()) {
+		rctx.getResponseHeaders().emplace("Last-Modified", deltaMax.toHttp());
+		if (targetDelta > 0) {
+			const String modified = rctx.getRequestHeaders().at("if-modified-since");
+			if (Time::fromHttp(modified).toSeconds() >= deltaMax.toSeconds()) {
+				return HTTP_NOT_MODIFIED;
 			}
 		}
 	}
 
+	for (auto &it : resources) {
+		if (!rctx.isHeaderRequest()) {
+			result.setValue(it.second->getResultObject(), it.first);
+		}
+	}
+
 	if (!result.empty()) {
+		resultData.setValue(move(delta), "delta");
 		return writeDataToRequest(rctx, move(result));
 	}
 
@@ -86,7 +119,7 @@ int MultiResourceHandler::onTranslateName(Request &rctx) {
 }
 
 int MultiResourceHandler::writeDataToRequest(Request &rctx, data::Value &&result) {
-	return output::writeResourceData(rctx, move(result));
+	return output::writeResourceData(rctx, move(result), move(resultData));
 }
 
 NS_SA_END

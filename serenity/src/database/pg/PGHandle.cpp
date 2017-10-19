@@ -25,8 +25,11 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "PGHandle.h"
+#include "PGHandleTypes.h"
 #include "PGQuery.h"
 #include "ResourceTemplates.h"
+#include "StorageScheme.h"
+#include "User.h"
 
 NS_SA_EXT_BEGIN(pg)
 
@@ -255,6 +258,74 @@ Resource *Handle::makeResource(ResourceType type, QueryList &&list, const Field 
 	case ResourceType::Array: return new ResourceArray(this, std::move(list), f); break;
 	}
 	return nullptr;
+}
+
+data::Value Handle::getHistory(const Scheme &scheme, const Time &time, bool resolveUsers) {
+	data::Value ret;
+	if (!scheme.hasDelta()) {
+		return ret;
+	}
+
+	ExecQuery q;
+	q.select().from(TableRec::getNameForDelta(scheme)).where("time", Comparation::GreatherThen, time.toMicroseconds())
+			.order(Ordering::Descending, "time").finalize();
+
+	auto res = select(q);
+	for (auto it : res) {
+		auto &d = ret.emplace();
+		for (size_t i = 0; i < it.size(); ++ i) {
+			auto name = res.name(i);
+			if (name == "action") {
+				switch (DeltaAction(it.toInteger(i))) {
+				case DeltaAction::Create: d.setString("create", "action"); break;
+				case DeltaAction::Update: d.setString("update", "action"); break;
+				case DeltaAction::Delete: d.setString("delete", "action"); break;
+				case DeltaAction::Append: d.setString("append", "action"); break;
+				case DeltaAction::Erase:d.setString("erase", "action");  break;
+				default: break;
+				}
+			} else if (name == "time") {
+				d.setString(Time::microseconds(it.toInteger(i)).toHttp(), "http-date");
+				d.setInteger(it.toInteger(i), "time");
+			} else if (name == "user" && resolveUsers) {
+				if (auto u = User::get(this, it.toInteger(i))) {
+					auto &ud = d.emplace("user");
+					ud.setInteger(u->getObjectId(), "id");
+					ud.setString(u->getName(), "name");
+				} else {
+					d.setInteger(it.toInteger(i), name.str());
+				}
+			} else if (name != "id") {
+				d.setInteger(it.toInteger(i), name.str());
+			}
+		}
+	}
+
+	return ret;
+}
+
+data::Value Handle::getDeltaData(const Scheme &scheme, const Time &time) {
+	if (scheme.hasDelta()) {
+		ExecQuery q;
+		q.writeQueryDelta(scheme, time, Set<const Field *>(), false);
+		q.finalize();
+
+		return select(scheme, q);
+	}
+	return data::Value();
+}
+
+int64_t Handle::getDeltaValue(const Scheme &scheme) {
+	if (scheme.hasDelta()) {
+		ExecQuery q;
+		q.select()
+				.aggregate("max", ExecQuery::Field("d", "time"))
+				.from(ExecQuery::Field(TableRec::getNameForDelta(scheme.getName())).as("d")).finalize();
+		if (auto res = select(q)) {
+			return res.at(0).toInteger(0);
+		}
+	}
+	return 0;
 }
 
 NS_SA_EXT_END(pg)

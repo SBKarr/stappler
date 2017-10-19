@@ -78,6 +78,8 @@ public: // Key-Value storage
 
 	virtual Resource *makeResource(ResourceType, QueryList &&, const Field *) = 0;
 
+	virtual int64_t getDeltaValue(const Scheme &) = 0;
+
 public: // resource requests
 	virtual Vector<int64_t> performQueryListForIds(const QueryList &, size_t count = maxOf<size_t>()) = 0;
 	virtual data::Value performQueryList(const QueryList &, size_t count = maxOf<size_t>(), bool forUpdate = false, const Field * = nullptr) = 0;

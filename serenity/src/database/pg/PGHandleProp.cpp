@@ -28,7 +28,6 @@ THE SOFTWARE.
 #include "PGQuery.h"
 #include "StorageScheme.h"
 #include "StorageFile.h"
-#include "StorageFile.h"
 
 NS_SA_EXT_BEGIN(pg)
 

@@ -30,6 +30,7 @@ THE SOFTWARE.
 #include "StorageScheme.h"
 #include "StorageAdapter.h"
 #include "Resource.h"
+#include "PGHandle.h"
 
 NS_SA_EXT_BEGIN(tools)
 
@@ -188,10 +189,14 @@ struct ListCmd : SocketCommand {
 struct ResourceCmd : SocketCommand {
 	ResourceCmd(const String &str) : SocketCommand(str) { }
 
+	const storage::Scheme *acquireScheme(ShellSocketHandler &h, const StringView &scheme) {
+		return h.request().server().getScheme(scheme.str());
+	}
+
 	Resource *acquireResource(ShellSocketHandler &h, const StringView &scheme, const StringView &path,
 			const StringView &resolve, const data::Value &val = data::Value()) {
 		if (!scheme.empty()) {
-			auto s =  h.request().server().getScheme(scheme.str());
+			auto s =  acquireScheme(h, scheme);
 			if (s) {
 				Resource *r = Resource::resolve(h.storage(), *s, path.empty()?String("/"):path.str());
 				if (r) {
@@ -247,6 +252,70 @@ struct GetCmd : ResourceCmd {
 	}
 	virtual const String help() const {
 		return "<scheme> <path> <resolve> - Get data from scheme"_weak;
+	}
+};
+
+struct HistoryCmd : ResourceCmd {
+	HistoryCmd() : ResourceCmd("history") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		auto schemeName = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+
+		int64_t time = 0;
+		auto testTime = r.readInteger();
+		if (testTime > 0) {
+			time = testTime;
+		}
+
+		if (auto s = acquireScheme(h, schemeName)) {
+			if (auto a = dynamic_cast<pg::Handle *>(h.storage())) {
+				h.sendData(a->getHistory(*s, Time::microseconds(time), true));
+				return true;
+			}
+		}
+
+		h.sendError(toString("Scheme is not defined"));
+		return false;
+	}
+
+	virtual const String desc() const {
+		return "<scheme> <time> - Changelog for scheme"_weak;
+	}
+	virtual const String help() const {
+		return "<scheme> <time> - Changelog for scheme"_weak;
+	}
+};
+
+struct DeltaCmd : ResourceCmd {
+	DeltaCmd() : ResourceCmd("delta") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		auto schemeName = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+
+		int64_t time = 0;
+		auto testTime = r.readInteger();
+		if (testTime > 0) {
+			time = testTime;
+		}
+
+		if (auto s = acquireScheme(h, schemeName)) {
+			if (auto a = dynamic_cast<pg::Handle *>(h.storage())) {
+				h.sendData(a->getDeltaData(*s, Time::microseconds(time)));
+				return true;
+			}
+		}
+
+		h.sendError(toString("Scheme is not defined"));
+		return false;
+	}
+
+	virtual const String desc() const {
+		return "<scheme> <time> - Delta for scheme"_weak;
+	}
+	virtual const String help() const {
+		return "<scheme> <time> - Delta for scheme"_weak;
 	}
 };
 
@@ -645,6 +714,8 @@ ShellSocketHandler::ShellSocketHandler(Manager *m, const Request &req, User *use
 
 	_cmds.push_back(new ListCmd());
 	_cmds.push_back(new HandlersCmd());
+	_cmds.push_back(new HistoryCmd());
+	_cmds.push_back(new DeltaCmd());
 	_cmds.push_back(new GetCmd());
 	_cmds.push_back(new MultiCmd());
 	_cmds.push_back(new CreateCmd());

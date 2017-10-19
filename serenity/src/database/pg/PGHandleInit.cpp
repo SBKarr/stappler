@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "PGHandle.h"
+#include "PGHandleTypes.h"
 #include "StorageScheme.h"
 
 NS_SA_EXT_BEGIN(pg)
@@ -84,76 +85,20 @@ WHERE pg_class.oid = ix.indrelid
 	AND pg_class.relkind = 'r'
 GROUP BY pg_class.relname, i.relname ORDER BY pg_class.relname, i.relname;)Sql";
 
-struct ConstraintRec {
-	enum Type {
-		Unique,
-		Reference,
-	};
-
-	Type type;
-	Vector<String> fields;
-	String reference;
-	RemovePolicy remove = RemovePolicy::Null;
-
-	ConstraintRec(Type t) : type(t) { }
-	ConstraintRec(Type t, std::initializer_list<String> il) : type(t), fields(il) { }
-	ConstraintRec(Type t, const String &col, const String &ref = "", RemovePolicy r = RemovePolicy::Null)
-	: type(t), fields{col}, reference(ref), remove(r) { }
-};
-
-struct ColRec {
-	enum class Type {
-		None,
-		Binary,
-		Integer,
-		Serial,
-		Float,
-		Boolean,
-		Text,
-	};
-
-	Type type = Type::None;
-	bool notNull = false;
-
-	ColRec(Type t, bool notNull = false) : type(t), notNull(notNull) { }
-};
-
-struct TableRec {
-	static Map<String, TableRec> parse(Server &serv, const Map<String, const storage::Scheme *> &s);
-	static Map<String, TableRec> get(Handle &h, apr::ostringstream &stream);
-
-	static void writeCompareResult(apr::ostringstream &stream,
-			Map<String, TableRec> &required, Map<String, TableRec> &existed,
-			const Map<String, const storage::Scheme *> &s);
-
-	TableRec();
-	TableRec(Server &serv, const storage::Scheme *scheme);
-
-	Map<String, ColRec> cols;
-	Map<String, ConstraintRec> constraints;
-	Map<String, String> indexes;
-	Vector<String> pkey;
-	Set<String> triggers;
-	bool objects = true;
-
-	bool exists = false;
-	bool valid = false;
-};
-
-static void writeFileUpdateTrigger(apr::ostringstream &stream, const storage::Scheme *s, const storage::Field &obj) {
+static void writeFileUpdateTrigger(StringStream &stream, const storage::Scheme *s, const storage::Field &obj) {
 	stream << "\t\tIF (NEW.\"" << obj.getName() << "\" IS NULL OR OLD.\"" << obj.getName() << "\" <> NEW.\"" << obj.getName() << "\") THEN\n"
 		<< "\t\t\tIF (OLD.\"" << obj.getName() << "\" IS NOT NULL) THEN\n"
 		<< "\t\t\t\tINSERT INTO __removed (__oid) VALUES (OLD.\"" << obj.getName() << "\");\n"
 		<< "\t\t\tEND IF;\n\t\tEND IF;\n";
 }
 
-static void writeFileRemoveTrigger(apr::ostringstream &stream, const storage::Scheme *s, const storage::Field &obj) {
+static void writeFileRemoveTrigger(StringStream &stream, const storage::Scheme *s, const storage::Field &obj) {
 	stream << "\t\tIF (OLD.\"" << obj.getName() << "\" IS NOT NULL) THEN\n"
 		<< "\t\t\tINSERT INTO __removed (__oid) VALUES (OLD.\"" << obj.getName() << "\");\n"
 		<< "\t\tEND IF;\n";
 }
 
-static void writeObjectSetRemoveTrigger(apr::ostringstream &stream, const storage::Scheme *s, const storage::FieldObject *obj) {
+static void writeObjectSetRemoveTrigger(StringStream &stream, const storage::Scheme *s, const storage::FieldObject *obj) {
 	auto & source = s->getName();
 	auto & target = obj->scheme->getName();
 
@@ -161,7 +106,7 @@ static void writeObjectSetRemoveTrigger(apr::ostringstream &stream, const storag
 			<< s->getName() << "_f_" << obj->name << " WHERE "<< source << "_id=OLD.__oid);\n";
 }
 
-static void writeTrigger(apr::ostringstream &stream, const storage::Scheme *s, const String &triggerName) {
+static void writeTrigger(StringStream &stream, const storage::Scheme *s, const String &triggerName) {
 	auto &fields = s->getFields();
 
 	stream << "CREATE OR REPLACE FUNCTION " << triggerName << "_func() RETURNS TRIGGER AS $" << triggerName
@@ -190,7 +135,7 @@ static void writeTrigger(apr::ostringstream &stream, const storage::Scheme *s, c
 			<< "\" FOR EACH ROW EXECUTE PROCEDURE " << triggerName << "_func();\n";
 }
 
-void TableRec::writeCompareResult(apr::ostringstream &stream,
+void TableRec::writeCompareResult(StringStream &stream,
 		Map<String, TableRec> &required, Map<String, TableRec> &existed,
 		const Map<String, const storage::Scheme *> &s) {
 	for (auto &ex_it : existed) {
@@ -375,6 +320,10 @@ void TableRec::writeCompareResult(apr::ostringstream &stream,
 	}
 }
 
+String TableRec::getNameForDelta(const Scheme &scheme) {
+	return toString("__delta_", scheme.getName());
+}
+
 Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, const storage::Scheme *> &s) {
 	Map<String, TableRec> tables;
 	for (auto &it : s) {
@@ -452,6 +401,21 @@ Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, const stor
 					table.indexes.emplace(name + "_idx_" + source, source + "_id");
 					tables.emplace(std::move(name), std::move(table));
 				}
+			}
+
+			if (scheme->hasDelta()) {
+				auto name = getNameForDelta(*scheme);
+				TableRec table;
+				table.cols.emplace("id", ColRec(ColRec::Type::Serial, true));
+				table.cols.emplace("object", ColRec(ColRec::Type::Integer, true));
+				table.cols.emplace("time", ColRec(ColRec::Type::Integer, true));
+				table.cols.emplace("action", ColRec(ColRec::Type::Integer, true));
+				table.cols.emplace("user", ColRec(ColRec::Type::Integer));
+
+				table.pkey.emplace_back("id");
+				table.indexes.emplace(name + "_idx_object", "object");
+				table.indexes.emplace(name + "_idx_time", "time");
+				tables.emplace(move(name), std::move(table));
 			}
 		}
 	}

@@ -34,7 +34,11 @@ THE SOFTWARE.
 
 NS_SA_BEGIN
 
-Resource::Resource(ResourceType t, Adapter *a, QueryList &&list) : _type(t), _adapter(a), _queries(move(list)) { }
+Resource::Resource(ResourceType t, Adapter *a, QueryList &&list) : _type(t), _adapter(a), _queries(move(list)) {
+	if (_queries.isDeltaApplicable()) {
+		_delta = Time::microseconds(_adapter->getDeltaValue(*_queries.getScheme()));
+	}
+}
 
 ResourceType Resource::getType() const {
 	return _type;
@@ -42,6 +46,11 @@ ResourceType Resource::getType() const {
 
 const storage::Scheme &Resource::getScheme() const { return *_queries.getScheme(); }
 int Resource::getStatus() const { return _status; }
+
+void Resource::setQueryDelta(Time d) {
+	_queries.setDelta(d);
+}
+Time Resource::getSourceDelta() const { return _delta; }
 
 void Resource::setTransform(const data::TransformMap *t) {
 	_transform = t;
@@ -270,7 +279,24 @@ int64_t Resource::processResolveResult(const QueryFieldResolver &res, const Set<
 	while (it != dict.end()) {
 		if (it->first == "__oid") {
 			id = it->second.asInteger();
-			it ++;
+			++ it;
+			continue;
+		} else if (it->first == "__delta") {
+			if (res.getMeta() == QueryFieldResolver::Meta::None) {
+				if (it->second.getString("action") == "delete") {
+					it->second.setString("delete");
+				} else {
+					it = dict.erase(it);
+				}
+			} else {
+				auto meta = res.getMeta();
+				if ((meta & QueryFieldResolver::Meta::Action) == QueryFieldResolver::Meta::None) {
+					it->second.erase("action");
+				} else if ((meta & QueryFieldResolver::Meta::Time) == QueryFieldResolver::Meta::None) {
+					it->second.erase("time");
+				}
+			}
+			++ it;
 			continue;
 		}
 

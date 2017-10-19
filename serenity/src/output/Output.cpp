@@ -378,7 +378,7 @@ int writeResourceFileData(Request &rctx, data::Value &&result) {
 	auto &queryData = rctx.getParsedQueryArgs();
 	if (queryData.getBool("stat")) {
 		file.setBool(filesystem::exists(path), "exists");
-		return writeResourceData(rctx, move(file));
+		return writeResourceData(rctx, move(file), data::Value());
 	}
 
 	auto &loc = file.getString("location");
@@ -399,8 +399,8 @@ int writeResourceFileData(Request &rctx, data::Value &&result) {
 	return HTTP_NOT_FOUND;
 }
 
-int writeResourceData(Request &rctx, data::Value &&result) {
-	data::Value data;
+int writeResourceData(Request &rctx, data::Value &&result, data::Value && origin) {
+	data::Value data(move(origin));
 
 	data.setInteger(apr_time_now(), "date");
 #if DEBUG

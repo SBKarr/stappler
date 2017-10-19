@@ -34,7 +34,7 @@ void writeData(Request &rctx, std::basic_ostream<char> &stream, const Function<v
 		const data::Value &, bool allowJsonP = true);
 
 int writeResourceFileData(Request &rctx, data::Value &&);
-int writeResourceData(Request &rctx, data::Value &&);
+int writeResourceData(Request &rctx, data::Value &&, data::Value && origin);
 
 int writeResourceFileHeader(Request &rctx, const data::Value &);
 

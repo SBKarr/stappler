@@ -29,6 +29,14 @@ NS_SA_EXT_BEGIN(pg)
 
 class Handle : public storage::Adapter {
 public:
+	enum class DeltaAction {
+		Create = 1,
+		Update,
+		Delete,
+		Append,
+		Erase
+	};
+
 	using Value = data::Value;
 
 	Handle(apr_pool_t *, ap_dbd_t *);
@@ -51,6 +59,9 @@ public:
 	bool performSimpleQuery(const String &);
 	Result performSimpleSelect(const String &);
 
+	data::Value getHistory(const Scheme &, const Time &, bool resolveUsers = false);
+	data::Value getDeltaData(const Scheme &, const Time &);
+
 public:
 	void makeSessionsCleanup();
 	int64_t processBroadcasts(Server &, int64_t);
@@ -71,6 +82,8 @@ public: // adapter interface
 	virtual bool clearSessionData(const Bytes &) override;
 
 	virtual Resource *makeResource(ResourceType, QueryList &&, const Field *) override;
+
+	virtual int64_t getDeltaValue(const Scheme &) override;
 
 protected: // object interface
 	virtual bool createObject(const Scheme &, data::Value &data) override;
@@ -121,6 +134,8 @@ protected:
 	bool endTransaction_pg();
 
 	void finalizeBroadcast();
+
+	void touchDelta(const Scheme &, int64_t id, DeltaAction);
 
 	apr_pool_t *pool;
 	ap_dbd_t *handle;

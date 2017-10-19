@@ -27,6 +27,8 @@ THE SOFTWARE.
 #include "PGHandle.h"
 #include "PGQuery.h"
 #include "StorageScheme.h"
+#include "PGHandleTypes.h"
+#include "User.h"
 
 NS_SA_EXT_BEGIN(pg)
 
@@ -88,6 +90,7 @@ bool Handle::createObject(const Scheme &scheme, data::Value &data) {
 
 	if (id > 0) {
 		performPostUpdate(query, scheme, data, id, postUpdate, false);
+		touchDelta(scheme, id, DeltaAction::Create);
 	}
 
 	return true;
@@ -123,7 +126,11 @@ bool Handle::saveObject(const Scheme &scheme, uint64_t oid, const data::Value &d
 	}
 
 	upd.where("__oid", Comparation::Equal, oid).finalize();
-	return perform(query) == 1;
+	if (perform(query) == 1) {
+		touchDelta(scheme, oid, DeltaAction::Update);
+		return true;
+	}
+	return false;
 }
 
 data::Value Handle::patchObject(const Scheme &scheme, uint64_t oid, const data::Value &patch) {
@@ -173,8 +180,8 @@ data::Value Handle::patchObject(const Scheme &scheme, uint64_t oid, const data::
 		int64_t id = obj.getInteger("__oid");
 		if (id > 0) {
 			performPostUpdate(query, scheme, obj, id, postUpdate, true);
+			touchDelta(scheme, id, DeltaAction::Update);
 		}
-
 		return obj;
 	}
 	return data::Value();
@@ -184,7 +191,11 @@ bool Handle::removeObject(const Scheme &scheme, uint64_t oid) {
 	ExecQuery query;
 	query.remove(scheme.getName())
 			.where("__oid", Comparation::Equal, oid).finalize();
-	return perform(query) == 1; // one row affected
+	if (perform(query) == 1) { // one row affected
+		touchDelta(scheme, oid, DeltaAction::Delete);
+		return true;
+	}
+	return false;
 }
 
 data::Value Handle::getObject(const Scheme &scheme, uint64_t oid, bool forUpdate) {
@@ -362,6 +373,25 @@ void Handle::performPostUpdate(ExecQuery &query, const Scheme &s, Value &data, i
 			}
 		}
 	}
+}
+
+void Handle::touchDelta(const Scheme &scheme, int64_t id, DeltaAction a) {
+	if (!scheme.hasDelta()) {
+		return;
+	}
+
+	int64_t userId = 0;
+	if (auto r = apr::pool::request()) {
+		Request req(r);
+		if (auto user = req.getAuthorizedUser()) {
+			userId = user->getObjectId();
+		}
+	}
+
+	ExecQuery query;
+	query.insert(TableRec::getNameForDelta(scheme)).fields("object", "time", "action", "user")
+			.values(id, Time::now().toMicroseconds(), int64_t(a), userId).finalize();
+	perform(query);
 }
 
 NS_SA_EXT_END(pg)

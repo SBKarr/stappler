@@ -35,19 +35,12 @@ ANDROID_EXPORT_PREFIX ?= $(GLOBAL_ROOT)
 
 ### Common
 ANDROID_TOOLCHAINS := \
-	$(ANDROID_TOOLCHAINS_PATH)/armeabi \
 	$(ANDROID_TOOLCHAINS_PATH)/armeabi-v7a \
 	$(ANDROID_TOOLCHAINS_PATH)/x86 \
 	$(ANDROID_TOOLCHAINS_PATH)/x86_64 \
 	$(ANDROID_TOOLCHAINS_PATH)/arm64-v8a \
 
 ANDROID_EXPORT_MK := $(TOOLKIT_OUTPUT)/android/export.mk
-
-
-$(ANDROID_TOOLCHAINS_PATH)/armeabi:
-	@echo "=== armeabi: Prepare android toolchain ==="
-	@$(GLOBAL_MKDIR) $(ANDROID_TOOLCHAINS_PATH)
-	$(NDK)/build/tools/make_standalone_toolchain.py --arch=arm --api $(ANDROID_API_LOW) --stl=libc++ --install-dir=$(ANDROID_TOOLCHAINS_PATH)/armeabi --unified-headers
 
 $(ANDROID_TOOLCHAINS_PATH)/armeabi-v7a:
 	@echo "=== armeabi-v7a: Prepare android toolchain ==="
@@ -78,19 +71,12 @@ android: $(ANDROID_TOOLCHAINS)
 	@$(MAKE) -f $(THIS_FILE) ANDROID_ARCH=armeabi-v7a android-export
 	@echo "=== armeabi-v7a: Build static library ==="
 	@$(MAKE) -f $(THIS_FILE) ANDROID_ARCH=armeabi-v7a static
-	@echo "=== armeabi: Build static library ==="
-	@$(MAKE) -f $(THIS_FILE) ANDROID_ARCH=armeabi static
 	@echo "=== arm64-v8a: Build static library ==="
 	@$(MAKE) -f $(THIS_FILE) ANDROID_ARCH=arm64-v8a static
 	@echo "=== x86: Build static library ==="
 	@$(MAKE) -f $(THIS_FILE) ANDROID_ARCH=x86 static
 	@echo "=== x86_64: Build static library ==="
 	@$(MAKE) -f $(THIS_FILE) ANDROID_ARCH=x86_64 static
-
-
-android-arm: $(ANDROID_TOOLCHAINS_PATH)/armeabi
-	@echo "=== armeabi: Build static library ==="
-	@$(MAKE) -f $(THIS_FILE) ANDROID_ARCH=armeabi static android-export
 
 
 android-armv7: $(ANDROID_TOOLCHAINS_PATH)/armeabi-v7a

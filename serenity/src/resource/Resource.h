@@ -58,6 +58,9 @@ public:
 	const Scheme &getScheme() const;
 	int getStatus() const;
 
+	void setQueryDelta(Time);
+	Time getSourceDelta() const;
+
 	void setTransform(const data::TransformMap *);
 	const data::TransformMap *getTransform() const;
 
@@ -113,6 +116,7 @@ protected:
 	virtual const storage::Scheme &getRequestScheme() const;
 	void resolveOptionForString(const String &str);
 
+	Time _delta;
 	ResourceType _type = ResourceType::Object;
 	int _status = HTTP_OK;
 

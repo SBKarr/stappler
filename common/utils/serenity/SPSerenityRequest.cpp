@@ -196,9 +196,19 @@ Query & Query::offset(size_t l) {
 	return *this;
 }
 
-Query & Query::delta(const String &d, DeltaMode m) {
-	deltaToken = d;
-	deltaMode = m;
+Query & Query::delta(uint64_t id) {
+	deltaToken = id;
+	return *this;
+}
+
+Query & Query::delta(const String &str) {
+	auto b = base64::decode(str);
+	DataReaderNetwork r(b);
+	switch (r.size()) {
+	case 2: deltaToken = r.readUnsigned16(); break;
+	case 4: deltaToken = r.readUnsigned32(); break;
+	case 8: deltaToken = r.readUnsigned64();  break;
+	}
 	return *this;
 }
 
@@ -268,17 +278,13 @@ bool Query::hasOffset() const {
 }
 
 bool Query::hasDelta() const {
-	return deltaMode != DeltaMode::None;
+	return deltaToken > 0;
 }
 bool Query::hasFields() const {
 	return !fieldsExclude.empty() || !fieldsInclude.empty();
 }
 
-Query::DeltaMode Query::getDeltaMode() const {
-	return deltaMode;
-}
-
-const String &Query::getDeltaToken() const {
+uint64_t Query::getDeltaToken() const {
 	return deltaToken;
 }
 
@@ -358,12 +364,7 @@ data::Value Query::encode() const {
 	}
 
 	if (hasDelta()) {
-		auto &d = ret.emplace("delta");
-		d.addString(deltaToken);
-		switch (deltaMode) {
-		case DeltaMode::Full: d.addString("full"); break;
-		default: break;
-		}
+		ret.setInteger(deltaToken, "delta");
 	}
 
 	if (hasFields()) {

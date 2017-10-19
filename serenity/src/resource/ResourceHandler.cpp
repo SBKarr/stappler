@@ -219,7 +219,9 @@ Resource *ResourceHandler::getResource(Request &rctx) {
 }
 
 int ResourceHandler::writeDataToRequest(Request &rctx, data::Value &&result) {
-	return output::writeResourceData(rctx, move(result));
+	data::Value origin;
+	origin.setInteger(_resource->getSourceDelta().toMicroseconds(), "delta");
+	return output::writeResourceData(rctx, move(result), move(origin));
 }
 
 int ResourceHandler::writeInfoToReqest(Request &rctx) {
@@ -232,11 +234,23 @@ int ResourceHandler::writeInfoToReqest(Request &rctx) {
 }
 
 int ResourceHandler::writeToRequest(Request &rctx) {
-	data::Value result(_resource->getResultObject());
-	if (result) {
-		if (_resource->getType() == ResourceType::File) {
+	if (_resource->getType() == ResourceType::File) {
+		data::Value result(_resource->getResultObject());
+		if (result) {
 			return output::writeResourceFileData(rctx, move(result));
-		} else {
+		}
+	} else {
+		auto d = _resource->getSourceDelta();
+		if (d) {
+			rctx.getResponseHeaders().emplace("Last-Modified", d.toHttp());
+			const String modified = rctx.getRequestHeaders().at("if-modified-since");
+			if (Time::fromHttp(modified).toSeconds() >= d.toSeconds()) {
+				return HTTP_NOT_MODIFIED;
+			}
+		}
+
+		data::Value result(_resource->getResultObject());
+		if (result) {
 			return writeDataToRequest(rctx, move(result));
 		}
 	}

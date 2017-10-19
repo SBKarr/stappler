@@ -77,6 +77,26 @@ auto Query<Binder>::FieldsClause<Clause>::field(const Field &f) -> Clause & {
 }
 
 template <typename Binder>
+template <typename Clause>
+auto Query<Binder>::FieldsClause<Clause>::aggregate(const StringView &func, const Field &f) -> Clause & {
+	switch (this->state) {
+	case State::None:
+		this->query->stream << " ";
+		this->state = State::Some;
+		break;
+	case State::Init:
+		this->query->stream << "(";
+		this->state = State::Some;
+		break;
+	case State::Some:
+		this->query->stream << ", ";
+		break;
+	}
+	this->query->writeBind(func, f);
+	return (Clause &)*this;
+}
+
+template <typename Binder>
 auto Query<Binder>::Select::from() -> Query<Binder>::SelectFrom {
 	if (this->state == State::None) {
 		this->query->stream << " *";
@@ -135,6 +155,42 @@ auto Query<Binder>::SelectFrom::innerJoinOn(const String &s, const Callback &cb)
 }
 
 template <typename Binder>
+template <typename Callback>
+auto Query<Binder>::SelectFrom::leftJoinOn(const String &s, const Callback &cb) -> SelectFrom & {
+	if (this->state == State::Some) {
+		this->query->stream << " LEFT OUTER JOIN " << s << " ON(";
+		WhereBegin tmp(this->query);
+		cb(tmp);
+		this->query->stream << ")";
+	}
+	return *this;
+}
+
+template <typename Binder>
+template <typename Callback>
+auto Query<Binder>::SelectFrom::rightJoinOn(const String &s, const Callback &cb) -> SelectFrom & {
+	if (this->state == State::Some) {
+		this->query->stream << " RIGHT OUTER JOIN " << s << " ON(";
+		WhereBegin tmp(this->query);
+		cb(tmp);
+		this->query->stream << ")";
+	}
+	return *this;
+}
+
+template <typename Binder>
+template <typename Callback>
+auto Query<Binder>::SelectFrom::fullJoinOn(const String &s, const Callback &cb) -> SelectFrom & {
+	if (this->state == State::Some) {
+		this->query->stream << " FULL OUTER JOIN " << s << " ON(";
+		WhereBegin tmp(this->query);
+		cb(tmp);
+		this->query->stream << ")";
+	}
+	return *this;
+}
+
+template <typename Binder>
 template <typename ... Args>
 auto Query<Binder>::SelectFrom::where(Args && ... args) -> SelectWhere {
 	this->query->stream << " WHERE";
@@ -150,18 +206,32 @@ auto Query<Binder>::SelectFrom::where() -> SelectWhere {
 }
 
 template <typename Binder>
-auto Query<Binder>::SelectFrom::order(Ordering ord, const Field &field, Nulls n) -> SelectOrder {
-	this->query->stream << " ORDER BY ";
-	this->query->writeBind(field, false);
+auto Query<Binder>::SelectFrom::group(const Field &f) -> SelectGroup {
+	this->query->stream << " GROUP BY ";
+	auto g = SelectGroup(this->query);
+	g.field(f);
+	return g;
+}
+
+template <typename Binder>
+inline auto Query_writeOrderSt(StringStream &stream, Query<Binder> &query, Ordering ord, const typename Query<Binder>::Field &field, Nulls n) {
+	stream << " ORDER BY ";
+	query.writeBind(field, false);
 	switch (ord) {
-	case Ordering::Ascending: this->query->stream << " ASC"; break;
-	case Ordering::Descending: this->query->stream << " DESC"; break;
+	case Ordering::Ascending: stream << " ASC"; break;
+	case Ordering::Descending: stream << " DESC"; break;
 	}
+
 	switch (n) {
 	case Nulls::None: break;
-	case Nulls::First: this->query->stream << " NULLS FIRST"; break;
-	case Nulls::Last: this->query->stream << " NULLS LAST"; break;
+	case Nulls::First: stream << " NULLS FIRST"; break;
+	case Nulls::Last: stream << " NULLS LAST"; break;
 	}
+}
+
+template <typename Binder>
+auto Query<Binder>::SelectFrom::order(Ordering ord, const Field &field, Nulls n) -> SelectOrder {
+	Query_writeOrderSt<Binder>(this->query->stream, *this->query, ord, field, n);
 	return SelectOrder(this->query);
 }
 
@@ -171,18 +241,46 @@ void Query<Binder>::SelectFrom::forUpdate() {
 }
 
 template <typename Binder>
+template <typename ...Args>
+auto Query<Binder>::SelectGroup::fields(const Field &f, Args && ... args) -> SelectGroup & {
+	Expand<SelectGroup>::fields(*this, f, std::forward<Args>(args)...);
+	return *this;
+}
+
+template <typename Binder>
+auto Query<Binder>::SelectGroup::field(const Field &f) -> SelectGroup & {
+	switch (this->state) {
+	case State::None:
+		this->query->stream << " ";
+		this->state = State::Some;
+		break;
+	case State::Some:
+		this->query->stream << ", ";
+		break;
+	default:
+		break;
+	}
+	this->query->writeBind(f, false);
+	return *this;
+}
+
+template <typename Binder>
+auto Query<Binder>::SelectGroup::order(Ordering ord, const Field &field, Nulls n) -> SelectOrder {
+	Query_writeOrderSt<Binder>(this->query->stream, *this->query, ord, field, n);
+	return SelectOrder(this->query);
+}
+
+template <typename Binder>
+auto Query<Binder>::SelectWhere::group(const Field &f) -> SelectGroup {
+	this->query->stream << " GROUP BY ";
+	auto g = SelectGroup(this->query);
+	g.field(f);
+	return g;
+}
+
+template <typename Binder>
 auto Query<Binder>::SelectWhere::order(Ordering ord, const Field &field, Nulls n) -> SelectOrder {
-	this->query->stream << " ORDER BY ";
-	this->query->writeBind(field, false);
-	switch (ord) {
-	case Ordering::Ascending: this->query->stream << " ASC"; break;
-	case Ordering::Descending: this->query->stream << " DESC"; break;
-	}
-	switch (n) {
-	case Nulls::None: break;
-	case Nulls::First: this->query->stream << " NULLS FIRST"; break;
-	case Nulls::Last: this->query->stream << " NULLS LAST"; break;
-	}
+	Query_writeOrderSt<Binder>(this->query->stream, *this->query, ord, field, n);
 	return SelectOrder(this->query);
 }
 

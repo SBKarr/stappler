@@ -309,7 +309,9 @@ void Reader::onPopTag(Tag &tag) {
 			_nodeStack.pop_back();
 			SP_RTREADER_LOG("'/%s'", tag.name.c_str());
 		}
-		_styleStack.pop_back();
+		if (!_styleStack.empty()) {
+			_styleStack.pop_back();
+		}
 	}
 }
 void Reader::onInlineTag(Tag &tag) {

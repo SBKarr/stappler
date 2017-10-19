@@ -87,6 +87,7 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 		Field::Integer("mtime", storage::Flags::AutoMTime | storage::Flags::Indexed),
 		Field::Integer("index", storage::Flags::Indexed),
 	});
+	_objects.setDelta(true);
 
 	_refs.define({
 		Field::Text("alias", storage::Transform::Alias),
@@ -107,6 +108,7 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 			storage::Thumbnail("cover64", 64, 64),
 		}),
 	});
+	_refs.setDelta(true);
 
 	_subobjects.define({
 		Field::Text("text", storage::MinLength(3)),
