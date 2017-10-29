@@ -53,7 +53,7 @@ bool Document::init(const FilePath &path) {
 			if (file.type == ManifestFile::Css) {
 				auto data = _info->getFileData(it.second);
 				if (!data.empty()) {
-					processCss(file.path, CharReaderBase((const char *)data.data(), data.size()));
+					processCss(file.path, StringView((const char *)data.data(), data.size()));
 				}
 			} else if (file.type == ManifestFile::Image) {
 				_images.emplace(it.first, Image(file.width, file.height, file.size, file.path));
@@ -64,7 +64,7 @@ bool Document::init(const FilePath &path) {
 		for (const SpineFile &it : spineRef) {
 			auto file = _info->getFileData(it);
 			if (!file.empty() && it.entry->type == ManifestFile::Source) {
-				processHtml(it.entry->path, CharReaderBase((const char *)file.data(), file.size()), it.linear);
+				processHtml(it.entry->path, StringView((const char *)file.data(), file.size()), it.linear);
 			}
 		}
 		return true;
@@ -195,7 +195,7 @@ String Document::getLanguage() const {
 	return String();
 }
 
-void Document::processHtml(const String &path, const CharReaderBase &html, bool linear) {
+void Document::processHtml(const String &path, const StringView &html, bool linear) {
 	epub::Reader r;
 	Vector<Pair<String, String>> meta;
 	_content.emplace_back(layout::HtmlPage{path, layout::Node("html", path), layout::HtmlPage::FontMap{}, linear});
@@ -350,7 +350,7 @@ void Document::readNcxNav(const String &filePath) {
 		}
 	} r(_info, filePath, &_contents);
 
-	html::parse(r, CharReaderUtf8((const char *)toc.data(), toc.size()));
+	html::parse(r, StringViewUtf8((const char *)toc.data(), toc.size()));
 
 	if (_contents.label.empty()) {
 		_contents.label = getTitle();
@@ -472,7 +472,7 @@ void Document::readXmlNav(const String &filePath) {
 		}
 	} r(_info, filePath, &_contents);
 
-	html::parse(r, CharReaderUtf8((const char *)toc.data(), toc.size()));
+	html::parse(r, StringViewUtf8((const char *)toc.data(), toc.size()));
 
 	if (_contents.label.empty()) {
 		_contents.label = getTitle();

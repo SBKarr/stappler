@@ -106,7 +106,7 @@ bool Document::init(const String &html) {
 	}
 
 	_data = Bytes((const uint8_t *)html.data(), (const uint8_t *)(html.data() + html.size()));
-	processHtml("", CharReaderBase(html));
+	processHtml("", StringView(html));
 	if (_content.empty()) {
 		return false;
 	}
@@ -131,7 +131,7 @@ bool Document::init(const Bytes &vec, const String &ct) {
 	_contentType = ct;
 	if (_contentType.compare(0, 9, "text/html") == 0 ||
 			(ct.empty() && (memcmp("<html>", data, 6) == 0 || strncasecmp("<!doctype", (const char *)data, 9) == 0))) {
-		processHtml("", CharReaderBase((const char *)data, vec.size()));
+		processHtml("", StringView((const char *)data, vec.size()));
 		updateNodes();
 	} else if (_contentType.compare(0, 15, "multipart/mixed") == 0 || _contentType.compare(0, 19, "multipart/form-data") == 0 || _contentType.empty()) {
 		MultipartParser parser;
@@ -177,19 +177,19 @@ bool Document::prepare() {
 }
 
 String Document::resolveName(const String &str) {
-	CharReaderBase r(str);
-	r.trimChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+	StringView r(str);
+	r.trimChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
 	if (r.is("url(") && r.back() == ')') {
-		r = CharReaderBase(r.data() + 4, r.size() - 5);
+		r = StringView(r.data() + 4, r.size() - 5);
 	}
 
-	r.trimChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+	r.trimChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
 	if (r.is('\'')) {
-		r.trimChars<CharReaderBase::Chars<'\''>>();
+		r.trimChars<StringView::Chars<'\''>>();
 	} else if (r.is('"')) {
-		r.trimChars<CharReaderBase::Chars<'"'>>();
+		r.trimChars<StringView::Chars<'"'>>();
 	}
 
 	return r.str();
@@ -342,13 +342,13 @@ const Node *Document::getNodeById(const String &str) const {
 	return nullptr;
 }
 
-void Document::processCss(const String &path, const CharReaderBase &str) {
+void Document::processCss(const String &path, const StringView &str) {
 	Reader r;
 	auto it = _css.emplace(path, r.readCss(path, str, _cssStrings, _mediaQueries)).first;
 	FontSource::mergeFontFace(_fontFaces, it->second.fonts);
 }
 
-void Document::processHtml(const String &path, const CharReaderBase &html, bool linear) {
+void Document::processHtml(const String &path, const StringView &html, bool linear) {
 	Reader r;
 	Vector<Pair<String, String>> meta;
 	_content.emplace_back(HtmlPage{path, Node("html", path), HtmlPage::FontMap{}, linear});
@@ -372,9 +372,9 @@ void Document::processMeta(HtmlPage &c, const Vector<Pair<String, String>> &vec)
 		} else {
 			auto git = _gallery.find(it.first);
 			if (git != _gallery.end()) {
-				CharReaderBase reader(it.second);
+				StringView reader(it.second);
 				while (!reader.empty()) {
-					CharReaderBase str = reader.readUntil<CharReaderBase::Chars<';'>>();
+					StringView str = reader.readUntil<StringView::Chars<';'>>();
 					if (!str.empty()) {
 						git->second.emplace_back(str.str());
 					}

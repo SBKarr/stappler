@@ -73,8 +73,7 @@ public:
 	Path(size_t);
 
 	bool init();
-	bool init(const String &);
-	bool init(const CharReaderBase &);
+	bool init(const StringView &);
 	bool init(FilePath &&);
 	bool init(const uint8_t *, size_t);
 

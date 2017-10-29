@@ -531,7 +531,7 @@ bool Formatter::pushLineBreakChar() {
 	return true;
 }
 
-bool Formatter::readChars(CharReaderUcs2 &r, const Vector<uint8_t> &hyph) {
+bool Formatter::readChars(WideStringView &r, const Vector<uint8_t> &hyph) {
 	size_t wordPos = 0;
 	auto hIt = hyph.begin();
 	bool startWhitespace = output->chars.empty();
@@ -784,16 +784,16 @@ bool Formatter::readWithRange(RangeSpec && range, const TextParameters &s, const
 
 	lineX += frontOffset;
 	charPosition = 0;
-	CharReaderUcs2 r(str, len);
+	WideStringView r(str, len);
 	if (textStyle.hyphens == Hyphens::Auto && _hyphens) {
 		while (!r.empty()) {
-			CharReaderUcs2 tmp = r.readUntil<CharReaderUcs2::CharGroup<CharGroupId::Latin>,
-					CharReaderUcs2::CharGroup<CharGroupId::Cyrillic>>();
+			WideStringView tmp = r.readUntil<WideStringView::CharGroup<CharGroupId::Latin>,
+					WideStringView::CharGroup<CharGroupId::Cyrillic>>();
 			if (!tmp.empty()) {
 				readChars(tmp);
 			}
-			tmp = r.readChars<CharReaderUcs2::CharGroup<CharGroupId::Latin>,
-					CharReaderUcs2::CharGroup<CharGroupId::Cyrillic>>();
+			tmp = r.readChars<WideStringView::CharGroup<CharGroupId::Latin>,
+					WideStringView::CharGroup<CharGroupId::Cyrillic>>();
 			if (!tmp.empty()) {
 				readChars(tmp, _hyphens->makeWordHyphens(tmp));
 			}
@@ -1282,7 +1282,7 @@ Vector<uint8_t> HyphenMap::makeWordHyphens(const char16_t *ptr, size_t len) {
 	}
 	return Vector<uint8_t>();
 }
-Vector<uint8_t> HyphenMap::makeWordHyphens(const CharReaderUcs2 &r) {
+Vector<uint8_t> HyphenMap::makeWordHyphens(const WideStringView &r) {
 	return makeWordHyphens(r.data(), r.size());
 }
 void HyphenMap::purgeHyphenDicts() {

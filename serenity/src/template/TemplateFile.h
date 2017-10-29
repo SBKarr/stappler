@@ -61,7 +61,7 @@ public:
 protected:
 	friend struct TemplateFileParser;
 
-	void push(const CharReaderBase &, ChunkType);
+	void push(const StringView &, ChunkType);
 	void parseConditional(Chunk &);
 	void parsePrint(Chunk &);
 	void parseForeach(Chunk &);

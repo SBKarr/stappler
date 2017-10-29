@@ -45,7 +45,7 @@ struct Color4F;
  */
 struct Color3B : public AllocBase {
 	static Color3B getColorByName(const String &, const Color3B & = Color3B::BLACK);
-	static Color3B getColorByName(const CharReaderBase &, const Color3B & = Color3B::BLACK);
+	static Color3B getColorByName(const StringView &, const Color3B & = Color3B::BLACK);
 
 	Color3B();
 	Color3B(uint8_t _r, uint8_t _g, uint8_t _b);
@@ -76,7 +76,7 @@ struct Color3B : public AllocBase {
  */
 struct Color4B : public AllocBase {
 	static Color4B getColorByName(const String &, const Color4B & = Color4B::BLACK);
-	static Color4B getColorByName(const CharReaderBase &, const Color4B & = Color4B::BLACK);
+	static Color4B getColorByName(const StringView &, const Color4B & = Color4B::BLACK);
 
 	Color4B();
 	Color4B(uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a);
@@ -260,7 +260,7 @@ public:
 	String name() const;
 
 	static Color getColorByName(const String &, const Color & = Color::Black);
-	static Color getColorByName(const CharReaderBase &, const Color & = Color::Black);
+	static Color getColorByName(const StringView &, const Color & = Color::Black);
 
 	static Color progress(const Color &a, const Color &b, float p);
 

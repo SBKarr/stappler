@@ -82,19 +82,19 @@ struct Expression : public ReaderClassBase<char> {
 	};
 
 	Expression() { }
-	Expression(CharReaderBase &);
-	Expression(const CharReaderBase &);
+	Expression(StringView &);
+	Expression(const StringView &);
 	Expression(const String &);
 
-	bool parse(CharReaderBase &);
-	bool parse(const CharReaderBase &);
+	bool parse(StringView &);
+	bool parse(const StringView &);
 	bool parse(const String &);
 
-	Op readOperator(CharReaderBase &r);
+	Op readOperator(StringView &r);
 
-	bool readOperand(Node **, CharReaderBase &r, Op op);
-	bool readOperandValue(Node *, CharReaderBase &r, Op op);
-	bool readExpression(Node **, CharReaderBase &r, bool root = false);
+	bool readOperand(Node **, StringView &r, Op op);
+	bool readOperandValue(Node *, StringView &r, Op op);
+	bool readExpression(Node **, StringView &r, bool root = false);
 
 	Node *insertOp(Node **, Op);
 

@@ -430,7 +430,7 @@ String Info::getRootPath() {
 			String result;
 		} r;
 
-		html::parse(r, CharReaderUtf8((const char *)container.data(), container.size()));
+		html::parse(r, StringViewUtf8((const char *)container.data(), container.size()));
 		return r.result;
 	}
 	return ret;
@@ -670,7 +670,7 @@ void Info::processPublication() {
 					fileIt->second.id = std::move(item.id);
 					fileIt->second.mime = std::move(item.type);
 					if (!item.props.empty()) {
-						string::split(item.props, " ", [&fileIt] (const CharReaderBase &r) {
+						string::split(item.props, " ", [&fileIt] (const StringView &r) {
 							fileIt->second.props.insert(r.str());
 						});
 					}
@@ -735,7 +735,7 @@ void Info::processPublication() {
 		Vector<SpineFile> *spineVec = nullptr;
 	} r(&_rootPath, &_manifest, &_spine);
 
-	html::parse(r, CharReaderUtf8((const char *)opf.data(), opf.size()));
+	html::parse(r, StringViewUtf8((const char *)opf.data(), opf.size()));
 
 	_meta.meta = std::move(r.metaProps);
 	for (auto &it : _meta.meta) {

@@ -63,7 +63,7 @@ public: // meta
 	String getLanguage() const;
 
 protected:
-	virtual void processHtml(const String &, const CharReaderBase &, bool linear = true) override;
+	virtual void processHtml(const String &, const StringView &, bool linear = true) override;
 
 	void readTocFile(const String &);
 	void readNcxNav(const String &filePath);

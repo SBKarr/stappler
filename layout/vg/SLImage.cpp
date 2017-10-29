@@ -56,17 +56,17 @@ NS_LAYOUT_BEGIN
 	skewY(<skew-angle>), which specifies a skew transformation along the y-axis.
  */
 
-static Mat4 svg_parseTransform(CharReaderBase &r) {
+static Mat4 svg_parseTransform(StringView &r) {
 	Mat4 ret(Mat4::IDENTITY);
 	while (!r.empty()) {
-		r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		if (r.is("matrix(")) {
 			r += "matrix("_len;
 			float values[6] = { 0 };
 
 			uint16_t i = 0;
 			for (; i < 6; ++ i) {
-				r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
+				r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>, StringView::Chars<','>>();
 				values[i] = r.readFloat();
 				if (IsErrorValue(values[i])) {
 					break;
@@ -83,13 +83,13 @@ static Mat4 svg_parseTransform(CharReaderBase &r) {
 			r += "translate("_len;
 
 			float tx = 0.0f, ty = 0.0f;
-			r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 			tx = r.readFloat();
 			if (IsErrorValue(tx)) {
 				break;
 			}
 
-			r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
+			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>, StringView::Chars<','>>();
 			if (!r.is(')')) {
 				ty = r.readFloat();
 				if (IsErrorValue(ty)) {
@@ -104,13 +104,13 @@ static Mat4 svg_parseTransform(CharReaderBase &r) {
 			r += "scale("_len;
 
 			float sx = 0.0f, sy = 0.0f;
-			r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 			sx = r.readFloat();
 			if (IsErrorValue(sx)) {
 				break;
 			}
 
-			r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
+			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>, StringView::Chars<','>>();
 			if (!r.is(')')) {
 				sy = r.readFloat();
 				if (IsErrorValue(sy)) {
@@ -126,20 +126,20 @@ static Mat4 svg_parseTransform(CharReaderBase &r) {
 			float angle = 0.0f;
 			float cx = 0.0f, cy = 0.0f;
 
-			r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 			angle = r.readFloat();
 			if (IsErrorValue(angle)) {
 				break;
 			}
 
-			r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
+			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>, StringView::Chars<','>>();
 			if (!r.is(')')) {
 				cx = r.readFloat();
 				if (IsErrorValue(cx)) {
 					break;
 				}
 
-				r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
+				r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>, StringView::Chars<','>>();
 				cy = r.readFloat();
 				if (IsErrorValue(cx)) {
 					break;
@@ -163,7 +163,7 @@ static Mat4 svg_parseTransform(CharReaderBase &r) {
 			r += "skewX("_len;
 
 			float angle = 0.0f;
-			r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 			angle = r.readFloat();
 			if (IsErrorValue(angle)) {
 				break;
@@ -174,7 +174,7 @@ static Mat4 svg_parseTransform(CharReaderBase &r) {
 			r += "skewY("_len;
 
 			float angle = 0.0f;
-			r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 			angle = r.readFloat();
 			if (IsErrorValue(angle)) {
 				break;
@@ -182,7 +182,7 @@ static Mat4 svg_parseTransform(CharReaderBase &r) {
 
 			ret *= Mat4(1, tanf(to_rad(angle)), 0, 1, 0, 0);
 		}
-		r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		if (!r.is(')')) {
 			break;
 		} else {
@@ -192,7 +192,7 @@ static Mat4 svg_parseTransform(CharReaderBase &r) {
 	return ret;
 }
 
-static float svg_readCoordValue(CharReaderBase &source, float origin) {
+static float svg_readCoordValue(StringView &source, float origin) {
 	style::Metric m; m.metric = style::Metric::Px;
 	if (style::readStyleValue(source, m, false, true)) {
 		switch (m.metric) {
@@ -209,16 +209,16 @@ static float svg_readCoordValue(CharReaderBase &source, float origin) {
 	return nan();
 }
 
-static void svg_readPointCoords(Path &target, CharReaderBase &source) {
+static void svg_readPointCoords(Path &target, StringView &source) {
 	float x, y;
 	while (!source.empty()) {
-		source.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
+		source.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>, StringView::Chars<','>>();
 		x = source.readFloat();
 		if (IsErrorValue(x)) {
 			return;
 		}
 
-		source.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
+		source.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>, StringView::Chars<','>>();
 		y = source.readFloat();
 		if (IsErrorValue(y)) {
 			return;
@@ -232,8 +232,8 @@ static void svg_readPointCoords(Path &target, CharReaderBase &source) {
 	}
 }
 
-struct SvgTag : public html::Tag<CharReaderBase> {
-	SvgTag(CharReaderBase &r) : Tag(r) {
+struct SvgTag : public html::Tag<StringView> {
+	SvgTag(StringView &r) : Tag(r) {
 		//path.setStyle(Path::Style::None);
 	}
 
@@ -259,7 +259,7 @@ struct SvgTag : public html::Tag<CharReaderBase> {
 };
 
 struct SvgReader {
-	using Parser = html::Parser<SvgReader, CharReaderBase, SvgTag>;
+	using Parser = html::Parser<SvgReader, StringView, SvgTag>;
 	using Tag = SvgTag;
 	using StringReader = Parser::StringReader;
 
@@ -556,7 +556,7 @@ bool Image::isSvg(const FilePath &file) {
 bool Image::init(const String &data) {
 	SvgReader reader;
 	reader._paths.reserve(8);
-	html::parse<SvgReader, CharReaderBase, SvgTag>(reader, CharReaderBase(data));
+	html::parse<SvgReader, StringView, SvgTag>(reader, StringView(data));
 
 	if (!reader._paths.empty()) {
 		_width = reader._width;
@@ -571,7 +571,7 @@ bool Image::init(const String &data) {
 bool Image::init(const Bytes &data) {
 	SvgReader reader;
 	reader._paths.reserve(8);
-	html::parse<SvgReader, CharReaderBase, SvgTag>(reader, CharReaderBase((const char *)data.data(), data.size()));
+	html::parse<SvgReader, StringView, SvgTag>(reader, StringView((const char *)data.data(), data.size()));
 
 	if (!reader._paths.empty()) {
 		_width = reader._width;

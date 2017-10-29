@@ -32,7 +32,7 @@ NS_SP_EXT_BEGIN(data)
 template <typename Interface>
 class JsonBuffer : public Interface::AllocBaseType {
 public:
-	using Reader = CharReaderBase;
+	using Reader = StringView;
 
 	using InterfaceType = Interface;
 	using BufferType = BufferTemplate<Interface>;

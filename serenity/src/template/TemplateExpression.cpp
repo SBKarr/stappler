@@ -28,7 +28,7 @@ THE SOFTWARE.
 
 NS_SA_EXT_BEGIN(tpl)
 
-bool Expression::readOperand(Node **node, CharReaderBase &r, Op op) {
+bool Expression::readOperand(Node **node, StringView &r, Op op) {
 	r.skipChars<Group<GroupId::WhiteSpace>>();
 
 	bool isRoot = true;
@@ -68,7 +68,7 @@ bool Expression::readOperand(Node **node, CharReaderBase &r, Op op) {
 	return readOperandValue(*node, r, op);
 }
 
-bool Expression::readOperandValue(Node *current, CharReaderBase &r, Op op) {
+bool Expression::readOperandValue(Node *current, StringView &r, Op op) {
 	bool ret = false;
 	if (r.is('\'')) { // string literal variant 1
 		auto tmp = r;
@@ -81,7 +81,7 @@ bool Expression::readOperandValue(Node *current, CharReaderBase &r, Op op) {
 		}
 		if (r.is('\'')) {
 			++ r;
-			auto value = CharReaderBase(tmp.data(), tmp.size() - r.size());
+			auto value = StringView(tmp.data(), tmp.size() - r.size());
 			current->value.assign_weak(value.data(), value.size());
 			ret = true;
 		}
@@ -96,7 +96,7 @@ bool Expression::readOperandValue(Node *current, CharReaderBase &r, Op op) {
 		}
 		if (r.is('"')) {
 			++ r;
-			auto value = CharReaderBase(tmp.data(), tmp.size() - r.size());
+			auto value = StringView(tmp.data(), tmp.size() - r.size());
 			current->value.assign_weak(value.data(), value.size());
 			ret = true;
 		}
@@ -104,7 +104,7 @@ bool Expression::readOperandValue(Node *current, CharReaderBase &r, Op op) {
 		auto tmp = r;
 		++ r;
 		r.skipChars<Group<GroupId::Alphanumeric>, Chars<'_'>>();
-		auto value = CharReaderBase(tmp.data(), tmp.size() - r.size());
+		auto value = StringView(tmp.data(), tmp.size() - r.size());
 		current->value.assign_weak(value.data(), value.size());
 		ret = true;
 	} else if (r.is<Group<GroupId::Numbers>>()) { // numeric literal
@@ -122,7 +122,7 @@ bool Expression::readOperandValue(Node *current, CharReaderBase &r, Op op) {
 			r.skipChars<Group<GroupId::Numbers>>();
 		}
 
-		auto value = CharReaderBase(tmp.data(), tmp.size() - r.size());
+		auto value = StringView(tmp.data(), tmp.size() - r.size());
 		current->value.assign_weak(value.data(), value.size());
 		ret = true;
 	} else { // keyword literal
@@ -132,7 +132,7 @@ bool Expression::readOperandValue(Node *current, CharReaderBase &r, Op op) {
 				++ r;
 			}
 			r.skipChars<Group<GroupId::Alphanumeric>, Chars<'_'>>();
-			auto value = CharReaderBase(tmp.data(), tmp.size() - r.size());
+			auto value = StringView(tmp.data(), tmp.size() - r.size());
 			current->value.assign_weak(value.data(), value.size());
 			ret = true;
 		} else {
@@ -147,7 +147,7 @@ bool Expression::readOperandValue(Node *current, CharReaderBase &r, Op op) {
 	return ret;
 }
 
-bool Expression::readExpression(Node **node, CharReaderBase &r, bool isRoot) {
+bool Expression::readExpression(Node **node, StringView &r, bool isRoot) {
 	bool braced = false;
 	if (!isRoot && r.is('(')) {
 		++ r;
@@ -199,7 +199,7 @@ Expression::Node *Expression::insertOp(Node **node, Op op) {
 	return *insert;
 }
 
-Expression::Op Expression::readOperator(CharReaderBase &r) {
+Expression::Op Expression::readOperator(StringView &r) {
 	r.skipChars<Group<GroupId::WhiteSpace>>();
 	if (r.is('#')) { ++ r; return Sharp; }
 	else if (r.is('.')) { ++ r; return Dot; }
@@ -237,21 +237,21 @@ Expression::Op Expression::readOperator(CharReaderBase &r) {
 }
 
 Expression::Expression(const String &str) { parse(str); }
-Expression::Expression(CharReaderBase &r) { parse(r); }
-Expression::Expression(const CharReaderBase &r) { parse(r); }
+Expression::Expression(StringView &r) { parse(r); }
+Expression::Expression(const StringView &r) { parse(r); }
 
-bool Expression::parse(CharReaderBase &r) {
+bool Expression::parse(StringView &r) {
 	root = new Node{Op::NoOp};
 	return readExpression(&root, r, true);
 }
 
-bool Expression::parse(const CharReaderBase &ir) {
-	CharReaderBase r(ir);
+bool Expression::parse(const StringView &ir) {
+	StringView r(ir);
 	return parse(r);
 }
 
 bool Expression::parse(const String &str) {
-	CharReaderBase r(str);
+	StringView r(str);
 	return parse(r);
 }
 

@@ -440,7 +440,7 @@ static struct ColorIndexName {
 	{ 0xfb6cbb5a, 0xec }, { 0xfb7b3b8f, 0x65 }, { 0xfd10b1d4, 0x54 }, { 0xfd6e72c2, 0x68 }, { 0xfe7f9849, 0x0c }, { 0xfebd338d, 0x74 }, { 0xfece83ca, 0x46 }, { 0xff8a4ca5, 0x6b },
 };
 
-bool getColor(const CharReaderBase &str, uint32_t &color) {
+bool getColor(const StringView &str, uint32_t &color) {
 	auto h = hash::hash32(str.data(), str.size());
 
 	auto it = std::lower_bound(&nameIndex[0], (&nameIndex[0]) + 256, h, [] (const ColorIndexName &l, const uint32_t &r) -> bool {
@@ -459,7 +459,7 @@ bool getColor(const CharReaderBase &str, uint32_t &color) {
 	return false;
 }
 
-bool getColor(const CharReaderBase &str, Color3B &color) {
+bool getColor(const StringView &str, Color3B &color) {
 	uint32_t value = 0;
 	if (getColor(str, value)) {
 		color.r = (value >> 16) & 0xFF;
@@ -826,9 +826,9 @@ String Color::name() const {
 }
 
 Color Color::getColorByName(const String &str, const Color &def) {
-	return getColorByName(CharReaderBase(str), def);
+	return getColorByName(StringView(str), def);
 }
-Color Color::getColorByName(const CharReaderBase &str, const Color &def) {
+Color Color::getColorByName(const StringView &str, const Color &def) {
 	Color3B color;
 	if (style::readColor(str, color)) {
 		return Color(color);
@@ -848,9 +848,9 @@ Color Color::progress(const Color &a, const Color &b, float fp) {
 }
 
 Color3B Color3B::getColorByName(const String &str, const Color3B &def) {
-	return getColorByName(CharReaderBase(str), def);
+	return getColorByName(StringView(str), def);
 }
-Color3B Color3B::getColorByName(const CharReaderBase &str, const Color3B &def) {
+Color3B Color3B::getColorByName(const StringView &str, const Color3B &def) {
 	Color3B color;
 	if (style::readColor(str, color)) {
 		return color;
@@ -859,9 +859,9 @@ Color3B Color3B::getColorByName(const CharReaderBase &str, const Color3B &def) {
 }
 
 Color4B Color4B::getColorByName(const String &str, const Color4B &def) {
-	return getColorByName(CharReaderBase(str), def);
+	return getColorByName(StringView(str), def);
 }
-Color4B Color4B::getColorByName(const CharReaderBase &str, const Color4B &def) {
+Color4B Color4B::getColorByName(const StringView &str, const Color4B &def) {
 	Color4B color;
 	if (style::readColor(str, color)) {
 		return color;

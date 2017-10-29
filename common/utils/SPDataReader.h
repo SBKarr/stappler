@@ -77,8 +77,8 @@ public:
 	float readFloat16();
 
 
-	CharReaderBase readString(); // read null-terminated string
-	CharReaderBase readString(size_t s); // read fixed-size string
+	StringView readString(); // read null-terminated string
+	StringView readString(size_t s); // read fixed-size string
 };
 
 using DataReaderNetwork = DataReader<ByteOrder::Endian::Network>;
@@ -258,9 +258,9 @@ auto DataReader<Endianess>::readFloat16() -> float {
 
 // read null-terminated string
 template <ByteOrder::Endian Endianess>
-auto DataReader<Endianess>::readString() -> CharReaderBase {
+auto DataReader<Endianess>::readString() -> StringView {
 	size_t offset = 0; while (len - offset && ptr[offset]) { offset ++; }
-	CharReaderBase ret((const char *)ptr, offset);
+	StringView ret((const char *)ptr, offset);
 	ptr += offset; len -= offset;
 	if (len && *ptr == 0) { ++ ptr; -- len; }
 	return ret;
@@ -268,12 +268,12 @@ auto DataReader<Endianess>::readString() -> CharReaderBase {
 
 // read fixed-size string
 template <ByteOrder::Endian Endianess>
-auto DataReader<Endianess>::readString(size_t s) -> CharReaderBase {
+auto DataReader<Endianess>::readString(size_t s) -> StringView {
 	if (len < s) {
 		s = len;
 	}
 	size_t offset = 0; while (len - offset && ptr[offset]) { offset ++; }
-	CharReaderBase ret((const char *)ptr, s);
+	StringView ret((const char *)ptr, s);
 	ptr += s; len -= s;
 	return ret;
 }

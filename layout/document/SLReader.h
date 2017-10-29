@@ -40,8 +40,8 @@ public:
 
 	virtual ~Reader() { }
 
-	virtual bool readHtml(HtmlPage &page, const CharReaderBase &str, CssStrings &, MediaQueries &, MetaPairs &, CssMap &);
-	virtual style::CssData readCss(const String &path, const CharReaderBase &str, CssStrings &, MediaQueries &);
+	virtual bool readHtml(HtmlPage &page, const StringView &str, CssStrings &, MediaQueries &, MetaPairs &, CssMap &);
+	virtual style::CssData readCss(const String &path, const StringView &str, CssStrings &, MediaQueries &);
 
 	MediaQueryId addMediaQuery(style::MediaQuery &&);
 	void addCssString(CssStringId id, const String &str);

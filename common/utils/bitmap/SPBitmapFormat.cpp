@@ -181,7 +181,7 @@ static bool BitmapFormat_getWebpImageSize(const io::Producer &file, StackBuffer<
 static bool BitmapFormat_detectSvg(const StringView &buf, size_t &w, size_t &h) {
 	StringView str(buf);
 	str.skipUntilString("<svg", false);
-	if (!str.empty() && str.is<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>()) {
+	if (!str.empty() && str.is<StringView::CharGroup<CharGroupId::WhiteSpace>>()) {
 		bool found = false;
 		bool isSvg = false;
 		uint32_t width = 0;

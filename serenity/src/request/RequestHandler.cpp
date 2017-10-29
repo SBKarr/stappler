@@ -40,16 +40,16 @@ int RequestHandler::onRequestRecieved(Request & rctx, String &&originPath, Strin
 
 	auto auth = rctx.getRequestHeaders().at("Authorization");
 	if (!auth.empty()) {
-		CharReaderBase r(auth);
-		r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
-		auto method = r.readUntil<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>().str();
+		StringView r(auth);
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		auto method = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>().str();
 		string::tolower(method);
 		auto userIp = rctx.getUseragentIp();
 		if (method == "basic" && (rctx.isSecureConnection() || strncmp(userIp.c_str(), "127.", 4) == 0 || userIp == "::1")) {
-			r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 			auto str = base64::decode(r);
-			CharReaderBase source((const char *)str.data(), str.size());
-			CharReaderBase user = source.readUntil<CharReaderBase::Chars<':'>>();
+			StringView source((const char *)str.data(), str.size());
+			StringView user = source.readUntil<StringView::Chars<':'>>();
 			++ source;
 
 			if (!user.empty() && !source.empty()) {

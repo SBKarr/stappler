@@ -130,7 +130,7 @@ struct Server::Config : public AllocPool {
 		isSessionSecure = val.getBool("secure");
 	}
 
-	void setSessionParam(CharReaderBase &n, CharReaderBase &v) {
+	void setSessionParam(StringView &n, StringView &v) {
 		if (n.is("name")) {
 			sessionName = v.str();
 		} else if (n.is("key")) {
@@ -287,24 +287,24 @@ void Server::setSourceRoot(const apr::string &file) {
 	_config->sourceRoot = file;
 }
 void Server::addHanderSource(const apr::string &str) {
-	CharReaderBase r(str);
-	r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+	StringView r(str);
+	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
-	CharReaderBase handlerParams;
+	StringView handlerParams;
 	if (r.is('"')) {
 		++ r;
-		handlerParams = r.readUntil<CharReaderBase::Chars<'"'>>();
+		handlerParams = r.readUntil<StringView::Chars<'"'>>();
 		if (r.is('"')) {
 			++ r;
 		}
 	} else {
-		handlerParams = r.readUntil<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+		handlerParams = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 	}
 
-	CharReaderBase name, file, symbol;
-	name = handlerParams.readUntil<CharReaderBase::Chars<':'>>();
+	StringView name, file, symbol;
+	name = handlerParams.readUntil<StringView::Chars<':'>>();
 	++ handlerParams;
-	file = handlerParams.readUntil<CharReaderBase::Chars<':'>>();
+	file = handlerParams.readUntil<StringView::Chars<':'>>();
 	++ handlerParams;
 	symbol = handlerParams;
 
@@ -316,20 +316,20 @@ void Server::addHanderSource(const apr::string &str) {
 		data::Value &data = h.emplace("data");
 
 		while (!r.empty()) {
-			r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
-			CharReaderBase params, n, v;
+			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+			StringView params, n, v;
 			if (r.is('"')) {
 				++ r;
-				params = r.readUntil<CharReaderBase::Chars<'"'>>();
+				params = r.readUntil<StringView::Chars<'"'>>();
 				if (r.is('"')) {
 					++ r;
 				}
 			} else {
-				params = r.readUntil<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+				params = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 			}
 
 			if (!params.empty()) {
-				n = params.readUntil<CharReaderBase::Chars<'='>>();
+				n = params.readUntil<StringView::Chars<'='>>();
 				++ params;
 				v = params;
 
@@ -344,22 +344,22 @@ void Server::addHanderSource(const apr::string &str) {
 }
 
 void Server::setSessionParams(const apr::string &str) {
-	CharReaderBase r(str);
-	r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+	StringView r(str);
+	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 	while (!r.empty()) {
-		CharReaderBase params, n, v;
+		StringView params, n, v;
 		if (r.is('"')) {
 			++ r;
-			params = r.readUntil<CharReaderBase::Chars<'"'>>();
+			params = r.readUntil<StringView::Chars<'"'>>();
 			if (r.is('"')) {
 				++ r;
 			}
 		} else {
-			params = r.readUntil<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+			params = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		}
 
 		if (!params.empty()) {
-			n = params.readUntil<CharReaderBase::Chars<'='>>();
+			n = params.readUntil<StringView::Chars<'='>>();
 			++ params;
 			v = params;
 
@@ -368,7 +368,7 @@ void Server::setSessionParams(const apr::string &str) {
 			}
 		}
 
-		r.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 	}
 }
 

@@ -53,7 +53,7 @@ public:
 protected:
 	using VarState = UrlencodeParser::VarState;
 
-	data::Value *flushString(CharReaderBase &r, data::Value *, VarState state);
+	data::Value *flushString(StringView &r, data::Value *, VarState state);
 
 	InputConfig config;
 	size_t length;
@@ -64,7 +64,7 @@ protected:
 
 class InputFilter : public AllocPool {
 public:
-	using Reader = CharReaderBase;
+	using Reader = StringView;
 	using FilterFunc = Function<void(InputFilter *filter)>;
 
 	enum class Accept {

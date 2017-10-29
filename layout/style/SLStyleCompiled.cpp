@@ -808,8 +808,8 @@ namespace style {
 			Overflow,
 		} state = Family;
 
-		string::split(str, ".", [&] (const CharReaderBase &ir) {
-			CharReaderBase r(ir);
+		string::split(str, ".", [&] (const StringView &ir) {
+			StringView r(ir);
 			switch (state) {
 			case Family:
 				ret.fontFamily = r.str();

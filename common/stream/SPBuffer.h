@@ -107,12 +107,12 @@ public:
 		return 1;
 	}
 
-	template <typename Reader = CharReaderBase>
+	template <typename Reader = StringView>
 	Reader get() const {
 		return Reader((const typename Reader::CharType *)_buffer.data(), _ptr - _buffer.data());
 	}
 
-	template <typename Reader = CharReaderBase>
+	template <typename Reader = StringView>
 	Reader pop(size_t len) {
 		size_t sz = size();
 		len = min(len, sz);
@@ -228,7 +228,7 @@ public:
 		return put(&c, 1);
 	}
 
-	template <typename Reader = CharReaderBase>
+	template <typename Reader = StringView>
 	Reader get() const {
 		return Reader((const typename Reader::CharType *)_buf.data(), _size);
 	}

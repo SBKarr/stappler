@@ -30,7 +30,7 @@ NS_EPUB_BEGIN
 
 class Reader : public layout::Reader {
 public:
-	using StringReader = CharReaderUtf8;
+	using StringReader = StringViewUtf8;
 
 	virtual ~Reader() { }
 

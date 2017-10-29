@@ -47,7 +47,7 @@ public:
 	void set(const String &, const data::Value *, const storage::Scheme *);
 	void clear(const String &);
 
-	Variable getVariable(const CharReaderBase &);
+	Variable getVariable(const StringView &);
 
 	Variable exec(const Expression &);
 	void print(const Expression &, Request &);
@@ -59,13 +59,13 @@ public:
 	const Callback &getTemplateCallback() const;
 
 protected:
-	using ReaderVec = Vector<CharReaderBase>;
-	using ReaderVecIt = Vector<CharReaderBase>::iterator;
+	using ReaderVec = Vector<StringView>;
+	using ReaderVecIt = Vector<StringView>::iterator;
 
 	Variable selectSchemeSetVariable(ReaderVec &path, ReaderVecIt &pathIt, const Variable &val, const storage::Field *obj);
 	Variable selectSchemeByPath(ReaderVec &path, ReaderVecIt &pathIt, const storage::Scheme *scheme, int64_t oid = 0, const String &field = String());
 
-	const data::Value * selectDataValue(const data::Value &val, CharReaderBase &r);
+	const data::Value * selectDataValue(const data::Value &val, StringView &r);
 
 	Variable execNode(const Expression::Node *, Expression::Op);
 	void printNode(const Expression::Node *, Expression::Op, Request &);

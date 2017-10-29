@@ -28,7 +28,7 @@ THE SOFTWARE.
 
 NS_LAYOUT_BEGIN
 
-using StringReader = CharReaderUtf8;
+using StringReader = StringViewUtf8;
 
 using HtmlIdentifier = chars::Compose<char16_t,
 		chars::Range<char16_t, u'0', u'9'>,
@@ -81,7 +81,7 @@ namespace style {
 	using NameSize = uint16_t;
 
 	using CssStyleFunction = Function<void(const String &, const StyleVec &)>;
-	using CssStringFunction = Function<void(CssStringId, const CharReaderBase &)>;
+	using CssStringFunction = Function<void(CssStringId, const StringView &)>;
 }
 
 using Style = style::ParameterList;
@@ -621,7 +621,7 @@ namespace style {
 		void set(const Parameter &p, bool force = false);
 
 		void read(const StyleVec &, MediaQueryId mediaQuary = MediaQueryNone());
-		void read(const String &, const CharReaderBase &, MediaQueryId mediaQuary = MediaQueryNone());
+		void read(const String &, const StringView &, MediaQueryId mediaQuary = MediaQueryNone());
 
 		void merge(const ParameterList &, bool inherit = false);
 		void merge(const StyleVec &);
@@ -727,17 +727,17 @@ namespace style {
 
 	ParameterList getStyleForTag(const String &, Tag::Type type);
 
-	bool readColor(const CharReaderBase &str, Color4B &color4);
-	bool readColor(const CharReaderBase &str, Color3B &color);
+	bool readColor(const StringView &str, Color4B &color4);
+	bool readColor(const StringView &str, Color3B &color);
 
-	bool readStyleValue(const CharReaderBase &str, Metric &value, bool resolutionMetric = false, bool allowEmptyMetric = false);
-	CharReaderBase readStringContents(const String &prefix, const CharReaderBase &origStr, CssStringId &value);
-	bool readStringValue(const String &prefix, const CharReaderBase &origStr, CssStringId &value);
-	bool splitValue(const CharReaderBase &str, CharReaderBase &first, CharReaderBase &second);
-	bool readAspectRatioValue(const CharReaderBase &str, float &value);
-	bool readStyleMargin(const CharReaderBase &origStr, Metric &top, Metric &right, Metric &bottom, Metric &left);
+	bool readStyleValue(const StringView &str, Metric &value, bool resolutionMetric = false, bool allowEmptyMetric = false);
+	StringView readStringContents(const String &prefix, const StringView &origStr, CssStringId &value);
+	bool readStringValue(const String &prefix, const StringView &origStr, CssStringId &value);
+	bool splitValue(const StringView &str, StringView &first, StringView &second);
+	bool readAspectRatioValue(const StringView &str, float &value);
+	bool readStyleMargin(const StringView &origStr, Metric &top, Metric &right, Metric &bottom, Metric &left);
 
-	bool readMediaParameter(Vector<Parameter> &params, const String &name, const CharReaderBase &value, const CssStringFunction &cb);
+	bool readMediaParameter(Vector<Parameter> &params, const String &name, const StringView &value, const CssStringFunction &cb);
 
 	String getFontConfigName(const String &, uint8_t, FontStyle, FontWeight, FontStretch, FontVariant, bool caps);
 

@@ -207,7 +207,7 @@ ParameterList getStyleForTag(const String &tag, Tag::Type type) {
 	return style;
 }
 
-static bool ParameterList_readListStyleType(ParameterList &list, const CharReaderBase &value, MediaQueryId mediaQuary) {
+static bool ParameterList_readListStyleType(ParameterList &list, const StringView &value, MediaQueryId mediaQuary) {
 	if (value.compare("none")) {
 		list.set<ParameterName::ListStyleType>(ListStyleType::None, mediaQuary);
 		return true;
@@ -249,7 +249,7 @@ static bool ParameterList_readListStyleType(ParameterList &list, const CharReade
 }
 
 template <style::ParameterName Name>
-static bool ParameterList_readBorderStyle(ParameterList &list, const CharReaderBase &value, MediaQueryId mediaQuary) {
+static bool ParameterList_readBorderStyle(ParameterList &list, const StringView &value, MediaQueryId mediaQuary) {
 	if (value.compare("none")) {
 		list.set<Name>(BorderStyle::None, mediaQuary);
 		return true;
@@ -267,7 +267,7 @@ static bool ParameterList_readBorderStyle(ParameterList &list, const CharReaderB
 }
 
 template <style::ParameterName Name>
-static bool ParameterList_readBorderColor(ParameterList &list, const CharReaderBase &value, MediaQueryId mediaQuary) {
+static bool ParameterList_readBorderColor(ParameterList &list, const StringView &value, MediaQueryId mediaQuary) {
 	if (value.compare("transparent")) {
 		list.set<Name>(Color4B(0, 0, 0, 0), mediaQuary);
 		return true;
@@ -282,7 +282,7 @@ static bool ParameterList_readBorderColor(ParameterList &list, const CharReaderB
 }
 
 template <style::ParameterName Name>
-static bool ParameterList_readBorderWidth(ParameterList &list, const CharReaderBase &value, MediaQueryId mediaQuary) {
+static bool ParameterList_readBorderWidth(ParameterList &list, const StringView &value, MediaQueryId mediaQuary) {
 	if (value.compare("thin")) {
 		list.set<Name>(Metric(2.0f, Metric::Units::Px), mediaQuary);
 		return true;
@@ -303,8 +303,8 @@ static bool ParameterList_readBorderWidth(ParameterList &list, const CharReaderB
 }
 
 template <style::ParameterName Style, style::ParameterName Color, style::ParameterName Width>
-static void ParameterList_readBorder(ParameterList &list, const CharReaderBase &value, MediaQueryId mediaQuary) {
-	value.split<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>([&] (const CharReaderBase &str) {
+static void ParameterList_readBorder(ParameterList &list, const StringView &value, MediaQueryId mediaQuary) {
+	value.split<StringView::CharGroup<CharGroupId::WhiteSpace>>([&] (const StringView &str) {
 		if (!ParameterList_readBorderStyle<Style>(list, str, mediaQuary)) {
 			if (!ParameterList_readBorderColor<Color>(list, str, mediaQuary)) {
 				ParameterList_readBorderWidth<Width>(list, str, mediaQuary);
@@ -314,9 +314,9 @@ static void ParameterList_readBorder(ParameterList &list, const CharReaderBase &
 }
 
 template <typename T, typename Getter>
-static void ParameterList_readQuadValue(const CharReaderBase &value, T &top, T &right, T &bottom, T &left, const Getter &g) {
+static void ParameterList_readQuadValue(const StringView &value, T &top, T &right, T &bottom, T &left, const Getter &g) {
 	int count = 0;
-	value.split<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>([&] (const CharReaderBase &r) {
+	value.split<StringView::CharGroup<CharGroupId::WhiteSpace>>([&] (const StringView &r) {
 		count ++;
 		if (count == 1) {
 			top = right = bottom = left = g(r);
@@ -330,7 +330,7 @@ static void ParameterList_readQuadValue(const CharReaderBase &value, T &top, T &
 	});
 }
 
-void ParameterList::read(const String &name, const CharReaderBase &value, MediaQueryId mediaQuary) {
+void ParameterList::read(const String &name, const StringView &value, MediaQueryId mediaQuary) {
 	if (name == "font-weight") {
 		if (value.compare("bold")) {
 			set<ParameterName::FontWeight>(FontWeight::Bold, mediaQuary);
@@ -489,7 +489,7 @@ void ParameterList::read(const String &name, const CharReaderBase &value, MediaQ
 			set<ParameterName::ListStylePosition>(ListStylePosition::Outside, mediaQuary);
 		}
 	} else if (name == "list-style") {
-		value.split<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>([&] (const CharReaderBase &r) {
+		value.split<StringView::CharGroup<CharGroupId::WhiteSpace>>([&] (const StringView &r) {
 			if (!ParameterList_readListStyleType(*this, r, mediaQuary)) {
 				if (r.compare("inside")) {
 					set<ParameterName::ListStylePosition>(ListStylePosition::Inside, mediaQuary);
@@ -522,7 +522,7 @@ void ParameterList::read(const String &name, const CharReaderBase &value, MediaQ
 			set<ParameterName::Clear>(Clear::Both, mediaQuary);
 		}
 	} else if (name == "opacity") {
-		float data = CharReaderBase(value).readFloat();
+		float data = StringView(value).readFloat();
 		if (!IsErrorValue(data)) {
 			if (data < 0.0f) {
 				data = 0.0f;
@@ -663,7 +663,7 @@ void ParameterList::read(const String &name, const CharReaderBase &value, MediaQ
 			}
 		}
 	} else if (name == "background-position") {
-		CharReaderBase first, second;
+		StringView first, second;
 		Metric x, y;
 		bool validX = false, validY = false, swapValues = false;
 		if (splitValue(value, first, second)) {
@@ -759,7 +759,7 @@ void ParameterList::read(const String &name, const CharReaderBase &value, MediaQ
 			set<ParameterName::BackgroundRepeat>(BackgroundRepeat::RepeatY, mediaQuary);
 		}
 	} else if (name == "background-size") {
-		CharReaderBase first, second;
+		StringView first, second;
 		Metric width, height;
 		bool validWidth = false, validHeight = false;
 		if (value.compare("contain")) {
@@ -842,7 +842,7 @@ void ParameterList::read(const String &name, const CharReaderBase &value, MediaQ
 		ParameterList_readBorderWidth<ParameterName::BorderLeftWidth>(*this, value, mediaQuary);
 	} else if (name == "border-style" && !value.empty()) {
 		BorderStyle top, right, bottom, left;
-		ParameterList_readQuadValue(value, top, right, bottom, left, [&] (const CharReaderBase &v) -> BorderStyle {
+		ParameterList_readQuadValue(value, top, right, bottom, left, [&] (const StringView &v) -> BorderStyle {
 			if (v.compare("solid")) {
 				return BorderStyle::Solid;
 			} else if (v.compare("dotted")) {
@@ -858,7 +858,7 @@ void ParameterList::read(const String &name, const CharReaderBase &value, MediaQ
 		set<ParameterName::BorderLeftStyle>(left, mediaQuary);
 	} else if (name == "border-color" && !value.empty()) {
 		Color4B top, right, bottom, left;
-		ParameterList_readQuadValue(value, top, right, bottom, left, [&] (const CharReaderBase &v) -> Color4B {
+		ParameterList_readQuadValue(value, top, right, bottom, left, [&] (const StringView &v) -> Color4B {
 			if (v.compare("transparent")) {
 				return Color4B(0, 0, 0, 0);
 			} else {
@@ -873,7 +873,7 @@ void ParameterList::read(const String &name, const CharReaderBase &value, MediaQ
 		set<ParameterName::BorderLeftColor>(left, mediaQuary);
 	} else if (name == "border-width" && !value.empty()) {
 		Metric top, right, bottom, left;
-		ParameterList_readQuadValue(value, top, right, bottom, left, [&] (const CharReaderBase &v) -> Metric {
+		ParameterList_readQuadValue(value, top, right, bottom, left, [&] (const StringView &v) -> Metric {
 			if (v.compare("thin")) {
 				return Metric(2.0f, Metric::Units::Px);
 			} else if (v.compare("medium")) {
@@ -894,7 +894,7 @@ void ParameterList::read(const String &name, const CharReaderBase &value, MediaQ
 		BorderStyle style = BorderStyle::None;
 		Metric width(0.0f, Metric::Units::Px);
 		Color4B color(0, 0, 0, 0);
-		value.split<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>([&] (const CharReaderBase &r) {
+		value.split<StringView::CharGroup<CharGroupId::WhiteSpace>>([&] (const StringView &r) {
 			if (r.compare("solid")) {
 				style = BorderStyle::Solid;
 			} else if (r.compare("dotted")) {
@@ -962,7 +962,7 @@ void ParameterList::read(const String &name, const CharReaderBase &value, MediaQ
 
 void ParameterList::read(const StyleVec &vec, MediaQueryId mediaQuary) {
 	for (auto &it : vec) {
-		read(it.first, CharReaderBase(it.second), mediaQuary);
+		read(it.first, StringView(it.second), mediaQuary);
 	}
 }
 

@@ -575,9 +575,9 @@ bool isBundled(const String &path) {
 
 bool isAboveRoot(const String & path) {
 	size_t components = 0;
-	CharReaderBase r(path);
+	StringView r(path);
 	while (!r.empty()) {
-		auto str = r.readUntil<CharReaderBase::Chars<'/'>>();
+		auto str = r.readUntil<StringView::Chars<'/'>>();
 		if (str == ".." && str.size() == 2) {
 			if (components == 0) {
 				return true;
@@ -595,12 +595,12 @@ bool isAboveRoot(const String & path) {
 }
 
 bool validatePath(const String & path) {
-	CharReaderBase r(path);
+	StringView r(path);
 	if (r.is('/')) {
 		++ r;
 	}
 	while (!r.empty()) {
-		auto str = r.readUntil<CharReaderBase::Chars<'/'>>();
+		auto str = r.readUntil<StringView::Chars<'/'>>();
 		if ((str == ".." && str.size() == 2) || (str == "." && str.size() == 1) || str.size() == 0) {
 			return false;
 		}
@@ -616,10 +616,10 @@ String reconstructPath(const String & path) {
 	bool start = (path.front() == '/');
 	bool end = (path.back() == '/');
 
-	Vector<CharReaderBase> retVec;
-	CharReaderBase r(path);
+	Vector<StringView> retVec;
+	StringView r(path);
 	while (!r.empty()) {
-		auto str = r.readUntil<CharReaderBase::Chars<'/'>>();
+		auto str = r.readUntil<StringView::Chars<'/'>>();
 		if (str == ".." && str.size() == 2) {
 			if (!retVec.empty()) {
 				retVec.pop_back();
@@ -832,12 +832,12 @@ size_t extensionCount(const String &path) {
 
 Vector<String> split(const String &str) {
 	Vector<String> ret;
-	CharReaderBase s(str);
+	StringView s(str);
 	do {
 		if (s.is('/')) {
 			s ++;
 		}
-		auto path = s.readUntil<CharReaderBase::Chars<'/', '?', ';', '&', '#'>>();
+		auto path = s.readUntil<StringView::Chars<'/', '?', ';', '&', '#'>>();
 		ret.push_back(path.str());
 	} while (!s.empty() && s.is('/'));
 	return ret;

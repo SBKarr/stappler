@@ -43,7 +43,7 @@ namespace parser {
 	String readHtmlTagParamName(StringReader &);
 	String readHtmlTagParamValue(StringReader &);
 
-	CharReaderBase resolveCssString(const CharReaderBase &);
+	StringView resolveCssString(const StringView &);
 
 	style::MediaQuery::Query readMediaQuery(StringReader &s, const style::CssStringFunction &cb);
 

@@ -31,7 +31,7 @@ NS_SA_BEGIN
 
 class MultipartParser : public InputParser {
 public:
-	using Reader = CharReaderBase;
+	using Reader = StringView;
 
 	MultipartParser(const InputConfig &, size_t, const apr::string &);
 	MultipartParser(const InputConfig &, size_t, const char *);

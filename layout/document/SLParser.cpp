@@ -402,7 +402,7 @@ namespace parser {
 			if (selector.compare(0, "@media"_len, "@media") == 0 && !hasMediaQuery) {
 				hasMediaQuery = true;
 				String q = parser::readCssMediaQuery<'<'>(selector, s, '<');
-				mediaQuery.parse(q, [&] (CssStringId id, const CharReaderBase &str) {
+				mediaQuery.parse(q, [&] (CssStringId id, const StringView &str) {
 					reader.addCssString(id, str.str());
 				});
 				mediaQueryId = reader.addMediaQuery(std::move(mediaQuery));
@@ -422,7 +422,7 @@ namespace parser {
 			}
 
 			if (!selector.empty() && !style.empty()) {
-				string::split(selector, ",", [&] (const CharReaderBase &r) {
+				string::split(selector, ",", [&] (const StringView &r) {
 					String sel = r.str(); string::trim(sel);
 					reader.onStyleObject(sel, style, mediaQueryId);
 				});
@@ -466,21 +466,21 @@ namespace parser {
 		}
 	}
 
-	CharReaderBase resolveCssString(const CharReaderBase &origStr) {
-		CharReaderBase str(origStr);
-		str.trimChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+	StringView resolveCssString(const StringView &origStr) {
+		StringView str(origStr);
+		str.trimChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
-		CharReaderBase tmp(str);
-		tmp.trimUntil<CharReaderBase::Chars<'(', '"', '\''>>();
+		StringView tmp(str);
+		tmp.trimUntil<StringView::Chars<'(', '"', '\''>>();
 		if (tmp.size() > 2) {
 			if (tmp.is('(') && tmp.back() == ')') {
-				tmp = CharReaderBase(tmp.data() + 1, tmp.size() - 2);
-				tmp.trimChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+				tmp = StringView(tmp.data() + 1, tmp.size() - 2);
+				tmp.trimChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 				return tmp;
 			} else if (tmp.is('"') && tmp.back() == '"') {
-				return CharReaderBase(tmp.data() + 1, tmp.size() - 2);
+				return StringView(tmp.data() + 1, tmp.size() - 2);
 			} else if (tmp.is('\'') && tmp.back() == '\'') {
-				return CharReaderBase(tmp.data() + 1, tmp.size() - 2);
+				return StringView(tmp.data() + 1, tmp.size() - 2);
 			}
 		}
 
@@ -527,7 +527,7 @@ namespace parser {
 			if (identifier.empty() && value.empty()) {
 				return q;
 			} else {
-				style::readMediaParameter(q.params, identifier, CharReaderBase(value), cb);
+				style::readMediaParameter(q.params, identifier, StringView(value), cb);
 			}
 
 			if (s != "and") {

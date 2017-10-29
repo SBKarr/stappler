@@ -43,12 +43,12 @@ struct TemplateFileParser : public AllocBase, public ReaderClassBase<char> {
 	bool backslash = false;
 
 	void parse(File &f, const char *str, size_t len);
-	void read(File &f, CharReaderBase &r);
+	void read(File &f, StringView &r);
 
-	void readEmpty(File &f, CharReaderBase &r);
-	void readTemplate(File &f, CharReaderBase &r);
+	void readEmpty(File &f, StringView &r);
+	void readTemplate(File &f, StringView &r);
 
-	void pushString(const CharReaderBase &r);
+	void pushString(const StringView &r);
 	void pushChar(char c);
 	void flush(File &f);
 };
@@ -82,11 +82,11 @@ File::File(const String &ipath) {
 	}
 }
 
-void File::push(const CharReaderBase &ir, ChunkType type) {
+void File::push(const StringView &ir, ChunkType type) {
 	if (type == Text) {
 		_stack.back()->chunks.emplace_back(Chunk{Text, ir.str()});
 	} else {
-		CharReaderBase r(ir);
+		StringView r(ir);
 		r.skipChars<Group<CharGroupId::WhiteSpace>>();
 		if (r.is('=')) {
 			++ r;
@@ -173,12 +173,12 @@ void File::parsePrint(Chunk &variant) {
 }
 
 void File::parseForeach(Chunk &variant) {
-	CharReaderBase r1(variant.value); r1.skipUntil<Chars<':'>>();
+	StringView r1(variant.value); r1.skipUntil<Chars<':'>>();
 	if (r1.is(':')) {
 		++ r1;
 	}
 
-	CharReaderBase r2(variant.value); r2.skipUntilString(" in ");
+	StringView r2(variant.value); r2.skipUntilString(" in ");
 	if (r2.is(" in ")) {
 		r2 += " in "_len;
 	}
@@ -192,7 +192,7 @@ void File::parseForeach(Chunk &variant) {
 }
 
 void File::parseSet(Chunk &variant) {
-	CharReaderBase r(variant.value);
+	StringView r(variant.value);
 	r.skipChars<Group<GroupId::WhiteSpace>>();
 	if (r.is('$')) {
 		++ r;
@@ -229,10 +229,10 @@ void File::runChunk(const Chunk &chunk, Exec &exec, Request &req) const {
 }
 
 template <char C>
-static void pushQuotedString(CharReaderBase &r, Request &req) {
+static void pushQuotedString(StringView &r, Request &req) {
 	++ r;
 	while (!r.empty()) {
-		auto str = r.readUntil<CharReaderBase::Chars<C, '\\'>>();
+		auto str = r.readUntil<StringView::Chars<C, '\\'>>();
 		if (r.is(C)) {
 			req << str;
 			++ r;
@@ -284,7 +284,7 @@ void File::runLoop(const String &value, const Expression &expr, const Vector<Chu
 		return;
 	}
 
-	CharReaderBase r(value);
+	StringView r(value);
 
 	String first;
 	String second;
@@ -353,7 +353,7 @@ void File::runLoop(const String &value, const Expression &expr, const Vector<Chu
 }
 
 void File::runSet(const String &value, const Expression &expr, Exec &exec) const {
-	CharReaderBase r(value);
+	StringView r(value);
 	r.skipChars<Group<GroupId::WhiteSpace>>();
 	if (r.is('$')) {
 		++ r;
@@ -384,7 +384,7 @@ void File::runTemplate(const Expression &expr, Exec &exec, Request &req) const {
 }
 
 void TemplateFileParser::parse(File &chunk, const char *str, size_t len) {
-	CharReaderBase r(str, len);
+	StringView r(str, len);
 	while (!r.empty()) {
 		read(chunk, r);
 	}
@@ -393,7 +393,7 @@ void TemplateFileParser::parse(File &chunk, const char *str, size_t len) {
 	}
 }
 
-void TemplateFileParser::read(File &chunk, CharReaderBase &r) {
+void TemplateFileParser::read(File &chunk, StringView &r) {
 	switch (state) {
 	case None:
 		readEmpty(chunk, r);
@@ -425,7 +425,7 @@ void TemplateFileParser::read(File &chunk, CharReaderBase &r) {
 	}
 }
 
-void TemplateFileParser::readEmpty(File &chunk, CharReaderBase &r) {
+void TemplateFileParser::readEmpty(File &chunk, StringView &r) {
 	auto tmp = r.readUntil<Chars<'{'>>();
 	pushString(tmp);
 	if (r.is('{')) {
@@ -434,7 +434,7 @@ void TemplateFileParser::readEmpty(File &chunk, CharReaderBase &r) {
 	}
 }
 
-void TemplateFileParser::readTemplate(File &chunk, CharReaderBase &r) {
+void TemplateFileParser::readTemplate(File &chunk, StringView &r) {
 	if (backslash) {
 		pushChar('\\');
 		pushChar(r.front());
@@ -480,7 +480,7 @@ void TemplateFileParser::readTemplate(File &chunk, CharReaderBase &r) {
 	}
 }
 
-void TemplateFileParser::pushString(const CharReaderBase &r) {
+void TemplateFileParser::pushString(const StringView &r) {
 	buffer.put((const uint8_t *)r.data(), r.size());
 }
 
@@ -490,9 +490,9 @@ void TemplateFileParser::pushChar(char c) {
 
 void TemplateFileParser::flush(File &chunk) {
 	if (state == CloseTemplate) {
-		chunk.push(CharReaderBase((const char *)buffer.data(), buffer.size()), File::ChunkType::Output);
+		chunk.push(StringView((const char *)buffer.data(), buffer.size()), File::ChunkType::Output);
 	} else {
-		chunk.push(CharReaderBase((const char *)buffer.data(), buffer.size()), File::ChunkType::Text);
+		chunk.push(StringView((const char *)buffer.data(), buffer.size()), File::ChunkType::Text);
 	}
 	buffer.clear();
 }

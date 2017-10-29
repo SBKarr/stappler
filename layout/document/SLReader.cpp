@@ -155,7 +155,7 @@ Reader::Tag Reader::onTag(StringReader &tag) {
 			}
 		} else if (paramName == "class") {
 			paramValue = parser::readHtmlTagParamValue(tag);
-			string::split(string::tolower(paramValue), " ", [&ret] (const CharReaderBase &r) {
+			string::split(string::tolower(paramValue), " ", [&ret] (const StringView &r) {
 				 ret.classes.emplace_back(r.str());
 			});
 		} else if (paramName == "x-refs" && ret.type == Tag::Block) {
@@ -399,7 +399,7 @@ static void Reader_resolveFontPaths(const String &root, HtmlPage::FontMap &fonts
 	}
 }
 
-bool Reader::readHtml(HtmlPage &page, const CharReaderBase &str, CssStrings &strings, MediaQueries &queries, MetaPairs &meta, CssMap &cssMap) {
+bool Reader::readHtml(HtmlPage &page, const StringView &str, CssStrings &strings, MediaQueries &queries, MetaPairs &meta, CssMap &cssMap) {
 	SP_RTREADER_LOG("read: %s", page.path.c_str());
 	Node &ret = page.root;
 
@@ -492,7 +492,7 @@ bool Reader::readHtml(HtmlPage &page, const CharReaderBase &str, CssStrings &str
 	return true;
 }
 
-style::CssData Reader::readCss(const String &path, const CharReaderBase &str, CssStrings &strings, MediaQueries &queries) {
+style::CssData Reader::readCss(const String &path, const StringView &str, CssStrings &strings, MediaQueries &queries) {
 	_path = path;
 	_cssStrings = &strings;
 	_mediaQueries = &queries;
@@ -512,7 +512,7 @@ void Reader::addCssString(CssStringId id, const String &str) {
 }
 
 void Reader::addCssString(const String &origStr) {
-	auto str = parser::resolveCssString(CharReaderBase(origStr));
+	auto str = parser::resolveCssString(StringView(origStr));
 	SP_RTREADER_LOG("css string %s", str.data());
 	CssStringId value = hash::hash32(str.data(), str.size());
 	_cssStrings->insert(pair(value, str.str()));

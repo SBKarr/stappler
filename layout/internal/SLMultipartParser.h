@@ -28,7 +28,7 @@ THE SOFTWARE.
 NS_LAYOUT_BEGIN
 
 struct MultipartParser {
-    using Reader = CharReaderBase;
+    using Reader = StringView;
 
 	struct Image {
 		uint16_t width;

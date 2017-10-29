@@ -152,7 +152,7 @@ public:
 
 	void addHyphenDict(CharGroupId id, const String &file);
 	Vector<uint8_t> makeWordHyphens(const char16_t *ptr, size_t len);
-	Vector<uint8_t> makeWordHyphens(const CharReaderUcs2 &);
+	Vector<uint8_t> makeWordHyphens(const WideStringView &);
 	void purgeHyphenDicts();
 
 protected:
@@ -227,7 +227,7 @@ protected:
 	bool readWithRange(RangeSpec &&, const TextParameters &s, const char16_t *str, size_t len, uint16_t front = 0, uint16_t back = 0);
 	bool readWithRange(RangeSpec &&, const TextParameters &s, uint16_t width, uint16_t height);
 
-	bool readChars(CharReaderUcs2 &r, const Vector<uint8_t> & = Vector<uint8_t>());
+	bool readChars(WideStringView &r, const Vector<uint8_t> & = Vector<uint8_t>());
 	void pushLineFiller(bool replaceLastChar = false);
 	bool pushChar(char16_t c);
 	bool pushSpace(bool wrap = true);

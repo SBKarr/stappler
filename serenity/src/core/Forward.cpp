@@ -42,7 +42,7 @@ using HostAsciiChars = chars::Compose<char, chars::CharGroup<char, CharGroupId::
 
 String toAscii(const String &source, bool validate) {
 	if (validate) {
-		CharReaderBase r(source);
+		StringView r(source);
 		r.skipChars<HostUnicodeChars>();
 		if (!r.empty()) {
 			return String();
@@ -65,7 +65,7 @@ String toAscii(const String &source, bool validate) {
 
 String toUnicode(const String &source, bool validate) {
 	if (validate) {
-		CharReaderBase r(source);
+		StringView r(source);
 		r.skipChars<HostAsciiChars>();
 		if (!r.empty()) {
 			return String();
@@ -97,7 +97,7 @@ bool validateIdentifier(const String &str) {
 		return false;
 	}
 
-	CharReaderBase r(str);
+	StringView r(str);
 	if (!r.is<chars::Compose<char, chars::CharGroup<char, CharGroupId::Alphanumeric>, chars::Chars<char, '_'>>>()) {
 		return false;
 	}
@@ -117,7 +117,7 @@ bool validateText(const String &str) {
 	}
 
 	// 8 9 10 12 13 - allowed
-	CharReaderBase r(str);
+	StringView r(str);
 	r.skipUntil<chars::Range<char, 0, 7>, chars::Range<char, 14, 31>, chars::Chars<char, 11>>();
 	if (!r.empty()) {
 		return false;
@@ -126,7 +126,7 @@ bool validateText(const String &str) {
 	return true;
 }
 
-static bool validateEmailQuotation(String &ret, CharReaderBase &r) {
+static bool validateEmailQuotation(String &ret, StringView &r) {
 	using namespace chars;
 
 	++ r;
@@ -174,7 +174,7 @@ bool validateEmail(String &str) {
 
 	using Whitespace =  CharGroup<char, CharGroupId::WhiteSpace>;
 
-	CharReaderBase r(str);
+	StringView r(str);
 	r.skipChars<Whitespace>();
 
 	if (r.is('(')) {
@@ -295,7 +295,7 @@ bool validateNumber(const String &str) {
 		return false;
 	}
 
-	CharReaderBase r(str);
+	StringView r(str);
 	r.skipChars<chars::Range<char, '0', '9'>>();
 	if (!r.empty()) {
 		return false;
@@ -309,7 +309,7 @@ bool validateHexadecimial(const String &str) {
 		return false;
 	}
 
-	CharReaderBase r(str);
+	StringView r(str);
 	r.skipChars<chars::CharGroup<char, CharGroupId::Hexadecimial>>();
 	if (!r.empty()) {
 		return false;
@@ -323,7 +323,7 @@ bool validateBase64(const String &str) {
 		return false;
 	}
 
-	CharReaderBase r(str);
+	StringView r(str);
 	r.skipChars<chars::CharGroup<char, CharGroupId::Base64>>();
 	if (!r.empty()) {
 		return false;

@@ -77,7 +77,7 @@ const InputConfig &InputParser::getConfig() const {
 	return config;
 }
 
-data::Value *InputParser::flushString(CharReaderBase &r, data::Value *current, VarState state) {
+data::Value *InputParser::flushString(StringView &r, data::Value *current, VarState state) {
 	return basicParser.flushString(r, current, state);
 }
 

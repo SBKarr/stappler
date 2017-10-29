@@ -32,8 +32,8 @@ NS_LAYOUT_BEGIN
 
 namespace style {
 
-static bool _readStyleValue(CharReaderBase &str, Metric &value, bool resolutionMetric = false, bool allowEmptyMetric = false) {
-	str.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+static bool _readStyleValue(StringView &str, Metric &value, bool resolutionMetric = false, bool allowEmptyMetric = false) {
+	str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 	if (!resolutionMetric && str.compare("auto")) {
 		str += 4;
 		value.metric = Metric::Units::Auto;
@@ -52,7 +52,7 @@ static bool _readStyleValue(CharReaderBase &str, Metric &value, bool resolutionM
 		return true;
 	}
 
-	str.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+	str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
 	if (!resolutionMetric) {
 		if (str.is('%')) {
@@ -143,29 +143,29 @@ static bool _readStyleValue(CharReaderBase &str, Metric &value, bool resolutionM
 	return false;
 }
 
-bool readStyleValue(const CharReaderBase &istr, Metric &value, bool resolutionMetric, bool allowEmptyMetric) {
-	CharReaderBase str(istr);
+bool readStyleValue(const StringView &istr, Metric &value, bool resolutionMetric, bool allowEmptyMetric) {
+	StringView str(istr);
 	return _readStyleValue(str, value, resolutionMetric, allowEmptyMetric);
 }
 
-CharReaderBase readStringContents(const String &prefix, const CharReaderBase &origStr, CssStringId &value) {
-	CharReaderBase str = parser::resolveCssString(origStr);
+StringView readStringContents(const String &prefix, const StringView &origStr, CssStringId &value) {
+	StringView str = parser::resolveCssString(origStr);
 	value = hash::hash32(str.data(), str.size());
 	return str;
 }
 
-bool readStringValue(const String &prefix, const CharReaderBase &origStr, CssStringId &value) {
+bool readStringValue(const String &prefix, const StringView &origStr, CssStringId &value) {
 	auto str = readStringContents(prefix, origStr, value);
 	return !str.empty();
 }
 
-bool splitValue(const CharReaderBase &istr, CharReaderBase &first, CharReaderBase &second) {
-	CharReaderBase str(istr);
-	str.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+bool splitValue(const StringView &istr, StringView &first, StringView &second) {
+	StringView str(istr);
+	str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
-	auto f = str.readUntil<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
-	str.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
-	auto s = str.readUntil<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+	auto f = str.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+	str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+	auto s = str.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
 	if (!f.empty() && !s.empty()) {
 		first = f;
@@ -176,8 +176,8 @@ bool splitValue(const CharReaderBase &istr, CharReaderBase &first, CharReaderBas
 	return false;
 }
 
-bool readAspectRatioValue(const CharReaderBase &istr, float &value) {
-	CharReaderBase str(istr);
+bool readAspectRatioValue(const StringView &istr, float &value) {
+	StringView str(istr);
 	float first, second;
 
 	first = str.readFloat();
@@ -188,10 +188,10 @@ bool readAspectRatioValue(const CharReaderBase &istr, float &value) {
 		return true;
 	}
 
-	str.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+	str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 	if (str.is('/')) {
 		++ str;
-		str.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+		str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		second = str.readFloat();
 		if (IsErrorValue(second)) {
 			return false;
@@ -204,8 +204,8 @@ bool readAspectRatioValue(const CharReaderBase &istr, float &value) {
 	return false;
 }
 
-bool readStyleMargin(const CharReaderBase &origStr, Metric &top, Metric &right, Metric &bottom, Metric &left) {
-	CharReaderBase str(origStr);
+bool readStyleMargin(const StringView &origStr, Metric &top, Metric &right, Metric &bottom, Metric &left) {
+	StringView str(origStr);
 	Metric values[4];
 	int count = 0;
 
@@ -216,7 +216,7 @@ bool readStyleMargin(const CharReaderBase &origStr, Metric &top, Metric &right, 
 		if (!_readStyleValue(str, values[count])) {
 			return false;
 		}
-		str.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+		str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		count ++;
 		if (count == 4) {
 			break;

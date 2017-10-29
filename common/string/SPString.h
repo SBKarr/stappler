@@ -488,6 +488,15 @@ inline auto toStringConcat(const Container &c, const Sep &s) -> StringType {
 	return stream.str();
 }
 
+inline bool operator > (const WideStringView &l, const WideStringView &r) { return string::compare(l, r) > 0; }
+inline bool operator >= (const WideStringView &l, const WideStringView &r) { return string::compare(l, r) >= 0; }
+inline bool operator < (const WideStringView &l, const WideStringView &r) { return string::compare(l, r) < 0; }
+inline bool operator <= (const WideStringView &l, const WideStringView &r) { return string::compare(l, r) <= 0; }
+inline bool operator > (const StringView &l, const StringView &r) { return string::compare(l, r) > 0; }
+inline bool operator >= (const StringView &l, const StringView &r) { return string::compare(l, r) >= 0; }
+inline bool operator < (const StringView &l, const StringView &r) { return string::compare(l, r) < 0; }
+inline bool operator <= (const StringView &l, const StringView &r) { return string::compare(l, r) <= 0; }
+
 inline bool operator > (const typename memory::StandartInterface::StringType &l, const StringView &r) { return string::compare(l, r) > 0; }
 inline bool operator >= (const typename memory::StandartInterface::StringType &l, const StringView &r) { return string::compare(l, r) >= 0; }
 inline bool operator < (const typename memory::StandartInterface::StringType &l, const StringView &r) { return string::compare(l, r) < 0; }

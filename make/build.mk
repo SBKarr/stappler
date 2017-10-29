@@ -41,6 +41,9 @@ endif
 # cocos2d deps
 -include $(GLOBAL_ROOT)/$(COCOS2D_ROOT)/cocos2d.mk
 
+# MMD
+-include $(GLOBAL_ROOT)/$(MMD_ROOT)/MMD.mk
+
 # libstappler + libcocos2d
 include $(GLOBAL_ROOT)/make/stappler.mk
 

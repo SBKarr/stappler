@@ -76,13 +76,13 @@ public:
 		auto ruleIt = _numRules.find(_locale);
 		if (ruleIt == _numRules.end()) {
 			auto fmt = string(str);
-			CharReaderBase r(fmt);
-			return r.readUntil<CharReaderBase::Chars<':'>>().str();
+			StringView r(fmt);
+			return r.readUntil<StringView::Chars<':'>>().str();
 		} else {
 			uint8_t numEq = ruleIt->second(num);
 			auto fmt = string(str);
-			CharReaderBase r(fmt);
-			CharReaderBase def = r.readUntil<CharReaderBase::Chars<':'>>();
+			StringView r(fmt);
+			StringView def = r.readUntil<StringView::Chars<':'>>();
 			if (r.empty() || numEq == 0) {
 				return def.str();
 			}
@@ -92,7 +92,7 @@ public:
 					++ r;
 				}
 
-				CharReaderBase res = r.readUntil<CharReaderBase::Chars<':'>>();
+				StringView res = r.readUntil<StringView::Chars<':'>>();
 				if (numEq == 1) {
 					return res.str();
 				} else {
@@ -130,16 +130,16 @@ public:
 			return false;
 		}
 
-		CharReaderUcs2 r(str, len);
+		WideStringView r(str, len);
 		if (r.is(u"@Locale:")) { // raw locale string
 			return true;
 		} else {
-			r.skipUntil<CharReaderUcs2::Chars<'%'>>();
+			r.skipUntil<WideStringView::Chars<'%'>>();
 			if (r.is('%')) {
 				++ r;
 				r.skipChars<
-					CharReaderUcs2::CharGroup<CharGroupId::Alphanumeric>,
-					CharReaderUcs2::Chars<':', '.', '-', '_', '[', ']', '+'>>();
+					WideStringView::CharGroup<CharGroupId::Alphanumeric>,
+					WideStringView::Chars<':', '.', '-', '_', '[', ']', '+'>>();
 				if (r.is('%')) {
 					return true;
 				}
@@ -150,42 +150,42 @@ public:
 	}
 
 	std::u16string resolveLocaleTags(const char16_t *str, size_t len) {
-		CharReaderUcs2 r(str, len);
+		WideStringView r(str, len);
 		if (r.is(u"@Locale:")) { // raw locale string
 			auto name = string::toUtf8(std::u16string(str + "@Locale:"_len, len - "@Locale:"_len));
 			return string::toUtf16(string(name));
 		} else {
 			std::u16string ret; ret.reserve(len);
 			while (!r.empty()) {
-				auto tmp = r.readUntil<CharReaderUcs2::Chars<'%'>>();
+				auto tmp = r.readUntil<WideStringView::Chars<'%'>>();
 				ret.append(tmp.data(), tmp.size());
 				if (r.is('%')) {
 					++ r;
 					auto token = r.readChars<
-						CharReaderUcs2::CharGroup<CharGroupId::Alphanumeric>,
-						CharReaderUcs2::Chars<':', '.', '-', '_', '[', ']', '+'>>();
+						WideStringView::CharGroup<CharGroupId::Alphanumeric>,
+						WideStringView::Chars<':', '.', '-', '_', '[', ']', '+'>>();
 					if (r.is('%')) {
 						++ r;
 
 						std::u16string replacement;
 						if (token.is(u"Num:")) {
-							CharReaderUcs2 splitMaster(token);
-							CharReaderUcs2 num;
+							WideStringView splitMaster(token);
+							WideStringView num;
 							while (!splitMaster.empty()) {
-								num = splitMaster.readUntil<CharReaderUcs2::Chars<':'>>();
+								num = splitMaster.readUntil<WideStringView::Chars<':'>>();
 								if (splitMaster.is(':')) {
 									++ splitMaster;
 								}
 							}
 
 							if (!num.empty()) {
-								CharReaderUcs2 validate(num);
+								WideStringView validate(num);
 								if (validate.is('-')) {
 									++ validate;
 								}
-								validate.skipChars<CharReaderUcs2::CharGroup<CharGroupId::Numbers>>();
+								validate.skipChars<WideStringView::CharGroup<CharGroupId::Numbers>>();
 								if (validate.empty()) {
-									CharReaderUcs2 vtoken(token.data(), token.size() - num.size() - 1);
+									WideStringView vtoken(token.data(), token.size() - num.size() - 1);
 									replacement = string::toUtf16(numeric(string::toUtf8(vtoken.str()), num.readInteger()));
 								}
 							}

@@ -184,7 +184,7 @@ size_t UrlencodeParser::read(const uint8_t * s, size_t count) {
 	return count;
 }
 
-data::Value *UrlencodeParser::flushString(CharReaderBase &r, data::Value *cur, VarState varState) {
+data::Value *UrlencodeParser::flushString(StringView &r, data::Value *cur, VarState varState) {
 	String str;
 #if SPAPR
 	str.assign_weak(r.data(), r.size());

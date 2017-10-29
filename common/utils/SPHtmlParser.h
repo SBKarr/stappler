@@ -67,7 +67,7 @@ struct Reader {
 template <typename StringReader>
 struct Tag;
 
-template <typename ReaderType, typename StringReader = CharReaderUtf8, typename TagType = html::Tag<StringReader>>
+template <typename ReaderType, typename StringReader = StringViewUtf8, typename TagType = html::Tag<StringReader>>
 void parse(ReaderType &r, const StringReader &s);
 
 InvokerCallTest_MakeInvoker(Html, onBeginTag);
@@ -138,7 +138,7 @@ struct Tag : public ReaderClassBase<char16_t> {
 	bool closable = true;
 };
 
-template <typename ReaderType, typename __StringReader = CharReaderUtf8, typename TagType = Tag<__StringReader>, typename Traits = ParserTraits<ReaderType>>
+template <typename ReaderType, typename __StringReader = StringViewUtf8, typename TagType = Tag<__StringReader>, typename Traits = ParserTraits<ReaderType>>
 struct Parser {
 	using StringReader = __StringReader;
 	using CharType = typename StringReader::MatchCharType;

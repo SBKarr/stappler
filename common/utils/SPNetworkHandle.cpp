@@ -783,12 +783,12 @@ size_t NetworkHandle::writeData(char *data, size_t size) {
 }
 
 size_t NetworkHandle::writeHeaders(const char *data, size_t size) {
-	CharReaderBase reader(data, size);
+	StringView reader(data, size);
 
 	if (!reader.is("\r\n")) {
 		if (_method != Method::Smtp) {
 			if (!reader.is("HTTP/")) {
-				auto name = reader.readUntil<CharReaderBase::Chars<':'>>();
+				auto name = reader.readUntil<StringView::Chars<':'>>();
 				reader ++;
 
 				auto nameStr = name.str(); string::trim(nameStr); string::tolower(nameStr);

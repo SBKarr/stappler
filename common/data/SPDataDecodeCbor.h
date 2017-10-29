@@ -229,34 +229,34 @@ void Decoder<Interface>::decodeMap(uint8_t type, ValueType &ret) {
 	while (!r.empty() && size > 0 && !(majorType == MajorTypeEncoded::Simple && type == toInt(Flags::UndefinedLength))) {
 		bool skip = false;
 		StringType parsedKey;
-		CharReaderBase key;
+		StringView key;
 
 		switch(majorType) {
 		case MajorTypeEncoded::Unsigned:
 			parsedKey = string::ToStringTraits<Interface>::toString(_readIntValue(r, type));
-			key = CharReaderBase(parsedKey);
+			key = StringView(parsedKey);
 			break;
 		case MajorTypeEncoded::Negative:
 			parsedKey = string::ToStringTraits<Interface>::toString((int64_t)(-1 - _readIntValue(r, type)));
-			key = CharReaderBase(parsedKey);
+			key = StringView(parsedKey);
 			break;
 		case MajorTypeEncoded::ByteString:
 			if (type == toInt(Flags::UndefinedLength)) {
 				decodeUndefinedLength(parsedKey, MajorTypeEncoded::ByteString);
-				key = CharReaderBase(parsedKey);
+				key = StringView(parsedKey);
 			} else {
 				auto size = size_t(_readIntValue(r, type));
-				key = CharReaderBase((char *)r.data(), size);
+				key = StringView((char *)r.data(), size);
 				r += size;
 			}
 			break;
 		case MajorTypeEncoded::CharString:
 			if (type == toInt(Flags::UndefinedLength)) {
 				decodeUndefinedLength(parsedKey, MajorTypeEncoded::CharString);
-				key = CharReaderBase(parsedKey);
+				key = StringView(parsedKey);
 			} else {
 				auto size = size_t(_readIntValue(r, type));
-				key = CharReaderBase((char *)r.data(), size);
+				key = StringView((char *)r.data(), size);
 				r += size;
 			}
 			break;

@@ -38,14 +38,14 @@ public:
 	static bool readFile(Path *p, const String &str) {
 		if (!str.empty()) {
 			auto content = filesystem::readTextFile(str);
-			CharReaderBase r(content);
+			StringView r(content);
 			r.skipUntilString("<path ");
 			if (!r.is("<path ")) {
 				return false;
 			}
 
 			r.skipString("<path ");
-			CharReaderBase pathContent = r.readUntil<Chars<'>'>>();
+			StringView pathContent = r.readUntil<Chars<'>'>>();
 			pathContent.skipUntilString("d=\"");
 			if (r.is("d=\"")) {
 				r.skipString("d=\"");
@@ -56,10 +56,10 @@ public:
 	}
 
 	static bool readPath(Path *p, const String &str) {
-		return readPath(p, CharReaderBase(str));
+		return readPath(p, StringView(str));
 	}
 
-	static bool readPath(Path *p, const CharReaderBase &r) {
+	static bool readPath(Path *p, const StringView &r) {
 		if (r.size() > 0) {
 			SVGPathReader reader(p, r);
 			return reader.parse();
@@ -502,7 +502,7 @@ protected:
 		}
 	}
 
-	SVGPathReader(Path *p, const CharReaderBase &r)
+	SVGPathReader(Path *p, const StringView &r)
 	: path(p), reader(r) { }
 
 	float _x = 0.0f, _y = 0.0f;
@@ -513,7 +513,7 @@ protected:
 	float _sx = 0.0f; float _sy = 0.0f;
 	bool _pathStarted = false;
 	Path *path = nullptr;
-	CharReaderBase reader;
+	StringView reader;
 };
 
 Path::Path() { }
@@ -526,14 +526,7 @@ bool Path::init() {
 	return true;
 }
 
-bool Path::init(const String &str) {
-	if (!SVGPathReader::readPath(this, str)) {
-		return false;
-	}
-	return true;
-}
-
-bool Path::init(const CharReaderBase &str) {
+bool Path::init(const StringView &str) {
 	if (!SVGPathReader::readPath(this, str)) {
 		return false;
 	}

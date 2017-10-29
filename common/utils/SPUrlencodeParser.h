@@ -31,7 +31,7 @@ NS_SP_BEGIN
 
 class UrlencodeParser : public AllocBase {
 public:
-	using Reader = CharReaderBase;
+	using Reader = StringView;
 
 	enum class Literal {
 		None,
@@ -54,7 +54,7 @@ public:
 
 	size_t read(const uint8_t * s, size_t count);
 
-	data::Value *flushString(CharReaderBase &r, data::Value *, VarState state);
+	data::Value *flushString(StringView &r, data::Value *, VarState state);
 
 	data::Value & data() { return *target; }
 	const data::Value & data() const { return *target; }

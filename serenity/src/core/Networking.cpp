@@ -86,7 +86,7 @@ Mail::Mail(const String &url, const String &user, const String &passwd) {
 }
 
 bool Mail::send(apr::ostringstream &stream) {
-	CharReaderBase r(stream.data(), stream.size());
+	StringView r(stream.data(), stream.size());
 	setSendCallback([&] (char *buf, size_t size) -> size_t {
 		auto writeSize = std::min(size, r.size());
 		memcpy(buf, r.data(), writeSize);

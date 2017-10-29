@@ -95,7 +95,7 @@ static void make_encode(const CoderSource &data, const Callback &cb) {
 
 template <typename Callback>
 static void make_decode(const CoderSource &data, const Callback &cb) {
-	CharReaderBase inputBuffer((char *)data.data.data(), data.data.size());
+	StringView inputBuffer((char *)data.data.data(), data.data.size());
 	auto length = inputBuffer.size();
 
 	size_t i = 0;

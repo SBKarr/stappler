@@ -33,7 +33,7 @@ NS_LAYOUT_BEGIN
 namespace table {
 
 // internal color table function,
-bool getColor(const CharReaderBase &str, Color3B &color);
+bool getColor(const StringView &str, Color3B &color);
 
 }
 
@@ -83,9 +83,9 @@ static void setHslColor(Color3B &color, float h, float sl, float l) {
 	color.b = (uint8_t)(b * 255.0f);
 }
 
-static bool readColorDigits(const CharReaderBase &origStr, float *b, int num, bool isRgb) {
-	CharReaderBase str(origStr);
-	str.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+static bool readColorDigits(const StringView &origStr, float *b, int num, bool isRgb) {
+	StringView str(origStr);
+	str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 	if (!str.is('(')) {
 		return false;
 	}
@@ -116,7 +116,7 @@ static bool readColorDigits(const CharReaderBase &origStr, float *b, int num, bo
 			b[i] = b[i] * 255.0f; // translate alpha to (0-255)
 		}
 
-		str.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+		str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
 		if (str.empty()) {
 			return false;
@@ -131,7 +131,7 @@ static bool readColorDigits(const CharReaderBase &origStr, float *b, int num, bo
 			} else if ((!isRgb && i == 0) || i == 3) {
 				return false; // for H in HSL and any alpha percent values is denied
 			}
-			str.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>>();
+			str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		} else if (!isRgb && (i == 1 || i == 2) && !str.is('%')) {
 			return false; // for S and L in HSL only percent values allowed
 		}
@@ -140,7 +140,7 @@ static bool readColorDigits(const CharReaderBase &origStr, float *b, int num, bo
 			return false;
 		}
 
-		str.skipChars<CharReaderBase::CharGroup<CharGroupId::WhiteSpace>, CharReaderBase::Chars<','>>();
+		str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>, StringView::Chars<','>>();
 
 		if (str.is(')') && i == num - 1) {
 			return true;
@@ -150,7 +150,7 @@ static bool readColorDigits(const CharReaderBase &origStr, float *b, int num, bo
 	return true;
 }
 
-static bool readRgbaColor(const CharReaderBase &origStr, Color3B &color, uint8_t &opacity) {
+static bool readRgbaColor(const StringView &origStr, Color3B &color, uint8_t &opacity) {
 	float b[4] = { 0.0f };
 	if (readColorDigits(origStr, b, 4, true)) {
 		color.r = (uint8_t)b[0];
@@ -162,7 +162,7 @@ static bool readRgbaColor(const CharReaderBase &origStr, Color3B &color, uint8_t
 	return false;
 }
 
-static bool readRgbColor(const CharReaderBase &origStr, Color3B &color) {
+static bool readRgbColor(const StringView &origStr, Color3B &color) {
 	float b[3] = { 0.0f };
 	if (readColorDigits(origStr, b, 3, true)) {
 		color.r = (uint8_t)b[0];
@@ -173,7 +173,7 @@ static bool readRgbColor(const CharReaderBase &origStr, Color3B &color) {
 	return false;
 }
 
-static bool readHslaColor(const CharReaderBase &origStr, Color3B &color, uint8_t &opacity) {
+static bool readHslaColor(const StringView &origStr, Color3B &color, uint8_t &opacity) {
 	float b[4] = { 0.0f };
 	if (readColorDigits(origStr, b, 4, false)) {
 		setHslColor(color, b[0], b[1], b[2]);
@@ -183,7 +183,7 @@ static bool readHslaColor(const CharReaderBase &origStr, Color3B &color, uint8_t
 	return false;
 }
 
-static bool readHslColor(const CharReaderBase &origStr, Color3B &color) {
+static bool readHslColor(const StringView &origStr, Color3B &color) {
 	float b[3] = { 0.0f };
 	if (readColorDigits(origStr, b, 3, false)) {
 		setHslColor(color, b[0], b[1], b[2]);
@@ -192,8 +192,8 @@ static bool readHslColor(const CharReaderBase &origStr, Color3B &color) {
 	return false;
 }
 
-static bool readHashColor(const CharReaderBase &origStr, Color3B &color) {
-	CharReaderBase str(origStr);
+static bool readHashColor(const StringView &origStr, Color3B &color) {
+	StringView str(origStr);
 	++ str;
 	if (str.size() == 6) {
 		color.r = base16::hexToChar(str[0], str[1]);
@@ -210,7 +210,7 @@ static bool readHashColor(const CharReaderBase &origStr, Color3B &color) {
 	return true;
 }
 
-static bool readNamedColor(const CharReaderBase &origStr, Color3B &color) {
+static bool readNamedColor(const StringView &origStr, Color3B &color) {
 	if (origStr.compare("white")) {
 		color = Color3B::WHITE;
 	} else if (origStr.compare("silver")) {
@@ -251,26 +251,26 @@ static bool readNamedColor(const CharReaderBase &origStr, Color3B &color) {
 	return true;
 }
 
-bool readColor(const CharReaderBase &str, Color4B &color4) {
+bool readColor(const StringView &str, Color4B &color4) {
 	Color3B color;
 	uint8_t opacity = 0;
 	if (str == "rgba") {
-		if (readRgbaColor(CharReaderBase(str.data() + 4, str.size() - 4), color, opacity)) {
+		if (readRgbaColor(StringView(str.data() + 4, str.size() - 4), color, opacity)) {
 			color4 = Color4B(color, opacity);
 			return true;
 		}
 	} else if (str == "hsla") {
-		if (readHslaColor(CharReaderBase(str.data() + 4, str.size() - 4), color, opacity)) {
+		if (readHslaColor(StringView(str.data() + 4, str.size() - 4), color, opacity)) {
 			color4 = Color4B(color, opacity);
 			return true;
 		}
 	} else if (str == "rgb") {
-		if (readRgbColor(CharReaderBase(str.data() + 3, str.size() - 3), color)) {
+		if (readRgbColor(StringView(str.data() + 3, str.size() - 3), color)) {
 			color4 = Color4B(color);
 			return true;
 		}
 	} else if (str == "hsl") {
-		if (readHslColor(CharReaderBase(str.data() + 3, str.size() - 3), color)) {
+		if (readHslColor(StringView(str.data() + 3, str.size() - 3), color)) {
 			color4 = Color4B(color);
 			return true;
 		}
@@ -288,13 +288,13 @@ bool readColor(const CharReaderBase &str, Color4B &color4) {
 	return false;
 }
 
-bool readColor(const CharReaderBase &str, Color3B &color) {
+bool readColor(const StringView &str, Color3B &color) {
 	if (str == "rgb") {
-		if (readRgbColor(CharReaderBase(str.data() + 3, str.size() - 3), color)) {
+		if (readRgbColor(StringView(str.data() + 3, str.size() - 3), color)) {
 			return true;
 		}
 	} else if (str == "hsl") {
-		if (readHslColor(CharReaderBase(str.data() + 3, str.size() - 3), color)) {
+		if (readHslColor(StringView(str.data() + 3, str.size() - 3), color)) {
 			return true;
 		}
 	} else if (str.is('#')) {

@@ -43,10 +43,10 @@ using HtmlIdentifier8 = chars::Compose<char,
 >;
 
 
-template <> CharReaderUtf8 Tag_readName<CharReaderUtf8>(CharReaderUtf8 &is, bool keepClean) {
-	CharReaderUtf8 s = is;
-	s.skipUntil<HtmlIdentifier16, CharReaderUtf8::MatchChars<'>', '?'>>();
-	CharReaderUtf8 name(s.readChars<HtmlIdentifier16, CharReaderUtf8::MatchChars<'?'>>());
+template <> StringViewUtf8 Tag_readName<StringViewUtf8>(StringViewUtf8 &is, bool keepClean) {
+	StringViewUtf8 s = is;
+	s.skipUntil<HtmlIdentifier16, StringViewUtf8::MatchChars<'>', '?'>>();
+	StringViewUtf8 name(s.readChars<HtmlIdentifier16, StringViewUtf8::MatchChars<'?'>>());
 	if (!keepClean) {
 		string::tolower_buf((char *)name.data(), name.size());
 	}
@@ -54,25 +54,25 @@ template <> CharReaderUtf8 Tag_readName<CharReaderUtf8>(CharReaderUtf8 &is, bool
 		name.set(name.data(), name.size() - 1);
 		is += (is.size() - s.size() - 1);
 	} else {
-		s.skipUntil<HtmlIdentifier16, CharReaderUtf8::MatchChars<'>'>>();
+		s.skipUntil<HtmlIdentifier16, StringViewUtf8::MatchChars<'>'>>();
 		is = s;
 	}
 	return name;
 }
 
-template <> CharReaderUtf8 Tag_readAttrName<CharReaderUtf8>(CharReaderUtf8 &s, bool keepClean) {
+template <> StringViewUtf8 Tag_readAttrName<StringViewUtf8>(StringViewUtf8 &s, bool keepClean) {
 	s.skipUntil<HtmlIdentifier16>();
-	CharReaderUtf8 name(s.readChars<HtmlIdentifier16>());
+	StringViewUtf8 name(s.readChars<HtmlIdentifier16>());
 	if (!keepClean) {
 		string::tolower_buf((char *)name.data(), name.size());
 	}
 	return name;
 }
 
-template <> CharReaderUtf8 Tag_readAttrValue<CharReaderUtf8>(CharReaderUtf8 &s, bool keepClean) {
+template <> StringViewUtf8 Tag_readAttrValue<StringViewUtf8>(StringViewUtf8 &s, bool keepClean) {
 	if (!s.is('=')) {
 		s.skipUntil<HtmlIdentifier16>();
-		return CharReaderUtf8();
+		return StringViewUtf8();
 	}
 
 	s ++;
@@ -80,23 +80,23 @@ template <> CharReaderUtf8 Tag_readAttrValue<CharReaderUtf8>(CharReaderUtf8 &s, 
 	if (s.is('"') || s.is('\'')) {
 		quoted = s[0];
 		s ++;
-		CharReaderUtf8 tmp = s;
+		StringViewUtf8 tmp = s;
 		while (!s.empty() && !s.is(quoted)) {
 			if (quoted == '"') {
-				s.skipUntil<CharReaderUtf8::MatchChars<u'\\', u'"'>>();
+				s.skipUntil<StringViewUtf8::MatchChars<u'\\', u'"'>>();
 			} else {
-				s.skipUntil<CharReaderUtf8::MatchChars<u'\\', u'\''>>();
+				s.skipUntil<StringViewUtf8::MatchChars<u'\\', u'\''>>();
 			}
 			if (s.is('\\')) {
 				s += 2;
 			}
 		}
 
-		CharReaderUtf8 ret(tmp.data(), tmp.size() - s.size());
+		StringViewUtf8 ret(tmp.data(), tmp.size() - s.size());
 		if (s.is(quoted)) {
 			s ++;
 		}
-		s.skipUntil<HtmlIdentifier16, CharReaderUtf8::MatchChars<'>'>>();
+		s.skipUntil<HtmlIdentifier16, StringViewUtf8::MatchChars<'>'>>();
 		return ret;
 	}
 
@@ -104,10 +104,10 @@ template <> CharReaderUtf8 Tag_readAttrValue<CharReaderUtf8>(CharReaderUtf8 &s, 
 }
 
 
-template <> CharReaderBase Tag_readName<CharReaderBase>(CharReaderBase &is, bool keepClean) {
-	CharReaderBase s = is;
-	s.skipUntil<HtmlIdentifier8, CharReaderBase::MatchChars<'>', '?'>>();
-	CharReaderBase name(s.readChars<HtmlIdentifier8, CharReaderBase::MatchChars<'?'>>());
+template <> StringView Tag_readName<StringView>(StringView &is, bool keepClean) {
+	StringView s = is;
+	s.skipUntil<HtmlIdentifier8, StringView::MatchChars<'>', '?'>>();
+	StringView name(s.readChars<HtmlIdentifier8, StringView::MatchChars<'?'>>());
 	if (!keepClean) {
 		string::tolower_buf((char *)name.data(), name.size());
 	}
@@ -115,25 +115,25 @@ template <> CharReaderBase Tag_readName<CharReaderBase>(CharReaderBase &is, bool
 		name.set(name.data(), name.size() - 1);
 		is += (is.size() - s.size() - 1);
 	} else {
-		s.skipUntil<HtmlIdentifier8, CharReaderBase::MatchChars<'>'>>();
+		s.skipUntil<HtmlIdentifier8, StringView::MatchChars<'>'>>();
 		is = s;
 	}
 	return name;
 }
 
-template <> CharReaderBase Tag_readAttrName<CharReaderBase>(CharReaderBase &s, bool keepClean) {
+template <> StringView Tag_readAttrName<StringView>(StringView &s, bool keepClean) {
 	s.skipUntil<HtmlIdentifier8>();
-	CharReaderBase name(s.readChars<HtmlIdentifier8>());
+	StringView name(s.readChars<HtmlIdentifier8>());
 	if (!keepClean) {
 		string::tolower_buf((char *)name.data(), name.size());
 	}
 	return name;
 }
 
-template <> CharReaderBase Tag_readAttrValue<CharReaderBase>(CharReaderBase &s, bool keepClean) {
+template <> StringView Tag_readAttrValue<StringView>(StringView &s, bool keepClean) {
 	if (!s.is('=')) {
 		s.skipUntil<HtmlIdentifier8>();
-		return CharReaderBase();
+		return StringView();
 	}
 
 	s ++;
@@ -141,23 +141,23 @@ template <> CharReaderBase Tag_readAttrValue<CharReaderBase>(CharReaderBase &s, 
 	if (s.is('"') || s.is('\'')) {
 		quoted = s[0];
 		s ++;
-		CharReaderBase tmp = s;
+		StringView tmp = s;
 		while (!s.empty() && !s.is(quoted)) {
 			if (quoted == '"') {
-				s.skipUntil<CharReaderBase::MatchChars<'\\', '"'>>();
+				s.skipUntil<StringView::MatchChars<'\\', '"'>>();
 			} else {
-				s.skipUntil<CharReaderBase::MatchChars<'\\', '\''>>();
+				s.skipUntil<StringView::MatchChars<'\\', '\''>>();
 			}
 			if (s.is('\\')) {
 				s += 2;
 			}
 		}
 
-		CharReaderBase ret(tmp.data(), tmp.size() - s.size());
+		StringView ret(tmp.data(), tmp.size() - s.size());
 		if (s.is(quoted)) {
 			s ++;
 		}
-		s.skipUntil<HtmlIdentifier8, CharReaderBase::MatchChars<'>'>>();
+		s.skipUntil<HtmlIdentifier8, StringView::MatchChars<'>'>>();
 		return ret;
 	}
 
@@ -165,10 +165,10 @@ template <> CharReaderBase Tag_readAttrValue<CharReaderBase>(CharReaderBase &s, 
 }
 
 
-template <> CharReaderUcs2 Tag_readName<CharReaderUcs2>(CharReaderUcs2 &is, bool keepClean) {
-	CharReaderUcs2 s = is;
-	s.skipUntil<HtmlIdentifier16, CharReaderUcs2::MatchChars<u'>', u'?'>>();
-	CharReaderUcs2 name(s.readChars<HtmlIdentifier16, CharReaderUcs2::MatchChars<u'?'>>());
+template <> WideStringView Tag_readName<WideStringView>(WideStringView &is, bool keepClean) {
+	WideStringView s = is;
+	s.skipUntil<HtmlIdentifier16, WideStringView::MatchChars<u'>', u'?'>>();
+	WideStringView name(s.readChars<HtmlIdentifier16, WideStringView::MatchChars<u'?'>>());
 	if (!keepClean) {
 		string::tolower_buf((char *)name.data(), name.size());
 	}
@@ -176,25 +176,25 @@ template <> CharReaderUcs2 Tag_readName<CharReaderUcs2>(CharReaderUcs2 &is, bool
 		name.set(name.data(), name.size() - 1);
 		is += (is.size() - s.size() - 1);
 	} else {
-		s.skipUntil<HtmlIdentifier16, CharReaderUcs2::MatchChars<u'>'>>();
+		s.skipUntil<HtmlIdentifier16, WideStringView::MatchChars<u'>'>>();
 		is = s;
 	}
 	return name;
 }
 
-template <> CharReaderUcs2 Tag_readAttrName<CharReaderUcs2>(CharReaderUcs2 &s, bool keepClean) {
+template <> WideStringView Tag_readAttrName<WideStringView>(WideStringView &s, bool keepClean) {
 	s.skipUntil<HtmlIdentifier16>();
-	CharReaderUcs2 name(s.readChars<HtmlIdentifier16>());
+	WideStringView name(s.readChars<HtmlIdentifier16>());
 	if (!keepClean) {
 		string::tolower_buf((char *)name.data(), name.size());
 	}
 	return name;
 }
 
-template <> CharReaderUcs2 Tag_readAttrValue<CharReaderUcs2>(CharReaderUcs2 &s, bool keepClean) {
+template <> WideStringView Tag_readAttrValue<WideStringView>(WideStringView &s, bool keepClean) {
 	if (!s.is('=')) {
 		s.skipUntil<HtmlIdentifier16>();
-		return CharReaderUcs2();
+		return WideStringView();
 	}
 
 	s ++;
@@ -202,23 +202,23 @@ template <> CharReaderUcs2 Tag_readAttrValue<CharReaderUcs2>(CharReaderUcs2 &s, 
 	if (s.is('"') || s.is('\'')) {
 		quoted = s[0];
 		s ++;
-		CharReaderUcs2 tmp = s;
+		WideStringView tmp = s;
 		while (!s.empty() && !s.is(quoted)) {
 			if (quoted == '"') {
-				s.skipUntil<CharReaderUcs2::MatchChars<u'\\', u'"'>>();
+				s.skipUntil<WideStringView::MatchChars<u'\\', u'"'>>();
 			} else {
-				s.skipUntil<CharReaderUcs2::MatchChars<u'\\', u'\''>>();
+				s.skipUntil<WideStringView::MatchChars<u'\\', u'\''>>();
 			}
 			if (s.is('\\')) {
 				s += 2;
 			}
 		}
 
-		CharReaderUcs2 ret(tmp.data(), tmp.size() - s.size());
+		WideStringView ret(tmp.data(), tmp.size() - s.size());
 		if (s.is(quoted)) {
 			s ++;
 		}
-		s.skipUntil<HtmlIdentifier16, CharReaderUcs2::MatchChars<u'>'>>();
+		s.skipUntil<HtmlIdentifier16, WideStringView::MatchChars<u'>'>>();
 		return ret;
 	}
 

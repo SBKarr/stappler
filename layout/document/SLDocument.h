@@ -107,8 +107,8 @@ public:
 protected:
 	Bytes readData(size_t offset, size_t len);
 
-	virtual void processCss(const String &, const CharReaderBase &);
-	virtual void processHtml(const String &, const CharReaderBase &, bool linear = true);
+	virtual void processCss(const String &, const StringView &);
+	virtual void processHtml(const String &, const StringView &, bool linear = true);
 	virtual void processMeta(HtmlPage &c, const Vector<Pair<String, String>> &);
 	void updateNodes();
 

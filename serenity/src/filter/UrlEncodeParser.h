@@ -30,7 +30,7 @@ NS_SA_BEGIN
 
 class UrlEncodeParser : public InputParser {
 public:
-	using Reader = CharReaderBase;
+	using Reader = StringView;
 
 	UrlEncodeParser(const InputConfig &, size_t);
 	virtual ~UrlEncodeParser();

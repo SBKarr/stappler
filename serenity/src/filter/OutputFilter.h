@@ -30,7 +30,7 @@ NS_SA_BEGIN
 
 class OutputFilter : public AllocPool {
 public:
-	using Reader = CharReaderBase;
+	using Reader = StringView;
 
 	static void filterRegister();
 	static void insert(const Request &);

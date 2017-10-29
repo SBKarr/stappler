@@ -58,7 +58,7 @@ void Exec::clear(const String &name) {
 	_variables.erase(name);
 }
 
-const data::Value * Exec::selectDataValue(const data::Value &val, CharReaderBase &r) {
+const data::Value * Exec::selectDataValue(const data::Value &val, StringView &r) {
 	using namespace chars;
 	if (r.empty()) {
 		return &val;
@@ -88,8 +88,8 @@ const data::Value * Exec::selectDataValue(const data::Value &val, CharReaderBase
 	return nullptr;
 }
 
-Exec::Variable Exec::getVariable(const CharReaderBase &ir) {
-	CharReaderBase r(ir);
+Exec::Variable Exec::getVariable(const StringView &ir) {
+	StringView r(ir);
 	auto tmp = r.readChars<Group<GroupId::Alphanumeric>, Chars<'_'>>();
 	auto name = String::make_weak(tmp.data(), tmp.size());
 	auto it = _variables.find(name);
@@ -168,7 +168,7 @@ Exec::Variable Exec::execNode(const Expression::Node *node, Expression::Op op) {
 
 	if (node->right && node->left) {
 		if (node->op == Expression::Dot || node->op == Expression::Colon || node->op == Expression::Sharp) {
-			Vector<CharReaderBase> path;
+			Vector<StringView> path;
 			execPathNode(path, node);
 			return execPath(path);
 		} else {
@@ -203,32 +203,32 @@ static const char *s_sharp_char = "#";
 
 void Exec::execPathNode(ReaderVec &path, const Expression::Node *node) {
 	if (!node->value.empty() || node->op == Expression::NoOp) {
-		path.push_back(CharReaderBase(node->value));
+		path.push_back(StringView(node->value));
 		return;
 	}
 
 	if (node->op == Expression::Dot || node->op == Expression::Colon || node->op == Expression::Sharp) {
 		execPathNode(path, node->left);
 		switch(node->op) {
-		case Expression::Dot: path.push_back(CharReaderBase(s_dot_char, 1)); break;
-		case Expression::Colon: path.push_back(CharReaderBase(s_color_char, 1)); break;
-		case Expression::Sharp: path.push_back(CharReaderBase(s_sharp_char, 1)); break;
+		case Expression::Dot: path.push_back(StringView(s_dot_char, 1)); break;
+		case Expression::Colon: path.push_back(StringView(s_color_char, 1)); break;
+		case Expression::Sharp: path.push_back(StringView(s_sharp_char, 1)); break;
 		default: break;
 		}
 		execPathNode(path, node->right);
 	} else {
 		Variable var = execNode(node, Expression::NoOp);
 		if (var.value && var.value->isString()) {
-			path.push_back(CharReaderBase(var.value->getString()));
+			path.push_back(StringView(var.value->getString()));
 		} else {
 			const_cast<data::Value *>(var.value)->setString(var.value->asString());
-			path.push_back(CharReaderBase(var.value->getString()));
+			path.push_back(StringView(var.value->getString()));
 		}
 	}
 }
 
 Exec::Variable Exec::eval(const String &value) {
-	CharReaderBase r(value);
+	StringView r(value);
 	if (r.is('$')) {
 		++ r;
 		return getVariable(r);

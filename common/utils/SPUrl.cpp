@@ -32,14 +32,14 @@ THE SOFTWARE.
 NS_SP_BEGIN
 
 template <char ...Args>
-using Chars = CharReaderBase::Chars<Args...>;
+using Chars = StringView::Chars<Args...>;
 
 template <char A, char B>
-using Range = CharReaderBase::Range<A, B>;
+using Range = StringView::Range<A, B>;
 
 Vector<String> Url::parsePath(const String &str) {
 	Vector<String> ret;
-	CharReaderBase s(str);
+	StringView s(str);
 	do {
 		if (s.is('/')) {
 			s ++;
@@ -59,7 +59,7 @@ Vector<String> Url::parsePath(const String &str) {
 }
 Url::QueryVec Url::parseArgs(const String &str) {
 	QueryVec vec;
-	CharReaderBase s(str);
+	StringView s(str);
 	do {
 		if (s.is(';') || s.is('?') || s.is('&')) {
 			s ++;
@@ -106,7 +106,7 @@ data::Value Url::parseDataArgs(const StringView &str, size_t maxVarSize) {
 	return ret;
 }
 
-static bool validateEmailQuotation(String &ret, CharReaderBase &r) {
+static bool validateEmailQuotation(String &ret, StringView &r) {
 	using namespace chars;
 
 	++ r;
@@ -154,7 +154,7 @@ bool Url::validateEmail(String &str) {
 
 	using Whitespace =  CharGroup<char, CharGroupId::WhiteSpace>;
 
-	CharReaderBase r(str);
+	StringView r(str);
 	r.skipChars<Whitespace>();
 
 	if (r.is('(')) {
@@ -267,7 +267,7 @@ using GenDelim = chars::Chars<char, ':', '/', '?', '#', '[', ']', '@'>;
 
 using UnreservedUni = chars::Compose<char, Unreserved, chars::UniChar>;
 
-static bool validateScheme(const CharReaderBase &r) {
+static bool validateScheme(const StringView &r) {
 	auto cpy = r;
 	if (cpy.is<chars::CharGroup<char, CharGroupId::Alphanumeric>>()) {
 		cpy ++;
@@ -279,7 +279,7 @@ static bool validateScheme(const CharReaderBase &r) {
 	return false;
 }
 
-static bool validateHost(const CharReaderBase &r) {
+static bool validateHost(const StringView &r) {
 	auto cpy = r;
 	if (cpy.is('[')) {
 		++ cpy;
@@ -300,7 +300,7 @@ static bool validateHost(const CharReaderBase &r) {
 	return false;
 }
 
-static bool validateUserOrPassword(const CharReaderBase &r) {
+static bool validateUserOrPassword(const StringView &r) {
 	auto cpy = r;
 	cpy.skipChars<Unreserved, SubDelim, chars::UniChar>();
 	if (cpy.empty()) {
@@ -309,7 +309,7 @@ static bool validateUserOrPassword(const CharReaderBase &r) {
 	return false;
 }
 
-static bool validatePathComponent(const CharReaderBase &r) {
+static bool validatePathComponent(const StringView &r) {
 	auto cpy = r;
 	cpy.skipChars<Unreserved, SubDelim, Chars<':', '@'>, chars::UniChar>();
 	if (cpy.empty()) {
@@ -318,7 +318,7 @@ static bool validatePathComponent(const CharReaderBase &r) {
 	return false;
 }
 
-static bool valudateQueryOrFragmentString(const CharReaderBase &r) {
+static bool valudateQueryOrFragmentString(const StringView &r) {
 	auto cpy = r;
 	cpy.skipChars<Unreserved, SubDelim, Chars<':', '@', '/', '?', '[', ']'>, chars::UniChar>();
 	if (cpy.empty()) {
@@ -335,7 +335,7 @@ static bool isEmptyHostAllowed(const String &scheme) {
 }
 
 bool Url::parseInternal(const String &str) {
-	CharReaderBase s(str);
+	StringView s(str);
 
 	enum State {
 		Scheme,
@@ -644,7 +644,7 @@ Url &Url::setPort(uint32_t p) {
 Url &Url::setPath(const String &str) {
 	_path.clear();
 
-	CharReaderBase s(str);
+	StringView s(str);
 	do {
 		if (s.is('/')) {
 			s ++;
@@ -664,7 +664,7 @@ Url &Url::setPath(Vector<String> &&vec) {
 }
 
 Url &Url::addPath(const String &str) {
-	CharReaderBase s(str);
+	StringView s(str);
 	do {
 		if (s.is('/')) {
 			s ++;

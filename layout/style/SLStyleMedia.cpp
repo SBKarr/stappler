@@ -49,7 +49,7 @@ template<> void Parameter::set<ParameterName::MinResolution, Metric>(const Metri
 template<> void Parameter::set<ParameterName::MaxResolution, Metric>(const Metric &v) { value.sizeValue = v; }
 template<> void Parameter::set<ParameterName::MediaOption, CssStringId>(const CssStringId &v) { value.stringId = v; }
 
-bool readMediaParameter(Vector<Parameter> &params, const String &name, const CharReaderBase &value, const CssStringFunction &cb) {
+bool readMediaParameter(Vector<Parameter> &params, const String &name, const StringView &value, const CssStringFunction &cb) {
 	SP_RTMEDIA_LOG("media: %s -> %s", name.c_str(), value.data());
 	if (name == "width") {
 		Metric size;
@@ -210,7 +210,7 @@ MediaQueryId MediaQuery::IsTooltipOption = 3;
 Vector<MediaQuery> MediaQuery::getDefaultQueries(Map<CssStringId, String> & strings) {
 	Vector<MediaQuery> ret;
 
-	auto mediaCssStringFn = [&strings] (CssStringId strId, const CharReaderBase &string) {
+	auto mediaCssStringFn = [&strings] (CssStringId strId, const StringView &string) {
 		strings.insert(pair(strId, string.str()));
 	};
 
