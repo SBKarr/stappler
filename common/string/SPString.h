@@ -218,6 +218,17 @@ struct ToStringTraits<memory::PoolInterface> {
 	using WideString = typename memory::PoolInterface::WideStringType;
 	using StringStream = typename memory::PoolInterface::StringStreamType;
 
+	template <typename T>
+	static void toStringStream(StringStream &stream, T value) {
+		stream << value;
+	}
+
+	template <typename T, typename... Args>
+	static void toStringStream(StringStream &stream, T value, Args && ... args) {
+		stream << value;
+		toStringStream(stream, std::forward<Args>(args)...);
+	}
+
 	template <class T>
 	static String toString(T value) {
 		StringStream stream;
@@ -227,6 +238,14 @@ struct ToStringTraits<memory::PoolInterface> {
 
 	static String toString(const String &value) { return value; }
 	static String toString(const char *value) { return value; }
+
+	template <typename T, typename... Args>
+	static String toString(T t, Args && ... args) {
+		StringStream stream;
+		toStringStream(stream, t);
+		toStringStream(stream, std::forward<Args>(args)...);
+	    return stream.str();
+	}
 };
 
 NS_SP_EXT_END(string)

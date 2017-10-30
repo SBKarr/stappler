@@ -53,7 +53,7 @@ void Node::pushLineBreak() {
 	Style s;
 	s.set<style::ParameterName::Display>(style::Display::Inline);
 	s.merge(_style, true);
-	s.merge(style::getStyleForTag("br", style::Tag::Block));
+	s.merge(style::getStyleForTag("br"));
 
 	pushValue(u"\n", std::move(s));
 }
@@ -101,6 +101,10 @@ bool Node::hasValue() const {
 	return _hasValue;
 }
 
+bool Node::isVirtual() const {
+	return _isVirtual;
+}
+
 Node::Node() { }
 
 Node::Node(Node &&other)
@@ -127,7 +131,7 @@ Node &Node::operator = (Node &&other) {
 	return *this;
 }
 
-Node::Node(Style &&style, WideString &&value) : _style(std::move(style)), _value(std::move(value)) { }
+Node::Node(Style &&style, WideString &&value) : _style(std::move(style)), _value(std::move(value)), _isVirtual(true) { }
 
 void Node::foreach(const ForeachIter &onNode) {
 	onNode(*this, 0);

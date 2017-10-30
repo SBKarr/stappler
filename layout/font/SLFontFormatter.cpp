@@ -39,9 +39,7 @@ Formatter::Formatter(FontSource *s, FormatSpec *o, float density)
 : source(s), output(o), density(density) { }
 
 void Formatter::init(FontSource *s, FormatSpec *o, float d) {
-	source = s;
-	output = o;
-	density = d;
+	reset(s, o, d);
 }
 
 void Formatter::setLinePositionCallback(const LinePositionCallback &func) {
@@ -202,14 +200,16 @@ inline uint16_t Formatter::getOriginPosition(uint16_t pos) const {
 }
 
 bool Formatter::isSpecial(char16_t ch) const {
-	if (!opticalAlignment) {
+	 // collapseSpaces can be disabled for manual optical alignment
+	if (!opticalAlignment || !collapseSpaces) {
 		return false;
 	}
 	return chars::CharGroup<char16_t, CharGroupId::OpticalAlignmentSpecial>::match(ch);
 }
 
 uint16_t Formatter::checkBullet(uint16_t first, uint16_t len) const {
-	if (!opticalAlignment) {
+	 // collapseSpaces can be disabled for manual optical alignment
+	if (!opticalAlignment || !collapseSpaces) {
 		return 0;
 	}
 
@@ -921,6 +921,12 @@ void Formatter::reset(FormatSpec *o) {
 	wordWrapPos = 0;
 
 	bufferedSpace = false;
+}
+
+void Formatter::reset(FontSource *s, FormatSpec *o, float d) {
+	source = s;
+	density = d;
+	reset(o);
 }
 
 uint16_t Formatter::getHeight() const {

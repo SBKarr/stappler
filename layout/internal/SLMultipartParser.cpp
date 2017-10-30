@@ -30,7 +30,7 @@ THE SOFTWARE.
 NS_LAYOUT_BEGIN
 
 /* read file width header */
-bool MultipartParser::parse(const Bytes &vec, bool files) {
+bool MultipartParser::parse(const DataReader<ByteOrder::Network> &vec, bool files) {
 	return parse(vec.data(), vec.size(), files);
 }
 bool MultipartParser::parse(const uint8_t *d, size_t l, bool files) {
@@ -57,7 +57,7 @@ bool MultipartParser::parse(const uint8_t *d, size_t l, bool files) {
 }
 
 /* read content only */
-bool MultipartParser::parse(const Bytes &vec, const String &ct, bool files) {
+bool MultipartParser::parse(const DataReader<ByteOrder::Network> &vec, const String &ct, bool files) {
 	return parse(vec.data(), vec.size(), ct, files);
 }
 bool MultipartParser::parse(const uint8_t *d, size_t l, const String &ct, bool files) {

@@ -49,7 +49,7 @@ namespace parser {
 
 	void readHtmlStyleValue(StringReader &s, const Function<void(const String &, const String &)> &fn);
 
-	void readStyleTag(Reader &reader, StringReader &, HtmlPage::FontMap &);
+	void readStyleTag(Reader &reader, StringReader &, Map<String, Vector<style::FontFace>> &);
 
 	struct RefParser {
 		using Callback = Function<void(const String &, const String &)>;

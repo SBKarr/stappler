@@ -116,7 +116,7 @@ static WideString Builder_getRomanBullet(int64_t v, bool uppercase) {
 WideString Builder::getListItemString(Layout *parent, Layout &l) {
 	WideString str;
 
-	switch (l.style.listStyleType) {
+	switch (l.node.block.listStyleType) {
 	case style::ListStyleType::None: break;
 	case style::ListStyleType::Circle: str += u"◦ "; break;
 	case style::ListStyleType::Disc: str += u"• "; break;
@@ -155,14 +155,13 @@ WideString Builder::getListItemString(Layout *parent, Layout &l) {
 	return str;
 }
 
-int64_t Builder::getListItemCount(const Node &node) {
+int64_t Builder::getListItemCount(const Node &node, const Style &s) {
 	auto &nodes = node.getNodes();
 	int64_t counter = 0;
 	for (auto &n : nodes) {
-		const Node::Style &s = n.getStyle();
-
-		auto display = s.get(style::ParameterName::Display, this);
-		auto listStyleType = s.get(style::ParameterName::ListStyleType, this);
+		auto style = compileStyle(n);
+		auto display = style->get(style::ParameterName::Display, this);
+		auto listStyleType = style->get(style::ParameterName::ListStyleType, this);
 
 		if (!listStyleType.empty() && !display.empty() && display[0].value.display == style::Display::ListItem) {
 			auto type = listStyleType[0].value.listStyleType;
@@ -190,9 +189,12 @@ void Builder::drawListItemBullet(Layout &l, float parentPosY) {
 	}
 
 	const auto density = _media.density;
-	auto origin = Vec2(roundf(l.position.x * density), roundf((parentPosY) * density));
-	FontParameters fStyle = l.node->getStyle().compileFontStyle(this);
-	ParagraphStyle pStyle = l.node->getStyle().compileParagraphLayout(this);
+	auto origin = Vec2(roundf(l.pos.position.x * density), roundf((parentPosY) * density));
+	FontParameters fStyle = l.node.style->compileFontStyle(this);
+	if (fStyle.fontFamily == "default" && (toInt(fStyle.listStyleType) < toInt(style::ListStyleType::Decimal))) {
+		fStyle.fontFamily = "system";
+	}
+	ParagraphStyle pStyle = l.node.style->compileParagraphLayout(this);
 	pStyle.textIndent.value = 0.0f; pStyle.textIndent.metric = style::Metric::Units::Px;
 	auto baseFont = _fontSet->getLayout(fStyle)->getData();
 
@@ -202,7 +204,7 @@ void Builder::drawListItemBullet(Layout &l, float parentPosY) {
 	initFormatter(l, pStyle, parentPosY, reader, true);
 
 	if (parent && parent->listItem != Layout::ListNone) {
-		TextStyle textStyle = l.node->getStyle().compileTextLayout(this);
+		TextStyle textStyle = l.node.style->compileTextLayout(this);
 		WideString str = getListItemString(parent, l);
 		reader.read(fStyle, textStyle, str, 0, 0);
 	}
@@ -215,8 +217,9 @@ void Builder::drawListItemBullet(Layout &l, float parentPosY) {
 	float x = 0, w = _media.surfaceSize.width;
 	std::tie(x, w) = getFloatBounds(&l, origin.y / density, finalHeight);
 
-	l.preObjects.emplace_back(Rect(x - l.position.x - finalWidth - pStyle.listOffset.computeValue(l.size.width, _media.surfaceSize, baseFont->metrics.height),
-			origin.y / density - l.position.y, finalWidth, finalHeight), std::move(label));
+	l.preObjects.emplace_back(Rect(x - l.pos.position.x - finalWidth -
+			pStyle.listOffset.computeValueAuto(l.pos.size.width, _media.surfaceSize, baseFont->metrics.height / density, _media.getDefaultFontSize()),
+			origin.y / density - l.pos.position.y, finalWidth, finalHeight), std::move(label));
 }
 
 NS_LAYOUT_END

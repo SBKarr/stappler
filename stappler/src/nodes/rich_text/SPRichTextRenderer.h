@@ -48,8 +48,6 @@ public:
 	virtual layout::Result *getResult() const;
 	virtual Drawer *getDrawer() const;
 
-	virtual MediaResolver getMediaResolver(const Vector<String> & = {}) const;
-
 public: /* media type resolver */
 	void setSurfaceSize(const Size &size);
 
@@ -78,6 +76,8 @@ public: /* media type resolver */
 	void addFlag(layout::RenderFlag::Flag flag);
 	void removeFlag(layout::RenderFlag::Flag flag);
 	bool hasFlag(layout::RenderFlag::Flag flag) const;
+
+	String getLegacyBackground(const layout::Node &, const StringView &opt) const;
 
 public: /* font routines */
 	virtual void setRenderingCallback(const RenderingCallback &);

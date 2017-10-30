@@ -35,16 +35,6 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
-
-
-
-
-
-
-
-
-
-
 GLProgramDesc::GLProgramDesc(Default def) {
 	switch (def) {
 	case Default::DrawNodeA8:
@@ -128,8 +118,9 @@ void GLProgramDesc::set(Attr attr, PixelFormat internal, PixelFormat reference) 
 
 	bool useColor = ((flags & Attr::Color) != Attr::None);
 	bool useTexCoord = ((flags & Attr::TexCoords) != Attr::None);
+	bool uniColor = ((flags & Attr::AmbientColor) != Attr::None);
 
-	if (useColor && useTexCoord) {
+	if ((useColor || uniColor) && useTexCoord) {
 		if (internal == reference) {
 			switch (internal) {
 			case PixelFormat::A8: color = ColorHash::TextureA8_Direct; break;
@@ -233,7 +224,6 @@ String GLProgramDesc::makeFragment() const {
 	}
 	stream << "#endif\n";
 
-
 	if ((flags & Attr::CustomRect) != Attr::None) {
 
 		stream << R"Shader(
@@ -266,42 +256,54 @@ void main() {
 })Shader";
 
 	} else {
+		bool uniColor = false;
+		if ((flags & Attr::AmbientColor) != Attr::None) {
+			stream << "uniform vec4 CC_AmbientColor;\n";
+			uniColor = true;
+		}
 		if (useColor) { stream << "varying vec4 v_fragmentColor;\n"; }
 		if (useTexCoord) { stream << "varying vec2 v_texCoord;\n"; }
 
 		stream << "void main() {\n";
-		if (useColor) {
+		if (useColor || uniColor) {
+			if (uniColor && useColor) {
+				stream << "\tvec4 c = v_fragmentColor * CC_AmbientColor;\n";
+			} else if (uniColor) {
+				stream << "\tvec4 c = CC_AmbientColor;\n";
+			} else {
+				stream << "\tvec4 c = v_fragmentColor;\n";
+			}
 			switch (color) {
 			case ColorHash::TextureA8_Direct:
-				stream << "\tgl_FragColor = vec4( v_fragmentColor.rgb, v_fragmentColor.a * texture2D(CC_Texture0, v_texCoord).a );\n";
+				stream << "\tgl_FragColor = vec4( c.rgb, c.a * texture2D(CC_Texture0, v_texCoord).a );\n";
 				break;
 			case ColorHash::TextureI8_Direct:
-				stream << "\tgl_FragColor = vec4( v_fragmentColor.rgb, v_fragmentColor.a * (1.0 - texture2D(CC_Texture0, v_texCoord).r) );\n";
+				stream << "\tgl_FragColor = vec4( c.rgb, c.a * (1.0 - texture2D(CC_Texture0, v_texCoord).r) );\n";
 				break;
 			case ColorHash::Texture_Direct:
-				stream << "\tgl_FragColor = texture2D(CC_Texture0, v_texCoord) * v_fragmentColor;\n";
+				stream << "\tgl_FragColor = texture2D(CC_Texture0, v_texCoord) * c;\n";
 				break;
 			case ColorHash::TextureA8_Ref:
-				stream << "\tgl_FragColor = vec4( v_fragmentColor.rgb, v_fragmentColor.a * texture2D(CC_Texture0, v_texCoord).r );\n";
+				stream << "\tgl_FragColor = vec4( c.rgb, c.a * texture2D(CC_Texture0, v_texCoord).r );\n";
 				break;
 			case ColorHash::TextureI8_Ref:
-				stream << "\tgl_FragColor = vec4( v_fragmentColor.rgb, v_fragmentColor.a * (1.0 - texture2D(CC_Texture0, v_texCoord).r) );\n";
+				stream << "\tgl_FragColor = vec4( c.rgb, c.a * (1.0 - texture2D(CC_Texture0, v_texCoord).r) );\n";
 				break;
 			case ColorHash::TextureAI88_Ref:
 				stream << "\tvec4 tex = texture2D(CC_Texture0, v_texCoord);\n";
-				stream << "\tgl_FragColor = vec4( v_fragmentColor.rgb * tex.r, v_fragmentColor.a * tex.g );\n";
+				stream << "\tgl_FragColor = vec4( c.rgb * tex.r, c.a * tex.g );\n";
 				break;
 			case ColorHash::Draw_Direct:
-				stream << "\tgl_FragColor = v_fragmentColor;\n";
+				stream << "\tgl_FragColor = c;\n";
 				break;
 			case ColorHash::Draw_AI88:
-				stream << "\tgl_FragColor = vec4(v_fragmentColor.r, v_fragmentColor.a, 0.0, 1.0);\n";
+				stream << "\tgl_FragColor = vec4(c.r, c.a, 0.0, 1.0);\n";
 				break;
 			case ColorHash::Draw_I8:
-				stream << "\tgl_FragColor = vec4(v_fragmentColor.r, 0.0, 0.0, 1.0);\n";
+				stream << "\tgl_FragColor = vec4(c.r, 0.0, 0.0, 1.0);\n";
 				break;
 			case ColorHash::Draw_A8:
-				stream << "\tgl_FragColor = vec4(v_fragmentColor.a, 0.0, 0.0, 1.0);\n";
+				stream << "\tgl_FragColor = vec4(c.a, 0.0, 0.0, 1.0);\n";
 				break;
 			default:
 				break;

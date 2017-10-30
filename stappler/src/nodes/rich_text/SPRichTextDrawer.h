@@ -54,7 +54,9 @@ public:
 
 public:
 	cocos2d::Texture2D *getBitmap(const String &);
+	cocos2d::Texture2D *getBitmap(const String &, const Size &);
 	void addBitmap(const String &str, cocos2d::Texture2D *bmp);
+	void addBitmap(const String &str, cocos2d::Texture2D *bmp, const Size &);
 	void performUpdate();
 
 	bool begin(cocos2d::Texture2D *, const Color4B &);

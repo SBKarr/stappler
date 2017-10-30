@@ -1,3 +1,6 @@
 [submodule "libs"]
 	path = libs
 	url = https://github.com/SBKarr/stappler-deps.git
+[submodule "extensions/document"]
+	path = extensions/document
+	url = git@github.com:SBKarr/stappler-document.git

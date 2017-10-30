@@ -32,34 +32,37 @@ THE SOFTWARE.
 
 NS_LAYOUT_BEGIN
 
-bool Builder::processInlineNode(Layout &l, const Node &node, BlockStyle &&style, const Vec2 &pos) {
-	SP_RTBUILDER_LOG("paragraph style: %s", node.getStyle().css(this).c_str());
+bool Builder::processInlineNode(Layout &l, Layout::NodeInfo && node, const Vec2 &pos) {
+	SP_RTBUILDER_LOG("paragraph style: %s", styleVec.css(this).c_str());
 
-	InlineContext &ctx = makeInlineContext(l, pos.y, node);
+	InlineContext &ctx = makeInlineContext(l, pos.y, *node.node);
 
 	const float density = _media.density;
-	const Style &nodeStyle = node.getStyle();
-	auto fstyle = nodeStyle.compileFontStyle(this);
+	auto fstyle = node.style->compileFontStyle(this);
 	auto font = _fontSet->getLayout(fstyle)->getData();
 	if (!font) {
 		return false;
 	}
 
-	auto front = (uint16_t)((style.marginLeft.computeValue(l.size.width, _media.surfaceSize, font->metrics.height / density, true)
-			+ style.paddingLeft.computeValue(l.size.width, _media.surfaceSize, font->metrics.height / density, true)) * density);
-	auto back = (uint16_t)((style.marginRight.computeValue(l.size.width, _media.surfaceSize, font->metrics.height / density, true)
-			+ style.paddingRight.computeValue(l.size.width, _media.surfaceSize, font->metrics.height / density, true)) * density);
+	auto front = (uint16_t)((
+			node.block.marginLeft.computeValueAuto(l.pos.size.width, _media.surfaceSize, font->metrics.height / density, _media.getDefaultFontSize())
+			+ node.block.paddingLeft.computeValueAuto(l.pos.size.width, _media.surfaceSize, font->metrics.height / density, _media.getDefaultFontSize())
+		) * density);
+	auto back = (uint16_t)((
+			node.block.marginRight.computeValueAuto(l.pos.size.width, _media.surfaceSize, font->metrics.height / density, _media.getDefaultFontSize())
+			+ node.block.paddingRight.computeValueAuto(l.pos.size.width, _media.surfaceSize, font->metrics.height / density, _media.getDefaultFontSize())
+		) * density);
 
 	uint16_t firstCharId = 0, lastCharId = 0;
-	auto textStyle = nodeStyle.compileTextLayout(this);
+	auto textStyle = node.style->compileTextLayout(this);
 
 	firstCharId = ctx.label.format.chars.size();
 
 	// Time now = Time::now();
-	ctx.reader.read(fstyle, textStyle, node.getValue(), front, back);
+	ctx.reader.read(fstyle, textStyle, node.node->getValue(), front, back);
 	//_readerAccum += (Time::now() - now);
 
-	ctx.pushNode(&node, [&] (InlineContext &ctx) {
+	ctx.pushNode(node.node, [&] (InlineContext &ctx) {
 		lastCharId = (ctx.label.format.chars.size() > 0)?(ctx.label.format.chars.size() - 1):0;
 
 		while (firstCharId < ctx.label.format.chars.size() && ctx.label.format.chars.at(firstCharId).charID == ' ') {
@@ -70,81 +73,83 @@ bool Builder::processInlineNode(Layout &l, const Node &node, BlockStyle &&style,
 		}
 
 		if (ctx.label.format.chars.size() > lastCharId && firstCharId <= lastCharId) {
-			auto hrefIt = node.getAttributes().find("href");
-			if (hrefIt != node.getAttributes().end() && !hrefIt->second.empty()) {
+			auto hrefIt = node.node->getAttributes().find("href");
+			if (hrefIt != node.node->getAttributes().end() && !hrefIt->second.empty()) {
 				ctx.refPos.push_back(InlineContext::RefPosInfo{firstCharId, lastCharId, hrefIt->second});
 			}
 
-			auto outline = nodeStyle.compileOutline(this);
+			auto outline = node.style->compileOutline(this);
 			if (outline.outlineStyle != style::BorderStyle::None) {
 				ctx.outlinePos.emplace_back(InlineContext::OutlinePosInfo{
 					firstCharId, lastCharId,
-					outline.outlineStyle, outline.outlineWidth.computeValue(1.0f, _media.surfaceSize, font->metrics.height / density, true), outline.outlineColor});
+					outline.outlineStyle, outline.outlineWidth.computeValueAuto(1.0f, _media.surfaceSize, font->metrics.height / density, _media.getDefaultFontSize()), outline.outlineColor});
 			}
 
 			float bwidth = 0.0f;
-			Border border = Border::border(outline, _media.surfaceSize, l.size.width, font->metrics.height / density, bwidth);
+			Border border = Border::border(outline, _media.surfaceSize, l.pos.size.width, font->metrics.height / density, _media.getDefaultFontSize(), bwidth);
 			if (border.getNumLines() > 0) {
 				ctx.borderPos.emplace_back(InlineContext::BorderPosInfo{firstCharId, lastCharId, std::move(border), bwidth});
 			}
 
-			auto background = nodeStyle.compileBackground(this);
+			auto background = node.style->compileBackground(this);
 			if (background.backgroundColor.a != 0 || !background.backgroundImage.empty()) {
 				ctx.backgroundPos.push_back(InlineContext::BackgroundPosInfo{firstCharId, lastCharId, background,
 					Padding(
-							style.paddingTop.computeValue(l.size.width, _media.surfaceSize, font->metrics.height / density, true),
-							style.paddingRight.computeValue(l.size.width, _media.surfaceSize, font->metrics.height / density, true),
-							style.paddingBottom.computeValue(l.size.width, _media.surfaceSize, font->metrics.height / density, true),
-							style.paddingLeft.computeValue(l.size.width, _media.surfaceSize, font->metrics.height / density, true))});
+							node.block.paddingTop.computeValueAuto(l.pos.size.width, _media.surfaceSize, font->metrics.height / density, _media.getDefaultFontSize()),
+							node.block.paddingRight.computeValueAuto(l.pos.size.width, _media.surfaceSize, font->metrics.height / density, _media.getDefaultFontSize()),
+							node.block.paddingBottom.computeValueAuto(l.pos.size.width, _media.surfaceSize, font->metrics.height / density, _media.getDefaultFontSize()),
+							node.block.paddingLeft.computeValueAuto(l.pos.size.width, _media.surfaceSize, font->metrics.height / density, _media.getDefaultFontSize()))});
 			}
 		}
 	});
 
-	processChilds(l, node);
-	ctx.popNode(&node);
+	processChilds(l, *node.node);
+	ctx.popNode(node.node);
 
 	return true;
 }
 
-bool Builder::processInlineBlockNode(Layout &l, const Node &node, BlockStyle && style, const Vec2 &pos) {
-	if (node.getHtmlName() == "img" && (_media.flags & RenderFlag::NoImages)) {
+bool Builder::processInlineBlockNode(Layout &l, Layout::NodeInfo && node, const Vec2 &pos) {
+	if (node.node->getHtmlName() == "img" && (_media.flags & RenderFlag::NoImages)) {
 		return true;
 	}
 
-	Layout newL(&node, std::move(style), true);
-	if (processNode(newL, pos, l.size, 0.0f)) {
-		l.inlineBlockLayouts.emplace_back(std::move(newL));
-		Layout &ref = l.inlineBlockLayouts.back();
+	Layout newL(std::move(node), true);
+	if (processNode(newL, pos, l.pos.size, 0.0f)) {
+		auto bbox = newL.getBoundingBox();
 
-		InlineContext &ctx = makeInlineContext(l, pos.y, node);
+		if (bbox.size.width > 0.0f && bbox.size.height > 0.0f) {
+			l.inlineBlockLayouts.emplace_back(std::move(newL));
+			Layout &ref = l.inlineBlockLayouts.back();
 
-		const float density = _media.density;
-		const Style &nodeStyle = node.getStyle();
-		auto fstyle = nodeStyle.compileFontStyle(this);
-		auto font = _fontSet->hasLayout(fstyle);
-		if (!font) {
-			return false;
-		}
+			InlineContext &ctx = makeInlineContext(l, pos.y, *node.node);
 
-		auto textStyle = nodeStyle.compileTextLayout(this);
-		auto bbox = ref.getBoundingBox();
+			const float density = _media.density;
+			auto fstyle = l.node.style->compileFontStyle(this);
+			auto font = _fontSet->hasLayout(fstyle);
+			if (!font) {
+				return false;
+			}
 
-		if (ctx.reader.read(fstyle, textStyle, uint16_t(bbox.size.width * density), uint16_t(bbox.size.height * density))) {
-			ref.charBinding = (ctx.label.format.ranges.size() > 0)?(ctx.label.format.ranges.size() - 1):0;
+			auto textStyle = l.node.style->compileTextLayout(this);
+
+			if (ctx.reader.read(fstyle, textStyle, uint16_t(bbox.size.width * density), uint16_t(bbox.size.height * density))) {
+				ref.charBinding = (ctx.label.format.ranges.size() > 0)?(ctx.label.format.ranges.size() - 1):0;
+			}
 		}
 	}
 	return true;
 }
 
-bool Builder::processFloatNode(Layout &l, const Node &node, BlockStyle &&blockModel, Vec2 &pos) {
+bool Builder::processFloatNode(Layout &l, Layout::NodeInfo && node, Vec2 &pos) {
 	pos.y += freeInlineContext(l);
 	auto currF = _floatStack.back();
-	Layout newL(&node, std::move(blockModel), true);
+	Layout newL(move(node), true);
 	bool pageBreak = (_media.flags & RenderFlag::PaginatedLayout);
 	FloatContext f{ &newL, pageBreak?_media.surfaceSize.height:nan() };
 	_floatStack.push_back(&f);
-	if (processNode(newL, pos, l.size, 0.0f)) {
-		FontParameters s = node.getStyle().compileFontStyle(this);
+	if (processNode(newL, pos, l.pos.size, 0.0f)) {
+		FontParameters s = newL.node.style->compileFontStyle(this);
 		Vec2 p = pos;
 		if (currF->pushFloatingNode(l, newL, p)) {
 			l.layouts.emplace_back(std::move(newL));
@@ -154,7 +159,7 @@ bool Builder::processFloatNode(Layout &l, const Node &node, BlockStyle &&blockMo
 	return true;
 }
 
-bool Builder::processBlockNode(Layout &l, const Node &node, BlockStyle &&style, Vec2 &pos, float &height, float &collapsableMarginTop) {
+bool Builder::processBlockNode(Layout &l, Layout::NodeInfo && node, Vec2 &pos, float &height, float &collapsableMarginTop) {
 	if (l.context && !l.context->finalized) {
 		float inlineHeight = freeInlineContext(l);
 		if (inlineHeight > 0.0f) {
@@ -164,16 +169,16 @@ bool Builder::processBlockNode(Layout &l, const Node &node, BlockStyle &&style, 
 		finalizeInlineContext(l);
 	}
 
-	Layout newL(&node, std::move(style), l.disablePageBreak);
-	if (processNode(newL, pos, l.size, collapsableMarginTop)) {
+	Layout newL(move(node), l.pos.disablePageBreak);
+	if (processNode(newL, pos, l.pos.size, collapsableMarginTop)) {
 		float nodeHeight =  newL.getBoundingBox().size.height;
 		pos.y += nodeHeight;
 		height += nodeHeight;
-		collapsableMarginTop = newL.margin.bottom;
+		collapsableMarginTop = newL.pos.margin.bottom;
 
 		l.layouts.emplace_back(std::move(newL));
-		if (!isnanf(l.maxHeight) && height > l.maxHeight) {
-			height = l.maxHeight;
+		if (!isnanf(l.pos.maxHeight) && height > l.pos.maxHeight) {
+			height = l.pos.maxHeight;
 			return false;
 		}
 	}
@@ -182,13 +187,13 @@ bool Builder::processBlockNode(Layout &l, const Node &node, BlockStyle &&style, 
 
 bool Builder::processNode(Layout &l, const Vec2 &origin, const Size &size, float colTop) {
 	if (initLayout(l, origin, size, colTop)) {
-		auto &attr = l.node->getAttributes();
-		l.layoutContext = getLayoutContext(*l.node);
-		if (l.node->getHtmlName() == "ol" || l.node->getHtmlName() == "ul") {
+		auto &attr = l.node.node->getAttributes();
+		l.node.context = getLayoutContext(l.node);
+		if (l.node.node->getHtmlName() == "ol" || l.node.node->getHtmlName() == "ul") {
 			l.listItem = Layout::ListForward;
 			if (attr.find("reversed") != attr.end()) {
 				l.listItem = Layout::ListReversed;
-				auto counter = getListItemCount(*l.node);
+				auto counter = getListItemCount(*l.node.node, *l.node.style);
 				if (counter != 0) {
 					l.listItemIndex = counter;
 				}
@@ -202,7 +207,7 @@ bool Builder::processNode(Layout &l, const Vec2 &origin, const Size &size, float
 		Layout *parent = nullptr;
 		if (_layoutStack.size() > 1) {
 			parent = _layoutStack.at(_layoutStack.size() - 1);
-			if (parent && parent->listItem != Layout::ListNone && l.style.display == style::Display::ListItem) {
+			if (parent && parent->listItem != Layout::ListNone && l.node.block.display == style::Display::ListItem) {
 				auto it = attr.find("value");
 				if (it != attr.end()) {
 					parent->listItemIndex = StringToNumber<int64_t>(it->second);
@@ -210,20 +215,20 @@ bool Builder::processNode(Layout &l, const Vec2 &origin, const Size &size, float
 			}
 		}
 
-		if (l.style.display == style::Display::ListItem) {
-			if (l.style.listStylePosition == style::ListStylePosition::Inside) {
-				makeInlineContext(l, origin.y, *l.node);
+		if (l.node.block.display == style::Display::ListItem) {
+			if (l.node.block.listStylePosition == style::ListStylePosition::Inside) {
+				makeInlineContext(l, origin.y, *l.node.node);
 			}
 		}
 
 		bool pageBreaks = false;
-		if (l.style.pageBreakInside == style::PageBreak::Avoid) {
-			pageBreaks = l.disablePageBreak;
-			l.disablePageBreak = true;
+		if (l.node.block.pageBreakInside == style::PageBreak::Avoid) {
+			pageBreaks = l.pos.disablePageBreak;
+			l.pos.disablePageBreak = true;
 		}
-		processChilds(l, *l.node);
-		if (l.style.pageBreakInside == style::PageBreak::Avoid) {
-			l.disablePageBreak = pageBreaks;
+		processChilds(l, *l.node.node);
+		if (l.node.block.pageBreakInside == style::PageBreak::Avoid) {
+			l.pos.disablePageBreak = pageBreaks;
 		}
 
 		freeInlineContext(l);
@@ -231,8 +236,8 @@ bool Builder::processNode(Layout &l, const Vec2 &origin, const Size &size, float
 		processOutline(l);
 		finalizeInlineContext(l);
 
-		if (l.style.display == style::Display::ListItem) {
-			if (l.style.listStylePosition == style::ListStylePosition::Outside) {
+		if (l.node.block.display == style::Display::ListItem) {
+			if (l.node.block.listStylePosition == style::ListStylePosition::Outside) {
 				drawListItemBullet(l, origin.y);
 			}
 		}

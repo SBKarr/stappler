@@ -30,13 +30,18 @@ THE SOFTWARE.
 #include "SPThread.h"
 #include "SPString.h"
 #include "SPTextureCache.h"
-#include "SPEpubDocument.h"
 #include "SPAssetLibrary.h"
 
 NS_LAYOUT_BEGIN
 
 SP_DECLARE_EVENT(Source, "RichTextSource", onError);
 SP_DECLARE_EVENT(Source, "RichTextSource", onDocument);
+
+String Source::getPathForUrl(const String &url) {
+	auto dir = filesystem::writablePath("Documents");
+	filesystem::mkdir(dir);
+	return toString(dir, "/", string::stdlibHashUnsigned(url));
+}
 
 Source::~Source() { }
 
@@ -72,10 +77,21 @@ bool Source::init(const StringDocument &str) {
 		return false;
 	}
 
-	_string = str.get();
+	_data = Bytes((const uint8_t *)str.get().data(), (const uint8_t *)(str.get().data() + str.get().size()));
 	updateDocument();
 	return true;
 }
+
+bool Source::init(const DataReader<ByteOrder::Network> &data) {
+	if (!init()) {
+		return false;
+	}
+
+	_data = Bytes(data.data(), data.data() + data.size());
+	updateDocument();
+	return true;
+}
+
 bool Source::init(const FilePath &file) {
 	if (!init()) {
 		return false;
@@ -117,6 +133,18 @@ Asset *Source::getAsset() const {
 	return _documentAsset;
 }
 
+Map<String, Source::AssetMeta> Source::getExternalAssetMeta() const {
+	Map<String, Source::AssetMeta> ret;
+	for (auto &it : _networkAssets) {
+		ret.emplace(it.first, it.second.meta);
+	}
+	return ret;
+}
+
+const Map<String, Source::AssetData> &Source::getExternalAssets() const {
+	return _networkAssets;
+}
+
 bool Source::isReady() const {
 	return _document;
 }
@@ -152,23 +180,27 @@ void Source::refresh() {
 }
 
 bool Source::tryReadLock(Ref *ref) {
-	if (_documentAsset) {
-		return _documentAsset->tryReadLock(ref);
+	auto vec = getAssetsVec();
+	if (vec.empty()) {
+		return true;
 	}
-	return true;
+
+	return SyncRWLock::tryReadLock(ref, vec);
 }
 
 void Source::retainReadLock(Ref *ref, const Function<void()> &cb) {
-	if (_documentAsset) {
-		_documentAsset->retainReadLock(ref, cb);
-	} else {
+	auto vec = getAssetsVec();
+	if (vec.empty()) {
 		cb();
+	} else {
+		SyncRWLock::retainReadLock(ref, vec, cb);
 	}
 }
 
 void Source::releaseReadLock(Ref *ref) {
-	if (_documentAsset) {
-		_documentAsset->releaseReadLock(ref);
+	auto vec = getAssetsVec();
+	if (!vec.empty()) {
+		SyncRWLock::releaseReadLock(ref, vec);
 	}
 }
 
@@ -236,35 +268,48 @@ void Source::tryLoadDocument() {
 		assetLocked = true;
 	}
 
-	if (_file.empty() && !assetLocked) {
+	if (_data.empty() && _file.empty() && !assetLocked) {
 		return;
 	}
 
 	auto &thread = TextureCache::thread();
 	Rc<Document> *doc = new Rc<Document>(nullptr);
+	Set<String> *assets = new Set<String>();
 
 	auto filename = (assetLocked)?_documentAsset->getFilePath():_file;
-	auto ct = (assetLocked)?_documentAsset->getContentType():"";
+	auto ct = (assetLocked)?_documentAsset->getContentType():String();
 
 	_documentLoading = true;
 	onUpdate(this);
 
-	thread.perform([this, doc, filename, ct] (const Task &) -> bool {
-		if (!_string.empty()) {
-			*doc = Rc<Document>::create(_string);
-		} else if (!filename.empty()) {
-			*doc = openDocument(filename, ct);
+	thread.perform([this, doc, filename, ct, assets] (const Task &) -> bool {
+		*doc = openDocument(filename, ct);
+		if (*doc) {
+			auto &pages = (*doc)->getContentPages();
+			for (auto &p_it : pages) {
+				for (auto &str : p_it.second.assets) {
+					assets->emplace(str);
+				}
+			}
 		}
 		return true;
-	}, [this, doc, assetLocked, filename] (const Task &, bool success) {
-		_documentLoading = false;
-		if (assetLocked) {
-			_documentAsset->releaseReadLock(this);
-		}
+	}, [this, doc, assetLocked, filename, assets] (const Task &, bool success) {
 		if (success && *doc) {
-			onDocumentLoaded(*doc);
+			auto l = [this, doc, assetLocked] {
+				_documentLoading = false;
+				if (assetLocked) {
+					_documentAsset->releaseReadLock(this);
+				}
+				onDocumentLoaded(*doc);
+				delete doc;
+			};
+			if (onExternalAssets(*doc, *assets)) {
+				l();
+			} else {
+				waitForAssets(move(l));
+			}
 		}
-		delete doc;
+		delete assets;
 	}, this);
 }
 
@@ -280,6 +325,103 @@ void Source::onDocumentLoaded(Document *doc) {
 	}
 }
 
+void Source::acquireAsset(const String &url, const Function<void(Asset *)> &fn) {
+	StringView urlView(url);
+	if (urlView.is("http://") || urlView.is("https://")) {
+		auto path = getPathForUrl(url);
+		auto lib = AssetLibrary::getInstance();
+		retain();
+		lib->getAsset([this, fn] (Asset *a) {
+			fn(a);
+			release();
+		}, url, path, config::getDocumentAssetTtl());
+	} else {
+		fn(nullptr);
+	}
+}
+
+bool Source::isExternalAsset(Document *doc, const String &asset) {
+	bool isDocFile = doc->isFileExists(asset);
+	if (!isDocFile) {
+		StringView urlView(asset);
+		if (urlView.is("http://") || urlView.is("https://")) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Source::onExternalAssets(Document *doc, const Set<String> &assets) {
+	for (auto &it : assets) {
+		if (isExternalAsset(doc, it)) {
+			auto n_it = _networkAssets.find(it);
+			if (n_it == _networkAssets.end()) {
+				auto a_it = _networkAssets.emplace(it, AssetData{it}).first;
+				AssetData * data = &a_it->second;
+				data->asset.setCallback(std::bind(&Source::onExternalAssetUpdated, this, data, std::placeholders::_1));
+				addAssetRequest(data);
+				acquireAsset(it, [this, data] (Asset *a) {
+					if (a) {
+						data->asset = a;
+						if (data->asset->isReadAvailable()) {
+							if (data->asset->tryReadLock(this)) {
+								readExternalAsset(*data);
+								data->asset->releaseReadLock(this);
+							}
+						}
+						if (data->asset->isDownloadAvailable()) {
+							data->asset->download();
+						}
+					}
+					removeAssetRequest(data);
+				});
+				log::text("Asset", it);
+			}
+		}
+	}
+	return !hasAssetRequests();
+}
+
+void Source::onExternalAssetUpdated(AssetData *a, data::Subscription::Flags f) {
+	if (f.hasFlag((uint8_t)Asset::Update::FileUpdated)) {
+		bool updated = false;
+		if (a->asset->tryReadLock(this)) {
+			if (readExternalAsset(*a)) {
+				updated = true;
+			}
+			a->asset->releaseReadLock(this);
+		}
+		if (updated) {
+			if (_document) {
+				_dirty = true;
+			}
+			onDocument(this);
+		}
+	}
+}
+
+bool Source::readExternalAsset(AssetData &data) {
+	data.meta.type = data.asset->getContentType();
+	if (StringView(data.meta.type).is("image/")) {
+		auto tmpImg = data.meta.image;
+		size_t w = 0, h = 0;
+		if (Bitmap::getImageSize(data.asset->getFilePath(), w, h)) {
+			data.meta.image.width = w;
+			data.meta.image.height = h;
+		}
+
+		if (data.meta.image.width != tmpImg.width || data.meta.image.height != tmpImg.height) {
+			return true;
+		}
+	} else if (StringView(data.meta.type).is("text/css")) {
+		auto d = filesystem::readTextFile(data.asset->getFilePath());
+		data.meta.css = Rc<CssDocument>::create(StringView(d));
+		return true;
+		log::format("readAsset", "%s css", data.originalUrl.c_str());
+	}
+	return false;
+}
+
 void Source::updateDocument() {
 	if (_documentAsset && _loadedAssetMTime > 0) {
 		_loadedAssetMTime = 0;
@@ -291,7 +433,10 @@ void Source::updateDocument() {
 Rc<font::FontSource> Source::makeSource(AssetMap && map, bool schedule) {
 	if (_document) {
 		FontFaceMap faceMap(_fontFaces);
-		font::FontSource::mergeFontFace(faceMap, _document->getFontFaces());
+		auto &pages = _document->getContentPages();
+		for (auto &it : pages) {
+			font::FontSource::mergeFontFace(faceMap, it.second.fonts);
+		}
 		return Rc<font::FontSource>::create(std::move(faceMap), _callback, _scale, SearchDirs(_searchDir), std::move(map), false);
 	}
 	return Rc<font::FontSource>::create(FontFaceMap(_fontFaces), _callback, _scale, SearchDirs(_searchDir), std::move(map), false);
@@ -299,17 +444,57 @@ Rc<font::FontSource> Source::makeSource(AssetMap && map, bool schedule) {
 
 Rc<Document> Source::openDocument(const String &path, const String &ct) {
 	Rc<Document> ret;
-	if (epub::Document::isEpub(path)) {
-		ret.set(Rc<epub::Document>::create(FilePath(path)));
+	if (!_data.empty()) {
+		ret = Document::openDocument(_data, ct);
 	} else {
-		ret = Rc<Document>::create(FilePath(path), ct);
+		ret = Document::openDocument(FilePath(path), ct);
 	}
+
 	if (ret) {
 		if (ret->prepare()) {
 			return ret;
 		}
 	}
+
 	return Rc<Document>();
+}
+
+bool Source::hasAssetRequests() const {
+	return !_assetRequests.empty();
+}
+void Source::addAssetRequest(AssetData *data) {
+	_assetRequests.emplace(data);
+}
+void Source::removeAssetRequest(AssetData *data) {
+	if (!_assetRequests.empty()) {
+		_assetRequests.erase(data);
+		if (_assetRequests.empty()) {
+			if (!_assetWaiters.empty()) {
+				auto w = move(_assetWaiters);
+				_assetWaiters.clear();
+				for (auto &it : w) {
+					it();
+				}
+			}
+		}
+	}
+}
+
+void Source::waitForAssets(Function<void()> &&fn) {
+	_assetWaiters.emplace_back(move(fn));
+}
+
+Vector<SyncRWLock *> Source::getAssetsVec() const {
+	Vector<SyncRWLock *> ret; ret.reserve(1 + _networkAssets.size());
+	if (_documentAsset) {
+		ret.emplace_back(_documentAsset);
+	}
+	for (auto &it : _networkAssets) {
+		if (it.second.asset) {
+			ret.emplace_back(it.second.asset);
+		}
+	}
+	return ret;
 }
 
 NS_LAYOUT_END

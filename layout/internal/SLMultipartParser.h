@@ -79,11 +79,11 @@ struct MultipartParser {
     Reader origData;
 
 	/* read file width header */
-	bool parse(const Bytes &, bool readFiles = true);
+	bool parse(const DataReader<ByteOrder::Network> &, bool readFiles = true);
 	bool parse(const uint8_t *, size_t, bool readFiles = true);
 
 	/* read content only */
-	bool parse(const Bytes &, const String &contentType, bool readFiles = true);
+	bool parse(const DataReader<ByteOrder::Network> &, const String &contentType, bool readFiles = true);
 	bool parse(const uint8_t *, size_t, const String &contentType, bool readFiles = true);
 
 	bool parseBody();

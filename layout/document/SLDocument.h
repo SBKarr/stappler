@@ -26,11 +26,34 @@ THE SOFTWARE.
 #include "SLMultipartParser.h"
 #include "SLNode.h"
 #include "SPBitmap.h"
+#include "SLCssDocument.h"
 
 NS_LAYOUT_BEGIN
 
 class Document : public Ref {
 public:
+	using check_data_fn = bool (*) (const DataReader<ByteOrder::Network> &str, const String &ct);
+	using load_data_fn = Rc<Document> (*) (const DataReader<ByteOrder::Network> &, const String &ct);
+
+	using check_file_fn = bool (*) (const String &path, const String &ct);
+	using load_file_fn = Rc<Document> (*) (const String &path, const String &ct);
+
+	struct DocumentFormat {
+		check_data_fn check_data;
+		check_file_fn check_file;
+
+		load_data_fn load_data;
+		load_file_fn load_file;
+
+		DocumentFormat(check_file_fn, load_file_fn, check_data_fn, load_data_fn);
+		~DocumentFormat();
+
+		DocumentFormat(const DocumentFormat &) = delete;
+		DocumentFormat(DocumentFormat &&) = delete;
+		DocumentFormat & operator=(const DocumentFormat &) = delete;
+		DocumentFormat & operator=(DocumentFormat &&) = delete;
+	};
+
 	struct Image {
 		enum Type {
 			Embed,
@@ -60,13 +83,26 @@ public:
 		Vector<ContentRecord> childs;
 	};
 
-	using CssStrings = Map<CssStringId, String>;
-	using MediaQueries = Vector<style::MediaQuery>;
+	struct AssetImageMeta {
+		uint16_t width;
+		uint16_t height;
+	};
+
+	struct AssetMeta {
+		String type;
+		Rc<CssDocument> css;
+		AssetImageMeta image;
+	};
+
 	using ImageMap = Map<String, Image>;
 	using GalleryMap = Map<String, Vector<String>>;
-	using NamedStyles = Map<String, style::ParameterList>;
-	using CssMap = Map<String, style::CssData>;
-	using FontFaceMap = Map<String, Vector<style::FontFace>>;
+	using StringDocument = ValueWrapper<String, class StringDocumentTag>;
+
+	static bool canOpenDocumnt(const FilePath &path, const String &ct = String());
+	static bool canOpenDocumnt(const DataReader<ByteOrder::Network> &data, const String &ct = String());
+
+	static Rc<Document> openDocument(const FilePath &path, const String &ct = String());
+	static Rc<Document> openDocument(const DataReader<ByteOrder::Network> &data, const String &ct = String());
 
 	static String resolveName(const String &);
 	static String getImageName(const String &);
@@ -76,51 +112,52 @@ public:
 
 	virtual ~Document() { }
 
-	virtual bool init(const String &);
-	virtual bool init(const FilePath &, const String & = "");
-	virtual bool init(const Bytes &, const String & = "");
+	virtual bool init(const StringDocument &);
+	virtual bool init(const FilePath &, const String &ct = "");
+	virtual bool init(const DataReader<ByteOrder::Network> &, const String &ct = "");
 
 	virtual bool isFileExists(const String &) const;
 	virtual Bytes getFileData(const String &);
-	virtual Bitmap getImageBitmap(const String &, const Bitmap::StrideFn &fn = nullptr);
+	virtual Bytes getImageData(const String &);
+	virtual Pair<uint16_t, uint16_t> getImageSize(const String &);
 
-	String getCssString(CssStringId) const;
-	const FontFaceMap &getFontFaces() const;
-
+	void storeData(const DataReader<ByteOrder::Network> &);
 	bool prepare();
 
-	const Node &getRoot() const;
-	const Vector<HtmlPage> &getContent() const;
-	const HtmlPage *getContentPage(const String &) const;
-	const Node *getNodeById(const String &) const;
+	const Vector<String> &getSpine() const;
 
-	const Vector<style::MediaQuery> &getMediaQueries() const;
-	const CssStrings &getCssStrings() const;
-
-	bool hasImage(const String &) const;
-	Pair<uint16_t, uint16_t> getImageSize(const String &) const;
+	const ContentPage *getRoot() const;
+	const ContentPage *getContentPage(const String &) const;
+	const Node *getNodeById(const String &pagePath, const String &id) const;
+	Pair<const ContentPage *, const Node *> getNodeByIdGlobal(const String &id) const;
 
 	const ImageMap & getImages() const;
 	const GalleryMap & getGalleryMap() const;
 	const ContentRecord & getTableOfContents() const;
+	const Map<String, ContentPage> & getContentPages() const;
+
+	// Default style, that can be redefined with css
+	virtual Style beginStyle(const Node &, const Vector<const Node *> &, const MediaParameters &) const;
+
+	// Default style, that can NOT be redefined with css
+	virtual Style endStyle(const Node &, const Vector<const Node *> &, const MediaParameters &) const;
 
 protected:
 	Bytes readData(size_t offset, size_t len);
 
 	virtual void processCss(const String &, const StringView &);
 	virtual void processHtml(const String &, const StringView &, bool linear = true);
-	virtual void processMeta(HtmlPage &c, const Vector<Pair<String, String>> &);
+	virtual void processMeta(ContentPage &c, const Vector<Pair<String, String>> &);
+
+	virtual void onStyleAttribute(Style &style, const StringView &tag, const StringView &name, const StringView &value, const MediaParameters &) const;
+
 	void updateNodes();
 
-	CssStrings _cssStrings;
-	MediaQueries _mediaQueries;
+	Map<String, ContentPage> _pages;
+	Vector<String> _spine;
 
 	ImageMap _images;
 	GalleryMap _gallery;
-	Map<String, Node *> _ids;
-	Vector<HtmlPage> _content;
-	CssMap _css;
-	FontFaceMap _fontFaces;
 
 	Bytes _data;
 	String _filePath;

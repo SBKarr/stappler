@@ -59,26 +59,14 @@ struct MediaParameters {
 
 	Margin pageMargin;
 
+	float getDefaultFontSize() const;
+
 	void addOption(const String &);
 	void removeOption(const String &);
 	bool hasOption(const String &) const;
 	bool hasOption(CssStringId) const;
 
 	Vector<bool> resolveMediaQueries(const Vector<style::MediaQuery> &) const;
-};
-
-class MediaResolver : public RendererInterface {
-public:
-	MediaResolver();
-	MediaResolver(Document *, const MediaParameters &, const Vector<String> &opts);
-
-	operator bool () const { return _document != nullptr; }
-
-	virtual bool resolveMediaQuery(MediaQueryId queryId) const override;
-	virtual String getCssString(CssStringId) const override;
-protected:
-	Vector<bool> _media;
-	Rc<Document> _document;
 };
 
 NS_LAYOUT_END

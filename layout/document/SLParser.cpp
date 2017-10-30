@@ -123,7 +123,7 @@ namespace parser {
 
 	void checkCssComments(StringReader &s) {
 		s.skipChars<Group<CharGroupId::WhiteSpace>>();
-		while (s == "/*") {
+		while (s.is("/*")) {
 			s.skipUntilString("*/", false);
 			s.skipChars<Group<CharGroupId::WhiteSpace>>();
 		}
@@ -284,8 +284,8 @@ namespace parser {
 			url.clear();
 			format.clear();
 			checkCssComments(r);
-			if (r == "url" || r == "local") {
-				bool local = (r == "local");
+			if (r.is("url") || r.is("local")) {
+				bool local = (r.is("local"));
 				readBracedString(r, url);
 				string::trim(url);
 				if (local) {
@@ -294,7 +294,7 @@ namespace parser {
 
 			}
 			checkCssComments(r);
-			if (r == "format") {
+			if (r.is("format")) {
 				readBracedString(r, format);
 				checkCssComments(r);
 			}
@@ -310,7 +310,7 @@ namespace parser {
 		}
 	}
 
-	void readFontFace(StringReader &s, HtmlPage::FontMap &fonts) {
+	void readFontFace(StringReader &s, ContentPage::FontMap &fonts) {
 		String fontFamily;
 		String src;
 		String selector;
@@ -361,7 +361,7 @@ namespace parser {
 		}
 	}
 
-	void readStyleTag(Reader &reader, StringReader &s, HtmlPage::FontMap &fonts) {
+	void readStyleTag(Reader &reader, StringReader &s, ContentPage::FontMap &fonts) {
 		String selector;
 		style::StyleVec style;
 		bool hasMediaQuery = false;
@@ -415,7 +415,7 @@ namespace parser {
 				parser::readCssStyleValue<'<'>(s, '<', [&] (const String &name, const String &value) {
 					SP_RTREADER_LOG("style tag: '%s' : '%s'", name.c_str(), value.c_str());
 					if (name == "font-family" || name == "background-image") {
-						reader.addCssString(value);
+						reader.addCssString(name, value);
 					}
 					style.push_back(pair(name, value));
 				});
@@ -471,16 +471,13 @@ namespace parser {
 		str.trimChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
 		StringView tmp(str);
-		tmp.trimUntil<StringView::Chars<'(', '"', '\''>>();
+		tmp.trimUntil<StringView::Chars<'(', '"', '\'', ')'>>();
 		if (tmp.size() > 2) {
-			if (tmp.is('(') && tmp.back() == ')') {
-				tmp = StringView(tmp.data() + 1, tmp.size() - 2);
-				tmp.trimChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+			auto c = tmp.front();
+			auto b = tmp.back();
+			if ((c == '(' || c == '"' || c == '\'' || c == ')') && (b == '(' || b == '"' || b == '\'' || b == ')')) {
+				tmp.trimChars<StringView::Chars<'(', '"', '\'', ')'>, StringView::CharGroup<CharGroupId::WhiteSpace>>();
 				return tmp;
-			} else if (tmp.is('"') && tmp.back() == '"') {
-				return StringView(tmp.data() + 1, tmp.size() - 2);
-			} else if (tmp.is('\'') && tmp.back() == '\'') {
-				return StringView(tmp.data() + 1, tmp.size() - 2);
 			}
 		}
 
@@ -493,7 +490,7 @@ namespace parser {
 		s.skipChars<Group<CharGroupId::WhiteSpace>>();
 
 		if (!s.empty() && !s.is('(')) {
-			if (s == "not") {
+			if (s.is("not")) {
 				q.negative = true;
 				s.skipString("not");
 				s.skipChars<Group<CharGroupId::WhiteSpace>>();
@@ -504,7 +501,7 @@ namespace parser {
 				return q;
 			}
 
-			if (s != "and") {
+			if (!s.is("and")) {
 				return q;
 			} else {
 				s.skipString("and");

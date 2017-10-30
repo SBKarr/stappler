@@ -48,6 +48,9 @@ public:
     virtual void setBorderRadius(uint32_t value);
     virtual uint32_t getBorderRadius() const;
 
+    virtual void setBackgroundOpacity(const uint8_t &);
+    virtual uint8_t getBackgroundOpacity() const;
+
     virtual void setBackgroundColor(const Color &);
     virtual const Color3B &getBackgroundColor() const;
 

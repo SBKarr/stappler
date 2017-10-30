@@ -29,16 +29,21 @@ NS_SP_BEGIN
 
 class SyncRWLock : public data::Subscription {
 public:
-    enum class Lock : uint8_t {
-    	None = 1,
+	enum class Lock : uint8_t {
+		None = 1,
 		Read,
 		Write,
-    };
+	};
 
-    using LockPtr = const void *;
-    using LockAcquiredCallback = Function<void()>;
+	using LockPtr = const void *;
+	using LockAcquiredCallback = Function<void()>;
 
 public:
+	static bool tryReadLock(LockPtr, const Vector<SyncRWLock *> &);
+	static void retainReadLock(LockPtr, const Vector<SyncRWLock *> &, const LockAcquiredCallback &);
+	static void retainReadLock(Ref *, const Vector<SyncRWLock *> &, const LockAcquiredCallback &);
+	static void releaseReadLock(LockPtr, const Vector<SyncRWLock *> &);
+
 	bool tryReadLock(LockPtr);
 	bool retainReadLock(LockPtr, const LockAcquiredCallback &);
 	bool releaseReadLock(LockPtr);

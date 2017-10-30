@@ -30,6 +30,10 @@ THE SOFTWARE.
 
 NS_LAYOUT_BEGIN
 
+float MediaParameters::getDefaultFontSize() const {
+	return style::FontSize::Medium * fontScale;
+}
+
 void MediaParameters::addOption(const String &str) {
 	auto value = string::hash32(str);
 	_options.insert(pair(value, str));
@@ -153,43 +157,6 @@ Vector<bool> MediaParameters::resolveMediaQueries(const Vector<style::MediaQuery
 		ret.push_back(success);
 	}
 	return ret;
-}
-
-MediaResolver::MediaResolver()
-: _document(nullptr) { }
-
-MediaResolver::MediaResolver(Document *doc, const MediaParameters &params, const Vector<String> &opts)
-: _document(doc) {
-	if (opts.empty()) {
-		_media = params.resolveMediaQueries(_document->getMediaQueries());
-	} else {
-		auto p = params;
-		for (auto &it : opts) {
-			p.addOption(it);
-		}
-
-		_media = p.resolveMediaQueries(_document->getMediaQueries());
-	}
-}
-
-bool MediaResolver::resolveMediaQuery(MediaQueryId queryId) const {
-	if (queryId < _media.size()) {
-		return _media[queryId];
-	}
-	return false;
-}
-
-String MediaResolver::getCssString(CssStringId id) const {
-	if (!_document) {
-		return "";
-	}
-
-	auto &map = _document->getCssStrings();
-	auto it = map.find(id);
-	if (it != map.end()) {
-		return it->second;
-	}
-	return "";
 }
 
 NS_LAYOUT_END

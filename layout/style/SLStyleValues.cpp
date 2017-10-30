@@ -30,6 +30,18 @@ THE SOFTWARE.
 
 NS_LAYOUT_BEGIN
 
+SimpleRendererInterface::SimpleRendererInterface() { }
+SimpleRendererInterface::SimpleRendererInterface(const Vector<bool> *media, const Map<CssStringId, String> *strings)
+: _media(media), _strings(strings) { }
+
+bool SimpleRendererInterface::resolveMediaQuery(MediaQueryId queryId) const {
+	return _media->at(queryId);
+}
+
+String SimpleRendererInterface::getCssString(CssStringId id) const {
+	return _strings->at(id);
+}
+
 namespace style {
 
 static bool _readStyleValue(StringView &str, Metric &value, bool resolutionMetric = false, bool allowEmptyMetric = false) {
@@ -64,6 +76,11 @@ static bool _readStyleValue(StringView &str, Metric &value, bool resolutionMetri
 			str += 2;
 			value.value = fvalue;
 			value.metric = Metric::Units::Em;
+			return true;
+		} else if (str == "rem") {
+			str += 3;
+			value.value = fvalue;
+			value.metric = Metric::Units::Rem;
 			return true;
 		} else if (str == "px") {
 			str += 2;
@@ -244,11 +261,12 @@ bool readStyleMargin(const StringView &origStr, Metric &top, Metric &right, Metr
 	return true;
 }
 
-float Metric::computeValue(float base, const Size &vp, float fontSize, bool autoIsZero) const {
+float Metric::computeValueStrong(float base, const Size &vp, float fontSize, float rootFontSize) const {
 	switch (metric) {
-	case Units::Auto: return (autoIsZero)?0:nan(); break;
+	case Units::Auto: return nan(); break;
 	case Units::Px: return value; break;
 	case Units::Em: return fontSize * value; break;
+	case Units::Rem: return rootFontSize * value; break;
 	case Units::Percent: return (!isnanf(base)?(base * value):nan()); break;
 	case Units::Cover: return base; break;
 	case Units::Contain: return base; break;
@@ -261,6 +279,13 @@ float Metric::computeValue(float base, const Size &vp, float fontSize, bool auto
 	return 0.0f;
 }
 
+float Metric::computeValueAuto(float base, const Size &vp, float fontSize, float rootFontSize) const {
+	switch (metric) {
+	case Units::Auto: return 0.0f; break;
+	default: return computeValueStrong(base, vp, fontSize, rootFontSize); break;
+	}
+	return 0.0f;
+}
 
 ParameterValue::ParameterValue() {
 	memset(this, 0, sizeof(ParameterValue));
@@ -268,6 +293,10 @@ ParameterValue::ParameterValue() {
 
 Parameter::Parameter(ParameterName name, MediaQueryId query)
 : name(name), mediaQuery(query) { }
+
+
+Parameter::Parameter(const Parameter &p, MediaQueryId query)
+: name(p.name), mediaQuery(query), value(p.value) { }
 
 bool ParameterList::isInheritable(ParameterName name) {
 	if (name == ParameterName::MarginTop

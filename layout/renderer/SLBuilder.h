@@ -31,9 +31,15 @@ NS_LAYOUT_BEGIN
 
 class Builder : public RendererInterface {
 public:
+	using ExternalAssetsMap = Map<String, Document::AssetMeta>;
+
+	static void compileNodeStyle(Style &style, const ContentPage *page, const Node &node,
+			const Vector<const Node *> &stack, const MediaParameters &media, const Vector<bool> &resolved);
+
 	Builder(Document *, const MediaParameters &, FontSource *set, const Vector<String> & = Vector<String>());
 	virtual ~Builder();
 
+	void setExternalAssetsMeta(ExternalAssetsMap &&);
 	void setHyphens(HyphenMap *);
 	void setMargin(const Margin &);
 
@@ -44,8 +50,6 @@ public:
 	virtual bool resolveMediaQuery(MediaQueryId queryId) const override;
 	virtual String getCssString(CssStringId) const override;
 
-	void resolveMediaQueries(const Vector<style::MediaQuery> &);
-
 	const MediaParameters &getMedia() const;
 
 	Document *getDocument() const;
@@ -54,19 +58,27 @@ public:
 	TimeInterval getReaderTime() const;
 
 protected:
+	bool isFileExists(const String &) const;
+	Pair<uint16_t, uint16_t> getImageSize(const String &) const;
+
+	const Style *compileStyle(const Node &);
+
+	const Vector<bool> * resolvePage(const ContentPage *page);
+	void setPage(const ContentPage *);
+
 	void generateFontConfig();
 	void buildBlockModel();
 
 	// build layout
 	bool processNode(Layout &l, const Vec2 &origin, const Size &size, float collapsableMarginTop);
-	bool processFloatNode(Layout &l, const Node &, BlockStyle &&, Vec2 &pos);
-	bool processBlockNode(Layout &l, const Node &, BlockStyle &&, Vec2 &, float &height, float &margin);
-	bool processInlineNode(Layout &l, const Node &, BlockStyle &&, const Vec2 &pos);
-	bool processInlineBlockNode(Layout &l, const Node &, BlockStyle &&, const Vec2 &pos);
+	bool processFloatNode(Layout &l, Layout::NodeInfo &&, Vec2 &pos);
+	bool processBlockNode(Layout &l, Layout::NodeInfo &&, Vec2 &, float &height, float &margin);
+	bool processInlineNode(Layout &l, Layout::NodeInfo &&, const Vec2 &pos);
+	bool processInlineBlockNode(Layout &l, Layout::NodeInfo &&, const Vec2 &pos);
 
 	void processChilds(Layout &l, const Node &);
 	void processChilds(Layout &l, const Vector<const Node *> &, bool pageBreak = false);
-	bool processChildNode(Layout &l, const Node &, Vec2 &pos, float &height, float &collapsableMarginTop);
+	bool processChildNode(Layout &l, const Node &, Vec2 &pos, float &height, float &collapsableMarginTop, bool pageBreak);
 	void finalizeChilds(Layout &l, float height);
 
 	bool initLayout(Layout &l, const Vec2 &origin, const Size &size, float collapsableMarginTop);
@@ -89,9 +101,11 @@ protected:
 	void applyVerticalMargin(Layout &l, float base, float collapsableMarginTop, float pos);
 
 	WideString getListItemString(Layout *parent, Layout &l);
-	int64_t getListItemCount(const Node &node);
-	style::Display getLayoutContext(const Node &node) const;
-	style::Display getLayoutContext(const Vector<const Node *> &, Vector<const Node *>::const_iterator, style::Display) const;
+	int64_t getListItemCount(const Node &node, const Style &);
+
+	style::Display getNodeDisplay(const Node &node, const Style *parentStyle);
+	style::Display getLayoutContext(const Layout::NodeInfo &node);
+	style::Display getLayoutContext(const Vector<Node> &, Vector<Node>::const_iterator, const Layout::NodeInfo &p);
 
 	void initFormatter(Layout &, const ParagraphStyle &, float, Formatter &, bool initial);
 	InlineContext &makeInlineContext(Layout &l, float parentPosY, const Node &node);
@@ -113,14 +127,22 @@ protected:
 	Rc<Document>_document;
 	Rc<Result>_result;
 	Rc<FontSource>_fontSet;
+	ExternalAssetsMap _externalAssets;
 
-	Vector<bool> _mediaQueries;
 	Vector<String> _spine;
 
 	Vector<Layout *> _layoutStack;
 	Vector<FloatContext *> _floatStack;
 	Rc<HyphenMap> _hyphens;
 	TimeInterval _readerAccum;
+
+	Vector<const Node *> _nodeStack;
+	Map<NodeId, Style> styles;
+
+	Map<CssStringId, String> _cssStrings;
+	const ContentPage *_currentPage = nullptr;
+	const Vector<bool> *_currentMedia = nullptr;
+	Map<const ContentPage *, Vector<bool>> _resolvedMedia;
 };
 
 NS_LAYOUT_END

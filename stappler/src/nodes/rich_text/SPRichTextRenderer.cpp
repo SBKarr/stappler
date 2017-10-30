@@ -113,17 +113,6 @@ Drawer *Renderer::getDrawer() const {
 	return _drawer;
 }
 
-MediaResolver Renderer::getMediaResolver(const Vector<String> &opts) const {
-	if (auto doc = getDocument()) {
-		if (_result) {
-			return MediaResolver(doc, _result->getMedia(), opts);
-		} else {
-			return MediaResolver(doc, _media, opts);
-		}
-	}
-	return MediaResolver();
-}
-
 void Renderer::onContentSizeDirty() {
 	_isPageSplitted = false;
 	auto size = _owner->getContentSize();
@@ -288,6 +277,7 @@ bool Renderer::requestRendering() {
 		}
 
 		layout::Builder * impl = new layout::Builder(document, media, fontSet, _ids);
+		impl->setExternalAssetsMeta(s->getExternalAssetMeta());
 		impl->setHyphens(_hyphens);
 		_renderingInProgress = true;
 		if (_renderingCallback) {
@@ -328,6 +318,25 @@ void Renderer::onResult(Result * result) {
 
 void Renderer::setRenderingCallback(const RenderingCallback &cb) {
 	_renderingCallback = cb;
+}
+
+String Renderer::getLegacyBackground(const layout::Node &node, const StringView &opt) const {
+	if (auto doc = _source->getDocument()) {
+		auto root = doc->getRoot();
+
+		layout::Style style;
+		auto media = _media;
+		media.addOption(opt.str());
+
+		auto resolved = media.resolveMediaQueries(root->queries);
+
+		layout::Builder::compileNodeStyle(style, root, node, Vector<const layout::Node *>(), media, resolved);
+		layout::SimpleRendererInterface iface(&resolved, &root->strings);
+		auto bg = style.compileBackground(&iface);
+
+		return bg.backgroundImage;
+	}
+	return String();
 }
 
 void Renderer::pushVersionOptions() {

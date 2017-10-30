@@ -43,54 +43,6 @@ static String getRootXType(const Vector<style::Tag> &stack) {
 	return String();
 }
 
-Reader::Style Reader::specializeStyle(const Tag &tag, const Style &parentStyle) {
-	Style style;
-	style.merge(parentStyle, true);
-	style.merge(style::getStyleForTag(tag.name, tag.type));
-	auto it = _namedStyles.find("*");
-	if (it != _namedStyles.end()) {
-		style.merge(it->second, true);
-	}
-	if (!tag.weakStyle.empty()) {
-		style.merge(tag.weakStyle);
-	}
-	style.merge(tag.compiledStyle, false);
-	it = _namedStyles.find(tag.name);
-	if (it != _namedStyles.end()) {
-		style.merge(it->second);
-	}
-	if (!tag.classes.empty()) {
-		for (auto &cl : tag.classes) {
-			SP_RTREADER_LOG("search class: %s", cl.c_str());
-			it = _namedStyles.find(String(".") + cl);
-			if (it != _namedStyles.end()) {
-				style.merge(it->second);
-			}
-			it = _namedStyles.find(tag.name + "." + cl);
-			if (it != _namedStyles.end()) {
-				style.merge(it->second);
-			}
-		}
-	}
-	if (!tag.id.empty()) {
-		it = _namedStyles.find(String("#") + tag.id);
-		if (it != _namedStyles.end()) {
-			style.merge(it->second);
-		}
-		it = _namedStyles.find(tag.name + "#" + tag.id);
-		if (it != _namedStyles.end()) {
-			style.merge(it->second);
-		}
-	}
-	if (!tag.style.empty()) {
-		style.merge(tag.style);
-	}
-
-	SP_RTREADER_LOG("style for '%s' => \n%s", tag.name.c_str(), style.css().c_str());
-
-	return style;
-}
-
 static String encodePathString(const String &str) {
 	String ret; ret.reserve(str.size());
 	for (auto &c : str) {
@@ -142,14 +94,14 @@ Reader::Tag Reader::onTag(StringReader &tag) {
 			parser::readHtmlStyleValue(tag, [&] (const String &name, const String &value) {
 				SP_RTREADER_LOG("%s style: '%s' : '%s'", ret.name.c_str(), name.c_str(), value.c_str());
 				if (name == "font-family" || name == "background-image") {
-					addCssString(value);
+					addCssString(name, value);
 				}
-				ret.style.push_back(pair(name, value));
+				ret.style.read(name, value);
 			});
 		} else if (paramName == "href") {
 			auto ref = parser::readHtmlTagParamValue(tag);
-			if (!ref.empty() && ref.front() != '#' && ref.find("://") == String::npos && !_path.empty()) {
-				ret.attributes.emplace(paramName, filepath::reconstructPath(filepath::merge(filepath::root(_path), ref)));
+			if (!ref.empty() && ref.front() != '#' && ref.find("://") == String::npos && !_page->path.empty()) {
+				ret.attributes.emplace(paramName, filepath::reconstructPath(filepath::merge(filepath::root(_page->path), ref)));
 			} else if (!ref.empty()) {
 				ret.attributes.emplace(paramName, std::move(ref));
 			}
@@ -158,18 +110,15 @@ Reader::Tag Reader::onTag(StringReader &tag) {
 			string::split(string::tolower(paramValue), " ", [&ret] (const StringView &r) {
 				 ret.classes.emplace_back(r.str());
 			});
+			ret.attributes.emplace(paramName, paramValue);
 		} else if (paramName == "x-refs" && ret.type == Tag::Block) {
 			paramValue = parser::readHtmlTagParamValue(tag);
 			ret.autoRefs = (paramValue == "auto");
 		} else {
 			if (tag.is('=')) {
-				if (isStyleAttribute(ret.name, paramName)) {
-					addStyleAttribute(ret, paramName, parser::readHtmlTagParamValue(tag));
-				} else {
-					String val = parser::readHtmlTagParamValue(tag);
-					SP_RTREADER_LOG("'%s' attr: '%s' : '%s'", ret.name.c_str(), paramName.c_str(), val.c_str());
-					ret.attributes.emplace(paramName, std::move(val));
-				}
+				String val = parser::readHtmlTagParamValue(tag);
+				SP_RTREADER_LOG("'%s' attr: '%s' : '%s'", ret.name.c_str(), paramName.c_str(), val.c_str());
+				ret.attributes.emplace(paramName, std::move(val));
 			} else {
 				SP_RTREADER_LOG("'%s' attr: '%s'", ret.name.c_str(), paramName.c_str());
 				ret.attributes.emplace(paramName, "");
@@ -227,7 +176,7 @@ Reader::Tag Reader::onTag(StringReader &tag) {
 			}
 		}
 	} else if ((ret.type == Tag::Image || ret.xType == "image") && ret.id.empty()) {
-		ret.id = toString("__id__", _pseudoId, "__", encodePathString(_path));
+		ret.id = toString("__id__", _pseudoId, "__", encodePathString(_page->path));
 		_pseudoId ++;
 	}
 
@@ -239,10 +188,11 @@ Reader::Tag Reader::onTag(StringReader &tag) {
 		if (it != ret.attributes.end()) {
 			if (!it->second.empty()) {
 				auto & src = it->second;
-				if (src.front() != '/' && src.find("://") == String::npos && !_path.empty()) {
-					it->second = filepath::reconstructPath(filepath::merge(filepath::root(_path), it->second));
+				if (src.front() != '/' && src.find("://") == String::npos && !_page->path.empty()) {
+					it->second = filepath::reconstructPath(filepath::merge(filepath::root(_page->path), it->second));
 				}
 			}
+			_page->assets.push_back(it->second);
 
 			if (ret.xType != "image") {
 				auto & src = it->second;
@@ -292,14 +242,14 @@ void Reader::onPushTag(Tag &tag) {
 	} else if (tag.name == "html") {
 		_htmlTag = true;
 	} else if (!_htmlTag || !hasParentTag("head")) {
-		_styleStack.push_back(specializeStyle(tag, (_styleStack.empty()?_nodeStack.back()->getStyle():_styleStack.back())));
+		//_styleStack.push_back(specializeStyle(tag, (_styleStack.empty()?_nodeStack.back()->getStyle():_styleStack.back())));
 		if (tag.type == Tag::Block) {
-			auto &node = _nodeStack.back()->pushNode(tag.name, tag.id, _styleStack.back(), std::move(tag.attributes));
+			auto &node = _nodeStack.back()->pushNode(tag.name, tag.id, move(tag.style), std::move(tag.attributes));
 			SP_RTREADER_LOG("'%s'", tag.name.c_str());
 			_nodeStack.push_back(&node);
 		} else if (tag.type == Tag::Markup && tag.name == "body") {
-			auto &body = _nodeStack.front();
-			body->pushStyle(_styleStack.back());
+			//auto &body = _nodeStack.front();
+			//body->pushStyle(_styleStack.back());
 		}
 	}
 }
@@ -309,9 +259,9 @@ void Reader::onPopTag(Tag &tag) {
 			_nodeStack.pop_back();
 			SP_RTREADER_LOG("'/%s'", tag.name.c_str());
 		}
-		if (!_styleStack.empty()) {
+		/*if (!_styleStack.empty()) {
 			_styleStack.pop_back();
-		}
+		}*/
 	}
 }
 void Reader::onInlineTag(Tag &tag) {
@@ -320,8 +270,7 @@ void Reader::onInlineTag(Tag &tag) {
 		if (tag.name == "br") {
 			_nodeStack.back()->pushLineBreak();
 		} else if (tag.type != Tag::Special) {
-			_nodeStack.back()->pushNode(tag.name, tag.id, specializeStyle(tag,
-					(_styleStack.empty()?_nodeStack.back()->getStyle():_styleStack.back())), std::move(tag.attributes));
+			_nodeStack.back()->pushNode(tag.name, tag.id, move(tag.style), std::move(tag.attributes));
 		}
 	}
 }
@@ -350,15 +299,11 @@ void Reader::onTagContent(Tag &tag, StringReader &s) {
 				if (!ref.empty()) {
 					Style refStyle;
 					refStyle.merge(node->getStyle(), true);
-					refStyle.merge(style::getStyleForTag("a", Tag::Block));
-
-					// push css specialized styles
-					auto it = _namedStyles.find("a"); if (it != _namedStyles.end()) { refStyle.merge(it->second); }
-					it = _namedStyles.find("a:auto"); if (it != _namedStyles.end()) { refStyle.merge(it->second); }
-					it = _namedStyles.find("a.auto"); if (it != _namedStyles.end()) { refStyle.merge(it->second); }
 
 					Map<String, String> attr;
 					attr.emplace("href", ref);
+					attr.emplace("class", "auto");
+					attr.emplace("x-refs", "auto");
 
 					Node &hrefNode = node->pushNode("a", "", refStyle, std::move(attr));
 					hrefNode.pushValue(ref);
@@ -369,7 +314,7 @@ void Reader::onTagContent(Tag &tag, StringReader &s) {
 }
 
 void Reader::onStyleTag(StringReader &s) {
-	parser::readStyleTag(*this, s, _fonts);
+	parser::readStyleTag(*this, s, _page->fonts);
 }
 
 void Reader::onStyleObject(const String &selector, const style::StyleVec &vec, const MediaQueryId &query) {
@@ -377,15 +322,19 @@ void Reader::onStyleObject(const String &selector, const style::StyleVec &vec, c
 		_nodeStack.front()->pushStyle(vec, query);
 	}
 
-	auto it = _namedStyles.find(selector);
-	if (it == _namedStyles.end()) {
-		it = _namedStyles.insert(pair(selector, style::ParameterList())).first;
+	auto it = _page->styles.find(selector);
+	if (it == _page->styles.end()) {
+		it = _page->styles.insert(pair(selector, style::ParameterList())).first;
 	}
 	it->second.read(vec, query);
 	SP_RTREADER_LOG("Added NamedStyle '%s' : %s", selector.c_str(), it->second.css().c_str());
 }
 
-static void Reader_resolveFontPaths(const String &root, HtmlPage::FontMap &fonts) {
+static void Reader_resolveFontPaths(const String &root, Map<String, Vector<style::FontFace>> &fonts) {
+	if (root.empty()) {
+		return;
+	}
+
 	for (auto &it : fonts) {
 		for (auto &vit : it.second) {
 			for (auto &fit : vit.src) {
@@ -399,17 +348,14 @@ static void Reader_resolveFontPaths(const String &root, HtmlPage::FontMap &fonts
 	}
 }
 
-bool Reader::readHtml(HtmlPage &page, const StringView &str, CssStrings &strings, MediaQueries &queries, MetaPairs &meta, CssMap &cssMap) {
+bool Reader::readHtml(ContentPage &page, const StringView &str, MetaPairs &meta) {
 	SP_RTREADER_LOG("read: %s", page.path.c_str());
 	Node &ret = page.root;
 
-	_path = page.path;
-	_cssStrings = &strings;
-	_mediaQueries = &queries;
+	_page = &page;
 	_meta = &meta;
-	_css = &cssMap;
 
-	ret.pushStyle(style::getStyleForTag("body", style::Tag::Markup));
+	ret.pushStyle(style::getStyleForTag("body"));
 	_nodeStack.push_back(&ret);
 	_current = _origin = StringReader(str.data(), str.size());
 
@@ -487,35 +433,35 @@ bool Reader::readHtml(HtmlPage &page, const StringView &str, CssStrings &strings
 	if (!ret) {
 		return false;
 	}
-	Reader_resolveFontPaths(_path, _fonts);
-	page.fonts = std::move(_fonts);
+	Reader_resolveFontPaths(_page->path, _page->fonts);
 	return true;
 }
 
-style::CssData Reader::readCss(const String &path, const StringView &str, CssStrings &strings, MediaQueries &queries) {
-	_path = path;
-	_cssStrings = &strings;
-	_mediaQueries = &queries;
+bool Reader::readCss(ContentPage &page, const StringView &str) {
+	_page = &page;
 
 	_current = _origin = StringReader(str.data(), str.size());
-	parser::readStyleTag(*this, _current, _fonts);
-	Reader_resolveFontPaths(_path, _fonts);
-	return style::CssData{std::move(_namedStyles), std::move(_fonts)};
+	parser::readStyleTag(*this, _current, _page->fonts);
+	Reader_resolveFontPaths(_page->path, _page->fonts);
+	return true;
 }
 
 MediaQueryId Reader::addMediaQuery(style::MediaQuery &&mediaQuery) {
-	_mediaQueries->emplace_back(std::move(mediaQuery));
-	return (MediaQueryId) _mediaQueries->size() - 1;
+	_page->queries.emplace_back(std::move(mediaQuery));
+	return (MediaQueryId) _page->queries.size() - 1;
 }
 void Reader::addCssString(CssStringId id, const String &str) {
-	_cssStrings->insert(pair(id, str));
+	_page->strings.insert(pair(id, str));
 }
 
-void Reader::addCssString(const String &origStr) {
+void Reader::addCssString(const StringView &name, const String &origStr) {
 	auto str = parser::resolveCssString(StringView(origStr));
+	if (name == "background-image") {
+		_page->assets.push_back(str.str());
+	}
 	SP_RTREADER_LOG("css string %s", str.data());
 	CssStringId value = hash::hash32(str.data(), str.size());
-	_cssStrings->insert(pair(value, str.str()));
+	_page->strings.insert(pair(value, str.str()));
 }
 
 bool Reader::hasParentTag(const String &str) {
@@ -542,58 +488,14 @@ void Reader::onMeta(String && name, String && content) {
 
 void Reader::onCss(const String & href) {
 	String path;
-	if (href.front() == '/') {
+	if (href.front() == '/' || href.find("://") != String::npos) {
 		path = href;
 	} else {
-		path = filepath::reconstructPath(filepath::merge(filepath::root(_path), href));
+		path = filepath::reconstructPath(filepath::merge(filepath::root(_page->path), href));
 	}
 
-	auto cssIt = _css->find(path);
-	if (cssIt != _css->end()) {
-		for (auto &it : cssIt->second.styles) {
-			auto nit = _namedStyles.find(it.first);
-			if (nit == _namedStyles.end()) {
-				_namedStyles.emplace(it.first, it.second);
-			} else {
-				nit->second.merge(it.second);
-			}
-		}
-	}
-}
-
-bool Reader::isStyleAttribute(const String &tag, const String &name) const {
-	if (name == "align" || name == "width" || name == "height") {
-		return true;
-	}
-	if (tag == "li" || tag == "ul" || tag == "ol") {
-		return name == "type";
-	}
-	return false;
-}
-
-void Reader::addStyleAttribute(Tag &tag, const String &name, const String &value) {
-	if (name == "align") {
-		tag.weakStyle.push_back(pair("text-align", value));
-		tag.weakStyle.push_back(pair("text-indent", "0px"));
-	} else if (name == "width") {
-		tag.weakStyle.push_back(pair("width", value + "px"));
-	} else if (name == "height") {
-		tag.weakStyle.push_back(pair("height", value + "px"));
-	} else if (name == "type") {
-		if (value == "disc" || value == "circle" || value == "square") {
-			tag.weakStyle.push_back(pair("list-style-type", value));
-		} else if (value == "A") {
-			tag.weakStyle.push_back(pair("list-style-type", "upper-alpha"));
-		} else if (value == "a") {
-			tag.weakStyle.push_back(pair("list-style-type", "lower-alpha"));
-		} else if (value == "I") {
-			tag.weakStyle.push_back(pair("list-style-type", "upper-roman"));
-		} else if (value == "i") {
-			tag.weakStyle.push_back(pair("list-style-type", "lower-roman"));
-		} else if (value == "1") {
-			tag.weakStyle.push_back(pair("list-style-type", "decimal"));
-		}
-	}
+	_page->assets.push_back(path);
+	_page->styleReferences.push_back(path);
 }
 
 NS_LAYOUT_END

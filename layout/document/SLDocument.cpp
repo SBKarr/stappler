@@ -39,28 +39,161 @@ THE SOFTWARE.
 
 NS_LAYOUT_BEGIN
 
-class Document_RenderInterface : public RendererInterface {
+class DocumentFormatStorage {
 public:
-	Document_RenderInterface(Document *d, const Vector<MediaQueryId> *m)
-	: doc(d), media(m) { }
+	static DocumentFormatStorage *getInstance();
 
-	virtual bool resolveMediaQuery(MediaQueryId queryId) const override {
-		for (auto &it : (*media)) {
-			if (it == queryId) {
-				return true;
-			}
-		}
-		return false;
-	}
+	void emplace(Document::DocumentFormat *);
+	void erase(Document::DocumentFormat *);
 
-	virtual String getCssString(CssStringId stringId) const override {
-		return doc->getCssString(stringId);
-	}
+	std::set<Document::DocumentFormat *> get();
 
-protected:
-	Document *doc = nullptr;
-	const Vector<MediaQueryId> *media;
+private:
+	static DocumentFormatStorage *s_sharedInstance;
+	std::mutex formatListMutex;
+	std::set<Document::DocumentFormat *> formatList;
 };
+
+DocumentFormatStorage *DocumentFormatStorage::s_sharedInstance = nullptr;
+
+DocumentFormatStorage *DocumentFormatStorage::getInstance() {
+	if (!s_sharedInstance) {
+		s_sharedInstance = new DocumentFormatStorage();
+	}
+	return s_sharedInstance;
+}
+
+void DocumentFormatStorage::emplace(Document::DocumentFormat *ptr) {
+	formatListMutex.lock();
+	formatList.emplace(ptr);
+	formatListMutex.unlock();
+}
+
+void DocumentFormatStorage::erase(Document::DocumentFormat *ptr) {
+	formatListMutex.lock();
+	formatList.erase(ptr);
+	formatListMutex.unlock();
+}
+
+std::set<Document::DocumentFormat *> DocumentFormatStorage::get() {
+	std::set<Document::DocumentFormat *> ret;
+
+	formatListMutex.lock();
+	ret = formatList;
+	formatListMutex.unlock();
+
+	return ret;
+}
+
+Document::DocumentFormat::DocumentFormat(check_file_fn chFileFn, load_file_fn ldFileFn, check_data_fn chDataFn, load_data_fn ldDataFn)
+: check_data(chDataFn), check_file(chFileFn), load_data(ldDataFn), load_file(ldFileFn) {
+	DocumentFormatStorage::getInstance()->emplace(this);
+}
+
+Document::DocumentFormat::~DocumentFormat() {
+	DocumentFormatStorage::getInstance()->erase(this);
+}
+
+bool Document_isAloowedByContentType(const String &ct) {
+	StringView ctView(ct);
+
+	return ctView.is("text/html") || ctView.is("multipart/mixed") || ctView.is("multipart/form-data");
+}
+
+bool Document_canOpenData(const DataReader<ByteOrder::Network> &data) {
+	StringView r((const char *)data.data(), data.size());
+	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+	if (r.is("<html>") || r.is("<!doctype") || r.is("Content-Type: multipart/mixed; boundary=")) {
+		return true;
+	}
+
+	return false;
+}
+
+bool Document_canOpen(const FilePath &path, const String &ct) {
+	if (Document_isAloowedByContentType(ct)) {
+		return true;
+	}
+
+	auto ext = filepath::lastExtension(path.get());
+	if (ext == "html" || ext == "htm") {
+		return true;
+	}
+
+	if (auto file = filesystem::openForReading(path.get())) {
+		StackBuffer<256> data;
+		if (io::Producer(file).seekAndRead(0, data, 512) > 0) {
+			return Document_canOpenData(DataReader<ByteOrder::Network>(data.data(), data.size()));
+		}
+	}
+
+	return false;
+}
+
+bool Document_canOpen(const DataReader<ByteOrder::Network> &data, const String &ct) {
+	if (Document_isAloowedByContentType(ct)) {
+		return true;
+	}
+
+	return Document_canOpenData(data);
+}
+
+bool Document::canOpenDocumnt(const FilePath &path, const String &ct) {
+	std::set<DocumentFormat *> formatList(DocumentFormatStorage::getInstance()->get());
+
+	for (auto &it : formatList) {
+		if (it->check_file && it->check_file(path.get(), ct)) {
+			return true;
+		}
+	}
+
+	return Document_canOpen(path, ct);
+}
+
+bool Document::canOpenDocumnt(const DataReader<ByteOrder::Network> &data, const String &ct) {
+	std::set<DocumentFormat *> formatList(DocumentFormatStorage::getInstance()->get());
+
+	for (auto &it : formatList) {
+		if (it->check_data && it->check_data(data, ct)) {
+			return true;
+		}
+	}
+
+	return Document_canOpen(data, ct);
+}
+
+Rc<Document> Document::openDocument(const FilePath &path, const String &ct) {
+	Rc<Document> ret;
+	std::set<DocumentFormat *> formatList(DocumentFormatStorage::getInstance()->get());
+
+	for (auto &it : formatList) {
+		if (it->check_file && it->check_file(path.get(), ct)) {
+			ret = it->load_file(path.get(), ct);
+			break;
+		}
+	}
+	if (!ret) {
+		ret = Rc<Document>::create(path, ct);
+	}
+	return ret;
+}
+
+Rc<Document> Document::openDocument(const DataReader<ByteOrder::Network> &data, const String &ct) {
+	Rc<Document> ret;
+	std::set<DocumentFormat *> formatList(DocumentFormatStorage::getInstance()->get());
+
+	for (auto &it : formatList) {
+		if (it->check_data && it->check_data(data, ct)) {
+			ret = it->load_data(data, ct);
+			break;
+		}
+	}
+	if (!ret) {
+		ret = Rc<Document>::create(data, ct);
+	}
+	return ret;
+}
+
 
 Document::Image::Image(const MultipartParser::Image &img)
 : type(Type::Embed), width(img.width), height(img.height), offset(img.offset), length(img.length)
@@ -78,9 +211,7 @@ String Document::getImageName(const String &name) {
 	return src;
 }
 
-Document::Document() {
-	_mediaQueries = style::MediaQuery::getDefaultQueries(_cssStrings);
-}
+Document::Document() { }
 
 Vector<String> Document::getImageOptions(const String &isrc) {
 	String src(resolveName(isrc));
@@ -100,18 +231,13 @@ Vector<String> Document::getImageOptions(const String &isrc) {
 	return Vector<String>();
 }
 
-bool Document::init(const String &html) {
-	if (html.empty()) {
+bool Document::init(const StringDocument &html) {
+	if (html.get().empty()) {
 		return false;
 	}
 
-	_data = Bytes((const uint8_t *)html.data(), (const uint8_t *)(html.data() + html.size()));
-	processHtml("", StringView(html));
-	if (_content.empty()) {
-		return false;
-	}
-
-	return true;
+	_data = Bytes((const uint8_t *)html.get().data(), (const uint8_t *)(html.get().data() + html.get().size()));
+	return init(_data, String());
 }
 
 bool Document::init(const FilePath &path, const String &ct) {
@@ -120,10 +246,12 @@ bool Document::init(const FilePath &path, const String &ct) {
 	}
 
 	_filePath = path.get();
-	return init(filesystem::readFile(path.get()), ct);
+
+	auto data = filesystem::readFile(path.get());
+	return init(data, ct);
 }
 
-bool Document::init(const Bytes &vec, const String &ct) {
+bool Document::init(const DataReader<ByteOrder::Network> &vec, const String &ct) {
 	if (vec.empty()) {
 		return false;
 	}
@@ -132,7 +260,6 @@ bool Document::init(const Bytes &vec, const String &ct) {
 	if (_contentType.compare(0, 9, "text/html") == 0 ||
 			(ct.empty() && (memcmp("<html>", data, 6) == 0 || strncasecmp("<!doctype", (const char *)data, 9) == 0))) {
 		processHtml("", StringView((const char *)data, vec.size()));
-		updateNodes();
 	} else if (_contentType.compare(0, 15, "multipart/mixed") == 0 || _contentType.compare(0, 19, "multipart/form-data") == 0 || _contentType.empty()) {
 		MultipartParser parser;
 		if (!ct.empty()) {
@@ -151,7 +278,7 @@ bool Document::init(const Bytes &vec, const String &ct) {
 
 		processHtml("", parser.html);
 
-		if (!_content.empty()) {
+		if (!_pages.empty()) {
 			for (auto &it : parser.images) {
 				String name = "embed://" + it.name;
 				SP_RTDOC_LOG("image : %s %d %d %lu %lu", it.name.c_str(), it.width, it.height, it.offset, it.length);
@@ -164,12 +291,19 @@ bool Document::init(const Bytes &vec, const String &ct) {
 		}
 	}
 
+	if (!_pages.empty()) {
+		return true;
+	}
 
-	return true;
+	return false;
+}
+
+void Document::storeData(const DataReader<ByteOrder::Network> &data) {
+	_data = Bytes(data.data(), data.data() + data.size());
 }
 
 bool Document::prepare() {
-	if (!_content.empty()) {
+	if (!_pages.empty()) {
 		updateNodes();
 		return true;
 	}
@@ -192,7 +326,9 @@ String Document::resolveName(const String &str) {
 		r.trimChars<StringView::Chars<'"'>>();
 	}
 
-	return r.str();
+	auto f = r.readUntil<StringView::Chars<'?'>>();
+
+	return f.str();
 }
 
 Bytes Document::readData(size_t offset, size_t len) {
@@ -211,9 +347,6 @@ Bytes Document::readData(size_t offset, size_t len) {
 	return Bytes();
 }
 
-const Document::FontFaceMap &Document::getFontFaces() const {
-	return _fontFaces;
-}
 bool Document::isFileExists(const String &iname) const {
 	String name(resolveName(iname));
 	auto imageIt = _images.find(name);
@@ -233,41 +366,46 @@ Bytes Document::getFileData(const String &iname) {
 	return Bytes();
 }
 
-Bitmap Document::getImageBitmap(const String &iname, const Bitmap::StrideFn &fn) {
-	String name(resolveName(iname));
+static Document::ImageMap::const_iterator getImageFromMap(const Document::ImageMap &images, const String &name) {
 	auto it = name.find('?');
-	ImageMap::const_iterator imageIt;
 	if (it != String::npos) {
-		imageIt = _images.find(name.substr(0, it));
+		return images.find(name.substr(0, it));
 	} else {
-		imageIt = _images.find(name);
+		return images.find(name);
 	}
+}
+
+Bytes Document::getImageData(const String &iname) {
+	auto imageIt = getImageFromMap(_images, resolveName(iname));
 	if (imageIt != _images.end()) {
 		auto &img = imageIt->second;
-		auto vec = readData(img.offset, img.length);
 		if (img.encoding == "base64") {
-			vec = base64::decode(CoderSource(vec.data(), vec.size()));
+			auto vec = readData(img.offset, img.length);
+			return base64::decode(CoderSource(vec.data(), vec.size()));
+		} else {
+			return readData(img.offset, img.length);
 		}
-
-		if (vec.empty()) {
-			return Bitmap();
-		}
-
-		return Bitmap(vec, fn);
 	}
-	return Bitmap();
+	return Bytes();
+}
+
+Pair<uint16_t, uint16_t> Document::getImageSize(const String &iname) {
+	auto imageIt = getImageFromMap(_images, resolveName(iname));
+	if (imageIt != _images.end()) {
+		return pair(imageIt->second.width, imageIt->second.height);
+	}
+	return pair(uint16_t(0), uint16_t(0));
 }
 
 void Document::updateNodes() {
-	_ids.clear();
-
 	NodeId nextId = 0;
-	for (auto &it : _content) {
-		it.root.foreach([&] (Node &node, size_t level) {
+	for (auto &it : _pages) {
+		ContentPage &page = it.second;
+		page.root.foreach([&] (Node &node, size_t level) {
 			node.setNodeId(nextId);
 			auto htmlId = node.getHtmlId();
 			if (!htmlId.empty()) {
-				_ids.insert(pair(htmlId, &node));
+				page.ids.insert(pair(htmlId, &node));
 				SP_RTDOC_LOG("id : %s", node.getHtmlId().c_str());
 			}
 			nextId ++;
@@ -275,51 +413,27 @@ void Document::updateNodes() {
 	}
 }
 
-const Node &Document::getRoot() const {
-	return _content.front().root;
+const Vector<String> &Document::getSpine() const {
+	return _spine;
 }
 
-const Vector<HtmlPage> &Document::getContent() const {
-	return _content;
-}
+const ContentPage *Document::getRoot() const {
+	if (!_spine.empty()) {
+		return getContentPage(_spine.front());
+	}
 
-const HtmlPage *Document::getContentPage(const String &name) const {
-	for (auto &it : _content) {
-		if (it.path == name) {
-			return &it;
-		}
+	if (!_pages.empty()) {
+		return &_pages.begin()->second;
 	}
 	return nullptr;
 }
 
-const Vector<style::MediaQuery> &Document::getMediaQueries() const {
-	return _mediaQueries;
-}
-const Map<CssStringId, String> &Document::getCssStrings() const {
-	return _cssStrings;
-}
-
-String Document::getCssString(CssStringId id) const {
-	auto it = _cssStrings.find(id);
-	if (it != _cssStrings.end()) {
-		return it->second;
+const ContentPage *Document::getContentPage(const String &name) const {
+	auto it = _pages.find(name);
+	if (it != _pages.end()) {
+		return &it->second;
 	}
-	return "";
-}
-
-bool Document::hasImage(const String &name) const {
-	return _images.find(getImageName(name)) != _images.end();
-}
-
-Pair<uint16_t, uint16_t> Document::getImageSize(const String &name) const {
-	auto src = getImageName(name);
-
-	auto it = _images.find(src);
-	if (it == _images.end()) {
-		return pair((uint16_t)0, (uint16_t)0);
-	} else {
-		return pair((uint16_t)it->second.width, (uint16_t)it->second.height);
-	}
+	return nullptr;
 }
 
 const Document::ImageMap & Document::getImages() const {
@@ -334,35 +448,53 @@ const Document::ContentRecord & Document::getTableOfContents() const {
 	return _contents;
 }
 
-const Node *Document::getNodeById(const String &str) const {
-	auto it = _ids.find(str);
-	if (it != _ids.end()) {
-		return it->second;
+const Map<String, ContentPage> & Document::getContentPages() const {
+	return _pages;
+}
+
+const Node *Document::getNodeById(const String &path, const String &str) const {
+	if (auto page = getContentPage(path)) {
+		auto it = page->ids.find(str);
+		if (it != page->ids.end()) {
+			return it->second;
+		}
 	}
 	return nullptr;
 }
 
+Pair<const ContentPage *, const Node *> Document::getNodeByIdGlobal(const String &id) const {
+	for (auto &it : _pages) {
+		auto &page = it.second;
+		auto id_it = page.ids.find(id);
+		if (id_it != page.ids.end()) {
+			return Pair<const ContentPage *, const Node *>(&page, id_it->second);
+		}
+	}
+	return Pair<const ContentPage *, const Node *>(nullptr, nullptr);
+}
+
 void Document::processCss(const String &path, const StringView &str) {
 	Reader r;
-	auto it = _css.emplace(path, r.readCss(path, str, _cssStrings, _mediaQueries)).first;
-	FontSource::mergeFontFace(_fontFaces, it->second.fonts);
+	auto it = _pages.emplace(path, ContentPage{path, Node("html", path)}).first;
+	it->second.queries = style::MediaQuery::getDefaultQueries(it->second.strings);
+	if (!r.readCss(it->second, str)) {
+		_pages.erase(it);
+	}
 }
 
 void Document::processHtml(const String &path, const StringView &html, bool linear) {
 	Reader r;
 	Vector<Pair<String, String>> meta;
-	_content.emplace_back(HtmlPage{path, Node("html", path), HtmlPage::FontMap{}, linear});
-	HtmlPage &c = _content.back();
-
-	if (r.readHtml(c, html, _cssStrings, _mediaQueries, meta, _css)) {
-		FontSource::mergeFontFace(_fontFaces, c.fonts);
-		processMeta(c, meta);
+	auto it = _pages.emplace(path, ContentPage{path, Node("html", path), linear}).first;
+	it->second.queries = style::MediaQuery::getDefaultQueries(it->second.strings);
+	if (r.readHtml(it->second, html, meta)) {
+		processMeta(it->second, meta);
 	} else {
-		_content.pop_back();
+		_pages.erase(it);
 	}
 }
 
-void Document::processMeta(HtmlPage &c, const Vector<Pair<String, String>> &vec) {
+void Document::processMeta(ContentPage &c, const Vector<Pair<String, String>> &vec) {
 	for (auto &it : vec) {
 		if (it.first == "gallery") {
 			auto git = _gallery.find(it.second);
@@ -383,6 +515,56 @@ void Document::processMeta(HtmlPage &c, const Vector<Pair<String, String>> &vec)
 					}
 				}
 			}
+		}
+	}
+}
+
+Style Document::beginStyle(const Node &node, const Vector<const Node *> &stack, const MediaParameters &media) const {
+	const Node *parent = nullptr;
+	if (stack.size() > 1) {
+		parent = stack.at(stack.size() - 2);
+	}
+
+	Style style(style::getStyleForTag(node.getHtmlName(), parent?StringView(parent->getHtmlName()):StringView()));
+
+	auto &attr = node.getAttributes();
+
+	for (auto &it : attr) {
+		onStyleAttribute(style, node.getHtmlName(), it.first, it.second, media);
+	}
+
+	return style;
+}
+
+Style Document::endStyle(const Node &node, const Vector<const Node *> &stack, const MediaParameters &media) const {
+	return Style();
+}
+
+void Document::onStyleAttribute(Style &style, const StringView &tag, const StringView &name, const StringView &value, const MediaParameters &) const {
+	if (name == "align") {
+		style.read("text-align", value);
+		style.read("text-indent", "0px");
+	} else if (name == "width") {
+		style.set<style::ParameterName::Width>(style::Metric(StringView(value).readInteger(), style::Metric::Px));
+	} else if (name == "height") {
+		style.set<style::ParameterName::Height>(style::Metric(StringView(value).readInteger(), style::Metric::Px));
+	} else if ((tag == "li" || tag == "ul" || tag == "ol") && name == "type") {
+		if (value == "disc") {
+			style.set<style::ParameterName::ListStyleType>(style::ListStyleType::Disc);
+		} else if (value == "circle") {
+			style.set<style::ParameterName::ListStyleType>(style::ListStyleType::Circle);
+		} else if (value == "square") {
+			style.set<style::ParameterName::ListStyleType>(style::ListStyleType::Square);
+		} else if (value == "A") {
+			style.set<style::ParameterName::ListStyleType>(style::ListStyleType::UpperAlpha);
+		} else if (value == "a") {
+			style.set<style::ParameterName::ListStyleType>(style::ListStyleType::LowerAlpha);
+		} else if (value == "I") {
+			style.set<style::ParameterName::ListStyleType>(style::ListStyleType::UpperRoman);
+		} else if (value == "i") {
+			style.set<style::ParameterName::ListStyleType>(style::ListStyleType::LowerRoman);
+		} else if (value == "1") {
+			style.set<style::ParameterName::ListStyleType>(style::ListStyleType::Decimal);
 		}
 	}
 }

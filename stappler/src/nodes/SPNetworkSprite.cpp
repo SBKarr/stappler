@@ -93,7 +93,7 @@ void NetworkSprite::updateSprite(bool force) {
 			lib->getAsset([this, force] (Asset *a) {
 				onAsset(a, force);
 				release();
-			}, _url, _filePath, TimeInterval::seconds(10 * 24 * 60 * 60));
+			}, _url, _filePath, config::getNetworkSpriteAssetTtl());
 		}
 	} else {
 		onAsset(nullptr, force);

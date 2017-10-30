@@ -33,11 +33,12 @@ THE SOFTWARE.
 NS_LAYOUT_BEGIN
 
 void Builder::applyVerticalMargin(Layout &l, float base, float collapsableMarginTop, float pos) {
-	l.margin.top = l.style.marginTop.computeValue(base + l.padding.top + l.padding.bottom, _media.surfaceSize, style::FontSize::Medium * _media.fontScale, true);
-	l.margin.bottom = l.style.marginBottom.computeValue(base + l.padding.top + l.padding.bottom, _media.surfaceSize, style::FontSize::Medium * _media.fontScale, true);
+	const float nBase = base + l.pos.padding.top + l.pos.padding.bottom;
+	l.pos.margin.top = l.node.block.marginTop.computeValueAuto(nBase, _media.surfaceSize, _media.getDefaultFontSize(), _media.getDefaultFontSize());
+	l.pos.margin.bottom = l.node.block.marginBottom.computeValueAuto(nBase, _media.surfaceSize, _media.getDefaultFontSize(), _media.getDefaultFontSize());
 
-	if (l.padding.top == 0) {
-		if (collapsableMarginTop >= 0 && l.margin.top >= 0) {
+	if (l.pos.padding.top == 0) {
+		if (collapsableMarginTop >= 0 && l.pos.margin.top >= 0) {
 			if ((_media.flags & RenderFlag::PaginatedLayout)) {
 				const float pageHeight = _media.surfaceSize.height;
 				uint32_t curr1 = (uint32_t)std::floor(pos / pageHeight);
@@ -45,62 +46,65 @@ void Builder::applyVerticalMargin(Layout &l, float base, float collapsableMargin
 
 				if (curr1 != curr2) {
 					float offset = pos - (curr1 * pageHeight);
-					if (collapsableMarginTop > l.margin.top) {
-						l.margin.top = 0;
+					if (collapsableMarginTop > l.pos.margin.top) {
+						l.pos.margin.top = 0;
 					} else {
-						l.margin.top -= collapsableMarginTop;
+						l.pos.margin.top -= collapsableMarginTop;
 					}
-					l.margin.top -= offset;
+					l.pos.margin.top -= offset;
 					collapsableMarginTop = 0;
 				}
 			}
 
-			if (l.margin.top >= 0) {
-				if (collapsableMarginTop >= l.margin.top) {
-					l.margin.top = 0;
-					l.collapsableMarginTop = collapsableMarginTop;
+			if (l.pos.margin.top >= 0) {
+				if (collapsableMarginTop >= l.pos.margin.top) {
+					l.pos.margin.top = 0;
+					l.pos.collapsableMarginTop = collapsableMarginTop;
 				} else {
-					l.margin.top -= collapsableMarginTop;
-					l.collapsableMarginTop = l.collapsableMarginTop + l.margin.top;
+					l.pos.margin.top -= collapsableMarginTop;
+					l.pos.collapsableMarginTop = l.pos.collapsableMarginTop + l.pos.margin.top;
 				}
 			}
 		}
 	}
 
-	if (l.padding.bottom == 0) {
-		l.collapsableMarginBottom = l.margin.bottom;
+	if (l.pos.padding.bottom == 0) {
+		l.pos.collapsableMarginBottom = l.pos.margin.bottom;
 	}
 }
 
 bool Builder::initLayout(Layout &l, const Vec2 &parentPos, const Size &parentSize, float collapsableMarginTop) {
-	float emBase = style::FontSize::Medium * _media.fontScale;
+	const float emBase = style::FontSize::Medium * _media.fontScale;
+	const float rootEmBase = _media.getDefaultFontSize();
 
-	float width = l.style.width.computeValue(parentSize.width, _media.surfaceSize, emBase);
-	float minWidth = l.style.minWidth.computeValue(parentSize.width, _media.surfaceSize, emBase);
-	float maxWidth = l.style.maxWidth.computeValue(parentSize.width, _media.surfaceSize, emBase);
+	float width = l.node.block.width.computeValueStrong(parentSize.width, _media.surfaceSize, emBase, rootEmBase);
+	float minWidth = l.node.block.minWidth.computeValueStrong(parentSize.width, _media.surfaceSize, emBase, rootEmBase);
+	float maxWidth = l.node.block.maxWidth.computeValueStrong(parentSize.width, _media.surfaceSize, emBase, rootEmBase);
 
-	float height = l.style.height.computeValue(parentSize.height, _media.surfaceSize, emBase);
-	float minHeight = l.style.minHeight.computeValue(parentSize.height, _media.surfaceSize, emBase);
-	float maxHeight = l.style.maxHeight.computeValue(parentSize.height, _media.surfaceSize, emBase);
+	float height = l.node.block.height.computeValueStrong(parentSize.height, _media.surfaceSize, emBase, rootEmBase);
+	float minHeight = l.node.block.minHeight.computeValueStrong(parentSize.height, _media.surfaceSize, emBase, rootEmBase);
+	float maxHeight = l.node.block.maxHeight.computeValueStrong(parentSize.height, _media.surfaceSize, emBase, rootEmBase);
 
-	if (l.node && l.node->getHtmlName() == "img") {
-		auto &attr = l.node->getAttributes();
+	if (l.node.node && l.node.node->getHtmlName() == "img") {
+		auto &attr = l.node.node->getAttributes();
 		auto srcIt = attr.find("src");
-		if (srcIt != attr.end() && _document->hasImage(srcIt->second)) {
-			auto size = _document->getImageSize(srcIt->second);
-			if (isnan(width) && isnan(height)) {
-				width = size.first;
-				height = size.second;
-			} else if (isnan(width)) {
-				width = height * (float(size.first) / float(size.second));
-			} else if (isnan(height)) {
-				height = width * (float(size.second) / float(size.first));
-			}
+		if (srcIt != attr.end() && isFileExists(srcIt->second)) {
+			auto size = getImageSize(srcIt->second);
+			if (size.first > 0 && size.second > 0) {
+				if (isnan(width) && isnan(height)) {
+					width = size.first;
+					height = size.second;
+				} else if (isnan(width)) {
+					width = height * (float(size.first) / float(size.second));
+				} else if (isnan(height)) {
+					height = width * (float(size.second) / float(size.first));
+				}
 
-			if (width > parentSize.width) {
-				auto scale = parentSize.width / width;
-				width *= scale;
-				height *= scale;
+				if (width > parentSize.width) {
+					auto scale = parentSize.width / width;
+					width *= scale;
+					height *= scale;
+				}
 			}
 		}
 
@@ -113,28 +117,32 @@ bool Builder::initLayout(Layout &l, const Vec2 &parentPos, const Size &parentSiz
 		}
 	}
 
-	l.padding.right = l.style.paddingRight.computeValue(parentSize.width, _media.surfaceSize, emBase, true);
-	l.padding.left = l.style.paddingLeft.computeValue(parentSize.width, _media.surfaceSize, emBase, true);
+	l.pos.padding.right = l.node.block.paddingRight.computeValueAuto(parentSize.width, _media.surfaceSize, emBase, rootEmBase);
+	l.pos.padding.left = l.node.block.paddingLeft.computeValueAuto(parentSize.width, _media.surfaceSize, emBase, rootEmBase);
 
-	l.margin.right = l.style.marginRight.computeValue(parentSize.width, _media.surfaceSize, emBase);
-	l.margin.left = l.style.marginLeft.computeValue(parentSize.width, _media.surfaceSize, emBase);
+	l.pos.margin.right = l.node.block.marginRight.computeValueStrong(parentSize.width, _media.surfaceSize, emBase, rootEmBase);
+	l.pos.margin.left = l.node.block.marginLeft.computeValueStrong(parentSize.width, _media.surfaceSize, emBase, rootEmBase);
 
-	if (isnanf(width)) {
-		if (isnanf(l.margin.right)) {
-			l.margin.right = 0;
-		}
-		if (isnanf(l.margin.left)) {
-			l.margin.left = 0;
-		}
-		width = parentSize.width - l.padding.left - l.padding.right - l.margin.left - l.margin.right;
-	}
-
-	if (!isnanf(minWidth) && width < minWidth) {
+	if (!isnanf(minWidth) && (width < minWidth || isnanf(width))) {
 		width = minWidth;
 	}
 
-	if (!isnanf(maxWidth) && width > maxWidth) {
+	if (!isnanf(maxWidth) && (width > maxWidth || isnanf(width))) {
+		if (l.node.node && l.node.node->getHtmlName() == "img") {
+			auto scale = maxWidth / width;
+			height *= scale;
+		}
 		width = maxWidth;
+	}
+
+	if (isnanf(width)) {
+		if (isnanf(l.pos.margin.right)) {
+			l.pos.margin.right = 0;
+		}
+		if (isnanf(l.pos.margin.left)) {
+			l.pos.margin.left = 0;
+		}
+		width = parentSize.width - l.pos.padding.left - l.pos.padding.right - l.pos.margin.left - l.pos.margin.right;
 	}
 
 	if (!isnanf(height)) {
@@ -143,73 +151,71 @@ bool Builder::initLayout(Layout &l, const Vec2 &parentPos, const Size &parentSiz
 		}
 
 		if (!isnanf(maxHeight) && height > maxHeight) {
-			if (l.node && l.node->getHtmlName() == "img") {
+			if (l.node.node && l.node.node->getHtmlName() == "img") {
 				auto scale = maxHeight / height;
-				height = maxHeight;
 				width *= scale;
-			} else {
-				height = maxHeight;
 			}
+			height = maxHeight;
 		}
 
-		l.minHeight = nan();
-		l.maxHeight = height;
+		l.pos.minHeight = nan();
+		l.pos.maxHeight = height;
 	} else {
-		l.minHeight = minHeight;
-		l.maxHeight = maxHeight;
+		l.pos.minHeight = minHeight;
+		l.pos.maxHeight = maxHeight;
 	}
 
-	if (l.style.floating == style::Float::None
-			&& l.style.display != style::Display::Inline
-			&& l.style.display != style::Display::InlineBlock) {
-		if (isnanf(l.margin.right) && isnanf(l.margin.left)) {
-			float contentWidth = width + l.padding.left + l.padding.right;
-			l.margin.right = l.margin.left = (parentSize.width - contentWidth) / 2.0f;
-		} else if (isnanf(l.margin.right)) {
-			float contentWidth = width + l.padding.left + l.padding.right + l.margin.left;
-			l.margin.right = parentSize.width - contentWidth;
-		} else if (isnanf(l.margin.left)) {
-			float contentWidth = width + l.padding.left + l.padding.right + l.margin.right;
-			l.margin.left = parentSize.width - contentWidth;
+	if (l.node.block.floating == style::Float::None
+			&& l.node.block.display != style::Display::Inline
+			&& l.node.block.display != style::Display::InlineBlock) {
+		if (isnanf(l.pos.margin.right) && isnanf(l.pos.margin.left)) {
+			float contentWidth = width + l.pos.padding.left + l.pos.padding.right;
+			l.pos.margin.right = l.pos.margin.left = (parentSize.width - contentWidth) / 2.0f;
+		} else if (isnanf(l.pos.margin.right)) {
+			float contentWidth = width + l.pos.padding.left + l.pos.padding.right + l.pos.margin.left;
+			l.pos.margin.right = parentSize.width - contentWidth;
+		} else if (isnanf(l.pos.margin.left)) {
+			float contentWidth = width + l.pos.padding.left + l.pos.padding.right + l.pos.margin.right;
+			l.pos.margin.left = parentSize.width - contentWidth;
 		}
 	} else {
-		if (isnanf(l.margin.right)) {
-			l.margin.right = 0;
+		if (isnanf(l.pos.margin.right)) {
+			l.pos.margin.right = 0;
 		}
-		if (isnanf(l.margin.left)) {
-			l.margin.left = 0;
+		if (isnanf(l.pos.margin.left)) {
+			l.pos.margin.left = 0;
 		}
 	}
 
-	l.size = Size(width, height);
-	l.padding.top = l.style.paddingTop.computeValue(l.size.width, _media.surfaceSize, emBase, true);
-	l.padding.bottom = l.style.paddingBottom.computeValue(l.size.width, _media.surfaceSize, emBase, true);
+	l.pos.size = Size(width, height);
+	l.pos.padding.top = l.node.block.paddingTop.computeValueAuto(l.pos.size.width, _media.surfaceSize, emBase, rootEmBase);
+	l.pos.padding.bottom = l.node.block.paddingBottom.computeValueAuto(l.pos.size.width, _media.surfaceSize, emBase, rootEmBase);
 
-	if ((_media.flags & RenderFlag::PaginatedLayout) && !l.disablePageBreak) {
+	if ((_media.flags & RenderFlag::PaginatedLayout) && !l.pos.disablePageBreak) {
 		const float pageHeight = _media.surfaceSize.height;
 		const float nextPos = parentPos.y;
-		if (l.style.pageBreakBefore == style::PageBreak::Always) {
+		if (l.node.block.pageBreakBefore == style::PageBreak::Always) {
 			uint32_t curr = (uint32_t)std::floor(nextPos / pageHeight);
-			l.padding.top += (curr + 1) * pageHeight - nextPos + 1.0f;
+			l.pos.padding.top += (curr + 1) * pageHeight - nextPos + 1.0f;
 			collapsableMarginTop = 0;
-		} else if (l.style.pageBreakBefore == style::PageBreak::Left) {
+		} else if (l.node.block.pageBreakBefore == style::PageBreak::Left) {
 			uint32_t curr = (uint32_t)std::floor(nextPos / pageHeight);
-			l.padding.top += (curr + ((curr % 2 == 1)?1:2)) * pageHeight - nextPos + 1.0f;
-		} else if (l.style.pageBreakBefore == style::PageBreak::Right) {
+			l.pos.padding.top += (curr + ((curr % 2 == 1)?1:2)) * pageHeight - nextPos + 1.0f;
+		} else if (l.node.block.pageBreakBefore == style::PageBreak::Right) {
 			uint32_t curr = (uint32_t)std::floor(nextPos / pageHeight);
-			l.padding.top += (curr + ((curr % 2 == 0)?1:2)) * pageHeight - nextPos + 1.0f;
+			l.pos.padding.top += (curr + ((curr % 2 == 0)?1:2)) * pageHeight - nextPos + 1.0f;
 		}
 	}
 
-	if (l.style.marginTop.metric == style::Metric::Units::Percent && l.style.marginTop.value < 0) {
-		l.position = Vec2(parentPos.x + l.margin.left + l.padding.left, parentPos.y + l.padding.top);
-		l.disablePageBreak = true;
+	if (l.node.block.marginTop.metric == style::Metric::Units::Percent && l.node.block.marginTop.value < 0) {
+		l.pos.position = Vec2(parentPos.x + l.pos.margin.left + l.pos.padding.left, parentPos.y + l.pos.padding.top);
+		l.pos.disablePageBreak = true;
 	} else {
-		applyVerticalMargin(l, l.size.width, collapsableMarginTop, parentPos.y);
+		applyVerticalMargin(l, l.pos.size.width, collapsableMarginTop, parentPos.y);
 		if (isnan(parentPos.y)) {
-			l.position = Vec2(parentPos.x + l.margin.left + l.padding.left, l.margin.top + l.padding.top);
+			l.pos.position = Vec2(parentPos.x + l.pos.margin.left + l.pos.padding.left, l.pos.margin.top + l.pos.padding.top);
 		} else {
-			l.position = Vec2(parentPos.x + l.margin.left + l.padding.left, parentPos.y + l.margin.top + l.padding.top);
+			l.pos.position = Vec2(parentPos.x + l.pos.margin.left + l.pos.padding.left, parentPos.y + l.pos.margin.top + l.pos.padding.top);
 		}
 	}
 
@@ -217,49 +223,49 @@ bool Builder::initLayout(Layout &l, const Vec2 &parentPos, const Size &parentSiz
 }
 
 bool Builder::finalizeLayout(Layout &l, const Vec2 &parentPos, float collapsableMarginTop) {
-	if (l.style.marginTop.metric == style::Metric::Units::Percent && l.style.marginTop.value < 0) {
-		applyVerticalMargin(l, l.size.height, collapsableMarginTop, parentPos.y);
+	if (l.node.block.marginTop.metric == style::Metric::Units::Percent && l.node.block.marginTop.value < 0) {
+		applyVerticalMargin(l, l.pos.size.height, collapsableMarginTop, parentPos.y);
 		if (isnan(parentPos.y)) {
-			l.position = Vec2(parentPos.x + l.margin.left + l.padding.left, l.margin.top + l.padding.top);
+			l.pos.position = Vec2(parentPos.x + l.pos.margin.left + l.pos.padding.left, l.pos.margin.top + l.pos.padding.top);
 		} else {
-			l.position = Vec2(parentPos.x + l.margin.left + l.padding.left, parentPos.y + l.margin.top + l.padding.top);
+			l.pos.position = Vec2(parentPos.x + l.pos.margin.left + l.pos.padding.left, parentPos.y + l.pos.margin.top + l.pos.padding.top);
 		}
 	}
-	if ((_media.flags & RenderFlag::PaginatedLayout) && !l.disablePageBreak) {
+	if ((_media.flags & RenderFlag::PaginatedLayout) && !l.pos.disablePageBreak) {
 		const float pageHeight = _media.surfaceSize.height;
-		if (l.style.pageBreakInside == style::PageBreak::Avoid) {
-			uint32_t curr1 = (uint32_t)std::floor(l.position.y / pageHeight);
-			uint32_t curr2 = (uint32_t)std::floor((l.position.y + l.size.height) / pageHeight);
+		if (l.node.block.pageBreakInside == style::PageBreak::Avoid) {
+			uint32_t curr1 = (uint32_t)std::floor(l.pos.position.y / pageHeight);
+			uint32_t curr2 = (uint32_t)std::floor((l.pos.position.y + l.pos.size.height) / pageHeight);
 
 			if (curr1 != curr2) {
-				float offset = curr2 * pageHeight - l.position.y + 1.0f;
+				float offset = curr2 * pageHeight - l.pos.position.y + 1.0f;
 				l.updatePosition(offset);
-				l.padding.top += offset;
+				l.pos.padding.top += offset;
 			}
 		}
 
-		if (l.style.pageBreakAfter == style::PageBreak::Always) {
+		if (l.node.block.pageBreakAfter == style::PageBreak::Always) {
 			auto bbox = l.getBoundingBox();
 			auto nextPos = bbox.origin.y + bbox.size.height;
-			uint32_t curr = (uint32_t)std::floor((nextPos - l.margin.bottom) / pageHeight);
-			l.padding.bottom += (curr + 1) * pageHeight - nextPos + 1.0f;
-		} else if (l.style.pageBreakAfter == style::PageBreak::Left) {
+			uint32_t curr = (uint32_t)std::floor((nextPos - l.pos.margin.bottom) / pageHeight);
+			l.pos.padding.bottom += (curr + 1) * pageHeight - nextPos + 1.0f;
+		} else if (l.node.block.pageBreakAfter == style::PageBreak::Left) {
 			auto bbox = l.getBoundingBox();
 			auto nextPos = bbox.origin.y + bbox.size.height;
-			uint32_t curr = (uint32_t)std::floor((nextPos - l.margin.bottom) / pageHeight);
-			l.padding.bottom += (curr + ((curr % 2 == 1)?1:2)) * pageHeight - nextPos + 1.0f;
-		} else if (l.style.pageBreakAfter == style::PageBreak::Right) {
+			uint32_t curr = (uint32_t)std::floor((nextPos - l.pos.margin.bottom) / pageHeight);
+			l.pos.padding.bottom += (curr + ((curr % 2 == 1)?1:2)) * pageHeight - nextPos + 1.0f;
+		} else if (l.node.block.pageBreakAfter == style::PageBreak::Right) {
 			auto bbox = l.getBoundingBox();
 			auto nextPos = bbox.origin.y + bbox.size.height;
-			uint32_t curr = (uint32_t)std::floor((nextPos - l.margin.bottom) / pageHeight);
-			l.padding.bottom += (curr + ((curr % 2 == 0)?1:2)) * pageHeight - nextPos + 1.0f;
-		} else if (l.style.pageBreakAfter == style::PageBreak::Avoid) {
+			uint32_t curr = (uint32_t)std::floor((nextPos - l.pos.margin.bottom) / pageHeight);
+			l.pos.padding.bottom += (curr + ((curr % 2 == 0)?1:2)) * pageHeight - nextPos + 1.0f;
+		} else if (l.node.block.pageBreakAfter == style::PageBreak::Avoid) {
 			auto bbox = l.getBoundingBox();
 			auto nextPos = bbox.origin.y + bbox.size.height;
-			auto scanPos = nextPos +  l.size.width;
+			auto scanPos = nextPos +  l.pos.size.width;
 
-			uint32_t curr = (uint32_t)std::floor((nextPos - l.margin.bottom) / pageHeight);
-			uint32_t scan = (uint32_t)std::floor((scanPos - l.margin.bottom) / pageHeight);
+			uint32_t curr = (uint32_t)std::floor((nextPos - l.pos.margin.bottom) / pageHeight);
+			uint32_t scan = (uint32_t)std::floor((scanPos - l.pos.margin.bottom) / pageHeight);
 
 			if (curr != scan) {
 
@@ -271,38 +277,38 @@ bool Builder::finalizeLayout(Layout &l, const Vec2 &parentPos, float collapsable
 }
 
 void Builder::finalizeChilds(Layout &l, float height) {
-	if (!l.layouts.empty() && l.collapsableMarginBottom > 0.0f) {
+	if (!l.layouts.empty() && l.pos.collapsableMarginBottom > 0.0f) {
 		auto &newL = l.layouts.back();
-		float collapsableMarginBottom = std::max(newL.collapsableMarginBottom, newL.margin.bottom);
-		if (l.collapsableMarginBottom > collapsableMarginBottom) {
-			l.margin.bottom -= collapsableMarginBottom;
+		float collapsableMarginBottom = std::max(newL.pos.collapsableMarginBottom, newL.pos.margin.bottom);
+		if (l.pos.collapsableMarginBottom > collapsableMarginBottom) {
+			l.pos.margin.bottom -= collapsableMarginBottom;
 		} else {
-			l.margin.bottom = 0;
+			l.pos.margin.bottom = 0;
 		}
 	}
 
-	if (isnan(l.size.height) || l.size.height < height) {
-		l.size.height = height;
+	if (isnan(l.pos.size.height) || l.pos.size.height < height) {
+		l.pos.size.height = height;
 	}
 
-	if (!isnan(l.minHeight) && l.size.height < l.minHeight) {
-		l.size.height = l.minHeight;
+	if (!isnan(l.pos.minHeight) && l.pos.size.height < l.pos.minHeight) {
+		l.pos.size.height = l.pos.minHeight;
 	}
 }
 
 void Builder::initFormatter(Layout &l, const ParagraphStyle &pStyle, float parentPosY, Formatter &reader, bool initial) {
 	Layout *parent = nullptr;
 	if (_layoutStack.size() > 1) {
-		parent = _layoutStack.at(_layoutStack.size() - 1);
+		parent = _layoutStack.back();
 	}
 
-	FontParameters fStyle = l.node->getStyle().compileFontStyle(this);
+	FontParameters fStyle = l.node.style->compileFontStyle(this);
 	auto baseFont = _fontSet->getLayout(fStyle)->getData();
 	float density = _media.density;
 	float lineHeightMod = 1.0f;
 	bool lineHeightIsAbsolute = false;
 	uint16_t lineHeight = baseFont->metrics.height;
-	uint16_t width = (uint16_t)roundf(l.size.width * density);
+	uint16_t width = (uint16_t)roundf(l.pos.size.width * density);
 
 	if (pStyle.lineHeight.metric == style::Metric::Units::Em
 			|| pStyle.lineHeight.metric == style::Metric::Units::Percent
@@ -336,11 +342,11 @@ void Builder::initFormatter(Layout &l, const ParagraphStyle &pStyle, float paren
 		reader.setHyphens(_hyphens);
 	}
 
-	reader.begin((uint16_t)roundf(pStyle.textIndent.computeValue(l.size.width, _media.surfaceSize, baseFont->metrics.height / density, true) * density), 0);
+	reader.begin((uint16_t)roundf(pStyle.textIndent.computeValueAuto(l.pos.size.width, _media.surfaceSize, baseFont->metrics.height / density, _media.getDefaultFontSize()) * density), 0);
 
-	if (initial && parent && parent->listItem != Layout::ListNone && l.style.display == style::Display::ListItem
-			&& l.style.listStylePosition == style::ListStylePosition::Inside) {
-		auto textStyle = l.node->getStyle().compileTextLayout(this);
+	if (initial && parent && parent->listItem != Layout::ListNone && l.node.block.display == style::Display::ListItem
+			&& l.node.block.listStylePosition == style::ListStylePosition::Inside) {
+		auto textStyle = l.node.style->compileTextLayout(this);
 		WideString str = getListItemString(parent, l);
 		reader.read(fStyle, textStyle, str, 0, 0);
 	}
@@ -360,7 +366,7 @@ InlineContext &Builder::makeInlineContext(Layout &l, float parentPosY, const Nod
 		l.context->reset();
 	}
 
-	l.origin = Vec2(roundf(l.position.x * density), roundf((parentPosY) * density));
+	l.pos.origin = Vec2(roundf(l.pos.position.x * density), roundf((parentPosY) * density));
 
 	size_t count = 0, nodes = 0;
 	node.foreach([&] (const Node &node, size_t level) {
@@ -370,7 +376,7 @@ InlineContext &Builder::makeInlineContext(Layout &l, float parentPosY, const Nod
 
 	l.context->reader.getOutput()->reserve(count, nodes);
 
-	ParagraphStyle pStyle = l.node->getStyle().compileParagraphLayout(this);
+	ParagraphStyle pStyle = l.node.style->compileParagraphLayout(this);
 	initFormatter(l, pStyle, parentPosY, l.context->reader, initial);
 
 	return *l.context.get();
@@ -379,8 +385,8 @@ InlineContext &Builder::makeInlineContext(Layout &l, float parentPosY, const Nod
 float Builder::fixLabelPagination(Layout &l, Label &label) {
 	uint16_t offset = 0;
 	const float density = _media.density;
-	if ((_media.flags & RenderFlag::PaginatedLayout) && !l.disablePageBreak) {
-		const Vec2 origin(l.origin.x  / density, l.origin.y / density);
+	if ((_media.flags & RenderFlag::PaginatedLayout) && !l.pos.disablePageBreak) {
+		const Vec2 origin(l.pos.origin.x  / density, l.pos.origin.y / density);
 		const float pageHeight = _media.surfaceSize.height;
 		for (auto &it : label.format.lines) {
 			Rect rect = label.getLineRect(it, density, origin);
@@ -413,29 +419,29 @@ float Builder::freeInlineContext(Layout &l) {
 
 	ctx->reader.finalize();
 
-	if (l.style.floating != style::Float::None && (l.style.width.value == 0 || isnanf(l.style.width.value))) {
-		l.size.width = ctx->reader.getMaxLineX() / density;
+	if (l.node.block.floating != style::Float::None && (l.node.block.width.value == 0 || isnanf(l.node.block.width.value))) {
+		l.pos.size.width = ctx->reader.getMaxLineX() / density;
 	}
 
-	float offset = (l.style.floating == style::Float::None?fixLabelPagination(l, ctx->label):0);
+	float offset = (l.node.block.floating == style::Float::None?fixLabelPagination(l, ctx->label):0);
 	float final = ctx->reader.getHeight() / density + offset;
-	if (isnan(l.size.height)) {
-		l.size.height = final;
+	if (isnan(l.pos.size.height)) {
+		l.pos.size.height = final;
 	} else {
-		if (!isnan(l.maxHeight)) {
-			if (l.size.height + final < l.maxHeight) {
-				l.size.height += final;
+		if (!isnan(l.pos.maxHeight)) {
+			if (l.pos.size.height + final < l.pos.maxHeight) {
+				l.pos.size.height += final;
 			} else {
-				l.size.height = l.maxHeight;
+				l.pos.size.height = l.pos.maxHeight;
 			}
 		} else {
-			l.size.height += final;
+			l.pos.size.height += final;
 		}
 	}
 	ctx->label.height = final;
 
 	if (!l.inlineBlockLayouts.empty()) {
-		const Vec2 origin(l.origin.x  / density, l.origin.y / density);
+		const Vec2 origin(l.pos.origin.x  / density, l.pos.origin.y / density);
 		for (Layout &it : l.inlineBlockLayouts) {
 			const RangeSpec &r = ctx->label.format.ranges.at(it.charBinding);
 			const CharSpec &c = ctx->label.format.chars.at(r.start + r.count - 1);
@@ -459,7 +465,7 @@ void Builder::finalizeInlineContext(Layout &l) {
 
 	auto ctx = l.context;
 	const float density = _media.density;
-	const Vec2 origin(l.origin.x  / density - l.position.x, l.origin.y / density - l.position.y);
+	const Vec2 origin(l.pos.origin.x  / density - l.pos.position.x, l.pos.origin.y / density - l.pos.position.y);
 
 	for (auto &it : ctx->backgroundPos) {
 		auto rects = ctx->label.getLabelRects(it.firstCharId, it.lastCharId, density, origin, it.padding);
@@ -496,7 +502,7 @@ void Builder::finalizeInlineContext(Layout &l) {
 
 	float final = ctx->label.height;
 	l.postObjects.emplace_back(Rect(origin.x, origin.y,
-			l.size.width, final), std::move(ctx->label));
+			l.pos.size.width, final), std::move(ctx->label));
 	l.context->finalize();
 }
 
@@ -507,10 +513,10 @@ Pair<float, float> Builder::getFloatBounds(const Layout *l, float y, float heigh
 	}
 
 	float minX = 0, maxWidth = _media.surfaceSize.width;
-	if (l->size.width == 0 || isnanf(l->size.width)) {
+	if (l->pos.size.width == 0 || isnanf(l->pos.size.width)) {
 		auto f = _floatStack.back();
-		minX = f->root->position.x;
-		maxWidth = f->root->size.width;
+		minX = f->root->pos.position.x;
+		maxWidth = f->root->pos.size.width;
 
 		bool found = false;
 		for (auto &it : _layoutStack) {
@@ -520,16 +526,16 @@ Pair<float, float> Builder::getFloatBounds(const Layout *l, float y, float heigh
 				}
 			}
 			if (found) {
-				minX += it->margin.left + it->padding.left;
-				maxWidth -= (it->margin.left + it->padding.left + it->padding.right + it->margin.right);
+				minX += it->pos.margin.left + it->pos.padding.left;
+				maxWidth -= (it->pos.margin.left + it->pos.padding.left + it->pos.padding.right + it->pos.margin.right);
 			}
 		}
 
-		minX += l->margin.left + l->padding.left;
-		maxWidth -= (l->margin.left + l->padding.left + l->padding.right + l->margin.right);
+		minX += l->pos.margin.left + l->pos.padding.left;
+		maxWidth -= (l->pos.margin.left + l->pos.padding.left + l->pos.padding.right + l->pos.margin.right);
 	} else {
-		minX = l->position.x;
-		maxWidth = l->size.width;
+		minX = l->pos.position.x;
+		maxWidth = l->pos.size.width;
 	}
 
 	if (x < minX) {
@@ -555,7 +561,7 @@ Pair<uint16_t, uint16_t> Builder::getTextPosition(const Layout *l,
 	float y = parentPosY + linePos / density;
 	float height = lineHeight / density;
 
-	if ((_media.flags & RenderFlag::PaginatedLayout) && !l->disablePageBreak) {
+	if ((_media.flags & RenderFlag::PaginatedLayout) && !l->pos.disablePageBreak) {
 		const float pageHeight = _media.surfaceSize.height;
 		uint32_t curr1 = (uint32_t)std::floor(y / pageHeight);
 		uint32_t curr2 = (uint32_t)std::floor((y + height) / pageHeight);
@@ -569,7 +575,7 @@ Pair<uint16_t, uint16_t> Builder::getTextPosition(const Layout *l,
 	float x = 0, width = _media.surfaceSize.width;
 	std::tie(x, width) = getFloatBounds(l, y, height);
 
-	uint16_t retX = (uint16_t)floorf((x - l->position.x) * density);
+	uint16_t retX = (uint16_t)floorf((x - l->pos.position.x) * density);
 	uint16_t retSize = (uint16_t)floorf(width * density);
 
 	return pair(retX, retSize);
@@ -577,13 +583,13 @@ Pair<uint16_t, uint16_t> Builder::getTextPosition(const Layout *l,
 
 void Builder::doPageBreak(Layout *lPtr, Vec2 &vec) {
 	while (lPtr) {
-		if (lPtr->margin.bottom > 0) {
-			vec.y -= lPtr->margin.bottom;
-			lPtr->margin.bottom = 0;
+		if (lPtr->pos.margin.bottom > 0) {
+			vec.y -= lPtr->pos.margin.bottom;
+			lPtr->pos.margin.bottom = 0;
 		}
-		if (lPtr->padding.bottom > 0) {
-			vec.y -= lPtr->padding.bottom;
-			lPtr->padding.bottom = 0;
+		if (lPtr->pos.padding.bottom > 0) {
+			vec.y -= lPtr->pos.padding.bottom;
+			lPtr->pos.padding.bottom = 0;
 		}
 
 		if (!lPtr->layouts.empty()) {
@@ -602,13 +608,14 @@ void Builder::doPageBreak(Layout *lPtr, Vec2 &vec) {
 }
 
 void Builder::processOutline(Layout &l) {
-	float emBase = style::FontSize::Medium * _media.fontScale;
-	auto style = l.node->getStyle().compileOutline(this);
+	const float emBase = style::FontSize::Medium * _media.fontScale;
+	const float rootEmBase = _media.getDefaultFontSize();
+	auto style = l.node.style->compileOutline(this);
 	if (style.outlineStyle != style::BorderStyle::None) {
-		float width = style.outlineWidth.computeValue(l.size.width, _media.surfaceSize, emBase, true);
-		if (style.outlineColor.a != 0 && width != 0.0f && !isnan(l.size.height)) {
-			l.preObjects.emplace_back(Rect(-l.padding.left - width / 2.0f, -l.padding.top - width / 2.0f,
-					l.size.width + l.padding.left + l.padding.right + width, l.size.height + l.padding.top + l.padding.bottom + width),
+		float width = style.outlineWidth.computeValueAuto(l.pos.size.width, _media.surfaceSize, emBase, rootEmBase);
+		if (style.outlineColor.a != 0 && width != 0.0f && !isnan(l.pos.size.height)) {
+			l.preObjects.emplace_back(Rect(-l.pos.padding.left - width / 2.0f, -l.pos.padding.top - width / 2.0f,
+					l.pos.size.width + l.pos.padding.left + l.pos.padding.right + width, l.pos.size.height + l.pos.padding.top + l.pos.padding.bottom + width),
 					Outline{
 						Outline::Params{style.outlineStyle, width, style.outlineColor},
 						Outline::Params{style.outlineStyle, width, style.outlineColor},
@@ -619,21 +626,21 @@ void Builder::processOutline(Layout &l) {
 	}
 
 	float borderWidth = 0.0f;
-	Border border = Border::border(style, _media.surfaceSize, l.size.width, emBase, borderWidth);
+	Border border = Border::border(style, _media.surfaceSize, l.pos.size.width, emBase, rootEmBase, borderWidth);
 	if (border.getNumLines() > 0) {
-		l.preObjects.emplace_back(Rect(-l.padding.left + borderWidth / 2.0f, -l.padding.top + borderWidth / 2.0f,
-				l.size.width + l.padding.left + l.padding.right - borderWidth, l.size.height + l.padding.top + l.padding.bottom - borderWidth),
+		l.preObjects.emplace_back(Rect(-l.pos.padding.left + borderWidth / 2.0f, -l.pos.padding.top + borderWidth / 2.0f,
+				l.pos.size.width + l.pos.padding.left + l.pos.padding.right - borderWidth, l.pos.size.height + l.pos.padding.top + l.pos.padding.bottom - borderWidth),
 				std::move(border));
 	}
 }
 
 void Builder::processBackground(Layout &l, float parentPosY) {
-	if (l.node && (l.node->getHtmlName() == "body" || l.node->getHtmlName() == "html")) {
+	if (l.node.node && (l.node.node->getHtmlName() == "body" || l.node.node->getHtmlName() == "html")) {
 		return;
 	}
 
-	auto style = l.node->getStyle().compileBackground(this);
-	auto &attr = l.node->getAttributes();
+	auto style = l.node.style->compileBackground(this);
+	auto &attr = l.node.node->getAttributes();
 	if (style.backgroundImage.empty()) {
 		auto attrIt = attr.find("src");
 		if (attrIt != attr.end()) {
@@ -642,36 +649,36 @@ void Builder::processBackground(Layout &l, float parentPosY) {
 	}
 	String src = style.backgroundImage;
 
-	if (isnan(l.size.height)) {
-		l.size.height = 0;
+	if (isnan(l.pos.size.height)) {
+		l.pos.size.height = 0;
 	}
 
 	if (src.empty()) {
-		if (style.backgroundColor.a != 0 && !isnan(l.size.height)) {
-			if (l.node->getHtmlName() != "hr") {
-				l.preObjects.emplace_back(Rect(-l.padding.left, -l.padding.top,
-						l.size.width + l.padding.left + l.padding.right, l.size.height + l.padding.top + l.padding.bottom), style);
+		if (style.backgroundColor.a != 0 && !isnan(l.pos.size.height)) {
+			if (l.node.node->getHtmlName() != "hr") {
+				l.preObjects.emplace_back(Rect(-l.pos.padding.left, -l.pos.padding.top,
+						l.pos.size.width + l.pos.padding.left + l.pos.padding.right, l.pos.size.height + l.pos.padding.top + l.pos.padding.bottom), style);
 			} else {
 				float density = _media.density;
 
-				uint16_t height = (uint16_t)((l.size.height + l.padding.top + l.padding.bottom) * density);
-				uint16_t pos = (uint16_t)(-l.padding.top * density);
+				uint16_t height = (uint16_t)((l.pos.size.height + l.pos.padding.top + l.pos.padding.bottom) * density);
+				uint16_t pos = (uint16_t)(-l.pos.padding.top * density);
 
 				auto posPair = getTextPosition(&l, pos, height, density, parentPosY);
 
-				l.preObjects.emplace_back(Rect(-l.padding.left + posPair.first / density,
-						-l.padding.top,
-						posPair.second / density + l.padding.left + l.padding.right,
-						l.size.height + l.padding.top + l.padding.bottom), style);
+				l.preObjects.emplace_back(Rect(-l.pos.padding.left + posPair.first / density,
+						-l.pos.padding.top,
+						posPair.second / density + l.pos.padding.left + l.pos.padding.right,
+						l.pos.size.height + l.pos.padding.top + l.pos.padding.bottom), style);
 			}
 		}
-	} else if (l.size.width > 0 && l.size.height == 0 && ((_media.flags & (RenderFlag::Mask)RenderFlag::NoImages) == 0)) {
-		float width = l.size.width;
-		float height = l.size.height;
+	} else if (l.pos.size.width > 0 && l.pos.size.height == 0 && ((_media.flags & (RenderFlag::Mask)RenderFlag::NoImages) == 0)) {
+		float width = l.pos.size.width;
+		float height = l.pos.size.height;
 		uint16_t w = 0;
 		uint16_t h = 0;
 
-		std::tie(w, h) = _document->getImageSize(src);
+		std::tie(w, h) = getImageSize(src);
 		if (w == 0 || h == 0) {
 			w = width;
 			h = height;
@@ -682,64 +689,72 @@ void Builder::processBackground(Layout &l, float parentPosY) {
 			height = width / ratio;
 		}
 
-		if (!isnan(l.maxHeight) && height > l.maxHeight) {
-			height = l.maxHeight;
+		if (!isnan(l.pos.maxHeight) && height > l.pos.maxHeight) {
+			height = l.pos.maxHeight;
 		}
 
-		if (!isnan(l.minHeight) && height < l.minHeight) {
-			height = l.minHeight;
+		if (!isnan(l.pos.minHeight) && height < l.pos.minHeight) {
+			height = l.pos.minHeight;
 		}
-		l.size.height = height;
-		l.preObjects.emplace_back(Rect(0, 0, l.size.width, l.size.height), style);
+		l.pos.size.height = height;
+		l.preObjects.emplace_back(Rect(0, 0, l.pos.size.width, l.pos.size.height), style);
 	} else {
-		l.preObjects.emplace_back(Rect(0, 0, l.size.width, l.size.height), style);
+		l.preObjects.emplace_back(Rect(0, 0, l.pos.size.width, l.pos.size.height), style);
 	}
 }
 
 void Builder::processRef(Layout &l, const String &href) {
-	l.postObjects.emplace_back(Rect(-l.padding.left, -l.padding.top,
-			l.size.width + l.padding.left + l.padding.right, l.size.height + l.padding.top + l.padding.bottom),
+	l.postObjects.emplace_back(Rect(-l.pos.padding.left, -l.pos.padding.top,
+			l.pos.size.width + l.pos.padding.left + l.pos.padding.right, l.pos.size.height + l.pos.padding.top + l.pos.padding.bottom),
 			Link{href});
 }
 
-style::Display Builder::getLayoutContext(const Node &node) const {
-	auto &nodes = node.getNodes();
+style::Display Builder::getLayoutContext(const Layout::NodeInfo &node) {
+	auto &nodes = node.node->getNodes();
 	if (nodes.empty()) {
 		return style::Display::Block;
 	} else {
 		bool inlineBlock = false;
 		for (auto &it : nodes) {
-			auto d = it.getStyle().get(style::ParameterName::Display, this);
+			_nodeStack.push_back(&it);
+			auto style = compileStyle(it);
+			auto d = style->get(style::ParameterName::Display, this);
 			if (!d.empty()) {
 				auto val = d.back().value.display;
 				if (val == style::Display::Inline) {
+					_nodeStack.pop_back();
 					return style::Display::Inline;
 				} else if (val == style::Display::InlineBlock) {
 					if (!inlineBlock) {
 						inlineBlock = true;
 					} else {
+						_nodeStack.pop_back();
 						return style::Display::Inline;
 					}
 				}
 			}
+			_nodeStack.pop_back();
 		}
 	}
 	return style::Display::Block;
 }
 
-static style::Display getNodeDisplay(const Builder *b, const Node &node) {
-	auto d = node.getStyle().get(style::ParameterName::Display, b);
+style::Display Builder::getNodeDisplay(const Node &node, const Style *parentStyle) {
+	_nodeStack.push_back(&node);
+	auto style = compileStyle(node);
+	auto d = style->get(style::ParameterName::Display, this);
 	if (!d.empty()) {
+		_nodeStack.pop_back();
 		return d.back().value.display;
 	}
+	_nodeStack.pop_back();
 	return style::Display::RunIn;
 }
 
-style::Display Builder::getLayoutContext(const Vector<const Node *> &nodes, Vector<const Node *>::const_iterator it, style::Display def) const {
-	if (def == style::Display::Inline) {
+style::Display Builder::getLayoutContext(const Vector<Node> &nodes, Vector<Node>::const_iterator it, const Layout::NodeInfo &p) {
+	if (p.context == style::Display::Inline) {
 		if (it != nodes.end()) {
-			auto node = *it;
-			auto d = getNodeDisplay(this, *node);
+			auto d = getNodeDisplay(*it, p.style);
 			if (d == style::Display::Block || d == style::Display::ListItem) {
 				return d;
 			}
@@ -747,8 +762,7 @@ style::Display Builder::getLayoutContext(const Vector<const Node *> &nodes, Vect
 		return style::Display::Inline;
 	} else {
 		for (; it != nodes.end(); ++it) {
-			auto node = *it;
-			auto d = getNodeDisplay(this, *node);
+			auto d = getNodeDisplay(*it, p.style);
 			if (d == style::Display::Inline || d == style::Display::InlineBlock) {
 				return style::Display::Inline;
 			} else if (d == style::Display::Block) {

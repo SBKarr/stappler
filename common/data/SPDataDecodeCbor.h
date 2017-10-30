@@ -161,7 +161,8 @@ void Decoder<Interface>::decodeArray(uint8_t type, ValueType &ret) {
 
 	size_t idx = 0;
 
-	while (!r.empty() && size > 0 && !(majorType == MajorTypeEncoded::Simple && type == toInt(Flags::UndefinedLength))) {
+	while ((!r.empty() || ((majorType == MajorTypeEncoded::Unsigned || majorType == MajorTypeEncoded::Negative) && type < toInt(Flags::MaxAdditionalNumber)))
+			&& size > 0 && !(majorType == MajorTypeEncoded::Simple && type == toInt(Flags::UndefinedLength))) {
 		ret.arrayVal->emplace_back(ValueType::Type::EMPTY);
 		decode(majorType, type, ret.arrayVal->back());
 

@@ -211,6 +211,7 @@ public:
 	StringViewUtf8(const char *ptr, size_t len = maxOf<size_t>());
 	StringViewUtf8(const PoolString &str);
 	StringViewUtf8(const StdString &str);
+	StringViewUtf8(const StringViewBase<char> &str);
 
 	Self & operator =(const PoolString &str);
 	Self & operator =(const StdString &str);
@@ -600,6 +601,9 @@ inline StringViewUtf8::StringViewUtf8(const PoolString &str)
 : StringViewUtf8(str.data(), str.size()) { }
 
 inline StringViewUtf8::StringViewUtf8(const StdString &str)
+: StringViewUtf8(str.data(), str.size()) { }
+
+inline StringViewUtf8::StringViewUtf8(const StringViewBase<char> &str)
 : StringViewUtf8(str.data(), str.size()) { }
 
 inline auto StringViewUtf8::operator =(const PoolString &str) -> Self & {

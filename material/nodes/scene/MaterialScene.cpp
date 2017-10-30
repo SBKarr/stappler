@@ -497,7 +497,7 @@ void Scene::takeScreenshoot() {
 
 void Scene::saveScreenshot(const String &filename, cocos2d::Texture2D *tex) {
 	auto bmp = _captureCanvas->captureTexture(tex);
-	bmp.save(filename);
+	bmp.save(filename, true);
 }
 
 void Scene::onLightLevel() {

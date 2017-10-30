@@ -66,6 +66,7 @@ public:
 
 	bool empty() const;
 	bool hasValue() const;
+	bool isVirtual() const;
 	inline operator bool () const { return !empty(); }
 
 	void foreach(const ForeachIter &);
@@ -109,13 +110,22 @@ protected:
 	bool _hasValue = false;
 };
 
-struct HtmlPage {
+struct ContentPage {
+	using StyleMap = Map<String, style::ParameterList>;
 	using FontMap = Map<String, Vector<style::FontFace>>;
 
 	String path;
 	Node root;
-	FontMap fonts;
 	bool linear = true;
+
+	Map<CssStringId, String> strings;
+	Vector<style::MediaQuery> queries;
+	StyleMap styles;
+	FontMap fonts;
+
+	Vector<String> styleReferences;
+	Vector<String> assets;
+	Map<String, Node *> ids;
 };
 
 NS_LAYOUT_END

@@ -169,7 +169,10 @@ $(BUILD_OUTDIR)/%.o: /%.mm $(TOOLKIT_H_GCH) $(TOOLKIT_GCH)
 $(BUILD_OUTDIR)/%.o: /%.c $(TOOLKIT_H_GCH) $(TOOLKIT_GCH)
 	$(GLOBAL_QUIET_CC) $(GLOBAL_CC) -MMD -MP -MF $(BUILD_OUTDIR)/$*.d $(BUILD_CFLAGS) -c -o $@ `$(GLOBAL_ROOT)/convert-path.sh $<`
 
-.PHONY: clean .prebuild_local .local_prebuild local .local_preclean
+clean_local:
+	$(GLOBAL_RM) $(LOCAL_OUTPUT_EXECUTABLE) $(LOCAL_OUTPUT_LIBRARY)
+
+.PHONY: clean_local clean .prebuild_local .local_prebuild local .local_preclean
 
 .preclean:
 	$(GLOBAL_RM) $(LOCAL_OUTPUT_EXECUTABLE) $(LOCAL_OUTPUT_LIBRARY)

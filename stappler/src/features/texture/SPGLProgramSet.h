@@ -68,6 +68,7 @@ public:
 		CustomRect = 1 << 6,
 		CustomBorder = 1 << 7,
 		CustomFill = 1 << 8,
+		AmbientColor = 1 << 9,
 	};
 
 	GLProgramDesc(Default);

@@ -553,10 +553,11 @@ bool Image::isSvg(const FilePath &file) {
 	return Bitmap::check(Bitmap::FileFormat::Svg, d.data(), d.size());
 }
 
-bool Image::init(const String &data) {
+bool Image::init(const StringView &data) {
+	String tmp = data.str();
 	SvgReader reader;
 	reader._paths.reserve(8);
-	html::parse<SvgReader, StringView, SvgTag>(reader, StringView(data));
+	html::parse<SvgReader, StringView, SvgTag>(reader, StringView(tmp));
 
 	if (!reader._paths.empty()) {
 		_width = reader._width;

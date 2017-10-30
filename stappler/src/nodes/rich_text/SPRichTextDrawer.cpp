@@ -33,6 +33,18 @@ THE SOFTWARE.
 #include "SPBitmap.h"
 #include "SPString.h"
 #include "SPTextureCache.h"
+#include "SPDrawCanvas.h"
+#include "SLImage.h"
+
+constexpr uint16_t ImageFillerWidth = 312;
+constexpr uint16_t ImageFillerHeight = 272;
+
+auto ImageFillerData = R"ImageFillerSvg(<svg xmlns="http://www.w3.org/2000/svg" height="272" width="312" version="1.1">
+	<rect x="0" y="0" width="312" height="272" opacity="0.5"/>
+	<g transform="translate(0 -780.4)">
+		<path d="m104 948.4h104l-32-56-24 32-16-12zm-32-96v128h168v-128h-168zm16 16h136v96h-136v-96zm38 20a10 10 0 0 1 -10 10 10 10 0 0 1 -10 -10 10 10 0 0 1 10 -10 10 10 0 0 1 10 10z" fill-rule="evenodd" fill="#000000"/>
+	</g>
+</svg>)ImageFillerSvg";
 
 NS_SP_EXT_BEGIN(rich_text)
 
@@ -49,6 +61,8 @@ public:
 protected:
 	void onAssetCaptured();
 
+	void prepareBackgroundImage(const Rect &bbox, const Background &bg);
+
 	void draw(cocos2d::Texture2D *);
 	void onDrawed(cocos2d::Texture2D *);
 
@@ -56,12 +70,17 @@ protected:
 
 	void drawRef(const Rect &bbox);
 	void drawOutline(const Rect &bbox, const Outline &);
-	void drawBitmap(const Rect &bbox, cocos2d::Texture2D *bmp, const Background &bg);
+	void drawBitmap(const Rect &bbox, cocos2d::Texture2D *bmp, const Background &bg, const Size &box);
+	void drawFillerImage(const Rect &bbox, const Background &bg);
 	void drawBackgroundImage(const Rect &bbox, const Background &bg);
 	void drawBackgroundColor(const Rect &bbox, const Background &bg);
 	void drawBackground(const Rect &bbox, const Background &bg);
 	void drawLabel(const Rect &bbox, const Label &l);
 	void drawObject(const Object &obj);
+
+	bool isFileExists(const String &) const;
+	Pair<uint16_t, uint16_t> getImageSize(const String &) const;
+	Bytes getImageData(const String &) const;
 
 	Rect _rect;
 	float _scale = 1.0f;
@@ -77,6 +96,8 @@ protected:
 	Rc<Result> _result;
 	Rc<Source> _source;
 	Rc<FontSource> _font;
+
+	Map<String, Source::AssetData> _networkAssets;
 
 	Callback _callback = nullptr;
 	Rc<cocos2d::Ref> _ref = nullptr;
@@ -134,6 +155,8 @@ void Request::onAssetCaptured() {
 	_font = _source->getSource();
 	_font->unschedule();
 
+	_networkAssets = _source->getExternalAssets();
+
 	Rc<cocos2d::Texture2D> *ptr = new Rc<cocos2d::Texture2D>(nullptr);
 
 	TextureCache::thread().perform([this, ptr] (const Task &) -> bool {
@@ -150,7 +173,100 @@ void Request::onAssetCaptured() {
 	}, this);
 }
 
+static Size Request_getBitmapSize(const Rect &bbox, const Background &bg, uint32_t w, uint32_t h) {
+	Size coverSize, containSize;
+
+	const float coverRatio = std::max(bbox.size.width / w, bbox.size.height / h);
+	const float containRatio = std::min(bbox.size.width / w, bbox.size.height / h);
+
+	coverSize = Size(w * coverRatio, h * coverRatio);
+	containSize = Size(w * containRatio, h * containRatio);
+
+	float boxWidth = 0.0f, boxHeight = 0.0f;
+	switch (bg.backgroundSizeWidth.metric) {
+	case layout::style::Metric::Units::Contain: boxWidth = containSize.width; break;
+	case layout::style::Metric::Units::Cover: boxWidth = coverSize.width; break;
+	case layout::style::Metric::Units::Percent: boxWidth = bbox.size.width * bg.backgroundSizeWidth.value; break;
+	case layout::style::Metric::Units::Px: boxWidth = bg.backgroundSizeWidth.value; break;
+	default: boxWidth = bbox.size.width; break;
+	}
+
+	switch (bg.backgroundSizeHeight.metric) {
+	case layout::style::Metric::Units::Contain: boxHeight = containSize.height; break;
+	case layout::style::Metric::Units::Cover: boxHeight = coverSize.height; break;
+	case layout::style::Metric::Units::Percent: boxHeight = bbox.size.height * bg.backgroundSizeHeight.value; break;
+	case layout::style::Metric::Units::Px: boxHeight = bg.backgroundSizeHeight.value; break;
+	default: boxHeight = bbox.size.height; break;
+	}
+
+	if (bg.backgroundSizeWidth.metric == layout::style::Metric::Units::Auto
+			&& bg.backgroundSizeHeight.metric == layout::style::Metric::Units::Auto) {
+		boxWidth = w;
+		boxHeight = h;
+	} else if (bg.backgroundSizeWidth.metric == layout::style::Metric::Units::Auto) {
+		boxWidth = boxHeight * ((float)w / (float)h);
+	} else if (bg.backgroundSizeHeight.metric == layout::style::Metric::Units::Auto) {
+		boxHeight = boxWidth * ((float)h / (float)w);
+	}
+
+	return Size(boxWidth, boxHeight);
+}
+
+void Request::prepareBackgroundImage(const Rect &bbox, const Background &bg) {
+	auto &src = bg.backgroundImage;
+	if (isFileExists(src)) {
+		auto size = getImageSize(src);
+		Size bmpSize = Request_getBitmapSize(bbox, bg, size.first, size.second);
+		if (!bmpSize.equals(Size::ZERO)) {
+			auto bmp = _drawer->getBitmap(src, bmpSize);
+			if (!bmp) {
+				Bytes bmpSource = getImageData(src);
+				if (!bmpSource.empty()) {
+					auto tex = TextureCache::uploadTexture(bmpSource, bmpSize);
+					_drawer->addBitmap(src, tex, bmpSize);
+				}
+			}
+		}
+	} else {
+		Size bmpSize = Request_getBitmapSize(bbox, bg, ImageFillerWidth, ImageFillerHeight);
+		auto bmp = _drawer->getBitmap("system://filler.svg", bmpSize);
+		if (!bmp && !bmpSize.equals(Size::ZERO)) {
+			Bytes bmpSource = Bytes((uint8_t *)ImageFillerData, (uint8_t *)(ImageFillerData + strlen(ImageFillerData)));
+			auto tex = TextureCache::uploadTexture(bmpSource, bmpSize);
+
+			//auto canvas = Rc<draw::Canvas>::create();
+			//Bitmap b = canvas->captureTexture(tex);
+			//b.save(toString(Time::now().toMicroseconds()));
+
+			_drawer->addBitmap("system://filler.svg", tex, bmpSize);
+		}
+	}
+}
+
 void Request::draw(cocos2d::Texture2D *data) {
+	Vector<const Object *> drawObjects;
+	auto &objs = _result->getObjects();
+	for (auto &obj : objs) {
+		if (obj.bbox.intersectsRect(_rect)) {
+			drawObjects.push_back(&obj);
+			if (obj.type == Object::Type::Label) {
+				const Label &l = obj.value.label;
+				for (auto &it : l.format.ranges) {
+					_font->addTextureChars(it.layout->getName(), l.format.chars, it.start, it.count);
+				}
+			} else if (obj.type == Object::Type::Background) {
+				const Background &bg = obj.value.background;
+				if (!bg.backgroundImage.empty() && !_isThumbnail) {
+					prepareBackgroundImage(obj.bbox, bg);
+				}
+			}
+		}
+	}
+
+	if (_font->isDirty()) {
+		_font->update(0.0f);
+	}
+
 	if (!_isThumbnail) {
 		auto bg = _result->getBackgroundColor();
 		if (bg.a == 0) {
@@ -165,40 +281,6 @@ void Request::draw(cocos2d::Texture2D *data) {
 		if (!_drawer->begin(data, Color4B(0, 0, 0, 0))) {
 			return;
 		}
-	}
-
-	Vector<const Object *> drawObjects;
-	auto &objs = _result->getObjects();
-	for (auto &obj : objs) {
-		if (obj.bbox.intersectsRect(_rect)) {
-			drawObjects.push_back(&obj);
-			if (obj.type == Object::Type::Label) {
-				const Label &l = obj.value.label;
-				for (auto &it : l.format.ranges) {
-					_font->addTextureChars(it.layout->getName(), l.format.chars, it.start, it.count);
-				}
-			} else if (obj.type == Object::Type::Background) {
-				const Background &bg = obj.value.background;
-				if (!bg.backgroundImage.empty()) {
-					auto &src = bg.backgroundImage;
-					auto document = _source->getDocument();
-					if (document->hasImage(src)) {
-						auto bmp = _drawer->getBitmap(src);
-						if (!bmp) {
-							Bitmap bmpSource = document->getImageBitmap(src, nullptr);
-							if (bmpSource) {
-								auto tex = TextureCache::uploadTexture(bmpSource);
-								_drawer->addBitmap(src, tex);
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	if (_font->isDirty()) {
-		_font->update(0.0f);
 	}
 
 	for (auto &obj : drawObjects) {
@@ -236,7 +318,15 @@ void Request::drawOutline(const Rect &bbox, const Outline &outline) {
 		return;
 	}
 	if (outline.isMono()) {
-		DrawerCanvas_prepareOutline(_drawer, outline.top, _density);
+		if (outline.top.style != layout::style::BorderStyle::None && outline.top.width > 0.0f) {
+			DrawerCanvas_prepareOutline(_drawer, outline.top, _density);
+		} else if (outline.right.style != layout::style::BorderStyle::None && outline.right.width > 0.0f) {
+			DrawerCanvas_prepareOutline(_drawer, outline.right, _density);
+		} else if (outline.bottom.style != layout::style::BorderStyle::None && outline.bottom.width > 0.0f) {
+			DrawerCanvas_prepareOutline(_drawer, outline.bottom, _density);
+		} else if (outline.left.style != layout::style::BorderStyle::None && outline.left.width > 0.0f) {
+			DrawerCanvas_prepareOutline(_drawer, outline.left, _density);
+		}
 		_drawer->drawRectangleOutline(getRect(bbox),
 				outline.hasTopLine(), outline.hasRightLine(), outline.hasBottomLine(), outline.hasLeftLine());
 	} else {
@@ -259,47 +349,13 @@ void Request::drawOutline(const Rect &bbox, const Outline &outline) {
 	}
 }
 
-void Request::drawBitmap(const Rect &origBbox, cocos2d::Texture2D *bmp, const Background &bg) {
+void Request::drawBitmap(const Rect &origBbox, cocos2d::Texture2D *bmp, const Background &bg, const Size &box) {
 	Rect bbox = origBbox;
-	Size coverSize, containSize;
 
 	const auto w = bmp->getPixelsWide();
 	const auto h = bmp->getPixelsHigh();
 
-	const float coverRatio = std::max(bbox.size.width / w, bbox.size.height / h);
-	const float containRatio = std::min(bbox.size.width / w, bbox.size.height / h);
-
-	coverSize = Size(w * coverRatio, h * coverRatio);
-	containSize = Size(w * containRatio, h * containRatio);
-
-	float boxWidth = 0.0f, boxHeight = 0.0f;
-	switch (bg.backgroundSizeWidth.metric) {
-	case layout::style::Metric::Units::Contain: boxWidth = containSize.width; break;
-	case layout::style::Metric::Units::Cover: boxWidth = coverSize.width; break;
-	case layout::style::Metric::Units::Percent: boxWidth = bbox.size.width * bg.backgroundSizeWidth.value; break;
-	case layout::style::Metric::Units::Px: boxWidth = bg.backgroundSizeWidth.value; break;
-	default: boxWidth = bbox.size.width; break;
-	}
-
-	switch (bg.backgroundSizeHeight.metric) {
-	case layout::style::Metric::Units::Contain: boxHeight = containSize.height; break;
-	case layout::style::Metric::Units::Cover: boxHeight = coverSize.height; break;
-	case layout::style::Metric::Units::Percent: boxHeight = bbox.size.height * bg.backgroundSizeHeight.value; break;
-	case layout::style::Metric::Units::Px: boxHeight = bg.backgroundSizeHeight.value; break;
-	default: boxHeight = bbox.size.height; break;
-	}
-
-	if (bg.backgroundSizeWidth.metric == layout::style::Metric::Units::Auto
-			&& bg.backgroundSizeHeight.metric == layout::style::Metric::Units::Auto) {
-		boxWidth = w;
-		boxHeight = h;
-	} else if (bg.backgroundSizeWidth.metric == layout::style::Metric::Units::Auto) {
-		boxWidth = boxHeight * ((float)w / (float)h);
-	} else if (bg.backgroundSizeHeight.metric == layout::style::Metric::Units::Auto) {
-		boxHeight = boxWidth * ((float)h / (float)w);
-	}
-
-	float availableWidth = bbox.size.width - boxWidth, availableHeight = bbox.size.height - boxHeight;
+	float availableWidth = bbox.size.width - box.width, availableHeight = bbox.size.height - box.height;
 	float xOffset = 0.0f, yOffset = 0.0f;
 
 	switch (bg.backgroundPositionX.metric) {
@@ -316,36 +372,51 @@ void Request::drawBitmap(const Rect &origBbox, cocos2d::Texture2D *bmp, const Ba
 
 	Rect contentBox(0, 0, w, h);
 
-	if (boxWidth < bbox.size.width) {
-		bbox.size.width = boxWidth;
+	if (box.width < bbox.size.width) {
+		bbox.size.width = box.width;
 		bbox.origin.x += xOffset;
-	} else if (boxWidth > bbox.size.width) {
-		contentBox.size.width = bbox.size.width * w / boxWidth;
-		contentBox.origin.x -= xOffset * (w / boxWidth);
+	} else if (box.width > bbox.size.width) {
+		contentBox.size.width = bbox.size.width * w / box.width;
+		contentBox.origin.x -= xOffset * (w / box.width);
 	}
 
-	if (boxHeight < bbox.size.height) {
-		bbox.size.height = boxHeight;
+	if (box.height < bbox.size.height) {
+		bbox.size.height = box.height;
 		bbox.origin.y += yOffset;
-	} else if (boxHeight > bbox.size.height) {
-		contentBox.size.height = bbox.size.height * h / boxHeight;
-		contentBox.origin.y -= yOffset * (h / boxHeight);
+	} else if (box.height > bbox.size.height) {
+		contentBox.size.height = bbox.size.height * h / box.height;
+		contentBox.origin.y -= yOffset * (h / box.height);
 	}
 
 	bbox = getRect(bbox);
 	_drawer->drawTexture(bbox, bmp, contentBox);
 }
 
-void Request::drawBackgroundImage(const cocos2d::Rect &bbox, const Background &bg) {
-	auto src = bg.backgroundImage;
-	auto document = _source->getDocument();
-	if (!document->hasImage(src)) {
+void Request::drawFillerImage(const Rect &bbox, const Background &bg) {
+	auto box = Request_getBitmapSize(bbox, bg, ImageFillerWidth, ImageFillerHeight);
+	auto bmp = _drawer->getBitmap("system://filler.svg", box);
+	if (bmp) {
+		drawBitmap(bbox, bmp, bg, box);
+	}
+}
+
+void Request::drawBackgroundImage(const Rect &bbox, const Background &bg) {
+	auto &src = bg.backgroundImage;
+	if (!isFileExists(src)) {
+		if (!src.empty() && bbox.size.width > 0.0f && bbox.size.height > 0.0f) {
+			_drawer->setColor(Color4B(168, 168, 168, 255));
+			drawFillerImage(bbox, bg);
+		}
 		return;
 	}
 
-	auto bmp = _drawer->getBitmap(src);
+	auto size = getImageSize(src);
+	Size box = Request_getBitmapSize(bbox, bg, size.first, size.second);
+
+	auto bmp = _drawer->getBitmap(src, box);
 	if (bmp) {
-		drawBitmap(bbox, bmp, bg);
+		_drawer->setColor(Color4B(layout::Color(_result->getBackgroundColor()).text(), 255));
+		drawBitmap(bbox, bmp, bg, box);
 	}
 }
 
@@ -398,6 +469,37 @@ void Request::onDrawed(cocos2d::Texture2D *data) {
 	}
 }
 
+bool Request::isFileExists(const String &url) const {
+	auto it = _networkAssets.find(url);
+	if (it != _networkAssets.end() && it->second.asset) {
+		return true;
+	}
+
+	return _source->getDocument()->isFileExists(url);
+}
+
+Pair<uint16_t, uint16_t> Request::getImageSize(const String &url) const {
+	auto it = _networkAssets.find(url);
+	if (it != _networkAssets.end()) {
+		if (StringView(it->second.meta.type).is("image/") && it->second.meta.image.width > 0 && it->second.meta.image.height > 0) {
+			return pair(it->second.meta.image.width, it->second.meta.image.height);
+		}
+	}
+
+	return _source->getDocument()->getImageSize(url);
+}
+
+Bytes Request::getImageData(const String &url) const {
+	auto it = _networkAssets.find(url);
+	if (it != _networkAssets.end()) {
+		if (StringView(it->second.meta.type).is("image/") && it->second.meta.image.width > 0 && it->second.meta.image.height > 0) {
+			return filesystem::readFile(it->second.asset->getFilePath());
+		}
+	}
+
+	return _source->getDocument()->getImageData(url);
+}
+
 bool Drawer::init() {
 	TextureCache::thread().perform([this] (const Task &) -> bool {
 		TextureCache::getInstance()->performWithGL([&] {
@@ -405,7 +507,9 @@ bool Drawer::init() {
 			glGenBuffers(2, _drawBufferVBO);
 		});
 		return true;
-	}, nullptr, this);
+	}, [this] (const Task &, bool) {
+		_cacheUpdated = true;
+	}, this);
 	return true;
 }
 
@@ -441,6 +545,9 @@ bool Drawer::begin(cocos2d::Texture2D * tex, const Color4B &clearColor) {
 	if (_fbo == 0) {
 		return false;
 	}
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+
 	load();
 	_width = tex->getPixelsWide();
 	_height = tex->getPixelsHigh();
@@ -567,6 +674,37 @@ void Drawer::drawRectangleOutline(const Rect &bbox) {
 	drawRectangleOutline(bbox, true, true, true, true);
 }
 
+static void Drawer_makeRect(Vector<GLfloat> &vertices, float x, float y, float width, float height) {
+	vertices.push_back(x);			vertices.push_back(y);
+	vertices.push_back(x + width);	vertices.push_back(y);
+	vertices.push_back(x);			vertices.push_back(y + height);
+	vertices.push_back(x + width);	vertices.push_back(y + height);
+}
+
+static void Drawer_makeRectFilterVert(Vector<GLfloat> &vertices, float x, float height, float inc, bool top, bool bottom) {
+	if (!bottom && !top) {
+		Drawer_makeRect(vertices, x - inc, 0, inc * 2.0f, height);
+	} else if (bottom && !top) {
+		Drawer_makeRect(vertices, x - inc, inc, inc * 2.0f, height - inc);
+	} else if (!bottom && top) {
+		Drawer_makeRect(vertices, x - inc, 0, inc * 2.0f, height - inc);
+	} else {
+		Drawer_makeRect(vertices, x - inc, inc, inc * 2.0f, height - inc * 2.0f);
+	}
+}
+
+static void Drawer_makeRectFilterHorz(Vector<GLfloat> &vertices, float y, float width, float inc, bool left, bool right) {
+	if (!left && !right) {
+		Drawer_makeRect(vertices, 0, y - inc, width, inc * 2.0f);
+	} else if (left && !right) {
+		Drawer_makeRect(vertices, inc, y - inc, width - inc, inc * 2.0f);
+	} else if (!left && right) {
+		Drawer_makeRect(vertices, 0, y - inc, width - inc, inc * 2.0f);
+	} else {
+		Drawer_makeRect(vertices, inc, y - inc, width - inc * 2.0f, inc * 2.0f);
+	}
+}
+
 void Drawer::drawRectangleOutline(const Rect &bbox, bool top, bool right, bool bottom, bool left) {
 	Vector<GLfloat> vertices; vertices.reserve(6 * 8 * 2);
 
@@ -590,94 +728,110 @@ void Drawer::drawRectangleOutline(const Rect &bbox, bool top, bool right, bool b
 			_color.r / 255.0f, _color.g / 255.0f, _color.b / 255.0f, _color.a / 255.0f);
 	p->setUniformLocationWithMatrix4fv(p->getUniformLocationForName(cocos2d::GLProgram::UNIFORM_MVP_MATRIX),
 			transform.m, 1);
-	p->setUniformLocationWith2f(p->getUniformLocationForName("u_size"), GLfloat(bbox.size.width / 2.0f + 0.5f), GLfloat(bbox.size.height / 2.0f + 0.5f));
-	p->setUniformLocationWith2f(p->getUniformLocationForName("u_position"), GLfloat(bbox.origin.x - 0.5f), GLfloat(_height - bbox.origin.y - bbox.size.height - 0.5f));
 	p->setUniformLocationWith1f(p->getUniformLocationForName("u_border"), GLfloat(_lineWidth / 2.0f));
 
-    const float inc = _lineWidth/2.0f + 2.0f;
+	const float inc = _lineWidth/2.0f + 2.0f;
 
+	size_t count = 0;
+
+	Rect shaderBox(bbox);
+	if (!left) {
+		shaderBox.size.width += inc;
+		shaderBox.origin.x -= inc;
+	}
+
+	if (!right) {
+		shaderBox.size.width += inc * 2;
+	}
+
+	if (!top) {
+		shaderBox.size.height += inc * 2.0f;
+		shaderBox.origin.y -= inc * 2.0f;
+	}
+
+	if (!bottom) {
+		shaderBox.size.height += inc * 2;
+	}
+
+	Size shaderSize(shaderBox.size.width / 2.0f + 0.5f, shaderBox.size.height / 2.0f + 0.5f);
+	Vec2 shaderPos(shaderBox.origin.x - 0.5f, _height - shaderBox.origin.y - shaderBox.size.height - 0.5f);
+
+	p->setUniformLocationWith2f(p->getUniformLocationForName("u_size"), GLfloat(shaderSize.width), GLfloat(shaderSize.height));
+	p->setUniformLocationWith2f(p->getUniformLocationForName("u_position"), GLfloat(shaderPos.x), GLfloat(shaderPos.y));
+
+	if (left) {
+		Drawer_makeRectFilterVert(vertices, 0, bbox.size.height, inc, top, bottom);
+		++ count;
+	}
+
+	if (right) {
+		Drawer_makeRectFilterVert(vertices, bbox.size.width, bbox.size.height, inc, top, bottom);
+		++ count;
+	}
+
+	if (top) {
+		Drawer_makeRectFilterHorz(vertices, bbox.size.height, bbox.size.width, inc, left, right);
+		++ count;
+	}
+
+	if (bottom) {
+		Drawer_makeRectFilterHorz(vertices, 0, bbox.size.width, inc, left, right);
+		++ count;
+	}
 
     if (left && bottom) {
-    	vertices.push_back(-inc);	vertices.push_back(-inc);
-    	vertices.push_back(inc);	vertices.push_back(-inc);
-    	vertices.push_back(-inc);	vertices.push_back(inc);
-    	vertices.push_back(inc);	vertices.push_back(-inc);
-    	vertices.push_back(-inc);	vertices.push_back(inc);
-    	vertices.push_back(inc);	vertices.push_back(inc);
-    }
-
-    if (left) {
-    	vertices.push_back(-inc);	vertices.push_back(inc);
-    	vertices.push_back(inc);	vertices.push_back(inc);
-    	vertices.push_back(-inc);	vertices.push_back(bbox.size.height - inc);
-    	vertices.push_back(inc);	vertices.push_back(inc);
-    	vertices.push_back(-inc);	vertices.push_back(bbox.size.height - inc);
-    	vertices.push_back(inc);	vertices.push_back(bbox.size.height - inc);
+    	Drawer_makeRect(vertices, -inc, -inc, inc * 2.0f, inc * 2.0f);
+		++ count;
     }
 
     if (left && top) {
-    	vertices.push_back(-inc);	vertices.push_back(bbox.size.height - inc);
-    	vertices.push_back(inc);	vertices.push_back(bbox.size.height - inc);
-    	vertices.push_back(-inc);	vertices.push_back(bbox.size.height + inc);
-    	vertices.push_back(inc);	vertices.push_back(bbox.size.height - inc);
-    	vertices.push_back(-inc);	vertices.push_back(bbox.size.height + inc);
-    	vertices.push_back(inc);	vertices.push_back(bbox.size.height + inc);
-    }
-
-    if (top) {
-    	vertices.push_back(inc);					vertices.push_back(bbox.size.height - inc);
-    	vertices.push_back(inc);					vertices.push_back(bbox.size.height + inc);
-    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(bbox.size.height + inc);
-    	vertices.push_back(inc);					vertices.push_back(bbox.size.height - inc);
-    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(bbox.size.height + inc);
-    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(bbox.size.height - inc);
+    	Drawer_makeRect(vertices, -inc, bbox.size.height - inc, inc * 2.0f, inc * 2.0f);
+		++ count;
     }
 
     if (top && right) {
-    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(bbox.size.height + inc);
-    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(bbox.size.height - inc);
-    	vertices.push_back(bbox.size.width + inc);	vertices.push_back(bbox.size.height + inc);
-    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(bbox.size.height - inc);
-    	vertices.push_back(bbox.size.width + inc);	vertices.push_back(bbox.size.height + inc);
-    	vertices.push_back(bbox.size.width + inc);	vertices.push_back(bbox.size.height - inc);
-    }
-
-    if (right) {
-    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(bbox.size.height - inc);
-    	vertices.push_back(bbox.size.width + inc);	vertices.push_back(bbox.size.height - inc);
-    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(inc);
-    	vertices.push_back(bbox.size.width + inc);	vertices.push_back(bbox.size.height - inc);
-    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(inc);
-    	vertices.push_back(bbox.size.width + inc);	vertices.push_back(inc);
+    	Drawer_makeRect(vertices, bbox.size.width - inc, bbox.size.height - inc, inc * 2.0f, inc * 2.0f);
+		++ count;
     }
 
     if (right && bottom) {
-    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(inc);
-    	vertices.push_back(bbox.size.width + inc);	vertices.push_back(inc);
-    	vertices.push_back(bbox.size.width + inc);	vertices.push_back(-inc);
-    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(inc);
-    	vertices.push_back(bbox.size.width + inc);	vertices.push_back(-inc);
-    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(-inc);
+    	Drawer_makeRect(vertices, bbox.size.width - inc, -inc, inc * 2.0f, inc * 2.0f);
+		++ count;
     }
 
-    if (bottom) {
-    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(inc);
-    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(-inc);
-    	vertices.push_back(inc);					vertices.push_back(-inc);
-    	vertices.push_back(bbox.size.width - inc);	vertices.push_back(inc);
-    	vertices.push_back(inc);					vertices.push_back(-inc);
-    	vertices.push_back(inc);					vertices.push_back(inc);
-    }
+	drawResizeBuffer(count);
+
+	glBindBuffer(GL_ARRAY_BUFFER, _drawBufferVBO[0]);
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_DYNAMIC_DRAW);
 
 	enableVertexAttribs(cocos2d::GL::VERTEX_ATTRIB_FLAG_POSITION);
-	glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_POSITION, 2, GL_FLOAT, GL_FALSE, 0, vertices.data());
-	glDrawArrays(GL_TRIANGLES, 0, GLint(vertices.size()));
+	glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_POSITION, 2, GL_FLOAT, GL_FALSE, 0, 0);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _drawBufferVBO[1]);
+	glDrawElements(GL_TRIANGLES, (GLsizei) count * 6, GL_UNSIGNED_SHORT, (GLvoid *) (0));
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	CHECK_GL_ERROR_DEBUG();
 }
 
 void Drawer::drawTexture(const Rect &bbox, cocos2d::Texture2D *tex, const Rect &texRect) {
 	auto programs = TextureCache::getInstance()->getPrograms();
-	auto p = programs->getProgram(GLProgramDesc::Default::RawTexture);
+	cocos2d::GLProgram * p = nullptr;
+
+	bool colorize = tex->getReferenceFormat() == cocos2d::Texture2D::PixelFormat::A8
+			|| tex->getReferenceFormat() == cocos2d::Texture2D::PixelFormat::AI88;
+
+	if (colorize) {
+		p = programs->getProgram(GLProgramDesc(GLProgramDesc::Attr::MatrixMVP | GLProgramDesc::Attr::AmbientColor
+				| GLProgramDesc::Attr::TexCoords | GLProgramDesc::Attr::MediumP,
+				tex->getPixelFormat(), tex->getReferenceFormat()));
+	} else {
+		p = programs->getProgram(GLProgramDesc(GLProgramDesc::Attr::MatrixMVP
+				| GLProgramDesc::Attr::TexCoords | GLProgramDesc::Attr::MediumP,
+				tex->getPixelFormat(), tex->getReferenceFormat()));
+	}
+
 
 	auto w = tex->getPixelsWide();
 	auto h = tex->getPixelsHigh();
@@ -693,6 +847,10 @@ void Drawer::drawTexture(const Rect &bbox, cocos2d::Texture2D *tex, const Rect &
 
 	bindTexture(tex->getName());
 	useProgram(p->getProgram());
+	if (colorize) {
+		p->setUniformLocationWith4f(p->getUniformLocationForName(cocos2d::GLProgram::UNIFORM_AMBIENT_COLOR),
+			_color.r / 255.0f, _color.g / 255.0f, _color.b / 255.0f, _color.a / 255.0f);
+	}
     p->setUniformLocationWithMatrix4fv(p->getUniformLocationForName(cocos2d::GLProgram::UNIFORM_MVP_MATRIX), transform.m, 1);
 
     GLfloat coordinates[] = {
@@ -751,10 +909,7 @@ void Drawer::drawRects(const Rect &bbox, const Vector<Rect> &rects) {
 			transform.m, 1);
 
 	for (auto &it : rects) {
-    	vertices.push_back(it.origin.x);					vertices.push_back(it.origin.y);
-    	vertices.push_back(it.origin.x + it.size.width);	vertices.push_back(it.origin.y);
-    	vertices.push_back(it.origin.x);					vertices.push_back(it.origin.y + it.size.height);
-    	vertices.push_back(it.origin.x + it.size.width);	vertices.push_back(it.origin.y + it.size.height);
+		Drawer_makeRect(vertices, it.origin.x, it.origin.y, it.size.width, it.size.height);
 	}
 
 	drawResizeBuffer(rects.size());
@@ -890,7 +1045,7 @@ void Drawer::performUpdate() {
 	auto time = Time::now();
 	Vector<String> keys;
 	for (auto &it : _cache) {
-		if (it.second.second - time > TimeInterval::seconds(6)) {
+		if (it.second.second - time > TimeInterval::seconds(30)) {
 			keys.push_back(it.first);
 		}
 	}
@@ -904,6 +1059,10 @@ void Drawer::addBitmap(const String &str, cocos2d::Texture2D *bmp) {
 	_cache.emplace(str, pair(bmp, Time::now()));
 }
 
+void Drawer::addBitmap(const String &str, cocos2d::Texture2D *bmp, const Size &size) {
+	addBitmap(toString(str, "?w=", int(roundf(size.width)), "&h=", int(roundf(size.height))), bmp);
+}
+
 cocos2d::Texture2D *Drawer::getBitmap(const std::string &key) {
 	auto it = _cache.find(key);
 	if (it != _cache.end()) {
@@ -911,6 +1070,10 @@ cocos2d::Texture2D *Drawer::getBitmap(const std::string &key) {
 		return it->second.first;
 	}
 	return nullptr;
+}
+
+cocos2d::Texture2D *Drawer::getBitmap(const String &key, const Size &size) {
+	return getBitmap(toString(key, "?w=", int(roundf(size.width)), "&h=", int(roundf(size.height))));
 }
 
 Thread &Drawer::thread() {

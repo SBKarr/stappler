@@ -1,5 +1,8 @@
+// This is an open source non-commercial project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
+
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,26 +23,32 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef stappler_core_SPConfig_h
-#define stappler_core_SPConfig_h
+#include "SLCssDocument.h"
 
-#include "SPForward.h"
+#include "SLMultipartParser.h"
+#include "SLNode.h"
+#include "SPBitmap.h"
 
-/**
- * Enables StoreKit feature (interface for IAP on iOS and Android)
- */
-#define SP_CONFIG_STOREKIT 1
+NS_LAYOUT_BEGIN
 
-NS_SP_EXT_BEGIN(config)
+CssDocument::CssDocument() { }
 
-inline constexpr auto getNetworkSpriteAssetTtl() {
-	return TimeInterval::seconds(10 * 24 * 60 * 60); // 10 days
+CssDocument::~CssDocument() { }
+
+bool CssDocument::init(const StringView &data) {
+	Reader r;
+	r.readCss(_page, data);
+
+	return true;
 }
 
-inline constexpr auto getDocumentAssetTtl() {
-	return TimeInterval::seconds(30 * 24 * 60 * 60); // 30 days
+bool CssDocument::init(const String &path, const StringView &data) {
+	_page.path = path;
+	Reader r;
+	r.readCss(_page, data);
+
+	return true;
 }
 
-NS_SP_EXT_END(config)
 
-#endif
+NS_LAYOUT_END

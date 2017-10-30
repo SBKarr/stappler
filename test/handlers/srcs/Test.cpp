@@ -107,6 +107,8 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 			storage::Thumbnail("cover128", 128, 128),
 			storage::Thumbnail("cover64", 64, 64),
 		}),
+
+		Field::Data("data")
 	});
 	_refs.setDelta(true);
 

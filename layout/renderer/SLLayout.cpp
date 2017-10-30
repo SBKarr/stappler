@@ -101,25 +101,25 @@ bool Object::isExternal() const {
 	return (type == Type::Background && !value.background.backgroundImage.empty());
 }
 
-Outline Outline::border(const OutlineStyle &style, const Size &vp, float swidth, float emBase, float &borderWidth) {
+Outline Outline::border(const OutlineStyle &style, const Size &vp, float swidth, float emBase, float rootEmBase, float &borderWidth) {
 	Border border;
 	if (style.borderTopStyle != style::BorderStyle::None) {
-		float width = style.borderTopWidth.computeValue(swidth, vp, emBase, true);
+		float width = style.borderTopWidth.computeValueAuto(swidth, vp, emBase, rootEmBase);
 		borderWidth = std::max(borderWidth, width);
 		border.top = Border::Params{style.borderTopStyle, width, style.borderTopColor};
 	}
 	if (style.borderRightStyle != style::BorderStyle::None) {
-		float width = style.borderRightWidth.computeValue(swidth, vp, emBase, true);
+		float width = style.borderRightWidth.computeValueAuto(swidth, vp, emBase, rootEmBase);
 		borderWidth = std::max(borderWidth, width);
 		border.right = Border::Params{style.borderRightStyle, width, style.borderRightColor};
 	}
 	if (style.borderBottomStyle != style::BorderStyle::None) {
-		float width = style.borderBottomWidth.computeValue(swidth, vp, emBase, true);
+		float width = style.borderBottomWidth.computeValueAuto(swidth, vp, emBase, rootEmBase);
 		borderWidth = std::max(borderWidth, width);
 		border.bottom = Border::Params{style.borderBottomStyle, width, style.borderBottomColor};
 	}
 	if (style.borderLeftStyle != style::BorderStyle::None) {
-		float width = style.borderLeftWidth.computeValue(swidth, vp, emBase, true);
+		float width = style.borderLeftWidth.computeValueAuto(swidth, vp, emBase, rootEmBase);
 		borderWidth = std::max(borderWidth, width);
 		border.left = Border::Params{style.borderLeftStyle, width, style.borderLeftColor};
 	}
@@ -146,88 +146,82 @@ void Label::getLabelRects(Vector<Rect> &rect, uint32_t firstCharId, uint32_t las
 	return format.getLabelRects(rect, firstCharId, lastCharId, density, origin, p);
 }
 
-Layout::Layout() { }
-Layout::Layout(const RendererInterface *r, const Node *n, bool d)
-: node(n), style(n->getStyle().compileBlockModel(r)), disablePageBreak(d) { }
 
-Layout::Layout(const Node *n, BlockStyle &&s, bool d)
-: node(n), style(std::move(s)), disablePageBreak(d) { }
+Layout::NodeInfo::NodeInfo(const Node *n, const Style *s, const RendererInterface *r)
+: node(n), style(s), block(style->compileBlockModel(r)), context(block.display) { }
 
-Layout::Layout(Layout &&l)
-: node(l.node)
-, style(std::move(l.style))
-, padding(l.padding)
-, margin(l.margin)
-, layoutContext(l.layoutContext)
-, position(l.position)
-, origin(l.origin)
-, size(l.size)
-, minHeight(l.minHeight)
-, maxHeight(l.maxHeight)
-, preObjects(std::move(l.preObjects))
-, layouts(std::move(l.layouts))
-, postObjects(std::move(l.postObjects))
-, collapsableMarginTop(l.collapsableMarginTop)
-, collapsableMarginBottom(l.collapsableMarginBottom)
-, listItemIndex(l.listItemIndex)
-, listItem(l.listItem)
-, context(std::move(l.context))
-, inlineBlockLayouts(std::move(l.inlineBlockLayouts))
-, charBinding(l.charBinding)
-, disablePageBreak(l.disablePageBreak) { }
+Layout::NodeInfo::NodeInfo(const Node *n, const Style *s, BlockStyle &&b)
+: node(n), style(s), block(move(b)), context(block.display) { }
 
-Layout & Layout::operator = (Layout &&l) {
-	node = (l.node);
-	style = (std::move(l.style));
-	padding = (l.padding);
-	margin = (l.margin);
-	layoutContext = (l.layoutContext);
-	position = (l.position);
-	origin = (l.origin);
-	size = (l.size);
-	minHeight = (l.minHeight);
-	maxHeight = (l.maxHeight);
-	preObjects = (std::move(l.preObjects));
-	layouts = (std::move(l.layouts));
-	postObjects = (std::move(l.postObjects));
-	collapsableMarginTop = (l.collapsableMarginTop);
-	listItemIndex = (l.listItemIndex);
-	listItem = (l.listItem);
-	context = std::move(l.context);
-	inlineBlockLayouts = std::move(l.inlineBlockLayouts);
-	charBinding = (l.charBinding);
-	disablePageBreak = (l.disablePageBreak);
-	return *this;
-}
 
-Rect Layout::getBoundingBox() const {
+Rect Layout::PositionInfo::getBoundingBox() const {
 	return Rect(position.x - padding.left - margin.left,
 			position.y - padding.top - margin.top,
 			size.width + padding.left + padding.right + margin.left + margin.right,
 			(!isnanf(size.height)?( size.height + padding.top + padding.bottom + margin.top + margin.bottom):nan()));
 }
-Rect Layout::getPaddingBox() const {
+Rect Layout::PositionInfo::getPaddingBox() const {
 	return Rect(position.x - padding.left, position.y - padding.top,
 			size.width + padding.left + padding.right,
 			(!isnanf(size.height)?( size.height + padding.top + padding.bottom):nan()));
 }
-Rect Layout::getContentBox() const {
+Rect Layout::PositionInfo::getContentBox() const {
 	return Rect(position.x, position.y, size.width, size.height);
 }
 
-void Layout::updatePosition(float pos) {
-	position.y += pos;
+Layout::Layout(NodeInfo &&n, bool d) : node(move(n)) {
+	pos.disablePageBreak = d;
+}
+
+Layout::Layout(Layout &&l)
+: node(move(l.node))
+, pos(move(l.pos))
+, preObjects(std::move(l.preObjects))
+, layouts(std::move(l.layouts))
+, postObjects(std::move(l.postObjects))
+, listItemIndex(l.listItemIndex)
+, listItem(l.listItem)
+, context(std::move(l.context))
+, inlineBlockLayouts(std::move(l.inlineBlockLayouts))
+, charBinding(l.charBinding) { }
+
+Layout & Layout::operator = (Layout &&l) {
+	node = move(l.node);
+	pos = move(l.pos);
+	preObjects = (std::move(l.preObjects));
+	layouts = (std::move(l.layouts));
+	postObjects = (std::move(l.postObjects));
+	listItemIndex = (l.listItemIndex);
+	listItem = (l.listItem);
+	context = std::move(l.context);
+	inlineBlockLayouts = std::move(l.inlineBlockLayouts);
+	charBinding = (l.charBinding);
+	return *this;
+}
+
+Rect Layout::getBoundingBox() const {
+	return pos.getBoundingBox();
+}
+Rect Layout::getPaddingBox() const {
+	return pos.getPaddingBox();
+}
+Rect Layout::getContentBox() const {
+	return pos.getContentBox();
+}
+
+void Layout::updatePosition(float p) {
+	pos.position.y += p;
 	for (auto &l : layouts) {
-		l.updatePosition(pos);
+		l.updatePosition(p);
 	}
 }
 
-void Layout::setBoundPosition(const Vec2 &pos) {
-	auto newPos = pos;
-	newPos.x += (margin.left + padding.left);
-	newPos.y += (margin.top + padding.top);
-	auto diff = pos - getBoundingBox().origin;
-	position = newPos;
+void Layout::setBoundPosition(const Vec2 &p) {
+	auto newPos = p;
+	newPos.x += (pos.margin.left + pos.padding.left);
+	newPos.y += (pos.margin.top + pos.padding.top);
+	auto diff = p - getBoundingBox().origin;
+	pos.position = newPos;
 
 	for (auto &l : layouts) {
 		auto nodePos = l.getBoundingBox().origin + diff;
@@ -236,15 +230,15 @@ void Layout::setBoundPosition(const Vec2 &pos) {
 }
 
 Pair<float, float> FloatContext::getAvailablePosition(float yPos, float height) const {
-	float x = root->position.x;
-	float width = root->size.width;
+	float x = root->pos.position.x;
+	float width = root->pos.size.width;
 
 	float topStackWidth = 0;
 	for (auto &stack : floatLeft) {
 		if (stack.origin.y <= yPos + height && stack.origin.y + stack.size.height >= yPos) {
 			if (topStackWidth < stack.origin.x + stack.size.width) {
 				x = stack.origin.x + stack.size.width;
-				width = root->size.width - x;
+				width = root->pos.size.width - x;
 				topStackWidth = stack.origin.x + stack.size.width;
 			}
 		}
@@ -254,7 +248,7 @@ Pair<float, float> FloatContext::getAvailablePosition(float yPos, float height) 
 	for (auto &stack : floatRight) {
 		if (stack.origin.y <= yPos + height && stack.origin.y + stack.size.height >= yPos) {
 			if (topStackWidth < stack.size.width) {
-				topStackWidth = root->size.width - stack.origin.x;
+				topStackWidth = root->pos.size.width - stack.origin.x;
 			}
 		}
 	}
@@ -263,19 +257,19 @@ Pair<float, float> FloatContext::getAvailablePosition(float yPos, float height) 
 }
 
 bool FloatContext::pushFloatingNode(Layout &origin, Layout &l, Vec2 &vec) {
-	auto &stacks = (l.style.floating==style::Float::Left)?floatLeft:floatRight;
+	auto &stacks = (l.node.block.floating==style::Float::Left)?floatLeft:floatRight;
 	auto bbox = l.getBoundingBox();
 
-	if (l.style.clear == style::Clear::Both
-			|| (l.style.floating == style::Float::Left && l.style.clear == style::Clear::Left)
-			|| (l.style.floating == style::Float::Right && l.style.clear == style::Clear::Right) ) {
+	if (l.node.block.clear == style::Clear::Both
+			|| (l.node.block.floating == style::Float::Left && l.node.block.clear == style::Clear::Left)
+			|| (l.node.block.floating == style::Float::Right && l.node.block.clear == style::Clear::Right) ) {
 		return pushFloatingNodeToNewStack(origin, l, stacks, bbox, vec);
 	}
 
 	// can we use current stack?
 	if (!stacks.empty()) {
 		auto &stack = stacks.back();
-		if (root->size.width - stack.size.width > bbox.size.width) {
+		if (root->pos.size.width - stack.size.width > bbox.size.width) {
 			if (pushFloatingNodeToStack(origin, l, stack, bbox, vec)) {
 				return true;
 			}
@@ -285,7 +279,7 @@ bool FloatContext::pushFloatingNode(Layout &origin, Layout &l, Vec2 &vec) {
 }
 
 bool FloatContext::pushFloatingNodeToStack(Layout &origin, Layout &l, Rect &s, const Rect &bbox, Vec2 &vec) {
-	auto &stacks = (l.style.floating==style::Float::Left)?floatRight:floatLeft;
+	auto &stacks = (l.node.block.floating==style::Float::Left)?floatRight:floatLeft;
 
 	float newHeight = std::max(s.size.height, bbox.size.height);
 	float oppositeWidth = 0;
@@ -298,14 +292,14 @@ bool FloatContext::pushFloatingNodeToStack(Layout &origin, Layout &l, Rect &s, c
 		}
 	}
 
-	if (root->size.width - s.size.width - oppositeWidth > bbox.size.width) {
+	if (root->pos.size.width - s.size.width - oppositeWidth > bbox.size.width) {
 		s.size.height = newHeight;
 		l.setBoundPosition(Vec2(
-				(l.style.floating==style::Float::Left)?(s.origin.x + s.size.width):(s.origin.x - s.size.width)
+				(l.node.block.floating==style::Float::Left)?(s.origin.x + s.size.width):(s.origin.x - s.size.width)
 						, s.origin.y));
 		s.size.width += bbox.size.width;
 
-		if (fabsf(root->size.width - s.size.width) < root->size.width * 0.025) {
+		if (fabsf(root->pos.size.width - s.size.width) < root->pos.size.width * 0.025) {
 			vec.y = s.origin.y + s.size.height;
 		}
 
@@ -315,10 +309,10 @@ bool FloatContext::pushFloatingNodeToStack(Layout &origin, Layout &l, Rect &s, c
 }
 
 bool FloatContext::pushFloatingNodeToNewStack(Layout &lo, Layout &l, FloatStack &stacks, const Rect &bbox, Vec2 &vec) {
-	auto &oppositeStacks = (l.style.floating==style::Float::Left)?floatRight:floatLeft;
+	auto &oppositeStacks = (l.node.block.floating==style::Float::Left)?floatRight:floatLeft;
 
 	Vec2 origin = Vec2(
-			(l.style.floating==style::Float::Left)?(lo.position.x):(lo.position.x + lo.size.width - bbox.size.width),
+			(l.node.block.floating==style::Float::Left)?(lo.pos.position.x):(lo.pos.position.x + lo.pos.size.width - bbox.size.width),
 			bbox.origin.y);
 
 	Size bsize = bbox.size;
@@ -330,15 +324,15 @@ bool FloatContext::pushFloatingNodeToNewStack(Layout &lo, Layout &l, FloatStack 
 	}
 
 	bool oppositeClear = false;
-	if (l.style.clear == style::Clear::Both
-			|| (l.style.floating == style::Float::Left && l.style.clear == style::Clear::Right)
-			|| (l.style.floating == style::Float::Right && l.style.clear == style::Clear::Left) ) {
+	if (l.node.block.clear == style::Clear::Both
+			|| (l.node.block.floating == style::Float::Left && l.node.block.clear == style::Clear::Right)
+			|| (l.node.block.floating == style::Float::Right && l.node.block.clear == style::Clear::Left) ) {
 		oppositeClear = true;
 	}
 
 	for (auto &stack : oppositeStacks) {
 		if (stack.origin.y <= origin.y && stack.origin.y + stack.size.height >= origin.y) {
-			if (oppositeClear || root->size.width - stack.size.width < bsize.width) {
+			if (oppositeClear || root->pos.size.width - stack.size.width < bsize.width) {
 				origin.y = stack.origin.y + stack.size.height;
 			}
 		}
@@ -355,7 +349,7 @@ bool FloatContext::pushFloatingNodeToNewStack(Layout &lo, Layout &l, FloatStack 
 	stacks.push_back(Rect(origin.x, origin.y, bsize.width, bsize.height));
 	l.setBoundPosition(origin);
 
-	if (fabsf(root->size.width - bsize.width)  < root->size.width * 0.025) {
+	if (fabsf(root->pos.size.width - bsize.width)  < root->pos.size.width * 0.025) {
 		vec.y = origin.y + bsize.height;
 	}
 

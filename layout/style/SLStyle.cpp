@@ -117,10 +117,19 @@ void ParameterList::set(const Parameter &p, bool force) {
 		return;
 	}
 
+	if (force && p.mediaQuery == MediaQueryNone()) {
+		for (auto &it : data) {
+			if (it.name == p.name) {
+				it.value = p.value;
+				return;
+			}
+		}
+	}
+
 	data.push_back(p);
 }
 
-ParameterList getStyleForTag(const String &tag, Tag::Type type) {
+ParameterList getStyleForTag(const StringView &tag, const StringView &parent) {
 	ParameterList style;
 
 	if (tag == "div") {
@@ -128,80 +137,205 @@ ParameterList getStyleForTag(const String &tag, Tag::Type type) {
 	}
 
 	if (tag == "p" || tag == "h1" || tag == "h2" || tag == "h3" || tag == "h4" || tag == "h5" || tag == "h6") {
-		style.data.push_back(Parameter::create<ParameterName::MarginTop>(Metric(10, Metric::Units::Px)));
-		style.data.push_back(Parameter::create<ParameterName::MarginBottom>(Metric(10, Metric::Units::Px)));
-		style.data.push_back(Parameter::create<ParameterName::TextIndent>(Metric(20, Metric::Units::Px)));
+		if (parent != "li" && parent != "blockquote") {
+			style.data.push_back(Parameter::create<ParameterName::MarginTop>(Metric(0.5f, Metric::Units::Em)));
+			style.data.push_back(Parameter::create<ParameterName::MarginBottom>(Metric(0.5f, Metric::Units::Em)));
+			if (parent != "dd" && parent != "figcaption") {
+				style.data.push_back(Parameter::create<ParameterName::TextIndent>(Metric(1.5f, Metric::Units::Rem)));
+			}
+		}
+		style.data.push_back(Parameter::create<ParameterName::LineHeight>(Metric(1.15f, Metric::Units::Em)));
 		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Block));
 	}
 
 	if (tag == "span" || tag == "strong" || tag == "em" || tag == "nobr"
 			|| tag == "sub" || tag == "sup" || tag == "inf" || tag == "b"
-			|| tag == "i" || tag == "u") {
+			|| tag == "i" || tag == "u" || tag == "code") {
 		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Inline));
 	}
 
 	if (tag == "h1") {
-		style.set(Parameter::create<ParameterName::MarginTop>(Metric(20, Metric::Units::Px)), true);
-		style.data.push_back(Parameter::create<ParameterName::FontSize>(FontSize::XXLarge));
+		style.set(Parameter::create<ParameterName::MarginTop>(Metric(0.8f, Metric::Units::Em)), true);
+		style.data.push_back(Parameter::create<ParameterName::FontSize>(uint8_t(32)));
+		style.data.push_back(Parameter::create<ParameterName::FontWeight>(FontWeight::W200));
+		style.data.push_back(Parameter::create<ParameterName::Opacity>(uint8_t(222)));
+
 	} else if (tag == "h2") {
-		style.set(Parameter::create<ParameterName::MarginTop>(Metric(20, Metric::Units::Px)), true);
-		style.data.push_back(Parameter::create<ParameterName::FontSize>(FontSize::XLarge));
+		style.set(Parameter::create<ParameterName::MarginTop>(Metric(0.8f, Metric::Units::Em)), true);
+		style.data.push_back(Parameter::create<ParameterName::FontSize>(uint8_t(28)));
+		style.data.push_back(Parameter::create<ParameterName::FontWeight>(FontWeight::W400));
+		style.data.push_back(Parameter::create<ParameterName::Opacity>(uint8_t(222)));
+
 	} else if (tag == "h3") {
-		style.set(Parameter::create<ParameterName::MarginTop>(Metric(20, Metric::Units::Px)), true);
+		style.set(Parameter::create<ParameterName::MarginTop>(Metric(0.8f, Metric::Units::Em)), true);
+		style.data.push_back(Parameter::create<ParameterName::FontSize>(FontSize::XXLarge));
+		style.data.push_back(Parameter::create<ParameterName::FontWeight>(FontWeight::W400));
+		style.data.push_back(Parameter::create<ParameterName::Opacity>(uint8_t(200)));
+
+	} else if (tag == "h4") {
+		style.set(Parameter::create<ParameterName::MarginTop>(Metric(0.8f, Metric::Units::Em)), true);
+		style.data.push_back(Parameter::create<ParameterName::FontSize>(FontSize::XLarge));
+		style.data.push_back(Parameter::create<ParameterName::FontWeight>(FontWeight::W500));
+		style.data.push_back(Parameter::create<ParameterName::Opacity>(uint8_t(188)));
+
+	} else if (tag == "h5") {
+		style.set(Parameter::create<ParameterName::MarginTop>(Metric(0.8f, Metric::Units::Em)), true);
+		style.data.push_back(Parameter::create<ParameterName::FontSize>(uint8_t(18)));
+		style.data.push_back(Parameter::create<ParameterName::FontWeight>(FontWeight::W400));
+		style.data.push_back(Parameter::create<ParameterName::Opacity>(uint8_t(222)));
+
+	} else if (tag == "h6") {
+		style.set(Parameter::create<ParameterName::MarginTop>(Metric(0.8f, Metric::Units::Em)), true);
 		style.data.push_back(Parameter::create<ParameterName::FontSize>(FontSize::Large));
+		style.data.push_back(Parameter::create<ParameterName::FontWeight>(FontWeight::W500));
+		style.data.push_back(Parameter::create<ParameterName::Opacity>(uint8_t(216)));
+
+	} else if (tag == "p") {
+		style.data.push_back(Parameter::create<ParameterName::TextAlign>(TextAlign::Justify));
+		style.data.push_back(Parameter::create<ParameterName::Hyphens>(Hyphens::Auto));
+
 	} else if (tag == "hr") {
-		style.data.push_back(Parameter::create<ParameterName::MarginTop>(Metric(10, Metric::Units::Px)));
-		style.data.push_back(Parameter::create<ParameterName::MarginRight>(Metric(10, Metric::Units::Px)));
-		style.data.push_back(Parameter::create<ParameterName::MarginBottom>(Metric(10, Metric::Units::Px)));
-		style.data.push_back(Parameter::create<ParameterName::MarginLeft>(Metric(10, Metric::Units::Px)));
+		style.data.push_back(Parameter::create<ParameterName::MarginTop>(Metric(0.5f, Metric::Units::Em)));
+		style.data.push_back(Parameter::create<ParameterName::MarginRight>(Metric(0.5f, Metric::Units::Em)));
+		style.data.push_back(Parameter::create<ParameterName::MarginBottom>(Metric(0.5f, Metric::Units::Em)));
+		style.data.push_back(Parameter::create<ParameterName::MarginLeft>(Metric(0.5f, Metric::Units::Em)));
 		style.data.push_back(Parameter::create<ParameterName::Height>(Metric(2, Metric::Units::Px)));
 		style.data.push_back(Parameter::create<ParameterName::BackgroundColor>(Color4B(0, 0, 0, 127)));
+
 	} else if (tag == "a") {
 		style.data.push_back(Parameter::create<ParameterName::TextDecoration>(TextDecoration::Underline));
 		style.data.push_back(Parameter::create<ParameterName::Color>(Color3B(0x0d, 0x47, 0xa1)));
+
 	} else if (tag == "b" || tag == "strong") {
 		style.data.push_back(Parameter::create<ParameterName::FontWeight>(FontWeight::Bold));
+
 	} else if (tag == "i" || tag == "em") {
 		style.data.push_back(Parameter::create<ParameterName::FontStyle>(FontStyle::Italic));
+
 	} else if (tag == "u") {
 		style.data.push_back(Parameter::create<ParameterName::TextDecoration>(TextDecoration::Underline));
+
 	} else if (tag == "nobr") {
 		style.data.push_back(Parameter::create<ParameterName::WhiteSpace>(WhiteSpace::Nowrap));
+
 	} else if (tag == "pre") {
+		style.data.push_back(Parameter::create<ParameterName::MarginTop>(Metric(0.5f, Metric::Units::Em)));
+		style.data.push_back(Parameter::create<ParameterName::MarginBottom>(Metric(0.5f, Metric::Units::Em)));
 		style.data.push_back(Parameter::create<ParameterName::WhiteSpace>(WhiteSpace::Pre));
+		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Block));
+		style.data.push_back(Parameter::create<ParameterName::BackgroundColor>(Color4B(228, 228, 228, 255)));
+
+		style.data.push_back(Parameter::create<ParameterName::PaddingTop>(Metric(0.5f, Metric::Units::Em)));
+		style.data.push_back(Parameter::create<ParameterName::PaddingLeft>(Metric(0.5f, Metric::Units::Em)));
+		style.data.push_back(Parameter::create<ParameterName::PaddingBottom>(Metric(0.5f, Metric::Units::Em)));
+		style.data.push_back(Parameter::create<ParameterName::PaddingRight>(Metric(0.5f, Metric::Units::Em)));
+
+	} else if (tag == "code") {
+		style.data.push_back(Parameter::create<ParameterName::FontFamily>(CssStringId("monospace"_hash)));
+		style.data.push_back(Parameter::create<ParameterName::BackgroundColor>(Color4B(228, 228, 228, 255)));
+
 	} else if (tag == "sub" || tag == "inf") {
 		style.data.push_back(Parameter::create<ParameterName::VerticalAlign>(VerticalAlign::Sub));
 		style.data.push_back(Parameter::create<ParameterName::FontSizeIncrement>(FontSizeIncrement::XSmaller));
+
 	} else if (tag == "sup") {
 		style.data.push_back(Parameter::create<ParameterName::VerticalAlign>(VerticalAlign::Super));
 		style.data.push_back(Parameter::create<ParameterName::FontSizeIncrement>(FontSizeIncrement::XSmaller));
+
 	} else if (tag == "body") {
-		style.data.push_back(Parameter::create<ParameterName::MarginLeft>(Metric(16, Metric::Units::Px), MediaQuery::IsScreenLayout));
-		style.data.push_back(Parameter::create<ParameterName::MarginRight>(Metric(16, Metric::Units::Px), MediaQuery::IsScreenLayout));
+		style.data.push_back(Parameter::create<ParameterName::MarginLeft>(Metric(0.8f, Metric::Units::Rem), MediaQuery::IsScreenLayout));
+		style.data.push_back(Parameter::create<ParameterName::MarginRight>(Metric(0.8f, Metric::Units::Rem), MediaQuery::IsScreenLayout));
+
 	} else if (tag == "br") {
 		style.data.push_back(Parameter::create<ParameterName::WhiteSpace>(style::WhiteSpace::PreLine));
 		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Inline));
+
 	} else if (tag == "li") {
 		style.data.push_back(Parameter::create<ParameterName::Display>(Display::ListItem));
+		style.data.push_back(Parameter::create<ParameterName::LineHeight>(Metric(1.2f, Metric::Units::Em)));
+
 	} else if (tag == "ol") {
 		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Block));
 		style.data.push_back(Parameter::create<ParameterName::ListStyleType>(ListStyleType::Decimal));
-		style.data.push_back(Parameter::create<ParameterName::PaddingLeft>(Metric(36, Metric::Units::Px)));
-		style.data.push_back(Parameter::create<ParameterName::MarginTop>(Metric(6, Metric::Units::Px)));
-		style.data.push_back(Parameter::create<ParameterName::MarginBottom>(Metric(6, Metric::Units::Px)));
-		style.data.push_back(Parameter::create<ParameterName::XListStyleOffset>(Metric(16, Metric::Units::Px)));
+		style.data.push_back(Parameter::create<ParameterName::PaddingLeft>(Metric(2.5f, Metric::Units::Em)));
+		style.data.push_back(Parameter::create<ParameterName::MarginTop>(Metric(0.25f, Metric::Units::Em)));
+		style.data.push_back(Parameter::create<ParameterName::MarginBottom>(Metric(0.25f, Metric::Units::Em)));
+		style.data.push_back(Parameter::create<ParameterName::XListStyleOffset>(Metric(0.6f, Metric::Units::Rem)));
+
 	} else if (tag == "ul") {
 		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Block));
-		style.data.push_back(Parameter::create<ParameterName::ListStyleType>(ListStyleType::Disc));
-		style.data.push_back(Parameter::create<ParameterName::PaddingLeft>(Metric(36, Metric::Units::Px)));
-		style.data.push_back(Parameter::create<ParameterName::MarginTop>(Metric(6, Metric::Units::Px)));
-		style.data.push_back(Parameter::create<ParameterName::MarginBottom>(Metric(6, Metric::Units::Px)));
-		style.data.push_back(Parameter::create<ParameterName::XListStyleOffset>(Metric(16, Metric::Units::Px)));
+		if (parent == "li") {
+			style.data.push_back(Parameter::create<ParameterName::ListStyleType>(ListStyleType::Circle));
+		} else {
+			style.data.push_back(Parameter::create<ParameterName::ListStyleType>(ListStyleType::Disc));
+		}
+		style.data.push_back(Parameter::create<ParameterName::PaddingLeft>(Metric(2.5f, Metric::Units::Em)));
+		style.data.push_back(Parameter::create<ParameterName::MarginTop>(Metric(0.25f, Metric::Units::Em)));
+		style.data.push_back(Parameter::create<ParameterName::MarginBottom>(Metric(0.25f, Metric::Units::Em)));
+		style.data.push_back(Parameter::create<ParameterName::XListStyleOffset>(Metric(0.6f, Metric::Units::Rem)));
+
 	} else if (tag == "img") {
-		style.data.push_back(Parameter::create<ParameterName::BackgroundSizeWidth>(Metric(1.0, Metric::Units::Percent)));
-		style.data.push_back(Parameter::create<ParameterName::BackgroundSizeHeight>(Metric(1.0, Metric::Units::Percent)));
+		style.data.push_back(Parameter::create<ParameterName::BackgroundSizeWidth>(Metric(1.0, Metric::Units::Contain)));
+		style.data.push_back(Parameter::create<ParameterName::BackgroundSizeHeight>(Metric(1.0, Metric::Units::Contain)));
 		style.data.push_back(Parameter::create<ParameterName::PageBreakInside>(PageBreak::Avoid));
 		style.data.push_back(Parameter::create<ParameterName::Display>(Display::InlineBlock));
+
+	} else if (tag == "table") {
+		style.data.push_back(Parameter::create<ParameterName::Display>(Display::None));
+
+	} else if (tag == "blockquote") {
+		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Block));
+		style.data.push_back(Parameter::create<ParameterName::MarginTop>(Metric(0.5f, Metric::Units::Em)));
+		style.data.push_back(Parameter::create<ParameterName::MarginBottom>(Metric(0.5f, Metric::Units::Em)));
+
+		if (parent == "blockquote") {
+			style.data.push_back(Parameter::create<ParameterName::PaddingLeft>(Metric(0.8f, Metric::Units::Rem)));
+		} else {
+			style.data.push_back(Parameter::create<ParameterName::MarginLeft>(Metric(1.5f, Metric::Units::Rem)));
+			style.data.push_back(Parameter::create<ParameterName::MarginRight>(Metric(1.5f, Metric::Units::Rem)));
+			style.data.push_back(Parameter::create<ParameterName::PaddingLeft>(Metric(1.0f, Metric::Units::Rem)));
+		}
+
+		style.data.push_back(Parameter::create<ParameterName::PaddingTop>(Metric(0.1f, Metric::Units::Rem)));
+		style.data.push_back(Parameter::create<ParameterName::PaddingBottom>(Metric(0.3f, Metric::Units::Rem)));
+
+		style.data.push_back(Parameter::create<ParameterName::BorderLeftColor>(Color4B(0, 0, 0, 64)));
+		style.data.push_back(Parameter::create<ParameterName::BorderLeftWidth>(Metric(3, Metric::Units::Px)));
+		style.data.push_back(Parameter::create<ParameterName::BorderLeftStyle>(BorderStyle::Solid));
+
+	} else if (tag == "dl") {
+		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Block));
+		style.data.push_back(Parameter::create<ParameterName::MarginTop>(Metric(1.0f, Metric::Units::Em)));
+		style.data.push_back(Parameter::create<ParameterName::MarginBottom>(Metric(1.0f, Metric::Units::Em)));
+		style.data.push_back(Parameter::create<ParameterName::MarginLeft>(Metric(1.5f, Metric::Units::Rem)));
+
+	} else if (tag == "dt") {
+		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Block));
+		style.data.push_back(Parameter::create<ParameterName::FontWeight>(FontWeight::W700));
+
+	} else if (tag == "dd") {
+		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Block));
+		style.data.push_back(Parameter::create<ParameterName::PaddingLeft>(Metric(1.0f, Metric::Units::Rem)));
+		style.data.push_back(Parameter::create<ParameterName::MarginTop>(Metric(0.5f, Metric::Units::Em)));
+		style.data.push_back(Parameter::create<ParameterName::MarginBottom>(Metric(0.5f, Metric::Units::Em)));
+
+		style.data.push_back(Parameter::create<ParameterName::BorderLeftColor>(Color4B(0, 0, 0, 64)));
+		style.data.push_back(Parameter::create<ParameterName::BorderLeftWidth>(Metric(2, Metric::Units::Px)));
+		style.data.push_back(Parameter::create<ParameterName::BorderLeftStyle>(BorderStyle::Solid));
+
+	} else if (tag == "figure") {
+		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Block));
+		style.data.push_back(Parameter::create<ParameterName::MarginTop>(Metric(1.0f, Metric::Units::Em)));
+		style.data.push_back(Parameter::create<ParameterName::MarginBottom>(Metric(0.5f, Metric::Units::Em)));
+
+	} else if (tag == "figcaption") {
+		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Block));
+		style.data.push_back(Parameter::create<ParameterName::MarginTop>(Metric(0.5f, Metric::Units::Em)));
+		style.data.push_back(Parameter::create<ParameterName::MarginBottom>(Metric(0.5f, Metric::Units::Em)));
+		style.data.push_back(Parameter::create<ParameterName::FontSize>(FontSize::Small));
+		style.data.push_back(Parameter::create<ParameterName::FontWeight>(FontWeight::W500));
+		style.data.push_back(Parameter::create<ParameterName::TextAlign>(TextAlign::Center));
+
 	}
 
 	return style;
@@ -330,7 +464,7 @@ static void ParameterList_readQuadValue(const StringView &value, T &top, T &righ
 	});
 }
 
-void ParameterList::read(const String &name, const StringView &value, MediaQueryId mediaQuary) {
+void ParameterList::read(const StringView &name, const StringView &value, MediaQueryId mediaQuary) {
 	if (name == "font-weight") {
 		if (value.compare("bold")) {
 			set<ParameterName::FontWeight>(FontWeight::Bold, mediaQuary);
@@ -970,6 +1104,15 @@ void ParameterList::merge(const ParameterList &style, bool inherit) {
 	for (auto &it : style.data) {
 		if (!inherit || ParameterList::isInheritable(it.name)) {
 			set(it, true);
+		}
+	}
+}
+
+void ParameterList::merge(const ParameterList &style, const Vector<bool> &media, bool inherit) {
+	for (auto &it : style.data) {
+		if ((!inherit || ParameterList::isInheritable(it.name))
+				&& (it.mediaQuery == MediaQueryNone() || media.at(it.mediaQuery))) {
+			set(Parameter(it, MediaQueryNone()), true);
 		}
 	}
 }

@@ -28,6 +28,62 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
+bool SyncRWLock::tryReadLock(LockPtr ptr, const Vector<SyncRWLock *> &vec) {
+	Vector<SyncRWLock *> locked; locked.reserve(vec.size());
+	for (auto &it : vec) {
+		if (it->tryReadLock(ptr)) {
+			locked.push_back(it);
+		} else {
+			break;
+		}
+	}
+
+	if (locked.size() == vec.size()) {
+		return true;
+	}
+
+	releaseReadLock(ptr, locked);
+	return false;
+}
+
+void SyncRWLock::retainReadLock(LockPtr ptr, const Vector<SyncRWLock *> &vec, const LockAcquiredCallback &cb) {
+	struct MultiLockContext {
+		size_t size = 0;
+		size_t locked = 0;
+		LockAcquiredCallback cb;
+	};
+
+	auto ctx = new MultiLockContext();
+	ctx->size = vec.size();
+	ctx->cb = cb;
+
+	for (auto &it : vec) {
+		it->retainReadLock(ptr, [ctx] {
+			++ ctx->locked;
+			if (ctx->locked == ctx->size) {
+				ctx->cb();
+				delete ctx;
+			}
+		});
+	}
+}
+
+
+void SyncRWLock::retainReadLock(Ref *ref, const Vector<SyncRWLock *> &vec, const LockAcquiredCallback &cb) {
+	ref->retain();
+	retainReadLock((void *)ref, vec, [ref, cb] {
+		cb();
+		ref->release();
+	});
+}
+
+void SyncRWLock::releaseReadLock(LockPtr ptr, const Vector<SyncRWLock *> &vec) {
+	for (auto &it : vec) {
+		it->releaseReadLock(ptr);
+	}
+}
+
+
 bool SyncRWLock::tryReadLock(LockPtr ptr) {
 	return retainLock(ptr, Lock::Read);
 }

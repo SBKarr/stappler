@@ -35,15 +35,8 @@ THE SOFTWARE.
 
 NS_LAYOUT_BEGIN
 
-void Builder::resolveMediaQueries(const Vector<style::MediaQuery> &vec) {
-	_mediaQueries = _media.resolveMediaQueries(vec);
-}
-
 bool Builder::resolveMediaQuery(MediaQueryId queryId) const {
-	if (queryId < _mediaQueries.size()) {
-		return _mediaQueries[queryId];
-	}
-	return false;
+	return true;
 }
 
 String Builder::getCssString(CssStringId id) const {
@@ -51,9 +44,8 @@ String Builder::getCssString(CssStringId id) const {
 		return "";
 	}
 
-	auto &map = _document->getCssStrings();
-	auto it = map.find(id);
-	if (it != map.end()) {
+	auto it = _cssStrings.find(id);
+	if (it != _cssStrings.end()) {
 		return it->second;
 	}
 	return "";
@@ -84,6 +76,8 @@ Builder::Builder(Document *doc, const MediaParameters &media, FontSource *cfg, c
 	_result = Rc<Result>::create(_media, _fontSet, _document);
 	_spine = spine;
 
+	_layoutStack.reserve(4);
+
 	if ((_media.flags & RenderFlag::PaginatedLayout) && _media.mediaType == style::MediaType::Screen) {
 		_media.mediaType = style::MediaType::Print;
 	}
@@ -93,6 +87,10 @@ Builder::~Builder() { }
 
 void Builder::setMargin(const Margin &m) {
 	_margin = m;
+}
+
+void Builder::setExternalAssetsMeta(ExternalAssetsMap &&assets) {
+	_externalAssets = move(assets);
 }
 
 void Builder::setHyphens(HyphenMap *map) {
@@ -115,63 +113,190 @@ FontSource *Builder::getFontSet() const {
 }
 
 void Builder::render() {
-	resolveMediaQueries(_document->getMediaQueries());
 	buildBlockModel();
 }
 
-void Builder::buildBlockModel() {
-	auto &root = _document->getRoot();
-	auto &documentStyle = root.getStyle();
+void Builder::compileNodeStyle(Style &style, const ContentPage *page, const Node &node,
+		const Vector<const Node *> &stack, const MediaParameters &media, const Vector<bool> &resolved) {
 
-	Layout l;
-	BlockStyle rootBlockModel;
-	if (!_spine.empty() && (_media.flags & RenderFlag::RenderById)) {
-		l.style = documentStyle.compileBlockModel(this);
-	} else {
-		l.style.width = style::Metric{1.0f, style::Metric::Units::Percent};
-		l.style.marginLeft = style::Metric{_margin.left, style::Metric::Units::Px};
-		l.style.marginTop = style::Metric{_margin.top, style::Metric::Units::Px};
-		l.style.marginBottom = style::Metric{_margin.bottom, style::Metric::Units::Px};
-		l.style.marginRight = style::Metric{_margin.right, style::Metric::Units::Px};
+	auto it = page->styles.find("*");
+	if (it != page->styles.end()) {
+		style.merge(it->second, resolved, true);
 	}
-	BackgroundStyle rootBackground = documentStyle.compileBackground(this);
+	it = page->styles.find(node.getHtmlName());
+	if (it != page->styles.end()) {
+		style.merge(it->second, resolved);
+	}
+	auto &attr = node.getAttributes();
+	auto attr_it = attr.find("class");
+	if (attr_it != attr.end()) {
+		StringView v(attr_it->second);
+		v.split<StringView::CharGroup<CharGroupId::WhiteSpace>>([&] (const StringView &classStr) {
+			auto it = page->styles.find(String(".") + classStr.str());
+			if (it != page->styles.end()) {
+				style.merge(it->second, resolved);
+			}
+
+			it = page->styles.find(node.getHtmlName() + String(".") + classStr.str());
+			if (it != page->styles.end()) {
+				style.merge(it->second, resolved);
+			}
+		});
+	}
+	if (!node.getHtmlId().empty()) {
+		it = page->styles.find(String("#") + node.getHtmlId());
+		if (it != page->styles.end()) {
+			style.merge(it->second, resolved);
+		}
+		it = page->styles.find(node.getHtmlName() + "#" + node.getHtmlId());
+		if (it != page->styles.end()) {
+			style.merge(it->second, resolved);
+		}
+	}
+}
+
+const Style * Builder::compileStyle(const Node &node) {
+	auto it = styles.find(node.getNodeId());
+	if (it != styles.end()) {
+		return &it->second;
+	}
+
+	/*StringStream nodeStackDump;
+	for (auto &it : _nodeStack) {
+		nodeStackDump << " " << it->getHtmlName();
+		auto &id = it->getHtmlId();
+		if (!id.empty()) {
+			nodeStackDump << "#" << id;
+		}
+
+		nodeStackDump << "(" << it->getNodeId() << ")";
+	}
+
+	std::cout << "Node stack: " << nodeStackDump.str() << " : " << node.getHtmlName() << "(" << node.getNodeId() << ")";
+	auto &value = node.getValue();
+	if (!value.empty()) {
+		std::cout << " \"" << string::toUtf8(value) << "\"";
+	}
+	std::cout << "\n";*/
+
+	it = styles.emplace(node.getNodeId(), Style()).first;
+
+	if (_nodeStack.size() > 1) {
+		const Node *parent = _nodeStack.at(_nodeStack.size() - 2);
+		if (parent) {
+			auto p_it = styles.find(parent->getNodeId());
+			if (p_it != styles.end()) {
+				it->second.merge(p_it->second, true);
+			}
+		}
+	}
+
+	it->second.merge(_document->beginStyle(node, _nodeStack, _media));
+
+	for (auto &ref_it : _currentPage->styleReferences) {
+		if (auto page = _document->getContentPage(ref_it)) {
+			auto resv = resolvePage(page);
+			compileNodeStyle(it->second, page, node, _nodeStack, _media, *resv);
+		}
+	}
+
+	compileNodeStyle(it->second, _currentPage, node, _nodeStack, _media, *_currentMedia);
+
+	it->second.merge(_document->endStyle(node, _nodeStack, _media));
+	it->second.merge(node.getStyle());
+
+	return &it->second;
+}
+
+const Vector<bool> * Builder::resolvePage(const ContentPage *page) {
+	auto p_it = _resolvedMedia.find(page);
+	if (p_it == _resolvedMedia.end()) {
+		p_it = _resolvedMedia.emplace(page, _media.resolveMediaQueries(page->queries)).first;
+		for (auto &it : page->strings) {
+			auto s_it = _cssStrings.find(it.first);
+			if (s_it == _cssStrings.end()) {
+				_cssStrings.emplace(it.first, it.second);
+			}
+		}
+		return &p_it->second;
+	}
+	return &p_it->second;
+}
+
+void Builder::setPage(const ContentPage *page) {
+	_currentMedia = resolvePage(page);
+	_currentPage = page;
+}
+
+void Builder::buildBlockModel() {
+	if (_spine.empty()) {
+		_spine = _document->getSpine();
+	}
+
+	auto root = _document->getRoot();
+	setPage(root);
+	_nodeStack.push_back(&root->root);
+
+	auto style = compileStyle(root->root);
+
+	Layout l(Layout::NodeInfo(&root->root, style, this), false);
+
+	if (_spine.empty() || (_media.flags & RenderFlag::RenderById) == 0) {
+		l.node.block = BlockStyle();
+		l.node.block.width = style::Metric{1.0f, style::Metric::Units::Percent};
+		l.node.block.marginLeft = style::Metric{_margin.left, style::Metric::Units::Px};
+		l.node.block.marginTop = style::Metric{_margin.top, style::Metric::Units::Px};
+		l.node.block.marginBottom = style::Metric{_margin.bottom, style::Metric::Units::Px};
+		l.node.block.marginRight = style::Metric{_margin.right, style::Metric::Units::Px};
+	}
+	BackgroundStyle rootBackground = l.node.style->compileBackground(this);
+
+	_nodeStack.pop_back();
 
 	bool pageBreak = (_media.flags & RenderFlag::PaginatedLayout);
 	FloatContext f{ &l, pageBreak?_media.surfaceSize.height:nan() };
 	_floatStack.push_back(&f);
 	if (initLayout(l, Vec2::ZERO, Size(_media.surfaceSize.width, nan()), 0.0f)) {
-		Vector<const Node *> nodes;
+		Vec2 pos = l.pos.position;
+		float collapsableMarginTop = l.pos.collapsableMarginTop;
+		float height = 0;
+		_layoutStack.push_back(&l);
+		l.node.context = style::Display::Block;
+
 		if (_spine.empty()) {
-			auto &content = _document->getContent();
-			for (auto &it : content) {
-				if (it.linear) {
-					nodes.push_back(&it.root);
-				}
+			if (auto page = _document->getContentPage(String())) {
+				setPage(page);
+				processChildNode(l, page->root, pos, height, collapsableMarginTop, pageBreak);
 			}
 		} else {
 			if (_media.flags & RenderFlag::RenderById) {
+				pageBreak = false;
 				for (auto &it : _spine) {
-					if (auto node = _document->getNodeById(it)) {
-						nodes.push_back(node);
+					auto node = _document->getNodeByIdGlobal(it);
+					if (node.first && node.second) {
+						setPage(node.first);
+						processChildNode(l, *node.second, pos, height, collapsableMarginTop, pageBreak);
 					}
-				}
-				if (pageBreak) {
-					pageBreak = false;
 				}
 			} else {
 				for (auto &it : _spine) {
 					if (auto page = _document->getContentPage(it)) {
-						nodes.push_back(&page->root);
+						setPage(page);
+						processChildNode(l, page->root, pos, height, collapsableMarginTop, pageBreak);
 					}
 				}
 			}
 		}
-		processChilds(l, nodes, pageBreak);
+		finalizeChilds(l, height);
+		_layoutStack.pop_back();
+
 		finalizeLayout(l, Vec2::ZERO, 0.0f);
+	} else {
+		_nodeStack.pop_back();
 	}
 	_floatStack.pop_back();
 
-	_result->setContentSize(l.size);
+	_result->setContentSize(l.pos.size);
 
 	if (rootBackground.backgroundColor.a != 0) {
 		_result->setBackgroundColor(rootBackground.backgroundColor);
@@ -188,15 +313,15 @@ void Builder::buildBlockModel() {
 }
 
 void Builder::addLayoutObjects(Layout &l) {
-	if (l.node) {
-		if (!l.node->getHtmlId().empty()) {
-			_result->pushIndex(l.node->getHtmlId(), l.position);
+	if (l.node.node) {
+		if (!l.node.node->getHtmlId().empty()) {
+			_result->pushIndex(l.node.node->getHtmlId(), l.pos.position);
 		}
 	}
 
 	if (!l.preObjects.empty()) {
 		for (auto &it : l.preObjects) {
-			it.bbox.origin += l.position;
+			it.bbox.origin += l.pos.position;
 			//log("object: %f %f %f %f", it.bbox.origin.x, it.bbox.origin.y, it.bbox.size.width, it.bbox.size.height);
 			_result->pushObject(std::move(it));
 		}
@@ -210,7 +335,7 @@ void Builder::addLayoutObjects(Layout &l) {
 
 	if (!l.postObjects.empty()) {
 		for (auto &it : l.postObjects) {
-			it.bbox.origin += l.position;
+			it.bbox.origin += l.pos.position;
 			//log("object: %f %f %f %f", it.bbox.origin.x, it.bbox.origin.y, it.bbox.size.width, it.bbox.size.height);
 			_result->pushObject(std::move(it));
 		}
@@ -223,32 +348,15 @@ TimeInterval Builder::getReaderTime() const {
 
 void Builder::processChilds(Layout &l, const Node &node) {
 	auto &nodes = node.getNodes();
-	Vector<const Node *> ptrVec; ptrVec.reserve(nodes.size());
-	for (auto &it : nodes) {
-		ptrVec.push_back(&it);
-	}
-	processChilds(l, ptrVec, false);
-}
-
-void Builder::processChilds(Layout &l, const Vector<const Node *> &nodes, bool pageBreak) {
-	Vec2 pos = l.position;
-	float collapsableMarginTop = l.collapsableMarginTop;
+	Vec2 pos = l.pos.position;
+	float collapsableMarginTop = l.pos.collapsableMarginTop;
 	float height = 0;
 	_layoutStack.push_back(&l);
 
-	l.layoutContext = (l.context && !l.context->finalized)?style::Display::Inline:style::Display::RunIn;
+	l.node.context = (l.context && !l.context->finalized)?style::Display::Inline:style::Display::RunIn;
 	for (auto it = nodes.begin(); it != nodes.end(); ++ it) {
-		l.layoutContext = getLayoutContext(nodes, it, l.layoutContext);
-		auto newNode = *it;
-		if (pageBreak) {
-			if (!l.layouts.empty()) {
-				doPageBreak(&l.layouts.back(), pos);
-			} else {
-				doPageBreak(nullptr, pos);
-			}
-			collapsableMarginTop = 0;
-		}
-		if (!processChildNode(l, *newNode, pos, height, collapsableMarginTop)) {
+		l.node.context = getLayoutContext(nodes, it, l.node);
+		if (!processChildNode(l, *it, pos, height, collapsableMarginTop, false)) {
 			break;
 		}
 	}
@@ -257,47 +365,83 @@ void Builder::processChilds(Layout &l, const Vector<const Node *> &nodes, bool p
 	_layoutStack.pop_back();
 }
 
-bool Builder::processChildNode(Layout &l, const Node &newNode, Vec2 &pos, float &height, float &collapsableMarginTop) {
-	SP_RTBUILDER_LOG("block style: %s", newNode.getStyle().css(this).c_str());
+bool Builder::processChildNode(Layout &l, const Node &newNode, Vec2 &pos, float &height, float &collapsableMarginTop, bool pageBreak) {
+	bool ret = true;
+	_nodeStack.push_back(&newNode);
+	if (pageBreak) {
+		if (!l.layouts.empty()) {
+			doPageBreak(&l.layouts.back(), pos);
+		} else {
+			doPageBreak(nullptr, pos);
+		}
+		collapsableMarginTop = 0;
+	}
+
+	auto style = compileStyle(newNode);
+	SP_RTBUILDER_LOG("block style: %s", style.css(this).c_str());
+
+	Layout::NodeInfo nodeInfo(&newNode, style, this);
 
 	// correction of display style property
 	// actual value may be different for default/run-in
 	// <img> tag is block by default, but inline-block inside <p> or in inline context
-	auto blockModel = newNode.getStyle().compileBlockModel(this);
-	if (blockModel.display == style::Display::Default || blockModel.display == style::Display::RunIn) {
-		if (l.layoutContext == style::Display::Block) {
-			blockModel.display = style::Display::Block;
-		} else if (l.layoutContext == style::Display::Inline) {
+	if (nodeInfo.block.display == style::Display::Default || nodeInfo.block.display == style::Display::RunIn) {
+		if (l.node.context == style::Display::Block) {
+			nodeInfo.block.display = style::Display::Block;
+		} else if (l.node.context == style::Display::Inline) {
 			if (newNode.getHtmlName() == "img") {
-				blockModel.display = style::Display::InlineBlock;
+				nodeInfo.block.display = style::Display::InlineBlock;
 			} else {
-				blockModel.display = style::Display::Inline;
+				nodeInfo.block.display = style::Display::Inline;
 			}
 		}
 	}
 
-	if (blockModel.display == style::Display::InlineBlock) {
-		if (l.layoutContext == style::Display::Block) {
-			blockModel.display = style::Display::Block;
+	if (nodeInfo.block.display == style::Display::InlineBlock) {
+		if (l.node.context == style::Display::Block) {
+			nodeInfo.block.display = style::Display::Block;
 		}
 	}
 
 	if (newNode.getHtmlName() == "img" && (_media.flags & RenderFlag::NoImages)) {
-		blockModel.display = style::Display::None;
+		nodeInfo.block.display = style::Display::None;
 	}
 
-	if (blockModel.display == style::Display::None) {
-		return true;
-	} else if (blockModel.floating != style::Float::None) {
-		return processFloatNode(l, newNode, std::move(blockModel), pos);
-	} else if (blockModel.display == style::Display::Inline) {
-		return processInlineNode(l, newNode, std::move(blockModel), pos);
-	} else if (blockModel.display == style::Display::InlineBlock) {
-		return processInlineBlockNode(l, newNode, std::move(blockModel), pos);
+	if (nodeInfo.block.display == style::Display::None) {
+		ret = true;
+	} else if (nodeInfo.block.floating != style::Float::None) {
+		ret = processFloatNode(l, move(nodeInfo), pos);
+	} else if (nodeInfo.block.display == style::Display::Inline) {
+		ret = processInlineNode(l, move(nodeInfo), pos);
+	} else if (nodeInfo.block.display == style::Display::InlineBlock) {
+		ret = processInlineBlockNode(l, move(nodeInfo), pos);
 	} else {
-		return processBlockNode(l, newNode, std::move(blockModel), pos, height, collapsableMarginTop);
+		ret = processBlockNode(l, move(nodeInfo), pos, height, collapsableMarginTop);
 	}
-	return true;
+
+	_nodeStack.pop_back();
+
+	return ret;
+}
+
+bool Builder::isFileExists(const String &url) const {
+	auto it = _externalAssets.find(url);
+	if (it != _externalAssets.end()) {
+		return true;
+	}
+
+	return _document->isFileExists(url);
+}
+
+Pair<uint16_t, uint16_t> Builder::getImageSize(const String &url) const {
+	auto it = _externalAssets.find(url);
+	if (it != _externalAssets.end()) {
+		if (StringView(it->second.type).is("image/") && it->second.image.width > 0 && it->second.image.height > 0) {
+			return pair(it->second.image.width, it->second.image.height);
+		}
+	}
+
+	return _document->getImageSize(url);
 }
 
 NS_LAYOUT_END

@@ -42,7 +42,7 @@ struct Outline {
 		bool isVisible() const { return style != style::BorderStyle::None && width >= 0.5f && color.a > 0; }
 	};
 
-	static Outline border(const OutlineStyle &, const Size &vp, float width, float emBase, float &borderWidth);
+	static Outline border(const OutlineStyle &, const Size &vp, float width, float emBase, float rootEmBase, float &borderWidth);
 
 	Params top;
 	Params right;
@@ -216,25 +216,44 @@ struct InlineContext : public Ref {
 };
 
 struct Layout {
-	const Node *node = nullptr;
-	BlockStyle style;
-	Padding padding;
-	Margin margin;
-	style::Display layoutContext = style::Display::Block;
+	struct NodeInfo {
+		const Node *node = nullptr;
+		const Style *style = nullptr;
 
-	Vec2 position;
-	Vec2 origin;
-	Size size;
+		BlockStyle block;
+		style::Display context = style::Display::Block;
 
-	float minHeight = stappler::nan();
-	float maxHeight = stappler::nan();
+		NodeInfo(const Node *, const Style *, const RendererInterface *);
+		NodeInfo(const Node *, const Style *, BlockStyle &&);
+	};
+
+	struct PositionInfo {
+		Padding padding;
+		Margin margin;
+
+		Vec2 position;
+		Vec2 origin;
+		Size size;
+
+		float minHeight = stappler::nan();
+		float maxHeight = stappler::nan();
+
+		float collapsableMarginTop = 0.0f;
+		float collapsableMarginBottom = 0.0f;
+
+		bool disablePageBreak = false;
+
+		Rect getBoundingBox() const;
+		Rect getPaddingBox() const;
+		Rect getContentBox() const;
+	};
+
+	NodeInfo node;
+	PositionInfo pos;
 
 	Vector<Object> preObjects;
 	Vector<Layout> layouts;
 	Vector<Object> postObjects;
-
-	float collapsableMarginTop = 0.0f;
-	float collapsableMarginBottom = 0.0f;
 
 	int64_t listItemIndex = 1;
 	enum : uint8_t {
@@ -246,11 +265,8 @@ struct Layout {
 	Rc<InlineContext> context;
 	Vector<Layout> inlineBlockLayouts;
 	size_t charBinding = 0;
-	bool disablePageBreak = false;
 
-	Layout();
-	Layout(const RendererInterface *, const Node *, bool disablePageBreak);
-	Layout(const Node *, BlockStyle &&, bool disablePageBreak);
+	Layout(NodeInfo &&, bool disablePageBreak);
 
 	Layout(Layout &&);
 	Layout & operator = (Layout &&);

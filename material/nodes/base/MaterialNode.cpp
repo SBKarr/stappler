@@ -205,6 +205,13 @@ uint32_t MaterialNode::getBorderRadius() const {
 	return _borderRadius;
 }
 
+void MaterialNode::setBackgroundOpacity(const uint8_t &op) {
+	_background->setOpacity(op);
+}
+uint8_t MaterialNode::getBackgroundOpacity() const {
+	return _background->getOpacity();
+}
+
 void MaterialNode::setBackgroundColor(const Color &c) {
 	_background->setColor(c);
 	_backgroundClipper->setColor(c);

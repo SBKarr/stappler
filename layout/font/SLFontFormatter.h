@@ -193,6 +193,7 @@ public:
 
 	void finalize();
 	void reset(FormatSpec *);
+	void reset(FontSource *, FormatSpec *, float density = 1.0f);
 
 	uint16_t getHeight() const;
 	uint16_t getWidth() const;

@@ -95,8 +95,23 @@ using OutlineStyle = style::OutlineParameters;
 
 class RendererInterface {
 public:
+	virtual ~RendererInterface() { }
 	virtual bool resolveMediaQuery(MediaQueryId queryId) const = 0;
 	virtual String getCssString(CssStringId) const = 0;
+};
+
+class SimpleRendererInterface : public RendererInterface {
+public:
+	virtual ~SimpleRendererInterface() { }
+	SimpleRendererInterface();
+	SimpleRendererInterface(const Vector<bool> *, const Map<CssStringId, String> *);
+
+	virtual bool resolveMediaQuery(MediaQueryId queryId) const;
+	virtual String getCssString(CssStringId) const;
+
+protected:
+	const Vector<bool> *_media = nullptr;
+	const Map<CssStringId, String> *_strings = nullptr;
 };
 
 namespace style {
@@ -105,6 +120,7 @@ namespace style {
 			Percent,
 			Px,
 			Em,
+			Rem,
 			Auto,
 			Dpi,
 			Dppx,
@@ -116,7 +132,9 @@ namespace style {
 			VMax
 		};
 
-		float computeValue(float base, const Size &vp, float fontSize = 0.0f, bool autoIsZero = false) const;
+		float computeValueStrong(float base, const Size &vp, float fontSize, float rootFontSize) const;
+		float computeValueAuto(float base, const Size &vp, float fontSize, float rootFontSize) const;
+
 		inline bool isAuto() const { return metric == Units::Auto; }
 
 		float value = 0.0f;
@@ -462,6 +480,7 @@ namespace style {
 		static Parameter create(const Value &value, MediaQueryId mediaQuery = MediaQueryNone());
 
 		Parameter(ParameterName name, MediaQueryId query);
+		Parameter(const Parameter &, MediaQueryId query);
 
 		template<ParameterName Name, class Value>
 		void set(const Value &);
@@ -621,13 +640,15 @@ namespace style {
 		void set(const Parameter &p, bool force = false);
 
 		void read(const StyleVec &, MediaQueryId mediaQuary = MediaQueryNone());
-		void read(const String &, const StringView &, MediaQueryId mediaQuary = MediaQueryNone());
+		void read(const StringView &, const StringView &, MediaQueryId mediaQuary = MediaQueryNone());
 
 		void merge(const ParameterList &, bool inherit = false);
+		void merge(const ParameterList &, const Vector<bool> &, bool inherit = false);
 		void merge(const StyleVec &);
 
 		Vector<Parameter> get(ParameterName) const;
 		Vector<Parameter> get(ParameterName, const RendererInterface *) const;
+		Parameter get(ParameterName, const Vector<bool> &) const;
 
 		FontStyleParameters compileFontStyle(const RendererInterface *) const;
 		TextLayoutParameters compileTextLayout(const RendererInterface *) const;
@@ -661,9 +682,7 @@ namespace style {
 
 		Type type = Block;
 
-		style::StyleVec style;
-		style::StyleVec weakStyle;
-		style::ParameterList compiledStyle;
+		ParameterList style;
 
 		Map<String, String> attributes;
 
@@ -720,12 +739,7 @@ namespace style {
 		: src(std::move(src)), fontStyle(style), fontWeight(weight), fontStretch(stretch) { }
 	};
 
-	struct CssData {
-		Map<String, ParameterList> styles;
-		Map<String, Vector<FontFace>> fonts;
-	};
-
-	ParameterList getStyleForTag(const String &, Tag::Type type);
+	ParameterList getStyleForTag(const StringView &, const StringView &parent = StringView());
 
 	bool readColor(const StringView &str, Color4B &color4);
 	bool readColor(const StringView &str, Color3B &color);

@@ -420,15 +420,15 @@ template <typename T> inline bool IsErrorValue(T val) { return _ErrorValue<T>::c
 template <typename T> inline auto GetErrorValue() -> T { return _ErrorValue<T>::get(); }
 
 #define SP_DEFINE_ENUM_AS_MASK(Type) \
-	inline Type operator | (const Type &l, const Type &r) { return Type(toInt(l) | toInt(r)); } \
-	inline Type operator & (const Type &l, const Type &r) { return Type(toInt(l) & toInt(r)); } \
-	inline Type & operator |= (Type &l, const Type &r) { l = Type(toInt(l) | toInt(r)); return l; } \
-	inline Type & operator &= (Type &l, const Type &r) { l = Type(toInt(l) & toInt(r)); return l; } \
-	inline bool operator == (const Type &l, const std::underlying_type<Type>::type &r) { return toInt(l) == r; } \
-	inline bool operator == (const std::underlying_type<Type>::type &l, const Type &r) { return l == toInt(r); } \
-	inline bool operator != (const Type &l, const std::underlying_type<Type>::type &r) { return toInt(l) != r; } \
-	inline bool operator != (const std::underlying_type<Type>::type &l, const Type &r) { return l != toInt(r); } \
-	inline Type operator~(const Type &t) { return Type(~toInt(t)); }
+	constexpr inline Type operator | (const Type &l, const Type &r) { return Type(toInt(l) | toInt(r)); } \
+	constexpr inline Type operator & (const Type &l, const Type &r) { return Type(toInt(l) & toInt(r)); } \
+	constexpr inline Type & operator |= (Type &l, const Type &r) { l = Type(toInt(l) | toInt(r)); return l; } \
+	constexpr inline Type & operator &= (Type &l, const Type &r) { l = Type(toInt(l) & toInt(r)); return l; } \
+	constexpr inline bool operator == (const Type &l, const std::underlying_type<Type>::type &r) { return toInt(l) == r; } \
+	constexpr inline bool operator == (const std::underlying_type<Type>::type &l, const Type &r) { return l == toInt(r); } \
+	constexpr inline bool operator != (const Type &l, const std::underlying_type<Type>::type &r) { return toInt(l) != r; } \
+	constexpr inline bool operator != (const std::underlying_type<Type>::type &l, const Type &r) { return l != toInt(r); } \
+	constexpr inline Type operator~(const Type &t) { return Type(~toInt(t)); }
 
 /*
  *   Value wrapper

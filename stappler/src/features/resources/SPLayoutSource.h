@@ -42,12 +42,22 @@ public:
 		NetworkError,
 	};
 
-	using StringDocument = ValueWrapper<String, class DocumentStringDocumentTag>;
+	using StringDocument = Document::StringDocument;
+	using AssetMeta = Document::AssetMeta;
+
+	struct AssetData {
+		String originalUrl;
+		data::Listener<Asset> asset;
+		AssetMeta meta;
+	};
+
+	static String getPathForUrl(const String &url);
 
 	virtual ~Source();
 
 	virtual bool init();
 	virtual bool init(const StringDocument &str);
+	virtual bool init(const DataReader<ByteOrder::Network> &data);
 	virtual bool init(const FilePath &file);
 	virtual bool init(const String &url, const String &path,
 			TimeInterval ttl = TimeInterval(), const String &cacheDir = "", const Asset::DownloadCallback & = nullptr);
@@ -55,6 +65,9 @@ public:
 
 	Document *getDocument() const;
 	Asset *getAsset() const;
+
+	Map<String, AssetMeta> getExternalAssetMeta() const;
+	const Map<String, AssetData> &getExternalAssets() const;
 
 	bool isReady() const;
 	bool isActual() const;
@@ -74,6 +87,14 @@ protected:
 	virtual void onDocumentAssetUpdated(data::Subscription::Flags);
 	virtual void onDocumentLoaded(Document *);
 
+	virtual void acquireAsset(const String &, const Function<void(Asset *)> &);
+	virtual bool isExternalAsset(Document *doc, const String &); // true is asset is external (not stored in document itself)
+
+	virtual bool onExternalAssets(Document *doc, const Set<String> &); // true if no asset requests is performed
+	virtual void onExternalAssetUpdated(AssetData *, data::Subscription::Flags);
+
+	virtual bool readExternalAsset(AssetData &); // true if asset meta was updated
+
 	virtual void tryLoadDocument();
 	virtual void updateDocument();
 
@@ -81,15 +102,26 @@ protected:
 
 	virtual Rc<Document> openDocument(const String &path, const String &ct);
 
-	String _string;
+	bool hasAssetRequests() const;
+	void addAssetRequest(AssetData *);
+	void removeAssetRequest(AssetData *);
+	void waitForAssets(Function<void()> &&);
+
+	Vector<SyncRWLock *> getAssetsVec() const;
+
+	Bytes _data;
 	String _file;
 
 	data::Listener<Asset> _documentAsset;
 	Rc<Document> _document;
+	Map<String, AssetData> _networkAssets;
 
 	uint64_t _loadedAssetMTime = 0;
 	bool _documentLoading = false;
 	bool _enabled = true;
+
+	Set<AssetData *> _assetRequests;
+	Vector<Function<void()>> _assetWaiters;
 };
 
 NS_LAYOUT_END

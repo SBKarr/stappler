@@ -36,16 +36,15 @@ public:
 	using NamedStyles = Map<String, style::ParameterList>;
 	using MediaQueries = Vector<style::MediaQuery>;
 	using MetaPairs = Vector<Pair<String, String>>;
-	using CssMap = Map<String, style::CssData>;
 
 	virtual ~Reader() { }
 
-	virtual bool readHtml(HtmlPage &page, const StringView &str, CssStrings &, MediaQueries &, MetaPairs &, CssMap &);
-	virtual style::CssData readCss(const String &path, const StringView &str, CssStrings &, MediaQueries &);
+	virtual bool readHtml(ContentPage &page, const StringView &str, MetaPairs &);
+	virtual bool readCss(ContentPage &page, const StringView &str);
 
 	MediaQueryId addMediaQuery(style::MediaQuery &&);
 	void addCssString(CssStringId id, const String &str);
-	void addCssString(const String &origStr);
+	void addCssString(const StringView &name, const String &origStr);
 
 	void onStyleObject(const String &, const style::StyleVec &, const MediaQueryId &);
 
@@ -62,28 +61,22 @@ protected:
 	bool hasParentTag(const String &);
 	bool shouldParseRefs();
 
-	Style specializeStyle(const Tag &tag, const Style &parentStyle);
+	//Style specializeStyle(const Tag &tag, const Style &parentStyle);
 
 	void onMeta(String &&name, String &&content);
 	void onCss(const String & href);
 
-	virtual bool isStyleAttribute(const String &tagName, const String &name) const;
-	virtual void addStyleAttribute(Tag &, const String &name, const String &value);
+	//virtual bool isStyleAttribute(const String &tagName, const String &name) const;
+	//virtual void addStyleAttribute(Tag &, const String &name, const String &value);
 
-	String _path;
 	StringReader _origin;
 	StringReader _current;
 
 	Vector<Node *> _nodeStack;
-	Vector<Style> _styleStack;
 
 	Vector<Tag> _tagStack;
-	NamedStyles _namedStyles;
-	CssStrings * _cssStrings;
-	MediaQueries * _mediaQueries;
-	MetaPairs *_meta;
-	CssMap *_css = nullptr;
-	HtmlPage::FontMap _fonts;
+	MetaPairs *_meta = nullptr;
+	ContentPage *_page = nullptr;
 
 	bool _htmlTag = false;
 	uint32_t _pseudoId = 0;

@@ -450,6 +450,54 @@ void TextureCache::reloadTextures() {
 	_reloadDirty = true;
 }
 
+
+Rc<cocos2d::Texture2D> TextureCache::uploadTexture(const Bytes &data, const Size &size) {
+	if (layout::Image::isSvg(data)) {
+		layout::Image img;
+		if (img.init(data)) {
+			BitmapFormat fmt = img.detectFormat();
+
+			return getInstance()->performWithGL([&] {
+				auto tex = Rc<cocos2d::Texture2D>::create(getPixelFormat(fmt),
+						roundf(size.width), roundf(size.height),
+						cocos2d::Texture2D::InitAs::RenderTarget);
+				Rc<draw::Canvas> canvas;
+				TextureCache *c = getInstance();
+				if (TextureCache::thread().isOnThisThread()) {
+					if (!c->_threadVectorCanvas) {
+						c->_threadVectorCanvas = Rc<draw::Canvas>::create();
+						c->_threadVectorCanvas->setQuality(draw::Canvas::QualityNormal);
+					}
+					canvas = c->_threadVectorCanvas;
+				} else {
+					canvas = c->_vectorCanvas;
+				}
+				canvas->begin(tex, Color4B());
+				canvas->draw(img, Rect(0.0f, 0.0f, tex->getPixelsWide(), tex->getPixelsHigh()));
+				canvas->end();
+
+				return tex;
+			});
+		}
+	} else {
+		Bitmap bitmap(data);
+		if (bitmap) {
+			if (size.width > 0.0f && size.height > 0.0f) {
+				bitmap = bitmap.resample(roundf(size.width), roundf(size.height));
+			}
+			return getInstance()->performWithGL([&] {
+				auto tex = Rc<cocos2d::Texture2D>::alloc();
+				tex->initWithDataThreadSafe(bitmap.dataPtr(), bitmap.size(), getPixelFormat(bitmap.format()), bitmap.width(), bitmap.height(), 0);
+				if (bitmap.alpha() == Bitmap::Alpha::Premultiplied) {
+					tex->setPremultipliedAlpha(true);
+				}
+				return tex;
+			});
+		}
+	}
+	return nullptr;
+}
+
 Rc<cocos2d::Texture2D> TextureCache::uploadTexture(const Bitmap &bmp) {
 	return getInstance()->performWithGL([&] () -> Rc<cocos2d::Texture2D> {
 		if (bmp) {

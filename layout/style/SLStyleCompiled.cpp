@@ -237,6 +237,9 @@ namespace style {
 		case style::Metric::Units::Em:
 			stream << size.value << "em";
 			break;
+		case style::Metric::Units::Rem:
+			stream << size.value << "rem";
+			break;
 		case style::Metric::Units::Auto:
 			stream << "auto";
 			break;
@@ -289,7 +292,9 @@ namespace style {
 
 	String ParameterList::css(const RendererInterface *iface) const {
 		StringStream stream;
+		stream << "{\n";
 		for (auto &it : data) {
+			stream << "\t";
 			switch (it.name) {
 			case ParameterName::Unknown:
 				stream << "unknown";
@@ -793,6 +798,7 @@ namespace style {
 			}
 			stream << ";\n";
 		}
+		stream << "}\n";
 		return stream.str();
 	}
 
