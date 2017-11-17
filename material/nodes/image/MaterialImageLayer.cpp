@@ -236,6 +236,10 @@ void ImageLayer::setTexture(cocos2d::Texture2D *tex) {
 	}
 }
 
+cocos2d::Texture2D *ImageLayer::getTexture() const {
+	return _image->getTexture();
+}
+
 void ImageLayer::setActionCallback(const Function<void()> &cb) {
 	_actionCallback = cb;
 }

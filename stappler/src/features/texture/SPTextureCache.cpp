@@ -451,39 +451,48 @@ void TextureCache::reloadTextures() {
 }
 
 
-Rc<cocos2d::Texture2D> TextureCache::uploadTexture(const Bytes &data, const Size &size) {
+Rc<cocos2d::Texture2D> TextureCache::uploadTexture(const Bytes &data, const Size &size, float density) {
 	if (layout::Image::isSvg(data)) {
 		layout::Image img;
 		if (img.init(data)) {
 			BitmapFormat fmt = img.detectFormat();
 
 			return getInstance()->performWithGL([&] {
-				auto tex = Rc<cocos2d::Texture2D>::create(getPixelFormat(fmt),
-						roundf(size.width), roundf(size.height),
-						cocos2d::Texture2D::InitAs::RenderTarget);
-				Rc<draw::Canvas> canvas;
-				TextureCache *c = getInstance();
-				if (TextureCache::thread().isOnThisThread()) {
-					if (!c->_threadVectorCanvas) {
-						c->_threadVectorCanvas = Rc<draw::Canvas>::create();
-						c->_threadVectorCanvas->setQuality(draw::Canvas::QualityNormal);
-					}
-					canvas = c->_threadVectorCanvas;
-				} else {
-					canvas = c->_vectorCanvas;
+				Size target(size);
+				if (target.width == 0.0f || target.height == 0.0f) {
+					target = Size(img.getWidth(), img.getHeight());
 				}
-				canvas->begin(tex, Color4B());
-				canvas->draw(img, Rect(0.0f, 0.0f, tex->getPixelsWide(), tex->getPixelsHigh()));
-				canvas->end();
 
-				return tex;
+				target = target * density;
+
+				if (target.width > 0.0f && target.height > 0.0f) {
+					auto tex = Rc<cocos2d::Texture2D>::create(getPixelFormat(fmt),
+							roundf(target.width), roundf(target.height),
+							cocos2d::Texture2D::InitAs::RenderTarget);
+					Rc<draw::Canvas> canvas;
+					TextureCache *c = getInstance();
+					if (TextureCache::thread().isOnThisThread()) {
+						if (!c->_threadVectorCanvas) {
+							c->_threadVectorCanvas = Rc<draw::Canvas>::create();
+							c->_threadVectorCanvas->setQuality(draw::Canvas::QualityNormal);
+						}
+						canvas = c->_threadVectorCanvas;
+					} else {
+						canvas = c->_vectorCanvas;
+					}
+					canvas->begin(tex, Color4B());
+					canvas->draw(img, Rect(0.0f, 0.0f, tex->getPixelsWide(), tex->getPixelsHigh()));
+					canvas->end();
+					return tex;
+				}
+				return Rc<cocos2d::Texture2D>();
 			});
 		}
 	} else {
 		Bitmap bitmap(data);
 		if (bitmap) {
-			if (size.width > 0.0f && size.height > 0.0f) {
-				bitmap = bitmap.resample(roundf(size.width), roundf(size.height));
+			if (size.width > 0.0f && size.height > 0.0f && (bitmap.width() > size.width || bitmap.height() > size.height)) {
+				bitmap = bitmap.resample(roundf(size.width * density), roundf(size.height * density));
 			}
 			return getInstance()->performWithGL([&] {
 				auto tex = Rc<cocos2d::Texture2D>::alloc();

@@ -75,7 +75,9 @@ bool Builder::processInlineNode(Layout &l, Layout::NodeInfo && node, const Vec2 
 		if (ctx.label.format.chars.size() > lastCharId && firstCharId <= lastCharId) {
 			auto hrefIt = node.node->getAttributes().find("href");
 			if (hrefIt != node.node->getAttributes().end() && !hrefIt->second.empty()) {
-				ctx.refPos.push_back(InlineContext::RefPosInfo{firstCharId, lastCharId, hrefIt->second});
+				auto targetIt = node.node->getAttributes().find("target");
+				ctx.refPos.push_back(InlineContext::RefPosInfo{firstCharId, lastCharId, hrefIt->second,
+					(targetIt == node.node->getAttributes().end())?String():targetIt->second});
 			}
 
 			auto outline = node.style->compileOutline(this);
@@ -99,6 +101,10 @@ bool Builder::processInlineNode(Layout &l, Layout::NodeInfo && node, const Vec2 
 							node.block.paddingRight.computeValueAuto(l.pos.size.width, _media.surfaceSize, font->metrics.height / density, _media.getDefaultFontSize()),
 							node.block.paddingBottom.computeValueAuto(l.pos.size.width, _media.surfaceSize, font->metrics.height / density, _media.getDefaultFontSize()),
 							node.block.paddingLeft.computeValueAuto(l.pos.size.width, _media.surfaceSize, font->metrics.height / density, _media.getDefaultFontSize()))});
+			}
+
+			if (!node.node->getHtmlId().empty()) {
+				ctx.idPos.push_back(InlineContext::IdPosInfo{firstCharId, lastCharId, node.node->getHtmlId()});
 			}
 		}
 	});
@@ -244,7 +250,9 @@ bool Builder::processNode(Layout &l, const Vec2 &origin, const Size &size, float
 
 		auto hrefIt = attr.find("href");
 		if (hrefIt != attr.end() && !hrefIt->second.empty()) {
-			processRef(l, hrefIt->second);
+			auto targetIt = attr.find("target");
+
+			processRef(l, hrefIt->second, (targetIt == attr.end())?String():targetIt->second);
 		}
 
 		finalizeLayout(l, origin, colTop);

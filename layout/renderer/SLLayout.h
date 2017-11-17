@@ -30,6 +30,7 @@ NS_LAYOUT_BEGIN
 
 struct Link {
 	String target;
+	String mode;
 };
 
 struct Outline {
@@ -95,6 +96,7 @@ struct Label {
 	uint32_t getLineForCharId(uint32_t id) const;
 	Vector<Rect> getLabelRects(uint32_t first, uint32_t last, float density, const Vec2 & = Vec2(), const Padding &p = Padding()) const;
 	void getLabelRects(Vector<Rect> &rect, uint32_t firstCharId, uint32_t lastCharId, float density, const Vec2 &origin, const Padding &p) const;
+	float getLinePosition(uint32_t first, uint32_t last, float density) const;
 };
 
 struct Object {
@@ -163,6 +165,7 @@ struct InlineContext : public Ref {
 		uint16_t lastCharId;
 
 		String target;
+		String mode;
 	};
 
 	struct OutlinePosInfo {
@@ -185,14 +188,23 @@ struct InlineContext : public Ref {
 	struct BackgroundPosInfo {
 		uint16_t firstCharId;
 		uint16_t lastCharId;
+
 		BackgroundStyle background;
 		Padding padding;
+	};
+
+	struct IdPosInfo {
+		uint16_t firstCharId;
+		uint16_t lastCharId;
+
+		String id;
 	};
 
 	Vector<RefPosInfo> refPos;
 	Vector<OutlinePosInfo> outlinePos;
 	Vector<BorderPosInfo> borderPos;
 	Vector<BackgroundPosInfo> backgroundPos;
+	Vector<IdPosInfo> idPos;
 
 	float density = 1.0f;
 	float lineHeightMod = 1.0f;

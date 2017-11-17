@@ -86,7 +86,7 @@ protected:
 
 	void processBackground(Layout &l, float parentPosY);
 	void processOutline(Layout &l);
-	void processRef(Layout &l, const String &);
+	void processRef(Layout &l, const String &ref, const String &target);
 
 	void pushFloatingNode(Layout &l, const BlockStyle &, const Vec2 &);
 

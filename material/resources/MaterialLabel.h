@@ -47,6 +47,9 @@ enum class FontType {
 	Tab_Small,
 	Tab_Small_Selected,
 
+	Tab_Caption,
+	Tab_Caption_Selected,
+
 	Input = Subhead, // 16sp Regular 87%
 
 	System_Headline = Headline, // 24sp Regular 87%

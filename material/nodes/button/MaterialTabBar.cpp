@@ -124,15 +124,12 @@ void TabBarButton::onContentSizeDirty() {
 		_label->setVisible(true);
 
 		_icon->setAnchorPoint(Vec2(0.5f, 0.5f));
-		_icon->setPosition(Vec2(_contentSize.width / 2.0f, _contentSize.height - 36.0f));
-		_label->setFont(_tabSelected?FontType::Tab_Large_Selected:FontType::Tab_Large);
+		_icon->setPosition(Vec2(_contentSize.width / 2.0f, (_contentSize.height / 2.0f - 3.0f) + 13.0f));
+		_label->setFont(_tabSelected?FontType::Tab_Caption_Selected:FontType::Tab_Caption);
 		_label->setWidth(_contentSize.width - (_wrapped?32.0f:16.0f));
 		_label->setAnchorPoint(Vec2(0.5f, 0.5f));
-		_label->setPosition(Vec2(_contentSize.width / 2.0f, _contentSize.height + 36.0f));
+		_label->setPosition(Vec2(_contentSize.width / 2.0f, (_contentSize.height / 2.0f - 3.0f) - 13.0f));
 		_label->tryUpdateLabel();
-		if (_label->getLinesCount() > 1) {
-			_label->setFont(_tabSelected?FontType::Tab_Small_Selected:FontType::Tab_Small);
-		}
 		break;
 	}
 }
@@ -497,11 +494,14 @@ void TabBar::onMenuSource() {
 float TabBar::getItemSize(const String &name, bool extended) const {
 	if (_buttonStyle == ButtonStyle::Icon) {
 		return metrics::tabMinWidth();
-	} else {
+	} else if (_buttonStyle == ButtonStyle::Title) {
 		float width = Label::getStringWidth(FontType::Tab_Large, name, 0.0f, true) + 32.0f;
-		if (extended && _buttonStyle == ButtonStyle::Title) {
+		if (extended) {
 			width += 16.0f;
 		}
+		return std::max(width, metrics::tabMinWidth());
+	} else {
+		float width = Label::getStringWidth(FontType::Tab_Caption, name, 0.0f, true) + 16.0f;
 		return std::max(width, metrics::tabMinWidth());
 	}
 }

@@ -78,7 +78,6 @@ class Document;
 class Result;
 class Node;
 class Reader;
-class Source;
 
 struct MultipartParser;
 struct MediaParameters;

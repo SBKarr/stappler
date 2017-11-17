@@ -110,11 +110,6 @@ class Toolbar;
 class SearchToolbar;
 class TabToolbar;
 
-class RichTextListenerView;
-class RichTextView;
-class RichTextTooltip;
-class RichTextSource;
-class RichTextImageView;
 class ImageLayer;
 
 class Switch;

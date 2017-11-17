@@ -76,11 +76,12 @@ void Params::setVisible(bool value) {
 }
 
 #ifndef SP_RESTRICT
-	bool isTouched(cocos2d::Node *node, const cocos2d::Vec2 &location, float padding) {
-		const cocos2d::Vec2 &point = node->convertToNodeSpace(location);
+	bool isTouched(cocos2d::Node *node, const Vec2 &location, float padding) {
+		const Vec2 &point = node->convertToNodeSpace(location);
+		const Size &size = node->getContentSize();
 		if (point.x > -padding && point.y > -padding
-				&& point.x < node->getContentSize().width + padding
-				&& point.y < node->getContentSize().height + padding) {
+				&& point.x < size.width + padding
+				&& point.y < size.height + padding) {
 			return true;
 		} else {
 			return false;

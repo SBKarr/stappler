@@ -179,7 +179,8 @@ void Canvas::flush() {
 	Time t = Time::now();
 
 	if (!_tess.empty()) {
-		if (TESSResult * res = tessVecResultTriangles(_tess.data(), int(_tess.size()))) {
+		TESSResult * res = tessVecResultTriangles(_tess.data(), int(_tess.size()));
+		if (res->contour.vertexCount > 0 || res->triangles.vertexCount > 0) {
 			auto verts = res->contour.vertexBuffer;
 			auto nverts = res->contour.vertexCount;
 

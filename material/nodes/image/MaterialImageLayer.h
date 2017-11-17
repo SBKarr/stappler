@@ -44,9 +44,12 @@ public:
 	virtual void onEnterTransitionDidFinish() override;
 
 	virtual void setTexture(cocos2d::Texture2D *tex);
+	virtual cocos2d::Texture2D *getTexture() const;
+
 	virtual void setActionCallback(const Function<void()> &);
 
 	virtual Vec2 getTexturePosition() const;
+
 public:
 	virtual bool onTap(const Vec2 &point, int count);
 

@@ -69,7 +69,7 @@ void Result::pushIndex(const String &str, const Vec2 &pos) {
 	_index.emplace(str, pos);
 }
 
-void Result::processContents(const Document::ContentRecord & rec) {
+void Result::processContents(const Document::ContentRecord & rec, size_t level) {
 	auto it = _index.find(rec.href);
 	if (it != _index.end()) {
 		auto pos = it->second.y;
@@ -83,12 +83,12 @@ void Result::processContents(const Document::ContentRecord & rec) {
 		}
 
 		if (!rec.label.empty()) {
-			_bounds.emplace_back(BoundIndex{_bounds.size(), pos, _size.height, page, rec.label, rec.href});
+			_bounds.emplace_back(BoundIndex{_bounds.size(), level, pos, _size.height, page, rec.label, rec.href});
 		}
 	}
 
 	for (auto &it : rec.childs) {
-		processContents(it);
+		processContents(it, level + 1);
 	}
 }
 
@@ -101,10 +101,12 @@ void Result::finalize() {
 
 	auto & toc = _document->getTableOfContents();
 
-	_bounds.emplace_back(BoundIndex{0, 0.0f, _size.height, 0, toc.label, toc.href});
+	_bounds.emplace_back(BoundIndex{0, 0, 0.0f, _size.height, 0,
+		toc.label.empty() ? _document->getMeta("title") : toc.label,
+		toc.href});
 
 	for (auto &it : toc.childs) {
-		processContents(it);
+		processContents(it, 1);
 	}
 }
 
@@ -165,11 +167,11 @@ Result::BoundIndex Result::getBoundsForPosition(float pos) const {
 			return _bounds.back();
 		}
 		if (it->start > pos) {
-			return BoundIndex{maxOf<size_t>(), 0.0f, 0.0f, maxOf<int64_t>()};
+			return BoundIndex{maxOf<size_t>(), 0, 0.0f, 0.0f, maxOf<int64_t>()};
 		}
 		return *it;
 	}
-	return BoundIndex{maxOf<size_t>(), 0.0f, 0.0f, maxOf<int64_t>()};
+	return BoundIndex{maxOf<size_t>(), 0, 0.0f, 0.0f, maxOf<int64_t>()};
 }
 
 Result::PageData Result::getPageData(size_t idx, float offset) const {

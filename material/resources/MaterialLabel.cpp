@@ -102,6 +102,17 @@ DynamicLabel::DescriptionStyle Label::getFontStyle(FontType t) {
 		ret.text.textTransform = font::TextTransform::Uppercase;
 		ret.text.opacity = 222;
 		break;
+	case FontType::Tab_Caption:
+		ret.font.fontSize = 10;
+		ret.text.opacity = 222;
+		ret.text.textTransform = font::TextTransform::Uppercase;
+		break;
+	case FontType::Tab_Caption_Selected:
+		ret.font.fontSize = 10;
+		ret.font.fontWeight = font::FontWeight::W500;
+		ret.text.textTransform = font::TextTransform::Uppercase;
+		ret.text.opacity = 222;
+		break;
 	default: break;
 	}
 	return ret;

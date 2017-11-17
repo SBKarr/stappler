@@ -299,7 +299,7 @@ struct SvgReader {
 			}
 			break;
 		case SvgTag::Circle:
-			if (isnan(tag.coords[0]) && !isnan(tag.coords[1]) && !isnan(tag.coords[2]) && tag.coords[2] >= 0.0f) {
+			if (!isnan(tag.coords[0]) && !isnan(tag.coords[1]) && !isnan(tag.coords[2]) && tag.coords[2] >= 0.0f) {
 				tag.path.addCircle(tag.coords[0], tag.coords[1], tag.coords[2]);
 			}
 			break;

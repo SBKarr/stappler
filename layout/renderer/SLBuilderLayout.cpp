@@ -496,8 +496,12 @@ void Builder::finalizeInlineContext(Layout &l) {
 	for (auto &it : ctx->refPos) {
 		auto rects = ctx->label.getLabelRects(it.firstCharId, it.lastCharId, density, origin);
 		for (auto &r : rects) {
-			l.postObjects.emplace_back(r, Link{it.target});
+			l.postObjects.emplace_back(r, Link{it.target, it.mode});
 		}
+	}
+
+	for (auto &it : ctx->idPos) {
+		_result->pushIndex(it.id, Vec2(0.0f, l.pos.origin.y / density));
 	}
 
 	float final = ctx->label.height;
@@ -701,12 +705,21 @@ void Builder::processBackground(Layout &l, float parentPosY) {
 	} else {
 		l.preObjects.emplace_back(Rect(0, 0, l.pos.size.width, l.pos.size.height), style);
 	}
+
+	if (l.node.node && l.node.node->getHtmlName() == "img") {
+		auto it = attr.find("href");
+		if (it != attr.end()) {
+			auto typeIt = attr.find("type");
+			l.postObjects.emplace_back(Rect(0, 0, l.pos.size.width, l.pos.size.height), Link{it->second,
+				(typeIt == attr.end()) ? String() : typeIt->second});
+		}
+	}
 }
 
-void Builder::processRef(Layout &l, const String &href) {
+void Builder::processRef(Layout &l, const String &href, const String &target) {
 	l.postObjects.emplace_back(Rect(-l.pos.padding.left, -l.pos.padding.top,
 			l.pos.size.width + l.pos.padding.left + l.pos.padding.right, l.pos.size.height + l.pos.padding.top + l.pos.padding.bottom),
-			Link{href});
+			Link{href, target});
 }
 
 style::Display Builder::getLayoutContext(const Layout::NodeInfo &node) {

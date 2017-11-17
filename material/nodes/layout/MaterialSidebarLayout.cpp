@@ -47,7 +47,7 @@ bool SidebarLayout::init(Position pos) {
 	_position = pos;
 
 	_listener = construct<gesture::Listener>();
-	_listener->setTouchFilter([this] (const cocos2d::Vec2 &loc, const stappler::gesture::Listener::DefaultTouchFilter &) -> bool {
+	_listener->setTouchFilter([this] (const Vec2 &loc, const stappler::gesture::Listener::DefaultTouchFilter &) -> bool {
 		if (!_node) {
 			return false;
 		}
@@ -145,6 +145,7 @@ void SidebarLayout::setNode(MaterialNode *n, int zOrder) {
 	addChild(_node, zOrder);
 	_contentSizeDirty = true;
 }
+
 MaterialNode *SidebarLayout::getNode() const {
 	return _node;
 }

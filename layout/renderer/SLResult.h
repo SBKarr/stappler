@@ -40,6 +40,7 @@ public:
 
 	struct BoundIndex {
 		size_t idx = maxOf<size_t>();
+		size_t level = 0;
 		float start;
 		float end;
 		int64_t page;
@@ -80,7 +81,7 @@ public:
 	const Object *getObject(size_t size) const;
 
 protected:
-	void processContents(const Document::ContentRecord & rec);
+	void processContents(const Document::ContentRecord & rec, size_t level);
 
 	MediaParameters _media;
 	Size _size;

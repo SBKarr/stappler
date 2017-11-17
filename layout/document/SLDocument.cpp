@@ -39,6 +39,16 @@ THE SOFTWARE.
 
 NS_LAYOUT_BEGIN
 
+struct DocumentFormatStorageLess {
+	bool operator () (Document::DocumentFormat *l, Document::DocumentFormat *r) {
+		if (l->priority == r->priority) {
+			return l < r;
+		} else {
+			return l->priority > r->priority;
+		}
+	}
+};
+
 class DocumentFormatStorage {
 public:
 	static DocumentFormatStorage *getInstance();
@@ -46,12 +56,12 @@ public:
 	void emplace(Document::DocumentFormat *);
 	void erase(Document::DocumentFormat *);
 
-	std::set<Document::DocumentFormat *> get();
+	std::set<Document::DocumentFormat *, DocumentFormatStorageLess> get();
 
 private:
 	static DocumentFormatStorage *s_sharedInstance;
 	std::mutex formatListMutex;
-	std::set<Document::DocumentFormat *> formatList;
+	std::set<Document::DocumentFormat *, DocumentFormatStorageLess> formatList;
 };
 
 DocumentFormatStorage *DocumentFormatStorage::s_sharedInstance = nullptr;
@@ -75,8 +85,8 @@ void DocumentFormatStorage::erase(Document::DocumentFormat *ptr) {
 	formatListMutex.unlock();
 }
 
-std::set<Document::DocumentFormat *> DocumentFormatStorage::get() {
-	std::set<Document::DocumentFormat *> ret;
+std::set<Document::DocumentFormat *, DocumentFormatStorageLess> DocumentFormatStorage::get() {
+	std::set<Document::DocumentFormat *, DocumentFormatStorageLess> ret;
 
 	formatListMutex.lock();
 	ret = formatList;
@@ -85,8 +95,8 @@ std::set<Document::DocumentFormat *> DocumentFormatStorage::get() {
 	return ret;
 }
 
-Document::DocumentFormat::DocumentFormat(check_file_fn chFileFn, load_file_fn ldFileFn, check_data_fn chDataFn, load_data_fn ldDataFn)
-: check_data(chDataFn), check_file(chFileFn), load_data(ldDataFn), load_file(ldFileFn) {
+Document::DocumentFormat::DocumentFormat(check_file_fn chFileFn, load_file_fn ldFileFn, check_data_fn chDataFn, load_data_fn ldDataFn, size_t p)
+: check_data(chDataFn), check_file(chFileFn), load_data(ldDataFn), load_file(ldFileFn), priority(p) {
 	DocumentFormatStorage::getInstance()->emplace(this);
 }
 
@@ -139,7 +149,7 @@ bool Document_canOpen(const DataReader<ByteOrder::Network> &data, const String &
 }
 
 bool Document::canOpenDocumnt(const FilePath &path, const String &ct) {
-	std::set<DocumentFormat *> formatList(DocumentFormatStorage::getInstance()->get());
+	std::set<DocumentFormat *, DocumentFormatStorageLess> formatList(DocumentFormatStorage::getInstance()->get());
 
 	for (auto &it : formatList) {
 		if (it->check_file && it->check_file(path.get(), ct)) {
@@ -151,7 +161,7 @@ bool Document::canOpenDocumnt(const FilePath &path, const String &ct) {
 }
 
 bool Document::canOpenDocumnt(const DataReader<ByteOrder::Network> &data, const String &ct) {
-	std::set<DocumentFormat *> formatList(DocumentFormatStorage::getInstance()->get());
+	std::set<DocumentFormat *, DocumentFormatStorageLess> formatList(DocumentFormatStorage::getInstance()->get());
 
 	for (auto &it : formatList) {
 		if (it->check_data && it->check_data(data, ct)) {
@@ -164,7 +174,7 @@ bool Document::canOpenDocumnt(const DataReader<ByteOrder::Network> &data, const 
 
 Rc<Document> Document::openDocument(const FilePath &path, const String &ct) {
 	Rc<Document> ret;
-	std::set<DocumentFormat *> formatList(DocumentFormatStorage::getInstance()->get());
+	std::set<DocumentFormat *, DocumentFormatStorageLess> formatList(DocumentFormatStorage::getInstance()->get());
 
 	for (auto &it : formatList) {
 		if (it->check_file && it->check_file(path.get(), ct)) {
@@ -180,7 +190,7 @@ Rc<Document> Document::openDocument(const FilePath &path, const String &ct) {
 
 Rc<Document> Document::openDocument(const DataReader<ByteOrder::Network> &data, const String &ct) {
 	Rc<Document> ret;
-	std::set<DocumentFormat *> formatList(DocumentFormatStorage::getInstance()->get());
+	std::set<DocumentFormat *, DocumentFormatStorageLess> formatList(DocumentFormatStorage::getInstance()->get());
 
 	for (auto &it : formatList) {
 		if (it->check_data && it->check_data(data, ct)) {
@@ -296,6 +306,18 @@ bool Document::init(const DataReader<ByteOrder::Network> &vec, const String &ct)
 	}
 
 	return false;
+}
+
+void Document::setMeta(const String &key, const String &value) {
+	_meta.emplace(key, value);
+}
+
+String Document::getMeta(const String &key) const {
+	auto it = _meta.find(key);
+	if (it != _meta.end()) {
+		return it->second;
+	}
+	return String();
 }
 
 void Document::storeData(const DataReader<ByteOrder::Network> &data) {
@@ -486,6 +508,7 @@ void Document::processHtml(const String &path, const StringView &html, bool line
 	Reader r;
 	Vector<Pair<String, String>> meta;
 	auto it = _pages.emplace(path, ContentPage{path, Node("html", path), linear}).first;
+	it->second.strings.insert(pair(layout::CssStringId("monospace"_hash), "monospace"));
 	it->second.queries = style::MediaQuery::getDefaultQueries(it->second.strings);
 	if (r.readHtml(it->second, html, meta)) {
 		processMeta(it->second, meta);

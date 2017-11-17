@@ -45,7 +45,9 @@ public:
 		load_data_fn load_data;
 		load_file_fn load_file;
 
-		DocumentFormat(check_file_fn, load_file_fn, check_data_fn, load_data_fn);
+		size_t priority = 0;
+
+		DocumentFormat(check_file_fn, load_file_fn, check_data_fn, load_data_fn, size_t = 0);
 		~DocumentFormat();
 
 		DocumentFormat(const DocumentFormat &) = delete;
@@ -116,6 +118,9 @@ public:
 	virtual bool init(const FilePath &, const String &ct = "");
 	virtual bool init(const DataReader<ByteOrder::Network> &, const String &ct = "");
 
+	virtual void setMeta(const String &key, const String &value);
+	virtual String getMeta(const String &) const;
+
 	virtual bool isFileExists(const String &) const;
 	virtual Bytes getFileData(const String &);
 	virtual Bytes getImageData(const String &);
@@ -164,6 +169,8 @@ protected:
 	String _contentType;
 
 	ContentRecord _contents;
+
+	Map<String, String> _meta;
 };
 
 NS_LAYOUT_END

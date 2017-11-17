@@ -121,7 +121,8 @@ void DynamicLabel::updateLabel() {
 		return;
 	}
 
-	updateLabel(Rc<layout::FormatSpec>::create(_string16.size(), _compiledStyles.size() + 1));
+	auto spec = Rc<layout::FormatSpec>::create(_string16.size(), _compiledStyles.size() + 1);
+	updateLabel(spec);
 
 	if (_format) {
 		if (_format->chars.empty()) {
@@ -207,8 +208,10 @@ void DynamicLabel::updateLabel(FormatSpec *format) {
 				}
 			}
 
-			_format->ranges.back().colorDirty = params.colorDirty;
-			_format->ranges.back().opacityDirty = params.opacityDirty;
+			if (!_format->ranges.empty()) {
+				_format->ranges.back().colorDirty = params.colorDirty;
+				_format->ranges.back().opacityDirty = params.opacityDirty;
+			}
 		}
 		formatter.finalize();
 	} while(_format->overflow && adjustValue < _adjustValue);

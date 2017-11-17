@@ -211,7 +211,8 @@ const Style * Builder::compileStyle(const Node &node) {
 const Vector<bool> * Builder::resolvePage(const ContentPage *page) {
 	auto p_it = _resolvedMedia.find(page);
 	if (p_it == _resolvedMedia.end()) {
-		p_it = _resolvedMedia.emplace(page, _media.resolveMediaQueries(page->queries)).first;
+		auto queries = _media.resolveMediaQueries(page->queries);
+		p_it = _resolvedMedia.emplace(page, move(queries)).first;
 		for (auto &it : page->strings) {
 			auto s_it = _cssStrings.find(it.first);
 			if (s_it == _cssStrings.end()) {

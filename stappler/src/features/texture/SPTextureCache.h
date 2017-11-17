@@ -59,7 +59,7 @@ public:
 	static TextureCache *getInstance();
 	static Thread &thread();
 
-	static Rc<cocos2d::Texture2D> uploadTexture(const Bytes &, const Size &hint = Size());
+	static Rc<cocos2d::Texture2D> uploadTexture(const Bytes &, const Size &hint = Size(), float density = 1.0f);
 	static Rc<cocos2d::Texture2D> uploadTexture(const Bitmap &);
 	static cocos2d::Texture2D::PixelFormat getPixelFormat(BitmapFormat fmt);
 

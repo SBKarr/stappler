@@ -146,6 +146,13 @@ void Label::getLabelRects(Vector<Rect> &rect, uint32_t firstCharId, uint32_t las
 	return format.getLabelRects(rect, firstCharId, lastCharId, density, origin, p);
 }
 
+float Label::getLinePosition(uint32_t firstCharId, uint32_t lastCharId, float density) const {
+	auto firstLine = format.getLine(firstCharId);
+	auto lastLine = format.getLine(lastCharId);
+
+	return ((firstLine->pos) / density + (lastLine->pos) / density) / 2.0f;
+}
+
 
 Layout::NodeInfo::NodeInfo(const Node *n, const Style *s, const RendererInterface *r)
 : node(n), style(s), block(style->compileBlockModel(r)), context(block.display) { }

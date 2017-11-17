@@ -371,11 +371,14 @@ void Button::updateSelectionProgress(float pr) {
 	if (_style == Raised) {
 		setShadowZIndex(progress(_raisedDefaultZIndex, _raisedActiveZIndex, pr));
 	} else {
-		if (pr > 0.5) {
-			uint8_t op = (uint8_t)progress(0.0f, 20.0f, (pr - 0.5) * 2.0);
-			getBackground()->setOpacity(op);
-		} else {
-			getBackground()->setOpacity((uint8_t)0);
+		auto c = getBackground()->getColor();
+		if (c == Color3B::WHITE || c == Color3B::BLACK) {
+			if (pr > 0.5) {
+				uint8_t op = (uint8_t)progress(0.0f, 20.0f, (pr - 0.5) * 2.0);
+				getBackground()->setOpacity(op);
+			} else {
+				getBackground()->setOpacity((uint8_t)0);
+			}
 		}
 	}
 }
