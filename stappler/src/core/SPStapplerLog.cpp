@@ -33,7 +33,7 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(log)
 
-using sp_log_fn = void (*) (const char *tag, const char *text, size_t len);
+using sp_log_fn = void (*) (const StringView &tag, const StringView &text);
 
 static sp_log_fn sCustomFn;
 
@@ -41,9 +41,9 @@ void setCustomLogFn(sp_log_fn fn) {
 	sCustomFn = fn;
 }
 
-static void __log2(const char *tag, const char *text, unsigned long len) {
+static void __log2(const StringView &tag, const StringView &text) {
 	if (sCustomFn) {
-		sCustomFn(tag, text, len);
+		sCustomFn(tag, text);
 	}
 
 	StringStream stream;
@@ -71,10 +71,10 @@ static void __log2(const char *tag, const char *text, unsigned long len) {
 #endif // platform switch
 }
 
-void __stappler_log(const char *tag, CustomLog::Type t, CustomLog::VA &va) {
+void __stappler_log(const StringView &tag, CustomLog::Type t, CustomLog::VA &va) {
 #if DEBUG
 	if (t == CustomLog::Text) {
-		__log2(tag, va.text.text, va.text.len);
+		__log2(tag, va.text);
 	} else {
 		char stackBuf[1_KiB] = { 0 };
 
@@ -87,10 +87,10 @@ void __stappler_log(const char *tag, CustomLog::Type t, CustomLog::VA &va) {
 			char *buf = new char[size + 1];
 			memset(buf, 0, size + 1);
 			size = vsnprintf(buf, size_t(size), va.format.format, va.format.args);
-			__log2(tag, buf, size);
+			__log2(tag, StringView(buf, size));
 			delete [] buf;
 		} else {
-			__log2(tag, stackBuf, size);
+			__log2(tag, StringView(stackBuf, size));
 		}
 	}
 #endif // DEBUG

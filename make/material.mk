@@ -67,6 +67,21 @@ MATERIAL_INPUT_CFLAGS := $(addprefix -I,$(sort $(dir $(MATERIAL_GCH)))) $(addpre
 MATERIAL_CXXFLAGS := $(GLOBAL_CXXFLAGS) $(MATERIAL_INPUT_CFLAGS)
 MATERIAL_CFLAGS := $(GLOBAL_CFLAGS) $(MATERIAL_INPUT_CFLAGS)
 
+
+# Progress counter
+MATERIAL_COUNTER := 0
+MATERIAL_WORDS := $(words $(MATERIAL_GCH) $(MATERIAL_OBJS))
+
+define MATERIAL_template =
+$(eval MATERIAL_COUNTER=$(shell echo $$(($(MATERIAL_COUNTER)+1))))
+$(1):BUILD_CURRENT_COUNTER:=$(MATERIAL_COUNTER)
+$(1):BUILD_FILES_COUNTER := $(MATERIAL_WORDS)
+$(1):BUILD_LIBRARY := material
+endef
+
+$(foreach obj,$(MATERIAL_GCH) $(MATERIAL_OBJS),$(eval $(call MATERIAL_template,$(obj))))
+
+
 -include $(patsubst %.o,%.d,$(MATERIAL_OBJS))
 -include $(patsubst %.o,%.d,$(STAPPLER_OBJS))
 -include $(patsubst %.gch,%.d,$(MATERIAL_GCH))

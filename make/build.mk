@@ -24,6 +24,9 @@ GLOBAL_MAKE ?= make
 GLOBAL_MKDIR ?= mkdir -p
 GLOBAL_AR ?= ar rcs
 
+BUILD_CURRENT_COUNTER ?= 1
+BUILD_FILES_COUNTER ?= 0
+
 TOOLKIT_CLEARABLE_OUTPUT := $(TOOLKIT_OUTPUT)
 
 ifeq ($(LOCAL_TOOLKIT),serenity)
@@ -40,9 +43,6 @@ endif
 
 # cocos2d deps
 -include $(GLOBAL_ROOT)/$(COCOS2D_ROOT)/cocos2d.mk
-
-# MMD
--include $(GLOBAL_ROOT)/$(MMD_ROOT)/MMD.mk
 
 # libstappler + libcocos2d
 include $(GLOBAL_ROOT)/make/stappler.mk
@@ -61,13 +61,13 @@ include $(GLOBAL_ROOT)/make/serenity.mk
 
 ifdef verbose
 ifneq ($(verbose),yes)
-GLOBAL_QUIET_CC = @ echo [$(notdir $(GLOBAL_CC))] $@ ;
-GLOBAL_QUIET_CPP = @ echo [$(notdir $(GLOBAL_CPP))] $@ ;
+GLOBAL_QUIET_CC = @ echo [$(BUILD_LIBRARY): $$(($(BUILD_CURRENT_COUNTER)*100/$(BUILD_FILES_COUNTER)))% $(BUILD_CURRENT_COUNTER)/$(BUILD_FILES_COUNTER)] [$(notdir $(GLOBAL_CC))] $@ ;
+GLOBAL_QUIET_CPP = @ echo [$(BUILD_LIBRARY): $$(($(BUILD_CURRENT_COUNTER)*100/$(BUILD_FILES_COUNTER)))% $(BUILD_CURRENT_COUNTER)/$(BUILD_FILES_COUNTER)] [$(notdir $(GLOBAL_CPP))] $@ ;
 GLOBAL_QUIET_LINK = @ echo [Link] $@ ;
 endif
 else
-GLOBAL_QUIET_CC = @ echo [$(notdir $(GLOBAL_CC))] $@ ;
-GLOBAL_QUIET_CPP = @ echo [$(notdir $(GLOBAL_CPP))] $@ ;
+GLOBAL_QUIET_CC = @ echo [$(BUILD_LIBRARY): $$(($(BUILD_CURRENT_COUNTER)*100/$(BUILD_FILES_COUNTER)))% $(BUILD_CURRENT_COUNTER)/$(BUILD_FILES_COUNTER)] [$(notdir $(GLOBAL_CC))] $@ ;
+GLOBAL_QUIET_CPP = @ echo [$(BUILD_LIBRARY): $$(($(BUILD_CURRENT_COUNTER)*100/$(BUILD_FILES_COUNTER)))% $(BUILD_CURRENT_COUNTER)/$(BUILD_FILES_COUNTER)] [$(notdir $(GLOBAL_CPP))] $@ ;
 GLOBAL_QUIET_LINK = @ echo [Link] $@ ;
 endif
 

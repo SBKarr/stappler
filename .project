@@ -79,5 +79,23 @@
 				<arguments>1.0-name-matches-false-false-mac</arguments>
 			</matcher>
 		</filter>
+		<filter>
+			<id>1514283836869</id>
+			<name>extensions/spwasm</name>
+			<type>10</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.multiFilter</id>
+				<arguments>1.0-name-matches-false-false-binaryen</arguments>
+			</matcher>
+		</filter>
+		<filter>
+			<id>1514283836871</id>
+			<name>extensions/spwasm</name>
+			<type>10</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.multiFilter</id>
+				<arguments>1.0-name-matches-false-false-wabt</arguments>
+			</matcher>
+		</filter>
 	</filteredResources>
 </projectDescription>

@@ -57,7 +57,10 @@ void push(pool_t *);
 void push(pool_t *, uint32_t, void * = nullptr);
 void pop();
 
+// creates unmanaged pool
 pool_t *create();
+
+// creates managed pool (managed by root, if parent in mullptr)
 pool_t *create(pool_t *);
 
 void destroy(pool_t *);

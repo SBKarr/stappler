@@ -62,6 +62,22 @@ SPMIN_INPUT_CFLAGS := $(addprefix -I,$(sort $(dir $(SPMIN_GCH)))) $(addprefix -I
 SPMIN_CXXFLAGS := $(GLOBAL_CXXFLAGS) $(SPMIN_FLAGS) $(SPMIN_INPUT_CFLAGS)
 SPMIN_CFLAGS := $(GLOBAL_CFLAGS) $(SPMIN_FLAGS) $(SPMIN_INPUT_CFLAGS)
 
+
+# Progress counter
+SPMIN_COUNTER := 0
+SPMIN_WORDS := $(words $(SPMIN_GCH) $(SPMIN_OBJS))
+
+define SPMIN_template =
+$(eval SPMIN_COUNTER=$(shell echo $$(($(SPMIN_COUNTER)+1))))
+$(1):BUILD_CURRENT_COUNTER:=$(SPMIN_COUNTER)
+$(1):BUILD_FILES_COUNTER := $(SPMIN_WORDS)
+$(1):BUILD_LIBRARY := common
+endef
+
+$(foreach obj,$(SPMIN_GCH) $(SPMIN_OBJS),$(eval $(call SPMIN_template,$(obj))))
+
+
+# include dependencies
 -include $(patsubst %.o,%.d,$(SPMIN_OBJS))
 -include $(patsubst %.gch,%.d,$(SPMIN_GCH))
 

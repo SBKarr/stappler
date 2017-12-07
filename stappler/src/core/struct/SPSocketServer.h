@@ -34,7 +34,7 @@ public:
 
 	bool isListening() const;
 
-	void log(const char *str, size_t n);
+	void log(const StringView &str);
 
 protected:
 	class ServerThread;

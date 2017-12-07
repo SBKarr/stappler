@@ -66,6 +66,7 @@ enum class Flags : uint8_t {
 	AdditionalNumber32Bit = 26,
 	AdditionalNumber64Bit = 27,
 
+	Simple8Bit = 24,
 	AdditionalFloat16Bit = 25,
 	AdditionalFloat32Bit = 26,
 	AdditionalFloat64Bit = 27,

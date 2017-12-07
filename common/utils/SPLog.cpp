@@ -34,16 +34,14 @@ static CustomLog::log_fn s_logFuncArr[MAX_LOG_FUNC] = { 0 };
 static std::atomic<int> s_logFuncCount;
 static std::mutex s_logFuncMutex;
 
-static void DefaultLog2(const char *tag, const char *text, size_t len) {
-	std::cerr << '[' << tag << "] ";
-	std::cerr.write(text, len);
-	std::cerr << '\n';
+static void DefaultLog2(const StringView &tag, const StringView &text) {
+	std::cerr << '[' << tag << "] " << text << '\n';
 	std::cerr.flush();
 }
 
-static void DefaultLog(const char *tag, CustomLog::Type t, CustomLog::VA &va) {
+static void DefaultLog(const StringView &tag, CustomLog::Type t, CustomLog::VA &va) {
 	if (t == CustomLog::Text) {
-		DefaultLog2(tag, va.text.text, va.text.len);
+		DefaultLog2(tag, va.text);
 	} else {
 		char stackBuf[1_KiB];
 		va_list tmpList;
@@ -53,17 +51,17 @@ static void DefaultLog(const char *tag, CustomLog::Type t, CustomLog::VA &va) {
 		if (size > int(1_KiB - 1)) {
 			char *buf = new char[size + 1];
 			size = vsnprintf(buf, size_t(size), va.format.format, va.format.args);
-			DefaultLog2(tag, buf, size);
+			DefaultLog2(tag, StringView(buf, size));
 			delete [] buf;
 		} else if (size >= 0) {
-			DefaultLog2(tag, stackBuf, size);
+			DefaultLog2(tag, StringView(stackBuf, size));
 		} else {
-			DefaultLog2(tag, "Log error", 9);
+			DefaultLog2(tag, "Log error");
 		}
 	}
 }
 
-static void __log3(const char *tag, CustomLog::Type t, CustomLog::VA &va) {
+static void __log3(const StringView tag, CustomLog::Type t, CustomLog::VA &va) {
 	int count = s_logFuncCount.load();
 	if (count == 0) {
 		DefaultLog(tag, t, va);
@@ -122,7 +120,7 @@ CustomLog& CustomLog::operator=(CustomLog && other) {
 	return *this;
 }
 
-void format(const char *tag, const char *fmt, ...) {
+void format(const StringView &tag, const char *fmt, ...) {
 	CustomLog::VA va;
     va_start(va.format.args, fmt);
     va.format.format = fmt;
@@ -132,23 +130,10 @@ void format(const char *tag, const char *fmt, ...) {
     va_end(va.format.args);
 }
 
-void text(const char *tag, const char *text, size_t len) {
-	if (len == maxOf<size_t>()) {
-		len = strlen(text);
-	}
+void text(const StringView &tag, const StringView &text) {
 	CustomLog::VA va;
-	va.text.text = text;
-	va.text.len = len;
+	va.text = text;
 	__log3(tag, CustomLog::Text, va);
-}
-void text(const String &tag, const char *t, size_t len) {
-	text(tag.c_str(), t, len);
-}
-void text(const char *tag, const String &t) {
-	text(tag, t.c_str(), t.size());
-}
-void text(const String &tag, const String &t) {
-	text(tag.c_str(), t.c_str(), t.size());
 }
 
 NS_SP_EXT_END(log)

@@ -105,4 +105,119 @@ struct PoolCborTest : MemPoolTest {
 	}
 } _PoolCborTest;
 
+
+struct CborDataTest : Test {
+	CborDataTest() : Test("CborDataTest") { }
+
+	virtual bool run() override {
+		StringStream stream;
+		size_t count = 0;
+		size_t passed = 0;
+		stream << "\n";
+
+		auto cborPath = filesystem::currentDir("data");
+
+		Map<String, data::Value> cborData;
+		Map<String, data::Value> jsonData;
+		Map<String, String> diagData;
+
+		filesystem::ftw(cborPath, [&] (const String &path, bool isFile) {
+			if (isFile) {
+				auto ext = filepath::lastExtension(path);
+
+				auto fileData = filesystem::readFile(path);
+
+				if (ext == "cbor") {
+					cborData.emplace(filepath::name(path), data::read(fileData));
+				} else if (ext == "json") {
+					jsonData.emplace(filepath::name(path), data::read(fileData));
+				} else if (ext == "diag") {
+					diagData.emplace(filepath::name(path), filesystem::readTextFile(path));
+				}
+			}
+		});
+
+		for (auto &it : cborData) {
+			++ count;
+			auto jIt = jsonData.find(it.first);
+			if (jIt != jsonData.end()) {
+				if (it.second == jIt->second) {
+					++ passed;
+				} else {
+					data::Value cValue = it.second;
+					data::Value dValue = jIt->second;
+					stream << it.first << " failed: " << cValue << " vs " << dValue << "\n";
+				}
+			} else {
+				auto dIt = diagData.find(it.first);
+				if (dIt != diagData.end()) {
+					stream << it.first << ": " << it.second << " diag: " << dIt->second << "\n";
+				}
+				++ passed;
+			}
+		}
+
+		_desc = stream.str();
+
+		return passed == count;
+	}
+
+} CborDataTest;
+
+struct CborDataFileTest : Test {
+	CborDataFileTest() : Test("CborDataFileTest") { }
+
+	virtual bool run() override {
+		StringStream stream;
+		size_t count = 0;
+		size_t passed = 0;
+		stream << "\n";
+
+		auto cborPath = filesystem::currentDir("data");
+
+		Map<String, data::Value> cborData;
+		Map<String, data::Value> jsonData;
+		Map<String, String> diagData;
+
+		filesystem::ftw(cborPath, [&] (const String &path, bool isFile) {
+			if (isFile) {
+				auto ext = filepath::lastExtension(path);
+
+				if (ext == "cbor") {
+					cborData.emplace(filepath::name(path), data::readFile(path));
+				} else if (ext == "json") {
+					jsonData.emplace(filepath::name(path), data::readFile(path));
+				} else if (ext == "diag") {
+					diagData.emplace(filepath::name(path), filesystem::readTextFile(path));
+				}
+			}
+		});
+
+		for (auto &it : cborData) {
+			++ count;
+			auto jIt = jsonData.find(it.first);
+			if (jIt != jsonData.end()) {
+				if (it.second == jIt->second) {
+					++ passed;
+				} else {
+					data::Value cValue = it.second;
+					data::Value dValue = jIt->second;
+					stream << it.first << " failed: " << cValue << " vs " << dValue << "\n";
+				}
+			} else {
+				auto dIt = diagData.find(it.first);
+				if (dIt != diagData.end()) {
+					stream << it.first << ": " << it.second << " diag: " << dIt->second << "\n";
+				}
+				++ passed;
+			}
+		}
+
+		_desc = stream.str();
+
+		return passed == count;
+	}
+
+} CborDataFileTest;
+
 NS_SP_END

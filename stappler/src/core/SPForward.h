@@ -67,9 +67,6 @@ extern const Vec2 MiddleTop; /** equals to Vec2(0.5, 1) */
 extern const Vec2 MiddleBottom; /** equals to Vec2(0.5, 0) */
 }
 
-template <typename T>
-using Arc = layout::Arc<T>;
-
 NS_SP_END
 
 NS_CC_BEGIN

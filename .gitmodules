@@ -4,3 +4,8 @@
 [submodule "extensions/document"]
 	path = extensions/document
 	url = git@github.com:SBKarr/stappler-document.git
+	branch = master
+[submodule "extensions/spwasm"]
+	path = extensions/spwasm
+	url = https://github.com/SBKarr/spwasm.git
+	branch = master

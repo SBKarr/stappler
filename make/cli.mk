@@ -87,6 +87,21 @@ CLI_INPUT_CFLAGS := $(addprefix -I,$(sort $(dir $(CLI_GCH)))) $(addprefix -I,$(C
 CLI_CXXFLAGS := $(GLOBAL_CXXFLAGS) $(CLI_FLAGS) $(CLI_INPUT_CFLAGS)
 CLI_CFLAGS := $(GLOBAL_CFLAGS) $(CLI_FLAGS) $(CLI_INPUT_CFLAGS)
 
+
+# Progress counter
+CLI_COUNTER := 0
+CLI_WORDS := $(words $(CLI_GCH) $(CLI_OBJS))
+
+define CLI_template =
+$(eval CLI_COUNTER=$(shell echo $$(($(CLI_COUNTER)+1))))
+$(1):BUILD_CURRENT_COUNTER:=$(CLI_COUNTER)
+$(1):BUILD_FILES_COUNTER := $(CLI_WORDS)
+$(1):BUILD_LIBRARY := cli
+endef
+
+$(foreach obj,$(CLI_GCH) $(CLI_OBJS),$(eval $(call CLI_template,$(obj))))
+
+
 -include $(patsubst %.o,%.d,$(CLI_OBJS))
 -include $(patsubst %.gch,%.d,$(CLI_GCH))
 

@@ -112,7 +112,6 @@ NS_LAYOUT_END
 #include "SLVec3.h"
 #include "SLVec4.h"
 #include "SLColor.h"
-#include "SLRef.h"
 
 #include "SLPadding.h"
 #include "SLMovingAverage.h"

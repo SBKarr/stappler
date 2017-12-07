@@ -31,7 +31,9 @@ namespace json {
 
 inline StringView decodeNumber(StringView &r, bool &isFloat) {
 	auto tmp = r;
-
+	if (r.is('-')) {
+		++ r;
+	}
 	r.skipChars<StringView::CharGroup<CharGroupId::Numbers>>();
 	if (r.is('.')) {
 		isFloat = true;

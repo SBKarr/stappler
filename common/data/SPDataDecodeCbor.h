@@ -91,6 +91,7 @@ void Decoder<Interface>::decodeUndefinedLength(Container &buf, MajorTypeEncoded 
 			return;
 		}
 
+		size = size_t(_readIntValue(r, type));
 		tmpSize = buf.size();
 		size = min(r.size(), size);
 		buf.resize(tmpSize + size);
@@ -313,7 +314,10 @@ void Decoder<Interface>::decodeTaggedValue(uint8_t type, ValueType &ret) {
 
 template <typename Interface>
 void Decoder<Interface>::decodeSimpleValue(uint8_t type, ValueType &ret) {
-	if (type == toInt(Flags::AdditionalFloat16Bit)) {
+	if (type == toInt(Flags::Simple8Bit)) {
+		ret._type = ValueType::Type::INTEGER;
+		ret.intVal = r.readUnsigned();
+	} else if (type == toInt(Flags::AdditionalFloat16Bit)) {
 		ret._type = ValueType::Type::DOUBLE;
 		ret.doubleVal = (double)r.readFloat16();
 	} else if (type == toInt(Flags::AdditionalFloat32Bit)) {
@@ -330,6 +334,9 @@ void Decoder<Interface>::decodeSimpleValue(uint8_t type, ValueType &ret) {
 	} else if (type == toInt(SimpleValue::False)) {
 		ret._type = ValueType::Type::BOOLEAN;
 		ret.boolVal = false;
+	} else {
+		ret._type = ValueType::Type::INTEGER;
+		ret.intVal = type;
 	}
 }
 

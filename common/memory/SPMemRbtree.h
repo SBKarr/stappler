@@ -245,6 +245,11 @@ struct TreeComparator {
 	static inline bool compare(const Key &l, const Key &r, const Comp &comp) noexcept {
 		return comp(l, r);
 	}
+
+	template <typename A, typename B>
+	static inline bool compare(const A &l, const B &r, const Comp &comp, typename Comp::is_transparent * = nullptr) noexcept {
+		return comp(l, r);
+	}
 };
 
 template <typename Key, typename Comp>

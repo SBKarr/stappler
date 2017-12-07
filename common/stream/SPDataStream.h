@@ -78,6 +78,7 @@ public:
 	size_t bytesWritten() const { return _bytesWritten; }
 
 protected:
+	bool tryHeader(const uint8_t* s, size_t count);
 	bool header(const uint8_t* s, bool send);
 	streamsize read(const uint8_t* s, streamsize count);
 	streamsize rxsputn(const uint8_t* s, streamsize count);

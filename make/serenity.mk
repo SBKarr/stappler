@@ -85,6 +85,21 @@ SERENITY_INPUT_CFLAGS := $(addprefix -I,$(sort $(dir $(SERENITY_GCH)))) $(addpre
 SERENITY_CXXFLAGS := $(GLOBAL_CXXFLAGS) $(SERENITY_FLAGS) $(SERENITY_INPUT_CFLAGS)
 SERENITY_CFLAGS := $(GLOBAL_CFLAGS) $(SERENITY_FLAGS) $(SERENITY_INPUT_CFLAGS)
 
+
+# Progress counter
+SERENITY_COUNTER := 0
+SERENITY_WORDS := $(words $(SERENITY_GCH) $(SERENITY_OBJS))
+
+define SERENITY_template =
+$(eval SERENITY_COUNTER=$(shell echo $$(($(SERENITY_COUNTER)+1))))
+$(1):BUILD_CURRENT_COUNTER:=$(SERENITY_COUNTER)
+$(1):BUILD_FILES_COUNTER:=$(SERENITY_WORDS)
+$(1):BUILD_LIBRARY := serenity
+endef
+
+$(foreach obj,$(SERENITY_GCH) $(SERENITY_OBJS),$(eval $(call SERENITY_template,$(obj))))
+
+
 -include $(patsubst %.o,%.d,$(SERENITY_OBJS))
 -include $(patsubst %.gch,%.d,$(SERENITY_GCH))
 

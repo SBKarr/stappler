@@ -51,7 +51,12 @@ public:
 	CborBuffer(const CborBuffer &) = delete;
 	CborBuffer & operator = (const CborBuffer &) = delete;
 
-	ValueType & data() { return root; }
+	ValueType & data() {
+		if (!buf.empty()) {
+			read((const uint8_t *)"\xFF", 1);
+		}
+		return root;
+	}
 
 	size_t read(const uint8_t * s, size_t count);
 	void clear();
@@ -266,6 +271,9 @@ void CborBuffer<Interface>::flushValueRoot(uint8_t t, uint8_t f) {
 		case cbor::SimpleValue::Null:
 		case cbor::SimpleValue::Undefined:
 			break;
+		default:
+			emplaceInt(root, f);
+			break;
 		}
 		break;
 	default: break;
@@ -285,6 +293,9 @@ void CborBuffer<Interface>::flushValueArray(uint8_t t, uint8_t f) {
 		case cbor::SimpleValue::Undefined:
 			emplaceArray();
 			break;
+		default:
+			emplaceInt(emplaceArray(), f);
+			break;
 		}
 		break;
 	default: break;
@@ -301,7 +312,7 @@ void CborBuffer<Interface>::flushValueKey(uint8_t t, uint8_t f) {
 		case cbor::SimpleValue::False: key = "false"; state = State::DictValue; break;
 		case cbor::SimpleValue::True: key = "true"; state = State::DictValue; break;
 		case cbor::SimpleValue::Null: key = "(null)"; state = State::DictValue; break;
-		case cbor::SimpleValue::Undefined: key = "(undefined)"; state = State::DictValue; break;
+		default: key = "(undefined)"; state = State::DictValue; break;
 		}
 		break;
 	default: break;
@@ -320,6 +331,10 @@ void CborBuffer<Interface>::flushValueDict(uint8_t t, uint8_t f) {
 		case cbor::SimpleValue::Null:
 		case cbor::SimpleValue::Undefined:
 			emplaceDict();
+			state = State::DictKey;
+			break;
+		default:
+			emplaceInt(emplaceDict(), f);
 			state = State::DictKey;
 			break;
 		}
@@ -357,10 +372,10 @@ void CborBuffer<Interface>::flushSequence(Reader &r, size_t s) {
 	case State::Begin: {
 		switch (literal) {
 		case Literal::CharSequence:
-			flushSequenceChars(*stack.back().first, r, s);
+			flushSequenceChars(stack.empty()?root:*stack.back().first, r, s);
 			break;
 		case Literal::ByteSequence:
-			flushSequenceBytes(*stack.back().first, r, s);
+			flushSequenceBytes(stack.empty()?root:*stack.back().first, r, s);
 			break;
 		default:
 			break;
@@ -584,7 +599,7 @@ auto CborBuffer<Interface>::getLiteral(uint8_t t, uint8_t f) -> Literal {
 		return fullLiteral ? Literal::Bytes : (undefined) ? Literal::ByteSequence : Literal::ByteSize;
 		break;
 	case cbor::MajorType::Simple:
-		return fullLiteral ? Literal::None : Literal::Float;
+		return fullLiteral ? Literal::None : (f == cbor::Flags::Simple8Bit ? Literal::Unsigned : Literal::Float);
 		break;
 	case cbor::MajorType::Tag:
 		return fullLiteral ? Literal::None : Literal::Tag;
@@ -658,6 +673,10 @@ bool CborBuffer<Interface>::readControl(Reader &r) {
 		break;
 	}
 
+	if (literal == Literal::ByteSequence || literal == Literal::CharSequence) {
+		sequence = Sequence::Head;
+	}
+
 	return true;
 }
 
@@ -677,6 +696,9 @@ size_t CborBuffer<Interface>::read(const uint8_t * s, size_t count) {
 			break;
 		case Literal::None:
 			readControl(r);
+			if (remains == 0 && (literal == Literal::Chars || literal == Literal::Bytes)) {
+				readLiteral(r, true);
+			}
 			break;
 		default:
 			if (!readLiteral(r, tryWhole)) {

@@ -170,6 +170,8 @@ int parseOptionString(data::Value &ret, const String &str, int argc, const char 
 		ret.setBool(true, "help");
 	} else if (str == "verbose") {
 		ret.setBool(true, "verbose");
+	} else if (str == "gencbor") {
+		ret.setBool(true, "gencbor");
 	}
 	return 1;
 }
@@ -190,7 +192,56 @@ int _spMain(argc, argv) {
 		std::cout << " Options: " << stappler::data::EncodeFormat::Pretty << opts << "\n";
 	}
 
-	Test::Run("PoolSerenityTest");
+	if (opts.getBool("gencbor")) {
+		auto path = filesystem::currentDir("test.json");
+		auto data = data::readFile(path);
+		if (data.isArray()) {
+			auto cborPath = filesystem::currentDir("data");
+			filesystem::remove(cborPath, true, true);
+			filesystem::mkdir(cborPath);
+
+			size_t i = 1;
+			for (auto &it : data.asArray()) {
+				auto cborHexData = toString("d9d9f7", it.getString("hex"));
+				auto cborData = base16::decode(cborHexData);
+				filesystem::write(filepath::merge(cborPath, toString(i, ".cbor")), base16::decode(cborHexData));
+
+				if (it.hasValue("decoded")) {
+					StringStream stream; stream << std::showpoint << std::setprecision(20);
+					data::write(stream, it.getValue("decoded"), data::EncodeFormat::Json);
+					String str = stream.str();
+					filesystem::write(filepath::merge(cborPath, toString(i, ".json")), (const uint8_t *)str.data(), str.size());
+				}
+
+				if (it.isString("diagnostic")) {
+					auto &str = it.getString("diagnostic");
+					filesystem::write(filepath::merge(cborPath, toString(i, ".diag")), (const uint8_t *)str.data(), str.size());
+				}
+
+				++ i;
+			}
+		}
+	}
+
+	auto &args = opts.getValue("args");
+
+	if (args.size() > 1) {
+		if (args.getString(1) == "all") {
+			Test::RunAll();
+		} else {
+			size_t i = 0;
+			for (auto &it : args.asArray()) {
+				if (i > 0) {
+					if (it.isString()) {
+						Test::Run(it.asString());
+					}
+				}
+				++ i;
+			}
+		}
+	} else {
+		Test::RunAll();
+	}
 
 	return 0;
 }

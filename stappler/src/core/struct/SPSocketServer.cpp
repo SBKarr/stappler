@@ -281,9 +281,9 @@ public:
 		_cond.notify_all();
 	}
 
-	void log(const char *str, size_t n) {
+	void log(const StringView &str) {
 		_logMutex.lock();
-		_logStrings.emplace_back(str, n);
+		_logStrings.emplace_back(str.str());
 		_logMutex.unlock();
 		_logFlag.clear();
 	}
@@ -362,9 +362,9 @@ bool SocketServer::isListening() const {
 	return _thread && _thread->isListening();
 }
 
-void SocketServer::log(const char *str, size_t n) {
+void SocketServer::log(const StringView &str) {
 	if (_thread) {
-		_thread->log(str, n);
+		_thread->log(str);
 	}
 }
 

@@ -53,7 +53,7 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(log)
 
-void __stappler_log(const char *tag, CustomLog::Type t, CustomLog::VA &va);
+void __stappler_log(const StringView &tag, CustomLog::Type t, CustomLog::VA &va);
 
 NS_SP_EXT_END(log)
 
@@ -340,7 +340,7 @@ const String &Device::getLaunchUrl() const {
 
 namespace log {
 
-using sp_log_fn = void (*) (const char *tag, const char *text, size_t len);
+using sp_log_fn = void (*) (const StringView &tag, const StringView &str);
 
 void setCustomLogFn(sp_log_fn fn);
 
@@ -354,9 +354,9 @@ bool Device::listen(uint16_t port) {
 	return _serv.listen(port);
 }
 
-void Device::log(const char *tag, const char *str, size_t n) {
+void Device::log(const StringView &tag, const StringView &str) {
 	auto & serv = getInstance()->_serv;
-	serv.log(str, n);
+	serv.log(str);
 }
 
 bool Device::isClipboardAvailable() {

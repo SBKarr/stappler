@@ -201,7 +201,7 @@ private:
 	SocketServer _serv;
 	cocos2d::EventListenerKeyboard *_keyboardListener = nullptr;
 
-    static void log(const char *tag, const char *, size_t n);
+    static void log(const StringView &tag, const StringView &str);
 
 private:
 	log::CustomLog _deviceLog;

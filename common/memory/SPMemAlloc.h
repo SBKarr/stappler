@@ -63,9 +63,11 @@ struct AllocPool {
 class MemPool : public AllocPool {
 public:
 	enum Init {
+		None,
 		Acquire,
 		Managed,
 		Unmanaged,
+		ManagedRoot,
 	};
 
 	MemPool() noexcept;

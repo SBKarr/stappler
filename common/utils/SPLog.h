@@ -24,19 +24,19 @@ THE SOFTWARE.
 #define COMMON_UTILS_SPLOG_H_
 
 #include "SPCommon.h"
+#include "SPCharReader.h"
 
 NS_SP_EXT_BEGIN(log)
 
 struct CustomLog {
 	union VA {
-		struct {
-			const char *text;
-			size_t len;
-		} text;
+		StringView text;
 		struct {
 			const char *format;
 			va_list args;
 		} format;
+
+		VA() { memset(this, 0, sizeof(VA)); }
 	};
 
 	enum Type {
@@ -44,7 +44,7 @@ struct CustomLog {
 		Format
 	};
 
-	using log_fn = void (*) (const char *, Type, VA &);
+	using log_fn = void (*) (const StringView &, Type, VA &);
 
 	CustomLog(log_fn fn);
 	~CustomLog();
@@ -58,12 +58,8 @@ struct CustomLog {
 	log_fn fn;
 };
 
-void format(const char *tag, const char *, ...) SPPRINTF(2, 3);
-void text(const char *tag, const char *text, size_t len = maxOf<size_t>());
-void text(const String &, const char *text, size_t len = maxOf<size_t>());
-void text(const char *tag, const String &);
-void text(const String &, const String &);
-
+void format(const StringView &tag, const char *, ...) SPPRINTF(2, 3);
+void text(const StringView &tag, const StringView &);
 
 #define SPASSERT(cond, msg) do { \
 	if (!(cond)) { \

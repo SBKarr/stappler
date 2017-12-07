@@ -107,6 +107,21 @@ STAPPLER_INPUT_CFLAGS := $(addprefix -I,$(sort $(dir $(STAPPLER_GCH)))) $(addpre
 STAPPLER_CXXFLAGS := $(GLOBAL_CXXFLAGS) $(STAPPLER_INPUT_CFLAGS)
 STAPPLER_CFLAGS := $(GLOBAL_CFLAGS) $(STAPPLER_INPUT_CFLAGS)
 
+
+# Progress counter
+STAPPLER_COUNTER := 0
+STAPPLER_WORDS := $(words $(STAPPLER_GCH) $(STAPPLER_OBJS))
+
+define STAPPLER_template =
+$(eval STAPPLER_COUNTER=$(shell echo $$(($(STAPPLER_COUNTER)+1))))
+$(1):BUILD_CURRENT_COUNTER:=$(STAPPLER_COUNTER)
+$(1):BUILD_FILES_COUNTER := $(STAPPLER_WORDS)
+$(1):BUILD_LIBRARY := stappler
+endef
+
+$(foreach obj,$(STAPPLER_GCH) $(STAPPLER_OBJS),$(eval $(call STAPPLER_template,$(obj))))
+
+
 -include $(patsubst %.o,%.d,$(STAPPLER_OBJS))
 -include $(patsubst %.gch,%.d,$(STAPPLER_GCH))
 
@@ -132,9 +147,10 @@ $(STAPPLER_OUTPUT): $(STAPPLER_H_GCH) $(STAPPLER_GCH) $(STAPPLER_OBJS)
 $(STAPPLER_OUTPUT_STATIC) : $(STAPPLER_H_GCH) $(STAPPLER_GCH) $(STAPPLER_OBJS)
 	$(GLOBAL_QUIET_LINK) $(GLOBAL_AR) $(STAPPLER_OUTPUT_STATIC) $(STAPPLER_OBJS)
 
-libstappler: .prebuild_stappler $(STAPPLER_OUTPUT) $(STAPPLER_OUTPUT_STATIC)
+libstappler_static: 
 
 libstappler_static: .prebuild_stappler $(STAPPLER_OUTPUT_STATIC)
+libstappler: libstappler_static $(STAPPLER_OUTPUT)
 
 .prebuild_stappler:
 	@echo "=== Build libstappler ==="

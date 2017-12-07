@@ -29,6 +29,9 @@ THE SOFTWARE.
 #include "SPTime.h"
 #include "Test.h"
 
+static constexpr auto JsonNumberTestString(
+R"JsonString({"neg1":-1;"neg2": -123456})JsonString");
+
 NS_SP_BEGIN
 
 struct PoolJsonTest : MemPoolTest {
@@ -105,5 +108,23 @@ struct PoolJsonTest : MemPoolTest {
 		return count == passed;
 	}
 } _PoolJsonTest;
+
+struct JsonNumbersTest : Test {
+	JsonNumbersTest() : Test("JsonNumbersTest") { }
+
+	virtual bool run() override {
+		StringStream stream;
+		stream << "\n";
+
+		auto d = data::read(String(JsonNumberTestString));
+
+		stream << data::EncodeFormat::Pretty << d << "\n";
+
+		_desc = stream.str();
+
+		return true;
+	}
+
+} JsonNumbersTest;
 
 NS_SP_END

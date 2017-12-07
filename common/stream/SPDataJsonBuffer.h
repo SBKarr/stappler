@@ -50,7 +50,12 @@ public:
 	JsonBuffer(const JsonBuffer &) = delete;
 	JsonBuffer & operator = (const JsonBuffer &) = delete;
 
-	ValueType & data() { return root; }
+	ValueType & data() {
+		if (!buf.empty()) {
+			read((const uint8_t *)"\0", 1);
+		}
+		return root;
+	}
 
 	size_t read(const uint8_t * s, size_t count);
 	void clear() {

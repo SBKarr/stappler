@@ -194,6 +194,31 @@ void StreamBuffer::getData(ValueTemplate<memory::StandartInterface> &data) {
 	}
 }
 
+bool StreamBuffer::tryHeader(const uint8_t* s, size_t count) {
+	StringView v((const char *)s, count);
+
+	if (v.is('"') || v.is('{') || v.is('[')) {
+		_type = Type::Json;
+		_json = new JsonBuffer<memory::DefaultInterface>;
+		return true;
+	}
+
+	if (v.is('+') || v.is('-')) {
+		++ v;
+	}
+
+	if (!v.empty()) {
+		v.skipChars<StringView::CharGroup<CharGroupId::Numbers>>();
+		if (v.empty()) {
+			_type = Type::Json;
+			_json = new JsonBuffer<memory::DefaultInterface>;
+			return true;
+		}
+	}
+
+	return false;
+}
+
 bool StreamBuffer::header(const uint8_t* s, bool send) {
 	/* there should be checkers for compressed or encrypted message */
 	if (s[0] == 0xd9 && s[1] == 0xd9 && s[2] == 0xf7) {
@@ -237,6 +262,8 @@ StreamBuffer::streamsize StreamBuffer::rxsputn(const uint8_t* s, streamsize coun
 				return read((const uint8_t *)s, count);
 			}
 			_headerBytes = 5;
+		} else if (count > 0 && tryHeader(s, count)) {
+			return read((const uint8_t *)s, count);
 		}
 
 		while ( _headerBytes < 4 && count > 0) {
