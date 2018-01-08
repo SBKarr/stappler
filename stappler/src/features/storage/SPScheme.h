@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef stappler_storage_SPScheme
-#define stappler_storage_SPScheme
+#ifndef LIBS_STAPPLER_FEATURES_STORAGE_SPSCHEME_H
+#define LIBS_STAPPLER_FEATURES_STORAGE_SPSCHEME_H
 
 #include "SPData.h"
 #include "SPStorage.h"

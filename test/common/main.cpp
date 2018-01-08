@@ -23,13 +23,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
+#include "SPDefine.h"
+#include "SPBitmap.h"
+#include "SPSql.h"
 #include "SPFilesystem.h"
+#include "SPTime.h"
 #include "SPData.h"
 #include "SPDataStream.h"
-#include "SPSql.h"
-#include "SPBitmap.h"
-#include "SPTime.h"
-
 #include "Test.h"
 
 static constexpr auto HELP_STRING(

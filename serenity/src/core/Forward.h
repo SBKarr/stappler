@@ -25,14 +25,13 @@ THE SOFTWARE.
 
 #include "SPCommon.h"
 #include "SPString.h"
-#include "SPTime.h"
 #include "SPData.h"
-#include "SPLog.h"
-
 #include <atomic>
 #include <idna.h>
 #include <postgresql/libpq-fe.h>
 
+#include "SPLog.h"
+#include "SPTime.h"
 #include "apr_hash.h"
 #include "apr_strings.h"
 #include "apr_pools.h"

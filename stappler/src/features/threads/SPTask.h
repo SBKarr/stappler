@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef chiertime_federal_SPTask_h
-#define chiertime_federal_SPTask_h
+#ifndef LIBS_STAPPLER_FEATURES_THREADS_SPTASK_H
+#define LIBS_STAPPLER_FEATURES_THREADS_SPTASK_H
 
 #include "SPDefine.h"
 #include "base/CCRef.h"

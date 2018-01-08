@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef __stappler__SPStrictNode__
-#define __stappler__SPStrictNode__
+#ifndef STAPPLER_SRC_NODES_SPSTRICTNODE_H_
+#define STAPPLER_SRC_NODES_SPSTRICTNODE_H_
 
 #include "SPDefine.h"
 #include "2d/CCNode.h"
@@ -85,4 +85,4 @@ protected:
 
 NS_SP_END
 
-#endif /* defined(__stappler__SPStrictNode__) */
+#endif

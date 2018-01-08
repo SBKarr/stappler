@@ -35,11 +35,11 @@ STAPPLER_SRCS_DIRS += \
 	stappler/src/components \
 	stappler/src/core \
 	stappler/src/features \
-	stappler/src/nodes \
-	stappler/src/platform/universal \
-	$(COCOS2D_STAPPLER_SRCS_DIRS)
+	stappler/src/nodes
 
 STAPPLER_SRCS_OBJS += \
+	stappler/src/platform/SPPlatform.scu.cpp \
+	stappler/src/SPExtra.scu.cpp \
 	$(COCOS2D_STAPPLER_SRCS_OBJS)
 
 STAPPLER_INCLUDES_DIRS += \
@@ -67,12 +67,10 @@ ifndef LOCAL_MAIN
 STAPPLER_SRCS_DIRS += stappler/src/platform/mac_main
 endif
 else ifeq ($(UNAME),Cygwin)
-STAPPLER_SRCS_DIRS += $(COCOS2D_ROOT)/cocos/platform/win32 stappler/src/platform/win32
 ifndef LOCAL_MAIN
 STAPPLER_SRCS_DIRS += stappler/src/platform/win32_main
 endif
 else
-STAPPLER_SRCS_DIRS += $(COCOS2D_ROOT)/cocos/platform/linux stappler/src/platform/linux
 ifndef LOCAL_MAIN
 STAPPLER_SRCS_DIRS += stappler/src/platform/linux_main
 endif
@@ -84,7 +82,7 @@ endif
 STAPPLER_LIBS := -L$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH) $(OSTYPE_STAPPLER_LIBS)
 
 STAPPLER_SRCS := \
-	$(foreach dir,$(STAPPLER_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.c*')) \
+	$(foreach dir,$(STAPPLER_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) \( -name "*.c" -or -name "*.cpp" \))) \
 	$(addprefix $(GLOBAL_ROOT)/,$(STAPPLER_SRCS_OBJS))
 
 ifeq ($(OBJC),1)

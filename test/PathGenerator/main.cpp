@@ -23,8 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
+#include "SPDefine.h"
 #include "SPData.h"
-#include "SPFilesystem.h"
 #include "SPThreadManager.h"
 #include "SPData.h"
 #include "SPNetworkDataTask.h"
@@ -35,6 +35,7 @@ THE SOFTWARE.
 #include <unistd.h>
 #include <iostream>
 #include <fstream>
+#include "SPFilesystem.h"
 
 NS_SP_EXT_BEGIN(app)
 

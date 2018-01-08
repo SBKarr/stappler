@@ -45,22 +45,22 @@ ANDROID_EXPORT_MK := $(TOOLKIT_OUTPUT)/android/export.mk
 $(ANDROID_TOOLCHAINS_PATH)/armeabi-v7a:
 	@echo "=== armeabi-v7a: Prepare android toolchain ==="
 	@$(GLOBAL_MKDIR) $(ANDROID_TOOLCHAINS_PATH)
-	$(NDK)/build/tools/make_standalone_toolchain.py --arch=arm --api $(ANDROID_API_LOW) --stl=libc++ --install-dir=$(ANDROID_TOOLCHAINS_PATH)/armeabi-v7a --unified-headers
+	$(NDK)/build/tools/make_standalone_toolchain.py --arch=arm --api $(ANDROID_API_LOW) --stl=libc++ --install-dir=$(ANDROID_TOOLCHAINS_PATH)/armeabi-v7a
 
 $(ANDROID_TOOLCHAINS_PATH)/x86:
 	@echo "=== x86: Prepare android toolchain ==="
 	@$(GLOBAL_MKDIR) $(ANDROID_TOOLCHAINS_PATH)
-	$(NDK)/build/tools/make_standalone_toolchain.py --arch=x86 --api $(ANDROID_API_LOW) --stl=libc++ --install-dir=$(ANDROID_TOOLCHAINS_PATH)/x86 --unified-headers
+	$(NDK)/build/tools/make_standalone_toolchain.py --arch=x86 --api $(ANDROID_API_LOW) --stl=libc++ --install-dir=$(ANDROID_TOOLCHAINS_PATH)/x86
 
 $(ANDROID_TOOLCHAINS_PATH)/x86_64:
 	@echo "=== x86_64: Prepare android toolchain ==="
 	@$(GLOBAL_MKDIR) $(ANDROID_TOOLCHAINS_PATH)
-	$(NDK)/build/tools/make_standalone_toolchain.py --arch=x86_64 --api $(ANDROID_API_HIGH) --stl=libc++ --install-dir=$(ANDROID_TOOLCHAINS_PATH)/x86_64 --unified-headers
+	$(NDK)/build/tools/make_standalone_toolchain.py --arch=x86_64 --api $(ANDROID_API_HIGH) --stl=libc++ --install-dir=$(ANDROID_TOOLCHAINS_PATH)/x86_64
 
 $(ANDROID_TOOLCHAINS_PATH)/arm64-v8a:
 	@echo "=== arm64-v8a: Prepare android toolchain ==="
 	@$(GLOBAL_MKDIR) $(ANDROID_TOOLCHAINS_PATH)
-	$(NDK)/build/tools/make_standalone_toolchain.py --arch=arm64 --api $(ANDROID_API_HIGH) --stl=libc++ --install-dir=$(ANDROID_TOOLCHAINS_PATH)/arm64-v8a --unified-headers
+	$(NDK)/build/tools/make_standalone_toolchain.py --arch=arm64 --api $(ANDROID_API_HIGH) --stl=libc++ --install-dir=$(ANDROID_TOOLCHAINS_PATH)/arm64-v8a
 
 
 $(GLOBAL_ROOT)/build/android/export.mk:

@@ -47,7 +47,8 @@ BUILD_OUTDIR := $(BUILD_OUTDIR)/local
 
 
 BUILD_SRCS := \
-	$(foreach dir,$(LOCAL_SRCS_DIRS),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.c*')) \
+	$(foreach dir,$(LOCAL_SRCS_DIRS),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.cpp')) \
+	$(foreach dir,$(LOCAL_SRCS_DIRS),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.c')) \
 	$(addprefix $(LOCAL_ROOT)/,$(LOCAL_SRCS_OBJS))
 
 ifeq ($(OBJC),1)
@@ -189,7 +190,7 @@ $(BUILD_OUTDIR)/%.o: /%.c $(TOOLKIT_H_GCH) $(TOOLKIT_GCH)
 clean_local:
 	$(GLOBAL_RM) $(LOCAL_OUTPUT_EXECUTABLE) $(LOCAL_OUTPUT_LIBRARY)
 
-.PHONY: clean_local clean .prebuild_local .local_prebuild local .local_preclean
+.PHONY: clean_local clean .prebuild_local .local_prebuild local .local_preclean all local
 
 .preclean:
 	$(GLOBAL_RM) $(LOCAL_OUTPUT_EXECUTABLE) $(LOCAL_OUTPUT_LIBRARY)

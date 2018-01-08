@@ -23,9 +23,9 @@ THE SOFTWARE.
 #ifndef LAYOUT_DOCUMENT_SLDOCUMENT_H_
 #define LAYOUT_DOCUMENT_SLDOCUMENT_H_
 
+#include "SPBitmap.h"
 #include "SLMultipartParser.h"
 #include "SLNode.h"
-#include "SPBitmap.h"
 #include "SLCssDocument.h"
 
 NS_LAYOUT_BEGIN

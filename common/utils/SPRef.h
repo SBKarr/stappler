@@ -23,8 +23,8 @@ THE SOFTWARE.
 #ifndef COMMON_UTILS_SPREF_H_
 #define COMMON_UTILS_SPREF_H_
 
-#include "SPCommon.h"
 #include "SPTime.h"
+#include "SPCommon.h"
 
 NS_SP_BEGIN
 
@@ -391,6 +391,11 @@ public:
 		return nullptr;
 	}
 
+	template <typename B, typename std::enable_if<std::is_convertible<Base *, B*>{}>::type* = nullptr>
+	inline operator Arc<B> () const {
+		return Arc<B>(_ptr);
+	}
+
 	inline operator Base * () { return get(); }
 	inline operator Base * () const { return get(); }
 	inline operator bool () const { return _ptr != nullptr && !_ptr->empty(); }
@@ -460,8 +465,18 @@ public:
 	inline bool operator <= (const std::nullptr_t other) const { return _ptr <= other; }
 
 private:
+	template <typename T>
+	friend class Arc;
+
 	// unsafe
 	inline Arc(Pointer value, bool v) : _ptr(value) { }
+
+	// it's not pretty, but should work (until AtomicSmartRef uses same data alignment)
+	template <typename B, typename std::enable_if<std::is_convertible<B *, Base *>{}>::type* = nullptr>
+	inline Arc(AtomicSmartRef<B> *ptr) : _ptr(reinterpret_cast<Pointer>(ptr)) {
+		if (_ptr) { _ptr->retain(); }
+	}
+
 	Pointer _ptr;
 };
 

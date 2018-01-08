@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef __stappler__SPNetworkSprite__
-#define __stappler__SPNetworkSprite__
+#ifndef STAPPLER_SRC_NODES_SPNETWORKSPRITE_H_
+#define STAPPLER_SRC_NODES_SPNETWORKSPRITE_H_
 
 #include "SPEventHandler.h"
 #include "SPAsset.h"
@@ -60,4 +60,4 @@ protected:
 
 NS_SP_END
 
-#endif /* defined(__stappler__SPNetworkSprite__) */
+#endif

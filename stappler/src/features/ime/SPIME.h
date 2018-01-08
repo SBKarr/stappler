@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef __stappler__SPIME__
-#define __stappler__SPIME__
+#ifndef STAPPLER_SRC_FEATURES_IME_IME_H_
+#define STAPPLER_SRC_FEATURES_IME_IME_H_
 
 #include "SPDefine.h"
 #include "SPEventHeader.h"
@@ -130,4 +130,4 @@ Cursor *getNativeCursorPointer();
 
 NS_SP_EXT_END(ime)
 
-#endif /* defined(__stappler__SPIME__) */
+#endif

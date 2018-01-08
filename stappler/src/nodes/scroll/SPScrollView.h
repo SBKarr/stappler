@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef __stappler__SPScrollView__
-#define __stappler__SPScrollView__
+#ifndef LIBS_STAPPLER_NODES_SCROLL_SPSCROLLVIEW_H_
+#define LIBS_STAPPLER_NODES_SCROLL_SPSCROLLVIEW_H_
 
 #include "SPScrollViewBase.h"
 
@@ -113,4 +113,4 @@ protected:
 
 NS_SP_END
 
-#endif /* defined(__stappler__SPScrollView__) */
+#endif

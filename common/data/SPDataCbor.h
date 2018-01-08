@@ -23,9 +23,9 @@ THE SOFTWARE.
 #ifndef COMMON_DATA_SPDATACBOR_H_
 #define COMMON_DATA_SPDATACBOR_H_
 
-#include "SPCommon.h"
 #include "SPDataReader.h"
 #include "SPHalfFloat.h"
+#include "SPCommon.h"
 
 NS_SP_EXT_BEGIN(data)
 

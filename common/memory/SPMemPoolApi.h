@@ -76,6 +76,7 @@ void cleanup_register(pool_t *, void *, cleanup_fn);
 void foreach_info(void *, bool(*)(void *, pool_t *, uint32_t, void *));
 
 // debug counters
+size_t get_allocator_allocated_bytes(pool_t *);
 size_t get_allocated_bytes(pool_t *);
 size_t get_return_bytes(pool_t *);
 size_t get_opts_bytes(pool_t *);

@@ -92,6 +92,10 @@ public:
 
 	void cleanup_register(void *, cleanup_fn);
 
+	size_t getAllocatedBytes() const;
+	size_t getReturnBytes() const;
+	size_t getOptsBytes() const;
+
 	template <typename Callback>
 	auto performWithPool() {
 		struct Context {

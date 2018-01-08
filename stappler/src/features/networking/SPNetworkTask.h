@@ -23,9 +23,9 @@ THE SOFTWARE.
 #ifndef STAPPLER_SRC_FEATURES_NETWORKING_SPNETWORKTASK_H_
 #define STAPPLER_SRC_FEATURES_NETWORKING_SPNETWORKTASK_H_
 
+#include "SPNetworkHandle.h"
 #include "SPTask.h"
 #include "SPThread.h"
-#include "SPNetworkHandle.h"
 
 NS_SP_BEGIN
 

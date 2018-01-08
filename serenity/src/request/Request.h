@@ -23,9 +23,9 @@ THE SOFTWARE.
 #ifndef SERENITY_SRC_REQUEST_REQUEST_H_
 #define SERENITY_SRC_REQUEST_REQUEST_H_
 
+#include "SPUrl.h"
 #include "Connection.h"
 #include "StorageAdapter.h"
-#include "SPUrl.h"
 
 NS_SA_BEGIN
 

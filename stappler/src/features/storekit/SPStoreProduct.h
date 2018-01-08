@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef __stappler__SPStoreProduct__
-#define __stappler__SPStoreProduct__
+#ifndef LIBS_STAPPLER_FEATURES_STOREKIT_SPSTOREPRODUCT_H
+#define LIBS_STAPPLER_FEATURES_STOREKIT_SPSTOREPRODUCT_H
 
 #include "SPDefine.h"
 #include "SPData.h"
@@ -66,4 +66,4 @@ public:
 
 NS_SP_END
 
-#endif /* defined(__stappler__SPStoreProduct__) */
+#endif

@@ -23,10 +23,10 @@ THE SOFTWARE.
 #ifndef COMMON_STREAM_SPDATACBORBUFFER_H_
 #define COMMON_STREAM_SPDATACBORBUFFER_H_
 
+#include "SPDataReader.h"
 #include "SPData.h"
 #include "SPTransferBuffer.h"
 #include "SPBuffer.h"
-#include "SPDataReader.h"
 
 NS_SP_EXT_BEGIN(data)
 

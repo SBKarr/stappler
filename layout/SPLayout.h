@@ -28,8 +28,8 @@ THE SOFTWARE.
  * Layout engine for rich text applications
  */
 
-#include "SPCommon.h"
 #include "SPRef.h"
+#include "SPCommon.h"
 
 #ifdef __cplusplus
 

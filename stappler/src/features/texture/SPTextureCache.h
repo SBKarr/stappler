@@ -23,10 +23,9 @@ THE SOFTWARE.
 #ifndef LIBS_STAPPLER_FEATURES_TEXTURE_SPTEXTURECACHE_H_
 #define LIBS_STAPPLER_FEATURES_TEXTURE_SPTEXTURECACHE_H_
 
+#include "SPBitmap.h"
 #include "SPGLProgramSet.h"
 #include "SPEventHandler.h"
-#include "SPBitmap.h"
-
 #include "base/CCMap.h"
 #include "renderer/CCTexture2D.h"
 

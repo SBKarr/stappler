@@ -23,8 +23,8 @@ THE SOFTWARE.
 #ifndef STAPPLER_SRC_CORE_SPNODE_H_
 #define STAPPLER_SRC_CORE_SPNODE_H_
 
-#include "SPForward.h"
 #include "SPBitmap.h"
+#include "SPForward.h"
 
 NS_SP_EXT_BEGIN(node)
 

@@ -23,12 +23,11 @@ THE SOFTWARE.
 #ifndef STAPPLER_SRC_NODES_SPDYNAMICBATCHSCENE_H_
 #define STAPPLER_SRC_NODES_SPDYNAMICBATCHSCENE_H_
 
-#include "2d/CCScene.h"
-#include "base/CCMap.h"
 #include "SPDefine.h"
-
 #include "SPDynamicAtlas.h"
 #include "SPDynamicBatchCommand.h"
+#include "2d/CCScene.h"
+#include "base/CCMap.h"
 
 NS_SP_BEGIN
 

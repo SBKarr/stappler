@@ -23,9 +23,9 @@ THE SOFTWARE.
 #ifndef COMMON_UTILS_SEARCH_SPSEARCHINDEX_H_
 #define COMMON_UTILS_SEARCH_SPSEARCHINDEX_H_
 
-#include "SPRef.h"
-#include "SPSearchDistance.h"
 #include "SPCharReader.h"
+#include "SPSearchDistance.h"
+#include "SPRef.h"
 
 NS_SP_EXT_BEGIN(search)
 

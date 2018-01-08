@@ -26,5 +26,5 @@ OSTYPE_COMMON_LIBS := -lpthread -l:libcurl.a -l:libmbedtls.a -l:libmbedx509.a -l
 OSTYPE_SERENITY_LIBS := -l:libcurl.a -l:libmbedtls.a -l:libmbedx509.a -l:libmbedcrypto.a -l:libpng.a -l:libjpeg.a -l:libfreetype.a
 OSTYPE_CLI_LIBS += $(OSTYPE_COMMON_LIBS) -l:libsqlite3.a -ldl
 OSTYPE_STAPPLER_LIBS += $(OSTYPE_CLI_LIBS) -l:libhyphen.a -l:libglfw3.a -l:libfreetype.a -lGLEW -lGL -lXxf86vm -lX11 -lXrandr -lXi -lXinerama -lXcursor
-OSTYPE_LDFLAGS := -Wl,-z,defs -rdynamic
-OSTYPE_EXEC_FLAGS :=
+OSTYPE_LDFLAGS := -Wl,-z,defs -rdynamic -fuse-ld=gold
+OSTYPE_EXEC_FLAGS := -fuse-ld=gold

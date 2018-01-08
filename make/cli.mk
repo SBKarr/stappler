@@ -32,23 +32,15 @@ CLI_PRECOMPILED_HEADERS += \
 
 CLI_SRCS_DIRS += \
 	common \
-	layout/style \
+	layout/document \
 	layout/types \
 	layout/vg \
 	stappler/src/core \
-	stappler/src/features/ime \
-	stappler/src/features/networking \
-	stappler/src/features/storage \
-	stappler/src/features/threads \
-	stappler/src/platform/universal \
-	stappler/src/platform/linux \
-	stappler/src/platform/mac \
 	$(COCOS2D_CLI_SRCS_DIRS)
 
 CLI_SRCS_OBJS += \
-	layout/document/SLNode.cpp \
-	layout/document/SLParser.cpp \
-	layout/document/SLReader.cpp \
+	stappler/src/platform/SPPlatform.scu.cpp \
+	stappler/src/features/SPBasicFeatures.scu.cpp \
 	$(COCOS2D_CLI_SRCS_OBJS)
 
 CLI_INCLUDES_DIRS += \
@@ -63,7 +55,7 @@ CLI_INCLUDES_OBJS += \
 CLI_LIBS += -L$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH) $(OSTYPE_CLI_LIBS)
 
 CLI_SRCS := \
-	$(foreach dir,$(CLI_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.c*')) \
+	$(foreach dir,$(CLI_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) \( -name "*.c" -or -name "*.cpp" \))) \
 	$(addprefix $(GLOBAL_ROOT)/,$(CLI_SRCS_OBJS))
 
 ifeq ($(OBJC),1)

@@ -23,11 +23,7 @@ MATERIAL_OUTPUT = $(TOOLKIT_OUTPUT)/libmaterial.so
 MATERIAL_OUTPUT_STATIC = $(TOOLKIT_OUTPUT)/libmaterial.a
 
 MATERIAL_PRECOMPILED_HEADERS += \
-	material/Material.h \
-	stappler/src/core/SPDefine.h \
-	layout/SPLayout.h \
-	common/core/SPCore.h \
-	common/core/SPCommon.h
+	material/Material.h
 
 MATERIAL_SRCS_DIRS += \
 	material
@@ -47,7 +43,7 @@ MATERIAL_INCLUDES_OBJS += \
 MATERIAL_LIBS := -L$(OSTYPE_PREBUILT_PATH) $(OSTYPE_STAPPLER_LIBS)
 
 MATERIAL_SRCS := \
-	$(foreach dir,$(MATERIAL_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.c*')) \
+	$(foreach dir,$(MATERIAL_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) \( -name "*.c" -or -name "*.cpp" \))) \
 	$(addprefix $(GLOBAL_ROOT)/,$(MATERIAL_SRCS_OBJS))
 
 MATERIAL_INCLUDES := \

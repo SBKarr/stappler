@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef __stappler__SPThreadManager__
-#define __stappler__SPThreadManager__
+#ifndef LIBS_STAPPLER_FEATURES_THREADS_SPTHREADMANAGER_H
+#define LIBS_STAPPLER_FEATURES_THREADS_SPTHREADMANAGER_H
 
 #include "SPTaskManager.h"
 #include "SPTaskStack.h"
@@ -150,4 +150,4 @@ public:
 
 NS_SP_END
 
-#endif /* defined(__stappler__SPThreadManager__) */
+#endif

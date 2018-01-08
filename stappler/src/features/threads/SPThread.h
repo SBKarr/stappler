@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef __stappler__SPThreads__
-#define __stappler__SPThreads__
+#ifndef LIBS_STAPPLER_FEATURES_THREADS_SPTHREAD_H
+#define LIBS_STAPPLER_FEATURES_THREADS_SPTHREAD_H
 
 #include "SPDefine.h"
 #include "SPTask.h"
@@ -114,4 +114,4 @@ private:
 
 NS_SP_END
 
-#endif /* defined(__stappler__SPThreads__) */
+#endif

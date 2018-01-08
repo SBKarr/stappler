@@ -23,8 +23,8 @@ THE SOFTWARE.
 #ifndef SERENITY_SRC_CORE_NETWORKING_H_
 #define SERENITY_SRC_CORE_NETWORKING_H_
 
-#include "Define.h"
 #include "SPNetworkHandle.h"
+#include "Define.h"
 
 NS_SA_EXT_BEGIN(network)
 

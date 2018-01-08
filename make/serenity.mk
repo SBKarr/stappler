@@ -55,7 +55,7 @@ SERENITY_VIRTUAL_DIRS += \
 SERENITY_LIBS += -L$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH) $(OSTYPE_SERENITY_LIBS) -lpq -lidn
 
 SERENITY_SRCS := \
-	$(foreach dir,$(SERENITY_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.c*')) \
+	$(foreach dir,$(SERENITY_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.cpp')) \
 	$(addprefix $(GLOBAL_ROOT)/,$(SERENITY_SRCS_OBJS))
 	
 SERENITY_FILE_SRCS := \

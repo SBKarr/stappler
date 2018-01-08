@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef stappler_storekit_SPStoreKit
-#define stappler_storekit_SPStoreKit
+#ifndef LIBS_STAPPLER_FEATURES_STOREKIT_SPSTOREKIT_H
+#define LIBS_STAPPLER_FEATURES_STOREKIT_SPSTOREKIT_H
 
 #include "SPDefine.h"
 
@@ -99,4 +99,4 @@ protected:
 
 NS_SP_END
 
-#endif /* defined(__template__SPStoreKit__) */
+#endif

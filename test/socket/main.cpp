@@ -23,11 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
+#include "SPDefine.h"
 #include "SPData.h"
-#include "SPFilesystem.h"
-#include "SPBitmap.h"
-#include "SPTime.h"
-#include "SPUrl.h"
 #include "SPString.h"
 
 #include <sys/types.h>
@@ -35,6 +32,10 @@ THE SOFTWARE.
 #include <netdb.h>
 #include <poll.h>
 #include <fcntl.h>
+#include "SPFilesystem.h"
+#include "SPBitmap.h"
+#include "SPUrl.h"
+#include "SPTime.h"
 
 #define HELP_STRING \
 	"SocketTest\n" \

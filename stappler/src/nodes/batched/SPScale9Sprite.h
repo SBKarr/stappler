@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef __stappler__SPScale9Sprite__
-#define __stappler__SPScale9Sprite__
+#ifndef STAPPLER_SRC_NODES_BATCHED_SPSCALE9SPRITE_H_
+#define STAPPLER_SRC_NODES_BATCHED_SPSCALE9SPRITE_H_
 
 #include "SPDynamicBatchNode.h"
 
@@ -73,8 +73,6 @@ protected:
 	bool _flipY = false;
 };
 
-
-
 NS_SP_END
 
-#endif /* defined(__stappler__SPScale9Sprite__) */
+#endif

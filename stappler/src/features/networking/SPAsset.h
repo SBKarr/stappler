@@ -23,11 +23,11 @@ THE SOFTWARE.
 #ifndef STAPPLER_SRC_FEATURES_NETWORKING_SPASSET_H_
 #define STAPPLER_SRC_FEATURES_NETWORKING_SPASSET_H_
 
+#include "SPFilesystem.h"
 #include "SPEventHeader.h"
 #include "SPEventHandler.h"
 #include "SPData.h"
 #include "SPSyncRWLock.h"
-#include "SPFilesystem.h"
 
 NS_SP_BEGIN
 

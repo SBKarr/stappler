@@ -24,8 +24,8 @@ THE SOFTWARE.
 #define COMMON_UTILS_SPNETWORKHANDLE_H_
 
 #include "SPCommon.h"
-#include "SPData.h"
 #include "SPTime.h"
+#include "SPData.h"
 
 // CURL predef;
 

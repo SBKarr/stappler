@@ -36,7 +36,7 @@ SPMIN_INCLUDES_OBJS += $(OSTYPE_INCLUDE)
 SPMIN_LIBS += -L$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH) $(OSTYPE_COMMON_LIBS)
 
 SPMIN_SRCS := \
-	$(foreach dir,$(SPMIN_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.c*')) \
+	$(foreach dir,$(SPMIN_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) \( -name "*.c" -or -name "*.cpp" \))) \
 	$(addprefix $(GLOBAL_ROOT)/,$(SPMIN_SRCS_OBJS))
 
 ifeq ($(OBJC),1)

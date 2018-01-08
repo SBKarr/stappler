@@ -23,10 +23,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
+#include "SPDefine.h"
+#include "SPTime.h"
 #include "SPCommon.h"
 #include "SPString.h"
 #include "SPData.h"
-#include "SPTime.h"
 #include "Test.h"
 
 NS_SP_BEGIN

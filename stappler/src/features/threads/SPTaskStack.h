@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef __chiertime_federal__SPExecutionStack__
-#define __chiertime_federal__SPExecutionStack__
+#ifndef LIBS_STAPPLER_FEATURES_THREADS_SPTASKSTACK_H
+#define LIBS_STAPPLER_FEATURES_THREADS_SPTASKSTACK_H
 
 #include "SPTask.h"
 
@@ -49,4 +49,4 @@ public:
 
 NS_SP_END
 
-#endif /* defined(__chiertime_federal__SPExecutionManager__) */
+#endif

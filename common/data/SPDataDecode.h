@@ -23,11 +23,11 @@ THE SOFTWARE.
 #ifndef COMMON_DATA_SPDATADECODE_H_
 #define COMMON_DATA_SPDATADECODE_H_
 
+#include "SPFilesystem.h"
 #include "SPDataDecodeCbor.h"
 #include "SPDataDecodeJson.h"
 #include "SPDataDecodeSerenity.h"
 #include "SPDataStream.h"
-#include "SPFilesystem.h"
 
 NS_SP_EXT_BEGIN(data)
 

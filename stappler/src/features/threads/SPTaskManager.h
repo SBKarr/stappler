@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef __chiertime_federal__SPTaskManager__
-#define __chiertime_federal__SPTaskManager__
+#ifndef LIBS_STAPPLER_FEATURES_THREADS_SPTASKMANAGER_H
+#define LIBS_STAPPLER_FEATURES_THREADS_SPTASKMANAGER_H
 
 #include "SPTask.h"
 #include "SPThread.h"
