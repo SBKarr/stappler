@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -411,6 +408,11 @@ static Resource *parseResource(storage::Resolver *resv, Vector<String> &path) {
 			} else if (type == storage::Type::Set) {
 				isSingleObject = false;
 				if (!resv->getSet(f)) {
+					return nullptr;
+				}
+			} else if (type == storage::Type::View) {
+				isSingleObject = false;
+				if (!resv->getView(f)) {
 					return nullptr;
 				}
 			} else {

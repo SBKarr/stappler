@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -198,45 +198,17 @@ bool Handle::removeObject(const Scheme &scheme, uint64_t oid) {
 	return false;
 }
 
-data::Value Handle::getObject(const Scheme &scheme, uint64_t oid, bool forUpdate) {
-	ExecQuery query;
-	auto w = query.select().from(scheme.getName())
-			.where("__oid", Comparation::Equal, oid);
-	if (forUpdate) {
-		w.forUpdate();
-	}
-	w.finalize();
-
-	auto result = select(query);
-	if (result.nrows() > 0) {
-		return result.front().toData(scheme);
-	}
-	return data::Value();
-}
-
-data::Value Handle::getObject(const Scheme &scheme, const String &alias, bool forUpdate) {
-	ExecQuery query;
-	auto w = query.select().from(scheme.getName())
-			.where();
-	query.writeAliasRequest(w, Operator::And, scheme, alias);
-	if (forUpdate) { w.forUpdate(); }
-	w.finalize();
-
-	auto result = select(query);
-	if (result.nrows() > 0) {
-		// we parse only first object in result set
-		// UNIQUE constraint for alias works on single field, not on combination of fields
-		// so, multiple result can be accessed, based on field matching
-		return result.front().toData(scheme);
-	}
-	return data::Value();
-}
-
 data::Value Handle::selectObjects(const Scheme &scheme, const Query &q) {
 	bool empty = true;
 	auto &fields = scheme.getFields();
 	ExecQuery query;
-	auto s = query.select().from(scheme.getName());
+	auto sel = query.select();
+	if (!q.getIncludeFields().empty() || !q.getExcludeFields().empty()) {
+		QueryFieldResolver resv(scheme, q);
+		sel = ExecQuery::writeSelectFields(scheme, sel, resv.getResolves(), String());
+	}
+
+	auto s = sel.from(scheme.getName());
 	ExecQuery::SelectWhere w(&query);
 	if (!q.empty()) {
 		empty = false;
@@ -265,6 +237,7 @@ data::Value Handle::selectObjects(const Scheme &scheme, const Query &q) {
 			}
 		}
 	}
+	if (q.isForUpdate()) { s.forUpdate(); }
 	s.finalize();
 	return select(scheme, query);
 }
@@ -376,10 +349,6 @@ void Handle::performPostUpdate(ExecQuery &query, const Scheme &s, Value &data, i
 }
 
 void Handle::touchDelta(const Scheme &scheme, int64_t id, DeltaAction a) {
-	if (!scheme.hasDelta()) {
-		return;
-	}
-
 	int64_t userId = 0;
 	if (auto r = apr::pool::request()) {
 		Request req(r);
@@ -389,9 +358,32 @@ void Handle::touchDelta(const Scheme &scheme, int64_t id, DeltaAction a) {
 	}
 
 	ExecQuery query;
-	query.insert(TableRec::getNameForDelta(scheme)).fields("object", "time", "action", "user")
-			.values(id, Time::now().toMicroseconds(), int64_t(a), userId).finalize();
-	perform(query);
+	if (scheme.hasDelta()) {
+		query.insert(TableRec::getNameForDelta(scheme)).fields("object", "time", "action", "user")
+				.values(id, Time::now().toMicroseconds(), int64_t(a), userId).finalize();
+		perform(query);
+	}
+
+	if (a != DeltaAction::Update) {
+		return;
+	}
+
+	auto &v = scheme.getViews();
+	if (!v.empty()) {
+		for (auto &it : v) {
+			query.clear();
+			String viewName = toString(it->scheme->getName(), "_f_", it->viewField->getName(), "_view");
+			String deltaName = toString(it->scheme->getName(), "_f_", it->viewField->getName(), "_delta");
+			String tagField = toString(it->scheme->getName(), "_id");
+			String objField = toString(scheme.getName(), "_id");
+
+			query << "INSERT INTO " << deltaName << " (\"tag\", \"object\", \"time\", \"user\") "
+					" SELECT \"" << tagField << "\", \"" << objField << "\", " << Time::now().toMicroseconds() << ", "
+					<< userId << " FROM " << viewName << " WHERE \"" << objField << "\"=" << id << ";";
+
+			perform(query);
+		}
+	}
 }
 
 NS_SA_EXT_END(pg)

@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -142,6 +142,24 @@ protected:
 	const Scheme *_sourceScheme = nullptr;
 	const Field *_field = nullptr;
 	Permission _refPerms = Permission::Restrict;
+};
+
+class ResourceView : public ResourceSet {
+public:
+	ResourceView(Adapter *h, QueryList &&q);
+
+	virtual bool prepareUpdate() override;
+	virtual bool prepareCreate() override;
+	virtual bool prepareAppend() override;
+	virtual bool removeObject() override;
+
+	virtual data::Value updateObject(data::Value &data, apr::array<InputFile> &) override;
+	virtual data::Value createObject(data::Value &data, apr::array<InputFile> &) override;
+
+	virtual data::Value getResultObject() override;
+
+protected:
+	const Field *_field = nullptr;
 };
 
 NS_SA_END

@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -46,6 +43,17 @@ ResourceType Resource::getType() const {
 
 const storage::Scheme &Resource::getScheme() const { return *_queries.getScheme(); }
 int Resource::getStatus() const { return _status; }
+
+bool Resource::hasDelta() const {
+	if (_queries.isDeltaApplicable()) {
+		if (_queries.isView()) {
+			return static_cast<const storage::FieldView *>(_queries.getItems().front().field->getSlot())->delta;
+		} else {
+			return _queries.getScheme()->hasDelta();
+		}
+	}
+	return false;
+}
 
 void Resource::setQueryDelta(Time d) {
 	_queries.setDelta(d);
@@ -298,6 +306,9 @@ int64_t Resource::processResolveResult(const QueryFieldResolver &res, const Set<
 			}
 			++ it;
 			continue;
+		} else if (it->first == "__views") {
+			++ it;
+			continue;
 		}
 
 		auto f = res.getField(it->first);
@@ -331,14 +342,14 @@ void Resource::resolveResult(const QueryFieldResolver &res, data::Value &obj, ui
 				continue;
 			}
 
-			if (!obj.hasValue(it.first) && (type == storage::Type::Set || type == storage::Type::Array)) {
+			if (!obj.hasValue(it.first) && (type == storage::Type::Set || type == storage::Type::Array || type == storage::Type::View)) {
 				obj.setInteger(id, it.first);
 			}
 
 			auto &fobj = obj.getValue(it.first);
 			if (type == storage::Type::Object && fobj.isInteger()) {
 				resolveObject(res, id, f, fobj);
-			} else if (type == storage::Type::Set && fobj.isInteger()) {
+			} else if ((type == storage::Type::Set || type == storage::Type::View) && fobj.isInteger()) {
 				resolveSet(res, id, f, fobj);
 			} else if (type == storage::Type::Array && fobj.isInteger()) {
 				resolveArray(res, id, f, fobj);

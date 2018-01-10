@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -79,6 +79,7 @@ public: // Key-Value storage
 	virtual Resource *makeResource(ResourceType, QueryList &&, const Field *) = 0;
 
 	virtual int64_t getDeltaValue(const Scheme &) = 0;
+	virtual int64_t getDeltaValue(const Scheme &, const FieldView &, uint64_t) = 0;
 
 public: // resource requests
 	virtual Vector<int64_t> performQueryListForIds(const QueryList &, size_t count = maxOf<size_t>()) = 0;
@@ -92,13 +93,11 @@ protected: // Object CRUD
 	virtual data::Value patchObject(const Scheme &, uint64_t oid, const data::Value &data) = 0;
 
 	virtual bool removeObject(const Scheme &, uint64_t oid) = 0;
-	virtual data::Value getObject(const Scheme &, uint64_t, bool forUpdate) = 0;
-	virtual data::Value getObject(const Scheme &, const String &, bool forUpdate) = 0;
+
 	virtual bool init(Server &serv, const Map<String, const Scheme *> &) = 0;
 
 	virtual data::Value selectObjects(const Scheme &, const Query &) = 0;
 	virtual size_t countObjects(const Scheme &, const Query &) = 0;
-
 
 protected: // Object properties CRUD
 	virtual data::Value getProperty(const Scheme &, uint64_t oid, const Field &, const Set<const Field *> &) = 0;
@@ -112,6 +111,9 @@ protected: // Object properties CRUD
 
 	virtual data::Value appendProperty(const Scheme &, uint64_t oid, const Field &, data::Value &&) = 0;
 	virtual data::Value appendProperty(const Scheme &, const data::Value &, const Field &, data::Value &&) = 0;
+
+	virtual bool removeFromView(const FieldView &, const Scheme *, uint64_t oid) = 0;
+	virtual bool addToView(const FieldView &, const Scheme *, uint64_t oid, const data::Value &) = 0;
 
 protected:
 	virtual bool beginTransaction() = 0;

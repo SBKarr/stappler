@@ -116,6 +116,7 @@ struct FieldFile;
 struct FieldImage;
 struct FieldObject;
 struct FieldArray;
+struct FieldView;
 
 class Adapter;
 class Resolver;

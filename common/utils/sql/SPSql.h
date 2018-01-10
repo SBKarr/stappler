@@ -96,6 +96,11 @@ public:
 	struct WhereBegin;
 	struct WhereContinue;
 
+	enum class Distinct {
+		Distinct,
+		None,
+	};
+
 	enum class State {
 		None,
 		Init,
@@ -116,12 +121,11 @@ public:
 
 	struct Field {
 		static Field all() { return Field("*"); }
+		static Field all(const StringView & t) { return Field(t, "*"); }
 
-		template <typename SourceString>
-		static Field all(SourceString && t) { return Field(t, "*"); }
-
-		template <typename SourceString>
-		Field(SourceString && str) : name(str) { }
+		Field(const StringView &str) : name(str) { }
+		Field(const char *str) : name(str) { }
+		Field(const String &str) : name(str) { }
 
 		template <typename SourceString, typename FieldString>
 		Field(SourceString &&t, FieldString &&f) : source(t), name(f) { }
@@ -236,9 +240,13 @@ public:
 		template <typename Callback>
 		auto with(const String &alias, const Callback &) -> GenericQuery &;
 
-		Select select();
+		Select select(Distinct = Distinct::None);
+
 		template <typename ... Args>
 		Select select(const Field &, Args && ... args);
+
+		template <typename ... Args>
+		Select select(Distinct, const Field &, Args && ... args);
 
 		Insert insert(const String &);
 		Insert insert(const String &, const String &alias);
@@ -409,9 +417,13 @@ public:
 	template <typename Callback>
 	GenericQuery with(const String &alias, const Callback &);
 
-	Select select();
+	Select select(Distinct = Distinct::None);
+
 	template <typename ... Args>
 	Select select(const Field &, Args && ... args);
+
+	template <typename ... Args>
+	Select select(Distinct, const Field &, Args && ... args);
 
 	Insert insert(const String &);
 	Insert insert(const String &, const String &alias);
@@ -567,14 +579,20 @@ auto Query<Binder>::GenericQuery::with(const String &alias, const Callback &cb) 
 }
 
 template <typename Binder>
-auto Query<Binder>::GenericQuery::select() -> Select {
-	return this->query->select();
+auto Query<Binder>::GenericQuery::select(Distinct d) -> Select {
+	return this->query->select(d);
 }
 
 template <typename Binder>
 template <typename ... Args>
 auto Query<Binder>::GenericQuery::select(const Field &f, Args && ... args) -> Select {
 	return this->query->select(f, forward<Args>(args)...);
+}
+
+template <typename Binder>
+template <typename ... Args>
+auto Query<Binder>::GenericQuery::select(Distinct d, const Field &f, Args && ... args) -> Select {
+	return this->query->select(d, f, forward<Args>(args)...);
 }
 
 template <typename Binder>

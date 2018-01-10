@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -55,12 +55,16 @@ public:
 
 	data::Value select(const Scheme &, const ExecQuery &);
 	data::Value select(const Field &, const ExecQuery &);
+	void select(data::Value &, const Field &, const ExecQuery &);
 
 	bool performSimpleQuery(const String &);
 	Result performSimpleSelect(const String &);
 
 	data::Value getHistory(const Scheme &, const Time &, bool resolveUsers = false);
+	data::Value getHistory(const FieldView &, const Scheme *, uint64_t tag, const Time &, bool resolveUsers = false);
+
 	data::Value getDeltaData(const Scheme &, const Time &);
+	data::Value getDeltaData(const Scheme &, const FieldView &, const Time &, uint64_t);
 
 public:
 	void makeSessionsCleanup();
@@ -84,14 +88,13 @@ public: // adapter interface
 	virtual Resource *makeResource(ResourceType, QueryList &&, const Field *) override;
 
 	virtual int64_t getDeltaValue(const Scheme &) override;
+	virtual int64_t getDeltaValue(const Scheme &, const FieldView &, uint64_t) override;
 
 protected: // object interface
 	virtual bool createObject(const Scheme &, data::Value &data) override;
 	virtual bool saveObject(const Scheme &, uint64_t oid, const data::Value &newObject, const Vector<String> &fields) override;
 	virtual data::Value patchObject(const Scheme &, uint64_t oid, const data::Value &data) override;
 	virtual bool removeObject(const Scheme &, uint64_t oid) override;
-	virtual data::Value getObject(const Scheme &, uint64_t, bool forUpdate) override;
-	virtual data::Value getObject(const Scheme &, const String &, bool forUpdate) override;
 
 	virtual data::Value selectObjects(const Scheme &, const Query &) override;
 	virtual size_t countObjects(const Scheme &, const Query &) override;
@@ -115,6 +118,9 @@ protected: // prop interface
 
 	virtual Vector<int64_t> performQueryListForIds(const QueryList &, size_t count = maxOf<size_t>()) override;
 	virtual data::Value performQueryList(const QueryList &, size_t count = maxOf<size_t>(), bool forUpdate = false, const Field * = nullptr) override;
+
+	virtual bool removeFromView(const FieldView &, const Scheme *, uint64_t oid) override;
+	virtual bool addToView(const FieldView &, const Scheme *, uint64_t oid, const data::Value &) override;
 
 protected:
 	virtual bool beginTransaction() override { return beginTransaction_pg(TransactionLevel::ReadCommited); }

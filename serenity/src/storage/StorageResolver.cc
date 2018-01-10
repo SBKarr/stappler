@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -141,6 +138,19 @@ bool Resolver::getSet(const Field *f) {
 	return false;
 }
 
+bool Resolver::getView(const Field *f) {
+	if (_type == Objects) {
+		if (auto fo = static_cast<const FieldView *>(f->getSlot())) {
+			if (_queries.setField(fo->scheme, f)) {
+				_scheme = fo->scheme;
+				return true;
+			}
+		}
+	}
+	messages::error("ResourceResolver", "Invalid 'getView', invalid resource type");
+	return false;
+}
+
 bool Resolver::getField(const String &str, const Field *f) {
 	if ((_type == Objects) && f->getType() == Type::Array) {
 		_resource = _storage->makeResource(ResourceType::Array, move(_queries), f);
@@ -171,6 +181,8 @@ Resource *Resolver::getResult() {
 	if (_type == Objects) {
 		if (_queries.empty()) {
 			return _storage->makeResource(ResourceType::ResourceList, move(_queries), nullptr);
+		} else if (_queries.isView()) {
+			return _storage->makeResource(ResourceType::View, move(_queries), nullptr);
 		} else if (_queries.isRefSet()) {
 			return _storage->makeResource(ResourceType::ReferenceSet, move(_queries), nullptr);
 		} else if (_queries.isObject()) {

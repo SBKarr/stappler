@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -84,7 +84,7 @@ class ExecQuery : public sql::Query<Binder> {
 public:
 	using TypeString = Binder::TypeString;
 
-	static ExecQuery::Select &writeSelectFields(const Scheme &, ExecQuery::Select &sel, const Set<const storage::Field *> &fields, const String &source);
+	static ExecQuery::Select &writeSelectFields(const Scheme &, ExecQuery::Select &sel, const Set<const storage::Field *> &fields, const StringView &source);
 
 	ExecQuery() = default;
 	ExecQuery(const StringView &);
@@ -94,7 +94,7 @@ public:
 	void writeAliasRequest(ExecQuery::SelectWhere &, Operator, const Scheme &s, const String &);
 	void writeQueryRequest(ExecQuery::SelectWhere &, Operator, const Scheme &s, const Vector<pg::Query::Select> &);
 
-	SelectFrom writeSelectFrom(GenericQuery &q, const QueryList::Item &item, bool idOnly, const String &schemeName, const String &fieldName);
+	SelectFrom writeSelectFrom(GenericQuery &q, const QueryList::Item &item, bool idOnly, const StringView &scheme, const StringView &field);
 
 	void writeQueryReqest(ExecQuery::SelectFrom &s, const QueryList::Item &item);
 	void writeQueryListItem(GenericQuery &sq, const QueryList &list, size_t idx, bool idOnly, const storage::Field *field = nullptr);
@@ -103,6 +103,7 @@ public:
 	void writeQueryArray(const QueryList &query, const storage::Field *field);
 
 	void writeQueryDelta(const Scheme &, const Time &, const Set<const storage::Field *> &fields, bool idOnly);
+	void writeQueryViewDelta(const QueryList &list, const Time &, const Set<const storage::Field *> &fields, bool idOnly);
 
 	template <typename T>
 	friend auto & operator << (ExecQuery &query, const T &value) {
@@ -120,7 +121,7 @@ struct ResultRow {
 	ResultRow & operator=(const ResultRow &other) noexcept;
 
 	size_t size() const;
-	data::Value toData(const Scheme &);
+	data::Value toData(const Scheme &, const Map<String, Field> & = Map<String, Field>());
 
 	StringView front() const;
 	StringView back() const;

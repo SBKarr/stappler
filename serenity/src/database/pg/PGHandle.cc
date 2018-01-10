@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -228,6 +228,70 @@ data::Value Handle::select(const Field &field, const ExecQuery &query) {
 	return data::Value();
 }
 
+static bool Handle_convertViewDelta(data::Value &it) {
+	auto vid_it = it.asDict().find("__vid");
+	auto d_it = it.asDict().find("__delta");
+	if (vid_it != it.asDict().end() && d_it != it.asDict().end()) {
+		if (vid_it->second.getInteger()) {
+			d_it->second.setString("update", "action");
+			it.asDict().erase(vid_it);
+		} else {
+			d_it->second.setString("delete", "action");
+			auto dict_it = it.asDict().begin();
+			while (dict_it != it.asDict().end()) {
+				if (dict_it->first != "__oid" && dict_it->first != "__delta") {
+					dict_it = it.asDict().erase(dict_it);
+				} else {
+					++ dict_it;
+				}
+			}
+			return false;
+		}
+	}
+	return true;
+}
+
+static void Handle_mergeViews(data::Value &objs, data::Value &vals) {
+	for (auto &it : objs.asArray()) {
+		if (!Handle_convertViewDelta(it)) {
+			continue;
+		}
+
+		if (auto oid = it.getInteger("__oid")) {
+			auto v_it = std::lower_bound(vals.asArray().begin(), vals.asArray().end(), oid,
+					[&] (const data::Value &l, int64_t r) -> bool {
+				return (l.isInteger() ? l.getInteger() : l.getInteger("__oid")) < r;
+			});
+			if (v_it != vals.asArray().end()) {
+				auto objId = v_it->getInteger("__oid");
+				if (objId == oid) {
+					v_it->erase("__oid");
+					if (it.hasValue("__views")) {
+						it.getValue("__views").addValue(move(*v_it));
+					} else {
+						it.emplace("__views").addValue(move(*v_it));
+					}
+					v_it->setInteger(oid);
+				}
+			}
+		}
+	}
+}
+
+void Handle::select(data::Value &objs, const Field &field, const ExecQuery &query) {
+	auto result = select(query);
+	if (result) {
+		auto vals = result.decode(field);
+		if (!vals.isArray()) {
+			for (auto &it : objs.asArray()) {
+				Handle_convertViewDelta(it);
+			}
+		} else if (vals.isArray() && objs.isArray()) {
+			Handle_mergeViews(objs, vals);
+		}
+	}
+}
+
 bool Handle::performSimpleQuery(const String &query) {
 	if (getTransactionStatus() == TransactionStatus::Rollback) {
 		return false;
@@ -254,6 +318,7 @@ Resource *Handle::makeResource(ResourceType type, QueryList &&list, const Field 
 	case ResourceType::ReferenceSet: return new ResourceRefSet(this, std::move(list)); break;
 	case ResourceType::Object: return new ResourceObject(this, std::move(list)); break;
 	case ResourceType::Set: return new ResourceSet(this, std::move(list)); break;
+	case ResourceType::View: return new ResourceView(this, std::move(list)); break;
 	case ResourceType::File: return new ResourceFile(this, std::move(list), f); break;
 	case ResourceType::Array: return new ResourceArray(this, std::move(list), f); break;
 	}
@@ -304,6 +369,50 @@ data::Value Handle::getHistory(const Scheme &scheme, const Time &time, bool reso
 	return ret;
 }
 
+data::Value Handle::getHistory(const FieldView &view, const Scheme *scheme, uint64_t tag, const Time &time, bool resolveUsers) {
+	data::Value ret;
+	if (!view.delta) {
+		return ret;
+	}
+
+	Result res;
+	if (scheme) {
+		String name = toString(scheme->getName(), "_f_", view.name, "_delta");
+
+		ExecQuery q;
+		q.select().from(name).where("time", Comparation::GreatherThen, time.toMicroseconds())
+				.where(Operator::And, "tag", Comparation::Equal, tag)
+				.order(Ordering::Descending, "time").finalize();
+
+		res = select(q);
+	}
+
+	for (auto it : res) {
+		auto &d = ret.emplace();
+		for (size_t i = 0; i < it.size(); ++ i) {
+			auto name = res.name(i);
+			if (name == "tag") {
+				d.setInteger(it.toInteger(i), "tag");
+			} else if (name == "time") {
+				d.setString(Time::microseconds(it.toInteger(i)).toHttp(), "http-date");
+				d.setInteger(it.toInteger(i), "time");
+			} else if (name == "user" && resolveUsers) {
+				if (auto u = User::get(this, it.toInteger(i))) {
+					auto &ud = d.emplace("user");
+					ud.setInteger(u->getObjectId(), "id");
+					ud.setString(u->getName(), "name");
+				} else {
+					d.setInteger(it.toInteger(i), name.str());
+				}
+			} else if (name != "id") {
+				d.setInteger(it.toInteger(i), name.str());
+			}
+		}
+	}
+
+	return ret;
+}
+
 data::Value Handle::getDeltaData(const Scheme &scheme, const Time &time) {
 	if (scheme.hasDelta()) {
 		ExecQuery q;
@@ -318,9 +427,21 @@ data::Value Handle::getDeltaData(const Scheme &scheme, const Time &time) {
 int64_t Handle::getDeltaValue(const Scheme &scheme) {
 	if (scheme.hasDelta()) {
 		ExecQuery q;
-		q.select()
-				.aggregate("max", ExecQuery::Field("d", "time"))
+		q.select().aggregate("max", ExecQuery::Field("d", "time"))
 				.from(ExecQuery::Field(TableRec::getNameForDelta(scheme.getName())).as("d")).finalize();
+		if (auto res = select(q)) {
+			return res.at(0).toInteger(0);
+		}
+	}
+	return 0;
+}
+
+int64_t Handle::getDeltaValue(const Scheme &scheme, const FieldView &view, uint64_t tag) {
+	if (view.delta) {
+		String deltaName = toString(scheme.getName(), "_f_", view.name, "_delta");
+		ExecQuery q;
+		q.select().aggregate("max", ExecQuery::Field("d", "time"))
+				.from(ExecQuery::Field(deltaName).as("d")).where("tag", Comparation::Equal, tag).finalize();
 		if (auto res = select(q)) {
 			return res.at(0).toInteger(0);
 		}

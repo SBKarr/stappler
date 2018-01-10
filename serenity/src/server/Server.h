@@ -49,12 +49,13 @@ public:
 	void onBroadcast(const Bytes &);
 	int onRequest(Request &);
 
-	void setHandlerFile(const apr::string &file);
-	void setSourceRoot(const apr::string &file);
-	void addHanderSource(const apr::string &w);
-	void setSessionParams(const apr::string &w);
-	const apr::string &getHandlerFile() const;
-	const apr::string &getNamespace() const;
+	void setHandlerFile(const String &file);
+	void setSourceRoot(const String &file);
+	void addHanderSource(const String &w);
+	void setSessionParams(const String &w);
+	void setWebHookParams(const String &w);
+	const String &getHandlerFile() const;
+	const String &getNamespace() const;
 
 	ServerComponent *getComponent(const String &) const;
 	void addComponent(const String &, ServerComponent *);
@@ -101,6 +102,8 @@ public:
 	const Map<String, const storage::Scheme *> &getSchemes() const;
 	const Map<const storage::Scheme *, ResourceScheme> &getResources() const;
 	const Map<String, RequestScheme> &getRequestHandlers() const;
+
+	void reportError(const data::Value &);
 
 public: // httpd server info
 	apr::weak_string getDefaultName() const;

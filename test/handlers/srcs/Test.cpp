@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -86,6 +86,13 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 		Field::Text("alias", storage::Transform::Alias),
 		Field::Integer("mtime", storage::Flags::AutoMTime | storage::Flags::Indexed),
 		Field::Integer("index", storage::Flags::Indexed),
+		Field::View("refs", _refs,Vector<Field>{
+			Field::Text("string"),
+		}, storage::ViewFn([this] (const Scheme &objScheme, const data::Value &obj) -> Vector<data::Value> {
+			return Vector<data::Value>{data::Value({
+				pair("string", data::Value(obj.getString("text")))
+			})};
+		}), storage::FieldView::Delta)
 	});
 	_objects.setDelta(true);
 

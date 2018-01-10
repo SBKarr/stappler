@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -370,13 +367,22 @@ bool QueryList::isObject() const {
 	const Query &b = queries.back().query;
 	return b.getSelectOid() != 0 || !b.getSelectAlias().empty() || b.getLimitValue() == 1;
 }
+bool QueryList::isView() const {
+	if (queries.size() > 1 && queries.at(queries.size() - 2).field) {
+		return queries.at(queries.size() - 2).field->getType() == Type::View;
+	} else if (!queries.empty() && queries.back().field) {
+		return queries.back().field->getType() == Type::View;
+	}
+	return false;
+}
 bool QueryList::empty() const {
 	return queries.size() == 1 && queries.front().query.empty();
 }
 
 bool QueryList::isDeltaApplicable() const {
 	const QueryList::Item &item = getItems().back();
-	if (queries.size() == 1 && !item.query.hasSelectName() && !item.query.hasSelectList()) {
+	if ((queries.size() == 1 || (isView() && queries.size() == 2 && queries.front().query.getSelectOid()))
+			&& !item.query.hasSelectName() && !item.query.hasSelectList()) {
 		return true;
 	}
 	return false;
@@ -651,6 +657,8 @@ bool QueryList::apply(const data::Value &val) {
 			} else if (it.second.isInteger()) {
 				q.delta(it.second.asInteger());
 			}
+		} else if (it.first == "forUpdate") {
+			q.forUpdate();
 		}
 	}
 

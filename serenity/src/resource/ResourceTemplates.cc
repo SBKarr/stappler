@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -884,6 +881,32 @@ data::Value ResourceArray::getArrayForObject(data::Value &object) {
 		}
 	}
 	return data::Value();
+}
+
+
+ResourceView::ResourceView(Adapter *h, QueryList &&q)
+: ResourceSet(h, move(q)), _field(_queries.getField()) {
+	if (_queries.isDeltaApplicable()) {
+		auto tag = _queries.getItems().front().query.getSelectOid();
+		_delta = Time::microseconds(_adapter->getDeltaValue(*_queries.getSourceScheme(), *static_cast<const storage::FieldView *>(_field->getSlot()), tag));
+	}
+}
+
+bool ResourceView::prepareUpdate() { return false; }
+bool ResourceView::prepareCreate() { return false; }
+bool ResourceView::prepareAppend() { return false; }
+bool ResourceView::removeObject() { return false; }
+
+data::Value ResourceView::updateObject(data::Value &data, apr::array<InputFile> &) { return data::Value(); }
+data::Value ResourceView::createObject(data::Value &data, apr::array<InputFile> &) { return data::Value(); }
+
+data::Value ResourceView::getResultObject() {
+	auto ret = _adapter->performQueryList(_queries, maxOf<size_t>(), false, _field);
+	if (!ret.isArray()) {
+		return data::Value();
+	}
+
+	return processResultList(_queries, ret);
 }
 
 NS_SA_END

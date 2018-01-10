@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -255,6 +255,9 @@ void TableRec::writeCompareResult(StringStream &stream,
 				case ColRec::Type::Text: 	stream << "text"; break;
 				default: break;
 				}
+				if (cit.second.notNull) {
+					stream << " NOT NULL";
+				}
 				stream << ";\n";
 			}
 		}
@@ -403,6 +406,71 @@ Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, const stor
 				}
 			}
 
+			if (type == Type::View) {
+				auto slot = static_cast<const FieldView *>(f.getSlot());
+
+				String name = toString(it.first, "_f_", fit.first, "_view");
+				auto & source = it.first;
+				auto & target = slot->scheme->getName();
+
+				TableRec table;
+				table.cols.emplace("__vid", ColRec(ColRec::Type::Serial, true));
+				table.cols.emplace(source + "_id", ColRec(ColRec::Type::Integer, true));
+				table.cols.emplace(target + "_id", ColRec(ColRec::Type::Integer, true));
+
+				for (auto &it : slot->fields) {
+					auto type = it.second.getType();
+					switch (type) {
+					case Type::Float:
+						table.cols.emplace(it.first, ColRec(ColRec::Type::Float));
+						break;
+					case Type::Boolean:
+						table.cols.emplace(it.first, ColRec(ColRec::Type::Boolean));
+						break;
+					case Type::Text:
+						table.cols.emplace(it.first, ColRec(ColRec::Type::Text));
+						break;
+					case Type::Data:
+					case Type::Bytes:
+					case Type::Extra:
+						table.cols.emplace(it.first, ColRec(ColRec::Type::Binary));
+						break;
+					case Type::Integer:
+						table.cols.emplace(it.first, ColRec(ColRec::Type::Integer));
+						break;
+					default:
+						break;
+					}
+
+					if (it.second.isIndexed()) {
+						table.indexes.emplace(name + "_idx_" + it.first, it.first);
+					}
+				}
+
+				table.constraints.emplace(name + "_ref_" + source, ConstraintRec(
+						ConstraintRec::Reference, source + "_id", source, RemovePolicy::Cascade));
+				table.constraints.emplace(name + "_ref_" + slot->getName(), ConstraintRec(
+						ConstraintRec::Reference, target + "_id", target, RemovePolicy::Cascade));
+
+				table.pkey.emplace_back("__vid");
+				tables.emplace(std::move(name), std::move(table));
+
+				if (slot->delta) {
+					String name = toString(it.first, "_f_", fit.first, "_delta");
+					table.cols.emplace("id", ColRec(ColRec::Type::Serial, true));
+					table.cols.emplace("tag", ColRec(ColRec::Type::Integer, true));
+					table.cols.emplace("object", ColRec(ColRec::Type::Integer, true));
+					table.cols.emplace("time", ColRec(ColRec::Type::Integer, true));
+					table.cols.emplace("user", ColRec(ColRec::Type::Integer));
+
+					table.pkey.emplace_back("id");
+					table.indexes.emplace(name + "_idx_tag", "tag");
+					table.indexes.emplace(name + "_idx_object", "object");
+					table.indexes.emplace(name + "_idx_time", "time");
+					tables.emplace(move(name), std::move(table));
+				}
+			}
+
 			if (scheme->hasDelta()) {
 				auto name = getNameForDelta(*scheme);
 				TableRec table;
@@ -422,7 +490,7 @@ Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, const stor
 	return tables;
 }
 
-Map<String, TableRec> TableRec::get(Handle &h, apr::ostringstream &stream) {
+Map<String, TableRec> TableRec::get(Handle &h, StringStream &stream) {
 	Map<String, TableRec> ret;
 
 	Result tables( h.performSimpleSelect("SELECT table_name FROM information_schema.tables "
@@ -514,7 +582,7 @@ Map<String, TableRec> TableRec::get(Handle &h, apr::ostringstream &stream) {
 
 TableRec::TableRec() : objects(false) { }
 TableRec::TableRec(Server &serv, const storage::Scheme *scheme) {
-	apr::ostringstream hashStream;
+	StringStream hashStream;
 	hashStream << getDefaultFunctionVersion();
 
 	bool hasTriggers = false;
@@ -534,6 +602,7 @@ TableRec::TableRec(Server &serv, const storage::Scheme *scheme) {
 		switch (type) {
 		case storage::Type::None:
 		case storage::Type::Array:
+		case storage::Type::View:
 			break;
 
 		case storage::Type::Float:
@@ -621,11 +690,11 @@ bool Handle::init(Server &serv, const Map<String, const Scheme *> &s) {
 		return false;
 	}
 
-	apr::ostringstream tables;
+	StringStream tables;
 	auto requiredTables = TableRec::parse(serv, s);
 	auto existedTables = TableRec::get(*this, tables);
 
-	apr::ostringstream stream;
+	StringStream stream;
 	TableRec::writeCompareResult(stream, requiredTables, existedTables, s);
 
 	auto name = toString(".", Time::now().toMilliseconds(), ".update.sql");

@@ -450,6 +450,11 @@ void _addErrorMessage(data::Value &&data) {
 			a->broadcast(bcast);
 		}
 	}
+
+	if (auto serv = Server(apr::pool::server())) {
+		serv.reportError(data);
+	}
+
 	Request rctx(apr::pool::request());
 	if (rctx) {
 		rctx.addErrorMessage(std::move(data));

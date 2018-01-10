@@ -326,8 +326,23 @@ auto Query<Binder>::select(const Field &f, Args && ... args) -> Select {
 }
 
 template <typename Binder>
-auto Query<Binder>::select() -> Select {
+template <typename ... Args>
+auto Query<Binder>::select(Distinct d, const Field &f, Args && ... args) -> Select {
+	auto s = select(d);
+	s.fields(f, forward<Args>(args)...);
+	return s;
+}
+
+template <typename Binder>
+auto Query<Binder>::select(Distinct d) -> Select {
 	stream << "SELECT";
+	switch (d) {
+	case Distinct::Distinct:
+		stream << " DISTINCT";
+		break;
+	default:
+		break;
+	}
 	return Select(this);
 }
 

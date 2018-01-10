@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -60,6 +60,45 @@ static void Handle_writeSelectSetQuery(ExecQuery &query, const Scheme &s, uint64
 	}
 }
 
+static void Handle_writeSelectViewQuery(ExecQuery &query, const Scheme &s, uint64_t oid, const Field &f, const Set<const Field *> &fields) {
+	auto fs = f.getForeignScheme();
+	auto sel = query.with("s", [&] (ExecQuery::GenericQuery &q) {
+		q.select(ExecQuery::Distinct::Distinct, ExecQuery::Field(toString(fs->getName(), "_id")).as("__id"))
+				.from(toString(s.getName(), "_f_", f.getName(), "_view"))
+				.where(toString(s.getName(), "_id"), Comparation::Equal, oid);
+	}).select();
+
+	String alias("t"); // do not touch;
+	ExecQuery::writeSelectFields(*f.getForeignScheme(), sel, fields, alias);
+	sel.from(ExecQuery::Field(fs->getName()).as(alias))
+			.innerJoinOn("s", [&] (ExecQuery::WhereBegin &q) {
+		q.where(ExecQuery::Field(alias, "__oid"), Comparation::Equal, ExecQuery::Field("s", "__id"));
+	}).finalize();
+}
+
+static void Handle_writeSelectViewDataQuery(ExecQuery &q, const Scheme &s, uint64_t oid, const Field &f, const data::Value &data) {
+	auto fs = f.getForeignScheme();
+	auto view = static_cast<const FieldView *>(f.getSlot());
+
+	auto fieldName = toString(fs->getName(), "_id");
+	auto sel = q.select(ExecQuery::Field(fieldName).as("__oid")).field("__vid");
+
+	for (auto &it : view->fields) {
+		if (it.second.isSimpleLayout()) {
+			sel.field(ExecQuery::Field(it.first));
+		}
+	}
+
+	sel.from(toString(s.getName(), "_f_", f.getName(), "_view"))
+		.where(toString(s.getName(), "_id"), Comparation::Equal, oid)
+		.parenthesis(Operator::And, [&] (ExecQuery::WhereBegin &w) {
+			auto subw = w.where();
+			for (auto &it : data.asArray()) {
+				subw.where(Operator::Or, fieldName, Comparation::Equal, it.getInteger("__oid"));
+			}
+	}).order(Ordering::Ascending, ExecQuery::Field(fieldName)).finalize();
+}
+
 data::Value Handle::getProperty(const Scheme &s, uint64_t oid, const Field &f, const Set<const Field *> &fields) {
 	ExecQuery query;
 	data::Value ret;
@@ -105,6 +144,17 @@ data::Value Handle::getProperty(const Scheme &s, uint64_t oid, const Field &f, c
 		if (auto fs = f.getForeignScheme()) {
 			Handle_writeSelectSetQuery(query, s, oid, f, fields);
 			ret = select(*fs, query);
+		}
+		break;
+	case storage::Type::View:
+		if (auto fs = f.getForeignScheme()) {
+			Handle_writeSelectViewQuery(query, s, oid, f, fields);
+			ret = select(*fs, query);
+			if (ret.isArray() && ret.size() > 0) {
+				query.clear();
+				Handle_writeSelectViewDataQuery(query, s, oid, f, ret);
+				select(ret, f, query);
+			}
 		}
 		break;
 	default:
@@ -163,6 +213,17 @@ data::Value Handle::getProperty(const Scheme &s, const data::Value &d, const Fie
 			ret = select(*fs, query);
 		}
 		break;
+	case storage::Type::View:
+		if (auto fs = f.getForeignScheme()) {
+			Handle_writeSelectViewQuery(query, s, oid, f, fields);
+			ret = select(*fs, query);
+			if (ret.isArray() && ret.size() > 0) {
+				query.clear();
+				Handle_writeSelectViewDataQuery(query, s, oid, f, ret);
+				select(ret, f, query);
+			}
+		}
+		break;
 	default:
 		return d.getValue(f.getName());
 		break;
@@ -180,6 +241,7 @@ data::Value Handle::setProperty(const Scheme &s, uint64_t oid, const Field &f, d
 		break;
 	case storage::Type::Array:
 		if (val.isArray()) {
+			s.touch(this, oid);
 			clearProperty(s, oid, f, data::Value());
 			insertIntoArray(query, s, oid, f, val);
 			ret = move(val);
@@ -187,6 +249,7 @@ data::Value Handle::setProperty(const Scheme &s, uint64_t oid, const Field &f, d
 		break;
 	case storage::Type::Set:
 		if (f.isReference()) {
+			s.touch(this, oid);
 			auto objField = static_cast<const storage::FieldObject *>(f.getSlot());
 			if (objField->onRemove == storage::RemovePolicy::Reference) {
 				clearProperty(s, oid, f, data::Value());
@@ -215,7 +278,7 @@ data::Value Handle::setProperty(const Scheme &s, uint64_t oid, const Field &f, d
 	default: {
 		data::Value patch;
 		patch.setValue(val, f.getName());
-		patchObject(s, oid, patch);
+		s.update(this, oid, patch);
 		return val;
 	}
 		break;
@@ -232,11 +295,13 @@ bool Handle::clearProperty(const Scheme &s, uint64_t oid, const Field &f, data::
 	data::Value ret;
 	switch (f.getType()) {
 	case storage::Type::Array:
+		s.touch(this, oid);
 		query << "DELETE FROM " << s.getName() << "_f_" << f.getName() << " WHERE " << s.getName() << "_id=" << oid << ";";
 		return perform(query) != maxOf<size_t>();
 		break;
 	case storage::Type::Set:
 		if (f.isReference()) {
+			s.touch(this, oid);
 			auto objField = static_cast<const storage::FieldObject *>(f.getSlot());
 			if (!hint.isArray()) {
 				if (objField->onRemove == storage::RemovePolicy::Reference) {
@@ -269,7 +334,7 @@ bool Handle::clearProperty(const Scheme &s, uint64_t oid, const Field &f, data::
 	default: {
 		data::Value patch;
 		patch.setValue(data::Value(), f.getName());
-		patchObject(s, oid, patch);
+		s.update(this, oid, patch);
 	}
 		break;
 	}
@@ -286,6 +351,7 @@ data::Value Handle::appendProperty(const Scheme &s, uint64_t oid, const Field &f
 	switch (f.getType()) {
 	case storage::Type::Array:
 		if (!val.isNull()) {
+			s.touch(this, oid);
 			if (insertIntoArray(query, s, oid, f, val)) {
 				ret = move(val);
 			}
@@ -294,6 +360,7 @@ data::Value Handle::appendProperty(const Scheme &s, uint64_t oid, const Field &f
 		break;
 	case storage::Type::Set:
 		if (f.isReference()) {
+			s.touch(this, oid);
 			Vector<int64_t> toAdd;
 			for (auto &it : val.asArray()) {
 				if (auto id = it.asInteger()) {
@@ -443,6 +510,35 @@ data::Value Handle::performQueryList(const QueryList &list, size_t count, bool f
 		}
 		query.finalize();
 		return select(*list.getScheme(), query);
+	} else if (f->getType() == Type::View) {
+		count = min(list.size(), count);
+		auto &items = list.getItems();
+		const QueryList::Item &item = items.back();
+		if (item.query.hasDelta() && list.isDeltaApplicable()) {
+			auto tag = items.front().query.getSelectOid();
+			auto viewField = items.size() > 1 ? items.at(items.size() - 2).field : items.back().field;
+			auto view = static_cast<const FieldView *>(viewField->getSlot());
+
+			query.writeQueryViewDelta(list, Time::microseconds(item.query.getDeltaToken()), item.fields.getResolves(), false);
+			query.finalize();
+
+			auto ret = select(*view->scheme, query);
+
+			if (ret.isArray() && ret.size() > 0) {
+				query.clear();
+				Handle_writeSelectViewDataQuery(query, *list.getSourceScheme(), tag, *viewField, ret);
+				select(ret, *viewField, query);
+
+				std::cout << data::EncodeFormat::Pretty << ret << "\n";
+				return ret;
+			}
+		} else {
+			query.writeQueryList(list, true, count - 1);
+			query.finalize();
+			if (auto id = selectId(query)) {
+				return getProperty(*list.getSourceScheme(), id, *f, list.getItems().back().fields.getResolves());
+			}
+		}
 	} else if (f->isFile()) {
 		query.writeQueryFile(list, f);
 		query.finalize();
@@ -455,6 +551,112 @@ data::Value Handle::performQueryList(const QueryList &list, size_t count, bool f
 		return select(*f, query);
 	}
 
+	return data::Value();
+}
+
+int64_t Handle_getUserId() {
+	if (auto r = apr::pool::request()) {
+		Request req(r);
+		if (auto user = req.getAuthorizedUser()) {
+			return user->getObjectId();
+		}
+	}
+	return 0;
+}
+
+bool Handle::removeFromView(const FieldView &view, const Scheme *scheme, uint64_t oid) {
+	if (scheme) {
+		String name = toString(scheme->getName(), "_f_", view.name, "_view");
+
+		ExecQuery query;
+		query << "DELETE FROM " << name << " WHERE \"" << view.scheme->getName() << "_id\"=" << oid;
+		if (view.delta) {
+			query << " RETURNING \"" << scheme->getName() << "_id\", \"__vid\";";
+
+			if (auto res = select(query)) {
+				if (!res.empty()) {
+					query.clear();
+					int64_t userId = Handle_getUserId();
+					String deltaName = toString(scheme->getName(), "_f_", view.name, "_delta");
+					auto ins = query.insert(deltaName).fields("tag", "object", "time", "user").values();
+					for (auto it : res) {
+						auto tag = it.toInteger(0);
+						ins.values(tag, oid, Time::now().toMicroseconds(), userId);
+					}
+					ins.finalize();
+					return perform(query) != maxOf<size_t>();
+				}
+				return true;
+			}
+			return false;
+		} else {
+			query << ";";
+			return perform(query) != maxOf<size_t>();
+		}
+	}
+	return false;
+}
+
+bool Handle::addToView(const FieldView &view, const Scheme *scheme, uint64_t tag, const data::Value &data) {
+	if (scheme) {
+		String name = toString(scheme->getName(), "_f_", view.name, "_view");
+
+		ExecQuery query;
+		auto ins = query.insert(name);
+
+		for (auto &it : data.asDict()) {
+			ins.field(it.first);
+		}
+
+		auto val = ins.values();
+		for (auto &it : data.asDict()) {
+			auto field_it = view.fields.find(it.first);
+			val.value(Binder::DataField{it.second, (field_it != view.fields.end() && field_it->second.isDataLayout()) });
+		}
+
+		if (view.delta) {
+			val.returning().field(ExecQuery::Field(toString(view.scheme->getName(), "_id"))).field(ExecQuery::Field("__vid")).finalize();
+			if (auto res = select(query)) {
+				if (!res.empty()) {
+					auto row = res.at(0);
+					auto obj = row.toInteger(0);
+					query.clear();
+					int64_t userId = Handle_getUserId();
+					String deltaName = toString(scheme->getName(), "_f_", view.name, "_delta");
+					query.insert(deltaName).fields("tag", "object", "time", "user")
+							.values(tag, obj, Time::now().toMicroseconds(), userId).finalize();
+					return perform(query) != maxOf<size_t>();
+				}
+				return true;
+			}
+			return false;
+		} else {
+			val.finalize();
+			return perform(query) != maxOf<size_t>();
+		}
+	}
+	return false;
+}
+
+data::Value Handle::getDeltaData(const Scheme &scheme, const FieldView &view, const Time &time, uint64_t tag) {
+	if (view.delta) {
+		ExecQuery q;
+		Field field(&view);
+		QueryList list(&scheme);
+		list.selectById(&scheme, tag);
+		list.setField(view.scheme, &field);
+
+		q.writeQueryViewDelta(list, time, Set<const Field *>(), false);
+
+		auto ret = select(*view.scheme, q);
+		if (ret.isArray() && ret.size() > 0) {
+			q.clear();
+			Field f(&view);
+			Handle_writeSelectViewDataQuery(q, scheme, tag, f, ret);
+			select(ret, f, q);
+			return ret;
+		}
+	}
 	return data::Value();
 }
 

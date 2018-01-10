@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -30,6 +27,20 @@ THE SOFTWARE.
 #include "StorageAdapter.h"
 
 NS_SA_EXT_BEGIN(storage)
+
+bool Scheme::initSchemes(Server &serv, const Map<String, const Scheme *> &schemes) {
+	for (auto &it : schemes) {
+		for (auto &fit : it.second->getFields()) {
+			if (fit.second.getType() == Type::View) {
+				auto slot = static_cast<const FieldView *>(fit.second.getSlot());
+				if (slot->scheme) {
+					const_cast<Scheme *>(slot->scheme)->addView(it.second, &fit.second);
+				}
+			}
+		}
+	}
+	return true;
+}
 
 Scheme::Scheme(const String &ns) : name(ns) { }
 
@@ -84,7 +95,7 @@ bool Scheme::hasAliases() const {
 	return false;
 }
 
-bool Scheme::isProtected(const String &key) const {
+bool Scheme::isProtected(const StringView &key) const {
 	auto it = fields.find(key);
 	if (it != fields.end()) {
 		return it->second.isProtected();
@@ -92,11 +103,15 @@ bool Scheme::isProtected(const String &key) const {
 	return false;
 }
 
+const Set<const Field *> & Scheme::getForceInclude() const {
+	return forceInclude;
+}
+
 const Map<String, Field> & Scheme::getFields() const {
 	return fields;
 }
 
-const Field *Scheme::getField(const String &key) const {
+const Field *Scheme::getField(const StringView &key) const {
 	auto it = fields.find(key);
 	if (it != fields.end()) {
 		return &it->second;
@@ -142,7 +157,7 @@ const Field *Scheme::getForeignLink(const Field &f) const {
 	}
 	return nullptr;
 }
-const Field *Scheme::getForeignLink(const String &fname) const {
+const Field *Scheme::getForeignLink(const StringView &fname) const {
 	auto f = getField(fname);
 	if (f) {
 		return getForeignLink(*f);
@@ -155,7 +170,7 @@ bool Scheme::isAtomicPatch(const data::Value &val) const {
 		for (auto &it : val.asDict()) {
 			auto f = getField(it.first);
 			// extra field should use select-update
-			if (f && f->getType() == Type::Extra) {
+			if (f && (f->getType() == Type::Extra || forceInclude.find(f) != forceInclude.end())) {
 				return false;
 			}
 		}
@@ -165,11 +180,15 @@ bool Scheme::isAtomicPatch(const data::Value &val) const {
 }
 
 uint64_t Scheme::hash(ValidationLevel l) const {
-	apr::ostringstream stream;
+	StringStream stream;
 	for (auto &it : fields) {
 		it.second.hash(stream, l);
 	}
 	return std::hash<String>{}(stream.weak());
+}
+
+const Vector<Scheme::ViewScheme *> &Scheme::getViews() const {
+	return views;
 }
 
 bool Scheme::saveObject(Adapter *adapter, Object *obj) const {
@@ -185,8 +204,31 @@ bool Scheme::hasFiles() const {
 	return false;
 }
 
+static void prepareGetQuery(Query &query, uint64_t oid, bool forUpdate) {
+	query.select(oid);
+	if (forUpdate) {
+		query.forUpdate();
+	}
+}
+
+static void prepareGetQuery(Query &query, const String &alias, bool forUpdate) {
+	query.select(alias);
+	if (forUpdate) {
+		query.forUpdate();
+	}
+}
+
+static data::Value reduceGetQuery(data::Value &&ret) {
+	if (ret.isArray() && ret.size() >= 1) {
+		return ret.getValue(0);
+	}
+	return data::Value();
+}
+
 data::Value Scheme::get(Adapter *adapter, uint64_t oid, bool forUpdate) const {
-	return adapter->getObject(*this, oid, forUpdate);
+	Query query;
+	prepareGetQuery(query, oid, forUpdate);
+	return reduceGetQuery(adapter->selectObjects(*this, query));
 }
 
 data::Value Scheme::get(Adapter *adapter, const String &alias, bool forUpdate) const {
@@ -194,19 +236,19 @@ data::Value Scheme::get(Adapter *adapter, const String &alias, bool forUpdate) c
 		return data::Value();
 	}
 
-	return adapter->getObject(*this, alias, forUpdate);
+	Query query;
+	prepareGetQuery(query, alias, forUpdate);
+	return reduceGetQuery(adapter->selectObjects(*this, query));
 }
 
 data::Value Scheme::get(Adapter *adapter, const data::Value &id, bool forUpdate) const {
 	if (id.isDictionary()) {
-		auto oid = id.getInteger("__oid");
-		if (oid) {
+		if (auto oid = id.getInteger("__oid")) {
 			return get(adapter, oid, forUpdate);
 		}
 	} else {
 		if ((id.isString() && valid::validateNumber(id.getString())) || id.isInteger()) {
-			auto oid = id.getInteger();
-			if (oid) {
+			if (auto oid = id.getInteger()) {
 				return get(adapter, oid, forUpdate);
 			}
 		}
@@ -215,7 +257,82 @@ data::Value Scheme::get(Adapter *adapter, const data::Value &id, bool forUpdate)
 		if (!str.empty()) {
 			return get(adapter, str, forUpdate);
 		}
+	}
+	return data::Value();
+}
 
+data::Value Scheme::get(Adapter *adapter, uint64_t oid, std::initializer_list<StringView> &&fields, bool forUpdate) const {
+	Query query;
+	prepareGetQuery(query, oid, forUpdate);
+	for (auto &it : fields) {
+		if (auto f = getField(it)) {
+			query.include(String(f->getName()));
+		}
+	}
+	return reduceGetQuery(adapter->selectObjects(*this, query));
+}
+data::Value Scheme::get(Adapter *adapter, const String &alias, std::initializer_list<StringView> &&fields, bool forUpdate) const {
+	Query query;
+	prepareGetQuery(query, alias, forUpdate);
+	for (auto &it : fields) {
+		if (auto f = getField(it)) {
+			query.include(String(f->getName()));
+		}
+	}
+	return reduceGetQuery(adapter->selectObjects(*this, query));
+}
+data::Value Scheme::get(Adapter *adapter, const data::Value &id, std::initializer_list<StringView> &&fields, bool forUpdate) const {
+	if (id.isDictionary()) {
+		if (auto oid = id.getInteger("__oid")) {
+			return get(adapter, oid, move(fields), forUpdate);
+		}
+	} else {
+		if ((id.isString() && valid::validateNumber(id.getString())) || id.isInteger()) {
+			if (auto oid = id.getInteger()) {
+				return get(adapter, oid, move(fields), forUpdate);
+			}
+		}
+
+		auto &str = id.getString();
+		if (!str.empty()) {
+			return get(adapter, str, move(fields), forUpdate);
+		}
+	}
+	return data::Value();
+}
+
+data::Value Scheme::get(Adapter *adapter, uint64_t oid, std::initializer_list<const Field *> &&fields, bool forUpdate) const {
+	Query query;
+	prepareGetQuery(query, oid, forUpdate);
+	for (auto &it : fields) {
+		query.include(String(it->getName()));
+	}
+	return reduceGetQuery(adapter->selectObjects(*this, query));
+}
+data::Value Scheme::get(Adapter *adapter, const String &alias, std::initializer_list<const Field *> &&fields, bool forUpdate) const {
+	Query query;
+	prepareGetQuery(query, alias, forUpdate);
+	for (auto &it : fields) {
+		query.include(String(it->getName()));
+	}
+	return reduceGetQuery(adapter->selectObjects(*this, query));
+}
+data::Value Scheme::get(Adapter *adapter, const data::Value &id, std::initializer_list<const Field *> &&fields, bool forUpdate) const {
+	if (id.isDictionary()) {
+		if (auto oid = id.getInteger("__oid")) {
+			return get(adapter, oid, move(fields), forUpdate);
+		}
+	} else {
+		if ((id.isString() && valid::validateNumber(id.getString())) || id.isInteger()) {
+			if (auto oid = id.getInteger()) {
+				return get(adapter, oid, move(fields), forUpdate);
+			}
+		}
+
+		auto &str = id.getString();
+		if (!str.empty()) {
+			return get(adapter, str, move(fields), forUpdate);
+		}
 	}
 	return data::Value();
 }
@@ -292,8 +409,7 @@ data::Value Scheme::update(Adapter *adapter, uint64_t oid, const data::Value &da
 		if (isAtomicPatch(changeSet)) {
 			ret = adapter->patchObject(*this, oid, changeSet);
 		} else {
-			auto obj = adapter->getObject(*this, oid, true);
-			if (obj) {
+			if (auto obj = get(adapter, oid, true)) {
 				ret = updateObject(adapter, std::move(obj), changeSet);
 			}
 		}
@@ -411,6 +527,8 @@ Pair<bool, data::Value> Scheme::prepareUpdate(const data::Value &data, bool isPr
 }
 
 data::Value Scheme::updateObject(Adapter *adapter, data::Value && obj, data::Value &changeSet) const {
+	Vector<const ViewScheme *> viewsToUpdate; viewsToUpdate.reserve(views.size());
+
 	// apply changeset
 	Vector<String> updatedFields;
 	for (auto &it : changeSet.asDict()) {
@@ -425,22 +543,46 @@ data::Value Scheme::updateObject(Adapter *adapter, data::Value && obj, data::Val
 				obj.erase(it.first);
 			}
 			updatedFields.emplace_back(it.first);
+
+			if (forceInclude.find(f) != forceInclude.end()) {
+				for (auto &it : views) {
+					if (it->fields.find(f) != it->fields.end()) {
+						auto lb = std::lower_bound(viewsToUpdate.begin(), viewsToUpdate.end(), it);
+						if (lb == viewsToUpdate.end() && *lb != it) {
+							viewsToUpdate.emplace(lb, it);
+						}
+					}
+				}
+			}
 		}
 	}
 
-	if (adapter->saveObject(*this, obj.getInteger("__oid"), obj, updatedFields)) {
+	if (!viewsToUpdate.empty()) {
+		if (adapter->performInTransaction([&] {
+			if (adapter->saveObject(*this, obj.getInteger("__oid"), obj, updatedFields)) {
+				for (auto &it : viewsToUpdate) {
+					updateView(adapter, obj, it);
+				}
+				return true;
+			}
+			return false;
+		})) {
+			return obj;
+		}
+	} else if (adapter->saveObject(*this, obj.getInteger("__oid"), obj, updatedFields)) {
 		return obj;
 	}
+
 	return data::Value();
 }
 
-void Scheme::tryUpdate(Adapter *adapter, uint64_t id) const {
+void Scheme::touch(Adapter *adapter, uint64_t id) const {
 	data::Value patch;
 	transform(patch, TransformAction::Update);
 	patchOrUpdate(adapter, id, patch);
 }
 
-void Scheme::tryUpdate(Adapter *adapter, const data::Value & obj) const {
+void Scheme::touch(Adapter *adapter, const data::Value & obj) const {
 	data::Value patch;
 	transform(patch, TransformAction::Update);
 	patchOrUpdate(adapter, obj, patch);
@@ -451,8 +593,7 @@ data::Value Scheme::patchOrUpdate(Adapter *adapter, uint64_t id, data::Value & p
 		if (isAtomicPatch(patch)) {
 			return adapter->patchObject(*this, id, patch);
 		} else {
-			auto obj = adapter->getObject(*this, id, true);
-			if (obj) {
+			if (auto obj = get(adapter, id, true)) {
 				return updateObject(adapter, std::move(obj), patch);
 			}
 		}
@@ -574,7 +715,6 @@ data::Value Scheme::setProperty(Adapter *a, uint64_t oid, const Field &f, data::
 	if (f.transform(*this, v)) {
 		data::Value ret;
 		a->performInTransaction([&] () -> bool {
-			tryUpdate(a, oid);
 			ret = a->setProperty(*this, oid, f, std::move(v));
 			return !ret.isNull();
 		});
@@ -590,7 +730,6 @@ data::Value Scheme::setProperty(Adapter *a, const data::Value &obj, const Field 
 	if (f.transform(*this, v)) {
 		data::Value ret;
 		a->performInTransaction([&] () -> bool {
-			tryUpdate(a, obj);
 			ret = a->setProperty(*this, obj, f, std::move(v));
 			return !ret.isNull();
 		});
@@ -630,7 +769,6 @@ data::Value Scheme::setProperty(Adapter *a, const data::Value &obj, const Field 
 bool Scheme::clearProperty(Adapter *a, uint64_t oid, const Field &f, data::Value &&objs) const {
 	if (!f.hasFlag(Flags::Required)) {
 		return a->performInTransaction([&] () -> bool {
-			tryUpdate(a, oid);
 			return a->clearProperty(*this, oid, f, move(objs));
 		});
 	}
@@ -639,7 +777,6 @@ bool Scheme::clearProperty(Adapter *a, uint64_t oid, const Field &f, data::Value
 bool Scheme::clearProperty(Adapter *a, const data::Value &obj, const Field &f, data::Value &&objs) const {
 	if (!f.hasFlag(Flags::Required)) {
 		return a->performInTransaction([&] () -> bool {
-			tryUpdate(a, obj);
 			return a->clearProperty(*this, obj, f, move(objs));
 		});
 	}
@@ -651,7 +788,6 @@ data::Value Scheme::appendProperty(Adapter *a, uint64_t oid, const Field &f, dat
 		if (f.transform(*this, v)) {
 			data::Value ret;
 			a->performInTransaction([&] () -> bool {
-				tryUpdate(a, oid);
 				ret = a->appendProperty(*this, oid, f, std::move(v));
 				return !ret.isNull();
 			});
@@ -665,7 +801,6 @@ data::Value Scheme::appendProperty(Adapter *a, const data::Value &obj, const Fie
 		if (f.transform(*this, v)) {
 			data::Value ret;
 			a->performInTransaction([&] () -> bool {
-				tryUpdate(a, obj);
 				ret = a->appendProperty(*this, obj, f, std::move(v));
 				return !ret.isNull();
 			});
@@ -887,6 +1022,134 @@ void Scheme::purgeFilePatch(Adapter *adapter, const data::Value &patch) const {
 	for (auto &it : patch.asDict()) {
 		if (auto f = getField(it.first)) {
 			File::purgeFile(adapter, *f, it.second);
+		}
+	}
+}
+
+void Scheme::addView(const Scheme *s, const Field *f) {
+	views.emplace_back(new ViewScheme{s, f});
+	auto viewScheme = views.back();
+	if (auto view = static_cast<const FieldView *>(f->getSlot())) {
+		bool linked = false;
+		for (auto &it : view->requires) {
+			auto fit = fields.find(it);
+			if (fit != fields.end()) {
+				if (fit->second.getType() == Type::Object && !view->linkage && !linked) {
+					// try to autolink from required field
+					auto nextSlot = static_cast<const FieldObject *>(fit->second.getSlot());
+					if (nextSlot->scheme == s) {
+						viewScheme->autoLink = &fit->second;
+						linked = true;
+					}
+				}
+				viewScheme->fields.emplace(&fit->second);
+				forceInclude.emplace(&fit->second);
+			} else {
+				messages::error("Scheme", "Field for view not foumd", data::Value{
+					pair("view", data::Value(toString(s->getName(), ".", f->getName()))),
+					pair("field", data::Value(toString(getName(), ".", it)))
+				});
+			}
+		}
+		if (!view->linkage && !linked) {
+			// try to autolink from other fields
+			for (auto &it : fields) {
+				auto &field = it.second;
+				if (field.getType() == Type::Object) {
+					auto nextSlot = static_cast<const FieldObject *>(field.getSlot());
+					if (nextSlot->scheme == s) {
+						viewScheme->autoLink = &field;
+						viewScheme->fields.emplace(&field);
+						forceInclude.emplace(&field);
+						linked = true;
+						break;
+					}
+				}
+			}
+		}
+		if (!linked) {
+			messages::error("Scheme", "Field to autolink view field", data::Value{
+				pair("view", data::Value(toString(s->getName(), ".", f->getName()))),
+			});
+		}
+	}
+}
+
+void Scheme::updateView(Adapter *adapter, const data::Value & obj, const ViewScheme *scheme) const {
+	auto view = static_cast<const FieldView *>(scheme->viewField->getSlot());
+	if (!view->viewFn) {
+		return;
+	}
+
+	auto objId = obj.getInteger("__oid");
+	adapter->removeFromView(*view, scheme->scheme, objId);
+
+	Vector<uint64_t> ids; ids.reserve(1);
+	if (view->linkage) {
+		ids = view->linkage(*scheme->scheme, *this, obj);
+	} else if (scheme->autoLink) {
+		if (auto id = obj.getInteger(scheme->autoLink->getName())) {
+			ids.push_back(id);
+		}
+	}
+
+	Vector<data::Value> val = view->viewFn(*this, obj);
+	for (auto &it : val) {
+		if (it.isBool() && it.asBool()) {
+			it = data::Value(data::Value::Type::DICTIONARY);
+		}
+
+		if (it.isDictionary()) {
+			// drop not existed fields
+			auto &dict = it.asDict();
+			auto d_it = dict.begin();
+			while (d_it != dict.end()) {
+				auto f_it = view->fields.find(d_it->first);
+				if (f_it == view->fields.end()) {
+					d_it = dict.erase(d_it);
+				} else {
+					d_it ++;
+				}
+			}
+
+			// write defaults
+			for (auto &f_it : view->fields) {
+				auto &field = f_it.second;
+				if (field.hasFlag(Flags::AutoMTime) || field.hasFlag(Flags::AutoCTime)) {
+					it.setInteger(Time::now().toMicroseconds(), f_it.first);
+				} else if (field.hasDefault() && !it.hasValue(f_it.first)) {
+					it.setValue(field.getDefault(), f_it.first);
+				}
+			}
+
+			// transform
+			d_it = dict.begin();
+			while (d_it != dict.end()) {
+				auto &field = view->fields.at(d_it->first);
+				if (d_it->second.isNull() || !field.isSimpleLayout()) {
+					d_it ++;
+				} else if (!field.transform(*this, d_it->second)) {
+					d_it = dict.erase(d_it);
+				} else {
+					d_it ++;
+				}
+			}
+
+			it.setInteger(objId, toString(getName(), "_id"));
+		} else {
+			it = nullptr;
+		}
+	}
+
+	for (auto &id : ids) {
+		for (auto &it : val) {
+			if (it) {
+				if (scheme->scheme) {
+					it.setInteger(id, toString(scheme->scheme->getName(), "_id"));
+				}
+
+				adapter->addToView(*view, scheme->scheme, id, it);
+			}
 		}
 	}
 }

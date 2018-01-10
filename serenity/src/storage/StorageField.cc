@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -46,6 +43,9 @@ bool Field::isReference() const {
 const Scheme * Field::getForeignScheme() const {
 	if (slot->type == Type::Object || slot->type == Type::Set) {
 		auto ref = static_cast<const FieldObject *>(slot);
+		return ref->scheme;
+	} else if (slot->type == Type::View) {
+		auto ref = static_cast<const FieldView *>(slot);
 		return ref->scheme;
 	}
 	return nullptr;

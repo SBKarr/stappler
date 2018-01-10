@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,17 @@ NS_SA_EXT_BEGIN(storage)
 
 class Scheme : public AllocPool {
 public:
+	struct ViewScheme : AllocPool {
+		const Scheme *scheme = nullptr;
+		const Field *viewField = nullptr;
+		Set<const Field *> fields;
+		const Field *autoLink = nullptr;
+
+		ViewScheme(const Scheme *s, const Field *v) : scheme(s), viewField(v) { }
+	};
+
+	static bool initSchemes(Server &serv, const Map<String, const Scheme *> &);
+
 	Scheme(const String &name);
 	Scheme(const String &name, std::initializer_list<Field> il);
 
@@ -43,17 +54,18 @@ public:
 	const String &getName() const;
 	bool hasAliases() const;
 
-	bool isProtected(const String &) const;
+	bool isProtected(const StringView &) const;
 	bool saveObject(Adapter *, Object *) const;
 
 	bool hasFiles() const;
 
+	const Set<const Field *> & getForceInclude() const;
 	const Map<String, Field> & getFields() const;
-	const Field *getField(const String &str) const;
+	const Field *getField(const StringView &str) const;
 
 	const Field *getForeignLink(const FieldObject *f) const;
 	const Field *getForeignLink(const Field &f) const;
-	const Field *getForeignLink(const String &f) const;
+	const Field *getForeignLink(const StringView &f) const;
 
 	size_t getMaxRequestSize() const { return maxRequestSize; }
 	size_t getMaxVarSize() const { return maxRequestSize; }
@@ -63,6 +75,8 @@ public:
 
 	uint64_t hash(ValidationLevel l = ValidationLevel::NamesAndTypes) const;
 
+	const Vector<ViewScheme *> &getViews() const;
+
 public:// CRUD functions
 	// returns Dictionary with single object data or Null value
 	data::Value create(Adapter *, const data::Value &data, bool isProtected = false) const;
@@ -70,6 +84,14 @@ public:// CRUD functions
 	data::Value get(Adapter *, uint64_t oid, bool forUpdate = false) const;
 	data::Value get(Adapter *, const String &alias, bool forUpdate = false) const;
 	data::Value get(Adapter *, const data::Value &id, bool forUpdate = false) const;
+
+	data::Value get(Adapter *, uint64_t oid, std::initializer_list<StringView> &&fields, bool forUpdate = false) const;
+	data::Value get(Adapter *, const String &alias, std::initializer_list<StringView> &&fields, bool forUpdate = false) const;
+	data::Value get(Adapter *, const data::Value &id, std::initializer_list<StringView> &&fields, bool forUpdate = false) const;
+
+	data::Value get(Adapter *, uint64_t oid, std::initializer_list<const Field *> &&fields, bool forUpdate = false) const;
+	data::Value get(Adapter *, const String &alias, std::initializer_list<const Field *> &&fields, bool forUpdate = false) const;
+	data::Value get(Adapter *, const data::Value &id, std::initializer_list<const Field *> &&fields, bool forUpdate = false) const;
 
 	data::Value update(Adapter *, uint64_t oid, const data::Value &data, bool isProtected = false) const;
 	data::Value update(Adapter *, const data::Value & obj, const data::Value &data, bool isProtected = false) const;
@@ -81,6 +103,9 @@ public:// CRUD functions
 
 	size_t count(Adapter *) const;
 	size_t count(Adapter *, const Query &) const;
+
+	void touch(Adapter *adapter, uint64_t id) const;
+	void touch(Adapter *adapter, const data::Value & obj) const;
 
 public:
 	data::Value getProperty(Adapter *, uint64_t oid, const String &, const Set<const Field *> & = Set<const Field *>()) const;
@@ -113,6 +138,8 @@ public:
 	data::Value appendProperty(Adapter *, const data::Value &, const Field &, data::Value &&) const;
 
 protected:
+	void addView(const Scheme *, const Field *);
+
 	data::Value createFilePatch(Adapter *, const data::Value &val) const;
 	void purgeFilePatch(Adapter *, const data::Value &) const;
 	void mergeValues(const Field &f, data::Value &original, data::Value &newVal) const;
@@ -120,8 +147,6 @@ protected:
 	Pair<bool, data::Value> prepareUpdate(const data::Value &data, bool isProtected) const;
 	data::Value updateObject(Adapter *, data::Value && obj, data::Value &data) const;
 
-	void tryUpdate(Adapter *adapter, uint64_t id) const;
-	void tryUpdate(Adapter *adapter, const data::Value & obj) const;
 	data::Value patchOrUpdate(Adapter *adapter, uint64_t id, data::Value & patch) const;
 	data::Value patchOrUpdate(Adapter *adapter, const data::Value & obj, data::Value & patch) const;
 
@@ -154,6 +179,8 @@ protected:
 	bool validateHint(const String &alias, const data::Value &);
 	bool validateHint(const data::Value &);
 
+	void updateView(Adapter *, const data::Value &, const ViewScheme *) const;
+
 	Map<String, Field> fields;
 	String name;
 
@@ -162,6 +189,9 @@ protected:
 	size_t maxRequestSize = 0;
 	size_t maxVarSize = 256;
 	size_t maxFileSize = 0;
+
+	Vector<ViewScheme *> views;
+	Set<const Field *> forceInclude;
 };
 
 NS_SA_EXT_END(storage)

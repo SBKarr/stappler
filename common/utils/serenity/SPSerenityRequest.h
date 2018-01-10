@@ -112,6 +112,8 @@ public:
 
 	Query & depth(uint16_t);
 
+	Query & forUpdate();
+
 	bool empty() const;
 
 	uint64_t getSelectOid() const;
@@ -132,6 +134,7 @@ public:
 	bool hasOffset() const;
 	bool hasDelta() const;
 	bool hasFields() const;
+	bool isForUpdate() const;
 
 	uint64_t getDeltaToken() const;
 
@@ -159,6 +162,7 @@ protected:
 
 	FieldsVec fieldsInclude;
 	FieldsVec fieldsExclude;
+	bool update = false;
 };
 
 class SerenityRequest {

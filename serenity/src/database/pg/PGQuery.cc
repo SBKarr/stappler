@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -230,43 +230,51 @@ static void ExecQuery_writeJoin(ExecQuery::SelectFrom &s, const String &sqName, 
 	});
 }
 
-ExecQuery::Select &ExecQuery::writeSelectFields(const Scheme &scheme, ExecQuery::Select &sel, const Set<const storage::Field *> &fields, const String &source) {
+ExecQuery::Select &ExecQuery::writeSelectFields(const Scheme &scheme, ExecQuery::Select &sel, const Set<const storage::Field *> &fields, const StringView &source) {
 	if (!fields.empty()) {
-		sel.field(ExecQuery::Field(source, "__oid"));
+		if (!source.empty()) { sel.field(ExecQuery::Field(source, "__oid")); } else { sel.field(ExecQuery::Field("__oid")); }
 		for (auto &it : fields) {
 			if (it != nullptr) {
 				auto type = it->getType();
-				if (type != storage::Type::Set && type != storage::Type::Array) {
-					sel.field(ExecQuery::Field(source, it->getName()));
+				if (type != storage::Type::Set && type != storage::Type::Array && type != storage::Type::View) {
+					if (!source.empty()) { sel.field(ExecQuery::Field(source, it->getName())); } else { sel.field(ExecQuery::Field(it->getName())); }
 				}
 			}
 		}
 		for (auto &it : scheme.getFields()) {
 			if (it.second.hasFlag(Flags::ForceInclude) && fields.find(&it.second) == fields.end()) {
-				sel.field(ExecQuery::Field(source, it.first));
+				if (!source.empty()) { sel.field(ExecQuery::Field(source, it.first)); } else { sel.field(ExecQuery::Field(it.first)); }
+			}
+		}
+		for (auto &it : scheme.getForceInclude()) {
+			if (fields.find(it) == fields.end()) {
+				if (!source.empty()) { sel.field(ExecQuery::Field(source, it->getName())); } else { sel.field(ExecQuery::Field(it->getName())); }
 			}
 		}
 	} else {
-		sel.field(ExecQuery::Field::all(source));
+		if (!source.empty()) { sel.field(ExecQuery::Field::all(source)); } else { sel.field(ExecQuery::Field::all()); }
 	}
 	return sel;
 }
 
-auto ExecQuery::writeSelectFrom(GenericQuery &q, const QueryList::Item &item, bool idOnly, const String &schemeName, const String &fieldName) -> SelectFrom {
+auto ExecQuery::writeSelectFrom(GenericQuery &q, const QueryList::Item &item, bool idOnly, const StringView &schemeName, const StringView &fieldName) -> SelectFrom {
 	if (idOnly) {
 		return q.select(ExecQuery::Field(schemeName, fieldName).as("id")).from(schemeName);
 	}
 
 	auto sel = q.select();
 	auto &fields = item.getQueryFields();
-	return writeSelectFields(*item.scheme, sel, fields, schemeName).from(schemeName);
+
+	auto s = writeSelectFields(*item.scheme, sel, fields, schemeName);
+	return s.from(schemeName);
 }
 
 void ExecQuery::writeQueryListItem(GenericQuery &q, const QueryList &list, size_t idx, bool idOnly, const storage::Field *field) {
 	auto &items = list.getItems();
 	const QueryList::Item &item = items.at(idx);
-
 	const storage::Field *sourceField = nullptr;
+	const storage::FieldView *viewField = nullptr;
+	String refQueryTag;
 	if (idx > 0) {
 		sourceField = items.at(idx - 1).field;
 	}
@@ -274,7 +282,13 @@ void ExecQuery::writeQueryListItem(GenericQuery &q, const QueryList &list, size_
 	if (idx > 0 && !item.ref && sourceField && sourceField->getType() != storage::Type::Object) {
 		String prevSq = toString("sq", idx - 1);
 		const QueryList::Item &prevItem = items.at(idx - 1);
-		String tname = toString(prevItem.scheme->getName(), "_f_", prevItem.field->getName());
+
+		if (sourceField->getType() == storage::Type::View) {
+			viewField = static_cast<const FieldView *>(sourceField->getSlot());
+		}
+		String tname = viewField
+				? toString(prevItem.scheme->getName(), "_f_", prevItem.field->getName(), "_view")
+				: toString(prevItem.scheme->getName(), "_f_", prevItem.field->getName());
 
 		String targetIdField = toString(item.scheme->getName(), "_id");
 		String sourceIdField = toString(prevItem.scheme->getName(), "_id");
@@ -288,10 +302,10 @@ void ExecQuery::writeQueryListItem(GenericQuery &q, const QueryList &list, size_
 			return;
 		}
 
-		q.with(toString("sq", idx, "_ref"), [&] (GenericQuery &sq) {
+		refQueryTag = toString("sq", idx, "_ref");
+		q.with(refQueryTag, [&] (GenericQuery &sq) {
 			sq.select(ExecQuery::Field(targetIdField).as("id"))
-					.from(tname)
-					.innerJoinOn(prevSq, [&] (WhereBegin &w) {
+					.from(tname).innerJoinOn(prevSq, [&] (WhereBegin &w) {
 				w.where(ExecQuery::Field(sourceIdField), Comparation::Equal, ExecQuery::Field(prevSq, "id"));
 			});
 		});
@@ -304,10 +318,10 @@ void ExecQuery::writeQueryListItem(GenericQuery &q, const QueryList &list, size_
 
 	auto s = writeSelectFrom(q, item, idOnly, schemeName, fieldName);
 	if (idx > 0) {
-		if (item.ref || !sourceField || sourceField->getType() == storage::Type::Object) {
+		if (refQueryTag.empty()) {
 			ExecQuery_writeJoin(s, toString("sq", idx - 1), item.scheme->getName(), item);
 		} else {
-			ExecQuery_writeJoin(s, toString(toString("sq", idx, "_ref")), item.scheme->getName(), item);
+			ExecQuery_writeJoin(s, refQueryTag, item.scheme->getName(), item);
 		}
 	}
 	writeQueryReqest(s, item);
@@ -315,8 +329,12 @@ void ExecQuery::writeQueryListItem(GenericQuery &q, const QueryList &list, size_
 
 void ExecQuery::writeQueryList(const QueryList &list, bool idOnly, size_t count) {
 	const QueryList::Item &item = list.getItems().back();
-	if (list.isDeltaApplicable() && item.query.hasDelta()) {
-		writeQueryDelta(*item.scheme, Time::microseconds(item.query.getDeltaToken()), item.fields.getResolves(), false);
+	if (item.query.hasDelta() && list.isDeltaApplicable()) {
+		if (!list.isView()) {
+			writeQueryDelta(*item.scheme, Time::microseconds(item.query.getDeltaToken()), item.fields.getResolves(), false);
+		} else {
+			writeQueryViewDelta(list, Time::microseconds(item.query.getDeltaToken()), item.fields.getResolves(), false);
+		}
 		return;
 	} else if (item.query.hasDelta()) {
 		messages::error("Query", "Delta is not applicable for this query");
@@ -394,14 +412,84 @@ void ExecQuery::writeQueryDelta(const Scheme &scheme, const Time &time, const Se
 	} else {
 		s.field(Field("t", "__oid"));
 	}
-	s.fields(
-			Field("d", "action").as("__d_action"),
-			Field("d", "time").as("__d_time"),
-			Field("d", "object").as("__d_object"))
+	s.fields(Field("d", "action").as("__d_action"), Field("d", "time").as("__d_time"), Field("d", "object").as("__d_object"))
 		.from(Field(scheme.getName()).as("t"))
 		.rightJoinOn("d", [&] (ExecQuery::WhereBegin &w) {
 			w.where(Field("d", "object"), Comparation::Equal, Field("t", "__oid"));
 	});
+}
+
+void ExecQuery::writeQueryViewDelta(const QueryList &list, const Time &time, const Set<const storage::Field *> &fields, bool idOnly) {
+	auto &items = list.getItems();
+	const QueryList::Item &item = items.back();
+	auto prevScheme = items.size() > 1 ? items.at(items.size() - 2).scheme : nullptr;
+	auto viewField = items.size() > 1 ? items.at(items.size() - 2).field : items.back().field;
+	auto view = static_cast<const FieldView *>(viewField->getSlot());
+
+	GenericQuery q(this);
+	const Scheme &scheme = *item.scheme;
+	String deltaName = toString(prevScheme->getName(), "_f_", view->name, "_delta");
+	String viewName = toString(prevScheme->getName(), "_f_", view->name, "_view");
+	auto s = q.with("dv", [&] (ExecQuery::GenericQuery &sq) {
+		uint64_t id = 0;
+		String sqName;
+		// optimize id-only
+		if (items.size() != 2 || items.front().query.getSelectOid() == 0) {
+			size_t i = 0;
+			for (; i < items.size() - 1; ++ i) {
+				sq.with(toString("sq", i), [&] (GenericQuery &sq) {
+					writeQueryListItem(sq, list, i, true);
+				});
+			}
+			sqName = toString("sq", i - 1);
+		} else {
+			id = items.front().query.getSelectOid();
+		}
+
+		sq.with("d", [&] (ExecQuery::GenericQuery &sq) {
+			if (id) {
+				sq.select()
+					.aggregate("max", Field("time").as("time"))
+					.field("object")
+					.field("tag")
+					.from(deltaName)
+					.where(ExecQuery::Field("tag"), Comparation::Equal, id)
+					.where(Operator::And, "time", Comparation::GreatherThen, time.toMicroseconds())
+					.group("object").field("tag");
+			} else {
+				sq.select()
+					.aggregate("max", Field("time").as("time"))
+					.field("object")
+					.field(Field(sqName, "id").as("tag"))
+					.from(deltaName)
+					.innerJoinOn(sqName, [&] (ExecQuery::WhereBegin &w) {
+					if (id) {
+					} else {
+						w.where(ExecQuery::Field(deltaName, "tag"), Comparation::Equal, ExecQuery::Field(sqName, "id"));
+					}
+				})
+					.where("time", Comparation::GreatherThen, time.toMicroseconds())
+					.group("object").field(ExecQuery::Field(sqName, "id"));;
+			}
+		}).select().fields(Field("d", "time"), Field("d", "object"), Field("__vid"))
+			.from(viewName).rightJoinOn("d", [&] (ExecQuery::WhereBegin &w) {
+				w.where(ExecQuery::Field("d", "tag"), Comparation::Equal, ExecQuery::Field(viewName, toString(prevScheme->getName(), "_id")))
+						.where(Operator::And, ExecQuery::Field("d", "object"), Comparation::Equal, ExecQuery::Field(viewName, toString(scheme.getName(), "_id")));
+			});
+	}).select();
+
+	if (!idOnly) {
+		writeSelectFields(scheme, s, fields, "t");
+	} else {
+		s.field(Field("t", "__oid"));
+	}
+	s.fields(Field("dv", "time").as("__d_time"), Field("dv", "object").as("__d_object"), Field("dv", "__vid"))
+		.from(Field(view->scheme->getName()).as("t"))
+		.innerJoinOn("dv", [&] (ExecQuery::WhereBegin &w) {
+			w.where(Field("dv", "object"), Comparation::Equal, Field("t", "__oid"));
+	});
+
+	std::cout << stream.weak() << "\n";
 }
 
 const StringStream &ExecQuery::getQuery() const {
@@ -432,7 +520,7 @@ ResultRow & ResultRow::operator=(const ResultRow &other) noexcept {
 size_t ResultRow::size() const {
 	return result->_nfields;
 }
-data::Value ResultRow::toData(const Scheme &scheme) {
+data::Value ResultRow::toData(const Scheme &scheme, const Map<String, Field> &viewFields) {
 	data::Value row;
 	data::Value *deltaPtr = nullptr;
 	for (size_t i = 0; i < result->_nfields; i++) {
@@ -441,6 +529,8 @@ data::Value ResultRow::toData(const Scheme &scheme) {
 			if (!isNull(i)) {
 				row.setInteger(toInteger(i), n.str());
 			}
+		} else if (n == "__vid") {
+			row.setInteger(isNull(i)?int64_t(0):toInteger(i), n.str());
 		} else if (n == "__d_action") {
 			if (!deltaPtr) {
 				deltaPtr = &row.emplace("__delta");
@@ -461,9 +551,13 @@ data::Value ResultRow::toData(const Scheme &scheme) {
 			}
 			deltaPtr->setInteger(toInteger(i), "time");
 		} else if (!isNull(i)) {
-			auto f_it = scheme.getField(String::make_weak(n.data(), n.size()));
-			if (f_it) {
+			if (auto f_it = scheme.getField(n)) {
 				row.setValue(toData(i, *f_it), n.str());
+			} else {
+				auto ef_it = viewFields.find(n);
+				if (ef_it != viewFields.end()) {
+					row.setValue(toData(i, ef_it->second), n.str());
+				}
 			}
 		}
 	}
@@ -710,6 +804,11 @@ data::Value Result::decode(const Field &field) const {
 			auto &arrF = static_cast<const FieldArray *>(field.getSlot())->tfield;
 			for (auto it : *this) {
 				ret.addValue(it.toData(0, arrF));
+			}
+		} else if (field.getType() == Type::View) {
+			auto v = static_cast<const FieldView *>(field.getSlot());
+			for (auto it : *this) {
+				ret.addValue(it.toData(*v->scheme, v->fields));
 			}
 		} else {
 			for (auto it : *this) {

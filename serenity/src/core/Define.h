@@ -40,6 +40,7 @@ enum class ResourceType {
 	ReferenceSet,
 	Object,
 	Set,
+	View,
 	File,
 	Array
 };

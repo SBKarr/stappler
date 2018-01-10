@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -268,9 +265,24 @@ struct HistoryCmd : ResourceCmd {
 			time = testTime;
 		}
 
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+
+		StringView field; uint64_t tag = 0;
+		if (!r.empty()) {
+			field = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+			tag = r.readInteger();
+		}
+
 		if (auto s = acquireScheme(h, schemeName)) {
 			if (auto a = dynamic_cast<pg::Handle *>(h.storage())) {
-				h.sendData(a->getHistory(*s, Time::microseconds(time), true));
+				if (field.empty()) {
+					h.sendData(a->getHistory(*s, Time::microseconds(time), true));
+				} else if (auto f = s->getField(field)) {
+					if (f->getType() == storage::Type::View) {
+						h.sendData(a->getHistory(*static_cast<const storage::FieldView *>(f->getSlot()), s, tag, Time::microseconds(time), true));
+					}
+				}
 				return true;
 			}
 		}
@@ -280,10 +292,10 @@ struct HistoryCmd : ResourceCmd {
 	}
 
 	virtual const String desc() const {
-		return "<scheme> <time> - Changelog for scheme"_weak;
+		return "<scheme> <time> [<field> <tag>] - Changelog for scheme or view"_weak;
 	}
 	virtual const String help() const {
-		return "<scheme> <time> - Changelog for scheme"_weak;
+		return "<scheme> <time> [<field> <tag>] - Changelog for scheme or view"_weak;
 	}
 };
 
@@ -300,9 +312,24 @@ struct DeltaCmd : ResourceCmd {
 			time = testTime;
 		}
 
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+
+		StringView field; uint64_t tag = 0;
+		if (!r.empty()) {
+			field = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+			tag = r.readInteger();
+		}
+
 		if (auto s = acquireScheme(h, schemeName)) {
 			if (auto a = dynamic_cast<pg::Handle *>(h.storage())) {
-				h.sendData(a->getDeltaData(*s, Time::microseconds(time)));
+				if (field.empty()) {
+					h.sendData(a->getDeltaData(*s, Time::microseconds(time)));
+				} else if (auto f = s->getField(field)) {
+					if (f->getType() == storage::Type::View) {
+						h.sendData(a->getDeltaData(*s, *static_cast<const storage::FieldView *>(f->getSlot()), Time::microseconds(time), tag));
+					}
+				}
 				return true;
 			}
 		}
@@ -312,10 +339,10 @@ struct DeltaCmd : ResourceCmd {
 	}
 
 	virtual const String desc() const {
-		return "<scheme> <time> - Delta for scheme"_weak;
+		return "<scheme> <time> [<field> <tag>] - Delta for scheme"_weak;
 	}
 	virtual const String help() const {
-		return "<scheme> <time> - Delta for scheme"_weak;
+		return "<scheme> <time> [<field> <tag>] - Delta for scheme"_weak;
 	}
 };
 

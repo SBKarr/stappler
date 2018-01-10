@@ -45,19 +45,23 @@ endif
 
 BUILD_OUTDIR := $(BUILD_OUTDIR)/local
 
-
 BUILD_SRCS := \
-	$(foreach dir,$(LOCAL_SRCS_DIRS),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.cpp')) \
-	$(foreach dir,$(LOCAL_SRCS_DIRS),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.c')) \
-	$(addprefix $(LOCAL_ROOT)/,$(LOCAL_SRCS_OBJS))
+	$(foreach dir,$(filter /%,$(LOCAL_SRCS_DIRS)),$(shell find $(dir) -name '*.cpp')) \
+	$(foreach dir,$(filter /%,$(LOCAL_SRCS_DIRS)),$(shell find $(dir) -name '*.c')) \
+	$(filter /%,$(LOCAL_SRCS_OBJS)) \
+	$(foreach dir,$(filter-out /%,$(LOCAL_SRCS_DIRS)),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.cpp')) \
+	$(foreach dir,$(filter-out /%,$(LOCAL_SRCS_DIRS)),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.c')) \
+	$(addprefix $(LOCAL_ROOT)/,$(filter-out /%,$(LOCAL_SRCS_OBJS)))
 
 ifeq ($(OBJC),1)
 BUILD_SRCS += $(foreach dir,$(LOCAL_SRCS_DIRS),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.mm'))
 endif
 
 BUILD_INCLUDES := \
-	$(foreach dir,$(LOCAL_INCLUDES_DIRS),$(shell find $(LOCAL_ROOT)/$(dir) -type d)) \
-	$(addprefix $(LOCAL_ROOT)/,$(LOCAL_INCLUDES_OBJS)) \
+	$(foreach dir,$(filter /%,$(LOCAL_INCLUDES_DIRS)),$(shell find $(dir) -type d)) \
+	$(filter /%,$(LOCAL_INCLUDES_OBJS)) \
+	$(foreach dir,$(filter-out /%,$(LOCAL_INCLUDES_DIRS)),$(shell find $(LOCAL_ROOT)/$(dir) -type d)) \
+	$(addprefix $(LOCAL_ROOT)/,$(filter-out /%,$(LOCAL_INCLUDES_OBJS))) \
 	$(LOCAL_ABSOLUTE_INCLUDES)
 
 
@@ -194,7 +198,7 @@ clean_local:
 
 .preclean:
 	$(GLOBAL_RM) $(LOCAL_OUTPUT_EXECUTABLE) $(LOCAL_OUTPUT_LIBRARY)
-	
+
 .prebuild_local:
 	@echo "=== Begin build ==="
 	@$(GLOBAL_MKDIR) $(BUILD_DIRS)

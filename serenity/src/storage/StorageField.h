@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -44,6 +44,7 @@ enum class Type {
 	Array, // set of raw data::Value
 	File,
 	Image,
+	View, // immutable predicate-based reference set of objects
 };
 
 inline bool checkIfComparationIsValid(Type t, Comparation c) {
@@ -105,8 +106,8 @@ enum class Linkage {
 
 using MinLength = ValueWrapper<size_t, class MinLengthTag>; // min utf8 length for string
 using MaxLength = ValueWrapper<size_t, class MaxLengthTag>; // max utf8 length for string
-using PasswordSalt = ValueWrapper<apr::string, class PasswordSaltTag>; // hashing salt for password
-using ForeignLink = ValueWrapper<apr::string, class ForeignLinkTag>; // hashing salt for password
+using PasswordSalt = ValueWrapper<String, class PasswordSaltTag>; // hashing salt for password
+using ForeignLink = ValueWrapper<String, class ForeignLinkTag>; // hashing salt for password
 
 // policy for images, that do not match bounds
 enum class ImagePolicy {
@@ -158,6 +159,9 @@ enum class RemovePolicy {
 using FilterFn = Function<bool(const Scheme &, data::Value &)>;
 using DefaultFn = Function<data::Value()>;
 
+using ViewLinkageFn = Function<Vector<uint64_t>(const Scheme &targetScheme, const Scheme &objScheme, const data::Value &obj)>;
+using ViewFn = Function<Vector<data::Value>(const Scheme &objScheme, const data::Value &obj)>;
+
 class Field : public AllocPool {
 public:
 	template <typename ... Args> static Field Data(String && name, Args && ... args);
@@ -173,6 +177,7 @@ public:
 	template <typename ... Args> static Field Object(String &&name, Args && ... args);
 	template <typename ... Args> static Field Set(String && name, Args && ... args);
 	template <typename ... Args> static Field Array(String && name, Args && ... args);
+	template <typename ... Args> static Field View(String && name, Args && ... args);
 
 	struct Slot : public AllocPool {
 	public:
@@ -195,9 +200,9 @@ public:
 			setOptions(f, std::forward<Args>(args)...);
 		};
 
-		Slot(apr::string && n, Type t) : name(n), type(t) { }
+		Slot(String && n, Type t) : name(n), type(t) { }
 
-		const apr::string &getName() const { return name; }
+		const String &getName() const { return name; }
 		bool hasFlag(Flags f) const { return ((flags & f) != Flags::None); }
 		Type getType() const { return type; }
 		bool isProtected() const;
@@ -216,7 +221,7 @@ public:
 		bool isFile() const { return type == Type::File || type == Type::Image; }
 
 		virtual bool transformValue(const Scheme &, data::Value &) const;
-		virtual void hash(apr::ostringstream &stream, ValidationLevel l) const;
+		virtual void hash(StringStream &stream, ValidationLevel l) const;
 
 		data::Value def;
 		String name;
@@ -227,7 +232,7 @@ public:
 		DefaultFn defaultFn;
 	};
 
-	const apr::string &getName() const { return slot->getName(); }
+	const String &getName() const { return slot->getName(); }
 	Type getType() const { return slot->getType(); }
 	Transform getTransform() const { return slot->getTransform(); }
 	data::Value getDefault() const { return slot->getDefault(); }
@@ -243,7 +248,7 @@ public:
 	bool isReference() const;
 	const Scheme * getForeignScheme() const;
 
-	void hash(apr::ostringstream &stream, ValidationLevel l) const { slot->hash(stream, l); }
+	void hash(StringStream &stream, ValidationLevel l) const { slot->hash(stream, l); }
 
 	bool transform(const Scheme &, data::Value &) const;
 
@@ -253,7 +258,7 @@ public:
 
 	data::Value getTypeDesc() const;
 
-	Field(Slot *s) : slot(s) { }
+	Field(const Slot *s) : slot(s) { }
 
 	Field(const Field & s) = default;
 	Field &operator=(const Field & s) = default;
@@ -270,12 +275,12 @@ struct FieldText : Field::Slot {
 	virtual ~FieldText() { }
 
 	template <typename ... Args>
-	FieldText(apr::string && n, Type t, Args && ... args) : Field::Slot(std::move(n), t) {
+	FieldText(String && n, Type t, Args && ... args) : Field::Slot(move(n), t) {
 		init<FieldText, Args...>(*this, std::forward<Args>(args)...);
 	}
 
 	virtual bool transformValue(const Scheme &, data::Value &) const override;
-	virtual void hash(apr::ostringstream &stream, ValidationLevel l) const override;
+	virtual void hash(StringStream &stream, ValidationLevel l) const override;
 
 	size_t minLength = config::getDefaultTextMin(), maxLength = config::getDefaultTextMax();
 };
@@ -284,23 +289,23 @@ struct FieldPassword : Field::Slot {
 	virtual ~FieldPassword() { }
 
 	template <typename ... Args>
-	FieldPassword(apr::string && n, Args && ... args) : Field::Slot(std::move(n), Type::Bytes) {
+	FieldPassword(String && n, Args && ... args) : Field::Slot(move(n), Type::Bytes) {
 		init<FieldPassword, Args...>(*this, std::forward<Args>(args)...);
 		transform = Transform::Password;
 	}
 
 	virtual bool transformValue(const Scheme &, data::Value &) const override;
-	virtual void hash(apr::ostringstream &stream, ValidationLevel l) const override;
+	virtual void hash(StringStream &stream, ValidationLevel l) const override;
 
 	size_t minLength = config::getDefaultTextMin(), maxLength = config::getDefaultTextMax();
-	apr::string salt = config::getDefaultPasswordSalt();
+	String salt = config::getDefaultPasswordSalt();
 };
 
 struct FieldExtra : Field::Slot {
 	virtual ~FieldExtra() { }
 
 	template <typename ... Args>
-	FieldExtra(apr::string && n, Args && ... args) : Field::Slot(std::move(n), Type::Extra) {
+	FieldExtra(String && n, Args && ... args) : Field::Slot(move(n), Type::Extra) {
 		init<FieldExtra, Args...>(*this, std::forward<Args>(args)...);
 	}
 
@@ -308,20 +313,20 @@ struct FieldExtra : Field::Slot {
 	virtual data::Value getDefault() const override;
 
 	virtual bool transformValue(const Scheme &, data::Value &) const override;
-	virtual void hash(apr::ostringstream &stream, ValidationLevel l) const override;
+	virtual void hash(StringStream &stream, ValidationLevel l) const override;
 
-	apr::map<String, Field> fields;
+	Map<String, Field> fields;
 };
 
 struct FieldFile : Field::Slot {
 	virtual ~FieldFile() { }
 
 	template <typename ... Args>
-	FieldFile(apr::string && n, Args && ... args) : Field::Slot(std::move(n), Type::File) {
+	FieldFile(String && n, Args && ... args) : Field::Slot(move(n), Type::File) {
 		init<FieldFile, Args...>(*this, std::forward<Args>(args)...);
 	}
 
-	virtual void hash(apr::ostringstream &stream, ValidationLevel l) const override;
+	virtual void hash(StringStream &stream, ValidationLevel l) const override;
 
 	size_t maxSize = config::getMaxInputFileSize();
 	Vector<String> allowedTypes;
@@ -331,11 +336,11 @@ struct FieldImage : Field::Slot {
 	virtual ~FieldImage() { }
 
 	template <typename ... Args>
-	FieldImage(apr::string && n, Args && ... args) : Field::Slot(std::move(n), Type::Image) {
+	FieldImage(String && n, Args && ... args) : Field::Slot(move(n), Type::Image) {
 		init<FieldImage, Args...>(*this, std::forward<Args>(args)...);
 	}
 
-	virtual void hash(apr::ostringstream &stream, ValidationLevel l) const override;
+	virtual void hash(StringStream &stream, ValidationLevel l) const override;
 
 	size_t maxSize = config::getMaxInputFileSize();
 	Vector<String> allowedTypes;
@@ -349,7 +354,7 @@ struct FieldObject : Field::Slot {
 	virtual ~FieldObject() { }
 
 	template <typename ... Args>
-	FieldObject(apr::string && n, Type t, Args && ... args) : Field::Slot(std::move(n), t) {
+	FieldObject(String && n, Type t, Args && ... args) : Field::Slot(move(n), t) {
 		init<FieldObject, Args...>(*this, std::forward<Args>(args)...);
 		if (t == Type::Set && (toInt(flags) & toInt(Flags::Reference))) {
 			onRemove = RemovePolicy::Reference;
@@ -360,7 +365,7 @@ struct FieldObject : Field::Slot {
 	}
 
 	virtual bool transformValue(const Scheme &, data::Value &) const override;
-	virtual void hash(apr::ostringstream &stream, ValidationLevel l) const override;
+	virtual void hash(StringStream &stream, ValidationLevel l) const override;
 
 	const Scheme *scheme = nullptr;
 	RemovePolicy onRemove = RemovePolicy::Null;
@@ -372,14 +377,37 @@ struct FieldArray : Field::Slot {
 	virtual ~FieldArray() { }
 
 	template <typename ... Args>
-	FieldArray(apr::string && n, Args && ... args) : Field::Slot(std::move(n), Type::Array), tfield(new FieldText("", Type::Text)) {
+	FieldArray(String && n, Args && ... args) : Field::Slot(move(n), Type::Array), tfield(new FieldText("", Type::Text)) {
 		init<FieldArray, Args...>(*this, std::forward<Args>(args)...);
 	}
 
 	virtual bool transformValue(const Scheme &, data::Value &) const override;
-	virtual void hash(apr::ostringstream &stream, ValidationLevel l) const override;
+	virtual void hash(StringStream &stream, ValidationLevel l) const override;
 
 	Field tfield;
+};
+
+struct FieldView : Field::Slot {
+	enum DeltaOptions {
+		Delta
+	};
+
+	virtual ~FieldView() { }
+
+	template <typename ... Args>
+	FieldView(String && n, Args && ... args) : Field::Slot(move(n), Type::View) {
+		init<FieldView, Args...>(*this, std::forward<Args>(args)...);
+	}
+
+	virtual bool transformValue(const Scheme &, data::Value &) const override { return false; }
+
+	const Scheme *scheme = nullptr;
+	Map<String, Field> fields;
+	Vector<String> requires;
+	ViewLinkageFn linkage;
+	ViewFn viewFn;
+
+	bool delta = false;
 };
 
 template <typename ... Args> Field Field::Data(String && name, Args && ... args) {
@@ -439,7 +467,11 @@ template <typename ... Args> Field Field::Set(String && name, Args && ... args) 
 }
 
 template <typename ... Args> Field Field::Array(String && name, Args && ... args) {
-	return Field(new FieldArray(std::move(name), std::forward<Args>(args)...));
+	return Field(new FieldArray(move(name), forward<Args>(args)...));
+}
+
+template <typename ... Args> Field Field::View(String && name, Args && ... args) {
+	return Field(new FieldView(move(name), forward<Args>(args)...));
 }
 
 
@@ -523,6 +555,32 @@ template <typename F> struct FieldOption<F, Scheme> {
 };
 template <typename F> struct FieldOption<F, Field> {
 	static inline void assign(F & f, Field && s) { f.tfield = s; }
+};
+
+// view options
+
+template <> struct FieldOption<FieldView, Vector<String>> {
+	static inline void assign(FieldView & f, Vector<String> && s) {
+		f.requires = move(s);
+	}
+};
+
+template <typename F> struct FieldOption<F, ViewLinkageFn> {
+	static inline void assign(F & f, ViewLinkageFn && s) {
+		f.linkage = move(s);
+	}
+};
+
+template <typename F> struct FieldOption<F, ViewFn> {
+	static inline void assign(F & f, ViewFn && s) {
+		f.viewFn = move(s);
+	}
+};
+
+template <typename F> struct FieldOption<F, FieldView::DeltaOptions> {
+	static inline void assign(F & f, FieldView::DeltaOptions d) {
+		if (d == FieldView::Delta) { f.delta = true; } else { f.delta = false; }
+	}
 };
 
 NS_SA_EXT_END(storage)

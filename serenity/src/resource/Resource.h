@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -57,6 +57,8 @@ public:
 	ResourceType getType() const;
 	const Scheme &getScheme() const;
 	int getStatus() const;
+
+	bool hasDelta() const;
 
 	void setQueryDelta(Time);
 	Time getSourceDelta() const;

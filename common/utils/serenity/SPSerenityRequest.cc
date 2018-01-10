@@ -226,6 +226,11 @@ Query & Query::depth(uint16_t d) {
 	return *this;
 }
 
+Query & Query::forUpdate() {
+	update = true;
+	return *this;
+}
+
 bool Query::empty() const {
 	return selectList.empty() && selectOid == 0 && selectAlias.empty();
 }
@@ -282,6 +287,9 @@ bool Query::hasDelta() const {
 }
 bool Query::hasFields() const {
 	return !fieldsExclude.empty() || !fieldsInclude.empty();
+}
+bool Query::isForUpdate() const {
+	return update;
 }
 
 uint64_t Query::getDeltaToken() const {
@@ -374,6 +382,10 @@ data::Value Query::encode() const {
 		if (!fieldsExclude.empty()) {
 			Query_encodeFields(ret.emplace("exclude"), fieldsExclude);
 		}
+	}
+
+	if (update) {
+		ret.setBool(update, "forUpdate");
 	}
 
 	return ret;

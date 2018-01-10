@@ -92,19 +92,32 @@ struct Server::Config : public AllocPool {
 					components.emplace(name, h);
 				} else {
 					log::format("Server", "DSO (%s) returns nullptr handler", name.c_str());
+					serv.reportError(data::Value {
+						pair("source", data::Value("Server")),
+						pair("text", data::Value(toString("DSO (", name, ") returns nullptr handler")))
+					});
+					loadingFalled = true;
 				}
 			} else {
 				/* fail to load symbol, terminating process */
 				char buf[256] = {0};
 				log::format("Server", "DSO (%s) error: %s", name.c_str(), apr_dso_error(obj, buf, 255));
+				serv.reportError(data::Value {
+					pair("source", data::Value("Server")),
+					pair("text", data::Value(toString("DSO (", name, ") error: ", apr_dso_error(obj, buf, 255))))
+				});
 				apr_dso_unload(obj);
-				return;
+				loadingFalled = true;
 			}
 		} else {
 			/* fail to load object, terminating process */
 			char buf[256] = {0};
 			log::format("Server", "Fail to load DSO (%s): %s", name.c_str(), apr_dso_error(obj, buf, 255));
-			return;
+			serv.reportError(data::Value {
+				pair("source", data::Value("Server")),
+				pair("text", data::Value(toString("Fail to load DSO (", name, "): ", apr_dso_error(obj, buf, 255))))
+			});
+			loadingFalled = true;
 		}
 	}
 
@@ -144,6 +157,16 @@ struct Server::Config : public AllocPool {
 		}
 	}
 
+	void setWebHookParam(StringView &n, StringView &v) {
+		if (n.is("name")) {
+			webHookName = v.str();
+		} else if (n.is("url")) {
+			webHookUrl = v.str();
+		} else if (n.is("format")) {
+			webHookFormat = v.str();
+		}
+	}
+
 	void init(Server &serv) {
 		schemes.emplace(userScheme.getName(), &userScheme);
 		schemes.emplace(fileScheme.getName(), &fileScheme);
@@ -171,13 +194,17 @@ struct Server::Config : public AllocPool {
 			currentComponent = String();
 		}
 
-		auto root = Root::getInstance();
-		auto pool = getCurrentPool();
-		auto db = root->dbdOpen(pool, serv);
-		if (db) {
-			pg::Handle h(pool, db);
-			h.init(serv, schemes);
-			root->dbdClose(serv, db);
+		if (!loadingFalled) {
+			Scheme::initSchemes(serv, schemes);
+
+			auto root = Root::getInstance();
+			auto pool = getCurrentPool();
+			auto db = root->dbdOpen(pool, serv);
+			if (db) {
+				pg::Handle h(pool, db);
+				h.init(serv, schemes);
+				root->dbdClose(serv, db);
+			}
 		}
 	}
 
@@ -224,10 +251,15 @@ struct Server::Config : public AllocPool {
 	String sessionKey = config::getDefaultSessionKey();
 	apr_time_t sessionMaxAge = 0;
 	bool isSessionSecure = false;
+	bool loadingFalled = false;
 
 	Time lastDatabaseCleanup;
 	int64_t broadcastId = 0;
 	tpl::Cache _templateCache;
+
+	String webHookUrl;
+	String webHookName;
+	String webHookFormat;
 };
 
 void * Server::merge(void *base, void *add) {
@@ -278,13 +310,13 @@ void Server::onChildInit() {
 	_config->currentComponent = String();
 }
 
-void Server::setHandlerFile(const apr::string &file) {
+void Server::setHandlerFile(const String &file) {
 	_config->handlerFile = file;
 }
-void Server::setSourceRoot(const apr::string &file) {
+void Server::setSourceRoot(const String &file) {
 	_config->sourceRoot = file;
 }
-void Server::addHanderSource(const apr::string &str) {
+void Server::addHanderSource(const String &str) {
 	StringView r(str);
 	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
@@ -341,7 +373,7 @@ void Server::addHanderSource(const apr::string &str) {
 	}
 }
 
-void Server::setSessionParams(const apr::string &str) {
+void Server::setSessionParams(const String &str) {
 	StringView r(str);
 	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 	while (!r.empty()) {
@@ -370,12 +402,41 @@ void Server::setSessionParams(const apr::string &str) {
 	}
 }
 
-const apr::string &Server::getHandlerFile() const {
+void Server::setWebHookParams(const String &str) {
+	StringView r(str);
+	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+	while (!r.empty()) {
+		StringView params, n, v;
+		if (r.is('"')) {
+			++ r;
+			params = r.readUntil<StringView::Chars<'"'>>();
+			if (r.is('"')) {
+				++ r;
+			}
+		} else {
+			params = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		}
+
+		if (!params.empty()) {
+			n = params.readUntil<StringView::Chars<'='>>();
+			++ params;
+			v = params;
+
+			if (!n.empty() && ! v.empty()) {
+				_config->setWebHookParam(n, v);
+			}
+		}
+
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+	}
+}
+
+const String &Server::getHandlerFile() const {
 	return _config->handlerFile;
 }
 
 apr::weak_string Server::getDefaultName() const {
-	return apr::string::make_weak(_server->defn_name, _server->process->pconf);
+	return String::make_weak(_server->defn_name, _server->process->pconf);
 }
 
 bool Server::isVirtual() const {
@@ -700,6 +761,38 @@ const Map<const storage::Scheme *, Server::ResourceScheme> &Server::getResources
 
 const Map<String, Server::RequestScheme> &Server::getRequestHandlers() const {
 	return _config->requests;
+}
+
+void Server::reportError(const data::Value &data) {
+	if (_config->webHookUrl.empty()) {
+		return;
+	}
+	if (_config->webHookFormat.empty() || _config->webHookFormat == "slack") {
+		apr::pool::perform([&] {
+			StringStream payload;
+			payload << "*" << getServerHostname();
+			if (getServerPort() > 0) {
+				payload << ":" << getServerPort();
+			}
+			payload << "*\n\n";
+
+			payload << "*" << _config->webHookName << "*: ";
+			if (data.isString("source")) {
+				payload << "*" << data.getString("source") << "*: ";
+			}
+			if (data.isString("text")) {
+				payload << data.getString("text") << " ";
+			}
+			payload << data::EncodeFormat::Pretty << data;
+
+			data::Value payloadData;
+			payloadData.setString(payload.str(), "text");
+
+			network::Handle h(network::Handle::Method::Post, _config->webHookUrl);
+			h.setSendData(payloadData, data::EncodeFormat::Json);
+			h.perform();
+		});
+	}
 }
 
 NS_SA_END

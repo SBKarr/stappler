@@ -182,49 +182,40 @@ protected:
 		void *ptr;
 	};
 
-	stack<Info> _info;
-	stack<pool_t *> _stack;
+	stack<Info> _stack;
 };
 
 AllocStack::AllocStack() {
-	_stack.push(nullptr);
+	_stack.push(Info{nullptr, 0, nullptr});
 }
 
 pool_t *AllocStack::top() const {
-	return _stack.get();
+	return _stack.get().pool;
 }
 
 Pair<uint32_t, void *> AllocStack::info() const {
-	if (_info.size == 0) {
-		return pair(0, nullptr);
-	} else {
-		return pair(_info.get().tag, _info.get().ptr);
-	}
+	return pair(_stack.get().tag, _stack.get().ptr);
 }
 
 void AllocStack::push(pool_t *p) {
 	if (p) {
-		_stack.push(p);
+		_stack.push(Info{p, 0, nullptr});
 	}
 }
 void AllocStack::push(pool_t *p, uint32_t tag, void *ptr) {
 	if (p) {
-		_stack.push(p);
-		_info.push(Info{p, tag, ptr});
+		_stack.push(Info{p, tag, ptr});
 	}
 }
 
 void AllocStack::pop() {
-	if (/*_info.size > 0 &&*/ _info.get().pool == _stack.get()) {
-		_info.pop();
-	}
 	_stack.pop();
 }
 
 void AllocStack::foreachInfo(void *data, bool(*cb)(void *, pool_t *, uint32_t, void *)) {
-	for (size_t i = 0; i < _info.size; ++ i) {
-		auto &it = _info.data[_info.size - 1 - i];
-		if (!cb(data, it.pool, it.tag, it.ptr)) {
+	for (size_t i = 0; i < _stack.size; ++ i) {
+		auto &it = _stack.data[_stack.size - 1 - i];
+		if (it.pool && !cb(data, it.pool, it.tag, it.ptr)) {
 			break;
 		}
 	}
