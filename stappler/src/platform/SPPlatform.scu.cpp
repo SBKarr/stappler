@@ -58,3 +58,6 @@ THE SOFTWARE.
 #include "universal/SPDevice.cc"
 #include "universal/SPScreen.cc"
 #include "universal/SPScreenOrientation.cc"
+
+#include "ios/SPReceiptValidation.cc"
+#include "ios/SPProc.cc"

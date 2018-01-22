@@ -24,13 +24,12 @@ THE SOFTWARE.
 **/
 
 #include "SPPlatform.h"
-#include "SPPlatform.h"
 #include "SPThreadManager.h"
+
+#if (MACOSX)
 
 #include "CCGLViewImpl-desktop.h"
 #include "base/CCDirector.h"
-
-#if (MACOSX)
 
 NS_SP_PLATFORM_BEGIN
 

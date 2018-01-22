@@ -59,8 +59,10 @@ CLI_SRCS := \
 	$(addprefix $(GLOBAL_ROOT)/,$(CLI_SRCS_OBJS))
 
 ifeq ($(OBJC),1)
-CLI_SRCS += $(foreach dir,$(CLI_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.mm'))
-CLI_SRCS += $(addprefix $(GLOBAL_ROOT)/,$(COCOS2D_ROOT)/cocos/platform/apple/CCFileUtils-apple.mm)
+CLI_SRCS += \
+	$(addprefix $(GLOBAL_ROOT)/,stappler/src/platform/SPPlatformApple.scu.mm) \
+	$(addprefix $(GLOBAL_ROOT)/,$(COCOS2D_ROOT)/cocos/platform/apple/CCFileUtils-apple.mm) \
+	$(foreach dir,$(CLI_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.mm'))
 endif
 
 CLI_INCLUDES := \

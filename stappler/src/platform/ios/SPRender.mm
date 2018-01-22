@@ -24,6 +24,9 @@ THE SOFTWARE.
 **/
 
 #include "SPPlatform.h"
+
+#ifdef IOS
+
 #include "SPThreadManager.h"
 #include "CCGLViewImpl-ios.h"
 #include "base/CCDirector.h"
@@ -58,3 +61,5 @@ namespace render {
 }
 
 NS_SP_PLATFORM_END
+
+#endif

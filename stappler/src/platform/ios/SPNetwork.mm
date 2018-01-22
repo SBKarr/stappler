@@ -24,6 +24,9 @@ THE SOFTWARE.
 **/
 
 #include "SPPlatform.h"
+
+#ifdef IOS
+
 #include "SPThread.h"
 
 #import <sys/socket.h>
@@ -102,3 +105,5 @@ namespace network {
 }
 
 NS_SP_PLATFORM_END
+
+#endif

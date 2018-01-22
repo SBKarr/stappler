@@ -24,6 +24,9 @@ THE SOFTWARE.
 **/
 
 #include "SPPlatform.h"
+
+#ifdef IOS
+
 #include "SPFilesystem.h"
 
 #import <Foundation/Foundation.h>
@@ -116,3 +119,5 @@ namespace filesystem {
 }
 
 NS_SP_PLATFORM_END
+
+#endif

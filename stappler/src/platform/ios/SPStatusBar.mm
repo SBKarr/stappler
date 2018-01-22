@@ -25,6 +25,8 @@ THE SOFTWARE.
 
 #include "SPPlatform.h"
 
+#ifdef IOS
+
 #include "math/CCGeometry.h"
 #include "SPIOSVersions.h"
 
@@ -91,3 +93,5 @@ namespace statusbar {
 }
 
 NS_SP_PLATFORM_END
+
+#endif

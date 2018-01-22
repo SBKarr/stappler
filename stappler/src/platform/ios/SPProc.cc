@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "SPCommon.h"
 #include "SPCommonPlatform.h"
 
+#ifdef IOS
 #if (__APPLE__)
 
 NS_SP_PLATFORM_BEGIN
@@ -42,4 +43,5 @@ bool _isArmNeonSupported() {
 
 NS_SP_PLATFORM_END
 
+#endif
 #endif

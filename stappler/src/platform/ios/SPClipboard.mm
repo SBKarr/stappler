@@ -25,6 +25,8 @@ THE SOFTWARE.
 
 #include "SPPlatform.h"
 
+#ifdef IOS
+
 #import <UIKit/UIKit.h>
 
 NS_SP_PLATFORM_BEGIN
@@ -47,3 +49,5 @@ namespace clipboard {
 }
 
 NS_SP_PLATFORM_END
+
+#endif

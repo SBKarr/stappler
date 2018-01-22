@@ -90,7 +90,7 @@ void LayeredBatchNode::draw(cocos2d::Renderer *renderer, const Mat4 &transform, 
 			}
 		}
 
-		if (!it.atlas || !it.texture) {
+		if (!it.atlas || !it.texture || !getGLProgram()) {
 			continue;
 		}
 

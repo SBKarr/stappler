@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "SPPlatform.h"
 
+#ifdef IOS
 #if (SP_INTERNAL_STOREKIT_ENABLED)
 
 #include "SPStoreKit.h"
@@ -220,7 +221,7 @@ static NSObject *NSObjectFromValue(const stappler::data::Value &obj) {
                 break;
 
             case SKPaymentTransactionStateFailed:
-                stappler::log::format("StoreKit", "Native response: %ld : %s : %s", transaction.error.code, transaction.error.description.UTF8String, transaction.error.localizedDescription.UTF8String);
+                stappler::log::format("StoreKit", "Native response: %d : %s : %s", int(transaction.error.code), transaction.error.description.UTF8String, transaction.error.localizedDescription.UTF8String);
 				if (transaction.error.localizedFailureReason) {
 					stappler::log::text("StoreKit", transaction.error.localizedFailureReason.UTF8String);
 				}
@@ -585,4 +586,5 @@ namespace storekit {
 
 NS_SP_PLATFORM_END
 
+#endif
 #endif

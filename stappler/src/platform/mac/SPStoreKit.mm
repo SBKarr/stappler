@@ -79,13 +79,13 @@ class StoreKitLinux : public EventHandler {
 	~StoreKitLinux() { }
 	
 	void init() {
-		onEvent(Device::onNetwork, [this] (const Event *ev) {
+		onEvent(Device::onNetwork, [this] (const Event &ev) {
 			if (Device::getInstance()->isNetworkOnline()) {
 				this->updateProducts();
 			}
 		});
 		
-		onEvent(Device::onBackground, [this] (const Event *ev) {
+		onEvent(Device::onBackground, [this] (const Event &ev) {
 			if (!Device::getInstance()->isInBackground()) {
 				this->restorePurchases();
 			}

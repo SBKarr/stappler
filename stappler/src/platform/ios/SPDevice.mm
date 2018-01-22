@@ -24,6 +24,9 @@ THE SOFTWARE.
 **/
 
 #include "SPPlatform.h"
+
+#ifdef IOS
+
 #include "SPScreenOrientation.h"
 
 #include "math/CCGeometry.h"
@@ -155,3 +158,5 @@ namespace device {
 }
 
 NS_SP_PLATFORM_END
+
+#endif

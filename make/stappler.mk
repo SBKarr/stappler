@@ -57,12 +57,14 @@ STAPPLER_SRCS_DIRS += stappler/src/platform/android
 
 else ifdef IOS_ARCH
 
-STAPPLER_SRCS_DIRS += stappler/src/platform/ios
+STAPPLER_SRCS_DIRS += $(COCOS2D_STAPPLER_SRCS_DIRS)
+STAPPLER_SRCS_OBJS += stappler/src/platform/SPPlatformApple.scu.mm
 
 else
 
 ifeq ($(UNAME),Darwin)
-STAPPLER_SRCS_DIRS += $(COCOS2D_ROOT)/cocos/platform/mac $(COCOS2D_ROOT)/cocos/platform/apple stappler/src/platform/mac
+STAPPLER_SRCS_DIRS += $(COCOS2D_ROOT)/cocos/platform/mac $(COCOS2D_ROOT)/cocos/platform/apple
+STAPPLER_SRCS_OBJS += stappler/src/platform/SPPlatformApple.scu.mm
 ifndef LOCAL_MAIN
 STAPPLER_SRCS_DIRS += stappler/src/platform/mac_main
 endif

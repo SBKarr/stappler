@@ -23,6 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
+#ifdef IOS
+
 #import "SPAppController.h"
 #import "CCEAGLView-ios.h"
 #import "CCGLViewImpl-ios.h"
@@ -38,7 +40,7 @@ THE SOFTWARE.
 NS_CC_BEGIN
 
 struct CCEAGLViewStorage {
-	CCEAGLView *view;
+	CCEAGLView *_Nullable view;
 };
 
 NS_CC_END
@@ -46,7 +48,7 @@ NS_CC_END
 NS_SP_PLATFORM_BEGIN
 
 namespace interaction {
-    void _setAppId(NSString *appId);
+    void _setAppId(NSString *_Nonnull appId);
 }
 
 NS_SP_PLATFORM_END
@@ -56,26 +58,26 @@ NS_SP_PLATFORM_END
 #pragma mark -
 #pragma mark Application lifecycle
 
-+ (void) setAppId: (NSString *)appId {
++ (void) setAppId: (nonnull NSString *)appId {
     stappler::platform::interaction::_setAppId(appId);
 }
 
-- (SPRootViewController *)createRootViewController:(nonnull UIWindow *)w {
+- (nonnull SPRootViewController *)createRootViewController:(nonnull UIWindow *)w {
 	return [[SPRootViewController alloc] initWithWindow:w];
 }
 
-- (void)registerForRemoteNotification:(UIApplication *)application {
+- (void)registerForRemoteNotification:(nonnull UIApplication *)application {
     [self registerForRemoteNotification:application forNewsttand:NO];
 }
 
-- (void)registerForRemoteNotification:(UIApplication *)application forNewsttand:(BOOL)isNewsstand {
+- (void)registerForRemoteNotification:(nonnull UIApplication *)application forNewsttand:(BOOL)isNewsstand {
 	auto flags = (UNAuthorizationOptionSound | UNAuthorizationOptionBadge | UNAuthorizationOptionAlert);
 	UIUserNotificationSettings *settings = [UIUserNotificationSettings settingsForTypes:flags categories:nil];
 	[application registerUserNotificationSettings:settings];
 	[application registerForRemoteNotifications];
 }
 
-- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+- (BOOL)application:(nonnull UIApplication *)application didFinishLaunchingWithOptions:(nullable NSDictionary *)launchOptions {
     [self parseApplication:application launchOptions:launchOptions];
     [application cancelAllLocalNotifications];
 		
@@ -115,7 +117,7 @@ NS_SP_PLATFORM_END
     }
 }
 
-- (BOOL)runApplication:(UIApplication *)application {
+- (BOOL)runApplication:(nonnull UIApplication *)application {
     if (launchUrl != nil) {
         stappler::Device::getInstance()->setLaunchUrl([launchUrl absoluteString].UTF8String);
     }
@@ -129,7 +131,7 @@ NS_SP_PLATFORM_END
     return YES;
 }
 
-- (BOOL)application:(UIApplication *)application openURL:(NSURL *)url options:(NSDictionary<NSString *,id> *)options {
+- (BOOL)application:(nonnull UIApplication *)application openURL:(nonnull NSURL *)url options:(nullable NSDictionary<NSString *,id> *)options {
     if (launchUrl != nil && [launchUrl isEqual:url]) {
         launchUrl = nil;
         return YES;
@@ -139,37 +141,37 @@ NS_SP_PLATFORM_END
     }
 }
 
-- (void)applicationWillResignActive:(UIApplication *)application {
+- (void)applicationWillResignActive:(nonnull UIApplication *)application {
 	cocos2d::Application::getInstance()->applicationDidEnterBackground();
 }
 
-- (void)applicationDidBecomeActive:(UIApplication *)application {
+- (void)applicationDidBecomeActive:(nonnull UIApplication *)application {
 	cocos2d::Application::getInstance()->applicationWillEnterForeground();
 }
 
-- (void)applicationDidEnterBackground:(UIApplication *)application {
+- (void)applicationDidEnterBackground:(nonnull UIApplication *)application {
     cocos2d::Application::getInstance()->applicationDidEnterBackground();
 }
 
-- (void)applicationWillEnterForeground:(UIApplication *)application {
+- (void)applicationWillEnterForeground:(nonnull UIApplication *)application {
     cocos2d::Application::getInstance()->applicationWillEnterForeground();
 }
 
-- (void)applicationWillTerminate:(UIApplication *)application { }
+- (void)applicationWillTerminate:(nonnull UIApplication *)application { }
 
-- (void)application:(UIApplication *)application didRegisterUserNotificationSettings:(UIUserNotificationSettings *)notificationSettings {
+- (void)application:(nonnull UIApplication *)application didRegisterUserNotificationSettings:(nonnull UIUserNotificationSettings *)notificationSettings {
 	
 }
 
-- (void) application:(UIApplication *)application didFailToRegisterForRemoteNotificationsWithError:(NSError *)error {
+- (void) application:(nonnull UIApplication *)application didFailToRegisterForRemoteNotificationsWithError:(nullable NSError *)error {
     stappler::log::format("AppController","remote notification: %s", [[error description] UTF8String]);
 }
 
-- (void) application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
+- (void) application:(nonnull UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(nonnull NSData *)deviceToken {
     stappler::Device::getInstance()->registerDeviceToken((uint8_t *)[deviceToken bytes], [deviceToken length]);
 }
 
-- (void) application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo {
+- (void) application:(nonnull UIApplication *)application didReceiveRemoteNotification:(nonnull NSDictionary *)userInfo {
     application.applicationIconBadgeNumber = 1;
 	stappler::Device::onRemoteNotification(stappler::Device::getInstance());
 }
@@ -177,8 +179,10 @@ NS_SP_PLATFORM_END
 #pragma mark -
 #pragma mark Memory management
 
-- (void)applicationDidReceiveMemoryWarning:(UIApplication *)application {
+- (void)applicationDidReceiveMemoryWarning:(nonnull UIApplication *)application {
 	cocos2d::Application::getInstance()->applicationDidReceiveMemoryWarning();
 }
 
 @end
+
+#endif

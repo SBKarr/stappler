@@ -26,9 +26,10 @@ THE SOFTWARE.
 #include "SPDefine.h"
 #include "SPPlatform.h"
 #include "base/CCDirector.h"
-#include "CCGLViewImpl-desktop.h"
 
 #if (MACOSX)
+
+#include "CCGLViewImpl-desktop.h"
 
 NS_SP_PLATFORM_BEGIN
 

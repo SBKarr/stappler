@@ -60,7 +60,7 @@ struct EncodeFormat {
 	EncodeFormat(Format fmt = DefaultFormat, Compression cmp = DefaultCompress, Encryption enc = Unencrypted, const String &key = "")
 	: format(fmt), compression(cmp), encryption(enc) { }
 
-	explicit EncodeFormat(int flag)
+	explicit EncodeFormat(long flag)
 	: format((Format)(flag & 0x0F)), compression((Compression)(flag & 0xF0))
 	, encryption((Encryption)(flag &0xF00)) { }
 

@@ -23,6 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
+#ifdef IOS
+
 #import <UIKit/UIKit.h>
 
 #include "SPDefine.h"
@@ -181,3 +183,5 @@ namespace debug {
 }
 
 NS_SP_PLATFORM_END
+
+#endif

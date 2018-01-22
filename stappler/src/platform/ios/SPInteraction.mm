@@ -25,7 +25,7 @@ THE SOFTWARE.
 
 #include "SPPlatform.h"
 
-#import "SPWebViewController.h"
+#ifdef IOS
 
 NS_SP_PLATFORM_BEGIN
 
@@ -33,23 +33,7 @@ namespace interaction {
 	void _goToUrl(const std::string &url, bool external) {
 		NSString *urlString = [[NSString alloc] initWithUTF8String:url.c_str()];
 		NSURL *urlObj = [[NSURL alloc] initWithString:urlString];
-		urlString = nil;
-		if (strncmp(url.c_str(), "https://itunes.apple.com", 24) == 0 || external) {
-			[[UIApplication sharedApplication] openURL:urlObj];
-		} else if (urlObj) {
-			if ([urlObj.host hasPrefix:@"www.youtube"] || [urlObj.host hasPrefix:@"youtube"] || [urlObj.host hasPrefix:@"youtu.be"]) {
-				[[UIApplication sharedApplication] openURL:urlObj];
-			} else {
-				SPWebViewController *wvc = [[SPWebViewController alloc] initWithURL:urlObj isExternal:external?YES:NO];
-				UIViewController *vc;
-				vc = [UIApplication sharedApplication].keyWindow.rootViewController;
-				if (!vc) {
-					vc = (UIViewController *)[[[UIApplication sharedApplication].keyWindow.subviews objectAtIndex:0] nextResponder];
-				}
-				wvc.modalTransitionStyle = UIModalTransitionStyleFlipHorizontal;
-				presentViewController(vc, wvc);
-			}
-		}
+		[[UIApplication sharedApplication] openURL:urlObj];
 	}
 
 	void _makePhoneCall(const std::string &str) {
@@ -93,3 +77,5 @@ namespace interaction {
 }
 
 NS_SP_PLATFORM_END
+
+#endif

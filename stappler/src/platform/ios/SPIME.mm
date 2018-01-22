@@ -25,6 +25,9 @@ THE SOFTWARE.
 
 #include "SPDefine.h"
 #include "SPPlatform.h"
+
+#ifdef IOS
+
 #include "SPIME.h"
 #include "SPScreen.h"
 #include "platform/CCPlatformConfig.h"
@@ -345,8 +348,8 @@ using Cursor = stappler::ime::Cursor;
 }
 
 - (BOOL)shouldChangeTextInRange:(UITextRange *)range replacementText:(NSString *)text {
-	Cursor c = ((SPTextRange *)range).cursor;
-	IMELOG("shouldChangeTextInRange %u %u %lu '%s'", c.start, c.length, text.length, text.UTF8String);
+	// Cursor c = ((SPTextRange *)range).cursor;
+	// IMELOG("shouldChangeTextInRange %u %u %lu '%s'", c.start, c.length, text.length, text.UTF8String);
 	return YES;
 }
 #pragma mark UITextInput - Working with Marked and Selected Text
@@ -723,3 +726,6 @@ namespace ime {
 }
 
 NS_SP_PLATFORM_END
+
+#endif
+

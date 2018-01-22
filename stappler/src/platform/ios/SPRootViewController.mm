@@ -23,6 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
+#ifdef IOS
+
 #import "SPRootViewController.h"
 #import "CCEAGLView-ios.h"
 #include "CCApplication-ios.h"
@@ -285,3 +287,5 @@ THE SOFTWARE.
 }
 
 @end
+
+#endif

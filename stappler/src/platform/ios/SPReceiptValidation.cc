@@ -801,7 +801,7 @@ data::Value validateReceipt(const Bytes &data) {
 }
 
 data::Value validateReceipt(const String &path) {
-	return validateReceipt(filesystem::readFile(path));
+	return validateReceipt(stappler::filesystem::readFile(path));
 }
 
 NS_SP_EXT_END(platform)
