@@ -57,7 +57,8 @@ public:
 	const String &getHandlerFile() const;
 	const String &getNamespace() const;
 
-	ServerComponent *getComponent(const String &) const;
+	template <typename Component = ServerComponent>
+	auto getComponent(const String &) const -> Component *;
 	void addComponent(const String &, ServerComponent *);
 
 	void addPreRequest(Function<int(Request &)> &&);
@@ -142,12 +143,20 @@ public: // httpd server info
 	void *getConfig() const { return (void *)_config; }
 
 	tpl::Cache *getTemplateCache() const;
+
 protected:
+	ServerComponent *getServerComponent(const String &name) const;
+
 	struct Config;
 
 	server_rec *_server = nullptr;
 	Config *_config = nullptr;
 };
+
+template <typename Component>
+inline auto Server::getComponent(const String &name) const -> Component * {
+	return dynamic_cast<Component *>(getServerComponent(name));
+}
 
 NS_SA_END
 

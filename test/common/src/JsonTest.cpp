@@ -23,9 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "SPDefine.h"
-#include "SPTime.h"
 #include "SPCommon.h"
+#include "SPTime.h"
 #include "SPString.h"
 #include "SPData.h"
 #include "Test.h"

@@ -38,7 +38,7 @@ public:
 		return true;
 	}
 
-	virtual int onTranslateName(Request &rctx) {
+	virtual int onTranslateName(Request &rctx) override {
 		auto scheme = rctx.server().getScheme("refs");
 		if (scheme) {
 			auto d = scheme->select(rctx.storage(), storage::Query::all());
@@ -47,7 +47,6 @@ public:
 		}
 		return HTTP_NOT_FOUND;
 	}
-protected:
 };
 
 class TestHandler : public ServerComponent {
@@ -56,6 +55,8 @@ public:
 	virtual ~TestHandler() { }
 
 	virtual void onChildInit(Server &) override;
+
+	const data::Value &getGoogleDiscoveryDocument() const;
 
 protected:
 	using Field = storage::Field;
@@ -75,6 +76,8 @@ protected:
 TestHandler::TestHandler(Server &serv, const String &name, const data::Value &dict)
 : ServerComponent(serv, name, dict) {
 	exportValues(_objects, _refs, _subobjects);
+
+	using namespace storage;
 
 	_objects.define({
 		Field::Text("text", storage::MinLength(3)),
@@ -139,6 +142,7 @@ void TestHandler::onChildInit(Server &serv) {
 
 	serv.addHandler("/handler", SA_HANDLER(TestSelectHandler));
 }
+
 
 extern "C" ServerComponent * CreateTestHandler(Server &serv, const String &name, const data::Value &dict) {
 	return new TestHandler(serv, name, dict);

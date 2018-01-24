@@ -32,7 +32,7 @@ THE SOFTWARE.
 
 namespace sha256 {
 
-using sha256_state = stappler::string::_Sha256Ctx;
+using sha256_state = stappler::string::Sha256::_Ctx;
 
 typedef uint32_t u32;
 typedef uint64_t u64;
@@ -188,7 +188,7 @@ static void sha_done(sha256_state& md, void* out) {
 
 namespace sha512 {
 
-using sha512_state = stappler::string::_Sha512Ctx;
+using sha512_state = stappler::string::Sha512::_Ctx;
 
 typedef uint32_t u32;
 typedef uint64_t u64;
@@ -296,7 +296,7 @@ static void sha_process(sha512_state& md, const void* src, u32 inlen) {
     const u32 block_size = sizeof(sha512_state::buf);
     auto in = static_cast<const unsigned char*>(src);
 
-    while(inlen > 0) {
+    while (inlen > 0) {
         if(md.curlen == 0 && inlen >= block_size) {
             sha_compress(md, in);
             md.length += block_size * 8;
@@ -353,14 +353,44 @@ static void sha_done(sha512_state& md, void *out) {
 
 NS_SP_EXT_BEGIN(string)
 
-Sha512::Buf Sha512::make(const String &source, const String &salt) {
-	return Sha512().update(salt.empty()?String(SP_SECURE_KEY):salt).update(source).final();
-}
-Sha512::Buf Sha512::make(const Bytes &source, const String &salt) {
+constexpr uint32_t SHA256_BLOCK_SIZE = 64;
+constexpr uint32_t SHA512_BLOCK_SIZE = 128;
+
+constexpr uint8_t HMAC_I_PAD = 0x36;
+constexpr uint8_t HMAC_O_PAD = 0x5C;
+
+Sha512::Buf Sha512::make(const CoderSource &source, const StringView &salt) {
 	return Sha512().update(salt.empty()?String(SP_SECURE_KEY):salt).update(source).final();
 }
 
+Sha512::Buf Sha512::hmac(const CoderSource &data, const CoderSource &key) {
+	Sha512::Buf ret;
+	std::array<uint8_t, SHA512_BLOCK_SIZE> keyData;
+	memset(keyData.data(), 0, keyData.size());
+
+	Sha512 shaCtx;
+    if (key.data.size() > SHA512_BLOCK_SIZE) {
+    	shaCtx.update(key).final(keyData.data());
+    } else {
+    	memcpy(keyData.data(), key.data.data(), key.data.size());
+    }
+
+    for (auto &it : keyData) {
+    	it ^= HMAC_I_PAD;
+    }
+
+    shaCtx.init().update(keyData).update(data).final(ret.data());
+
+    for (auto &it : keyData) {
+    	it ^= HMAC_I_PAD ^ HMAC_O_PAD;
+    }
+
+    shaCtx.init().update(keyData).update(ret).final(ret.data());
+    return ret;
+}
+
 Sha512::Sha512() { sha512::sha_init(ctx); }
+Sha512 & Sha512::init() { sha512::sha_init(ctx); return *this; }
 
 Sha512 & Sha512::update(const uint8_t *ptr, size_t len) {
 	if (len > 0) {
@@ -368,11 +398,9 @@ Sha512 & Sha512::update(const uint8_t *ptr, size_t len) {
 	}
 	return *this;
 }
-Sha512 & Sha512::update(const String &str) {
-	return update((const uint8_t *)str.data(), str.size());
-}
-Sha512 & Sha512::update(const Bytes &bytes) {
-	return update(bytes.data(), bytes.size());
+
+Sha512 & Sha512::update(const CoderSource &source) {
+	return update(source.data.data(), source.data.size());
 }
 
 Sha512::Buf Sha512::final() {
@@ -385,14 +413,38 @@ void Sha512::final(uint8_t *buf) {
 }
 
 
-Sha256::Buf Sha256::make(const String &source, const String &salt) {
-	return Sha256().update(salt.empty()?String(SP_SECURE_KEY):salt).update(source).final();
-}
-Sha256::Buf Sha256::make(const Bytes &source, const String &salt) {
+Sha256::Buf Sha256::make(const CoderSource &source, const StringView &salt) {
 	return Sha256().update(salt.empty()?String(SP_SECURE_KEY):salt).update(source).final();
 }
 
+Sha256::Buf Sha256::hmac(const CoderSource &data, const CoderSource &key) {
+	Sha256::Buf ret;
+	std::array<uint8_t, SHA256_BLOCK_SIZE> keyData;
+	memset(keyData.data(), 0, keyData.size());
+
+	Sha256 shaCtx;
+    if (key.data.size() > SHA256_BLOCK_SIZE) {
+    	shaCtx.init().update(key).final(keyData.data());
+    } else {
+    	memcpy(keyData.data(), key.data.data(), key.data.size());
+    }
+
+    for (auto &it : keyData) {
+    	it ^= HMAC_I_PAD;
+    }
+
+    shaCtx.init().update(keyData).update(data).final(ret.data());
+
+    for (auto &it : keyData) {
+    	it ^= HMAC_I_PAD ^ HMAC_O_PAD;
+    }
+
+    shaCtx.init().update(keyData).update(ret).final(ret.data());
+    return ret;
+}
+
 Sha256::Sha256() { sha256::sha_init(ctx); }
+Sha256 & Sha256::init() { sha256::sha_init(ctx); return *this; }
 
 Sha256 & Sha256::update(const uint8_t *ptr, size_t len) {
 	if (len) {
@@ -400,11 +452,9 @@ Sha256 & Sha256::update(const uint8_t *ptr, size_t len) {
 	}
 	return *this;
 }
-Sha256 & Sha256::update(const String &str) {
-	return update((const uint8_t *)str.data(), str.size());
-}
-Sha256 & Sha256::update(const Bytes &bytes) {
-	return update(bytes.data(), bytes.size());
+
+Sha256 & Sha256::update(const CoderSource &source) {
+	return update(source.data.data(), source.data.size());
 }
 
 Sha256::Buf Sha256::final() {

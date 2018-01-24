@@ -251,105 +251,6 @@ struct ToStringTraits<memory::PoolInterface> {
 NS_SP_EXT_END(string)
 
 
-NS_SP_EXT_BEGIN(string)
-
-/* Very simple and quick hasher, do NOT use it in collision-sensative cases */
-inline uint32_t hash32(const String &key) { return hash::hash32(key.c_str(), key.length()); }
-inline uint64_t hash64(const String &key) { return hash::hash64(key.c_str(), key.length()); }
-
-/* default stdlib hash 32/64-bit, platform depended, unsigned variant (do NOT use for storage) */
-inline uint64_t stdlibHashUnsigned(const String &key) { std::hash<String> hasher; return hasher(key); }
-
-/* default stdlib hash 32/64-bit, platform depended, signed variant, can be used for storage */
-inline int64_t stdlibHashSigned(const String &key) { return reinterpretValue<int64_t>(stdlibHashUnsigned(key)); }
-
-struct _Sha512Ctx {
-	uint64_t length;
-	uint64_t state[8];
-	uint32_t curlen;
-	uint8_t buf[128];
-};
-
-struct _Sha256Ctx {
-	uint64_t length;
-	uint32_t state[8];
-	uint32_t curlen;
-	uint8_t buf[64];
-};
-
-/* SHA-2 512-bit context
- * designed for chain use: Sha512().update(input).final() */
-struct Sha512 {
-	constexpr static uint32_t Length = 64;
-	using Buf = std::array<uint8_t, Length>;
-
-	static Buf make(const String &source, const String &salt = "");
-	static Buf make(const Bytes &source, const String &salt = "");
-
-	template <typename ... Args>
-	static Buf perform(Args && ... args) {
-		Sha512 ctx;
-		ctx._update(std::forward<Args>(args)...);
-		return ctx.final();
-	}
-
-	Sha512();
-
-	Sha512 & update(const uint8_t *, size_t);
-	Sha512 & update(const String &);
-	Sha512 & update(const Bytes &);
-
-	template  <typename T, typename ... Args>
-	void _update(T && t, Args && ... args) {
-		update(std::forward<T>(t));
-		_update(std::forward<Args>(args)...);
-	}
-
-	template  <typename T>
-	void _update(T && t) {
-		update(std::forward<T>(t));
-	}
-
-	template <size_t Size>
-	Sha512 & update(const std::array<uint8_t, Size> &b) {
-		return update(b.data(), Size);
-	}
-
-	Buf final();
-	void final(uint8_t *);
-
-	_Sha512Ctx ctx;
-};
-
-/* SHA-2 256-bit context
- * designed for chain use: Sha256().update(input).final() */
-struct Sha256 {
-	constexpr static uint32_t Length = 32;
-	using Buf = std::array<uint8_t, Length>;
-
-	static Buf make(const String &source, const String &salt = "");
-	static Buf make(const Bytes &source, const String &salt = "");
-
-	Sha256();
-
-	Sha256 & update(const uint8_t *, size_t);
-	Sha256 & update(const String &);
-	Sha256 & update(const Bytes &);
-
-	template <size_t Size>
-	Sha256 & update(const std::array<uint8_t, Size> &b) {
-		return update(b.data(), Size);
-	}
-
-	Buf final();
-	void final(uint8_t *);
-
-	_Sha256Ctx ctx;
-};
-
-NS_SP_EXT_END(string)
-
-
 NS_SP_BEGIN
 
 struct CoderSource {
@@ -385,6 +286,97 @@ struct CoderSource {
 NS_SP_END
 
 
+NS_SP_EXT_BEGIN(string)
+
+/* Very simple and quick hasher, do NOT use it in collision-sensative cases */
+inline uint32_t hash32(const StringView &key) { return hash::hash32(key.data(), key.size()); }
+inline uint64_t hash64(const StringView &key) { return hash::hash64(key.data(), key.size()); }
+
+/* default stdlib hash 32/64-bit, platform depended, unsigned variant (do NOT use for storage) */
+template <typename StringType>
+inline uint64_t stdlibHashUnsigned(const StringType &key) { std::hash<StringType> hasher; return hasher(key); }
+
+/* default stdlib hash 32/64-bit, platform depended, signed variant, can be used for storage */
+template <typename StringType>
+inline int64_t stdlibHashSigned(const StringType &key) { return reinterpretValue<int64_t>(stdlibHashUnsigned(key)); }
+
+
+/* SHA-2 512-bit context
+ * designed for chain use: Sha512().update(input).final() */
+struct Sha512 {
+	struct _Ctx {
+		uint64_t length;
+		uint64_t state[8];
+		uint32_t curlen;
+		uint8_t buf[128];
+	};
+
+	constexpr static uint32_t Length = 64;
+	using Buf = std::array<uint8_t, Length>;
+
+	static Buf make(const CoderSource &, const StringView &salt = StringView());
+	static Buf hmac(const CoderSource &data, const CoderSource &key);
+
+	template <typename ... Args>
+	static Buf perform(Args && ... args);
+
+	Sha512();
+	Sha512 & init();
+
+	Sha512 & update(const uint8_t *, size_t);
+	Sha512 & update(const CoderSource &);
+
+	template  <typename T, typename ... Args>
+	void _update(T && t, Args && ... args);
+
+	template  <typename T>
+	void _update(T && t);
+
+	Buf final();
+	void final(uint8_t *);
+
+	_Ctx ctx;
+};
+
+/* SHA-2 256-bit context
+ * designed for chain use: Sha256().update(input).final() */
+struct Sha256 {
+	struct _Ctx {
+		uint64_t length;
+		uint32_t state[8];
+		uint32_t curlen;
+		uint8_t buf[64];
+	};
+
+	constexpr static uint32_t Length = 32;
+	using Buf = std::array<uint8_t, Length>;
+
+	static Buf make(const CoderSource &, const StringView &salt = StringView());
+	static Buf hmac(const CoderSource &data, const CoderSource &key);
+
+	template <typename ... Args>
+	static Buf perform(Args && ... args);
+
+	Sha256();
+	Sha256 & init();
+
+	Sha256 & update(const uint8_t *, size_t);
+	Sha256 & update(const CoderSource &);
+
+	template  <typename T, typename ... Args>
+	void _update(T && t, Args && ... args);
+
+	template  <typename T>
+	void _update(T && t);
+
+	Buf final();
+	void final(uint8_t *);
+
+	_Ctx ctx;
+};
+
+NS_SP_EXT_END(string)
+
 NS_SP_EXT_BEGIN(base16)
 
 const char *charToHex(const char &c);
@@ -410,45 +402,37 @@ NS_SP_EXT_BEGIN(base64)
 size_t encodeSize(size_t);
 size_t decodeSize(size_t);
 
-auto __encode_pool(const CoderSource &source) -> typename memory::PoolInterface::StringType;
-auto __encode_std(const CoderSource &source) -> typename memory::StandartInterface::StringType;
-
 template <typename Interface = memory::DefaultInterface>
 auto encode(const CoderSource &source) -> typename Interface::StringType;
 
-template <>
-inline auto encode<memory::PoolInterface>(const CoderSource &source) -> typename memory::PoolInterface::StringType {
-	return __encode_pool(source);
-}
-
-template <>
-inline auto encode<memory::StandartInterface>(const CoderSource &source) -> typename memory::StandartInterface::StringType {
-	return __encode_std(source);
-}
-
 void encode(std::basic_ostream<char> &stream, const CoderSource &source);
-//size_t encode(char *, size_t bsize, const CoderSource &source);
 
-auto __decode_pool(const CoderSource &source) -> typename memory::PoolInterface::BytesType;
-auto __decode_std(const CoderSource &source) -> typename memory::StandartInterface::BytesType;
 
 template <typename Interface = memory::DefaultInterface>
 auto decode(const CoderSource &source) -> typename Interface::BytesType;
 
-template <>
-inline auto decode<memory::PoolInterface>(const CoderSource &source) -> typename memory::PoolInterface::BytesType {
-	return __decode_pool(source);
-}
-
-template <>
-inline auto decode<memory::StandartInterface>(const CoderSource &source) -> typename memory::StandartInterface::BytesType {
-	return __decode_std(source);
-}
-
 void decode(std::basic_ostream<char> &stream, const CoderSource &source);
-//size_t decode(uint8_t *, size_t bsize, const CoderSource &source);
 
 NS_SP_EXT_END(base64)
+
+
+NS_SP_EXT_BEGIN(base64url)
+
+size_t encodeSize(size_t);
+size_t decodeSize(size_t);
+
+template <typename Interface = memory::DefaultInterface>
+auto encode(const CoderSource &source) -> typename Interface::StringType;
+
+void encode(std::basic_ostream<char> &stream, const CoderSource &source);
+
+
+template <typename Interface = memory::DefaultInterface>
+auto decode(const CoderSource &source) -> typename Interface::BytesType;
+
+void decode(std::basic_ostream<char> &stream, const CoderSource &source);
+
+NS_SP_EXT_END(base64url)
 
 
 NS_SP_BEGIN
@@ -957,6 +941,103 @@ inline uint8_t utf8Encode(OutputStream &str, char16_t c) {
 	}
 }
 
+
+template <typename ... Args>
+inline Sha512::Buf Sha512::perform(Args && ... args) {
+	Sha512 ctx;
+	ctx._update(std::forward<Args>(args)...);
+	return ctx.final();
+}
+
+template  <typename T, typename ... Args>
+inline void Sha512::_update(T && t, Args && ... args) {
+	update(std::forward<T>(t));
+	_update(std::forward<Args>(args)...);
+}
+
+template  <typename T>
+inline void Sha512::_update(T && t) {
+	update(std::forward<T>(t));
+}
+
+template <typename ... Args>
+inline Sha256::Buf Sha256::perform(Args && ... args) {
+	Sha512 ctx;
+	ctx._update(std::forward<Args>(args)...);
+	return ctx.final();
+}
+
+template  <typename T, typename ... Args>
+inline void Sha256::_update(T && t, Args && ... args) {
+	update(std::forward<T>(t));
+	_update(std::forward<Args>(args)...);
+}
+
+template  <typename T>
+inline void Sha256::_update(T && t) {
+	update(std::forward<T>(t));
+}
+
 NS_SP_EXT_END(string)
+
+NS_SP_EXT_BEGIN(base64)
+
+auto __encode_pool(const CoderSource &source) -> typename memory::PoolInterface::StringType;
+auto __encode_std(const CoderSource &source) -> typename memory::StandartInterface::StringType;
+
+template <>
+inline auto encode<memory::PoolInterface>(const CoderSource &source) -> typename memory::PoolInterface::StringType {
+	return __encode_pool(source);
+}
+
+template <>
+inline auto encode<memory::StandartInterface>(const CoderSource &source) -> typename memory::StandartInterface::StringType {
+	return __encode_std(source);
+}
+
+
+auto __decode_pool(const CoderSource &source) -> typename memory::PoolInterface::BytesType;
+auto __decode_std(const CoderSource &source) -> typename memory::StandartInterface::BytesType;
+
+template <>
+inline auto decode<memory::PoolInterface>(const CoderSource &source) -> typename memory::PoolInterface::BytesType {
+	return __decode_pool(source);
+}
+
+template <>
+inline auto decode<memory::StandartInterface>(const CoderSource &source) -> typename memory::StandartInterface::BytesType {
+	return __decode_std(source);
+}
+
+NS_SP_EXT_END(base64)
+
+NS_SP_EXT_BEGIN(base64url)
+
+inline size_t encodeSize(size_t l) { return base64::encodeSize(l); }
+inline size_t decodeSize(size_t l) { return base64::decodeSize(l); }
+
+auto __encode_pool(const CoderSource &source) -> typename memory::PoolInterface::StringType;
+auto __encode_std(const CoderSource &source) -> typename memory::StandartInterface::StringType;
+
+template <>
+inline auto encode<memory::PoolInterface>(const CoderSource &source) -> typename memory::PoolInterface::StringType {
+	return __encode_pool(source);
+}
+
+template <>
+inline auto encode<memory::StandartInterface>(const CoderSource &source) -> typename memory::StandartInterface::StringType {
+	return __encode_std(source);
+}
+
+template <typename Interface>
+inline auto decode(const CoderSource &source) -> typename Interface::BytesType {
+	return base64::decode<Interface>(source);
+}
+
+inline void decode(std::basic_ostream<char> &stream, const CoderSource &source) {
+	base64::decode(stream, source);
+}
+
+NS_SP_EXT_END(base64url)
 
 #endif /* COMMON_STRING_SPSTRING_H_ */

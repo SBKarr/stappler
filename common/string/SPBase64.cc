@@ -36,15 +36,13 @@ static const char * base64EncodeLookup = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijkl
 // Definition for "masked-out" areas of the base64DecodeLookup mapping
 #define xx 65
 
-// Mapping from ASCII character to 6 bit pattern.
-static unsigned char base64DecodeLookup[256] =
-{
+static unsigned char base64DecodeLookup[256] = {
     xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx,
     xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx,
-    xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, 62, xx, xx, xx, 63,
+    xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, 62, xx, 62, xx, 63,
     52, 53, 54, 55, 56, 57, 58, 59, 60, 61, xx, xx, xx, xx, xx, xx,
     xx,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
-    15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, xx, xx, xx, xx, xx,
+    15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, xx, xx, xx, xx, 63,
     xx, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
     41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, xx, xx, xx, xx, xx,
     xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx,
@@ -123,6 +121,8 @@ static void make_decode(const CoderSource &data, const Callback &cb) {
 	}
 }
 
+#undef xx
+
 typename memory::PoolInterface::StringType __encode_pool(const CoderSource &source) {
 	typename memory::PoolInterface::StringType output;
 	output.reserve(encodeSize(source.data.size()));
@@ -144,7 +144,6 @@ void encode(std::basic_ostream<char> &stream, const CoderSource &source) {
 		stream << c;
 	});
 }
-// size_t encode(char *, size_t bsize, const CoderSource &source) { }
 
 typename memory::PoolInterface::BytesType __decode_pool(const CoderSource &source) {
 	typename memory::PoolInterface::BytesType output;
@@ -167,9 +166,69 @@ void decode(std::basic_ostream<char> &stream, const CoderSource &source) {
 		stream << char(c);
 	});
 }
-// size_t decode(uint8_t *, size_t bsize, const CoderSource &source) { }
 
 NS_SP_EXT_END(base64)
+
+NS_SP_EXT_BEGIN(base64url)
+
+using Reader = DataReader<ByteOrder::Network>;
+
+// Mapping from 6 bit pattern to ASCII character.
+static const char * base64EncodeLookup = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+
+// Fundamental sizes of the binary and base64 encode/decode units in bytes
+constexpr int BinaryUnit = 3;
+constexpr int Base64Unit = 4;
+
+template <typename Callback>
+static void make_encode(const CoderSource &data, const Callback &cb) {
+	Reader inputBuffer(data.data);
+	auto length = inputBuffer.size();
+
+	size_t i = 0;
+	for (; i + BinaryUnit - 1 < length; i += BinaryUnit) {
+		// Inner loop: turn 48 bytes into 64 base64 characters
+		cb(base64EncodeLookup[(inputBuffer[i] & 0xFC) >> 2]);
+		cb(base64EncodeLookup[((inputBuffer[i] & 0x03) << 4) | ((inputBuffer[i + 1] & 0xF0) >> 4)]);
+		cb(base64EncodeLookup[((inputBuffer[i + 1] & 0x0F) << 2) | ((inputBuffer[i + 2] & 0xC0) >> 6)]);
+		cb(base64EncodeLookup[inputBuffer[i + 2] & 0x3F]);
+	}
+
+	if (i + 1 < length) {
+		// Handle the single '=' case
+		cb(base64EncodeLookup[(inputBuffer[i] & 0xFC) >> 2]);
+		cb(base64EncodeLookup[((inputBuffer[i] & 0x03) << 4) | ((inputBuffer[i + 1] & 0xF0) >> 4)]);
+		cb(base64EncodeLookup[(inputBuffer[i + 1] & 0x0F) << 2]);
+	} else if (i < length) {
+		// Handle the double '=' case
+		cb(base64EncodeLookup[(inputBuffer[i] & 0xFC) >> 2]);
+		cb(base64EncodeLookup[(inputBuffer[i] & 0x03) << 4]);
+	}
+}
+
+typename memory::PoolInterface::StringType __encode_pool(const CoderSource &source) {
+	typename memory::PoolInterface::StringType output;
+	output.reserve(encodeSize(source.data.size()));
+	make_encode(source, [&] (const char &c) {
+		output.push_back(c);
+	});
+	return output;
+}
+typename memory::StandartInterface::StringType __encode_std(const CoderSource &source) {
+	typename memory::StandartInterface::StringType output;
+	output.reserve(encodeSize(source.data.size()));
+	make_encode(source, [&] (const char &c) {
+		output.push_back(c);
+	});
+	return output;
+}
+void encode(std::basic_ostream<char> &stream, const CoderSource &source) {
+	make_encode(source, [&] (const char &c) {
+		stream << c;
+	});
+}
+
+NS_SP_EXT_END(base64url)
 
 NS_SP_EXT_BEGIN(base16)
 

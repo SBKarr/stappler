@@ -533,17 +533,19 @@ auto Server_resolvePath(Map<String, T> &map, const String &path) -> typename Map
 
 void Server::onHeartBeat() {
 	apr::pool::perform([&] {
-		auto now = Time::now();
-		auto root = Root::getInstance();
-		auto pool = apr::pool::acquire();
-		if (auto dbd = root->dbdOpen(pool, _server)) {
-			pg::Handle h(pool, dbd);
-			if (now - _config->lastDatabaseCleanup > TimeInterval::seconds(60)) {
-				_config->lastDatabaseCleanup = now;
-				h.makeSessionsCleanup();
+		if (!_config->loadingFalled) {
+			auto now = Time::now();
+			auto root = Root::getInstance();
+			auto pool = apr::pool::acquire();
+			if (auto dbd = root->dbdOpen(pool, _server)) {
+				pg::Handle h(pool, dbd);
+				if (now - _config->lastDatabaseCleanup > TimeInterval::seconds(60)) {
+					_config->lastDatabaseCleanup = now;
+					h.makeSessionsCleanup();
+				}
+				_config->broadcastId = h.processBroadcasts(*this, _config->broadcastId);
+				root->dbdClose(_server, dbd);
 			}
-			_config->broadcastId = h.processBroadcasts(*this, _config->broadcastId);
-			root->dbdClose(_server, dbd);
 		}
 		_config->_templateCache.update();
 	});
@@ -581,6 +583,10 @@ void Server::onBroadcast(const Bytes &bytes) {
 }
 
 int Server::onRequest(Request &req) {
+	if (_config->loadingFalled) {
+		return HTTP_SERVICE_UNAVAILABLE;
+	}
+
 	auto &path = req.getUri();
 
 	// Websocket handshake
@@ -636,7 +642,7 @@ int Server::onRequest(Request &req) {
 	return OK;
 }
 
-ServerComponent *Server::getComponent(const String &name) const {
+ServerComponent *Server::getServerComponent(const String &name) const {
 	auto it = _config->components.find(name);
 	if (it != _config->components.end()) {
 		return it->second;

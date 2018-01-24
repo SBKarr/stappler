@@ -52,7 +52,9 @@ Vector<String> Url::parsePath(const String &str) {
 		} else if (path == ".") {
 			// skip this component
 		} else {
-			ret.push_back(path.str());
+			if (!path.empty()) {
+				ret.push_back(path.str());
+			}
 		}
 	} while (!s.empty() && s.is('/'));
 	return ret;
