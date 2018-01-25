@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -54,7 +54,16 @@ void FontCharString::addString(const char16_t *str, size_t len) {
 	}
 }
 
-FontData::~FontData() { }
+bool FontData::init() {
+	return true;
+}
+bool FontData::init(const FontData &data) {
+	metrics = data.metrics;
+	chars = data.chars;
+	kerning = data.kerning;
+	return true;
+}
+
 uint16_t FontData::getHeight() const {
 	return metrics.height;
 }
@@ -92,11 +101,22 @@ int16_t FontData::kerningAmount(char16_t first, char16_t second) const {
 	return 0;
 }
 
-FontLayout::FontLayout(const FontSource * source, const String &name, const String &family, uint8_t size, const FontFace &face, const ReceiptCallback &cb, float d,
-		const MetricCallback &mcb, const UpdateCallback &ucb)
-: _density(d), _name(name), _family(family), _size(size), _face(face), _callback(cb), _metricCallback(mcb), _updateCallback(ucb), _source(source) {
-	_data = Arc<Data>::create();
+bool FontLayout::init(const FontSource * source, const String &name, const String &family, uint8_t size, const FontFace &face, const ReceiptCallback &cb, float d,
+		const MetricCallback &mcb, const UpdateCallback &ucb) {
+	_density = d;
+	_name = name;
+	_family = family;
+	_size = size;
+	_face = face;
+	_callback = cb;
+	_metricCallback = mcb;
+	_updateCallback = ucb;
+	_source = source;
+
+	_data = Rc<FontData>::create();
 	_data->metrics = _metricCallback(_source, face.src, uint16_t(roundf(size * d)), _callback);
+
+	return true;
 }
 
 FontLayout::~FontLayout() { }
@@ -128,7 +148,7 @@ void FontLayout::addSortedChars(const Vector<char16_t> &vec) {
 }
 
 void FontLayout::merge(const Vector<char16_t> &chars) {
-	Arc<Data> data(getData());
+	Rc<FontData> data(getData());
 	while (true) {
 		Vector<char16_t> charsToUpdate; charsToUpdate.reserve(chars.size());
 		for (auto &it : chars) {
@@ -140,7 +160,7 @@ void FontLayout::merge(const Vector<char16_t> &chars) {
 			return;
 		}
 
-		Arc<Data> newData(_updateCallback(_source, _face.src, data, charsToUpdate, _callback));
+		Rc<FontData> newData(_updateCallback(_source, _face.src, data, charsToUpdate, _callback));
 		_mutex.lock();
 		if (_data == data) {
 			_data = newData;
@@ -153,8 +173,8 @@ void FontLayout::merge(const Vector<char16_t> &chars) {
 	}
 }
 
-Arc<FontLayout::Data> FontLayout::getData() {
-	Arc<FontLayout::Data> ret;
+Rc<FontData> FontLayout::getData() {
+	Rc<FontData> ret;
 	_mutex.lock();
 	ret = _data;
 	_mutex.unlock();
@@ -243,8 +263,8 @@ bool FontSource::init(FontFaceMap &&map, const ReceiptCallback &cb, float scale,
 	return true;
 }
 
-Arc<FontLayout> FontSource::getLayout(const FontParameters &style) {
-	Arc<FontLayout> ret = nullptr;
+Rc<FontLayout> FontSource::getLayout(const FontParameters &style) {
+	Rc<FontLayout> ret = nullptr;
 
 	auto family = style.fontFamily;
 	if (family.empty()) {
@@ -257,7 +277,7 @@ Arc<FontLayout> FontSource::getLayout(const FontParameters &style) {
 		_mutex.lock();
 		auto l_it = _layouts.find(name);
 		if (l_it == _layouts.end()) {
-			ret = (_layouts.emplace(name, Arc<FontLayout>::create(this, name, family, style.fontSize, *face,
+			ret = (_layouts.emplace(name, Rc<FontLayout>::create(this, name, family, style.fontSize, *face,
 					_callback, _density * _fontScale, _metricCallback, _layoutCallback)).first->second);
 		} else {
 			ret = (l_it->second);
@@ -268,8 +288,8 @@ Arc<FontLayout> FontSource::getLayout(const FontParameters &style) {
 	return ret;
 }
 
-Arc<FontLayout> FontSource::getLayout(const String &name) {
-	Arc<FontLayout> ret = nullptr;
+Rc<FontLayout> FontSource::getLayout(const String &name) {
+	Rc<FontLayout> ret = nullptr;
 	_mutex.lock();
 	auto l_it = _layouts.find(name);
 	if (l_it != _layouts.end()) {
@@ -310,8 +330,8 @@ bool FontSource::hasLayout(const String &name) {
 	return ret;
 }
 
-Map<String, Arc<FontLayout>> FontSource::getLayoutMap() {
-	Map<String, Arc<FontLayout>> ret;
+Map<String, Rc<FontLayout>> FontSource::getLayoutMap() {
+	Map<String, Rc<FontLayout>> ret;
 	_mutex.lock();
 	ret = _layouts;
 	_mutex.unlock();

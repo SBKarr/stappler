@@ -30,7 +30,7 @@ NS_SP_EXT_BEGIN(memory)
 constexpr size_t basic_ostringbuf_bufsize = 256;
 
 template<typename CharType>
-class basic_ostringbuf : public std::basic_streambuf<CharType, std::char_traits<CharType>>, public AllocPool {
+class basic_ostringbuf final : public std::basic_streambuf<CharType, std::char_traits<CharType>>, public AllocPool {
 public:
 	using storage_type = storage_mem<CharType>;
 	using allocator_type = Allocator<CharType>;
@@ -136,7 +136,7 @@ protected:
 
 
 template <typename CharType>
-class basic_ostringstream : public std::basic_ostream<CharType>, public AllocPool {
+class basic_ostringstream final : public std::basic_ostream<CharType>, public AllocPool {
 public:
 	// Types:
 	using char_type = CharType;

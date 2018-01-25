@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2017-2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,43 +20,39 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "SPCommon.h"
-#include "SPRef.h"
-#include "SPLog.h"
-#include "SPTime.h"
+#include "Task.h"
 
-NS_SP_BEGIN
+NS_SA_BEGIN
 
-namespace memleak {
-
-static std::mutex s_mutex;
-static Map<Ref *, Time> s_map;
-
-void store(Ref *ptr) {
-	s_mutex.lock();
-	s_map.emplace(ptr, Time::now());
-	s_mutex.unlock();
+void Task::addExecuteFn(const ExecuteCallback &cb) {
+	_execute.push_back(cb);
 }
-void release(Ref *ptr) {
-	s_mutex.lock();
-	s_map.erase(ptr);
-	s_mutex.unlock();
+void Task::addExecuteFn(ExecuteCallback &&cb) {
+	_execute.push_back(move(cb));
 }
-void check(const std::function<void(Ref *, Time)> &cb) {
-	s_mutex.lock();
-	for (auto &it : s_map) {
-		cb(it.first, it.second);
+
+void Task::addCompleteFn(const CompleteCallback &cb) {
+	_complete.push_back(cb);
+}
+void Task::addCompleteFn(CompleteCallback &&cb) {
+	_complete.push_back(move(cb));
+}
+
+bool Task::execute() {
+	bool success = true;
+	for (auto &it : _execute) {
+		if (!it(*this)) {
+			success = false;
+		}
 	}
-	s_mutex.unlock();
+	return success;
 }
-size_t count() {
-	size_t ret = 0;
-	s_mutex.lock();
-	ret = s_map.size();
-	s_mutex.unlock();
-	return ret;
+void Task::onComplete() {
+	for (auto &it : _complete) {
+		it(*this, _isSuccessful);
+	}
 }
 
-}
+Task::Task(memory::pool_t *p) : MemPool(p, MemPool::WrapTag()) { }
 
-NS_SP_END
+NS_SA_END

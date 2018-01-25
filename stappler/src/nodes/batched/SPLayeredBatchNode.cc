@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -44,7 +44,7 @@ void LayeredBatchNode::setTextures(const Vector<Rc<cocos2d::Texture2D>> &tex) {
 		auto size = _commands.size();
 		_commands.reserve(_textures.size());
 		for (size_t i = size; i < _textures.size(); ++ i) {
-			_commands.push_back(RcWrap<DynamicBatchCommand>::create());
+			_commands.push_back(Rc<CmdWrap>::create());
 		}
 	}
 }
@@ -59,7 +59,7 @@ void LayeredBatchNode::setTextures(const Vector<cocos2d::Texture2D *> &tex) {
 		auto size = _commands.size();
 		_commands.reserve(_textures.size());
 		for (size_t i = size; i < _textures.size(); ++ i) {
-			_commands.push_back(RcWrap<DynamicBatchCommand>::create());
+			_commands.push_back(Rc<CmdWrap>::create());
 		}
 	}
 }
@@ -75,7 +75,7 @@ void LayeredBatchNode::setTextures(const Vector<Rc<cocos2d::Texture2D>> &tex, Ve
 		auto size = _commands.size();
 		_commands.reserve(_textures.size());
 		for (size_t i = size; i < _textures.size(); ++ i) {
-			_commands.push_back(RcWrap<DynamicBatchCommand>::create());
+			_commands.push_back(Rc<CmdWrap>::create());
 		}
 	}
 }
@@ -94,19 +94,19 @@ void LayeredBatchNode::draw(cocos2d::Renderer *renderer, const Mat4 &transform, 
 			continue;
 		}
 
-		auto cmd = _commands[i];
+		auto &cmd = _commands[i];
 		if (_normalized) {
 			Mat4 newMV;
 			newMV.m[12] = floorf(transform.m[12]);
 			newMV.m[13] = floorf(transform.m[13]);
 			newMV.m[14] = floorf(transform.m[14]);
 
-			cmd->init(_globalZOrder, getGLProgram(), _blendFunc, it.atlas, newMV, zPath, _normalized);
+			cmd->cmd.init(_globalZOrder, getGLProgram(), _blendFunc, it.atlas, newMV, zPath, _normalized);
 		} else {
-			cmd->init(_globalZOrder, getGLProgram(), _blendFunc, it.atlas, transform, zPath, _normalized);
+			cmd->cmd.init(_globalZOrder, getGLProgram(), _blendFunc, it.atlas, transform, zPath, _normalized);
 		}
 
-		renderer->addCommand(cmd);
+		renderer->addCommand(&cmd->cmd);
 		++ i;
 	}
 }

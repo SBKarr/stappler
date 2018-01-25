@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -642,7 +642,7 @@ int Server::onRequest(Request &req) {
 	return OK;
 }
 
-ServerComponent *Server::getServerComponent(const String &name) const {
+ServerComponent *Server::getServerComponent(const StringView &name) const {
 	auto it = _config->components.find(name);
 	if (it != _config->components.end()) {
 		return it->second;
@@ -729,7 +729,7 @@ const storage::Scheme * Server::exportScheme(const storage::Scheme &scheme) {
 	return &scheme;
 }
 
-const storage::Scheme * Server::getScheme(const String &name) const {
+const storage::Scheme * Server::getScheme(const StringView &name) const {
 	auto it = _config->schemes.find(name);
 	if (it != _config->schemes.end()) {
 		return it->second;
@@ -799,6 +799,14 @@ void Server::reportError(const data::Value &data) {
 			h.perform();
 		});
 	}
+}
+
+bool Server::performTask(Task *task, bool performFirst) const {
+	return Root::getInstance()->performTask(*this, task, performFirst);
+}
+
+bool Server::scheduleTask(Task *task, TimeInterval t) const {
+	return Root::getInstance()->scheduleTask(*this, task, t);
 }
 
 NS_SA_END

@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -88,8 +88,9 @@ struct FontTextureInterface {
 	Function<bool(size_t, const void *data, uint16_t offsetX, uint16_t offsetY, uint16_t width, uint16_t height)> draw;
 };
 
-struct FontData {
-	~FontData();
+struct FontData final : public AtomicRef {
+	bool init();
+	bool init(const FontData &data);
 
 	uint16_t getHeight() const;
 	int16_t getAscender() const;
@@ -105,14 +106,12 @@ struct FontData {
 	Map<uint32_t, int16_t> kerning;
 };
 
-class FontLayout : public Ref {
+class FontLayout final : public AtomicRef {
 public:
-	using Data = FontData;
-
 	using MetricCallback = Function<Metrics(const FontSource *, const Vector<String> &, uint16_t, const ReceiptCallback &)>;
-	using UpdateCallback = Function<Arc<FontData>(const FontSource *, const Vector<String> &, const Arc<FontData> &, const Vector<char16_t> &, const ReceiptCallback &)>;
+	using UpdateCallback = Function<Rc<FontData>(const FontSource *, const Vector<String> &, const Rc<FontData> &, const Vector<char16_t> &, const ReceiptCallback &)>;
 
-	FontLayout(const FontSource *, const String &name, const String &family, uint8_t size, const FontFace &, const ReceiptCallback &, float,
+	bool init(const FontSource *, const String &name, const String &family, uint8_t size, const FontFace &, const ReceiptCallback &, float,
 			const MetricCallback &, const UpdateCallback &);
 	virtual ~FontLayout();
 
@@ -127,7 +126,7 @@ public:
 
 	void addSortedChars(const Vector<char16_t> &); // should be sorted vector
 
-	Arc<Data> getData();
+	Rc<FontData> getData();
 
 	const String &getName() const;
 	const String &getFamily() const;
@@ -148,7 +147,7 @@ protected:
 	String _family;
 	uint8_t _size;
 	FontFace _face;
-	Arc<Data> _data;
+	Rc<FontData> _data;
 	ReceiptCallback _callback = nullptr;
 	MetricCallback _metricCallback = nullptr;
 	UpdateCallback _updateCallback = nullptr;
@@ -180,18 +179,18 @@ public:
 	 * you should create another source object, if you want another map or scale */
 	virtual bool init(FontFaceMap &&, const ReceiptCallback &, float scale = 1.0f, SearchDirs && = SearchDirs());
 
-	Arc<FontLayout> getLayout(const FontParameters &); // returns persistent ptr, Layout will be created if needed
-	Arc<FontLayout> getLayout(const String &); // returns persistent ptr
+	Rc<FontLayout> getLayout(const FontParameters &); // returns persistent ptr, Layout will be created if needed
+	Rc<FontLayout> getLayout(const String &); // returns persistent ptr
 
 	bool hasLayout(const FontParameters &);
 	bool hasLayout(const String &);
 
 	template <typename ... Args>
-	Arc<FontLayout> getLayout(const String &family, uint8_t size, Args && ... args) {
+	Rc<FontLayout> getLayout(const String &family, uint8_t size, Args && ... args) {
 		return getLayout(getFontParameters(family, size, std::forward<Args>(args)...));
 	}
 
-	Map<String, Arc<FontLayout>> getLayoutMap();
+	Map<String, Rc<FontLayout>> getLayoutMap();
 
 	float getFontScale() const;
 	void update();
@@ -250,7 +249,7 @@ protected:
 	Map<uint32_t, String> _families;
 
 	Mutex _mutex;
-	Map<String, Arc<FontLayout>> _layouts;
+	Map<String, Rc<FontLayout>> _layouts;
 	ReceiptCallback _callback = nullptr;
 	UpdateCallback _updateCallback = nullptr;
 	FontLayout::MetricCallback _metricCallback = nullptr;

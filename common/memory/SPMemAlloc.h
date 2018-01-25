@@ -70,9 +70,13 @@ public:
 		ManagedRoot,
 	};
 
+	struct WrapTag { };
+
 	MemPool() noexcept;
 	MemPool(Init);
 	MemPool(pool_t *);
+	MemPool(pool_t *, WrapTag);
+
 	~MemPool() noexcept;
 
 	MemPool(const MemPool &) = delete;
@@ -110,6 +114,7 @@ public:
 		Context ctx(_pool);
 		return Callback();
 	}
+
 protected:
 	Init _status = Acquire;
 	pool_t *_pool = nullptr;

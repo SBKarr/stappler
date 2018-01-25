@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -58,7 +58,7 @@ struct RangeSpec { // 32 bytes
 	Color4B color;
 	uint16_t height = 0;
 
-	Arc<FontLayout> layout;
+	Rc<FontLayout> layout;
 };
 
 class FormatSpec : public Ref {
@@ -210,7 +210,7 @@ protected:
 	void parseFontLineHeight(uint16_t);
 	void updatePosition(uint16_t &linePos, uint16_t &lineHeight);
 
-	Arc<FontLayout> getLayout(uint16_t pos) const;
+	Rc<FontLayout> getLayout(uint16_t pos) const;
 
 	uint16_t getAdvance(const CharSpec &c) const;
 	uint16_t getAdvance(uint16_t pos) const;
@@ -248,8 +248,8 @@ protected:
 
 	float density = 1.0f;
 
-	Arc<FontLayout> primaryFont;
-	Arc<FontData> primaryData;
+	Rc<FontLayout> primaryFont;
+	Rc<FontData> primaryData;
 
 	TextParameters textStyle;
 

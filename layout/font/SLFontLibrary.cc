@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -109,7 +109,7 @@ static void addCharGroup(Vector<char16_t> &vec, CharGroupId id) {
 	}
 }
 
-static void addLayoutChar(Vector<char16_t> &charsToUpdate, const Arc<FontLayout::Data> &data, const Vector<char16_t> &chars, char16_t theChar) {
+static void addLayoutChar(Vector<char16_t> &charsToUpdate, const Rc<FontData> &data, const Vector<char16_t> &chars, char16_t theChar) {
 	auto spaceIt = std::lower_bound(chars.begin(), chars.end(), theChar);
 	if (spaceIt == chars.end() || *spaceIt != theChar) {
 		auto spaceDataIt = std::lower_bound(data->chars.begin(), data->chars.end(), theChar);
@@ -390,13 +390,24 @@ bool FreeTypeInterface::getKerning(const Vector<FT_Face> &faces, char16_t first,
 	return false;
 }
 
-FreeTypeInterface::FreeTypeInterface(const String &def) : fallbackFont(def) {
+bool FontTextureLayout::init(uint32_t i, FontTextureMap &&m) {
+	index = i;
+	map = move(m);
+	return true;
+}
+
+bool FreeTypeInterface::init(const String &def) {
+	fallbackFont = def;
 	FT_Init_FreeType( &FTlibrary );
+	return true;
 }
 
 FreeTypeInterface::~FreeTypeInterface() {
 	clear();
-	FT_Done_FreeType(FTlibrary);
+	if (FTlibrary) {
+		FT_Done_FreeType(FTlibrary);
+		FTlibrary = nullptr;
+	}
 }
 
 void FreeTypeInterface::clear() {
@@ -420,13 +431,13 @@ Metrics FreeTypeInterface::requestMetrics(const FontSource *source, const Vector
 	return Metrics();
 }
 
-Arc<FontLayout::Data> FreeTypeInterface::requestLayoutUpgrade(const FontSource *source, const Vector<String> &srcs,
-		const Arc<FontLayout::Data> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
-	Arc<FontLayout::Data> ret;
+Rc<FontData> FreeTypeInterface::requestLayoutUpgrade(const FontSource *source, const Vector<String> &srcs,
+		const Rc<FontData> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
+	Rc<FontData> ret;
 	if (!data || data->metrics.size == 0) {
 		return data;
 	} else {
-		ret = Arc<FontLayout::Data>::create(*(data.get()));
+		ret = Rc<FontData>::create(*(data.get()));
 
 		Vector<char16_t> charsToUpdate;
 
@@ -477,7 +488,7 @@ Arc<FontLayout::Data> FreeTypeInterface::requestLayoutUpgrade(const FontSource *
 }
 
 struct FontLayoutData {
-	Arc<FontLayout> layout;
+	Rc<FontLayout> layout;
 	Vector<CharTexture> *chars;
 	Vector<FT_Face> faces;
 };

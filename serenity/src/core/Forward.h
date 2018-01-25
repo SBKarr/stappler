@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -46,6 +46,7 @@ THE SOFTWARE.
 #include "apr_time.h"
 #include "apr_thread_rwlock.h"
 #include "apr_thread_cond.h"
+#include "apr_thread_pool.h"
 #include "apr_sha1.h"
 
 #include "httpd.h"
@@ -93,17 +94,9 @@ class Session;
 class User;
 struct InputFile;
 
+class Task;
+
 NS_SA_END
-
-
-#ifndef NOCB
-NS_SA_EXT_BEGIN(couchbase)
-
-class Handle;
-class Connection;
-
-NS_SA_EXT_END(couchbase)
-#endif
 
 NS_SA_EXT_BEGIN(storage)
 

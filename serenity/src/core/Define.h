@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include "SPAprUuid.h"
 #include "SPAprMutex.h"
 
+#include "SPRef.h"
 #include "SPData.h"
 
 NS_SA_BEGIN
@@ -76,7 +77,45 @@ constexpr apr_time_t operator"" _apr_sec ( unsigned long long int val ) { return
 constexpr apr_time_t operator"" _apr_msec ( unsigned long long int val ) { return val * 1000; }
 constexpr apr_time_t operator"" _apr_mksec ( unsigned long long int val ) { return val; }
 
+class SharedObject : public AtomicRef {
+public:
+	template <typename Type, typename ... Args>
+	static Rc<Type> create(memory::pool_t *, Args && ...);
+
+	virtual bool init() { return true; }
+
+protected:
+	SharedObject() { }
+
+	void setPool(memory::MemPool &&p) {
+		_pool = move(p);
+	}
+
+	memory::MemPool _pool;
+};
+
+template <typename Type, typename ... Args>
+auto SharedObject::create(memory::pool_t *pool, Args && ... args) -> Rc<Type> {
+	memory::MemPool p(pool);
+	return apr::pool::perform([&] {
+		auto pRet = new Type();
+		pRet->setPool(move(p));
+	    if (pRet->init(std::forward<Args>(args)...)) {
+	    	auto ret = Rc<Type>(pRet);
+	    	pRet->release();
+	    	return ret;
+		} else {
+			delete pRet;
+			return Rc<Type>(nullptr);
+		}
+	}, p.pool());
+}
+
+template <typename Type, typename ... Args>
+inline auto construct(memory::pool_t *pool, Args && ... args) -> Rc<Type> {
+	return SharedObject::create<Type>(pool, std::forward<Args>(args)...);
+}
+
 NS_SA_END
 
 #endif	/* SADEFINES_H */
-

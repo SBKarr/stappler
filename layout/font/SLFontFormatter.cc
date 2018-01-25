@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -160,7 +160,7 @@ void Formatter::updatePosition(uint16_t &linePos, uint16_t &height) {
 	}
 }
 
-Arc<FontLayout> Formatter::getLayout(uint16_t pos) const {
+Rc<FontLayout> Formatter::getLayout(uint16_t pos) const {
 	for (const RangeSpec &it : output->ranges) {
 		if (pos >= it.start && pos < it.start + it.count) {
 			return it.layout;
@@ -624,7 +624,7 @@ bool Formatter::read(const FontParameters &f, const TextParameters &s, const cha
 		return false;
 	}
 
-	Arc<FontLayout> primary, secondary;
+	Rc<FontLayout> primary, secondary;
 	clearRead();
 
 	primary = source->getLayout(f);

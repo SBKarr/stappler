@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -63,7 +63,7 @@ public:
 	static Bytes acquireFontData(const layout::FontSource *, const String &, const ReceiptCallback &);
 
 	static Metrics requestMetrics(const layout::FontSource *source, const Vector<String> &, uint16_t, const ReceiptCallback &);
-	static Arc<FontData> requestLayoutUpgrade(const layout::FontSource *source, const Vector<String> &, const Arc<FontData> &, const Vector<char16_t> &, const ReceiptCallback &);
+	static Rc<FontData> requestLayoutUpgrade(const layout::FontSource *source, const Vector<String> &, const Rc<FontData> &, const Vector<char16_t> &, const ReceiptCallback &);
 
 	virtual ~FontSource();
 

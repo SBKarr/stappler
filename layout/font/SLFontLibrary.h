@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -38,14 +38,20 @@ struct FontStruct {
 using FontStructMap = Map<String, FontStruct>;
 using FontFaceMap = Map<String, FT_Face>;
 using FontFacePriority = Vector<Pair<String, uint16_t>>;
-using FontTextureLayout = Pair<uint32_t, FontTextureMap>;
 
-class FreeTypeInterface : public AllocBase {
+struct FontTextureLayout final : AtomicRef {
+	bool init(uint32_t, FontTextureMap &&);
+
+	uint32_t index;
+	FontTextureMap map;
+};
+
+class FreeTypeInterface : public AtomicRef {
 public: /* common functions */
 	using FontTextureInterface = layout::FontTextureInterface;
 
-	FreeTypeInterface(const String &);
-	~FreeTypeInterface();
+	virtual bool init(const String &);
+	virtual ~FreeTypeInterface();
 
 	/**
 	 * Drop all cached data
@@ -62,8 +68,8 @@ public: /* fonts interface */
 	/**
 	 * Reqeust data for new chars in layout
 	 */
-	Arc<FontLayout::Data> requestLayoutUpgrade(const FontSource *, const Vector<String> &,
-			const Arc<FontLayout::Data> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb);
+	Rc<FontData> requestLayoutUpgrade(const FontSource *, const Vector<String> &,
+			const Rc<FontData> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb);
 
 	FontTextureMap updateTextureWithSource(uint32_t v, FontSource *source, const Map<String, Vector<char16_t>> &l, const FontTextureInterface &);
 

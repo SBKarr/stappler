@@ -36,3 +36,5 @@ APLOG_USE_MODULE(serenity);
 #include "Server.cc"
 #include "ServerComponent.cc"
 #include "mod_serenity.cc"
+
+#include "Task.cc"

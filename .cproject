@@ -78,9 +78,7 @@
 							<tool id="cdt.managedbuild.tool.gnu.archiver.base.1049772104" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.base"/>
 							<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.base.1904106110" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.base">
 								<option id="gnu.cpp.compiler.option.include.paths.1652343140" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/StapplerNext/cpp/stappler}&quot;"/>
 									<listOptionValue builtIn="false" value="/usr/local/include/apache"/>
-									<listOptionValue builtIn="false" value="/usr/include/ImageMagick"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.1356441528" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="LINUX=1"/>
@@ -91,9 +89,7 @@
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.compiler.base.1693384269" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.base">
 								<option id="gnu.c.compiler.option.include.paths.12506124" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/StapplerNext/cpp/stappler}&quot;"/>
 									<listOptionValue builtIn="false" value="/usr/local/include/apache"/>
-									<listOptionValue builtIn="false" value="/usr/include/ImageMagick"/>
 								</option>
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.700040841" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="LINUX=1"/>
@@ -111,10 +107,7 @@
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.assembler.base.1087584528" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.base">
 								<option id="gnu.both.asm.option.include.paths.1717624154" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/StapplerNext/cpp/stappler}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/StapplerNext/cpp/cocos/cocos2d}&quot;"/>
 									<listOptionValue builtIn="false" value="/usr/local/include/apache"/>
-									<listOptionValue builtIn="false" value="/usr/include/ImageMagick"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.assembler.input.1277860611" superClass="cdt.managedbuild.tool.gnu.assembler.input"/>
 							</tool>

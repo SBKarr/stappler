@@ -81,7 +81,7 @@ void DynamicBatchCommand::setStencilIndex(uint8_t st) {
 void DynamicBatchCommand::useMaterial() {
 	if (!_batch) {
 		auto &quads = _textureAtlas->getQuads();
-		for (auto it : quads) {
+		for (auto &it : quads) {
 			it->updateTransform(Mat4::IDENTITY);
 		}
 	}

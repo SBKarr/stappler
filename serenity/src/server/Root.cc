@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,7 @@ THE SOFTWARE.
 #include "Server.h"
 #include "StorageScheme.h"
 #include "WebSocket.h"
+#include "Task.h"
 
 NS_SA_BEGIN
 
@@ -45,9 +46,13 @@ void *sa_server_timer_thread_fn(apr_thread_t *self, void *data) {
 	Root *serv = (Root *)data;
 	apr_sleep(config::getHeartbeatPause().toMicroseconds());
 	while(s_timerExitFlag.test_and_set()) {
+		auto exec = Time::now();
 		serv->onHeartBeat();
-		auto stop = config::getHeartbeatTime().toMicroseconds();
-		apr_sleep(stop);
+
+		auto execTime = Time::now() - exec;
+		if (execTime < config::getHeartbeatTime()) {
+			apr_sleep((config::getHeartbeatTime() - execTime).toMicroseconds());
+		}
 	}
 	return NULL;
 }
@@ -139,13 +144,6 @@ void Root::dbdPrepare(server_rec *s, const char *l, const char *q) {
 	}
 }
 
-/*apr::weak_string Root::getBroadcastBindAddress() const {
-	return apr::string::make_weak(config::getBroadcastSocketAddr());
-}
-uint16_t Root::getBroadcastBindPort() const {
-	return config::getBroadcastSocketPort();
-}*/
-
 bool Root::isDebugEnabled() const {
 	return _debug;
 }
@@ -157,8 +155,52 @@ void Root::setDebugEnabled(bool val) {
 	});
 }
 
-void Root::onChildInit() {
+struct TaskContext : AllocPool {
+	Task *task = nullptr;
+	server_rec *serv = nullptr;
 
+	TaskContext(Task *t, server_rec *s) : task(t), serv(s) { }
+};
+
+static void *Root_performTask(apr_thread_t *, void *ptr) {
+	auto ctx = (TaskContext *)ptr;
+	apr::pool::perform([&] {
+		apr::pool::perform([&] {
+			ctx->task->setSuccessful(ctx->task->execute());
+			ctx->task->onComplete();
+		}, ctx->task->pool());
+	}, ctx->serv);
+	ctx->task->free();
+	return nullptr;
+}
+
+bool Root::performTask(const Server &serv, Task *task, bool performFirst) {
+	if (_threadPool && task) {
+		auto ctx = new (task->pool()) TaskContext( task, serv.server() );
+		if (performFirst) {
+			return apr_thread_pool_top(_threadPool, &Root_performTask, ctx, apr_byte_t(task->getPriority()), nullptr) == APR_SUCCESS;
+		} else {
+			return apr_thread_pool_push(_threadPool, &Root_performTask, ctx, apr_byte_t(task->getPriority()), nullptr) == APR_SUCCESS;
+		}
+	}
+	return false;
+}
+
+bool Root::scheduleTask(const Server &serv, Task *task, TimeInterval interval) {
+	if (_threadPool && task) {
+		auto ctx = new (task->pool()) TaskContext( task, serv.server() );
+		return apr_thread_pool_schedule(_threadPool, &Root_performTask, ctx, interval.toMicroseconds(), nullptr) == APR_SUCCESS;
+	}
+	return false;
+}
+
+void Root::onChildInit() {
+	if (apr_thread_pool_create(&_threadPool, 1, 10, _pool) == APR_SUCCESS) {
+		apr_thread_pool_idle_wait_set(_threadPool, (5_sec).toMicroseconds());
+		apr_thread_pool_threshold_set(_threadPool, 2);
+	} else {
+		_threadPool = nullptr;
+	}
 }
 
 void Root::onHeartBeat() {
@@ -182,6 +224,7 @@ void Root::onServerChildInit(apr_pool_t *p, server_rec* s) {
 		websocket::Manager::filterRegister();
 
 		setProcPool(p);
+		onChildInit();
 
 		_rootServerContext = s;
 		auto serv = _rootServerContext;
@@ -193,8 +236,6 @@ void Root::onServerChildInit(apr_pool_t *p, server_rec* s) {
 			serv = serv.next();
 		}
 
-		onChildInit();
-
 		s_timerExitFlag.test_and_set();
 		apr_threadattr_t *attr;
 		apr_status_t error = apr_threadattr_create(&attr, _pool);
@@ -203,22 +244,6 @@ void Root::onServerChildInit(apr_pool_t *p, server_rec* s) {
 			apr_thread_create(&_timerThread, attr,
 					sa_server_timer_thread_fn, this, _pool);
 		}
-
-		/*attr = nullptr;
-		error = apr_threadattr_create(&attr, _pool);
-		if (error == APR_SUCCESS) {
-			apr_threadattr_detach_set(attr, 1);
-			apr_thread_create(&_broadcastListenerThread, attr,
-					sa_server_broadcast_listener_thread_fn, this, _pool);
-		}
-
-		attr = nullptr;
-		error = apr_threadattr_create(&attr, _pool);
-		if (error == APR_SUCCESS) {
-			apr_threadattr_detach_set(attr, 1);
-			apr_thread_create(&_broadcastSenderThread, attr,
-					sa_server_broadcast_sender_thread_fn, this, _pool);
-		}*/
 	}, s);
 }
 

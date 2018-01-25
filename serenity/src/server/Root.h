@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -85,6 +85,9 @@ public:
 	bool isDebugEnabled() const;
 	void setDebugEnabled(bool);
 
+	bool performTask(const Server &server, Task *task, bool performFirst);
+	bool scheduleTask(const Server &server, Task *task, TimeInterval);
+
 protected:
 	static Root *s_sharedServer;
 
@@ -109,6 +112,8 @@ protected:
 
 	ap_log_writer_init *_defaultInit = nullptr;
 	ap_log_writer *_defaultWriter = nullptr;
+
+	apr_thread_pool_t *_threadPool = nullptr;
 
 #if DEBUG
 	bool _debug = true;

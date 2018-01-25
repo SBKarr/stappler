@@ -41,6 +41,7 @@ MemPool::MemPool(Init i) : _status(i), _pool(nullptr) {
 MemPool::MemPool(pool_t *p) : _status(Managed) {
 	_pool = pool::create(p);
 }
+MemPool::MemPool(pool_t *p, WrapTag t) : _status(Managed), _pool(p) { }
 MemPool::~MemPool() noexcept {
 	free();
 }

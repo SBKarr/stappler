@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -58,7 +58,7 @@ public:
 	const String &getNamespace() const;
 
 	template <typename Component = ServerComponent>
-	auto getComponent(const String &) const -> Component *;
+	auto getComponent(const StringView &) const -> Component *;
 	void addComponent(const String &, ServerComponent *);
 
 	void addPreRequest(Function<int(Request &)> &&);
@@ -79,7 +79,7 @@ public:
 
 	const storage::Scheme * exportScheme(const storage::Scheme &);
 
-	const storage::Scheme * getScheme(const String &) const;
+	const storage::Scheme * getScheme(const StringView &) const;
 	const storage::Scheme * getFileScheme() const;
 	const storage::Scheme * getUserScheme() const;
 
@@ -105,6 +105,9 @@ public:
 	const Map<String, RequestScheme> &getRequestHandlers() const;
 
 	void reportError(const data::Value &);
+
+	bool performTask(Task *task, bool performFirst = false) const;
+	bool scheduleTask(Task *task, TimeInterval) const;
 
 public: // httpd server info
 	apr::weak_string getDefaultName() const;
@@ -145,7 +148,7 @@ public: // httpd server info
 	tpl::Cache *getTemplateCache() const;
 
 protected:
-	ServerComponent *getServerComponent(const String &name) const;
+	ServerComponent *getServerComponent(const StringView &name) const;
 
 	struct Config;
 
@@ -154,7 +157,7 @@ protected:
 };
 
 template <typename Component>
-inline auto Server::getComponent(const String &name) const -> Component * {
+inline auto Server::getComponent(const StringView &name) const -> Component * {
 	return dynamic_cast<Component *>(getServerComponent(name));
 }
 

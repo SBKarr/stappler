@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -41,13 +41,13 @@ class FontLibraryCache;
 
 class FontLibraryCache : public layout::FreeTypeInterface {
 public:
-	FontLibraryCache(const String &, FontLibrary *);
+	bool init(const String &, FontLibrary *);
 
 	void update();
 	Time getTimer() const;
 
 protected:
-	FontLibrary *library;
+	FontLibrary *library = nullptr;
 	Time timer;
 };
 
@@ -58,7 +58,7 @@ public:
 	~FontLibrary();
 	void update(float dt);
 
-	Arc<FontLibraryCache> getCache();
+	Rc<FontLibraryCache> getCache();
 
 	Vector<size_t> getQuadsCount(const layout::FormatSpec *format, const Map<String, Vector<CharTexture>> &layouts, size_t texSize);
 
@@ -73,8 +73,8 @@ public:
 	bool isSourceRequestValid(layout::FontSource *, uint32_t);
 
 	void cleanupSource(FontSource *);
-	Arc<layout::FontTextureLayout> getSourceLayout(FontSource *);
-	void setSourceLayout(FontSource *, layout::FontTextureLayout &&);
+	Rc<layout::FontTextureLayout> getSourceLayout(FontSource *);
+	void setSourceLayout(FontSource *, Rc<layout::FontTextureLayout> &&);
 
 protected:
 	void writeTextureQuad(const layout::FormatSpec *format, const layout::Metrics &m, const layout::CharSpec &c, const layout::CharLayout &l, const layout::CharTexture &t,
@@ -82,16 +82,25 @@ protected:
 
 	std::mutex _mutex;
 	Time _timer = 0;
-	Map<uint64_t, Arc<FontLibraryCache>> _cache;
+	Map<uint64_t, Rc<FontLibraryCache>> _cache;
 
 	std::mutex _sourcesMutex;
-	Map<FontSource *, Arc<layout::FontTextureLayout>> _sources;
+	Map<FontSource *, Rc<layout::FontTextureLayout>> _sources;
 
 	static FontLibrary *s_instance;
 	static std::mutex s_mutex;
 };
 
-FontLibraryCache::FontLibraryCache(const String &str, FontLibrary *lib) : FreeTypeInterface(str), library(lib), timer(Time::now()) { }
+bool FontLibraryCache::init(const String &str, FontLibrary *lib) {
+	if (!FreeTypeInterface::init(str)) {
+		return false;
+	}
+
+	library = lib;
+	timer = Time::now();
+
+	return true;
+}
 
 void FontLibraryCache::update() {
 	timer = Time::now();
@@ -112,8 +121,8 @@ void FontLibrary::cleanupSource(FontSource *source) {
 	_sourcesMutex.unlock();
 }
 
-Arc<layout::FontTextureLayout> FontLibrary::getSourceLayout(FontSource *source) {
-	Arc<layout::FontTextureLayout> ret;
+Rc<layout::FontTextureLayout> FontLibrary::getSourceLayout(FontSource *source) {
+	Rc<layout::FontTextureLayout> ret;
 	_sourcesMutex.lock();
 	auto it = _sources.find(source);
 	if (it != _sources.end()) {
@@ -123,14 +132,14 @@ Arc<layout::FontTextureLayout> FontLibrary::getSourceLayout(FontSource *source) 
 	return ret;
 }
 
-void FontLibrary::setSourceLayout(FontSource *source, layout::FontTextureLayout &&map) {
-	Arc<layout::FontTextureLayout> ret;
+void FontLibrary::setSourceLayout(FontSource *source, Rc<layout::FontTextureLayout> &&map) {
+	Rc<layout::FontTextureLayout> ret;
 	_sourcesMutex.lock();
 	auto it = _sources.find(source);
 	if (it != _sources.end()) {
-		it->second = Arc<layout::FontTextureLayout>::create(std::move(map));
+		it->second = move(map);
 	} else {
-		_sources.emplace(source, Arc<layout::FontTextureLayout>::create(std::move(map)));
+		_sources.emplace(source, move(map));
 	}
 	_sourcesMutex.unlock();
 }
@@ -183,8 +192,8 @@ void FontLibrary::update(float dt) {
 	}
 }
 
-Arc<FontLibraryCache> FontLibrary::getCache() {
-	Arc<FontLibraryCache> ret;
+Rc<FontLibraryCache> FontLibrary::getCache() {
+	Rc<FontLibraryCache> ret;
 	_mutex.lock();
 	auto id = ThreadManager::getInstance()->getNativeThreadId();
 	auto it = _cache.find(id);
@@ -192,7 +201,7 @@ Arc<FontLibraryCache> FontLibrary::getCache() {
 		ret = it->second;
 		ret->update();
 	} else {
-		ret = _cache.emplace(id, Arc<FontLibraryCache>::create(resource::getFallbackFont(), this)).first->second;
+		ret = _cache.emplace(id, Rc<FontLibraryCache>::create(resource::getFallbackFont(), this)).first->second;
 	}
 
 	_mutex.unlock();
@@ -269,11 +278,11 @@ bool FontLibrary::writeTextureQuads(uint32_t v, FontSource *source, const layout
 		return false;
 	}
 
-	if (layoutsRef->first != v) {
+	if (layoutsRef->index != v) {
 		return false;
 	}
 
-	return writeTextureQuads(v, source, layoutsRef->second, format, texs, quads, colorMap);
+	return writeTextureQuads(v, source, layoutsRef->map, format, texs, quads, colorMap);
 }
 
 bool FontLibrary::writeTextureQuads(uint32_t v, FontSource *source, const layout::FontTextureMap &layouts, const layout::FormatSpec *format,
@@ -293,8 +302,8 @@ bool FontLibrary::writeTextureQuads(uint32_t v, FontSource *source, const layout
 
 	const layout::RangeSpec *targetRange = nullptr;
 	Map<String, Vector<CharTexture>>::const_iterator texVecIt;
-	Arc<layout::FontLayout> layout;
-	Arc<layout::FontData> data;
+	Rc<layout::FontLayout> layout;
+	Rc<layout::FontData> data;
 	const layout::Metrics *metrics;
 	const Vector<layout::CharLayout> *charVec;
 
@@ -362,16 +371,16 @@ bool FontLibrary::writeTextureRects(uint32_t v, FontSource *source, const layout
 		return false;
 	}
 
-	if (layoutsRef->first != v) {
+	if (layoutsRef->index != v) {
 		return false;
 	}
 
-	auto &layouts = layoutsRef->second;
+	auto &layouts = layoutsRef->map;
 
 	const layout::RangeSpec *targetRange = nullptr;
 	Map<String, Vector<CharTexture>>::const_iterator texVecIt;
-	Arc<layout::FontLayout> layout;
-	Arc<layout::FontData> data;
+	Rc<layout::FontLayout> layout;
+	Rc<layout::FontData> data;
 	const layout::Metrics *metrics;
 	const Vector<layout::CharLayout> *charVec;
 
@@ -475,7 +484,7 @@ bool FontSource::init(FontFaceMap &&map, const ReceiptCallback &cb, float scale,
 		return requestMetrics(source, srcs, size, cb);
 	};
 
-	_layoutCallback = [] (const layout::FontSource *source, const Vector<String> &srcs, const Arc<FontData> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
+	_layoutCallback = [] (const layout::FontSource *source, const Vector<String> &srcs, const Rc<FontData> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
 		return requestLayoutUpgrade(source, srcs, data, chars, cb);
 	};
 
@@ -599,7 +608,7 @@ void FontSource::updateTexture(uint32_t v, const Map<String, Vector<char16_t>> &
 			auto cache = lib->getCache();
 			auto ret = cache->updateTextureWithSource(v, this, l, iface);
 			if (!ret.empty()) {
-				lib->setSourceLayout(this, pair(v, std::move(ret)));
+				lib->setSourceLayout(this, Rc<layout::FontTextureLayout>::create(v, std::move(ret)));
 				onTextureResult(std::move(tPtr), v);
 			}
 		});
@@ -625,7 +634,7 @@ void FontSource::updateTexture(uint32_t v, const Map<String, Vector<char16_t>> &
 				auto cache = lib->getCache();
 				auto uret = cache->updateTextureWithSource(v, this, *lPtr, iface);
 				if (!uret.empty()) {
-					lib->setSourceLayout(this, pair(v, std::move(uret)));
+					lib->setSourceLayout(this, Rc<layout::FontTextureLayout>::create(v, move(uret)));
 					return true;
 				}
 				return false;
@@ -647,7 +656,7 @@ void FontSource::clone(FontSource *source, const Function<void(FontSource *)> &c
 			cb(this);
 		}
 	}
-	auto lPtr = new Map<String, Arc<FontLayout>>(source->getLayoutMap());
+	auto lPtr = new Map<String, Rc<FontLayout>>(source->getLayoutMap());
 	auto tlPtr = new Map<String, Vector<char16_t>>(source->getTextureLayoutMap());
 	auto tPtr = new Vector<Rc<cocos2d::Texture2D>>();
 	auto sPtr = new Rc<FontSource>(source);
@@ -657,7 +666,7 @@ void FontSource::clone(FontSource *source, const Function<void(FontSource *)> &c
 	thread.perform([this, lPtr, tlPtr, tPtr, vPtr] (const Task &) -> bool {
 		Vector<char16_t> vec;;
 		for (auto &it : (*lPtr)) {
-			Arc<FontLayout> l(it.second);
+			Rc<FontLayout> l(it.second);
 			auto style = l->getStyle();
 			auto data = l->getData();
 			vec.clear();
@@ -690,7 +699,7 @@ void FontSource::clone(FontSource *source, const Function<void(FontSource *)> &c
 			*vPtr = _version.load();
 			auto ret = cache->updateTextureWithSource(*vPtr, this, *tlPtr, iface);
 			if (!ret.empty()) {
-				lib->setSourceLayout(this, pair(*vPtr, std::move(ret)));
+				lib->setSourceLayout(this, Rc<layout::FontTextureLayout>::create(*vPtr, move(ret)));
 				return true;
 			}
 			return false;
@@ -716,7 +725,7 @@ Metrics FontSource::requestMetrics(const layout::FontSource *source, const Vecto
 	return cache->requestMetrics(source, srcs, size, cb);
 }
 
-Arc<FontData> FontSource::requestLayoutUpgrade(const layout::FontSource *source, const Vector<String> &srcs, const Arc<FontData> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
+Rc<FontData> FontSource::requestLayoutUpgrade(const layout::FontSource *source, const Vector<String> &srcs, const Rc<FontData> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
 	auto cache = FontLibrary::getInstance()->getCache();
 	return cache->requestLayoutUpgrade(source, srcs, data, chars, cb);
 }

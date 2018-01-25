@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -61,7 +61,7 @@ protected:
 	virtual void onBeforeFrame();
 	virtual void onAfterFrame();
 
-	bool _batchingEnabled = true;
+	bool _batchingEnabled = false;
 	bool _stencilOptEnabled = false;
 	size_t _clearDelay = 0;
 	bool _shouldClear = false;
