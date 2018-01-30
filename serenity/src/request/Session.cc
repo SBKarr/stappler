@@ -126,7 +126,7 @@ bool Session::init() {
 		return false;
 	}
 
-	Bytes sessionToken(base64::decode(sessionTokenString));
+	Bytes sessionToken(base64url::decode(sessionTokenString));
 	auto sessionData = getStorageData(_request, sessionToken);
 	auto &data = sessionData.getValue("data");
 	if (!data) {
@@ -151,7 +151,7 @@ bool Session::init() {
 		return false;
 	}
 
-	Bytes cookieToken(base64::decode(_request.getCookie(serv.getSessionName(), true)));
+	Bytes cookieToken(base64url::decode(_request.getCookie(serv.getSessionName(), true)));
 	if (cookieToken.empty() || cookieToken.size() != 64) {
 
 		messages::error("Session", "Fail to read token from cookie", data::Value{
@@ -209,7 +209,7 @@ bool Session::write() {
 		return false;
 	}
 
-	_request.setCookie(_request.server().getSessionName(), base64::encode(_cookieToken), _maxAge);
+	_request.setCookie(_request.server().getSessionName(), base64url::encode(_cookieToken), _maxAge);
 	return true;
 }
 

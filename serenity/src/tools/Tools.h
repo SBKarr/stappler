@@ -98,7 +98,7 @@ protected:
 class VirtualFilesystem : public RequestHandler {
 public:
 	virtual bool isRequestPermitted(Request &) override { return true; }
-	virtual int onPostReadRequest(Request &) override;
+	virtual int onTranslateName(Request &) override;
 };
 
 void registerTools(const String &prefix, Server &serv);
@@ -114,6 +114,7 @@ struct VirtualFile {
 };
 
 const char * getCompileDate();
+Time getCompileUnixTime();
 
 NS_SA_EXT_END(tools)
 

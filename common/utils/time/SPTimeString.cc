@@ -268,20 +268,67 @@ static int sp_date_checkmask(const char *data, const char *mask) {
  *
  */
 
+static const int s_months[12] = {
+		('J' << 16) | ('a' << 8) | 'n', ('F' << 16) | ('e' << 8) | 'b',
+		('M' << 16) | ('a' << 8) | 'r', ('A' << 16) | ('p' << 8) | 'r',
+		('M' << 16) | ('a' << 8) | 'y', ('J' << 16) | ('u' << 8) | 'n',
+		('J' << 16) | ('u' << 8) | 'l', ('A' << 16) | ('u' << 8) | 'g',
+		('S' << 16) | ('e' << 8) | 'p', ('O' << 16) | ('c' << 8) | 't',
+		('N' << 16) | ('o' << 8) | 'v', ('D' << 16) | ('e' << 8) | 'c'
+};
+
+Time Time::fromCompileTime(const char *date, const char *time) {
+	sp_time_exp_t ds;
+	ds.tm_year = ((date[7] - '0') * 10 + (date[8] - '0') - 19) * 100;
+	if (ds.tm_year < 0) {
+		return Time();
+	}
+
+	ds.tm_year += ((date[9] - '0') * 10) + (date[10] - '0');
+	ds.tm_mday = ((date[4] != ' ') ? ((date[4] - '0') * 10) : 0) + (date[5] - '0');
+
+	int mint = (date[0] << 16) | (date[1] << 8) | date[2];
+	int mon = 0;
+	for (; mon < 12; mon++) {
+		if (mint == s_months[mon])
+			break;
+	}
+
+	if (mon == 12)
+		return Time();
+
+	if (ds.tm_mday <= 0 || ds.tm_mday > 31)
+		return Time();
+
+	if ((ds.tm_mday == 31) && (mon == 3 || mon == 5 || mon == 8 || mon == 10))
+		return Time();
+
+	if ((mon == 1)
+			&& ((ds.tm_mday > 29)
+					|| ((ds.tm_mday == 29)
+							&& ((ds.tm_year & 3) || (((ds.tm_year % 100) == 0) && (((ds.tm_year % 400) != 100))))
+					)
+			))
+		return Time();
+
+	ds.tm_mon = mon;
+	ds.tm_hour = ((time[0] - '0') * 10) + (time[1] - '0');
+	ds.tm_min = ((time[3] - '0') * 10) + (time[4] - '0');
+	ds.tm_sec = ((time[6] - '0') * 10) + (time[7] - '0');
+
+	if ((ds.tm_hour > 23) || (ds.tm_min > 59) || (ds.tm_sec > 61))
+		return Time();
+
+	ds.tm_usec = 0;
+	ds.tm_gmtoff = 0;
+	return ds.ltz_get();
+}
+
 Time Time::fromHttp(const StringView &r) {
 	auto date = r.data();
 	sp_time_exp_t ds;
 	int mint, mon;
 	const char *monstr, *timstr;
-	static const int months[12] = {
-    		('J' << 16) | ('a' << 8) | 'n', ('F' << 16) | ('e' << 8) | 'b',
-			('M' << 16) | ('a' << 8) | 'r', ('A' << 16) | ('p' << 8) | 'r',
-			('M' << 16) | ('a' << 8) | 'y', ('J' << 16) | ('u' << 8) | 'n',
-			('J' << 16) | ('u' << 8) | 'l', ('A' << 16) | ('u' << 8) | 'g',
-			('S' << 16) | ('e' << 8) | 'p', ('O' << 16) | ('c' << 8) | 't',
-			('N' << 16) | ('o' << 8) | 'v', ('D' << 16) | ('e' << 8) | 'c'
-	};
-
 	if (!date)
 		return Time();
 
@@ -364,7 +411,7 @@ Time Time::fromHttp(const StringView &r) {
 
 	mint = (monstr[0] << 16) | (monstr[1] << 8) | monstr[2];
 	for (mon = 0; mon < 12; mon++)
-		if (mint == months[mon])
+		if (mint == s_months[mon])
 			break;
 
 	if (mon == 12)
@@ -440,14 +487,6 @@ Time Time::fromRfc(const StringView &r) {
 	sp_time_exp_t ds;
 	int mint, mon;
 	const char *monstr, *timstr, *gmtstr;
-	static const int months[12] = {
-			('J' << 16) | ('a' << 8) | 'n', ('F' << 16) | ('e' << 8) | 'b',
-			('M' << 16) | ('a' << 8) | 'r', ('A' << 16) | ('p' << 8) | 'r',
-			('M' << 16) | ('a' << 8) | 'y', ('J' << 16) | ('u' << 8) | 'n',
-			('J' << 16) | ('u' << 8) | 'l', ('A' << 16) | ('u' << 8) | 'g',
-			('S' << 16) | ('e' << 8) | 'p', ('O' << 16) | ('c' << 8) | 't',
-			('N' << 16) | ('o' << 8) | 'v', ('D' << 16) | ('e' << 8) | 'c'
-	};
 
 	if (!date)
 		return Time();
@@ -681,7 +720,7 @@ Time Time::fromRfc(const StringView &r) {
 
 	mint = (monstr[0] << 16) | (monstr[1] << 8) | monstr[2];
 	for (mon = 0; mon < 12; mon++)
-		if (mint == months[mon])
+		if (mint == s_months[mon])
 			break;
 
 	if (mon == 12)

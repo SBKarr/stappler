@@ -70,7 +70,7 @@ VirtualFile::VirtualFile(const char *n, const char *c) : name(n), content(c) {
 	s_handle.add(n, c);
 }
 
-int VirtualFilesystem::onPostReadRequest(Request &rctx) {
+int VirtualFilesystem::onTranslateName(Request &rctx) {
 	if (rctx.getMethod() != Request::Get) {
 		return DECLINED;
 	}
@@ -84,6 +84,11 @@ int VirtualFilesystem::onPostReadRequest(Request &rctx) {
 			} else if (_subPath.compare(_subPath.length() - 5, 5, ".html") == 0) {
 				rctx.setContentType("text/html;charset=UTF-8");
 			}
+
+			if (output::checkCacheHeaders(rctx, getCompileUnixTime(), hash::hash32(s_handle.table[i].name, strlen(s_handle.table[i].name)))) {
+				return HTTP_NOT_MODIFIED;
+			}
+
 			rctx << StringView(s_handle.table[i].content, s_handle.table[i].len);
 			return DONE;
 			break;

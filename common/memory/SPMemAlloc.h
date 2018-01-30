@@ -47,17 +47,10 @@ struct AllocPool {
 	static pool_t *getCurrentPool();
 
 	template <typename T>
-	static status_t cleanupObjectFromPool(void *data) {
-		if (data) {
-			delete ((T *)data);
-		}
-		return SUCCESS;
-	}
+	static status_t cleanupObjectFromPool(void *data);
 
 	template <typename T>
-	static void registerCleanupDestructor(T *obj, pool_t *pool) {
-		pool::cleanup_register(pool, (void *)obj, &(cleanupObjectFromPool<T>));
-	}
+	static void registerCleanupDestructor(T *obj, pool_t *pool);
 };
 
 class MemPool : public AllocPool {
@@ -408,6 +401,30 @@ struct Storage {
 	Value & ref() noexcept { return *ptr(); }
 	const Value & ref() const noexcept { return *ptr(); }
 };
+
+
+struct __CleaupData : AllocPool {
+	void *data = nullptr;
+	memory::pool_t *pool = nullptr;
+};
+
+template <typename T>
+inline status_t AllocPool::cleanupObjectFromPool(void *data) {
+	if (auto d = (__CleaupData *)data) {
+		memory::pool::push(d->pool);
+		delete ((T *)d->data);
+		memory::pool::pop();
+	}
+	return SUCCESS;
+}
+
+template <typename T>
+inline void AllocPool::registerCleanupDestructor(T *obj, pool_t *pool) {
+	auto data = new (pool) __CleaupData;
+	data->data = obj;
+	data->pool = pool;
+	pool::cleanup_register(pool, (void *)data, &(cleanupObjectFromPool<T>));
+}
 
 NS_SP_EXT_END(memory)
 

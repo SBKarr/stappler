@@ -25,6 +25,8 @@ THE SOFTWARE.
 
 #include "SPCharReader.h"
 
+#define SP_COMPILE_TIME (Time::fromCompileTime(__DATE__, __TIME__))
+
 NS_SP_BEGIN
 
 class Time;
@@ -105,6 +107,7 @@ class Time {
 public:
 	static Time now();
 
+	static Time fromCompileTime(const char *, const char *);
 	static Time fromHttp(const StringView &);
 	static Time fromRfc(const StringView &);
 

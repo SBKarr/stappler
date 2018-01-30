@@ -63,13 +63,19 @@ struct uuid : AllocPool {
 	}
 
 	string str() const {
-		string ret; ret.reserve(APR_UUID_FORMATTED_LENGTH);
+		string ret; ret.resize(APR_UUID_FORMATTED_LENGTH);
 		apr_uuid_format(ret.data(), &_uuid);
 		return ret;
 	}
 
 	Bytes bytes() const {
 		Bytes ret; ret.resize(16);
+		memcpy(ret.data(), _uuid.data, 16);
+		return ret;
+	}
+
+	std::array<uint8_t, 16> array() const {
+		std::array<uint8_t, 16> ret;
 		memcpy(ret.data(), _uuid.data, 16);
 		return ret;
 	}

@@ -106,6 +106,8 @@ struct Request::Config : public AllocPool {
 	User *_user = nullptr;
 	request_rec *_request = nullptr;
 	InputFilter *_filter = nullptr;
+
+	Map<String, CookieStorage> _cookies;
 };
 
 Request::Request() : _buffer(nullptr), _request(nullptr), _config(nullptr) { }
@@ -329,39 +331,18 @@ void Request::setHandler(apr::string &&str) {
 	_request->handler = str.extract();
 }
 
-void Request::setCookie(const String &name, const String &value, TimeInterval maxAge, CookieFlags flags, const String &path) {
-	apr::ostringstream attrs;
-	if (((flags & CookieFlags::Secure) != 0 && isSecureConnection()) && ((flags & CookieFlags::HttpOnly) != 0)) {
-		attrs << "HttpOnly;Secure;Version=1";
-	} else if (((flags & CookieFlags::Secure) != 0) && isSecureConnection()) {
-		attrs << "Secure;Version=1";
-	} else if ((flags & CookieFlags::HttpOnly) != 0) {
-		attrs << "HttpOnly;Version=1";
-	} else {
-		attrs << "Version=1";
-	}
-
-	if (!path.empty()) {
-		attrs << ";Path=" << path;
-	}
-
-	if (((flags & CookieFlags::SetOnError) != 0) && ((flags & CookieFlags::SetOnSuccess) != 0)) {
-		ap_cookie_write(_request, name.c_str(), string::urlencode(value).c_str(), attrs.weak().c_str(), maxAge.toSeconds(), _request->err_headers_out, _request->headers_out, NULL);
-	} else if ((flags & CookieFlags::SetOnError) != 0) {
-		ap_cookie_write(_request, name.c_str(), string::urlencode(value).c_str(), attrs.weak().c_str(), maxAge.toSeconds(), _request->err_headers_out, NULL);
-	} else if ((flags & CookieFlags::SetOnSuccess) != 0) {
-		ap_cookie_write(_request, name.c_str(), string::urlencode(value).c_str(), attrs.weak().c_str(), maxAge.toSeconds(), _request->headers_out, NULL);
-	}
+void Request::setCookie(const String &name, const String &value, TimeInterval maxAge, CookieFlags flags) {
+	_config->_cookies.emplace(name, CookieStorage{value, flags, maxAge});
 }
+
 void Request::removeCookie(const String &name, CookieFlags flags) {
-	if (((flags & CookieFlags::SetOnError) != 0) && ((flags & CookieFlags::SetOnSuccess) != 0)) {
-		ap_cookie_remove(_request, name.c_str(), CLEAR_ATTRS, _request->err_headers_out, _request->headers_out, NULL);
-	} else if ((flags & CookieFlags::SetOnError) != 0) {
-		ap_cookie_remove(_request, name.c_str(), CLEAR_ATTRS, _request->err_headers_out, NULL);
-	} else if ((flags & CookieFlags::SetOnSuccess) != 0) {
-		ap_cookie_remove(_request, name.c_str(), CLEAR_ATTRS, _request->headers_out, NULL);
-	}
+	_config->_cookies.emplace(name, CookieStorage{String(), flags, TimeInterval::seconds(0)});
 }
+
+const Map<String, Request::CookieStorage> Request::getResponseCookies() const {
+	return _config->_cookies;
+}
+
 apr::weak_string Request::getCookie(const String &name, bool removeFromHeadersTable) const {
 	const char *val = nullptr;
 	if (ap_cookie_read(_request, name.c_str(), &val, (int)removeFromHeadersTable) == APR_SUCCESS) {
@@ -460,6 +441,10 @@ void Request::setMaxFileSize(size_t s) {
 	_config->_config.maxFileSize = s;
 }
 
+void Request::storeObject(void *ptr, const String &key) const {
+	apr_pool_userdata_set(ptr, key.data(), nullptr, _request->pool);
+}
+
 const apr::vector<apr::string> & Request::getParsedQueryPath() const {
 	return _config->getPath();
 }
@@ -505,7 +490,9 @@ void Request::addDebugMessage(data::Value &&val) {
 static apr_status_t sa_request_custom_cleanup(void *ptr) {
 	if (ptr) {
 		auto ref = (Function<void()> *)ptr;
+		memory::pool::push(ref->get_allocator());
 		(*ref)();
+		memory::pool::pop();
 	}
 	return APR_SUCCESS;
 }
@@ -572,7 +559,7 @@ int Request::sendFile(String && file, String && contentType, size_t cacheTime) {
 	return sendFile(std::move(file), cacheTime);
 }
 
-apr::string Request::getFullHostname(int port) {
+apr::string Request::getFullHostname(int port) const {
 	if (port == -1) {
 		port = getParsedURI().port();
 	}
@@ -585,6 +572,14 @@ apr::string Request::getFullHostname(int port) {
 	}
 
 	return ret.str();
+}
+
+bool Request::checkCacheHeaders(Time t, const StringView &etag) {
+	return output::checkCacheHeaders(*this, t, etag);
+}
+
+bool Request::checkCacheHeaders(Time t, uint32_t idHash) {
+	return output::checkCacheHeaders(*this, t, idHash);
 }
 
 void Request::runTemplate(String && path, const Function<void(tpl::Exec &, Request &)> &cb) {

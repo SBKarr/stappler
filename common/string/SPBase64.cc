@@ -64,7 +64,7 @@ size_t decodeSize(size_t l) { return ((l+Base64Unit-1) / Base64Unit) * BinaryUni
 
 template <typename Callback>
 static void make_encode(const CoderSource &data, const Callback &cb) {
-	Reader inputBuffer(data.data);
+	Reader inputBuffer(data.data(), data.size());
 	auto length = inputBuffer.size();
 
 	size_t i = 0;
@@ -93,7 +93,7 @@ static void make_encode(const CoderSource &data, const Callback &cb) {
 
 template <typename Callback>
 static void make_decode(const CoderSource &data, const Callback &cb) {
-	StringView inputBuffer((char *)data.data.data(), data.data.size());
+	StringView inputBuffer((char *)data.data(), data.size());
 	auto length = inputBuffer.size();
 
 	size_t i = 0;
@@ -125,7 +125,7 @@ static void make_decode(const CoderSource &data, const Callback &cb) {
 
 typename memory::PoolInterface::StringType __encode_pool(const CoderSource &source) {
 	typename memory::PoolInterface::StringType output;
-	output.reserve(encodeSize(source.data.size()));
+	output.reserve(encodeSize(source.size()));
 	make_encode(source, [&] (const char &c) {
 		output.push_back(c);
 	});
@@ -133,7 +133,7 @@ typename memory::PoolInterface::StringType __encode_pool(const CoderSource &sour
 }
 typename memory::StandartInterface::StringType __encode_std(const CoderSource &source) {
 	typename memory::StandartInterface::StringType output;
-	output.reserve(encodeSize(source.data.size()));
+	output.reserve(encodeSize(source.size()));
 	make_encode(source, [&] (const char &c) {
 		output.push_back(c);
 	});
@@ -147,7 +147,7 @@ void encode(std::basic_ostream<char> &stream, const CoderSource &source) {
 
 typename memory::PoolInterface::BytesType __decode_pool(const CoderSource &source) {
 	typename memory::PoolInterface::BytesType output;
-	output.reserve(encodeSize(source.data.size()));
+	output.reserve(encodeSize(source.size()));
 	make_decode(source, [&] (const uint8_t &c) {
 		output.emplace_back(c);
 	});
@@ -155,7 +155,7 @@ typename memory::PoolInterface::BytesType __decode_pool(const CoderSource &sourc
 }
 typename memory::StandartInterface::BytesType __decode_std(const CoderSource &source) {
 	typename memory::StandartInterface::BytesType output;
-	output.reserve(encodeSize(source.data.size()));
+	output.reserve(encodeSize(source.size()));
 	make_decode(source, [&] (const uint8_t &c) {
 		output.emplace_back(c);
 	});
@@ -182,7 +182,7 @@ constexpr int Base64Unit = 4;
 
 template <typename Callback>
 static void make_encode(const CoderSource &data, const Callback &cb) {
-	Reader inputBuffer(data.data);
+	Reader inputBuffer(data.data(), data.size());
 	auto length = inputBuffer.size();
 
 	size_t i = 0;
@@ -208,7 +208,7 @@ static void make_encode(const CoderSource &data, const Callback &cb) {
 
 typename memory::PoolInterface::StringType __encode_pool(const CoderSource &source) {
 	typename memory::PoolInterface::StringType output;
-	output.reserve(encodeSize(source.data.size()));
+	output.reserve(encodeSize(source.size()));
 	make_encode(source, [&] (const char &c) {
 		output.push_back(c);
 	});
@@ -216,7 +216,7 @@ typename memory::PoolInterface::StringType __encode_pool(const CoderSource &sour
 }
 typename memory::StandartInterface::StringType __encode_std(const CoderSource &source) {
 	typename memory::StandartInterface::StringType output;
-	output.reserve(encodeSize(source.data.size()));
+	output.reserve(encodeSize(source.size()));
 	make_encode(source, [&] (const char &c) {
 		output.push_back(c);
 	});
@@ -279,7 +279,7 @@ uint8_t hexToChar(const char &c, const char &d) {
 }
 
 String encode(const CoderSource &source) {
-	Reader inputBuffer(source.data);
+	Reader inputBuffer(source.data(), source.size());
 	const auto length = inputBuffer.size();
 
 #if SPAPR
@@ -297,14 +297,14 @@ String encode(const CoderSource &source) {
     return output;
 }
 void encode(std::basic_ostream<char> &stream, const CoderSource &source) {
-	Reader inputBuffer(source.data);
+	Reader inputBuffer(source.data(), source.size());
 	const auto length = inputBuffer.size();
     for (size_t i = 0; i < length; ++i) {
     	stream << s_hexTable[inputBuffer[i]];
     }
 }
 size_t encode(char *buf, size_t bsize, const CoderSource &source) {
-	Reader inputBuffer(source.data);
+	Reader inputBuffer(source.data(), source.size());
 	const auto length = inputBuffer.size();
 
 	size_t bytes = 0;
@@ -320,34 +320,34 @@ size_t encode(char *buf, size_t bsize, const CoderSource &source) {
 }
 
 Bytes decode(const CoderSource &source) {
-	const auto length = source.data.size();
+	const auto length = source.size();
 
 	Bytes outputBuffer; outputBuffer.reserve(length / 2);
 	for (size_t i = 0; i < length; i += 2) {
 		outputBuffer.push_back(
-				(s_decTable[source.data[i]] << 4)
-					| s_decTable[source.data[i + 1]]);
+				(s_decTable[source[i]] << 4)
+					| s_decTable[source[i + 1]]);
 	}
 	return outputBuffer;
 }
 void decode(std::basic_ostream<char> &stream, const CoderSource &source) {
-	const auto length = source.data.size();
+	const auto length = source.size();
 
 	for (size_t i = 0; i < length; i += 2) {
 		stream << char(
-				(s_decTable[source.data[i]] << 4)
-					| s_decTable[source.data[i + 1]]);
+				(s_decTable[source[i]] << 4)
+					| s_decTable[source[i + 1]]);
 	}
 }
 size_t decode(uint8_t *buf, size_t bsize, const CoderSource &source) {
-	const auto length = source.data.size();
+	const auto length = source.size();
 
 	size_t bytes = 0;
 	for (size_t i = 0; i < length; i += 2) {
 		if (bytes + 1 <= bsize) {
 			buf[bytes] = uint8_t(
-					(s_decTable[source.data[i]] << 4)
-						| s_decTable[source.data[i + 1]]);
+					(s_decTable[source[i]] << 4)
+						| s_decTable[source[i + 1]]);
 			++ bytes;
 		} else {
 			break;

@@ -95,14 +95,13 @@ apr_status_t OutputFilter::func(ap_filter_t *f, apr_bucket_brigade *bb) {
 	if (_skipFilter || _state == State::Body || f->r->proto_num == 9) {
 		return ap_pass_brigade(f->next, bb);
 	}
-    conn_rec *c =  f->c;
 	apr_bucket *e;
 	const char *data = NULL;
 	size_t len = 0;
 	apr_status_t rv;
 
 	if (!_tmpBB) {
-		_tmpBB = apr_brigade_create(c->pool, c->bucket_alloc);
+		_tmpBB = apr_brigade_create(f->c->pool, f->c->bucket_alloc);
 	}
 
 	apr_read_type_e mode = APR_NONBLOCK_READ;
@@ -143,99 +142,11 @@ apr_status_t OutputFilter::func(ap_filter_t *f, apr_bucket_brigade *bb) {
 		}
 
 		if (rv == APR_SUCCESS) {
-			if (len > 0 && _state != State::Body) {
-				Reader reader(data, len);
-				if (_state == State::FirstLine) {
-					if (readRequestLine(reader)) {
-						_responseLine = _buffer.str();
-						_buffer.clear();
-						_nameBuffer.clear();
-					}
-				}
-				if (_state == State::Headers) {
-					if (readHeaders(reader)) {
-						apr::ostringstream servVersion;
-						servVersion << "Serenity/2 Stappler/1 (" << tools::getCompileDate() << ")";
-						_headers.emplace("Server", servVersion.str());
-						_buffer.clear();
-						if (_responseCode < 400) {
-							_skipFilter = true;
-						} else {
-							output::writeData(_request, _buffer, [&] (const String &ct) {
-								_headers.emplace("Content-Type", ct);
-							}, resultForRequest(), true);
-							_headers.emplace("Content-Length", apr_psprintf(c->pool, "%lu", _buffer.size()));
-							// provide additional info for 416 if we can
-							if (_responseCode == 416) {
-								// we need to determine requested file size
-								if (const char *filename = f->r->filename) {
-									apr_finfo_t info;
-									memset(&info, 0, sizeof(info));
-									if (apr_stat(&info, filename, APR_FINFO_SIZE, c->pool) == APR_SUCCESS) {
-										_headers.emplace("X-Range", apr_psprintf(c->pool, "%ld", info.size));
-									} else {
-										_headers.emplace("X-Range", "0");
-									}
-								} else {
-									_headers.emplace("X-Range", "0");
-								}
-							} else if (_responseCode == 401) {
-								if (_headers.at("WWW-Authenticate").empty()) {
-									_headers.emplace("WWW-Authenticate", toString("Basic realm=\"", _request.getHostname(), "\""));
-								}
-							}
-						}
-
-						auto len = _responseLine.size() + 2;
-						for (auto &it : _headers) {
-							len += strlen(it.key) + strlen(it.val) + 4;
-						}
-
-						// create ostream with preallocated storage
-						char dataBuf[len+1];
-						apr::ostringstream output(dataBuf, len);
-
-						output << _responseLine;
-						if (_responseLine.back() != '\n') {
-							output << '\n';
-						}
-						for (auto &it : _headers) {
-							output << it.key << ": " << it.val << "\r\n";
-						}
-						output << "\r\n";
-
-						apr_bucket *b = apr_bucket_transient_create(output.data(), output.size(),
-								_tmpBB->bucket_alloc);
-
-						APR_BRIGADE_INSERT_TAIL(_tmpBB, b);
-
-						if (!_buffer.empty()) {
-							APR_BUCKET_REMOVE(e);
-							APR_BRIGADE_INSERT_TAIL(_tmpBB, apr_bucket_transient_create(
-									_buffer.data(), _buffer.size(), _tmpBB->bucket_alloc));
-							APR_BRIGADE_INSERT_TAIL(_tmpBB, apr_bucket_flush_create(_tmpBB->bucket_alloc));
-							APR_BRIGADE_INSERT_TAIL(_tmpBB, apr_bucket_eos_create(
-									_tmpBB->bucket_alloc));
-							_seenEOS = true;
-
-							rv = ap_pass_brigade(f->next, _tmpBB);
-							apr_brigade_cleanup(_tmpBB);
-							return rv;
-						} else {
-							rv = ap_pass_brigade(f->next, _tmpBB);
-							apr_brigade_cleanup(_tmpBB);
-							if (rv != APR_SUCCESS) return rv;
-						}
-					}
-				}
-				if (_state == State::Body) {
-					if (!reader.empty()) {
-						APR_BRIGADE_INSERT_TAIL(_tmpBB, apr_bucket_transient_create(
-								reader.data(), reader.size(), _tmpBB->bucket_alloc));
-					}
-				}
+			rv = process(f, e, data, len);
+			if (rv != APR_SUCCESS) {
+				return rv;
 			}
-		};
+		}
 		/* Remove bucket e from bb. */
 		APR_BUCKET_REMOVE(e);
 		/* Pass brigade downstream. */
@@ -262,6 +173,162 @@ apr_status_t OutputFilter::func(ap_filter_t *f, apr_bucket_brigade *bb) {
 	}
 
 	return APR_SUCCESS;
+}
+
+apr_status_t OutputFilter::process(ap_filter_t* f, apr_bucket *e, const char *data, size_t len) {
+	apr_status_t rv = APR_SUCCESS;
+
+	if (len > 0 && _state != State::Body) {
+		Reader reader(data, len);
+		if (_state == State::FirstLine) {
+			if (readRequestLine(reader)) {
+				_responseLine = _buffer.str();
+				_buffer.clear();
+				_nameBuffer.clear();
+			}
+		}
+		if (_state == State::Headers) {
+			if (readHeaders(reader)) {
+				rv = outputHeaders(f, e, data, len);
+				if (rv != APR_SUCCESS) {
+					return rv;
+				}
+			}
+		}
+		if (_state == State::Body) {
+			if (!reader.empty()) {
+				APR_BRIGADE_INSERT_TAIL(_tmpBB, apr_bucket_transient_create(
+						reader.data(), reader.size(), _tmpBB->bucket_alloc));
+			}
+		}
+	}
+
+	return rv;
+}
+
+size_t OutputFilter::calcHeaderSize() const {
+	auto len = _responseLine.size() + 2;
+	for (auto &it : _headers) {
+		len += strlen(it.key) + strlen(it.val) + 4;
+	}
+
+	auto &cookies = _request.getResponseCookies();
+	for (auto &it : cookies) {
+		if ((_responseCode < 400 && (it.second.flags & CookieFlags::SetOnSuccess) != 0)
+				|| (_responseCode >= 400 && (it.second.flags & CookieFlags::SetOnError) != 0)) {
+			len += "Set-Cookie: "_len + it.first.size() + 1 + it.second.data.size() + ";Path=/;Version=1"_len + 4;
+			if (it.second.data.empty() || it.second.maxAge) {
+				len += ";Max-Age="_len + 10;
+			}
+			if ((it.second.flags & CookieFlags::HttpOnly) != 0) {
+				len += ";HttpOnly"_len;
+			}
+			if ((it.second.flags & CookieFlags::Secure) != 0) {
+				len += ";Secure;"_len;
+			}
+		}
+	}
+
+	return len;
+}
+
+void OutputFilter::writeHeader(ap_filter_t* f, StringStream &output) const {
+	output << _responseLine;
+	if (_responseLine.back() != '\n') {
+		output << '\n';
+	}
+	for (auto &it : _headers) {
+		output << it.key << ": " << it.val << "\r\n";
+	}
+
+	auto &cookies = _request.getResponseCookies();
+	for (auto &it : cookies) {
+		if ((_responseCode < 400 && (it.second.flags & CookieFlags::SetOnSuccess) != 0)
+				|| (_responseCode >= 400 && (it.second.flags & CookieFlags::SetOnError) != 0) ) {
+			output << "Set-Cookie: " << it.first << "=" << it.second.data;
+			if (it.second.data.empty() || it.second.maxAge) {
+				output << ";Max-Age=" << it.second.maxAge.toSeconds();
+			}
+			if ((it.second.flags & CookieFlags::HttpOnly) != 0) {
+				output << ";HttpOnly";
+			}
+			if ((it.second.flags & CookieFlags::Secure) != 0 && Connection(f->c).isSecureConnection()) {
+				output << ";Secure";
+			}
+			output << ";Path=/;Version=1\r\n";
+		}
+	}
+
+	output << "\r\n";
+}
+
+apr_status_t OutputFilter::outputHeaders(ap_filter_t* f, apr_bucket *e, const char *data, size_t len) {
+    conn_rec *c =  f->c;
+	apr_status_t rv = APR_SUCCESS;
+
+	apr::ostringstream servVersion;
+	servVersion << "Serenity/2 Stappler/1 (" << tools::getCompileUnixTime().toHttp() << ")";
+	_headers.emplace("Server", servVersion.str());
+	_buffer.clear();
+	if (_responseCode < 400) {
+		_skipFilter = true;
+	} else {
+		output::writeData(_request, _buffer, [&] (const String &ct) {
+			_headers.emplace("Content-Type", ct);
+		}, resultForRequest(), true);
+		_headers.emplace("Content-Length", apr_psprintf(c->pool, "%lu", _buffer.size()));
+		// provide additional info for 416 if we can
+		if (_responseCode == 416) {
+			// we need to determine requested file size
+			if (const char *filename = f->r->filename) {
+				apr_finfo_t info;
+				memset(&info, 0, sizeof(info));
+				if (apr_stat(&info, filename, APR_FINFO_SIZE, c->pool) == APR_SUCCESS) {
+					_headers.emplace("X-Range", apr_psprintf(c->pool, "%ld", info.size));
+				} else {
+					_headers.emplace("X-Range", "0");
+				}
+			} else {
+				_headers.emplace("X-Range", "0");
+			}
+		} else if (_responseCode == 401) {
+			if (_headers.at("WWW-Authenticate").empty()) {
+				_headers.emplace("WWW-Authenticate", toString("Basic realm=\"", _request.getHostname(), "\""));
+			}
+		}
+	}
+
+	// create ostream with preallocated storage
+	auto bufLen = calcHeaderSize();
+	char dataBuf[bufLen+1];
+	apr::ostringstream output(dataBuf, bufLen);
+
+	writeHeader(f, output);
+
+	apr_bucket *b = apr_bucket_transient_create(output.data(), output.size(),
+			_tmpBB->bucket_alloc);
+
+	APR_BRIGADE_INSERT_TAIL(_tmpBB, b);
+
+	if (!_buffer.empty()) {
+		APR_BUCKET_REMOVE(e);
+		APR_BRIGADE_INSERT_TAIL(_tmpBB, apr_bucket_transient_create(
+				_buffer.data(), _buffer.size(), _tmpBB->bucket_alloc));
+		APR_BRIGADE_INSERT_TAIL(_tmpBB, apr_bucket_flush_create(_tmpBB->bucket_alloc));
+		APR_BRIGADE_INSERT_TAIL(_tmpBB, apr_bucket_eos_create(
+				_tmpBB->bucket_alloc));
+		_seenEOS = true;
+
+		rv = ap_pass_brigade(f->next, _tmpBB);
+		apr_brigade_cleanup(_tmpBB);
+		return rv;
+	} else {
+		rv = ap_pass_brigade(f->next, _tmpBB);
+		apr_brigade_cleanup(_tmpBB);
+		if (rv != APR_SUCCESS) return rv;
+	}
+
+	return rv;
 }
 
 bool OutputFilter::readRequestLine(Reader &r) {

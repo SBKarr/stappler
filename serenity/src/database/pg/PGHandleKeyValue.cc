@@ -115,14 +115,27 @@ void Handle::broadcast(const Bytes &bytes) {
 }
 
 User * Handle::authorizeUser(const Scheme &s, const String &iname, const String &password) {
+	auto emailField = s.getField("email");
+	auto nameField = s.getField("name");
+	auto passwordField = s.getField("password");
+
+	if ((!emailField && !nameField) || !passwordField) {
+		messages::error("Auth", "Invalid scheme: fields 'name', 'email' and 'password' is not defined");
+		return nullptr;
+	}
+
 	ExecQuery query;
 	query.with("u", [&] (ExecQuery::GenericQuery &q) {
 		auto f = q.select().from(s.getName());
 		String name = iname;
-		if (valid::validateEmail(name)) {
+		if (!nameField) {
 			f.where("email", Comparation::Equal, std::move(name));
 		} else {
-			f.where("name", Comparation::Equal, std::move(name));
+			if (valid::validateEmail(name) && emailField) {
+				f.where("email", Comparation::Equal, std::move(name));
+			} else {
+				f.where("name", Comparation::Equal, std::move(name));
+			}
 		}
 	}).with("l", [&] (ExecQuery::GenericQuery &q) {
 		q.select().count("failed_count").from("__login").innerJoinOn("u", [&] (ExecQuery::WhereBegin &w) {

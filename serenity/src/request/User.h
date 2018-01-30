@@ -34,8 +34,10 @@ public:
 	static User *create(storage::Adapter *, data::Value &&);
 
 	static User *get(storage::Adapter *, const String &name, const String &password);
+	static User *get(storage::Adapter *, const storage::Scheme &scheme, const String &name, const String &password);
+
 	static User *get(storage::Adapter *, uint64_t oid);
-	static bool remove(storage::Adapter *, const String &name, const String &password);
+	static User *get(storage::Adapter *, const storage::Scheme &scheme, uint64_t oid);
 
 	User(data::Value &&, const storage::Scheme &);
 

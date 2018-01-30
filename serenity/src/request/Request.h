@@ -77,6 +77,12 @@ public:
 		Invalid =			M_INVALID,
 	};
 
+	struct CookieStorage {
+		String data;
+		CookieFlags flags;
+		TimeInterval maxAge;
+	};
+
 	Request();
 	Request(request_rec *);
 	Request & operator =(request_rec *);
@@ -164,8 +170,11 @@ public: /* request params setters */
 	 * if no string provided, default status line for code will be used */
 	void setStatus(int status, apr::string &&str = apr::string());
 
-	void setCookie(const String &name, const String &value, TimeInterval maxAge = TimeInterval(), CookieFlags flags = CookieFlags::Default, const String &path = "/"_weak);
+	void setCookie(const String &name, const String &value, TimeInterval maxAge = TimeInterval(), CookieFlags flags = CookieFlags::Default);
 	void removeCookie(const String &name, CookieFlags flags = CookieFlags::Default);
+
+	// cookies, that will be sent in server response
+	const Map<String, CookieStorage> getResponseCookies() const;
 
 	apr::weak_string getCookie(const String &name, bool removeFromHeadersTable = true) const;
 
@@ -175,7 +184,11 @@ public: /* request params setters */
 
 	void runTemplate(String && path, const Function<void(tpl::Exec &, Request &)> &);
 
-	apr::string getFullHostname(int port = -1);
+	apr::string getFullHostname(int port = -1) const;
+
+	// true if successful cache test
+	bool checkCacheHeaders(Time, const StringView &etag);
+	bool checkCacheHeaders(Time, uint32_t idHash);
 
 public: /* input config */
 	InputConfig & getInputConfig();
@@ -198,6 +211,11 @@ public: /* input config */
 	void setMaxFileSize(size_t);
 
 public: /* engine and errors */
+	void storeObject(void *ptr, const String &key) const;
+
+	template <typename T = void>
+	T *getObject(const String &) const;
+
 	const apr::vector<apr::string> & getParsedQueryPath() const;
 	const data::Value &getParsedQueryArgs() const;
 
@@ -281,6 +299,15 @@ protected:
 	request_rec *_request = nullptr;
 	Config *_config = nullptr;
 };
+
+template <typename T>
+inline T *Request::getObject(const String &key) const {
+	void *ptr = nullptr;
+	if (apr_pool_userdata_get(&ptr, key.data(), _request->pool) == APR_SUCCESS) {
+		return (T *)ptr;
+	}
+	return nullptr;
+}
 
 NS_SA_END
 

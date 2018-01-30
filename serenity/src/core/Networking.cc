@@ -85,6 +85,13 @@ Mail::Mail(const String &url, const String &user, const String &passwd) {
 	setReuse(false);
 }
 
+Mail::Mail(const data::Value &config) {
+	init(Method::Smtp, config.getString("server"));
+	setAuthority(config.getString("user"), config.getString("password"));
+	setMailFrom(config.getString("from"));
+	setReuse(false);
+}
+
 bool Mail::send(apr::ostringstream &stream) {
 	StringView r(stream.data(), stream.size());
 	setSendCallback([&] (char *buf, size_t size) -> size_t {

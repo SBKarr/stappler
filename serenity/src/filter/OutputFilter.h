@@ -44,7 +44,14 @@ public:
 	bool readHeaders(Reader & r);
 
 	data::Value resultForRequest();
+
 protected:
+	apr_status_t process(ap_filter_t* f, apr_bucket *e, const char *data, size_t len);
+	apr_status_t outputHeaders(ap_filter_t* f, apr_bucket *e, const char *data, size_t len);
+
+	size_t calcHeaderSize() const;
+	void writeHeader(ap_filter_t* f, StringStream &) const;
+
 	apr_bucket_brigade *_tmpBB;
 	bool _seenEOS = false;
 	bool _skipFilter = false;

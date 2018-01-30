@@ -338,6 +338,10 @@ void makeRandomBytes_buf(uint8_t * buf, size_t count) {
 	}
 }
 
+void makeRandomBytes(uint8_t *buf, size_t count) {
+	makeRandomBytes_buf(buf, count);
+}
+
 Bytes makeRandomBytes(size_t count) {
 	Bytes ret; ret.resize(count);
 	makeRandomBytes_buf(ret.data(), count);

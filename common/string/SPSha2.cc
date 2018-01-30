@@ -369,10 +369,10 @@ Sha512::Buf Sha512::hmac(const CoderSource &data, const CoderSource &key) {
 	memset(keyData.data(), 0, keyData.size());
 
 	Sha512 shaCtx;
-    if (key.data.size() > SHA512_BLOCK_SIZE) {
+    if (key.size() > SHA512_BLOCK_SIZE) {
     	shaCtx.update(key).final(keyData.data());
     } else {
-    	memcpy(keyData.data(), key.data.data(), key.data.size());
+    	memcpy(keyData.data(), key.data(), key.size());
     }
 
     for (auto &it : keyData) {
@@ -400,7 +400,7 @@ Sha512 & Sha512::update(const uint8_t *ptr, size_t len) {
 }
 
 Sha512 & Sha512::update(const CoderSource &source) {
-	return update(source.data.data(), source.data.size());
+	return update(source.data(), source.size());
 }
 
 Sha512::Buf Sha512::final() {
@@ -423,10 +423,10 @@ Sha256::Buf Sha256::hmac(const CoderSource &data, const CoderSource &key) {
 	memset(keyData.data(), 0, keyData.size());
 
 	Sha256 shaCtx;
-    if (key.data.size() > SHA256_BLOCK_SIZE) {
+    if (key.size() > SHA256_BLOCK_SIZE) {
     	shaCtx.init().update(key).final(keyData.data());
     } else {
-    	memcpy(keyData.data(), key.data.data(), key.data.size());
+    	memcpy(keyData.data(), key.data(), key.size());
     }
 
     for (auto &it : keyData) {
@@ -454,7 +454,7 @@ Sha256 & Sha256::update(const uint8_t *ptr, size_t len) {
 }
 
 Sha256 & Sha256::update(const CoderSource &source) {
-	return update(source.data.data(), source.data.size());
+	return update(source.data(), source.size());
 }
 
 Sha256::Buf Sha256::final() {

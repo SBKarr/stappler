@@ -42,6 +42,15 @@ int writeResourceFileHeader(Request &rctx, const data::Value &);
 // returns true if we shoul write file data or false if we should return HTTP_NOT_MODIFIED
 bool writeFileHeaders(Request &rctx, const data::Value &, const String &convertType = String());
 
+String makeEtag(uint32_t idHash, Time mtime);
+
+// returns true if requested entity is matched "if-none-match" and "if-modified-since"
+// suggest HTTP_NOT_MODIFIED if true
+bool checkCacheHeaders(Request &rctx, Time, const StringView &etag);
+
+// shortcut for checkCacheHeaders + makeEtag;
+bool checkCacheHeaders(Request &rctx, Time, uint32_t idHash);
+
 NS_SA_EXT_END(output)
 
 #endif /* SERENITY_SRC_OUTPUT_OUTPUT_H_ */

@@ -144,6 +144,7 @@ bool validateNumber(const String &str);
 bool validateHexadecimial(const String &str);
 bool validateBase64(const String &str);
 
+void makeRandomBytes(uint8_t *, size_t);
 Bytes makeRandomBytes(size_t);
 Bytes makePassword(const String &str, const String &key = "");
 bool validatePassord(const String &str, const Bytes &passwd, const String &key = "");

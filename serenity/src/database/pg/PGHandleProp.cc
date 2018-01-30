@@ -132,7 +132,7 @@ data::Value Handle::getProperty(const Scheme &s, uint64_t oid, const Field &f, c
 			}).select();
 			String alias("t"); // do not touch;
 			ExecQuery::writeSelectFields(*fs, sel, fields, alias).from(ExecQuery::Field(fs->getName()).as(alias)).innerJoinOn("s", [&] (ExecQuery::WhereBegin &q) {
-				q.where(ExecQuery::Field(fs->getName(), "__oid"), Comparation::Equal, ExecQuery::Field("s", f.getName()));
+				q.where(ExecQuery::Field("t", "__oid"), Comparation::Equal, ExecQuery::Field("s", f.getName()));
 			}).finalize();
 			ret = select(*fs, query);
 			if (ret.isArray()) {

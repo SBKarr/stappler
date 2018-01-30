@@ -254,33 +254,44 @@ NS_SP_EXT_END(string)
 NS_SP_BEGIN
 
 struct CoderSource {
-	CoderSource(const uint8_t *d, size_t len) : data(d, len) { }
-	CoderSource(const char *d, size_t len) : data((uint8_t *)d, len) { }
-	CoderSource(const char *d) : data((uint8_t *)d, strlen(d)) { }
-	CoderSource(const StringView &d) : data((uint8_t *)d.data(), d.size()) { }
+	CoderSource(const uint8_t *d, size_t len) : _data(d, len) { }
+	CoderSource(const char *d, size_t len) : _data((uint8_t *)d, len) { }
+	CoderSource(const char *d) : _data((uint8_t *)d, strlen(d)) { }
+	CoderSource(const StringView &d) : _data((uint8_t *)d.data(), d.size()) { }
 
-	CoderSource(const typename memory::PoolInterface::BytesType &d) : data(d.data(), d.size()) { }
-	CoderSource(const typename memory::StandartInterface::BytesType &d) : data(d.data(), d.size()) { }
+	CoderSource(const typename memory::PoolInterface::BytesType &d) : _data(d.data(), d.size()) { }
+	CoderSource(const typename memory::StandartInterface::BytesType &d) : _data(d.data(), d.size()) { }
 
-	CoderSource(const typename memory::PoolInterface::StringType &d) : data((const uint8_t *)d.data(), d.size()) { }
-	CoderSource(const typename memory::StandartInterface::StringType &d) : data((const uint8_t *)d.data(), d.size()) { }
+	CoderSource(const typename memory::PoolInterface::StringType &d) : _data((const uint8_t *)d.data(), d.size()) { }
+	CoderSource(const typename memory::StandartInterface::StringType &d) : _data((const uint8_t *)d.data(), d.size()) { }
 
 	template <ByteOrder::Endian Order>
-	CoderSource(const DataReader<Order> &d) : data(d.data(), d.size()) { }
+	CoderSource(const DataReader<Order> &d) : _data(d.data(), d.size()) { }
 
-	CoderSource(const BytesReader<uint8_t> &d) : data(d.data(), d.size()) { }
-	CoderSource(const BytesReader<char> &d) : data((uint8_t *)d.data(), d.size()) { }
+	CoderSource(const BytesReader<uint8_t> &d) : _data(d.data(), d.size()) { }
+	CoderSource(const BytesReader<char> &d) : _data((const uint8_t *)d.data(), d.size()) { }
 
 	template <size_t Size>
-	CoderSource(const std::array<uint8_t, Size> &d) : data(d.data(), Size) { }
+	CoderSource(const std::array<uint8_t, Size> &d) : _data(d.data(), Size) { }
 
-	DataReader<ByteOrder::Network> data;
+	template <typename Container>
+	CoderSource(const Container &d) : _data((const uint8_t *)d.data(), d.size()) { }
+
+	CoderSource() { }
+
+	DataReader<ByteOrder::Network> _data;
 
 	CoderSource(const CoderSource &) = delete;
 	CoderSource(CoderSource &&) = delete;
 
 	CoderSource& operator=(const CoderSource &) = delete;
 	CoderSource& operator=(CoderSource &&) = delete;
+
+	const uint8_t *data() const { return _data.data(); }
+	size_t size() const { return _data.size(); }
+	bool empty() const { return _data.empty(); }
+
+	uint8_t operator[] (size_t s) const { return _data[s]; }
 };
 
 NS_SP_END

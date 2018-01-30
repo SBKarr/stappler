@@ -489,4 +489,38 @@ bool writeFileHeaders(Request &rctx, const data::Value &file, const String &conv
 	return true;
 }
 
+String makeEtag(uint32_t idHash, Time mtime) {
+	auto time = mtime.toMicroseconds();
+	Bytes etagData; etagData.resize(12);
+	memcpy(etagData.data(), (const void *)&idHash, sizeof(uint32_t));
+	memcpy(etagData.data() + 4, (const void *)&time, sizeof(int64_t));
+
+	return toString('"', base64::encode(etagData), '"');
+}
+
+bool checkCacheHeaders(Request &rctx, Time t, const StringView &etag) {
+	auto h = rctx.getResponseHeaders();
+	h.emplace("ETag", etag.str());
+	h.emplace("Last-Modified", t.toHttp());
+
+	auto req_h = rctx.getRequestHeaders();
+	const String match = req_h.at("if-none-match");
+	const String modified = req_h.at("if-modified-since");
+	if (!match.empty() && !modified.empty()) {
+		if (etag == match && Time::fromHttp(modified).toSeconds() >= t.toSeconds()) {
+			return true;
+		}
+	} else if (!match.empty() && etag == match) {
+		return true;
+	} else if (!modified.empty() && Time::fromHttp(modified).toSeconds() >= t.toSeconds()) {
+		return true;
+	}
+
+	return false;
+}
+
+bool checkCacheHeaders(Request &rctx, Time t, uint32_t idHash) {
+	return checkCacheHeaders(rctx, t, makeEtag(idHash, t));
+}
+
 NS_SA_EXT_END(output)

@@ -58,42 +58,24 @@ User *User::create(storage::Adapter *a, data::Value &&val) {
 
 User *User::get(storage::Adapter *a, const String &name, const String &password) {
 	auto s = Server(apr::pool::server()).getUserScheme();
-	return a->authorizeUser(*s, name, password);
+	return get(a, *s, name, password);
+}
+
+User *User::get(storage::Adapter *a, const storage::Scheme &scheme, const String &name, const String &password) {
+	return a->authorizeUser(scheme, name, password);
 }
 
 User *User::get(storage::Adapter *a, uint64_t oid) {
 	auto s = Server(apr::pool::server()).getUserScheme();
-	auto d = s->get(a, oid);
-	if (d.isDictionary()) {
-		return new User(std::move(d), *s);
-	}
-
-	return nullptr;
+	return get(a, *s, oid);
 }
 
-bool User::remove(storage::Adapter *a, const String &name, const String &password) {
-	auto s = Server(apr::pool::server()).getUserScheme();
-	storage::Query q;
-	q.select("name", data::Value(name));
-
-	auto d = s->select(a, q);
-	if (d.size() != 1) {
-		return false;
+User *User::get(storage::Adapter *a, const storage::Scheme &s, uint64_t oid) {
+	auto d = s.get(a, oid);
+	if (d.isDictionary()) {
+		return new User(std::move(d), s);
 	}
-
-	auto &ud = d.getValue(0);
-	auto &passwd = ud.getBytes("password");
-
-	auto & fields = s->getFields();
-	auto it = s->getFields().find("password");
-	if (it != fields.end() && it->second.getTransform() == storage::Transform::Password) {
-		auto f = static_cast<const storage::FieldPassword *>(it->second.getSlot());
-		if (valid::validatePassord(password, passwd, f->salt)) {
-			return s->remove(a, ud.getInteger("__oid"));
-		}
-	}
-
-	return false;
+	return nullptr;
 }
 
 User::User(data::Value &&d, const storage::Scheme &s) : Object(std::move(d), s) { }

@@ -41,6 +41,7 @@ public:
 class Mail : public NetworkHandle {
 public:
 	Mail(const String &url, const String &user, const String &passwd);
+	Mail(const data::Value &config);
 
 	bool send(apr::ostringstream &stream);
 };
