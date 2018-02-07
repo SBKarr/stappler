@@ -30,7 +30,7 @@ THE SOFTWARE.
 
 NS_SA_EXT_BEGIN(tools)
 
-int ServerGui::onPostReadRequest(Request &rctx) {
+int ServerGui::onTranslateName(Request &rctx) {
 	if (rctx.getMethod() == Request::Get) {
 		auto userScheme = rctx.server().getUserScheme();
 		size_t count = 0;
@@ -39,6 +39,7 @@ int ServerGui::onPostReadRequest(Request &rctx) {
 			count = userScheme->count(rctx.storage());
 			hasDb = true;
 		}
+		rctx.setContentType("text/html");
 		rctx.runTemplate("virtual://html/server.html", [&] (tpl::Exec &exec, Request &) {
 			exec.set("count", data::Value(count));
 			exec.set("setup", data::Value(count != 0));

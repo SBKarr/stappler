@@ -35,6 +35,9 @@ THE SOFTWARE.
 #include "jpeglib.h"
 #include "png.h"
 
+#include "webp/decode.h"
+#include "webp/encode.h"
+
 NS_SP_EXT_BEGIN(jpeg)
 
 using Color = Bitmap::PixelFormat;
@@ -509,6 +512,252 @@ static Bytes writePng(const uint8_t *data, uint32_t width, uint32_t height, uint
 NS_SP_EXT_END(png)
 
 
+NS_SP_EXT_BEGIN(webp)
+
+static bool loadWebp(const uint8_t *inputData, size_t size,
+		Bytes &outputData, Color &color, Alpha &alpha, uint32_t &width, uint32_t &height,
+		uint32_t &stride, const Bitmap::StrideFn &strideFn) {
+
+	WebPDecoderConfig config;
+	if (WebPInitDecoderConfig(&config) == 0) return false;
+	if (WebPGetFeatures(inputData, size, &config.input) != VP8_STATUS_OK) return false;
+	if (config.input.width == 0 || config.input.height == 0) return false;
+
+	config.output.colorspace = config.input.has_alpha ? MODE_RGBA : MODE_RGB;
+	color = config.input.has_alpha ? BitmapFormat::Color::RGBA8888 : BitmapFormat::Color::RGB888;
+	width = config.input.width;
+	height = config.input.height;
+
+	alpha = (config.input.has_alpha != 0) ? Bitmap::Alpha::Unpremultiplied : Bitmap::Alpha::Opaque;
+
+	stride = strideFn ? strideFn(color, width) : width * Bitmap::getBytesPerPixel(color);
+	outputData.resize(stride * height);
+
+	config.output.u.RGBA.rgba = outputData.data();
+	config.output.u.RGBA.stride = stride;
+	config.output.u.RGBA.size = outputData.size();
+	config.output.is_external_memory = 1;
+
+	if (WebPDecode(inputData, size, &config) != VP8_STATUS_OK) {
+		outputData.clear();
+		return false;
+	}
+
+	return true;
+}
+
+
+struct WebpStruct {
+	static bool isWebpSupported(Color format) {
+		switch (format) {
+		case Color::A8:
+		case Color::I8:
+		case Color::IA88:
+		case Color::Auto:
+			log::text("Bitmap", "Webp supports only RGB888 and RGBA8888");
+			return false;
+		default:
+			break;
+		}
+		return true;
+	}
+
+	static int FileWriter(const uint8_t* data, size_t data_size, const WebPPicture* const pic) {
+		FILE* const out = (FILE *)pic->custom_ptr;
+		return data_size ? (fwrite(data, data_size, 1, out) == 1) : 1;
+	}
+
+	FILE *fp = nullptr;
+	Bytes *vec = nullptr;
+
+	WebPConfig config;
+	WebPPicture pic;
+	WebPMemoryWriter writer;
+
+	bool pictureInit = false;
+	bool memoryInit = false;
+	bool valid = true;
+
+	~WebpStruct() {
+		if (pictureInit) {
+			WebPPictureFree(&pic);
+			pictureInit = false;
+		}
+
+		if (memoryInit) {
+			WebPMemoryWriterClear(&writer);
+			memoryInit = false;
+		}
+
+		if (fp) {
+	        fclose(fp);
+		}
+	}
+
+	WebpStruct(Color format, bool lossless) {
+		if (!isWebpSupported(format)) {
+			valid = false;
+		}
+
+		if (!WebPPictureInit(&pic)) {
+			valid = false;
+		}
+
+
+		if (lossless) {
+			if (!WebPConfigPreset(&config, WEBP_PRESET_ICON, 100.0f)) {
+				valid = false;
+			}
+
+			config.lossless = 1;
+			config.method = 6;
+		} else {
+			if (!WebPConfigPreset(&config, WEBP_PRESET_PICTURE, 90.0f)) {
+				valid = false;
+			}
+
+			config.lossless = 0;
+			config.method = 6;
+		}
+
+		if (!WebPValidateConfig(&config)) {
+			valid = false;
+		}
+	}
+
+	WebpStruct(Bytes *v, Color format, bool lossless) : WebpStruct(format, lossless) {
+		vec = v;
+	}
+
+	WebpStruct(const String &filename, Color format, bool lossless) : WebpStruct(format, lossless) {
+	    fp = filesystem_native::fopen_fn(filename, "wb");
+	    if (!fp) {
+	        log::format("Bitmap", "fail to open file '%s' to write png data", filename.c_str());
+		    valid = false;
+			return;
+	    }
+	}
+
+	operator bool () const {
+		return valid;
+	}
+
+	bool write(const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride, Bitmap::PixelFormat format) {
+		if (!valid) {
+			return false;
+		}
+
+		if (!fp && !vec) {
+			return false;
+		}
+
+		WebPPicture pic;
+
+		pic.use_argb = 1;
+		pic.width = width;
+		pic.height = height;
+
+		Bitmap tmp;
+
+		switch (format) {
+		case Color::A8:
+		case Color::I8:
+		case Color::IA88:
+		case Color::Auto:
+			return false;
+		case Color::RGB888:
+			WebPPictureImportRGB(&pic, data, stride);
+
+			break;
+		case Color::RGBA8888:
+			WebPPictureImportRGBA(&pic, data, stride);
+			break;
+		}
+		pictureInit = true;
+
+		if (fp) {
+			pic.writer = FileWriter;
+			pic.custom_ptr = fp;
+		} else {
+			WebPMemoryWriterInit(&writer);
+			pic.writer = WebPMemoryWrite;
+			pic.custom_ptr = &writer;
+			memoryInit = true;
+		}
+
+		if (!WebPEncode(&config, &pic)) {
+			return false;
+		}
+
+		if (vec) {
+			vec->resize(writer.size);
+			memcpy(vec->data(), writer.mem, writer.size);
+		}
+
+	    return true;
+	}
+};
+
+
+static bool saveWebpLossless(const String &filename, const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride, Color format, bool invert) {
+	if (invert) {
+		log::format("Bitmap", "Inverted output is not supported for webp");
+		return false;
+	}
+
+	WebpStruct coder(filename, format, true);
+	if (coder) {
+		return coder.write(data, width, height, stride, format);
+	}
+
+	return false;
+}
+
+static Bytes writeWebpLossless(const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride, Color format, bool invert) {
+	if (invert) {
+		log::format("Bitmap", "Inverted output is not supported for webp");
+		return Bytes();
+	}
+
+	Bytes state;
+	WebpStruct coder(&state, format, true);
+	if (coder.write(data, width, height, stride, format)) {
+		return state;
+	}
+	return Bytes();
+}
+
+static bool saveWebpLossy(const String &filename, const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride, Color format, bool invert) {
+	if (invert) {
+		log::format("Bitmap", "Inverted output is not supported for webp");
+		return false;
+	}
+
+	WebpStruct coder(filename, format, false);
+	if (coder) {
+		return coder.write(data, width, height, stride, format);
+	}
+
+	return false;
+}
+
+static Bytes writeWebpLossy(const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride, Color format, bool invert) {
+	if (invert) {
+		log::format("Bitmap", "Inverted output is not supported for webp");
+		return Bytes();
+	}
+
+	Bytes state;
+	WebpStruct coder(&state, format, false);
+	if (coder.write(data, width, height, stride, format)) {
+		return state;
+	}
+	return Bytes();
+}
+
+NS_SP_EXT_END(webp)
+
+
 NS_SP_BEGIN
 
 static bool BitmapFormat_isPng(const uint8_t * data, size_t dataLen) {
@@ -826,8 +1075,12 @@ static BitmapFormat s_defaultFormats[toInt(Bitmap::FileFormat::Custom)] = {
 	BitmapFormat(Bitmap::FileFormat::Jpeg, &BitmapFormat_isJpg, &BitmapFormat_getJpegImageSize
 			, &jpeg::loadJpg, &jpeg::writeJpeg, &jpeg::saveJpeg
 	),
-	BitmapFormat(Bitmap::FileFormat::WebpLossless, &BitmapFormat_isWebpLossless, &BitmapFormat_getWebpLosslessImageSize),
-	BitmapFormat(Bitmap::FileFormat::WebpLossy, &BitmapFormat_isWebp, &BitmapFormat_getWebpImageSize),
+	BitmapFormat(Bitmap::FileFormat::WebpLossless, &BitmapFormat_isWebpLossless, &BitmapFormat_getWebpLosslessImageSize
+			, &webp::loadWebp, &webp::writeWebpLossless, &webp::saveWebpLossless
+	),
+	BitmapFormat(Bitmap::FileFormat::WebpLossy, &BitmapFormat_isWebp, &BitmapFormat_getWebpImageSize
+			, &webp::loadWebp, &webp::writeWebpLossy, &webp::saveWebpLossy
+	),
 	BitmapFormat(Bitmap::FileFormat::Svg, &BitmapFormat_isSvg, &BitmapFormat_getSvgImageSize),
 	BitmapFormat(Bitmap::FileFormat::Gif, &BitmapFormat_isGif, &BitmapFormat_getGifImageSize),
 	BitmapFormat(Bitmap::FileFormat::Tiff, &BitmapFormat_isTiff, &BitmapFormat_getTiffImageSize),

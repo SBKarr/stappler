@@ -35,6 +35,7 @@ APLOG_USE_MODULE(serenity);
 #include "Root.cc"
 #include "Server.cc"
 #include "ServerComponent.cc"
+#include "brotli_compress.cc"
 #include "mod_serenity.cc"
 
 #include "Task.cc"

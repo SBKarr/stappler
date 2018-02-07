@@ -77,7 +77,7 @@ public:
 	ServerGui() { _allow = AllowMethod::Get | AllowMethod::Post; _maxRequestSize = 512; }
 
 	virtual bool isRequestPermitted(Request &) override { return true; }
-	virtual int onPostReadRequest(Request &) override;
+	virtual int onTranslateName(Request &) override;
 	virtual void onFilterComplete(InputFilter *f) override;
 };
 

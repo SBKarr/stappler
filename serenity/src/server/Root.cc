@@ -307,7 +307,6 @@ const char * Root::getProtocol(const conn_rec *c) {
 	return NULL;
 }
 
-
 int Root::onPostReadRequest(request_rec *r) {
 	return apr::pool::perform([&] () -> int {
 		OutputFilter::insert(r);
@@ -320,6 +319,8 @@ int Root::onPostReadRequest(request_rec *r) {
 			return ret;
 		}
 
+		ap_add_output_filter("Serenity::Compress", nullptr, r, r->connection);
+
 		RequestHandler *rhdl = request.getRequestHandler();
 		if (rhdl) {
 			return rhdl->onPostReadRequest(request);
@@ -331,8 +332,6 @@ int Root::onPostReadRequest(request_rec *r) {
 
 int Root::onTranslateName(request_rec *r) {
 	return apr::pool::perform([&] () -> int {
-		//log("onTranslateName %s %s", r->uri, r->args);
-
 		Request request(r);
 
 		RequestHandler *rhdl = request.getRequestHandler();
@@ -363,7 +362,6 @@ int Root::onQuickHandler(request_rec *r, int v) {
 }
 void Root::onInsertFilter(request_rec *r) {
 	apr::pool::perform([&] {
-		//log("onInsertFilter %s %s", r->uri, r->args);
 		Request request(r);
 
 		RequestHandler *rhdl = request.getRequestHandler();

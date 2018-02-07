@@ -54,6 +54,11 @@ public:
 	void addHanderSource(const String &w);
 	void setSessionParams(const String &w);
 	void setWebHookParams(const String &w);
+	void setForceHttps();
+	void setProtectedList(const StringView &w);
+
+	void addProtectedLocation(const StringView &);
+
 	const String &getHandlerFile() const;
 	const String &getNamespace() const;
 
@@ -146,6 +151,28 @@ public: // httpd server info
 	void *getConfig() const { return (void *)_config; }
 
 	tpl::Cache *getTemplateCache() const;
+
+public: // compression
+	enum EtagMode {
+		AddSuffix,
+		NoChange,
+		Remove
+	};
+
+	// brotli compression configuration
+	// based on mod_brotli defaults
+	struct CompressionConfig {
+		bool enabled = true;
+	    int quality = 5;
+	    int lgwin = 18;
+	    int lgblock = 0;
+	    EtagMode etag_mode = EtagMode::NoChange;
+	    const char *note_input_name = nullptr;
+	    const char *note_output_name = nullptr;
+	    const char *note_ratio_name = nullptr;
+	};
+
+	CompressionConfig *getCompressionConfig() const;
 
 protected:
 	ServerComponent *getServerComponent(const StringView &name) const;

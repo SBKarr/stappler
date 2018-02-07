@@ -65,6 +65,12 @@ static int mod_serenity_handler(request_rec *r) {
 	return Root::getInstance()->onHandler(r);
 }
 
+static apr_status_t mod_serenity_compress(ap_filter_t *f, apr_bucket_brigade *bb) {
+	return apr::pool::perform([&] () -> int {
+		return compress_filter(f, bb);
+	}, f->r);
+}
+
 static void mod_serenity_register_hooks(apr_pool_t *pool) {
 	ap_hook_child_init(mod_serenity_child_init, NULL, NULL, APR_HOOK_MIDDLE);
     ap_hook_open_logs(mod_serenity_open_logs,NULL,NULL,APR_HOOK_FIRST);
@@ -74,6 +80,8 @@ static void mod_serenity_register_hooks(apr_pool_t *pool) {
 	ap_hook_quick_handler(mod_serenity_quick_handler, NULL, NULL, APR_HOOK_MIDDLE);
     ap_hook_insert_filter(mod_serenity_insert_filter, NULL, NULL, APR_HOOK_LAST);
     ap_hook_handler(mod_serenity_handler, NULL, NULL, APR_HOOK_MIDDLE);
+
+    ap_register_output_filter("Serenity::Compress", mod_serenity_compress, NULL, AP_FTYPE_CONTENT_SET);
 }
 
 static const char *mod_serenity_set_source_root(cmd_parms *parms, void *mconfig, const char *w) {
@@ -104,6 +112,20 @@ static const char *mod_serenity_set_webhook_params(cmd_parms *parms, void *mconf
 	return NULL;
 }
 
+static const char *mod_serenity_set_force_https(cmd_parms *parms, void *mconfig) {
+	apr::pool::perform([&] {
+		Server(parms->server).setForceHttps();
+	}, parms->pool);
+	return NULL;
+}
+
+static const char *mod_serenity_set_protected(cmd_parms *parms, void *mconfig, const char *w) {
+	apr::pool::perform([&] {
+		Server(parms->server).setProtectedList(apr::string::make_weak(w));
+	}, parms->pool);
+	return NULL;
+}
+
 static const command_rec mod_serenity_directives[] = {
 	AP_INIT_TAKE1("SerenitySourceRoot", (cmd_func)mod_serenity_set_source_root, NULL, RSRC_CONF,
 		"Serenity root dir for source handlers"),
@@ -113,6 +135,10 @@ static const command_rec mod_serenity_directives[] = {
 		"Serenity session params (name, key, host, maxage, secure)"),
 	AP_INIT_RAW_ARGS("SerenityWebHook", (cmd_func)mod_serenity_set_webhook_params, NULL, RSRC_CONF,
 		"Serenity webhook error reporter address in format: SerenityWebHook name=<name> url=<url>"),
+	AP_INIT_NO_ARGS("SerenityForceHttps", (cmd_func)mod_serenity_set_force_https, NULL, RSRC_CONF,
+		"Host should forward requests to secure connection"),
+	AP_INIT_RAW_ARGS("SerenityProtected", (cmd_func)mod_serenity_set_protected, NULL, RSRC_CONF,
+		"Space-separated list of location prefixes, which should be invisible for clients"),
     { NULL }
 };
 

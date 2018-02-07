@@ -49,7 +49,6 @@ NS_SA_BEGIN
 using namespace storage;
 
 struct Server::Config : public AllocPool {
-
 	static Config *get(server_rec *server) {
 		if (!server) { return nullptr; }
 		auto cfg = (Config *)ap_get_module_config(server->module_config, &serenity_module);
@@ -167,6 +166,10 @@ struct Server::Config : public AllocPool {
 		}
 	}
 
+	void setForceHttps() {
+		forceHttps = true;
+	}
+
 	void init(Server &serv) {
 		schemes.emplace(userScheme.getName(), &userScheme);
 		schemes.emplace(fileScheme.getName(), &fileScheme);
@@ -252,6 +255,7 @@ struct Server::Config : public AllocPool {
 	apr_time_t sessionMaxAge = 0;
 	bool isSessionSecure = false;
 	bool loadingFalled = false;
+	bool forceHttps = false;
 
 	Time lastDatabaseCleanup;
 	int64_t broadcastId = 0;
@@ -260,6 +264,9 @@ struct Server::Config : public AllocPool {
 	String webHookUrl;
 	String webHookName;
 	String webHookFormat;
+
+	CompressionConfig compression;
+	Set<String> protectedList;
 };
 
 void * Server::merge(void *base, void *add) {
@@ -308,6 +315,8 @@ void Server::onChildInit() {
 	_config->currentComponent = "root";
 	tools::registerTools(config::getServerToolsPrefix(), *this);
 	_config->currentComponent = String();
+
+	addProtectedLocation("/uploads");
 }
 
 void Server::setHandlerFile(const String &file) {
@@ -429,6 +438,20 @@ void Server::setWebHookParams(const String &str) {
 
 		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 	}
+}
+
+void Server::setProtectedList(const StringView &str) {
+	str.split<StringView::Chars<' '>>([&] (StringView &value) {
+		addProtectedLocation(value);
+	});
+}
+
+void Server::addProtectedLocation(const StringView &value) {
+	_config->protectedList.emplace(value.str());
+}
+
+void Server::setForceHttps() {
+	_config->setForceHttps();
 }
 
 const String &Server::getHandlerFile() const {
@@ -583,11 +606,41 @@ void Server::onBroadcast(const Bytes &bytes) {
 }
 
 int Server::onRequest(Request &req) {
+	if (_config->forceHttps) {
+		if (!req.isSecureConnection()) {
+			auto p = req.request()->parsed_uri.port;
+			if (!p || p == 80) {
+				return req.redirectTo(toString("https://", req.getHostname(), req.getUnparsedUri()));
+			} else if (p == 8080) {
+				return req.redirectTo(toString("https://", req.getHostname(), ":8443", req.getUnparsedUri()));
+			} else {
+				return req.redirectTo(toString("https://", req.getHostname(), ":", p, req.getUnparsedUri()));
+			}
+		}
+	}
+
 	if (_config->loadingFalled) {
 		return HTTP_SERVICE_UNAVAILABLE;
 	}
 
+
 	auto &path = req.getUri();
+
+	if (!_config->protectedList.empty()) {
+		StringView path_v(path);
+		auto lb_it = _config->protectedList.lower_bound(path);
+		if (lb_it != _config->protectedList.end() && path_v == *lb_it) {
+			return HTTP_NOT_FOUND;
+		} else {
+			-- lb_it;
+			StringView lb_v(*lb_it);
+			if (path_v.is(lb_v)) {
+				if (path_v.size() == lb_v.size() || lb_v.back() == '/' || (path_v.size() > lb_v.size() && path_v[lb_v.size()] == '/')) {
+					return HTTP_NOT_FOUND;
+				}
+			}
+		}
+	}
 
 	// Websocket handshake
 	auto h = req.getRequestHeaders();
@@ -640,6 +693,10 @@ int Server::onRequest(Request &req) {
 	}
 
 	return OK;
+}
+
+Server::CompressionConfig *Server::getCompressionConfig() const {
+	return &_config->compression;
 }
 
 ServerComponent *Server::getServerComponent(const StringView &name) const {

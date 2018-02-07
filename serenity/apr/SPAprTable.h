@@ -160,8 +160,8 @@ public:
 		emplace_back(std::forward<A>(key), std::forward<B>(value));
 	}
 
-	void erase(const apr::string &key) {
-		apr_table_unset(_table, key.c_str());
+	void erase(const StringView &key) {
+		apr_table_unset(_table, key.data());
 	}
 
 	reference front() { return *((pointer)(apr_table_elts(_table)->elts)); }
