@@ -42,8 +42,8 @@ public:
 
 	static bool initSchemes(Server &serv, const Map<String, const Scheme *> &);
 
-	Scheme(const String &name);
-	Scheme(const String &name, std::initializer_list<Field> il);
+	Scheme(const String &name, bool delta = false);
+	Scheme(const String &name, std::initializer_list<Field> ile, bool delta = false);
 
 	void setDelta(bool value);
 	bool hasDelta() const;

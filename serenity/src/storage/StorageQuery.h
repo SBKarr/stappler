@@ -39,6 +39,7 @@ public:
 		None = 0,
 		Time = 1,
 		Action = 2,
+		View = 4,
 	};
 
 	QueryFieldResolver();

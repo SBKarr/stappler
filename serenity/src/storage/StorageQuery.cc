@@ -194,6 +194,8 @@ void QueryFieldResolver::doResolve(Data *data, const Vector<String> &extra, uint
 						data->meta |= Meta::Time;
 					} else if (f_it.name == "action") {
 						data->meta |= Meta::Action;
+					} else if (f_it.name == "view") {
+						data->meta |= Meta::View;
 					}
 				}
 			} else {

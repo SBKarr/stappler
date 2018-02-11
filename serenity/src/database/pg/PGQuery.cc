@@ -488,8 +488,6 @@ void ExecQuery::writeQueryViewDelta(const QueryList &list, const Time &time, con
 		.innerJoinOn("dv", [&] (ExecQuery::WhereBegin &w) {
 			w.where(Field("dv", "object"), Comparation::Equal, Field("t", "__oid"));
 	});
-
-	std::cout << stream.weak() << "\n";
 }
 
 const StringStream &ExecQuery::getQuery() const {

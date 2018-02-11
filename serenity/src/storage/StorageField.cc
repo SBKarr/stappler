@@ -227,6 +227,32 @@ data::Value Field::getTypeDesc() const {
 			}
 		}
 		break;
+	case storage::Type::View:
+		ret.setString("view", "type");
+		if (auto v = static_cast<const FieldView *>(slot)) {
+			if (v->scheme) {
+				ret.setString(v->scheme->getName(), "scheme");
+			}
+
+			if (!v->fields.empty()) {
+				auto &f = ret.emplace("fields");
+				for (auto &it : v->fields) {
+					f.setValue(it.second.getTypeDesc(), it.first);
+				}
+			}
+
+			if (!v->requires.empty()) {
+				auto &f = ret.emplace("requires");
+				for (auto &it : v->requires) {
+					f.addString(it);
+				}
+			}
+
+			if (v->delta) {
+				ret.setBool(true, "delta");
+			}
+		}
+		break;
 	default: break;
 	}
 	return ret;

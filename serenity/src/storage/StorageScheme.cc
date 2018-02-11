@@ -42,9 +42,9 @@ bool Scheme::initSchemes(Server &serv, const Map<String, const Scheme *> &scheme
 	return true;
 }
 
-Scheme::Scheme(const String &ns) : name(ns) { }
+Scheme::Scheme(const String &ns, bool delta) : name(ns), delta(delta) { }
 
-Scheme::Scheme(const String &name, std::initializer_list<Field> il) :  Scheme(name) {
+Scheme::Scheme(const String &name, std::initializer_list<Field> il, bool delta) :  Scheme(name, delta) {
 	for (auto &it : il) {
 		auto &fname = it.getName();
 		fields.emplace(fname, std::move(const_cast<Field &>(it)));

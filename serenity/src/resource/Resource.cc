@@ -307,8 +307,13 @@ int64_t Resource::processResolveResult(const QueryFieldResolver &res, const Set<
 			++ it;
 			continue;
 		} else if (it->first == "__views") {
-			++ it;
-			continue;
+			auto meta = res.getMeta();
+			if ((meta & QueryFieldResolver::Meta::View) == QueryFieldResolver::Meta::None) {
+				it = dict.erase(it);
+			} else {
+				++ it;
+				continue;
+			}
 		}
 
 		auto f = res.getField(it->first);
@@ -362,10 +367,11 @@ void Resource::resolveResult(const QueryFieldResolver &res, data::Value &obj, ui
 			auto &f = it.second;
 			auto type = f.getType();
 
-			if ((type == storage::Type::Object && obj.isDictionary(it.first)) || (type == storage::Type::Set && obj.isArray(it.first))) {
+			if ((type == storage::Type::Object && obj.isDictionary(it.first))
+					|| ((type == storage::Type::Set || type == storage::Type::View) && obj.isArray(it.first))) {
 				QueryFieldResolver next(res.next(it.first));
 				if (next) {
-					if (type ==  storage::Type::Set) {
+					if (type == storage::Type::Set || type == storage::Type::View) {
 						auto &fobj = obj.getValue(it.first);
 						for (auto &sit : fobj.asArray()) {
 							if (sit.isDictionary()) {

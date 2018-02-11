@@ -488,6 +488,12 @@ void _addDebugMessage(data::Value &&data) {
 		}
 	}
 
+#if DEBUG
+	if (auto serv = Server(apr::pool::server())) {
+		serv.reportError(data);
+	}
+#endif
+
 	Request rctx(apr::pool::request());
 	if (rctx) {
 		rctx.addDebugMessage(std::move(data));

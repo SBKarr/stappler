@@ -528,8 +528,6 @@ data::Value Handle::performQueryList(const QueryList &list, size_t count, bool f
 				query.clear();
 				Handle_writeSelectViewDataQuery(query, *list.getSourceScheme(), tag, *viewField, ret);
 				select(ret, *viewField, query);
-
-				std::cout << data::EncodeFormat::Pretty << ret << "\n";
 				return ret;
 			}
 		} else {

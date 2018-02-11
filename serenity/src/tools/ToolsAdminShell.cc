@@ -195,7 +195,12 @@ struct ResourceCmd : SocketCommand {
 		if (!scheme.empty()) {
 			auto s =  acquireScheme(h, scheme);
 			if (s) {
-				Resource *r = Resource::resolve(h.storage(), *s, path.empty()?String("/"):path.str());
+				Resource *r =  Resource::resolve(h.storage(), *s,
+						path.empty()
+						? String("/")
+						: (path.is<StringView::CharGroup<CharGroupId::Numbers>>())
+						 	? toString("/id", path)
+						 	: path.str());
 				if (r) {
 					r->setUser(h.getUser());
 					if (!resolve.empty()) {
@@ -231,7 +236,7 @@ struct GetCmd : ResourceCmd {
 		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
 		StringView path("/");
-		if (r.is('/')) {
+		if (r.is('/') || r.is<StringView::CharGroup<CharGroupId::Numbers>>()) {
 			path = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		}
@@ -267,11 +272,20 @@ struct HistoryCmd : ResourceCmd {
 
 		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
+		auto schemeView = schemeName;
 		StringView field; uint64_t tag = 0;
-		if (!r.empty()) {
-			field = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-			tag = r.readInteger();
+		schemeName = schemeView.readUntilString("::");
+		if (schemeView.is("::")) {
+			schemeView += 2;
+			auto tmpField = schemeView.readUntilString("::");
+			if (schemeView.is("::")) {
+				schemeView += 2;
+				auto tmpTag = schemeView.readInteger();
+				if (tmpTag > 0 && !tmpField.empty()) {
+					field = tmpField;
+					tag = tmpTag;
+				}
+			}
 		}
 
 		if (auto s = acquireScheme(h, schemeName)) {
@@ -292,10 +306,12 @@ struct HistoryCmd : ResourceCmd {
 	}
 
 	virtual const String desc() const {
-		return "<scheme> <time> [<field> <tag>] - Changelog for scheme or view"_weak;
+		return "<scheme> <time> - Changelog for scheme or view"_weak;
 	}
 	virtual const String help() const {
-		return "<scheme> <time> [<field> <tag>] - Changelog for scheme or view"_weak;
+		return "\thistory <scheme|view> <time> - Changelog for scheme or view\n\n"
+				"Scheme can be defined by it's name\n"
+				"View can be defined as <scheme>::<field>::<tag>\n"_weak;
 	}
 };
 
@@ -312,13 +328,20 @@ struct DeltaCmd : ResourceCmd {
 			time = testTime;
 		}
 
-		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-
+		auto schemeView = schemeName;
 		StringView field; uint64_t tag = 0;
-		if (!r.empty()) {
-			field = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-			tag = r.readInteger();
+		schemeName = schemeView.readUntilString("::");
+		if (schemeView.is("::")) {
+			schemeView += 2;
+			auto tmpField = schemeView.readUntilString("::");
+			if (schemeView.is("::")) {
+				schemeView += 2;
+				auto tmpTag = schemeView.readInteger();
+				if (tmpTag > 0 && !tmpField.empty()) {
+					field = tmpField;
+					tag = tmpTag;
+				}
+			}
 		}
 
 		if (auto s = acquireScheme(h, schemeName)) {
@@ -342,7 +365,9 @@ struct DeltaCmd : ResourceCmd {
 		return "<scheme> <time> [<field> <tag>] - Delta for scheme"_weak;
 	}
 	virtual const String help() const {
-		return "<scheme> <time> [<field> <tag>] - Delta for scheme"_weak;
+		return "\tdelta <scheme|view> <time> - Changelog for scheme or view\n\n"
+				"Scheme can be defined by it's name\n"
+				"View can be defined as <scheme>::<field>::<tag>\n"_weak;
 	}
 };
 
@@ -389,7 +414,7 @@ struct CreateCmd : ResourceCmd {
 		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
 		StringView path("/");
-		if (r.is('/')) {
+		if (r.is('/') || r.is<StringView::CharGroup<CharGroupId::Numbers>>()) {
 			path = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		}
@@ -428,7 +453,7 @@ struct UpdateCmd : ResourceCmd {
 		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
 		StringView path("/");
-		if (r.is('/')) {
+		if (r.is('/') || r.is<StringView::CharGroup<CharGroupId::Numbers>>()) {
 			path = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		}
@@ -467,7 +492,7 @@ struct UploadCmd : ResourceCmd {
 		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
 		StringView path("/");
-		if (r.is('/')) {
+		if (r.is('/') || r.is<StringView::CharGroup<CharGroupId::Numbers>>()) {
 			path = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		}
@@ -516,7 +541,7 @@ struct AppendCmd : ResourceCmd {
 		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
 		StringView path("/");
-		if (r.is('/')) {
+		if (r.is('/') || r.is<StringView::CharGroup<CharGroupId::Numbers>>()) {
 			path = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		}
@@ -554,7 +579,7 @@ struct DeleteCmd : ResourceCmd {
 		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
 		StringView path("/");
-		if (r.is('/')) {
+		if (r.is('/') || r.is<StringView::CharGroup<CharGroupId::Numbers>>()) {
 			path = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		}
