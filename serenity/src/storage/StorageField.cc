@@ -69,7 +69,6 @@ data::Value Field::getTypeDesc() const {
 		if ((slot->flags & Flags::ReadOnly) != Flags::None) { f.addString("readonly"); }
 		if ((slot->flags & Flags::Reference) != Flags::None) { f.addString("reference"); }
 		if ((slot->flags & Flags::Unique) != Flags::None) { f.addString("unique"); }
-		if ((slot->flags & Flags::AutoNamed) != Flags::None) { f.addString("auto-named"); }
 		if ((slot->flags & Flags::AutoCTime) != Flags::None) { f.addString("auto-ctime"); }
 		if ((slot->flags & Flags::AutoMTime) != Flags::None) { f.addString("auto-mtime"); }
 		if ((slot->flags & Flags::AutoUser) != Flags::None) { f.addString("auto-user"); }

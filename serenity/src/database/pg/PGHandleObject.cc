@@ -133,7 +133,7 @@ bool Handle::saveObject(const Scheme &scheme, uint64_t oid, const data::Value &d
 	return false;
 }
 
-data::Value Handle::patchObject(const Scheme &scheme, uint64_t oid, const data::Value &patch) {
+data::Value Handle::patchObject(const Scheme &scheme, uint64_t oid, const data::Value &patch, const Vector<const Field *> &returnFields) {
 	if (!patch.isDictionary() || patch.empty()) {
 		return data::Value();
 	}
@@ -173,7 +173,20 @@ data::Value Handle::patchObject(const Scheme &scheme, uint64_t oid, const data::
 		}
 	}
 
-	upd.where("__oid", Comparation::Equal, oid).returning().all().finalize();
+	auto returning = upd.where("__oid", Comparation::Equal, oid).returning();
+	if (returnFields.empty()) {
+		returning.all().finalize();
+	} else {
+		if (returnFields.size() == 1 && returnFields.front() == nullptr) {
+			for (auto &it : data.asDict()) {
+				returning.field(it.first);
+			}
+		} else {
+			for (auto &it : returnFields) {
+				returning.field(it->getName());
+			}
+		}
+	}
 	auto ret = select(scheme, query);
 	if (ret.isArray() && ret.size() == 1) {
 		data::Value obj = std::move(ret.getValue(0));
@@ -288,7 +301,7 @@ void Handle::performPostUpdate(ExecQuery &query, const Scheme &s, Value &data, i
 				}
 
 				if (targetId) {
-					patchObject(s, id, data::Value{pair(f_it->first, data::Value(targetId))});
+					patchObject(s, id, data::Value{pair(f_it->first, data::Value(targetId))}, Scheme::EmptyFieldList());
 					data.setInteger(targetId, f_it->first);
 				}
 			} else if (f_it->second.getType() == storage::Type::Set) {

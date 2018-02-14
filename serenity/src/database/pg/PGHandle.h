@@ -93,7 +93,7 @@ public: // adapter interface
 protected: // object interface
 	virtual bool createObject(const Scheme &, data::Value &data) override;
 	virtual bool saveObject(const Scheme &, uint64_t oid, const data::Value &newObject, const Vector<String> &fields) override;
-	virtual data::Value patchObject(const Scheme &, uint64_t oid, const data::Value &data) override;
+	virtual data::Value patchObject(const Scheme &, uint64_t oid, const data::Value &data, const Vector<const Field *> &returnFields) override;
 	virtual bool removeObject(const Scheme &, uint64_t oid) override;
 
 	virtual data::Value selectObjects(const Scheme &, const Query &) override;
@@ -121,6 +121,8 @@ protected: // prop interface
 
 	virtual bool removeFromView(const FieldView &, const Scheme *, uint64_t oid) override;
 	virtual bool addToView(const FieldView &, const Scheme *, uint64_t oid, const data::Value &) override;
+
+	virtual Vector<int64_t> getReferenceParents(const Scheme &, uint64_t oid, const Scheme *, const Field *) override;
 
 protected:
 	virtual bool beginTransaction() override { return beginTransaction_pg(TransactionLevel::ReadCommited); }

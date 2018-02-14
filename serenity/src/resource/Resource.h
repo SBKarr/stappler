@@ -58,9 +58,12 @@ public:
 	const Scheme &getScheme() const;
 	int getStatus() const;
 
+	bool isDeltaApplicable() const;
 	bool hasDelta() const;
 
 	void setQueryDelta(Time);
+	Time getQueryDelta() const;
+
 	Time getSourceDelta() const;
 
 	void setTransform(const data::TransformMap *);

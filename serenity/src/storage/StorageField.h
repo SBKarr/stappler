@@ -66,13 +66,14 @@ enum class Flags : uint32_t {
 
 	Reference = 1 << 3, /** object or set stored by reference */
 	Unique = 1 << 4, /** field or array should contain only unique values */
-	AutoNamed = 1 << 5, /** field will be automatically filled with new UUID */
+	// deprecated: AutoNamed = 1 << 5, /** field will be automatically filled with new UUID */
 	AutoCTime = 1 << 6, /** Property will be automatically set to object creation time */
 	AutoMTime = 1 << 7, /** Property will be automatically update to modification time */
 	AutoUser = 1 << 8, /** Property will be automatically set to current user (if available) */
 	Indexed = 1 << 9, /** Create index, that allows select queries on that field */
 	Admin = 1 << 10, /** Field can be accessed by administrative queries only */
 	ForceInclude = 1 << 11, /** field will be internally included in all queries (useful for access control) */
+	Composed = 1 << 12, /** propagate modification events from objects in that field (for object and set fields) */
 };
 
 SP_DEFINE_ENUM_AS_MASK(Flags)

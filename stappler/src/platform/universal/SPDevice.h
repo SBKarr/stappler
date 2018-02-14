@@ -142,6 +142,7 @@ public: /* background/foreground */
 	void didEnterBackground();
 	void willEnterForeground();
 
+	bool hasFocus() const;
 	void onFocusGained();
 	void onFocusLost();
 

@@ -204,12 +204,16 @@ static apr_status_t compress_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
 
 		if (canBeAccepted) {
 			canBeAccepted = false;
-			auto typeView = StringView(resph.at("Content-Type")).readUntil<StringView::Chars<' ', ';'>>();
-			if (typeView.empty()) {
-				typeView = StringView(r->content_type).readUntil<StringView::Chars<' ', ';'>>();
+			StringView ctView(resph.at("Content-Type"));
+			if (ctView.empty() && r->content_type) {
+				ctView = StringView(r->content_type);
 			}
-			if (typeView.is("text/") || typeView == "application/json" || typeView == "application/javascript" || typeView == "application/cbor") {
-				canBeAccepted = true;
+
+			if (!ctView.empty()) {
+				auto typeView = ctView.readUntil<StringView::Chars<' ', ';'>>();
+				if (typeView.is("text/") || typeView == "application/json" || typeView == "application/javascript" || typeView == "application/cbor") {
+					canBeAccepted = true;
+				}
 			}
 		}
 
@@ -271,8 +275,6 @@ static apr_status_t compress_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
 			if (rv != APR_SUCCESS) {
 				return rv;
 			}
-
-			//std::cout << "In: " << ctx->total_in << " Out: " << ctx->total_out << " Ratio:" << (int) (ctx->total_out * 100 / ctx->total_in) << "\n";
 
 			/* Leave notes for logging. */
 			if (conf->note_input_name) {

@@ -53,7 +53,14 @@ public:
 
 	bool compare(const CharType *d, size_t l) const { return (l == len && memcmp(ptr, d, l) == 0); }
 	bool compare(const CharType *d) const { return compare(d, std::char_traits<CharType>::length(d)); }
+
 	bool prefix(const CharType *d, size_t l) const { return (l <= len && memcmp(ptr, d, l) == 0); }
+
+	bool starts_with(const CharType *d, size_t l) const { return prefix(d, l); }
+	bool starts_with(const CharType *d) const { return prefix(d, std::char_traits<CharType>::length(d)); }
+
+	bool ends_with(const CharType *d, size_t l) const { return (l <= len && memcmp(ptr + (len - l), d, l) == 0); }
+	bool ends_with(const CharType *d) const { return ends_with(d, std::char_traits<CharType>::length(d)); }
 
 	const CharType *data() const { return ptr; }
 

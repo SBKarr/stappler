@@ -90,7 +90,7 @@ protected: // Object CRUD
 
 	virtual bool createObject(const Scheme &, data::Value &data) = 0;
 	virtual bool saveObject(const Scheme &, uint64_t oid, const data::Value &newObject, const Vector<String> &fields) = 0;
-	virtual data::Value patchObject(const Scheme &, uint64_t oid, const data::Value &data) = 0;
+	virtual data::Value patchObject(const Scheme &, uint64_t oid, const data::Value &data, const Vector<const Field *> &returnFields) = 0;
 
 	virtual bool removeObject(const Scheme &, uint64_t oid) = 0;
 
@@ -114,6 +114,8 @@ protected: // Object properties CRUD
 
 	virtual bool removeFromView(const FieldView &, const Scheme *, uint64_t oid) = 0;
 	virtual bool addToView(const FieldView &, const Scheme *, uint64_t oid, const data::Value &) = 0;
+
+	virtual Vector<int64_t> getReferenceParents(const Scheme &, uint64_t oid, const Scheme *, const Field *) = 0;
 
 protected:
 	virtual bool beginTransaction() = 0;

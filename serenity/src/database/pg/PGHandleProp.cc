@@ -658,4 +658,26 @@ data::Value Handle::getDeltaData(const Scheme &scheme, const FieldView &view, co
 	return data::Value();
 }
 
+Vector<int64_t> Handle::getReferenceParents(const Scheme &objectScheme, uint64_t oid, const Scheme *parentScheme, const Field *parentField) {
+	if (parentField->isReference() && parentField->getType() == Type::Set) {
+		auto schemeName = toString(parentScheme->getName(), "_f_", parentField->getName());
+		ExecQuery q;
+		q.select(toString(parentScheme->getName(), "_id"))
+				.from(schemeName)
+				.where(toString(objectScheme.getName(), "_id"), Comparation::Equal, oid);
+
+		if (auto ret = select(q)) {
+			Vector<int64_t> vec; vec.reserve(ret.nrows());
+			for (auto it : ret) {
+				if (auto id = it.toInteger(0)) {
+					vec.emplace_back(id);
+				}
+			}
+			return vec;
+		}
+	}
+
+	return Vector<int64_t>();
+}
+
 NS_SA_EXT_END(pg)

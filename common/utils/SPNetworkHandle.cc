@@ -280,6 +280,9 @@ bool NetworkHandle::setupCurl(CURL *curl, char *errorBuffer) {
 	SETOPT(check, curl, CURLOPT_WRITEFUNCTION, Network::writeDummy);
 	SETOPT(check, curl, CURLOPT_WRITEDATA, this);
 
+	/* enable all supported built-in compressions */
+	SETOPT(check, curl, CURLOPT_ACCEPT_ENCODING, "");
+
 	return check;
 }
 

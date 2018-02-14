@@ -126,6 +126,7 @@ public:
 	void setResolveDepth(uint16_t);
 
 	void setDelta(Time);
+	Time getDelta() const;
 
 	size_t size() const;
 

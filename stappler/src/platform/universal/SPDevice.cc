@@ -221,6 +221,10 @@ void Device::willEnterForeground() {
 	}
 }
 
+bool Device::hasFocus() const {
+	return _hasFocus;
+}
+
 void Device::onFocusGained() {
 	if (!_hasFocus) {
 		_hasFocus = true;

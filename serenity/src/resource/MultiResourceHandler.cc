@@ -73,13 +73,13 @@ int MultiResourceHandler::onTranslateName(Request &rctx) {
 		auto s_it = _schemes.find(scheme.str());
 		if (s_it != _schemes.end()) {
 			Resource * resource = Resource::resolve(rctx.storage(), *s_it->second, path.str(), _transform);
-			if (targetDelta > 0) {
-				resource->setQueryDelta(Time::microseconds(targetDelta));
-			}
 			resource->setTransform(_transform);
 			resource->setAccessControl(_access);
 			resource->setUser(user);
 			resource->applyQuery(it.second);
+			if (targetDelta > 0 && resource->isDeltaApplicable() && !resource->getQueryDelta()) {
+				resource->setQueryDelta(Time::microseconds(targetDelta));
+			}
 			resource->prepare();
 
 			if (resource->hasDelta()) {

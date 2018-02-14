@@ -40,8 +40,22 @@ public:
 		ViewScheme(const Scheme *s, const Field *v) : scheme(s), viewField(v) { }
 	};
 
+	struct ParentScheme : AllocPool {
+		const Scheme *scheme = nullptr;
+		const Field *pointerField = nullptr;
+		const Field *backReference = nullptr;
+
+		ParentScheme(const Scheme *s, const Field *v) : scheme(s), pointerField(v) { }
+	};
+
+	using FieldVec = Vector<const Field *>;
+
+	// field list to send, when no field is required to return
+	static FieldVec EmptyFieldList() { return FieldVec{nullptr}; }
+
 	static bool initSchemes(Server &serv, const Map<String, const Scheme *> &);
 
+public:
 	Scheme(const String &name, bool delta = false);
 	Scheme(const String &name, std::initializer_list<Field> ile, bool delta = false);
 
@@ -76,6 +90,7 @@ public:
 	uint64_t hash(ValidationLevel l = ValidationLevel::NamesAndTypes) const;
 
 	const Vector<ViewScheme *> &getViews() const;
+	Vector<const Field *> getPatchFields(const data::Value &patch) const;
 
 public:// CRUD functions
 	// returns Dictionary with single object data or Null value
@@ -139,6 +154,7 @@ public:
 
 protected:
 	void addView(const Scheme *, const Field *);
+	void addParent(const Scheme *, const Field *);
 
 	data::Value createFilePatch(Adapter *, const data::Value &val) const;
 	void purgeFilePatch(Adapter *, const data::Value &) const;
@@ -147,8 +163,11 @@ protected:
 	Pair<bool, data::Value> prepareUpdate(const data::Value &data, bool isProtected) const;
 	data::Value updateObject(Adapter *, data::Value && obj, data::Value &data) const;
 
-	data::Value patchOrUpdate(Adapter *adapter, uint64_t id, data::Value & patch) const;
-	data::Value patchOrUpdate(Adapter *adapter, const data::Value & obj, data::Value & patch) const;
+	data::Value patchOrUpdate(Adapter *adapter, uint64_t id, data::Value & patch, const FieldVec & = FieldVec()) const;
+	data::Value patchOrUpdate(Adapter *adapter, const data::Value & obj, data::Value & patch, const FieldVec & = FieldVec()) const;
+
+	void touchParents(Adapter *, const data::Value &obj) const;
+	void extractParents(Map<int64_t, const Scheme *> &, Adapter *, const data::Value &obj, bool isChangeSet = false) const;
 
 	// returns:
 	// - true if field was successfully removed
@@ -163,6 +182,7 @@ protected:
 		Compare,
 		ProtectedCreate,
 		ProtectedUpdate,
+		Touch
 	};
 
 	data::Value &transform(data::Value &, TransformAction = TransformAction::Create) const;
@@ -191,6 +211,7 @@ protected:
 	size_t maxFileSize = 0;
 
 	Vector<ViewScheme *> views;
+	Vector<ParentScheme *> parents;
 	Set<const Field *> forceInclude;
 };
 

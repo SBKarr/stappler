@@ -684,6 +684,10 @@ void QueryList::setDelta(Time d) {
 	queries.back().query.delta(d.toMicroseconds());
 }
 
+Time QueryList::getDelta() const {
+	return Time::microseconds(queries.back().query.getDeltaToken());
+}
+
 const Query::FieldsVec &QueryList::getIncludeFields() const {
 	return queries.back().query.getIncludeFields();
 }

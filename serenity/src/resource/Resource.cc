@@ -44,6 +44,10 @@ ResourceType Resource::getType() const {
 const storage::Scheme &Resource::getScheme() const { return *_queries.getScheme(); }
 int Resource::getStatus() const { return _status; }
 
+bool Resource::isDeltaApplicable() const {
+	return _queries.isDeltaApplicable();
+}
+
 bool Resource::hasDelta() const {
 	if (_queries.isDeltaApplicable()) {
 		if (_queries.isView()) {
@@ -58,6 +62,11 @@ bool Resource::hasDelta() const {
 void Resource::setQueryDelta(Time d) {
 	_queries.setDelta(d);
 }
+
+Time Resource::getQueryDelta() const {
+	return _queries.getDelta();
+}
+
 Time Resource::getSourceDelta() const { return _delta; }
 
 void Resource::setTransform(const data::TransformMap *t) {
