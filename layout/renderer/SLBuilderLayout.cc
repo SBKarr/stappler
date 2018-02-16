@@ -92,8 +92,15 @@ bool Builder::initLayout(Layout &l, const Vec2 &parentPos, const Size &parentSiz
 			auto size = getImageSize(srcIt->second);
 			if (size.first > 0 && size.second > 0) {
 				if (isnan(width) && isnan(height)) {
-					width = size.first;
-					height = size.second;
+					if (l.node.context == style::Display::InlineBlock) {
+						const float scale = 0.9f * _media.fontScale;
+
+						width = size.first * scale;
+						height = size.second * scale;
+					} else {
+						width = size.first;
+						height = size.second;
+					}
 				} else if (isnan(width)) {
 					width = height * (float(size.first) / float(size.second));
 				} else if (isnan(height)) {
@@ -447,7 +454,39 @@ float Builder::freeInlineContext(Layout &l) {
 			const CharSpec &c = ctx->label.format.chars.at(r.start + r.count - 1);
 			auto line = ctx->label.format.getLine(r.start + r.count - 1);
 			if (line) {
-				it.setBoundPosition(origin + Vec2(c.pos / density, (line->pos - r.height) / density));
+				switch (r.align) {
+				case style::VerticalAlign::Baseline:
+					if (auto data = r.layout->getData()) {
+						const auto baseline = (data->metrics.size - data->metrics.height);
+						it.setBoundPosition(origin + Vec2(c.pos / density,
+								(line->pos - it.pos.size.height * density + baseline) / density));
+					}
+					break;
+				case style::VerticalAlign::Sub:
+					if (auto data = r.layout->getData()) {
+						const auto baseline = (data->metrics.size - data->metrics.height);
+						it.setBoundPosition(origin + Vec2(c.pos / density,
+								(line->pos - it.pos.size.height * density + (baseline - data->metrics.descender / 2)) / density));
+					}
+					break;
+				case style::VerticalAlign::Super:
+					if (auto data = r.layout->getData()) {
+						const auto baseline = (data->metrics.size - data->metrics.height);
+						it.setBoundPosition(origin + Vec2(c.pos / density,
+								(line->pos - it.pos.size.height * density + (baseline - data->metrics.ascender / 2)) / density));
+					}
+					break;
+				case style::VerticalAlign::Middle:
+					it.setBoundPosition(origin + Vec2(c.pos / density, (line->pos - (r.height + it.pos.size.height * density) / 2) / density));
+					break;
+				case style::VerticalAlign::Top:
+					it.setBoundPosition(origin + Vec2(c.pos / density, (line->pos - r.height) / density));
+					break;
+				case style::VerticalAlign::Bottom:
+					it.setBoundPosition(origin + Vec2(c.pos / density, (line->pos - it.pos.size.height * density) / density));
+					break;
+				}
+
 				l.layouts.emplace_back(std::move(it));
 			}
 		}

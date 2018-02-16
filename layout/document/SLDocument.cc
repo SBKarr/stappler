@@ -208,8 +208,8 @@ Document::Image::Image(const MultipartParser::Image &img)
 : type(Type::Embed), width(img.width), height(img.height), offset(img.offset), length(img.length)
 , encoding(img.encoding), name(img.name), ref("embed://" + img.name) { }
 
-Document::Image::Image(uint16_t width, uint16_t height, size_t size, const String &path)
-: type(Type::Embed), width(width), height(height), offset(0), length(size), name(path), ref("embed://" + path) { }
+Document::Image::Image(uint16_t width, uint16_t height, size_t size, const String &path, const String &ref)
+: type(Type::Embed), width(width), height(height), offset(0), length(size), name(path), ref(ref.empty()?("embed://" + path):ref) { }
 
 String Document::getImageName(const String &name) {
 	String src(resolveName(name));

@@ -192,6 +192,21 @@ static Mat4 svg_parseTransform(StringView &r) {
 	return ret;
 }
 
+static Rect svg_readViewBox(StringView &r) {
+	float values[4] = { 0 };
+
+	uint16_t i = 0;
+	for (; i < 4; ++ i) {
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>, StringView::Chars<','>>();
+		values[i] = r.readFloat();
+		if (IsErrorValue(values[i])) {
+			return Rect();
+		}
+	}
+
+	return Rect(values[0], values[1], values[2], values[3]);
+}
+
 static float svg_readCoordValue(StringView &source, float origin) {
 	style::Metric m; m.metric = style::Metric::Px;
 	if (style::readStyleValue(source, m, false, true)) {
@@ -245,6 +260,7 @@ struct SvgTag : public html::Tag<StringView> {
 		Line,
 		Polyline,
 		Polygon,
+		Use,
 	} shape = None;
 
 	// Coords layouts:
@@ -256,6 +272,7 @@ struct SvgTag : public html::Tag<StringView> {
 	// Polygon: write directly to path
 	float coords[6] = { nan() };
 	Path path;
+	StringView id;
 };
 
 struct SvgReader {
@@ -282,6 +299,8 @@ struct SvgReader {
 			tag.shape = SvgTag::Polyline;
 		} else if (tag.name.compare("polygon")) {
 			tag.shape = SvgTag::Polygon;
+		} else if (tag.name.compare("use")) {
+			tag.shape = SvgTag::Use;
 		}
 	}
 
@@ -445,6 +464,8 @@ struct SvgReader {
 				if (!isnan(val)) {
 					_width = val;
 				}
+			} else if (name.compare("viewbox")) {
+				_viewBox = svg_readViewBox(value);
 			}
 		} else if (tag.name.compare("path")) {
 			if (name.compare("d")) {
@@ -460,6 +481,8 @@ struct SvgReader {
 			tag.path.applyTransform(svg_parseTransform(value));
 		} else if (name.compare("style")) {
 			onStyle(tag, value);
+		} else if (name.compare("id")) {
+			tag.id = value;
 		} else {
 			switch (tag.shape) {
 			case SvgTag::Rect:
@@ -518,29 +541,72 @@ struct SvgReader {
 					svg_readPointCoords(tag.path, value);
 				}
 				break;
+			case SvgTag::Use:
+				if (name.compare("x")) {
+					tag.coords[0] = svg_readCoordValue(value, _width);
+				} else if (name.compare("y")) {
+					tag.coords[1] = svg_readCoordValue(value, _height);
+				} else if (name.compare("xlink:href")) {
+					tag.id = value;
+				}
+				break;
 			default:
 				break;
 			}
 		}
 	}
 
-	inline void onPushTag(Parser &p, Tag &tag) { }
-	inline void onPopTag(Parser &p, Tag &tag) { }
-
-	inline void onInlineTag(Parser &p, Tag &tag) {
-		if (!tag.path.empty()) {
-			_paths.emplace_back(std::move(tag.path));
+	inline void onPushTag(Parser &p, Tag &tag) {
+		if (tag.name == "defs") {
+			_defs = true;
+		}
+	}
+	inline void onPopTag(Parser &p, Tag &tag) {
+		if (tag.name == "defs") {
+			_defs = false;
 		}
 	}
 
-	float _squareLength = 0.0f;
-	uint32_t _width = 0;
-	uint32_t _height = 0;
+	inline void onInlineTag(Parser &p, Tag &tag) {
+		if (tag.shape == Tag::Shape::Use) {
+			StringView ref(tag.id);
+			if (ref.is('#')) { ++ ref; }
+			auto pathIt = _paths.find(ref);
+			if (pathIt != _paths.end()) {
+				if (tag.coords[0] == 0.0f && tag.coords[1] == 0.0f) {
+					_drawOrder.emplace_back(Image::PathXRef{ref.str()});
+				} else {
+					_drawOrder.emplace_back(Image::PathXRef{ref.str(), Vec2(tag.coords[0], tag.coords[1])});
+				}
+			}
+		} else if (!tag.path.empty()) {
+			String idStr;
+			StringView id(tag.id);
+			if (id.empty()) {
+				idStr = toString("auto-", _nextId);
+				++ _nextId;
+				id = idStr;
+			}
 
-	Vector<Path> _paths;
+			_paths.emplace(id.str(), move(tag.path)).first;
+			if (!_defs) {
+				_drawOrder.emplace_back(Image::PathXRef{id.str()});
+			}
+		}
+	}
+
+	bool _defs = false;
+	float _squareLength = 0.0f;
+	float _width = 0;
+	float _height = 0;
+	uint16_t _nextId = 0;
+
+	Rect _viewBox;
+	Vector<Image::PathXRef> _drawOrder;
+	Map<String, Path> _paths;
 };
 
-bool Image::isSvg(const String &str) {
+bool Image::isSvg(const StringView &str) {
 	return Bitmap::check(Bitmap::FileFormat::Svg, (const uint8_t *)str.data(), str.size());
 }
 
@@ -556,13 +622,26 @@ bool Image::isSvg(const FilePath &file) {
 bool Image::init(const StringView &data) {
 	String tmp = data.str();
 	SvgReader reader;
-	reader._paths.reserve(8);
 	html::parse<SvgReader, StringView, SvgTag>(reader, StringView(tmp));
 
 	if (!reader._paths.empty()) {
-		_width = reader._width;
-		_height = reader._height;
+		_width = uint16_t(ceilf(reader._width));
+		_height = uint16_t(ceilf(reader._height));
+		_drawOrder = std::move(reader._drawOrder);
 		_paths = std::move(reader._paths);
+		_nextId = reader._nextId;
+
+		if (!reader._viewBox.equals(Rect::ZERO)) {
+			const float scaleX = reader._width / reader._viewBox.size.width;
+			const float scaleY = reader._height / reader._viewBox.size.height;
+			_viewBoxTransform = Mat4::IDENTITY;
+			_viewBoxTransform.scale(scaleX, scaleY, 1.0f);
+			_viewBoxTransform.translate(-reader._viewBox.origin.x, -reader._viewBox.origin.y, 0.0f);
+			_viewBox = Rect(reader._viewBox.origin.x * scaleX, reader._viewBox.origin.y * scaleY,
+					reader._viewBox.size.width * scaleX, reader._viewBox.size.height * scaleY);
+		} else {
+			_viewBox = Rect(0, 0, _width, _height);
+		}
 		return true;
 	}
 
@@ -571,13 +650,26 @@ bool Image::init(const StringView &data) {
 
 bool Image::init(const Bytes &data) {
 	SvgReader reader;
-	reader._paths.reserve(8);
 	html::parse<SvgReader, StringView, SvgTag>(reader, StringView((const char *)data.data(), data.size()));
 
 	if (!reader._paths.empty()) {
-		_width = reader._width;
-		_height = reader._height;
+		_width = uint16_t(ceilf(reader._width));
+		_height = uint16_t(ceilf(reader._height));
+		_drawOrder = std::move(reader._drawOrder);
 		_paths = std::move(reader._paths);
+		_nextId = reader._nextId;
+
+		if (!reader._viewBox.equals(Rect::ZERO)) {
+			const float scaleX = reader._width / reader._viewBox.size.width;
+			const float scaleY = reader._height / reader._viewBox.size.height;
+			_viewBoxTransform = Mat4::IDENTITY;
+			_viewBoxTransform.scale(scaleX, scaleY, 1.0f);
+			_viewBoxTransform.translate(-reader._viewBox.origin.x, -reader._viewBox.origin.y, 0.0f);
+			_viewBox = Rect(reader._viewBox.origin.x * scaleX, reader._viewBox.origin.y * scaleY,
+					reader._viewBox.size.width * scaleX, reader._viewBox.size.height * scaleY);
+		} else {
+			_viewBox = Rect(0, 0, _width, _height);
+		}
 		return true;
 	}
 
@@ -595,6 +687,10 @@ uint16_t Image::getHeight() const {
 	return _height;
 }
 
+Rect Image::getViewBox() const {
+	return _viewBox;
+}
+
 Image::~Image() {
 	clearRefs();
 }
@@ -610,8 +706,9 @@ bool Image::init(uint16_t width, uint16_t height, const String &data) {
 bool Image::init(uint16_t width, uint16_t height, Path && path) {
 	_width = width;
 	_height = height;
+	_viewBox = Rect(0, 0, width, height);
 
-	_paths.emplace_back(std::move(path));
+	addPath(move(path));
 
 	return true;
 }
@@ -619,77 +716,66 @@ bool Image::init(uint16_t width, uint16_t height, Path && path) {
 bool Image::init(uint16_t width, uint16_t height) {
 	_width = width;
 	_height = height;
+	_viewBox = Rect(0, 0, width, height);
 
 	return true;
 }
 
-Image::PathRef Image::addPath(const Path &path, uint32_t tag) {
-	_paths.emplace_back(std::move(path));
-	if (tag) {
-		_paths.back().setTag(tag);
-	}
-	_paths.back().setAntialiased(_isAntialiased);
-	setDirty();
-	invalidateRefs();
-	return PathRef(this, &_paths.back(), _paths.size() - 1);
-}
-Image::PathRef Image::addPath(Path &&path, uint32_t tag) {
-	_paths.emplace_back(std::move(path));
-	if (tag) {
-		_paths.back().setTag(tag);
-	}
-	_paths.back().setAntialiased(_isAntialiased);
-	setDirty();
-	invalidateRefs();
-	return PathRef(this, &_paths.back(), _paths.size() - 1);
-}
-Image::PathRef Image::addPath() {
-	return addPath(Path());
+Image::PathRef Image::addPath(const Path &path, const StringView & tag) {
+	return addPath(Path(path), tag);
 }
 
-Image::PathRef Image::getPathByTag(uint32_t tag) {
-	if (tag == 0) {
-		return PathRef();
+Image::PathRef Image::addPath(Path &&path, const StringView & tag) {
+	Image::PathRef ref(definePath(move(path), tag));
+	_drawOrder.emplace_back(PathXRef{ref.id.str()});
+	return ref;
+}
+
+Image::PathRef Image::addPath(const StringView &tag) {
+	return addPath(Path(), tag);
+}
+
+Image::PathRef Image::definePath(const Path &path, const StringView &tag) {
+	return definePath(Path(path), tag);
+}
+
+Image::PathRef Image::definePath(Path &&path, const StringView &tag) {
+	String idStr;
+	StringView id(tag);
+	if (id.empty()) {
+		idStr = toString("auto-", _nextId);
+		++ _nextId;
+		id = idStr;
 	}
 
-	auto it = _paths.begin();
-	for (; it != _paths.end(); ++ it) {
-		if (it->getTag() == tag) {
-			return PathRef(this, &(*it), it - _paths.begin());
-		}
-	}
-	return PathRef();
+	auto pathIt = _paths.emplace(id.str(), move(path)).first;
+	pathIt->second.setAntialiased(_isAntialiased);
+
+	setDirty();
+	return PathRef(this, &pathIt->second, pathIt->first);
 }
-Image::PathRef Image::getPath(size_t idx) {
-	if (idx < _paths.size()) {
-		return PathRef(this, &_paths.at(idx), idx);
+
+Image::PathRef Image::definePath(const StringView &tag) {
+	return definePath(Path(), tag);
+}
+
+Image::PathRef Image::getPath(const StringView &tag) {
+	auto it = _paths.find(tag);
+	if (it != _paths.end()) {
+		return PathRef(this, &it->second, it->first);
 	}
 	return PathRef();
 }
 
 void Image::removePath(const PathRef &path) {
-	removePath(path.index);
+	removePath(path.id);
 }
-void Image::removePath(size_t idx) {
-	if (idx < _paths.size()) {
-		_paths.erase(_paths.begin() + idx);
+void Image::removePath(const StringView &tag) {
+	auto it = _paths.find(tag);
+	if (it != _paths.end()) {
+		_paths.erase(it);
+		eraseRefs(tag);
 	}
-	eraseRefs(idx);
-	invalidateRefs();
-	setDirty();
-}
-void Image::removePathByTag(uint32_t tag) {
-	auto it = _paths.begin();
-	for (; it != _paths.end(); ++ it) {
-		if (it->getTag() == tag) {
-			eraseRefs(it - _paths.begin());
-		}
-	}
-
-	_paths.erase(std::remove_if(_paths.begin(), _paths.end(), [tag] (const Path &p) -> bool {
-		return p.getTag() == tag;
-	}), _paths.end());
-	invalidateRefs();
 	setDirty();
 }
 
@@ -699,7 +785,7 @@ void Image::clear() {
 	setDirty();
 }
 
-const Vector<Path> &Image::getPaths() const {
+const Map<String, Path> &Image::getPaths() const {
 	return _paths;
 }
 
@@ -710,11 +796,6 @@ bool Image::isAntialiased() const {
 	return _isAntialiased;
 }
 
-void Image::invalidateRefs() {
-	for (auto &it : _refs) {
-		it->path = getPathByRef(*it);
-	}
-}
 void Image::clearRefs() {
 	for (auto &it : _refs) {
 		it->path = nullptr;
@@ -739,13 +820,11 @@ void Image::replaceRef(PathRef *original, PathRef *target) {
 		addRef(target);
 	}
 }
-void Image::eraseRefs(size_t idx) {
+void Image::eraseRefs(const StringView &tag) {
 	for (auto &it : _refs) {
-		if (it->index == idx) {
+		if (it->id == tag) {
 			it->image = nullptr;
 			it->path = nullptr;
-		} else if (it->index > idx) {
-			-- (it->index);
 		}
 	}
 
@@ -757,17 +836,10 @@ void Image::eraseRefs(size_t idx) {
 	}), _refs.end());
 }
 
-Path *Image::getPathByRef(const PathRef &ref) const {
-	if (ref.index < _paths.size()) {
-		return const_cast<Path *>(&_paths.at(ref.index));
-	}
-	return nullptr;
-}
-
-bool colorIsBlack(const Color4B &c) {
+static bool colorIsBlack(const Color4B &c) {
 	return c.r == 0 && c.g == 0 && c.b == 0;
 }
-bool colorIsGray(const Color4B &c) {
+static bool colorIsGray(const Color4B &c) {
 	return c.r == c.g && c.b == c.r;
 }
 
@@ -776,20 +848,20 @@ Bitmap::PixelFormat Image::detectFormat() const {
 	bool grey = true;
 
 	for (auto &it : _paths) {
-		if ((it.getStyle() & Path::Style::Fill) != DrawStyle::None) {
-			if (!colorIsBlack(it.getFillColor())) {
+		if ((it.second.getStyle() & Path::Style::Fill) != DrawStyle::None) {
+			if (!colorIsBlack(it.second.getFillColor())) {
 				black = false;
 			}
-			if (!colorIsGray(it.getFillColor())) {
+			if (!colorIsGray(it.second.getFillColor())) {
 				black = false;
 				grey = false;
 			}
 		}
-		if ((it.getStyle() & Path::Style::Stroke) != DrawStyle::None) {
-			if (!colorIsBlack(it.getStrokeColor())) {
+		if ((it.second.getStyle() & Path::Style::Stroke) != DrawStyle::None) {
+			if (!colorIsBlack(it.second.getStrokeColor())) {
 				black = false;
 			}
-			if (!colorIsGray(it.getStrokeColor())) {
+			if (!colorIsGray(it.second.getStrokeColor())) {
 				black = false;
 				grey = false;
 			}
@@ -804,25 +876,62 @@ Bitmap::PixelFormat Image::detectFormat() const {
 	return Bitmap::PixelFormat::RGBA8888;
 }
 
+const Vector<Image::PathXRef> &Image::getDrawOrder() const {
+	return _drawOrder;
+}
+void Image::setDrawOrder(const Vector<PathXRef> &vec) {
+	_drawOrder = vec;
+}
+void Image::setDrawOrder(Vector<PathXRef> &&vec) {
+	_drawOrder = move(vec);
+}
+
+Image::PathXRef Image::getDrawOrderPath(size_t size) const {
+	if (size >= _drawOrder.size()) {
+		return _drawOrder[size];
+	}
+	return PathXRef();
+}
+Image::PathXRef Image::addDrawOrderPath(const StringView &id, const Vec2 &pos) {
+	auto it = _paths.find(id);
+	if (it != _paths.end()) {
+		_drawOrder.emplace_back(PathXRef{id.str(), pos});
+		return _drawOrder.back();
+	}
+	return PathXRef();
+}
+
+void Image::clearDrawOrder() {
+	_drawOrder.clear();
+}
+
+void Image::setViewBoxTransform(const Mat4 &m) {
+	_viewBoxTransform = m;
+}
+
+const Mat4 &Image::getViewBoxTransform() const {
+	return _viewBoxTransform;
+}
+
 Image::PathRef::~PathRef() {
 	if (image) {
 		image->removeRef(this);
 		image = nullptr;
 	}
 }
-Image::PathRef::PathRef(Image *img, Path *path, size_t idx) : index(idx), path(path), image(img) {
+Image::PathRef::PathRef(Image *img, Path *path, const StringView &id) : id(id), path(path), image(img) {
 	image->addRef(this);
 }
 
 Image::PathRef::PathRef() { }
 
-Image::PathRef::PathRef(PathRef && ref) : index(ref.index), path(ref.path), image(ref.image) {
+Image::PathRef::PathRef(PathRef && ref) : id(ref.id), path(ref.path), image(ref.image) {
 	if (image) {
 		image->replaceRef(&ref, this);
 	}
 	ref.image = nullptr;
 }
-Image::PathRef::PathRef(const PathRef &ref) : index(ref.index), path(ref.path), image(ref.image) {
+Image::PathRef::PathRef(const PathRef &ref) : id(ref.id), path(ref.path), image(ref.image) {
 	if (image) {
 		image->addRef(this);
 	}
@@ -833,7 +942,7 @@ Image::PathRef & Image::PathRef::operator=(PathRef &&ref) {
 	invalidate();
 	image = ref.image;
 	path = ref.path;
-	index = ref.index;
+	id = ref.id;
 	if (image) {
 		image->replaceRef(&ref, this);
 		ref.image = nullptr;
@@ -844,7 +953,7 @@ Image::PathRef & Image::PathRef::operator=(const PathRef &ref) {
 	invalidate();
 	image = ref.image;
 	path = ref.path;
-	index = ref.index;
+	id = ref.id;
 	if (image) {
 		image->addRef(this);
 	}
@@ -1023,14 +1132,8 @@ Image::PathRef & Image::PathRef::clear() {
 	return *this;
 }
 
-Image::PathRef & Image::PathRef::setTag(uint32_t tag) {
-	if (path) {
-		path->setTag(tag);
-	}
-	return *this;
-}
-uint32_t Image::PathRef::getTag() const {
-	return path?path->getTag():0;
+StringView Image::PathRef::getId() const {
+	return id;
 }
 
 bool Image::PathRef::empty() const {

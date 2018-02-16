@@ -76,7 +76,7 @@ public:
 		String ref;
 
 		Image(const MultipartParser::Image &);
-		Image(uint16_t width, uint16_t height, size_t size, const String &path);
+		Image(uint16_t width, uint16_t height, size_t size, const String &path, const String &ref = String());
 	};
 
 	struct ContentRecord {

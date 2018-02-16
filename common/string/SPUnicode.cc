@@ -188,6 +188,10 @@ static char16_t Utf8DecodeHtml(char_const_ptr_t ptr, uint32_t len) {
 		return '&';
 	} else if (strncmp((char_const_ptr_t)ptr, "nbsp", len) == 0) {
 		return 0xA0;
+	} else if (strncmp((char_const_ptr_t)ptr, "quot", len) == 0) {
+		return '"';
+	} else if (strncmp((char_const_ptr_t)ptr, "apos", len) == 0) {
+		return '\'';
 	} else if (strncmp((char_const_ptr_t)ptr, "lt", len) == 0) {
 		return '<';
 	} else if (strncmp((char_const_ptr_t)ptr, "gt", len) == 0) {
@@ -269,7 +273,7 @@ size_t getUtf16HtmlLength(const StringView &input) {
 	size_t counter = 0;
 	char_const_ptr_t ptr = input.data();
 	const char_const_ptr_t end = ptr + input.size();
-	while (ptr < end) {
+	while (ptr < end && *ptr != 0) {
 		if (ptr[0] == '&') {
 			uint8_t len = 0;
 			while (ptr[len] && ptr[len] != ';' && len < 10) {

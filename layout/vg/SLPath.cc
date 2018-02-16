@@ -843,14 +843,6 @@ Path & Path::clear() {
 	return *this;
 }
 
-Path & Path::setTag(uint32_t tag) {
-	_tag = tag;
-	return *this;
-}
-uint32_t Path::getTag() const {
-	return _tag;
-}
-
 Path & Path::setParams(const Params &p) {
 	_params = p;
 	return *this;

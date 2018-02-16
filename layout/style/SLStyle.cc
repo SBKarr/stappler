@@ -933,6 +933,12 @@ void ParameterList::read(const StringView &name, const StringView &value, MediaQ
 			set<ParameterName::VerticalAlign>(VerticalAlign::Sub, mediaQuary);
 		} else if (value.compare("super")) {
 			set<ParameterName::VerticalAlign>(VerticalAlign::Super, mediaQuary);
+		} else if (value.compare("middle")) {
+			set<ParameterName::VerticalAlign>(VerticalAlign::Middle, mediaQuary);
+		} else if (value.compare("top")) {
+			set<ParameterName::VerticalAlign>(VerticalAlign::Top, mediaQuary);
+		} else if (value.compare("bottom")) {
+			set<ParameterName::VerticalAlign>(VerticalAlign::Bottom, mediaQuary);
 		}
 	} else if (name == "outline") {
 		ParameterList_readBorder<ParameterName::OutlineStyle, ParameterName::OutlineColor, ParameterName::OutlineWidth>(*this, value, mediaQuary);

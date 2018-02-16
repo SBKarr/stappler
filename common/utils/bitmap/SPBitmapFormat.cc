@@ -903,6 +903,37 @@ static bool BitmapFormat_getWebpImageSize(const io::Producer &file, StackBuffer<
 	return false;
 }
 
+size_t BitmapFormat_detectSvgSize(const StringView &value) {
+	StringView str(value);
+	float fvalue = str.readFloat();
+	if (IsErrorValue(fvalue)) {
+		return 0;
+	}
+
+	if (fvalue == 0.0f) {
+		return 0;
+	}
+
+	str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+
+	if (str == "px" || str.empty()) {
+		// do nothing
+	} else if (str == "pt") {
+		fvalue = fvalue * 4.0f / 3.0f;
+	} else if (str == "pc") {
+		fvalue = fvalue * 15.0f;
+	} else if (str == "mm") {
+		fvalue = fvalue * 3.543307f;
+	} else if (str == "cm") {
+		fvalue = fvalue * 35.43307f;
+	} else {
+		log::format("Bitmap", "Invalid size metric in svg: %s", str.data());
+		return 0;
+	}
+
+	return size_t(ceilf(fvalue));
+}
+
 static bool BitmapFormat_detectSvg(const StringView &buf, size_t &w, size_t &h) {
 	StringView str(buf);
 	str.skipUntilString("<svg", false);
@@ -921,9 +952,9 @@ static bool BitmapFormat_detectSvg(const StringView &buf, size_t &w, size_t &h) 
 						isSvg = true;
 					}
 				} else if (key == "width") {
-					width = size_t(value.readInteger());
+					width = BitmapFormat_detectSvgSize(value);
 				} else if (key == "height") {
-					height = size_t(value.readInteger());
+					height = BitmapFormat_detectSvgSize(value);
 				}
 				if (isSvg && width && height) {
 					found = true;
@@ -1247,9 +1278,13 @@ bool Bitmap::isImage(const io::Producer &file, bool readable) {
 		return false;
 	}
 
+	return isImage(data.data(), data.size(), readable);
+}
+
+bool Bitmap::isImage(const uint8_t * data, size_t dataLen, bool readable) {
 	for (int i = 0; i < toInt(Bitmap::FileFormat::Custom); ++i) {
 		if (s_defaultFormats[i].isRecognizable() && (!readable || s_defaultFormats[i].isReadable())
-				&& s_defaultFormats[i].is(data.data(), data.size())) {
+				&& s_defaultFormats[i].is(data, dataLen)) {
 			return true;
 		}
 	}
@@ -1268,7 +1303,7 @@ bool Bitmap::isImage(const io::Producer &file, bool readable) {
 	s_formatListMutex.unlock();
 
 	for (auto &it : fns) {
-		if (it(data.data(), data.size())) {
+		if (it(data, dataLen)) {
 			return true;
 		}
 	}

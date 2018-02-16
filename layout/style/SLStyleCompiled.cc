@@ -580,9 +580,11 @@ namespace style {
 				stream << "vertical-align: ";
 				switch (it.value.verticalAlign) {
 				case VerticalAlign::Baseline: stream << "baseline"; break;
-				case VerticalAlign::Center: stream << "center"; break;
 				case VerticalAlign::Sub: stream << "sub"; break;
 				case VerticalAlign::Super: stream << "super"; break;
+				case VerticalAlign::Middle: stream << "middle"; break;
+				case VerticalAlign::Top: stream << "top"; break;
+				case VerticalAlign::Bottom: stream << "bottom"; break;
 				};
 				break; // enum
 			case ParameterName::BorderTopStyle:

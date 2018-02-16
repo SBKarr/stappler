@@ -264,9 +264,11 @@ namespace style {
 
 	enum class VerticalAlign : EnumSize {
 		Baseline,
-		Center,
+		Middle,
 		Sub,
 		Super,
+		Top,
+		Bottom
 	};
 
 	enum class BorderStyle : EnumSize {

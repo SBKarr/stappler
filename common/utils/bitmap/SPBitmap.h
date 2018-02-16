@@ -84,6 +84,7 @@ public:
 
 	static bool isImage(const String &file, bool readable = true);
 	static bool isImage(const io::Producer &file, bool readable = true);
+	static bool isImage(const uint8_t * data, size_t dataLen, bool readable = true);
 
 	static bool check(FileFormat, const uint8_t * data, size_t dataLen);
 	static bool check(const String &, const uint8_t * data, size_t dataLen);

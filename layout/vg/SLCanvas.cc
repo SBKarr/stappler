@@ -144,6 +144,14 @@ void Canvas::endBatch() {
 }
 
 void Canvas::draw(const Image &img) {
+	auto &m = img.getViewBoxTransform();
+	bool isIdentity = m.isIdentity();
+
+	if (!isIdentity) {
+		save();
+		transform(m);
+	}
+
 	bool batch = false;
 	if (!_isBatch) {
 		beginBatch();
@@ -151,10 +159,13 @@ void Canvas::draw(const Image &img) {
 		batch = true;
 	}
 
-	auto &paths = img.getPaths();
-	for (auto &it : paths) {
-		draw(it);
-	}
+	img.draw([&] (const Path &path, const Vec2 &pos) {
+		if (pos.isZero()) {
+			draw(path);
+		} else {
+			draw(path, pos.x, pos.y);
+		}
+	});
 
 	if (!batch) {
 		endBatch();
@@ -163,6 +174,10 @@ void Canvas::draw(const Image &img) {
 			flushBatch();
 		}
 	}
+
+	if (!isIdentity) {
+	//	restore();
+	}
 }
 
 void Canvas::draw(const Image &img, const Rect &rect) {
@@ -170,7 +185,7 @@ void Canvas::draw(const Image &img, const Rect &rect) {
 }
 
 void Canvas::draw(const Image &img, const Rect &rect, const BackgroundStyle &bg) {
-	Size imageSize(img.getWidth(), img.getHeight());
+	Size imageSize(img.getViewBox().size);
 	Rect boxRect(calculateImageBoxRect(rect, imageSize, bg));
 
 	Mat4 t;

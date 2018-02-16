@@ -48,12 +48,10 @@ public:
     virtual Image::PathRef addPath(const Path & path);
     virtual Image::PathRef addPath(Path && path);
 
-    virtual Image::PathRef getPathByTag(uint32_t);
-    virtual Image::PathRef getPath(size_t);
+    virtual Image::PathRef getPath(const StringView &);
 
     virtual void removePath(const Image::PathRef &);
-    virtual void removePath(size_t);
-    virtual void removePathByTag(uint32_t);
+    virtual void removePath(const StringView &);
 
     virtual bool clear();
 

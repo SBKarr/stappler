@@ -158,9 +158,6 @@ public:
 
 	Path & clear();
 
-	Path & setTag(uint32_t);
-	uint32_t getTag() const;
-
 	Path & setParams(const Params &);
 	Params getParams() const;
 
@@ -178,9 +175,10 @@ public:
 	size_t dataCount() const;
 
 protected:
+	friend class Image;
+
 	Vector<CommandData> _points;
 	Vector<Command> _commands;
-	uint32_t _tag = 0;
 	Params _params;
 };
 

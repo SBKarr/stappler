@@ -100,15 +100,9 @@ Image::PathRef PathNode::addPath(Path &&path) {
 	return Image::PathRef();
 }
 
-Image::PathRef PathNode::getPathByTag(uint32_t idx) {
+Image::PathRef PathNode::getPath(const StringView &tag) {
 	if (_image) {
-		return _image->getPathByTag(idx);
-	}
-	return Image::PathRef();
-}
-Image::PathRef PathNode::getPath(size_t idx) {
-	if (_image) {
-		return _image->getPath(idx);
+		return _image->getPath(tag);
 	}
 	return Image::PathRef();
 }
@@ -118,14 +112,9 @@ void PathNode::removePath(const Image::PathRef &path) {
 		_image->removePath(path);
 	}
 }
-void PathNode::removePath(size_t idx) {
+void PathNode::removePath(const StringView &tag) {
 	if (_image) {
-		_image->removePath(idx);
-	}
-}
-void PathNode::removePathByTag(uint32_t tag) {
-	if (_image) {
-		_image->removePathByTag(tag);
+		_image->removePath(tag);
 	}
 }
 
@@ -230,11 +219,15 @@ void PathNode::updateCanvas(layout::Subscription::Flags f) {
 			_canvas->save();
 			_canvas->translate(offsetX, offsetY);
 			_canvas->scale(scaleX, scaleY);
+			_canvas->transform(_image->getViewBoxTransform());
 
-			auto &paths = _image->getPaths();
-			for (auto & path : paths) {
-				_canvas->draw(path);
-			}
+			_image->draw([&] (const Path &path, const Vec2 &pos) {
+				if (pos.isZero()) {
+					_canvas->draw(path);
+				} else {
+					_canvas->draw(path, pos.x, pos.y);
+				}
+			});
 
 			_canvas->restore();
 			_canvas->end();

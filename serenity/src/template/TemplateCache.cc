@@ -76,6 +76,7 @@ void Cache::runTemplate(const String &ipath, Request &req, const RunCallback &cb
 	String path = StringView(ipath).is("virtual://") ? ipath : filesystem::writablePath(ipath);
 	if (auto tpl = acquireTemplate(path, req)) {
 		auto h = req.getResponseHeaders();
+		h.emplace("Content-Type", "text/html; charset=UTF-8");
 		h.emplace("Cache-Control", "no-cache, no-store, must-revalidate");
 		h.emplace("Pragma", "no-cache");
 		h.emplace("Expires", "0");

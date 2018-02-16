@@ -126,7 +126,7 @@ public:
 
 	FontSource * getSource() const;
 
-	void update(float dt);
+	virtual void update(float dt);
 
 protected:
 	virtual void updateSource();

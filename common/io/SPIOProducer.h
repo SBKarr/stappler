@@ -77,7 +77,7 @@ struct ProducerTraitsOverload {
 };
 
 template <typename T>
-struct ProducerTraitsReolution {
+struct ProducerTraitsResolution {
 	using type = typename std::conditional<
 			std::is_base_of<std::basic_istream<char>, T>::value,
 			ProducerTraitsStream,
@@ -86,7 +86,7 @@ struct ProducerTraitsReolution {
 
 template <typename T>
 struct ProducerTraits {
-	using traits_type = typename ProducerTraitsReolution<T>::type;
+	using traits_type = typename ProducerTraitsResolution<T>::type;
 	static size_t ReadFn(void *ptr, uint8_t *buf, size_t nbytes) {
 		return traits_type::ReadFn(ptr, buf, nbytes);
 	}

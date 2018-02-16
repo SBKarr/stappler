@@ -160,24 +160,6 @@ const Style * Builder::compileStyle(const Node &node) {
 		return &it->second;
 	}
 
-	/*StringStream nodeStackDump;
-	for (auto &it : _nodeStack) {
-		nodeStackDump << " " << it->getHtmlName();
-		auto &id = it->getHtmlId();
-		if (!id.empty()) {
-			nodeStackDump << "#" << id;
-		}
-
-		nodeStackDump << "(" << it->getNodeId() << ")";
-	}
-
-	std::cout << "Node stack: " << nodeStackDump.str() << " : " << node.getHtmlName() << "(" << node.getNodeId() << ")";
-	auto &value = node.getValue();
-	if (!value.empty()) {
-		std::cout << " \"" << string::toUtf8(value) << "\"";
-	}
-	std::cout << "\n";*/
-
 	it = styles.emplace(node.getNodeId(), Style()).first;
 
 	if (_nodeStack.size() > 1) {
@@ -308,8 +290,6 @@ void Builder::buildBlockModel() {
 		addLayoutObjects(l);
 	}
 	_result->finalize();
-
-	// log::format("ReaderTime", "%lu", _readerAccum.toMicroseconds());
 }
 
 void Builder::addLayoutObjects(Layout &l) {
@@ -322,7 +302,6 @@ void Builder::addLayoutObjects(Layout &l) {
 	if (!l.preObjects.empty()) {
 		for (auto &it : l.preObjects) {
 			it.bbox.origin += l.pos.position;
-			//log("object: %f %f %f %f", it.bbox.origin.x, it.bbox.origin.y, it.bbox.size.width, it.bbox.size.height);
 			_result->pushObject(std::move(it));
 		}
 	}
@@ -336,7 +315,6 @@ void Builder::addLayoutObjects(Layout &l) {
 	if (!l.postObjects.empty()) {
 		for (auto &it : l.postObjects) {
 			it.bbox.origin += l.pos.position;
-			//log("object: %f %f %f %f", it.bbox.origin.x, it.bbox.origin.y, it.bbox.size.width, it.bbox.size.height);
 			_result->pushObject(std::move(it));
 		}
 	}

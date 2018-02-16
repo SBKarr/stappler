@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define COMMON_STRING_SPSTRING_H_
 
 #include "SPDataReader.h"
+#include "SPIO.h"
 
 NS_SP_EXT_BEGIN(string)
 
@@ -280,6 +281,7 @@ struct CoderSource {
 	CoderSource() { }
 
 	DataReader<ByteOrder::Network> _data;
+	size_t _offset = 0;
 
 	CoderSource(const CoderSource &) = delete;
 	CoderSource(CoderSource &&) = delete;
@@ -287,14 +289,81 @@ struct CoderSource {
 	CoderSource& operator=(const CoderSource &) = delete;
 	CoderSource& operator=(CoderSource &&) = delete;
 
-	const uint8_t *data() const { return _data.data(); }
-	size_t size() const { return _data.size(); }
-	bool empty() const { return _data.empty(); }
+	const uint8_t *data() const { return _data.data() + _offset; }
+	size_t size() const { return _data.size() - _offset; }
+	bool empty() const { return _data.empty() || _offset == _data.size(); }
 
-	uint8_t operator[] (size_t s) const { return _data[s]; }
+	uint8_t operator[] (size_t s) const { return _data[s + _offset]; }
+
+	size_t read(uint8_t *buf, size_t nbytes) {
+		const auto remains = _data.size() - _offset;
+		if (nbytes > remains) {
+			nbytes = remains;
+		}
+		memcpy(buf, _data.data(), nbytes);
+		_offset += nbytes;
+		return nbytes;
+	}
+
+	size_t seek(int64_t offset, io::Seek s) {
+		switch (s) {
+		case io::Seek::Current:
+			if (offset + _offset > _data.size()) {
+				_offset = _data.size();
+			} else if (offset + _offset < 0) {
+				_offset = 0;
+			} else {
+				_offset += offset;
+			}
+			break;
+		case io::Seek::End:
+			if (offset > 0) {
+				_offset = _data.size();
+			} else if (size_t(-offset) > _data.size()) {
+				_offset = 0;
+			} else {
+				_offset = size_t(-offset);
+			}
+			break;
+		case io::Seek::Set:
+			if (offset < 0) {
+				_offset = 0;
+			} else if (size_t(offset) <= _data.size()) {
+				_offset = size_t(offset);
+			} else {
+				_offset = _data.size();
+			}
+			break;
+		}
+		return _offset;
+	}
+
+	size_t tell() const {
+		return _offset;
+	}
 };
 
 NS_SP_END
+
+
+NS_SP_EXT_BEGIN(io)
+
+template <>
+struct ProducerTraits<CoderSource> {
+	using type = CoderSource;
+	static size_t ReadFn(void *ptr, uint8_t *buf, size_t nbytes) {
+		return ((type *)ptr)->read(buf, nbytes);
+	}
+
+	static size_t SeekFn(void *ptr, int64_t offset, Seek s) {
+		return ((type *)ptr)->seek(offset, s);
+	}
+	static size_t TellFn(void *ptr) {
+		return ((type *)ptr)->tell();
+	}
+};
+
+NS_SP_EXT_END(io)
 
 
 NS_SP_EXT_BEGIN(string)

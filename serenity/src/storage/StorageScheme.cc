@@ -598,7 +598,7 @@ data::Value Scheme::updateObject(Adapter *adapter, data::Value && obj, data::Val
 		}
 	}
 
-	if (!viewsToUpdate.empty() && !parentsToUpdate.empty()) {
+	if (!viewsToUpdate.empty() || !parentsToUpdate.empty()) {
 		if (adapter->performInTransaction([&] {
 			if (adapter->saveObject(*this, obj.getInteger("__oid"), obj, updatedFields)) {
 				for (auto &it : parentsToUpdate) {

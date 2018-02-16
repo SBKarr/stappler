@@ -398,7 +398,7 @@ bool Formatter::pushLine(uint16_t first, uint16_t len, bool forceAlign) {
 			int16_t offset = 0;
 			for (uint16_t i = first; i < first + len; i++) {
 				auto ch = output->chars.at(i).charID;
-				if (string::isspace(ch) && ch != '\n' && spacesCount > 0) {
+				if (ch != char16_t(0xffff) && string::isspace(ch) && ch != '\n' && spacesCount > 0) {
 					offset += joffset / spacesCount;
 					joffset -= joffset / spacesCount;
 					spacesCount --;

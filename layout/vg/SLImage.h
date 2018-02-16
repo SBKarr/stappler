@@ -37,6 +37,11 @@ NS_LAYOUT_BEGIN
 
 class Image : public Subscription {
 public:
+	struct PathXRef {
+		String id;
+		Vec2 pos;
+	};
+
 	class PathRef : public Ref {
 	public:
 		virtual ~PathRef();
@@ -109,8 +114,7 @@ public:
 
 		PathRef & clear();
 
-		PathRef & setTag(uint32_t);
-		uint32_t getTag() const;
+		StringView getId() const;
 
 		bool empty() const;
 		bool valid() const;
@@ -120,18 +124,19 @@ public:
 		void invalidate();
 
 		Path *getPath() const;
+
 	protected:
 		friend class Image;
-		PathRef(Image *, Path *, size_t);
+		PathRef(Image *, Path *, const StringView &);
 
-		size_t index = 0;
+		StringView id;
 		Path *path = nullptr;
 		Image *image = nullptr;
 	};
 
 	virtual ~Image();
 
-	static bool isSvg(const String &);
+	static bool isSvg(const StringView &);
 	static bool isSvg(const Bytes &);
 	static bool isSvg(const FilePath &);
 
@@ -145,25 +150,55 @@ public:
 	uint16_t getWidth() const;
 	uint16_t getHeight() const;
 
-	PathRef addPath(const Path &, uint32_t tag = 0);
-	PathRef addPath(Path &&, uint32_t tag = 0);
-	PathRef addPath();
+	Rect getViewBox() const;
 
-	PathRef getPathByTag(uint32_t);
-	PathRef getPath(size_t);
+	PathRef addPath(const Path &, const StringView & = StringView());
+	PathRef addPath(Path &&, const StringView & = StringView());
+	PathRef addPath(const StringView & = StringView());
+
+	PathRef definePath(const Path &, const StringView & id = StringView());
+	PathRef definePath(Path &&, const StringView & id = StringView());
+	PathRef definePath(const StringView & = StringView());
+
+	PathRef getPath(const StringView &);
 
 	void removePath(const PathRef &);
-	void removePath(size_t);
-	void removePathByTag(uint32_t);
+	void removePath(const StringView &);
 
 	void clear();
 
-	const Vector<Path> &getPaths() const;
+	const Map<String, Path> &getPaths() const;
 
 	void setAntialiased(bool value);
 	bool isAntialiased() const;
 
 	Bitmap::PixelFormat detectFormat() const;
+
+	const Vector<PathXRef> &getDrawOrder() const;
+	void setDrawOrder(const Vector<PathXRef> &);
+	void setDrawOrder(Vector<PathXRef> &&);
+
+	PathXRef getDrawOrderPath(size_t) const;
+	PathXRef addDrawOrderPath(const StringView &, const Vec2 & = Vec2::ZERO);
+
+	void clearDrawOrder();
+
+	void setViewBoxTransform(const Mat4 &);
+	const Mat4 &getViewBoxTransform() const;
+
+	// usage:
+	// draw([&] (const Path &path, const Mat4 &transform) {
+	//    // code here
+	// });
+	template <typename Callback>
+	void draw(const Callback &cb) const {
+		for (auto &it : _drawOrder) {
+			auto pathIt = _paths.find(it.id);
+			if (pathIt != _paths.end()) {
+				cb(pathIt->second, it.pos);
+			}
+		}
+	}
 
 protected:
 	void invalidateRefs();
@@ -172,15 +207,19 @@ protected:
 	void addRef(PathRef *);
 	void removeRef(PathRef *);
 	void replaceRef(PathRef *original, PathRef *target);
-	void eraseRefs(size_t);
-
-	Path *getPathByRef(const PathRef &) const;
+	void eraseRefs(const StringView &);
 
 	bool _isAntialiased = true;
+	uint16_t _nextId = 0;
 	uint16_t _width = 0;
 	uint16_t _height = 0;
-	Vector<Path> _paths;
+
+	Rect _viewBox = Rect::ZERO;
+
+	Mat4 _viewBoxTransform = Mat4::IDENTITY;
+	Vector<PathXRef> _drawOrder;
 	Vector<PathRef *> _refs;
+	Map<String, Path> _paths;
 };
 
 NS_LAYOUT_END

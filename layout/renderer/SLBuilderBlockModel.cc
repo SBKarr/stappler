@@ -131,15 +131,52 @@ bool Builder::processInlineBlockNode(Layout &l, Layout::NodeInfo && node, const 
 			InlineContext &ctx = makeInlineContext(l, pos.y, *node.node);
 
 			const float density = _media.density;
-			auto fstyle = l.node.style->compileFontStyle(this);
-			auto font = _fontSet->hasLayout(fstyle);
+			auto fstyle = node.style->compileFontStyle(this);
+			auto font = _fontSet->getLayout(fstyle);
 			if (!font) {
 				return false;
 			}
 
-			auto textStyle = l.node.style->compileTextLayout(this);
+			auto textStyle = node.style->compileTextLayout(this);
+			uint16_t width = uint16_t(bbox.size.width * density);
+			uint16_t height = uint16_t(bbox.size.height * density);
 
-			if (ctx.reader.read(fstyle, textStyle, uint16_t(bbox.size.width * density), uint16_t(bbox.size.height * density))) {
+			switch (textStyle.verticalAlign) {
+			case style::VerticalAlign::Baseline:
+				if (auto data = font->getData()) {
+					const auto baseline = (data->metrics.size - data->metrics.height);
+					height += baseline;
+				}
+				break;
+			case style::VerticalAlign::Sub:
+				if (auto data = font->getData()) {
+					const auto baseline = (data->metrics.size - data->metrics.height);
+					height += baseline + data->metrics.descender / 2;
+				}
+				break;
+			case style::VerticalAlign::Super:
+				if (auto data = font->getData()) {
+					const auto baseline = (data->metrics.size - data->metrics.height);
+					height += baseline + data->metrics.ascender / 2;
+				}
+				break;
+			default:
+				break;
+			}
+
+			auto lineHeightVec = node.style->get(style::ParameterName::LineHeight, this);
+			if (lineHeightVec.size() == 1) {
+				const float emBase = fstyle.fontSize * _media.fontScale;
+				const float rootEmBase = _media.getDefaultFontSize();
+				float lineHeight = lineHeightVec.front().value.sizeValue.computeValueStrong(
+						width / density, _media.surfaceSize, emBase, rootEmBase);
+
+				if (lineHeight * density > height) {
+					height = uint16_t(lineHeight * density);
+				}
+			}
+
+			if (ctx.reader.read(fstyle, textStyle, width, height)) {
 				ref.charBinding = (ctx.label.format.ranges.size() > 0)?(ctx.label.format.ranges.size() - 1):0;
 			}
 		}
