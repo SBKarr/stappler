@@ -50,7 +50,7 @@ enum class Type {
 inline bool checkIfComparationIsValid(Type t, Comparation c) {
 	if (t == Type::Integer || t == Type::Object || t == Type::Float) {
 		return true;
-	} else if (t == Type::Text || t == Type::Boolean) {
+	} else if (t == Type::Bytes || t == Type::Text || t == Type::Boolean) {
 		return c == Comparation::Equal || c == Comparation::NotEqual;
 	}
 	return false;

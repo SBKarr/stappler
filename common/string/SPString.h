@@ -310,7 +310,7 @@ struct CoderSource {
 		case io::Seek::Current:
 			if (offset + _offset > _data.size()) {
 				_offset = _data.size();
-			} else if (offset + _offset < 0) {
+			} else if (offset + int64_t(_offset) < 0) {
 				_offset = 0;
 			} else {
 				_offset += offset;
@@ -1042,7 +1042,7 @@ inline void Sha512::_update(T && t) {
 
 template <typename ... Args>
 inline Sha256::Buf Sha256::perform(Args && ... args) {
-	Sha512 ctx;
+	Sha256 ctx;
 	ctx._update(std::forward<Args>(args)...);
 	return ctx.final();
 }

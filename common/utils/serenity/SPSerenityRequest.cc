@@ -139,6 +139,18 @@ Query & Query::select(const String &f, const String & v) {
 	selectList.emplace_back(f, Comparation::Equal, data::Value(v), data::Value());
 	return *this;
 }
+Query & Query::select(const String &f, String && v) {
+	selectList.emplace_back(f, Comparation::Equal, data::Value(move(v)), data::Value());
+	return *this;
+}
+Query & Query::select(const String &f, const Bytes & v) {
+	selectList.emplace_back(f, Comparation::Equal, data::Value(v), data::Value());
+	return *this;
+}
+Query & Query::select(const String &f, Bytes && v) {
+	selectList.emplace_back(f, Comparation::Equal, data::Value(move(v)), data::Value());
+	return *this;
+}
 
 Query & Query::select(Select &&q) {
 	selectList.emplace_back(std::move(q));

@@ -92,6 +92,10 @@ public:
 	Query & select(const String &f, Comparation c, int64_t v1);
 	Query & select(const String &f, Comparation c, int64_t v1, int64_t v2);
 	Query & select(const String &f, const String & v);
+	Query & select(const String &f, String && v);
+
+	Query & select(const String &f, const Bytes & v);
+	Query & select(const String &f, Bytes && v);
 
 	Query & select(Select &&q);
 
