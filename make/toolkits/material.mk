@@ -40,47 +40,11 @@ MATERIAL_INCLUDES_OBJS += \
 	$(COCOS2D_STAPPLER_INCLUDES_OBJS) \
 	$(OSTYPE_INCLUDE)
 
-MATERIAL_LIBS := -L$(OSTYPE_PREBUILT_PATH) $(OSTYPE_STAPPLER_LIBS)
 
-MATERIAL_SRCS := \
-	$(foreach dir,$(MATERIAL_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) \( -name "*.c" -or -name "*.cpp" \))) \
-	$(addprefix $(GLOBAL_ROOT)/,$(MATERIAL_SRCS_OBJS))
+TOOLKIT_NAME := MATERIAL
+TOOLKIT_TITLE := material
 
-MATERIAL_INCLUDES := \
-	$(foreach dir,$(MATERIAL_INCLUDES_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -type d)) \
-	$(addprefix $(GLOBAL_ROOT)/,$(MATERIAL_INCLUDES_OBJS))
-
-
-MATERIAL_GCH := $(addprefix $(GLOBAL_ROOT)/,$(MATERIAL_PRECOMPILED_HEADERS))
-MATERIAL_H_GCH := $(patsubst $(GLOBAL_ROOT)/%,$(MATERIAL_OUTPUT_DIR)/include/%,$(MATERIAL_GCH))
-MATERIAL_GCH := $(addsuffix .gch,$(MATERIAL_H_GCH))
-
-MATERIAL_OBJS := $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(patsubst $(GLOBAL_ROOT)/%,$(MATERIAL_OUTPUT_DIR)/%,$(MATERIAL_SRCS))))
-MATERIAL_DIRS := $(sort $(dir $(MATERIAL_OBJS))) $(sort $(dir $(MATERIAL_GCH)))
-
-MATERIAL_INPUT_CFLAGS := $(addprefix -I,$(sort $(dir $(MATERIAL_GCH)))) $(addprefix -I,$(MATERIAL_INCLUDES))  -DCC_STATIC
-
-MATERIAL_CXXFLAGS := $(GLOBAL_CXXFLAGS) $(MATERIAL_INPUT_CFLAGS)
-MATERIAL_CFLAGS := $(GLOBAL_CFLAGS) $(MATERIAL_INPUT_CFLAGS)
-
-
-# Progress counter
-MATERIAL_COUNTER := 0
-MATERIAL_WORDS := $(words $(MATERIAL_GCH) $(MATERIAL_OBJS))
-
-define MATERIAL_template =
-$(eval MATERIAL_COUNTER=$(shell echo $$(($(MATERIAL_COUNTER)+1))))
-$(1):BUILD_CURRENT_COUNTER:=$(MATERIAL_COUNTER)
-$(1):BUILD_FILES_COUNTER := $(MATERIAL_WORDS)
-$(1):BUILD_LIBRARY := material
-endef
-
-$(foreach obj,$(MATERIAL_GCH) $(MATERIAL_OBJS),$(eval $(call MATERIAL_template,$(obj))))
-
-
--include $(patsubst %.o,%.d,$(MATERIAL_OBJS))
--include $(patsubst %.o,%.d,$(STAPPLER_OBJS))
--include $(patsubst %.gch,%.d,$(MATERIAL_GCH))
+include $(GLOBAL_ROOT)/make/utils/toolkit.mk
 
 $(MATERIAL_OUTPUT_DIR)/include/%.h : $(GLOBAL_ROOT)/%.h
 	@$(GLOBAL_MKDIR) $(dir $(MATERIAL_OUTPUT_DIR)/include/$*.h)
@@ -101,12 +65,10 @@ $(MATERIAL_OUTPUT): $(MATERIAL_H_GCH) $(MATERIAL_GCH) $(STAPPLER_OBJS) $(MATERIA
 $(MATERIAL_OUTPUT_STATIC) : $(MATERIAL_H_GCH) $(MATERIAL_GCH) $(MATERIAL_OBJS)
 	$(GLOBAL_QUIET_LINK) $(GLOBAL_AR) $(MATERIAL_OUTPUT_STATIC) $(MATERIAL_OBJS)
 
-libmaterial: .prebuild_material .prebuild_stappler $(MATERIAL_OUTPUT) $(MATERIAL_OUTPUT_STATIC)
-
-libmaterial_static: .prebuild_material .prebuild_stappler $(MATERIAL_OUTPUT_STATIC)
+libmaterial: .prebuild_material .prebuild_stappler $(MATERIAL_OUTPUT_STATIC)
 
 .prebuild_material:
 	@echo "=== Build libmaterial ==="
 	@$(GLOBAL_MKDIR) $(MATERIAL_DIRS)
 
-.PHONY: .prebuild_material libmaterial libmaterial_static
+.PHONY: .prebuild_material libmaterial

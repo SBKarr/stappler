@@ -22,7 +22,7 @@ THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
 GLOBAL_ROOT := .
 
-all: libmaterial libstappler libcli libspmin
+all: libmaterial libstappler libcli libcommon
 
 install-deps-ubuntu:
 	sudo apt-get install libglew-dev libz-dev libxrandr-dev libxi-dev libxinerama-dev libxcursor-dev
@@ -33,7 +33,7 @@ pvs.log:
 pvs-analyzer-log: pvs.log
 	plog-converter -t errorfile pvs.log
 
-static: libmaterial_static libstappler_static
+static: libmaterial libstappler
 
 .PHONY: all analyse-log android android-clean android-toolchain
 

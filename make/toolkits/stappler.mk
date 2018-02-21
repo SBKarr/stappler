@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+# Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -80,50 +80,12 @@ endif
 
 endif
 
+STAPPLER_FLAGS := -DCC_STATIC
 
-STAPPLER_LIBS := -L$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH) $(OSTYPE_STAPPLER_LIBS)
+TOOLKIT_NAME := STAPPLER
+TOOLKIT_TITLE := stappler
 
-STAPPLER_SRCS := \
-	$(foreach dir,$(STAPPLER_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) \( -name "*.c" -or -name "*.cpp" \))) \
-	$(addprefix $(GLOBAL_ROOT)/,$(STAPPLER_SRCS_OBJS))
-
-ifeq ($(OBJC),1)
-STAPPLER_SRCS += $(foreach dir,$(STAPPLER_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.mm'))
-endif
-
-STAPPLER_INCLUDES := \
-	$(foreach dir,$(STAPPLER_INCLUDES_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -type d)) \
-	$(addprefix $(GLOBAL_ROOT)/,$(STAPPLER_INCLUDES_OBJS))
-
-STAPPLER_GCH := $(addprefix $(GLOBAL_ROOT)/,$(STAPPLER_PRECOMPILED_HEADERS))
-STAPPLER_H_GCH := $(patsubst $(GLOBAL_ROOT)/%,$(STAPPLER_OUTPUT_DIR)/include/%,$(STAPPLER_GCH))
-STAPPLER_GCH := $(addsuffix .gch,$(STAPPLER_H_GCH))
-
-STAPPLER_OBJS := $(patsubst %.mm,%.o,$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(patsubst $(GLOBAL_ROOT)/%,$(STAPPLER_OUTPUT_DIR)/%,$(STAPPLER_SRCS)))))
-STAPPLER_DIRS := $(sort $(dir $(STAPPLER_OBJS))) $(sort $(dir $(STAPPLER_GCH)))
-
-STAPPLER_INPUT_CFLAGS := $(addprefix -I,$(sort $(dir $(STAPPLER_GCH)))) $(addprefix -I,$(STAPPLER_INCLUDES))  -DCC_STATIC
-
-STAPPLER_CXXFLAGS := $(GLOBAL_CXXFLAGS) $(STAPPLER_INPUT_CFLAGS)
-STAPPLER_CFLAGS := $(GLOBAL_CFLAGS) $(STAPPLER_INPUT_CFLAGS)
-
-
-# Progress counter
-STAPPLER_COUNTER := 0
-STAPPLER_WORDS := $(words $(STAPPLER_GCH) $(STAPPLER_OBJS))
-
-define STAPPLER_template =
-$(eval STAPPLER_COUNTER=$(shell echo $$(($(STAPPLER_COUNTER)+1))))
-$(1):BUILD_CURRENT_COUNTER:=$(STAPPLER_COUNTER)
-$(1):BUILD_FILES_COUNTER := $(STAPPLER_WORDS)
-$(1):BUILD_LIBRARY := stappler
-endef
-
-$(foreach obj,$(STAPPLER_GCH) $(STAPPLER_OBJS),$(eval $(call STAPPLER_template,$(obj))))
-
-
--include $(patsubst %.o,%.d,$(STAPPLER_OBJS))
--include $(patsubst %.gch,%.d,$(STAPPLER_GCH))
+include $(GLOBAL_ROOT)/make/utils/toolkit.mk
 
 $(STAPPLER_OUTPUT_DIR)/include/%.h : $(GLOBAL_ROOT)/%.h
 	@$(GLOBAL_MKDIR) $(dir $(STAPPLER_OUTPUT_DIR)/include/$*.h)
@@ -147,13 +109,10 @@ $(STAPPLER_OUTPUT): $(STAPPLER_H_GCH) $(STAPPLER_GCH) $(STAPPLER_OBJS)
 $(STAPPLER_OUTPUT_STATIC) : $(STAPPLER_H_GCH) $(STAPPLER_GCH) $(STAPPLER_OBJS)
 	$(GLOBAL_QUIET_LINK) $(GLOBAL_AR) $(STAPPLER_OUTPUT_STATIC) $(STAPPLER_OBJS)
 
-libstappler_static: 
-
-libstappler_static: .prebuild_stappler $(STAPPLER_OUTPUT_STATIC)
-libstappler: libstappler_static $(STAPPLER_OUTPUT)
+libstappler: .prebuild_stappler $(STAPPLER_OUTPUT_STATIC)
 
 .prebuild_stappler:
 	@echo "=== Build libstappler ==="
 	@$(GLOBAL_MKDIR) $(STAPPLER_DIRS)
 
-.PHONY: .prebuild_stappler libstappler libstappler_static
+.PHONY: .prebuild_stappler libstappler

@@ -17,6 +17,10 @@ LOCAL_WHOLE_STATIC_LIBRARIES := \
 	sqlite_static \
 	curl_static \
 	hyphen_static \
+	webp_static \
+	brotli_common_static \
+	brotli_dec_static \
+	brotli_enc_static \
 	cpufeatures
 
 LOCAL_EXPORT_LDLIBS := -lGLESv2 -lEGL -llog -lz -landroid

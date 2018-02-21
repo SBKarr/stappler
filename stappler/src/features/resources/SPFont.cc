@@ -304,8 +304,8 @@ bool FontLibrary::writeTextureQuads(uint32_t v, FontSource *source, const layout
 	Map<String, Vector<CharTexture>>::const_iterator texVecIt;
 	Rc<layout::FontLayout> layout;
 	Rc<layout::FontData> data;
-	const layout::Metrics *metrics;
-	const Vector<layout::CharLayout> *charVec;
+	const layout::Metrics *metrics = nullptr;
+	const Vector<layout::CharLayout> *charVec = nullptr;
 
 	for (auto it = format->begin(); it != format->end(); ++ it) {
 		if (it.count() == 0) {
@@ -381,8 +381,8 @@ bool FontLibrary::writeTextureRects(uint32_t v, FontSource *source, const layout
 	Map<String, Vector<CharTexture>>::const_iterator texVecIt;
 	Rc<layout::FontLayout> layout;
 	Rc<layout::FontData> data;
-	const layout::Metrics *metrics;
-	const Vector<layout::CharLayout> *charVec;
+	const layout::Metrics *metrics = nullptr;
+	const Vector<layout::CharLayout> *charVec = nullptr;
 
 	for (auto it = format->begin(); it != format->end(); ++ it) {
 		if (it.count() == 0) {

@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+# Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -17,6 +17,14 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
+
+ifndef GLOBAL_ROOT
+GLOBAL_ROOT = .
+endif
+
+ifndef COCOS2D_ROOT
+COCOS2D_ROOT := libs/external/stappler-cocos2d-x
+endif
 
 ifndef TOOLKIT_OUTPUT
 TOOLKIT_OUTPUT := $(GLOBAL_ROOT)/build
@@ -86,7 +94,7 @@ endif # ifndef GLOBAL_CC
 
 ifdef RELEASE
 TOOLKIT_OUTPUT := $(TOOLKIT_OUTPUT)/$(notdir $(GLOBAL_CC))/release
-GLOBAL_CFLAGS := -O2 -g -DNDEBUG $(OSTYPE_CFLAGS) $(GLOBAL_CFLAGS)
+GLOBAL_CFLAGS := -Os -g -DNDEBUG $(OSTYPE_CFLAGS) $(GLOBAL_CFLAGS)
 else
 TOOLKIT_OUTPUT := $(TOOLKIT_OUTPUT)/$(notdir $(GLOBAL_CC))/debug
 GLOBAL_CFLAGS := -g -DDEBUG -DCOCOS2D_DEBUG=1 $(OSTYPE_CFLAGS) $(GLOBAL_CFLAGS)
@@ -96,3 +104,41 @@ endif # End desktop arch
 
 GLOBAL_CXXFLAGS := $(GLOBAL_CFLAGS) -DSTAPPLER -std=gnu++14 $(OSTYPE_CPPFLAGS)
 GLOBAL_CFLAGS := $(GLOBAL_CFLAGS) -DSTAPPLER -std=c11
+
+sp_toolkit_source_list = \
+	$(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) \( -name "*.c" -or -name "*.cpp" \))) \
+	$(addprefix $(GLOBAL_ROOT)/,$(2)) \
+	$(if $(filter,$(OBJC),1), $(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.mm')))
+
+sp_toolkit_include_list = \
+	$(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) -type d)) \
+	$(addprefix $(GLOBAL_ROOT)/,$(2))
+
+sp_toolkit_object_list = \
+	$(patsubst %.mm,%.o,$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(patsubst $(GLOBAL_ROOT)/%,$(1)/%,$(2)))))
+
+sp_toolkit_prefix_files_list = \
+	$(patsubst $(GLOBAL_ROOT)/%,$(1)/include/%,$(addprefix $(GLOBAL_ROOT)/,$(2)))
+
+sp_toolkit_include_flags = \
+	$(addprefix -I,$(sort $(dir $(1)))) $(addprefix -I,$(2))
+
+sp_local_source_list = \
+	$(foreach dir,$(filter /%,$(1)),$(shell find $(dir) -name '*.cpp')) \
+	$(foreach dir,$(filter /%,$(1)),$(shell find $(dir) -name '*.c')) \
+	$(filter /%,$(2)) \
+	$(foreach dir,$(filter-out /%,$(1)),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.cpp')) \
+	$(foreach dir,$(filter-out /%,$(1)),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.c')) \
+	$(addprefix $(LOCAL_ROOT)/,$(filter-out /%,$(2))) \
+	$(if $(filter,$(OBJC),1), $(foreach dir,$(filter /%,$(1)),$(shell find $(dir) -name '*.mm'))) \
+	$(if $(filter,$(OBJC),1), $(foreach dir,$(filter-out /%,$(1)),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.mm')))
+
+sp_local_include_list = \
+	$(foreach dir,$(filter /%,$(1)),$(shell find $(dir) -type d)) \
+	$(filter /%,$(2)) \
+	$(foreach dir,$(filter-out /%,$(1)),$(shell find $(LOCAL_ROOT)/$(dir) -type d)) \
+	$(addprefix $(LOCAL_ROOT)/,$(filter-out /%,$(2))) \
+	$(3)
+
+sp_local_object_list = \
+	$(addprefix $(1),$(patsubst %.mm,%.o,$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(realpath $(2))))))

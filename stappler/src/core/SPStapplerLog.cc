@@ -41,6 +41,8 @@ void setCustomLogFn(sp_log_fn fn) {
 	sCustomFn = fn;
 }
 
+static void __log2(const StringView &tag, const StringView &text) __attribute__((unused));
+
 static void __log2(const StringView &tag, const StringView &text) {
 	if (sCustomFn) {
 		sCustomFn(tag, text);

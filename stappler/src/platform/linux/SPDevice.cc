@@ -71,7 +71,9 @@ namespace device {
 		} else {
 			Bytes data; data.resize(16);
 			auto fp = fopen("/dev/urandom", "r");
-			fread(data.data(), 1, data.size(), fp);
+			if (fread(data.data(), 1, data.size(), fp) == 0) {
+				log::text("Device", "Fail to read random bytes");
+			}
 			fclose(fp);
 
 			stappler::filesystem::write(devIdPath, data);

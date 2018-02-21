@@ -325,7 +325,7 @@ char charToKoi8r(char16_t c) {
 	} else if (c >= u'а' && c <= u'я') {
 		return char(koi8r_small[c - u'а' + 32]);
 	} else if (c >= u'А' && c <= u'Я') {
-		return char(koi8r_small[c - u'A']);
+		return char(koi8r_small[(c - u'A') % 64]);
 	} else {
 		switch (c) {
 		case 0x2500: return char(0x80); break;

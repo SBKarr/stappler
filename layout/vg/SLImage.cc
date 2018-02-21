@@ -588,7 +588,7 @@ struct SvgReader {
 				id = idStr;
 			}
 
-			_paths.emplace(id.str(), move(tag.path)).first;
+			_paths.emplace(id.str(), move(tag.path));
 			if (!_defs) {
 				_drawOrder.emplace_back(Image::PathXRef{id.str()});
 			}

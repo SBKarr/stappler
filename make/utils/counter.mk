@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+# Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,5 +18,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-include $(GLOBAL_ROOT)/make/utils/compiler.mk
-include $(GLOBAL_ROOT)/make/build.mk
+
+# Progress counter
+COUNTER := 0
+
+define counter_template =
+$(eval COUNTER=$(shell echo $$(($(COUNTER)+1))))
+$(1):BUILD_CURRENT_COUNTER:=$(COUNTER)
+$(1):BUILD_FILES_COUNTER:=$(COUNTER_WORDS)
+$(1):BUILD_LIBRARY:=$(COUNTER_NAME)
+endef

@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+# Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -52,52 +52,10 @@ CLI_INCLUDES_OBJS += \
 	$(COCOS2D_CLI_INCLUDES_OBJS) \
 	$(OSTYPE_INCLUDE)
 
-CLI_LIBS += -L$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH) $(OSTYPE_CLI_LIBS)
+TOOLKIT_NAME := CLI
+TOOLKIT_TITLE := cli
 
-CLI_SRCS := \
-	$(foreach dir,$(CLI_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) \( -name "*.c" -or -name "*.cpp" \))) \
-	$(addprefix $(GLOBAL_ROOT)/,$(CLI_SRCS_OBJS))
-
-ifeq ($(OBJC),1)
-CLI_SRCS += \
-	$(addprefix $(GLOBAL_ROOT)/,stappler/src/platform/SPPlatformApple.scu.mm) \
-	$(addprefix $(GLOBAL_ROOT)/,$(COCOS2D_ROOT)/cocos/platform/apple/CCFileUtils-apple.mm) \
-	$(foreach dir,$(CLI_SRCS_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.mm'))
-endif
-
-CLI_INCLUDES := \
-	$(foreach dir,$(CLI_INCLUDES_DIRS),$(shell find $(GLOBAL_ROOT)/$(dir) -type d)) \
-	$(addprefix $(GLOBAL_ROOT)/,$(CLI_INCLUDES_OBJS))
-
-CLI_GCH := $(addprefix $(GLOBAL_ROOT)/,$(CLI_PRECOMPILED_HEADERS))
-CLI_H_GCH := $(patsubst $(GLOBAL_ROOT)/%,$(CLI_OUTPUT_DIR)/include/%,$(CLI_GCH))
-CLI_GCH := $(addsuffix .gch,$(CLI_H_GCH))
-
-CLI_OBJS := $(patsubst %.mm,%.o,$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(patsubst $(GLOBAL_ROOT)/%,$(CLI_OUTPUT_DIR)/%,$(CLI_SRCS)))))
-CLI_DIRS := $(sort $(dir $(CLI_OBJS))) $(sort $(dir $(CLI_GCH)))
-
-CLI_INPUT_CFLAGS := $(addprefix -I,$(sort $(dir $(CLI_GCH)))) $(addprefix -I,$(CLI_INCLUDES))
-
-CLI_CXXFLAGS := $(GLOBAL_CXXFLAGS) $(CLI_FLAGS) $(CLI_INPUT_CFLAGS)
-CLI_CFLAGS := $(GLOBAL_CFLAGS) $(CLI_FLAGS) $(CLI_INPUT_CFLAGS)
-
-
-# Progress counter
-CLI_COUNTER := 0
-CLI_WORDS := $(words $(CLI_GCH) $(CLI_OBJS))
-
-define CLI_template =
-$(eval CLI_COUNTER=$(shell echo $$(($(CLI_COUNTER)+1))))
-$(1):BUILD_CURRENT_COUNTER:=$(CLI_COUNTER)
-$(1):BUILD_FILES_COUNTER := $(CLI_WORDS)
-$(1):BUILD_LIBRARY := cli
-endef
-
-$(foreach obj,$(CLI_GCH) $(CLI_OBJS),$(eval $(call CLI_template,$(obj))))
-
-
--include $(patsubst %.o,%.d,$(CLI_OBJS))
--include $(patsubst %.gch,%.d,$(CLI_GCH))
+include $(GLOBAL_ROOT)/make/utils/toolkit.mk
 
 $(CLI_OUTPUT_DIR)/include/%.h : $(GLOBAL_ROOT)/%.h
 	@$(GLOBAL_MKDIR) $(dir $(CLI_OUTPUT_DIR)/include/$*.h)
@@ -106,13 +64,13 @@ $(CLI_OUTPUT_DIR)/include/%.h : $(GLOBAL_ROOT)/%.h
 $(CLI_OUTPUT_DIR)/include/%.h.gch: $(CLI_OUTPUT_DIR)/include/%.h
 	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) $(OSTYPE_GCHFLAGS) -MMD -MP -MF $(CLI_OUTPUT_DIR)/include/$*.d $(CLI_CXXFLAGS) -c -o $@ $<
 
-$(CLI_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.cpp $(CLI_GCH)
+$(CLI_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.cpp $(CLI_H_GCH) $(CLI_GCH)
 	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(CLI_OUTPUT_DIR)/$*.d $(CLI_CXXFLAGS) -c -o $@ $<
 
-$(CLI_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.mm $(CLI_GCH)
+$(CLI_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.mm $(CLI_H_GCH) $(CLI_GCH)
 	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(CLI_OUTPUT_DIR)/$*.d $(CLI_CXXFLAGS) -fobjc-arc -c -o $@ $<
 
-$(CLI_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.c $(CLI_GCH)
+$(CLI_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.c $($(TOOLKIT_NAME)_H_GCH) $($(TOOLKIT_NAME)_GCH)
 	$(GLOBAL_QUIET_CC) $(GLOBAL_CC) -MMD -MP -MF $(CLI_OUTPUT_DIR)/$*.d $(CLI_CFLAGS) -c -o $@ $<
 
 $(CLI_OUTPUT): $(CLI_H_GCH) $(CLI_GCH) $(CLI_OBJS)
@@ -121,7 +79,7 @@ $(CLI_OUTPUT): $(CLI_H_GCH) $(CLI_GCH) $(CLI_OBJS)
 $(CLI_OUTPUT_STATIC) : $(CLI_H_GCH) $(CLI_GCH) $(CLI_OBJS)
 	$(GLOBAL_QUIET_LINK) $(GLOBAL_AR) $(CLI_OUTPUT_STATIC) $(CLI_OBJS)
 
-libcli: .prebuild_cli $(CLI_OUTPUT) $(CLI_OUTPUT_STATIC)
+libcli: .prebuild_cli $(CLI_OUTPUT_STATIC)
 
 .prebuild_cli:
 	@echo "=== Build libcli ==="

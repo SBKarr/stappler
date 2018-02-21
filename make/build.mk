@@ -45,19 +45,19 @@ endif
 -include $(GLOBAL_ROOT)/$(COCOS2D_ROOT)/cocos2d.mk
 
 # libstappler + libcocos2d
-include $(GLOBAL_ROOT)/make/stappler.mk
+include $(GLOBAL_ROOT)/make/toolkits/stappler.mk
 
 # libmaterial
-include $(GLOBAL_ROOT)/make/material.mk
+include $(GLOBAL_ROOT)/make/toolkits/material.mk
 
 # libcli - stappler command line toolkit
-include $(GLOBAL_ROOT)/make/cli.mk
+include $(GLOBAL_ROOT)/make/toolkits/cli.mk
 
-# libspmin - stappler embeddable minimal toolkit with no cocos2d-x
-include $(GLOBAL_ROOT)/make/spmin.mk
+# libcommon - stappler embeddable minimal toolkit with no cocos2d-x
+include $(GLOBAL_ROOT)/make/toolkits/common.mk
 
 # serenity - apache httpd module. based on stappler toolkit
-include $(GLOBAL_ROOT)/make/serenity.mk
+include $(GLOBAL_ROOT)/make/toolkits/serenity.mk
 
 ifdef verbose
 ifneq ($(verbose),yes)
@@ -66,8 +66,8 @@ GLOBAL_QUIET_CPP = @ echo [$(BUILD_LIBRARY): $$(($(BUILD_CURRENT_COUNTER)*100/$(
 GLOBAL_QUIET_LINK = @ echo [Link] $@ ;
 endif
 else
-GLOBAL_QUIET_CC = @ echo [$(BUILD_LIBRARY): $$(($(BUILD_CURRENT_COUNTER)*100/$(BUILD_FILES_COUNTER)))% $(BUILD_CURRENT_COUNTER)/$(BUILD_FILES_COUNTER)] [$(notdir $(GLOBAL_CC))] $@ ;
-GLOBAL_QUIET_CPP = @ echo [$(BUILD_LIBRARY): $$(($(BUILD_CURRENT_COUNTER)*100/$(BUILD_FILES_COUNTER)))% $(BUILD_CURRENT_COUNTER)/$(BUILD_FILES_COUNTER)] [$(notdir $(GLOBAL_CPP))] $@ ;
+GLOBAL_QUIET_CC = @ echo [$(BUILD_LIBRARY): $$(($(BUILD_CURRENT_COUNTER)*100/$(BUILD_FILES_COUNTER)))% $(BUILD_CURRENT_COUNTER)/$(BUILD_FILES_COUNTER)] [$(notdir $(GLOBAL_CC))] $(notdir $@) ;
+GLOBAL_QUIET_CPP = @ echo [$(BUILD_LIBRARY): $$(($(BUILD_CURRENT_COUNTER)*100/$(BUILD_FILES_COUNTER)))% $(BUILD_CURRENT_COUNTER)/$(BUILD_FILES_COUNTER)] [$(notdir $(GLOBAL_CPP))] $(notdir $@) ;
 GLOBAL_QUIET_LINK = @ echo [Link] $@ ;
 endif
 

@@ -1,0 +1,118 @@
+# Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
+BUILD_SRCS := $(call sp_local_source_list,$(LOCAL_SRCS_DIRS),$(LOCAL_SRCS_OBJS))
+BUILD_INCLUDES := $(call sp_local_include_list,$(LOCAL_INCLUDES_DIRS),$(LOCAL_INCLUDES_OBJS),$(LOCAL_ABSOLUTE_INCLUDES))
+BUILD_OBJS := $(call sp_local_object_list,$(BUILD_OUTDIR),$(BUILD_SRCS))
+
+ifdef LOCAL_MAIN
+BUILD_MAIN_SRC := $(realpath $(addprefix $(LOCAL_ROOT)/,$(LOCAL_MAIN)))
+BUILD_MAIN_SRC := $(BUILD_MAIN_SRC:.c=.o)
+BUILD_MAIN_SRC := $(BUILD_MAIN_SRC:.cpp=.o)
+BUILD_MAIN_SRC := $(BUILD_MAIN_SRC:.mm=.o)
+BUILD_MAIN_OBJ := $(addprefix $(BUILD_OUTDIR),$(BUILD_MAIN_SRC))
+else
+BUILD_MAIN_OBJ := 
+endif
+
+ifdef LOCAL_TOOLKIT_OUTPUT
+TOOLKIT_OUTPUT := $(LOCAL_TOOLKIT_OUTPUT)
+endif
+
+include $(GLOBAL_ROOT)/make/build.mk
+
+ifndef LOCAL_TOOLKIT
+LOCAL_TOOLKIT := material
+endif
+
+ifeq ($(LOCAL_TOOLKIT),material)
+TOOLKIT_OBJS := $(STAPPLER_OBJS) $(MATERIAL_OBJS)
+TOOLKIT_CFLAGS := $(MATERIAL_CFLAGS)
+TOOLKIT_CXXFLAGS := $(MATERIAL_CXXFLAGS)
+TOOLKIT_LIBS := $(STAPPLER_LIBS)
+TOOLKIT_LIB_FLAGS := $(OSTYPE_LDFLAGS)
+TOOLKIT_H_GCH := $(MATERIAL_H_GCH)
+TOOLKIT_GCH := $(MATERIAL_GCH)
+endif
+ifeq ($(LOCAL_TOOLKIT),stappler)
+TOOLKIT_OBJS := $(STAPPLER_OBJS)
+TOOLKIT_CFLAGS := $(STAPPLER_CFLAGS)
+TOOLKIT_CXXFLAGS := $(STAPPLER_CXXFLAGS)
+TOOLKIT_LIBS := $(STAPPLER_LIBS)
+TOOLKIT_LIB_FLAGS := $(OSTYPE_LDFLAGS)
+TOOLKIT_H_GCH := $(STAPPLER_H_GCH)
+TOOLKIT_GCH := $(STAPPLER_GCH)
+endif
+ifeq ($(LOCAL_TOOLKIT),cli)
+TOOLKIT_OBJS := $(CLI_OBJS)
+TOOLKIT_CFLAGS := $(CLI_CFLAGS)
+TOOLKIT_CXXFLAGS := $(CLI_CXXFLAGS)
+TOOLKIT_LIBS := $(CLI_LIBS)
+TOOLKIT_LIB_FLAGS := $(OSTYPE_LDFLAGS)
+TOOLKIT_H_GCH := $(CLI_H_GCH)
+TOOLKIT_GCH := $(CLI_GCH)
+endif
+ifeq ($(LOCAL_TOOLKIT),common)
+TOOLKIT_OBJS := $(SPMIN_OBJS)
+TOOLKIT_CFLAGS := $(SPMIN_CFLAGS)
+TOOLKIT_CXXFLAGS := $(SPMIN_CXXFLAGS)
+TOOLKIT_LIBS := $(SPMIN_LIBS)
+TOOLKIT_LIB_FLAGS := $(OSTYPE_LDFLAGS)
+TOOLKIT_H_GCH := $(SPMIN_H_GCH)
+TOOLKIT_GCH := $(SPMIN_GCH)
+endif
+ifeq ($(LOCAL_TOOLKIT),serenity)
+TOOLKIT_CFLAGS := $(SERENITY_CFLAGS)
+TOOLKIT_CXXFLAGS := $(SERENITY_CXXFLAGS)
+TOOLKIT_LIBS := $(SERENITY_LIBS)
+TOOLKIT_LIB_FLAGS := 
+TOOLKIT_H_GCH := $(SERENITY_H_GCH)
+TOOLKIT_GCH := $(SERENITY_GCH)
+endif
+
+BUILD_CFLAGS += $(LOCAL_CFLAGS) $(TOOLKIT_CFLAGS)
+BUILD_CXXFLAGS += $(LOCAL_CFLAGS) $(LOCAL_CXXFLAGS) $(TOOLKIT_CXXFLAGS)
+
+# Progress counter
+BUILD_COUNTER := 0
+BUILD_WORDS := $(words $(BUILD_OBJS) $(BUILD_MAIN_OBJ))
+
+define BUILD_template =
+$(eval BUILD_COUNTER=$(shell echo $$(($(BUILD_COUNTER)+1))))
+$(1):BUILD_CURRENT_COUNTER:=$(BUILD_COUNTER)
+$(1):BUILD_FILES_COUNTER := $(BUILD_WORDS)
+ifdef LOCAL_OUTPUT_EXECUTABLE
+$(1):BUILD_LIBRARY := $(notdir $(LOCAL_OUTPUT_EXECUTABLE))
+else
+$(1):BUILD_LIBRARY := $(notdir $(LOCAL_OUTPUT_LIBRARY))
+endif
+endef
+
+$(foreach obj,$(BUILD_OBJS) $(BUILD_MAIN_OBJ),$(eval $(call BUILD_template,$(obj))))
+
+BUILD_OBJS += $(TOOLKIT_OBJS)
+BUILD_DIRS := $(sort $(dir $(BUILD_OBJS) $(BUILD_MAIN_OBJ)))
+
+BUILD_CFLAGS += $(addprefix -I,$(BUILD_INCLUDES))
+BUILD_CXXFLAGS += $(addprefix -I,$(BUILD_INCLUDES))
+
+BUILD_LIBS := $(LOCAL_LIBS) $(TOOLKIT_LIBS)
+
+-include $(patsubst %.o,%.d,$(BUILD_OBJS) $(BUILD_MAIN_OBJ))
