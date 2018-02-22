@@ -39,11 +39,19 @@ OSTYPE_INCLUDE :=  libs/android/$(ANDROID_ARCH)/include
 OSTYPE_CFLAGS := -DANDROID -Wall -fPIC -DUSE_FILE32API --sysroot $(ANDROID_TOOLCHAIN)/sysroot -I$(NDK)/sources/android/cpufeatures
 OSTYPE_CPPFLAGS := -Wno-overloaded-virtual -frtti
 OSTYPE_GCHFLAGS := -x c++-header
-OSTYPE_COMMON_LIBS := 
-OSTYPE_CLI_LIBS := 
-OSTYPE_STAPPLER_LIBS := 
-OSTYPE_LDFLAGS := 
+
+OSTYPE_COMMON_LIBS := \
+	-l:libcurl.a -l:libbrotlidec.a -l:libbrotlienc.a -l:libbrotlicommon.a \
+	-l:libmbedtls.a -l:libmbedx509.a -l:libmbedcrypto.a \
+	-l:libpng.a -l:libjpeg.a -l:libwebp.a -lz -lm -landroid -llog
+
+OSTYPE_CLI_LIBS :=  $(OSTYPE_COMMON_LIBS) -l:libsqlite3.a
+
+OSTYPE_STAPPLER_LIBS := $(OSTYPE_CLI_LIBS) -l:libhyphen.a -l:libfreetype.a -lGLESv2 -lEGL
+
+OSTYPE_LDFLAGS := -Wl,-z,defs -rdynamic
 OSTYPE_EXEC_FLAGS := 
+
 
 ifeq ($(ANDROID_ARCH),armeabi-v7a)
 OSTYPE_CFLAGS += -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16 # `-mfpu=neon-vfpv3` is better, but causes crush on devices without NEON

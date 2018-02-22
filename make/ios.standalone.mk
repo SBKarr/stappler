@@ -18,31 +18,35 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-.DEFAULT_GOAL := local
+.DEFAULT_GOAL := all
 
 IS_LOCAL_BUILD := 1
 
-BUILD_OUTDIR := $(LOCAL_OUTDIR)/objs
+BUILD_OUTDIR := $(LOCAL_OUTDIR)
 
 GLOBAL_ROOT := $(STAPPLER_ROOT)
 GLOBAL_OUTPUT := $(BUILD_OUTDIR)
 
+THIS_FILE := $(firstword $(MAKEFILE_LIST))
+
 include $(GLOBAL_ROOT)/make/utils/compiler.mk
 
-BUILD_OUTDIR := $(BUILD_OUTDIR)/$(GLOBAL_CC)/$(if $(RELEASE),release,debug)/local
+ifdef IOS_ARCH
+
+BUILD_OUTDIR := $(BUILD_OUTDIR)/$(if $(RELEASE),release,debug)/$(IOS_ARCH)
+
+GLOBAL_OUTPUT := $(BUILD_OUTDIR)
+LOCAL_OUTPUT_LIBRARY := $(if $(LOCAL_LIBRARY_NAME),lib$(LOCAL_LIBRARY_NAME).a,$(LOCAL_OUTPUT_LIBRARY))
+BUILD_LIBRARY := $(BUILD_OUTDIR)/$(LOCAL_OUTPUT_LIBRARY)
 
 include $(GLOBAL_ROOT)/make/utils/external.mk
 
-all: local
+all: static
 
-local: .prebuild_local .local_prebuild $(LOCAL_OUTPUT_LIBRARY) $(LOCAL_OUTPUT_EXECUTABLE)
-.preclean: .local_preclean
+static: .prebuild_local $(BUILD_LIBRARY)
 
-$(LOCAL_OUTPUT_EXECUTABLE) : $(BUILD_OBJS) $(BUILD_MAIN_OBJ)
-	$(GLOBAL_QUIET_LINK) $(GLOBAL_CPP) $(BUILD_OBJS) $(BUILD_MAIN_OBJ) $(BUILD_LIBS) $(TOOLKIT_LIB_FLAGS) $(OSTYPE_EXEC_FLAGS) -o $(LOCAL_OUTPUT_EXECUTABLE)
-
-$(LOCAL_OUTPUT_LIBRARY): $(BUILD_OBJS)
-	$(GLOBAL_QUIET_LINK) $(GLOBAL_CPP) -shared  $(BUILD_OBJS) $(BUILD_LIBS) $(TOOLKIT_LIB_FLAGS) $(OSTYPE_EXEC_FLAGS) -o $(LOCAL_OUTPUT_LIBRARY)
+$(BUILD_LIBRARY): $(BUILD_OBJS)
+	$(GLOBAL_QUIET_LINK) $(GLOBAL_LIBTOOL) -static  $(BUILD_OBJS) $(OSTYPE_STAPPLER_LIBS_LIST) -o $(BUILD_LIBRARY)
 
 $(BUILD_OUTDIR)/%.o: /%.cpp $(TOOLKIT_H_GCH) $(TOOLKIT_GCH) 
 	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(BUILD_OUTDIR)/$*.d $(BUILD_CXXFLAGS) -c -o $@ `$(GLOBAL_ROOT)/convert-path.sh $<`
@@ -54,13 +58,27 @@ $(BUILD_OUTDIR)/%.o: /%.c $(TOOLKIT_H_GCH) $(TOOLKIT_GCH)
 	$(GLOBAL_QUIET_CC) $(GLOBAL_CC) -MMD -MP -MF $(BUILD_OUTDIR)/$*.d $(BUILD_CFLAGS) -c -o $@ `$(GLOBAL_ROOT)/convert-path.sh $<`
 
 clean_local:
-	$(GLOBAL_RM) $(LOCAL_OUTPUT_EXECUTABLE) $(LOCAL_OUTPUT_LIBRARY)
+	$(GLOBAL_RM) $(BUILD_LIBRARY)
 
-.PHONY: clean_local clean .prebuild_local .local_prebuild local .local_preclean all local
+.PHONY: clean_local clean .prebuild_local all static
 
 .preclean:
-	$(GLOBAL_RM) $(LOCAL_OUTPUT_EXECUTABLE) $(LOCAL_OUTPUT_LIBRARY)
+	$(GLOBAL_RM) $(BUILD_LIBRARY)
 
 .prebuild_local:
-	@echo "=== Begin build ==="
 	@$(GLOBAL_MKDIR) $(BUILD_DIRS)
+
+else
+
+ios: .local_prebuild
+
+ios-armv7: .local_prebuild
+ios-armv7s: .local_prebuild
+ios-arm64: .local_prebuild
+ios-i386: .local_prebuild
+ios-x86_64: .local_prebuild
+ios-clean: .local_preclean
+
+.PHONY: .local_prebuild .local_preclean
+
+endif

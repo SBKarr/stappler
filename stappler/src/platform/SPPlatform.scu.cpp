@@ -56,8 +56,11 @@ THE SOFTWARE.
 
 #include "universal/SPApplication.cc"
 #include "universal/SPDevice.cc"
-#include "universal/SPScreen.cc"
 #include "universal/SPScreenOrientation.cc"
+
+#ifndef SP_RESTRICT
+#include "universal/SPScreen.cc"
+#endif
 
 #include "ios/SPReceiptValidation.cc"
 #include "ios/SPProc.cc"

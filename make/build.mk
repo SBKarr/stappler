@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+# Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,14 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-GLOBAL_RM ?= rm -f
-GLOBAL_CP ?= cp -f
-GLOBAL_MAKE ?= make
-GLOBAL_MKDIR ?= mkdir -p
-GLOBAL_AR ?= ar rcs
-
 BUILD_CURRENT_COUNTER ?= 1
-BUILD_FILES_COUNTER ?= 0
+BUILD_FILES_COUNTER ?= 1
 
 TOOLKIT_CLEARABLE_OUTPUT := $(TOOLKIT_OUTPUT)
 
@@ -59,15 +53,21 @@ include $(GLOBAL_ROOT)/make/toolkits/common.mk
 # serenity - apache httpd module. based on stappler toolkit
 include $(GLOBAL_ROOT)/make/toolkits/serenity.mk
 
+ifeq (4.1,$(firstword $(sort $(MAKE_VERSION) 4.1)))
+sp_counter_text = [$(BUILD_LIBRARY): $$(($(BUILD_CURRENT_COUNTER)*100/$(BUILD_FILES_COUNTER)))% $(BUILD_CURRENT_COUNTER)/$(BUILD_FILES_COUNTER)]
+else
+sp_counter_text = 
+endif
+
 ifdef verbose
 ifneq ($(verbose),yes)
-GLOBAL_QUIET_CC = @ echo [$(BUILD_LIBRARY): $$(($(BUILD_CURRENT_COUNTER)*100/$(BUILD_FILES_COUNTER)))% $(BUILD_CURRENT_COUNTER)/$(BUILD_FILES_COUNTER)] [$(notdir $(GLOBAL_CC))] $@ ;
-GLOBAL_QUIET_CPP = @ echo [$(BUILD_LIBRARY): $$(($(BUILD_CURRENT_COUNTER)*100/$(BUILD_FILES_COUNTER)))% $(BUILD_CURRENT_COUNTER)/$(BUILD_FILES_COUNTER)] [$(notdir $(GLOBAL_CPP))] $@ ;
+GLOBAL_QUIET_CC = @ echo $(call sp_counter_text) [$(notdir $(GLOBAL_CC))] $@ ;
+GLOBAL_QUIET_CPP = @ echo $(call sp_counter_text) [$(notdir $(GLOBAL_CPP))] $@ ;
 GLOBAL_QUIET_LINK = @ echo [Link] $@ ;
 endif
 else
-GLOBAL_QUIET_CC = @ echo [$(BUILD_LIBRARY): $$(($(BUILD_CURRENT_COUNTER)*100/$(BUILD_FILES_COUNTER)))% $(BUILD_CURRENT_COUNTER)/$(BUILD_FILES_COUNTER)] [$(notdir $(GLOBAL_CC))] $(notdir $@) ;
-GLOBAL_QUIET_CPP = @ echo [$(BUILD_LIBRARY): $$(($(BUILD_CURRENT_COUNTER)*100/$(BUILD_FILES_COUNTER)))% $(BUILD_CURRENT_COUNTER)/$(BUILD_FILES_COUNTER)] [$(notdir $(GLOBAL_CPP))] $(notdir $@) ;
+GLOBAL_QUIET_CC = @ echo $(call sp_counter_text) [$(notdir $(GLOBAL_CC))] $(notdir $@) ;
+GLOBAL_QUIET_CPP = @ echo $(call sp_counter_text) [$(notdir $(GLOBAL_CPP))] $(notdir $@) ;
 GLOBAL_QUIET_LINK = @ echo [Link] $@ ;
 endif
 

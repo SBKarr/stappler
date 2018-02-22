@@ -23,19 +23,46 @@ OSTYPE_INCLUDE :=  libs/ios/$(IOS_ARCH)/include
 OSTYPE_CFLAGS := -DIOS -Wall -fPIC -DUSE_FILE32API -DCC_TARGET_OS_IPHONE -arch $(IOS_ARCH) -isysroot $(SYSROOT) -miphoneos-version-min=$(MIN_IOS_VERSION)
 OSTYPE_CPPFLAGS := -Wno-overloaded-virtual -frtti
 OSTYPE_GCHFLAGS := -x c++-header
-OSTYPE_COMMON_LIBS :=
-OSTYPE_CLI_LIBS :=
-OSTYPE_STAPPLER_LIBS :=
-OSTYPE_LDFLAGS :=  -miphoneos-version-min=$(MIN_IOS_VERSION)
+
+OSTYPE_COMMON_LIBS_LIST := \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libcurl.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libbrotlidec.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libbrotlienc.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libbrotlicommon.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libpng.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libjpeg.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libwebp.a
+
+OSTYPE_STAPPLER_LIBS_LIST := \
+	$(OSTYPE_COMMON_LIBS_LIST) \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libhyphen.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libfreetype.a \
+
+OSTYPE_COMMON_LIBS := $(OSTYPE_COMMON_LIBS_LIST) -lz
+OSTYPE_CLI_LIBS :=  $(OSTYPE_COMMON_LIBS)
+
+OSTYPE_STAPPLER_LIBS := $(OSTYPE_STAPPLER_LIBS_LIST) \
+	-lz -lsqlite3 \
+	-framework Foundation \
+	-framework UIKit \
+	-framework OpenGLES \
+	-framework Security \
+	-framework SystemConfiguration \
+	-framework StoreKit \
+	-framework CoreGraphics \
+	-framework QuartzCore
+
+OSTYPE_LDFLAGS :=  -arch $(IOS_ARCH) -isysroot $(SYSROOT) -miphoneos-version-min=$(MIN_IOS_VERSION) -rdynamic
 OSTYPE_EXEC_FLAGS :=
 
 GLOBAL_CPP := $(XCODE_BIN_PATH)/clang++
 GLOBAL_CC := $(XCODE_BIN_PATH)/clang
-GLOBAL_LIBTOOL := $(XCODE_BIN_PATH)/ar rcs
+GLOBAL_AR := $(XCODE_BIN_PATH)/ar rcs
+GLOBAL_LIBTOOL := $(XCODE_BIN_PATH)/libtool
 
 ifdef RELEASE
 TOOLKIT_OUTPUT := $(IOS_ROOT)/$(IOS_ARCH)
-GLOBAL_CFLAGS := -O2 -DNDEBUG $(OSTYPE_CFLAGS) $(GLOBAL_CFLAGS)
+GLOBAL_CFLAGS := -Oz -DNDEBUG $(OSTYPE_CFLAGS) $(GLOBAL_CFLAGS)
 else
 TOOLKIT_OUTPUT := $(IOS_ROOT)/$(IOS_ARCH)
 GLOBAL_CFLAGS := -g -DDEBUG -DCOCOS2D_DEBUG=1 $(OSTYPE_CFLAGS) $(GLOBAL_CFLAGS)

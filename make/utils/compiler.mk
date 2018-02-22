@@ -105,10 +105,16 @@ endif # End desktop arch
 GLOBAL_CXXFLAGS := $(GLOBAL_CFLAGS) -DSTAPPLER -std=gnu++14 $(OSTYPE_CPPFLAGS)
 GLOBAL_CFLAGS := $(GLOBAL_CFLAGS) -DSTAPPLER -std=c11
 
+GLOBAL_RM ?= rm -f
+GLOBAL_CP ?= cp -f
+GLOBAL_MAKE ?= make
+GLOBAL_MKDIR ?= mkdir -p
+GLOBAL_AR ?= ar rcs
+
 sp_toolkit_source_list = \
 	$(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) \( -name "*.c" -or -name "*.cpp" \))) \
 	$(addprefix $(GLOBAL_ROOT)/,$(2)) \
-	$(if $(filter,$(OBJC),1), $(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.mm')))
+	$(if $(OBJC), $(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.mm')))
 
 sp_toolkit_include_list = \
 	$(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) -type d)) \
@@ -130,8 +136,8 @@ sp_local_source_list = \
 	$(foreach dir,$(filter-out /%,$(1)),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.cpp')) \
 	$(foreach dir,$(filter-out /%,$(1)),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.c')) \
 	$(addprefix $(LOCAL_ROOT)/,$(filter-out /%,$(2))) \
-	$(if $(filter,$(OBJC),1), $(foreach dir,$(filter /%,$(1)),$(shell find $(dir) -name '*.mm'))) \
-	$(if $(filter,$(OBJC),1), $(foreach dir,$(filter-out /%,$(1)),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.mm')))
+	$(if $(OBJC), $(foreach dir,$(filter /%,$(1)),$(shell find $(dir) -name '*.mm'))) \
+	$(if $(OBJC), $(foreach dir,$(filter-out /%,$(1)),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.mm')))
 
 sp_local_include_list = \
 	$(foreach dir,$(filter /%,$(1)),$(shell find $(dir) -type d)) \

@@ -40,6 +40,7 @@ CLI_SRCS_DIRS += \
 
 CLI_SRCS_OBJS += \
 	stappler/src/platform/SPPlatform.scu.cpp \
+	stappler/src/platform/SPPlatformApple.scu.mm \
 	stappler/src/features/SPBasicFeatures.scu.cpp \
 	$(COCOS2D_CLI_SRCS_OBJS)
 

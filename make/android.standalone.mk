@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+# Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,7 @@
 
 IS_LOCAL_BUILD := 1
 
-BUILD_OUTDIR := $(LOCAL_OUTDIR)/objs
+BUILD_OUTDIR := $(LOCAL_OUTDIR)
 
 GLOBAL_ROOT := $(STAPPLER_ROOT)
 GLOBAL_OUTPUT := $(BUILD_OUTDIR)
@@ -43,12 +43,15 @@ GLOBAL_OUTPUT := $(BUILD_OUTDIR)
 
 BUILD_LIBRARY := $(BUILD_OUTDIR)/$(LOCAL_OUTPUT_LIBRARY)
 
+LOCAL_SRCS_OBJS += $(realpath $(NDK)/sources/android/cpufeatures/cpu-features.c)
+
 include $(GLOBAL_ROOT)/make/utils/external.mk
 
 all: static
 
-static: .prebuild_local .local_prebuild $(BUILD_LIBRARY)
-.preclean: .local_preclean
+static: .prebuild_local $(BUILD_LIBRARY)
+
+BUILD_LIBS += -static-libstdc++ -lc++_static -lc++abi
 
 $(BUILD_LIBRARY): $(BUILD_OBJS)
 	$(GLOBAL_QUIET_LINK) $(GLOBAL_CPP) -shared  $(BUILD_OBJS) $(BUILD_LIBS) $(TOOLKIT_LIB_FLAGS) $(OSTYPE_EXEC_FLAGS) -o $(BUILD_LIBRARY)
@@ -65,13 +68,24 @@ $(BUILD_OUTDIR)/%.o: /%.c $(TOOLKIT_H_GCH) $(TOOLKIT_GCH)
 clean_local:
 	$(GLOBAL_RM) $(BUILD_LIBRARY)
 
-.PHONY: clean_local clean .prebuild_local .local_prebuild local .local_preclean all local
+.PHONY: clean_local clean .prebuild_local all static
 
 .preclean:
 	$(GLOBAL_RM) $(BUILD_LIBRARY)
 
 .prebuild_local:
-	@echo "=== Begin build ==="
 	@$(GLOBAL_MKDIR) $(BUILD_DIRS)
+
+else
+
+android: .local_prebuild
+
+android-armv7: .local_prebuild
+android-arm64: .local_prebuild
+android-x86: .local_prebuild
+android-x86_64: .local_prebuild
+android-clean: .local_preclean
+
+.PHONY: .local_prebuild .local_preclean
 
 endif

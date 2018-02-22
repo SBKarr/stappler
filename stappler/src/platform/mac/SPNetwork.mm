@@ -57,11 +57,17 @@ namespace network {
 	}
 
 	static void _ReachabilityCallback(SCNetworkReachabilityRef target, SCNetworkReachabilityFlags flags, void* info) {
+#ifndef SP_RESTRICT
 		stappler::Thread::onMainThread([flags] () {
 			if (_callback) {
 				_callback(_ReachabilityIsOnline(flags));
 			}
 		});
+#else
+		if (_callback) {
+			_callback(_ReachabilityIsOnline(flags));
+		}
+#endif
 	}
 
 	void _setNetworkCallback(const Function<void(bool isOnline)> &callback) {
