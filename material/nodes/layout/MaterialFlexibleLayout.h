@@ -71,10 +71,18 @@ public:
 	virtual void setKeyboardTracked(bool);
 	virtual bool isKeyboardTracked() const;
 
+	// Безопасный триггер препятствует анимации, пока достаточный объём скролла не пройден
+	virtual void setSafeTrigger(bool value);
+	virtual bool isSafeTrigger() const;
+
+	virtual void expandFlexibleNode(float extraSpace, float animation = 0.0f);
+	virtual void clearFlexibleExpand(float animation = 0.0f);
+
 protected:
 	float getStatusBarHeight() const;
 	void onStatusBarHeight(float);
 
+	virtual void updateFlexParams();
 	virtual void onScroll(float delta, bool finished);
 	virtual void onStatusBarNode(const node::Params &);
 	virtual void onFlexibleNode(const node::Params &);
@@ -86,10 +94,14 @@ protected:
 
 	bool _flexibleAutoComplete = true;
 	bool _flexibleBaseNode = true;
+	bool _safeTrigger = true;
+
 	float _flexibleLevel = 1.0f;
 	float _flexibleMinHeight = 0.0f;
 	float _flexibleMaxHeight = 0.0f;
 	float _baseNodePadding = 4.0f;
+
+	float _flexibleExtraSpace = 0.0f;
 
 	HeightFunction _flexibleHeightFunction = nullptr;
 

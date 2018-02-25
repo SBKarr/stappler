@@ -33,13 +33,13 @@ bool ButtonLabel::init(FontType fnt, const TapCallback &tapCallback, const TapCa
 		return false;
 	}
 
-	_label = construct<Label>(fnt);
-	_label->setAnchorPoint(cocos2d::Vec2(0.5f, 0.5f));
-	_label->setMaxLines(1);
-	_label->setHyphens(Label::Hyphens::None);
-	_label->setLocaleEnabled(true);
-	_label->setTextTransform(Label::TextTransform::Uppercase);
-	addChild(_label);
+	auto label = Rc<Label>::create(fnt);
+	label->setAnchorPoint(cocos2d::Vec2(0.5f, 0.5f));
+	label->setMaxLines(1);
+	label->setHyphens(Label::Hyphens::None);
+	label->setLocaleEnabled(true);
+	label->setTextTransform(Label::TextTransform::Uppercase);
+	_label = addChildNode(label);
 
 	_labelOpacity = _label->getOpacity();
 

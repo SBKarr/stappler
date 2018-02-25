@@ -35,10 +35,10 @@ bool ButtonIcon::init(IconName name, const TapCallback &tapCallback, const TapCa
 		return false;
 	}
 
-	_icon = construct<IconSprite>();
-	_icon->setIconName(name);
-	_icon->setAnchorPoint(cocos2d::Vec2(0.5f, 0.5f));
-	addChild(_icon);
+	auto icon = Rc<IconSprite>::create();
+	icon->setIconName(name);
+	icon->setAnchorPoint(cocos2d::Vec2(0.5f, 0.5f));
+	_icon = addChildNode(icon);
 
 	setContentSize(_icon->getContentSize());
 

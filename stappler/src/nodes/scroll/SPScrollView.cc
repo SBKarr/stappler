@@ -40,17 +40,20 @@ bool ScrollView::init(Layout l) {
 		return false;
 	}
 
-	_indicator = construct<RoundedSprite>(2, screen::density());
-	_indicator->setOpacity(0);
-	_indicator->setColor(Color3B(127, 127, 127));
-	_indicator->setAnchorPoint(Vec2(1, 0));
-	addChild(_indicator, 11);
+	auto indicator = Rc<RoundedSprite>::create(2, screen::density());
+	indicator->setOpacity(0);
+	indicator->setColor(Color3B(127, 127, 127));
+	indicator->setAnchorPoint(Vec2(1, 0));
+	addChild(indicator, 11);
+	_indicator = indicator;
 
-	_overflowFront = construct<Overscroll>();
-	addChild(_overflowFront, 12);
+	auto overflowFront = Rc<Overscroll>::create();
+	addChild(overflowFront, 12);
+	_overflowFront = overflowFront;
 
-	_overflowBack = construct<Overscroll>();
-	addChild(_overflowBack, 12);
+	auto overflowBack = Rc<Overscroll>::create();
+	addChild(overflowBack, 12);
+	_overflowBack = overflowBack;
 
 	//setOverscrollColor(Color3B(0x03, 0xa9, 0xf4));
 	setOverscrollColor(Color3B(127, 127, 127));

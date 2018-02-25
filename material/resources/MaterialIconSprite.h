@@ -65,6 +65,7 @@ protected:
 	class DynamicIcon;
 	class NavIcon;
 	class CircleLoaderIcon;
+	class ExpandIcon;
 
 	virtual void updateCanvas(layout::Subscription::Flags f) override;
 	virtual void setDynamicIcon(DynamicIcon *);

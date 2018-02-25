@@ -245,9 +245,9 @@ void Label::onEnter() {
 
 void Label::setAutoLightLevel(bool value) {
 	if (value && !_lightLevelListener) {
-		_lightLevelListener = construct<EventListener>();
-		_lightLevelListener->onEvent(ResourceManager::onLightLevel, std::bind(&Label::onLightLevel, this));
-		addComponent(_lightLevelListener);
+		auto lightLevelListener = Rc<EventListener>::create();
+		lightLevelListener->onEvent(ResourceManager::onLightLevel, std::bind(&Label::onLightLevel, this));
+		_lightLevelListener = addComponentItem(lightLevelListener);
 		if (isRunning()) {
 			onLightLevel();
 		}

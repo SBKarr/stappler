@@ -370,7 +370,7 @@ struct FieldObject : Field::Slot {
 
 	const Scheme *scheme = nullptr;
 	RemovePolicy onRemove = RemovePolicy::Null;
-	Linkage linkage;
+	Linkage linkage = Linkage::Auto;
 	String link;
 };
 

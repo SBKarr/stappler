@@ -38,7 +38,7 @@ bool ForegroundLayer::init() {
 		return false;
 	}
 
-	auto l = construct<gesture::Listener>();
+	auto l = Rc<gesture::Listener>::create();
 	l->setTouchFilter([] (const Vec2 &, const stappler::gesture::Listener::DefaultTouchFilter &) -> bool {
 		return true;
 	});

@@ -35,7 +35,8 @@ public:
 
 	DynamicBatchCommand(bool b = false);
 
-    void init(float depth, GLProgram*, BlendFunc, DynamicAtlas *, const Mat4& mv, const std::vector<int> &, bool n, bool stencil = false);
+    void init(float depth, GLProgram*, BlendFunc, DynamicAtlas *, const Mat4& mv, const std::vector<int> &, bool n,
+    		bool stencil = false, AlphaTest = AlphaTest());
 
     void setStencilIndex(uint8_t);
 
@@ -71,6 +72,7 @@ protected:
     bool _batch = false;
     bool _stencil = false;
     uint8_t _stencilIndex = 0;
+    AlphaTest _alphaTest;
 };
 
 NS_SP_END

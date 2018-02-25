@@ -46,7 +46,7 @@ DynamicBatchCommand::DynamicBatchCommand(bool b) {
 }
 
 void DynamicBatchCommand::init(float g, GLProgram *p, BlendFunc f, DynamicAtlas *a, const Mat4& mv,
-		const std::vector<int> &zPath, bool n, bool stencil) {
+		const std::vector<int> &zPath, bool n, bool stencil, AlphaTest alphaTest) {
 	CCASSERT(p, "shader cannot be nill");
 	CCASSERT(a, "textureAtlas cannot be nill");
 
@@ -72,6 +72,7 @@ void DynamicBatchCommand::init(float g, GLProgram *p, BlendFunc f, DynamicAtlas 
 	_normalized = n;
 	_stencil = stencil;
 	_stencilIndex = 0;
+	_alphaTest = alphaTest;
 }
 
 void DynamicBatchCommand::setStencilIndex(uint8_t st) {
@@ -88,6 +89,13 @@ void DynamicBatchCommand::useMaterial() {
 
 	_shader->use();
 	_shader->setUniformsForBuiltins(_mv);
+
+	if (_alphaTest.state != AlphaTest::Disabled) {
+		if (auto loc = _shader->getUniformLocation("u_alphaTest")) {
+			_shader->setUniformLocationWith1f(loc, _alphaTest.value / 255.0f);
+		}
+	}
+
 	cocos2d::GL::bindTexture2D(_textureID);
 	cocos2d::GL::blendFunc(_blendType.src, _blendType.dst);
 }
@@ -152,7 +160,7 @@ uint32_t DynamicBatchCommand::getMaterialId(int32_t groupId) const {
 	intArray.push_back( reinterpretValue<int32_t>(_textureID) );
 	intArray.push_back( reinterpretValue<int32_t>(_blendType.src) );
 	intArray.push_back( reinterpretValue<int32_t>(_blendType.dst) );
-	intArray.push_back( (int32_t)_normalized | ((int32_t)_stencil << 2) );
+	intArray.push_back( int32_t(_normalized) | (int32_t(_stencil) << 2) | (uint32_t(_alphaTest.state) << 16) | (uint32_t(_alphaTest.value) << 24) );
 	intArray.push_back( (int32_t)groupId );
 
 	for (auto &i : _zPath) {

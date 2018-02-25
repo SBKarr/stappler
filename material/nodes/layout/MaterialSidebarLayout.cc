@@ -46,8 +46,8 @@ bool SidebarLayout::init(Position pos) {
 
 	_position = pos;
 
-	_listener = construct<gesture::Listener>();
-	_listener->setTouchFilter([this] (const Vec2 &loc, const stappler::gesture::Listener::DefaultTouchFilter &) -> bool {
+	auto listener = Rc<gesture::Listener>::create();
+	listener->setTouchFilter([this] (const Vec2 &loc, const stappler::gesture::Listener::DefaultTouchFilter &) -> bool {
 		if (!_node) {
 			return false;
 		}
@@ -69,7 +69,7 @@ bool SidebarLayout::init(Position pos) {
 			return false;
 		}
 	});
-	_listener->setPressCallback([this] (stappler::gesture::Event ev, const stappler::gesture::Press &p) -> bool {
+	listener->setPressCallback([this] (stappler::gesture::Event ev, const stappler::gesture::Press &p) -> bool {
 		if (isNodeEnabled() && !node::isTouched(_node, p.location())) {
 			if (ev == stappler::gesture::Event::Ended) {
 				hide();
@@ -78,7 +78,7 @@ bool SidebarLayout::init(Position pos) {
 		}
 		return false;
 	});
-	_listener->setSwipeCallback([this] (stappler::gesture::Event ev, const stappler::gesture::Swipe &s) -> bool {
+	listener->setSwipeCallback([this] (stappler::gesture::Event ev, const stappler::gesture::Swipe &s) -> bool {
 		if (!isNodeVisible() && !_edgeSwipeEnabled) {
 			return false;
 		}
@@ -101,14 +101,14 @@ bool SidebarLayout::init(Position pos) {
 
 		return true;
 	});
-	_listener->setSwallowTouches(true);
-	addComponent(_listener);
+	listener->setSwallowTouches(true);
+	_listener = addComponentItem(listener);
 
-	_background = construct<Layer>(material::Color::Grey_500);
-	_background->setAnchorPoint(cocos2d::Vec2(0.0f, 0.0f));
-	_background->setVisible(false);
-	_background->setOpacity(_backgroundPassiveOpacity);
-	addChild(_background);
+	auto background = Rc<Layer>::create(material::Color::Grey_500);
+	background->setAnchorPoint(cocos2d::Vec2(0.0f, 0.0f));
+	background->setVisible(false);
+	background->setOpacity(_backgroundPassiveOpacity);
+	_background = addChildNode(background);
 
 	return true;
 }
@@ -197,7 +197,7 @@ void SidebarLayout::setBackgroundPassiveOpacity(uint8_t value) {
 void SidebarLayout::show() {
 	stopActionByTag(HIDE_ACTION_TAG);
 	if (getActionByTag(SHOW_ACTION_TAG) == nullptr) {
-		auto a = cocos2d::EaseCubicActionOut::create(construct<ProgressAction>(
+		auto a = cocos2d::EaseCubicActionOut::create(Rc<ProgressAction>::create(
 				progress(0.35f, 0.0f, getProgress()), getProgress(), 1.0f,
 				[this] (ProgressAction *a, float progress) {
 			setProgress(progress);
@@ -210,7 +210,7 @@ void SidebarLayout::hide(float factor) {
 	stopActionByTag(SHOW_ACTION_TAG);
 	if (getActionByTag(HIDE_ACTION_TAG) == nullptr) {
 		if (factor <= 1.0f) {
-			auto a = cocos2d::EaseCubicActionIn::create(construct<ProgressAction>(
+			auto a = cocos2d::EaseCubicActionIn::create(Rc<ProgressAction>::create(
 					progress(0.0f, 0.35f / factor, getProgress()), getProgress(), 0.0f,
 					[this] (ProgressAction *a, float progress) {
 				setProgress(progress);
@@ -218,7 +218,7 @@ void SidebarLayout::hide(float factor) {
 			a->setTag(HIDE_ACTION_TAG);
 			runAction(a);
 		} else {
-			auto a = cocos2d::EaseQuadraticActionIn::create(construct<ProgressAction>(
+			auto a = cocos2d::EaseQuadraticActionIn::create(Rc<ProgressAction>::create(
 					progress(0.0f, 0.35f / factor, getProgress()), getProgress(), 0.0f,
 					[this] (ProgressAction *a, float progress) {
 				setProgress(progress);

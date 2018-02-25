@@ -47,13 +47,13 @@ void TabBarButton::initialize(const TabButtonCallback &cb, TabBar::ButtonStyle s
 	_tabStyle = style;
 	_wrapped = wrapped;
 
-	_label = construct<Label>(FontType::Tab_Large, Label::Alignment::Center);
-	_label->setLocaleEnabled(true);
-	_label->setTextTransform(Label::TextTransform::Uppercase);
-	addChild(_label, 2);
+	auto label = Rc<Label>::create(FontType::Tab_Large, Label::Alignment::Center);
+	label->setLocaleEnabled(true);
+	label->setTextTransform(Label::TextTransform::Uppercase);
+	_label = addChildNode(label, 2);
 
-	_icon = construct<IconSprite>(IconName::Empty);
-	addChild(_icon, 2);
+	auto icon = Rc<IconSprite>::create(IconName::Empty);
+	_icon = addChildNode(icon, 2);
 }
 
 bool TabBarButton::init(MenuSourceButton *btn, const TabButtonCallback &cb, TabBar::ButtonStyle style, bool swallow, bool wrapped) {
@@ -221,27 +221,29 @@ bool TabBar::init(material::MenuSource *source, ButtonStyle button, BarStyle bar
 		}
 	}
 
-	_scroll = construct<ScrollView>(ScrollView::Horizontal);
-	_scroll->setController(Rc<ScrollController>::create());
-	_scroll->setOverscrollVisible(false);
-	_scroll->setIndicatorVisible(false);
-	_scroll->setScrollCallback(std::bind(&TabBar::onScrollPosition, this));
+	auto scroll = Rc<ScrollView>::create(ScrollView::Horizontal);
+	scroll->setController(Rc<ScrollController>::create());
+	scroll->setOverscrollVisible(false);
+	scroll->setIndicatorVisible(false);
+	scroll->setScrollCallback(std::bind(&TabBar::onScrollPosition, this));
 
-	_layerNode = construct<cocos2d::Node>();
-	_layerNode->setPosition(0.0f, 0.0f);
-	_layerNode->setContentSize(Size(0.0f, 0.0f));
-	_layer = construct<Layer>(_accentColor);
-	_layer->setAnchorPoint(Vec2(0.0f, 0.0f));
-	_layer->setVisible(false);
-	_layerNode->addChild(_layer);
-	_scroll->addChild(_layerNode, 255);
-	addChild(_scroll);
+	auto layerNode = Rc<cocos2d::Node>::create();
+	layerNode->setPosition(0.0f, 0.0f);
+	layerNode->setContentSize(Size(0.0f, 0.0f));
 
-	_left = construct<IconSprite>(IconName::Navigation_chevron_left);
-	addChild(_left);
+	auto layer = Rc<Layer>::create(_accentColor);
+	layer->setAnchorPoint(Vec2(0.0f, 0.0f));
+	layer->setVisible(false);
+	_layer = layerNode->addChildNode(layer);
 
-	_right = construct<IconSprite>(IconName::Navigation_chevron_right);
-	addChild(_right);
+	_layerNode = scroll->addChildNode(layerNode, 255);
+	_scroll = addChildNode(scroll);
+
+	auto left = Rc<IconSprite>::create(IconName::Navigation_chevron_left);
+	_left = addChildNode(left);
+
+	auto right = Rc<IconSprite>::create(IconName::Navigation_chevron_right);
+	_right = addChildNode(right);
 
 	return true;
 }
@@ -506,14 +508,14 @@ float TabBar::getItemSize(const String &name, bool extended) const {
 	}
 }
 
-cocos2d::Node *TabBar::onItem(MenuSourceButton *btn, bool wrapped) {
-	TabBarButton *ret = nullptr;
+Rc<cocos2d::Node> TabBar::onItem(MenuSourceButton *btn, bool wrapped) {
+	Rc<TabBarButton> ret = nullptr;
 	if (btn) {
-		ret = construct<TabBarButton>(btn, [this] (Button *b, MenuSourceButton *btn) {
+		ret = Rc<TabBarButton>::create(btn, [this] (Button *b, MenuSourceButton *btn) {
 			onTabButton(b, btn);
 		}, _buttonStyle, _barStyle == BarStyle::Layout, wrapped);
 	} else {
-		ret = construct<TabBarButton>(_extra, [this] (Button *b, MenuSourceButton *btn) {
+		ret = Rc<TabBarButton>::create(_extra, [this] (Button *b, MenuSourceButton *btn) {
 			onTabButton(b, btn);
 		}, _buttonStyle, _barStyle == BarStyle::Layout, wrapped);
 	}
@@ -584,7 +586,7 @@ void TabBar::setSelectedTabIndex(size_t idx) {
 			_layer->setContentSize(Size(pos.second, 2.0f));
 
 			_layer->stopAllActionsByTag("TabBarAction"_tag);
-			auto spawn = cocos2d::EaseQuarticActionOut::create(construct<FadeIn>(0.15f));
+			auto spawn = cocos2d::EaseQuarticActionOut::create(Rc<FadeIn>::create(0.15f));
 			_layer->runAction(spawn, "TabBarAction"_tag);
 		} else {
 			_layer->setVisible(true);
@@ -592,8 +594,8 @@ void TabBar::setSelectedTabIndex(size_t idx) {
 			auto spawn = cocos2d::EaseQuarticActionOut::create(static_cast<cocos2d::ActionInterval *>(
 					action::spawn(
 							cocos2d::MoveTo::create(0.35f, Vec2(pos.first, 0.0f)),
-							construct<ResizeTo>(0.35f, Size(pos.second, 2.0f)),
-							construct<FadeIn>(0.15f)
+							Rc<ResizeTo>::create(0.35f, Size(pos.second, 2.0f)),
+							Rc<FadeIn>::create(0.15f)
 					)
 			));
 

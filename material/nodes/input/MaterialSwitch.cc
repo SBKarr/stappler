@@ -103,8 +103,8 @@ bool Switch::init(const Callback &cb) {
 
 	_callback = cb;
 
-	_listener = construct<gesture::Listener>();
-	_listener->setPressCallback([this] (gesture::Event ev, const gesture::Press &p) -> bool {
+	auto listener = Rc<gesture::Listener>::create();
+	listener->setPressCallback([this] (gesture::Event ev, const gesture::Press &p) -> bool {
 		if (ev == gesture::Event::Began) {
 			return onPressBegin(p.location());
 		} else if (ev == gesture::Event::Ended) {
@@ -114,7 +114,7 @@ bool Switch::init(const Callback &cb) {
 		}
 		return true;
 	});
-	_listener->setSwipeCallback([this] (gesture::Event ev, const gesture::Swipe &s) -> bool {
+	listener->setSwipeCallback([this] (gesture::Event ev, const gesture::Swipe &s) -> bool {
 		if (ev == gesture::Event::Began) {
 			return onSwipeBegin(s.location());
 		} else if (ev == gesture::Event::Activated) {
@@ -124,36 +124,36 @@ bool Switch::init(const Callback &cb) {
 		}
 		return true;
 	});
-	addComponent(_listener);
+	_listener = addComponentItem(listener);
 
 	setCascadeOpacityEnabled(true);
 
-	_select = construct<RoundedSprite>(20);
-	_select->setAnchorPoint(Vec2(0.5f, 0.5f));
-	_select->setContentSize(Size(40.0f, 40.0f));
-	_select->setColor(Color::Grey_500);
-	_select->setOpacity(32);
-	_select->setVisible(false);
-	addChild(_select, 4);
+	auto select = Rc<RoundedSprite>::create(20);
+	select->setAnchorPoint(Vec2(0.5f, 0.5f));
+	select->setContentSize(Size(40.0f, 40.0f));
+	select->setColor(Color::Grey_500);
+	select->setOpacity(32);
+	select->setVisible(false);
+	_select = addChildNode(select, 4);
 
-	_thumb = construct<RoundedSprite>(8);
-	_thumb->setContentSize(Size(16.0f, 16.0f));
-	_thumb->setAnchorPoint(Vec2(0.5f, 0.5f));
-	_thumb->setColor(Color::Grey_50);
-	addChild(_thumb, 3);
+	auto thumb = Rc<RoundedSprite>::create(8);
+	thumb->setContentSize(Size(16.0f, 16.0f));
+	thumb->setAnchorPoint(Vec2(0.5f, 0.5f));
+	thumb->setColor(Color::Grey_50);
+	_thumb = addChildNode(thumb, 3);
 
-	_shadow = construct<SwitchShadow>(11);
-	_shadow->setContentSize(Size(22.0f, 22.0f));
-	_shadow->setAnchorPoint(Vec2(0.5f, 0.525f));
-	_shadow->setColor(Color::Black);
-	_shadow->setOpacity(168);
-	addChild(_shadow, 2);
+	auto shadow = Rc<SwitchShadow>::create(11);
+	shadow->setContentSize(Size(22.0f, 22.0f));
+	shadow->setAnchorPoint(Vec2(0.5f, 0.525f));
+	shadow->setColor(Color::Black);
+	shadow->setOpacity(168);
+	_shadow = addChildNode(shadow, 2);
 
-	_track = construct<RoundedSprite>(5);
-	_track->setAnchorPoint(Vec2(0.5f, 0.5f));
-	_track->setColor(Color::Black);
-	_track->setOpacity(64);
-	addChild(_track, 1);
+	auto track = Rc<RoundedSprite>::create(5);
+	track->setAnchorPoint(Vec2(0.5f, 0.5f));
+	track->setColor(Color::Black);
+	track->setOpacity(64);
+	track = addChildNode(track, 1);
 
 	setContentSize(Size(42.0f, 24.0f));
 
@@ -203,7 +203,7 @@ void Switch::setSelected(bool value, float duration) {
 			onAnimation(_selected?1.0f:0.0f);
 			_contentSizeDirty = true;
 		} else {
-			auto a = construct<ProgressAction>(duration, _progress, _selected?1.0f:0.0f,
+			auto a = Rc<ProgressAction>::create(duration, _progress, _selected?1.0f:0.0f,
 					std::bind(&Switch::onAnimation, this, std::placeholders::_2));
 			runAction(a, "ProgressAnimation"_tag);
 		}

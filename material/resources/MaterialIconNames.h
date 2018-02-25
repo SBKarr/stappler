@@ -33,6 +33,7 @@ enum class IconName : uint16_t {
 
 	Dynamic_Navigation,
 	Dynamic_Loader,
+	Dynamic_Expand,
 	Action_3d_rotation,
 	Action_accessibility,
 	Action_account_balance,

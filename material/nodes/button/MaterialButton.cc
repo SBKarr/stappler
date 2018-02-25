@@ -40,6 +40,7 @@ THE SOFTWARE.
 #include "SPDataListener.h"
 #include "SPActions.h"
 #include "SPEventListener.h"
+#include "SPLayer.h"
 
 NS_MD_BEGIN
 
@@ -48,7 +49,7 @@ bool Button::init(const TapCallback &tapCallback, const TapCallback &longTapCall
 		return false;
 	}
 
-	auto l = construct<gesture::Listener>();
+	auto l = Rc<gesture::Listener>::create();
 	l->setGestureFilter([this] (const Vec2 &vec,  gesture::Type t, const gesture::Listener::DefaultGestureFilter &def) -> bool {
 		if (!_touchFilter) {
 			return def(vec, t);
@@ -216,7 +217,7 @@ void Button::setSelected(bool value, bool instant) {
 		if (_selected) {
 			if (!instant) {
 				stopActionByTag(2);
-				auto a = cocos2d::EaseQuadraticActionInOut::create(construct<ProgressAction>(
+				auto a = cocos2d::EaseQuadraticActionInOut::create(Rc<ProgressAction>::create(
 						progress(0.4f, 0.0f, _animationProgress), 1.0f,
 						[this] (ProgressAction *a, float progress) {
 					updateSelection(progress);
@@ -285,7 +286,7 @@ gesture::Listener * Button::getListener() const {
 void Button::animateSelection() {
 	if (!_selected) {
 		stopActionByTag(2);
-		auto a = cocos2d::EaseQuadraticActionInOut::create(construct<ProgressAction>(
+		auto a = cocos2d::EaseQuadraticActionInOut::create(Rc<ProgressAction>::create(
 				progress(0.4f, 0.0f, _animationProgress), 1.0f,
 				[this] (ProgressAction *a, float progress) {
 			updateSelection(progress);
@@ -330,7 +331,7 @@ void Button::animateSelection() {
 void Button::animateDeselection() {
 	if (!_selected) {
 		stopActionByTag(2);
-		auto a = cocos2d::EaseQuadraticActionInOut::create(construct<ProgressAction>(
+		auto a = cocos2d::EaseQuadraticActionInOut::create(Rc<ProgressAction>::create(
 				progress(0.35f, 0.0f, 1.0f - _animationProgress), 0.0f,
 				[this] (ProgressAction *a, float progress) {
 			updateSelection(progress);
@@ -396,15 +397,15 @@ draw::Image::PathRef Button::beginSpawn() {
 			_animationNode->removeFromParent();
 			_animationNode = nullptr;
 		}
-		_animationNode = construct<draw::PathNode>(width, height);
-		_animationNode->setContentSize(Size(_contentSize.width / downscale, _contentSize.height / downscale));
-		_animationNode->setPosition(Vec2(0, 0));
-		_animationNode->setAnchorPoint(Vec2(0, 0));
-		_animationNode->setScale(downscale);
-		_animationNode->setColor((_style == FlatWhite)?(Color::White):(Color::Black));
-		_animationNode->setOpacity(_animationOpacity);
-		_animationNode->setAntialiased(true);
-		addChild(_animationNode, 1);
+		auto animationNode = Rc<draw::PathNode>::create(width, height);
+		animationNode->setContentSize(Size(_contentSize.width / downscale, _contentSize.height / downscale));
+		animationNode->setPosition(Vec2(0, 0));
+		animationNode->setAnchorPoint(Vec2(0, 0));
+		animationNode->setScale(downscale);
+		animationNode->setColor((_style == FlatWhite)?(Color::White):(Color::Black));
+		animationNode->setOpacity(_animationOpacity);
+		animationNode->setAntialiased(true);
+		_animationNode = addChildNode(animationNode, 1);
 	}
 
 	auto path = _animationNode->addPath();

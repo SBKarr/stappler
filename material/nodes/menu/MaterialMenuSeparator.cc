@@ -41,13 +41,13 @@ bool MenuSeparator::init() {
 
 	setCascadeColorEnabled(true);
 
-	_color = construct<stappler::Layer>();
-	_color->setOpacity(32);
-	_color->setColor(Color::Black);
-	_color->ignoreAnchorPointForPosition(false);
-	_color->setAnchorPoint(cocos2d::Vec2(0, 0.5f));
-	_color->setPosition(0, 0);
-	addChild(_color);
+	auto color = Rc<Layer>::create();
+	color->setOpacity(32);
+	color->setColor(Color::Black);
+	color->ignoreAnchorPointForPosition(false);
+	color->setAnchorPoint(Vec2(0, 0.5f));
+	color->setPosition(0, 0);
+	_color = addChildNode(color);
 
 	_contentSizeDirty = true;
 
@@ -84,10 +84,10 @@ void MenuSeparator::setTopLevel(bool value) {
 	if (value != _topLevel) {
 		_topLevel = value;
 		if (_topLevel) {
-			_color->setAnchorPoint(cocos2d::Vec2(0, 1));
+			_color->setAnchorPoint(Vec2(0, 1));
 			_color->setPosition(0, _contentSize.height);
 		} else {
-			_color->setAnchorPoint(cocos2d::Vec2(0, 0.5f));
+			_color->setAnchorPoint(Vec2(0, 0.5f));
 			_color->setPosition(0, 0);
 		}
 	}
@@ -112,17 +112,17 @@ void MenuSeparator::onSourceDirty() {
 	auto menu = getMenu();
 	auto spacing = menu->getMetrics();
 
-	_color->setContentSize(cocos2d::Size(_contentSize.width, 2));
+	_color->setContentSize(Size(_contentSize.width, 2));
 	if (_topLevel) {
-		_color->setAnchorPoint(cocos2d::Vec2(0, 1));
+		_color->setAnchorPoint(Vec2(0, 1));
 		_color->setPosition(0, _contentSize.height);
 	} else {
-		_color->setAnchorPoint(cocos2d::Vec2(0, 0.5f));
+		_color->setAnchorPoint(Vec2(0, 0.5f));
 		if (spacing == MenuMetrics::Navigation) {
-			_color->setAnchorPoint(cocos2d::Vec2(0, 0));
+			_color->setAnchorPoint(Vec2(0, 0));
 			_color->setPosition(0, _contentSize.height / 2);
 		} else {
-			_color->setAnchorPoint(cocos2d::Vec2(0, 0.5));
+			_color->setAnchorPoint(Vec2(0, 0.5));
 			_color->setPosition(0, _contentSize.height / 2);
 		}
 	}

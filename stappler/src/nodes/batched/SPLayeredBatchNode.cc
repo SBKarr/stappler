@@ -81,6 +81,11 @@ void LayeredBatchNode::setTextures(const Vector<Rc<cocos2d::Texture2D>> &tex, Ve
 }
 
 void LayeredBatchNode::draw(cocos2d::Renderer *renderer, const Mat4 &transform, uint32_t flags, const ZPath &zPath) {
+	if (_programDirty) {
+		for (auto &it : _textures) {
+			updateBlendFunc(it.texture);
+		}
+	}
 	size_t i = 0;
 	for (auto &it : _textures) {
 		if (!it.atlas && it.texture) {
@@ -101,9 +106,9 @@ void LayeredBatchNode::draw(cocos2d::Renderer *renderer, const Mat4 &transform, 
 			newMV.m[13] = floorf(transform.m[13]);
 			newMV.m[14] = floorf(transform.m[14]);
 
-			cmd->cmd.init(_globalZOrder, getGLProgram(), _blendFunc, it.atlas, newMV, zPath, _normalized);
+			cmd->cmd.init(_globalZOrder, getGLProgram(), _blendFunc, it.atlas, newMV, zPath, _normalized, false, _alphaTest);
 		} else {
-			cmd->cmd.init(_globalZOrder, getGLProgram(), _blendFunc, it.atlas, transform, zPath, _normalized);
+			cmd->cmd.init(_globalZOrder, getGLProgram(), _blendFunc, it.atlas, transform, zPath, _normalized, false, _alphaTest);
 		}
 
 		renderer->addCommand(&cmd->cmd);

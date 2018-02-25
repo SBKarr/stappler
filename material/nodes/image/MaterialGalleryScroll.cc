@@ -49,10 +49,10 @@ bool GalleryImage::init(const String &file, const ImageCallback &cb) {
 
 	_gestureListener->setEnabled(false);
 
-	_loader = construct<IconSprite>(IconName::Dynamic_Loader);
-	_loader->setAnchorPoint(Vec2(0.5f, 0.5f));
-	_loader->setContentSize(Size(48.0f, 48.0f));
-	addChild(_loader);
+	auto loader = Rc<IconSprite>::create(IconName::Dynamic_Loader);
+	loader->setAnchorPoint(Vec2(0.5f, 0.5f));
+	loader->setContentSize(Size(48.0f, 48.0f));
+	_loader = addChildNode(loader);
 
 	if (cb) {
 		retain();
@@ -95,21 +95,21 @@ bool GalleryScroll::init(const ImageCallback &cb, const Vector<String> &vec, siz
 
 	_imageCallback = cb;
 
-	_overscrollTop = construct<Overscroll>(Overscroll::Top);
-	_overscrollTop->setColor(material::Color::Grey_500);
-	addChild(_overscrollTop, maxOf<int>() - 2);
+	auto overscrollTop = Rc<Overscroll>::create(Overscroll::Top);
+	overscrollTop->setColor(material::Color::Grey_500);
+	_overscrollTop = addChildNode(overscrollTop, maxOf<int>() - 2);
 
-	_overscrollBottom = construct<Overscroll>(Overscroll::Bottom);
-	_overscrollBottom->setColor(material::Color::Grey_500);
-	addChild(_overscrollBottom, maxOf<int>() - 2);
+	auto overscrollBottom = Rc<Overscroll>::create(Overscroll::Bottom);
+	overscrollBottom->setColor(material::Color::Grey_500);
+	_overscrollBottom = addChildNode(overscrollBottom, maxOf<int>() - 2);
 
-	_overscrollLeft = construct<Overscroll>(Overscroll::Left);
-	_overscrollLeft->setColor(material::Color::Grey_500);
-	addChild(_overscrollLeft, maxOf<int>() - 2);
+	auto overscrollLeft = Rc<Overscroll>::create(Overscroll::Left);
+	overscrollLeft->setColor(material::Color::Grey_500);
+	_overscrollLeft = addChildNode(overscrollLeft, maxOf<int>() - 2);
 
-	_overscrollRight = construct<Overscroll>(Overscroll::Right);
-	_overscrollRight->setColor(material::Color::Grey_500);
-	addChild(_overscrollRight, maxOf<int>() - 2);
+	auto overscrollRight = Rc<Overscroll>::create(Overscroll::Right);
+	overscrollRight->setColor(material::Color::Grey_500);
+	_overscrollRight = addChildNode(overscrollRight, maxOf<int>() - 2);
 
 	auto l = Rc<gesture::Listener>::create();
 	l->setTouchFilter([] (const Vec2 &loc, const gesture::Listener::DefaultTouchFilter &f) {
@@ -150,8 +150,7 @@ bool GalleryScroll::init(const ImageCallback &cb, const Vector<String> &vec, siz
 		}
 		return true;
 	});
-	addComponent(l);
-	_gestureListener = l;
+	_gestureListener = addComponentItem(l);
 
 	_images = vec;
 
@@ -230,9 +229,9 @@ void GalleryScroll::reset(size_t id) {
 
 	if (!_images.empty()) {
 		_primaryId = id;
-		_primary = construct<GalleryImage>(_images.at(id), _imageCallback);
-		_primary->setLoaderColor(_loaderColor);
-		addChild(_primary, int(_images.size() - id));
+		auto primary = Rc<GalleryImage>::create(_images.at(id), _imageCallback);
+		primary->setLoaderColor(_loaderColor);
+		_primary = addChildNode(primary, int(_images.size() - id));
 	}
 
 	_contentSizeDirty = true;
@@ -329,12 +328,12 @@ void GalleryScroll::setProgress(float value) {
 
 		if (!_secondary) {
 			_secondaryId = _primaryId - 1;
-			_secondary = construct<GalleryImage>(_images.at(_secondaryId), _imageCallback);
-			_secondary->setLoaderColor(_loaderColor);
-			_secondary->setAnchorPoint(Vec2(0.5f, 0.5f));
-			_secondary->setPosition(Vec2(_contentSize.width/2.0f, _contentSize.height/2.0f));
-			_secondary->setContentSize(_contentSize);
-			addChild(_secondary, int(_images.size() - _secondaryId));
+			auto secondary = Rc<GalleryImage>::create(_images.at(_secondaryId), _imageCallback);
+			secondary->setLoaderColor(_loaderColor);
+			secondary->setAnchorPoint(Vec2(0.5f, 0.5f));
+			secondary->setPosition(Vec2(_contentSize.width/2.0f, _contentSize.height/2.0f));
+			secondary->setContentSize(_contentSize);
+			_secondary = addChildNode(secondary, int(_images.size() - _secondaryId));
 		}
 
 		if (_secondary) {
@@ -355,12 +354,12 @@ void GalleryScroll::setProgress(float value) {
 		if (!_secondary) {
 			_secondaryId = _primaryId + 1;
 			if (_secondaryId < _images.size()) {
-				_secondary = construct<GalleryImage>(_images.at(_secondaryId), _imageCallback);
-				_secondary->setLoaderColor(_loaderColor);
-				_secondary->setAnchorPoint(Vec2(0.5f, 0.5f));
-				_secondary->setPosition(Vec2(_contentSize.width/2.0f, _contentSize.height/2.0f));
-				_secondary->setContentSize(_contentSize);
-				addChild(_secondary, int(_images.size() - _secondaryId));
+				auto secondary = Rc<GalleryImage>::create(_images.at(_secondaryId), _imageCallback);
+				secondary->setLoaderColor(_loaderColor);
+				secondary->setAnchorPoint(Vec2(0.5f, 0.5f));
+				secondary->setPosition(Vec2(_contentSize.width/2.0f, _contentSize.height/2.0f));
+				secondary->setContentSize(_contentSize);
+				_secondary = addChildNode(secondary, int(_images.size() - _secondaryId));
 			}
 		}
 
@@ -399,12 +398,12 @@ void GalleryScroll::setProgress(float value) {
 			}
 
 			if (_secondaryId < _images.size()) {
-				_secondary = construct<GalleryImage>(_images.at(_secondaryId), _imageCallback);
-				_secondary->setLoaderColor(_loaderColor);
-				_secondary->setAnchorPoint(Vec2(0.5f, 0.5f));
-				_secondary->setPosition(Vec2(_contentSize.width/2.0f, _contentSize.height/2.0f));
-				_secondary->setContentSize(_contentSize);
-				addChild(_secondary, int(_images.size() - _secondaryId));
+				auto secondary = Rc<GalleryImage>::create(_images.at(_secondaryId), _imageCallback);
+				secondary->setLoaderColor(_loaderColor);
+				secondary->setAnchorPoint(Vec2(0.5f, 0.5f));
+				secondary->setPosition(Vec2(_contentSize.width/2.0f, _contentSize.height/2.0f));
+				secondary->setContentSize(_contentSize);
+				_secondary = addChildNode(secondary, int(_images.size() - _secondaryId));
 			}
 		}
 		_progress = value;

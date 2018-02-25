@@ -51,22 +51,22 @@ bool FormField::init(FormController *c, const String &name, bool dense) {
 	_padding = _dense?Padding(12.0f, 12.0f):Padding(12.0f, 16.0f);
 	_label->setAnchorPoint(Vec2(0.0f, 1.0f));
 
-	_counter = construct<Label>(FontType::Caption);
-	_counter->setAnchorPoint(Vec2(1.0f, 1.0f));
-	_counter->setVisible(false);
-	addChild(_counter, 1);
+	auto counter = Rc<Label>::create(FontType::Caption);
+	counter->setAnchorPoint(Vec2(1.0f, 1.0f));
+	counter->setVisible(false);
+	_counter = addChildNode(counter, 1);
 
-	_error = construct<Label>(FontType::Caption);
-	_error->setAnchorPoint(Vec2(0.0f, 0.0f));
-	_error->setVisible(false);
-	_error->setLocaleEnabled(true);
-	_error->setColor(_errorColor);
-	addChild(_error, 1);
+	auto error = Rc<Label>::create(FontType::Caption);
+	error->setAnchorPoint(Vec2(0.0f, 0.0f));
+	error->setVisible(false);
+	error->setLocaleEnabled(true);
+	error->setColor(_errorColor);
+	_error = addChildNode(error, 1);
 
-	_underlineLayer = construct<Layer>(material::Color::Grey_500);
-	_underlineLayer->setOpacity(64);
-	_underlineLayer->setAnchorPoint(Vec2(0.0f, 0.0f));
-	addChild(_underlineLayer, 1);
+	auto underlineLayer = Rc<Layer>::create(material::Color::Grey_500);
+	underlineLayer->setOpacity(64);
+	underlineLayer->setAnchorPoint(Vec2(0.0f, 0.0f));
+	_underlineLayer = addChildNode(underlineLayer, 1);
 
 	_labelHeight = nan();
 	updateLabelHeight(1.0f + _padding.horizontal());
@@ -209,7 +209,8 @@ void FormField::onActivated(bool active) {
 
 			auto origPos = _placeholder->getPosition();
 			auto size = _placeholder->getFontSize();
-			_placeholder->runAction(cocos2d::EaseQuadraticActionInOut::create(construct<ProgressAction>(0.15f, [this, origPos, size] (ProgressAction *, float p) {
+			_placeholder->runAction(cocos2d::EaseQuadraticActionInOut::create(
+					Rc<ProgressAction>::create(0.15f, [this, origPos, size] (ProgressAction *, float p) {
 				_placeholder->setPosition(progress(origPos, _node->getPosition() + Vec2(0.0f, _node->getContentSize().height + (_dense?4.0f:8.0f)), p));
 				_placeholder->setFontSize(progress(size, uint8_t(12), p));
 			})));
@@ -220,7 +221,8 @@ void FormField::onActivated(bool active) {
 			_placeholder->stopAllActions();
 
 			if (_label->empty()) {
-				_placeholder->runAction(cocos2d::EaseQuadraticActionInOut::create(construct<ProgressAction>(0.15f, [this] (ProgressAction *, float p) {
+				_placeholder->runAction(cocos2d::EaseQuadraticActionInOut::create(
+						Rc<ProgressAction>::create(0.15f, [this] (ProgressAction *, float p) {
 					_placeholder->setPosition(_node->getPosition() + progress(Vec2(0.0f, _node->getContentSize().height + (_dense?4.0f:8.0f)), Vec2(0.0f, 0.0f), p));
 					_placeholder->setFontSize(progress(uint8_t(12), _label->getFontSize(), p));
 				})));

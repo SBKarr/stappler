@@ -69,6 +69,8 @@ public:
 		CustomBorder = 1 << 7,
 		CustomFill = 1 << 8,
 		AmbientColor = 1 << 9,
+		AlphaTestLT = 1 << 10,
+		AlphaTestGT = 1 << 11
 	};
 
 	GLProgramDesc(Default);

@@ -64,6 +64,8 @@ public:
 
 	virtual void clearAnimations();
 
+	virtual void animateIcon(float value, float duration = 0.0f);
+
 protected:
     virtual uint8_t getOpacityForAmbientShadow(float value) const override;
     virtual uint8_t getOpacityForKeyShadow(float value) const override;

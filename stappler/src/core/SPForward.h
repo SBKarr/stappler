@@ -67,6 +67,17 @@ extern const Vec2 MiddleTop; /** equals to Vec2(0.5, 1) */
 extern const Vec2 MiddleBottom; /** equals to Vec2(0.5, 0) */
 }
 
+struct AlphaTest {
+	enum State : uint8_t {
+		Disabled,
+		LessThen,
+		GreatherThen,
+	};
+
+	State state = State::Disabled;
+	uint8_t value = 0;
+};
+
 NS_SP_END
 
 NS_CC_BEGIN

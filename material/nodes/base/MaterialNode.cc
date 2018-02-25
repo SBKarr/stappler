@@ -31,15 +31,16 @@ THE SOFTWARE.
 #include "SPRoundedSprite.h"
 #include "SPClippingNode.h"
 #include "SPEventListener.h"
+#include "SPLayer.h"
 
 #include "2d/CCActionInterval.h"
 #include "base/CCDirector.h"
 #include "SPDataListener.h"
 
-#define MATERIAL_SHADOW_AMBIENT_MOD 6.0f
-#define MATERIAL_SHADOW_KEY_MOD 9.0f
-
 NS_MD_BEGIN
+
+static constexpr float MATERIAL_SHADOW_AMBIENT_MOD = 6.0f;
+static constexpr float MATERIAL_SHADOW_KEY_MOD = 9.0f;
 
 class ShadowAction : public cocos2d::ActionInterval {
 public:
@@ -91,45 +92,54 @@ bool MaterialNode::init() {
 		return false;
 	}
 
-	_background = construct<RoundedSprite>((uint32_t)_borderRadius, stappler::screen::density());
-	_background->setAnchorPoint(Vec2(0, 0));
-	_background->setPosition(0, 0);
-	_background->setOpacity(255);
-	_background->setColor(Color::White);
-	addChild(_background, 0);
+	auto backgroundClipper = Rc<RoundedSprite>::create((uint32_t)_borderRadius, screen::density());
+	backgroundClipper->setAnchorPoint(Vec2(0, 0));
+	backgroundClipper->setPosition(0, 0);
+	backgroundClipper->setOpacity(255);
+	backgroundClipper->setColor(Color::Black);
+	backgroundClipper->setAlphaTest(AlphaTest::GreatherThen, 1);
+	_backgroundClipper = backgroundClipper;
 
-	_backgroundClipper = construct<RoundedSprite>((uint32_t)_borderRadius, stappler::screen::density());
-	_backgroundClipper->setAnchorPoint(Vec2(0, 0));
-	_backgroundClipper->setPosition(0, 0);
-	_backgroundClipper->setOpacity(255);
-	_backgroundClipper->setColor(Color::Black);
+	auto shadowClipper = Rc<ClippingNode>::create(_backgroundClipper);
+	shadowClipper->setAnchorPoint(Vec2(0, 0));
+	shadowClipper->setPosition(0, 0);
+	shadowClipper->setInverted(true);
+	shadowClipper->setEnabled(false);
+	shadowClipper->setCascadeColorEnabled(true);
+	_shadowClipper = addChildNode(shadowClipper, -1);
 
-	_shadowClipper = construct<ClippingNode>(_backgroundClipper);
-	_shadowClipper->setAnchorPoint(Vec2(0, 0));
-	_shadowClipper->setPosition(0, 0);
-	_shadowClipper->setInverted(true);
-	_shadowClipper->setEnabled(false);
-	_shadowClipper->setCascadeColorEnabled(true);
-	addChild(_shadowClipper, -1);
+	auto content = Rc<ClippingNode>::create(_backgroundClipper);
+	content->setAnchorPoint(Vec2(0, 0));
+	content->setPosition(0, 0);
+	content->setInverted(false);
+	content->setEnabled(false);
+	_content = addChildNode(content, 0);
+
+	auto background = Rc<RoundedSprite>::create((uint32_t)_borderRadius, screen::density());
+	background->setAnchorPoint(Vec2(0, 0));
+	background->setPosition(0, 0);
+	background->setOpacity(255);
+	background->setColor(Color::White);
+	_background = _content->addChildNode(background, 0);
 
 	setCascadeOpacityEnabled(true);
 
 	ignoreAnchorPointForPosition(false);
 	setAnchorPoint(Vec2(0, 0));
 
-	_ambientShadow = construct<ShadowSprite>(_shadowIndex * MATERIAL_SHADOW_AMBIENT_MOD + _borderRadius,
+	auto ambientShadow = Rc<ShadowSprite>::create(_shadowIndex * MATERIAL_SHADOW_AMBIENT_MOD + _borderRadius,
 			std::max(0.0f, _borderRadius - (_shadowIndex) * MATERIAL_SHADOW_AMBIENT_MOD));
-	_ambientShadow->setOpacity(64);
-	_ambientShadow->setAnchorPoint(Vec2(0, 0));
-	_ambientShadow->setVisible(false);
-	_shadowClipper->addChild(_ambientShadow, -1);
+	ambientShadow->setOpacity(64);
+	ambientShadow->setAnchorPoint(Vec2(0, 0));
+	ambientShadow->setVisible(false);
+	_ambientShadow = _shadowClipper->addChildNode(ambientShadow, -1);
 
-	_keyShadow = construct<ShadowSprite>(_shadowIndex * MATERIAL_SHADOW_KEY_MOD + _borderRadius,
+	auto keyShadow = Rc<ShadowSprite>::create(_shadowIndex * MATERIAL_SHADOW_KEY_MOD + _borderRadius,
 			std::max(0.0f, _borderRadius - (_shadowIndex) * MATERIAL_SHADOW_KEY_MOD));
-	_keyShadow->setOpacity(128);
-	_keyShadow->setAnchorPoint(Vec2(0, 0));
-	_keyShadow->setVisible(false);
-	_shadowClipper->addChild(_keyShadow, -2);
+	keyShadow->setOpacity(128);
+	keyShadow->setAnchorPoint(Vec2(0, 0));
+	keyShadow->setVisible(false);
+	_keyShadow = _shadowClipper->addChildNode(keyShadow, -2);
 
 	return true;
 }
@@ -214,7 +224,7 @@ uint8_t MaterialNode::getBackgroundOpacity() const {
 
 void MaterialNode::setBackgroundColor(const Color &c) {
 	_background->setColor(c);
-	_backgroundClipper->setColor(c);
+	//_backgroundClipper->setColor(c);
 }
 const Color3B &MaterialNode::getBackgroundColor() const {
 	return _background->getColor();
@@ -237,7 +247,14 @@ const data::Value &MaterialNode::getUserData() const {
 	return _userData;
 }
 
-void MaterialNode::setPadding(const stappler::Padding &p) {
+void MaterialNode::setClipContent(bool value) {
+	static_cast<ClippingNode *>(_content)->setEnabled(value);
+}
+bool MaterialNode::isClipContent() const {
+	return static_cast<const ClippingNode *>(_content)->isEnabled();
+}
+
+void MaterialNode::setPadding(const Padding &p) {
 	if (p != _padding) {
 		_padding = p;
 		_contentSizeDirty = true;
@@ -264,14 +281,20 @@ void MaterialNode::layoutShadows() {
 		_keyShadow->setVisible(false);
 	}
 
-	_background->setContentSize(getContentSizeWithPadding());
-	_background->setPosition(getAnchorPositionWithPadding());
+	auto size = getContentSizeWithPadding();
+	auto vec = getAnchorPositionWithPadding();
 
-	_backgroundClipper->setContentSize(getContentSizeWithPadding());
-	_backgroundClipper->setPosition(getAnchorPositionWithPadding());
+	_backgroundClipper->setContentSize(size);
+	_backgroundClipper->setPosition(Vec2::ZERO);
 
-	_shadowClipper->setContentSize(_contentSize);
-	_shadowClipper->setPosition(0, 0);
+	_content->setContentSize(size);
+	_content->setPosition(vec);
+
+	_background->setContentSize(size);
+	_background->setPosition(Vec2::ZERO);
+
+	_shadowClipper->setContentSize(size);
+	_shadowClipper->setPosition(vec);
 
 	_positionsDirty = false;
 }
@@ -299,6 +322,10 @@ Rect MaterialNode::getContentRect() const {
 	return Rect(getAnchorPositionWithPadding(), getContentSizeWithPadding());
 }
 
+cocos2d::Node *MaterialNode::getContentNode() const {
+	return _content;
+}
+
 Size MaterialNode::getContentSizeForAmbientShadow(float index) const {
 	float ambientSeed = index * MATERIAL_SHADOW_AMBIENT_MOD;
 	auto ambientSize = getContentSizeWithPadding();
@@ -308,7 +335,7 @@ Size MaterialNode::getContentSizeForAmbientShadow(float index) const {
 }
 Vec2 MaterialNode::getPositionForAmbientShadow(float index) const {
 	float ambientSeed = index * MATERIAL_SHADOW_AMBIENT_MOD;
-	return Vec2(-ambientSeed / 2 + _padding.left, -ambientSeed / 2 + _padding.bottom);
+	return Vec2(-ambientSeed / 2, -ambientSeed / 2);
 }
 
 Size MaterialNode::getContentSizeForKeyShadow(float index) const {
@@ -328,7 +355,7 @@ Vec2 MaterialNode::getPositionForKeyShadow(float index) const {
 	normal = normal - Vec2(0, -1);
 
 	float keySeed = index * MATERIAL_SHADOW_KEY_MOD;
-	return Vec2(-keySeed / 2 + _padding.left, -keySeed / 2 + _padding.bottom) - normal * _shadowIndex * 0.5;
+	return Vec2(-keySeed / 2, -keySeed / 2) - normal * _shadowIndex * 0.5;
 }
 
 uint8_t MaterialNode::getOpacityForAmbientShadow(float value) const {
@@ -358,9 +385,9 @@ uint8_t MaterialNode::getOpacityForKeyShadow(float value) const {
 
 void MaterialNode::setAutoLightLevel(bool value) {
 	if (value && !_lightLevelListener) {
-		_lightLevelListener = construct<EventListener>();
-		_lightLevelListener->onEvent(ResourceManager::onLightLevel, std::bind(&MaterialNode::onLightLevel, this));
-		addComponent(_lightLevelListener);
+		auto lightLevelListener = Rc<EventListener>::create();
+		lightLevelListener->onEvent(ResourceManager::onLightLevel, std::bind(&MaterialNode::onLightLevel, this));
+		_lightLevelListener = addComponentItem(lightLevelListener);
 		if (isRunning()) {
 			onLightLevel();
 		}

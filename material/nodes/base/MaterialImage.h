@@ -36,6 +36,7 @@ public:
 	virtual ~MaterialImage();
 	virtual bool init(const String &file = String(), float density = 0.0f);
 	virtual void setContentSize(const Size &) override;
+	virtual void onContentSizeDirty() override;
 	virtual void visit(cocos2d::Renderer *r, const Mat4 &t, uint32_t f, ZPath &zPath) override;
 
 	virtual void onEnter() override;

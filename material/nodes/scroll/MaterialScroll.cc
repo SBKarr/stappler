@@ -48,10 +48,10 @@ bool Scroll::Loader::init(const Function<void()> &cb, const Color &c) {
 
 	setColor(c);
 
-	_icon = construct<IconSprite>(IconName::Dynamic_Loader);
-	_icon->setContentSize(Size(36.0f, 36.0f));
-	_icon->setAnchorPoint(Vec2(0.5f, 0.5f));
-	addChild(_icon);
+	auto icon = Rc<IconSprite>::create(IconName::Dynamic_Loader);
+	icon->setContentSize(Size(36.0f, 36.0f));
+	icon->setAnchorPoint(Vec2(0.5f, 0.5f));
+	_icon = addChildNode(icon);
 
 	return true;
 }

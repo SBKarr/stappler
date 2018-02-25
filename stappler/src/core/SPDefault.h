@@ -32,6 +32,9 @@ NS_SP_BEGIN
 using Opacity = uint8_t;
 
 template <class T, class... Args>
+inline T *construct(Args&&... args) __attribute__ ((deprecated));
+
+template <class T, class... Args>
 inline T *construct(Args&&... args) {
 	auto pRet = new T();
     if (pRet->init(std::forward<Args>(args)...)) {

@@ -42,26 +42,26 @@ bool RecyclerHolder::init(const Function<void()> &cb) {
 		return false;
 	}
 
-	_layer = construct<Layer>(Color::Grey_400);
-	addChild(_layer, 1);
+	auto layer = Rc<Layer>::create(Color::Grey_400);
+	_layer = addChildNode(layer, 1);
 
-	_icon = construct<IconSprite>(IconName::Content_clear);
-	_icon->setAnchorPoint(Vec2(0.5f, 0.5f));
-	_icon->setColor(Color::Black);
-	addChild(_icon, 2);
+	auto icon = Rc<IconSprite>::create(IconName::Content_clear);
+	icon->setAnchorPoint(Vec2(0.5f, 0.5f));
+	icon->setColor(Color::Black);
+	_icon = addChildNode(icon, 2);
 
-	_button = construct<ButtonLabel>(cb);
-	_button->setString("SystemRestore"_locale);
-	_button->setAnchorPoint(Vec2(1.0f, 0.0f));
-	_button->setVisible(false);
-	addChild(_button, 3);
+	auto button = Rc<ButtonLabel>::create(cb);
+	button->setString("SystemRestore"_locale);
+	button->setAnchorPoint(Vec2(1.0f, 0.0f));
+	button->setVisible(false);
+	_button = addChildNode(button, 3);
 
-	_label = construct<Label>(FontType::Body_1);
-	_label->setLocaleEnabled(true);
-	_label->setString("SystemRemoved"_locale);
-	_label->setAnchorPoint(Vec2(0.0f, 0.5f));
-	_label->setVisible(false);
-	addChild(_label, 4);
+	auto label = Rc<Label>::create(FontType::Body_1);
+	label->setLocaleEnabled(true);
+	label->setString("SystemRemoved"_locale);
+	label->setAnchorPoint(Vec2(0.0f, 0.5f));
+	label->setVisible(false);
+	_label = addChildNode(label, 4);
 
 	return true;
 }
@@ -119,7 +119,7 @@ void RecyclerHolder::updateProgress() {
 
 void RecyclerHolder::showEnabled() {
 	stopAllActionsByTag("HolderAction"_tag);
-	runAction(construct<ProgressAction>(0.25f, _progress, 1.0f, [this] (ProgressAction *, float p) {
+	runAction(Rc<ProgressAction>::create(0.25f, _progress, 1.0f, [this] (ProgressAction *, float p) {
 		_progress = p;
 		updateProgress();
 	}), "HolderAction"_tag);
@@ -127,7 +127,7 @@ void RecyclerHolder::showEnabled() {
 
 void RecyclerHolder::showDisabled() {
 	stopAllActionsByTag("HolderAction"_tag);
-	runAction(construct<ProgressAction>(0.25f, _progress, 0.0f, [this] (ProgressAction *, float p) {
+	runAction(Rc<ProgressAction>::create(0.25f, _progress, 0.0f, [this] (ProgressAction *, float p) {
 		_progress = p;
 		updateProgress();
 	}), "HolderAction"_tag);
@@ -157,15 +157,15 @@ bool RecyclerNode::init(RecyclerScroll *scroll, MaterialNode *node, Scroll::Item
 	_shadowClipper->setVisible(false);
 	_background->setVisible(false);
 
-	_layer = construct<Layer>(Color::Grey_500);
-	_layer->setAnchorPoint(Vec2(0.0f, 0.0f));
-	addChild(_layer, 0);
+	auto layer = Rc<Layer>::create(Color::Grey_500);
+	layer->setAnchorPoint(Vec2(0.0f, 0.0f));
+	_layer = addChildNode(layer, 0);
 
-	_holder = construct<RecyclerHolder>([this] {
+	auto holder = Rc<RecyclerHolder>::create([this] {
 		onRestore();
 	});
-	_holder->setAnchorPoint(Vec2(0.0f, 0.0f));
-	addChild(_holder, 1);
+	holder->setAnchorPoint(Vec2(0.0f, 0.0f));
+	_holder = addChildNode(holder, 1);
 
 	auto l = Rc<gesture::Listener>::create();
 	l->setSwipeCallback([this] (gesture::Event ev, const gesture::Swipe &s) -> bool {
@@ -373,7 +373,7 @@ void RecyclerNode::onRestore() {
 		_state = Enabled;
 		_contentSizeDirty = true;
 		_scroll->unscheduleCleanup();
-		_node->runAction(cocos2d::EaseQuadraticActionOut::create(construct<ProgressAction>(0.35f, _enabledProgress, 0.0f,
+		_node->runAction(cocos2d::EaseQuadraticActionOut::create(Rc<ProgressAction>::create(0.35f, _enabledProgress, 0.0f,
 				[this] (ProgressAction *, float p) {
 			_enabledProgress = p;
 			_contentSizeDirty = true;
@@ -438,7 +438,7 @@ void RecyclerScroll::removeRecyclerNode(Item *item, cocos2d::Node *node) {
 		}
 	}
 
-	runAction(construct<ProgressAction>(0.20f, 0.0f, 1.0f, [vec, this] (ProgressAction *, float p) {
+	runAction(Rc<ProgressAction>::create(0.20f, 0.0f, 1.0f, [vec, this] (ProgressAction *, float p) {
 		for (auto &it : vec) {
 			it.item->pos.y = progress(it.startPos, it.targetPos, p);
 			it.item->size.height = progress(it.startSize, it.targetSize, p);
@@ -512,7 +512,7 @@ void RecyclerScroll::performCleanup() {
 	}
 
 	if (!removedItems.empty()) {
-		runAction(construct<ProgressAction>(0.20f, 0.0f, 1.0f, [vec, this] (ProgressAction *, float p) {
+		runAction(Rc<ProgressAction>::create(0.20f, 0.0f, 1.0f, [vec, this] (ProgressAction *, float p) {
 			for (auto &it : vec) {
 				it.item->pos.y = progress(it.startPos, it.targetPos, p);
 				it.item->size.height = progress(it.startSize, it.targetSize, p);

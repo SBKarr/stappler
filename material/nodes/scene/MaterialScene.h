@@ -112,10 +112,10 @@ public:
 	virtual void popBackButtonCallback(stappler::Ref *);
 
 protected:
-	virtual ForegroundLayer *createForegroundLayer();
-	virtual NavigationLayer *createNavigationLayer();
-	virtual ContentLayer *createContentLayer();
-	virtual BackgroundLayer *createBackgroundLayer();
+	virtual Rc<ForegroundLayer> createForegroundLayer();
+	virtual Rc<NavigationLayer> createNavigationLayer();
+	virtual Rc<ContentLayer> createContentLayer();
+	virtual Rc<BackgroundLayer> createBackgroundLayer();
 
 	virtual void layoutSubviews();
 	virtual void layoutLayer(cocos2d::Node *);

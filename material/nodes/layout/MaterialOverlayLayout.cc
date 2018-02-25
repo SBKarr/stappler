@@ -116,7 +116,11 @@ void OverlayLayout::resize(const Size &size, bool animated) {
 		_boundSize = newSize;
 		if (animated) {
 			_node->stopAllActionsByTag("OverlayLayout.Resize"_tag);
-			_node->runAction(action::sequence(Rc<material::ResizeTo>::create(0.35f, newSize), std::bind(&OverlayLayout::onResized, this)), "OverlayLayout.Resize"_tag);
+			_node->runAction(
+				action::sequence(
+					Rc<material::ResizeTo>::create(0.35f, newSize),
+					std::bind(&OverlayLayout::onResized, this)
+			), "OverlayLayout.Resize"_tag);
 		} else {
 			_node->setContentSize(newSize);
 			onResized();
@@ -160,21 +164,23 @@ void OverlayLayout::onPop(ContentLayer *l, bool replace) {
 
 Rc<OverlayLayout::Transition> OverlayLayout::getDefaultEnterTransition() const {
 	if (_animationPending && _node) {
+		const float duration = 0.25f;
 		auto newSize = getActualSize(_boundSize);
 		return action::sequence(
 				0.25f,
 				[this] {
+			_node->setAnchorPoint(Anchor::Middle);
 			_node->setPosition(_animationOrigin);
 			_node->setContentSize(Size());
 				},
 				action::spawn(
 						cocos2d::TargetedAction::create(_node, action::spawn(
-								cocos2d::MoveTo::create(0.25f, Vec2(_contentSize.width / 2, (_contentSize.height + _keyboardSize.height) / 2)),
-								Rc<ResizeTo>::create(0.25f, newSize))),
+								cocos2d::MoveTo::create(duration, Vec2(_contentSize.width / 2, (_contentSize.height + _keyboardSize.height) / 2)),
+								Rc<ResizeTo>::create(duration, newSize))),
 						Rc<FadeIn>::create(0.25f)
 				), _animationCallback);
 	}
-	return Rc<FadeIn>::create(2.25f);
+	return Rc<FadeIn>::create(0.25f);
 }
 Rc<OverlayLayout::Transition> OverlayLayout::getDefaultExitTransition() const {
 	return Rc<FadeOut>::create(0.25f);

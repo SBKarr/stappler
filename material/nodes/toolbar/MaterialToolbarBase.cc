@@ -62,27 +62,31 @@ bool ToolbarBase::init() {
 
 	auto color = Color::Grey_500;
 
-	_navButton = construct<ButtonIcon>(IconName::Empty, std::bind(&ToolbarBase::onNavTapped, this));
-	_navButton->setStyle(color.text() == Color::White?Button::FlatWhite:Button::FlatBlack);
-	_navButton->setIconColor(color.text());
-	addChild(_navButton, 1);
+	auto navButton = Rc<ButtonIcon>::create(IconName::Empty, std::bind(&ToolbarBase::onNavTapped, this));
+	navButton->setStyle( color.text() == Color::White ? Button::FlatWhite : Button::FlatBlack );
+	navButton->setIconColor(color.text());
+	_content->addChild(navButton, 1);
+	_navButton = navButton;
 
-	_scissorNode = construct<StrictNode>();
-	_scissorNode->setPosition(0, 0);
-	_scissorNode->setAnchorPoint(Vec2(0, 0));
-	addChild(_scissorNode, 1);
+	auto scissorNode = Rc<StrictNode>::create();
+	scissorNode->setPosition(0, 0);
+	scissorNode->setAnchorPoint(Vec2(0, 0));
+	_content->addChild(scissorNode, 1);
+	_scissorNode = scissorNode;
 
-	_iconsComposer = construct<cocos2d::Node>();
-	_iconsComposer->setPosition(0, 0);
-	_iconsComposer->setAnchorPoint(Vec2(0, 0));
-	_iconsComposer->setCascadeOpacityEnabled(true);
-	_scissorNode->addChild(_iconsComposer, 1);
+	auto iconsComposer = Rc<cocos2d::Node>::create();
+	iconsComposer->setPosition(0, 0);
+	iconsComposer->setAnchorPoint(Vec2(0, 0));
+	iconsComposer->setCascadeOpacityEnabled(true);
+	_scissorNode->addChild(iconsComposer, 1);
+	_iconsComposer = iconsComposer;
 
 	return true;
 }
 
 void ToolbarBase::onContentSizeDirty() {
 	MaterialNode::onContentSizeDirty();
+	_scissorNode->setContentSize(_content->getContentSize());
 	layoutSubviews();
 }
 
@@ -132,11 +136,12 @@ void ToolbarBase::replaceActionMenuSource(MenuSource *source, size_t maxIcons) {
 
 	_prevComposer = _iconsComposer;
 	float pos = -_prevComposer->getContentSize().height;
-	_iconsComposer = construct<cocos2d::Node>();
-	_iconsComposer->setPosition(0, pos);
-	_iconsComposer->setAnchorPoint(Vec2(0, 0));
-	_iconsComposer->setCascadeOpacityEnabled(true);
-	_scissorNode->addChild(_iconsComposer, 1);
+	auto iconsComposer = Rc<cocos2d::Node>::create();
+	iconsComposer->setPosition(0, pos);
+	iconsComposer->setAnchorPoint(Vec2(0, 0));
+	iconsComposer->setCascadeOpacityEnabled(true);
+	_scissorNode->addChild(iconsComposer, 1);
+	_iconsComposer = iconsComposer;
 
 	float iconWidth = updateMenu(_iconsComposer, _actionMenuSource, _maxActionIcons);
 	if (iconWidth > _iconWidth) {
@@ -265,7 +270,7 @@ void ToolbarBase::updateProgress() {
 
 float ToolbarBase::updateMenu(cocos2d::Node *composer, MenuSource *source, size_t maxIcons) {
 	composer->removeAllChildren();
-	composer->setContentSize(_contentSize);
+	composer->setContentSize(_content->getContentSize());
 
 	float baseline = getBaseLine();
 	size_t iconsCount = 0;
@@ -281,7 +286,7 @@ float ToolbarBase::updateMenu(cocos2d::Node *composer, MenuSource *source, size_
 				if (iconsCount < maxIcons) {
 					auto btn = Rc<ButtonIcon>::create();
 					btn->setMenuSourceButton(btnSrc);
-					composer->addChild(btn);
+					composer->addChild(btn, 0, iconsCount);
 					icons.push_back(btn);
 					iconsCount ++;
 				} else {
@@ -295,7 +300,7 @@ float ToolbarBase::updateMenu(cocos2d::Node *composer, MenuSource *source, size_
 		auto btn = Rc<ButtonIcon>::create(IconName::Navigation_more_vert);
 		btn->setMenuSource(extMenuSource);
 		icons.push_back(btn);
-		composer->addChild(btn);
+		composer->addChild(btn, 0, iconsCount);
 		hasExtMenu = true;
 	} else {
 		hasExtMenu = false;
@@ -310,6 +315,7 @@ float ToolbarBase::updateMenu(cocos2d::Node *composer, MenuSource *source, size_
 			it->setContentSize(Size(48, std::min(48.0f, _basicHeight)));
 			it->setAnchorPoint(Vec2(0.5, 0.5));
 			it->setPosition(Vec2(pos, baseline));
+			it->setIconColor(_textColor);
 			pos += 56;
 		}
 		if (hasExtMenu) {
@@ -325,10 +331,9 @@ float ToolbarBase::updateMenu(cocos2d::Node *composer, MenuSource *source, size_
 }
 
 void ToolbarBase::layoutSubviews() {
-	_scissorNode->setContentSize(_contentSize);
-
 	updateProgress();
 
+	_iconsComposer->setContentSize(_scissorNode->getContentSize());
 	auto iconWidth = updateMenu(_iconsComposer, _actionMenuSource, _maxActionIcons);
 	if (_replaceProgress != 1.0f && _iconWidth != 0.0f) {
 		_iconWidth = std::max(iconWidth, _iconWidth);
@@ -339,8 +344,6 @@ void ToolbarBase::layoutSubviews() {
 	auto op = _minified ? 128 : 222;
 
 	float baseline = getBaseLine();
-
-	_iconsComposer->setContentSize(_contentSize);
 	if (_navButton->getIconName() != IconName::Empty && _navButton->getIconName() != IconName::None) {
 		_navButton->setContentSize(Size(48, std::min(48.0f, _basicHeight)));
 		_navButton->setAnchorPoint(Vec2(0.5, 0.5));

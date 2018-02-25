@@ -50,27 +50,27 @@ bool InputField::init(FontType font) {
 	_node = node;
 	_label = node->getLabel();
 
-	_placeholder = construct<Label>(font);
-	_placeholder->setPosition(Vec2(0.0f, 0.0f));
-	_placeholder->setColor(Color::Grey_500);
-	_placeholder->setLocaleEnabled(true);
-	_placeholder->setStandalone(true);
-	addChild(_placeholder, 1);
+	auto placeholder = Rc<Label>::create(font);
+	placeholder->setPosition(Vec2(0.0f, 0.0f));
+	placeholder->setColor(Color::Grey_500);
+	placeholder->setLocaleEnabled(true);
+	placeholder->setStandalone(true);
+	_placeholder = addChildNode(placeholder, 1);
 
 	_menu = Rc<InputMenu>::create(std::bind(&InputField::onMenuCut, this), std::bind(&InputField::onMenuCopy, this),
 			std::bind(&InputField::onMenuPaste, this));
 	_menu->setAnchorPoint(Anchor::MiddleBottom);
 	_menu->setVisible(false);
 
-	_gestureListener = construct<gesture::Listener>();
-	_gestureListener->setTouchFilter([this] (const Vec2 &vec, const gesture::Listener::DefaultTouchFilter &def) {
+	auto gestureListener = Rc<gesture::Listener>::create();
+	gestureListener->setTouchFilter([this] (const Vec2 &vec, const gesture::Listener::DefaultTouchFilter &def) {
 		if (!_label->isActive()) {
 			return def(vec);
 		} else {
 			return true;
 		}
 	});
-	_gestureListener->setPressCallback([this] (gesture::Event ev, const gesture::Press &g) {
+	gestureListener->setPressCallback([this] (gesture::Event ev, const gesture::Press &g) {
 		if (ev == gesture::Event::Began) {
 			return onPressBegin(g.location());
 		} else if (ev == gesture::Event::Activated) {
@@ -81,7 +81,7 @@ bool InputField::init(FontType font) {
 			return onPressCancel(g.location());
 		}
 	}, TimeInterval::milliseconds(425), true);
-	_gestureListener->setSwipeCallback([this] (gesture::Event ev, const gesture::Swipe &s) {
+	gestureListener->setSwipeCallback([this] (gesture::Event ev, const gesture::Swipe &s) {
 		if (ev == gesture::Event::Began) {
 			if (onSwipeBegin(s.location(), s.delta)) {
 				auto ret = onSwipe(s.location(), s.delta / screen::density());
@@ -100,7 +100,7 @@ bool InputField::init(FontType font) {
 			return ret;
 		}
 	});
-	addComponent(_gestureListener);
+	_gestureListener = addComponentItem(gestureListener);
 
 	return true;
 }

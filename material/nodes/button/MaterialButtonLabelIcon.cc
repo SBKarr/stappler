@@ -33,11 +33,11 @@ bool ButtonLabelIcon::init(const TapCallback &tapCallback, const TapCallback &lo
 		return false;
 	}
 
-	_label = construct<Label>(FontType::Button);
-	_label->setAnchorPoint(Vec2(0, 0.5));
-	_label->setMaxLines(1);
-	_label->setHyphens(Label::Hyphens::None);
-	addChild(_label);
+	auto label = Rc<Label>::create(FontType::Button);
+	label->setAnchorPoint(Vec2(0, 0.5));
+	label->setMaxLines(1);
+	label->setHyphens(Label::Hyphens::None);
+	_label = addChildNode(label);
 
 	_icon->setOpacity(_label->getOpacity());
 	setContentSize(Size(0.0f, _label->getFontHeight() / _label->getDensity() + 12.0f));

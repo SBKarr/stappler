@@ -110,7 +110,7 @@ bool Overscroll::init() {
 		return false;
 	}
 
-	auto l = construct<EventListener>();
+	auto l = Rc<EventListener>::create();
 	l->onEvent(Device::onAndroidReset, [this] (const Event &) {
 		updateTexture(_width, _height);
 	});

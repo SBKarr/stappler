@@ -42,8 +42,8 @@ public:
     virtual void setShadowZIndexAnimated(float value, float duration);
     virtual float getShadowZIndex() { return _shadowIndex; }
 
-    virtual void setPadding(const stappler::Padding &);
-    virtual const stappler::Padding &getPadding() const;
+    virtual void setPadding(const Padding &);
+    virtual const Padding &getPadding() const;
 
     virtual void setBorderRadius(uint32_t value);
     virtual uint32_t getBorderRadius() const;
@@ -61,10 +61,15 @@ public:
     virtual void setUserData(data::Value &&);
     virtual const data::Value &getUserData() const;
 
+    virtual void setClipContent(bool);
+    virtual bool isClipContent() const;
+
 public:
     Size getContentSizeWithPadding() const;
     Vec2 getAnchorPositionWithPadding() const;
     Rect getContentRect() const;
+
+    cocos2d::Node *getContentNode() const;
 
     Size getContentSizeForAmbientShadow(float index) const;
     Vec2 getPositionForAmbientShadow(float index) const;
@@ -72,9 +77,9 @@ public:
     Size getContentSizeForKeyShadow(float index) const;
     Vec2 getPositionForKeyShadow(float index) const;
 
-    stappler::ShadowSprite *getAmbientShadow() const { return _ambientShadow; }
-    stappler::ShadowSprite *getKeyShadow() const { return _keyShadow; }
-    stappler::RoundedSprite *getBackground() const { return _background; }
+    ShadowSprite *getAmbientShadow() const { return _ambientShadow; }
+    ShadowSprite *getKeyShadow() const { return _keyShadow; }
+    RoundedSprite *getBackground() const { return _background; }
 
 public:
 	virtual void setAutoLightLevel(bool);
@@ -90,26 +95,27 @@ public:
 	virtual const Color &getWashedColor() const;
 
 protected:
-    virtual uint8_t getOpacityForAmbientShadow(float value) const;
-    virtual uint8_t getOpacityForKeyShadow(float value) const;
+	virtual uint8_t getOpacityForAmbientShadow(float value) const;
+	virtual uint8_t getOpacityForKeyShadow(float value) const;
 
-    virtual void layoutShadows();
+	virtual void layoutShadows();
 
 	virtual void updateColor() override;
-    virtual void onDataRecieved(data::Value &);
+	virtual void onDataRecieved(data::Value &);
 
 	virtual void onLightLevel();
 
-    bool _positionsDirty = true;
+	bool _positionsDirty = true;
 
-    float _shadowIndex = 0.0f;
-    uint32_t _borderRadius = 0;
+	float _shadowIndex = 0.0f;
+	uint32_t _borderRadius = 0;
 
-    ClippingNode *_shadowClipper = nullptr;
-    RoundedSprite *_backgroundClipper = nullptr;
+	ClippingNode *_shadowClipper = nullptr;
+	cocos2d::Node *_content = nullptr;
+	RoundedSprite *_backgroundClipper = nullptr;
+	RoundedSprite *_background = nullptr;
 	ShadowSprite *_ambientShadow = nullptr;
 	ShadowSprite *_keyShadow = nullptr;
-	RoundedSprite *_background = nullptr;
 
 	Padding _padding;
 

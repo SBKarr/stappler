@@ -48,27 +48,27 @@ bool MenuButton::init() {
 	setSpawnDelay(0.1f);
 	setSwallowTouches(false);
 
-	_menuNameLabel = construct<Label>(FontType::Subhead);
-	_menuNameLabel->setVisible(false);
-	_menuNameLabel->setAnchorPoint(Vec2(0, 0.5f));
-	_menuNameLabel->setLocaleEnabled(true);
-	addChild(_menuNameLabel);
+	auto menuNameLabel = Rc<Label>::create(FontType::Subhead);
+	menuNameLabel->setVisible(false);
+	menuNameLabel->setAnchorPoint(Vec2(0, 0.5f));
+	menuNameLabel->setLocaleEnabled(true);
+	_menuNameLabel = addChildNode(menuNameLabel);
 
-	_menuValueLabel = construct<Label>(FontType::Subhead);
-	_menuValueLabel->setVisible(false);
-	_menuValueLabel->setAnchorPoint(Vec2(1.0f, 0.5f));
-	_menuValueLabel->setLocaleEnabled(true);
-	addChild(_menuValueLabel);
+	auto menuValueLabel = Rc<Label>::create(FontType::Subhead);
+	menuValueLabel->setVisible(false);
+	menuValueLabel->setAnchorPoint(Vec2(1.0f, 0.5f));
+	menuValueLabel->setLocaleEnabled(true);
+	_menuValueLabel = addChildNode(menuValueLabel);
 
-	_menuNameIcon = construct<IconSprite>();
-	_menuNameIcon->setVisible(false);
-	_menuNameIcon->setAnchorPoint(Vec2(0, 0.5));
-	addChild(_menuNameIcon);
+	auto menuNameIcon = Rc<IconSprite>::create();
+	menuNameIcon->setVisible(false);
+	menuNameIcon->setAnchorPoint(Vec2(0, 0.5));
+	_menuNameIcon = addChildNode(menuNameIcon);
 
-	_menuValueIcon = construct<IconSprite>();
-	_menuValueIcon->setVisible(false);
-	_menuValueIcon->setAnchorPoint(Vec2(1, 0.5));
-	addChild(_menuValueIcon);
+	auto menuValueIcon = Rc<IconSprite>::create();
+	menuValueIcon->setVisible(false);
+	menuValueIcon->setAnchorPoint(Vec2(1, 0.5));
+	_menuValueIcon = addChildNode(menuValueIcon);
 
 	onLightLevel();
 

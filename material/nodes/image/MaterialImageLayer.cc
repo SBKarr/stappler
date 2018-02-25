@@ -104,7 +104,7 @@ bool ImageLayer::init() {
 	}
 
 	setOpacity(255);
-	auto l = construct<gesture::Listener>();
+	auto l = Rc<gesture::Listener>::create();
 	l->setTouchFilter([] (const Vec2 &loc, const stappler::gesture::Listener::DefaultTouchFilter &f) {
 		return f(loc);
 	});
@@ -142,16 +142,16 @@ bool ImageLayer::init() {
 		}
 		return true;
 	});
-	addComponent(l);
-	_gestureListener = l;
-
-	_image = construct<DynamicSprite>();
-	_image->setAnchorPoint(Vec2(0, 0));
+	_gestureListener = addComponentItem(l);
 
 	_root = Node::create();
 	_root->setCascadeOpacityEnabled(true);
 	_root->setAnchorPoint(Vec2(0.0f, 0.0f));
-	_root->addChild(_image, 1);
+
+	auto image = Rc<DynamicSprite>::create();
+	image->setAnchorPoint(Vec2(0, 0));
+	_image = _root->addChildNode(image, 1);
+
 	_root->setScale(1.0f);
 	addChild(_root, 1);
 

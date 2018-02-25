@@ -45,7 +45,7 @@ bool FloatingActionButton::init(const TapCallback &tapCallback, const TapCallbac
 		return false;
 	}
 
-	auto l = construct<gesture::Listener>();
+	auto l = Rc<gesture::Listener>::create();
 	l->setPressCallback([this] (stappler::gesture::Event ev, const stappler::gesture::Press &g) -> bool {
 		if (ev == stappler::gesture::Event::Began) {
 			return onPressBegin(g.location());
@@ -66,22 +66,22 @@ bool FloatingActionButton::init(const TapCallback &tapCallback, const TapCallbac
 	_tapCallback = tapCallback;
 	_longTapCallback = longTapCallback;
 
-	_drawNode = construct<draw::PathNode>(48, 48, stappler::draw::Format::RGBA8888);
-	_drawNode->setAnchorPoint(Vec2(0.5f, 0.5f));
-	_drawNode->setPosition(Vec2(0.0f, 0.0f));
-	_drawNode->setColor(Color::White);
-	_drawNode->setAntialiased(true);
-	addChild(_drawNode, 31);
+	auto drawNode = Rc<draw::PathNode>::create(48, 48, stappler::draw::Format::RGBA8888);
+	drawNode->setAnchorPoint(Vec2(0.5f, 0.5f));
+	drawNode->setPosition(Vec2(0.0f, 0.0f));
+	drawNode->setColor(Color::White);
+	drawNode->setAntialiased(true);
+	_drawNode = addChildNode(drawNode, 31);
 
-	_icon = construct<IconSprite>();
-	_icon->setAnchorPoint(Vec2(0.5f, 0.5f));
-	_icon->setNormalized(false);
-	addChild(_icon, 1);
+	auto icon = Rc<IconSprite>::create();
+	icon->setAnchorPoint(Vec2(0.5f, 0.5f));
+	icon->setNormalized(false);
+	_icon = addChildNode(icon, 1);
 
-	_label = construct<Label>(FontType::Caption);
-	_label->setAnchorPoint(Vec2(0.5f, 0.5f));
-	_label->setOpacity(222);
-	addChild(_label, 2);
+	auto label = Rc<Label>::create(FontType::Caption);
+	label->setAnchorPoint(Vec2(0.5f, 0.5f));
+	label->setOpacity(222);
+	_label = addChildNode(label, 2);
 
 	setContentSize(Size(48.0f, 48.0));
 	setShadowZIndex(2.0f);
@@ -219,6 +219,11 @@ void FloatingActionButton::clearAnimations() {
 	}
 }
 
+void FloatingActionButton::animateIcon(float value, float duration) {
+	if (_icon) {
+		_icon->animate(value, duration);
+	}
+}
 
 uint8_t FloatingActionButton::getOpacityForAmbientShadow(float value) const {
 	return 72;
@@ -270,7 +275,7 @@ void FloatingActionButton::animateSelection() {
 
 	_tapAnimationPath.clear();
 	stopActionByTag(123);
-	auto a = construct<ProgressAction>(0.15, [this] (ProgressAction *a, float time) {
+	auto a = Rc<ProgressAction>::create(0.15, [this] (ProgressAction *a, float time) {
 		if (_tapAnimationPath.valid()) {
 			_tapAnimationPath.clear().setFillOpacity(64).addCircle(24.0f, 24.0f, 6.0f + (18.0f * time));
 		}
@@ -281,7 +286,7 @@ void FloatingActionButton::animateSelection() {
 
 void FloatingActionButton::animateDeselection() {
 	stopActionByTag(123);
-	auto a = construct<ProgressAction>(0.25, [this] (ProgressAction *a, float time) {
+	auto a = Rc<ProgressAction>::create(0.25, [this] (ProgressAction *a, float time) {
 		if (_tapAnimationPath) {
 			_tapAnimationPath.setFillOpacity(64 * (1.0f - time));
 		}

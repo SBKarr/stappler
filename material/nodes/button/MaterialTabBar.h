@@ -80,7 +80,7 @@ protected:
 	virtual void onScrollPosition();
 
 	virtual float getItemSize(const String &, bool extended = false) const;
-	virtual cocos2d::Node *onItem(MenuSourceButton *, bool wrapped);
+	virtual Rc<cocos2d::Node> onItem(MenuSourceButton *, bool wrapped);
 	virtual void onTabButton(Button *, MenuSourceButton *);
 
 

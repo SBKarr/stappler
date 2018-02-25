@@ -88,6 +88,7 @@ void BatchNodeBase::updateBlendFunc(cocos2d::Texture2D *tex) {
         _blendFunc = cocos2d::BlendFunc::ALPHA_NON_PREMULTIPLIED;
 		setOpacityModifyRGB(false);
 	}
+	_programDirty = false;
 }
 
 cocos2d::GLProgramState *BatchNodeBase::acquireProgramState(cocos2d::Texture2D *tex) const {
@@ -97,6 +98,12 @@ cocos2d::GLProgramState *BatchNodeBase::acquireProgramState(cocos2d::Texture2D *
 	}
 	if (_isHighPrecision) {
 		attrs |=  GLProgramDesc::Attr::HighP;
+	}
+
+	switch (_alphaTest.state) {
+	case AlphaTest::Disabled: break;
+	case AlphaTest::LessThen: attrs |=  GLProgramDesc::Attr::AlphaTestLT; break;
+	case AlphaTest::GreatherThen: attrs |=  GLProgramDesc::Attr::AlphaTestGT; break;
 	}
 
 	auto desc = tex ? GLProgramDesc(attrs, tex->getPixelFormat(), tex->getReferenceFormat()) : GLProgramDesc(attrs);
@@ -135,6 +142,34 @@ void BatchNodeBase::setDensity(float density) {
 
 float BatchNodeBase::getDensity() const {
 	return _density;
+}
+
+void BatchNodeBase::setAlphaTest(AlphaTest::State s, uint8_t value) {
+	AlphaTest newTest;
+	newTest.state = s;
+	if (newTest.state != AlphaTest::Disabled) {
+		newTest.value = value;
+	} else {
+		newTest.value = 0;
+	}
+
+	if (newTest.state != _alphaTest.state) {
+		_programDirty = true;
+	}
+	_alphaTest = newTest;
+}
+const AlphaTest &BatchNodeBase::getAlphaTest() const {
+	return _alphaTest;
+}
+
+void BatchNodeBase::setHighPrecision(bool value) {
+	if (_isHighPrecision != value) {
+		_isHighPrecision = value;
+		_programDirty = true;
+	}
+}
+bool BatchNodeBase::isHighPrecision() const {
+	return _isHighPrecision;
 }
 
 NS_SP_END

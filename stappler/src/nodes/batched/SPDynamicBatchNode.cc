@@ -91,8 +91,12 @@ void DynamicBatchNode::setTexture(cocos2d::Texture2D *texture) {
 }
 
 void DynamicBatchNode::draw(cocos2d::Renderer *renderer, const Mat4 &transform, uint32_t flags, const ZPath &zPath) {
+	if (_programDirty) {
+	    updateBlendFunc(_texture);
+	}
+
 	if (!_textureAtlas) {
-		if (auto atlas = construct<DynamicAtlas>(getTexture())) {
+		if (auto atlas = Rc<DynamicAtlas>::create(getTexture())) {
 			_textureAtlas = atlas;
 			_textureAtlas->addQuadArray(_quads);
 		}
@@ -109,9 +113,9 @@ void DynamicBatchNode::draw(cocos2d::Renderer *renderer, const Mat4 &transform, 
 		newMV.m[12] = floorf(transform.m[12]);
 		newMV.m[13] = floorf(transform.m[13]);
 		newMV.m[14] = floorf(transform.m[14]);
-		_batchCommand.init(_globalZOrder, getGLProgram(), _blendFunc, _textureAtlas, newMV, zPath, _normalized, asStencil);
+		_batchCommand.init(_globalZOrder, getGLProgram(), _blendFunc, _textureAtlas, newMV, zPath, _normalized, asStencil, _alphaTest);
 	} else {
-		_batchCommand.init(_globalZOrder, getGLProgram(), _blendFunc, _textureAtlas, transform, zPath, _normalized, asStencil);
+		_batchCommand.init(_globalZOrder, getGLProgram(), _blendFunc, _textureAtlas, transform, zPath, _normalized, asStencil, _alphaTest);
 	}
 
 	renderer->addCommand(&_batchCommand);

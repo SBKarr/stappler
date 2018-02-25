@@ -35,13 +35,13 @@ bool ButtonLabelSelector::init(const TapCallback &tapCallback, const TapCallback
 
 	_icon->setVisible(false);
 
-	_label = construct<Label>(FontType::Title);
-	_label->setAnchorPoint(Vec2(0, 0.5));
-	_label->setLocaleEnabled(true);
-	_label->setMaxLines(1);
-	_label->setAdjustValue(6);
-	_label->setHyphens(Label::Hyphens::None);
-	addChild(_label);
+	auto label = Rc<Label>::create(FontType::Title);
+	label->setAnchorPoint(Vec2(0, 0.5));
+	label->setLocaleEnabled(true);
+	label->setMaxLines(1);
+	label->setAdjustValue(6);
+	label->setHyphens(Label::Hyphens::None);
+	_label = addChildNode(label);
 
 	return true;
 }

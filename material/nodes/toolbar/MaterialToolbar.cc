@@ -42,10 +42,10 @@ bool Toolbar::init() {
 		return false;
 	}
 
-	_title = construct<ButtonLabelSelector>();
-	_title->setLabelColor(Color::Grey_500.text());
-	_title->setString("Title");
-	addChild(_title);
+	auto title = Rc<ButtonLabelSelector>::create();
+	title->setLabelColor(Color::Grey_500.text());
+	title->setString("Title");
+	_title = addChildNode(title);
 
 	return true;
 }

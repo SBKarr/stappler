@@ -35,9 +35,9 @@ bool TabToolbar::init() {
 	_toolbarMinLandscape = 48.0f;
 	_toolbarMinPortrait = 48.0f;
 
-	_tabs = construct<TabBar>(nullptr);
-	_tabs->setAnchorPoint(Vec2(0.0f, 0.0f));
-	addChild(_tabs, 5);
+	auto tabs = Rc<TabBar>::create(nullptr);
+	tabs->setAnchorPoint(Vec2(0.0f, 0.0f));
+	_tabs = addChildNode(tabs, 5);
 
 	return true;
 }

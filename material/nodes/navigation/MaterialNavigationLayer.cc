@@ -68,27 +68,28 @@ bool NavigationLayer::init() {
 		return false;
 	}
 
-	auto el = construct<EventListener>();
+	auto el = Rc<EventListener>::create();
 	el->onEvent(ResourceManager::onLightLevel, std::bind(&NavigationLayer::onLightLevel, this));
 	addComponent(el);
 
-	_navigation = construct<Menu>();
-	_navigation->setAnchorPoint(Vec2(0, 0));
-	_navigation->setShadowZIndex(2.0f);
-	_navigation->setMetrics(MenuMetrics::Navigation);
-	_navigation->setMenuButtonCallback([this] (MenuButton *b) {
+	auto navigation = Rc<Menu>::create();
+	navigation->setAnchorPoint(Vec2(0, 0));
+	navigation->setShadowZIndex(2.0f);
+	navigation->setMetrics(MenuMetrics::Navigation);
+	navigation->setMenuButtonCallback([this] (MenuButton *b) {
 		if (!b->getMenuSourceButton()->getNextMenu()) {
 			hide();
 		}
 	});
-	_navigation->setEnabled(false);
+	navigation->setEnabled(false);
 
-	_statusBarLayer = construct<stappler::Layer>();
-	_statusBarLayer->setColor(Color::Grey_500);
-	_statusBarLayer->setAnchorPoint(Vec2(0.0f, 1.0f));
-	_navigation->addChild(_statusBarLayer, 100);
+	auto statusBarLayer = Rc<Layer>::create();
+	statusBarLayer->setColor(Color::Grey_500);
+	statusBarLayer->setAnchorPoint(Vec2(0.0f, 1.0f));
+	_statusBarLayer = navigation->addChildNode(statusBarLayer, 100);
 
-	setNode(_navigation, 1);
+	setNode(navigation, 1);
+	_navigation = navigation;
 
 	setBackgroundColor(Color::Grey_500);
 	setBackgroundPassiveOpacity(0);

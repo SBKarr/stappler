@@ -65,18 +65,18 @@ Scene *Scene::getRunningScene() {
 
 void Scene::run(Scene *scene) {
 	if (!scene) {
-		scene = construct<Scene>();
+		cocos2d::Director::getInstance()->runWithScene(Rc<Scene>::create());
+	} else {
+		cocos2d::Director::getInstance()->runWithScene(scene);
 	}
-
-	cocos2d::Director::getInstance()->runWithScene(scene);
 }
 
 bool Scene::init() {
 	if (!DynamicBatchScene::init()) {
 		return false;
 	}
-	//cocos2d::Director::getInstance()->setAnimationInterval(0.2f);
-	auto l = construct<EventListener>();
+
+	auto l = Rc<EventListener>::create();
 	l->onEvent(stappler::Screen::onOrientation, [this] (const Event &) {
 		layoutSubviews();
 	});
@@ -93,23 +93,19 @@ bool Scene::init() {
 	addComponent(l);
 
 	if (!_background) {
-		_background = createBackgroundLayer();
-		addChild(_background, -1);
+		_background = addChildNode(createBackgroundLayer(), -1);
 	}
 
 	if (!_content) {
-		_content = createContentLayer();
-		addChild(_content, 1);
+		_content = addChildNode(createContentLayer(), 1);
 	}
 
 	if (!_navigation) {
-		_navigation = createNavigationLayer();
-		addChild(_navigation, 3);
+		_navigation = addChildNode(createNavigationLayer(), 3);
 	}
 
 	if (!_foreground) {
-		_foreground = createForegroundLayer();
-		addChild(_foreground, 4);
+		_foreground = addChildNode(createForegroundLayer(), 4);
 	}
 
 	_captureCanvas = Rc<draw::Canvas>::create(draw::StencilDepthFormat::Stencil8);
@@ -146,15 +142,15 @@ void Scene::setVisualizeTouches(bool value) {
 			_touchesNode->setAnchorPoint(cocos2d::Vec2(0, 0));
 			_touchesNode->setContentSize(_contentSize);
 
-			auto touches = construct<gesture::Listener>();
+			auto touches = Rc<gesture::Listener>::create();
 			touches->setTouchFilter([] (const cocos2d::Vec2 &loc, const stappler::gesture::Listener::DefaultTouchFilter &) {
 				return true;
 			});
 			touches->setTouchCallback([this] (stappler::gesture::Event ev, const stappler::gesture::Touch &t) -> bool {
 				if (_visualizeTouches) {
-					if (ev == stappler::gesture::Event::Began) {
-						auto d = stappler::screen::density();
-						auto node = construct<draw::PathNode>(24 * d, 24 * d);
+					if (ev == gesture::Event::Began) {
+						auto d = screen::density();
+						auto node = Rc<draw::PathNode>::create(24 * d, 24 * d);
 						node->setAnchorPoint(Vec2(0.5, 0.5));
 						node->setPosition(t.location());
 						node->setContentSize(Size(24 * d, 24 * d));
@@ -167,7 +163,7 @@ void Scene::setVisualizeTouches(bool value) {
 								.addOval(Rect(0, 0, 24 * d, 24 * d))
 								.setFillOpacity(127);
 						node->addPath(std::move(p));
-					} else if (ev == stappler::gesture::Event::Activated) {
+					} else if (ev == gesture::Event::Activated) {
 						auto it = _touchesNodes.find(t.id);
 						if (it != _touchesNodes.end()) {
 							it->second->setPosition(t.location());
@@ -232,17 +228,17 @@ BackgroundLayer *Scene::getBackgroundLayer() const {
 	return _background;
 }
 
-ForegroundLayer *Scene::createForegroundLayer() {
-	return construct<ForegroundLayer>();
+Rc<ForegroundLayer> Scene::createForegroundLayer() {
+	return Rc<ForegroundLayer>::create();
 }
-NavigationLayer *Scene::createNavigationLayer() {
-	return construct<NavigationLayer>();
+Rc<NavigationLayer> Scene::createNavigationLayer() {
+	return Rc<NavigationLayer>::create();
 }
-ContentLayer *Scene::createContentLayer() {
-	return construct<ContentLayer>();
+Rc<ContentLayer> Scene::createContentLayer() {
+	return Rc<ContentLayer>::create();
 }
-BackgroundLayer *Scene::createBackgroundLayer() {
-	return construct<BackgroundLayer>();
+Rc<BackgroundLayer> Scene::createBackgroundLayer() {
+	return Rc<BackgroundLayer>::create();
 }
 
 void Scene::layoutSubviews() {
@@ -315,19 +311,19 @@ void Scene::updateStatsLabel() {
 		}
 
 		if (!_stats) {
-			_stats = construct<Label>(FontType::Caption);
-			_stats->setAnchorPoint(Vec2(0, 0));
-			_stats->setScale(stappler::screen::density());
-			addChild(_stats, INT_MAX - 1);
+			auto stats = Rc<Label>::create(FontType::Caption);
+			stats->setAnchorPoint(Vec2(0, 0));
+			stats->setScale(stappler::screen::density());
+			_stats = addChildNode(stats, INT_MAX - 1);
 		}
 
 		if (!_statsColor) {
 			auto d = stappler::screen::density();
-			_statsColor = construct<Layer>();
-			_statsColor->setContentSize(Size(42 * d, 58 * d));
-			_statsColor->setOpacity(168);
-			_statsColor->setColor(Color::White);
-			addChild(_statsColor, INT_MAX - 2);
+			auto statsColor = Rc<Layer>::create();
+			statsColor->setContentSize(Size(42 * d, 58 * d));
+			statsColor->setOpacity(168);
+			statsColor->setColor(Color::White);
+			_statsColor = addChildNode(statsColor, INT_MAX - 2);
 		}
 	}
 	if (!_displayStats || !_running) {

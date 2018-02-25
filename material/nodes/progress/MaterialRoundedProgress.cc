@@ -39,19 +39,19 @@ bool RoundedProgress::init(Layout l) {
 	_layout = l;
 	setCascadeOpacityEnabled(true);
 
-	_line = construct<RoundedSprite>(0);
-	_line->setPosition(cocos2d::Vec2(0, 0));
-	_line->setAnchorPoint(cocos2d::Vec2(0, 0));
-	_line->setColor(Color::Grey_500);
-	_line->setOpacity(255);
-	addChild(_line, 1);
+	auto line = Rc<RoundedSprite>::create(0);
+	line->setPosition(Vec2(0, 0));
+	line->setAnchorPoint(Vec2(0, 0));
+	line->setColor(Color::Grey_500);
+	line->setOpacity(255);
+	_line = addChildNode(line, 1);
 
-	_bar = construct<RoundedSprite>(0);
-	_bar->setPosition(cocos2d::Vec2(0, 0));
-	_bar->setAnchorPoint(cocos2d::Vec2(0, 0));
-	_bar->setColor(Color::Black);
-	_bar->setOpacity(255);
-	addChild(_bar, 2);
+	auto bar = Rc<RoundedSprite>::create(0);
+	bar->setPosition(Vec2(0, 0));
+	bar->setAnchorPoint(Vec2(0, 0));
+	bar->setColor(Color::Black);
+	bar->setOpacity(255);
+	_bar = addChildNode(bar, 2);
 
 	return true;
 }
@@ -102,8 +102,8 @@ void RoundedProgress::onContentSizeDirty() {
 
 		float diff = _contentSize.width - width;
 
-		_bar->setContentSize(cocos2d::Size(width, _contentSize.height));
-		_bar->setPosition(cocos2d::Vec2(diff * (_inverted?(1.0f - _progress):_progress), 0));
+		_bar->setContentSize(Size(width, _contentSize.height));
+		_bar->setPosition(Vec2(diff * (_inverted?(1.0f - _progress):_progress), 0));
 	} else {
 		float height = _contentSize.height * _barScale;
 		if (height < _contentSize.width) {
@@ -115,8 +115,8 @@ void RoundedProgress::onContentSizeDirty() {
 
 		float diff = _contentSize.height - height;
 
-		_bar->setContentSize(cocos2d::Size(_contentSize.width, height));
-		_bar->setPosition(cocos2d::Vec2(0.0f, diff * (_inverted?(1.0f - _progress):_progress)));
+		_bar->setContentSize(Size(_contentSize.width, height));
+		_bar->setPosition(Vec2(0.0f, diff * (_inverted?(1.0f - _progress):_progress)));
 	}
 }
 
@@ -141,7 +141,7 @@ void RoundedProgress::setProgress(float value, float anim) {
 			_contentSizeDirty = true;
 		} else {
 			stopActionByTag(129);
-			auto a = construct<ProgressAction>(anim, value, [this] (ProgressAction *, float time) {
+			auto a = Rc<ProgressAction>::create(anim, value, [this] (ProgressAction *, float time) {
 				_progress = time;
 				_contentSizeDirty = true;
 			});

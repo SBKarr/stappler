@@ -35,15 +35,15 @@ bool LinearProgress::init() {
 		return false;
 	}
 
-	_line = construct<stappler::Layer>();
-	_line->setPosition(0, 0);
-	_line->setAnchorPoint(cocos2d::Vec2(0, 0));
-	addChild(_line, 1);
+	auto line = Rc<Layer>::create();
+	line->setPosition(0, 0);
+	line->setAnchorPoint(cocos2d::Vec2(0, 0));
+	_line = addChildNode(line, 1);
 
-	_bar = construct<stappler::Layer>();
-	_bar->setPosition(0, 0);
-	_bar->setAnchorPoint(cocos2d::Vec2(0, 0));
-	addChild(_bar, 2);
+	auto bar = Rc<Layer>::create();
+	bar->setPosition(0, 0);
+	bar->setAnchorPoint(cocos2d::Vec2(0, 0));
+	_bar = addChildNode(bar, 2);
 
 	setCascadeOpacityEnabled(true);
 
@@ -58,7 +58,7 @@ void LinearProgress::setAnimated(bool value) {
 	if (_animated != value) {
 		_animated = value;
 		if (_animated) {
-			auto p = construct<ProgressAction>(2.0f, 1.0f, [this] (ProgressAction *a, float time) {
+			auto p = Rc<ProgressAction>::create(2.0f, 1.0f, [this] (ProgressAction *a, float time) {
 				setProgress(time);
 			});
 			auto a = cocos2d::RepeatForever::create(p);

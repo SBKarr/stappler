@@ -49,14 +49,23 @@ public:
 	virtual void setDensity(float density);
 	virtual float getDensity() const;
 
+	virtual void setAlphaTest(AlphaTest::State, uint8_t value = 0);
+	virtual const AlphaTest &getAlphaTest() const;
+
+	virtual void setHighPrecision(bool);
+	virtual bool isHighPrecision() const;
+
 protected:
 	virtual void updateBlendFunc(cocos2d::Texture2D *);
 	cocos2d::GLProgramState *acquireProgramState(cocos2d::Texture2D *) const;
+
+	AlphaTest _alphaTest;
 
 	bool _opacityModifyRGB = false;
 	bool _normalized = false;
 	bool _stencil = false;
 	bool _isHighPrecision = false;
+	bool _programDirty = false;
 
 	cocos2d::BlendFunc _blendFunc;
 	float _density = 1.0f;

@@ -112,16 +112,18 @@ GLOBAL_MKDIR ?= mkdir -p
 GLOBAL_AR ?= ar rcs
 
 sp_toolkit_source_list = \
-	$(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) \( -name "*.c" -or -name "*.cpp" \))) \
-	$(addprefix $(GLOBAL_ROOT)/,$(2)) \
-	$(if $(OBJC), $(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.mm')))
+	$(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) \( -name "*.c" -or -name "*.cpp" \)))\
+	$(addprefix $(GLOBAL_ROOT)/,$(filter-out %.mm,$(2)))\
+	$(if $(BUILD_OBJC),\
+		$(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.mm'))\
+		$(addprefix $(GLOBAL_ROOT)/,$(filter %.mm,$(2)))\
+	)
 
 sp_toolkit_include_list = \
 	$(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) -type d)) \
 	$(addprefix $(GLOBAL_ROOT)/,$(2))
 
-sp_toolkit_object_list = \
-	$(patsubst %.mm,%.o,$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(patsubst $(GLOBAL_ROOT)/%,$(1)/%,$(2)))))
+sp_toolkit_object_list = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(patsubst %.mm,%.o,$(patsubst $(GLOBAL_ROOT)/%,$(1)/%,$(2)))))
 
 sp_toolkit_prefix_files_list = \
 	$(patsubst $(GLOBAL_ROOT)/%,$(1)/include/%,$(addprefix $(GLOBAL_ROOT)/,$(2)))
@@ -132,12 +134,16 @@ sp_toolkit_include_flags = \
 sp_local_source_list = \
 	$(foreach dir,$(filter /%,$(1)),$(shell find $(dir) -name '*.cpp')) \
 	$(foreach dir,$(filter /%,$(1)),$(shell find $(dir) -name '*.c')) \
-	$(filter /%,$(2)) \
+	$(filter /%,$(filter-out %.mm,$(2))) \
 	$(foreach dir,$(filter-out /%,$(1)),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.cpp')) \
 	$(foreach dir,$(filter-out /%,$(1)),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.c')) \
-	$(addprefix $(LOCAL_ROOT)/,$(filter-out /%,$(2))) \
-	$(if $(OBJC), $(foreach dir,$(filter /%,$(1)),$(shell find $(dir) -name '*.mm'))) \
-	$(if $(OBJC), $(foreach dir,$(filter-out /%,$(1)),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.mm')))
+	$(addprefix $(LOCAL_ROOT)/,$(filter-out /%,$(filter-out %.mm,$(2)))) \
+	$(if $(BUILD_OBJC),\
+		$(foreach dir,$(filter /%,$(1)),$(shell find $(dir) -name '*.mm'))\
+		$(foreach dir,$(filter-out /%,$(1)),$(shell find $(LOCAL_ROOT)/$(dir) -name '*.mm'))\
+		$(filter /%,$(filter %.mm,$(2)))\
+		$(addprefix $(LOCAL_ROOT)/,$(filter-out /%,$(filter %.mm,$(2))))\
+	) \
 
 sp_local_include_list = \
 	$(foreach dir,$(filter /%,$(1)),$(shell find $(dir) -type d)) \

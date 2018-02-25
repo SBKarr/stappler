@@ -54,18 +54,20 @@ bool MaterialImage::init(const String &file, float density) {
 		sprite = Rc<DynamicSprite>::create(nullptr, Rect::ZERO, density);
 	}
 
+	sprite->setPosition(Vec2::ZERO);
 	sprite->setAnchorPoint(Vec2(0.0f, 0.0f));
 	sprite->setVisible(true);
 	sprite->setAutofit(Autofit::Contain);
-	addChild(sprite, 0);
+	_content->addChild(sprite, 0);
 	_sprite = sprite;
 
 	auto network = Rc<NetworkSprite>::create("", density);
+	network->setPosition(Vec2::ZERO);
 	network->setAnchorPoint(Vec2(0.0f, 0.0f));
 	network->setOpacity(0);
 	network->setAutofit(Autofit::Contain);
 	network->setVisible(false);
-	addChild(network, 1);
+	_content->addChild(network, 1);
 	_network = network;
 
 	return true;
@@ -74,11 +76,13 @@ bool MaterialImage::init(const String &file, float density) {
 void MaterialImage::setContentSize(const Size &size) {
 	MaterialNode::setContentSize(size);
 
-	_sprite->setPosition(getAnchorPositionWithPadding());
-	_sprite->setContentSize(getContentSizeWithPadding());
+	_sprite->setContentSize(_content->getContentSize());
+	_network->setContentSize(_content->getContentSize());
+}
 
-	_network->setPosition(getAnchorPositionWithPadding());
-	_network->setContentSize(getContentSizeWithPadding());
+void MaterialImage::onContentSizeDirty() {
+	_sprite->setContentSize(_content->getContentSize());
+	_network->setContentSize(_content->getContentSize());
 }
 
 void MaterialImage::visit(cocos2d::Renderer *r, const Mat4 &t, uint32_t f, ZPath &zPath) {

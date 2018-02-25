@@ -134,6 +134,16 @@ protected:
 	draw::Image::PathRef _path;
 };
 
+class IconSprite::ExpandIcon : public IconSprite::DynamicIcon {
+public:
+	virtual void onAdded() override;
+	virtual void redraw(float pr, float diff) override;
+
+protected:
+	float _progress = -1.0f;
+	draw::Image::PathRef _path;
+};
+
 void IconSprite::NavIcon::onAdded() {
 	DynamicIcon::onAdded();
 	_top = _image->addPath().setFillColor(Color4B(255, 255, 255, 255));
@@ -234,7 +244,7 @@ void IconSprite::CircleLoaderIcon::redraw(float pr, float diff) {
 
 void IconSprite::CircleLoaderIcon::animate() {
 	if (_owner) {
-		auto a = cocos2d::EaseBezierAction::create(construct<_icons::IconProgress>(1.2f, 1.0f));
+		auto a = cocos2d::EaseBezierAction::create(Rc<_icons::IconProgress>::create(1.2f, 1.0f));
 		a->setBezierParamer(0.0, 0.050, 0.950, 1.0);
 		auto b = cocos2d::CallFunc::create([this] {
 			static_cast<IconSprite *>(_owner)->setProgress(0.0f);
@@ -242,6 +252,37 @@ void IconSprite::CircleLoaderIcon::animate() {
 		auto c = cocos2d::RepeatForever::create(cocos2d::Sequence::create(a, b, nullptr));
 		_owner->stopActionByTag("Animate"_tag);
 		_owner->runAction(c, "Animate"_tag);
+	}
+}
+
+void IconSprite::ExpandIcon::onAdded() {
+	DynamicIcon::onAdded();
+	_path = _image->addPath(draw::Path()
+		.setFillColor(Color4B(255, 255, 255, 255))
+		.setStyle(draw::Path::Style::Fill)
+		.moveTo(12.0f, 16.0f)
+		.lineTo(18.0f, 10.0f)
+		.lineTo(18.0f - float(M_SQRT2), 10.0f - float(M_SQRT2))
+		.lineTo(12.0f, 14.0f)
+		.lineTo(6.0f + float(M_SQRT2), 10.0f - float(M_SQRT2))
+		.lineTo(6.0f, 10.0f)
+		.closePath());
+}
+
+void IconSprite::ExpandIcon::redraw(float pr, float diff) {
+	float p = pr;
+
+	if (p <= 1.0f) {
+		float rotation = _owner->getRotation();
+		if (pr == 0.0f) {
+			_owner->setRotation(0);
+		} else if (pr == 1.0f) {
+			_owner->setRotation(180);
+		} else if ((diff < 0 && fabsf(rotation) == 180) || rotation > 0) {
+			_owner->setRotation(progress(0, 180, pr));
+		} else if ((diff > 0 && rotation == 0) || rotation < 0) {
+			_owner->setRotation(progress(0, -180, pr));
+		}
 	}
 }
 
@@ -303,6 +344,9 @@ void IconSprite::setIconName(IconName name) {
 	case IconName::Dynamic_Loader:
 		setDynamicIcon(Rc<CircleLoaderIcon>::create());
 		break;
+	case IconName::Dynamic_Expand:
+		setDynamicIcon(Rc<ExpandIcon>::create());
+		break;
 	case IconName::None:
 	case IconName::Empty:
 		setDynamicIcon(nullptr);
@@ -325,6 +369,7 @@ bool IconSprite::isDynamic() const {
 	switch (_iconName) {
 	case IconName::Dynamic_Navigation:
 	case IconName::Dynamic_Loader:
+	case IconName::Dynamic_Expand:
 		return true;
 		break;
 	default:
@@ -336,6 +381,7 @@ bool IconSprite::isStatic() const {
 	switch (_iconName) {
 	case IconName::Dynamic_Navigation:
 	case IconName::Dynamic_Loader:
+	case IconName::Dynamic_Expand:
 	case IconName::None:
 		return false;
 		break;
@@ -377,7 +423,7 @@ void IconSprite::animate() {
 void IconSprite::animate(float targetProgress, float duration) {
 	if (_dynamicIcon && _progress != targetProgress) {
 		if (duration > 0.0f) {
-			auto a = cocos2d::EaseQuadraticActionInOut::create(construct<_icons::IconProgress>(duration, targetProgress));
+			auto a = cocos2d::EaseQuadraticActionInOut::create(Rc<_icons::IconProgress>::create(duration, targetProgress));
 			stopActionByTag("Animate"_tag);
 			runAction(a, "Animate"_tag);
 		} else {
@@ -439,6 +485,7 @@ void IconSprite::onUpdate() {
 	switch (_iconName) {
 	case IconName::Dynamic_Navigation:
 	case IconName::Dynamic_Loader:
+	case IconName::Dynamic_Expand:
 	case IconName::None:
 	case IconName::Empty:
 		break;

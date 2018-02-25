@@ -51,14 +51,15 @@ bool FlexibleLayout::init() {
 
 	setCascadeOpacityEnabled(true);
 
-	_statusBar = construct<stappler::Layer>(Color::Grey_500);
-	_statusBar->setAnchorPoint(Vec2(0, 1));
-	_statusBar->setContentSize(Size(0, getStatusBarHeight()));
-	_statusBar->setVisible(false);
-	addChild(_statusBar, 5);
+	auto statusBar = Rc<Layer>::create(Color::Grey_500);
+	statusBar->setAnchorPoint(Vec2(0, 1));
+	statusBar->setContentSize(Size(0, getStatusBarHeight()));
+	statusBar->setVisible(false);
+	_statusBar = addChildNode(statusBar, 5);
 
 	return true;
 }
+
 void FlexibleLayout::onContentSizeDirty() {
 	Layout::onContentSizeDirty();
 	if (_flexibleHeightFunction) {
@@ -67,62 +68,8 @@ void FlexibleLayout::onContentSizeDirty() {
 		_flexibleMaxHeight = ret.second;
 	}
 
-	Padding padding;
-	if (_baseNode) {
-		padding = _baseNode->getPadding();
-	}
-
-	auto size = _contentSize;
-
-	node::Params statusBarParams, flexibleNodeParams, baseNodeParams;
-
-	float statusBar = getStatusBarHeight();
-	if (_statusBarTracked && statusBar > 0.0f) {
-		statusBarParams.setVisible(true);
-		statusBarParams.setPosition(Vec2(0, _contentSize.height + 1.0f));
-		statusBarParams.setContentSize(Size(_contentSize.width, statusBar + 1.0f));
-	} else {
-		statusBarParams.setVisible(false);
-	}
-
-	float flexSize = _flexibleMinHeight + (_flexibleMaxHeight + (_statusBarTracked?statusBar:0) - _flexibleMinHeight) * _flexibleLevel;
-
-	if (flexSize >= _flexibleMaxHeight && _statusBarTracked) {
-		statusBar = (flexSize - _flexibleMaxHeight);
-		statusBarParams.setContentSize(Size(_contentSize.width, statusBar + 1.0f));
-		size.height -= statusBar;
-		flexSize = _flexibleMaxHeight;
-	} else {
-		statusBarParams.setVisible(false);
-	}
-
-	flexibleNodeParams.setPosition(0, size.height);
-	flexibleNodeParams.setAnchorPoint(Vec2(0, 1));
-	flexibleNodeParams.setContentSize(Size(size.width, flexSize));
-
-	if (flexSize <= 0.0f) {
-		flexibleNodeParams.setVisible(false);
-	} else {
-		flexibleNodeParams.setVisible(true);
-	}
-
-	float baseNodeOffset = getCurrentFlexibleHeight();
-	Padding baseNodePadding(padding.setTop(getCurrentFlexibleMax() + _baseNodePadding));
-
-	baseNodeParams.setAnchorPoint(Vec2(0, 0));
-	baseNodeParams.setPosition(0, 0 + _keyboardSize.height);
-
-	if (_flexibleBaseNode) {
-		baseNodeParams.setContentSize(Size(_contentSize.width, _contentSize.height - _keyboardSize.height));
-	} else {
-		baseNodeParams.setContentSize(Size(_contentSize.width, _contentSize.height - _keyboardSize.height - getCurrentFlexibleMax() - 0.0f));
-		baseNodePadding = padding.setTop(4.0f);
-		baseNodeOffset = 0.0f;
-	}
-
-	onStatusBarNode(statusBarParams);
-	onFlexibleNode(flexibleNodeParams);
-	onBaseNode(baseNodeParams, baseNodePadding, baseNodeOffset);
+	_flexibleExtraSpace = 0.0f;
+	updateFlexParams();
 }
 
 void FlexibleLayout::setBaseNode(stappler::ScrollView *node, int zOrder) {
@@ -202,16 +149,79 @@ const FlexibleLayout::HeightFunction &FlexibleLayout::getFlexibleHeightFunction(
 	return _flexibleHeightFunction;
 }
 
+void FlexibleLayout::updateFlexParams() {
+	node::Params statusBarParams, flexibleNodeParams, baseNodeParams;
+
+	float statusBar = getStatusBarHeight();
+	float flexSize = _flexibleMinHeight + (_flexibleMaxHeight + (_statusBarTracked?statusBar:0) - _flexibleMinHeight) * _flexibleLevel;
+
+	auto size = _contentSize;
+	if (flexSize >= _flexibleMaxHeight && _statusBarTracked) {
+		statusBar = (flexSize - _flexibleMaxHeight);
+		statusBarParams.setContentSize(Size(_contentSize.width, statusBar + 1.0f));
+		size.height -= statusBar;
+		flexSize = _flexibleMaxHeight;
+		statusBarParams.setPosition(Vec2(0, _contentSize.height + 1.0f));
+		statusBarParams.setVisible(true);
+	} else {
+		statusBarParams.setVisible(false);
+	}
+
+	flexibleNodeParams.setPosition(0, size.height);
+	flexibleNodeParams.setAnchorPoint(Vec2(0, 1));
+	flexibleNodeParams.setContentSize(Size(size.width, flexSize + _flexibleExtraSpace));
+
+	if (flexSize <= 0.0f) {
+		flexibleNodeParams.setVisible(false);
+	} else {
+		flexibleNodeParams.setVisible(true);
+	}
+
+	if (_statusBarTracked) {
+		if (_flexibleLevel == 1.0f) {
+			stappler::Screen::getInstance()->setStatusBarEnabled(true, true);
+		} else {
+			stappler::Screen::getInstance()->setStatusBarEnabled(false, true);
+		}
+	}
+
+	Padding padding;
+	if (_baseNode) {
+		padding = _baseNode->getPadding();
+	}
+
+	float baseNodeOffset = getCurrentFlexibleHeight();
+	Padding baseNodePadding(padding.setTop(getCurrentFlexibleMax() + _baseNodePadding));
+
+	baseNodeParams.setAnchorPoint(Vec2(0, 0));
+	baseNodeParams.setPosition(0, 0 + _keyboardSize.height);
+
+	if (_flexibleBaseNode) {
+		baseNodeParams.setContentSize(Size(_contentSize.width, _contentSize.height - _keyboardSize.height));
+	} else {
+		baseNodeParams.setContentSize(Size(_contentSize.width, _contentSize.height - _keyboardSize.height - getCurrentFlexibleMax() - 0.0f));
+		baseNodePadding = padding.setTop(4.0f);
+		baseNodeOffset = 0.0f;
+	}
+
+	onStatusBarNode(statusBarParams);
+	onFlexibleNode(flexibleNodeParams);
+	onBaseNode(baseNodeParams, baseNodePadding, baseNodeOffset);
+}
+
 void FlexibleLayout::onScroll(float delta, bool finished) {
 	auto size = _baseNode->getScrollableAreaSize();
 	if (!isnan(size) && size < _contentSize.height) {
+		clearFlexibleExpand(0.25f);
 		setFlexibleLevel(1.0f);
 		return;
 	}
 
+	clearFlexibleExpand(0.25f);
 	if (!finished && delta != 0.0f) {
-		auto distanceFromStart = _baseNode->getDistanceFromStart();
-		if (isnan(distanceFromStart) || distanceFromStart > (_flexibleMaxHeight - _flexibleMinHeight) || delta < 0) {
+		const auto distanceFromStart = _baseNode->getDistanceFromStart();
+		const auto trigger = _safeTrigger ? ( _flexibleMaxHeight - _flexibleMinHeight) : 8.0f;
+		if (isnan(distanceFromStart) || distanceFromStart > trigger || delta < 0) {
 			stopActionByTag(FlexibleLayout::AutoCompleteTag());
 			float height = getCurrentFlexibleHeight();
 			//float diff = delta.y / _baseNode->getGlobalScale().y;
@@ -233,7 +243,7 @@ void FlexibleLayout::onScroll(float delta, bool finished) {
 			if (_flexibleLevel < 1.0f && _flexibleLevel > 0.0f) {
 				auto distanceFromStart = _baseNode->getDistanceFromStart();
 				bool open =  (_flexibleLevel > 0.5) || (!isnan(distanceFromStart) && distanceFromStart < (_flexibleMaxHeight - _flexibleMinHeight));
-				auto a = construct<ProgressAction>(progress(0.0f, 0.3f, open?_flexibleLevel:(1.0f - _flexibleLevel)), open?1.0f:0.0f,
+				auto a = Rc<ProgressAction>::create(progress(0.0f, 0.3f, open?_flexibleLevel:(1.0f - _flexibleLevel)), open?1.0f:0.0f,
 						[this] (ProgressAction *a, float p) {
 					setFlexibleLevel(p);
 				});
@@ -286,60 +296,8 @@ void FlexibleLayout::setFlexibleLevel(float value) {
 		return;
 	}
 
-	node::Params statusBarParams, flexibleNodeParams, baseNodeParams;
-
-	float statusBar = getStatusBarHeight();
-	float flexSize = _flexibleMinHeight + (_flexibleMaxHeight + (_statusBarTracked?statusBar:0) - _flexibleMinHeight) * value;
-
-	auto size = _contentSize;
-	if (flexSize >= _flexibleMaxHeight && _statusBarTracked) {
-		statusBar = (flexSize - _flexibleMaxHeight);
-		statusBarParams.setContentSize(Size(_contentSize.width, statusBar + 1.0f));
-		size.height -= statusBar;
-		flexSize = _flexibleMaxHeight;
-		statusBarParams.setVisible(true);
-	} else {
-		statusBarParams.setVisible(false);
-	}
-
-	flexibleNodeParams.setPosition(0, size.height);
-	flexibleNodeParams.setContentSize(Size(size.width, flexSize));
-
 	_flexibleLevel = value;
-	if (_baseNode && _baseNode->isVertical()) {
-		_baseNode->setOverscrollFrontOffset(getCurrentFlexibleHeight());
-	}
-
-	if (flexSize == 0.0f) {
-		flexibleNodeParams.setVisible(false);
-	} else {
-		flexibleNodeParams.setVisible(true);
-	}
-
-	if (_statusBarTracked) {
-		if (_flexibleLevel == 1.0f) {
-			stappler::Screen::getInstance()->setStatusBarEnabled(true, true);
-		} else {
-			stappler::Screen::getInstance()->setStatusBarEnabled(false, true);
-		}
-	}
-
-	Padding padding;
-	if (_baseNode) {
-		padding = _baseNode->getPadding();
-	}
-
-	float baseNodeOffset = getCurrentFlexibleHeight();
-	Padding baseNodePadding(padding.setTop(getCurrentFlexibleMax() + _baseNodePadding));
-
-	if (!_flexibleBaseNode) {
-		baseNodePadding = padding.setTop(4.0f);
-		baseNodeOffset = 0.0f;
-	}
-
-	onStatusBarNode(statusBarParams);
-	onFlexibleNode(flexibleNodeParams);
-	onBaseNode(baseNodeParams, baseNodePadding, baseNodeOffset);
+	updateFlexParams();
 }
 
 void FlexibleLayout::setFlexibleLevelAnimated(float value, float duration) {
@@ -347,7 +305,7 @@ void FlexibleLayout::setFlexibleLevelAnimated(float value, float duration) {
 	if (duration <= 0.0f) {
 		setFlexibleLevel(value);
 	} else {
-		auto a = cocos2d::EaseCubicActionOut::create(construct<ProgressAction>(
+		auto a = cocos2d::EaseCubicActionOut::create(Rc<ProgressAction>::create(
 				duration, _flexibleLevel, value,
 				[this] (ProgressAction *a, float progress) {
 			setFlexibleLevel(progress);
@@ -470,11 +428,11 @@ void FlexibleLayout::setKeyboardTracked(bool value) {
 		}
 
 		if (_trackKeyboard) {
-			_keyboardEventListener = construct<EventListener>();
-			_keyboardEventListener->onEvent(ime::onKeyboard, [this] (const Event &ev) {
+			auto keyboardEventListener = Rc<EventListener>::create();
+			keyboardEventListener->onEvent(ime::onKeyboard, [this] (const Event &ev) {
 				onKeyboard(ev.getBoolValue(), ime::getKeyboardRect(), ime::getKeyboardDuration());
 			});
-			addComponent(_keyboardEventListener);
+			_keyboardEventListener = addComponentItem(keyboardEventListener);
 		} else if (_keyboardEventListener) {
 			removeComponent(_keyboardEventListener);
 			_keyboardEventListener = nullptr;
@@ -483,6 +441,63 @@ void FlexibleLayout::setKeyboardTracked(bool value) {
 }
 bool FlexibleLayout::isKeyboardTracked() const {
 	return _trackKeyboard;
+}
+
+void FlexibleLayout::setSafeTrigger(bool value) {
+	_safeTrigger = value;
+}
+
+bool FlexibleLayout::isSafeTrigger() const {
+	return _safeTrigger;
+}
+
+void FlexibleLayout::expandFlexibleNode(float extraSpace, float duration) {
+	stopActionByTag("FlexibleExtraSpace"_tag);
+	stopActionByTag("FlexibleExtraClear"_tag);
+	if (duration > 0.0f) {
+		auto prevSpace = _flexibleExtraSpace;
+		if (extraSpace > prevSpace) {
+			auto a = cocos2d::EaseCubicActionOut::create(Rc<ProgressAction>::create(
+					duration, [this, extraSpace, prevSpace] (ProgressAction *a, float p) {
+				_flexibleExtraSpace = progress(prevSpace, extraSpace, p);
+				updateFlexParams();
+			}));
+			runAction(a, "FlexibleExtraSpace"_tag);
+		} else {
+			auto a = cocos2d::EaseCubicActionIn::create(Rc<ProgressAction>::create(
+					duration, [this, extraSpace, prevSpace] (ProgressAction *a, float p) {
+				_flexibleExtraSpace = progress(prevSpace, extraSpace, p);
+				updateFlexParams();
+			}));
+			runAction(a, "FlexibleExtraSpace"_tag);
+		}
+	} else {
+		_flexibleExtraSpace = extraSpace;
+		updateFlexParams();
+	}
+}
+
+void FlexibleLayout::clearFlexibleExpand(float duration) {
+	if (_flexibleExtraSpace == 0.0f) {
+		return;
+	}
+
+	if (duration > 0.0f) {
+		auto a = getActionByTag("FlexibleExtraClear"_tag);
+		if (!a) {
+			stopActionByTag("FlexibleExtraSpace"_tag);
+			auto prevSpace = _flexibleExtraSpace;
+			auto a = cocos2d::EaseCubicActionInOut::create(Rc<ProgressAction>::create(
+					duration, [this, prevSpace] (ProgressAction *a, float p) {
+				_flexibleExtraSpace = progress(prevSpace, 0.0f, p);
+				updateFlexParams();
+			}));
+			runAction(a, "FlexibleExtraClear"_tag);
+		}
+	} else {
+		_flexibleExtraSpace = 0.0f;
+		updateFlexParams();
+	}
 }
 
 void FlexibleLayout::onKeyboard(bool enabled, const Rect &rect, float duration) {

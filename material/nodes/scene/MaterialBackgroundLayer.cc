@@ -36,18 +36,18 @@ bool BackgroundLayer::init() {
 		return false;
 	}
 
-	_layer = construct<Layer>(Color::Grey_50);
-	_layer->setOpacity(255);
-	_layer->setPosition(0, 0);
-	_layer->setAnchorPoint(Vec2(0, 0));
-	addChild(_layer, -1);
+	auto layer = Rc<Layer>::create(Color::Grey_50);
+	layer->setOpacity(255);
+	layer->setPosition(0, 0);
+	layer->setAnchorPoint(Vec2(0, 0));
+	_layer = addChildNode(layer, -1);
 
-	_sprite = construct<DynamicSprite>();
-	_sprite->setVisible(false);
-	_sprite->setPosition(0, 0);
-	_sprite->setAnchorPoint(Vec2(0, 0));
-	_sprite->setFlippedY(true);
-	addChild(_sprite, 1);
+	auto sprite = Rc<DynamicSprite>::create();
+	sprite->setVisible(false);
+	sprite->setPosition(0, 0);
+	sprite->setAnchorPoint(Vec2(0, 0));
+	sprite->setFlippedY(true);
+	_sprite = addChildNode(sprite, 1);
 
 	return true;
 }

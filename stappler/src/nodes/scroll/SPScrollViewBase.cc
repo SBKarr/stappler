@@ -84,13 +84,14 @@ bool ScrollViewBase::init(Layout layout) {
 
     setCascadeOpacityEnabled(true);
 
-    _root = construct<cocos2d::Node>();
-    _root->setPosition(Vec2(0, 0));
-    _root->setAnchorPoint((_layout == Vertical)?Vec2(0, 1):Vec2(0, 0));
-    _root->setCascadeOpacityEnabled(true);
-    _root->setOnContentSizeDirtyCallback(std::bind(&ScrollViewBase::onPosition, this));
-    _root->setOnTransformDirtyCallback(std::bind(&ScrollViewBase::onPosition, this));
-    addChild(_root, 0);
+    auto root = Rc<cocos2d::Node>::create();
+    root->setPosition(Vec2(0, 0));
+    root->setAnchorPoint((_layout == Vertical)?Vec2(0, 1):Vec2(0, 0));
+    root->setCascadeOpacityEnabled(true);
+    root->setOnContentSizeDirtyCallback(std::bind(&ScrollViewBase::onPosition, this));
+    root->setOnTransformDirtyCallback(std::bind(&ScrollViewBase::onPosition, this));
+    addChild(root, 0);
+    _root = root;
 
 	return true;
 }
