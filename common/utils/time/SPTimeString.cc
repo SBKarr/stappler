@@ -482,14 +482,110 @@ Time Time::fromHttp(const StringView &r) {
                       timstr[6],timstr[7]);                 \
     }
 
+static Time subParseTime(sp_time_exp_t &ds, const char *monstr, const char *timstr, const char *gmtstr) {
+	int mint, mon;
+
+	if (ds.tm_mday <= 0 || ds.tm_mday > 31)
+		return Time();
+
+	if ((ds.tm_hour > 23) || (ds.tm_min > 59) || (ds.tm_sec > 61))
+		return Time();
+
+	mint = (monstr[0] << 16) | (monstr[1] << 8) | monstr[2];
+	for (mon = 0; mon < 12; mon++)
+		if (mint == s_months[mon])
+			break;
+
+	if (mon == 12)
+		return Time();
+
+	if ((ds.tm_mday == 31) && (mon == 3 || mon == 5 || mon == 8 || mon == 10))
+		return Time();
+
+    /* February gets special check for leapyear */
+
+	if ((mon == 1)
+			&& ((ds.tm_mday > 29)
+					|| ((ds.tm_mday == 29)
+							&& ((ds.tm_year & 3) || (((ds.tm_year % 100) == 0) && (((ds.tm_year % 400) != 100)))))
+			))
+		return Time();
+
+	ds.tm_mon = mon;
+
+	/* tm_gmtoff is the number of seconds off of GMT the time is.
+	 *
+	 * We only currently support: [+-]ZZZZ where Z is the offset in
+	 * hours from GMT.
+	 *
+	 * If there is any confusion, tm_gmtoff will remain 0.
+	 */
+	ds.tm_gmtoff = 0;
+
+	/* Do we have a timezone ? */
+	if (gmtstr) {
+		int offset;
+		switch (*gmtstr) {
+		case '-':
+			offset = atoi(gmtstr + 1);
+			ds.tm_gmtoff -= (offset / 100) * 60 * 60;
+			ds.tm_gmtoff -= (offset % 100) * 60;
+			break;
+		case '+':
+			offset = atoi(gmtstr + 1);
+			ds.tm_gmtoff += (offset / 100) * 60 * 60;
+			ds.tm_gmtoff += (offset % 100) * 60;
+			break;
+		}
+	}
+
+	/* apr_time_exp_get uses tm_usec field, but it hasn't been set yet.
+	 * It should be safe to just zero out this value.
+	 * tm_usec is the number of microseconds into the second.  HTTP only
+	 * cares about second granularity.
+	 */
+	ds.tm_usec = 0;
+
+	if (gmtstr) {
+		return ds.gmt_get();
+	} else {
+		return ds.ltz_get();
+	}
+}
+
 Time Time::fromRfc(const StringView &r) {
 	auto date = r.data();
 	sp_time_exp_t ds;
-	int mint, mon;
 	const char *monstr, *timstr, *gmtstr;
 
-	if (!date)
+	if (!date) {
 		return Time();
+	}
+
+	 if (sp_date_checkmask(date, "@$$ @$$ ## ##:##:## *")) {
+		auto extra_str = StringView(r.data() + 20, r.size() - 20);
+		extra_str.skipUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		if (extra_str.is<StringView::CharGroup<CharGroupId::WhiteSpace>>()) {
+			++ extra_str;
+		}
+
+		auto ydate = extra_str.data();
+		ds.tm_year = ((ydate[0] - '0') * 10 + (ydate[1] - '0') - 19) * 100;
+
+		if (ds.tm_year < 0) { return Time(); }
+
+		ds.tm_year += ((ydate[2] - '0') * 10) + (ydate[3] - '0');
+		ds.tm_mday = ((date[8] - '0') * 10) + (date[9] - '0');
+
+		monstr = date + 4;
+		timstr = date + 11;
+
+		TIMEPARSE_STD(ds, timstr);
+
+		gmtstr = nullptr;
+
+		return subParseTime(ds, monstr, timstr, gmtstr);
+	}
 
 	/* Not all dates have text days at the beginning. */
 	if (!chars::isdigit(date[0])) {
@@ -709,75 +805,11 @@ Time Time::fromRfc(const StringView &r) {
 		gmtstr = date + 21;
 
 		TIMEPARSE_STD(ds, timstr);
-	} else
-		return Time();
-
-	if (ds.tm_mday <= 0 || ds.tm_mday > 31)
-		return Time();
-
-	if ((ds.tm_hour > 23) || (ds.tm_min > 59) || (ds.tm_sec > 61))
-		return Time();
-
-	mint = (monstr[0] << 16) | (monstr[1] << 8) | monstr[2];
-	for (mon = 0; mon < 12; mon++)
-		if (mint == s_months[mon])
-			break;
-
-	if (mon == 12)
-		return Time();
-
-	if ((ds.tm_mday == 31) && (mon == 3 || mon == 5 || mon == 8 || mon == 10))
-		return Time();
-
-    /* February gets special check for leapyear */
-
-	if ((mon == 1)
-			&& ((ds.tm_mday > 29)
-					|| ((ds.tm_mday == 29)
-							&& ((ds.tm_year & 3) || (((ds.tm_year % 100) == 0) && (((ds.tm_year % 400) != 100)))))
-			))
-		return Time();
-
-	ds.tm_mon = mon;
-
-	/* tm_gmtoff is the number of seconds off of GMT the time is.
-	 *
-	 * We only currently support: [+-]ZZZZ where Z is the offset in
-	 * hours from GMT.
-	 *
-	 * If there is any confusion, tm_gmtoff will remain 0.
-	 */
-	ds.tm_gmtoff = 0;
-
-	/* Do we have a timezone ? */
-	if (gmtstr) {
-		int offset;
-		switch (*gmtstr) {
-		case '-':
-			offset = atoi(gmtstr + 1);
-			ds.tm_gmtoff -= (offset / 100) * 60 * 60;
-			ds.tm_gmtoff -= (offset % 100) * 60;
-			break;
-		case '+':
-			offset = atoi(gmtstr + 1);
-			ds.tm_gmtoff += (offset / 100) * 60 * 60;
-			ds.tm_gmtoff += (offset % 100) * 60;
-			break;
-		}
-	}
-
-	/* apr_time_exp_get uses tm_usec field, but it hasn't been set yet.
-	 * It should be safe to just zero out this value.
-	 * tm_usec is the number of microseconds into the second.  HTTP only
-	 * cares about second granularity.
-	 */
-	ds.tm_usec = 0;
-
-	if (gmtstr) {
-		return ds.gmt_get();
 	} else {
-		return ds.ltz_get();
+		return Time();
 	}
+
+	return subParseTime(ds, monstr, timstr, gmtstr);
 }
 
 static const char sp_month_snames[12][4] = {

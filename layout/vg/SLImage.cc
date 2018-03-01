@@ -273,6 +273,7 @@ struct SvgTag : public html::Tag<StringView> {
 	float coords[6] = { nan() };
 	Path path;
 	StringView id;
+	StringView ref;
 };
 
 struct SvgReader {
@@ -546,8 +547,12 @@ struct SvgReader {
 					tag.coords[0] = svg_readCoordValue(value, _width);
 				} else if (name.compare("y")) {
 					tag.coords[1] = svg_readCoordValue(value, _height);
-				} else if (name.compare("xlink:href")) {
+				} else if (name.compare("transform")) {
+					tag.path.setTransform(svg_parseTransform(value));
+				} else if (name.compare("id")) {
 					tag.id = value;
+				} else if (name.compare("xlink:href")) {
+					tag.ref = value;
 				}
 				break;
 			default:
@@ -569,14 +574,22 @@ struct SvgReader {
 
 	inline void onInlineTag(Parser &p, Tag &tag) {
 		if (tag.shape == Tag::Shape::Use) {
-			StringView ref(tag.id);
+			StringView ref(tag.ref);
 			if (ref.is('#')) { ++ ref; }
 			auto pathIt = _paths.find(ref);
 			if (pathIt != _paths.end()) {
-				if (tag.coords[0] == 0.0f && tag.coords[1] == 0.0f) {
-					_drawOrder.emplace_back(Image::PathXRef{ref.str()});
+				if (_defs) {
+					if (!tag.id.empty()) {
+						Path npath(pathIt->second);
+						npath.applyTransform(tag.path.getTransform());
+						_paths.emplace(tag.id.str(), move(npath));
+					}
 				} else {
-					_drawOrder.emplace_back(Image::PathXRef{ref.str(), Vec2(tag.coords[0], tag.coords[1])});
+					if (tag.coords[0] == 0.0f && tag.coords[1] == 0.0f) {
+						_drawOrder.emplace_back(Image::PathXRef{ref.str()});
+					} else {
+						_drawOrder.emplace_back(Image::PathXRef{ref.str(), Vec2(tag.coords[0], tag.coords[1])});
+					}
 				}
 			}
 		} else if (!tag.path.empty()) {

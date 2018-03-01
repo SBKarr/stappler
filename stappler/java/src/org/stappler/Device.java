@@ -21,6 +21,9 @@ import android.util.DisplayMetrics;
 import android.view.Display;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.common.ConnectionResult;
 
 public class Device {
 	private Activity _activity = null;
@@ -36,9 +39,8 @@ public class Device {
 	private native void setScreenSize(int width, int height);
 	private native void setCurrentSize(int width, int height);
 	private native void setDensity(float value);
-	
+
 	public  native void setDeviceToken(String value);
-	
 
 	private boolean isTablet(Activity activity) {
         DisplayMetrics metrics = new DisplayMetrics();
@@ -127,7 +129,39 @@ public class Device {
 	public void dispose() {
 		_activity = null;
 	}
-	
+
+	private boolean checkPlayService(int PLAY_SERVICE_STATUS) {
+		switch (PLAY_SERVICE_STATUS) {
+			case ConnectionResult.SUCCESS:
+				return true;
+			case ConnectionResult.SERVICE_MISSING:
+			case ConnectionResult.SERVICE_UPDATING:
+			case ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED:
+			case ConnectionResult.SERVICE_DISABLED:
+			case ConnectionResult.SERVICE_INVALID:
+				break;
+		}
+		return false;
+	}
+
+	public void updateDeviceToken(final Activity activity) {
+		GoogleApiAvailability api = GoogleApiAvailability.getInstance();
+		if (checkPlayService(api.isGooglePlayServicesAvailable(activity))) {
+			String refreshedToken = FirebaseInstanceId.getInstance().getToken();
+			if (refreshedToken != null) {
+				setDeviceToken(refreshedToken);
+			}
+		} else {
+			activity.runOnUiThread(new Runnable() {
+				@Override
+				public void run() {
+					GoogleApiAvailability api = GoogleApiAvailability.getInstance();
+					api.makeGooglePlayServicesAvailable(activity);
+				}
+			});
+		}
+	}
+
 	public void updateDevice(Activity activity) {
 		if (!_init) {
 			setIsTablet(isTablet(activity));
@@ -139,7 +173,9 @@ public class Device {
 			setUserLanguage(getUserLanguage(activity));
 			_init = true;
 		}
-		
+
+		updateDeviceToken(activity);
+
 		Display d = activity.getWindowManager().getDefaultDisplay();
 		DisplayMetrics metrics = new DisplayMetrics();
 		d.getMetrics(metrics);

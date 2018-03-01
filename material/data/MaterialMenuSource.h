@@ -94,6 +94,9 @@ public:
 	virtual bool init() { return true; }
 	virtual ~MenuSource();
 
+	void setHintCount(size_t);
+	size_t getHintCount() const;
+
 	Rc<MenuSource> copy() const;
 
 	void addItem(MenuSourceItem *);
@@ -111,6 +114,7 @@ public:
 
 protected:
 	Vector<Rc<MenuSourceItem>> _items;
+	size_t _hintCount = 0;
 };
 
 class MenuSourceButton : public MenuSourceItem {

@@ -341,7 +341,7 @@ Scheme::Command::Data::~Data() {
 
 
 
-Scheme::Command::Command(Scheme *scheme, Action a) {
+Scheme::Command::Command(const Scheme *scheme, Action a) {
 	_action = a;
 	_scheme = scheme;
 	switch(_action) {
@@ -540,26 +540,26 @@ String Scheme::getName() const {
 	}
 }
 
-Scheme::Command *Scheme::get(const DataCallback &cb) {
+Scheme::Command *Scheme::get(const DataCallback &cb) const {
 	auto cmd = new Command(this, Command::Get);
 	new (&cmd->_callback.data) DataCallback(cb);
 	return cmd;
 }
 
-Scheme::Command *Scheme::getByRow(const DataCallback & cb) {
+Scheme::Command *Scheme::getByRow(const DataCallback & cb) const {
 	auto cmd = new Command(this, Command::Get);
 	cmd->_separateRows = true;
 	new (&cmd->_callback.data) DataCallback(cb);
 	return cmd;
 }
 
-Scheme::Command *Scheme::count(const CountCallback &cb) {
+Scheme::Command *Scheme::count(const CountCallback &cb) const {
 	auto cmd = new Command(this, Command::Count);
 	new (&cmd->_callback.count) CountCallback(cb);
 	return cmd;
 }
 
-Scheme::Command *Scheme::insert(const data::Value &val, const SuccessCallback &cb) {
+Scheme::Command *Scheme::insert(const data::Value &val, const SuccessCallback &cb) const {
 	auto cmd = new Command(this, Command::Insert);
 	new (&cmd->_callback.success) SuccessCallback(cb);
 	if (!_internal->isValueAllowed(val)) {
@@ -571,7 +571,7 @@ Scheme::Command *Scheme::insert(const data::Value &val, const SuccessCallback &c
 	return cmd;
 }
 
-Scheme::Command *Scheme::insert(data::Value &&val, const SuccessCallback &cb) {
+Scheme::Command *Scheme::insert(data::Value &&val, const SuccessCallback &cb) const {
 	auto cmd = new Command(this, Command::Insert);
 	new (&cmd->_callback.success) SuccessCallback(cb);
 	if (!_internal->isValueAllowed(val)) {
@@ -583,7 +583,7 @@ Scheme::Command *Scheme::insert(data::Value &&val, const SuccessCallback &cb) {
 	return cmd;
 }
 
-Scheme::Command *Scheme::insertByRow(const InsertCallback & cb, size_t c, const SuccessCallback &scb) {
+Scheme::Command *Scheme::insertByRow(const InsertCallback & cb, size_t c, const SuccessCallback &scb) const {
 	auto cmd = new Command(this, Command::Insert);
 	cmd->_separateRows = true;
 	new (&cmd->_callback.success) SuccessCallback(scb);
@@ -592,13 +592,13 @@ Scheme::Command *Scheme::insertByRow(const InsertCallback & cb, size_t c, const 
 	return cmd;
 }
 
-Scheme::Command *Scheme::remove(const SuccessCallback &cb) {
+Scheme::Command *Scheme::remove(const SuccessCallback &cb) const {
 	auto cmd = new Command(this, Command::Remove);
 	new (&cmd->_callback.success) SuccessCallback(cb);
 	return cmd;
 }
 
-bool Scheme::perform(const String &sqlString, const DataCallback &cb) {
+bool Scheme::perform(const String &sqlString, const DataCallback &cb) const {
 	return _internal->perform(sqlString, cb);
 }
 

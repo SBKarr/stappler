@@ -47,7 +47,7 @@ public:
 	virtual size_t getMaxActionIcons() const;
 
 	virtual void setActionMenuSource(MenuSource *);
-	virtual void replaceActionMenuSource(MenuSource *, size_t maxIcons);
+	virtual void replaceActionMenuSource(MenuSource *, size_t maxIcons = maxOf<size_t>());
 	virtual MenuSource * getActionMenuSource() const;
 
 	virtual void setColor(const Color &color);

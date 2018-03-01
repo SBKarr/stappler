@@ -26,7 +26,7 @@ THE SOFTWARE.
 #include "SPLayout.h"
 #include "SLCanvas.h"
 
-//TESS_OPTIMIZE
+TESS_OPTIMIZE
 
 NS_LAYOUT_BEGIN
 
@@ -176,7 +176,7 @@ void Canvas::draw(const Image &img) {
 	}
 
 	if (!isIdentity) {
-	//	restore();
+		restore();
 	}
 }
 
@@ -327,11 +327,6 @@ void Canvas::pathBegin(const Path &path) {
 		pushContour(path, false);
 	}
 
-	if ((path.getStyle() & Path::Style::Fill) != 0) {
-		_tess.push_back(tessNewTess(&_tessAlloc));
-		_fillTess = _tess.back();
-	}
-
 	_pathX = 0.0f; _pathY = 0.0f;
 
 	Vec3 scale; _transform.getScale(&scale);
@@ -385,7 +380,7 @@ void Canvas::pathEnd(const Path &path) {
 		if (_fillTess) {
 			auto &c = path.getFillColor();
 			auto tess = _fillTess;
-			tessSetWinding(tess, path.getWindingRule()==layout::Winding::NonZero?TESS_WINDING_NONZERO:TESS_WINDING_ODD);
+			tessSetWinding(tess, (path.getWindingRule() == layout::Winding::NonZero) ? TESS_WINDING_NONZERO : TESS_WINDING_ODD);
 			tessSetColor(tess, TESSColor{c.r, c.g, c.b, c.a});
 			if (path.isAntialiased() && (path.getStyle() == Path::Style::Fill || path.getStrokeOpacity() < 96)) {
 				tessSetAntiAliased(tess, _approxScale);
@@ -444,12 +439,14 @@ void Canvas::pushContour(const Path &path, bool closed) {
 			if (dist < err) {
 				-- count;
 			}
-			/*log::format("Pt", "%f %f - %f %f - %f %f", _line.line[0], _line.line[1],
-					_line.line[(count - 1) * 2], _line.line[(count - 1) * 2 + 1],
-					err, dist);*/
 		}
 
-		if (_fillTess && !_line.line.empty()) {
+		if (!_fillTess && count > 2) {
+			_tess.push_back(tessNewTess(&_tessAlloc));
+			_fillTess = _tess.back();
+		}
+
+		if (_fillTess && !_line.line.empty() && count > 2) {
 			tessAddContour(_fillTess, _line.line.data(), int(count));
 			_vertexCount += _line.line.size() / 2;
 		}

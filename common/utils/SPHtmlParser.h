@@ -172,7 +172,7 @@ struct Parser {
 				if (!tagStack.empty()) {
 					onTagContent(tagStack.back(), prefix);
 				} else {
-					StringReader r;;
+					StringReader r;
 					Tag t(r);
 					onTagContent(t, prefix);
 				}
@@ -233,11 +233,26 @@ struct Parser {
 				}
 
 				if (name.is('!')) {
-					current.template skipUntil<Chars<'>'>>();
-					if (current.is('>')) {
-						++ current;
+					if (current.is("CDATA[")) {
+						auto data = current.readUntilString("]]>");
+						data += "CDATA["_len;
+						current += "]]>"_len;
+
+						if (!tagStack.empty()) {
+							onTagContent(tagStack.back(), data);
+						} else {
+							StringReader r;
+							Tag t(r);
+							onTagContent(t, data);
+						}
+						continue;
+					} else {
+						current.template skipUntil<Chars<'>'>>();
+						if (current.is('>')) {
+							++ current;
+						}
+						continue;
 					}
-					continue;
 				}
 
 				TagType tag(name);

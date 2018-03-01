@@ -16,9 +16,7 @@ import android.opengl.GLSurfaceView.EGLContextFactory;
 
 import org.cocos2dx.lib.Cocos2dxActivity;
 import org.cocos2dx.lib.Cocos2dxGLSurfaceView;
-import org.cocos2dx.lib.Cocos2dxHelper;
 import org.stappler.downloads.Manager;
-import org.stappler.gcm.PlayServices;
 import org.stappler.gcm.IconResource;
 
 import android.net.Uri;
@@ -29,13 +27,11 @@ import android.support.v4.app.NotificationCompat;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.webkit.WebSettings;
 import android.widget.FrameLayout;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.AssetManager;
 import android.content.res.Configuration;
 
 public class Activity extends Cocos2dxActivity {
@@ -54,7 +50,6 @@ public class Activity extends Cocos2dxActivity {
     protected Context _context;
     protected StoreKit _storeKit = null;
     protected Device _device = null;
-    protected PlayServices _playServices = null;
     protected Manager _downloadManager = null;
     protected Clipboard _clipboard = null;
 
@@ -93,8 +88,9 @@ public class Activity extends Cocos2dxActivity {
 		_isActive = true;
 		super.onResume();
 		nativeOnResume();
-		if (_playServices != null) {
-			_playServices.checkPlayServices();
+
+		if (_device != null) {
+			_device.updateDeviceToken(this);
 		}
 
 		final boolean visible = _statusBarVisible;
@@ -163,7 +159,6 @@ public class Activity extends Cocos2dxActivity {
 
 	    	_downloadManager = new Manager(this);
 	    	_device = new Device(this);
-	    	_playServices = new PlayServices(this);
 	    	_clipboard = new Clipboard(this);
 		
 			_device.updateDevice(this);
@@ -199,10 +194,7 @@ public class Activity extends Cocos2dxActivity {
 		
 		_storeKit.dispose();
 		_storeKit = null;
-		
-		_playServices.dispose();
-		_playServices = null;
-		
+
 		_device.dispose();
 		_device = null;
 		super.onDestroy();
@@ -327,10 +319,6 @@ public class Activity extends Cocos2dxActivity {
 	public Manager getDownloadManager() {
 		return _downloadManager;
 	}
-	
-	public PlayServices getPlayServices() {
-		return _playServices;
-	}
 
 	public boolean isActive() {
 		return _isActive;
@@ -392,7 +380,7 @@ public class Activity extends Cocos2dxActivity {
 	}
 	
 	public void directorStarted() {
-		_playServices.requestToken();
+		_device.updateDeviceToken(this);
 		runOnUiThread(new Runnable() {
             @Override
             public void run() {

@@ -225,11 +225,20 @@ const MenuSourceCustom::FactoryFunction & MenuSourceCustom::getFactoryFunction()
 
 MenuSource::~MenuSource() { }
 
+void MenuSource::setHintCount(size_t h) {
+	_hintCount = h;
+}
+
+size_t MenuSource::getHintCount() const {
+	return _hintCount;
+}
+
 Rc<MenuSource> MenuSource::copy() const {
 	auto ret = Rc<MenuSource>::create();
 	for (auto &it : _items) {
 		ret->addItem(it->copy());
 	}
+	ret->setHintCount(_hintCount);
 	return ret;
 }
 

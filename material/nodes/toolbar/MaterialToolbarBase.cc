@@ -55,8 +55,7 @@ bool ToolbarBase::init() {
 		return false;
 	}, TimeInterval::milliseconds(425), true);
 	l->setSwallowTouches(true);
-	addComponent(l);
-	_listener = l;
+	_listener = addComponentItem(l);
 
 	_actionMenuSource.setCallback(std::bind(&ToolbarBase::layoutSubviews, this));
 
@@ -65,21 +64,18 @@ bool ToolbarBase::init() {
 	auto navButton = Rc<ButtonIcon>::create(IconName::Empty, std::bind(&ToolbarBase::onNavTapped, this));
 	navButton->setStyle( color.text() == Color::White ? Button::FlatWhite : Button::FlatBlack );
 	navButton->setIconColor(color.text());
-	_content->addChild(navButton, 1);
-	_navButton = navButton;
+	_navButton = _content->addChildNode(navButton, 1);
 
 	auto scissorNode = Rc<StrictNode>::create();
 	scissorNode->setPosition(0, 0);
 	scissorNode->setAnchorPoint(Vec2(0, 0));
-	_content->addChild(scissorNode, 1);
-	_scissorNode = scissorNode;
+	_scissorNode = _content->addChildNode(scissorNode, 1);
 
 	auto iconsComposer = Rc<cocos2d::Node>::create();
 	iconsComposer->setPosition(0, 0);
 	iconsComposer->setAnchorPoint(Vec2(0, 0));
 	iconsComposer->setCascadeOpacityEnabled(true);
-	_scissorNode->addChild(iconsComposer, 1);
-	_iconsComposer = iconsComposer;
+	_iconsComposer = _scissorNode->addChildNode(iconsComposer, 1);
 
 	return true;
 }
@@ -125,6 +121,10 @@ void ToolbarBase::setActionMenuSource(MenuSource *source) {
 }
 
 void ToolbarBase::replaceActionMenuSource(MenuSource *source, size_t maxIcons) {
+	if (maxIcons == maxOf<size_t>()) {
+		maxIcons = source->getHintCount();
+	}
+
 	stopAllActionsByTag("replaceActionMenuSource"_tag);
 	if (_prevComposer) {
 		_prevComposer->removeFromParent();

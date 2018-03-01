@@ -102,32 +102,32 @@ public:
 
 	/** Returns new Get (SELECT *) command pointer
 	 * Without options this command will return all rows in table */
-	Command *get(const DataCallback & cb);
+	Command *get(const DataCallback & cb) const;
 
 	/** Returns new Get (SELECT *) command pointer
 	 * Without options this command will return all rows in table,
 	 * callback will be called for every row separately */
-	Command *getByRow(const DataCallback & cb);
+	Command *getByRow(const DataCallback & cb) const;
 
 	/** Returns new Count (SELECT COUNT(*)) command pointer
 	 * Without options this command will return count of all rows in table */
-	Command *count(const CountCallback &cb);
+	Command *count(const CountCallback &cb) const;
 
 	/** Returns new Insert (UPDATE) command pointer
 	 * Without options this command will insert given object as table row */
-	Command *insert(const data::Value &val, const SuccessCallback &cb = nullptr);
-	Command *insert(data::Value &&val, const SuccessCallback &cb = nullptr);
+	Command *insert(const data::Value &val, const SuccessCallback &cb = nullptr) const;
+	Command *insert(data::Value &&val, const SuccessCallback &cb = nullptr) const;
 
 	/** Returns new Insert (UPDATE) command pointer
 	 * Without options this command will insert given object as table row */
-	Command *insertByRow(const InsertCallback & cb, size_t, const SuccessCallback & = nullptr);
+	Command *insertByRow(const InsertCallback & cb, size_t, const SuccessCallback & = nullptr) const;
 
 
 	/** Returns new Remove (DELETE) command pointer
 	 * Without options this command will remove all rows from table */
-	Command *remove(const SuccessCallback &cb = nullptr);
+	Command *remove(const SuccessCallback &cb = nullptr) const;
 
-	bool perform(const String &sqlString, const DataCallback &cb = nullptr);
+	bool perform(const String &sqlString, const DataCallback &cb = nullptr) const;
 
 protected:
 	class Filter;
@@ -180,7 +180,7 @@ public:
 			Ignore
 		};
 
-		Command(Scheme *scheme, Action a);
+		Command(const Scheme *scheme, Action a);
 		~Command();
 
 		/** Adds filter, based on integer primary key.
@@ -245,7 +245,7 @@ public:
 	protected:
 		friend class Scheme;
 
-		Scheme *_scheme = nullptr;
+		const Scheme *_scheme = nullptr;
 		Action _action = Get;
 		bool _valid = true;
 		bool _separateRows = false;

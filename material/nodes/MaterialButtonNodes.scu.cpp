@@ -36,4 +36,4 @@ THE SOFTWARE.
 #include "MaterialOverlayLayout.cc"
 #include "MaterialSidebarLayout.cc"
 #include "MaterialToolbarLayout.cc"
-
+#include "MaterialMultiViewLayout.cc"

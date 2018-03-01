@@ -75,6 +75,7 @@ class FlexibleLayout;
 class SidebarLayout;
 class ToolbarLayout;
 class OverlayLayout;
+class MultiViewLayout;
 
 class MenuSource;
 class MenuSourceItem;

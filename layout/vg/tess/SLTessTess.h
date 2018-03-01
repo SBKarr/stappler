@@ -67,6 +67,7 @@ struct TESStesselator {
 	TESSreal antiAliasValue;
 	int antiAlias;
 	int plane;
+	int numVertices;
 
 	jmp_buf env;			/* place to jump to when memAllocs fail */
 };

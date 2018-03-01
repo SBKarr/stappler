@@ -171,6 +171,9 @@ namespace spjni {
 	}
 
 	JClassRef JObjectRef::get_class() const {
+		if (!_obj || !_env) {
+			log::format("JObjectRef", "fail to perform get_class with env (%p) and obj (%p)", _env, _obj);
+		}
 		return JClassRef(_env, _env->GetObjectClass(_obj));
 	}
 
@@ -198,6 +201,9 @@ namespace spjni {
 		}
 
 		void init() {
+#if DEBUG
+			log::text("JNI", "SharedActivity::init");
+#endif
 			auto pEnv = getJniEnv();
 
 			auto activityClass =  pEnv->FindClass("org/stappler/Activity");
@@ -350,7 +356,7 @@ void Java_org_stappler_Activity_nativeOnResume(JNIEnv *env, jobject activity) {
 	stappler::platform::render::_requestRender();
 	stappler::log::format("JNI", "%s", __FUNCTION__);
 }
-void Java_org_stappler_gcm_IntentService_onRemoteNotification(JNIEnv *env, jobject obj) {
+void Java_org_stappler_gcm_MessagingService_onRemoteNotification(JNIEnv *env, jobject obj) {
 	stappler::spjni::attachJniEnv(env);
 	stappler::Device::onRemoteNotification(stappler::Device::getInstance());
 }
@@ -363,6 +369,7 @@ void sp_android_terminate () {
 jint JNI_OnLoad(JavaVM *vm, void *reserved) {
 #ifdef DEBUG
 	std::set_terminate(&sp_android_terminate);
+	stappler::log::format("JNI", "%s", __FUNCTION__);
 #endif
     cocos2d::JniHelper::setJavaVM(vm);
     stappler::spjni::init();
@@ -495,9 +502,12 @@ JNIEnv *getJniEnv() {
     case JNI_OK:
         // Success!
         pthread_setspecific(jniEnvKey, env);
+        if (!env) {
+        	stappler::log::text("JNI", "Failed to get the environment from Java VM");
+        }
         return env;
     default:
-    	stappler::log::format("JNI", "Failed to get the environment using GetEnv()");
+    	stappler::log::text("JNI", "Failed to get the environment using GetEnv()");
         return nullptr;
     }
 
@@ -518,6 +528,10 @@ const JObjectRef &getActivity(JNIEnv *pEnv) {
 
 	if (activity->empty()) {
 		*activity = _activity.get(pEnv, JObjectRef::Type::WeakGlobal);
+	}
+
+	if (activity->empty()) {
+    	stappler::log::text("JNI", "Failed to get main Activity");
 	}
 
 	return *activity;
@@ -547,10 +561,6 @@ JObjectRef getService(Service serv, JNIEnv *pEnv, JObjectRef::Type type) {
 	case Service::DownloadManager:
 		method = "getDownloadManager";
 		param = "()Lorg/stappler/downloads/Manager;";
-		break;
-	case Service::PlayServices:
-		method = "getPlayServices";
-		param = "()Lorg/stappler/gcm/PlayServices;";
 		break;
 	case Service::StoreKit:
 		method = "getStoreKit";

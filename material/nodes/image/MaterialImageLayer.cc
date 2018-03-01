@@ -220,6 +220,14 @@ void ImageLayer::setTexture(cocos2d::Texture2D *tex) {
 	_image->setTexture(tex);
 	_image->setTextureRect(Rect(Vec2(0, 0), tex->getContentSize()));
 
+	if (_contentSize.width == 0.0f || _contentSize.height == 0.0f) {
+		_minScale = 1.0f;
+		_maxScale = 1.0f;
+		_root->setScale(1.0f);
+		_contentSizeDirty = true;
+		return;
+	}
+
 	if (_running) {
 		_minScale = std::min(
 				_contentSize.width / _image->getContentSize().width,

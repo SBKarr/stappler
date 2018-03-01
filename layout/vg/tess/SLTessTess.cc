@@ -334,6 +334,7 @@ TESStesselator* tessNewTess( TESSalloc* alloc )
 	tess->color.g = 0;
 	tess->color.b = 0;
 	tess->color.a = 0;
+	tess->numVertices = 0;
 
 	return tess;
 }
@@ -365,6 +366,8 @@ TESShalfEdge * tessContinueContour( TESStesselator *tess, TESShalfEdge * e, cons
 		tess->outOfMemory = 1;
 		return NULL;
 	}
+
+ 	tess->numVertices += numVertices;
 
 	for( i = 0; i < numVertices; ++i ) {
 		const TESSreal* coords = (const TESSreal*)src;

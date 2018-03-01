@@ -40,7 +40,6 @@ enum class Service {
 	Clipboard,
 	Device,
 	StoreKit,
-	PlayServices,
 	AssetManager,
 };
 

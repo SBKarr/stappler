@@ -180,7 +180,7 @@ void Canvas::flush() {
 
 	if (!_tess.empty()) {
 		TESSResult * res = tessVecResultTriangles(_tess.data(), int(_tess.size()));
-		if (res->contour.vertexCount > 0 || res->triangles.vertexCount > 0) {
+		if (res && (res->contour.vertexCount > 0 || res->triangles.vertexCount > 0)) {
 			auto verts = res->contour.vertexBuffer;
 			auto nverts = res->contour.vertexCount;
 

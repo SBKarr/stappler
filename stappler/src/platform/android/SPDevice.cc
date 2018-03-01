@@ -192,6 +192,13 @@ void Java_org_stappler_Device_setDeviceToken(JNIEnv *env, jobject activity, jstr
 		stappler::Device::getInstance()->registerDeviceToken(_valDeviceToken);
 	});
 }
+void Java_org_stappler_gcm_IdService_setDeviceToken(JNIEnv *env, jobject activity, jstring val) {
+	auto str = jStringToStdString(env, val);
+	stappler::Thread::onMainThread([str] () {
+		_valDeviceToken = str;
+		stappler::Device::getInstance()->registerDeviceToken(_valDeviceToken);
+	});
+}
 void Java_org_stappler_Device_setDensity(JNIEnv *env, jobject activity, jfloat val) {
 	_valDensity = val;
 }
