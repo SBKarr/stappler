@@ -64,6 +64,9 @@ public:
 	};
 
 public:
+	static void setAssetSignKey(Bytes &&);
+	static const Bytes &getAssetSignKey();
+
 	static AssetLibrary *getInstance();
 
 	void setServerDate(const Time &t);

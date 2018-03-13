@@ -665,7 +665,6 @@ bool NetworkHandle::perform() {
     }
 
 	Network::releaseHandle(curl, _reuse, success);
-
 	return success;
 }
 

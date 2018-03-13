@@ -50,6 +50,14 @@ static storage::Handle *getAssetStorage() {
 }
 
 static AssetLibrary *s_instance = nullptr;
+static Bytes s_assetSignKey;
+
+void AssetLibrary::setAssetSignKey(Bytes &&value) {
+	s_assetSignKey = move(value);
+}
+const Bytes &AssetLibrary::getAssetSignKey() {
+	return s_assetSignKey;
+}
 
 AssetLibrary *AssetLibrary::getInstance() {
 	if (!s_instance) {
@@ -181,7 +189,29 @@ void AssetLibrary::cleanup() {
 	_stateClass.perform(toString("DELETE FROM ", _stateClass.getName(), ";"));
 }
 
+static void signDownload(AssetDownload &d) {
+	auto dev = Device::getInstance();
+
+	String date = Time::now().toHttp();
+	StringStream message;
+
+	message << d.getUrl() << "\r\n";
+	message << "X-ApplicationName: " << dev->getBundleName() << "\r\n";
+	message << "X-ApplicationVersion: " << toString(dev->getApplicationVersionCode()) << "\r\n";
+	message << "X-ClientDate: " << date << "\r\n";
+	message << "User-Agent: " << dev->getUserAgent() << "\r\n";
+
+	auto msg = message.str();
+	auto sig = string::Sha512::hmac(msg, s_assetSignKey);
+
+	d.addHeader("X-ClientDate", date);
+	d.addHeader("X-Stappler-Sign", base64url::encode(sig));
+}
+
 void AssetLibrary::startDownload(AssetDownload *d) {
+	if (!s_assetSignKey.empty()) {
+		signDownload(*d);
+	}
 	d->setCompletedCallback(std::bind(&AssetLibrary::removeDownload, this, d));
 	d->run();
 }

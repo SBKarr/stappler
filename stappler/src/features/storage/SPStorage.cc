@@ -670,7 +670,8 @@ bool Scheme::Internal::initialize() {
 
 	auto storage = _storage;
 	auto &thread = _storage->getThread();
-	thread.perform([storage, this] (const Task &) -> bool {
+
+	auto cb = [storage, this] () -> bool {
 		// check if table exists
 		auto q = toString("SELECT count(*) as num FROM sqlite_master WHERE type='table' AND name='", _name, "'");
 		auto val = storage->perform(q, true);
@@ -726,7 +727,15 @@ bool Scheme::Internal::initialize() {
 			}
 			return false;
 		}
-	}, nullptr, this);
+	};
+
+	if (thread.isOnThisThread()) {
+		return cb();
+	} else {
+		thread.perform([cb] (const Task &) -> bool {
+			return cb();
+		}, nullptr, this);
+	}
 
 	return true;
 }
