@@ -228,6 +228,14 @@ BackgroundLayer *Scene::getBackgroundLayer() const {
 	return _background;
 }
 
+void Scene::setNavigationEnabled(bool value) {
+	_navigation->setEnabled(value);
+}
+
+bool Scene::isNavigationEnabled() const {
+	return _navigation->isEnabled();
+}
+
 Rc<ForegroundLayer> Scene::createForegroundLayer() {
 	return Rc<ForegroundLayer>::create();
 }

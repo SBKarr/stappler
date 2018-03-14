@@ -71,6 +71,9 @@ public:
 	virtual ContentLayer *getContentLayer() const;
 	virtual BackgroundLayer *getBackgroundLayer() const;
 
+	virtual void setNavigationEnabled(bool);
+	virtual bool isNavigationEnabled() const;
+
 	virtual void setAutoLightLevel(bool value);
 	virtual bool isAutoLightLevel() const;
 

@@ -86,6 +86,8 @@ public:
 	void showNextView(float val = 0.35f);
 	void showPrevView(float val = 0.35f);
 
+	void showIndexView(int64_t, float val = 0.35f);
+
 protected:
 	virtual Rc<ScrollView> makeInitialView();
 

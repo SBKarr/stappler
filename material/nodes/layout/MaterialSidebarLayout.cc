@@ -142,6 +142,9 @@ void SidebarLayout::setNode(MaterialNode *n, int zOrder) {
 		_node = nullptr;
 	}
 	_node = n;
+	if (getProgress() == 0) {
+		_node->setVisible(false);
+	}
 	addChild(_node, zOrder);
 	_contentSizeDirty = true;
 }

@@ -63,7 +63,7 @@ bool MultiViewLayout::Generator::isViewLocked(ScrollView *, int64_t index) {
 Rc<ScrollView> MultiViewLayout::Generator::makeIndexView(int64_t viewIndex) {
 	if (_makeViewSeq) {
 		return _makeViewSeq(nullptr, viewIndex, 0);
-	} else if (viewIndex > 0 && viewIndex < int64_t(_viewCount) && _makeViewByIndex) {
+	} else if (viewIndex >= 0 && viewIndex < int64_t(_viewCount) && _makeViewByIndex) {
 		return _makeViewByIndex(viewIndex);
 	}
 	return nullptr;
@@ -225,6 +225,16 @@ void MultiViewLayout::showPrevView(float val) {
 		endSwipeProgress(Vec2(0.0f, 0.0f), Vec2(0.0f, 0.0f));
 	});
 	runAction(cocos2d::EaseQuadraticActionInOut::create(a), "ListAction"_tag);
+}
+
+void MultiViewLayout::showIndexView(int64_t idx, float val) {
+	if (_currentViewIndex < idx) {
+		_currentViewIndex = idx - 1;
+		showNextView(val);
+	} else if (_currentViewIndex > idx) {
+		_currentViewIndex = idx + 1;
+		showPrevView(val);
+	}
 }
 
 Rc<ScrollView> MultiViewLayout::makeInitialView() {
