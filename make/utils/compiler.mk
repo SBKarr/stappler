@@ -18,17 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-ifndef GLOBAL_ROOT
-GLOBAL_ROOT = .
-endif
-
-ifndef COCOS2D_ROOT
-COCOS2D_ROOT := libs/external/stappler-cocos2d-x
-endif
-
-ifndef TOOLKIT_OUTPUT
-TOOLKIT_OUTPUT := $(GLOBAL_ROOT)/build
-endif
+GLOBAL_ROOT ?= .
+COCOS2D_ROOT ?= libs/external/stappler-cocos2d-x
+TOOLKIT_OUTPUT ?= $(GLOBAL_ROOT)/build
 
 UNAME := $(shell uname)
 ifneq ($(UNAME),Darwin)
@@ -111,22 +103,39 @@ GLOBAL_MAKE ?= make
 GLOBAL_MKDIR ?= mkdir -p
 GLOBAL_AR ?= ar rcs
 
-sp_toolkit_source_list = \
+ifeq ($(shell uname),Darwin)
+sp_convert_path = $(1)
+else
+ifeq ($(shell uname -o),Cygwin)
+sp_convert_path = $(shell cygpath -w $1)
+else
+sp_convert_path = $(1)
+endif
+endif
+
+sp_compile_gch = $(GLOBAL_QUIET_CPP) $(GLOBAL_MKDIR) $(dir $@); $(GLOBAL_CPP) $(OSTYPE_GCHFLAGS) -MMD -MP -MF $(dir $@)/$(notdir $*).d $(1) -c -o $@ $(call sp_convert_path,$<)
+sp_compile_c = $(GLOBAL_QUIET_CC) $(GLOBAL_MKDIR) $(dir $@); $(GLOBAL_CC) -MMD -MP -MF $(dir $@)/$(notdir $*).d $(1) -c -o $@ $(call sp_convert_path,$<)
+sp_compile_cpp = $(GLOBAL_QUIET_CPP) $(GLOBAL_MKDIR) $(dir $@); $(GLOBAL_CPP) -MMD -MP -MF $(dir $@)/$(notdir $*).d $(1) -c -o $@ $(call sp_convert_path,$<)
+sp_compile_mm = $(GLOBAL_QUIET_CPP) $(GLOBAL_MKDIR) $(dir $@); $(GLOBAL_CPP) -MMD -MP -MF $(dir $@)/$(notdir $*).d $(1) -fobjc-arc -c -o $@ $(call sp_convert_path,$<)
+
+sp_toolkit_source_list = $(realpath\
 	$(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) \( -name "*.c" -or -name "*.cpp" \)))\
 	$(addprefix $(GLOBAL_ROOT)/,$(filter-out %.mm,$(2)))\
 	$(if $(BUILD_OBJC),\
 		$(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.mm'))\
 		$(addprefix $(GLOBAL_ROOT)/,$(filter %.mm,$(2)))\
-	)
+	)\
+)
 
-sp_toolkit_include_list = \
+sp_toolkit_include_list = $(realpath\
 	$(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) -type d)) \
-	$(addprefix $(GLOBAL_ROOT)/,$(2))
+	$(addprefix $(GLOBAL_ROOT)/,$(2))\
+)
 
-sp_toolkit_object_list = $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(patsubst %.mm,%.o,$(patsubst $(GLOBAL_ROOT)/%,$(1)/%,$(2)))))
+sp_toolkit_object_list = $(abspath $(addprefix $(1),$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(patsubst %.mm,%.o,$(2))))))
 
 sp_toolkit_prefix_files_list = \
-	$(patsubst $(GLOBAL_ROOT)/%,$(1)/include/%,$(addprefix $(GLOBAL_ROOT)/,$(2)))
+	$(abspath $(addprefix $(1)/include,$(realpath $(addprefix $(GLOBAL_ROOT)/,$(2)))))
 
 sp_toolkit_include_flags = \
 	$(addprefix -I,$(sort $(dir $(1)))) $(addprefix -I,$(2))

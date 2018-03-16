@@ -40,43 +40,44 @@ TimeInterval TimeInterval::between(const Time &v1, const Time &v2) {
 	}
 }
 
-uint64_t TimeInterval::toMicroseconds() const {
+uint64_t TimeStorage::toMicroseconds() const {
 	return _value;
 }
-uint64_t TimeInterval::toMilliseconds() const {
+uint64_t TimeStorage::toMilliseconds() const {
 	return _value / 1000ULL;
 }
-uint64_t TimeInterval::toSeconds() const {
+uint64_t TimeStorage::toSeconds() const {
 	return _value / 1000000ULL;
 }
-float TimeInterval::toFloatSeconds() const {
+float TimeStorage::toFloatSeconds() const {
 	return _value / 1000000.0f;
 }
 
-uint64_t TimeInterval::mksec() const {
-	return _value;
-}
-uint64_t TimeInterval::msec() const {
-	return _value / 1000ULL;
-}
-uint64_t TimeInterval::sec() const {
-	return _value / 1000000ULL;
-}
-float TimeInterval::fsec() const {
-	return _value / 1000000.0f;
+struct tm TimeStorage::asLocal() const {
+	auto sec = time_t(toSeconds());
+	struct tm tm;
+	localtime_r(&sec, &tm);
+	return tm;
 }
 
-void TimeInterval::setMicroseconds(uint64_t v) {
+struct tm TimeStorage::asGmt() const {
+	auto sec = time_t(toSeconds());
+	struct tm tm;
+	gmtime_r(&sec, &tm);
+	return tm;
+}
+
+void TimeStorage::setMicroseconds(uint64_t v) {
 	_value = v;
 }
-void TimeInterval::setMilliseconds(uint64_t v) {
+void TimeStorage::setMilliseconds(uint64_t v) {
 	_value = v * 1000ULL;
 }
-void TimeInterval::setSeconds(time_t v) {
+void TimeStorage::setSeconds(time_t v) {
 	_value = v * 1000000ULL;
 }
 
-void TimeInterval::clear() {
+void TimeStorage::clear() {
 	_value = 0;
 }
 
@@ -113,53 +114,12 @@ Time Time::seconds(time_t sec) {
 	return Time(sec * 1000000ULL);
 }
 
-uint64_t Time::toMicroseconds() const {
-	return _value;
-}
-uint64_t Time::toMilliseconds() const {
-	return _value / 1000ULL;
-}
-uint64_t Time::toSeconds() const {
-	return _value / 1000000ULL;
-}
-
-uint64_t Time::mksec() const {
-	return _value;
-}
-uint64_t Time::msec() const {
-	return _value / 1000ULL;
-}
-uint64_t Time::sec() const {
-	return _value / 1000000ULL;
-}
-float Time::fsec() const {
-	return _value / 1000000.0f;
-}
-
-void Time::setMicroseconds(uint64_t v) {
-	_value = v;
-}
-void Time::setMilliseconds(uint64_t v) {
-	_value = v * 1000ULL;
-}
-void Time::setSeconds(time_t v) {
-	_value = v * 1000000ULL;
-}
-
-void Time::clear() {
-	_value = 0;
-}
-
-Time::Time(nullptr_t) {
-	_value = 0;
-}
+Time::Time(nullptr_t) : TimeStorage(0) { }
 Time & Time::operator= (nullptr_t) {
 	_value = 0;
 	return *this;
 }
 
-Time::Time(uint64_t v) {
-	_value = v;
-}
+Time::Time(uint64_t v) : TimeStorage(v) { }
 
 NS_SP_END

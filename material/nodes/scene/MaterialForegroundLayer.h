@@ -30,6 +30,28 @@ NS_MD_BEGIN
 
 class ForegroundLayer : public cocos2d::Node {
 public:
+	struct SnackbarData {
+		String text;
+		Color textColor = Color::White;
+
+		String buttonText;
+		Function<void()> buttonCallback = nullptr;
+		Color buttonColor = Color::White;
+		float delayTime = 4.0f; // in float seconds
+
+		SnackbarData() = default;
+		SnackbarData(const SnackbarData &) = default;
+		SnackbarData(SnackbarData &&) = default;
+		SnackbarData &operator=(const SnackbarData &) = default;
+		SnackbarData &operator=(SnackbarData &&) = default;
+
+		SnackbarData(const char *);
+		SnackbarData(const String &);
+		SnackbarData(const String &, const Color &);
+		SnackbarData &withButton(const String &, const Function<void()> &, const Color & = Color::White);
+		SnackbarData &delayFor(float);
+	};
+
 	virtual bool init() override;
 	virtual void onContentSizeDirty() override;
 
@@ -48,7 +70,7 @@ public:
 	virtual void clear();
 	virtual bool isActive() const;
 
-	virtual void setSnackbarString(const String &, const Color & = Color::White);
+	virtual void showSnackbar(SnackbarData &&);
 	virtual const String &getSnackbarString() const;
 
 	virtual void setBackgroundOpacity(uint8_t);
@@ -58,9 +80,7 @@ public:
 	virtual const Color & getBackgroundColor() const;
 
 protected:
-	virtual void setSnackbarStringInternal(const String &, const Color &color = Color::White);
-	virtual void hideSnackbar(const Function<void()> & = nullptr);
-	virtual void onSnackbarHidden();
+	class Snackbar;
 
 	virtual void enableBackground();
 	virtual void disableBackground();
@@ -71,9 +91,7 @@ protected:
 	Set<cocos2d::Node *> _pendingPush;
 	Map<cocos2d::Node *, Function<void()>> _callbacks;
 
-	Layer *_snackbar = nullptr;
-	Label *_snackbarLabel = nullptr;
-	String _snackbarString;
+	Snackbar *_snackbar = nullptr;
 
 	uint8_t _backgroundOpacity = 0;
 	Color _backgroundColor = Color::Grey_500;

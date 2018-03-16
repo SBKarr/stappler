@@ -71,7 +71,7 @@ GLOBAL_QUIET_CPP = @ echo $(call sp_counter_text) [$(notdir $(GLOBAL_CPP))] $(no
 GLOBAL_QUIET_LINK = @ echo [Link] $@ ;
 endif
 
-.PHONY: clean .postbuild .preclean
+.PHONY: clean
 
-clean: .preclean
+clean:
 	$(GLOBAL_RM) -r $(TOOLKIT_CLEARABLE_OUTPUT) $(GLOBAL_OUTPUT)

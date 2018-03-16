@@ -445,7 +445,7 @@ Scheme::Command *Scheme::Command::orderBy(const String &field, Flags orderMode) 
 	}
 	if (!_scheme->_internal->isOrderingAllowed(field, orderMode)) {
 		_valid = false;
-		log::format("Storage", "Scheme command: field '%s' is not Text", field.c_str());
+		log::format("Storage", "Scheme command: ordering by '%s' is not allowed", field.c_str());
 		return this;
 	}
 	_order = _scheme->_internal->resolveAlias(field);
@@ -845,7 +845,7 @@ bool Scheme::Internal::isOrderingAllowed(const String &origField, Flags ordering
 		return false;
 	} else {
 		auto &f = it->second;
-		if ((f.flags & ordering) == 0) {
+		if ((f.flags & ordering) == 0 && it->first != _primary) {
 			log::format("Storage", "Storage: %s: ordering by field %s failed: no index for specified diration field", _name.c_str(), field.c_str());
 			return false;
 		}

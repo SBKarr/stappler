@@ -468,8 +468,13 @@ void Scene::setNavigationMenuSource(material::MenuSource *source) {
 }
 
 void Scene::setSnackbarString(const std::string &str, const Color &color) {
-	_foreground->setSnackbarString(str, color);
+	showSnackbar(SnackbarData(str, color));
 }
+
+void Scene::showSnackbar(SnackbarData &&data) {
+	_foreground->showSnackbar(move(data));
+}
+
 Vec2 Scene::convertToScene(const Vec2 &vec) const {
 	return _foreground->convertToNodeSpace(vec);
 }
@@ -496,7 +501,7 @@ void Scene::takeScreenshoot() {
 	auto tex = _captureCanvas->captureContents(this, cocos2d::Texture2D::PixelFormat::RGBA8888, 1.0f);
 	saveScreenshot(path, tex);
 
-	_foreground->setSnackbarString("Screenshot saved to " + path);
+	_foreground->showSnackbar("Screenshot saved to " + path);
 }
 
 void Scene::saveScreenshot(const String &filename, cocos2d::Texture2D *tex) {

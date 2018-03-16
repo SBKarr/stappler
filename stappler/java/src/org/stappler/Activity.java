@@ -517,7 +517,7 @@ public class Activity extends Cocos2dxActivity {
 			public void run() {
 				View decorView = getWindow().getDecorView();
 				int uiOptions = decorView.getSystemUiVisibility();
-				if (v) {
+				if (!v) {
 					uiOptions = uiOptions | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
 				} else {
 					uiOptions = uiOptions & ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;

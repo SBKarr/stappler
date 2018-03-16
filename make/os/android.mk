@@ -31,11 +31,29 @@ endif
 
 ANDROID_TOOLCHAIN := $(GLOBAL_ROOT)/libs/android/toolchains/$(ANDROID_ARCH)
 
-
 ### OS vars
 
 OSTYPE_PREBUILT_PATH := libs/android/$(ANDROID_ARCH)/lib
 OSTYPE_INCLUDE :=  libs/android/$(ANDROID_ARCH)/include
+
+OSTYPE_COMMON_LIBS_LIST := \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libcurl.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libbrotlidec.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libbrotlienc.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libbrotlicommon.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libmbedtls.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libmbedx509.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libmbedcrypto.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libpng.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libjpeg.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libwebp.a
+
+OSTYPE_STAPPLER_LIBS_LIST := \
+	$(OSTYPE_COMMON_LIBS_LIST) \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libsqlite3.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libhyphen.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libfreetype.a
+
 OSTYPE_CFLAGS := -DANDROID -Wall -fPIC -DUSE_FILE32API --sysroot $(ANDROID_TOOLCHAIN)/sysroot -I$(NDK)/sources/android/cpufeatures
 OSTYPE_CPPFLAGS := -Wno-overloaded-virtual -frtti
 OSTYPE_GCHFLAGS := -x c++-header
@@ -63,7 +81,7 @@ endif
 
 GLOBAL_CPP := $(ANDROID_TOOLCHAIN)/bin/$(ANDROID_TARGET)-clang++
 GLOBAL_CC := $(ANDROID_TOOLCHAIN)/bin/$(ANDROID_TARGET)-clang
-GLOBAL_AR := $(ANDROID_TOOLCHAIN)/bin/$(ANDROID_TARGET)-ar rcs
+GLOBAL_AR := $(ANDROID_TOOLCHAIN)/bin/$(ANDROID_TARGET)-ar
 
 ifdef RELEASE
 TOOLKIT_OUTPUT := $(TOOLKIT_OUTPUT)/android/release/$(ANDROID_ARCH)

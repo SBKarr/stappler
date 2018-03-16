@@ -41,44 +41,32 @@ BUILD_LIBRARY := $(BUILD_OUTDIR)/$(LOCAL_OUTPUT_LIBRARY)
 
 include $(GLOBAL_ROOT)/make/utils/external.mk
 
-all: static
-
-static: .prebuild_local $(BUILD_LIBRARY)
+all: $(BUILD_LIBRARY)
 
 $(BUILD_LIBRARY): $(BUILD_OBJS)
 	$(GLOBAL_QUIET_LINK) $(GLOBAL_LIBTOOL) -static  $(BUILD_OBJS) $(OSTYPE_STAPPLER_LIBS_LIST) -o $(BUILD_LIBRARY)
 
-$(BUILD_OUTDIR)/%.o: /%.cpp $(TOOLKIT_H_GCH) $(TOOLKIT_GCH) 
-	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(BUILD_OUTDIR)/$*.d $(BUILD_CXXFLAGS) -c -o $@ `$(GLOBAL_ROOT)/convert-path.sh $<`
+$(BUILD_OUTDIR)/%.o: /%.cpp $(TOOLKIT_H_GCH) $(TOOLKIT_GCH)
+	$(call sp_compile_cpp,$(BUILD_CXXFLAGS))
 
-$(BUILD_OUTDIR)/%.o: /%.mm $(TOOLKIT_H_GCH) $(TOOLKIT_GCH) 
-	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(BUILD_OUTDIR)/$*.d $(BUILD_CXXFLAGS) -c -o $@ `$(GLOBAL_ROOT)/convert-path.sh $<`
+$(BUILD_OUTDIR)/%.o: /%.mm $(TOOLKIT_H_GCH) $(TOOLKIT_GCH)
+	$(call sp_compile_mm,$(BUILD_CXXFLAGS))
 
 $(BUILD_OUTDIR)/%.o: /%.c $(TOOLKIT_H_GCH) $(TOOLKIT_GCH)
-	$(GLOBAL_QUIET_CC) $(GLOBAL_CC) -MMD -MP -MF $(BUILD_OUTDIR)/$*.d $(BUILD_CFLAGS) -c -o $@ `$(GLOBAL_ROOT)/convert-path.sh $<`
+	$(call sp_compile_c,$(BUILD_CFLAGS))
 
-clean_local:
-	$(GLOBAL_RM) $(BUILD_LIBRARY)
-
-.PHONY: clean_local clean .prebuild_local all static
-
-.preclean:
-	$(GLOBAL_RM) $(BUILD_LIBRARY)
-
-.prebuild_local:
-	@$(GLOBAL_MKDIR) $(BUILD_DIRS)
+.PHONY: all
 
 else
 
-ios: .local_prebuild
+ios:
+ios-armv7:
+ios-armv7s:
+ios-arm64:
+ios-i386:
+ios-x86_64:
+ios-clean:
 
-ios-armv7: .local_prebuild
-ios-armv7s: .local_prebuild
-ios-arm64: .local_prebuild
-ios-i386: .local_prebuild
-ios-x86_64: .local_prebuild
-ios-clean: .local_preclean
-
-.PHONY: .local_prebuild .local_preclean
+.PHONY:
 
 endif

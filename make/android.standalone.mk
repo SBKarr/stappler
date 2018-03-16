@@ -22,7 +22,7 @@
 
 IS_LOCAL_BUILD := 1
 
-BUILD_OUTDIR := $(LOCAL_OUTDIR)
+BUILD_OUTDIR := $(LOCAL_OUTDIR)/android
 
 GLOBAL_ROOT := $(STAPPLER_ROOT)
 GLOBAL_OUTPUT := $(BUILD_OUTDIR)
@@ -33,37 +33,35 @@ include $(GLOBAL_ROOT)/make/utils/compiler.mk
 
 ifdef ANDROID_ARCH
 
-ifeq ($(RELEASE),1)
-BUILD_OUTDIR := $(BUILD_OUTDIR)/release/$(ANDROID_ARCH)
-else
-BUILD_OUTDIR := $(BUILD_OUTDIR)/debug/$(ANDROID_ARCH)
-endif
-
+BUILD_OUTDIR := $(BUILD_OUTDIR)/$(if $(RELEASE),release,debug)/$(ANDROID_ARCH)
 GLOBAL_OUTPUT := $(BUILD_OUTDIR)
+BUILD_LIBRARY := $(BUILD_OUTDIR)/$(LOCAL_LIBRARY).so
+BUILD_STATIC := $(BUILD_OUTDIR)/$(LOCAL_LIBRARY).a
 
-BUILD_LIBRARY := $(BUILD_OUTDIR)/$(LOCAL_OUTPUT_LIBRARY)
-
+ifndef ANDROID_EXPORT
 LOCAL_SRCS_OBJS += $(realpath $(NDK)/sources/android/cpufeatures/cpu-features.c)
+endif
 
 include $(GLOBAL_ROOT)/make/utils/external.mk
 
-all: static
-
-static: .prebuild_local $(BUILD_LIBRARY)
+all: $(BUILD_LIBRARY) $(BUILD_STATIC)
 
 BUILD_LIBS += -static-libstdc++ -lc++_static -lc++abi
 
 $(BUILD_LIBRARY): $(BUILD_OBJS)
 	$(GLOBAL_QUIET_LINK) $(GLOBAL_CPP) -shared  $(BUILD_OBJS) $(BUILD_LIBS) $(TOOLKIT_LIB_FLAGS) $(OSTYPE_EXEC_FLAGS) -o $(BUILD_LIBRARY)
 
-$(BUILD_OUTDIR)/%.o: /%.cpp $(TOOLKIT_H_GCH) $(TOOLKIT_GCH) 
-	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(BUILD_OUTDIR)/$*.d $(BUILD_CXXFLAGS) -c -o $@ `$(GLOBAL_ROOT)/convert-path.sh $<`
+$(BUILD_STATIC): $(BUILD_OBJS)
+	@$(GLOBAL_AR) cqT $(BUILD_STATIC) $(BUILD_OBJS) $(OSTYPE_STAPPLER_LIBS_LIST)
 
-$(BUILD_OUTDIR)/%.o: /%.mm $(TOOLKIT_H_GCH) $(TOOLKIT_GCH) 
-	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(BUILD_OUTDIR)/$*.d $(BUILD_CXXFLAGS) -c -o $@ `$(GLOBAL_ROOT)/convert-path.sh $<`
+$(BUILD_OUTDIR)/%.o: /%.cpp $(TOOLKIT_H_GCH) $(TOOLKIT_GCH)
+	$(call sp_compile_cpp,$(BUILD_CXXFLAGS))
+
+$(BUILD_OUTDIR)/%.o: /%.mm $(TOOLKIT_H_GCH) $(TOOLKIT_GCH)
+	$(call sp_compile_mm,$(BUILD_CXXFLAGS))
 
 $(BUILD_OUTDIR)/%.o: /%.c $(TOOLKIT_H_GCH) $(TOOLKIT_GCH)
-	$(GLOBAL_QUIET_CC) $(GLOBAL_CC) -MMD -MP -MF $(BUILD_OUTDIR)/$*.d $(BUILD_CFLAGS) -c -o $@ `$(GLOBAL_ROOT)/convert-path.sh $<`
+	$(call sp_compile_c,$(BUILD_CFLAGS))
 
 clean_local:
 	$(GLOBAL_RM) $(BUILD_LIBRARY)

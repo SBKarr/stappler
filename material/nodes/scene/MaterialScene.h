@@ -107,12 +107,19 @@ public:
 	virtual void popNode(cocos2d::Node *);
 
 	virtual void setNavigationMenuSource(material::MenuSource *);
-	virtual void setSnackbarString(const String &, const Color & = Color::White);
 
 	virtual Vec2 convertToScene(const Vec2 &) const;
 
 	virtual void pushBackButtonCallback(stappler::Ref *, const Function<void()> &);
 	virtual void popBackButtonCallback(stappler::Ref *);
+
+public:
+	using SnackbarData = ForegroundLayer::SnackbarData;
+
+	[[deprecated]]
+	virtual void setSnackbarString(const String &, const Color & = Color::White);
+
+	virtual void showSnackbar(SnackbarData &&);
 
 protected:
 	virtual Rc<ForegroundLayer> createForegroundLayer();

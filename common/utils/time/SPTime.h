@@ -31,7 +31,48 @@ NS_SP_BEGIN
 
 class Time;
 
-class TimeInterval {
+class TimeStorage {
+public:
+	uint64_t toMicroseconds() const;
+	uint64_t toMilliseconds() const;
+	uint64_t toSeconds() const;
+	float toFloatSeconds() const;
+
+	uint64_t toMicros() const { return toMicroseconds(); }
+	uint64_t toMillis() const { return toMilliseconds(); }
+
+	uint64_t mksec() const { return toMicroseconds(); }
+	uint64_t msec() const { return toMilliseconds(); }
+	uint64_t sec() const { return toSeconds(); }
+	float fsec() const { return toFloatSeconds(); }
+
+	struct tm asLocal() const;
+	struct tm asGmt() const;
+
+	void setMicros(uint64_t value) { setMicroseconds(value); }
+	void setMillis(uint64_t value) { setMilliseconds(value); }
+
+	void setMicroseconds(uint64_t);
+	void setMilliseconds(uint64_t);
+	void setSeconds(time_t);
+
+	void clear();
+
+	operator bool() const { return _value != 0; }
+
+	TimeStorage() = default;
+	TimeStorage(const TimeStorage &) = default;
+	TimeStorage(TimeStorage &&) = default;
+	TimeStorage & operator= (const TimeStorage &) = default;
+	TimeStorage & operator= (TimeStorage &&) = default;
+
+protected:
+    constexpr TimeStorage(uint64_t v) : _value(v) { }
+
+	uint64_t _value = 0;
+};
+
+class TimeInterval : public TimeStorage {
 public:
 	static TimeInterval between(const Time &, const Time &);
 
@@ -44,24 +85,6 @@ public:
 	constexpr static TimeInterval seconds(time_t sec) {
 		return TimeInterval(sec * 1000000ULL);
 	}
-
-	uint64_t toMicroseconds() const;
-	uint64_t toMilliseconds() const;
-	uint64_t toSeconds() const;
-	float toFloatSeconds() const;
-
-	uint64_t mksec() const;
-	uint64_t msec() const;
-	uint64_t sec() const;
-	float fsec() const;
-
-	void setMicroseconds(uint64_t);
-	void setMilliseconds(uint64_t);
-	void setSeconds(time_t);
-
-	void clear();
-
-	inline operator bool() const;
 
     inline const Time operator+(const Time& v) const;
 
@@ -84,26 +107,22 @@ public:
     inline bool operator==(const TimeInterval& v) const;
     inline bool operator!=(const TimeInterval& v) const;
 
-    TimeInterval(nullptr_t);
-    TimeInterval & operator= (nullptr_t);
+	TimeInterval(nullptr_t);
+	TimeInterval & operator= (nullptr_t);
 
-    TimeInterval() = default;
-    TimeInterval(const TimeInterval &) = default;
-    TimeInterval(TimeInterval &&) = default;
-    TimeInterval & operator= (const TimeInterval &) = default;
-    TimeInterval & operator= (TimeInterval &&) = default;
+	TimeInterval() : TimeStorage(0) { }
+	TimeInterval(const TimeInterval &other) : TimeStorage(other._value) { }
+	TimeInterval(TimeInterval &&other) : TimeStorage(other._value) { }
+	TimeInterval & operator= (const TimeInterval &other) { _value = other._value; return *this; }
+	TimeInterval & operator= (TimeInterval &&other) { _value = other._value; return *this; }
 
 protected:
     friend class Time;
 
-    constexpr TimeInterval(uint64_t v) {
-    	_value = v;
-    }
-
-	uint64_t _value = 0;
+    constexpr TimeInterval(uint64_t v) : TimeStorage(v) { }
 };
 
-class Time {
+class Time : public TimeStorage {
 public:
 	static Time now();
 
@@ -114,15 +133,6 @@ public:
 	static Time microseconds(uint64_t mksec);
 	static Time milliseconds(uint64_t msec);
 	static Time seconds(time_t sec);
-
-	uint64_t toMicroseconds() const;
-	uint64_t toMilliseconds() const;
-	uint64_t toSeconds() const;
-
-	uint64_t mksec() const;
-	uint64_t msec() const;
-	uint64_t sec() const;
-	float fsec() const;
 
 	template <typename Interface = memory::DefaultInterface>
 	auto toHttp() -> typename Interface::StringType {
@@ -145,14 +155,6 @@ public:
 		return StringType(buf, 24);
 	}
 
-	void setMicroseconds(uint64_t);
-	void setMilliseconds(uint64_t);
-	void setSeconds(time_t);
-
-	void clear();
-
-	inline operator bool() const;
-
     inline const Time operator+(const TimeInterval& v) const;
     inline Time& operator+=(const TimeInterval& v);
 
@@ -167,14 +169,14 @@ public:
     inline bool operator==(const Time& v) const;
     inline bool operator!=(const Time& v) const;
 
-    Time(nullptr_t);
-    Time & operator= (nullptr_t);
+	Time(nullptr_t);
+	Time & operator= (nullptr_t);
 
-    Time() = default;
-    Time(const Time &) = default;
-    Time(Time &&) = default;
-    Time & operator= (const Time &) = default;
-    Time & operator= (Time &&) = default;
+	Time() : TimeStorage(0) { }
+	Time(const Time &other) : TimeStorage(other._value) { }
+	Time(Time &&other) : TimeStorage(other._value) { }
+	Time & operator= (const Time &other) { _value = other._value; return *this; }
+	Time & operator= (Time &&other) { _value = other._value; return *this; }
 
 protected:
     friend class TimeInterval;
@@ -183,17 +185,12 @@ protected:
 
 	void encodeRfc822(char *);
 	void encodeCTime(char *);
-
-	uint64_t _value = 0;
 };
 
 constexpr TimeInterval operator"" _sec ( unsigned long long int val ) { return TimeInterval::seconds((time_t)val); }
 constexpr TimeInterval operator"" _msec ( unsigned long long int val ) { return TimeInterval::milliseconds(val); }
 constexpr TimeInterval operator"" _mksec ( unsigned long long int val ) { return TimeInterval::microseconds(val); }
 
-inline TimeInterval::operator bool() const {
-	return _value != 0;
-}
 
 inline const Time TimeInterval::operator+(const Time& v) const {
 	return v + *this;
@@ -245,11 +242,6 @@ inline bool TimeInterval::operator<=(const TimeInterval& v) const { return _valu
 inline bool TimeInterval::operator>=(const TimeInterval& v) const { return _value >= v._value; }
 inline bool TimeInterval::operator==(const TimeInterval& v) const { return _value == v._value; }
 inline bool TimeInterval::operator!=(const TimeInterval& v) const { return _value != v._value; }
-
-
-inline Time::operator bool() const {
-	return _value != 0;
-}
 
 inline const Time Time::operator+(const TimeInterval& v) const {
 	return Time(_value + v._value);

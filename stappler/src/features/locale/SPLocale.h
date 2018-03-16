@@ -32,6 +32,24 @@ using StringMap = std::unordered_map<String, String>;
 using LocaleMap = std::unordered_map<String, StringMap>;
 using NumRule = std::function<uint8_t(int64_t)>;
 
+enum class TimeTokens {
+	Today = 0,
+	Yesterday,
+	Jan,
+	Feb,
+	Mar,
+	Apr,
+	Nay,
+	Jun,
+	jul,
+	Aug,
+	Sep,
+	Oct,
+	Nov,
+	Dec,
+	Max
+};
+
 extern EventHeader onLocale;
 
 struct Initializer {
@@ -39,6 +57,8 @@ struct Initializer {
 };
 
 void define(const String &locale, LocaleInitList &&);
+void define(const String &locale, const std::array<StringView, toInt(TimeTokens::Max)> &);
+
 String string(const String &);
 String numeric(const String &, size_t);
 
@@ -51,12 +71,17 @@ const String &getLocale();
 void setNumRule(const String &, const NumRule &);
 
 bool hasLocaleTags(const char16_t *, size_t);
-std::u16string resolveLocaleTags(const char16_t *, size_t);
+WideString resolveLocaleTags(const char16_t *, size_t);
 
 String language(const String &locale);
 
 // convert locale name to common form ('en-us', 'ru-ru', 'fr-fr')
 String common(const String &locale);
+
+String timeToken(TimeTokens);
+
+String localDate(Time);
+String localDate(const std::array<StringView, toInt(TimeTokens::Max)> &, Time);
 
 NS_SP_EXT_END(locale)
 

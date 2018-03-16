@@ -44,7 +44,7 @@ public:
 	MainLoop();
 	~MainLoop();
 
-    void init();
+    bool init();
     bool update();
 
     void framePerformed();
@@ -92,7 +92,7 @@ MainLoop::~MainLoop() {
 
 }
 
-void MainLoop::init() {
+bool MainLoop::init() {
 	_shouldQuit.test_and_set();
 	_renderFlag.test_and_set();
 	_frameFlag.clear();
@@ -101,9 +101,14 @@ void MainLoop::init() {
 
 	JNIEnv *env = stappler::spjni::getJniEnv();
 	auto & activity = stappler::spjni::getActivity(env);
-	auto activityClass = activity.get_class();
-	_renderFrame = spjni::getMethodID(env, activityClass, "renderFrame", "()V");
-	_setRenderContinuously = spjni::getMethodID(env, activityClass, "setRenderContinuously", "(Z)V");
+	if (activity) {
+		auto activityClass = activity.get_class();
+		_renderFrame = spjni::getMethodID(env, activityClass, "renderFrame", "()V");
+		_setRenderContinuously = spjni::getMethodID(env, activityClass, "setRenderContinuously", "(Z)V");
+		return _renderFrame && _setRenderContinuously;
+	} else {
+		return false;
+	}
 }
 
 void MainLoop::render() {
@@ -120,6 +125,12 @@ bool MainLoop::update() {
 	if (!_running.load()) {
 		return true;
 	}
+
+    if (!_renderFrame || !_setRenderContinuously) {
+        if (!init()) {
+            return true;
+        }
+    }
 
 	auto now = Time::now().toMicroseconds();
 	auto diff = now - _mksec;

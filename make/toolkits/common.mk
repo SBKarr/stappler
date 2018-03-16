@@ -18,9 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-COMMON_OUTPUT_DIR = $(TOOLKIT_OUTPUT)/common
-COMMON_OUTPUT = $(TOOLKIT_OUTPUT)/libcommon.so
-COMMON_OUTPUT_STATIC = $(TOOLKIT_OUTPUT)/libcommon.a
+COMMON_OUTPUT_DIR = $(abspath $(TOOLKIT_OUTPUT)/common)
+COMMON_OUTPUT_STATIC = $(abspath $(TOOLKIT_OUTPUT)/libcommon.a)
 
 COMMON_FLAGS := -DNOCC
 
@@ -38,32 +37,25 @@ TOOLKIT_TITLE := common
 
 include $(GLOBAL_ROOT)/make/utils/toolkit.mk
 
-$(COMMON_OUTPUT_DIR)/include/%.h : $(GLOBAL_ROOT)/%.h
+$(COMMON_OUTPUT_DIR)/include/%.h : /%.h
 	@$(GLOBAL_MKDIR) $(dir $(COMMON_OUTPUT_DIR)/include/$*.h)
 	@cp -f $< $(COMMON_OUTPUT_DIR)/include/$*.h
 
 $(COMMON_OUTPUT_DIR)/include/%.h.gch: $(COMMON_OUTPUT_DIR)/include/%.h
-	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) $(OSTYPE_GCHFLAGS) -MMD -MP -MF $(COMMON_OUTPUT_DIR)/include/$*.d $(COMMON_CXXFLAGS) -c -o $@ $<
+	$(call sp_compile_gch,$(COMMON_CXXFLAGS))
 
-$(COMMON_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.cpp $(COMMON_H_GCH) $(COMMON_GCH)
-	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(COMMON_OUTPUT_DIR)/$*.d $(COMMON_CXXFLAGS) -c -o $@ $<
+$(COMMON_OUTPUT_DIR)/%.o: /%.cpp $(COMMON_H_GCH) $(COMMON_GCH)
+	$(call sp_compile_cpp,$(COMMON_CXXFLAGS))
 
-$(COMMON_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.mm $(COMMON_H_GCH) $(COMMON_GCH)
-	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(COMMON_OUTPUT_DIR)/$*.d $(COMMON_CXXFLAGS) -fobjc-arc -c -o $@ $<
+$(COMMON_OUTPUT_DIR)/%.o: /%.mm $(COMMON_H_GCH) $(COMMON_GCH)
+	$(call sp_compile_mm,$(COMMON_CXXFLAGS))
 
-$(COMMON_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.c $($(TOOLKIT_NAME)_H_GCH) $($(TOOLKIT_NAME)_GCH)
-	$(GLOBAL_QUIET_CC) $(GLOBAL_CC) -MMD -MP -MF $(COMMON_OUTPUT_DIR)/$*.d $(COMMON_CFLAGS) -c -o $@ $<
-
-$(COMMON_OUTPUT): $(COMMON_H_GCH) $(COMMON_GCH) $(COMMON_OBJS)
-	$(GLOBAL_QUIET_LINK) $(GLOBAL_CPP)  $(COMMON_OBJS) $(COMMON_LIBS) -shared $(OSTYPE_LDFLAGS) -o $(COMMON_OUTPUT)
+$(COMMON_OUTPUT_DIR)/%.o: /%.c $(COMMON_H_GCH) $(COMMON_GCH)
+	$(call sp_compile_c,$(COMMON_CFLAGS))
 
 $(COMMON_OUTPUT_STATIC) : $(COMMON_H_GCH) $(COMMON_GCH) $(COMMON_OBJS)
 	$(GLOBAL_QUIET_LINK) $(GLOBAL_AR) $(COMMON_OUTPUT_STATIC) $(COMMON_OBJS)
 
-libcommon: .prebuild_common $(COMMON_OUTPUT_STATIC)
+libcommon: $(COMMON_OUTPUT_STATIC)
 
-.prebuild_common:
-	@echo "=== Build libcommon ==="
-	@$(GLOBAL_MKDIR) $(COMMON_DIRS)
-
-.PHONY: .prebuild_common libcommon
+.PHONY: libcommon

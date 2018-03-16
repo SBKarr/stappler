@@ -26,7 +26,6 @@ $(TOOLKIT_NAME)_H_GCH := $(call sp_toolkit_prefix_files_list,$($(TOOLKIT_NAME)_O
 $(TOOLKIT_NAME)_GCH := $(addsuffix .gch,$($(TOOLKIT_NAME)_H_GCH))
 
 $(TOOLKIT_NAME)_OBJS := $(call sp_toolkit_object_list, $($(TOOLKIT_NAME)_OUTPUT_DIR), $($(TOOLKIT_NAME)_SRCS))
-$(TOOLKIT_NAME)_DIRS := $(sort $(dir $($(TOOLKIT_NAME)_OBJS) $($(TOOLKIT_NAME)_GCH)))
 
 $(TOOLKIT_NAME)_INPUT_CFLAGS := $(call sp_toolkit_include_flags,$($(TOOLKIT_NAME)_GCH),$($(TOOLKIT_NAME)_INCLUDES))
 

@@ -84,7 +84,6 @@ SERENITY_INPUT_CFLAGS := $(addprefix -I,$(sort $(dir $(SERENITY_GCH)))) $(addpre
 SERENITY_CXXFLAGS := $(GLOBAL_CXXFLAGS) $(SERENITY_FLAGS) $(SERENITY_INPUT_CFLAGS)
 SERENITY_CFLAGS := $(GLOBAL_CFLAGS) $(SERENITY_FLAGS) $(SERENITY_INPUT_CFLAGS)
 
-
 # Progress counter
 SERENITY_COUNTER := 0
 SERENITY_WORDS := $(words $(SERENITY_GCH) $(SERENITY_OBJS))
@@ -98,7 +97,6 @@ endef
 
 $(foreach obj,$(SERENITY_GCH) $(SERENITY_OBJS),$(eval $(call SERENITY_template,$(obj))))
 
-
 -include $(patsubst %.o,%.d,$(SERENITY_OBJS))
 -include $(patsubst %.gch,%.d,$(SERENITY_GCH))
 
@@ -107,7 +105,7 @@ $(SERENITY_OUTPUT_DIR)/include/%.h : $(GLOBAL_ROOT)/%.h
 	@cp -f $< $(SERENITY_OUTPUT_DIR)/include/$*.h
 
 $(SERENITY_OUTPUT_DIR)/include/%.h.gch: $(SERENITY_OUTPUT_DIR)/include/%.h
-	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) $(OSTYPE_GCHFLAGS) -MMD -MP -MF $(SERENITY_OUTPUT_DIR)/include/$*.h.d $(SERENITY_CXXFLAGS) -c -o $@ $<
+	$(call sp_compile_gch,$(SERENITY_CXXFLAGS))
 
 $(GLOBAL_ROOT)/serenity/gen/__Virtual.cpp: $(SERENITY_VIRTUAL_SRCS)
 	@mkdir -p $(GLOBAL_ROOT)/serenity/gen
@@ -128,22 +126,18 @@ $(GLOBAL_ROOT)/serenity/gen/__Virtual.cpp: $(SERENITY_VIRTUAL_SRCS)
 	@echo 'NS_SA_EXT_END(tools)' >> $@
 
 $(SERENITY_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.cpp $(SERENITY_H_GCH) $(SERENITY_GCH)
-	$(GLOBAL_QUIET_CPP) $(GLOBAL_CPP) -MMD -MP -MF $(SERENITY_OUTPUT_DIR)/$*.d $(SERENITY_CXXFLAGS) -c -o $@ $<
+	$(call sp_compile_cpp,$(SERENITY_CXXFLAGS))
 
 $(SERENITY_OUTPUT_DIR)/%.o: $(GLOBAL_ROOT)/%.c $(SERENITY_H_GCH) $(SERENITY_GCH)
-	$(GLOBAL_QUIET_CC) $(GLOBAL_CC) -MMD -MP -MF $(SERENITY_OUTPUT_DIR)/$*.d $(SERENITY_CFLAGS) -c -o $@ $<
+	$(call sp_compile_c,$(SERENITY_CFLAGS))
 
 $(SERENITY_OUTPUT): $(SERENITY_H_GCH) $(SERENITY_GCH) $(SERENITY_OBJS)
 	$(GLOBAL_QUIET_LINK) $(GLOBAL_CPP)  $(SERENITY_OBJS) $(SERENITY_LIBS) -shared -rdynamic -o $(SERENITY_OUTPUT)
 
-libserenity: .prebuild_serenity $(SERENITY_OUTPUT)
+libserenity: $(SERENITY_OUTPUT)
 serenity: libserenity
 	@echo "=== Install mod_serenity into Apache ==="
 	$(APXS) -i -n serenity -a $(SERENITY_OUTPUT)
 	@echo "=== Complete! ==="
 
-.prebuild_serenity:
-	@echo "=== Build libserenity ==="
-	@$(GLOBAL_MKDIR) $(SERENITY_DIRS)
-
-.PHONY: .prebuild_serenity libserenity serenity install-serenity
+.PHONY: libserenity serenity

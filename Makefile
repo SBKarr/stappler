@@ -18,25 +18,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+.DEFAULT_GOAL := all
+
 THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
 GLOBAL_ROOT := .
+
+include make/library.mk
 
 all: libmaterial libstappler libcli libcommon
 
 install-deps-ubuntu:
 	sudo apt-get install libglew-dev libz-dev libxrandr-dev libxi-dev libxinerama-dev libxcursor-dev
 
-pvs.log:
-	pvs-studio-analyzer analyze -o pvs.log -j4
-
-pvs-analyzer-log: pvs.log
-	plog-converter -t errorfile pvs.log
-
 static: libmaterial libstappler
 
-.PHONY: all analyse-log android android-clean android-toolchain
-
-include make/library.mk
-
-.PHONY: ios
+.PHONY: all install-deps-ubuntu
