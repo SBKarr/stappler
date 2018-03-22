@@ -180,6 +180,7 @@ class AlwaysDrawedNode;
 class EventListener;
 
 class ScrollController;
+class ScrollItemHandle;
 
 class Accelerated;
 class FadeIn;

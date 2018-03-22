@@ -208,6 +208,8 @@ namespace style {
 
 	enum class TextDecoration : EnumSize {
 		None,
+		LineThrough,
+		Overline,
 		Underline,
 	};
 

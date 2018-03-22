@@ -81,7 +81,7 @@ protected:
 			const layout::RangeSpec &range, const layout::LineSpec &line, Vector<bool> &cMap, const cocos2d::Texture2D *tex, DynamicQuadArray *quad);
 
 	std::mutex _mutex;
-	Time _timer = 0;
+	Time _timer;
 	Map<uint64_t, Rc<FontLibraryCache>> _cache;
 
 	std::mutex _sourcesMutex;
@@ -256,13 +256,13 @@ void FontLibrary::writeTextureQuad(const layout::FormatSpec *format, const layou
 	cMap.push_back(range.opacityDirty);
 	switch (range.align) {
 	case layout::VerticalAlign::Sub:
-		quad->drawChar(m, l, t, c.pos, format->height - line.pos + m.descender / 2, range.color, range.underline, tex->getPixelsWide(), tex->getPixelsHigh());
+		quad->drawChar(m, l, t, c.pos, format->height - line.pos + m.descender / 2, range.color, range.decoration, tex->getPixelsWide(), tex->getPixelsHigh());
 		break;
 	case layout::VerticalAlign::Super:
-		quad->drawChar(m, l, t, c.pos, format->height - line.pos + m.ascender / 2, range.color, range.underline, tex->getPixelsWide(), tex->getPixelsHigh());
+		quad->drawChar(m, l, t, c.pos, format->height - line.pos + m.ascender / 2, range.color, range.decoration, tex->getPixelsWide(), tex->getPixelsHigh());
 		break;
 	default:
-		quad->drawChar(m, l, t, c.pos, format->height - line.pos, range.color, range.underline, tex->getPixelsWide(), tex->getPixelsHigh());
+		quad->drawChar(m, l, t, c.pos, format->height - line.pos, range.color, range.decoration, tex->getPixelsWide(), tex->getPixelsHigh());
 		break;
 	}
 }

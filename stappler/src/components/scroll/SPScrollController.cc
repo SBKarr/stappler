@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include "SPScrollController.h"
 #include "SPScrollViewBase.h"
 #include "2d/CCNode.h"
+#include "SPScrollItemHandle.h"
 
 NS_SP_BEGIN
 
@@ -74,43 +75,46 @@ void ScrollController::onScrollPosition(bool force) {
 		return;
 	}
 
-	if (_infoDirty || force) {
-		float start = nan();
-		float end = nan();
-		float size = 0;
-		float pos = 0;
+	do {
+		if (_infoDirty || force) {
+			float start = nan();
+			float end = nan();
+			float size = 0;
+			float pos = 0;
 
-		for (auto &it : _nodes) {
-			pos = _scroll->getNodeScrollPosition(it.pos);
-			size = _scroll->getNodeScrollSize(it.size);
+			for (auto &it : _nodes) {
+				pos = _scroll->getNodeScrollPosition(it.pos);
+				size = _scroll->getNodeScrollSize(it.size);
 
-			if (isnan(start) || start > pos) {
-				start = pos;
+				if (isnan(start) || start > pos) {
+					start = pos;
+				}
+
+				if (isnan(end) || end < pos + size) {
+					end = pos + size;
+				}
 			}
 
-			if (isnan(end) || end < pos + size) {
-				end = pos + size;
+			if (isnan(start)) {
+			    setScrollableAreaOffset(0.0f);
+			} else {
+			    setScrollableAreaOffset(start);
 			}
+		    setScrollableAreaSize(end - start);
+		    _scroll->updateScrollBounds();
+		    _infoDirty = false;
+		    force = false;
 		}
 
-		if (isnan(start)) {
-		    setScrollableAreaOffset(0);
+		float pos = _scroll->getScrollPosition();
+		float size = _scroll->getScrollSize();
+
+		if (_currentSize == 0) {
+			reset(pos, size);
 		} else {
-		    setScrollableAreaOffset(start);
+			update(pos, size);
 		}
-	    setScrollableAreaSize(end - start);
-	    _scroll->updateScrollBounds();
-	    _infoDirty = false;
-	}
-
-	float pos = _scroll->getScrollPosition();
-	float size = _scroll->getScrollSize();
-
-	if (_currentSize == 0) {
-		reset(pos, size);
-	} else {
-		update(pos, size);
-	}
+	} while (_infoDirty || force);
 }
 
 void ScrollController::onScroll(float delta, bool eneded) {
@@ -154,58 +158,91 @@ void ScrollController::update(float position, float size) {
 	reset(position, size);
 }
 
-void ScrollController::reset(float position, float size) {
-	_nextPosition = position;
-	_nextSize = size;
+void ScrollController::reset(float origPosition, float origSize) {
+	float windowBegin = nan();
+	float windowEnd = nan();
 
-	std::set<Item *> nodesToRemove;
-	std::set<Item *> nodesToAdd;
+	float position = origPosition - 8.0f;
+	float size = origSize + 16.0f;
 
-	for (auto &it : _nodes) {
-		if (it.node && (!_keepNodes || it.node->isVisible())) {
-			nodesToRemove.insert(&it);
-		}
+	if (_animationPadding > 0.0f) {
+		size += _animationPadding;
+	} else if (_animationPadding < 0.0f) {
+		position += _animationPadding;
+		size -= _animationPadding;
 	}
 
 	for (auto &it : _nodes) {
 		auto nodePos = _scroll->getNodeScrollPosition(it.pos);
 		auto nodeSize = _scroll->getNodeScrollSize(it.size);
-		if (nodePos + nodeSize > _nextPosition && nodePos < _nextPosition + _nextSize) {
-			auto cit = nodesToRemove.find(&it);
-			if (cit != nodesToRemove.end()) {
-				nodesToRemove.erase(cit);
-			} else {
-				nodesToAdd.insert(&it);
+		if (nodePos + nodeSize > position && nodePos < position + size) {
+			if (it.node) {
+				if (isnan(windowBegin) || windowBegin > nodePos) {
+					windowBegin = nodePos;
+				}
+				if (isnan(windowEnd) || windowEnd < nodePos + nodeSize) {
+					windowEnd = nodePos + nodeSize;
+				}
 			}
 		}
 	}
 
-	// remove invisible nodes
-	for (auto &it : nodesToRemove) {
-		removeScrollNode(*it);
+	_windowBegin = windowBegin;
+	_windowEnd = windowEnd;
+
+	for (auto &it : _nodes) {
+		auto nodePos = _scroll->getNodeScrollPosition(it.pos);
+		auto nodeSize = _scroll->getNodeScrollSize(it.size);
+		if (nodePos + nodeSize <= position || nodePos >= position + size) {
+			if (it.node && (!_keepNodes || it.node->isVisible())) {
+				removeScrollNode(it);
+			}
+		} else {
+			onNextObject(it, nodePos, nodeSize);
+		}
 	}
 
-	// add new nodes
-	for (auto &it : nodesToAdd) {
-		onNextObject(*it);
-	}
-
-	_currentPosition = position;
-	_currentSize = size;
+	_currentPosition = origPosition;
+	_currentSize = origSize;
 }
 
-void ScrollController::onNextObject(Item &h) {
+void ScrollController::onNextObject(Item &h, float pos, float size) {
 	if (!_scroll || !_root) {
 		return;
 	}
 
 	if (!h.node) {
 		auto node = h.nodeFunction(h);
-		h.node = node;
-		addScrollNode(h);
+		if (node) {
+			bool forward = true;
+			if (!isnan(_windowBegin) && !isnan(_windowEnd)) {
+				float windowMid = (_windowBegin + _windowEnd) / 2.0f;
+				if (pos + size < windowMid) {
+					forward = false;
+				} else if (pos > windowMid) {
+					forward = true;
+				}
+			}
+
+			if (auto handle = node->getComponentByType<ScrollItemHandle>()) {
+				h.handle = handle;
+				_scroll->updateScrollNode(node, h.pos, h.size, h.zIndex, h.name);
+				handle->onNodeInserted(this, h, size_t(&h - _nodes.data()));
+
+				auto nodeSize = _scroll->getNodeScrollSize(node->getContentSize());
+				if (nodeSize > 0.0f && nodeSize != size) {
+					resizeItem(&h, nodeSize, forward);
+				}
+			}
+			h.node = node;
+			addScrollNode(h);
+		}
 	} else {
 		h.node->setVisible(true);
 		h.node->pushForceRendering();
+		if (h.handle) {
+			h.handle->onNodeUpdated(this, h, size_t(&h - _nodes.data()));
+		}
 		_scroll->updateScrollNode(h.node, h.pos, h.size, h.zIndex, h.name);
 	}
 }
@@ -322,12 +359,6 @@ Vector<ScrollController::Item> &ScrollController::getItems() {
 	return _nodes;
 }
 
-void ScrollController::removeItem(size_t n) {
-	if (_nodes.size() < n) {
-		_nodes.erase(_nodes.begin() + n);
-		_infoDirty = true;
-	}
-}
 size_t ScrollController::size() const {
 	return _nodes.size();
 }
@@ -414,8 +445,12 @@ void ScrollController::updateScrollNode(Item &it) {
 void ScrollController::removeScrollNode(Item &it) {
 	if (it.node) {
 		if (!_keepNodes) {
+			if (it.handle) {
+				it.handle->onNodeRemoved(this, it, size_t(&it - _nodes.data()));
+			}
 			if (_scroll->removeScrollNode(it.node)) {
 				it.node = nullptr;
+				it.handle = nullptr;
 			}
 		} else {
 			it.node->setVisible(false);
@@ -476,25 +511,71 @@ cocos2d::Node * ScrollController::getBackNode() const {
 	return ret;
 }
 
-void ScrollController::resizeItem(const Item *item, float newSize) {
+void ScrollController::resizeItem(const Item *item, float newSize, bool forward) {
 	auto &items = getItems();
 
-	float offset = 0.0f;
-	for (auto &it : items) {
-		if (&it == item) {
-			offset += (newSize - _scroll->getNodeScrollSize(it.size));
-			it.size =  _scroll->isVertical()?Size(it.size.width, newSize):Size(newSize, it.size.height);
-			if (it.node) {
-				_scroll->updateScrollNode(it.node, it.pos, it.size, it.zIndex, it.name);
+	if (forward) {
+		float offset = 0.0f;
+		for (auto &it : items) {
+			if (&it == item) {
+				offset += (newSize - _scroll->getNodeScrollSize(it.size));
+				it.size =  _scroll->isVertical()?Size(it.size.width, newSize):Size(newSize, it.size.height);
+				if (it.node) {
+					_scroll->updateScrollNode(it.node, it.pos, it.size, it.zIndex, it.name);
+				}
+			} else if (offset != 0.0f) {
+				it.pos = _scroll->isVertical()?Vec2(it.pos.x, it.pos.y + offset):Vec2(it.pos.x + offset, it.pos.y);
+				if (it.node) {
+					_scroll->updateScrollNode(it.node, it.pos, it.size, it.zIndex, it.name);
+				}
 			}
-		} else if (offset != 0.0f) {
-			it.pos = _scroll->isVertical()?Vec2(it.pos.x, it.pos.y + offset):Size(it.pos.x + offset, it.pos.y);
-			if (it.node) {
-				_scroll->updateScrollNode(it.node, it.pos, it.size, it.zIndex, it.name);
+		}
+	} else {
+		float offset = 0.0f;
+		for (auto it = items.rbegin(); it != items.rend(); ++ it) {
+			if (&(*it) == item) {
+				offset += (newSize - _scroll->getNodeScrollSize(it->size));
+				it->size = _scroll->isVertical()?Size(it->size.width, newSize):Size(newSize, it->size.height);
+				it->pos = _scroll->isVertical()?Vec2(it->pos.x, it->pos.y - offset):Vec2(it->pos.x - offset, it->pos.y);
+				if (it->node) {
+					_scroll->updateScrollNode(it->node, it->pos, it->size, it->zIndex, it->name);
+				}
+			} else if (offset != 0.0f) {
+				it->pos = _scroll->isVertical()?Vec2(it->pos.x, it->pos.y - offset):Vec2(it->pos.x - offset, it->pos.y);
+				if (it->node) {
+					_scroll->updateScrollNode(it->node, it->pos, it->size, it->zIndex, it->name);
+				}
 			}
 		}
 	}
-	onScrollPosition(true);
+    _infoDirty = true;
+}
+
+void ScrollController::setAnimationPadding(float padding) {
+	if (_animationPadding != padding) {
+		_animationPadding = padding;
+		_infoDirty = true;
+	}
+}
+
+void ScrollController::dropAnimationPadding() {
+	if (_animationPadding != 0.0f) {
+		_animationPadding = 0.0f;
+		_infoDirty = true;
+	}
+}
+
+void ScrollController::updateAnimationPadding(float value) {
+	if (_animationPadding != 0.0f) {
+		auto val = _animationPadding - value;
+		if (val * _animationPadding <= 0.0f) {
+			_animationPadding = 0.0f;
+			_infoDirty = true;
+		} else {
+			_animationPadding = val;
+			_infoDirty = true;
+		}
+	}
 }
 
 NS_SP_END

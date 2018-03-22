@@ -49,7 +49,7 @@ struct LineSpec { // 12 bytes
 struct RangeSpec { // 32 bytes
 	bool colorDirty = false;
 	bool opacityDirty = false;
-	uint8_t underline = 0;
+	TextDecoration decoration = TextDecoration::None;
 	VerticalAlign align = VerticalAlign::Baseline;
 
 	uint32_t start = 0;

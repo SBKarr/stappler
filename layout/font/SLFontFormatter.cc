@@ -693,8 +693,7 @@ bool Formatter::read(const FontParameters &f, const TextParameters &s, const cha
 				if (caps != true) {
 					caps = true;
 					if (blockSize > 0) {
-						readWithRange(RangeSpec{false, false,
-							((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign,
+						readWithRange(RangeSpec{false, false, s.textDecoration, s.verticalAlign,
 							uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), h, primary},
 								s, str + blockStart, blockSize, frontOffset, backOffset);
 					}
@@ -705,8 +704,7 @@ bool Formatter::read(const FontParameters &f, const TextParameters &s, const cha
 				if (caps != false) {
 					caps = false;
 					if (blockSize > 0) {
-						readWithRange(RangeSpec{false, false,
-							((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign,
+						readWithRange(RangeSpec{false, false, s.textDecoration, s.verticalAlign,
 							uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), h, secondary},
 								capsParams, str + blockStart, blockSize, frontOffset, backOffset);
 					}
@@ -718,20 +716,17 @@ bool Formatter::read(const FontParameters &f, const TextParameters &s, const cha
 		}
 		if (blockSize > 0) {
 			if (caps) {
-				return readWithRange(RangeSpec{false, false,
-					((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign,
+				return readWithRange(RangeSpec{false, false, s.textDecoration, s.verticalAlign,
 					uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), h, secondary},
 						capsParams, str + blockStart, blockSize, frontOffset, backOffset);
 			} else {
-				return readWithRange(RangeSpec{false, false,
-					((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign,
+				return readWithRange(RangeSpec{false, false, s.textDecoration, s.verticalAlign,
 					uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), h, primary},
 						s, str + blockStart, blockSize, frontOffset, backOffset);
 			}
 		}
 	} else {
-		return readWithRange(RangeSpec{false, false,
-			((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign,
+		return readWithRange(RangeSpec{false, false, s.textDecoration, s.verticalAlign,
 			uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), h, primary},
 				s, str, len, frontOffset, backOffset);
 	}
@@ -744,8 +739,7 @@ bool Formatter::read(const FontParameters &f, const TextParameters &s, uint16_t 
 
 	auto primary = source->getLayout(f);
 
-	return readWithRange(RangeSpec{false, false,
-		((s.textDecoration == TextDecoration::Underline)?uint8_t(roundf(density)):uint8_t(0)), s.verticalAlign,
+	return readWithRange(RangeSpec{false, false, s.textDecoration, s.verticalAlign,
 		uint32_t(output->chars.size()), 0, Color4B(s.color, s.opacity), blockHeight, primary},
 			s, blockWidth, blockHeight);
 }

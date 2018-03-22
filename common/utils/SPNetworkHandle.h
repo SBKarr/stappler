@@ -139,10 +139,10 @@ protected:
 	ProgressCallback _downloadProgress = nullptr;
 
 	int64_t _uploadProgressValue = 0;
-	Time _uploadProgressTiming = 0;
+	Time _uploadProgressTiming;
 
 	int64_t _downloadProgressValue = 0;
-	Time _downloadProgressTiming = 0;
+	Time _downloadProgressTiming;
 
 	String _receiveFileName;
 	IOCallback _receiveCallback = nullptr;

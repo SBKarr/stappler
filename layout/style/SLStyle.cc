@@ -66,6 +66,7 @@ template<> void Parameter::set<ParameterName::XListStyleOffset, Metric>(const Me
 template<> void Parameter::set<ParameterName::Float, Float>(const Float &v) { value.floating = v; }
 template<> void Parameter::set<ParameterName::Clear, Clear>(const Clear &v) { value.clear = v; }
 template<> void Parameter::set<ParameterName::Color, Color3B>(const Color3B &v) { value.color = v; }
+template<> void Parameter::set<ParameterName::Color, Color>(const Color &v) { value.color = v; }
 template<> void Parameter::set<ParameterName::Opacity, uint8_t>(const uint8_t &v) { value.opacity = v; }
 template<> void Parameter::set<ParameterName::TextIndent, Metric>(const Metric &v) { value.sizeValue = v; }
 template<> void Parameter::set<ParameterName::LineHeight, Metric>(const Metric &v) { value.sizeValue = v; }
@@ -208,6 +209,9 @@ ParameterList getStyleForTag(const StringView &tag, const StringView &parent) {
 
 	} else if (tag == "b" || tag == "strong") {
 		style.data.push_back(Parameter::create<ParameterName::FontWeight>(FontWeight::Bold));
+
+	} else if (tag == "s" || tag == "strike") {
+		style.data.push_back(Parameter::create<ParameterName::TextDecoration>(TextDecoration::LineThrough));
 
 	} else if (tag == "i" || tag == "em") {
 		style.data.push_back(Parameter::create<ParameterName::FontStyle>(FontStyle::Italic));
@@ -559,6 +563,10 @@ void ParameterList::read(const StringView &name, const StringView &value, MediaQ
 	} else if (name == "text-decoration") {
 		if (value.compare("underline")) {
 			set<ParameterName::TextDecoration>(TextDecoration::Underline, mediaQuary);
+		} else if (value.compare("line-through")) {
+			set<ParameterName::TextDecoration>(TextDecoration::LineThrough, mediaQuary);
+		} else if (value.compare("overline")) {
+			set<ParameterName::TextDecoration>(TextDecoration::Overline, mediaQuary);
 		} else if (value.compare("none")) {
 			set<ParameterName::TextDecoration>(TextDecoration::None, mediaQuary);
 		}

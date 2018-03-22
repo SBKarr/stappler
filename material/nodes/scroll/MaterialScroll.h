@@ -162,7 +162,7 @@ protected:
 
 	ItemMap _items;
 
-	Time _invalidateAfter = 0;
+	Time _invalidateAfter;
 	Color _loaderColor = Color::Grey_500;
 
 	float _savedSize = nan();

@@ -47,6 +47,7 @@ public:
 		String name;
 
 		cocos2d::Node *node = nullptr;
+		ScrollItemHandle *handle = nullptr;
 	};
 
 public:
@@ -84,13 +85,10 @@ public:
 	/// you should return true if this call successfully rebuilds visible objects
 	virtual bool rebuildObjects(bool force = false);
 
-	float getNextPosition() const { return _nextPosition; }
-	float getNextSize() const { return _nextSize; }
-
 	virtual size_t size() const;
 	virtual size_t addItem(const NodeFunction &, const Size &size, const Vec2 &pos, int zIndex = 0, const String &tag = String());
 	virtual size_t addItem(const NodeFunction &, float size, float pos, int zIndex = 0, const String &tag = String());
-	virtual size_t addItem(const NodeFunction &, float size, int zIndex = 0, const String &tag = String());
+	virtual size_t addItem(const NodeFunction &, float size = 0.0f, int zIndex = 0, const String &tag = String());
 
 	virtual size_t addPlaceholder(const Size &size, const Vec2 &pos);
 	virtual size_t addPlaceholder(float size, float pos);
@@ -105,8 +103,6 @@ public:
 	const Vector<Item> &getItems() const;
 	Vector<Item> &getItems();
 
-	virtual void removeItem(size_t);
-
 	virtual void setScrollRelativeValue(float value);
 
 	cocos2d::Node * getNodeByName(const String &) const;
@@ -119,10 +115,14 @@ public:
 	void setKeepNodes(bool);
 	bool isKeepNodes() const;
 
-	void resizeItem(const Item *node, float newSize);
+	void resizeItem(const Item *node, float newSize, bool forward = true);
+
+	void setAnimationPadding(float padding);
+	void dropAnimationPadding();
+	void updateAnimationPadding(float value);
 
 protected:
-	virtual void onNextObject(Item &); /// insert new object at specified position
+	virtual void onNextObject(Item &, float pos, float size); /// insert new object at specified position
 
 	virtual void addScrollNode(Item &);
 	virtual void updateScrollNode(Item &);
@@ -137,8 +137,8 @@ protected:
 	float _currentMin = 0.0f;
 	float _currentMax = 0.0f;
 
-	float _nextPosition = 0.0f;
-	float _nextSize = 0.0f;
+	float _windowBegin = 0.0f;
+	float _windowEnd = 0.0f;
 
 	float _currentPosition = 0.0f;
 	float _currentSize = 0.0f;
@@ -147,6 +147,8 @@ protected:
 
 	bool _infoDirty = true;
 	bool _keepNodes = false;
+
+	float _animationPadding = 0.0f;
 };
 
 NS_SP_END

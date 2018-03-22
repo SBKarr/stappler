@@ -120,6 +120,4 @@ Time & Time::operator= (nullptr_t) {
 	return *this;
 }
 
-Time::Time(uint64_t v) : TimeStorage(v) { }
-
 NS_SP_END

@@ -31,4 +31,5 @@ THE SOFTWARE.
 #include "SPGestureListener.cc"
 #include "SPGestureRecognizer.cc"
 #include "SPScrollController.cc"
+#include "SPScrollItemHandle.cc"
 #include "SPEventListener.cc"

@@ -155,7 +155,7 @@ bool StoreKit::isSubscriptionActive(const std::string &productId) {
 	if (auto product = getProduct(productId)) {
 		if (product->isSubscription && product->expiration) {
 			auto now = Time::now();
-			if (product->expiration > (int64_t)now) {
+			if (product->expiration > now) {
 				return true;
 			}
 		}

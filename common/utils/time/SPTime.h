@@ -110,16 +110,16 @@ public:
 	TimeInterval(nullptr_t);
 	TimeInterval & operator= (nullptr_t);
 
-	TimeInterval() : TimeStorage(0) { }
-	TimeInterval(const TimeInterval &other) : TimeStorage(other._value) { }
-	TimeInterval(TimeInterval &&other) : TimeStorage(other._value) { }
-	TimeInterval & operator= (const TimeInterval &other) { _value = other._value; return *this; }
-	TimeInterval & operator= (TimeInterval &&other) { _value = other._value; return *this; }
+	constexpr TimeInterval() : TimeStorage(0) { }
+	constexpr TimeInterval(const TimeInterval &other) : TimeStorage(other._value) { }
+	constexpr TimeInterval(TimeInterval &&other) : TimeStorage(other._value) { }
+	constexpr TimeInterval & operator= (const TimeInterval &other) { _value = other._value; return *this; }
+	constexpr TimeInterval & operator= (TimeInterval &&other) { _value = other._value; return *this; }
 
 protected:
     friend class Time;
 
-    constexpr TimeInterval(uint64_t v) : TimeStorage(v) { }
+    using TimeStorage::TimeStorage;
 };
 
 class Time : public TimeStorage {
@@ -181,7 +181,7 @@ public:
 protected:
     friend class TimeInterval;
 
-	explicit Time(uint64_t);
+    using TimeStorage::TimeStorage;
 
 	void encodeRfc822(char *);
 	void encodeCTime(char *);

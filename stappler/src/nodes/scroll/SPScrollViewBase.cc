@@ -543,6 +543,7 @@ void ScrollViewBase::onOverscrollPerformed(float velocity, float pos, float boun
 		auto a = Accelerated::createBounce(5000, currentPos, boundaryPos, velocity, MAX(25000, fabsf(velocity) * 50));
 		if (a) {
 			auto b = cocos2d::CallFunc::create(std::bind(&ScrollViewBase::onAnimationFinished, this));
+			_controller->dropAnimationPadding();
 			_movement = Movement::Overscroll;
 			_animationAction = cocos2d::Sequence::createWithTwoActions(a, b);
 			_root->runAction(_animationAction);
@@ -591,6 +592,7 @@ bool ScrollViewBase::onSwipeEventEnd(const Vec2 &loc, const Vec2 &d, const Vec2 
 }
 
 void ScrollViewBase::onSwipeBegin() {
+	_controller->dropAnimationPadding();
 	_root->stopAllActions();
 	_movementAction = nullptr;
 	_animationAction = nullptr;
@@ -605,6 +607,21 @@ bool ScrollViewBase::onSwipe(float delta, float velocity, bool ended) {
 		onDelta(delta);
 	} else {
 		float pos = getScrollPosition();
+
+		float acceleration = (velocity > 0)?-5000.0f:5000.0f;
+		if (!isnan(_maxVelocity)) {
+			if (velocity > fabs(_maxVelocity)) {
+				velocity = fabs(_maxVelocity);
+			} else if (velocity < -fabs(_maxVelocity)) {
+				velocity = -fabs(_maxVelocity);
+			}
+		}
+
+	    float duration = fabsf(velocity / acceleration);
+		float path = velocity * duration + acceleration * duration * duration * 0.5f;
+
+		_controller->setAnimationPadding(path);
+		_controller->onScrollPosition();
 
 		if (!isnan(_scrollMin)) {
 			if (pos < _scrollMin) {
@@ -696,9 +713,11 @@ void ScrollViewBase::onAnimationFinished() {
 	if (_movement != Movement::None) {
 		_animationDirty = true;
 	}
+	_controller->dropAnimationPadding();
 	_movement = Movement::None;
 	_movementAction = nullptr;
 	_animationAction = nullptr;
+	onPosition();
 }
 
 void ScrollViewBase::fixPosition() {
@@ -730,6 +749,10 @@ void ScrollViewBase::onPosition() {
 	}
 
 	_scrollPosition = newPos;
+
+	if (_movement == Movement::Auto) {
+		_controller->updateAnimationPadding(newPos - oldPos);
+	}
 
 	if (_controller) {
 		_controller->onScrollPosition();

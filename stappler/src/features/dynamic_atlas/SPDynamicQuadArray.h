@@ -85,7 +85,7 @@ public:
 	bool drawRect(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const Color4B &color, float texWidth, float texHeight);
 
 	bool drawChar(const font::Metrics &m, const font::CharLayout &l, const font::CharTexture &t, int16_t charX, int16_t charY,
-			const Color4B &color, uint8_t underline, float texWidth, float texHeight);
+			const Color4B &color, layout::style::TextDecoration, float texWidth, float texHeight);
 
 protected:
 	Vector<cocos2d::V3F_C4B_T2F_Quad> _quads;

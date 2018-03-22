@@ -379,6 +379,8 @@ namespace style {
 			case ParameterName::TextDecoration:
 				stream << "text-decoration: ";
 				switch (it.value.textDecoration) {
+				case TextDecoration::Overline: stream << "overline"; break;
+				case TextDecoration::LineThrough: stream << "line-through"; break;
 				case TextDecoration::Underline: stream << "underline"; break;
 				case TextDecoration::None: stream << "none"; break;
 				};

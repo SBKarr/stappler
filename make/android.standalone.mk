@@ -29,6 +29,13 @@ GLOBAL_OUTPUT := $(BUILD_OUTDIR)
 
 THIS_FILE := $(firstword $(MAKEFILE_LIST))
 
+ifdef ANDROID_EXPORT
+TARGET_ARCH_ABI := $$(TARGET_ARCH_ABI)
+ANDROID_ARCH := $(TARGET_ARCH_ABI)
+endif
+
+BUILD_LIBS_LIST := $(LOCAL_LIBS)
+
 include $(GLOBAL_ROOT)/make/utils/compiler.mk
 
 ifdef ANDROID_ARCH

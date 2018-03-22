@@ -44,16 +44,13 @@ bool ScrollView::init(Layout l) {
 	indicator->setOpacity(0);
 	indicator->setColor(Color3B(127, 127, 127));
 	indicator->setAnchorPoint(Vec2(1, 0));
-	addChild(indicator, 11);
-	_indicator = indicator;
+	_indicator = addChildNode(indicator, 11);
 
 	auto overflowFront = Rc<Overscroll>::create();
-	addChild(overflowFront, 12);
-	_overflowFront = overflowFront;
+	_overflowFront = addChildNode(overflowFront, 12);
 
 	auto overflowBack = Rc<Overscroll>::create();
-	addChild(overflowBack, 12);
-	_overflowBack = overflowBack;
+	_overflowBack = addChildNode(overflowBack, 12);
 
 	//setOverscrollColor(Color3B(0x03, 0xa9, 0xf4));
 	setOverscrollColor(Color3B(127, 127, 127));
@@ -174,6 +171,7 @@ void ScrollView::onAnimationFinished() {
 	if (_animationCallback) {
 		_animationCallback();
 	}
+	updateIndicatorPosition();
 }
 
 void ScrollView::updateIndicatorPosition() {
