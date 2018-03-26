@@ -62,13 +62,20 @@ android-release-clean:
 ios: ios-debug
 ios-clean: ios-debug
 
+ios-export:
+	@$(MAKE) STAPPLER_TARGET=ios IOS_ARCH=export ios-export
+
 ios-debug:
+	@$(MAKE) STAPPLER_TARGET=ios ios
 
 ios-debug-clean:
+	@$(MAKE) STAPPLER_TARGET=ios ios-clean
 
 ios-release:
+	@$(MAKE) STAPPLER_TARGET=ios RELEASE=1 ios
 
 ios-release-clean:
+	@$(MAKE) STAPPLER_TARGET=ios RELEASE=1 ios-clean
 
 .PHONY: clean install
 .PHONY: host host-clean host-debug host-debug-clean host-release host-release-clean host-install
@@ -82,6 +89,7 @@ include $(STAPPLER_ROOT)/make/local.mk
 else ifeq ($(STAPPLER_TARGET),android)
 include $(STAPPLER_ROOT)/make/android.standalone.mk
 else ifeq ($(STAPPLER_TARGET),ios)
+include $(STAPPLER_ROOT)/make/ios.standalone.mk
 endif
 
 endif
