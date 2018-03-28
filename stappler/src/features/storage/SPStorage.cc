@@ -103,6 +103,7 @@ public:
 	Internal(Handle *internal);
 
 	const String &getName() const { return _name; }
+	const String &getPrimary() const { return _primary; }
 
 	bool init(const String &name, FieldsList &&list, AliasesList &&aliases);
 	bool initialize();
@@ -451,6 +452,10 @@ Scheme::Command *Scheme::Command::orderBy(const String &field, Flags orderMode) 
 	_order = _scheme->_internal->resolveAlias(field);
 	_orderMode = orderMode;
 	return this;
+}
+
+Scheme::Command *Scheme::Command::orderByPrimary(Flags orderMode) {
+	return orderBy(_scheme->_internal->getPrimary(), orderMode);
 }
 
 Scheme::Command *Scheme::Command::limit(uint32_t count) {

@@ -656,6 +656,8 @@ bool Image::init(const StringView &data) {
 			_viewBox = Rect(0, 0, _width, _height);
 		}
 		return true;
+	} else {
+		log::text("layout::Image", "No paths found in input string");
 	}
 
 	return false;
@@ -684,6 +686,8 @@ bool Image::init(const Bytes &data) {
 			_viewBox = Rect(0, 0, _width, _height);
 		}
 		return true;
+	} else {
+		log::text("layout::Image", "No paths found in input data");
 	}
 
 	return false;
@@ -850,7 +854,7 @@ void Image::eraseRefs(const StringView &tag) {
 }
 
 static bool colorIsBlack(const Color4B &c) {
-	return c.r == 0 && c.g == 0 && c.b == 0;
+	return c.r == 0 && c.g == 0 && c.b == 0 && c.a == 255;
 }
 static bool colorIsGray(const Color4B &c) {
 	return c.r == c.g && c.b == c.r;

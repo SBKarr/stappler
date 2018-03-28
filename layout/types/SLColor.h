@@ -200,18 +200,30 @@ public:
 		BlackWhite,
 	};
 
-	inline operator Color3B () const {
+	inline Color3B asColor3B() const {
 		return Color3B((_value >> 16) & 0xFF, (_value >> 8) & 0xFF, _value & 0xFF);
 	}
-	inline operator Color4B () const {
+
+	inline Color4B asColor4B() const {
 		return Color4B((_value >> 16) & 0xFF, (_value >> 8) & 0xFF, _value & 0xFF, 255);
 	}
-	inline operator Color4F () const {
+
+	inline Color4F asColor4F() const {
 		return Color4F(
 				((float)0xFF) / ((_value >> 16) & 0xFF),
 				((float)0xFF) / ((_value >> 8) & 0xFF),
 				((float)0xFF) / (_value & 0xFF),
 				1.0f);
+	}
+
+	inline operator Color3B () const {
+		return asColor3B();
+	}
+	inline operator Color4B () const {
+		return asColor4B();
+	}
+	inline operator Color4F () const {
+		return asColor4F();
 	}
 
 	inline bool operator == (const Color &other) const {
@@ -228,6 +240,8 @@ public:
 
 	inline uint32_t value() const { return _value; }
 	inline uint32_t index() const { return _index; }
+
+
 
 	Color text() const;
 

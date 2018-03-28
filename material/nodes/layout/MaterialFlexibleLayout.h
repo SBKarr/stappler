@@ -34,6 +34,18 @@ public:
 	virtual bool init() override;
 	virtual void onContentSizeDirty() override;
 
+	template <typename T, typename ... Args>
+	auto setBaseNode(const Rc<T> &ptr, Args && ... args) -> T * {
+		setBaseNode(ptr.get(), std::forward<Args>(args)...);
+		return ptr.get();
+	}
+
+	template <typename T, typename ... Args>
+	auto setFlexibleNode(const Rc<T> &ptr, Args && ... args) -> T * {
+		setFlexibleNode(ptr.get(), std::forward<Args>(args)...);
+		return ptr.get();
+	}
+
 	virtual void setBaseNode(ScrollView *node, int zOrder = 2);
 	virtual void setFlexibleNode(cocos2d::Node *, int zOrder = 3);
 

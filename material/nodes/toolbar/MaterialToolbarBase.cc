@@ -372,8 +372,8 @@ void ToolbarBase::onNavTapped() {
 }
 
 float ToolbarBase::getBaseLine() const {
-	if (_contentSize.height > _basicHeight) {
-		return _contentSize.height - _basicHeight / 2;
+	if (_content->getContentSize().height > _basicHeight) {
+		return _content->getContentSize().height - _basicHeight / 2;
 	} else {
 		return _basicHeight / 2;
 	}

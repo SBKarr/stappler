@@ -35,7 +35,8 @@ public:
 	struct Item;
 
 	/// Callback for node creation
-	using NodeFunction = std::function<Rc<cocos2d::Node>(const Item &)>;
+	using NodeFunction = Function<Rc<cocos2d::Node>(const Item &)>;
+	using RebuildCallback = Function<bool(ScrollController *)>;
 
 	struct Item {
 		Item(const NodeFunction &, const Vec2 &pos, const Size &size, int zIndex, const String &);
@@ -83,7 +84,7 @@ public:
 	virtual float getScrollableAreaSize() const; // NaN by default
 
 	/// you should return true if this call successfully rebuilds visible objects
-	virtual bool rebuildObjects(bool force = false);
+	virtual bool rebuildObjects();
 
 	virtual size_t size() const;
 	virtual size_t addItem(const NodeFunction &, const Size &size, const Vec2 &pos, int zIndex = 0, const String &tag = String());
@@ -121,6 +122,9 @@ public:
 	void dropAnimationPadding();
 	void updateAnimationPadding(float value);
 
+	void setRebuildCallback(const RebuildCallback &);
+	const RebuildCallback &getRebuildCallback() const;
+
 protected:
 	virtual void onNextObject(Item &, float pos, float size); /// insert new object at specified position
 
@@ -149,6 +153,9 @@ protected:
 	bool _keepNodes = false;
 
 	float _animationPadding = 0.0f;
+	float _savedSize = 0.0f;
+
+	RebuildCallback _callback;
 };
 
 NS_SP_END

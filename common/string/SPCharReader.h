@@ -304,8 +304,12 @@ template <typename _CharType>
 StringViewBase<_CharType>::StringViewBase() : BytesReader<_CharType>(nullptr, 0) { }
 
 template <typename _CharType>
-StringViewBase<_CharType>::StringViewBase(const CharType *ptr, size_t len)
+inline StringViewBase<_CharType>::StringViewBase(const CharType *ptr, size_t len)
 : BytesReader<_CharType>(ptr, (len == maxOf<size_t>())?std::char_traits<CharType>::length(ptr):len) { }
+
+template <>
+inline StringViewBase<char>::StringViewBase(const char *ptr, size_t len)
+: BytesReader<char>(ptr, (len == maxOf<size_t>())?std::char_traits<char>::length(ptr):len) { }
 
 template <typename _CharType>
 StringViewBase<_CharType>::StringViewBase(const PoolString &str)

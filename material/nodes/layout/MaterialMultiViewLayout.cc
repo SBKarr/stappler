@@ -374,24 +374,26 @@ bool MultiViewLayout::endSwipeProgress(const Vec2 &delta, const Vec2 &velocity) 
 
 	float pos = _swipeProgress + ((velocity.x > 0) ? (dx) : (-dx));
 
+	float yPos = _currentView->getPositionY();
+
 	cocos2d::FiniteTimeAction *action = nullptr;
 	if (pos > _contentSize.width / 2 && _prevView) {
 		action = action::sequence(
-				Accelerated::createBounce(5000, Vec2(_swipeProgress, 0), Vec2(_contentSize.width, 0.0f), Vec2(velocity.x, 0),
+				Accelerated::createBounce(5000, Vec2(_swipeProgress, yPos), Vec2(_contentSize.width, yPos), Vec2(velocity.x, 0),
 						200000, std::bind(&MultiViewLayout::onSwipeAction, this, std::placeholders::_1)),
 				[this] {
 			setPrevView(_currentViewIndex - 1);
 		});
 	} else if (pos < -_contentSize.width / 2 && _nextView) {
 		action = action::sequence(
-				Accelerated::createBounce(5000, Vec2(_swipeProgress, 0), Vec2(-_contentSize.width, 0.0f), Vec2(velocity.x, 0),
+				Accelerated::createBounce(5000, Vec2(_swipeProgress, yPos), Vec2(-_contentSize.width, yPos), Vec2(velocity.x, 0),
 						200000, std::bind(&MultiViewLayout::onSwipeAction, this, std::placeholders::_1)),
 				[this] {
 			setNextView(_currentViewIndex + 1);
 		});
 	} else {
 		action = action::sequence(
-				Accelerated::createBounce(5000, Vec2(_swipeProgress, 0), Vec2(0, 0), Vec2(velocity.x, 0), 50000,
+				Accelerated::createBounce(5000, Vec2(_swipeProgress, yPos), Vec2(0, yPos), Vec2(velocity.x, 0), 50000,
 						std::bind(&MultiViewLayout::onSwipeAction, this, std::placeholders::_1)),
 				[this] {
 			_swipeProgress = 0;

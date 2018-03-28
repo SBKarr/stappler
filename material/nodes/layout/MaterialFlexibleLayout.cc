@@ -92,6 +92,7 @@ void FlexibleLayout::setBaseNode(stappler::ScrollView *node, int zOrder) {
 		_contentSizeDirty = true;
 	}
 }
+
 void FlexibleLayout::setFlexibleNode(cocos2d::Node *node, int zOrder) {
 	if (node != _flexibleNode) {
 		if (_flexibleNode) {

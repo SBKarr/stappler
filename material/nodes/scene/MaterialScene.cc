@@ -90,7 +90,7 @@ bool Scene::init() {
 		takeScreenshoot();
 	});
 	l->onEvent(ResourceManager::onLightLevel, std::bind(&Scene::onLightLevel, this));
-	addComponent(l);
+	addComponentItem(l);
 
 	if (!_background) {
 		_background = addChildNode(createBackgroundLayer(), -1);

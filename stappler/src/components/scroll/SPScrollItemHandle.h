@@ -33,7 +33,7 @@ NS_SP_BEGIN
 class ScrollItemHandle : public cocos2d::Component {
 public:
 	using Item = ScrollController::Item;
-	using Callback = Function<void(Item &)>;
+	using Callback = Function<void(const Item &)>;
 
 	virtual ~ScrollItemHandle();
 
@@ -47,6 +47,9 @@ public:
 
 	void resize(float newSize, bool forward = true);
 
+	void setLocked(bool);
+	bool isLocked() const;
+
 protected:
 	ScrollController *_controller = nullptr;
 	size_t _itemIndex = 0;
@@ -54,6 +57,7 @@ protected:
 	Callback _insertCallback;
 	Callback _updateCallback;
 	Callback _removeCallback;
+	bool _isLocked = false;
 };
 
 NS_SP_END

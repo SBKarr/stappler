@@ -56,6 +56,12 @@ public:
 
 class InputLabelContainer : public StrictNode {
 public:
+	template <typename T, typename ... Args>
+	auto setLabel(const Rc<T> &ptr, Args && ... args) {
+		setLabel(ptr.get(), forward<Args>(args)...);
+		return ptr.get();
+	}
+
 	virtual void setLabel(InputLabel *, int zIndex = 0);
 	virtual InputLabel *getLabel() const;
 
@@ -169,6 +175,9 @@ public:
 	virtual void pasteString(const String &);
 	virtual void pasteString(const WideString &);
 	virtual void eraseSelection();
+
+	virtual void setInputTouchFilter(const Function<bool(const Vec2 &)> &);
+	virtual const Function<bool(const Vec2 &)> &getInputTouchFilter() const;
 
 public:
 	virtual draw::PathNode *getTouchedCursor(const Vec2 &, float = 4.0f);

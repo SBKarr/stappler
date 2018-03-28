@@ -71,5 +71,18 @@ void ScrollItemHandle::setRemoveCallback(const Callback &cb) {
 	_removeCallback = cb;
 }
 
-NS_SP_END
+void ScrollItemHandle::resize(float newSize, bool forward) {
+	if (auto item = _controller->getItem(_itemIndex)) {
+		_controller->resizeItem(item, newSize, forward);
+	}
+}
 
+void ScrollItemHandle::setLocked(bool value) {
+	_isLocked = value;
+}
+
+bool ScrollItemHandle::isLocked() const {
+	return _isLocked;
+}
+
+NS_SP_END

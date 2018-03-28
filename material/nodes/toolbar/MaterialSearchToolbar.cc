@@ -66,27 +66,22 @@ bool SearchToolbar::init(const Callback &cb, Mode m) {
 	label->setCursorColor(Color::Grey_500, false);
 	label->setMaxLines(1);
 	label->setAllowMultiline(false);
-	node->setLabel(label);
+	_label = node->setLabel(label);
 
 	auto placeholder = Rc<Label>::create(FontType::Title);
 	placeholder->setPosition(Vec2(0.0f, 0.0f));
-	placeholder->setOpacity(127);
+	placeholder->setOpacity(72);
 	placeholder->setString("Placeholder");
 	placeholder->setMaxLines(1);
-	node->addChild(placeholder);
+	_placeholder = node->addChildNode(placeholder);
 
-	addChild(node, 1);
+	_node = _content->addChildNode(node, 1);
 
 	auto menu = Rc<InputMenu>::create(std::bind(&SearchToolbar::onMenuCut, this), std::bind(&SearchToolbar::onMenuCopy, this),
 			std::bind(&SearchToolbar::onMenuPaste, this));
 	menu->setAnchorPoint(Anchor::MiddleTop);
 	menu->setVisible(false);
-	addChild(menu, 11);
-
-	_label = label;
-	_placeholder = placeholder;
-	_node = node;
-	_menu = menu;
+	_menu = _content->addChildNode(menu, 11);
 
 	_listener->setTouchFilter([this] (const Vec2 &vec, const gesture::Listener::DefaultTouchFilter &def) {
 		if (_label->getTouchedCursor(vec, 8.0f)) {
@@ -202,7 +197,7 @@ void SearchToolbar::setColor(const Color &color) {
 	_label->setColor(_textColor);
 	_label->setCursorColor(_textColor == Color::White?_textColor.darker(2):_textColor.lighter(2), false);
 	_placeholder->setColor(_textColor);
-	_placeholder->setOpacity(127);
+	_placeholder->setOpacity(72);
 }
 void SearchToolbar::setTextColor(const Color &color) {
 	ToolbarBase::setTextColor(color);
@@ -210,7 +205,7 @@ void SearchToolbar::setTextColor(const Color &color) {
 	_label->setColor(_textColor);
 	_label->setCursorColor(_textColor == Color::White?_textColor.darker(2):_textColor.lighter(2), false);
 	_placeholder->setColor(_textColor);
-	_placeholder->setOpacity(127);
+	_placeholder->setOpacity(72);
 }
 
 void SearchToolbar::acquireInput() {
@@ -227,14 +222,18 @@ void SearchToolbar::layoutSubviews() {
 
 	if (_minified || _basicHeight < 48.0f) {
 		_label->setFont(FontType::Body_1);
+		_label->setFontWeight(Label::FontWeight::W400);
 		_placeholder->setFont(FontType::Body_1);
+		_placeholder->setFontWeight(Label::FontWeight::W400);
 	} else {
 		_label->setFont(FontType::Title);
+		_label->setFontWeight(Label::FontWeight::W400);
 		_placeholder->setFont(FontType::Title);
+		_placeholder->setFontWeight(Label::FontWeight::W400);
 	}
 
 	auto fontHeight = _label->getFontHeight() / _label->getDensity();
-	auto labelWidth = _contentSize.width - 16.0f - (_navButton->isVisible()?64.0f:16.0f) - _iconWidth;
+	auto labelWidth = _content->getContentSize().width - 16.0f - (_navButton->isVisible()?64.0f:16.0f) - _iconWidth;
 
 	_node->setContentSize(Size(labelWidth, fontHeight));
 	_node->setAnchorPoint(Anchor::MiddleLeft);
@@ -380,6 +379,16 @@ void SearchToolbar::onMenuPaste() {
 	_label->pasteString(Device::getInstance()->getStringFromClipboard());
 }
 
+bool SearchToolbar::onInputTouchFilter(const Vec2 &loc) {
+	if (node::isTouched(this, loc) || (_menu->isVisible() && node::isTouched(_menu, loc))) {
+		return true;
+	}
+	if (_touchFilterCallback) {
+		return _touchFilterCallback(loc);
+	}
+	return false;
+}
+
 void SearchToolbar::setAllowAutocorrect(bool value) {
 	_label->setAllowAutocorrect(value);
 }
@@ -397,5 +406,20 @@ MenuSource *SearchToolbar::getSearchMenu() const {
 MenuSource *SearchToolbar::getCommonMenu() const {
 	return _commonMenu;
 }
+
+void SearchToolbar::setInputTouchFilter(const Function<bool(const Vec2 &)> &cb) {
+	_touchFilterCallback = cb;
+}
+
+void SearchToolbar::setInputTouchFilterEnabled(bool value) {
+	if (value) {
+		_label->setInputTouchFilter([this] (const Vec2 &loc) -> bool {
+			return onInputTouchFilter(loc);
+		});
+	} else {
+		_label->setInputTouchFilter(nullptr);
+	}
+}
+
 
 NS_MD_END

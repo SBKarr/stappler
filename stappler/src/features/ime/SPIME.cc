@@ -32,6 +32,10 @@ THE SOFTWARE.
 #include "SPPlatform.h"
 
 #include "base/CCDirector.h"
+#include "base/CCEventDispatcher.h"
+#include "base/CCScheduler.h"
+#include "base/CCEventListenerTouch.h"
+#include "base/CCTouch.h"
 #include "platform/CCGLView.h"
 
 NS_SP_BEGIN
@@ -54,6 +58,7 @@ public:
 	void onKeyboardHide(float duration);
 
 	void setInputEnabled(bool enabled);
+	void updateInputEnabled(bool enabled);
 
 	void onTextChanged();
 
@@ -74,11 +79,19 @@ public:
 	const Rect &getKeyboardRect() const;
 
 	ime::Handler *getHandler() const;
-	
+
 	WideString *getNativeStringPointer();
 	Cursor *getNativeCursorPointer();
 
-public:
+	void registerWithDispatcher();
+	void unregisterWithDispatcher();
+
+	bool onTouchBegan(cocos2d::Touch *pTouch);
+	void onTouchMoved(cocos2d::Touch *pTouch);
+	void onTouchEnded(cocos2d::Touch *pTouch);
+	void onTouchCancelled(cocos2d::Touch *pTouch);
+
+protected:
 	ime::Handler *_handler = nullptr;
 	Rect _keyboardRect;
 	float _keyboardDuration = 0.0f;
@@ -86,10 +99,13 @@ public:
 	bool _isKeyboardVisible = false;
 	bool _isHardwareKeyboard = false;
 	bool _running = false;
+	bool _registred = false;
 
 	int32_t _type;
 	WideString _string;
 	Cursor _cursor;
+
+	Rc<cocos2d::EventListenerTouchOneByOne> _touchListener = nullptr;
 };
 
 static IMEImpl * s_sharedIme = nullptr;
@@ -107,6 +123,16 @@ IMEImpl::IMEImpl() {
 			cancel();
 		}
 	});
+
+#ifndef SP_RESTRICT
+	_touchListener = Rc<cocos2d::EventListenerTouchOneByOne>::create();
+	_touchListener->setEnabled(false);
+	_touchListener->setSwallowTouches(true);
+	_touchListener->onTouchBegan = std::bind(&IMEImpl::onTouchBegan, this, std::placeholders::_1);
+	_touchListener->onTouchMoved = std::bind(&IMEImpl::onTouchMoved, this, std::placeholders::_1);
+	_touchListener->onTouchEnded = std::bind(&IMEImpl::onTouchEnded, this, std::placeholders::_1);
+	_touchListener->onTouchCancelled = std::bind(&IMEImpl::onTouchCancelled, this, std::placeholders::_1);
+#endif
 }
 
 void IMEImpl::insertText(const WideString &sInsert) {
@@ -306,12 +332,61 @@ void IMEImpl::setInputEnabled(bool enabled) {
 	}
 }
 
+void IMEImpl::updateInputEnabled(bool enabled) {
+	if (enabled) {
+		registerWithDispatcher();
+	} else {
+		unregisterWithDispatcher();
+	}
+	stappler::ime::onInput(nullptr, enabled);
+}
+
 WideString *IMEImpl::getNativeStringPointer() {
 	return &_string;
 }
 ime::Cursor *IMEImpl::getNativeCursorPointer() {
 	return &_cursor;
 }
+
+void IMEImpl::registerWithDispatcher() {
+#ifndef SP_RESTRICT
+	if (!_registred) {
+		auto director = cocos2d::Director::getInstance();
+		auto ed = director->getEventDispatcher();
+		_touchListener->setEnabled(true);
+		ed->addEventListenerWithFixedPriority(_touchListener.get(), -1);
+		_registred = true;
+	}
+#endif
+}
+
+void IMEImpl::unregisterWithDispatcher() {
+#ifndef SP_RESTRICT
+	if (_registred) {
+		_registred = false;
+		auto director = cocos2d::Director::getInstance();
+		director->getScheduler()->unscheduleUpdate(this);
+		auto ed = director->getEventDispatcher();
+		ed->removeEventListener(_touchListener.get());
+		_touchListener->setEnabled(false);
+	}
+#endif
+}
+
+bool IMEImpl::onTouchBegan(cocos2d::Touch *pTouch) {
+#ifndef SP_RESTRICT
+	if (_handler && _handler->onTouchFilter && !_handler->onTouchFilter(pTouch->getLocation())) {
+		return true;
+	}
+#endif
+	return false;
+}
+void IMEImpl::onTouchMoved(cocos2d::Touch *pTouch) { }
+void IMEImpl::onTouchEnded(cocos2d::Touch *pTouch) {
+	cancel();
+}
+void IMEImpl::onTouchCancelled(cocos2d::Touch *pTouch) { }
+
 
 bool stappler::platform::ime::native::hasText() {
 	return IMEImpl::getInstance()->hasText();
@@ -340,7 +415,7 @@ void stappler::platform::ime::native::onKeyboardHide(float duration) {
 
 void stappler::platform::ime::native::setInputEnabled(bool enabled) {
 	IMEImpl::getInstance()->setInputEnabled(enabled);
-	stappler::ime::onInput(nullptr, enabled);
+	IMEImpl::getInstance()->updateInputEnabled(enabled);
 }
 
 void stappler::platform::ime::native::cancel() {
@@ -433,7 +508,7 @@ WideString *getNativeStringPointer() {
 Cursor *getNativeCursorPointer() {
 	return IMEImpl::getInstance()->getNativeCursorPointer();
 }
-	
+
 }
 
 NS_SP_END

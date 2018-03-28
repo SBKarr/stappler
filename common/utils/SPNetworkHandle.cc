@@ -309,7 +309,7 @@ bool NetworkHandle::setupRootCert(CURL *curl, const String &certPath) {
 #endif
 		} else {
 			String path = bundle.substr(0, bundle.size() - 1);
-			SETOPT(check, curl, CURLOPT_CAINFO, path.c_str());
+			SETOPT(check, curl, CURLOPT_CAPATH, path.c_str());
 
 		}
 	}

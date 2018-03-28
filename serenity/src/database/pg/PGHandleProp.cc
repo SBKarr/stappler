@@ -48,15 +48,16 @@ static void Handle_writeSelectSetQuery(ExecQuery &query, const Scheme &s, uint64
 			q.where(ExecQuery::Field(alias, "__oid"), Comparation::Equal, ExecQuery::Field("s", "id"));
 		}).finalize();
 	} else {
-		auto l = s.getForeignLink(f);
-		auto sel = query.select();
+		if (auto l = s.getForeignLink(f)) {
+			auto sel = query.select();
 
-		String alias("t"); // do not touch;
-		ExecQuery::writeSelectFields(*f.getForeignScheme(), sel, fields, alias);
+			String alias("t"); // do not touch;
+			ExecQuery::writeSelectFields(*f.getForeignScheme(), sel, fields, alias);
 
-		sel.from(ExecQuery::Field(fs->getName()).as(alias))
-				.where(l->getName(), Comparation::Equal, oid)
-				.finalize();
+			sel.from(ExecQuery::Field(fs->getName()).as(alias))
+					.where(l->getName(), Comparation::Equal, oid)
+					.finalize();
+		}
 	}
 }
 

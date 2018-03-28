@@ -40,7 +40,8 @@ public:
 	}
 
 	LocaleManager() : _defaultTime{
-		"today", "yesterday",
+		"today",
+		"yesterday",
 		"jan", "feb", "mar", "apr", "may", "jun",
 		"jul", "aug", "sep", "oct", "nov", "dec"
 	} { }

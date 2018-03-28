@@ -326,7 +326,7 @@ void GalleryScroll::setProgress(float value) {
 		// move back
 		_progress = 0.0f;
 
-		if (!_secondary) {
+		if (!_secondary && _primaryId > 0) {
 			_secondaryId = _primaryId - 1;
 			auto secondary = Rc<GalleryImage>::create(_images.at(_secondaryId), _imageCallback);
 			secondary->setLoaderColor(_loaderColor);

@@ -55,7 +55,7 @@ enum class InputType : int32_t {
 	PasswordBit			= 0b00100000,
 	MultiLineBit		= 0b01000000,
 	AutoCorrectionBit	= 0b10000000,
-	
+
 	ReturnKeyMask		= 0b00001111 << 8,
 
 	ReturnKeyDefault	= 1 << 8,
@@ -91,19 +91,20 @@ struct Cursor {
 };
 
 struct Handler {
-	std::function<void(const std::u16string &, const Cursor &)> onText;
-	std::function<void(bool, const Rect &, float)> onKeyboard;
-	std::function<void(bool)> onInput;
-	std::function<void()> onEnded;
+	Function<void(const WideString &, const Cursor &)> onText;
+	Function<void(bool, const Rect &, float)> onKeyboard;
+	Function<void(bool)> onInput;
+	Function<void()> onEnded;
+	Function<bool(const Vec2 &)> onTouchFilter;
 
-	bool run(const std::u16string &str = u"", const Cursor & = Cursor(), int32_t = 0);
+	bool run(const WideString &str = u"", const Cursor & = Cursor(), int32_t = 0);
 	void cancel();
 
 	// only if this handler is active
-	bool setString(const std::u16string &str, const Cursor & = Cursor());
+	bool setString(const WideString &str, const Cursor & = Cursor());
 	bool setCursor(const Cursor &);
 
-	const std::u16string &getString() const;
+	const WideString &getString() const;
 	const Cursor &getCursor() const;
 
 	bool isInputEnabled() const;

@@ -69,11 +69,21 @@ public:
 	virtual gesture::Listener *getGestureListener() const;
 
 	virtual bool addComponent(cocos2d::Component *) override;
+
+	template <typename T>
+	auto setController(const Rc<T> &ptr) -> T * {
+		setController(ptr.get());
+		return ptr.get();
+	}
+
 	virtual void setController(ScrollController *c);
 	virtual ScrollController *getController();
 
 	virtual void setPadding(const Padding &);
 	virtual const Padding &getPadding() const;
+
+	virtual void setSpaceLimit(float);
+	virtual float getSpaceLimit() const;
 
 	virtual float getScrollableAreaOffset() const; // NaN by default
 	virtual float getScrollableAreaSize() const; // NaN by default
@@ -168,6 +178,7 @@ protected:
 	float _scrollMax = nan();
 
 	float _maxVelocity = nan();
+	float _scrollSpaceLimit = nan();
 
     Vec2 _globalScale; // values to scale input gestures
 

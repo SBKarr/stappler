@@ -34,8 +34,6 @@ THE SOFTWARE.
 #include "base/CCConfiguration.h"
 #include "base/CCDirector.h"
 
-TESS_OPTIMIZE
-
 NS_SP_EXT_BEGIN(draw)
 
 Canvas::~Canvas() {

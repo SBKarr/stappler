@@ -336,19 +336,7 @@ void ScrollView::update(float dt) {
 	}
 }
 
-void ScrollView::runAdjust(float pos, float factor) {
-	auto scrollPos = getScrollPosition();
-	auto scrollSize = getScrollSize();
-
-	float newPos = nan();
-	if (scrollSize < 64.0f +  48.0f) {
-		newPos = ((pos - 64.0f) + (pos - scrollSize + 48.0f)) / 2.0f;
-	} else if (pos < scrollPos + 64.0f) {
-		newPos = pos - 64.0f;
-	} else if (pos > scrollPos + scrollSize - 48.0f) {
-		newPos = pos - scrollSize + 48.0f;
-	}
-
+void ScrollView::runAdjustPosition(float newPos, float factor) {
 	if (!isnan(newPos)) {
 		if (newPos < getScrollMinPosition()) {
 			newPos = getScrollMinPosition();
@@ -357,7 +345,7 @@ void ScrollView::runAdjust(float pos, float factor) {
 		}
 		if (_adjustValue != newPos) {
 			_adjustValue = newPos;
-			auto dist = fabsf(newPos - scrollPos);
+			auto dist = fabsf(newPos - getScrollPosition());
 
 			auto t = 0.15f;
 			if (dist < 20.0f) {
@@ -374,6 +362,21 @@ void ScrollView::runAdjust(float pos, float factor) {
 			_root->runAction(a, "ScrollViewAdjust"_tag);
 		}
 	}
+}
+void ScrollView::runAdjust(float pos, float factor) {
+	auto scrollPos = getScrollPosition();
+	auto scrollSize = getScrollSize();
+
+	float newPos = nan();
+	if (scrollSize < 64.0f +  48.0f) {
+		newPos = ((pos - 64.0f) + (pos - scrollSize + 48.0f)) / 2.0f;
+	} else if (pos < scrollPos + 64.0f) {
+		newPos = pos - 64.0f;
+	} else if (pos > scrollPos + scrollSize - 48.0f) {
+		newPos = pos - scrollSize + 48.0f;
+	}
+
+	runAdjustPosition(newPos, factor);
 }
 
 void ScrollView::scheduleAdjust(Adjust a, float val) {

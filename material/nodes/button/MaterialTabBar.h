@@ -78,11 +78,11 @@ protected:
 	virtual void setSelectedTabIndex(size_t);
 	virtual void onMenuSource();
 	virtual void onScrollPosition();
+	virtual void onScrollPositionProgress(float);
 
-	virtual float getItemSize(const String &, bool extended = false) const;
+	virtual float getItemSize(const String &, bool extended = false, bool selected = false) const;
 	virtual Rc<cocos2d::Node> onItem(MenuSourceButton *, bool wrapped);
 	virtual void onTabButton(Button *, MenuSourceButton *);
-
 
 	Alignment _alignment = Alignment::Center;
 	ButtonStyle _buttonStyle = ButtonStyle::Title;
@@ -92,7 +92,6 @@ protected:
 	Color _selectedColor = Color::Black;
 	ScrollView *_scroll = nullptr;
 
-	cocos2d::Node *_layerNode = nullptr;
 	Layer *_layer = nullptr;
 	IconSprite *_left = nullptr;
 	IconSprite *_right = nullptr;

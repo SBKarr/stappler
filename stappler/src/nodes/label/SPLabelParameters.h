@@ -88,6 +88,7 @@ public:
 			Param(const Hyphens &val) : name(Name::Hyphens) { value.hyphens = val; }
 			Param(const VerticalAlign &val) : name(Name::VerticalAlign) { value.verticalAlign = val; }
 			Param(const Color3B &val) : name(Name::Color) { value.color = val; }
+			Param(const layout::Color &val) : name(Name::Color) { value.color = val; }
 			Param(const Opacity &val) : name(Name::Opacity) { value.opacity = val.get(); }
 			Param(const FontSize &val) : name(Name::FontSize) { value.fontSize = val.get(); }
 			Param(const FontStyle &val) : name(Name::FontStyle) { value.fontStyle = val; }

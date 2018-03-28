@@ -73,6 +73,9 @@ public:
 	virtual MenuSource *getSearchMenu() const;
 	virtual MenuSource *getCommonMenu() const;
 
+	virtual void setInputTouchFilter(const Function<bool(const Vec2 &)> &);
+	virtual void setInputTouchFilterEnabled(bool);
+
 protected:
 	virtual void layoutSubviews() override;
 
@@ -99,6 +102,8 @@ protected:
 	virtual void onMenuCopy();
 	virtual void onMenuPaste();
 
+	virtual bool onInputTouchFilter(const Vec2 &);
+
 	InputLabelContainer *_node = nullptr;
 	Label *_placeholder = nullptr;
 	InputLabel *_label = nullptr;
@@ -108,6 +113,7 @@ protected:
 	Rc<MenuSource> _commonMenu;
 
 	Callback _callback;
+	Function<bool(const Vec2 &)> _touchFilterCallback;
 
 	Mode _mode = Mode::Persistent;
 	bool _hasSwipe = false;

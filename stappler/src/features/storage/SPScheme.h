@@ -228,6 +228,11 @@ public:
 		 * Allowed for Get */
 		Command *orderBy(const String &field, Flags orderMode);
 
+		/** Sets ordering rules to field, command will not be performed,
+		 * if there is no index on ordering field in specified direction.
+		 * Allowed for Get */
+		Command *orderByPrimary(Flags orderMode);
+
 		/** Limits number of returned rows.
 		 * Allowed for Get, Remove */
 		Command *limit(uint32_t count);

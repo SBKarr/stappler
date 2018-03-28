@@ -60,7 +60,7 @@ android-release-clean:
 	@$(MAKE) STAPPLER_TARGET=android RELEASE=1 android-clean
 
 ios: ios-debug
-ios-clean: ios-debug
+ios-clean: ios-debug-clean
 
 ios-export:
 	@$(MAKE) STAPPLER_TARGET=ios IOS_ARCH=export ios-export

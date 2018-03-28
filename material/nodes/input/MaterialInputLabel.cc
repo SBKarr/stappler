@@ -388,6 +388,14 @@ void InputLabel::eraseSelection() {
 	}
 }
 
+void InputLabel::setInputTouchFilter(const Function<bool(const Vec2 &)> &cb) {
+	_handler.onTouchFilter = cb;
+}
+
+const Function<bool(const Vec2 &)> &InputLabel::getInputTouchFilter() const {
+	return _handler.onTouchFilter;
+}
+
 draw::PathNode *InputLabel::getTouchedCursor(const Vec2 &vec, float padding) {
 	if (_cursorPointer->isVisible() && node::isTouched(_cursorPointer, vec, padding)) {
 		return _cursorPointer;

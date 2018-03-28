@@ -31,7 +31,7 @@ android {
 dependencies {
     compile 'com.google.firebase:firebase-core:11.8.0'
     compile 'com.google.firebase:firebase-messaging:11.8.0'
-	compile "com.google.android.gms:play-services-wallet:11.8.0"
-	compile "com.android.support:support-v4:25.4.0"
-	compile "com.android.support:appcompat-v7:25.4.0"
+    compile 'com.google.android.gms:play-services-wallet:11.8.0'
+    compile 'com.android.support:support-v4:25.4.0'
+    compile 'com.android.support:appcompat-v7:25.4.0'
 }

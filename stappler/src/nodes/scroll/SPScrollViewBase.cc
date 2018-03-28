@@ -42,34 +42,34 @@ bool ScrollViewBase::init(Layout layout) {
 
 	_layout = layout;
 
-    auto l = Rc<gesture::Listener>::create();
-    l->setTapCallback([this] (gesture::Event ev, const gesture::Tap &s) {
-    	onTap(s.count, s.location());
-    	return false;
-    });
-    l->setPressCallback([this] (gesture::Event ev, const gesture::Press &s) -> bool {
-    	if (ev == gesture::Event::Began) {
-    		return onPressBegin(s.location());
-    	} else if (ev == gesture::Event::Activated) {
-    		return onLongPress(s.location(), s.time, s.count);
-    	} else if (ev == gesture::Event::Ended) {
-    		return onPressEnd(s.location(), s.time);
-    	} else if (ev == gesture::Event::Cancelled) {
-    		return onPressCancel(s.location(), s.time);
-    	}
-    	return false;
-    }, TimeInterval::milliseconds(425), true);
-    l->setSwipeCallback([this] (gesture::Event ev, const gesture::Swipe &s) -> bool {
-    	if (ev == gesture::Event::Began) {
-    		return onSwipeEventBegin(s.location(), s.delta, s.velocity);
-    	} else if (ev == gesture::Event::Activated) {
-    		return onSwipeEvent(s.location(), s.delta, s.velocity);
-    	} else {
-    		return onSwipeEventEnd(s.location(), s.delta, s.velocity);
-    	}
-    });
-    l->setMouseWheelCallback([this] (gesture::Event ev, const gesture::Wheel &w) -> bool {
-    	auto pos = getScrollPosition();
+	auto l = Rc<gesture::Listener>::create();
+	l->setTapCallback([this] (gesture::Event ev, const gesture::Tap &s) {
+		onTap(s.count, s.location());
+		return false;
+	});
+	l->setPressCallback([this] (gesture::Event ev, const gesture::Press &s) -> bool {
+		if (ev == gesture::Event::Began) {
+			return onPressBegin(s.location());
+		} else if (ev == gesture::Event::Activated) {
+			return onLongPress(s.location(), s.time, s.count);
+		} else if (ev == gesture::Event::Ended) {
+			return onPressEnd(s.location(), s.time);
+		} else if (ev == gesture::Event::Cancelled) {
+			return onPressCancel(s.location(), s.time);
+		}
+		return false;
+	}, TimeInterval::milliseconds(425), true);
+	l->setSwipeCallback([this] (gesture::Event ev, const gesture::Swipe &s) -> bool {
+		if (ev == gesture::Event::Began) {
+			return onSwipeEventBegin(s.location(), s.delta, s.velocity);
+		} else if (ev == gesture::Event::Activated) {
+			return onSwipeEvent(s.location(), s.delta, s.velocity);
+		} else {
+			return onSwipeEventEnd(s.location(), s.delta, s.velocity);
+		}
+	});
+	l->setMouseWheelCallback([this] (gesture::Event ev, const gesture::Wheel &w) -> bool {
+		auto pos = getScrollPosition();
 		onSwipeBegin();
 		if (_layout == Vertical) {
 			onDelta(w.amount.y * 100.0f / _globalScale.y);
@@ -78,20 +78,18 @@ bool ScrollViewBase::init(Layout layout) {
 		}
 		onScroll(getScrollPosition() - pos, false);
 		return true;
-    });
-    addComponent(l);
-    _listener = l;
+	});
+	_listener = addComponentItem(l);
 
-    setCascadeOpacityEnabled(true);
+	setCascadeOpacityEnabled(true);
 
-    auto root = Rc<cocos2d::Node>::create();
-    root->setPosition(Vec2(0, 0));
-    root->setAnchorPoint((_layout == Vertical)?Vec2(0, 1):Vec2(0, 0));
-    root->setCascadeOpacityEnabled(true);
-    root->setOnContentSizeDirtyCallback(std::bind(&ScrollViewBase::onPosition, this));
-    root->setOnTransformDirtyCallback(std::bind(&ScrollViewBase::onPosition, this));
-    addChild(root, 0);
-    _root = root;
+	auto root = Rc<cocos2d::Node>::create();
+	root->setPosition(Vec2(0, 0));
+	root->setAnchorPoint((_layout == Vertical)?Vec2(0, 1):Vec2(0, 0));
+	root->setCascadeOpacityEnabled(true);
+	root->setOnContentSizeDirtyCallback(std::bind(&ScrollViewBase::onPosition, this));
+	root->setOnTransformDirtyCallback(std::bind(&ScrollViewBase::onPosition, this));
+	_root = addChildNode(root, 0);
 
 	return true;
 }
@@ -122,20 +120,23 @@ void ScrollViewBase::onEnter() {
 }
 
 void ScrollViewBase::onContentSizeDirty() {
-	if (isVertical()) {
-		auto pos = _root->getPositionY() - _scrollSize;
-		_scrollSize = _contentSize.height;
-	    _root->setAnchorPoint(Vec2(0, 1));
-		_root->setContentSize(Size(_contentSize.width - _paddingGlobal.left - _paddingGlobal.right, 0));
-		_root->setPositionY(pos + _scrollSize);
-		_root->setPositionX(_paddingGlobal.left);
-	} else {
-		_scrollSize = _contentSize.width;
-	    _root->setAnchorPoint(Vec2(0, 0));
-		_root->setContentSize(Size(0, _contentSize.height - _paddingGlobal.top - _paddingGlobal.bottom));
-		_root->setPositionY(_paddingGlobal.bottom);
+	if (!isnan(_scrollSpaceLimit)) {
+		auto padding = _paddingGlobal;
+		if (isVertical()) {
+			if (_contentSize.width > _scrollSpaceLimit) {
+				padding.left = padding.right = (_contentSize.width - _scrollSpaceLimit) / 2.0f;
+			} else {
+				padding.left = padding.right = 0.0f;
+			}
+		} else {
+			if (_contentSize.height > _scrollSpaceLimit) {
+				padding.top = padding.bottom = (_contentSize.height - _scrollSpaceLimit) / 2.0f;
+			} else {
+				padding.top = padding.bottom = 0.0f;
+			}
+		}
+		_paddingGlobal = padding;
 	}
-
 	StrictNode::onContentSizeDirty();
 	updateScrollBounds();
 	fixPosition();
@@ -214,6 +215,16 @@ void ScrollViewBase::setPadding(const Padding &p) {
 }
 const Padding &ScrollViewBase::getPadding() const {
 	return _paddingGlobal;
+}
+
+void ScrollViewBase::setSpaceLimit(float value) {
+	if (_scrollSpaceLimit != value) {
+		_scrollSpaceLimit = value;
+		_contentSizeDirty = true;
+	}
+}
+float ScrollViewBase::getSpaceLimit() const {
+	return _scrollSpaceLimit;
 }
 
 float ScrollViewBase::getScrollableAreaOffset() const {
@@ -800,6 +811,22 @@ void ScrollViewBase::onPosition() {
 void ScrollViewBase::updateScrollBounds() {
 	if ((isVertical() && _contentSize.width == 0) || (isHorizontal() && _contentSize.height == 0)) {
 		return;
+	}
+
+	if (_contentSizeDirty) {
+		if (isVertical()) {
+			auto pos = _root->getPositionY() - _scrollSize;
+			_scrollSize = _contentSize.height;
+		    _root->setAnchorPoint(Vec2(0, 1));
+			_root->setContentSize(Size(_contentSize.width - _paddingGlobal.left - _paddingGlobal.right, 0));
+			_root->setPositionY(pos + _scrollSize);
+			_root->setPositionX(_paddingGlobal.left);
+		} else {
+			_scrollSize = _contentSize.width;
+		    _root->setAnchorPoint(Vec2(0, 0));
+			_root->setContentSize(Size(0, _contentSize.height - _paddingGlobal.top - _paddingGlobal.bottom));
+			_root->setPositionY(_paddingGlobal.bottom);
+		}
 	}
 
 	_scrollMin = getScrollMinPosition();

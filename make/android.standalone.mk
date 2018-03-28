@@ -42,16 +42,20 @@ ifdef ANDROID_ARCH
 
 BUILD_OUTDIR := $(BUILD_OUTDIR)/$(if $(RELEASE),release,debug)/$(ANDROID_ARCH)
 GLOBAL_OUTPUT := $(BUILD_OUTDIR)
+
+ifeq ($(LOCAL_TOOLKIT),none)
+BUILD_EXPORT_STATIC := $(BUILD_OUTDIR)/$(LOCAL_LIBRARY).a
+else
 BUILD_LIBRARY := $(BUILD_OUTDIR)/$(LOCAL_LIBRARY).so
 BUILD_STATIC := $(BUILD_OUTDIR)/$(LOCAL_LIBRARY).a
-
 ifndef ANDROID_EXPORT
 LOCAL_SRCS_OBJS += $(realpath $(NDK)/sources/android/cpufeatures/cpu-features.c)
+endif
 endif
 
 include $(GLOBAL_ROOT)/make/utils/external.mk
 
-all: $(BUILD_LIBRARY) $(BUILD_STATIC)
+all: $(BUILD_LIBRARY) $(BUILD_STATIC) $(BUILD_EXPORT_STATIC)
 
 BUILD_LIBS += -static-libstdc++ -lc++_static -lc++abi
 
@@ -60,6 +64,9 @@ $(BUILD_LIBRARY): $(BUILD_OBJS)
 
 $(BUILD_STATIC): $(BUILD_OBJS)
 	@$(GLOBAL_AR) cqT $(BUILD_STATIC) $(BUILD_OBJS) $(OSTYPE_STAPPLER_LIBS_LIST)
+
+$(BUILD_EXPORT_STATIC): $(BUILD_OBJS)
+	$(GLOBAL_QUIET_LINK) $(GLOBAL_AR) rcs $(BUILD_EXPORT_STATIC) $(BUILD_OBJS)
 
 $(BUILD_OUTDIR)/%.o: /%.cpp $(TOOLKIT_H_GCH) $(TOOLKIT_GCH)
 	$(call sp_compile_cpp,$(BUILD_CXXFLAGS))

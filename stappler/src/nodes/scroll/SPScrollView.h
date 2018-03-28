@@ -79,6 +79,7 @@ public:
 		Back
 	};
 
+	virtual void runAdjustPosition(float pos, float factor = 1.0f);
 	virtual void runAdjust(float pos, float factor = 1.0f);
 	virtual void scheduleAdjust(Adjust, float value);
 

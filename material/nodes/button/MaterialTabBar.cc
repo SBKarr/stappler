@@ -117,7 +117,6 @@ void TabBarButton::onContentSizeDirty() {
 			_label->setAnchorPoint(Vec2(0.5f, 0.5f));
 			_label->setPosition(Vec2(_contentSize.width / 2.0f, _contentSize.height / 2.0f));
 		}
-
 		break;
 	case TabBar::ButtonStyle::TitleIcon:
 		_icon->setVisible(true);
@@ -130,6 +129,10 @@ void TabBarButton::onContentSizeDirty() {
 		_label->setAnchorPoint(Vec2(0.5f, 0.5f));
 		_label->setPosition(Vec2(_contentSize.width / 2.0f, (_contentSize.height / 2.0f - 3.0f) - 13.0f));
 		_label->tryUpdateLabel();
+		if (_label->getMaxLineX() > 72.0f || _label->getLinesCount() > 1) {
+			_label->setFontSize(8);
+			_label->tryUpdateLabel();
+		}
 		break;
 	}
 }
@@ -227,22 +230,24 @@ bool TabBar::init(material::MenuSource *source, ButtonStyle button, BarStyle bar
 	scroll->setIndicatorVisible(false);
 	scroll->setScrollCallback(std::bind(&TabBar::onScrollPosition, this));
 
-	auto layerNode = Rc<cocos2d::Node>::create();
-	layerNode->setPosition(0.0f, 0.0f);
-	layerNode->setContentSize(Size(0.0f, 0.0f));
-
 	auto layer = Rc<Layer>::create(_accentColor);
 	layer->setAnchorPoint(Vec2(0.0f, 0.0f));
 	layer->setVisible(false);
-	_layer = layerNode->addChildNode(layer);
-
-	_layerNode = scroll->addChildNode(layerNode, 255);
+	_layer = scroll->getRoot()->addChildNode(layer);
 	_scroll = addChildNode(scroll);
 
 	auto left = Rc<IconSprite>::create(IconName::Navigation_chevron_left);
+	auto leftListener = Rc<gesture::Listener>::create();
+	leftListener->setTouchCallback([this] (gesture::Event, const gesture::Touch &) -> bool { return true; });
+	leftListener->setSwallowTouches(true);
+	left->addComponentItem(leftListener);
 	_left = addChildNode(left);
 
 	auto right = Rc<IconSprite>::create(IconName::Navigation_chevron_right);
+	auto rightListener = Rc<gesture::Listener>::create();
+	rightListener->setTouchCallback([this] (gesture::Event, const gesture::Touch &) -> bool { return true; });
+	rightListener->setSwallowTouches(true);
+	right->addComponentItem(rightListener);
 	_right = addChildNode(right);
 
 	return true;
@@ -271,7 +276,7 @@ void TabBar::onContentSizeDirty() {
 	for (auto &item : items) {
 		if (auto btn = dynamic_cast<MenuSourceButton *>(item.get())) {
 			bool wrapped = false;
-			auto w = getItemSize(btn->getName());
+			auto w = getItemSize(btn->getName(), false, btn->isSelected());
 			if (w > metrics::tabMaxWidth()) {
 				wrapped = true;
 				w = metrics::tabMaxWidth() - 60.0f;
@@ -368,19 +373,21 @@ void TabBar::onContentSizeDirty() {
 		_right->setVisible(true);
 
 		_left->setAnchorPoint(Vec2(0.5f, 0.5f));
-		_left->setPosition(Vec2(32.0f, _contentSize.height / 2.0f));
+		_left->setPosition(Vec2(16.0f, _contentSize.height / 2.0f));
 		_left->setColor(_textColor);
 
 		_right->setAnchorPoint(Vec2(0.5f, 0.5f));
-		_right->setPosition(Vec2(_contentSize.width - 32.0f, _contentSize.height / 2.0f));
+		_right->setPosition(Vec2(_contentSize.width - 16.0f, _contentSize.height / 2.0f));
 		_right->setColor(_textColor);
 
 		_scroll->setAnchorPoint(Vec2(0.5f, 0.5f));
 		_scroll->setPosition(Vec2(_contentSize.width / 2.0f, _contentSize.height / 2.0f));
-		_scroll->setContentSize(Size(_contentSize.width - 96.0f, _contentSize.height));
+		_scroll->setContentSize(Size(_contentSize.width - 64.0f, _contentSize.height));
 		_scroll->setScrollRelativePosition(pos);
+		_scroll->updateScrollBounds();
+		_scroll->getController()->onScrollPosition(true);
 
-		onScrollPosition();
+		onScrollPositionProgress(0.5f);
 	}
 
 	setSelectedTabIndex(_selectedIndex);
@@ -493,18 +500,24 @@ void TabBar::onMenuSource() {
 	_contentSizeDirty = true;
 }
 
-float TabBar::getItemSize(const String &name, bool extended) const {
+float TabBar::getItemSize(const String &name, bool extended, bool selected) const {
 	if (_buttonStyle == ButtonStyle::Icon) {
 		return metrics::tabMinWidth();
 	} else if (_buttonStyle == ButtonStyle::Title) {
-		float width = Label::getStringWidth(FontType::Tab_Large, name, 0.0f, true) + 32.0f;
+		float width = Label::getStringWidth(selected?FontType::Tab_Large_Selected:FontType::Tab_Large, name, 0.0f, true) + 32.0f;
 		if (extended) {
 			width += 16.0f;
 		}
 		return std::max(width, metrics::tabMinWidth());
 	} else {
-		float width = Label::getStringWidth(FontType::Tab_Caption, name, 0.0f, true) + 16.0f;
-		return std::max(width, metrics::tabMinWidth());
+		auto style = Label::getFontStyle(selected?FontType::Tab_Caption_Selected:FontType::Tab_Caption);
+		WideString str = string::toUtf16(name);
+		float width = Label::getStringWidth(style, str, 0.0f, true);
+		if (width > 72.0f) {
+			style.font.fontSize = 8;
+			width = ceilf(Label::getStringWidth(style, str, 0.0f, true));
+		}
+		return std::max(width + 16.0f, metrics::tabMinWidth());
 	}
 }
 
@@ -557,19 +570,21 @@ void TabBar::onTabButton(Button *b, MenuSourceButton *btn) {
 
 void TabBar::onScrollPosition() {
 	if (_scrollWidth > _contentSize.width) {
-		auto pos = _scroll->getScrollRelativePosition();
-		if (pos <= 0.0f) {
-			_left->setOpacity(64);
-			_right->setOpacity(222);
-		} else if (pos >= 1.0f) {
-			_left->setOpacity(222);
-			_right->setOpacity(64);
-		} else {
-			_left->setOpacity(222);
-			_right->setOpacity(222);
-		}
+		onScrollPositionProgress(_scroll->getScrollRelativePosition());
 	}
-	_layerNode->setPositionX(_scroll->getRoot()->getPositionX());
+}
+
+void TabBar::onScrollPositionProgress(float pos) {
+	if (pos <= 0.01f) {
+		_left->setOpacity(64);
+		_right->setOpacity(222);
+	} else if (pos >= 0.99f) {
+		_left->setOpacity(222);
+		_right->setOpacity(64);
+	} else {
+		_left->setOpacity(222);
+		_right->setOpacity(222);
+	}
 }
 
 void TabBar::setSelectedTabIndex(size_t idx) {
@@ -598,8 +613,26 @@ void TabBar::setSelectedTabIndex(size_t idx) {
 							Rc<FadeIn>::create(0.15f)
 					)
 			));
-
 			_layer->runAction(spawn, "TabBarAction"_tag);
+
+			float scrollPos = _scroll->getScrollPosition();
+			float scrollSize = _scroll->getScrollSize();
+
+			if (scrollPos > pos.first) {
+				if (idx == 0) {
+					onScrollPositionProgress(0.0f);
+					_scroll->runAdjustPosition(pos.first);
+				} else {
+					_scroll->runAdjustPosition(pos.first - _positions[idx - 1].second / 2.0f);
+				}
+			} else if (scrollPos + scrollSize < pos.first + pos.second) {
+				if (idx + 1 == _positions.size()) {
+					onScrollPositionProgress(1.0f);
+					_scroll->runAdjustPosition(pos.first + pos.second - _scroll->getScrollSize());
+				} else {
+					_scroll->runAdjustPosition(pos.first + pos.second - _scroll->getScrollSize() + _positions[idx + 1].second / 2.0f);
+				}
+			}
 		}
 	}
 	_selectedIndex = idx;

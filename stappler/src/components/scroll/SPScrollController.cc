@@ -49,6 +49,7 @@ void ScrollController::onRemoved() {
 	Component::onRemoved();
 	_scroll = nullptr;
 	_root = nullptr;
+	_savedSize = 0.0f;
 }
 
 void ScrollController::onContentSizeDirty() {
@@ -57,7 +58,23 @@ void ScrollController::onContentSizeDirty() {
 		return;
 	}
 
-	if (!rebuildObjects()) {
+	auto defSize = _scroll->isVertical()
+			? _scroll->getContentSize().width - _scroll->getPadding().horizontal()
+			: _scroll->getContentSize().height - _scroll->getPadding().vertical();
+	if (_savedSize != defSize) {
+		float relPos = _scroll->getScrollRelativePosition();
+		if (!rebuildObjects()) {
+			for (auto &it : _nodes) {
+				updateScrollNode(it);
+			}
+		} else {
+			if (!isnan(relPos)) {
+				onScrollPosition();
+				_scroll->setScrollRelativePosition(relPos);
+			}
+		}
+		_savedSize = defSize;
+	} else {
 		for (auto &it : _nodes) {
 			updateScrollNode(it);
 		}
@@ -392,7 +409,10 @@ float ScrollController::getScrollableAreaSize() const {
 	return _scrollAreaSize;
 }
 
-bool ScrollController::rebuildObjects(bool force) {
+bool ScrollController::rebuildObjects() {
+	if (_callback) {
+		return _callback(this);
+	}
 	return false;
 }
 
@@ -446,6 +466,9 @@ void ScrollController::removeScrollNode(Item &it) {
 	if (it.node) {
 		if (!_keepNodes) {
 			if (it.handle) {
+				if (it.handle->isLocked()) {
+					return; // do not remove locked item
+				}
 				it.handle->onNodeRemoved(this, it, size_t(&it - _nodes.data()));
 			}
 			if (_scroll->removeScrollNode(it.node)) {
@@ -576,6 +599,14 @@ void ScrollController::updateAnimationPadding(float value) {
 			_infoDirty = true;
 		}
 	}
+}
+
+void ScrollController::setRebuildCallback(const RebuildCallback &cb) {
+	_callback = cb;
+}
+
+const ScrollController::RebuildCallback &ScrollController::getRebuildCallback() const {
+	return _callback;
 }
 
 NS_SP_END

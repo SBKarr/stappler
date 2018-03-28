@@ -385,6 +385,7 @@ void Canvas::pathEnd(const Path &path) {
 			if (path.isAntialiased() && (path.getStyle() == Path::Style::Fill || path.getStrokeOpacity() < 96)) {
 				tessSetAntiAliased(tess, _approxScale);
 			}
+			_fillTess = nullptr;
 		}
 	}
 
