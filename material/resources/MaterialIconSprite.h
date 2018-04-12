@@ -47,6 +47,8 @@ public:
 
 	virtual void onEnter() override;
 
+	virtual void setSizeHint(SizeHint);
+
 	virtual void setIconName(IconName name);
 	virtual IconName getIconName() const;
 

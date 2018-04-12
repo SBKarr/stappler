@@ -300,12 +300,7 @@ bool IconSprite::init(IconName name, SizeHint s) {
 
 	setCascadeColorEnabled(true);
 	setCascadeOpacityEnabled(true);
-	switch (s) {
-	case SizeHint::Small: setContentSize(Size(18.0f, 18.0f)); break;
-	case SizeHint::Normal: setContentSize(Size(24.0f, 24.0f)); break;
-	case SizeHint::Large: setContentSize(Size(32.0f, 32.0f)); break;
-	}
-
+	setSizeHint(s);
 	setIconName(name);
 
 	return true;
@@ -333,6 +328,14 @@ void IconSprite::onEnter() {
 	PathNode::onEnter();
 	if (_dynamicIcon) {
 		_dynamicIcon->redraw(_progress, 0.0f);
+	}
+}
+
+void IconSprite::setSizeHint(SizeHint s) {
+	switch (s) {
+	case SizeHint::Small: setContentSize(Size(18.0f, 18.0f)); break;
+	case SizeHint::Normal: setContentSize(Size(24.0f, 24.0f)); break;
+	case SizeHint::Large: setContentSize(Size(32.0f, 32.0f)); break;
 	}
 }
 

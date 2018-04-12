@@ -238,14 +238,14 @@ bool TabBar::init(material::MenuSource *source, ButtonStyle button, BarStyle bar
 
 	auto left = Rc<IconSprite>::create(IconName::Navigation_chevron_left);
 	auto leftListener = Rc<gesture::Listener>::create();
-	leftListener->setTouchCallback([this] (gesture::Event, const gesture::Touch &) -> bool { return true; });
+	leftListener->setTouchCallback([] (gesture::Event, const gesture::Touch &) -> bool { return true; });
 	leftListener->setSwallowTouches(true);
 	left->addComponentItem(leftListener);
 	_left = addChildNode(left);
 
 	auto right = Rc<IconSprite>::create(IconName::Navigation_chevron_right);
 	auto rightListener = Rc<gesture::Listener>::create();
-	rightListener->setTouchCallback([this] (gesture::Event, const gesture::Touch &) -> bool { return true; });
+	rightListener->setTouchCallback([] (gesture::Event, const gesture::Touch &) -> bool { return true; });
 	rightListener->setSwallowTouches(true);
 	right->addComponentItem(rightListener);
 	_right = addChildNode(right);

@@ -55,7 +55,7 @@ OSTYPE_STAPPLER_LIBS_LIST := \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libfreetype.a
 
 OSTYPE_CFLAGS := -DANDROID -Wall -fPIC -DUSE_FILE32API --sysroot $(ANDROID_TOOLCHAIN)/sysroot -I$(NDK)/sources/android/cpufeatures
-OSTYPE_CPPFLAGS := -Wno-overloaded-virtual -frtti
+OSTYPE_CPPFLAGS := -Wno-overloaded-virtual -Wno-gnu-string-literal-operator-template -frtti
 OSTYPE_GCHFLAGS := -x c++-header
 
 OSTYPE_COMMON_LIBS := \

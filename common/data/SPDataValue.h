@@ -120,7 +120,8 @@ public:
 	explicit ValueTemplate(bool v) : _type(Type::BOOLEAN) { boolVal = v; }
 	explicit ValueTemplate(int32_t v) : _type(Type::INTEGER) { intVal = int64_t(v); }
 	explicit ValueTemplate(int64_t v) : _type(Type::INTEGER) { intVal = v; }
-	explicit ValueTemplate(size_t v) : _type(Type::INTEGER) { intVal = int64_t(v); }
+	explicit ValueTemplate(uint32_t v) : _type(Type::INTEGER) { intVal = int64_t(v); }
+	explicit ValueTemplate(uint64_t v) : _type(Type::INTEGER) { intVal = int64_t(v); }
 	explicit ValueTemplate(float v) : _type(Type::DOUBLE) { doubleVal = v; }
 	explicit ValueTemplate(double v) : _type(Type::DOUBLE) { doubleVal = v; }
 	explicit ValueTemplate(const char *v) : _type(Type::CHARSTRING) { strVal = (v ?  new StringType(v) : new StringType()); }

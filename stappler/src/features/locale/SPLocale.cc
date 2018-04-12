@@ -30,53 +30,76 @@ NS_SP_EXT_BEGIN(locale)
 
 class LocaleManager {
 public:
+	using StringMap = memory::dict<memory::u16string, memory::u16string>;
+	using LocaleMap = memory::map<memory::string, StringMap>;
+
+	using StringIndexMap = memory::dict<size_t, memory::u16string>;
+	using LocaleIndexMap = memory::map<memory::string, StringIndexMap>;
+
+	using Interface = memory::PoolInterface;
+
 	static LocaleManager *s_sharedInstance;
 
 	static LocaleManager *getInstance() {
 		if (!s_sharedInstance) {
-			s_sharedInstance = new LocaleManager();
+			memory::MemPool pool(memory::MemPool::ManagedRoot);
+			memory::pool::push(pool);
+			s_sharedInstance = new LocaleManager(move(pool));
+			memory::pool::pop();
 		}
 		return s_sharedInstance;
 	}
 
-	LocaleManager() : _defaultTime{
+	LocaleManager(memory::MemPool &&p) : _defaultTime{
 		"today",
 		"yesterday",
 		"jan", "feb", "mar", "apr", "may", "jun",
 		"jul", "aug", "sep", "oct", "nov", "dec"
-	} { }
+	}, _pool(move(p)) { }
 
-	void define(const String &locale, LocaleInitList &&init) {
+	void define(const StringView &locale, LocaleInitList &&init) {
+		memory::pool::push(_pool);
 		auto it = _strings.find(locale);
-		if (it != _strings.end()) {
-			for (auto &iit : init) {
-				it->second.emplace(iit.first, iit.second);
-			}
-		} else {
-			auto it = _strings.emplace(locale, StringMap()).first;
-			for (auto &iit : init) {
-				it->second.emplace(iit.first, iit.second);
-			}
+		if (it == _strings.end()) {
+			it = _strings.emplace(locale.str<Interface>(), StringMap()).first;
 		}
+		for (auto &iit : init) {
+			it->second.emplace(string::toUtf16<Interface>(iit.first), string::toUtf16<Interface>(iit.second));
+		}
+		memory::pool::pop();
 	}
 
-	void define(const String &locale, const std::array<StringView, toInt(TimeTokens::Max)> &arr) {
+	void define(const StringView &locale, LocaleIndexList &&init) {
+		memory::pool::push(_pool);
+		auto it = _indexes.find(locale);
+		if (it == _indexes.end()) {
+			it = _indexes.emplace(locale.str<Interface>(), StringIndexMap()).first;
+		}
+		for (auto &iit : init) {
+			it->second.emplace(iit.first, string::toUtf16<Interface>(iit.second));
+		}
+		memory::pool::pop();
+	}
+
+	void define(const StringView &locale, const std::array<StringView, toInt(TimeTokens::Max)> &arr) {
+		memory::pool::push(_pool);
 		auto it = _timeTokens.find(locale);
 		if (it == _timeTokens.end()) {
-			it = _timeTokens.emplace(locale, std::array<String, toInt(TimeTokens::Max)>()).first;
+			it = _timeTokens.emplace(locale.str<Interface>(), std::array<memory::string, toInt(TimeTokens::Max)>()).first;
 		}
 
 		size_t i = 0;
 		for (auto &arr_it : arr) {
-			it->second[i] = arr_it.str();
+			it->second[i] = arr_it.str<Interface>();
 			++ i;
 		}
+		memory::pool::pop();
 	}
 
-	String string(const String &str) {
-		auto it = _strings.find(_locale);
+	WideStringView string(const WideStringView &str) {
+		auto it = _strings.find(StringView(_locale));
 		if (it == _strings.end()) {
-			it = _strings.find(_default);
+			it = _strings.find(StringView(_default));
 		}
 		if (it == _strings.end()) {
 			it = _strings.begin();
@@ -89,22 +112,39 @@ public:
 			}
 		}
 
-		return String();
+		return WideStringView();
 	}
 
-	String numeric(const String &str, int64_t num) {
-		auto ruleIt = _numRules.find(_locale);
+	WideStringView string(size_t index) {
+		auto it = _indexes.find(StringView(_locale));
+		if (it == _indexes.end()) {
+			it = _indexes.find(StringView(_default));
+		}
+		if (it == _indexes.end()) {
+			it = _indexes.begin();
+		}
+
+		if (it != _indexes.end()) {
+			auto sit = it->second.find(index);
+			if (sit != it->second.end()) {
+				return sit->second;
+			}
+		}
+
+		return WideStringView();
+	}
+
+	WideStringView numeric(const WideStringView &str, int64_t num) {
+		auto ruleIt = _numRules.find(StringView(_locale));
 		if (ruleIt == _numRules.end()) {
-			auto fmt = string(str);
-			StringView r(fmt);
-			return r.readUntil<StringView::Chars<':'>>().str();
+			return string(str);
 		} else {
 			uint8_t numEq = ruleIt->second(num);
 			auto fmt = string(str);
-			StringView r(fmt);
-			StringView def = r.readUntil<StringView::Chars<':'>>();
+			WideStringView r(fmt);
+			WideStringView def = r.readUntil<WideStringView::Chars<':'>>();
 			if (r.empty() || numEq == 0) {
-				return def.str();
+				return def;
 			}
 
 			while (!r.empty()) {
@@ -112,15 +152,15 @@ public:
 					++ r;
 				}
 
-				StringView res = r.readUntil<StringView::Chars<':'>>();
+				WideStringView res = r.readUntil<WideStringView::Chars<':'>>();
 				if (numEq == 1) {
-					return res.str();
+					return res;
 				} else {
 					-- numEq;
 				}
 			}
 
-			return def.str();
+			return def;
 		}
 	}
 
@@ -141,27 +181,82 @@ public:
 		return _locale;
 	}
 
-	void setNumRule(const String &locale, const NumRule &rule) {
-		_numRules.emplace(locale, rule);
+	void setNumRule(const StringView &locale, const NumRule &rule) {
+		_numRules.emplace(locale.str<Interface>(), rule);
 	}
 
-	bool hasLocaleTags(const char16_t *str, size_t len) {
-		if (len == 0) {
+	bool hasLocaleTagsFast(WideStringView r) {
+		if (r.empty()) {
 			return false;
 		}
 
-		WideStringView r(str, len);
 		if (r.is(u"@Locale:")) { // raw locale string
 			return true;
+		} else if (r.is(u"%=")) {
+			r += 2;
+			auto tmp = r.readChars<WideStringView::CharGroup<CharGroupId::Numbers>>();
+			if (!tmp.empty() && r.is('%')) {
+				return true;
+			}
 		} else {
-			r.skipUntil<WideStringView::Chars<'%'>>();
-			if (r.is('%')) {
-				++ r;
-				r.skipChars<
-					WideStringView::CharGroup<CharGroupId::Alphanumeric>,
-					WideStringView::Chars<':', '.', '-', '_', '[', ']', '+'>>();
+			constexpr size_t maxChars = config::maxFastLocaleChars;
+			WideStringView shortView(r.data(), std::min(r.size(), maxChars));
+			shortView.skipUntil<WideStringView::Chars<'%'>>();
+			if (shortView.is('%')) {
+				++ shortView;
+				if (shortView.is('=')) {
+					++ shortView;
+					shortView = WideStringView(shortView.data(), std::min(maxChars, r.size() - (shortView.data() - r.data())));
+					shortView.skipChars<WideStringView::CharGroup<CharGroupId::Numbers>>();
+					if (shortView.is('%')) {
+						return true;
+					}
+				} else {
+					shortView = WideStringView(shortView.data(), std::min(maxChars, r.size() - (shortView.data() - r.data())));
+					shortView.skipChars<
+						WideStringView::CharGroup<CharGroupId::Alphanumeric>,
+						WideStringView::Chars<':', '.', '-', '_', '[', ']', '+', '='>>();
+					if (shortView.is('%')) {
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	bool hasLocaleTags(WideStringView r) {
+		if (r.empty()) {
+			return false;
+		}
+
+		if (r.is(u"@Locale:")) { // raw locale string
+			return true;
+		} else if (r.is(u"%=")) {
+			r += 2;
+			auto tmp = r.readChars<WideStringView::CharGroup<CharGroupId::Numbers>>();
+			if (!tmp.empty() && r.is('%')) {
+				return true;
+			}
+		} else {
+			while (!r.empty()) {
+				r.skipUntil<WideStringView::Chars<'%'>>();
 				if (r.is('%')) {
-					return true;
+					++ r;
+					if (r.is('=')) {
+						++ r;
+						r.skipChars<WideStringView::CharGroup<CharGroupId::Numbers>>();
+						if (r.is('%')) {
+							return true;
+						}
+					} else {
+						r.skipChars<
+							WideStringView::CharGroup<CharGroupId::Alphanumeric>,
+							WideStringView::Chars<':', '.', '-', '_', '[', ']', '+', '='>>();
+						if (r.is('%')) {
+							return true;
+						}
+					}
 				}
 			}
 		}
@@ -169,13 +264,12 @@ public:
 		return false;
 	}
 
-	WideString resolveLocaleTags(const char16_t *str, size_t len) {
-		WideStringView r(str, len);
+	WideString resolveLocaleTags(WideStringView r) {
 		if (r.is(u"@Locale:")) { // raw locale string
-			auto name = string::toUtf8(std::u16string(str + "@Locale:"_len, len - "@Locale:"_len));
-			return string::toUtf16(string(name));
+			r += "@Locale:"_len;
+			return string(r).str();
 		} else {
-			std::u16string ret; ret.reserve(len);
+			WideString ret; ret.reserve(r.size());
 			while (!r.empty()) {
 				auto tmp = r.readUntil<WideStringView::Chars<'%'>>();
 				ret.append(tmp.data(), tmp.size());
@@ -183,12 +277,20 @@ public:
 					++ r;
 					auto token = r.readChars<
 						WideStringView::CharGroup<CharGroupId::Alphanumeric>,
-						WideStringView::Chars<':', '.', '-', '_', '[', ']', '+'>>();
+						WideStringView::Chars<':', '.', '-', '_', '[', ']', '+', '='>>();
 					if (r.is('%')) {
 						++ r;
-
-						std::u16string replacement;
-						if (token.is(u"Num:")) {
+						WideStringView replacement;
+						if (token.is('=')) {
+							auto numToken = token;
+							++ numToken;
+							if (numToken.is<WideStringView::CharGroup<CharGroupId::Numbers>>()) {
+								auto id = numToken.readInteger();
+								if (numToken.empty() && !IsErrorValue(id)) {
+									replacement = string(size_t(id));
+								}
+							}
+						} else if (token.is(u"Num:")) {
 							WideStringView splitMaster(token);
 							WideStringView num;
 							while (!splitMaster.empty()) {
@@ -206,13 +308,13 @@ public:
 								validate.skipChars<WideStringView::CharGroup<CharGroupId::Numbers>>();
 								if (validate.empty()) {
 									WideStringView vtoken(token.data(), token.size() - num.size() - 1);
-									replacement = string::toUtf16(numeric(string::toUtf8(vtoken.str()), num.readInteger()));
+									replacement = numeric(vtoken, num.readInteger());
 								}
 							}
 						}
 
-						if (replacement.empty()) {
-							replacement = string::toUtf16(string(string::toUtf8(token.str())));
+						if (replacement.empty() && !token.is('=')) {
+							replacement = string(token);
 						}
 
 						if (replacement.empty()) {
@@ -220,7 +322,7 @@ public:
 							ret.append(token.data(), token.size());
 							ret.push_back(u'%');
 						} else {
-							ret.append(replacement);
+							ret.append(replacement.str());
 						}
 					} else {
 						ret.push_back(u'%');
@@ -230,7 +332,7 @@ public:
 			}
 			return ret;
 		}
-		return std::u16string();
+		return WideString();
 	}
 
 	String language(const String &locale) {
@@ -257,20 +359,20 @@ public:
 		return ret;
 	}
 
-	String timeToken(TimeTokens tok) {
-		auto it = _timeTokens.find(_locale);
+	StringView timeToken(TimeTokens tok) {
+		auto it = _timeTokens.find(StringView(_locale));
 		if (it == _timeTokens.end()) {
-			it = _timeTokens.find(_default);
+			it = _timeTokens.find(StringView(_default));
 		}
 
 		auto &table = it == _timeTokens.end()?_defaultTime:it->second;
 		return table[toInt(tok)];
 	}
 
-	const std::array<String, toInt(TimeTokens::Max)> &timeTokenTable() {
-		auto it = _timeTokens.find(_locale);
+	const std::array<memory::string, toInt(TimeTokens::Max)> &timeTokenTable() {
+		auto it = _timeTokens.find(StringView(_locale));
 		if (it == _timeTokens.end()) {
-			it = _timeTokens.find(_default);
+			it = _timeTokens.find(StringView(_default));
 		}
 
 		return it == _timeTokens.end()?_defaultTime:it->second;
@@ -281,10 +383,12 @@ protected:
 	String _locale;
 
 	LocaleMap _strings;
-	std::unordered_map<String, NumRule> _numRules;
+	LocaleIndexMap _indexes;
+	memory::map<memory::string, NumRule> _numRules;
+	memory::map<memory::string, std::array<memory::string, toInt(TimeTokens::Max)>> _timeTokens;
+	std::array<memory::string, toInt(TimeTokens::Max)> _defaultTime;
 
-	Map<String, std::array<String, toInt(TimeTokens::Max)>> _timeTokens;
-	std::array<String, toInt(TimeTokens::Max)> _defaultTime;
+	memory::MemPool _pool;
 };
 
 LocaleManager *LocaleManager::s_sharedInstance = nullptr;
@@ -292,22 +396,30 @@ LocaleManager *LocaleManager::s_sharedInstance = nullptr;
 EventHeader onLocale("Locale", "onLocale");
 
 Initializer::Initializer(const String &locale, LocaleInitList && list) {
-	LocaleManager::getInstance()->define(locale, std::move(list));
+	LocaleManager::getInstance()->define(locale, move(list));
 }
 
-void define(const String &locale, LocaleInitList &&init) {
-	LocaleManager::getInstance()->define(locale, std::move(init));
+void define(const StringView &locale, LocaleInitList &&init) {
+	LocaleManager::getInstance()->define(locale, move(init));
 }
 
-void define(const String &locale, const std::array<StringView, toInt(TimeTokens::Max)> &arr) {
+void define(const StringView &locale, LocaleIndexList &&init) {
+	LocaleManager::getInstance()->define(locale, move(init));
+}
+
+void define(const StringView &locale, const std::array<StringView, toInt(TimeTokens::Max)> &arr) {
 	LocaleManager::getInstance()->define(locale, arr);
 }
 
-String string(const String &str) {
+WideStringView string(const WideStringView &str) {
 	return LocaleManager::getInstance()->string(str);
 }
 
-String numeric(const String &str, int64_t num) {
+WideStringView string(size_t idx) {
+	return LocaleManager::getInstance()->string(idx);
+}
+
+WideStringView numeric(const WideStringView &str, int64_t num) {
 	return LocaleManager::getInstance()->numeric(str, num);
 }
 
@@ -329,12 +441,16 @@ void setNumRule(const String &locale, const NumRule &rule) {
 	LocaleManager::getInstance()->setNumRule(locale, rule);
 }
 
-bool hasLocaleTags(const char16_t *str, size_t len) {
-	return LocaleManager::getInstance()->hasLocaleTags(str, len);
+bool hasLocaleTagsFast(const WideStringView &r) {
+	return LocaleManager::getInstance()->hasLocaleTagsFast(r);
 }
 
-WideString resolveLocaleTags(const char16_t *str, size_t len) {
-	return LocaleManager::getInstance()->resolveLocaleTags(str, len);
+bool hasLocaleTags(const WideStringView &r) {
+	return LocaleManager::getInstance()->hasLocaleTags(r);
+}
+
+WideString resolveLocaleTags(const WideStringView &r) {
+	return LocaleManager::getInstance()->resolveLocaleTags(r);
 }
 
 String language(const String &locale) {
@@ -345,7 +461,7 @@ String common(const String &locale) {
 	return LocaleManager::getInstance()->common(locale);
 }
 
-String timeToken(TimeTokens tok) {
+StringView timeToken(TimeTokens tok) {
 	return LocaleManager::getInstance()->timeToken(tok);
 }
 

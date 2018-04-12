@@ -213,6 +213,7 @@ public:
 public:
     virtual void setString(const String &newString);
     virtual void setString(const WideString &newString);
+    virtual void setLocalizedString(size_t);
     virtual const WideString &getString() const;
     virtual const String &getString8() const;
 
@@ -306,8 +307,8 @@ public:
 	bool isLocaleEnabled() const;
 
 protected:
-	virtual bool hasLocaleTags(const char16_t *, size_t) const;
-	virtual WideString resolveLocaleTags(const char16_t *, size_t) const;
+	virtual bool hasLocaleTags(const WideStringView &) const;
+	virtual WideString resolveLocaleTags(const WideStringView &) const;
 
 protected:
 	WideString _string16;

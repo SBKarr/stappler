@@ -288,12 +288,12 @@ void DynamicQuadArray::updateTransform(const cocos2d::Mat4 &t) {
 }
 
 bool DynamicQuadArray::drawRect(uint16_t x, uint16_t y, uint16_t width, uint16_t height,
-		const cocos2d::Color4B &color, float texWidth, float texHeight) {
+		const Color4B &color, float texWidth, float texHeight) {
 	_quads.emplace_back();
 	auto id = _quads.size() - 1;
-	setTextureRect(id, cocos2d::Rect(texWidth - 1.0f, texHeight - 1.0f, 1.0f, 1.0f),
+	setTextureRect(id, Rect(texWidth - 1.0f, texHeight - 1.0f, 1.0f, 1.0f),
 			texWidth, texHeight, false, false);
-	setGeometry(id, cocos2d::Vec2(x, y), cocos2d::Size(width, height), 0.0f);
+	setGeometry(id, Vec2(x, y), Size(width, height), 0.0f);
 	setColor(id, color);
 	_quadsDirty = true;
 	return true;

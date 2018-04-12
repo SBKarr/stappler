@@ -47,16 +47,14 @@ bool SearchToolbar::init(const Callback &cb, Mode m) {
 	_mode = m;
 	_callback = cb;
 
+	_searchMenu = Rc<MenuSource>::create();
+	_commonMenu = Rc<MenuSource>::create();
+
 	if (_mode == Persistent) {
+		_searchMenu->addButton("cancel", IconName::Navigation_close, std::bind(&SearchToolbar::onClearButton, this));
 		_navButton->setIconName(IconName::Action_search);
 		_navButton->setEnabled(false);
 	}
-
-	_searchMenu = Rc<MenuSource>::create();
-	_searchMenu->addButton("cancel", IconName::Navigation_close, std::bind(&SearchToolbar::onClearButton, this));
-
-	_commonMenu = Rc<MenuSource>::create();
-	//_commonMenu->addButton("voice_input", IconName::Av_mic, std::bind(&SearchToolbar::onVoiceButton, this));
 
 	auto node = Rc<InputLabelContainer>::create();
 	node->setAnchorPoint(Vec2(0.0f, 0.0f));
@@ -70,7 +68,7 @@ bool SearchToolbar::init(const Callback &cb, Mode m) {
 
 	auto placeholder = Rc<Label>::create(FontType::Title);
 	placeholder->setPosition(Vec2(0.0f, 0.0f));
-	placeholder->setOpacity(72);
+	placeholder->setOpacity((_mode == Expandable && !_searchEnabled) ? 222 : 72);
 	placeholder->setString("Placeholder");
 	placeholder->setMaxLines(1);
 	_placeholder = node->addChildNode(placeholder);
@@ -122,9 +120,18 @@ bool SearchToolbar::init(const Callback &cb, Mode m) {
 	});
 
 	_barCallback = [this] {
-		_label->acquireInput();
-		//log::text("SearchToolbar", "bar callback");
+		if (_mode == Persistent || _searchEnabled) {
+			_label->acquireInput();
+		}
 	};
+
+	if (_mode == Expandable) {
+		_commonMenu->addButton("search", IconName::Action_search, std::bind(&SearchToolbar::onSearchButton, this));
+		_label->setEnabled(false);
+
+		_altMenu = Rc<MenuSource>::create();
+		//_commonMenu->addButton("voice_input", IconName::Av_mic, std::bind(&SearchToolbar::onVoiceButton, this));
+	}
 
 	setActionMenuSource(_commonMenu);
 
@@ -149,10 +156,12 @@ void SearchToolbar::setFont(material::FontType font) {
 }
 
 void SearchToolbar::setTitle(const String &str) {
+	_title = str;
 	setPlaceholder(str);
+	clearSearch();
 }
 const String &SearchToolbar::getTitle() const {
-	return getPlaceholder();
+	return _title;
 }
 
 void SearchToolbar::setPlaceholder(const String &str) {
@@ -176,7 +185,7 @@ void SearchToolbar::setString(const String &str) {
 		} else if (_hasText && _label->empty()) {
 			_hasText = false;
 			_placeholder->setVisible(true);
-			replaceActionMenuSource(_commonMenu, 2);
+			replaceActionMenuSource(_searchEnabled ? _altMenu : _commonMenu, 2);
 		}
 	}
 }
@@ -197,7 +206,7 @@ void SearchToolbar::setColor(const Color &color) {
 	_label->setColor(_textColor);
 	_label->setCursorColor(_textColor == Color::White?_textColor.darker(2):_textColor.lighter(2), false);
 	_placeholder->setColor(_textColor);
-	_placeholder->setOpacity(72);
+	_placeholder->setOpacity((_mode == Expandable && !_searchEnabled) ? 222 : 72);
 }
 void SearchToolbar::setTextColor(const Color &color) {
 	ToolbarBase::setTextColor(color);
@@ -205,7 +214,7 @@ void SearchToolbar::setTextColor(const Color &color) {
 	_label->setColor(_textColor);
 	_label->setCursorColor(_textColor == Color::White?_textColor.darker(2):_textColor.lighter(2), false);
 	_placeholder->setColor(_textColor);
-	_placeholder->setOpacity(72);
+	_placeholder->setOpacity((_mode == Expandable && !_searchEnabled) ? 222 : 72);
 }
 
 void SearchToolbar::acquireInput() {
@@ -269,7 +278,7 @@ void SearchToolbar::onInput() {
 	} else if (_hasText && _label->empty()) {
 		_hasText = false;
 		_placeholder->setVisible(true);
-		replaceActionMenuSource(_commonMenu, 2);
+		replaceActionMenuSource(_searchEnabled ? _altMenu : _commonMenu, 2);
 	}
 	_node->onInput();
 
@@ -281,6 +290,13 @@ void SearchToolbar::onInput() {
 void SearchToolbar::onCursor(const Cursor &) {
 	_node->onCursor();
 	updateMenu();
+}
+
+void SearchToolbar::onActivated(bool value) {
+	InputLabelDelegate::onActivated(value);
+	if (!value && _searchEnabled && _label->empty()) {
+		onSearchButton();
+	}
 }
 
 void SearchToolbar::onPointer(bool) {
@@ -339,6 +355,36 @@ void SearchToolbar::onClearButton() {
 
 void SearchToolbar::onVoiceButton() {
 
+}
+
+void SearchToolbar::onSearchButton() {
+	if (_mode == Expandable) {
+		if (_searchEnabled) {
+			_searchEnabled = false;
+			replaceActionMenuSource(_commonMenu, 2);
+			_label->setEnabled(false);
+			_label->releaseInput();
+		} else {
+			_searchEnabled = true;
+			replaceActionMenuSource(_altMenu, 2);
+			_label->setEnabled(true);
+			_label->acquireInput();
+		}
+		_placeholder->setOpacity((_mode == Expandable && !_searchEnabled) ? 222 : 72);
+
+		if (_navButton->getIconName() == material::IconName::Dynamic_Navigation) {
+			if (_searchEnabled) {
+				_tmpNavProgress = _navButton->getIconProgress();
+				if (_tmpNavProgress < 1.0f) {
+					_navButton->setIconProgress(1.0f, 0.25f);
+				} else if (_tmpNavProgress < 2.0f) {
+					_navButton->setIconProgress(2.0f, 0.25f);
+				}
+			} else {
+				_navButton->setIconProgress(_tmpNavProgress, 0.25f);
+			}
+		}
+	}
 }
 
 void SearchToolbar::updateMenu() {
@@ -421,5 +467,42 @@ void SearchToolbar::setInputTouchFilterEnabled(bool value) {
 	}
 }
 
+void SearchToolbar::setSearchEnabled(bool value) {
+	if (value != _canSearchBeEnabled) {
+		_canSearchBeEnabled = value;
+		clearSearch();
+		if (_canSearchBeEnabled) {
+			if (_actionMenuSource != _commonMenu) {
+				replaceActionMenuSource(_commonMenu, 2);
+			}
+		} else {
+			if (_actionMenuSource != _altMenu) {
+				replaceActionMenuSource(_altMenu, 2);
+			}
+		}
+	}
+}
+
+bool SearchToolbar::isSearchEnabled() const {
+	return _canSearchBeEnabled;
+}
+
+void SearchToolbar::onNavTapped() {
+	if (_searchEnabled) {
+		clearSearch();
+	} else {
+		ToolbarBase::onNavTapped();
+	}
+}
+
+void SearchToolbar::clearSearch() {
+	if (!_label->empty()) {
+		_label->setString("");
+		onInput();
+	}
+	if (_searchEnabled) {
+		onSearchButton();
+	}
+}
 
 NS_MD_END

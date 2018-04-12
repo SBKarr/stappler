@@ -185,8 +185,8 @@ void DynamicLabel::updateLabel(FormatSpec *format) {
 			auto start = _string16.c_str() + it.start;
 			auto len = it.length;
 
-			if (_localeEnabled && hasLocaleTags(start, len)) {
-				WideString str(resolveLocaleTags(start, len));
+			if (_localeEnabled && hasLocaleTags(WideStringView(start, len))) {
+				WideString str(resolveLocaleTags(WideStringView(start, len)));
 
 				start = str.c_str();
 				len = str.length();

@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "SPDefault.h"
 #include "SPConfig.h"
+#include "SPMetastring.h"
 
 #if (SP_NOSTOREKIT)
 #define SP_INTERNAL_STOREKIT_ENABLED 0
@@ -37,13 +38,17 @@ THE SOFTWARE.
 NS_SP_BEGIN
 
 // full localized string
-inline String operator"" _locale ( const char* str, std::size_t len) {
+template <typename CharType, CharType ... Chars> auto operator "" _locale() {
+	return metastring::merge("@Locale:"_meta, metastring::metastring<Chars ...>());
+}
+
+/*inline String operator"" _locale ( const char* str, std::size_t len) {
 	String ret;
 	ret.reserve(len + "@Locale:"_len);
 	ret.append("@Locale:");
 	ret.append(str, len);
 	return ret;
-}
+}*/
 
 // localized token
 inline String operator"" _token ( const char* str, std::size_t len) {
@@ -53,6 +58,19 @@ inline String operator"" _token ( const char* str, std::size_t len) {
 	ret.append(str, len);
 	ret.append("%");
 	return ret;
+}
+
+inline String localeIndex(size_t idx) {
+	String ret; ret.reserve(20);
+	ret.append("%=");
+	ret.append(toString(idx));
+	ret.push_back('%');
+	return ret;
+}
+
+template <size_t Index>
+inline constexpr auto localeIndex() {
+	return metastring::merge("%="_meta, metastring::numeric<Index>(), "%"_meta);
 }
 
 NS_SP_END

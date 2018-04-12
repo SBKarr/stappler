@@ -422,8 +422,10 @@ template <typename T> inline auto GetErrorValue() -> T { return _ErrorValue<T>::
 #define SP_DEFINE_ENUM_AS_MASK(Type) \
 	constexpr inline Type operator | (const Type &l, const Type &r) { return Type(toInt(l) | toInt(r)); } \
 	constexpr inline Type operator & (const Type &l, const Type &r) { return Type(toInt(l) & toInt(r)); } \
+	constexpr inline Type operator ^ (const Type &l, const Type &r) { return Type(toInt(l) ^ toInt(r)); } \
 	constexpr inline Type & operator |= (Type &l, const Type &r) { l = Type(toInt(l) | toInt(r)); return l; } \
 	constexpr inline Type & operator &= (Type &l, const Type &r) { l = Type(toInt(l) & toInt(r)); return l; } \
+	constexpr inline Type & operator ^= (Type &l, const Type &r) { l = Type(toInt(l) ^ toInt(r)); return l; } \
 	constexpr inline bool operator == (const Type &l, const std::underlying_type<Type>::type &r) { return toInt(l) == r; } \
 	constexpr inline bool operator == (const std::underlying_type<Type>::type &l, const Type &r) { return l == toInt(r); } \
 	constexpr inline bool operator != (const Type &l, const std::underlying_type<Type>::type &r) { return toInt(l) != r; } \

@@ -139,7 +139,7 @@ void ForegroundLayer::Snackbar::setSnackbarData(SnackbarData &&data) {
 
 	setContentSize(Size(_contentSize.width, _label->getContentSize().height + 32.0f));
 	setPosition(Size(_position.x, -_contentSize.height));
-	if (!data.text.empty() || !_data.buttonText.empty()) {
+	if (!_data.text.empty() || !_data.buttonText.empty()) {
 		setVisible(true);
 		setOpacity(255);
 		runAction(action::sequence(cocos2d::MoveTo::create(0.25f, Vec2(_position.x, 0)), _data.delayTime,

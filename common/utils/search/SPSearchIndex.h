@@ -43,8 +43,13 @@ public:
 	struct ResultNode;
 	struct Result;
 
+	enum TokenType {
+		SearchNode,
+		SearchRequest
+	};
+
 	using TokenCallback = Function<void(const StringView &)>;
-	using TokenizerCallback = Function<void(const StringView &, const TokenCallback &)>;
+	using TokenizerCallback = Function<void(const StringView &, const TokenCallback &, TokenType)>;
 	using HeuristicCallback = Function<float(const SearchIndex &index, const ResultNode &result)>;
 
 	struct Slice {

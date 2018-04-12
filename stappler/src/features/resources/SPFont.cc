@@ -299,7 +299,6 @@ bool FontLibrary::writeTextureQuads(uint32_t v, FontSource *source, const layout
 		colorMap[i].reserve(sizes[i] * 2);
 	}
 
-
 	const layout::RangeSpec *targetRange = nullptr;
 	Map<String, Vector<CharTexture>>::const_iterator texVecIt;
 	Rc<layout::FontLayout> layout;
@@ -330,9 +329,21 @@ bool FontLibrary::writeTextureQuads(uint32_t v, FontSource *source, const layout
 		const auto start = it.start();
 		auto end = start + it.count();
 
+		for (auto charIdx = start; charIdx < end; ++ charIdx) {
+			const layout::CharSpec &c = format->chars[charIdx];
+			if (!string::isspace(c.charID) && c.charID != char16_t(0x0A) && c.charID != char16_t(0x00AD)) {
+				auto texIt = std::lower_bound(texVecIt->second.cbegin(), texVecIt->second.cend(), c.charID);
+				auto charIt = std::lower_bound(charVec->cbegin(), charVec->cend(), c.charID);
+
+				if (texIt != texVecIt->second.end() && texIt->charID == c.charID && charIt != charVec->end() && charIt->charID == c.charID && texIt->texture != maxOf<uint8_t>()) {
+					writeTextureQuad(format, *metrics, c, *charIt, *texIt, *it.range, *it.line, colorMap[texIt->texture], texs[texIt->texture], quads[texIt->texture]);
+				}
+			}
+		}
+
 		if (it.line->start + it.line->count == end) {
 			const layout::CharSpec &c = format->chars[end - 1];
-			if (!string::isspace(c.charID) && c.charID != char16_t(0x0A)) {
+			if (c.charID == char16_t(0x00AD)) {
 				auto texIt = std::lower_bound(texVecIt->second.cbegin(), texVecIt->second.cend(), c.charID);
 				auto charIt = std::lower_bound(charVec->cbegin(), charVec->cend(), c.charID);
 
@@ -343,15 +354,39 @@ bool FontLibrary::writeTextureQuads(uint32_t v, FontSource *source, const layout
 			end -= 1;
 		}
 
-		for (auto charIdx = start; charIdx < end; ++ charIdx) {
-			const layout::CharSpec &c = format->chars[charIdx];
-			if (!string::isspace(c.charID) && c.charID != char16_t(0x0A) && c.charID != char16_t(0x00AD)) {
-				auto texIt = std::lower_bound(texVecIt->second.cbegin(), texVecIt->second.cend(), c.charID);
-				auto charIt = std::lower_bound(charVec->cbegin(), charVec->cend(), c.charID);
+		if (it.count() > 0 && it.range->decoration != layout::style::TextDecoration::None) {
+			const font::CharSpec &firstChar = format->chars[it.start()];
+			const font::CharSpec &lastChar = format->chars[it.start() + it.count() - 1];
 
-				if (texIt != texVecIt->second.end() && texIt->charID == c.charID && charIt != charVec->end() && charIt->charID == c.charID && texIt->texture != maxOf<uint8_t>()) {
-					writeTextureQuad(format, *metrics, c, *charIt, *texIt, *it.range, *it.line, colorMap[texIt->texture], texs[texIt->texture], quads[texIt->texture]);
-				}
+			auto color = it.range->color;
+			color.a = uint8_t(0.75f * color.a);
+			Rc<font::FontLayout> layout(it.range->layout);
+			Rc<font::FontData> data(layout->getData());
+
+			float offset = 0.0f;
+			switch (it.range->decoration) {
+			case layout::style::TextDecoration::None: break;
+			case layout::style::TextDecoration::Overline:
+				offset = data->metrics.height;
+				break;
+			case layout::style::TextDecoration::LineThrough:
+				offset = data->metrics.height / 2.0f;
+				break;
+			case layout::style::TextDecoration::Underline:
+				offset = data->metrics.height / 8.0f;
+				break;
+			}
+
+			const float width = data->metrics.height / 16.0f;
+			const float base = floorf(width);
+			const float frac = width - base;
+
+			quads[0]->drawRect(firstChar.pos, format->height - it.line->pos + offset, lastChar.pos + lastChar.advance - firstChar.pos, base,
+					color, texs[0]->getPixelsWide(), texs[0]->getPixelsHigh());
+			if (frac > 0.1) {
+				color.a *= frac;
+				quads[0]->drawRect(firstChar.pos, format->height - it.line->pos + offset - base, lastChar.pos + lastChar.advance - firstChar.pos, 1,
+						color, texs[0]->getPixelsWide(), texs[0]->getPixelsHigh());
 			}
 		}
 	}

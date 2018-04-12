@@ -76,12 +76,16 @@ public:
 	virtual void setInputTouchFilter(const Function<bool(const Vec2 &)> &);
 	virtual void setInputTouchFilterEnabled(bool);
 
+	virtual void setSearchEnabled(bool);
+	virtual bool isSearchEnabled() const;
+
 protected:
 	virtual void layoutSubviews() override;
 
 	virtual bool onInputString(const WideString &str, const Cursor &c) override;
 	virtual void onInput() override;
 	virtual void onCursor(const Cursor &) override;
+	virtual void onActivated(bool) override;
 	virtual void onPointer(bool) override;
 
 	virtual bool onPressBegin(const Vec2 &);
@@ -95,6 +99,7 @@ protected:
 
 	virtual void onClearButton();
 	virtual void onVoiceButton();
+	virtual void onSearchButton();
 
 	virtual void updateMenu();
 
@@ -104,6 +109,9 @@ protected:
 
 	virtual bool onInputTouchFilter(const Vec2 &);
 
+	virtual void onNavTapped() override;
+	virtual void clearSearch();
+
 	InputLabelContainer *_node = nullptr;
 	Label *_placeholder = nullptr;
 	InputLabel *_label = nullptr;
@@ -111,13 +119,18 @@ protected:
 
 	Rc<MenuSource> _searchMenu;
 	Rc<MenuSource> _commonMenu;
+	Rc<MenuSource> _altMenu;
 
 	Callback _callback;
 	Function<bool(const Vec2 &)> _touchFilterCallback;
 
+	String _title;
 	Mode _mode = Mode::Persistent;
+	float _tmpNavProgress = 0.0f;
 	bool _hasSwipe = false;
 	bool _hasText = false;
+	bool _searchEnabled = false;
+	bool _canSearchBeEnabled = true;
 };
 
 NS_MD_END

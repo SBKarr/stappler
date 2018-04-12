@@ -59,11 +59,13 @@ void SearchIndex::add(const StringView &v, int64_t id, int64_t tag) {
 	};
 
 	if (_tokenizer) {
-		_tokenizer(origin, tokenFn);
+		_tokenizer(origin, tokenFn, SearchNode);
 	} else {
 		StringView r(origin);
 		r.split<DefaultSep>(tokenFn);
 	}
+
+	log::text("Canonical", canonical);
 
 	if (canonical.empty()) {
 		_nodes.pop_back();
@@ -112,7 +114,7 @@ SearchIndex::Result SearchIndex::performSearch(const StringView &v, size_t minMa
 	};
 
 	if (_tokenizer) {
-		_tokenizer(origin, tokenFn);
+		_tokenizer(origin, tokenFn, SearchRequest);
 	} else {
 		StringView r(origin);
 		r.split<DefaultSep>(tokenFn);

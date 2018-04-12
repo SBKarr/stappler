@@ -27,10 +27,9 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(locale)
 
-using LocaleInitList = std::initializer_list<std::pair<String, String>>;
-using StringMap = std::unordered_map<String, String>;
-using LocaleMap = std::unordered_map<String, StringMap>;
-using NumRule = std::function<uint8_t(int64_t)>;
+using LocaleInitList = std::initializer_list<Pair<StringView, StringView>>;
+using LocaleIndexList = std::initializer_list<Pair<size_t, StringView>>;
+using NumRule = Function<uint8_t(int64_t)>;
 
 enum class TimeTokens {
 	Today = 0,
@@ -56,11 +55,9 @@ struct Initializer {
 	Initializer(const String &locale, LocaleInitList &&);
 };
 
-void define(const String &locale, LocaleInitList &&);
-void define(const String &locale, const std::array<StringView, toInt(TimeTokens::Max)> &);
-
-String string(const String &);
-String numeric(const String &, size_t);
+void define(const StringView &locale, LocaleInitList &&);
+void define(const StringView &locale, LocaleIndexList &&);
+void define(const StringView &locale, const std::array<StringView, toInt(TimeTokens::Max)> &);
 
 void setDefault(const String &);
 const String &getDefault();
@@ -70,15 +67,20 @@ const String &getLocale();
 
 void setNumRule(const String &, const NumRule &);
 
-bool hasLocaleTags(const char16_t *, size_t);
-WideString resolveLocaleTags(const char16_t *, size_t);
+WideStringView string(const WideStringView &);
+WideStringView string(size_t);
+WideStringView numeric(const WideStringView &, size_t);
+
+bool hasLocaleTagsFast(const WideStringView &);
+bool hasLocaleTags(const WideStringView &);
+WideString resolveLocaleTags(const WideStringView &);
 
 String language(const String &locale);
 
 // convert locale name to common form ('en-us', 'ru-ru', 'fr-fr')
 String common(const String &locale);
 
-String timeToken(TimeTokens);
+StringView timeToken(TimeTokens);
 
 String localDate(Time);
 String localDate(const std::array<StringView, toInt(TimeTokens::Max)> &, Time);

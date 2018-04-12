@@ -40,6 +40,9 @@ inline constexpr auto getDocumentAssetTtl() {
 	return TimeInterval::seconds(30 * 24 * 60 * 60); // 30 days
 }
 
+// max chars count, used by locale::hasLocaleTagsFast
+constexpr size_t maxFastLocaleChars = size_t(127);
+
 NS_SP_EXT_END(config)
 
 #endif

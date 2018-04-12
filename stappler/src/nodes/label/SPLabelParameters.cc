@@ -125,8 +125,8 @@ void LabelParameters::ExternalFormatter::addString(const DescriptionStyle &style
 	addString(style, string::toUtf16(str), localized);
 }
 void LabelParameters::ExternalFormatter::addString(const DescriptionStyle &style, const WideString &str, bool localized) {
-	if (localized && locale::hasLocaleTags(str.data(), str.size())) {
-		auto u16str = locale::resolveLocaleTags(str.data(), str.size());
+	if (localized && locale::hasLocaleTags(str)) {
+		auto u16str = locale::resolveLocaleTags(str);
 		_formatter.read(style.font, style.text, u16str.data(), u16str.size());
 	} else {
 		_formatter.read(style.font, style.text, str.data(), str.size());
@@ -142,8 +142,8 @@ WideString LabelParameters::getLocalizedString(const String &s) {
 	return getLocalizedString(string::toUtf16(s));
 }
 WideString LabelParameters::getLocalizedString(const WideString &s) {
-	if (locale::hasLocaleTags(s.data(), s.size())) {
-		return locale::resolveLocaleTags(s.data(), s.size());
+	if (locale::hasLocaleTags(s)) {
+		return locale::resolveLocaleTags(s);
 	}
 	return s;
 }
@@ -165,8 +165,8 @@ float LabelParameters::getStringWidth(Source *source, const DescriptionStyle &st
 	layout::Formatter fmt(source, &spec, density);
 	fmt.begin(0, 0);
 
-	if (localized && locale::hasLocaleTags(str.data(), str.size())) {
-		auto u16str = locale::resolveLocaleTags(str.data(), str.size());
+	if (localized && locale::hasLocaleTags(str)) {
+		auto u16str = locale::resolveLocaleTags(str);
 		spec.reserve(u16str.size());
 		fmt.read(style.font, style.text, u16str.data(), u16str.size());
 	} else {
@@ -201,8 +201,8 @@ Size LabelParameters::getLabelSize(Source *source, const DescriptionStyle &style
 	fmt.setWidth((uint16_t)roundf(w * density));
 	fmt.begin(0, 0);
 
-	if (localized && locale::hasLocaleTags(str.data(), str.size())) {
-		auto u16str = locale::resolveLocaleTags(str.data(), str.size());
+	if (localized && locale::hasLocaleTags(str)) {
+		auto u16str = locale::resolveLocaleTags(str);
 		spec.reserve(u16str.size());
 		fmt.read(style.font, style.text, u16str.data(), u16str.size());
 	} else {
@@ -425,8 +425,11 @@ void LabelParameters::setString(const String &newString) {
 
 	_string8 = newString;
 	_string16 = string::toUtf16(newString);
-    _labelDirty = true;
-    clearStyles();
+	if (!_localeEnabled && locale::hasLocaleTagsFast(_string16)) {
+		setLocaleEnabled(true);
+	}
+	_labelDirty = true;
+	clearStyles();
 }
 
 void LabelParameters::setString(const WideString &newString) {
@@ -436,8 +439,16 @@ void LabelParameters::setString(const WideString &newString) {
 
 	_string8 = string::toUtf8(newString);
 	_string16 = newString;
-    _labelDirty = true;
-    clearStyles();
+	if (!_localeEnabled && locale::hasLocaleTagsFast(_string16)) {
+		setLocaleEnabled(true);
+	}
+	_labelDirty = true;
+	clearStyles();
+}
+
+void LabelParameters::setLocalizedString(size_t idx) {
+	setString(localeIndex(idx));
+	setLocaleEnabled(true);
 }
 
 const WideString &LabelParameters::getString() const {
@@ -604,12 +615,12 @@ LabelParameters::StyleVec LabelParameters::compileStyle() const {
 	return ret;
 }
 
-bool LabelParameters::hasLocaleTags(const char16_t *str, size_t len) const {
-	return locale::hasLocaleTags(str, len);
+bool LabelParameters::hasLocaleTags(const WideStringView &str) const {
+	return locale::hasLocaleTags(str);
 }
 
-WideString LabelParameters::resolveLocaleTags(const char16_t *str, size_t len) const {
-	return locale::resolveLocaleTags(str, len);
+WideString LabelParameters::resolveLocaleTags(const WideStringView &str) const {
+	return locale::resolveLocaleTags(str);
 }
 
 NS_SP_END

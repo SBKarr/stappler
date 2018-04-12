@@ -427,8 +427,8 @@ void QueryList::decodeSelect(const Scheme &scheme, Query &q, const data::Value &
 		q.select(val.asInteger());
 	} else if (val.isString()) {
 		q.select(val.getString());
-	} else if (val.isArray()) {
-		for (auto &iit : val.asArray()) {
+	} else if (val.isArray() && val.size() > 0) {
+		auto cb = [&] (const data::Value &iit) {
 			if (iit.isArray() && iit.size() >= 3) {
 				auto field = iit.getValue(0).asString();
 				if (auto f = scheme.getField(field)) {
@@ -448,6 +448,14 @@ void QueryList::decodeSelect(const Scheme &scheme, Query &q, const data::Value &
 				} else {
 					messages::error("QueryList", "Invalid field for select", data::Value(field));
 				}
+			}
+		};
+
+		if (val.getValue(0).isString()) {
+			cb(val);
+		} else if (val.getValue(0).isArray()) {
+			for (auto &iit : val.asArray()) {
+				cb(iit);
 			}
 		}
 	}

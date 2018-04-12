@@ -44,8 +44,8 @@ public:
 	template <typename ... Args>
 	using Compose = chars::Compose<CharType, Args ...>;
 
-	BytesReader() : ptr(nullptr), len(0) { }
-	BytesReader(const CharType *p, size_t l) : ptr(p), len(l) { }
+	constexpr BytesReader() : ptr(nullptr), len(0) { }
+	constexpr BytesReader(const CharType *p, size_t l) : ptr(p), len(l) { }
 
 	BytesReader & set(const uint8_t *p, size_t l) { ptr = p; len = l; return *this; }
 

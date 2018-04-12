@@ -121,6 +121,10 @@ void ToolbarBase::setActionMenuSource(MenuSource *source) {
 }
 
 void ToolbarBase::replaceActionMenuSource(MenuSource *source, size_t maxIcons) {
+	if (source == _actionMenuSource) {
+		return;
+	}
+
 	if (maxIcons == maxOf<size_t>()) {
 		maxIcons = source->getHintCount();
 	}
