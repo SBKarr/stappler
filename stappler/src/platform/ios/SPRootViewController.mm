@@ -24,6 +24,7 @@ THE SOFTWARE.
 **/
 
 #ifdef IOS
+#ifndef SP_RESTRICT
 
 #import "SPRootViewController.h"
 #import "CCEAGLView-ios.h"
@@ -288,4 +289,5 @@ THE SOFTWARE.
 
 @end
 
+#endif
 #endif

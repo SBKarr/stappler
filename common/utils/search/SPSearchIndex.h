@@ -51,6 +51,7 @@ public:
 	using TokenCallback = Function<void(const StringView &)>;
 	using TokenizerCallback = Function<void(const StringView &, const TokenCallback &, TokenType)>;
 	using HeuristicCallback = Function<float(const SearchIndex &index, const ResultNode &result)>;
+	using FilterCallback = Function<bool(const Node *)>;
 
 	struct Slice {
 		uint16_t start = 0; // start position in node's canonical string
@@ -124,7 +125,8 @@ public:
 	void reserve(size_t);
 	void add(const StringView &, int64_t id, int64_t tag);
 
-	Result performSearch(const StringView &, size_t minMatch, const HeuristicCallback & = Heuristic());
+	Result performSearch(const StringView &, size_t minMatch, const HeuristicCallback & = Heuristic(),
+			const FilterCallback & filter = nullptr);
 
 	StringView resolveToken(const Node &, const ResultToken &) const;
 	Slice convertToken(const Node &, const ResultToken &) const;

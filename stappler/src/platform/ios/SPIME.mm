@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include "SPPlatform.h"
 
 #ifdef IOS
+#ifndef SP_RESTRICT
 
 #include "SPIME.h"
 #include "SPScreen.h"
@@ -728,4 +729,4 @@ namespace ime {
 NS_SP_PLATFORM_END
 
 #endif
-
+#endif

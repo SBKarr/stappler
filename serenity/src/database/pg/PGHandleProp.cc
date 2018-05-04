@@ -242,7 +242,6 @@ data::Value Handle::setProperty(const Scheme &s, uint64_t oid, const Field &f, d
 		break;
 	case storage::Type::Array:
 		if (val.isArray()) {
-			s.touch(this, oid);
 			clearProperty(s, oid, f, data::Value());
 			insertIntoArray(query, s, oid, f, val);
 			ret = move(val);
@@ -250,7 +249,6 @@ data::Value Handle::setProperty(const Scheme &s, uint64_t oid, const Field &f, d
 		break;
 	case storage::Type::Set:
 		if (f.isReference()) {
-			s.touch(this, oid);
 			auto objField = static_cast<const storage::FieldObject *>(f.getSlot());
 			if (objField->onRemove == storage::RemovePolicy::Reference) {
 				clearProperty(s, oid, f, data::Value());

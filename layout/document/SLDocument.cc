@@ -39,7 +39,7 @@ THE SOFTWARE.
 NS_LAYOUT_BEGIN
 
 struct DocumentFormatStorageLess {
-	bool operator () (Document::DocumentFormat *l, Document::DocumentFormat *r) {
+	bool operator () (Document::DocumentFormat *l, Document::DocumentFormat *r) const {
 		if (l->priority == r->priority) {
 			return l < r;
 		} else {

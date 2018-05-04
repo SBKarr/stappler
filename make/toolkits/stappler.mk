@@ -58,6 +58,7 @@ else ifdef IOS_ARCH
 
 STAPPLER_SRCS_DIRS += $(COCOS2D_STAPPLER_SRCS_DIRS)
 STAPPLER_SRCS_OBJS += stappler/src/platform/SPPlatformApple.scu.mm
+STAPPLER_INCLUDES_OBJS += $(COCOS2D_ROOT)/cocos/platform/ios
 
 else
 

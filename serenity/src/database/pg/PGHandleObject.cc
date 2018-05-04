@@ -177,6 +177,7 @@ data::Value Handle::patchObject(const Scheme &scheme, uint64_t oid, const data::
 	if (returnFields.empty()) {
 		returning.all().finalize();
 	} else {
+		returning.field("__oid");
 		if (returnFields.size() == 1 && returnFields.front() == nullptr) {
 			for (auto &it : data.asDict()) {
 				returning.field(it.first);

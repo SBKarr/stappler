@@ -24,6 +24,7 @@ THE SOFTWARE.
 **/
 
 #ifdef IOS
+#ifndef SP_RESTRICT
 
 #import "SPAppController.h"
 #import "CCEAGLView-ios.h"
@@ -185,4 +186,5 @@ NS_SP_PLATFORM_END
 
 @end
 
+#endif
 #endif

@@ -125,14 +125,11 @@ void TabBarButton::onContentSizeDirty() {
 		_icon->setAnchorPoint(Vec2(0.5f, 0.5f));
 		_icon->setPosition(Vec2(_contentSize.width / 2.0f, (_contentSize.height / 2.0f - 3.0f) + 13.0f));
 		_label->setFont(_tabSelected?FontType::Tab_Caption_Selected:FontType::Tab_Caption);
-		_label->setWidth(_contentSize.width - (_wrapped?32.0f:16.0f));
+		_label->setWidth(_contentSize.width - (_wrapped?30.0f:14.0f));
 		_label->setAnchorPoint(Vec2(0.5f, 0.5f));
 		_label->setPosition(Vec2(_contentSize.width / 2.0f, (_contentSize.height / 2.0f - 3.0f) - 13.0f));
-		_label->tryUpdateLabel();
-		if (_label->getMaxLineX() > 72.0f || _label->getLinesCount() > 1) {
-			_label->setFontSize(8);
-			_label->tryUpdateLabel();
-		}
+		_label->setMaxLines(1);
+		_label->setAdjustValue(4);
 		break;
 	}
 }

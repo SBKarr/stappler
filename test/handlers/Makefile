@@ -1,7 +1,7 @@
 STAPPLER_ROOT ?= ../..
 
 LOCAL_OUTDIR := lib
-LOCAL_OUTPUT_LIBRARY := $(LOCAL_OUTDIR)/Handlers.so
+LOCAL_LIBRARY := Handlers
 
 LOCAL_TOOLKIT := serenity
 
@@ -32,7 +32,7 @@ $(LOCAL_OUTDIR)/httpd.conf: Makefile
 	@echo 'DBDriver pgsql' >> $@
 	@echo 'DBDPersist On' >> $@
 	@echo 'DBDParams "$(CONF_DB)"\n' >> $@
-	@echo 'SerenitySourceRoot "$(CONF_DIR)lib"' >> $@
+	@echo 'SerenitySourceRoot "$(CONF_DIR)lib/host"' >> $@
 	@echo '<Directory "$(CONF_DIR)www">' >> $@
 	@echo '\tRequire all granted' >> $@
 	@echo '</Directory>\n' >> $@
@@ -42,12 +42,9 @@ $(LOCAL_OUTDIR)/httpd.conf: Makefile
 	@echo 'DocumentRoot "$(CONF_DIR)www"' >> $@
 	@echo 'ErrorLog "$(CONF_DIR)lib/serenity.error.log"' >> $@
 	@echo 'CustomLog "$(CONF_DIR)lib/serenity.access.log" common\n' >> $@
-	@echo 'SerenitySource "Test:$(notdir $(LOCAL_OUTPUT_LIBRARY)):CreateTestHandler"' >> $@
+	@echo 'SerenitySource "Test:$(LOCAL_LIBRARY).so:CreateTestHandler"' >> $@
 	@echo 'SerenitySession name=SID key=SPSession maxage=0 secure=true' >> $@
 
-.local_prebuild: $(LOCAL_OUTDIR)/httpd.conf
-
-.local_preclean:
-	rm -f $(LOCAL_OUTDIR)/test.conf
-
 include $(STAPPLER_ROOT)/make/local.mk
+
+install: $(LOCAL_OUTDIR)/httpd.conf

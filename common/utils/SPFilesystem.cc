@@ -319,9 +319,9 @@ bool mkdir_recursive(const String &ipath, bool appWide) {
 		for (auto &it : components) {
 			construct.append(it);
 			if (!appWide || construct.compare(0, std::min(construct.size(), appWideLimit.size()), appWideLimit) == 0) {
-				if (control || !filesystem_native::isdir_fn(path)) {
+				if (control || !filesystem_native::isdir_fn(construct)) {
 					control = true;
-					if (!filesystem_native::mkdir_fn(path)) {
+					if (!filesystem_native::mkdir_fn(construct)) {
 						return false;
 					}
 				}

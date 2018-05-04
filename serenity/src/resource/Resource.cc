@@ -304,6 +304,7 @@ int64_t Resource::processResolveResult(const QueryFieldResolver &res, const Set<
 					it->second.setString("delete");
 				} else {
 					it = dict.erase(it);
+					continue;
 				}
 			} else {
 				auto meta = res.getMeta();
@@ -319,6 +320,7 @@ int64_t Resource::processResolveResult(const QueryFieldResolver &res, const Set<
 			auto meta = res.getMeta();
 			if ((meta & QueryFieldResolver::Meta::View) == QueryFieldResolver::Meta::None) {
 				it = dict.erase(it);
+				continue;
 			} else {
 				++ it;
 				continue;

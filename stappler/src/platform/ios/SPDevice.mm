@@ -149,7 +149,9 @@ namespace device {
 	}
 	
 	void _onDirectorStarted() {
+#ifndef SP_RESTRICT
 		[((SPRootViewController *)[UIApplication sharedApplication].keyWindow.rootViewController) cancelLoaderLiew];
+#endif
 	}
 	
 	float _density() {

@@ -65,8 +65,6 @@ void SearchIndex::add(const StringView &v, int64_t id, int64_t tag) {
 		r.split<DefaultSep>(tokenFn);
 	}
 
-	log::text("Canonical", canonical);
-
 	if (canonical.empty()) {
 		_nodes.pop_back();
 	} else if (canonical != origin) {
@@ -74,7 +72,8 @@ void SearchIndex::add(const StringView &v, int64_t id, int64_t tag) {
 	}
 }
 
-SearchIndex::Result SearchIndex::performSearch(const StringView &v, size_t minMatch, const HeuristicCallback &cb) {
+SearchIndex::Result SearchIndex::performSearch(const StringView &v, size_t minMatch, const HeuristicCallback &cb,
+		const FilterCallback & filter) {
 	String origin(string::tolower(v));
 
 	SearchIndex::Result res{this};
@@ -93,14 +92,16 @@ SearchIndex::Result SearchIndex::performSearch(const StringView &v, size_t minMa
 			//std::cout << "Found: '" << value << "' from '" << _nodes.at(lb->index).canonical << "'\n";
 
 			while (lb != _tokens.end() && value.size() >= str.size() && String::traits_type::compare(value.data(), str.data(), str.size()) == 0) {
-				auto ret_it = std::lower_bound(res.nodes.begin(), res.nodes.end(), node,
-						[&] (const ResultNode &l, const Node *r) {
-					return l.node < r;
-				});
-				if (ret_it == res.nodes.end() || ret_it->node != node) {
-					res.nodes.emplace(ret_it, ResultNode{ 0.0f, node, {ResultToken{wordIndex, uint16_t(str.size()), lb->slice}} });
-				} else {
-					ret_it->matches.emplace_back(ResultToken{wordIndex, uint16_t(str.size()), lb->slice});
+				if (!filter || filter(node)) {
+					auto ret_it = std::lower_bound(res.nodes.begin(), res.nodes.end(), node,
+							[&] (const ResultNode &l, const Node *r) {
+						return l.node < r;
+					});
+					if (ret_it == res.nodes.end() || ret_it->node != node) {
+						res.nodes.emplace(ret_it, ResultNode{ 0.0f, node, {ResultToken{wordIndex, uint16_t(str.size()), lb->slice}} });
+					} else {
+						ret_it->matches.emplace_back(ResultToken{wordIndex, uint16_t(str.size()), lb->slice});
+					}
 				}
 				++ lb;
 				if (lb != _tokens.end()) {

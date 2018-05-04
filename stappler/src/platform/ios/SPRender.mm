@@ -28,7 +28,9 @@ THE SOFTWARE.
 #ifdef IOS
 
 #include "SPThreadManager.h"
+#ifndef SP_RESTRICT
 #include "CCGLViewImpl-ios.h"
+#endif
 #include "base/CCDirector.h"
 
 NS_SP_PLATFORM_BEGIN

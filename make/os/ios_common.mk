@@ -22,7 +22,7 @@ DEF_SYSROOT_SIM := "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneS
 DEF_SYSROOT_OS := "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk"
 XCODE_BIN_PATH := /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin
 
-DEF_MIN_IOS_VERSION := 9.0
+DEF_MIN_IOS_VERSION := 10.0
 
 IOS_EXPORT_PREFIX ?= $(realpath $(GLOBAL_ROOT))
 IOS_EXPORT_PATH := $(if $(LOCAL_ROOT),,$(GLOBAL_ROOT)/)$(BUILD_OUTDIR)

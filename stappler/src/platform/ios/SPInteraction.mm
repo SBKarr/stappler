@@ -33,17 +33,17 @@ namespace interaction {
 	void _goToUrl(const std::string &url, bool external) {
 		NSString *urlString = [[NSString alloc] initWithUTF8String:url.c_str()];
 		NSURL *urlObj = [[NSURL alloc] initWithString:urlString];
-		[[UIApplication sharedApplication] openURL:urlObj];
+		[[UIApplication sharedApplication] openURL:urlObj options:[NSDictionary dictionary] completionHandler:nil];
 	}
 
 	void _makePhoneCall(const std::string &str) {
 		NSString *number = [NSString stringWithUTF8String:str.substr(4).c_str()];
 		NSString *phoneNumber = [@"telprompt://" stringByAppendingString:[number stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLPathAllowedCharacterSet]]];
-		[[UIApplication sharedApplication] openURL:[NSURL URLWithString:phoneNumber]];
+		[[UIApplication sharedApplication] openURL:[NSURL URLWithString:phoneNumber] options:[NSDictionary dictionary] completionHandler:nil];
 	}
 	void _mailTo(const std::string &address) {
 		NSString *urlString = [[NSString alloc] initWithUTF8String:address.c_str()];
-		[[UIApplication sharedApplication] openURL:[NSURL URLWithString:urlString]];
+		[[UIApplication sharedApplication] openURL:[NSURL URLWithString:urlString] options:[NSDictionary dictionary] completionHandler:nil];
 	}
 	void _backKey() { }
 	void _notification(const std::string &title, const std::string &text) {
@@ -71,7 +71,7 @@ namespace interaction {
 		if (appId) {
 			NSString * theUrl = [NSString  stringWithFormat:@"itms-apps://itunes.apple.com/WebObjects/MZStore.woa/wa/viewContentsUserReviews?id=%@&onlyLatestVersion=true&pageNumber=0&sortOrdering=1&type=Purple+Software",appId];
 			if ([[UIDevice currentDevice].systemVersion integerValue] > 6) theUrl = [NSString stringWithFormat:@"itms-apps://itunes.apple.com/app/id%@",appId];
-			[[UIApplication sharedApplication] openURL:[NSURL URLWithString:theUrl]];
+			[[UIApplication sharedApplication] openURL:[NSURL URLWithString:theUrl] options:[NSDictionary dictionary] completionHandler:nil];
 		}
 	}
 }

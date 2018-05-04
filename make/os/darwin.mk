@@ -22,7 +22,7 @@ ifeq ($(UNAME),Darwin)
 
 OSTYPE_PREBUILT_PATH := libs/mac/x86_64/lib
 OSTYPE_INCLUDE :=  libs/mac/x86_64/include
-OSTYPE_CFLAGS := -DMACOSX  -DUSE_FILE32API -Wall -fPIC
+OSTYPE_CFLAGS := -DMACOSX  -DUSE_FILE32API -Wall -fPIC -Wno-gnu-string-literal-operator-template
 OSTYPE_CPPFLAGS :=  -Wno-overloaded-virtual -frtti
 OSTYPE_COMMON_LIBS := -lpthread \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libcurl.a \

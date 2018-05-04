@@ -20,6 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
+#ifndef SP_RESTRICT
 #import "CCEAGLView-ios.h"
 
 @interface SPRootViewController : UIViewController {
@@ -41,3 +42,4 @@ THE SOFTWARE.
 - (void) setStatusBarLight;
 
 @end
+#endif
