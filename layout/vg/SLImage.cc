@@ -67,8 +67,7 @@ static Mat4 svg_parseTransform(StringView &r) {
 			uint16_t i = 0;
 			for (; i < 6; ++ i) {
 				r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>, StringView::Chars<','>>();
-				values[i] = r.readFloat();
-				if (IsErrorValue(values[i])) {
+				if (!r.readFloat().grab(values[i])) {
 					break;
 				}
 			}
@@ -84,15 +83,13 @@ static Mat4 svg_parseTransform(StringView &r) {
 
 			float tx = 0.0f, ty = 0.0f;
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-			tx = r.readFloat();
-			if (IsErrorValue(tx)) {
+			if (!r.readFloat().grab(tx)) {
 				break;
 			}
 
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>, StringView::Chars<','>>();
 			if (!r.is(')')) {
-				ty = r.readFloat();
-				if (IsErrorValue(ty)) {
+				if (!r.readFloat().grab(ty)) {
 					break;
 				}
 			}
@@ -105,15 +102,13 @@ static Mat4 svg_parseTransform(StringView &r) {
 
 			float sx = 0.0f, sy = 0.0f;
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-			sx = r.readFloat();
-			if (IsErrorValue(sx)) {
+			if (!r.readFloat().grab(sx)) {
 				break;
 			}
 
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>, StringView::Chars<','>>();
 			if (!r.is(')')) {
-				sy = r.readFloat();
-				if (IsErrorValue(sy)) {
+				if (!r.readFloat().grab(sy)) {
 					break;
 				}
 			}
@@ -127,21 +122,19 @@ static Mat4 svg_parseTransform(StringView &r) {
 			float cx = 0.0f, cy = 0.0f;
 
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-			angle = r.readFloat();
-			if (IsErrorValue(angle)) {
+			if (!r.readFloat().grab(angle)) {
 				break;
 			}
 
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>, StringView::Chars<','>>();
 			if (!r.is(')')) {
-				cx = r.readFloat();
-				if (IsErrorValue(cx)) {
+				if (!r.readFloat().grab(cx)) {
 					break;
 				}
 
 				r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>, StringView::Chars<','>>();
-				cy = r.readFloat();
-				if (IsErrorValue(cx)) {
+
+				if (!r.readFloat().grab(cy)) {
 					break;
 				}
 			}
@@ -164,8 +157,7 @@ static Mat4 svg_parseTransform(StringView &r) {
 
 			float angle = 0.0f;
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-			angle = r.readFloat();
-			if (IsErrorValue(angle)) {
+			if (!r.readFloat().grab(angle)) {
 				break;
 			}
 			ret *= Mat4(1, 0, tanf(to_rad(angle)), 1, 0, 0);
@@ -175,8 +167,7 @@ static Mat4 svg_parseTransform(StringView &r) {
 
 			float angle = 0.0f;
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-			angle = r.readFloat();
-			if (IsErrorValue(angle)) {
+			if (!r.readFloat().grab(angle)) {
 				break;
 			}
 
@@ -198,8 +189,7 @@ static Rect svg_readViewBox(StringView &r) {
 	uint16_t i = 0;
 	for (; i < 4; ++ i) {
 		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>, StringView::Chars<','>>();
-		values[i] = r.readFloat();
-		if (IsErrorValue(values[i])) {
+		if (!r.readFloat().grab(values[i])) {
 			return Rect();
 		}
 	}
@@ -228,14 +218,12 @@ static void svg_readPointCoords(Path &target, StringView &source) {
 	float x, y;
 	while (!source.empty()) {
 		source.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>, StringView::Chars<','>>();
-		x = source.readFloat();
-		if (IsErrorValue(x)) {
+		if (!source.readFloat().grab(x)) {
 			return;
 		}
 
 		source.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>, StringView::Chars<','>>();
-		y = source.readFloat();
-		if (IsErrorValue(y)) {
+		if (!source.readFloat().grab(y)) {
 			return;
 		}
 
@@ -346,8 +334,7 @@ struct SvgReader {
 
 	inline void onStyleParameter(Tag &tag, StringReader &name, StringReader &value) {
 		if (name.compare("opacity")) {
-			const float op = value.readFloat();
-			if (!IsErrorValue(op)) {
+			value.readFloat().unwrap([&] (float op) {
 				if (op <= 0.0f) {
 					tag.path.setFillOpacity(0);
 					tag.path.setStrokeOpacity(0);
@@ -358,7 +345,7 @@ struct SvgReader {
 					tag.path.setFillOpacity(255 * op);
 					tag.path.setStrokeOpacity(255 * op);
 				}
-			}
+			});
 		} else if (name.compare("fill")) {
 			if (value.compare("none")) {
 				tag.path.setStyle(tag.path.getStyle() & (~DrawStyle::Fill));
@@ -376,8 +363,7 @@ struct SvgReader {
 				tag.path.setWindingRule(Winding::EvenOdd);
 			}
 		} else if (name.compare("fill-opacity")) {
-			const float op = value.readFloat();
-			if (!IsErrorValue(op)) {
+			value.readFloat().unwrap([&] (float op) {
 				if (op <= 0.0f) {
 					tag.path.setFillOpacity(0);
 				} else if (op >= 1.0f) {
@@ -385,7 +371,7 @@ struct SvgReader {
 				} else {
 					tag.path.setFillOpacity(255 * op);
 				}
-			}
+			});
 		} else if (name.compare("stroke")) {
 			if (value.compare("none")) {
 				tag.path.setStyle(tag.path.getStyle() & (~DrawStyle::Stroke));
@@ -397,8 +383,7 @@ struct SvgReader {
 				}
 			}
 		} else if (name.compare("stroke-opacity")) {
-			const float op = value.readFloat();
-			if (!IsErrorValue(op)) {
+			value.readFloat().unwrap([&] (float op) {
 				if (op <= 0.0f) {
 					tag.path.setStrokeOpacity(0);
 				} else if (op >= 1.0f) {
@@ -406,12 +391,11 @@ struct SvgReader {
 				} else {
 					tag.path.setStrokeOpacity(255 * op);
 				}
-			}
+			});
 		} else if (name.compare("stroke-width")) {
 			auto val = svg_readCoordValue(value, _squareLength);
 			if (!isnan(val)) {
 				tag.path.setStrokeWidth(val);
-				tag.path.setStyle(tag.path.getStyle() | DrawStyle::Stroke);
 			}
 		} else if (name.compare("stroke-linecap")) {
 			if (value.compare("butt")) {
@@ -430,10 +414,11 @@ struct SvgReader {
 				tag.path.setLineJoin(LineJoin::Bevel);
 			}
 		} else if (name.compare("stroke-miterlimit")) {
-			const float op = value.readFloat();
-			if (!IsErrorValue(op) && op > 1.0f) {
-				tag.path.setMiterLimit(op);
-			}
+			value.readFloat().unwrap([&] (float op) {
+				if (op > 1.0f) {
+					tag.path.setMiterLimit(op);
+				}
+			});
 		}
 	}
 

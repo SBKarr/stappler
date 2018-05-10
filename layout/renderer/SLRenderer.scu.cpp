@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -28,8 +28,12 @@ THE SOFTWARE.
 #include "SLFontFormatter.cc"
 #include "SLFontLibrary.cc"
 #include "SLBuilder.cc"
-#include "SLBuilderBlockModel.cc"
-#include "SLBuilderBullet.cc"
-#include "SLBuilderLayout.cc"
+#include "SLResultObject.cc"
+#include "SLFloatContext.cc"
+#include "SLInlineContext.cc"
 #include "SLLayout.cc"
+#include "SLLayoutBullet.cc"
+#include "SLLayoutRequest.cc"
+#include "SLTable.cc"
+#include "SLTableBorder.cc"
 #include "SLResult.cc"

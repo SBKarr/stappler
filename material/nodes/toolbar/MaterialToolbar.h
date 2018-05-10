@@ -31,8 +31,8 @@ class Toolbar : public ToolbarBase {
 public:
 	virtual bool init() override;
 
-	virtual void setTitle(const String &) override;
-	virtual const String &getTitle() const override;
+	virtual void setTitle(const StringView &) override;
+	virtual StringView getTitle() const override;
 
 	virtual void setTitleMenuSource(MenuSource *);
 	virtual MenuSource * getTitleMenuSource() const;

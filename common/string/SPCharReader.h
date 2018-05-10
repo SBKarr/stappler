@@ -32,7 +32,7 @@ using const_char_ptr = const char *;
 using const_char16_ptr = const char16_t *;
 
 template <typename T>
-inline auto CharReader_readNumber(const_char_ptr &ptr, size_t &len) -> T {
+inline auto CharReader_readNumber(const_char_ptr &ptr, size_t &len) -> Result<T> {
 	char * ret = nullptr;
 	char buf[32] = { 0 }; // int64_t/scientific double character length max
 	size_t m = min(size_t(31), len);
@@ -44,13 +44,13 @@ inline auto CharReader_readNumber(const_char_ptr &ptr, size_t &len) -> T {
 	} else if (ret && ret != buf) {
 		len -= ret - buf; ptr += ret - buf;
 	} else {
-		return GetErrorValue<T>();
+		return Result<T>();
 	}
-	return val;
+	return Result<T>(val);
 }
 
 template <typename T>
-inline auto CharReader_readNumber(const_char16_ptr &ptr, size_t &len) -> T {
+inline auto CharReader_readNumber(const_char16_ptr &ptr, size_t &len) -> Result<T> {
 	char * ret = nullptr;
 	char buf[32] = { 0 }; // int64_t/scientific double character length max
 	size_t m = min(size_t(31), len);
@@ -72,9 +72,9 @@ inline auto CharReader_readNumber(const_char16_ptr &ptr, size_t &len) -> T {
 	} else if (ret && ret != buf) {
 		len -= ret - buf; ptr += ret - buf;
 	} else {
-		return GetErrorValue<T>();
+		return Result<T>();
 	}
-	return val;
+	return Result<T>(val);
 }
 
 template <typename CharType>
@@ -123,8 +123,13 @@ public:
 	template <CharGroupId Group>
 	using MatchCharGroup = chars::CharGroup<CharType, Group>;
 
+	template <typename ... Args>
+	static auto merge(Args && ... args) -> memory::DefaultInterface::template BasicStringType<CharType>;
+
 	constexpr StringViewBase();
 	constexpr StringViewBase(const CharType *ptr, size_t len = maxOf<size_t>());
+	constexpr StringViewBase(const CharType *ptr, size_t pos, size_t len);
+	constexpr StringViewBase(const Self &, size_t pos, size_t len);
 	StringViewBase(const PoolString &str);
 	StringViewBase(const StdString &str);
 
@@ -148,6 +153,8 @@ public:
 	template <CharGroupId G> bool is() const;
 	template <typename M> bool is() const;
 
+	Self sub(size_t pos = 0, size_t len = maxOf<size_t>()) const { return StringViewBase(*this, pos, len); }
+
 	template <typename Interface = memory::DefaultInterface>
 	auto str() const -> typename Interface::template BasicStringType<CharType>;
 
@@ -162,9 +169,9 @@ public:
 	Self& operator -= (const Self &) const;
 
 public:
-	float readFloat();
-	double readDouble();
-	int64_t readInteger();
+	Result<float> readFloat();
+	Result<double> readDouble();
+	Result<int64_t> readInteger();
 
 public:
 	template<typename ... Args> void skipChars();
@@ -181,9 +188,32 @@ public:
 	template<typename Separator, typename Callback> void split(const Callback &cb) const;
 
 	template <typename ... Args> void trimChars();
-    template <typename ... Args> void trimUntil();
+	template <typename ... Args> void trimUntil();
 
 protected:
+    template <typename T>
+    static size_t __size(const T &);
+
+    static size_t __size(const CharType *);
+
+	template <typename T, typename ... Args>
+	static size_t _size(T &&);
+
+	template <typename T, typename ... Args>
+	static size_t _size(T &&, Args && ... args);
+
+	template <typename Buf, typename T>
+	static void __merge(Buf &, const T &t);
+
+	template <typename Buf>
+	static void __merge(Buf &, const CharType *);
+
+	template <typename Buf, typename T, typename ... Args>
+	static void _merge(Buf &, T &&, Args && ... args);
+
+	template <typename Buf, typename T>
+	static void _merge(Buf &, T &&);
+
 	template <typename ... Args> bool match (CharType c);
 };
 
@@ -209,6 +239,8 @@ public:
 
 	StringViewUtf8();
 	StringViewUtf8(const char *ptr, size_t len = maxOf<size_t>());
+	StringViewUtf8(const char *ptr, size_t pos, size_t len);
+	StringViewUtf8(const StringViewUtf8 &, size_t pos, size_t len);
 	StringViewUtf8(const PoolString &str);
 	StringViewUtf8(const StdString &str);
 	StringViewUtf8(const StringViewBase<char> &str);
@@ -233,6 +265,8 @@ public:
 	template <char16_t C> bool is() const;
 	template <CharGroupId G> bool is() const;
 	template <typename M> bool is() const;
+
+	Self sub(size_t pos = 0, size_t len = maxOf<size_t>()) const { return StringViewUtf8(*this, pos, len); }
 
 	template <typename Interface = memory::DefaultInterface>
 	auto letter() const -> typename Interface::StringType;
@@ -261,9 +295,9 @@ public:
 	operator StringViewBase<char> () const;
 
 public:
-	float readFloat();
-	double readDouble();
-	int64_t readInteger();
+	Result<float> readFloat();
+	Result<double> readDouble();
+	Result<int64_t> readInteger();
 
 public:
 	template<typename ... Args> void skipChars();
@@ -289,8 +323,24 @@ protected: // char-matching inline functions
 using StringView = StringViewBase<char>;
 using WideStringView = StringViewBase<char16_t>;
 
-inline std::basic_ostream<char> &
-operator << (std::basic_ostream<char> & os, const StringView & str) {
+NS_SP_END
+
+
+NS_SP_EXT_BEGIN(string)
+
+template <typename L, typename R, typename CharType
+	= typename std::enable_if<
+		std::is_same< typename L::value_type, typename R::value_type >::value,
+		typename L::value_type>::type>
+int compare(const L &l, const R &r);
+
+NS_SP_EXT_END(string)
+
+
+NS_SP_BEGIN
+
+template <typename C> inline std::basic_ostream<C> &
+operator << (std::basic_ostream<C> & os, const StringViewBase<C> & str) {
 	return os.write(str.data(), str.size());
 }
 
@@ -299,13 +349,225 @@ operator << (std::basic_ostream<char> & os, const StringViewUtf8 & str) {
 	return os.write(str.data(), str.size());
 }
 
+template <typename C> inline bool
+operator > (const StringViewBase<C> &l, const StringViewBase<C> &r) { return string::compare(l, r) > 0; }
+
+template <typename C> inline bool
+operator >= (const StringViewBase<C> &l, const StringViewBase<C> &r) { return string::compare(l, r) >= 0; }
+
+template <typename C> inline bool
+operator < (const StringViewBase<C> &l, const StringViewBase<C> &r) { return string::compare(l, r) < 0; }
+
+template <typename C> inline bool
+operator <= (const StringViewBase<C> &l, const StringViewBase<C> &r) { return string::compare(l, r) <= 0; }
+
+
+template <typename C> inline bool
+operator == (const typename memory::StandartInterface::BasicStringType<C> &l, const StringViewBase<C> &r) { return StringViewBase<C>(l) == r; }
+
+template <typename C> inline bool
+operator != (const typename memory::StandartInterface::BasicStringType<C> &l, const StringViewBase<C> &r) { return StringViewBase<C>(l) != r; }
+
+template <typename C> inline bool
+operator > (const typename memory::StandartInterface::BasicStringType<C> &l, const StringViewBase<C> &r) { return string::compare(l, r) > 0; }
+
+template <typename C> inline bool
+operator >= (const typename memory::StandartInterface::BasicStringType<C> &l, const StringViewBase<C> &r) { return string::compare(l, r) >= 0; }
+
+template <typename C> inline bool
+operator < (const typename memory::StandartInterface::BasicStringType<C> &l, const StringViewBase<C> &r) { return string::compare(l, r) < 0; }
+
+template <typename C> inline bool
+operator <= (const typename memory::StandartInterface::BasicStringType<C> &l, const StringViewBase<C> &r) { return string::compare(l, r) <= 0; }
+
+
+template <typename C> inline bool
+operator == (const StringViewBase<C> &l, const typename memory::StandartInterface::BasicStringType<C> &r) { return l == StringViewBase<C>(r); }
+
+template <typename C> inline bool
+operator != (const StringViewBase<C> &l, const typename memory::StandartInterface::BasicStringType<C> &r) { return l != StringViewBase<C>(r); }
+
+template <typename C> inline bool
+operator > (const StringViewBase<C> &l, const typename memory::StandartInterface::BasicStringType<C> &r) { return string::compare(l, r) > 0; }
+
+template <typename C> inline bool
+operator >= (const StringViewBase<C> &l, const typename memory::StandartInterface::BasicStringType<C> &r) { return string::compare(l, r) >= 0; }
+
+template <typename C> inline bool
+operator < (const StringViewBase<C> &l, const typename memory::StandartInterface::BasicStringType<C> &r) { return string::compare(l, r) < 0; }
+
+template <typename C> inline bool
+operator <= (const StringViewBase<C> &l, const typename memory::StandartInterface::BasicStringType<C> &r) { return string::compare(l, r) <= 0; }
+
+
+template <typename C> inline bool
+operator == (const typename memory::PoolInterface::BasicStringType<C> &l, const StringViewBase<C> &r) { return StringViewBase<C>(l) == r; }
+
+template <typename C> inline bool
+operator != (const typename memory::PoolInterface::BasicStringType<C> &l, const StringViewBase<C> &r) { return StringViewBase<C>(l) != r; }
+
+template <typename C> inline bool
+operator > (const typename memory::PoolInterface::BasicStringType<C> &l, const StringViewBase<C> &r) { return string::compare(l, r) > 0; }
+
+template <typename C> inline bool
+operator >= (const typename memory::PoolInterface::BasicStringType<C> &l, const StringViewBase<C> &r) { return string::compare(l, r) >= 0; }
+
+template <typename C> inline bool
+operator < (const typename memory::PoolInterface::BasicStringType<C> &l, const StringViewBase<C> &r) { return string::compare(l, r) < 0; }
+
+template <typename C> inline bool
+operator <= (const typename memory::PoolInterface::BasicStringType<C> &l, const StringViewBase<C> &r) { return string::compare(l, r) <= 0; }
+
+
+template <typename C> inline bool
+operator == (const StringViewBase<C> &l, const typename memory::PoolInterface::BasicStringType<C> &r) { return l == StringViewBase<C>(r); }
+
+template <typename C> inline bool
+operator != (const StringViewBase<C> &l, const typename memory::PoolInterface::BasicStringType<C> &r) { return l != StringViewBase<C>(r); }
+
+template <typename C> inline bool
+operator > (const StringViewBase<C> &l, const typename memory::PoolInterface::BasicStringType<C> &r) { return string::compare(l, r) > 0; }
+
+template <typename C> inline bool
+operator >= (const StringViewBase<C> &l, const typename memory::PoolInterface::BasicStringType<C> &r) { return string::compare(l, r) >= 0; }
+
+template <typename C> inline bool
+operator < (const StringViewBase<C> &l, const typename memory::PoolInterface::BasicStringType<C> &r) { return string::compare(l, r) < 0; }
+
+template <typename C> inline bool
+operator <= (const StringViewBase<C> &l, const typename memory::PoolInterface::BasicStringType<C> &r) { return string::compare(l, r) <= 0; }
+
+
+template <typename C> inline typename memory::StandartInterface::BasicStringType<C>
+operator+ (const typename memory::StandartInterface::BasicStringType<C> &l, const StringViewBase<C> &r) {
+	typename memory::StandartInterface::BasicStringType<C> ret; ret.reserve(l.size() + r.size());
+	ret.append(l);
+	ret.append(r.data(), r.size());
+	return ret;
+}
+
+template <typename C> inline typename memory::StandartInterface::BasicStringType<C>
+operator+ (const StringViewBase<C> &l, const typename memory::StandartInterface::BasicStringType<C> &r) {
+	typename memory::StandartInterface::BasicStringType<C> ret; ret.reserve(l.size() + r.size());
+	ret.append(l.data(), l.size());
+	ret.append(r);
+	return ret;
+}
+
+template <typename C> inline typename memory::PoolInterface::BasicStringType<C>
+operator+ (const typename memory::PoolInterface::BasicStringType<C> &l, const StringViewBase<C> &r) {
+	typename memory::PoolInterface::BasicStringType<C> ret; ret.reserve(l.size() + r.size());
+	ret.append(l);
+	ret.append(r.data(), r.size());
+	return ret;
+}
+
+template <typename C> inline typename memory::PoolInterface::BasicStringType<C>
+operator+ (const StringViewBase<C> &l, const typename memory::PoolInterface::BasicStringType<C> &r) {
+	typename memory::PoolInterface::BasicStringType<C> ret; ret.reserve(l.size() + r.size());
+	ret.append(l.data(), l.size());
+	ret.append(r);
+	return ret;
+}
+
+
+template <typename C> inline typename memory::StandartInterface::BasicStringType<C>
+operator+ (typename memory::StandartInterface::BasicStringType<C> &&l, const StringViewBase<C> &r) {
+	l.append(r.data(), r.size());
+	return move(l);
+}
+
+template <typename C> inline typename memory::StandartInterface::BasicStringType<C>
+operator+ (const StringViewBase<C> &l, typename memory::StandartInterface::BasicStringType<C> &&r) {
+	r.insert(0, l.data(), l.size());
+	return move(r);
+}
+
+template <typename C> inline typename memory::PoolInterface::BasicStringType<C>
+operator+ (typename memory::PoolInterface::BasicStringType<C> &&l, const StringViewBase<C> &r) {
+	l.append(r.data(), r.size());
+	return move(l);
+}
+
+template <typename C> inline typename memory::PoolInterface::BasicStringType<C>
+operator+ (const StringViewBase<C> &l, typename memory::PoolInterface::BasicStringType<C> &&r) {
+	r.insert(0, l.data(), l.size());
+	return move(r);
+}
+
+
+template <typename _CharType>
+template <typename ... Args>
+auto StringViewBase<_CharType>::merge(Args && ... args) -> memory::DefaultInterface::template BasicStringType<CharType> {
+	using StringType = memory::DefaultInterface::template BasicStringType<CharType>;
+
+	StringType ret; ret.reserve(_size(forward<Args>(args)...));
+	_merge(ret, forward<Args>(args)...);
+	return ret;
+}
+
+template <typename _CharType>
+template <typename T>
+inline size_t StringViewBase<_CharType>::__size(const T &t) {
+	return t.size();
+}
+
+template <typename _CharType>
+inline size_t StringViewBase<_CharType>::__size(const CharType *c) {
+	return std::char_traits<_CharType>::length(c);
+}
+
+template <typename _CharType>
+template <typename T, typename ... Args>
+inline size_t StringViewBase<_CharType>::_size(T &&t) {
+	return __size(t);
+}
+
+template <typename _CharType>
+template <typename T, typename ... Args>
+inline size_t StringViewBase<_CharType>::_size(T &&t, Args && ... args) {
+	return __size(t) + _size(forward<Args>(args)...);
+}
+
+template <typename _CharType>
+template <typename Buf, typename T>
+inline void StringViewBase<_CharType>::__merge(Buf &buf, const T &t) {
+	buf.append(t.data(), t.size());
+}
+
+template <typename _CharType>
+template <typename Buf>
+inline void StringViewBase<_CharType>::__merge(Buf &buf, const CharType *c) {
+	buf.append(c);
+}
+
+template <typename _CharType>
+template <typename Buf, typename T, typename ... Args>
+inline void StringViewBase<_CharType>::_merge(Buf &buf, T &&t, Args && ... args) {
+	__merge(buf, t);
+	_merge(buf, forward<Args>(args)...);
+}
+
+template <typename _CharType>
+template <typename Buf, typename T>
+inline void StringViewBase<_CharType>::_merge(Buf &buf, T &&t) {
+	__merge(buf, t);
+}
 
 template <typename _CharType>
 inline constexpr StringViewBase<_CharType>::StringViewBase() : BytesReader<_CharType>(nullptr, 0) { }
 
 template <typename _CharType>
 inline constexpr StringViewBase<_CharType>::StringViewBase(const CharType *ptr, size_t len)
-: BytesReader<_CharType>(ptr, (len == maxOf<size_t>())?std::char_traits<CharType>::length(ptr):len) { }
+: BytesReader<_CharType>(ptr, min(std::char_traits<CharType>::length(ptr), len)) { }
+
+template <typename _CharType>
+inline constexpr StringViewBase<_CharType>::StringViewBase(const CharType *ptr, size_t pos, size_t len)
+: BytesReader<_CharType>(ptr + pos, min(len, std::char_traits<CharType>::length(ptr) - pos)) { }
+
+template <typename _CharType>
+inline constexpr StringViewBase<_CharType>::StringViewBase(const Self &ptr, size_t pos, size_t len)
+: BytesReader<_CharType>(ptr.data() + pos, min(len, ptr.size() - pos)) { }
 
 template <>
 constexpr inline StringViewBase<char>::StringViewBase(const char *ptr, size_t len)
@@ -369,7 +631,7 @@ auto StringViewBase<_CharType>::operator == (const Self &other) const -> bool {
 
 template <typename _CharType>
 auto StringViewBase<_CharType>::operator != (const Self &other) const -> bool {
-	return !(*this == other);
+	return this->len != other.len || memcmp(this->ptr, other.ptr, other.len) != 0;
 }
 
 template <typename _CharType>
@@ -465,17 +727,17 @@ auto StringViewBase<_CharType>::operator -= (const Self &other) const -> Self & 
 }
 
 template <typename _CharType>
-auto StringViewBase<_CharType>::readFloat() -> float {
+auto StringViewBase<_CharType>::readFloat() -> Result<float> {
 	return CharReader_readNumber<float>(this->ptr, this->len);
 }
 
 template <typename _CharType>
-auto StringViewBase<_CharType>::readDouble() -> double {
+auto StringViewBase<_CharType>::readDouble() -> Result<double> {
 	return CharReader_readNumber<double>(this->ptr, this->len);
 }
 
 template <typename _CharType>
-auto StringViewBase<_CharType>::readInteger() -> int64_t {
+auto StringViewBase<_CharType>::readInteger() -> Result<int64_t> {
 	return CharReader_readNumber<int64_t>(this->ptr, this->len);
 }
 
@@ -599,7 +861,13 @@ auto StringViewBase<_CharType>::match (CharType c) -> bool {
 inline StringViewUtf8::StringViewUtf8() : BytesReader(nullptr, 0) { }
 
 inline StringViewUtf8::StringViewUtf8(const char *ptr, size_t len)
-: BytesReader(ptr, (len == maxOf<size_t>())?std::char_traits<char>::length(ptr):len) { }
+: BytesReader(ptr, min(std::char_traits<char>::length(ptr), len)) { }
+
+inline StringViewUtf8::StringViewUtf8(const char *ptr, size_t pos, size_t len)
+: BytesReader(ptr + pos, min(len, std::char_traits<char>::length(ptr) - pos)) { }
+
+inline StringViewUtf8::StringViewUtf8(const StringViewUtf8 &ptr, size_t pos, size_t len)
+: BytesReader(ptr.data() + pos, min(len, ptr.size() - pos)) { }
 
 inline StringViewUtf8::StringViewUtf8(const PoolString &str)
 : StringViewUtf8(str.data(), str.size()) { }
@@ -766,13 +1034,13 @@ inline StringViewUtf8::operator StringViewBase<char> () const {
 	return StringViewBase<char>(ptr, len);
 }
 
-inline float StringViewUtf8::readFloat() {
+inline Result<float> StringViewUtf8::readFloat() {
 	return CharReader_readNumber<float>(ptr, len);
 }
-inline double StringViewUtf8::readDouble() {
+inline Result<double> StringViewUtf8::readDouble() {
 	return CharReader_readNumber<double>(ptr, len);
 }
-inline int64_t StringViewUtf8::readInteger() {
+inline Result<int64_t> StringViewUtf8::readInteger() {
 	return CharReader_readNumber<int64_t>(ptr, len);
 }
 
@@ -904,5 +1172,28 @@ inline bool StringViewUtf8::match (char16_t c) {
 }
 
 NS_SP_END
+
+NS_SP_EXT_BEGIN(string)
+
+template <typename L, typename R, typename CharType>
+inline int compare(const L &l, const R &r) {
+	auto __lsize = l.size();
+	auto __rsize = r.size();
+	auto __len = std::min(__lsize, __rsize);
+	auto ret = std::char_traits<CharType>::compare(l.data(), r.data(), __len);
+	if (!ret) {
+		if (__lsize < __rsize) {
+			return -1;
+		} else if (__lsize == __rsize) {
+			return 0;
+		} else {
+			return 1;
+		}
+	}
+	return ret;
+}
+
+NS_SP_EXT_END(string)
+
 
 #endif /* COMMON_STRING_SPCHARREADER_H_ */

@@ -111,7 +111,7 @@ public:
 	using MetricCallback = Function<Metrics(const FontSource *, const Vector<String> &, uint16_t, const ReceiptCallback &)>;
 	using UpdateCallback = Function<Rc<FontData>(const FontSource *, const Vector<String> &, const Rc<FontData> &, const Vector<char16_t> &, const ReceiptCallback &)>;
 
-	bool init(const FontSource *, const String &name, const String &family, uint8_t size, const FontFace &, const ReceiptCallback &, float,
+	bool init(const FontSource *, const String &name, const StringView &family, uint8_t size, const FontFace &, const ReceiptCallback &,
 			const MetricCallback &, const UpdateCallback &);
 	virtual ~FontLayout();
 
@@ -133,8 +133,7 @@ public:
 	const ReceiptCallback &getCallback() const;
 	const FontFace &getFontFace() const;
 
-	float getDensity() const;
-	uint8_t getOriginalSize() const;
+	//uint8_t getOriginalSize() const;
 	uint16_t getSize() const;
 
 	FontParameters getStyle() const;
@@ -142,10 +141,10 @@ public:
 protected:
 	void merge(const Vector<char16_t> &);
 
-	float _density;
+	//float _density;
 	String _name;
 	String _family;
-	uint8_t _size;
+	uint16_t _dsize;
 	FontFace _face;
 	Rc<FontData> _data;
 	ReceiptCallback _callback = nullptr;
@@ -179,7 +178,7 @@ public:
 	 * you should create another source object, if you want another map or scale */
 	virtual bool init(FontFaceMap &&, const ReceiptCallback &, float scale = 1.0f, SearchDirs && = SearchDirs());
 
-	Rc<FontLayout> getLayout(const FontParameters &); // returns persistent ptr, Layout will be created if needed
+	Rc<FontLayout> getLayout(const FontParameters &, float scale = nan()); // returns persistent ptr, Layout will be created if needed
 	Rc<FontLayout> getLayout(const String &); // returns persistent ptr
 
 	bool hasLayout(const FontParameters &);
@@ -218,6 +217,8 @@ public:
 	void preloadChars(const FontParameters &, const Vector<char16_t> &);
 
 protected:
+	Rc<FontLayout> getLayout(const FontLayout *); // returns persistent ptr, Layout will be created if needed
+
 	static void readParameter(FontParameters &p, FontStyle style) {
 		p.fontStyle = style;
 	}
@@ -239,7 +240,7 @@ protected:
 		readParameter(p, t);
 	}
 
-	FontFace * getFontFace(const String &name, const FontParameters &);
+	FontFace * getFontFace(const StringView &name, const FontParameters &);
 
 	void onResult(uint32_t v);
 

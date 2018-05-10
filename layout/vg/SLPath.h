@@ -163,6 +163,9 @@ public:
 
 	bool empty() const;
 
+	// factor - how many points reserve for single command
+	void reserve(size_t, size_t factor = 3);
+
 	const Vector<Command> &getCommands() const;
 	const Vector<CommandData> &getPoints() const;
 

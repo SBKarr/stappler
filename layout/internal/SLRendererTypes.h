@@ -26,6 +26,8 @@ THE SOFTWARE.
 #include "SLStyle.h"
 #include "SLDocument.h"
 
+#include <forward_list>
+
 NS_LAYOUT_BEGIN
 
 namespace RenderFlag {
@@ -67,7 +69,77 @@ struct MediaParameters {
 	bool hasOption(CssStringId) const;
 
 	Vector<bool> resolveMediaQueries(const Vector<style::MediaQuery> &) const;
+
+	bool shouldRenderImages() const;
 };
+
+
+template <typename T, size_t BytesSize>
+struct MemoryStorage {
+	static constexpr size_t ALIGN_BASE = 16;
+	static constexpr size_t ALIGN(size_t size) { return (((size) + ((ALIGN_BASE) - 1)) & ~((ALIGN_BASE) - 1)); }
+	static constexpr size_t ALIGN_SIZE = ALIGN(sizeof(T));
+
+	struct alignas(16) Bytes {
+		std::array<uint8_t, BytesSize - ALIGN(sizeof(size_t))> data;
+	};
+
+	struct Storage {
+		~Storage();
+
+		bool filled() const;
+
+		template <typename ... Args>
+		T &emplace(Args && ... args);
+
+		size_t used = 0;
+		Bytes bytes;
+	};
+
+	MemoryStorage();
+
+	template <typename ... Args>
+	T &emplace(Args && ... args);
+
+	size_t size = 0;
+	size_t blocks = 0;
+	std::forward_list<Storage> storage;
+};
+
+
+template <typename T, size_t Size>
+MemoryStorage<T, Size>::Storage::~Storage() {
+	for (size_t i = 0; i < used; ++ i) {
+		((T *)(&bytes.data[i * ALIGN_SIZE]))->~T();
+	}
+}
+
+template <typename T, size_t Size>
+bool MemoryStorage<T, Size>::Storage::filled() const {
+	return used < bytes.data.size() / ALIGN_SIZE;
+}
+
+template <typename T, size_t Size>
+template <typename ... Args>
+auto MemoryStorage<T, Size>::Storage::emplace(Args && ... args) -> T& {
+	auto ptr = new (bytes.data.data() + used * ALIGN_SIZE) T(std::forward<Args>(args)...);
+	++ used;
+	return *ptr;
+}
+
+template <typename T, size_t Size>
+MemoryStorage<T, Size>::MemoryStorage() { }
+
+template <typename T, size_t Size>
+template <typename ... Args>
+auto MemoryStorage<T, Size>::emplace(Args && ... args) -> T & {
+	if (storage.empty() || storage.front().filled()) {
+		storage.emplace_front();
+		++ blocks;
+	}
+	++ size;
+	return storage.front().emplace(std::forward<Args>(args)...);
+}
 
 NS_LAYOUT_END
 

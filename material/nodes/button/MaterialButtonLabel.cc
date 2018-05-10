@@ -57,14 +57,14 @@ void ButtonLabel::onContentSizeDirty() {
 	_label->setPosition(_contentSize.width/2, _contentSize.height/2);
 }
 
-void ButtonLabel::setString(const std::string &str) {
+void ButtonLabel::setString(const StringView &str) {
 	_label->setString(str);
 	if (_label->isLabelDirty()) {
 		_label->tryUpdateLabel(true);
 		updatePadding();
 	}
 }
-const std::string &ButtonLabel::getString() const {
+StringView ButtonLabel::getString() const {
 	return _label->getString8();
 }
 

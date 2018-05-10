@@ -165,6 +165,12 @@ class Formatter {
 public:
 	using LinePositionCallback = Function<Pair<uint16_t, uint16_t>(uint16_t &, uint16_t &, float density)>;
 
+	enum class ContentRequest {
+		Normal,
+		Minimize,
+		Maximize,
+	};
+
 public:
 	Formatter();
 
@@ -185,6 +191,8 @@ public:
 	void setEmplaceAllChars(bool value);
 	void setFillerChar(char16_t);
 	void setHyphens(HyphenMap *);
+	void setRequest(ContentRequest);
+	void setFontScale(float);
 
 	void begin(uint16_t indent, uint16_t blockMargin = 0);
 	bool read(const FontParameters &f, const TextParameters &s, const WideString &str, uint16_t front = 0, uint16_t back = 0);
@@ -208,7 +216,7 @@ protected:
 
 	void parseWhiteSpace(WhiteSpace whiteSpacePolicy);
 	void parseFontLineHeight(uint16_t);
-	void updatePosition(uint16_t &linePos, uint16_t &lineHeight);
+	bool updatePosition(uint16_t &linePos, uint16_t &lineHeight);
 
 	Rc<FontLayout> getLayout(uint16_t pos) const;
 
@@ -247,6 +255,7 @@ protected:
 	size_t charPosition = 0;
 
 	float density = 1.0f;
+	float fontScale = nan();
 
 	Rc<FontLayout> primaryFont;
 	Rc<FontData> primaryData;
@@ -289,6 +298,8 @@ protected:
 	char16_t _fillerChar = 0;
 	TextAlign alignment = TextAlign::Left;
 	LinePositionCallback linePositionFunc = nullptr;
+
+	ContentRequest request = ContentRequest::Normal;
 };
 
 NS_LAYOUT_END

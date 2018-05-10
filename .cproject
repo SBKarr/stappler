@@ -448,7 +448,7 @@
 					<folderInfo id="cdt.managedbuild.toolchain.gnu.base.1433006399.380183790.699133620.1617966234." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.base.30577105" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.base">
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.target.gnu.platform.base.808877270" name="Debug Platform" osList="linux,hpux,aix,qnx" superClass="cdt.managedbuild.target.gnu.platform.base"/>
-							<builder arguments="-j4" buildPath="${workspace_loc:/libstappler}/extensions/document/gui-test/proj.linux" command="make" id="cdt.managedbuild.target.gnu.builder.base.1643768877" incrementalBuildTarget="all" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Gnu Make Builder" superClass="cdt.managedbuild.target.gnu.builder.base">
+							<builder arguments="-j4" buildPath="${workspace_loc:/libstappler}/extensions/document/gui-test" command="make" id="cdt.managedbuild.target.gnu.builder.base.1643768877" incrementalBuildTarget="host-install" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Gnu Make Builder" superClass="cdt.managedbuild.target.gnu.builder.base">
 								<outputEntries>
 									<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="outputPath" name=""/>
 								</outputEntries>

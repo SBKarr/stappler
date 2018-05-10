@@ -91,20 +91,20 @@ struct Cursor {
 };
 
 struct Handler {
-	Function<void(const WideString &, const Cursor &)> onText;
+	Function<void(const WideStringView &, const Cursor &)> onText;
 	Function<void(bool, const Rect &, float)> onKeyboard;
 	Function<void(bool)> onInput;
 	Function<void()> onEnded;
 	Function<bool(const Vec2 &)> onTouchFilter;
 
-	bool run(const WideString &str = u"", const Cursor & = Cursor(), int32_t = 0);
+	bool run(const WideStringView &str = u"", const Cursor & = Cursor(), int32_t = 0);
 	void cancel();
 
 	// only if this handler is active
-	bool setString(const WideString &str, const Cursor & = Cursor());
+	bool setString(const WideStringView &str, const Cursor & = Cursor());
 	bool setCursor(const Cursor &);
 
-	const WideString &getString() const;
+	WideStringView getString() const;
 	const Cursor &getCursor() const;
 
 	bool isInputEnabled() const;

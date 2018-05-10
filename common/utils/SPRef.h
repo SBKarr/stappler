@@ -112,6 +112,11 @@ public:
 		return Self(new Type(), true);
 	}
 
+	template <class... Args>
+	static inline Self alloc(Args && ... args) {
+		return Self(new Type(std::forward<Args>(args)...), true);
+	}
+
 	inline RcBase() : _ptr(nullptr) { }
 	inline RcBase(const nullptr_t &) : _ptr(nullptr) { }
 	inline RcBase(const Pointer &value) : _ptr(value) { if (_ptr) { _ptr->retain(); } }

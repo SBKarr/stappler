@@ -44,6 +44,7 @@ struct Gradient {
 class Layer: public DynamicBatchNode {
 public:
 	virtual bool init(const cocos2d::Color4B & = cocos2d::Color4B(255, 255, 255, 255));
+	virtual bool init(const Gradient &);
 
 	virtual void onContentSizeDirty() override;
 

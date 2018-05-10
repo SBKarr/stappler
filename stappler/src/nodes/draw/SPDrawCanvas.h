@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef STAPPLER_SRC_NODES_DRAW_SPDRAWCANVAS_H_
 #define STAPPLER_SRC_NODES_DRAW_SPDRAWCANVAS_H_
 
-#include "SPDrawGLCacheNode.h"
+#include "SPDrawGLRenderSurface.h"
 #include "renderer/CCTexture2D.h"
 #include "SPBuffer.h"
 #include "SLImage.h"
@@ -33,14 +33,7 @@ NS_SP_EXT_BEGIN(draw)
 
 using Format = cocos2d::Texture2D::PixelFormat;
 
-enum class StencilDepthFormat {
-	None,
-	Depth16,
-	Depth24Stencil8,
-	Stencil8,
-};
-
-class Canvas : public layout::Canvas, public GLCacheNode {
+class Canvas : public layout::Canvas, protected GLRenderSurface {
 public:
 	using Path = layout::Path;
 
@@ -59,43 +52,9 @@ public:
 
 	void drop();
 
-	Bitmap read(uint32_t x, uint32_t y, uint32_t w, uint32_t h);
-	Bitmap read();
-
 protected:
-	void setUniformColor(const Color4B &);
-	void setUniformTransform(const Mat4 &);
-
-	void setFillBlending();
-	void setStrokeBlending();
-
 	void doSafeClear(const Color4B &color);
 	bool doUpdateAttachments(cocos2d::Texture2D *tex, uint32_t w, uint32_t h);
-
-	bool _valid = false;
-
-	StencilDepthFormat _depthFormat = StencilDepthFormat::Stencil8;
-
-	cocos2d::GLProgram *_drawProgram = nullptr;
-
-	GLbitfield _clearFlags = 0;
-
-	GLint _oldFbo = 0;
-	GLuint _fbo = 0;
-	GLuint _rbo = 0;
-	GLuint _vbo[2] = { 0, 0 };
-
-	Mat4 _viewTransform;
-
-	bool _premultipliedAlpha = false;
-	cocos2d::Texture2D::PixelFormat _internalFormat;
-	cocos2d::Texture2D::PixelFormat _referenceFormat;
-
-	Mat4 _uniformTransform;
-	Color4B _uniformColor;
-
-	size_t _vertexBufferSize = 0;
-	size_t _indexBufferSize = 0;
 
 	TimeInterval _tessAccum;
 	TimeInterval _glAccum;

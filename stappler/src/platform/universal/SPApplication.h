@@ -31,6 +31,8 @@ NS_SP_BEGIN
 #ifndef SP_RESTRICT
 class Application : public cocos2d::Application {
 public:
+	static bool isApplicationExists();
+
 	Application();
 	virtual ~Application();
 

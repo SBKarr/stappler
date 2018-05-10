@@ -52,7 +52,7 @@ Document *Result::getDocument() const {
 	return _document;
 }
 
-void Result::pushObject(Object &&obj) {
+/*void Result::pushObject(Object &&obj) {
 	if (obj.bbox.origin.y + obj.bbox.size.height > _size.height) {
 		_size.height = obj.bbox.origin.y + obj.bbox.size.height;
 	}
@@ -62,7 +62,7 @@ void Result::pushObject(Object &&obj) {
 		_objects.push_back(std::move(obj));
 		_objects.back().index = _objects.size() - 1;
 	}
-}
+}*/
 
 void Result::pushIndex(const String &str, const Vec2 &pos) {
 	_index.emplace(str, pos);
@@ -126,6 +126,7 @@ void Result::setContentSize(const Size &s) {
 
 	_numPages = size_t(ceilf(_size.height / _media.surfaceSize.height)) + 1;
 }
+
 const Size &Result::getContentSize() const {
 	return _size;
 }
@@ -134,11 +135,11 @@ const Size &Result::getSurfaceSize() const {
 	return _media.surfaceSize;
 }
 
-const Vector<Object> & Result::getObjects() const {
+const Vector<Object *> & Result::getObjects() const {
 	return _objects;
 }
 
-const Vector<Object> & Result::getRefs() const {
+const Vector<Link *> & Result::getRefs() const {
 	return _refs;
 }
 
@@ -173,6 +174,63 @@ Result::BoundIndex Result::getBoundsForPosition(float pos) const {
 	return BoundIndex{maxOf<size_t>(), 0, 0.0f, 0.0f, maxOf<int64_t>()};
 }
 
+Label *Result::emplaceLabel(const Layout &l) {
+	auto ret = &_labels.emplace();
+	ret->type = Object::Type::Label;
+	ret->depth = l.depth;
+	ret->index = _objects.size();
+	_objects.push_back(ret);
+	return ret;
+}
+
+Background *Result::emplaceBackground(const Layout &l, const Rect &rect, const BackgroundStyle &style) {
+	auto ret = &_backgrounds.emplace();
+	ret->type = Object::Type::Background;
+	ret->depth = l.depth;
+	ret->bbox = rect;
+	ret->background = style;
+	ret->background.backgroundImage = addString(ret->background.backgroundImage);
+	ret->index = _objects.size();
+	_objects.push_back(ret);
+	return ret;
+}
+
+Link *Result::emplaceLink(const Layout &l, const Rect &rect, const StringView &href, const StringView &target) {
+	auto ret = &_links.emplace();
+	ret->type = Object::Type::Link;
+	ret->depth = l.depth;
+	ret->bbox = rect;
+	ret->target = addString(href);
+	ret->mode = addString(target);
+	ret->index = _refs.size();
+	_refs.push_back(ret);
+	return ret;
+}
+
+PathObject *Result::emplaceOutline(const Layout &l, const Rect &rect, const Color4B &color, float width, style::BorderStyle style) {
+	auto ret = &_paths.emplace();
+	ret->type = Object::Type::Path;
+	ret->depth = l.depth;
+	ret->bbox = rect;
+	ret->drawOutline(rect, color, width, style);
+	ret->index = _objects.size();
+	_objects.push_back(ret);
+	return ret;
+}
+
+void Result::emplaceBorder(Layout &l, const Rect &rect, const OutlineStyle &style, float width) {
+	PathObject::makeBorder(this, l, rect, style, width, _media);
+}
+
+PathObject *Result::emplacePath(const Layout &l) {
+	auto ret = &_paths.emplace();
+	ret->type = Object::Type::Path;
+	ret->depth = l.depth;
+	ret->index = _objects.size();
+	_objects.push_back(ret);
+	return ret;
+}
+
 Result::PageData Result::getPageData(size_t idx, float offset) const {
 	auto surfaceSize = getSurfaceSize();
 	if (_media.flags & RenderFlag::PaginatedLayout) {
@@ -197,7 +255,7 @@ Result::PageData Result::getPageData(size_t idx, float offset) const {
 	}
 }
 
-size_t Result::getSizeInMemory() const {
+/*size_t Result::getSizeInMemory() const {
 	auto ret = sizeof(Result) + _objects.capacity() * sizeof(Object) + _refs.capacity() * sizeof(Object);
 	for (const Object &it : _objects) {
 		if (it.type == Object::Type::Label) {
@@ -208,13 +266,26 @@ size_t Result::getSizeInMemory() const {
 		}
 	}
 	return ret;
-}
+}*/
 
 const Object *Result::getObject(size_t size) const {
 	if (size < _objects.size()) {
-		return &_objects[size];
+		return _objects[size];
 	}
 	return nullptr;
+}
+
+const Map<CssStringId, String> &Result::getStrings() const {
+	return _strings;
+}
+
+StringView Result::addString(CssStringId id, const StringView &str) {
+	auto it = _strings.emplace(id, str.str());
+	return it.first->second;
+}
+
+StringView Result::addString(const StringView &str) {
+	return addString(hash::hash32(str.data(), str.size()), str);
 }
 
 NS_LAYOUT_END

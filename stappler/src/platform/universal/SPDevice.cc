@@ -245,15 +245,15 @@ void Device::onFocusLost() {
 	}
 }
 
-void Device::goToUrl(const String &url, bool external) {
+void Device::goToUrl(const StringView &url, bool external) {
 	onUrlOpened(this, url);
 	platform::interaction::_goToUrl(url, external);
 }
-void Device::makePhoneCall(const String &number) {
+void Device::makePhoneCall(const StringView &number) {
 	onUrlOpened(this, number);
 	platform::interaction::_makePhoneCall(number);
 }
-void Device::mailTo(const String &address) {
+void Device::mailTo(const StringView &address) {
 	onUrlOpened(this, address);
 	platform::interaction::_mailTo(address);
 }
@@ -268,14 +268,14 @@ std::pair<uint64_t, uint64_t> Device::getTotalDiskSpace() {
 uint64_t Device::getApplicationDiskSpace() {
 	auto path = filesystem::writablePath(getBundleName());
 	uint64_t size = 0;
-	filesystem::ftw(path, [&size] (const String &path, bool isFile) {
+	filesystem::ftw(path, [&size] (const StringView &path, bool isFile) {
 		if (isFile) {
 			size += filesystem::size(path);
 		}
 	});
 
 	path = filesystem::cachesPath(getBundleName());
-	filesystem::ftw(path, [&size] (const String &path, bool isFile) {
+	filesystem::ftw(path, [&size] (const StringView &path, bool isFile) {
 		if (isFile) {
 			size += filesystem::size(path);
 		}

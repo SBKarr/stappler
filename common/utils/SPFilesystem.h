@@ -64,49 +64,49 @@ protected:
 };
 
 // Check if file at path exists
-bool exists(const String &path);
+bool exists(const StringView &path);
 
 // check if path is valid and existed directory
-bool isdir(const String &path);
+bool isdir(const StringView &path);
 
 // get file size
-size_t size(const String &path);
+size_t size(const StringView &path);
 
 // get file modification time
-time_t mtime(const String &path);
+time_t mtime(const StringView &path);
 
 // get file creation time
-time_t ctime(const String &path);
+time_t ctime(const StringView &path);
 
 // create dir at path (just mkdir, not mkdir -p)
-bool mkdir(const String &path);
+bool mkdir(const StringView &path);
 
 // mkdir -p (
-bool mkdir_recursive(const String &path, bool appWide = true);
+bool mkdir_recursive(const StringView &path, bool appWide = true);
 
 // touch (set mtime to now) file
-bool touch(const String &path);
+bool touch(const StringView &path);
 
 // move file from source to dest (tries to rename file, then copy-remove, rename will be successful only if both path is on single physical drive)
-bool move(const String &source, const String &dest);
+bool move(const StringView &source, const StringView &dest);
 
 // copy file or directory to dest; use ftw_b for dirs, no directory tree check
-bool copy(const String &source, const String &dest, bool stopOnError = true);
+bool copy(const StringView &source, const StringView &dest, bool stopOnError = true);
 
 // remove file or directory
 // if not recursive, only single file or empty dir will be removed
 // if withDirs == false, only file s in directory tree will be removed
-bool remove(const String &path, bool recursive = false, bool withDirs = false);
+bool remove(const StringView &path, bool recursive = false, bool withDirs = false);
 
 // file-tree-walk, walk across directory tree at path, callback will be called for each file or directory
 // path in callback is absolute
 // depth = -1 - unlimited
 // dirFirst == true - directory will be shown before files inside them, useful for listings and copy
 // dirFirst == false - directory will be shown after files, useful for remove
-void ftw(const String &path, const Function<void(const String &path, bool isFile)> &, int depth = -1, bool dirFirst = false);
+void ftw(const StringView &path, const Function<void(const StringView &path, bool isFile)> &, int depth = -1, bool dirFirst = false);
 
 // same as ftw, but iteration can be stopped by returning false from callback
-bool ftw_b(const String &path, const Function<bool(const String &path, bool isFile)> &, int depth = -1, bool dirFirst = false);
+bool ftw_b(const StringView &path, const Function<bool(const StringView &path, bool isFile)> &, int depth = -1, bool dirFirst = false);
 
 // returns application writable path (or path inside writable dir, if path is set
 // if relative == false - do not merge paths, if provided path is absolute
@@ -115,7 +115,7 @@ bool ftw_b(const String &path, const Function<bool(const String &path, bool isFi
 // or caches, that should not be removed, when application is running or in background
 // On android, writable path is on same drive or device, that used for application file
 // This library use writable path to store fonts, icons caches and assets
-String writablePath(const String &path = "", bool relative = false);
+String writablePath(const StringView &path = StringView(), bool relative = false);
 
 // returns application documents path (or path inside documents dir, if path is set
 // if relative == false - do not merge paths, if provided path is absolute
@@ -123,13 +123,13 @@ String writablePath(const String &path = "", bool relative = false);
 // Documents path should be used for valuable data, like documents, created by user,
 // or content, that will be hard to recreate
 // This library stores StoreKit and purchases data in documents dir
-String documentsPath(const String &path = "", bool relative = false);
+String documentsPath(const StringView &path = StringView(), bool relative = false);
 
 // returns application current work dir from getcwd (or path inside current dir, if path is set
 // if relative == false - do not merge paths, if provided path is absolute
 //
 // Current work dir is technical concept. Use it only if there is good reason for it
-String currentDir(const String &path = "", bool relative = false);
+String currentDir(const StringView &path = StringView(), bool relative = false);
 
 // returns application caches dir (or path inside caches dir, if path is set
 // if relative == false - do not merge paths, if provided path is absolute
@@ -137,23 +137,23 @@ String currentDir(const String &path = "", bool relative = false);
 // Caches dir used to store caches or content, that can be easily recreated,
 // and that can be removed/erased, when application is active or in background
 // On android, caches will be placed on SD card, if it's available
-String cachesPath(const String &path = "", bool relative = false);
+String cachesPath(const StringView &path = StringView(), bool relative = false);
 
 // write data into file on path
-bool write(const String &path, const Bytes &);
-bool write(const String &path, const uint8_t *data, size_t len);
+bool write(const StringView &path, const Bytes &);
+bool write(const StringView &path, const uint8_t *data, size_t len);
 
-ifile openForReading(const String &path);
+ifile openForReading(const StringView &path);
 
 // read file to string (if it was a binary file, string will be invalid)
-String readTextFile(const String &path);
+String readTextFile(const StringView &path);
 
 // read binary data from file
-Bytes readFile(const String &path, size_t off = 0, size_t size = maxOf<size_t>());
-bool readFile(const io::Consumer &stream, uint8_t *buf, size_t bsize, const String &path, size_t off, size_t size);
+Bytes readFile(const StringView &path, size_t off = 0, size_t size = maxOf<size_t>());
+bool readFile(const io::Consumer &stream, uint8_t *buf, size_t bsize, const StringView &path, size_t off, size_t size);
 
 template <size_t Buffer = 1_KiB>
-bool readFile(const io::Consumer &stream, const String &path,
+bool readFile(const io::Consumer &stream, const StringView &path,
 		size_t off = 0, size_t size = maxOf<size_t>()) {
 	uint8_t b[Buffer];
 	return readFile(stream, b, Buffer, path, off, size);
@@ -171,29 +171,29 @@ enum Access {
 	Execute
 };
 
-String nativeToPosix(const String &path);
-String posixToNative(const String &path);
+String nativeToPosix(const StringView &path);
+String posixToNative(const StringView &path);
 
-bool remove_fn(const stappler::String &path);
-bool mkdir_fn(const stappler::String &path);
+bool remove_fn(const StringView &path);
+bool mkdir_fn(const StringView &path);
 
-bool access_fn(const stappler::String &path, Access mode);
+bool access_fn(const StringView &path, Access mode);
 
-bool isdir_fn(const String &path);
-size_t size_fn(const String &path);
-time_t mtime_fn(const String &path);
-time_t ctime_fn(const String &path);
+bool isdir_fn(const StringView &path);
+size_t size_fn(const StringView &path);
+time_t mtime_fn(const StringView &path);
+time_t ctime_fn(const StringView &path);
 
-bool touch_fn(const String &path);
+bool touch_fn(const StringView &path);
 
-void ftw_fn(const String &path, const Function<void(const String &path, bool isFile)> &, int depth, bool dirFirst);
-bool ftw_b_fn(const String &path, const Function<bool(const String &path, bool isFile)> &, int depth, bool dirFirst);
+void ftw_fn(const StringView &path, const Function<void(const StringView &path, bool isFile)> &, int depth, bool dirFirst);
+bool ftw_b_fn(const StringView &path, const Function<bool(const StringView &path, bool isFile)> &, int depth, bool dirFirst);
 
-bool rename_fn(const String &source, const String &dest);
+bool rename_fn(const StringView &source, const StringView &dest);
 
 String getcwd_fn();
 
-FILE *fopen_fn(const String &, const String &mode);
+FILE *fopen_fn(const StringView &, const StringView &mode);
 
 NS_SP_EXT_END(filesystem_native)
 
@@ -201,74 +201,71 @@ NS_SP_EXT_END(filesystem_native)
 NS_SP_EXT_BEGIN(filepath)
 
 // check if filepath is absolute
-bool isAbsolute(const String &path);
+bool isAbsolute(const StringView &path);
 
 // check if filepath is local (not in application bundle or apk)
-bool isCanonical(const String &path);
+bool isCanonical(const StringView &path);
 
 // check if filepath is in application bundle
-bool isBundled(const String &path);
+bool isBundled(const StringView &path);
 
 // check if filepath above it's current root
-bool isAboveRoot(const String &path);
-
-// resolve platform prefix to absolute path
-String platform(const String &path);
+bool isAboveRoot(const StringView &path);
 
 // check for ".", ".." and double slashes in path
-bool validatePath(const String & path);
+bool validatePath(const StringView & path);
 
 // remove any ".", ".." and double slashes from path
-String reconstructPath(const String & path);
+String reconstructPath(const StringView & path);
 
 // returns current absolute path for file (canonical prefix will be decoded), this path should not be cached
 // if writable flag is false, platform path will be returned with canonical prefix %PLATFORM%
 // if writable flag is true, system should resolve platform prefix to absolute path, if possible
 // if platform path can not be resolved (etc, it's in archive or another FS), empty string will be returned
-String absolute(const String &, bool writable = false);
+String absolute(const StringView &, bool writable = false);
 
 // encodes path for long-term storage (default application dirs will be replaced with canonical prefix,
 // like %CACHE%/dir)
-String canonical(const String &path);
+String canonical(const StringView &path);
 
 // extract root from path by removing last component (/dir/file.tar.bz -> /dir)
-String root(const String &path);
+String root(const StringView &path);
 
 // extract last component (/dir/file.tar.bz -> file.tar.bz)
-String lastComponent(const String &path);
-String lastComponent(const String &path, size_t allowedComponents);
+StringView lastComponent(const StringView &path);
+StringView lastComponent(const StringView &path, size_t allowedComponents);
 
 // extract full filename extension (/dir/file.tar.gz -> tar.gz)
-String fullExtension(const String &path);
+StringView fullExtension(const StringView &path);
 
 // extract last filename extension (/dir/file.tar.gz -> gz)
-String lastExtension(const String &path);
+StringView lastExtension(const StringView &path);
 
 // /dir/file.tar.bz -> file
-String name(const String &path);
+StringView name(const StringView &path);
 
 // /dir/file.tar.bz -> 2
-size_t extensionCount(const String &path);
+size_t extensionCount(const StringView &path);
 
-Vector<String> split(const String &);
+Vector<StringView> split(const StringView &);
 
 // merges two path component, removes or adds '/' where needed
-String merge(const String &root, const String &path);
+String merge(const StringView &root, const StringView &path);
 String merge(const Vector<String> &);
 
 template <class... Args>
-inline String merge(const String &root, const String &path, Args&&... args) {
+inline String merge(const StringView &root, const StringView &path, Args&&... args) {
 	return merge(merge(root, path), std::forward<Args>(args)...);
 }
 
 // translate some MIME Content-Type to common extensions
-String extensionForContentType(const String &type);
+String extensionForContentType(const StringView &type);
 
 // replace root path component in filepath
 // replace(/my/dir/first/file, /my/dir/first, /your/dir/second)
 // [/my/dir/first -> /your/dir/second] /file
 // /my/dir/first/file -> /your/dir/second/file
-String replace(const String &path, const String &source, const String &dest);
+String replace(const StringView &path, const StringView &source, const StringView &dest);
 
 NS_SP_EXT_END(filepath)
 

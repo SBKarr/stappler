@@ -55,8 +55,8 @@ public:
 	virtual void setFullHeight(bool);
 	virtual bool isFullHeight() const;
 
-	virtual void setError(const String &);
-	virtual const String &getError() const;
+	virtual void setError(const StringView &);
+	virtual StringView getError() const;
 
 	virtual void setFormController(FormController *);
 	virtual FormController *getFormController() const;

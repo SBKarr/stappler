@@ -71,13 +71,13 @@ public:
 
 	virtual bool empty() const;
 
-	virtual void setPlaceholder(const WideString &);
-	virtual void setPlaceholder(const String &);
-	virtual const WideString &getPlaceholder() const;
+	virtual void setPlaceholder(const WideStringView &);
+	virtual void setPlaceholder(const StringView &);
+	virtual WideStringView getPlaceholder() const;
 
 	virtual void setString(const WideString &);
 	virtual void setString(const String &);
-	virtual const WideString &getString() const;
+	virtual WideStringView getString() const;
 
 	virtual InputLabel *getLabel() const;
 

@@ -392,7 +392,11 @@ void Canvas::pathEnd(const Path &path) {
 	_pathX = 0; _pathY = 0;
 }
 
-void Canvas::flush() { }
+void Canvas::flush() {
+	if (_flushCallback) {
+		_flushCallback();
+	}
+}
 
 void Canvas::clearTess() {
 	for (auto &it : _tess) {
@@ -469,6 +473,25 @@ void Canvas::setQuality(float value) {
 }
 float Canvas::getQuality() const {
 	return _quality;
+}
+
+void Canvas::setFlushCallback(const FlushCallback &cb) {
+	_flushCallback = cb;
+}
+const Canvas::FlushCallback &Canvas::getFlushCallback() const {
+	return _flushCallback;
+}
+
+const Vector<TESStesselator *> &Canvas::getTess() const {
+	return _tess;
+}
+
+const Vector<StrokeDrawer> &Canvas::getStroke() const {
+	return _stroke;
+}
+
+const Mat4 &Canvas::getTransform() const {
+	return _transform;
 }
 
 NS_LAYOUT_END

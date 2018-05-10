@@ -155,23 +155,23 @@ void SearchToolbar::setFont(material::FontType font) {
 	_placeholder->setFont(font);
 }
 
-void SearchToolbar::setTitle(const String &str) {
-	_title = str;
+void SearchToolbar::setTitle(const StringView &str) {
+	_title = str.str();
 	setPlaceholder(str);
 	clearSearch();
 }
-const String &SearchToolbar::getTitle() const {
+StringView SearchToolbar::getTitle() const {
 	return _title;
 }
 
-void SearchToolbar::setPlaceholder(const String &str) {
+void SearchToolbar::setPlaceholder(const StringView &str) {
 	_placeholder->setString(str);
 }
-const String &SearchToolbar::getPlaceholder() const {
+StringView SearchToolbar::getPlaceholder() const {
 	return _placeholder->getString8();
 }
 
-void SearchToolbar::setString(const String &str) {
+void SearchToolbar::setString(const StringView &str) {
 	if (_label->getString8() != str) {
 		_label->setString(str);
 		if (_callback) {
@@ -189,7 +189,7 @@ void SearchToolbar::setString(const String &str) {
 		}
 	}
 }
-const String &SearchToolbar::getString() const {
+StringView SearchToolbar::getString() const {
 	return _label->getString8();
 }
 
@@ -260,7 +260,7 @@ void SearchToolbar::layoutSubviews() {
 	_menu->setPositionY(-24.0f);
 }
 
-bool SearchToolbar::onInputString(const WideString &str, const Cursor &c) {
+bool SearchToolbar::onInputString(const WideStringView &str, const Cursor &c) {
 	auto pos = std::min(str.find(u'\n'), str.find(u'\r'));
 	if (pos != std::u16string::npos) {
 		_label->releaseInput();

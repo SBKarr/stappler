@@ -212,15 +212,17 @@ using Set = toolkit::TypeTraits::set_type<T, Compare>;
 using AllocBase = toolkit::TypeTraits::allocator_base;
 using Mutex = toolkit::TypeTraits::mutex_type;
 
-template <typename T> auto StringToNumber(const String &str) -> T {
+template <typename T> auto StringToNumber(const memory::StandartInterface::StringType &str) -> T {
+	return StringToNumber<T>(str.data(), nullptr);
+}
+
+template <typename T> auto StringToNumber(const memory::PoolInterface::StringType &str) -> T {
 	return StringToNumber<T>(str.data(), nullptr);
 }
 
 template <typename T> auto StringToNumber(const char *str) -> T {
 	return StringToNumber<T>(str, nullptr);
 }
-
-using FilePath = ValueWrapper<String, class FilePathTag>;
 
 NS_SP_END
 

@@ -139,16 +139,6 @@ auto toKoi8r(const WideStringView &data) -> typename Interface::StringType;
 template <typename T>
 void split(const StringView &str, const StringView &delim, T && callback);
 
-template <typename L, typename R, typename CharType
-		= typename std::enable_if<
-			std::is_same<
-				typename L::value_type,
-				typename R::value_type
-			>::value,
-			typename L::value_type>::type>
-int compare(const L &l, const R &r);
-
-
 template <typename Interface>
 struct StringTraits : public Interface {
 	using String = typename Interface::StringType;
@@ -571,51 +561,6 @@ inline auto toStringConcat(const Container &c, const Sep &s) -> StringType {
 	return stream.str();
 }
 
-inline bool operator > (const WideStringView &l, const WideStringView &r) { return string::compare(l, r) > 0; }
-inline bool operator >= (const WideStringView &l, const WideStringView &r) { return string::compare(l, r) >= 0; }
-inline bool operator < (const WideStringView &l, const WideStringView &r) { return string::compare(l, r) < 0; }
-inline bool operator <= (const WideStringView &l, const WideStringView &r) { return string::compare(l, r) <= 0; }
-inline bool operator > (const StringView &l, const StringView &r) { return string::compare(l, r) > 0; }
-inline bool operator >= (const StringView &l, const StringView &r) { return string::compare(l, r) >= 0; }
-inline bool operator < (const StringView &l, const StringView &r) { return string::compare(l, r) < 0; }
-inline bool operator <= (const StringView &l, const StringView &r) { return string::compare(l, r) <= 0; }
-
-inline bool operator > (const typename memory::StandartInterface::StringType &l, const StringView &r) { return string::compare(l, r) > 0; }
-inline bool operator >= (const typename memory::StandartInterface::StringType &l, const StringView &r) { return string::compare(l, r) >= 0; }
-inline bool operator < (const typename memory::StandartInterface::StringType &l, const StringView &r) { return string::compare(l, r) < 0; }
-inline bool operator <= (const typename memory::StandartInterface::StringType &l, const StringView &r) { return string::compare(l, r) <= 0; }
-inline bool operator > (const StringView &l, const typename memory::StandartInterface::StringType &r) { return string::compare(l, r) > 0; }
-inline bool operator >= (const StringView &l, const typename memory::StandartInterface::StringType &r) { return string::compare(l, r) >= 0; }
-inline bool operator < (const StringView &l, const typename memory::StandartInterface::StringType &r) { return string::compare(l, r) < 0; }
-inline bool operator <= (const StringView &l, const typename memory::StandartInterface::StringType &r) { return string::compare(l, r) <= 0; }
-
-inline bool operator > (const typename memory::StandartInterface::WideStringType &l, const WideStringView &r) { return string::compare(l, r) > 0; }
-inline bool operator >= (const typename memory::StandartInterface::WideStringType &l, const WideStringView &r) { return string::compare(l, r) >= 0; }
-inline bool operator < (const typename memory::StandartInterface::WideStringType &l, const WideStringView &r) { return string::compare(l, r) < 0; }
-inline bool operator <= (const typename memory::StandartInterface::WideStringType &l, const WideStringView &r) { return string::compare(l, r) <= 0; }
-inline bool operator > (const WideStringView &l, const typename memory::StandartInterface::WideStringType &r) { return string::compare(l, r) > 0; }
-inline bool operator >= (const WideStringView &l, const typename memory::StandartInterface::WideStringType &r) { return string::compare(l, r) >= 0; }
-inline bool operator < (const WideStringView &l, const typename memory::StandartInterface::WideStringType &r) { return string::compare(l, r) < 0; }
-inline bool operator <= (const WideStringView &l, const typename memory::StandartInterface::WideStringType &r) { return string::compare(l, r) <= 0; }
-
-inline bool operator > (const typename memory::PoolInterface::StringType &l, const StringView &r) { return string::compare(l, r) > 0; }
-inline bool operator >= (const typename memory::PoolInterface::StringType &l, const StringView &r) { return string::compare(l, r) >= 0; }
-inline bool operator < (const typename memory::PoolInterface::StringType &l, const StringView &r) { return string::compare(l, r) < 0; }
-inline bool operator <= (const typename memory::PoolInterface::StringType &l, const StringView &r) { return string::compare(l, r) <= 0; }
-inline bool operator > (const StringView &l, const typename memory::PoolInterface::StringType &r) { return string::compare(l, r) > 0; }
-inline bool operator >= (const StringView &l, const typename memory::PoolInterface::StringType &r) { return string::compare(l, r) >= 0; }
-inline bool operator < (const StringView &l, const typename memory::PoolInterface::StringType &r) { return string::compare(l, r) < 0; }
-inline bool operator <= (const StringView &l, const typename memory::PoolInterface::StringType &r) { return string::compare(l, r) <= 0; }
-
-inline bool operator > (const typename memory::PoolInterface::WideStringType &l, const WideStringView &r) { return string::compare(l, r) > 0; }
-inline bool operator >= (const typename memory::PoolInterface::WideStringType &l, const WideStringView &r) { return string::compare(l, r) >= 0; }
-inline bool operator < (const typename memory::PoolInterface::WideStringType &l, const WideStringView &r) { return string::compare(l, r) < 0; }
-inline bool operator <= (const typename memory::PoolInterface::WideStringType &l, const WideStringView &r) { return string::compare(l, r) <= 0; }
-inline bool operator > (const WideStringView &l, const typename memory::PoolInterface::WideStringType &r) { return string::compare(l, r) > 0; }
-inline bool operator >= (const WideStringView &l, const typename memory::PoolInterface::WideStringType &r) { return string::compare(l, r) >= 0; }
-inline bool operator < (const WideStringView &l, const typename memory::PoolInterface::WideStringType &r) { return string::compare(l, r) < 0; }
-inline bool operator <= (const WideStringView &l, const typename memory::PoolInterface::WideStringType &r) { return string::compare(l, r) <= 0; }
-
 NS_SP_END
 
 NS_SP_EXT_BEGIN(string)
@@ -704,25 +649,6 @@ inline void split(const StringView &str, const StringView &delim, T && callback)
 		}
 	}
 }
-
-template <typename L, typename R, typename CharType>
-inline int compare(const L &l, const R &r) {
-	auto __lsize = l.size();
-	auto __rsize = r.size();
-	auto __len = std::min(__lsize, __rsize);
-	auto ret = std::char_traits<CharType>::compare(l.data(), r.data(), __len);
-	if (!ret) {
-		if (__lsize < __rsize) {
-			return -1;
-		} else if (__lsize == __rsize) {
-			return 0;
-		} else {
-			return 1;
-		}
-	}
-	return ret;
-}
-
 
 template <typename Interface>
 template <typename T>

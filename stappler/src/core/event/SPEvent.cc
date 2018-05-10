@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -59,53 +59,6 @@ bool Event::operator == (const EventHeader &eventHeader) const {
 	return is(eventHeader);
 }
 
-#if SP_EVENT_RTTI
-Event::Event(const EventHeader &header, Ref *object, const String &tname)
-: _header(header), _object(object), _targetTypename(tname) { _value.intValue = 0; }
-
-Event::Event(const EventHeader &header, Ref *object, const String &tname, Value val, Type type, const String &oname)
-: _header(header), _object(object), _value(val), _type(type), _targetTypename(tname), _objectTypename(oname) { }
-
-void Event::send(const EventHeader &header, Ref *object, const String &tname, int64_t value) {
-	Value val; val.intValue = value;
-	send(header, object, tname, val, Type::Int, "");
-}
-void Event::send(const EventHeader &header, Ref *object, const String &tname, double value) {
-	Value val; val.floatValue = value;
-	send(header, object, tname, val, Type::Float, "");
-}
-void Event::send(const EventHeader &header, Ref *object, const String &tname, bool value) {
-	Value val; val.boolValue = value;
-	send(header, object, tname, val, Type::Bool, "");
-}
-void Event::send(const EventHeader &header, Ref *object, const String &tname, Ref *value, const String oname) {
-	Value val; val.objValue = value;
-	send(header, object, tname, val, Type::Object, oname);
-}
-void Event::send(const EventHeader &header, Ref *object, const String &tname, const char *value) {
-	String str = value;
-	send(header, object, str);
-}
-void Event::send(const EventHeader &header, Ref *object, const String &tname, const String &value) {
-	Thread::onMainThread([header, object, value, tname] () {
-		Value val; val.strValue = &value;
-		Event event(header, object, tname, val, Type::String, "");
-		event.dispatch();
-	});
-}
-void Event::send(const EventHeader &header, Ref *object, const String &tname, Value val, Type type, const String oname) {
-	Thread::onMainThread([header, object, val, type, tname, oname] () {
-		Event event(header, object, tname, val, type, oname);
-		event.dispatch();
-	});
-}
-void Event::send(const EventHeader &header, Ref *object, const String &tname) {
-	Thread::onMainThread([header, object, tname] () {
-		Event event(header, object, tname);
-		event.dispatch();
-	});
-}
-#else
 Event::Event(const EventHeader &header, Ref *object)
 : _header(header), _object(object) { _value.intValue = 0; }
 
@@ -139,6 +92,9 @@ void Event::send(const EventHeader &header, Ref *object, const String &value) {
 		event.dispatch();
 	});
 }
+void Event::send(const EventHeader &header, Ref *object, const StringView &value) {
+	send(header, object, value.str());
+}
 void Event::send(const EventHeader &header, Ref *object, const data::Value &value) {
 	Thread::onMainThread([header, object, value] () {
 		Value val; val.dataValue = &value;
@@ -158,5 +114,3 @@ void Event::send(const EventHeader &header, Ref *object) {
 		event.dispatch();
 	});
 }
-
-#endif

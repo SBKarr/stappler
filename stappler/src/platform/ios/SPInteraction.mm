@@ -30,46 +30,47 @@ THE SOFTWARE.
 NS_SP_PLATFORM_BEGIN
 
 namespace interaction {
-	void _goToUrl(const std::string &url, bool external) {
-		NSString *urlString = [[NSString alloc] initWithUTF8String:url.c_str()];
+	void _goToUrl(const StringView &url, bool external) {
+		NSString *urlString = [[NSString alloc] initWithBytes:url.data() length:(NSUInteger)url.size() encoding:NSUTF8StringEncoding];
 		NSURL *urlObj = [[NSURL alloc] initWithString:urlString];
 		[[UIApplication sharedApplication] openURL:urlObj options:[NSDictionary dictionary] completionHandler:nil];
 	}
 
-	void _makePhoneCall(const std::string &str) {
-		NSString *number = [NSString stringWithUTF8String:str.substr(4).c_str()];
+	void _makePhoneCall(const StringView &str) {
+		StringView r(str); r.skipString("tel:");
+		NSString *number = [[NSString alloc] initWithBytes:r.data() length:(NSUInteger)r.size() encoding:NSUTF8StringEncoding];
 		NSString *phoneNumber = [@"telprompt://" stringByAppendingString:[number stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLPathAllowedCharacterSet]]];
 		[[UIApplication sharedApplication] openURL:[NSURL URLWithString:phoneNumber] options:[NSDictionary dictionary] completionHandler:nil];
 	}
-	void _mailTo(const std::string &address) {
-		NSString *urlString = [[NSString alloc] initWithUTF8String:address.c_str()];
+	void _mailTo(const StringView &address) {
+		NSString *urlString = [[NSString alloc] initWithBytes:address.data() length:(NSUInteger)address.size() encoding:NSUTF8StringEncoding];
 		[[UIApplication sharedApplication] openURL:[NSURL URLWithString:urlString] options:[NSDictionary dictionary] completionHandler:nil];
 	}
 	void _backKey() { }
-	void _notification(const std::string &title, const std::string &text) {
+	void _notification(const StringView &title, const StringView &text) {
 		UIApplication *application = [UIApplication sharedApplication];
 		UIApplicationState state = [application applicationState];
 		if (state == UIApplicationStateInactive || state == UIApplicationStateBackground) {
 			UILocalNotification *note = [[UILocalNotification alloc] init];
 			if (note) {
 				note.fireDate = [NSDate date];
-				note.alertBody = [NSString stringWithUTF8String:text.c_str()];
+				note.alertBody = [[NSString alloc] initWithBytes:text.data() length:(NSUInteger)text.size() encoding:NSUTF8StringEncoding];
 				note.soundName = UILocalNotificationDefaultSoundName;
 				[application scheduleLocalNotification:note];
 				note = nil;
 			}
 		}
 	}
-	
+
 	NSString *_appId = nil;
 	void _setAppId(NSString *appId) {
 		_appId = appId;
 	}
-	
+
 	void _rateApplication() {
 		NSString * appId = _appId;
 		if (appId) {
-			NSString * theUrl = [NSString  stringWithFormat:@"itms-apps://itunes.apple.com/WebObjects/MZStore.woa/wa/viewContentsUserReviews?id=%@&onlyLatestVersion=true&pageNumber=0&sortOrdering=1&type=Purple+Software",appId];
+			NSString * theUrl = [NSString stringWithFormat:@"itms-apps://itunes.apple.com/WebObjects/MZStore.woa/wa/viewContentsUserReviews?id=%@&onlyLatestVersion=true&pageNumber=0&sortOrdering=1&type=Purple+Software",appId];
 			if ([[UIDevice currentDevice].systemVersion integerValue] > 6) theUrl = [NSString stringWithFormat:@"itms-apps://itunes.apple.com/app/id%@",appId];
 			[[UIApplication sharedApplication] openURL:[NSURL URLWithString:theUrl] options:[NSDictionary dictionary] completionHandler:nil];
 		}

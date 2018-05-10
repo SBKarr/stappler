@@ -77,7 +77,7 @@ namespace style {
 			}
 		}
 		if (compiled.fontFamily.empty()) {
-			compiled.fontFamily = "default";
+			compiled.fontFamily = StringView("default");
 		}
 		if (incr != FontSizeIncrement::None) {
 			compiled.fontSize = modifySize(compiled.fontSize, incr);
@@ -144,6 +144,8 @@ namespace style {
 				case ParameterName::PageBreakAfter: compiled.pageBreakAfter = it.value.pageBreak; break;
 				case ParameterName::PageBreakBefore: compiled.pageBreakBefore = it.value.pageBreak; break;
 				case ParameterName::PageBreakInside: compiled.pageBreakInside = it.value.pageBreak; break;
+				case ParameterName::BorderCollapse: compiled.borderCollapse = it.value.borderCollapse; break;
+				case ParameterName::CaptionSide: compiled.captionSide = it.value.captionSide; break;
 				default: break;
 				}
 			}
@@ -155,20 +157,20 @@ namespace style {
 		for (auto &it : data) {
 			if (it.mediaQuery == MediaQueryNone() || renderer->resolveMediaQuery(it.mediaQuery)) {
 				switch(it.name) {
-				case ParameterName::MarginTop: compiled.marginTop = it.value.sizeValue; break;
+				//case ParameterName::MarginTop: compiled.marginTop = it.value.sizeValue; break;
 				case ParameterName::MarginRight: compiled.marginRight = it.value.sizeValue; break;
-				case ParameterName::MarginBottom: compiled.marginBottom = it.value.sizeValue; break;
+				//case ParameterName::MarginBottom: compiled.marginBottom = it.value.sizeValue; break;
 				case ParameterName::MarginLeft: compiled.marginLeft = it.value.sizeValue; break;
-				case ParameterName::PaddingTop: compiled.paddingTop = it.value.sizeValue; break;
+				//case ParameterName::PaddingTop: compiled.paddingTop = it.value.sizeValue; break;
 				case ParameterName::PaddingRight: compiled.paddingRight = it.value.sizeValue; break;
-				case ParameterName::PaddingBottom: compiled.paddingBottom = it.value.sizeValue; break;
+				//case ParameterName::PaddingBottom: compiled.paddingBottom = it.value.sizeValue; break;
 				case ParameterName::PaddingLeft: compiled.paddingLeft = it.value.sizeValue; break;
-				case ParameterName::Width: compiled.width = it.value.sizeValue; break;
-				case ParameterName::Height: compiled.height = it.value.sizeValue; break;
-				case ParameterName::MinWidth: compiled.minWidth = it.value.sizeValue; break;
-				case ParameterName::MinHeight: compiled.minHeight = it.value.sizeValue; break;
-				case ParameterName::MaxWidth: compiled.maxWidth = it.value.sizeValue; break;
-				case ParameterName::MaxHeight: compiled.maxHeight = it.value.sizeValue; break;
+				//case ParameterName::Width: compiled.width = it.value.sizeValue; break;
+				//case ParameterName::Height: compiled.height = it.value.sizeValue; break;
+				//case ParameterName::MinWidth: compiled.minWidth = it.value.sizeValue; break;
+				//case ParameterName::MinHeight: compiled.minHeight = it.value.sizeValue; break;
+				//case ParameterName::MaxWidth: compiled.maxWidth = it.value.sizeValue; break;
+				//case ParameterName::MaxHeight: compiled.maxHeight = it.value.sizeValue; break;
 				default: break;
 				}
 			}
@@ -204,21 +206,21 @@ namespace style {
 		for (auto &it : data) {
 			if (it.mediaQuery == MediaQueryNone() || renderer->resolveMediaQuery(it.mediaQuery)) {
 				switch(it.name) {
-				case ParameterName::BorderLeftStyle: compiled.borderLeftStyle = it.value.borderStyle; break;
-				case ParameterName::BorderLeftWidth: compiled.borderLeftWidth = it.value.sizeValue; break;
-				case ParameterName::BorderLeftColor: compiled.borderLeftColor = it.value.color4; break;
-				case ParameterName::BorderTopStyle: compiled.borderTopStyle = it.value.borderStyle; break;
-				case ParameterName::BorderTopWidth: compiled.borderTopWidth = it.value.sizeValue; break;
-				case ParameterName::BorderTopColor: compiled.borderTopColor = it.value.color4; break;
-				case ParameterName::BorderRightStyle: compiled.borderRightStyle = it.value.borderStyle; break;
-				case ParameterName::BorderRightWidth: compiled.borderRightWidth = it.value.sizeValue; break;
-				case ParameterName::BorderRightColor: compiled.borderRightColor = it.value.color4; break;
-				case ParameterName::BorderBottomStyle: compiled.borderBottomStyle = it.value.borderStyle; break;
-				case ParameterName::BorderBottomWidth: compiled.borderBottomWidth = it.value.sizeValue; break;
-				case ParameterName::BorderBottomColor: compiled.borderBottomColor = it.value.color4; break;
-				case ParameterName::OutlineStyle: compiled.outlineStyle = it.value.borderStyle; break;
-				case ParameterName::OutlineWidth: compiled.outlineWidth = it.value.sizeValue; break;
-				case ParameterName::OutlineColor: compiled.outlineColor = it.value.color4; break;
+				case ParameterName::BorderLeftStyle: compiled.left.style = it.value.borderStyle; break;
+				case ParameterName::BorderLeftWidth: compiled.left.width = it.value.sizeValue; break;
+				case ParameterName::BorderLeftColor: compiled.left.color = it.value.color4; break;
+				case ParameterName::BorderTopStyle: compiled.top.style = it.value.borderStyle; break;
+				case ParameterName::BorderTopWidth: compiled.top.width = it.value.sizeValue; break;
+				case ParameterName::BorderTopColor: compiled.top.color = it.value.color4; break;
+				case ParameterName::BorderRightStyle: compiled.right.style = it.value.borderStyle; break;
+				case ParameterName::BorderRightWidth: compiled.right.width = it.value.sizeValue; break;
+				case ParameterName::BorderRightColor: compiled.right.color = it.value.color4; break;
+				case ParameterName::BorderBottomStyle: compiled.bottom.style = it.value.borderStyle; break;
+				case ParameterName::BorderBottomWidth: compiled.bottom.width = it.value.sizeValue; break;
+				case ParameterName::BorderBottomColor: compiled.bottom.color = it.value.color4; break;
+				case ParameterName::OutlineStyle: compiled.outline.style = it.value.borderStyle; break;
+				case ParameterName::OutlineWidth: compiled.outline.width = it.value.sizeValue; break;
+				case ParameterName::OutlineColor: compiled.outline.color = it.value.color4; break;
 				default: break;
 				}
 			}
@@ -422,6 +424,10 @@ namespace style {
 				case Display::InlineBlock: stream << "inline-block"; break;
 				case Display::Block: stream << "block"; break;
 				case Display::ListItem: stream << "list-item"; break;
+				case Display::Table: stream << "table"; break;
+				case Display::TableCell: stream << "table-cell"; break;
+				case Display::TableColumn: stream << "table-column"; break;
+				case Display::TableCaption: stream << "table-caption"; break;
 				};
 				break; // enum
 			case ParameterName::Float:
@@ -657,6 +663,20 @@ namespace style {
 				stream << "border-left-color: ";
 				writeStyle(stream, it.value.color4);
 				break; // color4
+			case ParameterName::BorderCollapse:
+				stream << "border-collapse: ";
+				switch (it.value.borderCollapse) {
+				case BorderCollapse::Separate: stream << "separate"; break;
+				case BorderCollapse::Collapse: stream << "collapse"; break;
+				};
+				break; // enum
+			case ParameterName::CaptionSide:
+				stream << "caption-side: ";
+				switch (it.value.captionSide) {
+				case CaptionSide::Top: stream << "top"; break;
+				case CaptionSide::Bottom: stream << "bottom"; break;
+				};
+				break; // enum
 			case ParameterName::OutlineStyle:
 				stream << "outline-style: ";
 				switch (it.value.borderStyle) {
@@ -833,7 +853,7 @@ namespace style {
 				else if (r.is("l")) {ret.fontSize = style::FontSize::Large; }
 				else if (r.is("xl")) { ret.fontSize = style::FontSize::XLarge; }
 				else if (r.is("xxl")) { ret.fontSize = style::FontSize::XXLarge; }
-				else { ret.fontSize = uint8_t(r.readInteger()); }
+				else { r.readInteger().unwrap([&] (int64_t value) { ret.fontSize = uint8_t(value); }); }
 				state = Style;
 				break;
 			case Style:
@@ -915,11 +935,11 @@ namespace style {
 		}
 	}
 
-	String FontFace::getConfigName(const String &family, uint8_t size) const {
+	String FontFace::getConfigName(const StringView &family, uint8_t size) const {
 		return getFontConfigName(family, size, fontStyle, fontWeight, fontStretch, FontVariant::Normal, false);
 	}
 
-	FontStyleParameters FontFace::getStyle(const String &family, uint8_t size) const {
+	FontStyleParameters FontFace::getStyle(const StringView &family, uint8_t size) const {
 		FontStyleParameters ret;
 		ret.fontFamily = family;
 		ret.fontSize = size;
@@ -929,10 +949,13 @@ namespace style {
 		return ret;
 	}
 
-	String getFontConfigName(const String &fontFamily, uint8_t fontSize, FontStyle fontStyle, FontWeight fontWeight,
+	String getFontConfigName(const StringView &fontFamily, uint8_t fontSize, FontStyle fontStyle, FontWeight fontWeight,
 			FontStretch fontStretch, FontVariant fontVariant, bool caps) {
 		auto size = fontSize;
-		String name = fontFamily;
+		String name;
+		name.reserve(fontFamily.size() + 14);
+		name += fontFamily.str();
+
 		if (caps && fontVariant == style::FontVariant::SmallCaps) {
 			size -= size / 5;
 		}

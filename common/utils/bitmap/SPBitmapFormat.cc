@@ -905,11 +905,12 @@ static bool BitmapFormat_getWebpImageSize(const io::Producer &file, StackBuffer<
 
 size_t BitmapFormat_detectSvgSize(const StringView &value) {
 	StringView str(value);
-	float fvalue = str.readFloat();
-	if (IsErrorValue(fvalue)) {
+	auto fRes = str.readFloat();
+	if (!fRes.valid()) {
 		return 0;
 	}
 
+	auto fvalue = fRes.get();
 	if (fvalue == 0.0f) {
 		return 0;
 	}

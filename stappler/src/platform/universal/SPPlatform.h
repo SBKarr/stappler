@@ -63,12 +63,12 @@ namespace device {
 }
 
 namespace interaction {
-	void _goToUrl(const String &url, bool external);
-	void _makePhoneCall(const String &number);
-	void _mailTo(const String &address);
+	void _goToUrl(const StringView &url, bool external);
+	void _makePhoneCall(const StringView &number);
+	void _mailTo(const StringView &address);
 
 	void _backKey();
-	void _notification(const String &title, const String &text);
+	void _notification(const StringView &title, const StringView &text);
 	void _rateApplication();
 }
 

@@ -34,8 +34,8 @@ public:
 	virtual bool init() override;
 	virtual void onContentSizeDirty() override;
 
-	virtual void setTitle(const String &);
-	virtual const String &getTitle() const;
+	virtual void setTitle(const StringView &);
+	virtual StringView getTitle() const;
 
 	virtual void setNavButtonIcon(IconName);
 	virtual IconName getNavButtonIcon() const;

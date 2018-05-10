@@ -59,11 +59,12 @@ void Handle::makeSessionsCleanup() {
 			// check for files to remove
 			for (auto it : res) {
 				if (it.back() == "__files") {
-					auto fileId = it.front().readInteger();
-					filesystem::remove(storage::File::getFilesystemPath(fileId));
+					it.front().readInteger().unwrap([&] (int64_t fileId) {
+						filesystem::remove(storage::File::getFilesystemPath(fileId));
 
-					if (first) { first = false; } else { query << " OR "; }
-					query << " __oid=" << fileId;
+						if (first) { first = false; } else { query << " OR "; }
+						query << " __oid=" << fileId;
+					});
 				}
 			}
 			query << ";";

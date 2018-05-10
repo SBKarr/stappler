@@ -285,10 +285,11 @@ public:
 							auto numToken = token;
 							++ numToken;
 							if (numToken.is<WideStringView::CharGroup<CharGroupId::Numbers>>()) {
-								auto id = numToken.readInteger();
-								if (numToken.empty() && !IsErrorValue(id)) {
-									replacement = string(size_t(id));
-								}
+								numToken.readInteger().unwrap([&] (int64_t id) {
+									if (numToken.empty()) {
+										replacement = string(size_t(id));
+									}
+								});
 							}
 						} else if (token.is(u"Num:")) {
 							WideStringView splitMaster(token);
@@ -308,7 +309,9 @@ public:
 								validate.skipChars<WideStringView::CharGroup<CharGroupId::Numbers>>();
 								if (validate.empty()) {
 									WideStringView vtoken(token.data(), token.size() - num.size() - 1);
-									replacement = numeric(vtoken, num.readInteger());
+									num.readInteger().unwrap([&] (int64_t id) {
+										replacement = numeric(vtoken, id);
+									});
 								}
 							}
 						}

@@ -170,10 +170,10 @@ void FormField::onError(Error err) {
 
 	switch (err) {
 	case InputError::OverflowChars:
-		setError("SystemErrorOverflowChars"_locale);
+		setError("SystemErrorOverflowChars"_locale.to_string());
 		break;
 	case InputError::InvalidChar:
-		setError("SystemErrorInvalidChar"_locale);
+		setError("SystemErrorInvalidChar"_locale.to_string());
 		break;
 	}
 }
@@ -289,7 +289,7 @@ bool FormField::isFullHeight() const {
 	return _fullHeight;
 }
 
-void FormField::setError(const String &str) {
+void FormField::setError(const StringView &str) {
 	if (str != _error->getString8()) {
 		_error->setString(str);
 		if (str.empty()) {
@@ -314,7 +314,7 @@ void FormField::setError(const String &str) {
 		}
 	}
 }
-const String &FormField::getError() const {
+StringView FormField::getError() const {
 	return _error->getString8();
 }
 void FormField::updateAutoAdjust() {

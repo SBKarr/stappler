@@ -83,8 +83,8 @@ struct MultipartParser {
 	bool parse(const uint8_t *, size_t, bool readFiles = true);
 
 	/* read content only */
-	bool parse(const DataReader<ByteOrder::Network> &, const String &contentType, bool readFiles = true);
-	bool parse(const uint8_t *, size_t, const String &contentType, bool readFiles = true);
+	bool parse(const DataReader<ByteOrder::Network> &, const StringView &contentType, bool readFiles = true);
+	bool parse(const uint8_t *, size_t, const StringView &contentType, bool readFiles = true);
 
 	bool parseBody();
 	bool parseFile();

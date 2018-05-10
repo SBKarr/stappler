@@ -72,19 +72,10 @@ GLProgramDesc::GLProgramDesc(Default def) {
 	case Default::RawRect:
 		set(Attr::MatrixMVP | Attr::CustomRect | Attr::MediumP);
 		break;
-	case Default::RawRectBorder:
-		set(Attr::MatrixMVP | Attr::CustomBorder | Attr::HighP);
-		break;
 	case Default::RawRects:
 		set(Attr::MatrixMVP | Attr::CustomFill | Attr::MediumP);
 		break;
 
-	case Default::RawAAMaskR:
-		set(Attr::MatrixP | Attr::Color | Attr::MediumP, PixelFormat::R8, PixelFormat::A8);
-		break;
-	case Default::RawAAMaskRGBA:
-		set(Attr::MatrixP | Attr::Color | Attr::MediumP, PixelFormat::RGBA8888);
-		break;
 	}
 }
 
@@ -234,18 +225,6 @@ uniform vec4 CC_AmbientColor;
 void main() {
 	vec2 position = abs((gl_FragCoord.xy - u_position) - (u_size)) - u_size;
 	gl_FragColor = vec4(CC_AmbientColor.xyz, CC_AmbientColor.a * clamp(-max(position.x, position.y), 0.0, 1.0));
-})Shader";
-
-	} else if ((flags & Attr::CustomBorder) != Attr::None) {
-
-		stream << R"Shader(
-uniform vec2 u_size;
-uniform vec2 u_position;
-uniform float u_border;
-uniform vec4 CC_AmbientColor;
-void main() {
-	vec2 position = abs((gl_FragCoord.xy - u_position) - (u_size)) - u_size;
-	gl_FragColor = vec4(CC_AmbientColor.xyz, CC_AmbientColor.a * clamp(u_border + 0.5 - abs(max(position.x, position.y)), 0.0, 1.0));
 })Shader";
 
 	} else if ((flags & Attr::CustomFill) != Attr::None) {

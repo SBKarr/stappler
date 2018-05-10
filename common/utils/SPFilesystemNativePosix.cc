@@ -30,21 +30,23 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(filesystem_native)
 
-String nativeToPosix(const String &path) { return path; }
-String posixToNative(const String &path) { return path; }
+String nativeToPosix(const StringView &path) { return path.str(); }
+String posixToNative(const StringView &path) { return path.str(); }
 
-bool remove_fn(const stappler::String &path) {
-	return remove(path.c_str()) == 0;
+#define SP_TERMINATED_DATA(view) (view.terminated()?view.data():view.str().data())
+
+bool remove_fn(const StringView &path) {
+	return remove(SP_TERMINATED_DATA(path)) == 0;
 }
 
-bool mkdir_fn(const stappler::String &path) {
+bool mkdir_fn(const StringView &path) {
     mode_t process_mask = umask(0);
-	bool ret = mkdir(path.c_str(), (mode_t)(S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) == 0;
+	bool ret = mkdir(SP_TERMINATED_DATA(path), (mode_t)(S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) == 0;
     umask(process_mask);
     return ret;
 }
 
-bool access_fn(const stappler::String &path, Access mode) {
+bool access_fn(const StringView &path, Access mode) {
 	int m = 0;
 	switch (mode) {
 	case Access::Execute: m = X_OK; break;
@@ -52,50 +54,50 @@ bool access_fn(const stappler::String &path, Access mode) {
 	case Access::Read: m = R_OK; break;
 	case Access::Write: m = W_OK; break;
 	}
-	return access(path.c_str(), m) == 0;
+	return access(SP_TERMINATED_DATA(path), m) == 0;
 }
 
-bool isdir_fn(const String &path) {
+bool isdir_fn(const StringView &path) {
 	struct stat s;
-	if( stat(path.c_str(), &s) == 0 ) {
+	if( stat(SP_TERMINATED_DATA(path), &s) == 0 ) {
 		return s.st_mode & S_IFDIR;
 	} else {
 		return false;
 	}
 }
-size_t size_fn(const String &path) {
+size_t size_fn(const StringView &path) {
 	struct stat s;
-	if (stat(path.c_str(), &s) == 0) {
+	if (stat(SP_TERMINATED_DATA(path), &s) == 0) {
         return size_t(s.st_size);
     } else {
         return 0;
     }
 }
-time_t mtime_fn(const String &path) {
+time_t mtime_fn(const StringView &path) {
 	struct stat s;
-	if (stat(path.c_str(), &s) == 0) {
+	if (stat(SP_TERMINATED_DATA(path), &s) == 0) {
         return s.st_mtime;
     } else {
         return 0;
     }
 }
-time_t ctime_fn(const String &path) {
+time_t ctime_fn(const StringView &path) {
 	struct stat s;
-	if (stat(path.c_str(), &s) == 0) {
+	if (stat(SP_TERMINATED_DATA(path), &s) == 0) {
         return s.st_ctime;
     } else {
         return 0;
     }
 }
 
-bool touch_fn(const String &path) {
-	return utime(path.c_str(), NULL) == 0;
+bool touch_fn(const StringView &path) {
+	return utime(SP_TERMINATED_DATA(path), NULL) == 0;
 }
 
-void ftw_fn(const String &path, const Function<void(const String &path, bool isFile)> &callback, int depth, bool dirFirst) {
-	auto dp = opendir(path.c_str());
+void ftw_fn(const StringView &path, const Function<void(const StringView &path, bool isFile)> &callback, int depth, bool dirFirst) {
+	auto dp = opendir(SP_TERMINATED_DATA(path));
 	if (dp == NULL) {
-		if (access(path.c_str(), F_OK) != -1) {
+		if (access(SP_TERMINATED_DATA(path), F_OK) != -1) {
 			callback(path, true);
 		}
 	} else {
@@ -117,10 +119,10 @@ void ftw_fn(const String &path, const Function<void(const String &path, bool isF
 		closedir(dp);
 	}
 }
-bool ftw_b_fn(const String &path, const Function<bool(const String &path, bool isFile)> &callback, int depth, bool dirFirst) {
-	auto dp = opendir(path.c_str());
+bool ftw_b_fn(const StringView &path, const Function<bool(const StringView &path, bool isFile)> &callback, int depth, bool dirFirst) {
+	auto dp = opendir(SP_TERMINATED_DATA(path));
 	if (dp == NULL) {
-		if (access(path.c_str(), F_OK) != -1) {
+		if (access(SP_TERMINATED_DATA(path), F_OK) != -1) {
 			return callback(path, true);
 		}
 	} else {
@@ -133,7 +135,7 @@ bool ftw_b_fn(const String &path, const Function<bool(const String &path, bool i
 			struct dirent *entry;
 			while ((entry = readdir(dp))) {
 				if (strcmp(entry->d_name, "..") != 0 && strcmp(entry->d_name, ".") != 0) {
-					String newPath = path + "/" + entry->d_name;
+					String newPath = StringView::merge(path, "/", (const char *)entry->d_name);
 					if (!ftw_b_fn(newPath, callback, depth - 1, dirFirst)) {
 						closedir(dp);
 						return false;
@@ -149,8 +151,8 @@ bool ftw_b_fn(const String &path, const Function<bool(const String &path, bool i
 	return true;
 }
 
-bool rename_fn(const String &source, const String &dest) {
-	return rename(source.c_str(), dest.c_str()) == 0;
+bool rename_fn(const StringView &source, const StringView &dest) {
+	return rename(SP_TERMINATED_DATA(source), SP_TERMINATED_DATA(dest)) == 0;
 }
 
 String getcwd_fn() {
@@ -161,9 +163,11 @@ String getcwd_fn() {
 	return String();
 }
 
-FILE *fopen_fn(const String &path, const String &mode) {
-	return fopen(path.c_str(), mode.c_str());
+FILE *fopen_fn(const StringView &path, const StringView &mode) {
+	return fopen(SP_TERMINATED_DATA(path), SP_TERMINATED_DATA(mode));
 }
+
+#undef SP_TERMINATED_DATA
 
 NS_SP_EXT_END(filesystem_native)
 

@@ -34,8 +34,8 @@ public:
 	virtual void onContentSizeDirty() override;
 	virtual void setMenuSource(MenuSource *) override;
 
-	virtual void setString(const std::string &);
-	virtual const std::string &getString() const;
+	virtual void setString(const StringView &);
+	virtual StringView getString() const;
 
 	virtual void setWidth(float value);
 	virtual float getWidth() const;

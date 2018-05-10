@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -52,11 +52,6 @@ public:
 	EventHeader::Category getCategory() const;
 	EventHeader::EventID getEventID() const;
 
-#if SP_EVENT_RTTI
-	const String &getTargetTypename() const { return _targetTypename; }
-	const String &getObjectTypename() const { return _objectTypename; }
-#endif
-
 	bool is(const EventHeader &eventHeader) const;
 	bool operator == (const EventHeader &eventHeader) const;
 
@@ -106,23 +101,6 @@ protected:
 		const data::Value * dataValue;
 	};
 
-#if SP_EVENT_RTTI
-	static void send(const EventHeader &header, Ref *object, const String &tname, Value val, Type type, const String oname);
-	static void send(const EventHeader &header, Ref *object, const String &tname, int64_t value);
-	static void send(const EventHeader &header, Ref *object, const String &tname, double value);
-	static void send(const EventHeader &header, Ref *object, const String &tname, bool value);
-	static void send(const EventHeader &header, Ref *object, const String &tname, Ref *value, const String oname);
-	static void send(const EventHeader &header, Ref *object, const String &tname, const char *value);
-	static void send(const EventHeader &header, Ref *object, const String &tname, const String &value);
-	static void send(const EventHeader &header, Ref *object, const String &tname);
-
-	Event(const EventHeader &header, Ref *object, const String &tname, Value val, Type type, const String &oname);
-	Event(const EventHeader &header, Ref *object, const String &tname);
-
-	String _targetTypename;
-	String _objectTypename;
-#else
-
 	Event(const EventHeader &header, Ref *object, Value val, Type type);
 	Event(const EventHeader &header, Ref *object);
 
@@ -133,9 +111,9 @@ protected:
 	static void send(const EventHeader &header, Ref *object, Ref *value);
 	static void send(const EventHeader &header, Ref *object, const char *value);
 	static void send(const EventHeader &header, Ref *object, const String &value);
+	static void send(const EventHeader &header, Ref *object, const StringView &value);
 	static void send(const EventHeader &header, Ref *object, const data::Value &value);
 	static void send(const EventHeader &header, Ref *object);
-#endif
 
 protected:
 	void dispatch() const;

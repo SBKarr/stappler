@@ -65,7 +65,7 @@ void ButtonLabelSelector::setMenuSource(MenuSource *source) {
 	}
 }
 
-void ButtonLabelSelector::setString(const std::string &str) {
+void ButtonLabelSelector::setString(const StringView &str) {
 	_label->setString(str);
 	if (_label->isLabelDirty()) {
 		_label->tryUpdateLabel(true);
@@ -76,7 +76,7 @@ void ButtonLabelSelector::setString(const std::string &str) {
 		setContentSize(cocos2d::Size(_label->getContentSize().width + 32, _contentSize.height));
 	}
 }
-const std::string &ButtonLabelSelector::getString() const {
+StringView ButtonLabelSelector::getString() const {
 	return _label->getString8();
 }
 

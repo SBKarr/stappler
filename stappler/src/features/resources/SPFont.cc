@@ -385,7 +385,7 @@ bool FontLibrary::writeTextureQuads(uint32_t v, FontSource *source, const layout
 					color, texs[0]->getPixelsWide(), texs[0]->getPixelsHigh());
 			if (frac > 0.1) {
 				color.a *= frac;
-				quads[0]->drawRect(firstChar.pos, format->height - it.line->pos + offset - base, lastChar.pos + lastChar.advance - firstChar.pos, 1,
+				quads[0]->drawRect(firstChar.pos, format->height - it.line->pos + offset - base + 1, lastChar.pos + lastChar.advance - firstChar.pos, 1,
 						color, texs[0]->getPixelsWide(), texs[0]->getPixelsHigh());
 			}
 		}
@@ -702,7 +702,6 @@ void FontSource::clone(FontSource *source, const Function<void(FontSource *)> &c
 		Vector<char16_t> vec;;
 		for (auto &it : (*lPtr)) {
 			Rc<FontLayout> l(it.second);
-			auto style = l->getStyle();
 			auto data = l->getData();
 			vec.clear();
 			if (vec.capacity() < data->chars.size()) {
@@ -712,7 +711,7 @@ void FontSource::clone(FontSource *source, const Function<void(FontSource *)> &c
 				vec.emplace_back(c);
 			}
 
-			getLayout(style)->addSortedChars(vec);
+			getLayout(l)->addSortedChars(vec);
 		}
 
 		auto ret = TextureCache::getInstance()->performWithGL([&] {

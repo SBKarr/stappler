@@ -44,17 +44,16 @@ namespace filesystem {
 	String _getCachesPath() {
 		return _getWritablePath();
 	}
-    
-    
-    String _getPlatformPath(const String &path) {
+
+    StringView _getPlatformPath(const StringView &path) {
         if (filepath::isBundled(path)) {
-            return path.substr("%PLATFORM%:"_len);
+            return path.sub("%PLATFORM%:"_len);
         }
         return path;
     }
     
-    NSString* _getNSPath(const String &ipath) {
-        auto path = _getPlatformPath(ipath);
+    NSString* _getNSPath(const StringView &ipath) {
+        auto path = _getPlatformPath(ipath).str();
         if (path.empty()) {
             return nil;
         }
@@ -78,12 +77,12 @@ namespace filesystem {
         return nil;
     }
     
-    bool _exists(const String &ipath) {
+    bool _exists(const StringView &ipath) {
         auto path = _getNSPath(ipath);
         return path != nil;
     }
     
-    size_t _size(const String &ipath) {
+    size_t _size(const StringView &ipath) {
         auto path = _getNSPath(ipath);
         if (path != nil) {
             return stappler::filesystem::size([path UTF8String]);
@@ -91,7 +90,7 @@ namespace filesystem {
         return 0;
     }
 	
-	stappler::filesystem::ifile _openForReading(const String &path) {
+	stappler::filesystem::ifile _openForReading(const StringView &path) {
 		return stappler::filesystem::openForReading(_getPlatformPath(path));
 	}
 	

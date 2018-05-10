@@ -38,7 +38,7 @@ public:
 protected:
 	virtual void onInput() override;
 	virtual void onCursor(const Cursor &c) override;
-	virtual bool onInputString(const WideString &str, const Cursor &c) override;
+	virtual bool onInputString(const WideStringView &str, const Cursor &c) override;
 
 	virtual void onMenuVisible() override;
 

@@ -211,11 +211,16 @@ public:
 	virtual StyleVec compileStyle() const;
 
 public:
-    virtual void setString(const String &newString);
-    virtual void setString(const WideString &newString);
+	template <char ... Chars>
+	void setString(metastring::metastring<Chars ...> &&str) {
+		setString(str.to_string());
+	}
+
+    virtual void setString(const StringView &);
+    virtual void setString(const WideStringView &newString);
     virtual void setLocalizedString(size_t);
-    virtual const WideString &getString() const;
-    virtual const String &getString8() const;
+    virtual WideStringView getString() const;
+    virtual StringView getString8() const;
 
 	virtual void erase16(size_t start = 0, size_t len = WideString::npos);
 	virtual void erase8(size_t start = 0, size_t len = String::npos);
@@ -279,8 +284,8 @@ public:
 	void setFontStretch(const FontStretch &);
 	FontStretch getFontStretch() const;
 
-	void setFontFamily(const String &);
-	const String &getFontFamily() const;
+	void setFontFamily(const StringView &);
+	StringView getFontFamily() const;
 
 	void setLineHeightAbsolute(float value);
 	void setLineHeightRelative(float value);
@@ -324,6 +329,7 @@ protected:
 	bool _isLineHeightAbsolute = false;
 	float _lineHeight = 0;
 
+	String _fontFamilyStorage;
 	DescriptionStyle _style;
 	StyleVec _styles;
 	StyleVec _compiledStyles;

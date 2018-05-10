@@ -30,9 +30,11 @@ THE SOFTWARE.
 
 NS_MD_BEGIN
 
+static auto Label_systemFontFamily = "system";
+
 DynamicLabel::DescriptionStyle Label::getFontStyle(FontType t) {
 	DescriptionStyle ret;
-	ret.font.fontFamily = "system";
+	ret.font.fontFamily = StringView(Label_systemFontFamily);
 	switch (t) {
 	case FontType::Headline:
 		ret.font.fontSize = 24;

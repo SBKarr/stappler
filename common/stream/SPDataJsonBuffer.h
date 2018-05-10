@@ -183,17 +183,17 @@ protected:
 		switch (state) {
 		case State::None:
 			if (isFloat) {
-				writeNumber(root, value.readDouble());
+				value.readDouble().unwrap([&] (double value) { writeNumber(root, value); });
 			} else {
-				writeInteger(root, value.readInteger());
+				value.readInteger().unwrap([&] (int64_t value) { writeInteger(root, value); });
 			}
 			state = State::End;
 			break;
 		case State::ArrayItem:
 			if (isFloat) {
-				writeNumber(emplaceArray(), value.readDouble());
+				value.readDouble().unwrap([&] (double value) { writeNumber(emplaceArray(), value); });
 			} else {
-				writeInteger(emplaceArray(), value.readInteger());
+				value.readInteger().unwrap([&] (int64_t value) { writeInteger(emplaceArray(), value); });
 			}
 			state = State::ArrayNext;
 			break;
@@ -203,9 +203,9 @@ protected:
 			break;
 		case State::DictValue:
 			if (isFloat) {
-				writeNumber(emplaceDict(), value.readDouble());
+				value.readDouble().unwrap([&] (double value) { writeNumber(emplaceDict(), value); });
 			} else {
-				writeInteger(emplaceDict(), value.readInteger());
+				value.readInteger().unwrap([&] (int64_t value) { writeInteger(emplaceDict(), value); });
 			}
 			state = State::DictNext;
 			break;

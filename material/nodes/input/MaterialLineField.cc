@@ -59,14 +59,14 @@ void LineField::onMenuVisible() {
 	setMenuPosition(Vec2(ret.x, _label->getPositionY() + _label->getFontHeight() / _label->getDensity() + 6.0f));
 }
 
-bool LineField::onInputString(const WideString &nstr, const Cursor &nc) {
+bool LineField::onInputString(const WideStringView &nstr, const Cursor &nc) {
 	auto str = nstr;
 	auto c = nc;
 
 	auto pos = std::min(str.find(u'\n'), str.find(u'\r'));
 	if (pos != std::u16string::npos) {
-		str = str.substr(0, pos);
-		c = Cursor(uint32_t(str.length()), 0);
+		str = str.sub(0, pos);
+		c = Cursor(uint32_t(str.size()), 0);
 		_label->releaseInput();
 		if (_onInput) {
 			_onInput();

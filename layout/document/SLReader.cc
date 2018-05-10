@@ -175,7 +175,7 @@ Reader::Tag Reader::onTag(StringReader &tag) {
 				}
 			}
 		}
-	} else if ((ret.type == Tag::Image || ret.xType == "image") && ret.id.empty()) {
+	} else if ((ret.type == Tag::Image || ret.xType == "image" || ret.name == "table") && ret.id.empty()) {
 		ret.id = toString("__id__", _pseudoId, "__", encodePathString(_page->path));
 		_pseudoId ++;
 	}
@@ -218,7 +218,7 @@ Reader::Tag Reader::onTag(StringReader &tag) {
 		}
 	}
 
-	if (tag.is('/') || ret.name == "br" || ret.name == "hr" || ret.type == Tag::Image
+	if (tag.is('/') || ret.name == "br" || ret.name == "hr" || ret.name == "col" || ret.type == Tag::Image
 			|| ret.type == Tag::Special) {
 		ret.closable = false;
 	} else {

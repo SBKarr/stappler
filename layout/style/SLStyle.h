@@ -97,7 +97,7 @@ class RendererInterface {
 public:
 	virtual ~RendererInterface() { }
 	virtual bool resolveMediaQuery(MediaQueryId queryId) const = 0;
-	virtual String getCssString(CssStringId) const = 0;
+	virtual StringView getCssString(CssStringId) const = 0;
 };
 
 class SimpleRendererInterface : public RendererInterface {
@@ -107,7 +107,7 @@ public:
 	SimpleRendererInterface(const Vector<bool> *, const Map<CssStringId, String> *);
 
 	virtual bool resolveMediaQuery(MediaQueryId queryId) const;
-	virtual String getCssString(CssStringId) const;
+	virtual StringView getCssString(CssStringId) const;
 
 protected:
 	const Vector<bool> *_media = nullptr;
@@ -132,10 +132,27 @@ namespace style {
 			VMax
 		};
 
-		float computeValueStrong(float base, const Size &vp, float fontSize, float rootFontSize) const;
-		float computeValueAuto(float base, const Size &vp, float fontSize, float rootFontSize) const;
+		float computeValueStrong(float base, const MediaParameters &, float fontSize = nan()) const;
+		float computeValueAuto(float base, const MediaParameters &, float fontSize = nan()) const;
 
 		inline bool isAuto() const { return metric == Units::Auto; }
+
+		inline bool isFixed() const {
+			switch (metric) {
+			case Units::Px:
+			case Units::Em:
+			case Units::Rem:
+			case Units::Vw:
+			case Units::Vh:
+			case Units::VMin:
+			case Units::VMax:
+				return true;
+				break;
+			default:
+				break;
+			}
+			return false;
+		}
 
 		float value = 0.0f;
 		Units metric = Units::Auto;
@@ -242,6 +259,10 @@ namespace style {
 		InlineBlock,
 		Block,
 		ListItem,
+		Table,
+		TableCell,
+		TableColumn,
+		TableCaption,
 	};
 
 	enum class Float : EnumSize {
@@ -352,6 +373,16 @@ namespace style {
 		Contain,
 	};
 
+	enum class BorderCollapse : EnumSize {
+		Separate,
+		Collapse,
+	};
+
+	enum class CaptionSide : EnumSize {
+		Top,
+		Bottom,
+	};
+
 	enum class ParameterName : NameSize {
 		/* css-selectors */
 
@@ -420,6 +451,8 @@ namespace style {
 		PageBreakAfter, // enum
 		PageBreakInside, // enum
 		Autofit, // enum
+		BorderCollapse, // enum
+		CaptionSide, // enum
 
 		/* media - specific */
 		MediaType = 256,
@@ -464,6 +497,8 @@ namespace style {
 		ListStylePosition listStylePosition;
 		PageBreak pageBreak;
 		Autofit autofit;
+		BorderCollapse borderCollapse;
+		CaptionSide captionSide;
 		Color3B color;
 		uint8_t fontSize;
 		uint8_t opacity;
@@ -502,7 +537,7 @@ namespace style {
 		FontVariant fontVariant = FontVariant::Normal;
 		ListStyleType listStyleType = ListStyleType::None;
 		uint8_t fontSize = FontSize::Medium;
-		String fontFamily;
+		StringView fontFamily;
 
 		String getConfigName(bool caps = false) const;
 		FontStyleParameters getSmallCaps() const;
@@ -549,6 +584,8 @@ namespace style {
 		PageBreak pageBreakBefore = PageBreak::Auto;
 		PageBreak pageBreakAfter = PageBreak::Auto;
 		PageBreak pageBreakInside = PageBreak::Auto;
+		BorderCollapse borderCollapse = BorderCollapse::Collapse;
+		CaptionSide captionSide = CaptionSide::Top;
 
 		Metric marginTop;
 		Metric marginRight;
@@ -573,22 +610,10 @@ namespace style {
 	};
 
 	struct InlineModelParameters {
-		Metric marginTop;
 		Metric marginRight;
-		Metric marginBottom;
 		Metric marginLeft;
-
-		Metric paddingTop;
 		Metric paddingRight;
-		Metric paddingBottom;
 		Metric paddingLeft;
-
-		Metric width;
-		Metric height;
-		Metric minWidth;
-		Metric minHeight;
-		Metric maxWidth;
-		Metric maxHeight;
 
 		inline bool operator == (const InlineModelParameters &other) const { return memcmp(this, &other, sizeof(InlineModelParameters)) == 0; }
 		inline bool operator != (const InlineModelParameters &other) const { return !(*this == other); }
@@ -603,34 +628,30 @@ namespace style {
 		Metric backgroundSizeWidth;
 		Metric backgroundSizeHeight;
 
-		String backgroundImage;
+		StringView backgroundImage;
 
 		BackgroundParameters() = default;
 		BackgroundParameters(Autofit);
 
 		inline bool operator == (const BackgroundParameters &other) const {
-			return memcmp(this, &other, sizeof(BackgroundParameters) - sizeof(String)) == 0
+			return memcmp(this, &other, sizeof(BackgroundParameters) - sizeof(StringView)) == 0
 					&& backgroundImage == other.backgroundImage;
 		}
 		inline bool operator != (const BackgroundParameters &other) const { return !(*this == other); }
 	};
 
 	struct OutlineParameters {
-		BorderStyle borderLeftStyle = BorderStyle::None;
-		Metric borderLeftWidth;
-		Color4B borderLeftColor;
-		BorderStyle borderTopStyle = BorderStyle::None;
-		Metric borderTopWidth;
-		Color4B borderTopColor;
-		BorderStyle borderRightStyle = BorderStyle::None;
-		Metric borderRightWidth;
-		Color4B borderRightColor;
-		BorderStyle borderBottomStyle = BorderStyle::None;
-		Metric borderBottomWidth;
-		Color4B borderBottomColor;
-		BorderStyle outlineStyle = BorderStyle::None;
-		Metric outlineWidth;
-		Color4B outlineColor;
+		struct Params {
+			BorderStyle style = BorderStyle::None;
+			Metric width;
+			Color4B color;
+		};
+
+		Params left;
+		Params top;
+		Params right;
+		Params bottom;
+		Params outline;
 
 		inline bool operator == (const OutlineParameters &other) const { return memcmp(this, &other, sizeof(OutlineParameters)) == 0; }
 		inline bool operator != (const OutlineParameters &other) const { return !(*this == other); }
@@ -728,9 +749,9 @@ namespace style {
 		FontWeight fontWeight = FontWeight::Normal;
 		FontStretch fontStretch = FontStretch::Normal;
 
-		String getConfigName(const String &family, uint8_t size) const;
+		String getConfigName(const StringView &family, uint8_t size) const;
 
-		FontStyleParameters getStyle(const String &family, uint8_t size) const;
+		FontStyleParameters getStyle(const StringView &family, uint8_t size) const;
 
 		FontFace() = default;
 
@@ -757,7 +778,7 @@ namespace style {
 
 	bool readMediaParameter(Vector<Parameter> &params, const String &name, const StringView &value, const CssStringFunction &cb);
 
-	String getFontConfigName(const String &, uint8_t, FontStyle, FontWeight, FontStretch, FontVariant, bool caps);
+	String getFontConfigName(const StringView &, uint8_t, FontStyle, FontWeight, FontStretch, FontVariant, bool caps);
 
 	template<ParameterName Name, class Value> Parameter Parameter::create(const Value &v, MediaQueryId query) {
 		Parameter p(Name, query);

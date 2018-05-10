@@ -101,12 +101,12 @@ int16_t FontData::kerningAmount(char16_t first, char16_t second) const {
 	return 0;
 }
 
-bool FontLayout::init(const FontSource * source, const String &name, const String &family, uint8_t size, const FontFace &face, const ReceiptCallback &cb, float d,
-		const MetricCallback &mcb, const UpdateCallback &ucb) {
-	_density = d;
+bool FontLayout::init(const FontSource * source, const String &name, const StringView &family, uint8_t size, const FontFace &face,
+		const ReceiptCallback &cb, const MetricCallback &mcb, const UpdateCallback &ucb) {
+	//_density = d;
 	_name = name;
-	_family = family;
-	_size = size;
+	_family = family.str();
+	_dsize = size;
 	_face = face;
 	_callback = cb;
 	_metricCallback = mcb;
@@ -114,7 +114,7 @@ bool FontLayout::init(const FontSource * source, const String &name, const Strin
 	_source = source;
 
 	_data = Rc<FontData>::create();
-	_data->metrics = _metricCallback(_source, face.src, uint16_t(roundf(size * d)), _callback);
+	_data->metrics = _metricCallback(_source, face.src, _dsize, _callback);
 
 	return true;
 }
@@ -195,19 +195,17 @@ const ReceiptCallback &FontLayout::getCallback() const {
 const FontFace &FontLayout::getFontFace() const {
 	return _face;
 }
-float FontLayout::getDensity() const {
-	return _density;
-}
-uint8_t FontLayout::getOriginalSize() const {
-	return _size;
-}
+
+//uint8_t FontLayout::getOriginalSize() const {
+//	return _size;
+//}
 
 uint16_t FontLayout::getSize() const {
-	return roundf(_size * _density);
+	return _dsize;
 }
 
 FontParameters FontLayout::getStyle() const {
-	return _face.getStyle(_family, _size);
+	return _face.getStyle(_family, _dsize);
 }
 
 size_t FontSource::getFontFaceScore(const FontParameters &params, const FontFace &face) {
@@ -263,22 +261,55 @@ bool FontSource::init(FontFaceMap &&map, const ReceiptCallback &cb, float scale,
 	return true;
 }
 
-Rc<FontLayout> FontSource::getLayout(const FontParameters &style) {
+static auto FontSource_defaultFontFamily = "default";
+
+Rc<FontLayout> FontSource::getLayout(const FontParameters &style, float scale) {
 	Rc<FontLayout> ret = nullptr;
 
 	auto family = style.fontFamily;
 	if (family.empty()) {
-		family = "default";
+		family = StringView(FontSource_defaultFontFamily);
 	}
 
+	if (isnan(scale)) {
+		scale = _fontScale;
+	}
 	auto face = getFontFace(family, style);
 	if (face) {
-		auto name = face->getConfigName(family, style.fontSize);
+		auto dsize = uint16_t(roundf(style.fontSize * _density * scale));
+		auto name = face->getConfigName(family, dsize);
 		_mutex.lock();
 		auto l_it = _layouts.find(name);
 		if (l_it == _layouts.end()) {
-			ret = (_layouts.emplace(name, Rc<FontLayout>::create(this, name, family, style.fontSize, *face,
-					_callback, _density * _fontScale, _metricCallback, _layoutCallback)).first->second);
+			ret = (_layouts.emplace(name, Rc<FontLayout>::create(this, name, family, dsize, *face,
+					_callback, _metricCallback, _layoutCallback)).first->second);
+		} else {
+			ret = (l_it->second);
+		}
+		_mutex.unlock();
+	}
+
+	return ret;
+}
+
+Rc<FontLayout> FontSource::getLayout(const FontLayout *l) {
+	Rc<FontLayout> ret = nullptr;
+
+	StringView family = l->getFamily();
+	if (family.empty()) {
+		family = StringView(FontSource_defaultFontFamily);
+	}
+
+	auto dstyle = l->getStyle();
+	auto face = getFontFace(family, dstyle);
+	if (face) {
+		auto dsize = l->getSize();
+		auto name = face->getConfigName(family, dsize);
+		_mutex.lock();
+		auto l_it = _layouts.find(name);
+		if (l_it == _layouts.end()) {
+			ret = (_layouts.emplace(name, Rc<FontLayout>::create(this, name, family, dsize, *face,
+					_callback, _metricCallback, _layoutCallback)).first->second);
 		} else {
 			ret = (l_it->second);
 		}
@@ -303,7 +334,7 @@ bool FontSource::hasLayout(const FontParameters &style) {
 	bool ret = false;
 	auto family = style.fontFamily;
 	if (family.empty()) {
-		family = "default";
+		family = StringView(FontSource_defaultFontFamily);
 	}
 
 	auto face = getFontFace(family, style);
@@ -338,13 +369,13 @@ Map<String, Rc<FontLayout>> FontSource::getLayoutMap() {
 	return ret;
 }
 
-FontFace * FontSource::getFontFace(const String &name, const FontParameters &it) {
+FontFace * FontSource::getFontFace(const StringView &name, const FontParameters &it) {
 	size_t score = 0;
 	FontFace *face = nullptr;
 
 	auto family = it.fontFamily;
 	if (family.empty()) {
-		family = "default";
+		family = StringView(FontSource_defaultFontFamily);
 	}
 
 	auto f_it = _fontFaces.find(family);
@@ -360,7 +391,7 @@ FontFace * FontSource::getFontFace(const String &name, const FontParameters &it)
 	}
 
 	if (!face) {
-		family = "default";
+		family = StringView(FontSource_defaultFontFamily);
 		auto f_it = _fontFaces.find(family);
 		if (f_it != _fontFaces.end()) {
 			auto &faces = f_it->second;

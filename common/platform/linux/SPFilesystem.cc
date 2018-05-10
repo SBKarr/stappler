@@ -57,9 +57,9 @@ namespace filesystem {
 
 	static PathSource s_paths;
 
-	String _getPlatformPath(const String &path) {
+	String _getPlatformPath(const StringView &path) {
 		if (filepath::isBundled(path)) {
-			return filepath::merge(s_paths._appPath, path.substr("%PLATFORM%:"_len));
+			return filepath::merge(s_paths._appPath, path.sub("%PLATFORM%:"_len));
 		}
 		return filepath::merge(s_paths._appPath, path);
 	}
@@ -74,20 +74,20 @@ namespace filesystem {
 		return _getWritablePath();
 	}
 
-	bool _exists(const String &path) {
-		if (path.empty() || path.front() == '/' || path.compare(0, 2, "..") == 0 || path.find("/..") != String::npos) {
+	bool _exists(const StringView &path) {
+		if (path.empty() || path.front() == '/' || path.starts_with("..", 2) || path.find("/..") != maxOf<size_t>()) {
 			return false;
 		}
 
 		return access(_getPlatformPath(path).c_str(), F_OK) != -1;
 	}
 
-	size_t _size(const String &ipath) {
+	size_t _size(const StringView &ipath) {
 		auto path = _getPlatformPath(ipath);
 		return stappler::filesystem::size(path);
 	}
 
-	stappler::filesystem::ifile _openForReading(const String &path) {
+	stappler::filesystem::ifile _openForReading(const StringView &path) {
 		return stappler::filesystem::openForReading(_getPlatformPath(path));
 	}
 

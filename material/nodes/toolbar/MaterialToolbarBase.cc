@@ -86,8 +86,8 @@ void ToolbarBase::onContentSizeDirty() {
 	layoutSubviews();
 }
 
-void ToolbarBase::setTitle(const String &) { }
-const String &ToolbarBase::getTitle() const { return data::Value::StringNull; }
+void ToolbarBase::setTitle(const StringView &) { }
+StringView ToolbarBase::getTitle() const { return StringView(); }
 
 void ToolbarBase::setNavButtonIcon(IconName name) {
 	_navButton->setIconName(name);
@@ -282,19 +282,21 @@ float ToolbarBase::updateMenu(cocos2d::Node *composer, MenuSource *source, size_
 	Vector<ButtonIcon *> icons;
 	bool hasExtMenu = false;
 
-	auto &menuItems = _actionMenuSource->getItems();
-	for (auto &item : menuItems) {
-		if (item->getType() == MenuSourceItem::Type::Button) {
-			auto btnSrc = dynamic_cast<MenuSourceButton *>(item.get());
-			if (btnSrc->getNameIcon() != IconName::None) {
-				if (iconsCount < maxIcons) {
-					auto btn = Rc<ButtonIcon>::create();
-					btn->setMenuSourceButton(btnSrc);
-					composer->addChild(btn, 0, iconsCount);
-					icons.push_back(btn);
-					iconsCount ++;
-				} else {
-					extMenuSource->addItem(item);
+	if (_actionMenuSource) {
+		auto &menuItems = _actionMenuSource->getItems();
+		for (auto &item : menuItems) {
+			if (item->getType() == MenuSourceItem::Type::Button) {
+				auto btnSrc = dynamic_cast<MenuSourceButton *>(item.get());
+				if (btnSrc->getNameIcon() != IconName::None) {
+					if (iconsCount < maxIcons) {
+						auto btn = Rc<ButtonIcon>::create();
+						btn->setMenuSourceButton(btnSrc);
+						composer->addChild(btn, 0, iconsCount);
+						icons.push_back(btn);
+						iconsCount ++;
+					} else {
+						extMenuSource->addItem(item);
+					}
 				}
 			}
 		}

@@ -43,7 +43,7 @@ public:
 
 	virtual ~InputLabelDelegate();
 	virtual bool onInputChar(char16_t);
-	virtual bool onInputString(const WideString &str, const Cursor &c);
+	virtual bool onInputString(const WideStringView &str, const Cursor &c);
 
 	virtual void onCursor(const Cursor &);
 	virtual void onInput();
@@ -133,9 +133,9 @@ public:
 	virtual void setPointerColor(const Color &);
 	virtual const Color &getPointerColor() const;
 
-	virtual void setString(const WideString &) override;
-	virtual void setString(const String &) override;
-	virtual const WideString &getString() const override;
+	virtual void setString(const StringView &) override;
+	virtual void setString(const WideStringView &) override;
+	virtual WideStringView getString() const override;
 
 	virtual void setCursor(const Cursor &);
 	virtual const Cursor &getCursor() const;
@@ -198,7 +198,7 @@ public:
 	draw::PathNode *getCursorEnd() const;
 
 protected:
-	virtual void onText(const WideString &, const Cursor &);
+	virtual void onText(const WideStringView &, const Cursor &);
 	virtual void onKeyboard(bool, const Rect &, float);
 	virtual void onInput(bool);
 	virtual void onEnded();
@@ -206,7 +206,7 @@ protected:
 	virtual void onError(Error);
 
 	virtual void updateCursor();
-	virtual bool updateString(const WideString &str, const Cursor &c);
+	virtual bool updateString(const WideStringView &str, const Cursor &c);
 	virtual void updateFocus();
 
 	virtual void showLastChar();

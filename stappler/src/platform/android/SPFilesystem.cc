@@ -34,14 +34,16 @@ THE SOFTWARE.
 
 NS_SP_PLATFORM_BEGIN
 
+#define SP_TERMINATED_DATA(view) (view.terminated()?view.data():view.str().data())
+
 namespace filesystem {
-	std::string _getWritablePath() {
+	String _getWritablePath() {
 		return cocos2d::FileUtils::getInstance()->getWritablePath();
 	}
-	std::string _getDocumentsPath() {
+	String _getDocumentsPath() {
 		return cocos2d::FileUtils::getInstance()->getWritablePath();
 	}
-	std::string _getCachesPath() {
+	String _getCachesPath() {
 		auto env = spjni::getJniEnv();
 		auto & activity = spjni::getActivity(env);
 
@@ -56,25 +58,21 @@ namespace filesystem {
 		return _getWritablePath();
 	}
 
-	std::string _getPlatformPath(const std::string &ipath) {
-		return "";
-	}
-
-	std::string _getAssetsPath(const std::string &ipath) {
+	StringView _getAssetsPath(const StringView &ipath) {
 		auto path = ipath;
 		if (filepath::isBundled(path)) {
-			path = path.substr("%PLATFORM%:"_len);
+			path = path.sub("%PLATFORM%:"_len);
 		}
 
-	    if (strncmp(path.c_str(), "assets/", "assets/"_len) == 0) { // do we need this?
-	    	path = path.substr("assets/"_len);
+	    if (path.starts_with("assets/")) {
+	    	path = path.sub("assets/"_len);
 	    }
 
 		return path;
 	}
 
-	bool _exists(const std::string &ipath) { // check for existance in platform-specific filesystem
-		if (ipath.empty() || ipath.front() == '/' || ipath.compare(0, 2, "..") == 0 || ipath.find("/..") != String::npos) {
+	bool _exists(const StringView &ipath) { // check for existance in platform-specific filesystem
+		if (ipath.empty() || ipath.front() == '/' || ipath.starts_with("..") || ipath.find("/..") != maxOf<size_t>()) {
 			return false;
 		}
 
@@ -85,7 +83,7 @@ namespace filesystem {
 
 		auto path = _getAssetsPath(ipath);
 
-	    AAsset* aa = AAssetManager_open(mngr, path.c_str(), AASSET_MODE_UNKNOWN);
+	    AAsset* aa = AAssetManager_open(mngr, SP_TERMINATED_DATA(path), AASSET_MODE_UNKNOWN);
 	    if (aa) {
 	    	AAsset_close(aa);
 	    	return true;
@@ -94,7 +92,7 @@ namespace filesystem {
 	    return false;
 	}
 
-	size_t _size(const std::string &ipath) {
+	size_t _size(const StringView &ipath) {
 	    auto mngr = spjni::getAssetManager();
 	    if (!mngr) {
 	    	return 0;
@@ -102,7 +100,7 @@ namespace filesystem {
 
 		auto path = _getAssetsPath(ipath);
 
-	    AAsset* aa = AAssetManager_open(mngr, path.c_str(), AASSET_MODE_UNKNOWN);
+	    AAsset* aa = AAssetManager_open(mngr, SP_TERMINATED_DATA(path), AASSET_MODE_UNKNOWN);
 	    if (aa) {
 	    	auto len = AAsset_getLength64(aa);
 	    	AAsset_close(aa);
@@ -112,7 +110,7 @@ namespace filesystem {
 	    return 0;
 	}
 
-	stappler::filesystem::ifile _openForReading(const String &ipath) {
+	stappler::filesystem::ifile _openForReading(const StringView &ipath) {
 	    auto mngr = spjni::getAssetManager();
 	    if (!mngr) {
 	    	return stappler::filesystem::ifile();
@@ -120,7 +118,7 @@ namespace filesystem {
 
 		auto path = _getAssetsPath(ipath);
 
-	    AAsset* aa = AAssetManager_open(mngr, path.c_str(), AASSET_MODE_UNKNOWN);
+	    AAsset* aa = AAssetManager_open(mngr, SP_TERMINATED_DATA(path), AASSET_MODE_UNKNOWN);
 	    if (aa) {
 	    	auto len = AAsset_getLength64(aa);
 	    	return stappler::filesystem::ifile((void *)aa, len);
@@ -159,6 +157,8 @@ namespace filesystem {
     	AAsset_close((AAsset *)aa);
 	}
 }
+
+#undef SP_TERMINATED_DATA
 
 NS_SP_PLATFORM_END
 

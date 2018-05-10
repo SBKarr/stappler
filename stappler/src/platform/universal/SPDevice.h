@@ -147,9 +147,9 @@ public: /* background/foreground */
 	void onFocusLost();
 
 public: /* application actions */
-	void goToUrl(const String &url, bool external = true);
-	void makePhoneCall(const String &number);
-	void mailTo(const String &address);
+	void goToUrl(const StringView &url, bool external = true);
+	void makePhoneCall(const StringView &number);
+	void mailTo(const StringView &address);
 	void rateApplication();
 
 public:

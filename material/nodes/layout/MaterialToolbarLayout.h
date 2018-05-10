@@ -61,8 +61,8 @@ public:
 	virtual ToolbarBase *getToolbar() const;
 	virtual MenuSource *getActionMenuSource() const;
 
-	virtual void setTitle(const std::string &);
-	virtual const std::string &getTitle() const;
+	virtual void setTitle(const StringView &);
+	virtual StringView getTitle() const;
 
 	virtual void setToolbarColor(const Color &);
 	virtual void setToolbarColor(const Color &, const Color &text);

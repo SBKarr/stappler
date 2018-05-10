@@ -77,11 +77,14 @@ const data::Value * Exec::selectDataValue(const data::Value &val, StringView &r)
 		}
 	} else if (r.is('#') && val.isArray()) {
 		++ r;
-		auto name = r.readInteger();
-		if (name >= 0 && size_t(name) < val.size()) {
-			auto &it = val.getValue(name);
-			if (!it.isNull()) {
-				return selectDataValue(it, r);
+		auto nameRes = r.readInteger();
+		if (nameRes.valid()) {
+			auto name = nameRes.get();
+			if (name >= 0 && size_t(name) < val.size()) {
+				auto &it = val.getValue(name);
+				if (!it.isNull()) {
+					return selectDataValue(it, r);
+				}
 			}
 		}
 	}
@@ -236,9 +239,9 @@ Exec::Variable Exec::eval(const String &value) {
 		auto tmp = r;
 		r.skipUntil<Chars<'e', 'E', '.'>>();
 		if (!r.empty()) {
-			return Variable{new data::Value(tmp.readFloat())};
+			return Variable{new data::Value(tmp.readFloat().get(0.0f))};
 		} else {
-			return Variable{new data::Value(tmp.readInteger())};
+			return Variable{new data::Value(tmp.readInteger().get(0))};
 		}
 	} else if (r.is('\'')) {
 		++ r;
@@ -466,11 +469,12 @@ Exec::Variable Exec::execPathVariable(ReaderVec &path, ReaderVecIt pathIt, const
 			}
 		} else if (r.is('#') && var->isArray()) {
 			r = *pathIt;
-			auto name = r.readInteger();
-			++ pathIt;
-			if (name >= 0 && size_t(name) < var->size() && var->hasValue(name)) {
-				var = &var->getValue(name);
-			} else {
+			if (!r.readInteger().unwrap([&] (int64_t name) {
+				++ pathIt;
+				if (name >= 0 && size_t(name) < var->size() && var->hasValue(name)) {
+					var = &var->getValue(name);
+				}
+			})) {
 				return Variable();
 			}
 		} else {
@@ -489,12 +493,14 @@ bool Exec::execPathObject(ReaderVec &path, ReaderVecIt &pathIt, Variable &var) {
 	if (r.is('#') && var.value->isArray()) {
 		r = *pathIt;
 		++ pathIt;
-		auto name = r.readInteger();
-		if (name >= 0 && size_t(name) < var.value->size() && var.value->hasValue(name)) {
-			var.value = &var.value->getValue(name);
-		} else {
+		if (!r.readInteger().unwrap([&] (int64_t name) {
+			if (name >= 0 && size_t(name) < var.value->size() && var.value->hasValue(name)) {
+				var.value = &var.value->getValue(name);
+			}
+		})) {
 			return false;
 		}
+
 	} else if (r.is('.') && var.value->isDictionary()) {
 		auto name = String::make_weak(pathIt->data(), pathIt->size());
 		++ pathIt;

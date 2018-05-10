@@ -62,13 +62,13 @@ public:
 
 	void onTextChanged();
 
-	bool run(ime::Handler *, const WideString &str, const Cursor &, int32_t type);
+	bool run(ime::Handler *, const WideStringView &str, const Cursor &, int32_t type);
 
-	void setString(const WideString &str);
-	void setString(const WideString &str, const Cursor &);
+	void setString(const WideStringView &str);
+	void setString(const WideStringView &str, const Cursor &);
 	void setCursor(const Cursor &);
 
-	const WideString &getString() const;
+	WideStringView getString() const;
 	const Cursor &getCursor() const;
 
 	void cancel();
@@ -236,7 +236,7 @@ void IMEImpl::onTextChanged() {
 	}
 }
 
-bool IMEImpl::run(ime::Handler *h, const WideString &str, const Cursor &cursor, int32_t type) {
+bool IMEImpl::run(ime::Handler *h, const WideStringView &str, const Cursor &cursor, int32_t type) {
 	auto oldH = _handler;
 	_handler = h;
 	if (oldH) {
@@ -246,11 +246,11 @@ bool IMEImpl::run(ime::Handler *h, const WideString &str, const Cursor &cursor, 
 		oldH->onEnded();
 	}
 	_cursor = cursor;
-	_string = str;
+	_string = str.str();
 	_type = type;
 	_handler = h;
-	if (cursor.start > str.length()) {
-		_cursor.start = (uint32_t)str.length();
+	if (cursor.start > str.size()) {
+		_cursor.start = (uint32_t)str.size();
 	}
 	if (!_running) {
 		platform::ime::_runWithText(_string, cursor.start, cursor.length, type);
@@ -270,11 +270,11 @@ bool IMEImpl::run(ime::Handler *h, const WideString &str, const Cursor &cursor, 
 	return true;
 }
 
-void IMEImpl::setString(const WideString &str, const Cursor &cursor) {
+void IMEImpl::setString(const WideStringView &str, const Cursor &cursor) {
 	_cursor = cursor;
-	_string = str;
-	if (cursor.start > str.length()) {
-		_cursor.start = (uint32_t)str.length();
+	_string = str.str();
+	if (cursor.start > str.size()) {
+		_cursor.start = (uint32_t)str.size();
 	}
 
 	platform::ime::_updateText(_string, cursor.start, cursor.length, _type);
@@ -290,7 +290,7 @@ void IMEImpl::setCursor(const Cursor &cursor) {
 	}
 }
 
-const WideString &IMEImpl::getString() const {
+WideStringView IMEImpl::getString() const {
 	return _string;
 }
 const ime::Cursor &IMEImpl::getCursor() const {
@@ -428,7 +428,7 @@ namespace ime {
 EventHeader onKeyboard("IME", "IME.onKeyboard");
 EventHeader onInput("IME", "IME.onInput");
 
-bool Handler::run(const WideString &str, const Cursor &cursor, int32_t type) {
+bool Handler::run(const WideStringView &str, const Cursor &cursor, int32_t type) {
 	if (!isActive()) {
 		return IMEImpl::getInstance()->run(this, str, cursor, type);
 	}
@@ -441,7 +441,7 @@ void Handler::cancel() {
 }
 
 // only if this handler is active
-bool Handler::setString(const WideString &str, const Cursor &c) {
+bool Handler::setString(const WideStringView &str, const Cursor &c) {
 	if (isActive()) {
 		IMEImpl::getInstance()->setString(str, c);
 		return true;
@@ -456,7 +456,7 @@ bool Handler::setCursor(const Cursor &c) {
 	return false;
 }
 
-const WideString &Handler::getString() const {
+WideStringView Handler::getString() const {
 	return IMEImpl::getInstance()->getString();
 }
 const Cursor &Handler::getCursor() const {

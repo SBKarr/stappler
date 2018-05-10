@@ -93,6 +93,14 @@ const Node::AttrMap &Node::getAttributes() const {
 	return _attributes;
 }
 
+const String *Node::getAttribute(const StringView &key) const {
+	auto it = _attributes.find(key);
+	if (it != _attributes.end()) {
+		return &it->second;
+	}
+	return nullptr;
+}
+
 bool Node::empty() const {
 	return _value.empty() && _nodes.empty();
 }
@@ -141,6 +149,17 @@ void Node::foreach(const ForeachIter &onNode) {
 void Node::foreach(const ForeachConstIter &onNode) const {
 	onNode(*this, 0);
 	foreach(onNode, 0);
+}
+
+size_t Node::getChildIndex(const Node &node) const {
+	size_t idx = 0;
+	for (auto &it : _nodes) {
+		if (&it == &node) {
+			return idx;
+		}
+		++ idx;
+	}
+	return 0;
 }
 
 void Node::dropValue() {

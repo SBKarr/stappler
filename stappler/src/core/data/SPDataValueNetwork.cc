@@ -30,6 +30,7 @@ THE SOFTWARE.
 #include "SPNetworkDataTask.h"
 #include "SPDataJsonBuffer.h"
 #include "SPDevice.h"
+#include "SPAssetLibrary.h"
 
 NS_SP_EXT_BEGIN(data)
 
@@ -41,6 +42,7 @@ struct NetworkDataReader {
 	: _url(url), _key(key), _callback(cb), _nwcallback(ncb) {
 		auto task = Rc<NetworkDataTask>::create(NetworkTask::Method::Get, _url);
 		task->addCompleteCallback(std::bind(&NetworkDataReader::onDownloadCompleted, this, task, std::placeholders::_2));
+		AssetLibrary::signStandaloneTask(*task);
 		t.perform(task);
 	}
 

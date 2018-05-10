@@ -73,16 +73,16 @@ namespace device {
 	std::string _applicationVersion() {
 		return _valApplicationVersion;
 	}
-	cocos2d::Size _screenSize() {
+	Size _screenSize() {
 		return _valScreenSize;
 	}
-	cocos2d::Size _viewportSize(const cocos2d::Size &screenSize, bool isTablet) {
+	Size _viewportSize(const Size &screenSize, bool isTablet) {
 		if (_valCurrentSize.width > _valCurrentSize.height) {
 			return cocos2d::Size(_valCurrentSize.height, _valCurrentSize.width);
 		}
 		return _valCurrentSize;
 	}
-	float _designScale(const cocos2d::Size &screenSize, bool isTablet) {
+	float _designScale(const Size &screenSize, bool isTablet) {
 		return 1.0f;
 	}
 	const ScreenOrientation &_currentDeviceOrientation() {

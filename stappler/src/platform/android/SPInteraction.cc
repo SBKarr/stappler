@@ -32,36 +32,38 @@ THE SOFTWARE.
 
 NS_SP_PLATFORM_BEGIN
 
+#define SP_TERMINATED_DATA(view) (view.terminated()?view.data():view.str().data())
+
 namespace interaction {
-	void _goToUrl(const std::string &url, bool external) {
+	void _goToUrl(const StringView &url, bool external) {
 		auto env = spjni::getJniEnv();
 		auto & activity = spjni::getActivity(env);
 		auto activityClass = activity.get_class();
 		jmethodID openWebURL = spjni::getMethodID(env, activityClass, "openWebURL", "(Ljava/lang/String;)V");
 		if (openWebURL) {
-			jstring jurl = env->NewStringUTF(url.c_str());
+			jstring jurl = env->NewStringUTF(SP_TERMINATED_DATA(url));
 			env->CallVoidMethod(activity, openWebURL, jurl);
 			env->DeleteLocalRef(jurl);
 		}
 	}
-	void _makePhoneCall(const std::string &str) {
+	void _makePhoneCall(const StringView &str) {
 		auto env = spjni::getJniEnv();
 		auto & activity = spjni::getActivity(env);
 		auto activityClass = activity.get_class();
 		jmethodID openWebURL = spjni::getMethodID(env, activityClass, "openWebURL", "(Ljava/lang/String;)V");
 		if (openWebURL) {
-			jstring jurl = env->NewStringUTF(str.c_str());
+			jstring jurl = env->NewStringUTF(SP_TERMINATED_DATA(str));
 			env->CallVoidMethod(activity, openWebURL, jurl);
 			env->DeleteLocalRef(jurl);
 		}
 	}
-	void _mailTo(const std::string &address) {
+	void _mailTo(const StringView &address) {
 		auto env = spjni::getJniEnv();
 		auto & activity = spjni::getActivity(env);
 		auto activityClass = activity.get_class();
 		jmethodID openWebURL = spjni::getMethodID(env, activityClass, "openWebURL", "(Ljava/lang/String;)V");
 		if (openWebURL) {
-			jstring jurl = env->NewStringUTF(address.c_str());
+			jstring jurl = env->NewStringUTF(SP_TERMINATED_DATA(address));
 			env->CallVoidMethod(activity, openWebURL, jurl);
 			env->DeleteLocalRef(jurl);
 		}
@@ -76,15 +78,15 @@ namespace interaction {
 			env->CallVoidMethod(activity, perfromBackPressed);
 		}
 	}
-	void _notification(const std::string &title, const std::string &text) {
+	void _notification(const StringView &title, const StringView &text) {
 		auto env = spjni::getJniEnv();
 		auto & activity = spjni::getActivity(env);
 		auto activityClass = activity.get_class();
 		jmethodID openWebURL = spjni::getMethodID(env, activityClass, "showNotification",
 				"(Ljava/lang/String;Ljava/lang/String;)V");
 		if (openWebURL) {
-			jstring jtitle = env->NewStringUTF(title.c_str());
-			jstring jtext = env->NewStringUTF(text.c_str());
+			jstring jtitle = env->NewStringUTF(SP_TERMINATED_DATA(title));
+			jstring jtext = env->NewStringUTF(SP_TERMINATED_DATA(text));
 			env->CallVoidMethod(activity, openWebURL, jtitle, jtext);
 			env->DeleteLocalRef(jtitle);
 			env->DeleteLocalRef(jtext);
@@ -98,6 +100,8 @@ namespace interaction {
 		Device::getInstance()->goToUrl(url);
 	}
 }
+
+#undef SP_TERMINATED_DATA
 
 NS_SP_PLATFORM_END
 

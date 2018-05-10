@@ -51,14 +51,14 @@ bool RecyclerHolder::init(const Function<void()> &cb) {
 	_icon = addChildNode(icon, 2);
 
 	auto button = Rc<ButtonLabel>::create(cb);
-	button->setString("SystemRestore"_locale);
+	button->setString("SystemRestore"_locale.to_string());
 	button->setAnchorPoint(Vec2(1.0f, 0.0f));
 	button->setVisible(false);
 	_button = addChildNode(button, 3);
 
 	auto label = Rc<Label>::create(FontType::Body_1);
 	label->setLocaleEnabled(true);
-	label->setString("SystemRemoved"_locale);
+	label->setString("SystemRemoved"_locale.to_string());
 	label->setAnchorPoint(Vec2(0.0f, 0.5f));
 	label->setVisible(false);
 	_label = addChildNode(label, 4);

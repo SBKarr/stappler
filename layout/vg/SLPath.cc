@@ -35,7 +35,7 @@ NS_LAYOUT_BEGIN
 
 class SVGPathReader : public ReaderClassBase<char> {
 public:
-	static bool readFile(Path *p, const String &str) {
+	static bool readFile(Path *p, const StringView &str) {
 		if (!str.empty()) {
 			auto content = filesystem::readTextFile(str);
 			StringView r(content);
@@ -53,10 +53,6 @@ public:
 			}
 		}
 		return false;
-	}
-
-	static bool readPath(Path *p, const String &str) {
-		return readPath(p, StringView(str));
 	}
 
 	static bool readPath(Path *p, const StringView &r) {
@@ -473,11 +469,9 @@ protected:
 
 	bool readNumber(float &val) {
 		if (!reader.empty()) {
-			auto tmp = reader.readFloat();
-			if (IsErrorValue(tmp)) {
+			if (!reader.readFloat().grab(val)) {
 				return false;
 			}
-			val = tmp;
 			return true;
 		}
 		return false;
@@ -854,6 +848,11 @@ Path::Params Path::getParams() const {
 
 bool Path::empty() const {
 	return _commands.empty();
+}
+
+void Path::reserve(size_t s, size_t factor) {
+	_commands.reserve(s);
+	_points.reserve(s * factor);
 }
 
 const Vector<Path::Command> &Path::getCommands() const {

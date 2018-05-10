@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,12 +21,12 @@ THE SOFTWARE.
 **/
 
 #include "SPLayout.h"
+#include "SLLayout.h"
 #include "SLBuilder.h"
-#include "SLNode.h"
 
 NS_LAYOUT_BEGIN
 
-static WideString Builder_getLatinBullet(int64_t v, bool uppercase) {
+static WideString Layout_getLatinBullet(int64_t v, bool uppercase) {
 	static constexpr int mod = ('z' - 'a') + 1;
 	if (v == 0) {
 		return WideString(u"0");
@@ -51,7 +48,7 @@ static WideString Builder_getLatinBullet(int64_t v, bool uppercase) {
 	}
 	return ret;
 }
-static WideString Builder_getGreekBullet(int64_t v) {
+static WideString Layout_getGreekBullet(int64_t v) {
 	static constexpr int mod = (u'ω' - u'α') + 1;
 	if (v == 0) {
 		return WideString(u"0");
@@ -77,7 +74,7 @@ static WideString Builder_getGreekBullet(int64_t v) {
 //U+216x 	Ⅰ 	Ⅱ 	Ⅲ 	Ⅳ 	Ⅴ 	Ⅵ 	Ⅶ 	Ⅷ 	Ⅸ 	Ⅹ 	Ⅺ 	Ⅻ 	Ⅼ 	Ⅽ 	Ⅾ 	Ⅿ
 //U+217x 	ⅰ 	ⅱ 	ⅲ 	ⅳ 	ⅴ 	ⅵ 	ⅶ 	ⅷ 	ⅸ 	ⅹ 	ⅺ 	ⅻ 	ⅼ 	ⅽ 	ⅾ 	ⅿ
 
-static WideString Builder_getRomanBullet(int64_t v, bool uppercase) {
+static WideString Layout_getRomanBullet(int64_t v, bool uppercase) {
 	struct romandata_t {
 		int value;
 		char16_t const* numeral;
@@ -113,10 +110,11 @@ static WideString Builder_getRomanBullet(int64_t v, bool uppercase) {
 	return result;
 }
 
-WideString Builder::getListItemString(Layout *parent, Layout &l) {
+WideString Layout::getListItemBulletString() {
+	auto parent = builder->getTopLayout();
 	WideString str;
 
-	switch (l.node.block.listStyleType) {
+	switch (node.block.listStyleType) {
 	case style::ListStyleType::None: break;
 	case style::ListStyleType::Circle: str += u"◦ "; break;
 	case style::ListStyleType::Disc: str += u"• "; break;
@@ -131,23 +129,23 @@ WideString Builder::getListItemString(Layout *parent, Layout &l) {
 		parent->listItemIndex += ((parent->listItem==Layout::ListReversed)?-1:1);
 		break;
 	case style::ListStyleType::LowerAlpha:
-		str.append(Builder_getLatinBullet(parent->listItemIndex, false)).append(u". ");
+		str.append(Layout_getLatinBullet(parent->listItemIndex, false)).append(u". ");
 		parent->listItemIndex += ((parent->listItem==Layout::ListReversed)?-1:1);
 		break;
 	case style::ListStyleType::LowerGreek:
-		str.append(Builder_getGreekBullet(parent->listItemIndex)).append(u". ");
+		str.append(Layout_getGreekBullet(parent->listItemIndex)).append(u". ");
 		parent->listItemIndex += ((parent->listItem==Layout::ListReversed)?-1:1);
 		break;
 	case style::ListStyleType::LowerRoman:
-		str.append(Builder_getRomanBullet(parent->listItemIndex, false)).append(u". ");
+		str.append(Layout_getRomanBullet(parent->listItemIndex, false)).append(u". ");
 		parent->listItemIndex += ((parent->listItem==Layout::ListReversed)?-1:1);
 		break;
 	case style::ListStyleType::UpperAlpha:
-		str.append(Builder_getLatinBullet(parent->listItemIndex, true)).append(u". ");
+		str.append(Layout_getLatinBullet(parent->listItemIndex, true)).append(u". ");
 		parent->listItemIndex += ((parent->listItem==Layout::ListReversed)?-1:1);
 		break;
 	case style::ListStyleType::UpperRoman:
-		str.append(Builder_getRomanBullet(parent->listItemIndex, true)).append(u". ");
+		str.append(Layout_getRomanBullet(parent->listItemIndex, true)).append(u". ");
 		parent->listItemIndex += ((parent->listItem==Layout::ListReversed)?-1:1);
 		break;
 	}
@@ -155,71 +153,44 @@ WideString Builder::getListItemString(Layout *parent, Layout &l) {
 	return str;
 }
 
-int64_t Builder::getListItemCount(const Node &node, const Style &s) {
-	auto &nodes = node.getNodes();
-	int64_t counter = 0;
-	for (auto &n : nodes) {
-		auto style = compileStyle(n);
-		auto display = style->get(style::ParameterName::Display, this);
-		auto listStyleType = style->get(style::ParameterName::ListStyleType, this);
+void Layout::processListItemBullet(float parentPosY) {
+	Layout *parent = builder->getTopLayout();
 
-		if (!listStyleType.empty() && !display.empty() && display[0].value.display == style::Display::ListItem) {
-			auto type = listStyleType[0].value.listStyleType;
-			switch (type) {
-			case style::ListStyleType::Decimal:
-			case style::ListStyleType::DecimalLeadingZero:
-			case style::ListStyleType::LowerAlpha:
-			case style::ListStyleType::LowerGreek:
-			case style::ListStyleType::LowerRoman:
-			case style::ListStyleType::UpperAlpha:
-			case style::ListStyleType::UpperRoman:
-				++ counter;
-				break;
-			default: break;
-			}
+	if (node.block.display == style::Display::ListItem && node.block.listStylePosition == style::ListStylePosition::Outside
+			&& parent && parent->listItem != Layout::ListNone) {
+		auto &media = builder->getMedia();
+		const auto density = media.density;
+		auto origin = Vec2(roundf(pos.position.x * density), roundf((parentPosY) * density));
+		FontParameters fStyle = node.style->compileFontStyle(builder);
+		if (fStyle.fontFamily == "default" && (toInt(fStyle.listStyleType) < toInt(style::ListStyleType::Decimal))) {
+			fStyle.fontFamily = StringView("system");
 		}
-	}
-	return counter;
-}
+		ParagraphStyle pStyle = node.style->compileParagraphLayout(builder);
+		pStyle.textIndent.value = 0.0f; pStyle.textIndent.metric = style::Metric::Units::Px;
+		auto baseFont = builder->getFontSet()->getLayout(fStyle, media.fontScale)->getData();
 
-void Builder::drawListItemBullet(Layout &l, float parentPosY) {
-	Layout *parent = nullptr;
-	if (_layoutStack.size() > 1) {
-		parent = _layoutStack.at(_layoutStack.size() - 1);
-	}
+		Label *label = builder->getResult()->emplaceLabel(*this);
+		Formatter reader(builder->getFontSet(), &label->format, density);
+		reader.setOpticalAlignment(false);
+		InlineContext::initFormatter(*this, fStyle, pStyle, parentPosY, reader);
 
-	const auto density = _media.density;
-	auto origin = Vec2(roundf(l.pos.position.x * density), roundf((parentPosY) * density));
-	FontParameters fStyle = l.node.style->compileFontStyle(this);
-	if (fStyle.fontFamily == "default" && (toInt(fStyle.listStyleType) < toInt(style::ListStyleType::Decimal))) {
-		fStyle.fontFamily = "system";
-	}
-	ParagraphStyle pStyle = l.node.style->compileParagraphLayout(this);
-	pStyle.textIndent.value = 0.0f; pStyle.textIndent.metric = style::Metric::Units::Px;
-	auto baseFont = _fontSet->getLayout(fStyle)->getData();
-
-	Label label;
-	Formatter reader(getFontSet(), &label.format, _media.density);
-	reader.setOpticalAlignment(false);
-	initFormatter(l, pStyle, parentPosY, reader, true);
-
-	if (parent && parent->listItem != Layout::ListNone) {
-		TextStyle textStyle = l.node.style->compileTextLayout(this);
-		WideString str = getListItemString(parent, l);
+		TextStyle textStyle = node.style->compileTextLayout(builder);
+		WideString str = getListItemBulletString();
 		reader.read(fStyle, textStyle, str, 0, 0);
+
+		reader.finalize();
+		float offset = fixLabelPagination(*label);
+		float finalHeight = reader.getHeight() / density + offset;
+		float finalWidth = reader.getMaxLineX() / density;
+
+		float x = 0, w = builder->getMedia().surfaceSize.width;
+		std::tie(x, w) = builder->getFloatBounds(this, origin.y / density, finalHeight);
+
+		label->bbox = Rect(x - pos.position.x - finalWidth -
+				pStyle.listOffset.computeValueAuto(pos.size.width, builder->getMedia(), baseFont->metrics.height / density),
+				origin.y / density - pos.position.y, finalWidth, finalHeight);
+		objects.emplace_back(label);
 	}
-
-	reader.finalize();
-	float offset = fixLabelPagination(l, label);
-	float finalHeight = reader.getHeight() / density + offset;
-	float finalWidth = reader.getMaxLineX() / density;
-
-	float x = 0, w = _media.surfaceSize.width;
-	std::tie(x, w) = getFloatBounds(&l, origin.y / density, finalHeight);
-
-	l.preObjects.emplace_back(Rect(x - l.pos.position.x - finalWidth -
-			pStyle.listOffset.computeValueAuto(l.pos.size.width, _media.surfaceSize, baseFont->metrics.height / density, _media.getDefaultFontSize()),
-			origin.y / density - l.pos.position.y, finalWidth, finalHeight), std::move(label));
 }
 
 NS_LAYOUT_END

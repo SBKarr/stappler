@@ -33,7 +33,7 @@ public:
 	using Handler = ime::Handler;
 	using Cursor = ime::Cursor;
 
-	using Callback = Function<void(const String &)>;
+	using Callback = Function<void(const StringView &)>;
 
 	enum Mode {
 		Persistent,
@@ -48,14 +48,14 @@ public:
 
 	virtual void setFont(material::FontType);
 
-	virtual void setTitle(const String &) override;
-	virtual const String &getTitle() const override;
+	virtual void setTitle(const StringView &) override;
+	virtual StringView getTitle() const override;
 
-	virtual void setPlaceholder(const String &);
-	virtual const String &getPlaceholder() const;
+	virtual void setPlaceholder(const StringView &);
+	virtual StringView getPlaceholder() const;
 
-	virtual void setString(const String &);
-	virtual const String &getString() const;
+	virtual void setString(const StringView &);
+	virtual StringView getString() const;
 
 	virtual void setAllowAutocorrect(bool);
 	virtual bool isAllowAutocorrect() const;
@@ -82,7 +82,7 @@ public:
 protected:
 	virtual void layoutSubviews() override;
 
-	virtual bool onInputString(const WideString &str, const Cursor &c) override;
+	virtual bool onInputString(const WideStringView &str, const Cursor &c) override;
 	virtual void onInput() override;
 	virtual void onCursor(const Cursor &) override;
 	virtual void onActivated(bool) override;

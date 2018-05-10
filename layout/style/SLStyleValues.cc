@@ -23,9 +23,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "SLParser.h"
 #include "SPLayout.h"
+#include "SLParser.h"
 #include "SLStyle.h"
+#include "SLRendererTypes.h"
 #include "SPString.h"
 
 NS_LAYOUT_BEGIN
@@ -38,33 +39,36 @@ bool SimpleRendererInterface::resolveMediaQuery(MediaQueryId queryId) const {
 	return _media->at(queryId);
 }
 
-String SimpleRendererInterface::getCssString(CssStringId id) const {
+StringView SimpleRendererInterface::getCssString(CssStringId id) const {
 	return _strings->at(id);
 }
 
 namespace style {
 
-static bool _readStyleValue(StringView &str, Metric &value, bool resolutionMetric = false, bool allowEmptyMetric = false) {
-	str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-	if (!resolutionMetric && str.compare("auto")) {
-		str += 4;
+static bool _readStyleValue(StringView &r, Metric &value, bool resolutionMetric = false, bool allowEmptyMetric = false) {
+	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+	if (!resolutionMetric && r.starts_with("auto")) {
+		r += 4;
 		value.metric = Metric::Units::Auto;
 		value.value = 0.0f;
 		return true;
 	}
 
-	float fvalue = str.readFloat();
-	if (IsErrorValue(fvalue)) {
+	auto fRes = r.readFloat();
+	if (!fRes.valid()) {
 		return false;
 	}
 
+	auto fvalue = fRes.get();
 	if (fvalue == 0.0f) {
 		value.value = fvalue;
 		value.metric = Metric::Units::Px;
 		return true;
 	}
 
-	str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+
+	auto str = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
 	if (!resolutionMetric) {
 		if (str.is('%')) {
@@ -197,10 +201,11 @@ bool readAspectRatioValue(const StringView &istr, float &value) {
 	StringView str(istr);
 	float first, second;
 
-	first = str.readFloat();
-	if (IsErrorValue(first)) {
+	if (!str.readFloat().grab(first)) {
 		return false;
-	} else if (str.empty()) {
+	}
+
+	if (str.empty()) {
 		value = first;
 		return true;
 	}
@@ -209,8 +214,8 @@ bool readAspectRatioValue(const StringView &istr, float &value) {
 	if (str.is('/')) {
 		++ str;
 		str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-		second = str.readFloat();
-		if (IsErrorValue(second)) {
+
+		if (!str.readFloat().grab(second)) {
 			return false;
 		} else {
 			value = first / second;
@@ -261,28 +266,28 @@ bool readStyleMargin(const StringView &origStr, Metric &top, Metric &right, Metr
 	return true;
 }
 
-float Metric::computeValueStrong(float base, const Size &vp, float fontSize, float rootFontSize) const {
+float Metric::computeValueStrong(float base, const MediaParameters &media, float fontSize) const {
 	switch (metric) {
 	case Units::Auto: return nan(); break;
 	case Units::Px: return value; break;
-	case Units::Em: return fontSize * value; break;
-	case Units::Rem: return rootFontSize * value; break;
+	case Units::Em: return (!isnan(fontSize)) ? fontSize * value : media.getDefaultFontSize() * value; break;
+	case Units::Rem: return media.getDefaultFontSize() * value; break;
 	case Units::Percent: return (!isnanf(base)?(base * value):nan()); break;
 	case Units::Cover: return base; break;
 	case Units::Contain: return base; break;
-	case Units::Vw: return value * vp.width * 0.01; break;
-	case Units::Vh: return value * vp.height * 0.01; break;
-	case Units::VMin: return value * std::min(vp.width, vp.height) * 0.01; break;
-	case Units::VMax: return value * std::max(vp.width, vp.height) * 0.01; break;
+	case Units::Vw: return value * media.surfaceSize.width * 0.01; break;
+	case Units::Vh: return value * media.surfaceSize.height * 0.01; break;
+	case Units::VMin: return value * std::min(media.surfaceSize.width, media.surfaceSize.height) * 0.01; break;
+	case Units::VMax: return value * std::max(media.surfaceSize.width, media.surfaceSize.height) * 0.01; break;
 	default: return 0.0f; break;
 	}
 	return 0.0f;
 }
 
-float Metric::computeValueAuto(float base, const Size &vp, float fontSize, float rootFontSize) const {
+float Metric::computeValueAuto(float base, const MediaParameters &media, float fontSize) const {
 	switch (metric) {
 	case Units::Auto: return 0.0f; break;
-	default: return computeValueStrong(base, vp, fontSize, rootFontSize); break;
+	default: return computeValueStrong(base, media, fontSize); break;
 	}
 	return 0.0f;
 }
@@ -322,6 +327,14 @@ bool ParameterList::isInheritable(ParameterName name) {
 			|| name == ParameterName::BorderRightStyle
 			|| name == ParameterName::BorderBottomStyle
 			|| name == ParameterName::BorderLeftStyle
+			|| name == ParameterName::BorderTopWidth
+			|| name == ParameterName::BorderRightWidth
+			|| name == ParameterName::BorderBottomWidth
+			|| name == ParameterName::BorderLeftWidth
+			|| name == ParameterName::BorderTopColor
+			|| name == ParameterName::BorderRightColor
+			|| name == ParameterName::BorderBottomColor
+			|| name == ParameterName::BorderLeftColor
 			|| name == ParameterName::PageBreakBefore
 			|| name == ParameterName::PageBreakAfter
 			|| name == ParameterName::PageBreakInside) {

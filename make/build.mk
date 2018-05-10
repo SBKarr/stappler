@@ -29,6 +29,12 @@ TOOLKIT_CLEARABLE_OUTPUT :=
 endif
 endif
 
+ifeq ($(LOCAL_TOOLKIT),none)
+ifeq ($(IS_LOCAL_BUILD),1)
+TOOLKIT_CLEARABLE_OUTPUT :=
+endif
+endif
+
 ifeq ($(UNAME),Cygwin)
 GLOBAL_PREBUILT_LIBS_PATH := $(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)
 else

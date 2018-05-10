@@ -30,6 +30,7 @@ THE SOFTWARE.
 
 #include "SPRef.h"
 #include "SPCommon.h"
+#include "SPCharReader.h"
 
 #ifdef __cplusplus
 
@@ -78,6 +79,7 @@ class Document;
 class Result;
 class Node;
 class Reader;
+class Builder;
 
 struct MultipartParser;
 struct MediaParameters;
@@ -89,6 +91,7 @@ struct CharSpec;
 struct FontCharString;
 struct FontData;
 struct CharTexture;
+struct Layout;
 
 class FontLayout;
 class FontSource;
@@ -98,6 +101,8 @@ class HyphenMap;
 class Path;
 class Canvas;
 class Image;
+
+using FilePath = ValueWrapper<StringView, class FilePathTag>;
 
 NS_LAYOUT_END
 

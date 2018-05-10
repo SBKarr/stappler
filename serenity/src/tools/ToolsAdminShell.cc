@@ -264,11 +264,7 @@ struct HistoryCmd : ResourceCmd {
 		auto schemeName = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
-		int64_t time = 0;
-		auto testTime = r.readInteger();
-		if (testTime > 0) {
-			time = testTime;
-		}
+		int64_t time = r.readInteger().get(0);
 
 		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
@@ -280,7 +276,7 @@ struct HistoryCmd : ResourceCmd {
 			auto tmpField = schemeView.readUntilString("::");
 			if (schemeView.is("::")) {
 				schemeView += 2;
-				auto tmpTag = schemeView.readInteger();
+				auto tmpTag = schemeView.readInteger().get(0);
 				if (tmpTag > 0 && !tmpField.empty()) {
 					field = tmpField;
 					tag = tmpTag;
@@ -322,12 +318,7 @@ struct DeltaCmd : ResourceCmd {
 		auto schemeName = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
-		int64_t time = 0;
-		auto testTime = r.readInteger();
-		if (testTime > 0) {
-			time = testTime;
-		}
-
+		int64_t time = r.readInteger().get(0);
 		auto schemeView = schemeName;
 		StringView field; uint64_t tag = 0;
 		schemeName = schemeView.readUntilString("::");
@@ -336,7 +327,7 @@ struct DeltaCmd : ResourceCmd {
 			auto tmpField = schemeView.readUntilString("::");
 			if (schemeView.is("::")) {
 				schemeView += 2;
-				auto tmpTag = schemeView.readInteger();
+				auto tmpTag = schemeView.readInteger().get(0);
 				if (tmpTag > 0 && !tmpField.empty()) {
 					field = tmpField;
 					tag = tmpTag;

@@ -146,7 +146,7 @@ struct Server::Config : public AllocPool {
 		} else if (n.is("key")) {
 			sessionKey = v.str();
 		} else if (n.is("maxage")) {
-			sessionMaxAge = v.readInteger();
+			sessionMaxAge = v.readInteger().get(0);
 		} else if (n.is("secure")) {
 			if (v.is("true") || v.is("on") || v.is("On")) {
 				isSessionSecure = true;

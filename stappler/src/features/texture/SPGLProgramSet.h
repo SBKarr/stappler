@@ -47,10 +47,7 @@ public:
 		RawTextureColorA8Highp,
 
 		RawRect,
-		RawRectBorder,
 		RawRects,
-		RawAAMaskR,
-		RawAAMaskRGBA,
 	};
 
 	enum class Attr : uint16_t {
@@ -66,11 +63,10 @@ public:
 		MatrixMVP = 1 << 5,
 
 		CustomRect = 1 << 6,
-		CustomBorder = 1 << 7,
-		CustomFill = 1 << 8,
-		AmbientColor = 1 << 9,
-		AlphaTestLT = 1 << 10,
-		AlphaTestGT = 1 << 11
+		CustomFill = 1 << 7,
+		AmbientColor = 1 << 8,
+		AlphaTestLT = 1 << 9,
+		AlphaTestGT = 1 << 10
 	};
 
 	GLProgramDesc(Default);

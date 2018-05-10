@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,211 +23,13 @@ THE SOFTWARE.
 #ifndef LAYOUT_RENDERER_SLLAYOUT_H_
 #define LAYOUT_RENDERER_SLLAYOUT_H_
 
-#include "SLStyle.h"
-#include "SLFontFormatter.h"
+#include "SLInlineContext.h"
 
 NS_LAYOUT_BEGIN
 
-struct Link {
-	String target;
-	String mode;
-};
-
-struct Outline {
-	struct Params {
-		style::BorderStyle style = style::BorderStyle::None;
-		float width = 0.0f;
-		Color4B color;
-
-		bool compare(const Params &p) const { return p.style == style && p.width == width && p.color == color; }
-		bool isVisible() const { return style != style::BorderStyle::None && width >= 0.5f && color.a > 0; }
-	};
-
-	static Outline border(const OutlineStyle &, const Size &vp, float width, float emBase, float rootEmBase, float &borderWidth);
-
-	Params top;
-	Params right;
-	Params bottom;
-	Params left;
-
-	inline bool hasTopLine() const { return top.isVisible(); }
-	inline bool hasRightLine() const { return right.isVisible(); }
-	inline bool hasBottomLine() const { return bottom.isVisible(); }
-	inline bool hasLeftLine() const { return left.isVisible(); }
-
-	bool isMono() const {
-		Params def;
-		if (hasTopLine()) {
-			def = top;
-		}
-		if (hasRightLine()) {
-			if (!def.isVisible()) {
-				def = right;
-			} else if (!def.compare(right)) {
-				return false;
-			}
-		}
-		if (hasBottomLine()) {
-			if (!def.isVisible()) {
-				def = bottom;
-			} else if (!def.compare(bottom)) {
-				return false;
-			}
-		}
-		if (hasLeftLine() && def.isVisible() && !def.compare(left)) {
-			return false;
-		}
-		return true;
-	}
-	int getNumLines() const {
-		return (hasTopLine()?1:0) + (hasRightLine()?1:0) + (hasBottomLine()?1:0) + (hasLeftLine()?1:0);
-	}
-};
-
-using Border = Outline;
-
-struct Label {
-	FormatSpec format;
-	float height = 0.0f;
-
-	Rect getLineRect(uint32_t lineId, float density, const Vec2 & = Vec2()) const;
-	Rect getLineRect(const LineSpec &, float density, const Vec2 & = Vec2()) const;
-
-	uint32_t getLineForCharId(uint32_t id) const;
-	Vector<Rect> getLabelRects(uint32_t first, uint32_t last, float density, const Vec2 & = Vec2(), const Padding &p = Padding()) const;
-	void getLabelRects(Vector<Rect> &rect, uint32_t firstCharId, uint32_t lastCharId, float density, const Vec2 &origin, const Padding &p) const;
-	float getLinePosition(uint32_t first, uint32_t last, float density) const;
-};
-
-struct Object {
-	Rect bbox;
-
-	enum class Type {
-		Empty,
-		Ref,
-		Outline,
-		Background,
-		Label,
-
-		Link = Ref,
-	} type;
-
-	union Value {
-		Link ref;
-		Outline outline;
-		BackgroundStyle background;
-		Label label;
-
-		Value();
-		Value(Link &&);
-		Value(Outline &&);
-		Value(const BackgroundStyle &);
-		Value(BackgroundStyle &&);
-		Value(Label &&);
-
-		~Value();
-	} value;
-
-	size_t index = maxOf<size_t>();
-
-	~Object();
-	Object(const Rect &);
-	Object(const Rect &, Link &&);
-	Object(const Rect &, Outline &&);
-	Object(const Rect &, const BackgroundStyle &);
-	Object(const Rect &, BackgroundStyle &&);
-	Object(const Rect &, Label &&);
-
-	Object(Object &&);
-	Object & operator = (Object &&);
-
-	Object(const Object &) = delete;
-	Object & operator = (const Object &) = delete;
-
-	bool isTransparent() const;
-	bool isDrawable() const;
-	bool isExternal() const;
-
-	bool isEmpty() const { return (type == Type::Empty); }
-	bool isLabel() const { return type == Type::Label; }
-	bool isBackground() const { return type == Type::Background; }
-	bool isOutline() const { return type == Type::Outline; }
-	bool isLink() const { return type == Type::Link; }
-};
-
-using FloatStack = Vector< Rect >;
-
-struct InlineContext : public Ref {
-	using NodeCallback = Function<void(InlineContext &ctx)>;
-
-	struct RefPosInfo {
-		uint16_t firstCharId;
-		uint16_t lastCharId;
-
-		String target;
-		String mode;
-	};
-
-	struct OutlinePosInfo {
-		uint16_t firstCharId;
-		uint16_t lastCharId;
-
-		style::BorderStyle style;
-		float width;
-		Color4B color;
-	};
-
-	struct BorderPosInfo {
-		uint16_t firstCharId;
-		uint16_t lastCharId;
-
-		Border border;
-		float width;
-	};
-
-	struct BackgroundPosInfo {
-		uint16_t firstCharId;
-		uint16_t lastCharId;
-
-		BackgroundStyle background;
-		Padding padding;
-	};
-
-	struct IdPosInfo {
-		uint16_t firstCharId;
-		uint16_t lastCharId;
-
-		String id;
-	};
-
-	Vector<RefPosInfo> refPos;
-	Vector<OutlinePosInfo> outlinePos;
-	Vector<BorderPosInfo> borderPos;
-	Vector<BackgroundPosInfo> backgroundPos;
-	Vector<IdPosInfo> idPos;
-
-	float density = 1.0f;
-	float lineHeightMod = 1.0f;
-	bool lineHeightIsAbsolute = false;
-	uint16_t lineHeight = 0;
-
-	Label label;
-	Formatter reader;
-	bool finalized = false;
-
-	Vector<Pair<const Node *, NodeCallback>> nodes;
-
-	InlineContext();
-
-	bool init(FontSource *, float);
-
-	void pushNode(const Node *, const NodeCallback &);
-	void popNode(const Node *);
-	void finalize();
-	void reset();
-};
-
 struct Layout {
+	using ContentRequest = Formatter::ContentRequest;
+
 	struct NodeInfo {
 		const Node *node = nullptr;
 		const Style *style = nullptr;
@@ -235,8 +37,9 @@ struct Layout {
 		BlockStyle block;
 		style::Display context = style::Display::Block;
 
-		NodeInfo(const Node *, const Style *, const RendererInterface *);
-		NodeInfo(const Node *, const Style *, BlockStyle &&);
+		NodeInfo() = default;
+		NodeInfo(const Node *, const Style *, const RendererInterface *, style::Display = style::Display::None);
+		NodeInfo(const Node *, const Style *, BlockStyle &&, style::Display = style::Display::None);
 	};
 
 	struct PositionInfo {
@@ -255,17 +58,70 @@ struct Layout {
 
 		bool disablePageBreak = false;
 
+		Rect getInsideBoundingBox() const;
 		Rect getBoundingBox() const;
 		Rect getPaddingBox() const;
 		Rect getContentBox() const;
 	};
 
+	static void applyStyle(Builder *b, const Node *, const BlockStyle &, PositionInfo &, const Size &size,
+			style::Display = style::Display::Block, ContentRequest = ContentRequest::Normal);
+
+	static void applyStyle(Layout &, const Size &size, style::Display);
+
+	static float requestWidth(Builder *b, const Layout::NodeInfo &node, Layout::ContentRequest, const MediaParameters &);
+
+	Layout(Builder *, NodeInfo &&, bool disablePageBreak, uint16_t = 0);
+	Layout(Builder *, NodeInfo &&, PositionInfo &&, uint16_t = 0);
+
+	Layout(Builder *, const Node *, const Style *, style::Display = style::Display::None, bool disablePageBreak = false, uint16_t = 0);
+	Layout(Builder *, const Node *, const Style *, BlockStyle &&, style::Display = style::Display::None, bool disablePageBreak = false);
+
+	Layout(Layout &, const Node *, const Style *);
+
+	Layout(Layout &&) = delete;
+	Layout & operator = (Layout &&) = delete;
+
+	Layout(const Layout &) = delete;
+	Layout & operator = (const Layout &) = delete;
+
+	bool init(const Vec2 &, const Size &, float collapsableMarginTop);
+	bool finalize(const Vec2 &, float collapsableMarginTop);
+	void finalizeChilds(float height);
+
+	void applyVerticalMargin(float collapsableMarginTop, float pos);
+
+	Rect getBoundingBox() const;
+	Rect getPaddingBox() const;
+	Rect getContentBox() const;
+
+	void updatePosition(float pos);
+	void setBoundPosition(const Vec2 &pos);
+
+	void initFormatter(const FontParameters &fStyle, const ParagraphStyle &pStyle, float parentPosY, Formatter &reader, bool initial);
+	void initFormatter(float parentPosY, Formatter &reader, bool initial);
+
+	float fixLabelPagination(Label &label);
+
+	InlineContext &makeInlineContext(float parentPosY, const Node &node);
+	float finalizeInlineContext();
+	void cancelInlineContext();
+	void cancelInlineContext(Vec2 &, float &height, float &collapsableMarginTop);
+
+	void processBackground(float parentPosY);
+	void processListItemBullet(float);
+	void processOutline(bool withBorder = true);
+	void processRef();
+
+	WideString getListItemBulletString();
+
+	Builder *builder = nullptr;
+
 	NodeInfo node;
 	PositionInfo pos;
 
-	Vector<Object> preObjects;
-	Vector<Layout> layouts;
-	Vector<Object> postObjects;
+	Vector<Object *> objects;
+	Vector<Layout *> layouts;
 
 	int64_t listItemIndex = 1;
 	enum : uint8_t {
@@ -274,37 +130,13 @@ struct Layout {
 		ListReversed
 	} listItem = ListNone;
 
+	bool inlineInitialized = false;
 	Rc<InlineContext> context;
-	Vector<Layout> inlineBlockLayouts;
+	Vector<Layout *> inlineBlockLayouts;
 	size_t charBinding = 0;
+	ContentRequest request = ContentRequest::Normal;
 
-	Layout(NodeInfo &&, bool disablePageBreak);
-
-	Layout(Layout &&);
-	Layout & operator = (Layout &&);
-
-	Layout(const Layout &) = delete;
-	Layout & operator = (const Layout &) = delete;
-
-	Rect getBoundingBox() const;
-	Rect getPaddingBox() const;
-	Rect getContentBox() const;
-
-	void updatePosition(float pos);
-	void setBoundPosition(const Vec2 &pos);
-};
-
-struct FloatContext {
-	Layout * root;
-	float pageHeight = nan();
-	FloatStack floatRight;
-	FloatStack floatLeft;
-
-	Pair<float, float> getAvailablePosition(float yPos, float height) const;
-
-	bool pushFloatingNode(Layout &origin, Layout &l, Vec2 &vec);
-	bool pushFloatingNodeToStack(Layout &origin, Layout &l, Rect &s, const Rect &bbox, Vec2 &vec);
-	bool pushFloatingNodeToNewStack(Layout &origin, Layout &l, FloatStack &s, const Rect &bbox, Vec2 &vec);
+	uint16_t depth = 0;
 };
 
 NS_LAYOUT_END

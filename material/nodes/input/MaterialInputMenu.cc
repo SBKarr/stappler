@@ -44,7 +44,7 @@ bool InputMenu::init(const Callback &cut, const Callback &copy, const Callback &
 
 	auto buttonCut = Rc<ButtonLabel>::create(FontType::Button, cut);
 	buttonCut->setStyle(Button::Style::FlatBlack);
-	buttonCut->setString("SystemCut"_locale);
+	buttonCut->setString("SystemCut"_locale.to_string());
 	buttonCut->setVisible(false);
 	buttonCut->setAnchorPoint(Vec2(0.0f, 0.0f));
 	buttonCut->setLabelPadding(Padding(8.0f, 12.0f));
@@ -53,7 +53,7 @@ bool InputMenu::init(const Callback &cut, const Callback &copy, const Callback &
 
 	auto buttonCopy = Rc<ButtonLabel>::create(FontType::Button, copy);
 	buttonCopy->setStyle(Button::Style::FlatBlack);
-	buttonCopy->setString("SystemCopy"_locale);
+	buttonCopy->setString("SystemCopy"_locale.to_string());
 	buttonCopy->setVisible(false);
 	buttonCopy->setAnchorPoint(Vec2(0.0f, 0.0f));
 	buttonCopy->setLabelPadding(Padding(8.0f, 12.0f));
@@ -62,7 +62,7 @@ bool InputMenu::init(const Callback &cut, const Callback &copy, const Callback &
 
 	auto buttonPaste = Rc<ButtonLabel>::create(FontType::Button, paste);
 	buttonPaste->setStyle(Button::Style::FlatBlack);
-	buttonPaste->setString("SystemPaste"_locale);
+	buttonPaste->setString("SystemPaste"_locale.to_string());
 	buttonPaste->setVisible(false);
 	buttonPaste->setAnchorPoint(Vec2(0.0f, 0.0f));
 	buttonPaste->setLabelPadding(Padding(8.0f, 12.0f));

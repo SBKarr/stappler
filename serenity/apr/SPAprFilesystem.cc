@@ -41,9 +41,9 @@ namespace filesystem {
 	    return sconf->ap_document_root;
 	}
 
-	String _getPlatformPath(const String &path) {
+	String _getPlatformPath(const StringView &path) {
 		if (filepath::isBundled(path)) {
-			return filepath::merge(String::make_weak(getDocumentRoot()), path.substr("%PLATFORM%:"_len));
+			return filepath::merge(String::make_weak(getDocumentRoot()), path.sub("%PLATFORM%:"_len));
 		}
 		return filepath::merge(String::make_weak(getDocumentRoot()), path);
 	}
@@ -64,20 +64,20 @@ namespace filesystem {
 		return path;
 	}
 
-	bool _exists(const String &path) {
-		if (path.empty() || path.front() == '/' || path.compare(0, 2, "..") == 0 || path.find("/..") != String::npos) {
+	bool _exists(const StringView &path) {
+		if (path.empty() || path.front() == '/' || path.starts_with("..") || path.find("/..") != String::npos) {
 			return false;
 		}
 
 		return access(_getPlatformPath(path).c_str(), F_OK) != -1;
 	}
 
-	size_t _size(const String &ipath) {
+	size_t _size(const StringView &ipath) {
 		auto path = _getPlatformPath(ipath);
 		return stappler::filesystem::size(path);
 	}
 
-	stappler::filesystem::ifile _openForReading(const String &path) {
+	stappler::filesystem::ifile _openForReading(const StringView &path) {
 		return stappler::filesystem::openForReading(_getPlatformPath(path));
 	}
 

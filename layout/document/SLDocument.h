@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -32,11 +32,11 @@ NS_LAYOUT_BEGIN
 
 class Document : public Ref {
 public:
-	using check_data_fn = bool (*) (const DataReader<ByteOrder::Network> &str, const String &ct);
-	using load_data_fn = Rc<Document> (*) (const DataReader<ByteOrder::Network> &, const String &ct);
+	using check_data_fn = bool (*) (const DataReader<ByteOrder::Network> &str, const StringView &ct);
+	using load_data_fn = Rc<Document> (*) (const DataReader<ByteOrder::Network> &, const StringView &ct);
 
-	using check_file_fn = bool (*) (const String &path, const String &ct);
-	using load_file_fn = Rc<Document> (*) (const String &path, const String &ct);
+	using check_file_fn = bool (*) (const StringView &path, const StringView &ct);
+	using load_file_fn = Rc<Document> (*) (const StringView &path, const StringView &ct);
 
 	struct DocumentFormat {
 		check_data_fn check_data;
@@ -100,31 +100,31 @@ public:
 	using GalleryMap = Map<String, Vector<String>>;
 	using StringDocument = ValueWrapper<String, class StringDocumentTag>;
 
-	static bool canOpenDocumnt(const FilePath &path, const String &ct = String());
-	static bool canOpenDocumnt(const DataReader<ByteOrder::Network> &data, const String &ct = String());
+	static bool canOpenDocumnt(const StringView &path, const StringView &ct = StringView());
+	static bool canOpenDocumnt(const DataReader<ByteOrder::Network> &data, const StringView &ct = StringView());
 
-	static Rc<Document> openDocument(const FilePath &path, const String &ct = String());
-	static Rc<Document> openDocument(const DataReader<ByteOrder::Network> &data, const String &ct = String());
+	static Rc<Document> openDocument(const StringView &path, const StringView &ct = StringView());
+	static Rc<Document> openDocument(const DataReader<ByteOrder::Network> &data, const StringView &ct = StringView());
 
-	static String resolveName(const String &);
-	static String getImageName(const String &);
-	static Vector<String> getImageOptions(const String &);
+	static StringView resolveName(const StringView &);
+	static StringView getImageName(const StringView &);
+	static Vector<StringView> getImageOptions(const StringView &);
 
 	Document();
 
 	virtual ~Document() { }
 
 	virtual bool init(const StringDocument &);
-	virtual bool init(const FilePath &, const String &ct = "");
-	virtual bool init(const DataReader<ByteOrder::Network> &, const String &ct = "");
+	virtual bool init(const FilePath &, const StringView &ct = StringView());
+	virtual bool init(const DataReader<ByteOrder::Network> &, const StringView &ct = StringView());
 
 	virtual void setMeta(const String &key, const String &value);
 	virtual String getMeta(const String &) const;
 
-	virtual bool isFileExists(const String &) const;
-	virtual Bytes getFileData(const String &);
-	virtual Bytes getImageData(const String &);
-	virtual Pair<uint16_t, uint16_t> getImageSize(const String &);
+	virtual bool isFileExists(const StringView &) const;
+	virtual Bytes getFileData(const StringView &);
+	virtual Bytes getImageData(const StringView &);
+	virtual Pair<uint16_t, uint16_t> getImageSize(const StringView &);
 
 	void storeData(const DataReader<ByteOrder::Network> &);
 	bool prepare();
@@ -132,14 +132,16 @@ public:
 	const Vector<String> &getSpine() const;
 
 	const ContentPage *getRoot() const;
-	const ContentPage *getContentPage(const String &) const;
-	const Node *getNodeById(const String &pagePath, const String &id) const;
-	Pair<const ContentPage *, const Node *> getNodeByIdGlobal(const String &id) const;
+	const ContentPage *getContentPage(const StringView &) const;
+	const Node *getNodeById(const StringView &pagePath, const StringView &id) const;
+	Pair<const ContentPage *, const Node *> getNodeByIdGlobal(const StringView &id) const;
 
 	const ImageMap & getImages() const;
 	const GalleryMap & getGalleryMap() const;
 	const ContentRecord & getTableOfContents() const;
 	const Map<String, ContentPage> & getContentPages() const;
+
+	NodeId getMaxNodeId() const;
 
 	// Default style, that can be redefined with css
 	virtual Style beginStyle(const Node &, const Vector<const Node *> &, const MediaParameters &) const;
@@ -171,6 +173,7 @@ protected:
 	ContentRecord _contents;
 
 	Map<String, String> _meta;
+	NodeId _maxNodeId = 0;
 };
 
 NS_LAYOUT_END

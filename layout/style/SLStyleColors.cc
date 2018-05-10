@@ -92,8 +92,7 @@ static bool readColorDigits(const StringView &origStr, float *b, int num, bool i
 	++ str;
 
 	for (int i = 0; i < num; i++) {
-		b[i] = str.readFloat();
-		if (IsErrorValue(b[i])) {
+		if (!str.readFloat().grab(b[i])) {
 			return false;
 		}
 
@@ -215,7 +214,7 @@ static bool readNamedColor(const StringView &origStr, Color3B &color) {
 		color = Color3B::WHITE;
 	} else if (origStr.compare("silver")) {
 		color = Color3B(192,192,192);
-	} else if (origStr.compare("gray")) {
+	} else if (origStr.compare("gray") || origStr.compare("grey")) {
 		color = Color3B(128,128,128);
 	} else if (origStr.compare("black")) {
 		color = Color3B::BLACK;

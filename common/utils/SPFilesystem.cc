@@ -37,6 +37,8 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(filesystem)
 
+#define SP_TERMINATED_DATA(view) (view.terminated()?view.data():view.str().data())
+
 ifile::ifile() : _isBundled(false), _nativeFile(nullptr) { }
 ifile::ifile(FILE *f) : _isBundled(false), _nativeFile(f) {
 	if (is_open()) {
@@ -179,7 +181,7 @@ bool ifile::is_open() const {
 	return _nativeFile != nullptr || _platformFile != nullptr;
 }
 
-static bool inAppBundle(const String &path) {
+static bool inAppBundle(const StringView &path) {
 	if (filepath::isAbsolute(path)) {
 		return false;
 	}
@@ -190,15 +192,7 @@ static bool inAppBundle(const String &path) {
 	return false;
 }
 
-String resolvePath(const String &ipath) {
-	if (filepath::isAbsolute(ipath)) {
-		return ipath;
-	} else {
-		return filepath::absolute(ipath);
-	}
-}
-
-bool exists(const String &ipath) {
+bool exists(const StringView &ipath) {
 	if (filepath::isAbsolute(ipath)) {
 		return filesystem_native::access_fn(ipath, filesystem_native::Access::Exists);
 	} else if (filepath::isBundled(ipath)) {
@@ -211,7 +205,7 @@ bool exists(const String &ipath) {
 	}
 }
 
-bool isdir(const String &ipath) {
+bool isdir(const StringView &ipath) {
 	if (inAppBundle(ipath)) {
 		return false; // no directory support for platform path
 	}
@@ -219,7 +213,7 @@ bool isdir(const String &ipath) {
 	return filesystem_native::isdir_fn(path);
 }
 
-size_t size(const String &ipath) {
+size_t size(const StringView &ipath) {
 	if (inAppBundle(ipath)) {
 		return platform::filesystem::_size(ipath);
 	} else {
@@ -228,7 +222,7 @@ size_t size(const String &ipath) {
 	}
 }
 
-time_t mtime(const String &ipath) {
+time_t mtime(const StringView &ipath) {
 	if (inAppBundle(ipath)) {
 		return 0;
 	}
@@ -236,7 +230,7 @@ time_t mtime(const String &ipath) {
 	return filesystem_native::mtime_fn(path);
 }
 
-time_t ctime(const String &ipath) {
+time_t ctime(const StringView &ipath) {
 	if (inAppBundle(ipath)) {
 		return 0;
 	}
@@ -244,7 +238,7 @@ time_t ctime(const String &ipath) {
 	return filesystem_native::ctime_fn(path);
 }
 
-bool remove(const String &ipath, bool recursive, bool withDirs) {
+bool remove(const StringView &ipath, bool recursive, bool withDirs) {
 	if (inAppBundle(ipath)) {
 		return false;
 	}
@@ -253,7 +247,7 @@ bool remove(const String &ipath, bool recursive, bool withDirs) {
 	if (!recursive) {
 		return filesystem_native::remove_fn(path);
 	} else {
-		return ftw_b(path, [withDirs] (const String &fpath, bool isFile) -> bool {
+		return ftw_b(path, [withDirs] (const StringView &fpath, bool isFile) -> bool {
 			if (isFile || withDirs) {
 				return remove(fpath);
 			}
@@ -262,7 +256,7 @@ bool remove(const String &ipath, bool recursive, bool withDirs) {
 	}
 }
 
-bool touch(const String &ipath) {
+bool touch(const StringView &ipath) {
 	auto path = filepath::absolute(ipath, true);
 	if (filepath::isBundled(path)) {
 		return false;
@@ -271,12 +265,12 @@ bool touch(const String &ipath) {
 }
 
 
-bool mkdir(const String &ipath) {
+bool mkdir(const StringView &ipath) {
 	auto path = filepath::absolute(ipath, true);
 	return filesystem_native::mkdir_fn(path);
 }
 
-bool mkdir_recursive(const String &ipath, bool appWide) {
+bool mkdir_recursive(const StringView &ipath, bool appWide) {
 	auto path = filepath::absolute(ipath, true);
 
 	String appWideLimit;
@@ -317,7 +311,7 @@ bool mkdir_recursive(const String &ipath, bool appWide) {
 		bool control = false;
 		String construct("/");
 		for (auto &it : components) {
-			construct.append(it);
+			construct.append(it.data(), it.size());
 			if (!appWide || construct.compare(0, std::min(construct.size(), appWideLimit.size()), appWideLimit) == 0) {
 				if (control || !filesystem_native::isdir_fn(construct)) {
 					control = true;
@@ -332,17 +326,17 @@ bool mkdir_recursive(const String &ipath, bool appWide) {
 	return true;
 }
 
-void ftw(const String &ipath, const Function<void(const String &path, bool isFile)> &callback, int depth, bool dir_first) {
+void ftw(const StringView &ipath, const Function<void(const StringView &path, bool isFile)> &callback, int depth, bool dir_first) {
 	String path = filepath::absolute(ipath, true);
 	filesystem_native::ftw_fn(path, callback, depth, dir_first);
 }
 
-bool ftw_b(const String &ipath, const Function<bool(const String &path, bool isFile)> &callback, int depth, bool dir_first) {
+bool ftw_b(const StringView &ipath, const Function<bool(const StringView &path, bool isFile)> &callback, int depth, bool dir_first) {
 	String path = filepath::absolute(ipath, true);
 	return filesystem_native::ftw_b_fn(path, callback, depth, dir_first);
 }
 
-bool move(const String &isource, const String &idest) {
+bool move(const StringView &isource, const StringView &idest) {
 	String source = filepath::absolute(isource, true);
 	String dest = filepath::absolute(idest, true);
 
@@ -355,13 +349,13 @@ bool move(const String &isource, const String &idest) {
 	return true;
 }
 
-static inline bool performCopy(const String &source, const String &dest) {
+static inline bool performCopy(const StringView &source, const StringView &dest) {
 	if (stappler::filesystem::exists(dest)) {
 		stappler::filesystem::remove(dest);
 	}
 #if SPDEFAULT
 	if (!stappler::filesystem::exists(dest)) {
-		std::ofstream destStream(dest, std::ios::binary);
+		std::ofstream destStream(dest.str(), std::ios::binary);
 		auto f = openForReading(source);
 		if (f && destStream.is_open()) {
 			if (io::read(f, destStream) > 0) {
@@ -372,22 +366,22 @@ static inline bool performCopy(const String &source, const String &dest) {
 	}
 	return false;
 #else
-	return apr_file_copy(source.c_str(), dest.c_str(), APR_FPROT_FILE_SOURCE_PERMS, memory::pool::acquire()) == APR_SUCCESS;
+	return apr_file_copy(SP_TERMINATED_DATA(source), SP_TERMINATED_DATA(dest), APR_FPROT_FILE_SOURCE_PERMS, memory::pool::acquire()) == APR_SUCCESS;
 #endif
 }
 
-bool copy(const String &isource, const String &idest, bool stopOnError) {
+bool copy(const StringView &isource, const StringView &idest, bool stopOnError) {
 	String source = filepath::absolute(isource, true);
 	String dest = filepath::absolute(idest, true);
 	if (dest.back() == '/') {
-		dest += filepath::lastComponent(source);
+		dest = filepath::merge(dest, filepath::lastComponent(source));
 	} else if (isdir(dest) && filepath::lastComponent(source) != filepath::lastComponent(dest)) {
-		dest += "/" + filepath::lastComponent(source);
+		dest = filepath::merge(dest, filepath::lastComponent(source));
 	}
 	if (!isdir(source)) {
 		return performCopy(source, dest);
 	} else {
-		return ftw_b(source, [source, dest, stopOnError] (const String &path, bool isFile) -> bool {
+		return ftw_b(source, [source, dest, stopOnError] (const StringView &path, bool isFile) -> bool {
 			if (!isFile) {
 				if (path == source) {
 					mkdir(filepath::replace(path, source, dest));
@@ -411,9 +405,9 @@ bool copy(const String &isource, const String &idest, bool stopOnError) {
 	}
 }
 
-String writablePath(const String &path, bool relative) {
+String writablePath(const StringView &path, bool relative) {
 	if (!path.empty() && !relative && filepath::isAbsolute(path)) {
-		return path;
+		return path.str();
 	}
 	auto wpath =  platform::filesystem::_getWritablePath();
 	if (path.empty()) {
@@ -422,9 +416,9 @@ String writablePath(const String &path, bool relative) {
 	return filepath::merge(wpath, path);
 }
 
-String cachesPath(const String &path, bool relative) {
+String cachesPath(const StringView &path, bool relative) {
 	if (!path.empty() && !relative && filepath::isAbsolute(path)) {
-		return path;
+		return path.str();
 	}
 	auto cpath =  platform::filesystem::_getCachesPath();
 	if (path.empty()) {
@@ -433,9 +427,9 @@ String cachesPath(const String &path, bool relative) {
 	return filepath::merge(cpath, path);
 }
 
-String documentsPath(const String &path, bool relative) {
+String documentsPath(const StringView &path, bool relative) {
 	if (!path.empty() && !relative && filepath::isAbsolute(path)) {
-		return path;
+		return path.str();
 	}
 	auto dpath =  platform::filesystem::_getDocumentsPath();
 	if (path.empty()) {
@@ -444,9 +438,9 @@ String documentsPath(const String &path, bool relative) {
 	return filepath::merge(dpath, path);
 }
 
-String currentDir(const String &path, bool relative) {
+String currentDir(const StringView &path, bool relative) {
 	if (!path.empty() && !relative && filepath::isAbsolute(path)) {
-		return path;
+		return path.str();
 	}
 	String cwd = filesystem_native::getcwd_fn();
 	if (!cwd.empty()) {
@@ -459,10 +453,10 @@ String currentDir(const String &path, bool relative) {
 	return "";
 }
 
-bool write(const String &path, const Bytes &vec) {
+bool write(const StringView &path, const Bytes &vec) {
 	return write(path, vec.data(), vec.size());
 }
-bool write(const String &ipath, const unsigned char *data, size_t len) {
+bool write(const StringView &ipath, const unsigned char *data, size_t len) {
 	String path = filepath::absolute(ipath, true);
 	OutputFileStream f(path);
 	if (f.is_open()) {
@@ -473,7 +467,7 @@ bool write(const String &ipath, const unsigned char *data, size_t len) {
 	return false;
 }
 
-ifile openForReading(const String &ipath) {
+ifile openForReading(const StringView &ipath) {
 	if (inAppBundle(ipath)) {
 		return platform::filesystem::_openForReading(ipath);
 	}
@@ -485,7 +479,7 @@ ifile openForReading(const String &ipath) {
 	return ifile();
 }
 
-String readTextFile(const String &ipath) {
+String readTextFile(const StringView &ipath) {
 	auto f = openForReading(ipath);
 	if (f) {
 		auto fsize = f.size();
@@ -497,7 +491,7 @@ String readTextFile(const String &ipath) {
 	return String();
 }
 
-Bytes readFile(const String &ipath, size_t off, size_t size) {
+Bytes readFile(const StringView &ipath, size_t off, size_t size) {
 	auto f = openForReading(ipath);
 	if (f) {
 		auto fsize = f.size();
@@ -517,7 +511,7 @@ Bytes readFile(const String &ipath, size_t off, size_t size) {
 	return Bytes();
 }
 
-bool readFile(const io::Consumer &stream, uint8_t *buf, size_t bsize, const String &ipath, size_t off, size_t size) {
+bool readFile(const io::Consumer &stream, uint8_t *buf, size_t bsize, const StringView &ipath, size_t off, size_t size) {
 	auto f = openForReading(ipath);
 	if (f) {
 		size_t fsize = f.size();
@@ -551,7 +545,7 @@ NS_SP_EXT_END(filesystem)
 
 NS_SP_EXT_BEGIN(filepath)
 
-bool isAbsolute(const String &path) {
+bool isAbsolute(const StringView &path) {
 	if (path.empty()) {
 		return true;
 	}
@@ -559,21 +553,21 @@ bool isAbsolute(const String &path) {
 }
 
 // check if filepath is local (not in application bundle or apk)
-bool isCanonical(const String &path) {
+bool isCanonical(const StringView &path) {
 	if (path.empty()) {
 		return false;
 	}
 	return path[0] == '%';
 }
 
-bool isBundled(const String &path) {
-	if (path.length() > "%PLATFORM%:"_len) {
-		return memcmp(path.c_str(), "%PLATFORM%:", "%PLATFORM%:"_len) == 0;
+bool isBundled(const StringView &path) {
+	if (path.size() > "%PLATFORM%:"_len) {
+		return path.starts_with("%PLATFORM%:");
 	}
 	return false;
 }
 
-bool isAboveRoot(const String & path) {
+bool isAboveRoot(const StringView & path) {
 	size_t components = 0;
 	StringView r(path);
 	while (!r.empty()) {
@@ -594,7 +588,7 @@ bool isAboveRoot(const String & path) {
 	return false;
 }
 
-bool validatePath(const String & path) {
+bool validatePath(const StringView & path) {
 	StringView r(path);
 	if (r.is('/')) {
 		++ r;
@@ -611,7 +605,7 @@ bool validatePath(const String & path) {
 	return true;
 }
 
-String reconstructPath(const String & path) {
+String reconstructPath(const StringView & path) {
 	String ret; ret.reserve(path.size());
 	bool start = (path.front() == '/');
 	bool end = (path.back() == '/');
@@ -652,31 +646,31 @@ String reconstructPath(const String & path) {
 	return ret;
 }
 
-String absolute(const String &path, bool writable) {
+String absolute(const StringView &path, bool writable) {
 	if (path.empty()) {
 		return "";
 	}
 	if (path.front() == '%') {
-		if (path.compare(0, "%CACHE%"_len, "%CACHE%") == 0) {
-			return filesystem::cachesPath(path.substr(7), true);
-		} else if (path.compare(0, "%DOCUMENTS%"_len, "%DOCUMENTS%") == 0) {
-			return filesystem::documentsPath(path.substr(11), true);
-		} else if (path.compare(0, "%WRITEABLE%"_len, "%WRITEABLE%") == 0) {
-			return filesystem::writablePath(path.substr(11), true);
-		} else if (path.compare(0, "%CURRENT%"_len, "%CURRENT%") == 0) {
-			return filesystem::currentDir(path.substr(9), true);
-		} else if (path.compare(0, "%PLATFORM%:"_len, "%PLATFORM%:") == 0) {
-			return path;
+		if (path.starts_with("%CACHE%")) {
+			return filesystem::cachesPath(path.sub(7), true);
+		} else if (path.starts_with("%DOCUMENTS%")) {
+			return filesystem::documentsPath(path.sub(11), true);
+		} else if (path.starts_with("%WRITEABLE%")) {
+			return filesystem::writablePath(path.sub(11), true);
+		} else if (path.starts_with("%CURRENT%")) {
+			return filesystem::currentDir(path.sub(9), true);
+		} else if (path.starts_with("%PLATFORM%:")) {
+			return path.str();
 		}
 	}
 
 	if (isAbsolute(path)) {
-		return validatePath(path)?path:reconstructPath(path);
+		return validatePath(path)?path.str():reconstructPath(path);
 	}
 
 	if (!writable && !isAboveRoot(path)) {
 		if (validatePath(path)) {
-			return platform::filesystem::_exists(path)?path:filesystem::writablePath(path);
+			return platform::filesystem::_exists(path)?path.str():filesystem::writablePath(path);
 		} else {
 			auto ret = reconstructPath(path);
 			return platform::filesystem::_exists(ret)?ret:filesystem::writablePath(ret);
@@ -686,38 +680,38 @@ String absolute(const String &path, bool writable) {
 	return validatePath(path)?filesystem::writablePath(path):reconstructPath(filesystem::writablePath(path));
 }
 
-String canonical(const String &path) {
+String canonical(const StringView &path) {
 	if (path.empty()) {
 		return "";
 	}
 	if (path.front() == '%') {
-		return path;
+		return path.str();
 	}
 
 	bool isPlatform = filepath::isBundled(path);
 	if (!isPlatform && filesystem::inAppBundle(path)) {
-		return String("%PLATFORM%:") + path;
+		return StringView::merge("%PLATFORM%:", path);
 	} else if (isPlatform) {
-		return path;
+		return path.str();
 	}
 
 	auto cachePath = filesystem::cachesPath();
 	auto documentsPath = filesystem::documentsPath();
 	auto writablePath = filesystem::writablePath();
 	auto currentDir = filesystem::currentDir();
-	if (path.compare(0, cachePath.size(), cachePath) == 0) {
-		return merge("%CACHE%", path.substr(cachePath.size()));
-	} else if (path.compare(0, documentsPath.size(), documentsPath) == 0) {
-		return merge("%DOCUMENTS%", path.substr(documentsPath.size()));
-	} else if (path.compare(0, writablePath.size(), writablePath) == 0) {
-		return merge("%WRITEABLE%", path.substr(writablePath.size()));
-	} else if (path.compare(0, currentDir.size(), currentDir) == 0) {
-		return merge("%CURRENT%", path.substr(currentDir.size()));
+	if (path.starts_with(StringView(cachePath))) {
+		return merge("%CACHE%", path.sub(cachePath.size()));
+	} else if (path.starts_with(StringView(documentsPath)) == 0) {
+		return merge("%DOCUMENTS%", path.sub(documentsPath.size()));
+	} else if (path.starts_with(StringView(writablePath)) == 0) {
+		return merge("%WRITEABLE%", path.sub(writablePath.size()));
+	} else if (path.starts_with(StringView(currentDir)) == 0) {
+		return merge("%CURRENT%", path.sub(currentDir.size()));
 	} else {
-		return path;
+		return path.str();
 	}
 }
-String root(const String &path) {
+String root(const StringView &path) {
 	size_t pos = path.rfind('/');
 	if (pos == String::npos) {
 		return "";
@@ -725,87 +719,87 @@ String root(const String &path) {
 		if (pos == 0) {
 			return "/";
 		} else {
-			return path.substr(0, pos);
+			return path.sub(0, pos).str();
 		}
 	}
 }
-String lastComponent(const String &path) {
+StringView lastComponent(const StringView &path) {
 	size_t pos = path.rfind('/');
 	if (pos != String::npos) {
-		return path.substr(pos + 1);
+		return path.sub(pos + 1);
 	} else {
 		return path;
 	}
 }
-String lastComponent(const String &path, size_t allowedComponents) {
+StringView lastComponent(const StringView &path, size_t allowedComponents) {
 	if (allowedComponents == 0) {
 		return "";
 	}
 	size_t pos = path.rfind('/');
 	allowedComponents --;
 	if (pos == 0) {
-		pos = String::npos;
+		pos = maxOf<size_t>();
 	}
 
-	while (pos != String::npos && allowedComponents > 0) {
+	while (pos != maxOf<size_t>() && allowedComponents > 0) {
 		pos = path.rfind('/', pos - 1);
 		allowedComponents --;
 		if (pos == 0) {
-			pos = String::npos;
+			pos = maxOf<size_t>();
 		}
 	}
 
-	if (pos != String::npos) {
-		return path.substr(pos + 1);
+	if (pos != maxOf<size_t>()) {
+		return path.sub(pos + 1);
 	} else {
 		return path;
 	}
 }
-String fullExtension(const String &path) {
+StringView fullExtension(const StringView &path) {
 	auto cmp = lastComponent(path);
 
 	size_t pos = cmp.find('.');
-	if (pos == String::npos) {
-		return "";
+	if (pos == maxOf<size_t>()) {
+		return StringView();
 	} else {
-		return cmp.substr(pos + 1);
+		return cmp.sub(pos + 1);
 	}
 }
-String lastExtension(const String &path) {
+StringView lastExtension(const StringView &path) {
 	auto cmp = lastComponent(path);
 
 	size_t pos = cmp.rfind('.');
-	if (pos == String::npos) {
+	if (pos == maxOf<size_t>()) {
 		return "";
 	} else {
-		return cmp.substr(pos + 1);
+		return cmp.sub(pos + 1);
 	}
 }
-String name(const String &path) {
+StringView name(const StringView &path) {
 	auto cmp = lastComponent(path);
 
 	size_t pos = cmp.find('.');
-	if (pos == String::npos) {
+	if (pos == maxOf<size_t>()) {
 		return cmp;
 	} else {
-		return cmp.substr(0, pos);
+		return cmp.sub(0, pos);
 	}
 }
-String merge(const String &root, const String &path) {
+String merge(const StringView &root, const StringView &path) {
 	if (path.empty()) {
-		return root;
+		return root.str();
 	}
 	if (root.back() == '/') {
 		if (path.front() == '/') {
-			return root + path.substr(1);
+			return StringView::merge(root, path.sub(1));
 		} else {
-			return root + path;
+			return StringView::merge(root, path);
 		}
 	} else {
 		if (path.front() == '/') {
-			return root + path;
+			return StringView::merge(root, path);
 		} else {
-			return root + "/" + path;
+			return StringView::merge(root, "/", path);
 		}
 	}
 }
@@ -821,7 +815,7 @@ String merge(const Vector<String> &vec) {
 	return ret.str();
 }
 
-size_t extensionCount(const String &path) {
+size_t extensionCount(const StringView &path) {
 	size_t ret = 0;
 	auto cmp = lastComponent(path);
 	for (auto c : cmp) {
@@ -830,20 +824,20 @@ size_t extensionCount(const String &path) {
 	return ret;
 }
 
-Vector<String> split(const String &str) {
-	Vector<String> ret;
+Vector<StringView> split(const StringView &str) {
+	Vector<StringView> ret;
 	StringView s(str);
 	do {
 		if (s.is('/')) {
 			s ++;
 		}
 		auto path = s.readUntil<StringView::Chars<'/', '?', ';', '&', '#'>>();
-		ret.push_back(path.str());
+		ret.push_back(path);
 	} while (!s.empty() && s.is('/'));
 	return ret;
 }
 
-String extensionForContentType(const String &ct) {
+String extensionForContentType(const StringView &ct) {
 	String ret;
     if (ct.compare("application/pdf") == 0 || ct.compare("application/x-pdf") == 0) {
         ret = ".pdf";
@@ -863,11 +857,13 @@ String extensionForContentType(const String &ct) {
 	return ret;
 }
 
-String replace(const String &path, const String &source, const String &dest) {
-	if (path.compare(0, source.length(), source) == 0) {
-		return filepath::merge(dest, path.substr(source.length()));
+String replace(const StringView &path, const StringView &source, const StringView &dest) {
+	if (path.starts_with(source)) {
+		return filepath::merge(dest, path.sub(source.size()));
 	}
-	return path;
+	return path.str();
 }
+
+#undef SP_TERMINATED_DATA
 
 NS_SP_EXT_END(filepath)

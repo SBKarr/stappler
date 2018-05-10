@@ -31,6 +31,7 @@ NS_LAYOUT_BEGIN
 class Canvas : public Ref {
 public:
 	using Autofit = style::Autofit;
+	using FlushCallback = Function<void()>;
 
 	/* Approximation quality defines how precisely original curves will be approximated with lines
 	 * Extreme values (Worst/Perfect) should be used only for special cases
@@ -55,6 +56,13 @@ public:
 
 	void setQuality(float value);
 	float getQuality() const;
+
+	void setFlushCallback(const FlushCallback &);
+	const FlushCallback &getFlushCallback() const;
+
+	const Vector<TESStesselator *> &getTess() const;
+	const Vector<StrokeDrawer> &getStroke() const;
+	const Mat4 &getTransform() const;
 
 	void beginBatch();
 	void endBatch();
@@ -110,8 +118,6 @@ protected:
 	LineDrawer _line;
 
 	size_t _vertexCount = 0;
-	uint32_t _width = 0;
-	uint32_t _height = 0;
 	bool _isBatch = false;
 	float _lineWidth = 1.0f;
 	float _approxScale = 1.0f;
@@ -123,6 +129,8 @@ protected:
 	DrawStyle _pathStyle = DrawStyle::None;
 
 	Mat4 _batchTransform;
+
+	Function<void()> _flushCallback;
 };
 
 NS_LAYOUT_END

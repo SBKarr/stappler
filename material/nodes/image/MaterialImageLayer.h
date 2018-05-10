@@ -50,6 +50,9 @@ public:
 
 	virtual Vec2 getTexturePosition() const;
 
+	virtual void setFlippedY(bool);
+	virtual void setScaleDisabled(bool);
+
 public:
 	virtual bool onTap(const Vec2 &point, int count);
 
@@ -61,7 +64,7 @@ public:
 
 protected:
 	Rect getCorrectRect(const Size &containerSize);
-	Vec2 getCorrectPosition(const Size &containerSize, Vec2 point);
+	Vec2 getCorrectPosition(const Size &containerSize, const Vec2 &point);
 
 	Size getContainerSize() const;
 	Size getContainerSizeForScale(float value) const;
@@ -79,6 +82,7 @@ protected:
 	float _maxScale = 0.0f;
 
 	float _scaleSource;
+	bool _scaleDisabled = false;
 	bool _hasPinch = false;
 	bool _textureDirty = false;
 

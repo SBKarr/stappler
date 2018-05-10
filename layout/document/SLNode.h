@@ -63,6 +63,7 @@ public:
 	const NodeVec &getNodes() const;
 	const WideString &getValue() const;
 	const AttrMap &getAttributes() const;
+	const String *getAttribute(const StringView &) const;
 
 	bool empty() const;
 	bool hasValue() const;
@@ -71,6 +72,8 @@ public:
 
 	void foreach(const ForeachIter &);
 	void foreach(const ForeachConstIter &) const;
+
+	size_t getChildIndex(const Node &) const;
 
 public:
 	Node();

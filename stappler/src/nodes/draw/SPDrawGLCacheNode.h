@@ -146,8 +146,8 @@ struct GLBlending {
 				|| separateFunc != a.separateFunc || separateEq != a.separateEq;
 	}
 
-	BlendFunc colorFunc;
-	BlendFunc alphaFunc;
+	BlendFunc colorFunc = BlendFunc::DISABLE;
+	BlendFunc alphaFunc = BlendFunc::DISABLE;
 
 	Equation colorEq = FuncAdd;
 	Equation alphaEq = FuncAdd;

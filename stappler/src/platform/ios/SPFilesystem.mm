@@ -34,7 +34,7 @@ THE SOFTWARE.
 NS_SP_PLATFORM_BEGIN
 
 namespace filesystem {
-	std::string _getWritablePath() {
+	String _getWritablePath() {
 		NSArray *paths = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES);
 		NSString *libraryDirectory = [paths objectAtIndex:0];
 		std::string ret = libraryDirectory.UTF8String;
@@ -48,7 +48,7 @@ namespace filesystem {
 
 		return ret;
 	}
-	std::string _getDocumentsPath() {
+	String _getDocumentsPath() {
 		NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
 		NSString *documentsDirectory = [paths objectAtIndex:0];
 		std::string ret = documentsDirectory.UTF8String;
@@ -57,24 +57,23 @@ namespace filesystem {
 
 		return ret;
 	}
-	std::string _getCachesPath() {
+	String _getCachesPath() {
 		return _getWritablePath();
 	}
-    
-    
-    std::string _getPlatformPath(const std::string &path) {
+
+    StringView _getPlatformPath(const StringView &path) {
         if (filepath::isBundled(path)) {
-            return path.substr("%PLATFORM%:"_len);
+            return path.sub("%PLATFORM%:"_len);
         }
         return path;
     }
-    
-    NSString* _getNSPath(const std::string &ipath) {
-        auto path = _getPlatformPath(ipath);
+
+    NSString* _getNSPath(const StringView &ipath) {
+        auto path = _getPlatformPath(ipath).str();
         if (path.empty()) {
             return nil;
         }
-        
+
         if (path[0] != '/') {
             std::string dir;
             std::string file;
@@ -85,7 +84,7 @@ namespace filesystem {
             } else {
                 file = path;
             }
-            
+
             return [[NSBundle mainBundle] pathForResource:[NSString stringWithUTF8String:file.c_str()]
                                                                  ofType:nil
                                                             inDirectory:[NSString stringWithUTF8String:dir.c_str()]];
@@ -93,21 +92,21 @@ namespace filesystem {
         
         return nil;
     }
-    
-    bool _exists(const std::string &ipath) {
+
+    bool _exists(const StringView &ipath) {
         auto path = _getNSPath(ipath);
         return path != nil;
     }
-    
-    size_t _size(const std::string &ipath) {
+
+    size_t _size(const StringView &ipath) {
         auto path = _getNSPath(ipath);
         if (path != nil) {
             return stappler::filesystem::size([path UTF8String]);
         }
         return 0;
     }
-    
-	stappler::filesystem::ifile _openForReading(const String &path) {
+
+	stappler::filesystem::ifile _openForReading(const StringView &path) {
 		return stappler::filesystem::openForReading([_getNSPath(path) UTF8String]);
 	}
 

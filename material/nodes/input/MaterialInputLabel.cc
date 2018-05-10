@@ -37,7 +37,7 @@ NS_MD_BEGIN
 
 InputLabelDelegate::~InputLabelDelegate() { }
 bool InputLabelDelegate::onInputChar(char16_t) { return true; }
-bool InputLabelDelegate::onInputString(const WideString &str, const Cursor &c) { return true; }
+bool InputLabelDelegate::onInputString(const WideStringView &str, const Cursor &c) { return true; }
 
 void InputLabelDelegate::onCursor(const Cursor &) { }
 void InputLabelDelegate::onInput() { }
@@ -226,17 +226,18 @@ const Color &InputLabel::getPointerColor() const {
 	return _selectionColor;
 }
 
-void InputLabel::setString(const WideString &str) {
+void InputLabel::setString(const StringView &str) {
+	setString(string::toUtf16(str));
+}
+
+void InputLabel::setString(const WideStringView &str) {
 	updateString(str, Cursor(uint32_t(_inputString.length()), 0));
 	if (_handler.isActive()) {
 		_handler.setString(_inputString, _cursor);
 	}
 }
-void InputLabel::setString(const String &str) {
-	setString(string::toUtf16(str));
-}
 
-const WideString &InputLabel::getString() const {
+WideStringView InputLabel::getString() const {
 	return _inputString;
 }
 
@@ -574,7 +575,7 @@ draw::PathNode *InputLabel::getCursorEnd() const {
 	return _cursorEnd;
 }
 
-void InputLabel::onText(const WideString &str, const Cursor &c) {
+void InputLabel::onText(const WideStringView &str, const Cursor &c) {
 	if (updateString(str, c)) {
 		setPointerEnabled(false);
 		updateCursor();
@@ -642,15 +643,15 @@ void InputLabel::updateCursor() {
 	}
 }
 
-bool InputLabel::updateString(const WideString &str, const Cursor &c) {
+bool InputLabel::updateString(const WideStringView &str, const Cursor &c) {
 	if (!_delegate || _delegate->onInputString(str, c)) {
 		auto maxChars = getMaxChars();
 		if (maxChars > 0) {
-			if (maxChars < str.length()) {
+			if (maxChars < str.size()) {
 				if (_delegate) {
 					_delegate->onInput();
 				}
-				auto tmpString = WideString(str, 0, maxChars);
+				auto tmpString = WideStringView(str, 0, maxChars);
 				_handler.setString(tmpString, c);
 				auto ret = updateString(tmpString, _handler.getCursor());
 				onError(Error::OverflowChars);
@@ -669,9 +670,9 @@ bool InputLabel::updateString(const WideString &str, const Cursor &c) {
 			}
 		}
 
-		bool isInsert = str.length() > _inputString.length();
+		bool isInsert = str.size() > _inputString.length();
 
-		_inputString = str;
+		_inputString = str.str();
 		_cursor = c;
 
 		if (_password == PasswordMode::ShowAll || _password == PasswordMode::NotPassword) {

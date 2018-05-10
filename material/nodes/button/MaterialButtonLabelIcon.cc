@@ -51,12 +51,12 @@ void ButtonLabelIcon::onContentSizeDirty() {
 	_label->setPosition(48, _contentSize.height/2);
 }
 
-void ButtonLabelIcon::setString(const std::string &str) {
+void ButtonLabelIcon::setString(const StringView &str) {
 	_label->setString(str);
 	_label->tryUpdateLabel();
 	setContentSize(cocos2d::Size(_label->getContentSize().width + 56, _contentSize.height));
 }
-const std::string &ButtonLabelIcon::getString() const {
+StringView ButtonLabelIcon::getString() const {
 	return _label->getString8();
 }
 

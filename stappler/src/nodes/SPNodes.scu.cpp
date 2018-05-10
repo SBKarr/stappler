@@ -35,6 +35,7 @@ THE SOFTWARE.
 #include "SPShadowSprite.cc"
 #include "SPDrawCanvas.cc"
 #include "SPDrawGLCacheNode.cc"
+#include "SPDrawGLRenderSurface.cc"
 #include "SPDrawPathNode.cc"
 #include "SPLabelParameters.cc"
 #include "SPDynamicLabel.cc"

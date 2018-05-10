@@ -54,6 +54,7 @@ using Padding = layout::Padding;
 using Margin = layout::Margin;
 
 using MovingAverage = layout::MovingAverage;
+using FilePath = layout::FilePath;
 
 namespace Anchor {
 extern const Vec2 Middle; /** equals to Vec2(0.5, 0.5) */

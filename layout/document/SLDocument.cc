@@ -103,13 +103,11 @@ Document::DocumentFormat::~DocumentFormat() {
 	DocumentFormatStorage::getInstance()->erase(this);
 }
 
-bool Document_isAloowedByContentType(const String &ct) {
-	StringView ctView(ct);
-
+bool Document_isAloowedByContentType(const StringView &ctView) {
 	return ctView.is("text/html") || ctView.is("multipart/mixed") || ctView.is("multipart/form-data");
 }
 
-bool Document_canOpenData(const DataReader<ByteOrder::Network> &data) {
+static bool Document_canOpenData(const DataReader<ByteOrder::Network> &data) {
 	StringView r((const char *)data.data(), data.size());
 	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 	if (r.is("<html>") || r.is("<!doctype") || r.is("Content-Type: multipart/mixed; boundary=")) {
@@ -119,17 +117,17 @@ bool Document_canOpenData(const DataReader<ByteOrder::Network> &data) {
 	return false;
 }
 
-bool Document_canOpen(const FilePath &path, const String &ct) {
+static bool Document_canOpen(const StringView &path, const StringView &ct) {
 	if (Document_isAloowedByContentType(ct)) {
 		return true;
 	}
 
-	auto ext = filepath::lastExtension(path.get());
+	auto ext = filepath::lastExtension(path);
 	if (ext == "html" || ext == "htm") {
 		return true;
 	}
 
-	if (auto file = filesystem::openForReading(path.get())) {
+	if (auto file = filesystem::openForReading(path)) {
 		StackBuffer<256> data;
 		if (io::Producer(file).seekAndRead(0, data, 512) > 0) {
 			return Document_canOpenData(DataReader<ByteOrder::Network>(data.data(), data.size()));
@@ -139,7 +137,7 @@ bool Document_canOpen(const FilePath &path, const String &ct) {
 	return false;
 }
 
-bool Document_canOpen(const DataReader<ByteOrder::Network> &data, const String &ct) {
+static bool Document_canOpen(const DataReader<ByteOrder::Network> &data, const StringView &ct) {
 	if (Document_isAloowedByContentType(ct)) {
 		return true;
 	}
@@ -147,11 +145,11 @@ bool Document_canOpen(const DataReader<ByteOrder::Network> &data, const String &
 	return Document_canOpenData(data);
 }
 
-bool Document::canOpenDocumnt(const FilePath &path, const String &ct) {
+bool Document::canOpenDocumnt(const StringView &path, const StringView &ct) {
 	std::set<DocumentFormat *, DocumentFormatStorageLess> formatList(DocumentFormatStorage::getInstance()->get());
 
 	for (auto &it : formatList) {
-		if (it->check_file && it->check_file(path.get(), ct)) {
+		if (it->check_file && it->check_file(path, ct)) {
 			return true;
 		}
 	}
@@ -159,7 +157,7 @@ bool Document::canOpenDocumnt(const FilePath &path, const String &ct) {
 	return Document_canOpen(path, ct);
 }
 
-bool Document::canOpenDocumnt(const DataReader<ByteOrder::Network> &data, const String &ct) {
+bool Document::canOpenDocumnt(const DataReader<ByteOrder::Network> &data, const StringView &ct) {
 	std::set<DocumentFormat *, DocumentFormatStorageLess> formatList(DocumentFormatStorage::getInstance()->get());
 
 	for (auto &it : formatList) {
@@ -171,23 +169,23 @@ bool Document::canOpenDocumnt(const DataReader<ByteOrder::Network> &data, const 
 	return Document_canOpen(data, ct);
 }
 
-Rc<Document> Document::openDocument(const FilePath &path, const String &ct) {
+Rc<Document> Document::openDocument(const StringView &path, const StringView &ct) {
 	Rc<Document> ret;
 	std::set<DocumentFormat *, DocumentFormatStorageLess> formatList(DocumentFormatStorage::getInstance()->get());
 
 	for (auto &it : formatList) {
-		if (it->check_file && it->check_file(path.get(), ct)) {
-			ret = it->load_file(path.get(), ct);
+		if (it->check_file && it->check_file(path, ct)) {
+			ret = it->load_file(path, ct);
 			break;
 		}
 	}
 	if (!ret) {
-		ret = Rc<Document>::create(path, ct);
+		ret = Rc<Document>::create(FilePath(path), ct);
 	}
 	return ret;
 }
 
-Rc<Document> Document::openDocument(const DataReader<ByteOrder::Network> &data, const String &ct) {
+Rc<Document> Document::openDocument(const DataReader<ByteOrder::Network> &data, const StringView &ct) {
 	Rc<Document> ret;
 	std::set<DocumentFormat *, DocumentFormatStorageLess> formatList(DocumentFormatStorage::getInstance()->get());
 
@@ -211,33 +209,33 @@ Document::Image::Image(const MultipartParser::Image &img)
 Document::Image::Image(uint16_t width, uint16_t height, size_t size, const String &path, const String &ref)
 : type(Type::Embed), width(width), height(height), offset(0), length(size), name(path), ref(ref.empty()?("embed://" + path):ref) { }
 
-String Document::getImageName(const String &name) {
-	String src(resolveName(name));
+StringView Document::getImageName(const StringView &name) {
+	StringView src(resolveName(name));
 	auto pos = src.find('?');
-	if (pos != String::npos) {
-		src = src.substr(0, pos);
+	if (pos != maxOf<size_t>()) {
+		src = src.sub(0, pos);
 	}
 	return src;
 }
 
 Document::Document() { }
 
-Vector<String> Document::getImageOptions(const String &isrc) {
-	String src(resolveName(isrc));
+Vector<StringView> Document::getImageOptions(const StringView &isrc) {
+	StringView src(resolveName(isrc));
 	auto pos = src.find('?');
-	if (pos != String::npos && pos < src.length() - 1) {
-		Vector<String> ret;
+	if (pos != maxOf<size_t>() && pos < src.size() - 1) {
+		Vector<StringView> ret;
 
-		StringReader s(src.substr(pos + 1));
-		StringReader opt = s.readUntil<Chars<'&', ';'>>();
+		StringView s(src.sub(pos + 1));
+		StringView opt = s.readUntil<Chars<'&', ';'>>();
 		while (!opt.empty()) {
 			s ++;
-			ret.push_back(opt.str());
+			ret.push_back(opt);
 			opt = s.readUntil<Chars<'&', ';'>>();
 		}
 		return ret;
 	}
-	return Vector<String>();
+	return Vector<StringView>();
 }
 
 bool Document::init(const StringDocument &html) {
@@ -249,26 +247,27 @@ bool Document::init(const StringDocument &html) {
 	return init(_data, String());
 }
 
-bool Document::init(const FilePath &path, const String &ct) {
+bool Document::init(const FilePath &path, const StringView &ct) {
 	if (path.get().empty()) {
 		return false;
 	}
 
-	_filePath = path.get();
+	_filePath = path.get().str();
 
 	auto data = filesystem::readFile(path.get());
 	return init(data, ct);
 }
 
-bool Document::init(const DataReader<ByteOrder::Network> &vec, const String &ct) {
+bool Document::init(const DataReader<ByteOrder::Network> &vec, const StringView &ct) {
 	if (vec.empty()) {
 		return false;
 	}
-	auto data = vec.data();
-	_contentType = ct;
-	if (_contentType.compare(0, 9, "text/html") == 0 ||
-			(ct.empty() && (memcmp("<html>", data, 6) == 0 || strncasecmp("<!doctype", (const char *)data, 9) == 0))) {
-		processHtml("", StringView((const char *)data, vec.size()));
+	_contentType = ct.str();
+
+	StringView r((const char *)vec.data(), vec.size());
+	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+	if (_contentType.compare(0, 9, "text/html") == 0 || r.is('<')) {
+		processHtml("", r);
 	} else if (_contentType.compare(0, 15, "multipart/mixed") == 0 || _contentType.compare(0, 19, "multipart/form-data") == 0 || _contentType.empty()) {
 		MultipartParser parser;
 		if (!ct.empty()) {
@@ -331,7 +330,7 @@ bool Document::prepare() {
 	return false;
 }
 
-String Document::resolveName(const String &str) {
+StringView Document::resolveName(const StringView &str) {
 	StringView r(str);
 	r.trimChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
@@ -349,7 +348,7 @@ String Document::resolveName(const String &str) {
 
 	auto f = r.readUntil<StringView::Chars<'?'>>();
 
-	return f.str();
+	return f;
 }
 
 Bytes Document::readData(size_t offset, size_t len) {
@@ -368,8 +367,8 @@ Bytes Document::readData(size_t offset, size_t len) {
 	return Bytes();
 }
 
-bool Document::isFileExists(const String &iname) const {
-	String name(resolveName(iname));
+bool Document::isFileExists(const StringView &iname) const {
+	StringView name(resolveName(iname));
 	auto imageIt = _images.find(name);
 	if (imageIt != _images.end()) {
 		return true;
@@ -377,8 +376,8 @@ bool Document::isFileExists(const String &iname) const {
 	return false;
 }
 
-Bytes Document::getFileData(const String &iname) {
-	String name(resolveName(iname));
+Bytes Document::getFileData(const StringView &iname) {
+	StringView name(resolveName(iname));
 	auto imageIt = _images.find(name);
 	if (imageIt != _images.end()) {
 		auto &img = imageIt->second;
@@ -387,16 +386,16 @@ Bytes Document::getFileData(const String &iname) {
 	return Bytes();
 }
 
-static Document::ImageMap::const_iterator getImageFromMap(const Document::ImageMap &images, const String &name) {
+static Document::ImageMap::const_iterator getImageFromMap(const Document::ImageMap &images, const StringView &name) {
 	auto it = name.find('?');
 	if (it != String::npos) {
-		return images.find(name.substr(0, it));
+		return images.find(name.sub(0, it));
 	} else {
 		return images.find(name);
 	}
 }
 
-Bytes Document::getImageData(const String &iname) {
+Bytes Document::getImageData(const StringView &iname) {
 	auto imageIt = getImageFromMap(_images, resolveName(iname));
 	if (imageIt != _images.end()) {
 		auto &img = imageIt->second;
@@ -410,7 +409,7 @@ Bytes Document::getImageData(const String &iname) {
 	return Bytes();
 }
 
-Pair<uint16_t, uint16_t> Document::getImageSize(const String &iname) {
+Pair<uint16_t, uint16_t> Document::getImageSize(const StringView &iname) {
 	auto imageIt = getImageFromMap(_images, resolveName(iname));
 	if (imageIt != _images.end()) {
 		return pair(imageIt->second.width, imageIt->second.height);
@@ -432,6 +431,7 @@ void Document::updateNodes() {
 			nextId ++;
 		});
 	}
+	_maxNodeId = nextId;
 }
 
 const Vector<String> &Document::getSpine() const {
@@ -449,7 +449,7 @@ const ContentPage *Document::getRoot() const {
 	return nullptr;
 }
 
-const ContentPage *Document::getContentPage(const String &name) const {
+const ContentPage *Document::getContentPage(const StringView &name) const {
 	auto it = _pages.find(name);
 	if (it != _pages.end()) {
 		return &it->second;
@@ -473,7 +473,11 @@ const Map<String, ContentPage> & Document::getContentPages() const {
 	return _pages;
 }
 
-const Node *Document::getNodeById(const String &path, const String &str) const {
+NodeId Document::getMaxNodeId() const {
+	return _maxNodeId;
+}
+
+const Node *Document::getNodeById(const StringView &path, const StringView &str) const {
 	if (auto page = getContentPage(path)) {
 		auto it = page->ids.find(str);
 		if (it != page->ids.end()) {
@@ -483,7 +487,7 @@ const Node *Document::getNodeById(const String &path, const String &str) const {
 	return nullptr;
 }
 
-Pair<const ContentPage *, const Node *> Document::getNodeByIdGlobal(const String &id) const {
+Pair<const ContentPage *, const Node *> Document::getNodeByIdGlobal(const StringView &id) const {
 	for (auto &it : _pages) {
 		auto &page = it.second;
 		auto id_it = page.ids.find(id);
@@ -567,9 +571,25 @@ void Document::onStyleAttribute(Style &style, const StringView &tag, const Strin
 		style.read("text-align", value);
 		style.read("text-indent", "0px");
 	} else if (name == "width") {
-		style.set<style::ParameterName::Width>(style::Metric(StringView(value).readInteger(), style::Metric::Px));
+		if (value.back() == '%') {
+			StringView(value).readFloat().unwrap([&] (float v) {
+				style.set<style::ParameterName::Width>(style::Metric(v / 100.0f, style::Metric::Percent));
+			});
+		} else {
+			StringView(value).readInteger().unwrap([&] (int64_t v) {
+				style.set<style::ParameterName::Width>(style::Metric(v, style::Metric::Px));
+			});
+		}
 	} else if (name == "height") {
-		style.set<style::ParameterName::Height>(style::Metric(StringView(value).readInteger(), style::Metric::Px));
+		if (value.back() == '%') {
+			StringView(value).readFloat().unwrap([&] (float v) {
+				style.set<style::ParameterName::Width>(style::Metric(v / 100.0f, style::Metric::Percent));
+			});
+		} else {
+			StringView(value).readInteger().unwrap([&] (int64_t v) {
+				style.set<style::ParameterName::Height>(style::Metric(v, style::Metric::Px));
+			});
+		}
 	} else if ((tag == "li" || tag == "ul" || tag == "ol") && name == "type") {
 		if (value == "disc") {
 			style.set<style::ParameterName::ListStyleType>(style::ListStyleType::Disc);

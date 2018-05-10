@@ -50,10 +50,10 @@ bool Toolbar::init() {
 	return true;
 }
 
-void Toolbar::setTitle(const String &str) {
+void Toolbar::setTitle(const StringView &str) {
 	_title->setString(str);
 }
-const String &Toolbar::getTitle() const {
+StringView Toolbar::getTitle() const {
 	return _title->getString();
 }
 

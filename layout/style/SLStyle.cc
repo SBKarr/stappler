@@ -112,6 +112,8 @@ template<> void Parameter::set<ParameterName::PageBreakAfter, PageBreak>(const P
 template<> void Parameter::set<ParameterName::PageBreakBefore, PageBreak>(const PageBreak &v) { value.pageBreak = v; }
 template<> void Parameter::set<ParameterName::PageBreakInside, PageBreak>(const PageBreak &v) { value.pageBreak = v; }
 template<> void Parameter::set<ParameterName::Autofit, Autofit>(const Autofit &v) { value.autofit = v; }
+template<> void Parameter::set<ParameterName::BorderCollapse, BorderCollapse>(const BorderCollapse &v) { value.borderCollapse = v; }
+template<> void Parameter::set<ParameterName::CaptionSide, CaptionSide>(const CaptionSide &v) { value.captionSide = v; }
 
 void ParameterList::set(const Parameter &p, bool force) {
 	if (p.mediaQuery != MediaQueryNone() && !isAllowedForMediaQuery(p.name)) {
@@ -285,7 +287,7 @@ ParameterList getStyleForTag(const StringView &tag, const StringView &parent) {
 		style.data.push_back(Parameter::create<ParameterName::Display>(Display::InlineBlock));
 
 	} else if (tag == "table") {
-		style.data.push_back(Parameter::create<ParameterName::Display>(Display::None));
+		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Table));
 
 	} else if (tag == "blockquote") {
 		style.data.push_back(Parameter::create<ParameterName::Display>(Display::Block));
@@ -340,6 +342,13 @@ ParameterList getStyleForTag(const StringView &tag, const StringView &parent) {
 		style.data.push_back(Parameter::create<ParameterName::FontWeight>(FontWeight::W500));
 		style.data.push_back(Parameter::create<ParameterName::TextAlign>(TextAlign::Center));
 
+	} else if (tag == "caption") {
+		style.data.push_back(Parameter::create<ParameterName::TextAlign>(TextAlign::Center));
+
+		style.data.push_back(Parameter::create<ParameterName::PaddingTop>(Metric(0.3f, Metric::Units::Rem)));
+		style.data.push_back(Parameter::create<ParameterName::PaddingBottom>(Metric(0.3f, Metric::Units::Rem)));
+		style.data.push_back(Parameter::create<ParameterName::PaddingLeft>(Metric(0.3f, Metric::Units::Rem)));
+		style.data.push_back(Parameter::create<ParameterName::PaddingRight>(Metric(0.3f, Metric::Units::Rem)));
 	}
 
 	return style;
@@ -664,15 +673,9 @@ void ParameterList::read(const StringView &name, const StringView &value, MediaQ
 			set<ParameterName::Clear>(Clear::Both, mediaQuary);
 		}
 	} else if (name == "opacity") {
-		float data = StringView(value).readFloat();
-		if (!IsErrorValue(data)) {
-			if (data < 0.0f) {
-				data = 0.0f;
-			} else if (data > 1.0f) {
-				data = 1.0f;
-			}
-			set<ParameterName::Opacity>((uint8_t)(data * 255.0f), mediaQuary);
-		}
+		StringView(value).readFloat().unwrap([&] (float data) {
+			set<ParameterName::Opacity>((uint8_t)(math::clamp(data, 0.0f, 1.0f) * 255.0f), mediaQuary);
+		});
 	} else if (name == "color") {
 		Color4B color;
 		if (readColor(value, color)) {
@@ -1075,6 +1078,18 @@ void ParameterList::read(const StringView &name, const StringView &value, MediaQ
 		set<ParameterName::BorderRightWidth>(width, mediaQuary);
 		set<ParameterName::BorderBottomWidth>(width, mediaQuary);
 		set<ParameterName::BorderLeftWidth>(width, mediaQuary);
+	} else if (name == "border-collapse" && !value.empty()) {
+		if (value.compare("collapse")) {
+			set<ParameterName::BorderCollapse>(BorderCollapse::Collapse, mediaQuary);
+		} else if (value.compare("separate")) {
+			set<ParameterName::BorderCollapse>(BorderCollapse::Separate, mediaQuary);
+		}
+	} else if (name == "caption-side" && !value.empty()) {
+		if (value.compare("top")) {
+			set<ParameterName::CaptionSide>(CaptionSide::Top, mediaQuary);
+		} else if (value.compare("bottom")) {
+			set<ParameterName::CaptionSide>(CaptionSide::Bottom, mediaQuary);
+		}
 	} else if (name == "page-break-after") {
 		if (value.compare("always")) {
 			set<ParameterName::PageBreakAfter>(PageBreak::Always, mediaQuary);

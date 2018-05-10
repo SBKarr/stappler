@@ -57,11 +57,11 @@ bool MultipartParser::parse(const uint8_t *d, size_t l, bool files) {
 }
 
 /* read content only */
-bool MultipartParser::parse(const DataReader<ByteOrder::Network> &vec, const String &ct, bool files) {
+bool MultipartParser::parse(const DataReader<ByteOrder::Network> &vec, const StringView &ct, bool files) {
 	return parse(vec.data(), vec.size(), ct, files);
 }
-bool MultipartParser::parse(const uint8_t *d, size_t l, const String &ct, bool files) {
-    Reader r(ct.c_str(), ct.length());
+bool MultipartParser::parse(const uint8_t *d, size_t l, const StringView &ct, bool files) {
+    Reader r(ct);
 	if (!parseContentType(r)) {
 		return false;
 	}
@@ -225,19 +225,21 @@ bool MultipartParser::parseFileContentType(Reader &r) {
 
 	uint16_t width = 0, height = 0;
 	while (!r.empty()) {
-        if (r.is("width=")) {
-            r.offset("width="_len);
-            auto val = r.readInteger();
-            if (val < maxOf<uint16_t>()) {
-                width = (uint16_t)val;
-            }
-        } else if (r.is("height=")) {
-            r.offset("height="_len);
-            auto val = r.readInteger();
-            if (val < maxOf<uint16_t>()) {
-                height = (uint16_t)val;
-            }
-        }
+		if (r.is("width=")) {
+			r.offset("width="_len);
+			r.readInteger().unwrap([&] (int64_t val) {
+				if (val < maxOf<uint16_t>()) {
+					width = (uint16_t)val;
+				}
+			});
+		} else if (r.is("height=")) {
+			r.offset("height="_len);
+			r.readInteger().unwrap([&] (int64_t val) {
+				if (val < maxOf<uint16_t>()) {
+					height = (uint16_t)val;
+				}
+			});
+		}
         r.skipChars<Reader::CharGroup<CharGroupId::WhiteSpace>, Reader::Chars<';'>>();
 	}
 
@@ -251,12 +253,9 @@ bool MultipartParser::parseFileContentType(Reader &r) {
 }
 
 bool MultipartParser::parseFileContentLength(Reader &r) {
-    int64_t len = r.readInteger();
-    if (len != maxOf<int64_t>()) {
-        fileContentLength = (size_t)len;
-        return true;
-    }
-    return false;
+	return r.readInteger().unwrap([&] (int64_t len) {
+		fileContentLength = (size_t)len;
+	});
 }
 
 bool MultipartParser::parseFileContentDisposition(Reader &r) {

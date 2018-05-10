@@ -61,8 +61,7 @@ Rect ImageLayer::getCorrectRect(const Size &containerSize) {
 	return ret;
 }
 
-Vec2 ImageLayer::getCorrectPosition(const Size &containerSize,
-		Vec2 point) {
+Vec2 ImageLayer::getCorrectPosition(const Size &containerSize, const Vec2 &point) {
 	Vec2 ret = point;
 	Rect bounds = getCorrectRect(containerSize);
 
@@ -166,13 +165,17 @@ void ImageLayer::onContentSizeDirty() {
 	const Size &imageSize = _image->getBoundingBox().size;
 	_root->setContentSize(imageSize);
 
-	_minScale = std::min(
-			_contentSize.width / _image->getContentSize().width,
-			_contentSize.height / _image->getContentSize().height);
+	if (!_scaleDisabled) {
+		_minScale = std::min(
+				_contentSize.width / _image->getContentSize().width,
+				_contentSize.height / _image->getContentSize().height);
 
-	_maxScale = std::max(
-			_image->getContentSize().width * GetMaxScaleFactor() / _contentSize.width,
-			_image->getContentSize().height * GetMaxScaleFactor() / _contentSize.height);
+		_maxScale = std::max(
+				_image->getContentSize().width * GetMaxScaleFactor() / _contentSize.width,
+				_image->getContentSize().height * GetMaxScaleFactor() / _contentSize.height);
+	} else {
+		_minScale = _maxScale = 1.0f;
+	}
 
 	if (_textureDirty) {
 		_textureDirty = false;
@@ -229,15 +232,25 @@ void ImageLayer::setTexture(cocos2d::Texture2D *tex) {
 	}
 
 	if (_running) {
-		_minScale = std::min(
-				_contentSize.width / _image->getContentSize().width,
-				_contentSize.height / _image->getContentSize().height);
+		if (!_scaleDisabled) {
+			_minScale = std::min(
+					_contentSize.width / _image->getContentSize().width,
+					_contentSize.height / _image->getContentSize().height);
 
-		_maxScale = std::max(
-				_image->getContentSize().width * GetMaxScaleFactor() / _contentSize.width,
-				_image->getContentSize().height * GetMaxScaleFactor() / _contentSize.height);
+			_maxScale = std::max(
+					_image->getContentSize().width * GetMaxScaleFactor() / _contentSize.width,
+					_image->getContentSize().height * GetMaxScaleFactor() / _contentSize.height);
 
-		_root->setScale(_minScale);
+			_root->setScale(_minScale);
+		} else {
+			_minScale = _maxScale = 1.0f;
+			const Size &imageSize = _image->getBoundingBox().size;
+			_root->setContentSize(imageSize);
+			_root->setScale(1.0f);
+			_root->setPosition(getCorrectPosition(getContainerSize(),
+					Vec2((_contentSize.width - imageSize.width) / 2.0f, _contentSize.height - imageSize.height)));
+		}
+
 		_contentSizeDirty = true;
 	} else {
 		_textureDirty = true;
@@ -274,12 +287,23 @@ Vec2 ImageLayer::getTexturePosition() const {
 	return result;
 }
 
+void ImageLayer::setFlippedY(bool value) {
+	_image->setFlippedY(value);
+}
+
+void ImageLayer::setScaleDisabled(bool value) {
+	if (_scaleDisabled != value) {
+		_scaleDisabled = value;
+		_contentSizeDirty = true;
+	}
+}
+
 void ImageLayer::onEnterTransitionDidFinish() {
 	Node::onEnterTransitionDidFinish();
 }
 
 bool ImageLayer::onTap(const Vec2 &point, int count) {
-	if (count == 2) {
+	if (count == 2 && !_scaleDisabled) {
 		if (_root->getScale() > _minScale) {
 			Vec2 location = convertToNodeSpace(point);
 

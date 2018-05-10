@@ -159,4 +159,8 @@ Vector<bool> MediaParameters::resolveMediaQueries(const Vector<style::MediaQuery
 	return ret;
 }
 
+bool MediaParameters::shouldRenderImages() const {
+	return (flags & (RenderFlag::Mask)RenderFlag::NoImages) == 0;
+}
+
 NS_LAYOUT_END

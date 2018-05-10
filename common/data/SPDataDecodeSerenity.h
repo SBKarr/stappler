@@ -112,11 +112,15 @@ inline void Decoder<Interface>::parseNumber(StringView &token, ValueType &result
 			result.strVal = new StringType(data, size);
 		} else {
 			if (isFloat) {
-				result._type = ValueType::Type::DOUBLE;
-				result.doubleVal = value.readDouble();
+				value.readDouble().unwrap([&] (double v) {
+					result._type = ValueType::Type::DOUBLE;
+					result.doubleVal = v;
+				});
 			} else {
-				result._type = ValueType::Type::INTEGER;
-				result.intVal = value.readInteger();
+				value.readInteger().unwrap([&] (int64_t v) {
+					result._type = ValueType::Type::INTEGER;
+					result.intVal = v;
+				});
 			}
 		}
 	}

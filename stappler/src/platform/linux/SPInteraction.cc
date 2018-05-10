@@ -33,17 +33,17 @@ NS_SP_PLATFORM_BEGIN
 
 namespace interaction {
 	bool _dialogOpened = false;
-	void _goToUrl(const String &url, bool external) {
-		stappler::log::format("Intercation", "GoTo url: %s", url.c_str());
+	void _goToUrl(const StringView &url, bool external) {
+		stappler::log::format("Intercation", "GoTo url: %s", url.data());
 	}
-	void _makePhoneCall(const String &str) {
-		stappler::log::format("Intercation", "phone: %s", str.c_str());
+	void _makePhoneCall(const StringView &str) {
+		stappler::log::format("Intercation", "phone: %s", str.data());
 	}
-	void _mailTo(const String &address) {
-		stappler::log::format("Intercation", "MailTo phone: %s", address.c_str());
+	void _mailTo(const StringView &address) {
+		stappler::log::format("Intercation", "MailTo phone: %s", address.data());
 	}
 	void _backKey() { }
-	void _notification(const String &title, const String &text) {
+	void _notification(const StringView &title, const StringView &text) {
 
 	}
 	void _rateApplication() {

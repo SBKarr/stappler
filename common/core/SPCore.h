@@ -399,26 +399,6 @@ StringToNumber<double>(const char *ptr, char ** tail) -> double {
 	return strtod(ptr, tail);
 }
 
-
-template <typename T>
-struct _ErrorValueIntegral {
-	constexpr static T get() { return maxOf<T>(); }
-	constexpr static bool checkValue(T val) { return val == maxOf<T>(); }
-};
-
-template <typename T>
-struct _ErrorValueFloat {
-	constexpr static T get() { return nan<T>(); }
-	constexpr static bool checkValue(T val) { return isnan(val); }
-};
-
-template <typename T>
-using _ErrorValue = typename std::conditional<std::is_integral<T>::value, _ErrorValueIntegral<T>,
-		typename std::conditional<std::is_floating_point<T>::value, _ErrorValueFloat<T>, void>::type>::type;
-
-template <typename T> inline bool IsErrorValue(T val) { return _ErrorValue<T>::checkValue(val); }
-template <typename T> inline auto GetErrorValue() -> T { return _ErrorValue<T>::get(); }
-
 #define SP_DEFINE_ENUM_AS_MASK(Type) \
 	constexpr inline Type operator | (const Type &l, const Type &r) { return Type(toInt(l) | toInt(r)); } \
 	constexpr inline Type operator & (const Type &l, const Type &r) { return Type(toInt(l) & toInt(r)); } \
@@ -491,6 +471,50 @@ struct ValueWrapper {
 	inline ValueWrapper<T, Flag> operator-- (int) { ValueWrapper<T, Flag> result(*this); --(*this); return result; }
 
 	T value;
+};
+
+template <typename T>
+struct Result {
+	enum Status {
+		Ok,
+		Error
+	};
+
+	Status status = Error;
+	T result;
+
+	static Result<T> error() { return Result(); }
+
+	Result(T && t) : status(Ok), result(move(t)) { }
+	Result(const T & t) : status(Ok), result(t) { }
+
+	Result() = default;
+	Result(const Result &) = default;
+	Result(Result &&) = default;
+	Result& operator=(const Result &) = default;
+	Result& operator=(Result &&) = default;
+
+	bool valid() const { return status == Ok; }
+
+	template <typename Callback>
+	bool unwrap(const Callback &cb) const {
+		if (status == Ok) {
+			cb(result);
+			return true;
+		}
+		return false;
+	}
+
+	bool grab(T &value) {
+		if (status == Ok) {
+			value = move(result);
+			return true;
+		}
+		return false;
+	}
+
+	const T & get() const { return result; }
+	const T & get(const T &def) const { return (status == Ok) ? result : def; }
 };
 
 /*

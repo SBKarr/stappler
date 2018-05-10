@@ -98,6 +98,22 @@ bool Layer::init(const cocos2d::Color4B &c) {
 	return true;
 }
 
+bool Layer::init(const Gradient &grad) {
+	if (!DynamicBatchNode::init()) {
+		return false;
+	}
+
+	_stencil = true;
+
+	setColor(Color3B(255, 255, 255));
+	setOpacity(255);
+	setGradient(grad);
+
+	updateBlendFunc(nullptr);
+
+	return true;
+}
+
 void Layer::onContentSizeDirty() {
 	DynamicBatchNode::onContentSizeDirty();
 	updateSprites();

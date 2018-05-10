@@ -235,13 +235,13 @@ bool InputField::empty() const {
 	return _label->empty();
 }
 
-void InputField::setPlaceholder(const WideString &str) {
+void InputField::setPlaceholder(const WideStringView &str) {
 	_placeholder->setString(str);
 }
-void InputField::setPlaceholder(const String &str) {
+void InputField::setPlaceholder(const StringView &str) {
 	_placeholder->setString(str);
 }
-const WideString &InputField::getPlaceholder() const {
+WideStringView InputField::getPlaceholder() const {
 	return _label->getString();
 }
 
@@ -257,7 +257,7 @@ void InputField::setString(const String &str) {
 	}
 	_label->setString(str);
 }
-const WideString &InputField::getString() const {
+WideStringView InputField::getString() const {
 	return _label->getString();
 }
 

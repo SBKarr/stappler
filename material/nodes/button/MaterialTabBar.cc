@@ -73,7 +73,7 @@ bool TabBarButton::init(MenuSource *source, const TabButtonCallback &cb, TabBar:
 
 	initialize(cb, style, swallow, wrapped);
 
-	_label->setString("SystemMore"_locale);
+	_label->setString("SystemMore"_locale.to_string());
 	_icon->setIconName(IconName::Navigation_more_vert);
 
 	setMenuSource(source);

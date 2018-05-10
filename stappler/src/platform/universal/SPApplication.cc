@@ -68,14 +68,22 @@ NS_SP_BEGIN
 
 #ifndef SP_RESTRICT
 
+static std::atomic<bool> s_atomicApplicationExists;
+
+bool Application::isApplicationExists() {
+	return s_atomicApplicationExists.load();
+}
+
 Application::Application() {
 	memory::pool::initialize();
 	_applicationPool = memory::pool::create(memory::pool::acquire());
 	_framePool = memory::pool::create(_applicationPool);
 	memory::pool::push(_applicationPool);
+	s_atomicApplicationExists.store(true);
 }
 
 Application::~Application() {
+	s_atomicApplicationExists.store(false);
 	memory::pool::pop();
 	memory::pool::destroy(_applicationPool);
 	memory::pool::terminate();

@@ -108,7 +108,7 @@ bool Scene::init() {
 		_foreground = addChildNode(createForegroundLayer(), 4);
 	}
 
-	_captureCanvas = Rc<draw::Canvas>::create(draw::StencilDepthFormat::Stencil8);
+	_captureCanvas = Rc<draw::Canvas>::create();
 
 	return true;
 }

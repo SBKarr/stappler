@@ -35,6 +35,7 @@ THE SOFTWARE.
 #include "SPDataListener.h"
 #include "SPAssetLibrary.h"
 #include "SPDrawCanvas.h"
+#include "SPApplication.h"
 
 #include "base/CCDirector.h"
 #include "base/CCScheduler.h"
@@ -404,6 +405,10 @@ bool TextureCache::makeCurrentContext() {
 #ifdef DEBUG
 	assert(s_textureCacheThread.isOnThisThread());
 #endif
+	if (!stappler::Application::isApplicationExists()) {
+		return false;
+	}
+
 	if (_contextRetained == 0) {
 		++ _contextRetained;
 		return platform::render::_enableOffscreenContext();
@@ -416,6 +421,10 @@ void TextureCache::freeCurrentContext() {
 #ifdef DEBUG
 	assert(s_textureCacheThread.isOnThisThread());
 #endif
+	if (!stappler::Application::isApplicationExists()) {
+		return;
+	}
+
 	if (_contextRetained > 0) {
 		-- _contextRetained;
 		if (_contextRetained == 0) {

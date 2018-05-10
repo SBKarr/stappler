@@ -38,10 +38,10 @@ namespace filesystem {
 	String _getDocumentsPath();
 	String _getCachesPath();
 
-	bool _exists(const String &); // check if file exists in application bundle filesystem
-	size_t _size(const String &);
+	bool _exists(const StringView &); // check if file exists in application bundle filesystem
+	size_t _size(const StringView &);
 
-	stappler::filesystem::ifile _openForReading(const String &);
+	stappler::filesystem::ifile _openForReading(const StringView &);
 	size_t _read(void *, uint8_t *buf, size_t nbytes);
 	size_t _seek(void *, int64_t offset, io::Seek s);
 	size_t _tell(void *);

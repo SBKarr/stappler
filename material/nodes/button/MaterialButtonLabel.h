@@ -34,8 +34,8 @@ public:
 	virtual bool init(FontType, const TapCallback &tapCallback = nullptr, const TapCallback &longTapCallback = nullptr);
 	virtual void onContentSizeDirty() override;
 
-	virtual void setString(const std::string &);
-	virtual const std::string &getString() const;
+	virtual void setString(const StringView &);
+	virtual StringView getString() const;
 
 	virtual void setLabelPadding(const Padding &);
 	virtual const Padding &getLabelPadding() const;

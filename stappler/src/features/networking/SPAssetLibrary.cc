@@ -59,6 +59,33 @@ const Bytes &AssetLibrary::getAssetSignKey() {
 	return s_assetSignKey;
 }
 
+static void signDownload(NetworkTask &d) {
+	auto dev = Device::getInstance();
+
+	String date = Time::now().toHttp();
+	StringStream message;
+
+	message << d.getUrl() << "\r\n";
+	message << "X-ApplicationName: " << dev->getBundleName() << "\r\n";
+	message << "X-ApplicationVersion: " << toString(dev->getApplicationVersionCode()) << "\r\n";
+	message << "X-ClientDate: " << date << "\r\n";
+	message << "User-Agent: " << dev->getUserAgent() << "\r\n";
+
+	auto msg = message.str();
+	auto sig = string::Sha512::hmac(msg, s_assetSignKey);
+
+	d.addHeader("X-ClientDate", date);
+	d.addHeader("X-Stappler-Sign", base64url::encode(sig));
+}
+
+bool AssetLibrary::signStandaloneTask(NetworkTask &task) {
+	if (!s_assetSignKey.empty()) {
+		signDownload(task);
+		return true;
+	}
+	return false;
+}
+
 AssetLibrary *AssetLibrary::getInstance() {
 	if (!s_instance) {
 		s_instance = new AssetLibrary();
@@ -187,25 +214,6 @@ void AssetLibrary::cleanup() {
 		}
 	});
 	_stateClass.perform(toString("DELETE FROM ", _stateClass.getName(), ";"));
-}
-
-static void signDownload(AssetDownload &d) {
-	auto dev = Device::getInstance();
-
-	String date = Time::now().toHttp();
-	StringStream message;
-
-	message << d.getUrl() << "\r\n";
-	message << "X-ApplicationName: " << dev->getBundleName() << "\r\n";
-	message << "X-ApplicationVersion: " << toString(dev->getApplicationVersionCode()) << "\r\n";
-	message << "X-ClientDate: " << date << "\r\n";
-	message << "User-Agent: " << dev->getUserAgent() << "\r\n";
-
-	auto msg = message.str();
-	auto sig = string::Sha512::hmac(msg, s_assetSignKey);
-
-	d.addHeader("X-ClientDate", date);
-	d.addHeader("X-Stappler-Sign", base64url::encode(sig));
 }
 
 void AssetLibrary::startDownload(AssetDownload *d) {

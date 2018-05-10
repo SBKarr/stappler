@@ -272,7 +272,7 @@ bool FlexibleLayout::isStatusBarTracked() const {
 
 void FlexibleLayout::setStatusBarBackgroundColor(const Color &c) {
 	_statusBar->setColor(c);
-	if (_statusBarTracked && _flexibleBaseNode) {
+	if (_statusBarTracked) {
 		if (c.text() == Color::Black) {
 			stappler::Screen::getInstance()->setStatusBarColor(stappler::Screen::StatusBarColor::Black);
 		} else {

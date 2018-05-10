@@ -31,7 +31,7 @@ THE SOFTWARE.
 NS_SP_BEGIN
 
 LabelParameters::DescriptionStyle::DescriptionStyle() {
-	font.fontFamily = "default";
+	font.fontFamily = StringView("default");
 	font.fontSize = 14;
 	text.opacity = 222;
 	text.color = Color3B::BLACK;
@@ -327,13 +327,14 @@ LabelParameters::FontStretch LabelParameters::getFontStretch() const {
 	return _style.font.fontStretch;
 }
 
-void LabelParameters::setFontFamily(const String &value) {
+void LabelParameters::setFontFamily(const StringView &value) {
 	if (value != _style.font.fontFamily) {
-		_style.font.fontFamily = value;
+		_fontFamilyStorage = value.str();
+		_style.font.fontFamily = _fontFamilyStorage;
 		_labelDirty = true;
 	}
 }
-const String &LabelParameters::getFontFamily() const {
+StringView LabelParameters::getFontFamily() const {
 	return _style.font.fontFamily;
 }
 
@@ -418,12 +419,12 @@ bool LabelParameters::isLocaleEnabled() const {
 	return _localeEnabled;
 }
 
-void LabelParameters::setString(const String &newString) {
+void LabelParameters::setString(const StringView &newString) {
 	if (newString == _string8) {
 		return;
 	}
 
-	_string8 = newString;
+	_string8 = newString.str();
 	_string16 = string::toUtf16(newString);
 	if (!_localeEnabled && locale::hasLocaleTagsFast(_string16)) {
 		setLocaleEnabled(true);
@@ -432,13 +433,13 @@ void LabelParameters::setString(const String &newString) {
 	clearStyles();
 }
 
-void LabelParameters::setString(const WideString &newString) {
+void LabelParameters::setString(const WideStringView &newString) {
 	if (newString == _string16) {
 		return;
 	}
 
 	_string8 = string::toUtf8(newString);
-	_string16 = newString;
+	_string16 = newString.str();
 	if (!_localeEnabled && locale::hasLocaleTagsFast(_string16)) {
 		setLocaleEnabled(true);
 	}
@@ -451,11 +452,11 @@ void LabelParameters::setLocalizedString(size_t idx) {
 	setLocaleEnabled(true);
 }
 
-const WideString &LabelParameters::getString() const {
+WideStringView LabelParameters::getString() const {
 	return _string16;
 }
 
-const String &LabelParameters::getString8() const {
+StringView LabelParameters::getString8() const {
 	return _string8;
 }
 

@@ -126,7 +126,10 @@ void EventHeader::send(Ref *object, Ref *value) const {
 void EventHeader::send(Ref *object, const char *value) const {
 	Event::send(*this, object, value);
 }
-void EventHeader::send(Ref *object, const std::string &value) const {
+void EventHeader::send(Ref *object, const String &value) const {
+	Event::send(*this, object, value);
+}
+void EventHeader::send(Ref *object, const StringView &value) const {
 	Event::send(*this, object, value);
 }
 void EventHeader::send(Ref *object, const data::Value &value) const {

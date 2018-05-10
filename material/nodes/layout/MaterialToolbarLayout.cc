@@ -66,10 +66,10 @@ MenuSource *ToolbarLayout::getActionMenuSource() const {
 	return _toolbar->getActionMenuSource();
 }
 
-void ToolbarLayout::setTitle(const std::string &str) {
+void ToolbarLayout::setTitle(const StringView &str) {
 	_toolbar->setTitle(str);
 }
-const std::string &ToolbarLayout::getTitle() const {
+StringView ToolbarLayout::getTitle() const {
 	return _toolbar->getTitle();
 }
 
