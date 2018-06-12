@@ -66,6 +66,8 @@ public:
 	auto getComponent(const StringView &) const -> Component *;
 	void addComponent(const String &, ServerComponent *);
 
+	const Map<String, ServerComponent *> &getComponents() const;
+
 	void addPreRequest(Function<int(Request &)> &&);
 
 	void addHandler(const String &, const HandlerCallback &, const data::Value & = data::Value::Null);
@@ -143,8 +145,8 @@ public: // httpd server info
 
 	Server next() const { return Server(_server->next); }
 
-	const apr::string &getSessionKey() const;
-	const apr::string &getSessionName() const;
+	const String &getSessionKey() const;
+	const String &getSessionName() const;
 	apr_time_t getSessionMaxAge() const;
 	bool isSessionSecure() const;
 

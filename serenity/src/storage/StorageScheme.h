@@ -123,21 +123,25 @@ public:// CRUD functions
 	void touch(Adapter *adapter, const data::Value & obj) const;
 
 public:
-	data::Value getProperty(Adapter *, uint64_t oid, const String &, const Set<const Field *> & = Set<const Field *>()) const;
-	data::Value getProperty(Adapter *, const data::Value &, const String &, const Set<const Field *> & = Set<const Field *>()) const;
+	data::Value getProperty(Adapter *, uint64_t oid, const StringView &, std::initializer_list<StringView> fields) const;
+	data::Value getProperty(Adapter *, const data::Value &, const StringView &, std::initializer_list<StringView> fields) const;
+	data::Value getProperty(Adapter *, uint64_t oid, const StringView &, const Set<const Field *> & = Set<const Field *>()) const;
+	data::Value getProperty(Adapter *, const data::Value &, const StringView &, const Set<const Field *> & = Set<const Field *>()) const;
 
-	data::Value setProperty(Adapter *, uint64_t oid, const String &, data::Value &&) const;
-	data::Value setProperty(Adapter *, const data::Value &, const String &, data::Value &&) const;
-	data::Value setProperty(Adapter *, uint64_t oid, const String &, InputFile &) const;
-	data::Value setProperty(Adapter *, const data::Value &, const String &, InputFile &) const;
+	data::Value setProperty(Adapter *, uint64_t oid, const StringView &, data::Value &&) const;
+	data::Value setProperty(Adapter *, const data::Value &, const StringView &, data::Value &&) const;
+	data::Value setProperty(Adapter *, uint64_t oid, const StringView &, InputFile &) const;
+	data::Value setProperty(Adapter *, const data::Value &, const StringView &, InputFile &) const;
 
-	bool clearProperty(Adapter *, uint64_t oid, const String &, data::Value && = data::Value()) const;
-	bool clearProperty(Adapter *, const data::Value &, const String &, data::Value && = data::Value()) const;
+	bool clearProperty(Adapter *, uint64_t oid, const StringView &, data::Value && = data::Value()) const;
+	bool clearProperty(Adapter *, const data::Value &, const StringView &, data::Value && = data::Value()) const;
 
-	data::Value appendProperty(Adapter *, uint64_t oid, const String &, data::Value &&) const;
-	data::Value appendProperty(Adapter *, const data::Value &, const String &, data::Value &&) const;
+	data::Value appendProperty(Adapter *, uint64_t oid, const StringView &, data::Value &&) const;
+	data::Value appendProperty(Adapter *, const data::Value &, const StringView &, data::Value &&) const;
 
 public:
+	data::Value getProperty(Adapter *, uint64_t oid, const Field &, std::initializer_list<StringView> fields) const;
+	data::Value getProperty(Adapter *, const data::Value &, const Field &, std::initializer_list<StringView> fields) const;
 	data::Value getProperty(Adapter *, uint64_t oid, const Field &, const Set<const Field *> & = Set<const Field *>()) const;
 	data::Value getProperty(Adapter *, const data::Value &, const Field &, const Set<const Field *> & = Set<const Field *>()) const;
 
@@ -153,6 +157,8 @@ public:
 	data::Value appendProperty(Adapter *, const data::Value &, const Field &, data::Value &&) const;
 
 protected:
+	Set<const Field *> getFieldSet(const Field &, std::initializer_list<StringView>) const;
+
 	void addView(const Scheme *, const Field *);
 	void addParent(const Scheme *, const Field *);
 

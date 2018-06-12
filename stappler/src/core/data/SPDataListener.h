@@ -154,8 +154,8 @@ void Listener<T>::update(float dt) {
 	if (_callback && _binding) {
 		auto val = _binding.check();
 		if (!val.empty() || _dirty) {
-			_callback(val);
 			_dirty = false;
+			_callback(val);
 		}
 	}
 }

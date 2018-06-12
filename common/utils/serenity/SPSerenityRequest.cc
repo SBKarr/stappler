@@ -106,14 +106,29 @@ String Query::encodeResolve(Resolve res) {
 Query Query::all() { return Query(); }
 
 Query & Query::select(const String &alias) {
-	selectOid = 0;
+	selectIds.clear();
 	selectAlias = alias;
 	selectList.clear();
 	return *this;
 }
 
-Query & Query::select(uint64_t id) {
-	selectOid = id;
+Query & Query::select(int64_t id) {
+	selectIds.clear();
+	selectIds.push_back(id);
+	selectAlias.clear();
+	selectList.clear();
+	return *this;
+}
+
+Query & Query::select(Vector<int64_t> &&id) {
+	selectIds = move(id);
+	selectAlias.clear();
+	selectList.clear();
+	return *this;
+}
+
+Query & Query::select(std::initializer_list<int64_t> &&id) {
+	selectIds = move(id);
 	selectAlias.clear();
 	selectList.clear();
 	return *this;
@@ -244,11 +259,15 @@ Query & Query::forUpdate() {
 }
 
 bool Query::empty() const {
-	return selectList.empty() && selectOid == 0 && selectAlias.empty();
+	return selectList.empty() && selectIds.empty() && selectAlias.empty();
 }
 
-uint64_t Query::getSelectOid() const {
-	return selectOid;
+int64_t Query::getSingleSelectId() const {
+	return selectIds.size() == 1 ? selectIds.front() : 0;
+}
+
+const Vector<int64_t> & Query::getSelectIds() const {
+	return selectIds;
 }
 
 const String & Query::getSelectAlias() const {
@@ -276,7 +295,7 @@ size_t Query::getOffsetValue() const {
 }
 
 bool Query::hasSelectName() const {
-	return selectOid != 0 || !selectAlias.empty();
+	return !selectIds.empty() || !selectAlias.empty();
 }
 bool Query::hasSelectList() const {
 	return !selectList.empty();
@@ -346,8 +365,15 @@ void Query_encodeFields(data::Value &d, const Vector<Query::Field> &fields) {
 
 data::Value Query::encode() const {
 	data::Value ret;
-	if (selectOid != 0) {
-		ret.setInteger(selectOid, "select");
+	if (selectIds.size() == 1) {
+		ret.setInteger(selectIds.front(), "select");
+	} else if (!selectIds.empty()) {
+		auto &vals = ret.emplace("select");
+		vals.setArray(data::Value::ArrayType());
+		vals.asArray().reserve(selectIds.size());
+		for (auto &it : selectIds) {
+			vals.addInteger(it);
+		}
 	} else if (!selectAlias.empty()) {
 		ret.setString(selectAlias, "select");
 	} else if (!selectList.empty()) {

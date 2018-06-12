@@ -514,7 +514,7 @@ data::Value Handle::performQueryList(const QueryList &list, size_t count, bool f
 		auto &items = list.getItems();
 		const QueryList::Item &item = items.back();
 		if (item.query.hasDelta() && list.isDeltaApplicable()) {
-			auto tag = items.front().query.getSelectOid();
+			auto tag = items.front().query.getSingleSelectId();
 			auto viewField = items.size() > 1 ? items.at(items.size() - 2).field : items.back().field;
 			auto view = static_cast<const FieldView *>(viewField->getSlot());
 

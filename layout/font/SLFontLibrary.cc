@@ -516,7 +516,7 @@ FontTextureMap FreeTypeInterface::updateTextureWithSource(uint32_t v, FontSource
 			layout->addSortedChars(it.second);
 		}
 
-		names.push_back(FontLayoutData{source->getLayout(it.first), &lRef, Vector<FT_Face>()});
+		names.push_back(FontLayoutData{layout, &lRef, Vector<FT_Face>()});
 		count += it.second.size();
 	}
 

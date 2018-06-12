@@ -260,7 +260,7 @@ QueryList::QueryList(const Scheme *scheme) {
 
 bool QueryList::selectById(const Scheme *scheme, uint64_t id) {
 	Item &b = queries.back();
-	if (b.scheme == scheme && b.query.getSelectOid() == 0 && b.query.getSelectAlias().empty()) {
+	if (b.scheme == scheme && b.query.getSelectIds().empty() && b.query.getSelectAlias().empty()) {
 		b.query.select(id);
 		return true;
 	}
@@ -269,7 +269,7 @@ bool QueryList::selectById(const Scheme *scheme, uint64_t id) {
 
 bool QueryList::selectByName(const Scheme *scheme, const String &f) {
 	Item &b = queries.back();
-	if (b.scheme == scheme && b.query.getSelectOid() == 0 && b.query.getSelectAlias().empty()) {
+	if (b.scheme == scheme && b.query.getSelectIds().empty() && b.query.getSelectAlias().empty()) {
 		b.query.select(f);
 		return true;
 	}
@@ -367,7 +367,7 @@ bool QueryList::isRefSet() const {
 
 bool QueryList::isObject() const {
 	const Query &b = queries.back().query;
-	return b.getSelectOid() != 0 || !b.getSelectAlias().empty() || b.getLimitValue() == 1;
+	return b.getSelectIds().size() == 1 || !b.getSelectAlias().empty() || b.getLimitValue() == 1;
 }
 bool QueryList::isView() const {
 	if (queries.size() > 1 && queries.at(queries.size() - 2).field) {
@@ -383,7 +383,7 @@ bool QueryList::empty() const {
 
 bool QueryList::isDeltaApplicable() const {
 	const QueryList::Item &item = getItems().back();
-	if ((queries.size() == 1 || (isView() && queries.size() == 2 && queries.front().query.getSelectOid()))
+	if ((queries.size() == 1 || (isView() && queries.size() == 2 && queries.front().query.getSelectIds().size() == 1))
 			&& !item.query.hasSelectName() && !item.query.hasSelectList()) {
 		return true;
 	}

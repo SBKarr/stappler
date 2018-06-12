@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "Output.h"
 #include "StorageScheme.h"
 #include "StorageAdapter.h"
+#include "ServerComponent.h"
 #include "Resource.h"
 #include "PGHandle.h"
 
@@ -47,6 +48,7 @@ public:
 
 	User *getUser() const { return _user; }
 	const Vector<SocketCommand *> &getCommands() const { return _cmds; }
+	const Vector<Pair<StringView, const Map<String, ServerComponent::Command> *>> &getExternals() const { return _external; }
 
 	bool onCommand(StringView &r);
 
@@ -64,6 +66,7 @@ public:
 
 protected:
 	Vector<SocketCommand *> _cmds;
+	Vector<Pair<StringView, const Map<String, ServerComponent::Command> *>> _external;
 	ShellMode _mode = ShellMode::Plain;
 	User *_user;
 };
@@ -72,8 +75,8 @@ struct SocketCommand : AllocBase {
 	SocketCommand(const String &str) : name(str) { }
 	virtual ~SocketCommand() { }
 	virtual bool run(ShellSocketHandler &h, StringView &r) = 0;
-	virtual const String desc() const = 0;
-	virtual const String help() const = 0;
+	virtual StringView desc() const = 0;
+	virtual StringView help() const = 0;
 
 	String name;
 };
@@ -100,11 +103,11 @@ struct ModeCmd : SocketCommand {
 		return true;
 	}
 
-	virtual const String desc() const {
-		return "plain|html - Switch socket output mode"_weak;
+	virtual StringView desc() const {
+		return "plain|html - Switch socket output mode";
 	}
-	virtual const String help() const {
-		return "plain|html - Switch socket output mode"_weak;
+	virtual StringView help() const {
+		return "plain|html - Switch socket output mode";
 	}
 };
 
@@ -130,11 +133,11 @@ struct DebugCmd : SocketCommand {
 		return true;
 	}
 
-	virtual const String desc() const {
-		return "on|off - Switch server debug mode"_weak;
+	virtual StringView desc() const {
+		return "on|off - Switch server debug mode";
 	}
-	virtual const String help() const {
-		return "on|off - Switch server debug mode"_weak;
+	virtual StringView help() const {
+		return "on|off - Switch server debug mode";
 	}
 };
 
@@ -175,11 +178,11 @@ struct ListCmd : SocketCommand {
 		return true;
 	}
 
-	virtual const String desc() const {
-		return "all|<name> - Get information about data scheme"_weak;
+	virtual StringView desc() const {
+		return "all|<name> - Get information about data scheme";
 	}
-	virtual const String help() const {
-		return "all|<name> - Get information about data scheme"_weak;
+	virtual StringView help() const {
+		return "all|<name> - Get information about data scheme";
 	}
 };
 
@@ -249,11 +252,11 @@ struct GetCmd : ResourceCmd {
 		return true;
 	}
 
-	virtual const String desc() const {
-		return "<scheme> <path> <resolve> - Get data from scheme"_weak;
+	virtual StringView desc() const {
+		return "<scheme> <path> <resolve> - Get data from scheme";
 	}
-	virtual const String help() const {
-		return "<scheme> <path> <resolve> - Get data from scheme"_weak;
+	virtual StringView help() const {
+		return "<scheme> <path> <resolve> - Get data from scheme";
 	}
 };
 
@@ -301,13 +304,13 @@ struct HistoryCmd : ResourceCmd {
 		return false;
 	}
 
-	virtual const String desc() const {
-		return "<scheme> <time> - Changelog for scheme or view"_weak;
+	virtual StringView desc() const {
+		return "<scheme> <time> - Changelog for scheme or view";
 	}
-	virtual const String help() const {
+	virtual StringView help() const {
 		return "\thistory <scheme|view> <time> - Changelog for scheme or view\n\n"
 				"Scheme can be defined by it's name\n"
-				"View can be defined as <scheme>::<field>::<tag>\n"_weak;
+				"View can be defined as <scheme>::<field>::<tag>\n";
 	}
 };
 
@@ -352,13 +355,13 @@ struct DeltaCmd : ResourceCmd {
 		return false;
 	}
 
-	virtual const String desc() const {
-		return "<scheme> <time> [<field> <tag>] - Delta for scheme"_weak;
+	virtual StringView desc() const {
+		return "<scheme> <time> [<field> <tag>] - Delta for scheme";
 	}
-	virtual const String help() const {
+	virtual StringView help() const {
 		return "\tdelta <scheme|view> <time> - Changelog for scheme or view\n\n"
 				"Scheme can be defined by it's name\n"
-				"View can be defined as <scheme>::<field>::<tag>\n"_weak;
+				"View can be defined as <scheme>::<field>::<tag>\n";
 	}
 };
 
@@ -389,11 +392,11 @@ struct MultiCmd : ResourceCmd {
 		return true;
 	}
 
-	virtual const String desc() const {
-		return "<request> - perform multi-request"_weak;
+	virtual StringView desc() const {
+		return "<request> - perform multi-request";
 	}
-	virtual const String help() const {
-		return "<request> - perform multi-request"_weak;
+	virtual StringView help() const {
+		return "<request> - perform multi-request";
 	}
 };
 
@@ -428,11 +431,11 @@ struct CreateCmd : ResourceCmd {
 		return true;
 	}
 
-	virtual const String desc() const {
-		return "<scheme> <path> <data> - Create object for scheme"_weak;
+	virtual StringView desc() const {
+		return "<scheme> <path> <data> - Create object for scheme";
 	}
-	virtual const String help() const {
-		return "<scheme> <path> <data> - Create object for scheme"_weak;
+	virtual StringView help() const {
+		return "<scheme> <path> <data> - Create object for scheme";
 	}
 };
 
@@ -467,11 +470,11 @@ struct UpdateCmd : ResourceCmd {
 		return true;
 	}
 
-	virtual const String desc() const {
-		return "<scheme> <path> <data> - Update object for scheme"_weak;
+	virtual StringView desc() const {
+		return "<scheme> <path> <data> - Update object for scheme";
 	}
-	virtual const String help() const {
-		return "<scheme> <path> <data>  - Update object for scheme"_weak;
+	virtual StringView help() const {
+		return "<scheme> <path> <data>  - Update object for scheme";
 	}
 };
 
@@ -516,11 +519,11 @@ struct UploadCmd : ResourceCmd {
 		return true;
 	}
 
-	virtual const String desc() const {
-		return "<scheme> <path> - Upload file for scheme resource"_weak;
+	virtual StringView desc() const {
+		return "<scheme> <path> - Upload file for scheme resource";
 	}
-	virtual const String help() const {
-		return "<scheme> <path> - Update file for scheme resource"_weak;
+	virtual StringView help() const {
+		return "<scheme> <path> - Update file for scheme resource";
 	}
 };
 
@@ -554,11 +557,11 @@ struct AppendCmd : ResourceCmd {
 		return true;
 	}
 
-	virtual const String desc() const {
-		return "<scheme> <path> <data> - Append object for scheme"_weak;
+	virtual StringView desc() const {
+		return "<scheme> <path> <data> - Append object for scheme";
 	}
-	virtual const String help() const {
-		return "<scheme> <path> <data> - Append object for scheme"_weak;
+	virtual StringView help() const {
+		return "<scheme> <path> <data> - Append object for scheme";
 	}
 };
 
@@ -589,11 +592,11 @@ struct DeleteCmd : ResourceCmd {
 		return true;
 	}
 
-	virtual const String desc() const {
-		return "<scheme> <path> - Delete object for scheme"_weak;
+	virtual StringView desc() const {
+		return "<scheme> <path> - Delete object for scheme";
 	}
-	virtual const String help() const {
-		return "<scheme> <path> - Delete object for scheme"_weak;
+	virtual StringView help() const {
+		return "<scheme> <path> - Delete object for scheme";
 	}
 };
 
@@ -625,11 +628,11 @@ struct HandlersCmd : SocketCommand {
 		return true;
 	}
 
-	virtual const String desc() const {
-		return " - Information about registered handlers"_weak;
+	virtual StringView desc() const {
+		return " - Information about registered handlers";
 	}
-	virtual const String help() const {
-		return " - Information about registered handlers"_weak;
+	virtual StringView help() const {
+		return " - Information about registered handlers";
 	}
 };
 
@@ -641,11 +644,11 @@ struct CloseCmd : SocketCommand {
 		return false;
 	}
 
-	virtual const String desc() const {
-		return " - close current connection"_weak;
+	virtual StringView desc() const {
+		return " - close current connection";
 	}
-	virtual const String help() const {
-		return " - close current connection"_weak;
+	virtual StringView help() const {
+		return " - close current connection";
 	}
 };
 
@@ -657,11 +660,11 @@ struct EchoCmd : SocketCommand {
 		return true;
 	}
 
-	virtual const String desc() const {
-		return "<message> - display message in current terminal"_weak;
+	virtual StringView desc() const {
+		return "<message> - display message in current terminal";
 	}
-	virtual const String help() const {
-		return "<message> - display message in current terminal"_weak;
+	virtual StringView help() const {
+		return "<message> - display message in current terminal";
 	}
 };
 
@@ -674,11 +677,11 @@ struct ParseCmd : SocketCommand {
 		return true;
 	}
 
-	virtual const String desc() const {
-		return "<message> - parse message as object changeset"_weak;
+	virtual StringView desc() const {
+		return "<message> - parse message as object changeset";
 	}
-	virtual const String help() const {
-		return "<message> - parse message as object changeset"_weak;
+	virtual StringView help() const {
+		return "<message> - parse message as object changeset";
 	}
 };
 
@@ -694,11 +697,11 @@ struct MsgCmd : SocketCommand {
 		return true;
 	}
 
-	virtual const String desc() const {
-		return "<message> - display message in all opened terminals"_weak;
+	virtual StringView desc() const {
+		return "<message> - display message in all opened terminals";
 	}
-	virtual const String help() const {
-		return "<message> - display message in all opened terminals"_weak;
+	virtual StringView help() const {
+		return "<message> - display message in all opened terminals";
 	}
 };
 
@@ -712,11 +715,11 @@ struct CountCmd : SocketCommand {
 		return true;
 	}
 
-	virtual const String desc() const {
-		return " - display number of opened terminals"_weak;
+	virtual StringView desc() const {
+		return " - display number of opened terminals";
 	}
-	virtual const String help() const {
-		return " - display number of opened terminals"_weak;
+	virtual StringView help() const {
+		return " - display number of opened terminals";
 	}
 };
 
@@ -725,15 +728,42 @@ struct HelpCmd : SocketCommand {
 
 	virtual bool run(ShellSocketHandler &h, StringView &r) override {
 		auto & cmds = h.getCommands();
+		auto & externals = h.getExternals();
 		StringStream stream;
 		if (r.empty()) {
 			for (auto &it : cmds) {
 				stream << "  - " << it->name << " " << it->desc() << "\n";
 			}
+
+			for (auto &it : externals) {
+				stream << " From component: " << it.first << "\n";
+				for (auto &eit : *it.second) {
+					stream << "  - " << eit.second.name << " " << eit.second.desc << "\n";
+				}
+			}
 		} else {
+			bool found = false;
 			for (auto &it : cmds) {
 				if (r == it->name) {
 					stream << "  - " << it->name << " " << it->desc() << "\n" << it->help();
+					found = true;
+					break;
+				}
+			}
+
+			if (!found) {
+				for (auto &it : externals) {
+					stream << " From component: " << it.first << "\n";
+					for (auto &eit : *it.second) {
+						if (r == eit.second.name) {
+							stream << "  - " << eit.second.name << " " << eit.second.desc << "\n" << eit.second.help;
+							found = true;
+							break;
+						}
+					}
+					if (found) {
+						break;
+					}
 				}
 			}
 		}
@@ -741,11 +771,11 @@ struct HelpCmd : SocketCommand {
 		return true;
 	}
 
-	virtual const String desc() const {
-		return "<>|<cmd> - display command list or information about command"_weak;
+	virtual StringView desc() const {
+		return "<>|<cmd> - display command list or information about command";
 	}
-	virtual const String help() const {
-		return "<>|<cmd> - display command list or information about command"_weak;
+	virtual StringView help() const {
+		return "<>|<cmd> - display command list or information about command";
 	}
 };
 
@@ -774,6 +804,12 @@ ShellSocketHandler::ShellSocketHandler(Manager *m, const Request &req, User *use
 	_cmds.push_back(new MsgCmd());
 	_cmds.push_back(new CountCmd());
 	_cmds.push_back(new HelpCmd());
+
+	auto serv = req.server();
+	_external.reserve(serv.getComponents().size());
+	for (auto &it : serv.getComponents()) {
+		_external.emplace_back(StringView(it.first), &it.second->getCommands());
+	}
 }
 
 bool ShellSocketHandler::onCommand(StringView &r) {
@@ -783,6 +819,16 @@ bool ShellSocketHandler::onCommand(StringView &r) {
 	for (auto &it : _cmds) {
 		if (cmd == it->name) {
 			return it->run(*this, r);
+		}
+	}
+
+	for (auto &it : _external) {
+		for (auto &eit : *it.second) {
+			if (cmd == eit.second.name) {
+				auto val = eit.second.callback(r);
+				send(val);
+				return !val.isNull();
+			}
 		}
 	}
 

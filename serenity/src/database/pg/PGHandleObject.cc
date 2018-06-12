@@ -227,8 +227,10 @@ data::Value Handle::selectObjects(const Scheme &scheme, const Query &q) {
 	if (!q.empty()) {
 		empty = false;
 		w = s.where();
-		if (q.getSelectOid()) {
-			w.where(Operator::And, "__oid", Comparation::Equal, q.getSelectOid());
+		if (q.getSingleSelectId()) {
+			w.where(Operator::And, "__oid", Comparation::Equal, q.getSingleSelectId());
+		} else if (!q.getSelectIds().empty()) {
+			query.writeIdsRequest(w, Operator::And, scheme, q.getSelectIds());
 		} else if (!q.getSelectAlias().empty()) {
 			query.writeAliasRequest(w, Operator::And, scheme, q.getSelectAlias());
 		} else if (q.getSelectList().size() > 0) {
@@ -262,8 +264,10 @@ size_t Handle::countObjects(const Scheme &scheme, const Query &q) {
 
 	if (!q.empty()) {
 		auto w = f.where();
-		if (q.getSelectOid()) {
-			w.where(Operator::And, "__oid", Comparation::Equal, q.getSelectOid());
+		if (q.getSingleSelectId()) {
+			w.where(Operator::And, "__oid", Comparation::Equal, q.getSingleSelectId());
+		} else if (!q.getSelectIds().empty()) {
+			query.writeIdsRequest(w, Operator::And, scheme, q.getSelectIds());
 		} else if (!q.getSelectAlias().empty()) {
 			query.writeAliasRequest(w, Operator::And, scheme, q.getSelectAlias());
 		} else if (q.getSelectList().size() > 0) {

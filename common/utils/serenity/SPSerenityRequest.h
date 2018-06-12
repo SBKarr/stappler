@@ -84,7 +84,9 @@ public:
 	static String encodeResolve(Resolve);
 
 	Query & select(const String &alias);
-	Query & select(uint64_t id);
+	Query & select(int64_t id);
+	Query & select(Vector<int64_t> &&id);
+	Query & select(std::initializer_list<int64_t> &&id);
 
 	Query & select(const String &f, Comparation c, const data::Value & v1, const data::Value &v2 = data::Value());
 	Query & select(const String &f, const data::Value & v1); // special case for equality
@@ -120,7 +122,8 @@ public:
 
 	bool empty() const;
 
-	uint64_t getSelectOid() const;
+	int64_t getSingleSelectId() const;
+	const Vector<int64_t> & getSelectIds() const;
 	const String & getSelectAlias() const;
 	const Vector<Select> &getSelectList() const;
 
@@ -150,7 +153,7 @@ public:
 	data::Value encode() const;
 
 protected:
-	uint64_t selectOid = 0;
+	Vector<int64_t> selectIds;
 	String selectAlias;
 	Vector<Select> selectList;
 

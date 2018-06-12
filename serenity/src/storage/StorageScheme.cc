@@ -692,14 +692,29 @@ size_t Scheme::count(Adapter *a, const Query &q) const {
 	return a->countObjects(*this, q);
 }
 
-data::Value Scheme::getProperty(Adapter *a, uint64_t oid, const String &s, const Set<const Field *> &fields) const {
+data::Value Scheme::getProperty(Adapter *a, uint64_t oid, const StringView &s, std::initializer_list<StringView> fields) const {
+	auto f = getField(s);
+	if (f) {
+		return getProperty(a, oid, *f, getFieldSet(*f, fields));
+	}
+	return data::Value();
+}
+data::Value Scheme::getProperty(Adapter *a, const data::Value &obj, const StringView &s, std::initializer_list<StringView> fields) const {
+	auto f = getField(s);
+	if (f) {
+		return getProperty(a, obj, *f, getFieldSet(*f, fields));
+	}
+	return data::Value();
+}
+
+data::Value Scheme::getProperty(Adapter *a, uint64_t oid, const StringView &s, const Set<const Field *> &fields) const {
 	auto f = getField(s);
 	if (f) {
 		return getProperty(a, oid, *f, fields);
 	}
 	return data::Value();
 }
-data::Value Scheme::getProperty(Adapter *a, const data::Value &obj, const String &s, const Set<const Field *> &fields) const {
+data::Value Scheme::getProperty(Adapter *a, const data::Value &obj, const StringView &s, const Set<const Field *> &fields) const {
 	auto f = getField(s);
 	if (f) {
 		return getProperty(a, obj, *f, fields);
@@ -707,57 +722,64 @@ data::Value Scheme::getProperty(Adapter *a, const data::Value &obj, const String
 	return data::Value();
 }
 
-data::Value Scheme::setProperty(Adapter *a, uint64_t oid, const String &s, data::Value &&v) const {
+data::Value Scheme::setProperty(Adapter *a, uint64_t oid, const StringView &s, data::Value &&v) const {
 	auto f = getField(s);
 	if (f) {
 		return setProperty(a, oid, *f, std::move(v));
 	}
 	return data::Value();
 }
-data::Value Scheme::setProperty(Adapter *a, const data::Value &obj, const String &s, data::Value &&v) const {
+data::Value Scheme::setProperty(Adapter *a, const data::Value &obj, const StringView &s, data::Value &&v) const {
 	auto f = getField(s);
 	if (f) {
 		return setProperty(a, obj, *f, std::move(v));
 	}
 	return data::Value();
 }
-data::Value Scheme::setProperty(Adapter *a, uint64_t oid, const String &s, InputFile &file) const {
+data::Value Scheme::setProperty(Adapter *a, uint64_t oid, const StringView &s, InputFile &file) const {
 	auto f = getField(s);
 	if (f) {
 		return setProperty(a, oid, *f, file);
 	}
 	return data::Value();
 }
-data::Value Scheme::setProperty(Adapter *a, const data::Value &obj, const String &s, InputFile &file) const {
+data::Value Scheme::setProperty(Adapter *a, const data::Value &obj, const StringView &s, InputFile &file) const {
 	return setProperty(a, obj.getInteger(s), s, file);
 }
 
-bool Scheme::clearProperty(Adapter *a, uint64_t oid, const String &s, data::Value && objs) const {
+bool Scheme::clearProperty(Adapter *a, uint64_t oid, const StringView &s, data::Value && objs) const {
 	if (auto f = getField(s)) {
 		return clearProperty(a, oid, *f, move(objs));
 	}
 	return false;
 }
-bool Scheme::clearProperty(Adapter *a, const data::Value &obj, const String &s, data::Value && objs) const {
+bool Scheme::clearProperty(Adapter *a, const data::Value &obj, const StringView &s, data::Value && objs) const {
 	if (auto f = getField(s)) {
 		return clearProperty(a, obj, *f, move(objs));
 	}
 	return false;
 }
 
-data::Value Scheme::appendProperty(Adapter *a, uint64_t oid, const String &s, data::Value &&v) const {
+data::Value Scheme::appendProperty(Adapter *a, uint64_t oid, const StringView &s, data::Value &&v) const {
 	auto f = getField(s);
 	if (f) {
 		return appendProperty(a, oid, *f, std::move(v));
 	}
 	return data::Value();
 }
-data::Value Scheme::appendProperty(Adapter *a, const data::Value &obj, const String &s, data::Value &&v) const {
+data::Value Scheme::appendProperty(Adapter *a, const data::Value &obj, const StringView &s, data::Value &&v) const {
 	auto f = getField(s);
 	if (f) {
 		return appendProperty(a, obj, *f, std::move(v));
 	}
 	return data::Value();
+}
+
+data::Value Scheme::getProperty(Adapter *a, uint64_t oid, const Field &f, std::initializer_list<StringView> fields) const {
+	return getProperty(a, oid, f, getFieldSet(f, fields));
+}
+data::Value Scheme::getProperty(Adapter *a, const data::Value &obj, const Field &f, std::initializer_list<StringView> fields) const {
+	return getProperty(a, obj, f, getFieldSet(f, fields));
 }
 
 data::Value Scheme::getProperty(Adapter *a, uint64_t oid, const Field &f, const Set<const Field *> &fields) const {
@@ -1088,6 +1110,15 @@ void Scheme::purgeFilePatch(Adapter *adapter, const data::Value &patch) const {
 			File::purgeFile(adapter, *f, it.second);
 		}
 	}
+}
+
+Set<const Field *> Scheme::getFieldSet(const Field &f, std::initializer_list<StringView> il) const {
+	Set<const Field *> ret;
+	auto target = f.getForeignScheme();
+	for (auto &it : il) {
+		ret.emplace(target->getField(it));
+	}
+	return ret;
 }
 
 void Scheme::addView(const Scheme *s, const Field *f) {

@@ -35,8 +35,26 @@ ServerComponent::ServerComponent(Server &serv, const String &name, const data::V
 
 void ServerComponent::onChildInit(Server &serv) { }
 
+void ServerComponent::onStorageInit(Server &, storage::Adapter *) { }
+
 const storage::Scheme * ServerComponent::exportScheme(const storage::Scheme &scheme) {
 	return _server.exportScheme(scheme);
+}
+
+void ServerComponent::addCommand(const StringView &name, Function<data::Value(const StringView &)> &&cb, const StringView &desc, const StringView &help) {
+	_commands.emplace(name.str(), Command{name, desc, help, move(cb)});
+}
+
+const ServerComponent::Command *ServerComponent::getCommand(const StringView &name) const {
+	auto it = _commands.find(name);
+	if (it != _commands.end()) {
+		return &it->second;
+	}
+	return nullptr;
+}
+
+const Map<String, ServerComponent::Command> &ServerComponent::getCommands() const {
+	return _commands;
 }
 
 NS_SA_END

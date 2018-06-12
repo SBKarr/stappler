@@ -33,15 +33,29 @@ public:
 	using Symbol = ServerComponent * (*) (Server &serv, const String &name, const data::Value &dict);
 	using Scheme = storage::Scheme;
 
+	struct Command {
+		StringView name;
+		StringView desc;
+		StringView help;
+		Function<data::Value(const StringView &)> callback;
+	};
+
 	ServerComponent(Server &serv, const String &name, const data::Value &dict);
 	virtual ~ServerComponent() { }
 
 	virtual void onChildInit(Server &);
+	virtual void onStorageInit(Server &, storage::Adapter *);
 
 	const data::Value & getConfig() const { return _config; }
 	const String & getName() const { return _name; }
 
 	const storage::Scheme * exportScheme(const storage::Scheme &);
+
+	void addCommand(const StringView &name, Function<data::Value(const StringView &)> &&,
+			const StringView &desc = StringView(), const StringView &help = StringView());
+	const Command *getCommand(const StringView &name) const;
+
+	const Map<String, Command> &getCommands() const;
 
 	template <typename Value>
 	void exportValues(Value &&val) {
@@ -55,6 +69,8 @@ public:
 	}
 
 protected:
+	Map<String, Command> _commands;
+
 	Server _server;
 	String _name;
 	data::Value _config;

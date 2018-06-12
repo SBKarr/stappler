@@ -281,7 +281,7 @@ data::Value ResourceSet::createObject(data::Value &data, apr::array<InputFile> &
 	auto &item = items.back();
 	if (items.size() > 1 && item.ref) {
 		// has subqueries, try to calculate origin
-		if (auto id = items.at(items.size() - 2).query.getSelectOid()) {
+		if (auto id = items.at(items.size() - 2).query.getSingleSelectId()) {
 			extra.setInteger(id, item.ref->getName());
 		} else {
 			auto ids = getDatabaseId(_queries, _queries.size() - 1);
@@ -308,7 +308,7 @@ data::Value ResourceSet::appendObject(data::Value &data) {
 	auto &item = items.back();
 	if (items.size() > 1 && item.ref) {
 		// has subqueries, try to calculate origin
-		if (auto id = items.at(items.size() - 2).query.getSelectOid()) {
+		if (auto id = items.at(items.size() - 2).query.getSingleSelectId()) {
 			extra.setInteger(id, item.ref->getName());
 		} else {
 			auto ids = getDatabaseId(_queries);
@@ -887,7 +887,7 @@ data::Value ResourceArray::getArrayForObject(data::Value &object) {
 ResourceView::ResourceView(Adapter *h, QueryList &&q)
 : ResourceSet(h, move(q)), _field(_queries.getField()) {
 	if (_queries.isDeltaApplicable()) {
-		auto tag = _queries.getItems().front().query.getSelectOid();
+		auto tag = _queries.getItems().front().query.getSingleSelectId();
 		_delta = Time::microseconds(_adapter->getDeltaValue(*_queries.getSourceScheme(), *static_cast<const storage::FieldView *>(_field->getSlot()), tag));
 	}
 }

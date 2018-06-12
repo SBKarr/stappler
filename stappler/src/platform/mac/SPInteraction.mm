@@ -30,17 +30,17 @@ THE SOFTWARE.
 NS_SP_PLATFORM_BEGIN
 
 namespace interaction {
-	void _goToUrl(const std::string &url, bool external) {
+	void _goToUrl(const StringView &url, bool external) {
 		
 	}
-	void _makePhoneCall(const std::string &str) {
+	void _makePhoneCall(const StringView &str) {
 		
 	}
-	void _mailTo(const std::string &address) {
+	void _mailTo(const StringView &address) {
 		
 	}
 	void _backKey() { }
-	void _notification(const std::string &title, const std::string &text) {
+	void _notification(const StringView &title, const StringView &text) {
 		
 	}
 	void _rateApplication() { }

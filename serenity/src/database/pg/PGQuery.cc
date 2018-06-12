@@ -161,12 +161,21 @@ void ExecQuery::clear() {
 	binder.clear();
 }
 
+void ExecQuery::writeIdsRequest(ExecQuery::SelectWhere &w, Operator op, const Scheme &s, const Vector<int64_t> &ids) {
+	w.parenthesis(op, [&] (ExecQuery::WhereBegin &wh) {
+		auto whi = wh.where();
+		for (auto &it : ids) {
+			whi.where(Operator::Or, ExecQuery::Field(s.getName(), "__oid"), Comparation::Equal, it);
+		}
+	});
+}
+
 void ExecQuery::writeAliasRequest(ExecQuery::SelectWhere &w, Operator op, const Scheme &s, const String &a) {
 	w.parenthesis(op, [&] (ExecQuery::WhereBegin &wh) {
 		auto whi = wh.where();
 		for (auto &it : s.getFields()) {
 			if (it.second.getType() == storage::Type::Text && it.second.getTransform() == storage::Transform::Alias) {
-				whi.where(Operator::Or, it.first, Comparation::Equal, String(a));
+				whi.where(Operator::Or, ExecQuery::Field(s.getName(), it.first), Comparation::Equal, String(a));
 			}
 		}
 	});
@@ -189,8 +198,8 @@ void ExecQuery::writeQueryReqest(ExecQuery::SelectFrom &s, const QueryList::Item
 	auto &q = item.query;
 	if (!item.all && !item.query.empty()) {
 		auto w = s.where();
-		if (q.getSelectOid()) {
-			w.where(Operator::And, ExecQuery::Field(item.scheme->getName(), "__oid"), Comparation::Equal, q.getSelectOid());
+		if (q.getSingleSelectId()) {
+			w.where(Operator::And, ExecQuery::Field(item.scheme->getName(), "__oid"), Comparation::Equal, q.getSingleSelectId());
 		} else if (!q.getSelectAlias().empty()) {
 			writeAliasRequest(w, Operator::And, *item.scheme, q.getSelectAlias());
 		} else if (!q.getSelectList().empty()) {
@@ -434,7 +443,7 @@ void ExecQuery::writeQueryViewDelta(const QueryList &list, const Time &time, con
 		uint64_t id = 0;
 		String sqName;
 		// optimize id-only
-		if (items.size() != 2 || items.front().query.getSelectOid() == 0) {
+		if (items.size() != 2 || items.front().query.getSingleSelectId() == 0) {
 			size_t i = 0;
 			for (; i < items.size() - 1; ++ i) {
 				sq.with(toString("sq", i), [&] (GenericQuery &sq) {
@@ -443,7 +452,7 @@ void ExecQuery::writeQueryViewDelta(const QueryList &list, const Time &time, con
 			}
 			sqName = toString("sq", i - 1);
 		} else {
-			id = items.front().query.getSelectOid();
+			id = items.front().query.getSingleSelectId();
 		}
 
 		sq.with("d", [&] (ExecQuery::GenericQuery &sq) {
@@ -463,10 +472,7 @@ void ExecQuery::writeQueryViewDelta(const QueryList &list, const Time &time, con
 					.field(Field(sqName, "id").as("tag"))
 					.from(deltaName)
 					.innerJoinOn(sqName, [&] (ExecQuery::WhereBegin &w) {
-					if (id) {
-					} else {
 						w.where(ExecQuery::Field(deltaName, "tag"), Comparation::Equal, ExecQuery::Field(sqName, "id"));
-					}
 				})
 					.where("time", Comparation::GreatherThen, time.toMicroseconds())
 					.group("object").field(ExecQuery::Field(sqName, "id"));;

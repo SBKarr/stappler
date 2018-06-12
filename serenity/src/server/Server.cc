@@ -206,6 +206,12 @@ struct Server::Config : public AllocPool {
 			if (db) {
 				pg::Handle h(pool, db);
 				h.init(serv, schemes);
+
+				for (auto &it : components) {
+					currentComponent = it.second->getName();
+					it.second->onStorageInit(serv, &h);
+					currentComponent = String();
+				}
 				root->dbdClose(serv, db);
 			}
 		}
@@ -510,10 +516,10 @@ int Server::getMaxHeaders() const {
 	return _server->limit_req_fields;
 }
 
-const apr::string &Server::getSessionKey() const {
+const String &Server::getSessionKey() const {
 	return _config->sessionKey;
 }
-const apr::string &Server::getSessionName() const {
+const String &Server::getSessionName() const {
 	return _config->sessionName;
 }
 apr_time_t Server::getSessionMaxAge() const {
@@ -527,7 +533,7 @@ tpl::Cache *Server::getTemplateCache() const {
 	return &_config->_templateCache;
 }
 
-const apr::string &Server::getNamespace() const {
+const String &Server::getNamespace() const {
 	return _config->serverNamespace;
 }
 
@@ -712,6 +718,10 @@ void Server::addComponent(const String &name, ServerComponent *comp) {
 	if (_config->childInit) {
 		comp->onChildInit(*this);
 	}
+}
+
+const Map<String, ServerComponent *> &Server::getComponents() const {
+	return _config->components;
 }
 
 void Server::addPreRequest(Function<int(Request &)> &&req) {

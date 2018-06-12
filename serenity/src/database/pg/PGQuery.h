@@ -91,6 +91,7 @@ public:
 
 	void clear();
 
+	void writeIdsRequest(ExecQuery::SelectWhere &, Operator, const Scheme &s, const Vector<int64_t> &);
 	void writeAliasRequest(ExecQuery::SelectWhere &, Operator, const Scheme &s, const String &);
 	void writeQueryRequest(ExecQuery::SelectWhere &, Operator, const Scheme &s, const Vector<pg::Query::Select> &);
 

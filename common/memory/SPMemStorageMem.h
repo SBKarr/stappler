@@ -146,7 +146,7 @@ public:
 		_allocator.construct(data() + s - 1, std::forward<Args>(args)...);
 	}
 
-	template< class... Args >
+	template <typename... Args>
 	iterator emplace( const_iterator it, Args&&... args ) {
 		const auto _size = size();
 		auto _ptr = data();
@@ -163,7 +163,7 @@ public:
 		}
 	}
 
-	template< class... Args >
+	template <typename... Args>
 	iterator emplace_safe( const_iterator it, Args&&... args ) {
 		const auto _used = size();
 		auto _ptr = data();

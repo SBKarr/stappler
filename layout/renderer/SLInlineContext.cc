@@ -84,9 +84,10 @@ void InlineContext::initFormatter(Layout &l, float parentPosY, Formatter &reader
 
 InlineContext::InlineContext() { }
 
-bool InlineContext::init(FontSource *set, float density) {
+bool InlineContext::init(FontSource *set, float d) {
 	targetLabel = &phantomLabel;
-	reader.init(set, &targetLabel->format, density);
+	reader.init(set, &targetLabel->format, d);
+	density = d;
 	return true;
 }
 
