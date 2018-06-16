@@ -270,11 +270,18 @@ void Resource::resolveFile(const QueryFieldResolver &res, int64_t id, const stor
 
 static void Resource_resolveExtra(const storage::QueryFieldResolver &res, data::Value &obj) {
 	auto &fields = res.getResolves();
+	auto &fieldData = res.getResolvesData();
 	auto &dict = obj.asDict();
 	auto it = dict.begin();
 	while (it != dict.end()) {
 		auto f = res.getField(it->first);
-		if (!f || f->isProtected() || (fields.find(f) == fields.end())) {
+		if (fieldData.find(it->first) != fieldData.end()) {
+			storage::QueryFieldResolver next(res.next(it->first));
+			if (next) {
+				Resource_resolveExtra(next, it->second);
+			}
+			it ++;
+		} else if (!f || f->isProtected() || (fields.find(f) == fields.end())) {
 			it = dict.erase(it);
 		} else if (f->getType() == storage::Type::Extra && it->second.isDictionary()) {
 			storage::QueryFieldResolver next(res.next(it->first));
@@ -330,7 +337,7 @@ int64_t Resource::processResolveResult(const QueryFieldResolver &res, const Set<
 		auto f = res.getField(it->first);
 		if (!f || f->isProtected() || (fields.find(f) == fields.end())) {
 			it = dict.erase(it);
-		} else if (f->getType() == storage::Type::Extra && it->second.isDictionary()) {
+		} else if ((f->getType() == storage::Type::Extra || f->getType() == storage::Type::Data) && it->second.isDictionary()) {
 			QueryFieldResolver next(res.next(it->first));
 			if (next) {
 				Resource_resolveExtra(next, it->second);

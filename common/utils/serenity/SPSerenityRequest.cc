@@ -63,7 +63,7 @@ Query::Select::Select(const String & f, Comparation c, const String & v)
 : compare(Comparation::Equal), value1(v), value2(0), field(f) { }
 
 
-Resolve Query::decodeResolve(const String &str) {
+Resolve Query::decodeResolve(const StringView &str) {
 	if (str == "$all") {
 		return Resolve::All;
 	} else if (str == "$files") {

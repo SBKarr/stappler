@@ -154,6 +154,8 @@ public: // httpd server info
 
 	tpl::Cache *getTemplateCache() const;
 
+	void processReports();
+
 public: // compression
 	enum EtagMode {
 		AddSuffix,

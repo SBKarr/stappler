@@ -51,6 +51,7 @@ public:
 	Meta getMeta() const;
 
 	const Set<const Field *> &getResolves() const;
+	const Set<StringView> &getResolvesData() const;
 
 	const Query::FieldsVec *getIncludeVec() const;
 	const Query::FieldsVec *getExcludeVec() const;
@@ -66,12 +67,14 @@ protected:
 		const Query::FieldsVec *include = nullptr;
 		const Query::FieldsVec *exclude = nullptr;
 		Set<const Field *> resolved;
+		Set<StringView> resolvedData;
 		Map<String, Data> next;
 		Meta meta = Meta::None;
 	};
 
 	QueryFieldResolver(Data *);
 	void doResolve(Data *, const Vector<String> &extraFields, uint16_t depth, uint16_t max);
+	void doResolveData(Data *, uint16_t depth, uint16_t max);
 
 	Data *root = nullptr;
 };

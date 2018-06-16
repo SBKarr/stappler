@@ -163,6 +163,8 @@ struct Server::Config : public AllocPool {
 			webHookUrl = v.str();
 		} else if (n.is("format")) {
 			webHookFormat = v.str();
+		} else {
+			webHookExtra.setString(v.str(), n.str());
 		}
 	}
 
@@ -270,6 +272,7 @@ struct Server::Config : public AllocPool {
 	String webHookUrl;
 	String webHookName;
 	String webHookFormat;
+	data::Value webHookExtra;
 
 	CompressionConfig compression;
 	Set<String> protectedList;
@@ -316,13 +319,72 @@ void Server::onChildInit() {
 	_config->init(*this);
 	_config->onChildInit(*this);
 
+	filesystem::mkdir(filepath::merge(getDocumentRoot(), "/.serenity"));
 	filesystem::mkdir(filepath::merge(getDocumentRoot(), "/uploads"));
 
 	_config->currentComponent = "root";
 	tools::registerTools(config::getServerToolsPrefix(), *this);
 	_config->currentComponent = String();
 
+	addProtectedLocation("/.serenity");
 	addProtectedLocation("/uploads");
+
+	auto serv = server();
+	Task::perform(*this, [&] (Task &task) {
+		task.addExecuteFn([serv] (const Task &task) -> bool {
+			Server(serv).processReports();
+			return true;
+		});
+	});
+}
+
+void Server::processReports() {
+	if (_config->webHookFormat != "email") {
+		return;
+	}
+
+	Vector<String> crashFiles;
+	String path = filepath::absolute(".serenity", true);
+	filesystem::ftw(path, [&] (const StringView &view, bool isFile) {
+		if (isFile) {
+			StringView r(view);
+			r.skipString(path);
+			if (r.starts_with("/crash.")) {
+				crashFiles.emplace_back(view.str());
+			} else if (r.starts_with("/update.")) {
+				crashFiles.emplace_back(view.str());
+			}
+		}
+	});
+
+	Vector<String> crashData;
+	for (auto &it : crashFiles) {
+		crashData.emplace_back(filesystem::readTextFile(it));
+		filesystem::remove(it);
+	}
+
+	auto &from = _config->webHookExtra.getString("from");
+	auto &to = _config->webHookExtra.getString("to");
+	auto &title = _config->webHookExtra.getString("title");
+
+	StringStream data;
+	for (auto &it : crashData) {
+		network::Mail notify(_config->webHookUrl, _config->webHookName, _config->webHookExtra.getString("password"));
+		notify.setMailFrom(from);
+		notify.addMailTo(to);
+
+		data << "From: " << from << " <" << from << ">\r\n"
+			<< "Content-Type: text/plain; charset=utf-8\r\n"
+			<< "To: " << to << " <" << to << ">\r\n";
+		if (title.empty()) {
+			data << "Subject: Serenity Crash report\r\n\r\n";
+		} else {
+			data << "Subject: Serenity Crash report (" << title << ")\r\n\r\n";
+		}
+		data << it << "\r\n";
+
+		notify.send(data);
+	}
 }
 
 void Server::setHandlerFile(const String &file) {

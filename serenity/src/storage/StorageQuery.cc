@@ -27,7 +27,7 @@ THE SOFTWARE.
 
 NS_SA_EXT_BEGIN(storage)
 
-static const Field *getFieldFormMap(const Map<String, Field> &fields, const String &name) {
+static const Field *getFieldFormMap(const Map<String, Field> &fields, const StringView &name) {
 	auto it = fields.find(name);
 	if (it != fields.end()) {
 		return &it->second;
@@ -35,7 +35,7 @@ static const Field *getFieldFormMap(const Map<String, Field> &fields, const Stri
 	return nullptr;
 }
 
-static const Query::FieldsVec *getFieldsVec(const Query::FieldsVec *vec, const String &name) {
+static const Query::FieldsVec *getFieldsVec(const Query::FieldsVec *vec, const StringView &name) {
 	if (vec) {
 		for (auto &it : *vec) {
 			if (it.name == name) {
@@ -46,7 +46,7 @@ static const Query::FieldsVec *getFieldsVec(const Query::FieldsVec *vec, const S
 	return nullptr;
 }
 
-static void QueryFieldResolver_resolveByName(Set<const Field *> &ret, const Map<String, Field> &fields, const String &name) {
+static void QueryFieldResolver_resolveByName(Set<const Field *> &ret, const Map<String, Field> &fields, const StringView &name) {
 	if (!name.empty() && name.front() == '$') {
 		auto res = Query::decodeResolve(name);
 		switch (res) {
@@ -151,6 +151,10 @@ const Set<const Field *> &QueryFieldResolver::getResolves() const {
 	return root->resolved;
 }
 
+const Set<StringView> &QueryFieldResolver::getResolvesData() const {
+	return root->resolvedData;
+}
+
 const Query::FieldsVec *QueryFieldResolver::getIncludeVec() const {
 	if (root) {
 		return root->include;
@@ -176,7 +180,7 @@ QueryFieldResolver QueryFieldResolver::next(const String &f) const {
 }
 
 QueryFieldResolver::operator bool () const {
-	return root && root->scheme != nullptr && root->fields != nullptr;
+	return root && root->scheme != nullptr && (root->fields != nullptr || !root->resolvedData.empty());
 }
 
 QueryFieldResolver::QueryFieldResolver(Data *data) : root(data) { }
@@ -238,6 +242,12 @@ void QueryFieldResolver::doResolve(Data *data, const Vector<String> &extra, uint
 		} else if (it->getType() == Type::Extra) {
 			scheme = data->scheme;
 			fields = &static_cast<const FieldExtra *>(it->getSlot())->fields;
+		} else if (it->getType() == Type::Data) {
+			scheme = data->scheme;
+			if (depth < max) {
+				auto n_it = data->next.emplace(it->getName(), Data{scheme, nullptr, getFieldsVec(data->include, it->getName()), getFieldsVec(data->exclude, it->getName())}).first;
+				doResolveData(&n_it->second, depth + 1, max);
+			}
 		} else if (it->isFile()) {
 			scheme = storage::File::getScheme();
 			fields = &scheme->getFields();
@@ -245,6 +255,28 @@ void QueryFieldResolver::doResolve(Data *data, const Vector<String> &extra, uint
 		if (scheme && fields && depth < max) {
 			auto n_it = data->next.emplace(it->getName(), Data{scheme, fields, getFieldsVec(data->include, it->getName()), getFieldsVec(data->exclude, it->getName())}).first;
 			doResolve(&n_it->second, extra, depth + 1, max);
+		}
+	}
+}
+
+void QueryFieldResolver::doResolveData(Data *data, uint16_t depth, uint16_t max) {
+	if (data->include && !data->include->empty()) {
+		for (const Query::Field &it : *data->include) {
+			data->resolvedData.emplace(StringView(it.name));
+		}
+	}
+
+	if (data->exclude) {
+		for (const Query::Field &it : *data->exclude) {
+			data->resolvedData.erase(it.name);
+		}
+	}
+
+	for (const StringView &it : data->resolvedData) {
+		auto scheme = data->scheme;
+		if (depth < max) {
+			auto n_it = data->next.emplace(it.str(), Data{scheme, nullptr, getFieldsVec(data->include, it), getFieldsVec(data->exclude, it)}).first;
+			doResolveData(&n_it->second, depth + 1, max);
 		}
 	}
 }
@@ -550,6 +582,9 @@ static uint16_t QueryList_emplaceItem(const Scheme &scheme, const Field *f, Vect
 			dec.emplace_back(String(name));
 			return 0;
 		}
+	} else if (f->getType() == Type::Data) {
+		dec.emplace_back(String(name));
+		return 0;
 	}
 	if (!f) {
 		messages::error("QueryList", toString("Invalid field name in 'include' for scheme ", scheme.getName()), data::Value(name));

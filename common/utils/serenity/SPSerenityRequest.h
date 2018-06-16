@@ -80,7 +80,7 @@ public:
 
 	static Query all();
 
-	static Resolve decodeResolve(const String &str);
+	static Resolve decodeResolve(const StringView &str);
 	static String encodeResolve(Resolve);
 
 	Query & select(const String &alias);

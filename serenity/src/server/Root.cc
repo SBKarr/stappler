@@ -38,6 +38,79 @@ THE SOFTWARE.
 #include "WebSocket.h"
 #include "Task.h"
 
+#ifdef LINUX
+
+#include <sstream>
+#include <execinfo.h>
+#include <cxxabi.h>
+#include <signal.h>
+
+NS_SA_BEGIN
+
+void PrintBacktrace(FILE *f, int len) {
+    void *bt[len + 2];
+    char **bt_syms;
+    int bt_size;
+    char tmpBuf[1_KiB] = { 0 };
+
+    bt_size = backtrace(bt, len + 2);
+    bt_syms = backtrace_symbols(bt, bt_size);
+
+    for (int i = 3; i < bt_size; i++) {
+    	StringView str = bt_syms[i];
+    	auto first = str.rfind('(');
+    	auto second = str.rfind('+');
+    	if (first != maxOf<size_t>()) {
+    		if (second == maxOf<size_t>()) {
+    			second = str.size();
+    		}
+        	str = str.sub(first + 1, second - first - 1);
+
+        	if (!str.empty()) {
+            	int status = 0;
+
+            	char *extraBuf = nullptr;
+            	if (str.size() < 1_KiB) {
+            		extraBuf = tmpBuf;
+            	} else {
+            		extraBuf = new char[str.size() + 1];
+            	}
+
+        		memcpy(tmpBuf, str.data(), str.size());
+        		tmpBuf[str.size()] = 0;
+
+            	auto ptr = abi::__cxa_demangle (tmpBuf, nullptr, nullptr, &status);
+            	if (ptr) {
+    		    	fprintf(f, "\t[%d] %s [%s]\n", i - 3, (const char *)ptr, bt_syms[i]);
+    				free(ptr);
+    			} else {
+    		    	fprintf(f, "\t[%d] %s [%s]\n", i - 3, (const char *)tmpBuf, bt_syms[i]);
+    			}
+            	if (str.size() >= 1_KiB) {
+            		delete [] extraBuf;
+            	}
+				continue;
+        	}
+    	}
+
+    	fprintf(f, "\t[%d] %s\n", i - 3, bt_syms[i]);
+    }
+
+    free(bt_syms);
+}
+
+NS_SA_END
+
+#else
+
+NS_SA_BEGIN
+void PrintBacktrace(FILE *f, int len) {
+
+}
+NS_SA_END
+
+#endif
+
 NS_SA_BEGIN
 
 static std::atomic_flag s_timerExitFlag;
@@ -59,6 +132,63 @@ void *sa_server_timer_thread_fn(apr_thread_t *self, void *data) {
 
 Root *Root::s_sharedServer = 0;
 
+static struct sigaction s_sharedSigAction;
+static struct sigaction s_sharedSigOldAction;
+
+static void s_sigAction(int sig, siginfo_t *info, void *ucontext) {
+	if (auto serv = apr::pool::server()) {
+		Server s(serv);
+		auto root = s.getDocumentRoot();
+		auto filePath = toString(s.getDocumentRoot(), "/.serenity/crash.", Time::now().toMicros(), ".txt");
+		if (auto f = ::fopen(filePath.data(), "w+")) {
+			::fputs("Server:\n\tDocumentRoot: ", f);
+			::fputs(root.data(), f);
+			::fputs("\n\tName: ", f);
+			::fputs(serv->server_hostname, f);
+			::fputs("\n\tDate: ", f);
+			::fputs(Time::now().toHttp().data(), f);
+
+			if (auto req = apr::pool::request()) {
+				::fputs("\nRequest:\n", f);
+				::fprintf(f, "\tUrl: %s%s\n", req->hostname, req->unparsed_uri);
+				::fprintf(f, "\tRequest: %s\n", req->the_request);
+				::fprintf(f, "\tIp: %s\n", req->useragent_ip);
+
+				::fputs("\tHeaders:\n", f);
+				apr::table t(req->headers_in);
+				for (auto &it : t) {
+					::fprintf(f, "\t\t%s: %s\n", it.key, it.val);
+				}
+			}
+
+			::fputs("\nBacktrace:\n", f);
+			PrintBacktrace(f, 100);
+			::fclose(f);
+		}
+	}
+
+	if ((s_sharedSigOldAction.sa_flags & SA_SIGINFO) != 0) {
+		if (s_sharedSigOldAction.sa_sigaction) {
+			s_sharedSigOldAction.sa_sigaction(sig, info, ucontext);
+		}
+	} else {
+		if (s_sharedSigOldAction.sa_handler == SIG_DFL) {
+			if (SIGURG == sig || SIGWINCH == sig || SIGCONT == sig) return;
+
+			static struct sigaction tmpSig;
+			tmpSig.sa_handler = SIG_DFL;
+			::sigemptyset(&tmpSig.sa_mask);
+		    ::sigaction(sig, &tmpSig, nullptr);
+		    ::kill(getpid(), sig);
+			::sigaction(sig, &s_sharedSigAction, nullptr);
+		} else if (s_sharedSigOldAction.sa_handler == SIG_IGN) {
+			return;
+		} else if (s_sharedSigOldAction.sa_handler) {
+			s_sharedSigOldAction.sa_handler(sig);
+		}
+	}
+}
+
 Root *Root::getInstance() {
     assert(s_sharedServer);
     return s_sharedServer;
@@ -67,6 +197,14 @@ Root *Root::getInstance() {
 Root::Root() {
     assert(! s_sharedServer);
     s_sharedServer = this;
+
+	memset(&s_sharedSigAction, 0, sizeof(s_sharedSigAction));
+	s_sharedSigAction.sa_sigaction = &s_sigAction;
+	s_sharedSigAction.sa_flags = SA_SIGINFO;
+	sigemptyset(&s_sharedSigAction.sa_mask);
+	//sigaddset(&s_sharedSigAction.sa_mask, SIGSEGV);
+
+    ::sigaction(SIGSEGV, &s_sharedSigAction, &s_sharedSigOldAction);
 }
 
 Root::~Root() {

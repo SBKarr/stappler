@@ -691,13 +691,15 @@ bool Handle::init(Server &serv, const Map<String, const Scheme *> &s) {
 	}
 
 	StringStream tables;
+	tables << "Server: " << serv.getServerHostname() << "\n";
+
 	auto requiredTables = TableRec::parse(serv, s);
 	auto existedTables = TableRec::get(*this, tables);
 
 	StringStream stream;
 	TableRec::writeCompareResult(stream, requiredTables, existedTables, s);
 
-	auto name = toString(".", Time::now().toMilliseconds(), ".update.sql");
+	auto name = toString(".serenity/update.", Time::now().toMilliseconds(), ".sql");
 	if (stream.size() > 3) {
 		if (performSimpleQuery(stream.weak())) {
 			performSimpleQuery("COMMIT;"_weak);
