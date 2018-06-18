@@ -101,6 +101,10 @@ struct Label : Object {
 	FormatSpec format;
 	float height = 0.0f;
 	bool preview = false;
+	StringView hash;
+	size_t sourceIndex = 0;
+
+	float getTextIndent(float density) const;
 
 	Rect getLineRect(uint32_t lineId, float density, const Vec2 & = Vec2()) const;
 	Rect getLineRect(const LineSpec &, float density, const Vec2 & = Vec2()) const;

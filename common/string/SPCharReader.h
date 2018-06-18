@@ -292,6 +292,8 @@ public:
 	template <typename Callback>
 	void foreach(const Callback &cb);
 
+	size_t code_size() const;
+
 	operator StringViewBase<char> () const;
 
 public:
@@ -1028,6 +1030,17 @@ inline void StringViewUtf8::foreach(const Callback &cb) {
 		}
 		cb(char16_t(ret));
 	}
+}
+
+inline size_t StringViewUtf8::code_size() const {
+	size_t ret = 0;
+	auto p = ptr;
+	const auto e = ptr + len;
+	while (p < e) {
+		++ ret;
+		p += unicode::utf8DecodeLength(*p);
+	}
+	return ret;
 }
 
 inline StringViewUtf8::operator StringViewBase<char> () const {

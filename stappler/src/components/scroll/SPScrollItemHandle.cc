@@ -42,8 +42,8 @@ void ScrollItemHandle::onNodeUpdated(ScrollController *c, Item &item, size_t ind
 		_controller = c;
 		_itemIndex = index;
 
-		if (_insertCallback) {
-			_insertCallback(item);
+		if (_updateCallback) {
+			_updateCallback(item);
 		}
 	}
 }
@@ -53,8 +53,8 @@ void ScrollItemHandle::onNodeRemoved(ScrollController *c, Item &item, size_t ind
 		_controller = c;
 		_itemIndex = index;
 
-		if (_insertCallback) {
-			_insertCallback(item);
+		if (_removeCallback) {
+			_removeCallback(item);
 		}
 	}
 }

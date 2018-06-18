@@ -169,7 +169,7 @@ void Layout::processListItemBullet(float parentPosY) {
 		pStyle.textIndent.value = 0.0f; pStyle.textIndent.metric = style::Metric::Units::Px;
 		auto baseFont = builder->getFontSet()->getLayout(fStyle, media.fontScale)->getData();
 
-		Label *label = builder->getResult()->emplaceLabel(*this);
+		Label *label = builder->getResult()->emplaceLabel(*this, true);
 		Formatter reader(builder->getFontSet(), &label->format, density);
 		reader.setOpticalAlignment(false);
 		InlineContext::initFormatter(*this, fStyle, pStyle, parentPosY, reader);

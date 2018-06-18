@@ -59,44 +59,46 @@ public: /* interface */
 	void addCompleteCallback(const CompleteCallback &);
 
 	/* mark this task with tag */
-    void setTag(int tag) { _tag = tag; }
+	void setTag(int tag) { _tag = tag; }
 
 	/* returns tag */
-    int getTag()  const{ return _tag; }
+	int getTag()  const{ return _tag; }
 
 	/* set default task priority */
-    void setPriority(int priority) { _priority = priority; }
+	void setPriority(int priority) { _priority = priority; }
 
 	/* get task priority */
-    int getPriority()  const{ return _priority; }
+	int getPriority()  const{ return _priority; }
 
-    /* get assigned target */
-    Ref *getTarget() const { return _target; }
+	void setTarget(Ref *target) { _target = target; }
+
+	/* get assigned target */
+	Ref *getTarget() const { return _target; }
 
 public: /* behavior */
 	/* used by task manager to set success state */
-    void setSuccessful(bool value) { _isSuccessful = value; }
+	void setSuccessful(bool value) { _isSuccessful = value; }
 
 	/* if task execution was successful */
-    bool isSuccessful() const { return _isSuccessful; }
+	bool isSuccessful() const { return _isSuccessful; }
 
 public: /* overloads */
 	virtual bool prepare() const;
 
-    /** called on worker thread */
-    virtual bool execute();
+	/** called on worker thread */
+	virtual bool execute();
 
-    /** called on UI thread when request is completed */
-    virtual void onComplete();
+	/** called on UI thread when request is completed */
+	virtual void onComplete();
 
 public: /* constructors */
-    Task();
-    virtual ~Task();
+	Task();
+	virtual ~Task();
 
 protected:
-    bool _isSuccessful = true;
-    int _tag = -1;
-    int _priority = 0;
+	bool _isSuccessful = true;
+	int _tag = -1;
+	int _priority = 0;
 
 	Rc<Ref> _target;
 

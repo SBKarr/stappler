@@ -139,6 +139,15 @@ auto toKoi8r(const WideStringView &data) -> typename Interface::StringType;
 template <typename T>
 void split(const StringView &str, const StringView &delim, T && callback);
 
+uint8_t footprint_3(char16_t);
+uint8_t footprint_4(char16_t);
+
+template <typename Interface = memory::DefaultInterface>
+auto footprint(const StringView &str) -> typename Interface::BytesType;
+
+template <typename Interface = memory::DefaultInterface>
+auto footprint(const WideStringView &str) -> typename Interface::BytesType;
+
 template <typename Interface>
 struct StringTraits : public Interface {
 	using String = typename Interface::StringType;
@@ -648,6 +657,25 @@ inline void split(const StringView &str, const StringView &delim, T && callback)
 			callback(w);
 		}
 	}
+}
+
+size_t _footprint_size(const StringView &str);
+size_t _footprint_size(const WideStringView &str);
+void _make_footprint(const StringView &str, uint8_t *buf);
+void _make_footprint(const WideStringView &str, uint8_t *buf);
+
+template <typename Interface>
+inline auto footprint(const StringView &str) -> typename Interface::BytesType {
+	typename Interface::BytesType ret; ret.resize(_footprint_size(str));
+	_make_footprint(str, ret.data());
+	return ret;
+}
+
+template <typename Interface>
+inline auto footprint(const WideStringView &str) -> typename Interface::BytesType {
+	typename Interface::BytesType ret; ret.resize(_footprint_size(str));
+	_make_footprint(str, ret.data());
+	return ret;
 }
 
 template <typename Interface>

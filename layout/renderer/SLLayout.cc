@@ -709,6 +709,9 @@ void Layout::processOutline(bool withBorder) {
 void Layout::processRef() {
 	if (auto hrefPtr = node.node->getAttribute("href")) {
 		auto targetPtr = node.node->getAttribute("target");
+		if (!targetPtr && (node.node->getHtmlName() == "img" || node.node->getHtmlName() == "figure")) {
+			targetPtr = node.node->getAttribute("type");
+		}
 
 		auto res = builder->getResult();
 		if (!hrefPtr->empty()) {

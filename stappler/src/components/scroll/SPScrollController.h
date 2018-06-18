@@ -36,7 +36,7 @@ public:
 
 	/// Callback for node creation
 	using NodeFunction = Function<Rc<cocos2d::Node>(const Item &)>;
-	using RebuildCallback = Function<bool(ScrollController *)>;
+	using RebuildCallback = Function<bool(ScrollController *)>; // return true if item was rebuilded
 
 	struct Item {
 		Item(const NodeFunction &, const Vec2 &pos, const Size &size, int zIndex, const String &);

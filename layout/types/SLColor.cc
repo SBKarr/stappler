@@ -820,7 +820,7 @@ Color Color::specific(Level tone) const {
 String Color::name() const {
 	auto ret = table::getName(_value);
 	if (ret.empty()) {
-		ret = toString("rgb(", uint32_t(_value >> 16 & 0xFF), ", ", uint32_t(_value >> 8 & 0xFF), ", ", uint32_t(_value & 0xFF));
+		ret = toString("rgb(", uint32_t(_value >> 16 & 0xFF), ", ", uint32_t(_value >> 8 & 0xFF), ", ", uint32_t(_value & 0xFF), ")");
 	}
 	return ret;
 }

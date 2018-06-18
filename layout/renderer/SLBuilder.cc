@@ -200,7 +200,7 @@ bool Builder::isFileExists(const StringView &url) const {
 Pair<uint16_t, uint16_t> Builder::getImageSize(const StringView &url) const {
 	auto it = _externalAssets.find(url);
 	if (it != _externalAssets.end()) {
-		if (StringView(it->second.type).is("image/") && it->second.image.width > 0 && it->second.image.height > 0) {
+		if ((it->second.type.empty() || StringView(it->second.type).starts_with("image/")) && it->second.image.width > 0 && it->second.image.height > 0) {
 			return pair(it->second.image.width, it->second.image.height);
 		}
 	}

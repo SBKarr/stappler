@@ -60,9 +60,8 @@ bool FloatingActionButton::init(const TapCallback &tapCallback, const TapCallbac
 		}
 	});
 	l->setSwallowTouches(false);
-	addComponent(l);
+	_listener = addComponentItem(l);
 
-	_listener = l;
 	_tapCallback = tapCallback;
 	_longTapCallback = longTapCallback;
 
@@ -83,7 +82,7 @@ bool FloatingActionButton::init(const TapCallback &tapCallback, const TapCallbac
 	label->setOpacity(222);
 	_label = addChildNode(label, 2);
 
-	setContentSize(Size(48.0f, 48.0));
+	setContentSize(Size(48.0f, 48.0f));
 	setShadowZIndex(2.0f);
 
 	updateEnabled();
@@ -194,6 +193,9 @@ void FloatingActionButton::setIconOpacity(uint8_t o) {
 	_icon->setOpacity(o);
 	_iconOpacity = o;
 }
+void FloatingActionButton::setIconSize(IconSprite::SizeHint o) {
+	_icon->setSizeHint(o);
+}
 
 void FloatingActionButton::setTapCallback(const TapCallback &tapCallback) {
 	_tapCallback = tapCallback;
@@ -205,7 +207,10 @@ void FloatingActionButton::setLongTapCallback(const TapCallback &longTapCallback
 	updateEnabled();
 }
 void FloatingActionButton::setSwallowTouches(bool value) {
-	static_cast<stappler::gesture::Listener *>(_listener)->setSwallowTouches(value);
+	_listener->setSwallowTouches(value);
+}
+bool FloatingActionButton::isSwallowTouches() const {
+	return _listener->isSwallowTouches();
 }
 
 void FloatingActionButton::clearAnimations() {

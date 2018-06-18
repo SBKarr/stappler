@@ -322,6 +322,10 @@ size_t ContentLayer::getNodesCount() const {
 	return _nodes.size();
 }
 
+const Vector<Rc<Layout>> &ContentLayer::getLayouts() const {
+	return _nodes;
+}
+
 bool ContentLayer::pushOverlayNode(OverlayLayout *l, Transition *enterTransition, Transition *exitTransition) {
 	if (!l || l->isRunning()) {
 		return false;

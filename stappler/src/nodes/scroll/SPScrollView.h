@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define LIBS_STAPPLER_NODES_SCROLL_SPSCROLLVIEW_H_
 
 #include "SPScrollViewBase.h"
+#include "SPScrollController.h"
 
 NS_SP_BEGIN
 
@@ -86,6 +87,13 @@ public:
 	virtual data::Value save() const;
 	virtual void load(const data::Value &);
 
+public:
+	virtual Rc<ProgressAction> resizeNode(cocos2d::Node *, float newSize, float duration, const Function<void()> &cb = nullptr);
+	virtual Rc<ProgressAction> resizeNode(ScrollController::Item *, float newSize, float duration, const Function<void()> &cb = nullptr);
+
+	virtual Rc<ProgressAction> removeNode(cocos2d::Node *, float duration, const Function<void()> &cb = nullptr, bool disable = false);
+	virtual Rc<ProgressAction> removeNode(ScrollController::Item *, float duration, const Function<void()> &cb = nullptr, bool disable = false);
+
 protected:
 	virtual void onOverscroll(float delta) override;
 	virtual void onScroll(float delta, bool finished) override;
@@ -94,6 +102,8 @@ protected:
 
 	virtual void updateIndicatorPosition();
 	virtual void updateIndicatorPosition(cocos2d::Node *indicator, float size, float value, bool actions, float min);
+
+	virtual ScrollController::Item * getItemForNode(cocos2d::Node *) const;
 
 	Overscroll *_overflowFront = nullptr;
 	Overscroll *_overflowBack = nullptr;

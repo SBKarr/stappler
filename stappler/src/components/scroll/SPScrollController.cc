@@ -160,6 +160,7 @@ void ScrollController::clear() {
 	for (auto &it : _nodes) {
 		if (it.node) {
 			it.node->removeFromParent();
+			it.node = nullptr;
 		}
 	}
 
@@ -228,7 +229,7 @@ void ScrollController::onNextObject(Item &h, float pos, float size) {
 		return;
 	}
 
-	if (!h.node) {
+	if (!h.node && h.nodeFunction) {
 		auto node = h.nodeFunction(h);
 		if (node) {
 			bool forward = true;
@@ -254,11 +255,16 @@ void ScrollController::onNextObject(Item &h, float pos, float size) {
 			h.node = node;
 			addScrollNode(h);
 		}
-	} else {
+	} else if (h.node) {
 		h.node->setVisible(true);
 		h.node->pushForceRendering();
 		if (h.handle) {
 			h.handle->onNodeUpdated(this, h, size_t(&h - _nodes.data()));
+
+			auto nodeSize = _scroll->getNodeScrollSize(h.node->getContentSize());
+			if (nodeSize > 0.0f && nodeSize != size) {
+				resizeItem(&h, nodeSize, true);
+			}
 		}
 		_scroll->updateScrollNode(h.node, h.pos, h.size, h.zIndex, h.name);
 	}

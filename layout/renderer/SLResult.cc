@@ -52,18 +52,6 @@ Document *Result::getDocument() const {
 	return _document;
 }
 
-/*void Result::pushObject(Object &&obj) {
-	if (obj.bbox.origin.y + obj.bbox.size.height > _size.height) {
-		_size.height = obj.bbox.origin.y + obj.bbox.size.height;
-	}
-	if (obj.type == Object::Type::Ref) {
-		_refs.push_back(std::move(obj));
-	} else {
-		_objects.push_back(std::move(obj));
-		_objects.back().index = _objects.size() - 1;
-	}
-}*/
-
 void Result::pushIndex(const String &str, const Vec2 &pos) {
 	_index.emplace(str, pos);
 }
@@ -174,11 +162,26 @@ Result::BoundIndex Result::getBoundsForPosition(float pos) const {
 	return BoundIndex{maxOf<size_t>(), 0, 0.0f, 0.0f, maxOf<int64_t>()};
 }
 
-Label *Result::emplaceLabel(const Layout &l) {
+Label *Result::emplaceLabel(const Layout &l, bool isBullet) {
 	auto ret = &_labels.emplace();
 	ret->type = Object::Type::Label;
 	ret->depth = l.depth;
 	ret->index = _objects.size();
+
+	if (!isBullet) {
+		auto &node = l.node.node;
+		if (auto hashPtr = node->getAttribute("x-data-hash")) {
+			ret->hash = addString(*hashPtr);
+		}
+
+		if (auto indexPtr = node->getAttribute("x-data-index")) {
+			StringView r(*indexPtr);
+			r.readInteger().unwrap([&] (int64_t val) {
+				ret->sourceIndex = size_t(val);
+			});
+		}
+	}
+
 	_objects.push_back(ret);
 	return ret;
 }
@@ -255,24 +258,25 @@ Result::PageData Result::getPageData(size_t idx, float offset) const {
 	}
 }
 
-/*size_t Result::getSizeInMemory() const {
-	auto ret = sizeof(Result) + _objects.capacity() * sizeof(Object) + _refs.capacity() * sizeof(Object);
-	for (const Object &it : _objects) {
-		if (it.type == Object::Type::Label) {
-			const auto &f = it.value.label.format;
-			ret += (f.chars.capacity() * sizeof(CharSpec)
-					+ f.lines.capacity() + sizeof(LineSpec)
-					+ f.ranges.capacity() + sizeof(RangeSpec));
-		}
-	}
-	return ret;
-}*/
-
 const Object *Result::getObject(size_t size) const {
 	if (size < _objects.size()) {
 		return _objects[size];
 	}
 	return nullptr;
+}
+
+const Label *Result::getLabelByHash(const StringView &hash, size_t idx) const {
+	const Label *indexed = nullptr;
+	for (auto &it : _objects) {
+		if (auto l = it->asLabel()) {
+			if (l->hash == hash) {
+				return l;
+			} else if (l->sourceIndex == idx) {
+				indexed = l;
+			}
+		}
+	}
+	return indexed;
 }
 
 const Map<CssStringId, String> &Result::getStrings() const {

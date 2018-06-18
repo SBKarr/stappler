@@ -293,27 +293,27 @@ bool InputField::onPressEnd(const Vec2 &vec) {
 	if (!_label->isActive()) {
 		if (!_label->onPressEnd(vec)) {
 			if (!_label->isActive() && node::isTouched(this, vec)) {
-				_label->acquireInput();
+				acquireInput();
 				return true;
 			}
 			return false;
 		}
 		return true;
 	} else {
-		if (node::isTouched(_placeholder, vec, 8.0f)) {
-			_label->releaseInput();
+		if (_placeholder->isVisible() && node::isTouched(_placeholder, vec, 8.0f)) {
+			releaseInput();
 			return true;
 		}
 		if (!_label->onPressEnd(vec)) {
 			if (!node::isTouched(_node, vec)) {
-				_label->releaseInput();
+				releaseInput();
 				return true;
 			} else {
 				_label->setCursor(Cursor(uint32_t(_label->getCharsCount())));
 			}
 			return false;
 		} else if (_label->empty() && !node::isTouched(_node, vec)) {
-			_label->releaseInput();
+			releaseInput();
 		}
 		return true;
 	}

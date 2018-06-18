@@ -104,13 +104,6 @@ public:
 	// you can use custom loader with this callback
 	virtual void setLoaderCallback(const LoaderCallback &);
 
-public:
-	virtual Rc<ProgressAction> resizeNode(MaterialNode *, float newSize, float duration, const Function<void()> &cb = nullptr);
-	virtual Rc<ProgressAction> resizeNode(ScrollController::Item *, float newSize, float duration, const Function<void()> &cb = nullptr);
-
-	virtual Rc<ProgressAction> removeNode(MaterialNode *, float duration, const Function<void()> &cb = nullptr);
-	virtual Rc<ProgressAction> removeNode(ScrollController::Item *, float duration, const Function<void()> &cb = nullptr);
-
 protected:
 	virtual void onSourceDirty();
 
@@ -132,8 +125,6 @@ protected:
 	virtual Rc<Handler> onHandler();
 	virtual Rc<MaterialNode> onItemRequest(const ScrollController::Item &, Source::Id);
 	virtual Rc<Loader> onLoaderRequest(Request type);
-
-	virtual ScrollController::Item * getItemForNode(MaterialNode *) const;
 
 	virtual void onOverscroll(float delta) override;
 	virtual void updateIndicatorPosition() override;

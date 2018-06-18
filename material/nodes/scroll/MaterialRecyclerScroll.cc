@@ -661,12 +661,12 @@ void RecyclerScroll::onItemsRemoved(const Vector<Rc<Item>> &items) {
 	}
 }
 
-ScrollController::Item * RecyclerScroll::getItemForNode(MaterialNode *) const {
+ScrollController::Item * RecyclerScroll::getItemForNode(cocos2d::Node *node) const {
 	auto &items = _controller->getItems();
 	for (auto &it : items) {
 		if (it.node) {
 			if (auto rnode = dynamic_cast<RecyclerNode *>(it.node)) {
-				if (rnode->getNode() == it.node) {
+				if (rnode->getNode() == node) {
 					return &it;
 				}
 			}

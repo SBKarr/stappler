@@ -410,4 +410,103 @@ void ScrollView::load(const data::Value &d) {
 	}
 }
 
+ScrollController::Item * ScrollView::getItemForNode(cocos2d::Node *node) const {
+	auto &items = _controller->getItems();
+	for (auto &it : items) {
+		if (it.node && it.node == node) {
+			return &it;
+		}
+	}
+	return nullptr;
+}
+
+Rc<ProgressAction> ScrollView::resizeNode(cocos2d::Node *node, float newSize, float duration, const Function<void()> &cb) {
+	return resizeNode(getItemForNode(node), newSize, duration, cb);
+}
+Rc<ProgressAction> ScrollView::resizeNode(ScrollController::Item *item, float newSize, float duration, const Function<void()> &cb) {
+	if (!item) {
+		return nullptr;
+	}
+
+	auto &items = _controller->getItems();
+
+	float sourceSize = isVertical()?item->size.height:item->size.width;
+	float tergetSize = newSize;
+
+	struct ItemRects {
+		float startPos;
+		float startSize;
+		float targetPos;
+		float targetSize;
+		ScrollController::Item *item;
+	};
+
+	Vector<ItemRects> vec;
+
+	float offset = 0.0f;
+	for (auto &it : items) {
+		if (it.node && &it == item) {
+			offset += sourceSize - tergetSize;
+			vec.emplace_back(ItemRects{
+				getNodeScrollPosition(it.pos),
+				getNodeScrollSize(it.size),
+				getNodeScrollPosition(it.pos),
+				tergetSize,
+				&it});
+		} else if (offset != 0.0f) {
+			vec.emplace_back(ItemRects{
+				getNodeScrollPosition(it.pos),
+				getNodeScrollSize(it.size),
+				getNodeScrollPosition(it.pos) - offset,
+				getNodeScrollSize(it.size),
+				&it});
+		}
+	}
+
+	auto ret = Rc<ProgressAction>::create(duration, [this, vec] (ProgressAction *, float p) {
+		for (auto &it : vec) {
+			if (isVertical()) {
+				it.item->pos.y = progress(it.startPos, it.targetPos, p);
+				it.item->size.height = progress(it.startSize, it.targetSize, p);
+			} else {
+				it.item->pos.x = progress(it.startPos, it.targetPos, p);
+				it.item->size.width = progress(it.startSize, it.targetSize, p);
+			}
+			if (it.item->node) {
+				updateScrollNode(it.item->node, it.item->pos, it.item->size, it.item->zIndex, it.item->name);
+			}
+		}
+		_controller->onScrollPosition(true);
+	}, [] (ProgressAction *) {
+
+	}, [cb] (ProgressAction *) {
+		if (cb) {
+			cb();
+		}
+	});
+	ret->setForceStopCallback(true);
+	return ret;
+}
+
+Rc<ProgressAction> ScrollView::removeNode(cocos2d::Node *node, float duration, const Function<void()> &cb, bool disable) {
+	return removeNode(getItemForNode(node), duration, cb, disable);
+}
+Rc<ProgressAction> ScrollView::removeNode(ScrollController::Item *item, float duration, const Function<void()> &cb, bool disable) {
+	return resizeNode(item, 0.0f, duration, [item, cb, disable] {
+		if (item->node) {
+			if (item->node->isRunning()) {
+				item->node->removeFromParent();
+			}
+			item->node = nullptr;
+			item->handle = nullptr;
+			if (disable) {
+				item->nodeFunction = nullptr;
+			}
+		}
+		if (cb) {
+			cb();
+		}
+	});
+}
+
 NS_SP_END

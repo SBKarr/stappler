@@ -268,7 +268,9 @@ bool Asset::swapFiles(const String &file, const String &ct, const String &etag, 
 				_waitFileSwap = false;
 				_fileExisted = filesystem::exists(original);
 
-				_contentType = ct;
+				if (!ct.empty()) {
+					_contentType = ct;
+				}
 				_etag = etag;
 				_mtime = mtime;
 				_size = (size == 0) ? filesystem::size(original) : size;

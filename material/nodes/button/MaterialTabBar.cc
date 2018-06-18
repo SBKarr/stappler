@@ -651,12 +651,32 @@ void TabBar::setSelectedIndex(size_t nidx) {
 				++ idx;
 			}
 		}
-
 	}
 }
 
 size_t TabBar::getSelectedIndex() const {
 	return _selectedIndex;
+}
+
+void TabBar::setProgress(float prog) {
+	if (_layer->getActionByTag("TabBarAction"_tag) == nullptr) {
+		if (prog > 0.0f) {
+			if (_selectedIndex + 1 < _positions.size()) {
+				auto &origin = _positions[_selectedIndex];
+				auto &next = _positions[_selectedIndex + 1];
+				_layer->setPositionX(progress(origin.first, next.first, prog));
+				_layer->setContentSize(Size(progress(origin.second, next.second, prog), _layer->getContentSize().height));
+			}
+		} else if (prog < 0.0f) {
+			prog = -prog;
+			if (_selectedIndex > 0) {
+				auto &origin = _positions[_selectedIndex];
+				auto &next = _positions[_selectedIndex - 1];
+				_layer->setPositionX(progress(origin.first, next.first, prog));
+				_layer->setContentSize(Size(progress(origin.second, next.second, prog), _layer->getContentSize().height));
+			}
+		}
+	}
 }
 
 NS_MD_END

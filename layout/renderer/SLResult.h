@@ -80,13 +80,14 @@ public:
 	PathObject *emplaceOutline(const Layout &, const Rect &, const Color4B &, float = 0.0f, style::BorderStyle = style::BorderStyle::None);
 	void emplaceBorder(Layout &, const Rect &, const OutlineStyle &, float width);
 	PathObject *emplacePath(const Layout &);
-	Label *emplaceLabel(const Layout &);
+	Label *emplaceLabel(const Layout &, bool isBullet = false);
 	Link *emplaceLink(const Layout &, const Rect &, const StringView &, const StringView &);
 	//Outline *emplaceBorder(const Rect &, const Outline::Params &);
 
 	//size_t getSizeInMemory() const;
 
 	const Object *getObject(size_t size) const;
+	const Label *getLabelByHash(const StringView &, size_t idx) const;
 
 	const Map<CssStringId, String> &getStrings() const;
 

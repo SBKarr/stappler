@@ -288,11 +288,11 @@ bool readColor(const StringView &str, Color4B &color4) {
 }
 
 bool readColor(const StringView &str, Color3B &color) {
-	if (str == "rgb") {
+	if (str.starts_with("rgb")) {
 		if (readRgbColor(StringView(str.data() + 3, str.size() - 3), color)) {
 			return true;
 		}
-	} else if (str == "hsl") {
+	} else if (str.starts_with("hsl")) {
 		if (readHslColor(StringView(str.data() + 3, str.size() - 3), color)) {
 			return true;
 		}

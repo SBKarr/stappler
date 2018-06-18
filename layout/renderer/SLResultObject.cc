@@ -306,6 +306,10 @@ void PathObject::drawHorizontalLineSegment(const Vec2 &origin, float width, cons
 	path.closePath();
 }
 
+float Label::getTextIndent(float density) const {
+	return format.chars.front().pos / density;
+}
+
 Rect Label::getLineRect(uint32_t lineId, float density, const Vec2 &origin) const {
 	return format.getLineRect(lineId, density, origin);
 }

@@ -54,6 +54,8 @@ public:
 	virtual bool onBackButton();
 	virtual size_t getNodesCount() const;
 
+	virtual const Vector<Rc<Layout>> &getLayouts() const;
+
 protected:
 	virtual void pushNodeInternal(Layout *, Transition *enter, Transition *exit, const Function<void()> &cb);
 

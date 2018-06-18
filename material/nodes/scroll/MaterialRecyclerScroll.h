@@ -119,7 +119,7 @@ protected:
 	virtual void onSwipeBegin() override;
 
 	virtual Rc<MaterialNode> onItemRequest(const ScrollController::Item &, Source::Id) override;
-	virtual ScrollController::Item * getItemForNode(MaterialNode *) const override;
+	virtual ScrollController::Item * getItemForNode(cocos2d::Node *) const override;
 
 	virtual void removeRecyclerNode(Item *, cocos2d::Node *);
 	virtual void scheduleCleanup();

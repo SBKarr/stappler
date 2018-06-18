@@ -74,6 +74,8 @@ public:
 	virtual void setSelectedIndex(size_t);
 	virtual size_t getSelectedIndex() const;
 
+	virtual void setProgress(float prog);
+
 protected:
 	virtual void setSelectedTabIndex(size_t);
 	virtual void onMenuSource();

@@ -34,20 +34,23 @@ NS_SP_PLATFORM_BEGIN
 namespace interaction {
 	bool _dialogOpened = false;
 	void _goToUrl(const StringView &url, bool external) {
-		stappler::log::format("Intercation", "GoTo url: %s", url.data());
+		log::format("Interaction", "GoTo url: %s", url.data());
+		::system(toString("xdg-open ", url).data());
 	}
 	void _makePhoneCall(const StringView &str) {
-		stappler::log::format("Intercation", "phone: %s", str.data());
+		log::format("Interaction", "phone: %s", str.data());
+		::system(toString("xdg-open ", str).data());
 	}
 	void _mailTo(const StringView &address) {
-		stappler::log::format("Intercation", "MailTo phone: %s", address.data());
+		log::format("Interaction", "MailTo phone: %s", address.data());
+		::system(toString("xdg-open ", address).data());
 	}
 	void _backKey() { }
 	void _notification(const StringView &title, const StringView &text) {
 
 	}
 	void _rateApplication() {
-		stappler::log::text("Intercation", "Rate app");
+		log::text("Interaction", "Rate app");
 	}
 
 	void _openFileDialog(const String &path, const Function<void(const String &)> &func) {

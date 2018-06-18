@@ -52,6 +52,8 @@ public:
 
 	void drop();
 
+	using GLRenderSurface::read;
+
 protected:
 	void doSafeClear(const Color4B &color);
 	bool doUpdateAttachments(cocos2d::Texture2D *tex, uint32_t w, uint32_t h);

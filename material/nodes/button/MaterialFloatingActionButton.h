@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define LIBS_MATERIAL_NODES_BUTTON_MATERIALFLOATINGACTIONBUTTON_H_
 
 #include "MaterialIconStorage.h"
+#include "MaterialIconSprite.h"
 #include "MaterialNode.h"
 #include "SPDrawPathNode.h"
 
@@ -57,10 +58,12 @@ public:
 	virtual void setIcon(IconName name, bool animated = true);
 	virtual void setIconColor(const Color &);
 	virtual void setIconOpacity(uint8_t);
+	virtual void setIconSize(IconSprite::SizeHint);
 
 	virtual void setTapCallback(const TapCallback &);
 	virtual void setLongTapCallback(const TapCallback &);
 	virtual void setSwallowTouches(bool value);
+	virtual bool isSwallowTouches() const;
 
 	virtual void clearAnimations();
 
@@ -83,7 +86,7 @@ protected:
 	bool _enabled = true;
 	TapCallback _tapCallback = nullptr;
 	TapCallback _longTapCallback = nullptr;
-	cocos2d::Component *_listener = nullptr;
+	gesture::Listener *_listener = nullptr;
 
 	draw::Image::PathRef _tapAnimationPath;
 
