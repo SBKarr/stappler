@@ -45,6 +45,6 @@ $(LOCAL_OUTDIR)/httpd.conf: Makefile
 	@echo 'SerenitySource "Test:$(LOCAL_LIBRARY).so:CreateTestHandler"' >> $@
 	@echo 'SerenitySession name=SID key=SPSession maxage=0 secure=true' >> $@
 
-include $(STAPPLER_ROOT)/make/local.mk
+include $(STAPPLER_ROOT)/make/universal.mk
 
 install: $(LOCAL_OUTDIR)/httpd.conf

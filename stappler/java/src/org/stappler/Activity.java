@@ -52,6 +52,7 @@ public class Activity extends Cocos2dxActivity {
     protected Device _device = null;
     protected Manager _downloadManager = null;
     protected Clipboard _clipboard = null;
+    protected int mStatusBar = 0;
 
     protected native void setStatusBarHeight(int value);
     protected native void setInitialUrl(String url, String action);
@@ -152,6 +153,7 @@ public class Activity extends Cocos2dxActivity {
 					setStatusBarHeight(statusBar);
 					this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
 				}
+				mStatusBar = statusBar;
 			}
 
 			super.onCreate(savedInstanceState);
