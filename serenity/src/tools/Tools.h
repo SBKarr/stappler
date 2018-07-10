@@ -113,6 +113,7 @@ struct VirtualFile {
 	const char *content;
 };
 
+const char * getVersionString();
 const char * getCompileDate();
 Time getCompileUnixTime();
 
