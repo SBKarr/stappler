@@ -37,6 +37,7 @@ SERENITY_PRECOMPILED_HEADERS += \
 SERENITY_FLAGS := -DSPAPR
 
 SERENITY_SRCS_OBJS += \
+	serenity/gen/__Version.cpp \
 	serenity/gen/__Virtual.cpp
 
 SERENITY_INCLUDES_DIRS += \
@@ -95,6 +96,9 @@ $(1):BUILD_FILES_COUNTER:=$(SERENITY_WORDS)
 $(1):BUILD_LIBRARY := serenity
 endef
 
+STAPPLER_MAKE_ROOT ?= $(realpath $(GLOBAL_ROOT))
+STAPPLER_REPO_TAG := $(shell $(STAPPLER_MAKE_ROOT)/make-version.sh $(STAPPLER_MAKE_ROOT))
+
 $(foreach obj,$(SERENITY_GCH) $(SERENITY_OBJS),$(eval $(call SERENITY_template,$(obj))))
 
 -include $(patsubst %.o,%.d,$(SERENITY_OBJS))
@@ -136,8 +140,8 @@ $(SERENITY_OUTPUT): $(SERENITY_H_GCH) $(SERENITY_GCH) $(SERENITY_OBJS)
 
 libserenity: $(SERENITY_OUTPUT)
 serenity: libserenity
-	@echo "=== Install mod_serenity into Apache ==="
+	@echo "=== Install mod_serenity into Apache ($(STAPPLER_REPO_TAG)) ==="
 	$(APXS) -i -n serenity -a $(SERENITY_OUTPUT)
 	@echo "=== Complete! ==="
 
-.PHONY: libserenity serenity
+.PHONY: libserenity serenity serenity-version

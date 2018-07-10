@@ -7,8 +7,8 @@
 	<script src="/__server/virtual/js/shellHistory.js"></script>
 	<script src="/__server/virtual/js/shell.js"></script>
 </head><body onload="init();">
-	<h4>Serenity admin shell</h4>
-	<form id="login" onsubmit="return connect(this);">
+	<h4>Serenity admin shell ({?=$version?})</h4>
+	{?if $hasDb ?}{?if $setup ?}<form id="login" onsubmit="return connect(this);">
 		<input id="ws_name" type="text" name="name" placeholder="User name" value="" size="24" />
 		<input id="ws_passwd" type="password" name="passwd" placeholder="Password" value="" size="24" />
 		<input type="submit" />
@@ -19,4 +19,5 @@
 		Server says... <div id="output"></div>
 	</div>
 	<input id="fileSelector" type="file" style="visibility:hidden"/>
+	{?end?}{?else?}<p>No database connection in this handler</p>{?end?}
 </body></html>

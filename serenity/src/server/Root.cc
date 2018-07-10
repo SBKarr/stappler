@@ -197,14 +197,6 @@ Root *Root::getInstance() {
 Root::Root() {
     assert(! s_sharedServer);
     s_sharedServer = this;
-
-	memset(&s_sharedSigAction, 0, sizeof(s_sharedSigAction));
-	s_sharedSigAction.sa_sigaction = &s_sigAction;
-	s_sharedSigAction.sa_flags = SA_SIGINFO;
-	sigemptyset(&s_sharedSigAction.sa_mask);
-	//sigaddset(&s_sharedSigAction.sa_mask, SIGSEGV);
-
-    ::sigaction(SIGSEGV, &s_sharedSigAction, &s_sharedSigOldAction);
 }
 
 Root::~Root() {
@@ -357,6 +349,14 @@ void Root::onHeartBeat() {
 
 void Root::onServerChildInit(apr_pool_t *p, server_rec* s) {
 	apr::pool::perform([&] {
+		memset(&s_sharedSigAction, 0, sizeof(s_sharedSigAction));
+		s_sharedSigAction.sa_sigaction = &s_sigAction;
+		s_sharedSigAction.sa_flags = SA_SIGINFO;
+		sigemptyset(&s_sharedSigAction.sa_mask);
+		//sigaddset(&s_sharedSigAction.sa_mask, SIGSEGV);
+
+	    ::sigaction(SIGSEGV, &s_sharedSigAction, &s_sharedSigOldAction);
+
 		InputFilter::filterRegister();
 		OutputFilter::filterRegister();
 		websocket::Manager::filterRegister();

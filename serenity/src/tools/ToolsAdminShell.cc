@@ -779,6 +779,40 @@ struct HelpCmd : SocketCommand {
 	}
 };
 
+struct GenPasswordCmd : SocketCommand {
+	GenPasswordCmd() : SocketCommand("generate_password") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		auto len = r.readInteger().get(6);
+		h.send(valid::generatePassword(len));
+		return true;
+	}
+
+	virtual StringView desc() const {
+		return " - generate password with <length>";
+	}
+	virtual StringView help() const {
+		return " - generate password with <length>";
+	}
+};
+
+struct KillCmd : SocketCommand {
+	KillCmd() : SocketCommand("kill") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		::raise(SIGSEGV);
+		return true;
+	}
+
+	virtual StringView desc() const {
+		return " - kill current process";
+	}
+	virtual StringView help() const {
+		return " - kill current process";
+	}
+};
+
+
 ShellSocketHandler::ShellSocketHandler(Manager *m, const Request &req, User *user) : Handler(m, req, 600_sec), _user(user) {
 	sendBroadcast(data::Value{
 		std::make_pair("user", data::Value(_user->getName())),
@@ -804,6 +838,8 @@ ShellSocketHandler::ShellSocketHandler(Manager *m, const Request &req, User *use
 	_cmds.push_back(new MsgCmd());
 	_cmds.push_back(new CountCmd());
 	_cmds.push_back(new HelpCmd());
+	_cmds.push_back(new GenPasswordCmd());
+	_cmds.push_back(new KillCmd());
 
 	auto serv = req.server();
 	_external.reserve(serv.getComponents().size());
@@ -840,6 +876,14 @@ void ShellSocketHandler::onBegin() {
 	StringStream resp;
 	resp << "Serenity: Welcome. " << _user->getName() << "!";
 	send(resp.weak());
+
+	for (auto &it : _cmds) {
+		if ("help" == it->name) {
+			StringView r;
+			it->run(*this, r);
+			break;
+		}
+	}
 }
 
 bool ShellSocketHandler::onFrame(FrameType t, const Bytes &b) {
@@ -927,8 +971,22 @@ bool ShellSocket::onBroadcast(const data::Value &) {
 int ShellGui::onPostReadRequest(Request &rctx) {
 	if (rctx.getMethod() == Request::Get) {
 		if (_subPath.empty()) {
+			auto userScheme = rctx.server().getUserScheme();
+			size_t count = 0;
+			bool hasDb = false;
+			if (rctx.storage() && userScheme) {
+				count = userScheme->count(rctx.storage());
+				hasDb = true;
+			}
+
 			rctx.setContentType("text/html;charset=UTF-8");
-			rctx << VirtualFile::get("/html/shell.html");
+			rctx.runTemplate("virtual://html/shell.html", [&] (tpl::Exec &exec, Request &) {
+				exec.set("count", data::Value(count));
+				exec.set("setup", data::Value(count != 0));
+				exec.set("hasDb", data::Value(hasDb));
+				exec.set("version", data::Value(getVersionString()));
+			});
+
 			return DONE;
 		} else {
 			return HTTP_NOT_FOUND;

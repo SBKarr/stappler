@@ -149,6 +149,8 @@ Bytes makeRandomBytes(size_t);
 Bytes makePassword(const String &str, const String &key = "");
 bool validatePassord(const String &str, const Bytes &passwd, const String &key = "");
 
+String generatePassword(size_t len);
+
 NS_SA_EXT_END(valid)
 
 

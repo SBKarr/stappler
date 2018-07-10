@@ -148,6 +148,28 @@ protected:
 	size_t _cacheTime;
 };
 
+class DataMapHandler : public DataHandler {
+public:
+	using ProcessFunction = Function<bool(Request &req, data::Value &result, const data::Value &input)>;
+
+	struct MapResult {
+		MapResult(int);
+		MapResult(ProcessFunction &&);
+
+		int status = 0;
+		ProcessFunction function = nullptr;
+	};
+
+	using MapFunction = Function<MapResult(Request &req, Request::Method, const StringView &subpath)>;
+
+	virtual bool isRequestPermitted(Request &) override;
+	virtual bool processDataHandler(Request &req, data::Value &result, data::Value &input) override;
+
+protected:
+	MapFunction _mapFunction = nullptr;
+	ProcessFunction _selectedProcessFunction = nullptr;
+};
+
 SP_DEFINE_ENUM_AS_MASK(DataHandler::AllowMethod)
 
 NS_SA_END

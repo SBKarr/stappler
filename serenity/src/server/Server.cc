@@ -59,7 +59,7 @@ struct Server::Config : public AllocPool {
 		}, server);
 	}
 
-	Config(server_rec *server) : serverNamespace("default") {
+	Config(server_rec *server) {
 		ap_set_module_config(server->module_config, &serenity_module, this);
 	}
 
@@ -88,7 +88,8 @@ struct Server::Config : public AllocPool {
 			if (err == APR_SUCCESS) {
 				auto h = ((ServerComponent::Symbol) sym)(serv, name, handlerData);
 				if (h) {
-					components.emplace(name, h);
+					components.emplace(h->getName(), h);
+					typedComponents.emplace(std::type_index(typeid(*h)), h);
 				} else {
 					log::format("Server", "DSO (%s) returns nullptr handler", name.c_str());
 					serv.reportError(data::Value {
@@ -247,10 +248,10 @@ struct Server::Config : public AllocPool {
 	data::Value handlers;
 	String handlerFile;
 	String sourceRoot;
-	String serverNamespace;
 	String currentComponent;
 	Vector<Function<int(Request &)>> preRequest;
 	Map<String, ServerComponent *> components;
+	Map<std::type_index, ServerComponent *> typedComponents;
 	Map<String, RequestScheme> requests;
 	Map<const storage::Scheme *, ResourceScheme> resources;
 	Map<String, const storage::Scheme *> schemes;
@@ -282,9 +283,17 @@ void * Server::merge(void *base, void *add) {
 	Config *baseCfg = (Config *)base;
 	Config *addCfg = (Config *)add;
 
-	if (!baseCfg->sourceRoot.empty()) {
-		addCfg->sourceRoot = baseCfg->sourceRoot;
+	if (!baseCfg->sourceRoot.empty()) { addCfg->sourceRoot = baseCfg->sourceRoot; }
+	if (!baseCfg->webHookUrl.empty()) { addCfg->webHookUrl = baseCfg->webHookUrl; }
+	if (!baseCfg->webHookName.empty()) { addCfg->webHookName = baseCfg->webHookName; }
+	if (!baseCfg->webHookFormat.empty()) { addCfg->webHookFormat = baseCfg->webHookFormat; }
+
+	if (!baseCfg->webHookExtra.empty()) {
+		for (auto &it : baseCfg->webHookExtra.asDict()) {
+			addCfg->webHookExtra.setValue(it.second, it.first);
+		}
 	}
+
 	return addCfg;
 }
 
@@ -338,6 +347,33 @@ void Server::onChildInit() {
 	});
 }
 
+template <typename Callback> static
+void Server_prepareEmail(Server::Config *cfg, Callback &&cb) {
+	StringStream data;
+	if (!cfg->webHookUrl.empty() && !cfg->webHookName.empty()) {
+		auto &from = cfg->webHookName;
+		auto &to = cfg->webHookExtra.getString("to");
+		auto &title = cfg->webHookExtra.getString("title");
+
+		network::Mail notify(cfg->webHookUrl, cfg->webHookName, cfg->webHookExtra.getString("password"));
+		notify.setMailFrom(from);
+		notify.addMailTo(to);
+
+		data << "From: " << from << " <" << from << ">\r\n"
+			<< "Content-Type: text/plain; charset=utf-8\r\n"
+			<< "To: " << to << " <" << to << ">\r\n";
+		if (title.empty()) {
+			data << "Subject: Serenity Crash report\r\n\r\n";
+		} else {
+			data << "Subject: Serenity Crash report (" << title << ")\r\n\r\n";
+		}
+
+		cb(data);
+
+		notify.send(data);
+	}
+}
+
 void Server::processReports() {
 	if (_config->webHookFormat != "email") {
 		return;
@@ -363,37 +399,20 @@ void Server::processReports() {
 		filesystem::remove(it);
 	}
 
-	auto &from = _config->webHookExtra.getString("from");
-	auto &to = _config->webHookExtra.getString("to");
-	auto &title = _config->webHookExtra.getString("title");
-
-	StringStream data;
 	for (auto &it : crashData) {
-		network::Mail notify(_config->webHookUrl, _config->webHookName, _config->webHookExtra.getString("password"));
-		notify.setMailFrom(from);
-		notify.addMailTo(to);
-
-		data << "From: " << from << " <" << from << ">\r\n"
-			<< "Content-Type: text/plain; charset=utf-8\r\n"
-			<< "To: " << to << " <" << to << ">\r\n";
-		if (title.empty()) {
-			data << "Subject: Serenity Crash report\r\n\r\n";
-		} else {
-			data << "Subject: Serenity Crash report (" << title << ")\r\n\r\n";
-		}
-		data << it << "\r\n";
-
-		notify.send(data);
+		Server_prepareEmail(_config, [&] (StringStream &data) {
+			data << it << "\r\n";
+		});
 	}
 }
 
-void Server::setHandlerFile(const String &file) {
-	_config->handlerFile = file;
+void Server::setHandlerFile(const StringView &file) {
+	_config->handlerFile = file.str();
 }
-void Server::setSourceRoot(const String &file) {
-	_config->sourceRoot = file;
+void Server::setSourceRoot(const StringView &file) {
+	_config->sourceRoot = file.str();
 }
-void Server::addHanderSource(const String &str) {
+void Server::addHanderSource(const StringView &str) {
 	StringView r(str);
 	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
@@ -408,18 +427,25 @@ void Server::addHanderSource(const String &str) {
 		handlerParams = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 	}
 
-	StringView name, file, symbol;
-	name = handlerParams.readUntil<StringView::Chars<':'>>();
-	++ handlerParams;
-	file = handlerParams.readUntil<StringView::Chars<':'>>();
-	++ handlerParams;
-	symbol = handlerParams;
+	StringView args[3];
+	int64_t idx = 0;
+	while (!handlerParams.empty() && idx < 3) {
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		args[idx] = handlerParams.readUntil<StringView::Chars<':'>>();
+		if (handlerParams.is(':')) {
+			++ handlerParams;
+		}
+		++ idx;
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+	}
 
-	if (!name.empty() && !file.empty() && !symbol.empty()) {
+	if (idx >= 2) {
 		data::Value h;
-		h.setString(name.str(), "name");
-		h.setString(file.str(), "file");
-		h.setString(symbol.str(), "symbol");
+		h.setString(args[idx - 1].str(), "symbol");
+		h.setString(args[idx - 2].str(), "file");
+		if (idx == 3) {
+			h.setString(args[0].str(), "name");
+		}
 		data::Value &data = h.emplace("data");
 
 		while (!r.empty()) {
@@ -450,7 +476,7 @@ void Server::addHanderSource(const String &str) {
 	}
 }
 
-void Server::setSessionParams(const String &str) {
+void Server::setSessionParams(const StringView &str) {
 	StringView r(str);
 	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 	while (!r.empty()) {
@@ -479,7 +505,7 @@ void Server::setSessionParams(const String &str) {
 	}
 }
 
-void Server::setWebHookParams(const String &str) {
+void Server::setWebHookParams(const StringView &str) {
 	StringView r(str);
 	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 	while (!r.empty()) {
@@ -522,7 +548,7 @@ void Server::setForceHttps() {
 	_config->setForceHttps();
 }
 
-const String &Server::getHandlerFile() const {
+StringView Server::getHandlerFile() const {
 	return _config->handlerFile;
 }
 
@@ -593,10 +619,6 @@ bool Server::isSessionSecure() const {
 
 tpl::Cache *Server::getTemplateCache() const {
 	return &_config->_templateCache;
-}
-
-const String &Server::getNamespace() const {
-	return _config->serverNamespace;
 }
 
 template <typename T>
@@ -775,8 +797,17 @@ ServerComponent *Server::getServerComponent(const StringView &name) const {
 	return nullptr;
 }
 
+ServerComponent *Server::getServerComponent(std::type_index name) const {
+	auto it = _config->typedComponents.find(name);
+	if (it != _config->typedComponents.end()) {
+		return it->second;
+	}
+	return nullptr;
+}
+
 void Server::addComponent(const String &name, ServerComponent *comp) {
 	_config->components.emplace(name, comp);
+	_config->typedComponents.emplace(std::type_index(typeid(*comp)), comp);
 	if (_config->childInit) {
 		comp->onChildInit(*this);
 	}
@@ -898,34 +929,28 @@ const Map<String, Server::RequestScheme> &Server::getRequestHandlers() const {
 	return _config->requests;
 }
 
-void Server::reportError(const data::Value &data) {
-	if (_config->webHookUrl.empty()) {
-		return;
-	}
-	if (_config->webHookFormat.empty() || _config->webHookFormat == "slack") {
-		apr::pool::perform([&] {
-			StringStream payload;
-			payload << "*" << getServerHostname();
-			if (getServerPort() > 0) {
-				payload << ":" << getServerPort();
-			}
-			payload << "*\n\n";
+void Server::reportError(const data::Value &d) {
+	if (_config->webHookFormat == "email") {
+		Server_prepareEmail(_config, [&] (StringStream &data) {
+			data << "Server:\n"
+					"\tDocumentRoot: " << getDocumentRoot() << "\n"
+					"\tName: " << _server->server_hostname << "\n"
+					"\tDate: " << Time::now().toHttp() << "\n";
 
-			payload << "*" << _config->webHookName << "*: ";
-			if (data.isString("source")) {
-				payload << "*" << data.getString("source") << "*: ";
+			if (auto req = apr::pool::request()) {
+				data << "Request:\n"
+						"\tUrl: " << req->hostname << req->unparsed_uri << "\n"
+						"\tRequest: " << req->the_request << "\n"
+						"\tIp: " << req->useragent_ip << "\n"
+						"\tHeaders:\n";
+				apr::table t(req->headers_in);
+				for (auto &it : t) {
+					data << "\t\t" << it.key << ": " << it.val << "\n";
+				}
 			}
-			if (data.isString("text")) {
-				payload << data.getString("text") << " ";
-			}
-			payload << data::EncodeFormat::Pretty << data;
 
-			data::Value payloadData;
-			payloadData.setString(payload.str(), "text");
-
-			network::Handle h(network::Handle::Method::Post, _config->webHookUrl);
-			h.setSendData(payloadData, data::EncodeFormat::Json);
-			h.perform();
+			data << "\n";
+			data << data::EncodeFormat::Pretty << d;
 		});
 	}
 }

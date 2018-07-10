@@ -267,7 +267,7 @@ apr_status_t OutputFilter::outputHeaders(ap_filter_t* f, apr_bucket *e, const ch
 	apr_status_t rv = APR_SUCCESS;
 
 	apr::ostringstream servVersion;
-	servVersion << "Serenity/2 Stappler/1 (" << tools::getCompileUnixTime().toHttp() << ")";
+	servVersion << "Serenity/" << tools::getVersionString() << " (" << tools::getCompileUnixTime().toHttp() << ")";
 	_headers.emplace("Server", servVersion.str());
 	_buffer.clear();
 	if (_responseCode < 400) {

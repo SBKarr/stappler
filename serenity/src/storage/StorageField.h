@@ -180,6 +180,8 @@ public:
 	template <typename ... Args> static Field Array(String && name, Args && ... args);
 	template <typename ... Args> static Field View(String && name, Args && ... args);
 
+	template <typename ... Args> static Field Extra(String &&name, InitializerList<Field> &&, Args && ... args);
+
 	struct Slot : public AllocPool {
 	public:
 		template <typename F, typename T>
@@ -451,6 +453,10 @@ template <typename ... Args> Field Field::Extra(String &&name, Args && ... args)
 	return Field(new FieldExtra(std::move(name), std::forward<Args>(args)...));
 }
 
+template <typename ... Args> Field Field::Extra(String &&name, InitializerList<Field> &&f, Args && ... args) {
+	return Field(new FieldExtra(std::move(name), move(f), std::forward<Args>(args)...));
+}
+
 template <typename ... Args> Field Field::File(String &&name, Args && ... args) {
 	return Field(new FieldFile(std::move(name), std::forward<Args>(args)...));
 }
@@ -514,6 +520,14 @@ template <typename F> struct FieldOption<F, ForeignLink> {
 
 template <typename F> struct FieldOption<F, Vector<Field>> {
 	static inline void assign(F & f, Vector<Field> && s) {
+		for (auto &it : s) {
+			f.fields.emplace(it.getName(), it);
+		}
+	}
+};
+
+template <typename F> struct FieldOption<F, std::initializer_list<Field>> {
+	static inline void assign(F & f, std::initializer_list<Field> && s) {
 		for (auto &it : s) {
 			f.fields.emplace(it.getName(), it);
 		}

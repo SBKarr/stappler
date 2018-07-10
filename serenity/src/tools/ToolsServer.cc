@@ -44,6 +44,7 @@ int ServerGui::onTranslateName(Request &rctx) {
 			exec.set("count", data::Value(count));
 			exec.set("setup", data::Value(count != 0));
 			exec.set("hasDb", data::Value(hasDb));
+			exec.set("version", data::Value(getVersionString()));
 		});
 		return DONE;
 	} else {

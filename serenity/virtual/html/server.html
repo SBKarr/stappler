@@ -6,7 +6,7 @@
 	<script src="/__server/virtual/js/kawaiJson.js"></script>
 	<script src="/__server/virtual/js/shellHistory.js"></script>
 </head><body>
-	<h4>Serenity Server Page</h4>
+	<h4>Serenity Server Page ({?=$version?})</h4>
 	{?if $hasDb ?}{?if $setup ?}<p>Setup completed</p>
 	<p><a href="/__server/shell">Interactive server console</a></p>{?else?}<h5>Setup form:</h5>
 	<form id="setup" method="post">

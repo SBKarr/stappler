@@ -49,21 +49,24 @@ public:
 	void onBroadcast(const Bytes &);
 	int onRequest(Request &);
 
-	void setHandlerFile(const String &file);
-	void setSourceRoot(const String &file);
-	void addHanderSource(const String &w);
-	void setSessionParams(const String &w);
-	void setWebHookParams(const String &w);
+	void setHandlerFile(const StringView &file);
+	void setSourceRoot(const StringView &file);
+	void addHanderSource(const StringView &w);
+	void setSessionParams(const StringView &w);
+	void setWebHookParams(const StringView &w);
 	void setForceHttps();
 	void setProtectedList(const StringView &w);
 
 	void addProtectedLocation(const StringView &);
 
-	const String &getHandlerFile() const;
-	const String &getNamespace() const;
+	StringView getHandlerFile() const;
 
 	template <typename Component = ServerComponent>
 	auto getComponent(const StringView &) const -> Component *;
+
+	template <typename Component>
+	auto getComponent() const -> Component *;
+
 	void addComponent(const String &, ServerComponent *);
 
 	const Map<String, ServerComponent *> &getComponents() const;
@@ -180,6 +183,7 @@ public: // compression
 
 protected:
 	ServerComponent *getServerComponent(const StringView &name) const;
+	ServerComponent *getServerComponent(std::type_index name) const;
 
 	struct Config;
 
@@ -190,6 +194,14 @@ protected:
 template <typename Component>
 inline auto Server::getComponent(const StringView &name) const -> Component * {
 	return dynamic_cast<Component *>(getServerComponent(name));
+}
+
+template <typename Component>
+inline auto Server::getComponent() const -> Component * {
+	if (auto c = getServerComponent(std::type_index(typeid(Component)))) {
+		return static_cast<Component *>(c);
+	}
+	return nullptr;
 }
 
 NS_SA_END

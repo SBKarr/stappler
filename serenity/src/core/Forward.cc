@@ -421,6 +421,56 @@ bool validatePassord(const String &str, const Bytes &passwd, const String &key) 
 	}
 }
 
+#define PSWD_NUMBERS "12345679"
+#define PSWD_LOWER "abcdefghijkmnopqrstuvwxyz"
+#define PSWD_UPPER "ABCDEFGHJKLMNPQRSTUVWXYZ"
+
+static const char * const pswd_numbers = PSWD_NUMBERS;
+static const char * const pswd_lower = PSWD_LOWER;
+static const char * const pswd_upper = PSWD_UPPER;
+static const char * const pswd_all = PSWD_NUMBERS PSWD_LOWER PSWD_UPPER;
+
+static uint8_t pswd_numbersCount = uint8_t(strlen(PSWD_NUMBERS));
+static uint8_t pswd_lowerCount = uint8_t(strlen(PSWD_LOWER));
+static uint8_t pswd_upperCount = uint8_t(strlen(PSWD_UPPER));
+static uint8_t pswd_allCount = uint8_t(strlen(PSWD_NUMBERS PSWD_LOWER PSWD_UPPER));
+
+String generatePassword(size_t len) {
+	if (len < 6) {
+		return String();
+	}
+
+	auto randomBytes = len + 2;
+	auto bytes = makeRandomBytes(randomBytes);
+
+	uint16_t meta = 0;
+	memcpy(&meta, bytes.data(), sizeof(uint16_t));
+
+	bool extraChars[3] = { false, false, false };
+
+	String ret; ret.reserve(len);
+	for (size_t i = 0; i < len - 3; ++ i) {
+		ret.push_back(pswd_all[bytes[i + 5] % pswd_allCount]);
+		if (!extraChars[0] && i == bytes[2] % (len - 3)) {
+			ret.push_back(pswd_numbers[meta % pswd_numbersCount]);
+			meta /= pswd_numbersCount;
+			extraChars[0] = true;
+		}
+		if (!extraChars[1] && i == bytes[3] % (len - 3)) {
+			ret.push_back(pswd_lower[meta % pswd_lowerCount]);
+			meta /= pswd_lowerCount;
+			extraChars[1] = true;
+		}
+		if (!extraChars[2] && i == bytes[4] % (len - 3)) {
+			ret.push_back(pswd_upper[meta % pswd_upperCount]);
+			meta /= pswd_upperCount;
+			extraChars[2] = true;
+		}
+	}
+
+	return ret;
+}
+
 NS_SA_EXT_END(valid)
 
 
