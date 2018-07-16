@@ -220,4 +220,35 @@ int FilesystemHandler::onTranslateName(Request &rctx) {
 	}
 }
 
+
+DataMapHandler::MapResult::MapResult(int s) : status(s) { }
+DataMapHandler::MapResult::MapResult(ProcessFunction &&fn) : function(move(fn)) { }
+
+bool DataMapHandler::isRequestPermitted(Request &rctx) {
+	if (_mapFunction) {
+		auto res = _mapFunction(rctx, rctx.getMethod(), _subPath);
+		if (res.function) {
+			_selectedProcessFunction = move(res.function);
+			return true;
+		} else {
+			if (res.status) {
+				rctx.setStatus(res.status);
+			} else {
+				rctx.setStatus(HTTP_NOT_FOUND);
+			}
+			return false;
+		}
+	}
+	rctx.setStatus(HTTP_NOT_FOUND);
+	return false;
+}
+
+bool DataMapHandler::processDataHandler(Request &req, data::Value &result, data::Value &input) {
+	if (!_selectedProcessFunction) {
+		return false;
+	} else {
+		return _selectedProcessFunction(req, result, input);
+	}
+}
+
 NS_SA_END
