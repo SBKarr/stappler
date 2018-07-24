@@ -347,8 +347,14 @@ void Server::onChildInit() {
 	});
 }
 
+enum class ServerReportType {
+	Crash,
+	Update,
+	Error,
+};
+
 template <typename Callback> static
-void Server_prepareEmail(Server::Config *cfg, Callback &&cb) {
+void Server_prepareEmail(Server::Config *cfg, Callback &&cb, ServerReportType type) {
 	StringStream data;
 	if (!cfg->webHookUrl.empty() && !cfg->webHookName.empty()) {
 		auto &from = cfg->webHookName;
@@ -362,11 +368,23 @@ void Server_prepareEmail(Server::Config *cfg, Callback &&cb) {
 		data << "From: " << from << " <" << from << ">\r\n"
 			<< "Content-Type: text/plain; charset=utf-8\r\n"
 			<< "To: " << to << " <" << to << ">\r\n";
-		if (title.empty()) {
-			data << "Subject: Serenity Crash report\r\n\r\n";
-		} else {
-			data << "Subject: Serenity Crash report (" << title << ")\r\n\r\n";
+
+		switch (type) {
+		case ServerReportType::Crash:
+			data << "Subject: Serenity Crash report";
+			break;
+		case ServerReportType::Update:
+			data << "Subject: Serenity Update report";
+			break;
+		case ServerReportType::Error:
+			data << "Subject: Serenity Error report";
+			break;
 		}
+
+		if (!title.empty()) {
+			data << " (" << title << ")";
+		}
+		data << "\r\n\r\n";
 
 		cb(data);
 
@@ -379,30 +397,30 @@ void Server::processReports() {
 		return;
 	}
 
-	Vector<String> crashFiles;
+	Vector<Pair<String, ServerReportType>> crashFiles;
 	String path = filepath::absolute(".serenity", true);
 	filesystem::ftw(path, [&] (const StringView &view, bool isFile) {
 		if (isFile) {
 			StringView r(view);
 			r.skipString(path);
 			if (r.starts_with("/crash.")) {
-				crashFiles.emplace_back(view.str());
+				crashFiles.emplace_back(view.str(), ServerReportType::Crash);
 			} else if (r.starts_with("/update.")) {
-				crashFiles.emplace_back(view.str());
+				crashFiles.emplace_back(view.str(), ServerReportType::Update);
 			}
 		}
 	});
 
-	Vector<String> crashData;
+	Vector<Pair<String, ServerReportType>> crashData;
 	for (auto &it : crashFiles) {
-		crashData.emplace_back(filesystem::readTextFile(it));
-		filesystem::remove(it);
+		crashData.emplace_back(filesystem::readTextFile(it.first), it.second);
+		filesystem::remove(it.first);
 	}
 
 	for (auto &it : crashData) {
 		Server_prepareEmail(_config, [&] (StringStream &data) {
-			data << it << "\r\n";
-		});
+			data << it.first << "\r\n";
+		}, it.second);
 	}
 }
 
@@ -951,7 +969,7 @@ void Server::reportError(const data::Value &d) {
 
 			data << "\n";
 			data << data::EncodeFormat::Pretty << d;
-		});
+		}, ServerReportType::Error);
 	}
 }
 

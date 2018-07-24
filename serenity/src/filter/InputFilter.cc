@@ -87,7 +87,7 @@ void InputFilter::filterRegister() {
 			&(filterInit), AP_FTYPE_CONTENT_SET);
 }
 
-InputFilter::Accept getAcceptedData(const Request &req, InputFilter::Exception &e) {
+static InputFilter::Accept getAcceptedData(const Request &req, InputFilter::Exception &e) {
 	Request r = req;
 	auto &cfg = r.getInputConfig();
 	InputFilter::Accept ret = InputFilter::Accept::None;

@@ -169,7 +169,6 @@ public:
 	bool operator== (double v) const { return isBasicType() ? fabs(v - asDouble()) < epsilon<double>() : false; }
 	bool operator== (const char *v) const { return isString() ? strVal->compare(v) == 0 : false; }
 	bool operator== (const StringView &v) const { return isString() ? string::compare(*strVal, v) == 0 : false; }
-	bool operator== (const StringType &v) const { return isString() ? v.compare(*strVal) == 0 : false; }
 	bool operator== (const BytesType &v) const { return isBytes() ? (*bytesVal) == v : false; }
 	bool operator== (const ArrayType &v) const { return isArray() ? compare(*arrayVal, v) : false; }
 	bool operator== (const DictionaryType &v) const { return isDictionary() ? compare(*dictVal, v) : false; }
@@ -183,7 +182,6 @@ public:
 	bool operator!= (double v) const { return !(*this == v); }
 	bool operator!= (const char *v) const { return !(*this == v); }
 	bool operator!= (const StringView &v) const { return !(*this == v); }
-	bool operator!= (const StringType &v) const { return !(*this == v); }
 	bool operator!= (const BytesType &v) const { return !(*this == v); }
 	bool operator!= (const ArrayType &v) const { return !(*this == v); }
 	bool operator!= (const DictionaryType &v) const { return !(*this == v); }
@@ -773,6 +771,20 @@ void ValueTemplate<Interface>::reset(Type type) {
 template <typename Interface>
 struct __ValueTemplateTraits<Interface, false> {
 	using ValueType = ValueTemplate<Interface>;
+
+	template <class Val>
+	static ValueType & set(ValueType &target, Val &&value, const StringView & key) {
+		if (target.convertToDict()) {
+			auto i = target.dictVal->find(key);
+			if (i != target.dictVal->end()) {
+				i->second = std::forward<Val>(value);
+				return i->second;
+			} else {
+				return target.dictVal->emplace(key.str<Interface>(), std::forward<Val>(value)).first->second;
+			}
+		}
+		return const_cast<ValueType &>(ValueType::Null);
+	}
 
 	template <class Val, class Key>
 	static ValueType & set(ValueType &target, Val &&value, Key && key) {

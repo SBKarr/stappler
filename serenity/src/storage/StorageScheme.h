@@ -59,6 +59,12 @@ public:
 	Scheme(const String &name, bool delta = false);
 	Scheme(const String &name, std::initializer_list<Field> ile, bool delta = false);
 
+	Scheme(const Scheme &) = delete;
+	Scheme& operator=(const Scheme &) = delete;
+
+	Scheme(Scheme &&) = default;
+	Scheme& operator=(Scheme &&) = default;
+
 	void setDelta(bool value);
 	bool hasDelta() const;
 

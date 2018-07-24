@@ -130,6 +130,7 @@ public:
 	constexpr StringViewBase(const CharType *ptr, size_t len = maxOf<size_t>());
 	constexpr StringViewBase(const CharType *ptr, size_t pos, size_t len);
 	constexpr StringViewBase(const Self &, size_t pos, size_t len);
+	constexpr StringViewBase(const Self &, size_t len);
 	StringViewBase(const PoolString &str);
 	StringViewBase(const StdString &str);
 
@@ -570,6 +571,10 @@ inline constexpr StringViewBase<_CharType>::StringViewBase(const CharType *ptr, 
 template <typename _CharType>
 inline constexpr StringViewBase<_CharType>::StringViewBase(const Self &ptr, size_t pos, size_t len)
 : BytesReader<_CharType>(ptr.data() + pos, min(len, ptr.size() - pos)) { }
+
+template <typename _CharType>
+inline constexpr StringViewBase<_CharType>::StringViewBase(const Self &ptr, size_t len)
+: BytesReader<_CharType>(ptr.data(), min(len, ptr.size())) { }
 
 template <>
 constexpr inline StringViewBase<char>::StringViewBase(const char *ptr, size_t len)

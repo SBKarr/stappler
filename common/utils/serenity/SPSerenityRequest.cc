@@ -135,19 +135,19 @@ Query & Query::select(std::initializer_list<int64_t> &&id) {
 }
 
 Query & Query::select(const String &f, Comparation c, const data::Value & v1, const data::Value &v2) {
-	selectList.emplace_back(f, c, v1, v2);
+	selectList.emplace_back(f, c, data::Value(v1), data::Value(v2));
 	return *this;
 }
 Query & Query::select(const String &f, const data::Value & v1) {
-	selectList.emplace_back(f, Comparation::Equal, v1, data::Value());
-	return *this;
-}
-Query & Query::select(const String &f, Comparation c, int64_t v1) {
 	selectList.emplace_back(f, Comparation::Equal, data::Value(v1), data::Value());
 	return *this;
 }
+Query & Query::select(const String &f, Comparation c, int64_t v1) {
+	selectList.emplace_back(f, c, data::Value(v1), data::Value());
+	return *this;
+}
 Query & Query::select(const String &f, Comparation c, int64_t v1, int64_t v2) {
-	selectList.emplace_back(f, Comparation::Equal, data::Value(v1), data::Value(v2));
+	selectList.emplace_back(f, c, data::Value(v1), data::Value(v2));
 	return *this;
 }
 Query & Query::select(const String &f, const String & v) {
