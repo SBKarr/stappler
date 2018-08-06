@@ -355,7 +355,7 @@ data::Value Handle::appendProperty(const Scheme &s, uint64_t oid, const Field &f
 				ret = move(val);
 			}
 		}
-		return val;
+		return ret;
 		break;
 	case storage::Type::Set:
 		if (f.isReference()) {

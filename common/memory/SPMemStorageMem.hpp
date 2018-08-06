@@ -348,8 +348,11 @@ public:
 	// (small для малых блоков, large для больших)
 	// Таким образом, чтобы assign при size <= small_mem::max_capacity() всегда приводил к использованию small
 	// Допускает self-assign, в том числе, для подмножеств себя
+	// При попытке назначения несуществующего блока очищает строку
 	void assign(const_pointer ptr, size_type size) {
-		if (size <= small_mem::max_capacity() && (is_small() || empty())) {
+		if (!ptr || size == 0) {
+			clear();
+		} else if (size <= small_mem::max_capacity() && (is_small() || empty())) {
 			set_small_flag();
 			_small.assign(_allocator, ptr, size);
 		} else if (size > small_mem::max_capacity() && (is_large() || empty())) {
