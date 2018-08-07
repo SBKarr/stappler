@@ -189,16 +189,22 @@ void ResourceHandler::onFilterComplete(InputFilter *filter) {
 			rctx.setStatus(HTTP_OK);
 		} else {
 			rctx.setStatus(HTTP_BAD_REQUEST);
-			messages::error("Resource", "Fail to perform update");
+			if (result.isNull()) {
+				messages::error("Resource", "Fail to perform update", data::Value(filter->getData()));
+			}
 		}
 	} else if (_method == Request::Post) {
-		auto result = _resource->createObject(filter->getData(), filter->getFiles());
+		auto &d = filter->getData();
+		auto tmp = d;
+		auto result = _resource->createObject(d, filter->getFiles());
 		if (result) {
 			writeDataToRequest(rctx, move(result));
 			rctx.setStatus(HTTP_CREATED);
 		} else {
 			rctx.setStatus(HTTP_BAD_REQUEST);
-			messages::error("Resource", "Fail to perform create");
+			if (result.isNull()) {
+				messages::error("Resource", "Fail to perform create", data::Value(move(tmp)));
+			}
 		}
 	} else if (_method == Request::Patch) {
 		auto result = _resource->appendObject(filter->getData());
@@ -207,7 +213,9 @@ void ResourceHandler::onFilterComplete(InputFilter *filter) {
 			rctx.setStatus(HTTP_OK);
 		} else {
 			rctx.setStatus(HTTP_BAD_REQUEST);
-			messages::error("Resource", "Fail to perform append");
+			if (result.isNull()) {
+				messages::error("Resource", "Fail to perform append", data::Value(filter->getData()));
+			}
 		}
 	}
 }

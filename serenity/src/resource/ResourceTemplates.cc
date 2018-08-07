@@ -823,7 +823,7 @@ data::Value ResourceArray::createObject(data::Value &data, apr::array<InputFile>
 
 	if (!arr.isArray()) {
 		_status = HTTP_BAD_REQUEST;
-		return data::Value();
+		return data::Value(false);
 	}
 
 	if (_perms == Permission::Full) {
