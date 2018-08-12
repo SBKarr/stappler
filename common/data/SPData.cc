@@ -340,4 +340,93 @@ bool shouldEncodePercent(char c) {
 
 }
 
+template <>
+template <>
+auto ValueTemplate<memory::PoolInterface>::convert<memory::PoolInterface>() const -> ValueTemplate<memory::PoolInterface> {
+	return ValueTemplate<memory::PoolInterface>(*this);
+}
+
+template <>
+template <>
+auto ValueTemplate<memory::StandartInterface>::convert<memory::StandartInterface>() const -> ValueTemplate<memory::StandartInterface> {
+	return ValueTemplate<memory::StandartInterface>(*this);
+}
+
+template <>
+template <>
+auto ValueTemplate<memory::PoolInterface>::convert<memory::StandartInterface>() const -> ValueTemplate<memory::StandartInterface> {
+	switch (_type) {
+	case Type::INTEGER: return ValueTemplate<memory::StandartInterface>(intVal); break;
+	case Type::DOUBLE: return ValueTemplate<memory::StandartInterface>(doubleVal); break;
+	case Type::BOOLEAN: return ValueTemplate<memory::StandartInterface>(boolVal); break;
+	case Type::CHARSTRING:
+		return ValueTemplate<memory::StandartInterface>(memory::StandartInterface::StringType(strVal->data(), strVal->size()));
+		break;
+	case Type::BYTESTRING:
+		return ValueTemplate<memory::StandartInterface>(memory::StandartInterface::BytesType(bytesVal->data(), bytesVal->data() + bytesVal->size()));
+		break;
+	case Type::ARRAY: {
+		ValueTemplate<memory::StandartInterface> ret(ValueTemplate<memory::StandartInterface>::Type::ARRAY);
+		auto &arr = ret.asArray();
+		arr.reserve(arrayVal->size());
+		for (auto &it : *arrayVal) {
+			arr.emplace_back(it.convert<memory::StandartInterface>());
+		}
+		return ret;
+		break;
+	}
+	case Type::DICTIONARY: {
+		ValueTemplate<memory::StandartInterface> ret(ValueTemplate<memory::StandartInterface>::Type::DICTIONARY);
+		auto &dict = ret.asDict();
+		for (auto &it : *dictVal) {
+			dict.emplace(StringView(it.first).str<memory::StandartInterface>(), it.second.convert<memory::StandartInterface>());
+		}
+		return ret;
+		break;
+	}
+	default:
+		break;
+	}
+	return ValueTemplate<memory::StandartInterface>();
+}
+
+template <>
+template <>
+auto ValueTemplate<memory::StandartInterface>::convert<memory::PoolInterface>() const -> ValueTemplate<memory::PoolInterface> {
+	switch (_type) {
+	case Type::INTEGER: return ValueTemplate<memory::PoolInterface>(intVal); break;
+	case Type::DOUBLE: return ValueTemplate<memory::PoolInterface>(doubleVal); break;
+	case Type::BOOLEAN: return ValueTemplate<memory::PoolInterface>(boolVal); break;
+	case Type::CHARSTRING:
+		return ValueTemplate<memory::PoolInterface>(memory::PoolInterface::StringType(strVal->data(), strVal->size()));
+		break;
+	case Type::BYTESTRING:
+		return ValueTemplate<memory::PoolInterface>(memory::PoolInterface::BytesType(bytesVal->data(), bytesVal->data() + bytesVal->size()));
+		break;
+	case Type::ARRAY: {
+		ValueTemplate<memory::PoolInterface> ret(ValueTemplate<memory::PoolInterface>::Type::ARRAY);
+		auto &arr = ret.asArray();
+		arr.reserve(arrayVal->size());
+		for (auto &it : *arrayVal) {
+			arr.emplace_back(it.convert<memory::PoolInterface>());
+		}
+		return ret;
+		break;
+	}
+	case Type::DICTIONARY: {
+		ValueTemplate<memory::PoolInterface> ret(ValueTemplate<memory::PoolInterface>::Type::DICTIONARY);
+		auto &dict = ret.asDict();
+		dict.reserve(dictVal->size());
+		for (auto &it : *dictVal) {
+			dict.emplace(StringView(it.first).str<memory::PoolInterface>(), it.second.convert<memory::PoolInterface>());
+		}
+		return ret;
+		break;
+	}
+	default:
+		break;
+	}
+	return ValueTemplate<memory::PoolInterface>();
+}
+
 NS_SP_EXT_END(data)

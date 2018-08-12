@@ -328,6 +328,8 @@ public:
 
 	template <class Key> Type getType(Key &&) const;
 
+	template <typename NewInterface> auto convert() const -> ValueTemplate<NewInterface>;
+
 protected:
 	template <typename Iface>
 	friend class JsonBuffer;

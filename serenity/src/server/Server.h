@@ -201,6 +201,14 @@ inline auto Server::getComponent() const -> Component * {
 	if (auto c = getServerComponent(std::type_index(typeid(Component)))) {
 		return static_cast<Component *>(c);
 	}
+
+	auto &cmp = getComponents();
+	for (auto &it : cmp) {
+		if (auto c = dynamic_cast<Component *>(it.second)) {
+			return c;
+		}
+	}
+
 	return nullptr;
 }
 
