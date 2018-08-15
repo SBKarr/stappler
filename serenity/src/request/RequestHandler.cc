@@ -195,7 +195,12 @@ void DataHandler::onFilterComplete(InputFilter *filter) {
 	Request rctx(filter->getRequest());
 	_filter = filter;
 
-	result = processDataHandler(rctx, data, filter->getData());
+	data::Value input(filter->getData());
+	for (auto &it : filter->getFiles()) {
+		input.setInteger(it.negativeId(), it.name);
+	}
+
+	result = processDataHandler(rctx, data, input);
 
 	data.setBool(result, "OK");
 	writeResult(data);
