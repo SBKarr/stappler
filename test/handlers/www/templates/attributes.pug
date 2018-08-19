@@ -1,0 +1,56 @@
+doctype html
+html
+	head
+		title Pug Attributes Test
+	body
+		- var value = "Hello World!"
+		- var classes = ['foo', 'bar', 'baz']
+		div(class='div-class' '(click)'='play()' + 'test')
+		input(
+			type!='chec&kbox'
+			name='agree&ment'
+			value=value
+			checked
+		)
+		|
+		|
+		a(href='google.com' value=value) Google
+		|
+		|
+		a(class='button' href='google.com') Google
+		|
+		|
+		a(class='button', href='google.com') Google
+		|
+		|
+		div(class='div-class', (click)='play()')
+		|
+		|
+		a(class=classes)
+		|
+		|
+		a(style={color: 'red', background: 'green'})
+		|
+		|
+		input(type='checkbox' checked)
+		|
+		|
+		input(type='checkbox' checked=true)
+		|
+		|
+		input(type='checkbox' checked=false)
+		|
+		|
+		input(type='checkbox' checked=true && 'checked')
+
+		div#foo(data-bar="foo")&attributes({'data-foo': 'bar'})
+		-
+			var b = {
+				a: "A",
+				b: "B",
+				c: "C",
+				d: "D",
+				e: "E"
+			}
+		
+		#bar(data-bar="foo")&attributes(b)

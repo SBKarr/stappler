@@ -16,6 +16,7 @@ LOCAL_INCLUDES_OBJS :=
 verbose:= 1
 
 LOCAL_CFLAGS =  -ftemplate-backtrace-limit=0
+LOCAL_FORCE_INSTALL := 1
 
 CONF_DIR:= $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
@@ -45,6 +46,6 @@ $(LOCAL_OUTDIR)/httpd.conf: Makefile
 	@echo 'SerenitySource "Test:$(LOCAL_LIBRARY).so:CreateTestHandler"' >> $@
 	@echo 'SerenitySession name=SID key=SPSession maxage=0 secure=true' >> $@
 
-include $(STAPPLER_ROOT)/make/universal.mk
+include $(STAPPLER_ROOT)/make/local.mk
 
-install: $(LOCAL_OUTDIR)/httpd.conf
+all: $(LOCAL_OUTDIR)/httpd.conf

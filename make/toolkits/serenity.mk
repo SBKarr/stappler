@@ -28,6 +28,7 @@ SERENITY_SRCS_DIRS += \
 	common \
 	serenity/apr \
 	serenity/src \
+	serenity/spug \
 
 SERENITY_PRECOMPILED_HEADERS += \
 	serenity/src/core/Define.h \
@@ -44,6 +45,7 @@ SERENITY_INCLUDES_DIRS += \
 	common \
 	serenity/src \
 	serenity/apr \
+	serenity/spug \
 
 SERENITY_INCLUDES_OBJS += \
 	serenity/ext/cityhash

@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include "Request.h"
 
 #include "SPFilesystem.h"
+#include "SPugCache.h"
 #include "Root.h"
 #include "UrlEncodeParser.h"
 #include "PGHandle.h"
@@ -585,6 +586,28 @@ bool Request::checkCacheHeaders(Time t, uint32_t idHash) {
 void Request::runTemplate(String && path, const Function<void(tpl::Exec &, Request &)> &cb) {
 	auto cache = server().getTemplateCache();
 	cache->runTemplate(path, *this, cb);
+}
+
+int Request::runPug(const StringView & path, const Function<bool(pug::Context &, const pug::Template &)> &cb) {
+	auto cache = server().getPugCache();
+	if (cache->runTemplate(path, [&] (pug::Context &ctx, const pug::Template &tpl) -> bool {
+		if (cb(ctx, tpl)) {
+			auto h = getResponseHeaders();
+			auto lm = h.at("Last-Modified");
+			auto etag = h.at("ETag");
+			h.emplace("Content-Type", "text/html; charset=UTF-8");
+			if (lm.empty() && etag.empty()) {
+				h.emplace("Cache-Control", "no-cache, no-store, must-revalidate");
+				h.emplace("Pragma", "no-cache");
+				h.emplace("Expires", Time::seconds(0).toHttp());
+			}
+			return true;
+		}
+		return false;
+	}, *this)) {
+		return DONE;
+	}
+	return HTTP_INTERNAL_SERVER_ERROR;
 }
 
 void Request::setInputFilter(InputFilter *f) {

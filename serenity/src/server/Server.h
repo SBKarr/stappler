@@ -156,6 +156,7 @@ public: // httpd server info
 	void *getConfig() const { return (void *)_config; }
 
 	tpl::Cache *getTemplateCache() const;
+	pug::Cache *getPugCache() const;
 
 	void processReports();
 

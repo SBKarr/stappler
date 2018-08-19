@@ -30,6 +30,8 @@ THE SOFTWARE.
 #include "Networking.h"
 #include "Tools.h"
 
+#include "PugTest.cc"
+
 NS_SA_EXT_BEGIN(test)
 
 class TestSelectHandler : public RequestHandler {
@@ -141,6 +143,7 @@ void TestHandler::onChildInit(Server &serv) {
 	});
 
 	serv.addHandler("/handler", SA_HANDLER(TestSelectHandler));
+	serv.addHandler("/pug/", SA_HANDLER(TestPugHandler));
 }
 
 

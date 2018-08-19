@@ -1,0 +1,20 @@
+doctype html
+
+- var hello = "Hello"
+- var world = "World"
+
+html
+	head
+		title Pug Code Test
+	body
+		object= { hello: hello }
+		hello= hello
+		empty-obj= { }
+		empty-arr= [ ]
+		div
+			p= hello + " " + world
+		p= world
+		object= { hello: hello, world: world, test: hello + " " + world }
+		array= ["test", 1, false, hello]
+		p= "<test>test & string</test>"
+		p!= "<test>test & string</test>"

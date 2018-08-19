@@ -34,6 +34,8 @@ THE SOFTWARE.
 #include "SPRef.h"
 #include "SPData.h"
 
+#include "SPug.h"
+
 #include <typeindex>
 
 NS_SA_BEGIN

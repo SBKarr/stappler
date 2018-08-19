@@ -40,6 +40,7 @@ THE SOFTWARE.
 #include "WebSocket.h"
 #include "Tools.h"
 #include "TemplateCache.h"
+#include "SPugCache.h"
 
 NS_SA_BEGIN
 
@@ -59,7 +60,13 @@ struct Server::Config : public AllocPool {
 		}, server);
 	}
 
-	Config(server_rec *server) {
+	Config(server_rec *server)
+#if DEBUG
+	: _pugCache(pug::Template::Options::getPretty(), [this] (const StringView &str) { onError(str); })
+#else
+	: _pugCache(pug::Template::Options::getDefault(), [this] (const StringView &str) { onError(str); })
+#endif
+	{
 		ap_set_module_config(server->module_config, &serenity_module, this);
 	}
 
@@ -220,6 +227,13 @@ struct Server::Config : public AllocPool {
 		}
 	}
 
+	void onError(const StringView &str) {
+#if DEBUG
+		std::cout << str << "\n";
+#endif
+		messages::error("Template", "Template compilation error", data::Value(str));
+	}
+
 	bool childInit = false;
 
 	storage::Scheme userScheme = storage::Scheme(SA_SERVER_USER_SCHEME_NAME, {
@@ -267,8 +281,10 @@ struct Server::Config : public AllocPool {
 	bool forceHttps = false;
 
 	Time lastDatabaseCleanup;
+	Time lastTemplateUpdate;
 	int64_t broadcastId = 0;
 	tpl::Cache _templateCache;
+	pug::Cache _pugCache;
 
 	String webHookUrl;
 	String webHookName;
@@ -639,6 +655,10 @@ tpl::Cache *Server::getTemplateCache() const {
 	return &_config->_templateCache;
 }
 
+pug::Cache *Server::getPugCache() const {
+	return &_config->_pugCache;
+}
+
 template <typename T>
 auto Server_resolvePath(Map<String, T> &map, const String &path) -> typename Map<String, T>::iterator {
 	auto it = map.begin();
@@ -664,8 +684,8 @@ auto Server_resolvePath(Map<String, T> &map, const String &path) -> typename Map
 
 void Server::onHeartBeat() {
 	apr::pool::perform([&] {
+		auto now = Time::now();
 		if (!_config->loadingFalled) {
-			auto now = Time::now();
 			auto root = Root::getInstance();
 			auto pool = apr::pool::acquire();
 			if (auto dbd = root->dbdOpen(pool, _server)) {
@@ -678,7 +698,11 @@ void Server::onHeartBeat() {
 				root->dbdClose(_server, dbd);
 			}
 		}
-		_config->_templateCache.update();
+		if (now - _config->lastTemplateUpdate > TimeInterval::seconds(10)) {
+			_config->_templateCache.update();
+			_config->_pugCache.update();
+			_config->lastDatabaseCleanup = now;
+		}
 	});
 }
 

@@ -183,6 +183,7 @@ public: /* request params setters */
 	int sendFile(String && path, String && contentType, size_t cacheTimeInSeconds = maxOf<size_t>());
 
 	void runTemplate(String && path, const Function<void(tpl::Exec &, Request &)> &);
+	int runPug(const StringView & path, const Function<bool(pug::Context &, const pug::Template &)> & = nullptr);
 
 	apr::string getFullHostname(int port = -1) const;
 

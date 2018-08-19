@@ -1,0 +1,33 @@
+doctype html
+html
+	head
+		title Pug If Test
+	body
+		p= {1:'one',2:'two',3:'three'}
+		ul
+			each val in [1, 2, 3, 4, 5]
+				li= val
+
+		ul
+			each val, index in ['zero', 'one', 'two']
+				li= index + ': ' + val
+
+		ul
+			each val, index in {1:'one',2:'two',3:'three'}
+				li= index + ': ' + val
+
+		- var values = [1, 2, 3, 4, 5];
+		ul
+			each val in values.length ? values : ['There are no values']
+				li= val
+
+		- values = [];
+		ul
+			each val in values.length ? values : ['There are no values']
+				li= val
+
+		ul
+			each val in values
+				li= val
+			else
+				li There are no values

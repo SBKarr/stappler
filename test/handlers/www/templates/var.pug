@@ -1,0 +1,28 @@
+doctype html
+html
+	head
+		title Pug Var Test
+	body
+		-
+			var b = {
+				a: "A",
+				b: "B",
+				c: "C",
+				d: "D",
+				e: "E"
+			}
+
+			var test = { data : { first: 1, second: 2 }, hello: "Hello", test: "Hello" + " " + "World", world: "World"}
+			test.undef = "Undef"
+			b.data = { first: 1, second: 2 }
+		- var hello = ["test", 1, false]
+		// p= hello
+		p= test
+		p= b
+		p= test.data.first + " " + test.world + " " + test.undef
+		p= { a: "A", b: "B" }.b
+		p= hello[1]
+		p= hello[0] + " " + hello[1] + " " + hello[2]
+		p= test['data']
+		p= [ ]
+		p= { }
