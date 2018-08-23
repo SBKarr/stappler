@@ -124,7 +124,7 @@ static void MakeVertex( TESSvertex *newVertex,
 	TESSvertex *vPrev;
 	TESSvertex *vNew = newVertex;
 
-	assert(vNew != NULL);
+	TESSassert(vNew != (TESSvertex *)NULL, "MakeVertex");
 
 	/* insert in circular doubly-linked list before vNext */
 	vPrev = vNext->prev;
@@ -156,7 +156,7 @@ static void MakeFace( TESSface *newFace, TESShalfEdge *eOrig, TESSface *fNext )
 	TESSface *fPrev;
 	TESSface *fNew = newFace;
 
-	assert(fNew != NULL);
+	TESSassert(fNew != (TESSface *)NULL, "MakeFace");
 
 	/* insert in circular doubly-linked list before fNext */
 	fPrev = fNext->prev;
@@ -734,7 +734,7 @@ void tessMeshDeleteMesh( TESSalloc* alloc, TESSmesh *mesh )
 	while( fHead->next != fHead ) {
 		tessMeshZapFace( fHead->next );
 	}
-	assert( mesh->vHead.next == &mesh->vHead );
+	TESSassert( mesh->vHead.next == &mesh->vHead, "tessMeshDeleteMesh");
 
 	alloc->memfree( alloc->userData, mesh );
 }
@@ -765,14 +765,14 @@ void tessMeshCheckMesh( TESSmesh *mesh )
 
 	fPrev = fHead;
 	for( fPrev = fHead ; (f = fPrev->next) != fHead; fPrev = f) {
-		assert( f->prev == fPrev );
+		TESSassert( f->prev == fPrev, "tessMeshCheckMesh");
 		e = f->anEdge;
 		do {
-			assert( e->Sym != e );
-			assert( e->Sym->Sym == e );
-			assert( e->Lnext->Onext->Sym == e );
-			assert( e->Onext->Sym->Lnext == e );
-			assert( e->Lface == f );
+			TESSassert( e->Sym != e, "tessMeshCheckMesh");
+			TESSassert( e->Sym->Sym == e, "tessMeshCheckMesh");
+			TESSassert( e->Lnext->Onext->Sym == e, "tessMeshCheckMesh");
+			TESSassert( e->Onext->Sym->Lnext == e, "tessMeshCheckMesh");
+			TESSassert( e->Lface == f, "tessMeshCheckMesh");
 			e = e->Lnext;
 		} while( e != f->anEdge );
 	}
@@ -780,34 +780,34 @@ void tessMeshCheckMesh( TESSmesh *mesh )
 
 	vPrev = vHead;
 	for( vPrev = vHead ; (v = vPrev->next) != vHead; vPrev = v) {
-		assert( v->prev == vPrev );
+		TESSassert( v->prev == vPrev, "tessMeshCheckMesh");
 		e = v->anEdge;
 		do {
-			assert( e->Sym != e );
-			assert( e->Sym->Sym == e );
-			assert( e->Lnext->Onext->Sym == e );
-			assert( e->Onext->Sym->Lnext == e );
-			assert( e->Org == v );
+			TESSassert( e->Sym != e, "tessMeshCheckMesh");
+			TESSassert( e->Sym->Sym == e, "tessMeshCheckMesh");
+			TESSassert( e->Lnext->Onext->Sym == e, "tessMeshCheckMesh");
+			TESSassert( e->Onext->Sym->Lnext == e, "tessMeshCheckMesh");
+			TESSassert( e->Org == v, "tessMeshCheckMesh");
 			e = e->Onext;
 		} while( e != v->anEdge );
 	}
-	assert( v->prev == vPrev && v->anEdge == NULL );
+	TESSassert( v->prev == vPrev && v->anEdge == NULL, "tessMeshCheckMesh");
 
 	ePrev = eHead;
 	for( ePrev = eHead ; (e = ePrev->next) != eHead; ePrev = e) {
-		assert( e->Sym->next == ePrev->Sym );
-		assert( e->Sym != e );
-		assert( e->Sym->Sym == e );
-		assert( e->Org != NULL );
-		assert( e->Dst != NULL );
-		assert( e->Lnext->Onext->Sym == e );
-		assert( e->Onext->Sym->Lnext == e );
+		TESSassert( e->Sym->next == ePrev->Sym, "tessMeshCheckMesh");
+		TESSassert( e->Sym != e, "tessMeshCheckMesh");
+		TESSassert( e->Sym->Sym == e, "tessMeshCheckMesh");
+		TESSassert( e->Org != NULL, "tessMeshCheckMesh");
+		TESSassert( e->Dst != NULL, "tessMeshCheckMesh");
+		TESSassert( e->Lnext->Onext->Sym == e, "tessMeshCheckMesh");
+		TESSassert( e->Onext->Sym->Lnext == e, "tessMeshCheckMesh");
 	}
-	assert( e->Sym->next == ePrev->Sym
+	TESSassert( e->Sym->next == ePrev->Sym
 		&& e->Sym == &mesh->eHeadSym
 		&& e->Sym->Sym == e
 		&& e->Org == NULL && e->Dst == NULL
-		&& e->Lface == NULL && e->Rface == NULL );
+		&& e->Lface == NULL && e->Rface == NULL, "tessMeshCheckMesh");
 }
 
 #endif

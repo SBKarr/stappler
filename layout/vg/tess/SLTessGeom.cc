@@ -59,7 +59,7 @@ TESSreal tesedgeEval( TESSvertex *u, TESSvertex *v, TESSvertex *w )
 	*/
 	TESSreal gapL, gapR;
 
-	assert( VertLeq( u, v ) && VertLeq( v, w ));
+	TESSassert( VertLeq( u, v ) && VertLeq( v, w ), "tesedgeEval");
 
 	gapL = v->s - u->s;
 	gapR = w->s - v->s;
@@ -83,7 +83,7 @@ TESSreal tesedgeSign( TESSvertex *u, TESSvertex *v, TESSvertex *w )
 	*/
 	TESSreal gapL, gapR;
 
-	//assert( VertLeq( u, v ) && VertLeq( v, w ));
+	//TESSassert( VertLeq( u, v ) && VertLeq( v, w ), "tesedgeSign");
 
 	gapL = v->s - u->s;
 	gapR = w->s - v->s;
@@ -114,7 +114,7 @@ TESSreal testransEval( TESSvertex *u, TESSvertex *v, TESSvertex *w )
 	*/
 	TESSreal gapL, gapR;
 
-	assert( TransLeq( u, v ) && TransLeq( v, w ));
+	TESSassert( TransLeq( u, v ) && TransLeq( v, w ), "testransEval");
 
 	gapL = v->t - u->t;
 	gapR = w->t - v->t;
@@ -138,7 +138,7 @@ TESSreal testransSign( TESSvertex *u, TESSvertex *v, TESSvertex *w )
 	*/
 	TESSreal gapL, gapR;
 
-	assert( TransLeq( u, v ) && TransLeq( v, w ));
+	TESSassert( TransLeq( u, v ) && TransLeq( v, w ), "testransSign");
 
 	gapL = v->t - u->t;
 	gapR = w->t - v->t;

@@ -30,6 +30,14 @@ TESS_OPTIMIZE
 
 NS_LAYOUT_BEGIN
 
+NS_SP_EXTERN_BEGIN
+
+void tessLog(const char *msg) {
+	log::text("Tess", msg);
+}
+
+NS_SP_EXTERN_END
+
 static void * staticPoolAlloc(void* userData, unsigned int size) {
 	memory::MemPool *pool = (memory::MemPool *)userData;
 	size_t s = size;
@@ -122,13 +130,14 @@ Rect Canvas::calculateImageContentRect(const Rect &bbox, const Size &size, const
 	return contentBox;
 }
 
-bool Canvas::init() {
-	_pool = memory::MemPool(memory::MemPool::Unmanaged);
-
+Canvas::Canvas() : _pool(memory::MemPool(memory::MemPool::ManagedRoot)), _tess(_pool.pool()), _stroke(_pool.pool()), _line(_pool.pool()) {
 	memset(&_tessAlloc, 0, sizeof(_tessAlloc));
 	_tessAlloc.memalloc = &staticPoolAlloc;
 	_tessAlloc.memfree = &staticPoolFree;
 	_tessAlloc.userData = (void*)&_pool;
+}
+
+bool Canvas::init() {
 	return true;
 }
 
@@ -346,11 +355,11 @@ void Canvas::pathMoveTo(const Path &path, float x, float y) {
 		pushContour(path, false);
 	}
 
-	_line.push(x, y);
+	_line.drawLine(x, y);
 	_pathX = x; _pathY = y;
 }
 void Canvas::pathLineTo(const Path &path, float x, float y) {
-	_line.push(x, y);
+	_line.drawLine(x, y);
 	_pathX = x; _pathY = y;
 }
 void Canvas::pathQuadTo(const Path &path, float x1, float y1, float x2, float y2) {
@@ -403,11 +412,15 @@ void Canvas::clearTess() {
 		tessDeleteTess(it);
 	}
 
+	auto cap = _line.capacity();
 	_fillTess = nullptr;
-	_tess.clear();
-	_stroke.clear();
+	_tess.force_clear();
+	_stroke.force_clear();
+	_line.force_clear();
 	_vertexCount = 0;
 	_pool.clear();
+
+	_line.reserve(cap);
 }
 
 void Canvas::flushBatch() {
@@ -436,9 +449,9 @@ static inline float canvas_dist_sq(float x1, float y1, float x2, float y2) {
 
 void Canvas::pushContour(const Path &path, bool closed) {
 	if ((path.getStyle() & layout::Path::Style::Fill) != 0) {
-		size_t count = _line.line.size() / 2;
+		size_t count = _line.line.size();
 		if (closed && count >= 2) {
-			const float dist = canvas_dist_sq(_line.line[0], _line.line[1], _line.line[(count - 1) * 2], _line.line[(count - 1) * 2 + 1]);
+			const float dist = canvas_dist_sq(_line.line[0].x, _line.line[0].y, _line.line[count - 1].x, _line.line[count - 1].y);
 			const float err = canvas_approx_err_sq(_approxScale * _quality);
 
 			if (dist < err) {
@@ -453,7 +466,7 @@ void Canvas::pushContour(const Path &path, bool closed) {
 
 		if (_fillTess && !_line.line.empty() && count > 2) {
 			tessAddContour(_fillTess, _line.line.data(), int(count));
-			_vertexCount += _line.line.size() / 2;
+			_vertexCount += _line.line.size();
 		}
 	}
 
@@ -482,11 +495,11 @@ const Canvas::FlushCallback &Canvas::getFlushCallback() const {
 	return _flushCallback;
 }
 
-const Vector<TESStesselator *> &Canvas::getTess() const {
+const Canvas::PoolVector<TESStesselator *> &Canvas::getTess() const {
 	return _tess;
 }
 
-const Vector<StrokeDrawer> &Canvas::getStroke() const {
+const Canvas::PoolVector<StrokeDrawer> &Canvas::getStroke() const {
 	return _stroke;
 }
 

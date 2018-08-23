@@ -57,16 +57,19 @@ SP_DEFINE_ENUM_AS_MASK(DrawStyle)
 struct LineDrawer {
 	using Style = DrawStyle;
 
-	LineDrawer();
-	LineDrawer(Style s, float e);
-	LineDrawer(Style s, float e, float width, bool optimizeFill = false);
+	template <typename T>
+	using Vector = memory::PoolInterface::VectorType<T>;
 
-	void setStyle(Style s, float e);
-	void setStyle(Style s, float e, float width, bool optimizeFill = false);
+	LineDrawer(memory::pool_t *);
 
+	void setStyle(Style s, float e, float width);
+
+	size_t capacity() const;
 	void reserve(size_t);
 	void clear();
+	void force_clear();
 
+	void drawLine(float x, float y);
 	void drawQuadBezier(float x0, float y0, float x1, float y1, float x2, float y2);
 	void drawCubicBezier(float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3);
 	void drawArc(float x0, float y0, float rx, float ry, float angle, bool largeArc, bool sweep, float x, float y);
@@ -74,6 +77,8 @@ struct LineDrawer {
 	void pushLine(float x, float y);
 	void pushOutline(float x, float y);
 	void push(float x, float y);
+
+	void pushLinePointWithIntersects(float x, float y);
 
 	bool empty() const { return line.empty() && outline.empty(); }
 	bool isStroke() const { return toInt(style & Style::Stroke); }
@@ -85,20 +90,23 @@ struct LineDrawer {
 	float distanceError = 0.0f;
 	float angularError = 0.0f;
 
-	Vector<float> line; // verts on approximated line
-	Vector<float> outline; // verts on outline
+	Vector<TESSVec2> line; // verts on approximated line
+	Vector<TESSVec2> outline; // verts on outline
 
 	bool debug = false;
 };
 
 struct StrokeDrawer {
+	template <typename T>
+	using Vector = memory::PoolInterface::VectorType<T>;
+
 	StrokeDrawer();
 	StrokeDrawer(const Color4B &, float w, LineJoin join, LineCup cup, float l = 4.0f);
 
 	void setStyle(const Color4B &, float w, LineJoin join, LineCup cup, float l = 4.0f);
 	void setAntiAliased(float v);
 
-	void draw(const Vector<float> &points, bool closed);
+	void draw(const Vector<TESSVec2> &points, bool closed);
 
 	void processLineCup(float cx, float cy, float x, float y, bool inverse);
 	void processLine(float x0, float y0, float cx, float cy, float x1, float y1);

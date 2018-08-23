@@ -34,6 +34,8 @@ struct Gradient {
 	static const cocos2d::Vec2 Vertical;
 	static const cocos2d::Vec2 Horizontal;
 
+	static Gradient progress(const Gradient &a, const Gradient &b, float p);
+
 	Gradient();
 	Gradient(ColorRef start, ColorRef end, const cocos2d::Vec2 & = Vertical);
 	Gradient(ColorRef bl, ColorRef br, ColorRef tl, ColorRef tr);
@@ -57,6 +59,11 @@ protected:
 
 	Gradient _gradient;
 };
+
+template <> inline
+Gradient progress<Gradient>(const Gradient &a, const Gradient &b, float p) {
+	return Gradient::progress(a, b, p);
+}
 
 NS_SP_END
 

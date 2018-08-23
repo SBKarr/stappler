@@ -69,48 +69,48 @@ $(ANDROID_TOOLCHAINS_PATH)/arm64-v8a:
 
 android: $(ANDROID_TOOLCHAINS) android-mk
 	@echo "=== armeabi-v7a: Build static library ==="
-	@$(MAKE) -f $(THIS_FILE) ANDROID_ARCH=armeabi-v7a all
+	@$(MAKE) ANDROID_ARCH=armeabi-v7a all
 	@echo "=== arm64-v8a: Build static library ==="
-	@$(MAKE) -f $(THIS_FILE) ANDROID_ARCH=arm64-v8a all
+	@$(MAKE) ANDROID_ARCH=arm64-v8a all
 	@echo "=== x86: Build static library ==="
-	@$(MAKE) -f $(THIS_FILE) ANDROID_ARCH=x86 all
+	@$(MAKE) ANDROID_ARCH=x86 all
 	@echo "=== x86_64: Build static library ==="
-	@$(MAKE) -f $(THIS_FILE) ANDROID_ARCH=x86_64 all
+	@$(MAKE) ANDROID_ARCH=x86_64 all
 
 
 android-armv7: $(ANDROID_TOOLCHAINS_PATH)/armeabi-v7a android-mk
 	@echo "=== armeabi-v7a: Build static library ==="
-	@$(MAKE) -f $(THIS_FILE) ANDROID_ARCH=armeabi-v7a all
+	@$(MAKE) ANDROID_ARCH=armeabi-v7a all
 
 
 android-arm64: $(ANDROID_TOOLCHAINS_PATH)/arm64-v8a android-mk
 	@echo "=== arm64-v8a: Build static library ==="
-	@$(MAKE) -f $(THIS_FILE) ANDROID_ARCH=arm64-v8a all
+	@$(MAKE) ANDROID_ARCH=arm64-v8a all
 
 
 android-x86: $(ANDROID_TOOLCHAINS_PATH)/x86 android-mk
 	@echo "=== x86: Build static library ==="
-	@$(MAKE) -f $(THIS_FILE) ANDROID_ARCH=x86 all
+	@$(MAKE) ANDROID_ARCH=x86 all
 
 
 android-x86_64: $(ANDROID_TOOLCHAINS_PATH)/x86_64 android-mk
 	@echo "=== x86_64: Build static library ==="
-	@$(MAKE) -f $(THIS_FILE) ANDROID_ARCH=x86_64 all
+	@$(MAKE) ANDROID_ARCH=x86_64 all
 
 android-mk:
-	@$(MAKE) -f $(THIS_FILE) ANDROID_EXPORT=1 android-export
+	@$(MAKE) ANDROID_EXPORT=1 android-export
 
 android-clean: $(ANDROID_TOOLCHAINS)
 	@echo "=== armeabi-v7a: clean ==="
-	@$(MAKE) -f $(THIS_FILE) ANDROID_ARCH=armeabi-v7a clean
+	@$(MAKE) ANDROID_ARCH=armeabi-v7a clean
 	@echo "=== armeabi: clean ==="
-	@$(MAKE) -f $(THIS_FILE) ANDROID_ARCH=armeabi clean
+	@$(MAKE) ANDROID_ARCH=armeabi clean
 	@echo "=== arm64-v8a: clean ==="
-	@$(MAKE) -f $(THIS_FILE) ANDROID_ARCH=arm64-v8a clean
+	@$(MAKE) ANDROID_ARCH=arm64-v8a clean
 	@echo "=== x86: clean ==="
-	@$(MAKE) -f $(THIS_FILE) ANDROID_ARCH=x86 clean
+	@$(MAKE) ANDROID_ARCH=x86 clean
 	@echo "=== x86_64: clean ==="
-	@$(MAKE) -f $(THIS_FILE) ANDROID_ARCH=x86_64 clean
+	@$(MAKE) ANDROID_ARCH=x86_64 clean
 
 android_make_os_includes = \
 	$(abspath $(addprefix $(ANDROID_EXPORT_PREFIX)/,$(OSTYPE_INCLUDE)))\

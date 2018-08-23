@@ -27,55 +27,33 @@ THE SOFTWARE.
 
 NS_LAYOUT_BEGIN
 
+template <size_t Count>
 class MovingAverage {
-protected:
-    int _count, _current;
-    float *_values;
 public:
-    MovingAverage() : _count(0), _current(0) {
-        _values = nullptr;
-    }
-    MovingAverage(int count) : _count(count), _current(0) {
-        _values = new float[_count];
-        memset(_values, 0, sizeof(float) * _count);
-    }
-    ~MovingAverage() {
-        if (_values) {
-            delete [] _values;
-			_values = nullptr;
-        }
-    }
-    
-    void init(int count) {
-        if (_values) {
-            delete [] _values;
-            _values = NULL;
-        }
-        _count = count;
-        _values = new float[_count];
-        memset(_values, 0, sizeof(float) * _count);
-    }
-    
     void dropValues() {
-        for (int i = 0; i < _count; i++) {
+        for (int i = 0; i < Count; i++) {
             _values[i] = 0;
         }
     }
     void addValue(float value) {
         _values[_current] = value;
-        if ((++_current) >= _count) _current = 0;
+        if ((++_current) >= Count) _current = 0;
     }
     float getAverage() {
         float s = 0;
-        for (int i = 0; i < _count; i++) {
+        for (size_t i = 0; i < Count; i++) {
             s += _values[i];
         }
-        return s / _count;
+        return s / Count;
     }
     float step(float value) {
         addValue(value);
         return getAverage();
     }
+
+protected:
+	size_t _current = 0;
+    std::array<float, Count> _values;
 };
 
 NS_LAYOUT_END

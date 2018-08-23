@@ -72,6 +72,12 @@ public:
 	Path();
 	Path(size_t);
 
+	Path(const Path &);
+	Path &operator=(const Path &);
+
+	Path(Path &&);
+	Path &operator=(Path &&);
+
 	bool init();
 	bool init(const StringView &);
 	bool init(FilePath &&);

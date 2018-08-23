@@ -113,8 +113,13 @@ void ButtonLabel::setFont(FontType fnt) {
 	}
 }
 
-Label *ButtonLabel::getlabel() const {
+Label *ButtonLabel::getLabel() const {
 	return _label;
+}
+
+void ButtonLabel::updateFromLabel() {
+	_label->tryUpdateLabel();
+	updatePadding();
 }
 
 void ButtonLabel::updatePadding() {

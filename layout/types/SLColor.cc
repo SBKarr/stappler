@@ -898,6 +898,15 @@ bool Color3B::operator!=(const Color4F& right) const {
     return !(*this == right);
 }
 
+Color3B Color3B::progress(const Color3B &a, const Color3B &b, float fp) {
+	const uint8_t p = (uint8_t) (fp * 255.0f);
+	return Color3B(
+		(a.r * (255 - p) + b.r * p) / 255,
+		(a.g * (255 - p) + b.g * p) / 255,
+		(a.b * (255 - p) + b.b * p) / 255
+	);
+}
+
 Color4B::Color4B() : r(0), g(0), b(0), a(0) {}
 Color4B::Color4B(uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a) : r(_r), g(_g), b(_b), a(_a) { }
 Color4B::Color4B(const Color3B& color, uint8_t _a) : r(color.r), g(color.g), b(color.b), a(_a) { }
@@ -936,6 +945,17 @@ Color4B Color4B::black(uint8_t opacity) {
 	return Color4B(0, 0, 0, opacity);
 }
 
+Color4B Color4B::progress(const Color4B &a, const Color4B &b, float fp) {
+	const uint8_t p = (uint8_t) (fp * 255.0f);
+	return Color4B(
+		(a.r * (255 - p) + b.r * p) / 255,
+		(a.g * (255 - p) + b.g * p) / 255,
+		(a.b * (255 - p) + b.b * p) / 255,
+		(a.a * (255 - p) + b.a * p) / 255
+	);
+}
+
+
 Color4F::Color4F() : r(0.0f), g(0.0f), b(0.0f), a(0.0f) { }
 Color4F::Color4F(float _r, float _g, float _b, float _a) : r(_r), g(_g), b(_b), a(_a) { }
 
@@ -967,6 +987,15 @@ bool Color4F::operator!=(const Color3B& right) const {
 
 bool Color4F::operator!=(const Color4B& right) const {
 	return !(*this == right);
+}
+
+Color4F Color4F::progress(const Color4F &a, const Color4F &b, float p) {
+	return Color4F(
+		(a.r * (1.0f - p) + b.r * p),
+		(a.g * (1.0f - p) + b.g * p),
+		(a.b * (1.0f - p) + b.b * p),
+		(a.a * (1.0f - p) + b.a * p)
+	);
 }
 
 const Color3B Color3B::WHITE(255, 255, 255);

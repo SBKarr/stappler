@@ -111,6 +111,28 @@ void TextureCache::update(float dt) {
 	}
 }
 
+Rc<cocos2d::Texture2D> TextureCache::renderImage(cocos2d::Texture2D *tex, TextureFormat fmt, const layout::Image &image,
+		const Size &contentSize, layout::style::Autofit autofit, const Vec2 &autofitPos, float density) {
+	return doRenderImage(tex, fmt, image, contentSize, autofit, autofitPos, density);
+}
+
+void TextureCache::renderImageInBackground(const Callback &cb, cocos2d::Texture2D *tex, TextureFormat fmt, const layout::Image &image,
+		const Size &contentSize, layout::style::Autofit autofit, const Vec2 &autofitPos, float density) {
+	auto texPtr = new Rc<cocos2d::Texture2D>(tex);
+	auto imagePtr = new Rc<layout::Image>(image.clone());
+
+	s_textureCacheThread.perform([this, texPtr, imagePtr, fmt, contentSize, autofit, autofitPos, density] (const Task &) -> bool {
+		return performWithGL([&] {
+			*texPtr = doRenderImage(texPtr->get(), fmt, *imagePtr->get(), contentSize, autofit, autofitPos, density);
+			return true;
+		});
+	}, [cb, texPtr, imagePtr] (const Task &, bool) {
+		cb(*texPtr);
+		delete texPtr;
+		delete imagePtr;
+	});
+}
+
 GLProgramSet *TextureCache::getPrograms() const {
 	if (s_textureCacheThread.isOnThisThread()) {
 		return _threadProgramSet;
@@ -482,7 +504,7 @@ Rc<cocos2d::Texture2D> TextureCache::uploadTexture(const Bytes &data, const Size
 					if (TextureCache::thread().isOnThisThread()) {
 						if (!c->_threadVectorCanvas) {
 							c->_threadVectorCanvas = Rc<draw::Canvas>::create();
-							c->_threadVectorCanvas->setQuality(draw::Canvas::QualityNormal);
+							c->_threadVectorCanvas->setQuality(draw::Canvas::QualityHigh);
 						}
 						canvas = c->_threadVectorCanvas;
 					} else {
@@ -601,7 +623,7 @@ Rc<cocos2d::Texture2D> TextureCache::loadTexture(const TextureIndex &index) {
 						cocos2d::Texture2D::InitAs::RenderTarget);
 				if (!_threadVectorCanvas) {
 					_threadVectorCanvas = Rc<draw::Canvas>::create();
-					_threadVectorCanvas->setQuality(draw::Canvas::QualityNormal);
+					_threadVectorCanvas->setQuality(draw::Canvas::QualityHigh);
 				}
 				_threadVectorCanvas->begin(tex, Color4B());
 				_threadVectorCanvas->draw(img, Rect(0.0f, 0.0f, tex->getPixelsWide(), tex->getPixelsHigh()));
@@ -629,6 +651,106 @@ Rc<cocos2d::Texture2D> TextureCache::loadTexture(const TextureIndex &index) {
 		}
 	}
 	return nullptr;
+}
+
+Rc<cocos2d::Texture2D> TextureCache::doRenderImage(cocos2d::Texture2D *tex, TextureFormat fmt, const layout::Image &image,
+		const Size &size, layout::style::Autofit autofit, const Vec2 &autofitPos, float density) {
+	auto baseWidth = image.getWidth();
+	auto baseHeight = image.getHeight();
+
+	if (baseWidth == 0 || baseHeight == 0) {
+		return tex;
+	}
+
+	Rc<draw::Canvas> canvas;
+
+	if (s_textureCacheThread.isOnThisThread()) {
+		if (!_threadVectorCanvas) {
+			_threadVectorCanvas = Rc<draw::Canvas>::create();
+			_threadVectorCanvas->setQuality(draw::Canvas::QualityHigh);
+		}
+
+		canvas = _threadVectorCanvas;
+	} else {
+		if (!_vectorCanvas) {
+			_vectorCanvas = Rc<draw::Canvas>::create();
+			_vectorCanvas->setQuality(draw::Canvas::QualityHigh);
+		}
+		canvas = _vectorCanvas;
+	}
+
+	uint32_t width = ceilf(size.width * density);
+	uint32_t height = ceilf(size.height * density);
+
+	float scaleX = float(width) / float(baseWidth);
+	float scaleY = float(height) / float(baseHeight);
+
+	switch (autofit) {
+	case layout::style::Autofit::Contain:
+		scaleX = scaleY = std::min(scaleX, scaleY);
+		break;
+	case layout::style::Autofit::Cover:
+		scaleX = scaleY = std::max(scaleX, scaleY);
+		break;
+	case layout::style::Autofit::Width:
+		scaleY = scaleX;
+		break;
+	case layout::style::Autofit::Height:
+		scaleX = scaleY;
+		break;
+	case layout::style::Autofit::None:
+		break;
+	}
+
+	uint32_t nwidth = baseWidth * scaleX;
+	uint32_t nheight = baseHeight * scaleY;
+
+	float offsetX = 0.0f;
+	float offsetY = 0.0f;
+
+	if (nwidth > width) {
+		offsetX = autofitPos.x * (nwidth - width);
+	} else {
+		width = nwidth;
+	}
+
+	if (nheight > height) {
+		offsetY = autofitPos.y * (nheight - height);
+	} else {
+		height = nheight;
+	}
+
+	auto generateTexture = [] (cocos2d::Texture2D *tex, uint32_t w, uint32_t h, TextureFormat fmt) -> Rc<cocos2d::Texture2D> {
+		if (tex && tex->getPixelsHigh() == int(h) && tex->getPixelsWide() == int(w) && fmt == tex->getReferenceFormat()) {
+			return tex;
+		}
+		auto outtex = Rc<cocos2d::Texture2D>::create(fmt, w, h, cocos2d::Texture2D::InitAs::RenderTarget);
+		if (outtex) {
+			outtex->setAliasTexParameters();
+		}
+		return outtex;
+	};
+
+	auto t = generateTexture(tex, width, height, fmt);
+	if (t) {
+		canvas->begin(t.get(), Color4B(0, 0, 0, 0));
+		canvas->save();
+		canvas->translate(offsetX, offsetY);
+		canvas->scale(scaleX, scaleY);
+		canvas->transform(image.getViewBoxTransform());
+
+		image.draw([&] (const layout::Path &path, const Vec2 &pos) {
+			if (pos.isZero()) {
+				canvas->draw(path);
+			} else {
+				canvas->draw(path, pos.x, pos.y);
+			}
+		});
+
+		canvas->restore();
+		canvas->end();
+	}
+	return t;
 }
 
 NS_SP_END

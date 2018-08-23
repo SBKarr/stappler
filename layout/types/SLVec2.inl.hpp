@@ -189,4 +189,17 @@ void Vec2::setPoint(float xx, float yy) {
 	this->y = yy;
 }
 
+template <typename Callback>
+inline bool Vec2::getSegmentIntersectPoint(const Vec2& A, const Vec2& B, const Vec2& C, const Vec2& D, const Callback &cb) {
+	float S, T;
+
+	if (isLineIntersect(A, B, C, D, &S, &T )&& (S > 0.0f && S < 1.0f && T > 0.0f && T < 1.0f)) {
+		// Vec2 of intersection
+		cb(Vec2(A.x + S * (B.x - A.x), A.y + S * (B.y - A.y)), S, T);
+		return true;
+	}
+
+	return false;
+}
+
 NS_LAYOUT_END

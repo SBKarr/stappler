@@ -393,7 +393,6 @@ draw::Image::PathRef Button::beginSpawn() {
 		// do nothing, our node is perfect
 	} else {
 		if (_animationNode) {
-			log::text("Button", "dropSpawn");
 			_animationNode->removeFromParent();
 			_animationNode = nullptr;
 		}

@@ -72,22 +72,23 @@ int MultiResourceHandler::onTranslateName(Request &rctx) {
 		}
 		auto s_it = _schemes.find(scheme.str());
 		if (s_it != _schemes.end()) {
-			Resource * resource = Resource::resolve(rctx.storage(), *s_it->second, path.str(), _transform);
-			resource->setTransform(_transform);
-			resource->setAccessControl(_access);
-			resource->setUser(user);
-			resource->applyQuery(it.second);
-			if (targetDelta > 0 && resource->isDeltaApplicable() && !resource->getQueryDelta()) {
-				resource->setQueryDelta(Time::microseconds(targetDelta));
-			}
-			resource->prepare();
+			if (auto resource = Resource::resolve(rctx.storage(), *s_it->second, path.str(), _transform)) {
+				resource->setTransform(_transform);
+				resource->setAccessControl(_access);
+				resource->setUser(user);
+				resource->applyQuery(it.second);
+				if (targetDelta > 0 && resource->isDeltaApplicable() && !resource->getQueryDelta()) {
+					resource->setQueryDelta(Time::microseconds(targetDelta));
+				}
+				resource->prepare();
 
-			if (resource->hasDelta()) {
-				deltaMax = max(deltaMax, resource->getSourceDelta());
-				delta.setInteger(resource->getSourceDelta().toMicroseconds(), it.first);
-			}
+				if (resource->hasDelta()) {
+					deltaMax = max(deltaMax, resource->getSourceDelta());
+					delta.setInteger(resource->getSourceDelta().toMicroseconds(), it.first);
+				}
 
-			resources.emplace_back(it.first, resource);
+				resources.emplace_back(it.first, resource);
+			}
 		}
 	}
 
@@ -110,6 +111,8 @@ int MultiResourceHandler::onTranslateName(Request &rctx) {
 	if (!result.empty()) {
 		resultData.setValue(move(delta), "delta");
 		return writeDataToRequest(rctx, move(result));
+	} else {
+		return HTTP_NOT_FOUND;
 	}
 
 	return HTTP_NOT_IMPLEMENTED;

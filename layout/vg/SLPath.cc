@@ -516,6 +516,24 @@ Path::Path(size_t count) {
 	_commands.reserve(count);
 }
 
+Path::Path(const Path &path) : _points(path._points), _commands(path._commands), _params(path._params) { }
+
+Path &Path::operator=(const Path &path) {
+	_points = path._points;
+	_commands = path._commands;
+	_params = path._params;
+	return *this;
+}
+
+Path::Path(Path &&path) : _points(move(path._points)), _commands(move(path._commands)), _params(move(path._params)) { }
+
+Path &Path::operator=(Path &&path) {
+	_points = move(path._points);
+	_commands = move(path._commands);
+	_params = move(path._params);
+	return *this;
+}
+
 bool Path::init() {
 	return true;
 }

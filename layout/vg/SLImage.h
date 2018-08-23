@@ -146,6 +146,7 @@ public:
 	bool init(const StringView &);
 	bool init(const Bytes &);
 	bool init(FilePath &&);
+	bool init(const Image &);
 
 	uint16_t getWidth() const;
 	uint16_t getHeight() const;
@@ -183,8 +184,12 @@ public:
 
 	void clearDrawOrder();
 
+	Path *getPathById(const StringView &);
+
 	void setViewBoxTransform(const Mat4 &);
 	const Mat4 &getViewBoxTransform() const;
+
+	Rc<Image> clone() const;
 
 	// usage:
 	// draw([&] (const Path &path, const Mat4 &transform) {

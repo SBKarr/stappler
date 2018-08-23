@@ -52,8 +52,15 @@ public:
 	virtual void setAlphaTest(AlphaTest::State, uint8_t value = 0);
 	virtual const AlphaTest &getAlphaTest() const;
 
+	// All pictures uses mediump shader precision by default. With high-density atlases highp is required.
 	virtual void setHighPrecision(bool);
 	virtual bool isHighPrecision() const;
+
+	// Grayscale textures are read as A8 by default.
+	// If you want to display pictures - you should convert textures to I8 or use this flag
+	// Textures, other then A8 is not affected
+	virtual void setForceI8Texture(bool);
+	virtual bool isForcedI8Texture() const;
 
 protected:
 	virtual void updateBlendFunc(cocos2d::Texture2D *);
@@ -66,6 +73,7 @@ protected:
 	bool _stencil = false;
 	bool _isHighPrecision = false;
 	bool _programDirty = false;
+	bool _forceI8Texture = false;
 
 	cocos2d::BlendFunc _blendFunc;
 	float _density = 1.0f;

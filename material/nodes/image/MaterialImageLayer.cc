@@ -149,6 +149,7 @@ bool ImageLayer::init() {
 
 	auto image = Rc<DynamicSprite>::create();
 	image->setAnchorPoint(Vec2(0, 0));
+	image->setForceI8Texture(true);
 	_image = _root->addChildNode(image, 1);
 
 	_root->setScale(1.0f);

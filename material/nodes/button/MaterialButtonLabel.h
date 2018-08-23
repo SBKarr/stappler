@@ -51,7 +51,8 @@ public:
 
 	virtual void setFont(FontType fnt);
 
-	virtual Label *getlabel() const;
+	virtual Label *getLabel() const;
+	virtual void updateFromLabel();
 
 protected:
 	virtual void updatePadding();

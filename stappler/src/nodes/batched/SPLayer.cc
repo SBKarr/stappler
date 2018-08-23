@@ -31,6 +31,15 @@ NS_SP_BEGIN
 const cocos2d::Vec2 Gradient::Vertical(0.0f, -1.0f);
 const cocos2d::Vec2 Gradient::Horizontal(1.0f, 0.0f);
 
+Gradient Gradient::progress(const Gradient &a, const Gradient &b, float p) {
+	Gradient ret;
+	ret.colors[0] = stappler::progress(a.colors[0], b.colors[0], p);
+	ret.colors[1] = stappler::progress(a.colors[1], b.colors[1], p);
+	ret.colors[2] = stappler::progress(a.colors[2], b.colors[2], p);
+	ret.colors[3] = stappler::progress(a.colors[3], b.colors[3], p);
+	return ret;
+}
+
 Gradient::Gradient() {
 	colors[0] = Color4B(255, 255, 255, 255);
 	colors[1] = Color4B(255, 255, 255, 255);

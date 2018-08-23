@@ -96,6 +96,7 @@ private:
 		Texture_Direct,
 		TextureA8_Ref,
 		TextureI8_Ref,
+		TextureA8ToI8_Ref,
 		TextureAI88_Ref,
 		Draw_Direct,
 		Draw_AI88,

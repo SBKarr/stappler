@@ -70,6 +70,7 @@ protected:
 	Rc<cocos2d::Texture2D> generateTexture(cocos2d::Texture2D *tex, uint32_t w, uint32_t h, Format fmt);
 
 	bool _pathsDirty = false;
+	bool _renderRequested = false;
 	uint16_t _baseWidth = 0;
 	uint16_t _baseHeight = 0;
 	Format _format = Format::A8;

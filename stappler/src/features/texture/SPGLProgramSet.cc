@@ -126,7 +126,12 @@ void GLProgramDesc::set(Attr attr, PixelFormat internal, PixelFormat reference) 
 		} else {
 			switch (reference) {
 			case PixelFormat::A8: color = ColorHash::TextureA8_Ref; break;
-			case PixelFormat::I8: color = ColorHash::TextureI8_Ref; break;
+			case PixelFormat::I8:
+				switch (internal) {
+				case PixelFormat::A8: color = ColorHash::TextureA8ToI8_Ref; break;
+				default: color = ColorHash::TextureI8_Ref; break;
+				}
+				break;
 			case PixelFormat::AI88: color = ColorHash::TextureAI88_Ref; break;
 			default: color = ColorHash::Texture_Direct; break;
 			}
@@ -267,7 +272,7 @@ void main() {
 				stream << colorOutput << " = vec4( c.rgb, c.a * texture2D(CC_Texture0, v_texCoord).a );\n";
 				break;
 			case ColorHash::TextureI8_Direct:
-				stream << colorOutput << " = vec4( c.rgb, c.a * (1.0 - texture2D(CC_Texture0, v_texCoord).r) );\n";
+				stream << colorOutput << " = vec4( c.rgb * texture2D(CC_Texture0, v_texCoord).r, 1.0 );\n";
 				break;
 			case ColorHash::Texture_Direct:
 				stream << colorOutput << " = texture2D(CC_Texture0, v_texCoord) * c;\n";
@@ -277,6 +282,9 @@ void main() {
 				break;
 			case ColorHash::TextureI8_Ref:
 				stream << colorOutput << " = vec4( c.rgb, c.a * (1.0 - texture2D(CC_Texture0, v_texCoord).r) );\n";
+				break;
+			case ColorHash::TextureA8ToI8_Ref:
+				stream << colorOutput << " = vec4( c.rgb * (1.0 - texture2D(CC_Texture0, v_texCoord).a), 1.0 );\n";
 				break;
 			case ColorHash::TextureAI88_Ref:
 				stream << "vec4 tex = texture2D(CC_Texture0, v_texCoord);\n\t";

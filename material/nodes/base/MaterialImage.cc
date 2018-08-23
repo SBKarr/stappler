@@ -58,6 +58,7 @@ bool MaterialImage::init(const String &file, float density) {
 	sprite->setAnchorPoint(Vec2(0.0f, 0.0f));
 	sprite->setVisible(true);
 	sprite->setAutofit(Autofit::Contain);
+	sprite->setForceI8Texture(true);
 	_content->addChild(sprite, 0);
 	_sprite = sprite;
 
@@ -67,6 +68,7 @@ bool MaterialImage::init(const String &file, float density) {
 	network->setOpacity(0);
 	network->setAutofit(Autofit::Contain);
 	network->setVisible(false);
+	network->setForceI8Texture(true);
 	_content->addChild(network, 1);
 	_network = network;
 

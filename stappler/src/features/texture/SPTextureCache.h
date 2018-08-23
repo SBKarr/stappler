@@ -36,6 +36,7 @@ public:
 	static constexpr float GetDelayTime() { return 1.0f; }
 
 	using BitmapFormat = Bitmap::PixelFormat;
+	using TextureFormat = cocos2d::Texture2D::PixelFormat;
 
 	struct TextureIndex {
 		String file;
@@ -70,6 +71,12 @@ public:
 	GLProgramSet *getPrograms() const;
 
 	void update(float dt);
+
+	Rc<cocos2d::Texture2D> renderImage(cocos2d::Texture2D *, TextureFormat fmt, const layout::Image &,
+			const Size &contentSize, layout::style::Autofit = layout::style::Autofit::Contain, const Vec2 &autofitPos = Anchor::Middle, float density = 0.0f);
+
+	void renderImageInBackground(const Callback &, cocos2d::Texture2D *, TextureFormat fmt, const layout::Image &,
+			const Size &contentSize, layout::style::Autofit = layout::style::Autofit::Contain, const Vec2 &autofitPos = Anchor::Middle, float density = 0.0f);
 
 	void addTexture(const String &, const Callback & = nullptr, bool forceReload = false);
 	void addTexture(const String &, float, const Callback & = nullptr, bool forceReload = false);
@@ -132,6 +139,9 @@ protected:
 
 	void reloadTexture(cocos2d::Texture2D *, const TextureIndex &); // performed in main thread
 	Rc<cocos2d::Texture2D> loadTexture(const TextureIndex &); // performed in cache thread
+
+	Rc<cocos2d::Texture2D> doRenderImage(cocos2d::Texture2D *, TextureFormat fmt, const layout::Image &,
+			const Size &constntSize, layout::style::Autofit, const Vec2 &autofitPos, float density);
 
 	uint32_t _contextRetained = 0;
 	bool _registred = false;

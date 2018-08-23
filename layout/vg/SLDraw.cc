@@ -67,25 +67,12 @@ struct EllipseData {
 	float sin_phi;
 };
 
-LineDrawer::LineDrawer() { }
-LineDrawer::LineDrawer(Style s, float e) {
-	setStyle(s, e);
-}
+LineDrawer::LineDrawer(memory::pool_t *p) : line(p), outline(p) { }
 
-LineDrawer::LineDrawer(Style s, float e, float w, bool optimizeFill) {
-	setStyle(s, e, w, optimizeFill);
-}
-
-void LineDrawer::setStyle(Style s, float e) {
-	style = s;
-	approxError = distanceError = draw_approx_err_sq(e);
-	angularError = 0.0f;
-}
-
-void LineDrawer::setStyle(Style s, float e, float w, bool optimizeFill) {
+void LineDrawer::setStyle(Style s, float e, float w) {
 	style = s;
 	if (isStroke()) {
-		approxError = draw_approx_err_sq(optimizeFill?(e / 2.0):(e));
+		approxError = draw_approx_err_sq(e);
 		if (w > 1.0f) {
 			distanceError = draw_approx_err_sq(e * log2f(w));
 		} else {
@@ -98,9 +85,17 @@ void LineDrawer::setStyle(Style s, float e, float w, bool optimizeFill) {
 	}
 }
 
+size_t LineDrawer::capacity() const {
+	return line.capacity();
+}
+
 void LineDrawer::reserve(size_t size) {
-	line.reserve(size * 2);
-	outline.reserve(size * 2);
+	line.reserve(size);
+	outline.reserve(size);
+}
+
+void LineDrawer::drawLine(float x, float y) {
+	push(x, y);
 }
 
 static void drawQuadBezierRecursive(LineDrawer &drawer, float x0, float y0, float x1, float y1, float x2, float y2, size_t depth, bool fill) {
@@ -382,7 +377,7 @@ void LineDrawer::drawArc(float x0, float y0, float rx, float ry, float phi, bool
 
 	if (rx > std::numeric_limits<float>::epsilon() && ry > std::numeric_limits<float>::epsilon()) {
 		EllipseData d{ cx, cy, rx, ry, (rx * rx) / (ry * ry), cos_phi, sin_phi };
-		drawArcRecursive(*this, d, startAngle, (sweep ? -1.0f : 1.0f) * sweepAngle, x0, y0, x1, y1, 0, (style & Style::FillAndStroke) != 0);
+		drawArcRecursive(*this, d, startAngle, (sweep ? -1.0f : 1.0f) * sweepAngle, x0, y0, x1, y1, 0, style == Style::FillAndStroke);
 	}
 
 	push(x1, y1);
@@ -393,25 +388,67 @@ void LineDrawer::clear() {
 	outline.clear();
 }
 
+void LineDrawer::force_clear() {
+	line.force_clear();
+	outline.force_clear();
+}
+
 void LineDrawer::pushLine(float x, float y) {
-	line.push_back(x); line.push_back(y);
+	pushLinePointWithIntersects(x, y);
 }
 
 void LineDrawer::pushOutline(float x, float y) {
-	outline.push_back(x); outline.push_back(y);
+	outline.push_back(TESSVec2{x, y});
 }
 
 void LineDrawer::push(float x, float y) {
 	switch (style) {
 	case Style::Fill:
-		line.push_back(x); line.push_back(y);
+		pushLinePointWithIntersects(x, y);
 		break;
 	case Style::Stroke:
+		outline.push_back(TESSVec2{x, y});
+		break;
 	case Style::FillAndStroke:
-		outline.push_back(x); outline.push_back(y);
+		pushLinePointWithIntersects(x, y);
+		outline.push_back(TESSVec2{x, y});
 		break;
 	default: break;
 	}
+}
+
+void LineDrawer::pushLinePointWithIntersects(float x, float y) {
+	/*auto insertIntersect = [&] (const TESSintersect &it) {
+		auto lb = std::lower_bound(intersect.begin(), intersect.end(), it,
+				[] (const TESSintersect &l, const TESSintersect &r) -> bool {
+			if (l.index == r.index) {
+				return l.offset < r.offset;
+			}
+			return l.index < r.index;
+		});
+
+		if (lb == intersect.end()) {
+			intersect.emplace_back(it);
+		} else {
+			intersect.emplace(lb, it);
+		}
+	};*/
+
+	if (line.size() > 2) {
+		Vec2 A(line.back().x, line.back().y);
+		Vec2 B(x, y);
+
+		for (size_t i = 0; i < line.size() - 2; ++ i) {
+			Vec2::getSegmentIntersectPoint(A, B, Vec2(line[i].x, line[i].y), Vec2(line[i + 1].x, line[i + 1].y),
+					[&] (const Vec2 &P, float S, float T) {
+				//insertIntersect(TESSintersect{i, TESSVec2{P.x, P.y}, T});
+				//insertIntersect(TESSintersect{line.size(), TESSVec2{P.x, P.y}, S});
+				line.push_back(TESSVec2{P.x, P.y});
+			});
+		}
+	}
+
+	line.push_back(TESSVec2{x, y});
 }
 
 StrokeDrawer::StrokeDrawer()
@@ -440,22 +477,22 @@ void StrokeDrawer::setAntiAliased(float v) {
 	}
 }
 
-void StrokeDrawer::draw(const Vector<float> &points, bool isClosed) {
-	outline.clear(); outline.reserve(points.size() + 2);
+void StrokeDrawer::draw(const Vector<TESSVec2> &points, bool isClosed) {
+	outline.clear(); outline.reserve(points.size() * 2 + 2);
 	if (antialiased) {
-		inner.clear(); inner.reserve(points.size() + 2);
-		outer.clear(); outer.reserve(points.size() + 2);
+		inner.clear(); inner.reserve(points.size() * 2 + 2);
+		outer.clear(); outer.reserve(points.size() * 2 + 2);
 	}
 
-	auto size = points.size() / 2;
+	auto size = points.size();
 	if (size < 2) {
 		return;
 	}
 
 	if (size > 1 && !isClosed) {
 		// check if contour was closed without close command
-		if (fabsf(points[0] - points[(size - 1) * 2]) < std::numeric_limits<float>::epsilon()
-				&& fabsf(points[1] - points[(size - 1) * 2 + 1]) < std::numeric_limits<float>::epsilon()) {
+		if (fabsf(points[0].x - points[size - 1].x) < std::numeric_limits<float>::epsilon()
+				&& fabsf(points[0].y - points[size - 1].y) < std::numeric_limits<float>::epsilon()) {
 			isClosed = true;
 		}
 	}
@@ -466,13 +503,13 @@ void StrokeDrawer::draw(const Vector<float> &points, bool isClosed) {
 		auto start = points.data();
 		auto ptr = points.data();
 		for (size_t i = 0; i < size - 2; ++ i) {
-			processLine(*(ptr), *(ptr + 1), *(ptr + 2), *(ptr + 3), *(ptr + 4), *(ptr + 5));
-			ptr += 2;
+			processLine(ptr->x, ptr->y, (ptr + 1)->x, (ptr + 1)->y, (ptr + 2)->x, (ptr + 2)->y);
+			++ ptr;
 		}
 
-		processLine(*(ptr), *(ptr + 1), *(ptr + 2), *(ptr + 3), *(start), *(start + 1));
-		ptr += 2;
-		processLine(*(ptr), *(ptr + 1), *(start), *(start + 1), *(start + 2), *(start + 3));
+		processLine(ptr->x, ptr->y, (ptr + 1)->x, (ptr + 1)->y, start->x, start->y);
+		++ ptr;
+		processLine(ptr->x, ptr->y, start->x, start->y, (start + 1)->x, (start + 1)->y);
 
 		outline.push_back(outline[0]);
 		outline.push_back(outline[1]);
@@ -484,12 +521,13 @@ void StrokeDrawer::draw(const Vector<float> &points, bool isClosed) {
 			outer.push_back(outer[1]);
 		}
 	} else {
-		processLineCup(points[0], points[1], points[2], points[3], false);
+		processLineCup(points[0].x, points[0].y, points[1].x, points[1].y, false);
+		auto ptr = points.data();
 		for (size_t i = 0; i < size - 2; ++ i) {
-			auto ptr = points.data() + 2 * i;
-			processLine(*(ptr), *(ptr + 1), *(ptr + 2), *(ptr + 3), *(ptr + 4), *(ptr + 5));
+			processLine(ptr->x, ptr->y, (ptr + 1)->x, (ptr + 1)->y, (ptr + 2)->x, (ptr + 2)->y);
+			++ ptr;
 		}
-		processLineCup(points[(size - 1) * 2], points[(size - 1) * 2 + 1], points[(size - 2) * 2], points[(size - 2) * 2 + 1], true);
+		processLineCup(points[size - 1].x, points[size - 1].y, points[size - 2].x, points[size - 2].y, true);
 	}
 }
 

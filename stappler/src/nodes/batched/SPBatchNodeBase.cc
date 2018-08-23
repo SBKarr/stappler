@@ -106,7 +106,15 @@ cocos2d::GLProgramState *BatchNodeBase::acquireProgramState(cocos2d::Texture2D *
 	case AlphaTest::GreatherThen: attrs |=  GLProgramDesc::Attr::AlphaTestGT; break;
 	}
 
-	auto desc = tex ? GLProgramDesc(attrs, tex->getPixelFormat(), tex->getReferenceFormat()) : GLProgramDesc(attrs);
+	GLProgramDesc desc;
+	if (tex && _forceI8Texture && tex->getPixelFormat() == cocos2d::Texture2D::PixelFormat::A8) {
+		desc = GLProgramDesc(attrs, tex->getPixelFormat(), cocos2d::Texture2D::PixelFormat::I8);
+	} else if (tex) {
+		desc = GLProgramDesc(attrs, tex->getPixelFormat(), tex->getReferenceFormat());
+	} else {
+		desc = GLProgramDesc(attrs);
+	}
+
 	auto prog = TextureCache::getInstance()->getPrograms()->getProgram(desc);
 	return cocos2d::GLProgramState::getOrCreateWithGLProgram(prog);
 }
@@ -170,6 +178,17 @@ void BatchNodeBase::setHighPrecision(bool value) {
 }
 bool BatchNodeBase::isHighPrecision() const {
 	return _isHighPrecision;
+}
+
+void BatchNodeBase::setForceI8Texture(bool value) {
+	if (value != _forceI8Texture) {
+		_forceI8Texture = value;
+		_programDirty = true;
+	}
+}
+
+bool BatchNodeBase::isForcedI8Texture() const {
+	return _forceI8Texture;
 }
 
 NS_SP_END

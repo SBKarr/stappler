@@ -682,6 +682,18 @@ bool Image::init(FilePath &&path) {
 	return init(filesystem::readTextFile(path.get()));
 }
 
+bool Image::init(const Image &image) {
+	_isAntialiased = image._isAntialiased;
+	_nextId = image._nextId;
+	_width = image._width;
+	_height = image._height;
+	_viewBox = image._viewBox;
+	_viewBoxTransform = image._viewBoxTransform;
+	_drawOrder = image._drawOrder;
+	_paths = image._paths;
+	return true;
+}
+
 uint16_t Image::getWidth() const {
 	return _width;
 }
@@ -907,12 +919,24 @@ void Image::clearDrawOrder() {
 	_drawOrder.clear();
 }
 
+Path *Image::getPathById(const StringView &id) {
+	auto it = _paths.find(id);
+	if (it != _paths.end()) {
+		return &it->second;
+	}
+	return nullptr;
+}
+
 void Image::setViewBoxTransform(const Mat4 &m) {
 	_viewBoxTransform = m;
 }
 
 const Mat4 &Image::getViewBoxTransform() const {
 	return _viewBoxTransform;
+}
+
+Rc<Image> Image::clone() const {
+	return Rc<Image>::create(*this);
 }
 
 Image::PathRef::~PathRef() {

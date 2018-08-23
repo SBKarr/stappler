@@ -52,7 +52,20 @@ bool PathNode::init(Image *img, Format fmt) {
 		return false;
 	}
 
-	_image.setCallback(std::bind(&PathNode::updateCanvas, this, std::placeholders::_1));
+	_image.setCallback([this] (layout::Subscription::Flags f) {
+		bool vis = _visible;
+		auto p = getParent();
+		while (p && vis) {
+			vis = p->isVisible();
+			p = p->getParent();
+		}
+
+		if (vis) {
+			updateCanvas(f);
+		} else {
+			_pathsDirty = true;
+		}
+	});
 	_image = img;
 
 	auto l = Rc<EventListener>::create();
@@ -62,6 +75,7 @@ bool PathNode::init(Image *img, Format fmt) {
 			_canvas = nullptr;
 		}
 		setTexture(nullptr);
+		_renderRequested = false;
 		_pathsDirty = true;
 	});
 	addComponent(l);
@@ -76,7 +90,7 @@ bool PathNode::init(Image *img, Format fmt) {
 }
 
 void PathNode::visit(cocos2d::Renderer *r, const Mat4 &t, uint32_t f, ZPath &z) {
-	if (isVisible() && (_contentSizeDirty || _pathsDirty)) {
+	if (!_renderRequested && isVisible() && (_contentSizeDirty || _pathsDirty)) {
 		updateCanvas(_pathsDirty?data::Subscription::Initial:data::Subscription::Flags(0));
 		_pathsDirty = false;
 	}
@@ -149,6 +163,11 @@ Image * PathNode::getImage() const {
 }
 
 void PathNode::updateCanvas(layout::Subscription::Flags f) {
+	if (_renderRequested) {
+		_pathsDirty = true;
+		return;
+	}
+
 	if (_contentSize.equals(Size::ZERO)) {
 		return;
 	}
@@ -164,11 +183,6 @@ void PathNode::updateCanvas(layout::Subscription::Flags f) {
 		return;
 	}
 
-	if (!_canvas) {
-		_canvas.set(Rc<Canvas>::create());
-		_canvas->setQuality(1.75f /*Canvas::QualityHigh*/);
-	}
-
 	auto &size = _contentSize;
 	uint32_t width = ceilf(size.width * _density);
 	uint32_t height = ceilf(size.height * _density);
@@ -177,65 +191,30 @@ void PathNode::updateCanvas(layout::Subscription::Flags f) {
 	float scaleY = float(height) / float(_baseHeight);
 
 	switch (_autofit) {
-	case Autofit::Contain:
-		scaleX = scaleY = std::min(scaleX, scaleY);
-		break;
-	case Autofit::Cover:
-		scaleX = scaleY = std::max(scaleX, scaleY);
-		break;
-	case Autofit::Width:
-		scaleY = scaleX;
-		break;
-	case Autofit::Height:
-		scaleX = scaleY;
-		break;
-	case Autofit::None:
-		break;
+	case Autofit::Contain: scaleX = scaleY = std::min(scaleX, scaleY); break;
+	case Autofit::Cover: scaleX = scaleY = std::max(scaleX, scaleY); break;
+	case Autofit::Width: scaleY = scaleX; break;
+	case Autofit::Height: scaleX = scaleY; break;
+	case Autofit::None: break;
 	}
 
 	uint32_t nwidth = _baseWidth * scaleX;
 	uint32_t nheight = _baseHeight * scaleY;
 
-	float offsetX = 0.0f;
-	float offsetY = 0.0f;
-
-	if (nwidth > width) {
-		offsetX = _autofitPos.x * (nwidth - width);
-	} else {
-		width = nwidth;
-	}
-
-	if (nheight > height) {
-		offsetY = _autofitPos.y * (nheight - height);
-	} else {
-		height = nheight;
-	}
+	if (nwidth <= width) { width = nwidth; }
+	if (nheight <= height) { height = nheight; }
 
 	auto currentTex = getTexture();
 	if (!f.empty() || !currentTex || (uint32_t)currentTex->getPixelsWide() != width || (uint32_t)currentTex->getPixelsHigh() != height) {
-		auto tex = generateTexture(getTexture(), width, height, _format);
-		if (tex) {
-			_canvas->begin(tex, Color4B(0, 0, 0, 0));
-			_canvas->save();
-			_canvas->translate(offsetX, offsetY);
-			_canvas->scale(scaleX, scaleY);
-			_canvas->transform(_image->getViewBoxTransform());
-
-			_image->draw([&] (const Path &path, const Vec2 &pos) {
-				if (pos.isZero()) {
-					_canvas->draw(path);
-				} else {
-					_canvas->draw(path, pos.x, pos.y);
-				}
-			});
-
-			_canvas->restore();
-			_canvas->end();
-
+		_renderRequested = true;
+		retain();
+		TextureCache::getInstance()->renderImageInBackground([this] (cocos2d::Texture2D *tex) {
+			_renderRequested = false;
 			if (tex != getTexture()) {
 				setTexture(tex);
 			}
-		}
+			release();
+		}, getTexture(), _format, *_image.get(), _contentSize, _autofit, _autofitPos, _density);
 	}
 }
 

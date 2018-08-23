@@ -69,6 +69,8 @@ struct Color3B : public AllocBase {
 
 	static const Color3B WHITE;
 	static const Color3B BLACK;
+
+	static Color3B progress(const Color3B &a, const Color3B &b, float p);
 };
 
 /**
@@ -101,6 +103,8 @@ struct Color4B : public AllocBase {
 
 	static const Color4B WHITE;
 	static const Color4B BLACK;
+
+	static Color4B progress(const Color4B &a, const Color4B &b, float p);
 };
 
 /**
@@ -130,6 +134,8 @@ struct Color4F : public AllocBase {
 
 	static const Color4F WHITE;
 	static const Color4F BLACK;
+
+	static Color4F progress(const Color4F &a, const Color4F &b, float p);
 };
 
 class Color : public AllocBase {
@@ -293,6 +299,21 @@ NS_SP_BEGIN
 template <> inline
 layout::Color progress<layout::Color>(const layout::Color &a, const layout::Color &b, float p) {
 	return layout::Color::progress(a, b, p);
+}
+
+template <> inline
+layout::Color3B progress<layout::Color3B>(const layout::Color3B &a, const layout::Color3B &b, float p) {
+	return layout::Color3B::progress(a, b, p);
+}
+
+template <> inline
+layout::Color4B progress<layout::Color4B>(const layout::Color4B &a, const layout::Color4B &b, float p) {
+	return layout::Color4B::progress(a, b, p);
+}
+
+template <> inline
+layout::Color4F progress<layout::Color4F>(const layout::Color4F &a, const layout::Color4F &b, float p) {
+	return layout::Color4F::progress(a, b, p);
 }
 
 NS_SP_END

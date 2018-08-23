@@ -179,7 +179,7 @@ protected:
 	virtual bool renewTouch(cocos2d::Touch *touch) override;
 
 	Time _lastTime;
-	MovingAverage _velocityX, _velocityY;
+	MovingAverage<3> _velocityX, _velocityY;
 
 	bool _swipeBegin;
 	cocos2d::Touch *_currentTouch = nullptr;
@@ -212,7 +212,7 @@ protected:
 	virtual bool renewTouch(cocos2d::Touch *touch) override;
 
 	Time _lastTime;
-	MovingAverage _velocity;
+	MovingAverage<3> _velocity;
 
 	Pinch _gesture;
 	Callback _callback;
@@ -240,7 +240,7 @@ protected:
 	virtual bool renewTouch(cocos2d::Touch *touch) override;
 
 	uint64_t _lastTime;
-	MovingAverage _velocity;
+	MovingAverage<3> _velocity;
 	bool _rotateEnded;
 
 	Rotate _gesture;

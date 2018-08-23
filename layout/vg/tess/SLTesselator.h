@@ -63,6 +63,11 @@ typedef struct TESStesselator TESStesselator;
 typedef struct TESSalloc TESSalloc;
 typedef struct TESShalfEdge TESShalfEdge;
 
+typedef struct TESSVec2 {
+	TESSreal x;
+	TESSreal y;
+} TESSVec2;
+
 #define TESS_UNDEF (~(TESSshort)0)
 
 #define TESS_NOTUSED(v) do { (void)(1 ? (void)0 : ( (void)(v) ) ); } while(0)
@@ -73,6 +78,8 @@ typedef struct TESShalfEdge TESShalfEdge;
 #else
 #define TESS_OPTIMIZE
 #endif
+
+#define TESSassert(expr, message) if (!(expr)) { tessLog(__FILE__ ": assert " #expr ": " message); assert(expr); }
 
 // Custom memory allocator interface.
 // The internal memory allocator allocates mesh edges, vertices and faces
@@ -96,7 +103,6 @@ struct TESSalloc
 	void (*memfree)( void *userData, void *ptr );
 	void* userData;				// User data passed to the allocator functions.
 };
-
 
 //
 // Example use:
@@ -126,8 +132,8 @@ void tessDeleteTess( TESStesselator *tess );
 //   pointer - pointer to the first coordinate of the first vertex in the array.
 //   stride - defines offset in bytes between consecutive vertices.
 //   count - number of vertices in contour.
-TESShalfEdge * tessAddContour( TESStesselator *tess, const TESSreal* pointer, int count );
-TESShalfEdge * tessContinueContour( TESStesselator *tess, TESShalfEdge * e, const TESSreal* pointer, int count );
+TESShalfEdge * tessAddContour( TESStesselator *tess, const TESSVec2* pointer, int count );
+TESShalfEdge * tessContinueContour( TESStesselator *tess, TESShalfEdge * e, const TESSVec2* pointer, int count );
 
 // tessTesselate() - tesselate contours.
 // Parameters:
@@ -173,6 +179,8 @@ void tessSetAntiAliased(TESStesselator *tess, TESSreal val);
 
 TESSResult * tessVecResultTriangles(TESStesselator **tess, int count);
 TESSResult * tessResultTriangles(TESStesselator *tess, int windingRule, TESSColor color);
+
+void tessLog(const char *);
 
 #ifdef __cplusplus
 };

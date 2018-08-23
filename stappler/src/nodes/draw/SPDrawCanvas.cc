@@ -36,6 +36,47 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(draw)
 
+/*static void addCanvasTiming(uint32_t w, uint32_t h, TimeInterval t) {
+	struct TimingInfo {
+		uint32_t width;
+		uint32_t height;
+		TimeInterval accum;
+		size_t count = 0;
+		MovingAverage<128> average;
+	};
+
+	static std::mutex m;
+	static std::map<uint64_t, TimingInfo> map;
+	static Time last = Time::now();
+	static TimeInterval timer;
+
+	uint64_t index = uint64_t(w) << 32 | h;
+
+	m.lock();
+
+	timer += Time::now() - last;
+
+	auto it = map.find(index);
+	if (it == map.end()) {
+		it = map.emplace(index, TimingInfo{w, h}).first;
+	}
+
+	it->second.average.addValue(t.toFloatSeconds());
+	it->second.accum += t;
+	++ it->second.count;
+
+	if (timer.toMillis() > 10000) {
+		for (auto &t : map) {
+			log::format("Canvas", "%u x %u: %lu %f (%lu)", t.second.width, t.second.height, t.second.accum.toMicros() / t.second.count, t.second.average.getAverage(), t.second.count);
+		}
+		timer.clear();
+	}
+
+	last = Time::now();
+
+	m.unlock();
+}*/
+
 Canvas::~Canvas() { }
 
 bool Canvas::init(StencilDepthFormat fmt) {
@@ -52,10 +93,9 @@ bool Canvas::begin(cocos2d::Texture2D *tex, const Color4B &color, bool clear) {
 		_line.reserve(256);
 
 		_subAccum.clear();
-		_tessAccum.clear();
-		_glAccum.clear();
 		_contourVertex = 0;
 		_fillVertex = 0;
+		_beginTime = Time::now();
 
 		return true;
 	}
@@ -65,6 +105,8 @@ bool Canvas::begin(cocos2d::Texture2D *tex, const Color4B &color, bool clear) {
 
 void Canvas::end() {
 	GLRenderSurface::end();
+
+	//addCanvasTiming(_width, _height, Time::now() - _beginTime);
 }
 
 void Canvas::flush() {

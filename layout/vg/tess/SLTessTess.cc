@@ -160,7 +160,7 @@ int tessMeshTessellateMonoRegion( TESSmesh *mesh, TESSface *face )
 	* be close to the edge we want.
 	*/
 	up = face->anEdge;
-	assert( up->Lnext != up && up->Lnext->Lnext != up );
+	TESSassert( up->Lnext != up && up->Lnext->Lnext != up, "tessMeshTessellateMonoRegion");
 
 	for( ; VertLeq( up->Dst, up->Org ); up = up->Lprev )
 		;
@@ -196,7 +196,7 @@ int tessMeshTessellateMonoRegion( TESSmesh *mesh, TESSface *face )
 	/* Now lo->Org == up->Dst == the leftmost vertex.  The remaining region
 	* can be tessellated in a fan from this leftmost vertex.
 	*/
-	assert( lo->Lnext != up );
+	TESSassert( lo->Lnext != up, "tessMeshTessellateMonoRegion");
 	while( lo->Lnext->Lnext != up ) {
 		TESShalfEdge *tempHalfEdge= tessMeshConnect( mesh, lo->Lnext, lo );
 		if (tempHalfEdge == NULL) return 0;
@@ -351,12 +351,52 @@ void tessDeleteTess( TESStesselator *tess )
 	alloc.memfree( alloc.userData, tess );
 }
 
-TESShalfEdge * tessAddContour( TESStesselator *tess, const TESSreal* vertices, int numVertices ) {
+TESShalfEdge * tessAddContour( TESStesselator *tess, const TESSVec2* vertices, int numVertices ) {
 	TESShalfEdge *e = NULL;
 	return tessContinueContour(tess, e, vertices, numVertices);
 }
 
-TESShalfEdge * tessContinueContour( TESStesselator *tess, TESShalfEdge * e, const TESSreal* vertices, int numVertices ) {
+static inline TESShalfEdge * tessAddCoords(TESStesselator *tess, TESShalfEdge * e, TESSreal x, TESSreal y) {
+	if( e == NULL ) {
+		/* Make a self-loop (one vertex, one edge). */
+		e = tessMeshMakeEdge( tess->mesh );
+		if ( e == NULL ) {
+			tess->outOfMemory = 1;
+			return NULL;
+		}
+		if ( !tessMeshSplice( tess->mesh, e, e->Sym ) ) {
+			tess->outOfMemory = 1;
+			return NULL;
+		}
+	} else {
+		/* Create a new vertex and edge which immediately follow e
+		* in the ordering around the left face.
+		*/
+		if ( tessMeshSplitEdge( tess->mesh, e ) == NULL ) {
+			tess->outOfMemory = 1;
+			return NULL;
+		}
+		e = e->Lnext;
+	}
+
+	/* The new vertex is now e->Org. */
+	e->Org->s = x;
+	e->Org->t = y;
+	/* Store the insertion number so that the vertex can be later recognized. */
+	e->Org->idx = tess->vertexIndexCounter++;
+
+	/* The winding of an edge says how the winding number changes as we
+	* cross from the edge''s right face to its left face.  We add the
+	* vertices in such an order that a CCW contour will add +1 to
+	* the winding number of the region inside the contour.
+	*/
+	e->winding = 1;
+	e->Sym->winding = -1;
+
+	return e;
+}
+
+TESShalfEdge * tessContinueContour( TESStesselator *tess, TESShalfEdge * e, const TESSVec2* vertices, int numVertices ) {
 	const unsigned char *src = (const unsigned char*)vertices;
 	int i;
 
@@ -373,41 +413,17 @@ TESShalfEdge * tessContinueContour( TESStesselator *tess, TESShalfEdge * e, cons
 		const TESSreal* coords = (const TESSreal*)src;
 		src += sizeof(TESSreal) * 2;
 
-		if( e == NULL ) {
-			/* Make a self-loop (one vertex, one edge). */
-			e = tessMeshMakeEdge( tess->mesh );
-			if ( e == NULL ) {
-				tess->outOfMemory = 1;
-				return NULL;
-			}
-			if ( !tessMeshSplice( tess->mesh, e, e->Sym ) ) {
-				tess->outOfMemory = 1;
-				return NULL;
-			}
-		} else {
-			/* Create a new vertex and edge which immediately follow e
-			* in the ordering around the left face.
-			*/
-			if ( tessMeshSplitEdge( tess->mesh, e ) == NULL ) {
-				tess->outOfMemory = 1;
-				return NULL;
-			}
-			e = e->Lnext;
-		}
+		/*while (intersect && i == intersect->index) {
+			e = tessAddCoords(tess, e, intersect->point.x, intersect->point.y);
 
-		/* The new vertex is now e->Org. */
-		e->Org->s = coords[0];
-		e->Org->t = coords[1];
-		/* Store the insertion number so that the vertex can be later recognized. */
-		e->Org->idx = tess->vertexIndexCounter++;
+			++ intersect;
+			-- iCount;
+			if (iCount == 0) {
+				intersect = NULL;
+			}
+		}*/
 
-		/* The winding of an edge says how the winding number changes as we
-		* cross from the edge''s right face to its left face.  We add the
-		* vertices in such an order that a CCW contour will add +1 to
-		* the winding number of the region inside the contour.
-		*/
-		e->winding = 1;
-		e->Sym->winding = -1;
+		e = tessAddCoords(tess, e, coords[0], coords[1]);
 	}
 
 	return e;

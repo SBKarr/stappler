@@ -33,6 +33,9 @@ public:
 	using Autofit = style::Autofit;
 	using FlushCallback = Function<void()>;
 
+	template <typename T>
+	using PoolVector = memory::PoolInterface::VectorType<T>;
+
 	/* Approximation quality defines how precisely original curves will be approximated with lines
 	 * Extreme values (Worst/Perfect) should be used only for special cases
 	 * In most cases Low is enough to draw simple vector objects (like material icons)
@@ -50,6 +53,8 @@ public:
 	static Rect calculateImageBoxRect(const Rect &bbox, const Size &size, const BackgroundStyle &bg);
 	static Rect calculateImageContentRect(const Rect &bbox, const Size &size, const BackgroundStyle &bg);
 
+	Canvas();
+
 	virtual bool init();
 
 	virtual void flush();
@@ -60,8 +65,8 @@ public:
 	void setFlushCallback(const FlushCallback &);
 	const FlushCallback &getFlushCallback() const;
 
-	const Vector<TESStesselator *> &getTess() const;
-	const Vector<StrokeDrawer> &getStroke() const;
+	const PoolVector<TESStesselator *> &getTess() const;
+	const PoolVector<StrokeDrawer> &getStroke() const;
 	const Mat4 &getTransform() const;
 
 	void beginBatch();
@@ -105,17 +110,17 @@ protected:
 	void clearTess();
 	void flushBatch();
 
-	TESSalloc _tessAlloc;
-
-	TESStesselator *_fillTess = nullptr;
-	Vector<TESStesselator *> _tess;
-	Vector<StrokeDrawer> _stroke;
 	memory::MemPool _pool;
+
+	TESSalloc _tessAlloc;
+	TESStesselator *_fillTess = nullptr;
+	PoolVector<TESStesselator *> _tess;
+	PoolVector<StrokeDrawer> _stroke;
+	LineDrawer _line;
 
 	Mat4 _transform;
 	Vector<Mat4> _states;
 	Vector<Mat4> _batchStates;
-	LineDrawer _line;
 
 	size_t _vertexCount = 0;
 	bool _isBatch = false;

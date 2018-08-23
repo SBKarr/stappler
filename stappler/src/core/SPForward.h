@@ -53,7 +53,8 @@ using Renderer = cocos2d::Renderer;
 using Padding = layout::Padding;
 using Margin = layout::Margin;
 
-using MovingAverage = layout::MovingAverage;
+template <size_t Count>
+using MovingAverage = layout::MovingAverage<Count>;
 using FilePath = layout::FilePath;
 
 namespace Anchor {

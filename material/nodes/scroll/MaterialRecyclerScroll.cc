@@ -73,7 +73,7 @@ void RecyclerHolder::onContentSizeDirty() {
 
 	if (_enabled) {
 		_label->setPosition(Vec2(24.0f, _contentSize.height / 2.0f));
-		_button->setContentSize(Size(_button->getlabel()->getContentSize().width + 32.0f, _contentSize.height));
+		_button->setContentSize(Size(_button->getLabel()->getContentSize().width + 32.0f, _contentSize.height));
 		_button->setPosition(Vec2(_contentSize.width, 0.0f));
 	} else {
 		_icon->setPosition(Vec2(_inverted?24.0f:(_contentSize.width - 24.0f), _contentSize.height / 2.0f));

@@ -141,7 +141,7 @@ static void FloatDown( PriorityQHeap *pq, int curr )
 				++child;
 		}
 
-		assert(child <= pq->max);
+		TESSassert(child <= pq->max, "FloatDown");
 
 		hChild = n[child].handle;
 		if( child > pq->size || LEQ( h[hCurr].key, h[hChild].key )) {
@@ -239,7 +239,7 @@ PQhandle pqHeapInsert( TESSalloc* alloc, PriorityQHeap *pq, PQkey keyNew )
 	if( pq->initialized ) {
 		FloatUp( pq, curr );
 	}
-	assert(free != INV_HANDLE);
+	TESSassert(free != INV_HANDLE, "pqHeapInsert");
 	return free;
 }
 
@@ -273,7 +273,7 @@ void pqHeapDelete( PriorityQHeap *pq, PQhandle hCurr )
 	PQhandleElem *h = pq->handles;
 	int curr;
 
-	assert( hCurr >= 1 && hCurr <= pq->max && h[hCurr].key != NULL );
+	TESSassert( hCurr >= 1 && hCurr <= pq->max && h[hCurr].key != NULL, "pqHeapDelete");
 
 	curr = h[hCurr].node;
 	n[curr].handle = n[pq->size].handle;
@@ -326,7 +326,7 @@ PriorityQ *pqNewPriorityQ( TESSalloc* alloc, int size, int (*leq)(PQkey key1, PQ
 /* really tessPqSortDeletePriorityQ */
 void pqDeletePriorityQ( TESSalloc* alloc, PriorityQ *pq )
 {
-	assert(pq != NULL);
+	TESSassert(pq != NULL, "pqDeletePriorityQ");
 	if (pq->heap != NULL) pqHeapDeletePriorityQ( alloc, pq->heap );
 	if (pq->order != NULL) alloc->memfree( alloc->userData, pq->order );
 	if (pq->keys != NULL) alloc->memfree( alloc->userData, pq->keys );
@@ -411,7 +411,7 @@ int pqInit( TESSalloc* alloc, PriorityQ *pq )
 	p = pq->order;
 	r = p + pq->size - 1;
 	for( i = p; i < r; ++i ) {
-		assert( LEQ( **(i+1), **i ));
+		TESSassert( LEQ( **(i+1), **i ), "pqInit");
 	}
 #endif
 
@@ -441,7 +441,7 @@ PQhandle pqInsert( TESSalloc* alloc, PriorityQ *pq, PQkey keyNew )
 			memcpy(pq->keys, saveKey, (size_t)(tmpSize * sizeof( pq->keys[0] )));
 		}
 	}
-	assert(curr != INV_HANDLE);
+	TESSassert(curr != INV_HANDLE, "pqInsert");
 	pq->keys[curr] = keyNew;
 
 	/* Negative handles index the sorted array. */
@@ -501,7 +501,7 @@ void pqDelete( PriorityQ *pq, PQhandle curr )
 		return;
 	}
 	curr = -(curr+1);
-	assert( curr < pq->max && pq->keys[curr] != NULL );
+	TESSassert( curr < pq->max && pq->keys[curr] != NULL, "pqDelete");
 
 	pq->keys[curr] = NULL;
 	while( pq->size > 0 && *(pq->order[pq->size-1]) == NULL ) {

@@ -414,8 +414,7 @@ bool PressRecognizer::renewTouch(cocos2d::Touch *touch) {
 }
 
 SwipeRecognizer::SwipeRecognizer()
-: _velocityX(MovingAverage(3)), _velocityY(MovingAverage(3))
-, _swipeBegin(false) {
+: _swipeBegin(false) {
 	_maxTouches = 2;
 }
 
@@ -606,8 +605,7 @@ bool SwipeRecognizer::renewTouch(cocos2d::Touch *touch) {
 	}
 }
 
-PinchRecognizer::PinchRecognizer()
-: _velocity(MovingAverage(3)) {
+PinchRecognizer::PinchRecognizer() {
 	_maxTouches = 2;
 }
 
