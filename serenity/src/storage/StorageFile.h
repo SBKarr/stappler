@@ -33,7 +33,9 @@ public:
 	static bool validateFileField(const Field &, const InputFile &);
 
 	static data::Value createFile(Adapter *adapter, const Field &, InputFile &);
-	static data::Value createFile(Adapter *adapter, const String &type, const String &path);
+	static data::Value createFile(Adapter *adapter, const StringView &type, const StringView &path);
+	static data::Value createFile(Adapter *adapter, const StringView &type, const Bytes &data);
+
 	static data::Value createImage(Adapter *adapter, const Field &, InputFile &);
 
 	static data::Value getData(Adapter *adapter, uint64_t id);

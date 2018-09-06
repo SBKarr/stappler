@@ -78,25 +78,25 @@ public:
 	void renderImageInBackground(const Callback &, cocos2d::Texture2D *, TextureFormat fmt, const layout::Image &,
 			const Size &contentSize, layout::style::Autofit = layout::style::Autofit::Contain, const Vec2 &autofitPos = Anchor::Middle, float density = 0.0f);
 
-	void addTexture(const String &, const Callback & = nullptr, bool forceReload = false);
-	void addTexture(const String &, float, const Callback & = nullptr, bool forceReload = false);
-	void addTexture(const String &, float, BitmapFormat = BitmapFormat::Auto, const Callback & = nullptr, bool forceReload = false);
+	void addTexture(const StringView &, const Callback & = nullptr, bool forceReload = false);
+	void addTexture(const StringView &, float, const Callback & = nullptr, bool forceReload = false);
+	void addTexture(const StringView &, float, BitmapFormat = BitmapFormat::Auto, const Callback & = nullptr, bool forceReload = false);
 
 	void addTexture(Asset *, const Callback & = nullptr, bool forceReload = false);
 	void addTexture(Asset *, float, const Callback & = nullptr, bool forceReload = false);
 	void addTexture(Asset *, float, BitmapFormat = BitmapFormat::Auto, const Callback & = nullptr, bool forceReload = false);
 
-	bool hasTexture(const String &, float = screen::density(), BitmapFormat = BitmapFormat::Auto);
+	bool hasTexture(const StringView &, float = screen::density(), BitmapFormat = BitmapFormat::Auto);
 
 	void uploadBitmap(Bitmap &&, const Function<void(cocos2d::Texture2D *)> &, Ref * = nullptr);
 	void uploadBitmap(Vector<Bitmap> &&tex, const Function<void(Vector<Rc<cocos2d::Texture2D>> &&tex)> &, Ref * = nullptr);
 
 	/* add texture, that was manually loaded, into cache, useful to ensure cache reloading */
-	void addLoadedTexture(const String &, cocos2d::Texture2D *);
-	void addLoadedTexture(const String &, float, cocos2d::Texture2D *);
-	void addLoadedTexture(const String &, float, BitmapFormat, cocos2d::Texture2D *);
+	void addLoadedTexture(const StringView &, cocos2d::Texture2D *);
+	void addLoadedTexture(const StringView &, float, cocos2d::Texture2D *);
+	void addLoadedTexture(const StringView &, float, BitmapFormat, cocos2d::Texture2D *);
 
-	void removeLoadedTexture(const String &, float = screen::density(), BitmapFormat = BitmapFormat::Auto);
+	void removeLoadedTexture(const StringView &, float = screen::density(), BitmapFormat = BitmapFormat::Auto);
 
 	bool makeCurrentContext();
 	void freeCurrentContext();

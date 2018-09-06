@@ -32,7 +32,7 @@ NS_SP_BEGIN
 class TaskManager {
 public:
     TaskManager(Thread *thread);
-    TaskManager(const std::string &name, uint32_t count, uint32_t threadId);
+    TaskManager(const StringView &name, uint32_t count, uint32_t threadId);
     virtual ~TaskManager();
 
     TaskManager(const TaskManager &);
@@ -57,7 +57,7 @@ protected:
 	uint32_t _threadId = std::numeric_limits<uint32_t>::max();
 	std::vector<Worker *> _workers;
 	TaskQueue *_queue = nullptr;
-	std::string _name;
+	StringView _name;
 };
 
 NS_SP_END

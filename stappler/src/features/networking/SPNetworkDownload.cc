@@ -35,7 +35,7 @@ NS_SP_BEGIN
 
 NetworkDownload::NetworkDownload() { }
 
-bool NetworkDownload::init(const String &url, const String &fileName) {
+bool NetworkDownload::init(const StringView &url, const StringView &fileName) {
     if (!NetworkTask::init(Method::Get, url)) {
         return false;
     }

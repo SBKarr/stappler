@@ -90,8 +90,8 @@ public:
 	/* Checks if execution is on specific worker of thread */
 	bool isOnThisThread(uint32_t workerId);
 public:
-	Thread(const std::string &name);
-	Thread(const std::string &name, uint32_t count);
+	Thread(const StringView &name);
+	Thread(const StringView &name, uint32_t count);
 	~Thread();
 
     Thread(const Thread &) = delete;
@@ -100,7 +100,7 @@ public:
     Thread(Thread &&);
 	Thread &operator=(Thread &&);
 
-	inline const std::string &getName() { return _name; }
+	inline StringView getName() { return _name; }
 
 	inline uint32_t getId() { return _id; }
 	inline void setId(uint32_t newId) { _id = newId; }
@@ -109,7 +109,7 @@ public:
 private:
 	uint32_t _id = maxOf<uint32_t>();
 	uint32_t _count = 1;
-	std::string _name;
+	String _name;
 };
 
 NS_SP_END

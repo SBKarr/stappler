@@ -98,7 +98,7 @@ public:
 
 	inline operator bool() const { return _internal != nullptr; }
 
-	String getName() const;
+	StringView getName() const;
 
 	/** Returns new Get (SELECT *) command pointer
 	 * Without options this command will return all rows in table */
@@ -194,7 +194,7 @@ public:
 			return select((int64_t)t);
 		}
 
-		Command *_select(const String &str) {
+		Command *_select(const StringView &str) {
 			return select(str);
 		}
 
@@ -204,29 +204,29 @@ public:
 		/** Adds filter, based on string primary key.
 		 * If primary key is not string, command will not be performed.
 		 * Allowed for Get, Count, Remove */
-		Command *select(const String &value);
+		Command *select(const StringView &value);
 
 		/** Adds filter, based on integer column (field=value)
 		 * If field is not integer or there is no index on
 		 * field, command will not be performed.
 		 * Allowed for Get, Count, Remove */
-		Command *filterBy(const String &field, int64_t value);
+		Command *filterBy(const StringView &field, int64_t value);
 
 		/** Adds filter, based on string column (field=value)
 		 * If field is not string or there is no index on
 		 * field, command will not be performed.
 		 * Allowed for Get, Count, Remove */
-		Command *filterBy(const String &field, const String &value);
+		Command *filterBy(const StringView &field, const StringView &value);
 
 		/** Adds filter, based on string column ( instr(field,value) )
 		 * If field is not string, command will not be performed.
 		 * Allowed for Get, Count, Remove */
-		Command *filterLike(const String &field, const String &value);
+		Command *filterLike(const StringView &field, const StringView &value);
 
 		/** Sets ordering rules to field, command will not be performed,
 		 * if there is no index on ordering field in specified direction.
 		 * Allowed for Get */
-		Command *orderBy(const String &field, Flags orderMode);
+		Command *orderBy(const StringView &field, Flags orderMode);
 
 		/** Sets ordering rules to field, command will not be performed,
 		 * if there is no index on ordering field in specified direction.
@@ -296,8 +296,8 @@ protected:
 			Like,
 		};
 
-		Filter(const String &field, int64_t value);
-		Filter(const String &field, const String &value, bool like = false);
+		Filter(const StringView &field, int64_t value);
+		Filter(const StringView &field, const StringView &value, bool like = false);
 
 		Filter(Filter &&other);
 		Filter &operator= (Filter &&other);

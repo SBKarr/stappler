@@ -34,9 +34,9 @@ public:
 	using CompletedCallback = Function<void(const NetworkDownload *download, bool success)>;
 
     NetworkDownload();
-    
-    virtual bool init(const String &url, const String &fileName);
-    
+
+    virtual bool init(const StringView &url, const StringView &fileName);
+
     virtual bool execute() override;
     virtual bool performQuery() override;
     virtual void onComplete() override;

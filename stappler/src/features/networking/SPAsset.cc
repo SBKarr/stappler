@@ -44,9 +44,9 @@ bool AssetFile::init(Asset *a) {
 	_mtime = a->getMTime();
 	_id = a->getId();
 	_size = a->getSize();
-	_url = a->getUrl();
-	_contentType = a->getContentType();
-	_etag = a->getETag();
+	_url = a->getUrl().str();
+	_contentType = a->getContentType().str();
+	_etag = a->getETag().str();
 
 	_path = toString(a->getFilePath(), ".", _ctime);
 	filesystem::copy(a->getFilePath(), _path);
@@ -213,7 +213,7 @@ void Asset::onProgress(float progress) {
 	_progress = progress;
 	update(Update::DownloadProgress);
 }
-void Asset::onCompleted(bool success, bool cacheRequest, const String &file, const String &ct, const String &etag, uint64_t mtime, size_t size) {
+void Asset::onCompleted(bool success, bool cacheRequest, const StringView &file, const StringView &ct, const StringView &etag, uint64_t mtime, size_t size) {
 	if (!cacheRequest) {
 		_downloadInProgress = false;
 		if (success) {
@@ -248,10 +248,10 @@ void Asset::update(Update u) {
 	setDirty(Subscription::Flag((uint8_t)u));
 }
 
-bool Asset::swapFiles(const String &file, const String &ct, const String &etag, uint64_t mtime, size_t size) {
+bool Asset::swapFiles(const StringView &file, const StringView &ct, const StringView &etag, uint64_t mtime, size_t size) {
 	if (!file.empty() && filesystem::exists(file)) {
 		_waitFileSwap = true;
-		retainWriteLock((LockPtr)this, [this, file, ct, etag, mtime, size] {
+		retainWriteLock((LockPtr)this, [this, file = file.str(), ct = ct.str(), etag = etag.str(), mtime, size] {
 			_fileUpdate = true;
 			String original = _path;
 			String cache = _cachePath;

@@ -70,6 +70,8 @@ public:
 	virtual void setLoaderColor(const Color &);
 	virtual const Color &getLoaderColor() const;
 
+	virtual const Vector<String> &getImages() const;
+
 protected:
 	virtual void reset(size_t id);
 

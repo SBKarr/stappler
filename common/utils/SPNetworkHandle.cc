@@ -47,6 +47,8 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
+#define SP_TERMINATED_DATA(view) (view.terminated()?view.data():view.str().data())
+
 struct NetworkHandle::Network {
 #ifndef SPAPR
 	class CurlHandle {
@@ -223,15 +225,15 @@ NetworkHandle::NetworkHandle() {
 
 NetworkHandle::~NetworkHandle() { }
 
-bool NetworkHandle::init(Method method, const String &url) {
-	if (url.length() == 0 || method == Method::Unknown) {
+bool NetworkHandle::init(Method method, const StringView &url) {
+	if (url.size() == 0 || method == Method::Unknown) {
 		return false;
 	}
 
-	_url = url;
+	_url = url.str();
 	_method = method;
 
-	SP_NETWORK_LOG("init with url: %s", _url.c_str());
+	SP_NETWORK_LOG("init with url: %s", _url.data());
 
 	return true;
 }
@@ -296,28 +298,26 @@ bool NetworkHandle::setupDebug(CURL *curl, bool debug) {
 	return check;
 }
 
-bool NetworkHandle::setupRootCert(CURL *curl, const String &certPath) {
+bool NetworkHandle::setupRootCert(CURL *curl, const StringView &certPath) {
 	bool check = true;
 	if (!certPath.empty()) {
-		auto &bundle = certPath;
+		auto bundle = certPath;
 		if (bundle.empty() || bundle.back() != '/') {
 			String path = filepath::root(certPath);
 
-			SETOPT(check, curl, CURLOPT_CAINFO, bundle.c_str());
+			SETOPT(check, curl, CURLOPT_CAINFO, SP_TERMINATED_DATA(bundle));
 #ifndef ANDROID
 			SETOPT(check, curl, CURLOPT_CAPATH, path.c_str());
 #endif
 		} else {
-			String path = bundle.substr(0, bundle.size() - 1);
-			SETOPT(check, curl, CURLOPT_CAPATH, path.c_str());
-
+			StringView path = bundle.sub(0, bundle.size() - 1);
+			SETOPT(check, curl, CURLOPT_CAPATH, SP_TERMINATED_DATA(path));
 		}
 	}
 	return check;
 }
 
-bool NetworkHandle::setupHeaders(CURL *curl, const Vector<String> &vec,
-		curl_slist **headers) {
+bool NetworkHandle::setupHeaders(CURL *curl, const Vector<String> &vec, curl_slist **headers) {
 	bool check = true;
 	if (vec.size() > 0) {
 		for (const auto &str : vec) {
@@ -332,38 +332,36 @@ bool NetworkHandle::setupHeaders(CURL *curl, const Vector<String> &vec,
 	return check;
 }
 
-bool NetworkHandle::setupUserAgent(CURL *curl, const String &agent) {
+bool NetworkHandle::setupUserAgent(CURL *curl, const StringView &agent) {
 	bool check = true;
 	if (!agent.empty()) {
-		SETOPT(check, curl, CURLOPT_USERAGENT, agent.c_str());
+		SETOPT(check, curl, CURLOPT_USERAGENT, SP_TERMINATED_DATA(agent));
 	} else {
 		SETOPT(check, curl, CURLOPT_USERAGENT, "Stappler/0 CURL");
 	}
 	return check;
 }
 
-bool NetworkHandle::setupUser(CURL *curl, const String &user,
-		const String &password) {
+bool NetworkHandle::setupUser(CURL *curl, const StringView &user, const StringView &password) {
 	bool check = true;
 	if (!user.empty()) {
-		SETOPT(check, curl, CURLOPT_USERNAME, user.c_str());
+		SETOPT(check, curl, CURLOPT_USERNAME, SP_TERMINATED_DATA(user));
 		if (!password.empty()) {
-			SETOPT(check, curl, CURLOPT_PASSWORD, password.c_str());
+			SETOPT(check, curl, CURLOPT_PASSWORD, SP_TERMINATED_DATA(password));
 		}
 	}
 	return check;
 }
 
-bool NetworkHandle::setupFrom(CURL *curl, const String &from) {
+bool NetworkHandle::setupFrom(CURL *curl, const StringView &from) {
 	bool check = true;
 	if (_method == Method::Smtp && !from.empty()) {
-		SETOPT(check, curl, CURLOPT_MAIL_FROM, from.c_str());
+		SETOPT(check, curl, CURLOPT_MAIL_FROM, SP_TERMINATED_DATA(from));
 	}
 	return check;
 }
 
-bool NetworkHandle::setupRecv(CURL *curl, const Vector<String> &vec,
-		curl_slist **mailTo) {
+bool NetworkHandle::setupRecv(CURL *curl, const Vector<String> &vec, curl_slist **mailTo) {
 	bool check = true;
 	if (_method == Method::Smtp && vec.size() > 0) {
 		for (const auto &str : vec) {
@@ -388,11 +386,11 @@ bool NetworkHandle::setupProgress(CURL *curl, bool progress) {
 	return check;
 }
 
-bool NetworkHandle::setupCookies(CURL *curl, const String &cookiePath) {
+bool NetworkHandle::setupCookies(CURL *curl, const StringView &cookiePath) {
 	bool check = true;
 	if (!cookiePath.empty()) {
-		SETOPT(check, curl, CURLOPT_COOKIEFILE, cookiePath.c_str());
-		SETOPT(check, curl, CURLOPT_COOKIEJAR, cookiePath.c_str());
+		SETOPT(check, curl, CURLOPT_COOKIEFILE, SP_TERMINATED_DATA(cookiePath));
+		SETOPT(check, curl, CURLOPT_COOKIEJAR, SP_TERMINATED_DATA(cookiePath));
 	}
 	return check;
 }
@@ -668,24 +666,24 @@ bool NetworkHandle::perform() {
 	return success;
 }
 
-void NetworkHandle::setRootCertificateFile(const String &str) {
-	_rootCertFile = str;
+void NetworkHandle::setRootCertificateFile(const StringView &str) {
+	_rootCertFile = str.str();
 }
-void NetworkHandle::setCookieFile(const String &str) {
-	_cookieFile = str;
+void NetworkHandle::setCookieFile(const StringView &str) {
+	_cookieFile = str.str();
 }
-void NetworkHandle::setUserAgent(const String &str) {
-	_userAgent = str;
+void NetworkHandle::setUserAgent(const StringView &str) {
+	_userAgent = str.str();
 }
-void NetworkHandle::setUrl(const String &url) {
-	_url = url;
+void NetworkHandle::setUrl(const StringView &url) {
+	_url = url.str();
 }
 
-void NetworkHandle::addHeader(const String &header) {
-    _sendedHeaders.push_back(header);
+void NetworkHandle::addHeader(const StringView &header) {
+    _sendedHeaders.push_back(header.str());
 }
-void NetworkHandle::addHeader(const String &header, const String &value) {
-    _sendedHeaders.push_back(header + ": " + value);
+void NetworkHandle::addHeader(const StringView &header, const StringView &value) {
+    _sendedHeaders.push_back(toString(header, ": ", value));
 }
 
 void NetworkHandle::setDownloadProgress(const ProgressCallback &callback) {
@@ -695,19 +693,19 @@ void NetworkHandle::setUploadProgress(const ProgressCallback &callback) {
 	_uploadProgress = callback;
 }
 
-void NetworkHandle::setMailFrom(const String &from) {
-	_from = from;
+void NetworkHandle::setMailFrom(const StringView &from) {
+	_from = from.str();
 }
-void NetworkHandle::addMailTo(const String &to) {
-	_recv.push_back(to);
+void NetworkHandle::addMailTo(const StringView &to) {
+	_recv.push_back(to.str());
 }
-void NetworkHandle::setAuthority(const String &user, const String &passwd) {
-	_user = user;
-	_password = passwd;
+void NetworkHandle::setAuthority(const StringView &user, const StringView &passwd) {
+	_user = user.str();
+	_password = passwd.str();
 }
-void NetworkHandle::setReceiveFile(const String &str, bool resumeDownload) {
+void NetworkHandle::setReceiveFile(const StringView &str, bool resumeDownload) {
 	_receiveCallback = nullptr;
-	_receiveFileName = str;
+	_receiveFileName = str.str();
 	_resumeDownload = resumeDownload;
 }
 void NetworkHandle::setReceiveCallback(const IOCallback &cb) {
@@ -727,8 +725,8 @@ void NetworkHandle::setSendSize(size_t size) {
 		_sendSize = size;
 	}
 }
-void NetworkHandle::setSendFile(const String &str) {
-	_sendFileName = str;
+void NetworkHandle::setSendFile(const StringView &str) {
+	_sendFileName = str.str();
 	_sendCallback = nullptr;
 	_sendData.clear();
 	_sendSize = 0;
@@ -739,11 +737,11 @@ void NetworkHandle::setSendCallback(const IOCallback &cb, size_t outSize) {
 	_sendData.clear();
 	_sendSize = outSize;
 }
-void NetworkHandle::setSendData(const String &data) {
+void NetworkHandle::setSendData(const StringView &data) {
 	_sendFileName = "";
 	_sendCallback = nullptr;
 	_sendData.clear();
-	_sendSize = data.length();
+	_sendSize = data.size();
 	_sendData.assign((uint8_t *)data.data(), (uint8_t *)data.data() + _sendSize);
 }
 void NetworkHandle::setSendData(const Bytes &data) {
@@ -875,17 +873,17 @@ Pair<FILE *, size_t> NetworkHandle::openFile(const String &filename, bool readOn
     return pair(file, pos);
 }
 
-String NetworkHandle::getReceivedHeaderString(const String &ch) const {
+StringView NetworkHandle::getReceivedHeaderString(const StringView &ch) const {
 	String h = string::tolower(ch);
 	auto i = _parsedHeaders.find(h);
 	if (i != _parsedHeaders.end()) {
 		return i->second;
 	} else {
-		return "";
+		return StringView();
 	}
 }
 
-int64_t NetworkHandle::getReceivedHeaderInt(const String &ch) const {
+int64_t NetworkHandle::getReceivedHeaderInt(const StringView &ch) const {
 	String h = string::tolower(ch);
 	auto i = _parsedHeaders.find(h);
 	if (i != _parsedHeaders.end()) {
@@ -895,5 +893,7 @@ int64_t NetworkHandle::getReceivedHeaderInt(const String &ch) const {
 	}
 	return 0;
 }
+
+#undef SP_TERMINATED_DATA
 
 NS_SP_END

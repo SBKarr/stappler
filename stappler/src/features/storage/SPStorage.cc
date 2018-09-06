@@ -57,29 +57,29 @@ class Handle {
 public:
 	static Handle *getInstance();
 
-	Handle(const String &path);
-	Handle(const String &name, const String &path);
+	Handle(const StringView &path);
+	Handle(const StringView &name, const StringView &path);
 	~Handle();
 
 	Thread &getThread();
 
-	data::Value getData(const String &key);
-	void updateData(const String &key, const data::Value &value);
-	void removeData(const String &key);
+	data::Value getData(const StringView &key);
+	void updateData(const StringView &key, const data::Value &value);
+	void removeData(const StringView &key);
 
-	bool createClass(const String &cmd);
+	bool createClass(const StringView &cmd);
 
-	sqlite3_stmt *prepare(const String &zSql);
-	void release(const String &zSql);
+	sqlite3_stmt *prepare(const StringView &zSql);
+	void release(const StringView &zSql);
 
-	data::Value perform(const String &str, bool reduce = false);
+	data::Value perform(const StringView &str, bool reduce = false);
 	data::Value perform(sqlite3_stmt *stmt);
 
 	bool perform(sqlite3_stmt *stmt, const data::DataCallback &cb);
 
 	int getVersion() const { return _version; }
 private:
-	int prepareStmt(sqlite3_stmt **ppStmt, const String &zSql);
+	int prepareStmt(sqlite3_stmt **ppStmt, const StringView &zSql);
 
 	static Handle* s_sharedInternal;
 	static bool s_configured;
@@ -90,7 +90,7 @@ private:
 	sqlite3_stmt *_kv_select_stmt = nullptr;
 	sqlite3_stmt *_kv_remove_stmt = nullptr;
 
-	std::map<String, sqlite3_stmt *> _stmts;
+	Map<String, sqlite3_stmt *> _stmts;
 
 	int _version;
 	Thread _thread;
@@ -98,24 +98,24 @@ private:
 
 class Scheme::Internal : public Ref {
 public:
-	static Internal *create(const String &name, FieldsList &&list, AliasesList &&aliases, Handle *storage);
+	static Internal *create(const StringView &name, FieldsList &&list, AliasesList &&aliases, Handle *storage);
 
 	Internal(Handle *internal);
 
-	const String &getName() const { return _name; }
-	const String &getPrimary() const { return _primary; }
+	StringView getName() const { return _name; }
+	StringView getPrimary() const { return _primary; }
 
-	bool init(const String &name, FieldsList &&list, AliasesList &&aliases);
+	bool init(const StringView &name, FieldsList &&list, AliasesList &&aliases);
 	bool initialize();
 
 	bool perform(Scheme::Command *cmd);
-	bool perform(const String &, const DataCallback &);
+	bool perform(const StringView &, const DataCallback &);
 
-	bool isOrderingAllowed(const String &origField, Flags ordering);
-	bool isFieldAllowed(const String &origField, Type type);
+	bool isOrderingAllowed(const StringView &origField, Flags ordering);
+	bool isFieldAllowed(const StringView &origField, Type type);
 	bool isValueAllowed(const data::Value &value);
 
-	String resolveAlias(const String &field);
+	StringView resolveAlias(const StringView &field);
 
 protected:
 	friend class Command;
@@ -124,12 +124,12 @@ protected:
 	String getCreationCommand();
 	String getAlterCommand(const Field &);
 
-	bool isValueFieldAllowed(const String &name, const data::Value &value);
-	bool isPrimaryKey(const String &name);
+	bool isValueFieldAllowed(const StringView &name, const data::Value &value);
+	bool isPrimaryKey(const StringView &name);
 	bool isTypeMatched(Type type, const data::Value &value);
 
 	data::Value performCommand(Scheme::Command *cmd);
-	data::Value performCommand(const String &);
+	data::Value performCommand(const StringView &);
 	data::Value performQuery(Scheme::Command *cmd, sqlite3_stmt *stmt);
 
 	String buildQuery(Scheme::Command *cmd);
@@ -144,7 +144,7 @@ protected:
 	String _primary;
 	String _custom;
 	Map<String, Field> _fields; // fields must be in strict weak ordering to use them into prepared statements
-	std::unordered_map<String, String> _aliases;
+	Map<String, String> _aliases;
 
 	Handle *_storage = nullptr;
 };
@@ -156,7 +156,7 @@ Handle *defaultStorage() {
 	return Handle::getInstance();
 }
 
-Handle *create(const String &name, const String &filePath) {
+Handle *create(const StringView &name, const StringView &filePath) {
 	return new Handle(name, filePath);
 }
 
@@ -174,11 +174,11 @@ Thread &thread(Handle *storage) {
 	}
 }
 
-void get(const String &key, const data::DataCallback &callback, Handle *storage) {
+void get(const StringView &key, const data::DataCallback &callback, Handle *storage) {
 	get(key, std::bind(callback, std::placeholders::_2), storage);
 }
 
-void get(const String &key, const KeyDataCallback &callback, Handle *storage) {
+void get(const StringView &key, const KeyDataCallback &callback, Handle *storage) {
 	if (!storage) {
 		storage = Handle::getInstance();
 	}
@@ -188,17 +188,17 @@ void get(const String &key, const KeyDataCallback &callback, Handle *storage) {
 		callback(key, std::move(val));
 	} else {
 		data::Value *val = new data::Value();
-		thread.perform([key, val, storage] (const Task &) -> bool {
+		thread.perform([key = key.str(), val, storage] (const Task &) -> bool {
 			*val = storage->getData(key);
 			return true;
-		}, [key, val, callback] (const Task &, bool) {
+		}, [key = key.str(), val, callback] (const Task &, bool) {
 			callback(key, std::move(*val));
 			delete val;
 		});
 	}
 }
 
-void set(const String &key, const data::Value &value, const KeyDataCallback &callback, Handle *storage) {
+void set(const StringView &key, const data::Value &value, const KeyDataCallback &callback, Handle *storage) {
 	if (!storage) {
 		storage = Handle::getInstance();
 	}
@@ -210,10 +210,10 @@ void set(const String &key, const data::Value &value, const KeyDataCallback &cal
 		}
 	} else {
 		data::Value *val = new data::Value(value);
-		thread.perform([key, val, storage] (const Task &) -> bool {
+		thread.perform([key = key.str(), val, storage] (const Task &) -> bool {
 			storage->updateData(key, *val);
 			return true;
-		}, [key, val, callback] (const Task &, bool) {
+		}, [key = key.str(), val, callback] (const Task &, bool) {
 			if (callback) {
 				callback(key, std::move(*val));
 			}
@@ -222,7 +222,7 @@ void set(const String &key, const data::Value &value, const KeyDataCallback &cal
 	}
 }
 
-void set(const String &key, data::Value &&value, const KeyDataCallback &callback, Handle *storage) {
+void set(const StringView &key, data::Value &&value, const KeyDataCallback &callback, Handle *storage) {
 	if (!storage) {
 		storage = Handle::getInstance();
 	}
@@ -234,10 +234,10 @@ void set(const String &key, data::Value &&value, const KeyDataCallback &callback
 		}
 	} else {
 		data::Value *val = new data::Value(std::move(value));
-		thread.perform([key, val, storage] (const Task &) -> bool {
+		thread.perform([key = key.str(), val, storage] (const Task &) -> bool {
 			storage->updateData(key, *val);
 			return true;
-		}, [key, val, callback] (const Task &, bool) {
+		}, [key = key.str(), val, callback] (const Task &, bool) {
 			if (callback) {
 				callback(key, std::move(*val));
 			}
@@ -246,7 +246,7 @@ void set(const String &key, data::Value &&value, const KeyDataCallback &callback
 	}
 }
 
-void remove(const String &key, const KeyCallback &callback, Handle *storage) {
+void remove(const StringView &key, const KeyCallback &callback, Handle *storage) {
 	if (!storage) {
 		storage = Handle::getInstance();
 	}
@@ -257,10 +257,10 @@ void remove(const String &key, const KeyCallback &callback, Handle *storage) {
 			callback(key);
 		}
 	} else {
-		thread.perform([key, storage] (const Task &) -> bool {
+		thread.perform([key = key.str(), storage] (const Task &) -> bool {
 			storage->removeData(key);
 			return true;
-		}, [key, callback] (const Task &, bool) {
+		}, [key = key.str(), callback] (const Task &, bool) {
 			if (callback) {
 				callback(key);
 			}
@@ -286,16 +286,16 @@ Scheme::Field &Scheme::Field::operator= (Field &&other) {
 
 
 
-Scheme::Filter::Filter(const String &f, int64_t v) {
+Scheme::Filter::Filter(const StringView &f, int64_t v) {
 	type = Integer;
-	field = f;
+	field = f.str();
 	valueInteger = v;
 }
 
-Scheme::Filter::Filter(const String &f, const String &v, bool like) {
+Scheme::Filter::Filter(const StringView &f, const StringView &v, bool like) {
 	type = (like)?(Like):(Text);
-	field = f;
-	valueString = v;
+	field = f.str();
+	valueString = v.str();
 }
 
 Scheme::Filter::Filter(Filter &&other) {
@@ -388,12 +388,12 @@ Scheme::Command *Scheme::Command::select(int64_t value) {
 	return filterBy(field, value);
 }
 
-Scheme::Command *Scheme::Command::select(const String &value) {
+Scheme::Command *Scheme::Command::select(const StringView &value) {
 	auto field = _scheme->_internal->_primary;
 	return filterBy(field, value);
 }
 
-Scheme::Command *Scheme::Command::filterBy(const String &field, int64_t value) {
+Scheme::Command *Scheme::Command::filterBy(const StringView &field, int64_t value) {
 	if (_action == Insert) {
 		_valid = false;
 		log::text("Storage", "Scheme command: filter is not allowed for Insert command");
@@ -401,14 +401,14 @@ Scheme::Command *Scheme::Command::filterBy(const String &field, int64_t value) {
 	}
 	if (!_scheme->_internal->isFieldAllowed(field, Type::Integer)) {
 		_valid = false;
-		log::format("Storage", "Scheme command: field '%s' is not Integer", field.c_str());
+		log::text("Storage", toString("Scheme command: field '", field, "' is not Integer"));
 		return this;
 	}
 	_data.filters.emplace_back(_scheme->_internal->resolveAlias(field), value);
 	return this;
 }
 
-Scheme::Command *Scheme::Command::filterBy(const String &field, const String &value) {
+Scheme::Command *Scheme::Command::filterBy(const StringView &field, const StringView &value) {
 	if (_action == Insert) {
 		_valid = false;
 		log::text("Storage", "Scheme command: filter is not allowed for Insert command");
@@ -416,14 +416,14 @@ Scheme::Command *Scheme::Command::filterBy(const String &field, const String &va
 	}
 	if (!_scheme->_internal->isFieldAllowed(field, Type::Text)) {
 		_valid = false;
-		log::format("Storage", "Scheme command: field '%s' is not Text", field.c_str());
+		log::text("Storage", toString("Scheme command: field '", field, "' is not Text"));
 		return this;
 	}
 	_data.filters.emplace_back(_scheme->_internal->resolveAlias(field), value, false);
 	return this;
 }
 
-Scheme::Command *Scheme::Command::filterLike(const String &field, const String &value) {
+Scheme::Command *Scheme::Command::filterLike(const StringView &field, const StringView &value) {
 	if (_action == Insert) {
 		_valid = false;
 		log::text("Storage", "Scheme command: filter is not allowed for Insert command");
@@ -431,14 +431,14 @@ Scheme::Command *Scheme::Command::filterLike(const String &field, const String &
 	}
 	if (!_scheme->_internal->isFieldAllowed(field, Type::Text)) {
 		_valid = false;
-		log::format("Storage", "Scheme command: field '%s' is not Text", field.c_str());
+		log::text("Storage", toString("Scheme command: field '", field, "' is not Text"));
 		return this;
 	}
 	_data.filters.emplace_back(_scheme->_internal->resolveAlias(field), value, true);
 	return this;
 }
 
-Scheme::Command *Scheme::Command::orderBy(const String &field, Flags orderMode) {
+Scheme::Command *Scheme::Command::orderBy(const StringView &field, Flags orderMode) {
 	if (_action != Get) {
 		_valid = false;
 		log::text("Storage", "Scheme command: ordering is only allowed for Get command");
@@ -446,10 +446,10 @@ Scheme::Command *Scheme::Command::orderBy(const String &field, Flags orderMode) 
 	}
 	if (!_scheme->_internal->isOrderingAllowed(field, orderMode)) {
 		_valid = false;
-		log::format("Storage", "Scheme command: ordering by '%s' is not allowed", field.c_str());
+		log::text("Storage", toString("Scheme command: ordering by '", field, "' is not allowed"));
 		return this;
 	}
-	_order = _scheme->_internal->resolveAlias(field);
+	_order = _scheme->_internal->resolveAlias(field).str();
 	_orderMode = orderMode;
 	return this;
 }
@@ -537,11 +537,11 @@ Scheme &Scheme::operator= (Scheme &&other) {
 	return *this;
 }
 
-String Scheme::getName() const {
+StringView Scheme::getName() const {
 	if (_internal) {
 		return _internal->getName();
 	} else {
-		return "";
+		return StringView();
 	}
 }
 
@@ -608,7 +608,7 @@ bool Scheme::perform(const String &sqlString, const DataCallback &cb) const {
 }
 
 
-Scheme::Internal *Scheme::Internal::create(const String &name, FieldsList &&list, AliasesList &&aliases, Handle *internal) {
+Scheme::Internal *Scheme::Internal::create(const StringView &name, FieldsList &&list, AliasesList &&aliases, Handle *internal) {
 	auto pRet = new Internal(internal);
 	if (pRet->init(name, std::move(list), std::move(aliases))) {
 		return pRet;
@@ -625,7 +625,7 @@ Scheme::Internal::Internal(Handle *internal) : _custom("__data__") {
 	_storage = internal;
 }
 
-bool Scheme::Internal::init(const String &name, FieldsList &&list, AliasesList &&aliases) {
+bool Scheme::Internal::init(const StringView &name, FieldsList &&list, AliasesList &&aliases) {
 	for (auto v = list.begin(); v != list.end(); v ++) {
 		if (v->name == _custom) {
 			log::text("Storage", "Scheme: field name is matched internal custom data field name in mysterious way");
@@ -643,7 +643,7 @@ bool Scheme::Internal::init(const String &name, FieldsList &&list, AliasesList &
 			log::format("Storage", "Scheme WARNING: there is no field '%s' to define alias '%s'", p->second.c_str(), p->first.c_str());
 		}
 	}
-	_name = name;
+	_name = name.str();
 	return initialize();
 }
 
@@ -833,25 +833,25 @@ String Scheme::Internal::getAlterCommand(const Field &field) {
 	return str.str();
 }
 
-bool Scheme::Internal::isOrderingAllowed(const String &origField, Flags ordering) {
-	String field = resolveAlias(origField);
+bool Scheme::Internal::isOrderingAllowed(const StringView &origField, Flags ordering) {
+	auto field = resolveAlias(origField);
 	if (field.empty()) {
 		return true;
 	}
 
 	if (ordering != IndexAsc && ordering != IndexDesc) {
-		log::format("Storage", "Storage: %s: invalid ordering direction flag", _name.c_str());
+		log::text("Storage", toString("Storage: ", _name, ": invalid ordering direction flag"));
 		return false;
 	}
 
 	auto it = _fields.find(field);
 	if (it == _fields.end()) {
-		log::format("Storage", "Storage: %s: ordering by field %s failed: no such field", _name.c_str(), field.c_str());
+		log::text("Storage", toString("Storage: ", _name, ": ordering by field ", field, " failed: no such field"));
 		return false;
 	} else {
 		auto &f = it->second;
 		if ((f.flags & ordering) == 0 && it->first != _primary) {
-			log::format("Storage", "Storage: %s: ordering by field %s failed: no index for specified diration field", _name.c_str(), field.c_str());
+			log::text("Storage", toString("Storage: ", _name, ": ordering by field ", field, " failed: no index for specified diration field"));
 			return false;
 		}
 	}
@@ -859,11 +859,11 @@ bool Scheme::Internal::isOrderingAllowed(const String &origField, Flags ordering
 	return true;
 }
 
-bool Scheme::Internal::isFieldAllowed(const String &origField, Type type) {
-	String field = origField;
+bool Scheme::Internal::isFieldAllowed(const StringView &origField, Type type) {
+	auto field = origField;
 	if (field.empty()) {
 		if (_primary.empty()) {
-			log::format("Storage", "Storage: %s: no primary key", _name.c_str());
+			log::text("Storage", toString("Storage: ", _name, ": no primary key"));
 			return false;
 		}
 		field = _primary;
@@ -873,12 +873,12 @@ bool Scheme::Internal::isFieldAllowed(const String &origField, Type type) {
 
 	auto it = _fields.find(field);
 	if (it == _fields.end()) {
-		log::format("Storage", "Storage: %s: %s: no such field", _name.c_str(), field.c_str());
+		log::text("Storage", toString("Storage: ", _name, ": ", field, ": no such field"));
 		return false;
 	} else {
 		auto &f = it->second;
 		if (f.type != type) {
-			log::format("Storage", "Storage: %s: %s: type mismatch", _name.c_str(), it->first.c_str());
+			log::text("Storage", toString("Storage: ", _name, ": ", it->first, ": type mismatch"));
 			return false;
 		}
 	}
@@ -918,8 +918,8 @@ bool Scheme::Internal::isValueAllowed(const data::Value &value) {
 	return false;
 }
 
-bool Scheme::Internal::isValueFieldAllowed(const String &name, const data::Value &value) {
-	String field = resolveAlias(name);
+bool Scheme::Internal::isValueFieldAllowed(const StringView &name, const data::Value &value) {
+	auto field = resolveAlias(name);
 	auto it = _fields.find(field);
 	if (it == _fields.end()) {
 		return true;
@@ -930,7 +930,7 @@ bool Scheme::Internal::isValueFieldAllowed(const String &name, const data::Value
 	return false;
 }
 
-bool Scheme::Internal::isPrimaryKey(const String &name) {
+bool Scheme::Internal::isPrimaryKey(const StringView &name) {
 	return _primary == resolveAlias(name);
 }
 
@@ -954,7 +954,7 @@ bool Scheme::Internal::isTypeMatched(Type type, const data::Value &value) {
 	return false;
 }
 
-String Scheme::Internal::resolveAlias(const String &field) {
+StringView Scheme::Internal::resolveAlias(const StringView &field) {
 	auto it = _aliases.find(field);
 	if (it != _aliases.end()) {
 		return it->second;
@@ -1003,7 +1003,7 @@ bool Scheme::Internal::perform(Scheme::Command *cmd) {
 	return true;
 }
 
-bool Scheme::Internal::perform(const String &sql, const DataCallback &cb) {
+bool Scheme::Internal::perform(const StringView &sql, const DataCallback &cb) {
 	auto storage = _storage;
 	auto &thread = storage->getThread();
 
@@ -1014,7 +1014,7 @@ bool Scheme::Internal::perform(const String &sql, const DataCallback &cb) {
 		}
 	} else {
 		data::Value *val = new data::Value();
-		thread.perform([this, sql, val] (const Task &) -> bool {
+		thread.perform([this, sql = sql.str(), val] (const Task &) -> bool {
 			*val = performCommand(sql);
 			return true;
 		}, [cb, val] (const Task &, bool) {
@@ -1097,7 +1097,7 @@ data::Value Scheme::Internal::performCommand(Scheme::Command *cmd) {
 	}
 }
 
-data::Value Scheme::Internal::performCommand(const String &query) {
+data::Value Scheme::Internal::performCommand(const StringView &query) {
 	auto storage = _storage;
 	auto stmt = storage->prepare(query);
 
@@ -1463,7 +1463,7 @@ static int StorageInternal_explain_result(void *, int n, char **fields, char **v
 }
 #endif
 
-int Handle::prepareStmt(sqlite3_stmt **ppStmt, const String &zSql) {
+int Handle::prepareStmt(sqlite3_stmt **ppStmt, const StringView &zSql) {
 	auto it = _stmts.find(zSql);
 	if (it != _stmts.end()) {
 		*ppStmt = it->second;
@@ -1478,9 +1478,9 @@ int Handle::prepareStmt(sqlite3_stmt **ppStmt, const String &zSql) {
 	}
 #endif
 
-	auto err = sqlite3_prepare_v2(_db, zSql.c_str(), -1, ppStmt, NULL);
+	auto err = sqlite3_prepare_v2(_db, zSql.data(), zSql.size(), ppStmt, NULL);
 	if (err == SQLITE_OK) {
-		_stmts.insert(std::make_pair(zSql, *ppStmt));
+		_stmts.insert(std::make_pair(zSql.str(), *ppStmt));
 	}
 	return err;
 }
@@ -1493,9 +1493,9 @@ Handle *Handle::getInstance() {
 	return s_sharedInternal;
 }
 
-Handle::Handle(const String &path) : Handle("SqlStorageThread", path) { }
+Handle::Handle(const StringView &path) : Handle("SqlStorageThread", path) { }
 
-Handle::Handle(const String &name, const String &ipath) : _db(nullptr), _thread(name) {
+Handle::Handle(const StringView &name, const StringView &ipath) : _db(nullptr), _thread(name) {
 	String path = filesystem_native::posixToNative(ipath);
 	_version = sqlite3_libversion_number();
 
@@ -1568,7 +1568,7 @@ Thread &Handle::getThread() {
 	return _thread;
 }
 
-void Handle::updateData(const String &key, const data::Value &value) {
+void Handle::updateData(const StringView &key, const data::Value &value) {
 	int ok = SQLITE_OK;
 
 	Bytes b(data::write(value, _kvIsBinary?data::EncodeFormat::Cbor:data::EncodeFormat::Json));
@@ -1588,7 +1588,7 @@ void Handle::updateData(const String &key, const data::Value &value) {
 	sqlite3_reset(_kv_update_stmt);
 }
 
-void Handle::removeData(const String &key) {
+void Handle::removeData(const StringView &key) {
 	int ok = SQLITE_OK;
 
 	ok = (ok == SQLITE_OK)?sqlite3_bind_text(_kv_remove_stmt, 1, key.data(), key.size(), SQLITE_STATIC):ok;
@@ -1601,7 +1601,7 @@ void Handle::removeData(const String &key) {
 	sqlite3_reset(_kv_remove_stmt);
 }
 
-data::Value Handle::getData(const String &key) {
+data::Value Handle::getData(const StringView &key) {
 	data::Value ret;
 	int ok = SQLITE_OK;
 
@@ -1623,9 +1623,9 @@ data::Value Handle::getData(const String &key) {
 	return ret;
 }
 
-bool Handle::createClass(const String &cmd) {
+bool Handle::createClass(const StringView &cmd) {
 	char *errorBuffer = NULL;
-	auto ok = sqlite3_exec(_db, cmd.c_str(), NULL, NULL, &errorBuffer);
+	auto ok = sqlite3_exec(_db, cmd.terminated() ? cmd.data() : cmd.str().data(), NULL, NULL, &errorBuffer);
 	if (errorBuffer) {
 		log::text("Storage", cmd);
 		log::format("Storage", "SQLite: CREATE error: %d: %s", ok, errorBuffer);
@@ -1635,7 +1635,7 @@ bool Handle::createClass(const String &cmd) {
 	return true;
 }
 
-sqlite3_stmt *Handle::prepare(const String &zSql) {
+sqlite3_stmt *Handle::prepare(const StringView &zSql) {
 	sqlite3_stmt *stmt = nullptr;
 	auto err = prepareStmt(&stmt, zSql);
 	if (err == SQLITE_OK) {
@@ -1646,7 +1646,7 @@ sqlite3_stmt *Handle::prepare(const String &zSql) {
 	}
 }
 
-void Handle::release(const String &zSql) {
+void Handle::release(const StringView &zSql) {
 	auto it = _stmts.find(zSql);
 	if (it != _stmts.end()) {
 		sqlite3_finalize(it->second);
@@ -1673,12 +1673,12 @@ static int Handle_performCallback(void *ud, int count, char **items, char **cols
 	return 0;
 }
 
-data::Value Handle::perform(const String &str, bool reduce) {
+data::Value Handle::perform(const StringView &str, bool reduce) {
 	Handle_CallbackHandle h;
 	h.handle = this;
 
 	char *errorBuffer = NULL;
-	auto ok = sqlite3_exec(_db, str.c_str(), &Handle_performCallback, (void *)&h, &errorBuffer);
+	auto ok = sqlite3_exec(_db, str.terminated() ? str.data() : str.str().data(), &Handle_performCallback, (void *)&h, &errorBuffer);
 	if (errorBuffer) {
 		log::text("Storage", str);
 		log::format("Storage", "SQLite error: %d: %s", ok, errorBuffer);

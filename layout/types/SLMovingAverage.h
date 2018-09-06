@@ -31,7 +31,7 @@ template <size_t Count>
 class MovingAverage {
 public:
     void dropValues() {
-        for (int i = 0; i < Count; i++) {
+        for (size_t i = 0; i < Count; i++) {
             _values[i] = 0;
         }
     }

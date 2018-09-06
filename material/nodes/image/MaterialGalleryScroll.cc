@@ -112,7 +112,10 @@ bool GalleryScroll::init(const ImageCallback &cb, const Vector<String> &vec, siz
 	_overscrollRight = addChildNode(overscrollRight, maxOf<int>() - 2);
 
 	auto l = Rc<gesture::Listener>::create();
-	l->setTouchFilter([] (const Vec2 &loc, const gesture::Listener::DefaultTouchFilter &f) {
+	l->setTouchFilter([this] (const Vec2 &loc, const gesture::Listener::DefaultTouchFilter &f) {
+		if (!_primary) {
+			return false;
+		}
 		return f(loc);
 	});
 	l->setTapCallback([this] (gesture::Event ev, const gesture::Tap &t) {
@@ -456,6 +459,10 @@ void GalleryScroll::setLoaderColor(const Color &c) {
 }
 const Color &GalleryScroll::getLoaderColor() const {
 	return _loaderColor;
+}
+
+const Vector<String> &GalleryScroll::getImages() const {
+	return _images;
 }
 
 NS_MD_END

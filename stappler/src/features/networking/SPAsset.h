@@ -51,10 +51,10 @@ public:
 	uint64_t getAssetId() const { return _id; }
 	size_t getSize() const { return _size; }
 
-	const String & getPath() const { return _path; }
-	const String & getUrl() const { return _url; }
-	const String & getContentType() const { return _contentType; }
-	const String & getETag() const { return _etag; }
+	StringView getPath() const { return _path; }
+	StringView getUrl() const { return _url; }
+	StringView getContentType() const { return _contentType; }
+	StringView getETag() const { return _etag; }
 
 protected:
 	friend class Asset;
@@ -101,10 +101,10 @@ public:
 
 	void setDownloadCallback(const DownloadCallback &);
 
-	const String &getFilePath() const { return _path; }
-	const String &getCachePath() const { return _cachePath; }
-	const String &getUrl() const { return _url; }
-    const String &getContentType() const { return _contentType; }
+	StringView getFilePath() const { return _path; }
+	StringView getCachePath() const { return _cachePath; }
+	StringView getUrl() const { return _url; }
+	StringView getContentType() const { return _contentType; }
 
     bool isDownloadInProgress() const { return _downloadInProgress; }
 	float getProgress() const { return _progress; }
@@ -112,7 +112,7 @@ public:
 	uint64_t getMTime() const { return _mtime; }
 	uint64_t getId() const { return _id; }
 	size_t getSize() const { return _size; }
-	const String getETag() const { return _etag; }
+	StringView getETag() const { return _etag; }
 
 	Time getTouch() const { return _touch; }
 	TimeInterval getTtl() const { return _ttl; }
@@ -126,7 +126,7 @@ public:
 
 	void onStarted();
 	void onProgress(float progress);
-	void onCompleted(bool success, bool cacheRequest, const String &file, const String &ct, const String &etag, uint64_t mtime, size_t size);
+	void onCompleted(bool success, bool cacheRequest, const StringView &file, const StringView &ct, const StringView &etag, uint64_t mtime, size_t size);
 	void onFile();
 
 	void save();
@@ -143,7 +143,7 @@ protected:
     Asset(const data::Value &, const DownloadCallback &);
 
     void update(Update);
-    bool swapFiles(const String &file, const String &ct, const String &etag, uint64_t mtime, size_t size);
+    bool swapFiles(const StringView &file, const StringView &ct, const StringView &etag, uint64_t mtime, size_t size);
     void touchWithTime(Time t);
 
     virtual void onLocked(Lock) override;

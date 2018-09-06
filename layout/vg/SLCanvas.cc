@@ -148,8 +148,8 @@ void Canvas::beginBatch() {
 void Canvas::endBatch() {
 	if (!_tess.empty()) {
 		flushBatch();
-		_isBatch = false;
 	}
+	_isBatch = false;
 }
 
 void Canvas::draw(const Image &img) {

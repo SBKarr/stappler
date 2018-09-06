@@ -1229,7 +1229,7 @@ BitmapFormat::write_fn BitmapFormat::getWriteFn() const { return write_ptr; }
 BitmapFormat::save_fn BitmapFormat::getSaveFn() const { return save_ptr; }
 
 
-bool Bitmap::getImageSize(const String &path, size_t &width, size_t &height) {
+bool Bitmap::getImageSize(const StringView &path, size_t &width, size_t &height) {
 	auto file = filesystem::openForReading(path);
 	return getImageSize(file, width, height);
 }
@@ -1269,7 +1269,7 @@ bool Bitmap::getImageSize(const io::Producer &file, size_t &width, size_t &heigh
 	return false;
 }
 
-bool Bitmap::isImage(const String &path, bool readable) {
+bool Bitmap::isImage(const StringView &path, bool readable) {
 	auto file = filesystem::openForReading(path);
 	return isImage(file, readable);
 }
@@ -1317,7 +1317,7 @@ bool Bitmap::check(FileFormat fmt, const uint8_t * data, size_t dataLen) {
 	return s_defaultFormats[toInt(fmt)].is(data, dataLen);
 }
 
-bool Bitmap::check(const String &name, const uint8_t * data, size_t dataLen) {
+bool Bitmap::check(const StringView &name, const uint8_t * data, size_t dataLen) {
 	Vector<BitmapFormat::check_fn> fns;
 
 	s_formatListMutex.lock();

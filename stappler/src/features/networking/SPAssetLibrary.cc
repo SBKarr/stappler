@@ -127,7 +127,7 @@ void AssetLibrary::init() {
 
 	auto &thread = storage::thread(getAssetStorage());
 	thread.perform([this, downloads] (const Task &) -> bool {
-		storage::get("SP.AssetLibrary.Time", [this] (const String &key, data::Value &&value) {
+		storage::get("SP.AssetLibrary.Time", [this] (const StringView &key, data::Value &&value) {
 			_correctionTime.setMicroseconds(value.getInteger("time"));
 			_correctionNegative = value.getBool("negative");
 		}, getAssetStorage());
@@ -148,7 +148,7 @@ void AssetLibrary::init() {
 		for (auto &it : *downloads) {
 			_assets.insert(pair(it.first->getId(), it.first));
 			_downloads.emplace(it.first, it.second);
-			startDownload(it.second);
+			startDownload(it.second.get());
 		}
 		delete downloads;
 
@@ -229,14 +229,14 @@ void AssetLibrary::removeDownload(AssetDownload *d) {
 	_downloads.erase(a);
 }
 
-String AssetLibrary::getTempPath(const String &path) const {
-	return path + ".tmp";
+String AssetLibrary::getTempPath(const StringView &path) const {
+	return toString(path, ".tmp");
 }
 
 bool AssetLibrary::isLiveAsset(uint64_t id) const {
 	return getLiveAsset(id) != nullptr;
 }
-bool AssetLibrary::isLiveAsset(const String &url, const String &path) const {
+bool AssetLibrary::isLiveAsset(const StringView &url, const StringView &path) const {
 	return getLiveAsset(url, path) != nullptr;
 }
 
@@ -246,7 +246,7 @@ void AssetLibrary::updateAssets() {
 	}
 }
 
-void AssetLibrary::addAssetFile(const String &path, const String &url, uint64_t asset, uint64_t ctime) {
+void AssetLibrary::addAssetFile(const StringView &path, const StringView &url, uint64_t asset, uint64_t ctime) {
 	_stateClass.insert(data::Value({
 		pair("path", data::Value(path)),
 		pair("url", data::Value(url)),
@@ -254,7 +254,7 @@ void AssetLibrary::addAssetFile(const String &path, const String &url, uint64_t 
 		pair("asset", data::Value(int64_t(asset))),
 	}))->perform();
 }
-void AssetLibrary::removeAssetFile(const String &path) {
+void AssetLibrary::removeAssetFile(const StringView &path) {
 	_stateClass.remove()->select(path)->perform();
 }
 
@@ -277,12 +277,12 @@ Asset *AssetLibrary::getLiveAsset(uint64_t id) const {
 	return nullptr;
 }
 
-Asset *AssetLibrary::getLiveAsset(const String &url, const String &path) const {
+Asset *AssetLibrary::getLiveAsset(const StringView &url, const StringView &path) const {
 	return getLiveAsset(getAssetId(url, path));
 }
 
-uint64_t AssetLibrary::getAssetId(const String &url, const String &path) const {
-	return string::stdlibHashUnsigned(url +"|"+ filepath::canonical(path));
+uint64_t AssetLibrary::getAssetId(const StringView &url, const StringView &path) const {
+	return string::stdlibHashUnsigned(toString(url, "|", filepath::canonical(path)));
 }
 
 
@@ -302,8 +302,8 @@ void AssetLibrary::setServerDate(const Time &serv) {
 	storage::set("SP.AssetLibrary.Time", move(d), nullptr, getAssetStorage());
 }
 
-bool AssetLibrary::getAsset(const AssetCallback &cb, const String &url,
-		const String &path, TimeInterval ttl, const String &cache, const DownloadCallback &dcb) {
+bool AssetLibrary::getAsset(const AssetCallback &cb, const StringView &url,
+		const StringView &path, TimeInterval ttl, const StringView &cache, const DownloadCallback &dcb) {
 	if (!_loaded) {
 		_tmpRequests.push_back(AssetRequest(cb, url, path, ttl, cache, dcb));
 		return true;
@@ -326,7 +326,7 @@ bool AssetLibrary::getAsset(const AssetCallback &cb, const String &url,
 
 		auto &thread = storage::thread(getAssetStorage());
 		Asset ** assetPtr = new (Asset *) (nullptr);
-		thread.perform([this, assetPtr, id, url, path, cache, ttl, dcb] (const Task &) -> bool {
+		thread.perform([this, assetPtr, id, url = url.str(), path = path.str(), cache = cache.str(), ttl, dcb] (const Task &) -> bool {
 			data::Value data;
 			_assetsClass.get([&data] (data::Value &&d) {
 				if (d.isArray() && d.size() > 0) {
@@ -360,10 +360,10 @@ bool AssetLibrary::getAsset(const AssetCallback &cb, const String &url,
 	return true;
 }
 
-AssetLibrary::AssetRequest::AssetRequest(const AssetCallback &cb, const String &url, const String &path,
-		TimeInterval ttl, const String &cacheDir, const DownloadCallback &dcb)
+AssetLibrary::AssetRequest::AssetRequest(const AssetCallback &cb, const StringView &url, const StringView &path,
+		TimeInterval ttl, const StringView &cacheDir, const DownloadCallback &dcb)
 : callback(cb), id(AssetLibrary::getInstance()->getAssetId(url, path))
-, url(url), path(path), ttl(ttl), cacheDir(cacheDir), download(dcb) { }
+, url(url.str()), path(path.str()), ttl(ttl), cacheDir(cacheDir.str()), download(dcb) { }
 
 bool AssetLibrary::getAssets(const Vector<AssetRequest> &vec, const AssetVecCallback &cb) {
 	if (!_loaded) {
@@ -502,7 +502,7 @@ void AssetLibrary::performGetAssets(AssetVec &assetsVec, const Vector<AssetReque
 	}
 }
 
-Asset *AssetLibrary::acquireLiveAsset(const String &url, const String &path) {
+Asset *AssetLibrary::acquireLiveAsset(const StringView &url, const StringView &path) {
 	uint64_t id = getAssetId(url, path);
 	return getLiveAsset(id);
 }
@@ -535,7 +535,7 @@ AssetDownload * AssetLibrary::downloadAsset(Asset *asset) {
 		if (Device::getInstance()->isNetworkOnline()) {
 			auto d = Rc<AssetDownload>::create(asset, getTempPath(asset->getFilePath()));
 			_downloads.emplace(asset, d);
-			startDownload(d);
+			startDownload(d.get());
 			return d;
 		}
 		return nullptr;

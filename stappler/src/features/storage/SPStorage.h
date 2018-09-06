@@ -47,20 +47,20 @@ THE SOFTWARE.
 NS_SP_EXT_BEGIN(storage)
 
 Handle *defaultStorage();
-Handle *create(const String &name, const String &filePath);
+Handle *create(const StringView &name, const StringView &filePath);
 
 void finalize(Handle *);
 
 Thread & thread(Handle * = nullptr);
 
-using KeyDataCallback = Function<void(const String &key, data::Value && value)>;
-using KeyCallback = Function<void(const String &key)>;
+using KeyDataCallback = Function<void(const StringView &key, data::Value && value)>;
+using KeyCallback = Function<void(const StringView &key)>;
 
-void get(const String &key, const data::DataCallback &callback, Handle * = nullptr);
-void get(const String &key, const KeyDataCallback &callback, Handle * = nullptr);
-void set(const String &key, const data::Value &value, const KeyDataCallback &callback = nullptr, Handle * = nullptr);
-void set(const String &key, data::Value &&value, const KeyDataCallback &callback = nullptr, Handle * = nullptr);
-void remove(const String &key, const KeyCallback &callback = nullptr, Handle * = nullptr);
+void get(const StringView &key, const data::DataCallback &callback, Handle * = nullptr);
+void get(const StringView &key, const KeyDataCallback &callback, Handle * = nullptr);
+void set(const StringView &key, const data::Value &value, const KeyDataCallback &callback = nullptr, Handle * = nullptr);
+void set(const StringView &key, data::Value &&value, const KeyDataCallback &callback = nullptr, Handle * = nullptr);
+void remove(const StringView &key, const KeyCallback &callback = nullptr, Handle * = nullptr);
 
 NS_SP_EXT_END(storage)
 

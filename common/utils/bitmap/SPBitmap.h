@@ -79,15 +79,15 @@ public:
 
 	using StrideFn = Function<uint32_t(PixelFormat, uint32_t)>;
 
-	static bool getImageSize(const String &file, size_t &width, size_t &height);
+	static bool getImageSize(const StringView &file, size_t &width, size_t &height);
 	static bool getImageSize(const io::Producer &file, size_t &width, size_t &height);
 
-	static bool isImage(const String &file, bool readable = true);
+	static bool isImage(const StringView &file, bool readable = true);
 	static bool isImage(const io::Producer &file, bool readable = true);
 	static bool isImage(const uint8_t * data, size_t dataLen, bool readable = true);
 
 	static bool check(FileFormat, const uint8_t * data, size_t dataLen);
-	static bool check(const String &, const uint8_t * data, size_t dataLen);
+	static bool check(const StringView &, const uint8_t * data, size_t dataLen);
 
 	static uint8_t getBytesPerPixel(PixelFormat);
 

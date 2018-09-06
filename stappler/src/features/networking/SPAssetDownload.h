@@ -35,7 +35,7 @@ public:
 	};
 
 	virtual bool init(Asset *, CacheRequestType);
-	virtual bool init(Asset *, const String &);
+	virtual bool init(Asset *, const StringView &);
 
 	virtual ~AssetDownload();
 

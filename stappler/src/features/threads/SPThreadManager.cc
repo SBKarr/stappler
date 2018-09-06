@@ -329,14 +329,14 @@ void Thread::performAsync(const ExecuteCallback &exec, const CompleteCallback & 
 	performAsync(Rc<Task>::create(exec, complete, obj));
 }
 
-Thread::Thread(const std::string &name) : _name(name) { }
+Thread::Thread(const StringView &name) : _name(name.str()) { }
 Thread::~Thread() {
 	if (auto tm = ThreadManager::getInstance()) {
 		tm->removeThread(_id);
 	}
 }
 
-Thread::Thread(const std::string &name, uint32_t count) : _count(count), _name(name) { }
+Thread::Thread(const StringView &name, uint32_t count) : _count(count), _name(name.str()) { }
 
 Thread::Thread(Thread &&other) {
 	_id = other._id;

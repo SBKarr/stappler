@@ -42,51 +42,51 @@ public:
     NetworkTask();
     virtual ~NetworkTask();
 
-    virtual bool init(Method method, const String &url);
+    virtual bool init(Method method, const StringView &url);
     virtual bool execute() override;
     virtual bool performQuery();
 
 	virtual void run();
 
-    void setAuthority(const String &user, const String &passwd = String());
+    void setAuthority(const StringView &user, const StringView &passwd = StringView());
 
 	/* Adds HTTP header line to request */
-    void addHeader(const String &header);
-    void addHeader(const String &header, const String &value);
+    void addHeader(const StringView &header);
+    void addHeader(const StringView &header, const StringView &value);
 
-	void setReceiveFile(const String &str, bool resumeDownload);
+	void setReceiveFile(const StringView &str, bool resumeDownload);
 	void setReceiveCallback(const IOCallback &cb);
 
-	void setSendFile(const String &str);
+	void setSendFile(const StringView &str);
 	void setSendCallback(const IOCallback &cb, size_t outSize);
-	void setSendData(const String &data);
+	void setSendData(const StringView &data);
 	void setSendData(const Bytes &data);
 	void setSendData(Bytes &&data);
 	void setSendData(const uint8_t *data, size_t size);
 	void setSendData(const data::Value &, data::EncodeFormat fmt = data::EncodeFormat());
 
     int32_t getResponseCode() const { return (int32_t)_handle.getResponseCode(); }
-	const String &getUrl() const { return _handle.getUrl(); }
-    const String &getError() const { return _handle.getError(); }
-    const String &getContentType() const { return _handle.getContentType(); }
+    StringView getUrl() const { return _handle.getUrl(); }
+    StringView getError() const { return _handle.getError(); }
+    StringView getContentType() const { return _handle.getContentType(); }
 	const Vector<String> &getRecievedHeaders() const { return _handle.getRecievedHeaders(); }
 
-	const String &getSendFile() const { return _handle.getSendFile(); }
-	const String &getReceiveFile() const { return _handle.getReceiveFile(); }
+	StringView getSendFile() const { return _handle.getSendFile(); }
+	StringView getReceiveFile() const { return _handle.getReceiveFile(); }
 
 	void setDebug(bool value) { _handle.setDebug(value); }
 	const StringStream &getDebugData() const { return _handle.getDebugData(); }
 
-	String getReceivedHeaderString(const String &h) const;
-	int64_t getReceivedHeaderInt(const String &h) const;
+	StringView getReceivedHeaderString(const StringView &h) const;
+	int64_t getReceivedHeaderInt(const StringView &h) const;
 
 	size_t getSize() const { return _size; }
 	int64_t getMTime() const { return _mtime; }
-	const String &getETag() const { return _etag; }
+	StringView getETag() const { return _etag; }
 
 	void setSize(size_t val) { _size = val; }
 	void setMTime(int64_t val) { _mtime = val; }
-	void setETag(const String &val) { _etag = val; }
+	void setETag(const StringView &val) { _etag = val.str(); }
 
 	NetworkHandle & getHandle() { return _handle; }
 	const NetworkHandle & getHandle() const { return _handle; }

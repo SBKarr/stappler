@@ -210,11 +210,20 @@ void PathNode::updateCanvas(layout::Subscription::Flags f) {
 		retain();
 		TextureCache::getInstance()->renderImageInBackground([this] (cocos2d::Texture2D *tex) {
 			_renderRequested = false;
-			if (tex != getTexture()) {
+			auto off = _offscreenTexture;
+			_offscreenTexture = getTexture();
+			if (off == tex) {
+				// fast swap
+				if (_textureAtlas) {
+				    _textureAtlas->setTexture(tex);
+				}
+
+				_texture = tex;
+			} else {
 				setTexture(tex);
 			}
 			release();
-		}, getTexture(), _format, *_image.get(), _contentSize, _autofit, _autofitPos, _density);
+		}, _offscreenTexture.get(), _format, *_image.get(), _contentSize, _autofit, _autofitPos, _density);
 	}
 }
 

@@ -290,6 +290,12 @@ bool Field::Slot::transformValue(const Scheme &scheme, data::Value &val) const {
 			return false;
 		}
 		break;
+	case Type::File:
+	case Type::Image:
+		if (val.isInteger()) {
+			return true;
+		}
+		break;
 	default:
 		return false;
 		break;

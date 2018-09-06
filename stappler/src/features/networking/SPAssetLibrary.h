@@ -59,8 +59,8 @@ public:
 		String cacheDir;
 		DownloadCallback download;
 
-		AssetRequest(const AssetCallback &, const String &url, const String &path,
-				TimeInterval ttl = TimeInterval(), const String &cacheDir = "", const DownloadCallback & = nullptr);
+		AssetRequest(const AssetCallback &, const StringView &url, const StringView &path,
+				TimeInterval ttl = TimeInterval(), const StringView &cacheDir = StringView(), const DownloadCallback & = nullptr);
 	};
 
 public:
@@ -74,25 +74,25 @@ public:
 	void setServerDate(const Time &t);
 
 	/* get asset from db, new asset is autoreleased */
-	bool getAsset(const AssetCallback &cb, const String &url, const String &path,
-			TimeInterval ttl = TimeInterval(), const String &cacheDir = "", const DownloadCallback & = nullptr);
+	bool getAsset(const AssetCallback &cb, const StringView &url, const StringView &path,
+			TimeInterval ttl = TimeInterval(), const StringView &cacheDir = StringView(), const DownloadCallback & = nullptr);
 
 	bool getAssets(const AssetRequestVec &, const AssetVecCallback & = nullptr);
 
-	Asset *acquireLiveAsset(const String &url, const String &path);
+	Asset *acquireLiveAsset(const StringView &url, const StringView &path);
 
 	bool isLoaded() const { return _loaded; }
-	uint64_t getAssetId(const String &url, const String &path) const;
+	uint64_t getAssetId(const StringView &url, const StringView &path) const;
 
-	String getTempPath(const String &) const;
+	String getTempPath(const StringView &) const;
 
 	bool isLiveAsset(uint64_t) const;
-	bool isLiveAsset(const String &url, const String &path) const;
+	bool isLiveAsset(const StringView &url, const StringView &path) const;
 
 	void updateAssets();
 
-	void addAssetFile(const String &, const String &, uint64_t asset, uint64_t ctime);
-	void removeAssetFile(const String &);
+	void addAssetFile(const StringView &, const StringView &, uint64_t asset, uint64_t ctime);
+	void removeAssetFile(const StringView &);
 
 	void finalize();
 
@@ -116,13 +116,13 @@ protected:
 
 	Time getCorrectTime() const;
 	Asset *getLiveAsset(uint64_t id) const;
-	Asset *getLiveAsset(const String &, const String &) const;
+	Asset *getLiveAsset(const StringView &, const StringView &) const;
 
 	void onAssetCreated(Asset *);
 
 	friend class storage::Handle;
 
-	void performGetAssets(AssetVec &, const std::vector<AssetRequest> &);
+	void performGetAssets(AssetVec &, const Vector<AssetRequest> &);
 
 	bool _loaded = false;
 

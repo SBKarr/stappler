@@ -154,7 +154,7 @@ protected:
 
 class TaskManager::Worker : public ThreadHandlerInterface {
 public:
-	Worker(TaskQueue *queue, uint32_t threadId, uint32_t workerId, const std::string &name)
+	Worker(TaskQueue *queue, uint32_t threadId, uint32_t workerId, const StringView &name)
 	: _queue(queue), _refCount(1), _shouldQuit() , _managerId(threadId)
 	, _workerId(workerId), _name(name) {
 		memory::pool::initialize();
@@ -225,7 +225,7 @@ protected:
 
 	uint32_t _managerId;
 	uint32_t _workerId;
-	std::string _name;
+	StringView _name;
 	memory::pool_t *_pool;
 };
 
@@ -235,7 +235,7 @@ NS_SP_BEGIN
 
 TaskManager::TaskManager(Thread *thread) : TaskManager(thread->getName(), thread->getCount(), thread->getId()) { }
 
-TaskManager::TaskManager(const std::string &name, uint32_t count, uint32_t threadId)
+TaskManager::TaskManager(const StringView &name, uint32_t count, uint32_t threadId)
 : _maxWorkers(count), _threadId(threadId), _name(name) { }
 
 TaskManager::~TaskManager() {

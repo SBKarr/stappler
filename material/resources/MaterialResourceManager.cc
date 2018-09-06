@@ -156,7 +156,7 @@ ResourceManager::ResourceManager() {
 	_iconStorageSmall = Rc<IconStorage>::create(stappler::screen::density(), 18, 18);
 	_iconStorageLarge = Rc<IconStorage>::create(stappler::screen::density(), 32, 32);
 
-	storage::get("Material.ResourceManager", [this] (const String &key, data::Value &&value) {
+	storage::get("Material.ResourceManager", [this] (const StringView &key, data::Value &&value) {
 		if (value.isDictionary()) {
 			float textFontScale = value.getDouble("TextFontScale", 1.0f);
 			_textFont->setFontScale(textFontScale);

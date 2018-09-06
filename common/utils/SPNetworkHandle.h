@@ -49,62 +49,62 @@ public:
 	using ProgressCallback = Function<int(int64_t, int64_t)>;
 	using IOCallback = Function<size_t(char *data, size_t size)>;
 
-public:
+	public:
 	NetworkHandle();
-    ~NetworkHandle();
+	~NetworkHandle();
 
-    bool init(Method method, const String &url);
-    bool perform();
+	bool init(Method method, const StringView &url);
+	bool perform();
 
-    void setRootCertificateFile(const String &);
-    void setCookieFile(const String &);
-    void setUserAgent(const String &);
-    void setUrl(const String &);
+	void setRootCertificateFile(const StringView &);
+	void setCookieFile(const StringView &);
+	void setUserAgent(const StringView &);
+	void setUrl(const StringView &);
 
-    void addHeader(const String &header);
-    void addHeader(const String &header, const String &value);
+	void addHeader(const StringView &header);
+	void addHeader(const StringView &header, const StringView &value);
 
-    void setMailFrom(const String &);
-    void addMailTo(const String &);
-    void setAuthority(const String &user, const String &passwd = String());
+	void setMailFrom(const StringView &);
+	void addMailTo(const StringView &);
+	void setAuthority(const StringView &user, const StringView &passwd = StringView());
 
-	void setReceiveFile(const String &str, bool resumeDownload);
+	void setReceiveFile(const StringView &str, bool resumeDownload);
 	void setReceiveCallback(const IOCallback &cb);
 	void setResumeDownload(bool value);
 
 	void setSendSize(size_t);
-	void setSendFile(const String &str);
+	void setSendFile(const StringView &str);
 	void setSendCallback(const IOCallback &cb, size_t outSize);
-	void setSendData(const String &data);
+	void setSendData(const StringView &data);
 	void setSendData(const Bytes &data);
 	void setSendData(Bytes &&data);
 	void setSendData(const uint8_t *data, size_t size);
 	void setSendData(const data::Value &, data::EncodeFormat fmt = data::EncodeFormat());
 
-    String getReceivedHeaderString(const String &h) const;
-    int64_t getReceivedHeaderInt(const String &h) const;
+	StringView getReceivedHeaderString(const StringView &h) const;
+	int64_t getReceivedHeaderInt(const StringView &h) const;
 
-    long getResponseCode() const { return _responseCode; }
-    long getErrorCode() const { return _errorCode; }
-    const String &getError() const { return _error; }
+	long getResponseCode() const { return _responseCode; }
+	long getErrorCode() const { return _errorCode; }
+	StringView getError() const { return _error; }
 
-    Method getMethod() const { return _method; }
-	const String &getUrl() const { return _url; }
-	const String &getRootCertificateFile() const { return _rootCertFile; }
-    const String &getCookieFile() const { return _cookieFile; }
-    const String &getUserAgent() const { return _userAgent; }
-    const String &getContentType() const { return _contentType; }
+	Method getMethod() const { return _method; }
+	StringView getUrl() const { return _url; }
+	StringView getRootCertificateFile() const { return _rootCertFile; }
+	StringView getCookieFile() const { return _cookieFile; }
+	StringView getUserAgent() const { return _userAgent; }
+	StringView getContentType() const { return _contentType; }
 	const Vector<String> &getRecievedHeaders() const { return _recievedHeaders; }
-	const String &getSendFile() const { return _sendFileName; }
-	const String &getReceiveFile() const { return _receiveFileName; }
+	StringView getSendFile() const { return _sendFileName; }
+	StringView getReceiveFile() const { return _receiveFileName; }
 
 	void setDebug(bool value) { _debug = value; }
 	void setReuse(bool value) { _reuse = value; }
 	void setSilent(bool value) { _silent = value; }
 	const StringStream &getDebugData() const { return _debugData; }
 
-    void setDownloadProgress(const ProgressCallback &callback);
-    void setUploadProgress(const ProgressCallback &callback);
+	void setDownloadProgress(const ProgressCallback &callback);
+	void setUploadProgress(const ProgressCallback &callback);
 
 protected:
 	struct Network;
@@ -175,14 +175,14 @@ protected:
 
     bool setupCurl(CURL *curl, char *errorBuffer);
     bool setupDebug(CURL *curl, bool debug);
-    bool setupRootCert(CURL *curl, const String &certPath);
+    bool setupRootCert(CURL *curl, const StringView &certPath);
     bool setupHeaders(CURL *curl, const Vector<String> &vec, curl_slist **headers);
-    bool setupUserAgent(CURL *curl, const String &agent);
-    bool setupUser(CURL *curl, const String &user, const String &password);
-    bool setupFrom(CURL *curl, const String &from);
+    bool setupUserAgent(CURL *curl, const StringView &agent);
+    bool setupUser(CURL *curl, const StringView &user, const StringView &password);
+    bool setupFrom(CURL *curl, const StringView &from);
     bool setupRecv(CURL *curl, const Vector<String> &vec, curl_slist **mailTo);
     bool setupProgress(CURL *curl, bool progress);
-    bool setupCookies(CURL *curl, const String &cookiePath);
+    bool setupCookies(CURL *curl, const StringView &cookiePath);
 
     bool setupReceive(CURL *curl, FILE * & inputFile, size_t &inputPos);
 

@@ -939,14 +939,14 @@ void FontController::performSourceUpdate() {
 					auto it = currentMap->find(a->getUrl());
 					if (it != currentMap->end()) {
 						if (it->second->match(a)) {
-							assets.emplace(a->getUrl(), it->second);
+							assets.emplace(a->getUrl().str(), it->second);
 							continue;
 						}
 					}
 				}
 				auto file = a->cloneFile();
 				if (file) {
-					assets.emplace(a->getUrl(), std::move(file));
+					assets.emplace(a->getUrl().str(), std::move(file));
 					assetsDirty = true;
 				}
 				a->releaseReadLock(this);

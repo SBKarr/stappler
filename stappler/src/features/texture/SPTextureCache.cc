@@ -165,18 +165,18 @@ cocos2d::Texture2D::PixelFormat TextureCache::getPixelFormat(Bitmap::PixelFormat
 }
 
 
-void TextureCache::addTexture(const String &ifile, const Callback &cb, bool forceReload) {
+void TextureCache::addTexture(const StringView &ifile, const Callback &cb, bool forceReload) {
 	addTexture(ifile, screen::density(), BitmapFormat::Auto, cb, forceReload);
 }
-void TextureCache::addTexture(const String &ifile, float density, const Callback &cb, bool forceReload) {
+void TextureCache::addTexture(const StringView &ifile, float density, const Callback &cb, bool forceReload) {
 	addTexture(ifile, density, BitmapFormat::Auto, cb, forceReload);
 }
-void TextureCache::addTexture(const String &ifile, float density, BitmapFormat fmt, const Callback &cb, bool forceReload) {
+void TextureCache::addTexture(const StringView &ifile, float density, BitmapFormat fmt, const Callback &cb, bool forceReload) {
 	if (ifile.empty()) {
 		return;
 	}
 
-	TextureIndex index{ifile, fmt, density};
+	TextureIndex index{ifile.str(), fmt, density};
 	auto pos = index.file.find("://");
 	if (pos != String::npos) {
 		Url url(index.file);
@@ -301,9 +301,9 @@ void TextureCache::addTexture(Asset *a, float density, const Callback & cb, bool
 	addTexture(a, density, BitmapFormat::Auto, cb, forceReload);
 }
 void TextureCache::addTexture(Asset *a, float density, BitmapFormat fmt, const Callback & cb, bool forceReload) {
-	auto &file = a->getFilePath();
+	auto file = a->getFilePath();
 	if (!forceReload) {
-		auto it = _textures.find(TextureIndex{file, fmt, density});
+		auto it = _textures.find(TextureIndex{file.str(), fmt, density});
 		if (it != _textures.end()) {
 			if (cb) {
 				cb(it->second);
@@ -320,8 +320,8 @@ void TextureCache::addTexture(Asset *a, float density, BitmapFormat fmt, const C
 }
 
 void TextureCache::addAssetTexture(Asset *a, float density, BitmapFormat fmt, const Callback &cb, bool forceReload) {
-	auto &file = a->getFilePath();
-	a->retainReadLock(this, [this, a, density, fmt, cb, file, forceReload] {
+	auto file = a->getFilePath();
+	a->retainReadLock(this, [this, a, density, fmt, cb, file = file.str(), forceReload] {
 		addTexture(file, density, fmt, [this, a, cb] (cocos2d::Texture2D *tex) {
 			if (cb) {
 				cb(tex);
@@ -331,8 +331,8 @@ void TextureCache::addAssetTexture(Asset *a, float density, BitmapFormat fmt, co
 	});
 }
 
-bool TextureCache::hasTexture(const String &path, float d, BitmapFormat fmt) {
-	auto it = _textures.find(TextureIndex{path, fmt, d});
+bool TextureCache::hasTexture(const StringView &path, float d, BitmapFormat fmt) {
+	auto it = _textures.find(TextureIndex{path.str(), fmt, d});
 	return it != _textures.end();
 }
 
@@ -409,18 +409,18 @@ void TextureCache::uploadTextureBackground(Vector<Rc<cocos2d::Texture2D>> &texs,
 	}
 }
 
-void TextureCache::addLoadedTexture(const String &str, cocos2d::Texture2D *tex) {
+void TextureCache::addLoadedTexture(const StringView &str, cocos2d::Texture2D *tex) {
 	addLoadedTexture(str, screen::density(), BitmapFormat::Auto, tex);
 }
-void TextureCache::addLoadedTexture(const String &str, float d, cocos2d::Texture2D *tex) {
+void TextureCache::addLoadedTexture(const StringView &str, float d, cocos2d::Texture2D *tex) {
 	addLoadedTexture(str, d, BitmapFormat::Auto, tex);
 }
-void TextureCache::addLoadedTexture(const String &str, float d, BitmapFormat fmt, cocos2d::Texture2D *tex) {
-	_textures.emplace(TextureIndex{str, fmt, d}, tex);
+void TextureCache::addLoadedTexture(const StringView &str, float d, BitmapFormat fmt, cocos2d::Texture2D *tex) {
+	_textures.emplace(TextureIndex{str.str(), fmt, d}, tex);
 }
 
-void TextureCache::removeLoadedTexture(const String &str, float d, BitmapFormat fmt) {
-	_textures.erase(TextureIndex{str, fmt, d});
+void TextureCache::removeLoadedTexture(const StringView &str, float d, BitmapFormat fmt) {
+	_textures.erase(TextureIndex{str.str(), fmt, d});
 }
 
 bool TextureCache::makeCurrentContext() {

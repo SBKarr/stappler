@@ -189,7 +189,7 @@ data::Value File::createFile(Adapter *adapter, const Field &f, InputFile &file) 
 	return data::Value();
 }
 
-data::Value File::createFile(Adapter *adapter, const String &type, const String &path) {
+data::Value File::createFile(Adapter *adapter, const StringView &type, const StringView &path) {
 	auto scheme = Server(apr::pool::server()).getFileScheme();
 	auto size = filesystem::size(path);
 
@@ -198,7 +198,7 @@ data::Value File::createFile(Adapter *adapter, const String &type, const String 
 	fileData.setInteger(size, "size");
 
 	size_t width = 0, height = 0;
-	if (Bitmap::getImageSize(path, width, height)) {
+	if (Bitmap::getImageSize(StringView(path), width, height)) {
 		auto &val = fileData.emplace("image");
 		val.setInteger(width, "width");
 		val.setInteger(height, "height");
@@ -209,10 +209,41 @@ data::Value File::createFile(Adapter *adapter, const String &type, const String 
 		auto id = fileData.getInteger("__oid");
 		if (filesystem::move(path, File::getFilesystemPath(id))) {
 			return data::Value(id);
+		} else {
+			scheme->remove(adapter, fileData.getInteger("__oid"));
 		}
 	}
 
 	filesystem::remove(path);
+	return data::Value();
+}
+
+data::Value File::createFile(Adapter *adapter, const StringView &type, const Bytes &data) {
+	auto scheme = Server(apr::pool::server()).getFileScheme();
+	auto size = data.size();
+
+	data::Value fileData;
+	fileData.setString(type, "type");
+	fileData.setInteger(size, "size");
+
+	size_t width = 0, height = 0;
+	CoderSource source(data);
+	if (Bitmap::getImageSize(source, width, height)) {
+		auto &val = fileData.emplace("image");
+		val.setInteger(width, "width");
+		val.setInteger(height, "height");
+	}
+
+	fileData = scheme->create(adapter, fileData, true);
+	if (fileData && fileData.isInteger("__oid")) {
+		auto id = fileData.getInteger("__oid");
+		if (filesystem::write(File::getFilesystemPath(id), data)) {
+			return data::Value(id);
+		} else {
+			scheme->remove(adapter, fileData.getInteger("__oid"));
+		}
+	}
+
 	return data::Value();
 }
 

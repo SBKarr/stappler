@@ -76,6 +76,7 @@ protected:
 	Format _format = Format::A8;
 	Rc<Canvas> _canvas;
 	data::Listener<Image> _image;
+	Rc<cocos2d::Texture2D> _offscreenTexture;
 };
 
 NS_SP_EXT_END(draw)

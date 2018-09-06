@@ -44,7 +44,7 @@ bool AssetDownload::init(Asset *a, CacheRequestType) {
 	_size = a->getSize();
 	if (a->isFileExists()) {
 		_mtime = a->getMTime();
-		_etag = a->getETag();
+		_etag = a->getETag().str();
 	}
 
 	if (a->isFileExists()) {
@@ -61,7 +61,7 @@ bool AssetDownload::init(Asset *a, CacheRequestType) {
 
 AssetDownload::~AssetDownload() { }
 
-bool AssetDownload::init(Asset *a, const String &file) {
+bool AssetDownload::init(Asset *a, const StringView &file) {
 	if (!NetworkDownload::init(a->getUrl(), file)) {
 		return false;
 	}
@@ -73,7 +73,7 @@ bool AssetDownload::init(Asset *a, const String &file) {
 	_size = a->getSize();
 	if (a->isFileExists()) {
 		_mtime = a->getMTime();
-		_etag = a->getETag();
+		_etag = a->getETag().str();
 	}
 
 	setThreadDownloadProgress([this] (int64_t total, int64_t now) -> int {

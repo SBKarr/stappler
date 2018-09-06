@@ -50,7 +50,7 @@ NetworkTask::NetworkTask() { }
 
 NetworkTask::~NetworkTask() { }
 
-bool NetworkTask::init(Method method, const String &url) {
+bool NetworkTask::init(Method method, const StringView &url) {
 	if (!_handle.init(method, url)) {
 		return false;
 	}
@@ -75,7 +75,7 @@ bool NetworkTask::execute() {
 	if (val) {
 		if (_handle.getResponseCode() < 300) {
 			_mtime = Time::fromHttp(getReceivedHeaderString("Last-Modified")).toMicroseconds();
-			_etag = getReceivedHeaderString("ETag");
+			_etag = getReceivedHeaderString("ETag").str();
 		} else {
 			auto f = getReceiveFile();
 			if (!f.empty()) {
@@ -121,15 +121,15 @@ void NetworkTask::run() {
 	getThread().perform(this);
 }
 
-void NetworkTask::setAuthority(const String &user, const String &passwd) {
+void NetworkTask::setAuthority(const StringView &user, const StringView &passwd) {
 	_handle.setAuthority(user, passwd);
 }
 
-void NetworkTask::addHeader(const String &header) {
+void NetworkTask::addHeader(const StringView &header) {
 	_handle.addHeader(header);
 }
 
-void NetworkTask::addHeader(const String &header, const String &value) {
+void NetworkTask::addHeader(const StringView &header, const StringView &value) {
 	_handle.addHeader(header, value);
 }
 
@@ -140,20 +140,20 @@ void NetworkTask::setThreadUploadProgress(const ThreadProgressCallback &callback
 	_handle.setUploadProgress(callback);
 }
 
-void NetworkTask::setReceiveFile(const String &str, bool resumeDownload) {
+void NetworkTask::setReceiveFile(const StringView &str, bool resumeDownload) {
 	_handle.setReceiveFile(str, resumeDownload);
 }
 void NetworkTask::setReceiveCallback(const IOCallback &cb) {
 	_handle.setReceiveCallback(cb);
 }
 
-void NetworkTask::setSendFile(const String &str) {
+void NetworkTask::setSendFile(const StringView &str) {
 	_handle.setSendFile(str);
 }
 void NetworkTask::setSendCallback(const IOCallback &cb, size_t outSize) {
 	_handle.setSendCallback(cb, outSize);
 }
-void NetworkTask::setSendData(const String &data) {
+void NetworkTask::setSendData(const StringView &data) {
 	_handle.setSendData(data);
 }
 void NetworkTask::setSendData(const Bytes &data) {
@@ -169,11 +169,11 @@ void NetworkTask::setSendData(const data::Value &data, data::EncodeFormat fmt) {
 	_handle.setSendData(data, fmt);
 }
 
-String NetworkTask::getReceivedHeaderString(const String &h) const {
+StringView NetworkTask::getReceivedHeaderString(const StringView &h) const {
 	return _handle.getReceivedHeaderString(h);
 }
 
-int64_t NetworkTask::getReceivedHeaderInt(const String &h) const {
+int64_t NetworkTask::getReceivedHeaderInt(const StringView &h) const {
 	return _handle.getReceivedHeaderInt(h);
 }
 

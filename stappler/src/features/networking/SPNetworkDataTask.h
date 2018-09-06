@@ -32,7 +32,7 @@ public:
 	NetworkDataTask();
 	virtual ~NetworkDataTask();
 
-	virtual bool init(Method method, const String &url, const data::Value &data = data::Value(), data::EncodeFormat = data::EncodeFormat::Cbor);
+	virtual bool init(Method method, const StringView &url, const data::Value &data = data::Value(), data::EncodeFormat = data::EncodeFormat::Cbor);
 
 	virtual bool execute() override;
 

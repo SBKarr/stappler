@@ -905,8 +905,13 @@ data::Value &Scheme::transform(data::Value &d, TransformAction a) const {
 		auto &fname = it->first;
 		auto f_it = fields.find(fname);
 		if (f_it == fields.end()
+				// we can write into readonly field only in protected mode
 				|| (f_it->second.hasFlag(Flags::ReadOnly) && a != TransformAction::ProtectedCreate && a != TransformAction::ProtectedUpdate)
-				|| (f_it->second.isFile() && !it->second.isNull())) {
+
+				// we can drop files in all modes...
+				|| (f_it->second.isFile() && !it->second.isNull()
+						// but we can write files as ints only in protected mode
+						&& ((a != TransformAction::ProtectedCreate && a != TransformAction::ProtectedUpdate) || !it->second.isInteger()))) {
 			it = dict.erase(it);
 		} else {
 			it ++;
