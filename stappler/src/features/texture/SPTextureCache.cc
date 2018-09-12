@@ -35,6 +35,7 @@ THE SOFTWARE.
 #include "SPDataListener.h"
 #include "SPAssetLibrary.h"
 #include "SPDrawCanvas.h"
+#include "SPDrawCache.h"
 #include "SPApplication.h"
 
 #include "base/CCDirector.h"
@@ -610,23 +611,22 @@ void TextureCache::reloadTexture(cocos2d::Texture2D *tex, const TextureIndex &in
 Rc<cocos2d::Texture2D> TextureCache::loadTexture(const TextureIndex &index) {
 	auto data = filesystem::readFile(index.file);
 	if (layout::Image::isSvg(data)) {
-		layout::Image img;
-		if (img.init(data)) {
+		if (auto img = draw::Cache::getInstance()->addImage(index.file, data)) {
 			BitmapFormat fmt = index.fmt;
 			if (index.fmt == BitmapFormat::Auto) {
-				fmt = img.detectFormat();
+				fmt = img->detectFormat();
 			}
 
 			return performWithGL([&] {
 				auto tex = Rc<cocos2d::Texture2D>::create(getPixelFormat(fmt),
-						roundf(img.getWidth() * index.density), roundf(img.getHeight() * index.density),
+						roundf(img->getWidth() * index.density), roundf(img->getHeight() * index.density),
 						cocos2d::Texture2D::InitAs::RenderTarget);
 				if (!_threadVectorCanvas) {
 					_threadVectorCanvas = Rc<draw::Canvas>::create();
 					_threadVectorCanvas->setQuality(draw::Canvas::QualityHigh);
 				}
 				_threadVectorCanvas->begin(tex, Color4B());
-				_threadVectorCanvas->draw(img, Rect(0.0f, 0.0f, tex->getPixelsWide(), tex->getPixelsHigh()));
+				_threadVectorCanvas->draw(*img.get(), Rect(0.0f, 0.0f, tex->getPixelsWide(), tex->getPixelsHigh()));
 				_threadVectorCanvas->end();
 
 				return tex;

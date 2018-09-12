@@ -50,7 +50,11 @@ public:
 
 	virtual Label * getLabel() const;
 
+	virtual void updateLabel(const Function<void(Label *)> &);
+
 protected:
+	void updateSizeWithLabel();
+
 	Label *_label = nullptr;
 };
 

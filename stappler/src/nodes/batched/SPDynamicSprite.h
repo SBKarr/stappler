@@ -34,7 +34,7 @@ public:
 	using Callback = Function<void(cocos2d::Texture2D *)>;
 
 	virtual bool init(cocos2d::Texture2D *tex = nullptr, const Rect & = Rect::ZERO, float density = 0.0f);
-	virtual bool init(const String &, const Rect & = Rect::ZERO, float density = 0.0f);
+	virtual bool init(const String &, const Rect & = Rect::ZERO, float density = 0.0f, float texD = 1.0f);
 	virtual bool init(const Bitmap &, const Rect & = Rect::ZERO, float density = 0.0f);
 
 	virtual void onContentSizeDirty() override;

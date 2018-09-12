@@ -173,6 +173,9 @@ public:
 	void setAntialiased(bool value);
 	bool isAntialiased() const;
 
+	void setBatchDrawing(bool);
+	bool isBatchDrawing() const;
+
 	Bitmap::PixelFormat detectFormat() const;
 
 	const Vector<PathXRef> &getDrawOrder() const;
@@ -225,6 +228,7 @@ protected:
 	Vector<PathXRef> _drawOrder;
 	Vector<PathRef *> _refs;
 	Map<String, Path> _paths;
+	bool _allowBatchDrawing = true;
 };
 
 NS_LAYOUT_END

@@ -161,9 +161,11 @@ void Canvas::draw(const Image &img) {
 		transform(m);
 	}
 
+	auto batchAllowed = img.isBatchDrawing();
+
 	bool batch = false;
 	if (!_isBatch) {
-		beginBatch();
+		if (batchAllowed) { beginBatch(); }
 	} else {
 		batch = true;
 	}
@@ -179,7 +181,7 @@ void Canvas::draw(const Image &img) {
 	if (!batch) {
 		endBatch();
 	} else {
-		if (!_tess.empty()) {
+		if (!_tess.empty() && batchAllowed) {
 			flushBatch();
 		}
 	}

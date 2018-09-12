@@ -57,24 +57,16 @@ void ButtonLabelSelector::setMenuSource(MenuSource *source) {
 	if (_floatingMenuSource) {
 		_icon->setVisible(true);
 		_contentSizeDirty = true;
-		setContentSize(cocos2d::Size(_label->getContentSize().width + 32, _contentSize.height));
 	} else {
 		_icon->setVisible(false);
 		_contentSizeDirty = true;
-		setContentSize(cocos2d::Size(_label->getContentSize().width + 16, _contentSize.height));
 	}
+	updateSizeWithLabel();
 }
 
 void ButtonLabelSelector::setString(const StringView &str) {
 	_label->setString(str);
-	if (_label->isLabelDirty()) {
-		_label->tryUpdateLabel(true);
-	}
-	if (!_icon->isVisible()) {
-		setContentSize(cocos2d::Size(_label->getContentSize().width + 16, _contentSize.height));
-	} else {
-		setContentSize(cocos2d::Size(_label->getContentSize().width + 32, _contentSize.height));
-	}
+	updateSizeWithLabel();
 }
 StringView ButtonLabelSelector::getString() const {
 	return _label->getString8();
@@ -83,12 +75,7 @@ StringView ButtonLabelSelector::getString() const {
 void ButtonLabelSelector::setWidth(float value) {
 	if (value != getWidth()) {
 		_label->setWidth(value);
-		_label->tryUpdateLabel();
-		if (!_icon->isVisible()) {
-			setContentSize(cocos2d::Size(_label->getContentSize().width + 16, _contentSize.height));
-		} else {
-			setContentSize(cocos2d::Size(_label->getContentSize().width + 32, _contentSize.height));
-		}
+		updateSizeWithLabel();
 	}
 }
 float ButtonLabelSelector::getWidth() const {
@@ -105,16 +92,18 @@ const cocos2d::Color3B &ButtonLabelSelector::getLabelColor() const {
 
 void ButtonLabelSelector::setFont(FontType fnt) {
 	_label->setFont(fnt);
-	_label->tryUpdateLabel();
-	if (!_icon->isVisible()) {
-		setContentSize(cocos2d::Size(_label->getContentSize().width + 16, _contentSize.height));
-	} else {
-		setContentSize(cocos2d::Size(_label->getContentSize().width + 32, _contentSize.height));
-	}
+	updateSizeWithLabel();
 }
 
 Label * ButtonLabelSelector::getLabel() const {
 	return _label;
+}
+
+void ButtonLabelSelector::updateLabel(const Function<void(Label *)> &cb) {
+	if (cb) {
+		cb(_label);
+		updateSizeWithLabel();
+	}
 }
 
 void ButtonLabelSelector::setLabelOpacity(uint8_t value) {
@@ -122,6 +111,15 @@ void ButtonLabelSelector::setLabelOpacity(uint8_t value) {
 }
 uint8_t ButtonLabelSelector::getLabelOpacity() {
 	return _label->getOpacity();
+}
+
+void ButtonLabelSelector::updateSizeWithLabel() {
+	_label->tryUpdateLabel();
+	if (!_icon->isVisible()) {
+		setContentSize(cocos2d::Size(_label->getContentSize().width + 16, _contentSize.height));
+	} else {
+		setContentSize(cocos2d::Size(_label->getContentSize().width + 32, _contentSize.height));
+	}
 }
 
 NS_MD_END

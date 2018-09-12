@@ -116,7 +116,7 @@ void FloatingMenu::pushMenu(const Vec2 &o, Binding b) {
 		break;
 	}
 
-	if (b != Binding::Anchor) {
+	if (b != Binding::Anchor && b != Binding::Relative) {
 		if (_fullSize.height > origin.y - incr / 4) {
 			if (origin.y - incr / 4 < incr * 4) {
 				if (_fullSize.height > incr * 4) {
@@ -127,6 +127,10 @@ void FloatingMenu::pushMenu(const Vec2 &o, Binding b) {
 			} else {
 				_fullSize.height = origin.y - incr / 4;
 			}
+		}
+	} else if (b == Binding::Relative) {
+		if (_fullSize.height > origin.y - incr / 4) {
+			setAnchorPoint(Vec2(getAnchorPoint().x, (origin.y - incr / 4) / _fullSize.height));
 		}
 	}
 

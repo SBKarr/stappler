@@ -49,11 +49,12 @@ bool DynamicSprite::init(cocos2d::Texture2D *tex, const Rect &rect, float densit
 	return true;
 }
 
-bool DynamicSprite::init(const std::string &file, const Rect &rect, float density) {
+bool DynamicSprite::init(const std::string &file, const Rect &rect, float density, float texD) {
 	if (!init(nullptr, rect, density)) {
 		return false;
 	}
 
+	_textureDensity = texD;
 	acquireTexture(file);
 
 	return true;

@@ -810,6 +810,13 @@ bool Image::isAntialiased() const {
 	return _isAntialiased;
 }
 
+void Image::setBatchDrawing(bool value) {
+	_allowBatchDrawing = value;
+}
+bool Image::isBatchDrawing() const {
+	return _allowBatchDrawing;
+}
+
 void Image::clearRefs() {
 	for (auto &it : _refs) {
 		it->path = nullptr;

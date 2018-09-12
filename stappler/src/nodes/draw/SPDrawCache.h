@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,27 +20,30 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "SPDefine.h"
-#include "SPBatchNodeBase.cc"
-#include "SPCornerSprite.cc"
-#include "SPDynamicBatchNode.cc"
-#include "SPDynamicSprite.cc"
-#include "SPLayer.cc"
-#include "SPLayeredBatchNode.cc"
-#include "SPRoundedSprite.cc"
-#include "SPScale9Sprite.cc"
-#include "SPShadowSprite.cc"
-#include "SPDrawCache.cc"
-#include "SPDrawCanvas.cc"
-#include "SPDrawGLCacheNode.cc"
-#include "SPDrawGLRenderSurface.cc"
-#include "SPDrawPathNode.cc"
-#include "SPLabelParameters.cc"
-#include "SPDynamicLabel.cc"
-#include "SPOverscroll.cc"
-#include "SPScrollView.cc"
-#include "SPScrollViewBase.cc"
-#include "SPClippingNode.cc"
-#include "SPDynamicBatchScene.cc"
-#include "SPNetworkSprite.cc"
-#include "SPStrictNode.cc"
+#ifndef STAPPLER_SRC_NODES_DRAW_SPDRAWCACHE_H_
+#define STAPPLER_SRC_NODES_DRAW_SPDRAWCACHE_H_
+
+#include "SPDrawCanvas.h"
+#include "SLImage.h"
+
+NS_SP_EXT_BEGIN(draw)
+
+class Cache : public Ref {
+public:
+	static Cache *getInstance();
+
+	Rc<layout::Image> addImage(const StringView &path, bool replace = false);
+	Rc<layout::Image> addImage(const StringView &key, const Bytes &data, bool replace = false);
+	Rc<layout::Image> addImage(const StringView &key, layout::Image *);
+
+	Rc<layout::Image> getImage(const StringView &key);
+	bool hasImage(const StringView &key);
+
+protected:
+	Mutex _mutex;
+	Map<String, Rc<layout::Image>> _images;
+};
+
+NS_SP_EXT_END(draw)
+
+#endif /* STAPPLER_SRC_NODES_DRAW_SPDRAWCACHE_H_ */

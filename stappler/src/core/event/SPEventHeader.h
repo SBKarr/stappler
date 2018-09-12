@@ -70,15 +70,10 @@ public:
 
 	bool operator == (const Event &event) const;
 
-	inline void operator() (Ref *object, int64_t value) const { send(object, value); }
-	inline void operator() (Ref *object, double value) const { send(object, value); }
-	inline void operator() (Ref *object, bool value) const { send(object, value); }
-	inline void operator() (Ref *object, Ref *value) const { send(object, value); }
-	inline void operator() (Ref *object, const char *value) const { send(object, value); }
-	inline void operator() (Ref *object, const String &value) const { send(object, value); }
-	inline void operator() (Ref *object, const StringView &value) const { send(object, value); }
-	inline void operator() (Ref *object, const data::Value &value) const { send(object, value); }
-	inline void operator() (Ref *object = nullptr) const { send(object); }
+	template <typename T>
+	inline void operator() (Ref *object, const T &value) const { send(object, value); }
+
+	inline void operator() (Ref *object) const { send(object); }
 
 protected:
 	void send(Ref *object, int64_t value) const;
