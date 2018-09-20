@@ -50,7 +50,6 @@ THE SOFTWARE.
 - (void)applicationDidEnterBackground:(nonnull UIApplication *)application;
 - (void)applicationWillEnterForeground:(nonnull UIApplication *)application;
 - (void)applicationWillTerminate:(nonnull UIApplication *)application;
-- (void)application:(nonnull UIApplication *)application didRegisterUserNotificationSettings:(nonnull UIUserNotificationSettings *)notificationSettings;
 
 - (void) application:(nonnull UIApplication *)application didFailToRegisterForRemoteNotificationsWithError:(nullable NSError *)error;
 - (void) application:(nonnull UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(nonnull NSData *)deviceToken;

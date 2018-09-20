@@ -644,7 +644,6 @@ data::Value Handle::getDeltaData(const Scheme &scheme, const FieldView &view, co
 		list.setField(view.scheme, &field);
 
 		q.writeQueryViewDelta(list, time, Set<const Field *>(), false);
-
 		auto ret = select(*view.scheme, q);
 		if (ret.isArray() && ret.size() > 0) {
 			q.clear();

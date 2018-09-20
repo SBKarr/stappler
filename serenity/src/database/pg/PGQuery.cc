@@ -491,7 +491,7 @@ void ExecQuery::writeQueryViewDelta(const QueryList &list, const Time &time, con
 	}
 	s.fields(Field("dv", "time").as("__d_time"), Field("dv", "object").as("__d_object"), Field("dv", "__vid"))
 		.from(Field(view->scheme->getName()).as("t"))
-		.innerJoinOn("dv", [&] (ExecQuery::WhereBegin &w) {
+		.rightJoinOn("dv", [&] (ExecQuery::WhereBegin &w) {
 			w.where(Field("dv", "object"), Comparation::Equal, Field("t", "__oid"));
 	});
 }
@@ -534,7 +534,11 @@ data::Value ResultRow::toData(const Scheme &scheme, const Map<String, Field> &vi
 				row.setInteger(toInteger(i), n.str());
 			}
 		} else if (n == "__vid") {
-			row.setInteger(isNull(i)?int64_t(0):toInteger(i), n.str());
+			auto val = isNull(i)?int64_t(0):toInteger(i);
+			row.setInteger(val, n.str());
+			if (deltaPtr && val == 0) {
+				deltaPtr->setString("delete", "action");
+			}
 		} else if (n == "__d_action") {
 			if (!deltaPtr) {
 				deltaPtr = &row.emplace("__delta");

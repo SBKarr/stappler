@@ -203,10 +203,32 @@ data::Value Handle::patchObject(const Scheme &scheme, uint64_t oid, const data::
 
 bool Handle::removeObject(const Scheme &scheme, uint64_t oid) {
 	ExecQuery query;
-	query.remove(scheme.getName())
-			.where("__oid", Comparation::Equal, oid).finalize();
+	auto q = query.remove(scheme.getName())
+			.where("__oid", Comparation::Equal, oid);
+
+	Vector<Pair<const storage::Scheme::ViewScheme *, int64_t>> viewIds;
+
+	ExecQuery tmpQuery;
+	auto &v = scheme.getViews();
+	for (auto &it : v) {
+		auto vf = static_cast<const storage::FieldView *>(it->viewField->getSlot());
+		if (!vf->delta) {
+			continue;
+		}
+		String viewName = toString(it->scheme->getName(), "_f_", it->viewField->getName(), "_view");
+		String tagField = toString(it->scheme->getName(), "_id");
+		String objField = toString(scheme.getName(), "_id");
+
+		tmpQuery.clear();
+		tmpQuery.select(tagField).from(viewName).where(objField, storage::Comparation::Equal, oid);
+		if (auto id = selectId(tmpQuery)) {
+			viewIds.emplace_back(it, id);
+		}
+	}
+
+	q.finalize();
 	if (perform(query) == 1) { // one row affected
-		touchDelta(scheme, oid, DeltaAction::Delete);
+		touchDelta(scheme, oid, DeltaAction::Delete, viewIds);
 		return true;
 	}
 	return false;
@@ -366,7 +388,7 @@ void Handle::performPostUpdate(ExecQuery &query, const Scheme &s, Value &data, i
 	}
 }
 
-void Handle::touchDelta(const Scheme &scheme, int64_t id, DeltaAction a) {
+void Handle::touchDelta(const Scheme &scheme, int64_t id, DeltaAction a, const ViewIdVec &viewIds) {
 	int64_t userId = 0;
 	if (auto r = apr::pool::request()) {
 		Request req(r);
@@ -382,14 +404,16 @@ void Handle::touchDelta(const Scheme &scheme, int64_t id, DeltaAction a) {
 		perform(query);
 	}
 
-	if (a != DeltaAction::Update) {
-		return;
-	}
-
-	auto &v = scheme.getViews();
-	if (!v.empty()) {
+	if (a == DeltaAction::Update || a == DeltaAction::Create) {
+		auto &v = scheme.getViews();
 		for (auto &it : v) {
+			auto vf = static_cast<const storage::FieldView *>(it->viewField->getSlot());
+			if (!vf->delta) {
+				continue;
+			}
+
 			query.clear();
+
 			String viewName = toString(it->scheme->getName(), "_f_", it->viewField->getName(), "_view");
 			String deltaName = toString(it->scheme->getName(), "_f_", it->viewField->getName(), "_delta");
 			String tagField = toString(it->scheme->getName(), "_id");
@@ -398,6 +422,20 @@ void Handle::touchDelta(const Scheme &scheme, int64_t id, DeltaAction a) {
 			query << "INSERT INTO " << deltaName << " (\"tag\", \"object\", \"time\", \"user\") "
 					" SELECT \"" << tagField << "\", \"" << objField << "\", " << Time::now().toMicroseconds() << ", "
 					<< userId << " FROM " << viewName << " WHERE \"" << objField << "\"=" << id << ";";
+
+			perform(query);
+		}
+	} else if (a == DeltaAction::Delete && !viewIds.empty()) {
+		for (auto &it : viewIds) {
+			query.clear();
+
+			String viewName = toString(it.first->scheme->getName(), "_f_", it.first->viewField->getName(), "_view");
+			String deltaName = toString(it.first->scheme->getName(), "_f_", it.first->viewField->getName(), "_delta");
+			String tagField = toString(it.first->scheme->getName(), "_id");
+			String objField = toString(scheme.getName(), "_id");
+
+			query << "INSERT INTO " << deltaName << " (\"tag\", \"object\", \"time\", \"user\") VALUES("
+					<< it.second << ", " << id << ", " << Time::now().toMicroseconds() << ", " << userId << ");";
 
 			perform(query);
 		}
