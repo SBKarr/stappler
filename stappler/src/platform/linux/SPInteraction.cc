@@ -42,7 +42,7 @@ namespace interaction {
 		::system(toString("xdg-open ", str).data());
 	}
 	void _mailTo(const StringView &address) {
-		log::format("Interaction", "MailTo phone: %s", address.data());
+		log::format("Interaction", "MailTo: %s", address.data());
 		::system(toString("xdg-open ", address).data());
 	}
 	void _backKey() { }

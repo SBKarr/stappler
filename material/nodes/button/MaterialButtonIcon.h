@@ -47,6 +47,8 @@ public:
 
 	virtual IconSprite *getIcon() const;
 
+	virtual void setSizeHint(IconSprite::SizeHint);
+
 protected:
 	virtual void updateFromSource() override;
 

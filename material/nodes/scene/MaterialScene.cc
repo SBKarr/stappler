@@ -467,10 +467,6 @@ void Scene::setNavigationMenuSource(material::MenuSource *source) {
 	_navigation->setNavigationMenuSource(source);
 }
 
-void Scene::setSnackbarString(const std::string &str, const Color &color) {
-	showSnackbar(SnackbarData(str, color));
-}
-
 void Scene::showSnackbar(SnackbarData &&data) {
 	_foreground->showSnackbar(move(data));
 }

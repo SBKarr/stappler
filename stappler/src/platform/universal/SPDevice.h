@@ -165,13 +165,13 @@ public:
 
 public: /* launch with url options */
     // set in launch process by AppController/Activity/etc...
-    void setLaunchUrl(const String &);
+    void setLaunchUrl(const StringView &);
 
     // called, when we should open recieved url with launched application
-    // produce onUrl event, url can be read from event or by getLaunchUrl()
-    void processLaunchUrl(const String &);
+    // produce onLaunchUrl event, url can be read from event or by getLaunchUrl()
+    void processLaunchUrl(const StringView &);
 
-    const String &getLaunchUrl() const;
+    StringView getLaunchUrl() const;
 
 public:
     bool listen(uint16_t port = 0);

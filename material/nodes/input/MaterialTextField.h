@@ -32,7 +32,11 @@ public:
 	using CursorCallback = Function<void(const Vec2 &)>;
 	using PositionCallback = Function<void(const Vec2 &, bool ended)>;
 
+	virtual bool init(bool dense = false) override;
+	virtual bool init(FormController *, const String &name, bool dense = false) override;
+
 	virtual void setContentSize(const Size &) override;
+	virtual void onContentSizeDirty() override;
 
 	virtual bool onSwipe(const Vec2 &loc, const Vec2 &delta) override;
 	virtual bool onSwipeEnd(const Vec2 &) override;
@@ -40,6 +44,8 @@ public:
 protected:
 	virtual void onInput() override;
 	virtual void onMenuVisible() override;
+
+	material::ButtonIcon *_clearIcon = nullptr;
 };
 
 NS_MD_END

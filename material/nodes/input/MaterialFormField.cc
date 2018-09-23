@@ -33,6 +33,7 @@ THE SOFTWARE.
 #include "SPGestureListener.h"
 #include "SPEventListener.h"
 #include "SPScrollView.h"
+#include "SPScrollItemHandle.h"
 
 NS_MD_BEGIN
 
@@ -72,8 +73,10 @@ bool FormField::init(FormController *c, const String &name, bool dense) {
 	updateLabelHeight(1.0f + _padding.horizontal());
 
 	auto el = Rc<EventListener>::create();
-	addComponent(el);
-	_formEventListener = el;
+	_formEventListener = addComponentItem(el);
+
+	auto sh = Rc<ScrollItemHandle>::create();
+	_scrollHandle = addComponentItem(sh);
 
 	setFormController(c);
 
@@ -121,14 +124,18 @@ void FormField::setContentSize(const Size &size) {
 	}
 }
 
-void FormField::updateLabelHeight(float width) {
+void FormField::updateLabelHeight(float width, bool force) {
 	if (isnan(width)) {
 		width = _contentSize.width;
 	}
 	auto h = _label->getContentSize().height;
-	if (h != _labelHeight) {
+	if (force || h != _labelHeight) {
 		_labelHeight = h;
-		InputField::setContentSize(getSizeForLabelWidth(width, h));
+		auto size = getSizeForLabelWidth(width, h);
+		InputField::setContentSize(size);
+		if (_scrollHandle && _scrollHandle->isConnected()) {
+			_scrollHandle->forceResize(size.height);
+		}
 		if (_sizeCallback) {
 			_sizeCallback(_contentSize);
 		}
@@ -301,17 +308,12 @@ void FormField::setError(const StringView &str) {
 				_underlineLayer->setColor(Color::Grey_500);
 				_placeholder->setColor(Color::Grey_500);
 			}
-			if (!_fullHeight) {
-				_contentSizeDirty = true;
-			}
 		} else {
-			if (!_fullHeight) {
-				_contentSizeDirty = true;
-			}
 			_error->setVisible(true);
 			_underlineLayer->setColor(_errorColor);
 			_placeholder->setColor(_errorColor);
 		}
+		updateLabelHeight(_contentSize.width, true);
 	}
 }
 StringView FormField::getError() const {

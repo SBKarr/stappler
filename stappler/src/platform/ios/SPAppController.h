@@ -21,10 +21,11 @@ THE SOFTWARE.
 **/
 
 #import <UIKit/UIKit.h>
+#import <UserNotifications/UserNotifications.h>
 
 @class SPRootViewController;
 
-@interface SPAppController : NSObject <UIApplicationDelegate> {
+@interface SPAppController : NSObject <UIApplicationDelegate, UNUserNotificationCenterDelegate> {
     UIWindow *window;
     NSURL *launchUrl;
     BOOL isNotificationWakeUp;

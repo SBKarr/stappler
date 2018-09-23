@@ -77,12 +77,23 @@ void ScrollItemHandle::resize(float newSize, bool forward) {
 	}
 }
 
+void ScrollItemHandle::forceResize(float newSize, bool forward) {
+	if (auto item = _controller->getItem(_itemIndex)) {
+		_controller->resizeItem(item, newSize, forward);
+		_controller->onScrollPosition();
+	}
+}
+
 void ScrollItemHandle::setLocked(bool value) {
 	_isLocked = value;
 }
 
 bool ScrollItemHandle::isLocked() const {
 	return _isLocked;
+}
+
+bool ScrollItemHandle::isConnected() const {
+	return _controller != nullptr;
 }
 
 NS_SP_END

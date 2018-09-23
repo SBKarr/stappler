@@ -72,9 +72,16 @@ NS_SP_PLATFORM_END
 }
 
 - (void)registerForRemoteNotification:(nonnull UIApplication *)application forNewsttand:(BOOL)isNewsstand {
-	auto flags = (UNAuthorizationOptionSound | UNAuthorizationOptionBadge | UNAuthorizationOptionAlert);
-	UIUserNotificationSettings *settings = [UIUserNotificationSettings settingsForTypes:flags categories:nil];
-	[application registerUserNotificationSettings:settings];
+	[UNUserNotificationCenter currentNotificationCenter].delegate = self;
+	UNAuthorizationOptions authOptions = UNAuthorizationOptionAlert | UNAuthorizationOptionSound | UNAuthorizationOptionBadge;
+	[[UNUserNotificationCenter currentNotificationCenter] requestAuthorizationWithOptions:authOptions
+		completionHandler:^(BOOL granted, NSError * _Nullable error) {
+        if (granted) {
+        	NSLog(@"%@", @"Notification permissions granted");
+        } else {
+        	NSLog(@"%@ %@", @"Notification permissions failed", error);
+        }
+	}];
 	[application registerForRemoteNotifications];
 }
 
@@ -132,6 +139,16 @@ NS_SP_PLATFORM_END
     return YES;
 }
 
+- (BOOL)application:(nonnull UIApplication *)application continueUserActivity:(nonnull NSUserActivity *)userActivity
+		restorationHandler:(void (^_Nonnull)(NSArray<id<UIUserActivityRestoring>> *_Nonnull restorableObjects))restorationHandler {
+	if (userActivity.activityType == NSUserActivityTypeBrowsingWeb) {
+		launchUrl = userActivity.webpageURL;
+		stappler::Device::getInstance()->processLaunchUrl([launchUrl absoluteString].UTF8String);
+		return true;
+	}
+	return false;
+}
+
 - (BOOL)application:(nonnull UIApplication *)application openURL:(nonnull NSURL *)url options:(nullable NSDictionary<NSString *,id> *)options {
     if (launchUrl != nil && [launchUrl isEqual:url]) {
         launchUrl = nil;
@@ -159,10 +176,6 @@ NS_SP_PLATFORM_END
 }
 
 - (void)applicationWillTerminate:(nonnull UIApplication *)application { }
-
-- (void)application:(nonnull UIApplication *)application didRegisterUserNotificationSettings:(nonnull UIUserNotificationSettings *)notificationSettings {
-	
-}
 
 - (void) application:(nonnull UIApplication *)application didFailToRegisterForRemoteNotificationsWithError:(nullable NSError *)error {
     stappler::log::format("AppController","remote notification: %s", [[error description] UTF8String]);

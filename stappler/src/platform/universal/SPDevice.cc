@@ -326,19 +326,16 @@ void Device::onDirectorStarted() {
     }
 }
 
-void Device::setLaunchUrl(const String &url) {
-    _launchUrl = url;
+void Device::setLaunchUrl(const StringView &url) {
+    _launchUrl = url.str();
 }
 
-// called, when we should open recieved url with launched application
-// produce onUrl event, url can be read from event or by getLaunchUrl()
-void Device::processLaunchUrl(const String &url) {
-    _launchUrl = url;
-    stappler::log::format("Device", "url: %s", url.c_str());
+void Device::processLaunchUrl(const StringView &url) {
+    _launchUrl = url.str();
     onLaunchUrl(this, url);
 }
 
-const String &Device::getLaunchUrl() const {
+StringView Device::getLaunchUrl() const {
     return _launchUrl;
 }
 

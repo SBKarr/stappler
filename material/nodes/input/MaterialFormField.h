@@ -62,7 +62,7 @@ public:
 	virtual FormController *getFormController() const;
 
 protected:
-	virtual void updateLabelHeight(float = nan());
+	virtual void updateLabelHeight(float = nan(), bool force = false);
 	virtual Size getSizeForLabelWidth(float width, float labelHeight);
 
 	virtual void onError(Error) override;
@@ -89,6 +89,7 @@ protected:
 
 	EventListener *_formEventListener = nullptr;
 	FormController *_formController = nullptr;
+	ScrollItemHandle *_scrollHandle = nullptr;
 };
 
 NS_MD_END

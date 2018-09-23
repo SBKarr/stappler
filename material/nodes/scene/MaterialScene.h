@@ -116,9 +116,6 @@ public:
 public:
 	using SnackbarData = ForegroundLayer::SnackbarData;
 
-	[[deprecated]]
-	virtual void setSnackbarString(const String &, const Color & = Color::White);
-
 	virtual void showSnackbar(SnackbarData &&);
 
 protected:

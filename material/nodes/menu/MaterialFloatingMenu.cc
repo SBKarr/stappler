@@ -144,7 +144,7 @@ void FloatingMenu::pushMenu(const Vec2 &o, Binding b) {
 
 	f->pushNode(this, std::bind(&FloatingMenu::close, this));
 
-	auto a = Rc<ResizeTo>::create(0.25, _fullSize);
+	auto a = Rc<ResizeTo>::create(0.2f, _fullSize);
 	runAction(action::sequence(a, [this] {
 		_scroll->setVisible(true);
 	}));
@@ -160,7 +160,7 @@ const FloatingMenu::CloseCallback & FloatingMenu::getCloseCallback() const {
 void FloatingMenu::close() {
 	stopAllActions();
 	_scroll->setVisible(false);
-	auto a = Rc<ResizeTo>::create(0.25f, (_binding == Binding::Relative?Size(1, 1):Size(_fullSize.width, 1)));
+	auto a = Rc<ResizeTo>::create(0.2f, (_binding == Binding::Relative?Size(1, 1):Size(_fullSize.width, 1)));
 	runAction(action::sequence(a, [this] {
 		if (_closeCallback) {
 			_closeCallback();

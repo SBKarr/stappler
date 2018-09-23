@@ -35,8 +35,7 @@ bool ButtonIcon::init(IconName name, const TapCallback &tapCallback, const TapCa
 		return false;
 	}
 
-	auto icon = Rc<IconSprite>::create();
-	icon->setIconName(name);
+	auto icon = Rc<IconSprite>::create(name);
 	icon->setAnchorPoint(cocos2d::Vec2(0.5f, 0.5f));
 	_icon = addChildNode(icon);
 
@@ -48,7 +47,7 @@ bool ButtonIcon::init(IconName name, const TapCallback &tapCallback, const TapCa
 void ButtonIcon::onContentSizeDirty() {
 	Button::onContentSizeDirty();
 	if (_icon) {
-		_icon->setPosition(_contentSize.width/2, _contentSize.height/2);
+		_icon->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
 	}
 }
 
@@ -87,6 +86,11 @@ uint8_t ButtonIcon::getIconOpacity() const {
 
 IconSprite *ButtonIcon::getIcon() const {
 	return _icon;
+}
+
+void ButtonIcon::setSizeHint(IconSprite::SizeHint s) {
+	_icon->setSizeHint(s);
+	setContentSize(_icon->getContentSize());
 }
 
 void ButtonIcon::updateFromSource() {

@@ -84,7 +84,7 @@ public:
 					  "Invalid Type for stappler::Event target!");
 		return getObjValueImpl<T>(std::is_convertible<T, Ref *>());
 	}
-	inline const String &getStringValue() const {
+	inline StringView getStringValue() const {
 		return (_type == Type::String)?(*_value.strValue):ZERO_STRING;
 	}
 	inline const data::Value &getDataValue() const {

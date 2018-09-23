@@ -46,9 +46,12 @@ public:
 	void setRemoveCallback(const Callback &);
 
 	void resize(float newSize, bool forward = true);
+	void forceResize(float newSize, bool forward = true);
 
 	void setLocked(bool);
 	bool isLocked() const;
+
+	bool isConnected() const;
 
 protected:
 	ScrollController *_controller = nullptr;

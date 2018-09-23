@@ -30,6 +30,42 @@ THE SOFTWARE.
 
 NS_MD_BEGIN
 
+bool TextField::init(bool dense) {
+	if (!FormField::init(dense)) {
+		return false;
+	}
+
+	auto clearButton = Rc<material::ButtonIcon>::create(material::IconName::Navigation_close, [this] {
+		setString(String());
+	});
+	clearButton->setSizeHint(IconSprite::SizeHint::Small);
+	clearButton->setIconColor(material::Color::Grey_500);
+	clearButton->setContentSize(Size(32.0f, 32.0f));
+	clearButton->setAnchorPoint(Anchor::TopRight);
+	clearButton->setVisible(false);
+	_clearIcon = addChildNode(clearButton, 1);
+
+	return true;
+}
+
+bool TextField::init(FormController *c, const String &name, bool dense) {
+	if (!FormField::init(c, name, dense)) {
+		return false;
+	}
+
+	auto clearButton = Rc<material::ButtonIcon>::create(material::IconName::Navigation_close, [this] {
+		setString(String());
+	});
+	clearButton->setSizeHint(IconSprite::SizeHint::Small);
+	clearButton->setIconColor(material::Color::Grey_500);
+	clearButton->setContentSize(Size(32.0f, 32.0f));
+	clearButton->setAnchorPoint(Anchor::TopRight);
+	clearButton->setVisible(false);
+	_clearIcon = addChildNode(clearButton, 1);
+
+	return true;
+}
+
 void TextField::setContentSize(const Size &size) {
 	auto w = size.width - _padding.horizontal();
 	if (w > 0) {
@@ -37,6 +73,12 @@ void TextField::setContentSize(const Size &size) {
 		_label->tryUpdateLabel();
 	}
 	FormField::setContentSize(size);
+}
+
+void TextField::onContentSizeDirty() {
+	FormField::onContentSizeDirty();
+
+	_clearIcon->setPosition(_contentSize.width - 2.0f, _contentSize.height - 2.0f);
 }
 
 bool TextField::onSwipe(const Vec2 &loc, const Vec2 &delta) {
@@ -77,6 +119,7 @@ bool TextField::onSwipeEnd(const Vec2 &loc) {
 void TextField::onInput() {
 	FormField::onInput();
 	updateLabelHeight();
+	_clearIcon->setVisible(!_label->empty());
 }
 
 void TextField::onMenuVisible() {
