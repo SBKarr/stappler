@@ -362,6 +362,12 @@ void Resource::resolveResult(const QueryFieldResolver &res, data::Value &obj, ui
 			auto type = f.getType();
 
 			if (f.isSimpleLayout() || searchField.find(&f) == searchField.end()) {
+				if (type == storage::Type::Bytes && f.getTransform() == storage::Transform::Uuid) {
+					auto &fobj = obj.getValue(it.first);
+					if (fobj.isBytes()) {
+						fobj.setString(apr::uuid::getStringFromBytes(fobj.getBytes()));
+					}
+				}
 				continue;
 			}
 

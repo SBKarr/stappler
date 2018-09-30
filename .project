@@ -3,6 +3,7 @@
 	<name>libstappler</name>
 	<comment></comment>
 	<projects>
+		<project>libstappler</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

@@ -28,6 +28,7 @@ NS_SA_EXT_BEGIN(tools)
 void registerTools(const String &prefix, Server &serv) {
 	serv.addHandler(prefix, SA_HANDLER(tools::ServerGui));
 	serv.addHandler(toString(prefix, config::getServerToolsShell(), "/"), SA_HANDLER(tools::ShellGui));
+	serv.addHandler(toString(prefix, config::getServerToolsErrors(), "/"), SA_HANDLER(tools::ErrorsGui));
 	serv.addWebsocket(prefix + config::getServerToolsShell(), new tools::ShellSocket());
 
 	serv.addHandler(prefix + config::getServerToolsAuth(), SA_HANDLER(tools::AuthHandler));

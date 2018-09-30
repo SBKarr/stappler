@@ -476,7 +476,16 @@ void TextureCache::reloadTextures() {
 	});
 
 	for (auto &it : _textures) {
-		it.second->init(it.second->getPixelFormat(), it.second->getPixelsWide(), it.second->getPixelsHigh());
+		if (auto img = draw::Cache::getInstance()->getImage(it.first.file)) {
+			BitmapFormat fmt = it.first.fmt;
+			if (fmt == BitmapFormat::Auto) {
+				fmt = img->detectFormat();
+			}
+
+			it.second->init(getPixelFormat(fmt), it.second->getPixelsWide(), it.second->getPixelsHigh(), cocos2d::Texture2D::InitAs::RenderTarget);
+		} else {
+			it.second->init(it.second->getPixelFormat(), it.second->getPixelsWide(), it.second->getPixelsHigh());
+		}
 	}
 	_reloadDirty = true;
 }
@@ -585,13 +594,12 @@ bool TextureCache::TextureIndex::operator != (const TextureIndex &other) const {
 void TextureCache::reloadTexture(cocos2d::Texture2D *tex, const TextureIndex &index) {
 	auto data = filesystem::readFile(index.file);
 	if (layout::Image::isSvg(data)) {
-		layout::Image img;
-		if (img.init(data)) {
+		if (auto img = draw::Cache::getInstance()->addImage(index.file, data)) {
 			if (!_vectorCanvas) {
 				_vectorCanvas = Rc<draw::Canvas>::create();
 			}
 			_vectorCanvas->begin(tex, Color4B());
-			_vectorCanvas->draw(img, Rect(0.0f, 0.0f, tex->getPixelsWide(), tex->getPixelsHigh()));
+			_vectorCanvas->draw(*img, Rect(0.0f, 0.0f, tex->getPixelsWide(), tex->getPixelsHigh()));
 			_vectorCanvas->end();
 		}
 	} else {

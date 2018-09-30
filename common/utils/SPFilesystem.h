@@ -140,8 +140,12 @@ String currentDir(const StringView &path = StringView(), bool relative = false);
 String cachesPath(const StringView &path = StringView(), bool relative = false);
 
 // write data into file on path
-bool write(const StringView &path, const Bytes &);
 bool write(const StringView &path, const uint8_t *data, size_t len);
+
+template <typename BytesView>
+inline bool write(const StringView &path, const BytesView &view) {
+	return write(path, (const uint8_t *)view.data(), size_t(view.size()));
+}
 
 ifile openForReading(const StringView &path);
 

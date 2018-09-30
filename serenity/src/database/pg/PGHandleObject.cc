@@ -90,7 +90,6 @@ bool Handle::createObject(const Scheme &scheme, data::Value &data) {
 
 	if (id > 0) {
 		performPostUpdate(query, scheme, data, id, postUpdate, false);
-		touchDelta(scheme, id, DeltaAction::Create);
 	}
 
 	return true;
@@ -127,7 +126,6 @@ bool Handle::saveObject(const Scheme &scheme, uint64_t oid, const data::Value &d
 
 	upd.where("__oid", Comparation::Equal, oid).finalize();
 	if (perform(query) == 1) {
-		touchDelta(scheme, oid, DeltaAction::Update);
 		return true;
 	}
 	return false;
@@ -194,7 +192,6 @@ data::Value Handle::patchObject(const Scheme &scheme, uint64_t oid, const data::
 		int64_t id = obj.getInteger("__oid");
 		if (id > 0) {
 			performPostUpdate(query, scheme, obj, id, postUpdate, true);
-			touchDelta(scheme, id, DeltaAction::Update);
 		}
 		return obj;
 	}
@@ -206,29 +203,8 @@ bool Handle::removeObject(const Scheme &scheme, uint64_t oid) {
 	auto q = query.remove(scheme.getName())
 			.where("__oid", Comparation::Equal, oid);
 
-	Vector<Pair<const storage::Scheme::ViewScheme *, int64_t>> viewIds;
-
-	ExecQuery tmpQuery;
-	auto &v = scheme.getViews();
-	for (auto &it : v) {
-		auto vf = static_cast<const storage::FieldView *>(it->viewField->getSlot());
-		if (!vf->delta) {
-			continue;
-		}
-		String viewName = toString(it->scheme->getName(), "_f_", it->viewField->getName(), "_view");
-		String tagField = toString(it->scheme->getName(), "_id");
-		String objField = toString(scheme.getName(), "_id");
-
-		tmpQuery.clear();
-		tmpQuery.select(tagField).from(viewName).where(objField, storage::Comparation::Equal, oid);
-		if (auto id = selectId(tmpQuery)) {
-			viewIds.emplace_back(it, id);
-		}
-	}
-
 	q.finalize();
 	if (perform(query) == 1) { // one row affected
-		touchDelta(scheme, oid, DeltaAction::Delete, viewIds);
 		return true;
 	}
 	return false;
@@ -384,60 +360,6 @@ void Handle::performPostUpdate(ExecQuery &query, const Scheme &s, Value &data, i
 				insertIntoArray(query, s, id, f_it->second, it.second);
 				query.clear();
 			}
-		}
-	}
-}
-
-void Handle::touchDelta(const Scheme &scheme, int64_t id, DeltaAction a, const ViewIdVec &viewIds) {
-	int64_t userId = 0;
-	if (auto r = apr::pool::request()) {
-		Request req(r);
-		if (auto user = req.getAuthorizedUser()) {
-			userId = user->getObjectId();
-		}
-	}
-
-	ExecQuery query;
-	if (scheme.hasDelta()) {
-		query.insert(TableRec::getNameForDelta(scheme)).fields("object", "time", "action", "user")
-				.values(id, Time::now().toMicroseconds(), int64_t(a), userId).finalize();
-		perform(query);
-	}
-
-	if (a == DeltaAction::Update || a == DeltaAction::Create) {
-		auto &v = scheme.getViews();
-		for (auto &it : v) {
-			auto vf = static_cast<const storage::FieldView *>(it->viewField->getSlot());
-			if (!vf->delta) {
-				continue;
-			}
-
-			query.clear();
-
-			String viewName = toString(it->scheme->getName(), "_f_", it->viewField->getName(), "_view");
-			String deltaName = toString(it->scheme->getName(), "_f_", it->viewField->getName(), "_delta");
-			String tagField = toString(it->scheme->getName(), "_id");
-			String objField = toString(scheme.getName(), "_id");
-
-			query << "INSERT INTO " << deltaName << " (\"tag\", \"object\", \"time\", \"user\") "
-					" SELECT \"" << tagField << "\", \"" << objField << "\", " << Time::now().toMicroseconds() << ", "
-					<< userId << " FROM " << viewName << " WHERE \"" << objField << "\"=" << id << ";";
-
-			perform(query);
-		}
-	} else if (a == DeltaAction::Delete && !viewIds.empty()) {
-		for (auto &it : viewIds) {
-			query.clear();
-
-			String viewName = toString(it.first->scheme->getName(), "_f_", it.first->viewField->getName(), "_view");
-			String deltaName = toString(it.first->scheme->getName(), "_f_", it.first->viewField->getName(), "_delta");
-			String tagField = toString(it.first->scheme->getName(), "_id");
-			String objField = toString(scheme.getName(), "_id");
-
-			query << "INSERT INTO " << deltaName << " (\"tag\", \"object\", \"time\", \"user\") VALUES("
-					<< it.second << ", " << id << ", " << Time::now().toMicroseconds() << ", " << userId << ");";
-
-			perform(query);
 		}
 	}
 }

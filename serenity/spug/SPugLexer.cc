@@ -70,10 +70,11 @@ bool Lexer::parseToken(Token &tok) {
 	while (!r.empty()) {
 		StringView tmp(r);
 		auto indent = indentLevel;
+		bool followTag = false;
 		if (r.is(':')) {
 			++ r;
 			r.skipChars<SpacingFilter>();
-			++ indent;
+			followTag = true;
 		} else {
 			indent = checkIndent(indentStep, r);
 		}
@@ -98,7 +99,13 @@ bool Lexer::parseToken(Token &tok) {
 			}
 
 			if (auto line = readLine(tmp, r, currentTok)) {
-				currentTok->addChild(line);
+				if (followTag) {
+					currentTok->tail->addChild(line);
+					currentTok = line;
+					stack[indentLevel] = currentTok;
+				} else {
+					currentTok->addChild(line);
+				}
 			} else {
 				if (!r.is<StringView::Chars<'\n', '\r'>>()) {
 					return false;
@@ -319,13 +326,13 @@ bool Lexer::readTagInfo(Token *data, StringView &r, bool interpolated) const {
 			break;
 		} else if (data->tail->type == Token::TagTrailingEq || data->tail->type == Token::TagTrailingNEq) {
 			r.skipChars<SpacingFilter>();
-			if (r.is<NewLineFilter>()) {
+			if (r.is<NewLineFilter>() || (interpolated && r.is(']'))) {
 				return true;
 			}
 			auto tmp = r;
 			if (auto expr = Expression::parse(r, Expression::Options::getDefaultInline())) {
 				r.skipChars<SpacingFilter>();
-				if (r.is<NewLineFilter>() || r.empty()) {
+				if (r.is<NewLineFilter>() || r.empty() || (interpolated && r.is(']'))) {
 					data->addChild(new Token{data->tail->type == Token::TagTrailingEq ? Token::OutputEscaped : Token::OutputUnescaped,
 							StringView(tmp, tmp.size() - r.size()), expr});
 					return true;
@@ -652,7 +659,9 @@ Token *Lexer::readKeywordLine(const StringView &line, StringView &r) {
 	};
 
 	auto word = r.readChars<TagWordFilter>();
+	bool hasSpacing = false;
 	if (r.is<SpacingFilter>()) {
+		hasSpacing = true;
 		r.skipChars<SpacingFilter>();
 		if (word == "include") {
 			auto target = r.readUntil<NewLineFilter>();
@@ -754,8 +763,16 @@ Token *Lexer::readKeywordLine(const StringView &line, StringView &r) {
 
 	auto retData = new Token{Token::LineData, tmp};
 	retData->addChild(new Token{Token::Tag, word});
-	if (!readTagInfo(retData, r)) {
-		return nullptr;
+	if (!hasSpacing) {
+		if (!readTagInfo(retData, r)) {
+			return nullptr;
+		}
+	} else {
+		if (!r.is<NewLineFilter>()) {
+			if (!readPlainTextInterpolation(retData, r, false)) {
+				return nullptr;
+			}
+		}
 	}
 	return Lexer_completeLine(retData, line, r);
 }

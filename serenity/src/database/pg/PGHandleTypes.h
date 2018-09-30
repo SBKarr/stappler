@@ -86,6 +86,9 @@ struct TableRec {
 
 	bool exists = false;
 	bool valid = false;
+
+	const storage::Scheme *viewScheme = nullptr;
+	const storage::FieldView *viewField = nullptr;
 };
 
 NS_SA_EXT_END(pg)

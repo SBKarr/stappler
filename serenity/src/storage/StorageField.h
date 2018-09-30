@@ -90,6 +90,8 @@ enum class Transform {
 	Hexadecimial,
 	Base64,
 
+	Uuid,
+
 	Password, // deprecated
 };
 
@@ -211,9 +213,6 @@ public:
 		bool isProtected() const;
 		Transform getTransform() const { return transform; }
 
-		virtual bool hasDefault() const { return defaultFn || !def.isNull(); }
-		virtual data::Value getDefault() const { if (defaultFn) { return defaultFn(); } else { return def; } }
-
 		bool isSimpleLayout() const { return type == Type::Integer || type == Type::Float ||
 				type == Type::Boolean || type == Type::Text || type == Type::Bytes ||
 				type == Type::Data || type == Type::Extra; }
@@ -222,6 +221,9 @@ public:
 
 		bool isIndexed() const { return hasFlag(Flags::Indexed) || transform == Transform::Alias || type == Type::Object; }
 		bool isFile() const { return type == Type::File || type == Type::Image; }
+
+		virtual bool hasDefault() const;
+		virtual data::Value getDefault() const;
 
 		virtual bool transformValue(const Scheme &, data::Value &) const;
 		virtual void hash(StringStream &stream, ValidationLevel l) const;
@@ -257,7 +259,8 @@ public:
 
 	operator bool () const { return slot != nullptr; }
 
-	const Slot *getSlot() const { return slot; }
+	template <typename SlotType = Slot>
+	auto getSlot() const -> const SlotType * { return static_cast<const SlotType *>(slot); }
 
 	data::Value getTypeDesc() const;
 
@@ -360,7 +363,9 @@ struct FieldObject : Field::Slot {
 	FieldObject(String && n, Type t, Args && ... args) : Field::Slot(move(n), t) {
 		init<FieldObject, Args...>(*this, std::forward<Args>(args)...);
 		if (t == Type::Set && (toInt(flags) & toInt(Flags::Reference))) {
-			onRemove = RemovePolicy::Reference;
+			if (onRemove != RemovePolicy::Reference && onRemove != RemovePolicy::StrongReference) {
+				onRemove = RemovePolicy::Reference;
+			}
 		}
 		if (t == Type::Set && (onRemove == RemovePolicy::Reference || onRemove == RemovePolicy::StrongReference)) {
 			flags |= Flags::Reference;
@@ -483,7 +488,7 @@ template <typename ... Args> Field Field::View(String && name, Args && ... args)
 
 
 template <typename F> struct FieldOption<F, Flags> {
-	static inline void assign(F & f, Flags flags) { f.flags = flags; }
+	static inline void assign(F & f, Flags flags) { f.flags |= flags; }
 };
 
 template <typename F> struct FieldOption<F, FilterFn> {
@@ -555,7 +560,12 @@ template <typename F> struct FieldOption<F, Vector<Thumbnail>> {
 };
 
 template <typename F> struct FieldOption<F, RemovePolicy> {
-	static inline void assign(F & f, RemovePolicy p) { f.onRemove = p; }
+	static inline void assign(F & f, RemovePolicy p) {
+		f.onRemove = p;
+		if (p == RemovePolicy::Reference || p == RemovePolicy::StrongReference) {
+			f.flags |= Flags::Reference;
+		}
+	}
 };
 
 template <typename F> struct FieldOption<F, Linkage> {

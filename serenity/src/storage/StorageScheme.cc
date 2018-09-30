@@ -30,6 +30,7 @@ NS_SA_EXT_BEGIN(storage)
 
 bool Scheme::initSchemes(Server &serv, const Map<String, const Scheme *> &schemes) {
 	for (auto &it : schemes) {
+		const_cast<Scheme *>(it.second)->initScheme();
 		for (auto &fit : it.second->getFields()) {
 			if (fit.second.getType() == Type::View) {
 				auto slot = static_cast<const FieldView *>(fit.second.getSlot());
@@ -83,6 +84,24 @@ void Scheme::define(std::initializer_list<Field> il) {
 
 	updateLimits();
 }
+
+void Scheme::define(Vector<Field> &&il) {
+	for (auto &it : il) {
+		auto &fname = it.getName();
+		if (it.getType() == Type::Image) {
+			auto image = static_cast<const FieldImage *>(it.getSlot());
+			auto &thumbnails = image->thumbnails;
+			for (auto & thumb : thumbnails) {
+				auto new_f = fields.emplace(thumb.name, Field::Image(String(thumb.name), MaxImageSize(thumb.width, thumb.height))).first;
+				((FieldImage *)(new_f->second.getSlot()))->primary = false;
+			}
+		}
+		fields.emplace(fname, std::move(const_cast<Field &>(it)));
+	}
+
+	updateLimits();
+}
+
 void Scheme::cloneFrom(Scheme *source) {
 	for (auto &it : source->fields) {
 		fields.emplace(it.first, it.second);
@@ -1113,6 +1132,29 @@ void Scheme::purgeFilePatch(Adapter *adapter, const data::Value &patch) const {
 	for (auto &it : patch.asDict()) {
 		if (auto f = getField(it.first)) {
 			File::purgeFile(adapter, *f, it.second);
+		}
+	}
+}
+
+void Scheme::initScheme() {
+	// init non-linked object fields as StrongReferences
+	for (auto &it : fields) {
+		switch (it.second.getType()) {
+		case Type::Object:
+		case Type::Set:
+			if (auto slot = it.second.getSlot<FieldObject>()) {
+				if (slot->linkage == Linkage::Auto && slot->onRemove == RemovePolicy::Null && !slot->hasFlag(Flags::Reference)) {
+					if (!getForeignLink(slot)) {
+						// assume strong reference
+						auto mutSlot = const_cast<FieldObject *>(slot);
+						mutSlot->onRemove = RemovePolicy::StrongReference;
+						mutSlot->flags |= Flags::Reference;
+					}
+				}
+			}
+			break;
+		default:
+			break;
 		}
 	}
 }

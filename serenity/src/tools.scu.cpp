@@ -32,6 +32,7 @@ THE SOFTWARE.
 #include "ToolsAdminShell.cc"
 #include "ToolsAuth.cc"
 #include "ToolsServer.cc"
+#include "ToolsErrors.cc"
 #include "ToolsTestHandler.cc"
 #include "ToolsVirtual.cc"
 #include "WebSocket.cc"

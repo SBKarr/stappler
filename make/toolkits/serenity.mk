@@ -50,10 +50,6 @@ SERENITY_INCLUDES_DIRS += \
 SERENITY_INCLUDES_OBJS += \
 	serenity/ext/cityhash
 
-SERENITY_VIRTUAL_DIRS += \
-	serenity/virtual/js \
-	serenity/virtual/css \
-
 SERENITY_LIBS += -L$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH) $(OSTYPE_SERENITY_LIBS) -lpq -lidn
 
 SERENITY_SRCS := \
@@ -73,7 +69,8 @@ SERENITY_INCLUDES := \
 SERENITY_VIRTUAL_SRCS := \
 	$(shell find $(GLOBAL_ROOT)/serenity/virtual/js -name '*.js') \
 	$(shell find $(GLOBAL_ROOT)/serenity/virtual/css -name '*.css') \
-	$(shell find $(GLOBAL_ROOT)/serenity/virtual/html -name '*.html')
+	$(shell find $(GLOBAL_ROOT)/serenity/virtual/html -name '*.html') \
+	$(shell find $(GLOBAL_ROOT)/serenity/virtual/html -name '*.pug')
 
 SERENITY_GCH := $(addprefix $(GLOBAL_ROOT)/,$(SERENITY_PRECOMPILED_HEADERS))
 SERENITY_H_GCH := $(patsubst $(GLOBAL_ROOT)/%,$(SERENITY_OUTPUT_DIR)/include/%,$(SERENITY_GCH))
@@ -122,7 +119,7 @@ $(GLOBAL_ROOT)/serenity/gen/__Virtual.cpp: $(SERENITY_VIRTUAL_SRCS)
 	@for file in $^; do \
 		echo "\n// $$file" "\nstatic VirtualFile" >> $@; \
 		echo -n $$file | tr "/." _ >> $@; \
-		echo -n " (\"" >> $@; \
+		echo -n " = VirtualFile::add(\"" >> $@; \
 		echo -n $$file | sed "s:^$(GLOBAL_ROOT)/serenity/virtual::" >> $@; \
 		echo -n "\", R\"VirtualFile(" >> $@; \
 		cat $$file >> $@; \

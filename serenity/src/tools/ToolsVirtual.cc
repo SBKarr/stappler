@@ -26,48 +26,43 @@ THE SOFTWARE.
 NS_SA_EXT_BEGIN(tools)
 
 struct VirtualFilesystemHandle {
-	struct Rec {
-		const char *name;
-		const char *content;
-		size_t len;
-	};
-
 	VirtualFilesystemHandle() : count(0) { }
 
-	void add(const char *n, const char *c) {
-		if (strncmp(n, "serenity/virtual", "serenity/virtual"_len) == 0) {
+	VirtualFile add(StringView n, const StringView &c) {
+		if (n.starts_with("serenity/virtual")) {
 			n += "serenity/virtual"_len;
 		}
 		if (count < 255) {
 			table[count].name = n;
 			table[count].content = c;
-			table[count].len = strlen(c);
 			++ count;
 		}
+		return table[count - 1];
 	}
 
-	size_t count;
-	Rec table[255] = { };
+	size_t count = 0;
+	VirtualFile table[255] = { };
 };
 
 static VirtualFilesystemHandle s_handle;
 
-StringView VirtualFile::get(const String &path) {
-	return get(path.data());
+VirtualFile VirtualFile::add(const StringView &n, const StringView &c) {
+	return s_handle.add(n, c);
 }
 
-StringView VirtualFile::get(const char *path) {
+StringView VirtualFile::get(const StringView &path) {
 	for (size_t i = 0; i < s_handle.count; ++i) {
-		if (strcmp(path, s_handle.table[i].name) == 0) {
-			return StringView(s_handle.table[i].content, s_handle.table[i].len);
+		if (path == s_handle.table[i].name) {
+			return StringView(s_handle.table[i].content);
 			break;
 		}
 	}
 	return StringView();
 }
 
-VirtualFile::VirtualFile(const char *n, const char *c) : name(n), content(c) {
-	s_handle.add(n, c);
+const VirtualFile *VirtualFile::getList(size_t &count) {
+	count = s_handle.count;
+	return s_handle.table;
 }
 
 int VirtualFilesystem::onTranslateName(Request &rctx) {
@@ -85,11 +80,11 @@ int VirtualFilesystem::onTranslateName(Request &rctx) {
 				rctx.setContentType("text/html;charset=UTF-8");
 			}
 
-			if (output::checkCacheHeaders(rctx, getCompileUnixTime(), hash::hash32(s_handle.table[i].name, strlen(s_handle.table[i].name)))) {
+			if (output::checkCacheHeaders(rctx, getCompileUnixTime(), hash::hash32(s_handle.table[i].name.data(), s_handle.table[i].name.size()))) {
 				return HTTP_NOT_MODIFIED;
 			}
 
-			rctx << StringView(s_handle.table[i].content, s_handle.table[i].len);
+			rctx << s_handle.table[i].content;
 			return DONE;
 			break;
 		}

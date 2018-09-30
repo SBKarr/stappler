@@ -28,6 +28,8 @@ THE SOFTWARE.
 
 #include "SPFilesystem.h"
 #include "SPugCache.h"
+#include "SPugContext.h"
+#include "SPugVariable.h"
 #include "Root.h"
 #include "UrlEncodeParser.h"
 #include "PGHandle.h"
@@ -109,6 +111,7 @@ struct Request::Config : public AllocPool {
 	InputFilter *_filter = nullptr;
 
 	Map<String, CookieStorage> _cookies;
+	int64_t _altUserid = 0;
 };
 
 Request::Request() : _buffer(nullptr), _request(nullptr), _config(nullptr) { }
@@ -404,6 +407,14 @@ User *Request::getAuthorizedUser() const {
 	return _config->_user;
 }
 
+int64_t Request::getUserId() const {
+	if (_config->_user) {
+		return _config->_user->getObjectId();
+	} else {
+		return _config->_altUserid;
+	}
+}
+
 void Request::setContentEncoding(apr::string &&str) {
 	_request->content_encoding = str.extract();
 }
@@ -442,8 +453,8 @@ void Request::setMaxFileSize(size_t s) {
 	_config->_config.maxFileSize = s;
 }
 
-void Request::storeObject(void *ptr, const String &key) const {
-	apr_pool_userdata_set(ptr, key.data(), nullptr, _request->pool);
+void Request::storeObject(void *ptr, const String &key, Function<void()> &&cb) const {
+	apr::pool::store(_request->pool, ptr, key, std::move(cb));
 }
 
 const apr::vector<apr::string> & Request::getParsedQueryPath() const {
@@ -591,6 +602,21 @@ void Request::runTemplate(String && path, const Function<void(tpl::Exec &, Reque
 int Request::runPug(const StringView & path, const Function<bool(pug::Context &, const pug::Template &)> &cb) {
 	auto cache = server().getPugCache();
 	if (cache->runTemplate(path, [&] (pug::Context &ctx, const pug::Template &tpl) -> bool {
+		pug::VarClass serenityClass;
+		serenityClass.staticFunctions.emplace("prettify", [] (pug::VarStorage &, pug::Var *var, size_t argc) -> pug::Var {
+			if (var && argc == 1) {
+				return pug::Var(data::Value(data::toString(var->readValue(), true)));
+			}
+			return pug::Var();
+		});
+		serenityClass.staticFunctions.emplace("timeToHttp", [] (pug::VarStorage &, pug::Var *var, size_t argc) -> pug::Var {
+			if (var && argc == 1 && var->readValue().isInteger()) {
+				return pug::Var(data::Value(Time::microseconds(var->readValue().asInteger()).toHttp()));
+			}
+			return pug::Var();
+		});
+		ctx.set("serenity", std::move(serenityClass));
+
 		if (cb(ctx, tpl)) {
 			auto h = getResponseHeaders();
 			auto lm = h.at("Last-Modified");

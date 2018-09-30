@@ -77,6 +77,7 @@ constexpr auto getWebsocketMaxBufferSlotSize() -> size_t { return 8_KiB; }
 
 constexpr auto getServerToolsPrefix() { return "/__server"; }
 constexpr auto getServerToolsShell() { return "/shell"; }
+constexpr auto getServerToolsErrors() { return "/errors"; }
 constexpr auto getServerToolsAuth() { return "/auth/"; }
 constexpr auto getServerVirtualFilesystem() { return "/virtual/"; }
 

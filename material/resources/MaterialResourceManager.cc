@@ -76,6 +76,7 @@ ResourceManager::ResourceManager() {
 		pair("SystemCopy", "Копировать"),
 		pair("SystemCut", "Вырезать"),
 		pair("SystemPaste", "Вставить"),
+		pair("SystemTapExit", "Нажмите ещё раз для выхода"),
 
 		pair("SystemErrorOverflowChars", "Слишком много символов"),
 		pair("SystemErrorInvalidChar", "Недопустимый символ"),
@@ -97,6 +98,7 @@ ResourceManager::ResourceManager() {
 		pair("SystemCopy", "Copy"),
 		pair("SystemCut", "Cut"),
 		pair("SystemPaste", "Paste"),
+		pair("SystemTapExit", "Tap one more time to exit"),
 
 		pair("SystemErrorOverflowChars", "Too many characters"),
 		pair("SystemErrorInvalidChar", "Invalid character"),

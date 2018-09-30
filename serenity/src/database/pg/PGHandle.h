@@ -146,8 +146,6 @@ protected:
 
 	using ViewIdVec = Vector<Pair<const storage::Scheme::ViewScheme *, int64_t>>;
 
-	void touchDelta(const Scheme &, int64_t id, DeltaAction, const ViewIdVec & = ViewIdVec());
-
 	apr_pool_t *pool;
 	ap_dbd_t *handle;
     PGconn *conn = nullptr;

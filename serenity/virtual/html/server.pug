@@ -1,0 +1,23 @@
+doctype html
+html
+	head
+		title Serenity Server Page
+		link(rel="stylesheet",href="/__server/virtual/css/style.css")
+		link(rel="stylesheet",href="/__server/virtual/css/kawaiJson.css")
+		script(src="/__server/virtual/js/kawaiJson.js")
+		script(src="/__server/virtual/js/shellHistory.js")
+	body
+		h4 Serenity Server Page (#{version})
+		if hasDb
+			if setup
+				p Setup completed
+				p: a(href="/__server/shell") Interactive server console
+				p: a(href="/__server/errors") Server errors database
+			else
+				h5 Setup form:
+				form#setup(method="post")
+					input#name(type="text",name="name",placeholder="User name",value="",size="24")
+					input#passwd(type="password",name="passwd",placeholder="Password",value="",size="24")
+					input(type="submit")
+		else
+			p No database connection in this handler

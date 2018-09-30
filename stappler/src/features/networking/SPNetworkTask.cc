@@ -169,6 +169,10 @@ void NetworkTask::setSendData(const data::Value &data, data::EncodeFormat fmt) {
 	_handle.setSendData(data, fmt);
 }
 
+void NetworkTask::setSilent(bool value) {
+	_handle.setSilent(value);
+}
+
 StringView NetworkTask::getReceivedHeaderString(const StringView &h) const {
 	return _handle.getReceivedHeaderString(h);
 }

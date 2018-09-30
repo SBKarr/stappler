@@ -40,11 +40,12 @@ int ServerGui::onTranslateName(Request &rctx) {
 			hasDb = true;
 		}
 		rctx.setContentType("text/html");
-		rctx.runTemplate("virtual://html/server.html", [&] (tpl::Exec &exec, Request &) {
+		rctx.runPug("virtual://html/server.pug", [&] (pug::Context &exec, const pug::Template &) -> bool {
 			exec.set("count", data::Value(count));
 			exec.set("setup", data::Value(count != 0));
 			exec.set("hasDb", data::Value(hasDb));
 			exec.set("version", data::Value(getVersionString()));
+			return true;
 		});
 		return DONE;
 	} else {
@@ -60,7 +61,6 @@ void ServerGui::onFilterComplete(InputFilter *filter) {
 
 	auto &name = data.getString("name");
 	auto &passwd = data.getString("passwd");
-
 	if (!name.empty() && !passwd.empty()) {
 		User::setup(rctx.storage(), name, passwd);
 	}

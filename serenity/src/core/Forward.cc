@@ -40,7 +40,7 @@ using HostUnicodeChars = chars::Compose<char, chars::CharGroup<char, CharGroupId
 using HostAsciiChars = chars::Compose<char, chars::CharGroup<char, CharGroupId::Alphanumeric>,
 		chars::Chars<char, '.', '-'>>;
 
-String toAscii(const String &source, bool validate) {
+String toAscii(const StringView &source, bool validate) {
 	if (validate) {
 		StringView r(source);
 		r.skipChars<HostUnicodeChars>();
@@ -63,7 +63,7 @@ String toAscii(const String &source, bool validate) {
 	return String();
 }
 
-String toUnicode(const String &source, bool validate) {
+String toUnicode(const StringView &source, bool validate) {
 	if (validate) {
 		StringView r(source);
 		r.skipChars<HostAsciiChars>();

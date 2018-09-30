@@ -388,6 +388,9 @@ void ForegroundLayer::showSnackbar(SnackbarData &&data) {
 const String &ForegroundLayer::getSnackbarString() const {
 	return _snackbar->getData().text;
 }
+void ForegroundLayer::clearSnackbar() {
+	_snackbar->clear();
+}
 
 void ForegroundLayer::setBackgroundOpacity(uint8_t op) {
 	_backgroundOpacity = op;

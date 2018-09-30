@@ -123,8 +123,8 @@ NS_SA_EXT_END(storage)
 
 NS_SA_EXT_BEGIN(idn)
 
-String toAscii(const String &, bool validate = true);
-String toUnicode(const String &, bool validate = false);
+String toAscii(const StringView &, bool validate = true);
+String toUnicode(const StringView &, bool validate = false);
 
 NS_SA_EXT_END(idn)
 

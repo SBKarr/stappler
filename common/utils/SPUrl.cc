@@ -37,7 +37,7 @@ using Chars = StringView::Chars<Args...>;
 template <char A, char B>
 using Range = StringView::Range<A, B>;
 
-Vector<String> Url::parsePath(const String &str) {
+Vector<String> Url::parsePath(const StringView &str) {
 	Vector<String> ret;
 	StringView s(str);
 	do {
@@ -59,7 +59,7 @@ Vector<String> Url::parsePath(const String &str) {
 	} while (!s.empty() && s.is('/'));
 	return ret;
 }
-Url::QueryVec Url::parseArgs(const String &str) {
+Url::QueryVec Url::parseArgs(const StringView &str) {
 	QueryVec vec;
 	StringView s(str);
 	do {
@@ -89,9 +89,6 @@ Url::QueryVec Url::parseArgs(const String &str) {
 		}
 	} while (!s.empty() && (s.is('&') || s.is(';')));
 	return vec;
-}
-data::Value Url::parseDataArgs(const String &str, size_t maxVarSize) {
-	return parseDataArgs(StringView(str), maxVarSize);
 }
 
 data::Value Url::parseDataArgs(const StringView &str, size_t maxVarSize) {
@@ -336,7 +333,7 @@ static bool isEmptyHostAllowed(const String &scheme) {
 	return false;
 }
 
-bool Url::parseInternal(const String &str) {
+bool Url::parseInternal(const StringView &str) {
 	StringView s(str);
 
 	enum State {
@@ -598,7 +595,7 @@ bool Url::parseInternal(const String &str) {
 	return true;
 }
 
-bool Url::parse(const String &str) {
+bool Url::parse(const StringView &str) {
 	clear();
 	if (!parseInternal(str)) {
 		clear();
@@ -607,33 +604,33 @@ bool Url::parse(const String &str) {
 	return true;
 }
 
-Url &Url::set(const String &str) {
+Url &Url::set(const StringView &str) {
 	parse(str);
 	return *this;
 }
 
-Url &Url::setScheme(const String &str) {
-	_scheme = str;
+Url &Url::setScheme(const StringView &str) {
+	_scheme = str.str();
 	return *this;
 }
 
-Url &Url::setUser(const String &str) {
-	_user = str;
+Url &Url::setUser(const StringView &str) {
+	_user = str.str();
 	return *this;
 }
 
-Url &Url::setPassword(const String &str) {
-	_password = str;
+Url &Url::setPassword(const StringView &str) {
+	_password = str.str();
 	return *this;
 }
 
-Url &Url::setHost(const String &str) {
+Url &Url::setHost(const StringView &str) {
 	auto pos = str.find(':');
 	if (pos == String::npos) {
-		_host = str;
+		_host = str.str();
 	} else {
-		_host = str.substr(0, pos);
-		_port = StringToNumber<uint32_t>(str.c_str() + pos + 1, nullptr);
+		_host = str.sub(0, pos).str();
+		_port = StringToNumber<uint32_t>(str.data() + pos + 1, nullptr);
 	}
 	return *this;
 }
@@ -643,7 +640,7 @@ Url &Url::setPort(uint32_t p) {
 }
 
 
-Url &Url::setPath(const String &str) {
+Url &Url::setPath(const StringView &str) {
 	_path.clear();
 
 	StringView s(str);
@@ -665,7 +662,7 @@ Url &Url::setPath(Vector<String> &&vec) {
 	return *this;
 }
 
-Url &Url::addPath(const String &str) {
+Url &Url::addPath(const StringView &str) {
 	StringView s(str);
 	do {
 		if (s.is('/')) {
@@ -693,8 +690,8 @@ Url &Url::addPath(Vector<String> &&vec) {
 	return *this;
 }
 
-Url &Url::addPathComponent(const String &str) {
-	_path.push_back(str);
+Url &Url::addPathComponent(const StringView &str) {
+	_path.push_back(str.str());
 	return *this;
 }
 Url &Url::addPathComponent(String &&str) {
@@ -736,7 +733,7 @@ Url &Url::addQuery(const data::Value &data) {
 	_originalQuery.clear();
 	if (data.isDictionary()) {
 		for (auto &it : data.getDict()) {
-			addQuery(it.first, it.second);
+			addQuery(it.first, it.second.asString());
 		}
 	} else if (data.isArray()) {
 		for (auto &it : data.getArray()) {
@@ -757,7 +754,7 @@ Url &Url::addQuery(const QueryValue &q) {
 	_query.push_back(q);
 	return *this;
 }
-Url &Url::addQuery(const String &key, const data::Value &value) {
+Url &Url::addQuery(const StringView &key, const data::Value &value) {
 	_originalQuery.clear();
 	if (value.isArray()){
 		for (auto &it : value.getArray()) {
@@ -777,8 +774,8 @@ Url &Url::addQuery(const String &key, const data::Value &value) {
 	return *this;
 }
 
-Url &Url::setFragment(const String &str) {
-	_fragment = str;
+Url &Url::setFragment(const StringView &str) {
+	_fragment = str.str();
 	return *this;
 }
 

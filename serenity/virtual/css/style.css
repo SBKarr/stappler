@@ -74,3 +74,23 @@ body.api {
 
 .edit:hover,.delete:hover { opacity: 1.0 }
 .error { color: red }
+
+.code {
+	font-family: monospace;
+	margin: 0 0 0 10px;
+	padding: 0;
+}
+
+span.time {
+	font-family: monospace;
+	color: gray;
+}
+
+span.ip {
+	font-family: monospace;
+	color: blue;
+}
+
+span.server {
+	font-weight: bold;
+}

@@ -46,6 +46,7 @@ NS_SA_BEGIN
 
 #define SA_SERVER_FILE_SCHEME_NAME "__files"
 #define SA_SERVER_USER_SCHEME_NAME "__users"
+#define SA_SERVER_ERROR_SCHEME_NAME "__error"
 
 using namespace storage;
 
@@ -67,6 +68,17 @@ struct Server::Config : public AllocPool {
 	: _pugCache(pug::Template::Options::getDefault(), [this] (const StringView &str) { onError(str); })
 #endif
 	{
+		// add virtual files to template engine
+		size_t count = 0;
+		auto d = tools::VirtualFile::getList(count);
+		for (size_t i = 0; i < count; ++ i) {
+			if (d[i].name.ends_with(".pug") || d[i].name.ends_with(".spug")) {
+				_pugCache.addTemplate(toString("virtual:/", d[i].name), d[i].content.str());
+			} else {
+				_pugCache.addContent(toString("virtual:/", d[i].name), d[i].content.str());
+			}
+		}
+
 		ap_set_module_config(server->module_config, &serenity_module, this);
 	}
 
@@ -183,6 +195,7 @@ struct Server::Config : public AllocPool {
 	void init(Server &serv) {
 		schemes.emplace(userScheme.getName(), &userScheme);
 		schemes.emplace(fileScheme.getName(), &fileScheme);
+		schemes.emplace(errorScheme.getName(), &errorScheme);
 
 		if (data) {
 			if (data.isArray("handlers")) {
@@ -257,6 +270,19 @@ struct Server::Config : public AllocPool {
 			Field::Integer("width"),
 			Field::Integer("height"),
 		})
+	});
+
+	storage::Scheme errorScheme = storage::Scheme(SA_SERVER_ERROR_SCHEME_NAME, {
+		Field::Boolean("hidden", data::Value(false)),
+		Field::Boolean("delivered", data::Value(false)),
+		Field::Text("name"),
+		Field::Text("documentRoot"),
+		Field::Text("url"),
+		Field::Text("request"),
+		Field::Text("ip"),
+		Field::Data("headers"),
+		Field::Data("data"),
+		Field::Integer("time"),
 	});
 
 	data::Value handlers;
@@ -847,7 +873,7 @@ ServerComponent *Server::getServerComponent(std::type_index name) const {
 	return nullptr;
 }
 
-void Server::addComponent(const String &name, ServerComponent *comp) {
+void Server::addComponentWithName(const String &name, ServerComponent *comp) {
 	_config->components.emplace(name, comp);
 	_config->typedComponents.emplace(std::type_index(typeid(*comp)), comp);
 	if (_config->childInit) {
@@ -947,6 +973,10 @@ const storage::Scheme * Server::getUserScheme() const {
 	return getScheme(SA_SERVER_USER_SCHEME_NAME);
 }
 
+const storage::Scheme * Server::getErrorScheme() const {
+	return getScheme(SA_SERVER_ERROR_SCHEME_NAME);
+}
+
 const storage::Scheme * Server::defineUserScheme(std::initializer_list<storage::Field> il) {
 	_config->userScheme.define(il);
 	return &_config->userScheme;
@@ -971,29 +1001,34 @@ const Map<String, Server::RequestScheme> &Server::getRequestHandlers() const {
 	return _config->requests;
 }
 
+struct Server_ErrorList {
+	request_rec *request;
+	Vector<data::Value> errors;
+};
+
+struct Server_ErrorReporterFlags {
+	bool isProtected = false;
+};
+
 void Server::reportError(const data::Value &d) {
-	if (_config->webHookFormat == "email") {
-		Server_prepareEmail(_config, [&] (StringStream &data) {
-			data << "Server:\n"
-					"\tDocumentRoot: " << getDocumentRoot() << "\n"
-					"\tName: " << _server->server_hostname << "\n"
-					"\tDate: " << Time::now().toHttp() << "\n";
-
-			if (auto req = apr::pool::request()) {
-				data << "Request:\n"
-						"\tUrl: " << req->hostname << req->unparsed_uri << "\n"
-						"\tRequest: " << req->the_request << "\n"
-						"\tIp: " << req->useragent_ip << "\n"
-						"\tHeaders:\n";
-				apr::table t(req->headers_in);
-				for (auto &it : t) {
-					data << "\t\t" << it.key << ": " << it.val << "\n";
-				}
-			}
-
-			data << "\n";
-			data << data::EncodeFormat::Pretty << d;
-		}, ServerReportType::Error);
+	if (auto obj = apr::pool::get<Server_ErrorReporterFlags>("Server_ErrorReporterFlags")) {
+		if (obj->isProtected) {
+			return;
+		}
+	}
+	if (auto req = apr::pool::request()) {
+		if (auto objVal = Request(req).getObject<Server_ErrorList>("Server_ErrorList")) {
+			objVal->errors.emplace_back(d);
+		} else {
+			auto obj = new Server_ErrorList{req};
+			obj->errors.emplace_back(d);
+			Request rctx(req);
+			rctx.storeObject(obj, "Server_ErrorList", [obj] {
+				Server(obj->request->server).runErrorReportTask(obj->request, obj->errors);
+			});
+		}
+	} else {
+		runErrorReportTask(nullptr, Vector<data::Value>{d});
 	}
 }
 
@@ -1003,6 +1038,63 @@ bool Server::performTask(Task *task, bool performFirst) const {
 
 bool Server::scheduleTask(Task *task, TimeInterval t) const {
 	return Root::getInstance()->scheduleTask(*this, task, t);
+}
+
+void Server::runErrorReportTask(request_rec *req, const Vector<data::Value> &errors) {
+	auto serv = req->server;
+	Task::perform(Server(serv), [&] (Task &task) {
+		data::Value *err = nullptr;
+		if (req) {
+			err = new data::Value {
+				pair("documentRoot", data::Value(Server(serv).getDocumentRoot())),
+				pair("name", data::Value(serv->server_hostname)),
+				pair("url", data::Value(toString(req->hostname, req->unparsed_uri))),
+				pair("request", data::Value(req->the_request)),
+				pair("ip", data::Value(req->useragent_ip)),
+				pair("time", data::Value(Time::now().toMicros()))
+			};
+			apr::table t(req->headers_in);
+			if (!t.empty()) {
+				auto &headers = err->emplace("headers");
+				for (auto &it : t) {
+					headers.setString(it.val, it.key);
+				}
+			}
+		} else {
+			err = new data::Value {
+				pair("documentRoot", data::Value(Server(serv).getDocumentRoot())),
+				pair("name", data::Value(serv->server_hostname)),
+				pair("time", data::Value(Time::now().toMicros()))
+			};
+		}
+		auto &d = err->emplace("data");
+		for (auto &it : errors) {
+			d.addValue(it);
+		}
+		task.addExecuteFn([err] (const Task &task) -> bool {
+			Server_ErrorReporterFlags *obj = apr::pool::get<Server_ErrorReporterFlags>("Server_ErrorReporterFlags");
+			if (obj) {
+				obj->isProtected = true;
+			} else {
+				obj = new Server_ErrorReporterFlags{true};
+				apr::pool::store(obj, "Server_ErrorReporterFlags");
+			}
+
+			auto root = Root::getInstance();
+			auto pool = apr::pool::acquire();
+			auto serv = apr::pool::server();
+			if (auto dbd = root->dbdOpen(pool, serv)) {
+				pg::Handle h(pool, dbd);
+				storage::Adapter *storage = &h;
+
+				auto serv = Server(apr::pool::server());
+				serv.getErrorScheme()->create(storage, *err);
+
+				root->dbdClose(serv, dbd);
+			}
+			return true;
+		});
+	});
 }
 
 NS_SA_END

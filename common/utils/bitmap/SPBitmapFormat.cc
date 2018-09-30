@@ -1312,6 +1312,49 @@ bool Bitmap::isImage(const uint8_t * data, size_t dataLen, bool readable) {
 	return false;
 }
 
+Pair<Bitmap::FileFormat, StringView> Bitmap::detectFormat(const StringView &path) {
+	auto file = filesystem::openForReading(path);
+	return detectFormat(path);
+}
+
+Pair<Bitmap::FileFormat, StringView> Bitmap::detectFormat(const io::Producer &file) {
+	StackBuffer<512> data;
+	if (file.seekAndRead(0, data, 512) < 32) {
+		return pair(FileFormat::Custom, StringView());
+	}
+
+	return detectFormat(data.data(), data.size());
+}
+
+Pair<Bitmap::FileFormat, StringView> Bitmap::detectFormat(const uint8_t * data, size_t dataLen) {
+	for (int i = 0; i < toInt(Bitmap::FileFormat::Custom); ++i) {
+		if (s_defaultFormats[i].isRecognizable() && s_defaultFormats[i].is(data, dataLen)) {
+			return pair(s_defaultFormats[i].getFormat(), s_defaultFormats[i].getName());
+		}
+	}
+
+	Vector<Pair<StringView, BitmapFormat::check_fn>> fns;
+
+	s_formatListMutex.lock();
+	fns.reserve(s_formatList.size());
+
+	for (auto &it : s_formatList) {
+		if (it.isRecognizable()) {
+			fns.emplace_back(it.getName(), it.getCheckFn());
+		}
+	}
+
+	s_formatListMutex.unlock();
+
+	for (auto &it : fns) {
+		if (it.second(data, dataLen)) {
+			return pair(FileFormat::Custom, it.first);
+		}
+	}
+
+	return pair(FileFormat::Custom, StringView());
+}
+
 bool Bitmap::check(FileFormat fmt, const uint8_t * data, size_t dataLen) {
 	assert(fmt != FileFormat::Custom);
 	return s_defaultFormats[toInt(fmt)].is(data, dataLen);

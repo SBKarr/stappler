@@ -94,6 +94,17 @@ protected:
 	bool processImageTest(Request &rctx, data::Value &ret, const data::Value &input, InputFile &);
 };
 
+class ErrorsGui : public RequestHandler {
+public:
+	virtual bool isRequestPermitted(Request &) override { return true; }
+	virtual int onTranslateName(Request &) override;
+
+	//virtual int onHandler(Request &) override;
+
+protected:
+	Resource *_resource = nullptr;
+};
+
 /* WebSocket shell interface GUI */
 class VirtualFilesystem : public RequestHandler {
 public:
@@ -104,13 +115,13 @@ public:
 void registerTools(const String &prefix, Server &serv);
 
 struct VirtualFile {
-	static StringView get(const String &);
-	static StringView get(const char *);
+	static VirtualFile add(const StringView &, const StringView &);
+	static StringView get(const StringView &);
 
-	VirtualFile(const char *, const char *);
+	static const VirtualFile *getList(size_t &);
 
-	const char *name;
-	const char *content;
+	StringView name;
+	StringView content;
 };
 
 const char * getVersionString();

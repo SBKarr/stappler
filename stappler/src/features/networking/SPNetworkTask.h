@@ -65,6 +65,8 @@ public:
 	void setSendData(const uint8_t *data, size_t size);
 	void setSendData(const data::Value &, data::EncodeFormat fmt = data::EncodeFormat());
 
+	void setSilent(bool);
+
     int32_t getResponseCode() const { return (int32_t)_handle.getResponseCode(); }
     StringView getUrl() const { return _handle.getUrl(); }
     StringView getError() const { return _handle.getError(); }

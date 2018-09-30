@@ -30,7 +30,7 @@ THE SOFTWARE.
 
 NS_SA_EXT_BEGIN(pg)
 
-constexpr static uint32_t getDefaultFunctionVersion() { return 6; }
+constexpr static uint32_t getDefaultFunctionVersion() { return 8; }
 
 constexpr static const char * DATABASE_DEFAULTS = R"Sql(
 CREATE TABLE IF NOT EXISTS __objects (
@@ -106,16 +106,54 @@ static void writeObjectSetRemoveTrigger(StringStream &stream, const storage::Sch
 			<< s->getName() << "_f_" << obj->name << " WHERE "<< source << "_id=OLD.__oid);\n";
 }
 
+static void writeObjectUpdateTrigger(StringStream &stream, const storage::Scheme *s, const storage::FieldObject *obj) {
+	auto & target = obj->scheme->getName();
+
+	stream << "\t\tIF (NEW.\"" << obj->getName() << "\" IS NULL OR OLD.\"" << obj->getName() << "\" <> NEW.\"" << obj->getName() << "\") THEN\n"
+		<< "\t\t\tIF (OLD.\"" << obj->getName() << "\" IS NOT NULL) THEN\n"
+		<< "\t\t\t\tDELETE FROM " << target << " WHERE __oid=OLD." << obj->getName() << ";\n";
+	stream << "\t\t\tEND IF;\n\t\tEND IF;\n";
+}
+
+static void writeObjectRemoveTrigger(StringStream &stream, const storage::Scheme *s, const storage::FieldObject *obj) {
+	auto & target = obj->scheme->getName();
+
+	stream << "\t\tIF (OLD.\"" << obj->getName() << "\" IS NOT NULL) THEN\n"
+		<< "\t\t\tDELETE FROM " << target << " WHERE __oid=OLD." << obj->getName() << ";\n";
+	stream << "\t\tEND IF;\n";
+}
+
 static void writeTrigger(StringStream &stream, const storage::Scheme *s, const String &triggerName) {
 	auto &fields = s->getFields();
 
+	auto writeInsertDelta = [&] (Handle::DeltaAction a) {
+		if (a == Handle::DeltaAction::Create) {
+			stream << "\t\tINSERT INTO " << TableRec::getNameForDelta(*s) << "(\"object\",\"action\",\"time\",\"user\")"
+				"VALUES(NEW.__oid,1,current_setting('serenity.now')::bigint,current_setting('serenity.user')::bigint);\n";
+		} else {
+			stream << "\t\tINSERT INTO " << TableRec::getNameForDelta(*s) << "(\"object\",\"action\",\"time\",\"user\")"
+				"VALUES(OLD.__oid," << toInt(a) << ",current_setting('serenity.now')::bigint,current_setting('serenity.user')::bigint);\n";
+		}
+	};
+
 	stream << "CREATE OR REPLACE FUNCTION " << triggerName << "_func() RETURNS TRIGGER AS $" << triggerName
 			<< "$ BEGIN\n\tIF (TG_OP = 'INSERT') THEN\n";
+	if (s->hasDelta()) {
+		writeInsertDelta(Handle::DeltaAction::Create);
+	}
 	stream << "\tELSIF (TG_OP = 'UPDATE') THEN\n";
 	for (auto &it : fields) {
 		if (it.second.isFile()) {
 			writeFileUpdateTrigger(stream, s, it.second);
+		} else if (it.second.getType() == storage::Type::Object) {
+			const storage::FieldObject *objSlot = static_cast<const storage::FieldObject *>(it.second.getSlot());
+			if (objSlot->onRemove == storage::RemovePolicy::StrongReference) {
+				writeObjectUpdateTrigger(stream, s, objSlot);
+			}
 		}
+	}
+	if (s->hasDelta()) {
+		writeInsertDelta(Handle::DeltaAction::Update);
 	}
 	stream << "\tELSIF (TG_OP = 'DELETE') THEN\n";
 	for (auto &it : fields) {
@@ -126,12 +164,58 @@ static void writeTrigger(StringStream &stream, const storage::Scheme *s, const S
 			if (objSlot->onRemove == storage::RemovePolicy::StrongReference) {
 				writeObjectSetRemoveTrigger(stream, s, objSlot);
 			}
+		} else if (it.second.getType() == storage::Type::Object) {
+			const storage::FieldObject *objSlot = static_cast<const storage::FieldObject *>(it.second.getSlot());
+			if (objSlot->onRemove == storage::RemovePolicy::StrongReference) {
+				writeObjectRemoveTrigger(stream, s, objSlot);
+			}
 		}
+	}
+	if (s->hasDelta()) {
+		writeInsertDelta(Handle::DeltaAction::Delete);
 	}
 	stream << "\tEND IF;\n\tRETURN NULL;\n";
 	stream << "\nEND; $" << triggerName << "$ LANGUAGE plpgsql;\n";
 
 	stream << "CREATE TRIGGER " << triggerName << " AFTER INSERT OR UPDATE OR DELETE ON \"" << s->getName()
+			<< "\" FOR EACH ROW EXECUTE PROCEDURE " << triggerName << "_func();\n";
+}
+
+static void writeDeltaTrigger(StringStream &stream, const StringView &name, const TableRec &s, const StringView &triggerName) {
+	String deltaName = toString(name.sub(0, name.size() - 5), "_delta");
+	String tagField = toString(s.viewScheme->getName(), "_id");
+	String objField = toString(s.viewField->scheme->getName(), "_id");
+
+	stream << "CREATE OR REPLACE FUNCTION " << triggerName << "_func() RETURNS TRIGGER AS $" << triggerName
+			<< "$ BEGIN\n"
+			"\tIF (TG_OP = 'INSERT') THEN\n";
+
+
+	stream << "\tINSERT INTO " << deltaName << " (\"tag\", \"object\", \"time\", \"user\") VALUES("
+			"NEW.\"" << tagField << "\",NEW.\"" << objField << "\","
+			"current_setting('serenity.now')::bigint,current_setting('serenity.user')::bigint);\n";
+
+
+	stream << "\tELSIF (TG_OP = 'UPDATE') THEN\n";
+
+
+	stream << "\tINSERT INTO " << deltaName << " (\"tag\", \"object\", \"time\", \"user\") VALUES("
+			"OLD.\"" << tagField << "\",OLD.\"" << objField << "\","
+			"current_setting('serenity.now')::bigint,current_setting('serenity.user')::bigint);\n";
+
+
+	stream << "\tELSIF (TG_OP = 'DELETE') THEN\n";
+
+
+	stream << "\tINSERT INTO " << deltaName << " (\"tag\", \"object\", \"time\", \"user\") VALUES("
+			"OLD.\"" << tagField << "\",OLD.\"" << objField << "\","
+			"current_setting('serenity.now')::bigint,current_setting('serenity.user')::bigint);\n";
+
+
+	stream << "\tEND IF;\n"
+			"\tRETURN NULL;\n"
+			"END; $" << triggerName << "$ LANGUAGE plpgsql;\n";
+	stream << "CREATE TRIGGER " << triggerName << " AFTER INSERT OR UPDATE OR DELETE ON \"" << name
 			<< "\" FOR EACH ROW EXECUTE PROCEDURE " << triggerName << "_func();\n";
 }
 
@@ -318,6 +402,10 @@ void TableRec::writeCompareResult(StringStream &stream,
 				for (auto & tit : it.second.triggers) {
 					writeTrigger(stream, scheme_it->second, tit);
 				}
+			} else if (it.second.viewField) {
+				for (auto & tit : it.second.triggers) {
+					writeDeltaTrigger(stream, it.first, it.second, tit);
+				}
 			}
 		}
 	}
@@ -355,7 +443,7 @@ Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, const stor
 
 					table.pkey.emplace_back(source + "_id");
 					table.pkey.emplace_back(target + "_id");
-					tables.emplace(std::move(name), std::move(table));
+					tables.emplace(std::move(string::tolower(name)), std::move(table));
 				}
 			}
 
@@ -414,6 +502,8 @@ Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, const stor
 				auto & target = slot->scheme->getName();
 
 				TableRec table;
+				table.viewScheme = it.second;
+				table.viewField = slot;
 				table.cols.emplace("__vid", ColRec(ColRec::Type::Serial, true));
 				table.cols.emplace(source + "_id", ColRec(ColRec::Type::Integer, true));
 				table.cols.emplace(target + "_id", ColRec(ColRec::Type::Integer, true));
@@ -453,9 +543,17 @@ Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, const stor
 						ConstraintRec::Reference, target + "_id", target, RemovePolicy::Cascade));
 
 				table.pkey.emplace_back("__vid");
-				tables.emplace(std::move(name), std::move(table));
+				auto tblIt = tables.emplace(std::move(name), std::move(table)).first;
 
 				if (slot->delta) {
+					StringStream hashStream;
+					hashStream << getDefaultFunctionVersion() << tblIt->first << "_delta";
+
+					size_t id = std::hash<String>{}(hashStream.weak());
+					hashStream.clear();
+					hashStream << "_trig_" << tblIt->first << "_" << id;
+					tblIt->second.triggers.emplace(StringView(hashStream.weak()).sub(0, 56).str());
+
 					String name = toString(it.first, "_f_", fit.first, "_delta");
 					table.cols.emplace("id", ColRec(ColRec::Type::Serial, true));
 					table.cols.emplace("tag", ColRec(ColRec::Type::Integer, true));
@@ -589,6 +687,11 @@ TableRec::TableRec(Server &serv, const storage::Scheme *scheme) {
 	auto &name = scheme->getName();
 	pkey.emplace_back("__oid");
 
+	if (scheme->hasDelta()) {
+		hasTriggers = true;
+		hashStream << ":delta:";
+	}
+
 	for (auto &it : scheme->getFields()) {
 		bool emplaced = false;
 		auto &f = it.second;
@@ -628,10 +731,21 @@ TableRec::TableRec(Server &serv, const storage::Scheme *scheme) {
 			break;
 
 		case storage::Type::Integer:
-		case storage::Type::Object:
 		case storage::Type::File:
 		case storage::Type::Image:
 			cols.emplace(it.first, ColRec(ColRec::Type::Integer, f.hasFlag(storage::Flags::Required)));
+			emplaced = true;
+			break;
+
+		case storage::Type::Object:
+			cols.emplace(it.first, ColRec(ColRec::Type::Integer, f.hasFlag(storage::Flags::Required)));
+			if (f.isReference()) {
+				auto objSlot = static_cast<const storage::FieldObject *>(f.getSlot());
+				if (objSlot->onRemove == storage::RemovePolicy::StrongReference) {
+					hasTriggers = true;
+					hashStream << it.first << toInt(type);
+				}
+			}
 			emplaced = true;
 			break;
 
@@ -676,8 +790,8 @@ TableRec::TableRec(Server &serv, const storage::Scheme *scheme) {
 		size_t id = std::hash<String>{}(hashStream.weak());
 
 		hashStream.clear();
-		hashStream << "_sa_auto_" << scheme->getName() << "_" << id << "_trigger";
-		triggers.emplace(hashStream.str());
+		hashStream << "_trig_" << scheme->getName() << "_" << id;
+		triggers.emplace(StringView(hashStream.weak()).sub(0, 56).str());
 	}
 }
 

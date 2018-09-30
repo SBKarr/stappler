@@ -67,7 +67,8 @@ public:
 	template <typename Component>
 	auto getComponent() const -> Component *;
 
-	void addComponent(const String &, ServerComponent *);
+	template <typename Component>
+	auto addComponent(Component *) -> Component *;
 
 	const Map<String, ServerComponent *> &getComponents() const;
 
@@ -92,6 +93,7 @@ public:
 	const storage::Scheme * getScheme(const StringView &) const;
 	const storage::Scheme * getFileScheme() const;
 	const storage::Scheme * getUserScheme() const;
+	const storage::Scheme * getErrorScheme() const;
 
 	const storage::Scheme * defineUserScheme(std::initializer_list<storage::Field> il);
 
@@ -183,8 +185,12 @@ public: // compression
 	CompressionConfig *getCompressionConfig() const;
 
 protected:
+	void addComponentWithName(const String &, ServerComponent *);
+
 	ServerComponent *getServerComponent(const StringView &name) const;
 	ServerComponent *getServerComponent(std::type_index name) const;
+
+	void runErrorReportTask(request_rec *, const Vector<data::Value> &);
 
 	struct Config;
 
@@ -211,6 +217,12 @@ inline auto Server::getComponent() const -> Component * {
 	}
 
 	return nullptr;
+}
+
+template <typename Component>
+auto Server::addComponent(Component *c) -> Component * {
+	addComponentWithName(c->getName(), c);
+	return c;
 }
 
 NS_SA_END

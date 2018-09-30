@@ -69,6 +69,34 @@ request_rec *request() {
 	return ret;
 }
 
+struct Pool_StoreHandle : AllocPool {
+	void *pointer;
+	Function<void()> callback;
+};
+
+static apr_status_t sa_request_store_custom_cleanup(void *ptr) {
+	if (ptr) {
+		auto ref = (Pool_StoreHandle *)ptr;
+		if (ref->callback) {
+			memory::pool::push(ref->callback.get_allocator());
+			ref->callback();
+			memory::pool::pop();
+		}
+	}
+	return APR_SUCCESS;
+}
+
+void store(pool_t *pool, void *ptr, const String &key, Function<void()> &&cb) {
+	memory::pool::push(pool);
+	auto h = new (pool) Pool_StoreHandle();
+	h->pointer = ptr;
+	if (cb) {
+		h->callback = std::move(cb);
+	}
+	memory::pool::pop();
+	apr_pool_userdata_set(h, key.data(), h->callback ? sa_request_store_custom_cleanup : nullptr, pool);
+}
+
 }
 
 NS_SP_EXT_END(apr)

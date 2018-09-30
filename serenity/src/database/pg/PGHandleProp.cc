@@ -566,30 +566,8 @@ bool Handle::removeFromView(const FieldView &view, const Scheme *scheme, uint64_
 		String name = toString(scheme->getName(), "_f_", view.name, "_view");
 
 		ExecQuery query;
-		query << "DELETE FROM " << name << " WHERE \"" << view.scheme->getName() << "_id\"=" << oid;
-		if (view.delta) {
-			query << " RETURNING \"" << scheme->getName() << "_id\", \"__vid\";";
-
-			if (auto res = select(query)) {
-				if (!res.empty()) {
-					query.clear();
-					int64_t userId = Handle_getUserId();
-					String deltaName = toString(scheme->getName(), "_f_", view.name, "_delta");
-					auto ins = query.insert(deltaName).fields("tag", "object", "time", "user").values();
-					for (auto it : res) {
-						auto tag = it.toInteger(0);
-						ins.values(tag, oid, Time::now().toMicroseconds(), userId);
-					}
-					ins.finalize();
-					return perform(query) != maxOf<size_t>();
-				}
-				return true;
-			}
-			return false;
-		} else {
-			query << ";";
-			return perform(query) != maxOf<size_t>();
-		}
+		query << "DELETE FROM " << name << " WHERE \"" << view.scheme->getName() << "_id\"=" << oid << ";";
+		return perform(query) != maxOf<size_t>();
 	}
 	return false;
 }
@@ -611,26 +589,8 @@ bool Handle::addToView(const FieldView &view, const Scheme *scheme, uint64_t tag
 			val.value(Binder::DataField{it.second, (field_it != view.fields.end() && field_it->second.isDataLayout()) });
 		}
 
-		if (view.delta) {
-			val.returning().field(ExecQuery::Field(toString(view.scheme->getName(), "_id"))).field(ExecQuery::Field("__vid")).finalize();
-			if (auto res = select(query)) {
-				if (!res.empty()) {
-					auto row = res.at(0);
-					auto obj = row.toInteger(0);
-					query.clear();
-					int64_t userId = Handle_getUserId();
-					String deltaName = toString(scheme->getName(), "_f_", view.name, "_delta");
-					query.insert(deltaName).fields("tag", "object", "time", "user")
-							.values(tag, obj, Time::now().toMicroseconds(), userId).finalize();
-					return perform(query) != maxOf<size_t>();
-				}
-				return true;
-			}
-			return false;
-		} else {
-			val.finalize();
-			return perform(query) != maxOf<size_t>();
-		}
+		val.finalize();
+		return perform(query) != maxOf<size_t>();
 	}
 	return false;
 }

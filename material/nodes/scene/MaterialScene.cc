@@ -52,6 +52,7 @@ THE SOFTWARE.
 #include "MaterialLabel.h"
 
 #include "SPString.h"
+#include "SPActions.h"
 
 using namespace stappler::gesture;
 
@@ -408,7 +409,15 @@ void Scene::onBackKeyPressed() {
 	} else if (_navigation->isNodeEnabled()) {
 		_navigation->hide();
 	} else if (_content->isActive() && _content->onBackButton()) {
+	} else if (_exitProtection && !_shouldExit) {
+		showSnackbar(move(SnackbarData("SystemTapExit"_locale.to_string()).delayFor(3.0f)));
+		_shouldExit = true;
+		runAction(action::sequence(3.0f, [this] {
+			_shouldExit = false;
+		}));
 	} else {
+		_shouldExit = false;
+		_foreground->clearSnackbar();
 		stappler::Device::getInstance()->keyBackClicked();
 	}
 	onBackKey(this);

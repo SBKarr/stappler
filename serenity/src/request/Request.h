@@ -212,10 +212,12 @@ public: /* input config */
 	void setMaxFileSize(size_t);
 
 public: /* engine and errors */
-	void storeObject(void *ptr, const String &key) const;
+	void storeObject(void *ptr, const String &key, Function<void()> && = nullptr) const;
 
 	template <typename T = void>
-	T *getObject(const String &) const;
+	T *getObject(const String &key) const {
+		return apr::pool::get<T>(_request->pool, key);
+	}
 
 	const apr::vector<apr::string> & getParsedQueryPath() const;
 	const data::Value &getParsedQueryArgs() const;
@@ -244,6 +246,8 @@ public: /* engine and errors */
 	// if session is anonymous - returns nullptr
 	User *getUser();
 	User *getAuthorizedUser() const;
+
+	int64_t getUserId() const;
 
 	// check if request is sent by server/handler administrator
 	// uses 'User::isAdmin' or tries to authorize admin by cross-server protocol
@@ -300,15 +304,6 @@ protected:
 	request_rec *_request = nullptr;
 	Config *_config = nullptr;
 };
-
-template <typename T>
-inline T *Request::getObject(const String &key) const {
-	void *ptr = nullptr;
-	if (apr_pool_userdata_get(&ptr, key.data(), _request->pool) == APR_SUCCESS) {
-		return (T *)ptr;
-	}
-	return nullptr;
-}
 
 NS_SA_END
 

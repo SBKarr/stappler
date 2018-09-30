@@ -87,6 +87,7 @@ data::Value Field::getTypeDesc() const {
 		case Transform::Number: ret.setString("number", "transform"); break;
 		case Transform::Hexadecimial: ret.setString("hexadecimal", "transform"); break;
 		case Transform::Base64: ret.setString("base64", "transform"); break;
+		case Transform::Uuid: ret.setString("uuid", "transform"); break;
 		case Transform::Password: ret.setString("password", "transform"); break;
 		default: break;
 		}
@@ -257,6 +258,20 @@ data::Value Field::getTypeDesc() const {
 	return ret;
 }
 
+bool Field::Slot::hasDefault() const {
+	return defaultFn || !def.isNull() || (transform == Transform::Uuid && type == Type::Bytes);
+}
+
+data::Value Field::Slot::getDefault() const {
+	if (defaultFn) {
+		return defaultFn();
+	} else if (transform == Transform::Uuid && type == Type::Bytes) {
+		return data::Value(apr::uuid::generate().bytes());
+	} else {
+		return def;
+	}
+}
+
 bool Field::Slot::transformValue(const Scheme &scheme, data::Value &val) const {
 	if (!val.isBasicType() && type != Type::Data) {
 		return false;
@@ -386,6 +401,13 @@ bool FieldText::transformValue(const Scheme &scheme, data::Value &val) const {
 				}
 
 				val.setBytes(base64::decode(StringView(str.data() + 7, str.size() - 7)));
+			} else if (transform == Transform::Uuid) {
+				auto b = apr::uuid::getBytesFromString(str);
+				if (b.empty()) {
+					return false;
+				}
+
+				val.setBytes(move(b));
 			}
 		} else if (val.isBytes()) {
 			auto &bytes = val.getBytes();

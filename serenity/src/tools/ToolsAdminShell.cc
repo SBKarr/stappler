@@ -29,6 +29,7 @@ THE SOFTWARE.
 #include "ServerComponent.h"
 #include "Resource.h"
 #include "PGHandle.h"
+#include "SPugContext.h"
 
 NS_SA_EXT_BEGIN(tools)
 
@@ -980,11 +981,12 @@ int ShellGui::onPostReadRequest(Request &rctx) {
 			}
 
 			rctx.setContentType("text/html;charset=UTF-8");
-			rctx.runTemplate("virtual://html/shell.html", [&] (tpl::Exec &exec, Request &) {
+			rctx.runPug("virtual://html/shell.pug", [&] (pug::Context &exec, const pug::Template &) -> bool {
 				exec.set("count", data::Value(count));
 				exec.set("setup", data::Value(count != 0));
 				exec.set("hasDb", data::Value(hasDb));
 				exec.set("version", data::Value(getVersionString()));
+				return true;
 			});
 
 			return DONE;

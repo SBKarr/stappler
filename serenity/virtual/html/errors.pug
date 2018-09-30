@@ -1,0 +1,21 @@
+doctype html
+html
+	head
+		title Serenity Errors Page
+		link(rel='stylesheet', href='/__server/virtual/css/style.css')
+	body
+		h4 Serenity Errors Page (#{version})
+		p.user Current user: #{user.name}
+		each val in errors
+			div.error_item
+				p.header.
+					[#[span.time= serenity.timeToHttp(val.time)]] [#[span.ip= val.ip]] #[span.server= val.name] #[span.request= val.request]
+				.headers
+					each value, key in val.headers
+						p.code #[= key]: #[= value]
+				.data
+					pre: code= serenity.prettify(val.data)
+				.actions
+					a(href="?delete="+val.__oid) Remove
+		else
+			p No errors found

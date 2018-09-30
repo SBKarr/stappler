@@ -150,7 +150,9 @@ protected:
 	bool _visualizeTouches = false;
 	bool _displayStats = false;
 	bool _registred = false;
+	bool _exitProtection = true;
 
+	bool _shouldExit = false;
 	bool _contentCaptured = false;
 	Set<cocos2d::Node *> _contentCaptureNodes;
 

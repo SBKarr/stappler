@@ -107,9 +107,20 @@ Handle::operator bool() const {
 }
 
 bool Handle::beginTransaction_pg(TransactionLevel l) {
+	int64_t userId = 0;
+	int64_t now = Time::now().toMicros();
+	if (auto req = apr::pool::request()) {
+		userId = Request(req).getUserId();
+	}
+
+	auto setVariables = [&] {
+		performSimpleQuery(toString("SET LOCAL serenity.\"user\" = ", userId, ";SET LOCAL serenity.\"now\" = ", now, ";"));
+	};
+
 	switch (l) {
 	case TransactionLevel::ReadCommited:
 		if (performSimpleQuery("BEGIN ISOLATION LEVEL READ COMMITTED"_weak)) {
+			setVariables();
 			level = TransactionLevel::ReadCommited;
 			transactionStatus = TransactionStatus::Commit;
 			return true;
@@ -117,6 +128,7 @@ bool Handle::beginTransaction_pg(TransactionLevel l) {
 		break;
 	case TransactionLevel::RepeatableRead:
 		if (performSimpleQuery("BEGIN ISOLATION LEVEL REPEATABLE READ"_weak)) {
+			setVariables();
 			level = TransactionLevel::RepeatableRead;
 			transactionStatus = TransactionStatus::Commit;
 			return true;
@@ -124,6 +136,7 @@ bool Handle::beginTransaction_pg(TransactionLevel l) {
 		break;
 	case TransactionLevel::Serialized:
 		if (performSimpleQuery("BEGIN ISOLATION LEVEL SERIALIZABLE"_weak)) {
+			setVariables();
 			level = TransactionLevel::Serialized;
 			transactionStatus = TransactionStatus::Commit;
 			return true;
@@ -183,8 +196,9 @@ Result Handle::select(const ExecQuery &query) {
 	Result res(PQexecParams(conn, query.getQuery().weak().data(), query.getParams().size(), nullptr,
 			data.paramValues, data.paramLengths, data.paramFormats, 1));
 	if (!res || !res.success()) {
+		std::cout << res.info() << "\n";
+		messages::debug("Database", "Fail mto perform query", res.info());
 		messages::error("Database", "Fail to perform query");
-		messages::debug("Database", "Fail to perform query", res.info());
 	}
 
 	lastError = res.getError();

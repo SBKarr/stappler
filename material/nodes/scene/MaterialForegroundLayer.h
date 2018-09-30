@@ -72,6 +72,7 @@ public:
 
 	virtual void showSnackbar(SnackbarData &&);
 	virtual const String &getSnackbarString() const;
+	virtual void clearSnackbar();
 
 	virtual void setBackgroundOpacity(uint8_t);
 	virtual uint8_t getBackgroundOpacity() const;

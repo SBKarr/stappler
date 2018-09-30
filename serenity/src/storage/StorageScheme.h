@@ -69,6 +69,11 @@ public:
 	bool hasDelta() const;
 
 	void define(std::initializer_list<Field> il);
+	void define(Vector<Field> &&il);
+
+	template <typename T, typename ... Args>
+	void define(T &&il, Args && ... args);
+
 	void cloneFrom(Scheme *);
 
 	const String &getName() const;
@@ -163,6 +168,8 @@ public:
 	data::Value appendProperty(Adapter *, const data::Value &, const Field &, data::Value &&) const;
 
 protected:
+	void initScheme();
+
 	Set<const Field *> getFieldSet(const Field &, std::initializer_list<StringView>) const;
 
 	void addView(const Scheme *, const Field *);
@@ -226,6 +233,13 @@ protected:
 	Vector<ParentScheme *> parents;
 	Set<const Field *> forceInclude;
 };
+
+
+template <typename T, typename ... Args>
+void Scheme::define(T &&il, Args && ... args) {
+	define(forward<T>(il));
+	define(forward<Args>(args)...);
+}
 
 NS_SA_EXT_END(storage)
 

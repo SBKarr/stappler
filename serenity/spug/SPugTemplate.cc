@@ -300,16 +300,24 @@ bool TemplateRender::renderLine(Token *tok, bool interpolated) {
 bool TemplateRender::renderTag(Token *tok, Token *nextTok, bool interpolated) {
 	auto shouldIndent = interpolated ? false : makeStartIndent(!isInlineTag(tok->data));
 
-	_buffer << "<" << (tok->data.empty() ? StringView("div") : tok->data); // it's a tag
+	bool isOutput = tok->data.empty() && tok->next && tok->next->type == Token::TagTrailingEq;
 
-	// read attributes
-	auto tagEval = renderTagAttributes(tok->next);
-	if ((tagEval && tagEval->type == Token::TagTrailingSlash) || isSelfClosing(tok->data)) {
-		_buffer << "/>";
-		return true;
+	Token *tagEval = nullptr;
+
+	if (!isOutput) {
+		_buffer << "<" << (tok->data.empty() ? StringView("div") : tok->data); // it's a tag
+
+		// read attributes
+		tagEval = renderTagAttributes(tok->next);
+		if ((tagEval && tagEval->type == Token::TagTrailingSlash) || isSelfClosing(tok->data)) {
+			_buffer << "/>";
+			return true;
+		}
+
+		_buffer << ">";
+	} else {
+		tagEval = tok->next->next;
 	}
-
-	_buffer << ">";
 
 	if (_pretty) { ++ _indentation; }
 
@@ -333,7 +341,9 @@ bool TemplateRender::renderTag(Token *tok, Token *nextTok, bool interpolated) {
 		}
 	}
 
-	_buffer << "</" << (tok->data.empty() ? StringView("div") : tok->data) << ">";
+	if (!isOutput) {
+		_buffer << "</" << (tok->data.empty() ? StringView("div") : tok->data) << ">";
+	}
 	return shouldIndent;
 }
 
@@ -754,6 +764,7 @@ bool Template::runChunk(const Chunk &chunk, Context &exec, std::ostream &out) co
 			}
 		} else {
 			r = false;
+			runElse = true;
 		}
 
 		if (hasElse) {

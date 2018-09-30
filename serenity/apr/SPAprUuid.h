@@ -38,6 +38,27 @@ struct uuid : AllocPool {
 		return ret;
 	}
 
+	static Bytes getBytesFromString(const string &str) {
+		apr_uuid_t uuid;
+		if (apr_uuid_parse(&uuid, str.data()) == APR_SUCCESS) {
+			Bytes ret; ret.resize(16);
+			memcpy(ret.data(), uuid.data, 16);
+			return ret;
+		}
+		return Bytes();
+	}
+
+	static string getStringFromBytes(const Bytes &b) {
+		if (b.size() == 16) {
+			apr_uuid_t uuid;
+			memcpy(uuid.data, b.data(), 16);
+			string ret; ret.resize(APR_UUID_FORMATTED_LENGTH);
+			apr_uuid_format(ret.data(), &uuid);
+			return ret;
+		}
+		return string();
+	}
+
 	uuid() {
 		memset(_uuid.data, 0, 16);
 	}
