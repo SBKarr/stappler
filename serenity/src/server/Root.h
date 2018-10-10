@@ -40,6 +40,8 @@ public:
 
 	void onServerChildInit(apr_pool_t *p, server_rec *s);
 	void onOpenLogs(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s);
+
+	void initHeartBeat();
 	void onHeartBeat();
 
 	/* Connection Handling */
@@ -96,6 +98,7 @@ protected:
 			int *lengths, int nelts, apr_size_t len);
 
 	apr_pool_t *_pool = nullptr;
+	apr_pool_t *_heartBeatPool = nullptr;
 
 	Server _rootServerContext;
 

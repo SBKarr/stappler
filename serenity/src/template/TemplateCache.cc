@@ -56,20 +56,18 @@ time_t FileRef::getMtime() const {
 
 Cache::Cache() : _pool(getCurrentPool()) { }
 
-void Cache::update() {
-	apr::pool::perform([&] {
-		_mutex.lock();
-		for (auto &it : _templates) {
-			if (it.second->getMtime() != 0) {
-				auto mtime = filesystem::mtime(it.first);
-				if (mtime != it.second->getMtime()) {
-					it.second->release();
-					it.second = openTemplate(it.first);
-				}
+void Cache::update(apr_pool_t *) {
+	_mutex.lock();
+	for (auto &it : _templates) {
+		if (it.second->getMtime() != 0) {
+			auto mtime = filesystem::mtime(it.first);
+			if (mtime != it.second->getMtime()) {
+				it.second->release();
+				it.second = openTemplate(it.first);
 			}
 		}
-		_mutex.unlock();
-	});
+	}
+	_mutex.unlock();
 }
 
 void Cache::runTemplate(const String &ipath, Request &req, const RunCallback &cb) {

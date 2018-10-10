@@ -118,6 +118,7 @@ static std::atomic_flag s_timerExitFlag;
 void *sa_server_timer_thread_fn(apr_thread_t *self, void *data) {
 	Root *serv = (Root *)data;
 	apr_sleep(config::getHeartbeatPause().toMicroseconds());
+	serv->initHeartBeat();
 	while(s_timerExitFlag.test_and_set()) {
 		auto exec = Time::now();
 		serv->onHeartBeat();
@@ -333,6 +334,10 @@ void Root::onChildInit() {
 	}
 }
 
+void Root::initHeartBeat() {
+	_heartBeatPool = apr::pool::create(_pool);
+}
+
 void Root::onHeartBeat() {
 	if (!_rootServerContext) {
 		return;
@@ -341,9 +346,10 @@ void Root::onHeartBeat() {
 	auto serv = _rootServerContext;
 	while (serv) {
 		apr::pool::perform([&] {
-			serv.onHeartBeat();
+			serv.onHeartBeat(_heartBeatPool);
 		}, serv.server());
 		serv = serv.next();
+		apr_pool_clear(_heartBeatPool);
 	}
 }
 
@@ -382,7 +388,7 @@ void Root::onServerChildInit(apr_pool_t *p, server_rec* s) {
 			apr_thread_create(&_timerThread, attr,
 					sa_server_timer_thread_fn, this, _pool);
 		}
-	}, s);
+	}, p);
 }
 
 void *Root::logWriterInit(apr_pool_t *p, server_rec *s, const char *name) {

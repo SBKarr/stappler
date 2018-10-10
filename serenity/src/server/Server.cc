@@ -708,12 +708,11 @@ auto Server_resolvePath(Map<String, T> &map, const String &path) -> typename Map
 	return ret;
 }
 
-void Server::onHeartBeat() {
+void Server::onHeartBeat(apr_pool_t *pool) {
 	apr::pool::perform([&] {
 		auto now = Time::now();
 		if (!_config->loadingFalled) {
 			auto root = Root::getInstance();
-			auto pool = apr::pool::acquire();
 			if (auto dbd = root->dbdOpen(pool, _server)) {
 				pg::Handle h(pool, dbd);
 				if (now - _config->lastDatabaseCleanup > TimeInterval::seconds(60)) {
@@ -725,11 +724,11 @@ void Server::onHeartBeat() {
 			}
 		}
 		if (now - _config->lastTemplateUpdate > TimeInterval::seconds(10)) {
-			_config->_templateCache.update();
-			_config->_pugCache.update();
+			_config->_templateCache.update(pool);
+			_config->_pugCache.update(pool);
 			_config->lastDatabaseCleanup = now;
 		}
-	});
+	}, pool);
 }
 
 void Server::onBroadcast(const data::Value &val) {

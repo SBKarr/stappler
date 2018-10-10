@@ -50,7 +50,7 @@ public:
 
 	Cache();
 
-	void update();
+	void update(apr_pool_t *);
 
 	void runTemplate(const String &, Request &, const RunCallback &);
 

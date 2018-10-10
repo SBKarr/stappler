@@ -59,7 +59,7 @@ public:
 
 	Cache(Template::Options opts = Template::Options::getDefault(), const Function<void(const StringView &)> &err = nullptr);
 
-	void update();
+	void update(apr_pool_t *);
 
 	bool runTemplate(const StringView &, const RunCallback &, std::ostream &);
 

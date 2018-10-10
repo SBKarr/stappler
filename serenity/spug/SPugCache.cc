@@ -110,21 +110,19 @@ static inline auto perform(const Callback &cb) {
 	return cb();
 }
 
-void Cache::update() {
-	perform([&] {
-		_mutex.lock();
-		for (auto &it : _templates) {
-			if (it.second->getMtime() != 0) {
-				auto mtime = filesystem::mtime(it.first);
-				if (mtime != it.second->getMtime()) {
-					if (auto tpl = openTemplate(it.first)) {
-						it.second = tpl;
-					}
+void Cache::update(apr_pool_t *) {
+	_mutex.lock();
+	for (auto &it : _templates) {
+		if (it.second->getMtime() != 0) {
+			auto mtime = filesystem::mtime(it.first);
+			if (mtime != it.second->getMtime()) {
+				if (auto tpl = openTemplate(it.first)) {
+					it.second = tpl;
 				}
 			}
 		}
-		_mutex.unlock();
-	});
+	}
+	_mutex.unlock();
 }
 
 bool Cache::runTemplate(const StringView &ipath, const RunCallback &cb, std::ostream &out) {

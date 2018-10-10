@@ -44,7 +44,7 @@ public:
 	Server & operator =(const Server &);
 
 	void onChildInit();
-	void onHeartBeat();
+	void onHeartBeat(apr_pool_t *);
 	void onBroadcast(const data::Value &);
 	void onBroadcast(const Bytes &);
 	int onRequest(Request &);
