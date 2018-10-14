@@ -46,6 +46,20 @@ bool NetworkDataTask::init(Method method, const StringView &url, const data::Val
 	return true;
 }
 
+bool NetworkDataTask::init(Method method, const StringView &url, const FilePath &file, const StringView &type) {
+	if (!NetworkTask::init(method, url)) {
+		return false;
+	}
+
+	addHeader("Accept", "application/cbor, application/json");
+
+	if ((method == Method::Post || method == Method::Put) && !file.get().empty()) {
+		setSendFile(file.get());
+	}
+
+	return true;
+}
+
 bool NetworkDataTask::execute() {
 	data::StreamBuffer buffer;
 	auto ret = false;

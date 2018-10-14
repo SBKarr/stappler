@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define COMMON_UTILS_SPFILESYSTEM_H_
 
 #include "SPIO.h"
+#include "SPTime.h"
 
 NS_SP_EXT_BEGIN(filesystem)
 
@@ -74,6 +75,9 @@ size_t size(const StringView &path);
 
 // get file modification time
 time_t mtime(const StringView &path);
+
+// get more accurate modification time
+Time mtime_v(const StringView &path);
 
 // get file creation time
 time_t ctime(const StringView &path);
@@ -186,6 +190,7 @@ bool access_fn(const StringView &path, Access mode);
 bool isdir_fn(const StringView &path);
 size_t size_fn(const StringView &path);
 time_t mtime_fn(const StringView &path);
+Time mtime_v_fn(const StringView &path);
 time_t ctime_fn(const StringView &path);
 
 bool touch_fn(const StringView &path);

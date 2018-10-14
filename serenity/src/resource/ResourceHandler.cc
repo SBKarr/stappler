@@ -255,8 +255,33 @@ int ResourceHandler::writeToRequest(Request &rctx) {
 			}
 		}
 
+		auto checkObj = [&] (const data::Value &obj, const Map<String, storage::Field> &fields) {
+			const String modified = rctx.getRequestHeaders().at("if-modified-since");
+			if (!modified.empty()) {
+				auto mt = Time::fromHttp(modified).toSeconds();
+				for (auto &it : fields) {
+					if (it.second.hasFlag(storage::Flags::AutoMTime)) {
+						if (auto t = obj.getInteger(it.second.getName())) {
+							if (mt >= uint64_t(t / 1000000)) {
+								return true;
+							}
+						}
+					}
+				}
+			}
+			return false;
+		};
+
 		data::Value result(_resource->getResultObject());
 		if (result) {
+			if (_resource->getType() == ResourceType::Object) {
+				if (auto &obj = result.getValue(0)) {
+					if (checkObj(obj, _resource->getScheme().getFields())) {
+						return HTTP_NOT_MODIFIED;
+					}
+				}
+			}
+
 			return writeDataToRequest(rctx, move(result));
 		}
 	}

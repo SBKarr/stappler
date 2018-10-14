@@ -147,8 +147,8 @@ void NetworkTask::setReceiveCallback(const IOCallback &cb) {
 	_handle.setReceiveCallback(cb);
 }
 
-void NetworkTask::setSendFile(const StringView &str) {
-	_handle.setSendFile(str);
+void NetworkTask::setSendFile(const StringView &str, const StringView &type) {
+	_handle.setSendFile(str, type);
 }
 void NetworkTask::setSendCallback(const IOCallback &cb, size_t outSize) {
 	_handle.setSendCallback(cb, outSize);

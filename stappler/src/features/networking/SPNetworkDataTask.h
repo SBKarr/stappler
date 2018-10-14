@@ -33,6 +33,7 @@ public:
 	virtual ~NetworkDataTask();
 
 	virtual bool init(Method method, const StringView &url, const data::Value &data = data::Value(), data::EncodeFormat = data::EncodeFormat::Cbor);
+	virtual bool init(Method method, const StringView &url, const FilePath &file, const StringView &type = StringView());
 
 	virtual bool execute() override;
 

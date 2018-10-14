@@ -405,6 +405,9 @@ data::Value Scheme::create(Adapter *adapter, const data::Value &data, bool isPro
 
 		if (adapter->createObject(*this, changeSet)) {
 			touchParents(adapter, changeSet);
+			for (auto &it : views) {
+				updateView(adapter, changeSet, it);
+			}
 			return true;
 		} else {
 			if (patch.isDictionary()) {
@@ -946,7 +949,9 @@ data::Value &Scheme::transform(data::Value &d, TransformAction a) const {
 			} else if (field.hasFlag(Flags::AutoCTime)) {
 				d.setInteger(Time::now().toMicroseconds(), it.first);
 			} else if (field.hasDefault() && !d.hasValue(it.first)) {
-				d.setValue(field.getDefault(), it.first);
+				if (auto def = field.getDefault(d)) {
+					d.setValue(move(def), it.first);
+				}
 			}
 		} else if ((a == TransformAction::Update || a == TransformAction::ProtectedUpdate || a == TransformAction::Touch)
 				&& field.hasFlag(Flags::AutoMTime) && (!d.empty() || a == TransformAction::Touch)) {
@@ -1274,7 +1279,9 @@ void Scheme::updateView(Adapter *adapter, const data::Value & obj, const ViewSch
 				if (field.hasFlag(Flags::AutoMTime) || field.hasFlag(Flags::AutoCTime)) {
 					it.setInteger(Time::now().toMicroseconds(), f_it.first);
 				} else if (field.hasDefault() && !it.hasValue(f_it.first)) {
-					it.setValue(field.getDefault(), f_it.first);
+					if (auto def = field.getDefault(it)) {
+						it.setValue(move(def), f_it.first);
+					}
 				}
 			}
 

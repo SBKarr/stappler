@@ -262,9 +262,9 @@ bool Field::Slot::hasDefault() const {
 	return defaultFn || !def.isNull() || (transform == Transform::Uuid && type == Type::Bytes);
 }
 
-data::Value Field::Slot::getDefault() const {
+data::Value Field::Slot::getDefault(const data::Value &patch) const {
 	if (defaultFn) {
-		return defaultFn();
+		return defaultFn(patch);
 	} else if (transform == Transform::Uuid && type == Type::Bytes) {
 		return data::Value(apr::uuid::generate().bytes());
 	} else {
@@ -462,17 +462,17 @@ bool FieldExtra::hasDefault() const {
 	return false;
 }
 
-data::Value FieldExtra::getDefault() const {
+data::Value FieldExtra::getDefault(const data::Value &patch) const {
 	if (def) {
 		return def;
 	} else if (defaultFn) {
-		return defaultFn();
+		return defaultFn(patch);
 	}
 
 	data::Value ret;
 	for (auto & it : fields) {
 		if (it.second.hasDefault()) {
-			ret.setValue(it.second.getDefault(), it.first);
+			ret.setValue(it.second.getDefault(patch), it.first);
 		}
 	}
 	return ret;

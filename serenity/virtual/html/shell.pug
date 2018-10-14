@@ -13,7 +13,7 @@ html
 			if setup
 				form#login(onsubmit="return connect(this);")
 					input#ws_name(type="text",name="name",placeholder="User name",value="",size="24")
-					input#ws_name(type="password",name="passwd",placeholder="Password",value="",size="24")
+					input#ws_passwd(type="password",name="passwd",placeholder="Password",value="",size="24")
 					input(type="submit")
 				#connected Not Connected
 				#main(style="visibility:hidden")

@@ -230,6 +230,15 @@ time_t mtime(const StringView &ipath) {
 	return filesystem_native::mtime_fn(path);
 }
 
+Time mtime_v(const StringView &ipath) {
+	if (inAppBundle(ipath)) {
+		return Time();
+	}
+
+	auto path = filepath::absolute(ipath);
+	return filesystem_native::mtime_v_fn(path);
+}
+
 time_t ctime(const StringView &ipath) {
 	if (inAppBundle(ipath)) {
 		return 0;

@@ -81,6 +81,18 @@ time_t mtime_fn(const StringView &path) {
         return 0;
     }
 }
+Time mtime_v_fn(const StringView &path) {
+#if LINUX
+	struct stat s;
+	if (stat(SP_TERMINATED_DATA(path), &s) == 0) {
+        return Time::microseconds(s.st_mtime * 1000000 + s.st_mtim.tv_nsec / 1000);
+    } else {
+        return Time();
+    }
+#else
+	return Time::second(mtime_fn(path));
+#endif
+}
 time_t ctime_fn(const StringView &path) {
 	struct stat s;
 	if (stat(SP_TERMINATED_DATA(path), &s) == 0) {

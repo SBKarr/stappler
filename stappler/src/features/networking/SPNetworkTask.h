@@ -57,7 +57,7 @@ public:
 	void setReceiveFile(const StringView &str, bool resumeDownload);
 	void setReceiveCallback(const IOCallback &cb);
 
-	void setSendFile(const StringView &str);
+	void setSendFile(const StringView &str, const StringView &type = StringView());
 	void setSendCallback(const IOCallback &cb, size_t outSize);
 	void setSendData(const StringView &data);
 	void setSendData(const Bytes &data);

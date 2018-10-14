@@ -160,7 +160,7 @@ enum class RemovePolicy {
 };
 
 using FilterFn = Function<bool(const Scheme &, data::Value &)>;
-using DefaultFn = Function<data::Value()>;
+using DefaultFn = Function<data::Value(const data::Value &)>;
 
 using ViewLinkageFn = Function<Vector<uint64_t>(const Scheme &targetScheme, const Scheme &objScheme, const data::Value &obj)>;
 using ViewFn = Function<Vector<data::Value>(const Scheme &objScheme, const data::Value &obj)>;
@@ -223,7 +223,7 @@ public:
 		bool isFile() const { return type == Type::File || type == Type::Image; }
 
 		virtual bool hasDefault() const;
-		virtual data::Value getDefault() const;
+		virtual data::Value getDefault(const data::Value &patch) const;
 
 		virtual bool transformValue(const Scheme &, data::Value &) const;
 		virtual void hash(StringStream &stream, ValidationLevel l) const;
@@ -240,7 +240,7 @@ public:
 	const String &getName() const { return slot->getName(); }
 	Type getType() const { return slot->getType(); }
 	Transform getTransform() const { return slot->getTransform(); }
-	data::Value getDefault() const { return slot->getDefault(); }
+	data::Value getDefault(const data::Value &patch) const { return slot->getDefault(patch); }
 
 	bool hasFlag(Flags f) const { return slot->hasFlag(f); }
 	bool hasDefault() const { return slot->hasDefault(); }
@@ -316,7 +316,7 @@ struct FieldExtra : Field::Slot {
 	}
 
 	virtual bool hasDefault() const override;
-	virtual data::Value getDefault() const override;
+	virtual data::Value getDefault(const data::Value &) const override;
 
 	virtual bool transformValue(const Scheme &, data::Value &) const override;
 	virtual void hash(StringStream &stream, ValidationLevel l) const override;
@@ -497,6 +497,12 @@ template <typename F> struct FieldOption<F, FilterFn> {
 
 template <typename F> struct FieldOption<F, DefaultFn> {
 	static inline void assign(F & f, const DefaultFn &fn) { f.defaultFn = fn; }
+};
+
+template <typename F> struct FieldOption<F, Function<data::Value()>> {
+	static inline void assign(F & f, const Function<data::Value()> &fn) {
+		f.defaultFn = DefaultFn([fn] (const data::Value &) -> data::Value { return fn(); });
+	}
 };
 
 template <typename F> struct FieldOption<F, Transform> {

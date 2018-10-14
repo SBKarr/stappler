@@ -29,6 +29,14 @@ THE SOFTWARE.
 #include "SPNetworkHandle.h"
 #include "SPFilesystem.h"
 #include "SPLog.h"
+#include "SPBitmap.h"
+
+#ifdef LINUX
+#include <sys/types.h>
+#include <sys/xattr.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#endif
 
 #ifdef __MINGW32__
 #define CURL_STATICLIB 1
@@ -206,6 +214,45 @@ struct NetworkHandle::Network {
 		}
 	}
 };
+
+#ifdef LINUX
+
+static bool NetworkHandle_setUserAttributes(FILE *file, const StringView &str, Time mtime) {
+	if (int fd = fileno(file)) {
+		auto err = fsetxattr(fd, "user.mime_type", str.data(), str.size(), XATTR_CREATE);
+		if (err != 0) {
+			std::cout << "Fail to set mime type attribute (" << err << ")\n";
+			return false;
+		}
+
+		if (mtime) {
+			struct timespec times[2];
+			times[0].tv_nsec = UTIME_OMIT;
+
+			times[1].tv_sec = time_t(mtime.sec());
+			times[1].tv_nsec = (mtime.toMicroseconds() - Time::seconds(mtime.sec()).toMicroseconds()) * 1000;
+			futimens(fd, times);
+		}
+
+		return true;
+	}
+	return false;
+}
+
+static String NetworkHandle_getUserMime(const StringView &filename) {
+	String path = filepath::absolute(filename);
+
+	char buf[1_KiB] = { 0 };
+	auto vallen = getxattr(path.data(), "user.mime_type", buf, 1_KiB);
+	if (vallen == -1) {
+		return String();
+	}
+
+	return StringView(buf, vallen).str();
+}
+
+#endif
+
 
 #ifndef SPAPR
 NetworkHandle::Network::CurlThreadLocalKey NetworkHandle::Network::s_localCurl;
@@ -599,16 +646,6 @@ bool NetworkHandle::perform() {
 		mailTo = nullptr;
 	}
 
-	if (inputFile) {
-		fflush(inputFile);
-		fclose(inputFile);
-		inputFile = nullptr;
-	}
-	if (outputFile) {
-		fclose(outputFile);
-		outputFile = nullptr;
-	}
-
 	if (CURLE_RANGE_ERROR == _errorCode && _method == Method::Get) {
 		size_t allowedRange = size_t(getReceivedHeaderInt("X-Range"));
 		if (allowedRange == inputPos) {
@@ -630,6 +667,15 @@ bool NetworkHandle::perform() {
         	curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &ct);
 			if (ct) {
 				_contentType = ct;
+#if LINUX
+				if (inputFile && !_contentType.empty()) {
+					fflush(inputFile);
+					NetworkHandle_setUserAttributes(inputFile, _contentType,
+							Time::microseconds(getReceivedHeaderInt("X-FileModificationTime")));
+					fclose(inputFile);
+					inputFile = nullptr;
+				}
+#endif
 			}
 
             _responseCode = (long)code;
@@ -663,6 +709,17 @@ bool NetworkHandle::perform() {
     }
 
 	Network::releaseHandle(curl, _reuse, success);
+
+	if (inputFile) {
+		fflush(inputFile);
+		fclose(inputFile);
+		inputFile = nullptr;
+	}
+	if (outputFile) {
+		fclose(outputFile);
+		outputFile = nullptr;
+	}
+
 	return success;
 }
 
@@ -725,11 +782,37 @@ void NetworkHandle::setSendSize(size_t size) {
 		_sendSize = size;
 	}
 }
-void NetworkHandle::setSendFile(const StringView &str) {
+void NetworkHandle::setSendFile(const StringView &str, const StringView &type) {
 	_sendFileName = str.str();
 	_sendCallback = nullptr;
 	_sendData.clear();
 	_sendSize = 0;
+	if (!type.empty()) {
+		addHeader("Content-Type", type);
+	} else {
+		bool isSet = false;
+#if LINUX
+		auto t = NetworkHandle_getUserMime(_sendFileName);
+		if (!t.empty()) {
+			addHeader("Content-Type", t);
+			isSet = true;
+		}
+#endif
+		if (!isSet) {
+			// try image format
+			auto fmt = Bitmap::detectFormat(StringView(_sendFileName));
+			switch (fmt.first) {
+			case Bitmap::FileFormat::Png: addHeader("Content-Type: image/png"); isSet = true; break;
+			case Bitmap::FileFormat::Jpeg: addHeader("Content-Type: image/jpeg"); isSet = true; break;
+			case Bitmap::FileFormat::WebpLossless: addHeader("Content-Type: image/webp"); isSet = true; break;
+			case Bitmap::FileFormat::WebpLossy: addHeader("Content-Type: image/webp"); isSet = true; break;
+			case Bitmap::FileFormat::Svg: addHeader("Content-Type: image/svg+xml"); isSet = true; break;
+			case Bitmap::FileFormat::Gif: addHeader("Content-Type: image/gif"); isSet = true; break;
+			case Bitmap::FileFormat::Tiff: addHeader("Content-Type: image/tiff"); isSet = true; break;
+			case Bitmap::FileFormat::Custom: break;
+			}
+		}
+	}
 }
 void NetworkHandle::setSendCallback(const IOCallback &cb, size_t outSize) {
 	_sendFileName = "";
