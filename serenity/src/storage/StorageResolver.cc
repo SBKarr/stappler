@@ -184,6 +184,11 @@ Resource *Resolver::getResult() {
 		} else if (_queries.isView()) {
 			return _storage->makeResource(ResourceType::View, move(_queries), nullptr);
 		} else if (_queries.isRefSet()) {
+			if (auto f = _queries.getField()) {
+				if (f->getType() == storage::Type::Object) {
+					return _storage->makeResource(ResourceType::ObjectField, move(_queries), nullptr);
+				}
+			}
 			return _storage->makeResource(ResourceType::ReferenceSet, move(_queries), nullptr);
 		} else if (_queries.isObject()) {
 			return _storage->makeResource(ResourceType::Object, move(_queries), nullptr);

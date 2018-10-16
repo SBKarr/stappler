@@ -293,7 +293,7 @@ struct SvgReader {
 		}
 	}
 
-	inline void onEndTag(Parser &p, Tag &tag) {
+	inline void onEndTag(Parser &p, Tag &tag, bool isClosed) {
 		if (tag.name.compare("svg")) {
 			_squareLength = sqrtf((_width * _width + _height * _height) / 2.0f);
 		}

@@ -1040,7 +1040,7 @@ bool Server::scheduleTask(Task *task, TimeInterval t) const {
 }
 
 void Server::runErrorReportTask(request_rec *req, const Vector<data::Value> &errors) {
-	auto serv = req->server;
+	auto serv = req ? req->server : apr::pool::server();
 	Task::perform(Server(serv), [&] (Task &task) {
 		data::Value *err = nullptr;
 		if (req) {

@@ -330,6 +330,7 @@ Resource *Handle::makeResource(ResourceType type, QueryList &&list, const Field 
 	switch (type) {
 	case ResourceType::ResourceList: return new ResourceReslist(this, std::move(list));  break;
 	case ResourceType::ReferenceSet: return new ResourceRefSet(this, std::move(list)); break;
+	case ResourceType::ObjectField: return new ResourceFieldObject(this, std::move(list)); break;
 	case ResourceType::Object: return new ResourceObject(this, std::move(list)); break;
 	case ResourceType::Set: return new ResourceSet(this, std::move(list)); break;
 	case ResourceType::View: return new ResourceView(this, std::move(list)); break;

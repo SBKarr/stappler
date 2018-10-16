@@ -144,6 +144,10 @@ bool MultipartParser::parseFile() {
 		return false;
 	}
 
+	if (bodyContentType.empty()) {
+		bodyContentType = fileContentType;
+	}
+
 	if (fileContentType == "image/png" || fileContentType == "image/jpeg") {
 		if (readFiles) {
 			if (fileEncoding == "base64") {

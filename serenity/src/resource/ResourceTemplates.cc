@@ -149,6 +149,12 @@ data::Value ResourceObject::processResultList(const QueryList &s, data::Value &r
 		auto &arr = ret.asArray();
 		auto it = arr.begin();
 		while (it != arr.end()) {
+			if (it->isInteger()) {
+				if (auto val = getScheme().get(_adapter, it->getInteger())) {
+					*it = move(val);
+				}
+			}
+
 			if (!processResultObject(perms, s, *it)) {
 				it = arr.erase(it);
 			} else {
@@ -426,10 +432,6 @@ int64_t ResourceRefSet::getObjectId() {
 		if (!ids.empty()) {
 			_objectId = ids.front();
 		}
-		//ExecQuery query;
-		//query.writeQueryList(_queries, true, _queries.getItems().size() - 1);
-		//query.finalize();
-		//_objectId = _adapter->selectId(query);
 	}
 	return _objectId;
 }
@@ -531,6 +533,11 @@ data::Value ResourceRefSet::doAppendObjects(const data::Value &val, bool cleanup
 	_adapter->performInTransaction([&] { // all or nothing
 		return doAppendObjectsTransaction(ret, val, cleanup);
 	});
+
+	if (!_queries.getFields().getFields()->empty()) {
+		return processResultList(_queries, ret);
+	}
+
 	return ret;
 }
 
@@ -878,6 +885,206 @@ data::Value ResourceArray::getArrayForObject(data::Value &object) {
 	if (object.isDictionary()) {
 		if (isObjectAllowed(getScheme(), Action::Read, object)) {
 			return getScheme().getProperty(_adapter, object, *_field);
+		}
+	}
+	return data::Value();
+}
+
+
+ResourceFieldObject::ResourceFieldObject(Adapter *a, QueryList &&q)
+: ResourceObject(a, move(q)), _sourceScheme(_queries.getSourceScheme()), _field(_queries.getField()) {
+	_type = ResourceType::ObjectField;
+}
+
+bool ResourceFieldObject::prepareUpdate() {
+	_refPerms = isSchemeAllowed(getScheme(), Action::Update);
+	_perms = min(_refPerms, isSchemeAllowed(*_sourceScheme, Action::Update));
+	return _perms != Permission::Restrict;
+}
+
+bool ResourceFieldObject::prepareCreate() {
+	_refPerms = isSchemeAllowed(getScheme(), Action::Update);
+	_perms = min(_refPerms, isSchemeAllowed(*_sourceScheme, Action::Update));
+	return _perms != Permission::Restrict;
+}
+
+bool ResourceFieldObject::prepareAppend() {
+	return false;
+}
+
+bool ResourceFieldObject::removeObject() {
+	auto id = getObjectId();
+	if (id == 0) {
+		return data::Value();
+	}
+
+	_refPerms = isSchemeAllowed(getScheme(), Action::Remove);
+	_perms = min(_refPerms, isSchemeAllowed(*_sourceScheme, Action::Update));
+
+	if (_perms == Permission::Restrict) {
+		return false;
+	}
+
+	return _adapter->performInTransaction([&] () -> bool {
+		return doRemoveObject();
+	});
+}
+
+data::Value ResourceFieldObject::updateObject(data::Value &val, apr::array<InputFile> &files) {
+	// create or update object
+	data::Value ret;
+	_adapter->performInTransaction([&] () -> bool {
+		if (getObjectId()) {
+			ret = doUpdateObject(val, files);
+		} else {
+			ret = doCreateObject(val, files);
+		}
+		if (ret) {
+			return true;
+		}
+		return false;
+	});
+	return ret;
+}
+
+data::Value ResourceFieldObject::createObject(data::Value &val, apr::array<InputFile> &files) {
+	// remove then recreate object
+	data::Value ret;
+	_adapter->performInTransaction([&] () -> bool {
+		if (getObjectId()) {
+			if (!doRemoveObject()) {
+				return data::Value();
+			}
+		}
+		ret = doCreateObject(val, files);
+		if (ret) {
+			return true;
+		}
+		return false;
+	});
+	return ret;
+}
+
+data::Value ResourceFieldObject::appendObject(data::Value &) {
+	return data::Value();
+}
+
+int64_t ResourceFieldObject::getRootId() {
+	if (!_rootId) {
+		auto ids = _adapter->performQueryListForIds(_queries, _queries.getItems().size() - 1);
+		if (!ids.empty()) {
+			_rootId = ids.front();
+		}
+	}
+	return _rootId;
+}
+
+int64_t ResourceFieldObject::getObjectId() {
+	if (!_objectId) {
+		if (auto id = getRootId()) {
+			if (auto obj = getScheme().get(_adapter, id, {_field->getName()})) {
+				_objectId = obj.getValue(_field->getName());
+			}
+		}
+	}
+	return _objectId;
+}
+
+data::Value ResourceFieldObject::getRootObject(bool forUpdate) {
+	if (auto id = getRootId()) {
+		return _sourceScheme->get(_adapter, id, {_field->getName()}, forUpdate);
+	}
+	return data::Value();
+}
+
+data::Value ResourceFieldObject::getTargetObject(bool forUpdate) {
+	if (auto id = getObjectId()) {
+		return getScheme().get(_adapter, id, { nullptr }, forUpdate);
+	}
+	return data::Value();
+}
+
+bool ResourceFieldObject::doRemoveObject() {
+	if (_perms == Permission::Full) {
+		return _sourceScheme->clearProperty(_adapter, getRootId(), *_field);
+	} else {
+		auto rootObj = getRootObject(false);
+		auto targetObj = getTargetObject(false);
+		if (!rootObj || !targetObj) {
+			return false;
+		}
+
+		data::Value patch { pair(_field->getName(), data::Value()) };
+		if (isObjectAllowed(*_sourceScheme, Action::Update, rootObj, patch)) {
+			if (isObjectAllowed(getScheme(), Action::Remove, targetObj)) {
+				if (_sourceScheme->clearProperty(_adapter, getRootId(), *_field)) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+}
+
+data::Value ResourceFieldObject::doUpdateObject(data::Value &val, apr::array<InputFile> &files) {
+	encodeFiles(val, files);
+	if (_perms == Permission::Full) {
+		return getScheme().update(_adapter, getObjectId(), val);
+	} else {
+		auto rootObj = getRootObject(false);
+		auto targetObj = getTargetObject(true);
+		if (!rootObj || !targetObj) {
+			return data::Value();
+		}
+
+		data::Value patch { pair(_field->getName(), data::Value(move(val))) };
+		if (isObjectAllowed(*_sourceScheme, Action::Update, rootObj, patch)) {
+			if (auto &v = patch.getValue(_field->getName())) {
+				if (isObjectAllowed(getScheme(), Action::Update, targetObj, v)) {
+					return getScheme().update(_adapter, getObjectId(), v);
+				}
+			}
+		}
+
+		return data::Value();
+	}
+}
+
+data::Value ResourceFieldObject::doCreateObject(data::Value &val, apr::array<InputFile> &files) {
+	encodeFiles(val, files);
+	if (_perms == Permission::Full) {
+		if (auto ret = getScheme().create(_adapter, val)) {
+			if (auto id = ret.getInteger("__oid")) {
+				if (_sourceScheme->update(_adapter, getRootId(), data::Value{
+					pair(_field->getName(), data::Value(id))
+				})) {
+					return ret;
+				}
+			}
+		}
+	} else {
+		auto rootObj = getRootObject(true);
+		if (!rootObj) {
+			return data::Value();
+		}
+
+		data::Value patch { pair(_field->getName(), data::Value(move(val))) };
+		if (isObjectAllowed(*_sourceScheme, Action::Update, rootObj, patch)) {
+			if (auto &v = patch.getValue(_field->getName())) {
+				data::Value p;
+				if (isObjectAllowed(getScheme(), Action::Create, p, v)) {
+					if (auto ret = getScheme().create(_adapter, v)) {
+						if (auto id = ret.getInteger("__oid")) {
+							if (_sourceScheme->update(_adapter, getRootId(), data::Value{
+								pair(_field->getName(), data::Value(id))
+							})) {
+								return ret;
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 	return data::Value();

@@ -991,6 +991,20 @@ data::Value Scheme::createFile(Adapter *adapter, const Field &field, InputFile &
 	return data::Value();
 }
 
+data::Value Scheme::createFile(Adapter *adapter, const Field &field, const Bytes &data, const StringView &type) const {
+	//check if content type is valid
+	if (!File::validateFileField(field, type, data)) {
+		return data::Value();
+	}
+
+	if (field.getType() == Type::File) {
+		return File::createFile(adapter, type, data);
+	} else if (field.getType() == Type::Image) {
+		return File::createImage(adapter, field, type, data);
+	}
+	return data::Value();
+}
+
 // call after object is created, used for custom field initialization
 data::Value Scheme::initField(Adapter *, Object *, const Field &, const data::Value &) {
 	return data::Value::Null;
@@ -1036,6 +1050,25 @@ static size_t processExtraVarSize(const FieldExtra *s) {
 	return ret;
 }
 
+static size_t updateFieldLimits(const Map<String, Field> &vec) {
+	size_t ret = 256 * vec.size();
+	for (auto &it : vec) {
+		auto t = it.second.getType();
+		if (t == storage::Type::Text || t == storage::Type::Bytes) {
+			auto f = static_cast<const storage::FieldText *>(it.second.getSlot());
+			ret += f->maxLength;
+		} else if (t == Type::Data || t == Type::Array) {
+			ret += config::getMaxExtraFieldSize();
+		} else if (t == Type::Extra) {
+			auto f = static_cast<const storage::FieldExtra *>(it.second.getSlot());
+			ret += updateFieldLimits(f->fields);
+		} else {
+			ret += 256;
+		}
+	}
+	return ret;
+}
+
 void Scheme::updateLimits() {
 	maxRequestSize = 256 * fields.size();
 	for (auto &it : fields) {
@@ -1052,12 +1085,12 @@ void Scheme::updateLimits() {
 			auto f = static_cast<const storage::FieldText *>(it.second.getSlot());
 			maxVarSize = std::max(f->maxLength, maxVarSize);
 			maxRequestSize += f->maxLength;
-		} else if (t == Type::Extra || t == Type::Data || t == Type::Array) {
+		} else if (t == Type::Data || t == Type::Array) {
 			maxRequestSize += config::getMaxExtraFieldSize();
-			if (t == Type::Extra) {
-				auto f = static_cast<const storage::FieldExtra *>(it.second.getSlot());
-				maxVarSize = std::max(processExtraVarSize(f), maxVarSize);
-			}
+		} else if (t == Type::Extra) {
+			auto f = static_cast<const storage::FieldExtra *>(it.second.getSlot());
+			maxRequestSize += updateFieldLimits(f->fields);
+			maxVarSize = std::max(processExtraVarSize(f), maxVarSize);
 		}
 	}
 }
@@ -1113,12 +1146,23 @@ bool Scheme::validateHint(const data::Value &hint) {
 data::Value Scheme::createFilePatch(Adapter *adapter, const data::Value &val) const {
 	data::Value patch;
 	for (auto &it : val.asDict()) {
-		if (it.second.isInteger() && it.second.getInteger() < 0) {
-			auto f = getField(it.first);
-			if (f && (f->getType() == Type::File || (f->getType() == Type::Image && static_cast<const FieldImage *>(f->getSlot())->primary))) {
+		auto f = getField(it.first);
+		if (f && (f->getType() == Type::File || (f->getType() == Type::Image && static_cast<const FieldImage *>(f->getSlot())->primary))) {
+			if (it.second.isInteger() && it.second.getInteger() < 0) {
 				auto file = InputFilter::getFileFromContext(it.second.getInteger());
 				if (file && file->isOpen()) {
 					auto d = createFile(adapter, *f, *file);
+					if (d.isInteger()) {
+						patch.setValue(d, f->getName());
+					} else if (d.isDictionary()) {
+						for (auto & it : d.asDict()) {
+							patch.setValue(std::move(it.second), it.first);
+						}
+					}
+				}
+			} else if (it.second.isDictionary()) {
+				if (it.second.isBytes("content") && it.second.isString("type")) {
+					auto d = createFile(adapter, *f, it.second.getBytes("content"), it.second.getString("type"));
 					if (d.isInteger()) {
 						patch.setValue(d, f->getName());
 					} else if (d.isDictionary()) {

@@ -278,7 +278,7 @@ auto ExecQuery::writeSelectFrom(GenericQuery &q, const QueryList::Item &item, bo
 	return s.from(schemeName);
 }
 
-void ExecQuery::writeQueryListItem(GenericQuery &q, const QueryList &list, size_t idx, bool idOnly, const storage::Field *field) {
+void ExecQuery::writeQueryListItem(GenericQuery &q, const QueryList &list, size_t idx, bool idOnly, const storage::Field *field, bool forSubquery) {
 	auto &items = list.getItems();
 	const QueryList::Item &item = items.at(idx);
 	const storage::Field *sourceField = nullptr;
@@ -323,7 +323,11 @@ void ExecQuery::writeQueryListItem(GenericQuery &q, const QueryList &list, size_
 	const storage::Field * f = field?field:item.field;
 
 	String schemeName(item.scheme->getName());
-	String fieldName( (f && (f->getType() == Type::Object || f->isFile())) ? f->getName() : String("__oid") );
+	String fieldName( (f && (
+		(f->getType() == Type::Object && (forSubquery || !idOnly || idx + 1 == items.size()))
+		|| f->isFile()))
+			? f->getName()
+			: String("__oid") );
 
 	auto s = writeSelectFrom(q, item, idOnly, schemeName, fieldName);
 	if (idx > 0) {
@@ -354,13 +358,15 @@ void ExecQuery::writeQueryList(const QueryList &list, bool idOnly, size_t count)
 
 	GenericQuery q(this);
 	size_t i = 0;
-	for (; i < count - 1; ++ i) {
-		q.with(toString("sq", i), [&] (GenericQuery &sq) {
-			writeQueryListItem(sq, list, i, true);
-		});
+	if (count > 0) {
+		for (; i < count - 1; ++ i) {
+			q.with(toString("sq", i), [&] (GenericQuery &sq) {
+				writeQueryListItem(sq, list, i, true, nullptr, true);
+			});
+		}
 	}
 
-	writeQueryListItem(q, list, i, idOnly);
+	writeQueryListItem(q, list, i, idOnly, nullptr, false);
 }
 
 void ExecQuery::writeQueryFile(const QueryList &list, const storage::Field *field) {

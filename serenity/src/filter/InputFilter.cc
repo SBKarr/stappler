@@ -36,7 +36,7 @@ THE SOFTWARE.
 
 NS_SA_BEGIN
 
-InputFile::InputFile(apr::string &&name, apr::string && type, apr::string && enc, apr::string && orig, size_t s, int64_t id)
+InputFile::InputFile(String &&name, String && type, String && enc, String && orig, size_t s, int64_t id)
 : name(std::move(name)), type(std::move(type)), encoding(std::move(enc))
 , original(std::move(orig)), writeSize(0), headerSize(s), id(id) {
 	file.open_tmp(config::getUploadTmpFilePrefix(), APR_FOPEN_CREATE | APR_FOPEN_READ | APR_FOPEN_WRITE | APR_FOPEN_EXCL);

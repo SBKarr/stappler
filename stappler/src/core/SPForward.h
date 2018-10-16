@@ -190,6 +190,8 @@ class FadeOut;
 class ProgressAction;
 class Timeout;
 
+class DynamicLabel;
+
 NS_SP_END
 
 

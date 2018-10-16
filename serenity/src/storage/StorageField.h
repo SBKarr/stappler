@@ -91,6 +91,7 @@ enum class Transform {
 	Base64,
 
 	Uuid,
+	Array, // handle extra field as array
 
 	Password, // deprecated
 };

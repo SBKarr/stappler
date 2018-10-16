@@ -90,7 +90,7 @@ Time mtime_v_fn(const StringView &path) {
         return Time();
     }
 #else
-	return Time::second(mtime_fn(path));
+	return Time::seconds(mtime_fn(path));
 #endif
 }
 time_t ctime_fn(const StringView &path) {

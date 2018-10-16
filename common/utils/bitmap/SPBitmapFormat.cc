@@ -1314,7 +1314,7 @@ bool Bitmap::isImage(const uint8_t * data, size_t dataLen, bool readable) {
 
 Pair<Bitmap::FileFormat, StringView> Bitmap::detectFormat(const StringView &path) {
 	auto file = filesystem::openForReading(path);
-	return detectFormat(path);
+	return detectFormat(file);
 }
 
 Pair<Bitmap::FileFormat, StringView> Bitmap::detectFormat(const io::Producer &file) {

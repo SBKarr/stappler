@@ -98,7 +98,7 @@ public:
 	SelectFrom writeSelectFrom(GenericQuery &q, const QueryList::Item &item, bool idOnly, const StringView &scheme, const StringView &field);
 
 	void writeQueryReqest(ExecQuery::SelectFrom &s, const QueryList::Item &item);
-	void writeQueryListItem(GenericQuery &sq, const QueryList &list, size_t idx, bool idOnly, const storage::Field *field = nullptr);
+	void writeQueryListItem(GenericQuery &sq, const QueryList &list, size_t idx, bool idOnly, const storage::Field *field = nullptr, bool forSubquery = false);
 	void writeQueryList(const QueryList &query, bool idOnly, size_t count = maxOf<size_t>());
 	void writeQueryFile(const QueryList &query, const storage::Field *field);
 	void writeQueryArray(const QueryList &query, const storage::Field *field);

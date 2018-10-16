@@ -75,7 +75,7 @@ auto read(const StringType &data, const String &key = "") -> ValueTemplate<Inter
 }
 
 template <typename Interface = DefaultInterface>
-auto readFile(const String &filename, const String &key = "") -> ValueTemplate<Interface> {
+auto readFile(const StringView &filename, const StringView &key = StringView()) -> ValueTemplate<Interface> {
 	Stream stream;
 	filesystem::readFile(stream, filename);
 	return stream.extract<Interface>();

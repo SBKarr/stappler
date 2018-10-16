@@ -478,32 +478,59 @@ data::Value FieldExtra::getDefault(const data::Value &patch) const {
 	return ret;
 }
 
-bool FieldExtra::transformValue(const Scheme &scheme, data::Value &val) const {
-	if (!val.isDictionary()) {
-		return false;
-	}
-	auto &dict = val.asDict();
-	auto it = dict.begin();
-	while (it != dict.end()) {
-		auto f_it = fields.find(it->first);
-		if (f_it != fields.end()) {
-			if (it->second.isNull()) {
-				it ++;
-			} else if (!f_it->second.transform(scheme, it->second)) {
-				it = val.getDict().erase(it);
-			} else {
-				it ++;
-			}
-		} else {
-			it = val.getDict().erase(it);
+bool FieldExtra::transformValue(const Scheme &scheme, data::Value &v) const {
+	auto processValue = [&] (data::Value &val) -> bool {
+		if (!val.isDictionary()) {
+			return false;
 		}
-	}
+		auto &dict = val.asDict();
+		auto it = dict.begin();
+		while (it != dict.end()) {
+			auto f_it = fields.find(it->first);
+			if (f_it != fields.end()) {
+				if (it->second.isNull()) {
+					it ++;
+				} else if (!f_it->second.transform(scheme, it->second)) {
+					it = val.getDict().erase(it);
+				} else {
+					it ++;
+				}
+			} else {
+				it = val.getDict().erase(it);
+			}
+		}
 
-	if (!val.empty()) {
-		return true;
-	}
+		if (!val.empty()) {
+			return true;
+		}
 
-	return false;
+		return false;
+	};
+
+	if (transform == Transform::Array) {
+		if (!v.isArray()) {
+			return false;
+		}
+
+		auto &arr = v.asArray();
+
+		auto it = arr.begin();
+		while (it != arr.end()) {
+			if (processValue(*it)) {
+				++ it;
+			} else {
+				it = arr.erase(it);
+			}
+		}
+
+		if (!v.empty()) {
+			return true;
+		}
+
+		return false;
+	} else {
+		return processValue(v);
+	}
 }
 
 void FieldExtra::hash(apr::ostringstream &stream, ValidationLevel l) const {

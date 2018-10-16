@@ -144,7 +144,7 @@ public:
 		bool operator != (const DescriptionStyle &) const;
 
 		template <typename ... Args>
-		static DescriptionStyle construct(const String &family, uint8_t size, Args && ... args) {
+		static DescriptionStyle construct(const StringView &family, uint8_t size, Args && ... args) {
 			DescriptionStyle p;
 			p.font.fontFamily = family;
 			p.font.fontSize = size;
@@ -173,6 +173,8 @@ public:
 		static void readParameters(DescriptionStyle &p, T && t) {
 			readParameter(p, t);
 		}
+
+		static void readParameters(DescriptionStyle &p) { }
 	};
 
 	class ExternalFormatter : public Ref {

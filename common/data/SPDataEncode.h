@@ -145,7 +145,7 @@ struct EncodeTraits {
 		return false;
 	}
 
-	static bool save(const ValueType &data, const String &file, EncodeFormat fmt) {
+	static bool save(const ValueType &data, const StringView &file, EncodeFormat fmt) {
 		const String &path = filepath::absolute(file, true);
 		if (fmt.format == EncodeFormat::DefaultFormat) {
 			auto ext = filepath::lastExtension(path);
@@ -182,7 +182,7 @@ write(std::ostream &stream, const ValueTemplate<Interface> &data, EncodeFormat f
 }
 
 template <typename Interface> inline bool
-save(const ValueTemplate<Interface> &data, const String &file, EncodeFormat fmt = EncodeFormat()) {
+save(const ValueTemplate<Interface> &data, const StringView &file, EncodeFormat fmt = EncodeFormat()) {
 	return EncodeTraits<Interface>::save(data, file, fmt);
 }
 

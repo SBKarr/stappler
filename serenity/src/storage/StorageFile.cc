@@ -38,7 +38,7 @@ String File::getFilesystemPath(uint64_t oid) {
 	return toString(Server(apr::pool::server()).getDocumentRoot(), "/uploads/", oid);
 }
 
-bool File_isImage(const String &type) {
+static bool File_isImage(const StringView &type) {
 	return type == "image/gif"
 			|| type == "image/jpeg"
 			|| type == "image/pjpeg"
@@ -48,116 +48,134 @@ bool File_isImage(const String &type) {
 			|| type == "image/svg+xml";
 }
 
+static bool File_validateFileField(const Field &field, size_t writeSize, const StringView &type) {
+	auto ffield = static_cast<const FieldFile *>(field.getSlot());
+	// check size
+	if (writeSize > ffield->maxSize) {
+		messages::error("Storage", "File is larger then max file size in field", data::Value {
+			std::make_pair("field", data::Value(field.getName())),
+			std::make_pair("max", data::Value((int64_t)ffield->maxSize)),
+			std::make_pair("size", data::Value((int64_t)writeSize))
+		});
+		return false;
+	}
+
+	// check type
+	auto &types = ffield->allowedTypes;
+	if (!types.empty()) {
+		bool ret = false;
+		for (auto &it : types) {
+			if (type == it) {
+				ret = true;
+				break;
+			}
+		}
+		if (!ret) {
+			messages::error("Storage", "Invalid file type for field", data::Value{
+				std::make_pair("field", data::Value(field.getName())),
+				std::make_pair("type", data::Value(type))
+			});
+			return false;
+		}
+	}
+	return true;
+}
+
+static bool File_validateImageField(const Field &field, size_t writeSize, const StringView &type, io::Producer file) {
+	auto ffield = static_cast<const FieldImage *>(field.getSlot());
+
+	// check size
+	if (writeSize > ffield->maxSize) {
+		messages::error("Storage", "File is larger then max file size in field", data::Value{
+			std::make_pair("field", data::Value(field.getName())),
+			std::make_pair("max", data::Value((int64_t)ffield->maxSize)),
+			std::make_pair("size", data::Value((int64_t)writeSize))
+		});
+		return false;
+	}
+
+	if (!File_isImage(type)) {
+		messages::error("Storage", "Unknown image type for field", data::Value {
+			std::make_pair("field", data::Value(field.getName())),
+			std::make_pair("type", data::Value(type))
+		});
+		return false;
+	}
+
+	// check type
+	auto &types = ffield->allowedTypes;
+	if (!types.empty()) {
+		bool ret = false;
+		for (auto &it : types) {
+			if (type == it) {
+				ret = true;
+				break;
+			}
+		}
+		if (!ret) {
+			messages::error("Storage", "Invalid file type for field", data::Value{
+				std::make_pair("field", data::Value(field.getName())),
+				std::make_pair("type", data::Value(type))
+			});
+			return false;
+		}
+	}
+
+	size_t width = 0, height = 0;
+	if (!Bitmap::getImageSize(file, width, height) && width > 0 && height > 0) {
+		messages::error("Storage", "Fail to detect file size with");
+		return false;
+	}
+
+	if (ffield->minImageSize.policy == ImagePolicy::Reject) {
+		if (ffield->minImageSize.width > width || ffield->minImageSize.height > height) {
+			messages::error("Storage", "Image is to small, rejected by policy rule", data::Value{
+				std::make_pair("min", data::Value {
+					std::make_pair("width", data::Value(ffield->minImageSize.width)),
+					std::make_pair("height", data::Value(ffield->minImageSize.height))
+				}),
+				std::make_pair("current", data::Value{
+					std::make_pair("width", data::Value(width)),
+					std::make_pair("height", data::Value(height))
+				})
+			});
+			return false;
+		}
+	}
+
+	if (ffield->maxImageSize.policy == ImagePolicy::Reject) {
+		if (ffield->maxImageSize.width < width || ffield->maxImageSize.height < height) {
+			messages::error("Storage", "Image is to large, rejected by policy rule", data::Value{
+				std::make_pair("max", data::Value {
+					std::make_pair("width", data::Value(ffield->maxImageSize.width)),
+					std::make_pair("height", data::Value(ffield->maxImageSize.height))
+				}),
+				std::make_pair("current", data::Value{
+					std::make_pair("width", data::Value(width)),
+					std::make_pair("height", data::Value(height))
+				})
+			});
+			return false;
+		}
+	}
+	return true;
+}
+
 bool File::validateFileField(const Field &field, const InputFile &file) {
 	if (field.getType() == Type::File) {
-		auto ffield = static_cast<const FieldFile *>(field.getSlot());
-		// check size
-		if (file.writeSize > ffield->maxSize) {
-			messages::error("Storage", "File is larger then max file size in field", data::Value {
-				std::make_pair("field", data::Value(field.getName())),
-				std::make_pair("max", data::Value((int64_t)ffield->maxSize)),
-				std::make_pair("size", data::Value((int64_t)file.writeSize))
-			});
-			return false;
-		}
-
-		// check type
-		auto &types = ffield->allowedTypes;
-		if (!types.empty()) {
-			bool ret = false;
-			for (auto &it : types) {
-				if (file.type == it) {
-					ret = true;
-					break;
-				}
-			}
-			if (!ret) {
-				messages::error("Storage", "Invalid file type for field", data::Value{
-					std::make_pair("field", data::Value(field.getName())),
-					std::make_pair("type", data::Value(file.type))
-				});
-				return false;
-			}
-		}
-
+		return File_validateFileField(field, file.writeSize, file.type);
 	} else if (field.getType() == Type::Image) {
-		auto ffield = static_cast<const FieldImage *>(field.getSlot());
+		return File_validateImageField(field, file.writeSize, file.type, file.file);
+	}
+	return true;
+}
 
-		// check size
-		if (file.writeSize > ffield->maxSize) {
-			messages::error("Storage", "File is larger then max file size in field", data::Value{
-				std::make_pair("field", data::Value(field.getName())),
-				std::make_pair("max", data::Value((int64_t)ffield->maxSize)),
-				std::make_pair("size", data::Value((int64_t)file.writeSize))
-			});
-			return false;
-		}
-
-		if (!File_isImage(file.type)) {
-
-			messages::error("Storage", "Unknown image type for field", data::Value {
-				std::make_pair("field", data::Value(field.getName())),
-				std::make_pair("type", data::Value(file.type))
-			});
-			return false;
-		}
-
-		// check type
-		auto &types = ffield->allowedTypes;
-		if (!types.empty()) {
-			bool ret = false;
-			for (auto &it : types) {
-				if (file.type == it) {
-					ret = true;
-					break;
-				}
-			}
-			if (!ret) {
-				messages::error("Storage", "Invalid file type for field", data::Value{
-					std::make_pair("field", data::Value(field.getName())),
-					std::make_pair("type", data::Value(file.type))
-				});
-				return false;
-			}
-		}
-
-		size_t width = 0, height = 0;
-		if (!Bitmap::getImageSize(file.file, width, height) && width > 0 && height > 0) {
-			messages::error("Storage", "Fail to detect file size with");
-			return false;
-		}
-
-		if (ffield->minImageSize.policy == ImagePolicy::Reject) {
-			if (ffield->minImageSize.width > width || ffield->minImageSize.height > height) {
-				messages::error("Storage", "Image is to small, rejected by policy rule", data::Value{
-					std::make_pair("min", data::Value {
-						std::make_pair("width", data::Value(ffield->minImageSize.width)),
-						std::make_pair("height", data::Value(ffield->minImageSize.height))
-					}),
-					std::make_pair("current", data::Value{
-						std::make_pair("width", data::Value(width)),
-						std::make_pair("height", data::Value(height))
-					})
-				});
-				return false;
-			}
-		}
-
-		if (ffield->maxImageSize.policy == ImagePolicy::Reject) {
-			if (ffield->maxImageSize.width < width || ffield->maxImageSize.height < height) {
-				messages::error("Storage", "Image is to large, rejected by policy rule", data::Value{
-					std::make_pair("max", data::Value {
-						std::make_pair("width", data::Value(ffield->maxImageSize.width)),
-						std::make_pair("height", data::Value(ffield->maxImageSize.height))
-					}),
-					std::make_pair("current", data::Value{
-						std::make_pair("width", data::Value(width)),
-						std::make_pair("height", data::Value(height))
-					})
-				});
-				return false;
-			}
-		}
+bool File::validateFileField(const Field &field, const StringView &type, const Bytes &data) {
+	if (field.getType() == Type::File) {
+		return File_validateFileField(field, data.size(), type);
+	} else if (field.getType() == Type::Image) {
+		CoderSource source(data);
+		return File_validateImageField(field, data.size(), type, source);
 	}
 	return true;
 }
@@ -280,31 +298,37 @@ static bool getTargetImageSize(size_t W, size_t H, const MinImageSize &min, cons
 	return false;
 }
 
-String resizeImage(Map<String, String> &ret, Bitmap &bmp, size_t width, size_t height) {
+static String saveImage(Bitmap &bmp) {
+	apr::file file;
+	file.open_tmp(config::getUploadTmpImagePrefix(), 0);
+	String path(file.path());
+	file.close();
+
+	bool ret = false;
+	auto fmt = bmp.getOriginalFormat();
+	if (fmt == Bitmap::FileFormat::Custom) {
+		ret = bmp.save(bmp.getOriginalFormatName(), path);
+	} else {
+		ret = bmp.save(bmp.getOriginalFormat(), path);
+	}
+
+	if (ret) {
+		return String(path);
+	}
+
+    return String();
+}
+
+static String resizeImage(Bitmap &bmp, size_t width, size_t height) {
 	auto newImage = bmp.resample(width, height);
     if (newImage) {
-    	apr::file file;
-    	file.open_tmp(config::getUploadTmpImagePrefix(), 0);
-    	String path(file.path());
-    	file.close();
-
-    	bool ret = false;
-    	auto fmt = bmp.getOriginalFormat();
-    	if (fmt == Bitmap::FileFormat::Custom) {
-    		ret = newImage.save(bmp.getOriginalFormatName(), path);
-    	} else {
-    		ret = newImage.save(bmp.getOriginalFormat(), path);
-    	}
-
-	    if (ret) {
-		    return String(path);
-	    }
+    	return saveImage(newImage);
     }
 
     return String();
 }
 
-Map<String, String> writeImages(const Field &f, InputFile &file) {
+static Map<String, String> writeImages(const Field &f, InputFile &file) {
 	auto field = static_cast<const FieldImage *>(f.getSlot());
 
 	size_t width = 0, height = 0;
@@ -327,7 +351,7 @@ Map<String, String> writeImages(const Field &f, InputFile &file) {
 	    	messages::error("Storage", "Fail to open image");
 	    } else {
 		    if (needResize) {
-		    	auto fpath = resizeImage(ret, bmp, targetWidth, targetHeight);
+		    	auto fpath = resizeImage(bmp, targetWidth, targetHeight);
 		    	if (!fpath.empty()) {
 		    		ret.emplace(f.getName(), std::move(fpath));
 		    	}
@@ -340,7 +364,7 @@ Map<String, String> writeImages(const Field &f, InputFile &file) {
 			    	getTargetImageSize(width, height, MinImageSize(), MaxImageSize(it.width, it.height),
 			    			targetWidth, targetHeight);
 
-			    	auto fpath = resizeImage(ret, bmp, targetWidth, targetHeight);
+			    	auto fpath = resizeImage(bmp, targetWidth, targetHeight);
 			    	if (!fpath.empty()) {
 			    		ret.emplace(it.name, std::move(fpath));
 			    	}
@@ -349,6 +373,59 @@ Map<String, String> writeImages(const Field &f, InputFile &file) {
 	    }
 	} else {
 		ret.emplace(f.getName(), file.path);
+	}
+
+	return ret;
+}
+
+static Map<String, String> writeImages(const Field &f, const StringView &type, const Bytes &data) {
+	auto field = static_cast<const FieldImage *>(f.getSlot());
+
+	size_t width = 0, height = 0;
+	size_t targetWidth, targetHeight;
+	CoderSource source(data);
+	if (!Bitmap::getImageSize(source, width, height)) {
+		return Map<String, String>();
+	}
+
+	Map<String, String> ret;
+
+	bool needResize = getTargetImageSize(width, height, field->minImageSize, field->maxImageSize, targetWidth, targetHeight);
+	if (needResize || field->thumbnails.size() > 0) {
+		Bitmap bmp(data);
+	    if (!bmp) {
+	    	messages::error("Storage", "Fail to open image");
+	    } else {
+		    if (needResize) {
+		    	auto fpath = resizeImage(bmp, targetWidth, targetHeight);
+		    	if (!fpath.empty()) {
+		    		ret.emplace(f.getName(), std::move(fpath));
+		    	}
+		    } else {
+		    	auto fpath = saveImage(bmp);
+		    	if (!fpath.empty()) {
+		    		ret.emplace(f.getName(), std::move(fpath));
+		    	}
+		    }
+
+		    if (field->thumbnails.size() > 0) {
+		    	for (auto &it : field->thumbnails) {
+			    	getTargetImageSize(width, height, MinImageSize(), MaxImageSize(it.width, it.height),
+			    			targetWidth, targetHeight);
+
+			    	auto fpath = resizeImage(bmp, targetWidth, targetHeight);
+			    	if (!fpath.empty()) {
+			    		ret.emplace(it.name, std::move(fpath));
+			    	}
+		    	}
+		    }
+	    }
+	} else {
+		apr::file file;
+		file.open_tmp(config::getUploadTmpImagePrefix(), 0);
+		file.xsputn((const char *)data.data(), data.size());
+		ret.emplace(f.getName(), file.path());
+		file.close();
 	}
 
 	return ret;
@@ -371,6 +448,21 @@ data::Value File::createImage(Adapter *adapter, const Field &f, InputFile &file)
 			if (val.isInteger()) {
 				ret.setValue(std::move(val), field);
 			}
+		}
+	}
+	return ret;
+}
+
+data::Value File::createImage(Adapter *adapter, const Field &f, const StringView &type, const Bytes &data) {
+	data::Value ret;
+	auto files = writeImages(f, type, data);
+	for (auto & it : files) {
+		auto &field = it.first;
+		auto &filePath = it.second;
+
+		auto val = createFile(adapter, type, filePath);
+		if (val.isInteger()) {
+			ret.setValue(std::move(val), field);
 		}
 	}
 	return ret;

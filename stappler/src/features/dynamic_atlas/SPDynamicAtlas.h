@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "base/ccTypes.h"
 #include "renderer/CCTexture2D.h"
 #include "SPEventHandler.h"
+#include "SPDynamicQuadArray.h"
 
 NS_SP_BEGIN
 

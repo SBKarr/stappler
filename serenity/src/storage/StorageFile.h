@@ -30,13 +30,16 @@ NS_SA_EXT_BEGIN(storage)
 class File : public Object {
 public:
 	static String getFilesystemPath(uint64_t oid);
+
 	static bool validateFileField(const Field &, const InputFile &);
+	static bool validateFileField(const Field &, const StringView &type, const Bytes &data);
 
 	static data::Value createFile(Adapter *adapter, const Field &, InputFile &);
 	static data::Value createFile(Adapter *adapter, const StringView &type, const StringView &path);
 	static data::Value createFile(Adapter *adapter, const StringView &type, const Bytes &data);
 
 	static data::Value createImage(Adapter *adapter, const Field &, InputFile &);
+	static data::Value createImage(Adapter *adapter, const Field &, const StringView &type, const Bytes &data);
 
 	static data::Value getData(Adapter *adapter, uint64_t id);
 	static void setData(Adapter *adapter, uint64_t id, const data::Value &);

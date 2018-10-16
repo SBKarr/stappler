@@ -43,6 +43,7 @@ NS_SA_BEGIN
 enum class ResourceType {
 	ResourceList,
 	ReferenceSet,
+	ObjectField,
 	Object,
 	Set,
 	View,

@@ -67,8 +67,13 @@ struct Reader {
 template <typename StringReader>
 struct Tag;
 
-template <typename ReaderType, typename StringReader = StringViewUtf8, typename TagType = html::Tag<StringReader>>
-void parse(ReaderType &r, const StringReader &s);
+template <typename ReaderType, typename StringReader = StringViewUtf8,
+	typename TagType = typename std::conditional<
+		std::is_same<typename ReaderType::Tag, html::Tag<StringReader>>::value,
+		html::Tag<StringReader>,
+		typename ReaderType::Tag
+	>::type>
+void parse(ReaderType &r, const StringReader &s, bool rootOnly = true);
 
 InvokerCallTest_MakeInvoker(Html, onBeginTag);
 InvokerCallTest_MakeInvoker(Html, onEndTag);
@@ -134,11 +139,21 @@ struct Tag : public ReaderClassBase<char16_t> {
 	void setClosable(bool v) { closable = v; }
 	bool isClosable() const { return closable; }
 
+	void setHasContent(bool v) { content = v; }
+	bool hasContent() const { return content; }
+
 	StringReader name;
 	bool closable = true;
+	bool content = false;
 };
 
-template <typename ReaderType, typename __StringReader = StringViewUtf8, typename TagType = Tag<__StringReader>, typename Traits = ParserTraits<ReaderType>>
+template <typename ReaderType, typename __StringReader = StringViewUtf8,
+		typename TagType = typename std::conditional<
+				std::is_same<typename ReaderType::Tag, Tag<__StringReader>>::value,
+				html::Tag<__StringReader>,
+				typename ReaderType::Tag
+			>::type,
+		typename Traits = ParserTraits<ReaderType>>
 struct Parser {
 	using StringReader = __StringReader;
 	using CharType = typename StringReader::MatchCharType;
@@ -164,16 +179,18 @@ struct Parser {
 		canceled = true;
 	}
 
-	bool parse(const StringReader &r) {
+	bool parse(const StringReader &r, bool rootOnly) {
 		current = r;
 		while (!current.empty()) {
 			auto prefix = current.template readUntil<LtChar>(); // move to next tag
 			if (!prefix.empty()) {
 				if (!tagStack.empty()) {
+					tagStack.back().setHasContent(true);
 					onTagContent(tagStack.back(), prefix);
 				} else {
 					StringReader r;
 					Tag t(r);
+					t.setHasContent(true);
 					onTagContent(t, prefix);
 				}
 			}
@@ -205,7 +222,7 @@ struct Parser {
 						}
 					} while(it != tagStack.begin());
 
-					if (tagStack.empty()) {
+					if (rootOnly && tagStack.empty()) {
 						break;
 					}
 				} else if (current.empty()) {
@@ -239,10 +256,12 @@ struct Parser {
 						current += "]]>"_len;
 
 						if (!tagStack.empty()) {
+							tagStack.back().setHasContent(true);
 							onTagContent(tagStack.back(), data);
 						} else {
 							StringReader r;
 							Tag t(r);
+							t.setHasContent(true);
 							onTagContent(t, data);
 						}
 						continue;
@@ -282,7 +301,7 @@ struct Parser {
 					++ current;
 				}
 
-				onEndTag(tag);
+				onEndTag(tag, !tag.isClosable());
 				if (tag.isClosable()) {
 					onPushTag(tag);
 					tagStack.emplace_back(std::move(tag));
@@ -335,7 +354,7 @@ struct Parser {
 	}
 
 	inline void onBeginTag(TagType &tag) { Traits::onBeginTag(*reader, *this, tag); }
-	inline void onEndTag(TagType &tag) { Traits::onEndTag(*reader, *this, tag); }
+	inline void onEndTag(TagType &tag, bool isClosed) { Traits::onEndTag(*reader, *this, tag, isClosed); }
 	inline void onTagAttribute(TagType &tag, StringReader &name, StringReader &value) { Traits::onTagAttribute(*reader, *this, tag, name, value); }
 	inline void onPushTag(TagType &tag) { Traits::onPushTag(*reader, *this, tag); }
 	inline void onPopTag(TagType &tag) { Traits::onPopTag(*reader, *this, tag); }
@@ -349,9 +368,9 @@ struct Parser {
 };
 
 template <typename ReaderType, typename StringReader, typename TagType>
-void parse(ReaderType &r, const StringReader &s) {
+void parse(ReaderType &r, const StringReader &s, bool rootOnly) {
 	html::Parser<ReaderType, StringReader, TagType> p(r);
-	p.parse(s);
+	p.parse(s, rootOnly);
 }
 
 NS_SP_EXT_END(html)

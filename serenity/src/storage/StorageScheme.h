@@ -209,6 +209,9 @@ protected:
 	// call before object is created, used for additional checking or default values
 	data::Value createFile(Adapter *, const Field &, InputFile &) const;
 
+	// call before object is created, when file is embedded into patch
+	data::Value createFile(Adapter *, const Field &, const Bytes &, const StringView &type) const;
+
 	// call after object is created, used for custom field initialization
 	data::Value initField(Adapter *, Object *, const Field &, const data::Value &);
 

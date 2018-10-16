@@ -144,6 +144,36 @@ protected:
 	Permission _refPerms = Permission::Restrict;
 };
 
+class ResourceFieldObject : public ResourceObject {
+public:
+	ResourceFieldObject(Adapter *a, QueryList &&q);
+
+	virtual bool prepareUpdate() override;
+	virtual bool prepareCreate() override;
+	virtual bool prepareAppend() override;
+	virtual bool removeObject() override;
+	virtual data::Value updateObject(data::Value &, apr::array<InputFile> &) override;
+	virtual data::Value createObject(data::Value &, apr::array<InputFile> &) override;
+	virtual data::Value appendObject(data::Value &) override;
+
+protected:
+	int64_t getRootId();
+	int64_t getObjectId();
+
+	data::Value getRootObject(bool forUpdate);
+	data::Value getTargetObject(bool forUpdate);
+
+	bool doRemoveObject();
+	data::Value doUpdateObject(data::Value &, apr::array<InputFile> &);
+	data::Value doCreateObject(data::Value &, apr::array<InputFile> &);
+
+	int64_t _objectId = 0;
+	int64_t _rootId = 0;
+	const Scheme *_sourceScheme = nullptr;
+	const Field *_field = nullptr;
+	Permission _refPerms = Permission::Restrict;
+};
+
 class ResourceView : public ResourceSet {
 public:
 	ResourceView(Adapter *h, QueryList &&q);

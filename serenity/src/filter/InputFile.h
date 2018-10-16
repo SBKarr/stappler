@@ -28,18 +28,18 @@ THE SOFTWARE.
 NS_SA_BEGIN
 
 struct InputFile : public AllocPool {
-	apr::string path;
-	apr::string name;
-	apr::string type;
-	apr::string encoding;
-	apr::string original;
+	String path;
+	String name;
+	String type;
+	String encoding;
+	String original;
 	apr::file file;
 
 	size_t writeSize;
 	size_t headerSize;
 	int64_t id;
 
-	InputFile(apr::string && name, apr::string && type, apr::string && enc, apr::string && orig, size_t s, int64_t id);
+	InputFile(String && name, String && type, String && enc, String && orig, size_t s, int64_t id);
 	~InputFile();
 
 	bool isOpen() const;
@@ -47,7 +47,7 @@ struct InputFile : public AllocPool {
 	size_t write(const char *, size_t);
 	void close();
 
-	bool save(const apr::string &) const;
+	bool save(const String &) const;
 
 	int64_t negativeId() const { return - id - 1; }
 

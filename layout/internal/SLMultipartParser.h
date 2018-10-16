@@ -63,6 +63,8 @@ struct MultipartParser {
 
 	uint16_t fileWidth = 0;
 	uint16_t fileHeight = 0;
+
+	String bodyContentType;
 	String fileContentType;
 	String fileName;
 	String fileEncoding;
