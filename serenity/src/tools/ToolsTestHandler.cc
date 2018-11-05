@@ -150,14 +150,14 @@ bool TestHandler::processUserTest(Request &rctx, data::Value &ret, const data::V
 		}
 	} else if (d.getBool("all")) {
 		auto s = rctx.server().getUserScheme();
-		auto data = s->select(adapter, storage::Query::all());
+		auto data = storage::Worker(*s, adapter).select(storage::Query::all());
 
 		ret.setValue(std::move(data), "users");
 	} else {
 		auto passwd = input.getString("password");
 		data::Value user(input);
 		auto s = rctx.server().getUserScheme();
-		user = s->create(adapter, user);
+		user = storage::Worker(*s, adapter).create(user);
 
 		auto pswd = base64::decode(
 			"AAEFBp6epLB1iBwFWarx6ZKwghFXNaFVQsZ8wblJNvgCxjRe2z1JvigC1IliAFIkHT5NEbNJSUFcHl1r7CroDBIch9KM/087Qp3+ACZOGmg=");

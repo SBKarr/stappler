@@ -63,7 +63,7 @@ protected:
 	using ReaderVecIt = Vector<StringView>::iterator;
 
 	Variable selectSchemeSetVariable(ReaderVec &path, ReaderVecIt &pathIt, const Variable &val, const storage::Field *obj);
-	Variable selectSchemeByPath(ReaderVec &path, ReaderVecIt &pathIt, const storage::Scheme *scheme, int64_t oid = 0, const String &field = String());
+	Variable selectSchemeByPath(ReaderVec &path, ReaderVecIt &pathIt, const storage::Scheme *scheme, int64_t oid = 0, const StringView &field = StringView());
 
 	const data::Value * selectDataValue(const data::Value &val, StringView &r);
 
@@ -82,7 +82,7 @@ protected:
 	Variable perform(Variable &, Variable &, Expression::Op);
 
 	AccessControl _access;
-	storage::Adapter *_storage;
+	storage::Adapter _storage;
 	Map<String, Variable> _variables;
 
 	Callback _templateCallback;

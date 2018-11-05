@@ -34,6 +34,7 @@ THE SOFTWARE.
 #include "ServerComponent.h"
 #include "StorageField.h"
 #include "StorageScheme.h"
+#include "StorageWorker.h"
 #include "PGHandle.h"
 #include "ResourceHandler.h"
 #include "MultiResourceHandler.h"
@@ -193,9 +194,9 @@ struct Server::Config : public AllocPool {
 	}
 
 	void init(Server &serv) {
-		schemes.emplace(userScheme.getName(), &userScheme);
-		schemes.emplace(fileScheme.getName(), &fileScheme);
-		schemes.emplace(errorScheme.getName(), &errorScheme);
+		schemes.emplace(userScheme.getName().str(), &userScheme);
+		schemes.emplace(fileScheme.getName().str(), &fileScheme);
+		schemes.emplace(errorScheme.getName().str(), &errorScheme);
 
 		if (data) {
 			if (data.isArray("handlers")) {
@@ -223,20 +224,30 @@ struct Server::Config : public AllocPool {
 		if (!loadingFalled) {
 			Scheme::initSchemes(serv, schemes);
 
-			auto root = Root::getInstance();
-			auto pool = getCurrentPool();
-			auto db = root->dbdOpen(pool, serv);
-			if (db) {
-				pg::Handle h(pool, db);
-				h.init(serv, schemes);
+			apr::pool::perform([&] {
+				auto root = Root::getInstance();
+				auto pool = getCurrentPool();
+				auto db = root->dbdOpen(pool, serv);
+				if (db) {
+					pg::Handle h(pool, db);
+					h.init(serv, schemes);
 
-				for (auto &it : components) {
-					currentComponent = it.second->getName();
-					it.second->onStorageInit(serv, &h);
-					currentComponent = String();
+					for (auto &it : components) {
+						currentComponent = it.second->getName();
+						it.second->onStorageInit(serv, &h);
+						currentComponent = String();
+					}
+					root->dbdClose(serv, db);
 				}
-				root->dbdClose(serv, db);
-			}
+			});
+		}
+	}
+
+	void onStorageTransaction(storage::Transaction &t) {
+		for (auto &it : components) {
+			currentComponent = it.second->getName();
+			it.second->onStorageTransaction(t);
+			currentComponent = String();
 		}
 	}
 
@@ -464,6 +475,10 @@ void Server::processReports() {
 			data << it.first << "\r\n";
 		}, it.second);
 	}
+}
+
+void Server::performStorage(apr_pool_t *pool, const Callback<void(const storage::Adapter &)> &cb) {
+	Root::getInstance()->performStorage(pool, *this, cb);
 }
 
 void Server::setHandlerFile(const StringView &file) {
@@ -726,7 +741,7 @@ void Server::onHeartBeat(apr_pool_t *pool) {
 		if (now - _config->lastTemplateUpdate > TimeInterval::seconds(10)) {
 			_config->_templateCache.update(pool);
 			_config->_pugCache.update(pool);
-			_config->lastDatabaseCleanup = now;
+			_config->lastTemplateUpdate = now;
 		}
 	}, pool);
 }
@@ -758,7 +773,7 @@ void Server::onBroadcast(const data::Value &val) {
 	}
 }
 
-void Server::onBroadcast(const Bytes &bytes) {
+void Server::onBroadcast(const DataReaderHost &bytes) {
 	onBroadcast(data::read(bytes));
 }
 
@@ -850,6 +865,10 @@ int Server::onRequest(Request &req) {
 	}
 
 	return OK;
+}
+
+void Server::onStorageTransaction(storage::Transaction &t) {
+	_config->onStorageTransaction(t);
 }
 
 Server::CompressionConfig *Server::getCompressionConfig() const {
@@ -952,7 +971,7 @@ void Server::addWebsocket(const String &str, websocket::Manager *m) {
 }
 
 const storage::Scheme * Server::exportScheme(const storage::Scheme &scheme) {
-	_config->schemes.emplace(scheme.getName(), &scheme);
+	_config->schemes.emplace(scheme.getName().str(), &scheme);
 	return &scheme;
 }
 
@@ -1084,10 +1103,10 @@ void Server::runErrorReportTask(request_rec *req, const Vector<data::Value> &err
 			auto serv = apr::pool::server();
 			if (auto dbd = root->dbdOpen(pool, serv)) {
 				pg::Handle h(pool, dbd);
-				storage::Adapter *storage = &h;
+				storage::Adapter storage(&h);
 
 				auto serv = Server(apr::pool::server());
-				serv.getErrorScheme()->create(storage, *err);
+				storage::Worker(*serv.getErrorScheme(), storage).create(*err);
 
 				root->dbdClose(serv, dbd);
 			}

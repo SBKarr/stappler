@@ -24,7 +24,7 @@ THE SOFTWARE.
 #define COMMON_STREAM_SPBUFFER_H_
 
 #include "SPIOBuffer.h"
-#include "SPCharReader.h"
+#include "SPStringView.h"
 #include "SPUnicode.h"
 
 NS_SP_BEGIN

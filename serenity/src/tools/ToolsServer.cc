@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include "User.h"
 #include "Output.h"
 #include "StorageScheme.h"
+#include "StorageWorker.h"
 #include "Resource.h"
 #include "TemplateExec.h"
 
@@ -36,7 +37,7 @@ int ServerGui::onTranslateName(Request &rctx) {
 		size_t count = 0;
 		bool hasDb = false;
 		if (rctx.storage() && userScheme) {
-			count = userScheme->count(rctx.storage());
+			count = storage::Worker(*userScheme, rctx.storage()).count();
 			hasDb = true;
 		}
 		rctx.setContentType("text/html");

@@ -56,11 +56,16 @@ public:
 		Field(Field &&);
 		Field(const Field &);
 
-		Field(String &&);
-		Field(String &&, Vector<String> &&);
-		Field(String &&, std::initializer_list<String> &&);
-		Field(String &&, Vector<Field> &&);
-		Field(String &&, std::initializer_list<Field> &&);
+		template <typename Str> Field(Str &&);
+		template <typename Str> Field(Str &&, Vector<String> &&);
+		template <typename Str> Field(Str &&, std::initializer_list<String> &&);
+		template <typename Str> Field(Str &&, Vector<Field> &&);
+		template <typename Str> Field(Str &&, std::initializer_list<Field> &&);
+
+		void setName(const char *);
+		void setName(const StringView &);
+		void setName(const String &);
+		void setName(String &&);
 
 		bool operator < (const Field &) const;
 	};
@@ -73,9 +78,9 @@ public:
 		data::Value value2;
 		String field;
 
-		Select(const String & f, Comparation c, data::Value && v1, data::Value && v2);
-		Select(const String & f, Comparation c, int64_t v1, int64_t v2);
-		Select(const String & f, Comparation c, const String & v);
+		Select(const StringView & f, Comparation c, data::Value && v1, data::Value && v2);
+		Select(const StringView & f, Comparation c, int64_t v1, int64_t v2);
+		Select(const StringView & f, Comparation c, const String & v);
 	};
 
 	static Query all();
@@ -83,35 +88,35 @@ public:
 	static Resolve decodeResolve(const StringView &str);
 	static String encodeResolve(Resolve);
 
-	Query & select(const String &alias);
+	Query & select(const StringView &alias);
 	Query & select(int64_t id);
 	Query & select(Vector<int64_t> &&id);
 	Query & select(std::initializer_list<int64_t> &&id);
 
-	Query & select(const String &f, Comparation c, const data::Value & v1, const data::Value &v2 = data::Value());
-	Query & select(const String &f, const data::Value & v1); // special case for equality
+	Query & select(const StringView &f, Comparation c, const data::Value & v1, const data::Value &v2 = data::Value());
+	Query & select(const StringView &f, const data::Value & v1); // special case for equality
 
-	Query & select(const String &f, Comparation c, int64_t v1);
-	Query & select(const String &f, Comparation c, int64_t v1, int64_t v2);
-	Query & select(const String &f, const String & v);
-	Query & select(const String &f, String && v);
+	Query & select(const StringView &f, Comparation c, int64_t v1);
+	Query & select(const StringView &f, Comparation c, int64_t v1, int64_t v2);
+	Query & select(const StringView &f, const String & v);
+	Query & select(const StringView &f, String && v);
 
-	Query & select(const String &f, const Bytes & v);
-	Query & select(const String &f, Bytes && v);
+	Query & select(const StringView &f, const Bytes & v);
+	Query & select(const StringView &f, Bytes && v);
 
 	Query & select(Select &&q);
 
-	Query & order(const String &f, Ordering o = Ordering::Ascending, size_t limit = maxOf<size_t>(), size_t offset = 0);
+	Query & order(const StringView &f, Ordering o = Ordering::Ascending, size_t limit = maxOf<size_t>(), size_t offset = 0);
 
-	Query & first(const String &f, size_t limit = 1, size_t offset = 0);
-	Query & last(const String &f, size_t limit = 1, size_t offset = 0);
+	Query & first(const StringView &f, size_t limit = 1, size_t offset = 0);
+	Query & last(const StringView &f, size_t limit = 1, size_t offset = 0);
 
 	Query & limit(size_t l, size_t off);
 	Query & limit(size_t l);
 	Query & offset(size_t l);
 
 	Query & delta(uint64_t);
-	Query & delta(const String &);
+	Query & delta(const StringView &);
 
 	Query & include(Field &&);
 	Query & exclude(Field &&);
@@ -124,7 +129,7 @@ public:
 
 	int64_t getSingleSelectId() const;
 	const Vector<int64_t> & getSelectIds() const;
-	const String & getSelectAlias() const;
+	StringView getSelectAlias() const;
 	const Vector<Select> &getSelectList() const;
 
 	const String & getOrderField() const;
@@ -171,6 +176,40 @@ protected:
 	FieldsVec fieldsExclude;
 	bool update = false;
 };
+
+template <typename Str>
+inline Query::Field::Field(Str &&str) {
+	setName(std::forward<Str>(str));
+}
+
+template <typename Str>
+inline Query::Field::Field(Str &&str, Vector<String> &&l) {
+	setName(std::forward<Str>(str));
+	for (auto &it : l) {
+		fields.emplace_back(move(it));
+	}
+}
+
+template <typename Str>
+inline Query::Field::Field(Str &&str, std::initializer_list<String> &&l) {
+	setName(std::forward<Str>(str));
+	for (auto &it : l) {
+		fields.emplace_back(String(move(it)));
+	}
+}
+
+template <typename Str>
+inline Query::Field::Field(Str &&str, Vector<Field> &&l) : fields(move(l)) {
+	setName(std::forward<Str>(str));
+}
+
+template <typename Str>
+inline Query::Field::Field(Str &&str, std::initializer_list<Field> &&l) {
+	setName(std::forward<Str>(str));
+	for (auto &it : l) {
+		fields.emplace_back(move(it));
+	}
+}
 
 class SerenityRequest {
 public:

@@ -90,6 +90,8 @@ public:
 	static Pair<FileFormat, StringView> detectFormat(const io::Producer &file);
 	static Pair<FileFormat, StringView> detectFormat(const uint8_t * data, size_t dataLen);
 
+	static StringView getMimeType(FileFormat);
+
 	static bool check(FileFormat, const uint8_t * data, size_t dataLen);
 	static bool check(const StringView &, const uint8_t * data, size_t dataLen);
 

@@ -20,11 +20,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef COMMON_STRING_SPCHARREADER_H_
-#define COMMON_STRING_SPCHARREADER_H_
+#ifndef COMMON_STRING_SPSTRINGVIEW_H_
+#define COMMON_STRING_SPSTRINGVIEW_H_
 
 #include "SPBytesReader.h"
 #include "SPUnicode.h"
+
+#define SP_TERMINATED_DATA(view) (view.terminated()?view.data():view.str().data())
 
 NS_SP_BEGIN
 
@@ -32,7 +34,7 @@ using const_char_ptr = const char *;
 using const_char16_ptr = const char16_t *;
 
 template <typename T>
-inline auto CharReader_readNumber(const_char_ptr &ptr, size_t &len) -> Result<T> {
+inline auto StringView_readNumber(const_char_ptr &ptr, size_t &len) -> Result<T> {
 	char * ret = nullptr;
 	char buf[32] = { 0 }; // int64_t/scientific double character length max
 	size_t m = min(size_t(31), len);
@@ -50,7 +52,7 @@ inline auto CharReader_readNumber(const_char_ptr &ptr, size_t &len) -> Result<T>
 }
 
 template <typename T>
-inline auto CharReader_readNumber(const_char16_ptr &ptr, size_t &len) -> Result<T> {
+inline auto StringView_readNumber(const_char16_ptr &ptr, size_t &len) -> Result<T> {
 	char * ret = nullptr;
 	char buf[32] = { 0 }; // int64_t/scientific double character length max
 	size_t m = min(size_t(31), len);
@@ -95,8 +97,8 @@ struct ReaderClassBase {
 // Matching function based on templates
 //
 // Usage:
-//   using CharReader::Chars;
-//   using CharReader::Range;
+//   using StringView::Chars;
+//   using StringView::Range;
 //
 //   reader.readUntil<Chars<' ', '\n', '\r', '\t'>>();
 //   reader.readChars<Chars<'-', '+', '.', 'e'>, Range<'0', '9'>>();
@@ -178,11 +180,17 @@ public:
 	template<typename ... Args> void skipChars();
 	template<typename ... Args> void skipUntil();
 
+	template<typename ... Args> void backwardSkipChars();
+	template<typename ... Args> void backwardSkipUntil();
+
 	bool skipString(const Self &str);
 	bool skipUntilString(const Self &str, bool stopBeforeString = true);
 
 	template<typename ... Args> Self readChars();
 	template<typename ... Args> Self readUntil();
+
+	template<typename ... Args> Self backwardReadChars();
+	template<typename ... Args> Self backwardReadUntil();
 
 	Self readUntilString(const Self &str);
 
@@ -229,7 +237,7 @@ public:
 	using PoolString = typename memory::PoolInterface::StringType;
 	using StdString = typename memory::StandartInterface::StringType;
 
-	template <CharType ... Args>
+	template <MatchCharType ... Args>
 	using MatchChars = chars::Chars<MatchCharType, Args...>;
 
 	template <char First, char Last>
@@ -237,6 +245,9 @@ public:
 
 	template <CharGroupId Group>
 	using MatchCharGroup = chars::CharGroup<MatchCharType, Group>;
+
+	template <typename ... Args>
+	using MatchCompose = chars::Compose<MatchCharType, Args ...>;
 
 	StringViewUtf8();
 	StringViewUtf8(const char *ptr, size_t len = maxOf<size_t>());
@@ -306,11 +317,17 @@ public:
 	template<typename ... Args> void skipChars();
 	template<typename ... Args> void skipUntil();
 
+	template<typename ... Args> void backwardSkipChars();
+	template<typename ... Args> void backwardSkipUntil();
+
 	bool skipString(const Self &str);
 	bool skipUntilString(const Self &str, bool stopBeforeString = true);
 
 	template<typename ... Args> Self readChars();
 	template<typename ... Args> Self readUntil();
+
+	template<typename ... Args> Self backwardReadChars();
+	template<typename ... Args> Self backwardReadUntil();
 
 	Self readUntilString(const Self &str);
 	template<typename Separator, typename Callback> void split(const Callback &cb) const;
@@ -319,7 +336,7 @@ public:
     template <typename ... Args> void trimUntil();
 
 protected: // char-matching inline functions
-    template <typename ...Args> bool rv_match_utf8 (CharType *ptr, size_t len, uint8_t &offset);
+    template <typename ...Args> bool rv_match_utf8 (const CharType *ptr, size_t len, uint8_t &offset);
 	template <typename ...Args> bool match (char16_t c);
 };
 
@@ -735,17 +752,17 @@ auto StringViewBase<_CharType>::operator -= (const Self &other) const -> Self & 
 
 template <typename _CharType>
 auto StringViewBase<_CharType>::readFloat() -> Result<float> {
-	return CharReader_readNumber<float>(this->ptr, this->len);
+	return StringView_readNumber<float>(this->ptr, this->len);
 }
 
 template <typename _CharType>
 auto StringViewBase<_CharType>::readDouble() -> Result<double> {
-	return CharReader_readNumber<double>(this->ptr, this->len);
+	return StringView_readNumber<double>(this->ptr, this->len);
 }
 
 template <typename _CharType>
 auto StringViewBase<_CharType>::readInteger() -> Result<int64_t> {
-	return CharReader_readNumber<int64_t>(this->ptr, this->len);
+	return StringView_readNumber<int64_t>(this->ptr, this->len);
 }
 
 template <typename _CharType>
@@ -768,6 +785,22 @@ auto StringViewBase<_CharType>::skipUntil() -> void {
 	}
 	this->len -= offset;
 	this->ptr += offset;
+}
+
+template <typename _CharType>
+template<typename ... Args>
+auto StringViewBase<_CharType>::backwardSkipChars() -> void {
+	while (this->len > 0 && match<Args...>(this->ptr[this->len - 1])) {
+		-- this->len;
+	}
+}
+
+template <typename _CharType>
+template<typename ... Args>
+auto StringViewBase<_CharType>::backwardSkipUntil() -> void {
+	while (this->len > 0 && !match<Args...>(this->ptr[this->len - 1])) {
+		-- this->len;
+	}
 }
 
 template <typename _CharType>
@@ -817,6 +850,22 @@ auto StringViewBase<_CharType>::readUntil() -> Self {
 }
 
 template <typename _CharType>
+template<typename ... Args>
+auto StringViewBase<_CharType>::backwardReadChars() -> Self {
+	auto tmp = *this;
+	backwardSkipChars<Args ...>();
+	return Self(this->data() + this->size(), tmp.size() - this->size());
+}
+
+template <typename _CharType>
+template<typename ... Args>
+auto StringViewBase<_CharType>::backwardReadUntil() -> Self {
+	auto tmp = *this;
+	backwardSkipUntil<Args ...>();
+	return Self(this->data() + this->size(), tmp.size() - this->size());
+}
+
+template <typename _CharType>
 auto StringViewBase<_CharType>::readUntilString(const Self &str) -> Self {
 	auto tmp = *this;
 	skipUntilString(str);
@@ -841,9 +890,7 @@ template<typename ... Args>
 auto StringViewBase<_CharType>::trimChars() -> void {
 	this->skipChars<Args...>();
 	if (!this->empty()) {
-		while (this->len > 0 && match<Args...>(this->ptr[this->len - 1])) {
-			-- this->len;
-		}
+		this->backwardSkipChars<Args...>();
 	}
 }
 
@@ -852,9 +899,7 @@ template <typename... Args>
 auto StringViewBase<_CharType>::trimUntil() -> void {
 	this->skipUntil<Args...>();
 	if (!this->empty()) {
-		while (this->len > 0 && !match<Args...>(this->ptr[this->len - 1])) {
-			-- this->len;
-		}
+		this->backwardSkipUntil<Args...>();
 	}
 }
 
@@ -1053,13 +1098,13 @@ inline StringViewUtf8::operator StringViewBase<char> () const {
 }
 
 inline Result<float> StringViewUtf8::readFloat() {
-	return CharReader_readNumber<float>(ptr, len);
+	return StringView_readNumber<float>(ptr, len);
 }
 inline Result<double> StringViewUtf8::readDouble() {
-	return CharReader_readNumber<double>(ptr, len);
+	return StringView_readNumber<double>(ptr, len);
 }
 inline Result<int64_t> StringViewUtf8::readInteger() {
-	return CharReader_readNumber<int64_t>(ptr, len);
+	return StringView_readNumber<int64_t>(ptr, len);
 }
 
 template<typename ... Args>
@@ -1082,6 +1127,30 @@ inline void StringViewUtf8::skipUntil() {
 	}
 	len -= offset;
 	ptr += offset;
+}
+
+template<typename ... Args>
+inline void StringViewUtf8::backwardSkipChars() {
+	uint8_t clen = 0;
+	while (this->len > 0 && rv_match_utf8<Args...>(this->ptr, this->len, clen)) {
+		if (clen > 0) {
+			this->len -= clen;
+		} else {
+			return;
+		}
+	}
+}
+
+template<typename ... Args>
+inline void StringViewUtf8::backwardSkipUntil() {
+	uint8_t clen = 0;
+	while (this->len > 0 && !rv_match_utf8<Args...>(this->ptr, this->len, clen)) {
+		if (clen > 0) {
+			this->len -= clen;
+		} else {
+			return;
+		}
+	}
 }
 
 inline bool StringViewUtf8::skipString(const Self &str) {
@@ -1125,6 +1194,20 @@ inline auto StringViewUtf8::readUntil() -> Self {
 	return Self(tmp.data(), tmp.size() - this->size());
 }
 
+template<typename ... Args>
+inline auto StringViewUtf8::backwardReadChars() -> Self {
+	auto tmp = *this;
+	backwardSkipChars<Args ...>();
+	return Self(this->data() + this->size(), tmp.size() - this->size());
+}
+
+template<typename ... Args>
+inline auto StringViewUtf8::backwardReadUntil() -> Self {
+	auto tmp = *this;
+	backwardSkipUntil<Args ...>();
+	return Self(this->data() + this->size(), tmp.size() - this->size());
+}
+
 inline auto StringViewUtf8::readUntilString(const Self &str) -> Self {
 	auto tmp = *this;
 	skipUntilString(str);
@@ -1147,14 +1230,7 @@ template<typename ... Args>
 inline void StringViewUtf8::trimChars() {
 	this->skipChars<Args...>();
 	if (!this->empty()) {
-		uint8_t clen = 0;
-		while (this->len > 0 && rv_match_utf8<Args...>(this->ptr, this->len, clen)) {
-			if (clen > 0) {
-				this->len -= clen;
-			} else {
-				return;
-			}
-		}
+		this->backwardSkipChars<Args...>();
 	}
 }
 
@@ -1162,22 +1238,17 @@ template <typename... Args>
 inline void StringViewUtf8::trimUntil() {
 	this->skipUntil<Args...>();
 	if (!this->empty()) {
-		uint8_t clen = 0;
-		while (this->len > 0 && !rv_match_utf8<Args...>(this->ptr, this->len, clen)) {
-			if (clen > 0) {
-				this->len -= clen;
-			} else {
-				return;
-			}
-		}
+		this->backwardSkipUntil<Args...>();
 	}
 }
 
 template  <typename ...Args>
-inline bool StringViewUtf8::rv_match_utf8 (CharType *ptr, size_t len, uint8_t &offset) {
+inline bool StringViewUtf8::rv_match_utf8 (const CharType *ptr, size_t len, uint8_t &offset) {
 	while (len > 0) {
 		if (!unicode::isUtf8Surrogate(ptr[len - 1])) {
 			return match<Args...>(unicode::utf8Decode(ptr + len - 1, offset));
+		} else {
+			-- len;
 		}
 	}
 	offset = 0;
@@ -1214,4 +1285,4 @@ inline int compare(const L &l, const R &r) {
 NS_SP_EXT_END(string)
 
 
-#endif /* COMMON_STRING_SPCHARREADER_H_ */
+#endif /* COMMON_STRING_SPSTRINGVIEW_H_ */

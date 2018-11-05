@@ -23,110 +23,99 @@ THE SOFTWARE.
 #ifndef SERENITY_SRC_STORAGE_STORAGEADAPTER_H_
 #define SERENITY_SRC_STORAGE_STORAGEADAPTER_H_
 
-#include "StorageQuery.h"
+#include "StorageInterface.h"
 
 NS_SA_EXT_BEGIN(storage)
 
-enum class TransactionStatus {
-	None,
-	Commit,
-	Rollback,
-};
-
-class Adapter : public AllocPool {
+class Adapter final : public AllocPool {
 public:
-	static Adapter *FromContext();
+	static Adapter FromContext();
 
-	virtual ~Adapter() { }
+	Adapter(Interface *);
 
-public: // transactions
-	template <typename T>
-	bool performInTransaction(T && t) {
-		if (isInTransaction()) {
-			if (!t()) {
-				cancelTransaction();
-			} else {
-				return true;
-			}
-		} else {
-			if (beginTransaction()) {
-				if (!t()) {
-					cancelTransaction();
-				}
-				return endTransaction();
-			}
-		}
-		return false;
-	}
+	Adapter(const Adapter &);
+	Adapter& operator=(const Adapter &);
 
-public: // session support
-	virtual data::Value getSessionData(const Bytes &) = 0;
-	virtual bool setSessionData(const Bytes &, const data::Value &, TimeInterval) = 0;
-	virtual bool clearSessionData(const Bytes &) = 0;
+	operator bool () const { return _interface != nullptr; }
 
-public: // Key-Value storage
-	virtual bool setData(const String &, const data::Value &, TimeInterval = config::getKeyValueStorageTime()) = 0;
-	virtual data::Value getData(const String &) = 0;
-	virtual bool clearData(const String &) = 0;
+	Interface *interface() const;
 
-	virtual User * authorizeUser(const Scheme &, const String &name, const String &password) = 0;
-
-	virtual void broadcast(const Bytes &) = 0;
-	virtual void broadcast(const data::Value &val) {
-		broadcast(data::write(val, data::EncodeFormat::Cbor));
-	}
-
-	virtual Resource *makeResource(ResourceType, QueryList &&, const Field *) = 0;
-
-	virtual int64_t getDeltaValue(const Scheme &) = 0;
-	virtual int64_t getDeltaValue(const Scheme &, const FieldView &, uint64_t) = 0;
+public: // key-value storage
+	bool set(const CoderSource &, const data::Value &, TimeInterval = config::getKeyValueStorageTime());
+	data::Value get(const CoderSource &);
+	bool clear(const CoderSource &);
 
 public: // resource requests
-	virtual Vector<int64_t> performQueryListForIds(const QueryList &, size_t count = maxOf<size_t>()) = 0;
-	virtual data::Value performQueryList(const QueryList &, size_t count = maxOf<size_t>(), bool forUpdate = false, const Field * = nullptr) = 0;
+	Resource *makeResource(ResourceType, QueryList &&, const Field *);
 
-protected: // Object CRUD
-	friend class Scheme;
+public:
+	bool init(Server &serv, const Map<String, const Scheme *> &);
 
-	virtual bool createObject(const Scheme &, data::Value &data) = 0;
-	virtual bool saveObject(const Scheme &, uint64_t oid, const data::Value &newObject, const Vector<String> &fields) = 0;
-	virtual data::Value patchObject(const Scheme &, uint64_t oid, const data::Value &data, const Vector<const Field *> &returnFields) = 0;
+	User * authorizeUser(const Auth &, const StringView &name, const StringView &password) const;
 
-	virtual bool removeObject(const Scheme &, uint64_t oid) = 0;
+	void broadcast(const Bytes &);
+	void broadcast(const data::Value &val);
 
-	virtual bool init(Server &serv, const Map<String, const Scheme *> &) = 0;
+	template <typename Callback>
+	bool performInTransaction(Callback && t);
 
-	virtual data::Value selectObjects(const Scheme &, const Query &) = 0;
-	virtual size_t countObjects(const Scheme &, const Query &) = 0;
-
-protected: // Object properties CRUD
-	virtual data::Value getProperty(const Scheme &, uint64_t oid, const Field &, const Set<const Field *> &) = 0;
-	virtual data::Value getProperty(const Scheme &, const data::Value &, const Field &, const Set<const Field *> &) = 0;
-
-	virtual data::Value setProperty(const Scheme &, uint64_t oid, const Field &, data::Value &&) = 0;
-	virtual data::Value setProperty(const Scheme &, const data::Value &, const Field &, data::Value &&) = 0;
-
-	virtual bool clearProperty(const Scheme &, uint64_t oid, const Field &, data::Value && = data::Value()) = 0;
-	virtual bool clearProperty(const Scheme &, const data::Value &, const Field &, data::Value && = data::Value()) = 0;
-
-	virtual data::Value appendProperty(const Scheme &, uint64_t oid, const Field &, data::Value &&) = 0;
-	virtual data::Value appendProperty(const Scheme &, const data::Value &, const Field &, data::Value &&) = 0;
-
-	virtual bool removeFromView(const FieldView &, const Scheme *, uint64_t oid) = 0;
-	virtual bool addToView(const FieldView &, const Scheme *, uint64_t oid, const data::Value &) = 0;
-
-	virtual Vector<int64_t> getReferenceParents(const Scheme &, uint64_t oid, const Scheme *, const Field *) = 0;
+	Vector<int64_t> getReferenceParents(const Scheme &, uint64_t oid, const Scheme *, const Field *) const;
 
 protected:
-	virtual bool beginTransaction() = 0;
-	virtual bool endTransaction() = 0;
+	friend class Transaction;
 
-	virtual void cancelTransaction() { transactionStatus = TransactionStatus::Rollback; }
-	virtual bool isInTransaction() const { return transactionStatus != TransactionStatus::None; }
-	virtual TransactionStatus getTransactionStatus() const { return transactionStatus; }
+	int64_t getDeltaValue(const Scheme &); // scheme-based delta
+	int64_t getDeltaValue(const Scheme &, const FieldView &, uint64_t); // view-based delta
 
-    TransactionStatus transactionStatus = TransactionStatus::None;
+	Vector<int64_t> performQueryListForIds(const QueryList &, size_t count = maxOf<size_t>()) const;
+	data::Value performQueryList(const QueryList &, size_t count = maxOf<size_t>(), bool forUpdate = false, const Field * = nullptr) const;
+
+	data::Value select(Worker &, const Query &) const;
+
+	data::Value create(Worker &, const data::Value &) const;
+	data::Value save(Worker &, uint64_t oid, const data::Value &obj, const Vector<String> &fields) const;
+	data::Value patch(Worker &, uint64_t oid, const data::Value &patch) const;
+
+	bool remove(Worker &, uint64_t oid) const;
+
+	size_t count(Worker &, const Query &) const;
+
+protected:
+	data::Value field(Action, Worker &, uint64_t oid, const Field &, data::Value && = data::Value()) const;
+	data::Value field(Action, Worker &, const data::Value &, const Field &, data::Value && = data::Value()) const;
+
+	bool addToView(const FieldView &, const Scheme *, uint64_t oid, const data::Value &) const;
+	bool removeFromView(const FieldView &, const Scheme *, uint64_t oid) const;
+
+	bool beginTransaction() const;
+	bool endTransaction() const;
+
+	void cancelTransaction() const;
+	bool isInTransaction() const;
+	TransactionStatus getTransactionStatus() const;
+
+protected:
+	Interface *_interface;
 };
+
+template <typename Callback>
+inline bool Adapter::performInTransaction(Callback && t) {
+	if (isInTransaction()) {
+		if (!t()) {
+			cancelTransaction();
+		} else {
+			return true;
+		}
+	} else {
+		if (beginTransaction()) {
+			if (!t()) {
+				cancelTransaction();
+			}
+			return endTransaction();
+		}
+	}
+	return false;
+}
 
 NS_SA_EXT_END(storage)
 

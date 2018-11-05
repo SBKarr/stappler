@@ -46,6 +46,7 @@ Pair<String, bool> encodeComparation(Comparation cmp) {
 	case Comparation::BetweenEquals: ret = "be"; isTwoArgs = true; break;
 	case Comparation::NotBetweenValues: ret = "nbw"; isTwoArgs = true; break;
 	case Comparation::NotBetweenEquals: ret = "nbe"; isTwoArgs = true; break;
+	case Comparation::Includes: ret = "incl"; isTwoArgs = true; break;
 	}
 
 	return pair(move(ret), isTwoArgs);
@@ -138,6 +139,7 @@ PathQuery & PathQuery::select(const String &f, Comparation c, const data::Value 
 	case Comparation::BetweenEquals: stream << "/"; PathQuery_writeValueQuery(stream, "be", v1, v2); break;
 	case Comparation::NotBetweenValues: stream << "/"; PathQuery_writeValueQuery(stream, "nbw", v1, v2); break;
 	case Comparation::NotBetweenEquals: stream << "/"; PathQuery_writeValueQuery(stream, "nbe", v1, v2); break;
+	case Comparation::Includes: stream << "/"; PathQuery_writeValueQuery(stream, "incl", v1); break;
 	}
 	return *this;
 }

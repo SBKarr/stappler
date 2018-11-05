@@ -28,19 +28,20 @@ THE SOFTWARE.
 #include "Server.h"
 #include "StorageScheme.h"
 #include "StorageAdapter.h"
+#include "StorageWorker.h"
 
 NS_SA_BEGIN
 
-User *User::create(storage::Adapter *a, const String &name, const String &password) {
+User *User::create(const Adapter &a, const StringView &name, const StringView &password) {
 	return create(a, data::Value{
 		std::make_pair("name", data::Value(name)),
 		std::make_pair("password", data::Value(password)),
 	});
 }
 
-User *User::setup(storage::Adapter *a, const String &name, const String &password) {
+User *User::setup(const Adapter &a, const StringView &name, const StringView &password) {
 	auto s = Server(apr::pool::server()).getUserScheme();
-	if (s->count(a) == 0) {
+	if (Worker(*s, a).count() == 0) {
 		return create(a, data::Value{
 			std::make_pair("name", data::Value(name)),
 			std::make_pair("password", data::Value(password)),
@@ -49,38 +50,38 @@ User *User::setup(storage::Adapter *a, const String &name, const String &passwor
 	}
 	return nullptr;
 }
-User *User::create(storage::Adapter *a, data::Value &&val) {
+User *User::create(const Adapter &a, data::Value &&val) {
 	auto s = Server(apr::pool::server()).getUserScheme();
 
-	auto d = s->create(a, val);
+	auto d = Worker(*s, a).create(val);
 	return new User(std::move(d), *s);
 }
 
-User *User::get(storage::Adapter *a, const String &name, const String &password) {
+User *User::get(const Adapter &a, const StringView &name, const StringView &password) {
 	auto s = Server(apr::pool::server()).getUserScheme();
 	return get(a, *s, name, password);
 }
 
-User *User::get(storage::Adapter *a, const storage::Scheme &scheme, const String &name, const String &password) {
-	return a->authorizeUser(scheme, name, password);
+User *User::get(const Adapter &a, const Scheme &scheme, const StringView &name, const StringView &password) {
+	return a.authorizeUser(storage::Auth(scheme), name, password);
 }
 
-User *User::get(storage::Adapter *a, uint64_t oid) {
+User *User::get(const Adapter &a, uint64_t oid) {
 	auto s = Server(apr::pool::server()).getUserScheme();
 	return get(a, *s, oid);
 }
 
-User *User::get(storage::Adapter *a, const storage::Scheme &s, uint64_t oid) {
-	auto d = s.get(a, oid);
+User *User::get(const Adapter &a, const Scheme &s, uint64_t oid) {
+	auto d = Worker(s, a).get(oid);
 	if (d.isDictionary()) {
 		return new User(std::move(d), s);
 	}
 	return nullptr;
 }
 
-User::User(data::Value &&d, const storage::Scheme &s) : Object(std::move(d), s) { }
+User::User(data::Value &&d, const Scheme &s) : Object(std::move(d), s) { }
 
-bool User::validatePassword(const String &passwd) const {
+bool User::validatePassword(const StringView &passwd) const {
 	auto & fields = _scheme.getFields();
 	auto it = _scheme.getFields().find("password");
 	if (it != fields.end() && it->second.getTransform() == storage::Transform::Password) {
@@ -90,7 +91,7 @@ bool User::validatePassword(const String &passwd) const {
 	return false;
 }
 
-void User::setPassword(const String &passwd) {
+void User::setPassword(const StringView &passwd) {
 	auto & fields = _scheme.getFields();
 	auto it = _scheme.getFields().find("password");
 	if (it != fields.end() && it->second.getTransform() == storage::Transform::Password) {
@@ -103,7 +104,7 @@ bool User::isAdmin() const {
 	return getBool("isAdmin");
 }
 
-const String & User::getName() const {
+StringView User::getName() const {
 	return getString("name");
 }
 

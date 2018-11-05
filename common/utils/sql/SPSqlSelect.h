@@ -144,7 +144,7 @@ auto Query<Binder>::SelectFrom::from(const Field &field, Args && ... args) -> Se
 
 template <typename Binder>
 template <typename Callback>
-auto Query<Binder>::SelectFrom::innerJoinOn(const String &s, const Callback &cb) -> SelectFrom & {
+auto Query<Binder>::SelectFrom::innerJoinOn(const StringView &s, const Callback &cb) -> SelectFrom & {
 	if (this->state == State::Some) {
 		this->query->stream << " INNER JOIN " << s << " ON(";
 		WhereBegin tmp(this->query);
@@ -156,7 +156,7 @@ auto Query<Binder>::SelectFrom::innerJoinOn(const String &s, const Callback &cb)
 
 template <typename Binder>
 template <typename Callback>
-auto Query<Binder>::SelectFrom::leftJoinOn(const String &s, const Callback &cb) -> SelectFrom & {
+auto Query<Binder>::SelectFrom::leftJoinOn(const StringView &s, const Callback &cb) -> SelectFrom & {
 	if (this->state == State::Some) {
 		this->query->stream << " LEFT OUTER JOIN " << s << " ON(";
 		WhereBegin tmp(this->query);
@@ -168,7 +168,7 @@ auto Query<Binder>::SelectFrom::leftJoinOn(const String &s, const Callback &cb) 
 
 template <typename Binder>
 template <typename Callback>
-auto Query<Binder>::SelectFrom::rightJoinOn(const String &s, const Callback &cb) -> SelectFrom & {
+auto Query<Binder>::SelectFrom::rightJoinOn(const StringView &s, const Callback &cb) -> SelectFrom & {
 	if (this->state == State::Some) {
 		this->query->stream << " RIGHT OUTER JOIN " << s << " ON(";
 		WhereBegin tmp(this->query);
@@ -180,7 +180,7 @@ auto Query<Binder>::SelectFrom::rightJoinOn(const String &s, const Callback &cb)
 
 template <typename Binder>
 template <typename Callback>
-auto Query<Binder>::SelectFrom::fullJoinOn(const String &s, const Callback &cb) -> SelectFrom & {
+auto Query<Binder>::SelectFrom::fullJoinOn(const StringView &s, const Callback &cb) -> SelectFrom & {
 	if (this->state == State::Some) {
 		this->query->stream << " FULL OUTER JOIN " << s << " ON(";
 		WhereBegin tmp(this->query);

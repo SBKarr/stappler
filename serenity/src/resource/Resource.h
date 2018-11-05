@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define SERENITY_SRC_RESOURCE_RESOURCE_H_
 
 #include "StorageQuery.h"
+#include "StorageTransaction.h"
 #include "AccessControl.h"
 
 NS_SA_BEGIN
@@ -33,7 +34,9 @@ using ResolveOptions = query::Resolve;
 class Resource : public AllocBase {
 public:
 	using Adapter = storage::Adapter;
+	using Transaction = storage::Transaction;
 	using Scheme = storage::Scheme;
+	using Worker = storage::Worker;
 	using Field = storage::Field;
 	using Object = storage::Object;
 	using File = storage::File;
@@ -45,14 +48,14 @@ public:
 
 	using QueryFieldResolver = storage::QueryFieldResolver;
 
-	static Resource *resolve(storage::Adapter *a, const storage::Scheme &scheme, const String &path, const data::TransformMap * = nullptr);
-	static Resource *resolve(storage::Adapter *a, const storage::Scheme &scheme, const String &path, data::Value & sub, const data::TransformMap * = nullptr);
+	static Resource *resolve(const Adapter &, const Scheme &scheme, const String &path, const data::TransformMap * = nullptr);
+	static Resource *resolve(const Adapter &, const Scheme &scheme, const String &path, data::Value & sub, const data::TransformMap * = nullptr);
 
 	/* PathVec should be inverted (so, first selectors should be last in vector */
-	static Resource *resolve(storage::Adapter *a, const storage::Scheme &scheme, Vector<String> &path);
+	static Resource *resolve(const Adapter &, const Scheme &scheme, Vector<String> &path);
 
 	virtual ~Resource() { }
-	Resource(ResourceType, Adapter *, QueryList &&);
+	Resource(ResourceType, const Adapter &, QueryList &&);
 
 	ResourceType getType() const;
 	const Scheme &getScheme() const;
@@ -103,10 +106,10 @@ public:
 protected:
 	void encodeFiles(data::Value &, apr::array<InputFile> &);
 
-	void resolveSet(const QueryFieldResolver &, int64_t, const storage::Field &, data::Value &);
-	void resolveObject(const QueryFieldResolver &, int64_t, const storage::Field &, data::Value &);
-	void resolveArray(const QueryFieldResolver &, int64_t, const storage::Field &, data::Value &);
-	void resolveFile(const QueryFieldResolver &, int64_t, const storage::Field &, data::Value &);
+	void resolveSet(const QueryFieldResolver &, int64_t, const Field &, data::Value &);
+	void resolveObject(const QueryFieldResolver &, int64_t, const Field &, data::Value &);
+	void resolveArray(const QueryFieldResolver &, int64_t, const Field &, data::Value &);
+	void resolveFile(const QueryFieldResolver &, int64_t, const Field &, data::Value &);
 
 	int64_t processResolveResult(const QueryFieldResolver &res, const Set<const Field *> &, data::Value &obj);
 
@@ -118,14 +121,14 @@ protected:
 	bool isObjectAllowed(const Scheme &, AccessControl::Action, data::Value &, data::Value &) const;
 
 protected:
-	virtual const storage::Scheme &getRequestScheme() const;
+	virtual const Scheme &getRequestScheme() const;
 	void resolveOptionForString(const String &str);
 
 	Time _delta;
 	ResourceType _type = ResourceType::Object;
 	int _status = HTTP_OK;
 
-	storage::Adapter *_adapter = nullptr;
+	Transaction _transaction;
 	QueryList _queries;
 
 	User *_user = nullptr;

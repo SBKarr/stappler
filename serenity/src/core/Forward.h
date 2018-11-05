@@ -88,7 +88,7 @@ class AccessControl;
 class Resource;
 class ResourceHandler;
 
-using AllocPool = apr::AllocPool;
+using AllocPool = memory::AllocPool;
 
 class Session;
 class User;
@@ -115,6 +115,8 @@ class Adapter;
 class Resolver;
 class Object;
 class Scheme;
+class Transaction;
+class Worker;
 
 class File;
 
@@ -132,22 +134,22 @@ NS_SA_EXT_END(idn)
 NS_SA_EXT_BEGIN(valid)
 
 /** Identifier starts with [a-zA-Z_] and can contain [a-zA-Z0-9_\-.@] */
-bool validateIdentifier(const String &str);
+bool validateIdentifier(const StringView &str);
 
 /** Text can contain all characters above 0x1F and \t, \r, \n, \b, \f */
-bool validateText(const String &str);
+bool validateText(const StringView &str);
 
 bool validateEmail(String &str);
 bool validateUrl(String &str);
 
-bool validateNumber(const String &str);
-bool validateHexadecimial(const String &str);
-bool validateBase64(const String &str);
+bool validateNumber(const StringView &str);
+bool validateHexadecimial(const StringView &str);
+bool validateBase64(const StringView &str);
 
 void makeRandomBytes(uint8_t *, size_t);
 Bytes makeRandomBytes(size_t);
-Bytes makePassword(const String &str, const String &key = "");
-bool validatePassord(const String &str, const Bytes &passwd, const String &key = "");
+Bytes makePassword(const StringView &str, const StringView &key = StringView());
+bool validatePassord(const StringView &str, const Bytes &passwd, const StringView &key = StringView());
 
 String generatePassword(size_t len);
 

@@ -26,10 +26,11 @@ THE SOFTWARE.
 #include "StorageScheme.h"
 #include "Request.h"
 #include "WebSocket.h"
+#include "ResourceTemplates.h"
 
 NS_SA_EXT_BEGIN(storage)
 
-Adapter *Adapter::FromContext() {
+Adapter Adapter::FromContext() {
 	auto log = apr::pool::info();
 	if (log.first == uint32_t(apr::pool::Info::Request)) {
 		return Request((request_rec *)log.second).storage();
@@ -37,10 +38,139 @@ Adapter *Adapter::FromContext() {
 		websocket::Handler *h = nullptr;
 		apr_pool_userdata_get((void **)&h, config::getSerenityWebsocketHandleName(), (apr_pool_t *)log.second);
 		if (h) {
-			return h->storage();
+			return Adapter(h->storage());
 		}
 	}
+	return Adapter(nullptr);
+}
+
+Adapter::Adapter(Interface *iface) : _interface(iface) { }
+Adapter::Adapter(const Adapter &other) { _interface = other._interface; }
+Adapter& Adapter::operator=(const Adapter &other) { _interface = other._interface; return *this; }
+
+Interface *Adapter::interface() const {
+	return _interface;
+}
+
+bool Adapter::set(const CoderSource &key, const data::Value &val, TimeInterval maxAge) {
+	return _interface->set(key, val, maxAge);
+}
+
+data::Value Adapter::get(const CoderSource &key) {
+	return _interface->get(key);
+}
+
+bool Adapter::clear(const CoderSource &key) {
+	return _interface->clear(key);
+}
+
+Resource *Adapter::makeResource(ResourceType type, QueryList &&list, const Field *f) {
+	switch (type) {
+	case ResourceType::ResourceList: return new ResourceReslist(*this, std::move(list));  break;
+	case ResourceType::ReferenceSet: return new ResourceRefSet(*this, std::move(list)); break;
+	case ResourceType::ObjectField: return new ResourceFieldObject(*this, std::move(list)); break;
+	case ResourceType::Object: return new ResourceObject(*this, std::move(list)); break;
+	case ResourceType::Set: return new ResourceSet(*this, std::move(list)); break;
+	case ResourceType::View: return new ResourceView(*this, std::move(list)); break;
+	case ResourceType::File: return new ResourceFile(*this, std::move(list), f); break;
+	case ResourceType::Array: return new ResourceArray(*this, std::move(list), f); break;
+	case ResourceType::Search: return new ResourceSearch(*this, std::move(list), f); break;
+	}
 	return nullptr;
+}
+
+Vector<int64_t> Adapter::performQueryListForIds(const QueryList &ql, size_t count) const {
+	return _interface->performQueryListForIds(ql, count);
+}
+data::Value Adapter::performQueryList(const QueryList &ql, size_t count, bool forUpdate, const Field *f) const {
+	return _interface->performQueryList(ql, count, forUpdate, f);
+}
+
+bool Adapter::init(Server &serv, const Map<String, const Scheme *> &schemes) {
+	return _interface->init(serv, schemes);
+}
+
+User * Adapter::authorizeUser(const Auth &auth, const StringView &name, const StringView &password) const {
+	return _interface->authorizeUser(auth, name, password);
+}
+
+void Adapter::broadcast(const Bytes &data) {
+	_interface->broadcast(data);
+}
+
+void Adapter::broadcast(const data::Value &val) {
+	broadcast(data::write(val, data::EncodeFormat::Cbor));
+}
+
+int64_t Adapter::getDeltaValue(const Scheme &s) {
+	return _interface->getDeltaValue(s);
+}
+
+int64_t Adapter::getDeltaValue(const Scheme &s, const FieldView &v, uint64_t id) {
+	return _interface->getDeltaValue(s, v, id);
+}
+
+data::Value Adapter::select(Worker &w, const Query &q) const {
+	return _interface->select(w, q);
+}
+
+data::Value Adapter::create(Worker &w, const data::Value &d) const {
+	return _interface->create(w, d);
+}
+
+data::Value Adapter::save(Worker &w, uint64_t oid, const data::Value &obj, const Vector<String> &fields) const {
+	return _interface->save(w, oid, obj, fields);
+}
+
+data::Value Adapter::patch(Worker &w, uint64_t oid, const data::Value &patch) const {
+	return _interface->patch(w, oid, patch);
+}
+
+bool Adapter::remove(Worker &w, uint64_t oid) const {
+	return _interface->remove(w, oid);
+}
+
+size_t Adapter::count(Worker &w, const Query &q) const {
+	return _interface->count(w, q);
+}
+
+data::Value Adapter::field(Action a, Worker &w, uint64_t oid, const Field &f, data::Value &&data) const {
+	return _interface->field(a, w, oid, f, move(data));
+}
+
+data::Value Adapter::field(Action a, Worker &w, const data::Value &obj, const Field &f, data::Value &&data) const {
+	return _interface->field(a, w, obj, f, move(data));
+}
+
+bool Adapter::addToView(const FieldView &v, const Scheme *s, uint64_t oid, const data::Value &data) const {
+	return _interface->addToView(v, s, oid, data);
+}
+bool Adapter::removeFromView(const FieldView &v, const Scheme *s, uint64_t oid) const {
+	return _interface->removeFromView(v, s, oid);
+}
+
+Vector<int64_t> Adapter::getReferenceParents(const Scheme &s, uint64_t oid, const Scheme *fs, const Field *f) const {
+	return _interface->getReferenceParents(s, oid, fs, f);
+}
+
+bool Adapter::beginTransaction() const {
+	return _interface->beginTransaction();
+}
+
+bool Adapter::endTransaction() const {
+	return _interface->endTransaction();
+}
+
+void Adapter::cancelTransaction() const {
+	_interface->cancelTransaction();
+}
+
+bool Adapter::isInTransaction() const {
+	return _interface->isInTransaction();
+}
+
+TransactionStatus Adapter::getTransactionStatus() const {
+	return _interface->getTransactionStatus();
 }
 
 NS_SA_EXT_END(storage)

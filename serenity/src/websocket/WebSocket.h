@@ -123,7 +123,7 @@ public:
 	bool send(const data::Value &);
 
 	// get default storage adapter, that binds to current call context
-	storage::Adapter *storage() const;
+	storage::Adapter storage() const;
 	const Request &request() const;
 	Manager *manager() const;
 

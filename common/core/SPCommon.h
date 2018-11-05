@@ -137,46 +137,46 @@ struct TypeTraits {
 NS_SP_EXT_END(toolkit)
 #else
 
-#include "SPAprAllocator.h"
 #include "SPAprFileStream.h"
 #include "SPAprMutex.h"
 
 NS_SP_EXT_BEGIN(toolkit)
 
 struct TypeTraits {
-	using string_type = apr::basic_string<char>;
-	using ucs2_string_type = apr::basic_string<char16_t>;
-	using bytes_type = apr::vector<uint8_t>;
+	using string_type = memory::basic_string<char>;
+	using ucs2_string_type = memory::basic_string<char16_t>;
+	using bytes_type = memory::vector<uint8_t>;
 
 	template <typename T>
-	using basic_string_stream = apr::basic_ostringstream<T>;
+	using basic_string_stream = memory::basic_ostringstream<T>;
 
-	using string_stream = apr::basic_ostringstream<char>;
+	using string_stream = memory::basic_ostringstream<char>;
 	using output_stream = std::ostream;
 
 	using input_file_stream = apr::ifstream;
 	using output_file_stream = apr::ofstream;
 
-	using allocator_base = apr::AllocPool;
+	using allocator_base = memory::AllocPool;
 	using mutex_type = apr::mutex;
 
 	template <typename T, typename Compare = std::less<>>
-	using set_type = apr::set<T, Compare>;
+	using set_type = memory::set<T, Compare>;
 
 	template <typename T>
-	using vector_type = apr::vector<T>;
+	using vector_type = memory::vector<T>;
 
 	template <typename K, typename V, typename Compare = std::less<>>
-	using map_type = apr::map<K, V, Compare>;
+	using map_type = memory::map<K, V, Compare>;
 
 	template <class T>
-	using function_type = apr::function<T>;
+	using function_type = memory::function<T>;
 
 	using primary_interface = memory::PoolInterface;
 	using secondary_interface = memory::StandartInterface;
 };
 
 NS_SP_EXT_END(toolkit)
+
 #endif
 
 NS_SP_EXT_BEGIN(memory)
@@ -203,8 +203,11 @@ using Vector = toolkit::TypeTraits::vector_type<T>;
 template <typename K, typename V, typename Compare = std::less<void>>
 using Map = toolkit::TypeTraits::map_type<K, V, Compare>;
 
-template <class T>
+template <typename T>
 using Function = toolkit::TypeTraits::function_type<T>;
+
+template <typename T>
+using Callback = memory::callback<T>;
 
 template <typename T, typename Compare = std::less<void>>
 using Set = toolkit::TypeTraits::set_type<T, Compare>;

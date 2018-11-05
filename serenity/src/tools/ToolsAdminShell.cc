@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "Output.h"
 #include "StorageScheme.h"
 #include "StorageAdapter.h"
+#include "StorageWorker.h"
 #include "ServerComponent.h"
 #include "Resource.h"
 #include "PGHandle.h"
@@ -289,7 +290,7 @@ struct HistoryCmd : ResourceCmd {
 		}
 
 		if (auto s = acquireScheme(h, schemeName)) {
-			if (auto a = dynamic_cast<pg::Handle *>(h.storage())) {
+			if (auto a = dynamic_cast<pg::Handle *>(h.storage().interface())) {
 				if (field.empty()) {
 					h.sendData(a->getHistory(*s, Time::microseconds(time), true));
 				} else if (auto f = s->getField(field)) {
@@ -340,7 +341,7 @@ struct DeltaCmd : ResourceCmd {
 		}
 
 		if (auto s = acquireScheme(h, schemeName)) {
-			if (auto a = dynamic_cast<pg::Handle *>(h.storage())) {
+			if (auto a = dynamic_cast<pg::Handle *>(h.storage().interface())) {
 				if (field.empty()) {
 					h.sendData(a->getDeltaData(*s, Time::microseconds(time)));
 				} else if (auto f = s->getField(field)) {
@@ -504,7 +505,7 @@ struct UploadCmd : ResourceCmd {
 					pair("user", data::Value(h.getUser()->getObjectId())),
 				};
 
-				h.storage()->setData(key, token, TimeInterval::seconds(5));
+				h.storage().set(key, token, TimeInterval::seconds(5));
 
 				StringStream str;
 				str << ":upload:" << data::Value{
@@ -598,6 +599,51 @@ struct DeleteCmd : ResourceCmd {
 	}
 	virtual StringView help() const {
 		return "<scheme> <path> - Delete object for scheme";
+	}
+};
+
+struct SearchCmd : ResourceCmd {
+	SearchCmd() : ResourceCmd("search") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		auto schemeName = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+
+		StringView path("/");
+		if (r.is('/') || r.is<StringView::CharGroup<CharGroupId::Numbers>>()) {
+			path = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		}
+		data::Value data;
+		if (r.is('(')) {
+			data = data::serenity::read<memory::DefaultInterface>(r);
+		}
+
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		if (!r.empty()) {
+			data.setString(r, "search");
+		}
+
+		if (auto res = acquireResource(h, schemeName, path, StringView(), data)) {
+			if (auto val = res->getResultObject()) {
+				h.sendData(val);
+				return true;
+			} else {
+				h.sendError(toString(schemeName, ": nothing is found"));
+				return true;
+			}
+		}
+
+		h.sendError("Fail run search");
+
+		return true;
+	}
+
+	virtual StringView desc() const {
+		return "<scheme> <path> <text> - Run full-text search";
+	}
+	virtual StringView help() const {
+		return "<scheme> <path> <text> - Run full-text search";
 	}
 };
 
@@ -831,6 +877,7 @@ ShellSocketHandler::ShellSocketHandler(Manager *m, const Request &req, User *use
 	_cmds.push_back(new AppendCmd());
 	_cmds.push_back(new UploadCmd());
 	_cmds.push_back(new DeleteCmd());
+	_cmds.push_back(new SearchCmd());
 	//_cmds.push_back(new ModeCmd());
 	_cmds.push_back(new DebugCmd());
 	_cmds.push_back(new CloseCmd());
@@ -976,7 +1023,7 @@ int ShellGui::onPostReadRequest(Request &rctx) {
 			size_t count = 0;
 			bool hasDb = false;
 			if (rctx.storage() && userScheme) {
-				count = userScheme->count(rctx.storage());
+				count = storage::Worker(*userScheme, rctx.storage()).count();
 				hasDb = true;
 			}
 
@@ -1001,9 +1048,9 @@ int ShellGui::onPostReadRequest(Request &rctx) {
 			path += "/upload/"_len;
 			auto storage = rctx.storage();
 			if (storage && !path.empty()) {
-				auto data = storage->getData(path.str());
+				auto data = storage.get(path.str());
 				if (data) {
-					storage->clearData(path.str());
+					storage.clear(path.str());
 				} else {
 					return HTTP_NOT_FOUND;
 				}

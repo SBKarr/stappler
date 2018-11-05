@@ -23,9 +23,9 @@ THE SOFTWARE.
 #ifndef LAYOUT_DOCUMENT_SLPARSER_H_
 #define LAYOUT_DOCUMENT_SLPARSER_H_
 
+#include "../../common/string/SPStringView.h"
 #include "SLNode.h"
 #include "SLReader.h"
-#include "SPCharReader.h"
 
 NS_LAYOUT_BEGIN
 

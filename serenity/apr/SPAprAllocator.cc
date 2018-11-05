@@ -86,7 +86,7 @@ static apr_status_t sa_request_store_custom_cleanup(void *ptr) {
 	return APR_SUCCESS;
 }
 
-void store(pool_t *pool, void *ptr, const String &key, Function<void()> &&cb) {
+void store(pool_t *pool, void *ptr, const StringView &key, Function<void()> &&cb) {
 	memory::pool::push(pool);
 	auto h = new (pool) Pool_StoreHandle();
 	h->pointer = ptr;
@@ -94,7 +94,7 @@ void store(pool_t *pool, void *ptr, const String &key, Function<void()> &&cb) {
 		h->callback = std::move(cb);
 	}
 	memory::pool::pop();
-	apr_pool_userdata_set(h, key.data(), h->callback ? sa_request_store_custom_cleanup : nullptr, pool);
+	apr_pool_userdata_set(h, SP_TERMINATED_DATA(key), h->callback ? sa_request_store_custom_cleanup : nullptr, pool);
 }
 
 }

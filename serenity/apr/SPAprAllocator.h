@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "SPMemAlloc.h"
 #include "SPMemString.h"
 #include "SPMemFunction.h"
+#include "SPStringView.h"
 
 #ifdef SPAPR
 
@@ -83,17 +84,17 @@ inline auto perform(const Callback &cb) {
 server_rec *server();
 request_rec *request();
 
-void store(pool_t *, void *ptr, const memory::string &key, memory::function<void()> && = nullptr);
+void store(pool_t *, void *ptr, const StringView &key, Function<void()> && = nullptr);
 
 template <typename T = void>
-inline T *get(pool_t *pool, const memory::string &key) {
+inline T *get(pool_t *pool, const StringView &key) {
 	struct Handle : AllocPool {
 		void *pointer;
 		memory::function<void()> callback;
 	};
 
 	void *ptr = nullptr;
-	if (apr_pool_userdata_get(&ptr, key.data(), pool) == APR_SUCCESS) {
+	if (apr_pool_userdata_get(&ptr, SP_TERMINATED_DATA(key), pool) == APR_SUCCESS) {
 		if (ptr) {
 			return (T *)((Handle *)ptr)->pointer;
 		}
@@ -101,12 +102,12 @@ inline T *get(pool_t *pool, const memory::string &key) {
 	return nullptr;
 }
 
-inline void store(void *ptr, const memory::string &key, memory::function<void()> &&cb = nullptr) {
+inline void store(void *ptr, const StringView &key, Function<void()> &&cb = nullptr) {
 	store(acquire(), ptr, key, move(cb));
 }
 
 template <typename T = void>
-inline T *get(const memory::string &key) {
+inline T *get(const StringView &key) {
 	return get<T>(acquire(), key);
 }
 

@@ -592,6 +592,16 @@ bool TextureCache::TextureIndex::operator != (const TextureIndex &other) const {
 }
 
 void TextureCache::reloadTexture(cocos2d::Texture2D *tex, const TextureIndex &index) {
+	if (auto img = draw::Cache::getInstance()->getImage(index.file)) {
+		if (!_vectorCanvas) {
+			_vectorCanvas = Rc<draw::Canvas>::create();
+		}
+		_vectorCanvas->begin(tex, Color4B());
+		_vectorCanvas->draw(*img, Rect(0.0f, 0.0f, tex->getPixelsWide(), tex->getPixelsHigh()));
+		_vectorCanvas->end();
+		return;
+	}
+
 	auto data = filesystem::readFile(index.file);
 	if (layout::Image::isSvg(data)) {
 		if (auto img = draw::Cache::getInstance()->addImage(index.file, data)) {
@@ -617,28 +627,36 @@ void TextureCache::reloadTexture(cocos2d::Texture2D *tex, const TextureIndex &in
 }
 
 Rc<cocos2d::Texture2D> TextureCache::loadTexture(const TextureIndex &index) {
+	auto renderVg = [&] (layout::Image *img) -> Rc<cocos2d::Texture2D> {
+		BitmapFormat fmt = index.fmt;
+		if (index.fmt == BitmapFormat::Auto) {
+			fmt = img->detectFormat();
+		}
+
+		return performWithGL([&] {
+			auto tex = Rc<cocos2d::Texture2D>::create(getPixelFormat(fmt),
+					roundf(img->getWidth() * index.density), roundf(img->getHeight() * index.density),
+					cocos2d::Texture2D::InitAs::RenderTarget);
+			if (!_threadVectorCanvas) {
+				_threadVectorCanvas = Rc<draw::Canvas>::create();
+				_threadVectorCanvas->setQuality(draw::Canvas::QualityHigh);
+			}
+			_threadVectorCanvas->begin(tex, Color4B());
+			_threadVectorCanvas->draw(*img, Rect(0.0f, 0.0f, tex->getPixelsWide(), tex->getPixelsHigh()));
+			_threadVectorCanvas->end();
+
+			return tex;
+		});
+	};
+
+	if (auto img = draw::Cache::getInstance()->getImage(index.file)) {
+		return renderVg(img);
+	}
+
 	auto data = filesystem::readFile(index.file);
 	if (layout::Image::isSvg(data)) {
 		if (auto img = draw::Cache::getInstance()->addImage(index.file, data)) {
-			BitmapFormat fmt = index.fmt;
-			if (index.fmt == BitmapFormat::Auto) {
-				fmt = img->detectFormat();
-			}
-
-			return performWithGL([&] {
-				auto tex = Rc<cocos2d::Texture2D>::create(getPixelFormat(fmt),
-						roundf(img->getWidth() * index.density), roundf(img->getHeight() * index.density),
-						cocos2d::Texture2D::InitAs::RenderTarget);
-				if (!_threadVectorCanvas) {
-					_threadVectorCanvas = Rc<draw::Canvas>::create();
-					_threadVectorCanvas->setQuality(draw::Canvas::QualityHigh);
-				}
-				_threadVectorCanvas->begin(tex, Color4B());
-				_threadVectorCanvas->draw(*img.get(), Rect(0.0f, 0.0f, tex->getPixelsWide(), tex->getPixelsHigh()));
-				_threadVectorCanvas->end();
-
-				return tex;
-			});
+			return renderVg(img);
 		}
 	} else {
 		Bitmap bitmap(filesystem::readFile(index.file));

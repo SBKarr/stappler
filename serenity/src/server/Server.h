@@ -46,8 +46,10 @@ public:
 	void onChildInit();
 	void onHeartBeat(apr_pool_t *);
 	void onBroadcast(const data::Value &);
-	void onBroadcast(const Bytes &);
+	void onBroadcast(const DataReaderHost &);
 	int onRequest(Request &);
+
+	void onStorageTransaction(storage::Transaction &);
 
 	void setHandlerFile(const StringView &file);
 	void setSourceRoot(const StringView &file);
@@ -161,6 +163,8 @@ public: // httpd server info
 	pug::Cache *getPugCache() const;
 
 	void processReports();
+
+	void performStorage(apr_pool_t *pool, const Callback<void(const storage::Adapter &)> &cb);
 
 public: // compression
 	enum EtagMode {

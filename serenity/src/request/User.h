@@ -29,24 +29,28 @@ NS_SA_BEGIN
 
 class User : public storage::Object {
 public:
-	static User *create(storage::Adapter *, const String &name, const String &password);
-	static User *setup(storage::Adapter *, const String &name, const String &password);
-	static User *create(storage::Adapter *, data::Value &&);
+	using Adapter = storage::Adapter;
+	using Scheme = storage::Scheme;
+	using Worker = storage::Worker;
 
-	static User *get(storage::Adapter *, const String &name, const String &password);
-	static User *get(storage::Adapter *, const storage::Scheme &scheme, const String &name, const String &password);
+	static User *create(const Adapter &, const StringView &name, const StringView &password);
+	static User *setup(const Adapter &, const StringView &name, const StringView &password);
+	static User *create(const Adapter &, data::Value &&);
 
-	static User *get(storage::Adapter *, uint64_t oid);
-	static User *get(storage::Adapter *, const storage::Scheme &scheme, uint64_t oid);
+	static User *get(const Adapter &, const StringView &name, const StringView &password);
+	static User *get(const Adapter &, const Scheme &scheme, const StringView &name, const StringView &password);
+
+	static User *get(const Adapter &, uint64_t oid);
+	static User *get(const Adapter &, const Scheme &scheme, uint64_t oid);
 
 	User(data::Value &&, const storage::Scheme &);
 
-	bool validatePassword(const String &passwd) const;
-	void setPassword(const String &passwd);
+	bool validatePassword(const StringView &passwd) const;
+	void setPassword(const StringView &passwd);
 
 	bool isAdmin() const;
 
-	const String & getName() const;
+	StringView getName() const;
 };
 
 NS_SA_END

@@ -169,7 +169,7 @@ const Query::FieldsVec *QueryFieldResolver::getExcludeVec() const {
 	return nullptr;
 }
 
-QueryFieldResolver QueryFieldResolver::next(const String &f) const {
+QueryFieldResolver QueryFieldResolver::next(const StringView &f) const {
 	if (root) {
 		auto it = root->next.find(f);
 		if (it != root->next.end()) {
@@ -245,7 +245,7 @@ void QueryFieldResolver::doResolve(Data *data, const Vector<String> &extra, uint
 		} else if (it->getType() == Type::Data) {
 			scheme = data->scheme;
 			if (depth < max) {
-				auto n_it = data->next.emplace(it->getName(), Data{scheme, nullptr, getFieldsVec(data->include, it->getName()), getFieldsVec(data->exclude, it->getName())}).first;
+				auto n_it = data->next.emplace(it->getName().str(), Data{scheme, nullptr, getFieldsVec(data->include, it->getName()), getFieldsVec(data->exclude, it->getName())}).first;
 				doResolveData(&n_it->second, depth + 1, max);
 			}
 		} else if (it->isFile()) {
@@ -253,7 +253,7 @@ void QueryFieldResolver::doResolve(Data *data, const Vector<String> &extra, uint
 			fields = &scheme->getFields();
 		}
 		if (scheme && fields && depth < max) {
-			auto n_it = data->next.emplace(it->getName(), Data{scheme, fields, getFieldsVec(data->include, it->getName()), getFieldsVec(data->exclude, it->getName())}).first;
+			auto n_it = data->next.emplace(it->getName().str(), Data{scheme, fields, getFieldsVec(data->include, it->getName()), getFieldsVec(data->exclude, it->getName())}).first;
 			doResolve(&n_it->second, extra, depth + 1, max);
 		}
 	}
@@ -285,6 +285,36 @@ const Set<const Field *> &QueryList::Item::getQueryFields() const {
 	return fields.getResolves();
 }
 
+void QueryList::readFields(const Scheme &scheme, const Set<const Field *> &fields, const FieldCallback &cb) {
+	if (!fields.empty()) {
+		cb("__oid", nullptr);
+		for (auto &it : fields) {
+			if (it != nullptr) {
+				auto type = it->getType();
+				if (type != storage::Type::Set && type != storage::Type::Array && type != storage::Type::View) {
+					cb(it->getName(), it);
+				}
+			}
+		}
+		for (auto &it : scheme.getFields()) {
+			if (it.second.hasFlag(Flags::ForceInclude) && fields.find(&it.second) == fields.end()) {
+				cb(it.first, &it.second);
+			}
+		}
+		for (auto &it : scheme.getForceInclude()) {
+			if (fields.find(it) == fields.end()) {
+				cb(it->getName(), it);
+			}
+		}
+	} else {
+		cb("*", nullptr);
+	}
+}
+
+void QueryList::Item::readFields(const FieldCallback &cb) const {
+	QueryList::readFields(*scheme, getQueryFields(), cb);
+}
+
 QueryList::QueryList(const Scheme *scheme) {
 	queries.reserve(4);
 	queries.emplace_back(Item{scheme});
@@ -299,7 +329,7 @@ bool QueryList::selectById(const Scheme *scheme, uint64_t id) {
 	return false;
 }
 
-bool QueryList::selectByName(const Scheme *scheme, const String &f) {
+bool QueryList::selectByName(const Scheme *scheme, const StringView &f) {
 	Item &b = queries.back();
 	if (b.scheme == scheme && b.query.getSelectIds().empty() && b.query.getSelectAlias().empty()) {
 		b.query.select(f);
@@ -317,7 +347,7 @@ bool QueryList::selectByQuery(const Scheme *scheme, Query::Select &&f) {
 	return false;
 }
 
-bool QueryList::order(const Scheme *scheme, const String &f, Ordering o) {
+bool QueryList::order(const Scheme *scheme, const StringView &f, Ordering o) {
 	Item &b = queries.back();
 	if (b.scheme == scheme && b.query.getOrderField().empty()) {
 		b.query.order(f, o);
@@ -326,7 +356,7 @@ bool QueryList::order(const Scheme *scheme, const String &f, Ordering o) {
 
 	return false;
 }
-bool QueryList::first(const Scheme *scheme, const String &f, size_t v) {
+bool QueryList::first(const Scheme *scheme, const StringView &f, size_t v) {
 	Item &b = queries.back();
 	if (b.scheme == scheme && b.query.getOrderField().empty() && b.query.getLimitValue() > v && b.query.getOffsetValue() == 0) {
 		b.query.order(f, Ordering::Ascending);
@@ -336,7 +366,7 @@ bool QueryList::first(const Scheme *scheme, const String &f, size_t v) {
 
 	return false;
 }
-bool QueryList::last(const Scheme *scheme, const String &f, size_t v) {
+bool QueryList::last(const Scheme *scheme, const StringView &f, size_t v) {
 	Item &b = queries.back();
 	if (b.scheme == scheme && b.query.getOrderField().empty() && b.query.getLimitValue() > v && b.query.getOffsetValue() == 0) {
 		b.query.order(f, Ordering::Descending);
@@ -365,6 +395,16 @@ bool QueryList::offset(const Scheme *scheme, size_t offset) {
 	return false;
 }
 
+bool QueryList::setFullTextQuery(const Field *field, Vector<FullTextData> &&data) {
+	if (queries.size() > 0 && field->getType() == Type::FullTextView) {
+		Item &b = queries.back();
+		b.field = field;
+		b.fullTextQuery = move(data);
+		return true;
+	}
+	return false;
+}
+
 bool QueryList::setAll() {
 	Item &b = queries.back();
 	if (!b.all) {
@@ -385,7 +425,7 @@ bool QueryList::setField(const Scheme *scheme, const Field *field) {
 }
 
 bool QueryList::setProperty(const Field *field) {
-	queries.back().query.include(Query::Field(String(field->getName())));
+	queries.back().query.include(Query::Field(field->getName().str()));
 	return true;
 }
 
@@ -704,6 +744,8 @@ bool QueryList::apply(const data::Value &val) {
 			}
 		} else if (it.first == "forUpdate") {
 			q.forUpdate();
+		} else {
+			extraData.setValue(it.second, it.first);
 		}
 	}
 
@@ -740,6 +782,10 @@ const Query::FieldsVec &QueryList::getExcludeFields() const {
 
 QueryFieldResolver QueryList::getFields() const {
 	return QueryFieldResolver(queries.back().fields);
+}
+
+const data::Value &QueryList::getExtraData() const {
+	return extraData;
 }
 
 NS_SA_EXT_END(storage)

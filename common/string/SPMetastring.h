@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef COMMON_STRING_SPMETASTRING_H_
 #define COMMON_STRING_SPMETASTRING_H_
 
-#include "SPCharReader.h"
+#include "SPStringView.h"
 
 NS_SP_EXT_BEGIN(metastring)
 

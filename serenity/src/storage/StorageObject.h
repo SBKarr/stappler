@@ -47,7 +47,7 @@ public:
 	auto begin() const { return Wrapper::begin<Object>(this); }
 	auto end() const { return Wrapper::end<Object>(this); }
 
-	bool save(Adapter *, bool force = false);
+	bool save(const Adapter &, bool force = false);
 
 protected:
 	friend class Scheme;

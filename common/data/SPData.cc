@@ -26,8 +26,8 @@ THE SOFTWARE.
 #include "SPCommon.h"
 #include "SPData.h"
 
+#include "SPStringView.h"
 #include "SPFilesystem.h"
-#include "SPCharReader.h"
 #include "SPString.h"
 #include "SPDataStream.h"
 

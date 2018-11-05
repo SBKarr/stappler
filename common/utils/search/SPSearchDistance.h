@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef COMMON_UTILS_SEARCH_SPSEARCHDISTANCE_H_
 #define COMMON_UTILS_SEARCH_SPSEARCHDISTANCE_H_
 
-#include "SPCharReader.h"
+#include "SPStringView.h"
 
 NS_SP_EXT_BEGIN(search)
 

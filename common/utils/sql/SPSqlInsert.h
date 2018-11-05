@@ -207,20 +207,20 @@ auto Query<Binder>::Returning::count() -> Returning & {
 }
 
 template <typename Binder>
-auto Query<Binder>::Returning::count(const String &alias) -> Returning & {
+auto Query<Binder>::Returning::count(const StringView &alias) -> Returning & {
 	if (this->state == State::None) { this->state = State::Some; } else { this->query->stream << ","; }
 	this->query->stream << " COUNT(*) AS \"" << alias << "\"";
 	return *this;
 }
 
 template <typename Binder>
-auto Query<Binder>::insert(const String & field) -> Insert {
+auto Query<Binder>::insert(const StringView & field) -> Insert {
 	stream << "INSERT INTO " << field;
 	return Insert(this, State::Init);
 }
 
 template <typename Binder>
-auto Query<Binder>::insert(const String &field, const String &alias) -> Insert {
+auto Query<Binder>::insert(const StringView &field, const StringView &alias) -> Insert {
 	stream << "INSERT INTO " << field << " AS " << alias;
 	return Insert(this, State::Init);
 }

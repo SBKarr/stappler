@@ -81,6 +81,8 @@ public:
 	ap_dbd_t * dbdPoolAcquire(server_rec *, apr_pool_t *);
 	void dbdPrepare(server_rec *, const char *, const char *);
 
+	void performStorage(apr_pool_t *, const Server &, const Callback<void(const storage::Adapter &)> &);
+
 	// apr::weak_string getBroadcastBindAddress() const;
 	// uint16_t getBroadcastBindPort() const;
 

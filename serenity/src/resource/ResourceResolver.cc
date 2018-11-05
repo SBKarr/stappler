@@ -149,6 +149,22 @@ static bool getSelectResource(storage::Resolver *resv, Vector<String> &path, boo
 	return false;
 }
 
+static bool getSearchResource(storage::Resolver *resv, Vector<String> &path, bool &isSingleObject) {
+	if (path.size() < 1) {
+		messages::error("ResourceResolver", "invalid 'search' query");
+		return false;
+	}
+
+	auto field = resv->getSchemeField(path.back());
+	if (!field || field->getType() != storage::Type::FullTextView) {
+		messages::error("ResourceResolver", "invalid 'search' query");
+		return false;
+	}
+	path.pop_back();
+
+	return resv->searchByField(field);
+}
+
 static bool getOrderResource(storage::Resolver *resv, Vector<String> &path) {
 	if (path.size() < 1) {
 		messages::error("ResourceResolver", "invalid 'order' query");
@@ -339,6 +355,10 @@ static Resource *parseResource(storage::Resolver *resv, Vector<String> &path) {
 				if (!getSelectResource(resv, path, isSingleObject)) {
 					return nullptr;
 				}
+			} else if (filter == "search") {
+				if (!getSearchResource(resv, path, isSingleObject)) {
+					return nullptr;
+				}
 			} else if (filter == "order") {
 				if (!getOrderResource(resv, path)) {
 					return nullptr;
@@ -432,12 +452,12 @@ static Resource *getResolvedResource(storage::Resolver *resv, Vector<String> &pa
 	return parseResource(resv, path);
 }
 
-Resource *Resource::resolve(storage::Adapter *a, const storage::Scheme &scheme, const String &path, const data::TransformMap *map) {
+Resource *Resource::resolve(const Adapter &a, const Scheme &scheme, const String &path, const data::TransformMap *map) {
 	data::Value tmp;
 	return resolve(a, scheme, path, tmp, map);
 }
 
-Resource *Resource::resolve(storage::Adapter *a, const storage::Scheme &scheme, const String &path, data::Value & sub, const data::TransformMap *map) {
+Resource *Resource::resolve(const Adapter &a, const Scheme &scheme, const String &path, data::Value & sub, const data::TransformMap *map) {
 	auto pathVec = parsePath(path);
 
 	storage::Resolver resolver(a, scheme, map);
@@ -477,7 +497,7 @@ Resource *Resource::resolve(storage::Adapter *a, const storage::Scheme &scheme, 
 	return getResolvedResource(&resolver, pathVec);
 }
 
-Resource *Resource::resolve(storage::Adapter *a, const storage::Scheme &scheme, Vector<String> &pathVec) {
+Resource *Resource::resolve(const Adapter &a, const storage::Scheme &scheme, Vector<String> &pathVec) {
 	storage::Resolver resolver(a, scheme, nullptr);
 	return getResolvedResource(&resolver, pathVec);
 }

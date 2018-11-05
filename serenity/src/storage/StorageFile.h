@@ -34,21 +34,23 @@ public:
 	static bool validateFileField(const Field &, const InputFile &);
 	static bool validateFileField(const Field &, const StringView &type, const Bytes &data);
 
-	static data::Value createFile(Adapter *adapter, const Field &, InputFile &);
-	static data::Value createFile(Adapter *adapter, const StringView &type, const StringView &path);
-	static data::Value createFile(Adapter *adapter, const StringView &type, const Bytes &data);
+	static data::Value createFile(const Transaction &, const Field &, InputFile &);
+	static data::Value createFile(const Transaction &, const StringView &type, const StringView &path);
+	static data::Value createFile(const Transaction &, const StringView &type, const Bytes &data);
 
-	static data::Value createImage(Adapter *adapter, const Field &, InputFile &);
-	static data::Value createImage(Adapter *adapter, const Field &, const StringView &type, const Bytes &data);
+	static data::Value createImage(const Transaction &, const Field &, InputFile &);
+	static data::Value createImage(const Transaction &, const Field &, const StringView &type, const Bytes &data);
 
-	static data::Value getData(Adapter *adapter, uint64_t id);
-	static void setData(Adapter *adapter, uint64_t id, const data::Value &);
+	static data::Value getData(const Transaction &, uint64_t id);
+	static void setData(const Transaction &, uint64_t id, const data::Value &);
 
 	// remove file from filesystem
-	static bool removeFile(Adapter *adapter, const Field &, const data::Value &);
+	static bool removeFile(const data::Value &);
+	static bool removeFile(int64_t);
 
 	// remove file from storage and filesystem
-	static bool purgeFile(Adapter *adapter, const Field &, const data::Value &);
+	static bool purgeFile(const Transaction &, const data::Value &);
+	static bool purgeFile(const Transaction &, int64_t);
 
 	static const Scheme *getScheme();
 protected:

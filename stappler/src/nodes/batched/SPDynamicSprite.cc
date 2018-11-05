@@ -49,7 +49,7 @@ bool DynamicSprite::init(cocos2d::Texture2D *tex, const Rect &rect, float densit
 	return true;
 }
 
-bool DynamicSprite::init(const std::string &file, const Rect &rect, float density, float texD) {
+bool DynamicSprite::init(const StringView &file, const Rect &rect, float density, float texD) {
 	if (!init(nullptr, rect, density)) {
 		return false;
 	}
@@ -145,12 +145,23 @@ void DynamicSprite::onContentSizeDirty() {
 void DynamicSprite::setTexture(cocos2d::Texture2D *tex, const Rect &rect) {
 	if (_texture != tex) {
 		DynamicBatchNode::setTexture(tex);
-		if (rect.equals(Rect::ZERO) && tex) {
-			_textureRect = Rect(0, 0, tex->getPixelsWide(), tex->getPixelsHigh());
-			_contentSizeDirty = true;
-		} else {
+		auto setRect = [&] (const Rect &rect) {
 			_textureRect = rect;
+			if (_autofit == Autofit::None) {
+				setContentSize(Size(_textureRect.size.width / _density, _textureRect.size.height / _density));
+			}
 			_contentSizeDirty = true;
+		};
+
+		if (rect.equals(Rect::ZERO) && tex) {
+			auto newRect = Rect(0, 0, tex->getPixelsWide(), tex->getPixelsHigh());
+			if (!_textureRect.equals(newRect)) {
+				setRect(newRect);
+			}
+		} else {
+			if (!_textureRect.equals(rect)) {
+				setRect(rect);
+			}
 		}
 
 		if (_callback) {
@@ -159,7 +170,7 @@ void DynamicSprite::setTexture(cocos2d::Texture2D *tex, const Rect &rect) {
 	}
 }
 
-void DynamicSprite::setTexture(const std::string &file, const Rect &rect) {
+void DynamicSprite::setTexture(const StringView &file, const Rect &rect) {
 	_textureRect = rect;
 	acquireTexture(file);
 }
@@ -212,7 +223,7 @@ void DynamicSprite::updateQuads() {
 	_quads->setColor(0, color4);
 }
 
-void DynamicSprite::acquireTexture(const String &file) {
+void DynamicSprite::acquireTexture(const StringView &file) {
 	_textureTime = Time::now();
 	auto time = _textureTime;
 	retain();

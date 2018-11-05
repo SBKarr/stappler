@@ -34,33 +34,27 @@ Query::Field::Field(Field &&f) : name(move(f.name)), fields(move(f.fields)) { }
 
 Query::Field::Field(const Field &f) : name(f.name), fields(f.fields) { }
 
-Query::Field::Field(String &&str) : name(move(str)) { }
-
-Query::Field::Field(String &&str, Vector<String> &&l) : name(move(str)) {
-	for (auto &it : l) {
-		fields.emplace_back(move(it));
-	}
+void Query::Field::setName(const char *n) {
+	name = n;
 }
-Query::Field::Field(String &&str, std::initializer_list<String> &&l) : name(move(str)) {
-	for (auto &it : l) {
-		fields.emplace_back(String(move(it)));
-	}
+void Query::Field::setName(const StringView &n) {
+	name = n.str();
 }
-Query::Field::Field(String &&str, Vector<Field> &&l) : name(move(str)), fields(move(l)) { }
-Query::Field::Field(String &&str, std::initializer_list<Field> &&l) : name(move(str)) {
-	for (auto &it : l) {
-		fields.emplace_back(move(it));
-	}
+void Query::Field::setName(const String &n) {
+	name = n;
+}
+void Query::Field::setName(String &&n) {
+	name = move(n);
 }
 
-Query::Select::Select(const String & f, Comparation c, data::Value && v1, data::Value && v2)
-: compare(c), value1(move(v1)), value2(move(v2)), field(f) { }
+Query::Select::Select(const StringView & f, Comparation c, data::Value && v1, data::Value && v2)
+: compare(c), value1(move(v1)), value2(move(v2)), field(f.str()) { }
 
-Query::Select::Select(const String & f, Comparation c, int64_t v1, int64_t v2)
-: compare(c), value1(v1), value2(v2), field(f) { }
+Query::Select::Select(const StringView & f, Comparation c, int64_t v1, int64_t v2)
+: compare(c), value1(v1), value2(v2), field(f.str()) { }
 
-Query::Select::Select(const String & f, Comparation c, const String & v)
-: compare(Comparation::Equal), value1(v), value2(0), field(f) { }
+Query::Select::Select(const StringView & f, Comparation c, const String & v)
+: compare(Comparation::Equal), value1(v), value2(0), field(f.str()) { }
 
 
 Resolve Query::decodeResolve(const StringView &str) {
@@ -105,9 +99,9 @@ String Query::encodeResolve(Resolve res) {
 
 Query Query::all() { return Query(); }
 
-Query & Query::select(const String &alias) {
+Query & Query::select(const StringView &alias) {
 	selectIds.clear();
-	selectAlias = alias;
+	selectAlias = alias.str();
 	selectList.clear();
 	return *this;
 }
@@ -134,35 +128,35 @@ Query & Query::select(std::initializer_list<int64_t> &&id) {
 	return *this;
 }
 
-Query & Query::select(const String &f, Comparation c, const data::Value & v1, const data::Value &v2) {
+Query & Query::select(const StringView &f, Comparation c, const data::Value & v1, const data::Value &v2) {
 	selectList.emplace_back(f, c, data::Value(v1), data::Value(v2));
 	return *this;
 }
-Query & Query::select(const String &f, const data::Value & v1) {
+Query & Query::select(const StringView &f, const data::Value & v1) {
 	selectList.emplace_back(f, Comparation::Equal, data::Value(v1), data::Value());
 	return *this;
 }
-Query & Query::select(const String &f, Comparation c, int64_t v1) {
+Query & Query::select(const StringView &f, Comparation c, int64_t v1) {
 	selectList.emplace_back(f, c, data::Value(v1), data::Value());
 	return *this;
 }
-Query & Query::select(const String &f, Comparation c, int64_t v1, int64_t v2) {
+Query & Query::select(const StringView &f, Comparation c, int64_t v1, int64_t v2) {
 	selectList.emplace_back(f, c, data::Value(v1), data::Value(v2));
 	return *this;
 }
-Query & Query::select(const String &f, const String & v) {
+Query & Query::select(const StringView &f, const String & v) {
 	selectList.emplace_back(f, Comparation::Equal, data::Value(v), data::Value());
 	return *this;
 }
-Query & Query::select(const String &f, String && v) {
+Query & Query::select(const StringView &f, String && v) {
 	selectList.emplace_back(f, Comparation::Equal, data::Value(move(v)), data::Value());
 	return *this;
 }
-Query & Query::select(const String &f, const Bytes & v) {
+Query & Query::select(const StringView &f, const Bytes & v) {
 	selectList.emplace_back(f, Comparation::Equal, data::Value(v), data::Value());
 	return *this;
 }
-Query & Query::select(const String &f, Bytes && v) {
+Query & Query::select(const StringView &f, Bytes && v) {
 	selectList.emplace_back(f, Comparation::Equal, data::Value(move(v)), data::Value());
 	return *this;
 }
@@ -172,8 +166,8 @@ Query & Query::select(Select &&q) {
 	return *this;
 }
 
-Query & Query::order(const String &f, Ordering o, size_t l, size_t off) {
-	orderField = f;
+Query & Query::order(const StringView &f, Ordering o, size_t l, size_t off) {
+	orderField = f.str();
 	ordering = o;
 	if (l != maxOf<size_t>()) {
 		limitValue = l;
@@ -184,8 +178,8 @@ Query & Query::order(const String &f, Ordering o, size_t l, size_t off) {
 	return *this;
 }
 
-Query & Query::first(const String &f, size_t limit, size_t offset) {
-	orderField = f;
+Query & Query::first(const StringView &f, size_t limit, size_t offset) {
+	orderField = f.str();
 	ordering = Ordering::Ascending;
 	if (limit != maxOf<size_t>()) {
 		limitValue = limit;
@@ -195,8 +189,8 @@ Query & Query::first(const String &f, size_t limit, size_t offset) {
 	}
 	return *this;
 }
-Query & Query::last(const String &f, size_t limit, size_t offset) {
-	orderField = f;
+Query & Query::last(const StringView &f, size_t limit, size_t offset) {
+	orderField = f.str();
 	ordering = Ordering::Descending;
 	if (limit != maxOf<size_t>()) {
 		limitValue = limit;
@@ -228,7 +222,7 @@ Query & Query::delta(uint64_t id) {
 	return *this;
 }
 
-Query & Query::delta(const String &str) {
+Query & Query::delta(const StringView &str) {
 	auto b = base64::decode(str);
 	DataReaderNetwork r(b);
 	switch (r.size()) {
@@ -270,7 +264,7 @@ const Vector<int64_t> & Query::getSelectIds() const {
 	return selectIds;
 }
 
-const String & Query::getSelectAlias() const {
+StringView Query::getSelectAlias() const {
 	return selectAlias;
 }
 

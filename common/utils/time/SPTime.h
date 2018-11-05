@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef COMMON_UTILS_SPTIME_H_
 #define COMMON_UTILS_SPTIME_H_
 
-#include "SPCharReader.h"
+#include "SPStringView.h"
 
 #define SP_COMPILE_TIME (Time::fromCompileTime(__DATE__, __TIME__))
 
@@ -85,6 +85,9 @@ public:
 	constexpr static TimeInterval seconds(time_t sec) {
 		return TimeInterval(sec * 1000000ULL);
 	}
+	constexpr static TimeInterval floatSeconds(float sec) {
+		return TimeInterval(uint64_t(sec * 1000000.0f));
+	}
 
     inline const Time operator+(const Time& v) const;
 
@@ -133,6 +136,7 @@ public:
 	static Time microseconds(uint64_t mksec);
 	static Time milliseconds(uint64_t msec);
 	static Time seconds(time_t sec);
+	static Time floatSeconds(float sec);
 
 	template <typename Interface = memory::DefaultInterface>
 	auto toHttp() -> typename Interface::StringType {

@@ -28,6 +28,8 @@ THE SOFTWARE.
 #include "StorageField.h"
 #include "StorageScheme.h"
 #include "StorageAdapter.h"
+#include "StorageTransaction.h"
+#include "StorageWorker.h"
 #include "InputFilter.h"
 
 #include "SPIO.h"
@@ -81,7 +83,7 @@ static bool File_validateFileField(const Field &field, size_t writeSize, const S
 	return true;
 }
 
-static bool File_validateImageField(const Field &field, size_t writeSize, const StringView &type, io::Producer file) {
+static bool File_validateImageField(const Field &field, size_t writeSize, StringView type, io::Producer file) {
 	auto ffield = static_cast<const FieldImage *>(field.getSlot());
 
 	// check size
@@ -180,7 +182,7 @@ bool File::validateFileField(const Field &field, const StringView &type, const B
 	return true;
 }
 
-data::Value File::createFile(Adapter *adapter, const Field &f, InputFile &file) {
+data::Value File::createFile(const Transaction &t, const Field &f, InputFile &file) {
 	auto scheme = Server(apr::pool::server()).getFileScheme();
 	data::Value fileData;
 	fileData.setString(file.type, "type");
@@ -195,7 +197,7 @@ data::Value File::createFile(Adapter *adapter, const Field &f, InputFile &file) 
 		}
 	}
 
-	fileData = scheme->create(adapter, fileData, true);
+	fileData = Worker(*scheme, t).create(fileData, true);
 	if (fileData && fileData.isInteger("__oid")) {
 		auto id = fileData.getInteger("__oid");
 		if (file.save(File::getFilesystemPath(id))) {
@@ -207,7 +209,7 @@ data::Value File::createFile(Adapter *adapter, const Field &f, InputFile &file) 
 	return data::Value();
 }
 
-data::Value File::createFile(Adapter *adapter, const StringView &type, const StringView &path) {
+data::Value File::createFile(const Transaction &t, const StringView &type, const StringView &path) {
 	auto scheme = Server(apr::pool::server()).getFileScheme();
 	auto size = filesystem::size(path);
 
@@ -222,13 +224,13 @@ data::Value File::createFile(Adapter *adapter, const StringView &type, const Str
 		val.setInteger(height, "height");
 	}
 
-	fileData = scheme->create(adapter, fileData, true);
+	fileData = Worker(*scheme, t).create(fileData, true);
 	if (fileData && fileData.isInteger("__oid")) {
 		auto id = fileData.getInteger("__oid");
 		if (filesystem::move(path, File::getFilesystemPath(id))) {
 			return data::Value(id);
 		} else {
-			scheme->remove(adapter, fileData.getInteger("__oid"));
+			Worker(*scheme, t).remove(fileData.getInteger("__oid"));
 		}
 	}
 
@@ -236,7 +238,7 @@ data::Value File::createFile(Adapter *adapter, const StringView &type, const Str
 	return data::Value();
 }
 
-data::Value File::createFile(Adapter *adapter, const StringView &type, const Bytes &data) {
+data::Value File::createFile(const Transaction &t, const StringView &type, const Bytes &data) {
 	auto scheme = Server(apr::pool::server()).getFileScheme();
 	auto size = data.size();
 
@@ -252,13 +254,13 @@ data::Value File::createFile(Adapter *adapter, const StringView &type, const Byt
 		val.setInteger(height, "height");
 	}
 
-	fileData = scheme->create(adapter, fileData, true);
+	fileData = Worker(*scheme, t).create(fileData, true);
 	if (fileData && fileData.isInteger("__oid")) {
 		auto id = fileData.getInteger("__oid");
 		if (filesystem::write(File::getFilesystemPath(id), data)) {
 			return data::Value(id);
 		} else {
-			scheme->remove(adapter, fileData.getInteger("__oid"));
+			Worker(*scheme, t).remove(fileData.getInteger("__oid"));
 		}
 	}
 
@@ -353,10 +355,10 @@ static Map<String, String> writeImages(const Field &f, InputFile &file) {
 		    if (needResize) {
 		    	auto fpath = resizeImage(bmp, targetWidth, targetHeight);
 		    	if (!fpath.empty()) {
-		    		ret.emplace(f.getName(), std::move(fpath));
+		    		ret.emplace(f.getName().str(), std::move(fpath));
 		    	}
 		    } else {
-		    	ret.emplace(f.getName(), file.file.path());
+		    	ret.emplace(f.getName().str(), file.file.path());
 		    }
 
 		    if (field->thumbnails.size() > 0) {
@@ -372,7 +374,7 @@ static Map<String, String> writeImages(const Field &f, InputFile &file) {
 		    }
 	    }
 	} else {
-		ret.emplace(f.getName(), file.path);
+		ret.emplace(f.getName().str(), file.path);
 	}
 
 	return ret;
@@ -399,12 +401,12 @@ static Map<String, String> writeImages(const Field &f, const StringView &type, c
 		    if (needResize) {
 		    	auto fpath = resizeImage(bmp, targetWidth, targetHeight);
 		    	if (!fpath.empty()) {
-		    		ret.emplace(f.getName(), std::move(fpath));
+		    		ret.emplace(f.getName().str(), std::move(fpath));
 		    	}
 		    } else {
 		    	auto fpath = saveImage(bmp);
 		    	if (!fpath.empty()) {
-		    		ret.emplace(f.getName(), std::move(fpath));
+		    		ret.emplace(f.getName().str(), std::move(fpath));
 		    	}
 		    }
 
@@ -424,19 +426,20 @@ static Map<String, String> writeImages(const Field &f, const StringView &type, c
 		apr::file file;
 		file.open_tmp(config::getUploadTmpImagePrefix(), 0);
 		file.xsputn((const char *)data.data(), data.size());
-		ret.emplace(f.getName(), file.path());
+		ret.emplace(f.getName().str(), file.path());
 		file.close();
 	}
 
 	return ret;
 }
 
-data::Value File::createImage(Adapter *adapter, const Field &f, InputFile &file) {
+data::Value File::createImage(const Transaction &t, const Field &f, InputFile &file) {
 	data::Value ret;
+
 	auto files = writeImages(f, file);
 	for (auto & it : files) {
 		if (it.first == f.getName() && it.second == file.path) {
-			auto val = createFile(adapter, f, file);
+			auto val = createFile(t, f, file);
 			if (val.isInteger()) {
 				ret.setValue(std::move(val), it.first);
 			}
@@ -444,7 +447,7 @@ data::Value File::createImage(Adapter *adapter, const Field &f, InputFile &file)
 			auto &field = it.first;
 			auto &filePath = it.second;
 
-			auto val = createFile(adapter, file.type, filePath);
+			auto val = createFile(t, file.type, filePath);
 			if (val.isInteger()) {
 				ret.setValue(std::move(val), field);
 			}
@@ -453,14 +456,15 @@ data::Value File::createImage(Adapter *adapter, const Field &f, InputFile &file)
 	return ret;
 }
 
-data::Value File::createImage(Adapter *adapter, const Field &f, const StringView &type, const Bytes &data) {
+data::Value File::createImage(const Transaction &t, const Field &f, const StringView &type, const Bytes &data) {
 	data::Value ret;
+
 	auto files = writeImages(f, type, data);
 	for (auto & it : files) {
 		auto &field = it.first;
 		auto &filePath = it.second;
 
-		auto val = createFile(adapter, type, filePath);
+		auto val = createFile(t, type, filePath);
 		if (val.isInteger()) {
 			ret.setValue(std::move(val), field);
 		}
@@ -468,7 +472,7 @@ data::Value File::createImage(Adapter *adapter, const Field &f, const StringView
 	return ret;
 }
 
-bool File::removeFile(Adapter *adapter, const Field &f, const data::Value &val) {
+bool File::removeFile(const data::Value &val) {
 	int64_t id = 0;
 	if (val.isInteger()) {
 		id = val.asInteger();
@@ -476,6 +480,9 @@ bool File::removeFile(Adapter *adapter, const Field &f, const data::Value &val) 
 		id = val.getInteger("__oid");
 	}
 
+	return removeFile(id);
+}
+bool File::removeFile(int64_t id) {
 	if (id) {
 		filesystem::remove(File::getFilesystemPath(id));
 		return true;
@@ -484,24 +491,27 @@ bool File::removeFile(Adapter *adapter, const Field &f, const data::Value &val) 
 	return false;
 }
 
-bool File::purgeFile(Adapter *adapter, const Field &f, const data::Value &val) {
+bool File::purgeFile(const Transaction &t, const data::Value &val) {
 	int64_t id = 0;
 	if (val.isInteger()) {
 		id = val.asInteger();
 	} else if (val.isInteger("__oid")) {
 		id = val.getInteger("__oid");
 	}
+	return purgeFile(t, id);
+}
 
+bool File::purgeFile(const Transaction &t, int64_t id) {
 	if (id) {
-		auto scheme = Server(apr::pool::server()).getFileScheme();
-		if (scheme->remove(adapter, id)) {
+		if (auto scheme = Server(apr::pool::server()).getFileScheme()) {
+			Worker(*scheme, t).remove(id);
 			filesystem::remove(File::getFilesystemPath(id));
+			return true;
 		}
-		return true;
 	}
-
 	return false;
 }
+
 const Scheme * File::getScheme() {
 	auto serv = apr::pool::server();
 	if (serv) {
@@ -510,18 +520,16 @@ const Scheme * File::getScheme() {
 	return nullptr;
 }
 
-data::Value File::getData(Adapter *adapter, uint64_t id) {
-	auto scheme = getScheme();
-	if (scheme) {
-		return scheme->get(adapter, id);
+data::Value File::getData(const Transaction &t, uint64_t id) {
+	if (auto scheme = getScheme()) {
+		return Worker(*scheme, t).get(id);
 	}
 	return data::Value();
 }
 
-void File::setData(Adapter *adapter, uint64_t id, const data::Value &val) {
-	auto scheme = getScheme();
-	if (scheme) {
-		scheme->update(adapter, id, val);
+void File::setData(const Transaction &t, uint64_t id, const data::Value &val) {
+	if (auto scheme = getScheme()) {
+		Worker(*scheme, t).update(id, val);
 	}
 }
 

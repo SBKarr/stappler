@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define SERENITY_SRC_STORAGE_STORAGEQUERY_H_
 
 #include "SPSerenityRequest.h"
+#include "SPSnowballStemmer.h"
 #include "Define.h"
 
 NS_SA_EXT_BEGIN(storage)
@@ -32,6 +33,13 @@ using Operator = sql::Operator;
 using Comparation = sql::Comparation;
 using Ordering = sql::Ordering;
 using Query = query::Query;
+
+enum class Action {
+	Get,
+	Set,
+	Append,
+	Remove,
+};
 
 class QueryFieldResolver {
 public:
@@ -56,7 +64,7 @@ public:
 	const Query::FieldsVec *getIncludeVec() const;
 	const Query::FieldsVec *getExcludeVec() const;
 
-	QueryFieldResolver next(const String &) const;
+	QueryFieldResolver next(const StringView &) const;
 
 	operator bool () const;
 
@@ -81,9 +89,12 @@ protected:
 
 SP_DEFINE_ENUM_AS_MASK(QueryFieldResolver::Meta);
 
+using FullTextData = search::SearchData;
 
 class QueryList : public AllocBase {
 public:
+	using FieldCallback = Callback<void(const StringView &name, const Field *f)>;
+
 	struct Item {
 		const Scheme *scheme = nullptr;
 		const Field *ref = nullptr;
@@ -94,21 +105,28 @@ public:
 
 		Query query;
 		QueryFieldResolver fields;
+		Vector<FullTextData> fullTextQuery;
 
 		const Set<const Field *> &getQueryFields() const;
+		void readFields(const FieldCallback &) const;
 	};
 
+	static void readFields(const Scheme &, const Set<const Field *> &, const FieldCallback &);
+
+public:
 	QueryList(const Scheme *);
 
 	bool selectById(const Scheme *, uint64_t);
-	bool selectByName(const Scheme *, const String &);
+	bool selectByName(const Scheme *, const StringView &);
 	bool selectByQuery(const Scheme *, Query::Select &&);
 
-	bool order(const Scheme *, const String &f, storage::Ordering o);
-	bool first(const Scheme *, const String &f, size_t v);
-	bool last(const Scheme *, const String &f, size_t v);
+	bool order(const Scheme *, const StringView &f, storage::Ordering o);
+	bool first(const Scheme *, const StringView &f, size_t v);
+	bool last(const Scheme *, const StringView &f, size_t v);
 	bool limit(const Scheme *, size_t limit);
 	bool offset(const Scheme *, size_t offset);
+
+	bool setFullTextQuery(const Field *field, Vector<FullTextData> &&);
 
 	bool setAll();
 	bool setField(const Scheme *, const Field *field);
@@ -146,6 +164,8 @@ public:
 
 	QueryFieldResolver getFields() const;
 
+	const data::Value &getExtraData() const;
+
 protected:
 	void decodeSelect(const Scheme &, Query &, const data::Value &);
 	void decodeOrder(const Scheme &, Query &, const String &, const data::Value &);
@@ -153,6 +173,7 @@ protected:
 	bool decodeIncludeItem(const Scheme &, Query &, const data::Value &);
 
 	Vector<Item> queries;
+	data::Value extraData;
 };
 
 NS_SA_EXT_END(storage)

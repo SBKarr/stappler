@@ -25,8 +25,9 @@ THE SOFTWARE.
 
 #include "SPCommon.h"
 #include "SPString.h"
-#include "SPCharReader.h"
 #include "SPFilesystem.h"
+
+#include "SPStringView.h"
 #include "SPTime.h"
 
 #if (SPAPR)

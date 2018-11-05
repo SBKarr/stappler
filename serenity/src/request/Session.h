@@ -61,8 +61,8 @@ protected:
 	static bool clearStorageData(Request &, const Token &);
 	static User *getStorageUser(Request &, uint64_t);
 
-	static void makeSessionToken(Request &rctx, Token &buf, const apr::uuid & uuid, const String & userName);
-	static void makeCookieToken(Request &rctx, Token &buf, const apr::uuid & uuid, const String & userName, const Bytes & salt);
+	static void makeSessionToken(Request &rctx, Token &buf, const apr::uuid & uuid, const StringView & userName);
+	static void makeCookieToken(Request &rctx, Token &buf, const apr::uuid & uuid, const StringView & userName, const Bytes & salt);
 
 	Request _request;
 

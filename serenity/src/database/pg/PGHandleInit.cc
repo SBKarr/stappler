@@ -25,10 +25,76 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "PGHandle.h"
-#include "PGHandleTypes.h"
 #include "StorageScheme.h"
 
 NS_SA_EXT_BEGIN(pg)
+
+using RemovePolicy = storage::RemovePolicy;
+
+struct ConstraintRec {
+	enum Type {
+		Unique,
+		Reference,
+	};
+
+	Type type;
+	Vector<String> fields;
+	String reference;
+	RemovePolicy remove = RemovePolicy::Null;
+
+	ConstraintRec(Type t) : type(t) { }
+	ConstraintRec(Type t, std::initializer_list<String> il) : type(t), fields(il) { }
+	ConstraintRec(Type t, const String &col, const String &ref = "", RemovePolicy r = RemovePolicy::Null)
+	: type(t), fields{col}, reference(ref), remove(r) { }
+};
+
+struct ColRec {
+	enum class Type {
+		None,
+		Binary,
+		Integer,
+		Serial,
+		Float,
+		Boolean,
+		Text,
+		TsVector
+	};
+
+	Type type = Type::None;
+	bool notNull = false;
+
+	ColRec(Type t, bool notNull = false) : type(t), notNull(notNull) { }
+};
+
+struct TableRec {
+	using Scheme = storage::Scheme;
+
+	static String getNameForDelta(const Scheme &);
+
+	static Map<String, TableRec> parse(Server &serv, const Map<String, const Scheme *> &s);
+	static Map<String, TableRec> get(Handle &h, StringStream &stream);
+
+	static void writeCompareResult(StringStream &stream,
+			Map<String, TableRec> &required, Map<String, TableRec> &existed,
+			const Map<String, const storage::Scheme *> &s);
+
+	TableRec();
+	TableRec(Server &serv, const storage::Scheme *scheme);
+
+	Map<String, ColRec> cols;
+	Map<String, ConstraintRec> constraints;
+	Map<String, String> indexes;
+	Vector<String> pkey;
+	Set<String> triggers;
+	bool objects = true;
+
+	bool exists = false;
+	bool valid = false;
+
+	const storage::Scheme *viewScheme = nullptr;
+	const storage::FieldView *viewField = nullptr;
+};
+
 
 constexpr static uint32_t getDefaultFunctionVersion() { return 8; }
 
@@ -99,15 +165,15 @@ static void writeFileRemoveTrigger(StringStream &stream, const storage::Scheme *
 }
 
 static void writeObjectSetRemoveTrigger(StringStream &stream, const storage::Scheme *s, const storage::FieldObject *obj) {
-	auto & source = s->getName();
-	auto & target = obj->scheme->getName();
+	auto source = s->getName();
+	auto target = obj->scheme->getName();
 
 	stream << "\t\tDELETE FROM " << target << " WHERE __oid IN (SELECT " << target << "_id FROM "
 			<< s->getName() << "_f_" << obj->name << " WHERE "<< source << "_id=OLD.__oid);\n";
 }
 
 static void writeObjectUpdateTrigger(StringStream &stream, const storage::Scheme *s, const storage::FieldObject *obj) {
-	auto & target = obj->scheme->getName();
+	auto target = obj->scheme->getName();
 
 	stream << "\t\tIF (NEW.\"" << obj->getName() << "\" IS NULL OR OLD.\"" << obj->getName() << "\" <> NEW.\"" << obj->getName() << "\") THEN\n"
 		<< "\t\t\tIF (OLD.\"" << obj->getName() << "\" IS NOT NULL) THEN\n"
@@ -116,7 +182,7 @@ static void writeObjectUpdateTrigger(StringStream &stream, const storage::Scheme
 }
 
 static void writeObjectRemoveTrigger(StringStream &stream, const storage::Scheme *s, const storage::FieldObject *obj) {
-	auto & target = obj->scheme->getName();
+	auto target = obj->scheme->getName();
 
 	stream << "\t\tIF (OLD.\"" << obj->getName() << "\" IS NOT NULL) THEN\n"
 		<< "\t\t\tDELETE FROM " << target << " WHERE __oid=OLD." << obj->getName() << ";\n";
@@ -304,6 +370,7 @@ void TableRec::writeCompareResult(StringStream &stream,
 				case ColRec::Type::Float:	stream << "double precision"; break;
 				case ColRec::Type::Boolean:	stream << "boolean"; break;
 				case ColRec::Type::Text: 	stream << "text"; break;
+				case ColRec::Type::TsVector:stream << "tsvector"; break;
 				default: break;
 				}
 
@@ -337,6 +404,7 @@ void TableRec::writeCompareResult(StringStream &stream,
 				case ColRec::Type::Float:	stream << "double precision"; break;
 				case ColRec::Type::Boolean:	stream << "boolean"; break;
 				case ColRec::Type::Text: 	stream << "text"; break;
+				case ColRec::Type::TsVector:stream << "tsvector"; break;
 				default: break;
 				}
 				if (cit.second.notNull) {
@@ -426,29 +494,29 @@ Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, const stor
 			auto &f = fit.second;
 			auto type = fit.second.getType();
 
-			if (type == Type::Set) {
-				auto ref = static_cast<const FieldObject *>(f.getSlot());
+			if (type == storage::Type::Set) {
+				auto ref = static_cast<const storage::FieldObject *>(f.getSlot());
 				if (ref->onRemove == RemovePolicy::Reference || ref->onRemove == RemovePolicy::StrongReference) {
 					String name = it.first + "_f_" + fit.first;
 					auto & source = it.first;
-					auto & target = ref->scheme->getName();
+					auto target = ref->scheme->getName();
 					TableRec table;
 					table.cols.emplace(source + "_id", ColRec(ColRec::Type::Integer, true));
-					table.cols.emplace(target + "_id", ColRec(ColRec::Type::Integer, true));
+					table.cols.emplace(toString(target, "_id"), ColRec(ColRec::Type::Integer, true));
 
 					table.constraints.emplace(name + "_ref_" + source, ConstraintRec(
 							ConstraintRec::Reference, source + "_id", source, RemovePolicy::Cascade));
 					table.constraints.emplace(name + "_ref_" + ref->getName(), ConstraintRec(
-							ConstraintRec::Reference, target + "_id", target, RemovePolicy::Cascade));
+							ConstraintRec::Reference, toString(target, "_id"), target.str(), RemovePolicy::Cascade));
 
 					table.pkey.emplace_back(source + "_id");
-					table.pkey.emplace_back(target + "_id");
+					table.pkey.emplace_back(toString(target, "_id"));
 					tables.emplace(std::move(string::tolower(name)), std::move(table));
 				}
 			}
 
-			if (type == Type::Array) {
-				auto slot = static_cast<const FieldArray *>(f.getSlot());
+			if (type == storage::Type::Array) {
+				auto slot = static_cast<const storage::FieldArray *>(f.getSlot());
 				if (slot->tfield && slot->tfield.isSimpleLayout()) {
 
 					String name = it.first + "_f_" + fit.first;
@@ -460,21 +528,21 @@ Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, const stor
 
 					auto type = slot->tfield.getType();
 					switch (type) {
-					case Type::Float:
+					case storage::Type::Float:
 						table.cols.emplace("data", ColRec(ColRec::Type::Float));
 						break;
-					case Type::Boolean:
+					case storage::Type::Boolean:
 						table.cols.emplace("data", ColRec(ColRec::Type::Boolean));
 						break;
-					case Type::Text:
+					case storage::Type::Text:
 						table.cols.emplace("data", ColRec(ColRec::Type::Text));
 						break;
-					case Type::Data:
-					case Type::Bytes:
-					case Type::Extra:
+					case storage::Type::Data:
+					case storage::Type::Bytes:
+					case storage::Type::Extra:
 						table.cols.emplace("data", ColRec(ColRec::Type::Binary));
 						break;
-					case Type::Integer:
+					case storage::Type::Integer:
 						table.cols.emplace("data", ColRec(ColRec::Type::Integer));
 						break;
 					default:
@@ -494,38 +562,38 @@ Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, const stor
 				}
 			}
 
-			if (type == Type::View) {
-				auto slot = static_cast<const FieldView *>(f.getSlot());
+			if (type == storage::Type::View) {
+				auto slot = static_cast<const storage::FieldView *>(f.getSlot());
 
 				String name = toString(it.first, "_f_", fit.first, "_view");
 				auto & source = it.first;
-				auto & target = slot->scheme->getName();
+				auto target = slot->scheme->getName();
 
 				TableRec table;
 				table.viewScheme = it.second;
 				table.viewField = slot;
 				table.cols.emplace("__vid", ColRec(ColRec::Type::Serial, true));
 				table.cols.emplace(source + "_id", ColRec(ColRec::Type::Integer, true));
-				table.cols.emplace(target + "_id", ColRec(ColRec::Type::Integer, true));
+				table.cols.emplace(toString(target, "_id"), ColRec(ColRec::Type::Integer, true));
 
 				for (auto &it : slot->fields) {
 					auto type = it.second.getType();
 					switch (type) {
-					case Type::Float:
+					case storage::Type::Float:
 						table.cols.emplace(it.first, ColRec(ColRec::Type::Float));
 						break;
-					case Type::Boolean:
+					case storage::Type::Boolean:
 						table.cols.emplace(it.first, ColRec(ColRec::Type::Boolean));
 						break;
-					case Type::Text:
+					case storage::Type::Text:
 						table.cols.emplace(it.first, ColRec(ColRec::Type::Text));
 						break;
-					case Type::Data:
-					case Type::Bytes:
-					case Type::Extra:
+					case storage::Type::Data:
+					case storage::Type::Bytes:
+					case storage::Type::Extra:
 						table.cols.emplace(it.first, ColRec(ColRec::Type::Binary));
 						break;
-					case Type::Integer:
+					case storage::Type::Integer:
 						table.cols.emplace(it.first, ColRec(ColRec::Type::Integer));
 						break;
 					default:
@@ -540,7 +608,7 @@ Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, const stor
 				table.constraints.emplace(name + "_ref_" + source, ConstraintRec(
 						ConstraintRec::Reference, source + "_id", source, RemovePolicy::Cascade));
 				table.constraints.emplace(name + "_ref_" + slot->getName(), ConstraintRec(
-						ConstraintRec::Reference, target + "_id", target, RemovePolicy::Cascade));
+						ConstraintRec::Reference, toString(target, "_id"), target.str(), RemovePolicy::Cascade));
 
 				table.pkey.emplace_back("__vid");
 				auto tblIt = tables.emplace(std::move(name), std::move(table)).first;
@@ -591,90 +659,101 @@ Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, const stor
 Map<String, TableRec> TableRec::get(Handle &h, StringStream &stream) {
 	Map<String, TableRec> ret;
 
-	Result tables( h.performSimpleSelect("SELECT table_name FROM information_schema.tables "
-			"WHERE table_schema='public' AND table_type='BASE TABLE';"_weak) );
-	for (auto it : tables) {
-		ret.emplace(it.at(0).str(), TableRec());
-		stream << "TABLE " << it.at(0) << "\n";
-	}
-	tables.clear();
+	h.performSimpleSelect("SELECT table_name FROM information_schema.tables "
+			"WHERE table_schema='public' AND table_type='BASE TABLE';",
+			[&] (sql::Result &tables) {
+		for (auto it : tables) {
+			ret.emplace(it.at(0).str(), TableRec());
+			stream << "TABLE " << it.at(0) << "\n";
+		}
+		tables.clear();
+	});
 
-	Result columns( h.performSimpleSelect("SELECT table_name, column_name, is_nullable, data_type FROM information_schema.columns "
-			"WHERE table_schema='public';"_weak) );
-	for (auto it : columns) {
-		auto tname = it.at(0).str();
-		auto f = ret.find(tname);
-		if (f != ret.end()) {
-			auto &table = f->second;
-			bool isNullable = (it.at(2) == "YES");
-			auto type = it.at(3);
-			if (it.at(1) != "__oid") {
-				if (type == "bigint") {
-					table.cols.emplace(it.at(1).str(), ColRec(ColRec::Type::Integer, !isNullable));
-				} else if (type == "boolean") {
-					table.cols.emplace(it.at(1).str(), ColRec(ColRec::Type::Boolean, !isNullable));
-				} else if (type == "double precision") {
-					table.cols.emplace(it.at(1).str(), ColRec(ColRec::Type::Float, !isNullable));
-				} else if (type == "text") {
-					table.cols.emplace(it.at(1).str(), ColRec(ColRec::Type::Text, !isNullable));
-				} else if (type == "bytea") {
-					table.cols.emplace(it.at(1).str(), ColRec(ColRec::Type::Binary, !isNullable));
-				} else {
-					table.cols.emplace(it.at(1).str(), ColRec(ColRec::Type::None, !isNullable));
+	h.performSimpleSelect("SELECT table_name, column_name, is_nullable, data_type FROM information_schema.columns "
+			"WHERE table_schema='public';"_weak,
+			[&] (sql::Result &columns) {
+		for (auto it : columns) {
+			auto tname = it.at(0).str();
+			auto f = ret.find(tname);
+			if (f != ret.end()) {
+				auto &table = f->second;
+				bool isNullable = (it.at(2) == "YES");
+				auto type = it.at(3);
+				if (it.at(1) != "__oid") {
+					if (type == "bigint") {
+						table.cols.emplace(it.at(1).str(), ColRec(ColRec::Type::Integer, !isNullable));
+					} else if (type == "boolean") {
+						table.cols.emplace(it.at(1).str(), ColRec(ColRec::Type::Boolean, !isNullable));
+					} else if (type == "double precision") {
+						table.cols.emplace(it.at(1).str(), ColRec(ColRec::Type::Float, !isNullable));
+					} else if (type == "text") {
+						table.cols.emplace(it.at(1).str(), ColRec(ColRec::Type::Text, !isNullable));
+					} else if (type == "bytea") {
+						table.cols.emplace(it.at(1).str(), ColRec(ColRec::Type::Binary, !isNullable));
+					} else if (type == "tsvector") {
+						table.cols.emplace(it.at(1).str(), ColRec(ColRec::Type::TsVector, !isNullable));
+					} else {
+						table.cols.emplace(it.at(1).str(), ColRec(ColRec::Type::None, !isNullable));
+					}
+				}
+				stream << "COLUMNS " << it.at(0) << " " << it.at(1) << " " << it.at(2) << " " << it.at(3) << "\n";
+			}
+		}
+		columns.clear();
+	});
+
+	h.performSimpleSelect("SELECT table_name, constraint_name, constraint_type FROM information_schema.table_constraints "
+			"WHERE table_schema='public' AND constraint_schema='public';"_weak,
+			[&] (sql::Result &constraints) {
+		for (auto it : constraints) {
+			auto tname = it.at(0).str();
+			auto f = ret.find(tname);
+			if (f != ret.end()) {
+				auto &table = f->second;
+				if (it.at(2) == "UNIQUE") {
+					table.constraints.emplace(it.at(1).str(), ConstraintRec(ConstraintRec::Unique));
+					stream << "CONSTRAINT " << it.at(0) << " " << it.at(1) << " " << it.at(2) << "\n";
+				} else if (it.at(2) == "FOREIGN KEY") {
+					table.constraints.emplace(it.at(1).str(), ConstraintRec(ConstraintRec::Reference));
+					stream << "CONSTRAINT " << it.at(0) << " " << it.at(1) << " " << it.at(2) << "\n";
 				}
 			}
-			stream << "COLUMNS " << it.at(0) << " " << it.at(1) << " " << it.at(2) << " " << it.at(3) << "\n";
 		}
-	}
-	columns.clear();
+		constraints.clear();
+	});
 
-	Result constraints( h.performSimpleSelect("SELECT table_name, constraint_name, constraint_type FROM information_schema.table_constraints "
-			"WHERE table_schema='public' AND constraint_schema='public';"_weak) );
-	for (auto it : constraints) {
-		auto tname = it.at(0).str();
-		auto f = ret.find(tname);
-		if (f != ret.end()) {
-			auto &table = f->second;
-			if (it.at(2) == "UNIQUE") {
-				table.constraints.emplace(it.at(1).str(), ConstraintRec(ConstraintRec::Unique));
-				stream << "CONSTRAINT " << it.at(0) << " " << it.at(1) << " " << it.at(2) << "\n";
-			} else if (it.at(2) == "FOREIGN KEY") {
-				table.constraints.emplace(it.at(1).str(), ConstraintRec(ConstraintRec::Reference));
-				stream << "CONSTRAINT " << it.at(0) << " " << it.at(1) << " " << it.at(2) << "\n";
+	h.performSimpleSelect(String::make_weak(INDEX_QUERY),
+			[&] (sql::Result &indexes) {
+		for (auto it : indexes) {
+			auto tname = it.at(0).str();
+			auto f = ret.find(tname);
+			if (f != ret.end()) {
+				auto &table = f->second;
+				auto name = it.at(1);
+				name.readUntilString("_idx_");
+				if (name.is("_idx_")) {
+					table.indexes.emplace(it.at(1).str(), it.at(2).str());
+					stream << "INDEX " << it.at(0) << " " << it.at(1) << " " << it.at(2) << "\n";
+				}
 			}
 		}
-	}
-	constraints.clear();
+		indexes.clear();
+	});
 
-	Result indexes( h.performSimpleSelect(String::make_weak(INDEX_QUERY)));
-	for (auto it : indexes) {
-		auto tname = it.at(0).str();
-		auto f = ret.find(tname);
-		if (f != ret.end()) {
-			auto &table = f->second;
-			auto name = it.at(1);
-			name.readUntilString("_idx_");
-			if (name.is("_idx_")) {
-				table.indexes.emplace(it.at(1).str(), it.at(2).str());
-				stream << "INDEX " << it.at(0) << " " << it.at(1) << " " << it.at(2) << "\n";
+	h.performSimpleSelect("SELECT event_object_table, trigger_name FROM information_schema.triggers "
+			"WHERE trigger_schema='public';"_weak,
+			[&] (sql::Result &triggers) {
+		for (auto it : triggers) {
+			auto tname = it.at(0).str();
+			auto f = ret.find(tname);
+			if (f != ret.end()) {
+				auto &table = f->second;
+				table.triggers.emplace(it.at(1).str());
+				stream << "TRIGGER " << it.at(0) << " " << it.at(1) << "\n";
 			}
 		}
-	}
-	indexes.clear();
-
-	Result triggers( h.performSimpleSelect("SELECT event_object_table, trigger_name FROM information_schema.triggers "
-			"WHERE trigger_schema='public';"));
-	for (auto it : triggers) {
-		auto tname = it.at(0).str();
-		auto f = ret.find(tname);
-		if (f != ret.end()) {
-			auto &table = f->second;
-			table.triggers.emplace(it.at(1).str());
-			stream << "TRIGGER " << it.at(0) << " " << it.at(1) << "\n";
-		}
-	}
-	triggers.clear();
-
+		triggers.clear();
+	});
 	return ret;
 }
 
@@ -684,7 +763,7 @@ TableRec::TableRec(Server &serv, const storage::Scheme *scheme) {
 	hashStream << getDefaultFunctionVersion();
 
 	bool hasTriggers = false;
-	auto &name = scheme->getName();
+	auto name = scheme->getName();
 	pkey.emplace_back("__oid");
 
 	if (scheme->hasDelta()) {
@@ -737,6 +816,11 @@ TableRec::TableRec(Server &serv, const storage::Scheme *scheme) {
 			emplaced = true;
 			break;
 
+		case storage::Type::FullTextView:
+			cols.emplace(it.first, ColRec(ColRec::Type::TsVector, f.hasFlag(storage::Flags::Required)));
+			emplaced = true;
+			break;
+
 		case storage::Type::Object:
 			cols.emplace(it.first, ColRec(ColRec::Type::Integer, f.hasFlag(storage::Flags::Required)));
 			if (f.isReference()) {
@@ -763,25 +847,25 @@ TableRec::TableRec(Server &serv, const storage::Scheme *scheme) {
 		if (emplaced) {
 			if (type == storage::Type::Object) {
 				auto ref = static_cast<const storage::FieldObject *>(f.getSlot());
-				auto & target = ref->scheme->getName();
-				auto cname = name + "_ref_" + it.first + "_" + target;
-				constraints.emplace(cname, ConstraintRec(ConstraintRec::Reference, it.first, target, ref->onRemove));
-				indexes.emplace(name + "_idx_" + it.first, it.first);
+				auto target = ref->scheme->getName();
+				auto cname = toString(name, "_ref_", it.first, "_", target);
+				constraints.emplace(cname, ConstraintRec(ConstraintRec::Reference, it.first, target.str(), ref->onRemove));
+				indexes.emplace(toString(name, "_idx_", it.first), it.first);
 			} else if (type == storage::Type::File || type == storage::Type::Image) {
 				auto ref = serv.getFileScheme();
-				auto cname = name + "_ref_" + it.first;
-				auto & target = ref->getName();
-				constraints.emplace(cname, ConstraintRec(ConstraintRec::Reference, it.first, target, storage::RemovePolicy::Null));
+				auto cname = toString(name, "_ref_", it.first);
+				auto target = ref->getName();
+				constraints.emplace(cname, ConstraintRec(ConstraintRec::Reference, it.first, target.str(), storage::RemovePolicy::Null));
 			}
 
 			if ((type == storage::Type::Text && f.getTransform() == storage::Transform::Alias) ||
 					f.hasFlag(storage::Flags::Unique)) {
-				constraints.emplace(name + "_unique_" + it.first, ConstraintRec(ConstraintRec::Unique, it.first));
+				constraints.emplace(toString(name, "_unique_", it.first), ConstraintRec(ConstraintRec::Unique, it.first));
 			}
 
 			if ((type == storage::Type::Text && f.getTransform() == storage::Transform::Alias)
 					|| (f.hasFlag(storage::Flags::Indexed) && !f.hasFlag(storage::Flags::Unique))) {
-				indexes.emplace(name + "_idx_" + it.first, it.first);
+				indexes.emplace(toString(name, "_idx_", it.first), it.first);
 			}
 		}
 	}
@@ -832,6 +916,5 @@ bool Handle::init(Server &serv, const Map<String, const Scheme *> &s) {
 
 	return true;
 }
-
 
 NS_SA_EXT_END(pg)

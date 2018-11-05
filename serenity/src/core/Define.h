@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "Config.h"
 
+#include "SPAprAllocator.h"
 #include "SPAprArray.h"
 #include "SPAprTable.h"
 #include "SPAprUri.h"
@@ -48,7 +49,8 @@ enum class ResourceType {
 	Set,
 	View,
 	File,
-	Array
+	Array,
+	Search
 };
 
 struct InputConfig {

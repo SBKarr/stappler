@@ -23,8 +23,8 @@ THE SOFTWARE.
 #ifndef COMMON_UTILS_SPLOG_H_
 #define COMMON_UTILS_SPLOG_H_
 
+#include "SPStringView.h"
 #include "SPCommon.h"
-#include "SPCharReader.h"
 
 NS_SP_EXT_BEGIN(log)
 

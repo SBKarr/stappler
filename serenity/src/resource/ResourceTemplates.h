@@ -29,7 +29,7 @@ NS_SA_BEGIN
 
 class ResourceProperty : public Resource {
 public:
-	ResourceProperty(Adapter *h, QueryList &&q, const Field *prop);
+	ResourceProperty(const Adapter &h, QueryList &&q, const Field *prop);
 
 	virtual bool removeObject() override;
 
@@ -42,7 +42,7 @@ protected:
 
 class ResourceFile : public ResourceProperty {
 public:
-	ResourceFile(Adapter *h, QueryList &&q, const Field *prop);
+	ResourceFile(const Adapter &h, QueryList &&q, const Field *prop);
 
 	virtual bool prepareUpdate() override;
 	virtual bool prepareCreate() override;
@@ -58,7 +58,7 @@ protected:
 
 class ResourceArray : public ResourceProperty {
 public:
-	ResourceArray(Adapter *h, QueryList &&q, const Field *prop);
+	ResourceArray(const Adapter &h, QueryList &&q, const Field *prop);
 
 	virtual bool prepareUpdate() override;
 	virtual bool prepareCreate() override;
@@ -73,7 +73,7 @@ protected:
 
 class ResourceObject : public Resource {
 public:
-	ResourceObject(Adapter *a, QueryList &&q);
+	ResourceObject(const Adapter &a, QueryList &&q);
 
 	virtual bool prepareUpdate() override;
 	virtual bool prepareCreate() override;
@@ -93,7 +93,7 @@ protected:
 
 class ResourceReslist : public ResourceObject {
 public:
-	ResourceReslist(Adapter *a, QueryList &&q);
+	ResourceReslist(const Adapter &a, QueryList &&q);
 
 	virtual bool prepareCreate() override;
 	virtual data::Value createObject(data::Value &, apr::array<InputFile> &) override;
@@ -104,7 +104,7 @@ protected:
 
 class ResourceSet : public ResourceReslist {
 public:
-	ResourceSet(Adapter *a, QueryList &&q);
+	ResourceSet(const Adapter &a, QueryList &&q);
 
 	virtual bool prepareAppend() override;
 	virtual data::Value createObject(data::Value &, apr::array<InputFile> &) override;
@@ -113,7 +113,7 @@ public:
 
 class ResourceRefSet : public ResourceSet {
 public:
-	ResourceRefSet(Adapter *a, QueryList &&q);
+	ResourceRefSet(const Adapter &a, QueryList &&q);
 
 	virtual bool prepareUpdate() override;
 	virtual bool prepareCreate() override;
@@ -146,7 +146,7 @@ protected:
 
 class ResourceFieldObject : public ResourceObject {
 public:
-	ResourceFieldObject(Adapter *a, QueryList &&q);
+	ResourceFieldObject(const Adapter &a, QueryList &&q);
 
 	virtual bool prepareUpdate() override;
 	virtual bool prepareCreate() override;
@@ -176,7 +176,7 @@ protected:
 
 class ResourceView : public ResourceSet {
 public:
-	ResourceView(Adapter *h, QueryList &&q);
+	ResourceView(const Adapter &h, QueryList &&q);
 
 	virtual bool prepareUpdate() override;
 	virtual bool prepareCreate() override;
@@ -190,6 +190,26 @@ public:
 
 protected:
 	const Field *_field = nullptr;
+};
+
+class ResourceSearch : public ResourceObject {
+public:
+	ResourceSearch(const Adapter &h, QueryList &&q, const Field *prop);
+
+	virtual data::Value getResultObject() override;
+
+protected:
+	Vector<String> stemQuery(const Vector<storage::FullTextData> &);
+
+	Vector<storage::FullTextData> parseQueryDefault(const data::Value &) const;
+
+	void makeHeadlines(data::Value &obj, const data::Value &headlineInfo, const Vector<String> &);
+	String makeHeadline(const StringView &value, const data::Value &headlineInfo, const Vector<String> &);
+
+	const data::Value *getObjectLine(const data::Value &obj, const StringView &);
+
+	const Field *_field = nullptr;
+	search::Stemmer _stemmer;
 };
 
 NS_SA_END

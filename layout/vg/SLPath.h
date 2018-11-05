@@ -121,6 +121,8 @@ public:
 	Path & addArc(const Rect& oval, float startAngleInRadians, float sweepAngleInRadians);
 	Path & addRect(float x, float y, float width, float height, float rx, float ry);
 
+	Path & addPath(const Path &);
+
 	Path & setFillColor(const Color4B &color);
 	Path & setFillColor(const Color3B &color, bool preserveOpacity = false);
 	Path & setFillColor(const Color &color, bool preserveOpacity = false);

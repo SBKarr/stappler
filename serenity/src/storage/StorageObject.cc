@@ -52,10 +52,10 @@ bool Object::isFieldProtected(const String &key) const {
 	return _scheme.isProtected(key);
 }
 
-bool Object::save(Adapter *adapter, bool force) {
+bool Object::save(const Adapter &a, bool force) {
 	if (_modified || force) {
 		_modified = false;
-		return _scheme.saveObject(adapter, this);
+		return _scheme.save(Transaction::acquire(a), this);
 	}
 	return true;
 }

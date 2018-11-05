@@ -30,3 +30,5 @@ THE SOFTWARE.
 #include "ResourceHandler.cc"
 #include "ResourceResolver.cc"
 #include "ResourceTemplates.cc"
+#include "ResourceTemplatesProperty.cc"
+#include "ResourceTemplatesSearch.cc"

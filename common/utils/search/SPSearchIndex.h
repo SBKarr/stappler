@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef COMMON_UTILS_SEARCH_SPSEARCHINDEX_H_
 #define COMMON_UTILS_SEARCH_SPSEARCHINDEX_H_
 
-#include "SPCharReader.h"
+#include "SPStringView.h"
 #include "SPSearchDistance.h"
 #include "SPRef.h"
 

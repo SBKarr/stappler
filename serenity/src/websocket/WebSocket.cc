@@ -115,7 +115,7 @@ void Handler::sendBroadcast(data::Value &&val) const {
 	};
 
 	auto s = storage();
-	s->broadcast(bcast);
+	s.broadcast(bcast);
 }
 
 void Handler::setStatusCode(StatusCode s, const String &r) {
@@ -169,7 +169,7 @@ bool Handler::trySend(FrameType t, const uint8_t *bytes, size_t count) {
 	return true;
 }
 
-storage::Adapter *Handler::storage() const {
+storage::Adapter Handler::storage() const {
 	auto pool = apr::pool::acquire();
 
 	pg::Handle *db = nullptr;

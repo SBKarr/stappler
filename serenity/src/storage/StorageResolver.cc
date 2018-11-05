@@ -27,7 +27,7 @@ THE SOFTWARE.
 
 NS_SA_EXT_BEGIN(storage)
 
-Resolver::Resolver(Adapter *a, const Scheme &scheme, const data::TransformMap *map)
+Resolver::Resolver(const Adapter &a, const Scheme &scheme, const data::TransformMap *map)
 : _storage(a), _scheme(&scheme), _transform(map), _queries(&scheme) {
 	_type = Objects;
 }
@@ -42,7 +42,7 @@ bool Resolver::selectById(uint64_t oid) {
 	return false;
 }
 
-bool Resolver::selectByAlias(const String &str) {
+bool Resolver::selectByAlias(const StringView &str) {
 	if (_type == Objects) {
 		if (_queries.selectByName(_scheme, str)) {
 			return true;
@@ -62,7 +62,17 @@ bool Resolver::selectByQuery(Query::Select &&q) {
 	return false;
 }
 
-bool Resolver::order(const String &f, storage::Ordering o) {
+bool Resolver::searchByField(const Field *field) {
+	if (_type == Objects) {
+		_resource = _storage.makeResource(ResourceType::Search, move(_queries), field);
+		_type = Search;
+		return true;
+	}
+	messages::error("ResourceResolver", "Invalid 'search', invalid resource type");
+	return false;
+}
+
+bool Resolver::order(const StringView &f, storage::Ordering o) {
 	if (_type == Objects) {
 		if (_queries.order(_scheme, f, o)) {
 			return true;
@@ -72,7 +82,7 @@ bool Resolver::order(const String &f, storage::Ordering o) {
 	return false;
 }
 
-bool Resolver::first(const String &f, size_t v) {
+bool Resolver::first(const StringView &f, size_t v) {
 	if (_type == Objects) {
 		if (_queries.first(_scheme, f, v)) {
 			return true;
@@ -82,7 +92,7 @@ bool Resolver::first(const String &f, size_t v) {
 	return false;
 }
 
-bool Resolver::last(const String &f, size_t v) {
+bool Resolver::last(const StringView &f, size_t v) {
 	if (_type == Objects) {
 		if (_queries.last(_scheme, f, v)) {
 			return true;
@@ -153,13 +163,13 @@ bool Resolver::getView(const Field *f) {
 
 bool Resolver::getField(const String &str, const Field *f) {
 	if ((_type == Objects) && f->getType() == Type::Array) {
-		_resource = _storage->makeResource(ResourceType::Array, move(_queries), f);
+		_resource = _storage.makeResource(ResourceType::Array, move(_queries), f);
 		_type = Array;
 		return true;
 	}
 
 	if (_type == Objects && (f->getType() == Type::File || f->getType() == storage::Type::Image)) {
-		_resource = _storage->makeResource(ResourceType::File, move(_queries), f);
+		_resource = _storage.makeResource(ResourceType::File, move(_queries), f);
 		_type = File;
 		return true;
 	}
@@ -180,20 +190,20 @@ bool Resolver::getAll() {
 Resource *Resolver::getResult() {
 	if (_type == Objects) {
 		if (_queries.empty()) {
-			return _storage->makeResource(ResourceType::ResourceList, move(_queries), nullptr);
+			return _storage.makeResource(ResourceType::ResourceList, move(_queries), nullptr);
 		} else if (_queries.isView()) {
-			return _storage->makeResource(ResourceType::View, move(_queries), nullptr);
+			return _storage.makeResource(ResourceType::View, move(_queries), nullptr);
 		} else if (_queries.isRefSet()) {
 			if (auto f = _queries.getField()) {
 				if (f->getType() == storage::Type::Object) {
-					return _storage->makeResource(ResourceType::ObjectField, move(_queries), nullptr);
+					return _storage.makeResource(ResourceType::ObjectField, move(_queries), nullptr);
 				}
 			}
-			return _storage->makeResource(ResourceType::ReferenceSet, move(_queries), nullptr);
+			return _storage.makeResource(ResourceType::ReferenceSet, move(_queries), nullptr);
 		} else if (_queries.isObject()) {
-			return _storage->makeResource(ResourceType::Object, move(_queries), nullptr);
+			return _storage.makeResource(ResourceType::Object, move(_queries), nullptr);
 		} else {
-			return _storage->makeResource(ResourceType::Set, move(_queries), nullptr);
+			return _storage.makeResource(ResourceType::Set, move(_queries), nullptr);
 		}
 	}
 	return _resource;

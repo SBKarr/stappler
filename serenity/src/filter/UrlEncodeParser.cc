@@ -24,8 +24,8 @@ THE SOFTWARE.
 **/
 
 #include "Define.h"
-#include "SPCharReader.h"
 #include "UrlEncodeParser.h"
+#include "../../../common/string/SPStringView.h"
 
 NS_SA_BEGIN
 

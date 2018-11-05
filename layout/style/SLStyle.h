@@ -23,8 +23,8 @@ THE SOFTWARE.
 #ifndef LAYOUT_STYLE_SLSTYLE_H_
 #define LAYOUT_STYLE_SLSTYLE_H_
 
+#include "../../common/string/SPStringView.h"
 #include "SPLayout.h"
-#include "SPCharReader.h"
 
 NS_LAYOUT_BEGIN
 

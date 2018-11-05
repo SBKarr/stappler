@@ -1355,6 +1355,20 @@ Pair<Bitmap::FileFormat, StringView> Bitmap::detectFormat(const uint8_t * data, 
 	return pair(FileFormat::Custom, StringView());
 }
 
+StringView Bitmap::getMimeType(FileFormat fmt) {
+	switch (fmt) {
+	case Bitmap::FileFormat::Png: return "image/png"; break;
+	case Bitmap::FileFormat::Jpeg: return "image/jpeg"; break;
+	case Bitmap::FileFormat::WebpLossless: return "image/webp"; break;
+	case Bitmap::FileFormat::WebpLossy: return "image/webp"; break;
+	case Bitmap::FileFormat::Svg: return "image/svg+xml"; break;
+	case Bitmap::FileFormat::Gif: return "image/gif"; break;
+	case Bitmap::FileFormat::Tiff: return "image/tiff"; break;
+	case Bitmap::FileFormat::Custom: break;
+	}
+	return StringView();
+}
+
 bool Bitmap::check(FileFormat fmt, const uint8_t * data, size_t dataLen) {
 	assert(fmt != FileFormat::Custom);
 	return s_defaultFormats[toInt(fmt)].is(data, dataLen);

@@ -24,7 +24,7 @@ THE SOFTWARE.
 #define COMMON_UTILS_SPURLENCODEPARSER_H_
 
 #include "SPData.h"
-#include "SPCharReader.h"
+#include "SPStringView.h"
 #include "SPBuffer.h"
 
 NS_SP_BEGIN

@@ -212,10 +212,10 @@ public: /* input config */
 	void setMaxFileSize(size_t);
 
 public: /* engine and errors */
-	void storeObject(void *ptr, const String &key, Function<void()> && = nullptr) const;
+	void storeObject(void *ptr, const StringView &key, Function<void()> && = nullptr) const;
 
 	template <typename T = void>
-	T *getObject(const String &key) const {
+	T *getObject(const StringView &key) const {
 		return apr::pool::get<T>(_request->pool, key);
 	}
 
@@ -226,7 +226,7 @@ public: /* engine and errors */
 	Connection connection() const;
 	apr_pool_t *pool() const;
 
-	storage::Adapter * storage() const;
+	storage::Adapter storage() const;
 
 	// authorize user and create session for 'maxAge' seconds
 	// previous session (if existed) will be canceled

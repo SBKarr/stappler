@@ -23,16 +23,15 @@ THE SOFTWARE.
 #ifndef COMMON_APR_SPAPRFILESTREAM_H_
 #define COMMON_APR_SPAPRFILESTREAM_H_
 
-#include "SPAprAllocator.h"
 #include "SPMemString.h"
 
 #if SPAPR
 
 NS_SP_EXT_BEGIN(apr)
 
-class basic_file : public AllocPool {
+class basic_file : public memory::AllocPool {
 public:
-	using allocator_type = Allocator<char>;
+	using allocator_type = memory::Allocator<char>;
 	using file_type = apr_file_t *;
 	using streamsize = std::streamsize;
 	using streamoff = std::streamoff;
@@ -88,12 +87,12 @@ protected:
 
 // wide-char file buffer is not implemented for APR
 // APR has its own buffered file input, so, we manage only it's storage
-class basic_filebuf : public std::basic_streambuf<char, std::char_traits<char>>, public AllocPool {
+class basic_filebuf : public std::basic_streambuf<char, std::char_traits<char>>, public memory::AllocPool {
 public:
 	static constexpr const size_t DefaultBufferSize = 1_KiB;
 
 	// Types:
-	using allocator_type = Allocator<char>;
+	using allocator_type = memory::Allocator<char>;
 	using char_type = char;
 	using traits_type = std::char_traits<char>;
 	using int_type = typename traits_type::int_type;
@@ -140,7 +139,7 @@ public:
 	bool is_open() const { return _file.is_open(); }
 
 	filebuf_type * open(const char * s, ios_base::openmode mode);
-	filebuf_type * open(const string & s, ios_base::openmode mode) {return open(s.c_str(), mode);}
+	filebuf_type * open(const memory::string & s, ios_base::openmode mode) {return open(s.c_str(), mode);}
 
 	filebuf_type * close();
 
@@ -161,11 +160,11 @@ protected:
 	virtual streamsize xsputn(const char_type* s, streamsize n) override;
 };
 
-class ifstream : public std::basic_istream<char, std::char_traits<char>>, public AllocPool {
+class ifstream : public std::basic_istream<char, std::char_traits<char>>, public memory::AllocPool {
 public:
 	using char_type =char ;
 	using traits_type = std::char_traits<char>;
-	using allocator_type = Allocator<char>;
+	using allocator_type = memory::Allocator<char>;
 
 	using int_type = typename traits_type::int_type ;
 	using pos_type = typename traits_type::pos_type;
@@ -190,7 +189,7 @@ public:
 		this->open(s, mode);
 	}
 
-	explicit ifstream(const string& s, ios_base::openmode mode = ios_base::in,
+	explicit ifstream(const memory::string& s, ios_base::openmode mode = ios_base::in,
 			const allocator_type &alloc = allocator_type()) : istream_type(), _buf(alloc) {
 		this->init(&_buf);
 		this->open(s, mode);
@@ -229,7 +228,7 @@ public:
 		}
 	}
 
-	void open(const string & s, ios_base::openmode mode = ios_base::in) {
+	void open(const memory::string & s, ios_base::openmode mode = ios_base::in) {
 		if (!_buf.open(s, mode | ios_base::in)) {
 			this->setstate(ios_base::failbit);
 		} else {
@@ -247,11 +246,11 @@ private:
 	filebuf_type _buf;
 };
 
-class ofstream : public std::basic_ostream<char, std::char_traits<char>>, public AllocPool {
+class ofstream : public std::basic_ostream<char, std::char_traits<char>>, public memory::AllocPool {
 public:
 	using char_type =char ;
 	using traits_type = std::char_traits<char>;
-	using allocator_type = Allocator<char>;
+	using allocator_type = memory::Allocator<char>;
 
 	using int_type = typename traits_type::int_type ;
 	using pos_type = typename traits_type::pos_type;
@@ -279,7 +278,7 @@ public:
 		this->open(s, mode);
 	}
 
-	explicit ofstream(const string & s, ios_base::openmode mode = ios_base::out|ios_base::trunc,
+	explicit ofstream(const memory::string & s, ios_base::openmode mode = ios_base::out|ios_base::trunc,
 			const allocator_type &alloc = allocator_type()) : ostream_type(), _buf(alloc) {
 		this->init(&_buf);
 		this->open(s, mode);
@@ -318,7 +317,7 @@ public:
 		}
 	}
 
-	void open(const string& s, ios_base::openmode mode = ios_base::out | ios_base::trunc) {
+	void open(const memory::string& s, ios_base::openmode mode = ios_base::out | ios_base::trunc) {
 		if (!_buf.open(s, mode | ios_base::out)) {
 			this->setstate(ios_base::failbit);
 		} else {

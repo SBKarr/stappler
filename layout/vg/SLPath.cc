@@ -729,6 +729,20 @@ Path & Path::addRect(float x, float y, float width, float height, float rx, floa
 
 	return *this;
 }
+
+Path & Path::addPath(const Path &path) {
+	auto &cmds = path.getCommands();
+	auto &points = path.getPoints();
+
+	_commands.reserve(_commands.size() + cmds.size());
+	for (auto &it : cmds) { _commands.emplace_back(it); }
+
+	_points.reserve(_points.size() + points.size());
+	for (auto &it : points) { _points.emplace_back(it); }
+
+	return *this;
+}
+
 Path & Path::setFillColor(const Color4B &color) {
 	_params.fillColor = color;
 	return *this;

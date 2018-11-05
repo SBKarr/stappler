@@ -25,15 +25,16 @@ THE SOFTWARE.
 #include "Request.h"
 #include "StorageScheme.h"
 #include "StorageFile.h"
+#include "StorageWorker.h"
 
 #include "User.h"
 #include "Session.h"
 
 NS_SA_BEGIN
 
-Resource::Resource(ResourceType t, Adapter *a, QueryList &&list) : _type(t), _adapter(a), _queries(move(list)) {
+Resource::Resource(ResourceType t, const Adapter &a, QueryList &&list) : _type(t), _transaction(Transaction::acquire(a)), _queries(move(list)) {
 	if (_queries.isDeltaApplicable()) {
-		_delta = Time::microseconds(_adapter->getDeltaValue(*_queries.getScheme()));
+		_delta = Time::microseconds(_transaction.getDeltaValue(*_queries.getScheme()));
 	}
 }
 
@@ -192,8 +193,8 @@ void Resource::resolveSet(const QueryFieldResolver &res, int64_t id, const stora
 			bool idOnly = Resource_isIdRequest(next, ResolveOptions::None, ResolveOptions::Sets);
 
 			auto objs = idOnly
-					? res.getScheme()->getProperty(_adapter, fobj, field, Set<const Field *>{(const Field *)nullptr})
-					: res.getScheme()->getProperty(_adapter, fobj, field, fields);
+					? Worker(*res.getScheme(), _transaction).getField(fobj, field, Set<const Field *>{(const Field *)nullptr})
+					: Worker(*res.getScheme(), _transaction).getField(fobj, field, fields);
 			if (objs.isArray()) {
 				data::Value arr;
 				for (auto &sit : objs.asArray()) {
@@ -226,7 +227,7 @@ void Resource::resolveObject(const QueryFieldResolver &res, int64_t id, const st
 		if (perms != AccessControl::Restrict) {
 			auto &fields = next.getResolves();
 			if (!Resource_isIdRequest(next, _resolve, ResolveOptions::Objects)) {
-				data::Value obj = res.getScheme()->getProperty(_adapter, fobj, field, fields);
+				data::Value obj = Worker(*res.getScheme(), _transaction).getField(fobj, field, fields);
 				if (obj.isDictionary() && (perms == AccessControl::Full || isObjectAllowed(*(next.getScheme()), AccessControl::Read, obj))) {
 					auto id = obj.getInteger("__oid");
 					if (_resolveObjects.insert(id).second == false) {
@@ -245,7 +246,7 @@ void Resource::resolveObject(const QueryFieldResolver &res, int64_t id, const st
 }
 
 void Resource::resolveArray(const QueryFieldResolver &res, int64_t id, const storage::Field &field, data::Value &fobj) {
-	fobj.setValue(res.getScheme()->getProperty(_adapter, fobj, field));
+	fobj.setValue(Worker(*res.getScheme(), _transaction).getField(fobj, field));
 }
 
 void Resource::resolveFile(const QueryFieldResolver &res, int64_t id, const storage::Field &field, data::Value &fobj) {
@@ -255,7 +256,7 @@ void Resource::resolveFile(const QueryFieldResolver &res, int64_t id, const stor
 		if (perms != AccessControl::Restrict) {
 			auto fields = next.getResolves();
 			if (!Resource_isIdRequest(next, _resolve, ResolveOptions::Files)) {
-				data::Value obj = res.getScheme()->getProperty(_adapter, fobj, field, fields);
+				data::Value obj = Worker(*res.getScheme(), _transaction).getField(fobj, field, fields);
 				if (obj.isDictionary() && (perms == AccessControl::Full || isObjectAllowed(*(next.getScheme()), AccessControl::Read, obj))) {
 					fobj.setValue(move(obj));
 					return;
@@ -332,6 +333,9 @@ int64_t Resource::processResolveResult(const QueryFieldResolver &res, const Set<
 				++ it;
 				continue;
 			}
+		} else if (it->first == "__ts_rank") {
+			++ it;
+			continue;
 		}
 
 		auto f = res.getField(it->first);

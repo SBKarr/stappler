@@ -38,6 +38,8 @@ THE SOFTWARE.
 #include "WebSocket.h"
 #include "Task.h"
 
+#include "PGHandle.h"
+
 #ifdef LINUX
 
 #include <sstream>
@@ -273,6 +275,19 @@ void Root::dbdPrepare(server_rec *s, const char *l, const char *q) {
 	if (_dbdPrepare) {
 		return _dbdPrepare(s, l, q);
 	}
+}
+
+void Root::performStorage(apr_pool_t *pool, const Server &serv, const Callback<void(const storage::Adapter &)> &cb) {
+	apr::pool::perform([&] {
+		if (auto dbd = dbdOpen(pool, serv.server())) {
+			pg::Handle h(pool, dbd);
+			storage::Adapter storage(&h);
+
+			cb(storage);
+
+			dbdClose(serv.server(), dbd);
+		}
+	}, pool);
 }
 
 bool Root::isDebugEnabled() const {

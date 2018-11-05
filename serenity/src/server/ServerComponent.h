@@ -24,7 +24,6 @@ THE SOFTWARE.
 #define SERENITY_SRC_SERVER_SERVERCOMPONENT_H_
 
 #include "Server.h"
-#include "AccessControl.h"
 
 NS_SA_BEGIN
 
@@ -44,7 +43,8 @@ public:
 	virtual ~ServerComponent() { }
 
 	virtual void onChildInit(Server &);
-	virtual void onStorageInit(Server &, storage::Adapter *);
+	virtual void onStorageInit(Server &, const storage::Adapter &);
+	virtual void onStorageTransaction(storage::Transaction &);
 
 	const data::Value & getConfig() const { return _config; }
 	const String & getName() const { return _name; }

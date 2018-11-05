@@ -113,6 +113,9 @@ Time Time::milliseconds(uint64_t msec) {
 Time Time::seconds(time_t sec) {
 	return Time(sec * 1000000ULL);
 }
+Time Time::floatSeconds(float sec) {
+	return Time(uint64_t(sec * 1000000.0f));
+}
 
 Time::Time(nullptr_t) : TimeStorage(0) { }
 Time & Time::operator= (nullptr_t) {

@@ -23,8 +23,8 @@ THE SOFTWARE.
 #ifndef SAOUTPUTFILTER_H
 #define	SAOUTPUTFILTER_H
 
+#include "../../../common/string/SPStringView.h"
 #include "Request.h"
-#include "SPCharReader.h"
 
 NS_SA_BEGIN
 

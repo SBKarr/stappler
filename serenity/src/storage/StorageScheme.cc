@@ -25,6 +25,8 @@ THE SOFTWARE.
 #include "StorageObject.h"
 #include "StorageFile.h"
 #include "StorageAdapter.h"
+#include "StorageWorker.h"
+#include "StorageTransaction.h"
 
 NS_SA_EXT_BEGIN(storage)
 
@@ -36,6 +38,13 @@ bool Scheme::initSchemes(Server &serv, const Map<String, const Scheme *> &scheme
 				auto slot = static_cast<const FieldView *>(fit.second.getSlot());
 				if (slot->scheme) {
 					const_cast<Scheme *>(slot->scheme)->addView(it.second, &fit.second);
+				}
+			} else if (fit.second.getType() == Type::FullTextView) {
+				auto slot = static_cast<const FieldFullTextView *>(fit.second.getSlot());
+				for (auto &req_it : slot->requires) {
+					if (auto f = it.second->getField(req_it)) {
+						const_cast<Scheme *>(it.second)->fullTextFields.emplace(f);
+					}
 				}
 			}
 			if (fit.second.hasFlag(Flags::Composed) && (fit.second.getType() == Type::Object || fit.second.getType() == Type::Set)) {
@@ -49,12 +58,16 @@ bool Scheme::initSchemes(Server &serv, const Map<String, const Scheme *> &scheme
 	return true;
 }
 
-Scheme::Scheme(const String &ns, bool delta) : name(ns), delta(delta) { }
+Scheme::Scheme(const String &ns, bool delta) : name(ns), delta(delta) {
+	for (size_t i = 0; i < roles.size(); ++ i) {
+		roles[i] = nullptr;
+	}
+}
 
 Scheme::Scheme(const String &name, std::initializer_list<Field> il, bool delta) :  Scheme(name, delta) {
 	for (auto &it : il) {
-		auto &fname = it.getName();
-		fields.emplace(fname, std::move(const_cast<Field &>(it)));
+		auto fname = it.getName();
+		fields.emplace(fname.str(), std::move(const_cast<Field &>(it)));
 	}
 
 	updateLimits();
@@ -70,7 +83,7 @@ bool Scheme::hasDelta() const {
 
 void Scheme::define(std::initializer_list<Field> il) {
 	for (auto &it : il) {
-		auto &fname = it.getName();
+		auto fname = it.getName();
 		if (it.getType() == Type::Image) {
 			auto image = static_cast<const FieldImage *>(it.getSlot());
 			auto &thumbnails = image->thumbnails;
@@ -79,7 +92,7 @@ void Scheme::define(std::initializer_list<Field> il) {
 				((FieldImage *)(new_f->second.getSlot()))->primary = false;
 			}
 		}
-		fields.emplace(fname, std::move(const_cast<Field &>(it)));
+		fields.emplace(fname.str(), std::move(const_cast<Field &>(it)));
 	}
 
 	updateLimits();
@@ -87,7 +100,7 @@ void Scheme::define(std::initializer_list<Field> il) {
 
 void Scheme::define(Vector<Field> &&il) {
 	for (auto &it : il) {
-		auto &fname = it.getName();
+		auto fname = it.getName();
 		if (it.getType() == Type::Image) {
 			auto image = static_cast<const FieldImage *>(it.getSlot());
 			auto &thumbnails = image->thumbnails;
@@ -96,7 +109,7 @@ void Scheme::define(Vector<Field> &&il) {
 				((FieldImage *)(new_f->second.getSlot()))->primary = false;
 			}
 		}
-		fields.emplace(fname, std::move(const_cast<Field &>(it)));
+		fields.emplace(fname.str(), std::move(const_cast<Field &>(it)));
 	}
 
 	updateLimits();
@@ -108,7 +121,7 @@ void Scheme::cloneFrom(Scheme *source) {
 	}
 }
 
-const String &Scheme::getName() const {
+StringView Scheme::getName() const {
 	return name;
 }
 bool Scheme::hasAliases() const {
@@ -194,8 +207,10 @@ bool Scheme::isAtomicPatch(const data::Value &val) const {
 	if (val.isDictionary()) {
 		for (auto &it : val.asDict()) {
 			auto f = getField(it.first);
-			// extra field should use select-update
-			if (f && (f->getType() == Type::Extra || forceInclude.find(f) != forceInclude.end())) {
+
+			if (f && (f->getType() == Type::Extra // extra field should use select-update
+					|| forceInclude.find(f) != forceInclude.end() // force-includes used to update views, so, we need select-update
+					|| fullTextFields.find(f) != fullTextFields.end())) { // for full-text views update
 				return false;
 			}
 		}
@@ -226,8 +241,23 @@ Vector<const Field *> Scheme::getPatchFields(const data::Value &patch) const {
 	return ret;
 }
 
-bool Scheme::saveObject(Adapter *adapter, Object *obj) const {
-	return adapter->saveObject(*this, obj->getObjectId(), obj->_data, Vector<String>());
+const Scheme::AccessTable &Scheme::getAccessTable() const {
+	return roles;
+}
+
+const AccessRole *Scheme::getAccessRole(AccessRoleId id) const {
+	return roles[toInt(id)];
+}
+
+void Scheme::setAccessRole(AccessRoleId id, AccessRole &&r) {
+	if (toInt(id) < toInt(AccessRoleId::Max)) {
+		roles[toInt(id)] = new AccessRole(move(r));
+	}
+}
+
+bool Scheme::save(const Transaction &t, Object *obj) const {
+	Worker w(*this, t);
+	return t.save(w, obj->getObjectId(), obj->_data, Vector<String>());
 }
 
 bool Scheme::hasFiles() const {
@@ -239,140 +269,7 @@ bool Scheme::hasFiles() const {
 	return false;
 }
 
-static void prepareGetQuery(Query &query, uint64_t oid, bool forUpdate) {
-	query.select(oid);
-	if (forUpdate) {
-		query.forUpdate();
-	}
-}
-
-static void prepareGetQuery(Query &query, const String &alias, bool forUpdate) {
-	query.select(alias);
-	if (forUpdate) {
-		query.forUpdate();
-	}
-}
-
-static data::Value reduceGetQuery(data::Value &&ret) {
-	if (ret.isArray() && ret.size() >= 1) {
-		return ret.getValue(0);
-	}
-	return data::Value();
-}
-
-data::Value Scheme::get(Adapter *adapter, uint64_t oid, bool forUpdate) const {
-	Query query;
-	prepareGetQuery(query, oid, forUpdate);
-	return reduceGetQuery(adapter->selectObjects(*this, query));
-}
-
-data::Value Scheme::get(Adapter *adapter, const String &alias, bool forUpdate) const {
-	if (!hasAliases()) {
-		return data::Value();
-	}
-
-	Query query;
-	prepareGetQuery(query, alias, forUpdate);
-	return reduceGetQuery(adapter->selectObjects(*this, query));
-}
-
-data::Value Scheme::get(Adapter *adapter, const data::Value &id, bool forUpdate) const {
-	if (id.isDictionary()) {
-		if (auto oid = id.getInteger("__oid")) {
-			return get(adapter, oid, forUpdate);
-		}
-	} else {
-		if ((id.isString() && valid::validateNumber(id.getString())) || id.isInteger()) {
-			if (auto oid = id.getInteger()) {
-				return get(adapter, oid, forUpdate);
-			}
-		}
-
-		auto &str = id.getString();
-		if (!str.empty()) {
-			return get(adapter, str, forUpdate);
-		}
-	}
-	return data::Value();
-}
-
-data::Value Scheme::get(Adapter *adapter, uint64_t oid, std::initializer_list<StringView> &&fields, bool forUpdate) const {
-	Query query;
-	prepareGetQuery(query, oid, forUpdate);
-	for (auto &it : fields) {
-		if (auto f = getField(it)) {
-			query.include(String(f->getName()));
-		}
-	}
-	return reduceGetQuery(adapter->selectObjects(*this, query));
-}
-data::Value Scheme::get(Adapter *adapter, const String &alias, std::initializer_list<StringView> &&fields, bool forUpdate) const {
-	Query query;
-	prepareGetQuery(query, alias, forUpdate);
-	for (auto &it : fields) {
-		if (auto f = getField(it)) {
-			query.include(String(f->getName()));
-		}
-	}
-	return reduceGetQuery(adapter->selectObjects(*this, query));
-}
-data::Value Scheme::get(Adapter *adapter, const data::Value &id, std::initializer_list<StringView> &&fields, bool forUpdate) const {
-	if (id.isDictionary()) {
-		if (auto oid = id.getInteger("__oid")) {
-			return get(adapter, oid, move(fields), forUpdate);
-		}
-	} else {
-		if ((id.isString() && valid::validateNumber(id.getString())) || id.isInteger()) {
-			if (auto oid = id.getInteger()) {
-				return get(adapter, oid, move(fields), forUpdate);
-			}
-		}
-
-		auto &str = id.getString();
-		if (!str.empty()) {
-			return get(adapter, str, move(fields), forUpdate);
-		}
-	}
-	return data::Value();
-}
-
-data::Value Scheme::get(Adapter *adapter, uint64_t oid, std::initializer_list<const Field *> &&fields, bool forUpdate) const {
-	Query query;
-	prepareGetQuery(query, oid, forUpdate);
-	for (auto &it : fields) {
-		query.include(String(it->getName()));
-	}
-	return reduceGetQuery(adapter->selectObjects(*this, query));
-}
-data::Value Scheme::get(Adapter *adapter, const String &alias, std::initializer_list<const Field *> &&fields, bool forUpdate) const {
-	Query query;
-	prepareGetQuery(query, alias, forUpdate);
-	for (auto &it : fields) {
-		query.include(String(it->getName()));
-	}
-	return reduceGetQuery(adapter->selectObjects(*this, query));
-}
-data::Value Scheme::get(Adapter *adapter, const data::Value &id, std::initializer_list<const Field *> &&fields, bool forUpdate) const {
-	if (id.isDictionary()) {
-		if (auto oid = id.getInteger("__oid")) {
-			return get(adapter, oid, move(fields), forUpdate);
-		}
-	} else {
-		if ((id.isString() && valid::validateNumber(id.getString())) || id.isInteger()) {
-			if (auto oid = id.getInteger()) {
-				return get(adapter, oid, move(fields), forUpdate);
-			}
-		}
-
-		auto &str = id.getString();
-		if (!str.empty()) {
-			return get(adapter, str, move(fields), forUpdate);
-		}
-	}
-	return data::Value();
-}
-
-data::Value Scheme::create(Adapter *adapter, const data::Value &data, bool isProtected) const {
+data::Value Scheme::createWithWorker(Worker &w, const data::Value &data, bool isProtected) const {
 	if (!data.isDictionary()) {
 		messages::error("Storage", "Invalid data for object");
 		return data::Value();
@@ -380,6 +277,8 @@ data::Value Scheme::create(Adapter *adapter, const data::Value &data, bool isPro
 
 	data::Value changeSet = data;
 	transform(changeSet, isProtected?TransformAction::ProtectedCreate:TransformAction::Create);
+
+	processFullTextFields(changeSet);
 
 	bool stop = false;
 	for (auto &it : fields) {
@@ -395,34 +294,36 @@ data::Value Scheme::create(Adapter *adapter, const data::Value &data, bool isPro
 		return data::Value();
 	}
 
-	if (adapter->performInTransaction([&] () -> bool {
-		data::Value patch(createFilePatch(adapter, data));
+	data::Value retVal;
+	if (w.perform([&] (const Transaction &t) -> bool {
+		data::Value patch(createFilePatch(t, data));
 		if (patch.isDictionary()) {
 			for (auto &it : patch.asDict()) {
 				changeSet.setValue(it.second, it.first);
 			}
 		}
 
-		if (adapter->createObject(*this, changeSet)) {
-			touchParents(adapter, changeSet);
+		if (auto ret = t.create(w, changeSet)) {
+			touchParents(t, changeSet);
 			for (auto &it : views) {
-				updateView(adapter, changeSet, it);
+				updateView(t, changeSet, it);
 			}
+			retVal = move(ret);
 			return true;
 		} else {
 			if (patch.isDictionary()) {
-				purgeFilePatch(adapter, patch);
+				purgeFilePatch(t, patch);
 			}
 		}
 		return false;
 	})) {
-		return changeSet;
+		return retVal;
 	}
 
 	return data::Value();
 }
 
-data::Value Scheme::update(Adapter *adapter, uint64_t oid, const data::Value &data, bool isProtected) const {
+data::Value Scheme::updateWithWorker(Worker &w, uint64_t oid, const data::Value &data, bool isProtected) const {
 	bool success = false;
 	data::Value changeSet;
 
@@ -432,8 +333,8 @@ data::Value Scheme::update(Adapter *adapter, uint64_t oid, const data::Value &da
 	}
 
 	data::Value ret;
-	adapter->performInTransaction([&] () -> bool {
-		data::Value filePatch(createFilePatch(adapter, data));
+	w.perform([&] (const Transaction &t) -> bool {
+		data::Value filePatch(createFilePatch(t, data));
 		if (filePatch.isDictionary()) {
 			for (auto &it : filePatch.asDict()) {
 				changeSet.setValue(it.second, it.first);
@@ -445,10 +346,10 @@ data::Value Scheme::update(Adapter *adapter, uint64_t oid, const data::Value &da
 			return false;
 		}
 
-		ret = patchOrUpdate(adapter, oid, changeSet);
+		ret = patchOrUpdate(w, oid, changeSet);
 		if (ret.isNull()) {
 			if (filePatch.isDictionary()) {
-				purgeFilePatch(adapter, filePatch);
+				purgeFilePatch(t, filePatch);
 			}
 			messages::error("Storage", "Fail to update object for id", data::Value{ std::make_pair("oid", data::Value((int64_t)oid)) });
 			return false;
@@ -459,7 +360,7 @@ data::Value Scheme::update(Adapter *adapter, uint64_t oid, const data::Value &da
 	return ret;
 }
 
-data::Value Scheme::update(Adapter *adapter, const data::Value & obj, const data::Value &data, bool isProtected) const {
+data::Value Scheme::updateWithWorker(Worker &w, const data::Value & obj, const data::Value &data, bool isProtected) const {
 	uint64_t oid = obj.getInteger("__oid");
 	if (!oid) {
 		messages::error("Storage", "Invalid data for object");
@@ -475,8 +376,8 @@ data::Value Scheme::update(Adapter *adapter, const data::Value & obj, const data
 	}
 
 	data::Value ret;
-	adapter->performInTransaction([&] () -> bool {
-		data::Value filePatch(createFilePatch(adapter, data));
+	w.perform([&] (const Transaction &t) -> bool {
+		data::Value filePatch(createFilePatch(t, data));
 		if (filePatch.isDictionary()) {
 			for (auto &it : filePatch.asDict()) {
 				changeSet.setValue(it.second, it.first);
@@ -488,10 +389,10 @@ data::Value Scheme::update(Adapter *adapter, const data::Value & obj, const data
 			return false;
 		}
 
-		ret = patchOrUpdate(adapter, obj, changeSet);
+		ret = patchOrUpdate(w, obj, changeSet);
 		if (ret.isNull()) {
 			if (filePatch.isDictionary()) {
-				purgeFilePatch(adapter, filePatch);
+				purgeFilePatch(t, filePatch);
 			}
 			messages::error("Storage", "No object for id", data::Value{ std::make_pair("oid", data::Value((int64_t)oid)) });
 			return false;
@@ -554,17 +455,17 @@ Pair<bool, data::Value> Scheme::prepareUpdate(const data::Value &data, bool isPr
 	return pair(true, changeSet);
 }
 
-void Scheme::touchParents(Adapter *adapter, const data::Value &obj) const {
+void Scheme::touchParents(const Transaction &t, const data::Value &obj) const {
 	if (!parents.empty()) {
 		Map<int64_t, const Scheme *> parentsToUpdate;
-		extractParents(parentsToUpdate, adapter, obj);
+		extractParents(parentsToUpdate, t, obj, false);
 		for (auto &it : parentsToUpdate) {
-			it.second->touch(adapter, it.first);
+			Worker(*it.second, t).touch(it.first);
 		}
 	}
 }
 
-void Scheme::extractParents(Map<int64_t, const Scheme *> &parentsToUpdate, Adapter *adapter, const data::Value &obj, bool isChangeSet) const {
+void Scheme::extractParents(Map<int64_t, const Scheme *> &parentsToUpdate, const Transaction &t, const data::Value &obj, bool isChangeSet) const {
 	auto id = obj.getInteger("__oid");
 	for (auto &it : parents) {
 		if (it->backReference) {
@@ -572,7 +473,7 @@ void Scheme::extractParents(Map<int64_t, const Scheme *> &parentsToUpdate, Adapt
 				parentsToUpdate.emplace(value, it->scheme);
 			}
 		} else if (!isChangeSet && id) {
-			auto vec = adapter->getReferenceParents(*this, id, it->scheme, it->pointerField);
+			auto vec = t.getAdapter().getReferenceParents(*this, id, it->scheme, it->pointerField);
 			for (auto &value : vec) {
 				parentsToUpdate.emplace(value, it->scheme);
 			}
@@ -580,15 +481,15 @@ void Scheme::extractParents(Map<int64_t, const Scheme *> &parentsToUpdate, Adapt
 	}
 }
 
-data::Value Scheme::updateObject(Adapter *adapter, data::Value && obj, data::Value &changeSet) const {
+data::Value Scheme::updateObject(Worker &w, data::Value && obj, data::Value &changeSet) const {
 	Vector<const ViewScheme *> viewsToUpdate; viewsToUpdate.reserve(views.size());
 	Map<int64_t, const Scheme *> parentsToUpdate;
 
 	data::Value replacements;
 
 	if (!parents.empty()) {
-		extractParents(parentsToUpdate, adapter, obj);
-		extractParents(parentsToUpdate, adapter, changeSet, true);
+		extractParents(parentsToUpdate, w.transaction(), obj);
+		extractParents(parentsToUpdate, w.transaction(), changeSet, true);
 	}
 
 	// apply changeset
@@ -620,14 +521,15 @@ data::Value Scheme::updateObject(Adapter *adapter, data::Value && obj, data::Val
 		}
 	}
 
+	processFullTextFields(changeSet);
 	if (!viewsToUpdate.empty() || !parentsToUpdate.empty()) {
-		if (adapter->performInTransaction([&] {
-			if (adapter->saveObject(*this, obj.getInteger("__oid"), obj, updatedFields)) {
+		if (w.perform([&] (const Transaction &t) {
+			if (t.save(w, obj.getInteger("__oid"), obj, updatedFields)) {
 				for (auto &it : parentsToUpdate) {
-					it.second->touch(adapter, it.first);
+					Worker(*it.second, t).touch(it.first);
 				}
 				for (auto &it : viewsToUpdate) {
-					updateView(adapter, obj, it);
+					updateView(t, obj, it);
 				}
 				return true;
 			}
@@ -635,288 +537,208 @@ data::Value Scheme::updateObject(Adapter *adapter, data::Value && obj, data::Val
 		})) {
 			return obj;
 		}
-	} else if (adapter->saveObject(*this, obj.getInteger("__oid"), obj, updatedFields)) {
+	} else if (w.transaction().save(w, obj.getInteger("__oid"), obj, updatedFields)) {
 		return obj;
 	}
 
 	return data::Value();
 }
 
-void Scheme::touch(Adapter *adapter, uint64_t id) const {
+void Scheme::touchWithWorker(Worker &w, uint64_t id) const {
 	data::Value patch;
 	transform(patch, TransformAction::Touch);
-	patchOrUpdate(adapter, id, patch, EmptyFieldList());
+	w.includeNone();
+	patchOrUpdate(w, id, patch);
 }
 
-void Scheme::touch(Adapter *adapter, const data::Value & obj) const {
+void Scheme::touchWithWorker(Worker &w, const data::Value & obj) const {
 	data::Value patch;
 	transform(patch, TransformAction::Touch);
-	patchOrUpdate(adapter, obj, patch, EmptyFieldList());
+	w.includeNone();
+	patchOrUpdate(w, obj, patch);
 }
 
-data::Value Scheme::patchOrUpdate(Adapter *adapter, uint64_t id, data::Value & patch, const FieldVec &fields) const {
-	if (!patch.empty()) {
-		if (isAtomicPatch(patch)) {
-			if (auto ret = adapter->patchObject(*this, id, patch, fields)) {
-				touchParents(adapter, ret);
-				return ret;
-			}
-		} else {
-			if (auto obj = get(adapter, id, true)) {
-				return updateObject(adapter, std::move(obj), patch);
-			}
+data::Value Scheme::fieldWithWorker(Action a, Worker &w, uint64_t oid, const Field &f, data::Value &&patch) const {
+	switch (a) {
+	case Action::Get: return w.transaction().field(a, w, oid, f, move(patch)); break;
+	case Action::Set:
+		if (f.transform(*this, patch)) {
+			data::Value ret;
+			w.perform([&] (const Transaction &t) -> bool {
+				ret = t.field(a, w, oid, f, move(patch));
+				return !ret.isNull();
+			});
+			return ret;
 		}
+		break;
+	case Action::Remove:
+		return data::Value(w.perform([&] (const Transaction &t) -> bool {
+			return t.field(a, w, oid, f, move(patch)).asBool();
+		}));
+		break;
+	case Action::Append:
+		if (f.transform(*this, patch)) {
+			data::Value ret;
+			w.perform([&] (const Transaction &t) -> bool {
+				ret = t.field(a, w, oid, f, move(patch));
+				return !ret.isNull();
+			});
+			return ret;
+		}
+		break;
 	}
 	return data::Value();
 }
 
-data::Value Scheme::patchOrUpdate(Adapter *adapter, const data::Value & obj, data::Value & patch, const FieldVec &fields) const {
-	if (!patch.empty()) {
-		if (isAtomicPatch(patch)) {
-			if (auto ret = adapter->patchObject(*this, obj.getInteger("__oid"), patch, fields)) {
-				touchParents(adapter, ret);
-				return ret;
-			}
-		} else {
-			return updateObject(adapter, data::Value(obj), patch);
+data::Value Scheme::fieldWithWorker(Action a, Worker &w, const data::Value &obj, const Field &f, data::Value &&patch) const {
+	switch (a) {
+	case Action::Get: return w.transaction().field(a, w, obj, f, move(patch)); break;
+	case Action::Set:
+		if (f.transform(*this, patch)) {
+			data::Value ret;
+			w.perform([&] (const Transaction &t) -> bool {
+				ret = t.field(a, w, obj, f, std::move(patch));
+				return !ret.isNull();
+			});
+			return ret;
 		}
+		break;
+	case Action::Remove:
+		return data::Value(w.perform([&] (const Transaction &t) -> bool {
+			return t.field(a, w, obj, f, move(patch)).asBool();
+		}));
+		break;
+	case Action::Append:
+		if (f.transform(*this, patch)) {
+			data::Value ret;
+			w.perform([&] (const Transaction &t) -> bool {
+				ret = t.field(a, w, obj, f, move(patch));
+				return !ret.isNull();
+			});
+			return ret;
+		}
+		break;
 	}
 	return data::Value();
 }
 
-bool Scheme::remove(Adapter *adapter, uint64_t oid) const {
+data::Value Scheme::setFileWithWorker(Worker &w, uint64_t oid, const Field &f, InputFile &file) const {
+	data::Value ret;
+	w.perform([&] (const Transaction &t) -> bool {
+		data::Value patch;
+		transform(patch, TransformAction::Update);
+		auto d = createFile(t, f, file);
+		if (d.isInteger()) {
+			patch.setValue(d, f.getName().str());
+		} else {
+			patch.setValue(std::move(d));
+		}
+		if (patchOrUpdate(w, oid, patch)) {
+			// resolve files
+			ret = File::getData(t, patch.getInteger(f.getName()));
+			return true;
+		} else {
+			purgeFilePatch(t, patch);
+			return false;
+		}
+	});
+	return ret;
+}
+
+data::Value Scheme::patchOrUpdate(Worker &w, uint64_t id, data::Value & patch) const {
+	if (!patch.empty()) {
+		data::Value ret;
+		w.perform([&] (const Transaction &t) {
+			if (isAtomicPatch(patch)) {
+				ret = w.transaction().patch(w, id, patch);
+				if (ret) {
+					touchParents(t, ret);
+					return true;
+				}
+			} else {
+				if (auto obj = makeObjectForPatch(t, id, data::Value(), patch)) {
+					if ((ret = updateObject(w, std::move(obj), patch))) {
+						return true;
+					}
+				}
+			}
+			return false;
+		});
+		return ret;
+	}
+	return data::Value();
+}
+
+data::Value Scheme::patchOrUpdate(Worker &w, const data::Value & obj, data::Value & patch) const {
+	auto isObjectValid = [&] (const data::Value &obj) -> bool {
+		for (auto &it : patch.asDict()) {
+			if (!obj.hasValue(it.first)) {
+				return false;
+			}
+		}
+		for (auto &it : forceInclude) {
+			if (!obj.hasValue(it->getName())) {
+				return false;
+			}
+		}
+		return true;
+	};
+
+	if (!patch.empty()) {
+		data::Value ret;
+		w.perform([&] (const Transaction &t) {
+			if (isAtomicPatch(patch)) {
+				ret = t.patch(w, obj.getInteger("__oid"), patch);
+				if (ret) {
+					touchParents(t, ret);
+					return true;
+				}
+			} else {
+				auto id =  obj.getInteger("__oid");
+				if (isObjectValid(obj)) {
+					if ((ret = updateObject(w, data::Value(obj), patch))) {
+						return true;
+					}
+				} else if (auto patchObj = makeObjectForPatch(t, id, obj, patch)) {
+					if ((ret = updateObject(w, std::move(patchObj), patch))) {
+						return true;
+					}
+				}
+			}
+			return false;
+		});
+		return ret;
+	}
+	return data::Value();
+}
+
+bool Scheme::removeWithWorker(Worker &w, uint64_t oid) const {
 	if (!parents.empty()) {
-		return adapter->performInTransaction([&] {
+		return w.perform([&] (const Transaction &t) {
 			Query query;
 			prepareGetQuery(query, oid, true);
 			for (auto &it : parents) {
 				if (it->backReference) {
-					query.include(String(it->backReference->getName()));
+					query.include(it->backReference->getName());
 				}
 			}
-			auto obj = reduceGetQuery(adapter->selectObjects(*this, query));
-			touchParents(adapter, obj);
-			return adapter->removeObject(*this, oid);
+			if (auto &obj = t.setObject(int64_t(oid), reduceGetQuery(Worker(*this, t).select(query)))) {
+				touchParents(t, obj); // if transaction fails - all changes will be rolled back
+				return t.remove(w, oid);
+			}
+			return false;
 		});
 	} else {
-		return adapter->removeObject(*this, oid);
+		return w.transaction().remove(w, oid);
 	}
 }
 
-data::Value Scheme::select(Adapter *a, const Query &q) const {
-	return a->selectObjects(*this, q);
+data::Value Scheme::selectWithWorker(Worker &w, const Query &q) const {
+	return w.transaction().select(w, q);
 }
 
-size_t Scheme::count(Adapter *a) const {
-	return a->countObjects(*this, Query());
-}
-size_t Scheme::count(Adapter *a, const Query &q) const {
-	return a->countObjects(*this, q);
-}
-
-data::Value Scheme::getProperty(Adapter *a, uint64_t oid, const StringView &s, std::initializer_list<StringView> fields) const {
-	auto f = getField(s);
-	if (f) {
-		return getProperty(a, oid, *f, getFieldSet(*f, fields));
-	}
-	return data::Value();
-}
-data::Value Scheme::getProperty(Adapter *a, const data::Value &obj, const StringView &s, std::initializer_list<StringView> fields) const {
-	auto f = getField(s);
-	if (f) {
-		return getProperty(a, obj, *f, getFieldSet(*f, fields));
-	}
-	return data::Value();
-}
-
-data::Value Scheme::getProperty(Adapter *a, uint64_t oid, const StringView &s, const Set<const Field *> &fields) const {
-	auto f = getField(s);
-	if (f) {
-		return getProperty(a, oid, *f, fields);
-	}
-	return data::Value();
-}
-data::Value Scheme::getProperty(Adapter *a, const data::Value &obj, const StringView &s, const Set<const Field *> &fields) const {
-	auto f = getField(s);
-	if (f) {
-		return getProperty(a, obj, *f, fields);
-	}
-	return data::Value();
-}
-
-data::Value Scheme::setProperty(Adapter *a, uint64_t oid, const StringView &s, data::Value &&v) const {
-	auto f = getField(s);
-	if (f) {
-		return setProperty(a, oid, *f, std::move(v));
-	}
-	return data::Value();
-}
-data::Value Scheme::setProperty(Adapter *a, const data::Value &obj, const StringView &s, data::Value &&v) const {
-	auto f = getField(s);
-	if (f) {
-		return setProperty(a, obj, *f, std::move(v));
-	}
-	return data::Value();
-}
-data::Value Scheme::setProperty(Adapter *a, uint64_t oid, const StringView &s, InputFile &file) const {
-	auto f = getField(s);
-	if (f) {
-		return setProperty(a, oid, *f, file);
-	}
-	return data::Value();
-}
-data::Value Scheme::setProperty(Adapter *a, const data::Value &obj, const StringView &s, InputFile &file) const {
-	return setProperty(a, obj.getInteger(s), s, file);
-}
-
-bool Scheme::clearProperty(Adapter *a, uint64_t oid, const StringView &s, data::Value && objs) const {
-	if (auto f = getField(s)) {
-		return clearProperty(a, oid, *f, move(objs));
-	}
-	return false;
-}
-bool Scheme::clearProperty(Adapter *a, const data::Value &obj, const StringView &s, data::Value && objs) const {
-	if (auto f = getField(s)) {
-		return clearProperty(a, obj, *f, move(objs));
-	}
-	return false;
-}
-
-data::Value Scheme::appendProperty(Adapter *a, uint64_t oid, const StringView &s, data::Value &&v) const {
-	auto f = getField(s);
-	if (f) {
-		return appendProperty(a, oid, *f, std::move(v));
-	}
-	return data::Value();
-}
-data::Value Scheme::appendProperty(Adapter *a, const data::Value &obj, const StringView &s, data::Value &&v) const {
-	auto f = getField(s);
-	if (f) {
-		return appendProperty(a, obj, *f, std::move(v));
-	}
-	return data::Value();
-}
-
-data::Value Scheme::getProperty(Adapter *a, uint64_t oid, const Field &f, std::initializer_list<StringView> fields) const {
-	return getProperty(a, oid, f, getFieldSet(f, fields));
-}
-data::Value Scheme::getProperty(Adapter *a, const data::Value &obj, const Field &f, std::initializer_list<StringView> fields) const {
-	return getProperty(a, obj, f, getFieldSet(f, fields));
-}
-
-data::Value Scheme::getProperty(Adapter *a, uint64_t oid, const Field &f, const Set<const Field *> &fields) const {
-	return a->getProperty(*this, oid, f, fields);
-}
-data::Value Scheme::getProperty(Adapter *a, const data::Value &obj, const Field &f, const Set<const Field *> &fields) const {
-	if (f.isSimpleLayout()) {
-		return obj.getValue(f.getName());
-	} else if (f.isFile() && fields.empty()) {
-		return File::getData(a, obj.isInteger() ? obj.asInteger() : obj.getInteger(f.getName()));
-	}
-	return a->getProperty(*this, obj, f, fields);
-}
-
-data::Value Scheme::setProperty(Adapter *a, uint64_t oid, const Field &f, data::Value &&v) const {
-	if (v.isNull()) {
-		clearProperty(a, oid, f);
-		return data::Value();
-	}
-	if (f.transform(*this, v)) {
-		data::Value ret;
-		a->performInTransaction([&] () -> bool {
-			ret = a->setProperty(*this, oid, f, std::move(v));
-			return !ret.isNull();
-		});
-		return ret;
-	}
-	return data::Value();
-}
-data::Value Scheme::setProperty(Adapter *a, const data::Value &obj, const Field &f, data::Value &&v) const {
-	if (v.isNull()) {
-		clearProperty(a, obj, f);
-		return data::Value();
-	}
-	if (f.transform(*this, v)) {
-		data::Value ret;
-		a->performInTransaction([&] () -> bool {
-			ret = a->setProperty(*this, obj, f, std::move(v));
-			return !ret.isNull();
-		});
-		return ret;
-	}
-	return data::Value();
-}
-data::Value Scheme::setProperty(Adapter *a, uint64_t oid, const Field &f, InputFile &file) const {
-	if (f.isFile()) {
-		data::Value ret;
-		a->performInTransaction([&] () -> bool {
-			data::Value patch;
-			transform(patch, TransformAction::Update);
-			auto d = createFile(a, f, file);
-			if (d.isInteger()) {
-				patch.setValue(d, f.getName());
-			} else {
-				patch.setValue(std::move(d));
-			}
-			if (patchOrUpdate(a, oid, patch)) {
-				// resolve files
-				ret = File::getData(a, patch.getInteger(f.getName()));
-				return true;
-			} else {
-				purgeFilePatch(a, patch);
-				return false;
-			}
-		});
-		return ret;
-	}
-	return data::Value();
-}
-data::Value Scheme::setProperty(Adapter *a, const data::Value &obj, const Field &f, InputFile &file) const {
-	return setProperty(a, obj.getInteger("__oid"), f, file);
-}
-
-bool Scheme::clearProperty(Adapter *a, uint64_t oid, const Field &f, data::Value &&objs) const {
-	if (!f.hasFlag(Flags::Required)) {
-		return a->performInTransaction([&] () -> bool {
-			return a->clearProperty(*this, oid, f, move(objs));
-		});
-	}
-	return false;
-}
-bool Scheme::clearProperty(Adapter *a, const data::Value &obj, const Field &f, data::Value &&objs) const {
-	if (!f.hasFlag(Flags::Required)) {
-		return a->performInTransaction([&] () -> bool {
-			return a->clearProperty(*this, obj, f, move(objs));
-		});
-	}
-	return false;
-}
-
-data::Value Scheme::appendProperty(Adapter *a, uint64_t oid, const Field &f, data::Value &&v) const {
-	if (f.getType() == Type::Array || (f.getType() == Type::Set && f.isReference())) {
-		if (f.transform(*this, v)) {
-			data::Value ret;
-			a->performInTransaction([&] () -> bool {
-				ret = a->appendProperty(*this, oid, f, std::move(v));
-				return !ret.isNull();
-			});
-			return ret;
-		}
-	}
-	return data::Value();
-}
-data::Value Scheme::appendProperty(Adapter *a, const data::Value &obj, const Field &f, data::Value &&v) const {
-	if (f.getType() == Type::Array || (f.getType() == Type::Set && f.isReference())) {
-		if (f.transform(*this, v)) {
-			data::Value ret;
-			a->performInTransaction([&] () -> bool {
-				ret = a->appendProperty(*this, obj, f, std::move(v));
-				return !ret.isNull();
-			});
-			return ret;
-		}
-	}
-	return data::Value();
+size_t Scheme::countWithWorker(Worker &w, const Query &q) const {
+	return w.transaction().count(w, q);
 }
 
 data::Value &Scheme::transform(data::Value &d, TransformAction a) const {
@@ -927,6 +749,8 @@ data::Value &Scheme::transform(data::Value &d, TransformAction a) const {
 		auto &fname = it->first;
 		auto f_it = fields.find(fname);
 		if (f_it == fields.end()
+				|| f_it->second.getType() == Type::FullTextView
+
 				// we can write into readonly field only in protected mode
 				|| (f_it->second.hasFlag(Flags::ReadOnly) && a != TransformAction::ProtectedCreate && a != TransformAction::ProtectedUpdate)
 
@@ -977,40 +801,135 @@ data::Value &Scheme::transform(data::Value &d, TransformAction a) const {
 	return d;
 }
 
-data::Value Scheme::createFile(Adapter *adapter, const Field &field, InputFile &file) const {
+data::Value Scheme::createFile(const Transaction &t, const Field &field, InputFile &file) const {
 	//check if content type is valid
+	if (field.getType() == Type::Image) {
+		if (file.type == "application/octet-stream" || file.type.empty()) {
+			file.type = Bitmap::getMimeType(Bitmap::detectFormat(file.file).first).str();
+		}
+	}
+
 	if (!File::validateFileField(field, file)) {
 		return data::Value();
 	}
 
 	if (field.getType() == Type::File) {
-		return File::createFile(adapter, field, file);
+		return File::createFile(t, field, file);
 	} else if (field.getType() == Type::Image) {
-		return File::createImage(adapter, field, file);
+		return File::createImage(t, field, file);
 	}
 	return data::Value();
 }
 
-data::Value Scheme::createFile(Adapter *adapter, const Field &field, const Bytes &data, const StringView &type) const {
+data::Value Scheme::createFile(const Transaction &t, const Field &field, const Bytes &data, const StringView &itype) const {
 	//check if content type is valid
+	String type(itype.str());
+	if (field.getType() == Type::Image) {
+		if (type == "application/octet-stream" || type.empty()) {
+			CoderSource source(data);
+			type = Bitmap::getMimeType(Bitmap::detectFormat(source).first).str();
+		}
+	}
+
 	if (!File::validateFileField(field, type, data)) {
 		return data::Value();
 	}
 
 	if (field.getType() == Type::File) {
-		return File::createFile(adapter, type, data);
+		return File::createFile(t, type, data);
 	} else if (field.getType() == Type::Image) {
-		return File::createImage(adapter, field, type, data);
+		return File::createImage(t, field, type, data);
 	}
 	return data::Value();
 }
 
-// call after object is created, used for custom field initialization
-data::Value Scheme::initField(Adapter *, Object *, const Field &, const data::Value &) {
-	return data::Value::Null;
+void Scheme::processFullTextFields(data::Value &patch) const {
+	Vector<const FieldFullTextView *> vec; vec.reserve(2);
+	for (auto &it : fields) {
+		if (it.second.getType() == Type::FullTextView) {
+			auto slot = it.second.getSlot<FieldFullTextView>();
+			for (auto &p_it : patch.asDict()) {
+				if (std::find(slot->requires.begin(), slot->requires.end(), p_it.first) != slot->requires.end()) {
+					if (std::find(vec.begin(), vec.end(), slot) == vec.end()) {
+						vec.emplace_back(slot);
+					}
+					break;
+				}
+			}
+		}
+	}
+
+	for (auto &it : vec) {
+		if (it->viewFn) {
+			auto result = it->viewFn(*this, patch);
+			if (!result.empty()) {
+				data::Value val;
+				for (auto &r_it : result) {
+					auto &value = val.emplace();
+					value.addString(r_it.buffer);
+					value.addInteger(toInt(r_it.language));
+					value.addInteger(toInt(r_it.rank));
+				}
+				patch.setValue(move(val), it->name);
+			}
+		}
+	}
 }
 
-data::Value Scheme::removeField(Adapter *adapter, data::Value &obj, const Field &f, const data::Value &value) {
+data::Value Scheme::makeObjectForPatch(const Transaction &t, uint64_t oid, const data::Value &obj, const data::Value &patch) const {
+	Set<const Field *> includeFields;
+
+	Query query;
+	prepareGetQuery(query, oid, true);
+
+	for (auto &it : patch.asDict()) {
+		if (auto f = getField(it.first)) {
+			if (!obj.hasValue(it.first)) {
+				includeFields.emplace(f);
+			}
+		}
+	}
+
+	for (auto &it : forceInclude) {
+		if (!obj.hasValue(it->getName())) {
+			includeFields.emplace(it);
+		}
+	}
+
+	for (auto &it : fields) {
+		if (it.second.getType() == Type::FullTextView) {
+			auto slot = it.second.getSlot<FieldFullTextView>();
+			for (auto &p_it : patch.asDict()) {
+				auto req_it = std::find(slot->requires.begin(), slot->requires.end(), p_it.first);
+				if (req_it != slot->requires.end()) {
+					for (auto &it : slot->requires) {
+						if (auto f = getField(it)) {
+							includeFields.emplace(f);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	for (auto &it : includeFields) {
+		query.include(Query::Field(it->getName()));
+	}
+
+	auto ret = reduceGetQuery(Worker(*this, t).select(query));
+	if (!obj) {
+		return ret;
+	} else {
+		for (auto &it : obj.asDict()) {
+			if (!ret.hasValue(it.first)) {
+				ret.setValue(it.second, it.first);
+			}
+		}
+		return ret;
+	}
+}
+
+data::Value Scheme::removeField(const Transaction &t, data::Value &obj, const Field &f, const data::Value &value) {
 	if (f.isFile()) {
 		auto scheme = Server(apr::pool::server()).getFileScheme();
 		int64_t id = 0;
@@ -1021,7 +940,7 @@ data::Value Scheme::removeField(Adapter *adapter, data::Value &obj, const Field 
 		}
 
 		if (id) {
-			if (adapter->removeObject(*scheme, id)) {
+			if (Worker(*scheme, t).remove(id)) {
 				return data::Value(id);
 			}
 		}
@@ -1029,9 +948,9 @@ data::Value Scheme::removeField(Adapter *adapter, data::Value &obj, const Field 
 	}
 	return data::Value(true);
 }
-void Scheme::finalizeField(Adapter *a, const Field &f, const data::Value &value) {
+void Scheme::finalizeField(const Transaction &t, const Field &f, const data::Value &value) {
 	if (f.isFile()) {
-		File::removeFile(a, f, value);
+		File::removeFile(value);
 	}
 }
 
@@ -1143,7 +1062,7 @@ bool Scheme::validateHint(const data::Value &hint) {
 	return false;
 }
 
-data::Value Scheme::createFilePatch(Adapter *adapter, const data::Value &val) const {
+data::Value Scheme::createFilePatch(const Transaction &t, const data::Value &val) const {
 	data::Value patch;
 	for (auto &it : val.asDict()) {
 		auto f = getField(it.first);
@@ -1151,9 +1070,9 @@ data::Value Scheme::createFilePatch(Adapter *adapter, const data::Value &val) co
 			if (it.second.isInteger() && it.second.getInteger() < 0) {
 				auto file = InputFilter::getFileFromContext(it.second.getInteger());
 				if (file && file->isOpen()) {
-					auto d = createFile(adapter, *f, *file);
+					auto d = createFile(t, *f, *file);
 					if (d.isInteger()) {
-						patch.setValue(d, f->getName());
+						patch.setValue(d, f->getName().str());
 					} else if (d.isDictionary()) {
 						for (auto & it : d.asDict()) {
 							patch.setValue(std::move(it.second), it.first);
@@ -1162,9 +1081,9 @@ data::Value Scheme::createFilePatch(Adapter *adapter, const data::Value &val) co
 				}
 			} else if (it.second.isDictionary()) {
 				if (it.second.isBytes("content") && it.second.isString("type")) {
-					auto d = createFile(adapter, *f, it.second.getBytes("content"), it.second.getString("type"));
+					auto d = createFile(t, *f, it.second.getBytes("content"), it.second.getString("type"));
 					if (d.isInteger()) {
-						patch.setValue(d, f->getName());
+						patch.setValue(d, f->getName().str());
 					} else if (d.isDictionary()) {
 						for (auto & it : d.asDict()) {
 							patch.setValue(std::move(it.second), it.first);
@@ -1177,10 +1096,10 @@ data::Value Scheme::createFilePatch(Adapter *adapter, const data::Value &val) co
 	return patch;
 }
 
-void Scheme::purgeFilePatch(Adapter *adapter, const data::Value &patch) const {
+void Scheme::purgeFilePatch(const Transaction &t, const data::Value &patch) const {
 	for (auto &it : patch.asDict()) {
-		if (auto f = getField(it.first)) {
-			File::purgeFile(adapter, *f, it.second);
+		if (getField(it.first)) {
+			File::purgeFile(t, it.second);
 		}
 	}
 }
@@ -1206,15 +1125,6 @@ void Scheme::initScheme() {
 			break;
 		}
 	}
-}
-
-Set<const Field *> Scheme::getFieldSet(const Field &f, std::initializer_list<StringView> il) const {
-	Set<const Field *> ret;
-	auto target = f.getForeignScheme();
-	for (auto &it : il) {
-		ret.emplace(target->getField(it));
-	}
-	return ret;
 }
 
 void Scheme::addView(const Scheme *s, const Field *f) {
@@ -1280,14 +1190,14 @@ void Scheme::addParent(const Scheme *s, const Field *f) {
 	}
 }
 
-void Scheme::updateView(Adapter *adapter, const data::Value & obj, const ViewScheme *scheme) const {
+void Scheme::updateView(const Transaction &t, const data::Value & obj, const ViewScheme *scheme) const {
 	auto view = static_cast<const FieldView *>(scheme->viewField->getSlot());
 	if (!view->viewFn) {
 		return;
 	}
 
 	auto objId = obj.getInteger("__oid");
-	adapter->removeFromView(*view, scheme->scheme, objId);
+	t.removeFromView(*scheme->scheme, *view, objId, obj);
 
 	Vector<uint64_t> ids; ids.reserve(1);
 	if (view->linkage) {
@@ -1355,7 +1265,7 @@ void Scheme::updateView(Adapter *adapter, const data::Value & obj, const ViewSch
 					it.setInteger(id, toString(scheme->scheme->getName(), "_id"));
 				}
 
-				adapter->addToView(*view, scheme->scheme, id, it);
+				t.addToView(*scheme->scheme, *view, id, obj, it);
 			}
 		}
 	}

@@ -104,6 +104,11 @@ inline void Query_writeComparation(Query<Binder> &q, StringStream &stream, const
 		stream << '"' << f.name << '"' << '>';
 		q.writeBind(forward<Value>(v2));
 		break;
+	case Comparation::Includes:
+		if (!f.source.empty()) { stream << f.source << "."; }
+		stream << '"' << f.name << '"' << "@@";
+		q.writeBind(forward<Value>(v1));
+		break;
 	}
 	stream << ")";
 }
@@ -165,7 +170,7 @@ auto Query<Binder>::WhereBegin::whereParentesis(const Callback &cb) -> WhereCont
 template <typename Binder>
 template <typename Clause>
 template <typename Value>
-auto Query<Binder>::SetClause<Clause>::set(const String &f, Value &&v) -> Clause & {
+auto Query<Binder>::SetClause<Clause>::set(const StringView &f, Value &&v) -> Clause & {
 	if (this->state == State::None) { this->state = State::Some; } else { this->query->stream << ","; }
 	this->query->stream << " \"" << f << "\"=";
 	this->query->writeBind(forward<Value>(v));
@@ -175,7 +180,7 @@ auto Query<Binder>::SetClause<Clause>::set(const String &f, Value &&v) -> Clause
 template <typename Binder>
 template <typename Clause>
 template <typename Value>
-auto Query<Binder>::SetClause<Clause>::set(const String &t, const String &f, Value && v) -> Clause & {
+auto Query<Binder>::SetClause<Clause>::set(const StringView &t, const StringView &f, Value && v) -> Clause & {
 	if (this->state == State::None) { this->state = State::Some; } else { this->query->stream << ","; }
 	this->query->stream << " " << t << ".\"" << f << "\"=";
 	this->query->writeBind(forward<Value>(v));
@@ -184,7 +189,7 @@ auto Query<Binder>::SetClause<Clause>::set(const String &t, const String &f, Val
 
 template <typename Binder>
 template <typename Clause>
-auto Query<Binder>::SetClause<Clause>::def(const String &f) -> Clause & {
+auto Query<Binder>::SetClause<Clause>::def(const StringView &f) -> Clause & {
 	if (this->state == State::None) { this->state = State::Some; } else { this->query->stream << ","; }
 	this->query->stream << " \"" << f << "\"=DEFAULT";
 	return (Clause &)*this;

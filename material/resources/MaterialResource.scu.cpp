@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "Material.h"
 #include "MaterialIconSprite.cc"
+#include "MaterialIconSources.cc"
 #include "MaterialIconStorage.cc"
 #include "MaterialLabel.cc"
 #include "MaterialMetrics.cc"

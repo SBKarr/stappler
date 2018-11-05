@@ -25,8 +25,8 @@ THE SOFTWARE.
 
 #include "SPCommon.h"
 #include "SPString.h"
-#include "SPCharReader.h"
 #include "SPUrl.h"
+#include "SPStringView.h"
 #include "SPUrlencodeParser.h"
 
 NS_SP_BEGIN

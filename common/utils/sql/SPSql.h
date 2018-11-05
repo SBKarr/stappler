@@ -39,6 +39,7 @@ enum class Comparation {
 	BetweenEquals, // be  field >= v1 AND field <= v2
 	NotBetweenValues, // nbw  field < v1 OR field > v2
 	NotBetweenEquals, // nbe  field <= v1 OR field >= v2
+	Includes // @@ - operation
 };
 
 enum class Ordering {
@@ -216,12 +217,12 @@ public:
 	template <typename Clause>
 	struct SetClause : QueryHandle {
 		template <typename Value>
-		auto set(const String &f, Value && v) -> Clause &;
+		auto set(const StringView &f, Value && v) -> Clause &;
 
 		template <typename Value>
-		auto set(const String &t, const String &f, Value && v) -> Clause &;
+		auto set(const StringView &t, const StringView &f, Value && v) -> Clause &;
 
-		auto def(const String &f) -> Clause &;
+		auto def(const StringView &f) -> Clause &;
 
 		using QueryHandle::QueryHandle;
 	};
@@ -238,7 +239,7 @@ public:
 
 	struct GenericQuery : QueryHandle {
 		template <typename Callback>
-		auto with(const String &alias, const Callback &) -> GenericQuery &;
+		auto with(const StringView &alias, const Callback &) -> GenericQuery &;
 
 		Select select(Distinct = Distinct::None);
 
@@ -248,14 +249,14 @@ public:
 		template <typename ... Args>
 		Select select(Distinct, const Field &, Args && ... args);
 
-		Insert insert(const String &);
-		Insert insert(const String &, const String &alias);
+		Insert insert(const StringView &);
+		Insert insert(const StringView &, const StringView &alias);
 
-		Update update(const String &);
-		Update update(const String &, const String &alias);
+		Update update(const StringView &);
+		Update update(const StringView &, const StringView &alias);
 
-		Delete remove(const String &);
-		Delete remove(const String &, const String &alias);
+		Delete remove(const StringView &);
+		Delete remove(const StringView &, const StringView &alias);
 
 		using QueryHandle::QueryHandle;
 	};
@@ -278,16 +279,16 @@ public:
 		auto from(const Field &field, Args && ... args) -> SelectFrom &;
 
 		template <typename Callback>
-		auto innerJoinOn(const String &s, const Callback &cb) -> SelectFrom &;
+		auto innerJoinOn(const StringView &s, const Callback &cb) -> SelectFrom &;
 
 		template <typename Callback>
-		auto leftJoinOn(const String &s, const Callback &cb) -> SelectFrom &;
+		auto leftJoinOn(const StringView &s, const Callback &cb) -> SelectFrom &;
 
 		template <typename Callback>
-		auto rightJoinOn(const String &s, const Callback &cb) -> SelectFrom &;
+		auto rightJoinOn(const StringView &s, const Callback &cb) -> SelectFrom &;
 
 		template <typename Callback>
-		auto fullJoinOn(const String &s, const Callback &cb) -> SelectFrom &;
+		auto fullJoinOn(const StringView &s, const Callback &cb) -> SelectFrom &;
 
 		template <typename ... Args>
 		auto where(Args && ... args) -> SelectWhere;
@@ -408,14 +409,14 @@ public:
 	struct Returning : FieldsClause<Returning> {
 		auto all() -> Returning &;
 		auto count() -> Returning &;
-		auto count(const String &alias) -> Returning &;
+		auto count(const StringView &alias) -> Returning &;
 		using FieldsClause<Returning>::FieldsClause;
 	};
 
 	Query() = default;
 
 	template <typename Callback>
-	GenericQuery with(const String &alias, const Callback &);
+	GenericQuery with(const StringView &alias, const Callback &);
 
 	Select select(Distinct = Distinct::None);
 
@@ -425,14 +426,14 @@ public:
 	template <typename ... Args>
 	Select select(Distinct, const Field &, Args && ... args);
 
-	Insert insert(const String &);
-	Insert insert(const String &, const String &alias);
+	Insert insert(const StringView &);
+	Insert insert(const StringView &, const StringView &alias);
 
-	Update update(const String &);
-	Update update(const String &, const String &alias);
+	Update update(const StringView &);
+	Update update(const StringView &, const StringView &alias);
 
-	Delete remove(const String &);
-	Delete remove(const String &, const String &alias);
+	Delete remove(const StringView &);
+	Delete remove(const StringView &, const StringView &alias);
 
 	void finalize();
 
@@ -546,7 +547,7 @@ void Query<Binder>::finalize() {
 
 template <typename Binder>
 template <typename Callback>
-auto Query<Binder>::with(const String &alias, const Callback &cb) -> GenericQuery {
+auto Query<Binder>::with(const StringView &alias, const Callback &cb) -> GenericQuery {
 	GenericQuery q(this);
 	q.with(alias, cb);
 	return q;
@@ -554,7 +555,7 @@ auto Query<Binder>::with(const String &alias, const Callback &cb) -> GenericQuer
 
 template <typename Binder>
 template <typename Callback>
-auto Query<Binder>::GenericQuery::with(const String &alias, const Callback &cb) -> GenericQuery & {
+auto Query<Binder>::GenericQuery::with(const StringView &alias, const Callback &cb) -> GenericQuery & {
 	switch (this->state) {
 	case State::None:
 		this->query->stream << "WITH ";
@@ -596,32 +597,32 @@ auto Query<Binder>::GenericQuery::select(Distinct d, const Field &f, Args && ...
 }
 
 template <typename Binder>
-auto Query<Binder>::GenericQuery::insert(const String & field) -> Insert {
+auto Query<Binder>::GenericQuery::insert(const StringView & field) -> Insert {
 	return this->query->insert(field);
 }
 
 template <typename Binder>
-auto Query<Binder>::GenericQuery::insert(const String &field, const String &alias) -> Insert {
+auto Query<Binder>::GenericQuery::insert(const StringView &field, const StringView &alias) -> Insert {
 	return this->query->insert(field, alias);
 }
 
 template <typename Binder>
-auto Query<Binder>::GenericQuery::update(const String & field) -> Update {
+auto Query<Binder>::GenericQuery::update(const StringView & field) -> Update {
 	return this->query->update(field);
 }
 
 template <typename Binder>
-auto Query<Binder>::GenericQuery::update(const String &field, const String &alias) -> Update {
+auto Query<Binder>::GenericQuery::update(const StringView &field, const StringView &alias) -> Update {
 	return this->query->update(field, alias);
 }
 
 template <typename Binder>
-auto Query<Binder>::GenericQuery::remove(const String & field) -> Delete {
+auto Query<Binder>::GenericQuery::remove(const StringView & field) -> Delete {
 	return this->query->remove(field);
 }
 
 template <typename Binder>
-auto Query<Binder>::GenericQuery::remove(const String &field, const String &alias) -> Delete {
+auto Query<Binder>::GenericQuery::remove(const StringView &field, const StringView &alias) -> Delete {
 	return this->query->remove(field, alias);
 }
 

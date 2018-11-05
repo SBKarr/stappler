@@ -43,7 +43,7 @@ int ErrorsGui::onTranslateName(Request &req) {
 				auto s = req.server().getErrorScheme();
 				auto a = req.storage();
 				if (s && a) {
-					s->remove(a, id);
+					storage::Worker(*s, a).remove(id);
 				}
 			}
 		}
@@ -57,7 +57,7 @@ int ErrorsGui::onTranslateName(Request &req) {
 		auto s = req.server().getErrorScheme();
 		auto a = req.storage();
 		if (s && a) {
-			errorsData = s->select(a, storage::Query().order("__oid", storage::Ordering::Descending));
+			errorsData = storage::Worker(*s, a).select(storage::Query().order("__oid", storage::Ordering::Descending));
 		}
 
 		req.runPug("virtual://html/errors.pug", [&] (pug::Context &exec, const pug::Template &tpl) -> bool {

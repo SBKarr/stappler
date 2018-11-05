@@ -24,9 +24,10 @@ THE SOFTWARE.
 **/
 
 #include "Define.h"
+#include "SqlHandle.cc"
+#include "SqlHandleObject.cc"
+#include "SqlHandleProp.cc"
+#include "SqlQuery.cc"
+#include "SqlResult.cc"
 #include "PGHandle.cc"
 #include "PGHandleInit.cc"
-#include "PGHandleKeyValue.cc"
-#include "PGHandleObject.cc"
-#include "PGHandleProp.cc"
-#include "PGQuery.cc"

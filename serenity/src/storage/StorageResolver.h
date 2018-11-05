@@ -29,15 +29,17 @@ NS_SA_EXT_BEGIN(storage)
 
 class Resolver : public AllocPool {
 public:
-	Resolver(Adapter *a, const Scheme &scheme, const data::TransformMap *map);
+	Resolver(const Adapter &a, const Scheme &scheme, const data::TransformMap *map);
 
 	bool selectById(uint64_t); // objects/id123
-	bool selectByAlias(const String &); // objects/named-alias
+	bool selectByAlias(const StringView &); // objects/named-alias
 	bool selectByQuery(Query::Select &&); // objects/select/counter/2 or objects/select/counter/bw/10/20
 
-	bool order(const String &f, Ordering o); // objects/order/counter/desc
-	bool first(const String &f, size_t v); // objects/first/10
-	bool last(const String &f, size_t v); // objects/last/10
+	bool searchByField(const Field *);
+
+	bool order(const StringView &f, Ordering o); // objects/order/counter/desc
+	bool first(const StringView &f, size_t v); // objects/first/10
+	bool last(const StringView &f, size_t v); // objects/last/10
 	bool limit(size_t limit); // objects/order/counter/desc/10
 	bool offset(size_t offset); // objects/order/counter/desc/10
 
@@ -57,10 +59,11 @@ protected:
 		Objects,
 		File,
 		Array,
+		Search,
 	};
 
 	bool _all = false;
-	Adapter *_storage = nullptr;
+	Adapter _storage;
 	const Scheme *_scheme = nullptr;
 	const data::TransformMap *_transform = nullptr;
 	InternalResourceType _type = Objects;

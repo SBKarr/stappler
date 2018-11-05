@@ -453,7 +453,7 @@ void Request::setMaxFileSize(size_t s) {
 	_config->_config.maxFileSize = s;
 }
 
-void Request::storeObject(void *ptr, const String &key, Function<void()> &&cb) const {
+void Request::storeObject(void *ptr, const StringView &key, Function<void()> &&cb) const {
 	apr::pool::store(_request->pool, ptr, key, std::move(cb));
 }
 
@@ -475,7 +475,7 @@ apr_pool_t *Request::pool() const {
 	return _request->pool;
 }
 
-storage::Adapter *Request::storage() const {
+storage::Adapter Request::storage() const {
 	return _config->acquireDatabase(_request);
 }
 

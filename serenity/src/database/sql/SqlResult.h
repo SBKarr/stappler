@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2017-2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,100 +20,43 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef SERENITY_SRC_DATABASE_PG_PGQUERY_H_
-#define SERENITY_SRC_DATABASE_PG_PGQUERY_H_
+#ifndef SERENITY_SRC_DATABASE_SQL_SQLRESULT_H_
+#define SERENITY_SRC_DATABASE_SQL_SQLRESULT_H_
 
 #include "SPSql.h"
 #include "StorageAdapter.h"
 
-NS_SA_EXT_BEGIN(pg)
+NS_SA_EXT_BEGIN(sql)
 
 using namespace storage;
 
 class Result;
-class Handle;
+class ResultInterface;
 
-enum class TransactionLevel {
-	ReadCommited,
-	RepeatableRead,
-	Serialized,
-};
-
-class Binder {
+class ResultInterface {
 public:
-	struct DataField {
-		const data::Value &data;
-		bool force = false;
-	};
+	virtual ~ResultInterface() = default;
 
-	struct TypeString {
-		StringView str;
-		StringView type;
+	virtual bool isNull(size_t row, size_t field) = 0;
 
-		template <typename Str, typename Type>
-		TypeString(Str && str, Type && type)
-		: str(str), type(type) { }
-	};
+	virtual StringView toString(size_t row, size_t field) = 0;
+	virtual DataReader<ByteOrder::Host> toBytes(size_t row, size_t field) = 0;
 
-	size_t push(String &&);
-	size_t push(const StringView &);
-	size_t push(Bytes &&);
-	size_t push(StringStream &query, const data::Value &, bool force);
+	virtual int64_t toInteger(size_t row, size_t field) = 0;
+	virtual double toDouble(size_t row, size_t field) = 0;
+	virtual bool toBool(size_t row, size_t field) = 0;
 
-	void writeBind(StringStream &, int64_t);
-	void writeBind(StringStream &, uint64_t);
-	void writeBind(StringStream &, const String &);
-	void writeBind(StringStream &, String &&);
-	void writeBind(StringStream &, const Bytes &);
-	void writeBind(StringStream &, Bytes &&);
-	void writeBind(StringStream &, const data::Value &);
-	void writeBind(StringStream &, const DataField &);
-	void writeBind(StringStream &, const TypeString &);
+	virtual int64_t toId() = 0;
 
-	void clear();
+	virtual StringView getFieldName(size_t field) = 0;
 
-	const Vector<Bytes> &getParams() const;
-	const Vector<bool> &getBinaryVec() const;
+	virtual bool isSuccess() const = 0;
+	virtual size_t getRowsCount() const = 0;
+	virtual size_t getFieldsCount() const = 0;
+	virtual size_t getAffectedRows() const = 0;
 
-protected:
-	Vector<Bytes> params;
-	Vector<bool> binary;
-};
-
-class ExecQuery : public sql::Query<Binder> {
-public:
-	using TypeString = Binder::TypeString;
-
-	static ExecQuery::Select &writeSelectFields(const Scheme &, ExecQuery::Select &sel, const Set<const storage::Field *> &fields, const StringView &source);
-
-	ExecQuery() = default;
-	ExecQuery(const StringView &);
-
-	void clear();
-
-	void writeIdsRequest(ExecQuery::SelectWhere &, Operator, const Scheme &s, const Vector<int64_t> &);
-	void writeAliasRequest(ExecQuery::SelectWhere &, Operator, const Scheme &s, const String &);
-	void writeQueryRequest(ExecQuery::SelectWhere &, Operator, const Scheme &s, const Vector<pg::Query::Select> &);
-
-	SelectFrom writeSelectFrom(GenericQuery &q, const QueryList::Item &item, bool idOnly, const StringView &scheme, const StringView &field);
-
-	void writeQueryReqest(ExecQuery::SelectFrom &s, const QueryList::Item &item);
-	void writeQueryListItem(GenericQuery &sq, const QueryList &list, size_t idx, bool idOnly, const storage::Field *field = nullptr, bool forSubquery = false);
-	void writeQueryList(const QueryList &query, bool idOnly, size_t count = maxOf<size_t>());
-	void writeQueryFile(const QueryList &query, const storage::Field *field);
-	void writeQueryArray(const QueryList &query, const storage::Field *field);
-
-	void writeQueryDelta(const Scheme &, const Time &, const Set<const storage::Field *> &fields, bool idOnly);
-	void writeQueryViewDelta(const QueryList &list, const Time &, const Set<const storage::Field *> &fields, bool idOnly);
-
-	template <typename T>
-	friend auto & operator << (ExecQuery &query, const T &value) {
-		return query.stream << value;
-	}
-
-	const StringStream &getQuery() const;
-	const Vector<Bytes> &getParams() const;
-	const Vector<bool> &getBinaryVec() const;
+	virtual data::Value getInfo() const = 0;
+	virtual void clear() = 0;
 };
 
 struct ResultRow {
@@ -130,14 +73,11 @@ struct ResultRow {
 	bool isNull(size_t) const;
 	StringView at(size_t) const;
 
-	String toString(size_t) const;
-	Bytes toBytes(size_t) const;
+	StringView toString(size_t) const;
+	DataReader<ByteOrder::Host> toBytes(size_t) const;
 	int64_t toInteger(size_t) const;
 	double toDouble(size_t) const;
 	bool toBool(size_t) const;
-
-	String toStringWeak(size_t) const;
-	Bytes toBytesWeak(size_t) const;
 
 	data::Value toData(size_t n, const Field &);
 
@@ -177,7 +117,7 @@ public:
 	};
 
 	Result() = default;
-	Result(PGresult *);
+	Result(ResultInterface *);
 	~Result();
 
 	Result(const Result &) = delete;
@@ -188,8 +128,6 @@ public:
 
 	operator bool () const;
 	bool success() const;
-
-	ExecStatusType getError() const;
 
 	data::Value info() const;
 
@@ -217,13 +155,13 @@ public:
 protected:
 	friend struct ResultRow;
 
-	PGresult *result = nullptr;
-	ExecStatusType err = PGRES_EMPTY_QUERY;
+	ResultInterface *_interface = nullptr;
 
+	bool _success = false;
 	size_t _nrows = 0;
 	size_t _nfields = 0;
 };
 
-NS_SA_EXT_END(pg)
+NS_SA_EXT_END(sql)
 
-#endif /* SERENITY_SRC_DATABASE_PG_PGQUERY_H_ */
+#endif /* SERENITY_SRC_DATABASE_SQL_SQLRESULT_H_ */

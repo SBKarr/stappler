@@ -35,7 +35,9 @@ ServerComponent::ServerComponent(Server &serv, const String &name, const data::V
 
 void ServerComponent::onChildInit(Server &serv) { }
 
-void ServerComponent::onStorageInit(Server &, storage::Adapter *) { }
+void ServerComponent::onStorageInit(Server &, const storage::Adapter &) { }
+
+void ServerComponent::onStorageTransaction(storage::Transaction &) { }
 
 const storage::Scheme * ServerComponent::exportScheme(const storage::Scheme &scheme) {
 	return _server.exportScheme(scheme);

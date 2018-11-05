@@ -26,15 +26,14 @@ THE SOFTWARE.
 #include "Define.h"
 #include "TemplateExec.h"
 #include "StorageAdapter.h"
+#include "StorageWorker.h"
 
 NS_SA_EXT_BEGIN(tpl)
 
-Exec::Exec() {
+Exec::Exec() : _storage(storage::Adapter::FromContext()) {
 	AccessControl::List list(AccessControl::List::restrictive());
 	list.read = AccessControl::Permission::Full;
 	_access.setDefaultList(list);
-
-	_storage = storage::Adapter::FromContext();
 }
 
 void Exec::set(const String &name, const storage::Scheme *scheme) {
@@ -513,7 +512,7 @@ bool Exec::execPathObject(ReaderVec &path, ReaderVecIt &pathIt, Variable &var) {
 				}
 			} else if (f->getType() == storage::Type::Object || f->getType() == storage::Type::Array
 					|| f->getType() == storage::Type::File || f->getType() == storage::Type::Image) {
-				var.value = new data::Value(var.scheme->getProperty(_storage, *var.value, *f));
+				var.value = new data::Value(storage::Worker(*var.scheme, _storage).getField(*var.value, *f));
 				var.scheme = f->getForeignScheme();
 			} else {
 				var.value = &var.value->getValue(name);
@@ -532,7 +531,7 @@ bool Exec::execPathObject(ReaderVec &path, ReaderVecIt &pathIt, Variable &var) {
 Exec::Variable Exec::selectSchemeSetVariable(ReaderVec &path, ReaderVecIt &pathIt, const Variable &val, const storage::Field *obj) {
 	data::Value res;
 	if (pathIt == path.end() || pathIt->is('.') || pathIt->is('#')) {
-		res = val.scheme->getProperty(_storage, *val.value, *obj);
+		res = storage::Worker(*val.scheme, _storage).getField(*val.value, *obj);
 		if (res) {
 			return Variable{new data::Value(std::move(res)), obj->getForeignScheme()};
 		}
@@ -543,7 +542,7 @@ Exec::Variable Exec::selectSchemeSetVariable(ReaderVec &path, ReaderVecIt &pathI
 	return Variable();
 }
 
-Exec::Variable Exec::selectSchemeByPath(ReaderVec &path, ReaderVecIt &pathIt, const storage::Scheme *scheme, int64_t oid, const String &field) {
+Exec::Variable Exec::selectSchemeByPath(ReaderVec &path, ReaderVecIt &pathIt, const storage::Scheme *scheme, int64_t oid, const StringView &field) {
 	StringStream tmp;
 	Vector<String> pathComponents; pathComponents.reserve(10);
 	if (oid) {
@@ -551,7 +550,7 @@ Exec::Variable Exec::selectSchemeByPath(ReaderVec &path, ReaderVecIt &pathIt, co
 		pathComponents.emplace_back(tmp.weak());
 	}
 	if (!field.empty()) {
-		pathComponents.emplace_back(field);
+		pathComponents.emplace_back(field.str());
 	}
 	while (pathIt != path.end() && pathIt->is(':')) {
 		++ pathIt;

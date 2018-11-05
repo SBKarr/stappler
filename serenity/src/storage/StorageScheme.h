@@ -23,9 +23,7 @@ THE SOFTWARE.
 #ifndef SERENITY_SRC_DATABASE_DATABASESCHEME_H_
 #define SERENITY_SRC_DATABASE_DATABASESCHEME_H_
 
-#include "StorageField.h"
-#include "StorageQuery.h"
-#include "InputFilter.h"
+#include "StorageWorker.h"
 
 NS_SA_EXT_BEGIN(storage)
 
@@ -49,6 +47,7 @@ public:
 	};
 
 	using FieldVec = Vector<const Field *>;
+	using AccessTable = std::array<AccessRole *, toInt(AccessRoleId::Max)>;
 
 	// field list to send, when no field is required to return
 	static FieldVec EmptyFieldList() { return FieldVec{nullptr}; }
@@ -76,11 +75,11 @@ public:
 
 	void cloneFrom(Scheme *);
 
-	const String &getName() const;
+	StringView getName() const;
 	bool hasAliases() const;
 
 	bool isProtected(const StringView &) const;
-	bool saveObject(Adapter *, Object *) const;
+	bool save(const Transaction &, Object *) const;
 
 	bool hasFiles() const;
 
@@ -103,69 +102,56 @@ public:
 	const Vector<ViewScheme *> &getViews() const;
 	Vector<const Field *> getPatchFields(const data::Value &patch) const;
 
-public:// CRUD functions
-	// returns Dictionary with single object data or Null value
-	data::Value create(Adapter *, const data::Value &data, bool isProtected = false) const;
+	const AccessTable &getAccessTable() const;
+	const AccessRole *getAccessRole(AccessRoleId) const;
+	void setAccessRole(AccessRoleId, AccessRole &&);
 
-	data::Value get(Adapter *, uint64_t oid, bool forUpdate = false) const;
-	data::Value get(Adapter *, const String &alias, bool forUpdate = false) const;
-	data::Value get(Adapter *, const data::Value &id, bool forUpdate = false) const;
+public: // worker interface
+	template <typename Storage, typename Value> auto get(Storage &&, Value &&, bool forUpdate = false) const -> data::Value;
+	template <typename Storage, typename Value> auto get(Storage &&, Value &&, std::initializer_list<StringView> &&fields, bool forUpdate = false) const -> data::Value;
+	template <typename Storage, typename Value> auto get(Storage &&, Value &&, std::initializer_list<const char *> &&fields, bool forUpdate = false) const -> data::Value;
+	template <typename Storage, typename Value> auto get(Storage &&, Value &&, std::initializer_list<const Field *> &&fields, bool forUpdate = false) const -> data::Value;
 
-	data::Value get(Adapter *, uint64_t oid, std::initializer_list<StringView> &&fields, bool forUpdate = false) const;
-	data::Value get(Adapter *, const String &alias, std::initializer_list<StringView> &&fields, bool forUpdate = false) const;
-	data::Value get(Adapter *, const data::Value &id, std::initializer_list<StringView> &&fields, bool forUpdate = false) const;
+	template <typename T, typename ... Args> auto select(T &&t, Args && ... args) const -> data::Value;
+	template <typename T, typename ... Args> auto create(T &&t, Args && ... args) const -> data::Value;
+	template <typename T, typename ... Args> auto update(T &&t, Args && ... args) const  -> data::Value;
+	template <typename T, typename ... Args> auto remove(T &&t, Args && ... args) const -> bool;
+	template <typename T, typename ... Args> auto count(T &&t, Args && ... args) const -> size_t;
+	template <typename T, typename ... Args> auto touch(T &&t, Args && ... args) const -> void;
 
-	data::Value get(Adapter *, uint64_t oid, std::initializer_list<const Field *> &&fields, bool forUpdate = false) const;
-	data::Value get(Adapter *, const String &alias, std::initializer_list<const Field *> &&fields, bool forUpdate = false) const;
-	data::Value get(Adapter *, const data::Value &id, std::initializer_list<const Field *> &&fields, bool forUpdate = false) const;
+	template <typename _Storage, typename _Value, typename _Field>
+	auto getProperty(_Storage &&, _Value &&, _Field &&, std::initializer_list<StringView> fields) const -> data::Value;
 
-	data::Value update(Adapter *, uint64_t oid, const data::Value &data, bool isProtected = false) const;
-	data::Value update(Adapter *, const data::Value & obj, const data::Value &data, bool isProtected = false) const;
+	template <typename _Storage, typename _Value, typename _Field>
+	auto getProperty(_Storage &&, _Value &&, _Field &&, const Set<const Field *> & = Set<const Field *>()) const -> data::Value;
 
-	bool remove(Adapter *, uint64_t oid) const;
+	template <typename T, typename ... Args> auto setProperty(T &&t, Args && ... args) const -> data::Value;
+	template <typename T, typename ... Args> auto appendProperty(T &&t, Args && ... args) const -> data::Value;
+	template <typename T, typename ... Args> auto clearProperty(T &&t, Args && ... args) const -> bool;
+
+protected:// CRUD functions
+	friend class Worker;
 
 	// returns Array with zero or more Dictionaries with object data or Null value
-	data::Value select(Adapter *, const Query &) const;
+	data::Value selectWithWorker(Worker &, const Query &) const;
 
-	size_t count(Adapter *) const;
-	size_t count(Adapter *, const Query &) const;
+	// returns Dictionary with single object data or Null value
+	data::Value createWithWorker(Worker &, const data::Value &data, bool isProtected = false) const;
 
-	void touch(Adapter *adapter, uint64_t id) const;
-	void touch(Adapter *adapter, const data::Value & obj) const;
+	data::Value updateWithWorker(Worker &, uint64_t oid, const data::Value &data, bool isProtected = false) const;
+	data::Value updateWithWorker(Worker &, const data::Value & obj, const data::Value &data, bool isProtected = false) const;
 
-public:
-	data::Value getProperty(Adapter *, uint64_t oid, const StringView &, std::initializer_list<StringView> fields) const;
-	data::Value getProperty(Adapter *, const data::Value &, const StringView &, std::initializer_list<StringView> fields) const;
-	data::Value getProperty(Adapter *, uint64_t oid, const StringView &, const Set<const Field *> & = Set<const Field *>()) const;
-	data::Value getProperty(Adapter *, const data::Value &, const StringView &, const Set<const Field *> & = Set<const Field *>()) const;
+	bool removeWithWorker(Worker &, uint64_t oid) const;
 
-	data::Value setProperty(Adapter *, uint64_t oid, const StringView &, data::Value &&) const;
-	data::Value setProperty(Adapter *, const data::Value &, const StringView &, data::Value &&) const;
-	data::Value setProperty(Adapter *, uint64_t oid, const StringView &, InputFile &) const;
-	data::Value setProperty(Adapter *, const data::Value &, const StringView &, InputFile &) const;
+	size_t countWithWorker(Worker &, const Query &) const;
 
-	bool clearProperty(Adapter *, uint64_t oid, const StringView &, data::Value && = data::Value()) const;
-	bool clearProperty(Adapter *, const data::Value &, const StringView &, data::Value && = data::Value()) const;
+	void touchWithWorker(Worker &, uint64_t id) const;
+	void touchWithWorker(Worker &, const data::Value & obj) const;
 
-	data::Value appendProperty(Adapter *, uint64_t oid, const StringView &, data::Value &&) const;
-	data::Value appendProperty(Adapter *, const data::Value &, const StringView &, data::Value &&) const;
+	data::Value fieldWithWorker(Action, Worker &, uint64_t oid, const Field &, data::Value && = data::Value()) const;
+	data::Value fieldWithWorker(Action, Worker &, const data::Value &, const Field &, data::Value && = data::Value()) const;
 
-public:
-	data::Value getProperty(Adapter *, uint64_t oid, const Field &, std::initializer_list<StringView> fields) const;
-	data::Value getProperty(Adapter *, const data::Value &, const Field &, std::initializer_list<StringView> fields) const;
-	data::Value getProperty(Adapter *, uint64_t oid, const Field &, const Set<const Field *> & = Set<const Field *>()) const;
-	data::Value getProperty(Adapter *, const data::Value &, const Field &, const Set<const Field *> & = Set<const Field *>()) const;
-
-	data::Value setProperty(Adapter *, uint64_t oid, const Field &, data::Value &&) const;
-	data::Value setProperty(Adapter *, const data::Value &, const Field &, data::Value &&) const;
-	data::Value setProperty(Adapter *, uint64_t oid, const Field &, InputFile &) const;
-	data::Value setProperty(Adapter *, const data::Value &, const Field &, InputFile &) const;
-
-	bool clearProperty(Adapter *, uint64_t oid, const Field &, data::Value && = data::Value()) const;
-	bool clearProperty(Adapter *, const data::Value &, const Field &, data::Value && = data::Value()) const;
-
-	data::Value appendProperty(Adapter *, uint64_t oid, const Field &, data::Value &&) const;
-	data::Value appendProperty(Adapter *, const data::Value &, const Field &, data::Value &&) const;
+	data::Value setFileWithWorker(Worker &w, uint64_t oid, const Field &, InputFile &) const;
 
 protected:
 	void initScheme();
@@ -175,25 +161,25 @@ protected:
 	void addView(const Scheme *, const Field *);
 	void addParent(const Scheme *, const Field *);
 
-	data::Value createFilePatch(Adapter *, const data::Value &val) const;
-	void purgeFilePatch(Adapter *, const data::Value &) const;
+	data::Value createFilePatch(const Transaction &, const data::Value &val) const;
+	void purgeFilePatch(const Transaction &t, const data::Value &) const;
 	void mergeValues(const Field &f, data::Value &original, data::Value &newVal) const;
 
 	Pair<bool, data::Value> prepareUpdate(const data::Value &data, bool isProtected) const;
-	data::Value updateObject(Adapter *, data::Value && obj, data::Value &data) const;
+	data::Value updateObject(Worker &, data::Value && obj, data::Value &data) const;
 
-	data::Value patchOrUpdate(Adapter *adapter, uint64_t id, data::Value & patch, const FieldVec & = FieldVec()) const;
-	data::Value patchOrUpdate(Adapter *adapter, const data::Value & obj, data::Value & patch, const FieldVec & = FieldVec()) const;
+	data::Value patchOrUpdate(Worker &, uint64_t id, data::Value & patch) const;
+	data::Value patchOrUpdate(Worker &, const data::Value & obj, data::Value & patch) const;
 
-	void touchParents(Adapter *, const data::Value &obj) const;
-	void extractParents(Map<int64_t, const Scheme *> &, Adapter *, const data::Value &obj, bool isChangeSet = false) const;
+	void touchParents(const Transaction &, const data::Value &obj) const;
+	void extractParents(Map<int64_t, const Scheme *> &, const Transaction &, const data::Value &obj, bool isChangeSet = false) const;
 
 	// returns:
 	// - true if field was successfully removed
 	// - null of false if field was not removed, we should abort transaction
 	// - value, that will be sent to finalizeField if all fields will be removed
-	data::Value removeField(Adapter *, data::Value &, const Field &, const data::Value &old);
-	void finalizeField(Adapter *, const Field &, const data::Value &old);
+	data::Value removeField(const Transaction &, data::Value &, const Field &, const data::Value &old);
+	void finalizeField(const Transaction &, const Field &, const data::Value &old);
 
 	enum class TransformAction {
 		Create,
@@ -207,13 +193,14 @@ protected:
 	data::Value &transform(data::Value &, TransformAction = TransformAction::Create) const;
 
 	// call before object is created, used for additional checking or default values
-	data::Value createFile(Adapter *, const Field &, InputFile &) const;
+	data::Value createFile(const Transaction &, const Field &, InputFile &) const;
 
 	// call before object is created, when file is embedded into patch
-	data::Value createFile(Adapter *, const Field &, const Bytes &, const StringView &type) const;
+	data::Value createFile(const Transaction &, const Field &, const Bytes &, const StringView &type) const;
 
-	// call after object is created, used for custom field initialization
-	data::Value initField(Adapter *, Object *, const Field &, const data::Value &);
+	void processFullTextFields(data::Value &patch) const;
+
+	data::Value makeObjectForPatch(const Transaction &, uint64_t id, const data::Value &, const data::Value &patch) const;
 
 	void updateLimits();
 
@@ -221,7 +208,7 @@ protected:
 	bool validateHint(const String &alias, const data::Value &);
 	bool validateHint(const data::Value &);
 
-	void updateView(Adapter *, const data::Value &, const ViewScheme *) const;
+	void updateView(const Transaction &, const data::Value &, const ViewScheme *) const;
 
 	Map<String, Field> fields;
 	String name;
@@ -235,8 +222,87 @@ protected:
 	Vector<ViewScheme *> views;
 	Vector<ParentScheme *> parents;
 	Set<const Field *> forceInclude;
+	Set<const Field *> fullTextFields;
+
+	AccessTable roles;
 };
 
+
+template <typename Storage, typename Value>
+inline auto Scheme::get(Storage &&s, Value &&v, bool forUpdate) const -> data::Value {
+	return Worker(*this, std::forward<Storage>(s)).get(std::forward<Value>(v), forUpdate);
+}
+
+template <typename Storage, typename Value>
+inline auto Scheme::get(Storage &&s, Value &&v, std::initializer_list<StringView> &&fields, bool forUpdate) const -> data::Value {
+	return Worker(*this, std::forward<Storage>(s)).get(std::forward<Value>(v), move(fields), forUpdate);
+}
+
+template <typename Storage, typename Value>
+inline auto Scheme::get(Storage &&s, Value &&v, std::initializer_list<const char *> &&fields, bool forUpdate) const -> data::Value {
+	return Worker(*this, std::forward<Storage>(s)).get(std::forward<Value>(v), move(fields), forUpdate);
+}
+
+template <typename Storage, typename Value>
+inline auto Scheme::get(Storage &&s, Value &&v, std::initializer_list<const Field *> &&fields, bool forUpdate) const -> data::Value {
+	return Worker(*this, std::forward<Storage>(s)).get(std::forward<Value>(v), move(fields), forUpdate);
+}
+
+template <typename T, typename ... Args>
+inline auto Scheme::select(T &&t, Args && ... args) const -> data::Value {
+	return Worker(*this, std::forward<T>(t)).select(std::forward<Args>(args)...);
+}
+
+template <typename T, typename ... Args>
+inline auto Scheme::create(T &&t, Args && ... args) const -> data::Value {
+	return Worker(*this, std::forward<T>(t)).create(std::forward<Args>(args)...);
+}
+
+template <typename T, typename ... Args>
+inline auto Scheme::update(T &&t, Args && ... args) const  -> data::Value {
+	return Worker(*this, std::forward<T>(t)).update(std::forward<Args>(args)...);
+}
+
+template <typename T, typename ... Args>
+inline auto Scheme::remove(T &&t, Args && ... args) const -> bool {
+	return Worker(*this, std::forward<T>(t)).remove(std::forward<Args>(args)...);
+}
+
+template <typename T, typename ... Args>
+inline auto Scheme::count(T &&t, Args && ... args) const -> size_t {
+	return Worker(*this, std::forward<T>(t)).count(std::forward<Args>(args)...);
+}
+
+template <typename T, typename ... Args>
+inline auto Scheme::touch(T &&t, Args && ... args) const -> void {
+	Worker(*this, std::forward<T>(t)).touch(std::forward<Args>(args)...);
+}
+
+
+template <typename _Storage, typename _Value, typename _Field>
+inline auto Scheme::getProperty(_Storage &&s, _Value &&v, _Field &&f, std::initializer_list<StringView> fields) const -> data::Value {
+	return Worker(*this, std::forward<_Storage>(s)).getField(std::forward<_Value>(v), std::forward<_Field>(f), fields);
+}
+
+template <typename _Storage, typename _Value, typename _Field>
+auto Scheme::getProperty(_Storage &&s, _Value &&v, _Field &&f, const Set<const Field *> &fields) const -> data::Value {
+	return Worker(*this, std::forward<_Storage>(s)).getField(std::forward<_Value>(v), std::forward<_Field>(f), fields);
+}
+
+template <typename T, typename ... Args>
+inline auto Scheme::setProperty(T &&t, Args && ... args) const -> data::Value {
+	return Worker(*this, std::forward<T>(t)).setField(std::forward<Args>(args)...);
+}
+
+template <typename T, typename ... Args>
+inline auto Scheme::appendProperty(T &&t, Args && ... args) const -> data::Value {
+	return Worker(*this, std::forward<T>(t)).appendField(std::forward<Args>(args)...);
+}
+
+template <typename T, typename ... Args>
+inline auto Scheme::clearProperty(T &&t, Args && ... args) const -> bool {
+	return Worker(*this, std::forward<T>(t)).clearField(std::forward<Args>(args)...);
+}
 
 template <typename T, typename ... Args>
 void Scheme::define(T &&il, Args && ... args) {

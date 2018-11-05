@@ -45,6 +45,7 @@ enum class Type {
 	File,
 	Image,
 	View, // immutable predicate-based reference set of objects
+	FullTextView, // full-text search resource
 };
 
 inline bool checkIfComparationIsValid(Type t, Comparation c) {
@@ -74,6 +75,11 @@ enum class Flags : uint32_t {
 	Admin = 1 << 10, /** Field can be accessed by administrative queries only */
 	ForceInclude = 1 << 11, /** field will be internally included in all queries (useful for access control) */
 	Composed = 1 << 12, /** propagate modification events from objects in that field (for object and set fields) */
+
+	TsNormalize_DocLengthLog = 1 << 24, /** Text search normalization: divides the rank by 1 + the logarithm of the document length */
+	TsNormalize_DocLength = 1 << 25, /** Text search normalization: divides the rank by the document length */
+	TsNormalize_UniqueWordsCount = 1 << 26, /** Text search normalization: divides the rank by the number of unique words in document */
+	TsNormalize_UniqueWordsCountLog = 1 << 27, /** Text search normalization: divides the rank by 1 + the logarithm of the number of unique words in document */
 };
 
 SP_DEFINE_ENUM_AS_MASK(Flags)
@@ -166,6 +172,9 @@ using DefaultFn = Function<data::Value(const data::Value &)>;
 using ViewLinkageFn = Function<Vector<uint64_t>(const Scheme &targetScheme, const Scheme &objScheme, const data::Value &obj)>;
 using ViewFn = Function<Vector<data::Value>(const Scheme &objScheme, const data::Value &obj)>;
 
+using FullTextViewFn = Function<Vector<FullTextData>(const Scheme &objScheme, const data::Value &obj)>;
+using FullTextQueryFn = Function<Vector<FullTextData>(const data::Value &searchData)>;
+
 class Field : public AllocPool {
 public:
 	template <typename ... Args> static Field Data(String && name, Args && ... args);
@@ -182,6 +191,7 @@ public:
 	template <typename ... Args> static Field Set(String && name, Args && ... args);
 	template <typename ... Args> static Field Array(String && name, Args && ... args);
 	template <typename ... Args> static Field View(String && name, Args && ... args);
+	template <typename ... Args> static Field FullTextView(String && name, Args && ... args);
 
 	template <typename ... Args> static Field Extra(String &&name, InitializerList<Field> &&, Args && ... args);
 
@@ -208,7 +218,7 @@ public:
 
 		Slot(String && n, Type t) : name(n), type(t) { }
 
-		const String &getName() const { return name; }
+		StringView getName() const { return name; }
 		bool hasFlag(Flags f) const { return ((flags & f) != Flags::None); }
 		Type getType() const { return type; }
 		bool isProtected() const;
@@ -238,7 +248,7 @@ public:
 		DefaultFn defaultFn;
 	};
 
-	const String &getName() const { return slot->getName(); }
+	StringView getName() const { return slot->getName(); }
 	Type getType() const { return slot->getType(); }
 	Transform getTransform() const { return slot->getTransform(); }
 	data::Value getDefault(const data::Value &patch) const { return slot->getDefault(patch); }
@@ -419,6 +429,21 @@ struct FieldView : Field::Slot {
 	bool delta = false;
 };
 
+struct FieldFullTextView : Field::Slot {
+	virtual ~FieldFullTextView() { }
+
+	template <typename ... Args>
+	FieldFullTextView(String && n, Args && ... args) : Field::Slot(move(n), Type::FullTextView) {
+		init<FieldFullTextView, Args...>(*this, std::forward<Args>(args)...);
+	}
+
+	virtual bool transformValue(const Scheme &, data::Value &) const override { return false; }
+
+	Vector<String> requires;
+	FullTextViewFn viewFn;
+	FullTextQueryFn queryFn;
+};
+
 template <typename ... Args> Field Field::Data(String && name, Args && ... args) {
 	auto newSlot = new Field::Slot(std::move(name), Type::Data);
 	Slot::init<Field::Slot>(*newSlot, std::forward<Args>(args)...);
@@ -487,6 +512,10 @@ template <typename ... Args> Field Field::View(String && name, Args && ... args)
 	return Field(new FieldView(move(name), forward<Args>(args)...));
 }
 
+template <typename ... Args> Field Field::FullTextView(String && name, Args && ... args) {
+	return Field(new FieldFullTextView(move(name), forward<Args>(args)...));
+}
+
 
 template <typename F> struct FieldOption<F, Flags> {
 	static inline void assign(F & f, Flags flags) { f.flags |= flags; }
@@ -533,7 +562,7 @@ template <typename F> struct FieldOption<F, ForeignLink> {
 template <typename F> struct FieldOption<F, Vector<Field>> {
 	static inline void assign(F & f, Vector<Field> && s) {
 		for (auto &it : s) {
-			f.fields.emplace(it.getName(), it);
+			f.fields.emplace(it.getName().str(), it);
 		}
 	}
 };
@@ -541,7 +570,7 @@ template <typename F> struct FieldOption<F, Vector<Field>> {
 template <typename F> struct FieldOption<F, std::initializer_list<Field>> {
 	static inline void assign(F & f, std::initializer_list<Field> && s) {
 		for (auto &it : s) {
-			f.fields.emplace(it.getName(), it);
+			f.fields.emplace(it.getName().str(), it);
 		}
 	}
 };
@@ -597,6 +626,12 @@ template <> struct FieldOption<FieldView, Vector<String>> {
 	}
 };
 
+template <> struct FieldOption<FieldFullTextView, Vector<String>> {
+	static inline void assign(FieldFullTextView & f, Vector<String> && s) {
+		f.requires = move(s);
+	}
+};
+
 template <typename F> struct FieldOption<F, ViewLinkageFn> {
 	static inline void assign(F & f, ViewLinkageFn && s) {
 		f.linkage = move(s);
@@ -605,6 +640,12 @@ template <typename F> struct FieldOption<F, ViewLinkageFn> {
 
 template <typename F> struct FieldOption<F, ViewFn> {
 	static inline void assign(F & f, ViewFn && s) {
+		f.viewFn = move(s);
+	}
+};
+
+template <typename F> struct FieldOption<F, FullTextViewFn> {
+	static inline void assign(F & f, FullTextViewFn && s) {
 		f.viewFn = move(s);
 	}
 };

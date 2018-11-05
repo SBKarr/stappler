@@ -23,11 +23,11 @@ THE SOFTWARE.
 #ifndef SACONTENTFILTER_H
 #define	SACONTENTFILTER_H
 
+#include "../../../common/string/SPStringView.h"
 #include "SPUrlencodeParser.h"
 #include "Request.h"
 #include "InputFile.h"
 #include "SPData.h"
-#include "SPCharReader.h"
 
 NS_SA_BEGIN
 

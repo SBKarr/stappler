@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef COMMON_APR_SPAPRMUTEX_H_
 #define COMMON_APR_SPAPRMUTEX_H_
 
-#include "SPAprAllocator.h"
+#include "SPMemAlloc.h"
 
 #if SPAPR
 
@@ -31,7 +31,7 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(apr)
 
-class mutex : public AllocPool {
+class mutex : public memory::AllocPool {
 public:
 	mutex() {
 		apr_thread_mutex_create(&_mutex, APR_THREAD_MUTEX_DEFAULT, getCurrentPool());

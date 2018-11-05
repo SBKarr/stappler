@@ -34,14 +34,14 @@ public:
 	using Callback = Function<void(cocos2d::Texture2D *)>;
 
 	virtual bool init(cocos2d::Texture2D *tex = nullptr, const Rect & = Rect::ZERO, float density = 0.0f);
-	virtual bool init(const String &, const Rect & = Rect::ZERO, float density = 0.0f, float texD = 1.0f);
+	virtual bool init(const StringView &, const Rect & = Rect::ZERO, float density = 0.0f, float texD = 1.0f);
 	virtual bool init(const Bitmap &, const Rect & = Rect::ZERO, float density = 0.0f);
 
 	virtual void onContentSizeDirty() override;
 	virtual void setDensity(float value) override;
 
 	virtual void setTexture(cocos2d::Texture2D *tex, const Rect & = Rect::ZERO);
-	virtual void setTexture(const String &, const Rect & = Rect::ZERO);
+	virtual void setTexture(const StringView &, const Rect & = Rect::ZERO);
 	virtual void setTexture(const Bitmap &, const Rect & = Rect::ZERO);
 	virtual cocos2d::Texture2D *getTexture() const override;
 
@@ -71,7 +71,7 @@ public:
 protected:
 	void updateQuads();
 
-	virtual void acquireTexture(const String &file);
+	virtual void acquireTexture(const StringView &file);
 	virtual void onTextureRecieved(cocos2d::Texture2D *);
 
 	bool _flippedX = false;

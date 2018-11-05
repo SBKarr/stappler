@@ -24,9 +24,10 @@ THE SOFTWARE.
 **/
 
 #include "SPCommon.h"
-#include "SPCharReader.h"
 #include "SPString.h"
 #include "SPNetworkHandle.h"
+
+#include "SPStringView.h"
 #include "SPFilesystem.h"
 #include "SPLog.h"
 #include "SPBitmap.h"
@@ -221,8 +222,11 @@ static bool NetworkHandle_setUserAttributes(FILE *file, const StringView &str, T
 	if (int fd = fileno(file)) {
 		auto err = fsetxattr(fd, "user.mime_type", str.data(), str.size(), XATTR_CREATE);
 		if (err != 0) {
-			std::cout << "Fail to set mime type attribute (" << err << ")\n";
-			return false;
+			err = fsetxattr(fd, "user.mime_type", str.data(), str.size(), XATTR_REPLACE);
+			if (err != 0) {
+				std::cout << "Fail to set mime type attribute (" << err << ")\n";
+				return false;
+			}
 		}
 
 		if (mtime) {
@@ -687,7 +691,7 @@ bool NetworkHandle::perform() {
 				if (allowedRange == inputPos) {
 					_responseCode = 200;
 					if (!_silent) {
-						log::text("CURL", "Get 0-range is not an error, fixed response code to 200");
+						log::text("CURL", toString(_url, ": Get 0-range is not an error, fixed response code to 200"));
 					}
 				}
 	        }

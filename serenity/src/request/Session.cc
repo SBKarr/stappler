@@ -41,7 +41,7 @@ NS_SA_BEGIN
 #define SA_SESSION_MAX_AGE_KEY "maxAge"
 #define SA_SESSION_TOKEN_LEN 64
 
-void Session::makeSessionToken(Request &rctx, Token &buf, const apr::uuid & uuid, const String & userName) {
+void Session::makeSessionToken(Request &rctx, Token &buf, const apr::uuid & uuid, const StringView & userName) {
 	auto serv = rctx.server();
 	string::Sha512 ctx;
 	ctx.update(uuid.data(), uuid.size())
@@ -53,7 +53,7 @@ void Session::makeSessionToken(Request &rctx, Token &buf, const apr::uuid & uuid
 			.final(buf.data());
 }
 
-void Session::makeCookieToken(Request &rctx, Token &buf, const apr::uuid & uuid, const String & userName, const Bytes & salt) {
+void Session::makeCookieToken(Request &rctx, Token &buf, const apr::uuid & uuid, const StringView & userName, const Bytes & salt) {
 	auto serv = rctx.server();
 	string::Sha512 ctx;
 	ctx.update(uuid.data(), uuid.size())
@@ -245,28 +245,28 @@ TimeInterval Session::getMaxAge() const {
 
 data::Value Session::getStorageData(Request &rctx, const Token &t) {
 	if (auto s = rctx.storage()) {
-		return s->getSessionData(Bytes::make_weak(t.data(), t.size()));
+		return s.get(t);
 	}
 	return data::Value();
 }
 
 data::Value Session::getStorageData(Request &rctx, const Bytes &b) {
 	if (auto s = rctx.storage()) {
-		return s->getSessionData(b);
+		return s.get(b);
 	}
 	return data::Value();
 }
 
 bool Session::setStorageData(Request &rctx, const Token &t, const data::Value &d, TimeInterval maxAge) {
 	if (auto s = rctx.storage()) {
-		return s->setSessionData(Bytes::make_weak(t.data(), t.size()), d, maxAge);
+		return s.set(t, d, maxAge);
 	}
 	return false;
 }
 
 bool Session::clearStorageData(Request &rctx, const Token &t) {
 	if (auto s = rctx.storage()) {
-		return s->clearSessionData(Bytes::make_weak(t.data(), t.size()));
+		return s.clear(t);
 	}
 	return false;
 }

@@ -92,7 +92,7 @@ NS_SA_EXT_END(idn)
 NS_SA_EXT_BEGIN(valid)
 
 /** Identifier starts with [a-zA-Z_] and can contain [a-zA-Z0-9_\-.@] */
-bool validateIdentifier(const String &str) {
+bool validateIdentifier(const StringView &str) {
 	if (str.empty()) {
 		return false;
 	}
@@ -111,7 +111,7 @@ bool validateIdentifier(const String &str) {
 }
 
 /** Text can contain all characters above 0x1F and \t, \r, \n, \b, \f */
-bool validateText(const String &str) {
+bool validateText(const StringView &str) {
 	if (str.empty()) {
 		return false;
 	}
@@ -157,6 +157,10 @@ static bool validateEmailQuotation(String &ret, StringView &r) {
 
 bool validateEmail(String &str) {
 	string::trim(str);
+	if (str.empty()) {
+		return false;
+	}
+
 	if (str.back() == ')') {
 		auto pos = str.rfind('(');
 		if (pos != String::npos) {
@@ -290,7 +294,7 @@ bool validateUrl(String &str) {
 	return true;
 }
 
-bool validateNumber(const String &str) {
+bool validateNumber(const StringView &str) {
 	if (str.empty()) {
 		return false;
 	}
@@ -304,7 +308,7 @@ bool validateNumber(const String &str) {
 	return true;
 }
 
-bool validateHexadecimial(const String &str) {
+bool validateHexadecimial(const StringView &str) {
 	if (str.empty()) {
 		return false;
 	}
@@ -318,7 +322,7 @@ bool validateHexadecimial(const String &str) {
 	return true;
 }
 
-bool validateBase64(const String &str) {
+bool validateBase64(const StringView &str) {
 	if (str.empty()) {
 		return false;
 	}
@@ -348,7 +352,7 @@ Bytes makeRandomBytes(size_t count) {
 	return ret;
 }
 
-Bytes makePassword(const String &str, const String &key) {
+Bytes makePassword(const StringView &str, const StringView &key) {
 	if (str.empty() || key.empty()) {
 		return Bytes();
 	}
@@ -369,7 +373,7 @@ Bytes makePassword(const String &str, const String &key) {
 	return passwdKey;
 }
 
-bool validatePassord(const String &str, const Bytes &passwd, const String &key) {
+bool validatePassord(const StringView &str, const Bytes &passwd, const StringView &key) {
 	if (passwd.size() < 8 + string::Sha256::Length) {
 		return false; // not a password
 	}
@@ -499,9 +503,8 @@ void _addErrorMessage(data::Value &&data) {
 			std::make_pair("level", data::Value("error")),
 			std::make_pair("data", data::Value(data)),
 		};
-		auto a = storage::Adapter::FromContext();
-		if (a) {
-			a->broadcast(bcast);
+		if (auto a = storage::Adapter::FromContext()) {
+			a.broadcast(bcast);
 		}
 	}
 
@@ -532,9 +535,8 @@ void _addDebugMessage(data::Value &&data) {
 			std::make_pair("level", data::Value("debug")),
 			std::make_pair("data", data::Value(data)),
 		};
-		auto a = storage::Adapter::FromContext();
-		if (a) {
-			a->broadcast(bcast);
+		if (auto a = storage::Adapter::FromContext()) {
+			a.broadcast(bcast);
 		}
 	}
 
@@ -560,15 +562,13 @@ void _addDebugMessage(data::Value &&data) {
 }
 
 void broadcast(const data::Value &val) {
-	auto a = storage::Adapter::FromContext();
-	if (a) {
-		a->broadcast(val);
+	if (auto a = storage::Adapter::FromContext()) {
+		a.broadcast(val);
 	}
 }
 void broadcast(const Bytes &val) {
-	auto a = storage::Adapter::FromContext();
-	if (a) {
-		a->broadcast(val);
+	if (auto a = storage::Adapter::FromContext()) {
+		a.broadcast(val);
 	}
 }
 

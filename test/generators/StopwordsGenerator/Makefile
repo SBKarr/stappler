@@ -1,7 +1,7 @@
-STAPPLER_ROOT = ../..
+STAPPLER_ROOT = ../../..
 
 LOCAL_OUTDIR := bin
-LOCAL_OUTPUT_EXECUTABLE := $(LOCAL_OUTDIR)/pathgen
+LOCAL_EXECUTABLE := stopwords
 
 LOCAL_TOOLKIT := cli
 
@@ -17,7 +17,6 @@ LOCAL_MAIN := main.cpp
 
 LOCAL_LIBS =
 
-#.local_prebuild:
-#	@echo test
+LOCAL_FORCE_INSTALL := 1
 
 include $(STAPPLER_ROOT)/make/local.mk

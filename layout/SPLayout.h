@@ -28,9 +28,9 @@ THE SOFTWARE.
  * Layout engine for rich text applications
  */
 
+#include "../common/string/SPStringView.h"
 #include "SPRef.h"
 #include "SPCommon.h"
-#include "SPCharReader.h"
 
 #ifdef __cplusplus
 

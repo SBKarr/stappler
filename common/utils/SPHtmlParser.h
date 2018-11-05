@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef COMMON_UTILS_SPHTMLPARSER_H_
 #define COMMON_UTILS_SPHTMLPARSER_H_
 
-#include "SPCharReader.h"
+#include "SPStringView.h"
 #include "SPString.h"
 
 NS_SP_EXT_BEGIN(html)
@@ -148,11 +148,7 @@ struct Tag : public ReaderClassBase<char16_t> {
 };
 
 template <typename ReaderType, typename __StringReader = StringViewUtf8,
-		typename TagType = typename std::conditional<
-				std::is_same<typename ReaderType::Tag, Tag<__StringReader>>::value,
-				html::Tag<__StringReader>,
-				typename ReaderType::Tag
-			>::type,
+		typename TagType = typename html::Tag<__StringReader>,
 		typename Traits = ParserTraits<ReaderType>>
 struct Parser {
 	using StringReader = __StringReader;

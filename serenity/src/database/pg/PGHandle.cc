@@ -25,13 +25,320 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "PGHandle.h"
-#include "PGHandleTypes.h"
-#include "PGQuery.h"
 #include "ResourceTemplates.h"
 #include "StorageScheme.h"
 #include "User.h"
 
 NS_SA_EXT_BEGIN(pg)
+
+class PgQueryInterface : public sql::QueryInterface {
+public:
+	using Binder = sql::Binder;
+
+	size_t push(String &&val) {
+		params.emplace_back(Bytes());
+		params.back().assign_strong((uint8_t *)val.data(), val.size() + 1);
+		binary.emplace_back(false);
+		return params.size();
+	}
+
+	size_t push(const StringView &val) {
+		params.emplace_back(Bytes());
+		params.back().assign_strong((uint8_t *)val.data(), val.size() + 1);
+		binary.emplace_back(false);
+		return params.size();
+	}
+
+	size_t push(Bytes &&val) {
+		params.emplace_back(std::move(val));
+		binary.emplace_back(true);
+		return params.size();
+	}
+	size_t push(StringStream &query, const data::Value &val, bool force) {
+		if (!force) {
+			switch (val.getType()) {
+			case data::Value::Type::EMPTY:
+				query << "NULL";
+				break;
+			case data::Value::Type::BOOLEAN:
+				if (val.asBool()) {
+					query << "TRUE";
+				} else {
+					query << "FALSE";
+				}
+				break;
+			case data::Value::Type::INTEGER:
+				query << val.asInteger();
+				break;
+			case data::Value::Type::DOUBLE:
+				if (isnan(val.asDouble())) {
+					query << "NaN";
+				} else if (val.asDouble() == std::numeric_limits<double>::infinity()) {
+					query << "-Infinity";
+				} else if (-val.asDouble() == std::numeric_limits<double>::infinity()) {
+					query << "Infinity";
+				} else {
+					query << val.asDouble();
+				}
+				break;
+			case data::Value::Type::CHARSTRING:
+				params.emplace_back(Bytes());
+				params.back().assign_strong((uint8_t *)val.getString().data(), val.size() + 1);
+				binary.emplace_back(false);
+				query << "$" << params.size() << "::text";
+				break;
+			case data::Value::Type::BYTESTRING:
+				params.emplace_back(val.asBytes());
+				binary.emplace_back(true);
+				query << "$" << params.size() << "::bytea";
+				break;
+			case data::Value::Type::ARRAY:
+			case data::Value::Type::DICTIONARY:
+				params.emplace_back(data::write(val, data::EncodeFormat::Cbor));
+				binary.emplace_back(true);
+				query << "$" << params.size() << "::bytea";
+				break;
+			default: break;
+			}
+		} else {
+			params.emplace_back(data::write(val, data::EncodeFormat::Cbor));
+			binary.emplace_back(true);
+			query << "$" << params.size() << "::bytea";
+		}
+		return params.size();
+	}
+
+
+	virtual void bindInt(Binder &, StringStream &query, int64_t val) override {
+		query << val;
+	}
+	virtual void bindUInt(Binder &, StringStream &query, uint64_t val) override {
+		query << val;
+	}
+	virtual void bindString(Binder &, StringStream &query, const String &val) override {
+		if (auto num = push(String(val))) {
+			query << "$" << num << "::text";
+		}
+	}
+	virtual void bindMoveString(Binder &, StringStream &query, String &&val) override {
+		if (auto num = push(move(val))) {
+			query << "$" << num << "::text";
+		}
+	}
+	virtual void bindStringView(Binder &, StringStream &query, const StringView &val) override {
+		if (auto num = push(val.str())) {
+			query << "$" << num << "::text";
+		}
+	}
+	virtual void bindBytes(Binder &, StringStream &query, const Bytes &val) override {
+		if (auto num = push(Bytes(val))) {
+			query << "$" << num << "::bytea";
+		}
+	}
+	virtual void bindMoveBytes(Binder &, StringStream &query, Bytes &&val) override {
+		if (auto num = push(move(val))) {
+			query << "$" << num << "::bytea";
+		}
+	}
+	virtual void bindCoderSource(Binder &, StringStream &query, const CoderSource &val) override {
+		if (auto num = push(Bytes(val.data(), val.data() + val.size()))) {
+			query << "$" << num << "::bytea";
+		}
+	}
+	virtual void bindValue(Binder &, StringStream &query, const data::Value &val) override {
+		push(query, val, false);
+	}
+	virtual void bindDataField(Binder &, StringStream &query, const Binder::DataField &f) override {
+		push(query, f.data, f.force);
+	}
+	virtual void bindTypeString(Binder &, StringStream &query, const Binder::TypeString &type) override {
+		if (auto num = push(type.str)) {
+			query << "$" << num << "::" << type.type;
+		}
+	}
+
+	virtual void bindFullText(Binder &, StringStream &query, const Binder::FullTextField &d) override {
+		if (!d.data || !d.data.isArray() || d.data.size() == 0) {
+			query << "NULL";
+		} else {
+			bool first = true;
+			for (auto &it : d.data.asArray()) {
+				auto &data = it.getString(0);
+				auto lang = storage::FullTextData::Language(it.getInteger(1));
+				auto rank = it.getInteger(2);
+
+				if (!data.empty()) {
+					if (!first) { query << " || "; } else { first = false; }
+
+					auto dataIdx = push(data);
+
+					query << "setweight(to_tsvector('" << storage::FullTextData::getLanguageString(lang) << "', $" << dataIdx << "::text), '" << char('A' + char(rank)) << "')";
+				}
+			}
+		}
+	}
+
+	virtual void bindFullTextRank(Binder &, StringStream &query, const Binder::FullTextRank &d) override {
+		int normalizationValue = 0;
+		if (d.field->hasFlag(storage::Flags::TsNormalize_DocLength)) {
+			normalizationValue |= 2;
+		} else if (d.field->hasFlag(storage::Flags::TsNormalize_DocLengthLog)) {
+			normalizationValue |= 1;
+		} else if (d.field->hasFlag(storage::Flags::TsNormalize_UniqueWordsCount)) {
+			normalizationValue |= 8;
+		} else if (d.field->hasFlag(storage::Flags::TsNormalize_UniqueWordsCountLog)) {
+			normalizationValue |= 16;
+		}
+		query << "ts_rank(" << d.scheme << ".\"" << d.field->getName() << "\" , __ts_query, " << normalizationValue << ")";
+	}
+
+	virtual void bindFullTextData(Binder &, StringStream &query, const storage::FullTextData &d) override {
+		auto idx = push(String(d.buffer));
+		query  << "websearch_to_tsquery('" << d.getLanguageString() << "', $" << idx << "::text)";
+	}
+
+	virtual void clear() override {
+		params.clear();
+		binary.clear();
+	}
+
+public:
+	Vector<Bytes> params;
+	Vector<bool> binary;
+};
+
+class PgResultInterface : public sql::ResultInterface {
+public:
+	inline static constexpr bool pgsql_is_success(ExecStatusType x) {
+		return (x == PGRES_EMPTY_QUERY) || (x == PGRES_COMMAND_OK) || (x == PGRES_TUPLES_OK) || (x == PGRES_SINGLE_TUPLE);
+	}
+
+	PgResultInterface(PGresult *res) : result(res) {
+		err = result ? PQresultStatus(result) : PGRES_FATAL_ERROR;
+	}
+	virtual ~PgResultInterface() {
+		clear();
+	}
+
+	virtual bool isNull(size_t row, size_t field) override {
+		return PQgetisnull(result, row, field);
+	}
+
+	virtual StringView toString(size_t row, size_t field) override {
+		return StringView(PQgetvalue(result, row, field), size_t(PQgetlength(result, row, field)));
+	}
+	virtual DataReader<ByteOrder::Host> toBytes(size_t row, size_t field) override {
+		if (PQfformat(result, field) == 0) {
+			auto val = PQgetvalue(result, row, field);
+			auto len = PQgetlength(result, row, field);
+			if (len > 2 && memcmp(val, "\\x", 2) == 0) {
+				auto d = new Bytes(base16::decode(CoderSource(val + 2, len - 2)));
+				return DataReader<ByteOrder::Host>(*d);
+			}
+			return DataReader<ByteOrder::Host>((uint8_t *)val, len);
+		} else {
+			return DataReader<ByteOrder::Host>((uint8_t *)PQgetvalue(result, row, field), size_t(PQgetlength(result, row, field)));
+		}
+	}
+	virtual int64_t toInteger(size_t row, size_t field) override {
+		if (PQfformat(result, field) == 0) {
+			auto val = PQgetvalue(result, row, field);
+			return StringToNumber<int64_t>(val, nullptr);
+		} else {
+			DataReader<ByteOrder::Network> r((const uint8_t *)PQgetvalue(result, row, field), size_t(PQgetlength(result, row, field)));
+			switch (r.size()) {
+			case 1: return r.readUnsigned(); break;
+			case 2: return r.readUnsigned16(); break;
+			case 4: return r.readUnsigned32(); break;
+			case 8: return r.readUnsigned64(); break;
+			default: break;
+			}
+			return 0;
+		}
+	}
+	virtual double toDouble(size_t row, size_t field) override {
+		if (PQfformat(result, field) == 0) {
+			auto val = PQgetvalue(result, row, field);
+			return StringToNumber<int64_t>(val, nullptr);
+		} else {
+			DataReader<ByteOrder::Network> r((const uint8_t *)PQgetvalue(result, row, field), size_t(PQgetlength(result, row, field)));
+			switch (r.size()) {
+			case 2: return r.readFloat16(); break;
+			case 4: return r.readFloat32(); break;
+			case 8: return r.readFloat64(); break;
+			default: break;
+			}
+			return 0;
+		}
+	}
+	virtual bool toBool(size_t row, size_t field) override {
+		auto val = PQgetvalue(result, row, field);
+		if (PQfformat(result, field) == 0) {
+			if (val && (*val == 'T' || *val == 'y')) {
+				return true;
+			}
+			return false;
+		} else {
+			return val && *val != 0;
+		}
+	}
+	virtual int64_t toId() override {
+		if (PQfformat(result, 0) == 0) {
+			auto val = PQgetvalue(result, 0, 0);
+			return StringToNumber<int64_t>(val, nullptr);
+		} else {
+			DataReader<ByteOrder::Network> r((const uint8_t *)PQgetvalue(result, 0, 0), size_t(PQgetlength(result, 0, 0)));
+			switch (r.size()) {
+			case 1: return int64_t(r.readUnsigned()); break;
+			case 2: return int64_t(r.readUnsigned16()); break;
+			case 4: return int64_t(r.readUnsigned32()); break;
+			case 8: return int64_t(r.readUnsigned64()); break;
+			default: break;
+			}
+			return 0;
+		}
+	}
+	virtual StringView getFieldName(size_t field) override {
+		auto ptr = PQfname(result, field);
+		if (ptr) {
+			return StringView(ptr);
+		}
+		return StringView();
+	}
+	virtual bool isSuccess() const override {
+		return result && pgsql_is_success(err);
+	}
+	virtual size_t getRowsCount() const override {
+		return size_t(PQntuples(result));
+	}
+	virtual size_t getFieldsCount() const override {
+		return size_t(PQnfields(result));
+	}
+	virtual size_t getAffectedRows() const override {
+		return StringToNumber<size_t>(PQcmdTuples(result));
+	}
+	virtual data::Value getInfo() const override {
+		return data::Value {
+			pair("error", data::Value(err)),
+			pair("status", data::Value(PQresStatus(err))),
+			pair("desc", data::Value(result ? PQresultErrorMessage(result) : "Fatal database error")),
+		};
+	}
+	virtual void clear() {
+		if (result) {
+	        PQclear(result);
+	        result = nullptr;
+		}
+	}
+
+	ExecStatusType getError() const {
+		return err;
+	}
+
+public:
+	PGresult *result = nullptr;
+	ExecStatusType err = PGRES_EMPTY_QUERY;
+};
 
 struct ExecParamData {
 	std::array<const char *, 64> values;
@@ -46,8 +353,10 @@ struct ExecParamData {
 	const int *paramLengths = nullptr;
 	const int *paramFormats = nullptr;
 
-	ExecParamData(const ExecQuery &query) {
-		auto size = query.getParams().size();
+	ExecParamData(const sql::SqlQuery &query) {
+		auto queryInterface = static_cast<PgQueryInterface *>(query.getInterface());
+
+		auto size = queryInterface->params.size();
 
 		if (size > 64) {
 			valuesVec.reserve(size);
@@ -55,8 +364,8 @@ struct ExecParamData {
 			formatsVec.reserve(size);
 
 			for (size_t i = 0; i < size; ++ i) {
-				const Bytes &d = query.getParams().at(i);
-				bool bin = query.getBinaryVec().at(i);
+				const Bytes &d = queryInterface->params.at(i);
+				bool bin = queryInterface->binary.at(i);
 				valuesVec.emplace_back((const char *)d.data());
 				sizesVec.emplace_back(int(d.size()));
 				formatsVec.emplace_back(bin);
@@ -67,8 +376,8 @@ struct ExecParamData {
 			paramFormats = formatsVec.data();
 		} else {
 			for (size_t i = 0; i < size; ++ i) {
-				const Bytes &d = query.getParams().at(i);
-				bool bin = query.getBinaryVec().at(i);
+				const Bytes &d = queryInterface->params.at(i);
+				bool bin = queryInterface->binary.at(i);
 				values[i] = (const char *)d.data();
 				sizes[i] = int(d.size());
 				formats[i] = bin;
@@ -106,6 +415,75 @@ Handle::operator bool() const {
 	return pool != nullptr && conn != nullptr;
 }
 
+void Handle::makeQuery(const Callback<void(sql::SqlQuery &)> &cb) {
+	PgQueryInterface interface;
+	sql::SqlQuery query(&interface);
+	cb(query);
+}
+
+bool Handle::selectQuery(const sql::SqlQuery &query, const Callback<void(sql::Result &)> &cb) {
+	if (!conn || getTransactionStatus() == storage::TransactionStatus::Rollback) {
+		return false;
+	}
+
+	auto queryInterface = static_cast<PgQueryInterface *>(query.getInterface());
+
+	ExecParamData data(query);
+	PgResultInterface res(PQexecParams(conn, query.getQuery().weak().data(), queryInterface->params.size(), nullptr,
+			data.paramValues, data.paramLengths, data.paramFormats, 1));
+	if (!res.isSuccess()) {
+		auto info = res.getInfo();
+		std::cout << query.getQuery().weak() << "\n";
+		std::cout << info << "\n";
+		messages::debug("Database", "Fail to perform query", move(info));
+		messages::error("Database", "Fail to perform query");
+		cancelTransaction_pg();
+	}
+
+	lastError = res.getError();
+
+	sql::Result ret(&res);
+	cb(ret);
+	return res.isSuccess();
+}
+
+bool Handle::performSimpleQuery(const StringView &query) {
+	if (getTransactionStatus() == storage::TransactionStatus::Rollback) {
+		return false;
+	}
+
+	PgResultInterface res(PQexec(conn, query.data()));
+	lastError = res.getError();
+	if (!res.isSuccess()) {
+		auto info = res.getInfo();
+		std::cout << query << "\n";
+		std::cout << info << "\n";
+		cancelTransaction_pg();
+	}
+	return res.isSuccess();
+}
+
+bool Handle::performSimpleSelect(const StringView &query, const Callback<void(sql::Result &)> &cb) {
+	if (getTransactionStatus() == storage::TransactionStatus::Rollback) {
+		return false;
+	}
+
+	PgResultInterface res(PQexec(conn, query.data()));
+	lastError = res.getError();
+
+	if (res.isSuccess()) {
+		sql::Result ret(&res);
+		cb(ret);
+	} else {
+		auto info = res.getInfo();
+		std::cout << query << "\n";
+		std::cout << info << "\n";
+		cancelTransaction_pg();
+	}
+
+	return res.isSuccess();
+}
+
 bool Handle::beginTransaction_pg(TransactionLevel l) {
 	int64_t userId = 0;
 	int64_t now = Time::now().toMicros();
@@ -122,7 +500,7 @@ bool Handle::beginTransaction_pg(TransactionLevel l) {
 		if (performSimpleQuery("BEGIN ISOLATION LEVEL READ COMMITTED"_weak)) {
 			setVariables();
 			level = TransactionLevel::ReadCommited;
-			transactionStatus = TransactionStatus::Commit;
+			transactionStatus = storage::TransactionStatus::Commit;
 			return true;
 		}
 		break;
@@ -130,7 +508,7 @@ bool Handle::beginTransaction_pg(TransactionLevel l) {
 		if (performSimpleQuery("BEGIN ISOLATION LEVEL REPEATABLE READ"_weak)) {
 			setVariables();
 			level = TransactionLevel::RepeatableRead;
-			transactionStatus = TransactionStatus::Commit;
+			transactionStatus = storage::TransactionStatus::Commit;
 			return true;
 		}
 		break;
@@ -138,7 +516,7 @@ bool Handle::beginTransaction_pg(TransactionLevel l) {
 		if (performSimpleQuery("BEGIN ISOLATION LEVEL SERIALIZABLE"_weak)) {
 			setVariables();
 			level = TransactionLevel::Serialized;
-			transactionStatus = TransactionStatus::Commit;
+			transactionStatus = storage::TransactionStatus::Commit;
 			return true;
 		}
 		break;
@@ -149,20 +527,20 @@ bool Handle::beginTransaction_pg(TransactionLevel l) {
 }
 
 void Handle::cancelTransaction_pg() {
-	transactionStatus = TransactionStatus::Rollback;
+	transactionStatus = storage::TransactionStatus::Rollback;
 }
 
 bool Handle::endTransaction_pg() {
 	switch (transactionStatus) {
-	case TransactionStatus::Commit:
-		transactionStatus = TransactionStatus::None;
+	case storage::TransactionStatus::Commit:
+		transactionStatus = storage::TransactionStatus::None;
 		if (performSimpleQuery("COMMIT"_weak)) {
 			finalizeBroadcast();
 			return true;
 		}
 		break;
-	case TransactionStatus::Rollback:
-		transactionStatus = TransactionStatus::None;
+	case storage::TransactionStatus::Rollback:
+		transactionStatus = storage::TransactionStatus::None;
 		if (performSimpleQuery("ROLLBACK"_weak)) {
 			finalizeBroadcast();
 			return false;
@@ -172,296 +550,6 @@ bool Handle::endTransaction_pg() {
 		break;
 	}
 	return false;
-}
-
-void Handle::finalizeBroadcast() {
-	if (!_bcasts.empty()) {
-		ExecQuery query;
-		auto vals = query.insert("__broadcasts").fields("date", "msg").values();
-		for (auto &it : _bcasts) {
-			vals.values(it.first, move(it.second));
-		}
-		query.finalize();
-		perform(query);
-		_bcasts.clear();
-	}
-}
-
-Result Handle::select(const ExecQuery &query) {
-	if (!conn || getTransactionStatus() == TransactionStatus::Rollback) {
-		return Result();
-	}
-
-	ExecParamData data(query);
-	Result res(PQexecParams(conn, query.getQuery().weak().data(), query.getParams().size(), nullptr,
-			data.paramValues, data.paramLengths, data.paramFormats, 1));
-	if (!res || !res.success()) {
-		std::cout << res.info() << "\n";
-		messages::debug("Database", "Fail mto perform query", res.info());
-		messages::error("Database", "Fail to perform query");
-	}
-
-	lastError = res.getError();
-	return res;
-}
-
-int64_t Handle::selectId(const ExecQuery &query) {
-	if (getTransactionStatus() == TransactionStatus::Rollback) {
-		return 0;
-	}
-	Result res(select(query));
-	if (!res.empty()) {
-		return res.readId();
-	}
-	return 0;
-}
-size_t Handle::perform(const ExecQuery &query) {
-	if (getTransactionStatus() == TransactionStatus::Rollback) {
-		return maxOf<size_t>();
-	}
-	Result res(select(query));
-	if (res.success()) {
-		return res.getAffectedRows();
-	}
-	return maxOf<size_t>();
-}
-
-data::Value Handle::select(const Scheme &scheme, const ExecQuery &query) {
-	auto result = select(query);
-	if (result) {
-		return result.decode(scheme);
-	}
-	return data::Value();
-}
-
-data::Value Handle::select(const Field &field, const ExecQuery &query) {
-	auto result = select(query);
-	if (result) {
-		return result.decode(field);
-	}
-	return data::Value();
-}
-
-static bool Handle_convertViewDelta(data::Value &it) {
-	auto vid_it = it.asDict().find("__vid");
-	auto d_it = it.asDict().find("__delta");
-	if (vid_it != it.asDict().end() && d_it != it.asDict().end()) {
-		if (vid_it->second.getInteger()) {
-			d_it->second.setString("update", "action");
-			it.asDict().erase(vid_it);
-		} else {
-			d_it->second.setString("delete", "action");
-			auto dict_it = it.asDict().begin();
-			while (dict_it != it.asDict().end()) {
-				if (dict_it->first != "__oid" && dict_it->first != "__delta") {
-					dict_it = it.asDict().erase(dict_it);
-				} else {
-					++ dict_it;
-				}
-			}
-			return false;
-		}
-	}
-	return true;
-}
-
-static void Handle_mergeViews(data::Value &objs, data::Value &vals) {
-	for (auto &it : objs.asArray()) {
-		if (!Handle_convertViewDelta(it)) {
-			continue;
-		}
-
-		if (auto oid = it.getInteger("__oid")) {
-			auto v_it = std::lower_bound(vals.asArray().begin(), vals.asArray().end(), oid,
-					[&] (const data::Value &l, int64_t r) -> bool {
-				return (l.isInteger() ? l.getInteger() : l.getInteger("__oid")) < r;
-			});
-			if (v_it != vals.asArray().end()) {
-				auto objId = v_it->getInteger("__oid");
-				if (objId == oid) {
-					v_it->erase("__oid");
-					if (it.hasValue("__views")) {
-						it.getValue("__views").addValue(move(*v_it));
-					} else {
-						it.emplace("__views").addValue(move(*v_it));
-					}
-					v_it->setInteger(oid);
-				}
-			}
-		}
-	}
-}
-
-void Handle::select(data::Value &objs, const Field &field, const ExecQuery &query) {
-	auto result = select(query);
-	if (result) {
-		auto vals = result.decode(field);
-		if (!vals.isArray()) {
-			for (auto &it : objs.asArray()) {
-				Handle_convertViewDelta(it);
-			}
-		} else if (vals.isArray() && objs.isArray()) {
-			Handle_mergeViews(objs, vals);
-		}
-	}
-}
-
-bool Handle::performSimpleQuery(const String &query) {
-	if (getTransactionStatus() == TransactionStatus::Rollback) {
-		return false;
-	}
-
-	Result res(PQexec(conn, query.data()));
-	lastError = res.getError();
-	return res.success();
-}
-
-Result Handle::performSimpleSelect(const String &query) {
-	if (getTransactionStatus() == TransactionStatus::Rollback) {
-		return Result();
-	}
-
-	Result res(PQexec(conn, query.data()));
-	lastError = res.getError();
-	return res;
-}
-
-Resource *Handle::makeResource(ResourceType type, QueryList &&list, const Field *f) {
-	switch (type) {
-	case ResourceType::ResourceList: return new ResourceReslist(this, std::move(list));  break;
-	case ResourceType::ReferenceSet: return new ResourceRefSet(this, std::move(list)); break;
-	case ResourceType::ObjectField: return new ResourceFieldObject(this, std::move(list)); break;
-	case ResourceType::Object: return new ResourceObject(this, std::move(list)); break;
-	case ResourceType::Set: return new ResourceSet(this, std::move(list)); break;
-	case ResourceType::View: return new ResourceView(this, std::move(list)); break;
-	case ResourceType::File: return new ResourceFile(this, std::move(list), f); break;
-	case ResourceType::Array: return new ResourceArray(this, std::move(list), f); break;
-	}
-	return nullptr;
-}
-
-data::Value Handle::getHistory(const Scheme &scheme, const Time &time, bool resolveUsers) {
-	data::Value ret;
-	if (!scheme.hasDelta()) {
-		return ret;
-	}
-
-	ExecQuery q;
-	q.select().from(TableRec::getNameForDelta(scheme)).where("time", Comparation::GreatherThen, time.toMicroseconds())
-			.order(Ordering::Descending, "time").finalize();
-
-	auto res = select(q);
-	for (auto it : res) {
-		auto &d = ret.emplace();
-		for (size_t i = 0; i < it.size(); ++ i) {
-			auto name = res.name(i);
-			if (name == "action") {
-				switch (DeltaAction(it.toInteger(i))) {
-				case DeltaAction::Create: d.setString("create", "action"); break;
-				case DeltaAction::Update: d.setString("update", "action"); break;
-				case DeltaAction::Delete: d.setString("delete", "action"); break;
-				case DeltaAction::Append: d.setString("append", "action"); break;
-				case DeltaAction::Erase:d.setString("erase", "action");  break;
-				default: break;
-				}
-			} else if (name == "time") {
-				d.setString(Time::microseconds(it.toInteger(i)).toHttp(), "http-date");
-				d.setInteger(it.toInteger(i), "time");
-			} else if (name == "user" && resolveUsers) {
-				if (auto u = User::get(this, it.toInteger(i))) {
-					auto &ud = d.emplace("user");
-					ud.setInteger(u->getObjectId(), "id");
-					ud.setString(u->getName(), "name");
-				} else {
-					d.setInteger(it.toInteger(i), name.str());
-				}
-			} else if (name != "id") {
-				d.setInteger(it.toInteger(i), name.str());
-			}
-		}
-	}
-
-	return ret;
-}
-
-data::Value Handle::getHistory(const FieldView &view, const Scheme *scheme, uint64_t tag, const Time &time, bool resolveUsers) {
-	data::Value ret;
-	if (!view.delta) {
-		return ret;
-	}
-
-	Result res;
-	if (scheme) {
-		String name = toString(scheme->getName(), "_f_", view.name, "_delta");
-
-		ExecQuery q;
-		q.select().from(name).where("time", Comparation::GreatherThen, time.toMicroseconds())
-				.where(Operator::And, "tag", Comparation::Equal, tag)
-				.order(Ordering::Descending, "time").finalize();
-
-		res = select(q);
-	}
-
-	for (auto it : res) {
-		auto &d = ret.emplace();
-		for (size_t i = 0; i < it.size(); ++ i) {
-			auto name = res.name(i);
-			if (name == "tag") {
-				d.setInteger(it.toInteger(i), "tag");
-			} else if (name == "time") {
-				d.setString(Time::microseconds(it.toInteger(i)).toHttp(), "http-date");
-				d.setInteger(it.toInteger(i), "time");
-			} else if (name == "user" && resolveUsers) {
-				if (auto u = User::get(this, it.toInteger(i))) {
-					auto &ud = d.emplace("user");
-					ud.setInteger(u->getObjectId(), "id");
-					ud.setString(u->getName(), "name");
-				} else {
-					d.setInteger(it.toInteger(i), name.str());
-				}
-			} else if (name != "id") {
-				d.setInteger(it.toInteger(i), name.str());
-			}
-		}
-	}
-
-	return ret;
-}
-
-data::Value Handle::getDeltaData(const Scheme &scheme, const Time &time) {
-	if (scheme.hasDelta()) {
-		ExecQuery q;
-		q.writeQueryDelta(scheme, time, Set<const Field *>(), false);
-		q.finalize();
-
-		return select(scheme, q);
-	}
-	return data::Value();
-}
-
-int64_t Handle::getDeltaValue(const Scheme &scheme) {
-	if (scheme.hasDelta()) {
-		ExecQuery q;
-		q.select().aggregate("max", ExecQuery::Field("d", "time"))
-				.from(ExecQuery::Field(TableRec::getNameForDelta(scheme.getName())).as("d")).finalize();
-		if (auto res = select(q)) {
-			return res.at(0).toInteger(0);
-		}
-	}
-	return 0;
-}
-
-int64_t Handle::getDeltaValue(const Scheme &scheme, const FieldView &view, uint64_t tag) {
-	if (view.delta) {
-		String deltaName = toString(scheme.getName(), "_f_", view.name, "_delta");
-		ExecQuery q;
-		q.select().aggregate("max", ExecQuery::Field("d", "time"))
-				.from(ExecQuery::Field(deltaName).as("d")).where("tag", Comparation::Equal, tag).finalize();
-		if (auto res = select(q)) {
-			return res.at(0).toInteger(0);
-		}
-	}
-	return 0;
 }
 
 NS_SA_EXT_END(pg)

@@ -55,13 +55,13 @@ auto Query<Binder>::UpdateWhere::returning() -> Returning {
 }
 
 template <typename Binder>
-auto Query<Binder>::update(const String & field) -> Update {
+auto Query<Binder>::update(const StringView & field) -> Update {
 	stream << "UPDATE " << field << " SET";
 	return Update(this);
 }
 
 template <typename Binder>
-auto Query<Binder>::update(const String &field, const String &alias) -> Update {
+auto Query<Binder>::update(const StringView &field, const StringView &alias) -> Update {
 	stream << "UPDATE " << field << " AS " << alias << " SET";
 	return Update(this);
 }
@@ -95,13 +95,13 @@ auto Query<Binder>::DeleteWhere::returning() -> Returning {
 }
 
 template <typename Binder>
-auto Query<Binder>::remove(const String & field) -> Delete {
+auto Query<Binder>::remove(const StringView & field) -> Delete {
 	stream << "DELETE FROM " << field;
 	return Delete(this);
 }
 
 template <typename Binder>
-auto Query<Binder>::remove(const String &field, const String &alias) -> Delete {
+auto Query<Binder>::remove(const StringView &field, const StringView &alias) -> Delete {
 	stream << "DELETE FROM " << field << " AS " << alias;
 	return Delete(this);
 }
