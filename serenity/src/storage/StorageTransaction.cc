@@ -38,7 +38,7 @@ Transaction::Op Transaction::getTransactionOp(Action a) {
 }
 
 Transaction Transaction::acquire(const Adapter &adapter) {
-	if (auto req = apr::pool::request()) {
+	auto makeRequestTransaction = [&] (request_rec *req) -> Transaction {
 		if (auto d = Request(req).getObject<Data>("current_transaction")) {
 			return Transaction(d);
 		} else {
@@ -56,6 +56,11 @@ Transaction Transaction::acquire(const Adapter &adapter) {
 			}
 			return ret;
 		}
+	};
+
+	auto log = apr::pool::info();
+	if (log.first == uint32_t(apr::pool::Info::Request)) {
+		return makeRequestTransaction((request_rec *)log.second);
 	} else if (auto pool = apr::pool::acquire()) {
 		if (auto d = apr::pool::get<Data>(pool, "current_transaction")) {
 			return Transaction(d);

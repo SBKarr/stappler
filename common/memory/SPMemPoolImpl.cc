@@ -1042,6 +1042,18 @@ void *calloc(pool_t *p, size_t count, size_t eltsize) {
 	return ptr;
 }
 
+static status_t cleanup_register_fn(void *ptr) {
+	if (auto fn = (Function<void()> *)ptr) {
+		(*fn)();
+	}
+	return SUCCESS;
+}
+
+void cleanup_register(pool_t *p, Function<void()> &&cb) {
+	auto fn = new (p) Function<void()>(move(cb));
+	cleanup_register(p, fn, &cleanup_register_fn);
+}
+
 }
 
 NS_SP_EXT_END(memory)

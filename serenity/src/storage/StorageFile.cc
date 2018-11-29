@@ -302,7 +302,7 @@ static bool getTargetImageSize(size_t W, size_t H, const MinImageSize &min, cons
 
 static String saveImage(Bitmap &bmp) {
 	apr::file file;
-	file.open_tmp(config::getUploadTmpImagePrefix(), 0);
+	file.open_tmp(config::getUploadTmpImagePrefix(), APR_FOPEN_CREATE | APR_FOPEN_READ | APR_FOPEN_WRITE | APR_FOPEN_EXCL);
 	String path(file.path());
 	file.close();
 
@@ -424,7 +424,7 @@ static Map<String, String> writeImages(const Field &f, const StringView &type, c
 	    }
 	} else {
 		apr::file file;
-		file.open_tmp(config::getUploadTmpImagePrefix(), 0);
+		file.open_tmp(config::getUploadTmpImagePrefix(), APR_FOPEN_CREATE | APR_FOPEN_READ | APR_FOPEN_WRITE | APR_FOPEN_EXCL);
 		file.xsputn((const char *)data.data(), data.size());
 		ret.emplace(f.getName().str(), file.path());
 		file.close();

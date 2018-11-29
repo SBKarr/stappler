@@ -128,8 +128,14 @@ void SqlQuery::writeOrdering(SqlQuery::SelectFrom &s, const Scheme &scheme, cons
 		String orderField;
 		if (q.hasOrder()) {
 			orderField = q.getOrderField();
+			if (!scheme.getField(orderField)) {
+				return;
+			}
 		} else if (q.getSelectList().size() == 1) {
 			orderField = q.getSelectList().back().field;
+			if (!scheme.getField(orderField)) {
+				return;
+			}
 		} else if (!fts.empty()) {
 			orderField = "__ts_rank";
 			ordering = Ordering::Descending;

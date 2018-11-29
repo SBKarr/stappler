@@ -287,6 +287,12 @@ private:
 	invoker_t mInvoker;
 };
 
+namespace pool {
+
+void cleanup_register(pool_t *, memory::function<void()> &&);
+
+}
+
 NS_SP_EXT_END(memory)
 
 #endif /* COMMON_MEMORY_SPMEMFUNCTION_H_ */
