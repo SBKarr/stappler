@@ -82,8 +82,8 @@ Session::~Session() {
 	}
 }
 
-Session::Session(const Request &rctx) : _request(rctx) {
-	_valid = init();
+Session::Session(const Request &rctx, bool silent) : _request(rctx) {
+	_valid = init(silent);
 }
 
 Session::Session(const Request &rctx, User *user, TimeInterval maxAge) : _request(rctx) {
@@ -114,7 +114,7 @@ bool Session::init(User *user, TimeInterval maxAge) {
 	return write();
 }
 
-bool Session::init() {
+bool Session::init(bool silent) {
 	auto serv = _request.server();
 	auto &args = _request.getParsedQueryArgs();
 
@@ -122,7 +122,7 @@ bool Session::init() {
 
 	/* token is a base64 encoded hash from sha512, so, it must have 88 bytes */
 	if (sessionTokenString.size() != 88) {
-		//messages::debug("Session", "Session token format is invalid");
+		if (!silent) { messages::debug("Session", "Session token format is invalid"); }
 		return false;
 	}
 
@@ -130,14 +130,14 @@ bool Session::init() {
 	auto sessionData = getStorageData(_request, sessionToken);
 	auto &data = sessionData.getValue("data");
 	if (!data) {
-		messages::debug("Session", "Fail to extract session from storage");
+		if (!silent) { messages::debug("Session", "Fail to extract session from storage"); }
 	}
 
 	auto &uuidData = data.getBytes(SA_SESSION_UUID_KEY);
 	auto &userName = data.getString(SA_SESSION_USER_NAME_KEY);
 	auto &salt = data.getBytes(SA_SESSION_SALT_KEY);
 	if (uuidData.empty() || userName.empty()) {
-		messages::error("Session", "Wrong authority data in session");
+		if (!silent) { messages::error("Session", "Wrong authority data in session"); }
 		return false;
 	}
 
@@ -147,27 +147,25 @@ bool Session::init() {
 	makeSessionToken(_request, buf, sessionUuid, userName);
 
 	if (memcmp(buf.data(), sessionToken.data(), sizeof(Token)) != 0) {
-		messages::error("Session", "Session token is invalid");
+		if (!silent) { messages::error("Session", "Session token is invalid"); }
 		return false;
 	}
 
 	Bytes cookieToken(base64url::decode(_request.getCookie(serv.getSessionName(), true)));
 	if (cookieToken.empty() || cookieToken.size() != 64) {
-
-		messages::error("Session", "Fail to read token from cookie", data::Value{
+		if (!silent) { messages::error("Session", "Fail to read token from cookie", data::Value{
 			std::make_pair("token", data::Value(cookieToken))
-		});
+		}); }
 		return false;
 	}
 
 	makeCookieToken(_request, buf, sessionUuid, userName, salt);
 
 	if (memcmp(buf.data(), cookieToken.data(), 64) != 0) {
-		messages::error("Session", "Cookie token is invalid", data::Value{
+		if (!silent) { messages::error("Session", "Cookie token is invalid", data::Value{
 			std::make_pair("token", data::Value(cookieToken)),
 			std::make_pair("check", data::Value(Bytes(buf.begin(), buf.end())))
-
-		});
+		}); }
 		return false;
 	}
 
@@ -180,7 +178,7 @@ bool Session::init() {
 	if (id) {
 		_user = getStorageUser(_request, id);
 		if (!_user) {
-			messages::error("Session", "Invalid user id in session data");
+			if (!silent) { messages::error("Session", "Invalid user id in session data"); }
 			return false;
 		}
 	}

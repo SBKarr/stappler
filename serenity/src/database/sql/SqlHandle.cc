@@ -322,6 +322,7 @@ int64_t SqlHandle::getDeltaValue(const Scheme &scheme) {
 				}
 			});
 		});
+		return ret;
 	}
 	return 0;
 }
@@ -339,6 +340,7 @@ int64_t SqlHandle::getDeltaValue(const Scheme &scheme, const FieldView &view, ui
 				}
 			});
 		});
+		return ret;
 	}
 	return 0;
 }

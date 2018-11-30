@@ -34,12 +34,12 @@ public:
 
 	static Session *create(const Request &);
 
-	Session(const Request &);
+	Session(const Request &, bool silent = false);
 	Session(const Request &, User *user, TimeInterval maxAge);
 	~Session();
 
 	bool init(User *user, TimeInterval maxAge);
-	bool init();
+	bool init(bool silent);
 
 	bool isValid() const;
 	const Token &getSessionToken() const;

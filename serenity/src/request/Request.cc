@@ -515,11 +515,19 @@ void Request::addCleanup(const Function<void()> &cb) {
 }
 
 bool Request::isAdministrative() {
-	bool isAuthorized = (getUser() && getUser()->isAdmin());
-	if (isAuthorized) {
+	if (_config->_user && _config->_user->isAdmin()) {
 		return true;
 	}
 
+	Session s(*this, true);
+	if (s.isValid()) {
+		auto u = s.getUser();
+		if (u && u->isAdmin()) {
+			return true;
+		}
+	}
+
+	bool isAuthorized = false;
 	auto userIp = getUseragentIp();
 	if (isSecureConnection() || strncmp(userIp.data(), "127.", 4) == 0 || userIp == "::1") {
 		// try cross-server auth
