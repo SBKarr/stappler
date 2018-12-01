@@ -44,12 +44,15 @@ Transaction Transaction::acquire(const Adapter &adapter) {
 		} else {
 			Request rctx(req);
 			d = new (req->pool) Data{adapter, rctx};
+			d->role = AccessRoleId::System;
+			rctx.storeObject(d, "current_transaction");
 			if (rctx.isAdministrative()) {
 				d->role = AccessRoleId::Admin;
 			} else if (rctx.getAuthorizedUser()) {
 				d->role = AccessRoleId::Operator;
+			} else {
+				d->role = AccessRoleId::Nobody;
 			}
-			rctx.storeObject(d, "current_transaction");
 			auto ret = Transaction(d);
 			if (auto serv = apr::pool::server()) {
 				Server(serv).onStorageTransaction(ret);

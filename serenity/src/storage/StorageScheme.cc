@@ -304,9 +304,9 @@ data::Value Scheme::createWithWorker(Worker &w, const data::Value &data, bool is
 		}
 
 		if (auto ret = t.create(w, changeSet)) {
-			touchParents(t, changeSet);
+			touchParents(t, ret);
 			for (auto &it : views) {
-				updateView(t, changeSet, it);
+				updateView(t, ret, it);
 			}
 			retVal = move(ret);
 			return true;

@@ -34,6 +34,17 @@ Query::Field::Field(Field &&f) : name(move(f.name)), fields(move(f.fields)) { }
 
 Query::Field::Field(const Field &f) : name(f.name), fields(f.fields) { }
 
+Query::Field &Query::Field::operator=(Field &&f) {
+	name = move(f.name);
+	fields = move(f.fields);
+	return *this;
+}
+Query::Field &Query::Field::operator=(const Field &f) {
+	name = f.name;
+	fields = f.fields;
+	return *this;
+}
+
 void Query::Field::setName(const char *n) {
 	name = n;
 }
@@ -45,6 +56,14 @@ void Query::Field::setName(const String &n) {
 }
 void Query::Field::setName(String &&n) {
 	name = move(n);
+}
+void Query::Field::setName(const Field &f) {
+	name = f.name;
+	fields = f.fields;
+}
+void Query::Field::setName(Field &&f) {
+	name = move(f.name);
+	fields = move(f.fields);
 }
 
 Query::Select::Select(const StringView & f, Comparation c, data::Value && v1, data::Value && v2)

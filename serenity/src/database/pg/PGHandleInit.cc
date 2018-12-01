@@ -96,7 +96,7 @@ struct TableRec {
 };
 
 
-constexpr static uint32_t getDefaultFunctionVersion() { return 8; }
+constexpr static uint32_t getDefaultFunctionVersion() { return 9; }
 
 constexpr static const char * DATABASE_DEFAULTS = R"Sql(
 CREATE TABLE IF NOT EXISTS __objects (
@@ -193,7 +193,7 @@ static void writeTrigger(StringStream &stream, const storage::Scheme *s, const S
 	auto &fields = s->getFields();
 
 	auto writeInsertDelta = [&] (Handle::DeltaAction a) {
-		if (a == Handle::DeltaAction::Create) {
+		if (a == Handle::DeltaAction::Create || a == Handle::DeltaAction::Update) {
 			stream << "\t\tINSERT INTO " << TableRec::getNameForDelta(*s) << "(\"object\",\"action\",\"time\",\"user\")"
 				"VALUES(NEW.__oid,1,current_setting('serenity.now')::bigint,current_setting('serenity.user')::bigint);\n";
 		} else {

@@ -151,7 +151,7 @@ bool Session::init(bool silent) {
 		return false;
 	}
 
-	Bytes cookieToken(base64url::decode(_request.getCookie(serv.getSessionName(), true)));
+	Bytes cookieToken(base64url::decode(_request.getCookie(serv.getSessionName(), !silent)));
 	if (cookieToken.empty() || cookieToken.size() != 64) {
 		if (!silent) { messages::error("Session", "Fail to read token from cookie", data::Value{
 			std::make_pair("token", data::Value(cookieToken))

@@ -357,6 +357,7 @@ apr::weak_string Request::getCookie(const String &name, bool removeFromHeadersTa
 			} else {
 				apr::string ret(val);
 				ap_unescape_urlencoded(ret.data());
+				ret.resize(strlen(ret.data()));
 				return ret;
 			}
 		}

@@ -56,6 +56,9 @@ public:
 		Field(Field &&);
 		Field(const Field &);
 
+		Field &operator=(Field &&);
+		Field &operator=(const Field &);
+
 		template <typename Str> Field(Str &&);
 		template <typename Str> Field(Str &&, Vector<String> &&);
 		template <typename Str> Field(Str &&, std::initializer_list<String> &&);
@@ -66,8 +69,8 @@ public:
 		void setName(const StringView &);
 		void setName(const String &);
 		void setName(String &&);
-
-		bool operator < (const Field &) const;
+		void setName(const Field &);
+		void setName(Field &&);
 	};
 
 	using FieldsVec = Vector<Field>;

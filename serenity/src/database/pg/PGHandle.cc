@@ -433,8 +433,10 @@ bool Handle::selectQuery(const sql::SqlQuery &query, const Callback<void(sql::Re
 			data.paramValues, data.paramLengths, data.paramFormats, 1));
 	if (!res.isSuccess()) {
 		auto info = res.getInfo();
+#if DEBUG
 		std::cout << query.getQuery().weak() << "\n";
-		std::cout << info << "\n";
+		std::cout << data::EncodeFormat::Pretty << info << "\n";
+#endif
 		messages::debug("Database", "Fail to perform query", move(info));
 		messages::error("Database", "Fail to perform query");
 		cancelTransaction_pg();
