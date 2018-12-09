@@ -1106,7 +1106,14 @@ void Server::runErrorReportTask(request_rec *req, const Vector<data::Value> &err
 				storage::Adapter storage(&h);
 
 				auto serv = Server(apr::pool::server());
-				storage::Worker(*serv.getErrorScheme(), storage).create(*err);
+				if (auto t = Transaction::acquire(storage)) {
+					t.performAsSystem([&] () -> bool {
+						if (!serv.getErrorScheme()->create(storage, *err)) {
+							std::cout << "Fail to report error: " << *err << "\n";
+						}
+						return true;
+					});
+				}
 
 				root->dbdClose(serv, dbd);
 			}

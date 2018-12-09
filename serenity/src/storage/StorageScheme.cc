@@ -456,13 +456,16 @@ Pair<bool, data::Value> Scheme::prepareUpdate(const data::Value &data, bool isPr
 }
 
 void Scheme::touchParents(const Transaction &t, const data::Value &obj) const {
-	if (!parents.empty()) {
-		Map<int64_t, const Scheme *> parentsToUpdate;
-		extractParents(parentsToUpdate, t, obj, false);
-		for (auto &it : parentsToUpdate) {
-			Worker(*it.second, t).touch(it.first);
+	t.performAsSystem([&] () -> bool {
+		if (!parents.empty()) {
+			Map<int64_t, const Scheme *> parentsToUpdate;
+			extractParents(parentsToUpdate, t, obj, false);
+			for (auto &it : parentsToUpdate) {
+				Worker(*it.second, t).touch(it.first);
+			}
 		}
-	}
+		return true;
+	});
 }
 
 void Scheme::extractParents(Map<int64_t, const Scheme *> &parentsToUpdate, const Transaction &t, const data::Value &obj, bool isChangeSet) const {
@@ -525,9 +528,12 @@ data::Value Scheme::updateObject(Worker &w, data::Value && obj, data::Value &cha
 	if (!viewsToUpdate.empty() || !parentsToUpdate.empty()) {
 		if (w.perform([&] (const Transaction &t) {
 			if (t.save(w, obj.getInteger("__oid"), obj, updatedFields)) {
-				for (auto &it : parentsToUpdate) {
-					Worker(*it.second, t).touch(it.first);
-				}
+				t.performAsSystem([&] () -> bool {
+					for (auto &it : parentsToUpdate) {
+						Worker(*it.second, t).touch(it.first);
+					}
+					return true;
+				});
 				for (auto &it : viewsToUpdate) {
 					updateView(t, obj, it);
 				}
@@ -537,8 +543,8 @@ data::Value Scheme::updateObject(Worker &w, data::Value && obj, data::Value &cha
 		})) {
 			return obj;
 		}
-	} else if (w.transaction().save(w, obj.getInteger("__oid"), obj, updatedFields)) {
-		return obj;
+	} else if (auto ret = w.transaction().save(w, obj.getInteger("__oid"), obj, updatedFields)) {
+		return ret;
 	}
 
 	return data::Value();
@@ -562,7 +568,7 @@ data::Value Scheme::fieldWithWorker(Action a, Worker &w, uint64_t oid, const Fie
 	switch (a) {
 	case Action::Get: return w.transaction().field(a, w, oid, f, move(patch)); break;
 	case Action::Set:
-		if (f.transform(*this, patch)) {
+		if (f.transform(FieldAccessAction::Write, *this, oid, patch)) {
 			data::Value ret;
 			w.perform([&] (const Transaction &t) -> bool {
 				ret = t.field(a, w, oid, f, move(patch));
@@ -577,7 +583,7 @@ data::Value Scheme::fieldWithWorker(Action a, Worker &w, uint64_t oid, const Fie
 		}));
 		break;
 	case Action::Append:
-		if (f.transform(*this, patch)) {
+		if (f.transform(FieldAccessAction::Write, *this, oid, patch)) {
 			data::Value ret;
 			w.perform([&] (const Transaction &t) -> bool {
 				ret = t.field(a, w, oid, f, move(patch));
@@ -594,7 +600,7 @@ data::Value Scheme::fieldWithWorker(Action a, Worker &w, const data::Value &obj,
 	switch (a) {
 	case Action::Get: return w.transaction().field(a, w, obj, f, move(patch)); break;
 	case Action::Set:
-		if (f.transform(*this, patch)) {
+		if (f.transform(FieldAccessAction::Write, *this, obj, patch)) {
 			data::Value ret;
 			w.perform([&] (const Transaction &t) -> bool {
 				ret = t.field(a, w, obj, f, std::move(patch));
@@ -609,7 +615,7 @@ data::Value Scheme::fieldWithWorker(Action a, Worker &w, const data::Value &obj,
 		}));
 		break;
 	case Action::Append:
-		if (f.transform(*this, patch)) {
+		if (f.transform(FieldAccessAction::Write, *this, obj, patch)) {
 			data::Value ret;
 			w.perform([&] (const Transaction &t) -> bool {
 				ret = t.field(a, w, obj, f, move(patch));
@@ -649,17 +655,19 @@ data::Value Scheme::patchOrUpdate(Worker &w, uint64_t id, data::Value & patch) c
 	if (!patch.empty()) {
 		data::Value ret;
 		w.perform([&] (const Transaction &t) {
-			if (isAtomicPatch(patch)) {
+			auto r = getAccessRole(t.getRole());
+			if (!isAtomicPatch(patch) || (r && r->onSave)) { // if we have save callback - we unable to do patches
+				if (auto obj = makeObjectForPatch(t, id, data::Value(), patch)) {
+					t.setObject(id, data::Value(obj));
+					if ((ret = updateObject(w, std::move(obj), patch))) {
+						return true;
+					}
+				}
+			} else {
 				ret = w.transaction().patch(w, id, patch);
 				if (ret) {
 					touchParents(t, ret);
 					return true;
-				}
-			} else {
-				if (auto obj = makeObjectForPatch(t, id, data::Value(), patch)) {
-					if ((ret = updateObject(w, std::move(obj), patch))) {
-						return true;
-					}
 				}
 			}
 			return false;
@@ -788,9 +796,11 @@ data::Value &Scheme::transform(data::Value &d, TransformAction a) const {
 		auto it = dict.begin();
 		while (it != dict.end()) {
 			auto &field = fields.at(it->first);
+			auto accessAction = (a == TransformAction::Update || a == TransformAction::ProtectedUpdate || a == TransformAction::Touch)
+					? FieldAccessAction::Write : FieldAccessAction::Create;
 			if (it->second.isNull() && (a == TransformAction::Update || a == TransformAction::ProtectedUpdate || a == TransformAction::Touch)) {
 				it ++;
-			} else if (!field.transform(*this, it->second)) {
+			} else if (!field.transform(accessAction, *this, d, it->second)) {
 				it = dict.erase(it);
 			} else {
 				it ++;
@@ -1196,79 +1206,82 @@ void Scheme::updateView(const Transaction &t, const data::Value & obj, const Vie
 		return;
 	}
 
-	auto objId = obj.getInteger("__oid");
-	t.removeFromView(*scheme->scheme, *view, objId, obj);
+	t.performAsSystem([&] () -> bool {
+		auto objId = obj.getInteger("__oid");
+		t.removeFromView(*scheme->scheme, *view, objId, obj);
 
-	Vector<uint64_t> ids; ids.reserve(1);
-	if (view->linkage) {
-		ids = view->linkage(*scheme->scheme, *this, obj);
-	} else if (scheme->autoLink) {
-		if (auto id = obj.getInteger(scheme->autoLink->getName())) {
-			ids.push_back(id);
-		}
-	}
-
-	Vector<data::Value> val = view->viewFn(*this, obj);
-	for (auto &it : val) {
-		if (it.isBool() && it.asBool()) {
-			it = data::Value(data::Value::Type::DICTIONARY);
+		Vector<uint64_t> ids; ids.reserve(1);
+		if (view->linkage) {
+			ids = view->linkage(*scheme->scheme, *this, obj);
+		} else if (scheme->autoLink) {
+			if (auto id = obj.getInteger(scheme->autoLink->getName())) {
+				ids.push_back(id);
+			}
 		}
 
-		if (it.isDictionary()) {
-			// drop not existed fields
-			auto &dict = it.asDict();
-			auto d_it = dict.begin();
-			while (d_it != dict.end()) {
-				auto f_it = view->fields.find(d_it->first);
-				if (f_it == view->fields.end()) {
-					d_it = dict.erase(d_it);
-				} else {
-					d_it ++;
-				}
+		Vector<data::Value> val = view->viewFn(*this, obj);
+		for (auto &it : val) {
+			if (it.isBool() && it.asBool()) {
+				it = data::Value(data::Value::Type::DICTIONARY);
 			}
 
-			// write defaults
-			for (auto &f_it : view->fields) {
-				auto &field = f_it.second;
-				if (field.hasFlag(Flags::AutoMTime) || field.hasFlag(Flags::AutoCTime)) {
-					it.setInteger(Time::now().toMicroseconds(), f_it.first);
-				} else if (field.hasDefault() && !it.hasValue(f_it.first)) {
-					if (auto def = field.getDefault(it)) {
-						it.setValue(move(def), f_it.first);
+			if (it.isDictionary()) {
+				// drop not existed fields
+				auto &dict = it.asDict();
+				auto d_it = dict.begin();
+				while (d_it != dict.end()) {
+					auto f_it = view->fields.find(d_it->first);
+					if (f_it == view->fields.end()) {
+						d_it = dict.erase(d_it);
+					} else {
+						d_it ++;
 					}
 				}
-			}
 
-			// transform
-			d_it = dict.begin();
-			while (d_it != dict.end()) {
-				auto &field = view->fields.at(d_it->first);
-				if (d_it->second.isNull() || !field.isSimpleLayout()) {
-					d_it ++;
-				} else if (!field.transform(*this, d_it->second)) {
-					d_it = dict.erase(d_it);
-				} else {
-					d_it ++;
-				}
-			}
-
-			it.setInteger(objId, toString(getName(), "_id"));
-		} else {
-			it = nullptr;
-		}
-	}
-
-	for (auto &id : ids) {
-		for (auto &it : val) {
-			if (it) {
-				if (scheme->scheme) {
-					it.setInteger(id, toString(scheme->scheme->getName(), "_id"));
+				// write defaults
+				for (auto &f_it : view->fields) {
+					auto &field = f_it.second;
+					if (field.hasFlag(Flags::AutoMTime) || field.hasFlag(Flags::AutoCTime)) {
+						it.setInteger(Time::now().toMicroseconds(), f_it.first);
+					} else if (field.hasDefault() && !it.hasValue(f_it.first)) {
+						if (auto def = field.getDefault(it)) {
+							it.setValue(move(def), f_it.first);
+						}
+					}
 				}
 
-				t.addToView(*scheme->scheme, *view, id, obj, it);
+				// transform
+				d_it = dict.begin();
+				while (d_it != dict.end()) {
+					auto &field = view->fields.at(d_it->first);
+					if (d_it->second.isNull() || !field.isSimpleLayout()) {
+						d_it ++;
+					} else if (!field.transform(FieldAccessAction::Write, *this, it, d_it->second)) {
+						d_it = dict.erase(d_it);
+					} else {
+						d_it ++;
+					}
+				}
+
+				it.setInteger(objId, toString(getName(), "_id"));
+			} else {
+				it = nullptr;
 			}
 		}
-	}
+
+		for (auto &id : ids) {
+			for (auto &it : val) {
+				if (it) {
+					if (scheme->scheme) {
+						it.setInteger(id, toString(scheme->scheme->getName(), "_id"));
+					}
+
+					t.addToView(*scheme->scheme, *view, id, obj, it);
+				}
+			}
+		}
+		return true;
+	});
 }
 
 NS_SA_EXT_END(storage)

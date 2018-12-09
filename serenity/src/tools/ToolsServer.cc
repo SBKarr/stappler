@@ -63,7 +63,10 @@ void ServerGui::onFilterComplete(InputFilter *filter) {
 	auto &name = data.getString("name");
 	auto &passwd = data.getString("passwd");
 	if (!name.empty() && !passwd.empty()) {
-		User::setup(rctx.storage(), name, passwd);
+		auto t = storage::Transaction::acquire();
+		t.performAsSystem([&] () -> bool {
+			return User::setup(rctx.storage(), name, passwd) != nullptr;
+		});
 	}
 
 	rctx.redirectTo(String(rctx.getUnparsedUri()));

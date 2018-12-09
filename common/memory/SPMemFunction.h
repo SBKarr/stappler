@@ -112,6 +112,9 @@ public:
 
 	inline operator bool () const noexcept { return mInvoker != nullptr; }
 
+	inline bool operator == (nullptr_t) const noexcept { return mInvoker == nullptr; }
+	inline bool operator != (nullptr_t) const noexcept { return mInvoker != nullptr; }
+
 	const allocator_type &get_allocator() const { return mAllocator; }
 
 private:

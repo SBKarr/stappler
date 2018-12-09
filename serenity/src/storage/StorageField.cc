@@ -51,13 +51,31 @@ const Scheme * Field::getForeignScheme() const {
 	return nullptr;
 }
 
-bool Field::transform(const Scheme &scheme, data::Value &val) const {
+bool Field::transform(FieldAccessAction a, const Scheme &scheme, int64_t id, data::Value &val) const {
+	if (slot->fieldAccessFn) {
+		if (auto t = Transaction::acquire()) {
+			if (auto obj = t.acquireObject(scheme, id)) {
+				return transform(a, scheme, obj, val);
+			}
+		}
+		return false;
+	} else {
+		return transform(a, scheme, data::Value(id), val);
+	}
+}
+
+bool Field::transform(FieldAccessAction a, const Scheme &scheme, const data::Value &obj, data::Value &val) const {
 	if (slot->filter) {
 		if (!slot->filter(scheme, val)) {
 			return false;
 		}
 	}
-	return slot->transformValue(scheme, val);
+	if (slot->transformValue(a, scheme, obj, val)) {
+		if (!slot->fieldAccessFn || slot->fieldAccessFn(a, scheme, obj, val)) {
+			return true;
+		}
+	}
+	return false;
 }
 
 data::Value Field::getTypeDesc() const {
@@ -272,7 +290,7 @@ data::Value Field::Slot::getDefault(const data::Value &patch) const {
 	}
 }
 
-bool Field::Slot::transformValue(const Scheme &scheme, data::Value &val) const {
+bool Field::Slot::transformValue(FieldAccessAction a, const Scheme &scheme, const data::Value &obj, data::Value &val) const {
 	if (!val.isBasicType() && type != Type::Data) {
 		return false;
 	}
@@ -327,7 +345,7 @@ void Field::Slot::hash(apr::ostringstream &stream, ValidationLevel l) const {
 	}
 }
 
-bool FieldText::transformValue(const Scheme &scheme, data::Value &val) const {
+bool FieldText::transformValue(FieldAccessAction, const Scheme &scheme, const data::Value &obj, data::Value &val) const {
 	switch (type) {
 	case Type::Text:
 		if (!val.isBasicType()) {
@@ -431,7 +449,7 @@ void FieldText::hash(apr::ostringstream &stream, ValidationLevel l) const {
 }
 
 
-bool FieldPassword::transformValue(const Scheme &scheme, data::Value &val) const {
+bool FieldPassword::transformValue(FieldAccessAction, const Scheme &scheme, const data::Value &, data::Value &val) const {
 	if (!val.isString()) {
 		return false;
 	}
@@ -478,7 +496,7 @@ data::Value FieldExtra::getDefault(const data::Value &patch) const {
 	return ret;
 }
 
-bool FieldExtra::transformValue(const Scheme &scheme, data::Value &v) const {
+bool FieldExtra::transformValue(FieldAccessAction a, const Scheme &scheme, const data::Value &obj, data::Value &v) const {
 	auto processValue = [&] (data::Value &val) -> bool {
 		if (!val.isDictionary()) {
 			return false;
@@ -490,7 +508,7 @@ bool FieldExtra::transformValue(const Scheme &scheme, data::Value &v) const {
 			if (f_it != fields.end()) {
 				if (it->second.isNull()) {
 					it ++;
-				} else if (!f_it->second.transform(scheme, it->second)) {
+				} else if (!f_it->second.transform(a, scheme, obj, it->second)) {
 					it = val.getDict().erase(it);
 				} else {
 					it ++;
@@ -564,7 +582,7 @@ void FieldImage::hash(apr::ostringstream &stream, ValidationLevel l) const {
 	}
 }
 
-bool FieldObject::transformValue(const Scheme &schene, data::Value &val) const {
+bool FieldObject::transformValue(FieldAccessAction a, const Scheme &scheme, const data::Value &obj, data::Value &val) const {
 	switch (type) {
 	case Type::Object:
 		if (val.isBasicType()) {
@@ -610,13 +628,13 @@ void FieldObject::hash(apr::ostringstream &stream, ValidationLevel l) const {
 	}
 }
 
-bool FieldArray::transformValue(const Scheme &scheme, data::Value &val) const {
+bool FieldArray::transformValue(FieldAccessAction a, const Scheme &scheme, const data::Value &obj, data::Value &val) const {
 	if (val.isArray()) {
 		if (tfield) {
 			auto &arr = val.asArray();
 			auto it = arr.begin();
 			while (it != arr.end()) {
-				if (!tfield.transform(scheme, *it)) {
+				if (!tfield.transform(a, scheme, obj, *it)) {
 					it = arr.erase(it);
 				} else {
 					++ it;

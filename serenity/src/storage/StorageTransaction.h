@@ -76,8 +76,8 @@ public:
 	static Transaction acquire(const Adapter &);
 	static Transaction acquire();
 
-	void setRole(AccessRoleId);
-	AccessRoleId isAdmin() const;
+	void setRole(AccessRoleId) const;
+	AccessRoleId getRole() const;
 
 	const data::Value &setValue(const StringView &, data::Value &&);
 	const data::Value &getValue(const StringView &) const;
@@ -93,9 +93,14 @@ public:
 
 	operator bool () const { return _data != nullptr; }
 
+	const data::Value &acquireObject(const Scheme &, uint64_t oid) const;
+
 public: // adapter interface
 	template <typename Callback>
 	bool perform(Callback && cb) const;
+
+	template <typename Callback>
+	bool performAsSystem(Callback && cb) const;
 
 	bool isInTransaction() const;
 	TransactionStatus getTransactionStatus() const;
@@ -108,7 +113,7 @@ public: // adapter interface
 	bool remove(Worker &t, uint64_t oid) const;
 
 	data::Value create(Worker &, data::Value &data) const;
-	bool save(Worker &, uint64_t oid, const data::Value &newObject, const Vector<String> &fields) const;
+	data::Value save(Worker &, uint64_t oid, const data::Value &newObject, const Vector<String> &fields) const;
 	data::Value patch(Worker &, uint64_t oid, const data::Value &data) const;
 
 	data::Value field(Action, Worker &, uint64_t oid, const Field &, data::Value && = data::Value()) const;
@@ -130,8 +135,8 @@ protected:
 
 	void clearObjectStorage() const;
 
-	bool processReturnObject(const Scheme &, const data::Value &) const;
-	bool processReturnField(const Scheme &, const Field &, const data::Value &) const;
+	bool processReturnObject(const Scheme &, data::Value &) const;
+	bool processReturnField(const Scheme &, const data::Value &obj, const Field &, data::Value &) const;
 
 	bool isOpAllowed(const Scheme &, Op, const Field * = nullptr) const;
 
@@ -140,7 +145,7 @@ protected:
 		Request request;
 		mutable Map<int64_t, data::Value> objects;
 		Map<String, data::Value> data;
-		AccessRoleId role = AccessRoleId::Nobody;
+		mutable AccessRoleId role = AccessRoleId::Nobody;
 		int status = 0;
 
 		Data(const Adapter &, const Request & = Request());
@@ -170,19 +175,32 @@ inline bool Transaction::perform(Callback && cb) const {
 	return false;
 }
 
+template <typename Callback>
+inline bool Transaction::performAsSystem(Callback && cb) const {
+	auto tmpRole = getRole();
+	setRole(AccessRoleId::System);
+	auto ret = perform(std::forward<Callback>(cb));
+	setRole(tmpRole);
+	return ret;
+}
+
 struct AccessRole : public AllocPool {
+	static AccessRole Default();
+	static AccessRole Admin();
+
+	std::bitset<toInt(Transaction::Op::Max)> operations;
+
 	Function<bool(Worker &, const Query &)> onSelect;
 	Function<bool(Worker &, const Query &)> onCount;
 
 	Function<bool(Worker &, data::Value &obj)> onCreate;
-	Function<bool(Worker &, const data::Value &, data::Value &obj)> onSave;
+	Function<bool(Worker &, const data::Value &, data::Value &obj, Vector<String> &fields)> onSave;
 	Function<bool(Worker &, const data::Value &)> onRemove;
 
 	Function<bool(Action, Worker &, const data::Value &, const Field &, data::Value &)> onField;
 
-	Function<bool(Worker &, data::Value &)> onReturn;
-
-	std::bitset<toInt(Transaction::Op::Max)> operations;
+	Function<bool(const Scheme &, data::Value &)> onReturn;
+	Function<bool(const Scheme &, const Field &, data::Value &)> onReturnField;
 };
 
 NS_SA_EXT_END(storage)

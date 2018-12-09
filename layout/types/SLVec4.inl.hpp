@@ -96,4 +96,10 @@ inline const Vec4 operator*(float x, const Vec4& v) {
 	return result;
 }
 
+inline std::basic_ostream<char> &
+operator << (std::basic_ostream<char> & os, const Vec4 & vec) {
+	os << "(x: " << vec.x << "; y: " << vec.y << "; z: " << vec.z << "; w: " << vec.w << ")";
+	return os;
+}
+
 NS_LAYOUT_END

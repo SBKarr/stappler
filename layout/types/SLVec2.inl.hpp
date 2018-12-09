@@ -202,4 +202,10 @@ inline bool Vec2::getSegmentIntersectPoint(const Vec2& A, const Vec2& B, const V
 	return false;
 }
 
+inline std::basic_ostream<char> &
+operator << (std::basic_ostream<char> & os, const Vec2 & vec) {
+	os << "(x: " << vec.x << "; y: " << vec.y << ")";
+	return os;
+}
+
 NS_LAYOUT_END
