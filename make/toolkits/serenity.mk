@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+# Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,9 +26,9 @@ SERENITY_OUTPUT_DIR = $(TOOLKIT_OUTPUT)/serenity
 SERENITY_OUTPUT = $(TOOLKIT_OUTPUT)/mod_serenity.so
 SERENITY_SRCS_DIRS += \
 	common \
+	spug \
 	serenity/apr \
 	serenity/src \
-	serenity/spug \
 
 SERENITY_PRECOMPILED_HEADERS += \
 	serenity/src/core/Define.h \
@@ -43,9 +43,9 @@ SERENITY_SRCS_OBJS += \
 
 SERENITY_INCLUDES_DIRS += \
 	common \
+	spug \
 	serenity/src \
 	serenity/apr \
-	serenity/spug \
 
 SERENITY_INCLUDES_OBJS += \
 	serenity/ext/cityhash

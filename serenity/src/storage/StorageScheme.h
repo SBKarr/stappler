@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -69,6 +69,7 @@ public:
 
 	void define(std::initializer_list<Field> il);
 	void define(Vector<Field> &&il);
+	void define(AccessRole &&role);
 
 	template <typename T, typename ... Args>
 	void define(T &&il, Args && ... args);
@@ -82,6 +83,8 @@ public:
 	bool save(const Transaction &, Object *) const;
 
 	bool hasFiles() const;
+	bool hasForceExclude() const;
+	bool hasAccessControl() const;
 
 	const Set<const Field *> & getForceInclude() const;
 	const Map<String, Field> & getFields() const;
@@ -196,7 +199,7 @@ protected:
 	data::Value createFile(const Transaction &, const Field &, InputFile &) const;
 
 	// call before object is created, when file is embedded into patch
-	data::Value createFile(const Transaction &, const Field &, const Bytes &, const StringView &type) const;
+	data::Value createFile(const Transaction &, const Field &, const Bytes &, const StringView &type, int64_t = 0) const;
 
 	void processFullTextFields(data::Value &patch) const;
 
@@ -223,6 +226,10 @@ protected:
 	Vector<ParentScheme *> parents;
 	Set<const Field *> forceInclude;
 	Set<const Field *> fullTextFields;
+
+	bool _hasFiles = false;
+	bool _hasForceExclude = false;
+	bool _hasAccessControl = false;
 
 	AccessTable roles;
 };

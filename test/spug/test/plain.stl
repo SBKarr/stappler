@@ -1,0 +1,41 @@
+script.
+  if (usingPug)
+    console.log('you are awesome')
+  else
+    console.log('use pug')
+
+html
+  // 1234
+    multi-line comment
+    multi-line comment
+
+  // test html comment
+  //- test stl comment
+
+  .test
+    #somediv
+
+  <some html text>
+
+div
+  p This text belongs to the paragraph tag.
+  br
+  .
+    This text belongs to the div tag.
+
+p
+  | The pipe always goes at the beginning of its own line,
+  | not counting indentation.
+
+p
+  strong test1
+  |
+  |
+  em test2
+
+p
+  | You put the em
+  em pha
+  | sis on the wrong syl
+  em la
+  | ble.

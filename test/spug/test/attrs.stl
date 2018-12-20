@@ -1,0 +1,16 @@
+a(href='google.com') Google
+|
+|
+a(class='button' href='google.com') Google
+|
+|
+a(class='button', href='google.com') Google
+
+div(class='div-class', (click)='play()')
+div(class='div-class' '(click)'='play()')
+
+input(
+  type='checkbox'
+  name='agreement'
+  checked
+)

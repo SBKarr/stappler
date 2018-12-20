@@ -1,0 +1,12 @@
+html
+  // 1234
+    multi-line comment
+    multi-line comment
+
+  // test html comment
+  //- test stl comment
+
+  .test
+    #somediv
+
+  <some html text>

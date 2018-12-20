@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -209,13 +209,16 @@ data::Value File::createFile(const Transaction &t, const Field &f, InputFile &fi
 	return data::Value();
 }
 
-data::Value File::createFile(const Transaction &t, const StringView &type, const StringView &path) {
+data::Value File::createFile(const Transaction &t, const StringView &type, const StringView &path, int64_t mtime) {
 	auto scheme = Server(apr::pool::server()).getFileScheme();
 	auto size = filesystem::size(path);
 
 	data::Value fileData;
 	fileData.setString(type, "type");
 	fileData.setInteger(size, "size");
+	if (mtime) {
+		fileData.setInteger(mtime, "mtime");
+	}
 
 	size_t width = 0, height = 0;
 	if (Bitmap::getImageSize(StringView(path), width, height)) {
@@ -238,13 +241,16 @@ data::Value File::createFile(const Transaction &t, const StringView &type, const
 	return data::Value();
 }
 
-data::Value File::createFile(const Transaction &t, const StringView &type, const Bytes &data) {
+data::Value File::createFile(const Transaction &t, const StringView &type, const Bytes &data, int64_t mtime) {
 	auto scheme = Server(apr::pool::server()).getFileScheme();
 	auto size = data.size();
 
 	data::Value fileData;
 	fileData.setString(type, "type");
 	fileData.setInteger(size, "size");
+	if (mtime) {
+		fileData.setInteger(mtime, "mtime");
+	}
 
 	size_t width = 0, height = 0;
 	CoderSource source(data);
@@ -456,7 +462,7 @@ data::Value File::createImage(const Transaction &t, const Field &f, InputFile &f
 	return ret;
 }
 
-data::Value File::createImage(const Transaction &t, const Field &f, const StringView &type, const Bytes &data) {
+data::Value File::createImage(const Transaction &t, const Field &f, const StringView &type, const Bytes &data, int64_t mtime) {
 	data::Value ret;
 
 	auto files = writeImages(f, type, data);
@@ -464,7 +470,7 @@ data::Value File::createImage(const Transaction &t, const Field &f, const String
 		auto &field = it.first;
 		auto &filePath = it.second;
 
-		auto val = createFile(t, type, filePath);
+		auto val = createFile(t, type, filePath, mtime);
 		if (val.isInteger()) {
 			ret.setValue(std::move(val), field);
 		}

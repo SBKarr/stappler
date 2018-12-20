@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -74,7 +74,8 @@ enum class Flags : uint32_t {
 	Indexed = 1 << 9, /** Create index, that allows select queries on that field */
 	Admin = 1 << 10, /** Field can be accessed by administrative queries only */
 	ForceInclude = 1 << 11, /** field will be internally included in all queries (useful for access control) */
-	Composed = 1 << 12, /** propagate modification events from objects in that field (for object and set fields) */
+	ForceExclude = 1 << 12, /** field will be excluded, if not requested directly */
+	Composed = 1 << 13, /** propagate modification events from objects in that field (for object and set fields) */
 
 	TsNormalize_DocLengthLog = 1 << 24, /** Text search normalization: divides the rank by 1 + the logarithm of the document length */
 	TsNormalize_DocLength = 1 << 25, /** Text search normalization: divides the rank by the document length */

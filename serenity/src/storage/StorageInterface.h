@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2018-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,12 +26,6 @@ THE SOFTWARE.
 #include "StorageAuth.h"
 
 NS_SA_EXT_BEGIN(storage)
-
-enum class TransactionStatus {
-	None,
-	Commit,
-	Rollback,
-};
 
 class Interface : public AllocPool {
 public:

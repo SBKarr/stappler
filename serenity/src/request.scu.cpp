@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2017-2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -37,3 +37,12 @@ APLOG_USE_MODULE(serenity);
 #include "OutputFilter.cc"
 #include "MultipartParser.cc"
 #include "UrlEncodeParser.cc"
+
+#include "AccessControl.cc"
+#include "MultiResourceHandler.cc"
+#include "Resource.cc"
+#include "ResourceHandler.cc"
+#include "ResourceResolver.cc"
+#include "ResourceTemplates.cc"
+#include "ResourceTemplatesProperty.cc"
+#include "ResourceTemplatesSearch.cc"

@@ -96,7 +96,7 @@ struct TableRec {
 };
 
 
-constexpr static uint32_t getDefaultFunctionVersion() { return 9; }
+constexpr static uint32_t getDefaultFunctionVersion() { return 10; }
 
 constexpr static const char * DATABASE_DEFAULTS = R"Sql(
 CREATE TABLE IF NOT EXISTS __objects (
@@ -189,7 +189,7 @@ static void writeObjectRemoveTrigger(StringStream &stream, const storage::Scheme
 	stream << "\t\tEND IF;\n";
 }
 
-static void writeTrigger(StringStream &stream, const storage::Scheme *s, const String &triggerName) {
+static void writeAfterTrigger(StringStream &stream, const storage::Scheme *s, const String &triggerName) {
 	auto &fields = s->getFields();
 
 	auto writeInsertDelta = [&] (Handle::DeltaAction a) {
@@ -225,11 +225,6 @@ static void writeTrigger(StringStream &stream, const storage::Scheme *s, const S
 	for (auto &it : fields) {
 		if (it.second.isFile()) {
 			writeFileRemoveTrigger(stream, s, it.second);
-		} else if (it.second.getType() == storage::Type::Set) {
-			const storage::FieldObject *objSlot = static_cast<const storage::FieldObject *>(it.second.getSlot());
-			if (objSlot->onRemove == storage::RemovePolicy::StrongReference) {
-				writeObjectSetRemoveTrigger(stream, s, objSlot);
-			}
 		} else if (it.second.getType() == storage::Type::Object) {
 			const storage::FieldObject *objSlot = static_cast<const storage::FieldObject *>(it.second.getSlot());
 			if (objSlot->onRemove == storage::RemovePolicy::StrongReference) {
@@ -244,6 +239,28 @@ static void writeTrigger(StringStream &stream, const storage::Scheme *s, const S
 	stream << "\nEND; $" << triggerName << "$ LANGUAGE plpgsql;\n";
 
 	stream << "CREATE TRIGGER " << triggerName << " AFTER INSERT OR UPDATE OR DELETE ON \"" << s->getName()
+			<< "\" FOR EACH ROW EXECUTE PROCEDURE " << triggerName << "_func();\n";
+}
+
+static void writeBeforeTrigger(StringStream &stream, const storage::Scheme *s, const String &triggerName) {
+	auto &fields = s->getFields();
+
+	stream << "CREATE OR REPLACE FUNCTION " << triggerName << "_func() RETURNS TRIGGER AS $" << triggerName
+			<< "$ BEGIN\n\tIF (TG_OP = 'DELETE') THEN\n";
+
+	for (auto &it : fields) {
+		if (it.second.getType() == storage::Type::Set) {
+			const storage::FieldObject *objSlot = static_cast<const storage::FieldObject *>(it.second.getSlot());
+			if (objSlot->onRemove == storage::RemovePolicy::StrongReference) {
+				writeObjectSetRemoveTrigger(stream, s, objSlot);
+			}
+		}
+	}
+
+	stream << "\tEND IF;\n\tRETURN OLD;\n";
+	stream << "\nEND; $" << triggerName << "$ LANGUAGE plpgsql;\n";
+
+	stream << "CREATE TRIGGER " << triggerName << " BEFORE DELETE ON \"" << s->getName()
 			<< "\" FOR EACH ROW EXECUTE PROCEDURE " << triggerName << "_func();\n";
 }
 
@@ -468,7 +485,11 @@ void TableRec::writeCompareResult(StringStream &stream,
 			auto scheme_it = s.find(it.first);
 			if (scheme_it != s.end()) {
 				for (auto & tit : it.second.triggers) {
-					writeTrigger(stream, scheme_it->second, tit);
+					if (StringView(tit).starts_with("_tr_a_")) {
+						writeAfterTrigger(stream, scheme_it->second, tit);
+					} else {
+						writeBeforeTrigger(stream, scheme_it->second, tit);
+					}
 				}
 			} else if (it.second.viewField) {
 				for (auto & tit : it.second.triggers) {
@@ -759,16 +780,17 @@ Map<String, TableRec> TableRec::get(Handle &h, StringStream &stream) {
 
 TableRec::TableRec() : objects(false) { }
 TableRec::TableRec(Server &serv, const storage::Scheme *scheme) {
-	StringStream hashStream;
-	hashStream << getDefaultFunctionVersion();
+	StringStream hashStreamAfter; hashStreamAfter << getDefaultFunctionVersion();
+	StringStream hashStreamBefore; hashStreamBefore << getDefaultFunctionVersion();
 
-	bool hasTriggers = false;
+	bool hasAfterTrigger = false;
+	bool hasBeforeTrigger = false;
 	auto name = scheme->getName();
 	pkey.emplace_back("__oid");
 
 	if (scheme->hasDelta()) {
-		hasTriggers = true;
-		hashStream << ":delta:";
+		hasAfterTrigger = true;
+		hashStreamAfter << ":delta:";
 	}
 
 	for (auto &it : scheme->getFields()) {
@@ -777,8 +799,8 @@ TableRec::TableRec(Server &serv, const storage::Scheme *scheme) {
 		auto type = it.second.getType();
 
 		if (type == storage::Type::File || type == storage::Type::Image) {
-			hasTriggers = true;
-			hashStream << it.first << toInt(type);
+			hasAfterTrigger = true;
+			hashStreamAfter << it.first << toInt(type);
 		}
 
 		switch (type) {
@@ -826,8 +848,8 @@ TableRec::TableRec(Server &serv, const storage::Scheme *scheme) {
 			if (f.isReference()) {
 				auto objSlot = static_cast<const storage::FieldObject *>(f.getSlot());
 				if (objSlot->onRemove == storage::RemovePolicy::StrongReference) {
-					hasTriggers = true;
-					hashStream << it.first << toInt(type);
+					hasAfterTrigger = true;
+					hashStreamAfter << it.first << toInt(type);
 				}
 			}
 			emplaced = true;
@@ -837,8 +859,8 @@ TableRec::TableRec(Server &serv, const storage::Scheme *scheme) {
 			if (f.isReference()) {
 				auto objSlot = static_cast<const storage::FieldObject *>(f.getSlot());
 				if (objSlot->onRemove == storage::RemovePolicy::StrongReference) {
-					hasTriggers = true;
-					hashStream << it.first << toInt(type);
+					hasBeforeTrigger = true;
+					hashStreamBefore << it.first << toInt(type);
 				}
 			}
 			break;
@@ -870,12 +892,20 @@ TableRec::TableRec(Server &serv, const storage::Scheme *scheme) {
 		}
 	}
 
-	if (hasTriggers) {
-		size_t id = std::hash<String>{}(hashStream.weak());
+	if (hasAfterTrigger) {
+		size_t id = std::hash<String>{}(hashStreamAfter.weak());
 
-		hashStream.clear();
-		hashStream << "_trig_" << scheme->getName() << "_" << id;
-		triggers.emplace(StringView(hashStream.weak()).sub(0, 56).str());
+		hashStreamAfter.clear();
+		hashStreamAfter << "_tr_a_" << scheme->getName() << "_" << id;
+		triggers.emplace(StringView(hashStreamAfter.weak()).sub(0, 56).str());
+	}
+
+	if (hasBeforeTrigger) {
+		size_t id = std::hash<String>{}(hashStreamBefore.weak());
+
+		hashStreamBefore.clear();
+		hashStreamBefore << "_tr_b_" << scheme->getName() << "_" << id;
+		triggers.emplace(StringView(hashStreamBefore.weak()).sub(0, 56).str());
 	}
 }
 

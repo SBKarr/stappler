@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2017-2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +40,6 @@ int ServerGui::onTranslateName(Request &rctx) {
 			count = storage::Worker(*userScheme, rctx.storage()).count();
 			hasDb = true;
 		}
-		rctx.setContentType("text/html");
 		rctx.runPug("virtual://html/server.pug", [&] (pug::Context &exec, const pug::Template &) -> bool {
 			exec.set("count", data::Value(count));
 			exec.set("setup", data::Value(count != 0));

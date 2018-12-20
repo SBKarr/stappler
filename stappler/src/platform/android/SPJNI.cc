@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -323,12 +323,16 @@ NS_SP_END
 
 NS_SP_EXTERN_BEGIN
 
+void Java_org_stappler_Activity_nativeOnPreCreate(JNIEnv *env, jobject activity) {
+    stappler::log::format("JNI", "%s", __FUNCTION__);
+    stappler::spjni::attachJniEnv(env);
+    if (activity) {
+        stappler::spjni::_activity.set(env, activity);
+    }
+}
+
 void Java_org_stappler_Activity_nativeOnCreate(JNIEnv *env, jobject activity) {
 	stappler::log::format("JNI", "%s", __FUNCTION__);
-	stappler::spjni::attachJniEnv(env);
-	if (activity) {
-		stappler::spjni::_activity.set(env, activity);
-	}
 	stappler::platform::render::_start();
 }
 
@@ -544,6 +548,7 @@ JObjectRef getService(Service serv, JNIEnv *pEnv, JObjectRef::Type type) {
 
 	auto & activity = getActivity(pEnv);
 	if (activity.empty()) {
+		log::text("SPJNI", "No activity for getService");
 		return nullptr;
 	}
 

@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -795,7 +795,6 @@ int Server::onRequest(Request &req) {
 		return HTTP_SERVICE_UNAVAILABLE;
 	}
 
-
 	auto &path = req.getUri();
 
 	if (!_config->protectedList.empty()) {
@@ -838,6 +837,10 @@ int Server::onRequest(Request &req) {
 	if (ret != _config->requests.end() && ret->second.callback) {
 		RequestHandler *h = ret->second.callback();
 		if (h) {
+			auto role = h->getAccessRole();
+			if (role != storage::AccessRoleId::Nobody) {
+				req.setAccessRole(role);
+			}
 			String subPath((ret->first.back() == '/')?path.substr(ret->first.size() - 1):"");
 			String originPath = subPath.size() == 0 ? String(path) : String(ret->first);
 			if (originPath.back() == '/' && !subPath.empty()) {

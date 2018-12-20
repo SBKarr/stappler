@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2018-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -52,7 +52,6 @@ int ErrorsGui::onTranslateName(Request &req) {
 
 	auto u = req.getAuthorizedUser();
 	if (u && u->isAdmin()) {
-		req.setContentType("text/html");
 		data::Value errorsData;
 		auto s = req.server().getErrorScheme();
 		auto a = req.storage();
@@ -70,7 +69,6 @@ int ErrorsGui::onTranslateName(Request &req) {
 		});
 		return DONE;
 	} else {
-		req.setContentType("text/html");
 		req.runPug("virtual://html/errors_unauthorized.pug", [&] (pug::Context &exec, const pug::Template &) -> bool {
 			exec.set("version", data::Value(getVersionString()));
 			return true;

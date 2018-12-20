@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -86,12 +86,16 @@ public:
 
 	virtual const data::Value &getOptions() const { return _options; }
 
+	void setAccessRole(storage::AccessRoleId role) { _accessRole = role; }
+	storage::AccessRoleId getAccessRole() const { return _accessRole; }
+
 protected:
 	Request _request;
 	String _originPath;
 	String _subPath;
 	Vector<String> _subPathVec;
 	data::Value _options;
+	storage::AccessRoleId _accessRole = storage::AccessRoleId::Nobody;
 };
 
 class DefaultHandler : public RequestHandler {

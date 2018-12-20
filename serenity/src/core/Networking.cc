@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +33,19 @@ NS_SA_EXT_BEGIN(network)
 Handle::Handle(Method method, const String &url) {
 	init(method, url);
 	setReuse(false);
+}
+
+Bytes Handle::performBytesQuery() {
+	Buffer stream;
+	setReceiveCallback([&] (char *data, size_t size) -> size_t {
+		stream.put(data, size);
+		return size;
+	});
+	if (perform()) {
+		auto r = stream.get();
+		return Bytes(r.data(), r.data() + r.size());
+	}
+	return Bytes();
 }
 
 data::Value Handle::performDataQuery() {

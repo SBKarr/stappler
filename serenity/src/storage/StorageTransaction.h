@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2018-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,14 +25,12 @@ THE SOFTWARE.
 
 #include "StorageField.h"
 #include "StorageQuery.h"
-#include "InputFilter.h"
 
 NS_SA_EXT_BEGIN(storage)
 
 enum class AccessRoleId {
-	Admin = 0,
-	Operator = 1,
-	Nobody = 2,
+	Nobody = 0,
+	Authorized = 1,
 	UserDefined1,
 	UserDefined2,
 	UserDefined3,
@@ -45,6 +43,7 @@ enum class AccessRoleId {
 	UserDefined10,
 	UserDefined11,
 	UserDefined12,
+	Admin,
 	System,
 	Max = 16,
 };
@@ -71,22 +70,29 @@ public:
 		Max,
 	};
 
+	struct Data;
+
 	static Op getTransactionOp(Action);
 
 	static Transaction acquire(const Adapter &);
 	static Transaction acquire();
 
+	static Transaction acquireIfExists();
+	static Transaction acquireIfExists(memory::pool_t *);
+
+	Transaction(nullptr_t);
+
 	void setRole(AccessRoleId) const;
 	AccessRoleId getRole() const;
+
+	void setStatus(int);
+	int getStatus() const;
 
 	const data::Value &setValue(const StringView &, data::Value &&);
 	const data::Value &getValue(const StringView &) const;
 
 	const data::Value &setObject(int64_t, data::Value &&) const;
 	const data::Value &getObject(int64_t) const;
-
-	void setStatus(int);
-	int getStatus() const;
 
 	void setAdapter(const Adapter &);
 	const Adapter &getAdapter() const;
@@ -140,17 +146,6 @@ protected:
 
 	bool isOpAllowed(const Scheme &, Op, const Field * = nullptr) const;
 
-	struct Data : AllocPool {
-		Adapter adapter;
-		Request request;
-		mutable Map<int64_t, data::Value> objects;
-		Map<String, data::Value> data;
-		mutable AccessRoleId role = AccessRoleId::Nobody;
-		int status = 0;
-
-		Data(const Adapter &, const Request & = Request());
-	};
-
 	Transaction(Data *);
 
 	Data *_data = nullptr;
@@ -185,9 +180,40 @@ inline bool Transaction::performAsSystem(Callback && cb) const {
 }
 
 struct AccessRole : public AllocPool {
-	static AccessRole Default();
-	static AccessRole Admin();
+	using OnSelect = ValueWrapper<Function<bool(Worker &, const Query &)>, class OnSelectTag>;
+	using OnCount = ValueWrapper<Function<bool(Worker &, const Query &)>, class OnCountTag>;
+	using OnCreate = ValueWrapper<Function<bool(Worker &, data::Value &obj)>, class OnCreateTag>;
+	using OnSave = ValueWrapper<Function<bool(Worker &, const data::Value &, data::Value &obj, Vector<String> &fields)>, class OnSaveTag>;
+	using OnRemove = ValueWrapper<Function<bool(Worker &, const data::Value &)>, class OnRemoveTag>;
+	using OnField = ValueWrapper<Function<bool(Action, Worker &, const data::Value &, const Field &, data::Value &)>, class OnFieldTag>;
+	using OnReturn = ValueWrapper<Function<bool(const Scheme &, data::Value &)>, class OnReturnTag>;
+	using OnReturnField = ValueWrapper<Function<bool(const Scheme &, const Field &, data::Value &)>, class OnReturnFieldTag>;
 
+	template <typename ... Args>
+	static AccessRole Empty(Args && ... args);
+
+	template <typename ... Args>
+	static AccessRole Default(Args && ... args);
+
+	template <typename ... Args>
+	static AccessRole Admin(Args && ... args);
+
+	template <typename T, typename ... Args>
+	AccessRole &define(T &&, Args && ... args);
+
+	AccessRole &define();
+	AccessRole &define(AccessRoleId);
+	AccessRole &define(Transaction::Op);
+	AccessRole &define(OnSelect &&);
+	AccessRole &define(OnCount &&);
+	AccessRole &define(OnCreate &&);
+	AccessRole &define(OnSave &&);
+	AccessRole &define(OnRemove &&);
+	AccessRole &define(OnField &&);
+	AccessRole &define(OnReturn &&);
+	AccessRole &define(OnReturnField &&);
+
+	std::bitset<toInt(AccessRoleId::Max)> users;
 	std::bitset<toInt(Transaction::Op::Max)> operations;
 
 	Function<bool(Worker &, const Query &)> onSelect;
@@ -202,6 +228,62 @@ struct AccessRole : public AllocPool {
 	Function<bool(const Scheme &, data::Value &)> onReturn;
 	Function<bool(const Scheme &, const Field &, data::Value &)> onReturnField;
 };
+
+template <typename T, typename ... Args>
+inline AccessRole &AccessRole::define(T &&v, Args && ... args) {
+	define(std::forward<T>(v));
+	define(std::forward<Args>(args)...);
+	return *this;
+}
+
+template <typename ... Args>
+AccessRole AccessRole::Empty(Args && ... args) {
+	AccessRole ret;
+	ret.define(std::forward<Args>(args)...);
+	return ret;
+}
+
+template <typename ... Args>
+AccessRole AccessRole::Default(Args && ... args) {
+	AccessRole ret;
+
+	ret.operations.set(Transaction::Op::Id);
+	ret.operations.set(Transaction::Op::Select);
+	ret.operations.set(Transaction::Op::Count);
+	ret.operations.set(Transaction::Op::Delta);
+	ret.operations.set(Transaction::Op::DeltaView);
+	ret.operations.set(Transaction::Op::FieldGet);
+
+	ret.define(std::forward<Args>(args)...);
+
+	return ret;
+}
+
+template <typename ... Args>
+AccessRole AccessRole::Admin(Args && ... args) {
+	AccessRole ret;
+
+	ret.operations.set(Transaction::Op::Id);
+	ret.operations.set(Transaction::Op::Select);
+	ret.operations.set(Transaction::Op::Count);
+	ret.operations.set(Transaction::Op::Delta);
+	ret.operations.set(Transaction::Op::DeltaView);
+	ret.operations.set(Transaction::Op::FieldGet);
+
+	ret.operations.set(Transaction::Op::Remove);
+	ret.operations.set(Transaction::Op::Create);
+	ret.operations.set(Transaction::Op::Save);
+	ret.operations.set(Transaction::Op::Patch);
+	ret.operations.set(Transaction::Op::FieldSet);
+	ret.operations.set(Transaction::Op::FieldAppend);
+	ret.operations.set(Transaction::Op::FieldClear);
+	ret.operations.set(Transaction::Op::RemoveFromView);
+	ret.operations.set(Transaction::Op::AddToView);
+
+	ret.define(std::forward<Args>(args)...);
+
+	return ret;
+}
 
 NS_SA_EXT_END(storage)
 

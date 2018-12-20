@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -28,9 +28,10 @@ THE SOFTWARE.
  * Layout engine for rich text applications
  */
 
-#include "../common/string/SPStringView.h"
+#include "SPStringView.h"
 #include "SPRef.h"
 #include "SPCommon.h"
+#include "SPMultipartParser.h"
 
 #ifdef __cplusplus
 
@@ -81,7 +82,6 @@ class Node;
 class Reader;
 class Builder;
 
-struct MultipartParser;
 struct MediaParameters;
 class MediaResolver;
 

@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,7 @@ int writeResourceData(Request &rctx, data::Value &&, data::Value && origin);
 int writeResourceFileHeader(Request &rctx, const data::Value &);
 
 // write file headers with respect for cache headers (if-none-match, if-modified-since)
-// returns true if we shoul write file data or false if we should return HTTP_NOT_MODIFIED
+// returns true if we should write file data or false if we should return HTTP_NOT_MODIFIED
 bool writeFileHeaders(Request &rctx, const data::Value &, const String &convertType = String());
 
 String makeEtag(uint32_t idHash, Time mtime);

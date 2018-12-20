@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef SACONTENTFILTER_H
 #define	SACONTENTFILTER_H
 
-#include "../../../common/string/SPStringView.h"
+#include "SPStringView.h"
 #include "SPUrlencodeParser.h"
 #include "Request.h"
 #include "InputFile.h"

@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -112,6 +112,7 @@ struct Request::Config : public AllocPool {
 
 	Map<String, CookieStorage> _cookies;
 	int64_t _altUserid = 0;
+	storage::AccessRoleId _accessRole = storage::AccessRoleId::Nobody;
 };
 
 Request::Request() : _buffer(nullptr), _request(nullptr), _config(nullptr) { }
@@ -516,46 +517,45 @@ void Request::addCleanup(const Function<void()> &cb) {
 }
 
 bool Request::isAdministrative() {
-	if (_config->_user && _config->_user->isAdmin()) {
-		return true;
-	}
+	return getAccessRole() == storage::AccessRoleId::Admin;
+}
 
-	Session s(*this, true);
-	if (s.isValid()) {
-		auto u = s.getUser();
-		if (u && u->isAdmin()) {
-			return true;
-		}
-	}
-
-	bool isAuthorized = false;
-	auto userIp = getUseragentIp();
-	if (isSecureConnection() || strncmp(userIp.data(), "127.", 4) == 0 || userIp == "::1") {
-		// try cross-server auth
-		auto headers = getRequestHeaders();
-		auto ua = headers.at("User-Agent");
-		auto auth = headers.at("X-Serenity-Auth");
-		auto name = headers.at("X-Serenity-Auth-User");
-		auto passwd = headers.at("X-Serenity-Auth-Password");
-
-		if (!ua.empty() && !auth.empty() && !name.empty() && !passwd.empty()) {
-			if (strncasecmp(ua.data(), "SerenityServerAuth/1", 20) == 0 && auth == "1") {
-				auto user = User::get(storage(), name, passwd);
-				if (user && user->isAdmin()) {
-					isAuthorized = true;
-					messages::debug("Auth", "Authorized on single-request basis");
+storage::AccessRoleId Request::getAccessRole() const {
+	if (_config->_accessRole == storage::AccessRoleId::Nobody) {
+		if (_config->_user) {
+			if (_config->_user->isAdmin()) {
+				_config->_accessRole = storage::AccessRoleId::Admin;
+			} else {
+				_config->_accessRole = storage::AccessRoleId::Authorized;
+			}
+		} else {
+			Session s(*this, true);
+			if (s.isValid()) {
+				auto u = s.getUser();
+				if (u) {
+					if (u->isAdmin()) {
+						_config->_accessRole = storage::AccessRoleId::Admin;
+					} else {
+						_config->_accessRole = storage::AccessRoleId::Authorized;
+					}
 				}
 			}
+#ifdef DEBUG
+			auto userIp = getUseragentIp();
+			if ((strncmp(userIp.data(), "127.", 4) == 0 || userIp == "::1") && _config->_data.getBool("admin")) {
+				_config->_accessRole = storage::AccessRoleId::Admin;
+			}
+#endif
 		}
 	}
+	return _config->_accessRole;
+}
 
-#ifdef DEBUG
-	if ((strncmp(userIp.data(), "127.", 4) == 0 || userIp == "::1") && _config->_data.getBool("admin")) {
-		isAuthorized = true;
+void Request::setAccessRole(storage::AccessRoleId role) const {
+	_config->_accessRole = role;
+	if (auto t = storage::Transaction::acquireIfExists(pool())) {
+		t.setRole(role);
 	}
-#endif
-
-	return isAuthorized;
 }
 
 int Request::redirectTo(String && location) {
@@ -611,20 +611,7 @@ void Request::runTemplate(String && path, const Function<void(tpl::Exec &, Reque
 int Request::runPug(const StringView & path, const Function<bool(pug::Context &, const pug::Template &)> &cb) {
 	auto cache = server().getPugCache();
 	if (cache->runTemplate(path, [&] (pug::Context &ctx, const pug::Template &tpl) -> bool {
-		pug::VarClass serenityClass;
-		serenityClass.staticFunctions.emplace("prettify", [] (pug::VarStorage &, pug::Var *var, size_t argc) -> pug::Var {
-			if (var && argc == 1) {
-				return pug::Var(data::Value(data::toString(var->readValue(), true)));
-			}
-			return pug::Var();
-		});
-		serenityClass.staticFunctions.emplace("timeToHttp", [] (pug::VarStorage &, pug::Var *var, size_t argc) -> pug::Var {
-			if (var && argc == 1 && var->readValue().isInteger()) {
-				return pug::Var(data::Value(Time::microseconds(var->readValue().asInteger()).toHttp()));
-			}
-			return pug::Var();
-		});
-		ctx.set("serenity", std::move(serenityClass));
+		initScriptContext(ctx);
 
 		if (cb(ctx, tpl)) {
 			auto h = getResponseHeaders();

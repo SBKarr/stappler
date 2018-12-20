@@ -1,4 +1,5 @@
 /* Copyright (c) 2012 Google Inc.
+ * Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -179,6 +180,7 @@ public class StoreKit {
 						mContext.bindService(serviceIntent, mServiceConn,
 								Context.BIND_AUTO_CREATE);
 					} else {
+                        logDebug("Fail to bind billing service");
 						onSetupCompleted(false);
 						mServiceConn = null;
 					}

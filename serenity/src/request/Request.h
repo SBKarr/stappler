@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "SPUrl.h"
 #include "Connection.h"
 #include "StorageAdapter.h"
+#include "StorageTransaction.h"
 
 NS_SA_BEGIN
 
@@ -253,6 +254,9 @@ public: /* engine and errors */
 	// uses 'User::isAdmin' or tries to authorize admin by cross-server protocol
 	bool isAdministrative();
 
+	storage::AccessRoleId getAccessRole() const;
+	void setAccessRole(storage::AccessRoleId) const;
+
 	const Vector<data::Value> & getDebugMessages() const;
 	const Vector<data::Value> & getErrorMessages() const;
 
@@ -266,6 +270,8 @@ public: /* engine and errors */
 
 protected:
 	struct Config;
+
+	void initScriptContext(pug::Context &ctx);
 
 	/* Buffer class used as basic_streambuf to allow stream writing to request
 	 * like 'request << "String you want to send"; */

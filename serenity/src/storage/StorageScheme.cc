@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -92,6 +92,12 @@ void Scheme::define(std::initializer_list<Field> il) {
 				((FieldImage *)(new_f->second.getSlot()))->primary = false;
 			}
 		}
+		if (it.hasFlag(Flags::ForceExclude)) {
+			_hasForceExclude = true;
+		}
+		if (it.isFile()) {
+			_hasFiles = true;
+		}
 		fields.emplace(fname.str(), std::move(const_cast<Field &>(it)));
 	}
 
@@ -109,10 +115,33 @@ void Scheme::define(Vector<Field> &&il) {
 				((FieldImage *)(new_f->second.getSlot()))->primary = false;
 			}
 		}
+		if (it.hasFlag(Flags::ForceExclude)) {
+			_hasForceExclude = true;
+		}
+		if (it.isFile()) {
+			_hasFiles = true;
+		}
 		fields.emplace(fname.str(), std::move(const_cast<Field &>(it)));
 	}
 
 	updateLimits();
+}
+
+void Scheme::define(AccessRole &&role) {
+	if (role.users.count() == 1) {
+		for (size_t i = 0; i < role.users.size(); ++ i) {
+			if (role.users.test(i)) {
+				setAccessRole(AccessRoleId(i), move(role));
+				break;
+			}
+		}
+	} else {
+		for (size_t i = 0; i < role.users.size(); ++ i) {
+			if (role.users.test(i)) {
+				setAccessRole(AccessRoleId(i), AccessRole(role));
+			}
+		}
+	}
 }
 
 void Scheme::cloneFrom(Scheme *source) {
@@ -252,6 +281,7 @@ const AccessRole *Scheme::getAccessRole(AccessRoleId id) const {
 void Scheme::setAccessRole(AccessRoleId id, AccessRole &&r) {
 	if (toInt(id) < toInt(AccessRoleId::Max)) {
 		roles[toInt(id)] = new AccessRole(move(r));
+		_hasAccessControl = true;
 	}
 }
 
@@ -261,12 +291,15 @@ bool Scheme::save(const Transaction &t, Object *obj) const {
 }
 
 bool Scheme::hasFiles() const {
-	for (auto &it : fields) {
-		if (it.second.isFile()) {
-			return true;
-		}
-	}
-	return false;
+	return _hasFiles;
+}
+
+bool Scheme::hasForceExclude() const {
+	return _hasForceExclude;
+}
+
+bool Scheme::hasAccessControl() const {
+	return _hasAccessControl;
 }
 
 data::Value Scheme::createWithWorker(Worker &w, const data::Value &data, bool isProtected) const {
@@ -394,7 +427,7 @@ data::Value Scheme::updateWithWorker(Worker &w, const data::Value & obj, const d
 			if (filePatch.isDictionary()) {
 				purgeFilePatch(t, filePatch);
 			}
-			messages::error("Storage", "No object for id", data::Value{ std::make_pair("oid", data::Value((int64_t)oid)) });
+			messages::error("Storage", "No object for id to update", data::Value{ std::make_pair("oid", data::Value((int64_t)oid)) });
 			return false;
 		}
 		return true;
@@ -776,7 +809,7 @@ data::Value &Scheme::transform(data::Value &d, TransformAction a) const {
 	for (auto &it : fields) {
 		auto &field = it.second;
 		if (a == TransformAction::Create || a == TransformAction::ProtectedCreate) {
-			if (field.hasFlag(Flags::AutoMTime)) {
+			if (field.hasFlag(Flags::AutoMTime) && !d.hasValue(it.first)) {
 				d.setInteger(Time::now().toMicroseconds(), it.first);
 			} else if (field.hasFlag(Flags::AutoCTime)) {
 				d.setInteger(Time::now().toMicroseconds(), it.first);
@@ -786,8 +819,10 @@ data::Value &Scheme::transform(data::Value &d, TransformAction a) const {
 				}
 			}
 		} else if ((a == TransformAction::Update || a == TransformAction::ProtectedUpdate || a == TransformAction::Touch)
-				&& field.hasFlag(Flags::AutoMTime) && (!d.empty() || a == TransformAction::Touch)) {
-			d.setInteger(Time::now().toMicroseconds(), it.first);
+				&& field.hasFlag(Flags::AutoMTime)) {
+			if ((!d.empty() && !d.hasValue(it.first)) || a == TransformAction::Touch) {
+				d.setInteger(Time::now().toMicroseconds(), it.first);
+			}
 		}
 	}
 
@@ -831,7 +866,7 @@ data::Value Scheme::createFile(const Transaction &t, const Field &field, InputFi
 	return data::Value();
 }
 
-data::Value Scheme::createFile(const Transaction &t, const Field &field, const Bytes &data, const StringView &itype) const {
+data::Value Scheme::createFile(const Transaction &t, const Field &field, const Bytes &data, const StringView &itype, int64_t mtime) const {
 	//check if content type is valid
 	String type(itype.str());
 	if (field.getType() == Type::Image) {
@@ -846,9 +881,9 @@ data::Value Scheme::createFile(const Transaction &t, const Field &field, const B
 	}
 
 	if (field.getType() == Type::File) {
-		return File::createFile(t, type, data);
+		return File::createFile(t, type, data, mtime);
 	} else if (field.getType() == Type::Image) {
-		return File::createImage(t, field, type, data);
+		return File::createImage(t, field, type, data, mtime);
 	}
 	return data::Value();
 }
@@ -926,7 +961,7 @@ data::Value Scheme::makeObjectForPatch(const Transaction &t, uint64_t oid, const
 		query.include(Query::Field(it->getName()));
 	}
 
-	auto ret = reduceGetQuery(Worker(*this, t).select(query));
+	auto ret = reduceGetQuery(Worker(*this, t).asSystem().select(query));
 	if (!obj) {
 		return ret;
 	} else {

@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2018-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -128,7 +128,7 @@ void SqlQuery::writeOrdering(SqlQuery::SelectFrom &s, const Scheme &scheme, cons
 		String orderField;
 		if (q.hasOrder()) {
 			orderField = q.getOrderField();
-			if (!scheme.getField(orderField)) {
+			if (orderField != "__oid" && !scheme.getField(orderField)) {
 				return;
 			}
 		} else if (q.getSelectList().size() == 1) {

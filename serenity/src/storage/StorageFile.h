@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,11 +35,11 @@ public:
 	static bool validateFileField(const Field &, const StringView &type, const Bytes &data);
 
 	static data::Value createFile(const Transaction &, const Field &, InputFile &);
-	static data::Value createFile(const Transaction &, const StringView &type, const StringView &path);
-	static data::Value createFile(const Transaction &, const StringView &type, const Bytes &data);
+	static data::Value createFile(const Transaction &, const StringView &type, const StringView &path, int64_t = 0);
+	static data::Value createFile(const Transaction &, const StringView &type, const Bytes &data, int64_t = 0);
 
 	static data::Value createImage(const Transaction &, const Field &, InputFile &);
-	static data::Value createImage(const Transaction &, const Field &, const StringView &type, const Bytes &data);
+	static data::Value createImage(const Transaction &, const Field &, const StringView &type, const Bytes &data, int64_t = 0);
 
 	static data::Value getData(const Transaction &, uint64_t id);
 	static void setData(const Transaction &, uint64_t id, const data::Value &);

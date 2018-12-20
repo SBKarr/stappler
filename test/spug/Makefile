@@ -1,0 +1,18 @@
+STAPPLER_ROOT = ../..
+
+LOCAL_OUTDIR := bin
+LOCAL_EXECUTABLE := stl
+
+LOCAL_TOOLKIT := cli
+
+LOCAL_ROOT = .
+
+LOCAL_SRCS_OBJS :=
+
+LOCAL_INCLUDES_OBJS :=
+
+LOCAL_MAIN := main.cpp
+
+LOCAL_LIBS =
+
+include $(STAPPLER_ROOT)/make/universal.mk

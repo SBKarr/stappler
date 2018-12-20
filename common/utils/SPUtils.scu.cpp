@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -34,5 +34,17 @@ THE SOFTWARE.
 #include "SPRef.cc"
 #include "SPUrl.cc"
 #include "SPUrlencodeParser.cc"
+#include "SPMultipartParser.cc"
 #include "SPTime.cc"
 #include "SPTimeString.cc"
+
+#include "SPBitmap.cc"
+#include "SPBitmapFormat.cc"
+#include "SPBitmapResample.cc"
+#include "SPSearchDistance.cc"
+#include "SPSearchDistanceEdLib.cc"
+#include "SPSearchIndex.cc"
+#include "SPSnowballStopwords.cc"
+#include "SPSnowballStemmer.cc"
+#include "SPSerenityPathQuery.cc"
+#include "SPSerenityRequest.cc"

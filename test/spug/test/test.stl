@@ -1,0 +1,31 @@
+html
+  // test html comment
+  //- test stl comment
+  body.someclass
+    p#someid
+      em hello world
+    ul
+      li Item A
+      li Item B
+      li Item C
+    img
+    p
+      em Test1
+      strong Test2
+    p
+      | The pipe always goes at the beginning of its own line,
+      | not counting indentation.
+
+    p
+      | You put the em
+      em pha
+      | sis on the wrong syl
+      em la
+      | ble.
+
+    .test
+      #somediv
+    
+    <some html text>
+ test
+   .somediv

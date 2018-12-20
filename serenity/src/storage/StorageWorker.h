@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2018-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -80,6 +80,9 @@ public:
 
 	bool shouldIncludeNone() const;
 
+	Worker &asSystem();
+	bool isSystem() const;
+
 public:
 	data::Value get(uint64_t oid, bool forUpdate = false);
 	data::Value get(const String &alias, bool forUpdate = false);
@@ -154,6 +157,7 @@ protected:
 	RequiredFields _required;
 	const Scheme *_scheme = nullptr;
 	Transaction _transaction;
+	bool _isSystem = false;
 };
 
 template <typename Callback>

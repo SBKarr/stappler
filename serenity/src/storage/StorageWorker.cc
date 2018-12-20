@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2018-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -132,7 +132,23 @@ bool Worker::readFields(const Scheme &scheme, const FieldCallback &cb, const dat
 	if (_required.includeNone || (_required.scheme != nullptr && _required.scheme != &scheme)) {
 		return false;
 	} else if (_required.excludeFields.empty() && _required.includeFields.empty()) {
-		cb("*", nullptr);
+		if (!scheme.hasForceExclude()) {
+			cb("*", nullptr);
+		} else {
+			cb("__oid", nullptr);
+			for (auto &it : scheme.getFields()) {
+				if (it.second.hasFlag(Flags::ForceExclude)) {
+					continue;
+				}
+
+				auto type = it.second.getType();
+				if (type == storage::Type::Set || type == storage::Type::Array || type == storage::Type::View) {
+					continue;
+				}
+
+				cb(it.second.getName(), &it.second);
+			}
+		}
 	} else {
 		cb("__oid", nullptr);
 		auto hasField = [&] (const Vector<const Field *> &vec, const Field &f) -> bool {
@@ -202,6 +218,15 @@ void Worker::readFields(const Scheme &scheme, const Query &q, const FieldCallbac
 
 bool Worker::shouldIncludeNone() const {
 	return _required.includeNone;
+}
+
+Worker &Worker::asSystem() {
+	_isSystem = true;
+	return *this;
+}
+
+bool Worker::isSystem() const {
+	return _isSystem;
 }
 
 data::Value Worker::get(uint64_t oid, bool forUpdate) {
