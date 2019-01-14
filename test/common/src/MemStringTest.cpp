@@ -722,6 +722,13 @@ struct MemStringUncommonTest : MemPoolTest {
 			return t1 && t2;
 		});
 
+		runTest(stream, "Empty comparation test", count, passed, [&] {
+			String emptyString;
+			String nonEmptyString("nonEmptyString");
+
+			return nonEmptyString.compare(emptyString) > 0;
+		});
+
 		_desc = stream.str();
 
 		return count == passed;

@@ -1,7 +1,7 @@
 STAPPLER_ROOT = ../..
 
 LOCAL_OUTDIR := bin
-LOCAL_OUTPUT_EXECUTABLE := $(LOCAL_OUTDIR)/sptest
+LOCAL_EXECUTABLE := sptest
 
 LOCAL_TOOLKIT := common
 
@@ -20,4 +20,4 @@ LOCAL_LIBS =
 #.local_prebuild:
 #	@echo test
 
-include $(STAPPLER_ROOT)/make/local.mk
+include $(STAPPLER_ROOT)/make/universal.mk

@@ -257,11 +257,11 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactName="${ProjName}" buildProperties="" description="" id="cdt.managedbuild.toolchain.gnu.base.1433006399.380183790.699133620" name="Common Test" parent="org.eclipse.cdt.build.core.emptycfg">
+				<configuration artifactName="${ProjName}" buildProperties="" description="" id="cdt.managedbuild.toolchain.gnu.base.1433006399.380183790.699133620" name="Common Test" optionalBuildProperties="" parent="org.eclipse.cdt.build.core.emptycfg">
 					<folderInfo id="cdt.managedbuild.toolchain.gnu.base.1433006399.380183790.699133620." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.base.2111706809" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.base">
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.target.gnu.platform.base.1879478796" name="Debug Platform" osList="linux,hpux,aix,qnx" superClass="cdt.managedbuild.target.gnu.platform.base"/>
-							<builder arguments="-j4" buildPath="${workspace_loc:/libstappler}/test/common" command="make" id="cdt.managedbuild.target.gnu.builder.base.101863955" incrementalBuildTarget="all" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Gnu Make Builder" superClass="cdt.managedbuild.target.gnu.builder.base">
+							<builder arguments="-j4" buildPath="${workspace_loc:/libstappler}/test/common" command="make" id="cdt.managedbuild.target.gnu.builder.base.101863955" incrementalBuildTarget="install" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Gnu Make Builder" superClass="cdt.managedbuild.target.gnu.builder.base">
 								<outputEntries>
 									<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="outputPath" name=""/>
 								</outputEntries>
@@ -675,6 +675,7 @@
 		<configuration configurationName="Stappler Test">
 			<resource resourceType="PROJECT" workspacePath="/libstappler"/>
 		</configuration>
+		<configuration configurationName="Pug Test"/>
 		<configuration configurationName="Serenity">
 			<resource resourceType="PROJECT" workspacePath="/libstappler"/>
 		</configuration>

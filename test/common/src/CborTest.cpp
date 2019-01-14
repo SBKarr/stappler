@@ -121,18 +121,18 @@ struct CborDataTest : Test {
 		Map<String, data::Value> jsonData;
 		Map<String, String> diagData;
 
-		filesystem::ftw(cborPath, [&] (const String &path, bool isFile) {
+		filesystem::ftw(cborPath, [&] (const StringView &path, bool isFile) {
 			if (isFile) {
 				auto ext = filepath::lastExtension(path);
 
 				auto fileData = filesystem::readFile(path);
 
 				if (ext == "cbor") {
-					cborData.emplace(filepath::name(path), data::read(fileData));
+					cborData.emplace(filepath::name(path).str(), data::read(fileData));
 				} else if (ext == "json") {
-					jsonData.emplace(filepath::name(path), data::read(fileData));
+					jsonData.emplace(filepath::name(path).str(), data::read(fileData));
 				} else if (ext == "diag") {
-					diagData.emplace(filepath::name(path), filesystem::readTextFile(path));
+					diagData.emplace(filepath::name(path).str(), filesystem::readTextFile(path));
 				}
 			}
 		});
@@ -179,16 +179,16 @@ struct CborDataFileTest : Test {
 		Map<String, data::Value> jsonData;
 		Map<String, String> diagData;
 
-		filesystem::ftw(cborPath, [&] (const String &path, bool isFile) {
+		filesystem::ftw(cborPath, [&] (const StringView &path, bool isFile) {
 			if (isFile) {
 				auto ext = filepath::lastExtension(path);
 
 				if (ext == "cbor") {
-					cborData.emplace(filepath::name(path), data::readFile(path));
+					cborData.emplace(filepath::name(path).str(), data::readFile(path));
 				} else if (ext == "json") {
-					jsonData.emplace(filepath::name(path), data::readFile(path));
+					jsonData.emplace(filepath::name(path).str(), data::readFile(path));
 				} else if (ext == "diag") {
-					diagData.emplace(filepath::name(path), filesystem::readTextFile(path));
+					diagData.emplace(filepath::name(path).str(), filesystem::readTextFile(path));
 				}
 			}
 		});

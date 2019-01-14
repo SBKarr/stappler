@@ -330,6 +330,9 @@ struct Server::Config : public AllocPool {
 
 	CompressionConfig compression;
 	Set<String> protectedList;
+
+	String publicSessionKey;
+	String privateSessionKey;
 };
 
 void * Server::merge(void *base, void *add) {
@@ -479,6 +482,19 @@ void Server::processReports() {
 
 void Server::performStorage(apr_pool_t *pool, const Callback<void(const storage::Adapter &)> &cb) {
 	Root::getInstance()->performStorage(pool, *this, cb);
+}
+
+void Server::setSessionKeys(const StringView &pub, const StringView &priv) const {
+	_config->publicSessionKey = pub.str();
+	_config->privateSessionKey = priv.str();
+}
+
+StringView Server::getSessionPublicKey() const {
+	return _config->publicSessionKey;
+}
+
+StringView Server::getSessionPrivateKey() const {
+	return _config->privateSessionKey;
 }
 
 void Server::setHandlerFile(const StringView &file) {

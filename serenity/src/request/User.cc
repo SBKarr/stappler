@@ -41,7 +41,7 @@ User *User::create(const Adapter &a, const StringView &name, const StringView &p
 
 User *User::setup(const Adapter &a, const StringView &name, const StringView &password) {
 	auto s = Server(apr::pool::server()).getUserScheme();
-	if (Worker(*s, a).count() == 0) {
+	if (Worker(*s, a).asSystem().count() == 0) {
 		return create(a, data::Value{
 			std::make_pair("name", data::Value(name)),
 			std::make_pair("password", data::Value(password)),
@@ -53,7 +53,7 @@ User *User::setup(const Adapter &a, const StringView &name, const StringView &pa
 User *User::create(const Adapter &a, data::Value &&val) {
 	auto s = Server(apr::pool::server()).getUserScheme();
 
-	auto d = Worker(*s, a).create(val);
+	auto d = Worker(*s, a).asSystem().create(val);
 	return new User(std::move(d), *s);
 }
 
@@ -72,7 +72,7 @@ User *User::get(const Adapter &a, uint64_t oid) {
 }
 
 User *User::get(const Adapter &a, const Scheme &s, uint64_t oid) {
-	auto d = Worker(s, a).get(oid);
+	auto d = Worker(s, a).asSystem().get(oid);
 	if (d.isDictionary()) {
 		return new User(std::move(d), s);
 	}

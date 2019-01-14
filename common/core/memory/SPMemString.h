@@ -592,7 +592,7 @@ public: /* APR extensions */
 
 protected:
 	static int compare(const charT* s1, size_type len1, const charT* s2, size_type len2) {
-	    int result = traits_type::compare(s1, s2, min(len1, len2));
+	    int result = (s1 && s2) ? traits_type::compare(s1, s2, min(len1, len2)) : 0;
 	    if (result != 0)
 	        return result;
 	    if (len1 < len2)
@@ -601,7 +601,6 @@ protected:
 	        return 1;
 	    return 0;
 	}
-
 
 	template <typename C, typename I, bool B>
 	friend struct __basic_string_fill;

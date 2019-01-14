@@ -166,6 +166,10 @@ public: // httpd server info
 
 	void performStorage(apr_pool_t *pool, const Callback<void(const storage::Adapter &)> &cb);
 
+	void setSessionKeys(const StringView &pub, const StringView &priv) const;
+	StringView getSessionPublicKey() const;
+	StringView getSessionPrivateKey() const;
+
 public: // compression
 	enum EtagMode {
 		AddSuffix,

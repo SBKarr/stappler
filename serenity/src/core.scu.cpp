@@ -39,3 +39,6 @@ APLOG_USE_MODULE(serenity);
 #include "mod_serenity.cc"
 
 #include "Task.cc"
+
+#include "ExternalSession.cc"
+#include "JsonWebToken.cc"
