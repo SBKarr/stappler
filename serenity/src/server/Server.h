@@ -51,7 +51,6 @@ public:
 
 	void onStorageTransaction(storage::Transaction &);
 
-	void setHandlerFile(const StringView &file);
 	void setSourceRoot(const StringView &file);
 	void addHanderSource(const StringView &w);
 	void setSessionParams(const StringView &w);
@@ -60,8 +59,6 @@ public:
 	void setProtectedList(const StringView &w);
 
 	void addProtectedLocation(const StringView &);
-
-	StringView getHandlerFile() const;
 
 	template <typename Component = ServerComponent>
 	auto getComponent(const StringView &) const -> Component *;

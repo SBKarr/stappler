@@ -731,22 +731,37 @@ AccessRole &AccessRole::define() {
 	return *this;
 }
 AccessRole &AccessRole::define(OnSelect &&val) {
+	if (val.get()) {
+		operations.set(Transaction::Select);
+	}
 	onSelect = move(val.get());
 	return *this;
 }
 AccessRole &AccessRole::define(OnCount &&val) {
+	if (val.get()) {
+		operations.set(Transaction::Count);
+	}
 	onCount = move(val.get());
 	return *this;
 }
 AccessRole &AccessRole::define(OnCreate &&val) {
+	if (val.get()) {
+		operations.set(Transaction::Create);
+	}
 	onCreate = move(val.get());
 	return *this;
 }
 AccessRole &AccessRole::define(OnSave &&val) {
+	if (val.get()) {
+		operations.set(Transaction::Save);
+	}
 	onSave = move(val.get());
 	return *this;
 }
 AccessRole &AccessRole::define(OnRemove &&val) {
+	if (val.get()) {
+		operations.set(Transaction::Remove);
+	}
 	onRemove = move(val.get());
 	return *this;
 }

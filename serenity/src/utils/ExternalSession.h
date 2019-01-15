@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "Request.h"
 #include "SPDataWrapper.h"
+#include "StorageTransaction.h"
 
 NS_SA_BEGIN
 
@@ -36,9 +37,11 @@ struct SessionKeyPair {
 class ExternalSession : public data::Wrapper {
 public:
 	using Token = string::Sha512::Buf;
+	using AccessRoleId = storage::AccessRoleId;
 
 	static constexpr auto SessionCookie = "SessionToken";
 
+	static ExternalSession *get();
 	static ExternalSession *get(const Request &);
 	static ExternalSession *get(const Request &, const SessionKeyPair &keys);
 
@@ -50,12 +53,13 @@ public:
 	bool initAsNew(const apr::uuid &);
 	bool init(const apr::uuid &, data::Value &&);
 
-	void setUser(uint64_t);
+	void setUser(uint64_t, AccessRoleId);
 
 	bool isValid() const;
 	const apr::uuid &getUuid() const;
 
 	uint64_t getUser() const;
+	AccessRoleId getRole() const;
 	data::Value getUserData() const;
 	TimeInterval getMaxAge() const;
 
@@ -81,6 +85,7 @@ protected:
 	TimeInterval _maxAge;
 
 	uint64_t _user = 0;
+	AccessRoleId _role = AccessRoleId::Nobody;
 	bool _valid = false;
 };
 

@@ -1126,7 +1126,7 @@ data::Value Scheme::createFilePatch(const Transaction &t, const data::Value &val
 				}
 			} else if (it.second.isDictionary()) {
 				if (it.second.isBytes("content") && it.second.isString("type")) {
-					auto d = createFile(t, *f, it.second.getBytes("content"), it.second.getString("type"));
+					auto d = createFile(t, *f, it.second.getBytes("content"), it.second.getString("type"), it.second.getInteger("mtime"));
 					if (d.isInteger()) {
 						patch.setValue(d, f->getName().str());
 					} else if (d.isDictionary()) {

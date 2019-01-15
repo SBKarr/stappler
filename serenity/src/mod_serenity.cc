@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -130,7 +130,7 @@ static const command_rec mod_serenity_directives[] = {
 	AP_INIT_TAKE1("SerenitySourceRoot", (cmd_func)mod_serenity_set_source_root, NULL, RSRC_CONF,
 		"Serenity root dir for source handlers"),
 	AP_INIT_RAW_ARGS("SerenitySource", (cmd_func)mod_serenity_add_handler_source, NULL, RSRC_CONF,
-		"Serenity handler definition in format (Name File Func Args)"),
+		"Serenity handler definition in format (Name:File:Func Args)"),
 	AP_INIT_RAW_ARGS("SerenitySession", (cmd_func)mod_serenity_set_session_params, NULL, RSRC_CONF,
 		"Serenity session params (name, key, host, maxage, secure)"),
 	AP_INIT_RAW_ARGS("SerenityWebHook", (cmd_func)mod_serenity_set_webhook_params, NULL, RSRC_CONF,

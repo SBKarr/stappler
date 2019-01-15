@@ -58,6 +58,13 @@ ExternalSession::Token ExternalSession::makeToken(const Request &rctx, const apr
 		.final();
 }
 
+ExternalSession *ExternalSession::get() {
+	if (auto req = apr::pool::request()) {
+		return get(Request(req));
+	}
+	return nullptr;
+}
+
 ExternalSession *ExternalSession::get(const Request &rctx) {
 	auto serv = rctx.server();
 	return get(rctx, SessionKeyPair{serv.getSessionPublicKey(), serv.getSessionPrivateKey()});
@@ -186,6 +193,7 @@ bool ExternalSession::init(const apr::uuid &sessionId, data::Value &&d) {
 	_uuid = sessionId;
 	_valid = true;
 	_user = _data.getInteger("user");
+	_role = AccessRoleId(_data.getInteger("role"));
 	_maxAge = TimeInterval::microseconds(_data.getInteger("maxage"));
 
 	registerCleanupDestructor(this, _request.pool());
@@ -193,9 +201,11 @@ bool ExternalSession::init(const apr::uuid &sessionId, data::Value &&d) {
 	return true;
 }
 
-void ExternalSession::setUser(uint64_t id) {
+void ExternalSession::setUser(uint64_t id, AccessRoleId role) {
 	_user = id;
+	_role = role;
 	setInteger(id, "user");
+	setInteger(toInt(_role), "role");
 }
 
 bool ExternalSession::isValid() const {
@@ -208,6 +218,9 @@ const apr::uuid &ExternalSession::getUuid() const {
 
 uint64_t ExternalSession::getUser() const {
 	return _user;
+}
+storage::AccessRoleId ExternalSession::getRole() const {
+	return _role;
 }
 TimeInterval ExternalSession::getMaxAge() const {
 	return _maxAge;

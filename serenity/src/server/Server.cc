@@ -83,11 +83,16 @@ struct Server::Config : public AllocPool {
 		ap_set_module_config(server->module_config, &serenity_module, this);
 	}
 
-	void onHandler(Server &serv, const String &name, const String &ifile, const String &symbol, const data::Value &handlerData) {
+	void onHandler(Server &serv, const StringView &name, const StringView &ifile, const StringView &symbol, const data::Value &handlerData) {
 		String file;
-		if (!sourceRoot.empty() && ifile.front() != '/') {
-			file = filepath::absolute(filepath::merge(sourceRoot, ifile));
-		} else {
+		for (auto &it : sourceRoot) {
+			auto path = filepath::absolute(filepath::merge(it, ifile));
+			if (filesystem::exists(path)) {
+				file = path;
+			}
+		}
+
+		if (file.empty()) {
 			file = filepath::absolute(ifile);
 		}
 
@@ -104,14 +109,14 @@ struct Server::Config : public AllocPool {
 		apr_status_t err = apr_dso_load(&obj, file.c_str(), pool);
 		if (err == APR_SUCCESS) {
 			/* loading was successful, export main symbol */
-			err = apr_dso_sym(&sym, obj, symbol.c_str());
+			err = apr_dso_sym(&sym, obj, symbol.data());
 			if (err == APR_SUCCESS) {
-				auto h = ((ServerComponent::Symbol) sym)(serv, name, handlerData);
+				auto h = ((ServerComponent::Symbol) sym)(serv, name.str(), handlerData);
 				if (h) {
 					components.emplace(h->getName(), h);
 					typedComponents.emplace(std::type_index(typeid(*h)), h);
 				} else {
-					log::format("Server", "DSO (%s) returns nullptr handler", name.c_str());
+					log::format("Server", "DSO (%s) returns nullptr handler", name.data());
 					serv.reportError(data::Value {
 						pair("source", data::Value("Server")),
 						pair("text", data::Value(toString("DSO (", name, ") returns nullptr handler")))
@@ -121,7 +126,7 @@ struct Server::Config : public AllocPool {
 			} else {
 				/* fail to load symbol, terminating process */
 				char buf[256] = {0};
-				log::format("Server", "DSO (%s) error: %s", name.c_str(), apr_dso_error(obj, buf, 255));
+				log::format("Server", "DSO (%s) error: %s", name.data(), apr_dso_error(obj, buf, 255));
 				serv.reportError(data::Value {
 					pair("source", data::Value("Server")),
 					pair("text", data::Value(toString("DSO (", name, ") error: ", apr_dso_error(obj, buf, 255))))
@@ -132,7 +137,7 @@ struct Server::Config : public AllocPool {
 		} else {
 			/* fail to load object, terminating process */
 			char buf[256] = {0};
-			log::format("Server", "Fail to load DSO (%s): %s", name.c_str(), apr_dso_error(obj, buf, 255));
+			log::format("Server", "Fail to load DSO (%s): %s", name.data(), apr_dso_error(obj, buf, 255));
 			serv.reportError(data::Value {
 				pair("source", data::Value("Server")),
 				pair("text", data::Value(toString("Fail to load DSO (", name, "): ", apr_dso_error(obj, buf, 255))))
@@ -141,13 +146,13 @@ struct Server::Config : public AllocPool {
 		}
 	}
 
-	void initHandlers(Server &serv, data::Value &val) {
-		for (auto &it : val.asArray()) {
-			if (it.isDictionary()) {
-				auto & name = it.getString("name");
-				auto & file = it.getString("file");
-				auto & symbol = it.getString("symbol");
-				auto & handlerData = it.getValue("data");
+	void initHandlers(Server &serv, const Vector<Pair<String, data::Value>> &val) {
+		for (auto &it : val) {
+			if (it.second.isDictionary()) {
+				auto & name = it.second.getString("name");
+				auto & file = it.second.getString("file");
+				auto & symbol = it.second.getString("symbol");
+				auto & handlerData = it.second.getValue("data");
 
 				onHandler(serv, name, file, symbol, handlerData);
 			}
@@ -198,17 +203,7 @@ struct Server::Config : public AllocPool {
 		schemes.emplace(fileScheme.getName().str(), &fileScheme);
 		schemes.emplace(errorScheme.getName().str(), &errorScheme);
 
-		if (data) {
-			if (data.isArray("handlers")) {
-				initHandlers(serv, data.getValue("handlers"));
-			}
-
-			if (data.isDictionary("session")) {
-				initSession(data.getValue("session"));
-			}
-		}
-
-		if (handlers.isArray()) {
+		if (!handlers.empty()) {
 			initHandlers(serv, handlers);
 		}
 	}
@@ -245,9 +240,7 @@ struct Server::Config : public AllocPool {
 
 	void onStorageTransaction(storage::Transaction &t) {
 		for (auto &it : components) {
-			currentComponent = it.second->getName();
 			it.second->onStorageTransaction(t);
-			currentComponent = String();
 		}
 	}
 
@@ -296,9 +289,9 @@ struct Server::Config : public AllocPool {
 		Field::Integer("time"),
 	});
 
-	data::Value handlers;
-	String handlerFile;
-	String sourceRoot;
+	Vector<Pair<String, data::Value>> handlers;
+
+	Vector<String> sourceRoot;
 	String currentComponent;
 	Vector<Function<int(Request &)>> preRequest;
 	Map<String, ServerComponent *> components;
@@ -308,7 +301,6 @@ struct Server::Config : public AllocPool {
 	Map<String, const storage::Scheme *> schemes;
 
 	Map<String, websocket::Manager *> websockets;
-	data::Value data;
 
 	String sessionName = config::getDefaultSessionName();
 	String sessionKey = config::getDefaultSessionKey();
@@ -339,7 +331,28 @@ void * Server::merge(void *base, void *add) {
 	Config *baseCfg = (Config *)base;
 	Config *addCfg = (Config *)add;
 
-	if (!baseCfg->sourceRoot.empty()) { addCfg->sourceRoot = baseCfg->sourceRoot; }
+	if (!baseCfg->sourceRoot.empty()) {
+		if (addCfg->sourceRoot.empty()) {
+			addCfg->sourceRoot = baseCfg->sourceRoot;
+		} else {
+			auto pool = apr::pool::acquire();
+
+			apr::pool::perform([&] {
+				Set<String> strings;
+				for (auto &it : baseCfg->sourceRoot) {
+					strings.emplace(it);
+				}
+				for (auto &it : addCfg->sourceRoot) {
+					strings.erase(it);
+				}
+				if (!strings.empty()) {
+					for (auto &it : strings) {
+						addCfg->sourceRoot.emplace_back(String(it, pool));
+					}
+				}
+			});
+		}
+	}
 	if (!baseCfg->webHookUrl.empty()) { addCfg->webHookUrl = baseCfg->webHookUrl; }
 	if (!baseCfg->webHookName.empty()) { addCfg->webHookName = baseCfg->webHookName; }
 	if (!baseCfg->webHookFormat.empty()) { addCfg->webHookFormat = baseCfg->webHookFormat; }
@@ -347,6 +360,19 @@ void * Server::merge(void *base, void *add) {
 	if (!baseCfg->webHookExtra.empty()) {
 		for (auto &it : baseCfg->webHookExtra.asDict()) {
 			addCfg->webHookExtra.setValue(it.second, it.first);
+		}
+	}
+
+	if (!baseCfg->handlers.empty()) {
+		if (addCfg->handlers.empty()) {
+			addCfg->handlers = baseCfg->handlers;
+		} else {
+			auto tmp = move(addCfg->handlers);
+			addCfg->handlers = baseCfg->handlers;
+
+			for (auto &it : tmp) {
+				addCfg->handlers.emplace_back(move(it));
+			}
 		}
 	}
 
@@ -377,10 +403,6 @@ Server & Server::operator =(const Server &other) {
 }
 
 void Server::onChildInit() {
-	if (!_config->handlerFile.empty()) {
-		_config->data = data::readFile(_config->handlerFile);
-	}
-
 	_config->init(*this);
 	_config->onChildInit(*this);
 
@@ -497,11 +519,8 @@ StringView Server::getSessionPrivateKey() const {
 	return _config->privateSessionKey;
 }
 
-void Server::setHandlerFile(const StringView &file) {
-	_config->handlerFile = file.str();
-}
 void Server::setSourceRoot(const StringView &file) {
-	_config->sourceRoot = file.str();
+	_config->sourceRoot.emplace_back(file.str());
 }
 void Server::addHanderSource(const StringView &str) {
 	StringView r(str);
@@ -563,7 +582,7 @@ void Server::addHanderSource(const StringView &str) {
 			}
 		}
 
-		_config->handlers.addValue(std::move(h));
+		_config->handlers.emplace_back(args[idx - 2].str(), std::move(h));
 	}
 }
 
@@ -637,10 +656,6 @@ void Server::addProtectedLocation(const StringView &value) {
 
 void Server::setForceHttps() {
 	_config->setForceHttps();
-}
-
-StringView Server::getHandlerFile() const {
-	return _config->handlerFile;
 }
 
 apr::weak_string Server::getDefaultName() const {
@@ -1078,6 +1093,12 @@ bool Server::scheduleTask(Task *task, TimeInterval t) const {
 }
 
 void Server::runErrorReportTask(request_rec *req, const Vector<data::Value> &errors) {
+	if (!_config->childInit) {
+		for (auto &it : errors) {
+			std::cout << data::EncodeFormat::Pretty << it << "\n";
+		}
+		return;
+	}
 	auto serv = req ? req->server : apr::pool::server();
 	Task::perform(Server(serv), [&] (Task &task) {
 		data::Value *err = nullptr;
@@ -1127,10 +1148,13 @@ void Server::runErrorReportTask(request_rec *req, const Vector<data::Value> &err
 				auto serv = Server(apr::pool::server());
 				if (auto t = Transaction::acquire(storage)) {
 					t.performAsSystem([&] () -> bool {
-						if (!serv.getErrorScheme()->create(storage, *err)) {
-							std::cout << "Fail to report error: " << *err << "\n";
+						if (auto errScheme = serv.getErrorScheme()) {
+							if (errScheme->create(storage, *err)) {
+								return true;
+							}
 						}
-						return true;
+						std::cout << "Fail to report error: " << *err << "\n";
+						return false;
 					});
 				}
 
