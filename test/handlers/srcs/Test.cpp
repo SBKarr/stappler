@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include "Tools.h"
 
 #include "PugTest.cc"
+#include "UploadTest.cc"
 
 NS_SA_EXT_BEGIN(test)
 
@@ -57,6 +58,7 @@ public:
 	virtual ~TestHandler() { }
 
 	virtual void onChildInit(Server &) override;
+	virtual void onStorageTransaction(storage::Transaction &) override;
 
 	const data::Value &getGoogleDiscoveryDocument() const;
 
@@ -73,15 +75,16 @@ protected:
 	Scheme _objects = Scheme("objects");
 	Scheme _refs = Scheme("refs");
 	Scheme _subobjects = Scheme("subobjects");
+	Scheme _images = Scheme("images");
 };
 
 TestHandler::TestHandler(Server &serv, const String &name, const data::Value &dict)
 : ServerComponent(serv, name, dict) {
-	exportValues(_objects, _refs, _subobjects);
+	exportValues(_objects, _refs, _subobjects, _images);
 
 	using namespace storage;
 
-	_objects.define({
+	_objects.define(Vector<Field>{
 		Field::Text("text", storage::MinLength(3)),
 		Field::Extra("data", Vector<Field>{
 			Field::Array("strings", Field::Text("")),
@@ -97,8 +100,12 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 			return Vector<data::Value>{data::Value({
 				pair("string", data::Value(obj.getString("text")))
 			})};
-		}), storage::FieldView::Delta)
-	});
+		}), storage::FieldView::Delta),
+
+		Field::Set("images", _images, Flags::Composed),
+	},
+			AccessRole::Admin(AccessRoleId::Authorized)
+	);
 	_objects.setDelta(true);
 
 	_refs.define({
@@ -130,6 +137,19 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 		Field::Integer("mtime", storage::Flags::AutoMTime | storage::Flags::Indexed),
 		Field::Integer("index", storage::Flags::Indexed),
 	});
+
+	_images.define(Vector<Field>{
+		Field::Integer("ctime", Flags::ReadOnly | Flags::AutoCTime | Flags::ForceInclude),
+		Field::Integer("mtime", Flags::ReadOnly | Flags::AutoMTime | Flags::ForceInclude),
+
+		Field::Text("name", Transform::Identifier, Flags::Required | Flags::Indexed | Flags::ForceInclude),
+
+		Field::Image("content", MaxImageSize(2048, 2048, storage::ImagePolicy::Resize), Vector<Thumbnail>{
+			Thumbnail("thumb", 380, 380)
+		}),
+	},
+			AccessRole::Admin(AccessRoleId::Authorized)
+	);
 }
 
 void TestHandler::onChildInit(Server &serv) {
@@ -144,8 +164,12 @@ void TestHandler::onChildInit(Server &serv) {
 
 	serv.addHandler("/handler", SA_HANDLER(TestSelectHandler));
 	serv.addHandler("/pug/", SA_HANDLER(TestPugHandler));
+	serv.addHandler("/upload/", SA_HANDLER(TestUploadHandler));
 }
 
+void TestHandler::onStorageTransaction(storage::Transaction &t) {
+	t.setRole(storage::AccessRoleId::Authorized);
+}
 
 extern "C" ServerComponent * CreateTestHandler(Server &serv, const String &name, const data::Value &dict) {
 	return new TestHandler(serv, name, dict);

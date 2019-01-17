@@ -449,6 +449,12 @@ void Resource::resolveResult(const QueryList &l, data::Value &obj) {
 AccessControl::Permission Resource::isSchemeAllowed(const Scheme &s, AccessControl::Action a) const {
 	if (_access) {
 		return _access->onScheme(_user, s, a);
+	} else {
+		if (auto t = storage::Transaction::acquire()) {
+			if (s.getAccessRole(t.getRole())) {
+				return AccessControl::Full;
+			}
+		}
 	}
 	return (_user &&_user->isAdmin())
 			? AccessControl::Full
@@ -466,10 +472,10 @@ bool Resource::isObjectAllowed(const Scheme &s, AccessControl::Action a, data::V
 		return _access->onObject(_user, s, a, current, patch);
 	}
 	return (_user &&_user->isAdmin())
+		? true
+		: (a == AccessControl::Read
 			? true
-			: (a == AccessControl::Read
-					? true
-					: false);
+			: false);
 }
 
 const storage::Scheme &Resource::getRequestScheme() const {

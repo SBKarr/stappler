@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,11 @@ THE SOFTWARE.
 NS_SA_BEGIN
 
 ServerComponent::ServerComponent(Server &serv, const String &name, const data::Value &dict)
-: _server(serv), _name(name), _config(dict) { }
+: _server(serv), _name(name), _version("1.0"), _config(dict) {
+	if (_config.isString("version")) {
+		_version = _config.getString("version");
+	}
+}
 
 void ServerComponent::onChildInit(Server &serv) { }
 

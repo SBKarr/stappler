@@ -1,0 +1,16 @@
+doctype html
+html
+	head
+		title Upload test
+		link(rel='stylesheet', href='/css/style.css')
+	body
+		each obj in objs
+			div
+				form(
+					method="POST",
+					enctype="multipart/form-data",
+					action="/objects/id"+obj.__oid+"/images"
+				)
+					input(name="content",type="file")
+					input(name="name",type="text")
+					input(type="submit")

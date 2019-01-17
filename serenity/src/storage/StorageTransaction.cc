@@ -506,7 +506,7 @@ data::Value Transaction::performQueryList(const QueryList &list, size_t count, b
 	if (!list.getScheme()->hasAccessControl()) {
 		if (f) {
 			if (f->getAccessFn()) {
-				auto ids = performQueryListForIds(list, (count == maxOf<size_t>()) ? list.size() - 1 : count - 1);
+				auto ids = performQueryListForIds(list, (count == maxOf<size_t>()) ? list.size() : count);
 				if (ids.size() == 1) {
 					auto id = ids.front();
 					auto &scheme = *list.getSourceScheme();
@@ -539,10 +539,10 @@ data::Value Transaction::performQueryList(const QueryList &list, size_t count, b
 	}
 
 	if (f) {
-		auto ids = performQueryListForIds(list, (count == maxOf<size_t>()) ? list.size() - 1 : count - 1);
+		auto ids = performQueryListForIds(list, (count == maxOf<size_t>()) ? list.size() : count);
 		if (ids.size() == 1) {
 			auto id = ids.front();
-			auto &scheme = *list.getSourceScheme();
+			auto &scheme = *list.getScheme();
 			if (auto obj = acquireObject(scheme, id)) {
 				val = scheme.getProperty(*this, obj, *f, list.getItems().at(min(count - 1, list.getItems().size() - 1)).getQueryFields());
 			}

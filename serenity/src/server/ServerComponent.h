@@ -47,7 +47,8 @@ public:
 	virtual void onStorageTransaction(storage::Transaction &);
 
 	const data::Value & getConfig() const { return _config; }
-	const String & getName() const { return _name; }
+	StringView getName() const { return _name; }
+	StringView getVersion() const { return _version; }
 
 	const storage::Scheme * exportScheme(const storage::Scheme &);
 
@@ -73,6 +74,7 @@ protected:
 
 	Server _server;
 	String _name;
+	String _version;
 	data::Value _config;
 };
 

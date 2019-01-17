@@ -113,7 +113,7 @@ struct Server::Config : public AllocPool {
 			if (err == APR_SUCCESS) {
 				auto h = ((ServerComponent::Symbol) sym)(serv, name.str(), handlerData);
 				if (h) {
-					components.emplace(h->getName(), h);
+					components.emplace(h->getName().str(), h);
 					typedComponents.emplace(std::type_index(typeid(*h)), h);
 				} else {
 					log::format("Server", "DSO (%s) returns nullptr handler", name.data());
@@ -292,7 +292,7 @@ struct Server::Config : public AllocPool {
 	Vector<Pair<String, data::Value>> handlers;
 
 	Vector<String> sourceRoot;
-	String currentComponent;
+	StringView currentComponent;
 	Vector<Function<int(Request &)>> preRequest;
 	Map<String, ServerComponent *> components;
 	Map<std::type_index, ServerComponent *> typedComponents;
@@ -409,9 +409,9 @@ void Server::onChildInit() {
 	filesystem::mkdir(filepath::merge(getDocumentRoot(), "/.serenity"));
 	filesystem::mkdir(filepath::merge(getDocumentRoot(), "/uploads"));
 
-	_config->currentComponent = "root";
+	_config->currentComponent = StringView("root");
 	tools::registerTools(config::getServerToolsPrefix(), *this);
-	_config->currentComponent = String();
+	_config->currentComponent = StringView();
 
 	addProtectedLocation("/.serenity");
 	addProtectedLocation("/uploads");
@@ -885,6 +885,10 @@ int Server::onRequest(Request &req) {
 			}
 			req.setRequestHandler(h);
 		}
+	} else {
+		if (path.size() > 1 && path.back() == '/') {
+			return req.redirectTo(toString(path.substr(0, path.size() - 1)));
+		}
 	}
 
 	auto &data = req.getParsedQueryArgs();
@@ -943,13 +947,13 @@ void Server::addPreRequest(Function<int(Request &)> &&req) {
 
 void Server::addHandler(const String &path, const HandlerCallback &cb, const data::Value &d) {
 	if (!path.empty() && path.front() == '/') {
-		_config->requests.emplace(path, RequestScheme{_config->currentComponent, cb, d});
+		_config->requests.emplace(path, RequestScheme{_config->currentComponent.str(), cb, d});
 	}
 }
 void Server::addResourceHandler(const String &path, const storage::Scheme &scheme,
 		const data::TransformMap *transform, const AccessControl *a, size_t priority) {
 	if (!path.empty() && path.front() == '/') {
-		_config->requests.emplace(path, RequestScheme{_config->currentComponent,
+		_config->requests.emplace(path, RequestScheme{_config->currentComponent.str(),
 			[s = &scheme, transform, a] () -> RequestHandler * { return new ResourceHandler(*s, transform, a, data::Value()); },
 			data::Value(), &scheme});
 	}
@@ -967,7 +971,7 @@ void Server::addResourceHandler(const String &path, const storage::Scheme &schem
 void Server::addResourceHandler(const String &path, const storage::Scheme &scheme, const data::Value &val,
 		const data::TransformMap *transform, const AccessControl *a, size_t priority) {
 	if (!path.empty() && path.front() == '/') {
-		_config->requests.emplace(path, RequestScheme{_config->currentComponent,
+		_config->requests.emplace(path, RequestScheme{_config->currentComponent.str(),
 			[s = &scheme, transform, a, val] () -> RequestHandler * { return new ResourceHandler(*s, transform, a, val); },
 			data::Value(), &scheme});
 	}
@@ -985,7 +989,7 @@ void Server::addResourceHandler(const String &path, const storage::Scheme &schem
 void Server::addMultiResourceHandler(const String &path, std::initializer_list<Pair<const String, const storage::Scheme *>> &&schemes,
 		const data::TransformMap *transform, const AccessControl *a) {
 	if (!path.empty() && path.front() == '/') {
-		_config->requests.emplace(path, RequestScheme{_config->currentComponent,
+		_config->requests.emplace(path, RequestScheme{_config->currentComponent.str(),
 			[s = Map<String, const storage::Scheme *>(move(schemes)), transform, a] () -> RequestHandler * {
 				return new MultiResourceHandler(s, transform, a);
 			}, data::Value()});
@@ -995,7 +999,7 @@ void Server::addMultiResourceHandler(const String &path, std::initializer_list<P
 void Server::addHandler(std::initializer_list<String> paths, const HandlerCallback &cb, const data::Value &d) {
 	for (auto &it : paths) {
 		if (!it.empty() && it.front() == '/') {
-			_config->requests.emplace(std::move(const_cast<String &>(it)), RequestScheme{_config->currentComponent, cb, d});
+			_config->requests.emplace(std::move(const_cast<String &>(it)), RequestScheme{_config->currentComponent.str(), cb, d});
 		}
 	}
 }

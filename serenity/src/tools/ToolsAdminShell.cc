@@ -778,14 +778,22 @@ struct HelpCmd : SocketCommand {
 		auto & externals = h.getExternals();
 		StringStream stream;
 		if (r.empty()) {
+			stream << "Loaded components:\n";
+			for (auto &it : h.request().server().getComponents()) {
+				stream << "  " << it.second->getName() << " - " << it.second->getVersion() << "\n";
+			}
+
+			stream << "Available commands:\n";
 			for (auto &it : cmds) {
 				stream << "  - " << it->name << " " << it->desc() << "\n";
 			}
 
 			for (auto &it : externals) {
-				stream << " From component: " << it.first << "\n";
-				for (auto &eit : *it.second) {
-					stream << "  - " << eit.second.name << " " << eit.second.desc << "\n";
+				if (it.second && !it.second->empty()) {
+					stream << " From component: " << it.first << "\n";
+					for (auto &eit : *it.second) {
+						stream << "  - " << eit.second.name << " " << eit.second.desc << "\n";
+					}
 				}
 			}
 		} else {
@@ -892,7 +900,9 @@ ShellSocketHandler::ShellSocketHandler(Manager *m, const Request &req, User *use
 	auto serv = req.server();
 	_external.reserve(serv.getComponents().size());
 	for (auto &it : serv.getComponents()) {
-		_external.emplace_back(StringView(it.first), &it.second->getCommands());
+		if (!it.second->getCommands().empty()) {
+			_external.emplace_back(StringView(it.first), &it.second->getCommands());
+		}
 	}
 }
 

@@ -107,7 +107,7 @@ bool Lexer::parseToken(Token &tok) {
 					currentTok->addChild(line);
 				}
 			} else {
-				if (!r.is<StringView::Chars<'\n', '\r'>>()) {
+				if (!r.is<StringView::Chars<'\n', '\r'>>() && !r.empty()) {
 					return false;
 				}
 			}
@@ -674,7 +674,7 @@ Token *Lexer::readCommonLine(const StringView &line, StringView &r) {
 	} else if (r.is('<')) {
 		auto retData = new Token{Token::LinePlainText, r.readUntil<NewLineFilter>()};
 		return Lexer_completeLine(retData, line, r);
-	} else if (r.is<NewLineFilter>()) {
+	} else if (r.is<NewLineFilter>() || r.empty()) {
 		return nullptr;
 	}
 
