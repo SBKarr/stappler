@@ -139,8 +139,11 @@ struct TimeTest : Test {
 			auto t1 = Time::fromHttp(http);
 			auto t2 = Time::fromRfc(ctime);
 
+			auto ti = TimeInterval::microseconds(rand());
+
 			stream << "\n\t" << t.toSeconds() << " | Rfc822: " << http << " | " << t1.toSeconds() << " " << (t1.toSeconds() == t.toSeconds());
 			stream << " | CTime: " << ctime << " | " << t2.toSeconds() << " " << (t2.toSeconds() == t.toSeconds());
+			stream << " | " << ti.toMicros();
 
 			if (!(t1.toSeconds() == t.toSeconds() && t2.toSeconds() == t.toSeconds())) {
 				success = false;
@@ -182,7 +185,7 @@ int _spMain(argc, argv) {
 	if (opts.getBool("help")) {
 		std::cout << HELP_STRING << "\n";
 		return 0;
-	};
+	}
 
 	if (opts.getBool("verbose")) {
 		std::cout << " Current work dir: " << stappler::filesystem::currentDir() << "\n";
@@ -223,7 +226,38 @@ int _spMain(argc, argv) {
 		}
 	}
 
+	data::Value null;
+	data::Value integer(42);
+	data::Value f(42.0);
+	data::Value boolFalse(false);
+	data::Value boolTrue(true);
+	data::Value str("String");
+
+	memory::PoolInterface::StringType pstr("string");
+	StringView r(pstr);
+
+	auto mempool = memory::pool::create();
+	memory::pool::push(mempool);
+
+	data::ValueTemplate<memory::PoolInterface> pool_val {
+		data::ValueTemplate<memory::PoolInterface>(),
+		data::ValueTemplate<memory::PoolInterface>(42),
+		data::ValueTemplate<memory::PoolInterface>(42.0),
+		data::ValueTemplate<memory::PoolInterface>(false),
+		data::ValueTemplate<memory::PoolInterface>("String"),
+		data::ValueTemplate<memory::PoolInterface>(true),
+	};
+
+	Vector<data::Value> vec2;
+	vec2.emplace_back(data::Value(true));
+	vec2.emplace_back(data::Value(0.5));
+	vec2.emplace_back(data::Value("test"));
+
+	vec2.emplace(vec2.begin() + 1, data::Value(1234));
+
 	auto &args = opts.getValue("args");
+
+	memory::pool::pop();
 
 	if (args.size() > 1) {
 		if (args.getString(1) == "all") {

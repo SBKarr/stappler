@@ -929,8 +929,8 @@ ServerComponent *Server::getServerComponent(std::type_index name) const {
 	return nullptr;
 }
 
-void Server::addComponentWithName(const String &name, ServerComponent *comp) {
-	_config->components.emplace(name, comp);
+void Server::addComponentWithName(const StringView &name, ServerComponent *comp) {
+	_config->components.emplace(name.str(), comp);
 	_config->typedComponents.emplace(std::type_index(typeid(*comp)), comp);
 	if (_config->childInit) {
 		comp->onChildInit(*this);

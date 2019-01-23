@@ -451,7 +451,9 @@ AccessControl::Permission Resource::isSchemeAllowed(const Scheme &s, AccessContr
 		return _access->onScheme(_user, s, a);
 	} else {
 		if (auto t = storage::Transaction::acquire()) {
-			if (s.getAccessRole(t.getRole())) {
+			auto role = t.getRole();
+
+			if (s.getAccessRole(role) || role == storage::AccessRoleId::Admin) {
 				return AccessControl::Full;
 			}
 		}

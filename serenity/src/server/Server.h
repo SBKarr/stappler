@@ -190,7 +190,7 @@ public: // compression
 	CompressionConfig *getCompressionConfig() const;
 
 protected:
-	void addComponentWithName(const String &, ServerComponent *);
+	void addComponentWithName(const StringView &, ServerComponent *);
 
 	ServerComponent *getServerComponent(const StringView &name) const;
 	ServerComponent *getServerComponent(std::type_index name) const;

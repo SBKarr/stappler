@@ -71,12 +71,12 @@ struct MemVectorTest : MemPoolTest {
 		});
 
 		runTest(stream, "Vector<data::Value>", count, passed, [&] {
-			Vector<Value> vec;
-			vec.emplace_back(Value(true));
-			vec.emplace_back(Value(0.5));
-			vec.emplace_back(Value("test"));
+			Vector<Value> vec2;
+			vec2.emplace_back(Value(true));
+			vec2.emplace_back(Value(0.5));
+			vec2.emplace_back(Value("test"));
 
-			vec.emplace(vec.begin() + 1, Value(1234));
+			vec2.emplace(vec2.begin() + 1, Value(1234));
 
 			stream << "sizeof: " << sizeof(Value);
 

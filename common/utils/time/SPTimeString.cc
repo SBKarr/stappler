@@ -564,10 +564,7 @@ Time Time::fromRfc(const StringView &r) {
 
 	 if (sp_date_checkmask(date, "@$$ @$$ ## ##:##:## *")) {
 		auto extra_str = StringView(r.data() + 20, r.size() - 20);
-		extra_str.skipUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-		if (extra_str.is<StringView::CharGroup<CharGroupId::WhiteSpace>>()) {
-			++ extra_str;
-		}
+		extra_str.skipUntil<StringView::CharGroup<CharGroupId::Numbers>>();
 
 		auto ydate = extra_str.data();
 		ds.tm_year = ((ydate[0] - '0') * 10 + (ydate[1] - '0') - 19) * 100;

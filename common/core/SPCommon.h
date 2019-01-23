@@ -229,4 +229,22 @@ template <typename T> auto StringToNumber(const char *str) -> T {
 
 NS_SP_END
 
+#if LINUX
+#if DEBUG
+
+#define TEXTIFY(A) #A
+
+#define SP_DEFINE_GDB_SCRIPT(path, script_name) \
+  asm("\
+.pushsection \".debug_gdb_scripts\", \"MS\",@progbits,1\n\
+.byte 1\n\
+.asciz \"" TEXTIFY(path) script_name "\"\n\
+.popsection \n\
+");
+
+SP_DEFINE_GDB_SCRIPT(STAPPLER_ROOT, "/gdb/stappler-printers.py")
+
+#endif
+#endif
+
 #endif /* COMMON_CORE_SPCOMMON_H_ */

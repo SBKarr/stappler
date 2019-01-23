@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "SPDataTraits.h"
 #include "SPString.h"
+#include "SPLog.h"
 
 NS_SP_EXT_BEGIN(data)
 
@@ -283,7 +284,7 @@ public:
 
 	Self slice(int start, int count);
 
-	operator bool() const noexcept { return (_type != Type::EMPTY); }
+	operator bool() const noexcept { return (_type != Type::EMPTY && _type != Type::NONE); }
 
 	int64_t asInteger() const;
 	double asDouble() const;
@@ -304,7 +305,7 @@ public:
 	template <class Stream, class Traits = StreamTraits<Stream>>
 	void encode(Stream &stream) const;
 
-	inline bool isNull() const noexcept { return _type == Type::EMPTY; }
+	inline bool isNull() const noexcept { return _type == Type::EMPTY || _type == Type::NONE; }
 	inline bool isBasicType() const noexcept { return _type != Type::ARRAY && _type != Type::DICTIONARY; }
 	inline bool isArray() const noexcept { return _type == Type::ARRAY; }
 	inline bool isDictionary() const noexcept { return _type == Type::DICTIONARY; }
@@ -377,7 +378,7 @@ protected:
 };
 
 template <typename Interface>
-const typename ValueTemplate<Interface>::Self ValueTemplate<Interface>::Null;
+const typename ValueTemplate<Interface>::Self ValueTemplate<Interface>::Null(ValueTemplate<Interface>::Type::NONE);
 
 template <typename Interface>
 const typename ValueTemplate<Interface>::StringType ValueTemplate<Interface>::StringNull;
@@ -397,6 +398,7 @@ ValueTemplate<Interface>::ValueTemplate() noexcept { }
 template <typename Interface>
 ValueTemplate<Interface>::ValueTemplate(Type type) noexcept : _type(type) {
 	switch (type) {
+	case Type::NONE: _type = Type::EMPTY; break;
 	case Type::BOOLEAN: boolVal = false; break;
 	case Type::INTEGER: intVal = int64_t(0); break;
 	case Type::DOUBLE: doubleVal = double(0.0); break;
@@ -478,12 +480,16 @@ ValueTemplate<Interface>::ValueTemplate(InitializerList<Pair<StringType, Self>> 
 
 template <typename Interface>
 auto ValueTemplate<Interface>::operator= (const Self& other) noexcept -> Self & {
+	if (_type == Type::NONE) {
+		return *this;
+	}
 	if (this != &other) {
 		Self mv;
 		memcpy(&mv, this, sizeof(Self));
 		memset(this, 0, sizeof(Self));
 
 		switch (other._type) {
+		case Type::NONE: _type = Type::EMPTY; return *this; break;
 		case Type::INTEGER: intVal = other.intVal; break;
 		case Type::DOUBLE: doubleVal = other.doubleVal; break;
 		case Type::BOOLEAN: boolVal = other.boolVal; break;
@@ -493,6 +499,7 @@ auto ValueTemplate<Interface>::operator= (const Self& other) noexcept -> Self & 
 		case Type::DICTIONARY: dictVal = new DictionaryType(*other.dictVal); break;
 		default: break;
 		}
+
 		_type = other._type;
 	}
 	return *this;
@@ -500,13 +507,20 @@ auto ValueTemplate<Interface>::operator= (const Self& other) noexcept -> Self & 
 
 template <typename Interface>
 auto ValueTemplate<Interface>::operator= (Self&& other) noexcept -> Self & {
-	if (this != &other) {
-		Self mv;
-		memcpy(&mv, this, sizeof(Self));
-		memcpy(this, &other, sizeof(Self));
-		other._type = Type::EMPTY;
+	if (_type == Type::NONE) {
+		return *this;
 	}
-
+	if (this != &other) {
+		if (other._type == Type::NONE) {
+			clear();
+			_type = Type::EMPTY;
+		} else {
+			Self mv;
+			memcpy(&mv, this, sizeof(Self));
+			memcpy(this, &other, sizeof(Self));
+			other._type = Type::EMPTY;
+		}
+	}
 	return *this;
 }
 
@@ -739,6 +753,7 @@ bool ValueTemplate<Interface>::compare(const DictionaryType &map1, const Diction
 template <typename Interface>
 void ValueTemplate<Interface>::clear() {
 	switch (_type) {
+	case Type::NONE: return; break;
 	case Type::INTEGER: intVal = 0; break;
 	case Type::DOUBLE: doubleVal = 0.0; break;
 	case Type::BOOLEAN: boolVal = false; break;
@@ -754,7 +769,7 @@ void ValueTemplate<Interface>::clear() {
 
 template <typename Interface>
 void ValueTemplate<Interface>::reset(Type type) {
-	if (_type == type) {
+	if (_type == Type::NONE && _type == type) {
 		return;
 	}
 
@@ -1151,62 +1166,62 @@ void ValueTemplate<Interface>::encode(Stream &stream) const {
 };
 
 template <typename Interface>
-template <class Key>
+template <typename Key>
 bool ValueTemplate<Interface>::isNull(Key &&key) const {
-	return getType(std::forward<Key>(key)) == Type::EMPTY;
+	return getType(std::forward<Key>(key)) == Type::EMPTY || getType(std::forward<Key>(key)) == Type::NONE;
 }
 
 template <typename Interface>
-template <class Key>
+template <typename Key>
 bool ValueTemplate<Interface>::isBasicType(Key &&key) const {
 	const auto type = getType(std::forward<Key>(key));
 	return type != Type::ARRAY && type != Type::DICTIONARY && type != Type::NONE;
 }
 
 template <typename Interface>
-template <class Key>
+template <typename Key>
 bool ValueTemplate<Interface>::isArray(Key &&key) const {
 	return getType(std::forward<Key>(key)) == Type::ARRAY;
 }
 
 template <typename Interface>
-template <class Key>
+template <typename Key>
 bool ValueTemplate<Interface>::isDictionary(Key &&key) const {
 	return getType(std::forward<Key>(key)) == Type::DICTIONARY;
 }
 
 template <typename Interface>
-template <class Key>
+template <typename Key>
 bool ValueTemplate<Interface>::isBool(Key &&key) const {
 	return getType(std::forward<Key>(key)) == Type::BOOLEAN;
 }
 
 template <typename Interface>
-template <class Key>
+template <typename Key>
 bool ValueTemplate<Interface>::isInteger(Key &&key) const {
 	return getType(std::forward<Key>(key)) == Type::INTEGER;
 }
 
 template <typename Interface>
-template <class Key>
+template <typename Key>
 bool ValueTemplate<Interface>::isDouble(Key &&key) const {
 	return getType(std::forward<Key>(key)) == Type::DOUBLE;
 }
 
 template <typename Interface>
-template <class Key>
+template <typename Key>
 bool ValueTemplate<Interface>::isString(Key &&key) const {
 	return getType(std::forward<Key>(key)) == Type::CHARSTRING;
 }
 
 template <typename Interface>
-template <class Key>
+template <typename Key>
 bool ValueTemplate<Interface>::isBytes(Key &&key) const {
 	return getType(std::forward<Key>(key)) == Type::BYTESTRING;
 }
 
 template <typename Interface>
-template <class Key>
+template <typename Key>
 auto ValueTemplate<Interface>::getType(Key &&key) const -> Type {
 	return __ValueTemplateTraits<Interface, std::is_integral<typename std::remove_reference<Key>::type>::value>::
 			type(*this, std::forward<Key>(key));

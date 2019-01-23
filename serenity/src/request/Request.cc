@@ -385,6 +385,10 @@ void Request::setUser(User *u) {
 	}
 }
 
+void Request::setAltUserId(int64_t id) {
+	_config->_altUserid = id;
+}
+
 Session *Request::getSession() {
 	if (!_config->_session) {
 		_config->_session = new Session(*this);

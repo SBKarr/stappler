@@ -185,8 +185,13 @@ void ResourceHandler::onFilterComplete(InputFilter *filter) {
 		// we should update our resource
 		auto result = _resource->updateObject(filter->getData(), filter->getFiles());
 		if (result) {
-			writeDataToRequest(rctx, move(result));
-			rctx.setStatus(HTTP_OK);
+			auto &target = rctx.getParsedQueryArgs().getValue("target");
+			if (target.isString() && StringView(target.getString()).starts_with(StringView(rctx.getFullHostname()))) {
+				rctx.setStatus(rctx.redirectTo(String(target.getString())));
+			} else {
+				writeDataToRequest(rctx, move(result));
+				rctx.setStatus(HTTP_OK);
+			}
 		} else {
 			rctx.setStatus(HTTP_BAD_REQUEST);
 			if (result.isNull()) {
@@ -198,8 +203,13 @@ void ResourceHandler::onFilterComplete(InputFilter *filter) {
 		auto tmp = d;
 		auto result = _resource->createObject(d, filter->getFiles());
 		if (result) {
-			writeDataToRequest(rctx, move(result));
-			rctx.setStatus(HTTP_CREATED);
+			auto &target = rctx.getParsedQueryArgs().getValue("target");
+			if (target.isString() && StringView(target.getString()).starts_with(StringView(rctx.getFullHostname()))) {
+				rctx.setStatus(rctx.redirectTo(String(target.getString())));
+			} else {
+				writeDataToRequest(rctx, move(result));
+				rctx.setStatus(HTTP_CREATED);
+			}
 		} else {
 			rctx.setStatus(HTTP_BAD_REQUEST);
 			if (result.isNull()) {
@@ -209,8 +219,13 @@ void ResourceHandler::onFilterComplete(InputFilter *filter) {
 	} else if (_method == Request::Patch) {
 		auto result = _resource->appendObject(filter->getData());
 		if (result) {
-			writeDataToRequest(rctx, move(result));
-			rctx.setStatus(HTTP_OK);
+			auto &target = rctx.getParsedQueryArgs().getValue("target");
+			if (target.isString() && StringView(target.getString()).starts_with(StringView(rctx.getFullHostname()))) {
+				rctx.setStatus(rctx.redirectTo(String(target.getString())));
+			} else {
+				writeDataToRequest(rctx, move(result));
+				rctx.setStatus(HTTP_OK);
+			}
 		} else {
 			rctx.setStatus(HTTP_BAD_REQUEST);
 			if (result.isNull()) {

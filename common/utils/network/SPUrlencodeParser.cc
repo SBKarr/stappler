@@ -81,6 +81,7 @@ void UrlencodeParser::bufferize(char c) {
 			skip = true;
 		} else {
 			buf.putc(c);
+			return;
 		}
 	}
 	buf.putc(c);
@@ -179,6 +180,11 @@ size_t UrlencodeParser::read(const uint8_t * s, size_t count) {
 		if (skip) {
 			break;
 		}
+	}
+
+	if (!buf.empty()) {
+		auto tmp = buf.get();
+		flush(tmp);
 	}
 
 	return count;

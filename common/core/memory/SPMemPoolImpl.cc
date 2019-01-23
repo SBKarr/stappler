@@ -111,7 +111,7 @@ void *allocmngr_t::alloc(size_t &sizeInBytes) {
 }
 
 void allocmngr_t::free(void *ptr, size_t sizeInBytes) {
-	memaddr_t *addr;
+	memaddr_t *addr = nullptr;
 
 	if (free_buffered) {
 		addr = free_buffered;
@@ -121,32 +121,34 @@ void allocmngr_t::free(void *ptr, size_t sizeInBytes) {
 		increment_opts(sizeof(memaddr_t));
 	}
 
-	addr->size = sizeInBytes;
-	addr->address = ptr;
-	addr->next = nullptr;
+	if (addr) {
+		addr->size = sizeInBytes;
+		addr->address = ptr;
+		addr->next = nullptr;
 
-	if (buffered) {
-		memaddr_t *c, **lastp;
+		if (buffered) {
+			memaddr_t *c, **lastp;
 
-		c = buffered;
-		lastp = &buffered;
-		while (c) {
-			if (c->size >= sizeInBytes) {
-				addr->next = c;
-				*lastp = addr;
-				break;
+			c = buffered;
+			lastp = &buffered;
+			while (c) {
+				if (c->size >= sizeInBytes) {
+					addr->next = c;
+					*lastp = addr;
+					break;
+				}
+
+				lastp = &c->next;
+				c = c->next;
 			}
 
-			lastp = &c->next;
-			c = c->next;
+			if (!addr->next) {
+				*lastp = addr;
+			}
+		} else {
+			buffered = addr;
+			addr->next = nullptr;
 		}
-
-		if (!addr->next) {
-			*lastp = addr;
-		}
-	} else {
-		buffered = addr;
-		addr->next = nullptr;
 	}
 }
 

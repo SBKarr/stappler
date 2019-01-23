@@ -409,7 +409,7 @@ struct MemStringModifierTest : MemPoolTest {
 			stream << "'" << s << "' " << capacity << " ";
 			s.clear();
 			stream << "'" << s << "' " << capacity;
-			return (s.capacity() == capacity) && (s.empty()) && (s.size() == 0);
+			return (s.capacity() == capacity || s.capacity() == 0) && (s.empty()) && (s.size() == 0);
 		});
 
 		runTest(stream, "push_back() test", count, passed, [&] {

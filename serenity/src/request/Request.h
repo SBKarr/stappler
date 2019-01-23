@@ -236,6 +236,8 @@ public: /* engine and errors */
 	// explicitly set user authority to request
 	void setUser(User *);
 
+	void setAltUserId(int64_t);
+
 	// try to access to session data
 	// if session object already created - returns it
 	// if all authorization data is valid - session object will be created

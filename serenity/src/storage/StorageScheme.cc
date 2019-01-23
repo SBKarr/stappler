@@ -770,7 +770,9 @@ bool Scheme::removeWithWorker(Worker &w, uint64_t oid) const {
 			return false;
 		});
 	} else {
-		return w.transaction().remove(w, oid);
+		return w.perform([&] (const Transaction &t) {
+			return t.remove(w, oid);
+		});
 	}
 }
 

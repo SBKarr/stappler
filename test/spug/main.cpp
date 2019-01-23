@@ -348,6 +348,42 @@ if novar && nover.cond
 	.test Content
 )";
 
+const auto s_notTest = R"(
+- var app = { value: "value", number: 42 }
+
+if !app.extra
+	- app.extra = "extra"
+	.extra Not extra
+.test= app
+)";
+
+const auto s_recursionTest = R"(
+mixin recursion(id)
+	span= id
+	span= value.value
+	if value.next
+		- var next = value.next
+		+recursion(next)
+
++recursion(test)
+)";
+
+/*
+ * 	- var node = getSpineNode(value)
+	if node[4]
+		li Page
+	else
+		- var sect = getSectionData(value)
+		li
+			span= id
+			span= sect.title + " (" + sect.__oid + ": " + sect.name + ")"
+			if node[6]
+				span= node[6]
+				each n in node[6]
+					+sectionListItem(n)
+ *
+ */
+
 int parseOptionSwitch(data::Value &ret, char c, const char *str) {
 	if (c == 'v') {
 		ret.setBool(true, "verbose");
@@ -378,7 +414,7 @@ int _spMain(argc, argv) {
 
 	//auto &args = opts.getValue("args");
 
-	pug::Template * tpl = pug::Template::read(s_tagIfTest, pug::Template::Options::getPretty());
+	pug::Template * tpl = pug::Template::read(s_recursionTest, pug::Template::Options::getPretty());
 
 	using Value = pug::Value;
 
@@ -386,8 +422,14 @@ int _spMain(argc, argv) {
 
 	tpl->describe(std::cout, true);
 
-	ctx.set("novar", Value{
-		pair("test", Value("test"))
+	ctx.set("test", Value{
+		pair("value", Value("value1")),
+		pair("next", Value{
+			pair("value", Value("value2")),
+			pair("next", Value{
+				pair("value", Value("value3")),
+			}),
+		}),
 	});
 	ctx.set("world", Value("World"));
 	ctx.set("func", [] (pug::VarStorage &self, pug::Var *args, size_t count) -> pug::Var {

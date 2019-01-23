@@ -33,6 +33,10 @@ public:
 	}
 
 	virtual int onTranslateName(Request &rctx) override {
+		data::Value none;
+		auto val = none.getValue("test");
+		val = data::Value("string");
+
 		if (_subPath == "/upload.html") {
 			if (auto scheme = rctx.server().getScheme("objects")) {
 				return rctx.runPug("templates/upload.pug", [&] (pug::Context &c, const pug::Template &tpl) -> bool {

@@ -381,7 +381,14 @@ Var ContextFn::execExpr(const Expression &expr, Expression::Op op, bool assignab
 		}
 		}
 	} else if (expr.left) {
-		if (expr.op != Expression::Var) {
+		if (expr.op == Expression::Neg && allowUndefined) {
+			auto var = execExpr(*expr.left, expr.op, assignable);
+			if (var) {
+				return performUnaryOp(var, expr.op);
+			} else {
+				return Var(data::Value(true));
+			}
+		} else if (expr.op != Expression::Var) {
 			if (auto var = execExpr(*expr.left, expr.op, assignable)) {
 				return performUnaryOp(var, expr.op);
 			}

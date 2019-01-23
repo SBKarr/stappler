@@ -198,6 +198,10 @@ bool ExternalSession::init(const apr::uuid &sessionId, data::Value &&d) {
 
 	registerCleanupDestructor(this, _request.pool());
 
+	if (_user) {
+		_request.setAltUserId(_user);
+	}
+
 	return true;
 }
 

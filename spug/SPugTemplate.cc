@@ -868,12 +868,18 @@ bool Template::runChunk(const Chunk &chunk, Context &exec, std::ostream &out) co
 	};
 
 	auto runWhile = [&] (const Chunk &ch) {
+		Context::VarScope scope;
 		while (true) {
 			if (auto var = exec.exec(*ch.expr, out)) {
 				if (var.readValue().asBool()) {
+					scope.namedVars.clear();
+					scope.mixins.clear();
+					exec.pushVarScope(scope);
 					if (!runChunk(ch, exec, out)) {
+						exec.popVarScope();
 						return false;
 					}
+					exec.popVarScope();
 				} else {
 					return true;
 				}
