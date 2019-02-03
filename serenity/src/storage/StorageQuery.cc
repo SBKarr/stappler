@@ -211,7 +211,9 @@ void QueryFieldResolver::doResolve(Data *data, const Vector<String> &extra, uint
 	if (!data->include || data->include->empty() || (data->include->size() == 1 && data->include->front().name == "$meta")) {
 		for (auto &it : *data->fields) {
 			if (it.second.isSimpleLayout()) {
-				data->resolved.emplace(&it.second);
+				if (!it.second.hasFlag(Flags::ForceExclude)) {
+					data->resolved.emplace(&it.second);
+				}
 			}
 		}
 	}

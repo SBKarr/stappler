@@ -101,6 +101,9 @@ public:
 	void setRequestHandler(RequestHandler *);
 	RequestHandler *getRequestHandler() const;
 
+	void setHookErrors(bool);
+	bool isHookErrors() const;
+
 	void writeData(const data::Value &, bool allowJsonP = false);
 
 	void clearFilters();

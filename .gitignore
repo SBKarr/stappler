@@ -3,6 +3,8 @@ build
 project.xcworkspace
 xcuserdata
 
+__pycache__
+
 .build.config.json
 .cmd*
 .settings

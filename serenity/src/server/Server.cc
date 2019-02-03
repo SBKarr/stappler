@@ -761,7 +761,7 @@ void Server::onHeartBeat(apr_pool_t *pool) {
 			auto root = Root::getInstance();
 			if (auto dbd = root->dbdOpen(pool, _server)) {
 				pg::Handle h(pool, dbd);
-				if (now - _config->lastDatabaseCleanup > TimeInterval::seconds(60)) {
+				if (now - _config->lastDatabaseCleanup > config::getDefaultDatabaseCleanupInterval()) {
 					_config->lastDatabaseCleanup = now;
 					h.makeSessionsCleanup();
 				}
@@ -769,7 +769,7 @@ void Server::onHeartBeat(apr_pool_t *pool) {
 				root->dbdClose(_server, dbd);
 			}
 		}
-		if (now - _config->lastTemplateUpdate > TimeInterval::seconds(10)) {
+		if (now - _config->lastTemplateUpdate > config::getDefaultPugTemplateUpdateInterval()) {
 			_config->_templateCache.update(pool);
 			_config->_pugCache.update(pool);
 			_config->lastTemplateUpdate = now;

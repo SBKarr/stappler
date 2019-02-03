@@ -79,7 +79,9 @@ bool Handle::performProxyQuery(Request &rctx) {
 	bool init = false;
 	setReceiveCallback([&] (char *data, size_t size) -> size_t {
 		if (!init) {
+			rctx.setHookErrors(false);
 			rctx.setContentType(getReceivedHeaderString("Content-Type").str());
+			rctx.setStatus(getResponseCode());
 			init = true;
 		}
 		rctx.write(data, size);

@@ -242,7 +242,7 @@ NS_SP_END
 .popsection \n\
 ");
 
-SP_DEFINE_GDB_SCRIPT(STAPPLER_ROOT, "/gdb/stappler-printers.py")
+SP_DEFINE_GDB_SCRIPT(STAPPLER_ROOT, "/gdb/printers.py")
 
 #endif
 #endif

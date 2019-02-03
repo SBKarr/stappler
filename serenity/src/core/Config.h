@@ -69,6 +69,14 @@ constexpr auto getDefaultWebsocketMax() { return 1_KiB; }
 constexpr auto getWebsocketBufferSlots() -> size_t { return 16; }
 constexpr auto getWebsocketMaxBufferSlotSize() -> size_t { return 8_KiB; }
 
+#if DEBUG
+constexpr auto getDefaultPugTemplateUpdateInterval() { return 3_sec; }
+constexpr auto getDefaultDatabaseCleanupInterval() { return 60_sec; }
+#else
+constexpr auto getDefaultPugTemplateUpdateInterval() { return 30_sec; }
+constexpr auto getDefaultDatabaseCleanupInterval() { return 180_sec; }
+#endif
+
 // MTU configured to use local loopback interface
 // for network, you should use smaller value, like 1472 (1464 for PPPoE)
 // constexpr auto getBroadcastProtocolMtu() { return 8_KiB; }

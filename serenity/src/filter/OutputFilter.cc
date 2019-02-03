@@ -120,7 +120,7 @@ apr_status_t OutputFilter::func(ap_filter_t *f, apr_bucket_brigade *bb) {
             APR_BRIGADE_INSERT_TAIL(_tmpBB, e);
 			continue;
 		}
-		if (_responseCode < 400 && _state == State::Body) {
+		if ((_responseCode < 400 || !_request.isHookErrors()) && _state == State::Body) {
 			_skipFilter = true;
 			APR_BUCKET_REMOVE(e);
 			APR_BRIGADE_INSERT_TAIL(_tmpBB, e);
@@ -270,7 +270,7 @@ apr_status_t OutputFilter::outputHeaders(ap_filter_t* f, apr_bucket *e, const ch
 	servVersion << "Serenity/" << tools::getVersionString() << " (" << tools::getCompileUnixTime().toHttp() << ")";
 	_headers.emplace("Server", servVersion.str());
 	_buffer.clear();
-	if (_responseCode < 400) {
+	if (_responseCode < 400 || !_request.isHookErrors()) {
 		_skipFilter = true;
 	} else {
 		output::writeData(_request, _buffer, [&] (const String &ct) {

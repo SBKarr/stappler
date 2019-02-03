@@ -30,6 +30,14 @@ THE SOFTWARE.
 
 NS_SA_EXT_BEGIN(storage)
 
+enum class UpdateFlags : uint32_t {
+	None = 0,
+	Protected = 1 << 0,
+	NoReturn = 1 << 1,
+};
+
+SP_DEFINE_ENUM_AS_MASK(UpdateFlags)
+
 class Worker : public AllocPool {
 public:
 	using FieldCallback = Callback<void(const StringView &name, const Field *f)>;
@@ -105,9 +113,13 @@ public:
 
 	// returns Dictionary with single object data or Null value
 	data::Value create(const data::Value &data, bool isProtected = false);
+	data::Value create(const data::Value &data, UpdateFlags);
 
 	data::Value update(uint64_t oid, const data::Value &data, bool isProtected = false);
 	data::Value update(const data::Value & obj, const data::Value &data, bool isProtected = false);
+
+	data::Value update(uint64_t oid, const data::Value &data, UpdateFlags);
+	data::Value update(const data::Value & obj, const data::Value &data, UpdateFlags);
 
 	bool remove(uint64_t oid);
 

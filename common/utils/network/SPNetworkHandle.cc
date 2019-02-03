@@ -882,6 +882,12 @@ size_t NetworkHandle::writeHeaders(const char *data, size_t size) {
 				auto valueStr = reader.str(); string::trim(valueStr);
 
 				_parsedHeaders.emplace(std::move(nameStr), std::move(valueStr));
+			} else {
+				reader.skipUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+				reader.skipUntil<StringView::CharGroup<CharGroupId::Numbers>>();
+				reader.readInteger().unwrap([&] (int64_t code) {
+					_responseCode = code;
+				});
 			}
 		}
 

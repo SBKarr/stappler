@@ -248,12 +248,39 @@ int _spMain(argc, argv) {
 		data::ValueTemplate<memory::PoolInterface>(true),
 	};
 
+	data::ValueTemplate<memory::PoolInterface> dict_val {
+		pair("hello", data::ValueTemplate<memory::PoolInterface>("test1")),
+		pair("world", data::ValueTemplate<memory::PoolInterface>("test2")),
+		pair("hello world", data::ValueTemplate<memory::PoolInterface>("test2")),
+		pair("[hello world]", data::ValueTemplate<memory::PoolInterface>("test2")),
+	};
+
 	Vector<data::Value> vec2;
 	vec2.emplace_back(data::Value(true));
 	vec2.emplace_back(data::Value(0.5));
 	vec2.emplace_back(data::Value("test"));
 
 	vec2.emplace(vec2.begin() + 1, data::Value(1234));
+
+	memory::set<int64_t> set;
+	set.emplace(123);
+	set.emplace(1234);
+
+	memory::set<memory::string> strset;
+	strset.emplace("hello");
+	strset.emplace("world");
+
+	memory::map<memory::string, memory::string> strmap;
+	strmap.emplace("hello", "test1");
+	strmap.emplace("world", "test2");
+
+	memory::vector<int> vecInt;
+	vecInt.emplace_back(1);
+	vecInt.emplace_back(2);
+	vecInt.emplace_back(3);
+	vecInt.emplace_back(4);
+	vecInt.emplace_back(5);
+	vecInt.emplace_back(6);
 
 	auto &args = opts.getValue("args");
 

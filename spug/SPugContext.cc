@@ -53,6 +53,8 @@ struct ContextFn {
 	Var getVar(const StringView &key) const;
 	Var getVar(VarScope *, const StringView &key) const;
 
+	const VarStorage *getVarStorage(VarScope *, const StringView &key) const;
+
 	VarScope *currentScope = nullptr;
 	std::ostream *outStream = nullptr;
 	bool escapeOutput = false;
@@ -784,6 +786,15 @@ Var ContextFn::getVar(VarScope *scope, const StringView &key) const {
 	}
 }
 
+const VarStorage *ContextFn::getVarStorage(VarScope *scope, const StringView &key) const {
+	auto it = scope->namedVars.find(key);
+	if (it != scope->namedVars.end()) {
+		return &it->second;
+	} else if (scope->prev) {
+		return getVarStorage(scope->prev, key);
+	}
+	return nullptr;
+}
 
 void Context::VarList::emplace(Var &&var) {
 	if (staticCount < MinStaticVars) {
@@ -1007,6 +1018,11 @@ const Context::Mixin *Context::getMixin(const StringView &name) const {
 		scope = scope->prev;
 	}
 	return nullptr;
+}
+
+const VarStorage *Context::getVar(const StringView &name) const {
+	ContextFn fn;
+	return fn.getVarStorage(currentScope, name);
 }
 
 bool Context::runInclude(const StringView &name, std::ostream &out, const Template *tpl) {

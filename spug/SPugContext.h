@@ -84,6 +84,8 @@ public:
 	bool setMixin(const StringView &name, const Template::Chunk *);
 	const Mixin *getMixin(const StringView &name) const;
 
+	const VarStorage *getVar(const StringView &name) const;
+
 	VarClass * set(const StringView &name, VarClass &&);
 
 	bool runInclude(const StringView &, std::ostream &, const Template *);

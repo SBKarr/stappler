@@ -110,6 +110,8 @@ struct Request::Config : public AllocPool {
 	request_rec *_request = nullptr;
 	InputFilter *_filter = nullptr;
 
+	bool _hookErrors = true;
+
 	Map<String, CookieStorage> _cookies;
 	int64_t _altUserid = 0;
 	storage::AccessRoleId _accessRole = storage::AccessRoleId::Nobody;
@@ -188,6 +190,13 @@ void Request::setRequestHandler(RequestHandler *h) {
 }
 RequestHandler *Request::getRequestHandler() const {
 	return _config->_handler;
+}
+
+void Request::setHookErrors(bool value) {
+	_config->_hookErrors = value;
+}
+bool Request::isHookErrors() const {
+	return _config->_hookErrors;
 }
 
 void Request::writeData(const data::Value &data, bool allowJsonP) {

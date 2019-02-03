@@ -390,12 +390,33 @@ data::Value Worker::create(const data::Value &data, bool isProtected) {
 	return _scheme->createWithWorker(*this, data, isProtected);
 }
 
+data::Value Worker::create(const data::Value &data, UpdateFlags flags) {
+	if ((flags & UpdateFlags::NoReturn) != UpdateFlags::None) {
+		includeNone();
+	}
+	return _scheme->createWithWorker(*this, data, (flags & UpdateFlags::Protected) != UpdateFlags::None);
+}
+
 data::Value Worker::update(uint64_t oid, const data::Value &data, bool isProtected) {
 	return _scheme->updateWithWorker(*this, oid, data, isProtected);
 }
 
 data::Value Worker::update(const data::Value & obj, const data::Value &data, bool isProtected) {
 	return _scheme->updateWithWorker(*this, obj, data, isProtected);
+}
+
+data::Value Worker::update(uint64_t oid, const data::Value &data, UpdateFlags flags) {
+	if ((flags & UpdateFlags::NoReturn) != UpdateFlags::None) {
+		includeNone();
+	}
+	return _scheme->updateWithWorker(*this, oid, data, (flags & UpdateFlags::Protected) != UpdateFlags::None);
+}
+
+data::Value Worker::update(const data::Value & obj, const data::Value &data, UpdateFlags flags) {
+	if ((flags & UpdateFlags::NoReturn) != UpdateFlags::None) {
+		includeNone();
+	}
+	return _scheme->updateWithWorker(*this, obj, data, (flags & UpdateFlags::Protected) != UpdateFlags::None);
 }
 
 bool Worker::remove(uint64_t oid) {
