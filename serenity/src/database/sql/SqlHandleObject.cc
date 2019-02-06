@@ -103,6 +103,13 @@ data::Value SqlHandle::create(Worker &worker, const data::Value &data) {
 			val.returning().field(SqlQuery::Field("__oid").as("id")).finalize();
 			id = selectQueryId(query);
 			if (id) {
+				if (worker.shouldIncludeNone() && worker.scheme().hasForceExclude()) {
+					for (auto &it : worker.scheme().getFields()) {
+						if (it.second.hasFlag(storage::Flags::ForceExclude)) {
+							ret.erase(it.second.getName());
+						}
+					}
+				}
 				ret.setInteger(id, "__oid");
 			} else {
 				return;
@@ -160,7 +167,17 @@ data::Value SqlHandle::save(Worker &worker, uint64_t oid, const data::Value &dat
 
 		upd.where("__oid", Comparation::Equal, oid).finalize();
 		if (performQuery(query) == 1) {
-			ret = data;
+			if (worker.shouldIncludeNone() && worker.scheme().hasForceExclude()) {
+				ret.setInteger(oid, "__oid");
+				ret.asDict().reserve(data.size() + 1);
+				for (auto &it : worker.scheme().getFields()) {
+					if (!it.second.hasFlag(storage::Flags::ForceExclude) && data.hasValue(it.first)) {
+						ret.setValue(data.getValue(it.first));
+					}
+				}
+			} else {
+				ret = data;
+			}
 		}
 	});
 	return ret;
@@ -292,7 +309,8 @@ void SqlHandle::performPostUpdate(const Transaction &t, SqlQuery &query, const S
 		if (targetId) {
 			Worker w(s, t);
 			w.includeNone();
-			t.patch(w, id, data::Value{ pair(field.getName().str(), data::Value(targetId)) });
+			data::Value patch{ pair(field.getName().str(), data::Value(targetId)) };
+			t.patch(w, id, patch);
 			data.setInteger(targetId, field.getName().str());
 		}
 	};

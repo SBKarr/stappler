@@ -322,6 +322,7 @@ static void *Root_performTask(apr_thread_t *, void *ptr) {
 
 bool Root::performTask(const Server &serv, Task *task, bool performFirst) {
 	if (_threadPool && task) {
+		task->setServer(serv);
 		auto ctx = new (task->pool()) TaskContext( task, serv.server() );
 		if (performFirst) {
 			return apr_thread_pool_top(_threadPool, &Root_performTask, ctx, apr_byte_t(task->getPriority()), nullptr) == APR_SUCCESS;
@@ -474,7 +475,7 @@ int Root::onPostReadRequest(request_rec *r) {
 		Server server = request.server();
 
 		auto ret = server.onRequest(request);
-		if (ret > 0) {
+		if (ret > 0 || ret == DONE) {
 			return ret;
 		}
 

@@ -202,7 +202,7 @@ bool SqlHandle::insertIntoArray(SqlQuery &query, const Scheme &scheme, int64_t i
 				.where(toString(scheme.getName(), "_id"), Comparation::Equal, id).finalize();
 		return performQuery(query) != maxOf<size_t>();
 	} else {
-		if (field.transform(storage::FieldAccessAction::Create, scheme, id, const_cast<data::Value &>(d))) {
+		if (field.transform(scheme, id, const_cast<data::Value &>(d))) {
 			auto &arrf = static_cast<const storage::FieldArray *>(field.getSlot())->tfield;
 			if (!d.empty()) {
 				auto vals = query.insert(toString(scheme.getName(), "_f_", field.getName()))

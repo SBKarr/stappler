@@ -51,29 +51,18 @@ const Scheme * Field::getForeignScheme() const {
 	return nullptr;
 }
 
-bool Field::transform(FieldAccessAction a, const Scheme &scheme, int64_t id, data::Value &val) const {
-	if (slot->fieldAccessFn) {
-		if (auto t = Transaction::acquire()) {
-			if (auto obj = t.acquireObject(scheme, id)) {
-				return transform(a, scheme, obj, val);
-			}
-		}
-		return false;
-	} else {
-		return transform(a, scheme, data::Value(id), val);
-	}
+bool Field::transform(const Scheme &scheme, int64_t id, data::Value &val, bool isCreate) const {
+	return transform(scheme, data::Value(id), val, isCreate);
 }
 
-bool Field::transform(FieldAccessAction a, const Scheme &scheme, const data::Value &obj, data::Value &val) const {
-	if (slot->filter) {
-		if (!slot->filter(scheme, val)) {
+bool Field::transform(const Scheme &scheme, const data::Value &obj, data::Value &val, bool isCreate) const {
+	if (slot->writeFilterFn) {
+		if (!slot->writeFilterFn(scheme, obj, val, isCreate)) {
 			return false;
 		}
 	}
-	if (slot->transformValue(a, scheme, obj, val)) {
-		if (!slot->fieldAccessFn || slot->fieldAccessFn(a, scheme, obj, val)) {
-			return true;
-		}
+	if (slot->transformValue(scheme, obj, val, isCreate)) {
+		return true;
 	}
 	return false;
 }
@@ -290,7 +279,7 @@ data::Value Field::Slot::getDefault(const data::Value &patch) const {
 	}
 }
 
-bool Field::Slot::transformValue(FieldAccessAction a, const Scheme &scheme, const data::Value &obj, data::Value &val) const {
+bool Field::Slot::transformValue(const Scheme &scheme, const data::Value &obj, data::Value &val, bool isCreate) const {
 	if (!val.isBasicType() && type != Type::Data) {
 		return false;
 	}
@@ -345,7 +334,7 @@ void Field::Slot::hash(apr::ostringstream &stream, ValidationLevel l) const {
 	}
 }
 
-bool FieldText::transformValue(FieldAccessAction, const Scheme &scheme, const data::Value &obj, data::Value &val) const {
+bool FieldText::transformValue(const Scheme &scheme, const data::Value &obj, data::Value &val, bool isCreate) const {
 	switch (type) {
 	case Type::Text:
 		if (!val.isBasicType()) {
@@ -449,7 +438,7 @@ void FieldText::hash(apr::ostringstream &stream, ValidationLevel l) const {
 }
 
 
-bool FieldPassword::transformValue(FieldAccessAction, const Scheme &scheme, const data::Value &, data::Value &val) const {
+bool FieldPassword::transformValue(const Scheme &scheme, const data::Value &, data::Value &val, bool isCreate) const {
 	if (!val.isString()) {
 		return false;
 	}
@@ -496,7 +485,7 @@ data::Value FieldExtra::getDefault(const data::Value &patch) const {
 	return ret;
 }
 
-bool FieldExtra::transformValue(FieldAccessAction a, const Scheme &scheme, const data::Value &obj, data::Value &v) const {
+bool FieldExtra::transformValue(const Scheme &scheme, const data::Value &obj, data::Value &v, bool isCreate) const {
 	auto processValue = [&] (data::Value &val) -> bool {
 		if (!val.isDictionary()) {
 			return false;
@@ -508,7 +497,7 @@ bool FieldExtra::transformValue(FieldAccessAction a, const Scheme &scheme, const
 			if (f_it != fields.end()) {
 				if (it->second.isNull()) {
 					it ++;
-				} else if (!f_it->second.transform(a, scheme, obj, it->second)) {
+				} else if (!f_it->second.transform(scheme, obj, it->second, isCreate)) {
 					it = val.getDict().erase(it);
 				} else {
 					it ++;
@@ -582,7 +571,7 @@ void FieldImage::hash(apr::ostringstream &stream, ValidationLevel l) const {
 	}
 }
 
-bool FieldObject::transformValue(FieldAccessAction a, const Scheme &scheme, const data::Value &obj, data::Value &val) const {
+bool FieldObject::transformValue(const Scheme &scheme, const data::Value &obj, data::Value &val, bool isCreate) const {
 	switch (type) {
 	case Type::Object:
 		if (val.isBasicType()) {
@@ -628,13 +617,13 @@ void FieldObject::hash(apr::ostringstream &stream, ValidationLevel l) const {
 	}
 }
 
-bool FieldArray::transformValue(FieldAccessAction a, const Scheme &scheme, const data::Value &obj, data::Value &val) const {
+bool FieldArray::transformValue(const Scheme &scheme, const data::Value &obj, data::Value &val, bool isCreate) const {
 	if (val.isArray()) {
 		if (tfield) {
 			auto &arr = val.asArray();
 			auto it = arr.begin();
 			while (it != arr.end()) {
-				if (!tfield.transform(a, scheme, obj, *it)) {
+				if (!tfield.transform(scheme, obj, *it, isCreate)) {
 					it = arr.erase(it);
 				} else {
 					++ it;

@@ -239,7 +239,8 @@ bool Scheme::isAtomicPatch(const data::Value &val) const {
 
 			if (f && (f->getType() == Type::Extra // extra field should use select-update
 					|| forceInclude.find(f) != forceInclude.end() // force-includes used to update views, so, we need select-update
-					|| fullTextFields.find(f) != fullTextFields.end())) { // for full-text views update
+					|| fullTextFields.find(f) != fullTextFields.end() // for full-text views update
+					|| f->getSlot()->replaceFilterFn)) { //
 				return false;
 			}
 		}
@@ -436,21 +437,25 @@ data::Value Scheme::updateWithWorker(Worker &w, const data::Value & obj, const d
 	return ret;
 }
 
-void Scheme::mergeValues(const Field &f, data::Value &original, data::Value &newVal) const {
+void Scheme::mergeValues(const Field &f, const data::Value &obj, data::Value &original, data::Value &newVal) const {
 	if (f.getType() == Type::Extra) {
 		if (newVal.isDictionary()) {
 			auto &extraFields = static_cast<const FieldExtra *>(f.getSlot())->fields;
 			for (auto &it : newVal.asDict()) {
 				auto f_it = extraFields.find(it.first);
 				if (f_it != extraFields.end()) {
-					if (!it.second.isNull()) {
-						if (auto &val = original.getValue(it.first)) {
-							mergeValues(f_it->second, val, it.second);
+					auto slot = f_it->second.getSlot();
+					auto &val = original.getValue(it.first);
+					if (!slot->replaceFilterFn || slot->replaceFilterFn(*this, obj, val, it.second)) {
+						if (!it.second.isNull()) {
+							if (val) {
+								mergeValues(f_it->second, obj, val, it.second);
+							} else {
+								original.setValue(std::move(it.second), it.first);
+							}
 						} else {
-							original.setValue(std::move(it.second), it.first);
+							original.erase(it.first);
 						}
-					} else {
-						original.erase(it.first);
 					}
 				}
 			}
@@ -533,16 +538,20 @@ data::Value Scheme::updateObject(Worker &w, data::Value && obj, data::Value &cha
 	for (auto &it : changeSet.asDict()) {
 		auto &fieldName = it.first;
 		if (auto f = getField(fieldName)) {
-			if (!it.second.isNull()) {
-				if (auto &val = obj.getValue(it.first)) {
-					mergeValues(*f, val, it.second);
+			auto slot = f->getSlot();
+			auto &val = obj.getValue(it.first);
+			if (!slot->replaceFilterFn || slot->replaceFilterFn(*this, obj, val, it.second)) {
+				if (!it.second.isNull()) {
+					if (val) {
+						mergeValues(*f, obj, val, it.second);
+					} else {
+						obj.setValue(move(it.second), it.first);
+					}
 				} else {
-					obj.setValue(move(it.second), it.first);
+					obj.erase(it.first);
 				}
-			} else {
-				obj.erase(it.first);
+				updatedFields.emplace_back(it.first);
 			}
-			updatedFields.emplace_back(it.first);
 
 			if (forceInclude.find(f) != forceInclude.end()) {
 				for (auto &it : views) {
@@ -601,7 +610,7 @@ data::Value Scheme::fieldWithWorker(Action a, Worker &w, uint64_t oid, const Fie
 	switch (a) {
 	case Action::Get: return w.transaction().field(a, w, oid, f, move(patch)); break;
 	case Action::Set:
-		if (f.transform(FieldAccessAction::Write, *this, oid, patch)) {
+		if (f.transform(*this, oid, patch)) {
 			data::Value ret;
 			w.perform([&] (const Transaction &t) -> bool {
 				ret = t.field(a, w, oid, f, move(patch));
@@ -616,7 +625,7 @@ data::Value Scheme::fieldWithWorker(Action a, Worker &w, uint64_t oid, const Fie
 		}));
 		break;
 	case Action::Append:
-		if (f.transform(FieldAccessAction::Write, *this, oid, patch)) {
+		if (f.transform(*this, oid, patch)) {
 			data::Value ret;
 			w.perform([&] (const Transaction &t) -> bool {
 				ret = t.field(a, w, oid, f, move(patch));
@@ -633,7 +642,7 @@ data::Value Scheme::fieldWithWorker(Action a, Worker &w, const data::Value &obj,
 	switch (a) {
 	case Action::Get: return w.transaction().field(a, w, obj, f, move(patch)); break;
 	case Action::Set:
-		if (f.transform(FieldAccessAction::Write, *this, obj, patch)) {
+		if (f.transform(*this, obj, patch)) {
 			data::Value ret;
 			w.perform([&] (const Transaction &t) -> bool {
 				ret = t.field(a, w, obj, f, std::move(patch));
@@ -648,7 +657,7 @@ data::Value Scheme::fieldWithWorker(Action a, Worker &w, const data::Value &obj,
 		}));
 		break;
 	case Action::Append:
-		if (f.transform(FieldAccessAction::Write, *this, obj, patch)) {
+		if (f.transform(*this, obj, patch)) {
 			data::Value ret;
 			w.perform([&] (const Transaction &t) -> bool {
 				ret = t.field(a, w, obj, f, move(patch));
@@ -689,7 +698,9 @@ data::Value Scheme::patchOrUpdate(Worker &w, uint64_t id, data::Value & patch) c
 		data::Value ret;
 		w.perform([&] (const Transaction &t) {
 			auto r = getAccessRole(t.getRole());
-			if (!isAtomicPatch(patch) || (r && r->onSave)) { // if we have save callback - we unable to do patches
+			auto d = getAccessRole(AccessRoleId::Default);
+			// if we have save callback - we unable to do patches
+			if (!isAtomicPatch(patch) || (r && r->onSave && !r->onPatch) || (d && d->onSave && !d->onPatch)) {
 				if (auto obj = makeObjectForPatch(t, id, data::Value(), patch)) {
 					t.setObject(id, data::Value(obj));
 					if ((ret = updateObject(w, std::move(obj), patch))) {
@@ -741,6 +752,7 @@ data::Value Scheme::patchOrUpdate(Worker &w, const data::Value & obj, data::Valu
 						return true;
 					}
 				} else if (auto patchObj = makeObjectForPatch(t, id, obj, patch)) {
+					t.setObject(id, data::Value(patchObj));
 					if ((ret = updateObject(w, std::move(patchObj), patch))) {
 						return true;
 					}
@@ -833,11 +845,9 @@ data::Value &Scheme::transform(data::Value &d, TransformAction a) const {
 		auto it = dict.begin();
 		while (it != dict.end()) {
 			auto &field = fields.at(it->first);
-			auto accessAction = (a == TransformAction::Update || a == TransformAction::ProtectedUpdate || a == TransformAction::Touch)
-					? FieldAccessAction::Write : FieldAccessAction::Create;
 			if (it->second.isNull() && (a == TransformAction::Update || a == TransformAction::ProtectedUpdate || a == TransformAction::Touch)) {
 				it ++;
-			} else if (!field.transform(accessAction, *this, d, it->second)) {
+			} else if (!field.transform(*this, d, it->second, (a == TransformAction::Create || a == TransformAction::ProtectedCreate))) {
 				it = dict.erase(it);
 			} else {
 				it ++;
@@ -1293,7 +1303,7 @@ void Scheme::updateView(const Transaction &t, const data::Value & obj, const Vie
 					auto &field = view->fields.at(d_it->first);
 					if (d_it->second.isNull() || !field.isSimpleLayout()) {
 						d_it ++;
-					} else if (!field.transform(FieldAccessAction::Write, *this, it, d_it->second)) {
+					} else if (!field.transform(*this, it, d_it->second)) {
 						d_it = dict.erase(d_it);
 					} else {
 						d_it ++;

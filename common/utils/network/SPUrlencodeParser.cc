@@ -29,35 +29,6 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
-#if SPAPR
-static apr::string &apr_decodeString_inPlace(apr::string &str) {
-	char code1 = 0, code2 = 0;
-	char *writePtr = str.data(); size_t writeLen = 0;
-	char *readPtr = str.data(); size_t readLen = str.size();
-
-	while (readLen > 0) {
-		char c = *readPtr;
-		if (c != '%' || readLen <= 2) {
-			if (readPtr != writePtr) {
-				*writePtr = c;
-			}
-			++ writePtr; ++ writeLen;
-			++ readPtr; -- readLen;
-		} else {
-			++ readPtr; -- readLen; code1 = * readPtr;
-			++ readPtr; -- readLen; code2 = * readPtr;
-			++ readPtr; -- readLen;
-
-			*writePtr = base16::hexToChar(code1) << 4 | base16::hexToChar(code2);
-			++ writePtr; ++ writeLen;
-		}
-	}
-
-	str.resize(writeLen);
-	return str;
-}
-#endif
-
 using NextToken = chars::Chars<char, '=', '&', ';', '[', ']', '+', '%'>;
 using NextKey = chars::Chars<char, '&', ';', '+'>;
 
@@ -191,13 +162,7 @@ size_t UrlencodeParser::read(const uint8_t * s, size_t count) {
 }
 
 data::Value *UrlencodeParser::flushString(StringView &r, data::Value *cur, VarState varState) {
-	String str;
-#if SPAPR
-	str.assign_weak(r.data(), r.size());
-	apr_decodeString_inPlace(str);
-#else
-	str = string::urldecode(r.str());
-#endif
+	String str = string::urldecode(r);
 
 	switch (varState) {
 	case VarState::Key:

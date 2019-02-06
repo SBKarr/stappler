@@ -186,7 +186,21 @@ bool Worker::readFields(const Scheme &scheme, const FieldCallback &cb, const dat
 }
 void Worker::readFields(const Scheme &scheme, const Query &q, const FieldCallback &cb) {
 	if (q.getIncludeFields().empty() && q.getExcludeFields().empty()) {
-		cb("*", nullptr);
+		if (scheme.hasForceExclude()) {
+			cb("__oid", nullptr);
+			for (auto &it : scheme.getFields()) {
+				auto type = it.second.getType();
+				if (type == storage::Type::Set || type == storage::Type::Array || type == storage::Type::View) {
+					continue;
+				}
+
+				if (!it.second.hasFlag(storage::Flags::ForceExclude)) {
+					cb(it.second.getName(), &it.second);
+				}
+			}
+		} else {
+			cb("*", nullptr);
+		}
 	} else {
 		cb("__oid", nullptr);
 		auto hasField = [&] (const Query::FieldsVec &vec, const Field &f) -> bool {

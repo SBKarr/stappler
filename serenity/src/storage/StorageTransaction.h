@@ -42,9 +42,9 @@ enum class AccessRoleId {
 	UserDefined9,
 	UserDefined10,
 	UserDefined11,
-	UserDefined12,
 	Admin,
 	System,
+	Default,
 	Max = 16,
 };
 
@@ -120,7 +120,7 @@ public: // adapter interface
 
 	data::Value create(Worker &, data::Value &data) const;
 	data::Value save(Worker &, uint64_t oid, const data::Value &newObject, const Vector<String> &fields) const;
-	data::Value patch(Worker &, uint64_t oid, const data::Value &data) const;
+	data::Value patch(Worker &, uint64_t oid, data::Value &data) const;
 
 	data::Value field(Action, Worker &, uint64_t oid, const Field &, data::Value && = data::Value()) const;
 	data::Value field(Action, Worker &, const data::Value &, const Field &, data::Value && = data::Value()) const;
@@ -183,6 +183,7 @@ struct AccessRole : public AllocPool {
 	using OnSelect = ValueWrapper<Function<bool(Worker &, const Query &)>, class OnSelectTag>;
 	using OnCount = ValueWrapper<Function<bool(Worker &, const Query &)>, class OnCountTag>;
 	using OnCreate = ValueWrapper<Function<bool(Worker &, data::Value &obj)>, class OnCreateTag>;
+	using OnPatch = ValueWrapper<Function<bool(Worker &, int64_t id, data::Value &obj)>, class OnPatchTag>;
 	using OnSave = ValueWrapper<Function<bool(Worker &, const data::Value &, data::Value &obj, Vector<String> &fields)>, class OnSaveTag>;
 	using OnRemove = ValueWrapper<Function<bool(Worker &, const data::Value &)>, class OnRemoveTag>;
 	using OnField = ValueWrapper<Function<bool(Action, Worker &, const data::Value &, const Field &, data::Value &)>, class OnFieldTag>;
@@ -207,6 +208,7 @@ struct AccessRole : public AllocPool {
 	AccessRole &define(OnSelect &&);
 	AccessRole &define(OnCount &&);
 	AccessRole &define(OnCreate &&);
+	AccessRole &define(OnPatch &&);
 	AccessRole &define(OnSave &&);
 	AccessRole &define(OnRemove &&);
 	AccessRole &define(OnField &&);
@@ -220,6 +222,7 @@ struct AccessRole : public AllocPool {
 	Function<bool(Worker &, const Query &)> onCount;
 
 	Function<bool(Worker &, data::Value &obj)> onCreate;
+	Function<bool(Worker &, int64_t id, data::Value &obj)> onPatch;
 	Function<bool(Worker &, const data::Value &, data::Value &obj, Vector<String> &fields)> onSave;
 	Function<bool(Worker &, const data::Value &)> onRemove;
 

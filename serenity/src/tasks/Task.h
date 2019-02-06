@@ -74,6 +74,11 @@ public: /* interface */
 	/* if task execution was successful */
     bool isSuccessful() const { return _isSuccessful; }
 
+    void setServer(const Server &serv) { _server = serv; }
+    const Server &getServer() const { return _server; }
+
+    void performWithStorage(const Callback<void(const storage::Transaction &)> &) const;
+
 public: /* overloads */
     bool execute();
     void onComplete();
@@ -84,6 +89,7 @@ protected:
     apr_byte_t _priority = PriorityNormal;
     bool _isSuccessful = false;
 
+    Server _server;
 	Vector<ExecuteCallback> _execute;
 	Vector<CompleteCallback> _complete;
 };

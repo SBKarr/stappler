@@ -170,19 +170,15 @@ enum class RemovePolicy {
 using FilterFn = Function<bool(const Scheme &, data::Value &)>;
 using DefaultFn = Function<data::Value(const data::Value &)>;
 
+using ReadFilterFn = Function<bool(const Scheme &, const data::Value &obj, data::Value &value)>;
+using WriteFilterFn = Function<bool(const Scheme &, const data::Value &patch, data::Value &value, bool isCreate)>;
+using ReplaceFilterFn = Function<bool(const Scheme &, const data::Value &obj, const data::Value &oldValue, data::Value &newValue)>;
+
 using ViewLinkageFn = Function<Vector<uint64_t>(const Scheme &targetScheme, const Scheme &objScheme, const data::Value &obj)>;
 using ViewFn = Function<Vector<data::Value>(const Scheme &objScheme, const data::Value &obj)>;
 
 using FullTextViewFn = Function<Vector<FullTextData>(const Scheme &objScheme, const data::Value &obj)>;
 using FullTextQueryFn = Function<Vector<FullTextData>(const data::Value &searchData)>;
-
-enum class FieldAccessAction {
-	Read,
-	Write,
-	Create
-};
-
-using FieldAccessFn = Function<bool(FieldAccessAction, const Scheme &, const data::Value &obj, data::Value &value)>;
 
 class Field : public AllocPool {
 public:
@@ -201,7 +197,6 @@ public:
 	template <typename ... Args> static Field Array(String && name, Args && ... args);
 	template <typename ... Args> static Field View(String && name, Args && ... args);
 	template <typename ... Args> static Field FullTextView(String && name, Args && ... args);
-
 	template <typename ... Args> static Field Extra(String &&name, InitializerList<Field> &&, Args && ... args);
 
 	struct Slot : public AllocPool {
@@ -245,7 +240,7 @@ public:
 		virtual bool hasDefault() const;
 		virtual data::Value getDefault(const data::Value &patch) const;
 
-		virtual bool transformValue(FieldAccessAction, const Scheme &, const data::Value &, data::Value &) const;
+		virtual bool transformValue(const Scheme &, const data::Value &, data::Value &, bool isCreate) const;
 		virtual void hash(StringStream &stream, ValidationLevel l) const;
 
 		data::Value def;
@@ -253,17 +248,17 @@ public:
 		Flags flags = Flags::None;
 		Type type = Type::None;
 		Transform transform = Transform::None;
-		FilterFn filter;
 		DefaultFn defaultFn;
-		FieldAccessFn fieldAccessFn;
+
+		ReadFilterFn readFilterFn;
+		WriteFilterFn writeFilterFn;
+		ReplaceFilterFn replaceFilterFn;
 	};
 
 	StringView getName() const { return slot->getName(); }
 	Type getType() const { return slot->getType(); }
 	Transform getTransform() const { return slot->getTransform(); }
 	data::Value getDefault(const data::Value &patch) const { return slot->getDefault(patch); }
-
-	const FieldAccessFn &getAccessFn() const { return slot->fieldAccessFn; }
 
 	bool hasFlag(Flags f) const { return slot->hasFlag(f); }
 	bool hasDefault() const { return slot->hasDefault(); }
@@ -275,14 +270,12 @@ public:
 	bool isFile() const { return slot->isFile(); }
 	bool isReference() const;
 
-	bool hasAccessChecker() const { return slot->fieldAccessFn != nullptr; }
-
 	const Scheme * getForeignScheme() const;
 
 	void hash(StringStream &stream, ValidationLevel l) const { slot->hash(stream, l); }
 
-	bool transform(FieldAccessAction, const Scheme &, int64_t, data::Value &) const;
-	bool transform(FieldAccessAction, const Scheme &, const data::Value &, data::Value &) const;
+	bool transform(const Scheme &, int64_t, data::Value &, bool isCreate = false) const;
+	bool transform(const Scheme &, const data::Value &, data::Value &, bool isCreate) const;
 
 	operator bool () const { return slot != nullptr; }
 
@@ -312,7 +305,7 @@ struct FieldText : Field::Slot {
 		init<FieldText, Args...>(*this, std::forward<Args>(args)...);
 	}
 
-	virtual bool transformValue(FieldAccessAction, const Scheme &, const data::Value &, data::Value &) const override;
+	virtual bool transformValue(const Scheme &, const data::Value &, data::Value &, bool isCreate) const override;
 	virtual void hash(StringStream &stream, ValidationLevel l) const override;
 
 	size_t minLength = config::getDefaultTextMin(), maxLength = config::getDefaultTextMax();
@@ -327,7 +320,7 @@ struct FieldPassword : Field::Slot {
 		transform = Transform::Password;
 	}
 
-	virtual bool transformValue(FieldAccessAction, const Scheme &, const data::Value &, data::Value &) const override;
+	virtual bool transformValue(const Scheme &, const data::Value &, data::Value &, bool isCreate) const override;
 	virtual void hash(StringStream &stream, ValidationLevel l) const override;
 
 	size_t minLength = config::getDefaultTextMin(), maxLength = config::getDefaultTextMax();
@@ -345,7 +338,7 @@ struct FieldExtra : Field::Slot {
 	virtual bool hasDefault() const override;
 	virtual data::Value getDefault(const data::Value &) const override;
 
-	virtual bool transformValue(FieldAccessAction, const Scheme &, const data::Value &, data::Value &) const override;
+	virtual bool transformValue(const Scheme &, const data::Value &, data::Value &, bool isCreate) const override;
 	virtual void hash(StringStream &stream, ValidationLevel l) const override;
 
 	Map<String, Field> fields;
@@ -399,7 +392,7 @@ struct FieldObject : Field::Slot {
 		}
 	}
 
-	virtual bool transformValue(FieldAccessAction, const Scheme &, const data::Value &, data::Value &) const override;
+	virtual bool transformValue(const Scheme &, const data::Value &, data::Value &, bool isCreate) const override;
 	virtual void hash(StringStream &stream, ValidationLevel l) const override;
 
 	const Scheme *scheme = nullptr;
@@ -416,7 +409,7 @@ struct FieldArray : Field::Slot {
 		init<FieldArray, Args...>(*this, std::forward<Args>(args)...);
 	}
 
-	virtual bool transformValue(FieldAccessAction, const Scheme &, const data::Value &, data::Value &) const override;
+	virtual bool transformValue(const Scheme &, const data::Value &, data::Value &, bool isCreate) const override;
 	virtual void hash(StringStream &stream, ValidationLevel l) const override;
 
 	Field tfield;
@@ -434,7 +427,7 @@ struct FieldView : Field::Slot {
 		init<FieldView, Args...>(*this, std::forward<Args>(args)...);
 	}
 
-	virtual bool transformValue(FieldAccessAction, const Scheme &, const data::Value &, data::Value &) const override { return false; }
+	virtual bool transformValue(const Scheme &, const data::Value &, data::Value &, bool isCreate) const override { return false; }
 
 	const Scheme *scheme = nullptr;
 	Map<String, Field> fields;
@@ -453,7 +446,7 @@ struct FieldFullTextView : Field::Slot {
 		init<FieldFullTextView, Args...>(*this, std::forward<Args>(args)...);
 	}
 
-	virtual bool transformValue(FieldAccessAction, const Scheme &, const data::Value &, data::Value &) const override { return false; }
+	virtual bool transformValue(const Scheme &, const data::Value &, data::Value &, bool isCreate) const override { return false; }
 
 	Vector<String> requires;
 	FullTextViewFn viewFn;
@@ -538,15 +531,27 @@ template <typename F> struct FieldOption<F, Flags> {
 };
 
 template <typename F> struct FieldOption<F, FilterFn> {
-	static inline void assign(F & f, const FilterFn &fn) { f.filter = fn; }
+	static inline void assign(F & f, const FilterFn &fn) {
+		f.writeFilterFn = WriteFilterFn([fn] (const Scheme &scheme, const data::Value &patch, data::Value &value, bool isCreate) -> bool {
+			return fn(scheme, value);
+		});
+	}
+};
+
+template <typename F> struct FieldOption<F, WriteFilterFn> {
+	static inline void assign(F & f, const WriteFilterFn &fn) { f.writeFilterFn = fn; }
+};
+
+template <typename F> struct FieldOption<F, ReadFilterFn> {
+	static inline void assign(F & f, const ReadFilterFn &fn) { f.readFilterFn = fn; }
+};
+
+template <typename F> struct FieldOption<F, ReplaceFilterFn> {
+	static inline void assign(F & f, const ReplaceFilterFn &fn) { f.replaceFilterFn = fn; }
 };
 
 template <typename F> struct FieldOption<F, DefaultFn> {
 	static inline void assign(F & f, const DefaultFn &fn) { f.defaultFn = fn; }
-};
-
-template <typename F> struct FieldOption<F, FieldAccessFn> {
-	static inline void assign(F & f, const FieldAccessFn &fn) { f.fieldAccessFn = fn; }
 };
 
 template <typename F> struct FieldOption<F, Function<data::Value()>> {

@@ -299,7 +299,7 @@ public:
 	Self operator - (const Self &) const;
 	Self& operator -= (const Self &);
 
-	MatchCharType operator * (const size_t &s) const;
+	MatchCharType operator * () const;
 
 	template <typename Callback>
 	void foreach(const Callback &cb);
@@ -1057,7 +1057,7 @@ inline auto StringViewUtf8::operator -= (const Self &other) -> Self & {
 	}
 	return *this;
 }
-inline auto StringViewUtf8::operator * (const size_t &s) const -> MatchCharType {
+inline auto StringViewUtf8::operator * () const -> MatchCharType {
 	return unicode::utf8Decode(ptr);
 }
 

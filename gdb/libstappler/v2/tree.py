@@ -82,7 +82,7 @@ class MemoryMapPrinter(object):
 
     def to_string(self):
         tree = self.val['_tree']
-        return "(in %s) set of size %s" % (tree['_allocator']['pool'], tree['_size'])
+        return "(in %s) map of size %s" % (tree['_allocator']['pool'], tree['_size'])
 
     def children(self):
         tree = self.val['_tree']

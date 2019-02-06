@@ -299,7 +299,7 @@ struct CoderSource {
 		if (nbytes > remains) {
 			nbytes = remains;
 		}
-		memcpy(buf, _data.data(), nbytes);
+		memcpy(buf, _data.data() + _offset, nbytes);
 		_offset += nbytes;
 		return nbytes;
 	}
@@ -777,6 +777,7 @@ inline void urldecode(Storage &storage, const StringView &str) {
 			r += 3;
 		} else if (!r.empty()) {
 			storage.insert(storage.end(), Value(r.data()), Value(r.data() + r.size()));
+			r.clear();
 		}
 	}
 }

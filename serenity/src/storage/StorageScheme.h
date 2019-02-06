@@ -166,7 +166,7 @@ protected:
 
 	data::Value createFilePatch(const Transaction &, const data::Value &val) const;
 	void purgeFilePatch(const Transaction &t, const data::Value &) const;
-	void mergeValues(const Field &f, data::Value &original, data::Value &newVal) const;
+	void mergeValues(const Field &f, const data::Value &obj, data::Value &original, data::Value &newVal) const;
 
 	Pair<bool, data::Value> prepareUpdate(const data::Value &data, bool isProtected) const;
 	data::Value updateObject(Worker &, data::Value && obj, data::Value &data) const;

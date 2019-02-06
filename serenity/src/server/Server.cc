@@ -810,6 +810,16 @@ void Server::onBroadcast(const DataReaderHost &bytes) {
 
 int Server::onRequest(Request &req) {
 	if (_config->forceHttps) {
+		StringView uri(req.getUnparsedUri());
+		if (uri.starts_with("/.well-known/acme-challenge/")) {
+			++ uri;
+			if (filesystem::exists(uri)) {
+				auto content = filesystem::readFile(uri);
+				req.write((const char *)content.data(), content.size());
+				return DONE;
+			}
+		}
+
 		if (!req.isSecureConnection()) {
 			auto p = req.request()->parsed_uri.port;
 			if (!p || p == 80) {

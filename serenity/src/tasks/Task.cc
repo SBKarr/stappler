@@ -25,17 +25,36 @@ THE SOFTWARE.
 NS_SA_BEGIN
 
 void Task::addExecuteFn(const ExecuteCallback &cb) {
-	_execute.push_back(cb);
+	apr::pool::perform([&] {
+		_execute.push_back(cb);
+	}, _pool);
 }
 void Task::addExecuteFn(ExecuteCallback &&cb) {
-	_execute.push_back(move(cb));
+	apr::pool::perform([&] {
+		_execute.push_back(move(cb));
+	}, _pool);
 }
 
 void Task::addCompleteFn(const CompleteCallback &cb) {
-	_complete.push_back(cb);
+	apr::pool::perform([&] {
+		_complete.push_back(cb);
+	}, _pool);
 }
 void Task::addCompleteFn(CompleteCallback &&cb) {
-	_complete.push_back(move(cb));
+	apr::pool::perform([&] {
+		_complete.push_back(move(cb));
+	}, _pool);
+}
+
+void Task::performWithStorage(const Callback<void(const storage::Transaction &)> &cb) const {
+	auto root = Root::getInstance();
+	if (auto dbd = root->dbdOpen(pool(), _server)) {
+		pg::Handle h(pool(), dbd);
+		if (auto t = storage::Transaction::acquire(&h)) {
+			cb(t);
+		}
+		root->dbdClose(_server, dbd);
+	}
 }
 
 bool Task::execute() {
