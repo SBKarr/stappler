@@ -74,6 +74,9 @@ int RequestHandler::onRequestRecieved(Request & rctx, String &&originPath, Strin
 		if (isCorsPermitted(rctx, origin)) {
 			rctx.getResponseHeaders().emplace("Access-Control-Allow-Origin", origin);
 			rctx.getResponseHeaders().emplace("Access-Control-Allow-Credentials", "true");
+
+			rctx.getErrorHeaders().emplace("Access-Control-Allow-Origin", origin);
+			rctx.getErrorHeaders().emplace("Access-Control-Allow-Credentials", "true");
 			return OK;
 		} else {
 			return HTTP_METHOD_NOT_ALLOWED;
