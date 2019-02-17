@@ -354,6 +354,13 @@ template <typename L, typename R, typename CharType
 		typename L::value_type>::type>
 int compare(const L &l, const R &r);
 
+
+template <typename L, typename R, typename CharType
+	= typename std::enable_if<
+		std::is_same< typename L::value_type, typename R::value_type >::value,
+		typename L::value_type>::type>
+inline int compareCaseInsensivive(const L &l, const R &r);
+
 NS_SP_EXT_END(string)
 
 
@@ -1282,7 +1289,45 @@ inline int compare(const L &l, const R &r) {
 	return ret;
 }
 
-NS_SP_EXT_END(string)
+template <typename L, typename R, typename CharType>
+inline int compareCaseInsensivive(const L &l, const R &r) {
+	auto __lsize = l.size();
+	auto __rsize = r.size();
 
+	int ret = 0;
+
+	uint8_t __l_off = 0;
+	uint8_t __r_off = 0;
+
+	auto lPtr = l.data();
+	auto rPtr = r.data();
+
+	auto lEnd = l.data() + l.size();
+	auto rEnd = r.data() + r.size();
+
+	while (lPtr < lEnd && rPtr < rEnd) {
+		auto lc = string::tolower(unicode::utf8Decode(lPtr, __l_off));
+		auto rc = string::tolower(unicode::utf8Decode(rPtr, __r_off));
+		if (lc != rc) {
+			ret =  (lc < rc)?-1:1;
+			break;
+		}
+		lPtr += __l_off;
+		rPtr += __r_off;
+	}
+
+	if (!ret) {
+		if (__lsize < __rsize) {
+			return -1;
+		} else if (__lsize == __rsize) {
+			return 0;
+		} else {
+			return 1;
+		}
+	}
+	return ret;
+}
+
+NS_SP_EXT_END(string)
 
 #endif /* COMMON_STRING_SPSTRINGVIEW_H_ */

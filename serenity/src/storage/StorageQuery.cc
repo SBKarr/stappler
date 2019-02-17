@@ -400,8 +400,8 @@ bool QueryList::offset(const Scheme *scheme, size_t offset) {
 bool QueryList::setFullTextQuery(const Field *field, Vector<FullTextData> &&data) {
 	if (queries.size() > 0 && field->getType() == Type::FullTextView) {
 		Item &b = queries.back();
+		b.query.select(field->getName(), move(data));
 		b.field = field;
-		b.fullTextQuery = move(data);
 		return true;
 	}
 	return false;

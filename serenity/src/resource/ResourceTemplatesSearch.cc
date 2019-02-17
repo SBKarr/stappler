@@ -36,13 +36,7 @@ ResourceSearch::ResourceSearch(const Adapter &a, QueryList &&q, const Field *pro
 data::Value ResourceSearch::getResultObject() {
 	auto slot = _field->getSlot<storage::FieldFullTextView>();
 	if (auto &searchData = _queries.getExtraData().getValue("search")) {
-		Vector<storage::FullTextData> q;
-		if (slot->queryFn) {
-			q = slot->queryFn(searchData);
-		} else {
-			q = parseQueryDefault(searchData);
-		}
-
+		Vector<storage::FullTextData> q = slot->parseQuery(searchData);
 		if (!q.empty()) {
 			_queries.setFullTextQuery(_field, Vector<storage::FullTextData>(q));
 			auto ret = _transaction.performQueryList(_queries, _queries.size(), false, _field);
@@ -80,19 +74,6 @@ Vector<String> ResourceSearch::stemQuery(const Vector<storage::FullTextData> &qu
 	}
 
 	return ret;
-}
-
-Vector<storage::FullTextData> ResourceSearch::parseQueryDefault(const data::Value &data) const {
-	if (data.isString()) {
-		StringViewUtf8 r(data.getString());
-		r.skipUntil<StringViewUtf8::MatchCharGroup<CharGroupId::Latin>, StringViewUtf8::MatchCharGroup<CharGroupId::Cyrillic>>();
-		if (r.is<StringViewUtf8::MatchCharGroup<CharGroupId::Latin>>()) {
-			return Vector<storage::FullTextData>{storage::FullTextData{data.getString(), storage::FullTextData::Language::English}};
-		} else if (r.is<StringViewUtf8::MatchCharGroup<CharGroupId::Cyrillic>>()) {
-			return Vector<storage::FullTextData>{storage::FullTextData{data.getString(), storage::FullTextData::Language::Russian}};
-		}
-	}
-	return Vector<storage::FullTextData>();
 }
 
 void ResourceSearch::makeHeadlines(data::Value &obj, const data::Value &headlineInfo, const Vector<String> &ql) {

@@ -642,4 +642,19 @@ void FieldArray::hash(apr::ostringstream &stream, ValidationLevel l) const {
 	}
 }
 
+Vector<FullTextData> FieldFullTextView::parseQuery(const data::Value &data) const {
+	if (queryFn) {
+		return queryFn(data);
+	} else if (data.isString()) {
+		StringViewUtf8 r(data.getString());
+		r.skipUntil<StringViewUtf8::MatchCharGroup<CharGroupId::Latin>, StringViewUtf8::MatchCharGroup<CharGroupId::Cyrillic>>();
+		if (r.is<StringViewUtf8::MatchCharGroup<CharGroupId::Latin>>()) {
+			return Vector<storage::FullTextData>{storage::FullTextData{data.getString(), storage::FullTextData::Language::English}};
+		} else if (r.is<StringViewUtf8::MatchCharGroup<CharGroupId::Cyrillic>>()) {
+			return Vector<storage::FullTextData>{storage::FullTextData{data.getString(), storage::FullTextData::Language::Russian}};
+		}
+	}
+	return Vector<storage::FullTextData>();
+}
+
 NS_SA_EXT_END(storage)

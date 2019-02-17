@@ -172,7 +172,7 @@ public:
 
 					auto dataIdx = push(data);
 
-					query << "setweight(to_tsvector('" << storage::FullTextData::getLanguageString(lang) << "', $" << dataIdx << "::text), '" << char('A' + char(rank)) << "')";
+					query << " setweight(to_tsvector('" << storage::FullTextData::getLanguageString(lang) << "', $" << dataIdx << "::text), '" << char('A' + char(rank)) << "')";
 				}
 			}
 		}
@@ -189,12 +189,12 @@ public:
 		} else if (d.field->hasFlag(storage::Flags::TsNormalize_UniqueWordsCountLog)) {
 			normalizationValue |= 16;
 		}
-		query << "ts_rank(" << d.scheme << ".\"" << d.field->getName() << "\" , __ts_query, " << normalizationValue << ")";
+		query << " ts_rank(" << d.scheme << ".\"" << d.field->getName() << "\" , __ts_query_" << d.field->getName() << ", " << normalizationValue << ")";
 	}
 
 	virtual void bindFullTextData(Binder &, StringStream &query, const storage::FullTextData &d) override {
 		auto idx = push(String(d.buffer));
-		query  << "websearch_to_tsquery('" << d.getLanguageString() << "', $" << idx << "::text)";
+		query  << " websearch_to_tsquery('" << d.getLanguageString() << "', $" << idx << "::text)";
 	}
 
 	virtual void clear() override {

@@ -72,8 +72,8 @@ data::Value ResultRow::toData(const Scheme &scheme, const Map<String, Field> &vi
 				deltaPtr = &row.emplace("__delta");
 			}
 			deltaPtr->setInteger(toInteger(i), "time");
-		} else if (n == "__ts_rank") {
-			row.setDouble(toDouble(i), "__ts_rank");
+		} else if (n.starts_with("__ts_rank_")) {
+			row.setDouble(toDouble(i), n.str());
 		} else if (!isNull(i)) {
 			if (auto f_it = scheme.getField(n)) {
 				row.setValue(toData(i, *f_it), n.str());

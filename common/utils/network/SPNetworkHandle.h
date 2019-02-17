@@ -49,7 +49,7 @@ public:
 	using ProgressCallback = Function<int(int64_t, int64_t)>;
 	using IOCallback = Function<size_t(char *data, size_t size)>;
 
-	public:
+public:
 	NetworkHandle();
 	~NetworkHandle();
 

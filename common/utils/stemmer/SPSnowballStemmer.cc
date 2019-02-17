@@ -177,7 +177,7 @@ StringView Stemmer::getHighlightStop() const {
 
 void Stemmer::setFragmentParams(const StringView &start, const StringView &stop) {
 	_startFragment = start.str<memory::PoolInterface>();
-	_stopToken = stop.str<memory::PoolInterface>();
+	_stopFragment = stop.str<memory::PoolInterface>();
 }
 
 StringView Stemmer::getFragmentStart() const {
@@ -206,6 +206,10 @@ void Stemmer::setFragmentShortWord(size_t value) {
 }
 size_t Stemmer::getFragmentShortWord() const {
 	return _shortWord;
+}
+
+void Stemmer::setFragmentCallback(const Function<void(const StringView &, const StringView &)> &cb) {
+	_fragmentCallback = cb;
 }
 
 Stemmer::Vector<Stemmer::String> Stemmer::stemQuery(const StringView &query, Language lang) {
@@ -287,29 +291,7 @@ Stemmer::Language Stemmer::detectWordLanguage(const StringView &word) const {
 		return _languageCallback(word);
 	}
 
-	StringView str(word);
-	str.skipUntil<StringView::CharGroup<CharGroupId::Numbers>, StringView::Chars<'.'>>();
-	if (str.empty()) {
-		StringViewUtf8 r(word.data(), word.size());
-		while (!r.empty()) {
-			r.skipUntil<StringViewUtf8::MatchCharGroup<CharGroupId::Latin>,
-				StringViewUtf8::MatchCharGroup<CharGroupId::Cyrillic>,
-				StringViewUtf8::MatchCharGroup<CharGroupId::GreekBasic>,
-				StringViewUtf8::MatchCharGroup<CharGroupId::Numbers>>();
-			if (r.is<StringViewUtf8::MatchCharGroup<CharGroupId::Latin>>()) {
-				return English;
-			} else if (r.is<StringViewUtf8::MatchCharGroup<CharGroupId::Cyrillic>>()) {
-				return Russian;
-			} else if (r.is<StringViewUtf8::MatchCharGroup<CharGroupId::GreekBasic>>()) {
-				return Greek;
-			} else if (r.is<StringViewUtf8::MatchCharGroup<CharGroupId::Numbers>>()) {
-				return Simple;
-			}
-		}
-		return Unknown;
-	} else {
-		return Simple;
-	}
+	return detectWordDefaultLanguage(word);
 }
 
 StemmerData *Stemmer::getStemmer(Language lang) {
@@ -360,8 +342,10 @@ Stemmer::String Stemmer::makeHighlight(const StringView &origin, const Vector<St
 			}
 
 			auto stem = stemWord(tmp, lang);
-			auto it = std::lower_bound(queryList.begin(), queryList.end(), stem);
-			if (it != queryList.end() && *it == stem) {
+			auto it = std::lower_bound(queryList.begin(), queryList.end(), stem, [] (const String &l, const StringView &r) {
+				return string::compareCaseInsensivive(l, r) < 0;
+			});
+			if (it != queryList.end() && string::compareCaseInsensivive(*it, stem) == 0) {
 				result << sep;
 				if (!isOpen) {
 					result << _startToken;
@@ -384,6 +368,11 @@ Stemmer::String Stemmer::makeHighlight(const StringView &origin, const Vector<St
 			}
 			result << sep;
 		}
+	}
+
+	if (isOpen) {
+		result << _stopToken;
+		isOpen = false;
 	}
 
 	return result.str();
@@ -483,6 +472,20 @@ struct Stemmer_Reader {
 };
 
 Stemmer::String Stemmer::makeHtmlHeadlines(const StringView &origin, const Vector<String> &queryList, size_t count, Language lang) {
+	return makeProducerHeadlines([&] (const Function<bool(const StringView &, const StringView &)> &cb) {
+		Stemmer_Reader r;
+		r.callback = [&] (Stemmer_Reader::Parser &p, const StringView &str) {
+			if (!cb(str, StringView())) {
+				p.cancel();
+			}
+		};
+		html::parse(r, origin, false);
+	}, queryList, lang);
+}
+
+String Stemmer::makeProducerHeadlines(const Callback<void(const Function<bool(const StringView &frag, const StringView &tag)>)> &cb,
+		const Vector<String> &queryList, size_t count, Language lang) {
+
 	struct WordIndex {
 		StringView word;
 		uint16_t index;
@@ -602,7 +605,7 @@ Stemmer::String Stemmer::makeHtmlHeadlines(const StringView &origin, const Vecto
 		}
 	};
 
-	auto makeFragment = [&] (StringStream &out, const StringView &str, const std::array<WordIndex, 32> &words, const WordIndex *word, size_t idx) {
+	auto makeFragment = [&] (StringStream &out, const StringView &str, const StringView &tagId, const std::array<WordIndex, 32> &words, const WordIndex *word, size_t idx) {
 		out << _startFragment;
 		auto prefixView = StringView(str.data(), word->word.data() - str.data());
 		auto suffixView = StringView(word->end->word.data() + word->end->word.size(), str.data() + str.size() - (word->end->word.data() + word->end->word.size()));
@@ -641,10 +644,13 @@ Stemmer::String Stemmer::makeHtmlHeadlines(const StringView &origin, const Vecto
 			makeFragmentSuffix(out, suffixView, 1, idx - word->end->index - 1);
 		}
 		out << _stopFragment;
+
+		if (_fragmentCallback) {
+			_fragmentCallback(out.weak(), tagId);
+		}
 	};
 
-	Stemmer_Reader r;
-	r.callback = [&] (Stemmer_Reader::Parser &p, const StringView &str) {
+	cb([&] (const StringView &str, const StringView &fragmentTag) -> bool {
 		std::array<WordIndex, 32> wordsMatch;
 		uint16_t wordCount = 0;
 		uint16_t idx = 0;
@@ -652,8 +658,10 @@ Stemmer::String Stemmer::makeHtmlHeadlines(const StringView &origin, const Vecto
 		stemPhrase(str, [&] (const StringView &word, const StringView &stem, Language lang) {
 			if (string::getUtf16Length(word) > _shortWord) {
 				if (wordCount < 32) {
-					auto it = std::lower_bound(queryList.begin(), queryList.end(), stem);
-					if (it != queryList.end() && *it == stem) {
+					auto it = std::lower_bound(queryList.begin(), queryList.end(), stem, [] (const String &l, const StringView &r) {
+						return string::compareCaseInsensivive(l, r) < 0;
+					});
+					if (it != queryList.end() && string::compareCaseInsensivive(*it, stem) == 0) {
 						wordsMatch[wordCount] = WordIndex{word, idx};
 						++ wordCount;
 					}
@@ -663,7 +671,7 @@ Stemmer::String Stemmer::makeHtmlHeadlines(const StringView &origin, const Vecto
 		}, lang);
 
 		if (wordCount == 0) {
-			return;
+			return true;
 		}
 
 		for (size_t i = 0; i < wordCount; ++ i) {
@@ -671,18 +679,17 @@ Stemmer::String Stemmer::makeHtmlHeadlines(const StringView &origin, const Vecto
 		}
 
 		if (topIndex && count > 0) {
-			makeFragment(ret, str, wordsMatch, topIndex, idx);
+			makeFragment(ret, str, fragmentTag, wordsMatch, topIndex, idx);
 			-- count;
 		}
 
 		if (count == 0) {
-			p.cancel();
+			return false;
 		}
 
 		topIndex = nullptr;
-	};
-	html::parse(r, origin, false);
-	std::cout << ret.weak() << "\n";
+		return true;
+	});
 	return ret.str();
 }
 
@@ -692,6 +699,32 @@ void Stemmer::splitHtmlText(const StringView &data, const Function<void(const St
 		cb(str);
 	};
 	html::parse(r, data, false);
+}
+
+Stemmer::Language Stemmer::detectWordDefaultLanguage(const StringView &word) {
+	StringView str(word);
+	str.skipUntil<StringView::CharGroup<CharGroupId::Numbers>, StringView::Chars<'.'>>();
+	if (str.empty()) {
+		StringViewUtf8 r(word.data(), word.size());
+		while (!r.empty()) {
+			r.skipUntil<StringViewUtf8::MatchCharGroup<CharGroupId::Latin>,
+				StringViewUtf8::MatchCharGroup<CharGroupId::Cyrillic>,
+				StringViewUtf8::MatchCharGroup<CharGroupId::GreekBasic>,
+				StringViewUtf8::MatchCharGroup<CharGroupId::Numbers>>();
+			if (r.is<StringViewUtf8::MatchCharGroup<CharGroupId::Latin>>()) {
+				return English;
+			} else if (r.is<StringViewUtf8::MatchCharGroup<CharGroupId::Cyrillic>>()) {
+				return Russian;
+			} else if (r.is<StringViewUtf8::MatchCharGroup<CharGroupId::GreekBasic>>()) {
+				return Greek;
+			} else if (r.is<StringViewUtf8::MatchCharGroup<CharGroupId::Numbers>>()) {
+				return Simple;
+			}
+		}
+		return Unknown;
+	} else {
+		return Simple;
+	}
 }
 
 StringView SearchData::getLanguageString(Language lang) {

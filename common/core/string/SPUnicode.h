@@ -40,6 +40,9 @@ static constexpr inline uint8_t utf8DecodeLength(T c, uint8_t &mask);
 static constexpr inline char16_t utf8Decode(const char *ptr);
 static constexpr inline char16_t utf8Decode(const char *ptr, uint8_t &offset);
 
+static constexpr inline char16_t utf8Decode(const char16_t *ptr);
+static constexpr inline char16_t utf8Decode(const char16_t *ptr, uint8_t &offset);
+
 // utf8 string length, that can be used to encode UCS-2 symbol
 inline constexpr uint8_t utf8EncodeLength(char16_t c) SPINLINE;
 
@@ -88,6 +91,15 @@ static constexpr inline char16_t utf8Decode(const char *ptr, uint8_t &offset) {
 		ret <<= 6; ret |= (ptr[c] & 0x3f);
 	}
 	return (char16_t)ret;
+}
+
+static constexpr inline char16_t utf8Decode(const char16_t *ptr) {
+	return *ptr;
+}
+
+static constexpr inline char16_t utf8Decode(const char16_t *ptr, uint8_t &offset) {
+	offset = 1;
+	return *ptr;
 }
 
 inline constexpr uint8_t utf8EncodeLength(char16_t c) {
@@ -151,5 +163,32 @@ constexpr inline bool isUtf8Surrogate(char c) {
 }
 
 NS_SP_EXT_END(unicode)
+
+NS_SP_EXT_BEGIN(string)
+
+using char_ptr_t = char *;
+using char_ptr_ref_t = char_ptr_t &;
+
+using char_const_ptr_t = const char *;
+using char_const_ptr_ref_t = char_const_ptr_t &;
+using char_const_ptr_const_ref_t = const char_const_ptr_t &;
+
+
+void toupper(char &b, char &c);
+void tolower(char &b, char &c);
+
+char16_t toupper(char16_t);
+char16_t tolower(char16_t);
+
+void toupper_buf(char *, size_t len = maxOf<size_t>());
+void tolower_buf(char *, size_t len = maxOf<size_t>());
+void toupper_buf(char16_t *, size_t len = maxOf<size_t>());
+void tolower_buf(char16_t *, size_t len = maxOf<size_t>());
+
+bool isspace(char ch);
+bool isspace(char16_t ch);
+bool isspace(char_const_ptr_t ch);
+
+NS_SP_EXT_END(string)
 
 #endif /* COMMON_STRING_SPUNICODE_H_ */

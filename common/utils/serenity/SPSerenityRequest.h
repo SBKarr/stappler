@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define COMMON_UTILS_SERENITY_SPSERENITYREQUEST_H_
 
 #include "SPSerenityPathQuery.h"
+#include "SPSnowballStemmer.h"
 
 NS_SP_EXT_BEGIN(serenity)
 
@@ -80,10 +81,12 @@ public:
 		data::Value value1;
 		data::Value value2;
 		String field;
+		Vector<search::SearchData> searchData;
 
 		Select(const StringView & f, Comparation c, data::Value && v1, data::Value && v2);
 		Select(const StringView & f, Comparation c, int64_t v1, int64_t v2);
 		Select(const StringView & f, Comparation c, const String & v);
+		Select(const StringView & f, Comparation c, Vector<search::SearchData> && v);
 	};
 
 	static Query all();
@@ -106,6 +109,8 @@ public:
 
 	Query & select(const StringView &f, const Bytes & v);
 	Query & select(const StringView &f, Bytes && v);
+
+	Query & select(const StringView &f, Vector<search::SearchData> && v);
 
 	Query & select(Select &&q);
 

@@ -201,7 +201,7 @@ protected:
 	// call before object is created, when file is embedded into patch
 	data::Value createFile(const Transaction &, const Field &, const Bytes &, const StringView &type, int64_t = 0) const;
 
-	void processFullTextFields(data::Value &patch) const;
+	void processFullTextFields(data::Value &patch, Vector<String> *updateFields = nullptr) const;
 
 	data::Value makeObjectForPatch(const Transaction &, uint64_t id, const data::Value &, const data::Value &patch) const;
 

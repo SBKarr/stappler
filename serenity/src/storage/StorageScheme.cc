@@ -566,7 +566,7 @@ data::Value Scheme::updateObject(Worker &w, data::Value && obj, data::Value &cha
 		}
 	}
 
-	processFullTextFields(changeSet);
+	processFullTextFields(obj, &updatedFields);
 	if (!viewsToUpdate.empty() || !parentsToUpdate.empty()) {
 		if (w.perform([&] (const Transaction &t) {
 			if (t.save(w, obj.getInteger("__oid"), obj, updatedFields)) {
@@ -900,7 +900,7 @@ data::Value Scheme::createFile(const Transaction &t, const Field &field, const B
 	return data::Value();
 }
 
-void Scheme::processFullTextFields(data::Value &patch) const {
+void Scheme::processFullTextFields(data::Value &patch, Vector<String> *updateFields) const {
 	Vector<const FieldFullTextView *> vec; vec.reserve(2);
 	for (auto &it : fields) {
 		if (it.second.getType() == Type::FullTextView) {
@@ -927,7 +927,12 @@ void Scheme::processFullTextFields(data::Value &patch) const {
 					value.addInteger(toInt(r_it.language));
 					value.addInteger(toInt(r_it.rank));
 				}
-				patch.setValue(move(val), it->name);
+				if (val) {
+					patch.setValue(move(val), it->name);
+					if (updateFields) {
+						updateFields->emplace_back(it->name);
+					}
+				}
 			}
 		}
 	}

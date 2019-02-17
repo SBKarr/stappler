@@ -113,22 +113,36 @@ void SqlQuery::writeWhere(SqlQuery::SelectWhere &w, Operator op, const Scheme &s
 			auto &fields = scheme.getFields();
 			for (auto &it : q.getSelectList()) {
 				auto f_it = fields.find(it.field);
-				if ((f_it != fields.end() && f_it->second.isIndexed() && storage::checkIfComparationIsValid(f_it->second.getType(), it.compare))
-						|| (it.field == "__oid" && storage::checkIfComparationIsValid(storage::Type::Integer, it.compare))) {
-					whi.where(Operator::And, SqlQuery::Field(scheme.getName(), it.field), it.compare, it.value1, it.value2);
+				if (f_it != fields.end()) {
+					if (f_it->second.getType() == storage::Type::FullTextView) {
+						whi.where(Operator::And, SqlQuery::Field(scheme.getName(), it.field), Comparation::Includes, RawString{toString("__ts_query_", it.field)});
+					} else if ((f_it->second.isIndexed() && storage::checkIfComparationIsValid(f_it->second.getType(), it.compare))
+							|| (it.field == "__oid" && storage::checkIfComparationIsValid(storage::Type::Integer, it.compare))) {
+						whi.where(Operator::And, SqlQuery::Field(scheme.getName(), it.field), it.compare, it.value1, it.value2);
+					}
 				}
+
 			}
 		});
 	}
 }
 
-void SqlQuery::writeOrdering(SqlQuery::SelectFrom &s, const Scheme &scheme, const query::Query &q, const Vector<FullTextData> &fts) {
-	if (q.hasOrder() || q.hasLimit() || q.hasOffset() || !fts.empty()) {
+void SqlQuery::writeOrdering(SqlQuery::SelectFrom &s, const Scheme &scheme, const query::Query &q) {
+	if (q.hasOrder() || q.hasLimit() || q.hasOffset()) {
 		auto ordering = q.getOrdering();
 		String orderField;
+		String schemeName = scheme.getName().str();
 		if (q.hasOrder()) {
-			orderField = q.getOrderField();
-			if (orderField != "__oid" && !scheme.getField(orderField)) {
+			if (auto f = scheme.getField(q.getOrderField())) {
+				if (f->getType() == storage::Type::FullTextView) {
+					orderField = toString("__ts_rank_", q.getOrderField());
+					schemeName.clear();
+				} else {
+					orderField = q.getOrderField();
+				}
+			} else if (q.getOrderField() == "__oid") {
+				orderField = q.getOrderField();
+			} else {
 				return;
 			}
 		} else if (q.getSelectList().size() == 1) {
@@ -136,14 +150,11 @@ void SqlQuery::writeOrdering(SqlQuery::SelectFrom &s, const Scheme &scheme, cons
 			if (!scheme.getField(orderField)) {
 				return;
 			}
-		} else if (!fts.empty()) {
-			orderField = "__ts_rank";
-			ordering = Ordering::Descending;
 		} else {
 			orderField = "__oid";
 		}
 
-		SelectOrder o = s.order(ordering, fts.empty() ? SqlQuery::Field(scheme.getName(), orderField) : SqlQuery::Field(orderField),
+		SelectOrder o = s.order(ordering, schemeName.empty() ? SqlQuery::Field(orderField) : SqlQuery::Field(scheme.getName(), orderField),
 				ordering == Ordering::Descending?sql::Nulls::Last:sql::Nulls::None);
 
 		if (q.hasLimit() && q.hasOffset()) {
@@ -158,20 +169,12 @@ void SqlQuery::writeOrdering(SqlQuery::SelectFrom &s, const Scheme &scheme, cons
 
 void SqlQuery::writeQueryReqest(SqlQuery::SelectFrom &s, const QueryList::Item &item) {
 	auto &q = item.query;
-	if ((!item.all && !item.query.empty()) || !item.fullTextQuery.empty()) {
-		auto makeWhere = [&] () -> SelectWhere {
-			if (item.fullTextQuery.empty()) {
-				return s.where();
-			} else {
-				return s.where(SqlQuery::Field(item.scheme->getName(), item.field->getName()), Comparation::Includes, RawString{"__ts_query"});
-			}
-		};
-
-		auto w = makeWhere();
+	if (!item.all && !item.query.empty()) {
+		auto w = s.where();
 		writeWhere(w, Operator::And, *item.scheme, q);
 	}
 
-	writeOrdering(s, *item.scheme, q, item.fullTextQuery);
+	writeOrdering(s, *item.scheme, q);
 }
 
 static void SqlQuery_writeJoin(SqlQuery::SelectFrom &s, const StringView &sqName, const StringView &schemeName, const QueryList::Item &item) {
@@ -183,37 +186,72 @@ static void SqlQuery_writeJoin(SqlQuery::SelectFrom &s, const StringView &sqName
 	});
 }
 
+void SqlQuery::writeFullTextRank(Select &sel, const Scheme &scheme, const query::Query &q) {
+	for (auto &it : q.getSelectList()) {
+		if (auto f = scheme.getField(it.field)) {
+			if (f->getType() == Type::FullTextView) {
+				sel.query->writeBind(Binder::FullTextRank{scheme.getName(), f});
+				sel.query->getStream() << " AS __ts_rank_" << it.field << ", ";
+			}
+		}
+	}
+}
+
+auto SqlQuery::writeFullTextFrom(Select &sel, const Scheme &scheme, const query::Query &q) -> SelectFrom {
+	auto f = sel.from();
+	for (auto &it : q.getSelectList()) {
+		if (auto field = scheme.getField(it.field)) {
+			if (field->getType() == Type::FullTextView) {
+				if (!it.searchData.empty()) {
+					StringStream queryFrom;
+					for (auto &searchIt : it.searchData) {
+						if (!queryFrom.empty()) {
+							queryFrom  << " && ";
+						}
+						binder.writeBind(queryFrom, searchIt);
+					}
+					auto queryStr = queryFrom.weak();
+					f = f.from(Query::Field(queryStr).as(toString("__ts_query_", it.field)));
+				} else if (it.value1) {
+					auto d = field->getSlot<FieldFullTextView>();
+					auto q = d->parseQuery(it.value1);
+					if (!q.empty()) {
+						StringStream queryFrom;
+						for (auto &searchIt : q) {
+							if (!queryFrom.empty()) {
+								queryFrom  << " && ";
+							}
+							binder.writeBind(queryFrom, searchIt);
+						}
+						auto queryStr = queryFrom.weak();
+						f = f.from(Query::Field(queryStr).as(toString("__ts_query_", it.field)));
+					}
+				}
+			}
+		}
+	}
+	return f;
+}
+
 auto SqlQuery::writeSelectFrom(GenericQuery &q, const QueryList::Item &item, bool idOnly, const StringView &schemeName, const StringView &fieldName) -> SelectFrom {
 	if (idOnly) {
 		return q.select(SqlQuery::Field(schemeName, fieldName).as("id")).from(schemeName);
 	}
 
-	bool isFullText = (item.field && !item.fullTextQuery.empty() && item.field->getType() == Type::FullTextView);
-
 	auto sel = q.select();
-	if (isFullText) {
-		sel.query->writeBind(Binder::FullTextRank{schemeName, item.field});
-		sel.query->getStream() << " AS __ts_rank, ";
-	}
-
+	writeFullTextRank(sel, *item.scheme, item.query);
 	item.readFields([&] (const StringView &name, const storage::Field *) {
 		sel = sel.field(SqlQuery::Field(schemeName, name));
 	});
+	return writeFullTextFrom(sel, *item.scheme, item.query).from(schemeName);
+}
 
-	if (isFullText) {
-		StringStream queryFrom;
-		for (auto &it : item.fullTextQuery) {
-
-			if (!queryFrom.empty()) {
-				queryFrom  << " && ";
-			}
-			binder.writeBind(queryFrom, it);
-		}
-		auto queryStr = queryFrom.weak();
-		return sel.from(Query::Field(queryStr).as("__ts_query")).from(schemeName);
-	} else {
-		return sel.from(schemeName);
-	}
+auto SqlQuery::writeSelectFrom(Select &sel, Worker &worker, const query::Query &q) -> SelectFrom {
+	writeFullTextRank(sel, worker.scheme(), q);
+	worker.readFields(worker.scheme(), q, [&] (const StringView &name, const storage::Field *) {
+		sel = sel.field(SqlQuery::Field(name));
+	});
+	return writeFullTextFrom(sel, worker.scheme(), q).from(worker.scheme().getName());
 }
 
 void SqlQuery::writeQueryListItem(GenericQuery &q, const QueryList &list, size_t idx, bool idOnly, const storage::Field *field, bool forSubquery) {

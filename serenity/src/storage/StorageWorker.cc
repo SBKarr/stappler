@@ -142,7 +142,7 @@ bool Worker::readFields(const Scheme &scheme, const FieldCallback &cb, const dat
 				}
 
 				auto type = it.second.getType();
-				if (type == storage::Type::Set || type == storage::Type::Array || type == storage::Type::View) {
+				if (type == storage::Type::Set || type == storage::Type::Array || type == storage::Type::View || type == storage::Type::FullTextView) {
 					continue;
 				}
 
@@ -169,7 +169,7 @@ bool Worker::readFields(const Scheme &scheme, const FieldCallback &cb, const dat
 		auto &forceInclude = scheme.getForceInclude();
 		for (auto &it : scheme.getFields()) {
 			auto type = it.second.getType();
-			if (type == storage::Type::Set || type == storage::Type::Array || type == storage::Type::View) {
+			if (type == storage::Type::Set || type == storage::Type::Array || type == storage::Type::View || type == storage::Type::FullTextView) {
 				continue;
 			}
 
@@ -190,7 +190,7 @@ void Worker::readFields(const Scheme &scheme, const Query &q, const FieldCallbac
 			cb("__oid", nullptr);
 			for (auto &it : scheme.getFields()) {
 				auto type = it.second.getType();
-				if (type == storage::Type::Set || type == storage::Type::Array || type == storage::Type::View) {
+				if (type == storage::Type::Set || type == storage::Type::Array || type == storage::Type::View || type == storage::Type::FullTextView) {
 					continue;
 				}
 
@@ -215,7 +215,7 @@ void Worker::readFields(const Scheme &scheme, const Query &q, const FieldCallbac
 		auto &forceInclude = scheme.getForceInclude();
 		for (auto &it : scheme.getFields()) {
 			auto type = it.second.getType();
-			if (type == storage::Type::Set || type == storage::Type::Array || type == storage::Type::View) {
+			if (type == storage::Type::Set || type == storage::Type::Array || type == storage::Type::View || type == storage::Type::FullTextView) {
 				continue;
 			}
 

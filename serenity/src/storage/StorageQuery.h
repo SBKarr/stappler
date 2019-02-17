@@ -24,7 +24,6 @@ THE SOFTWARE.
 #define SERENITY_SRC_STORAGE_STORAGEQUERY_H_
 
 #include "SPSerenityRequest.h"
-#include "SPSnowballStemmer.h"
 #include "Define.h"
 
 NS_SA_EXT_BEGIN(storage)
@@ -111,7 +110,6 @@ public:
 
 		Query query;
 		QueryFieldResolver fields;
-		Vector<FullTextData> fullTextQuery;
 
 		const Set<const Field *> &getQueryFields() const;
 		void readFields(const FieldCallback &) const;

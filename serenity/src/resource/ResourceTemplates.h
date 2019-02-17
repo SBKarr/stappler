@@ -201,8 +201,6 @@ public:
 protected:
 	Vector<String> stemQuery(const Vector<storage::FullTextData> &);
 
-	Vector<storage::FullTextData> parseQueryDefault(const data::Value &) const;
-
 	void makeHeadlines(data::Value &obj, const data::Value &headlineInfo, const Vector<String> &);
 	String makeHeadline(const StringView &value, const data::Value &headlineInfo, const Vector<String> &);
 

@@ -75,6 +75,8 @@ Query::Select::Select(const StringView & f, Comparation c, int64_t v1, int64_t v
 Query::Select::Select(const StringView & f, Comparation c, const String & v)
 : compare(Comparation::Equal), value1(v), value2(0), field(f.str()) { }
 
+Query::Select::Select(const StringView & f, Comparation c, Vector<search::SearchData> && v)
+: compare(Comparation::Equal), field(f.str()), searchData(move(v)) { }
 
 Resolve Query::decodeResolve(const StringView &str) {
 	if (str == "$all") {
@@ -177,6 +179,11 @@ Query & Query::select(const StringView &f, const Bytes & v) {
 }
 Query & Query::select(const StringView &f, Bytes && v) {
 	selectList.emplace_back(f, Comparation::Equal, data::Value(move(v)), data::Value());
+	return *this;
+}
+Query & Query::select(const StringView &f, Vector<search::SearchData> && v) {
+	selectList.emplace_back(f, Comparation::Equal, move(v));
+	order(f, Ordering::Descending);
 	return *this;
 }
 

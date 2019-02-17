@@ -28,29 +28,6 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(string)
 
-using char_ptr_t = char *;
-using char_ptr_ref_t = char_ptr_t &;
-
-using char_const_ptr_t = const char *;
-using char_const_ptr_ref_t = char_const_ptr_t &;
-using char_const_ptr_const_ref_t = const char_const_ptr_t &;
-
-
-void toupper(char &b, char &c);
-void tolower(char &b, char &c);
-
-char16_t toupper(char16_t);
-char16_t tolower(char16_t);
-
-void toupper_buf(char *, size_t len = maxOf<size_t>());
-void tolower_buf(char *, size_t len = maxOf<size_t>());
-void toupper_buf(char16_t *, size_t len = maxOf<size_t>());
-void tolower_buf(char16_t *, size_t len = maxOf<size_t>());
-
-bool isspace(char ch);
-bool isspace(char16_t ch);
-bool isspace(char_const_ptr_t ch);
-
 size_t getUtf16Length(const StringView &str);
 size_t getUtf16HtmlLength(const StringView &str);
 size_t getUtf8Length(const WideStringView &str);

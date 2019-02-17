@@ -57,11 +57,7 @@ data::Value SqlHandle::select(Worker &worker, const Query &q) {
 	auto &scheme = worker.scheme();
 	makeQuery([&] (SqlQuery &query) {
 		auto sel = query.select();
-		worker.readFields(worker.scheme(), q, [&] (const StringView &name, const Field *) {
-			sel = sel.field(SqlQuery::Field(name));
-		});
-
-		auto s = sel.from(scheme.getName());
+		auto s = query.writeSelectFrom(sel, worker, q);
 		if (!q.empty()) {
 			empty = false;
 			auto w = s.where();

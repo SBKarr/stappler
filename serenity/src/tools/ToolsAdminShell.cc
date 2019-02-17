@@ -867,6 +867,44 @@ struct KillCmd : SocketCommand {
 	}
 };
 
+struct TimeCmd : SocketCommand {
+	TimeCmd() : SocketCommand("time") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		int64_t t = r.readInteger().get(0);
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+
+		if (t) {
+			if (r == "s" || r == "sec") {
+				h.send(Time::seconds(t).toHttp());
+			} else if (r == "ms" || r == "msec") {
+				h.send(Time::milliseconds(t).toHttp());
+			} else if (r == "mcs" || r == "mcsec" || r.empty()) {
+				h.send(Time::microseconds(t).toHttp());
+			} else {
+				h.send("Invalid input");
+			}
+		} else if (r.empty()) {
+			h.send(Time::now().toHttp());
+		} else {
+			h.send("Invalid input");
+		}
+
+		return true;
+	}
+
+	virtual StringView desc() const {
+		return " - convert integer timestamp to human-readable format";
+	}
+	virtual StringView help() const {
+		return " - convert integer timestamp to human-readable format.\n"
+				"    <int>s | <int>sec - as seconds\n"
+				"    <int>ms | <int>msec - as milliseconds\n"
+				"    <int>mcs | <int>mcsec | <int> (no suffix) - as microseconds";
+	}
+};
+
 
 ShellSocketHandler::ShellSocketHandler(Manager *m, const Request &req, User *user) : Handler(m, req, 600_sec), _user(user) {
 	sendBroadcast(data::Value{
@@ -896,6 +934,7 @@ ShellSocketHandler::ShellSocketHandler(Manager *m, const Request &req, User *use
 	_cmds.push_back(new HelpCmd());
 	_cmds.push_back(new GenPasswordCmd());
 	_cmds.push_back(new KillCmd());
+	_cmds.push_back(new TimeCmd());
 
 	auto serv = req.server();
 	_external.reserve(serv.getComponents().size());

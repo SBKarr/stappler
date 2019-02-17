@@ -108,6 +108,8 @@ public:
 
 	static void splitHtmlText(const StringView &, const Function<void(const StringView &)> &);
 
+	static Language detectWordDefaultLanguage(const StringView &);
+
 	Stemmer();
 
 	// custom language detection used, when language specified as Unknown
@@ -146,11 +148,16 @@ public:
 	void setFragmentShortWord(size_t);
 	size_t getFragmentShortWord() const;
 
+	void setFragmentCallback(const Function<void(const StringView &text, const StringView &tag)> &);
+
 	Vector<String> stemQuery(const StringView &query, Language = Unknown);
 	Vector<String> stemQuery(const Vector<SearchData> &query);
 
 	String makeHighlight(const StringView &origin, const Vector<String> &query, Language = Unknown);
 	String makeHtmlHeadlines(const StringView &origin, const Vector<String> &query, size_t count = 1, Language = Unknown);
+
+	String makeProducerHeadlines(const Callback<void(const Function<bool(const StringView &frag, const StringView &tag)>)> &,
+			const Vector<String> &query, size_t count = 1, Language = Unknown);
 
 protected:
 	struct Alloc {
@@ -177,6 +184,8 @@ protected:
 	size_t _maxWords = DefaultMaxWords;
 	size_t _minWords = DefaultMinWords;
 	size_t _shortWord = DefaultShortWord;
+
+	Function<void(const StringView &text, const StringView &)> _fragmentCallback;
 };
 
 struct SearchData {

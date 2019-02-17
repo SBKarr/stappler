@@ -115,9 +115,10 @@ public:
 	void clear();
 
 	void writeWhere(SqlQuery::SelectWhere &, Operator op, const Scheme &, const query::Query &);
-	void writeOrdering(SqlQuery::SelectFrom &, const Scheme &, const query::Query &, const Vector<FullTextData> & = Vector<FullTextData>());
+	void writeOrdering(SqlQuery::SelectFrom &, const Scheme &, const query::Query &);
 
 	SelectFrom writeSelectFrom(GenericQuery &q, const QueryList::Item &item, bool idOnly, const StringView &scheme, const StringView &field);
+	SelectFrom writeSelectFrom(Select &sel, Worker &, const query::Query &);
 
 	void writeQueryReqest(SqlQuery::SelectFrom &s, const QueryList::Item &item);
 	void writeQueryListItem(GenericQuery &sq, const QueryList &list, size_t idx, bool idOnly, const storage::Field *field = nullptr, bool forSubquery = false);
@@ -135,6 +136,10 @@ public:
 
 	const StringStream &getQuery() const;
 	QueryInterface * getInterface() const;
+
+protected:
+	void writeFullTextRank(Select &sel, const Scheme &scheme, const query::Query &q);
+	SelectFrom writeFullTextFrom(Select &sel, const Scheme &scheme, const query::Query &q);
 };
 
 NS_SA_EXT_END(sql)

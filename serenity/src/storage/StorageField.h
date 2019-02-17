@@ -448,6 +448,8 @@ struct FieldFullTextView : Field::Slot {
 
 	virtual bool transformValue(const Scheme &, const data::Value &, data::Value &, bool isCreate) const override { return false; }
 
+	Vector<FullTextData> parseQuery(const data::Value &) const;
+
 	Vector<String> requires;
 	FullTextViewFn viewFn;
 	FullTextQueryFn queryFn;
