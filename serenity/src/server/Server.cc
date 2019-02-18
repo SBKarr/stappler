@@ -576,8 +576,12 @@ void Server::addHanderSource(const StringView &str) {
 				++ params;
 				v = params;
 
-				if (!n.empty() && ! v.empty()) {
-					data.setString(v.str(), n.str());
+				if (!n.empty()) {
+					if (v.empty()) {
+						data.setBool(true, n.str());
+					} else {
+						data.setString(v.str(), n.str());
+					}
 				}
 			}
 		}

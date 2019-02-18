@@ -47,6 +47,12 @@ bool Scheme::initSchemes(Server &serv, const Map<String, const Scheme *> &scheme
 					}
 				}
 			}
+			if (fit.second.getSlot()->autoField.defaultFn) {
+				auto &autoF = fit.second.getSlot()->autoField;
+				for (auto &a_it : autoF.schemes) {
+					const_cast<Scheme &>(a_it.scheme).addAutoField(it.second, &fit.second, a_it);
+				}
+			}
 			if (fit.second.hasFlag(Flags::Composed) && (fit.second.getType() == Type::Object || fit.second.getType() == Type::Set)) {
 				auto slot = static_cast<const FieldObject *>(fit.second.getSlot());
 				if (slot->scheme) {
@@ -340,7 +346,7 @@ data::Value Scheme::createWithWorker(Worker &w, const data::Value &data, bool is
 		if (auto ret = t.create(w, changeSet)) {
 			touchParents(t, ret);
 			for (auto &it : views) {
-				updateView(t, ret, it);
+				updateView(t, ret, it, Vector<uint64_t>());
 			}
 			retVal = move(ret);
 			return true;
@@ -459,6 +465,8 @@ void Scheme::mergeValues(const Field &f, const data::Value &obj, data::Value &or
 					}
 				}
 			}
+		} else if (newVal.isArray() && f.getTransform() == Transform::Array) {
+			original.setValue(std::move(newVal));
 		}
 	} else {
 		original.setValue(std::move(newVal));
@@ -523,7 +531,9 @@ void Scheme::extractParents(Map<int64_t, const Scheme *> &parentsToUpdate, const
 }
 
 data::Value Scheme::updateObject(Worker &w, data::Value && obj, data::Value &changeSet) const {
-	Vector<const ViewScheme *> viewsToUpdate; viewsToUpdate.reserve(views.size());
+	Set<const Field *> fieldsToUpdate;
+
+	Vector<Pair<const ViewScheme *, Vector<uint64_t>>> viewsToUpdate; viewsToUpdate.reserve(views.size());
 	Map<int64_t, const Scheme *> parentsToUpdate;
 
 	data::Value replacements;
@@ -533,37 +543,53 @@ data::Value Scheme::updateObject(Worker &w, data::Value && obj, data::Value &cha
 		extractParents(parentsToUpdate, w.transaction(), changeSet, true);
 	}
 
-	// apply changeset
-	Vector<String> updatedFields;
+	// find what fields and views should be updated
 	for (auto &it : changeSet.asDict()) {
 		auto &fieldName = it.first;
 		if (auto f = getField(fieldName)) {
 			auto slot = f->getSlot();
 			auto &val = obj.getValue(it.first);
 			if (!slot->replaceFilterFn || slot->replaceFilterFn(*this, obj, val, it.second)) {
-				if (!it.second.isNull()) {
-					if (val) {
-						mergeValues(*f, obj, val, it.second);
-					} else {
-						obj.setValue(move(it.second), it.first);
-					}
-				} else {
-					obj.erase(it.first);
-				}
-				updatedFields.emplace_back(it.first);
-			}
+				fieldsToUpdate.emplace(f);
 
-			if (forceInclude.find(f) != forceInclude.end()) {
-				for (auto &it : views) {
-					if (it->fields.find(f) != it->fields.end()) {
-						auto lb = std::lower_bound(viewsToUpdate.begin(), viewsToUpdate.end(), it);
-						if (lb == viewsToUpdate.end() && *lb != it) {
-							viewsToUpdate.emplace(lb, it);
+				if (forceInclude.find(f) != forceInclude.end()) {
+					for (auto &it : views) {
+						if (it->fields.find(f) != it->fields.end()) {
+							auto lb = std::lower_bound(viewsToUpdate.begin(), viewsToUpdate.end(), it,
+									[] (Pair<const ViewScheme *, Vector<uint64_t>> &l, const ViewScheme *r) -> bool {
+								return l.first < r;
+							});
+							if (lb == viewsToUpdate.end() && lb->first != it) {
+								viewsToUpdate.emplace(lb, pair(it, Vector<uint64_t>()));
+							}
 						}
 					}
 				}
 			}
 		}
+	}
+
+	// acquire current views state
+	for (auto &it : viewsToUpdate) {
+		it.second = getLinkageForView(obj, *it.first);
+	}
+
+	// apply changeset
+	Vector<String> updatedFields;
+	for (auto &it : fieldsToUpdate) {
+		auto &v = changeSet.getValue(it->getName());
+		auto &val = obj.getValue(it->getName());
+
+		if (!v.isNull()) {
+			if (val) {
+				mergeValues(*it, obj, val, v);
+			} else {
+				obj.setValue(move(v), it->getName().str());
+			}
+		} else {
+			obj.erase(it->getName());
+		}
+		updatedFields.emplace_back(it->getName().str());
 	}
 
 	processFullTextFields(obj, &updatedFields);
@@ -577,7 +603,7 @@ data::Value Scheme::updateObject(Worker &w, data::Value && obj, data::Value &cha
 					return true;
 				});
 				for (auto &it : viewsToUpdate) {
-					updateView(t, obj, it);
+					updateView(t, obj, it.first, it.second);
 				}
 				return true;
 			}
@@ -1189,53 +1215,66 @@ void Scheme::initScheme() {
 	}
 }
 
-void Scheme::addView(const Scheme *s, const Field *f) {
-	views.emplace_back(new ViewScheme{s, f});
+template <typename Source>
+void Scheme::addViewScheme(const Scheme *s, const Field *f, const Source &a) {
+	views.emplace_back(new ViewScheme{s, f, a});
 	auto viewScheme = views.back();
-	if (auto view = static_cast<const FieldView *>(f->getSlot())) {
-		bool linked = false;
-		for (auto &it : view->requires) {
-			auto fit = fields.find(it);
-			if (fit != fields.end()) {
-				if (fit->second.getType() == Type::Object && !view->linkage && !linked) {
-					// try to autolink from required field
-					auto nextSlot = static_cast<const FieldObject *>(fit->second.getSlot());
-					if (nextSlot->scheme == s) {
-						viewScheme->autoLink = &fit->second;
-						linked = true;
-					}
-				}
-				viewScheme->fields.emplace(&fit->second);
-				forceInclude.emplace(&fit->second);
-			} else {
-				messages::error("Scheme", "Field for view not foumd", data::Value{
-					pair("view", data::Value(toString(s->getName(), ".", f->getName()))),
-					pair("field", data::Value(toString(getName(), ".", it)))
-				});
-			}
-		}
-		if (!view->linkage && !linked) {
-			// try to autolink from other fields
-			for (auto &it : fields) {
-				auto &field = it.second;
-				if (field.getType() == Type::Object) {
-					auto nextSlot = static_cast<const FieldObject *>(field.getSlot());
-					if (nextSlot->scheme == s) {
-						viewScheme->autoLink = &field;
-						viewScheme->fields.emplace(&field);
-						forceInclude.emplace(&field);
-						linked = true;
-						break;
-					}
+
+	bool linked = false;
+	for (auto &it : a.requires) {
+		auto fit = fields.find(it);
+		if (fit != fields.end()) {
+			if (fit->second.getType() == Type::Object && !a.linkage && !linked) {
+				// try to autolink from required field
+				auto nextSlot = static_cast<const FieldObject *>(fit->second.getSlot());
+				if (nextSlot->scheme == s) {
+					viewScheme->autoLink = &fit->second;
+					linked = true;
 				}
 			}
-		}
-		if (!linked) {
-			messages::error("Scheme", "Field to autolink view field", data::Value{
+			viewScheme->fields.emplace(&fit->second);
+			forceInclude.emplace(&fit->second);
+		} else {
+			messages::error("Scheme", "Field for view not foumd", data::Value{
 				pair("view", data::Value(toString(s->getName(), ".", f->getName()))),
+				pair("field", data::Value(toString(getName(), ".", it)))
 			});
 		}
 	}
+	if (!a.linkage && !linked) {
+		// try to autolink from other fields
+		for (auto &it : fields) {
+			auto &field = it.second;
+			if (field.getType() == Type::Object) {
+				auto nextSlot = static_cast<const FieldObject *>(field.getSlot());
+				if (nextSlot->scheme == s) {
+					viewScheme->autoLink = &field;
+					viewScheme->fields.emplace(&field);
+					forceInclude.emplace(&field);
+					linked = true;
+					break;
+				}
+			}
+		}
+	}
+	if (a.linkage) {
+		linked = true;
+	}
+	if (!linked) {
+		messages::error("Scheme", "Failed to autolink view field", data::Value{
+			pair("view", data::Value(toString(s->getName(), ".", f->getName()))),
+		});
+	}
+}
+
+void Scheme::addView(const Scheme *s, const Field *f) {
+	if (auto view = static_cast<const FieldView *>(f->getSlot())) {
+		addViewScheme(s, f, *view);
+	}
+}
+
+void Scheme::addAutoField(const Scheme *s, const Field *f, const AutoFieldScheme &a) {
+	addViewScheme(s, f, a);
 }
 
 void Scheme::addParent(const Scheme *s, const Field *f) {
@@ -1252,88 +1291,73 @@ void Scheme::addParent(const Scheme *s, const Field *f) {
 	}
 }
 
-void Scheme::updateView(const Transaction &t, const data::Value & obj, const ViewScheme *scheme) const {
+Vector<uint64_t> Scheme::getLinkageForView(const data::Value &obj, const ViewScheme &s) const {
+	Vector<uint64_t> ids; ids.reserve(1);
+	if (s.autoLink) {
+		if (auto id = obj.getInteger(s.autoLink->getName())) {
+			ids.push_back(id);
+		}
+	} else if (s.autoField) {
+		if (s.autoField->linkage) {
+			ids = s.autoField->linkage(*s.scheme, *this, obj);
+		} else if (&s.autoField->scheme == this) {
+			ids.push_back(obj.getInteger("__oid"));
+		}
+	} else {
+		auto view = s.viewField->getSlot<FieldView>();
+		if (!view->viewFn) {
+			return Vector<uint64_t>();
+		}
+
+		if (view->linkage) {
+			ids = view->linkage(*s.scheme, *this, obj);
+		}
+	}
+	return ids;
+}
+
+void Scheme::updateView(const Transaction &t, const data::Value & obj, const ViewScheme *scheme, const Vector<uint64_t> &orig) const {
 	auto view = static_cast<const FieldView *>(scheme->viewField->getSlot());
 	if (!view->viewFn) {
 		return;
 	}
 
-	t.performAsSystem([&] () -> bool {
-		auto objId = obj.getInteger("__oid");
-		t.removeFromView(*scheme->scheme, *view, objId, obj);
+	auto objId = obj.getInteger("__oid");
 
-		Vector<uint64_t> ids; ids.reserve(1);
-		if (view->linkage) {
-			ids = view->linkage(*scheme->scheme, *this, obj);
-		} else if (scheme->autoLink) {
-			if (auto id = obj.getInteger(scheme->autoLink->getName())) {
-				ids.push_back(id);
+	// list of objects, that view fields should contain this object
+	Vector<uint64_t> ids = getLinkageForView(obj, *scheme);
+
+	if (scheme->autoField) {
+		for (auto &it : orig) {
+			auto ids_it = std::find(ids.begin(), ids.begin(), it);
+			if (ids_it != ids.end()) {
+				ids.erase(ids_it);
 			}
+			t.scheduleAutoField(*scheme->scheme, *scheme->viewField, it);
 		}
 
-		Vector<data::Value> val = view->viewFn(*this, obj);
-		for (auto &it : val) {
-			if (it.isBool() && it.asBool()) {
-				it = data::Value(data::Value::Type::DICTIONARY);
-			}
+		for (auto &it : ids) {
+			t.scheduleAutoField(*scheme->scheme, *scheme->viewField, it);
+		}
+	} else {
+		t.performAsSystem([&] () -> bool {
+			t.removeFromView(*scheme->scheme, *view, objId, obj);
 
-			if (it.isDictionary()) {
-				// drop not existed fields
-				auto &dict = it.asDict();
-				auto d_it = dict.begin();
-				while (d_it != dict.end()) {
-					auto f_it = view->fields.find(d_it->first);
-					if (f_it == view->fields.end()) {
-						d_it = dict.erase(d_it);
-					} else {
-						d_it ++;
-					}
-				}
-
-				// write defaults
-				for (auto &f_it : view->fields) {
-					auto &field = f_it.second;
-					if (field.hasFlag(Flags::AutoMTime) || field.hasFlag(Flags::AutoCTime)) {
-						it.setInteger(Time::now().toMicroseconds(), f_it.first);
-					} else if (field.hasDefault() && !it.hasValue(f_it.first)) {
-						if (auto def = field.getDefault(it)) {
-							it.setValue(move(def), f_it.first);
+			if (!ids.empty()) {
+				if (view->viewFn(*this, obj)) {
+					for (auto &id : ids) {
+						data::Value it;
+						it.setInteger(objId, toString(getName(), "_id"));
+						if (scheme->scheme) {
+							it.setInteger(id, toString(scheme->scheme->getName(), "_id"));
 						}
+						t.addToView(*scheme->scheme, *view, id, obj, it);
 					}
-				}
-
-				// transform
-				d_it = dict.begin();
-				while (d_it != dict.end()) {
-					auto &field = view->fields.at(d_it->first);
-					if (d_it->second.isNull() || !field.isSimpleLayout()) {
-						d_it ++;
-					} else if (!field.transform(*this, it, d_it->second)) {
-						d_it = dict.erase(d_it);
-					} else {
-						d_it ++;
-					}
-				}
-
-				it.setInteger(objId, toString(getName(), "_id"));
-			} else {
-				it = nullptr;
-			}
-		}
-
-		for (auto &id : ids) {
-			for (auto &it : val) {
-				if (it) {
-					if (scheme->scheme) {
-						it.setInteger(id, toString(scheme->scheme->getName(), "_id"));
-					}
-
-					t.addToView(*scheme->scheme, *view, id, obj, it);
 				}
 			}
-		}
-		return true;
-	});
+			return true;
+		});
+	}
 }
 
 NS_SA_EXT_END(storage)

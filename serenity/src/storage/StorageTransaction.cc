@@ -94,6 +94,9 @@ Transaction Transaction::acquire(const Adapter &adapter) {
 }
 
 Transaction Transaction::acquire() {
+	if (auto t = acquireIfExists()) {
+		return t;
+	}
 	if (auto a = Adapter::FromContext()) {
 		return acquire(a);
 	}
@@ -559,6 +562,10 @@ data::Value Transaction::performQueryList(const QueryList &list, size_t count, b
 	}
 
 	return val;
+}
+
+void Transaction::scheduleAutoField(const Scheme &scheme, const Field &field, uint64_t id) const {
+	_data->adapter.scheduleAutoField(scheme, field, id);
 }
 
 bool Transaction::beginTransaction() const {

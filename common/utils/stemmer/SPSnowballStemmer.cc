@@ -483,7 +483,7 @@ Stemmer::String Stemmer::makeHtmlHeadlines(const StringView &origin, const Vecto
 	}, queryList, lang);
 }
 
-String Stemmer::makeProducerHeadlines(const Callback<void(const Function<bool(const StringView &frag, const StringView &tag)>)> &cb,
+Stemmer::String Stemmer::makeProducerHeadlines(const Callback<void(const Function<bool(const StringView &frag, const StringView &tag)>)> &cb,
 		const Vector<String> &queryList, size_t count, Language lang) {
 
 	struct WordIndex {

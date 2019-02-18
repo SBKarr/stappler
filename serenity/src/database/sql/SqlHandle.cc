@@ -289,16 +289,9 @@ static void Handle_mergeViews(data::Value &objs, data::Value &vals) {
 
 static void Handle_writeSelectViewDataQuery(SqlQuery &q, const Scheme &s, uint64_t oid, const Field &f, const data::Value &data) {
 	auto fs = f.getForeignScheme();
-	auto view = static_cast<const FieldView *>(f.getSlot());
 
 	auto fieldName = toString(fs->getName(), "_id");
 	auto sel = q.select(SqlQuery::Field(fieldName).as("__oid")).field("__vid");
-
-	for (auto &it : view->fields) {
-		if (it.second.isSimpleLayout()) {
-			sel.field(SqlQuery::Field(it.first));
-		}
-	}
 
 	sel.from(toString(s.getName(), "_f_", f.getName(), "_view"))
 		.where(toString(s.getName(), "_id"), Comparation::Equal, oid)

@@ -27,6 +27,9 @@ THE SOFTWARE.
 
 NS_SA_EXT_BEGIN(storage)
 
+AutoFieldScheme::AutoFieldScheme(const Scheme &s, Vector<String> &&vec, ViewLinkageFn &&fn)
+: scheme(s), requires(move(vec)), linkage(move(fn)) { }
+
 bool Field::Slot::isProtected() const {
 	auto req = Request(apr::pool::request());
 	return hasFlag(Flags::Protected) || (hasFlag(Flags::Admin) && (!req || !req.isAdministrative()));
@@ -241,13 +244,6 @@ data::Value Field::getTypeDesc() const {
 				ret.setString(v->scheme->getName(), "scheme");
 			}
 
-			if (!v->fields.empty()) {
-				auto &f = ret.emplace("fields");
-				for (auto &it : v->fields) {
-					f.setValue(it.second.getTypeDesc(), it.first);
-				}
-			}
-
 			if (!v->requires.empty()) {
 				auto &f = ret.emplace("requires");
 				for (auto &it : v->requires) {
@@ -439,16 +435,18 @@ void FieldText::hash(apr::ostringstream &stream, ValidationLevel l) const {
 
 
 bool FieldPassword::transformValue(const Scheme &scheme, const data::Value &, data::Value &val, bool isCreate) const {
-	if (!val.isString()) {
+	if (!val.isString() && !val.isBytes()) {
 		return false;
 	}
 
-	auto &str = val.getString();
-	if (str.size() < minLength || str.size() > maxLength) {
-		return false;
+	if (val.isString()) {
+		auto &str = val.getString();
+		if (str.size() < minLength || str.size() > maxLength) {
+			return false;
+		}
+		val.setBytes(valid::makePassword(str, salt));
 	}
 
-	val.setBytes(valid::makePassword(str, salt));
 	return true;
 }
 

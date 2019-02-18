@@ -34,8 +34,10 @@ public:
 		const Field *viewField = nullptr;
 		Set<const Field *> fields;
 		const Field *autoLink = nullptr;
+		const AutoFieldScheme *autoField = nullptr;
 
-		ViewScheme(const Scheme *s, const Field *v) : scheme(s), viewField(v) { }
+		ViewScheme(const Scheme *s, const Field *v, const FieldView &) : scheme(s), viewField(v) { }
+		ViewScheme(const Scheme *s, const Field *v, const AutoFieldScheme &af) : scheme(s), viewField(v), autoField(&af) { }
 	};
 
 	struct ParentScheme : AllocPool {
@@ -162,6 +164,7 @@ protected:
 	Set<const Field *> getFieldSet(const Field &, std::initializer_list<StringView>) const;
 
 	void addView(const Scheme *, const Field *);
+	void addAutoField(const Scheme *, const Field *f, const AutoFieldScheme &);
 	void addParent(const Scheme *, const Field *);
 
 	data::Value createFilePatch(const Transaction &, const data::Value &val) const;
@@ -211,8 +214,15 @@ protected:
 	bool validateHint(const String &alias, const data::Value &);
 	bool validateHint(const data::Value &);
 
-	void updateView(const Transaction &, const data::Value &, const ViewScheme *) const;
+	Vector<uint64_t> getLinkageForView(const data::Value &, const ViewScheme &) const;
 
+	void updateView(const Transaction &, const data::Value &, const ViewScheme *, const Vector<uint64_t> &) const;
+
+private:
+	template <typename Source>
+	void addViewScheme(const Scheme *s, const Field *f, const Source &source);
+
+protected:
 	Map<String, Field> fields;
 	String name;
 

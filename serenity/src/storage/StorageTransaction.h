@@ -134,6 +134,8 @@ public: // adapter interface
 	Vector<int64_t> performQueryListForIds(const QueryList &, size_t count = maxOf<size_t>());
 	data::Value performQueryList(const QueryList &, size_t count = maxOf<size_t>(), bool forUpdate = false, const Field * = nullptr);
 
+	void scheduleAutoField(const Scheme &, const Field &, uint64_t id) const;
+
 protected:
 	bool beginTransaction() const;
 	bool endTransaction() const;

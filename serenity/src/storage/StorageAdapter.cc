@@ -28,6 +28,8 @@ THE SOFTWARE.
 #include "WebSocket.h"
 #include "ResourceTemplates.h"
 
+#include "Task.h"
+
 NS_SA_EXT_BEGIN(storage)
 
 Adapter Adapter::FromContext() {
@@ -134,6 +136,47 @@ size_t Adapter::count(Worker &w, const Query &q) const {
 	return _interface->count(w, q);
 }
 
+void Adapter::scheduleAutoField(const Scheme &scheme, const Field &field, uint64_t id) {
+	struct Adapter_TaskData : AllocPool {
+		const Scheme *scheme = nullptr;
+		const Field *field = nullptr;
+		Set<uint64_t> objects;
+	};
+
+	auto serv = apr::pool::server();
+
+	if (!id || !serv) {
+		return;
+	}
+
+	auto p = memory::pool::acquire();
+	if (auto obj = apr::pool::get<Adapter_TaskData>(p, toString(scheme.getName(), "_f_", field.getName()))) {
+		obj->objects.emplace(id);
+	} else {
+		auto d = new (p) Adapter_TaskData;
+		d->scheme = &scheme;
+		d->field = &field;
+		d->objects.emplace(id);
+		apr::pool::store(p, d, "Essence.SpineTaskData", [d, this, serv] {
+			Task::perform(Server(serv), [&] (Task &task) {
+				auto vec = new (task.pool()) Vector<uint64_t>();
+				for (auto &it : d->objects) {
+					vec->push_back(it);
+				}
+				task.addExecuteFn([this, vec, scheme = d->scheme, field = d->field] (const Task &task) -> bool {
+					task.performWithStorage([&] (const Transaction &t) {
+						t.performAsSystem([&] () -> bool {
+							runAutoFields(t, *vec, *scheme, *field);
+							return true;
+						});
+					});
+					return true;
+				});
+			});
+		});
+	}
+}
+
 data::Value Adapter::field(Action a, Worker &w, uint64_t oid, const Field &f, data::Value &&data) const {
 	return _interface->field(a, w, oid, f, move(data));
 }
@@ -171,6 +214,32 @@ bool Adapter::isInTransaction() const {
 
 TransactionStatus Adapter::getTransactionStatus() const {
 	return _interface->getTransactionStatus();
+}
+
+void Adapter::runAutoFields(const Transaction &t, const Vector<uint64_t> &vec, const Scheme &scheme, const Field &field) {
+	auto &defs = field.getSlot()->autoField;
+	if (defs.defaultFn) {
+		auto includeSelf = (std::find(defs.requires.begin(), defs.requires.end(), field.getName()) == defs.requires.end());
+		for (auto &id : vec) {
+			Query q; q.select(id);
+			for (auto &req : defs.requires) {
+				q.include(req);
+			}
+			if (includeSelf) {
+				q.include(field.getName());
+			}
+
+			auto objs = scheme.select(t, q);
+			if (auto obj = objs.getValue(0)) {
+				auto newValue = defs.defaultFn(obj);
+				if (newValue != obj.getValue(field.getName())) {
+					data::Value patch;
+					patch.setValue(move(newValue), field.getName().str());
+					scheme.update(t, obj, patch, UpdateFlags::Protected | UpdateFlags::NoReturn);
+				}
+			}
+		}
+	}
 }
 
 NS_SA_EXT_END(storage)

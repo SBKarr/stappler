@@ -254,7 +254,7 @@ data::Value Result::decode(const Field &field) const {
 		} else if (field.getType() == Type::View) {
 			auto v = static_cast<const FieldView *>(field.getSlot());
 			for (auto it : *this) {
-				ret.addValue(it.toData(*v->scheme, v->fields));
+				ret.addValue(it.toData(*v->scheme, Map<String, Field>()));
 			}
 		} else {
 			for (auto it : *this) {

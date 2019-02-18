@@ -92,14 +92,14 @@ int RequestHandler::onRequestRecieved(Request & rctx, String &&originPath, Strin
 			auto c_methods = getCorsAllowMethods(rctx);
 			if (!c_methods.empty()) {
 				rctx.getResponseHeaders().emplace("Access-Control-Allow-Methods", c_methods);
-			} else {
+			} else if (!method.empty()) {
 				rctx.getResponseHeaders().emplace("Access-Control-Allow-Methods", method);
 			}
 
 			auto c_headers = getCorsAllowHeaders(rctx);
 			if (!c_headers.empty()) {
 				rctx.getResponseHeaders().emplace("Access-Control-Allow-Headers", c_headers);
-			} else {
+			} else if (!headers.empty()) {
 				rctx.getResponseHeaders().emplace("Access-Control-Allow-Headers", headers);
 			}
 

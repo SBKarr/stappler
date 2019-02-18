@@ -56,7 +56,7 @@ static uint32_t checkIndent(uint32_t &indent, StringView &str) {
 }
 
 using TagWordFilter = StringView::Compose<StringView::CharGroup<CharGroupId::Alphanumeric>, StringView::Chars<'-', '_'>>;
-using AttrWordFilter = StringView::Compose<StringView::CharGroup<CharGroupId::Alphanumeric>, StringView::Chars<'-', '_', ':', '(', ')'>>;
+using AttrWordFilter = StringView::Compose<StringView::CharGroup<CharGroupId::Alphanumeric>, StringView::Chars<'@', '-', '_', ':', '(', ')', '.'>>;
 using SpacingFilter = StringView::Chars<' ', '\t'>;
 using NewLineFilter = StringView::Chars<'\n', '\r'>;
 
@@ -341,7 +341,7 @@ bool Lexer::readTagInfo(Token *data, StringView &r, bool interpolated) const {
 					return true;
 				}
 			}
-			onError(r, "Invalid expression in output block");
+			onError(r, "Invalid expression in tag attribute output block");
 			return false; // invalid expression
 		}
 	}
@@ -603,8 +603,8 @@ Token *Lexer::readCommonLine(const StringView &line, StringView &r) {
 			auto tmp = r;
 			if (auto expr = Expression::parse(r, Expression::Options::getDefaultInline())) {
 				r.skipChars<SpacingFilter>();
-				if (!r.is<NewLineFilter>()) {
-					onError(r, "Invalid expression in output block");
+				if (!r.is<NewLineFilter>() && !r.empty()) {
+					onError(r, "Invalid expression after output expression block");
 					return nullptr;
 				} else {
 					exprToken->data = StringView(tmp, tmp.size() - r.size());
@@ -654,8 +654,8 @@ Token *Lexer::readCommonLine(const StringView &line, StringView &r) {
 			if (auto expr = Expression::parse(r, Expression::Options::getDefaultInline())) {
 				auto exprToken = new Token{Token::MixinArgs, tmp};
 				r.skipChars<SpacingFilter>();
-				if (!r.is<NewLineFilter>()) {
-					onError(r, "Invalid expression in output block");
+				if (!r.is<NewLineFilter>() && !r.empty()) {
+					onError(r, "Invalid expression after mixin call block");
 					return nullptr;
 				} else {
 					exprToken->data = StringView(tmp, tmp.size() - r.size());
@@ -663,7 +663,7 @@ Token *Lexer::readCommonLine(const StringView &line, StringView &r) {
 					retData->addChild(exprToken);
 				}
 			} else {
-				onError(r, "Invalid expression in output block");
+				onError(r, "Invalid expression in mixin call block");
 				return nullptr;
 			}
 		}

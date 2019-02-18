@@ -487,8 +487,7 @@ bool SqlHandle::addToView(const FieldView &view, const Scheme *scheme, uint64_t 
 
 			auto val = ins.values();
 			for (auto &it : data.asDict()) {
-				auto field_it = view.fields.find(it.first);
-				val.value(Binder::DataField{it.second, (field_it != view.fields.end() && field_it->second.isDataLayout()) });
+				val.value(Binder::DataField{it.second, false});
 			}
 
 			val.finalize();

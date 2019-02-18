@@ -167,18 +167,49 @@ enum class RemovePolicy {
 	Null, // set object to null
 };
 
+// old-fashion filter fn (use WriteFilterFn instead)
 using FilterFn = Function<bool(const Scheme &, data::Value &)>;
+
+// function to deduce default value from object data
 using DefaultFn = Function<data::Value(const data::Value &)>;
 
+// function to modify out value of object's field to return it to users
 using ReadFilterFn = Function<bool(const Scheme &, const data::Value &obj, data::Value &value)>;
+
+// function to modify input value of object's field to write it into storage
 using WriteFilterFn = Function<bool(const Scheme &, const data::Value &patch, data::Value &value, bool isCreate)>;
+
+// function to replace previous value of field with another
 using ReplaceFilterFn = Function<bool(const Scheme &, const data::Value &obj, const data::Value &oldValue, data::Value &newValue)>;
 
+// function to deduce root object ids list from object of external scheme
+// Used by:
+// - View field: to deduce id of root object id from external objects
+// - AutoField: to deduce id of object with auto field from external objects
 using ViewLinkageFn = Function<Vector<uint64_t>(const Scheme &targetScheme, const Scheme &objScheme, const data::Value &obj)>;
-using ViewFn = Function<Vector<data::Value>(const Scheme &objScheme, const data::Value &obj)>;
 
+// function to deduce view data from object of external scheme
+using ViewFn = Function<bool(const Scheme &objScheme, const data::Value &obj)>;
+
+// function to extract fulltext search data from object
 using FullTextViewFn = Function<Vector<FullTextData>(const Scheme &objScheme, const data::Value &obj)>;
+
+// function to prepare fulltext query from input string
 using FullTextQueryFn = Function<Vector<FullTextData>(const data::Value &searchData)>;
+
+struct AutoFieldScheme : AllocPool {
+	const Scheme &scheme;
+	Vector<String> requires;
+	ViewLinkageFn linkage;
+
+	AutoFieldScheme(const Scheme &, Vector<String> && = Vector<String>(), ViewLinkageFn && = nullptr);
+};
+
+struct AutoFieldDef {
+	Vector<AutoFieldScheme> schemes;
+	DefaultFn defaultFn;
+	Vector<String> requires;
+};
 
 class Field : public AllocPool {
 public:
@@ -253,6 +284,8 @@ public:
 		ReadFilterFn readFilterFn;
 		WriteFilterFn writeFilterFn;
 		ReplaceFilterFn replaceFilterFn;
+
+		AutoFieldDef autoField;
 	};
 
 	StringView getName() const { return slot->getName(); }
@@ -430,11 +463,9 @@ struct FieldView : Field::Slot {
 	virtual bool transformValue(const Scheme &, const data::Value &, data::Value &, bool isCreate) const override { return false; }
 
 	const Scheme *scheme = nullptr;
-	Map<String, Field> fields;
 	Vector<String> requires;
 	ViewLinkageFn linkage;
 	ViewFn viewFn;
-
 	bool delta = false;
 };
 
@@ -591,6 +622,12 @@ template <typename F> struct FieldOption<F, Vector<Field>> {
 		for (auto &it : s) {
 			f.fields.emplace(it.getName().str(), it);
 		}
+	}
+};
+
+template <typename F> struct FieldOption<F, AutoFieldDef> {
+	static inline void assign(F & f, AutoFieldDef &&def) {
+		f.autoField = move(def);
 	}
 };
 

@@ -80,6 +80,8 @@ protected:
 
 	size_t count(Worker &, const Query &) const;
 
+	void scheduleAutoField(const Scheme &, const Field &, uint64_t id);
+
 protected:
 	data::Value field(Action, Worker &, uint64_t oid, const Field &, data::Value && = data::Value()) const;
 	data::Value field(Action, Worker &, const data::Value &, const Field &, data::Value && = data::Value()) const;
@@ -93,6 +95,8 @@ protected:
 	void cancelTransaction() const;
 	bool isInTransaction() const;
 	TransactionStatus getTransactionStatus() const;
+
+	void runAutoFields(const Transaction &t, const Vector<uint64_t> &vec, const Scheme &, const Field &);
 
 protected:
 	Interface *_interface;

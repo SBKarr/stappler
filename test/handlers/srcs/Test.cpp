@@ -94,12 +94,8 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 		Field::Text("alias", storage::Transform::Alias),
 		Field::Integer("mtime", storage::Flags::AutoMTime | storage::Flags::Indexed),
 		Field::Integer("index", storage::Flags::Indexed),
-		Field::View("refs", _refs, Vector<Field>{
-			Field::Text("string"),
-		}, storage::ViewFn([this] (const Scheme &objScheme, const data::Value &obj) -> Vector<data::Value> {
-			return Vector<data::Value>{data::Value({
-				pair("string", data::Value(obj.getString("text")))
-			})};
+		Field::View("refs", _refs, storage::ViewFn([this] (const Scheme &objScheme, const data::Value &obj) -> bool {
+			return true;
 		}), storage::FieldView::Delta),
 
 		Field::Set("images", _images, Flags::Composed),

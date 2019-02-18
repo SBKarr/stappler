@@ -78,7 +78,14 @@ input(type='checkbox' checked=false)
 input(type='checkbox' checked=true && 'checked')
 )";
 
-const auto s_attrText3 = R"(
+const auto s_attrText3 = R"Test(
+
+- var id = 12
+a(href="/lecture/"+id @click.stop.prevent="toggleShowChapter(chapter)") link1
+
+a(@click.stop.prevent="toggleShowChapter(chapter)" :href="getLectureLink(lecture)") link2
+
+a(:href="getLectureLink(lecture)")
 div#foo(data-bar="foo")&attributes({'data-foo': 'bar'})
 -
   var b = {
@@ -90,7 +97,8 @@ div#foo(data-bar="foo")&attributes({'data-foo': 'bar'})
   }
 
 #bar(data-bar="foo")&attributes(b)
-)";
+
+)Test";
 
 const auto s_outputText = R"(
 html
@@ -326,7 +334,7 @@ ul
 
 +list
 +list
-)";
++pet('pig'))";
 
 const auto s_tagMixinListText = R"(
 mixin updateForm(value)
@@ -368,22 +376,6 @@ mixin recursion(id)
 +recursion(test)
 )";
 
-/*
- * 	- var node = getSpineNode(value)
-	if node[4]
-		li Page
-	else
-		- var sect = getSectionData(value)
-		li
-			span= id
-			span= sect.title + " (" + sect.__oid + ": " + sect.name + ")"
-			if node[6]
-				span= node[6]
-				each n in node[6]
-					+sectionListItem(n)
- *
- */
-
 int parseOptionSwitch(data::Value &ret, char c, const char *str) {
 	if (c == 'v') {
 		ret.setBool(true, "verbose");
@@ -414,7 +406,7 @@ int _spMain(argc, argv) {
 
 	//auto &args = opts.getValue("args");
 
-	pug::Template * tpl = pug::Template::read(s_recursionTest, pug::Template::Options::getPretty());
+	pug::Template * tpl = pug::Template::read(s_tagMixinText, pug::Template::Options::getPretty());
 
 	using Value = pug::Value;
 

@@ -214,7 +214,10 @@ Rc<FileRef> Cache::acquireTemplate(const StringView &path, bool readOnly) {
 
 Rc<FileRef> Cache::openTemplate(const StringView &path) {
 	memory::pool::push(_pool);
-	auto ret = FileRef::read(FilePath(path), _opts);
+	auto ret = FileRef::read(FilePath(path), _opts, [&] (const StringView &err) {
+		std::cout << path << ":\n";
+		std::cout << err << "\n";
+	});
 	memory::pool::pop();
 	if (!ret) {
 		onError(toString("File not found: ", path));

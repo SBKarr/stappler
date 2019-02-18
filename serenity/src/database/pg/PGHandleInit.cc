@@ -597,35 +597,6 @@ Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, const stor
 				table.cols.emplace(source + "_id", ColRec(ColRec::Type::Integer, true));
 				table.cols.emplace(toString(target, "_id"), ColRec(ColRec::Type::Integer, true));
 
-				for (auto &it : slot->fields) {
-					auto type = it.second.getType();
-					switch (type) {
-					case storage::Type::Float:
-						table.cols.emplace(it.first, ColRec(ColRec::Type::Float));
-						break;
-					case storage::Type::Boolean:
-						table.cols.emplace(it.first, ColRec(ColRec::Type::Boolean));
-						break;
-					case storage::Type::Text:
-						table.cols.emplace(it.first, ColRec(ColRec::Type::Text));
-						break;
-					case storage::Type::Data:
-					case storage::Type::Bytes:
-					case storage::Type::Extra:
-						table.cols.emplace(it.first, ColRec(ColRec::Type::Binary));
-						break;
-					case storage::Type::Integer:
-						table.cols.emplace(it.first, ColRec(ColRec::Type::Integer));
-						break;
-					default:
-						break;
-					}
-
-					if (it.second.isIndexed()) {
-						table.indexes.emplace(name + "_idx_" + it.first, it.first);
-					}
-				}
-
 				table.constraints.emplace(name + "_ref_" + source, ConstraintRec(
 						ConstraintRec::Reference, source + "_id", source, RemovePolicy::Cascade));
 				table.constraints.emplace(name + "_ref_" + slot->getName(), ConstraintRec(
