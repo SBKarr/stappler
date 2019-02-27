@@ -932,6 +932,11 @@ void Scheme::processFullTextFields(data::Value &patch, Vector<String> *updateFie
 		if (it.second.getType() == Type::FullTextView) {
 			auto slot = it.second.getSlot<FieldFullTextView>();
 			for (auto &p_it : patch.asDict()) {
+				if (updateFields) {
+					if (std::find(updateFields->begin(), updateFields->end(), p_it.first) == updateFields->end()) {
+						continue;
+					}
+				}
 				if (std::find(slot->requires.begin(), slot->requires.end(), p_it.first) != slot->requires.end()) {
 					if (std::find(vec.begin(), vec.end(), slot) == vec.end()) {
 						vec.emplace_back(slot);

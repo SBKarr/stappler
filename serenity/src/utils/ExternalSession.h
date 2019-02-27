@@ -103,6 +103,7 @@ public:
 	void cancel();
 
 	uint64_t getUser() const;
+	const Bytes &getSignature() const;
 
 protected:
 	LongSession(const Request &, const SessionKeyPair &);
@@ -111,6 +112,7 @@ protected:
 	Request _request;
 	SessionKeyPair _keys;
 	uint64_t _user = 0;
+	Bytes _sig;
 };
 
 NS_SA_END

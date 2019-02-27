@@ -45,11 +45,17 @@ static uint32_t checkIndent(uint32_t &indent, StringView &str) {
 			}
 			return 1;
 		} else if (indent == 0) {
-			indentStr = indentStr.readChars<StringView::Chars<'\t'>>();
-			return indentStr.size();
+			auto indentStrTmp = indentStr.readChars<StringView::Chars<'\t'>>();
+			if (!indentStr.empty()) {
+				return maxOf<uint32_t>();
+			}
+			return indentStrTmp.size();
 		} else {
-			indentStr = indentStr.readChars<StringView::Chars<' '>>();
-			return indentStr.size() / indent;
+			auto indentStrTmp = indentStr.readChars<StringView::Chars<' '>>();
+			if (!indentStr.empty()) {
+				return maxOf<uint32_t>();
+			}
+			return indentStrTmp.size() / indent;
 		}
 	}
 	return 0;
@@ -77,9 +83,15 @@ bool Lexer::parseToken(Token &tok) {
 			followTag = true;
 		} else {
 			indent = checkIndent(indentStep, r);
+			if (indent == 0 && !r.is<NewLineFilter>()) {
+				indentStep = maxOf<uint32_t>();
+			} else if (indent == maxOf<uint32_t>() && !r.is<NewLineFilter>() && !r.empty()) {
+				onError(r, "Mixed tab and spaces indentations");
+				return false;
+			}
 		}
 
-		if (!r.is<NewLineFilter>()) {
+		if (!r.is<NewLineFilter>() && !r.empty()) {
 			if (indent == indentLevel) {
 				// do nothing
 			} else if (indent == indentLevel + 1) {

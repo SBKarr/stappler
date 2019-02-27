@@ -340,6 +340,7 @@ const auto s_tagMixinListText = R"(
 mixin updateForm(value)
 	span= value
 
+
 mixin provider
 	ul
 		li: +updateForm("Test1")
@@ -349,6 +350,23 @@ mixin provider
 		li: span Test2
 
 +provider
+)";
+
+const auto s_tagMixinComboText = R"(
+mixin partsMenu()
+    - var root = getSpineData(unit.spine.unit)
+    each part in root.ord
+        - var partData = getSpineData(part)
+        .row
+
+mixin elementGrid(root, childEntity, grandChildEntity)
+    each child in root.ord
+        - var childData = getSpineData(child)
+        .row
+
+mixin lectures_list()
+  p Test
+	  p Test2
 )";
 
 const auto s_tagIfTest = R"(
@@ -406,7 +424,7 @@ int _spMain(argc, argv) {
 
 	//auto &args = opts.getValue("args");
 
-	pug::Template * tpl = pug::Template::read(s_tagMixinText, pug::Template::Options::getPretty());
+	pug::Template * tpl = pug::Template::read(s_tagMixinComboText, pug::Template::Options::getPretty());
 
 	using Value = pug::Value;
 

@@ -311,10 +311,35 @@ LongSession::LongSession(const Request &rctx, const SessionKeyPair &keys): _requ
 }
 
 LongSession::LongSession(const Request &rctx, const SessionKeyPair &keys, uint64_t uid) : _request(rctx), _keys(keys) {
+	auto str = _request.getCookie(SessionCookie);
+	if (!str.empty()) {
+		auto iss = rctx.getFullHostname();
+		JsonWebToken cookieToken(str);
+		if (cookieToken.validate(JsonWebToken::SigAlg::RS512, _keys.pub)) {
+			if (cookieToken.validatePayload(iss, iss)) {
+				_user = cookieToken.payload.getInteger("uid");
+				_sig = cookieToken.payload.getBytes("signature");
+				auto diff = Time::now() - Time::microseconds(cookieToken.payload.getInteger("exp"));
+				if (_user != uid || diff > TimeInterval::seconds(60 * 60 * 24 * 15)) {
+					assignUser(uid ? uid : _user);
+				}
+				return;
+			}
+		}
+	}
+
 	assignUser(uid);
 }
 
 void LongSession::assignUser(uint64_t uid) {
+	if (_sig.empty()) {
+		const String ua = _request.getRequestHeaders().at("User-Agent");
+		const String userIp = _request.getUseragentIp();
+		auto hashBuff = string::Sha256::perform(ua, userIp);
+
+		_sig = Bytes(hashBuff.data(), hashBuff.data() + hashBuff.size());
+	}
+
 	_user = uid;
 
 	auto maxAge = TimeInterval::seconds(60 * 60 * 24 * 3650);
@@ -322,6 +347,7 @@ void LongSession::assignUser(uint64_t uid) {
 
 	auto token = JsonWebToken::make(iss, iss, maxAge, toString(uid));
 	token.payload.setInteger(uid, "uid");
+	token.payload.setBytes(_sig, "signature");
 
 	auto str = token.exportSigned(JsonWebToken::RS512, _keys.priv, CoderSource(), data::EncodeFormat::Cbor);
 	if (!str.empty()) {
@@ -335,6 +361,10 @@ void LongSession::cancel() {
 
 uint64_t LongSession::getUser() const {
 	return _user;
+}
+
+const Bytes &LongSession::getSignature() const {
+	return _sig;
 }
 
 NS_SA_END

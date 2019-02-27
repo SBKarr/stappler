@@ -714,6 +714,12 @@ template <typename F> struct FieldOption<F, FullTextViewFn> {
 	}
 };
 
+template <typename F> struct FieldOption<F, FullTextQueryFn> {
+	static inline void assign(F & f, FullTextQueryFn && s) {
+		f.queryFn = move(s);
+	}
+};
+
 template <typename F> struct FieldOption<F, FieldView::DeltaOptions> {
 	static inline void assign(F & f, FieldView::DeltaOptions d) {
 		if (d == FieldView::Delta) { f.delta = true; } else { f.delta = false; }
