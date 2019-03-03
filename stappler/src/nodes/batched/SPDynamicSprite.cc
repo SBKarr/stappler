@@ -94,6 +94,14 @@ const Rect &DynamicSprite::getTextureRect() const {
 	return _textureRect;
 }
 
+const Vec2 &DynamicSprite::getTextureOrigin() const {
+	return _textureOrigin;
+}
+
+const Size &DynamicSprite::getTextureSize() const {
+	return _textureSize;
+}
+
 void DynamicSprite::onContentSizeDirty() {
 	DynamicBatchNode::onContentSizeDirty();
 

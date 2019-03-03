@@ -61,6 +61,7 @@ public:
 
 	int onPostReadRequest(request_rec *r);
 	int onTranslateName(request_rec *r);
+	int onCheckAccess(request_rec *r);
 	int onQuickHandler(request_rec *r, int v);
 	void onInsertFilter(request_rec *r);
 	int onHandler(request_rec *r);

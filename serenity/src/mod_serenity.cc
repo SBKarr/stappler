@@ -23,7 +23,9 @@ THE SOFTWARE.
 #include "server/Root.h"
 #include "server/Server.h"
 
+#include "ap_provider.h"
 #include "mod_log_config.h"
+#include "mod_auth.h"
 
 static stappler::serenity::Root s_sharedServer;
 
@@ -49,6 +51,10 @@ static int mod_serenity_open_logs(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_
 	Root::getInstance()->onOpenLogs(pconf, plog, ptemp, s);
 	return OK;
 }
+
+static int mod_serenity_check_access_ex(request_rec *r) {
+	return Root::getInstance()->onCheckAccess(r);
+}
 static int mod_serenity_post_read_request(request_rec *r) {
 	return Root::getInstance()->onPostReadRequest(r);
 }
@@ -73,7 +79,9 @@ static apr_status_t mod_serenity_compress(ap_filter_t *f, apr_bucket_brigade *bb
 
 static void mod_serenity_register_hooks(apr_pool_t *pool) {
 	ap_hook_child_init(mod_serenity_child_init, NULL, NULL, APR_HOOK_MIDDLE);
-    ap_hook_open_logs(mod_serenity_open_logs,NULL,NULL,APR_HOOK_FIRST);
+    ap_hook_open_logs(mod_serenity_open_logs, NULL, NULL, APR_HOOK_FIRST);
+
+    ap_hook_check_access_ex(mod_serenity_check_access_ex, NULL, NULL, APR_HOOK_FIRST, AP_AUTH_INTERNAL_PER_URI);
 
 	ap_hook_post_read_request(mod_serenity_post_read_request, NULL, NULL, APR_HOOK_MIDDLE);
     ap_hook_translate_name(mod_serenity_translate_name, NULL, NULL, APR_HOOK_LAST);
@@ -126,6 +134,30 @@ static const char *mod_serenity_set_protected(cmd_parms *parms, void *mconfig, c
 	return NULL;
 }
 
+static const char *mod_serenity_set_server_names(cmd_parms *parms, void *mconfig, const char *arg) {
+    if (!parms->server->names) {
+        return "Only used in <VirtualHost>";
+    }
+
+    bool hostname = false;
+	while (*arg) {
+		char **item, *name = ap_getword_conf(parms->pool, &arg);
+		if (!hostname) {
+			parms->server->server_hostname = apr_pstrdup(parms->pool, name);
+			hostname = true;
+		} else {
+			if (ap_is_matchexp(name)) {
+				item = (char **) apr_array_push(parms->server->wild_names);
+			} else {
+				item = (char **) apr_array_push(parms->server->names);
+			}
+			*item = name;
+		}
+	}
+
+    return NULL;
+}
+
 static const command_rec mod_serenity_directives[] = {
 	AP_INIT_TAKE1("SerenitySourceRoot", (cmd_func)mod_serenity_set_source_root, NULL, RSRC_CONF,
 		"Serenity root dir for source handlers"),
@@ -139,6 +171,8 @@ static const command_rec mod_serenity_directives[] = {
 		"Host should forward requests to secure connection"),
 	AP_INIT_RAW_ARGS("SerenityProtected", (cmd_func)mod_serenity_set_protected, NULL, RSRC_CONF,
 		"Space-separated list of location prefixes, which should be invisible for clients"),
+	AP_INIT_RAW_ARGS("SerenityServerNames", (cmd_func)mod_serenity_set_server_names, NULL, RSRC_CONF,
+		"Space-separated list of server names (first would be ServerName, others - ServerAliases)"),
     { NULL }
 };
 

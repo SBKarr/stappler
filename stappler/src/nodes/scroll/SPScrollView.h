@@ -95,6 +95,8 @@ public:
 	virtual Rc<ProgressAction> removeNode(ScrollController::Item *, float duration, const Function<void()> &cb = nullptr, bool disable = false);
 
 protected:
+	virtual void doSetScrollPosition(float pos) override;
+
 	virtual void onOverscroll(float delta) override;
 	virtual void onScroll(float delta, bool finished) override;
 	virtual void onTap(int count, const Vec2 &loc) override;

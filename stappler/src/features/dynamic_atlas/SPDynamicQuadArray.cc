@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -63,7 +63,7 @@ size_t DynamicQuadArray::emplace() {
 	return _quads.size() - 1;
 }
 
-void DynamicQuadArray::setTextureRect(size_t index, const cocos2d::Rect &texRect, float texWidth, float texHeight,
+void DynamicQuadArray::setTextureRect(size_t index, const Rect &texRect, float texWidth, float texHeight,
 		bool flippedX, bool flippedY, bool rotated) {
 	float texLeft = texRect.origin.x / texWidth;
 	float texRight = (texRect.origin.x + texRect.size.width) / texWidth;
@@ -101,8 +101,8 @@ void DynamicQuadArray::setTextureRect(size_t index, const cocos2d::Rect &texRect
 	_quadsDirty = true;
 }
 
-void DynamicQuadArray::setTexturePoints(size_t index, const cocos2d::Vec2 &bl, const cocos2d::Vec2 &tl,
-		const cocos2d::Vec2 &tr, const cocos2d::Vec2 &br, float texWidth, float texHeight) {
+void DynamicQuadArray::setTexturePoints(size_t index, const Vec2 &bl, const Vec2 &tl,
+		const Vec2 &tr, const Vec2 &br, float texWidth, float texHeight) {
 
 	_quads[index].bl.texCoords.u = bl.x / texWidth;
 	_quads[index].bl.texCoords.v = bl.y / texHeight;
@@ -116,7 +116,7 @@ void DynamicQuadArray::setTexturePoints(size_t index, const cocos2d::Vec2 &bl, c
 	_quadsDirty = true;
 }
 
-void DynamicQuadArray::setGeometry(size_t index, const cocos2d::Vec2 &pos, const cocos2d::Size &size, float positionZ) {
+void DynamicQuadArray::setGeometry(size_t index, const Vec2 &pos, const Size &size, float positionZ) {
 	const float x1 = pos.x;
 	const float y1 = pos.y;
 
@@ -142,10 +142,10 @@ void DynamicQuadArray::setGeometry(size_t index, const cocos2d::Vec2 &pos, const
 	const float dx = x1 * cr - y2 * sr2 + x;
 	const float dy = x1 * sr + y2 * cr2 + y;
 
-	_quads[index].bl.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(ax), RENDER_IN_SUBPIXEL(ay), positionZ);
-	_quads[index].br.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(bx), RENDER_IN_SUBPIXEL(by), positionZ);
-	_quads[index].tl.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(dx), RENDER_IN_SUBPIXEL(dy), positionZ);
-	_quads[index].tr.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(cx), RENDER_IN_SUBPIXEL(cy), positionZ);
+	_quads[index].bl.vertices = Vec3( RENDER_IN_SUBPIXEL(ax), RENDER_IN_SUBPIXEL(ay), positionZ);
+	_quads[index].br.vertices = Vec3( RENDER_IN_SUBPIXEL(bx), RENDER_IN_SUBPIXEL(by), positionZ);
+	_quads[index].tl.vertices = Vec3( RENDER_IN_SUBPIXEL(dx), RENDER_IN_SUBPIXEL(dy), positionZ);
+	_quads[index].tr.vertices = Vec3( RENDER_IN_SUBPIXEL(cx), RENDER_IN_SUBPIXEL(cy), positionZ);
 
 	_quadsDirty = true;
 }
@@ -245,10 +245,10 @@ void DynamicQuadArray::setNormalizedGeometry(size_t index, const cocos2d::Vec2 &
 	const float dx = x1 * cr - y2 * sr2 + x;
 	const float dy = x1 * sr + y2 * cr2 + y;
 
-	_quads[index].bl.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(ax), RENDER_IN_SUBPIXEL(ay), positionZ );
-	_quads[index].br.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(bx), RENDER_IN_SUBPIXEL(by), positionZ );
-	_quads[index].tl.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(dx), RENDER_IN_SUBPIXEL(dy), positionZ );
-	_quads[index].tr.vertices = cocos2d::Vec3( RENDER_IN_SUBPIXEL(cx), RENDER_IN_SUBPIXEL(cy), positionZ );
+	_quads[index].bl.vertices = Vec3( RENDER_IN_SUBPIXEL(ax), RENDER_IN_SUBPIXEL(ay), positionZ );
+	_quads[index].br.vertices = Vec3( RENDER_IN_SUBPIXEL(bx), RENDER_IN_SUBPIXEL(by), positionZ );
+	_quads[index].tl.vertices = Vec3( RENDER_IN_SUBPIXEL(dx), RENDER_IN_SUBPIXEL(dy), positionZ );
+	_quads[index].tr.vertices = Vec3( RENDER_IN_SUBPIXEL(cx), RENDER_IN_SUBPIXEL(cy), positionZ );
 
 	_quadsDirty = true;
 }
@@ -258,7 +258,7 @@ void DynamicQuadArray::setTransform(const cocos2d::Mat4 &t) {
 	_quadsDirty = true;
 }
 
-void DynamicQuadArray::updateTransform(const cocos2d::Mat4 &t) {
+void DynamicQuadArray::updateTransform(const Mat4 &t) {
 	if (_transform.m[12] == t.m[12] && _transform.m[13] == t.m[13]
 			&& _transform.m[0] == t.m[0] && _transform.m[1] == t.m[1]
 			&& _transform.m[5] == t.m[5] && _transform.m[4] == t.m[4]) {

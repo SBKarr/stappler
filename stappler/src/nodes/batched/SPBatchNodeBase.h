@@ -26,6 +26,8 @@ THE SOFTWARE.
 #include "SPDefine.h"
 #include "base/CCProtocols.h"
 #include "2d/CCNode.h"
+#include "SPGLProgramSet.h"
+#include "SPDynamicLinearGradient.h"
 
 NS_SP_BEGIN
 
@@ -62,11 +64,15 @@ public:
 	virtual void setForceI8Texture(bool);
 	virtual bool isForcedI8Texture() const;
 
+    virtual void setGradientObject(DynamicLinearGradient *);
+    DynamicLinearGradient * getGradientObject() const;
+
 protected:
 	virtual void updateBlendFunc(cocos2d::Texture2D *);
 	cocos2d::GLProgramState *acquireProgramState(cocos2d::Texture2D *) const;
 
 	AlphaTest _alphaTest;
+	Rc<DynamicLinearGradient> _gradientObject;
 
 	bool _opacityModifyRGB = false;
 	bool _normalized = false;
@@ -77,6 +83,8 @@ protected:
 
 	cocos2d::BlendFunc _blendFunc;
 	float _density = 1.0f;
+
+	GLProgramDesc::Attr _baseAttributes = GLProgramDesc::Attr::None;
 };
 
 NS_SP_END

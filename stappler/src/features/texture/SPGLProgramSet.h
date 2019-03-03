@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -66,7 +66,19 @@ public:
 		CustomFill = 1 << 7,
 		AmbientColor = 1 << 8,
 		AlphaTestLT = 1 << 9,
-		AlphaTestGT = 1 << 10
+		AlphaTestGT = 1 << 10,
+
+		/* Linear gradient drawing requires some uniforms:
+			uniform float      grad_tg_alpha; // tangent of gradient axis angle
+			uniform vec2       grad_size; // size of canvas
+			uniform vec2       grad_origin; // position on canvas
+			uniform int        grad_numStops; // number of active stops (at least 2)
+			uniform lowp vec4  grad_colors[16]; // colors for stops
+			uniform float      grad_stops[16]; // value of stops
+		 */
+
+		LinearGradient = 1 << 11,
+		GradientAbsolute = 1 << 12,
 	};
 
 	GLProgramDesc(Default);

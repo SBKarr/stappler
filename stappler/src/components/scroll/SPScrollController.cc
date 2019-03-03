@@ -62,13 +62,14 @@ void ScrollController::onContentSizeDirty() {
 			? _scroll->getContentSize().width - _scroll->getPadding().horizontal()
 			: _scroll->getContentSize().height - _scroll->getPadding().vertical();
 	if (_savedSize != defSize) {
+		float tmpPos = _scroll->getScrollPosition();
 		float relPos = _scroll->getScrollRelativePosition();
 		if (!rebuildObjects()) {
 			for (auto &it : _nodes) {
 				updateScrollNode(it);
 			}
 		} else {
-			if (!isnan(relPos)) {
+			if (!isnan(relPos) && tmpPos == _scroll->getScrollPosition()) {
 				onScrollPosition();
 				_scroll->setScrollRelativePosition(relPos);
 			}

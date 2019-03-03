@@ -66,7 +66,8 @@ public:
 		Real,
 		Integer,
 		Text,
-		Blob
+		Blob,
+		Data,
 	};
 
 	/** Modifiers for fields */

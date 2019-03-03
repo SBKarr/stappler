@@ -503,9 +503,32 @@ int Root::onTranslateName(request_rec *r) {
 				}
 				return status;
 			}
-			return rhdl->onTranslateName(request);
+			auto res = rhdl->onTranslateName(request);
+			if (res == DECLINED
+					&& request.getMethod() != Request::Method::Post
+					&& request.getMethod() != Request::Method::Put
+					&& request.getMethod() != Request::Method::Patch
+					&& request.getMethod() != Request::Method::Options) {
+				request.setRequestHandler(nullptr);
+			}
+			return res;
 		}
 
+		return DECLINED;
+	}, r);
+}
+int Root::onCheckAccess(request_rec *r) {
+	return apr::pool::perform([&] () -> int {
+		Request request(r);
+		RequestHandler *rhdl = request.getRequestHandler();
+		if (rhdl) {
+			return OK; // already checked by serenity
+		}
+		if (r->filename) {
+			if (StringView(r->filename).starts_with(StringView(request.getDocumentRoot()))) {
+				return OK;
+			}
+		}
 		return DECLINED;
 	}, r);
 }
@@ -516,7 +539,6 @@ int Root::onQuickHandler(request_rec *r, int v) {
 		if (rhdl) {
 			return rhdl->onQuickHandler(request, v);
 		}
-
 		return DECLINED;
 	}, r);
 }

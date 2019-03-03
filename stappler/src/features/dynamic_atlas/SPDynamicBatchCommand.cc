@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -30,9 +30,10 @@ THE SOFTWARE.
 #include "SPDynamicQuadArray.h"
 #include "SPStencilCache.h"
 
-#include "renderer/CCGLProgram.h"
-#include "renderer/CCTexture2D.h"
 #include "platform/CCGL.h"
+#include "renderer/CCGLProgram.h"
+#include "renderer/CCGLProgramState.h"
+#include "renderer/CCTexture2D.h"
 #include "renderer/ccGLStateCache.h"
 
 #include "xxhash.h"
@@ -45,8 +46,8 @@ DynamicBatchCommand::DynamicBatchCommand(bool b) {
 	_batch = b;
 }
 
-void DynamicBatchCommand::init(float g, GLProgram *p, BlendFunc f, DynamicAtlas *a, const Mat4& mv,
-		const std::vector<int> &zPath, bool n, bool stencil, AlphaTest alphaTest) {
+void DynamicBatchCommand::init(float g, GLProgramState *p, BlendFunc f, DynamicAtlas *a, const Mat4& mv,
+		const std::vector<int> &zPath, bool n, bool stencil, AlphaTest alphaTest, DynamicLinearGradient *grad) {
 	CCASSERT(p, "shader cannot be nill");
 	CCASSERT(a, "textureAtlas cannot be nill");
 
@@ -73,6 +74,7 @@ void DynamicBatchCommand::init(float g, GLProgram *p, BlendFunc f, DynamicAtlas 
 	_stencil = stencil;
 	_stencilIndex = 0;
 	_alphaTest = alphaTest;
+	_gradient = grad;
 }
 
 void DynamicBatchCommand::setStencilIndex(uint8_t st) {
@@ -87,14 +89,15 @@ void DynamicBatchCommand::useMaterial() {
 		}
 	}
 
-	_shader->use();
-	_shader->setUniformsForBuiltins(_mv);
-
 	if (_alphaTest.state != AlphaTest::Disabled) {
-		if (auto loc = _shader->getUniformLocation("u_alphaTest")) {
-			_shader->setUniformLocationWith1f(loc, _alphaTest.value / 255.0f);
-		}
+		_shader->setUniformFloat("u_alphaTest", _alphaTest.value / 255.0f);
 	}
+	if (_gradient) {
+		_gradient->updateUniforms(_shader);
+	}
+
+	_shader->applyGLProgram(_mv);
+	_shader->applyUniforms();
 
 	cocos2d::GL::bindTexture2D(_textureID);
 	cocos2d::GL::blendFunc(_blendType.src, _blendType.dst);
@@ -126,7 +129,7 @@ uint8_t DynamicBatchCommand::makeStencil() {
 GLuint DynamicBatchCommand::getTextureId() const {
 	return _textureID;
 }
-cocos2d::GLProgram *DynamicBatchCommand::getProgram() const {
+cocos2d::GLProgramState *DynamicBatchCommand::getProgram() const {
 	return _shader;
 }
 const cocos2d::BlendFunc &DynamicBatchCommand::getBlendFunc() const {
@@ -156,7 +159,7 @@ uint32_t DynamicBatchCommand::getMaterialId(int32_t groupId) const {
 	std::vector<int32_t> intArray;
 	intArray.reserve(6 + _zPath.size());
 
-	intArray.push_back( _shader ? reinterpretValue<int32_t>(_shader->getProgram()) : 0 );
+	intArray.push_back( _shader ? reinterpretValue<int32_t>(_shader->getGLProgram()->getProgram()) : 0 );
 	intArray.push_back( reinterpretValue<int32_t>(_textureID) );
 	intArray.push_back( reinterpretValue<int32_t>(_blendType.src) );
 	intArray.push_back( reinterpretValue<int32_t>(_blendType.dst) );
@@ -172,6 +175,10 @@ uint32_t DynamicBatchCommand::getMaterialId(int32_t groupId) const {
 
 uint8_t DynamicBatchCommand::getStencilIndex() const {
 	return _stencilIndex;
+}
+
+DynamicLinearGradient *DynamicBatchCommand::getGradient() const {
+	return _gradient;
 }
 
 NS_SP_END

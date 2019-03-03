@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,9 @@ THE SOFTWARE.
 NS_LAYOUT_BEGIN
 
 #define SP_PATH_LOG(...)
-//#define SP_PATH_LOG(...) stappler::logTag("Path Debug", __VA_ARGS__)
+//#define SP_PATH_LOG(...) stappler::log::format("Path Debug", __VA_ARGS__)
+
+using PathFloat = float;
 
 class SVGPathReader : public ReaderClassBase<char> {
 public:
@@ -158,7 +160,7 @@ protected:
 	}
 
 	bool readLineToArgs(bool relative) {
-		float x, y;
+		PathFloat x, y;
 		bool readNext = true, first = true, ret = false;
 		while (readNext) {
 			readCommaWhitespace();
@@ -168,8 +170,9 @@ protected:
 			} else if (readNext) {
 				if (first) { ret = true; first = false; }
 				if (relative) { x = _x + x; y = _y + y; }
+
+				SP_PATH_LOG("L %f %f (%f %f)", x, y, x - _x, y - _y);
 				_x = x; _y = y; _b = false;
-				SP_PATH_LOG("L %f %f", _x, _y);
 				path->lineTo(x, y);
 			}
 		}
@@ -177,7 +180,7 @@ protected:
 	}
 
 	bool readHorizontalLineTo(bool relative) {
-		float x;
+		PathFloat x;
 		bool readNext = true, first = true, ret = false;
 		while (readNext) {
 			readCommaWhitespace();
@@ -187,9 +190,9 @@ protected:
 			} else if (readNext) {
 				if (first) { ret = true; first = false; }
 				if (relative) { x = _x + x; }
-				_x = x; _b = false;
 
-				SP_PATH_LOG("H %f", _x);
+				SP_PATH_LOG("H %f (%f)", x, x - _x);
+				_x = x; _b = false;
 				path->lineTo(x, _y);
 			}
 		}
@@ -197,7 +200,7 @@ protected:
 	}
 
 	bool readVerticalLineTo(bool relative) {
-		float y;
+		PathFloat y;
 		bool readNext = true, first = true, ret = false;
 		while (readNext) {
 			readCommaWhitespace();
@@ -207,8 +210,9 @@ protected:
 			} else if (readNext) {
 				if (first) { ret = true; first = false; }
 				if (relative) { y = _y + y; }
+
+				SP_PATH_LOG("V %f (%f)", y, y - _y);
 				_y = y; _b = false;
-				SP_PATH_LOG("V %f", _y);
 				path->lineTo(_x, y);
 			}
 		}
@@ -216,7 +220,7 @@ protected:
 	}
 
 	bool readCubicBezier(bool relative) {
-		float x1, y1, x2, y2, x, y;
+		PathFloat x1, y1, x2, y2, x, y;
 		bool readNext = true, first = true, ret = false;
 		while (readNext) {
 			readCommaWhitespace();
@@ -239,7 +243,7 @@ protected:
 	}
 
 	bool readCubicBezierShort(bool relative) {
-		float x1, y1, x2, y2, x, y;
+		PathFloat x1, y1, x2, y2, x, y;
 		bool readNext = true, first = true, ret = false;
 		while (readNext) {
 			readCommaWhitespace();
@@ -263,7 +267,7 @@ protected:
 	}
 
 	bool readQuadraticBezier(bool relative) {
-		float x1, y1, x, y;
+		PathFloat x1, y1, x, y;
 		bool readNext = true, first = true, ret = false;
 		while (readNext) {
 			readCommaWhitespace();
@@ -284,7 +288,7 @@ protected:
 	}
 
 	bool readQuadraticBezierShort(bool relative) {
-		float x1, y1, x, y;
+		PathFloat x1, y1, x, y;
 		bool readNext = true, first = true, ret = false;
 		while (readNext) {
 			readCommaWhitespace();
@@ -305,7 +309,7 @@ protected:
 	}
 
 	bool readEllipticalArc(bool relative) {
-		float rx, ry, xAxisRotation, x, y;
+		PathFloat rx, ry, xAxisRotation, x, y;
 		bool largeArc, sweep;
 
 		bool readNext = true, first = true, ret = false;
@@ -333,7 +337,7 @@ protected:
 	}
 
 	bool readMoveToArgs(bool relative) {
-		float x = 0.0f, y = 0.0f;
+		PathFloat x = 0.0f, y = 0.0f;
 		if (!readCoordPair(x, y)) {
 			return false;
 		}
@@ -360,7 +364,7 @@ protected:
 		return true;
 	}
 
-	bool readCurveToArg(float &x1, float &y1, float &x2, float &y2, float &x, float &y) {
+	bool readCurveToArg(PathFloat &x1, PathFloat &y1, PathFloat &x2, PathFloat &y2, PathFloat &x, PathFloat &y) {
 		if (!readCoordPair(x1, y1)) {
 			return false;
 		}
@@ -375,11 +379,11 @@ protected:
 		return true;
 	}
 
-	bool readSmoothCurveToArg(float &x2, float &y2, float &x, float &y) {
+	bool readSmoothCurveToArg(PathFloat &x2, PathFloat &y2, PathFloat &x, PathFloat &y) {
 		return readQuadraticCurveToArg(x2, y2, x, y);
 	}
 
-	bool readQuadraticCurveToArg(float &x1, float &y1, float &x, float &y) {
+	bool readQuadraticCurveToArg(PathFloat &x1, PathFloat &y1, PathFloat &x, PathFloat &y) {
 		if (!readCoordPair(x1, y1)) {
 			return false;
 		}
@@ -390,9 +394,9 @@ protected:
 		return true;
 	}
 
-	bool readEllipticalArcArg(float &_rx, float &_ry, float &_xAxisRotation,
-			bool &_largeArc, bool &_sweep, float &_dx, float &_dy) {
-		float rx, ry, xAxisRotation, x, y;
+	bool readEllipticalArcArg(PathFloat &_rx, PathFloat &_ry, PathFloat &_xAxisRotation,
+			bool &_largeArc, bool &_sweep, PathFloat &_dx, PathFloat &_dy) {
+		PathFloat rx, ry, xAxisRotation, x, y;
 		bool largeArc, sweep;
 
 		if (!readCoordPair(rx, ry)) {
@@ -432,12 +436,12 @@ protected:
 		return true;
 	}
 
-	bool readSmoothQuadraticCurveToArg(float &x, float &y) {
+	bool readSmoothQuadraticCurveToArg(PathFloat &x, PathFloat &y) {
 		return readCoordPair(x, y);
 	}
 
-	bool readCoordPair(float &x, float &y) {
-		float value1 = 0.0f, value2 = 0.0f;
+	bool readCoordPair(PathFloat &x, PathFloat &y) {
+		PathFloat value1 = 0.0f, value2 = 0.0f;
 		if (!readNumber(value1)) {
 			return false;
 		}
@@ -467,7 +471,7 @@ protected:
 		return false;
 	}
 
-	bool readNumber(float &val) {
+	bool readNumber(PathFloat &val) {
 		if (!reader.empty()) {
 			if (!reader.readFloat().grab(val)) {
 				return false;
@@ -488,7 +492,7 @@ protected:
 		return false;
 	}
 
-	void getNewBezierParams(float &bx, float &by) {
+	void getNewBezierParams(PathFloat &bx, PathFloat &by) {
 		if (_b) {
 			bx = _x * 2 - _bx; by = _y * 2 - _by;
 		} else {
@@ -499,12 +503,12 @@ protected:
 	SVGPathReader(Path *p, const StringView &r)
 	: path(p), reader(r) { }
 
-	float _x = 0.0f, _y = 0.0f;
+	PathFloat _x = 0.0f, _y = 0.0f;
 
 	bool _b = false;
-	float _bx = 0.0f, _by = 0.0f;
+	PathFloat _bx = 0.0f, _by = 0.0f;
 
-	float _sx = 0.0f; float _sy = 0.0f;
+	PathFloat _sx = 0.0f, _sy = 0.0f;
 	bool _pathStarted = false;
 	Path *path = nullptr;
 	StringView reader;

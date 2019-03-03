@@ -142,6 +142,11 @@ bool ScrollView::isIndicatorVisible() const {
 	return _indicatorVisible;
 }
 
+void ScrollView::doSetScrollPosition(float pos) {
+	ScrollViewBase::doSetScrollPosition(pos);
+	updateIndicatorPosition();
+}
+
 void ScrollView::onOverscroll(float delta) {
 	ScrollViewBase::onOverscroll(delta);
 	if (isOverscrollVisible()) {

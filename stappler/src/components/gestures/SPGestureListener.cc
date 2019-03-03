@@ -458,9 +458,12 @@ void Listener::setGestureFilter(const GestureFilter &cb) {
 }
 
 void Listener::update(float dt) {
-	for (auto &it : _recognizers) {
+	_owner->retain();
+	auto tmpRec = _recognizers;
+	for (auto &it : tmpRec) {
 		it.second->update(dt);
 	}
+	_owner->release();
 }
 
 void Listener::onTouch(TouchRecognizer *r, Event ev, const Touch &g) {

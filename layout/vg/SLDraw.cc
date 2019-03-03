@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -418,32 +418,25 @@ void LineDrawer::push(float x, float y) {
 }
 
 void LineDrawer::pushLinePointWithIntersects(float x, float y) {
-	/*auto insertIntersect = [&] (const TESSintersect &it) {
-		auto lb = std::lower_bound(intersect.begin(), intersect.end(), it,
-				[] (const TESSintersect &l, const TESSintersect &r) -> bool {
-			if (l.index == r.index) {
-				return l.offset < r.offset;
-			}
-			return l.index < r.index;
-		});
-
-		if (lb == intersect.end()) {
-			intersect.emplace_back(it);
-		} else {
-			intersect.emplace(lb, it);
-		}
-	};*/
-
 	if (line.size() > 2) {
 		Vec2 A(line.back().x, line.back().y);
 		Vec2 B(x, y);
 
 		for (size_t i = 0; i < line.size() - 2; ++ i) {
-			Vec2::getSegmentIntersectPoint(A, B, Vec2(line[i].x, line[i].y), Vec2(line[i + 1].x, line[i + 1].y),
+			auto C = Vec2(line[i].x, line[i].y);
+			auto D = Vec2(line[i + 1].x, line[i + 1].y);
+
+			Vec2::getSegmentIntersectPoint(A, B, C, D,
 					[&] (const Vec2 &P, float S, float T) {
-				//insertIntersect(TESSintersect{i, TESSVec2{P.x, P.y}, T});
-				//insertIntersect(TESSintersect{line.size(), TESSVec2{P.x, P.y}, S});
-				line.push_back(TESSVec2{P.x, P.y});
+				if (S > 0.5f) { S = 1.0f - S; }
+				if (T > 0.5f) { T = 1.0f - T; }
+
+				auto dsAB = A.distanceSquared(B) * S * S;
+				auto dsCD = C.distanceSquared(D) * T * T;
+
+				if (dsAB > approxError && dsCD > approxError) {
+					line.push_back(TESSVec2{P.x, P.y});
+				}
 			});
 		}
 	}

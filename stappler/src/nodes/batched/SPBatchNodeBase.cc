@@ -92,7 +92,7 @@ void BatchNodeBase::updateBlendFunc(cocos2d::Texture2D *tex) {
 }
 
 cocos2d::GLProgramState *BatchNodeBase::acquireProgramState(cocos2d::Texture2D *tex) const {
-	auto attrs = GLProgramDesc::Attr::MatrixMVP | GLProgramDesc::Attr::Color;
+	auto attrs = _baseAttributes | GLProgramDesc::Attr::MatrixMVP | GLProgramDesc::Attr::Color;
 	if (tex) {
 		attrs |= GLProgramDesc::Attr::TexCoords;
 	}
@@ -189,6 +189,23 @@ void BatchNodeBase::setForceI8Texture(bool value) {
 
 bool BatchNodeBase::isForcedI8Texture() const {
 	return _forceI8Texture;
+}
+
+void BatchNodeBase::setGradientObject(DynamicLinearGradient *g) {
+	_gradientObject = g;
+	if (_gradientObject) {
+		_baseAttributes |= GLProgramDesc::Attr::LinearGradient;
+		if (_gradientObject->isAbsolute()) {
+			_baseAttributes |= GLProgramDesc::Attr::GradientAbsolute;
+		}
+	} else {
+		_baseAttributes &= (~GLProgramDesc::Attr::LinearGradient);
+	}
+	_programDirty = true;
+}
+
+DynamicLinearGradient * BatchNodeBase::getGradientObject() const {
+	return _gradientObject;
 }
 
 NS_SP_END

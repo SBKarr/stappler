@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -46,7 +46,7 @@ bool DynamicBatchNode::init(cocos2d::Texture2D *tex, float density) {
 
 	_texture = tex;
 	if (_texture) {
-		updateBlendFunc(_texture);
+		_programDirty = true;
 	}
 
 	return true;
@@ -85,14 +85,23 @@ void DynamicBatchNode::setTexture(cocos2d::Texture2D *texture) {
 
 		_texture = texture;
 		_contentSizeDirty = true;
-
-	    updateBlendFunc(_texture);
+		_programDirty = true;
 	}
 }
 
 void DynamicBatchNode::draw(cocos2d::Renderer *renderer, const Mat4 &transform, uint32_t flags, const ZPath &zPath) {
 	if (_programDirty) {
-	    updateBlendFunc(_texture);
+		updateBlendFunc(_texture);
+	}
+
+	if (_gradientObject) {
+		if (_gradientObject->isAbsolute()) {
+			Vec2 pos = transform.transformPoint(Vec2::ZERO);
+			Vec2 size = transform.transformPoint(Vec2(_contentSize.width, _contentSize.height)) - pos;
+			_gradientObject->updateWithSize(Size(size.x, size.y), pos);
+		} else {
+			_gradientObject->updateWithSize(_contentSize, Vec2::ZERO);
+		}
 	}
 
 	if (!_textureAtlas) {
@@ -113,9 +122,9 @@ void DynamicBatchNode::draw(cocos2d::Renderer *renderer, const Mat4 &transform, 
 		newMV.m[12] = floorf(transform.m[12]);
 		newMV.m[13] = floorf(transform.m[13]);
 		newMV.m[14] = floorf(transform.m[14]);
-		_batchCommand.init(_globalZOrder, getGLProgram(), _blendFunc, _textureAtlas, newMV, zPath, _normalized, asStencil, _alphaTest);
+		_batchCommand.init(_globalZOrder, getGLProgramState(), _blendFunc, _textureAtlas, newMV, zPath, _normalized, asStencil, _alphaTest, _gradientObject);
 	} else {
-		_batchCommand.init(_globalZOrder, getGLProgram(), _blendFunc, _textureAtlas, transform, zPath, _normalized, asStencil, _alphaTest);
+		_batchCommand.init(_globalZOrder, getGLProgramState(), _blendFunc, _textureAtlas, transform, zPath, _normalized, asStencil, _alphaTest, _gradientObject);
 	}
 
 	renderer->addCommand(&_batchCommand);

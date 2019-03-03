@@ -732,8 +732,9 @@ bool ValueTemplate<Interface>::compare(const ArrayType &v1, const ArrayType &v2)
 		for (size_t i = 0; i < size; i++) {
 			if (v1[i] != v2[i]) return false;
 		}
+		return true;
 	}
-	return true;
+	return false;
 }
 
 template <typename Interface>

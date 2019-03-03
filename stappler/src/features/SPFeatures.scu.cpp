@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include "dynamic_atlas/SPDynamicAtlas.cc"
 #include "dynamic_atlas/SPDynamicBatchCommand.cc"
 #include "dynamic_atlas/SPDynamicQuadArray.cc"
+#include "dynamic_atlas/SPDynamicLinearGradient.cc"
 #include "dynamic_atlas/SPStencilCache.cc"
 #include "locale/SPLocale.cc"
 #include "resources/SPFont.cc"

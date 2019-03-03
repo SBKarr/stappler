@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define LIBS_STAPPLER_NODES_BATCHED_SPDYNAMICBATCHCOMMAND_H_
 
 #include "SPDefine.h"
+#include "SPDynamicLinearGradient.h"
 #include "renderer/CCCustomCommand.h"
 
 NS_SP_BEGIN
@@ -31,48 +32,52 @@ NS_SP_BEGIN
 class DynamicBatchCommand : public cocos2d::CustomCommand {
 public:
 	using GLProgram = cocos2d::GLProgram;
+	using GLProgramState = cocos2d::GLProgramState;
 	using BlendFunc = cocos2d::BlendFunc;
 
 	DynamicBatchCommand(bool b = false);
 
-    void init(float depth, GLProgram*, BlendFunc, DynamicAtlas *, const Mat4& mv, const std::vector<int> &, bool n,
-    		bool stencil = false, AlphaTest = AlphaTest());
+	void init(float depth, GLProgramState *, BlendFunc, DynamicAtlas *, const Mat4& mv, const std::vector<int> &, bool n,
+			bool stencil = false, AlphaTest = AlphaTest(), DynamicLinearGradient *gradient = nullptr);
 
-    void setStencilIndex(uint8_t);
+	void setStencilIndex(uint8_t);
 
-    void useMaterial();
-    void execute();
-    uint8_t makeStencil();
+	void useMaterial();
+	void execute();
+	uint8_t makeStencil();
 
-    GLuint getTextureId() const;
-    cocos2d::GLProgram *getProgram() const;
-    const cocos2d::BlendFunc &getBlendFunc() const;
-    DynamicAtlas *getAtlas() const;
+	GLuint getTextureId() const;
+	cocos2d::GLProgramState *getProgram() const;
+	const cocos2d::BlendFunc &getBlendFunc() const;
+	DynamicAtlas *getAtlas() const;
 
-    const Mat4 &getTransform() const;
+	const Mat4 &getTransform() const;
 
-    bool isNormalized() const;
-    bool isStencil() const;
-    bool isBatch() const;
+	bool isNormalized() const;
+	bool isStencil() const;
+	bool isBatch() const;
 
-    uint32_t getMaterialId(int32_t groupId) const;
-    uint8_t getStencilIndex() const;
+	uint32_t getMaterialId(int32_t groupId) const;
+	uint8_t getStencilIndex() const;
+
+	DynamicLinearGradient *getGradient() const;
 
 protected:
-    //Material
-    GLuint _textureID = 0;
-    cocos2d::GLProgram* _shader = nullptr;
-    cocos2d::BlendFunc _blendType;
+	//Material
+	GLuint _textureID = 0;
+	cocos2d::GLProgramState * _shader = nullptr;
+	cocos2d::BlendFunc _blendType;
 
-    DynamicAtlas *_textureAtlas = nullptr;
+	DynamicAtlas *_textureAtlas = nullptr;
 
-    // ModelView transform
-    Mat4 _mv;
-    bool _normalized = false;
-    bool _batch = false;
-    bool _stencil = false;
-    uint8_t _stencilIndex = 0;
-    AlphaTest _alphaTest;
+	// ModelView transform
+	Mat4 _mv;
+	bool _normalized = false;
+	bool _batch = false;
+	bool _stencil = false;
+	uint8_t _stencilIndex = 0;
+	AlphaTest _alphaTest;
+	Rc<DynamicLinearGradient> _gradient;
 };
 
 NS_SP_END

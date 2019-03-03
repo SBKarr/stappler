@@ -1,7 +1,7 @@
 /**
  Copyright 2013 BlackBerry Inc.
  Copyright (c) 2014-2015 Chukong Technologies
- Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+ Copyright (c) 2017-2019 Roman Katuntsev <sbkarr@stappler.org>
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -787,7 +787,7 @@ public:
      * @param point The point to transform.
      * @param dst A vector to store the transformed point in.
      */
-    inline Vec2 transformPoint(const Vec2& point) const;
+    Vec2 transformPoint(const Vec2& point) const;
 
     /**
      * Transforms the specified vector by this matrix by

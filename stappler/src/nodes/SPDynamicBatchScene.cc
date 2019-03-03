@@ -123,11 +123,14 @@ protected:
 
 	bool update(const Mat4 &transform, CommandIterator &cmdIt, int32_t id) {
 		auto cmd = static_cast<DynamicBatchCommand *>(*cmdIt);
+		if (cmd->getGradient()) {
+			return true;
+		}
 		auto mid = cmd->getMaterialId(id);
 		auto mit = _materialMap.find(mid);
 		if (mit != _materialMap.end()) {
 			merge(mid, mit->second, cmd, transform);
-			return  false;
+			return false;
 		} else {
 			_materialMap.insert(std::make_pair(mid, cmdIt));
 		}

@@ -792,7 +792,15 @@ data::Value Scheme::patchOrUpdate(Worker &w, const data::Value & obj, data::Valu
 }
 
 bool Scheme::removeWithWorker(Worker &w, uint64_t oid) const {
-	if (!parents.empty()) {
+	bool hasAuto = false;
+	for (auto &it : views) {
+		if (it->autoField) {
+			hasAuto = true;
+			break;
+		}
+	}
+
+	if (!parents.empty() || hasAuto) {
 		return w.perform([&] (const Transaction &t) {
 			Query query;
 			prepareGetQuery(query, oid, true);
@@ -803,6 +811,16 @@ bool Scheme::removeWithWorker(Worker &w, uint64_t oid) const {
 			}
 			if (auto &obj = t.setObject(int64_t(oid), reduceGetQuery(Worker(*this, t).select(query)))) {
 				touchParents(t, obj); // if transaction fails - all changes will be rolled back
+
+				for (auto &it : views) {
+					if (it->autoField) {
+						Vector<uint64_t> ids = getLinkageForView(obj, *it);
+						for (auto &id : ids) {
+							t.scheduleAutoField(*it->scheme, *it->viewField, id);
+						}
+					}
+				}
+
 				return t.remove(w, oid);
 			}
 			return false;

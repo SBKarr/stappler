@@ -759,9 +759,8 @@ void Scheme::Internal::writeFieldDef(StringStream &sstream, const Field &field) 
 		sstream << "REAL";
 		break;
 	case Type::Blob:
+	case Type::Data:
 		sstream << "BLOB";
-		break;
-	default:
 		break;
 	}
 
@@ -948,6 +947,9 @@ bool Scheme::Internal::isTypeMatched(Type type, const data::Value &value) {
 	case Type::Blob:
 		return value.isBytes();
 		break;
+	case Type::Data:
+		return true;
+		break;
 	default:
 		break;
 	}
@@ -1117,6 +1119,12 @@ data::Value Scheme::Internal::performQuery(Scheme::Command *cmd, sqlite3_stmt *s
 		if (val.isDictionary()) {
 			data::Value cdataStr(std::move(val.getValue(_custom)));
 			val.erase(_custom);
+			for (auto &it : val.asDict()) {
+				auto f_it = _fields.find(it.first);
+				if (f_it != _fields.end() && f_it->second.type == Type::Data && it.second.isBytes()) {
+					it.second = data::read(it.second.getBytes());
+				}
+			}
 			data::Value cdata;
 			if (cdataStr.isString()) {
 				cdata = data::read(cdataStr.getString());
@@ -1333,6 +1341,14 @@ void Scheme::Internal::bindInsertParams(sqlite3_stmt *stmt, data::Value &value, 
 				if (!val.empty()) {
 					auto &str = val.getBytes();
 					sqlite3_bind_blob(stmt, count, str.data(), (int)str.size(), SQLITE_TRANSIENT);
+				} else {
+					sqlite3_bind_null(stmt, count);
+				}
+				break;
+			case Type::Data:
+				if (!val.empty()) {
+					Bytes tmp = data::write(val, data::EncodeFormat::Cbor);
+					sqlite3_bind_blob(stmt, count, tmp.data(), (int)tmp.size(), SQLITE_TRANSIENT);
 				} else {
 					sqlite3_bind_null(stmt, count);
 				}

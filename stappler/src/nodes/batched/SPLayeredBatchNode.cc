@@ -86,6 +86,17 @@ void LayeredBatchNode::draw(cocos2d::Renderer *renderer, const Mat4 &transform, 
 			updateBlendFunc(it.texture);
 		}
 	}
+
+	if (_gradientObject) {
+		Vec2 pos = transform.transformPoint(Vec2::ZERO);
+		Vec2 size = transform.transformPoint(Vec2(_contentSize.width, _contentSize.height)) - pos;
+		if (_gradientObject->isAbsolute()) {
+			_gradientObject->updateWithSize(Size(size.x, size.y), pos);
+		} else {
+			_gradientObject->updateWithSize(_contentSize, Vec2::ZERO);
+		}
+	}
+
 	size_t i = 0;
 	for (auto &it : _textures) {
 		if (!it.atlas && it.texture) {
@@ -106,9 +117,9 @@ void LayeredBatchNode::draw(cocos2d::Renderer *renderer, const Mat4 &transform, 
 			newMV.m[13] = floorf(transform.m[13]);
 			newMV.m[14] = floorf(transform.m[14]);
 
-			cmd->cmd.init(_globalZOrder, getGLProgram(), _blendFunc, it.atlas, newMV, zPath, _normalized, false, _alphaTest);
+			cmd->cmd.init(_globalZOrder, getGLProgramState(), _blendFunc, it.atlas, newMV, zPath, _normalized, false, _alphaTest, _gradientObject);
 		} else {
-			cmd->cmd.init(_globalZOrder, getGLProgram(), _blendFunc, it.atlas, transform, zPath, _normalized, false, _alphaTest);
+			cmd->cmd.init(_globalZOrder, getGLProgramState(), _blendFunc, it.atlas, transform, zPath, _normalized, false, _alphaTest, _gradientObject);
 		}
 
 		renderer->addCommand(&cmd->cmd);

@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -295,8 +295,7 @@ bool IconSprite::init(IconName name, SizeHint s) {
 	l->onEvent(IconStorage::onUpdate, [this] (const Event &) {
 		onUpdate();
 	});
-	addComponent(l);
-	_listener = l;
+	_listener = addComponentItem(l);
 
 	setCascadeColorEnabled(true);
 	setCascadeOpacityEnabled(true);
@@ -340,25 +339,27 @@ void IconSprite::setSizeHint(SizeHint s) {
 }
 
 void IconSprite::setIconName(IconName name) {
-	switch (name) {
-	case IconName::Dynamic_Navigation:
-		setDynamicIcon(Rc<NavIcon>::create());
-		break;
-	case IconName::Dynamic_Loader:
-		setDynamicIcon(Rc<CircleLoaderIcon>::create());
-		break;
-	case IconName::Dynamic_Expand:
-		setDynamicIcon(Rc<ExpandIcon>::create());
-		break;
-	case IconName::None:
-	case IconName::Empty:
-		setDynamicIcon(nullptr);
-		break;
-	default:
-		setStaticIcon(name);
-		break;
+	if (_iconName != name) {
+		switch (name) {
+		case IconName::Dynamic_Navigation:
+			setDynamicIcon(Rc<NavIcon>::create());
+			break;
+		case IconName::Dynamic_Loader:
+			setDynamicIcon(Rc<CircleLoaderIcon>::create());
+			break;
+		case IconName::Dynamic_Expand:
+			setDynamicIcon(Rc<ExpandIcon>::create());
+			break;
+		case IconName::None:
+		case IconName::Empty:
+			setDynamicIcon(nullptr);
+			break;
+		default:
+			setStaticIcon(name);
+			break;
+		}
+		_iconName = name;
 	}
-	_iconName = name;
 }
 
 IconName IconSprite::getIconName() const {
@@ -470,6 +471,7 @@ void IconSprite::setDynamicIcon(DynamicIcon *i) {
 void IconSprite::setStaticIcon(IconName name) {
 	_storage = ResourceManager::getInstance()->getIconStorage(_contentSize);
 	if (_storage) {
+		auto tmpSize = _contentSize;
 		setDynamicIcon(nullptr);
 		_storage->addIcon(name);
 		auto icon = _storage->getIcon(name);
@@ -478,6 +480,8 @@ void IconSprite::setStaticIcon(IconName name) {
 			setTexture(_storage->getTexture());
 			setTextureRect(icon->getTextureRect());
 			setDensity(icon->getDensity());
+		} else {
+			_contentSize = tmpSize;
 		}
 	} else {
 		setImage(Rc<layout::Image>::create(48, 48, IconStorage::getIconPath(name)));

@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -170,7 +170,7 @@ void GLProgramDesc::set(Attr attr, PixelFormat internal, PixelFormat reference) 
 
 String GLProgramDesc::makeVertex() const {
 	bool useColor = ((flags & Attr::Color) != Attr::None);
-	bool useTexCoord = ((flags & Attr::TexCoords) != Attr::None);
+	bool useTexCoord = ((flags & Attr::TexCoords) != Attr::None || (flags & Attr::LinearGradient) != Attr::None);
 	bool isHighP = ((flags & Attr::HighP) != Attr::None);
 
 	StringStream stream;
@@ -205,10 +205,21 @@ String GLProgramDesc::makeVertex() const {
 	return stream.str();
 }
 
+struct LinearGradient {
+	struct Stop {
+		Color4B color;
+		float position; //
+	};
+
+	Vector<Stop> stops;
+};
+
 String GLProgramDesc::makeFragment() const {
 	bool useColor = ((flags & Attr::Color) != Attr::None);
-	bool useTexCoord = ((flags & Attr::TexCoords) != Attr::None);
+	bool useTexCoord = ((flags & Attr::TexCoords) != Attr::None || (flags & Attr::LinearGradient) != Attr::None);
 	bool alphaTest = (flags & Attr::AlphaTestLT) != Attr::None || (flags & Attr::AlphaTestGT) != Attr::None;
+	bool gradient = ((flags & Attr::LinearGradient) != Attr::None);
+	bool isGradientAbsolute = ((flags & Attr::GradientAbsolute) != Attr::None);
 
 	StringStream stream;
 	stream << "#ifdef GL_ES\n";
@@ -249,11 +260,38 @@ void main() {
 		if (alphaTest) {
 			stream << "uniform float u_alphaTest;\n";
 		}
+		if (gradient) {
+			stream << R"Shader(
+uniform int        grad_numStops;
+#ifdef GL_ES
+uniform lowp float    grad_axis;
+uniform mediump float grad_tg_alpha;
+uniform lowp vec4     grad_colors[16];
+uniform mediump float grad_stops[16];
+#else
+uniform float      grad_axis;
+uniform float      grad_tg_alpha;
+uniform vec4       grad_colors[16];
+uniform float      grad_stops[16];
+#endif
+)Shader";
+			if (isGradientAbsolute) {
+				stream << R"Shader(
+#ifdef GL_ES
+uniform mediump vec2  grad_size;
+uniform mediump vec2  grad_origin;
+#else
+uniform vec2  grad_size;
+uniform vec2  grad_origin;
+#endif
+)Shader";
+			}
+		}
 		if (useColor) { stream << "varying vec4 v_fragmentColor;\n"; }
 		if (useTexCoord) { stream << "varying vec2 v_texCoord;\n"; }
 
 		String colorOutput("gl_FragColor");
-		if (alphaTest) {
+		if (alphaTest || gradient) {
 			colorOutput = "vec4 fc";
 		}
 
@@ -308,8 +346,29 @@ void main() {
 		} else if (useTexCoord) {
 			stream << colorOutput << " = texture2D(CC_Texture0, v_texCoord);\n";
 		}
-
+		if (gradient) {
+			if (isGradientAbsolute) {
+				stream << R"Shader(
+	float grad_loc = grad_axis * (gl_FragCoord.x - grad_origin.x + grad_tg_alpha * (gl_FragCoord.y - grad_origin.y)) / grad_size.x
+		+ (1.0 - grad_axis) * (gl_FragCoord.y - grad_origin.y + grad_tg_alpha * (gl_FragCoord.x - grad_origin.x)) / grad_size.y;
+)Shader";
+			} else {
+				stream << R"Shader(
+	float grad_loc = grad_axis * (v_texCoord.x + grad_tg_alpha * (1.0 - v_texCoord.y))
+		+ (1.0 - grad_axis) * (1.0 - (v_texCoord.y - grad_tg_alpha * v_texCoord.x));
+)Shader";
+			}
+			stream << R"Shader(
+    vec4 gradColor = mix( grad_colors[0], grad_colors[1], smoothstep( grad_stops[0], grad_stops[1], grad_loc ) );
+    for ( int i = 1; i < grad_numStops - 1; ++i ) {
+        gradColor = mix(gradColor, grad_colors[i+1], smoothstep( grad_stops[i], grad_stops[i+1], grad_loc ) );
+    }
+)Shader";
+		}
 		if (alphaTest) {
+			if (gradient) {
+				stream << "\tfc = fc * gradColor;\n";
+			}
 			if ((flags & Attr::AlphaTestLT) != Attr::None) {
 				stream << "\tif(fc.a < u_alphaTest) { ";
 			} else {
@@ -317,6 +376,8 @@ void main() {
 			}
 
 			stream << "gl_FragColor = fc; } else { discard; }\n";
+		} else if (gradient) {
+			stream << "\tgl_FragColor = fc * gradColor;\n";
 		}
 		stream << "}\n";
 	}

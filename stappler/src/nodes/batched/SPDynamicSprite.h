@@ -48,6 +48,9 @@ public:
 	virtual void setTextureRect(const Rect &);
 	virtual const Rect &getTextureRect() const;
 
+	virtual const Vec2 &getTextureOrigin() const;
+	virtual const Size &getTextureSize() const;
+
 	virtual void setFlippedX(bool value);
 	virtual bool isFlippedX() const;
 
@@ -69,7 +72,7 @@ public:
 	virtual float getTextureDensity() const;
 
 protected:
-	void updateQuads();
+	virtual void updateQuads();
 
 	virtual void acquireTexture(const StringView &file);
 	virtual void onTextureRecieved(cocos2d::Texture2D *);
