@@ -143,14 +143,25 @@ bool OverlayForm::submit() {
 	if (_submitCallback) {
 		retain();
 		_formController->setEnabled(false);
-		auto ret = _submitCallback(_formController->collect(true), [this] (bool success, data::Value && data) {
+
+		class Target : public Ref {
+		public:
+			Target(OverlayForm *f) : form(f) { }
+			virtual ~Target() { }
+
+			bool called = false;
+			Rc<OverlayForm> form;
+		};
+
+		Rc<Target> target = Rc<Target>::alloc(this);
+
+		auto ret = _submitCallback(_formController->collect(true), [this, target] (bool success, data::Value && data) {
 			auto ret = complete(success, move(data));
-			release();
+			target->called = true;
 			return ret;
 		});
 		if (!ret) {
 			_formController->setEnabled(true);
-			release();
 		}
 		return true;
 	}

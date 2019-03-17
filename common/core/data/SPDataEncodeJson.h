@@ -70,7 +70,7 @@ struct RawEncoder : public Interface::AllocBaseType {
 		encodeString(*stream, str);
 	}
 
-	inline void write(const typename ValueType::BytesType &data) { (*stream) << '"' << "BASE64:" << base64::encode(data) << '"'; }
+	inline void write(const typename ValueType::BytesType &data) { (*stream) << '"' << "BASE64:" << base64url::encode(data) << '"'; }
 	inline void onBeginArray(const typename ValueType::ArrayType &arr) { (*stream) << '['; }
 	inline void onEndArray(const typename ValueType::ArrayType &arr) { (*stream) << ']'; }
 	inline void onBeginDict(const typename ValueType::DictionaryType &dict) { (*stream) << '{'; }
@@ -86,11 +86,18 @@ struct PrettyEncoder : public Interface::AllocBaseType {
 	using InterfaceType = Interface;
 	using ValueType = ValueTemplate<Interface>;
 
-	PrettyEncoder(OutputStream *stream) : stream(stream) { }
+	PrettyEncoder(OutputStream *stream, bool timeMarkers = false) : timeMarkers(timeMarkers), stream(stream) { }
 
 	void write(nullptr_t) { (*stream) << "null"; offsetted = false; }
 	void write(bool value) { (*stream) << ((value)?"true":"false"); offsetted = false; }
-	void write(int64_t value) { (*stream) << value; offsetted = false; }
+	void write(int64_t value) {
+		(*stream) << value; offsetted = false;
+		if (timeMarkers
+			&& (lastKey.find("time") != maxOf<size_t>() || lastKey.find("Time") != maxOf<size_t>() || lastKey.find("TIME") != maxOf<size_t>())
+			&& (value > 1000000000000000 && value < 10000000000000000)) {
+			(*stream) << " /* " << Time::microseconds(value).toHttp() << " */";
+		}
+	}
 	void write(double value) { (*stream) << value; offsetted = false; }
 
 	void write(const typename ValueType::StringType &str) {
@@ -99,7 +106,7 @@ struct PrettyEncoder : public Interface::AllocBaseType {
 	}
 
 	void write(const typename ValueType::BytesType &data) {
-		(*stream) << '"'  << "BASE64:" << base64::encode(data) << '"';
+		(*stream) << '"'  << "BASE64:" << base64url::encode(data) << '"';
 		offsetted = false;
 	}
 
@@ -145,11 +152,13 @@ struct PrettyEncoder : public Interface::AllocBaseType {
 	}
 
 	void onBeginDict(const typename ValueType::DictionaryType &dict) {
+		lastKey = StringView();
 		(*stream) << '{';
 		++ depth;
 	}
 
 	void onEndDict(const typename ValueType::DictionaryType &dict) {
+		lastKey = StringView();
 		-- depth;
 		(*stream) << '\n';
 		for (size_t i = 0; i < depth; i++) {
@@ -160,6 +169,7 @@ struct PrettyEncoder : public Interface::AllocBaseType {
 	}
 
 	void onKey(const typename ValueType::StringType &str) {
+		lastKey = str;
 		(*stream) << '\n';
 		for (size_t i = 0; i < depth; i++) {
 			(*stream) << '\t';
@@ -170,6 +180,7 @@ struct PrettyEncoder : public Interface::AllocBaseType {
 	}
 
 	void onNextValue() {
+		lastKey = StringView();
 		(*stream) << ',';
 	}
 
@@ -193,14 +204,16 @@ struct PrettyEncoder : public Interface::AllocBaseType {
 	size_t depth = 0;
 	bool popComplex = false;
 	bool offsetted = false;
+	bool timeMarkers = false;
 	OutputStream *stream;
+	StringView lastKey;
 	typename Interface::template ArrayType<bool> bstack;
 };
 
 template <typename Interface>
-inline void write(std::ostream &stream, const ValueTemplate<Interface> &val, bool pretty) {
+inline void write(std::ostream &stream, const ValueTemplate<Interface> &val, bool pretty, bool timeMarkers = false) {
 	if (pretty) {
-		PrettyEncoder<Interface> encoder(&stream);
+		PrettyEncoder<Interface> encoder(&stream, timeMarkers);
 		val.encode(encoder);
 	} else {
 		RawEncoder<Interface> encoder(&stream);
@@ -209,17 +222,17 @@ inline void write(std::ostream &stream, const ValueTemplate<Interface> &val, boo
 }
 
 template <typename Interface>
-inline auto write(const ValueTemplate<Interface> &val, bool pretty = false) -> typename Interface::StringType {
+inline auto write(const ValueTemplate<Interface> &val, bool pretty = false, bool timeMarkers = false) -> typename Interface::StringType {
 	typename Interface::StringStreamType stream;
-	write<Interface>(stream, val, pretty);
+	write<Interface>(stream, val, pretty, timeMarkers);
 	return stream.str();
 }
 
 template <typename Interface>
-bool save(const ValueTemplate<Interface> &val, const String &path, bool pretty) {
+bool save(const ValueTemplate<Interface> &val, const String &path, bool pretty, bool timeMarkers = false) {
 	OutputFileStream stream(path);
 	if (stream.is_open()) {
-		write(stream, val, pretty);
+		write(stream, val, pretty, timeMarkers);
 		stream.flush();
 		stream.close();
 		return true;

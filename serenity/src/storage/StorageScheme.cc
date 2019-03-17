@@ -869,7 +869,7 @@ data::Value &Scheme::transform(data::Value &d, TransformAction a) const {
 		if (a == TransformAction::Create || a == TransformAction::ProtectedCreate) {
 			if (field.hasFlag(Flags::AutoMTime) && !d.hasValue(it.first)) {
 				d.setInteger(Time::now().toMicroseconds(), it.first);
-			} else if (field.hasFlag(Flags::AutoCTime)) {
+			} else if (field.hasFlag(Flags::AutoCTime) && !d.hasValue(it.first)) {
 				d.setInteger(Time::now().toMicroseconds(), it.first);
 			} else if (field.hasDefault() && !d.hasValue(it.first)) {
 				if (auto def = field.getDefault(d)) {

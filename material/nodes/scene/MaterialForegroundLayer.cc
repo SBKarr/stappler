@@ -189,6 +189,7 @@ void ForegroundLayer::Snackbar::onHidden() {
 void ForegroundLayer::Snackbar::onButton() {
 	if (_data.buttonCallback) {
 		_data.buttonCallback();
+		_data.buttonCallback = nullptr;
 	}
 	stopAllActions();
 	runAction(action::sequence(0.35f, std::bind(&ForegroundLayer::Snackbar::hide, this, nullptr)));

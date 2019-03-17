@@ -117,7 +117,7 @@ public:
 	void writeWhere(SqlQuery::SelectWhere &, Operator op, const Scheme &, const query::Query &);
 	void writeOrdering(SqlQuery::SelectFrom &, const Scheme &, const query::Query &);
 
-	SelectFrom writeSelectFrom(GenericQuery &q, const QueryList::Item &item, bool idOnly, const StringView &scheme, const StringView &field);
+	SelectFrom writeSelectFrom(GenericQuery &q, const QueryList::Item &item, bool idOnly, const StringView &scheme, const StringView &field, bool isSimpleGet = false);
 	SelectFrom writeSelectFrom(Select &sel, Worker &, const query::Query &);
 
 	void writeQueryReqest(SqlQuery::SelectFrom &s, const QueryList::Item &item);

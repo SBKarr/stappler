@@ -617,7 +617,9 @@ void InputLabel::updateCursor() {
 			} else {
 				cpos = getCursorPosition(_cursor.start);
 			}
-			_cursorLayer->setVisible(true);
+			if (_inputEnabled) {
+				_cursorLayer->setVisible(true);
+			}
 			_cursorLayer->setPosition(cpos);
 			_cursorPointer->setPosition(cpos);
 
@@ -721,6 +723,7 @@ void InputLabel::showLastChar() {
 		}
 		str += _inputString.back();
 		Label::setString(str);
+		stopActionByTag("InputLabelLastChar"_tag);
 		runAction(action::sequence(2.0f, std::bind(&InputLabel::hideLastChar, this)), "InputLabelLastChar"_tag);
 	}
 }

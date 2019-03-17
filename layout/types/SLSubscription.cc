@@ -35,38 +35,96 @@ Subscription::Id Subscription::getNextId() {
 	return Id(nextId.fetch_add(1));
 }
 
-void Subscription::setDirty(Flags flags) {
-	for (auto &it : _flags) {
-		it.second |= flags;
+Subscription::~Subscription() {
+	setForwardedSubscription(nullptr);
+}
+
+void Subscription::setDirty(Flags flags, bool forwardedOnly) {
+	if (_forwardedFlags) {
+		for (auto &it : (*_forwardedFlags)) {
+			if (forwardedOnly) {
+				if (_flags.find(it.first) != _flags.end()) {
+					it.second |= flags;
+				}
+			} else {
+				it.second |= flags;
+			}
+		}
+	} else {
+		for (auto &it : _flags) {
+			it.second |= flags;
+		}
 	}
 }
 
 bool Subscription::subscribe(Id id) {
-	auto it = _flags.find(id);
-	if (it == _flags.end()) {
-		_flags.insert(std::make_pair(id, Initial));
-		return true;
+	if (_forwardedFlags) {
+		auto it = _forwardedFlags->find(id);
+		if (it == _forwardedFlags->end()) {
+			_forwardedFlags->insert(std::make_pair(id, Initial));
+			_flags.insert(std::make_pair(id, Initial));
+			return true;
+		}
+	} else {
+		auto it = _flags.find(id);
+		if (it == _flags.end()) {
+			_flags.insert(std::make_pair(id, Initial));
+			return true;
+		}
 	}
 	return false;
 }
 
 bool Subscription::unsubscribe(Id id) {
-	auto it = _flags.find(id);
-	if (it != _flags.end()) {
-		_flags.erase(id);
-		return true;
+	if (_forwardedFlags) {
+		auto it = _forwardedFlags->find(id);
+		if (it == _forwardedFlags->end()) {
+			_forwardedFlags->erase(id);
+			_flags.erase(id);
+			return true;
+		}
+	} else {
+		auto it = _flags.find(id);
+		if (it != _flags.end()) {
+			_flags.erase(id);
+			return true;
+		}
 	}
 	return false;
 }
 
 Subscription::Flags Subscription::check(Id id) {
-	auto it = _flags.find(id);
-	if (it != _flags.end()) {
-		auto val = it->second;
-		it->second = Flags(0);
-		return val;
+	if (_forwardedFlags) {
+		auto it = _forwardedFlags->find(id);
+		if (it != _forwardedFlags->end()) {
+			auto val = it->second;
+			it->second = Flags(0);
+			return val;
+		}
+	} else {
+		auto it = _flags.find(id);
+		if (it != _flags.end()) {
+			auto val = it->second;
+			it->second = Flags(0);
+			return val;
+		}
 	}
 	return Flags(0);
+}
+
+void Subscription::setForwardedSubscription(Subscription *sub) {
+	if (_forwardedFlags) {
+		// erase forwarded items from sub
+		for (auto &it : _flags) {
+			_forwardedFlags->erase(it.first);
+		}
+	}
+	_forwardedFlags = nullptr;
+	_forwarded = sub;
+	_flags.clear();
+	if (sub) {
+		_forwardedFlags = sub->_forwardedFlags ? sub->_forwardedFlags : &sub->_flags;
+	}
 }
 
 NS_LAYOUT_END

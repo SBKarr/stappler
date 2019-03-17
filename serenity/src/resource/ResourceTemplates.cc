@@ -143,6 +143,20 @@ data::Value ResourceObject::getResultObject() {
 	return processResultList(_queries, ret);
 }
 
+int64_t ResourceObject::getObjectMtime() {
+	auto tmpQuery = _queries;
+	tmpQuery.clearFlags();
+	tmpQuery.addFlag(QueryList::SimpleGet);
+	auto str = tmpQuery.setQueryAsMtime();
+	if (!str.empty()) {
+		if (auto ret = _transaction.performQueryList(tmpQuery)) {
+			return ret.getInteger(str);
+		}
+	}
+
+	return 0;
+}
+
 data::Value ResourceObject::processResultList(const QueryList &s, data::Value &ret) {
 	auto perms = isSchemeAllowed(*s.getScheme(), Action::Read);
 	if (perms != Permission::Restrict && ret.isArray()) {

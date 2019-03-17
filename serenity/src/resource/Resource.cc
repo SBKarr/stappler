@@ -132,7 +132,8 @@ void Resource::applyQuery(const data::Value &query) {
 	_queries.apply(query);
 }
 
-void Resource::prepare() {
+void Resource::prepare(QueryList::Flags flags) {
+	_queries.addFlag(flags);
 	_queries.resolve(_extraResolves);
 }
 

@@ -278,6 +278,12 @@ Query & Query::forUpdate() {
 	return *this;
 }
 
+Query & Query::clearFields() {
+	fieldsInclude.clear();
+	fieldsExclude.clear();
+	return *this;
+}
+
 bool Query::empty() const {
 	return selectList.empty() && selectIds.empty() && selectAlias.empty();
 }

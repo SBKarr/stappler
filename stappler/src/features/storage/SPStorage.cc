@@ -1524,7 +1524,7 @@ Handle::Handle(const StringView &name, const StringView &ipath) : _db(nullptr), 
 		s_configured = true;
 	}
 
-	int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_PRIVATECACHE;
+	int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_PRIVATECACHE | SQLITE_OPEN_NOMUTEX;
 	auto ok = sqlite3_open_v2(path.c_str(), &_db, flags, NULL);
 	if (ok != SQLITE_OK ) {
 		log::text("Storage", "SQLite: Error check on open");

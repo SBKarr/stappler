@@ -233,7 +233,7 @@ auto SqlQuery::writeFullTextFrom(Select &sel, const Scheme &scheme, const query:
 	return f;
 }
 
-auto SqlQuery::writeSelectFrom(GenericQuery &q, const QueryList::Item &item, bool idOnly, const StringView &schemeName, const StringView &fieldName) -> SelectFrom {
+auto SqlQuery::writeSelectFrom(GenericQuery &q, const QueryList::Item &item, bool idOnly, const StringView &schemeName, const StringView &fieldName, bool isSimpleGet) -> SelectFrom {
 	if (idOnly) {
 		return q.select(SqlQuery::Field(schemeName, fieldName).as("id")).from(schemeName);
 	}
@@ -242,7 +242,7 @@ auto SqlQuery::writeSelectFrom(GenericQuery &q, const QueryList::Item &item, boo
 	writeFullTextRank(sel, *item.scheme, item.query);
 	item.readFields([&] (const StringView &name, const storage::Field *) {
 		sel = sel.field(SqlQuery::Field(schemeName, name));
-	});
+	}, isSimpleGet);
 	return writeFullTextFrom(sel, *item.scheme, item.query).from(schemeName);
 }
 
@@ -305,7 +305,7 @@ void SqlQuery::writeQueryListItem(GenericQuery &q, const QueryList &list, size_t
 			? f->getName()
 			: StringView("__oid") );
 
-	auto s = writeSelectFrom(q, item, idOnly, schemeName, fieldName);
+	auto s = writeSelectFrom(q, item, idOnly, schemeName, fieldName, list.hasFlag(QueryList::SimpleGet));
 	if (idx > 0) {
 		if (refQueryTag.empty()) {
 			SqlQuery_writeJoin(s, toString("sq", idx - 1), item.scheme->getName(), item);

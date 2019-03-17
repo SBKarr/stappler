@@ -121,7 +121,7 @@ bool Session::init(bool silent) {
 	auto &sessionTokenString = args.getString(SA_SESSION_TOKEN_NAME);
 
 	/* token is a base64 encoded hash from sha512, so, it must have 88 bytes */
-	if (sessionTokenString.size() != 88) {
+	if (sessionTokenString.size() != 86) {
 		if (!silent) { messages::debug("Session", "Session token format is invalid"); }
 		return false;
 	}

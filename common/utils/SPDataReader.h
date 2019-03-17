@@ -278,6 +278,8 @@ auto DataReader<Endianess>::readString(size_t s) -> StringView {
 	return ret;
 }
 
+using BytesView = DataReader<ByteOrder::Host>;
+
 NS_SP_END
 
 #endif /* COMMON_UTILS_SPDATAREADER_H_ */

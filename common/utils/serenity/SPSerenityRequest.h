@@ -133,6 +133,8 @@ public:
 
 	Query & forUpdate();
 
+	Query & clearFields();
+
 	bool empty() const;
 
 	int64_t getSingleSelectId() const;

@@ -61,6 +61,8 @@ struct MediaParameters {
 
 	Margin pageMargin;
 
+	Color4B defaultBackground = Color4B(0xfa, 0xfa, 0xfa, 255);
+
 	float getDefaultFontSize() const;
 
 	void addOption(const String &);

@@ -82,6 +82,8 @@ public:
 	virtual data::Value updateObject(data::Value &data, apr::array<InputFile> &) override;
 	virtual data::Value getResultObject() override;
 
+	virtual int64_t getObjectMtime();
+
 protected:
 	data::Value performUpdate(const Vector<int64_t> &, data::Value &, apr::array<InputFile> &);
 

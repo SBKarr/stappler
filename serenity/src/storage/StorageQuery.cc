@@ -287,7 +287,7 @@ const Set<const Field *> &QueryList::Item::getQueryFields() const {
 	return fields.getResolves();
 }
 
-void QueryList::readFields(const Scheme &scheme, const Set<const Field *> &fields, const FieldCallback &cb) {
+void QueryList::readFields(const Scheme &scheme, const Set<const Field *> &fields, const FieldCallback &cb, bool isSimpleGet) {
 	if (!fields.empty()) {
 		cb("__oid", nullptr);
 		for (auto &it : fields) {
@@ -298,14 +298,12 @@ void QueryList::readFields(const Scheme &scheme, const Set<const Field *> &field
 				}
 			}
 		}
+		auto &forced = scheme.getForceInclude();
 		for (auto &it : scheme.getFields()) {
-			if (it.second.hasFlag(Flags::ForceInclude) && fields.find(&it.second) == fields.end()) {
+			if ((it.second.hasFlag(storage::Flags::ForceInclude) || (!isSimpleGet && forced.find(&it.second) != forced.end()))
+					&& fields.find(&it.second) == fields.end()
+					) {
 				cb(it.first, &it.second);
-			}
-		}
-		for (auto &it : scheme.getForceInclude()) {
-			if (fields.find(it) == fields.end()) {
-				cb(it->getName(), it);
 			}
 		}
 	} else {
@@ -313,8 +311,8 @@ void QueryList::readFields(const Scheme &scheme, const Set<const Field *> &field
 	}
 }
 
-void QueryList::Item::readFields(const FieldCallback &cb) const {
-	QueryList::readFields(*scheme, getQueryFields(), cb);
+void QueryList::Item::readFields(const FieldCallback &cb, bool isSimpleGet) const {
+	QueryList::readFields(*scheme, getQueryFields(), cb, isSimpleGet);
 }
 
 QueryList::QueryList(const Scheme *scheme) {
@@ -429,6 +427,32 @@ bool QueryList::setField(const Scheme *scheme, const Field *field) {
 bool QueryList::setProperty(const Field *field) {
 	queries.back().query.include(Query::Field(field->getName().str()));
 	return true;
+}
+
+StringView QueryList::setQueryAsMtime() {
+	if (auto scheme = getScheme()) {
+		for (auto &it : scheme->getFields()) {
+			if (it.second.hasFlag(storage::Flags::AutoMTime)) {
+				auto &q = queries.back();
+				q.query.clearFields().include(it.first);
+				q.fields = QueryFieldResolver(*q.scheme, q.query, Vector<String>());
+				return it.first;
+			}
+		}
+	}
+	return StringView();
+}
+
+void QueryList::clearFlags() {
+	_flags = None;
+}
+
+void QueryList::addFlag(Flags flags) {
+	_flags |= flags;
+}
+
+bool QueryList::hasFlag(Flags flags) const {
+	return (_flags & flags) != Flags::None;
 }
 
 bool QueryList::isAll() const {

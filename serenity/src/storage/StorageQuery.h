@@ -100,6 +100,11 @@ class QueryList : public AllocBase {
 public:
 	using FieldCallback = Callback<void(const StringView &name, const Field *f)>;
 
+	enum Flags {
+		None,
+		SimpleGet = 1 << 0,
+	};
+
 	struct Item {
 		const Scheme *scheme = nullptr;
 		const Field *ref = nullptr;
@@ -112,10 +117,10 @@ public:
 		QueryFieldResolver fields;
 
 		const Set<const Field *> &getQueryFields() const;
-		void readFields(const FieldCallback &) const;
+		void readFields(const FieldCallback &, bool isSimpleGet = false) const;
 	};
 
-	static void readFields(const Scheme &, const Set<const Field *> &, const FieldCallback &);
+	static void readFields(const Scheme &, const Set<const Field *> &, const FieldCallback &, bool isSimpleGet = false);
 
 public:
 	QueryList(const Scheme *);
@@ -135,6 +140,12 @@ public:
 	bool setAll();
 	bool setField(const Scheme *, const Field *field);
 	bool setProperty(const Field *field);
+
+	StringView setQueryAsMtime();
+
+	void clearFlags();
+	void addFlag(Flags);
+	bool hasFlag(Flags) const;
 
 	bool isAll() const;
 	bool isRefSet() const;
@@ -176,9 +187,12 @@ protected:
 	bool decodeInclude(const Scheme &, Query &, const data::Value &);
 	bool decodeIncludeItem(const Scheme &, Query &, const data::Value &);
 
+	Flags _flags = Flags::None;
 	Vector<Item> queries;
 	data::Value extraData;
 };
+
+SP_DEFINE_ENUM_AS_MASK(QueryList::Flags);
 
 NS_SA_EXT_END(storage)
 

@@ -84,7 +84,7 @@ public:
 
 	void applyQuery(const data::Value &);
 
-	void prepare();
+	void prepare(QueryList::Flags = QueryList::None);
 
 public: // common interface
 	virtual bool prepareUpdate();

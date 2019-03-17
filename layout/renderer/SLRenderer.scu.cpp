@@ -37,3 +37,6 @@ THE SOFTWARE.
 #include "SLTable.cc"
 #include "SLTableBorder.cc"
 #include "SLResult.cc"
+
+#include "SLCssDocument.cc"
+#include "SLDocument.cc"

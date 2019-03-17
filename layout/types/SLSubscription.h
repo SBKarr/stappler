@@ -61,6 +61,8 @@ public:
 
 	static Flags Initial;
 
+	~Subscription();
+
 	template <class T>
 	static Flags _Flag(T idx) { return ((uint8_t)idx == 0 || (uint8_t)idx > (sizeof(Flags) * 8))?Flags(0):Flags(1 << (uint8_t)idx); }
 
@@ -69,13 +71,17 @@ public:
 	template <class T, class... Args>
 	static Flags Flag(T val, Args&&... args) { return _Flag(val) | Flag(args...); }
 
-	void setDirty(Flags flags = Initial);
+	void setDirty(Flags flags = Initial, bool forwardedOnly = false);
 
 	bool subscribe(Id);
 	bool unsubscribe(Id);
 	Flags check(Id);
 
+	void setForwardedSubscription(Subscription *);
+
 protected:
+	Rc<Subscription> _forwarded;
+	Map<Id, Flags> *_forwardedFlags = nullptr;
 	Map<Id, Flags> _flags;
 };
 

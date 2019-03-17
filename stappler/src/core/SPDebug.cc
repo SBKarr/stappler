@@ -89,7 +89,17 @@ NS_SP_BEGIN
 
 void LogOpenGLError(const char *file, size_t line, const char *func) {
 #ifdef DEBUG
-	if(GLenum __error = glGetError()) {
+	static constexpr int VBO_FREE_MEMORY_ATI = 0x87FB;
+	static constexpr int TEXTURE_FREE_MEMORY_ATI = 0x87FC;
+	static constexpr int RENDERBUFFER_FREE_MEMORY_ATI = 0x87FD;
+
+	static constexpr int GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX = 0x9047;
+	static constexpr int GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX = 0x9048;
+	static constexpr int GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX = 0x9049;
+	static constexpr int GPU_MEMORY_INFO_EVICTED_MEMORY_NVX = 0x904B;
+
+	GLenum __error = glGetError();
+	if (__error) {
 		const char *desc = "unknown error";
 		switch (__error) {
 		case GL_INVALID_ENUM: desc = "GL_INVALID_ENUM"; break;
@@ -97,7 +107,31 @@ void LogOpenGLError(const char *file, size_t line, const char *func) {
 		case GL_INVALID_OPERATION: desc = "GL_INVALID_OPERATION"; break;
 		case GL_OUT_OF_MEMORY: desc = "GL_OUT_OF_MEMORY"; break;
 		}
-		stappler::log::format("SP-OpenGL", "%s:%d %s: error 0x%04X (%s)", file, int(line), func, __error, desc);
+		stappler::log::format("SP-OpenGL", "%s:%d %s: error 0x%04X (%s)", ::stappler::filepath::lastComponent(file).data(), int(line), func, __error, desc);
+		if (__error == GL_OUT_OF_MEMORY) {
+			int values[4] = { 0, 0, 0, 0};
+			glGetIntegerv(GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, values);
+			if (values[0] != 0) {
+				glGetIntegerv(GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX, &values[1]);
+				glGetIntegerv(GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &values[2]);
+				glGetIntegerv(GPU_MEMORY_INFO_EVICTED_MEMORY_NVX, &values[3]);
+				stappler::log::format("SP-OpenGL", "  - Memory: Total: %dkb, Dedicated: %dkb, Available: %dkb, Evicted: %dkb", values[0], values[1], values[2], values[3]);
+			} else {
+				glGetIntegerv(TEXTURE_FREE_MEMORY_ATI, values);
+				if (values[0] != 0) {
+					auto tex = values[0];
+
+					glGetIntegerv(VBO_FREE_MEMORY_ATI, values);
+					auto vbo = values[0];
+
+					glGetIntegerv(RENDERBUFFER_FREE_MEMORY_ATI, values);
+					auto rbo = values[0];
+
+					stappler::log::format("SP-OpenGL", "  - Memory free: Texture: %d, VBO: %d, RBO: %d", tex, vbo, rbo);
+				}
+			}
+			glGetError();
+		}
 	}
 #endif
 }

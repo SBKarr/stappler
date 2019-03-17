@@ -78,7 +78,7 @@ static void DynamicAtlas_fillBuffer(const Set<Rc<DynamicQuadArray>> &quads, size
 		}
 	}
 
-    CHECK_GL_ERROR_DEBUG();
+    LOG_GL_ERROR();
 }
 
 DynamicAtlas::DynamicAtlas() {}
@@ -282,7 +282,7 @@ void DynamicAtlas::setupVBOandVAO() {
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	CHECK_GL_ERROR_DEBUG();
+    LOG_GL_ERROR();
 }
 
 void DynamicAtlas::setupVBO() {
@@ -447,7 +447,7 @@ void DynamicAtlas::drawQuads(bool update) {
         }
 
         CC_INCREMENT_GL_DRAWN_BATCHES_AND_VERTICES(1,numberOfQuads*6);
-        CHECK_GL_ERROR_DEBUG();
+        LOG_GL_ERROR();
     }
 
     if (update && _useBufferSwapping) {

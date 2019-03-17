@@ -283,6 +283,10 @@ void TabBar::onContentSizeDirty() {
 		}
 	}
 
+	if (_contentSize.width == 0.0f) {
+		return;
+	}
+
 	float extraWidth = metrics::tabMinWidth();
 	Rc<MenuSource> extraSource;
 	if ((_barStyle == BarStyle::Layout) && width > _contentSize.width) {

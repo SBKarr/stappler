@@ -39,7 +39,8 @@ struct EncodeFormat {
 		Cbor				= 0b0010, // CBOR data (http://cbor.io/, http://tools.ietf.org/html/rfc7049)
 		DefaultFormat		= 0b0011,
 		Serenity			= 0b0100,
-		SerenityPretty		= 0b0101
+		SerenityPretty		= 0b0101,
+		PrettyTime			= 0b1001, // Pretty-printed JSON data (with time markers comment)
 	};
 
 	// We use LZ4 for compression, it's very fast to decode
@@ -103,8 +104,9 @@ struct EncodeTraits {
 			switch (fmt.format) {
 			case EncodeFormat::Json:
 			case EncodeFormat::Pretty:
+			case EncodeFormat::PrettyTime:
 			{
-				String s = json::write(data, (fmt.format == EncodeFormat::Pretty));
+				String s = json::write(data, (fmt.format == EncodeFormat::Pretty), (fmt.format == EncodeFormat::PrettyTime));
 				Bytes ret; ret.reserve(s.length());
 				ret.assign(s.begin(), s.end());
 				return ret;
@@ -134,6 +136,7 @@ struct EncodeTraits {
 			switch (fmt.format) {
 			case EncodeFormat::Json: json::write(stream, data, false); return true; break;
 			case EncodeFormat::Pretty: json::write(stream, data, true); return true; break;
+			case EncodeFormat::PrettyTime: json::write(stream, data, true, true); return true; break;
 			case EncodeFormat::Cbor:
 			case EncodeFormat::DefaultFormat:
 				return cbor::write(stream, data);
@@ -159,6 +162,7 @@ struct EncodeTraits {
 			switch (fmt.format) {
 			case EncodeFormat::Json: return json::save(data, path, false); break;
 			case EncodeFormat::Pretty: return json::save(data, path, true); break;
+			case EncodeFormat::PrettyTime: return json::save(data, path, true, true); break;
 			case EncodeFormat::Cbor:
 			case EncodeFormat::DefaultFormat:
 				return cbor::save(data, path);
@@ -198,6 +202,9 @@ toString(const ValueTemplate<Interface> &data, EncodeFormat::Format fmt) -> type
 		break;
 	case EncodeFormat::Pretty:
 		return json::write<Interface>(data, true);
+		break;
+	case EncodeFormat::PrettyTime:
+		return json::write<Interface>(data, true, true);
 		break;
 	case EncodeFormat::Cbor:
 		return base64::encode<Interface>(cbor::write(data));

@@ -58,7 +58,7 @@ public:
 	virtual void clearError(const String &);
 
 	virtual void reset();
-	virtual void reset(const data::Value &);
+	virtual void reset(const data::Value &, const data::Value &errors = data::Value());
 	virtual void reset(const Map<String, data::Value> &);
 	virtual data::Value collect(bool force = false);
 

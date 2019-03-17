@@ -657,12 +657,12 @@ auto StringViewBase<_CharType>::set(const CharType *p, size_t l)-> Self & {
 
 template <typename _CharType>
 auto StringViewBase<_CharType>::operator == (const Self &other) const -> bool {
-	return this->len == other.len && memcmp(this->ptr, other.ptr, other.len) == 0;
+	return this->len == other.len && memcmp(this->ptr, other.ptr, other.len * sizeof(_CharType)) == 0;
 }
 
 template <typename _CharType>
 auto StringViewBase<_CharType>::operator != (const Self &other) const -> bool {
-	return this->len != other.len || memcmp(this->ptr, other.ptr, other.len) != 0;
+	return this->len != other.len || memcmp(this->ptr, other.ptr, other.len * sizeof(_CharType)) != 0;
 }
 
 template <typename _CharType>

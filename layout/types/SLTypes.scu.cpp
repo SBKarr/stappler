@@ -24,6 +24,17 @@ THE SOFTWARE.
 **/
 
 #include "SPLayout.h"
+
+#include "SLStyle.cc"
+#include "SLStyleColors.cc"
+#include "SLStyleCompiled.cc"
+#include "SLStyleMedia.cc"
+#include "SLStyleValues.cc"
+#include "SLParser.cc"
+#include "SLReader.cc"
+#include "SLNode.cc"
+#include "SLRendererTypes.cc"
+
 #include "SLColor.cc"
 #include "SLGeometry.cc"
 #include "SLMat4.cc"
@@ -33,3 +44,8 @@ THE SOFTWARE.
 #include "SLVec2.cc"
 #include "SLVec3.cc"
 #include "SLVec4.cc"
+
+#include "SLCanvas.cc"
+#include "SLDraw.cc"
+#include "SLImage.cc"
+#include "SLPath.cc"

@@ -86,8 +86,20 @@ void FormController::reset() {
 	onForceUpdate(this);
 }
 
-void FormController::reset(const data::Value &data) {
+void FormController::reset(const data::Value &data, const data::Value &errors) {
 	reset(data.asDict());
+
+	if (errors.isDictionary()) {
+		Map<String, String> errs;
+		for (auto &it : errors.asDict()) {
+			if (it.second.isString()) {
+				errs.emplace(it.first, it.second.asString());
+			}
+		}
+		if (!errs.empty()) {
+			setErrors(move(errs));
+		}
+	}
 }
 
 void FormController::reset(const Map<String, data::Value> &data) {

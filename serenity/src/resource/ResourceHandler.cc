@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "ResourceHandler.h"
+#include "ResourceTemplates.h"
 
 #include "SPFilesystem.h"
 #include "Resource.h"
@@ -107,15 +108,39 @@ int ResourceHandler::onTranslateName(Request &rctx) {
 		}
 	}
 
-	_resource->prepare();
+	switch (_method) {
+	case Request::Get: {
+		const String modified = rctx.getRequestHeaders().at("if-modified-since");
+		auto mt = modified.empty() ? 0 : Time::fromHttp(modified).toSeconds();
 
-	if (_method == Request::Get) {
+		if (auto d = _resource->getSourceDelta()) {
+			rctx.getResponseHeaders().emplace("Last-Modified", d.toHttp());
+			if (mt >= d.toSeconds()) {
+				return HTTP_NOT_MODIFIED;
+			}
+		}
+
+		if (mt > 0 && _resource->getType() == ResourceType::Object) {
+			if (auto res = dynamic_cast<ResourceObject *>(_resource)) {
+				if (auto objMtime = res->getObjectMtime()) {
+					if (mt >= uint64_t(objMtime / 1000000)) {
+						return HTTP_NOT_MODIFIED;
+					}
+				}
+			}
+		}
+
+		_resource->prepare(storage::QueryList::SimpleGet);
+
 		if (!rctx.isHeaderRequest()) {
 			return writeToRequest(rctx);
 		} else {
 			return writeInfoToReqest(rctx);
 		}
-	} else if (_method == Request::Delete) {
+		break;
+	}
+	case Request::Delete:
+		_resource->prepare();
 		if (_resource->removeObject()) {
 			if (data.isString("location")) {
 				return rctx.redirectTo(String(data.getString("location")));
@@ -124,24 +149,33 @@ int ResourceHandler::onTranslateName(Request &rctx) {
 		} else {
 			return getHintedStatus(HTTP_FORBIDDEN);
 		}
-	} else if (_method == Request::Post) {
+		break;
+	case Request::Post:
+		_resource->prepare();
 		if (_resource->prepareCreate()) {
 			return DECLINED;
 		} else {
 			return getHintedStatus(HTTP_FORBIDDEN);
 		}
-	} else if (_method == Request::Put) {
+		break;
+	case Request::Put:
+		_resource->prepare();
 		if (_resource->prepareUpdate()) {
 			return DECLINED;
 		} else {
 			return getHintedStatus(HTTP_FORBIDDEN);
 		}
-	} else if (_method == Request::Patch) {
+		break;
+	case Request::Patch:
+		_resource->prepare();
 		if (_resource->prepareAppend()) {
 			return DECLINED;
 		} else {
 			return getHintedStatus(HTTP_FORBIDDEN);
 		}
+		break;
+	default:
+		break;
 	}
 
 	return HTTP_NOT_IMPLEMENTED;
@@ -261,42 +295,8 @@ int ResourceHandler::writeToRequest(Request &rctx) {
 			return output::writeResourceFileData(rctx, move(result));
 		}
 	} else {
-		auto d = _resource->getSourceDelta();
-		if (d) {
-			rctx.getResponseHeaders().emplace("Last-Modified", d.toHttp());
-			const String modified = rctx.getRequestHeaders().at("if-modified-since");
-			if (Time::fromHttp(modified).toSeconds() >= d.toSeconds()) {
-				return HTTP_NOT_MODIFIED;
-			}
-		}
-
-		auto checkObj = [&] (const data::Value &obj, const Map<String, storage::Field> &fields) {
-			const String modified = rctx.getRequestHeaders().at("if-modified-since");
-			if (!modified.empty()) {
-				auto mt = Time::fromHttp(modified).toSeconds();
-				for (auto &it : fields) {
-					if (it.second.hasFlag(storage::Flags::AutoMTime)) {
-						if (auto t = obj.getInteger(it.second.getName())) {
-							if (mt >= uint64_t(t / 1000000)) {
-								return true;
-							}
-						}
-					}
-				}
-			}
-			return false;
-		};
-
 		data::Value result(_resource->getResultObject());
 		if (result) {
-			if (_resource->getType() == ResourceType::Object) {
-				if (auto &obj = result.getValue(0)) {
-					if (checkObj(obj, _resource->getScheme().getFields())) {
-						return HTTP_NOT_MODIFIED;
-					}
-				}
-			}
-
 			return writeDataToRequest(rctx, move(result));
 		}
 	}

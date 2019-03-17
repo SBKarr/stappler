@@ -460,7 +460,7 @@ void Builder::render() {
 	if (rootBackground.backgroundColor.a != 0) {
 		_result->setBackgroundColor(rootBackground.backgroundColor);
 	} else {
-		_result->setBackgroundColor(Color4B(0xfa, 0xfa, 0xfa, 255));
+		_result->setBackgroundColor(_media.defaultBackground);
 	}
 
 	if (!l.layouts.empty()) {
