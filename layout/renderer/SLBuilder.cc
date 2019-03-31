@@ -748,6 +748,10 @@ bool Builder::processInlineNode(Layout &l, Layout::NodeInfo && node, const Vec2 
 			if (!node.node->getHtmlId().empty()) {
 				ctx.idPos.push_back(InlineContext::IdPosInfo{firstCharId, lastCharId, node.node->getHtmlId()});
 			}
+		} else {
+			if (!node.node->getHtmlId().empty()) {
+				ctx.idPos.push_back(InlineContext::IdPosInfo{firstCharId, firstCharId, node.node->getHtmlId()});
+			}
 		}
 	});
 

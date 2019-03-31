@@ -106,28 +106,31 @@ public:
 	void setDownloadProgress(const ProgressCallback &callback);
 	void setUploadProgress(const ProgressCallback &callback);
 
+	void setConnectTimeout(int);
+	void setLowSpeedLimit(int time, size_t limit);
+
 protected:
 	struct Network;
 	friend struct Network;
 
-    String _user;
-    String _password;
-    String _from;
-    Vector<String> _recv;
+	String _user;
+	String _password;
+	String _from;
+	Vector<String> _recv;
 
-    String _url;
+	String _url;
 
-    String _cookieFile;
-    String _rootCertFile;
-    String _userAgent;
+	String _cookieFile;
+	String _rootCertFile;
+	String _userAgent;
 
-    long _errorCode = 0;
-    String _contentType;
-    String _error;
+	long _errorCode = 0;
+	String _contentType;
+	String _error;
 
-    long _responseCode;
+	long _responseCode;
 
-    bool _isRequestPerformed;
+	bool _isRequestPerformed;
 	bool _debug = false;
 	bool _reuse = true;
 
@@ -159,39 +162,43 @@ protected:
 
 	bool _silent = false;
 
-    Pair<FILE *, size_t> openFile(const String &filename, bool readOnly = false, bool resume = false);
+	Pair<FILE *, size_t> openFile(const String &filename, bool readOnly = false, bool resume = false);
+
+	int _connectTimeout = 20;
+	int _lowSpeedTime = 20;
+	int _lowSpeedLimit = 20_KiB;
 
 protected:
 	/* protocol parameter */
-    Method _method;
+	Method _method;
 
-    int progressUpload(int64_t ultotal, int64_t ulnow);
-    int progressDownload(int64_t dltotal, int64_t dlnow);
+	int progressUpload(int64_t ultotal, int64_t ulnow);
+	int progressDownload(int64_t dltotal, int64_t dlnow);
 
-    size_t writeData(char *data, size_t size);
-    size_t writeHeaders(const char *data, size_t size);
-    size_t writeDebug(char *data, size_t size);
-    size_t readData(char *data, size_t size);
+	size_t writeData(char *data, size_t size);
+	size_t writeHeaders(const char *data, size_t size);
+	size_t writeDebug(char *data, size_t size);
+	size_t readData(char *data, size_t size);
 
-    bool setupCurl(CURL *curl, char *errorBuffer);
-    bool setupDebug(CURL *curl, bool debug);
-    bool setupRootCert(CURL *curl, const StringView &certPath);
-    bool setupHeaders(CURL *curl, const Vector<String> &vec, curl_slist **headers);
-    bool setupUserAgent(CURL *curl, const StringView &agent);
-    bool setupUser(CURL *curl, const StringView &user, const StringView &password);
-    bool setupFrom(CURL *curl, const StringView &from);
-    bool setupRecv(CURL *curl, const Vector<String> &vec, curl_slist **mailTo);
-    bool setupProgress(CURL *curl, bool progress);
-    bool setupCookies(CURL *curl, const StringView &cookiePath);
+	bool setupCurl(CURL *curl, char *errorBuffer);
+	bool setupDebug(CURL *curl, bool debug);
+	bool setupRootCert(CURL *curl, const StringView &certPath);
+	bool setupHeaders(CURL *curl, const Vector<String> &vec, curl_slist **headers);
+	bool setupUserAgent(CURL *curl, const StringView &agent);
+	bool setupUser(CURL *curl, const StringView &user, const StringView &password);
+	bool setupFrom(CURL *curl, const StringView &from);
+	bool setupRecv(CURL *curl, const Vector<String> &vec, curl_slist **mailTo);
+	bool setupProgress(CURL *curl, bool progress);
+	bool setupCookies(CURL *curl, const StringView &cookiePath);
 
-    bool setupReceive(CURL *curl, FILE * & inputFile, size_t &inputPos);
+	bool setupReceive(CURL *curl, FILE * & inputFile, size_t &inputPos);
 
-    bool setupMethodGet(CURL *curl);
-    bool setupMethodHead(CURL *curl);
-    bool setupMethodPost(CURL *curl, FILE * & outputFile);
-    bool setupMethodPut(CURL *curl, FILE * & outputFile);
-    bool setupMethodDelete(CURL *curl);
-    bool setupMethodSmpt(CURL *curl, FILE * & outputFile);
+	bool setupMethodGet(CURL *curl);
+	bool setupMethodHead(CURL *curl);
+	bool setupMethodPost(CURL *curl, FILE * & outputFile);
+	bool setupMethodPut(CURL *curl, FILE * & outputFile);
+	bool setupMethodDelete(CURL *curl);
+	bool setupMethodSmpt(CURL *curl, FILE * & outputFile);
 };
 
 NS_SP_END

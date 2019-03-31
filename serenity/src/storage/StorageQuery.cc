@@ -80,21 +80,23 @@ static void QueryFieldResolver_resolveByName(Set<const Field *> &ret, const Map<
 			break;
 		case query::Resolve::Basics:
 			for (auto &it : fields) {
-				if (it.second.isSimpleLayout() && !it.second.isDataLayout()) {
+				if (it.second.isSimpleLayout() && !it.second.isDataLayout() && !it.second.hasFlag(storage::Flags::ForceExclude)) {
 					ret.emplace(&it.second);
 				}
 			}
 			break;
 		case query::Resolve::Defaults:
 			for (auto &it : fields) {
-				if (it.second.isSimpleLayout()) {
+				if (it.second.isSimpleLayout() && !it.second.hasFlag(storage::Flags::ForceExclude)) {
 					ret.emplace(&it.second);
 				}
 			}
 			break;
 		case query::Resolve::All:
 			for (auto &it : fields) {
-				ret.emplace(&it.second);
+				if (!it.second.hasFlag(storage::Flags::ForceExclude)) {
+					ret.emplace(&it.second);
+				}
 			}
 			break;
 		case query::Resolve::Ids:

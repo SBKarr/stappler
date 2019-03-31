@@ -78,7 +78,7 @@ public:
 				} else if (-val.asDouble() == std::numeric_limits<double>::infinity()) {
 					query << "Infinity";
 				} else {
-					query << val.asDouble();
+					query << std::setprecision(std::numeric_limits<double>::max_digits10) << val.asDouble();
 				}
 				break;
 			case data::Value::Type::CHARSTRING:
@@ -149,7 +149,13 @@ public:
 		push(query, val, false);
 	}
 	virtual void bindDataField(Binder &, StringStream &query, const Binder::DataField &f) override {
-		push(query, f.data, f.force);
+		if (f.field && f.field->getType() == storage::Type::Custom) {
+			if (!f.field->getSlot<storage::FieldCustom>()->writeToStorage(*this, query, f.data)) {
+				query << "NULL";
+			}
+		} else {
+			push(query, f.data, f.force);
+		}
 	}
 	virtual void bindTypeString(Binder &, StringStream &query, const Binder::TypeString &type) override {
 		if (auto num = push(type.str)) {
@@ -218,6 +224,10 @@ public:
 	}
 	virtual ~PgResultInterface() {
 		clear();
+	}
+
+	virtual bool isBinaryFormat(size_t field) const override {
+		return PQfformat(result, field) != 0;
 	}
 
 	virtual bool isNull(size_t row, size_t field) override {

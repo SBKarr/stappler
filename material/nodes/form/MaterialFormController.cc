@@ -80,6 +80,7 @@ void FormController::setValue(const String &key, const data::Value &value) {
 	} else {
 		_data.emplace(key, value);
 	}
+	save();
 }
 
 void FormController::reset() {

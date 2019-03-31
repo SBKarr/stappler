@@ -51,7 +51,7 @@ static void stl_print_token(std::ostream &stream, const Token * t, uint16_t dept
 			stream << "  ";
 		}
 
-		stream << "* " << t->type << " ";
+		stream << "* " << toInt(t->type) << " ";
 		switch (t->type) {
 		case Token::Root: stream << "<root>"; break;
 		case Token::Line: stream << "<line>"; break;

@@ -87,11 +87,12 @@ data::Value SqlHandle::create(Worker &worker, const data::Value &data) {
 
 		auto val = ins.values();
 		for (auto &it : ret.asDict()) {
-			auto f = scheme.getField(it.first);
-			if (f->getType() == Type::FullTextView) {
-				val.value(Binder::FullTextField{it.second});
-			} else {
-				val.value(Binder::DataField{it.second, f->isDataLayout()});
+			if (auto f = scheme.getField(it.first)) {
+				if (f->getType() == Type::FullTextView) {
+					val.value(Binder::FullTextField{it.second});
+				} else {
+					val.value(Binder::DataField{f, it.second, f->isDataLayout()});
+				}
 			}
 		}
 
@@ -108,11 +109,13 @@ data::Value SqlHandle::create(Worker &worker, const data::Value &data) {
 				}
 				ret.setInteger(id, "__oid");
 			} else {
+				ret = data::Value();
 				return;
 			}
 		} else {
 			val.finalize();
 			if (performQuery(query) != 1) {
+				ret = data::Value();
 				return;
 			}
 		}
@@ -143,8 +146,8 @@ data::Value SqlHandle::save(Worker &worker, uint64_t oid, const data::Value &dat
 					auto type = f_it->getType();
 					if (type == storage::Type::FullTextView) {
 						upd.set(it, Binder::FullTextField{val});
-					} else if (type != storage::Type::Set && type != storage::Type::Array) {
-						upd.set(it, Binder::DataField{val, f_it->isDataLayout()});
+					} else if (type != storage::Type::Set && type != storage::Type::Array && type != storage::Type::View) {
+						upd.set(it, Binder::DataField{f_it, val, f_it->isDataLayout()});
 					}
 				}
 			}
@@ -154,8 +157,8 @@ data::Value SqlHandle::save(Worker &worker, uint64_t oid, const data::Value &dat
 					auto type = f_it->getType();
 					if (type == storage::Type::FullTextView) {
 						upd.set(it.first, Binder::FullTextField{it.second});
-					} else if (type != storage::Type::Set && type != storage::Type::Array) {
-						upd.set(it.first, Binder::DataField{it.second, f_it->isDataLayout()});
+					} else if (type != storage::Type::Set && type != storage::Type::Array && type != storage::Type::View) {
+						upd.set(it.first, Binder::DataField{f_it, it.second, f_it->isDataLayout()});
 					}
 				}
 			}
@@ -219,7 +222,7 @@ data::Value SqlHandle::patch(Worker &worker, uint64_t oid, const data::Value &pa
 				if (f_it->getType() == Type::FullTextView) {
 					upd.set(it.first, Binder::FullTextField{it.second});
 				} else {
-					upd.set(it.first, Binder::DataField{it.second, f_it->isDataLayout()});
+					upd.set(it.first, Binder::DataField{f_it, it.second, f_it->isDataLayout()});
 				}
 			}
 		}
@@ -487,7 +490,7 @@ bool SqlHandle::addToView(const FieldView &view, const Scheme *scheme, uint64_t 
 
 			auto val = ins.values();
 			for (auto &it : data.asDict()) {
-				val.value(Binder::DataField{it.second, false});
+				val.value(Binder::DataField{nullptr, it.second, false});
 			}
 
 			val.finalize();

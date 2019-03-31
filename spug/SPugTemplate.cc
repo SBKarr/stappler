@@ -773,7 +773,7 @@ bool Template::runChunk(const Chunk &chunk, Context &exec, std::ostream &out) co
 					size_t i = 0;
 					if (val.size() > 0) {
 						for (auto &v_it : val.asArray()) {
-							cb(Value(i), &v_it, isConst);
+							cb(Value(uint32_t(i)), &v_it, isConst);
 							if (!runChunk(**it, exec, out) && _opts.hasFlag(Options::StopOnError)) {
 								return false;
 							}

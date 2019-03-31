@@ -87,7 +87,6 @@ NS_SP_PLATFORM_END
 
 - (BOOL)application:(nonnull UIApplication *)application didFinishLaunchingWithOptions:(nullable NSDictionary *)launchOptions {
     [self parseApplication:application launchOptions:launchOptions];
-    [application cancelAllLocalNotifications];
 		
     window = [[UIWindow alloc] initWithFrame: [[UIScreen mainScreen] bounds]];
 

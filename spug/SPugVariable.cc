@@ -384,7 +384,7 @@ Var Var::subscript(const StringView &str, bool mut) {
 		auto read = [&] () -> Var {
 			auto &r = readValue();
 			if (str == "length" && (r.isArray() || r.isDictionary())) {
-				return Var(Value(r.size()));
+				return Var(Value(uint64_t(r.size())));
 			} else if (r.isDictionary()) {
 				auto &dict = r.asDict();
 				auto it = dict.find(str);

@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef SP_RESTRICT
 #import "CCEAGLView-ios.h"
 
-@interface SPRootViewController : UIViewController {
+@interface SPRootViewController : UIViewController <UNUserNotificationCenterDelegate> {
 
 }
 

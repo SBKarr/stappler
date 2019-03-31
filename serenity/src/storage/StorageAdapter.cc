@@ -242,4 +242,58 @@ void Adapter::runAutoFields(const Transaction &t, const Vector<uint64_t> &vec, c
 	}
 }
 
+
+void Binder::setInterface(QueryInterface *iface) {
+	_iface = iface;
+}
+QueryInterface * Binder::getInterface() const {
+	return _iface;
+}
+
+void Binder::writeBind(StringStream &query, int64_t val) {
+	_iface->bindInt(*this, query, val);
+}
+void Binder::writeBind(StringStream &query, uint64_t val) {
+	_iface->bindUInt(*this, query, val);
+}
+void Binder::writeBind(StringStream &query, const String &val) {
+	_iface->bindString(*this, query, val);
+}
+void Binder::writeBind(StringStream &query, String &&val) {
+	_iface->bindMoveString(*this, query, move(val));
+}
+void Binder::writeBind(StringStream &query, const StringView &val) {
+	_iface->bindStringView(*this, query, val);
+}
+void Binder::writeBind(StringStream &query, const Bytes &val) {
+	_iface->bindBytes(*this, query, val);
+}
+void Binder::writeBind(StringStream &query, Bytes &&val) {
+	_iface->bindMoveBytes(*this, query, move(val));
+}
+void Binder::writeBind(StringStream &query, const CoderSource &val) {
+	_iface->bindCoderSource(*this, query, val);
+}
+void Binder::writeBind(StringStream &query, const data::Value &val) {
+	_iface->bindValue(*this, query, val);
+}
+void Binder::writeBind(StringStream &query, const DataField &f) {
+	_iface->bindDataField(*this, query, f);
+}
+void Binder::writeBind(StringStream &query, const TypeString &type) {
+	_iface->bindTypeString(*this, query, type);
+}
+void Binder::writeBind(StringStream &query, const FullTextField &d) {
+	_iface->bindFullText(*this, query, d);
+}
+void Binder::writeBind(StringStream &query, const FullTextRank &rank) {
+	_iface->bindFullTextRank(*this, query, rank);
+}
+void Binder::writeBind(StringStream &query, const FullTextData &data) {
+	_iface->bindFullTextData(*this, query, data);
+}
+void Binder::clear() {
+	_iface->clear();
+}
+
 NS_SA_EXT_END(storage)

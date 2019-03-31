@@ -138,11 +138,9 @@ bool Lexer::parseToken(Token &tok) {
 }
 
 bool Lexer::readAttributes(Token *data, StringView &r) const {
-	StringView tmp(r);
 	auto attrs = new Token{Token::TagAttrList, r};
 
 	auto readAttrName = [] (StringView &r) -> Token * {
-		StringView tmp(r);
 		auto ret = new Token{Token::AttrName, r};
 		if (r.is('\'')) {
 			++ r;

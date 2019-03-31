@@ -208,7 +208,7 @@ bool SqlHandle::insertIntoArray(SqlQuery &query, const Scheme &scheme, int64_t i
 				auto vals = query.insert(toString(scheme.getName(), "_f_", field.getName()))
 						.fields(toString(scheme.getName(), "_id"), "data").values();
 				for (auto &it : d.asArray()) {
-					vals.values(id, Binder::DataField {it, arrf.isDataLayout()});
+					vals.values(id, Binder::DataField {&arrf, it, arrf.isDataLayout()});
 				}
 				vals.onConflictDoNothing().finalize();
 				return performQuery(query) != maxOf<size_t>();

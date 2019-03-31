@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -130,7 +130,35 @@ public:
 	static Time now();
 
 	static Time fromCompileTime(const char *, const char *);
+
+	/*
+	 * Parses an HTTP date in one of three standard forms:
+	 *
+	 *     Sun, 06 Nov 1994 08:49:37 GMT  ; RFC 822, updated by RFC 1123
+	 *     Sunday, 06-Nov-94 08:49:37 GMT ; RFC 850, obsoleted by RFC 1036
+	 *     Sun Nov  6 08:49:37 1994       ; ANSI C's asctime() format
+	 *     2011-04-28T06:34:00+09:00      ; Atom time format
+	 */
 	static Time fromHttp(const StringView &);
+
+	/*
+	 * Parses a string resembling an RFC 822 date.  This is meant to be
+	 * leinent in its parsing of dates.  Hence, this will parse a wider
+	 * range of dates than Time::fromHttp.
+	 *
+	 *     Sun, 06 Nov 1994 08:49:37 GMT  ; RFC 822, updated by RFC 1123
+	 *     Sunday, 06-Nov-94 08:49:37 GMT ; RFC 850, obsoleted by RFC 1036
+	 *     Sun Nov  6 08:49:37 1994       ; ANSI C's asctime() format
+	 *     Sun, 6 Nov 1994 08:49:37 GMT   ; RFC 822, updated by RFC 1123
+	 *     Sun, 06 Nov 94 08:49:37 GMT    ; RFC 822
+	 *     Sun, 6 Nov 94 08:49:37 GMT     ; RFC 822
+	 *     Sun, 06 Nov 94 08:49 GMT       ; Unknown [drtr@ast.cam.ac.uk]
+	 *     Sun, 6 Nov 94 08:49 GMT        ; Unknown [drtr@ast.cam.ac.uk]
+	 *     Sun, 06 Nov 94 8:49:37 GMT     ; Unknown [Elm 70.85]
+	 *     Sun, 6 Nov 94 8:49:37 GMT      ; Unknown [Elm 70.85]
+	 *     Mon,  7 Jan 2002 07:21:22 GMT  ; Unknown [Postfix]
+	 *     Sun, 06-Nov-1994 08:49:37 GMT  ; RFC 850 with four digit years
+	 */
 	static Time fromRfc(const StringView &);
 
 	static Time microseconds(uint64_t mksec);

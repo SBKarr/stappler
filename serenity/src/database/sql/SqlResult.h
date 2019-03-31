@@ -31,33 +31,6 @@ NS_SA_EXT_BEGIN(sql)
 using namespace storage;
 
 class Result;
-class ResultInterface;
-
-class ResultInterface {
-public:
-	virtual ~ResultInterface() = default;
-
-	virtual bool isNull(size_t row, size_t field) = 0;
-
-	virtual StringView toString(size_t row, size_t field) = 0;
-	virtual DataReader<ByteOrder::Host> toBytes(size_t row, size_t field) = 0;
-
-	virtual int64_t toInteger(size_t row, size_t field) = 0;
-	virtual double toDouble(size_t row, size_t field) = 0;
-	virtual bool toBool(size_t row, size_t field) = 0;
-
-	virtual int64_t toId() = 0;
-
-	virtual StringView getFieldName(size_t field) = 0;
-
-	virtual bool isSuccess() const = 0;
-	virtual size_t getRowsCount() const = 0;
-	virtual size_t getFieldsCount() const = 0;
-	virtual size_t getAffectedRows() const = 0;
-
-	virtual data::Value getInfo() const = 0;
-	virtual void clear() = 0;
-};
 
 struct ResultRow {
 	ResultRow(const Result *, size_t);

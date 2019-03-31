@@ -100,6 +100,11 @@ NS_SA_END
 
 NS_SA_EXT_BEGIN(storage)
 
+class Interface;
+class Binder;
+class QueryInterface;
+class ResultInterface;
+
 class Field;
 
 struct FieldText;

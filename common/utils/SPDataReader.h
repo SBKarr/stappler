@@ -45,6 +45,9 @@ public:
 	DataReader(const PoolBytes &vec);
 	DataReader(const StdBytes &vec);
 
+	template<ByteOrder::Endian OtherEndianess>
+	DataReader(const DataReader<OtherEndianess> &vec);
+
 	Self & operator =(const PoolBytes &b);
 	Self & operator =(const StdBytes &b);
 	Self & operator =(const Self &b);
@@ -98,6 +101,11 @@ DataReader<Endianess>::DataReader(const PoolBytes &vec)
 template <ByteOrder::Endian Endianess>
 DataReader<Endianess>::DataReader(const StdBytes &vec)
 : BytesReader(vec.data(), vec.size()) { }
+
+template <ByteOrder::Endian Endianess>
+template<ByteOrder::Endian OtherEndianess>
+DataReader<Endianess>::DataReader(const DataReader<OtherEndianess> &data)
+: BytesReader(data.data(), data.size()) { }
 
 
 template <ByteOrder::Endian Endianess>

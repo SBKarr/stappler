@@ -62,6 +62,9 @@ void set(const StringView &key, const data::Value &value, const KeyDataCallback 
 void set(const StringView &key, data::Value &&value, const KeyDataCallback &callback = nullptr, Handle * = nullptr);
 void remove(const StringView &key, const KeyCallback &callback = nullptr, Handle * = nullptr);
 
+// should be called only in storage thread
+bool performWithTransaction(const Function<void()> &, Handle * = nullptr, bool unsafe = false);
+
 NS_SP_EXT_END(storage)
 
 #endif

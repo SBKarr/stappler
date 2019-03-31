@@ -27,6 +27,8 @@ THE SOFTWARE.
 
 #ifdef IOS
 
+#import <UserNotifications/UserNotifications.h>
+
 NS_SP_PLATFORM_BEGIN
 
 namespace interaction {
@@ -48,18 +50,19 @@ namespace interaction {
 	}
 	void _backKey() { }
 	void _notification(const StringView &title, const StringView &text) {
-		UIApplication *application = [UIApplication sharedApplication];
-		UIApplicationState state = [application applicationState];
-		if (state == UIApplicationStateInactive || state == UIApplicationStateBackground) {
-			UILocalNotification *note = [[UILocalNotification alloc] init];
-			if (note) {
-				note.fireDate = [NSDate date];
-				note.alertBody = [[NSString alloc] initWithBytes:text.data() length:(NSUInteger)text.size() encoding:NSUTF8StringEncoding];
-				note.soundName = UILocalNotificationDefaultSoundName;
-				[application scheduleLocalNotification:note];
-				note = nil;
+		UNMutableNotificationContent* content = [[UNMutableNotificationContent alloc] init];
+		content.title = [[NSString alloc] initWithBytes:title.data() length:(NSUInteger)title.size() encoding:NSUTF8StringEncoding];
+		content.body = [[NSString alloc] initWithBytes:text.data() length:(NSUInteger)text.size() encoding:NSUTF8StringEncoding];
+		
+		UNTimeIntervalNotificationTrigger* trigger = [UNTimeIntervalNotificationTrigger triggerWithTimeInterval:1 repeats: NO];
+		UNNotificationRequest* request = [UNNotificationRequest requestWithIdentifier:@"SPNotification" content:content trigger:trigger];
+		
+		UNUserNotificationCenter* center = [UNUserNotificationCenter currentNotificationCenter];
+		[center addNotificationRequest:request withCompletionHandler:^(NSError * _Nullable error) {
+			if (error != nil) {
+				NSLog(@"%@", error.localizedDescription);
 			}
-		}
+		}];
 	}
 
 	NSString *_appId = nil;

@@ -46,6 +46,8 @@ enum class Type {
 	Image,
 	View, // immutable predicate-based reference set of objects
 	FullTextView, // full-text search resource
+
+	Custom
 };
 
 inline bool checkIfComparationIsValid(Type t, Comparation c) {
@@ -211,6 +213,8 @@ struct AutoFieldDef {
 	Vector<String> requires;
 };
 
+struct FieldCustom;
+
 class Field : public AllocPool {
 public:
 	template <typename ... Args> static Field Data(String && name, Args && ... args);
@@ -221,6 +225,7 @@ public:
 	template <typename ... Args> static Field Bytes(String &&name, Args && ... args);
 	template <typename ... Args> static Field Password(String && name, Args && ... args);
 	template <typename ... Args> static Field Extra(String &&name, Args && ... args);
+	template <typename ... Args> static Field Extra(String &&name, InitializerList<Field> &&, Args && ... args);
 	template <typename ... Args> static Field File(String &&name, Args && ... args);
 	template <typename ... Args> static Field Image(String &&name, Args && ... args);
 	template <typename ... Args> static Field Object(String &&name, Args && ... args);
@@ -228,7 +233,7 @@ public:
 	template <typename ... Args> static Field Array(String && name, Args && ... args);
 	template <typename ... Args> static Field View(String && name, Args && ... args);
 	template <typename ... Args> static Field FullTextView(String && name, Args && ... args);
-	template <typename ... Args> static Field Extra(String &&name, InitializerList<Field> &&, Args && ... args);
+	template <typename ... Args> static Field Custom(FieldCustom *);
 
 	struct Slot : public AllocPool {
 	public:
@@ -259,11 +264,11 @@ public:
 		bool isProtected() const;
 		Transform getTransform() const { return transform; }
 
-		bool isSimpleLayout() const { return type == Type::Integer || type == Type::Float ||
+		virtual bool isSimpleLayout() const { return type == Type::Integer || type == Type::Float ||
 				type == Type::Boolean || type == Type::Text || type == Type::Bytes ||
 				type == Type::Data || type == Type::Extra; }
 
-		bool isDataLayout() const { return type == Type::Data || type == Type::Extra; }
+		virtual bool isDataLayout() const { return type == Type::Data || type == Type::Extra; }
 
 		bool isIndexed() const { return hasFlag(Flags::Indexed) || transform == Transform::Alias || type == Type::Object; }
 		bool isFile() const { return type == Type::File || type == Type::Image; }
@@ -486,6 +491,20 @@ struct FieldFullTextView : Field::Slot {
 	FullTextQueryFn queryFn;
 };
 
+struct FieldCustom : Field::Slot {
+	virtual ~FieldCustom() { }
+
+	template <typename ... Args>
+	FieldCustom(String && n, Args && ... args) : Field::Slot(move(n), Type::Custom) {
+		init<FieldCustom, Args...>(*this, std::forward<Args>(args)...);
+	}
+
+	virtual data::Value readFromStorage(ResultInterface &, size_t row, size_t field) const = 0;
+	virtual bool writeToStorage(QueryInterface &, StringStream &, const data::Value &) const = 0;
+
+	virtual StringView getTypeName() const = 0;
+};
+
 template <typename ... Args> Field Field::Data(String && name, Args && ... args) {
 	auto newSlot = new Field::Slot(std::move(name), Type::Data);
 	Slot::init<Field::Slot>(*newSlot, std::forward<Args>(args)...);
@@ -558,6 +577,9 @@ template <typename ... Args> Field Field::FullTextView(String && name, Args && .
 	return Field(new FieldFullTextView(move(name), forward<Args>(args)...));
 }
 
+template <typename ... Args> Field Field::Custom(FieldCustom *custom) {
+	return Field(custom);
+}
 
 template <typename F> struct FieldOption<F, Flags> {
 	static inline void assign(F & f, Flags flags) { f.flags |= flags; }

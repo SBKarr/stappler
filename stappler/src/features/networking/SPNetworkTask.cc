@@ -173,6 +173,13 @@ void NetworkTask::setSilent(bool value) {
 	_handle.setSilent(value);
 }
 
+void NetworkTask::setConnectTimeout(int time) {
+	_handle.setConnectTimeout(time);
+}
+void NetworkTask::setLowSpeedLimit(int time, size_t limit) {
+	_handle.setLowSpeedLimit(time, limit);
+}
+
 StringView NetworkTask::getReceivedHeaderString(const StringView &h) const {
 	return _handle.getReceivedHeaderString(h);
 }

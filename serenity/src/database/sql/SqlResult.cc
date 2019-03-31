@@ -148,6 +148,9 @@ data::Value ResultRow::toData(size_t n, const Field &f) {
 	case storage::Type::Extra:
 		return data::read(toBytes(n));
 		break;
+	case storage::Type::Custom:
+		return f.getSlot<storage::FieldCustom>()->readFromStorage(*result->_interface, row, n);
+		break;
 	default:
 		break;
 	}

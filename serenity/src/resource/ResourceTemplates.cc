@@ -150,7 +150,11 @@ int64_t ResourceObject::getObjectMtime() {
 	auto str = tmpQuery.setQueryAsMtime();
 	if (!str.empty()) {
 		if (auto ret = _transaction.performQueryList(tmpQuery)) {
-			return ret.getInteger(str);
+			if (ret.isArray()) {
+				return ret.getValue(0).getInteger(str);
+			} else {
+				return ret.getInteger(str);
+			}
 		}
 	}
 

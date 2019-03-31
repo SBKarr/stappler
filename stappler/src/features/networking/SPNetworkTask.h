@@ -67,6 +67,9 @@ public:
 
 	void setSilent(bool);
 
+	void setConnectTimeout(int);
+	void setLowSpeedLimit(int time, size_t limit);
+
     int32_t getResponseCode() const { return (int32_t)_handle.getResponseCode(); }
     StringView getUrl() const { return _handle.getUrl(); }
     StringView getError() const { return _handle.getError(); }

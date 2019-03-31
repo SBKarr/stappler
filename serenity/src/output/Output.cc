@@ -365,8 +365,13 @@ void writeData(Request &rctx, std::basic_ostream<char> &stream, const Function<v
 		ct("text/html;charset=UTF-8");
 		writeToRequest(rctx, stream, data, pretty.getString() == "api");
 	} else {
-		ct("application/json;charset=UTF-8");
-		stream << (pretty.asBool()?data::EncodeFormat::Pretty:data::EncodeFormat::Json) << data << "\r\n";
+		if (pretty.isString() && pretty.getString() == "time") {
+			ct("application/json;charset=UTF-8");
+			stream << data::EncodeFormat::PrettyTime << data << "\r\n";
+		} else {
+			ct("application/json;charset=UTF-8");
+			stream << (pretty.asBool()?data::EncodeFormat::Pretty:data::EncodeFormat::Json) << data << "\r\n";
+		}
 	}
 	stream.flush();
 }

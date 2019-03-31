@@ -78,6 +78,10 @@ public:
 	bool perform(sqlite3_stmt *stmt, const data::DataCallback &cb);
 
 	int getVersion() const { return _version; }
+
+	template <typename Callback>
+	void performWithTransaction(Callback &&, bool unsafe = false);
+
 private:
 	int prepareStmt(sqlite3_stmt **ppStmt, const StringView &zSql);
 
@@ -94,6 +98,8 @@ private:
 
 	int _version;
 	Thread _thread;
+
+	bool _inTransaction = false;
 };
 
 class Scheme::Internal : public Ref {
@@ -268,7 +274,19 @@ void remove(const StringView &key, const KeyCallback &callback, Handle *storage)
 	}
 }
 
+bool performWithTransaction(const Function<void()> &cb, Handle *storage, bool unsafe) {
+	if (!storage) {
+		storage = Handle::getInstance();
+	}
 
+	if (!storage->getThread().isOnThisThread()) {
+		return false;
+	}
+
+	storage->performWithTransaction(cb, unsafe);
+
+	return true;
+}
 
 Scheme::Field::Field(const String &name, Type type, uint8_t flags, uint8_t size)
 : name(name), type(type), size(size), flags(flags) { }
@@ -1041,20 +1059,19 @@ data::Value Scheme::Internal::performCommand(Scheme::Command *cmd) {
 			}
 
 			bool success = false;
-
-			_storage->perform("BEGIN TRANSACTION;");
-			for (size_t i = 0; i < cmd->_data.insert.count; ++ i) {
-				data::Value obj = cmd->_data.insert.cb(i);
-				if (obj.isDictionary() && isValueAllowed(obj)) {
-					int count = 1;
-					bindInsertParams(stmt, obj, count);
-					auto ret = performQuery(cmd, stmt);
-					if (ret) {
-						success = true;
+			_storage->performWithTransaction([&] {
+				for (size_t i = 0; i < cmd->_data.insert.count; ++ i) {
+					data::Value obj = cmd->_data.insert.cb(i);
+					if (obj.isDictionary() && isValueAllowed(obj)) {
+						int count = 1;
+						bindInsertParams(stmt, obj, count);
+						auto ret = performQuery(cmd, stmt);
+						if (ret) {
+							success = true;
+						}
 					}
 				}
-			}
-			_storage->perform("COMMIT;");
+			});
 			_storage->release(query);
 
 			return data::Value(success);
@@ -1063,21 +1080,23 @@ data::Value Scheme::Internal::performCommand(Scheme::Command *cmd) {
 		}
 	} else if (cmd->_action == Command::Insert && cmd->_data.value.isArray() && cmd->_data.value.size() > 50) {
 		// batch insert handling
-		_storage->perform("BEGIN TRANSACTION;");
-		data::Value val = std::move(cmd->_data.value);
-		while(val.size() > 0) {
-			if (val.size() > SP_STORAGE_BATCH_MAX) {
-				cmd->_data.value = val.slice(0, SP_STORAGE_BATCH_MAX);
-			} else {
-				cmd->_data.value = std::move(val);
+		bool success = false;
+		_storage->performWithTransaction([&] {
+			data::Value val = std::move(cmd->_data.value);
+			while(val.size() > 0) {
+				if (val.size() > SP_STORAGE_BATCH_MAX) {
+					cmd->_data.value = val.slice(0, SP_STORAGE_BATCH_MAX);
+				} else {
+					cmd->_data.value = std::move(val);
+				}
+				auto ret = performCommand(cmd);
+				if (ret.isBool() && !ret.asBool()) {
+					success = false;
+					return;
+				}
 			}
-			auto ret = performCommand(cmd);
-			if (ret.isBool() && !ret.asBool()) {
-				return ret;
-			}
-		}
-		_storage->perform("COMMIT;");
-		return data::Value(true);
+		});
+		return data::Value(success);
 	} else {
 		auto query = buildQuery(cmd);
 		if (!query.empty()) {
@@ -1531,6 +1550,9 @@ Handle::Handle(const StringView &name, const StringView &ipath) : _db(nullptr), 
 		assert(false);
 	}
 
+	perform("PRAGMA synchronous = NORMAL;");
+	perform("PRAGMA journal_mode = TRUNCATE;");
+
 	char *errorBuffer = NULL;
 	ok = sqlite3_exec(_db, LIBRARY_CREATE, NULL, NULL, &errorBuffer);
 	if (errorBuffer) {
@@ -1774,6 +1796,29 @@ bool Handle::perform(sqlite3_stmt *stmt, const data::DataCallback &cb) {
 #endif
 
 	return ret;
+}
+
+template <typename Callback>
+void Handle::performWithTransaction(Callback &&cb, bool unsafe) {
+	if (_inTransaction) {
+		cb();
+	} else {
+		_inTransaction = true;
+		if (unsafe) {
+			perform("PRAGMA synchronous = OFF");
+			perform("PRAGMA journal_mode = OFF");
+		}
+		perform("BEGIN TRANSACTION;");
+
+		cb();
+
+		perform("COMMIT;");
+		if (unsafe) {
+			perform("PRAGMA synchronous = NORMAL;");
+			perform("PRAGMA journal_mode = TRUNCATE;");
+		}
+		_inTransaction = false;
+	}
 }
 
 NS_SP_EXT_END(storage)

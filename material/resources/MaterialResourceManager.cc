@@ -181,6 +181,7 @@ ResourceManager::ResourceManager() {
 			locale::setLocale(_locale);
 		}
 
+		_init = true;
 		ResourceManager::onLoaded(this);
 	});
 }

@@ -57,13 +57,16 @@ struct ColRec {
 		Float,
 		Boolean,
 		Text,
-		TsVector
+		TsVector,
+		Custom
 	};
 
-	Type type = Type::None;
+	Type type = Type::Custom;
+	String custom;
 	bool notNull = false;
 
 	ColRec(Type t, bool notNull = false) : type(t), notNull(notNull) { }
+	ColRec(const StringView &t, bool notNull = false) : custom(t.str()), notNull(notNull) { }
 };
 
 struct TableRec {
@@ -345,6 +348,8 @@ void TableRec::writeCompareResult(StringStream &stream,
 
 					if (ex_col.type == ColRec::Type::None || req_type != ex_col.type) {
 						stream << "ALTER TABLE " << ex_it.first << " DROP COLUMN IF EXISTS \"" << ex_col_it.first << "\";\n";
+					} else if (ex_col.type == ColRec::Type::Custom && req_type == ColRec::Type::Custom && ex_col.custom != req_col.custom) {
+						stream << "ALTER TABLE " << ex_it.first << " DROP COLUMN IF EXISTS \"" << ex_col_it.first << "\";\n";
 					} else {
 						if (ex_col.notNull != req_col.notNull) {
 							if (ex_col.notNull) {
@@ -388,6 +393,7 @@ void TableRec::writeCompareResult(StringStream &stream,
 				case ColRec::Type::Boolean:	stream << "boolean"; break;
 				case ColRec::Type::Text: 	stream << "text"; break;
 				case ColRec::Type::TsVector:stream << "tsvector"; break;
+				case ColRec::Type::Custom:  stream << cit->second.custom; break;
 				default: break;
 				}
 
@@ -422,6 +428,7 @@ void TableRec::writeCompareResult(StringStream &stream,
 				case ColRec::Type::Boolean:	stream << "boolean"; break;
 				case ColRec::Type::Text: 	stream << "text"; break;
 				case ColRec::Type::TsVector:stream << "tsvector"; break;
+				case ColRec::Type::Custom:  stream << cit.second.custom; break;
 				default: break;
 				}
 				if (cit.second.notNull) {
@@ -534,9 +541,7 @@ Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, const stor
 					table.pkey.emplace_back(toString(target, "_id"));
 					tables.emplace(std::move(string::tolower(name)), std::move(table));
 				}
-			}
-
-			if (type == storage::Type::Array) {
+			} else if (type == storage::Type::Array) {
 				auto slot = static_cast<const storage::FieldArray *>(f.getSlot());
 				if (slot->tfield && slot->tfield.isSimpleLayout()) {
 
@@ -581,9 +586,7 @@ Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, const stor
 					table.indexes.emplace(name + "_idx_" + source, source + "_id");
 					tables.emplace(std::move(name), std::move(table));
 				}
-			}
-
-			if (type == storage::Type::View) {
+			} else if (type == storage::Type::View) {
 				auto slot = static_cast<const storage::FieldView *>(f.getSlot());
 
 				String name = toString(it.first, "_f_", fit.first, "_view");
@@ -685,7 +688,7 @@ Map<String, TableRec> TableRec::get(Handle &h, StringStream &stream) {
 					} else if (type == "tsvector") {
 						table.cols.emplace(it.at(1).str(), ColRec(ColRec::Type::TsVector, !isNullable));
 					} else {
-						table.cols.emplace(it.at(1).str(), ColRec(ColRec::Type::None, !isNullable));
+						table.cols.emplace(it.at(1).str(), ColRec(type, !isNullable));
 					}
 				}
 				stream << "COLUMNS " << it.at(0) << " " << it.at(1) << " " << it.at(2) << " " << it.at(3) << "\n";
@@ -834,6 +837,12 @@ TableRec::TableRec(Server &serv, const storage::Scheme *scheme) {
 					hashStreamBefore << it.first << toInt(type);
 				}
 			}
+			break;
+
+		case storage::Type::Custom:
+			auto objSlot = f.getSlot<storage::FieldCustom>();
+			cols.emplace(it.first, ColRec(objSlot->getTypeName(), f.hasFlag(storage::Flags::Required)));
+			emplaced = true;
 			break;
 		}
 

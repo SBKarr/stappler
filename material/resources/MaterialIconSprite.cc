@@ -351,9 +351,12 @@ void IconSprite::setIconName(IconName name) {
 			setDynamicIcon(Rc<ExpandIcon>::create());
 			break;
 		case IconName::None:
-		case IconName::Empty:
+		case IconName::Empty: {
+			auto tmpSize = _contentSize;
 			setDynamicIcon(nullptr);
+			setContentSize(tmpSize);
 			break;
+		}
 		default:
 			setStaticIcon(name);
 			break;

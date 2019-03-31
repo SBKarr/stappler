@@ -45,10 +45,6 @@ THE SOFTWARE.
 
 #include <curl/curl.h>
 
-#define SP_NW_CONNECT_TIMEOUT 20
-#define SP_NW_READ_TIMEOUT 30
-#define SP_NW_LOW_SPEED_TIME 20
-#define SP_NW_LOW_SPEED_LIMIT 20_KiB
 #define SP_NETWORK_PROGRESS_TIMEOUT stappler::TimeInterval::microseconds(250000ull)
 
 #define SP_NETWORK_LOG(...)
@@ -314,10 +310,10 @@ bool NetworkHandle::setupCurl(CURL *curl, char *errorBuffer) {
 	SETOPT(check, curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_WHATEVER);
 
 	SETOPT(check, curl, CURLOPT_ERRORBUFFER, errorBuffer);
-	SETOPT(check, curl, CURLOPT_LOW_SPEED_TIME, SP_NW_LOW_SPEED_TIME);
-	SETOPT(check, curl, CURLOPT_LOW_SPEED_LIMIT, SP_NW_LOW_SPEED_LIMIT);
+	SETOPT(check, curl, CURLOPT_LOW_SPEED_TIME, _lowSpeedTime);
+	SETOPT(check, curl, CURLOPT_LOW_SPEED_LIMIT, _lowSpeedLimit);
 	//SETOPT(check, curl, CURLOPT_TIMEOUT, SP_NW_READ_TIMEOUT);
-	SETOPT(check, curl, CURLOPT_CONNECTTIMEOUT, SP_NW_CONNECT_TIMEOUT);
+	SETOPT(check, curl, CURLOPT_CONNECTTIMEOUT, _connectTimeout);
 
 #if (DEBUG || LINUX)
 	SETOPT(check, curl, CURLOPT_SSL_VERIFYPEER, 0L);
@@ -752,6 +748,14 @@ void NetworkHandle::setDownloadProgress(const ProgressCallback &callback) {
 }
 void NetworkHandle::setUploadProgress(const ProgressCallback &callback) {
 	_uploadProgress = callback;
+}
+
+void NetworkHandle::setConnectTimeout(int time) {
+	_connectTimeout = time;
+}
+void NetworkHandle::setLowSpeedLimit(int time, size_t limit) {
+	_lowSpeedTime = time;
+	_lowSpeedLimit = int(limit);
 }
 
 void NetworkHandle::setMailFrom(const StringView &from) {

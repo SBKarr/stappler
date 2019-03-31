@@ -64,7 +64,7 @@ struct RawEncoder : public Interface::AllocBaseType {
 	inline void write(nullptr_t) { (*stream) << "null"; }
 	inline void write(bool value) { (*stream) << ((value)?"true":"false"); }
 	inline void write(int64_t value) { (*stream) << value; }
-	inline void write(double value) { (*stream) << value; }
+	inline void write(double value) { (*stream) << std::setprecision(std::numeric_limits<double>::max_digits10) << value; }
 
 	inline void write(const typename ValueType::StringType &str) {
 		encodeString(*stream, str);
@@ -98,7 +98,7 @@ struct PrettyEncoder : public Interface::AllocBaseType {
 			(*stream) << " /* " << Time::microseconds(value).toHttp() << " */";
 		}
 	}
-	void write(double value) { (*stream) << value; offsetted = false; }
+	void write(double value) { (*stream) << std::setprecision(std::numeric_limits<double>::max_digits10) << value; offsetted = false; }
 
 	void write(const typename ValueType::StringType &str) {
 		encodeString(*stream, str);

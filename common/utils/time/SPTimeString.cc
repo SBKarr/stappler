@@ -31,7 +31,7 @@
  */
 
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -226,6 +226,7 @@ static int sp_date_checkmask(const char *data, const char *mask) {
  *     Sun, 06 Nov 1994 08:49:37 GMT  ; RFC 822, updated by RFC 1123
  *     Sunday, 06-Nov-94 08:49:37 GMT ; RFC 850, obsoleted by RFC 1036
  *     Sun Nov  6 08:49:37 1994       ; ANSI C's asctime() format
+ *     2011-04-28T06:34:00+09:00      ; Atom time format
  *
  * and returns the apr_time_t number of microseconds since 1 Jan 1970 GMT,
  * or APR_DATE_BAD if this would be out of range or if the date is invalid.
@@ -324,22 +325,147 @@ Time Time::fromCompileTime(const char *date, const char *time) {
 	return ds.ltz_get();
 }
 
-Time Time::fromHttp(const StringView &r) {
-	auto date = r.data();
+#define TIMEPARSE(ds,hr10,hr1,min10,min1,sec10,sec1)        \
+    {                                                       \
+        ds.tm_hour = ((hr10 - '0') * 10) + (hr1 - '0');     \
+        ds.tm_min = ((min10 - '0') * 10) + (min1 - '0');    \
+        ds.tm_sec = ((sec10 - '0') * 10) + (sec1 - '0');    \
+    }
+#define TIMEPARSE_STD(ds,timstr)                            \
+    {                                                       \
+        TIMEPARSE(ds, timstr[0],timstr[1],                  \
+                      timstr[3],timstr[4],                  \
+                      timstr[6],timstr[7]);                 \
+    }
+
+static Time subParseTime(sp_time_exp_t &ds, const char *monstr, const char *timstr, const char *gmtstr) {
+	int mint, mon;
+
+	if (ds.tm_mday <= 0 || ds.tm_mday > 31)
+		return Time();
+
+	if ((ds.tm_hour > 23) || (ds.tm_min > 59) || (ds.tm_sec > 61))
+		return Time();
+
+	if (monstr) {
+		mint = (monstr[0] << 16) | (monstr[1] << 8) | monstr[2];
+		for (mon = 0; mon < 12; mon++)
+			if (mint == s_months[mon])
+				break;
+
+	} else {
+		mon = ds.tm_mon - 1;
+	}
+
+	if (mon >= 12)
+		return Time();
+
+	if ((ds.tm_mday == 31) && (mon == 3 || mon == 5 || mon == 8 || mon == 10))
+		return Time();
+
+    /* February gets special check for leapyear */
+
+	if ((mon == 1)
+			&& ((ds.tm_mday > 29)
+					|| ((ds.tm_mday == 29)
+							&& ((ds.tm_year & 3) || (((ds.tm_year % 100) == 0) && (((ds.tm_year % 400) != 100)))))
+			))
+		return Time();
+
+	ds.tm_mon = mon;
+
+	/* tm_gmtoff is the number of seconds off of GMT the time is.
+	 *
+	 * We only currently support: [+-]ZZZZ where Z is the offset in
+	 * hours from GMT.
+	 *
+	 * If there is any confusion, tm_gmtoff will remain 0.
+	 */
+	ds.tm_gmtoff = 0;
+
+	/* Do we have a timezone ? */
+	if (gmtstr) {
+		int offset;
+		switch (*gmtstr) {
+		case '-':
+			if (gmtstr[3] == ':') {
+				offset = atoi(gmtstr + 1) * 100 + atoi(gmtstr + 4);
+			} else {
+				offset = atoi(gmtstr + 1);
+			}
+			ds.tm_gmtoff -= (offset / 100) * 60 * 60;
+			ds.tm_gmtoff -= (offset % 100) * 60;
+			break;
+		case '+':
+			if (gmtstr[3] == ':') {
+				offset = atoi(gmtstr + 1) * 100 + atoi(gmtstr + 4);
+			} else {
+				offset = atoi(gmtstr + 1);
+			}
+			ds.tm_gmtoff += (offset / 100) * 60 * 60;
+			ds.tm_gmtoff += (offset % 100) * 60;
+			break;
+		}
+	}
+
+	/* apr_time_exp_get uses tm_usec field, but it hasn't been set yet.
+	 * It should be safe to just zero out this value.
+	 * tm_usec is the number of microseconds into the second.  HTTP only
+	 * cares about second granularity.
+	 */
+	ds.tm_usec = 0;
+
+	if (gmtstr) {
+		return ds.gmt_get();
+	} else {
+		return ds.ltz_get();
+	}
+}
+
+Time Time::fromHttp(const StringView &ir) {
+	StringView r(ir);
 	sp_time_exp_t ds;
 	int mint, mon;
 	const char *monstr, *timstr;
-	if (!date)
+
+	if (r.empty())
 		return Time();
 
-	while (*date && chars::isspace(*date)) /* Find first non-whitespace char */
-		++date;
+	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
-	if (*date == '\0')
+	if (r.empty())
 		return Time();
 
-	if ((date = strchr(date, ' ')) == NULL) /* Find space after weekday */
+	auto date = r.data();
+	if ((date = strchr(date, ' ')) == NULL) { /* Find space after weekday */
+		date = r.data();
+		if (sp_date_checkmask(date, "####-##-##T##:##:##*")) {
+			ds.tm_year = ((date[0] - '0') * 10 + (date[1] - '0') - 19) * 100;
+			if (ds.tm_year < 0)
+				return Time();
+
+			ds.tm_year += ((date[2] - '0') * 10) + (date[3] - '0');
+			ds.tm_mon = ((date[5] - '0') * 10) + (date[6] - '0');
+			ds.tm_mday = ((date[8] - '0') * 10) + (date[9] - '0');
+
+			timstr = &date[11];
+			TIMEPARSE(ds, timstr[0], timstr[1], timstr[3], timstr[4], timstr[6], timstr[7]);
+
+			return subParseTime(ds, nullptr, timstr, &date[19]);
+		} else if (sp_date_checkmask(date, "####-##-##")) {
+			ds.tm_year = ((date[0] - '0') * 10 + (date[1] - '0') - 19) * 100;
+			if (ds.tm_year < 0)
+				return Time();
+
+			ds.tm_year += ((date[2] - '0') * 10) + (date[3] - '0');
+			ds.tm_mon = ((date[5] - '0') * 10) + (date[6] - '0');
+			ds.tm_mday = ((date[8] - '0') * 10) + (date[9] - '0');
+
+			return subParseTime(ds, nullptr, nullptr, "Z");
+		}
+
 		return Time();
+	}
 
 	++date; /* Now pointing to first char after space, which should be */
 
@@ -414,7 +540,7 @@ Time Time::fromHttp(const StringView &r) {
 		if (mint == s_months[mon])
 			break;
 
-	if (mon == 12)
+	if (mon >= 12)
 		return Time();
 
 	if ((ds.tm_mday == 31) && (mon == 3 || mon == 5 || mon == 8 || mon == 10))
@@ -468,90 +594,6 @@ Time Time::fromHttp(const StringView &r) {
  *     Sun, 06-Nov-1994 08:49:37 GMT  ; RFC 850 with four digit years
  *
  */
-
-#define TIMEPARSE(ds,hr10,hr1,min10,min1,sec10,sec1)        \
-    {                                                       \
-        ds.tm_hour = ((hr10 - '0') * 10) + (hr1 - '0');     \
-        ds.tm_min = ((min10 - '0') * 10) + (min1 - '0');    \
-        ds.tm_sec = ((sec10 - '0') * 10) + (sec1 - '0');    \
-    }
-#define TIMEPARSE_STD(ds,timstr)                            \
-    {                                                       \
-        TIMEPARSE(ds, timstr[0],timstr[1],                  \
-                      timstr[3],timstr[4],                  \
-                      timstr[6],timstr[7]);                 \
-    }
-
-static Time subParseTime(sp_time_exp_t &ds, const char *monstr, const char *timstr, const char *gmtstr) {
-	int mint, mon;
-
-	if (ds.tm_mday <= 0 || ds.tm_mday > 31)
-		return Time();
-
-	if ((ds.tm_hour > 23) || (ds.tm_min > 59) || (ds.tm_sec > 61))
-		return Time();
-
-	mint = (monstr[0] << 16) | (monstr[1] << 8) | monstr[2];
-	for (mon = 0; mon < 12; mon++)
-		if (mint == s_months[mon])
-			break;
-
-	if (mon == 12)
-		return Time();
-
-	if ((ds.tm_mday == 31) && (mon == 3 || mon == 5 || mon == 8 || mon == 10))
-		return Time();
-
-    /* February gets special check for leapyear */
-
-	if ((mon == 1)
-			&& ((ds.tm_mday > 29)
-					|| ((ds.tm_mday == 29)
-							&& ((ds.tm_year & 3) || (((ds.tm_year % 100) == 0) && (((ds.tm_year % 400) != 100)))))
-			))
-		return Time();
-
-	ds.tm_mon = mon;
-
-	/* tm_gmtoff is the number of seconds off of GMT the time is.
-	 *
-	 * We only currently support: [+-]ZZZZ where Z is the offset in
-	 * hours from GMT.
-	 *
-	 * If there is any confusion, tm_gmtoff will remain 0.
-	 */
-	ds.tm_gmtoff = 0;
-
-	/* Do we have a timezone ? */
-	if (gmtstr) {
-		int offset;
-		switch (*gmtstr) {
-		case '-':
-			offset = atoi(gmtstr + 1);
-			ds.tm_gmtoff -= (offset / 100) * 60 * 60;
-			ds.tm_gmtoff -= (offset % 100) * 60;
-			break;
-		case '+':
-			offset = atoi(gmtstr + 1);
-			ds.tm_gmtoff += (offset / 100) * 60 * 60;
-			ds.tm_gmtoff += (offset % 100) * 60;
-			break;
-		}
-	}
-
-	/* apr_time_exp_get uses tm_usec field, but it hasn't been set yet.
-	 * It should be safe to just zero out this value.
-	 * tm_usec is the number of microseconds into the second.  HTTP only
-	 * cares about second granularity.
-	 */
-	ds.tm_usec = 0;
-
-	if (gmtstr) {
-		return ds.gmt_get();
-	} else {
-		return ds.ltz_get();
-	}
-}
 
 Time Time::fromRfc(const StringView &r) {
 	auto date = r.data();
