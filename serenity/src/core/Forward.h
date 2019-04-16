@@ -252,9 +252,7 @@ void error(Args && ...args) {
 
 template <typename ... Args>
 void debug(Args && ...args) {
-	if (isDebugEnabled()) {
-		_addDebug(std::forward<Args>(args)...);
-	}
+	_addDebug(std::forward<Args>(args)...);
 }
 
 void broadcast(const data::Value &);

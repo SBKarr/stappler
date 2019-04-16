@@ -1087,16 +1087,18 @@ void Server::reportError(const data::Value &d) {
 		}
 	}
 	if (auto req = apr::pool::request()) {
-		if (auto objVal = Request(req).getObject<Server_ErrorList>("Server_ErrorList")) {
-			objVal->errors.emplace_back(d);
-		} else {
-			auto obj = new Server_ErrorList{req};
-			obj->errors.emplace_back(d);
-			Request rctx(req);
-			rctx.storeObject(obj, "Server_ErrorList", [obj] {
-				Server(obj->request->server).runErrorReportTask(obj->request, obj->errors);
-			});
-		}
+		apr::pool::perform([&] {
+			if (auto objVal = Request(req).getObject<Server_ErrorList>("Server_ErrorList")) {
+				objVal->errors.emplace_back(d);
+			} else {
+				auto obj = new Server_ErrorList{req};
+				obj->errors.emplace_back(d);
+				Request rctx(req);
+				rctx.storeObject(obj, "Server_ErrorList", [obj] {
+					Server(obj->request->server).runErrorReportTask(obj->request, obj->errors);
+				});
+			}
+		}, req->pool);
 	} else {
 		runErrorReportTask(nullptr, Vector<data::Value>{d});
 	}

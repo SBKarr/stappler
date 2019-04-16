@@ -47,12 +47,12 @@ void Request::initScriptContext(pug::Context &ctx) {
 	});
 	ctx.set("serenity", std::move(serenityClass));
 	ctx.set("window", data::Value{
-		pair("location", data::Value{
+		pair("location", data::Value({
 			pair("href", data::Value(getFullHostname() + getUnparsedUri())),
 			pair("hostname", data::Value(getHostname())),
-			pair("pathname", data::Value(getUnparsedUri())),
+			pair("pathname", data::Value(getUri())),
 			pair("protocol", data::Value(isSecureConnection() ? "https:" : "http:")),
-		})
+		}))
 	});
 }
 

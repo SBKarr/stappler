@@ -133,6 +133,7 @@ public: // worker interface
 	template <typename T, typename ... Args> auto setProperty(T &&t, Args && ... args) const -> data::Value;
 	template <typename T, typename ... Args> auto appendProperty(T &&t, Args && ... args) const -> data::Value;
 	template <typename T, typename ... Args> auto clearProperty(T &&t, Args && ... args) const -> bool;
+	template <typename T, typename ... Args> auto countProperty(T &&t, Args && ... args) const -> size_t;
 
 protected:// CRUD functions
 	friend class Worker;
@@ -319,6 +320,11 @@ inline auto Scheme::appendProperty(T &&t, Args && ... args) const -> data::Value
 template <typename T, typename ... Args>
 inline auto Scheme::clearProperty(T &&t, Args && ... args) const -> bool {
 	return Worker(*this, std::forward<T>(t)).clearField(std::forward<Args>(args)...);
+}
+
+template <typename T, typename ... Args>
+inline auto Scheme::countProperty(T &&t, Args && ... args) const -> size_t {
+	return Worker(*this, std::forward<T>(t)).countField(std::forward<Args>(args)...);
 }
 
 template <typename T, typename ... Args>

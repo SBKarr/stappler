@@ -34,6 +34,8 @@ enum class UpdateFlags : uint32_t {
 	None = 0,
 	Protected = 1 << 0,
 	NoReturn = 1 << 1,
+	GetAll = 1 << 2,
+	GetForUpdate = 1 << 3,
 };
 
 SP_DEFINE_ENUM_AS_MASK(UpdateFlags)
@@ -47,6 +49,7 @@ public:
 		Vector<const Field *> includeFields;
 		Vector<const Field *> excludeFields;
 		bool includeNone = false;
+		bool includeAll = false;
 
 		void clear();
 		void reset(const Scheme &);
@@ -87,6 +90,7 @@ public:
 	void readFields(const Scheme &, const Query &, const FieldCallback &);
 
 	bool shouldIncludeNone() const;
+	bool shouldIncludeAll() const;
 
 	Worker &asSystem();
 	bool isSystem() const;
@@ -95,6 +99,10 @@ public:
 	data::Value get(uint64_t oid, bool forUpdate = false);
 	data::Value get(const String &alias, bool forUpdate = false);
 	data::Value get(const data::Value &id, bool forUpdate = false);
+
+	data::Value get(uint64_t oid, UpdateFlags);
+	data::Value get(const String &alias, UpdateFlags);
+	data::Value get(const data::Value &id, UpdateFlags);
 
 	data::Value get(uint64_t oid, std::initializer_list<StringView> &&fields, bool forUpdate = false);
 	data::Value get(const String &alias, std::initializer_list<StringView> &&fields, bool forUpdate = false);
@@ -146,6 +154,9 @@ public:
 	data::Value appendField(uint64_t oid, const StringView &, data::Value &&);
 	data::Value appendField(const data::Value &, const StringView &, data::Value &&);
 
+	size_t countField(uint64_t oid, const StringView &);
+	size_t countField(const data::Value &, const StringView &);
+
 public:
 	data::Value getField(uint64_t oid, const Field &, std::initializer_list<StringView> fields);
 	data::Value getField(const data::Value &, const Field &, std::initializer_list<StringView> fields);
@@ -162,6 +173,9 @@ public:
 
 	data::Value appendField(uint64_t oid, const Field &, data::Value &&);
 	data::Value appendField(const data::Value &, const Field &, data::Value &&);
+
+	size_t countField(uint64_t oid, const Field &);
+	size_t countField(const data::Value &, const Field &);
 
 protected:
 	Set<const Field *> getFieldSet(const Field &f, std::initializer_list<StringView> il) const;

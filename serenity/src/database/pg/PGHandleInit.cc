@@ -924,6 +924,15 @@ bool Handle::init(Server &serv, const Map<String, const Scheme *> &s) {
 		performSimpleQuery("COMMIT;"_weak);
 	}
 
+	StringStream query;
+	query << "DELETE FROM __login WHERE \"date\" < " << (Time::now() - config::getInternalsStorageTime()).toSeconds() << ";";
+	performSimpleQuery(query.weak());
+	query.clear();
+
+	query << "DELETE FROM __error WHERE \"time\" < " << (Time::now() - config::getInternalsStorageTime()).toMicros() << ";";
+	performSimpleQuery(query.weak());
+	query.clear();
+
 	return true;
 }
 

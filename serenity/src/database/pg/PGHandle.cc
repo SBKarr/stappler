@@ -443,6 +443,7 @@ bool Handle::selectQuery(const sql::SqlQuery &query, const Callback<void(sql::Re
 			data.paramValues, data.paramLengths, data.paramFormats, 1));
 	if (!res.isSuccess()) {
 		auto info = res.getInfo();
+		info.setString(query.getQuery().str(), "query");
 #if DEBUG
 		std::cout << query.getQuery().weak() << "\n";
 		std::cout << data::EncodeFormat::Pretty << info << "\n";

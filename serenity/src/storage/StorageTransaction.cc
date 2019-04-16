@@ -46,6 +46,7 @@ Transaction::Op Transaction::getTransactionOp(Action a) {
 	case Action::Set: return FieldSet; break;
 	case Action::Append: return FieldAppend; break;
 	case Action::Remove: return FieldClear; break;
+	case Action::Count: return FieldCount; break;
 	}
 	return None;
 }
@@ -714,6 +715,7 @@ bool Transaction::isOpAllowed(const Scheme &scheme, Op op, const Field *f) const
 	case Op::FieldSet:
 	case Op::FieldAppend:
 	case Op::FieldClear:
+	case Op::FieldCount:
 	case Op::RemoveFromView:
 	case Op::AddToView:
 		return _data->role == AccessRoleId::Admin || _data->role == AccessRoleId::System;

@@ -132,7 +132,7 @@ bool Worker::readFields(const Scheme &scheme, const FieldCallback &cb, const dat
 	if (_required.includeNone || (_required.scheme != nullptr && _required.scheme != &scheme)) {
 		return false;
 	} else if (_required.excludeFields.empty() && _required.includeFields.empty()) {
-		if (!scheme.hasForceExclude()) {
+		if (!scheme.hasForceExclude() || _required.includeAll) {
 			cb("*", nullptr);
 		} else {
 			cb("__oid", nullptr);
@@ -234,6 +234,10 @@ bool Worker::shouldIncludeNone() const {
 	return _required.includeNone;
 }
 
+bool Worker::shouldIncludeAll() const {
+	return _required.includeAll;
+}
+
 Worker &Worker::asSystem() {
 	_isSystem = true;
 	return *this;
@@ -274,6 +278,51 @@ data::Value Worker::get(const data::Value &id, bool forUpdate) {
 		auto &str = id.getString();
 		if (!str.empty()) {
 			return get(str, forUpdate);
+		}
+	}
+	return data::Value();
+}
+
+data::Value Worker::get(uint64_t oid, UpdateFlags flags) {
+	Query query;
+
+	if ((flags & UpdateFlags::GetAll) != UpdateFlags::None) {
+		_required.includeAll = true;
+	}
+
+	prepareGetQuery(query, oid, (flags & UpdateFlags::GetForUpdate) != UpdateFlags::None);
+	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
+}
+
+data::Value Worker::get(const String &alias, UpdateFlags flags) {
+	if (!_scheme->hasAliases()) {
+		return data::Value();
+	}
+
+	if ((flags & UpdateFlags::GetAll) != UpdateFlags::None) {
+		_required.includeAll = true;
+	}
+
+	Query query;
+	prepareGetQuery(query, alias, (flags & UpdateFlags::GetForUpdate) != UpdateFlags::None);
+	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
+}
+
+data::Value Worker::get(const data::Value &id, UpdateFlags flags) {
+	if (id.isDictionary()) {
+		if (auto oid = id.getInteger("__oid")) {
+			return get(oid, flags);
+		}
+	} else {
+		if ((id.isString() && valid::validateNumber(id.getString())) || id.isInteger()) {
+			if (auto oid = id.getInteger()) {
+				return get(oid, flags);
+			}
+		}
+
+		auto &str = id.getString();
+		if (!str.empty()) {
+			return get(str, flags);
 		}
 	}
 	return data::Value();
@@ -527,6 +576,22 @@ data::Value Worker::appendField(const data::Value &obj, const StringView &s, dat
 	return data::Value();
 }
 
+size_t Worker::countField(uint64_t oid, const StringView &s) {
+	auto f = _scheme->getField(s);
+	if (f) {
+		return countField(oid, *f);
+	}
+	return 0;
+}
+
+size_t Worker::countField(const data::Value &obj, const StringView &s) {
+	auto f = _scheme->getField(s);
+	if (f) {
+		return countField(obj, *f);
+	}
+	return 0;
+}
+
 data::Value Worker::getField(uint64_t oid, const Field &f, std::initializer_list<StringView> fields) {
 	if (auto s = f.getForeignScheme()) {
 		_required.reset(*s);
@@ -620,6 +685,22 @@ data::Value Worker::appendField(const data::Value &obj, const Field &f, data::Va
 		return _scheme->fieldWithWorker(Action::Append, *this, obj, f, move(v));
 	}
 	return data::Value();
+}
+
+size_t Worker::countField(uint64_t oid, const Field &f) {
+	auto d = _scheme->fieldWithWorker(Action::Count, *this, oid, f);
+	if (d.isInteger()) {
+		return size_t(d.asInteger());
+	}
+	return 0;
+}
+
+size_t Worker::countField(const data::Value &obj, const Field &f) {
+	auto d = _scheme->fieldWithWorker(Action::Count, *this, obj, f);
+	if (d.isInteger()) {
+		return size_t(d.asInteger());
+	}
+	return 0;
 }
 
 Set<const Field *> Worker::getFieldSet(const Field &f, std::initializer_list<StringView> il) const {

@@ -94,7 +94,7 @@ public:
 	size_t getOptsBytes() const;
 
 	template <typename Callback>
-	auto performWithPool() {
+	auto performWithPool(const Callback &cb) {
 		struct Context {
 		public:
 			Context(pool_t *p) : pool(p) { pool::push(pool); }
@@ -105,7 +105,7 @@ public:
 		};
 
 		Context ctx(_pool);
-		return Callback();
+		return cb();
 	}
 
 protected:

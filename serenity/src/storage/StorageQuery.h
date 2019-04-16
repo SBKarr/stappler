@@ -38,6 +38,7 @@ enum class Action {
 	Set,
 	Append,
 	Remove,
+	Count,
 };
 
 enum class TransactionStatus {

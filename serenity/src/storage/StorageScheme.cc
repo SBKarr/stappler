@@ -634,7 +634,10 @@ void Scheme::touchWithWorker(Worker &w, const data::Value & obj) const {
 
 data::Value Scheme::fieldWithWorker(Action a, Worker &w, uint64_t oid, const Field &f, data::Value &&patch) const {
 	switch (a) {
-	case Action::Get: return w.transaction().field(a, w, oid, f, move(patch)); break;
+	case Action::Get:
+	case Action::Count:
+		return w.transaction().field(a, w, oid, f, move(patch));
+		break;
 	case Action::Set:
 		if (f.transform(*this, oid, patch)) {
 			data::Value ret;
@@ -666,7 +669,10 @@ data::Value Scheme::fieldWithWorker(Action a, Worker &w, uint64_t oid, const Fie
 
 data::Value Scheme::fieldWithWorker(Action a, Worker &w, const data::Value &obj, const Field &f, data::Value &&patch) const {
 	switch (a) {
-	case Action::Get: return w.transaction().field(a, w, obj, f, move(patch)); break;
+	case Action::Get:
+	case Action::Count:
+		return w.transaction().field(a, w, obj, f, move(patch));
+		break;
 	case Action::Set:
 		if (f.transform(*this, obj, patch)) {
 			data::Value ret;

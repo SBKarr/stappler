@@ -63,6 +63,7 @@ public:
 		FieldSet,
 		FieldAppend,
 		FieldClear,
+		FieldCount,
 		Delta,
 		DeltaView,
 		RemoveFromView,
@@ -258,6 +259,7 @@ AccessRole AccessRole::Default(Args && ... args) {
 	ret.operations.set(Transaction::Op::Delta);
 	ret.operations.set(Transaction::Op::DeltaView);
 	ret.operations.set(Transaction::Op::FieldGet);
+	ret.operations.set(Transaction::Op::FieldCount);
 
 	ret.define(std::forward<Args>(args)...);
 
@@ -282,6 +284,7 @@ AccessRole AccessRole::Admin(Args && ... args) {
 	ret.operations.set(Transaction::Op::FieldSet);
 	ret.operations.set(Transaction::Op::FieldAppend);
 	ret.operations.set(Transaction::Op::FieldClear);
+	ret.operations.set(Transaction::Op::FieldCount);
 	ret.operations.set(Transaction::Op::RemoveFromView);
 	ret.operations.set(Transaction::Op::AddToView);
 

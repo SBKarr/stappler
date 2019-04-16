@@ -56,10 +56,47 @@ data::Value SqlHandle::getFileField(Worker &w, SqlQuery &query, uint64_t oid, ui
 	return data::Value();
 }
 
+size_t SqlHandle::getFileCount(Worker &w, SqlQuery &query, uint64_t oid, uint64_t targetId, const Field &f) {
+	size_t ret = 0;
+	auto sel = (targetId ? query.select() : query.with("s", [&] (SqlQuery::GenericQuery &q) {
+		q.select(f.getName()).from(w.scheme().getName()).where("__oid", Comparation::Equal, oid);
+	}).select()).aggregate("COUNT", "*");
+	String alias("t"); // do not touch;
+
+	if (targetId) {
+		sel.from(SqlQuery::Field("__files").as(alias))
+			.where(SqlQuery::Field(alias, "__oid"), Comparation::Equal, targetId).finalize();
+	} else {
+		sel.from(SqlQuery::Field("__files").as(alias)).innerJoinOn("s", [&] (SqlQuery::WhereBegin &q) {
+			q.where(SqlQuery::Field(alias,"__oid"), Comparation::Equal, SqlQuery::Field("s", f.getName()));
+		}).finalize();
+	}
+
+	selectQuery(query, [&] (Result &result) {
+		if (result && result.nrows() == 1) {
+			ret = size_t(result.front().toInteger(0));
+		}
+	});
+	return ret;
+}
+
 data::Value SqlHandle::getArrayField(Worker &w, SqlQuery &query, uint64_t oid, const Field &f) {
 	query.select("data").from(toString(w.scheme().getName(), "_f_", f.getName()))
 		.where(toString(w.scheme().getName(), "_id"), Comparation::Equal, oid).finalize();
 	return selectValueQuery(f, query);
+}
+
+size_t SqlHandle::getArrayCount(Worker &w, SqlQuery &query, uint64_t oid, const Field &f) {
+	size_t ret = 0;
+	query.select().aggregate("COUNT", "*").from(toString(w.scheme().getName(), "_f_", f.getName()))
+		.where(toString(w.scheme().getName(), "_id"), Comparation::Equal, oid).finalize();
+
+	selectQuery(query, [&] (Result &result) {
+		if (result && result.nrows() == 1) {
+			ret = size_t(result.front().toInteger(0));
+		}
+	});
+	return ret;
 }
 
 data::Value SqlHandle::getObjectField(Worker &w, SqlQuery &query, uint64_t oid, uint64_t targetId, const Field &f) {
@@ -89,6 +126,32 @@ data::Value SqlHandle::getObjectField(Worker &w, SqlQuery &query, uint64_t oid, 
 		return ret;
 	}
 	return data::Value();
+}
+
+size_t SqlHandle::getObjectCount(Worker &w, SqlQuery &query, uint64_t oid, uint64_t targetId, const Field &f) {
+	size_t ret = 0;
+	if (auto fs = f.getForeignScheme()) {
+		auto sel = (targetId ? query.select() : query.with("s", [&] (SqlQuery::GenericQuery &q) {
+			q.select(f.getName()).from(w.scheme().getName()).where("__oid", Comparation::Equal, oid);
+		}).select()).aggregate("COUNT", "*");
+		String alias("t"); // do not touch;
+
+		if (targetId) {
+			sel.from(SqlQuery::Field(fs->getName()).as(alias))
+				.where(SqlQuery::Field(alias, "__oid"), Comparation::Equal, targetId).finalize();
+		} else {
+			sel.from(SqlQuery::Field(fs->getName()).as(alias)).innerJoinOn("s", [&] (SqlQuery::WhereBegin &q) {
+				q.where(SqlQuery::Field("t", "__oid"), Comparation::Equal, SqlQuery::Field("s", f.getName()));
+			}).finalize();
+		}
+
+		selectQuery(query, [&] (Result &result) {
+			if (result && result.nrows() == 1) {
+				ret = size_t(result.front().toInteger(0));
+			}
+		});
+	}
+	return ret;
 }
 
 data::Value SqlHandle::getSetField(Worker &w, SqlQuery &query, uint64_t oid, const Field &f) {
@@ -129,6 +192,42 @@ data::Value SqlHandle::getSetField(Worker &w, SqlQuery &query, uint64_t oid, con
 	return data::Value();
 }
 
+size_t SqlHandle::getSetCount(Worker &w, SqlQuery &query, uint64_t oid, const Field &f) {
+	size_t ret = 0;
+	if (auto fs = f.getForeignScheme()) {
+		if (f.isReference()) {
+			auto sel = query.with("s", [&] (SqlQuery::GenericQuery &q) {
+				q.select(SqlQuery::Field(toString(fs->getName(), "_id")).as("id"))
+						.from(toString(w.scheme().getName(), "_f_", f.getName()))
+						.where(toString(w.scheme().getName(), "_id"), Comparation::Equal, oid);
+			}).select().aggregate("COUNT", "*");
+
+			String alias("t"); // do not touch;
+			sel.from(SqlQuery::Field(fs->getName()).as(alias))
+					.innerJoinOn("s", [&] (SqlQuery::WhereBegin &q) {
+				q.where(SqlQuery::Field(alias, "__oid"), Comparation::Equal, SqlQuery::Field("s", "id"));
+			}).finalize();
+		} else {
+			if (auto l = w.scheme().getForeignLink(f)) {
+				auto sel = query.select().aggregate("COUNT", "*");
+
+				String alias("t"); // do not touch;
+				sel.from(SqlQuery::Field(fs->getName()).as(alias))
+					.where(l->getName(), Comparation::Equal, oid)
+					.finalize();
+			} else {
+				return 0;
+			}
+		}
+		selectQuery(query, [&] (Result &result) {
+			if (result && result.nrows() == 1) {
+				ret = size_t(result.front().toInteger(0));
+			}
+		});
+	}
+	return ret;
+}
+
 data::Value SqlHandle::getViewField(Worker &w, SqlQuery &query, uint64_t oid, const Field &f) {
 	if (auto fs = f.getForeignScheme()) {
 		auto sel = query.with("s", [&] (SqlQuery::GenericQuery &q) {
@@ -158,6 +257,30 @@ data::Value SqlHandle::getViewField(Worker &w, SqlQuery &query, uint64_t oid, co
 	return data::Value();
 }
 
+size_t SqlHandle::getViewCount(Worker &w, SqlQuery &query, uint64_t oid, const Field &f) {
+	size_t ret = 0;
+	if (auto fs = f.getForeignScheme()) {
+		auto sel = query.with("s", [&] (SqlQuery::GenericQuery &q) {
+			q.select(SqlQuery::Distinct::Distinct, SqlQuery::Field(toString(fs->getName(), "_id")).as("__id"))
+					.from(toString(w.scheme().getName(), "_f_", f.getName(), "_view"))
+					.where(toString(w.scheme().getName(), "_id"), Comparation::Equal, oid);
+		}).select().aggregate("COUNT", "*");
+
+		String alias("t"); // do not touch;
+		sel.from(SqlQuery::Field(fs->getName()).as(alias))
+				.innerJoinOn("s", [&] (SqlQuery::WhereBegin &q) {
+			q.where(SqlQuery::Field(alias, "__oid"), Comparation::Equal, SqlQuery::Field("s", "__id"));
+		}).finalize();
+
+		selectQuery(query, [&] (Result &result) {
+			if (result && result.nrows() == 1) {
+				ret = size_t(result.front().toInteger(0));
+			}
+		});
+	}
+	return ret;
+}
+
 data::Value SqlHandle::getSimpleField(Worker &w, SqlQuery &query, uint64_t oid, const Field &f) {
 	query.select(f.getName()).from(w.scheme().getName()).where("__oid", Comparation::Equal, oid).finalize();
 	auto ret = selectValueQuery(w.scheme(), query);
@@ -167,6 +290,17 @@ data::Value SqlHandle::getSimpleField(Worker &w, SqlQuery &query, uint64_t oid, 
 	if (ret.isDictionary()) {
 		ret = ret.getValue(f.getName());
 	}
+	return ret;
+}
+
+size_t SqlHandle::getSimpleCount(Worker &w, SqlQuery &query, uint64_t oid, const Field &f) {
+	size_t ret = 0;
+	query.select().aggregate("COUNT", f.getName()).from(w.scheme().getName()).where("__oid", Comparation::Equal, oid).finalize();
+	selectQuery(query, [&] (Result &result) {
+		if (result && result.nrows() == 1) {
+			ret = size_t(result.front().toInteger(0));
+		}
+	});
 	return ret;
 }
 
@@ -274,6 +408,19 @@ data::Value SqlHandle::field(Action a, Worker &w, uint64_t oid, const Field &f, 
 			case storage::Type::Set: ret = getSetField(w, query, oid, f); break;
 			case storage::Type::View: ret = getViewField(w, query, oid, f); break;
 			default: ret = getSimpleField(w, query, oid, f); break;
+			}
+		});
+		break;
+	case Action::Count:
+		makeQuery([&] (SqlQuery &query) {
+			switch (f.getType()) {
+			case storage::Type::File:
+			case storage::Type::Image: ret = data::Value(getFileCount(w, query, oid, 0, f)); break;
+			case storage::Type::Array: ret = data::Value(getArrayCount(w, query, oid, f)); break;
+			case storage::Type::Object: ret = data::Value(getObjectCount(w, query, oid, 0, f)); break;
+			case storage::Type::Set: ret = data::Value(getSetCount(w, query, oid, f)); break;
+			case storage::Type::View: ret = data::Value(getViewCount(w, query, oid, f)); break;
+			default: ret = data::Value(getSimpleCount(w, query, oid, f)); break;
 			}
 		});
 		break;
@@ -452,6 +599,25 @@ data::Value SqlHandle::field(Action a, Worker &w, const data::Value &obj, const 
 					ret = move(val);
 				} else {
 					ret = getSimpleField(w, query, oid, f);
+				}
+				break;
+			}
+		});
+		break;
+	case Action::Count:
+		makeQuery([&] (SqlQuery &query) {
+			switch (f.getType()) {
+			case storage::Type::File:
+			case storage::Type::Image: ret = data::Value(getFileCount(w, query, oid, 0, f)); break;
+			case storage::Type::Array: ret = data::Value(getArrayCount(w, query, oid, f)); break;
+			case storage::Type::Object: ret = data::Value(getObjectCount(w, query, oid, 0, f)); break;
+			case storage::Type::Set: ret = data::Value(getSetCount(w, query, oid, f)); break;
+			case storage::Type::View: ret = data::Value(getViewCount(w, query, oid, f)); break;
+			default:
+				if (auto val = obj.getValue(f.getName())) {
+					ret = data::Value(1);
+				} else {
+					ret = data::Value(getSimpleCount(w, query, oid, f));
 				}
 				break;
 			}

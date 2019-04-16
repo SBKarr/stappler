@@ -97,6 +97,7 @@ constexpr auto getSerenityWebsocketHandleName() { return "Serenity.Websocket.Han
 constexpr uint16_t getResourceResolverMaxDepth() { return 4; }
 
 inline TimeInterval getKeyValueStorageTime() { return TimeInterval::seconds(60 * 60 * 24 * 365); } // one year
+inline TimeInterval getInternalsStorageTime() { return TimeInterval::seconds(60 * 60 * 24 * 30); }
 
 NS_SA_EXT_END(config)
 

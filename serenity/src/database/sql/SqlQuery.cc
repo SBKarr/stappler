@@ -63,10 +63,11 @@ void SqlQuery::writeWhere(SqlQuery::SelectWhere &w, Operator op, const Scheme &s
 				if (f_it != fields.end()) {
 					if (f_it->second.getType() == storage::Type::FullTextView) {
 						whi.where(Operator::And, SqlQuery::Field(scheme.getName(), it.field), Comparation::Includes, RawString{toString("__ts_query_", it.field)});
-					} else if ((f_it->second.isIndexed() && storage::checkIfComparationIsValid(f_it->second.getType(), it.compare))
-							|| (it.field == "__oid" && storage::checkIfComparationIsValid(storage::Type::Integer, it.compare))) {
+					} else if ((f_it->second.isIndexed() && storage::checkIfComparationIsValid(f_it->second.getType(), it.compare))) {
 						whi.where(Operator::And, SqlQuery::Field(scheme.getName(), it.field), it.compare, it.value1, it.value2);
 					}
+				} else if (it.field == "__oid" && storage::checkIfComparationIsValid(storage::Type::Integer, it.compare)) {
+					whi.where(Operator::And, SqlQuery::Field(scheme.getName(), it.field), it.compare, it.value1, it.value2);
 				}
 			}
 		});
@@ -194,9 +195,13 @@ auto SqlQuery::writeSelectFrom(GenericQuery &q, const QueryList::Item &item, boo
 
 auto SqlQuery::writeSelectFrom(Select &sel, Worker &worker, const query::Query &q) -> SelectFrom {
 	writeFullTextRank(sel, worker.scheme(), q);
-	worker.readFields(worker.scheme(), q, [&] (const StringView &name, const storage::Field *) {
-		sel = sel.field(SqlQuery::Field(name));
-	});
+	if (worker.shouldIncludeAll()) {
+		sel = sel.field(SqlQuery::Field("*"));
+	} else {
+		worker.readFields(worker.scheme(), q, [&] (const StringView &name, const storage::Field *) {
+			sel = sel.field(SqlQuery::Field(name));
+		});
+	}
 	return writeFullTextFrom(sel, worker.scheme(), q).from(worker.scheme().getName());
 }
 

@@ -122,6 +122,7 @@ User * SqlHandle::authorizeUser(const Auth &auth, const StringView &iname, const
 		auto req = apr::pool::request();
 		auto passwd = ud.getBytes("password");
 
+		auto userId = ud.getInteger("__oid");
 		if (auth.authorizeWithPassword(password, passwd, count)) {
 			ret = new User(std::move(ud), auth.getScheme());
 			success = true;
@@ -130,7 +131,7 @@ User * SqlHandle::authorizeUser(const Auth &auth, const StringView &iname, const
 		query.clear();
 		query.insert("__login")
 			.fields("user", "name", "password", "date", "success", "addr", "host", "path")
-			.values(ud.getInteger("__oid"), iname, passwd, Time::now().toSeconds(), data::Value(success),
+			.values(userId, iname, passwd, Time::now().toSeconds(), data::Value(success),
 				SqlQuery::TypeString(req?req->useragent_ip:"NULL", "inet"), String(req?req->hostname:"NULL"), String(req?req->uri:"NULL"))
 			.finalize();
 		performQuery(query);

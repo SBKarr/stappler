@@ -108,11 +108,22 @@ protected:
 
 protected:
 	data::Value getFileField(Worker &w, SqlQuery &query, uint64_t oid, uint64_t targetId, const Field &f);
+	size_t getFileCount(Worker &w, SqlQuery &query, uint64_t oid, uint64_t targetId, const Field &f);
+
 	data::Value getArrayField(Worker &w, SqlQuery &query, uint64_t oid, const Field &f);
-	data::Value getObjectField(Worker &w, SqlQuery &query, uint64_t oid, uint64_t targetId,  const Field &f);
+	size_t getArrayCount(Worker &w, SqlQuery &query, uint64_t oid, const Field &f);
+
+	data::Value getObjectField(Worker &w, SqlQuery &query, uint64_t oid, uint64_t targetId, const Field &f);
+	size_t getObjectCount(Worker &w, SqlQuery &query, uint64_t oid, uint64_t targetId, const Field &f);
+
 	data::Value getSetField(Worker &w, SqlQuery &query, uint64_t oid, const Field &f);
+	size_t getSetCount(Worker &w, SqlQuery &query, uint64_t oid, const Field &f);
+
 	data::Value getViewField(Worker &w, SqlQuery &query, uint64_t oid, const Field &f);
+	size_t getViewCount(Worker &w, SqlQuery &query, uint64_t oid, const Field &f);
+
 	data::Value getSimpleField(Worker &w, SqlQuery &query, uint64_t oid, const Field &f);
+	size_t getSimpleCount(Worker &w, SqlQuery &query, uint64_t oid, const Field &f);
 
 	bool insertIntoSet(SqlQuery &, const Scheme &s, int64_t id, const FieldObject &field, const Field &f, const data::Value &d);
 	bool insertIntoArray(SqlQuery &, const Scheme &s, int64_t id, const Field &field, const data::Value &d);

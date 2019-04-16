@@ -544,17 +544,19 @@ void _addDebugMessage(data::Value &&data) {
 		serv.reportError(data);
 	}
 
-	Request rctx(apr::pool::request());
-	if (rctx) {
-		rctx.addDebugMessage(std::move(data));
-	} else {
-		auto pool = apr::pool::acquire();
-		ErrorNotificator *err = nullptr;
-		apr_pool_userdata_get((void **)&err, (const char *)config::getSerenityErrorNotificatorName(), pool);
-		if (err && err->debug) {
-			err->debug(std::move(data));
+	if (isDebugEnabled()) {
+		Request rctx(apr::pool::request());
+		if (rctx) {
+			rctx.addDebugMessage(std::move(data));
 		} else {
-			log::text("Debug", data::toString(data, false));
+			auto pool = apr::pool::acquire();
+			ErrorNotificator *err = nullptr;
+			apr_pool_userdata_get((void **)&err, (const char *)config::getSerenityErrorNotificatorName(), pool);
+			if (err && err->debug) {
+				err->debug(std::move(data));
+			} else {
+				log::text("Debug", data::toString(data, false));
+			}
 		}
 	}
 }
