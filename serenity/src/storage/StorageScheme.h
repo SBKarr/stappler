@@ -113,6 +113,7 @@ public:
 
 public: // worker interface
 	template <typename Storage, typename Value> auto get(Storage &&, Value &&, bool forUpdate = false) const -> data::Value;
+	template <typename Storage, typename Value> auto get(Storage &&, Value &&, UpdateFlags) const -> data::Value;
 	template <typename Storage, typename Value> auto get(Storage &&, Value &&, std::initializer_list<StringView> &&fields, bool forUpdate = false) const -> data::Value;
 	template <typename Storage, typename Value> auto get(Storage &&, Value &&, std::initializer_list<const char *> &&fields, bool forUpdate = false) const -> data::Value;
 	template <typename Storage, typename Value> auto get(Storage &&, Value &&, std::initializer_list<const Field *> &&fields, bool forUpdate = false) const -> data::Value;
@@ -249,6 +250,11 @@ protected:
 template <typename Storage, typename Value>
 inline auto Scheme::get(Storage &&s, Value &&v, bool forUpdate) const -> data::Value {
 	return Worker(*this, std::forward<Storage>(s)).get(std::forward<Value>(v), forUpdate);
+}
+
+template <typename Storage, typename Value>
+inline auto Scheme::get(Storage &&s, Value &&v, UpdateFlags flags) const -> data::Value {
+	return Worker(*this, std::forward<Storage>(s)).get(std::forward<Value>(v), flags);
 }
 
 template <typename Storage, typename Value>

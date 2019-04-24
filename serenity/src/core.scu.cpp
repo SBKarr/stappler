@@ -42,3 +42,4 @@ APLOG_USE_MODULE(serenity);
 
 #include "ExternalSession.cc"
 #include "JsonWebToken.cc"
+#include "RequestAuthHandler.cc"

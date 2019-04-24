@@ -177,7 +177,7 @@ auto DataReader<Endianess>::operator += (size_t l) -> Self & {
 
 template <ByteOrder::Endian Endianess>
 auto DataReader<Endianess>::operator == (const Self &other) const -> bool {
-	return ptr == other.ptr && len == other.len;
+	return len == other.len && (ptr == other.ptr || memcmp(ptr, other.ptr, len * sizeof(CharType)) == 0);
 }
 
 template <ByteOrder::Endian Endianess>

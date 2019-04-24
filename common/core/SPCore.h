@@ -361,42 +361,66 @@ template <typename T> auto StringToNumber(const char *ptr, char ** tail) -> T;
 
 template <> inline auto
 StringToNumber<unsigned int>(const char *ptr, char ** tail) -> unsigned int {
-	return (unsigned int)strtoul(ptr, tail, 10);
+	if (ptr) {
+		return (unsigned int)strtoul(ptr, tail, 10);
+	}
+	return 0;
 }
 
 template <> inline auto
 StringToNumber<unsigned long>(const char *ptr, char ** tail) -> unsigned long {
-	return strtoul(ptr, tail, 10);
+	if (ptr) {
+		return strtoul(ptr, tail, 10);
+	}
+	return 0;
 }
 
 template <> inline auto
 StringToNumber<unsigned long long>(const char *ptr, char ** tail) -> unsigned long long {
-	return strtoull(ptr, tail, 10);
+	if (ptr) {
+		return strtoull(ptr, tail, 10);
+	}
+	return 0;
 }
 
 template <> inline auto
 StringToNumber<int>(const char *ptr, char ** tail) -> int {
-	return (int)strtol(ptr, tail, 10);
+	if (ptr) {
+		return (int)strtol(ptr, tail, 10);
+	}
+	return 0;
 }
 
 template <> inline auto
 StringToNumber<long>(const char *ptr, char ** tail) -> long {
-	return strtol(ptr, tail, 10);
+	if (ptr) {
+		return strtol(ptr, tail, 10);
+	}
+	return 0;
 }
 
 template <> inline auto
 StringToNumber<long long>(const char *ptr, char ** tail) -> long long {
-	return strtoll(ptr, tail, 10);
+	if (ptr) {
+		return strtoll(ptr, tail, 10);
+	}
+	return 0;
 }
 
 template <> inline auto
 StringToNumber<float>(const char *ptr, char ** tail) -> float {
-	return strtof(ptr, tail);
+	if (ptr) {
+		return strtof(ptr, tail);
+	}
+	return 0.0f;
 }
 
 template <> inline auto
 StringToNumber<double>(const char *ptr, char ** tail) -> double {
-	return strtod(ptr, tail);
+	if (ptr) {
+		return strtod(ptr, tail);
+	}
+	return 0.0;
 }
 
 #define SP_DEFINE_ENUM_AS_MASK(Type) \

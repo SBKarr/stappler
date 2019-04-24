@@ -236,9 +236,9 @@ static bool ContextFn_asBool(const data::Value &v) {
 
 Var ContextFn::execExpr(const Expression &expr, Expression::Op op, bool assignable) {
 	if (expr.left || expr.right || expr.op != Expression::NoOp) {
-		if (expr.block == Expression::Operator) {
+		if (expr.block == Expression::Operator && op != Expression::Construct) {
 			return execOperator(expr, op);
-		} else if (expr.block == Expression::Composition) {
+		} else if (expr.block == Expression::Composition && op != Expression::Subscript) {
 			return execComposition(expr, op);
 		}
 	}
