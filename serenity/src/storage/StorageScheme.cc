@@ -1346,8 +1346,11 @@ Vector<uint64_t> Scheme::getLinkageForView(const data::Value &obj, const ViewSch
 }
 
 void Scheme::updateView(const Transaction &t, const data::Value & obj, const ViewScheme *scheme, const Vector<uint64_t> &orig) const {
-	auto view = static_cast<const FieldView *>(scheme->viewField->getSlot());
-	if (!view->viewFn) {
+	const FieldView *view = nullptr;
+	if (scheme->viewField->getType() == Type::View) {
+		view = static_cast<const FieldView *>(scheme->viewField->getSlot());
+	}
+	if ((!view || !view->viewFn) && !scheme->autoField) {
 		return;
 	}
 
