@@ -45,11 +45,8 @@ public: // key-value storage
 	data::Value get(const CoderSource &);
 	bool clear(const CoderSource &);
 
-public: // resource requests
-	Resource *makeResource(ResourceType, QueryList &&, const Field *);
-
 public:
-	bool init(Server &serv, const Map<String, const Scheme *> &);
+	bool init(const Interface::Config &, const Map<String, const Scheme *> &);
 
 	User * authorizeUser(const Auth &, const StringView &name, const StringView &password) const;
 

@@ -46,7 +46,8 @@ OSTYPE_COMMON_LIBS_LIST := \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libmbedcrypto.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libpng.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libjpeg.a \
-	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libwebp.a
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libwebp.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libidn2.a
 
 OSTYPE_STAPPLER_LIBS_LIST := \
 	$(OSTYPE_COMMON_LIBS_LIST) \
@@ -61,7 +62,7 @@ OSTYPE_GCHFLAGS := -x c++-header
 OSTYPE_COMMON_LIBS := \
 	-l:libcurl.a -l:libbrotlidec.a -l:libbrotlienc.a -l:libbrotlicommon.a \
 	-l:libmbedtls.a -l:libmbedx509.a -l:libmbedcrypto.a \
-	-l:libpng.a -l:libjpeg.a -l:libwebp.a -lz -lm -landroid -llog
+	-l:libpng.a -l:libjpeg.a -l:libwebp.a -l:libidn2 -lz -lm -landroid -llog
 
 OSTYPE_CLI_LIBS :=  $(OSTYPE_COMMON_LIBS) -l:libsqlite3.a
 

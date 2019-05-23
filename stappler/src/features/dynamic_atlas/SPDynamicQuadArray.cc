@@ -26,13 +26,6 @@ THE SOFTWARE.
 #include "SPDefine.h"
 #include "SPDynamicQuadArray.h"
 
-#if CC_SPRITEBATCHNODE_RENDER_SUBPIXEL
-#define RENDER_IN_SUBPIXEL
-#else
-#define RENDER_IN_SUBPIXEL
-//#define RENDER_IN_SUBPIXEL(__ARGS__) (ceil(__ARGS__))
-#endif
-
 NS_SP_BEGIN
 
 void DynamicQuadArray::clear() {

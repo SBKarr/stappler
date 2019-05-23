@@ -28,20 +28,31 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(filesystem)
 
-class ifile {
+class file {
 public:
-	ifile();
-	explicit ifile(FILE *);
-	explicit ifile(void *);
-	explicit ifile(void *, size_t);
+	enum class Flags {
+		None,
+		DelOnClose
+	};
 
-	~ifile();
+	using traits_type = std::char_traits<char>;
+	using streamsize = std::streamsize;
+	using int_type = typename traits_type::int_type;
 
-	ifile(ifile &&);
-	ifile & operator=(ifile &&);
+	static file open_tmp(const char *prefix);
 
-	ifile(const ifile &) = delete;
-	ifile & operator=(const ifile &) = delete;
+	file();
+	explicit file(FILE *, Flags = Flags::None);
+	explicit file(void *);
+	explicit file(void *, size_t);
+
+	~file();
+
+	file(file &&);
+	file & operator=(file &&);
+
+	file(const file &) = delete;
+	file & operator=(const file &) = delete;
 
 	size_t read(uint8_t *buf, size_t nbytes);
 	size_t seek(int64_t offset, io::Seek s);
@@ -49,20 +60,37 @@ public:
 	size_t tell() const;
 	size_t size() const;
 
+	int_type xsgetc();
+	int_type xsputc(int_type c);
+
+	streamsize xsputn(const char* s, streamsize n);
+	streamsize xsgetn(char* s, streamsize n);
+
 	bool eof() const;
 	void close();
+	void close_remove();
+
+	bool close_rename(const StringView &);
 
 	bool is_open() const;
 	operator bool() const { return is_open(); }
 
+	const char *path() const;
+
 protected:
+	void set_tmp_path(const char *);
+
 	bool _isBundled = false;
 	size_t _size = 0;
+	Flags _flags = Flags::None;
+	char _buf[256] = { 0 };
 	union {
 		FILE *_nativeFile;
 		void *_platformFile;
 	};
 };
+
+using ifile = file;
 
 // Check if file at path exists
 bool exists(const StringView &path);

@@ -98,6 +98,7 @@ struct EncodeTraits {
 	using InterfaceType = Interface;
 	using ValueType = ValueTemplate<Interface>;
 	using BytesType = typename ValueType::BytesType;
+	using StringType = typename ValueType::StringType;
 
 	static BytesType write(const ValueType &data, EncodeFormat fmt) {
 		if (fmt.isRaw()) {
@@ -106,8 +107,8 @@ struct EncodeTraits {
 			case EncodeFormat::Pretty:
 			case EncodeFormat::PrettyTime:
 			{
-				String s = json::write(data, (fmt.format == EncodeFormat::Pretty), (fmt.format == EncodeFormat::PrettyTime));
-				Bytes ret; ret.reserve(s.length());
+				StringType s = json::write(data, (fmt.format == EncodeFormat::Pretty), (fmt.format == EncodeFormat::PrettyTime));
+				BytesType ret; ret.reserve(s.length());
 				ret.assign(s.begin(), s.end());
 				return ret;
 			}
@@ -120,15 +121,15 @@ struct EncodeTraits {
 			case EncodeFormat::Serenity:
 			case EncodeFormat::SerenityPretty:
 			{
-				String s = serenity::write(data, (fmt.format == EncodeFormat::SerenityPretty));
-				Bytes ret; ret.reserve(s.length());
+				StringType s = serenity::write(data, (fmt.format == EncodeFormat::SerenityPretty));
+				BytesType ret; ret.reserve(s.length());
 				ret.assign(s.begin(), s.end());
 				return ret;
 			}
 				break;
 			}
 		}
-		return Bytes();
+		return BytesType();
 	}
 
 	static bool write(std::ostream &stream, const ValueType &data, EncodeFormat fmt) {

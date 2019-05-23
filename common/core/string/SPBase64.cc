@@ -278,24 +278,32 @@ uint8_t hexToChar(const char &c, const char &d) {
 	return (hexToChar(c) << 4) | hexToChar(d);
 }
 
-String encode(const CoderSource &source) {
+
+template <>
+auto encode<memory::PoolInterface>(const CoderSource &source) -> typename memory::PoolInterface::StringType {
 	Reader inputBuffer(source.data(), source.size());
 	const auto length = inputBuffer.size();
 
-#if SPAPR
-	String output; output.resize(length * 2);
-    for (size_t i = 0; i < length; ++i) {
-    	memcpy(output.data() + i * 2, s_hexTable[inputBuffer[i]], 2);
-    }
-#else
-	String output; output.reserve(length * 2);
+	memory::PoolInterface::StringType output; output.resize(length * 2);
+	for (size_t i = 0; i < length; ++i) {
+		memcpy(output.data() + i * 2, s_hexTable[inputBuffer[i]], 2);
+	}
+    return output;
+}
+
+template <>
+auto encode<memory::StandartInterface>(const CoderSource &source) -> typename memory::StandartInterface::StringType {
+	Reader inputBuffer(source.data(), source.size());
+	const auto length = inputBuffer.size();
+
+	memory::StandartInterface::StringType output; output.reserve(length * 2);
     for (size_t i = 0; i < length; ++i) {
     	output.append(s_hexTable[inputBuffer[i]], 2);
     }
-#endif
 
     return output;
 }
+
 void encode(std::basic_ostream<char> &stream, const CoderSource &source) {
 	Reader inputBuffer(source.data(), source.size());
 	const auto length = inputBuffer.size();
@@ -319,10 +327,10 @@ size_t encode(char *buf, size_t bsize, const CoderSource &source) {
     return bytes;
 }
 
-Bytes decode(const CoderSource &source) {
+template <>
+auto decode<memory::PoolInterface>(const CoderSource &source) -> typename memory::PoolInterface::BytesType {
 	const auto length = source.size();
-
-	Bytes outputBuffer; outputBuffer.reserve(length / 2);
+	memory::PoolInterface::BytesType outputBuffer; outputBuffer.reserve(length / 2);
 	for (size_t i = 0; i < length; i += 2) {
 		outputBuffer.push_back(
 				(s_decTable[source[i]] << 4)
@@ -330,6 +338,19 @@ Bytes decode(const CoderSource &source) {
 	}
 	return outputBuffer;
 }
+
+template <>
+auto decode<memory::StandartInterface>(const CoderSource &source) -> typename memory::StandartInterface::BytesType {
+	const auto length = source.size();
+	memory::StandartInterface::BytesType outputBuffer; outputBuffer.reserve(length / 2);
+	for (size_t i = 0; i < length; i += 2) {
+		outputBuffer.push_back(
+				(s_decTable[source[i]] << 4)
+					| s_decTable[source[i + 1]]);
+	}
+	return outputBuffer;
+}
+
 void decode(std::basic_ostream<char> &stream, const CoderSource &source) {
 	const auto length = source.size();
 

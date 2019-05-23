@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -138,23 +138,27 @@ protected:
 	}
 
 	void merge(uint32_t id, CommandIterator &cmdIt, DynamicBatchCommand *cmd, const Mat4 &transform) {
-		DynamicBatchScene::AtlasCacheNode &a = _scene->getAtlasForMaterial(id, cmd);
+		if (auto atlas = dynamic_cast<DynamicQuadAtlas *>(cmd->getAtlas())) {
+			DynamicBatchScene::AtlasCacheNode &a = _scene->getAtlasForMaterial(id, cmd);
 
-		if ((*cmdIt) != &a.cmd) {
-			auto origCmd = static_cast<DynamicBatchCommand *>(*cmdIt);
-			*cmdIt = &a.cmd;
+			if ((*cmdIt) != &a.cmd) {
+				auto origCmd = static_cast<DynamicBatchCommand *>(*cmdIt);
+				*cmdIt = &a.cmd;
 
-			auto &quads = origCmd->getAtlas()->getQuads();
+				if (auto atlas = dynamic_cast<DynamicQuadAtlas *>(origCmd->getAtlas())) {
+					auto &quads = atlas->getSet();
+					for (auto it : quads) {
+						it->updateTransform(origCmd->getTransform());
+						a.set.insert(it);
+					}
+				}
+			}
+
+			auto &quads = atlas->getSet();
 			for (auto it : quads) {
-				it->updateTransform(origCmd->getTransform());
+				it->updateTransform(cmd->getTransform());
 				a.set.insert(it);
 			}
-		}
-
-		auto &quads = cmd->getAtlas()->getQuads();
-		for (auto it : quads) {
-			it->updateTransform(cmd->getTransform());
-			a.set.insert(it);
 		}
 	}
 
@@ -174,7 +178,7 @@ bool DynamicBatchScene::init() {
 	el->onEvent(Device::onBackground, [this] (const Event &) {
 		_map.clear();
 	});
-	addComponent(el);
+	addComponentItem(el);
 
 	return true;
 }
@@ -240,7 +244,7 @@ void DynamicBatchScene::visit(cocos2d::Renderer *r, const Mat4& t, uint32_t f, Z
 
 		for (auto &it : _map) {
 			if (it.second.cmdInit && !it.second.set.empty()) {
-				it.second.atlas->updateQuadArrays(std::move(it.second.set));
+				it.second.atlas->updateArrays(std::move(it.second.set));
 				it.second.set.clear();
 			}
 		}
@@ -273,14 +277,14 @@ void DynamicBatchScene::visit(cocos2d::Renderer *r, const Mat4& t, uint32_t f, Z
 }
 
 
-DynamicBatchScene::AtlasCacheNode::AtlasCacheNode(Rc<DynamicAtlas> &&atlas)
+DynamicBatchScene::AtlasCacheNode::AtlasCacheNode(Rc<DynamicQuadAtlas> &&atlas)
 : atlas(atlas), cmd(true), cmdInit(false) { }
 
 DynamicBatchScene::AtlasCacheNode &DynamicBatchScene::getAtlasForMaterial(uint32_t id, DynamicBatchCommand *cmd) {
 	auto it = _map.find(id);
 	if (it == _map.end()) {
 		cocos2d::Texture2D *tex = cmd->getAtlas()->getTexture();
-		it = _map.emplace(id, Rc<DynamicAtlas>::create(tex)).first;
+		it = _map.emplace(id, Rc<DynamicQuadAtlas>::create(tex)).first;
 	}
 
 	if (!it->second.cmdInit) {

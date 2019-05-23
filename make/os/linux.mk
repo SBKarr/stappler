@@ -24,14 +24,14 @@ OSTYPE_CFLAGS := -DLINUX -Wall -fPIC
 OSTYPE_CPPFLAGS :=  -Wno-overloaded-virtual -frtti
 
 OSTYPE_COMMON_LIBS := -lpthread \
-	-l:libcurl.a \
+	-l:libcurl.a -l:libidn2.a \
 	-l:libbrotlidec.a -l:libbrotlicommon.a \
 	-l:libmbedtls.a -l:libmbedx509.a -l:libmbedcrypto.a \
 	-l:libpng.a -l:libjpeg.a -l:libwebp.a \
 	-lz
 
 OSTYPE_SERENITY_LIBS := \
-	-l:libcurl.a \
+	-l:libcurl.a -l:libidn2.a \
 	-l:libbrotlidec.a -l:libbrotlienc.a -l:libbrotlicommon.a \
 	-l:libmbedtls.a -l:libmbedx509.a -l:libmbedcrypto.a \
 	-l:libpng.a -l:libjpeg.a -l:libwebp.a \

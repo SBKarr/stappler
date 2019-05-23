@@ -26,14 +26,15 @@ THE SOFTWARE.
 #include "SPBatchNodeBase.h"
 #include "SPDynamicAtlas.h"
 #include "SPDynamicQuadArray.h"
+#include "SPDynamicTriangleArray.h"
 #include "SPDynamicBatchCommand.h"
 
 NS_SP_BEGIN
 
-class DynamicBatchNode: public BatchNodeBase {
+/* template for custom sprite with DynamicAtlas */
+class DynamicBatchAtlasNode : public BatchNodeBase {
 public:
-	DynamicBatchNode();
-	virtual ~DynamicBatchNode();
+	virtual ~DynamicBatchAtlasNode();
 
 	virtual bool init(cocos2d::Texture2D * = nullptr, float density = 0.0f);
 
@@ -42,17 +43,44 @@ public:
 
 	virtual void draw(cocos2d::Renderer *, const cocos2d::Mat4 &, uint32_t, const ZPath &zPath) override;
 
-    virtual DynamicQuadArray *getQuads() const;
-
 protected:
-	virtual void updateColor() override;
+	virtual Rc<DynamicAtlas> makeAtlas() const = 0;
 
 	DynamicAtlas* getAtlas(void);
 
 	Rc<cocos2d::Texture2D> _texture = nullptr;
 	Rc<DynamicAtlas> _textureAtlas = nullptr;
+	DynamicBatchCommand _batchCommand; // render command
+};
+
+/* template for quad-based sprites */
+class DynamicBatchNode : public DynamicBatchAtlasNode {
+public:
+	DynamicBatchNode();
+	virtual ~DynamicBatchNode();
+
+    virtual DynamicQuadArray *getArray() const;
+
+protected:
+	virtual void updateColor() override;
+	virtual Rc<DynamicAtlas> makeAtlas() const;
+
 	Rc<DynamicQuadArray> _quads;
-	DynamicBatchCommand _batchCommand;     // render command
+};
+
+/* template for triangle-based sprites */
+class DynamicBatchTriangleNode : public DynamicBatchAtlasNode {
+public:
+	DynamicBatchTriangleNode();
+	virtual ~DynamicBatchTriangleNode();
+
+    virtual DynamicTriangleArray *getArray() const;
+
+protected:
+	virtual void updateColor() override;
+	virtual Rc<DynamicAtlas> makeAtlas() const;
+
+	Rc<DynamicTriangleArray> _array;
 };
 
 NS_SP_END

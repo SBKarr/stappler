@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2017-2019 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,29 +20,46 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "SPCommon.h"
-#include "SPFilesystem.cc"
-#include "SPFilesystemNativeMingw.cc"
-#include "SPFilesystemNativePosix.cc"
-#include "SPHalfFloat.cc"
-#include "SPHtmlParser.cc"
-#include "SPLog.cc"
-#include "SPNetworkHandle.cc"
-#include "SPRef.cc"
-#include "SPUrl.cc"
-#include "SPUrlencodeParser.cc"
-#include "SPMultipartParser.cc"
-#include "SPTime.cc"
-#include "SPTimeString.cc"
+#ifndef COMMON_CORE_MEMORY_SPMEMUSERDATA_H_
+#define COMMON_CORE_MEMORY_SPMEMUSERDATA_H_
 
-#include "SPBitmap.cc"
-#include "SPBitmapFormat.cc"
-#include "SPBitmapResample.cc"
-#include "SPSearchDistance.cc"
-#include "SPSearchDistanceEdLib.cc"
-#include "SPSearchIndex.cc"
-#include "SPSnowballStopwords.cc"
-#include "SPSnowballStemmer.cc"
-#include "SPSerenityPathQuery.cc"
-#include "SPSerenityRequest.cc"
-#include "SPValid.cc"
+#include "SPCommon.h"
+#include "SPStringView.h"
+#include "SPMemPoolApi.h"
+
+NS_SP_EXT_BEGIN(memory)
+
+namespace pool {
+
+void store(pool_t *, void *ptr, const StringView &key, memory::function<void()> && = nullptr);
+
+template <typename T = void>
+inline T *get(pool_t *pool, const StringView &key) {
+	struct Handle : AllocPool {
+		void *pointer;
+		memory::function<void()> callback;
+	};
+
+	void *ptr = nullptr;
+	if (pool::userdata_get(&ptr, SP_TERMINATED_DATA(key), pool) == SUCCESS) {
+		if (ptr) {
+			return (T *)((Handle *)ptr)->pointer;
+		}
+	}
+	return nullptr;
+}
+
+inline void store(void *ptr, const StringView &key, memory::function<void()> &&cb = nullptr) {
+	store(acquire(), ptr, key, move(cb));
+}
+
+template <typename T = void>
+inline T *get(const StringView &key) {
+	return get<T>(acquire(), key);
+}
+
+}
+
+NS_SP_EXT_END(memory)
+
+#endif /* COMMON_CORE_MEMORY_SPMEMUSERDATA_H_ */

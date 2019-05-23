@@ -27,6 +27,10 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(memory)
 
+namespace internals {
+struct pool_t;
+}
+
 #if (SPAPR)
 
 using pool_t = apr_pool_t;
@@ -36,7 +40,7 @@ constexpr status_t SUCCESS(APR_SUCCESS);
 
 #else
 
-struct pool_t;
+using pool_t = internals::pool_t;
 using status_t = int;
 
 constexpr status_t SUCCESS(0);
@@ -74,6 +78,10 @@ void free(pool_t *, void *ptr, size_t size);
 void cleanup_register(pool_t *, void *, cleanup_fn);
 
 void foreach_info(void *, bool(*)(void *, pool_t *, uint32_t, void *));
+
+status_t userdata_set(const void *data, const char *key, cleanup_fn, pool_t *);
+status_t userdata_setn(const void *data, const char *key, cleanup_fn, pool_t *);
+status_t userdata_get(void **data, const char *key, pool_t *);
 
 // debug counters
 size_t get_allocator_allocated_bytes(pool_t *);

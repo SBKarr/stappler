@@ -225,7 +225,7 @@ struct Server::Config : public AllocPool {
 				auto db = root->dbdOpen(pool, serv);
 				if (db) {
 					pg::Handle h(pool, db);
-					h.init(serv, schemes);
+					h.init(storage::Interface::Config{serv.getServerHostname(), serv.getFileScheme()}, schemes);
 
 					for (auto &it : components) {
 						currentComponent = it.second->getName();

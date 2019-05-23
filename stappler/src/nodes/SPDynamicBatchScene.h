@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,7 +24,7 @@ THE SOFTWARE.
 #define STAPPLER_SRC_NODES_SPDYNAMICBATCHSCENE_H_
 
 #include "SPDefine.h"
-#include "SPDynamicAtlas.h"
+#include "SPDynamicQuadAtlas.h"
 #include "SPDynamicBatchCommand.h"
 #include "2d/CCScene.h"
 #include "base/CCMap.h"
@@ -48,12 +48,12 @@ protected:
     friend class DynamicBatchSceneRenderer;
 
 	struct AtlasCacheNode {
-		Rc<DynamicAtlas> atlas;
+		Rc<DynamicQuadAtlas> atlas;
 		DynamicBatchCommand cmd;
 		Set<Rc<DynamicQuadArray>> set;
 		bool cmdInit;
 
-		AtlasCacheNode(Rc<DynamicAtlas> &&atlas);
+		AtlasCacheNode(Rc<DynamicQuadAtlas> &&atlas);
 	};
 
 	virtual AtlasCacheNode &getAtlasForMaterial(uint32_t id, DynamicBatchCommand *cmd);

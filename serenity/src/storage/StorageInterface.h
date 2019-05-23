@@ -29,6 +29,11 @@ NS_SA_EXT_BEGIN(storage)
 
 class Interface : public AllocPool {
 public:
+	struct Config {
+		String name;
+		const Scheme *fileScheme;
+	};
+
 	virtual ~Interface() { }
 
 public: // key-value storage
@@ -41,7 +46,7 @@ public: // resource requests
 	virtual data::Value performQueryList(const QueryList &, size_t count, bool forUpdate, const Field *) = 0;
 
 public:
-	virtual bool init(Server &serv, const Map<String, const Scheme *> &) = 0;
+	virtual bool init(const Config &serv, const Map<String, const Scheme *> &) = 0;
 
 	virtual data::Value select(Worker &, const Query &) = 0;
 

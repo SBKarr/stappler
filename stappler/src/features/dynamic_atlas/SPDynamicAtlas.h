@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,6 @@ THE SOFTWARE.
 #include "base/ccTypes.h"
 #include "renderer/CCTexture2D.h"
 #include "SPEventHandler.h"
-#include "SPDynamicQuadArray.h"
 
 NS_SP_BEGIN
 
@@ -36,41 +35,41 @@ class DynamicAtlas : public cocos2d::Ref, EventHandler {
 public:
 	using QuadArraySet = Set<Rc<DynamicQuadArray>>;
 
+	struct BufferParams {
+	    bool bufferSwapping = false;
+	    bool indexBuffer = false;
+
+	    size_t pointsPerElt = 3;
+
+	    Function<void()> fillBufferCallback;
+	    Function<void()> fillIndexesCallback;
+	};
+
 	DynamicAtlas();
-    virtual ~DynamicAtlas();
+	virtual ~DynamicAtlas();
 
-    bool init(cocos2d::Texture2D *texture, bool bufferSwapping = false);
+	virtual bool init(cocos2d::Texture2D *texture, BufferParams);
 
-    void drawQuads(bool update = true);
-    uint8_t drawStencilQuads();
-    void listenRendererRecreated();
+	virtual void draw(bool update = true);
 
-    ssize_t getQuadsCount() const;
+	void listenRendererRecreated();
 
-    cocos2d::Texture2D* getTexture() const;
-    void setTexture(cocos2d::Texture2D* texture);
+	ssize_t getQuadsCount() const;
 
-    const QuadArraySet &getQuads() const;
-    QuadArraySet &getQuads();
+	cocos2d::Texture2D* getTexture() const;
+	void setTexture(cocos2d::Texture2D* texture);
 
-    void clear();
-    void addQuadArray(DynamicQuadArray *);
-    void removeQuadArray(DynamicQuadArray *);
-    void updateQuadArrays(QuadArraySet &&);
+	virtual void clear() = 0;
 
 protected:
-    size_t calculateBufferSize() const;
-    size_t calculateQuadsCount() const;
+    virtual void visit() = 0;
 
-    void visit();
-    void setupIndices();
+	virtual void setDirty();
+	virtual void setup();
+
     void mapBuffers();
-    void setup();
-    void setupVBOandVAO();
-    void setupVBO();
-
-    void onCapacityDirty(size_t newSize);
-    void onQuadsDirty();
+	void setupVBOandVAO();
+	void setupVBO();
 
     struct Buffer {
         GLuint vao = 0;
@@ -79,20 +78,18 @@ protected:
         size_t size = 0;
     };
 
-    inline Buffer &drawBuffer() { return _buffers[_useBufferSwapping?_index:0]; }
-    inline Buffer &transferBuffer() { return _buffers[_useBufferSwapping?((_index + 1) % 2):0]; }
-    inline void swapBuffer() { _index = _useBufferSwapping?((_index + 1) % 2):_index; }
+    inline Buffer &drawBuffer() { return _buffers[_params.bufferSwapping?_index:0]; }
+    inline Buffer &transferBuffer() { return _buffers[_params.bufferSwapping?((_index + 1) % 2):0]; }
+    inline void swapBuffer() { _index = _params.bufferSwapping?((_index + 1) % 2):_index; }
 
-    bool _useBufferSwapping = true;
-    Vector<GLushort> _indices;
-    QuadArraySet _quads;
+    BufferParams _params;
     Buffer _buffers[2];
 
     uint8_t _index = 0;
     bool _dirty = false;
 
-    size_t _quadsCapacity = 0;
-    size_t _quadsCount = 0;
+    size_t _eltsCapacity = 0;
+    size_t _eltsCount = 0;
     Rc<cocos2d::Texture2D> _texture;
 };
 

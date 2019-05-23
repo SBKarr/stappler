@@ -100,9 +100,9 @@ void LayeredBatchNode::draw(cocos2d::Renderer *renderer, const Mat4 &transform, 
 	size_t i = 0;
 	for (auto &it : _textures) {
 		if (!it.atlas && it.texture) {
-			if (auto atlas = Rc<DynamicAtlas>::create(it.texture)) {
-				it.atlas = atlas;
-				it.atlas->addQuadArray(it.quads);
+			if (auto atlas = Rc<DynamicQuadAtlas>::create(it.texture)) {
+				it.atlas = static_cast<DynamicAtlas *>(atlas);
+				atlas->addArray(it.quads);
 			}
 		}
 

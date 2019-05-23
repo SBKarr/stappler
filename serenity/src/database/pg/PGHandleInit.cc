@@ -74,7 +74,7 @@ struct TableRec {
 
 	static String getNameForDelta(const Scheme &);
 
-	static Map<String, TableRec> parse(Server &serv, const Map<String, const Scheme *> &s);
+	static Map<String, TableRec> parse(const storage::Interface::Config &cfg, const Map<String, const Scheme *> &s);
 	static Map<String, TableRec> get(Handle &h, StringStream &stream);
 
 	static void writeCompareResult(StringStream &stream,
@@ -82,7 +82,7 @@ struct TableRec {
 			const Map<String, const storage::Scheme *> &s);
 
 	TableRec();
-	TableRec(Server &serv, const storage::Scheme *scheme);
+	TableRec(const storage::Interface::Config &cfg, const storage::Scheme *scheme);
 
 	Map<String, ColRec> cols;
 	Map<String, ConstraintRec> constraints;
@@ -511,11 +511,11 @@ String TableRec::getNameForDelta(const Scheme &scheme) {
 	return toString("__delta_", scheme.getName());
 }
 
-Map<String, TableRec> TableRec::parse(Server &serv, const Map<String, const storage::Scheme *> &s) {
+Map<String, TableRec> TableRec::parse(const storage::Interface::Config &cfg, const Map<String, const storage::Scheme *> &s) {
 	Map<String, TableRec> tables;
 	for (auto &it : s) {
 		auto scheme = it.second;
-		tables.emplace(it.first, TableRec(serv, scheme));
+		tables.emplace(it.first, TableRec(cfg, scheme));
 
 		// check for extra tables
 		for (auto &fit : scheme->getFields()) {
@@ -753,7 +753,7 @@ Map<String, TableRec> TableRec::get(Handle &h, StringStream &stream) {
 }
 
 TableRec::TableRec() : objects(false) { }
-TableRec::TableRec(Server &serv, const storage::Scheme *scheme) {
+TableRec::TableRec(const storage::Interface::Config &cfg, const storage::Scheme *scheme) {
 	StringStream hashStreamAfter; hashStreamAfter << getDefaultFunctionVersion();
 	StringStream hashStreamBefore; hashStreamBefore << getDefaultFunctionVersion();
 
@@ -854,7 +854,7 @@ TableRec::TableRec(Server &serv, const storage::Scheme *scheme) {
 				constraints.emplace(cname, ConstraintRec(ConstraintRec::Reference, it.first, target.str(), ref->onRemove));
 				indexes.emplace(toString(name, "_idx_", it.first), it.first);
 			} else if (type == storage::Type::File || type == storage::Type::Image) {
-				auto ref = serv.getFileScheme();
+				auto ref = cfg.fileScheme;
 				auto cname = toString(name, "_ref_", it.first);
 				auto target = ref->getName();
 				constraints.emplace(cname, ConstraintRec(ConstraintRec::Reference, it.first, target.str(), storage::RemovePolicy::Null));
@@ -889,7 +889,7 @@ TableRec::TableRec(Server &serv, const storage::Scheme *scheme) {
 	}
 }
 
-bool Handle::init(Server &serv, const Map<String, const Scheme *> &s) {
+bool Handle::init(const Interface::Config &cfg, const Map<String, const Scheme *> &s) {
 	if (!performSimpleQuery(String::make_weak(DATABASE_DEFAULTS))) {
 		return false;
 	}
@@ -899,9 +899,9 @@ bool Handle::init(Server &serv, const Map<String, const Scheme *> &s) {
 	}
 
 	StringStream tables;
-	tables << "Server: " << serv.getServerHostname() << "\n";
+	tables << "Server: " << cfg.name << "\n";
 
-	auto requiredTables = TableRec::parse(serv, s);
+	auto requiredTables = TableRec::parse(cfg, s);
 	auto existedTables = TableRec::get(*this, tables);
 
 	StringStream stream;

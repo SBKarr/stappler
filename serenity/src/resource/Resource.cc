@@ -370,7 +370,7 @@ void Resource::resolveResult(const QueryFieldResolver &res, data::Value &obj, ui
 				if (type == storage::Type::Bytes && f.getTransform() == storage::Transform::Uuid) {
 					auto &fobj = obj.getValue(it.first);
 					if (fobj.isBytes()) {
-						fobj.setString(apr::uuid::getStringFromBytes(fobj.getBytes()));
+						fobj.setString(apr::uuid(fobj.getBytes()).str());
 					}
 				}
 				continue;

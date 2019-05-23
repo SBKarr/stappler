@@ -98,8 +98,9 @@ template <typename Callback>
 Task *Task::prepare(memory::pool_t *rootPool, const Callback &cb) {
 	if (rootPool) {
 		if (auto p = memory::pool::create(rootPool)) {
-			auto task = new (p) Task(p);
+			Task * task = nullptr;
 			apr::pool::perform([&] {
+				task = new (p) Task(p);
 				cb(*task);
 			}, p);
 			return task;

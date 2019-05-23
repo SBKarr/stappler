@@ -41,7 +41,7 @@ void Request::initScriptContext(pug::Context &ctx) {
 	});
 	serenityClass.staticFunctions.emplace("uuidToString", [] (pug::VarStorage &, pug::Var *var, size_t argc) -> pug::Var {
 		if (var && argc == 1 && var->readValue().isBytes()) {
-			return pug::Var(data::Value(apr::uuid::getStringFromBytes(var->readValue().getBytes())));
+			return pug::Var(data::Value(apr::uuid(var->readValue().getBytes()).str()));
 		}
 		return pug::Var();
 	});

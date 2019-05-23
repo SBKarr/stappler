@@ -66,21 +66,6 @@ bool Adapter::clear(const CoderSource &key) {
 	return _interface->clear(key);
 }
 
-Resource *Adapter::makeResource(ResourceType type, QueryList &&list, const Field *f) {
-	switch (type) {
-	case ResourceType::ResourceList: return new ResourceReslist(*this, std::move(list));  break;
-	case ResourceType::ReferenceSet: return new ResourceRefSet(*this, std::move(list)); break;
-	case ResourceType::ObjectField: return new ResourceFieldObject(*this, std::move(list)); break;
-	case ResourceType::Object: return new ResourceObject(*this, std::move(list)); break;
-	case ResourceType::Set: return new ResourceSet(*this, std::move(list)); break;
-	case ResourceType::View: return new ResourceView(*this, std::move(list)); break;
-	case ResourceType::File: return new ResourceFile(*this, std::move(list), f); break;
-	case ResourceType::Array: return new ResourceArray(*this, std::move(list), f); break;
-	case ResourceType::Search: return new ResourceSearch(*this, std::move(list), f); break;
-	}
-	return nullptr;
-}
-
 Vector<int64_t> Adapter::performQueryListForIds(const QueryList &ql, size_t count) const {
 	return _interface->performQueryListForIds(ql, count);
 }
@@ -88,8 +73,8 @@ data::Value Adapter::performQueryList(const QueryList &ql, size_t count, bool fo
 	return _interface->performQueryList(ql, count, forUpdate, f);
 }
 
-bool Adapter::init(Server &serv, const Map<String, const Scheme *> &schemes) {
-	return _interface->init(serv, schemes);
+bool Adapter::init(const Interface::Config &cfg, const Map<String, const Scheme *> &schemes) {
+	return _interface->init(cfg, schemes);
 }
 
 User * Adapter::authorizeUser(const Auth &auth, const StringView &name, const StringView &password) const {

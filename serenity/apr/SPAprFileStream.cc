@@ -30,10 +30,17 @@ THE SOFTWARE.
 
 #if SPAPR
 
+#include "Config.h"
 #include "SPIOProducer.h"
 #include "SPIOConsumer.h"
 
 NS_SP_EXT_BEGIN(apr)
+
+basic_file basic_file::open_tmp(const char *prefix) {
+	basic_file file;
+	file.open_tmp(prefix, APR_FOPEN_CREATE | APR_FOPEN_READ | APR_FOPEN_WRITE | APR_FOPEN_EXCL);
+	return file;
+}
 
 basic_file * basic_file::open(const char* name, std::ios_base::openmode mode, int prot) {
 	apr_int32_t flag = 0;

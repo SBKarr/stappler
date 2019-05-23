@@ -405,7 +405,7 @@ bool FieldText::transformValue(const Scheme &scheme, const data::Value &obj, dat
 
 				val.setBytes(base64::decode(StringView(str.data() + 7, str.size() - 7)));
 			} else if (transform == Transform::Uuid) {
-				auto b = apr::uuid::getBytesFromString(str);
+				auto b = apr::uuid(str).bytes();
 				if (b.empty()) {
 					return false;
 				}

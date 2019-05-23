@@ -412,10 +412,9 @@ void DynamicLabel::onQuads(const Time &t, const Vector<Rc<cocos2d::Texture2D>> &
 	} else {
 		for (size_t i = 0; i < newQuads.size(); ++i) {
 			_textures[i].quads = std::move(newQuads[i]);
-			auto a = _textures[i].atlas;
-			if (a) {
+			if (auto a = dynamic_cast<DynamicQuadAtlas *>(_textures[i].atlas.get())) {
 				a->clear();
-				a->addQuadArray(_textures[i].quads);
+				a->addArray(_textures[i].quads);
 			}
 		}
 	}

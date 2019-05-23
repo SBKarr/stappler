@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2017-2019 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,29 +20,45 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "SPCommon.h"
-#include "SPFilesystem.cc"
-#include "SPFilesystemNativeMingw.cc"
-#include "SPFilesystemNativePosix.cc"
-#include "SPHalfFloat.cc"
-#include "SPHtmlParser.cc"
-#include "SPLog.cc"
-#include "SPNetworkHandle.cc"
-#include "SPRef.cc"
-#include "SPUrl.cc"
-#include "SPUrlencodeParser.cc"
-#include "SPMultipartParser.cc"
-#include "SPTime.cc"
-#include "SPTimeString.cc"
+#ifndef STAPPLER_SRC_FEATURES_DYNAMIC_ATLAS_SPDYNAMICQUADATLAS_H_
+#define STAPPLER_SRC_FEATURES_DYNAMIC_ATLAS_SPDYNAMICQUADATLAS_H_
 
-#include "SPBitmap.cc"
-#include "SPBitmapFormat.cc"
-#include "SPBitmapResample.cc"
-#include "SPSearchDistance.cc"
-#include "SPSearchDistanceEdLib.cc"
-#include "SPSearchIndex.cc"
-#include "SPSnowballStopwords.cc"
-#include "SPSnowballStemmer.cc"
-#include "SPSerenityPathQuery.cc"
-#include "SPSerenityRequest.cc"
-#include "SPValid.cc"
+#include "SPDynamicAtlas.h"
+#include "SPDynamicQuadArray.h"
+
+NS_SP_BEGIN
+
+class DynamicQuadAtlas : public DynamicAtlas {
+public:
+	using ArraySet = Set<Rc<DynamicQuadArray>>;
+
+	virtual bool init(cocos2d::Texture2D *texture);
+	virtual void clear() override;
+
+	const ArraySet &getSet() const;
+	ArraySet &getSet();
+
+	void addArray(DynamicQuadArray *);
+	void removeArray(DynamicQuadArray *);
+	void updateArrays(ArraySet &&);
+
+protected:
+	virtual void setDirty() override;
+	virtual void setup() override;
+
+	void setupIndices();
+	void onCapacityDirty(size_t newSize);
+	void onQuadsDirty();
+
+	virtual void visit() override;
+
+	size_t calculateBufferSize() const;
+	size_t calculateQuadsCount() const;
+
+	Vector<GLushort> _indices;
+	QuadArraySet _quads;
+};
+
+NS_SP_END
+
+#endif /* STAPPLER_SRC_FEATURES_DYNAMIC_ATLAS_SPDYNAMICQUADATLAS_H_ */

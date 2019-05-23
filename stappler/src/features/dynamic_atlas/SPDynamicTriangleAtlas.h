@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2017-2019 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,32 +20,45 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "SPCommon.h"
-#include "city.cc"
+#ifndef STAPPLER_SRC_FEATURES_DYNAMIC_ATLAS_SPDYNAMICTRIANGLEATLAS_H_
+#define STAPPLER_SRC_FEATURES_DYNAMIC_ATLAS_SPDYNAMICTRIANGLEATLAS_H_
 
-#include "SPIO.cc"
-#include "SPMemAlloc.cc"
-#include "SPMemPoolImpl.cc"
-#include "SPMemRbtree.cc"
-#include "SPMemUuid.cc"
+#include "SPDynamicAtlas.h"
+#include "SPDynamicTriangleArray.h"
 
-#include "SPBase64.cc"
-#include "SPCharGroup.cc"
-#include "SPSha2.cc"
-#include "SPString.cc"
-#include "SPUnicode.cc"
+NS_SP_BEGIN
 
-#include "SPData.cc"
-#include "SPDataDecompressBuffer.cc"
-#include "SPDataDecryptBuffer.cc"
-#include "SPDataStream.cc"
+class DynamicTriangleAtlas : public DynamicAtlas {
+public:
+	using ArraySet = Set<Rc<DynamicTriangleArray>>;
 
-#include "SPMemUserData.cc"
+	virtual bool init(cocos2d::Texture2D *texture);
+	virtual void clear() override;
 
-#include "cygwin/SPFilesystem.cc"
-#include "cygwin/SPProc.cc"
+	const ArraySet &getSet() const;
+	ArraySet &getSet();
 
-#include "linux/SPFilesystem.cc"
-#include "linux/SPProc.cc"
+	void addArray(DynamicTriangleArray *);
+	void removeArray(DynamicTriangleArray *);
+	void updateArrays(ArraySet &&);
 
-#include "mac/SPProc.cc"
+protected:
+	virtual void setDirty() override;
+	virtual void setup() override;
+
+	void setupIndices();
+	void onCapacityDirty(size_t newSize);
+	void onQuadsDirty();
+
+	virtual void visit() override;
+
+	size_t calculateBufferSize() const;
+	size_t calculateQuadsCount() const;
+
+	ArraySet _set;
+	Vector<GLushort> _indices;
+};
+
+NS_SP_END
+
+#endif /* STAPPLER_SRC_FEATURES_DYNAMIC_ATLAS_SPDYNAMICTRIANGLEATLAS_H_ */

@@ -29,7 +29,6 @@ THE SOFTWARE.
 #include "SPAprArray.h"
 #include "SPAprTable.h"
 #include "SPAprUri.h"
-#include "SPAprUuid.h"
 #include "SPAprMutex.h"
 
 #include "SPRef.h"

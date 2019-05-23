@@ -55,7 +55,7 @@ public:
 	virtual bool performSimpleSelect(const StringView &, const Callback<void(sql::Result &)> &cb);
 
 public: // adapter interface
-	virtual bool init(Server &serv, const Map<String, const Scheme *> &) override;
+	virtual bool init(const Interface::Config &cfg, const Map<String, const Scheme *> &) override;
 
 protected:
 	virtual bool beginTransaction() override { return beginTransaction_pg(TransactionLevel::ReadCommited); }

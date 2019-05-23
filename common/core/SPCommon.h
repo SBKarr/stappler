@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include "SPMemSet.h"
 #include "SPMemMap.h"
 #include "SPMemDict.h"
+#include "SPMemUuid.h"
 
 NS_SP_EXT_BEGIN(memory)
 

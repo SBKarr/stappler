@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include "SPDynamicBatchCommand.h"
 
 #include "SPDynamicAtlas.h"
+#include "SPDynamicQuadAtlas.h"
 #include "SPDynamicQuadArray.h"
 #include "SPStencilCache.h"
 
@@ -83,9 +84,11 @@ void DynamicBatchCommand::setStencilIndex(uint8_t st) {
 
 void DynamicBatchCommand::useMaterial() {
 	if (!_batch) {
-		auto &quads = _textureAtlas->getQuads();
-		for (auto &it : quads) {
-			it->updateTransform(Mat4::IDENTITY);
+		if (auto a = dynamic_cast<DynamicQuadAtlas *>(_textureAtlas)) {
+			auto &quads = a->getSet();
+			for (auto &it : quads) {
+				it->updateTransform(Mat4::IDENTITY);
+			}
 		}
 	}
 
@@ -113,7 +116,7 @@ void DynamicBatchCommand::execute() {
 			s->disableStencilTest();
 		}
 	}
-	_textureAtlas->drawQuads();
+	_textureAtlas->draw();
 }
 
 uint8_t DynamicBatchCommand::makeStencil() {
@@ -122,7 +125,7 @@ uint8_t DynamicBatchCommand::makeStencil() {
 	if (s->isEnabled()) {
 		_stencilIndex = s->pushStencilLayer();
 	}
-	_textureAtlas->drawQuads(false);
+	_textureAtlas->draw(false);
 	return _stencilIndex;
 }
 

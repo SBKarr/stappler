@@ -55,6 +55,8 @@ public:
 	const Scheme *getScheme() const;
 
 protected:
+	Resource *makeResource(ResourceType type, QueryList &&list, const Field *f);
+
 	enum InternalResourceType {
 		Objects,
 		File,

@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "SPCommon.h"
 #include "SPString.h"
 #include "SPData.h"
+#include "SPValid.h"
 #include <atomic>
 #include <idna.h>
 #include <postgresql/libpq-fe.h>
@@ -128,35 +129,9 @@ class File;
 NS_SA_EXT_END(storage)
 
 
-NS_SA_EXT_BEGIN(idn)
-
-String toAscii(const StringView &, bool validate = true);
-String toUnicode(const StringView &, bool validate = false);
-
-NS_SA_EXT_END(idn)
-
-
 NS_SA_EXT_BEGIN(valid)
 
-/** Identifier starts with [a-zA-Z_] and can contain [a-zA-Z0-9_\-.@] */
-bool validateIdentifier(const StringView &str);
-
-/** Text can contain all characters above 0x1F and \t, \r, \n, \b, \f */
-bool validateText(const StringView &str);
-
-bool validateEmail(String &str);
-bool validateUrl(String &str);
-
-bool validateNumber(const StringView &str);
-bool validateHexadecimial(const StringView &str);
-bool validateBase64(const StringView &str);
-
-void makeRandomBytes(uint8_t *, size_t);
-Bytes makeRandomBytes(size_t);
-Bytes makePassword(const StringView &str, const StringView &key = StringView());
-bool validatePassord(const StringView &str, const Bytes &passwd, const StringView &key = StringView());
-
-String generatePassword(size_t len);
+using namespace stappler::valid;
 
 NS_SA_EXT_END(valid)
 

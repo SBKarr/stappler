@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2017-2019 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,29 +20,40 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "SPCommon.h"
-#include "SPFilesystem.cc"
-#include "SPFilesystemNativeMingw.cc"
-#include "SPFilesystemNativePosix.cc"
-#include "SPHalfFloat.cc"
-#include "SPHtmlParser.cc"
-#include "SPLog.cc"
-#include "SPNetworkHandle.cc"
-#include "SPRef.cc"
-#include "SPUrl.cc"
-#include "SPUrlencodeParser.cc"
-#include "SPMultipartParser.cc"
-#include "SPTime.cc"
-#include "SPTimeString.cc"
+#include "SPMemUserData.h"
 
-#include "SPBitmap.cc"
-#include "SPBitmapFormat.cc"
-#include "SPBitmapResample.cc"
-#include "SPSearchDistance.cc"
-#include "SPSearchDistanceEdLib.cc"
-#include "SPSearchIndex.cc"
-#include "SPSnowballStopwords.cc"
-#include "SPSnowballStemmer.cc"
-#include "SPSerenityPathQuery.cc"
-#include "SPSerenityRequest.cc"
-#include "SPValid.cc"
+NS_SP_EXT_BEGIN(memory)
+
+namespace pool {
+
+struct Pool_StoreHandle : AllocPool {
+	void *pointer;
+	memory::function<void()> callback;
+};
+
+static status_t sa_request_store_custom_cleanup(void *ptr) {
+	if (ptr) {
+		auto ref = (Pool_StoreHandle *)ptr;
+		if (ref->callback) {
+			memory::pool::push(ref->callback.get_allocator());
+			ref->callback();
+			memory::pool::pop();
+		}
+	}
+	return SUCCESS;
+}
+
+void store(pool_t *pool, void *ptr, const StringView &key, memory::function<void()> &&cb) {
+	memory::pool::push(pool);
+	auto h = new (pool) Pool_StoreHandle();
+	h->pointer = ptr;
+	if (cb) {
+		h->callback = std::move(cb);
+	}
+	memory::pool::pop();
+	pool::userdata_set(h, SP_TERMINATED_DATA(key), h->callback ? sa_request_store_custom_cleanup : nullptr, pool);
+}
+
+}
+
+NS_SP_EXT_END(memory)

@@ -106,8 +106,6 @@ data::Value Url::parseDataArgs(const StringView &str, size_t maxVarSize) {
 }
 
 static bool validateEmailQuotation(String &ret, StringView &r) {
-	using namespace chars;
-
 	++ r;
 	ret.push_back('"');
 	while (!r.empty() && !r.is('"')) {

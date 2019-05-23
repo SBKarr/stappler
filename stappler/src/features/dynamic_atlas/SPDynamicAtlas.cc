@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,14 +26,13 @@ THE SOFTWARE.
 #include "SPDefine.h"
 #include "SPDynamicAtlas.h"
 
-#include "base/ccMacros.h"
 #include "base/CCDirector.h"
 #include "base/CCConfiguration.h"
 #include "renderer/CCTextureCache.h"
 #include "renderer/CCGLProgram.h"
-#include "renderer/ccGLStateCache.h"
 #include "renderer/CCRenderer.h"
 #include "renderer/CCTexture2D.h"
+#include "renderer/ccGLStateCache.h"
 #include "platform/CCGL.h"
 
 #include "SPDynamicQuadArray.h"
@@ -43,44 +42,6 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
-static void DynamicAtlas_fillBuffer(const Set<Rc<DynamicQuadArray>> &quads, size_t bufferSize) {
-	if (bufferSize <= 0) {
-		return;
-	}
-
-	bool vao = cocos2d::Configuration::getInstance()->supportsShareableVAO();
-	void *buf = nullptr;
-
-	size_t offset = 0;
-	glBufferData(GL_ARRAY_BUFFER, bufferSize, nullptr, GL_DYNAMIC_DRAW);
-	if (vao) {
-		buf = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-		for (auto &it : quads) {
-			size_t size = it->size();
-			if (size > 0) {
-				auto data = it->getData();
-				memcpy((uint8_t *) buf + sizeof(cocos2d::V3F_C4B_T2F_Quad) * offset, (void *) data,
-						sizeof(cocos2d::V3F_C4B_T2F_Quad) * size);
-
-				offset += size;
-			}
-		}
-		glUnmapBuffer(GL_ARRAY_BUFFER);
-	} else {
-		for (auto &it : quads) {
-			size_t size = it->size();
-			if (size > 0) {
-				auto data = it->getData();
-				glBufferSubData(GL_ARRAY_BUFFER, sizeof(cocos2d::V3F_C4B_T2F_Quad) * offset,
-						sizeof(cocos2d::V3F_C4B_T2F_Quad) * size, (void *) data);
-				offset += size;
-			}
-		}
-	}
-
-    LOG_GL_ERROR();
-}
-
 DynamicAtlas::DynamicAtlas() {}
 
 DynamicAtlas::~DynamicAtlas() {
@@ -89,7 +50,6 @@ DynamicAtlas::~DynamicAtlas() {
 
 	    if (cocos2d::Configuration::getInstance()->supportsShareableVAO()) {
 	        glDeleteVertexArrays(1, &transferBuffer().vao);
-	        cocos2d::GL::bindVAO(0);
 	    }
 	    transferBuffer().setup = false;
 	}
@@ -99,7 +59,6 @@ DynamicAtlas::~DynamicAtlas() {
 
 	    if (cocos2d::Configuration::getInstance()->supportsShareableVAO()) {
 	        glDeleteVertexArrays(1, &drawBuffer().vao);
-	        cocos2d::GL::bindVAO(0);
 	    }
 
 	    drawBuffer().setup = false;
@@ -107,7 +66,7 @@ DynamicAtlas::~DynamicAtlas() {
 }
 
 ssize_t DynamicAtlas::getQuadsCount() const {
-	return _quadsCount;
+	return _eltsCount;
 }
 
 cocos2d::Texture2D* DynamicAtlas::getTexture() const {
@@ -118,62 +77,8 @@ void DynamicAtlas::setTexture(cocos2d::Texture2D * var) {
     _texture = var;
 }
 
-const DynamicAtlas::QuadArraySet &DynamicAtlas::getQuads() const {
-	return _quads;
-}
-DynamicAtlas::QuadArraySet &DynamicAtlas::getQuads() {
-	return _quads;
-}
-
-void DynamicAtlas::clear() {
-	_quads.clear();
-	_dirty = true;
-}
-
-void DynamicAtlas::addQuadArray(DynamicQuadArray *arr) {
-	_quads.insert(arr);
-	_dirty = true;
-}
-
-void DynamicAtlas::removeQuadArray(DynamicQuadArray *arr) {
-	auto it = _quads.find(arr);
-	if (it != _quads.end()) {
-		_quads.erase(it);
-		_dirty = true;
-	}
-}
-
-void DynamicAtlas::updateQuadArrays(QuadArraySet &&set) {
-	bool dirty = false;
-	if (set.empty()) {
-		_quads.clear();
-		_dirty = true;
-		return;
-	}
-
-	if (_quads.size() != set.size()) {
-		dirty = true;
-	} else {
-		auto fit = _quads.begin();
-		auto sit = set.begin();
-
-		while (fit != _quads.end() && (*fit) == (*sit)) {
-			fit ++;
-			sit ++;
-		}
-		if (fit != _quads.end()) {
-			dirty = true;
-		}
-	}
-
-	if (dirty) {
-		_quads = std::move(set);
-		_dirty = true;
-	}
-}
-
-bool DynamicAtlas::init(cocos2d::Texture2D *texture, bool bufferSwapping) {
-	_useBufferSwapping = bufferSwapping;
+bool DynamicAtlas::init(cocos2d::Texture2D *texture, BufferParams buf) {
+	_params = buf;
     _texture = texture;
 
 #if CC_ENABLE_CACHE_TEXTURE_DATA
@@ -185,67 +90,104 @@ bool DynamicAtlas::init(cocos2d::Texture2D *texture, bool bufferSwapping) {
     return true;
 }
 
+void DynamicAtlas::draw(bool update) {
+	if (!_params.bufferSwapping) {
+		visit();
+	}
+
+	auto nelts = _eltsCount;
+	if (!nelts) {
+		if (update && _params.bufferSwapping) {
+			visit();
+		}
+		return;
+	}
+
+	if (drawBuffer().setup) {
+		if (_texture) {
+			cocos2d::GL::bindTexture2D(_texture->getName());
+		}
+
+		if (cocos2d::Configuration::getInstance()->supportsShareableVAO()) {
+			cocos2d::GL::bindVAO(drawBuffer().vao);
+
+#if CC_REBIND_INDICES_BUFFER
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawBuffer().vbo[1]);
+#endif
+
+			glDrawElements(GL_TRIANGLES, (GLsizei) nelts * _params.pointsPerElt, GL_UNSIGNED_SHORT, (GLvoid*) (0));
+
+#if CC_REBIND_INDICES_BUFFER
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+#endif
+		} else {
+			glBindBuffer(GL_ARRAY_BUFFER, drawBuffer().vbo[0]);
+
+			cocos2d::GL::enableVertexAttribs(cocos2d::GL::VERTEX_ATTRIB_FLAG_POS_COLOR_TEX);
+
+			glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE,
+					sizeof(cocos2d::V3F_C4B_T2F), (GLvoid*) offsetof(cocos2d::V3F_C4B_T2F, vertices));
+
+			glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE,
+					sizeof(cocos2d::V3F_C4B_T2F), (GLvoid*) offsetof(cocos2d::V3F_C4B_T2F, colors));
+
+			glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_TEX_COORD, 2, GL_FLOAT, GL_FALSE,
+					sizeof(cocos2d::V3F_C4B_T2F), (GLvoid*) offsetof(cocos2d::V3F_C4B_T2F, texCoords));
+
+			if (_params.indexBuffer) {
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawBuffer().vbo[1]);
+			}
+
+			glDrawElements(GL_TRIANGLES, (GLsizei) nelts * _params.pointsPerElt, GL_UNSIGNED_SHORT, (GLvoid*) (0));
+
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+			if (_params.indexBuffer) {
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+			}
+		}
+
+		CC_INCREMENT_GL_DRAWN_BATCHES_AND_VERTICES(1, nelts * 6);
+		LOG_GL_ERROR();
+	}
+
+	if (update && _params.bufferSwapping) {
+		visit();
+	}
+}
+
 void DynamicAtlas::listenRendererRecreated() {
 	drawBuffer().setup = false;
 	drawBuffer().size = 0;
 	transferBuffer().setup = false;
 	transferBuffer().size = 0;
 
+	setDirty();
+}
+
+void DynamicAtlas::setDirty() {
 	_dirty = true;
-
-	for (auto it : _quads) {
-		it->setDirty();
-	}
 }
 
-size_t DynamicAtlas::calculateBufferSize() const {
-	size_t ret = 0;
-	for (auto &it : _quads) {
-		ret += it->capacity();
-	}
-	return ret;
-}
-size_t DynamicAtlas::calculateQuadsCount() const {
-	if (_quads.empty()) {
-		return 0;
-	}
-	size_t ret = 0;
-	for (auto &it : _quads) {
-		ret += it->size();
-	}
-	return ret;
-}
+void DynamicAtlas::mapBuffers() {
+    // Avoid changing the element buffer for whatever VAO might be bound.
+	cocos2d::GL::bindVAO(0);
 
+    CHECK_GL_ERROR_DEBUG();
+    glBindBuffer(GL_ARRAY_BUFFER, transferBuffer().vbo[0]);
+    if (_params.fillBufferCallback) {
+        _params.fillBufferCallback();
+    }
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-void DynamicAtlas::setup() {
-    setupIndices();
-    if (cocos2d::Configuration::getInstance()->supportsShareableVAO()) {
-        setupVBOandVAO();
-    } else {
-        setupVBO();
+    if (_params.indexBuffer && _params.fillIndexesCallback) {
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, transferBuffer().vbo[1]);
+        _params.fillIndexesCallback();
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     }
 
-	transferBuffer().setup = true;
+    CHECK_GL_ERROR_DEBUG();
+
     swapBuffer();
-}
-
-void DynamicAtlas::setupIndices() {
-    if (transferBuffer().size == 0)
-        return;
-
-    _indices.reserve(transferBuffer().size * 6);
-    _indices.clear();
-
-    for(size_t i= 0; i < transferBuffer().size; i++) {
-        _indices.push_back( i*4 + 0 );
-        _indices.push_back( i*4 + 1 );
-        _indices.push_back( i*4 + 2 );
-
-        // inverted index. issue #179
-        _indices.push_back( i*4 + 3 );
-        _indices.push_back( i*4 + 2 );
-        _indices.push_back( i*4 + 1 );
-    }
 }
 
 void DynamicAtlas::setupVBOandVAO() {
@@ -256,30 +198,36 @@ void DynamicAtlas::setupVBOandVAO() {
 
 	glBindBuffer(GL_ARRAY_BUFFER, transferBuffer().vbo[0]);
 
-	DynamicAtlas_fillBuffer(_quads, sizeof(cocos2d::V3F_C4B_T2F_Quad) * transferBuffer().size);
+    if (_params.fillBufferCallback) {
+        _params.fillBufferCallback();
+    }
+
+	glEnableVertexAttribArray(cocos2d::GLProgram::VERTEX_ATTRIB_POSITION);
+	glEnableVertexAttribArray(cocos2d::GLProgram::VERTEX_ATTRIB_COLOR);
+	glEnableVertexAttribArray(cocos2d::GLProgram::VERTEX_ATTRIB_TEX_COORD);
 
 	// vertices
-	glEnableVertexAttribArray(cocos2d::GLProgram::VERTEX_ATTRIB_POSITION);
 	glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE,
 			sizeof(cocos2d::V3F_C4B_T2F), (GLvoid*) offsetof(cocos2d::V3F_C4B_T2F, vertices));
 
 	// colors
-	glEnableVertexAttribArray(cocos2d::GLProgram::VERTEX_ATTRIB_COLOR);
 	glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE,
 			sizeof(cocos2d::V3F_C4B_T2F), (GLvoid*) offsetof(cocos2d::V3F_C4B_T2F, colors));
 
 	// tex coords
-	glEnableVertexAttribArray(cocos2d::GLProgram::VERTEX_ATTRIB_TEX_COORD);
 	glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_TEX_COORD, 2, GL_FLOAT, GL_FALSE,
 			sizeof(cocos2d::V3F_C4B_T2F), (GLvoid*) offsetof(cocos2d::V3F_C4B_T2F, texCoords));
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, transferBuffer().vbo[1]);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLushort) * transferBuffer().size * 6,
-			_indices.data(), GL_DYNAMIC_DRAW);
+    if (_params.indexBuffer && _params.fillIndexesCallback) {
+    	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, transferBuffer().vbo[1]);
+        _params.fillIndexesCallback();
+    }
 
 	// Must unbind the VAO before changing the element buffer.
 	cocos2d::GL::bindVAO(0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    if (_params.indexBuffer && _params.fillIndexesCallback) {
+    	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    }
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     LOG_GL_ERROR();
@@ -290,169 +238,15 @@ void DynamicAtlas::setupVBO() {
     mapBuffers();
 }
 
-void DynamicAtlas::mapBuffers() {
-    // Avoid changing the element buffer for whatever VAO might be bound.
-	cocos2d::GL::bindVAO(0);
+void DynamicAtlas::setup() {
+    if (cocos2d::Configuration::getInstance()->supportsShareableVAO()) {
+        setupVBOandVAO();
+    } else {
+        setupVBO();
+    }
 
-    CHECK_GL_ERROR_DEBUG();
-    glBindBuffer(GL_ARRAY_BUFFER, transferBuffer().vbo[0]);
-
-	DynamicAtlas_fillBuffer(_quads, sizeof(cocos2d::V3F_C4B_T2F_Quad) * transferBuffer().size);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, transferBuffer().vbo[1]);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, (sizeof(GLushort) * transferBuffer().size * 6), (const GLvoid *)_indices.data(), GL_DYNAMIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-    CHECK_GL_ERROR_DEBUG();
-
+	transferBuffer().setup = true;
     swapBuffer();
-}
-
-void DynamicAtlas::onCapacityDirty(size_t newSize) {
-	if (newSize > transferBuffer().size) {
-		transferBuffer().size = newSize;
-		setupIndices();
-		if (transferBuffer().setup) {
-			mapBuffers();
-		} else {
-			setup();
-		}
-		for (auto it : _quads) {
-			it->dropDirty();
-		}
-	} else {
-		onQuadsDirty();
-	}
-}
-
-void DynamicAtlas::onQuadsDirty() {
-    CHECK_GL_ERROR_DEBUG();
-	glBindBuffer(GL_ARRAY_BUFFER, transferBuffer().vbo[0]);
-
-	DynamicAtlas_fillBuffer(_quads, sizeof(cocos2d::V3F_C4B_T2F_Quad) * transferBuffer().size);
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    CHECK_GL_ERROR_DEBUG();
-
-	for (auto it : _quads) {
-		it->dropDirty();
-	}
-
-    swapBuffer();
-}
-
-void DynamicAtlas::visit() {
-	if (_dirty) {
-		_quadsCount = calculateQuadsCount();
-		_quadsCapacity = calculateBufferSize();
-		if (_quadsCapacity > 0) {
-			if (_quadsCapacity > transferBuffer().size || !transferBuffer().setup) {
-				onCapacityDirty(_quadsCapacity);
-			} else {
-				onQuadsDirty();
-			}
-
-			_dirty = false;
-		}
-		return;
-	}
-
-	bool isSizeDirty = false;
-	bool isQuadsDirty = false;
-
-	for (auto &it : _quads) {
-		if (it->isCapacityDirty()) {
-			isSizeDirty = true;
-			break;
-		}
-		if (it->isQuadsDirty()) {
-			isQuadsDirty = true;
-		}
-	}
-
-	if (isSizeDirty || isQuadsDirty) {
-		_quadsCount = calculateQuadsCount();
-		_quadsCapacity = calculateBufferSize();
-	} else {
-		return;
-	}
-
-	if (_quadsCapacity > transferBuffer().size || !transferBuffer().setup) {
-		onCapacityDirty(_quadsCapacity);
-	} else if (isQuadsDirty || isSizeDirty) {
-		onQuadsDirty();
-	} else {
-		for (auto it : _quads) {
-			it->dropDirty();
-		}
-	}
-}
-
-void DynamicAtlas::drawQuads(bool update) {
-	if (_quads.empty()) {
-		return;
-	}
-
-    if (!_useBufferSwapping) {
-    	visit();
-    }
-
-    auto numberOfQuads = _quadsCount;
-    if (!numberOfQuads) {
-        if (update && _useBufferSwapping) {
-            visit();
-        }
-        return;
-    }
-
-    if (drawBuffer().setup) {
-    	if (_texture) {
-            cocos2d::GL::bindTexture2D(_texture->getName());
-    	}
-
-        if (cocos2d::Configuration::getInstance()->supportsShareableVAO()) {
-            cocos2d::GL::bindVAO(drawBuffer().vao);
-
-    #if CC_REBIND_INDICES_BUFFER
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawBuffer().vbo[1]);
-    #endif
-
-            glDrawElements(GL_TRIANGLES, (GLsizei) numberOfQuads*6, GL_UNSIGNED_SHORT, (GLvoid*) (0) );
-
-    #if CC_REBIND_INDICES_BUFFER
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    #endif
-        } else {
-            glBindBuffer(GL_ARRAY_BUFFER, drawBuffer().vbo[0]);
-
-            cocos2d::GL::enableVertexAttribs(cocos2d::GL::VERTEX_ATTRIB_FLAG_POS_COLOR_TEX);
-
-            glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_POSITION, 3, GL_FLOAT, GL_FALSE,
-            		sizeof(cocos2d::V3F_C4B_T2F), (GLvoid*) offsetof(cocos2d::V3F_C4B_T2F, vertices));
-
-            glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE,
-            		sizeof(cocos2d::V3F_C4B_T2F), (GLvoid*) offsetof(cocos2d::V3F_C4B_T2F, colors));
-
-            glVertexAttribPointer(cocos2d::GLProgram::VERTEX_ATTRIB_TEX_COORD, 2, GL_FLOAT, GL_FALSE,
-            		sizeof(cocos2d::V3F_C4B_T2F), (GLvoid*) offsetof(cocos2d::V3F_C4B_T2F, texCoords));
-
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, drawBuffer().vbo[1]);
-
-            glDrawElements(GL_TRIANGLES, (GLsizei)numberOfQuads*6, GL_UNSIGNED_SHORT, (GLvoid*) (0));
-
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-        }
-
-        CC_INCREMENT_GL_DRAWN_BATCHES_AND_VERTICES(1,numberOfQuads*6);
-        LOG_GL_ERROR();
-    }
-
-    if (update && _useBufferSwapping) {
-        visit();
-    }
 }
 
 NS_SP_END

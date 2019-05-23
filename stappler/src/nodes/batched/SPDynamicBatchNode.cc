@@ -25,7 +25,8 @@ THE SOFTWARE.
 
 #include "SPDefine.h"
 #include "SPDynamicBatchNode.h"
-#include "SPDynamicAtlas.h"
+#include "SPDynamicQuadAtlas.h"
+#include "SPDynamicTriangleAtlas.h"
 #include "SPGLProgramSet.h"
 
 #include "renderer/CCRenderer.h"
@@ -33,13 +34,9 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
-DynamicBatchNode::DynamicBatchNode() {
-	_quads = Rc<DynamicQuadArray>::alloc();
-}
+DynamicBatchAtlasNode::~DynamicBatchAtlasNode() { }
 
-DynamicBatchNode::~DynamicBatchNode() { }
-
-bool DynamicBatchNode::init(cocos2d::Texture2D *tex, float density) {
+bool DynamicBatchAtlasNode::init(cocos2d::Texture2D *tex, float density) {
 	if (!BatchNodeBase::init(density)) {
 		return false;
 	}
@@ -52,32 +49,15 @@ bool DynamicBatchNode::init(cocos2d::Texture2D *tex, float density) {
 	return true;
 }
 
-DynamicAtlas* DynamicBatchNode::getAtlas(void) {
+DynamicAtlas* DynamicBatchAtlasNode::getAtlas(void) {
 	return _textureAtlas;
 }
 
-void DynamicBatchNode::updateColor() {
-	if (_quads && !_quads->empty()) {
-	    Color4B color4( _displayedColor.r, _displayedColor.g, _displayedColor.b, _displayedOpacity );
-
-	    // special opacity for premultiplied textures
-		if (_opacityModifyRGB) {
-			color4.r *= _displayedOpacity/255.0f;
-			color4.g *= _displayedOpacity/255.0f;
-			color4.b *= _displayedOpacity/255.0f;
-	    }
-
-		for (size_t i = 0; i < _quads->size(); i++) {
-			_quads->setColor(i, color4);
-		}
-	}
-}
-
-cocos2d::Texture2D* DynamicBatchNode::getTexture() const {
+cocos2d::Texture2D* DynamicBatchAtlasNode::getTexture() const {
 	return _texture;
 }
 
-void DynamicBatchNode::setTexture(cocos2d::Texture2D *texture) {
+void DynamicBatchAtlasNode::setTexture(cocos2d::Texture2D *texture) {
 	if (texture != _texture) {
 		if (_textureAtlas) {
 		    _textureAtlas->setTexture(texture);
@@ -89,7 +69,7 @@ void DynamicBatchNode::setTexture(cocos2d::Texture2D *texture) {
 	}
 }
 
-void DynamicBatchNode::draw(cocos2d::Renderer *renderer, const Mat4 &transform, uint32_t flags, const ZPath &zPath) {
+void DynamicBatchAtlasNode::draw(cocos2d::Renderer *renderer, const Mat4 &transform, uint32_t flags, const ZPath &zPath) {
 	if (_programDirty) {
 		updateBlendFunc(_texture);
 	}
@@ -105,9 +85,8 @@ void DynamicBatchNode::draw(cocos2d::Renderer *renderer, const Mat4 &transform, 
 	}
 
 	if (!_textureAtlas) {
-		if (auto atlas = Rc<DynamicAtlas>::create(getTexture())) {
-			_textureAtlas = atlas;
-			_textureAtlas->addQuadArray(_quads);
+		if (auto a = makeAtlas()) {
+			_textureAtlas = a;
 		}
 	}
 
@@ -130,8 +109,75 @@ void DynamicBatchNode::draw(cocos2d::Renderer *renderer, const Mat4 &transform, 
 	renderer->addCommand(&_batchCommand);
 }
 
-DynamicQuadArray *DynamicBatchNode::getQuads() const {
+DynamicBatchNode::DynamicBatchNode() {
+	_quads = Rc<DynamicQuadArray>::alloc();
+}
+
+DynamicBatchNode::~DynamicBatchNode() { }
+
+void DynamicBatchNode::updateColor() {
+	if (_quads && !_quads->empty()) {
+	    Color4B color4( _displayedColor.r, _displayedColor.g, _displayedColor.b, _displayedOpacity );
+
+	    // special opacity for premultiplied textures
+		if (_opacityModifyRGB) {
+			color4.r *= _displayedOpacity/255.0f;
+			color4.g *= _displayedOpacity/255.0f;
+			color4.b *= _displayedOpacity/255.0f;
+	    }
+
+		for (size_t i = 0; i < _quads->size(); i++) {
+			_quads->setColor(i, color4);
+		}
+	}
+}
+
+Rc<DynamicAtlas> DynamicBatchNode::makeAtlas() const {
+	if (auto atlas = Rc<DynamicQuadAtlas>::create(getTexture())) {
+		atlas->addArray(_quads);
+		return Rc<DynamicAtlas>(static_cast<DynamicAtlas *>(atlas));
+	}
+	return nullptr;
+}
+
+DynamicQuadArray *DynamicBatchNode::getArray() const {
 	return _quads;
+}
+
+
+DynamicBatchTriangleNode::DynamicBatchTriangleNode() {
+	_array = Rc<DynamicTriangleArray>::alloc();
+}
+
+DynamicBatchTriangleNode::~DynamicBatchTriangleNode() { }
+
+DynamicTriangleArray *DynamicBatchTriangleNode::getArray() const {
+	return _array;
+}
+
+void DynamicBatchTriangleNode::updateColor() {
+	if (_array && !_array->empty()) {
+	    Color4B color4( _displayedColor.r, _displayedColor.g, _displayedColor.b, _displayedOpacity );
+
+	    // special opacity for premultiplied textures
+		if (_opacityModifyRGB) {
+			color4.r *= _displayedOpacity/255.0f;
+			color4.g *= _displayedOpacity/255.0f;
+			color4.b *= _displayedOpacity/255.0f;
+	    }
+
+		for (size_t i = 0; i < _array->size(); i++) {
+			_array->setColor(i, color4);
+		}
+	}
+}
+
+Rc<DynamicAtlas> DynamicBatchTriangleNode::makeAtlas() const {
+	if (auto atlas = Rc<DynamicTriangleAtlas>::create(getTexture())) {
+		atlas->addArray(_array);
+		return Rc<DynamicAtlas>(static_cast<DynamicAtlas *>(atlas));
+	}
+	return nullptr;
 }
 
 NS_SP_END

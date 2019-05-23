@@ -442,11 +442,15 @@ uint8_t hexToChar(const char &c, const char &d);
 size_t encodeSize(size_t);
 size_t decodeSize(size_t);
 
-String encode(const CoderSource &source);
+template <typename Interface = memory::DefaultInterface>
+auto encode(const CoderSource &source) -> typename Interface::StringType;
+
 void encode(std::basic_ostream<char> &stream, const CoderSource &source);
 size_t encode(char *, size_t bsize, const CoderSource &source);
 
-Bytes decode(const CoderSource &source);
+template <typename Interface = memory::DefaultInterface>
+auto decode(const CoderSource &source) -> typename Interface::BytesType;
+
 void decode(std::basic_ostream<char> &stream, const CoderSource &source);
 size_t decode(uint8_t *, size_t bsize, const CoderSource &source);
 

@@ -40,8 +40,31 @@ NS_SP_EXT_BEGIN(filesystem)
 
 #define SP_TERMINATED_DATA(view) (view.terminated()?view.data():view.str().data())
 
-ifile::ifile() : _isBundled(false), _nativeFile(nullptr) { }
-ifile::ifile(FILE *f) : _isBundled(false), _nativeFile(f) {
+file file::open_tmp(const char *prefix) {
+	if (prefix == nullptr) {
+		prefix = "sa.tmp";
+	}
+	char buf[256] = { 0 };
+	const char *tmp = P_tmpdir;
+	size_t len = strlen(tmp);
+	strcpy(&buf[0], tmp);
+	strcpy(&buf[len], "/");
+	strcpy(&buf[len + 1], prefix);
+	len += strlen(prefix);
+	strcpy(&buf[len + 1], "XXXXXX");
+
+	if (auto fd = ::mkstemp(buf)) {
+		if (auto f = ::fdopen(fd, "wb+")) {
+			auto ret = file(f, Flags::DelOnClose);
+			ret.set_tmp_path(buf);
+			return ret;
+		}
+	}
+	return file();
+}
+
+file::file() : _isBundled(false), _nativeFile(nullptr) { }
+file::file(FILE *f, Flags flags) : _isBundled(false), _flags(flags), _nativeFile(f) {
 	if (is_open()) {
 		auto pos = seek(0, io::Seek::Current);
 		auto size = seek(0, io::Seek::End);
@@ -51,7 +74,7 @@ ifile::ifile(FILE *f) : _isBundled(false), _nativeFile(f) {
 		_size = (size != maxOf<size_t>())?size:0;
 	}
 }
-ifile::ifile(void *f) : _isBundled(true), _platformFile(f) {
+file::file(void *f) : _isBundled(true), _platformFile(f) {
 	if (is_open()) {
 		auto pos = seek(0, io::Seek::Current);
 		auto size = seek(0, io::Seek::End);
@@ -62,9 +85,9 @@ ifile::ifile(void *f) : _isBundled(true), _platformFile(f) {
 	}
 }
 
-ifile::ifile(void *f, size_t s) : _isBundled(true), _size(s), _platformFile(f) { }
+file::file(void *f, size_t s) : _isBundled(true), _size(s), _platformFile(f) { }
 
-ifile::ifile(ifile && f) : _isBundled(f._isBundled), _size(f._size) {
+file::file(ifile && f) : _isBundled(f._isBundled), _size(f._size) {
 	if (_isBundled) {
 		_platformFile = f._platformFile;
 		f._platformFile = nullptr;
@@ -75,7 +98,7 @@ ifile::ifile(ifile && f) : _isBundled(f._isBundled), _size(f._size) {
 	f._size = 0;
 }
 
-ifile & ifile::operator=(ifile && f) {
+file & file::operator=(ifile && f) {
 	_isBundled = f._isBundled;
 	_size = f._size;
 	if (_isBundled) {
@@ -89,11 +112,11 @@ ifile & ifile::operator=(ifile && f) {
 	return *this;
 }
 
-ifile::~ifile() {
+file::~file() {
 	close();
 }
 
-size_t ifile::read(uint8_t *buf, size_t nbytes) {
+size_t file::read(uint8_t *buf, size_t nbytes) {
 	if (is_open()) {
 		if (!_isBundled) {
 			size_t remains = _size - ftell(_nativeFile);
@@ -110,7 +133,7 @@ size_t ifile::read(uint8_t *buf, size_t nbytes) {
 	return 0;
 }
 
-size_t ifile::seek(int64_t offset, io::Seek s) {
+size_t file::seek(int64_t offset, io::Seek s) {
 	if (is_open()) {
 		if (!_isBundled) {
 			int whence = SEEK_SET;
@@ -139,7 +162,7 @@ size_t ifile::seek(int64_t offset, io::Seek s) {
 	return maxOf<size_t>();
 }
 
-size_t ifile::tell() const {
+size_t file::tell() const {
 	if (!_isBundled) {
 		auto p = ftell(_nativeFile);
 		if (p >= 0) {
@@ -152,11 +175,52 @@ size_t ifile::tell() const {
 	}
 }
 
-size_t ifile::size() const {
+size_t file::size() const {
 	return _size;
 }
 
-bool ifile::eof() const {
+typename file::int_type file::xsgetc() {
+	int_type ret = traits_type::eof();
+	if (is_open()) {
+		if (!_isBundled) {
+			ret = fgetc(_nativeFile);
+		} else {
+			uint8_t buf = 0;
+			if (read(&buf, 1) == 1) {
+				ret = buf;
+			}
+		}
+	}
+	return ret;
+}
+
+typename file::int_type file::xsputc(int_type c) {
+	int_type ret = traits_type::eof();
+	if (is_open() && !_isBundled) {
+		ret = fputc(c, _nativeFile);
+	}
+	return ret;
+}
+
+typename file::streamsize file::xsputn(const char* s, streamsize n) {
+	streamsize ret = -1;
+	if (is_open() && !_isBundled) {
+		if (fwrite(s, n, 1, _nativeFile) == 1) {
+			ret = n;
+		}
+	}
+	return ret;
+}
+
+typename file::streamsize file::xsgetn(char* s, streamsize n) {
+	streamsize ret = -1;
+	if (is_open()) {
+		ret = read((uint8_t *)s, n);
+	}
+	return ret;
+}
+
+bool file::eof() const {
 	if (is_open()) {
 		if (!_isBundled) {
 			return feof(_nativeFile) != 0;
@@ -166,10 +230,15 @@ bool ifile::eof() const {
 	}
 	return true;
 }
-void ifile::close() {
+
+void file::close() {
 	if (is_open()) {
 		if (!_isBundled) {
 			fclose(_nativeFile);
+			if (_flags != Flags::DelOnClose && _buf[0] != 0) {
+				::unlink(_buf);
+			}
+			memset(_buf, 0, 256);
 			_nativeFile = nullptr;
 		} else {
 			platform::filesystem::_close(_platformFile);
@@ -178,8 +247,52 @@ void ifile::close() {
 	}
 }
 
-bool ifile::is_open() const {
+void file::close_remove() {
+	if (is_open()) {
+		if (!_isBundled) {
+			fclose(_nativeFile);
+			if (_buf[0] != 0) {
+				::unlink(_buf);
+			}
+			memset(_buf, 0, 256);
+			_nativeFile = nullptr;
+		} else {
+			platform::filesystem::_close(_platformFile);
+			_platformFile = nullptr;
+		}
+	}
+}
+
+bool file::close_rename(const StringView &path) {
+	if (is_open()) {
+		if (!_isBundled && _buf[0] != 0) {
+			fclose(_nativeFile);
+			_nativeFile = nullptr;
+			if (move(_buf, path)) {
+				memset(_buf, 0, 256);
+				return true;
+			} else {
+				_nativeFile = fopen(_buf, "wb+");
+			}
+		}
+	}
+	return false;
+}
+
+bool file::is_open() const {
 	return _nativeFile != nullptr || _platformFile != nullptr;
+}
+
+const char *file::path() const {
+	if (_buf[0] == 0) {
+		return nullptr;
+	} else {
+		return _buf;
+	}
+}
+
+void file::set_tmp_path(const char *buf) {
+	memcpy(_buf, buf, 256);
 }
 
 static bool inAppBundle(const StringView &path) {

@@ -64,7 +64,7 @@ bool Resolver::selectByQuery(Query::Select &&q) {
 
 bool Resolver::searchByField(const Field *field) {
 	if (_type == Objects) {
-		_resource = _storage.makeResource(ResourceType::Search, move(_queries), field);
+		_resource = makeResource(ResourceType::Search, move(_queries), field);
 		_type = Search;
 		return true;
 	}
@@ -163,13 +163,13 @@ bool Resolver::getView(const Field *f) {
 
 bool Resolver::getField(const String &str, const Field *f) {
 	if ((_type == Objects) && f->getType() == Type::Array) {
-		_resource = _storage.makeResource(ResourceType::Array, move(_queries), f);
+		_resource = makeResource(ResourceType::Array, move(_queries), f);
 		_type = Array;
 		return true;
 	}
 
 	if (_type == Objects && (f->getType() == Type::File || f->getType() == storage::Type::Image)) {
-		_resource = _storage.makeResource(ResourceType::File, move(_queries), f);
+		_resource = makeResource(ResourceType::File, move(_queries), f);
 		_type = File;
 		return true;
 	}
@@ -190,20 +190,20 @@ bool Resolver::getAll() {
 Resource *Resolver::getResult() {
 	if (_type == Objects) {
 		if (_queries.empty()) {
-			return _storage.makeResource(ResourceType::ResourceList, move(_queries), nullptr);
+			return makeResource(ResourceType::ResourceList, move(_queries), nullptr);
 		} else if (_queries.isView()) {
-			return _storage.makeResource(ResourceType::View, move(_queries), nullptr);
+			return makeResource(ResourceType::View, move(_queries), nullptr);
 		} else if (_queries.isRefSet()) {
 			if (auto f = _queries.getField()) {
 				if (f->getType() == storage::Type::Object) {
-					return _storage.makeResource(ResourceType::ObjectField, move(_queries), nullptr);
+					return makeResource(ResourceType::ObjectField, move(_queries), nullptr);
 				}
 			}
-			return _storage.makeResource(ResourceType::ReferenceSet, move(_queries), nullptr);
+			return makeResource(ResourceType::ReferenceSet, move(_queries), nullptr);
 		} else if (_queries.isObject()) {
-			return _storage.makeResource(ResourceType::Object, move(_queries), nullptr);
+			return makeResource(ResourceType::Object, move(_queries), nullptr);
 		} else {
-			return _storage.makeResource(ResourceType::Set, move(_queries), nullptr);
+			return makeResource(ResourceType::Set, move(_queries), nullptr);
 		}
 	}
 	return _resource;
@@ -230,6 +230,21 @@ const Field *Resolver::getSchemeField(const String &name) const {
 
 const Scheme *Resolver::getScheme() const {
 	return _scheme;
+}
+
+Resource *Resolver::makeResource(ResourceType type, QueryList &&list, const Field *f) {
+	switch (type) {
+	case ResourceType::ResourceList: return new ResourceReslist(_storage, std::move(list));  break;
+	case ResourceType::ReferenceSet: return new ResourceRefSet(_storage, std::move(list)); break;
+	case ResourceType::ObjectField: return new ResourceFieldObject(_storage, std::move(list)); break;
+	case ResourceType::Object: return new ResourceObject(_storage, std::move(list)); break;
+	case ResourceType::Set: return new ResourceSet(_storage, std::move(list)); break;
+	case ResourceType::View: return new ResourceView(_storage, std::move(list)); break;
+	case ResourceType::File: return new ResourceFile(_storage, std::move(list), f); break;
+	case ResourceType::Array: return new ResourceArray(_storage, std::move(list), f); break;
+	case ResourceType::Search: return new ResourceSearch(_storage, std::move(list), f); break;
+	}
+	return nullptr;
 }
 
 NS_SA_EXT_END(storage)

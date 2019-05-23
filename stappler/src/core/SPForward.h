@@ -154,9 +154,12 @@ class StoreKit;
 class StoreProduct;
 
 class DynamicAtlas;
+class DynamicQuadAtlas;
+class DynamicTriangleAtlas;
 class DynamicBatchCommand;
 class DynamicMaterial;
 class DynamicQuadArray;
+class DynamicTriangleArray;
 class GLProgramSet;
 
 class DynamicBatchScene;

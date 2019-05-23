@@ -24,9 +24,20 @@ THE SOFTWARE.
 **/
 
 #include "SPDefine.h"
+
+#if CC_SPRITEBATCHNODE_RENDER_SUBPIXEL
+#define RENDER_IN_SUBPIXEL
+#else
+#define RENDER_IN_SUBPIXEL
+//#define RENDER_IN_SUBPIXEL(__ARGS__) (ceil(__ARGS__))
+#endif
+
 #include "dynamic_atlas/SPDynamicAtlas.cc"
 #include "dynamic_atlas/SPDynamicBatchCommand.cc"
 #include "dynamic_atlas/SPDynamicQuadArray.cc"
+#include "dynamic_atlas/SPDynamicQuadAtlas.cc"
+#include "dynamic_atlas/SPDynamicTriangleArray.cc"
+#include "dynamic_atlas/SPDynamicTriangleAtlas.cc"
 #include "dynamic_atlas/SPDynamicLinearGradient.cc"
 #include "dynamic_atlas/SPStencilCache.cc"
 #include "locale/SPLocale.cc"
