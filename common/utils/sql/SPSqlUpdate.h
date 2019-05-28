@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,81 +27,81 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(sql)
 
-template <typename Binder>
+template <typename Binder, typename Interface>
 template <typename ... Args>
-auto Query<Binder>::Update::where(Args && ... args) -> UpdateWhere {
+auto Query<Binder, Interface>::Update::where(Args && ... args) -> UpdateWhere {
 	this->query->stream << " WHERE";
 	UpdateWhere q(this->query);
 	q.where(sql::Operator::And, forward<Args>(args)...);
 	return q;
 };
 
-template <typename Binder>
-auto Query<Binder>::Update::where() -> UpdateWhere {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::Update::where() -> UpdateWhere {
 	this->query->stream << " WHERE";
 	return UpdateWhere(this->query);
 }
 
-template <typename Binder>
-auto Query<Binder>::Update::returning() -> Returning {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::Update::returning() -> Returning {
 	this->query->stream << " RETURNING";
 	return Returning(this->query);
 }
 
-template <typename Binder>
-auto Query<Binder>::UpdateWhere::returning() -> Returning {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::UpdateWhere::returning() -> Returning {
 	this->query->stream << " RETURNING";
 	return Returning(this->query);
 }
 
-template <typename Binder>
-auto Query<Binder>::update(const StringView & field) -> Update {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::update(const StringView & field) -> Update {
 	stream << "UPDATE " << field << " SET";
 	return Update(this);
 }
 
-template <typename Binder>
-auto Query<Binder>::update(const StringView &field, const StringView &alias) -> Update {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::update(const StringView &field, const StringView &alias) -> Update {
 	stream << "UPDATE " << field << " AS " << alias << " SET";
 	return Update(this);
 }
 
 
-template <typename Binder>
+template <typename Binder, typename Interface>
 template <typename ... Args>
-auto Query<Binder>::Delete::where(Args && ... args) -> DeleteWhere {
+auto Query<Binder, Interface>::Delete::where(Args && ... args) -> DeleteWhere {
 	this->query->stream << " WHERE";
 	DeleteWhere q(this->query);
 	q.where(sql::Operator::And, forward<Args>(args)...);
 	return q;
 };
 
-template <typename Binder>
-auto Query<Binder>::Delete::where() -> DeleteWhere {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::Delete::where() -> DeleteWhere {
 	this->query->stream << " WHERE";
 	return DeleteWhere(this->query);
 }
 
-template <typename Binder>
-auto Query<Binder>::Delete::returning() -> Returning {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::Delete::returning() -> Returning {
 	this->query->stream << " RETURNING";
 	return Returning(this->query);
 }
 
-template <typename Binder>
-auto Query<Binder>::DeleteWhere::returning() -> Returning {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::DeleteWhere::returning() -> Returning {
 	this->query->stream << " RETURNING";
 	return Returning(this->query);
 }
 
-template <typename Binder>
-auto Query<Binder>::remove(const StringView & field) -> Delete {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::remove(const StringView & field) -> Delete {
 	stream << "DELETE FROM " << field;
 	return Delete(this);
 }
 
-template <typename Binder>
-auto Query<Binder>::remove(const StringView &field, const StringView &alias) -> Delete {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::remove(const StringView &field, const StringView &alias) -> Delete {
 	stream << "DELETE FROM " << field << " AS " << alias;
 	return Delete(this);
 }

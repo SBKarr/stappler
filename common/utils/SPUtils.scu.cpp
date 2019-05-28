@@ -47,5 +47,4 @@ THE SOFTWARE.
 #include "SPSnowballStopwords.cc"
 #include "SPSnowballStemmer.cc"
 #include "SPSerenityPathQuery.cc"
-#include "SPSerenityRequest.cc"
 #include "SPValid.cc"

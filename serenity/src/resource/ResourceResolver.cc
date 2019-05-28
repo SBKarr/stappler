@@ -24,8 +24,6 @@ THE SOFTWARE.
 #include "ResourceHandler.h"
 #include "Resource.h"
 #include "StorageResolver.h"
-#include "StorageScheme.h"
-#include "StorageAdapter.h"
 
 NS_SA_BEGIN
 
@@ -67,69 +65,69 @@ static bool getSelectResource(storage::Resolver *resv, Vector<String> &path, boo
 
 	String cmpStr(std::move(path.back())); path.pop_back();
 
-	storage::Comparation cmp = storage::Comparation::Equal;
+	db::Comparation cmp = db::Comparation::Equal;
 	size_t valuesRequired = 1;
 
 	if (cmpStr == "lt") {
-		cmp = storage::Comparation::LessThen;
+		cmp = db::Comparation::LessThen;
 	} else if (cmpStr == "le") {
-		cmp = storage::Comparation::LessOrEqual;
+		cmp = db::Comparation::LessOrEqual;
 	} else if (cmpStr == "eq") {
-		cmp = storage::Comparation::Equal;
-		if (field->hasFlag(storage::Flags::Unique) || field->getTransform() == storage::Transform::Alias) {
+		cmp = db::Comparation::Equal;
+		if (field->hasFlag(db::Flags::Unique) || field->getTransform() == db::Transform::Alias) {
 			isSingleObject = true;
 		}
 	} else if (cmpStr == "neq") {
-		cmp = storage::Comparation::NotEqual;
+		cmp = db::Comparation::NotEqual;
 	} else if (cmpStr == "ge") {
-		cmp = storage::Comparation::GreatherOrEqual;
+		cmp = db::Comparation::GreatherOrEqual;
 	} else if (cmpStr == "gt") {
-		cmp = storage::Comparation::GreatherThen;
+		cmp = db::Comparation::GreatherThen;
 	} else if (cmpStr == "bw") {
-		cmp = storage::Comparation::BetweenValues;
+		cmp = db::Comparation::BetweenValues;
 		valuesRequired = 2;
 	} else if (cmpStr == "be") {
-		cmp = storage::Comparation::BetweenEquals;
+		cmp = db::Comparation::BetweenEquals;
 		valuesRequired = 2;
 	} else if (cmpStr == "nbw") {
-		cmp = storage::Comparation::NotBetweenValues;
+		cmp = db::Comparation::NotBetweenValues;
 		valuesRequired = 2;
 	} else if (cmpStr == "nbe") {
-		cmp = storage::Comparation::NotBetweenEquals;
+		cmp = db::Comparation::NotBetweenEquals;
 		valuesRequired = 2;
 	} else {
-		if (field->hasFlag(storage::Flags::Unique) || field->getTransform() == storage::Transform::Alias) {
+		if (field->hasFlag(db::Flags::Unique) || field->getTransform() == db::Transform::Alias) {
 			isSingleObject = true;
 		}
-		if (field->getType() == storage::Type::Text) {
-			return resv->selectByQuery(storage::Query::Select(field->getName(), cmp, cmpStr));
-		} else if (field->getType() == storage::Type::Boolean) {
+		if (field->getType() == db::Type::Text) {
+			return resv->selectByQuery(db::Query::Select(field->getName(), cmp, cmpStr));
+		} else if (field->getType() == db::Type::Boolean) {
 			if (valid::validateNumber(cmpStr)) {
-				return resv->selectByQuery(storage::Query::Select(field->getName(), cmp, (uint64_t)apr_strtoi64(cmpStr.c_str(), nullptr, 10), 0));
+				return resv->selectByQuery(db::Query::Select(field->getName(), cmp, (uint64_t)apr_strtoi64(cmpStr.c_str(), nullptr, 10), 0));
 			} else if (cmpStr == "t" || cmpStr == "true") {
-				return resv->selectByQuery(storage::Query::Select(field->getName(), cmp, data::Value(true), data::Value(false)));
+				return resv->selectByQuery(db::Query::Select(field->getName(), cmp, data::Value(true), data::Value(false)));
 			} else if (cmpStr == "f" || cmpStr == "false") {
-				return resv->selectByQuery(storage::Query::Select(field->getName(), cmp, data::Value(false), data::Value(false)));
+				return resv->selectByQuery(db::Query::Select(field->getName(), cmp, data::Value(false), data::Value(false)));
 			}
-		} else if (valid::validateNumber(cmpStr) && storage::checkIfComparationIsValid(field->getType(), cmp)) {
-			return resv->selectByQuery(storage::Query::Select(field->getName(), cmp, (uint64_t)apr_strtoi64(cmpStr.c_str(), nullptr, 10), 0));
+		} else if (valid::validateNumber(cmpStr) && db::checkIfComparationIsValid(field->getType(), cmp)) {
+			return resv->selectByQuery(db::Query::Select(field->getName(), cmp, (uint64_t)apr_strtoi64(cmpStr.c_str(), nullptr, 10), 0));
 		} else {
 			messages::error("ResourceResolver", "invalid 'select' query");
 			return false;
 		}
 	}
 
-	if (path.size() < valuesRequired || !storage::checkIfComparationIsValid(field->getType(), cmp)) {
+	if (path.size() < valuesRequired || !db::checkIfComparationIsValid(field->getType(), cmp)) {
 		messages::error("ResourceResolver", "invalid 'select' query");
 		return false;
 	}
 
 	if (valuesRequired == 1) {
 		String value(std::move(path.back())); path.pop_back();
-		if (field->getType() == storage::Type::Text) {
-			return resv->selectByQuery(storage::Query::Select(field->getName(), cmp, value));
+		if (field->getType() == db::Type::Text) {
+			return resv->selectByQuery(db::Query::Select(field->getName(), cmp, value));
 		} else if (valid::validateNumber(value)) {
-			return resv->selectByQuery(storage::Query::Select(field->getName(), cmp, (uint64_t)apr_strtoi64(value.c_str(), nullptr, 10), 0));
+			return resv->selectByQuery(db::Query::Select(field->getName(), cmp, (uint64_t)apr_strtoi64(value.c_str(), nullptr, 10), 0));
 		} else {
 			messages::error("ResourceResolver", "invalid 'select' query");
 			return false;
@@ -140,7 +138,7 @@ static bool getSelectResource(storage::Resolver *resv, Vector<String> &path, boo
 		String value1(std::move(path.back())); path.pop_back();
 		String value2(std::move(path.back())); path.pop_back();
 		if (valid::validateNumber(value1) && valid::validateNumber(value2)) {
-			return resv->selectByQuery(storage::Query::Select(field->getName(), cmp,
+			return resv->selectByQuery(db::Query::Select(field->getName(), cmp,
 					(uint64_t)apr_strtoi64(value1.c_str(), nullptr, 10),
 					(uint64_t)apr_strtoi64(value2.c_str(), nullptr, 10)));
 		}
@@ -156,7 +154,7 @@ static bool getSearchResource(storage::Resolver *resv, Vector<String> &path, boo
 	}
 
 	auto field = resv->getSchemeField(path.back());
-	if (!field || field->getType() != storage::Type::FullTextView) {
+	if (!field || field->getType() != db::Type::FullTextView) {
 		messages::error("ResourceResolver", "invalid 'search' query");
 		return false;
 	}
@@ -178,13 +176,13 @@ static bool getOrderResource(storage::Resolver *resv, Vector<String> &path) {
 	}
 	path.pop_back();
 
-	storage::Ordering ord = storage::Ordering::Ascending;
+	db::Ordering ord = db::Ordering::Ascending;
 	if (!path.empty()) {
 		if (path.back() == "asc" ) {
-			ord = storage::Ordering::Ascending;
+			ord = db::Ordering::Ascending;
 			path.pop_back();
 		} else if (path.back() == "desc") {
-			ord = storage::Ordering::Descending;
+			ord = db::Ordering::Descending;
 			path.pop_back();
 		}
 	}
@@ -205,7 +203,7 @@ static bool getOrderResource(storage::Resolver *resv, Vector<String> &path) {
 	return resv->order(field->getName(), ord);
 }
 
-static bool getOrderResource(storage::Resolver *resv, Vector<String> &path, const String &fieldName, storage::Ordering ord) {
+static bool getOrderResource(storage::Resolver *resv, Vector<String> &path, const String &fieldName, db::Ordering ord) {
 	auto field = resv->getSchemeField(fieldName);
 	if (!field || !field->isIndexed()) {
 		messages::error("ResourceResolver", "invalid 'order' query");
@@ -364,11 +362,11 @@ static Resource *parseResource(storage::Resolver *resv, Vector<String> &path) {
 					return nullptr;
 				}
 			} else if (filter.size() > 2 && filter.front() == '+') {
-				if (!getOrderResource(resv, path, filter.substr(1), storage::Ordering::Ascending)) {
+				if (!getOrderResource(resv, path, filter.substr(1), db::Ordering::Ascending)) {
 					return nullptr;
 				}
 			} else if (filter.size() > 2 && filter.front() == '-') {
-				if (!getOrderResource(resv, path, filter.substr(1), storage::Ordering::Descending)) {
+				if (!getOrderResource(resv, path, filter.substr(1), db::Ordering::Descending)) {
 					return nullptr;
 				}
 			} else if (filter == "limit") {
@@ -388,11 +386,11 @@ static Resource *parseResource(storage::Resolver *resv, Vector<String> &path) {
 					return nullptr;
 				}
 			} else if (filter.size() > 2 && filter.front() == '+') {
-				if (!getOrderResource(resv, path, filter.substr(1), storage::Ordering::Ascending)) {
+				if (!getOrderResource(resv, path, filter.substr(1), db::Ordering::Ascending)) {
 					return nullptr;
 				}
 			} else if (filter.size() > 2 && filter.front() == '-') {
-				if (!getOrderResource(resv, path, filter.substr(1), storage::Ordering::Descending)) {
+				if (!getOrderResource(resv, path, filter.substr(1), db::Ordering::Descending)) {
 					return nullptr;
 				}
 			} else {
@@ -413,24 +411,24 @@ static Resource *parseResource(storage::Resolver *resv, Vector<String> &path) {
 			}
 
 			auto type = f->getType();
-			if (type == storage::Type::File || type == storage::Type::Image || type == storage::Type::Array) {
+			if (type == db::Type::File || type == db::Type::Image || type == db::Type::Array) {
 				isSingleObject = true;
 				if (!resv->getField(filter, f)) {
 					return nullptr;
 				} else {
 					return resv->getResult();
 				}
-			} else if (type == storage::Type::Object) {
+			} else if (type == db::Type::Object) {
 				isSingleObject = true;
 				if (!resv->getObject(f)) {
 					return nullptr;
 				}
-			} else if (type == storage::Type::Set) {
+			} else if (type == db::Type::Set) {
 				isSingleObject = false;
 				if (!resv->getSet(f)) {
 					return nullptr;
 				}
-			} else if (type == storage::Type::View) {
+			} else if (type == db::Type::View) {
 				isSingleObject = false;
 				if (!resv->getView(f)) {
 					return nullptr;
@@ -466,15 +464,15 @@ Resource *Resource::resolve(const Adapter &a, const Scheme &scheme, const String
 			if (auto f = resolver.getSchemeField(it.first)) {
 				if (f->isIndexed()) {
 					switch (f->getType()) {
-					case storage::Type::Integer:
-					case storage::Type::Boolean:
-					case storage::Type::Object:
+					case db::Type::Integer:
+					case db::Type::Boolean:
+					case db::Type::Object:
 						resolver.selectByQuery(
-								storage::Query::Select(it.first, storage::Comparation::Equal, it.second.getInteger(), 0));
+								db::Query::Select(it.first, db::Comparation::Equal, it.second.getInteger(), 0));
 						break;
-					case storage::Type::Text:
+					case db::Type::Text:
 						resolver.selectByQuery(
-								storage::Query::Select(it.first, storage::Comparation::Equal, it.second.getString()));
+								db::Query::Select(it.first, db::Comparation::Equal, it.second.getString()));
 						break;
 					default:
 						break;

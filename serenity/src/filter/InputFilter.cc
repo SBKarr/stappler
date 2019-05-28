@@ -36,34 +36,6 @@ THE SOFTWARE.
 
 NS_SA_BEGIN
 
-InputFile::InputFile(String &&name, String && type, String && enc, String && orig, size_t s, int64_t id)
-: name(std::move(name)), type(std::move(type)), encoding(std::move(enc))
-, original(std::move(orig)), writeSize(0), headerSize(s), id(id) {
-	file.open_tmp(config::getUploadTmpFilePrefix(), APR_FOPEN_CREATE | APR_FOPEN_READ | APR_FOPEN_WRITE | APR_FOPEN_EXCL);
-	path.assign_weak(file.path());
-}
-
-InputFile::~InputFile() {
-	close();
-}
-
-bool InputFile::isOpen() const {
-	return file.is_open();
-}
-
-size_t InputFile::write(const char *s, size_t n) {
-	writeSize += n;
-	return file.xsputn(s, n);
-}
-
-void InputFile::close() {
-	file.close_remove();
-}
-
-bool InputFile::save(const String &ipath) const {
-	return const_cast<apr::file &>(file).close_rename(filesystem::cachesPath(ipath).c_str());
-}
-
 InputParser::InputParser(const InputConfig &cfg, size_t len)
 : config(cfg), length(len), basicParser(root, len, cfg.maxVarSize) { }
 
@@ -164,7 +136,7 @@ static InputFilter::Accept getAcceptedData(const Request &req, InputFilter::Exce
 	return ret;
 }
 
-InputFile *InputFilter::getFileFromContext(int64_t id) {
+db::InputFile *InputFilter::getFileFromContext(int64_t id) {
 	auto req = apr::pool::request();
 	if (req) {
 		Request rctx(req);
@@ -380,11 +352,11 @@ const apr::ostringstream & InputFilter::getBody() const {
 data::Value & InputFilter::getData() {
 	return _parser->getData();
 }
-apr::array<InputFile> &InputFilter::getFiles() {
+apr::array<db::InputFile> &InputFilter::getFiles() {
 	return _parser->getFiles();
 }
 
-InputFile * InputFilter::getInputFile(int64_t idx) const {
+db::InputFile * InputFilter::getInputFile(int64_t idx) const {
 	if (idx < 0) {
 		idx = -(idx + 1);
 	}

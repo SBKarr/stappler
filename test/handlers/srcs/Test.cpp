@@ -25,7 +25,6 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "ServerComponent.h"
-#include "StorageScheme.h"
 #include "RequestHandler.h"
 #include "Networking.h"
 #include "Tools.h"
@@ -100,8 +99,7 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 
 		Field::Set("images", _images, Flags::Composed),
 	},
-			AccessRole::Admin(AccessRoleId::Authorized)
-	);
+	AccessRole::Admin(AccessRoleId::Authorized));
 	_objects.setDelta(true);
 
 	_refs.define({

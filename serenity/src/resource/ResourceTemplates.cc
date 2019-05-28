@@ -22,8 +22,6 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "ResourceTemplates.h"
-#include "StorageAdapter.h"
-#include "StorageScheme.h"
 
 NS_SA_BEGIN
 
@@ -84,7 +82,7 @@ bool ResourceObject::removeObject() {
 	return false;
 }
 
-data::Value ResourceObject::performUpdate(const Vector<int64_t> &objs, data::Value &data, apr::array<InputFile> &files) {
+data::Value ResourceObject::performUpdate(const Vector<int64_t> &objs, data::Value &data, apr::array<db::InputFile> &files) {
 	data::Value ret;
 	encodeFiles(data, files);
 
@@ -119,7 +117,7 @@ data::Value ResourceObject::performUpdate(const Vector<int64_t> &objs, data::Val
 	return processResultList(_queries, ret);
 }
 
-data::Value ResourceObject::updateObject(data::Value &data, apr::array<InputFile> &files) {
+data::Value ResourceObject::updateObject(data::Value &data, apr::array<db::InputFile> &files) {
 	data::Value ret;
 	if (files.empty() && (!data.isDictionary() || data.empty())) {
 		return data::Value();
@@ -212,7 +210,7 @@ bool ResourceReslist::prepareCreate() {
 	_perms = isSchemeAllowed(getScheme(), Action::Create);
 	return _perms != Permission::Restrict;
 }
-data::Value ResourceReslist::performCreateObject(data::Value &data, apr::array<InputFile> &files, const data::Value &extra) {
+data::Value ResourceReslist::performCreateObject(data::Value &data, apr::array<db::InputFile> &files, const data::Value &extra) {
 	// single object
 	if (data.isDictionary() || data.empty()) {
 		if (extra.isDictionary()) {
@@ -285,7 +283,7 @@ data::Value ResourceReslist::performCreateObject(data::Value &data, apr::array<I
 	return data::Value();
 }
 
-data::Value ResourceReslist::createObject(data::Value &data, apr::array<InputFile> &file) {
+data::Value ResourceReslist::createObject(data::Value &data, apr::array<db::InputFile> &file) {
 	return performCreateObject(data, file, data::Value());
 }
 
@@ -298,7 +296,7 @@ bool ResourceSet::prepareAppend() {
 	_perms = isSchemeAllowed(getScheme(), Action::Update);
 	return _perms != Permission::Restrict;
 }
-data::Value ResourceSet::createObject(data::Value &data, apr::array<InputFile> &file) {
+data::Value ResourceSet::createObject(data::Value &data, apr::array<db::InputFile> &file) {
 	// write object patch
 	data::Value extra;
 	auto &items = _queries.getItems();
@@ -317,7 +315,7 @@ data::Value ResourceSet::createObject(data::Value &data, apr::array<InputFile> &
 	if (!item.query.getSelectList().empty()) {
 		// has select query, try to extract extra data
 		for (auto &it : item.query.getSelectList()) {
-			if (it.compare == storage::Comparation::Equal) {
+			if (it.compare == db::Comparation::Equal) {
 				extra.setValue(it.value1, it.field);
 			}
 		}
@@ -368,7 +366,7 @@ data::Value ResourceSet::appendObject(data::Value &data) {
 		}
 	}
 
-	apr::array<InputFile> files;
+	apr::array<db::InputFile> files;
 	return performUpdate(ids, extra, files);
 }
 
@@ -417,7 +415,7 @@ bool ResourceRefSet::removeObject() {
 		return doCleanup(id, _perms, objs);
 	});
 }
-data::Value ResourceRefSet::updateObject(data::Value &value, apr::array<InputFile> &files) {
+data::Value ResourceRefSet::updateObject(data::Value &value, apr::array<db::InputFile> &files) {
 	if (value.isDictionary() && value.hasValue(_field->getName()) && (value.isBasicType(_field->getName()) || value.isArray(_field->getName()))) {
 		value = value.getValue(_field->getName());
 	}
@@ -429,7 +427,7 @@ data::Value ResourceRefSet::updateObject(data::Value &value, apr::array<InputFil
 		return ResourceSet::updateObject(value, files);
 	}
 }
-data::Value ResourceRefSet::createObject(data::Value &value, apr::array<InputFile> &files) {
+data::Value ResourceRefSet::createObject(data::Value &value, apr::array<db::InputFile> &files) {
 	encodeFiles(value, files);
 	return appendObject(value);
 }

@@ -25,8 +25,6 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "TemplateExec.h"
-#include "StorageAdapter.h"
-#include "StorageWorker.h"
 
 NS_SA_EXT_BEGIN(tpl)
 
@@ -505,14 +503,14 @@ bool Exec::execPathObject(ReaderVec &path, ReaderVecIt &pathIt, Variable &var) {
 		++ pathIt;
 		auto f = var.scheme->getField(name);
 		if (f) {
-			if (f->getType() == storage::Type::Set) {
+			if (f->getType() == db::Type::Set) {
 				var = selectSchemeSetVariable(path, pathIt, var, f);
 				if (!var.value) {
 					return false;
 				}
-			} else if (f->getType() == storage::Type::Object || f->getType() == storage::Type::Array
-					|| f->getType() == storage::Type::File || f->getType() == storage::Type::Image) {
-				var.value = new data::Value(storage::Worker(*var.scheme, _storage).getField(*var.value, *f));
+			} else if (f->getType() == db::Type::Object || f->getType() == db::Type::Array
+					|| f->getType() == db::Type::File || f->getType() == db::Type::Image) {
+				var.value = new data::Value(db::Worker(*var.scheme, _storage).getField(*var.value, *f));
 				var.scheme = f->getForeignScheme();
 			} else {
 				var.value = &var.value->getValue(name);

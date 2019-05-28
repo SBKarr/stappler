@@ -424,17 +424,17 @@ StringToNumber<double>(const char *ptr, char ** tail) -> double {
 }
 
 #define SP_DEFINE_ENUM_AS_MASK(Type) \
-	constexpr inline Type operator | (const Type &l, const Type &r) { return Type(toInt(l) | toInt(r)); } \
-	constexpr inline Type operator & (const Type &l, const Type &r) { return Type(toInt(l) & toInt(r)); } \
-	constexpr inline Type operator ^ (const Type &l, const Type &r) { return Type(toInt(l) ^ toInt(r)); } \
-	constexpr inline Type & operator |= (Type &l, const Type &r) { l = Type(toInt(l) | toInt(r)); return l; } \
-	constexpr inline Type & operator &= (Type &l, const Type &r) { l = Type(toInt(l) & toInt(r)); return l; } \
-	constexpr inline Type & operator ^= (Type &l, const Type &r) { l = Type(toInt(l) ^ toInt(r)); return l; } \
-	constexpr inline bool operator == (const Type &l, const std::underlying_type<Type>::type &r) { return toInt(l) == r; } \
-	constexpr inline bool operator == (const std::underlying_type<Type>::type &l, const Type &r) { return l == toInt(r); } \
-	constexpr inline bool operator != (const Type &l, const std::underlying_type<Type>::type &r) { return toInt(l) != r; } \
-	constexpr inline bool operator != (const std::underlying_type<Type>::type &l, const Type &r) { return l != toInt(r); } \
-	constexpr inline Type operator~(const Type &t) { return Type(~toInt(t)); }
+	constexpr inline Type operator | (const Type &l, const Type &r) { return Type(stappler::toInt(l) | stappler::toInt(r)); } \
+	constexpr inline Type operator & (const Type &l, const Type &r) { return Type(stappler::toInt(l) & stappler::toInt(r)); } \
+	constexpr inline Type operator ^ (const Type &l, const Type &r) { return Type(stappler::toInt(l) ^ stappler::toInt(r)); } \
+	constexpr inline Type & operator |= (Type &l, const Type &r) { l = Type(stappler::toInt(l) | stappler::toInt(r)); return l; } \
+	constexpr inline Type & operator &= (Type &l, const Type &r) { l = Type(stappler::toInt(l) & stappler::toInt(r)); return l; } \
+	constexpr inline Type & operator ^= (Type &l, const Type &r) { l = Type(stappler::toInt(l) ^ stappler::toInt(r)); return l; } \
+	constexpr inline bool operator == (const Type &l, const std::underlying_type<Type>::type &r) { return stappler::toInt(l) == r; } \
+	constexpr inline bool operator == (const std::underlying_type<Type>::type &l, const Type &r) { return l == stappler::toInt(r); } \
+	constexpr inline bool operator != (const Type &l, const std::underlying_type<Type>::type &r) { return stappler::toInt(l) != r; } \
+	constexpr inline bool operator != (const std::underlying_type<Type>::type &l, const Type &r) { return l != stappler::toInt(r); } \
+	constexpr inline Type operator~(const Type &t) { return Type(~stappler::toInt(t)); }
 
 /*
  *   Value wrapper

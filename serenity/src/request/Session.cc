@@ -25,8 +25,6 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "Session.h"
-#include "User.h"
-#include "StorageAdapter.h"
 
 NS_SA_BEGIN
 

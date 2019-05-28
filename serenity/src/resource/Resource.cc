@@ -23,11 +23,6 @@ THE SOFTWARE.
 #include "Define.h"
 #include "Resource.h"
 #include "Request.h"
-#include "StorageScheme.h"
-#include "StorageFile.h"
-#include "StorageWorker.h"
-
-#include "User.h"
 #include "Session.h"
 
 NS_SA_BEGIN
@@ -141,8 +136,8 @@ bool Resource::prepareUpdate() { return false; }
 bool Resource::prepareCreate() { return false; }
 bool Resource::prepareAppend() { return false; }
 bool Resource::removeObject() { return false; }
-data::Value Resource::updateObject(data::Value &, apr::array<InputFile> &) { return data::Value(); }
-data::Value Resource::createObject(data::Value &, apr::array<InputFile> &) { return data::Value(); }
+data::Value Resource::updateObject(data::Value &, apr::array<db::InputFile> &) { return data::Value(); }
+data::Value Resource::createObject(data::Value &, apr::array<db::InputFile> &) { return data::Value(); }
 data::Value Resource::appendObject(data::Value &) { return data::Value(); }
 data::Value Resource::getResultObject() { return data::Value(); }
 void Resource::resolve(const Scheme &, data::Value &) { }
@@ -157,7 +152,7 @@ size_t Resource::getMaxFileSize() const {
 	return getRequestScheme().getMaxFileSize();
 }
 
-void Resource::encodeFiles(data::Value &data, apr::array<InputFile> &files) {
+void Resource::encodeFiles(data::Value &data, apr::array<db::InputFile> &files) {
 	for (auto &it : files) {
 		const storage::Field * f = getRequestScheme().getField(it.name);
 		if (f && f->isFile()) {
@@ -285,7 +280,7 @@ static void Resource_resolveExtra(const storage::QueryFieldResolver &res, data::
 			it ++;
 		} else if (!f || f->isProtected() || (fields.find(f) == fields.end())) {
 			it = dict.erase(it);
-		} else if (f->getType() == storage::Type::Extra && it->second.isDictionary()) {
+		} else if (f->getType() == db::Type::Extra && it->second.isDictionary()) {
 			storage::QueryFieldResolver next(res.next(it->first));
 			if (next) {
 				Resource_resolveExtra(next, it->second);
@@ -342,7 +337,7 @@ int64_t Resource::processResolveResult(const QueryFieldResolver &res, const Set<
 		auto f = res.getField(it->first);
 		if (!f || f->isProtected() || (fields.find(f) == fields.end())) {
 			it = dict.erase(it);
-		} else if ((f->getType() == storage::Type::Extra || f->getType() == storage::Type::Data) && it->second.isDictionary()) {
+		} else if ((f->getType() == db::Type::Extra || f->getType() == db::Type::Data) && it->second.isDictionary()) {
 			QueryFieldResolver next(res.next(it->first));
 			if (next) {
 				Resource_resolveExtra(next, it->second);
@@ -367,7 +362,7 @@ void Resource::resolveResult(const QueryFieldResolver &res, data::Value &obj, ui
 			auto type = f.getType();
 
 			if (f.isSimpleLayout() || searchField.find(&f) == searchField.end()) {
-				if (type == storage::Type::Bytes && f.getTransform() == storage::Transform::Uuid) {
+				if (type == db::Type::Bytes && f.getTransform() == db::Transform::Uuid) {
 					auto &fobj = obj.getValue(it.first);
 					if (fobj.isBytes()) {
 						fobj.setString(apr::uuid(fobj.getBytes()).str());
@@ -376,18 +371,18 @@ void Resource::resolveResult(const QueryFieldResolver &res, data::Value &obj, ui
 				continue;
 			}
 
-			if (!obj.hasValue(it.first) && (type == storage::Type::Set || type == storage::Type::Array || type == storage::Type::View)) {
+			if (!obj.hasValue(it.first) && (type == db::Type::Set || type == db::Type::Array || type == db::Type::View)) {
 				obj.setInteger(id, it.first);
 			}
 
 			auto &fobj = obj.getValue(it.first);
-			if (type == storage::Type::Object && fobj.isInteger()) {
+			if (type == db::Type::Object && fobj.isInteger()) {
 				resolveObject(res, id, f, fobj);
-			} else if ((type == storage::Type::Set || type == storage::Type::View) && fobj.isInteger()) {
+			} else if ((type == db::Type::Set || type == db::Type::View) && fobj.isInteger()) {
 				resolveSet(res, id, f, fobj);
-			} else if (type == storage::Type::Array && fobj.isInteger()) {
+			} else if (type == db::Type::Array && fobj.isInteger()) {
 				resolveArray(res, id, f, fobj);
-			} else if ((type == storage::Type::File || type == storage::Type::Image) && fobj.isInteger()) {
+			} else if ((type == db::Type::File || type == db::Type::Image) && fobj.isInteger()) {
 				resolveFile(res, id, f, fobj);
 			}
 		}
@@ -396,11 +391,11 @@ void Resource::resolveResult(const QueryFieldResolver &res, data::Value &obj, ui
 			auto &f = it.second;
 			auto type = f.getType();
 
-			if ((type == storage::Type::Object && obj.isDictionary(it.first))
-					|| ((type == storage::Type::Set || type == storage::Type::View) && obj.isArray(it.first))) {
+			if ((type == db::Type::Object && obj.isDictionary(it.first))
+					|| ((type == db::Type::Set || type == db::Type::View) && obj.isArray(it.first))) {
 				QueryFieldResolver next(res.next(it.first));
 				if (next) {
-					if (type == storage::Type::Set || type == storage::Type::View) {
+					if (type == db::Type::Set || type == db::Type::View) {
 						auto &fobj = obj.getValue(it.first);
 						for (auto &sit : fobj.asArray()) {
 							if (sit.isDictionary()) {

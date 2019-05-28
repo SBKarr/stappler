@@ -32,7 +32,6 @@ APLOG_USE_MODULE(serenity);
 #include "Request.cc"
 #include "RequestHandler.cc"
 #include "Session.cc"
-#include "User.cc"
 #include "InputFilter.cc"
 #include "OutputFilter.cc"
 #include "MultipartParser.cc"
@@ -46,3 +45,5 @@ APLOG_USE_MODULE(serenity);
 #include "ResourceTemplates.cc"
 #include "ResourceTemplatesProperty.cc"
 #include "ResourceTemplatesSearch.cc"
+
+#include "StorageResolver.cc"

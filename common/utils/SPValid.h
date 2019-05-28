@@ -48,11 +48,17 @@ bool validateHexadecimial(const StringView &str);
 bool validateBase64(const StringView &str);
 
 void makeRandomBytes(uint8_t *, size_t);
-Bytes makeRandomBytes(size_t);
-Bytes makePassword(const StringView &str, const StringView &key = StringView());
-bool validatePassord(const StringView &str, const Bytes &passwd, const StringView &key = StringView());
 
-String generatePassword(size_t len);
+template <typename Interface = memory::DefaultInterface>
+auto makeRandomBytes(size_t) -> typename Interface::BytesType;
+
+template <typename Interface = memory::DefaultInterface>
+auto makePassword(const StringView &str, const StringView &key = StringView()) -> typename Interface::BytesType;
+
+bool validatePassord(const StringView &str, const BytesView &passwd, const StringView &key = StringView());
+
+template <typename Interface = memory::DefaultInterface>
+auto generatePassword(size_t len) -> typename Interface::StringType;
 
 NS_SP_EXT_END(valid)
 

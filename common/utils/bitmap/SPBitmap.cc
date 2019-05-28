@@ -227,6 +227,9 @@ Bitmap::Bitmap() { }
 Bitmap::Bitmap(const Bytes &vec, const StrideFn &strideFn)
 : Bitmap(vec.data(), vec.size(), strideFn) { }
 
+Bitmap::Bitmap(const BytesView &vec, const StrideFn &strideFn)
+: Bitmap(vec.data(), vec.size(), strideFn) { }
+
 Bitmap::Bitmap(const uint8_t *data, size_t size, const StrideFn &strideFn) {
 	if (!loadData(data, size, strideFn)) {
 		_data.clear();

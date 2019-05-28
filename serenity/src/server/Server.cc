@@ -32,9 +32,6 @@ THE SOFTWARE.
 #include "Root.h"
 
 #include "ServerComponent.h"
-#include "StorageField.h"
-#include "StorageScheme.h"
-#include "StorageWorker.h"
 #include "PGHandle.h"
 #include "ResourceHandler.h"
 #include "MultiResourceHandler.h"
@@ -48,8 +45,6 @@ NS_SA_BEGIN
 #define SA_SERVER_FILE_SCHEME_NAME "__files"
 #define SA_SERVER_USER_SCHEME_NAME "__users"
 #define SA_SERVER_ERROR_SCHEME_NAME "__error"
-
-using namespace storage;
 
 struct Server::Config : public AllocPool {
 	static Config *get(server_rec *server) {
@@ -217,7 +212,7 @@ struct Server::Config : public AllocPool {
 		}
 
 		if (!loadingFalled) {
-			Scheme::initSchemes(serv, schemes);
+			db::Scheme::initSchemes(schemes);
 
 			apr::pool::perform([&] {
 				auto root = Root::getInstance();
@@ -225,7 +220,7 @@ struct Server::Config : public AllocPool {
 				auto db = root->dbdOpen(pool, serv);
 				if (db) {
 					pg::Handle h(pool, db);
-					h.init(storage::Interface::Config{serv.getServerHostname(), serv.getFileScheme()}, schemes);
+					h.init(db::Interface::Config{serv.getServerHostname(), serv.getFileScheme()}, schemes);
 
 					for (auto &it : components) {
 						currentComponent = it.second->getName();
@@ -253,40 +248,40 @@ struct Server::Config : public AllocPool {
 
 	bool childInit = false;
 
-	storage::Scheme userScheme = storage::Scheme(SA_SERVER_USER_SCHEME_NAME, {
-		Field::Text("name", Transform::Alias, Flags::Required),
-		Field::Password("password", PasswordSalt(config::getDefaultPasswordSalt()), Flags::Required | Flags::Protected),
-		Field::Boolean("isAdmin", data::Value(false)),
-		Field::Extra("data", Vector<Field>{
-			Field::Text("email", Transform::Email),
-			Field::Text("public"),
-			Field::Text("desc"),
+	db::Scheme userScheme = storage::Scheme(SA_SERVER_USER_SCHEME_NAME, {
+		db::Field::Text("name", db::Transform::Alias, db::Flags::Required),
+		db::Field::Password("password", db::PasswordSalt(config::getDefaultPasswordSalt()), db::Flags::Required | db::Flags::Protected),
+		db::Field::Boolean("isAdmin", data::Value(false)),
+		db::Field::Extra("data", Vector<db::Field>{
+			db::Field::Text("email", db::Transform::Email),
+			db::Field::Text("public"),
+			db::Field::Text("desc"),
 		}),
-		Field::Text("email", Transform::Email, Flags::Unique),
+		db::Field::Text("email", db::Transform::Email, db::Flags::Unique),
 	});
 
-	storage::Scheme fileScheme = storage::Scheme(SA_SERVER_FILE_SCHEME_NAME, {
-		Field::Text("location", Transform::Url),
-		Field::Text("type", Flags::ReadOnly),
-		Field::Integer("size", Flags::ReadOnly),
-		Field::Integer("mtime", Flags::AutoMTime | Flags::ReadOnly),
-		Field::Extra("image", Vector<Field>{
-			Field::Integer("width"),
-			Field::Integer("height"),
+	db::Scheme fileScheme = storage::Scheme(SA_SERVER_FILE_SCHEME_NAME, {
+		db::Field::Text("location", db::Transform::Url),
+		db::Field::Text("type", db::Flags::ReadOnly),
+		db::Field::Integer("size", db::Flags::ReadOnly),
+		db::Field::Integer("mtime", db::Flags::AutoMTime | db::Flags::ReadOnly),
+		db::Field::Extra("image", Vector<db::Field>{
+			db::Field::Integer("width"),
+			db::Field::Integer("height"),
 		})
 	});
 
-	storage::Scheme errorScheme = storage::Scheme(SA_SERVER_ERROR_SCHEME_NAME, {
-		Field::Boolean("hidden", data::Value(false)),
-		Field::Boolean("delivered", data::Value(false)),
-		Field::Text("name"),
-		Field::Text("documentRoot"),
-		Field::Text("url"),
-		Field::Text("request"),
-		Field::Text("ip"),
-		Field::Data("headers"),
-		Field::Data("data"),
-		Field::Integer("time"),
+	db::Scheme errorScheme = storage::Scheme(SA_SERVER_ERROR_SCHEME_NAME, {
+		db::Field::Boolean("hidden", data::Value(false)),
+		db::Field::Boolean("delivered", data::Value(false)),
+		db::Field::Text("name"),
+		db::Field::Text("documentRoot"),
+		db::Field::Text("url"),
+		db::Field::Text("request"),
+		db::Field::Text("ip"),
+		db::Field::Data("headers"),
+		db::Field::Data("data"),
+		db::Field::Integer("time"),
 	});
 
 	Vector<Pair<String, data::Value>> handlers;
@@ -769,7 +764,9 @@ void Server::onHeartBeat(apr_pool_t *pool) {
 					_config->lastDatabaseCleanup = now;
 					h.makeSessionsCleanup();
 				}
-				_config->broadcastId = h.processBroadcasts(*this, _config->broadcastId);
+				_config->broadcastId = h.processBroadcasts([&] (BytesView bytes) {
+					onBroadcast(bytes);
+				}, _config->broadcastId);
 				root->dbdClose(_server, dbd);
 			}
 		}
@@ -1166,7 +1163,7 @@ void Server::runErrorReportTask(request_rec *req, const Vector<data::Value> &err
 				storage::Adapter storage(&h);
 
 				auto serv = Server(apr::pool::server());
-				if (auto t = Transaction::acquire(storage)) {
+				if (auto t = db::Transaction::acquire(storage)) {
 					t.performAsSystem([&] () -> bool {
 						if (auto errScheme = serv.getErrorScheme()) {
 							if (errScheme->create(storage, *err)) {

@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -70,9 +70,12 @@ struct SimpleBinder : public AllocBase {
 	}
 };
 
-template <typename Binder>
+template <typename Binder, typename Interface = memory::DefaultInterface>
 class Query : public AllocBase {
 public:
+	using Stream = typename Interface::StringStreamType;
+	using String = typename Interface::StringType;
+
 	struct Select;
 	struct SelectFrom;
 	struct SelectWhere;
@@ -126,16 +129,19 @@ public:
 
 		Field(const StringView &str) : name(str) { }
 		Field(const char *str) : name(str) { }
-		Field(const String &str) : name(str) { }
+		Field(const std::string &str) : name(str) { }
+		Field(const memory::string &str) : name(str) { }
 
 		template <typename SourceString, typename FieldString>
 		Field(SourceString &&t, FieldString &&f) : source(t), name(f) { }
 
 		Field & as(const char *str) { alias = StringView(str); return *this; }
-		Field & as(const String &str) { alias = StringView(str); return *this; }
+		Field & as(const std::string &str) { alias = StringView(str); return *this; }
+		Field & as(const memory::string &str) { alias = StringView(str); return *this; }
 
 		Field & from(const char *str) { source = StringView(str); return *this; }
-		Field & from(const String &str) { source = StringView(str); return *this; }
+		Field & from(const std::string &str) { source = StringView(str); return *this; }
+		Field & from(const memory::string &str) { source = StringView(str); return *this; }
 
 		StringView source;
 		StringView name;
@@ -445,61 +451,61 @@ public:
 	void writeBind(const Field &, bool withAlias);
 	void writeBind(const StringView &func, const Field &f);
 
-	StringStream &getStream();
+	Stream &getStream();
 
 protected:
 	FinalizationState finalization = FinalizationState::None;
 	Binder binder;
-	StringStream stream;
+	Stream stream;
 	bool subquery = false;
 };
 
-template <typename Binder, typename Value>
+template <typename Binder, typename Interface, typename Value>
 struct BinderTraits {
 	template <typename V>
-	static void writeBind(Query<Binder> &q, Binder &b, V &&val) {
+	static void writeBind(Query<Binder, Interface> &q, Binder &b, V &&val) {
 		b.writeBind(q.getStream(), forward<V>(val));
 	}
 };
 
-template <typename Binder>
-struct BinderTraits<Binder, typename Query<Binder>::Field> {
-	static void writeBind(Query<Binder> &q, Binder &b, const typename Query<Binder>::Field &val) {
+template <typename Binder, typename Interface>
+struct BinderTraits<Binder, Interface, typename Query<Binder, Interface>::Field> {
+	static void writeBind(Query<Binder, Interface> &q, Binder &b, const typename Query<Binder, Interface>::Field &val) {
 		q.writeBind(val);
 	}
 };
 
-template <typename Binder>
-struct BinderTraits<Binder, typename Query<Binder>::RawString> {
-	static void writeBind(Query<Binder> &q, Binder &b, const typename Query<Binder>::RawString &val) {
+template <typename Binder, typename Interface>
+struct BinderTraits<Binder, Interface, typename Query<Binder, Interface>::RawString> {
+	static void writeBind(Query<Binder, Interface> &q, Binder &b, const typename Query<Binder, Interface>::RawString &val) {
 		q.writeBind(val);
 	}
 };
 
 
-template <typename Binder>
-void Query<Binder>::QueryHandle::finalize() {
+template <typename Binder, typename Interface>
+void Query<Binder, Interface>::QueryHandle::finalize() {
 	this->query->finalize();
 }
 
-template <typename Binder>
+template <typename Binder, typename Interface>
 template <typename Value>
-void Query<Binder>::writeBind(Value &&val) {
-	BinderTraits<Binder, typename std::remove_reference<Value>::type>::writeBind(*this, this->binder, forward<Value>(val));
+void Query<Binder, Interface>::writeBind(Value &&val) {
+	BinderTraits<Binder, Interface, typename std::remove_reference<Value>::type>::writeBind(*this, this->binder, forward<Value>(val));
 }
 
-template <typename Binder>
-void Query<Binder>::writeBind(const RawString &data) {
+template <typename Binder, typename Interface>
+void Query<Binder, Interface>::writeBind(const RawString &data) {
 	stream << data.data;
 }
 
-template <typename Binder>
-void Query<Binder>::writeBind(const Field &f) {
+template <typename Binder, typename Interface>
+void Query<Binder, Interface>::writeBind(const Field &f) {
 	writeBind(f, true);
 }
 
-template <typename Binder>
-void Query<Binder>::writeBind(const Field &f, bool withAlias) {
+template <typename Binder, typename Interface>
+void Query<Binder, Interface>::writeBind(const Field &f, bool withAlias) {
 	if (!f.source.empty()) {
 		stream << f.source << ".";
 	}
@@ -513,8 +519,8 @@ void Query<Binder>::writeBind(const Field &f, bool withAlias) {
 	}
 }
 
-template <typename Binder>
-void Query<Binder>::writeBind(const StringView &func, const Field &f) {
+template <typename Binder, typename Interface>
+void Query<Binder, Interface>::writeBind(const StringView &func, const Field &f) {
 	stream << func << "(";
 	writeBind(f, false);
 	stream << ")";
@@ -523,13 +529,13 @@ void Query<Binder>::writeBind(const StringView &func, const Field &f) {
 	}
 }
 
-template <typename Binder>
-StringStream &Query<Binder>::getStream() {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::getStream() -> typename Query<Binder, Interface>::Stream & {
 	return stream;
 }
 
-template <typename Binder>
-void Query<Binder>::finalize() {
+template <typename Binder, typename Interface>
+void Query<Binder, Interface>::finalize() {
 	if (subquery) {
 		return;
 	}
@@ -545,17 +551,17 @@ void Query<Binder>::finalize() {
 }
 
 
-template <typename Binder>
+template <typename Binder, typename Interface>
 template <typename Callback>
-auto Query<Binder>::with(const StringView &alias, const Callback &cb) -> GenericQuery {
+auto Query<Binder, Interface>::with(const StringView &alias, const Callback &cb) -> GenericQuery {
 	GenericQuery q(this);
 	q.with(alias, cb);
 	return q;
 }
 
-template <typename Binder>
+template <typename Binder, typename Interface>
 template <typename Callback>
-auto Query<Binder>::GenericQuery::with(const StringView &alias, const Callback &cb) -> GenericQuery & {
+auto Query<Binder, Interface>::GenericQuery::with(const StringView &alias, const Callback &cb) -> GenericQuery & {
 	switch (this->state) {
 	case State::None:
 		this->query->stream << "WITH ";
@@ -579,50 +585,50 @@ auto Query<Binder>::GenericQuery::with(const StringView &alias, const Callback &
 	return *this;
 }
 
-template <typename Binder>
-auto Query<Binder>::GenericQuery::select(Distinct d) -> Select {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::GenericQuery::select(Distinct d) -> Select {
 	return this->query->select(d);
 }
 
-template <typename Binder>
+template <typename Binder, typename Interface>
 template <typename ... Args>
-auto Query<Binder>::GenericQuery::select(const Field &f, Args && ... args) -> Select {
+auto Query<Binder, Interface>::GenericQuery::select(const Field &f, Args && ... args) -> Select {
 	return this->query->select(f, forward<Args>(args)...);
 }
 
-template <typename Binder>
+template <typename Binder, typename Interface>
 template <typename ... Args>
-auto Query<Binder>::GenericQuery::select(Distinct d, const Field &f, Args && ... args) -> Select {
+auto Query<Binder, Interface>::GenericQuery::select(Distinct d, const Field &f, Args && ... args) -> Select {
 	return this->query->select(d, f, forward<Args>(args)...);
 }
 
-template <typename Binder>
-auto Query<Binder>::GenericQuery::insert(const StringView & field) -> Insert {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::GenericQuery::insert(const StringView & field) -> Insert {
 	return this->query->insert(field);
 }
 
-template <typename Binder>
-auto Query<Binder>::GenericQuery::insert(const StringView &field, const StringView &alias) -> Insert {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::GenericQuery::insert(const StringView &field, const StringView &alias) -> Insert {
 	return this->query->insert(field, alias);
 }
 
-template <typename Binder>
-auto Query<Binder>::GenericQuery::update(const StringView & field) -> Update {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::GenericQuery::update(const StringView & field) -> Update {
 	return this->query->update(field);
 }
 
-template <typename Binder>
-auto Query<Binder>::GenericQuery::update(const StringView &field, const StringView &alias) -> Update {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::GenericQuery::update(const StringView &field, const StringView &alias) -> Update {
 	return this->query->update(field, alias);
 }
 
-template <typename Binder>
-auto Query<Binder>::GenericQuery::remove(const StringView & field) -> Delete {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::GenericQuery::remove(const StringView & field) -> Delete {
 	return this->query->remove(field);
 }
 
-template <typename Binder>
-auto Query<Binder>::GenericQuery::remove(const StringView &field, const StringView &alias) -> Delete {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::GenericQuery::remove(const StringView &field, const StringView &alias) -> Delete {
 	return this->query->remove(field, alias);
 }
 

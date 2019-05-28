@@ -25,8 +25,6 @@ THE SOFTWARE.
 
 #include "SPUrl.h"
 #include "Connection.h"
-#include "StorageAdapter.h"
-#include "StorageTransaction.h"
 
 NS_SA_BEGIN
 

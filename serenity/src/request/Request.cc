@@ -34,7 +34,6 @@ THE SOFTWARE.
 #include "UrlEncodeParser.h"
 #include "PGHandle.h"
 
-#include "User.h"
 #include "Session.h"
 
 #include "Output.h"

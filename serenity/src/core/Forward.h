@@ -28,7 +28,6 @@ THE SOFTWARE.
 #include "SPData.h"
 #include "SPValid.h"
 #include <atomic>
-#include <idna.h>
 #include <postgresql/libpq-fe.h>
 
 #include "SPLog.h"
@@ -62,8 +61,12 @@ THE SOFTWARE.
 #include "mod_log_config.h"
 #include "util_cookies.h"
 
-#define MAGICKCORE_QUANTUM_DEPTH 16
-#define MAGICKCORE_HDRI_ENABLE 0
+#include "SPDBInputFile.h"
+#include "SPDBStorageScheme.h"
+#include "SPDBStorageUser.h"
+#include "SPDBStorageFile.h"
+
+#include "Config.h"
 
 #define NS_SA_BEGIN				NS_SP_EXT_BEGIN(serenity)
 #define NS_SA_END				NS_SP_EXT_END(serenity)
@@ -92,39 +95,16 @@ class ResourceHandler;
 using AllocPool = memory::AllocPool;
 
 class Session;
-class User;
-struct InputFile;
-
 class Task;
 
 NS_SA_END
 
+
 NS_SA_EXT_BEGIN(storage)
 
-class Interface;
-class Binder;
-class QueryInterface;
-class ResultInterface;
+using namespace db;
 
-class Field;
-
-struct FieldText;
-struct FieldPassword;
-struct FieldExtra;
-struct FieldFile;
-struct FieldImage;
-struct FieldObject;
-struct FieldArray;
-struct FieldView;
-
-class Adapter;
 class Resolver;
-class Object;
-class Scheme;
-class Transaction;
-class Worker;
-
-class File;
 
 NS_SA_EXT_END(storage)
 
@@ -244,6 +224,13 @@ class Handle;
 class Mail;
 
 NS_SA_EXT_END(network)
+
+
+NS_SA_BEGIN
+
+using User = db::User;
+
+NS_SA_END
 
 
 #endif /* SERENITY_SRC_CORE_FORWARD_H_ */

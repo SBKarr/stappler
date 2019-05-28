@@ -22,10 +22,7 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "Tools.h"
-#include "User.h"
 #include "Output.h"
-#include "StorageScheme.h"
-#include "StorageWorker.h"
 #include "Resource.h"
 #include "TemplateExec.h"
 

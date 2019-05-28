@@ -22,15 +22,12 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "Tools.h"
-#include "User.h"
 #include "Output.h"
-#include "StorageScheme.h"
-#include "StorageAdapter.h"
-#include "StorageWorker.h"
 #include "ServerComponent.h"
 #include "Resource.h"
 #include "PGHandle.h"
 #include "SPugContext.h"
+#include "InputFilter.h"
 
 NS_SA_EXT_BEGIN(tools)
 
@@ -294,7 +291,7 @@ struct HistoryCmd : ResourceCmd {
 				if (field.empty()) {
 					h.sendData(a->getHistory(*s, Time::microseconds(time), true));
 				} else if (auto f = s->getField(field)) {
-					if (f->getType() == storage::Type::View) {
+					if (f->getType() == db::Type::View) {
 						h.sendData(a->getHistory(*static_cast<const storage::FieldView *>(f->getSlot()), s, tag, Time::microseconds(time), true));
 					}
 				}
@@ -345,8 +342,8 @@ struct DeltaCmd : ResourceCmd {
 				if (field.empty()) {
 					h.sendData(a->getDeltaData(*s, Time::microseconds(time)));
 				} else if (auto f = s->getField(field)) {
-					if (f->getType() == storage::Type::View) {
-						h.sendData(a->getDeltaData(*s, *static_cast<const storage::FieldView *>(f->getSlot()), Time::microseconds(time), tag));
+					if (f->getType() == db::Type::View) {
+						h.sendData(a->getDeltaData(*s, *static_cast<const db::FieldView *>(f->getSlot()), Time::microseconds(time), tag));
 					}
 				}
 				return true;
@@ -417,7 +414,7 @@ struct CreateCmd : ResourceCmd {
 
 		data::Value patch = (r.is('{') || r.is('[') || r.is('(')) ? data::read(r) : Url::parseDataArgs(r, 1_KiB);
 		if (auto r = acquireResource(h, schemeName, path, StringView())) {
-			apr::array<InputFile> f;
+			apr::array<db::InputFile> f;
 			if (r->prepareCreate()) {
 				auto ret = r->createObject(patch, f);
 				h.sendData(ret);
@@ -456,7 +453,7 @@ struct UpdateCmd : ResourceCmd {
 
 		data::Value patch = (r.is('{') || r.is('[') || r.is('(')) ? data::read(r) : Url::parseDataArgs(r, 1_KiB);
 		if (auto r = acquireResource(h, schemeName, path, StringView())) {
-			apr::array<InputFile> f;
+			apr::array<db::InputFile> f;
 			if (r->prepareUpdate()) {
 				auto ret = r->updateObject(patch, f);
 				h.sendData(ret);

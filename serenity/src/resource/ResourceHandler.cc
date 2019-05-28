@@ -28,10 +28,7 @@ THE SOFTWARE.
 #include "Resource.h"
 #include "InputFilter.h"
 #include "Session.h"
-#include "User.h"
 #include "Output.h"
-#include "StorageScheme.h"
-#include "StorageFile.h"
 
 NS_SA_BEGIN
 

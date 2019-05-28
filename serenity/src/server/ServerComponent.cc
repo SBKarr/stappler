@@ -26,8 +26,6 @@ THE SOFTWARE.
 #include "Define.h"
 #include "ServerComponent.h"
 
-#include "StorageScheme.h"
-
 NS_SA_BEGIN
 
 ServerComponent::ServerComponent(Server &serv, const String &name, const data::Value &dict)

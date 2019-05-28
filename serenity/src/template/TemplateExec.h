@@ -23,7 +23,6 @@ THE SOFTWARE.
 #ifndef APPS_TEMPLATEEXEC_H_
 #define APPS_TEMPLATEEXEC_H_
 
-#include "StorageScheme.h"
 #include "Resource.h"
 #include "TemplateExpression.h"
 

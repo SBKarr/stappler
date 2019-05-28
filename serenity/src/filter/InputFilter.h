@@ -44,7 +44,7 @@ public:
 		return root;
 	}
 
-	virtual apr::array<InputFile> &getFiles() {
+	virtual apr::array<db::InputFile> &getFiles() {
 		return files;
 	}
 
@@ -59,7 +59,7 @@ protected:
 	size_t length;
 	data::Value root;
 	UrlencodeParser basicParser;
-	apr::array<InputFile> files;
+	apr::array<db::InputFile> files;
 };
 
 class InputFilter : public AllocPool {
@@ -89,7 +89,7 @@ public:
 	 * negative_id = - index - 1
 	 *
 	 * return nullptr if there is no such file */
-	static InputFile *getFileFromContext(int64_t);
+	static db::InputFile *getFileFromContext(int64_t);
 
 	apr::weak_string getContentType() const;
 
@@ -112,9 +112,9 @@ public:
 
 	const apr::ostringstream & getBody() const;
 	data::Value & getData();
-	apr::array<InputFile> &getFiles();
+	apr::array<db::InputFile> &getFiles();
 
-	InputFile * getInputFile(int64_t) const;
+	db::InputFile * getInputFile(int64_t) const;
 
 	const InputConfig & getConfig() const;
 

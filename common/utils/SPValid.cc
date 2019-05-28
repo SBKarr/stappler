@@ -372,34 +372,58 @@ void makeRandomBytes(uint8_t *buf, size_t count) {
 	makeRandomBytes_buf(buf, count);
 }
 
-Bytes makeRandomBytes(size_t count) {
-	Bytes ret; ret.resize(count);
+template <>
+auto makeRandomBytes<memory::PoolInterface>(size_t count) -> memory::PoolInterface::BytesType  {
+	memory::PoolInterface::BytesType ret; ret.resize(count);
 	makeRandomBytes_buf(ret.data(), count);
 	return ret;
 }
 
-Bytes makePassword(const StringView &str, const StringView &key) {
-	if (str.empty() || key.empty()) {
-		return Bytes();
-	}
+template <>
+auto makeRandomBytes<memory::StandartInterface>(size_t count) -> memory::StandartInterface::BytesType  {
+	memory::StandartInterface::BytesType ret; ret.resize(count);
+	makeRandomBytes_buf(ret.data(), count);
+	return ret;
+}
+
+static void makePassword_buf(uint8_t *passwdKey, const StringView &str, const StringView &key) {
 	string::Sha512::Buf source = string::Sha512::make(str, Config_getInternalPasswordKey());
 
-	Bytes passwdKey; passwdKey.resize(16 + string::Sha512::Length);
 	passwdKey[0] = 0; passwdKey[1] = 1; // version code
-	makeRandomBytes_buf(passwdKey.data() + 2, 14);
+	makeRandomBytes_buf(passwdKey + 2, 14);
 
 	string::Sha512 hash_ctx;
-	hash_ctx.update(passwdKey.data(), 16);
+	hash_ctx.update(passwdKey, 16);
 	if (!key.empty()) {
 		hash_ctx.update(key);
 	}
 	hash_ctx.update(source);
-	hash_ctx.final(passwdKey.data() + 16);
+	hash_ctx.final(passwdKey + 16);
+}
 
+template <>
+auto makePassword<memory::PoolInterface>(const StringView &str, const StringView &key) -> memory::PoolInterface::BytesType {
+	if (str.empty() || key.empty()) {
+		return memory::PoolInterface::BytesType();
+	}
+
+	memory::PoolInterface::BytesType passwdKey; passwdKey.resize(16 + string::Sha512::Length);
+	makePassword_buf(passwdKey.data(), str, key);
 	return passwdKey;
 }
 
-bool validatePassord(const StringView &str, const Bytes &passwd, const StringView &key) {
+template <>
+auto makePassword<memory::StandartInterface>(const StringView &str, const StringView &key) -> memory::StandartInterface::BytesType {
+	if (str.empty() || key.empty()) {
+		return memory::StandartInterface::BytesType();
+	}
+
+	memory::StandartInterface::BytesType passwdKey; passwdKey.resize(16 + string::Sha512::Length);
+	makePassword_buf(passwdKey.data(), str, key);
+	return passwdKey;
+}
+
+bool validatePassord(const StringView &str, const BytesView &passwd, const StringView &key) {
 	if (passwd.size() < 8 + string::Sha256::Length) {
 		return false; // not a password
 	}
@@ -467,39 +491,58 @@ static uint8_t pswd_lowerCount = uint8_t(strlen(PSWD_LOWER));
 static uint8_t pswd_upperCount = uint8_t(strlen(PSWD_UPPER));
 static uint8_t pswd_allCount = uint8_t(strlen(PSWD_NUMBERS PSWD_LOWER PSWD_UPPER));
 
-String generatePassword(size_t len) {
-	if (len < 6) {
-		return String();
-	}
 
-	auto randomBytes = len + 2;
-	auto bytes = makeRandomBytes(randomBytes);
-
+template <typename Callback>
+static void generatePassword_buf(size_t len, const uint8_t *bytes, const Callback &cb) {
 	uint16_t meta = 0;
-	memcpy(&meta, bytes.data(), sizeof(uint16_t));
+	memcpy(&meta, bytes, sizeof(uint16_t));
 
 	bool extraChars[3] = { false, false, false };
-
-	String ret; ret.reserve(len);
 	for (size_t i = 0; i < len - 3; ++ i) {
-		ret.push_back(pswd_all[bytes[i + 5] % pswd_allCount]);
+		cb(pswd_all[bytes[i + 5] % pswd_allCount]);
 		if (!extraChars[0] && i == bytes[2] % (len - 3)) {
-			ret.push_back(pswd_numbers[meta % pswd_numbersCount]);
+			cb(pswd_numbers[meta % pswd_numbersCount]);
 			meta /= pswd_numbersCount;
 			extraChars[0] = true;
 		}
 		if (!extraChars[1] && i == bytes[3] % (len - 3)) {
-			ret.push_back(pswd_lower[meta % pswd_lowerCount]);
+			cb(pswd_lower[meta % pswd_lowerCount]);
 			meta /= pswd_lowerCount;
 			extraChars[1] = true;
 		}
 		if (!extraChars[2] && i == bytes[4] % (len - 3)) {
-			ret.push_back(pswd_upper[meta % pswd_upperCount]);
+			cb(pswd_upper[meta % pswd_upperCount]);
 			meta /= pswd_upperCount;
 			extraChars[2] = true;
 		}
 	}
+}
 
+template <>
+auto generatePassword<memory::PoolInterface>(size_t len) -> memory::PoolInterface::StringType {
+	if (len < 6) {
+		return memory::PoolInterface::StringType();
+	}
+
+	auto bytes = makeRandomBytes<memory::PoolInterface>(len + 2);
+	memory::PoolInterface::StringType ret; ret.reserve(len);
+	generatePassword_buf(len, bytes.data(), [&] (char c) {
+		ret.push_back(c);
+	});
+	return ret;
+}
+
+template <>
+auto generatePassword<memory::StandartInterface>(size_t len) -> memory::StandartInterface::StringType {
+	if (len < 6) {
+		return memory::StandartInterface::StringType();
+	}
+
+	auto bytes = makeRandomBytes<memory::StandartInterface>(len + 2);
+	memory::StandartInterface::StringType ret; ret.reserve(len);
+	generatePassword_buf(len, bytes.data(), [&] (char c) {
+		ret.push_back(c);
+	});
 	return ret;
 }
 

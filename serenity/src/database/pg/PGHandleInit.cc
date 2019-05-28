@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016-2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,11 +25,10 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "PGHandle.h"
-#include "StorageScheme.h"
 
 NS_SA_EXT_BEGIN(pg)
 
-using RemovePolicy = storage::RemovePolicy;
+using RemovePolicy = db::RemovePolicy;
 
 struct ConstraintRec {
 	enum Type {
@@ -40,11 +39,11 @@ struct ConstraintRec {
 	Type type;
 	Vector<String> fields;
 	String reference;
-	RemovePolicy remove = RemovePolicy::Null;
+	db::RemovePolicy remove = db::RemovePolicy::Null;
 
 	ConstraintRec(Type t) : type(t) { }
 	ConstraintRec(Type t, std::initializer_list<String> il) : type(t), fields(il) { }
-	ConstraintRec(Type t, const String &col, const String &ref = "", RemovePolicy r = RemovePolicy::Null)
+	ConstraintRec(Type t, const String &col, const String &ref = "", db::RemovePolicy r = db::RemovePolicy::Null)
 	: type(t), fields{col}, reference(ref), remove(r) { }
 };
 
@@ -214,9 +213,9 @@ static void writeAfterTrigger(StringStream &stream, const storage::Scheme *s, co
 	for (auto &it : fields) {
 		if (it.second.isFile()) {
 			writeFileUpdateTrigger(stream, s, it.second);
-		} else if (it.second.getType() == storage::Type::Object) {
+		} else if (it.second.getType() == db::Type::Object) {
 			const storage::FieldObject *objSlot = static_cast<const storage::FieldObject *>(it.second.getSlot());
-			if (objSlot->onRemove == storage::RemovePolicy::StrongReference) {
+			if (objSlot->onRemove == db::RemovePolicy::StrongReference) {
 				writeObjectUpdateTrigger(stream, s, objSlot);
 			}
 		}
@@ -228,9 +227,9 @@ static void writeAfterTrigger(StringStream &stream, const storage::Scheme *s, co
 	for (auto &it : fields) {
 		if (it.second.isFile()) {
 			writeFileRemoveTrigger(stream, s, it.second);
-		} else if (it.second.getType() == storage::Type::Object) {
+		} else if (it.second.getType() == db::Type::Object) {
 			const storage::FieldObject *objSlot = static_cast<const storage::FieldObject *>(it.second.getSlot());
-			if (objSlot->onRemove == storage::RemovePolicy::StrongReference) {
+			if (objSlot->onRemove == db::RemovePolicy::StrongReference) {
 				writeObjectRemoveTrigger(stream, s, objSlot);
 			}
 		}
@@ -252,9 +251,9 @@ static void writeBeforeTrigger(StringStream &stream, const storage::Scheme *s, c
 			<< "$ BEGIN\n\tIF (TG_OP = 'DELETE') THEN\n";
 
 	for (auto &it : fields) {
-		if (it.second.getType() == storage::Type::Set) {
+		if (it.second.getType() == db::Type::Set) {
 			const storage::FieldObject *objSlot = static_cast<const storage::FieldObject *>(it.second.getSlot());
-			if (objSlot->onRemove == storage::RemovePolicy::StrongReference) {
+			if (objSlot->onRemove == db::RemovePolicy::StrongReference) {
 				writeObjectSetRemoveTrigger(stream, s, objSlot);
 			}
 		}
@@ -462,15 +461,15 @@ void TableRec::writeCompareResult(StringStream &stream,
 				}
 				stream << ") REFERENCES " << cit.second.reference << " ( \"__oid\" )";
 				switch (cit.second.remove) {
-				case RemovePolicy::Cascade:
+				case db::RemovePolicy::Cascade:
 					stream << " ON DELETE CASCADE";
 					break;
-				case RemovePolicy::Restrict:
+				case db::RemovePolicy::Restrict:
 					stream << " ON DELETE RESTRICT";
 					break;
-				case RemovePolicy::Null:
-				case RemovePolicy::Reference:
-				case RemovePolicy::StrongReference:
+				case db::RemovePolicy::Null:
+				case db::RemovePolicy::Reference:
+				case db::RemovePolicy::StrongReference:
 					stream << " ON DELETE SET NULL";
 					break;
 				}
@@ -522,9 +521,9 @@ Map<String, TableRec> TableRec::parse(const storage::Interface::Config &cfg, con
 			auto &f = fit.second;
 			auto type = fit.second.getType();
 
-			if (type == storage::Type::Set) {
+			if (type == db::Type::Set) {
 				auto ref = static_cast<const storage::FieldObject *>(f.getSlot());
-				if (ref->onRemove == RemovePolicy::Reference || ref->onRemove == RemovePolicy::StrongReference) {
+				if (ref->onRemove == db::RemovePolicy::Reference || ref->onRemove == db::RemovePolicy::StrongReference) {
 					String name = it.first + "_f_" + fit.first;
 					auto & source = it.first;
 					auto target = ref->scheme->getName();
@@ -533,15 +532,15 @@ Map<String, TableRec> TableRec::parse(const storage::Interface::Config &cfg, con
 					table.cols.emplace(toString(target, "_id"), ColRec(ColRec::Type::Integer, true));
 
 					table.constraints.emplace(name + "_ref_" + source, ConstraintRec(
-							ConstraintRec::Reference, source + "_id", source, RemovePolicy::Cascade));
+							ConstraintRec::Reference, source + "_id", source, db::RemovePolicy::Cascade));
 					table.constraints.emplace(name + "_ref_" + ref->getName(), ConstraintRec(
-							ConstraintRec::Reference, toString(target, "_id"), target.str(), RemovePolicy::Cascade));
+							ConstraintRec::Reference, toString(target, "_id"), target.str(), db::RemovePolicy::Cascade));
 
 					table.pkey.emplace_back(source + "_id");
 					table.pkey.emplace_back(toString(target, "_id"));
 					tables.emplace(std::move(string::tolower(name)), std::move(table));
 				}
-			} else if (type == storage::Type::Array) {
+			} else if (type == db::Type::Array) {
 				auto slot = static_cast<const storage::FieldArray *>(f.getSlot());
 				if (slot->tfield && slot->tfield.isSimpleLayout()) {
 
@@ -554,21 +553,21 @@ Map<String, TableRec> TableRec::parse(const storage::Interface::Config &cfg, con
 
 					auto type = slot->tfield.getType();
 					switch (type) {
-					case storage::Type::Float:
+					case db::Type::Float:
 						table.cols.emplace("data", ColRec(ColRec::Type::Float));
 						break;
-					case storage::Type::Boolean:
+					case db::Type::Boolean:
 						table.cols.emplace("data", ColRec(ColRec::Type::Boolean));
 						break;
-					case storage::Type::Text:
+					case db::Type::Text:
 						table.cols.emplace("data", ColRec(ColRec::Type::Text));
 						break;
-					case storage::Type::Data:
-					case storage::Type::Bytes:
-					case storage::Type::Extra:
+					case db::Type::Data:
+					case db::Type::Bytes:
+					case db::Type::Extra:
 						table.cols.emplace("data", ColRec(ColRec::Type::Binary));
 						break;
-					case storage::Type::Integer:
+					case db::Type::Integer:
 						table.cols.emplace("data", ColRec(ColRec::Type::Integer));
 						break;
 					default:
@@ -576,17 +575,17 @@ Map<String, TableRec> TableRec::parse(const storage::Interface::Config &cfg, con
 					}
 
 					table.constraints.emplace(name + "_ref_" + source, ConstraintRec (
-							ConstraintRec::Reference, source + "_id", source, RemovePolicy::Cascade));
+							ConstraintRec::Reference, source + "_id", source, db::RemovePolicy::Cascade));
 					table.pkey.emplace_back("id");
 
-					if (f.hasFlag(storage::Flags::Unique)) {
+					if (f.hasFlag(db::Flags::Unique)) {
 						table.constraints.emplace(name + "_unique", ConstraintRec(ConstraintRec::Unique, {source + "_id", "data"}));
 					}
 
 					table.indexes.emplace(name + "_idx_" + source, source + "_id");
 					tables.emplace(std::move(name), std::move(table));
 				}
-			} else if (type == storage::Type::View) {
+			} else if (type == db::Type::View) {
 				auto slot = static_cast<const storage::FieldView *>(f.getSlot());
 
 				String name = toString(it.first, "_f_", fit.first, "_view");
@@ -601,9 +600,9 @@ Map<String, TableRec> TableRec::parse(const storage::Interface::Config &cfg, con
 				table.cols.emplace(toString(target, "_id"), ColRec(ColRec::Type::Integer, true));
 
 				table.constraints.emplace(name + "_ref_" + source, ConstraintRec(
-						ConstraintRec::Reference, source + "_id", source, RemovePolicy::Cascade));
+						ConstraintRec::Reference, source + "_id", source, db::RemovePolicy::Cascade));
 				table.constraints.emplace(name + "_ref_" + slot->getName(), ConstraintRec(
-						ConstraintRec::Reference, toString(target, "_id"), target.str(), RemovePolicy::Cascade));
+						ConstraintRec::Reference, toString(target, "_id"), target.str(), db::RemovePolicy::Cascade));
 
 				table.pkey.emplace_back("__vid");
 				auto tblIt = tables.emplace(std::move(name), std::move(table)).first;
@@ -656,7 +655,7 @@ Map<String, TableRec> TableRec::get(Handle &h, StringStream &stream) {
 
 	h.performSimpleSelect("SELECT table_name FROM information_schema.tables "
 			"WHERE table_schema='public' AND table_type='BASE TABLE';",
-			[&] (sql::Result &tables) {
+			[&] (db::sql::Result &tables) {
 		for (auto it : tables) {
 			ret.emplace(it.at(0).str(), TableRec());
 			stream << "TABLE " << it.at(0) << "\n";
@@ -666,7 +665,7 @@ Map<String, TableRec> TableRec::get(Handle &h, StringStream &stream) {
 
 	h.performSimpleSelect("SELECT table_name, column_name, is_nullable, data_type FROM information_schema.columns "
 			"WHERE table_schema='public';"_weak,
-			[&] (sql::Result &columns) {
+			[&] (db::sql::Result &columns) {
 		for (auto it : columns) {
 			auto tname = it.at(0).str();
 			auto f = ret.find(tname);
@@ -699,7 +698,7 @@ Map<String, TableRec> TableRec::get(Handle &h, StringStream &stream) {
 
 	h.performSimpleSelect("SELECT table_name, constraint_name, constraint_type FROM information_schema.table_constraints "
 			"WHERE table_schema='public' AND constraint_schema='public';"_weak,
-			[&] (sql::Result &constraints) {
+			[&] (db::sql::Result &constraints) {
 		for (auto it : constraints) {
 			auto tname = it.at(0).str();
 			auto f = ret.find(tname);
@@ -718,7 +717,7 @@ Map<String, TableRec> TableRec::get(Handle &h, StringStream &stream) {
 	});
 
 	h.performSimpleSelect(String::make_weak(INDEX_QUERY),
-			[&] (sql::Result &indexes) {
+			[&] (db::sql::Result &indexes) {
 		for (auto it : indexes) {
 			auto tname = it.at(0).str();
 			auto f = ret.find(tname);
@@ -737,7 +736,7 @@ Map<String, TableRec> TableRec::get(Handle &h, StringStream &stream) {
 
 	h.performSimpleSelect("SELECT event_object_table, trigger_name FROM information_schema.triggers "
 			"WHERE trigger_schema='public';"_weak,
-			[&] (sql::Result &triggers) {
+			[&] (db::sql::Result &triggers) {
 		for (auto it : triggers) {
 			auto tname = it.at(0).str();
 			auto f = ret.find(tname);
@@ -772,56 +771,56 @@ TableRec::TableRec(const storage::Interface::Config &cfg, const storage::Scheme 
 		auto &f = it.second;
 		auto type = it.second.getType();
 
-		if (type == storage::Type::File || type == storage::Type::Image) {
+		if (type == db::Type::File || type == db::Type::Image) {
 			hasAfterTrigger = true;
 			hashStreamAfter << it.first << toInt(type);
 		}
 
 		switch (type) {
-		case storage::Type::None:
-		case storage::Type::Array:
-		case storage::Type::View:
+		case db::Type::None:
+		case db::Type::Array:
+		case db::Type::View:
 			break;
 
-		case storage::Type::Float:
-			cols.emplace(it.first, ColRec(ColRec::Type::Float, f.hasFlag(storage::Flags::Required)));
+		case db::Type::Float:
+			cols.emplace(it.first, ColRec(ColRec::Type::Float, f.hasFlag(db::Flags::Required)));
 			emplaced = true;
 			break;
 
-		case storage::Type::Boolean:
-			cols.emplace(it.first, ColRec(ColRec::Type::Boolean, f.hasFlag(storage::Flags::Required)));
+		case db::Type::Boolean:
+			cols.emplace(it.first, ColRec(ColRec::Type::Boolean, f.hasFlag(db::Flags::Required)));
 			emplaced = true;
 			break;
 
-		case storage::Type::Text:
-			cols.emplace(it.first, ColRec(ColRec::Type::Text, f.hasFlag(storage::Flags::Required)));
+		case db::Type::Text:
+			cols.emplace(it.first, ColRec(ColRec::Type::Text, f.hasFlag(db::Flags::Required)));
 			emplaced = true;
 			break;
 
-		case storage::Type::Data:
-		case storage::Type::Bytes:
-		case storage::Type::Extra:
-			cols.emplace(it.first, ColRec(ColRec::Type::Binary, f.hasFlag(storage::Flags::Required)));
+		case db::Type::Data:
+		case db::Type::Bytes:
+		case db::Type::Extra:
+			cols.emplace(it.first, ColRec(ColRec::Type::Binary, f.hasFlag(db::Flags::Required)));
 			emplaced = true;
 			break;
 
-		case storage::Type::Integer:
-		case storage::Type::File:
-		case storage::Type::Image:
-			cols.emplace(it.first, ColRec(ColRec::Type::Integer, f.hasFlag(storage::Flags::Required)));
+		case db::Type::Integer:
+		case db::Type::File:
+		case db::Type::Image:
+			cols.emplace(it.first, ColRec(ColRec::Type::Integer, f.hasFlag(db::Flags::Required)));
 			emplaced = true;
 			break;
 
-		case storage::Type::FullTextView:
-			cols.emplace(it.first, ColRec(ColRec::Type::TsVector, f.hasFlag(storage::Flags::Required)));
+		case db::Type::FullTextView:
+			cols.emplace(it.first, ColRec(ColRec::Type::TsVector, f.hasFlag(db::Flags::Required)));
 			emplaced = true;
 			break;
 
-		case storage::Type::Object:
-			cols.emplace(it.first, ColRec(ColRec::Type::Integer, f.hasFlag(storage::Flags::Required)));
+		case db::Type::Object:
+			cols.emplace(it.first, ColRec(ColRec::Type::Integer, f.hasFlag(db::Flags::Required)));
 			if (f.isReference()) {
 				auto objSlot = static_cast<const storage::FieldObject *>(f.getSlot());
-				if (objSlot->onRemove == storage::RemovePolicy::StrongReference) {
+				if (objSlot->onRemove == db::RemovePolicy::StrongReference) {
 					hasAfterTrigger = true;
 					hashStreamAfter << it.first << toInt(type);
 				}
@@ -829,44 +828,44 @@ TableRec::TableRec(const storage::Interface::Config &cfg, const storage::Scheme 
 			emplaced = true;
 			break;
 
-		case storage::Type::Set:
+		case db::Type::Set:
 			if (f.isReference()) {
 				auto objSlot = static_cast<const storage::FieldObject *>(f.getSlot());
-				if (objSlot->onRemove == storage::RemovePolicy::StrongReference) {
+				if (objSlot->onRemove == db::RemovePolicy::StrongReference) {
 					hasBeforeTrigger = true;
 					hashStreamBefore << it.first << toInt(type);
 				}
 			}
 			break;
 
-		case storage::Type::Custom:
-			auto objSlot = f.getSlot<storage::FieldCustom>();
-			cols.emplace(it.first, ColRec(objSlot->getTypeName(), f.hasFlag(storage::Flags::Required)));
+		case db::Type::Custom:
+			auto objSlot = f.getSlot<db::FieldCustom>();
+			cols.emplace(it.first, ColRec(objSlot->getTypeName(), f.hasFlag(db::Flags::Required)));
 			emplaced = true;
 			break;
 		}
 
 		if (emplaced) {
-			if (type == storage::Type::Object) {
+			if (type == db::Type::Object) {
 				auto ref = static_cast<const storage::FieldObject *>(f.getSlot());
 				auto target = ref->scheme->getName();
 				auto cname = toString(name, "_ref_", it.first, "_", target);
 				constraints.emplace(cname, ConstraintRec(ConstraintRec::Reference, it.first, target.str(), ref->onRemove));
 				indexes.emplace(toString(name, "_idx_", it.first), it.first);
-			} else if (type == storage::Type::File || type == storage::Type::Image) {
+			} else if (type == db::Type::File || type == db::Type::Image) {
 				auto ref = cfg.fileScheme;
 				auto cname = toString(name, "_ref_", it.first);
 				auto target = ref->getName();
-				constraints.emplace(cname, ConstraintRec(ConstraintRec::Reference, it.first, target.str(), storage::RemovePolicy::Null));
+				constraints.emplace(cname, ConstraintRec(ConstraintRec::Reference, it.first, target.str(), db::RemovePolicy::Null));
 			}
 
-			if ((type == storage::Type::Text && f.getTransform() == storage::Transform::Alias) ||
-					f.hasFlag(storage::Flags::Unique)) {
+			if ((type == db::Type::Text && f.getTransform() == db::Transform::Alias) ||
+					f.hasFlag(db::Flags::Unique)) {
 				constraints.emplace(toString(name, "_unique_", it.first), ConstraintRec(ConstraintRec::Unique, it.first));
 			}
 
-			if ((type == storage::Type::Text && f.getTransform() == storage::Transform::Alias)
-					|| (f.hasFlag(storage::Flags::Indexed) && !f.hasFlag(storage::Flags::Unique))) {
+			if ((type == db::Type::Text && f.getTransform() == db::Transform::Alias)
+					|| (f.hasFlag(db::Flags::Indexed) && !f.hasFlag(db::Flags::Unique))) {
 				indexes.emplace(toString(name, "_idx_", it.first), it.first);
 			}
 		}
@@ -913,8 +912,7 @@ bool Handle::init(const Interface::Config &cfg, const Map<String, const Scheme *
 			performSimpleQuery("COMMIT;"_weak);
 		} else {
 			log::format("Database", "Fail to perform update %s", name.c_str());
-			stream << "\nError: " << lastError << "\n" << apr_dbd_error(handle->driver, handle->handle, lastError) << "\n";
-
+			stream << "\nError: " << PQresStatus(lastError) << "\n";
 			performSimpleQuery("ROLLBACK;"_weak);
 		}
 

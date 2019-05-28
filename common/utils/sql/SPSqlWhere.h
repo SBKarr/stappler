@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,15 +27,17 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(sql)
 
-inline void Query_writeOperator(StringStream &stream, Operator op) {
+template <typename Stream>
+inline void Query_writeOperator(Stream &stream, Operator op) {
 	switch (op) {
 	case Operator::And: stream << "AND"; break;
 	case Operator::Or: stream << "OR"; break;
 	}
 }
 
-template <typename Binder, typename Value>
-inline void Query_writeComparation(Query<Binder> &q, StringStream &stream, const typename Query<Binder>::Field &f, Comparation cmp, Value &&v1, Value &&v2) {
+template <typename Binder, typename Interface, typename Value>
+inline void Query_writeComparation(Query<Binder, Interface> &q, typename Interface::StringStreamType &stream,
+		const typename Query<Binder, Interface>::Field &f, Comparation cmp, Value &&v1, Value &&v2) {
 	stream << "(";
 	switch (cmp) {
 	case Comparation::LessThen:
@@ -113,28 +115,28 @@ inline void Query_writeComparation(Query<Binder> &q, StringStream &stream, const
 	stream << ")";
 }
 
-template <typename Binder>
+template <typename Binder, typename Interface>
 template <typename Clause>
 template <typename Value>
-auto Query<Binder>::WhereClause<Clause>::where(Operator op, const Field &field, Comparation cmp, Value &&val) -> Clause & {
+auto Query<Binder, Interface>::WhereClause<Clause>::where(Operator op, const Field &field, Comparation cmp, Value &&val) -> Clause & {
 	if (this->state == State::None) { this->state = State::Some; } else { Query_writeOperator(this->query->stream, op); }
 	Query_writeComparation(*(this->query), this->query->stream, field, cmp, std::forward<Value>(val), std::forward<Value>(val));
 	return (Clause &)*this;
 }
 
-template <typename Binder>
+template <typename Binder, typename Interface>
 template <typename Clause>
 template <typename Value>
-auto Query<Binder>::WhereClause<Clause>::where(Operator op, const Field &field, Comparation cmp, Value &&val1, Value &&val2) -> Clause & {
+auto Query<Binder, Interface>::WhereClause<Clause>::where(Operator op, const Field &field, Comparation cmp, Value &&val1, Value &&val2) -> Clause & {
 	if (this->state == State::None) { this->state = State::Some; } else { Query_writeOperator(this->query->stream, op); }
 	Query_writeComparation(*(this->query), this->query->stream, field, cmp, std::forward<Value>(val1), std::forward<Value>(val2));
 	return (Clause &)*this;
 }
 
-template <typename Binder>
+template <typename Binder, typename Interface>
 template <typename Clause>
 template <typename Callback>
-auto Query<Binder>::WhereClause<Clause>::parenthesis(Operator op, const Callback &cb) -> Clause & {
+auto Query<Binder, Interface>::WhereClause<Clause>::parenthesis(Operator op, const Callback &cb) -> Clause & {
 	if (this->state == State::None) { this->state = State::Some; } else { Query_writeOperator(this->query->stream, op); }
 	this->query->stream << "(";
 	auto state = this->state;
@@ -146,55 +148,54 @@ auto Query<Binder>::WhereClause<Clause>::parenthesis(Operator op, const Callback
 	return (Clause &)*this;
 }
 
-template <typename Binder>
+template <typename Binder, typename Interface>
 template <typename ... Args>
-auto Query<Binder>::WhereBegin::where(Args && ... args) -> WhereContinue {
+auto Query<Binder, Interface>::WhereBegin::where(Args && ... args) -> WhereContinue {
 	WhereContinue q(this->query);
 	q.where(sql::Operator::And, std::forward<Args>(args)...);
 	return q;
 }
 
-template <typename Binder>
-auto Query<Binder>::WhereBegin::where() -> WhereContinue {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::WhereBegin::where() -> WhereContinue {
 	return WhereContinue(this->query);
 }
 
-template <typename Binder>
+template <typename Binder, typename Interface>
 template <typename Callback>
-auto Query<Binder>::WhereBegin::whereParentesis(const Callback &cb) -> WhereContinue {
+auto Query<Binder, Interface>::WhereBegin::whereParentesis(const Callback &cb) -> WhereContinue {
 	WhereContinue q(this->query);
 	q.parenthesis(sql::Operator::And, cb);
 	return q;
 }
 
-template <typename Binder>
+template <typename Binder, typename Interface>
 template <typename Clause>
 template <typename Value>
-auto Query<Binder>::SetClause<Clause>::set(const StringView &f, Value &&v) -> Clause & {
+auto Query<Binder, Interface>::SetClause<Clause>::set(const StringView &f, Value &&v) -> Clause & {
 	if (this->state == State::None) { this->state = State::Some; } else { this->query->stream << ","; }
 	this->query->stream << " \"" << f << "\"=";
 	this->query->writeBind(forward<Value>(v));
 	return (Clause &)*this;
 }
 
-template <typename Binder>
+template <typename Binder, typename Interface>
 template <typename Clause>
 template <typename Value>
-auto Query<Binder>::SetClause<Clause>::set(const StringView &t, const StringView &f, Value && v) -> Clause & {
+auto Query<Binder, Interface>::SetClause<Clause>::set(const StringView &t, const StringView &f, Value && v) -> Clause & {
 	if (this->state == State::None) { this->state = State::Some; } else { this->query->stream << ","; }
 	this->query->stream << " " << t << ".\"" << f << "\"=";
 	this->query->writeBind(forward<Value>(v));
 	return (Clause &)*this;
 }
 
-template <typename Binder>
+template <typename Binder, typename Interface>
 template <typename Clause>
-auto Query<Binder>::SetClause<Clause>::def(const StringView &f) -> Clause & {
+auto Query<Binder, Interface>::SetClause<Clause>::def(const StringView &f) -> Clause & {
 	if (this->state == State::None) { this->state = State::Some; } else { this->query->stream << ","; }
 	this->query->stream << " \"" << f << "\"=DEFAULT";
 	return (Clause &)*this;
 }
-
 
 NS_SP_EXT_END(sql)
 

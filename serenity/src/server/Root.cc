@@ -34,7 +34,6 @@ THE SOFTWARE.
 
 #include "SPDataStream.h"
 #include "Server.h"
-#include "StorageScheme.h"
 #include "WebSocket.h"
 #include "Task.h"
 

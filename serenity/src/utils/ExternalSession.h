@@ -25,7 +25,6 @@ THE SOFTWARE.
 
 #include "Request.h"
 #include "SPDataWrapper.h"
-#include "StorageTransaction.h"
 
 NS_SA_BEGIN
 

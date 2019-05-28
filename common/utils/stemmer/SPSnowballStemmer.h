@@ -189,6 +189,8 @@ protected:
 };
 
 struct SearchData {
+	using String = memory::PoolInterface::StringType;
+
 	enum Rank {
 		A,
 		B,

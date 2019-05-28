@@ -91,7 +91,7 @@ protected:
 	bool processEmailTest(Request &rctx, data::Value &ret, const data::Value &input);
 	bool processUrlTest(Request &rctx, data::Value &ret, const data::Value &input);
 	bool processUserTest(Request &rctx, data::Value &ret, const data::Value &input);
-	bool processImageTest(Request &rctx, data::Value &ret, const data::Value &input, InputFile &);
+	bool processImageTest(Request &rctx, data::Value &ret, const data::Value &input, db::InputFile &);
 };
 
 class ErrorsGui : public RequestHandler {

@@ -102,6 +102,7 @@ public:
 
 	// init with jpeg or png data
 	Bitmap(const Bytes &, const StrideFn &strideFn = nullptr);
+	Bitmap(const BytesView &, const StrideFn &strideFn = nullptr);
 	Bitmap(const uint8_t *, size_t, const StrideFn &strideFn = nullptr);
 
 	// init with raw data
@@ -151,14 +152,14 @@ public:
 	size_t size() const { return _data.size(); }
 
 	FileFormat getOriginalFormat() const { return _originalFormat; }
-	String getOriginalFormatName() const { return _originalFormatName; }
+	StringView getOriginalFormatName() const { return _originalFormatName; }
 
-	bool save(const String &, bool invert = false);
-	bool save(FileFormat, const String &, bool invert = false);
-	bool save(const String &name, const String &path, bool invert = false);
+	bool save(const StringView &, bool invert = false);
+	bool save(FileFormat, const StringView &, bool invert = false);
+	bool save(const StringView &name, const StringView &path, bool invert = false);
 
 	Bytes write(FileFormat = FileFormat::Png, bool invert = false);
-	Bytes write(const String &name, bool invert = false);
+	Bytes write(const StringView &name, bool invert = false);
 
 	// resample with default filter (usually Lanczos4)
 	Bitmap resample(uint32_t width, uint32_t height, uint32_t stride = 0) const;
@@ -203,7 +204,7 @@ public:
 	using write_fn = Bytes (*) (const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride,
 			Color format, bool invert);
 
-	using save_fn = bool (*) (const String &, const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride,
+	using save_fn = bool (*) (const StringView &, const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride,
 			Color format, bool invert);
 
 	static void add(const BitmapFormat &);
@@ -214,7 +215,7 @@ public:
 	BitmapFormat(const String &, const check_fn&, const size_fn &, const load_fn & = nullptr,
 			const write_fn & = nullptr, const save_fn & = nullptr);
 
-	const String &getName() const;
+	StringView getName() const;
 
 	bool isRecognizable() const;
 	bool isReadable() const;
@@ -233,7 +234,7 @@ public:
 	Bytes write(const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride,
 			Color format, bool invert);
 
-	bool save(const String &, const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride,
+	bool save(const StringView &, const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride,
 			Color format, bool invert);
 
 	check_fn getCheckFn() const;

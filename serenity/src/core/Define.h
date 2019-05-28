@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef SADEFINES_H
 #define	SADEFINES_H
 
-#include "Config.h"
+#include "Forward.h"
 
 #include "SPAprAllocator.h"
 #include "SPAprArray.h"

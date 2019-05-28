@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2017-2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,14 +26,13 @@ THE SOFTWARE.
 #include "Define.h"
 #include "PGHandle.h"
 #include "ResourceTemplates.h"
-#include "StorageScheme.h"
-#include "User.h"
+#include "Request.h"
 
 NS_SA_EXT_BEGIN(pg)
 
-class PgQueryInterface : public sql::QueryInterface {
+class PgQueryInterface : public db::QueryInterface {
 public:
-	using Binder = sql::Binder;
+	using Binder = db::Binder;
 
 	size_t push(String &&val) {
 		params.emplace_back(Bytes());
@@ -109,68 +108,68 @@ public:
 	}
 
 
-	virtual void bindInt(Binder &, StringStream &query, int64_t val) override {
+	virtual void bindInt(db::Binder &, StringStream &query, int64_t val) override {
 		query << val;
 	}
-	virtual void bindUInt(Binder &, StringStream &query, uint64_t val) override {
+	virtual void bindUInt(db::Binder &, StringStream &query, uint64_t val) override {
 		query << val;
 	}
-	virtual void bindString(Binder &, StringStream &query, const String &val) override {
+	virtual void bindString(db::Binder &, StringStream &query, const String &val) override {
 		if (auto num = push(String(val))) {
 			query << "$" << num << "::text";
 		}
 	}
-	virtual void bindMoveString(Binder &, StringStream &query, String &&val) override {
+	virtual void bindMoveString(db::Binder &, StringStream &query, String &&val) override {
 		if (auto num = push(move(val))) {
 			query << "$" << num << "::text";
 		}
 	}
-	virtual void bindStringView(Binder &, StringStream &query, const StringView &val) override {
+	virtual void bindStringView(db::Binder &, StringStream &query, const StringView &val) override {
 		if (auto num = push(val.str())) {
 			query << "$" << num << "::text";
 		}
 	}
-	virtual void bindBytes(Binder &, StringStream &query, const Bytes &val) override {
+	virtual void bindBytes(db::Binder &, StringStream &query, const Bytes &val) override {
 		if (auto num = push(Bytes(val))) {
 			query << "$" << num << "::bytea";
 		}
 	}
-	virtual void bindMoveBytes(Binder &, StringStream &query, Bytes &&val) override {
+	virtual void bindMoveBytes(db::Binder &, StringStream &query, Bytes &&val) override {
 		if (auto num = push(move(val))) {
 			query << "$" << num << "::bytea";
 		}
 	}
-	virtual void bindCoderSource(Binder &, StringStream &query, const CoderSource &val) override {
+	virtual void bindCoderSource(db::Binder &, StringStream &query, const CoderSource &val) override {
 		if (auto num = push(Bytes(val.data(), val.data() + val.size()))) {
 			query << "$" << num << "::bytea";
 		}
 	}
-	virtual void bindValue(Binder &, StringStream &query, const data::Value &val) override {
+	virtual void bindValue(db::Binder &, StringStream &query, const data::Value &val) override {
 		push(query, val, false);
 	}
-	virtual void bindDataField(Binder &, StringStream &query, const Binder::DataField &f) override {
-		if (f.field && f.field->getType() == storage::Type::Custom) {
-			if (!f.field->getSlot<storage::FieldCustom>()->writeToStorage(*this, query, f.data)) {
+	virtual void bindDataField(db::Binder &, StringStream &query, const db::Binder::DataField &f) override {
+		if (f.field && f.field->getType() == db::Type::Custom) {
+			if (!f.field->getSlot<db::FieldCustom>()->writeToStorage(*this, query, f.data)) {
 				query << "NULL";
 			}
 		} else {
 			push(query, f.data, f.force);
 		}
 	}
-	virtual void bindTypeString(Binder &, StringStream &query, const Binder::TypeString &type) override {
+	virtual void bindTypeString(db::Binder &, StringStream &query, const db::Binder::TypeString &type) override {
 		if (auto num = push(type.str)) {
 			query << "$" << num << "::" << type.type;
 		}
 	}
 
-	virtual void bindFullText(Binder &, StringStream &query, const Binder::FullTextField &d) override {
+	virtual void bindFullText(db::Binder &, StringStream &query, const db::Binder::FullTextField &d) override {
 		if (!d.data || !d.data.isArray() || d.data.size() == 0) {
 			query << "NULL";
 		} else {
 			bool first = true;
 			for (auto &it : d.data.asArray()) {
 				auto &data = it.getString(0);
-				auto lang = storage::FullTextData::Language(it.getInteger(1));
+				auto lang = db::FullTextData::Language(it.getInteger(1));
 				auto rank = it.getInteger(2);
 
 				if (!data.empty()) {
@@ -178,27 +177,27 @@ public:
 
 					auto dataIdx = push(data);
 
-					query << " setweight(to_tsvector('" << storage::FullTextData::getLanguageString(lang) << "', $" << dataIdx << "::text), '" << char('A' + char(rank)) << "')";
+					query << " setweight(to_tsvector('" << db::FullTextData::getLanguageString(lang) << "', $" << dataIdx << "::text), '" << char('A' + char(rank)) << "')";
 				}
 			}
 		}
 	}
 
-	virtual void bindFullTextRank(Binder &, StringStream &query, const Binder::FullTextRank &d) override {
+	virtual void bindFullTextRank(db::Binder &, StringStream &query, const db::Binder::FullTextRank &d) override {
 		int normalizationValue = 0;
-		if (d.field->hasFlag(storage::Flags::TsNormalize_DocLength)) {
+		if (d.field->hasFlag(db::Flags::TsNormalize_DocLength)) {
 			normalizationValue |= 2;
-		} else if (d.field->hasFlag(storage::Flags::TsNormalize_DocLengthLog)) {
+		} else if (d.field->hasFlag(db::Flags::TsNormalize_DocLengthLog)) {
 			normalizationValue |= 1;
-		} else if (d.field->hasFlag(storage::Flags::TsNormalize_UniqueWordsCount)) {
+		} else if (d.field->hasFlag(db::Flags::TsNormalize_UniqueWordsCount)) {
 			normalizationValue |= 8;
-		} else if (d.field->hasFlag(storage::Flags::TsNormalize_UniqueWordsCountLog)) {
+		} else if (d.field->hasFlag(db::Flags::TsNormalize_UniqueWordsCountLog)) {
 			normalizationValue |= 16;
 		}
 		query << " ts_rank(" << d.scheme << ".\"" << d.field->getName() << "\" , __ts_query_" << d.field->getName() << ", " << normalizationValue << ")";
 	}
 
-	virtual void bindFullTextData(Binder &, StringStream &query, const storage::FullTextData &d) override {
+	virtual void bindFullTextData(db::Binder &, StringStream &query, const db::FullTextData &d) override {
 		auto idx = push(String(d.buffer));
 		query  << " websearch_to_tsquery('" << d.getLanguageString() << "', $" << idx << "::text)";
 	}
@@ -213,7 +212,7 @@ public:
 	Vector<bool> binary;
 };
 
-class PgResultInterface : public sql::ResultInterface {
+class PgResultInterface : public db::ResultInterface {
 public:
 	inline static constexpr bool pgsql_is_success(ExecStatusType x) {
 		return (x == PGRES_EMPTY_QUERY) || (x == PGRES_COMMAND_OK) || (x == PGRES_TUPLES_OK) || (x == PGRES_SINGLE_TUPLE);
@@ -363,7 +362,7 @@ struct ExecParamData {
 	const int *paramLengths = nullptr;
 	const int *paramFormats = nullptr;
 
-	ExecParamData(const sql::SqlQuery &query) {
+	ExecParamData(const db::sql::SqlQuery &query) {
 		auto queryInterface = static_cast<PgQueryInterface *>(query.getInterface());
 
 		auto size = queryInterface->params.size();
@@ -400,23 +399,20 @@ struct ExecParamData {
 	}
 };
 
-Handle::Handle(apr_pool_t *p, ap_dbd_t *h) : pool(p), handle(h) {
-	if (strcmp(apr_dbd_name(handle->driver), "pgsql") == 0) {
-		conn = (PGconn *)apr_dbd_native_handle(handle->driver, handle->handle);
+Handle::Handle(apr_pool_t *p, ap_dbd_t *h) : pool(p) {
+	if (strcmp(apr_dbd_name(h->driver), "pgsql") == 0) {
+		conn = (PGconn *)apr_dbd_native_handle(h->driver, h->handle);
 	}
 }
-Handle::Handle(Handle &&h) : pool(h.pool), handle(h.handle), conn(h.conn) {
+Handle::Handle(Handle &&h) : pool(h.pool), conn(h.conn) {
 	h.pool = nullptr;
-	h.handle = nullptr;
 	h.conn = nullptr;
 }
 
 Handle & Handle::operator=(Handle &&h) {
 	pool = h.pool;
-	handle = h.handle;
 	conn = h.conn;
 	h.pool = nullptr;
-	h.handle = nullptr;
 	h.conn = nullptr;
 	return *this;
 }
@@ -425,14 +421,14 @@ Handle::operator bool() const {
 	return pool != nullptr && conn != nullptr;
 }
 
-void Handle::makeQuery(const Callback<void(sql::SqlQuery &)> &cb) {
+void Handle::makeQuery(const Callback<void(db::sql::SqlQuery &)> &cb) {
 	PgQueryInterface interface;
-	sql::SqlQuery query(&interface);
+	db::sql::SqlQuery query(&interface);
 	cb(query);
 }
 
-bool Handle::selectQuery(const sql::SqlQuery &query, const Callback<void(sql::Result &)> &cb) {
-	if (!conn || getTransactionStatus() == storage::TransactionStatus::Rollback) {
+bool Handle::selectQuery(const db::sql::SqlQuery &query, const Callback<void(db::sql::Result &)> &cb) {
+	if (!conn || getTransactionStatus() == db::TransactionStatus::Rollback) {
 		return false;
 	}
 
@@ -455,13 +451,13 @@ bool Handle::selectQuery(const sql::SqlQuery &query, const Callback<void(sql::Re
 
 	lastError = res.getError();
 
-	sql::Result ret(&res);
+	db::sql::Result ret(&res);
 	cb(ret);
 	return res.isSuccess();
 }
 
 bool Handle::performSimpleQuery(const StringView &query) {
-	if (getTransactionStatus() == storage::TransactionStatus::Rollback) {
+	if (getTransactionStatus() == db::TransactionStatus::Rollback) {
 		return false;
 	}
 
@@ -476,8 +472,8 @@ bool Handle::performSimpleQuery(const StringView &query) {
 	return res.isSuccess();
 }
 
-bool Handle::performSimpleSelect(const StringView &query, const Callback<void(sql::Result &)> &cb) {
-	if (getTransactionStatus() == storage::TransactionStatus::Rollback) {
+bool Handle::performSimpleSelect(const StringView &query, const Callback<void(db::sql::Result &)> &cb) {
+	if (getTransactionStatus() == db::TransactionStatus::Rollback) {
 		return false;
 	}
 
@@ -485,7 +481,7 @@ bool Handle::performSimpleSelect(const StringView &query, const Callback<void(sq
 	lastError = res.getError();
 
 	if (res.isSuccess()) {
-		sql::Result ret(&res);
+		db::sql::Result ret(&res);
 		cb(ret);
 	} else {
 		auto info = res.getInfo();
@@ -513,7 +509,7 @@ bool Handle::beginTransaction_pg(TransactionLevel l) {
 		if (performSimpleQuery("BEGIN ISOLATION LEVEL READ COMMITTED"_weak)) {
 			setVariables();
 			level = TransactionLevel::ReadCommited;
-			transactionStatus = storage::TransactionStatus::Commit;
+			transactionStatus = db::TransactionStatus::Commit;
 			return true;
 		}
 		break;
@@ -521,7 +517,7 @@ bool Handle::beginTransaction_pg(TransactionLevel l) {
 		if (performSimpleQuery("BEGIN ISOLATION LEVEL REPEATABLE READ"_weak)) {
 			setVariables();
 			level = TransactionLevel::RepeatableRead;
-			transactionStatus = storage::TransactionStatus::Commit;
+			transactionStatus = db::TransactionStatus::Commit;
 			return true;
 		}
 		break;
@@ -529,7 +525,7 @@ bool Handle::beginTransaction_pg(TransactionLevel l) {
 		if (performSimpleQuery("BEGIN ISOLATION LEVEL SERIALIZABLE"_weak)) {
 			setVariables();
 			level = TransactionLevel::Serialized;
-			transactionStatus = storage::TransactionStatus::Commit;
+			transactionStatus = db::TransactionStatus::Commit;
 			return true;
 		}
 		break;
@@ -540,20 +536,20 @@ bool Handle::beginTransaction_pg(TransactionLevel l) {
 }
 
 void Handle::cancelTransaction_pg() {
-	transactionStatus = storage::TransactionStatus::Rollback;
+	transactionStatus = db::TransactionStatus::Rollback;
 }
 
 bool Handle::endTransaction_pg() {
 	switch (transactionStatus) {
-	case storage::TransactionStatus::Commit:
-		transactionStatus = storage::TransactionStatus::None;
+	case db::TransactionStatus::Commit:
+		transactionStatus = db::TransactionStatus::None;
 		if (performSimpleQuery("COMMIT"_weak)) {
 			finalizeBroadcast();
 			return true;
 		}
 		break;
-	case storage::TransactionStatus::Rollback:
-		transactionStatus = storage::TransactionStatus::None;
+	case db::TransactionStatus::Rollback:
+		transactionStatus = db::TransactionStatus::None;
 		if (performSimpleQuery("ROLLBACK"_weak)) {
 			finalizeBroadcast();
 			return false;

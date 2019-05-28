@@ -22,8 +22,6 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "ResourceTemplates.h"
-#include "StorageAdapter.h"
-#include "StorageScheme.h"
 #include "SPCharGroup.h"
 
 NS_SA_BEGIN
@@ -34,11 +32,11 @@ ResourceSearch::ResourceSearch(const Adapter &a, QueryList &&q, const Field *pro
 }
 
 data::Value ResourceSearch::getResultObject() {
-	auto slot = _field->getSlot<storage::FieldFullTextView>();
+	auto slot = _field->getSlot<db::FieldFullTextView>();
 	if (auto &searchData = _queries.getExtraData().getValue("search")) {
-		Vector<storage::FullTextData> q = slot->parseQuery(searchData);
+		Vector<db::FullTextData> q = slot->parseQuery(searchData);
 		if (!q.empty()) {
-			_queries.setFullTextQuery(_field, Vector<storage::FullTextData>(q));
+			_queries.setFullTextQuery(_field, Vector<db::FullTextData>(q));
 			auto ret = _transaction.performQueryList(_queries, _queries.size(), false, _field);
 			if (!ret.isArray()) {
 				return data::Value();
@@ -59,7 +57,7 @@ data::Value ResourceSearch::getResultObject() {
 	return data::Value();
 }
 
-Vector<String> ResourceSearch::stemQuery(const Vector<storage::FullTextData> &query) {
+Vector<String> ResourceSearch::stemQuery(const Vector<db::FullTextData> &query) {
 	Vector<String> ret; ret.reserve(256 / sizeof(String)); // memory manager hack
 
 	for (auto &it : query) {

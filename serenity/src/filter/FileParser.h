@@ -53,7 +53,7 @@ public:
 
 protected:
 	bool skip = false;
-	InputFile *file = nullptr;
+	db::InputFile *file = nullptr;
 };
 
 NS_SA_END

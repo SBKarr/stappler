@@ -27,37 +27,6 @@ THE SOFTWARE.
 
 NS_SA_BEGIN
 
-struct InputFile : public AllocPool {
-	String path;
-	String name;
-	String type;
-	String encoding;
-	String original;
-	apr::file file;
-
-	size_t writeSize;
-	size_t headerSize;
-	int64_t id;
-
-	InputFile(String && name, String && type, String && enc, String && orig, size_t s, int64_t id);
-	~InputFile();
-
-	bool isOpen() const;
-
-	size_t write(const char *, size_t);
-	void close();
-
-	bool save(const String &) const;
-
-	int64_t negativeId() const { return - id - 1; }
-
-	InputFile(const InputFile &) = delete;
-	InputFile(InputFile &&) = delete;
-
-	InputFile &operator=(const InputFile &) = delete;
-	InputFile &operator=(InputFile &&) = delete;
-};
-
 NS_SA_END
 
 #endif /* SERENITY_SRC_FILTER_INPUTFILE_H_ */

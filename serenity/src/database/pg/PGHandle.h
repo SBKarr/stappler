@@ -23,8 +23,8 @@ THE SOFTWARE.
 #ifndef SERENITY_SRC_DATABASE_PG_PGHANDLE_H_
 #define SERENITY_SRC_DATABASE_PG_PGHANDLE_H_
 
-#include "SqlHandle.h"
-#include "StorageScheme.h"
+#include "Define.h"
+#include "SPDBSqlHandle.h"
 
 NS_SA_EXT_BEGIN(pg)
 
@@ -34,7 +34,7 @@ enum class TransactionLevel {
 	Serialized,
 };
 
-class Handle : public sql::SqlHandle {
+class Handle : public db::sql::SqlHandle {
 public:
 	using Value = data::Value;
 
@@ -48,11 +48,11 @@ public:
 
 	operator bool () const;
 
-	virtual void makeQuery(const Callback<void(sql::SqlQuery &)> &cb);
+	virtual void makeQuery(const Callback<void(db::sql::SqlQuery &)> &cb);
 
-	virtual bool selectQuery(const sql::SqlQuery &, const Callback<void(sql::Result &)> &cb);
+	virtual bool selectQuery(const db::sql::SqlQuery &, const Callback<void(db::sql::Result &)> &cb);
 	virtual bool performSimpleQuery(const StringView &);
-	virtual bool performSimpleSelect(const StringView &, const Callback<void(sql::Result &)> &cb);
+	virtual bool performSimpleSelect(const StringView &, const Callback<void(db::sql::Result &)> &cb);
 
 public: // adapter interface
 	virtual bool init(const Interface::Config &cfg, const Map<String, const Scheme *> &) override;
@@ -67,8 +67,7 @@ protected:
 
 	using ViewIdVec = Vector<Pair<const storage::Scheme::ViewScheme *, int64_t>>;
 
-	apr_pool_t *pool;
-	ap_dbd_t *handle;
+	memory::pool_t *pool = nullptr;
     PGconn *conn = nullptr;
     ExecStatusType lastError = PGRES_EMPTY_QUERY;
     TransactionLevel level = TransactionLevel::ReadCommited;

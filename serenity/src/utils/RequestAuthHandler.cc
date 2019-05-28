@@ -20,11 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "User.h"
 #include "ExternalSession.h"
 #include "RequestAuthHandler.h"
-#include "StorageScheme.h"
-#include "StorageWorker.h"
 
 NS_SA_BEGIN
 
@@ -398,9 +395,9 @@ bool RequestAuthHandler::processActivate(Request &rctx, data::Value &result) {
 	if (!isActivated(userData)) {
 		if (validateActivationCode(userData, code)) {
 			data::Value patch;
-			if (_userScheme->getField("isActive")->getType() == storage::Type::Boolean) {
+			if (_userScheme->getField("isActive")->getType() == db::Type::Boolean) {
 				patch.setBool(true, "isActive");
-			} else if (_userScheme->getField("data")->getType() == storage::Type::Extra) {
+			} else if (_userScheme->getField("data")->getType() == db::Type::Extra) {
 				patch = data::Value({ pair( "data", data::Value { pair("emailValidated", data::Value(true)) } ) });
 			}
 			userData = storage::Worker(*_userScheme, _storage).asSystem().update(oid, patch, true);

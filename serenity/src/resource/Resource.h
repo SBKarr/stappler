@@ -23,13 +23,11 @@ THE SOFTWARE.
 #ifndef SERENITY_SRC_RESOURCE_RESOURCE_H_
 #define SERENITY_SRC_RESOURCE_RESOURCE_H_
 
-#include "StorageQuery.h"
-#include "StorageTransaction.h"
 #include "AccessControl.h"
 
 NS_SA_BEGIN
 
-using ResolveOptions = query::Resolve;
+using ResolveOptions = db::Resolve;
 
 class Resource : public AllocBase {
 public:
@@ -40,7 +38,7 @@ public:
 	using Field = storage::Field;
 	using Object = storage::Object;
 	using File = storage::File;
-	using Query = storage::Query;
+	using Query = db::Query;
 	using QueryList = storage::QueryList;
 
 	using Permission = AccessControl::Permission;
@@ -91,8 +89,8 @@ public: // common interface
 	virtual bool prepareCreate();
 	virtual bool prepareAppend();
 	virtual bool removeObject();
-	virtual data::Value updateObject(data::Value &, apr::array<InputFile> &);
-	virtual data::Value createObject(data::Value &, apr::array<InputFile> &);
+	virtual data::Value updateObject(data::Value &, apr::array<db::InputFile> &);
+	virtual data::Value createObject(data::Value &, apr::array<db::InputFile> &);
 	virtual data::Value appendObject(data::Value &);
 
 	virtual data::Value getResultObject();
@@ -104,7 +102,7 @@ public:
 	size_t getMaxFileSize() const;
 
 protected:
-	void encodeFiles(data::Value &, apr::array<InputFile> &);
+	void encodeFiles(data::Value &, apr::array<db::InputFile> &);
 
 	void resolveSet(const QueryFieldResolver &, int64_t, const Field &, data::Value &);
 	void resolveObject(const QueryFieldResolver &, int64_t, const Field &, data::Value &);

@@ -159,10 +159,10 @@ struct JpegStruct {
 		valid = true;
 	}
 
-	JpegStruct(const String &filename) : JpegStruct() {
+	JpegStruct(const StringView &filename) : JpegStruct() {
 		fp = filesystem_native::fopen_fn(filename, "wb");
 		if (!fp) {
-			log::format("Bitmap", "fail to open file '%s' to write jpeg data", filename.c_str());
+			log::format("Bitmap", "fail to open file '%s' to write jpeg data", filename.data());
 			valid = false;
 			return;
 		}
@@ -225,7 +225,7 @@ struct JpegStruct {
 	}
 };
 
-static bool saveJpeg(const String &filename, const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride, Color format, bool invert) {
+static bool saveJpeg(const StringView &filename, const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride, Color format, bool invert) {
 	JpegStruct s(filename);
 	return s.write(data, width, height, stride, format, invert);
 }
@@ -414,10 +414,10 @@ struct PngStruct {
 	    valid = true;
 	}
 
-	PngStruct(const String &filename) : PngStruct() {
+	PngStruct(const StringView &filename) : PngStruct() {
 	    fp = filesystem_native::fopen_fn(filename, "wb");
 	    if (!fp) {
-	        log::format("Bitmap", "fail to open file '%s' to write png data", filename.c_str());
+	        log::format("Bitmap", "fail to open file '%s' to write png data", filename.data());
 		    valid = false;
 			return;
 	    }
@@ -494,7 +494,7 @@ struct PngStruct {
 	}
 };
 
-static bool savePng(const String &filename, const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride, Color format, bool invert) {
+static bool savePng(const StringView &filename, const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride, Color format, bool invert) {
 	PngStruct s(filename);
 	return s.write(data, width, height, stride, format, invert);
 }
@@ -629,10 +629,10 @@ struct WebpStruct {
 		vec = v;
 	}
 
-	WebpStruct(const String &filename, Color format, bool lossless) : WebpStruct(format, lossless) {
+	WebpStruct(const StringView &filename, Color format, bool lossless) : WebpStruct(format, lossless) {
 	    fp = filesystem_native::fopen_fn(filename, "wb");
 	    if (!fp) {
-	        log::format("Bitmap", "fail to open file '%s' to write png data", filename.c_str());
+	        log::format("Bitmap", "fail to open file '%s' to write png data", filename.data());
 		    valid = false;
 			return;
 	    }
@@ -699,7 +699,7 @@ struct WebpStruct {
 };
 
 
-static bool saveWebpLossless(const String &filename, const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride, Color format, bool invert) {
+static bool saveWebpLossless(const StringView &filename, const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride, Color format, bool invert) {
 	if (invert) {
 		log::format("Bitmap", "Inverted output is not supported for webp");
 		return false;
@@ -727,7 +727,7 @@ static Bytes writeWebpLossless(const uint8_t *data, uint32_t width, uint32_t hei
 	return Bytes();
 }
 
-static bool saveWebpLossy(const String &filename, const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride, Color format, bool invert) {
+static bool saveWebpLossy(const StringView &filename, const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride, Color format, bool invert) {
 	if (invert) {
 		log::format("Bitmap", "Inverted output is not supported for webp");
 		return false;
@@ -1165,7 +1165,7 @@ BitmapFormat::BitmapFormat(const String &n, const check_fn &c, const size_fn &s,
 	}
 }
 
-const String &BitmapFormat::getName() const {
+StringView BitmapFormat::getName() const {
 	return name;
 }
 
@@ -1215,7 +1215,7 @@ Bytes BitmapFormat::write(const uint8_t *data, uint32_t width, uint32_t height, 
 	return Bytes();
 }
 
-bool BitmapFormat::save(const String &path, const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride, Color format, bool invert) {
+bool BitmapFormat::save(const StringView &path, const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride, Color format, bool invert) {
 	if (save_ptr) {
 		return save_ptr(path, data, width, height, stride, format, invert);
 	}
@@ -1397,7 +1397,7 @@ bool Bitmap::check(const StringView &name, const uint8_t * data, size_t dataLen)
 	return false;
 }
 
-bool Bitmap::save(const String &path, bool invert) {
+bool Bitmap::save(const StringView &path, bool invert) {
 	FileFormat fmt = FileFormat::Png;
 	auto ext = filepath::lastExtension(path);
 	if (ext == "png") {
@@ -1409,14 +1409,14 @@ bool Bitmap::save(const String &path, bool invert) {
 	}
 	return save(fmt, path, invert);
 }
-bool Bitmap::save(FileFormat fmt, const String &path, bool invert) {
+bool Bitmap::save(FileFormat fmt, const StringView &path, bool invert) {
 	auto &support = s_defaultFormats[toInt(fmt)];
 	if (support.isWritable()) {
 		return support.save(path, _data.data(), _width, _height, _stride, _color, invert);
 	}
 	return false;
 }
-bool Bitmap::save(const String &name, const String &path, bool invert) {
+bool Bitmap::save(const StringView &name, const StringView &path, bool invert) {
 	BitmapFormat::save_fn fn = nullptr;
 
 	s_formatListMutex.lock();
@@ -1442,7 +1442,7 @@ Bytes Bitmap::write(FileFormat fmt, bool invert) {
 	}
 	return Bytes();
 }
-Bytes Bitmap::write(const String &name, bool invert) {
+Bytes Bitmap::write(const StringView &name, bool invert) {
 	BitmapFormat::write_fn fn = nullptr;
 
 	s_formatListMutex.lock();
@@ -1467,7 +1467,7 @@ bool Bitmap::loadData(const uint8_t * data, size_t dataLen, const StrideFn &stri
 		if (fmt.is(data, dataLen) && fmt.isReadable()) {
 			if (fmt.load(data, dataLen, _data, _color, _alpha, _width, _height, _stride, strideFn)) {
 				_originalFormat = FileFormat(i);
-				_originalFormatName = fmt.getName();
+				_originalFormatName = fmt.getName().str();
 				return true;
 			}
 		}
@@ -1489,7 +1489,7 @@ bool Bitmap::loadData(const uint8_t * data, size_t dataLen, const StrideFn &stri
 	for (auto &it : fns) {
 		if (it.is(data, dataLen) && it.load(data, dataLen, _data, _color, _alpha, _width, _height, _stride, strideFn)) {
 			_originalFormat = FileFormat::Custom;
-			_originalFormatName = it.getName();
+			_originalFormatName = it.getName().str();
 			return true;
 		}
 	}

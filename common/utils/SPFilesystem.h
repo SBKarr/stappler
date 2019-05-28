@@ -39,7 +39,7 @@ public:
 	using streamsize = std::streamsize;
 	using int_type = typename traits_type::int_type;
 
-	static file open_tmp(const char *prefix);
+	static file open_tmp(const char *prefix, bool delOnClose = true);
 
 	file();
 	explicit file(FILE *, Flags = Flags::None);

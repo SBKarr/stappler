@@ -23,7 +23,12 @@ THE SOFTWARE.
 #ifndef SERENITY_SRC_CORE_CONFIG_H_
 #define SERENITY_SRC_CORE_CONFIG_H_
 
-#include "Forward.h"
+#include "SPCommon.h"
+#include "SPTime.h"
+
+#define NS_SA_EXT_BEGIN(v)		NS_SP_EXT_BEGIN(serenity) namespace v {
+#define NS_SA_EXT_END(v)		NS_SP_EXT_END(serenity) }
+#define USING_NS_SA_EXT(v)		using namespace stappler::serenity::v
 
 NS_SA_EXT_BEGIN(config)
 

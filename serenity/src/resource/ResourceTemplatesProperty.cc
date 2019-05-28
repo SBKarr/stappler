@@ -22,8 +22,6 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "ResourceTemplates.h"
-#include "StorageAdapter.h"
-#include "StorageScheme.h"
 
 NS_SA_BEGIN
 
@@ -97,13 +95,13 @@ bool ResourceFile::prepareCreate() {
 	_perms = isSchemeAllowed(getScheme(), Action::Update);
 	return _perms != Permission::Restrict;
 }
-data::Value ResourceFile::updateObject(data::Value &, apr::array<InputFile> &f) {
+data::Value ResourceFile::updateObject(data::Value &, apr::array<db::InputFile> &f) {
 	if (f.empty()) {
 		_status = HTTP_BAD_REQUEST;
 		return data::Value();
 	}
 
-	InputFile *file = nullptr;
+	db::InputFile *file = nullptr;
 	for (auto &it : f) {
 		if (it.name == _field->getName() || it.name == "content") {
 			file = &it;
@@ -161,13 +159,13 @@ data::Value ResourceFile::updateObject(data::Value &, apr::array<InputFile> &f) 
 	}
 	return data::Value();
 }
-data::Value ResourceFile::createObject(data::Value &val, apr::array<InputFile> &f) {
+data::Value ResourceFile::createObject(data::Value &val, apr::array<db::InputFile> &f) {
 	// same as update
 	return updateObject(val, f);
 }
 
 data::Value ResourceFile::getResultObject() {
-	if (_field->hasFlag(storage::Flags::Protected)) {
+	if (_field->hasFlag(db::Flags::Protected)) {
 		_status = HTTP_NOT_FOUND;
 		return data::Value();
 	}
@@ -213,7 +211,7 @@ bool ResourceArray::prepareCreate() {
 	_perms = isSchemeAllowed(getScheme(), Action::Append);
 	return _perms != Permission::Restrict;
 }
-data::Value ResourceArray::updateObject(data::Value &data, apr::array<InputFile> &) {
+data::Value ResourceArray::updateObject(data::Value &data, apr::array<db::InputFile> &) {
 	data::Value arr;
 	if (data.isDictionary()) {
 		auto &newArr = data.getValue(_field->getName());
@@ -257,7 +255,7 @@ data::Value ResourceArray::updateObject(data::Value &data, apr::array<InputFile>
 	}
 	return data::Value();
 }
-data::Value ResourceArray::createObject(data::Value &data, apr::array<InputFile> &) {
+data::Value ResourceArray::createObject(data::Value &data, apr::array<db::InputFile> &) {
 	data::Value arr;
 	if (data.isDictionary()) {
 		auto &newArr = data.getValue(_field->getName());
@@ -306,7 +304,7 @@ data::Value ResourceArray::createObject(data::Value &data, apr::array<InputFile>
 }
 
 data::Value ResourceArray::getResultObject() {
-	if (_field->hasFlag(storage::Flags::Protected)) {
+	if (_field->hasFlag(db::Flags::Protected)) {
 		_status = HTTP_NOT_FOUND;
 		return data::Value();
 	}
@@ -374,7 +372,7 @@ bool ResourceFieldObject::removeObject() {
 	});
 }
 
-data::Value ResourceFieldObject::updateObject(data::Value &val, apr::array<InputFile> &files) {
+data::Value ResourceFieldObject::updateObject(data::Value &val, apr::array<db::InputFile> &files) {
 	// create or update object
 	data::Value ret;
 	_transaction.perform([&] () -> bool {
@@ -391,7 +389,7 @@ data::Value ResourceFieldObject::updateObject(data::Value &val, apr::array<Input
 	return ret;
 }
 
-data::Value ResourceFieldObject::createObject(data::Value &val, apr::array<InputFile> &files) {
+data::Value ResourceFieldObject::createObject(data::Value &val, apr::array<db::InputFile> &files) {
 	// remove then recreate object
 	data::Value ret;
 	_transaction.perform([&] () -> bool {
@@ -471,7 +469,7 @@ bool ResourceFieldObject::doRemoveObject() {
 	}
 }
 
-data::Value ResourceFieldObject::doUpdateObject(data::Value &val, apr::array<InputFile> &files) {
+data::Value ResourceFieldObject::doUpdateObject(data::Value &val, apr::array<db::InputFile> &files) {
 	encodeFiles(val, files);
 	if (_perms == Permission::Full) {
 		return Worker(getScheme(), _transaction).update(getObjectId(), val);
@@ -495,7 +493,7 @@ data::Value ResourceFieldObject::doUpdateObject(data::Value &val, apr::array<Inp
 	}
 }
 
-data::Value ResourceFieldObject::doCreateObject(data::Value &val, apr::array<InputFile> &files) {
+data::Value ResourceFieldObject::doCreateObject(data::Value &val, apr::array<db::InputFile> &files) {
 	encodeFiles(val, files);
 	if (_perms == Permission::Full) {
 		if (auto ret = Worker(getScheme(), _transaction).create(val)) {
@@ -548,8 +546,8 @@ bool ResourceView::prepareCreate() { return false; }
 bool ResourceView::prepareAppend() { return false; }
 bool ResourceView::removeObject() { return false; }
 
-data::Value ResourceView::updateObject(data::Value &data, apr::array<InputFile> &) { return data::Value(); }
-data::Value ResourceView::createObject(data::Value &data, apr::array<InputFile> &) { return data::Value(); }
+data::Value ResourceView::updateObject(data::Value &data, apr::array<db::InputFile> &) { return data::Value(); }
+data::Value ResourceView::createObject(data::Value &data, apr::array<db::InputFile> &) { return data::Value(); }
 
 data::Value ResourceView::getResultObject() {
 	auto ret = _transaction.performQueryList(_queries, maxOf<size_t>(), false, _field);

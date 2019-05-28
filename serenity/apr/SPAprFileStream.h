@@ -41,7 +41,7 @@ public:
 	using pos_type = typename traits_type::pos_type;
 	using off_type = typename traits_type::off_type;
 
-	static basic_file open_tmp(const char *prefix);
+	static basic_file open_tmp(const char *prefix, bool delOnClose = true);
 
 	basic_file(const allocator_type &alloc = allocator_type()) :  _allocator(alloc), _file(nullptr) { }
 	basic_file(basic_file && other, const allocator_type &alloc = allocator_type())
@@ -52,7 +52,13 @@ public:
 	~basic_file() { close(); }
 
 	basic_file & operator= (const basic_file &) = delete;
-	basic_file & operator= (basic_file &&) = delete;
+	basic_file & operator= (basic_file && other) {
+		if (_allocator == other._allocator) {
+			_file = other._file;
+			other._file = nullptr;
+		}
+		return *this;
+	}
 
 	void swap(basic_file & f) { std::swap(_file, f._file); }
 

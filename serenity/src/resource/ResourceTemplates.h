@@ -46,8 +46,8 @@ public:
 
 	virtual bool prepareUpdate() override;
 	virtual bool prepareCreate() override;
-	virtual data::Value updateObject(data::Value &, apr::array<InputFile> &f) override;
-	virtual data::Value createObject(data::Value &val, apr::array<InputFile> &f) override;
+	virtual data::Value updateObject(data::Value &, apr::array<db::InputFile> &f) override;
+	virtual data::Value createObject(data::Value &val, apr::array<db::InputFile> &f) override;
 
 	virtual data::Value getResultObject() override;
 
@@ -62,8 +62,8 @@ public:
 
 	virtual bool prepareUpdate() override;
 	virtual bool prepareCreate() override;
-	virtual data::Value updateObject(data::Value &data, apr::array<InputFile> &) override;
-	virtual data::Value createObject(data::Value &data, apr::array<InputFile> &) override;
+	virtual data::Value updateObject(data::Value &data, apr::array<db::InputFile> &) override;
+	virtual data::Value createObject(data::Value &data, apr::array<db::InputFile> &) override;
 	virtual data::Value getResultObject() override;
 
 protected:
@@ -79,13 +79,13 @@ public:
 	virtual bool prepareCreate() override;
 	virtual bool prepareAppend() override;
 	virtual bool removeObject() override;
-	virtual data::Value updateObject(data::Value &data, apr::array<InputFile> &) override;
+	virtual data::Value updateObject(data::Value &data, apr::array<db::InputFile> &) override;
 	virtual data::Value getResultObject() override;
 
 	virtual int64_t getObjectMtime();
 
 protected:
-	data::Value performUpdate(const Vector<int64_t> &, data::Value &, apr::array<InputFile> &);
+	data::Value performUpdate(const Vector<int64_t> &, data::Value &, apr::array<db::InputFile> &);
 
 	data::Value processResultList(const QueryList &s, data::Value &ret);
 	bool processResultObject(Permission p, const QueryList &s, data::Value &obj);
@@ -98,10 +98,10 @@ public:
 	ResourceReslist(const Adapter &a, QueryList &&q);
 
 	virtual bool prepareCreate() override;
-	virtual data::Value createObject(data::Value &, apr::array<InputFile> &) override;
+	virtual data::Value createObject(data::Value &, apr::array<db::InputFile> &) override;
 
 protected:
-	data::Value performCreateObject(data::Value &data, apr::array<InputFile> &files, const data::Value &extra);
+	data::Value performCreateObject(data::Value &data, apr::array<db::InputFile> &files, const data::Value &extra);
 };
 
 class ResourceSet : public ResourceReslist {
@@ -109,7 +109,7 @@ public:
 	ResourceSet(const Adapter &a, QueryList &&q);
 
 	virtual bool prepareAppend() override;
-	virtual data::Value createObject(data::Value &, apr::array<InputFile> &) override;
+	virtual data::Value createObject(data::Value &, apr::array<db::InputFile> &) override;
 	virtual data::Value appendObject(data::Value &) override;
 };
 
@@ -121,8 +121,8 @@ public:
 	virtual bool prepareCreate() override;
 	virtual bool prepareAppend() override;
 	virtual bool removeObject() override;
-	virtual data::Value updateObject(data::Value &, apr::array<InputFile> &) override;
-	virtual data::Value createObject(data::Value &, apr::array<InputFile> &) override;
+	virtual data::Value updateObject(data::Value &, apr::array<db::InputFile> &) override;
+	virtual data::Value createObject(data::Value &, apr::array<db::InputFile> &) override;
 	virtual data::Value appendObject(data::Value &) override;
 
 protected:
@@ -154,8 +154,8 @@ public:
 	virtual bool prepareCreate() override;
 	virtual bool prepareAppend() override;
 	virtual bool removeObject() override;
-	virtual data::Value updateObject(data::Value &, apr::array<InputFile> &) override;
-	virtual data::Value createObject(data::Value &, apr::array<InputFile> &) override;
+	virtual data::Value updateObject(data::Value &, apr::array<db::InputFile> &) override;
+	virtual data::Value createObject(data::Value &, apr::array<db::InputFile> &) override;
 	virtual data::Value appendObject(data::Value &) override;
 
 protected:
@@ -166,8 +166,8 @@ protected:
 	data::Value getTargetObject(bool forUpdate);
 
 	bool doRemoveObject();
-	data::Value doUpdateObject(data::Value &, apr::array<InputFile> &);
-	data::Value doCreateObject(data::Value &, apr::array<InputFile> &);
+	data::Value doUpdateObject(data::Value &, apr::array<db::InputFile> &);
+	data::Value doCreateObject(data::Value &, apr::array<db::InputFile> &);
 
 	int64_t _objectId = 0;
 	int64_t _rootId = 0;
@@ -185,8 +185,8 @@ public:
 	virtual bool prepareAppend() override;
 	virtual bool removeObject() override;
 
-	virtual data::Value updateObject(data::Value &data, apr::array<InputFile> &) override;
-	virtual data::Value createObject(data::Value &data, apr::array<InputFile> &) override;
+	virtual data::Value updateObject(data::Value &data, apr::array<db::InputFile> &) override;
+	virtual data::Value createObject(data::Value &data, apr::array<db::InputFile> &) override;
 
 	virtual data::Value getResultObject() override;
 
@@ -201,7 +201,7 @@ public:
 	virtual data::Value getResultObject() override;
 
 protected:
-	Vector<String> stemQuery(const Vector<storage::FullTextData> &);
+	Vector<String> stemQuery(const Vector<db::FullTextData> &);
 
 	void makeHeadlines(data::Value &obj, const data::Value &headlineInfo, const Vector<String> &);
 	String makeHeadline(const StringView &value, const data::Value &headlineInfo, const Vector<String> &);

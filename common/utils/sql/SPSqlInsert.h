@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,9 +27,9 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(sql)
 
-template <typename Binder>
+template <typename Binder, typename Interface>
 template <typename ...Args>
-auto Query<Binder>::Insert::values(Args && ... args) -> InsertValues {
+auto Query<Binder, Interface>::Insert::values(Args && ... args) -> InsertValues {
 	switch (this->state) {
 	case State::None: this->query->stream << " VALUES"; break;
 	case State::Some: this->query->stream << ")VALUES"; break;
@@ -41,9 +41,9 @@ auto Query<Binder>::Insert::values(Args && ... args) -> InsertValues {
 	return v;
 }
 
-template <typename Binder>
+template <typename Binder, typename Interface>
 template <typename ...Args>
-auto Query<Binder>::InsertValues::values(Args && ... args) -> InsertValues & {
+auto Query<Binder, Interface>::InsertValues::values(Args && ... args) -> InsertValues & {
 	if (this->state == State::Some) {
 		this->query->stream << ")";
 		this->state = State::None;
@@ -55,9 +55,9 @@ auto Query<Binder>::InsertValues::values(Args && ... args) -> InsertValues & {
 	return *this;
 }
 
-template <typename Binder>
+template <typename Binder, typename Interface>
 template <typename Value>
-auto Query<Binder>::InsertValues::value(Value &&val) -> InsertValues & {
+auto Query<Binder, Interface>::InsertValues::value(Value &&val) -> InsertValues & {
 	switch (this->state) {
 	case State::None:
 		this->query->stream << ",(";
@@ -78,8 +78,8 @@ auto Query<Binder>::InsertValues::value(Value &&val) -> InsertValues & {
 	return *this;
 }
 
-template <typename Binder>
-auto Query<Binder>::InsertValues::def() -> InsertValues & {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::InsertValues::def() -> InsertValues & {
 	if (this->state == State::None) {
 		this->query->stream << ",(";
 		this->state = State::Some;
@@ -91,8 +91,8 @@ auto Query<Binder>::InsertValues::def() -> InsertValues & {
 	return *this;
 }
 
-template <typename Binder>
-auto Query<Binder>::InsertValues::onConflict(const String &field) -> InsertConflict {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::InsertValues::onConflict(const String &field) -> InsertConflict {
 	switch (this->state) {
 	case State::None: break;
 	case State::Init: break;
@@ -105,8 +105,8 @@ auto Query<Binder>::InsertValues::onConflict(const String &field) -> InsertConfl
 	return InsertConflict(this->query);
 }
 
-template <typename Binder>
-auto Query<Binder>::InsertValues::onConflictDoNothing() -> InsertPostConflict {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::InsertValues::onConflictDoNothing() -> InsertPostConflict {
 	switch (this->state) {
 	case State::None: break;
 	case State::Init: break;
@@ -119,8 +119,8 @@ auto Query<Binder>::InsertValues::onConflictDoNothing() -> InsertPostConflict {
 	return InsertPostConflict(this->query);
 }
 
-template <typename Binder>
-auto Query<Binder>::InsertValues::returning() -> Returning {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::InsertValues::returning() -> Returning {
 	switch (this->state) {
 	case State::None: break;
 	case State::Init: break;
@@ -133,94 +133,94 @@ auto Query<Binder>::InsertValues::returning() -> Returning {
 	return Returning(this->query);
 }
 
-template <typename Binder>
-auto Query<Binder>::InsertConflict::doNothing() -> InsertPostConflict {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::InsertConflict::doNothing() -> InsertPostConflict {
 	this->query->stream << " DO NOTHING";
 	return InsertPostConflict(this->query);
 }
 
-template <typename Binder>
-auto Query<Binder>::InsertConflict::doUpdate() -> InsertUpdateValues {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::InsertConflict::doUpdate() -> InsertUpdateValues {
 	this->query->stream << " DO UPDATE SET";
 	return InsertUpdateValues(this->query);
 }
 
-template <typename Binder>
-auto Query<Binder>::InsertUpdateValues::excluded(const String &f) -> InsertUpdateValues & {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::InsertUpdateValues::excluded(const String &f) -> InsertUpdateValues & {
 	if (this->state == State::None) { this->state = State::Some; } else { this->query->stream << ","; }
 	this->query->stream << " \"" << f << "\"=EXCLUDED.\"" << f << "\"";
 	return *this;
 }
 
-template <typename Binder>
-auto Query<Binder>::InsertUpdateValues::excluded(const String &f, const String &v) -> InsertUpdateValues & {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::InsertUpdateValues::excluded(const String &f, const String &v) -> InsertUpdateValues & {
 	if (this->state == State::None) { this->state = State::Some; } else { this->query->stream << ","; }
 	this->query->stream << " \"" << f << "\"=EXCLUDED.\"" << v << "\"";
 	return *this;
 }
 
-template <typename Binder>
+template <typename Binder, typename Interface>
 template <typename ... Args>
-auto Query<Binder>::InsertUpdateValues::where(Args && ... args) -> InsertWhereValues {
+auto Query<Binder, Interface>::InsertUpdateValues::where(Args && ... args) -> InsertWhereValues {
 	this->query->stream << " WHERE";
 	InsertWhereValues q(this->query);
 	q.where(sql::Operator::And, forward<Args>(args)...);
 	return q;
 };
 
-template <typename Binder>
-auto Query<Binder>::InsertUpdateValues::where() -> InsertWhereValues {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::InsertUpdateValues::where() -> InsertWhereValues {
 	this->query->stream << " WHERE";
 	return InsertWhereValues(this->query);
 };
 
-template <typename Binder>
-auto Query<Binder>::InsertUpdateValues::returning() -> Returning {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::InsertUpdateValues::returning() -> Returning {
 	this->query->stream << " RETURNING";
 	return Returning(this->query);
 }
 
-template <typename Binder>
-auto Query<Binder>::InsertWhereValues::returning() -> Returning {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::InsertWhereValues::returning() -> Returning {
 	this->query->stream << " RETURNING";
 	return Returning(this->query);
 }
 
-template <typename Binder>
-auto Query<Binder>::InsertPostConflict::returning() -> Returning {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::InsertPostConflict::returning() -> Returning {
 	this->query->stream << " RETURNING";
 	return Returning(this->query);
 }
 
-template <typename Binder>
-auto Query<Binder>::Returning::all() -> Returning & {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::Returning::all() -> Returning & {
 	if (this->state == State::None) { this->state = State::Some; } else { this->query->stream << ","; }
 	this->query->stream << " *";
 	return *this;
 }
 
-template <typename Binder>
-auto Query<Binder>::Returning::count() -> Returning & {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::Returning::count() -> Returning & {
 	if (this->state == State::None) { this->state = State::Some; } else { this->query->stream << ","; }
 	this->query->stream << " COUNT(*)";
 	return *this;
 }
 
-template <typename Binder>
-auto Query<Binder>::Returning::count(const StringView &alias) -> Returning & {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::Returning::count(const StringView &alias) -> Returning & {
 	if (this->state == State::None) { this->state = State::Some; } else { this->query->stream << ","; }
 	this->query->stream << " COUNT(*) AS \"" << alias << "\"";
 	return *this;
 }
 
-template <typename Binder>
-auto Query<Binder>::insert(const StringView & field) -> Insert {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::insert(const StringView & field) -> Insert {
 	stream << "INSERT INTO " << field;
 	return Insert(this, State::Init);
 }
 
-template <typename Binder>
-auto Query<Binder>::insert(const StringView &field, const StringView &alias) -> Insert {
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::insert(const StringView &field, const StringView &alias) -> Insert {
 	stream << "INSERT INTO " << field << " AS " << alias;
 	return Insert(this, State::Init);
 }

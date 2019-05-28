@@ -36,9 +36,13 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(apr)
 
-basic_file basic_file::open_tmp(const char *prefix) {
+basic_file basic_file::open_tmp(const char *prefix, bool delOnClose) {
 	basic_file file;
-	file.open_tmp(prefix, APR_FOPEN_CREATE | APR_FOPEN_READ | APR_FOPEN_WRITE | APR_FOPEN_EXCL);
+	auto flags = APR_FOPEN_CREATE | APR_FOPEN_READ | APR_FOPEN_WRITE | APR_FOPEN_EXCL;
+	if (delOnClose) {
+		flags |= APR_FOPEN_DELONCLOSE;
+	}
+	file.open_tmp(prefix, flags);
 	return file;
 }
 

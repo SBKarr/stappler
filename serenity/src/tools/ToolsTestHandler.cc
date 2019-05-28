@@ -22,8 +22,6 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "Tools.h"
-#include "StorageScheme.h"
-#include "User.h"
 
 #include "SPBitmap.h"
 
@@ -150,7 +148,7 @@ bool TestHandler::processUserTest(Request &rctx, data::Value &ret, const data::V
 		}
 	} else if (d.getBool("all")) {
 		auto s = rctx.server().getUserScheme();
-		auto data = storage::Worker(*s, adapter).select(storage::Query::all());
+		auto data = db::Worker(*s, adapter).select(db::Query::all());
 
 		ret.setValue(std::move(data), "users");
 	} else {
@@ -169,7 +167,7 @@ bool TestHandler::processUserTest(Request &rctx, data::Value &ret, const data::V
 	return true;
 }
 
-bool TestHandler::processImageTest(Request &rctx, data::Value &ret, const data::Value &input, InputFile & f) {
+bool TestHandler::processImageTest(Request &rctx, data::Value &ret, const data::Value &input, db::InputFile & f) {
 	ret.setString(f.type, "type");
 	ret.setString(f.name, "name");
 	ret.setString(f.original, "original");

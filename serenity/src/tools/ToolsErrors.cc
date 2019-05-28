@@ -22,9 +22,7 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "Tools.h"
-#include "User.h"
 #include "Output.h"
-#include "StorageScheme.h"
 #include "Resource.h"
 #include "TemplateExec.h"
 #include "SPugContext.h"
@@ -56,7 +54,7 @@ int ErrorsGui::onTranslateName(Request &req) {
 		auto s = req.server().getErrorScheme();
 		auto a = req.storage();
 		if (s && a) {
-			errorsData = storage::Worker(*s, a).select(storage::Query().order("__oid", storage::Ordering::Descending));
+			errorsData = db::Worker(*s, a).select(db::Query().order("__oid", db::Ordering::Descending));
 		}
 
 		req.runPug("virtual://html/errors.pug", [&] (pug::Context &exec, const pug::Template &tpl) -> bool {

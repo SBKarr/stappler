@@ -22,7 +22,6 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "AccessControl.h"
-#include "User.h"
 #include "Request.h"
 
 NS_SA_BEGIN

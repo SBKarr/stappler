@@ -40,7 +40,7 @@ NS_SP_EXT_BEGIN(filesystem)
 
 #define SP_TERMINATED_DATA(view) (view.terminated()?view.data():view.str().data())
 
-file file::open_tmp(const char *prefix) {
+file file::open_tmp(const char *prefix, bool delOnClose) {
 	if (prefix == nullptr) {
 		prefix = "sa.tmp";
 	}
@@ -55,7 +55,7 @@ file file::open_tmp(const char *prefix) {
 
 	if (auto fd = ::mkstemp(buf)) {
 		if (auto f = ::fdopen(fd, "wb+")) {
-			auto ret = file(f, Flags::DelOnClose);
+			auto ret = file(f, delOnClose ? Flags::DelOnClose : Flags::None);
 			ret.set_tmp_path(buf);
 			return ret;
 		}

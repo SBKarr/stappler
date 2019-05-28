@@ -22,7 +22,6 @@ THE SOFTWARE.
 
 #include "Define.h"
 #include "Tools.h"
-#include "User.h"
 #include "Session.h"
 
 NS_SA_EXT_BEGIN(tools)

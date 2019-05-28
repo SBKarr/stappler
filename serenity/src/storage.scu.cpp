@@ -24,21 +24,6 @@ THE SOFTWARE.
 **/
 
 #include "Define.h"
-#include "StorageAdapter.cc"
-#include "StorageAuth.cc"
-#include "StorageField.cc"
-#include "StorageFile.cc"
-#include "StorageObject.cc"
-#include "StorageQuery.cc"
-#include "StorageResolver.cc"
-#include "StorageWorker.cc"
-#include "StorageScheme.cc"
-#include "StorageTransaction.cc"
 
-#include "SqlHandle.cc"
-#include "SqlHandleObject.cc"
-#include "SqlHandleProp.cc"
-#include "SqlQuery.cc"
-#include "SqlResult.cc"
 #include "PGHandle.cc"
 #include "PGHandleInit.cc"
