@@ -36,7 +36,7 @@ static server_rec *getServerFromContext(pool_t *p, uint32_t tag, void *ptr) {
 	case uint32_t(Server): return (server_rec *)ptr; break;
 	case uint32_t(Connection): return ((conn_rec *)ptr)->base_server; break;
 	case uint32_t(Request): return ((request_rec *)ptr)->server; break;
-	case uint32_t(Pool): return nullptr; break;
+	case uint32_t(Pool): return memory::pool::get<server_rec>(p, "Apr.Server"); break;
 	}
 	return nullptr;
 }

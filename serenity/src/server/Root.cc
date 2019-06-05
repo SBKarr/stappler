@@ -322,6 +322,7 @@ static void *Root_performTask(apr_thread_t *, void *ptr) {
 bool Root::performTask(const Server &serv, Task *task, bool performFirst) {
 	if (_threadPool && task) {
 		task->setServer(serv);
+		memory::pool::store(task->pool(), serv.server(), "Apr.Server");
 		auto ctx = new (task->pool()) TaskContext( task, serv.server() );
 		if (performFirst) {
 			return apr_thread_pool_top(_threadPool, &Root_performTask, ctx, apr_byte_t(task->getPriority()), nullptr) == APR_SUCCESS;
@@ -334,6 +335,8 @@ bool Root::performTask(const Server &serv, Task *task, bool performFirst) {
 
 bool Root::scheduleTask(const Server &serv, Task *task, TimeInterval interval) {
 	if (_threadPool && task) {
+		task->setServer(serv);
+		memory::pool::store(task->pool(), serv.server(), "Apr.Server");
 		auto ctx = new (task->pool()) TaskContext( task, serv.server() );
 		return apr_thread_pool_schedule(_threadPool, &Root_performTask, ctx, interval.toMicroseconds(), nullptr) == APR_SUCCESS;
 	}

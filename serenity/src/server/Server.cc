@@ -754,6 +754,7 @@ auto Server_resolvePath(Map<String, T> &map, const String &path) -> typename Map
 }
 
 void Server::onHeartBeat(apr_pool_t *pool) {
+	memory::pool::store(pool, _server, "Apr.Server");
 	apr::pool::perform([&] {
 		auto now = Time::now();
 		if (!_config->loadingFalled) {
@@ -776,6 +777,7 @@ void Server::onHeartBeat(apr_pool_t *pool) {
 			_config->lastTemplateUpdate = now;
 		}
 	}, pool);
+	memory::pool::store(pool, nullptr, "Apr.Server");
 }
 
 void Server::onBroadcast(const data::Value &val) {
@@ -810,6 +812,7 @@ void Server::onBroadcast(const DataReaderHost &bytes) {
 }
 
 int Server::onRequest(Request &req) {
+	memory::pool::store(req.pool(), _server, "Apr.Server");
 	if (_config->forceHttps) {
 		StringView uri(req.getUnparsedUri());
 		if (uri.starts_with("/.well-known/acme-challenge/")) {
