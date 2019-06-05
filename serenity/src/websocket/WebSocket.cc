@@ -26,7 +26,7 @@ THE SOFTWARE.
 #include "Define.h"
 #include "WebSocket.h"
 #include "Root.h"
-#include "PGHandle.h"
+#include "STPqHandle.h"
 
 NS_SA_EXT_BEGIN(websocket)
 
@@ -172,10 +172,10 @@ bool Handler::trySend(FrameType t, const uint8_t *bytes, size_t count) {
 storage::Adapter Handler::storage() const {
 	auto pool = apr::pool::acquire();
 
-	pg::Handle *db = nullptr;
+	db::pq::Handle *db = nullptr;
 	apr_pool_userdata_get((void **)&db, (const char *)config::getSerenityWebsocketDatabaseName(), pool);
 	if (!db) {
-		db = new (pool) pg::Handle(pool, Root::getInstance()->dbdPoolAcquire(_request.server(), pool));
+		db = new (pool) db::pq::Handle(pool, db::pq::Driver::open(), db::pq::Driver::Handle(Root::getInstance()->dbdPoolAcquire(_request.server(), pool)));
 		apr_pool_userdata_set(db, (const char *)config::getSerenityWebsocketDatabaseName(), NULL, pool);
 	}
 	return db;

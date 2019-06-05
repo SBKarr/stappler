@@ -49,7 +49,7 @@ void Task::addCompleteFn(CompleteCallback &&cb) {
 void Task::performWithStorage(const Callback<void(const storage::Transaction &)> &cb) const {
 	auto root = Root::getInstance();
 	if (auto dbd = root->dbdOpen(pool(), _server)) {
-		pg::Handle h(pool(), dbd);
+		db::pq::Handle h(pool(), db::pq::Driver::open(), db::pq::Driver::Handle(dbd));
 		if (auto t = storage::Transaction::acquire(&h)) {
 			cb(t);
 		}

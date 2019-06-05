@@ -25,7 +25,7 @@ THE SOFTWARE.
 #include "Output.h"
 #include "ServerComponent.h"
 #include "Resource.h"
-#include "PGHandle.h"
+#include "STPqHandle.h"
 #include "SPugContext.h"
 #include "InputFilter.h"
 
@@ -287,7 +287,7 @@ struct HistoryCmd : ResourceCmd {
 		}
 
 		if (auto s = acquireScheme(h, schemeName)) {
-			if (auto a = dynamic_cast<pg::Handle *>(h.storage().interface())) {
+			if (auto a = dynamic_cast<db::pq::Handle *>(h.storage().interface())) {
 				if (field.empty()) {
 					h.sendData(a->getHistory(*s, Time::microseconds(time), true));
 				} else if (auto f = s->getField(field)) {
@@ -338,7 +338,7 @@ struct DeltaCmd : ResourceCmd {
 		}
 
 		if (auto s = acquireScheme(h, schemeName)) {
-			if (auto a = dynamic_cast<pg::Handle *>(h.storage().interface())) {
+			if (auto a = dynamic_cast<db::pq::Handle *>(h.storage().interface())) {
 				if (field.empty()) {
 					h.sendData(a->getDeltaData(*s, Time::microseconds(time)));
 				} else if (auto f = s->getField(field)) {

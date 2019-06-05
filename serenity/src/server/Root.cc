@@ -37,7 +37,7 @@ THE SOFTWARE.
 #include "WebSocket.h"
 #include "Task.h"
 
-#include "PGHandle.h"
+#include "STPqHandle.h"
 
 #ifdef LINUX
 
@@ -279,7 +279,7 @@ void Root::dbdPrepare(server_rec *s, const char *l, const char *q) {
 void Root::performStorage(apr_pool_t *pool, const Server &serv, const Callback<void(const storage::Adapter &)> &cb) {
 	apr::pool::perform([&] {
 		if (auto dbd = dbdOpen(pool, serv.server())) {
-			pg::Handle h(pool, dbd);
+			db::pq::Handle h(pool, db::pq::Driver::open(), db::pq::Driver::Handle(dbd));
 			storage::Adapter storage(&h);
 
 			cb(storage);

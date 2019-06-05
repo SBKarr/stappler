@@ -61,10 +61,10 @@ THE SOFTWARE.
 #include "mod_log_config.h"
 #include "util_cookies.h"
 
-#include "SPDBInputFile.h"
-#include "SPDBStorageScheme.h"
-#include "SPDBStorageUser.h"
-#include "SPDBStorageFile.h"
+#include "STInputFile.h"
+#include "STStorageScheme.h"
+#include "STStorageUser.h"
+#include "STStorageFile.h"
 
 #include "Config.h"
 

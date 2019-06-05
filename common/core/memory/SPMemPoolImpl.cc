@@ -48,7 +48,7 @@ protected:
 	template <typename T>
 	struct stack {
 		size_t size = 0;
-		std::array<T, 16> data;
+		std::array<T, 32> data;
 
 		bool empty() const { return size == 0; }
 		void push(const T &t) { data[size] = t; ++ size; }

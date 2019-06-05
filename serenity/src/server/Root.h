@@ -84,9 +84,6 @@ public:
 
 	void performStorage(apr_pool_t *, const Server &, const Callback<void(const storage::Adapter &)> &);
 
-	// apr::weak_string getBroadcastBindAddress() const;
-	// uint16_t getBroadcastBindPort() const;
-
 	bool isDebugEnabled() const;
 	void setDebugEnabled(bool);
 

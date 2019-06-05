@@ -33,8 +33,8 @@ THE SOFTWARE.
 #include "SPUrl.h"
 #include "SPString.h"
 
-#include "SPDBStorage.h"
-#include "SPDBStorageTransaction.h"
+#include "STStorage.h"
+#include "STStorageTransaction.h"
 
 NS_DB_BEGIN
 
@@ -165,6 +165,8 @@ int64_t getUserIdFromContext() {
 		stappler::serenity::Request req(r);
 		if (auto user = req.getAuthorizedUser()) {
 			return user->getObjectId();
+		} else {
+			return req.getUserId();
 		}
 	}
 	return 0;

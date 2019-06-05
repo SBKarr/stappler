@@ -32,7 +32,7 @@ THE SOFTWARE.
 #include "SPugVariable.h"
 #include "Root.h"
 #include "UrlEncodeParser.h"
-#include "PGHandle.h"
+#include "STPqHandle.h"
 
 #include "Session.h"
 
@@ -81,11 +81,11 @@ struct Request::Config : public AllocPool {
 		return _data;
 	}
 
-	pg::Handle *acquireDatabase(request_rec *r) {
+	db::pq::Handle *acquireDatabase(request_rec *r) {
 		if (!_database) {
 			auto handle = Root::getInstance()->dbdRequestAcquire(r);
 			if (handle) {
-				_database = new pg::Handle(r->pool, handle);
+				_database = new db::pq::Handle(r->pool, db::pq::Driver::open(), db::pq::Driver::Handle(handle));
 			}
 		}
 		return _database;
@@ -102,7 +102,7 @@ struct Request::Config : public AllocPool {
 	Vector<data::Value> _errors;
 	InputConfig _config;
 
-	pg::Handle *_database = nullptr;
+	db::pq::Handle *_database = nullptr;
 	RequestHandler *_handler = nullptr;
 	Session *_session = nullptr;
 	User *_user = nullptr;

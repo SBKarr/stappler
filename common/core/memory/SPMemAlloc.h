@@ -117,7 +117,7 @@ template <typename T, bool IsTrivial>
 struct __AllocatorTraits;
 
 template <typename T>
-struct __AllocatorTriviallyCopyable : std:: is_trivially_copyable<T> { };
+struct __AllocatorTriviallyCopyable : std::is_trivially_copyable<T> { };
 
 template <typename T>
 struct __AllocatorTriviallyMoveable : std::is_trivially_copyable<T> { };
@@ -250,8 +250,10 @@ struct __AllocatorTraits<T, false> {
 	}
 
 	template <typename ...Args>
-	static void construct(T * p, Args &&...args) noexcept {
+	static void construct(pool_t *pool, T * p, Args &&...args) noexcept {
+		memory::pool::push(pool);
 		new ((T*) p) T(std::forward<Args>(args)...);
+		memory::pool::pop();
 	}
 
 	static void destroy(T *p) noexcept {
@@ -342,11 +344,11 @@ public:
 	inline pointer address(reference r) const noexcept { return &r; }
 	inline const_pointer address(const_reference r) const noexcept { return &r; }
 
-	size_type max_size() const noexcept { return NumericLimits<size_type>::max(); }
+	size_type max_size() const noexcept { return maxOf<size_type>(); }
 
 	template <typename ...Args>
 	void construct(pointer p, Args &&...args) {
-		__AllocatorTraits<T, !std::is_constructible<T, Args...>::value>::construct(p, std::forward<Args>(args)...);
+		__AllocatorTraits<T, !std::is_constructible<T, Args...>::value>::construct(pool_ptr(pool), p, std::forward<Args>(args)...);
 	}
 
 	void destroy(pointer p) {

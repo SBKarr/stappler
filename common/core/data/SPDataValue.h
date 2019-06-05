@@ -856,7 +856,12 @@ struct __ValueTemplateTraits<Interface, false> {
 	template <class Key>
 	static ValueType &emplace(ValueType &target, Key &&key) {
 		if (target.convertToDict()) {
-			return target.dictVal->emplace(std::forward<Key>(key), ValueType::Type::EMPTY).first->second;
+			auto it = target.dictVal->find(key);
+			if (it == target.dictVal->end()) {
+				return target.dictVal->emplace(std::forward<Key>(key), ValueType::Type::EMPTY).first->second;
+			} else {
+				return it->second;
+			}
 		}
 		return const_cast<ValueType &>(ValueType::Null);
 	}

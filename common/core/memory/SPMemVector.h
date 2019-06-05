@@ -120,7 +120,7 @@ public:
 		_mem.assign(t, s);
 	}
 
-	allocator_type get_allocator() const noexcept { return _mem._allocator; }
+	allocator_type get_allocator() const noexcept { return _mem.get_allocator(); }
 
 	reference at( size_type pos ) noexcept { return _mem.at(pos); }
 	const_reference at( size_type pos ) const noexcept { return _mem.at(pos); }

@@ -197,7 +197,13 @@ public:
 		auto where(Operator, const Field &field, Comparation, Value &&) -> Clause &;
 
 		template <typename Value>
+		auto where(Operator, const Field &field, const StringView &, Value &&) -> Clause &;
+
+		template <typename Value>
 		auto where(Operator, const Field &field, Comparation, Value &&, Value &&) -> Clause &;
+
+		template <typename Value>
+		auto where(Operator, const Field &field, const StringView &, Value &&, const StringView &, Value &&) -> Clause &;
 
 		template <typename Callback>
 		auto parenthesis(Operator, const Callback &) -> Clause &;

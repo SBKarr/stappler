@@ -32,7 +32,7 @@ THE SOFTWARE.
 #include "Root.h"
 
 #include "ServerComponent.h"
-#include "PGHandle.h"
+#include "STPqHandle.h"
 #include "ResourceHandler.h"
 #include "MultiResourceHandler.h"
 #include "WebSocket.h"
@@ -219,7 +219,7 @@ struct Server::Config : public AllocPool {
 				auto pool = getCurrentPool();
 				auto db = root->dbdOpen(pool, serv);
 				if (db) {
-					pg::Handle h(pool, db);
+					db::pq::Handle h(pool, db::pq::Driver::open(), db::pq::Driver::Handle(db));
 					h.init(db::Interface::Config{serv.getServerHostname(), serv.getFileScheme()}, schemes);
 
 					for (auto &it : components) {
@@ -760,7 +760,7 @@ void Server::onHeartBeat(apr_pool_t *pool) {
 		if (!_config->loadingFalled) {
 			auto root = Root::getInstance();
 			if (auto dbd = root->dbdOpen(pool, _server)) {
-				pg::Handle h(pool, dbd);
+				db::pq::Handle h(pool, db::pq::Driver::open(), db::pq::Driver::Handle(dbd));
 				if (now - _config->lastDatabaseCleanup > config::getDefaultDatabaseCleanupInterval()) {
 					_config->lastDatabaseCleanup = now;
 					h.makeSessionsCleanup();
@@ -1162,7 +1162,7 @@ void Server::runErrorReportTask(request_rec *req, const Vector<data::Value> &err
 			auto pool = apr::pool::acquire();
 			auto serv = apr::pool::server();
 			if (auto dbd = root->dbdOpen(pool, serv)) {
-				pg::Handle h(pool, dbd);
+				db::pq::Handle h(pool, db::pq::Driver::open(), db::pq::Driver::Handle(dbd));
 				storage::Adapter storage(&h);
 
 				auto serv = Server(apr::pool::server());

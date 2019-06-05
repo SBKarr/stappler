@@ -281,7 +281,9 @@ Var ContextFn::execExpr(const Expression &expr, Expression::Op op, bool assignab
 							if (auto ret = var.subscript(val.asInteger(), assignable)) {
 								return ret;
 							} else {
-								onError(toString("Access to undefined member [", val.getInteger(), "]"));
+								if (!allowUndefined) {
+									onError(toString("Access to undefined member [", val.getInteger(), "]"));
+								}
 								return Var();
 							}
 						} else if (!val.isDictionary() && !val.isArray()) {
@@ -289,7 +291,9 @@ Var ContextFn::execExpr(const Expression &expr, Expression::Op op, bool assignab
 							if (auto ret = var.subscript(str, assignable)) {
 								return ret;
 							} else {
-								onError(toString("Access to undefined member ['", str, "']"));
+								if (!allowUndefined) {
+									onError(toString("Access to undefined member ['", str, "']"));
+								}
 								return Var();
 							}
 						}

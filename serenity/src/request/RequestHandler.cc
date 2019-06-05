@@ -28,7 +28,7 @@ THE SOFTWARE.
 
 #include "SPFilesystem.h"
 #include "InputFilter.h"
-#include "SPDBInputFile.h"
+#include "STInputFile.h"
 
 NS_SA_BEGIN
 

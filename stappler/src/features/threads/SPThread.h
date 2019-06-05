@@ -89,6 +89,7 @@ public:
 
 	/* Checks if execution is on specific worker of thread */
 	bool isOnThisThread(uint32_t workerId);
+
 public:
 	Thread(const StringView &name);
 	Thread(const StringView &name, uint32_t count);
@@ -106,6 +107,7 @@ public:
 	inline void setId(uint32_t newId) { _id = newId; }
 
 	inline uint32_t getCount() { return _count; }
+
 private:
 	uint32_t _id = maxOf<uint32_t>();
 	uint32_t _count = 1;
