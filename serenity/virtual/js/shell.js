@@ -9,16 +9,10 @@ function escape(str) {
     });
 };
 
-var uploadInfo = {
-	'url' : '',
-	'name' : 'content'
-}
-
-function upload(file) {
+function upload(file, url, name) {
 	var xhr = new XMLHttpRequest();
 	var data = new FormData();
-	data.append(uploadInfo.name, file);
-	console.log(uploadInfo);
+	data.append(name, file);
 
 	var output = document.getElementById("output");
 	var node = document.createElement("p");
@@ -38,12 +32,11 @@ function upload(file) {
 		node.innerHTML = event.loaded + ' / ' + event.total;
 	};
 
-	xhr.open("POST", uploadInfo.url, true);
+	xhr.open("POST", url, true);
 	xhr.send(data);
 }
 
 function uploadWithData(data) {
-	uploadInfo = data;
 	document.getElementById('fileSelector').click();
 }
 

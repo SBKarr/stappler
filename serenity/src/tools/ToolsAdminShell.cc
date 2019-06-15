@@ -504,11 +504,18 @@ struct UploadCmd : ResourceCmd {
 
 				h.storage().set(key, token, TimeInterval::seconds(5));
 
+				auto tv = Time::now().toMicros();
 				StringStream str;
+				str << "<p id=\"tmp" << tv << "\"><input type=\"file\" name=\"content\" onchange=\""
+							"upload(this.files[0], '" << toString(h.request().getUri(), "/upload/", key) << "', 'content');"
+							"var elem = document.getElementById('tmp" << tv << "');elem.parentNode.removeChild(elem);"
+						"\"></p>";
+
+				/*StringStream str;
 				str << ":upload:" << data::Value{
 					pair("url", data::Value(toString(h.request().getUri(), "/upload/", key))),
 					pair("name", data::Value("content")),
-				};
+				};*/
 				h.send(str.str());
 				return true;
 			}
@@ -1153,11 +1160,15 @@ int ShellGui::onHandler(Request &) {
 void ShellGui ::onFilterComplete(InputFilter *filter) {
 	Request rctx(filter->getRequest());
 	data::Value data;
+	data.setBool(false, "OK");
 	if (_resource) {
-		data.setValue(_resource->createObject(filter->getData(), filter->getFiles()), "result");
-		data.setBool(true, "OK");
-	} else {
-		data.setBool(false, "OK");
+		if (auto t = storage::Transaction::acquire(_request.storage())) {
+			t.performAsSystem([&] {
+				data.setValue(_resource->createObject(filter->getData(), filter->getFiles()), "result");
+				data.setBool(true, "OK");
+				return true;
+			});
+		}
 	}
 
 	data.setInteger(apr_time_now(), "date");
