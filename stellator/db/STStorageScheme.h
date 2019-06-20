@@ -176,6 +176,8 @@ protected:
 	stappler::Pair<bool, mem::Value> prepareUpdate(const mem::Value &data, bool isProtected) const;
 	mem::Value updateObject(Worker &, mem::Value && obj, mem::Value &data) const;
 
+	mem::Value doPatch(Worker &w, const Transaction &t, uint64_t obj, mem::Value & patch) const;
+
 	mem::Value patchOrUpdate(Worker &, uint64_t id, mem::Value & patch) const;
 	mem::Value patchOrUpdate(Worker &, const mem::Value & obj, mem::Value & patch) const;
 
@@ -220,10 +222,6 @@ protected:
 
 	void updateView(const Transaction &, const mem::Value &, const ViewScheme *, const mem::Vector<uint64_t> &) const;
 
-private:
-	template <typename Source>
-	void addViewScheme(const Scheme *s, const Field *f, const Source &source);
-
 protected:
 	mem::Map<mem::String, Field> fields;
 	mem::String name;
@@ -238,6 +236,7 @@ protected:
 	mem::Vector<ParentScheme *> parents;
 	mem::Set<const Field *> forceInclude;
 	mem::Set<const Field *> fullTextFields;
+	mem::Set<const Field *> autoFieldReq;
 
 	bool _hasFiles = false;
 	bool _hasForceExclude = false;

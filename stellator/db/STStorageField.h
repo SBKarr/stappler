@@ -203,11 +203,16 @@ using FullTextViewFn = mem::Function<mem::Vector<FullTextData>(const Scheme &obj
 using FullTextQueryFn = mem::Function<mem::Vector<FullTextData>(const mem::Value &searchData)>;
 
 struct AutoFieldScheme : mem::AllocBase {
-	const Scheme &scheme;
-	mem::Vector<mem::String> requires;
-	ViewLinkageFn linkage;
+	using ReqVec = mem::Vector<mem::String>;
 
-	AutoFieldScheme(const Scheme &, mem::Vector<mem::String> && = mem::Vector<mem::String>(), ViewLinkageFn && = nullptr);
+	const Scheme &scheme;
+	ReqVec requiresForAuto;
+
+	ViewLinkageFn linkage;
+	ReqVec requiresForLinking;
+
+	AutoFieldScheme(const Scheme &, ReqVec && = ReqVec(), ViewLinkageFn && = nullptr, ReqVec && = ReqVec());
+	AutoFieldScheme(const Scheme &, ReqVec &&, ReqVec &&);
 };
 
 struct AutoFieldDef {

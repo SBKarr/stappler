@@ -3,7 +3,7 @@ STAPPLER_ROOT = ../..
 LOCAL_OUTDIR := bin
 LOCAL_OUTPUT_EXECUTABLE := $(LOCAL_OUTDIR)/socket_test
 
-LOCAL_TOOLKIT := cli
+LOCAL_TOOLKIT := stellator
 
 LOCAL_ROOT = .
 

@@ -27,8 +27,11 @@ THE SOFTWARE.
 
 NS_DB_BEGIN
 
-AutoFieldScheme::AutoFieldScheme(const Scheme &s, mem::Vector<mem::String> &&vec, ViewLinkageFn &&fn)
-: scheme(s), requires(std::move(vec)), linkage(std::move(fn)) { }
+AutoFieldScheme::AutoFieldScheme(const Scheme &s, ReqVec &&vec, ViewLinkageFn &&fn, ReqVec &&lvec)
+: scheme(s), requiresForAuto(std::move(vec)), linkage(std::move(fn)), requiresForLinking(std::move(lvec)) { }
+
+AutoFieldScheme::AutoFieldScheme(const Scheme &s, ReqVec &&vec, ReqVec &&lvec)
+: scheme(s), requiresForAuto(std::move(vec)), linkage(nullptr), requiresForLinking(std::move(lvec)) { }
 
 bool Field::Slot::isProtected() const {
 	return hasFlag(Flags::Protected) || (hasFlag(Flags::Admin) && (!internals::isAdministrative()));

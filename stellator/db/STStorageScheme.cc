@@ -245,6 +245,7 @@ bool Scheme::isAtomicPatch(const mem::Value &val) const {
 			if (f && (f->getType() == Type::Extra // extra field should use select-update
 					|| forceInclude.find(f) != forceInclude.end() // force-includes used to update views, so, we need select-update
 					|| fullTextFields.find(f) != fullTextFields.end() // for full-text views update
+					|| autoFieldReq.find(f) != autoFieldReq.end()
 					|| f->getSlot()->replaceFilterFn)) { //
 				return false;
 			}
@@ -324,7 +325,7 @@ mem::Value Scheme::createWithWorker(Worker &w, const mem::Value &data, bool isPr
 		auto &val = changeSet.getValue(it.first);
 		if (val.isNull() && it.second.hasFlag(Flags::Required)) {
 			messages::error("Storage", "No value for required field",
-					mem::Value{ std::make_pair("field", mem::Value(it.first)) });
+					mem::Value({ std::make_pair("field", mem::Value(it.first)) }));
 			stop = true;
 		}
 	}
@@ -381,7 +382,7 @@ mem::Value Scheme::updateWithWorker(Worker &w, uint64_t oid, const mem::Value &d
 		}
 
 		if (changeSet.empty()) {
-			messages::error("Storage", "Empty changeset for id", mem::Value{ std::make_pair("oid", mem::Value((int64_t)oid)) });
+			messages::error("Storage", "Empty changeset for id", mem::Value({ std::make_pair("oid", mem::Value((int64_t)oid)) }));
 			return false;
 		}
 
@@ -390,7 +391,7 @@ mem::Value Scheme::updateWithWorker(Worker &w, uint64_t oid, const mem::Value &d
 			if (filePatch.isDictionary()) {
 				purgeFilePatch(t, filePatch);
 			}
-			messages::error("Storage", "Fail to update object for id", mem::Value{ std::make_pair("oid", mem::Value((int64_t)oid)) });
+			messages::error("Storage", "Fail to update object for id", mem::Value({ std::make_pair("oid", mem::Value((int64_t)oid)) }));
 			return false;
 		}
 		return true;
@@ -424,7 +425,7 @@ mem::Value Scheme::updateWithWorker(Worker &w, const mem::Value & obj, const mem
 		}
 
 		if (changeSet.empty()) {
-			messages::error("Storage", "Empty changeset for id", mem::Value{ std::make_pair("oid", mem::Value((int64_t)oid)) });
+			messages::error("Storage", "Empty changeset for id", mem::Value({ std::make_pair("oid", mem::Value((int64_t)oid)) }));
 			return false;
 		}
 
@@ -433,7 +434,7 @@ mem::Value Scheme::updateWithWorker(Worker &w, const mem::Value & obj, const mem
 			if (filePatch.isDictionary()) {
 				purgeFilePatch(t, filePatch);
 			}
-			messages::error("Storage", "No object for id to update", mem::Value{ std::make_pair("oid", mem::Value((int64_t)oid)) });
+			messages::error("Storage", "No object for id to update", mem::Value({ std::make_pair("oid", mem::Value((int64_t)oid)) }));
 			return false;
 		}
 		return true;
@@ -487,7 +488,7 @@ stappler::Pair<bool, mem::Value> Scheme::prepareUpdate(const mem::Value &data, b
 			auto &val = changeSet.getValue(it.first);
 			if (val.isNull() && it.second.hasFlag(Flags::Required)) {
 				messages::error("Storage", "Value for required field can not be removed",
-						mem::Value{ std::make_pair("field", mem::Value(it.first)) });
+						mem::Value({ std::make_pair("field", mem::Value(it.first)) }));
 				stop = true;
 			}
 		}
@@ -551,7 +552,7 @@ mem::Value Scheme::updateObject(Worker &w, mem::Value && obj, mem::Value &change
 			if (!slot->replaceFilterFn || slot->replaceFilterFn(*this, obj, val, it.second)) {
 				fieldsToUpdate.emplace(f);
 
-				if (forceInclude.find(f) != forceInclude.end()) {
+				if (forceInclude.find(f) != forceInclude.end() || autoFieldReq.find(f) != autoFieldReq.end()) {
 					for (auto &it : views) {
 						if (it->fields.find(f) != it->fields.end()) {
 							auto lb = std::lower_bound(viewsToUpdate.begin(), viewsToUpdate.end(), it,
@@ -724,6 +725,14 @@ mem::Value Scheme::setFileWithWorker(Worker &w, uint64_t oid, const Field &f, In
 	return ret;
 }
 
+mem::Value Scheme::doPatch(Worker &w, const Transaction &t, uint64_t id, mem::Value & patch) const {
+	if (auto ret = t.patch(w, id, patch)) {
+		touchParents(t, ret);
+		return ret;
+	}
+	return mem::Value();
+}
+
 mem::Value Scheme::patchOrUpdate(Worker &w, uint64_t id, mem::Value & patch) const {
 	if (!patch.empty()) {
 		mem::Value ret;
@@ -739,9 +748,8 @@ mem::Value Scheme::patchOrUpdate(Worker &w, uint64_t id, mem::Value & patch) con
 					}
 				}
 			} else {
-				ret = w.transaction().patch(w, id, patch);
+				ret = doPatch(w, w.transaction(), id, patch);
 				if (ret) {
-					touchParents(t, ret);
 					return true;
 				}
 			}
@@ -771,9 +779,8 @@ mem::Value Scheme::patchOrUpdate(Worker &w, const mem::Value & obj, mem::Value &
 		mem::Value ret;
 		w.perform([&] (const Transaction &t) {
 			if (isAtomicPatch(patch)) {
-				ret = t.patch(w, obj.getInteger("__oid"), patch);
+				ret = doPatch(w, t, obj.getInteger("__oid"), patch);
 				if (ret) {
-					touchParents(t, ret);
 					return true;
 				}
 			} else {
@@ -1243,66 +1250,132 @@ void Scheme::initScheme() {
 	}
 }
 
-template <typename Source>
-void Scheme::addViewScheme(const Scheme *s, const Field *f, const Source &a) {
-	views.emplace_back(new ViewScheme{s, f, a});
-	auto viewScheme = views.back();
-
-	bool linked = false;
-	for (auto &it : a.requires) {
-		auto fit = fields.find(it);
-		if (fit != fields.end()) {
-			if (fit->second.getType() == Type::Object && !a.linkage && !linked) {
-				// try to autolink from required field
-				auto nextSlot = static_cast<const FieldObject *>(fit->second.getSlot());
-				if (nextSlot->scheme == s) {
-					viewScheme->autoLink = &fit->second;
-					linked = true;
-				}
-			}
-			viewScheme->fields.emplace(&fit->second);
-			forceInclude.emplace(&fit->second);
-		} else {
-			messages::error("Scheme", "Field for view not foumd", mem::Value{
-				stappler::pair("view", mem::Value(mem::toString(s->getName(), ".", f->getName()))),
-				stappler::pair("field", mem::Value(mem::toString(getName(), ".", it)))
-			});
-		}
-	}
-	if (!a.linkage && !linked) {
-		// try to autolink from other fields
-		for (auto &it : fields) {
-			auto &field = it.second;
-			if (field.getType() == Type::Object) {
-				auto nextSlot = static_cast<const FieldObject *>(field.getSlot());
-				if (nextSlot->scheme == s) {
-					viewScheme->autoLink = &field;
-					viewScheme->fields.emplace(&field);
-					forceInclude.emplace(&field);
-					linked = true;
-					break;
-				}
-			}
-		}
-	}
-	if (a.linkage) {
-		linked = true;
-	}
-	if (!linked) {
-		messages::error("Scheme", "Failed to autolink view field", mem::Value{
-			stappler::pair("view", mem::Value(mem::toString(s->getName(), ".", f->getName()))),
-		});
-	}
-}
-
 void Scheme::addView(const Scheme *s, const Field *f) {
 	if (auto view = static_cast<const FieldView *>(f->getSlot())) {
-		addViewScheme(s, f, *view);
+		views.emplace_back(new ViewScheme{s, f, *view});
+		auto viewScheme = views.back();
+
+		bool linked = false;
+		for (auto &it : view->requires) {
+			auto fit = fields.find(it);
+			if (fit != fields.end()) {
+				if (fit->second.getType() == Type::Object && !view->linkage && !linked) {
+					// try to autolink from required field
+					auto nextSlot = static_cast<const FieldObject *>(fit->second.getSlot());
+					if (nextSlot->scheme == s) {
+						viewScheme->autoLink = &fit->second;
+						linked = true;
+					}
+				}
+				viewScheme->fields.emplace(&fit->second);
+				forceInclude.emplace(&fit->second);
+			} else {
+				messages::error("Scheme", "Field for view not foumd", mem::Value({
+					stappler::pair("view", mem::Value(mem::toString(s->getName(), ".", f->getName()))),
+					stappler::pair("field", mem::Value(mem::toString(getName(), ".", it)))
+				}));
+			}
+		}
+		if (!view->linkage && !linked) {
+			// try to autolink from other fields
+			for (auto &it : fields) {
+				auto &field = it.second;
+				if (field.getType() == Type::Object) {
+					auto nextSlot = static_cast<const FieldObject *>(field.getSlot());
+					if (nextSlot->scheme == s) {
+						viewScheme->autoLink = &field;
+						viewScheme->fields.emplace(&field);
+						forceInclude.emplace(&field);
+						linked = true;
+						break;
+					}
+				}
+			}
+		}
+		if (view->linkage) {
+			linked = true;
+		}
+		if (!linked) {
+			messages::error("Scheme", "Failed to autolink view field", mem::Value({
+				stappler::pair("view", mem::Value(mem::toString(s->getName(), ".", f->getName()))),
+			}));
+		}
 	}
 }
 
 void Scheme::addAutoField(const Scheme *s, const Field *f, const AutoFieldScheme &a) {
-	addViewScheme(s, f, a);
+	views.emplace_back(new ViewScheme{s, f, a});
+	auto viewScheme = views.back();
+
+	if (this == s && !a.linkage) {
+		for (auto &it : a.requiresForAuto) {
+			if (auto f = getField(it)) {
+				viewScheme->fields.emplace(f);
+				autoFieldReq.emplace(f);
+			} else {
+				messages::error("Scheme", "Field for view not foumd", mem::Value({
+					stappler::pair("view", mem::Value(mem::toString(s->getName(), ".", f->getName()))),
+					stappler::pair("field", mem::Value(mem::toString(getName(), ".", it)))
+				}));
+			}
+		}
+	} else {
+		bool linked = false;
+		for (auto &it : a.requiresForLinking) {
+			if (auto f = getField(it)) {
+				if (f->getType() == Type::Object && !a.linkage && !linked) {
+					// try to autolink from required field
+					auto nextSlot = static_cast<const FieldObject *>(f->getSlot());
+					if (nextSlot->scheme == s) {
+						viewScheme->autoLink = f;
+						linked = true;
+					}
+				}
+				viewScheme->fields.emplace(f);
+				forceInclude.emplace(f);
+			} else {
+				messages::error("Scheme", "Field for view not foumd", mem::Value({
+					stappler::pair("view", mem::Value(mem::toString(s->getName(), ".", f->getName()))),
+					stappler::pair("field", mem::Value(mem::toString(getName(), ".", it)))
+				}));
+			}
+		}
+		for (auto &it : a.requiresForAuto) {
+			if (auto f = getField(it)) {
+				viewScheme->fields.emplace(f);
+				autoFieldReq.emplace(f);
+			} else {
+				messages::error("Scheme", "Field for view not foumd", mem::Value({
+					stappler::pair("view", mem::Value(mem::toString(s->getName(), ".", f->getName()))),
+					stappler::pair("field", mem::Value(mem::toString(getName(), ".", it)))
+				}));
+			}
+		}
+		if (!a.linkage && !linked) {
+			// try to autolink from other fields
+			for (auto &it : fields) {
+				auto &field = it.second;
+				if (field.getType() == Type::Object) {
+					auto nextSlot = static_cast<const FieldObject *>(field.getSlot());
+					if (nextSlot->scheme == s) {
+						viewScheme->autoLink = &field;
+						viewScheme->fields.emplace(&field);
+						forceInclude.emplace(&field);
+						linked = true;
+						break;
+					}
+				}
+			}
+		}
+		if (a.linkage) {
+			linked = true;
+		}
+		if (!linked) {
+			messages::error("Scheme", "Failed to autolink view field", mem::Value({
+				stappler::pair("view", mem::Value(mem::toString(s->getName(), ".", f->getName()))),
+			}));
+		}
+	}
 }
 
 void Scheme::addParent(const Scheme *s, const Field *f) {
