@@ -211,6 +211,8 @@ public:
 	template <class Key> void setString(const StringView &v, Key &&key) { setValue(Self(std::move(v)), std::forward<Key>(key)); }
 	template <class Key> void setBytes(const BytesType &v, Key &&key) { setValue(Self(v), std::forward<Key>(key)); }
 	template <class Key> void setBytes(BytesType &&v, Key &&key) { setValue(Self(std::move(v)), std::forward<Key>(key)); }
+	template <class Key> void setBytes(const DataReader<ByteOrder::Big> &v, Key &&key) { setValue(Self(v), std::forward<Key>(key)); }
+	template <class Key> void setBytes(const DataReader<ByteOrder::Little> &v, Key &&key) { setValue(Self(v), std::forward<Key>(key)); }
 	template <class Key> void setArray(const ArrayType &v, Key &&key) { setValue(Self(v), std::forward<Key>(key)); }
 	template <class Key> void setArray(ArrayType &&v, Key &&key) { setValue(Self(std::move(v)), std::forward<Key>(key)); }
 	template <class Key> void setDict(const DictionaryType &v, Key &&key) { setValue(Self(v), std::forward<Key>(key)); }

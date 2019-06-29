@@ -135,13 +135,16 @@ String JsonWebToken::getAlgName(const SigAlg &alg) {
 	return String();
 }
 
-JsonWebToken JsonWebToken::make(const String &iss, const String &aud, TimeInterval maxage, const String &sub) {
+JsonWebToken JsonWebToken::make(const StringView &iss, const StringView &aud, TimeInterval maxage, const StringView &sub) {
 	data::Value payload;
 	payload.setString(iss, "iss");
 	if (!sub.empty()) {
 		payload.setString(sub, "sub");
 	}
-	payload.setString(aud, "aud");
+
+	if (!aud.empty()) {
+		payload.setString(aud, "aud");
+	}
 
 	return JsonWebToken(move(payload), maxage);
 }
@@ -324,24 +327,22 @@ String JsonWebToken::exportSigned(SigAlg alg, const StringView &key, const Coder
 				switch (alg) {
 				case RS256:
 				case ES256: {
-					Bytes buf; buf.resize(256);
+					std::array<uint8_t, 1_KiB> buf;
 					size_t writeLen = buf.size();
 					auto hash = string::Sha256().update(out.weak()).final();
 					if (mbedtls_pk_sign(&ctx, MBEDTLS_MD_SHA256, hash.data(), hash.size(), buf.data(), &writeLen, mbedtls_ctr_drbg_random, &ctr_drbg) == 0) {
-						buf.resize(writeLen);
-						out << "." << base64url::encode(buf);
+						out << "." << base64url::encode(BytesView(buf.data(), writeLen));
 						success = true;
 					}
 					break;
 				}
 				case RS512:
 				case ES512: {
-					Bytes buf; buf.resize(256);
+					std::array<uint8_t, 1_KiB> buf;
 					size_t writeLen = buf.size();
 					auto hash = string::Sha512().update(out.weak()).final();
 					if (mbedtls_pk_sign(&ctx, MBEDTLS_MD_SHA512, hash.data(), hash.size(), buf.data(), &writeLen, mbedtls_ctr_drbg_random, &ctr_drbg) == 0) {
-						buf.resize(writeLen);
-						out << "." << base64url::encode(buf);
+						out << "." << base64url::encode(BytesView(buf.data(), writeLen));
 						success = true;
 					}
 					break;

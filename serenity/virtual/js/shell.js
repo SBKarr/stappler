@@ -54,7 +54,7 @@ function send(input) {
 		input.value = "";
 	}
 }
-function init() {
+function init(consoleTarget) {
 	document.getElementById("main").style.visibility = "hidden";
 	ShellHistory(document.getElementById("input"), send);
 
@@ -62,6 +62,8 @@ function init() {
 	fileUpload.addEventListener("change", function(event) {
 		upload(event.target.files[0]);
 	}, false);
+
+	wsaddress = wsaddress + consoleTarget;
 }
 
 function push(data) {

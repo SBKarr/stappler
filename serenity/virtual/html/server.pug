@@ -6,13 +6,29 @@ html
 		link(rel="stylesheet",href="/__server/virtual/css/kawaiJson.css")
 		script(src="/__server/virtual/js/kawaiJson.js")
 		script(src="/__server/virtual/js/shellHistory.js")
-	body
+		script(src="/__server/virtual/js/shell.js")
+	body(onload="init(\"/shell\");")
 		h4 Serenity Server Page (#{version})
 		if hasDb
 			if setup
-				p Setup completed
-				p: a(href="/__server/shell") Interactive server console
-				p: a(href="/__server/errors") Server errors database
+				div.actions
+					p Setup completed
+					p: a(href="/__server/shell") Interactive server console
+					p: a(href="/__server/errors") Server errors database
+				div.console
+					form#login(onsubmit="return connect(this);")
+						input#ws_name(type="text",name="name",placeholder="User name",value="",size="24")
+						input#ws_passwd(type="password",name="passwd",placeholder="Password",value="",size="24")
+						input(type="submit")
+					#connected Not Connected
+					#main(style="visibility:hidden")
+						| Enter Message:
+						input#input(type="text",name="message",value="",size="80")
+						br
+						|
+						| Server says...
+						#output
+					input#fileSelector(type="file",style="visibility:hidden")
 			else
 				h5 Setup form:
 				form#setup(method="post")

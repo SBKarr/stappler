@@ -48,7 +48,7 @@ struct JsonWebToken {
 	static SigAlg getAlg(const StringView &);
 	static String getAlgName(const SigAlg &);
 
-	static JsonWebToken make(const String &iss, const String &aud, TimeInterval maxage = TimeInterval(), const String &sub = String());
+	static JsonWebToken make(const StringView &iss, const StringView &aud, TimeInterval maxage = TimeInterval(), const StringView &sub = StringView());
 
 	bool validate(const KeyData &key);
 	bool validate(SigAlg, const StringView &key);
