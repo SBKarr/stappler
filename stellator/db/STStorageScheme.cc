@@ -63,13 +63,15 @@ bool Scheme::initSchemes(const mem::Map<mem::String, const Scheme *> &schemes) {
 	return true;
 }
 
-Scheme::Scheme(const mem::String &ns, bool delta) : name(ns), delta(delta) {
+Scheme::Scheme(const mem::StringView &ns, bool delta) : Scheme(ns, Options::WithDelta) { }
+
+Scheme::Scheme(const mem::StringView &ns, Options f) : name(ns.str()), flags(f) {
 	for (size_t i = 0; i < roles.size(); ++ i) {
 		roles[i] = nullptr;
 	}
 }
 
-Scheme::Scheme(const mem::String &name, std::initializer_list<Field> il, bool delta) :  Scheme(name, delta) {
+Scheme::Scheme(const mem::StringView &name, std::initializer_list<Field> il, bool delta) :  Scheme(name, Options::WithDelta) {
 	for (auto &it : il) {
 		auto fname = it.getName();
 		fields.emplace(fname.str<mem::Interface>(), std::move(const_cast<Field &>(it)));
@@ -78,12 +80,21 @@ Scheme::Scheme(const mem::String &name, std::initializer_list<Field> il, bool de
 	updateLimits();
 }
 
-void Scheme::setDelta(bool v) {
-	delta = v;
+Scheme::Scheme(const mem::StringView &name, std::initializer_list<Field> il, Options f) :  Scheme(name, f) {
+	for (auto &it : il) {
+		auto fname = it.getName();
+		fields.emplace(fname.str<mem::Interface>(), std::move(const_cast<Field &>(it)));
+	}
+
+	updateLimits();
 }
 
 bool Scheme::hasDelta() const {
-	return delta;
+	return (flags & Options::WithDelta) != Options::None;
+}
+
+bool Scheme::isDetouched() const {
+	return (flags & Options::Detouched) != Options::None;
 }
 
 void Scheme::define(std::initializer_list<Field> il) {

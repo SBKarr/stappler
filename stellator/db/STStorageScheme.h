@@ -29,6 +29,12 @@ NS_DB_BEGIN
 
 class Scheme : public mem::AllocBase {
 public:
+	enum Options {
+		None = 0,
+		WithDelta = 1 << 0,
+		Detouched = 1 << 1,
+	};
+
 	struct ViewScheme : mem::AllocBase {
 		const Scheme *scheme = nullptr;
 		const Field *viewField = nullptr;
@@ -57,8 +63,10 @@ public:
 	static bool initSchemes(const mem::Map<mem::String, const Scheme *> &);
 
 public:
-	Scheme(const mem::String &name, bool delta = false);
-	Scheme(const mem::String &name, std::initializer_list<Field> ile, bool delta = false);
+	Scheme(const mem::StringView &name, bool delta = false);
+	Scheme(const mem::StringView &name, Options);
+	Scheme(const mem::StringView &name, std::initializer_list<Field> il, bool delta = false);
+	Scheme(const mem::StringView &name, std::initializer_list<Field> il, Options);
 
 	Scheme(const Scheme &) = delete;
 	Scheme& operator=(const Scheme &) = delete;
@@ -66,8 +74,8 @@ public:
 	Scheme(Scheme &&) = default;
 	Scheme& operator=(Scheme &&) = default;
 
-	void setDelta(bool value);
 	bool hasDelta() const;
+	bool isDetouched() const;
 
 	void define(std::initializer_list<Field> il);
 	void define(mem::Vector<Field> &&il);
@@ -226,7 +234,7 @@ protected:
 	mem::Map<mem::String, Field> fields;
 	mem::String name;
 
-	bool delta = false;
+	Options flags = Options::None;
 
 	size_t maxRequestSize = 0;
 	size_t maxVarSize = 256;
@@ -245,6 +253,7 @@ protected:
 	AccessTable roles;
 };
 
+SP_DEFINE_ENUM_AS_MASK(Scheme::Options)
 
 template <typename Storage, typename _Value>
 inline auto Scheme::get(Storage &&s, _Value &&v, bool forUpdate) const -> mem::Value {

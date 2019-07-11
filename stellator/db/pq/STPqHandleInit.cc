@@ -419,22 +419,24 @@ void TableRec::writeCompareResult(mem::StringStream &stream,
 			stream << " WITH ( OIDS=FALSE );\n\n";
 		} else {
 			for (auto cit : t.cols) {
-				stream << "ALTER TABLE " << it.first << " ADD COLUMN \"" << cit.first << "\" ";
-				switch(cit.second.type) {
-				case ColRec::Type::Binary:	stream << "bytea"; break;
-				case ColRec::Type::Integer:	stream << "bigint"; break;
-				case ColRec::Type::Serial:	stream << "bigserial"; break;
-				case ColRec::Type::Float:	stream << "double precision"; break;
-				case ColRec::Type::Boolean:	stream << "boolean"; break;
-				case ColRec::Type::Text: 	stream << "text"; break;
-				case ColRec::Type::TsVector:stream << "tsvector"; break;
-				case ColRec::Type::Custom:  stream << cit.second.custom; break;
-				default: break;
+				if (cit.first != "__oid") {
+					stream << "ALTER TABLE " << it.first << " ADD COLUMN \"" << cit.first << "\" ";
+					switch(cit.second.type) {
+					case ColRec::Type::Binary:	stream << "bytea"; break;
+					case ColRec::Type::Integer:	stream << "bigint"; break;
+					case ColRec::Type::Serial:	stream << "bigserial"; break;
+					case ColRec::Type::Float:	stream << "double precision"; break;
+					case ColRec::Type::Boolean:	stream << "boolean"; break;
+					case ColRec::Type::Text: 	stream << "text"; break;
+					case ColRec::Type::TsVector:stream << "tsvector"; break;
+					case ColRec::Type::Custom:  stream << cit.second.custom; break;
+					default: break;
+					}
+					if (cit.second.notNull) {
+						stream << " NOT NULL";
+					}
+					stream << ";\n";
 				}
-				if (cit.second.notNull) {
-					stream << " NOT NULL";
-				}
-				stream << ";\n";
 			}
 		}
 	}
@@ -886,6 +888,11 @@ TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme) {
 		}
 	}
 
+	if (scheme->isDetouched()) {
+		cols.emplace("__oid", ColRec(ColRec::Type::Serial, true));
+		objects = false;
+	}
+
 	if (hasAfterTrigger) {
 		size_t id = std::hash<mem::String>{}(hashStreamAfter.weak());
 
@@ -937,6 +944,7 @@ bool Handle::init(const Interface::Config &cfg, const mem::Map<mem::String, cons
 		performSimpleQuery("COMMIT;"_weak);
 	}
 
+	beginTransaction_pg(TransactionLevel::ReadCommited);
 	mem::StringStream query;
 	query << "DELETE FROM __login WHERE \"date\" < " << (stappler::Time::now() - config::getInternalsStorageTime()).toSeconds() << ";";
 	performSimpleQuery(query.weak());
@@ -945,6 +953,7 @@ bool Handle::init(const Interface::Config &cfg, const mem::Map<mem::String, cons
 	query << "DELETE FROM __error WHERE \"time\" < " << (stappler::Time::now() - config::getInternalsStorageTime()).toMicros() << ";";
 	performSimpleQuery(query.weak());
 	query.clear();
+	endTransaction_pg();
 
 	return true;
 }
