@@ -21,3 +21,81 @@ THE SOFTWARE.
 **/
 
 #include "STDefine.h"
+
+NS_DB_BEGIN
+
+namespace messages {
+
+void _addErrorMessage(mem::Value &&data) {
+	// not implemented
+}
+
+void _addDebugMessage(mem::Value &&data) {
+	// not implemented
+}
+
+}
+
+Transaction Transaction::acquire(const Adapter &adapter) {
+	if (auto pool = stappler::memory::pool::acquire()) {
+		if (auto d = stappler::memory::pool::get<Data>(pool, "current_transaction")) {
+			return Transaction(d);
+		} else {
+			d = new (pool) Data{adapter};
+			d->role = AccessRoleId::System;
+			stappler::memory::pool::store(pool, d, "current_transaction");
+			return Transaction(d);
+		}
+	}
+	return Transaction(nullptr);
+}
+
+namespace internals {
+
+Adapter getAdapterFromContext() {
+	if (auto p = stappler::memory::pool::acquire()) {
+		Interface *h = nullptr;
+		stappler::memory::pool::userdata_get((void **)&h, config::getStorageInterfaceKey(), p);
+		if (h) {
+			return Adapter(h);
+		}
+	}
+	return Adapter(nullptr);
+}
+
+void scheduleAyncDbTask(const stappler::Callback<mem::Function<void(const Transaction &)>(stappler::memory::pool_t *)> &setupCb) {
+
+}
+
+bool isAdministrative() {
+	return false;
+}
+
+mem::String getDocuemntRoot() {
+	auto p = stappler::filesystem::writablePath();
+	return mem::String(p.data(), p.size());
+}
+
+const Scheme *getFileScheme() {
+	return nullptr;
+}
+
+const Scheme *getUserScheme() {
+	return nullptr;
+}
+
+InputFile *getFileFromContext(int64_t) {
+	return nullptr;
+}
+
+RequestData getRequestData() {
+	return RequestData();
+}
+
+int64_t getUserIdFromContext() {
+	return 0;
+}
+
+}
+
+NS_DB_END

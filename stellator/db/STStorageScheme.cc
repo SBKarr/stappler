@@ -63,15 +63,15 @@ bool Scheme::initSchemes(const mem::Map<mem::String, const Scheme *> &schemes) {
 	return true;
 }
 
-Scheme::Scheme(const mem::StringView &ns, bool delta) : Scheme(ns, Options::WithDelta) { }
+Scheme::Scheme(const mem::StringView &ns, bool delta) : Scheme(ns, delta ? Options::WithDelta : Options::None) { }
 
-Scheme::Scheme(const mem::StringView &ns, Options f) : name(ns.str()), flags(f) {
+Scheme::Scheme(const mem::StringView &ns, Options f) : name(ns.str<mem::Interface>()), flags(f) {
 	for (size_t i = 0; i < roles.size(); ++ i) {
 		roles[i] = nullptr;
 	}
 }
 
-Scheme::Scheme(const mem::StringView &name, std::initializer_list<Field> il, bool delta) :  Scheme(name, Options::WithDelta) {
+Scheme::Scheme(const mem::StringView &name, std::initializer_list<Field> il, bool delta) :  Scheme(name, delta ? Options::WithDelta : Options::None) {
 	for (auto &it : il) {
 		auto fname = it.getName();
 		fields.emplace(fname.str<mem::Interface>(), std::move(const_cast<Field &>(it)));

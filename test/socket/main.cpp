@@ -25,12 +25,10 @@ THE SOFTWARE.
 
 #include "SPData.h"
 #include "SPString.h"
+#include "STConnectionHandler.h"
 
 #define HELP_STRING \
 	"SocketTest\n" \
-
-#include "Socket.cc"
-#include "Server.cc"
 
 USING_NS_SP;
 
@@ -71,8 +69,10 @@ int _spMain(argc, argv) {
 	});
 	sock.perform(TimeInterval::seconds(10));*/
 
-	Server serv("127.0.0.1:8080");
-	serv.listen();
+	memory::pool::push(memory::pool::create());
+	stellator::ConnectionHandler h("127.0.0.1", 8080);
+	h.run();
+	memory::pool::pop();
 
 	return 0;
 }

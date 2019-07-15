@@ -31,22 +31,12 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
-#define  container_of(ptr, type, member) ({ \
-    const  typeof( ((type *)0)->member ) *__mptr = (ptr); \
-    (type  *)( (char *)__mptr - offsetof(type,member) );})
 
-struct  epoll_client {
-    /** some  usefull  associated  data...*/
-    struct  epoll_event  event;
+class ClientHandler {
+
 };
 
-struct  epoll_client* to_epoll_client(struct  epoll_event* event)
-{
-    return  container_of(event, struct  epoll_client, event);
-}
-
-
-class Server {
+class ConnectionHandler {
 public:
 	struct Client {
 		struct epoll_event event;
@@ -54,7 +44,7 @@ public:
 
 	static constexpr size_t MAXEVENTS = 64;
 
-	Server(const StringView &);
+	ConnectionHandler(const StringView &);
 
 	void onError(const StringView &);
 
@@ -68,9 +58,11 @@ protected:
 	struct epoll_event _socketEvent;
 	std::array<struct epoll_event, MAXEVENTS> _events;
 	std::array<char, 10_KiB> _buffer;
+
+
 };
 
-void Server::setNonblocking(int fd) {
+void ConnectionHandler::setNonblocking(int fd) {
 	int flags = fcntl(fd, F_GETFL, 0);
 	if (flags == -1) {
 		onError(toString("fcntl() fail to get flags for ", fd));
@@ -81,7 +73,7 @@ void Server::setNonblocking(int fd) {
 	}
 }
 
-Server::Server(const StringView &addrStr) {
+ConnectionHandler::ConnectionHandler(const StringView &addrStr) {
 	_socket = socket(AF_INET, SOCK_STREAM, 0);
 	if (_socket == -1) {
 		onError("socket() failed");

@@ -126,7 +126,190 @@ Driver::Result Driver::exec(Connection conn, const char *command, int nParams, c
 	return Driver::Result(PQexecParams((PGconn *)conn.get(), command, nParams, nullptr, paramValues, paramLengths, paramFormats, resultFormat));
 }
 
+Driver::~Driver() { }
+
 Driver::Driver(const mem::StringView &) { }
+
+NS_DB_PQ_END
+#elif STELLATOR
+#include <dlfcn.h>
+
+NS_DB_PQ_BEGIN
+
+enum ExecStatusType {
+	PGRES_EMPTY_QUERY = 0,
+	PGRES_COMMAND_OK,
+	PGRES_TUPLES_OK,
+	PGRES_COPY_OUT,
+	PGRES_COPY_IN,
+	PGRES_BAD_RESPONSE,
+	PGRES_NONFATAL_ERROR,
+	PGRES_FATAL_ERROR,
+	PGRES_COPY_BOTH,
+	PGRES_SINGLE_TUPLE
+};
+
+struct DriverSym {
+	using PQresultStatusType = ExecStatusType (*) (const void *res);
+	using PQfformatType = int (*) (const void *res, int field_num);
+	using PQgetisnullType = int	(*) (const void *res, int tup_num, int field_num);
+	using PQgetvalueType = char *(*) (const void *res, int tup_num, int field_num);
+	using PQgetlengthType = int	(*) (const void *res, int tup_num, int field_num);
+	using PQfnameType = char *(*) (const void *res, int field_num);
+	using PQntuplesType = int (*) (const void *res);
+	using PQnfieldsType = int (*) (const void *res);
+	using PQcmdTuplesType = char *(*) (void *res);
+	using PQresStatusType = char *(*) (ExecStatusType status);
+	using PQresultErrorMessageType = char *(*) (const void *res);
+	using PQclearType = void (*) (void *res);
+	using PQexecType = void *(*) (void *conn, const char *query);
+	using PQexecParamsType = void *(*) (void *conn, const char *command, int nParams, const void *paramTypes,
+			const char *const *paramValues, const int *paramLengths, const int *paramFormats, int resultFormat);
+
+	void *ptr;
+
+	PQresultStatusType PQresultStatus;
+	PQfformatType PQfformat;
+	PQgetisnullType PQgetisnull;
+	PQgetvalueType PQgetvalue;
+	PQgetlengthType PQgetlength;
+	PQfnameType PQfname;
+	PQntuplesType PQntuples;
+	PQnfieldsType PQnfields;
+	PQcmdTuplesType PQcmdTuples;
+	PQresStatusType PQresStatus;
+	PQresultErrorMessageType PQresultErrorMessage;
+	PQclearType PQclear;
+	PQexecType PQexec;
+	PQexecParamsType PQexecParams;
+};
+
+Driver *Driver::open(const mem::StringView &path) {
+	static Driver s_tmp = Driver(path);
+	if (!s_tmp._handle) {
+		s_tmp = Driver(path);
+	}
+	return &s_tmp;
+}
+
+Driver::Connection Driver::getConnection(Handle _h) const {
+	return Driver::Connection(_h.get());
+}
+
+Driver::Status Driver::getStatus(Result res) const {
+	auto err = ((DriverSym *)_handle)->PQresultStatus(res.get());
+	switch (err) {
+	case PGRES_EMPTY_QUERY: return Driver::Status::Empty; break;
+	case PGRES_COMMAND_OK: return Driver::Status::CommandOk; break;
+	case PGRES_TUPLES_OK: return Driver::Status::TuplesOk; break;
+	case PGRES_COPY_OUT: return Driver::Status::CopyOut; break;
+	case PGRES_COPY_IN: return Driver::Status::CopyIn; break;
+	case PGRES_BAD_RESPONSE: return Driver::Status::BadResponse; break;
+	case PGRES_NONFATAL_ERROR: return Driver::Status::NonfatalError; break;
+	case PGRES_FATAL_ERROR: return Driver::Status::FatalError; break;
+	case PGRES_COPY_BOTH: return Driver::Status::CopyBoth; break;
+	case PGRES_SINGLE_TUPLE: return Driver::Status::SingleTuple; break;
+	default: break;
+	}
+	return Driver::Status::Empty;
+}
+
+bool Driver::isBinaryFormat(Result res, size_t field) const {
+	return ((DriverSym *)_handle)->PQfformat(res.get(), field) != 0;
+}
+
+bool Driver::isNull(Result res, size_t row, size_t field) const {
+	return ((DriverSym *)_handle)->PQgetisnull(res.get(), row, field);
+}
+
+char *Driver::getValue(Result res, size_t row, size_t field) const {
+	return ((DriverSym *)_handle)->PQgetvalue(res.get(), row, field);
+}
+
+size_t Driver::getLength(Result res, size_t row, size_t field) const {
+	return size_t(((DriverSym *)_handle)->PQgetlength(res.get(), row, field));
+}
+
+char *Driver::getName(Result res, size_t field) const {
+	return ((DriverSym *)_handle)->PQfname(res.get(), field);
+}
+
+size_t Driver::getNTuples(Result res) const {
+	return size_t(((DriverSym *)_handle)->PQntuples(res.get()));
+}
+
+size_t Driver::getNFields(Result res) const {
+	return size_t(((DriverSym *)_handle)->PQnfields(res.get()));
+}
+
+size_t Driver::getCmdTuples(Result res) const {
+	return stappler::StringToNumber<size_t>(((DriverSym *)_handle)->PQcmdTuples(res.get()));
+}
+
+char *Driver::getStatusMessage(Status st) const {
+	switch (st) {
+	case Status::Empty: return ((DriverSym *)_handle)->PQresStatus(PGRES_EMPTY_QUERY); break;
+	case Status::CommandOk: return ((DriverSym *)_handle)->PQresStatus(PGRES_COMMAND_OK); break;
+	case Status::TuplesOk: return ((DriverSym *)_handle)->PQresStatus(PGRES_TUPLES_OK); break;
+	case Status::CopyOut: return ((DriverSym *)_handle)->PQresStatus(PGRES_COPY_OUT); break;
+	case Status::CopyIn: return ((DriverSym *)_handle)->PQresStatus(PGRES_COPY_IN); break;
+	case Status::BadResponse: return ((DriverSym *)_handle)->PQresStatus(PGRES_BAD_RESPONSE); break;
+	case Status::NonfatalError: return ((DriverSym *)_handle)->PQresStatus(PGRES_NONFATAL_ERROR); break;
+	case Status::FatalError: return ((DriverSym *)_handle)->PQresStatus(PGRES_FATAL_ERROR); break;
+	case Status::CopyBoth: return ((DriverSym *)_handle)->PQresStatus(PGRES_COPY_BOTH); break;
+	case Status::SingleTuple: return ((DriverSym *)_handle)->PQresStatus(PGRES_SINGLE_TUPLE); break;
+	}
+	return nullptr;
+}
+
+char *Driver::getResultErrorMessage(Result res) const {
+	return ((DriverSym *)_handle)->PQresultErrorMessage(res.get());
+}
+
+void Driver::clearResult(Result res) const {
+	((DriverSym *)_handle)->PQclear(res.get());
+}
+
+Driver::Result Driver::exec(Connection conn, const char *query) {
+	return Driver::Result(((DriverSym *)_handle)->PQexec(conn.get(), query));
+}
+
+Driver::Result Driver::exec(Connection conn, const char *command, int nParams, const char *const *paramValues,
+		const int *paramLengths, const int *paramFormats, int resultFormat) {
+	return Driver::Result(((DriverSym *)_handle)->PQexecParams(conn.get(), command, nParams, nullptr, paramValues, paramLengths, paramFormats, resultFormat));
+}
+
+Driver::~Driver() {
+	if (_handle) {
+		dlclose(_handle);
+	}
+}
+
+Driver::Driver(const mem::StringView &path) {
+	if (auto d = dlopen(path.empty() ? "pq" : path.data(), RTLD_LAZY)) {
+		auto h = new DriverSym({d});
+
+		h->PQresultStatus = DriverSym::PQresultStatusType(dlsym(d, "PQresultStatus"));
+		h->PQfformat = DriverSym::PQfformatType(dlsym(d, "PQfformat"));
+		h->PQgetisnull = DriverSym::PQgetisnullType(dlsym(d, "PQgetisnull"));
+		h->PQgetvalue = DriverSym::PQgetvalueType(dlsym(d, "PQgetvalue"));
+		h->PQgetlength = DriverSym::PQgetlengthType(dlsym(d, "PQgetlength"));
+		h->PQfname = DriverSym::PQfnameType(dlsym(d, "PQfname"));
+		h->PQntuples = DriverSym::PQntuplesType(dlsym(d, "PQntuples"));
+		h->PQnfields = DriverSym::PQnfieldsType(dlsym(d, "PQnfields"));
+		h->PQcmdTuples = DriverSym::PQcmdTuplesType(dlsym(d, "PQcmdTuples"));
+		h->PQresStatus = DriverSym::PQresStatusType(dlsym(d, "PQresStatus"));
+		h->PQresultErrorMessage = DriverSym::PQresultErrorMessageType(dlsym(d, "PQresultErrorMessage"));
+		h->PQclear = DriverSym::PQclearType(dlsym(d, "PQclear"));
+		h->PQexec = DriverSym::PQexecType(dlsym(d, "PQexec"));
+		h->PQexecParams = DriverSym::PQexecParamsType(dlsym(d, "PQexecParams"));
+
+		if (h->PQresultStatus && h->PQfformat && h->PQgetisnull && h->PQgetvalue && h->PQgetlength && h->PQfname && h->PQntuples
+				&& h->PQnfields && h->PQcmdTuples && h->PQresStatus && h->PQresultErrorMessage && h->PQclear && h->PQexec && h->PQexecParams) {
+			_handle = h;
+		}
+	}
+}
 
 NS_DB_PQ_END
 #endif

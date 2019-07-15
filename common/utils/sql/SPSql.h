@@ -59,13 +59,13 @@ enum class Operator {
 };
 
 struct SimpleBinder : public AllocBase {
-	void writeBind(StringStream &stream, const data::Value &val) {
+	void writeBind(std::ostream &stream, const data::Value &val) {
 		stream << data::toString(val);
 	}
-	void writeBind(StringStream &stream, const String &val) {
+	void writeBind(std::ostream &stream, const String &val) {
 		stream << val;
 	}
-	void writeBind(StringStream &stream, const Bytes &val) {
+	void writeBind(std::ostream &stream, const Bytes &val) {
 		stream << base16::encode(val);
 	}
 };

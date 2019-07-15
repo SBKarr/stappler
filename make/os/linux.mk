@@ -39,6 +39,8 @@ OSTYPE_SERENITY_LIBS := \
 
 OSTYPE_CLI_LIBS += $(OSTYPE_COMMON_LIBS) -l:libsqlite3.a -ldl
 
+OSTYPE_STELLATOR_LIBS += $(OSTYPE_COMMON_LIBS) -l:libsqlite3.a -ldl
+
 OSTYPE_STAPPLER_LIBS += $(OSTYPE_CLI_LIBS) -l:libhyphen.a -l:libglfw3.a -l:libfreetype.a \
 	-lGLEW -lGL -lXxf86vm -lX11 -lXrandr -lXi -lXinerama -lXcursor
 

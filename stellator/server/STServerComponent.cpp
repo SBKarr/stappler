@@ -22,12 +22,3 @@ THE SOFTWARE.
 
 #include "STServerComponent.h"
 
-STServerComponent::STServerComponent() {
-	// TODO Auto-generated constructor stub
-
-}
-
-STServerComponent::~STServerComponent() {
-	// TODO Auto-generated destructor stub
-}
-

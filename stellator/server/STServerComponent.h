@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define STELLATOR_SERVER_STSERVERCOMPONENT_H_
 
 #include "STDefine.h"
+#include "STServer.h"
 
 namespace stellator {
 
@@ -62,8 +63,8 @@ public:
 
 	template <typename Value, typename ... Args>
 	void exportValues(Value &&val, Args && ... args) {
-		exportValues(forward<Value>(val));
-		exportValues(forward<Args>(args)...);
+		exportValues(std::forward<Value>(val));
+		exportValues(std::forward<Args>(args)...);
 	}
 
 protected:

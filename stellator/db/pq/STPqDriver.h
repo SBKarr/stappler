@@ -48,6 +48,8 @@ public:
 		SingleTuple,
 	};
 
+	virtual ~Driver();
+
 	Connection getConnection(Handle h) const;
 
 	Status getStatus(Result res) const;

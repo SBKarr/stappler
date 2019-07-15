@@ -31,7 +31,7 @@ NS_SP_EXT_BEGIN(apr)
 
 namespace pool {
 
-static server_rec *getServerFromContext(pool_t *p, uint32_t tag, void *ptr) {
+static server_rec *getServerFromContext(pool_t *p, uint32_t tag, const void *ptr) {
 	switch (tag) {
 	case uint32_t(Server): return (server_rec *)ptr; break;
 	case uint32_t(Connection): return ((conn_rec *)ptr)->base_server; break;
@@ -43,7 +43,7 @@ static server_rec *getServerFromContext(pool_t *p, uint32_t tag, void *ptr) {
 
 server_rec *server() {
 	server_rec *ret = nullptr;
-	foreach_info(&ret, [] (void *ud, pool_t *p, uint32_t tag, void *data) -> bool {
+	foreach_info(&ret, [] (void *ud, pool_t *p, uint32_t tag, const void *data) -> bool {
 		auto ptr = getServerFromContext(p, tag, data);
 		if (ptr) {
 			*((server_rec **)ud) = ptr;
@@ -57,7 +57,7 @@ server_rec *server() {
 
 request_rec *request() {
 	request_rec *ret = nullptr;
-	foreach_info(&ret, [] (void *ud, pool_t *p, uint32_t tag, void *data) -> bool {
+	foreach_info(&ret, [] (void *ud, pool_t *p, uint32_t tag, const void *data) -> bool {
 		if (tag == uint32_t(Request)) {
 			*((request_rec **)ud) = (request_rec *)data;
 			return false;

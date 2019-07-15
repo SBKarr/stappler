@@ -109,7 +109,7 @@ public:
 	void setAdapter(const Adapter &);
 	const Adapter &getAdapter() const;
 
-	operator bool () const { return _data != nullptr; }
+	operator bool () const { return _data != nullptr && _data->adapter; }
 
 	const mem::Value &acquireObject(const Scheme &, uint64_t oid) const;
 

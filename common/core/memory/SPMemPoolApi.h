@@ -55,10 +55,10 @@ void initialize();
 void terminate();
 
 pool_t *acquire();
-Pair<uint32_t, void *> info();
+Pair<uint32_t, const void *> info();
 
 void push(pool_t *);
-void push(pool_t *, uint32_t, void * = nullptr);
+void push(pool_t *, uint32_t, const void * = nullptr);
 void pop();
 
 // creates unmanaged pool
@@ -77,7 +77,7 @@ void free(pool_t *, void *ptr, size_t size);
 
 void cleanup_register(pool_t *, void *, cleanup_fn);
 
-void foreach_info(void *, bool(*)(void *, pool_t *, uint32_t, void *));
+void foreach_info(void *, bool(*)(void *, pool_t *, uint32_t, const void *));
 
 status_t userdata_set(const void *data, const char *key, cleanup_fn, pool_t *);
 status_t userdata_setn(const void *data, const char *key, cleanup_fn, pool_t *);

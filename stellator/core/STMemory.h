@@ -38,10 +38,10 @@ enum Info : uint32_t {
 template <typename T>
 struct CallableContext {
 public:
-	CallableContext(pool_t *p) : type(p), pool(p) { push(pool, uint32_t(Pool), type); }
-	CallableContext(const stellator::Request &r) : type(&r), pool(r.getPool()) { pool::push(pool, uint32_t(Request), type); }
-	CallableContext(const stellator::Connection &c) : type(&c), pool(c.getPool()) { pool::push(pool, uint32_t(Connection), type); }
-	CallableContext(const stellator::Server &s) : type(&s), pool(s.getPool()) { pool::push(pool, uint32_t(Server), type); }
+	CallableContext(pool_t *p) : type(&p), pool(p) { pool::push(pool, uint32_t(Pool), type); }
+	//CallableContext(const stellator::Request &r) : type(&r), pool(r.getPool()) { pool::push(pool, uint32_t(Request), type); }
+	//CallableContext(const stellator::Connection &c) : type(&c), pool(c.getPool()) { pool::push(pool, uint32_t(Connection), type); }
+	//CallableContext(const stellator::Server &s) : type(&s), pool(s.getPool()) { pool::push(pool, uint32_t(Server), type); }
 	~CallableContext() { pool::pop(); }
 
 protected:

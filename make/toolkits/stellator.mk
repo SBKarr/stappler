@@ -28,9 +28,9 @@ STELLATOR_PRECOMPILED_HEADERS += \
 	common/core/SPCommon.h \
 	stellator/core/STDefine.h
 
-STELLATOR_SRCS_DIRS += common stellator
+STELLATOR_SRCS_DIRS += common stellator spug
 STELLATOR_SRCS_OBJS += 
-STELLATOR_INCLUDES_DIRS += common stellator
+STELLATOR_INCLUDES_DIRS += common stellator spug
 STELLATOR_INCLUDES_OBJS += $(OSTYPE_INCLUDE)
 
 TOOLKIT_NAME := STELLATOR

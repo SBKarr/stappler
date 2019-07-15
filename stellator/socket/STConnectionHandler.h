@@ -20,9 +20,34 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
+#ifndef STELLATOR_SOCKET_STCONNECTIONHANDLER_H_
+#define STELLATOR_SOCKET_STCONNECTIONHANDLER_H_
+
 #include "STDefine.h"
 
-#include "STDefine.cc"
-#include "STConnectionHandler.cc"
-#include "STConnectionWorker.cc"
-//#include "STThreadPool.cc"
+#include <sys/epoll.h>
+
+namespace stellator {
+
+class ConnectionHandler : public mem::AllocBase {
+public:
+	static constexpr size_t MaxEvents = 64;
+
+	ConnectionHandler(const mem::StringView &, int port);
+
+	bool run();
+
+protected:
+	void onError(const mem::StringView &);
+
+	void setNonblocking(int fd);
+
+	mem::String _addr;
+	int _port = 8080;
+	mem::pool_t *pool = nullptr;
+	//moodycamel::ConcurrentQueue<int> _fdQueue;
+};
+
+}
+
+#endif /* STELLATOR_SOCKET_STCONNECTIONHANDLER_H_ */

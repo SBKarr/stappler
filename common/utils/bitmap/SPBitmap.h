@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "SPCommon.h"
 #include "SPIO.h"
+#include "SPDataReader.h"
 
 NS_SP_BEGIN
 

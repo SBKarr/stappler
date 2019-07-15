@@ -36,13 +36,13 @@ public:
 	AllocStack();
 
 	pool_t *top() const;
-	Pair<uint32_t, void *> info() const;
+	Pair<uint32_t, const void *> info() const;
 
 	void push(pool_t *);
-	void push(pool_t *, uint32_t, void *);
+	void push(pool_t *, uint32_t, const void *);
 	void pop();
 
-	void foreachInfo(void *, bool(*cb)(void *, pool_t *, uint32_t, void *));
+	void foreachInfo(void *, bool(*cb)(void *, pool_t *, uint32_t, const void *));
 
 protected:
 	template <typename T>
@@ -60,7 +60,7 @@ protected:
 	struct Info {
 		pool_t *pool;
 		uint32_t tag;
-		void *ptr;
+		const void *ptr;
 	};
 
 	stack<Info> _stack;
@@ -74,7 +74,7 @@ pool_t *AllocStack::top() const {
 	return _stack.get().pool;
 }
 
-Pair<uint32_t, void *> AllocStack::info() const {
+Pair<uint32_t, const void *> AllocStack::info() const {
 	return pair(_stack.get().tag, _stack.get().ptr);
 }
 
@@ -83,7 +83,7 @@ void AllocStack::push(pool_t *p) {
 		_stack.push(Info{p, 0, nullptr});
 	}
 }
-void AllocStack::push(pool_t *p, uint32_t tag, void *ptr) {
+void AllocStack::push(pool_t *p, uint32_t tag, const void *ptr) {
 	if (p) {
 		_stack.push(Info{p, tag, ptr});
 	}
@@ -93,7 +93,7 @@ void AllocStack::pop() {
 	_stack.pop();
 }
 
-void AllocStack::foreachInfo(void *data, bool(*cb)(void *, pool_t *, uint32_t, void *)) {
+void AllocStack::foreachInfo(void *data, bool(*cb)(void *, pool_t *, uint32_t, const void *)) {
 	for (size_t i = 0; i < _stack.size; ++ i) {
 		auto &it = _stack.data[_stack.size - 1 - i];
 		if (it.pool && !cb(data, it.pool, it.tag, it.ptr)) {
@@ -110,21 +110,21 @@ pool_t *acquire() {
 	return tl_stack.top();
 }
 
-Pair<uint32_t, void *> info() {
+Pair<uint32_t, const void *> info() {
 	return tl_stack.info();
 }
 
 void push(pool_t *p) {
 	return tl_stack.push(p);
 }
-void push(pool_t *p, uint32_t tag, void *ptr) {
+void push(pool_t *p, uint32_t tag, const void *ptr) {
 	return tl_stack.push(p, tag, ptr);
 }
 void pop() {
 	return tl_stack.pop();
 }
 
-void foreach_info(void *data, bool(*cb)(void *, pool_t *, uint32_t, void *)) {
+void foreach_info(void *data, bool(*cb)(void *, pool_t *, uint32_t, const void *)) {
 	tl_stack.foreachInfo(data, cb);
 }
 

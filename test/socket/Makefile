@@ -1,7 +1,7 @@
 STAPPLER_ROOT = ../..
 
 LOCAL_OUTDIR := bin
-LOCAL_OUTPUT_EXECUTABLE := $(LOCAL_OUTDIR)/socket_test
+LOCAL_EXECUTABLE := socket_test
 
 LOCAL_TOOLKIT := stellator
 
@@ -20,4 +20,4 @@ LOCAL_LIBS =
 #.local_prebuild:
 #	@echo test
 
-include $(STAPPLER_ROOT)/make/local.mk
+include $(STAPPLER_ROOT)/make/universal.mk
