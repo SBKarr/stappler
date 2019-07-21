@@ -247,7 +247,7 @@ bool CustomCornerSprite::Texture::init(uint32_t r) {
 	reload();
 
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
-	onEvent(Device::onAndroidReset, [this] (const Event &ev) {
+	onEvent(Device::onRegenerateTextures, [this] (const Event &ev) {
 		reload();
 	});
 #endif

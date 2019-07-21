@@ -459,16 +459,8 @@ void TextureCache::freeCurrentContext() {
 
 void TextureCache::reloadTextures() {
 	_mainProgramSet->reloadPrograms();
-	if (_vectorCanvas) {
-		_vectorCanvas->drop();
-		_vectorCanvas = nullptr;
-	}
 
 	s_textureCacheThread.perform([this] (const Task &) -> bool {
-		if (_threadVectorCanvas) {
-			_threadVectorCanvas->drop();
-			_threadVectorCanvas = nullptr;
-		}
 		performWithGL([&] {
 			_threadProgramSet->reloadPrograms();
 		});
@@ -489,7 +481,6 @@ void TextureCache::reloadTextures() {
 	}
 	_reloadDirty = true;
 }
-
 
 Rc<cocos2d::Texture2D> TextureCache::uploadTexture(const Bytes &data, const Size &size, float density) {
 	if (layout::Image::isSvg(data)) {

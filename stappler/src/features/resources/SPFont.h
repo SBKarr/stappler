@@ -84,6 +84,7 @@ public:
 	FontTextureMap updateTextures(const Map<String, Vector<char16_t>> &l, Vector<Rc<cocos2d::Texture2D>> &);
 
 protected:
+	bool doUpdateTexture(uint32_t v, Vector<Rc<cocos2d::Texture2D>> &tPtr, const Map<String, Vector<char16_t>> &lPtr);
 	void updateTexture(uint32_t, const Map<String, Vector<char16_t>> &);
 	void onTextureResult(Vector<Rc<cocos2d::Texture2D>> &&, uint32_t);
 	void onTextureResult(Map<String, Vector<char16_t>> &&map, Vector<Rc<cocos2d::Texture2D>> &&tex, uint32_t v);

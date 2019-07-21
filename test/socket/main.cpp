@@ -25,7 +25,7 @@ THE SOFTWARE.
 
 #include "SPData.h"
 #include "SPString.h"
-#include "STConnectionHandler.h"
+#include "STRoot.h"
 
 #define HELP_STRING \
 	"SocketTest\n" \
@@ -70,8 +70,9 @@ int _spMain(argc, argv) {
 	sock.perform(TimeInterval::seconds(10));*/
 
 	memory::pool::push(memory::pool::create());
-	stellator::ConnectionHandler h("127.0.0.1", 8080);
-	h.run();
+
+	stellator::Root root;
+	root.run("127.0.0.1", 8080);
 	memory::pool::pop();
 
 	return 0;

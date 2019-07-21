@@ -68,7 +68,8 @@ SP_DECLARE_EVENT_CLASS(Device, onFocus);
 SP_DECLARE_EVENT_CLASS(Device, onUrlOpened);
 SP_DECLARE_EVENT_CLASS(Device, onError);
 SP_DECLARE_EVENT_CLASS(Device, onRemoteNotification);
-SP_DECLARE_EVENT_CLASS(Device, onAndroidReset);
+SP_DECLARE_EVENT_CLASS(Device, onRegenerateResources);
+SP_DECLARE_EVENT_CLASS(Device, onRegenerateTextures);
 SP_DECLARE_EVENT_CLASS(Device, onBackKey);
 SP_DECLARE_EVENT_CLASS(Device, onRateApplication);
 SP_DECLARE_EVENT_CLASS(Device, onScreenshot);
@@ -132,7 +133,8 @@ Device::Device() : _deviceLog(&log::__stappler_log) {
         ThreadManager::getInstance()->update(0.0f);
         TextureCache::getInstance()->reloadTextures();
     	stappler::log::text("Device", "onAndroidReset");
-    	onAndroidReset(this);
+    	onRegenerateResources(this);
+    	onRegenerateTextures(this);
     });
     cocos2d::Director::getInstance()->getEventDispatcher()->addEventListenerWithFixedPriority(_backToForegroundlistener, -1);
 #endif

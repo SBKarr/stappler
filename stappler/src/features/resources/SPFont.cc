@@ -525,7 +525,7 @@ bool FontSource::init(FontFaceMap &&map, const ReceiptCallback &cb, float scale,
 
 	_assets = std::move(assets);
 
-	onEvent(Device::onAndroidReset, [this] (const Event &) {
+	onEvent(Device::onRegenerateResources, [this] (const Event &) {
 		for (auto &it : _textures) {
 			it->init(it->getPixelFormat(), it->getPixelsWide(), it->getPixelsHigh());
 		}
@@ -621,29 +621,36 @@ void FontSource::onTextureResult(Map<String, Vector<char16_t>> &&map, Vector<Rc<
 	});
 }
 
+bool FontSource::doUpdateTexture(uint32_t v, Vector<Rc<cocos2d::Texture2D>> &tPtr, const Map<String, Vector<char16_t>> &lPtr) {
+	layout::FreeTypeInterface::FontTextureInterface iface;
+	iface.emplaceTexture = [&] (uint16_t w, uint16_t h) -> size_t {
+		tPtr.emplace_back(Rc<cocos2d::Texture2D>::create(cocos2d::Texture2D::PixelFormat::A8, w, h));
+		tPtr.back()->updateWithData("\xFF", w-1, h-1, 1, 1);
+		tPtr.back()->setAliasTexParameters();
+		return tPtr.size() - 1;
+	};
+	iface.draw = [&] (size_t idx, const void *data, uint16_t offsetX, uint16_t offsetY, uint16_t width, uint16_t height) -> bool {
+		cocos2d::Texture2D * t = tPtr.at(idx);
+		t->updateWithData(data, offsetX, offsetY, width, height);
+		return true;
+	};
+
+	auto lib = FontLibrary::getInstance();
+	auto cache = lib->getCache();
+	auto uret = cache->updateTextureWithSource(v, this, lPtr, iface);
+	if (!uret.empty()) {
+		lib->setSourceLayout(this, Rc<layout::FontTextureLayout>::create(v, move(uret)));
+		return true;
+	}
+	return false;
+}
+
 void FontSource::updateTexture(uint32_t v, const Map<String, Vector<char16_t>> &l) {
 	auto &thread = TextureCache::thread();
 	if (thread.isOnThisThread()) {
 		Vector<Rc<cocos2d::Texture2D>> tPtr;
 		TextureCache::getInstance()->performWithGL([&] {
-			layout::FreeTypeInterface::FontTextureInterface iface;
-			iface.emplaceTexture = [&] (uint16_t w, uint16_t h) -> size_t {
-				tPtr.emplace_back(Rc<cocos2d::Texture2D>::create(cocos2d::Texture2D::PixelFormat::A8, w, h));
-				tPtr.back()->updateWithData("\xFF", w-1, h-1, 1, 1);
-				tPtr.back()->setAliasTexParameters();
-				return tPtr.size() - 1;
-			};
-			iface.draw = [&] (size_t idx, const void *data, uint16_t offsetX, uint16_t offsetY, uint16_t width, uint16_t height) -> bool {
-				cocos2d::Texture2D * t = tPtr.at(idx);
-				t->updateWithData(data, offsetX, offsetY, width, height);
-				return true;
-			};
-
-			auto lib = FontLibrary::getInstance();
-			auto cache = lib->getCache();
-			auto ret = cache->updateTextureWithSource(v, this, l, iface);
-			if (!ret.empty()) {
-				lib->setSourceLayout(this, Rc<layout::FontTextureLayout>::create(v, std::move(ret)));
+			if (doUpdateTexture(v, tPtr, l)) {
 				onTextureResult(std::move(tPtr), v);
 			}
 		});
@@ -652,27 +659,7 @@ void FontSource::updateTexture(uint32_t v, const Map<String, Vector<char16_t>> &
 		auto tPtr = new Vector<Rc<cocos2d::Texture2D>>();
 		thread.perform([this, lPtr, tPtr, v] (const Task &) -> bool {
 			auto ret = TextureCache::getInstance()->performWithGL([&] {
-				layout::FreeTypeInterface::FontTextureInterface iface;
-				iface.emplaceTexture = [tPtr] (uint16_t w, uint16_t h) -> size_t {
-					tPtr->emplace_back(Rc<cocos2d::Texture2D>::create(cocos2d::Texture2D::PixelFormat::A8, w, h));
-					tPtr->back()->updateWithData("\xFF", w-1, h-1, 1, 1);
-					tPtr->back()->setAliasTexParameters();
-					return tPtr->size() - 1;
-				};
-				iface.draw = [tPtr] (size_t idx, const void *data, uint16_t offsetX, uint16_t offsetY, uint16_t width, uint16_t height) -> bool {
-					cocos2d::Texture2D * t = tPtr->at(idx);
-					t->updateWithData(data, offsetX, offsetY, width, height);
-					return true;
-				};
-
-				auto lib = FontLibrary::getInstance();
-				auto cache = lib->getCache();
-				auto uret = cache->updateTextureWithSource(v, this, *lPtr, iface);
-				if (!uret.empty()) {
-					lib->setSourceLayout(this, Rc<layout::FontTextureLayout>::create(v, move(uret)));
-					return true;
-				}
-				return false;
+				return doUpdateTexture(v, *tPtr, *lPtr);
 			});
 			delete lPtr;
 			return ret;

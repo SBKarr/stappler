@@ -69,6 +69,7 @@ protected:
 	class CircleLoaderIcon;
 	class ExpandIcon;
 
+	virtual void regenerate() override;
 	virtual void updateCanvas(layout::Subscription::Flags f) override;
 	virtual void setDynamicIcon(DynamicIcon *);
 	virtual void setStaticIcon(IconName);

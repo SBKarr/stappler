@@ -63,7 +63,7 @@ public:
 
 protected:
 	virtual void updateColor() override;
-	virtual Rc<DynamicAtlas> makeAtlas() const;
+	virtual Rc<DynamicAtlas> makeAtlas() const override;
 
 	Rc<DynamicQuadArray> _quads;
 };
@@ -78,7 +78,7 @@ public:
 
 protected:
 	virtual void updateColor() override;
-	virtual Rc<DynamicAtlas> makeAtlas() const;
+	virtual Rc<DynamicAtlas> makeAtlas() const override;
 
 	Rc<DynamicTriangleArray> _array;
 };

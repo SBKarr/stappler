@@ -69,14 +69,8 @@ bool PathNode::init(Image *img, Format fmt) {
 	_image = img;
 
 	auto l = Rc<EventListener>::create();
-	l->onEvent(Device::onAndroidReset, [this] (const Event &) {
-		if (_canvas) {
-			_canvas->drop();
-			_canvas = nullptr;
-		}
-		setTexture(nullptr);
-		_renderRequested = false;
-		_pathsDirty = true;
+	l->onEvent(Device::onRegenerateTextures, [this] (const Event &) {
+		regenerate();
 	});
 	addComponent(l);
 
@@ -160,6 +154,14 @@ void PathNode::setImage(Image *img) {
 }
 Image * PathNode::getImage() const {
 	return _image;
+}
+
+void PathNode::regenerate() {
+	if (auto tex = getTexture()) {
+		tex->init(tex->getPixelFormat(), tex->getPixelsWide(), tex->getPixelsHigh(), cocos2d::Texture2D::InitAs::RenderTarget);
+	}
+	_renderRequested = false;
+	_pathsDirty = true;
 }
 
 void PathNode::updateCanvas(layout::Subscription::Flags f) {

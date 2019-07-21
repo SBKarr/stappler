@@ -84,7 +84,7 @@ bool Scene::init() {
 	l->onEvent(stappler::Device::onBackKey, [this] (const Event &) {
 		onBackKeyPressed();
 	});
-	l->onEvent(stappler::Device::onAndroidReset, [] (const Event &) {
+	l->onEvent(stappler::Device::onRegenerateTextures, [] (const Event &) {
 		stappler::Device::getInstance()->onDirectorStarted();
 	});
 	l->onEvent(stappler::Device::onScreenshot, [this] (const Event &) {
@@ -191,6 +191,14 @@ void Scene::setVisualizeTouches(bool value) {
 }
 bool Scene::isVisualizeTouches() const {
 	return _visualizeTouches;
+}
+
+void Scene::setExitProtection(bool value) {
+	_exitProtection = value;
+}
+
+bool Scene::isExitProtection() const {
+	return _exitProtection;
 }
 
 void Scene::onEnter() {

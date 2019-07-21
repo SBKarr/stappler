@@ -67,7 +67,7 @@ bool ShadowSprite::Texture::init(uint16_t size, uint16_t radius) {
 	reload();
 
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
-	onEvent(Device::onAndroidReset, [this] (const Event &ev) {
+	onEvent(Device::onRegenerateTextures, [this] (const Event &ev) {
 		reload();
 	});
 #endif

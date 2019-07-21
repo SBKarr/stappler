@@ -20,19 +20,176 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "STConnectionWorker.h"
+#include "STRoot.h"
+#include "STMemory.h"
 
-#include <sys/signalfd.h>
 #include <signal.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/epoll.h>
+#include <sys/signalfd.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 namespace stellator {
 
-#define  container_of(ptr, type, member) ({ \
-    const  typeof( ((type *)0)->member ) *__mptr = (ptr); \
-    (type  *)( (char *)__mptr - offsetof(type,member) );})
+class ConnectionWorker;
 
-inline ConnectionWorker::Client* to_epoll_client(struct epoll_event *event) {
-    return  container_of(event, ConnectionWorker::Client, event);
+class ConnectionQueue : public mem::AllocBase {
+public:
+	ConnectionQueue(mem::pool_t *p, Root *h, int socket);
+	~ConnectionQueue();
+
+	void retain();
+	void release();
+	void finalize();
+
+	std::mutex &getMutex();
+	int32_t getRefCount();
+
+protected:
+	std::atomic<bool> _finalized;
+	std::atomic<int32_t> _refCount;
+
+	mem::Vector<ConnectionWorker *> _workers;
+	mem::pool_t *_pool = nullptr;
+
+	int _pipe[2] = { -1, -1 };
+};
+
+class ConnectionWorker : public mem::AllocBase {
+public:
+	struct Buffer;
+	struct Client;
+	struct Generation;
+
+	struct Buffer : mem::AllocBase {
+		Buffer *next = nullptr;
+	    mem::pool_t *pool = nullptr;
+
+		uint8_t *buf = nullptr;
+		size_t size = 0;
+		size_t offset = 0;
+		size_t capacity = 0;
+
+		static Buffer *create(mem::pool_t *, const uint8_t *, size_t);
+
+		void release();
+	};
+
+	struct Client : mem::AllocBase {
+		Client *next = nullptr;
+		Client *prev = nullptr;
+		Generation *gen = nullptr;
+
+		Buffer **input = nullptr;
+
+		Buffer *outputFront = nullptr;
+		Buffer **outputTail = nullptr;
+
+	    mem::pool_t *pool = nullptr;
+
+		int fd = -1;
+	    struct epoll_event event;
+
+		Client(Generation *);
+		Client();
+
+		void init(int);
+		void release();
+
+		void performRead();
+		void performWrite();
+
+		void readBuffer(const uint8_t *, size_t);
+		void writeBuffer(const uint8_t *, size_t);
+	};
+
+	struct Generation : mem::AllocBase {
+		Generation *prev = nullptr;
+		Generation *next = nullptr;
+		Client *active = nullptr;
+		Client *empty = nullptr;
+		size_t activeClients = 0;
+
+		mem::pool_t *pool = nullptr;
+		bool endOfLife = false;
+
+		Generation(mem::pool_t *);
+
+		Client *pushFd(int);
+		void releaseClient(Client *);
+		void releaseAll();
+	};
+
+	static constexpr size_t MaxEvents = 64;
+
+	ConnectionWorker(ConnectionQueue *queue, Root *, int socket, int pipe);
+	~ConnectionWorker();
+
+	bool worker();
+	bool poll(int);
+
+	void initializeThread();
+	void finalizeThread();
+
+	std::thread &thread() { return _thread; }
+
+protected:
+	Generation *makeGeneration();
+	void pushFd(int epollFd, int fd);
+
+	void onError(const mem::StringView &);
+
+	ConnectionQueue *_queue;
+	std::thread::id _threadId;
+
+	Root *_root = nullptr;
+
+	int _inputFd = -1;
+	int _cancelFd = -1;
+	size_t _fdCount = 0;
+
+	Generation *_generation = nullptr;
+
+	std::thread _thread;
+};
+
+static mem::StringView s_getSignalName(int sig) {
+	switch (sig) {
+	case SIGINT: return "SIGINT";
+	case SIGILL: return "SIGILL";
+	case SIGABRT: return "SIGABRT";
+	case SIGFPE: return "SIGFPE";
+	case SIGSEGV: return "SIGSEGV";
+	case SIGTERM: return "SIGTERM";
+	case SIGHUP: return "SIGHUP";
+	case SIGQUIT: return "SIGQUIT";
+	case SIGTRAP: return "SIGTRAP";
+	case SIGKILL: return "SIGKILL";
+	case SIGBUS: return "SIGBUS";
+	case SIGSYS: return "SIGSYS";
+	case SIGPIPE: return "SIGPIPE";
+	case SIGALRM: return "SIGALRM";
+	case SIGURG: return "SIGURG";
+	case SIGSTOP: return "SIGSTOP";
+	case SIGTSTP: return "SIGTSTP";
+	case SIGCONT: return "SIGCONT";
+	case SIGCHLD: return "SIGCHLD";
+	case SIGTTIN: return "SIGTTIN";
+	case SIGTTOU: return "SIGTTOU";
+	case SIGPOLL: return "SIGPOLL";
+	case SIGXCPU: return "SIGXCPU";
+	case SIGXFSZ: return "SIGXFSZ";
+	case SIGVTALRM: return "SIGVTALRM";
+	case SIGPROF: return "SIGPROF";
+	case SIGUSR1: return "SIGUSR1";
+	case SIGUSR2: return "SIGUSR2";
+	default: return "(unknown)";
+	}
+	return mem::StringView();
 }
 
 static void s_ConnectionWorker_workerThread(ConnectionWorker *tm) {
@@ -53,8 +210,71 @@ static void s_ConnectionWorker_workerThread(ConnectionWorker *tm) {
 	mem::pool::terminate();
 }
 
-ConnectionWorker::ConnectionWorker(ConnectionQueue *queue, ConnectionHandler *h, int socket, int pipe)
-: _queue(queue), _handler(h), _inputFd(socket), _cancelFd(pipe), _thread(s_ConnectionWorker_workerThread, this) {
+static bool ConnectionHandler_setNonblocking(int fd) {
+	int flags = fcntl(fd, F_GETFL, 0);
+	if (flags == -1) {
+		std::cout << mem::toString("fcntl() fail to get flags for ", fd);
+		return false;
+	}
+	if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+		std::cout << mem::toString("fcntl() setNonblocking failed for ", fd);
+		return false;
+	}
+
+	return true;
+}
+
+ConnectionQueue::ConnectionQueue(mem::pool_t *p, Root *h, int socket) : _finalized(false), _refCount(1), _pool(p) {
+	mem::pool::push(_pool);
+	auto nWorkers = std::thread::hardware_concurrency();
+	_workers.reserve(nWorkers);
+
+	if (pipe2(_pipe, O_NONBLOCK) == 0) {
+		ConnectionHandler_setNonblocking(_pipe[0]);
+		ConnectionHandler_setNonblocking(_pipe[1]);
+
+		for (uint32_t i = 0; i < nWorkers; i++) {
+			ConnectionWorker *worker = new (_pool) ConnectionWorker(this, h, socket, _pipe[0]);
+			_workers.push_back(worker);
+		}
+	}
+
+	mem::pool::pop();
+}
+
+ConnectionQueue::~ConnectionQueue() {
+	if (_pipe[0] > -1) { close(_pipe[0]); }
+	if (_pipe[1] > -1) { close(_pipe[1]); }
+
+	mem::pool::destroy(_pool);
+}
+
+void ConnectionQueue::retain() {
+	_refCount ++;
+}
+
+void ConnectionQueue::release() {
+	if (--_refCount <= 0) {
+		delete this;
+	}
+}
+
+void ConnectionQueue::finalize() {
+	_finalized = true;
+	write(_pipe[1], "END!", 4);
+
+	for (auto &it : _workers) {
+		if (it->thread().joinable()) {
+			it->thread().join();
+			delete it;
+		}
+	}
+
+	release();
+}
+
+ConnectionWorker::ConnectionWorker(ConnectionQueue *queue, Root *h, int socket, int pipe)
+: _queue(queue), _root(h), _inputFd(socket), _cancelFd(pipe), _thread(s_ConnectionWorker_workerThread, this) {
 	_queue->retain();
 }
 
@@ -119,10 +339,10 @@ bool ConnectionWorker::worker() {
 
 bool ConnectionWorker::poll(int epollFd) {
 	bool _shouldClose = false;
-	std::array<struct epoll_event, ConnectionHandler::MaxEvents> _events;
+	std::array<struct epoll_event, ConnectionWorker::MaxEvents> _events;
 
 	while (!_shouldClose) {
-		int nevents = epoll_wait(epollFd, _events.data(), ConnectionHandler::MaxEvents, -1);
+		int nevents = epoll_wait(epollFd, _events.data(), ConnectionWorker::MaxEvents, -1);
 		if (nevents == -1 && errno != EINTR) {
 			char buf[256] = { 0 };
 			onError(mem::toString("epoll_wait() failed with errno ", errno, " (", strerror_r(errno, buf, 255), ")"));
@@ -175,6 +395,12 @@ bool ConnectionWorker::poll(int epollFd) {
 			if ((_events[i].events & EPOLLOUT)) {
 				client->performWrite();
 			}
+
+			if ((_events[i].events & EPOLLHUP) || (_events[i].events & EPOLLRDHUP)) {
+				if (client->fd != _inputFd && client->fd != _cancelFd) {
+					client->gen->releaseClient(client);
+				}
+			}
 		}
 	}
 
@@ -198,7 +424,7 @@ void ConnectionWorker::pushFd(int epollFd, int fd) {
 
 	auto c = _generation->pushFd(fd);
 
-	if (epoll_ctl(epollFd, EPOLL_CTL_ADD, c->event.data.fd, &c->event) == -1) {
+	if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fd, &c->event) == -1) {
 		std::cout << "Failed epoll_ctl(" << c->event.data.fd << ", EPOLL_CTL_ADD)\n";
 		c->gen->releaseClient(c);
 	} else {
@@ -236,11 +462,12 @@ ConnectionWorker::Client::Client(Generation *g) : gen(g) { }
 
 ConnectionWorker::Client::Client() { }
 
-void ConnectionWorker::Client::init(int fd) {
+void ConnectionWorker::Client::init(int ifd) {
 	memset(&event, 0, sizeof(event));
-	event.data.fd = fd;
+	event.data.fd = ifd;
 	event.data.ptr = this;
-	event.events = EPOLLIN | EPOLLOUT | EPOLLET;
+	event.events = EPOLLIN | EPOLLOUT | EPOLLET | EPOLLRDHUP;
+	fd = ifd;
 
 	ConnectionHandler_setNonblocking(fd);
 }
@@ -259,10 +486,11 @@ void ConnectionWorker::Client::performRead() {
 	}
 
 	if (sz == 0) {
-		gen->releaseClient(this);
+		//gen->releaseClient(this);
 	} else if (sz == -1 && errno != EAGAIN) {
+		char buf[256] = { 0 };
 		gen->releaseClient(this);
-		std::cout << "[Worker] fail to read from client\n";
+		std::cout << "[Worker] fail to read from client: " << strerror_r(errno, buf, 255) << "\n";
 	}
 }
 
@@ -333,9 +561,9 @@ ConnectionWorker::Generation::Generation(mem::pool_t *p) : pool(p) {
 }
 
 ConnectionWorker::Client *ConnectionWorker::Generation::pushFd(int fd) {
-	ConnectionWorker::Client *ret;
+	ConnectionWorker::Client *ret = nullptr;
 	if (empty) {
-		auto ret = empty;
+		ret = empty;
 		empty = ret->next;
 		if (empty) { empty->prev = nullptr; }
 	} else {
@@ -383,6 +611,89 @@ void ConnectionWorker::Generation::releaseAll() {
 ConnectionWorker::Generation *ConnectionWorker::makeGeneration() {
 	auto p = mem::pool::create(mem::pool::acquire());
 	return new (p) Generation(p);
+}
+
+
+bool Root::run(const mem::StringView &_addr, int _port) {
+	struct sigaction s_sharedSigAction;
+	struct sigaction s_sharedSigOldUsr1Action;
+	struct sigaction s_sharedSigOldUsr2Action;
+
+	memset(&s_sharedSigAction, 0, sizeof(s_sharedSigAction));
+	s_sharedSigAction.sa_handler = SIG_IGN;
+	sigemptyset(&s_sharedSigAction.sa_mask);
+	sigaction(SIGUSR1, &s_sharedSigAction, &s_sharedSigOldUsr1Action);
+	sigaction(SIGUSR2, &s_sharedSigAction, &s_sharedSigOldUsr2Action);
+
+	sigset_t mask;
+	sigset_t oldmask;
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGUSR1);
+	sigaddset(&mask, SIGUSR2);
+	::sigprocmask(SIG_BLOCK, &mask, &oldmask);
+
+	int socket = ::socket(AF_INET, SOCK_STREAM, 0);
+	if (socket == -1) {
+		messages::error("Root:Socket", "Fail to open socket");
+		return false;
+	}
+
+	int enable = 1;
+	if (setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable)) == -1) {
+		messages::error("Root:Socket", "Fail to set socket option");
+		close(socket);
+		return false;
+	}
+
+	struct sockaddr_in addr;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = !_addr.empty() ? inet_addr(_addr.data()) : htonl(INADDR_LOOPBACK);
+	addr.sin_port = htons(_port);
+	if (::bind(socket, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		messages::error("Root:Socket", "Fail to bind socket");
+		close(socket);
+		return false;
+	}
+
+	if (!ConnectionHandler_setNonblocking(socket)) {
+		messages::error("Root:Socket", "Fail to set socket nonblock");
+		close(socket);
+		return false;
+	}
+
+	if (::listen(socket, SOMAXCONN) < 0) {
+		messages::error("Root:Socket", "Fail to listen on socket");
+		close(socket);
+		return false;
+	}
+
+	auto ret = mem::perform([&] () -> bool {
+		auto q = new (_pool) ConnectionQueue(_pool, this, socket);
+
+		int sig = 0;
+		sigset_t sigset;
+		sigemptyset(&sigset);
+		sigaddset(&sigset, SIGUSR1);
+		sigaddset(&sigset, SIGUSR2);
+
+		auto err = sigwait(&sigset, &sig);
+		if (err == 0) {
+			q->finalize();
+			return true;
+		} else {
+			char buf[256] = { 0 };
+			messages::error("Root:Socket", mem::toString("sigwait() failed with errno ", errno, " (", strerror_r(errno, buf, 255), ")"));
+			return false;
+		}
+	}, _pool);
+
+	close(socket);
+
+	sigaction(SIGINT, &s_sharedSigOldUsr1Action, nullptr);
+	sigaction(SIGINT, &s_sharedSigOldUsr2Action, nullptr);
+	::sigprocmask(SIG_SETMASK, &oldmask, nullptr);
+	return ret;
 }
 
 }

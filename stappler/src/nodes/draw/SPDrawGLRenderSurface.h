@@ -24,11 +24,12 @@ THE SOFTWARE.
 #define STAPPLER_SRC_NODES_DRAW_SPDRAWGLRENDERSURFACE_H_
 
 #include "SPDrawGLCacheNode.h"
+#include "SPEventHandler.h"
 #include "renderer/CCTexture2D.h"
 
 NS_SP_EXT_BEGIN(draw)
 
-class GLRenderSurface : public GLCacheNode {
+class GLRenderSurface : public GLCacheNode, private EventHandler {
 public:
 	enum class StencilDepthFormat {
 		None,
@@ -37,11 +38,14 @@ public:
 		Stencil8,
 	};
 
+	GLRenderSurface();
 	virtual ~GLRenderSurface();
 
 	bool initializeSurface(StencilDepthFormat fmt = StencilDepthFormat::Stencil8);
 	void finalizeSurface();
 	void dropSurface(); // use drop if graphic context was garbage-collected (on Android)
+
+	virtual void resetSurface();
 
 	bool begin(cocos2d::Texture2D *, const Color4B &color, bool clear);
 	void end();
@@ -83,8 +87,8 @@ protected:
 	cocos2d::GLProgram *_drawProgram = nullptr;
 
 	bool _premultipliedAlpha = false;
-	cocos2d::Texture2D::PixelFormat _internalFormat;
-	cocos2d::Texture2D::PixelFormat _referenceFormat;
+	cocos2d::Texture2D::PixelFormat _internalFormat = cocos2d::Texture2D::PixelFormat::NONE;
+	cocos2d::Texture2D::PixelFormat _referenceFormat = cocos2d::Texture2D::PixelFormat::NONE;
 
 	Mat4 _uniformTransform;
 	Color4B _uniformColor;

@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "SPStringView.h"
 #include "SPCommon.h"
+#include "SPString.h"
 
 NS_SP_EXT_BEGIN(log)
 
@@ -60,6 +61,11 @@ struct CustomLog {
 
 void format(const StringView &tag, const char *, ...) SPPRINTF(2, 3);
 void text(const StringView &tag, const StringView &);
+
+template <typename ... Args>
+void vtext(const StringView &tag, Args && ... args) {
+	text(tag, StringView(toString(std::forward<Args>(args)...)));
+}
 
 #define SPASSERT(cond, msg) do { \
 	if (!(cond)) { \

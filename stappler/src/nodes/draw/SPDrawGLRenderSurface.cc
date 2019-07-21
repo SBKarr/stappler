@@ -64,6 +64,13 @@ static void updateUniformColor(cocos2d::GLProgram *p, cocos2d::Texture2D::PixelF
 	}
 }
 
+
+GLRenderSurface::GLRenderSurface() {
+	onEvent(Device::onRegenerateResources, [this] (const Event &) {
+		resetSurface();
+	});
+}
+
 GLRenderSurface::~GLRenderSurface() {
 	finalizeSurface();
 }
@@ -120,6 +127,12 @@ void GLRenderSurface::dropSurface() {
 
 	_rbo = 0;
 	_fbo = 0;
+}
+
+void GLRenderSurface::resetSurface() {
+	dropSurface();
+	initializeSurface(_depthFormat);
+	cleanup();
 }
 
 bool GLRenderSurface::begin(cocos2d::Texture2D *tex, const Color4B &color, bool clear) {

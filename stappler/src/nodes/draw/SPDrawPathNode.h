@@ -65,6 +65,7 @@ public:
     virtual uint32_t getBaseHeight();
 
 protected:
+	virtual void regenerate();
 	virtual void updateCanvas(layout::Subscription::Flags f);
 
 	Rc<cocos2d::Texture2D> generateTexture(cocos2d::Texture2D *tex, uint32_t w, uint32_t h, Format fmt);

@@ -37,11 +37,18 @@ public:
 
 	bool addServer(const mem::Value &);
 
-	void run(const mem::StringView &addr = mem::StringView());
+	bool run(const mem::StringView &addr = mem::StringView(), int port = 8080);
 
 	void onBroadcast(const mem::Value &);
 	bool performTask(const Server &server, Task *task, bool performFirst);
 	bool scheduleTask(const Server &server, Task *task, mem::TimeInterval);
+
+	db::Adapter dbdOpen(mem::pool_t *, const Server &) const;
+	void dbdClose(const Server &, const db::Adapter &);
+
+	//ap_dbd_t * dbdRequestAcquire(request_rec *);
+	//ap_dbd_t * dbdConnectionAcquire(conn_rec *);
+	//ap_dbd_t * dbdPoolAcquire(server_rec *, apr_pool_t *);
 
 protected:
 	void onChildInit();
@@ -52,8 +59,8 @@ protected:
 	mem::pool_t *_heartBeatPool = nullptr;
 
 	bool _isRunned = false;
-	std::thread _timerThread;
-	mem::Time _timerValue = 0;
+
+	mem::Map<mem::String, Server *> _servers;
 
 #if DEBUG
 	bool _debug = true;

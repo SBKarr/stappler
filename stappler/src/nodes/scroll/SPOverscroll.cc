@@ -111,7 +111,7 @@ bool Overscroll::init() {
 	}
 
 	auto l = Rc<EventListener>::create();
-	l->onEvent(Device::onAndroidReset, [this] (const Event &) {
+	l->onEvent(Device::onRegenerateTextures, [this] (const Event &) {
 		updateTexture(_width, _height);
 	});
 	addComponent(l);

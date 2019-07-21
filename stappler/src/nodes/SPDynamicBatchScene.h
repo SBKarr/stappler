@@ -61,7 +61,7 @@ protected:
 	virtual void onBeforeFrame();
 	virtual void onAfterFrame();
 
-	bool _batchingEnabled = false;
+	bool _batchingEnabled = true;
 	bool _stencilOptEnabled = false;
 	size_t _clearDelay = 0;
 	bool _shouldClear = false;

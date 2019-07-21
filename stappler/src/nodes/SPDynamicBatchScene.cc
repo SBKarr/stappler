@@ -178,6 +178,9 @@ bool DynamicBatchScene::init() {
 	el->onEvent(Device::onBackground, [this] (const Event &) {
 		_map.clear();
 	});
+	el->onEvent(Device::onRegenerateTextures, [this] (const Event &) {
+		_map.clear();
+	});
 	addComponentItem(el);
 
 	return true;

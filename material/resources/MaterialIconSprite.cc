@@ -43,6 +43,7 @@ THE SOFTWARE.
 #include "renderer/ccGLStateCache.h"
 
 #include "SPScreen.h"
+#include "SPDevice.h"
 #include "SPEventListener.h"
 
 NS_MD_BEGIN
@@ -102,6 +103,8 @@ float IconProgress::getDestProgress() const {
 
 class IconSprite::DynamicIcon : public cocos2d::Component {
 public:
+	DynamicIcon() { }
+
 	virtual void onAdded() override { Component::onAdded(); _image = Rc<draw::Image>::create(24, 24); }
 	virtual void redraw(float progress, float diff) { }
 	draw::Image * getImage() const { return _image; }
@@ -109,6 +112,7 @@ public:
 	virtual void animate() { }
 
 protected:
+	float _progress = -1.0f;
 	Rc<draw::Image> _image;
 };
 
@@ -118,7 +122,6 @@ public:
 	virtual void redraw(float pr, float diff) override;
 
 protected:
-	float _progress = -1.0f;
 	draw::Image::PathRef _top;
 	draw::Image::PathRef _center;
 	draw::Image::PathRef _bottom;
@@ -140,7 +143,6 @@ public:
 	virtual void redraw(float pr, float diff) override;
 
 protected:
-	float _progress = -1.0f;
 	draw::Image::PathRef _path;
 };
 
@@ -395,7 +397,7 @@ bool IconSprite::isStatic() const {
 	default:
 		break;
 	}
-	return false;
+	return true;
 }
 
 void IconSprite::setProgress(float progress) {
@@ -442,6 +444,12 @@ void IconSprite::animate(float targetProgress, float duration) {
 	}
 }
 
+void IconSprite::regenerate() {
+	if (!isStatic()) {
+		PathNode::regenerate();
+	}
+}
+
 void IconSprite::updateCanvas(layout::Subscription::Flags f) {
 	if (isDynamic() || !ResourceManager::getInstance()->getIconStorage(_contentSize)) {
 		PathNode::updateCanvas(f);
@@ -480,12 +488,12 @@ void IconSprite::setStaticIcon(IconName name) {
 		auto icon = _storage->getIcon(name);
 		if (icon) {
 			setImage(nullptr);
-			setTexture(_storage->getTexture());
-			setTextureRect(icon->getTextureRect());
 			setDensity(icon->getDensity());
+			setTexture(_storage->getTexture(), icon->getTextureRect());
 		} else {
 			_contentSize = tmpSize;
 		}
+		_transformDirty = true;
 	} else {
 		setImage(Rc<layout::Image>::create(48, 48, IconStorage::getIconPath(name)));
 	}

@@ -658,7 +658,7 @@ template <typename F> struct FieldOption<F, ForeignLink> {
 template <typename F> struct FieldOption<F, mem::Vector<Field>> {
 	static inline void assign(F & f, mem::Vector<Field> && s) {
 		for (auto &it : s) {
-			f.fields.emplace(it.getName().str(), it);
+			f.fields.emplace(it.getName().str<mem::Interface>(), it);
 		}
 	}
 };

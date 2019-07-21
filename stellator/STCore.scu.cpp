@@ -23,6 +23,7 @@ THE SOFTWARE.
 #include "STDefine.h"
 
 #include "STDefine.cc"
-#include "STConnectionHandler.cc"
+#include "STServer.cc"
+#include "STRoot.cc"
 #include "STConnectionWorker.cc"
 //#include "STThreadPool.cc"

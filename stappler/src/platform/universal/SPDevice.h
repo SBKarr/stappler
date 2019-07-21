@@ -68,7 +68,8 @@ public:
 	static EventHeader onError;
 
 	static EventHeader onRemoteNotification;
-	static EventHeader onAndroidReset;
+	static EventHeader onRegenerateResources;
+	static EventHeader onRegenerateTextures;
 
 	static EventHeader onBackKey;
     static EventHeader onRateApplication;

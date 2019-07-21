@@ -36,66 +36,6 @@ NS_MD_BEGIN
 
 SP_DECLARE_EVENT_CLASS(IconStorage, onUpdate);
 
-layout::Path IconStorage::getIconPath(IconName n) {
-	auto dataIt = std::lower_bound(s_iconTable, s_iconTable + s_iconCount, n, [] (const IconDataStruct &d, IconName n) -> bool {
-		return d.name < n;
-	});
-
-	layout::Path path;
-	path.init(dataIt->data, dataIt->len);
-	path.setFillColor(Color4B(255, 255, 255, 255));
-	return path;
-}
-
-IconStorage::IconStorage() { }
-
-IconStorage::~IconStorage() {
-	unschedule();
-}
-
-bool IconStorage::init(float d, uint16_t w, int16_t h) {
-	_width = w;
-	_height = h;
-	_density = d;
-	onEvent(Device::onAndroidReset, [this] (const Event &) {
-        if (_texture) {
-            _texture->init(cocos2d::Texture2D::PixelFormat::A8, _texture->getPixelsWide(), _texture->getPixelsHigh(),
-                           cocos2d::Texture2D::InitAs::RenderTarget);
-        }
-		_dirty = true;
-	});
-	schedule();
-	return true;
-}
-
-void IconStorage::addIcon(IconName name) {
-	auto it = std::lower_bound(_names.begin(), _names.end(), name);
-	if (it == _names.end() || *it != name) {
-		_names.insert(it, name);
-		_dirty = true;
-	}
-}
-
-const IconStorage::Icon * IconStorage::getIcon(IconName name) const {
-	auto it = std::lower_bound(_icons.begin(), _icons.end(), name, [] (const Icon &i, IconName n) -> bool {
-		return i._name < n;
-	});
-
-	if (it == _icons.end() || it->_name != name) {
-		return nullptr;
-	}
-	return &(*it);
-}
-cocos2d::Texture2D *IconStorage::getTexture() const {
-	return _texture;
-}
-
-void IconStorage::update(float dt) {
-	if (_dirty) {
-		reload();
-	}
-}
-
 static void IconStorage_drawIcons(cocos2d::Texture2D *tex, const Vector<IconName> &names, Vector<IconStorage::Icon> &icons, float density, uint16_t iwidth, uint16_t iheight) {
 	size_t count = names.size();
 	uint16_t originalWidth = 48;
@@ -113,7 +53,6 @@ static void IconStorage_drawIcons(cocos2d::Texture2D *tex, const Vector<IconName
 	}
 
 	auto canvas = Rc<draw::Canvas>::create();
-
 	canvas->setQuality(draw::Canvas::QualityLow);
 	canvas->begin(tex, Color4B(0, 0, 0, 0));
 	canvas->scale(scaleX, scaleY);
@@ -181,6 +120,67 @@ static Rc<cocos2d::Texture2D> IconStorage_updateIcons(const Vector<IconName> &na
 	IconStorage_drawIcons(tex, names, icons, density, iwidth, iheight);
 
 	return tex;
+}
+
+layout::Path IconStorage::getIconPath(IconName n) {
+	auto dataIt = std::lower_bound(s_iconTable, s_iconTable + s_iconCount, n, [] (const IconDataStruct &d, IconName n) -> bool {
+		return d.name < n;
+	});
+
+	layout::Path path;
+	path.init(dataIt->data, dataIt->len);
+	path.setFillColor(Color4B(255, 255, 255, 255));
+	return path;
+}
+
+IconStorage::IconStorage() { }
+
+IconStorage::~IconStorage() {
+	unschedule();
+}
+
+bool IconStorage::init(float d, uint16_t w, int16_t h) {
+	_width = w;
+	_height = h;
+	_density = d;
+	onEvent(Device::onRegenerateResources, [this] (const Event &) {
+		if (_texture) {
+			_texture->init(cocos2d::Texture2D::PixelFormat::A8, _texture->getPixelsWide(), _texture->getPixelsHigh(), cocos2d::Texture2D::InitAs::RenderTarget);
+			Thread::onMainThread([this] {
+				IconStorage_drawIcons(_texture.get(), _names, _icons, _density, _width, _height);
+			}, this, true);
+		}
+	});
+	schedule();
+	return true;
+}
+
+void IconStorage::addIcon(IconName name) {
+	auto it = std::lower_bound(_names.begin(), _names.end(), name);
+	if (it == _names.end() || *it != name) {
+		_names.insert(it, name);
+		_dirty = true;
+	}
+}
+
+const IconStorage::Icon * IconStorage::getIcon(IconName name) const {
+	auto it = std::lower_bound(_icons.begin(), _icons.end(), name, [] (const Icon &i, IconName n) -> bool {
+		return i._name < n;
+	});
+
+	if (it == _icons.end() || it->_name != name) {
+		return nullptr;
+	}
+	return &(*it);
+}
+cocos2d::Texture2D *IconStorage::getTexture() const {
+	return _texture;
+}
+
+void IconStorage::update(float dt) {
+	if (_dirty) {
+		reload();
+	}
 }
 
 void IconStorage::reload() {

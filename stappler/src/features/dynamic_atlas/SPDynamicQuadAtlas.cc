@@ -29,10 +29,31 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
+/*std::ostream &operator<< (std::ostream &s, const cocos2d::V3F_C4B_T2F &q) {
+	s << "rgba(" << int(q.colors.r) << ", " << int(q.colors.g) << ", " << int(q.colors.b) << ", " << int(q.colors.a) << ") "
+		<< "tex(" << q.texCoords.u << ", " << q.texCoords.v << ") "
+		<< "vec(" << q.vertices.x << ", " << q.vertices.y << ", " << q.vertices.z << ")";
+	return s;
+}*/
+
 static void DynamicQuadAtlas_fillBuffer(const Set<Rc<DynamicQuadArray>> &quads, size_t bufferSize) {
 	if (bufferSize <= 0) {
 		return;
 	}
+
+	/*StringStream out;
+	for (auto &it : quads) {
+		out << it.get() << " {\n";
+		for (auto &iit : it->getQuads()) {
+			out << "\tbl: " << iit.bl << "\n";
+			out << "\ttl: " << iit.tl << "\n";
+			out << "\ttr: " << iit.tr << "\n";
+			out << "\tbr: " << iit.br << "\n";
+		}
+		out << "}\n";
+	}
+
+	log::text("Atlas", out.str());*/
 
 	bool vao = cocos2d::Configuration::getInstance()->supportsShareableVAO();
 	void *buf = nullptr;

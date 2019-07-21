@@ -83,6 +83,9 @@ public:
 	virtual void setVisualizeTouches(bool value);
 	virtual bool isVisualizeTouches() const;
 
+	virtual void setExitProtection(bool value);
+	virtual bool isExitProtection() const;
+
 	virtual void update(float dt) override;
 
 	virtual void captureContentForNode(cocos2d::Node *);

@@ -39,20 +39,25 @@ Root::~Root() {
 }
 
 bool Root::addServer(const mem::Value &val) {
-
-}
-
-void Root::run(const mem::StringView &addr) {
-
+	auto serv = new (_pool) Server::Config(val);
+	return false;
 }
 
 void Root::onBroadcast(const mem::Value &) {
 
 }
 bool Root::performTask(const Server &server, Task *task, bool performFirst) {
-
+	return false;
 }
 bool Root::scheduleTask(const Server &server, Task *task, mem::TimeInterval) {
+	return false;
+}
+
+db::Adapter Root::dbdOpen(mem::pool_t *, const Server &) const {
+	return nullptr;
+}
+
+void Root::dbdClose(const Server &, const db::Adapter &) {
 
 }
 
