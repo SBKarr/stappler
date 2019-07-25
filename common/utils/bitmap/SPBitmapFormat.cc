@@ -799,13 +799,14 @@ static bool BitmapFormat_getJpegImageSize(const io::Producer &file, StackBuffer<
 		auto reader = DataReader<ByteOrder::Network>(data.data() + 2, data.size() - 2);
 		while (reader.is((uint8_t) 0xFF)) {
 			++reader;
+			++offset;
 		}
 
 		marker = reader.readUnsigned();
 		len = reader.readUnsigned16();
 
-		while (marker < 0xC0 || marker > 0xCF) {
-			offset += 2 + len;
+		while (marker < 0xC0 || marker > 0xCF || marker == 0xC4) {
+			offset += 1 + len;
 			data.clear();
 
 			if (file.seekAndRead(offset, data, 12) != 12) {
@@ -817,6 +818,7 @@ static bool BitmapFormat_getJpegImageSize(const io::Producer &file, StackBuffer<
 
 				while (reader.is((uint8_t) 0xFF)) {
 					++reader;
+					++offset;
 				}
 
 				marker = reader.readUnsigned();
@@ -827,7 +829,7 @@ static bool BitmapFormat_getJpegImageSize(const io::Producer &file, StackBuffer<
 			}
 		}
 
-		if (reader >= 5 && marker >= 0xC0 && marker <= 0xCF) {
+		if (reader >= 5 && marker >= 0xC0 && marker <= 0xCF && marker != 0xC4) {
 			++reader;
 			height = reader.readUnsigned16();
 			width = reader.readUnsigned16();
