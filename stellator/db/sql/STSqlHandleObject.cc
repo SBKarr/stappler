@@ -54,18 +54,32 @@ mem::Value SqlHandle::select(Worker &worker, const db::Query &q) {
 	bool empty = true;
 	auto &scheme = worker.scheme();
 	makeQuery([&] (SqlQuery &query) {
-		auto sel = query.select();
-		auto s = query.writeSelectFrom(sel, worker, q);
-		if (!q.empty()) {
-			empty = false;
-			auto w = s.where();
-			query.writeWhere(w, Operator::And, scheme, q);
-		}
+		auto ordField = q.getQueryField();
+		if (ordField.empty()) {
+			auto sel = query.select();
+			auto s = query.writeSelectFrom(sel, worker, q);
+			if (!q.empty()) {
+				empty = false;
+				auto w = s.where();
+				query.writeWhere(w, Operator::And, scheme, q);
+			}
 
-		query.writeOrdering(s, scheme, q);
-		if (q.isForUpdate()) { s.forUpdate(); }
-		s.finalize();
-		ret = selectValueQuery(scheme, query);
+			query.writeOrdering(s, scheme, q);
+			if (q.isForUpdate()) { s.forUpdate(); }
+			s.finalize();
+			ret = selectValueQuery(scheme, query);
+		} else if (auto f = scheme.getField(ordField)) {
+			switch (f->getType()) {
+			case Type::Set:
+				ret = getSetField(worker, query, q.getQueryId(), *f, q);
+				break;
+			case Type::View:
+				ret = getViewField(worker, query, q.getQueryId(), *f, q);
+				break;
+			default:
+				break;
+			}
+		}
 	});
 	return ret;
 }
@@ -268,19 +282,33 @@ size_t SqlHandle::count(Worker &worker, const db::Query &q) {
 
 	size_t ret = 0;
 	makeQuery([&] (SqlQuery &query) {
-		auto f = query.select().count().from(scheme.getName());
+		auto ordField = q.getQueryField();
+		if (ordField.empty()) {
+			auto f = query.select().count().from(scheme.getName());
 
-		if (!q.empty()) {
-			auto w = f.where();
-			query.writeWhere(w, Operator::And, scheme, q);
-		}
-
-		query.finalize();
-		selectQuery(query, [&] (Result &res) {
-			if (res.nrows() > 0) {
-				ret = res.front().toInteger(0);
+			if (!q.empty()) {
+				auto w = f.where();
+				query.writeWhere(w, Operator::And, scheme, q);
 			}
-		});
+
+			query.finalize();
+			selectQuery(query, [&] (Result &res) {
+				if (res.nrows() > 0) {
+					ret = res.front().toInteger(0);
+				}
+			});
+		} else if (auto f = scheme.getField(ordField)) {
+			switch (f->getType()) {
+			case Type::Set:
+				ret = getSetCount(worker, query, q.getQueryId(), *f, q);
+				break;
+			case Type::View:
+				ret = getViewCount(worker, query, q.getQueryId(), *f, q);
+				break;
+			default:
+				break;
+			}
+		}
 	});
 	return ret;
 }

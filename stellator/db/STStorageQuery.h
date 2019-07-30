@@ -92,6 +92,7 @@ public:
 	};
 
 	static Query all();
+	static Query field(int64_t id, const mem::StringView &);
 
 	static Resolve decodeResolve(const mem::StringView &str);
 	static mem::String encodeResolve(Resolve);
@@ -139,6 +140,9 @@ public:
 
 	bool empty() const;
 
+	mem::StringView getQueryField() const;
+	int64_t getQueryId() const;
+
 	int64_t getSingleSelectId() const;
 	const mem::Vector<int64_t> & getSelectIds() const;
 	mem::StringView getSelectAlias() const;
@@ -153,6 +157,7 @@ public:
 	bool hasSelectName() const; // id or alias
 	bool hasSelectList() const;
 
+	bool hasSelect() const;
 	bool hasOrder() const;
 	bool hasLimit() const;
 	bool hasOffset() const;
@@ -170,6 +175,9 @@ public:
 	mem::Value encode() const;
 
 protected:
+	mem::String queryField;
+	int64_t queryId = 0;
+
 	mem::Vector<int64_t> selectIds;
 	mem::String selectAlias;
 	mem::Vector<Select> selectList;

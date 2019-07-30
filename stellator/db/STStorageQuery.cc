@@ -164,6 +164,13 @@ mem::String Query::encodeResolve(Resolve res) {
 
 Query Query::all() { return Query(); }
 
+Query Query::field(int64_t id, const mem::StringView &f) {
+	Query q;
+	q.queryField = f.str<mem::Interface>();
+	q.queryId = id;
+	return q;
+}
+
 Query & Query::select(const mem::StringView &alias) {
 	selectIds.clear();
 	selectAlias = alias.str<mem::Interface>();
@@ -332,6 +339,14 @@ bool Query::empty() const {
 	return selectList.empty() && selectIds.empty() && selectAlias.empty();
 }
 
+mem::StringView Query::getQueryField() const {
+	return queryField;
+}
+
+int64_t Query::getQueryId() const {
+	return queryId;
+}
+
 int64_t Query::getSingleSelectId() const {
 	return selectIds.size() == 1 ? selectIds.front() : 0;
 }
@@ -369,6 +384,13 @@ bool Query::hasSelectName() const {
 }
 bool Query::hasSelectList() const {
 	return !selectList.empty();
+}
+
+bool Query::hasSelect() const {
+	if (getSingleSelectId() || !getSelectIds().empty() || !getSelectAlias().empty() || !getSelectList().empty()) {
+		return true;
+	}
+	return false;
 }
 
 bool Query::hasOrder() const {

@@ -116,11 +116,11 @@ protected:
 	mem::Value getObjectField(Worker &w, SqlQuery &query, uint64_t oid, uint64_t targetId, const Field &f);
 	size_t getObjectCount(Worker &w, SqlQuery &query, uint64_t oid, uint64_t targetId, const Field &f);
 
-	mem::Value getSetField(Worker &w, SqlQuery &query, uint64_t oid, const Field &f);
-	size_t getSetCount(Worker &w, SqlQuery &query, uint64_t oid, const Field &f);
+	mem::Value getSetField(Worker &w, SqlQuery &query, uint64_t oid, const Field &f, const db::Query &);
+	size_t getSetCount(Worker &w, SqlQuery &query, uint64_t oid, const Field &f, const db::Query &);
 
-	mem::Value getViewField(Worker &w, SqlQuery &query, uint64_t oid, const Field &f);
-	size_t getViewCount(Worker &w, SqlQuery &query, uint64_t oid, const Field &f);
+	mem::Value getViewField(Worker &w, SqlQuery &query, uint64_t oid, const Field &f, const db::Query &);
+	size_t getViewCount(Worker &w, SqlQuery &query, uint64_t oid, const Field &f, const db::Query &);
 
 	mem::Value getSimpleField(Worker &w, SqlQuery &query, uint64_t oid, const Field &f);
 	size_t getSimpleCount(Worker &w, SqlQuery &query, uint64_t oid, const Field &f);

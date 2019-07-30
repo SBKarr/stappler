@@ -59,7 +59,6 @@ public:
 	const mem::StringStream &getQuery() const;
 	db::QueryInterface * getInterface() const;
 
-protected:
 	void writeFullTextRank(Select &sel, const db::Scheme &scheme, const db::Query &q);
 	SelectFrom writeFullTextFrom(Select &sel, const db::Scheme &scheme, const db::Query &q);
 };
