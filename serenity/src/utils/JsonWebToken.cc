@@ -188,7 +188,7 @@ void JsonWebToken::setMaxAge(TimeInterval maxage) {
 }
 
 bool JsonWebToken::validate(const KeyData &key) {
-	return validate(key.alg, StringView((const char *)key.key.data(), key.key.size()));
+	return validate(key.alg, StringView((const char *)key.key.data(), key.key.size() - 1));
 }
 
 bool JsonWebToken::validate(SigAlg a, const StringView &key) {
@@ -242,6 +242,10 @@ bool JsonWebToken::validate(SigAlg a, const StringView &key) {
 				return false;
 				break;
 			}
+		} else {
+			char buf[256] = { 0 };
+			mbedtls_strerror(err, buf, 255);
+			std::cout << buf << "\n";
 		}
 
 		mbedtls_pk_free(&ctx);
