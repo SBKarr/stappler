@@ -77,6 +77,8 @@ db::User * SqlHandle::authorizeUser(const db::Auth &auth, const mem::StringView 
 		return nullptr;
 	}
 
+	auto minTime = stappler::Time::now() - config::getMaxAuthTime();
+
 	db::User *ret = nullptr;
 	makeQuery([&] (SqlQuery &query) {
 		query.with("u", [&] (SqlQuery::GenericQuery &q) {
@@ -86,7 +88,7 @@ db::User * SqlHandle::authorizeUser(const db::Auth &auth, const mem::StringView 
 			q.select().count("failed_count").from("__login").innerJoinOn("u", [&] (SqlQuery::WhereBegin &w) {
 				w.where(SqlQuery::Field( "__login", "user"), Comparation::Equal, SqlQuery::Field("u", "__oid"))
 						.where(Operator::And, SqlQuery::Field( "__login", "success"), Comparation::Equal, mem::Value(false))
-						.where(Operator::And, SqlQuery::Field( "__login", "date"), Comparation::GreatherThen, uint64_t((stappler::Time::now() - config::getMaxAuthTime()).toSeconds()));
+						.where(Operator::And, SqlQuery::Field( "__login", "date"), Comparation::GreatherThen, uint64_t((minTime).toSeconds()));
 			});
 		}).select().from("l", "u").finalize();
 
@@ -127,20 +129,43 @@ db::User * SqlHandle::authorizeUser(const db::Auth &auth, const mem::StringView 
 		}
 
 		query.clear();
-		auto &f = query.insert("__login")
-			.fields("user", "name", "password", "date", "success", "addr", "host", "path");
-		if (req) {
-			f.values(userId, iname, passwd, stappler::Time::now().toSeconds(), mem::Value(success),
-					SqlQuery::TypeString(req.address, "inet"),
-					req.hostname.str<mem::Interface>(),
-					req.uri.str<mem::Interface>())
-				.finalize();
-		} else {
-			f.values(userId, iname, passwd, stappler::Time::now().toSeconds(), mem::Value(success),
-					SqlQuery::TypeString("NULL", "inet"), mem::String("NULL"), mem::String("NULL"))
-				.finalize();
-		}
-		performQuery(query);
+
+		query.with("u", [&] (SqlQuery::GenericQuery &q) {
+			q.select().from(auth.getScheme().getName())
+				.where(namePair.first->getName(), Comparation::Equal, std::move(namePair.second));
+		}).with("l", [&] (SqlQuery::GenericQuery &q) {
+			q.select().aggregate("MAX", SqlQuery::Field("id").as("maxId")).from("__login").innerJoinOn("u", [&] (SqlQuery::WhereBegin &w) {
+				w.where(SqlQuery::Field( "__login", "user"), Comparation::Equal, SqlQuery::Field("u", "__oid"))
+						.where(Operator::And, SqlQuery::Field( "__login", "success"), Comparation::Equal, mem::Value(true))
+						.where(Operator::And, SqlQuery::Field( "__login", "date"), Comparation::GreatherThen, uint64_t((minTime).toSeconds()));
+			});
+		}).select().from("l", "u").finalize();
+
+		selectQuery(query, [&] (Result &res) {
+			query.clear();
+			int64_t id = 0;
+			if (res.nrows() == 1 && (id = res.readId())) {
+				query.update("__login").set("date", stappler::Time::now().toSeconds())
+						.where("id", Comparation::Equal, mem::Value(id)).finalize();
+				performQuery(query);
+			} else {
+				auto &f = query.insert("__login")
+					.fields("user", "name", "password", "date", "success", "addr", "host", "path");
+				if (req) {
+					f.values(userId, iname, passwd, stappler::Time::now().toSeconds(), mem::Value(success),
+							SqlQuery::TypeString(req.address, "inet"),
+							req.hostname.str<mem::Interface>(),
+							req.uri.str<mem::Interface>())
+						.finalize();
+				} else {
+					f.values(userId, iname, passwd, stappler::Time::now().toSeconds(), mem::Value(success),
+							SqlQuery::TypeString("NULL", "inet"), mem::String("NULL"), mem::String("NULL"))
+						.finalize();
+				}
+				performQuery(query);
+			}
+
+		});
 	});
 	return ret;
 }

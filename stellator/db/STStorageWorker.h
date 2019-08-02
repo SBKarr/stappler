@@ -116,7 +116,7 @@ public:
 	mem::Value get(const mem::Value &id, std::initializer_list<const Field *> &&fields, bool forUpdate = false);
 
 	// returns Array with zero or more Dictionaries with object data or Null value
-	mem::Value select(const Query &);
+	mem::Value select(const Query &, UpdateFlags = UpdateFlags::None);
 
 	// returns Dictionary with single object data or Null value
 	mem::Value create(const mem::Value &data, bool isProtected = false);

@@ -43,12 +43,14 @@ public:
 	BufferTemplate(const BufferTemplate & rhs) : _buffer(rhs._buffer) {
 		_ptr = (byte_type *)(_buffer.data() + (rhs._ptr - rhs._buffer.data()));
 		_end = (byte_type *)(_buffer.data() + _buffer.size());
+		_input = rhs._input;
 	}
 	BufferTemplate(BufferTemplate && rhs) {
 		auto size = rhs._ptr - rhs._buffer.data();
 		_buffer = std::move(rhs._buffer);
 		_ptr = (byte_type *)(_buffer.data() + size);
 		_end = (byte_type *)(_buffer.data() + _buffer.size());
+		_input = rhs._input;
 	}
 
 	BufferTemplate & operator=(const BufferTemplate & rhs) {
@@ -56,6 +58,7 @@ public:
 		_buffer = rhs._buffer;
 		_ptr = (byte_type *)(_buffer.data() + size);
 		_end = (byte_type *)(_buffer.data() + _buffer.size());
+		_input = rhs._input;
 		return *this;
 	}
 	BufferTemplate & operator=(BufferTemplate && rhs) {
@@ -63,6 +66,7 @@ public:
 		_buffer = std::move(rhs._buffer);
 		_ptr = (byte_type *)(_buffer.data() + size);
 		_end = (byte_type *)(_buffer.data() + _buffer.size());
+		_input = rhs._input;
 		return *this;
 	}
 
@@ -81,8 +85,11 @@ public:
 			}
 
 			if (ret < len) {
-				overflow();
+				overflow(len - ret);
 			}
+		}
+		if (_ptr > _buffer.data() + _input) {
+			_input = _ptr - _buffer.data();
 		}
 		return ret;
 	}
@@ -94,6 +101,10 @@ public:
 		}
 		unicode::utf8EncodeBuf((char *)_ptr, c);
 		_ptr += len;
+
+		if (_ptr > _buffer.data() + _input) {
+			_input = _ptr - _buffer.data();
+		}
 		return len;
 	}
 
@@ -104,6 +115,9 @@ public:
 		*_ptr = *((byte_type *)&c);
 		++ _ptr;
 
+		if (_ptr > _buffer.data() + _input) {
+			_input = _ptr - _buffer.data();
+		}
 		return 1;
 	}
 
@@ -123,6 +137,18 @@ public:
 
 	void clear() {
 		_ptr = (byte_type *)_buffer.data();
+		_input = 0;
+	}
+
+	bool seek(size_t pos) {
+		if (pos > _buffer.size()) {
+			overflow(pos - _buffer.size());
+		}
+		_ptr = _buffer.data() + pos;
+		if (_ptr > _buffer.data() + _input) {
+			_input = _ptr - _buffer.data();
+		}
+		return true;
 	}
 
 	size_t capacity() const {
@@ -131,6 +157,10 @@ public:
 
 	size_t size() const {
 		return _ptr - _buffer.data();
+	}
+
+	size_t input() const {
+		return _input;
 	}
 
 	bool empty() const {
@@ -156,6 +186,9 @@ public:
 
 	void save(uint8_t *, size_t nbytes) {
 		_ptr += nbytes;
+		if (_ptr > _buffer.data() + _input) {
+			_input = _ptr - _buffer.data();
+		}
 	}
 
 protected:
@@ -166,9 +199,21 @@ protected:
 		_end = (byte_type *)(_buffer.data() + _buffer.size());
 	}
 
+	void overflow(size_t required) {
+		if (required < _buffer.size()) {
+			overflow();
+		} else {
+			auto size = _ptr - _buffer.data();
+			_buffer.resize(_buffer.size() + required, 0);
+			_ptr = (byte_type *)(_buffer.data() + size);
+			_end = (byte_type *)(_buffer.data() + _buffer.size());
+		}
+	}
+
 	typename Interface::BytesType _buffer;
 	uint8_t *_ptr = nullptr;
 	uint8_t *_end = nullptr;
+	size_t _input = 0;
 };
 
 template <size_t Size>

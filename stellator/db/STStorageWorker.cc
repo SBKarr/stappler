@@ -443,7 +443,10 @@ mem::Value Worker::get(const mem::Value &id, std::initializer_list<const Field *
 	return mem::Value();
 }
 
-mem::Value Worker::select(const Query &q) {
+mem::Value Worker::select(const Query &q, UpdateFlags flags) {
+	if ((flags & UpdateFlags::GetAll) != UpdateFlags::None) {
+		_required.includeAll = true;
+	}
 	return _scheme->selectWithWorker(*this, q);
 }
 

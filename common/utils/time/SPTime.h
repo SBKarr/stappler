@@ -219,6 +219,41 @@ protected:
 	void encodeCTime(char *);
 };
 
+struct sp_time_exp_t {
+	/** microseconds past tm_sec */
+	int32_t tm_usec;
+	/** (0-61) seconds past tm_min */
+	int32_t tm_sec;
+	/** (0-59) minutes past tm_hour */
+	int32_t tm_min;
+	/** (0-23) hours past midnight */
+	int32_t tm_hour;
+	/** (1-31) day of the month */
+	int32_t tm_mday;
+	/** (0-11) month of the year */
+	int32_t tm_mon;
+	/** year since 1900 */
+	int32_t tm_year;
+	/** (0-6) days since Sunday */
+	int32_t tm_wday;
+	/** (0-365) days since January 1 */
+	int32_t tm_yday;
+	/** daylight saving time */
+	int32_t tm_isdst;
+	/** seconds east of UTC */
+	int32_t tm_gmtoff;
+
+	sp_time_exp_t();
+	sp_time_exp_t(Time t, int32_t offset, bool use_localtime);
+	sp_time_exp_t(Time t, int32_t offs);
+	sp_time_exp_t(Time t);
+	sp_time_exp_t(Time t, bool use_localtime);
+
+	Time get() const;
+	Time gmt_get() const;
+	Time ltz_get() const;
+};
+
 constexpr TimeInterval operator"" _sec ( unsigned long long int val ) { return TimeInterval::seconds((time_t)val); }
 constexpr TimeInterval operator"" _msec ( unsigned long long int val ) { return TimeInterval::milliseconds(val); }
 constexpr TimeInterval operator"" _mksec ( unsigned long long int val ) { return TimeInterval::microseconds(val); }

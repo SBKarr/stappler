@@ -61,111 +61,86 @@ static constexpr uint64_t SP_USEC_PER_SEC(1000000);
 
 using sp_time_t = uint32_t;
 
-struct sp_time_exp_t {
-	/** microseconds past tm_sec */
-	int32_t tm_usec;
-	/** (0-61) seconds past tm_min */
-	int32_t tm_sec;
-	/** (0-59) minutes past tm_hour */
-	int32_t tm_min;
-	/** (0-23) hours past midnight */
-	int32_t tm_hour;
-	/** (1-31) day of the month */
-	int32_t tm_mday;
-	/** (0-11) month of the year */
-	int32_t tm_mon;
-	/** year since 1900 */
-	int32_t tm_year;
-	/** (0-6) days since Sunday */
-	int32_t tm_wday;
-	/** (0-365) days since January 1 */
-	int32_t tm_yday;
-	/** daylight saving time */
-	int32_t tm_isdst;
-	/** seconds east of UTC */
-	int32_t tm_gmtoff;
+sp_time_exp_t::sp_time_exp_t() {
+	tm_usec = 0;
+	tm_sec = 0;
+	tm_min = 0;
+	tm_hour = 0;
+	tm_mday = 0;
+	tm_mon = 0;
+	tm_year = 0;
+	tm_wday = 0;
+	tm_yday = 0;
+	tm_isdst = 0;
+	tm_gmtoff = 0;
+}
 
-	sp_time_exp_t() {
-		tm_usec = 0;
-		tm_sec = 0;
-		tm_min = 0;
-		tm_hour = 0;
-		tm_mday = 0;
-		tm_mon = 0;
-		tm_year = 0;
-		tm_wday = 0;
-		tm_yday = 0;
-		tm_isdst = 0;
-		tm_gmtoff = 0;
-	}
+sp_time_exp_t::sp_time_exp_t(Time t, int32_t offset, bool use_localtime) {
+	struct tm tm;
+	time_t tt = (t.toSeconds()) + offset;
+	tm_usec = t.toMicroseconds() % SP_USEC_PER_SEC;
 
-	sp_time_exp_t(Time t, int32_t offset, bool use_localtime) {
-		struct tm tm;
-		time_t tt = (t.toSeconds()) + offset;
-		tm_usec = t.toMicroseconds() % SP_USEC_PER_SEC;
+	if (use_localtime)
+		localtime_r(&tt, &tm);
+	else
+		gmtime_r(&tt, &tm);
 
-		if (use_localtime)
-			localtime_r(&tt, &tm);
-		else
-			gmtime_r(&tt, &tm);
+	tm_sec = tm.tm_sec;
+	tm_min = tm.tm_min;
+	tm_hour = tm.tm_hour;
+	tm_mday = tm.tm_mday;
+	tm_mon = tm.tm_mon;
+	tm_year = tm.tm_year;
+	tm_wday = tm.tm_wday;
+	tm_yday = tm.tm_yday;
+	tm_isdst = tm.tm_isdst;
+	tm_gmtoff = tm.tm_gmtoff;
+}
 
-		tm_sec = tm.tm_sec;
-		tm_min = tm.tm_min;
-		tm_hour = tm.tm_hour;
-		tm_mday = tm.tm_mday;
-		tm_mon = tm.tm_mon;
-		tm_year = tm.tm_year;
-		tm_wday = tm.tm_wday;
-		tm_yday = tm.tm_yday;
-		tm_isdst = tm.tm_isdst;
-		tm_gmtoff = tm.tm_gmtoff;
-	}
+// apr_time_exp_tz
+sp_time_exp_t::sp_time_exp_t(Time t, int32_t offs) : sp_time_exp_t(t, offs, false) {
+	tm_gmtoff = offs;
+}
 
-	// apr_time_exp_tz
-	sp_time_exp_t(Time t, int32_t offs) : sp_time_exp_t(t, offs, false) {
-	    tm_gmtoff = offs;
-	}
+// apr_time_exp_gmt
+sp_time_exp_t::sp_time_exp_t(Time t) : sp_time_exp_t(t, 0, 0) {
+	tm_gmtoff = 0;
+}
 
-	// apr_time_exp_gmt
-	sp_time_exp_t(Time t) : sp_time_exp_t(t, 0, 0) {
-		tm_gmtoff = 0;
-	}
+// apr_time_exp_lt
+sp_time_exp_t::sp_time_exp_t(Time t, bool use_localtime) : sp_time_exp_t(t, 0, use_localtime) { }
 
-	// apr_time_exp_lt
-	sp_time_exp_t(Time t, bool use_localtime) : sp_time_exp_t(t, 0, use_localtime) { }
+Time sp_time_exp_t::get() const {
+	sp_time_t year = tm_year;
+	sp_time_t days;
+	static const int dayoffset[12] = { 306, 337, 0, 31, 61, 92, 122, 153, 184, 214, 245, 275 };
 
-	Time get() const {
-		sp_time_t year = tm_year;
-		sp_time_t days;
-		static const int dayoffset[12] = { 306, 337, 0, 31, 61, 92, 122, 153, 184, 214, 245, 275 };
+	/* shift new year to 1st March in order to make leap year calc easy */
 
-		/* shift new year to 1st March in order to make leap year calc easy */
+	if (tm_mon < 2)
+		year--;
 
-		if (tm_mon < 2)
-			year--;
+	/* Find number of days since 1st March 1900 (in the Gregorian calendar). */
 
-		/* Find number of days since 1st March 1900 (in the Gregorian calendar). */
+	days = year * 365 + year / 4 - year / 100 + (year / 100 + 3) / 4;
+	days += dayoffset[tm_mon] + tm_mday - 1;
+	days -= 25508; /* 1 jan 1970 is 25508 days since 1 mar 1900 */
+	days = ((days * 24 + tm_hour) * 60 + tm_min) * 60 + tm_sec;
 
-		days = year * 365 + year / 4 - year / 100 + (year / 100 + 3) / 4;
-		days += dayoffset[tm_mon] + tm_mday - 1;
-		days -= 25508; /* 1 jan 1970 is 25508 days since 1 mar 1900 */
-		days = ((days * 24 + tm_hour) * 60 + tm_min) * 60 + tm_sec;
+	return Time::microseconds(days * SP_USEC_PER_SEC + tm_usec);
+}
 
-		return Time::microseconds(days * SP_USEC_PER_SEC + tm_usec);
-	}
+Time sp_time_exp_t::gmt_get() const {
+	return Time::microseconds(get().toMicroseconds() - tm_gmtoff * SP_USEC_PER_SEC);
+}
 
-	Time gmt_get() const {
-		return Time::microseconds(get().toMicroseconds() - tm_gmtoff * SP_USEC_PER_SEC);
-	}
+Time sp_time_exp_t::ltz_get() const {
+	time_t t = time(NULL);
+	struct tm lt = {0};
+	localtime_r(&t, &lt);
 
-	Time ltz_get() const {
-		time_t t = time(NULL);
-		struct tm lt = {0};
-		localtime_r(&t, &lt);
-
-		return Time::microseconds(get().toMicroseconds() - lt.tm_gmtoff * SP_USEC_PER_SEC);
-	}
-};
+	return Time::microseconds(get().toMicroseconds() - lt.tm_gmtoff * SP_USEC_PER_SEC);
+}
 
 /*
  * Compare a string to a mask
