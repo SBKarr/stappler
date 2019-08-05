@@ -111,6 +111,9 @@ public:
 	virtual void bindUInt(db::Binder &, mem::StringStream &query, uint64_t val) override {
 		query << val;
 	}
+	virtual void bindDouble(db::Binder &, mem::StringStream &query, double val) override {
+		query << std::setprecision(std::numeric_limits<double>::max_digits10) << val;
+	}
 	virtual void bindString(db::Binder &, mem::StringStream &query, const mem::String &val) override {
 		if (auto num = push(mem::String(val))) {
 			query << "$" << num << "::text";
@@ -191,7 +194,7 @@ public:
 		} else if (d.field->hasFlag(db::Flags::TsNormalize_UniqueWordsCountLog)) {
 			normalizationValue |= 16;
 		}
-		query << " ts_rank(" << d.scheme << ".\"" << d.field->getName() << "\" , __ts_query_" << d.field->getName() << ", " << normalizationValue << ")";
+		query << " ts_rank(" << d.scheme << ".\"" << d.field->getName() << "\", " << d.query << ", " << normalizationValue << ")";
 	}
 
 	virtual void bindFullTextData(db::Binder &, mem::StringStream &query, const db::FullTextData &d) override {

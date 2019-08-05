@@ -55,7 +55,7 @@ inline bool checkIfComparationIsValid(Type t, Comparation c) {
 	if (t == Type::Integer || t == Type::Object || t == Type::Float) {
 		return true;
 	} else if (t == Type::Bytes || t == Type::Text || t == Type::Boolean) {
-		return c == Comparation::Equal || c == Comparation::NotEqual;
+		return c == Comparation::Equal || c == Comparation::NotEqual || c == Comparation::IsNull || c == Comparation::IsNotNull;
 	} else if (t == Type::Custom) {
 		return true;
 	}

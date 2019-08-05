@@ -46,7 +46,11 @@ Pair<String, bool> encodeComparation(Comparation cmp) {
 	case Comparation::BetweenEquals: ret = "be"; isTwoArgs = true; break;
 	case Comparation::NotBetweenValues: ret = "nbw"; isTwoArgs = true; break;
 	case Comparation::NotBetweenEquals: ret = "nbe"; isTwoArgs = true; break;
-	case Comparation::Includes: ret = "incl"; isTwoArgs = true; break;
+	case Comparation::Includes: ret = "incl"; break;
+	case Comparation::Between: ret = "sbw"; isTwoArgs = true; break;
+	case Comparation::In: ret = "in"; break;
+	case Comparation::IsNull: ret = "isnull"; break;
+	case Comparation::IsNotNull: ret = "isnotnull"; break;
 	}
 
 	return pair(move(ret), isTwoArgs);
@@ -76,6 +80,16 @@ Pair<Comparation, bool> decodeComparation(const String &str) {
 		ret = Comparation::NotBetweenValues;
 	} else if (str == "nbe") {
 		ret = Comparation::NotBetweenEquals;
+	} else if (str == "incl") {
+		ret = Comparation::Includes;
+	} else if (str == "sbw") {
+		ret = Comparation::Between;
+	} else if (str == "in") {
+		ret = Comparation::In;
+	} else if (str == "isnull") {
+		ret = Comparation::IsNull;
+	} else if (str == "isnotnull") {
+		ret = Comparation::IsNotNull;
 	}
 
 	return pair(ret, isTwoArgs);
@@ -140,6 +154,10 @@ PathQuery & PathQuery::select(const String &f, Comparation c, const data::Value 
 	case Comparation::NotBetweenValues: stream << "/"; PathQuery_writeValueQuery(stream, "nbw", v1, v2); break;
 	case Comparation::NotBetweenEquals: stream << "/"; PathQuery_writeValueQuery(stream, "nbe", v1, v2); break;
 	case Comparation::Includes: stream << "/"; PathQuery_writeValueQuery(stream, "incl", v1); break;
+	case Comparation::Between: stream << "/"; PathQuery_writeValueQuery(stream, "sbw", v1, v2); break;
+	case Comparation::In: stream << "/"; PathQuery_writeValueQuery(stream, "in", v1); break;
+	case Comparation::IsNull: stream << "/"; PathQuery_writeValueQuery(stream, "isnull", data::Value(true)); break;
+	case Comparation::IsNotNull: stream << "/"; PathQuery_writeValueQuery(stream, "isnotnull", data::Value(true)); break;
 	}
 	return *this;
 }

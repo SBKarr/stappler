@@ -39,7 +39,11 @@ enum class Comparation {
 	BetweenEquals, // be  field >= v1 AND field <= v2
 	NotBetweenValues, // nbw  field < v1 OR field > v2
 	NotBetweenEquals, // nbe  field <= v1 OR field >= v2
-	Includes // @@ - operation
+	Includes, // @@ - operation
+	Between, // customized BETWEEN ... AND ...
+	In,
+	IsNull,
+	IsNotNull,
 };
 
 enum class Ordering {
@@ -121,6 +125,10 @@ public:
 
 	struct RawString {
 		String data;
+	};
+
+	struct RawStringView {
+		StringView data;
 	};
 
 	struct Field {
@@ -453,6 +461,8 @@ public:
 	void writeBind(Value &&);
 
 	void writeBind(const RawString &);
+	void writeBind(const RawStringView &);
+	void writeBind(const Callback<void(Select &)> &);
 	void writeBind(const Field &);
 	void writeBind(const Field &, bool withAlias);
 	void writeBind(const StringView &func, const Field &f);
@@ -488,6 +498,20 @@ struct BinderTraits<Binder, Interface, typename Query<Binder, Interface>::RawStr
 	}
 };
 
+template <typename Binder, typename Interface>
+struct BinderTraits<Binder, Interface, typename Query<Binder, Interface>::RawStringView> {
+	static void writeBind(Query<Binder, Interface> &q, Binder &b, const typename Query<Binder, Interface>::RawStringView &val) {
+		q.writeBind(val);
+	}
+};
+
+template <typename Binder, typename Interface>
+struct BinderTraits<Binder, Interface, Callback<void(typename Query<Binder, Interface>::Select &)>> {
+	static void writeBind(Query<Binder, Interface> &q, Binder &b, const Callback<void(typename Query<Binder, Interface>::Select &)> &val) {
+		q.writeBind(val);
+	}
+};
+
 
 template <typename Binder, typename Interface>
 void Query<Binder, Interface>::QueryHandle::finalize() {
@@ -503,6 +527,22 @@ void Query<Binder, Interface>::writeBind(Value &&val) {
 template <typename Binder, typename Interface>
 void Query<Binder, Interface>::writeBind(const RawString &data) {
 	stream << data.data;
+}
+
+template <typename Binder, typename Interface>
+void Query<Binder, Interface>::writeBind(const RawStringView &data) {
+	stream << data.data;
+}
+
+template <typename Binder, typename Interface>
+void Query<Binder, Interface>::writeBind(const Callback<void(Select &)> &cb) {
+	stream << "(";
+	auto fin = finalization;
+	finalization = FinalizationState::Finalized;
+	auto sel = select();
+	cb(sel);
+	finalization = fin;
+	stream << ")";
 }
 
 template <typename Binder, typename Interface>

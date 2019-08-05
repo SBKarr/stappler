@@ -39,7 +39,11 @@ stappler::Pair<mem::String, bool> encodeComparation(Comparation cmp) {
 	case Comparation::BetweenEquals: ret = "be"; isTwoArgs = true; break;
 	case Comparation::NotBetweenValues: ret = "nbw"; isTwoArgs = true; break;
 	case Comparation::NotBetweenEquals: ret = "nbe"; isTwoArgs = true; break;
-	case Comparation::Includes: ret = "incl"; isTwoArgs = true; break;
+	case Comparation::Includes: ret = "incl"; break;
+	case Comparation::Between: ret = "sbw"; isTwoArgs = true; break;
+	case Comparation::In: ret = "in"; break;
+	case Comparation::IsNull: ret = "isnull"; break;
+	case Comparation::IsNotNull: ret = "isnotnull"; break;
 	}
 
 	return stappler::pair(std::move(ret), isTwoArgs);
@@ -69,6 +73,16 @@ stappler::Pair<Comparation, bool> decodeComparation(const mem::String &str) {
 		ret = Comparation::NotBetweenValues;
 	} else if (str == "nbe") {
 		ret = Comparation::NotBetweenEquals;
+	} else if (str == "incl") {
+		ret = Comparation::Includes;
+	} else if (str == "sbw") {
+		ret = Comparation::Between;
+	} else if (str == "in") {
+		ret = Comparation::In;
+	} else if (str == "isnull") {
+		ret = Comparation::IsNull;
+	} else if (str == "isnotnull") {
+		ret = Comparation::IsNotNull;
 	}
 
 	return stappler::pair(ret, isTwoArgs);
@@ -255,6 +269,15 @@ Query & Query::order(const mem::StringView &f, Ordering o, size_t l, size_t off)
 	return *this;
 }
 
+Query & Query::softLimit(const mem::StringView &field, Ordering ord, size_t limit, mem::Value &&val) {
+	orderField = field.str<mem::Interface>();
+	ordering = ord;
+	limitValue = limit;
+	softLimitValue = std::move(val);
+	_softLimit = true;
+	return *this;
+}
+
 Query & Query::first(const mem::StringView &f, size_t limit, size_t offset) {
 	orderField = f.str<mem::Interface>();
 	ordering = Ordering::Ascending;
@@ -379,6 +402,10 @@ size_t Query::getOffsetValue() const {
 	return offsetValue;
 }
 
+const mem::Value &Query::getSoftLimitValue() const {
+	return softLimitValue;
+}
+
 bool Query::hasSelectName() const {
 	return !selectIds.empty() || !selectAlias.empty();
 }
@@ -413,6 +440,9 @@ bool Query::hasFields() const {
 }
 bool Query::isForUpdate() const {
 	return update;
+}
+bool Query::isSoftLimit() const {
+	return _softLimit;
 }
 
 uint64_t Query::getDeltaToken() const {

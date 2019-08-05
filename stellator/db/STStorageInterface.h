@@ -102,6 +102,7 @@ public:
 	struct FullTextRank {
 		mem::StringView scheme;
 		const Field *field;
+		mem::StringView query;
 	};
 
 	struct TypeString {
@@ -118,6 +119,7 @@ public:
 
 	void writeBind(mem::StringStream &, int64_t);
 	void writeBind(mem::StringStream &, uint64_t);
+	void writeBind(mem::StringStream &, double);
 	void writeBind(mem::StringStream &query, stappler::Time val);
 	void writeBind(mem::StringStream &query, stappler::TimeInterval val);
 	void writeBind(mem::StringStream &, const mem::String &);
@@ -145,6 +147,7 @@ public:
 
 	virtual void bindInt(Binder &, mem::StringStream &, int64_t) = 0;
 	virtual void bindUInt(Binder &, mem::StringStream &, uint64_t) = 0;
+	virtual void bindDouble(Binder &, mem::StringStream &, double) = 0;
 	virtual void bindString(Binder &, mem::StringStream &, const mem::String &) = 0;
 	virtual void bindMoveString(Binder &, mem::StringStream &, mem::String &&) = 0;
 	virtual void bindStringView(Binder &, mem::StringStream &, const mem::StringView &) = 0;

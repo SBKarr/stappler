@@ -44,7 +44,94 @@ static inline bool SqlQuery_comparationIsValid(const Field &f, Comparation comp)
 	}
 }
 
+
+bool SqlQuery::writeQuery(Worker &worker, const db::Scheme &scheme, const db::Query &q) {
+	if (q.isSoftLimit()) {
+		mem::StringView softLimitField;
+		auto field = q.getOrderField();
+		auto f = scheme.getField(field);
+		if (f) {
+			softLimitField = f->getName();
+		} else if (field == "__oid") {
+			softLimitField = field;
+		} else {
+			std::cout << "Invalid soft limit field: " << field << "\n";
+			return false;
+		}
+
+		bool isAsc = q.getOrdering() == Ordering::Ascending;
+		if (softLimitField == "__oid") {
+			auto sel = select();
+			auto s = writeSelectFrom(sel, worker, q);
+			if (auto &val = q.getSoftLimitValue()) {
+				auto w = s.where(SqlQuery::Field(scheme.getName(), softLimitField),
+						isAsc ? Comparation::GreatherThen : Comparation::LessThen, val.asInteger());
+				writeWhere(w, Operator::And, scheme, q);
+			} else if (!q.empty()) {
+				auto w = s.where();
+				writeWhere(w, Operator::And, scheme, q);
+			}
+
+			writeOrdering(s, scheme, q);
+			if (q.isForUpdate()) { s.forUpdate(); }
+			s.finalize();
+		} else {
+			auto sel = with("u", [&] (GenericQuery &subq) {
+				auto sel = subq.select(SqlQuery::Field(scheme.getName(), "__oid"), SqlQuery::Field(scheme.getName(), softLimitField));
+				auto s = sel.from(scheme.getName());
+
+				if (auto &val = q.getSoftLimitValue()) {
+					auto w = s.where(SqlQuery::Field(scheme.getName(), softLimitField),
+							q.getOrdering() == Ordering::Ascending ? Comparation::GreatherThen : Comparation::LessThen, val.asInteger());
+					writeWhere(w, Operator::And, scheme, q);
+				} else if (!q.empty()) {
+					auto w = s.where();
+					writeWhere(w, Operator::And, scheme, q);
+				}
+
+				writeOrdering(s, scheme, q);
+			}).select();
+
+			// write query select fields
+			auto s = writeSelectFrom(sel, worker, q);
+
+			// write soft limit query like WHERE __oid IN (SELECT __oid FROM u) OR (field = (SELECT MAX(mtime) FROM u))
+			s.where("__oid", Comparation::In, mem::Callback<void(SqlQuery::Select &)>([&] (SqlQuery::Select &subQ) {
+				subQ.field(SqlQuery::Field("u", "__oid")).from("u").finalize();
+			})).parenthesis(Operator::Or, [&] (WhereBegin &whi) {
+				auto w = whi.where(SqlQuery::Field(scheme.getName(), softLimitField), Comparation::Equal,
+						mem::Callback<void(SqlQuery::Select &)>([&] (SqlQuery::Select &subQ) {
+					subQ.aggregate(isAsc ? "MAX" : "MIN", SqlQuery::Field("u", softLimitField)).from("u").finalize();
+				}));
+				writeWhere(w, Operator::And, scheme, q);
+			});
+
+			writeOrdering(s, scheme, q, true);
+			if (q.isForUpdate()) { s.forUpdate(); }
+			s.finalize();
+		}
+	} else {
+		auto sel = select();
+		auto s = writeSelectFrom(sel, worker, q);
+		if (!q.empty()) {
+			auto w = s.where();
+			writeWhere(w, Operator::And, scheme, q);
+		}
+
+		writeOrdering(s, scheme, q);
+		if (q.isForUpdate()) { s.forUpdate(); }
+		s.finalize();
+	}
+
+	return true;
+}
+
 void SqlQuery::writeWhere(SqlQuery::SelectWhere &w, db::Operator op, const db::Scheme &scheme, const db::Query &q) {
+	SqlQuery::WhereContinue iw(w.query, w.state);
+	writeWhere(iw, op, scheme, q);
+}
+
+void SqlQuery::writeWhere(SqlQuery::WhereContinue &w, db::Operator op, const db::Scheme &scheme, const db::Query &q) {
 	if (q.getSingleSelectId()) {
 		w.where(op, "__oid", db::Comparation::Equal, q.getSingleSelectId());
 	} else if (!q.getSelectIds().empty()) {
@@ -72,13 +159,17 @@ void SqlQuery::writeWhere(SqlQuery::SelectWhere &w, db::Operator op, const db::S
 				if (f_it != fields.end()) {
 					auto type = f_it->second.getType();
 					if (type == db::Type::FullTextView) {
-						whi.where(db::Operator::And, SqlQuery::Field(scheme.getName(), it.field), db::Comparation::Includes, RawString{mem::toString("__ts_query_", it.field)});
+						auto ftsQuery = getFullTextQuery(scheme, f_it->second, it);
+						if (!ftsQuery.empty()) {
+							whi.where(db::Operator::And, SqlQuery::Field(scheme.getName(), it.field),
+									db::Comparation::Includes, RawStringView{ftsQuery});
+						}
 					} else if ((f_it->second.isIndexed() && SqlQuery_comparationIsValid(f_it->second, it.compare))) {
 						if (type == Type::Custom) {
 							auto c = f_it->second.getSlot<FieldCustom>();
 							c->writeQuery(scheme, whi, db::Operator::And, it.field, it.compare, it.value1, it.value2);
 						} else {
-							if (it.compare == Comparation::Equal && (type == Type::Integer || type == Type::Object) && it.value1.isArray()) {
+							if (it.compare == Comparation::Equal && (type == Type::Integer || type == Type::Float || type == Type::Object) && it.value1.isArray()) {
 								whi.parenthesis(db::Operator::And, [&] (WhereBegin &wb) {
 									auto wwb = wb.where();
 									for (auto &id : it.value1.asArray()) {
@@ -98,7 +189,7 @@ void SqlQuery::writeWhere(SqlQuery::SelectWhere &w, db::Operator op, const db::S
 	}
 }
 
-void SqlQuery::writeOrdering(SqlQuery::SelectFrom &s, const db::Scheme &scheme, const db::Query &q) {
+void SqlQuery::writeOrdering(SqlQuery::SelectFrom &s, const db::Scheme &scheme, const db::Query &q, bool dropLimits) {
 	if (q.hasOrder() || q.hasLimit() || q.hasOffset()) {
 		auto ordering = q.getOrdering();
 		mem::String orderField;
@@ -128,12 +219,14 @@ void SqlQuery::writeOrdering(SqlQuery::SelectFrom &s, const db::Scheme &scheme, 
 		SelectOrder o = s.order(ordering, schemeName.empty() ? SqlQuery::Field(orderField) : SqlQuery::Field(scheme.getName(), orderField),
 				ordering == db::Ordering::Descending ? stappler::sql::Nulls::Last : stappler::sql::Nulls::None);
 
-		if (q.hasLimit() && q.hasOffset()) {
-			o.limit(q.getLimitValue(), q.getOffsetValue());
-		} else if (q.hasLimit()) {
-			o.limit(q.getLimitValue());
-		} else if (q.hasOffset()) {
-			o.offset(q.getOffsetValue());
+		if (!dropLimits) {
+			if (q.hasLimit() && q.hasOffset()) {
+				o.limit(q.getLimitValue(), q.getOffsetValue());
+			} else if (q.hasLimit()) {
+				o.limit(q.getLimitValue());
+			} else if (q.hasOffset()) {
+				o.offset(q.getOffsetValue());
+			}
 		}
 	}
 }
@@ -157,53 +250,6 @@ static void SqlQuery_writeJoin(SqlQuery::SelectFrom &s, const mem::StringView &s
 	});
 }
 
-void SqlQuery::writeFullTextRank(Select &sel, const db::Scheme &scheme, const db::Query &q) {
-	for (auto &it : q.getSelectList()) {
-		if (auto f = scheme.getField(it.field)) {
-			if (f->getType() == db::Type::FullTextView) {
-				sel.query->writeBind(db::Binder::FullTextRank{scheme.getName(), f});
-				sel.query->getStream() << " AS __ts_rank_" << it.field << ", ";
-			}
-		}
-	}
-}
-
-auto SqlQuery::writeFullTextFrom(Select &sel, const db::Scheme &scheme, const db::Query &q) -> SelectFrom {
-	auto f = sel.from();
-	for (auto &it : q.getSelectList()) {
-		if (auto field = scheme.getField(it.field)) {
-			if (field->getType() == db::Type::FullTextView) {
-				if (!it.searchData.empty()) {
-					mem::StringStream queryFrom;
-					for (auto &searchIt : it.searchData) {
-						if (!queryFrom.empty()) {
-							queryFrom  << " && ";
-						}
-						binder.writeBind(queryFrom, searchIt);
-					}
-					auto queryStr = queryFrom.weak();
-					f = f.from(Query::Field(queryStr).as(mem::toString("__ts_query_", it.field)));
-				} else if (it.value1) {
-					auto d = field->getSlot<db::FieldFullTextView>();
-					auto q = d->parseQuery(it.value1);
-					if (!q.empty()) {
-						mem::StringStream queryFrom;
-						for (auto &searchIt : q) {
-							if (!queryFrom.empty()) {
-								queryFrom  << " && ";
-							}
-							binder.writeBind(queryFrom, searchIt);
-						}
-						auto queryStr = queryFrom.weak();
-						f = f.from(Query::Field(queryStr).as(mem::toString("__ts_query_", it.field)));
-					}
-				}
-			}
-		}
-	}
-	return f;
-}
-
 auto SqlQuery::writeSelectFrom(GenericQuery &q, const db::QueryList::Item &item, bool idOnly, const mem::StringView &schemeName, const mem::StringView &fieldName, bool isSimpleGet) -> SelectFrom {
 	if (idOnly) {
 		return q.select(SqlQuery::Field(schemeName, fieldName).as("id")).from(schemeName);
@@ -214,7 +260,7 @@ auto SqlQuery::writeSelectFrom(GenericQuery &q, const db::QueryList::Item &item,
 	item.readFields([&] (const mem::StringView &name, const db::Field *) {
 		sel = sel.field(SqlQuery::Field(schemeName, name));
 	}, isSimpleGet);
-	return writeFullTextFrom(sel, *item.scheme, item.query).from(schemeName);
+	return sel.from(schemeName);
 }
 
 auto SqlQuery::writeSelectFrom(Select &sel, db::Worker &worker, const db::Query &q) -> SelectFrom {
@@ -226,7 +272,7 @@ auto SqlQuery::writeSelectFrom(Select &sel, db::Worker &worker, const db::Query 
 			sel = sel.field(SqlQuery::Field(name));
 		});
 	}
-	return writeFullTextFrom(sel, worker.scheme(), q).from(worker.scheme().getName());
+	return sel.from(worker.scheme().getName());
 }
 
 void SqlQuery::writeQueryListItem(GenericQuery &q, const db::QueryList &list, size_t idx, bool idOnly, const db::Field *field, bool forSubquery) {
@@ -463,6 +509,60 @@ const mem::StringStream &SqlQuery::getQuery() const {
 
 db::QueryInterface * SqlQuery::getInterface() const {
 	return binder.getInterface();
+}
+
+void SqlQuery::writeFullTextRank(Select &sel, const db::Scheme &scheme, const db::Query &q) {
+	for (auto &it : q.getSelectList()) {
+		if (auto f = scheme.getField(it.field)) {
+			if (f->getType() == db::Type::FullTextView) {
+
+				auto ftsQuery = getFullTextQuery(scheme, *f, it);
+				if (!ftsQuery.empty()) {
+					sel.query->writeBind(db::Binder::FullTextRank{scheme.getName(), f, ftsQuery});
+					sel.query->getStream() << " AS __ts_rank_" << it.field << ", ";
+				}
+			}
+		}
+	}
+}
+
+mem::StringView SqlQuery::getFullTextQuery(const db::Scheme &scheme, const db::Field &f, const db::Query::Select &it) {
+	if (f.getType() != Type::FullTextView) {
+		return mem::StringView();
+	}
+
+	String key = toString(scheme.getName(), ":", f.getName());
+
+	auto fit = _fulltextQueries.find(key);
+	if (fit != _fulltextQueries.end()) {
+		return fit->second;
+	}
+
+	if (!it.searchData.empty()) {
+		mem::StringStream queryFrom;
+		for (auto &searchIt : it.searchData) {
+			if (!queryFrom.empty()) {
+				queryFrom  << " && ";
+			}
+			binder.writeBind(queryFrom, searchIt);
+		}
+		return _fulltextQueries.emplace(std::move(key), queryFrom.str()).first->second;
+	} else if (it.value1) {
+		auto d = f.getSlot<db::FieldFullTextView>();
+		auto q = d->parseQuery(it.value1);
+		if (!q.empty()) {
+			mem::StringStream queryFrom;
+			for (auto &searchIt : q) {
+				if (!queryFrom.empty()) {
+					queryFrom  << " && ";
+				}
+				binder.writeBind(queryFrom, searchIt);
+			}
+			return _fulltextQueries.emplace(std::move(key), queryFrom.str()).first->second;
+		}
+	}
+
+	return mem::StringView();
 }
 
 NS_DB_SQL_END

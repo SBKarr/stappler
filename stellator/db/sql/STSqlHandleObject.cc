@@ -51,22 +51,11 @@ static mem::Value Handle_preparePostUpdate(mem::Value &data, const mem::Map<mem:
 
 mem::Value SqlHandle::select(Worker &worker, const db::Query &q) {
 	mem::Value ret;
-	bool empty = true;
 	auto &scheme = worker.scheme();
 	makeQuery([&] (SqlQuery &query) {
 		auto ordField = q.getQueryField();
 		if (ordField.empty()) {
-			auto sel = query.select();
-			auto s = query.writeSelectFrom(sel, worker, q);
-			if (!q.empty()) {
-				empty = false;
-				auto w = s.where();
-				query.writeWhere(w, Operator::And, scheme, q);
-			}
-
-			query.writeOrdering(s, scheme, q);
-			if (q.isForUpdate()) { s.forUpdate(); }
-			s.finalize();
+			query.writeQuery(worker, scheme, q);
 			ret = selectValueQuery(scheme, query);
 		} else if (auto f = scheme.getField(ordField)) {
 			switch (f->getType()) {

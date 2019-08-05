@@ -166,7 +166,7 @@ mem::Value SqlHandle::getSetField(Worker &w, SqlQuery &query, uint64_t oid, cons
 				sel = sel.field(SqlQuery::Field(fs->getName(), name));
 			});
 
-			auto tmp = query.writeFullTextFrom(sel, *fs, q).from(fs->getName())
+			auto tmp = sel.from(fs->getName())
 					.innerJoinOn("s", [&] (SqlQuery::WhereBegin &q) {
 				q.where(SqlQuery::Field(fs->getName(), "__oid"), Comparation::Equal, SqlQuery::Field("s", "id"));
 			});
@@ -186,7 +186,7 @@ mem::Value SqlHandle::getSetField(Worker &w, SqlQuery &query, uint64_t oid, cons
 				sel = sel.field(SqlQuery::Field(fs->getName(), name));
 			});
 
-			auto tmp = query.writeFullTextFrom(sel, *fs, q).from(fs->getName());
+			auto tmp = sel.from(fs->getName());
 			auto whi = tmp.where(l->getName(), Comparation::Equal, oid);
 			query.writeWhere(whi, db::Operator::And, *fs, q);
 			query.writeOrdering(tmp, *fs, q);
@@ -209,7 +209,7 @@ size_t SqlHandle::getSetCount(Worker &w, SqlQuery &query, uint64_t oid, const Fi
 			query.writeFullTextRank(sel, *fs, q);
 			sel.aggregate("COUNT", "*");
 
-			auto tmp = query.writeFullTextFrom(sel, *fs, q).from(fs->getName())
+			auto tmp = sel.from(fs->getName())
 					.innerJoinOn("s", [&] (SqlQuery::WhereBegin &q) {
 				q.where(SqlQuery::Field(fs->getName(), "__oid"), Comparation::Equal, SqlQuery::Field("s", "id"));
 			});
@@ -224,7 +224,7 @@ size_t SqlHandle::getSetCount(Worker &w, SqlQuery &query, uint64_t oid, const Fi
 			query.writeFullTextRank(sel, *fs, q);
 			sel.aggregate("COUNT", "*");
 
-			auto whi = query.writeFullTextFrom(sel, *fs, q).from(fs->getName())
+			auto whi = sel.from(fs->getName())
 				.where(l->getName(), Comparation::Equal, oid);
 			query.writeWhere(whi, db::Operator::And, *fs, q);
 			query.finalize();
@@ -253,7 +253,7 @@ mem::Value SqlHandle::getViewField(Worker &w, SqlQuery &query, uint64_t oid, con
 			sel = sel.field(SqlQuery::Field(fs->getName(), name));
 		});
 
-		auto tmp = query.writeFullTextFrom(sel, *fs, q).from(fs->getName())
+		auto tmp = sel.from(fs->getName())
 				.innerJoinOn("s", [&] (SqlQuery::WhereBegin &q) {
 			q.where(SqlQuery::Field(fs->getName(), "__oid"), Comparation::Equal, SqlQuery::Field("s", "__id"));
 		});
@@ -287,7 +287,7 @@ size_t SqlHandle::getViewCount(Worker &w, SqlQuery &query, uint64_t oid, const F
 		query.writeFullTextRank(sel, *fs, q);
 		sel.aggregate("COUNT", "*");
 
-		auto tmp = query.writeFullTextFrom(sel, *fs, q).from(fs->getName())
+		auto tmp = sel.from(fs->getName())
 				.innerJoinOn("s", [&] (SqlQuery::WhereBegin &q) {
 			q.where(SqlQuery::Field(fs->getName(), "__oid"), Comparation::Equal, SqlQuery::Field("s", "__id"));
 		});

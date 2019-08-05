@@ -217,6 +217,9 @@ void Binder::writeBind(mem::StringStream &query, int64_t val) {
 void Binder::writeBind(mem::StringStream &query, uint64_t val) {
 	_iface->bindUInt(*this, query, val);
 }
+void Binder::writeBind(mem::StringStream &query, double val) {
+	_iface->bindDouble(*this, query, val);
+}
 void Binder::writeBind(mem::StringStream &query, stappler::Time val) {
 	_iface->bindUInt(*this, query, val.toMicros());
 }

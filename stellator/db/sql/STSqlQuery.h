@@ -36,8 +36,11 @@ public:
 
 	void clear();
 
+	bool writeQuery(Worker &worker, const db::Scheme &scheme, const db::Query &q);
+
 	void writeWhere(SqlQuery::SelectWhere &, db::Operator op, const db::Scheme &, const db::Query &);
-	void writeOrdering(SqlQuery::SelectFrom &, const db::Scheme &, const db::Query &);
+	void writeWhere(SqlQuery::WhereContinue &, db::Operator op, const db::Scheme &, const db::Query &);
+	void writeOrdering(SqlQuery::SelectFrom &, const db::Scheme &, const db::Query &, bool dropLimits = false);
 
 	SelectFrom writeSelectFrom(GenericQuery &q, const db::QueryList::Item &item, bool idOnly, const mem::StringView &scheme, const mem::StringView &field, bool isSimpleGet = false);
 	SelectFrom writeSelectFrom(Select &sel, db::Worker &, const db::Query &);
@@ -60,7 +63,11 @@ public:
 	db::QueryInterface * getInterface() const;
 
 	void writeFullTextRank(Select &sel, const db::Scheme &scheme, const db::Query &q);
-	SelectFrom writeFullTextFrom(Select &sel, const db::Scheme &scheme, const db::Query &q);
+
+	mem::StringView getFullTextQuery(const db::Scheme &scheme, const db::Field &f, const db::Query::Select &it);
+
+protected:
+	mem::Map<mem::String, mem::String> _fulltextQueries;
 };
 
 NS_DB_SQL_END

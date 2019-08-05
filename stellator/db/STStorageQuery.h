@@ -91,6 +91,12 @@ public:
 		Select(const mem::StringView & f, Comparation c, mem::Vector<stappler::search::SearchData> && v);
 	};
 
+	struct SoftLimit {
+		mem::String field;
+		size_t limit;
+		mem::Value offset;
+	};
+
 	static Query all();
 	static Query field(int64_t id, const mem::StringView &);
 
@@ -118,6 +124,7 @@ public:
 	Query & select(Select &&q);
 
 	Query & order(const mem::StringView &f, Ordering o = Ordering::Ascending, size_t limit = stappler::maxOf<size_t>(), size_t offset = 0);
+	Query & softLimit(const mem::StringView &, Ordering, size_t limit, mem::Value &&);
 
 	Query & first(const mem::StringView &f, size_t limit = 1, size_t offset = 0);
 	Query & last(const mem::StringView &f, size_t limit = 1, size_t offset = 0);
@@ -154,6 +161,8 @@ public:
 	size_t getLimitValue() const;
 	size_t getOffsetValue() const;
 
+	const mem::Value &getSoftLimitValue() const;
+
 	bool hasSelectName() const; // id or alias
 	bool hasSelectList() const;
 
@@ -164,6 +173,7 @@ public:
 	bool hasDelta() const;
 	bool hasFields() const;
 	bool isForUpdate() const;
+	bool isSoftLimit() const;
 
 	uint64_t getDeltaToken() const;
 
@@ -187,6 +197,7 @@ protected:
 
 	size_t limitValue = stappler::maxOf<size_t>();
 	size_t offsetValue = 0;
+	mem::Value softLimitValue;
 
 	uint64_t deltaToken;
 
@@ -195,6 +206,7 @@ protected:
 	FieldsVec fieldsInclude;
 	FieldsVec fieldsExclude;
 	bool update = false;
+	bool _softLimit = false;
 };
 
 template <typename Str>
