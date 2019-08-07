@@ -153,46 +153,8 @@ size_t SqlHandle::getObjectCount(Worker &w, SqlQuery &query, uint64_t oid, uint6
 }
 
 mem::Value SqlHandle::getSetField(Worker &w, SqlQuery &query, uint64_t oid, const Field &f, const db::Query &q) {
-	if (auto fs = f.getForeignScheme()) {
-		if (f.isReference()) {
-			auto sel = query.with("s", [&] (SqlQuery::GenericQuery &q) {
-				q.select(SqlQuery::Field(mem::toString(fs->getName(), "_id")).as("id"))
-						.from(mem::toString(w.scheme().getName(), "_f_", f.getName()))
-						.where(mem::toString(w.scheme().getName(), "_id"), Comparation::Equal, oid);
-			}).select();
-
-			query.writeFullTextRank(sel, *fs, q);
-			w.readFields(*fs, [&] (const mem::StringView &name, const Field *) {
-				sel = sel.field(SqlQuery::Field(fs->getName(), name));
-			});
-
-			auto tmp = sel.from(fs->getName())
-					.innerJoinOn("s", [&] (SqlQuery::WhereBegin &q) {
-				q.where(SqlQuery::Field(fs->getName(), "__oid"), Comparation::Equal, SqlQuery::Field("s", "id"));
-			});
-
-			if (q.hasSelect()) {
-				auto whi = tmp.where();
-				query.writeWhere(whi, db::Operator::And, *fs, q);
-			}
-			query.writeOrdering(tmp, *fs, q);
-			query.finalize();
-			return selectValueQuery(*fs, query);
-		} else if (auto l = w.scheme().getForeignLink(f)) {
-			auto sel = query.select();
-
-			query.writeFullTextRank(sel, *fs, q);
-			w.readFields(*fs, [&] (const mem::StringView &name, const Field *) {
-				sel = sel.field(SqlQuery::Field(fs->getName(), name));
-			});
-
-			auto tmp = sel.from(fs->getName());
-			auto whi = tmp.where(l->getName(), Comparation::Equal, oid);
-			query.writeWhere(whi, db::Operator::And, *fs, q);
-			query.writeOrdering(tmp, *fs, q);
-			query.finalize();
-			return selectValueQuery(*fs, query);
-		}
+	if (query.writeQuery(w, w.scheme(), oid, f, q)) {
+		return selectValueQuery(*f.getForeignScheme(), query);
 	}
 	return mem::Value();
 }
@@ -241,30 +203,8 @@ size_t SqlHandle::getSetCount(Worker &w, SqlQuery &query, uint64_t oid, const Fi
 }
 
 mem::Value SqlHandle::getViewField(Worker &w, SqlQuery &query, uint64_t oid, const Field &f, const db::Query &q) {
-	if (auto fs = f.getForeignScheme()) {
-		auto sel = query.with("s", [&] (SqlQuery::GenericQuery &q) {
-			q.select(SqlQuery::Distinct::Distinct, SqlQuery::Field(mem::toString(fs->getName(), "_id")).as("__id"))
-					.from(mem::toString(w.scheme().getName(), "_f_", f.getName(), "_view"))
-					.where(mem::toString(w.scheme().getName(), "_id"), Comparation::Equal, oid);
-		}).select();
-
-		query.writeFullTextRank(sel, *fs, q);
-		w.readFields(*fs, [&] (const mem::StringView &name, const Field *) {
-			sel = sel.field(SqlQuery::Field(fs->getName(), name));
-		});
-
-		auto tmp = sel.from(fs->getName())
-				.innerJoinOn("s", [&] (SqlQuery::WhereBegin &q) {
-			q.where(SqlQuery::Field(fs->getName(), "__oid"), Comparation::Equal, SqlQuery::Field("s", "__id"));
-		});
-
-		if (q.hasSelect()) {
-			auto whi = tmp.where();
-			query.writeWhere(whi, db::Operator::And, *fs, q);
-		}
-		query.writeOrdering(tmp, *fs, q);
-		query.finalize();
-
+	if (query.writeQuery(w, w.scheme(), oid, f, q)) {
+		auto fs = f.getForeignScheme();
 		auto ret = selectValueQuery(*fs, query);
 		if (ret.isArray() && ret.size() > 0) {
 			query.clear();

@@ -40,6 +40,7 @@ APLOG_USE_MODULE(serenity);
 
 #include "Task.cc"
 
+#include "ContinueToken.cc"
 #include "ExternalSession.cc"
 #include "JsonWebToken.cc"
 #include "RequestAuthHandler.cc"

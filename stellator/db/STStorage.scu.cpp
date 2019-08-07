@@ -48,3 +48,6 @@ THE SOFTWARE.
 #include "STPqHandle.cc"
 #include "STPqHandleInit.cc"
 #include "STPqDriver.cc"
+
+#include "STFieldIntArray.cc"
+#include "STFieldPoint.cc"

@@ -37,6 +37,7 @@ public:
 	void clear();
 
 	bool writeQuery(Worker &worker, const db::Scheme &scheme, const db::Query &q);
+	bool writeQuery(Worker &worker, const db::Scheme &scheme, uint64_t, const db::Field &f, const db::Query &q);
 
 	void writeWhere(SqlQuery::SelectWhere &, db::Operator op, const db::Scheme &, const db::Query &);
 	void writeWhere(SqlQuery::WhereContinue &, db::Operator op, const db::Scheme &, const db::Query &);
