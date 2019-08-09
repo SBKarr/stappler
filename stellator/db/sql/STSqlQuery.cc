@@ -62,9 +62,13 @@ static inline mem::StringView SqlQuery_getSoftLimitField(const db::Scheme &schem
 	return softLimitField;
 }
 
-static inline auto SqlQuery_makeSoftLimitWith(SqlQuery &query, const db::Scheme &scheme, const db::Query &q,
+static inline auto SqlQuery_makeSoftLimitWith(SqlQuery &iquery, const db::Scheme &ischeme, const db::Query &iq,
 		const mem::StringView &softLimitField, bool isSubField = false, const mem::StringView &lName = mem::StringView(), uint64_t oid = 0) {
-	return [&] (SqlQuery::GenericQuery &subq) {
+	return [pquery = &iquery, pscheme = &ischeme, pq = &iq, isSubField, softLimitField, lName, oid] (SqlQuery::GenericQuery &subq) {
+		SqlQuery &query = *pquery;
+		const db::Scheme &scheme = *pscheme;
+		const db::Query &q = *pq;
+
 		auto sel = subq.select(SqlQuery::Field(scheme.getName(), "__oid"), SqlQuery::Field(scheme.getName(), softLimitField));
 		auto s = isSubField ? sel.from(scheme.getName()).innerJoinOn("s", [&] (SqlQuery::WhereBegin &q) {
 			q.where(SqlQuery::Field(scheme.getName(), "__oid"), Comparation::Equal, SqlQuery::Field("s", "id"));
@@ -90,7 +94,7 @@ template <typename Clause>
 static inline auto SqlQuery_makeWhereClause(SqlQuery &query, Clause &tmp, const db::Scheme &scheme, const db::Query &q,
 		const mem::StringView &softLimitField, const mem::StringView &lName = mem::StringView(), uint64_t oid = 0) {
 	bool isAsc = q.getOrdering() == Ordering::Ascending;
-	if (q.hasSelect() || !softLimitField.empty()) {
+	if (q.hasSelect() || !softLimitField.empty() || !lName.empty()) {
 		if (softLimitField == "__oid") {
 			if (auto &val = q.getSoftLimitValue()) {
 				auto w = tmp.where(SqlQuery::Field(scheme.getName(), softLimitField),
@@ -131,7 +135,7 @@ bool SqlQuery::writeQuery(Worker &worker, const db::Scheme &scheme, const db::Qu
 	mem::StringView softLimitField = SqlQuery_getSoftLimitField(scheme, q, hasAltLimit);
 
 	auto sel = (hasAltLimit)
-		? with("u", SqlQuery_makeSoftLimitWith(*this, scheme, q, softLimitField)).select()
+		? with("u", SqlQuery_makeSoftLimitWith(*this, scheme, q, softLimitField, false)).select()
 		: select();
 	auto s = writeSelectFrom(sel, worker, q);
 
