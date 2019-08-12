@@ -90,7 +90,7 @@ mem::String FieldIntArray::getIndexField() const { return mem::toString("USING G
 
 bool FieldIntArray::isComparationAllowed(db::Comparation c) const { return c == db::Comparation::Includes || c == db::Comparation::Equal; }
 
-void FieldIntArray::writeQuery(const db::Scheme &s, stappler::sql::Query<db::Binder>::WhereContinue &whi,
+void FieldIntArray::writeQuery(const db::Scheme &s, stappler::sql::Query<db::Binder, mem::Interface>::WhereContinue &whi,
 			stappler::sql::Operator op, const mem::StringView &f, stappler::sql::Comparation, const mem::Value &val, const mem::Value &) const {
 	if (val.isInteger()) {
 		whi.where(op, db::sql::SqlQuery::Field(s.getName(), f), "@>", db::sql::SqlQuery::RawString{mem::toString("ARRAY[", val.asInteger(), ']')});

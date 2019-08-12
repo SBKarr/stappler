@@ -30,9 +30,10 @@ SERENITY_SRCS_DIRS += \
 	serenity/apr \
 	serenity/src \
 	stellator/db \
+	stellator/utils \
 
 SERENITY_PRECOMPILED_HEADERS += \
-	serenity/src/core/Define.h \
+	stellator/serenity_api/Define.h \
 	common/core/SPCore.h \
 	common/core/SPCommon.h
 
@@ -48,6 +49,8 @@ SERENITY_INCLUDES_DIRS += \
 	serenity/src \
 	serenity/apr \
 	stellator/db \
+	stellator/serenity_api \
+	stellator/utils \
 
 SERENITY_INCLUDES_OBJS += \
 	serenity/ext/cityhash

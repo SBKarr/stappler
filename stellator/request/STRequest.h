@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "SPUrl.h"
 #include "STConnection.h"
+#include "STTable.h"
 
 namespace stellator {
 
@@ -92,87 +93,68 @@ public: /* request data */
 	bool isSimpleRequest() const;
 	bool isHeaderRequest() const;
 
-	int getProtocolNumber() const;
-	mem::StringView getProtocol() const;
-	mem::StringView getHostname() const;
+	const mem::String getProtocol() const;
+	const mem::String getHostname() const;
 
 	mem::Time getRequestTime() const;
 
-	mem::StringView getStatusLine() const;
+	const mem::String getStatusLine() const;
 	int getStatus() const;
 
 	Method getMethod() const;
-	mem::StringView getMethodName() const;
 
-	mem::StringView getRangeLine() const;
-	apr_off_t getContentLength() const;
-	bool isChunked() const;
+	off_t getContentLength() const;
 
-	apr_off_t getRemainingLength() const;
-	apr_off_t getReadLength() const;
-
-	apr::table getRequestHeaders() const;
-	apr::table getResponseHeaders() const;
-	apr::table getErrorHeaders() const;
-	apr::table getSubprocessEnvironment() const;
-	apr::table getNotes() const;
-	apr::uri getParsedURI() const;
+	mem::table getRequestHeaders() const;
+	mem::table getResponseHeaders() const;
+	mem::table getErrorHeaders() const;
 
 	mem::StringView getDocumentRoot() const;
 	mem::StringView getContentType() const;
-	mem::StringView getHandler() const;
 	mem::StringView getContentEncoding() const;
-
-	mem::StringView getRequestUser() const;
-	mem::StringView getAuthType() const;
 
 	mem::StringView getUnparsedUri() const;
 	mem::StringView getUri() const;
 	mem::StringView getFilename() const;
-	mem::StringView getCanonicalFilename() const;
 	mem::StringView getPathInfo() const;
 	mem::StringView getQueryArgs() const;
 
 	bool isEosSent() const;
-	bool hasCache() const;
-	bool hasLocalCopy() const;
 	bool isSecureConnection() const;
 
 	mem::StringView getUseragentIp() const;
 
 public: /* request params setters */
-	void setDocumentRoot(apr::string &&str);
-	void setContentType(apr::string &&str);
-	void setHandler(apr::string &&str);
-	void setContentEncoding(apr::string &&str);
+	void setDocumentRoot(mem::String &&str);
+	void setContentType(mem::String &&str);
+	void setContentEncoding(mem::String &&str);
 
 	/* set path for file, that should be returned in response via sendfile */
-	void setFilename(apr::string &&str);
+	void setFilename(mem::String &&str);
 
 	/* set HTTP status code and response status line ("404 NOT FOUND", etc.)
 	 * if no string provided, default status line for code will be used */
-	void setStatus(int status, apr::string &&str = apr::string());
+	void setStatus(int status, mem::String &&str = mem::String());
 
-	void setCookie(const String &name, const String &value, TimeInterval maxAge = TimeInterval(), CookieFlags flags = CookieFlags::Default);
-	void removeCookie(const String &name, CookieFlags flags = CookieFlags::Default);
+	void setCookie(const mem::StringView &name, const mem::String &value, mem::TimeInterval maxAge = mem::TimeInterval(), CookieFlags flags = CookieFlags::Default);
+	void removeCookie(const mem::StringView &name, CookieFlags flags = CookieFlags::Default);
 
 	// cookies, that will be sent in server response
-	const Map<String, CookieStorage> getResponseCookies() const;
+	const mem::Map<mem::String, CookieStorage> getResponseCookies() const;
 
-	apr::weak_string getCookie(const String &name, bool removeFromHeadersTable = true) const;
+	mem::StringView getCookie(const mem::StringView &name, bool removeFromHeadersTable = true) const;
 
-	int redirectTo(String && location);
-	int sendFile(String && path, size_t cacheTimeInSeconds = maxOf<size_t>());
-	int sendFile(String && path, String && contentType, size_t cacheTimeInSeconds = maxOf<size_t>());
+	int redirectTo(mem::String && location);
+	int sendFile(mem::String && path, size_t cacheTimeInSeconds = stappler::maxOf<size_t>());
+	int sendFile(mem::String && path, mem::String && contentType, size_t cacheTimeInSeconds = stappler::maxOf<size_t>());
 
-	void runTemplate(String && path, const Function<void(tpl::Exec &, Request &)> &);
-	int runPug(const StringView & path, const Function<bool(pug::Context &, const pug::Template &)> & = nullptr);
+	int runPug(const mem::StringView & path, const mem::Function<bool(pug::Context &, const pug::Template &)> & = nullptr);
 
-	apr::string getFullHostname(int port = -1) const;
+	mem::String getFullHostname(int port = -1) const;
 
 	// true if successful cache test
-	bool checkCacheHeaders(Time, const StringView &etag);
-	bool checkCacheHeaders(Time, uint32_t idHash);
+	bool checkCacheHeaders(mem::Time, const mem::StringView &etag);
+	bool checkCacheHeaders(mem::Time, uint32_t idHash);
 
 public: /* input config */
 	InputConfig & getInputConfig();
@@ -195,28 +177,27 @@ public: /* input config */
 	void setMaxFileSize(size_t);
 
 public: /* engine and errors */
-	void storeObject(void *ptr, const StringView &key, Function<void()> && = nullptr) const;
+	void storeObject(void *ptr, const mem::StringView &key, mem::Function<void()> && = nullptr) const;
 
 	template <typename T = void>
-	T *getObject(const StringView &key) const {
-		return apr::pool::get<T>(_request->pool, key);
+	T *getObject(const mem::StringView &key) const {
+		return mem::pool::get<T>(pool(), key);
 	}
 
-	const apr::vector<apr::string> & getParsedQueryPath() const;
-	const data::Value &getParsedQueryArgs() const;
+	const mem::Vector<mem::String> & getParsedQueryPath() const;
+	const mem::Value &getParsedQueryArgs() const;
 
 	Server server() const;
-	Connection connection() const;
-	apr_pool_t *pool() const;
+	mem::pool_t *pool() const;
 
-	storage::Adapter storage() const;
+	db::Adapter storage() const;
 
 	// authorize user and create session for 'maxAge' seconds
 	// previous session (if existed) will be canceled
-	Session *authorizeUser(User *, TimeInterval maxAge);
+	Session *authorizeUser(db::User *, mem::TimeInterval maxAge);
 
 	// explicitly set user authority to request
-	void setUser(User *);
+	void setUser(db::User *);
 
 	void setAltUserId(int64_t);
 
@@ -229,8 +210,8 @@ public: /* engine and errors */
 	// try to get user data from session (by 'getSession' call)
 	// if session is not existed - returns nullptr
 	// if session is anonymous - returns nullptr
-	User *getUser();
-	User *getAuthorizedUser() const;
+	db::User *getUser();
+	db::User *getAuthorizedUser() const;
 
 	int64_t getUserId() const;
 
@@ -238,23 +219,23 @@ public: /* engine and errors */
 	// uses 'User::isAdmin' or tries to authorize admin by cross-server protocol
 	bool isAdministrative();
 
-	storage::AccessRoleId getAccessRole() const;
-	void setAccessRole(storage::AccessRoleId) const;
+	db::AccessRoleId getAccessRole() const;
+	void setAccessRole(db::AccessRoleId) const;
 
-	const Vector<data::Value> & getDebugMessages() const;
-	const Vector<data::Value> & getErrorMessages() const;
+	const mem::Vector<mem::Value> & getDebugMessages() const;
+	const mem::Vector<mem::Value> & getErrorMessages() const;
 
-	void addErrorMessage(data::Value &&);
-	void addDebugMessage(data::Value &&);
+	void addErrorMessage(mem::Value &&);
+	void addDebugMessage(mem::Value &&);
 
-	void addCleanup(const Function<void()> &);
+	void addCleanup(const mem::Function<void()> &);
 
 	void setInputFilter(InputFilter *);
 	InputFilter *getInputFilter() const;
 
-protected:
-	struct Config;
+	Config *getConfig() const;
 
+protected:
 	void initScriptContext(pug::Context &ctx);
 
 	/* Buffer class used as basic_streambuf to allow stream writing to request
@@ -270,7 +251,7 @@ protected:
 
 		using ios_base = std::ios_base;
 
-		Buffer(request_rec *r);
+		Buffer(Request::Config *r);
 		Buffer(Buffer&&);
 		Buffer& operator=(Buffer&&);
 
@@ -287,7 +268,7 @@ protected:
 
 		virtual streamsize xsputn(const char_type* s, streamsize n) override;
 
-		request_rec *_request;
+		Request::Config *_request;
 	};
 
 	Buffer _buffer;

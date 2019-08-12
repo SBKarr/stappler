@@ -22,15 +22,64 @@ THE SOFTWARE.
 
 #include "STDefine.h"
 
+#include "STServer.h"
+#include "STMemory.h"
+#include "STTask.h"
+
+namespace stellator::mem {
+
+static stellator::Server::Config *getServerFromContext(pool_t *p, uint32_t tag, const void *ptr) {
+	switch (tag) {
+	case uint32_t(Info::Server): return (stellator::Server::Config *)ptr; break;
+	//case uint32_t(Connection): return ((conn_rec *)ptr)->base_server; break;
+	//case uint32_t(Request): return ((request_rec *)ptr)->server; break;
+	case uint32_t(Info::Pool): return mem::pool::get<stellator::Server::Config>(p, "Apr.Server"); break;
+	}
+	return nullptr;
+}
+
+stellator::Server server() {
+	stellator::Server::Config *ret = nullptr;
+	pool::foreach_info(&ret, [] (void *ud, pool_t *p, uint32_t tag, const void *data) -> bool {
+		auto ptr = getServerFromContext(p, tag, data);
+		if (ptr) {
+			*((stellator::Server::Config **)ud) = ptr;
+			return false;
+		}
+		return true;
+	});
+
+	return stellator::Server(ret);
+}
+
+stellator::Request request() {
+	stellator::Request::Config *ret = nullptr;
+	pool::foreach_info(&ret, [] (void *ud, pool_t *p, uint32_t tag, const void *data) -> bool {
+		if (tag == uint32_t(Info::Request)) {
+			*((stellator::Request::Config **)ud) = (stellator::Request::Config *)data;
+			return false;
+		}
+
+		return true;
+	});
+
+	return ret;
+}
+
+}
+
+
 NS_DB_BEGIN
 
 namespace messages {
 
 void _addErrorMessage(mem::Value &&data) {
+	std::cout << "[Error]: " << stappler::data::EncodeFormat::Pretty << data << "\n";
 	// not implemented
 }
 
 void _addDebugMessage(mem::Value &&data) {
+	std::cout << "[Debug]: " << stappler::data::EncodeFormat::Pretty << data << "\n";
 	// not implemented
 }
 
@@ -53,7 +102,7 @@ Transaction Transaction::acquire(const Adapter &adapter) {
 namespace internals {
 
 Adapter getAdapterFromContext() {
-	if (auto p = stappler::memory::pool::acquire()) {
+	if (auto p = mem::pool::acquire()) {
 		Interface *h = nullptr;
 		stappler::memory::pool::userdata_get((void **)&h, config::getStorageInterfaceKey(), p);
 		if (h) {
@@ -64,24 +113,36 @@ Adapter getAdapterFromContext() {
 }
 
 void scheduleAyncDbTask(const stappler::Callback<mem::Function<void(const Transaction &)>(stappler::memory::pool_t *)> &setupCb) {
-
+	if (auto serv = stellator::mem::server()) {
+		stellator::Task::perform(serv, [&] (stellator::Task &task) {
+			auto cb = setupCb(task.pool());
+			task.addExecuteFn([cb = std::move(cb)] (const stellator::Task &task) -> bool {
+				task.performWithStorage([&] (const Transaction &t) {
+					t.performAsSystem([&] () -> bool {
+						cb(t);
+						return true;
+					});
+				});
+				return true;
+			});
+		});
+	}
 }
 
 bool isAdministrative() {
-	return false;
+	return true;
 }
 
 mem::String getDocuemntRoot() {
-	auto p = stappler::filesystem::writablePath();
-	return mem::String(p.data(), p.size());
+	return stellator::mem::server().getDocumentRoot().str<mem::Interface>();
 }
 
 const Scheme *getFileScheme() {
-	return nullptr;
+	return stellator::mem::server().getFileScheme();
 }
 
 const Scheme *getUserScheme() {
-	return nullptr;
+	return stellator::mem::server().getUserScheme();
 }
 
 InputFile *getFileFromContext(int64_t) {

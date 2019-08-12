@@ -39,7 +39,7 @@ class Handle : public db::sql::SqlHandle {
 public:
 	using Value = mem::Value;
 
-	Handle(stappler::memory::pool_t *, Driver *, Driver::Handle);
+	Handle(Driver *, Driver::Handle);
 
 	Handle(const Handle &) = delete;
 	Handle &operator=(const Handle &) = delete;
@@ -48,6 +48,9 @@ public:
 	Handle &operator=(Handle &&);
 
 	operator bool () const;
+
+	Driver::Handle getHandle() const;
+	Driver::Connection getConnection() const;
 
 	virtual void makeQuery(const stappler::Callback<void(sql::SqlQuery &)> &cb);
 
@@ -68,8 +71,8 @@ protected:
 
 	using ViewIdVec = mem::Vector<stappler::Pair<const Scheme::ViewScheme *, int64_t>>;
 
-	stappler::memory::pool_t *pool = nullptr;
 	Driver *driver = nullptr;
+	Driver::Handle handle = Driver::Handle(nullptr);
 	Driver::Connection conn = Driver::Connection(nullptr);
 	Driver::Status lastError = Driver::Status::Empty;
 	TransactionLevel level = TransactionLevel::ReadCommited;

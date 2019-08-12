@@ -214,7 +214,7 @@ protected:
 	mem::Value createFile(const Transaction &, const Field &, InputFile &) const;
 
 	// call before object is created, when file is embedded into patch
-	mem::Value createFile(const Transaction &, const Field &, const mem::Bytes &, const mem::StringView &type, int64_t = 0) const;
+	mem::Value createFile(const Transaction &, const Field &, const mem::BytesView &, const mem::StringView &type, int64_t = 0) const;
 
 	void processFullTextFields(mem::Value &patch, mem::Vector<mem::String> *updateFields = nullptr) const;
 

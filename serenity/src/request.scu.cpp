@@ -28,11 +28,9 @@ THE SOFTWARE.
 APLOG_USE_MODULE(serenity);
 
 #include "Output.cc"
-#include "Connection.cc"
-#include "Request.cc"
-#include "RequestHandler.cc"
-#include "Session.cc"
-#include "InputFilter.cc"
+#include "SEConnection.cc"
+#include "SERequest.cc"
+#include "SEInputFilter.cc"
 #include "OutputFilter.cc"
 #include "MultipartParser.cc"
 #include "UrlEncodeParser.cc"

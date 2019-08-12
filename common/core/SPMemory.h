@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "SPCommon.h"
 #include "SPStringView.h"
 #include "SPData.h"
+#include "SPString.h"
 
 NS_SP_BEGIN
 
@@ -40,7 +41,7 @@ using Time = stappler::Time;
 using TimeInterval = stappler::TimeInterval;
 
 using StringView = stappler::StringView;
-using Interface = stappler::memory::PoolInterface;
+using BytesView = stappler::BytesView;
 
 using AllocBase = stappler::memory::AllocPool;
 
@@ -82,30 +83,6 @@ inline bool writeData(std::ostream &stream, const Value &data, EncodeFormat fmt 
 	return stappler::data::EncodeTraits<stappler::memory::PoolInterface>::write(stream, data, fmt);
 }
 
-template <typename T>
-inline mem_pool::String toString(const T &t) {
-	return stappler::string::ToStringTraits<Interface>::toString(t);
-}
-
-template <typename T>
-inline void toStringStream(mem_pool::StringStream &stream, T value) {
-	stream << value;
-}
-
-template <typename T, typename... Args>
-inline void toStringStream(mem_pool::StringStream &stream, T value, Args && ... args) {
-	stream << value;
-	mem_pool::toStringStream(stream, std::forward<Args>(args)...);
-}
-
-template <typename T, typename... Args>
-inline mem_pool::String toString(T t, Args && ... args) {
-	mem_pool::StringStream stream;
-	mem_pool::toStringStream(stream, t);
-	mem_pool::toStringStream(stream, std::forward<Args>(args)...);
-    return stream.str();
-}
-
 }
 
 
@@ -117,7 +94,7 @@ using Time = stappler::Time;
 using TimeInterval = stappler::TimeInterval;
 
 using StringView = stappler::StringView;
-using Interface = stappler::memory::StandartInterface;
+using BytesView = stappler::BytesView;
 
 using AllocBase = stappler::memory::AllocPool;
 
@@ -159,32 +136,7 @@ inline bool writeData(std::ostream &stream, const Value &data, EncodeFormat fmt 
 	return stappler::data::EncodeTraits<stappler::memory::StandartInterface>::write(stream, data, fmt);
 }
 
-template <typename T>
-inline mem_std::String toString(const T &t) {
-	return stappler::string::ToStringTraits<Interface>::toString(t);
 }
-
-template <typename T>
-inline void toStringStream(mem_std::StringStream &stream, T value) {
-	stream << value;
-}
-
-template <typename T, typename... Args>
-inline void toStringStream(mem_std::StringStream &stream, T value, Args && ... args) {
-	stream << value;
-	mem_std::toStringStream(stream, std::forward<Args>(args)...);
-}
-
-template <typename T, typename... Args>
-inline mem_std::String toString(T t, Args && ... args) {
-	mem_std::StringStream stream;
-	mem_std::toStringStream(stream, t);
-	mem_std::toStringStream(stream, std::forward<Args>(args)...);
-    return stream.str();
-}
-
-}
-
 
 NS_SP_END
 

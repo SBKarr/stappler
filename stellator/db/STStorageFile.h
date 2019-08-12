@@ -32,14 +32,14 @@ public:
 	static mem::String getFilesystemPath(uint64_t oid);
 
 	static bool validateFileField(const Field &, const InputFile &);
-	static bool validateFileField(const Field &, const mem::StringView &type, const mem::Bytes &data);
+	static bool validateFileField(const Field &, const mem::StringView &type, const mem::BytesView &data);
 
 	static mem::Value createFile(const Transaction &, const Field &, InputFile &);
 	static mem::Value createFile(const Transaction &, const mem::StringView &type, const mem::StringView &path, int64_t = 0);
-	static mem::Value createFile(const Transaction &, const mem::StringView &type, const mem::Bytes &data, int64_t = 0);
+	static mem::Value createFile(const Transaction &, const mem::StringView &type, const mem::BytesView &data, int64_t = 0);
 
 	static mem::Value createImage(const Transaction &, const Field &, InputFile &);
-	static mem::Value createImage(const Transaction &, const Field &, const mem::StringView &type, const mem::Bytes &data, int64_t = 0);
+	static mem::Value createImage(const Transaction &, const Field &, const mem::StringView &type, const mem::BytesView &data, int64_t = 0);
 
 	static mem::Value getData(const Transaction &, uint64_t id);
 	static void setData(const Transaction &, uint64_t id, const mem::Value &);

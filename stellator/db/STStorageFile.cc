@@ -169,7 +169,7 @@ bool File::validateFileField(const Field &field, const InputFile &file) {
 	return true;
 }
 
-bool File::validateFileField(const Field &field, const mem::StringView &type, const mem::Bytes &data) {
+bool File::validateFileField(const Field &field, const mem::StringView &type, const mem::BytesView &data) {
 	if (field.getType() == db::Type::File) {
 		return File_validateFileField(field, data.size(), type);
 	} else if (field.getType() == db::Type::Image) {
@@ -238,7 +238,7 @@ mem::Value File::createFile(const Transaction &t, const mem::StringView &type, c
 	return Value();
 }
 
-mem::Value File::createFile(const Transaction &t, const mem::StringView &type, const mem::Bytes &data, int64_t mtime) {
+mem::Value File::createFile(const Transaction &t, const mem::StringView &type, const mem::BytesView &data, int64_t mtime) {
 	auto scheme = internals::getFileScheme();
 	auto size = data.size();
 
@@ -384,7 +384,7 @@ static mem::Map<mem::String, mem::String> writeImages(const Field &f, InputFile 
 	return ret;
 }
 
-static mem::Map<mem::String, mem::String> writeImages(const Field &f, const mem::StringView &type, const mem::Bytes &data) {
+static mem::Map<mem::String, mem::String> writeImages(const Field &f, const mem::StringView &type, const mem::BytesView &data) {
 	auto field = static_cast<const FieldImage *>(f.getSlot());
 
 	size_t width = 0, height = 0;
@@ -459,7 +459,7 @@ mem::Value File::createImage(const Transaction &t, const Field &f, InputFile &fi
 	return ret;
 }
 
-mem::Value File::createImage(const Transaction &t, const Field &f, const mem::StringView &type, const mem::Bytes &data, int64_t mtime) {
+mem::Value File::createImage(const Transaction &t, const Field &f, const mem::StringView &type, const mem::BytesView &data, int64_t mtime) {
 	mem::Value ret;
 
 	auto files = writeImages(f, type, data);

@@ -39,7 +39,7 @@ THE SOFTWARE.
 
 // use Serenity config
 
-#include "Config.h"
+#include "SEConfig.h"
 #include "SPAprFileStream.h"
 
 NS_DB_BEGIN

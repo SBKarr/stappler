@@ -827,6 +827,7 @@
 			<resource resourceType="PROJECT" workspacePath="/libstappler"/>
 		</configuration>
 		<configuration configurationName="Pug Test"/>
+		<configuration configurationName="Socket Test"/>
 		<configuration configurationName="Serenity Release"/>
 		<configuration configurationName="spwasm"/>
 	</storageModule>

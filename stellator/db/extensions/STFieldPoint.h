@@ -41,7 +41,7 @@ struct FieldPoint : db::FieldCustom {
 
 	virtual bool isComparationAllowed(stappler::sql::Comparation c) const override;
 
-	virtual void writeQuery(const db::Scheme &s, stappler::sql::Query<db::Binder>::WhereContinue &whi, stappler::sql::Operator op,
+	virtual void writeQuery(const db::Scheme &s, stappler::sql::Query<db::Binder, mem::Interface>::WhereContinue &whi, stappler::sql::Operator op,
 			const mem::StringView &f, stappler::sql::Comparation cmp, const mem::Value &val, const mem::Value &) const override;
 };
 

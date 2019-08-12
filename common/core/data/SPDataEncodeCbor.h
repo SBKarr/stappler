@@ -59,8 +59,8 @@ struct Encoder : public Interface::AllocBaseType {
 		return enc.data();
 	}
 
-	Encoder(const String &filename) : type(File) {
-		file = new OutputFileStream(filename, std::ios::binary);
+	Encoder(const StringView &filename) : type(File) {
+		file = new OutputFileStream(filename.data(), std::ios::binary);
 		if (isOpen()) {
 			cbor::_writeId(*this);
 		}

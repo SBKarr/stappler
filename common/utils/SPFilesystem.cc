@@ -478,10 +478,10 @@ static inline bool performCopy(const StringView &source, const StringView &dest)
 	}
 #if SPDEFAULT
 	if (!stappler::filesystem::exists(dest)) {
-		std::ofstream destStream(dest.str(), std::ios::binary);
+		std::ofstream destStream(dest.data(), std::ios::binary);
 		auto f = openForReading(source);
 		if (f && destStream.is_open()) {
-			if (io::read(f, destStream) > 0) {
+			if (io::read(f, io::Consumer(destStream)) > 0) {
 				return true;
 			}
 		}
@@ -568,9 +568,9 @@ String currentDir(const StringView &path, bool relative) {
 	String cwd = filesystem_native::getcwd_fn();
 	if (!cwd.empty()) {
 		if (path.empty()) {
-			return String(cwd);
+			return cwd;
 		} else {
-			return filepath::merge(String(cwd), path);
+			return filepath::merge(cwd, path);
 		}
 	}
 	return "";
@@ -581,7 +581,7 @@ bool write(const StringView &path, const Bytes &vec) {
 }
 bool write(const StringView &ipath, const unsigned char *data, size_t len) {
 	String path = filepath::absolute(ipath, true);
-	OutputFileStream f(path);
+	OutputFileStream f(path.data());
 	if (f.is_open()) {
 		f.write((const char *)data, len);
 		f.close();

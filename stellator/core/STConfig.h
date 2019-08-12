@@ -65,6 +65,15 @@ constexpr auto getDefaultSessionName() { return "SID"; }
 constexpr auto getDefaultSessionKey() { return "SerenitySession"; }
 
 
+#if DEBUG
+constexpr auto getDefaultPugTemplateUpdateInterval() { return stappler::TimeInterval::seconds(3); }
+constexpr auto getDefaultDatabaseCleanupInterval() { return stappler::TimeInterval::seconds(60); }
+#else
+constexpr auto getDefaultPugTemplateUpdateInterval() { return stappler::TimeInterval::seconds(30); }
+constexpr auto getDefaultDatabaseCleanupInterval() { return stappler::TimeInterval::seconds(180); }
+#endif
+
+
 }
 
 #endif /* STELLATOR_CORE_STCONFIG_H_ */

@@ -24,43 +24,47 @@ THE SOFTWARE.
 #define STELLATOR_SERVER_STROOT_H_
 
 #include "STDefine.h"
+#include "STPqDriver.h"
 
 namespace stellator {
 
 // Root stellator server singleton
-class Root {
+class Root : public mem::MemPool {
 public:
 	static Root *getInstance();
 
 	Root();
 	~Root();
 
-	bool addServer(const mem::Value &);
-
+	bool run(const mem::Value &);
 	bool run(const mem::StringView &addr = mem::StringView(), int port = 8080);
 
 	void onBroadcast(const mem::Value &);
 	bool performTask(const Server &server, Task *task, bool performFirst);
 	bool scheduleTask(const Server &server, Task *task, mem::TimeInterval);
 
-	db::Adapter dbdOpen(mem::pool_t *, const Server &) const;
-	void dbdClose(const Server &, const db::Adapter &);
+	db::pq::Driver::Handle dbdOpen(mem::pool_t *, const Server &) const;
+	void dbdClose(const Server &, const db::pq::Driver::Handle &);
 
 	//ap_dbd_t * dbdRequestAcquire(request_rec *);
 	//ap_dbd_t * dbdConnectionAcquire(conn_rec *);
 	//ap_dbd_t * dbdPoolAcquire(server_rec *, apr_pool_t *);
 
+	void performStorage(mem::pool_t *, const Server &, const mem::Callback<void(const db::Adapter &)> &);
+
+	db::pq::Driver * getDbDriver() const;
+
+	void scheduleCancel();
+
 protected:
+	struct Internal;
+
 	void onChildInit();
-	void initHeartBeat();
 	void onHeartBeat();
 
-	mem::pool_t *_pool = nullptr;
-	mem::pool_t *_heartBeatPool = nullptr;
+	bool addServer(const mem::Value &);
 
-	bool _isRunned = false;
-
-	mem::Map<mem::String, Server *> _servers;
+	Internal *_internal = nullptr;
 
 #if DEBUG
 	bool _debug = true;

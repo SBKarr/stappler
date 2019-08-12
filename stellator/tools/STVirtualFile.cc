@@ -52,7 +52,7 @@ VirtualFile VirtualFile::add(const mem::StringView &n, const mem::StringView &c)
 mem::StringView VirtualFile::get(const mem::StringView &path) {
 	for (size_t i = 0; i < s_handle.count; ++i) {
 		if (path == s_handle.table[i].name) {
-			return StringView(s_handle.table[i].content);
+			return mem::StringView(s_handle.table[i].content);
 			break;
 		}
 	}

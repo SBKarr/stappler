@@ -32,6 +32,30 @@ THE SOFTWARE.
 
 USING_NS_SP;
 
+static constexpr auto s_config = R"Config({
+	"listen": "127.0.0.1:8080",
+	"hosts" : [
+		{
+			"name": "localhost",
+			"admin": "serenity@stappler.org",
+			"root": "$WORK_DIR/www",
+			"components": [{
+				"name": "TestComponent",
+				"data": {
+					"admin": "serenity@stappler.org",
+					"root": "$WORK_DIR/www",
+				}
+			}],
+			"db": {
+				"host": "localhost",
+				"dbname": "test",
+				"user": "postgres",
+				"password": "80015385",
+			}
+		}
+	]
+})Config";
+
 int parseOptionSwitch(data::Value &ret, char c, const char *str) {
 	if (c == 'h') {
 		ret.setBool(true, "help");
@@ -39,7 +63,7 @@ int parseOptionSwitch(data::Value &ret, char c, const char *str) {
 	return 1;
 }
 
-int parseOptionString(data::Value &ret, const std::string &str, int argc, const char * argv[]) {
+int parseOptionString(data::Value &ret, const String &str, int argc, const char * argv[]) {
 	if (str == "help") {
 		ret.setBool(true, "help");
 	}
@@ -54,26 +78,14 @@ int _spMain(argc, argv) {
 		return 0;
 	};
 
-	/*auto &args = opts.getValue("args");
-	if (args.size() < 2) {
-		std::cout << "At least 1 argument is required!\n";
-		return -1;
-	}*/
+	stellator::Root * root = stellator::Root::getInstance();
+	memory::pool::push(root->pool());
 
-	/*Socket sock;
-	sock.init("http://apps.stappler.org");
-	sock.setSendData("GET /api/v2/apps/id3738 HTTP/1.1\r\nHost: apps.stappler.org\r\n\r\n");
-	sock.setReceiveCallback([] (char *buf, size_t s) {
-		log::text("Input", String(buf, s));
-		return 0;
-	});
-	sock.perform(TimeInterval::seconds(10));*/
+	auto val = data::read<StringView, stellator::mem::Interface>(StringView(s_config));
 
-	memory::pool::push(memory::pool::create());
-
-	stellator::Root root;
-	root.run("127.0.0.1", 8080);
 	memory::pool::pop();
+
+	root->run(val);
 
 	return 0;
 }

@@ -170,7 +170,7 @@ bool rename_fn(const StringView &source, const StringView &dest) {
 String getcwd_fn() {
 	char cwd[1024] = { 0 };
 	if (getcwd(cwd, 1024 - 1) != NULL) {
-		return String(cwd);
+		return String((const char *)cwd);
 	}
 	return String();
 }

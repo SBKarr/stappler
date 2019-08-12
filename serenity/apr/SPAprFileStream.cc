@@ -30,7 +30,7 @@ THE SOFTWARE.
 
 #if SPAPR
 
-#include "Config.h"
+#include "SEConfig.h"
 #include "SPIOProducer.h"
 #include "SPIOConsumer.h"
 

@@ -619,7 +619,7 @@ mem::StringView SqlQuery::getFullTextQuery(const db::Scheme &scheme, const db::F
 		return mem::StringView();
 	}
 
-	String key = toString(scheme.getName(), ":", f.getName());
+	mem::String key = mem::toString(scheme.getName(), ":", f.getName());
 
 	auto fit = _fulltextQueries.find(key);
 	if (fit != _fulltextQueries.end()) {

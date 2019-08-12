@@ -89,6 +89,9 @@ size_t get_allocated_bytes(pool_t *);
 size_t get_return_bytes(pool_t *);
 size_t get_opts_bytes(pool_t *);
 
+void *pmemdup(pool_t *a, const void *m, size_t n);
+char *pstrdup(pool_t *a, const char *s);
+
 }
 
 NS_SP_EXT_END(memory)

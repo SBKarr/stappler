@@ -99,9 +99,43 @@ NS_SP_EXT_END(memory)
  *   - OutputFileStream
  */
 
-#ifdef SPDEFAULT
+#if STELLATOR
 NS_SP_EXT_BEGIN(toolkit)
+struct TypeTraits {
+	using string_type = memory::basic_string<char>;
+	using ucs2_string_type = memory::basic_string<char16_t>;
+	using bytes_type = memory::vector<uint8_t>;
 
+	template <typename T>
+	using basic_string_stream = memory::basic_ostringstream<T>;
+
+	using string_stream = memory::basic_ostringstream<char>;
+	using output_stream = std::ostream;
+
+	using input_file_stream = std::ifstream;
+	using output_file_stream = std::ofstream;
+
+	using allocator_base = memory::AllocPool;
+	using mutex_type = std::mutex;
+
+	template <typename T, typename Compare = std::less<>>
+	using set_type = memory::set<T, Compare>;
+
+	template <typename T>
+	using vector_type = memory::vector<T>;
+
+	template <typename K, typename V, typename Compare = std::less<>>
+	using map_type = memory::map<K, V, Compare>;
+
+	template <class T>
+	using function_type = memory::function<T>;
+
+	using primary_interface = memory::PoolInterface;
+	using secondary_interface = memory::StandartInterface;
+};
+NS_SP_EXT_END(toolkit)
+#elif SPDEFAULT
+NS_SP_EXT_BEGIN(toolkit)
 struct TypeTraits {
 	using string_type = std::string;
 	using ucs2_string_type = std::u16string;
@@ -134,7 +168,6 @@ struct TypeTraits {
 	using primary_interface = memory::StandartInterface;
 	using secondary_interface = memory::PoolInterface;
 };
-
 NS_SP_EXT_END(toolkit)
 #else
 

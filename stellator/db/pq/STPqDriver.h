@@ -48,9 +48,23 @@ public:
 		SingleTuple,
 	};
 
+	enum class TransactionStatus {
+		Idle,
+		Active,
+		InTrans,
+		InError,
+		Unknown
+	};
+
 	virtual ~Driver();
 
+	Handle connect(const char * const *keywords, const char * const *values, int expand_dbname) const;
+	void finish(Handle) const;
+
 	Connection getConnection(Handle h) const;
+
+	bool isValid(Connection) const;
+	TransactionStatus getTransactionStatus(Connection) const;
 
 	Status getStatus(Result res) const;
 
@@ -73,6 +87,8 @@ public:
 	Result exec(Connection conn, const char *query);
 	Result exec(Connection conn, const char *command, int nParams, const char *const *paramValues,
 			const int *paramLengths, const int *paramFormats, int resultFormat);
+
+	void release();
 
 protected:
 	Driver(const mem::StringView &);

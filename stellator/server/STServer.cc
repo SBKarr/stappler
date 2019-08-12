@@ -26,17 +26,166 @@ THE SOFTWARE.
 #include "STStorageInterface.h"
 #include "STMemory.h"
 #include "STVirtualFile.h"
+#include "STTask.h"
+#include "STPqHandle.h"
 
 #include "SPugCache.h"
 
 namespace stellator {
 
+struct ServerComponentLoaderList {
+	static constexpr size_t Max = 16;
+
+	void addLoader(const mem::StringView &v, ServerComponent::Symbol s) {
+		if (count < Max) {
+			list[count] = pair(v, s);
+			++ count;
+		} else {
+			std::cout << "[Server]: server component loader list overflow\n";
+		}
+	}
+
+	ServerComponent::Symbol getLoader(const mem::StringView &v) {
+		for (size_t i = 0; i < count; ++ i) {
+			if (list[i].first == v) {
+				return list[i].second;
+			}
+		}
+		return nullptr;
+	}
+
+	std::array<stappler::Pair<mem::StringView, ServerComponent::Symbol>, Max> list;
+	size_t count = 0;
+};
+
+static ServerComponentLoaderList s_componentLoaders;
+
+ServerComponent::Loader::Loader(const mem::StringView &str, Symbol s) : name(str), loader(s) {
+	s_componentLoaders.addLoader(str, s);
+}
+
 static constexpr auto SA_SERVER_FILE_SCHEME_NAME = "__files";
 static constexpr auto SA_SERVER_USER_SCHEME_NAME = "__users";
 static constexpr auto SA_SERVER_ERROR_SCHEME_NAME = "__error";
 
+
+struct DbConnection : public mem::AllocBase {
+	db::pq::Driver::Handle handle;
+	DbConnection *next = nullptr;
+};
+
+struct DbConnList : public mem::AllocBase {
+	std::array<DbConnection, 16> array;
+
+	DbConnection *opened = nullptr;
+	DbConnection *free = nullptr;
+
+	size_t count = 0;
+	std::mutex mutex;
+
+	const char * *keywords = nullptr;
+	const char * *values = nullptr;
+
+	db::pq::Driver *driver = nullptr;
+
+	DbConnList(mem::pool_t *p, db::pq::Driver *d) : driver(d) {
+		memset(array.data(), 0, sizeof(DbConnection) * array.size());
+
+		DbConnection *target = nullptr;
+		for (auto &it : array) {
+			it.next = target;
+			target = &it;
+		}
+		free = target;
+
+		registerCleanupDestructor(this, p);
+	}
+
+	~DbConnList() {
+		while (opened) {
+			auto ret = opened->handle;
+			opened->handle = db::pq::Driver::Handle(nullptr);
+			opened = opened->next;
+
+			driver->finish(ret);
+		}
+	}
+
+	void parseParams(mem::pool_t *p, const mem::Map<mem::String, mem::String> &params) {
+		keywords = (const char * *)mem::pool::palloc(p, sizeof(const char *) * (params.size() + 1));
+		memset((void *)keywords, 0, sizeof(const char *) * (params.size() + 1));
+
+		values = (const char * *)mem::pool::palloc(p, sizeof(const char *) * (params.size() + 1));
+		memset((void *)values, 0, sizeof(const char *) * (params.size() + 1));
+
+		size_t i = 0;
+		for (auto &it : params) {
+			keywords[i] = it.first.data();
+			values[i] = it.second.data();
+			++ i;
+		}
+	}
+
+	db::pq::Driver::Handle open() {
+		db::pq::Driver::Handle ret(nullptr);
+		mutex.lock();
+		while (opened) {
+			auto tmpOpened = opened;
+			ret = opened->handle;
+			opened->handle = db::pq::Driver::Handle(nullptr);
+			opened = opened->next;
+
+			tmpOpened->next = free;
+			free = tmpOpened;
+
+			auto conn = driver->getConnection(ret);
+			if (driver->isValid(conn)) {
+				break;
+			} else {
+				driver->finish(ret);
+				ret = db::pq::Driver::Handle(nullptr);
+			}
+		}
+		mutex.unlock();
+
+		if (ret.get()) {
+			return ret;
+		} else {
+			return driver->connect(keywords, values, 0);
+		}
+	}
+
+	void close(db::pq::Driver::Handle h) {
+		auto conn = driver->getConnection(h);
+		bool valid = driver->isValid(conn) && (driver->getTransactionStatus(conn) == db::pq::Driver::TransactionStatus::Idle);
+		if (!valid) {
+			driver->finish(h);
+		} else {
+			mutex.lock();
+			if (free) {
+				auto tmpfree = free;
+				free->handle = h;
+				free = free->next;
+
+				tmpfree->next = opened;
+				opened = tmpfree;
+				mutex.unlock();
+			} else {
+				mutex.unlock();
+				driver->finish(h);
+			}
+		}
+	}
+};
+
 struct Server::Config : public mem::AllocBase {
-	Config(const mem::Value &config);
+	struct ComponentScheme {
+		mem::String name;
+		mem::Value data;
+		ServerComponent::Symbol symbol;
+	};
+
+	Config(mem::pool_t *, db::pq::Driver *, const mem::Value &config);
 
 	void setSessionParams(mem::Value &val);
 	void setForceHttps();
@@ -47,6 +196,15 @@ struct Server::Config : public mem::AllocBase {
 	void onStorageTransaction(db::Transaction &t);
 	void onError(const mem::StringView &str);
 
+	void setDocumentRoot(const mem::StringView &);
+	void addComponent(const mem::Value &);
+
+	db::pq::Driver::Handle openDb();
+	void closeDb(db::pq::Driver::Handle);
+
+	mem::pool_t *pool = nullptr;
+	DbConnList dbConnList;
+
 	mem::String name;
 	mem::Vector<mem::String> aliases;
 
@@ -54,7 +212,6 @@ struct Server::Config : public mem::AllocBase {
 	mem::String scheme;
 
 	mem::String servAdmin;
-	mem::String servHostname;
 
 	mem::TimeInterval timeout;
 	mem::TimeInterval keepAlive;
@@ -67,6 +224,8 @@ struct Server::Config : public mem::AllocBase {
 	bool childInit = false;
 
 	mem::Vector<ComponentScheme> componentLoaders;
+
+	mem::Map<mem::String, mem::String> dbParams;
 
 	mem::StringView currentComponent;
 	mem::Vector<mem::Function<int(Request &)>> preRequest;
@@ -88,7 +247,7 @@ struct Server::Config : public mem::AllocBase {
 	mem::Time lastDatabaseCleanup;
 	mem::Time lastTemplateUpdate;
 	int64_t broadcastId = 0;
-	pug::Cache _pugCache;
+	pug::Cache pugCache;
 
 	mem::String webHookUrl;
 	mem::String webHookName;
@@ -140,21 +299,42 @@ struct Server::Config : public mem::AllocBase {
 
 
 
-Server::Config::Config(const mem::Value &config)
+Server::Config::Config(mem::pool_t *p, db::pq::Driver *driver, const mem::Value &config)
+: pool(p)
+, dbConnList(p, driver)
 #if DEBUG
-: _pugCache(pug::Template::Options::getPretty(), [this] (const mem::StringView &str) { onError(str); })
+, pugCache(pug::Template::Options::getPretty(), [this] (const mem::StringView &str) { onError(str); })
 #else
-: _pugCache(pug::Template::Options::getDefault(), [this] (const mem::StringView &str) { onError(str); })
+, pugCache(pug::Template::Options::getDefault(), [this] (const mem::StringView &str) { onError(str); })
 #endif
 {
+	for (auto &it : config.asDict()) {
+		if (it.first == "name") {
+			name = it.second.getString();
+		} else if (it.first == "admin") {
+			servAdmin = it.second.getString();
+		} else if (it.first == "root") {
+			setDocumentRoot(it.second.getString());
+		} else if (it.first == "components" && it.second.isArray()) {
+			for (auto &iit : it.second.asArray()) {
+				addComponent(iit);
+			}
+		} else if (it.first == "db") {
+			for (auto &iit : it.second.asDict()) {
+				dbParams.emplace(iit.first, iit.second.asString());
+			}
+			dbConnList.parseParams(pool, dbParams);
+		}
+	}
+
 	// add virtual files to template engine
 	size_t count = 0;
 	auto d = tools::VirtualFile::getList(count);
 	for (size_t i = 0; i < count; ++ i) {
 		if (d[i].name.ends_with(".pug") || d[i].name.ends_with(".spug")) {
-			_pugCache.addTemplate(mem::toString("virtual:/", d[i].name), d[i].content.str<mem::Interface>());
+			pugCache.addTemplate(mem::toString("virtual:/", d[i].name), d[i].content.str<mem::Interface>());
 		} else {
-			_pugCache.addContent(mem::toString("virtual:/", d[i].name), d[i].content.str<mem::Interface>());
+			pugCache.addContent(mem::toString("virtual:/", d[i].name), d[i].content.str<mem::Interface>());
 		}
 	}
 }
@@ -176,8 +356,8 @@ void Server::Config::init(Server &serv) {
 	schemes.emplace(errorScheme.getName().str<mem::Interface>(), &errorScheme);
 
 	for (auto &it : componentLoaders) {
-		if (it.callback) {
-			if (auto c = it.callback(serv, it.name, it.data)) {
+		if (it.symbol) {
+			if (auto c = it.symbol(serv, it.name, it.data)) {
 				components.emplace(c->getName().str<mem::Interface>(), c);
 				typedComponents.emplace(std::type_index(typeid(*c)), c);
 			}
@@ -194,20 +374,30 @@ void Server::Config::onChildInit(Server &serv) {
 	}
 
 	if (!loadingFalled) {
-		db::Scheme::initSchemes(schemes);
+		if (!db::Scheme::initSchemes(schemes)) {
+			loadingFalled = true;
+			return;
+		}
 
 		mem::perform([&] {
 			auto root = Root::getInstance();
 			auto pool = getCurrentPool();
-			if (auto db = root->dbdOpen(pool, serv)) {
-				db.init(db::Interface::Config{serv.getServerHostname().str<mem::Interface>(), serv.getFileScheme()}, schemes);
+			auto db = root->dbdOpen(pool, serv);
+			if (db.get()) {
+				db::pq::Handle hdb(dbConnList.driver, db);
+				if (!hdb.init(db::Interface::Config{serv.getServerHostname().str<mem::Interface>(), serv.getFileScheme()}, schemes)) {
+					loadingFalled = true;
+					return;
+				}
 
 				for (auto &it : components) {
 					currentComponent = it.second->getName();
-					it.second->onStorageInit(serv, db);
+					it.second->onStorageInit(serv, &hdb);
 					currentComponent = mem::String();
 				}
 				root->dbdClose(serv, db);
+			} else {
+				loadingFalled = true;
 			}
 		});
 	}
@@ -220,10 +410,275 @@ void Server::Config::onStorageTransaction(db::Transaction &t) {
 }
 
 void Server::Config::onError(const mem::StringView &str) {
-#if DEBUG
-	std::cout << str << "\n";
-#endif
 	messages::error("Template", "Template compilation error", mem::Value(str));
+}
+
+void Server::Config::setDocumentRoot(const mem::StringView &str) {
+	documentRoot = stappler::filepath::absolute(str);
+
+	std::cout << "DocumentRoot for " << name << ": " << documentRoot << "\n";
+}
+
+void Server::Config::addComponent(const mem::Value &d) {
+	mem::String name;
+	mem::Value data;
+
+	for (auto &it : d.asDict()) {
+		if (it.first == "name") {
+			name = it.second.getString();
+		} else if (it.first == "data") {
+			data = std::move(it.second);
+		}
+	}
+
+	if (auto sym = s_componentLoaders.getLoader(name)) {
+		componentLoaders.emplace_back(ComponentScheme{std::move(name), std::move(data), sym});
+	}
+}
+
+db::pq::Driver::Handle Server::Config::openDb() {
+	return dbConnList.open();
+}
+void Server::Config::closeDb(db::pq::Driver::Handle h) {
+	dbConnList.close(h);
+}
+
+Server::Server() : _config(nullptr) { }
+Server::Server(Config *cfg) : _config(cfg) { }
+Server & Server::operator =(Config *c) { _config = c; return *this; }
+
+Server::Server(Server &&s) : _config(s._config) { }
+Server & Server::operator =(Server &&s) { _config = s._config; return *this; }
+
+Server::Server(const Server &s) : _config(s._config) { }
+Server & Server::operator =(const Server &s) { _config = s._config; return *this; }
+
+void Server::onChildInit() {
+	_config->init(*this);
+	_config->onChildInit(*this);
+
+	stappler::filesystem::mkdir(getDocumentRoot());
+	stappler::filesystem::mkdir(stappler::filepath::merge(getDocumentRoot(), "/.serenity"));
+	stappler::filesystem::mkdir(stappler::filepath::merge(getDocumentRoot(), "/uploads"));
+
+	_config->currentComponent = mem::StringView("root");
+	//tools::registerTools(config::getServerToolsPrefix(), *this);
+	_config->currentComponent = mem::StringView();
+
+	addProtectedLocation("/.stellator");
+	addProtectedLocation("/uploads");
+
+	auto cfg = _config;
+	Task::perform(*this, [&] (Task &task) {
+		task.addExecuteFn([cfg] (const Task &task) -> bool {
+			Server(cfg).processReports();
+			return true;
+		});
+	});
+}
+
+void Server::onHeartBeat(mem::pool_t *pool) {
+	mem::pool::store(pool, _config, "Apr.Server");
+	mem::perform([&] {
+		auto now = mem::Time::now();
+		if (!_config->loadingFalled) {
+			auto root = Root::getInstance();
+			auto dbd = root->dbdOpen(pool, *this);
+			if (dbd.get()) {
+				db::pq::Handle hdb(_config->dbConnList.driver, dbd);
+				if (now - _config->lastDatabaseCleanup > config::getDefaultDatabaseCleanupInterval()) {
+					_config->lastDatabaseCleanup = now;
+					hdb.makeSessionsCleanup();
+				}
+
+				_config->broadcastId = hdb.processBroadcasts([&] (stappler::BytesView bytes) {
+					onBroadcast(bytes);
+				}, _config->broadcastId);
+				root->dbdClose(*this, dbd);
+			}
+		}
+		if (now - _config->lastTemplateUpdate > config::getDefaultPugTemplateUpdateInterval()) {
+			_config->pugCache.update(pool);
+			_config->lastTemplateUpdate = now;
+		}
+	}, pool);
+	mem::pool::store(pool, nullptr, "Apr.Server");
+}
+
+void Server::onBroadcast(const mem::Value &val) {
+	if (val.getBool("system")) {
+		Root::getInstance()->onBroadcast(val);
+		return;
+	}
+
+	if (!val.hasValue("data")) {
+		return;
+	}
+
+	if (val.getBool("message")) {
+		/*mem::String url = mem::String(config::getServerToolsPrefix()) + config::getServerToolsShell();
+		auto it = Server_resolvePath(_config->websockets, url);
+		if (it != _config->websockets.end() && it->second) {
+			it->second->receiveBroadcast(val);
+		}*/
+	}
+
+	auto &url = val.getString("url");
+	if (!url.empty()) {
+		/*auto it = Server_resolvePath(_config->websockets, url);
+		if (it != _config->websockets.end() && it->second) {
+			it->second->receiveBroadcast(val.getValue("data"));
+		}*/
+	}
+}
+
+void Server::onBroadcast(const stappler::BytesView &bytes) {
+	onBroadcast(stappler::data::read<stappler::BytesView, mem::Interface>(bytes));
+}
+
+void Server::onStorageTransaction(db::Transaction &t) {
+	_config->onStorageTransaction(t);
+}
+
+void Server::setForceHttps() {
+	_config->setForceHttps();
+}
+
+void Server::addProtectedLocation(const mem::StringView &value) {
+	_config->protectedList.emplace(value.str<mem::Interface>());
+}
+
+const mem::Map<mem::String, ServerComponent *> &Server::getComponents() const {
+	return _config->components;
+}
+
+int Server::onRequest(Request &) { return DECLINED; }
+void Server::addPreRequest(mem::Function<int(Request &)> &&) { }
+
+void Server::addHandler(const mem::String &, const HandlerCallback &, const mem::Value &) { }
+void Server::addHandler(std::initializer_list<mem::String>, const HandlerCallback &, const mem::Value &) { }
+
+void Server::addResourceHandler(const mem::String &, const db::Scheme &) { }
+void Server::addResourceHandler(const mem::String &, const db::Scheme &, const mem::Value &) { }
+void Server::addMultiResourceHandler(const mem::String &, std::initializer_list<stappler::Pair<const mem::String, const db::Scheme *>> &&) { }
+
+void Server::addWebsocket(const mem::String &, websocket::Manager *) { }
+
+const db::Scheme * Server::exportScheme(const db::Scheme &scheme) {
+	_config->schemes.emplace(scheme.getName().str<mem::Interface>(), &scheme);
+	return &scheme;
+}
+
+const db::Scheme * Server::getScheme(const mem::StringView &name) const {
+	auto it = _config->schemes.find(name);
+	if (it != _config->schemes.end()) {
+		return it->second;
+	}
+	return nullptr;
+}
+
+const db::Scheme * Server::getFileScheme() const {
+	return &_config->fileScheme;
+}
+
+const db::Scheme * Server::getUserScheme() const {
+	return &_config->userScheme;
+}
+
+const db::Scheme * Server::getErrorScheme() const {
+	return &_config->errorScheme;
+}
+
+const db::Scheme * Server::defineUserScheme(std::initializer_list<db::Field> il) {
+	_config->userScheme.define(il);
+	return &_config->userScheme;
+}
+
+bool Server::performTask(Task *task, bool performFirst) const {
+	return Root::getInstance()->performTask(*this, task, performFirst);
+}
+
+bool Server::scheduleTask(Task *task, mem::TimeInterval t) const {
+	return Root::getInstance()->scheduleTask(*this, task, t);
+}
+
+mem::StringView Server::getDefaultName() const {
+	return _config->name;
+}
+
+mem::StringView Server::getServerScheme() const {
+	return _config->scheme;
+}
+
+mem::StringView Server::getServerAdmin() const {
+	return _config->servAdmin;
+}
+
+mem::StringView Server::getServerHostname() const {
+	return _config->name;
+}
+
+mem::StringView Server::getDocumentRoot() const {
+	return _config->documentRoot;
+}
+
+
+mem::StringView Server::getSessionKey() const {
+	return _config->sessionKey;
+}
+mem::StringView Server::getSessionName() const {
+	return _config->sessionName;
+}
+mem::TimeInterval Server::getSessionMaxAge() const {
+	return _config->sessionMaxAge;
+}
+bool Server::isSessionSecure() const {
+	return _config->isSessionSecure;
+}
+
+mem::pool_t *Server::getPool() const {
+	return _config->pool;
+}
+
+stappler::pug::Cache *Server::getPugCache() const {
+	return &_config->pugCache;
+}
+
+void Server::processReports() {
+
+}
+
+void Server::performStorage(mem::pool_t *pool, const mem::Callback<void(const db::Adapter &)> &cb) {
+	Root::getInstance()->performStorage(pool, *this, cb);
+}
+
+void Server::setSessionKeys(const mem::StringView &pub, const mem::StringView &priv) const {
+	_config->publicSessionKey = pub.str<mem::Interface>();
+	_config->privateSessionKey = priv.str<mem::Interface>();
+}
+
+mem::StringView Server::getSessionPublicKey() const {
+	return _config->publicSessionKey;
+}
+
+mem::StringView Server::getSessionPrivateKey() const {
+	return _config->privateSessionKey;
+}
+
+ServerComponent *Server::getServerComponent(const mem::StringView &name) const {
+	auto it = _config->components.find(name);
+	if (it != _config->components.end()) {
+		return it->second;
+	}
+	return nullptr;
+}
+
+ServerComponent *Server::getServerComponent(std::type_index name) const {
+	auto it = _config->typedComponents.find(name);
+	if (it != _config->typedComponents.end()) {
+		return it->second;
+	}
+	return nullptr;
 }
 
 }

@@ -20,8 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "server/Root.h"
-#include "server/Server.h"
+#include "Root.h"
+#include "Server.h"
 
 #include "ap_provider.h"
 #include "mod_log_config.h"

@@ -945,7 +945,7 @@ mem::Value Scheme::createFile(const Transaction &t, const Field &field, InputFil
 	return mem::Value();
 }
 
-mem::Value Scheme::createFile(const Transaction &t, const Field &field, const mem::Bytes &data, const mem::StringView &itype, int64_t mtime) const {
+mem::Value Scheme::createFile(const Transaction &t, const Field &field, const mem::BytesView &data, const mem::StringView &itype, int64_t mtime) const {
 	//check if content type is valid
 	mem::String type(itype.str<mem::Interface>());
 	if (field.getType() == Type::Image) {
@@ -1214,8 +1214,15 @@ mem::Value Scheme::createFilePatch(const Transaction &t, const mem::Value &val) 
 					}
 				}
 			} else if (it.second.isDictionary()) {
-				if (it.second.isBytes("content") && it.second.isString("type")) {
-					auto d = createFile(t, *f, it.second.getBytes("content"), it.second.getString("type"), it.second.getInteger("mtime"));
+				if ((it.second.isBytes("content") || it.second.isString("content")) && it.second.isString("type")) {
+					auto &c = it.second.getValue("content");
+					mem::Value d;
+					if (c.isBytes()) {
+						d = createFile(t, *f, c.getBytes(), it.second.getString("type"), it.second.getInteger("mtime"));
+					} else {
+						auto &str = it.second.getString("content");
+						d = createFile(t, *f, mem::BytesView((const uint8_t *)str.data(), str.size()), it.second.getString("type"), it.second.getInteger("mtime"));
+					}
 					if (d.isInteger()) {
 						patch.setValue(d, f->getName().str<mem::Interface>());
 					} else if (d.isDictionary()) {

@@ -65,14 +65,14 @@ bool FieldPoint::isSimpleLayout() const {
 }
 
 bool FieldPoint::isComparationAllowed(stappler::sql::Comparation c) const {
-	return c == db::Comparation::Includes || c == db::Comparation::Equal;
+	return c == db::Comparation::Includes || c == db::Comparation::Equal || c == db::Comparation::In;
 }
 
-void FieldPoint::writeQuery(const db::Scheme &s, stappler::sql::Query<db::Binder>::WhereContinue &whi, stappler::sql::Operator op,
+void FieldPoint::writeQuery(const db::Scheme &s, stappler::sql::Query<db::Binder, mem::Interface>::WhereContinue &whi, stappler::sql::Operator op,
 		const mem::StringView &f, stappler::sql::Comparation cmp, const mem::Value &val, const mem::Value &) const {
 	if (val.isArray() && val.size() == 4) {
-		if (whi.state == stappler::sql::Query<db::Binder>::State::None) {
-			whi.state = stappler::sql::Query<db::Binder>::State::Some;
+		if (whi.state == stappler::sql::Query<db::Binder, mem::Interface>::State::None) {
+			whi.state = stappler::sql::Query<db::Binder, mem::Interface>::State::Some;
 		} else {
 			Query_writeOperator(whi.query->getStream(), op);
 		}

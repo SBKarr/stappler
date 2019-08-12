@@ -497,30 +497,6 @@ NS_SP_EXT_END(base64url)
 
 NS_SP_BEGIN
 
-template <typename T>
-inline String toString(const T &t) {
-	return string::ToStringTraits<memory::DefaultInterface>::toString(t);
-}
-
-template <typename T>
-inline void toStringStream(StringStream &stream, T value) {
-	stream << value;
-}
-
-template <typename T, typename... Args>
-inline void toStringStream(StringStream &stream, T value, Args && ... args) {
-	stream << value;
-	toStringStream(stream, std::forward<Args>(args)...);
-}
-
-template <typename T, typename... Args>
-inline String toString(T t, Args && ... args) {
-	StringStream stream;
-	toStringStream(stream, t);
-	toStringStream(stream, std::forward<Args>(args)...);
-    return stream.str();
-}
-
 template<typename Container, typename StreamType>
 inline void toStringStreamConcat(StreamType &stream, const Container &c) {
 	for (auto &it : c) {
@@ -1055,5 +1031,97 @@ inline void decode(std::basic_ostream<char> &stream, const CoderSource &source) 
 }
 
 NS_SP_EXT_END(base64url)
+
+
+NS_SP_BEGIN
+
+
+namespace mem_pool {
+
+using String = stappler::memory::string;
+using WideString = stappler::memory::u16string;
+using StringStream = stappler::memory::ostringstream;
+using Interface = stappler::memory::PoolInterface;
+
+namespace to_string {
+
+template <typename T>
+inline mem_pool::String toString(const T &t) {
+	return stappler::string::ToStringTraits<Interface>::toString(t);
+}
+
+template <typename T>
+inline void toStringStream(mem_pool::StringStream &stream, T value) {
+	stream << value;
+}
+
+template <typename T, typename... Args>
+inline void toStringStream(mem_pool::StringStream &stream, T value, Args && ... args) {
+	stream << value;
+	mem_pool::to_string::toStringStream(stream, std::forward<Args>(args)...);
+}
+
+template <typename T, typename... Args>
+inline mem_pool::String toString(T t, Args && ... args) {
+	mem_pool::StringStream stream;
+	mem_pool::to_string::toStringStream(stream, t);
+	mem_pool::to_string::toStringStream(stream, std::forward<Args>(args)...);
+    return stream.str();
+}
+
+}
+
+using to_string::toString;
+
+}
+
+namespace mem_std {
+
+using String = std::string;
+using WideString = std::u16string;
+using StringStream = std::stringstream;
+using Interface = stappler::memory::StandartInterface;
+
+namespace to_string {
+
+template <typename T>
+inline mem_std::String toString(const T &t) {
+	return stappler::string::ToStringTraits<Interface>::toString(t);
+}
+
+template <typename T>
+inline void toStringStream(mem_std::StringStream &stream, T value) {
+	stream << value;
+}
+
+template <typename T, typename... Args>
+inline void toStringStream(mem_std::StringStream &stream, T value, Args && ... args) {
+	stream << value;
+	mem_std::to_string::toStringStream(stream, std::forward<Args>(args)...);
+}
+
+template <typename T, typename... Args>
+inline mem_std::String toString(T t, Args && ... args) {
+	mem_std::StringStream stream;
+	mem_std::to_string::toStringStream(stream, t);
+	mem_std::to_string::toStringStream(stream, std::forward<Args>(args)...);
+    return stream.str();
+}
+
+}
+
+using to_string::toString;
+
+}
+
+#if SPAPR
+using mem_pool::to_string::toString;
+#elif STELLATOR
+using mem_pool::to_string::toString;
+#else
+using mem_std::to_string::toString;
+#endif
+
+NS_SP_END
 
 #endif /* COMMON_STRING_SPSTRING_H_ */

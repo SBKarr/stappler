@@ -1,0 +1,11 @@
+{
+	"listen": "127.0.0.1:8080",
+	"servers" : [
+		{
+			"name": "localhost",
+			"admin": "serenity@stappler.org",
+			"root": "$WORK_DIR/www",
+			"components": ["TestComponent"]
+		}
+	]
+}

@@ -34,6 +34,12 @@ Driver *Driver::open(const mem::StringView &path) {
 	return &s_tmp;
 }
 
+Driver::Handle Driver::connect(const char * const *keywords, const char * const *values, int expand_dbname) const {
+	return Driver::Handle(nullptr);
+}
+
+void Driver::finish(Handle) const { }
+
 Driver::Connection Driver::getConnection(Handle _h) const {
 	ap_dbd_t *h = (ap_dbd_t *)_h.get();
 	if (strcmp(apr_dbd_name(h->driver), "pgsql") == 0) {
@@ -41,6 +47,23 @@ Driver::Connection Driver::getConnection(Handle _h) const {
 	}
 
 	return Driver::Connection(nullptr);
+}
+
+bool Driver::isValid(Connection conn) const {
+	return PQstatus((const PGconn *)conn.get()) == CONNECTION_OK;
+}
+
+Driver::TransactionStatus Driver::getTransactionStatus(Connection conn) const {
+	auto ret = PQtransactionStatus((const PGconn *)conn.get());
+	switch (ret) {
+	case PQTRANS_IDLE: return TransactionStatus::Idle; break;
+	case PQTRANS_ACTIVE: return TransactionStatus::Active; break;
+	case PQTRANS_INTRANS: return TransactionStatus::InTrans; break;
+	case PQTRANS_INERROR: return TransactionStatus::InError; break;
+	case PQTRANS_UNKNOWN: return TransactionStatus::Unknown; break;
+	default: break;
+	}
+	return TransactionStatus::Unknown;
 }
 
 Driver::Status Driver::getStatus(Result res) const {
@@ -136,6 +159,11 @@ NS_DB_PQ_END
 
 NS_DB_PQ_BEGIN
 
+enum ConnStatusType {
+	CONNECTION_OK,
+	CONNECTION_BAD,
+};
+
 enum ExecStatusType {
 	PGRES_EMPTY_QUERY = 0,
 	PGRES_COMMAND_OK,
@@ -149,8 +177,20 @@ enum ExecStatusType {
 	PGRES_SINGLE_TUPLE
 };
 
-struct DriverSym {
+enum PGTransactionStatusType {
+	PQTRANS_IDLE,
+	PQTRANS_ACTIVE,
+	PQTRANS_INTRANS,
+	PQTRANS_INERROR,
+	PQTRANS_UNKNOWN
+};
+
+struct DriverSym : mem::AllocBase {
+	using PQnoticeProcessor = void (*) (void *arg, const char *message);
+
 	using PQresultStatusType = ExecStatusType (*) (const void *res);
+	using PQconnectdbParamsType = void * (*) (const char * const *keywords, const char * const *values, int expand_dbname);
+	using PQfinishType = void (*) (void *conn);
 	using PQfformatType = int (*) (const void *res, int field_num);
 	using PQgetisnullType = int	(*) (const void *res, int tup_num, int field_num);
 	using PQgetvalueType = char *(*) (const void *res, int tup_num, int field_num);
@@ -166,34 +206,79 @@ struct DriverSym {
 	using PQexecParamsType = void *(*) (void *conn, const char *command, int nParams, const void *paramTypes,
 			const char *const *paramValues, const int *paramLengths, const int *paramFormats, int resultFormat);
 
+	using PQstatusType = ConnStatusType (*) (void *conn);
+	using PQtransactionStatusType = PGTransactionStatusType (*) (void *conn);
+	using PQsetNoticeProcessorType = void (*) (void *conn, PQnoticeProcessor, void *);
+
+	DriverSym(void *p) : ptr(p) { }
+
 	void *ptr;
 
-	PQresultStatusType PQresultStatus;
-	PQfformatType PQfformat;
-	PQgetisnullType PQgetisnull;
-	PQgetvalueType PQgetvalue;
-	PQgetlengthType PQgetlength;
-	PQfnameType PQfname;
-	PQntuplesType PQntuples;
-	PQnfieldsType PQnfields;
-	PQcmdTuplesType PQcmdTuples;
-	PQresStatusType PQresStatus;
-	PQresultErrorMessageType PQresultErrorMessage;
-	PQclearType PQclear;
-	PQexecType PQexec;
-	PQexecParamsType PQexecParams;
+	PQconnectdbParamsType PQconnectdbParams = nullptr;
+	PQfinishType PQfinish = nullptr;
+	PQresultStatusType PQresultStatus = nullptr;
+	PQfformatType PQfformat = nullptr;
+	PQgetisnullType PQgetisnull = nullptr;
+	PQgetvalueType PQgetvalue = nullptr;
+	PQgetlengthType PQgetlength = nullptr;
+	PQfnameType PQfname = nullptr;
+	PQntuplesType PQntuples = nullptr;
+	PQnfieldsType PQnfields = nullptr;
+	PQcmdTuplesType PQcmdTuples = nullptr;
+	PQresStatusType PQresStatus = nullptr;
+	PQresultErrorMessageType PQresultErrorMessage = nullptr;
+	PQclearType PQclear = nullptr;
+	PQexecType PQexec = nullptr;
+	PQexecParamsType PQexecParams = nullptr;
+	PQstatusType PQstatus = nullptr;
+	PQtransactionStatusType PQtransactionStatus = nullptr;
+	PQsetNoticeProcessorType PQsetNoticeProcessor = nullptr;
 };
 
 Driver *Driver::open(const mem::StringView &path) {
-	static Driver s_tmp = Driver(path);
-	if (!s_tmp._handle) {
-		s_tmp = Driver(path);
+	auto ret = new (mem::pool::acquire()) Driver(path);
+	if (ret->_handle) {
+		return ret;
 	}
-	return &s_tmp;
+	return nullptr;
+}
+
+void Driver_noticeMessage(void *arg, const char *message) {
+	// std::cout << "Notice: " << message << "\n";
+	// Silence libpq notices
+}
+
+Driver::Handle Driver::connect(const char * const *keywords, const char * const *values, int expand_dbname) const{
+	auto ret = (((DriverSym *)_handle)->PQconnectdbParams(keywords, values, expand_dbname));
+	if (ret && ((DriverSym *)_handle)->PQstatus(ret) == CONNECTION_OK) {
+		((DriverSym *)_handle)->PQsetNoticeProcessor(ret, Driver_noticeMessage, (void *)this);
+		return Driver::Handle(ret);
+	}
+	return Driver::Handle(nullptr);
+}
+
+void Driver::finish(Handle h) const {
+	((DriverSym *)_handle)->PQfinish(h.get());
 }
 
 Driver::Connection Driver::getConnection(Handle _h) const {
 	return Driver::Connection(_h.get());
+}
+
+bool Driver::isValid(Connection conn) const {
+	return ((DriverSym *)_handle)->PQstatus(conn.get()) == CONNECTION_OK;
+}
+
+Driver::TransactionStatus Driver::getTransactionStatus(Connection conn) const {
+	auto ret = ((DriverSym *)_handle)->PQtransactionStatus(conn.get());
+	switch (ret) {
+	case PQTRANS_IDLE: return TransactionStatus::Idle; break;
+	case PQTRANS_ACTIVE: return TransactionStatus::Active; break;
+	case PQTRANS_INTRANS: return TransactionStatus::InTrans; break;
+	case PQTRANS_INERROR: return TransactionStatus::InError; break;
+	case PQTRANS_UNKNOWN: return TransactionStatus::Unknown; break;
+	}
+	return TransactionStatus::Unknown;
 }
 
 Driver::Status Driver::getStatus(Result res) const {
@@ -280,16 +365,22 @@ Driver::Result Driver::exec(Connection conn, const char *command, int nParams, c
 }
 
 Driver::~Driver() {
+	release();
+}
+
+void Driver::release() {
 	if (_handle) {
 		dlclose(_handle);
 	}
 }
 
 Driver::Driver(const mem::StringView &path) {
-	if (auto d = dlopen(path.empty() ? "pq" : path.data(), RTLD_LAZY)) {
-		auto h = new DriverSym({d});
+	if (auto d = dlopen(path.empty() ? "libpq.so" : path.data(), RTLD_LAZY)) {
+		auto h = new DriverSym(d);
 
 		h->PQresultStatus = DriverSym::PQresultStatusType(dlsym(d, "PQresultStatus"));
+		h->PQconnectdbParams = DriverSym::PQconnectdbParamsType(dlsym(d, "PQconnectdbParams"));
+		h->PQfinish = DriverSym::PQfinishType(dlsym(d, "PQfinish"));
 		h->PQfformat = DriverSym::PQfformatType(dlsym(d, "PQfformat"));
 		h->PQgetisnull = DriverSym::PQgetisnullType(dlsym(d, "PQgetisnull"));
 		h->PQgetvalue = DriverSym::PQgetvalueType(dlsym(d, "PQgetvalue"));
@@ -303,9 +394,13 @@ Driver::Driver(const mem::StringView &path) {
 		h->PQclear = DriverSym::PQclearType(dlsym(d, "PQclear"));
 		h->PQexec = DriverSym::PQexecType(dlsym(d, "PQexec"));
 		h->PQexecParams = DriverSym::PQexecParamsType(dlsym(d, "PQexecParams"));
+		h->PQstatus = DriverSym::PQstatusType(dlsym(d, "PQstatus"));
+		h->PQtransactionStatus = DriverSym::PQtransactionStatusType(dlsym(d, "PQtransactionStatus"));
+		h->PQsetNoticeProcessor = DriverSym::PQsetNoticeProcessorType(dlsym(d, "PQsetNoticeProcessor"));
 
-		if (h->PQresultStatus && h->PQfformat && h->PQgetisnull && h->PQgetvalue && h->PQgetlength && h->PQfname && h->PQntuples
-				&& h->PQnfields && h->PQcmdTuples && h->PQresStatus && h->PQresultErrorMessage && h->PQclear && h->PQexec && h->PQexecParams) {
+		if (h->PQresultStatus && h->PQconnectdbParams && h->PQfinish && h->PQfformat && h->PQgetisnull && h->PQgetvalue && h->PQgetlength
+				&& h->PQfname && h->PQntuples && h->PQnfields && h->PQcmdTuples && h->PQresStatus && h->PQresultErrorMessage && h->PQclear
+				&& h->PQexec && h->PQexecParams && h->PQstatus && h->PQtransactionStatus && h->PQsetNoticeProcessor) {
 			_handle = h;
 		}
 	}

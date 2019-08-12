@@ -29,7 +29,6 @@ namespace stellator {
 
 class Server : public mem::AllocBase {
 public:
-	using ComponentCallback = mem::Function<ServerComponent *(Server &serv, const mem::StringView &name, const mem::Value &dict)>;
 	using HandlerCallback = mem::Function<RequestHandler *()>;
 
 	struct Config;
@@ -53,12 +52,7 @@ public:
 
 	void onStorageTransaction(db::Transaction &);
 
-	void setSourceRoot(const mem::StringView &file);
-	void setSessionParams(const mem::StringView &w);
-	void setWebHookParams(const mem::StringView &w);
-	void setProtectedList(const mem::StringView &w);
 	void setForceHttps();
-
 	void addProtectedLocation(const mem::StringView &);
 
 	template <typename Component = ServerComponent>
@@ -100,12 +94,6 @@ public:
 		mem::Value data;
 	};
 
-	struct ComponentScheme {
-		mem::String name;
-		mem::Value data;
-		ComponentCallback callback;
-	};
-
 	struct RequestScheme {
 		mem::String component;
 		HandlerCallback callback;
@@ -124,10 +112,6 @@ public:
 
 public: // httpd server info
 	mem::StringView getDefaultName() const;
-
-	bool isVirtual() const;
-
-    uint16_t getServerPort() const;
     mem::StringView getServerScheme() const;
     mem::StringView getServerAdmin() const;
     mem::StringView getServerHostname() const;

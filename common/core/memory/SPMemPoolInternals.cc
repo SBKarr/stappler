@@ -1,3 +1,23 @@
+/* Code from Apache Portable Runtime original license notice: */
+
+/* Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/* Stappler project license notice: */
+
 /**
 Copyright (c) 2019 Roman Katuntsev <sbkarr@stappler.org>
 
@@ -343,6 +363,20 @@ void allocator_t::free(memnode_t *node) {
 		}
 	} while ((node = next) != nullptr);
 
+#if DEBUG
+	int i = 0;
+	auto n = buf[1];
+	while (n && i < 1024 * 16) {
+		n = n->next;
+		++ i;
+	}
+
+	if (i >= 1024 * 128) {
+		printf("WARNING: pool double-free detected!\n");
+		abort();
+	}
+#endif
+
 	if (lock.owns_lock()) {
 		lock.unlock();
 	}
@@ -448,7 +482,7 @@ void pool_t::clear() {
 	cleanup_t::run(&this->cleanups);
 	this->cleanups = nullptr;
 	this->free_cleanups = nullptr;
-
+	this->user_data = nullptr;
 
 	/* Find the node attached to the pool structure, reset it, make
 	 * it the active node and free the rest of the nodes.
@@ -640,7 +674,7 @@ void pool_t::cleanup_run(void *data, cleanup_t::callback_t cb) {
 	(*cb)(data);
 }
 
-static void *pmemdup(pool_t *a, const void *m, size_t n) {
+void *pmemdup(pool_t *a, const void *m, size_t n) {
 	if (m == nullptr) {
 		return nullptr;
 	}
@@ -649,7 +683,7 @@ static void *pmemdup(pool_t *a, const void *m, size_t n) {
 	return res;
 }
 
-static char *pstrdup(pool_t *a, const char *s) {
+char *pstrdup(pool_t *a, const char *s) {
 	if (s == nullptr) {
 		return nullptr;
 	}
@@ -715,6 +749,7 @@ void initialize() {
 			s_global_allocator = new allocator_t();
 		}
 		s_global_pool = pool_t::create(s_global_allocator);
+		pool::push(s_global_pool);
 	}
 	++ s_global_init;
 }
@@ -722,6 +757,7 @@ void initialize() {
 void terminate() {
 	-- s_global_init;
 	if (s_global_init == 0) {
+		pool::pop();
 		pool_t::destroy(s_global_pool);
 		delete s_global_allocator;
 	}

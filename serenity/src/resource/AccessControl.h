@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef SERENITY_SRC_RESOURCE_ACCESSCONTROL_H_
 #define SERENITY_SRC_RESOURCE_ACCESSCONTROL_H_
 
-#include "InputFile.h"
+#include "Define.h"
 
 NS_SA_BEGIN
 

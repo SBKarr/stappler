@@ -163,6 +163,9 @@ size_t get_allocated_bytes(pool_t *p) { return internals::get_allocated_bytes(p)
 size_t get_return_bytes(pool_t *p) { return internals::get_return_bytes(p); }
 size_t get_opts_bytes(pool_t *p) { return internals::get_opts_bytes(p); }
 
+void *pmemdup(pool_t *a, const void *m, size_t n) { return internals::pmemdup(a, m, n); }
+char *pstrdup(pool_t *a, const char *s) { return internals::pstrdup(a, s); }
+
 }
 #else
 
@@ -264,6 +267,9 @@ size_t get_opts_bytes(pool_t *p) {
 	return 0;
 #endif
 }
+
+void *pmemdup(pool_t *a, const void *m, size_t n) { return apr_pmemdup(a, m, n); }
+char *pstrdup(pool_t *a, const char *s) { return apr_pstrdup(a, s); }
 
 }
 #endif

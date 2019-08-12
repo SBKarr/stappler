@@ -30,10 +30,20 @@ namespace stellator {
 
 class ServerComponent : public mem::AllocBase {
 public:
-	struct Command {
+	using Symbol = ServerComponent * (*) (Server &serv, const mem::String &name, const mem::Value &dict);
+	using Scheme = db::Scheme;
+
+	struct Loader {
 		mem::StringView name;
-		mem::StringView desc;
-		mem::StringView help;
+		Symbol loader;
+
+		Loader(const mem::StringView &, Symbol);
+	};
+
+	struct Command {
+		mem::String name;
+		mem::String desc;
+		mem::String help;
 		mem::Function<mem::Value(const mem::StringView &)> callback;
 	};
 

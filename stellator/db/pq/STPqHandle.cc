@@ -400,30 +400,38 @@ struct ExecParamData {
 	}
 };
 
-Handle::Handle(stappler::memory::pool_t *p, Driver *d, Driver::Handle h) : pool(p), driver(d) {
+Handle::Handle(Driver *d, Driver::Handle h) : driver(d), handle(h) {
 	auto c = d->getConnection(h);
 	if (c.get()) {
 		conn = c;
 	}
 }
-Handle::Handle(Handle &&h) : pool(h.pool), driver(h.driver), conn(h.conn) {
-	h.pool = nullptr;
+Handle::Handle(Handle &&h) : driver(h.driver), handle(h.handle), conn(h.conn), lastError(h.lastError), level(h.level) {
 	h.conn = Driver::Connection(nullptr);
 	h.driver = nullptr;
 }
 
 Handle & Handle::operator=(Handle &&h) {
-	pool = h.pool;
+	handle = h.handle;
 	conn = h.conn;
 	driver = h.driver;
-	h.pool = nullptr;
+	lastError = h.lastError;
+	level = h.level;
 	h.conn = Driver::Connection(nullptr);
 	h.driver = nullptr;
 	return *this;
 }
 
 Handle::operator bool() const {
-	return pool != nullptr && conn.get() != nullptr;
+	return conn.get() != nullptr;
+}
+
+Driver::Handle Handle::getHandle() const {
+	return handle;
+}
+
+Driver::Connection Handle::getConnection() const {
+	return conn;
 }
 
 void Handle::makeQuery(const stappler::Callback<void(sql::SqlQuery &)> &cb) {
