@@ -32,6 +32,7 @@ OSTYPE_COMMON_LIBS := -lpthread \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libcurl.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libwebp.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libpng.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libgif.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libjpeg.a \
 	-framework Foundation -lz -framework Security
 

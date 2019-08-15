@@ -315,7 +315,7 @@ static void *Root_performTask(apr_thread_t *, void *ptr) {
 			ctx->task->onComplete();
 		}, ctx->task->pool());
 	}, ctx->serv);
-	ctx->task->free();
+	Task::destroy(ctx->task);
 	return nullptr;
 }
 

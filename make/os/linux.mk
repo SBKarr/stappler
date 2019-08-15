@@ -27,7 +27,7 @@ OSTYPE_COMMON_LIBS := -lpthread \
 	-l:libcurl.a -l:libidn2.a \
 	-l:libbrotlidec.a -l:libbrotlicommon.a \
 	-l:libmbedtls.a -l:libmbedx509.a -l:libmbedcrypto.a \
-	-l:libpng.a -l:libjpeg.a -l:libwebp.a \
+	-l:libpng.a -l:libgif.a -l:libjpeg.a -l:libwebp.a \
 	-lz
 
 OSTYPE_SERENITY_LIBS := \

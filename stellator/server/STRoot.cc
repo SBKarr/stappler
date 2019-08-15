@@ -53,13 +53,16 @@ Root *Root::getInstance() {
 	return &s_root;
 }
 
-Root::Root() : MemPool(MemPool::Init::ManagedRoot) {
+Root::Root() {
+	_pool = mem::pool::create(nullptr);
 	mem::pool::push(_pool);
 	_internal = new (_pool) Internal;
 	mem::pool::pop();
 }
 
-Root::~Root() { }
+Root::~Root() {
+	mem::pool::destroy(_pool);
+}
 
 bool Root::run(const mem::Value &config) {
 	return mem::perform([&] {
@@ -101,12 +104,17 @@ void Root::onBroadcast(const mem::Value &) {
 
 }
 
-db::pq::Driver::Handle Root::dbdOpen(mem::pool_t *, const Server &serv) const {
-	return ((Server::Config *)serv.getConfig())->openDb();
+db::pq::Driver::Handle Root::dbdOpen(mem::pool_t *p, const Server &serv) const {
+	mem::pool::push(p);
+	auto ret = ((Server::Config *)serv.getConfig())->openDb();
+	mem::pool::pop();
+	return ret;
 }
 
-void Root::dbdClose(const Server &serv, const db::pq::Driver::Handle &ad) {
+void Root::dbdClose(mem::pool_t *p, const Server &serv, const db::pq::Driver::Handle &ad) {
+	mem::pool::push(p);
 	((Server::Config *)serv.getConfig())->closeDb(ad);
+	mem::pool::pop();
 }
 
 void Root::performStorage(mem::pool_t *pool, const Server &serv, const mem::Callback<void(const db::Adapter &)> &cb) {
@@ -116,7 +124,7 @@ void Root::performStorage(mem::pool_t *pool, const Server &serv, const mem::Call
 			db::pq::Handle h(_internal->dbDriver, dbd);
 			db::Adapter storage(&h);
 			cb(storage);
-			dbdClose(serv, dbd);
+			dbdClose(pool, serv, dbd);
 		}
 	}, pool);
 }

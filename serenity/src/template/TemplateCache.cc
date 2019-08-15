@@ -29,7 +29,7 @@ THE SOFTWARE.
 
 NS_SA_EXT_BEGIN(tpl)
 
-FileRef::FileRef(apr::MemPool &&pool, const String &file) : _pool(std::move(pool)), _file(file) {
+FileRef::FileRef(mem::pool_t *pool, const String &file) : _pool(pool), _file(file) {
 	_refCount.store(1);
 }
 
@@ -42,7 +42,7 @@ void FileRef::retain(Request &req) {
 
 void FileRef::release() {
 	if (_refCount.fetch_sub(1) == 0) {
-		_pool.free();
+		mem::pool::destroy(_pool);
 	}
 }
 
@@ -129,10 +129,10 @@ FileRef *Cache::acquireTemplate(const String &path, Request &req) {
 }
 
 FileRef *Cache::openTemplate(const String &path) {
-	apr::MemPool pool(_pool);
+	auto pool = mem::pool::create(_pool);
 	return apr::pool::perform([&] {
 		return new FileRef(std::move(pool), path);
-	}, pool.pool());
+	}, pool);
 }
 
 NS_SA_EXT_END(tpl)

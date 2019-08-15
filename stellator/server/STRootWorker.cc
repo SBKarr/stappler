@@ -55,7 +55,9 @@ public:
 	void pushTask(Task *);
 	Task * popTask();
 
-	bool hasTasks() const;
+	bool hasTasks();
+
+	size_t getWorkersCount() const { return _workers.size(); }
 
 protected:
 	std::atomic<bool> _finalized;
@@ -66,6 +68,9 @@ protected:
 	Root *_root = nullptr;
 
 	moodycamel::ConcurrentQueue<Task *> _taskQueue;
+
+	//stappler::Mutex _taskMutex;
+	//mem::Vector<Task *> _taskQueue;
 
 	int _pipe[2] = { -1, -1 };
 	int _eventFd = -1;
@@ -215,7 +220,7 @@ static void s_ConnectionWorker_workerThread(ConnectionWorker *tm) {
 	sigaddset(&mask, SIGUSR2);
 	::sigprocmask(SIG_BLOCK, &mask, nullptr);
 
-	auto pool = mem::pool::create();
+	auto pool = mem::pool::create(nullptr);
 	mem::pool::push(pool);
 
 	tm->worker();
@@ -298,13 +303,14 @@ void ConnectionQueue::pushTask(Task *task) {
 
 Task * ConnectionQueue::popTask() {
 	Task *t = nullptr;
+
 	if (_taskQueue.try_dequeue(t)) {
 		return t;
 	}
 	return nullptr;
 }
 
-bool ConnectionQueue::hasTasks() const {
+bool ConnectionQueue::hasTasks() {
 	return _taskQueue.size_approx() != 0;
 }
 
@@ -494,7 +500,7 @@ void ConnectionWorker::runTask(Task *task) {
 			task->onComplete();
 		}, task->pool());
 	}, task->getServer());
-	task->free();
+	Task::destroy(task);
 }
 
 void ConnectionWorker::pushFd(int epollFd, int fd) {
@@ -755,9 +761,8 @@ bool Root::run(const mem::StringView &_addr, int _port) {
 		onChildInit();
 
 		_internal->queue->run();
-		_internal->queue->finalize();
 
-		/*sigset_t sigset;
+		sigset_t sigset;
 		sigemptyset(&sigset);
 		sigaddset(&sigset, SIGUSR1);
 		sigaddset(&sigset, SIGUSR2);
@@ -796,7 +801,7 @@ bool Root::run(const mem::StringView &_addr, int _port) {
 			}
 		} while (sig >= 0);
 
-		_internal->isRunned = false;*/
+		_internal->isRunned = false;
 		return true;
 	}, p);
 
@@ -817,6 +822,17 @@ bool Root::performTask(const Server &serv, Task *task, bool performFirst) {
 		return true;
 	}
 	return false;
+}
+
+size_t Root::getThreadCount() const {
+	if (_internal && _internal->queue) {
+		return _internal->queue->getWorkersCount();
+	}
+	return 0;
+}
+
+mem::pool_t * Root::pool() const {
+	return _pool;
 }
 
 }

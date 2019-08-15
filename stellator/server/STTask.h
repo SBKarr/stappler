@@ -28,7 +28,7 @@ THE SOFTWARE.
 
 namespace stellator {
 
-class Task : public mem::MemPool {
+class Task : public mem::AllocBase {
 public:
 	using ExecuteCallback = mem::Function<bool(const Task &)>;
 	using CompleteCallback = mem::Function<void(const Task &, bool)>;
@@ -49,6 +49,8 @@ public:
 
 	template <typename Callback>
 	static bool perform(const Callback &cb);
+
+	static void destroy(Task *);
 
 public: /* interface */
 	void addExecuteFn(const ExecuteCallback &);
@@ -75,15 +77,43 @@ public: /* overloads */
 	bool execute();
 	void onComplete();
 
+	mem::pool_t *pool() const { return _pool; }
+
 protected:
 	Task(mem::pool_t *);
 
+	mem::pool_t *_pool = nullptr;
 	mem::Time _scheduled;
 	bool _isSuccessful = false;
 
 	Server _server;
 	mem::Vector<ExecuteCallback> _execute;
 	mem::Vector<CompleteCallback> _complete;
+};
+
+class SharedObject : public mem::AllocBase {
+public:
+	template <typename T, typename Callback>
+	static stappler::Rc<T> create(mem::pool_t *rootPool, const Callback &cb);
+
+	template <typename T, typename Callback>
+	static stappler::Rc<T> create(const Callback &cb);
+
+	static void destroy(SharedObject *);
+
+	virtual ~SharedObject() { }
+
+	void retain() { _counter.increment(); }
+	void release() { if (_counter.decrement()) { destroy(this); } }
+	uint32_t getReferenceCount() const { return _counter.get(); }
+
+	mem::pool_t *pool() const { return _pool; }
+
+protected:
+	SharedObject(mem::pool_t *);
+
+	mem::pool_t *_pool;
+	stappler::AtomicCounter _counter;
 };
 
 template <typename Callback>
@@ -125,6 +155,32 @@ bool Task::perform(const Callback &cb) {
 		return perform(Server(serv), cb);
 	}
 	return false;
+}
+
+
+template <typename T, typename Callback>
+stappler::Rc<T> SharedObject::create(mem::pool_t *rootPool, const Callback &cb) {
+	if (rootPool) {
+		if (auto p = mem::pool::create(rootPool)) {
+			stappler::Rc<T> ret;
+			mem::perform([&] {
+				auto obj = new (p) T(p);
+				cb(*obj);
+				ret = stappler::Rc<T>(obj);
+				obj->release();
+			}, p);
+			return ret;
+		}
+	}
+	return stappler::Rc<T>(nullptr);
+}
+
+template <typename T, typename Callback>
+stappler::Rc<T> SharedObject::create(const Callback &cb) {
+	if (auto serv = mem::server()) {
+		return create<T>(serv.getPool(), cb);
+	}
+	return stappler::Rc<T>(nullptr);
 }
 
 }

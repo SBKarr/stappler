@@ -471,7 +471,9 @@ void *pool_t::palloc(size_t in_size) {
 }
 
 void pool_t::clear() {
+	stappler::memory::pool::push(this);
 	cleanup_t::run(&this->pre_cleanups);
+	stappler::memory::pool::pop();
 	this->pre_cleanups = nullptr;
 
 	while (this->child) {
@@ -479,7 +481,9 @@ void pool_t::clear() {
 	}
 
 	/* Run cleanups */
+	stappler::memory::pool::push(this);
 	cleanup_t::run(&this->cleanups);
+	stappler::memory::pool::pop();
 	this->cleanups = nullptr;
 	this->free_cleanups = nullptr;
 	this->user_data = nullptr;
@@ -548,14 +552,21 @@ pool_t::pool_t(pool_t *p, allocator_t *alloc, memnode_t *node)
 }
 
 pool_t::~pool_t() {
+	stappler::memory::pool::push(this);
 	cleanup_t::run(&this->pre_cleanups);
+	stappler::memory::pool::pop();
 	this->pre_cleanups = nullptr;
 
 	while (this->child) {
 		this->child->~pool_t();
 	}
 
+	stappler::memory::pool::push(this);
 	cleanup_t::run(&this->cleanups);
+	stappler::memory::pool::pop();
+	this->cleanups = nullptr;
+	this->free_cleanups = nullptr;
+	this->user_data = nullptr;
 
 	/* Remove the pool from the parents child list */
 	if (this->parent) {

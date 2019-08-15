@@ -59,7 +59,6 @@ namespace mem {
 
 using namespace stappler::mem_pool;
 
-using MemPool = stappler::memory::MemPool;
 using uuid = stappler::memory::uuid;
 
 using ostringstream = stappler::memory::ostringstream;

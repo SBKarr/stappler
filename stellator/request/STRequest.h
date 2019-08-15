@@ -78,6 +78,8 @@ public:
 	Request(const Request &);
 	Request & operator =(const Request &);
 
+	operator bool() const { return _config != nullptr; }
+
 	void setRequestHandler(RequestHandler *);
 	RequestHandler *getRequestHandler() const;
 

@@ -45,13 +45,28 @@ static status_t sa_request_store_custom_cleanup(void *ptr) {
 
 void store(pool_t *pool, void *ptr, const StringView &key, memory::function<void()> &&cb) {
 	memory::pool::push(pool);
-	auto h = new (pool) Pool_StoreHandle();
-	h->pointer = ptr;
-	if (cb) {
-		h->callback = std::move(cb);
+
+	auto ikey = mem_pool::toString("~~", key);
+
+	void * ret = nullptr;
+	pool::userdata_get(&ret, ikey.data(), pool);
+	if (ret) {
+		auto h = (Pool_StoreHandle *)ret;
+		h->pointer = ptr;
+		if (cb) {
+			h->callback = std::move(cb);
+		} else {
+			h->callback = nullptr;
+		}
+	} else {
+		auto h = new (pool) Pool_StoreHandle();
+		h->pointer = ptr;
+		if (cb) {
+			h->callback = std::move(cb);
+		}
+		pool::userdata_set(h, ikey.data(), sa_request_store_custom_cleanup, pool);
 	}
 	memory::pool::pop();
-	pool::userdata_set(h, SP_TERMINATED_DATA(key), h->callback ? sa_request_store_custom_cleanup : nullptr, pool);
 }
 
 }

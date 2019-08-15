@@ -96,6 +96,9 @@ file::file(ifile && f) : _isBundled(f._isBundled), _size(f._size) {
 		f._nativeFile = nullptr;
 	}
 	f._size = 0;
+	if (f._buf[0] != 0) {
+		memcpy(_buf, f._buf, 256);
+	}
 }
 
 file & file::operator=(ifile && f) {
@@ -109,6 +112,9 @@ file & file::operator=(ifile && f) {
 		f._nativeFile = nullptr;
 	}
 	f._size = 0;
+	if (f._buf[0] != 0) {
+		memcpy(_buf, f._buf, 256);
+	}
 	return *this;
 }
 

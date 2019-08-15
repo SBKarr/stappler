@@ -160,6 +160,10 @@ void Scheme::define(AccessRole &&role) {
 	}
 }
 
+void Scheme::addFlags(Options opts) {
+	flags |= opts;
+}
+
 void Scheme::cloneFrom(Scheme *source) {
 	for (auto &it : source->fields) {
 		fields.emplace(it.first, it.second);

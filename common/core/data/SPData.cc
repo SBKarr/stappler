@@ -35,7 +35,7 @@ NS_SP_EXT_BEGIN(data)
 
 Value parseCommandLineOptions(int argc, const char * argv[],
 		const Function<int (Value &ret, char c, const char *str)> &switchCallback,
-		const Function<int (Value &ret, const String &str, int argc, const char * argv[])> &stringCallback) {
+		const Function<int (Value &ret, const StringView &str, int argc, const char * argv[])> &stringCallback) {
 	if (argc == 0) {
 		return Value();
 	}
@@ -89,7 +89,7 @@ Value parseCommandLineOptions(int argc, const char * argv[],
 
 Value parseCommandLineOptions(int argc, const char16_t * wargv[],
 		const Function<int (Value &ret, char c, const char *str)> &switchCallback,
-		const Function<int (Value &ret, const String &str, int argc, const char * argv[])> &stringCallback) {
+		const Function<int (Value &ret, const StringView &str, int argc, const char * argv[])> &stringCallback) {
 	Vector<String> vec; vec.reserve(argc);
 	Vector<const char *> argv; argv.reserve(argc);
 	for (int i = 0; i < argc; ++ i) {

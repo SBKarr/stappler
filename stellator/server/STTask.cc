@@ -26,6 +26,12 @@ THE SOFTWARE.
 
 namespace stellator {
 
+void Task::destroy(Task *t) {
+	auto p = t->pool();
+	delete t;
+	mem::pool::destroy(p);
+}
+
 void Task::addExecuteFn(const ExecuteCallback &cb) {
 	mem::perform([&] {
 		_execute.push_back(cb);
@@ -57,7 +63,7 @@ void Task::performWithStorage(const mem::Callback<void(const db::Transaction &)>
 		if (auto t = db::Transaction::acquire(&h)) {
 			cb(t);
 		}
-		root->dbdClose(_server, dbd);
+		root->dbdClose(pool(), _server, dbd);
 	}
 }
 
@@ -76,6 +82,20 @@ void Task::onComplete() {
 	}
 }
 
-Task::Task(mem::pool_t *p) : MemPool(p, MemPool::WrapTag()) { }
+Task::Task(mem::pool_t *p) : _pool(p) {
+	if (!p) {
+		abort();
+	}
+}
+
+void SharedObject::destroy(SharedObject *obj) {
+	auto p = obj->pool();
+	delete obj;
+	mem::pool::destroy(p);
+}
+
+SharedObject::SharedObject(mem::pool_t *p) : _pool(p) {
+
+}
 
 }

@@ -257,6 +257,8 @@ public:
 
 	template< class K > size_t count( const K& x ) const { return _tree.count_unique(x); }
 
+	void reserve(size_t) { }
+
 protected:
 	template <class A, class B>
 	Pair<iterator,bool> do_insert( const Pair<A, B> & value ) {

@@ -84,6 +84,8 @@ public:
 	template <typename T, typename ... Args>
 	void define(T &&il, Args && ... args);
 
+	void addFlags(Options);
+
 	void cloneFrom(Scheme *);
 
 	mem::StringView getName() const;

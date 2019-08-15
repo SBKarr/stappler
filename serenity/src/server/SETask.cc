@@ -24,6 +24,12 @@ THE SOFTWARE.
 
 NS_SA_BEGIN
 
+void Task::destroy(Task *t) {
+	auto p = t->pool();
+	delete t;
+	mem::pool::destroy(p);
+}
+
 void Task::addExecuteFn(const ExecuteCallback &cb) {
 	apr::pool::perform([&] {
 		_execute.push_back(cb);
@@ -72,6 +78,14 @@ void Task::onComplete() {
 	}
 }
 
-Task::Task(memory::pool_t *p) : MemPool(p, MemPool::WrapTag()) { }
+Task::Task(memory::pool_t *p) : _pool(p) { }
+
+void SharedObject::destroy(SharedObject *obj) {
+	auto p = obj->pool();
+	delete obj;
+	mem::pool::destroy(p);
+}
+
+SharedObject::SharedObject(mem::pool_t *p) : _pool(p) { }
 
 NS_SA_END

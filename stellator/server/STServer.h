@@ -87,6 +87,8 @@ public:
 
 	const db::Scheme * defineUserScheme(std::initializer_list<db::Field> il);
 
+	db::Scheme * getMutable(const db::Scheme *) const;
+
 	mem::String getResourcePath(const db::Scheme &) const;
 
 	struct ResourceScheme {

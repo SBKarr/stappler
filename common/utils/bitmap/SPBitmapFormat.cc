@@ -34,6 +34,7 @@ THE SOFTWARE.
 #include "SPHtmlParser.h"
 #include "jpeglib.h"
 #include "png.h"
+#include "gif_lib.h"
 
 #include "webp/decode.h"
 #include "webp/encode.h"
@@ -84,6 +85,9 @@ static bool loadJpg(const uint8_t *inputData, size_t size,
 		// we only support RGB or grayscale
 		if (cinfo.jpeg_color_space == JCS_GRAYSCALE) {
 			color = (color == Color::A8?Color::A8:Color::I8);
+		} else if (cinfo.jpeg_color_space == JCS_YCCK || cinfo.jpeg_color_space == JCS_CMYK) {
+			cinfo.out_color_space = JCS_CMYK;
+			color = Color::RGB888;
 		} else {
 			cinfo.out_color_space = JCS_RGB;
 			color = Color::RGB888;
@@ -103,20 +107,36 @@ static bool loadJpg(const uint8_t *inputData, size_t size,
 		}
 
 		if (strideFn) {
-			stride = max(strideFn(color, width), cinfo.output_width*cinfo.output_components);
+			stride = max(strideFn(color, width), cinfo.output_width * Bitmap::getBytesPerPixel(color));
 		} else {
-			stride = cinfo.output_width*cinfo.output_components;
+			stride = cinfo.output_width * Bitmap::getBytesPerPixel(color);
 		}
 
 		auto dataLen = height * stride;
 		outputData.resize(dataLen);
 
-		/* now actually read the jpeg into the raw buffer */
-		/* read one scan line at a time */
-		while (cinfo.output_scanline < cinfo.output_height) {
-			row_pointer[0] = outputData.data() + location;
-			location += stride;
-			jpeg_read_scanlines(&cinfo, row_pointer, 1);
+		if (cinfo.out_color_space == JCS_CMYK || cinfo.out_color_space == JCS_YCCK) {
+			Bytes buf; buf.resize(cinfo.output_width * cinfo.output_components);
+			while (cinfo.output_scanline < cinfo.output_height) {
+				row_pointer[0] = buf.data();
+				jpeg_read_scanlines(&cinfo, row_pointer, 1);
+
+				auto loc = outputData.data() + location;
+				for (size_t i = 0; i < cinfo.output_width; ++ i) {
+					*loc++ = (buf[i * 4]) * (buf[i * 4 + 3]) / 255;
+					*loc++ = (buf[i * 4 + 1]) * (buf[i * 4 + 3]) / 255;
+					*loc++ = (buf[i * 4 + 2]) * (buf[i * 4 + 3]) / 255;
+				}
+				location += stride;
+			}
+		} else {
+			/* now actually read the jpeg into the raw buffer */
+			/* read one scan line at a time */
+			while (cinfo.output_scanline < cinfo.output_height) {
+				row_pointer[0] = outputData.data() + location;
+				location += stride;
+				jpeg_read_scanlines(&cinfo, row_pointer, 1);
+			}
 		}
 
 		jpeg_destroy_decompress( &cinfo );
@@ -441,14 +461,14 @@ struct PngStruct {
 			return false;
 		}
 
-	    if (setjmp (png_jmpbuf (png_ptr))) {
-	        log::text("libpng", "error in processing (setjmp return)");
-	        return false;
-	    }
+		if (setjmp (png_jmpbuf (png_ptr))) {
+			log::text("libpng", "error in processing (setjmp return)");
+			return false;
+		}
 
-	    if (stride == 0) {
-	    	stride = Bitmap::getBytesPerPixel(format) * width;
-	    }
+		if (stride == 0) {
+			stride = Bitmap::getBytesPerPixel(format) * width;
+		}
 
 	    int color_type = 0;
 		switch (format) {
@@ -469,28 +489,27 @@ struct PngStruct {
 			return false;
 		}
 
-	    /* Set image attributes. */
-	    png_set_IHDR (png_ptr, info_ptr, width, height, bit_depth,
-	    		color_type, PNG_INTERLACE_NONE,
-	                  PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+		/* Set image attributes. */
+		png_set_IHDR (png_ptr, info_ptr, width, height, bit_depth,
+				color_type, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
 	    /* Initialize rows of PNG. */
 	    png_byte **row_pointers = (png_byte **)png_malloc(png_ptr, height * sizeof (png_byte *));
-	    for (size_t i = 0; i < height; ++i) {
-	        row_pointers[i] = (png_byte *) (
-	        		(invert)?(&data[stride * (height - i - 1)]):(&data[stride * i]));
-	    }
+		for (size_t i = 0; i < height; ++i) {
+			row_pointers[i] = (png_byte *) (
+					(invert)?(&data[stride * (height - i - 1)]):(&data[stride * i]));
+		}
 
-	    if (fp) {
-	        png_init_io (png_ptr, fp);
-	    } else {
-	        png_set_write_fn(png_ptr, vec, &writePngFn, nullptr);
-	    }
+		if (fp) {
+			png_init_io (png_ptr, fp);
+		} else {
+			png_set_write_fn(png_ptr, vec, &writePngFn, nullptr);
+		}
 
-	    png_set_rows (png_ptr, info_ptr, row_pointers);
-	    png_write_png (png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
-	    png_free(png_ptr, row_pointers);
-	    return true;
+		png_set_rows (png_ptr, info_ptr, row_pointers);
+		png_write_png (png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
+		png_free(png_ptr, row_pointers);
+		return true;
 	}
 };
 
@@ -500,8 +519,8 @@ static bool savePng(const StringView &filename, const uint8_t *data, uint32_t wi
 }
 
 static Bytes writePng(const uint8_t *data, uint32_t width, uint32_t height, uint32_t stride, Color format, bool invert) {
-    Bytes state;
-    PngStruct s(&state);
+	Bytes state;
+	PngStruct s(&state);
 	if (s.write(data, width, height, stride, format, invert)) {
 		return state;
 	} else {
@@ -510,6 +529,167 @@ static Bytes writePng(const uint8_t *data, uint32_t width, uint32_t height, uint
 }
 
 NS_SP_EXT_END(png)
+
+
+NS_SP_EXT_BEGIN(gif)
+
+static int Gif_InputFunc(GifFileType *file, GifByteType *bytes, int count) {
+	auto reader = (CoderSource *)file->UserData;
+
+	if (count >= 0) {
+		return reader->read(bytes, count);
+	}
+	return 0;
+}
+
+static bool loadGif(const uint8_t *inputData, size_t size,
+		Bytes &outputData, Color &color, Alpha &alpha, uint32_t &width, uint32_t &height,
+		uint32_t &stride, const Bitmap::StrideFn &strideFn) {
+	CoderSource reader(inputData, size);
+
+	int error = 0;
+	auto f = DGifOpen((void *)&reader, &Gif_InputFunc, &error);
+
+	if (!f || error != 0) {
+		if (f) {
+			DGifCloseFile(f, &error);
+		}
+		log::text("GIF", "fail to open file");
+		return false;
+	}
+
+	if (DGifSlurp(f) != GIF_OK) {
+		DGifCloseFile(f, &error);
+		log::text("GIF", "fail to read file");
+		return false;
+	}
+
+	if (f->ImageCount == 0) {
+		DGifCloseFile(f, &error);
+		log::text("GIF", "no images found");
+		return false;
+	}
+
+	ColorMapObject *colors =  (f->SavedImages->ImageDesc.ColorMap) ? f->SavedImages->ImageDesc.ColorMap : f->SColorMap;
+	if (!colors) {
+		DGifCloseFile(f, &error);
+		log::text("GIF", "no color profile found");
+		return false;
+	}
+
+	auto checkGrayscale = [&] (GifColorType &c) {
+		return c.Red == c.Green && c.Red == c.Blue;
+	};
+
+	bool isGrayscale = true;
+	for (size_t i = 0; i < size_t(colors->ColorCount); ++ i) {
+		if (!checkGrayscale(colors->Colors[i])) {
+			isGrayscale = false;
+			break;
+		}
+	}
+
+	size_t transparent = maxOf<size_t>();
+	if (f->ExtensionBlockCount > 0) {
+		for (size_t i = 0; i < size_t(f->ExtensionBlockCount); ++ i) {
+			GraphicsControlBlock GCB;
+			if (DGifExtensionToGCB(f->ExtensionBlocks[i].ByteCount, f->ExtensionBlocks[i].Bytes, &GCB) == GIF_OK) {
+				if (GCB.TransparentColor != NO_TRANSPARENT_COLOR) {
+					transparent = GCB.TransparentColor;
+				}
+			}
+		}
+	}
+
+	if (f->SavedImages->ExtensionBlockCount > 0) {
+		GraphicsControlBlock GCB;
+		if (DGifSavedExtensionToGCB(f, 0, &GCB) == GIF_OK) {
+			if (GCB.TransparentColor != NO_TRANSPARENT_COLOR) {
+				transparent = GCB.TransparentColor;
+			}
+		}
+	}
+
+	width = f->SavedImages->ImageDesc.Width;
+	height = f->SavedImages->ImageDesc.Height;
+
+	color = (transparent != maxOf<size_t>())
+			? (isGrayscale ? Color::IA88 : Color::RGBA8888)
+			: (isGrayscale ? ((color == Color::A8) ? Color::A8 : Color::I8) : Color::RGB888);
+
+	alpha = (transparent != maxOf<size_t>() || color == Color::A8)
+			? Alpha::Unpremultiplied
+			: Alpha::Opaque;
+
+	if (strideFn) {
+		stride = (uint32_t)strideFn(color, width);
+	}
+	stride = max(stride, (uint32_t)(width * Bitmap::getBytesPerPixel(color)));
+
+    auto dataLen = stride * height;
+    outputData.resize(dataLen);
+
+	auto input = f->SavedImages->RasterBits;
+	auto location = outputData.data();
+
+	if (color == Color::RGB888) {
+		for (size_t i = 0; i < height; ++ i) {
+			auto loc = location;
+			for (size_t j = 0; j < width; ++ j) {
+				auto &c = colors->Colors[input[i * width + j]];
+				*loc++ = c.Red;
+				*loc++ = c.Green;
+				*loc++ = c.Blue;
+			}
+			location += stride;
+		}
+	} else if (color == Color::A8 || color == Color::I8) {
+		for (size_t i = 0; i < height; ++ i) {
+			auto loc = location;
+			for (size_t j = 0; j < width; ++ j) {
+				auto &c = colors->Colors[input[i * width + j]];
+				*loc++ = c.Red;
+			}
+			location += stride;
+		}
+	} else if (color == Color::IA88) {
+		for (size_t i = 0; i < height; ++ i) {
+			auto loc = location;
+			for (size_t j = 0; j < width; ++ j) {
+				auto idx = input[i * width + j];
+				*loc++ = colors->Colors[idx].Red;
+				if (idx == transparent) {
+					*loc++ = 0;
+				} else {
+					*loc++ = 255;
+				}
+			}
+			location += stride;
+		}
+	} else if (color == Color::RGBA8888) {
+		for (size_t i = 0; i < height; ++ i) {
+			auto loc = location;
+			for (size_t j = 0; j < width; ++ j) {
+				auto idx = input[i * width + j];
+				auto &c = colors->Colors[idx];
+				*loc++ = c.Red;
+				*loc++ = c.Green;
+				*loc++ = c.Blue;
+				if (idx == transparent) {
+					*loc++ = 0;
+				} else {
+					*loc++ = 255;
+				}
+			}
+			location += stride;
+		}
+	}
+
+	DGifCloseFile(f, &error);
+	return true;
+}
+
+NS_SP_EXT_END(gif)
 
 
 NS_SP_EXT_BEGIN(webp)
@@ -1116,7 +1296,9 @@ static BitmapFormat s_defaultFormats[toInt(Bitmap::FileFormat::Custom)] = {
 			, &webp::loadWebp, &webp::writeWebpLossy, &webp::saveWebpLossy
 	),
 	BitmapFormat(Bitmap::FileFormat::Svg, &BitmapFormat_isSvg, &BitmapFormat_getSvgImageSize),
-	BitmapFormat(Bitmap::FileFormat::Gif, &BitmapFormat_isGif, &BitmapFormat_getGifImageSize),
+	BitmapFormat(Bitmap::FileFormat::Gif, &BitmapFormat_isGif, &BitmapFormat_getGifImageSize
+			, &gif::loadGif
+	),
 	BitmapFormat(Bitmap::FileFormat::Tiff, &BitmapFormat_isTiff, &BitmapFormat_getTiffImageSize),
 };
 
@@ -1415,6 +1597,10 @@ bool Bitmap::save(FileFormat fmt, const StringView &path, bool invert) {
 	auto &support = s_defaultFormats[toInt(fmt)];
 	if (support.isWritable()) {
 		return support.save(path, _data.data(), _width, _height, _stride, _color, invert);
+	} else {
+		// fallback to png
+		return s_defaultFormats[toInt(FileFormat::Png)]
+			.save(path, _data.data(), _width, _height, _stride, _color, invert);
 	}
 	return false;
 }
@@ -1441,6 +1627,10 @@ Bytes Bitmap::write(FileFormat fmt, bool invert) {
 	auto &support = s_defaultFormats[toInt(fmt)];
 	if (support.isWritable()) {
 		return support.write(_data.data(), _width, _height, _stride, _color, invert);
+	} else {
+		// fallback to png
+		return s_defaultFormats[toInt(FileFormat::Png)]
+			.write(_data.data(), _width, _height, _stride, _color, invert);
 	}
 	return Bytes();
 }

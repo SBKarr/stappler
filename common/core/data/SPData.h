@@ -51,11 +51,11 @@ using DataCallback = Function<void(data::Value &&)>;
 
 Value parseCommandLineOptions(int argc, const char * argv[],
 		const Function<int (Value &ret, char c, const char *str)> &switchCallback,
-		const Function<int (Value &ret, const String &str, int argc, const char * argv[])> &stringCallback);
+		const Function<int (Value &ret, const StringView &str, int argc, const char * argv[])> &stringCallback);
 
 Value parseCommandLineOptions(int argc, const char16_t * argv[],
 		const Function<int (Value &ret, char c, const char *str)> &switchCallback,
-		const Function<int (Value &ret, const String &str, int argc, const char * argv[])> &stringCallback);
+		const Function<int (Value &ret, const StringView &str, int argc, const char * argv[])> &stringCallback);
 
 class Transform : AllocBase {
 public:

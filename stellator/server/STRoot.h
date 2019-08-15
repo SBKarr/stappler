@@ -29,7 +29,7 @@ THE SOFTWARE.
 namespace stellator {
 
 // Root stellator server singleton
-class Root : public mem::MemPool {
+class Root : public mem::AllocBase {
 public:
 	static Root *getInstance();
 
@@ -44,7 +44,7 @@ public:
 	bool scheduleTask(const Server &server, Task *task, mem::TimeInterval);
 
 	db::pq::Driver::Handle dbdOpen(mem::pool_t *, const Server &) const;
-	void dbdClose(const Server &, const db::pq::Driver::Handle &);
+	void dbdClose(mem::pool_t *, const Server &, const db::pq::Driver::Handle &);
 
 	//ap_dbd_t * dbdRequestAcquire(request_rec *);
 	//ap_dbd_t * dbdConnectionAcquire(conn_rec *);
@@ -56,6 +56,9 @@ public:
 
 	void scheduleCancel();
 
+	size_t getThreadCount() const;
+	mem::pool_t *pool() const;
+
 protected:
 	struct Internal;
 
@@ -64,6 +67,7 @@ protected:
 
 	bool addServer(const mem::Value &);
 
+	mem::pool_t *_pool = nullptr;
 	Internal *_internal = nullptr;
 
 #if DEBUG

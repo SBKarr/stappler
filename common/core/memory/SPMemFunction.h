@@ -61,13 +61,13 @@ public:
 		: mAllocator(alloc), mInvoker(
 				new (alloc)free_function_holder<
 						typename std::remove_cv<typename std::remove_reference<FunctionT>::type>::type
-				>(std::forward<FunctionT>(f))) { }
+				>(mAllocator, std::forward<FunctionT>(f))) { }
 
 	template <typename FunctionT>
 	function & operator= (FunctionT f) noexcept {
 		mInvoker = new (mAllocator) free_function_holder<
 				typename std::remove_cv<typename std::remove_reference<FunctionT>::type>::type
-		>(f);
+		>(mAllocator, f);
 		return *this;
 	}
 
@@ -136,15 +136,19 @@ private:
 	template <typename FunctionT>
 	class free_function_holder : public function_holder_base {
 	public:
-		free_function_holder(const FunctionT &func) noexcept : function_holder_base(), mFunction(func) { }
-		free_function_holder(FunctionT &&func) noexcept : function_holder_base(), mFunction(std::move(func)) { }
+		free_function_holder(const allocator_type &alloc, const FunctionT &func) noexcept : function_holder_base(), mFunction(func) {
+			registerCleanupDestructor(this, alloc.getPool());
+		}
+		free_function_holder(const allocator_type &alloc, FunctionT &&func) noexcept : function_holder_base(), mFunction(std::move(func)) {
+			registerCleanupDestructor(this, alloc.getPool());
+		}
 
 		virtual ReturnType invoke(ArgumentTypes && ... args) override {
 			return mFunction(std::forward<ArgumentTypes>(args)...);
 		}
 
 		virtual invoker_t clone(const allocator_type &alloc) override {
-			return invoker_t(new (alloc) free_function_holder(mFunction));
+			return invoker_t(new (alloc) free_function_holder(alloc, mFunction));
 		}
 
 	private:

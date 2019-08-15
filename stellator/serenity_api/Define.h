@@ -46,7 +46,6 @@ namespace stellator::serenity {
 
 using namespace stappler::mem_pool;
 
-using MemPool = stappler::memory::MemPool;
 using uuid = stappler::memory::uuid;
 
 using ostringstream = stappler::memory::ostringstream;
@@ -172,6 +171,7 @@ using Stream = stappler::data::Stream;
 
 using stappler::data::read;
 using stappler::data::write;
+using stappler::data::readFile;
 
 }
 

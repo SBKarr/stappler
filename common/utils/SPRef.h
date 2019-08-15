@@ -73,9 +73,6 @@ protected:
 using Ref = RefBase<RegularCounter, memory::DefaultInterface>;
 using AtomicRef = RefBase<AtomicCounter, memory::DefaultInterface>;
 
-//template <typename Counter = experimental::RegularCounter, typename Interface = memory::DefaultInterface>
-//using Ref = experimental::Ref<Counter, Interface>;
-
 namespace memleak {
 
 void store(Ref *);

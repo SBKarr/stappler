@@ -151,11 +151,23 @@ struct DbConnList : public mem::AllocBase {
 		if (ret.get()) {
 			return ret;
 		} else {
-			return driver->connect(keywords, values, 0);
+			auto ret = driver->connect(keywords, values, 0);
+			if (ret.get()) {
+				auto key = mem::toString("pq", uintptr_t(ret.get()));
+				mem::pool::store(ret.get(), key, [d = driver, ret] () {
+					d->finish(ret);
+				});
+			}
+			return ret;
 		}
 	}
 
 	void close(db::pq::Driver::Handle h) {
+		if (h.get()) {
+			auto key = mem::toString("pq", uintptr_t(h.get()));
+			mem::pool::store(h.get(), key, nullptr);
+		}
+
 		auto conn = driver->getConnection(h);
 		bool valid = driver->isValid(conn) && (driver->getTransactionStatus(conn) == db::pq::Driver::TransactionStatus::Idle);
 		if (!valid) {
@@ -366,12 +378,13 @@ void Server::Config::init(Server &serv) {
 }
 
 void Server::Config::onChildInit(Server &serv) {
-	childInit = true;
 	for (auto &it : components) {
 		currentComponent = it.second->getName();
 		it.second->onChildInit(serv);
 		currentComponent = mem::StringView();
 	}
+
+	childInit = true;
 
 	if (!loadingFalled) {
 		if (!db::Scheme::initSchemes(schemes)) {
@@ -395,7 +408,7 @@ void Server::Config::onChildInit(Server &serv) {
 					it.second->onStorageInit(serv, &hdb);
 					currentComponent = mem::String();
 				}
-				root->dbdClose(serv, db);
+				root->dbdClose(pool, serv, db);
 			} else {
 				loadingFalled = true;
 			}
@@ -465,7 +478,7 @@ void Server::onChildInit() {
 	//tools::registerTools(config::getServerToolsPrefix(), *this);
 	_config->currentComponent = mem::StringView();
 
-	addProtectedLocation("/.stellator");
+	addProtectedLocation("/.serenity");
 	addProtectedLocation("/uploads");
 
 	auto cfg = _config;
@@ -494,7 +507,7 @@ void Server::onHeartBeat(mem::pool_t *pool) {
 				_config->broadcastId = hdb.processBroadcasts([&] (stappler::BytesView bytes) {
 					onBroadcast(bytes);
 				}, _config->broadcastId);
-				root->dbdClose(*this, dbd);
+				root->dbdClose(pool, *this, dbd);
 			}
 		}
 		if (now - _config->lastTemplateUpdate > config::getDefaultPugTemplateUpdateInterval()) {
@@ -592,6 +605,13 @@ const db::Scheme * Server::getErrorScheme() const {
 const db::Scheme * Server::defineUserScheme(std::initializer_list<db::Field> il) {
 	_config->userScheme.define(il);
 	return &_config->userScheme;
+}
+
+db::Scheme * Server::getMutable(const db::Scheme *scheme) const {
+	if (!_config->childInit) {
+		return const_cast<db::Scheme *>(scheme);
+	}
+	return nullptr;
 }
 
 bool Server::performTask(Task *task, bool performFirst) const {

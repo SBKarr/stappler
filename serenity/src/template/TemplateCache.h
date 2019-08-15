@@ -29,7 +29,7 @@ NS_SA_EXT_BEGIN(tpl)
 
 class FileRef : public AllocPool {
 public:
-	FileRef(apr::MemPool &&, const String &);
+	FileRef(mem::pool_t *, const String &);
 
 	void retain(Request &);
 	void release();
@@ -38,7 +38,7 @@ public:
 	time_t getMtime() const;
 
 protected:
-	apr::MemPool _pool;
+	mem::pool_t * _pool = nullptr;
 	File _file;
 	std::atomic<uint32_t> _refCount;
 };

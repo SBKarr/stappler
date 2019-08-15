@@ -31,6 +31,8 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(memory)
 
+std::mutex s_globalLogMutex;
+
 class AllocStack {
 public:
 	AllocStack();
@@ -51,10 +53,26 @@ protected:
 		std::array<T, 32> data;
 
 		bool empty() const { return size == 0; }
+#if DEBUG
+		void push(const T &t) {
+			if (size < data.size()) {
+				data[size] = t; ++ size;
+			} else {
+				abort();
+			}
+		}
+		void pop() {
+			if (size > 0) {
+				-- size;
+			} else {
+				abort();
+			}
+		}
+#else
 		void push(const T &t) { data[size] = t; ++ size; }
 		void pop() { -- size; }
-		const T &get() const {
-			return data[size - 1]; }
+#endif
+		const T &get() const { return data[size - 1]; }
 	};
 
 	struct Info {
@@ -81,11 +99,15 @@ Pair<uint32_t, const void *> AllocStack::info() const {
 void AllocStack::push(pool_t *p) {
 	if (p) {
 		_stack.push(Info{p, 0, nullptr});
+	} else {
+		abort();
 	}
 }
 void AllocStack::push(pool_t *p, uint32_t tag, const void *ptr) {
 	if (p) {
 		_stack.push(Info{p, tag, ptr});
+	} else {
+		abort();
 	}
 }
 

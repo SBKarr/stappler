@@ -43,7 +43,6 @@ NS_SA_EXT_BEGIN(mem)
 
 using namespace stappler::mem_pool;
 
-using MemPool = stappler::memory::MemPool;
 using uuid = stappler::memory::uuid;
 
 using ostringstream = stappler::memory::ostringstream;
@@ -98,45 +97,6 @@ SP_DEFINE_ENUM_AS_MASK(InputConfig::Require);
 constexpr apr_time_t operator"" _apr_sec ( unsigned long long int val ) { return val * 1000000; }
 constexpr apr_time_t operator"" _apr_msec ( unsigned long long int val ) { return val * 1000; }
 constexpr apr_time_t operator"" _apr_mksec ( unsigned long long int val ) { return val; }
-
-class SharedObject : public AtomicRef {
-public:
-	template <typename Type, typename ... Args>
-	static Rc<Type> create(memory::pool_t *, Args && ...);
-
-	virtual bool init() { return true; }
-
-protected:
-	SharedObject() { }
-
-	void setPool(memory::MemPool &&p) {
-		_pool = move(p);
-	}
-
-	memory::MemPool _pool;
-};
-
-template <typename Type, typename ... Args>
-auto SharedObject::create(memory::pool_t *pool, Args && ... args) -> Rc<Type> {
-	memory::MemPool p(pool);
-	return apr::pool::perform([&] {
-		auto pRet = new Type();
-		pRet->setPool(move(p));
-	    if (pRet->init(std::forward<Args>(args)...)) {
-	    	auto ret = Rc<Type>(pRet);
-	    	pRet->release();
-	    	return ret;
-		} else {
-			delete pRet;
-			return Rc<Type>(nullptr);
-		}
-	}, p.pool());
-}
-
-template <typename Type, typename ... Args>
-inline auto construct(memory::pool_t *pool, Args && ... args) -> Rc<Type> {
-	return SharedObject::create<Type>(pool, std::forward<Args>(args)...);
-}
 
 NS_SA_END
 

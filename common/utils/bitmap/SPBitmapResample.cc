@@ -1111,9 +1111,12 @@ Resampler::Resampler(int src_x, int src_y, int dst_x, int dst_y, Boundary_Op bou
 	 * contributes to a destination line.
 	 */
 
-	for (i = 0; i < m_resample_dst_y; i++)
-		for (j = 0; j < m_Pclist_y[i].n; j++)
-			m_Psrc_y_count[resampler_range_check(m_Pclist_y[i].p[j].pixel, m_resample_src_y)]++;
+	for (i = 0; i < m_resample_dst_y; i++) {
+		for (j = 0; j < m_Pclist_y[i].n; j++) {
+			auto tmp = resampler_range_check(m_Pclist_y[i].p[j].pixel, m_resample_src_y);
+			m_Psrc_y_count[tmp]++;
+		}
+	}
 
 	if ((m_Pscan_buf = (Scan_Buf*)memory::pool::palloc(m_pool, sizeof(Scan_Buf))) == NULL) {
 		m_status = STATUS_OUT_OF_MEMORY;
@@ -1195,7 +1198,7 @@ public:
 		}
 	};
 
-	ResamplerData() = default;
+	ResamplerData(memory::pool_t *p) : pool(p) { }
 
 	ResamplerData(const ResamplerData &) = delete;
 	ResamplerData(ResamplerData &&) = delete;
@@ -1206,7 +1209,7 @@ public:
 	void resample(Filter, const Bitmap &source, Bitmap &target);
 
 protected:
-	memory::MemPool pool = memory::MemPool::Managed;
+	memory::pool_t *pool = nullptr;
 };
 
 
@@ -1315,8 +1318,14 @@ Bitmap Bitmap::resample(ResampleFilter f, uint32_t width, uint32_t height, uint3
 	ret._originalFormat = _originalFormat;
 	ret._originalFormatName = _originalFormatName;
 
-	ResamplerData data;
+	auto p = memory::pool::create(memory::pool::acquire());
+	memory::pool::push(p);
+
+	ResamplerData data(p);
 	data.resample(f, *this, ret);
+
+	memory::pool::pop();
+	memory::pool::destroy(p);
 
 	return ret;
 }

@@ -53,66 +53,6 @@ struct AllocPool {
 	static void registerCleanupDestructor(T *obj, pool_t *pool);
 };
 
-class MemPool : public AllocPool {
-public:
-	enum Init {
-		None,
-		Acquire,
-		Managed,
-		Unmanaged,
-		ManagedRoot,
-	};
-
-	struct WrapTag { };
-
-	MemPool() noexcept;
-	MemPool(Init);
-	MemPool(pool_t *);
-	MemPool(pool_t *, WrapTag);
-
-	~MemPool() noexcept;
-
-	MemPool(const MemPool &) = delete;
-	MemPool & operator=(const MemPool &) = delete;
-
-	MemPool(MemPool &&) noexcept;
-	MemPool & operator=(MemPool &&) noexcept;
-
-	operator pool_t *() const { return _pool; }
-	pool_t *pool() const { return _pool; }
-
-	void free();
-	void clear();
-
-	void *alloc(size_t &);
-	void free(void *ptr, size_t size);
-
-	void cleanup_register(void *, cleanup_fn);
-
-	size_t getAllocatedBytes() const;
-	size_t getReturnBytes() const;
-	size_t getOptsBytes() const;
-
-	template <typename Callback>
-	auto performWithPool(const Callback &cb) {
-		struct Context {
-		public:
-			Context(pool_t *p) : pool(p) { pool::push(pool); }
-			~Context() { pool::pop(); }
-
-		protected:
-			pool_t *pool;
-		};
-
-		Context ctx(_pool);
-		return cb();
-	}
-
-protected:
-	Init _status = Acquire;
-	pool_t *_pool = nullptr;
-};
-
 template <typename T, bool IsTrivial>
 struct __AllocatorTraits;
 
@@ -152,9 +92,9 @@ struct __AllocatorTraits<T, true> {
 	/*template <typename ...Args>
 	static void construct(T * p, Args &&...args) noexcept { }*/
 
-	static void destroy(T *p) noexcept { }
+	static void destroy(pool_t *pool, T *p) noexcept { }
 
-	static void destroy(T *p, size_t size) { }
+	static void destroy(pool_t *pool, T *p, size_t size) noexcept { }
 };
 
 template <typename T>
@@ -256,14 +196,22 @@ struct __AllocatorTraits<T, false> {
 		memory::pool::pop();
 	}
 
-	static void destroy(T *p) noexcept {
+	static void __destroy(T *p) noexcept {
 		p->~T();
 	}
 
-	static void destroy(T *p, size_t size) {
+	static void destroy(pool_t *pool, T *p) noexcept {
+		memory::pool::push(pool);
+		__destroy(p);
+		memory::pool::pop();
+	}
+
+	static void destroy(pool_t *pool, T *p, size_t size) noexcept {
+		memory::pool::push(pool);
 		for (size_t i = 0; i < size; ++i) {
-			destroy(p + i);
+			__destroy(p + i);
 		}
+		memory::pool::pop();
 	}
 };
 
@@ -352,11 +300,11 @@ public:
 	}
 
 	void destroy(pointer p) {
-		__AllocatorTraits<T, !std::is_destructible<T>::value>::destroy(p);
+		__AllocatorTraits<T, !std::is_destructible<T>::value || std::is_scalar<T>::value>::destroy(pool_ptr(pool), p);
 	}
 
 	void destroy(pointer p, size_t size) {
-		__AllocatorTraits<T, !std::is_destructible<T>::value>::destroy(p, size);
+		__AllocatorTraits<T, !std::is_destructible<T>::value || std::is_scalar<T>::value>::destroy(pool_ptr(pool), p, size);
 	}
 
 	operator pool_t * () const noexcept { return pool_ptr(pool); }
@@ -410,6 +358,7 @@ struct __CleaupData : AllocPool {
 	memory::pool_t *pool = nullptr;
 };
 
+#if SPAPR
 template <typename T>
 inline status_t AllocPool::cleanupObjectFromPool(void *data) {
 	if (auto d = (__CleaupData *)data) {
@@ -427,6 +376,18 @@ inline void AllocPool::registerCleanupDestructor(T *obj, pool_t *pool) {
 	data->pool = pool;
 	pool::cleanup_register(pool, (void *)data, &(cleanupObjectFromPool<T>));
 }
+#else
+template <typename T>
+inline status_t AllocPool::cleanupObjectFromPool(void *data) {
+	delete ((T *)data);
+	return SUCCESS;
+}
+
+template <typename T>
+inline void AllocPool::registerCleanupDestructor(T *obj, pool_t *pool) {
+	pool::cleanup_register(pool, (void *)obj, &(cleanupObjectFromPool<T>));
+}
+#endif
 
 NS_SP_EXT_END(memory)
 

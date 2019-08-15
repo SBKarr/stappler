@@ -211,17 +211,26 @@ mem::Value File::createFile(const Transaction &t, const mem::StringView &type, c
 	auto size = stappler::filesystem::size(path);
 
 	mem::Value fileData;
-	fileData.setString(type, "type");
 	fileData.setInteger(size, "size");
 	if (mtime) {
 		fileData.setInteger(mtime, "mtime");
 	}
 
 	size_t width = 0, height = 0;
-	if (stappler::Bitmap::getImageSize(mem::StringView(path), width, height)) {
+	auto file = stappler::filesystem::openForReading(mem::StringView(path));
+	auto fmt = stappler::Bitmap::detectFormat(file);
+	if ((fmt.second.empty() && fmt.first == stappler::Bitmap::FileFormat::Custom)
+			|| !stappler::Bitmap::getImageSize(file, width, height)) {
+		fileData.setString(type, "type");
+	} else {
 		auto &val = fileData.emplace("image");
 		val.setInteger(width, "width");
 		val.setInteger(height, "height");
+		if (fmt.first != stappler::Bitmap::FileFormat::Custom) {
+			fileData.setString(stappler::Bitmap::getMimeType(fmt.first), "type");
+		} else {
+			fileData.setString(type, "type");
+		}
 	}
 
 	fileData = Worker(*scheme, t).create(fileData, true);
