@@ -791,7 +791,7 @@ bool Root::run(const mem::StringView &_addr, int _port) {
 					return true;
 				}
 			} else if (errno == EINTR) {
-				std::cout << "[Loop]: Non-specific signal interrupted\n";
+				//std::cout << "[Loop]: Non-specific signal interrupted\n";
 				sig = 0;
 			} else {
 				char buf[256] = { 0 };

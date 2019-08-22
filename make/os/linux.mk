@@ -34,7 +34,7 @@ OSTYPE_SERENITY_LIBS := \
 	-l:libcurl.a -l:libidn2.a \
 	-l:libbrotlidec.a -l:libbrotlienc.a -l:libbrotlicommon.a \
 	-l:libmbedtls.a -l:libmbedx509.a -l:libmbedcrypto.a \
-	-l:libpng.a -l:libjpeg.a -l:libwebp.a \
+	-l:libpng.a -l:libgif.a -l:libjpeg.a -l:libwebp.a \
 	-l:libfreetype.a
 
 OSTYPE_CLI_LIBS += $(OSTYPE_COMMON_LIBS) -l:libsqlite3.a -ldl

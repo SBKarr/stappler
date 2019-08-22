@@ -136,6 +136,9 @@ public:
 	Query & delta(uint64_t);
 	Query & delta(const mem::StringView &);
 
+	template <typename ... Args>
+	Query & include(Field &&, Args && ...);
+
 	Query & include(Field &&);
 	Query & exclude(Field &&);
 
@@ -241,6 +244,13 @@ inline Query::Field::Field(Str &&str, std::initializer_list<Field> &&l) {
 	for (auto &it : l) {
 		fields.emplace_back(std::move(it));
 	}
+}
+
+template <typename ... Args>
+Query & Query::include(Field &&f, Args && ... args) {
+	include(std::move(f));
+	include(std::forward<Args>(args)...);
+	return *this;
 }
 
 NS_DB_END

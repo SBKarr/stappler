@@ -205,12 +205,13 @@ struct Server::Config : public AllocPool {
 	}
 
 	void onChildInit(Server &serv) {
-		childInit = true;
 		for (auto &it : components) {
 			currentComponent = it.second->getName();
 			it.second->onChildInit(serv);
 			currentComponent = String();
 		}
+
+		childInit = true;
 
 		if (!loadingFalled) {
 			db::Scheme::initSchemes(schemes);
@@ -1051,6 +1052,13 @@ const storage::Scheme * Server::getErrorScheme() const {
 const storage::Scheme * Server::defineUserScheme(std::initializer_list<storage::Field> il) {
 	_config->userScheme.define(il);
 	return &_config->userScheme;
+}
+
+db::Scheme * Server::getMutable(const db::Scheme *s) const {
+	if (!_config->childInit) {
+		return const_cast<db::Scheme *>(s);
+	}
+	return nullptr;
 }
 
 String Server::getResourcePath(const storage::Scheme &scheme) const {

@@ -101,6 +101,7 @@ protected:
 	virtual bool processRegister(Request &rctx, data::Value &result);
 	virtual bool processActivate(Request &rctx, data::Value &result);
 	virtual bool processUpdate(Request &rctx, data::Value &input);
+	virtual bool processTouch(Request &rctx, data::Value &result);
 
 	const storage::Scheme *_userScheme = nullptr;
 	storage::Transaction _storage = nullptr;

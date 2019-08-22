@@ -67,20 +67,7 @@ bool RequestAuthHandler::processDataHandler(Request & rctx, data::Value &result,
 			rctx.setStatus(rctx.redirectTo(String(target.getString())));
 		}
 	} else if (_subPath == "/touch") {
-		if (auto s = ExternalSession::get(rctx)) {
-			if (auto u = s->getUser()) {
-				if (auto uData = _userScheme->get(_storage, u)) {
-					auto uRole = getUserRole(uData);
-					if (toInt(s->getRole()) != toInt(uRole)) {
-						s->setUser(u, uRole);
-						s->save();
-					}
-					result.setInteger(toInt(uRole), "role");
-					result.setInteger(u, "user");
-					return true;
-				}
-			}
-		}
+		return processTouch(rctx, result);
 	} else if (_subPath == "/cancel") {
 		if (auto s = ExternalSession::get(rctx)) {
 			s->cancel();
@@ -433,6 +420,24 @@ bool RequestAuthHandler::processUpdate(Request &rctx, data::Value &input) {
 		return true;
 	}
 
+	return false;
+}
+
+bool RequestAuthHandler::processTouch(Request &rctx, data::Value &result) {
+	if (auto s = ExternalSession::get(rctx)) {
+		if (auto u = s->getUser()) {
+			if (auto uData = _userScheme->get(_storage, u)) {
+				auto uRole = getUserRole(uData);
+				if (toInt(s->getRole()) != toInt(uRole)) {
+					s->setUser(u, uRole);
+					s->save();
+				}
+				result.setInteger(toInt(uRole), "role");
+				result.setInteger(u, "user");
+				return true;
+			}
+		}
+	}
 	return false;
 }
 

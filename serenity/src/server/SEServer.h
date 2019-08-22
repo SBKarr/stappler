@@ -96,6 +96,8 @@ public:
 
 	const storage::Scheme * defineUserScheme(std::initializer_list<storage::Field> il);
 
+	db::Scheme * getMutable(const db::Scheme *) const;
+
 	String getResourcePath(const storage::Scheme &) const;
 
 	struct ResourceScheme {
