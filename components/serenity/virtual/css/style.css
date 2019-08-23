@@ -1,0 +1,178 @@
+html {
+	font-size: 18px;
+}
+
+body {
+	background: #aaa;
+	margin: 0;
+	padding: 0;
+}
+
+.body {
+	margin: 1% auto;
+	padding: 4px;
+	max-width: 1380px;
+	width: 98%;
+	background: #fff;
+	box-shadow: 0 2px 8px #666;
+}
+
+.title {
+	margin: 16px;
+	border-bottom: 1px #ccc solid;
+	display: flex;
+	justify-content: space-between;
+}
+
+.title > h1 {
+	font-family: "Roboto";
+	font-size: 1.2rem;
+	margin: 0;
+	padding: 0;
+	font-weight: 300;
+}
+
+.title > h1 > span.name {
+	font-weight: 500;
+}
+
+.title > p.nav {
+	text-align: right;
+	font-family: "Roboto";
+	font-size: 1.2rem;
+	margin: 0;
+	padding: 0;
+}
+
+a {
+	font-family: "Roboto";
+	margin: 6px;
+	color: #00bfa5ff;
+	font-weight: 500;
+	font-size: 1.1rem;
+}
+
+.title > p.nav > span.id {
+	color: #999;
+}
+
+.main {
+	margin: 16px;
+}
+
+.main > form#setup > input {
+	width: 160px;
+	display: block;
+	margin: 4px auto;
+	padding: 0;
+}
+
+.main > p.components > span.component {
+	font-family: "Roboto";
+	display: inline-block;
+	background-color: #64ffda;
+	outline: 1px #00bfa5 solid;
+	padding: 2px 6px;
+	margin: 4px;
+}
+
+.main > p.components > span.component > span.version {
+	color: #999;
+}
+
+.main > p.components > span.db {
+	background-color: #ffd180;
+	outline: 1px #e65100 solid;
+}
+
+.main > p.components > span.root {
+	background-color: #ea80fc;
+	outline: 1px #6a1b9a solid;
+}
+
+#output p {
+	margin: 0;
+	padding: 0;
+	white-space: pre-wrap;
+}
+
+.content {
+	width: 99%;
+	height: 1600px;
+	padding-left: 10px;
+	white-space: pre-wrap;
+	font-family: monospace;
+	-moz-tab-size: 4;
+}
+
+.key { font-weight: bold }
+.bool,.integer,.float { color: blue }
+.string,.bytes { color: green }
+.null { color: red }
+.key > .quote { opacity: 0 }
+
+.actions { }
+
+.delete {
+	color: white;
+	background: #d50000
+}
+
+.edit {
+	color: white;
+	background: #303f9f
+}
+
+.edit,.delete {
+	opacity: 0.4;
+	line-height: 3em;
+	padding: 0.5em;
+	text-decoration: none;
+	border-radius: 0.5em;
+	box-shadow: 0px 0px 3px rgba(0, 0, 0, 0.5);
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	-webkit-touch-callout: none;
+}
+
+.edit:hover,.delete:hover { opacity: 1.0 }
+.error { color: red }
+
+pre {
+	margin: 0;
+	padding: 0;
+}
+
+.code {
+	font-family: monospace;
+	margin: 0;
+	padding: 0;
+	-moz-tab-size: 4;
+}
+
+span.time {
+	font-family: monospace;
+	color: gray;
+}
+
+span.ip {
+	font-family: monospace;
+	color: blue;
+}
+
+span.server {
+	font-weight: bold;
+}
+
+.headers {
+	margin: 4px 0;
+	overflow-x: scroll;
+	background-color: #ddd;
+}
+
+.data {
+	margin: 4px 0;
+	overflow-x: scroll;
+	background-color: #a7ffeb;
+}

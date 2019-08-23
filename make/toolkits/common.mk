@@ -24,12 +24,11 @@ COMMON_OUTPUT_STATIC = $(abspath $(TOOLKIT_OUTPUT)/libcommon.a)
 COMMON_FLAGS := -DNOCC
 
 COMMON_PRECOMPILED_HEADERS += \
-	common/core/SPCore.h \
-	common/core/SPCommon.h
+	components/common/core/SPCommon.h
 
-COMMON_SRCS_DIRS += common
+COMMON_SRCS_DIRS += components/common
 COMMON_SRCS_OBJS += 
-COMMON_INCLUDES_DIRS += common
+COMMON_INCLUDES_DIRS += components/common
 COMMON_INCLUDES_OBJS += $(OSTYPE_INCLUDE)
 
 TOOLKIT_NAME := COMMON

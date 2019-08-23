@@ -1,0 +1,28 @@
+Title:	Table of Contents
+latex config:	article
+
+{{TOC}}
+
+## Second Level ##
+
+# First Level #
+
+## Second Level b ##
+
+### Third Level ###
+
+## Second Level c ##
+
+# First Level b #
+
+### Third Level b ###
+
+## Second level d ##
+
+### Third level d ##
+
+#### Fourth level d ####
+
+# First level [First Level e] #
+
+## Second level [Second Level e] ##

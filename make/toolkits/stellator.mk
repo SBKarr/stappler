@@ -24,13 +24,20 @@ STELLATOR_OUTPUT_STATIC = $(abspath $(TOOLKIT_OUTPUT)/libstellator.a)
 STELLATOR_FLAGS := -DNOCC -DSTELLATOR
 
 STELLATOR_PRECOMPILED_HEADERS += \
-	common/core/SPCore.h \
-	common/core/SPCommon.h \
-	stellator/core/STDefine.h
+	components/common/core/SPCommon.h \
+	components/stellator/core/STDefine.h
 
-STELLATOR_SRCS_DIRS += common stellator spug
+STELLATOR_SRCS_DIRS += \
+	components/common \
+	components/stellator \
+	components/spug
+
 STELLATOR_SRCS_OBJS += 
-STELLATOR_INCLUDES_DIRS += common stellator spug
+STELLATOR_INCLUDES_DIRS += \
+	components/common \
+	components/stellator \
+	components/spug
+
 STELLATOR_INCLUDES_OBJS += $(OSTYPE_INCLUDE)
 
 TOOLKIT_NAME := STELLATOR

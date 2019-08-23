@@ -1,0 +1,12 @@
+Title:	Figure Images
+latex config:	article
+
+![foo]
+
+![*bar*][foo]
+
+![*bar*][foo] bar
+
+![*foo*](http://foo.bar/ "foo" width="40px")
+
+[foo]: http://foo.bar/	"foo" width="40px"

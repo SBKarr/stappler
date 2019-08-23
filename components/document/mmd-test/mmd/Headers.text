@@ -1,0 +1,38 @@
+Title:	Headers
+latex config:	article
+
+# foo #
+
+ # foo #
+
+  # foo #
+
+   # foo #
+
+    # foo #
+
+5
+
+#foo#
+
+#foo #
+
+# foo # bar
+
+\# foo #
+
+## foo ##
+
+10
+
+### foo ###
+
+#### foo ####
+
+##### foo #####
+
+###### foo ######
+
+####### foo #######
+
+15

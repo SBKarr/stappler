@@ -1,0 +1,25 @@
+mixin header(name)
+	.title
+		h1
+			span.name= name
+			span.id= ": Serenity " + version
+		p.nav
+			if hasDb && setup && auth
+				a(href="/__server") Server
+				|
+				|
+				a(href="/__server/docs/index") Docs
+				|
+				|
+				a(href="/__server/errors") Errors
+			else if hasDb && !setup
+				span Waiting for setup
+			else if !hasDb
+				span No db connection
+		if setup
+			p.nav
+				if auth
+					span.id= "#" + auth.id
+					span= " " + auth.name
+				else
+					a(href=window.location.pathname+"?auth") Not authorized

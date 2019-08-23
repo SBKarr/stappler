@@ -1,0 +1,20 @@
+Title:	Special Characters
+latex config:	article
+
+{foo}
+
+[foo]
+
+{{foo}}
+
+[[foo]]
+
+(foo)
+
+5
+
+|foo|
+
+\foo\
+
+<foo>

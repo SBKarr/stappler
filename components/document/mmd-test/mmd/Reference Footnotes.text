@@ -1,0 +1,19 @@
+Title:	Reference Footnotes
+latex config:	article
+
+foo.[^bar]
+
+foo.[^bar2]
+
+foo.[^bar3]
+
+foo.[^bar3]
+
+[^bar]: *foo*
+[^bar2]: *foo
+bar*
+[^bar3]: foo
+
+	*bar*
+
+	* bat

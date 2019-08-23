@@ -1,0 +1,16 @@
+Title:	Variables
+latex config:	article
+foo:	bar
+foo bar
+	foo bar
+bat:	**foo**
+
+foo:	bar
+
+[%foo]
+
+[%bar]
+
+[%bat]
+
+[%latex config]

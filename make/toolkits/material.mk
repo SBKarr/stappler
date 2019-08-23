@@ -22,18 +22,18 @@ MATERIAL_OUTPUT_DIR = $(abspath $(TOOLKIT_OUTPUT)/material)
 MATERIAL_OUTPUT_STATIC = $(abspath $(TOOLKIT_OUTPUT)/libmaterial.a)
 
 MATERIAL_PRECOMPILED_HEADERS += \
-	material/Material.h
+	components/material/Material.h
 
 MATERIAL_SRCS_DIRS += \
-	material
+	components/material
 
 MATERIAL_SRCS_OBJS +=
 
 MATERIAL_INCLUDES_DIRS += \
-	material \
-	common \
-	layout \
-	stappler/src
+	components/material \
+	components/common \
+	components/layout \
+	components/stappler/src
 
 MATERIAL_INCLUDES_OBJS += \
 	$(COCOS2D_STAPPLER_INCLUDES_OBJS) \

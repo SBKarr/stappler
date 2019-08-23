@@ -1,0 +1,77 @@
+.docs {
+	padding: 12px 0;
+}
+
+.docs > .contents {
+	width: 320px;
+	border-left: 1px #ccc solid;
+	float: right;
+}
+
+.docs > .doc {
+	margin-right: 320px;
+}
+
+.source {
+	padding-left: 16px;
+	padding-right: 16px;
+}
+
+.docs pre {
+	margin-top: 6px;
+	margin-bottom: 6px;
+	padding: 4px;
+	background-color: #e0f2f1;
+	overflow: scroll;
+}
+
+.docs code {
+	color: black;
+	background-color: #e0f2f1;
+}
+
+.docs p, .docs h1, .docs h2, .docs h3, .docs h4, .docs h5, .docs h6 {
+	font-family: "Roboto";
+	margin-top: 8px;
+	margin-bottom: 8px;
+}
+
+.docs li {
+	margin: 0;
+	padding: 0;
+}
+
+.docs h1 {
+	font-weight: 400;
+	font-size: 1.5rem;
+	color: #666;
+}
+
+.docs h2 {
+	font-weight: 500;
+	font-size: 1.3rem;
+	color: #333;
+}
+.docs h3 {
+	font-weight: 500;
+	font-size: 1.1rem;
+	color: #666;
+}
+
+.docs h1, .docs h2, .docs h3 {
+	margin-top: 12px;
+}
+
+.docs .contents h1 {
+	font-size: 1.3rem;
+	color: #999;
+}
+
+.docs .contents h2 {
+	font-size: 1.2rem;
+	color: #999;
+}
+
+.source a {
+	margin: 0;
+}

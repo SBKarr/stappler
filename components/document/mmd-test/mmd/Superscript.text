@@ -1,0 +1,52 @@
+Title:	Superscript
+latex config:	article
+
+x^2.
+
+x^2xz.
+
+x^2.^
+
+x^2 3^
+
+x^2 3^2
+
+5
+
+x~z.
+
+x~xyz.
+
+z~z.~
+
+~/Library/MultiMarkdown
+
+^test
+
+10
+
+x\^y
+
+x\~y
+
+x~2 3~
+
+x~2 3~2
+
+H~2~O
+
+15
+
+CH~3~CH~2~CH~2~CH~3~
+
+CH~3~CH~2~CH~2~CH~3
+
+`\pi^2`
+
+`\pi^2^`
+
+`CH~4`
+
+20
+
+`CH~4~`

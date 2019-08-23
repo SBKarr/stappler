@@ -24,31 +24,30 @@ CLI_OUTPUT_STATIC = $(abspath $(TOOLKIT_OUTPUT)/libcli.a)
 CLI_FLAGS := -DSP_RESTRICT -DSP_DRAW=0 -DSP_NO_STOREKIT -DCC_STATIC
 
 CLI_PRECOMPILED_HEADERS += \
-	stappler/src/core/SPDefine.h \
-	layout/SPLayout.h \
-	common/core/SPCore.h \
-	common/core/SPCommon.h
+	components/stappler/src/core/SPDefine.h \
+	components/layout/SPLayout.h \
+	components/common/core/SPCommon.h
 
 CLI_SRCS_DIRS += \
-	common \
-	spug \
-	layout/document \
-	layout/types \
-	layout/vg \
-	stappler/src/core \
+	components/common \
+	components/spug \
+	components/layout/document \
+	components/layout/types \
+	components/layout/vg \
+	components/stappler/src/core \
 	$(COCOS2D_CLI_SRCS_DIRS)
 
 CLI_SRCS_OBJS += \
-	stappler/src/platform/SPPlatform.scu.cpp \
-	stappler/src/platform/SPPlatformApple.scu.mm \
-	stappler/src/features/SPBasicFeatures.scu.cpp \
+	components/stappler/src/platform/SPPlatform.scu.cpp \
+	components/stappler/src/platform/SPPlatformApple.scu.mm \
+	components/stappler/src/features/SPBasicFeatures.scu.cpp \
 	$(COCOS2D_CLI_SRCS_OBJS)
 
 CLI_INCLUDES_DIRS += \
-	common \
-	spug \
-	layout \
-	stappler/src
+	components/common \
+	components/spug \
+	components/layout \
+	components/stappler/src
 
 CLI_INCLUDES_OBJS += \
 	$(COCOS2D_CLI_INCLUDES_OBJS) \

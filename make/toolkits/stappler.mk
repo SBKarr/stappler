@@ -22,29 +22,28 @@ STAPPLER_OUTPUT_DIR = $(abspath $(TOOLKIT_OUTPUT)/stappler)
 STAPPLER_OUTPUT_STATIC = $(abspath $(TOOLKIT_OUTPUT)/libstappler.a)
 
 STAPPLER_PRECOMPILED_HEADERS += \
-	stappler/src/core/SPDefine.h \
-	layout/SPLayout.h \
-	common/core/SPCore.h \
-	common/core/SPCommon.h
+	components/stappler/src/core/SPDefine.h \
+	components/layout/SPLayout.h \
+	components/common/core/SPCommon.h
 
 STAPPLER_SRCS_DIRS += \
-	common \
-	layout \
-	stappler/src/actions \
-	stappler/src/components \
-	stappler/src/core \
-	stappler/src/features \
-	stappler/src/nodes
+	components/common \
+	components/layout \
+	components/stappler/src/actions \
+	components/stappler/src/components \
+	components/stappler/src/core \
+	components/stappler/src/features \
+	components/stappler/src/nodes
 
 STAPPLER_SRCS_OBJS += \
-	stappler/src/platform/SPPlatform.scu.cpp \
-	stappler/src/SPExtra.scu.cpp \
+	components/stappler/src/platform/SPPlatform.scu.cpp \
+	components/stappler/src/SPExtra.scu.cpp \
 	$(COCOS2D_STAPPLER_SRCS_OBJS)
 
 STAPPLER_INCLUDES_DIRS += \
-	common \
-	layout \
-	stappler/src \
+	components/common \
+	components/layout \
+	components/stappler/src \
 
 STAPPLER_INCLUDES_OBJS += \
 	$(COCOS2D_STAPPLER_INCLUDES_OBJS) \
@@ -52,29 +51,29 @@ STAPPLER_INCLUDES_OBJS += \
 
 ifdef ANDROID_ARCH
 
-STAPPLER_SRCS_DIRS += stappler/src/platform/android
+STAPPLER_SRCS_DIRS += components/stappler/src/platform/android
 
 else ifdef IOS_ARCH
 
 STAPPLER_SRCS_DIRS += $(COCOS2D_STAPPLER_SRCS_DIRS)
-STAPPLER_SRCS_OBJS += stappler/src/platform/SPPlatformApple.scu.mm
+STAPPLER_SRCS_OBJS += components/stappler/src/platform/SPPlatformApple.scu.mm
 STAPPLER_INCLUDES_OBJS += $(COCOS2D_ROOT)/cocos/platform/ios
 
 else
 
 ifeq ($(UNAME),Darwin)
 STAPPLER_SRCS_DIRS += $(COCOS2D_ROOT)/cocos/platform/mac $(COCOS2D_ROOT)/cocos/platform/apple
-STAPPLER_SRCS_OBJS += stappler/src/platform/SPPlatformApple.scu.mm
+STAPPLER_SRCS_OBJS += components/components/stappler/src/platform/SPPlatformApple.scu.mm
 ifndef LOCAL_MAIN
-STAPPLER_SRCS_DIRS += stappler/src/platform/mac_main
+STAPPLER_SRCS_DIRS += components/stappler/src/platform/mac_main
 endif
 else ifeq ($(UNAME),Cygwin)
 ifndef LOCAL_MAIN
-STAPPLER_SRCS_DIRS += stappler/src/platform/win32_main
+STAPPLER_SRCS_DIRS += components/stappler/src/platform/win32_main
 endif
 else
 ifndef LOCAL_MAIN
-STAPPLER_SRCS_DIRS += stappler/src/platform/linux_main
+STAPPLER_SRCS_DIRS += components/stappler/src/platform/linux_main
 endif
 endif
 
