@@ -915,5 +915,34 @@ void Time::encodeCTime(char *date_str) {
 	*date_str++ = 0;
 }
 
+void Time::encodeIso8601(char *date_str) {
+	// [-]CCYY-MM-DDThh:mm:ssZ
+
+	sp_time_exp_t xt(*this, false);
+	int real_year;
+
+	real_year = 1900 + xt.tm_year;
+	*date_str++ = real_year / 1000 + '0';		// 1
+	*date_str++ = real_year % 1000 / 100 + '0';	// 2
+	*date_str++ = real_year % 100 / 10 + '0';	// 3
+	*date_str++ = real_year % 10 + '0';			// 4
+	*date_str++ = '-';							// 5
+	*date_str++ = (xt.tm_mon + 1) / 10 + '0';	// 6
+	*date_str++ = (xt.tm_mon + 1) % 10 + '0';	// 7
+	*date_str++ = '-';							// 8
+	*date_str++ = xt.tm_mday / 10 + '0';		// 9
+	*date_str++ = xt.tm_mday % 10 + '0';		// 10
+	*date_str++ = 'T';							// 11
+	*date_str++ = xt.tm_hour / 10 + '0';		// 12
+	*date_str++ = xt.tm_hour % 10 + '0';		// 13
+	*date_str++ = ':';							// 14
+	*date_str++ = xt.tm_min / 10 + '0';			// 15
+	*date_str++ = xt.tm_min % 10 + '0';			// 16
+	*date_str++ = ':';							// 17
+	*date_str++ = xt.tm_sec / 10 + '0';			// 18
+	*date_str++ = xt.tm_sec % 10 + '0';			// 19
+	*date_str++ = 'Z';							// 20
+	*date_str++ = 0;
+}
 
 NS_SP_END

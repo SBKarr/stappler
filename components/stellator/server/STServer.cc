@@ -701,4 +701,24 @@ ServerComponent *Server::getServerComponent(std::type_index name) const {
 	return nullptr;
 }
 
+const mem::Map<mem::String, const db::Scheme *> &Server::getSchemes() const {
+	return _config->schemes;
+}
+
+const mem::Map<const db::Scheme *, Server::ResourceScheme> &Server::getResources() const {
+	return _config->resources;
+}
+
+const mem::Map<mem::String, Server::RequestScheme> &Server::getRequestHandlers() const {
+	return _config->requests;
+}
+
+void Server::addComponentWithName(const mem::StringView &name, ServerComponent *comp) {
+	_config->components.emplace(name.str(), comp);
+	_config->typedComponents.emplace(std::type_index(typeid(*comp)), comp);
+	if (_config->childInit) {
+		comp->onChildInit(*this);
+	}
+}
+
 }

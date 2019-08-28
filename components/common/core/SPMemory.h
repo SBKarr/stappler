@@ -41,6 +41,8 @@ using Time = stappler::Time;
 using TimeInterval = stappler::TimeInterval;
 
 using StringView = stappler::StringView;
+using StringViewUtf8 = stappler::StringViewUtf8;
+using WideStringView = stappler::WideStringView;
 using BytesView = stappler::BytesView;
 
 using AllocBase = stappler::memory::AllocPool;
@@ -70,6 +72,9 @@ using Callback = stappler::memory::callback<T>;
 template <typename T, typename V>
 using Pair = std::pair<T, V>;
 
+template <typename T, typename V, typename Compare = std::less<void>>
+using dict = stappler::memory::dict<T, V, Compare>;
+
 using Value = stappler::data::ValueTemplate<stappler::memory::PoolInterface>;
 using Array = Value::ArrayType;
 using Dictionary = Value::DictionaryType;
@@ -82,6 +87,8 @@ inline auto writeData(const Value &data, EncodeFormat fmt = EncodeFormat()) -> B
 inline bool writeData(std::ostream &stream, const Value &data, EncodeFormat fmt = EncodeFormat()) {
 	return stappler::data::EncodeTraits<stappler::memory::PoolInterface>::write(stream, data, fmt);
 }
+
+using Mutex = toolkit::TypeTraits::mutex_type;
 
 }
 
@@ -135,6 +142,8 @@ inline auto writeData(const Value &data, EncodeFormat fmt = EncodeFormat()) -> B
 inline bool writeData(std::ostream &stream, const Value &data, EncodeFormat fmt = EncodeFormat()) {
 	return stappler::data::EncodeTraits<stappler::memory::StandartInterface>::write(stream, data, fmt);
 }
+
+using Mutex = std::mutex;
 
 }
 

@@ -1,17 +1,4 @@
-mixin components
-	p.components
-		if root
-			span.component.root= "Root: " + root
-		if dbName
-			span.component.db= "Database: " + dbName
-		if components
-			each c in components
-				span.component
-					span.name=c.name
-					|
-					|
-					span.version=c.version
-
+include virtual://html/components.pug
 include virtual://html/header.pug
 
 doctype html

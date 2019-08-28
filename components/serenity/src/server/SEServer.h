@@ -143,6 +143,8 @@ public: // httpd server info
 	operator server_rec *() const { return _server; }
 	operator bool () const { return _server != nullptr; }
 
+	mem::pool_t *getPool() const { return _server->process->pconf; }
+
 	Server next() const { return Server(_server->next); }
 
 	const String &getSessionKey() const;

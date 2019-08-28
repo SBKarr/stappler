@@ -143,7 +143,7 @@ struct HtmlJsonEncoder {
 		offsetted = false;
 	}
 
-	bool isObjectArray(const data::Array &arr) {
+	bool isObjectArray(const mem::Array &arr) {
 		for (auto &it : arr) {
 			if (!it.isDictionary()) {
 				return false;
@@ -152,7 +152,7 @@ struct HtmlJsonEncoder {
 		return true;
 	}
 
-	void onBeginArray(const data::Array &arr) {
+	void onBeginArray(const mem::Array &arr) {
 		(*stream) << '[';
 		if (!isObjectArray(arr)) {
 			++ depth;
@@ -163,7 +163,7 @@ struct HtmlJsonEncoder {
 		}
 	}
 
-	void onEndArray(const data::Array &arr) {
+	void onEndArray(const mem::Array &arr) {
 		if (!bstack.empty()) {
 			if (!bstack.back()) {
 				-- depth;
@@ -184,7 +184,7 @@ struct HtmlJsonEncoder {
 		popComplex = true;
 	}
 
-	void onBeginDict(const data::Dictionary &dict) {
+	void onBeginDict(const mem::Dictionary &dict) {
 		if (trackActions && actionsState == Key) {
 			actionsState = Dict;
 			(*stream) << "<span class=\"actions\">";
@@ -194,7 +194,7 @@ struct HtmlJsonEncoder {
 		}
 	}
 
-	void onEndDict(const data::Dictionary &dict) {
+	void onEndDict(const mem::Dictionary &dict) {
 		if (actionsState == Dict) {
 			actionsState = None;
 			(*stream) << "</span>";
@@ -376,7 +376,7 @@ void writeData(Request &rctx, std::basic_ostream<char> &stream, const Function<v
 
 int writeResourceFileData(Request &rctx, data::Value &&result) {
 	data::Value file(result.isArray()?move(result.getValue(0)):move(result));
-	auto path = storage::File::getFilesystemPath((uint64_t)file.getInteger("__oid"));
+	auto path = db::File::getFilesystemPath((uint64_t)file.getInteger("__oid"));
 
 	auto &queryData = rctx.getParsedQueryArgs();
 	if (queryData.getBool("stat")) {
@@ -405,7 +405,7 @@ int writeResourceFileData(Request &rctx, data::Value &&result) {
 int writeResourceData(Request &rctx, data::Value &&result, data::Value && origin) {
 	data::Value data(move(origin));
 
-	data.setInteger(apr_time_now(), "date");
+	data.setInteger(Time::now().toMicros(), "date");
 #if DEBUG
 	auto &debug = rctx.getDebugMessages();
 	if (!debug.empty()) {
@@ -431,7 +431,7 @@ int writeResourceFileHeader(Request &rctx, const data::Value &result) {
 		return HTTP_NOT_FOUND;
 	}
 
-	auto path = storage::File::getFilesystemPath((uint64_t)file.getInteger("__oid"));
+	auto path = db::File::getFilesystemPath((uint64_t)file.getInteger("__oid"));
 	auto &loc = file.getString("location");
 
 	if (!filesystem::exists(path) && loc.empty()) {
@@ -446,10 +446,11 @@ int writeResourceFileHeader(Request &rctx, const data::Value &result) {
 }
 
 bool writeFileHeaders(Request &rctx, const data::Value &file, const String &convertType) {
+#if SERENITY
 	auto req = rctx.request();
-	auto path = storage::File::getFilesystemPath(file.getInteger("__oid"));
+	auto path = db::File::getFilesystemPath(file.getInteger("__oid"));
 
-	req->filename = storage::File::getFilesystemPath(file.getInteger("__oid")).extract();
+	req->filename = db::File::getFilesystemPath(file.getInteger("__oid")).extract();
 
 	apr_stat(&req->finfo, req->filename, APR_FINFO_NORM, req->pool);
 	req->mtime = req->finfo.mtime;
@@ -488,8 +489,10 @@ bool writeFileHeaders(Request &rctx, const data::Value &file, const String &conv
 		}
 		rctx.setContentType(String(file.getString("type")));
 	}
-
 	return true;
+#else
+	return false;
+#endif
 }
 
 String makeEtag(uint32_t idHash, Time mtime) {

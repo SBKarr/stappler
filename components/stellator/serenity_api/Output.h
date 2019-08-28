@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2017-2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,25 +20,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "Define.h"
+#ifndef COMPONENTS_STELLATOR_SERENITY_API_OUTPUT_H_
+#define COMPONENTS_STELLATOR_SERENITY_API_OUTPUT_H_
 
-APLOG_USE_MODULE(serenity);
+#include "STOutput.h"
 
-#include "SPAprAllocator.cc"
-#include "SPAprFileStream.cc"
-#include "SPAprFilesystem.cc"
-#include "SEForward.cc"
-#include "SERoot.cc"
-#include "SEServer.cc"
-#include "SEServerComponent.cc"
-#include "SETask.cc"
-
-#include "SEConnection.cc"
-#include "SERequest.cc"
-#include "SEInputFilter.cc"
-#include "OutputFilter.cc"
-#include "MultipartParser.cc"
-#include "UrlEncodeParser.cc"
-
-#include "brotli_compress.cc"
-#include "mod_serenity.cc"
+#endif /* COMPONENTS_STELLATOR_SERENITY_API_OUTPUT_H_ */

@@ -333,7 +333,7 @@ static Resource *parseResource(storage::Resolver *resv, Vector<StringView> &path
 				} else {
 					return nullptr;
 				}
-			} else if (filter.starts_with("named-") == 0) {
+			} else if (filter.starts_with("named-")) {
 				filter += "named-"_len;
 				if (valid::validateIdentifier(filter)) {
 					if (!resv->selectByAlias(filter)) {

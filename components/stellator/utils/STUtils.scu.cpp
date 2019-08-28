@@ -30,3 +30,4 @@ THE SOFTWARE.
 #include "STContinueToken.cc"
 #include "STExternalSession.cc"
 #include "STJsonWebToken.cc"
+#include "STOutput.cc"

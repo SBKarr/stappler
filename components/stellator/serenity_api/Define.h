@@ -28,6 +28,8 @@ THE SOFTWARE.
 #include "STDefine.h"
 #include "STMemory.h"
 #include "SPUrl.h"
+#include "SPHtmlParser.h"
+#include "SPBitmap.h"
 
 #define NS_SA_BEGIN				namespace stellator::serenity {
 #define NS_SA_END				}
@@ -64,7 +66,15 @@ using DataReader = stappler::DataReader<Endianess>;
 using BytesView = stappler::BytesView;
 using CoderSource = stappler::CoderSource;
 
+using Bitmap = stappler::Bitmap;
+
+template <typename T>
+using Rc = stappler::Rc<T>;
+
 using sp_time_exp_t = stappler::sp_time_exp_t;
+
+template <size_t Size>
+using StackBuffer = stappler::StackBuffer<Size>;
 
 namespace string { using namespace stappler::string; }
 namespace base16 { using namespace stappler::base16; }
@@ -74,6 +84,9 @@ namespace valid { using namespace stappler::valid; }
 namespace filesystem { using namespace stappler::filesystem; }
 namespace filepath { using namespace stappler::filepath; }
 namespace search { using namespace stappler::search; }
+namespace hash { using namespace stappler::hash; }
+namespace html { using namespace stappler::html; }
+namespace log { using namespace stappler::log; }
 
 using std::forward;
 using std::move;
@@ -112,10 +125,11 @@ inline constexpr T minOf() {
 	return NumericLimits<T>::min();
 }
 
-template <typename... Args>
-inline auto pair(Args&&... args) -> decltype(std::make_pair(forward<Args>(args)...)) {
-	return std::make_pair(forward<Args>(args)...);
-}
+using stappler::pair;
+
+constexpr TimeInterval operator"" _sec ( unsigned long long int val ) { return TimeInterval::seconds((time_t)val); }
+constexpr TimeInterval operator"" _msec ( unsigned long long int val ) { return TimeInterval::milliseconds(val); }
+constexpr TimeInterval operator"" _mksec ( unsigned long long int val ) { return TimeInterval::microseconds(val); }
 
 }
 
@@ -158,7 +172,9 @@ using ReplaceFilterFn = db::ReplaceFilterFn;
 using FilterFn = db::FilterFn;
 using DefaultFn = db::DefaultFn;
 using FullTextViewFn = db::FullTextViewFn;
+using FullTextQueryFn = db::FullTextViewFn;
 
+using Action = db::Action;
 
 }
 

@@ -187,6 +187,15 @@ public:
 		return StringType(buf, 24);
 	}
 
+	// XML dateTime format
+	template <typename Interface = memory::DefaultInterface>
+	auto toIso8601() -> typename Interface::StringType {
+		using StringType = typename Interface::StringType;
+		char buf[20] = { 0 };
+		encodeIso8601(buf);
+		return StringType(buf);
+	}
+
     inline const Time operator+(const TimeInterval& v) const;
     inline Time& operator+=(const TimeInterval& v);
 
@@ -217,6 +226,7 @@ protected:
 
 	void encodeRfc822(char *);
 	void encodeCTime(char *);
+	void encodeIso8601(char *);
 };
 
 struct sp_time_exp_t {

@@ -101,9 +101,14 @@ public:
 	virtual int onTranslateName(Request &) override;
 
 	//virtual int onHandler(Request &) override;
+};
 
-protected:
-	Resource *_resource = nullptr;
+class HandlersGui : public RequestHandler {
+public:
+	virtual bool isRequestPermitted(Request &) override { return true; }
+	virtual int onTranslateName(Request &) override;
+
+	//virtual int onHandler(Request &) override;
 };
 
 class DocsGui : public RequestHandler {
@@ -112,9 +117,6 @@ public:
 	virtual int onTranslateName(Request &) override;
 
 	//virtual int onHandler(Request &) override;
-
-protected:
-	Resource *_resource = nullptr;
 };
 
 class VirtualFilesystem : public RequestHandler {

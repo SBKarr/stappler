@@ -67,7 +67,7 @@ a {
 	padding: 0;
 }
 
-.main > p.components > span.component {
+p.components > span.component {
 	font-family: "Roboto";
 	display: inline-block;
 	background-color: #64ffda;
@@ -76,18 +76,27 @@ a {
 	margin: 4px;
 }
 
-.main > p.components > span.component > span.version {
+p.components span.version {
 	color: #999;
 }
 
-.main > p.components > span.db {
+p.components > span.db {
 	background-color: #ffd180;
 	outline: 1px #e65100 solid;
 }
 
-.main > p.components > span.root {
+p.components > span.root {
 	background-color: #ea80fc;
 	outline: 1px #6a1b9a solid;
+}
+p.components > span.rootserver {
+	background-color: #eee;
+	outline: 1px #999 solid;
+}
+
+p.components > span.scheme {
+	background-color: #8c9eff;
+	outline: 1px #304ffe solid;
 }
 
 #output p {

@@ -111,4 +111,82 @@ int ErrorsGui::onTranslateName(Request &req) {
 	}
 }
 
+int HandlersGui::onTranslateName(Request &req) {
+	req.getResponseHeaders().emplace("WWW-Authenticate", req.server().getServerHostname());
+
+	auto u = req.getAuthorizedUser();
+	if (u && u->isAdmin()) {
+
+		auto &hdl = req.server().getRequestHandlers();
+
+		data::Value servh;
+		data::Value ret;
+		for (auto &it : hdl) {
+			auto &v = (it.second.component == "root") ? servh.emplace() : ret.emplace();
+			v.setValue(it.first, "name");
+			if (!it.second.data.isNull()) {
+				v.setValue(it.second.data, "data");
+			}
+			if (it.second.scheme) {
+				v.setString(it.second.scheme->getName(), "scheme");
+			}
+			if (!it.second.component.empty()) {
+				if (it.second.component == "root") {
+					v.setBool(true, "server");
+				}
+				v.setString(it.second.component, "component");
+			}
+			if (it.first.back() == '/') {
+				v.setBool(true, "forSubPaths");
+			}
+		}
+
+		for (auto &it : servh.asArray()) {
+			ret.addValue(move(it));
+		}
+
+		req.runPug("virtual://html/handlers.pug", [&] (pug::Context &exec, const pug::Template &tpl) -> bool {
+			exec.set("version", data::Value(getVersionString()));
+			exec.set("user", true, &u->getData());
+			exec.set("hasDb", data::Value(true));
+			exec.set("setup", data::Value(true));
+			exec.set("auth", data::Value({
+				pair("id", data::Value(u->getObjectId())),
+				pair("name", data::Value(u->getString("name")))
+			}));
+
+			if (auto iface = dynamic_cast<db::sql::SqlHandle *>(req.storage().interface())) {
+				iface->makeQuery([&] (db::sql::SqlQuery &query) {
+					query << "SELECT current_database();";
+					iface->selectQuery(query, [&] (db::sql::Result &qResult) {
+						if (!qResult.empty()) {
+							exec.set("dbName", data::Value(qResult.front().toString(0)));
+						}
+					});
+				});
+			}
+
+			data::Value components;
+			for (auto &it : req.server().getComponents()) {
+				components.addValue(data::Value({
+					pair("name", data::Value(it.second->getName())),
+					pair("version", data::Value(it.second->getVersion())),
+				}));
+			}
+			exec.set("components", move(components));
+			exec.set("root", data::Value(req.server().getDocumentRoot()));
+
+			exec.set("handlers", std::move(ret));
+			return true;
+		});
+		return DONE;
+	} else {
+		req.runPug("virtual://html/errors_unauthorized.pug", [&] (pug::Context &exec, const pug::Template &) -> bool {
+			exec.set("version", data::Value(getVersionString()));
+			return true;
+		});
+		return HTTP_UNAUTHORIZED;
+	}
+}
+
 NS_SA_EXT_END(tools)
