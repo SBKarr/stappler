@@ -123,7 +123,7 @@ void Adapter::scheduleAutoField(const Scheme &scheme, const Field &field, uint64
 		d->scheme = &scheme;
 		d->field = &field;
 		d->objects.emplace(id);
-		stappler::memory::pool::store(p, d, "Adapter.AutoField", [d, this] {
+		stappler::memory::pool::store(p, d, mem::toString(scheme.getName(), "_f_", field.getName()), [d, this] {
 			internals::scheduleAyncDbTask([this, d] (stappler::memory::pool_t *p) -> mem::Function<void(const Transaction &t)> {
 				auto vec = new (p) mem::Vector<uint64_t>(p);
 				for (auto &it : d->objects) {
