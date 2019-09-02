@@ -54,6 +54,7 @@ public:
 	static Rect calculateImageContentRect(const Rect &bbox, const Size &size, const BackgroundStyle &bg);
 
 	Canvas();
+	virtual ~Canvas();
 
 	virtual bool init();
 
@@ -110,7 +111,7 @@ protected:
 	void clearTess();
 	void flushBatch();
 
-	memory::MemPool _pool;
+	memory::pool_t * _pool = nullptr;
 
 	TESSalloc _tessAlloc;
 	TESStesselator *_fillTess = nullptr;

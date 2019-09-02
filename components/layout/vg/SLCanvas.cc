@@ -39,9 +39,9 @@ void tessLog(const char *msg) {
 NS_SP_EXTERN_END
 
 static void * staticPoolAlloc(void* userData, unsigned int size) {
-	memory::MemPool *pool = (memory::MemPool *)userData;
+	memory::pool_t *pool = (memory::pool_t *)userData;
 	size_t s = size;
-	return pool->alloc(s);
+	return memory::pool::palloc(pool, s);
 }
 
 static void staticPoolFree(void * userData, void * ptr) {
@@ -130,11 +130,19 @@ Rect Canvas::calculateImageContentRect(const Rect &bbox, const Size &size, const
 	return contentBox;
 }
 
-Canvas::Canvas() : _pool(memory::MemPool(memory::MemPool::ManagedRoot)), _tess(_pool.pool()), _stroke(_pool.pool()), _line(_pool.pool()) {
+Canvas::Canvas() : _pool(memory::pool::create(memory::pool::acquire())), _tess(_pool), _stroke(_pool), _line(_pool) {
 	memset(&_tessAlloc, 0, sizeof(_tessAlloc));
 	_tessAlloc.memalloc = &staticPoolAlloc;
 	_tessAlloc.memfree = &staticPoolFree;
 	_tessAlloc.userData = (void*)&_pool;
+}
+
+Canvas::~Canvas() {
+	_fillTess = nullptr;
+	_tess.force_clear();
+	_stroke.force_clear();
+	_line.force_clear();
+	memory::pool::destroy(_pool);
 }
 
 bool Canvas::init() {
@@ -420,7 +428,7 @@ void Canvas::clearTess() {
 	_stroke.force_clear();
 	_line.force_clear();
 	_vertexCount = 0;
-	_pool.clear();
+	memory::pool::clear(_pool);
 
 	_line.reserve(cap);
 }

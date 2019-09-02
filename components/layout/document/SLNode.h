@@ -80,8 +80,8 @@ public:
 	Node(Node &&);
 	Node &operator = (Node &&);
 
-	Node(const Node &) = delete;
-	Node &operator = (const Node &) = delete;
+	Node(const Node &) = default;
+	Node &operator = (const Node &) = default;
 
 	Node(Style &&style, WideString &&);
 

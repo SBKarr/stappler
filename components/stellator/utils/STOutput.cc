@@ -446,7 +446,7 @@ int writeResourceFileHeader(Request &rctx, const data::Value &result) {
 }
 
 bool writeFileHeaders(Request &rctx, const data::Value &file, const String &convertType) {
-#if SERENITY
+#if SPAPR
 	auto req = rctx.request();
 	auto path = db::File::getFilesystemPath(file.getInteger("__oid"));
 

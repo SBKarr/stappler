@@ -126,9 +126,9 @@ public:
 	}
 
 	template <typename ...Args>
-	void emplace_back(Args &&  ...args) {
+	reference emplace_back(Args &&  ...args) {
 		reserve(size() + 1, true); // reserve should switch mode if required
-		emplace_back_unsafe(std::forward<Args>(args)...);
+		return emplace_back_unsafe(std::forward<Args>(args)...);
 	}
 
 	void pop_back() {
@@ -141,9 +141,11 @@ public:
 	}
 
 	template <typename ...Args>
-	void emplace_back_unsafe(Args &&  ...args) {
+	reference emplace_back_unsafe(Args &&  ...args) {
 		const auto s = modify_size(1);
+		auto ptr = data() + s - 1;
 		_allocator.construct(data() + s - 1, std::forward<Args>(args)...);
+		return *ptr;
 	}
 
 	template <typename... Args>

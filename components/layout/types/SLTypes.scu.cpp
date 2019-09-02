@@ -44,8 +44,3 @@ THE SOFTWARE.
 #include "SLVec2.cc"
 #include "SLVec3.cc"
 #include "SLVec4.cc"
-
-#include "SLCanvas.cc"
-#include "SLDraw.cc"
-#include "SLImage.cc"
-#include "SLPath.cc"

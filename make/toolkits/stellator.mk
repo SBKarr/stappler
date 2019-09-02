@@ -30,7 +30,8 @@ STELLATOR_PRECOMPILED_HEADERS += \
 STELLATOR_SRCS_DIRS += \
 	components/common \
 	components/stellator \
-	components/spug
+	components/spug \
+	components/layout/types
 
 STELLATOR_SRCS_OBJS += 
 STELLATOR_INCLUDES_DIRS += \
@@ -38,7 +39,13 @@ STELLATOR_INCLUDES_DIRS += \
 	components/stellator \
 	components/spug
 
-STELLATOR_INCLUDES_OBJS += $(OSTYPE_INCLUDE)
+STELLATOR_INCLUDES_OBJS += \
+	$(OSTYPE_INCLUDE) \
+	components/layout/types \
+	components/layout/style \
+	components/layout/document \
+	components/layout/vg \
+	components/layout
 
 TOOLKIT_NAME := STELLATOR
 TOOLKIT_TITLE := stellator

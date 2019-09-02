@@ -37,8 +37,6 @@ struct AllocBase {
 // Root class for pool allocated objects
 // Use with care
 struct AllocPool {
-	~AllocPool() { }
-
 	void *operator new(size_t size) noexcept;
 	void *operator new(size_t size, pool_t *pool) noexcept;
 	void *operator new(size_t size, void *mem) noexcept;
@@ -88,9 +86,6 @@ struct __AllocatorTraits<T, true> {
 	static void move_rewrite(T *dest, size_t, T *source, size_t count, Alloc &alloc) noexcept {
 		memmove(dest, source, count * sizeof(T));
 	}
-
-	/*template <typename ...Args>
-	static void construct(T * p, Args &&...args) noexcept { }*/
 
 	static void destroy(pool_t *pool, T *p) noexcept { }
 

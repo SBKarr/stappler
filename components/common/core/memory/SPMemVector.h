@@ -196,8 +196,8 @@ public:
 	}
 
 	template< class... Args >
-	void emplace_back( Args&&... args ) {
-		_mem.emplace_back(std::forward<Args>(args)...);
+	reference emplace_back( Args&&... args ) {
+		return _mem.emplace_back(std::forward<Args>(args)...);
 	}
 
 	void push_back( const Type& value ) {

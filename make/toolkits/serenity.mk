@@ -31,12 +31,13 @@ SERENITY_SRCS_DIRS += \
 	components/serenity/src \
 	components/stellator/db \
 	components/stellator/utils \
+	components/layout/types
 
 SERENITY_PRECOMPILED_HEADERS += \
 	components/stellator/serenity_api/Define.h \
 	components/common/core/SPCommon.h
 
-SERENITY_FLAGS := -DSPAPR
+SERENITY_FLAGS := -DSPAPR -DSERENITY
 
 SERENITY_SRCS_OBJS += \
 	components/document/src/mmd/common/MMDEngine.scu.cpp \
@@ -56,7 +57,12 @@ SERENITY_INCLUDES_DIRS += \
 SERENITY_INCLUDES_OBJS += \
 	components/document/src/mmd/common \
 	components/document/src/mmd/processors \
-	components/serenity/ext/cityhash
+	components/serenity/ext/cityhash \
+	components/layout/types \
+	components/layout/style \
+	components/layout/document \
+	components/layout/vg \
+	components/layout
 
 SERENITY_LIBS += -L$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH) $(OSTYPE_SERENITY_LIBS) -lpq
 
