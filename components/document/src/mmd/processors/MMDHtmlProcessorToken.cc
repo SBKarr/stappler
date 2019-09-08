@@ -860,7 +860,7 @@ void HtmlProcessor::exportTokenMath(std::ostream &out, token *t) {
 		return;
 	}
 
-	if (spExt) {
+	if (spExt || safeMath) {
 		switch (t->type) {
 			case MATH_BRACKET_OPEN:
 				out << "\\[";

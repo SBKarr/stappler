@@ -42,77 +42,77 @@ protected:
 	virtual void processMeta(const StringView &, const StringView &);
 	virtual void processHtml(const Content &, const StringView &, const Token &);
 
-	void pad(std::ostream &, uint16_t num);
-	void printHtml(std::ostream &, const StringView &);
-	void printLocalizedChar(std::ostream &, uint16_t type);
+	virtual void pad(std::ostream &, uint16_t num);
+	virtual void printHtml(std::ostream &, const StringView &);
+	virtual void printLocalizedChar(std::ostream &, uint16_t type);
 
-	bool shouldWriteMeta(const StringView &);
+	virtual bool shouldWriteMeta(const StringView &);
 
-	void startCompleteHtml(const Content &c);
-	void endCompleteHtml();
+	virtual void startCompleteHtml(const Content &c);
+	virtual void endCompleteHtml();
 
-	void exportToken(std::ostream &, token *t);
-	void exportTokenTree(std::ostream &, token *t);
+	virtual void exportToken(std::ostream &, token *t);
+	virtual void exportTokenTree(std::ostream &, token *t);
 
-	void exportTokenRaw(std::ostream &, token *t);
-	void exportTokenTreeRaw(std::ostream &, token *t);
+	virtual void exportTokenRaw(std::ostream &, token *t);
+	virtual void exportTokenTreeRaw(std::ostream &, token *t);
 
-	void makeTokenHash(const Function<void(const StringView &)> &, token *t);
-	void makeTokenTreeHash(const Function<void(const StringView &)> &, token *t);
+	virtual void makeTokenHash(const Function<void(const StringView &)> &, token *t);
+	virtual void makeTokenTreeHash(const Function<void(const StringView &)> &, token *t);
 
-	void exportTokenMath(std::ostream &, token *t);
-	void exportTokenTreeMath(std::ostream &, token *t);
+	virtual void exportTokenMath(std::ostream &, token *t);
+	virtual void exportTokenTreeMath(std::ostream &, token *t);
 
-	void exportFootnoteList(std::ostream &);
-	void exportGlossaryList(std::ostream &);
-	void exportCitationList(std::ostream &);
+	virtual void exportFootnoteList(std::ostream &);
+	virtual void exportGlossaryList(std::ostream &);
+	virtual void exportCitationList(std::ostream &);
 
-	void exportBlockquote(std::ostream &, token *t);
-	void exportDefinition(std::ostream &, token *t);
-	void exportDefList(std::ostream &, token *t);
-	void exportDefTerm(std::ostream &, token *t);
-	void exportFencedCodeBlock(std::ostream &,token *t);
-	void exportIndentedCodeBlock(std::ostream &, token *t);
-	void exportHeader(std::ostream &, token *t);
-	void exportHr(std::ostream &);
-	void exportHtml(std::ostream &, token *t);
-	void exportListBulleted(std::ostream &, token *t);
-	void exportListEnumerated(std::ostream &, token *t);
-	void exportListItem(std::ostream &, token *t, bool tight);
-	void exportDefinitionBlock(std::ostream &, token *t);
-	void exportHeaderText(std::ostream &, token *t, uint8_t level);
-	void exportTable(std::ostream &, token *t);
-	void exportTableHeader(std::ostream &, token *t);
-	void exportTableSection(std::ostream &, token *t);
-	void exportTableCell(std::ostream &, token *t);
-	void exportTableRow(std::ostream &, token *t);
-	void exportToc(std::ostream &, token *t);
-	void exportTocEntry(std::ostream &, size_t &counter, uint16_t level);
+	virtual void exportBlockquote(std::ostream &, token *t);
+	virtual void exportDefinition(std::ostream &, token *t);
+	virtual void exportDefList(std::ostream &, token *t);
+	virtual void exportDefTerm(std::ostream &, token *t);
+	virtual void exportFencedCodeBlock(std::ostream &,token *t);
+	virtual void exportIndentedCodeBlock(std::ostream &, token *t);
+	virtual void exportHeader(std::ostream &, token *t);
+	virtual void exportHr(std::ostream &);
+	virtual void exportHtml(std::ostream &, token *t);
+	virtual void exportListBulleted(std::ostream &, token *t);
+	virtual void exportListEnumerated(std::ostream &, token *t);
+	virtual void exportListItem(std::ostream &, token *t, bool tight);
+	virtual void exportDefinitionBlock(std::ostream &, token *t);
+	virtual void exportHeaderText(std::ostream &, token *t, uint8_t level);
+	virtual void exportTable(std::ostream &, token *t);
+	virtual void exportTableHeader(std::ostream &, token *t);
+	virtual void exportTableSection(std::ostream &, token *t);
+	virtual void exportTableCell(std::ostream &, token *t);
+	virtual void exportTableRow(std::ostream &, token *t);
+	virtual void exportToc(std::ostream &, token *t);
+	virtual void exportTocEntry(std::ostream &, size_t &counter, uint16_t level);
 
-	void exportBacktick(std::ostream &, token *t);
-	void exportPairBacktick(std::ostream &, token *t);
-	void exportPairAngle(std::ostream &, token *t);
-	void exportPairBracketImage(std::ostream &, token *t);
-	void exportPairBracketAbbreviation(std::ostream &, token *t);
-	void exportPairBracketCitation(std::ostream &, token *t);
-	void exportPairBracketFootnote(std::ostream &, token *t);
-	void exportPairBracketGlossary(std::ostream &, token *t);
-	void exportPairBracketVariable(std::ostream &, token *t);
+	virtual void exportBacktick(std::ostream &, token *t);
+	virtual void exportPairBacktick(std::ostream &, token *t);
+	virtual void exportPairAngle(std::ostream &, token *t);
+	virtual void exportPairBracketImage(std::ostream &, token *t);
+	virtual void exportPairBracketAbbreviation(std::ostream &, token *t);
+	virtual void exportPairBracketCitation(std::ostream &, token *t);
+	virtual void exportPairBracketFootnote(std::ostream &, token *t);
+	virtual void exportPairBracketGlossary(std::ostream &, token *t);
+	virtual void exportPairBracketVariable(std::ostream &, token *t);
 
-	void exportCriticAdd(std::ostream &, token *t);
-	void exportCriticDel(std::ostream &, token *t);
-	void exportCriticCom(std::ostream &, token *t);
-	void exportCriticHi(std::ostream &, token *t);
-	void exportCriticPairSubDel(std::ostream &, token *t);
-	void exportCriticPairSubAdd(std::ostream &, token *t);
+	virtual void exportCriticAdd(std::ostream &, token *t);
+	virtual void exportCriticDel(std::ostream &, token *t);
+	virtual void exportCriticCom(std::ostream &, token *t);
+	virtual void exportCriticHi(std::ostream &, token *t);
+	virtual void exportCriticPairSubDel(std::ostream &, token *t);
+	virtual void exportCriticPairSubAdd(std::ostream &, token *t);
 
-	void exportMath(std::ostream &, token *t);
-	void exportSubscript(std::ostream &, token *t);
-	void exportSuperscript(std::ostream &, token *t);
-	void exportLineBreak(std::ostream &, token *t);
+	virtual void exportMath(std::ostream &, token *t);
+	virtual void exportSubscript(std::ostream &, token *t);
+	virtual void exportSuperscript(std::ostream &, token *t);
+	virtual void exportLineBreak(std::ostream &, token *t);
 
-	void exportLink(std::ostream &, token * text, Content::Link * link);
-	void exportImage(std::ostream &, token * text, Content::Link * link, bool is_figure);
+	virtual void exportLink(std::ostream &, token * text, Content::Link * link);
+	virtual void exportImage(std::ostream &, token * text, Content::Link * link, bool is_figure);
 
 	virtual void pushHtmlEntity(std::ostream &, token *t);
 
@@ -125,6 +125,7 @@ protected:
 	virtual void pushHtmlEntityText(std::ostream &out, StringView r, token *t = nullptr);
 
 	bool spExt = false;
+	bool safeMath = false;
 	uint8_t html_header_level = maxOf<uint8_t>();
 	std::ostream *output = nullptr;
 	StringStream buffer;

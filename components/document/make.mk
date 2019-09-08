@@ -23,11 +23,13 @@ DOCUMENT_MAKEFILE_DIR := $(patsubst $(LOCAL_ROOT)/%,%,$(dir $(lastword $(MAKEFIL
 
 DOCUMENT_SOURCE_DIR_COMMON := \
 	$(DOCUMENT_MAKEFILE_DIR)src/mmd/common \
-	$(DOCUMENT_MAKEFILE_DIR)src/mmd/internals
+	$(DOCUMENT_MAKEFILE_DIR)src/mmd/internals \
+	$(DOCUMENT_MAKEFILE_DIR)src/odf
 
 DOCUMENT_INCLUDE_COMMON := \
 	$(DOCUMENT_MAKEFILE_DIR)src/mmd/common \
-	$(DOCUMENT_MAKEFILE_DIR)src/mmd/processors
+	$(DOCUMENT_MAKEFILE_DIR)src/mmd/processors \
+	$(DOCUMENT_MAKEFILE_DIR)src/odf
 
 
 DOCUMENT_SOURCE_DIR_STAPPLER := \
