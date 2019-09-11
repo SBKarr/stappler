@@ -125,7 +125,7 @@ String formatMetaDouble(double val) {
 }
 
 String formatMetaDateTime(Time val) {
-	return val.toIso8601();
+	return val.toIso8601<Interface>();
 }
 
 String formatMetaBoolean(bool val) {

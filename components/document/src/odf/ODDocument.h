@@ -67,11 +67,15 @@ public: // meta
 	StringView getUserMeta(const StringView &) const;
 
 	style::Style *getDefaultStyle(style::Style::Family);
-	style::Style *addCommonStyle(const StringView &, style::Style::Family, const style::Style * = nullptr, const StringView & = StringView());
-	style::Style *addAutoStyle(const StringView &, style::Style::Family, const style::Style * = nullptr, const StringView & = StringView());
-	style::Style *addAutoStyle(style::Style::Family, const style::Style * = nullptr, const StringView & = StringView());
 
-	style::Style *addContentStyle(style::Style::Family, const style::Style * = nullptr, const StringView & = StringView());
+	style::Style *addCommonStyle(const StringView &, style::Style::Family, const StringView & = StringView());
+	style::Style *addCommonStyle(const StringView &, const style::Style *, const StringView & = StringView());
+
+	style::Style *addAutoStyle(style::Style::Family, const StringView & = StringView());
+	style::Style *addAutoStyle(const style::Style *, const StringView & = StringView());
+
+	style::Style *addContentStyle(style::Style::Family, const StringView & = StringView());
+	style::Style *addContentStyle(const style::Style *, const StringView & = StringView());
 
 	style::Style *getCommonStyle(const StringView &);
 
@@ -84,7 +88,7 @@ protected:
 	StringView getMeta(MetaType) const;
 
 	void writeMeta(const WriteCallback &, bool pretty) const;
-	void writeStyles(const WriteCallback &, bool pretty) const;
+	void writeStyles(const WriteCallback &, bool pretty, bool withContent = false) const;
 	void writeContentNode(const WriteCallback &, const Node &, bool pretty) const;
 
 	DocumentType _type;
@@ -96,11 +100,9 @@ protected:
 	Map<style::StringId, String> _stringPool;
 
 	Map<style::Style::Family, style::Style> _defaultStyles;
-	Vector<style::Style *> _styles;
-	//Vector<style::Style *> _masterStyles;
 	Vector<style::Style *> _autoStyles;
 	Vector<style::Style *> _contentStyles;
-	Map<StringView, style::Style *> _commonStyles;
+	Map<String, style::Style *> _commonStyles;
 
 	Map<String, MasterPage> _masterPages;
 	size_t _autoStyleCount = 0;

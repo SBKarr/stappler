@@ -9,7 +9,7 @@ Value::Value() {
 }
 
 bool Margin::isSingle() const {
-	return top == bottom && left == right && left == top && top;
+	return top == bottom && left == right && left == top && top.isValid();
 }
 
 
@@ -171,7 +171,7 @@ STYLE_SETTER(		PagePaddingBottom, Metric, pageLayout)
 STYLE_SETTER(		PagePaddingLeft, Metric, pageLayout)
 STYLE_SETTER(		PageHeight, Metric, pageLayout)
 STYLE_SETTER(		PageWidth, Metric, pageLayout)
-STYLE_SETTER(		PageFirstPageNumber, Metric, pageLayout)
+STYLE_SETTER(		PageFirstPageNumber, uint32_t, pageLayout)
 STYLE_SETTER(		PageFootnoteMaxHeight, Metric, pageLayout)
 
 STYLE_SETTER(		TableBackgroundColor, Color3B, table)
@@ -694,19 +694,19 @@ void Style::writePageProperties(const WriteCallback &cb, const Callback<StringVi
 	if (margin.isSingle()) {
 		cb << " fo:margin=\"" << margin.top << "\"";
 	} else {
-		if (margin.top) { cb << " fo:margin-top=\"" << margin.top << "\""; }
-		if (margin.left) { cb << " fo:margin-left=\"" << margin.left << "\""; }
-		if (margin.bottom) { cb << " fo:margin-bottom=\"" << margin.bottom << "\""; }
-		if (margin.right) { cb << " fo:margin-right=\"" << margin.right << "\""; }
+		if (margin.top.isValid()) { cb << " fo:margin-top=\"" << margin.top << "\""; }
+		if (margin.left.isValid()) { cb << " fo:margin-left=\"" << margin.left << "\""; }
+		if (margin.bottom.isValid()) { cb << " fo:margin-bottom=\"" << margin.bottom << "\""; }
+		if (margin.right.isValid()) { cb << " fo:margin-right=\"" << margin.right << "\""; }
 	}
 
 	if (padding.isSingle()) {
 		cb << " fo:padding=\"" << padding.top << "\"";
 	} else {
-		if (padding.top) { cb << " fo:padding-top=\"" << padding.top << "\""; }
-		if (padding.left) { cb << " fo:padding-left=\"" << padding.left << "\""; }
-		if (padding.bottom) { cb << " fo:padding-bottom=\"" << padding.bottom << "\""; }
-		if (padding.right) { cb << " fo:padding-right=\"" << padding.right << "\""; }
+		if (padding.top.isValid()) { cb << " fo:padding-top=\"" << padding.top << "\""; }
+		if (padding.left.isValid()) { cb << " fo:padding-left=\"" << padding.left << "\""; }
+		if (padding.bottom.isValid()) { cb << " fo:padding-bottom=\"" << padding.bottom << "\""; }
+		if (padding.right.isValid()) { cb << " fo:padding-right=\"" << padding.right << "\""; }
 	}
 
 	cb << "/>";
@@ -941,19 +941,19 @@ void Style::writeStyleProperties(const WriteCallback &cb, const Callback<StringV
 		if (margin.isSingle()) {
 			cb << " fo:margin=\"" << margin.top << "\"";
 		} else {
-			if (margin.top) { cb << " fo:margin-top=\"" << margin.top << "\""; }
-			if (margin.left) { cb << " fo:margin-left=\"" << margin.left << "\""; }
-			if (margin.bottom) { cb << " fo:margin-bottom=\"" << margin.bottom << "\""; }
-			if (margin.right) { cb << " fo:margin-right=\"" << margin.right << "\""; }
+			if (margin.top.isValid()) { cb << " fo:margin-top=\"" << margin.top << "\""; }
+			if (margin.left.isValid()) { cb << " fo:margin-left=\"" << margin.left << "\""; }
+			if (margin.bottom.isValid()) { cb << " fo:margin-bottom=\"" << margin.bottom << "\""; }
+			if (margin.right.isValid()) { cb << " fo:margin-right=\"" << margin.right << "\""; }
 		}
 
 		if (padding.isSingle()) {
 			cb << " fo:padding=\"" << padding.top << "\"";
 		} else {
-			if (padding.top) { cb << " fo:padding-top=\"" << padding.top << "\""; }
-			if (padding.left) { cb << " fo:padding-left=\"" << padding.left << "\""; }
-			if (padding.bottom) { cb << " fo:padding-bottom=\"" << padding.bottom << "\""; }
-			if (padding.right) { cb << " fo:padding-right=\"" << padding.right << "\""; }
+			if (padding.top.isValid()) { cb << " fo:padding-top=\"" << padding.top << "\""; }
+			if (padding.left.isValid()) { cb << " fo:padding-left=\"" << padding.left << "\""; }
+			if (padding.bottom.isValid()) { cb << " fo:padding-bottom=\"" << padding.bottom << "\""; }
+			if (padding.right.isValid()) { cb << " fo:padding-right=\"" << padding.right << "\""; }
 		}
 
 		cb << "/>";
@@ -988,10 +988,10 @@ void Style::writeStyleProperties(const WriteCallback &cb, const Callback<StringV
 		if (margin.isSingle()) {
 			cb << " fo:margin=\"" << margin.top << "\"";
 		} else {
-			if (margin.top) { cb << " fo:margin-top=\"" << margin.top << "\""; }
-			if (margin.left) { cb << " fo:margin-left=\"" << margin.left << "\""; }
-			if (margin.bottom) { cb << " fo:margin-bottom=\"" << margin.bottom << "\""; }
-			if (margin.right) { cb << " fo:margin-right=\"" << margin.right << "\""; }
+			if (margin.top.isValid()) { cb << " fo:margin-top=\"" << margin.top << "\""; }
+			if (margin.left.isValid()) { cb << " fo:margin-left=\"" << margin.left << "\""; }
+			if (margin.bottom.isValid()) { cb << " fo:margin-bottom=\"" << margin.bottom << "\""; }
+			if (margin.right.isValid()) { cb << " fo:margin-right=\"" << margin.right << "\""; }
 		}
 
 		cb << "/>";
@@ -1076,10 +1076,10 @@ void Style::writeStyleProperties(const WriteCallback &cb, const Callback<StringV
 		if (padding.isSingle()) {
 			cb << " fo:padding=\"" << padding.top << "\"";
 		} else {
-			if (padding.top) { cb << " fo:padding-top=\"" << padding.top << "\""; }
-			if (padding.left) { cb << " fo:padding-left=\"" << padding.left << "\""; }
-			if (padding.bottom) { cb << " fo:padding-bottom=\"" << padding.bottom << "\""; }
-			if (padding.right) { cb << " fo:padding-right=\"" << padding.right << "\""; }
+			if (padding.top.isValid()) { cb << " fo:padding-top=\"" << padding.top << "\""; }
+			if (padding.left.isValid()) { cb << " fo:padding-left=\"" << padding.left << "\""; }
+			if (padding.bottom.isValid()) { cb << " fo:padding-bottom=\"" << padding.bottom << "\""; }
+			if (padding.right.isValid()) { cb << " fo:padding-right=\"" << padding.right << "\""; }
 		}
 
 		if (borderleft.style != LineStyle::None) { cb << " fo:border-left=\"" << borderleft << "\""; }
@@ -1226,24 +1226,54 @@ void Style::writeStyleProperties(const WriteCallback &cb, const Callback<StringV
 		if (margin.isSingle()) {
 			cb << " fo:margin=\"" << margin.top << "\"";
 		} else {
-			if (margin.top) { cb << " fo:margin-top=\"" << margin.top << "\""; }
-			if (margin.left) { cb << " fo:margin-left=\"" << margin.left << "\""; }
-			if (margin.bottom) { cb << " fo:margin-bottom=\"" << margin.bottom << "\""; }
-			if (margin.right) { cb << " fo:margin-right=\"" << margin.right << "\""; }
+			if (margin.top.isValid()) { cb << " fo:margin-top=\"" << margin.top << "\""; }
+			if (margin.left.isValid()) { cb << " fo:margin-left=\"" << margin.left << "\""; }
+			if (margin.bottom.isValid()) { cb << " fo:margin-bottom=\"" << margin.bottom << "\""; }
+			if (margin.right.isValid()) { cb << " fo:margin-right=\"" << margin.right << "\""; }
 		}
 
 		if (padding.isSingle()) {
 			cb << " fo:padding=\"" << padding.top << "\"";
 		} else {
-			if (padding.top) { cb << " fo:padding-top=\"" << padding.top << "\""; }
-			if (padding.left) { cb << " fo:padding-left=\"" << padding.left << "\""; }
-			if (padding.bottom) { cb << " fo:padding-bottom=\"" << padding.bottom << "\""; }
-			if (padding.right) { cb << " fo:padding-right=\"" << padding.right << "\""; }
+			if (padding.top.isValid()) { cb << " fo:padding-top=\"" << padding.top << "\""; }
+			if (padding.left.isValid()) { cb << " fo:padding-left=\"" << padding.left << "\""; }
+			if (padding.bottom.isValid()) { cb << " fo:padding-bottom=\"" << padding.bottom << "\""; }
+			if (padding.right.isValid()) { cb << " fo:padding-right=\"" << padding.right << "\""; }
 		}
 
 		cb << "/>";
 		if (pretty) { cb << "\n"; }
 	}
+}
+
+String Metric::toString() const {
+	StringStream cb;
+	switch (metric) {
+	case Metric::Units::None: cb << "none"; break;
+	case Metric::Units::Percent: cb << floatValue * 100.0f << "%"; break;
+	case Metric::Units::Float: cb << floatValue; break;
+	case Metric::Units::Integer: cb << signedValue; break;
+	case Metric::Units::Custom:
+		switch (customValue) {
+		case Metric::Auto: cb << "auto"; break;
+		case Metric::Normal: cb << "normal"; break;
+		case Metric::Bold: cb << "bold"; break;
+		case Metric::Thin: cb << "thin"; break;
+		case Metric::Medium: cb << "medium"; break;
+		case Metric::Thick: cb << "thick"; break;
+		case Metric::Scale: cb << "scale"; break;
+		case Metric::ScaleMin: cb << "scale-min"; break;
+		}
+		break;
+	case Metric::Units::Cm: cb << floatValue << "cm"; break;
+	case Metric::Units::Mm: cb << floatValue << "mm"; break;
+	case Metric::Units::In: cb << floatValue << "in"; break;
+	case Metric::Units::Pt: cb << floatValue << "pt"; break;
+	case Metric::Units::Pc: cb << floatValue << "pc"; break;
+	case Metric::Units::Px: cb << floatValue << "px"; break;
+	case Metric::Units::Em: cb << floatValue << "em"; break;
+	}
+	return cb.str();
 }
 
 }

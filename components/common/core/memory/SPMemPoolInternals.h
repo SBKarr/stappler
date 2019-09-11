@@ -142,6 +142,7 @@ struct allocator_t {
 };
 
 struct pool_t {
+	const char *tag = nullptr;
 	pool_t *parent = nullptr;
 	pool_t *child = nullptr;
 	pool_t *sibling = nullptr;

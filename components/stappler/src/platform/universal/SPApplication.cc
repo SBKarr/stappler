@@ -76,8 +76,8 @@ bool Application::isApplicationExists() {
 
 Application::Application() {
 	memory::pool::initialize();
-	_applicationPool = memory::pool::create(memory::pool::acquire());
-	_framePool = memory::pool::create(_applicationPool);
+	_applicationPool = memory::pool::createTagged(memory::pool::acquire(), "Application");
+	_framePool = memory::pool::createTagged(_applicationPool, "ApplicationFrame");
 	memory::pool::push(_applicationPool);
 	s_atomicApplicationExists.store(true);
 }

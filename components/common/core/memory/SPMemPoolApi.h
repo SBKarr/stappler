@@ -67,6 +67,12 @@ pool_t *create();
 // creates managed pool (managed by root, if parent in mullptr)
 pool_t *create(pool_t *);
 
+// creates unmanaged pool
+pool_t *createTagged(const char *);
+
+// creates managed pool (managed by root, if parent in mullptr)
+pool_t *createTagged(pool_t *, const char *);
+
 void destroy(pool_t *);
 void clear(pool_t *);
 

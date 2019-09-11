@@ -42,20 +42,20 @@ public:
 
 	static LocaleManager *getInstance() {
 		if (!s_sharedInstance) {
-			memory::MemPool pool(memory::MemPool::ManagedRoot);
-			memory::pool::push(pool);
-			s_sharedInstance = new LocaleManager(move(pool));
+			auto p = memory::pool::createTagged(nullptr, "LocaleManager");
+			memory::pool::push(p);
+			s_sharedInstance = new LocaleManager(p);
 			memory::pool::pop();
 		}
 		return s_sharedInstance;
 	}
 
-	LocaleManager(memory::MemPool &&p) : _defaultTime{
+	LocaleManager(memory::pool_t *p) : _defaultTime{
 		"today",
 		"yesterday",
 		"jan", "feb", "mar", "apr", "may", "jun",
 		"jul", "aug", "sep", "oct", "nov", "dec"
-	}, _pool(move(p)) { }
+	}, _pool(p) { }
 
 	void define(const StringView &locale, LocaleInitList &&init) {
 		memory::pool::push(_pool);
@@ -391,7 +391,7 @@ protected:
 	memory::map<memory::string, std::array<memory::string, toInt(TimeTokens::Max)>> _timeTokens;
 	std::array<memory::string, toInt(TimeTokens::Max)> _defaultTime;
 
-	memory::MemPool _pool;
+	memory::pool_t *_pool;
 };
 
 LocaleManager *LocaleManager::s_sharedInstance = nullptr;

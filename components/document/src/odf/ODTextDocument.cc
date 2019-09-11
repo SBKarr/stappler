@@ -75,20 +75,28 @@ static constexpr auto s_xml_ns_styles = R"(xmlns:office="urn:oasis:names:tc:open
 
 static constexpr auto s_xml_ns_meta = R"(xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" xmlns:ooo="http://openoffice.org/2004/office" xmlns:grddl="http://www.w3.org/2003/g/data-view#" office:version="1.2")";
 
-TextDocument::TextDocument()
-: Document(DocumentType::Text), _content("office:text"/*, Map<String, String>{ stappler::pair("text:use-soft-page-breaks", "true") }*/) {
-	addFunctionalFile("settings.xml", "text/xml", [this] (const WriteCallback &cb) {
-		writeSettingsFile(cb);
-	});
-	addFunctionalFile("meta.xml", "text/xml", [this] (const WriteCallback &cb) {
-		writeMetaFile(cb);
-	});
-	addFunctionalFile("content.xml", "text/xml", [this] (const WriteCallback &cb) {
-		writeContentFile(cb);
-	});
-	addFunctionalFile("styles.xml", "text/xml", [this] (const WriteCallback &cb) {
-		writeStyleFile(cb);
-	});
+TextDocument::TextDocument(bool singleDocument)
+: Document(DocumentType::Text)
+, _content("office:text"/*, Map<String, String>{ stappler::pair("text:use-soft-page-breaks", "true") }*/)
+, _singleDocument(singleDocument) {
+	if (_singleDocument) {
+		addFunctionalFile("content.xml", "text/xml", [this] (const WriteCallback &cb) {
+			writeSingleContentFile(cb);
+		});
+	} else {
+		addFunctionalFile("settings.xml", "text/xml", [this] (const WriteCallback &cb) {
+			writeSettingsFile(cb);
+		});
+		addFunctionalFile("meta.xml", "text/xml", [this] (const WriteCallback &cb) {
+			writeMetaFile(cb);
+		});
+		addFunctionalFile("content.xml", "text/xml", [this] (const WriteCallback &cb) {
+			writeContentFile(cb);
+		});
+		addFunctionalFile("styles.xml", "text/xml", [this] (const WriteCallback &cb) {
+			writeStyleFile(cb);
+		});
+	}
 }
 
 void TextDocument::addFileFont(const StringView &name, Vector<Pair<File, String>> &&val, const StringView &family, Font::Generic gen, Font::Pitch pitch) {
@@ -126,12 +134,41 @@ void TextDocument::addFamilyFont(const StringView &name, const StringView &famil
 	}
 }
 
+void TextDocument::writeSingleContentFile(const WriteCallback &cb) {
+	cb << R"(<?xml version="1.0" encoding="UTF-8"?>)" << "\n" << "<office:document " << s_xml_ns << ">";
+
+	bool pretty = false;
+
+	writeMeta(cb, pretty);
+
+	cb << R"(<office:settings>
+	<config:config-item-set config:name="ooo:configuration-settings">
+		<config:config-item config:name="StylesNoDefault" config:type="boolean">true</config:config-item>
+		<config:config-item config:name="LoadReadonly" config:type="boolean">true</config:config-item>
+		<config:config-item config:name="EmbedFonts" config:type="boolean">true</config:config-item>
+		<config:config-item config:name="PrintGraphics" config:type="boolean">true</config:config-item>
+	</config:config-item-set>
+</office:settings>
+)";
+
+	writeFonts(cb, pretty, true);
+	writeStyles(cb, pretty, true);
+	writeScripts(cb, pretty);
+
+	cb << "\n<office:body>\n";
+
+	writeContentNode(cb, _content, pretty);
+
+	cb << "\n</office:body>\n";
+	cb << "</office:document>";
+}
+
 void TextDocument::writeContentFile(const WriteCallback &cb) {
 	cb << R"(<?xml version="1.0" encoding="UTF-8"?>)" << "\n" << "<office:document-content " << s_xml_ns << ">";
 
 	bool pretty = false;
-
 	writeScripts(cb, pretty);
+	writeFonts(cb, pretty, true);
 
 	auto stringCb = [strings = &_stringPool] (style::StringId id) -> StringView {
 		auto it = strings->find(id);
@@ -170,7 +207,7 @@ void TextDocument::writeStyleFile(const WriteCallback &cb) {
 	cb << R"(<?xml version="1.0" encoding="UTF-8"?>)" << "\n" << "<office:document-styles " << s_xml_ns_styles << ">";
 
 	bool pretty = false;
-	writeFonts(cb, pretty);
+	writeFonts(cb, pretty, false);
 	writeStyles(cb, pretty);
 
 	cb << "</office:document-styles>";
@@ -209,7 +246,7 @@ void TextDocument::writeScripts(const WriteCallback &cb, bool pretty) {
 	if (pretty) { cb << "\n"; }
 }
 
-void TextDocument::writeFonts(const WriteCallback &cb, bool pretty) {
+void TextDocument::writeFonts(const WriteCallback &cb, bool pretty, bool full) {
 	if (pretty) { cb << "\n"; }
 
 	cb << "<office:font-face-decls>";
@@ -240,7 +277,7 @@ void TextDocument::writeFonts(const WriteCallback &cb, bool pretty) {
 	};
 
 	for (auto &it : _fonts) {
-		if (!it.second.files.empty()) {
+		if (full && !it.second.files.empty()) {
 			if (pretty) { cb << "\t"; }
 			writeFontFaceInfo(it.first, it.second);
 			cb << "><svg:font-face-src>";

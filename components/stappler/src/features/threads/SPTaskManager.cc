@@ -158,7 +158,7 @@ public:
 	: _queue(queue), _refCount(1), _shouldQuit() , _managerId(threadId)
 	, _workerId(workerId), _name(name) {
 		memory::pool::initialize();
-		_pool = memory::pool::create(nullptr);
+		_pool = memory::pool::createTagged(nullptr, "TaskManager::Worker");
 		_queue->retain();
 	}
 

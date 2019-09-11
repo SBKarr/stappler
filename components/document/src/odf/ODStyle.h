@@ -366,7 +366,7 @@ struct Metric {
 
 	Metric() = default;
 
-	operator bool() const {
+	bool isValid() const {
 		return metric != Units::None;
 	}
 
@@ -384,6 +384,19 @@ struct Metric {
 		}
 		return ret;
 	}
+
+	Metric operator*=(float val) const {
+		Metric ret = *this;
+		switch (ret.metric) {
+		case None: break;
+		case Custom: break;
+		case Integer: ret.signedValue = int32_t(ret.signedValue * val); break;
+		default: ret.floatValue *= val; break;
+		}
+		return ret;
+	}
+
+	String toString() const;
 };
 
 struct Padding {
@@ -1067,7 +1080,6 @@ const WriteCallback &operator<<(const WriteCallback &cb, const char *str);
 const WriteCallback &operator<<(const WriteCallback &cb, const StringView &str);
 const WriteCallback &operator<<(const WriteCallback &cb, const Escaped &str);
 const WriteCallback &operator<<(const WriteCallback &cb, const PercentValue &str);
-
 
 inline style::Metric operator"" _percents ( long double val ) { return style::Metric(float(val), style::Metric::Percent); }
 inline style::Metric operator"" _cm ( long double val ) { return style::Metric(float(val), style::Metric::Cm); }

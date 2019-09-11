@@ -372,7 +372,7 @@ void allocator_t::free(memnode_t *node) {
 	}
 
 	if (i >= 1024 * 128) {
-		printf("WARNING: pool double-free detected!\n");
+		printf("ERRER: pool double-free detected!\n");
 		abort();
 	}
 #endif
@@ -529,6 +529,7 @@ pool_t *pool_t::create(allocator_t *alloc) {
 }
 
 void pool_t::destroy(pool_t *pool) {
+	SP_POOL_LOG("destroy %p %s", pool, pool->tag);
 	pool->~pool_t();
 }
 
@@ -760,6 +761,7 @@ void initialize() {
 			s_global_allocator = new allocator_t();
 		}
 		s_global_pool = pool_t::create(s_global_allocator);
+		s_global_pool->tag = "Global";
 		pool::push(s_global_pool);
 	}
 	++ s_global_init;
@@ -789,6 +791,7 @@ void destroy(pool_t *p) {
 	pool_t::destroy(p);
 }
 void clear(pool_t *p) {
+	SP_POOL_LOG("clear %p %s", p, p->tag);
 	p->clear();
 }
 

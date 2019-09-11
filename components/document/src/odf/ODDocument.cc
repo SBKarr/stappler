@@ -127,56 +127,73 @@ style::Style *Document::getDefaultStyle(style::Style::Family f) {
 	}
 }
 
-style::Style *Document::addCommonStyle(const StringView &name, style::Style::Family f, const style::Style *parent, const StringView &cl) {
-	auto it = std::find_if(_styles.begin(), _styles.end(), [&] (const style::Style *style) { return style->getName() == name; });
-	if (it != _styles.end()) {
-		return (*it);
+style::Style *Document::addCommonStyle(const StringView &name, style::Style::Family f, const StringView &cl) {
+	auto it = _commonStyles.find(name);
+	if (it != _commonStyles.end()) {
+		return it->second;
 	} else {
-		pool::push(_styles.get_allocator());
-		if (parent && parent->getType() != style::Style::Common) {
-			std::cout << "Invalid style as parent\n";
-		}
-		auto ret = _styles.emplace_back(new style::Style(style::Style::Common, f, name, parent, [this] (const StringView &str) {
+		pool::push(_commonStyles.get_allocator());
+		auto ret = _commonStyles.emplace(name.str<Interface>(), new style::Style(style::Style::Common, f, name, nullptr, [this] (const StringView &str) {
 			_stringPool.emplace(style::StringId{stappler::hash::hash32(str.data(), str.size())}, str.str<Interface>());
-		}, cl));
-		_commonStyles.emplace(ret->getName(), ret);
+		}, cl)).first->second;
 		pool::pop();
 		return ret;
 	}
 }
 
-style::Style *Document::addAutoStyle(const StringView &name, style::Style::Family f, const style::Style *parent, const StringView &cl) {
-	auto it = std::find_if(_styles.begin(), _styles.end(), [&] (const style::Style *style) { return style->getName() == name; });
-	if (it != _styles.end()) {
-		return (*it);
+style::Style *Document::addCommonStyle(const StringView &name, const style::Style *parent, const StringView &cl) {
+	auto it = _commonStyles.find(name);
+	if (it != _commonStyles.end()) {
+		return it->second;
 	} else {
-		pool::push(_styles.get_allocator());
-		if (parent && parent->getType() != style::Style::Common) {
-			std::cout << "Invalid style as parent\n";
-		}
-		auto ret = _styles.emplace_back(new style::Style(style::Style::Automatic, f, name, parent, [this] (const StringView &str) {
+		pool::push(_commonStyles.get_allocator());
+		auto ret = _commonStyles.emplace(name.str<Interface>(), new style::Style(style::Style::Common, parent->getFamily(), name, parent, [this] (const StringView &str) {
 			_stringPool.emplace(style::StringId{stappler::hash::hash32(str.data(), str.size())}, str.str<Interface>());
-		}, cl));
-		_autoStyles.emplace_back(ret);
+		}, cl)).first->second;
 		pool::pop();
 		return ret;
 	}
 }
 
-style::Style *Document::addAutoStyle(style::Style::Family f, const style::Style *parent, const StringView &cl) {
-	return addAutoStyle(toString("__Auto", _autoStyleCount ++), f, parent, cl);
+style::Style *Document::addAutoStyle(style::Style::Family f, const StringView &cl) {
+	pool::push(_autoStyles.get_allocator());
+	auto name = toString("__Auto", _autoStyleCount ++);
+	auto ret = _autoStyles.emplace_back(new style::Style(style::Style::Automatic, f, name, nullptr, [this] (const StringView &str) {
+		_stringPool.emplace(style::StringId{stappler::hash::hash32(str.data(), str.size())}, str.str<Interface>());
+	}, cl));
+	pool::pop();
+	return ret;
 }
 
-style::Style *Document::addContentStyle(style::Style::Family f, const style::Style *parent, const StringView &cl) {
-	auto name = toString("__content", _contentStyleCount ++);
-	pool::push(_styles.get_allocator());
+style::Style *Document::addAutoStyle(const style::Style *parent, const StringView &cl) {
+	pool::push(_autoStyles.get_allocator());
+	auto name = toString("__Auto", _autoStyleCount ++);
 	if (parent && parent->getType() != style::Style::Common) {
 		std::cout << "Invalid style as parent\n";
 	}
-	auto ret = _styles.emplace_back(new style::Style(style::Style::Automatic, f, name, parent, [this] (const StringView &str) {
+	auto ret = _autoStyles.emplace_back(new style::Style(style::Style::Automatic, parent->getFamily(), name, parent, [this] (const StringView &str) {
 		_stringPool.emplace(style::StringId{stappler::hash::hash32(str.data(), str.size())}, str.str<Interface>());
 	}, cl));
-	_contentStyles.emplace_back(ret);
+	pool::pop();
+	return ret;
+}
+
+style::Style *Document::addContentStyle(style::Style::Family f, const StringView &cl) {
+	pool::push(_contentStyles.get_allocator());
+	auto name = toString("__content", _contentStyleCount ++);
+	auto ret = _contentStyles.emplace_back(new style::Style(style::Style::Automatic, f, name, nullptr, [this] (const StringView &str) {
+		_stringPool.emplace(style::StringId{stappler::hash::hash32(str.data(), str.size())}, str.str<Interface>());
+	}, cl));
+	pool::pop();
+	return ret;
+}
+
+style::Style *Document::addContentStyle(const style::Style *s, const StringView &cl) {
+	pool::push(_contentStyles.get_allocator());
+	auto name = toString("__content", _contentStyleCount ++);
+	auto ret = _contentStyles.emplace_back(new style::Style(style::Style::Automatic, s->getFamily(), name, s, [this] (const StringView &str) {
+		_stringPool.emplace(style::StringId{stappler::hash::hash32(str.data(), str.size())}, str.str<Interface>());
+	}, cl));
 	pool::pop();
 	return ret;
 }
@@ -384,7 +401,7 @@ static void Document_writeNode(const WriteCallback &cb, const Node *node, bool p
 	}
 }
 
-void Document::writeStyles(const WriteCallback &cb, bool pretty) const {
+void Document::writeStyles(const WriteCallback &cb, bool pretty, bool withContent) const {
 	auto stringCb = [strings = &_stringPool] (style::StringId id) -> StringView {
 		auto it = strings->find(id);
 		if (it != strings->end()) {
@@ -415,13 +432,21 @@ void Document::writeStyles(const WriteCallback &cb, bool pretty) const {
 	if (pretty) { cb << "\n"; }
 
 	if (pretty) { cb << "\n"; }
-	if (!_autoStyles.empty()) {
+	if (!_autoStyles.empty() || (withContent && !_contentStyles.empty())) {
 		cb << "<office:automatic-styles>";
 		if (pretty) { cb << "\n"; }
 
 		for (auto &it : _autoStyles) {
 			if (it->getType() == style::Style::Automatic) {
 				it->write(cb, stringCb, pretty);
+			}
+		}
+
+		if (withContent) {
+			for (auto &it : _contentStyles) {
+				if (it->getType() == style::Style::Automatic) {
+					it->write(cb, stringCb, pretty);
+				}
 			}
 		}
 

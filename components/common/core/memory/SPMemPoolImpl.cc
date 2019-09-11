@@ -27,6 +27,9 @@ THE SOFTWARE.
 #include "SPLog.h"
 #include "SPMemPoolApi.h"
 
+#define SP_POOL_LOG(...)
+//#define SP_POOL_LOG(...) log::format("Pool", __VA_ARGS__)
+
 #include "SPMemPoolInternals.cc"
 
 NS_SP_EXT_BEGIN(memory)
@@ -159,8 +162,37 @@ void initialize() { internals::initialize(); }
 
 void terminate() { internals::terminate(); }
 
-pool_t *create() { return internals::create(); }
-pool_t *create(pool_t *p) { return internals::create(p); }
+pool_t *create() {
+	if (auto ret = internals::create()) {
+		SP_POOL_LOG("create %p", ret);
+		return ret;
+	}
+	return nullptr;
+}
+pool_t *create(pool_t *p) {
+	if (auto ret = internals::create(p)) {
+		SP_POOL_LOG("create %p", ret);
+		return ret;
+	}
+	return nullptr;
+}
+
+pool_t *createTagged(const char *tag) {
+	if (auto ret = internals::create()) {
+		ret->tag = tag;
+		SP_POOL_LOG("create %p %s", ret, ret->tag);
+		return ret;
+	}
+	return nullptr;
+}
+pool_t *createTagged(pool_t *p, const char *tag) {
+	if (auto ret = internals::create(p)) {
+		ret->tag = tag;
+		SP_POOL_LOG("create %p %s", ret, ret->tag);
+		return ret;
+	}
+	return nullptr;
+}
 
 void destroy(pool_t *p) { internals::destroy(p); }
 void clear(pool_t *p) { internals::clear(p); }
@@ -216,6 +248,13 @@ pool_t *create(pool_t *p) {
 	pool_t *ret = nullptr;
 	apr_pool_create(&ret, p);
 	return ret;
+}
+
+pool_t *createTagged(const char *tag) {
+	return create();
+}
+pool_t *createTagged(pool_t *p, const char *tag) {
+	return create(p);
 }
 
 void destroy(pool_t *p) {

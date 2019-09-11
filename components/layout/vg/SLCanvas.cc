@@ -30,14 +30,6 @@ TESS_OPTIMIZE
 
 NS_LAYOUT_BEGIN
 
-NS_SP_EXTERN_BEGIN
-
-void tessLog(const char *msg) {
-	log::text("Tess", msg);
-}
-
-NS_SP_EXTERN_END
-
 static void * staticPoolAlloc(void* userData, unsigned int size) {
 	memory::pool_t *pool = (memory::pool_t *)userData;
 	size_t s = size;
@@ -130,11 +122,12 @@ Rect Canvas::calculateImageContentRect(const Rect &bbox, const Size &size, const
 	return contentBox;
 }
 
-Canvas::Canvas() : _pool(memory::pool::create(memory::pool::acquire())), _tess(_pool), _stroke(_pool), _line(_pool) {
+Canvas::Canvas() : _pool(memory::pool::createTagged(nullptr, "layout::Canvas")), _tess(_pool), _stroke(_pool), _line(_pool) {
 	memset(&_tessAlloc, 0, sizeof(_tessAlloc));
 	_tessAlloc.memalloc = &staticPoolAlloc;
 	_tessAlloc.memfree = &staticPoolFree;
-	_tessAlloc.userData = (void*)&_pool;
+	_tessAlloc.userData = (void*)_pool;
+
 }
 
 Canvas::~Canvas() {
