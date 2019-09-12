@@ -394,6 +394,13 @@ mixin recursion(id)
 +recursion(test)
 )";
 
+const auto s_undefinedTest = R"(
+if !unit || unit.category >= 4 || unit.role > 9
+	p Success
+else
+	p Failure
+)";
+
 int parseOptionSwitch(data::Value &ret, char c, const char *str) {
 	if (c == 'v') {
 		ret.setBool(true, "verbose");
@@ -401,7 +408,7 @@ int parseOptionSwitch(data::Value &ret, char c, const char *str) {
 	return 1;
 }
 
-int parseOptionString(data::Value &ret, const String &str, int argc, const char * argv[]) {
+int parseOptionString(data::Value &ret, const StringView &str, int argc, const char * argv[]) {
 	if (str == "v") {
 		ret.setBool(true, "verbose");
 	}
@@ -419,12 +426,12 @@ int _spMain(argc, argv) {
 		std::cout << " Options: " << stappler::data::EncodeFormat::Pretty << opts << "\n";
 	};
 
-	memory::MemPool pool(memory::MemPool::Managed);
+	auto pool = memory::pool::create(nullptr);
 	memory::pool::push(pool);
 
 	//auto &args = opts.getValue("args");
 
-	pug::Template * tpl = pug::Template::read(s_tagMixinComboText, pug::Template::Options::getPretty());
+	pug::Template * tpl = pug::Template::read(s_undefinedTest, pug::Template::Options::getPretty());
 
 	using Value = pug::Value;
 
@@ -432,7 +439,7 @@ int _spMain(argc, argv) {
 
 	tpl->describe(std::cout, true);
 
-	ctx.set("test", Value{
+	/*ctx.set("test", Value{
 		pair("value", Value("value1")),
 		pair("next", Value{
 			pair("value", Value("value2")),
@@ -453,7 +460,10 @@ int _spMain(argc, argv) {
 			return pug::Var(Value(stream.str()));
 		}
 		return pug::Var();
-	});
+	});*/
+	/*ctx.set("unit", Value{
+		pair("role", Value(10)),
+	});*/
 
 	tpl->run(ctx, std::cout);
 

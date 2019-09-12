@@ -165,9 +165,6 @@ struct StringTraits : public Interface {
 	static String tolower(const StringView &str);
 	static String toupper(const StringView &str);
 
-	static WideString & ltrim(WideString &s);
-	static WideString & rtrim(WideString &s);
-
 	static bool isUrlencodeChar(char c);
 };
 
@@ -876,18 +873,6 @@ auto StringTraits<Interface>::toupper(const StringView &str) -> String {
 	String buf(str.str<Interface>());
 	toupper(buf);
 	return buf;
-}
-
-template <typename Interface>
-auto StringTraits<Interface>::ltrim(WideString &s) -> WideString & {
-	s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<char16_t, bool>(stappler::string::isspace))));
-	return s;
-}
-
-template <typename Interface>
-auto StringTraits<Interface>::rtrim(WideString &s) -> WideString & {
-	s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<char16_t, bool>(stappler::string::isspace))).base(), s.end());
-	return s;
 }
 
 template <typename Interface>

@@ -55,8 +55,8 @@ struct RawEncoder : public Interface::AllocBaseType {
 
 	inline RawEncoder(OutputStream *stream) : stream(stream) { }
 
-	inline void write(nullptr_t) { (*stream) << 'n'; }
-	inline void write(bool value) { (*stream) << ((value)?'t':'f'); }
+	inline void write(nullptr_t) { (*stream) << "null"; }
+	inline void write(bool value) { (*stream) << ((value)?"true":"false"); }
 	inline void write(int64_t value) { (*stream) << value; }
 	inline void write(double value) { (*stream) << value; }
 
@@ -123,6 +123,8 @@ struct RawEncoder : public Interface::AllocBaseType {
 				type = Type::Plain; // prevent plain array
 			}
 			val.encode(*this);
+		} else {
+			(*stream) << ":true";
 		}
 		type = tmpType;
 	}
@@ -273,6 +275,8 @@ struct PrettyEncoder : public Interface::AllocBaseType {
 				type = Type::Plain; // prevent plain array
 			}
 			val.encode(*this);
+		} else {
+			(*stream) << ": true";
 		}
 		type = tmpType;
 	}

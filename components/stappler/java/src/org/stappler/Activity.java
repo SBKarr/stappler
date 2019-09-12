@@ -45,7 +45,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.support.v4.app.NotificationCompat;
+import androidx.core.app.NotificationCompat;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -276,7 +276,7 @@ public class Activity extends Cocos2dxActivity {
 	public void setContentView(View view) {
 		FrameLayout layout = (FrameLayout)view;
 
-		if (_directorStarted == false) {
+		if (!_directorStarted) {
 			_splashScreen = new LoaderView(this);
 			layout.addView(_splashScreen);
 		}
@@ -398,7 +398,7 @@ public class Activity extends Cocos2dxActivity {
 	public void showNotification(String title, String text) {
 		final String fTitle = title;
 		final String fText = text;
-		if (_isActive == false) {
+		if (!_isActive) {
 			runOnUiThread(new Runnable() {
 	            @Override
 	            public void run() {

@@ -344,9 +344,9 @@ bool Root::scheduleTask(const Server &serv, Task *task, TimeInterval interval) {
 }
 
 void Root::onChildInit() {
-	if (apr_thread_pool_create(&_threadPool, 1, 10, _pool) == APR_SUCCESS) {
+	if (apr_thread_pool_create(&_threadPool, 3, 10, _pool) == APR_SUCCESS) {
 		apr_thread_pool_idle_wait_set(_threadPool, (5_sec).toMicroseconds());
-		apr_thread_pool_threshold_set(_threadPool, 2);
+		apr_thread_pool_threshold_set(_threadPool, 5);
 	} else {
 		_threadPool = nullptr;
 	}

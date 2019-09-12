@@ -531,8 +531,8 @@ static Bytes writePng(const uint8_t *data, uint32_t width, uint32_t height, uint
 NS_SP_EXT_END(png)
 
 
+#if LINUX // compilation issues prevents to use that lib on another platform
 NS_SP_EXT_BEGIN(gif)
-
 static int Gif_InputFunc(GifFileType *file, GifByteType *bytes, int count) {
 	auto reader = (CoderSource *)file->UserData;
 
@@ -690,6 +690,7 @@ static bool loadGif(const uint8_t *inputData, size_t size,
 }
 
 NS_SP_EXT_END(gif)
+#endif
 
 
 NS_SP_EXT_BEGIN(webp)
@@ -1297,7 +1298,9 @@ static BitmapFormat s_defaultFormats[toInt(Bitmap::FileFormat::Custom)] = {
 	),
 	BitmapFormat(Bitmap::FileFormat::Svg, &BitmapFormat_isSvg, &BitmapFormat_getSvgImageSize),
 	BitmapFormat(Bitmap::FileFormat::Gif, &BitmapFormat_isGif, &BitmapFormat_getGifImageSize
+#if LINUX
 			, &gif::loadGif
+#endif
 	),
 	BitmapFormat(Bitmap::FileFormat::Tiff, &BitmapFormat_isTiff, &BitmapFormat_getTiffImageSize),
 };

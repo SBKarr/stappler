@@ -168,7 +168,7 @@ int parseOptionSwitch(data::Value &ret, char c, const char *str) {
 	return 1;
 }
 
-int parseOptionString(data::Value &ret, const String &str, int argc, const char * argv[]) {
+int parseOptionString(data::Value &ret, const StringView &str, int argc, const char * argv[]) {
 	if (str == "help") {
 		ret.setBool(true, "help");
 	} else if (str == "verbose") {

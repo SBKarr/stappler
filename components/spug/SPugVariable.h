@@ -122,6 +122,7 @@ struct Var {
 		Temporary, // temporary
 		Variable, // variable in context storage
 		Writable, // writing will create storage for variable
+		SoftUndefined,
 	};
 
 	struct StoragePointer {
@@ -139,6 +140,7 @@ struct Var {
 	~Var();
 
 	Var();
+	explicit Var(nullptr_t);
 
 	Var(const Var &);
 	Var(Var &&);
@@ -170,6 +172,7 @@ struct Var {
 
 	Callback * getCallable() const;
 	VarStorage * getStorage() const;
+	Type getType() const;
 };
 
 NS_SP_EXT_END(pug)

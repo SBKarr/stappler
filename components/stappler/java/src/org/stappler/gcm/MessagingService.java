@@ -4,7 +4,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.support.v4.app.NotificationCompat;
+import androidx.core.app.NotificationCompat;
 import android.util.Log;
 
 import com.google.firebase.messaging.FirebaseMessagingService;
@@ -19,6 +19,12 @@ public class MessagingService extends FirebaseMessagingService {
     public static final int NOTIFICATION_ID = 1;
     private NotificationManager mNotificationManager;
     NotificationCompat.Builder builder;
+
+    @Override
+    public void onNewToken(String s) {
+        super.onNewToken(s);
+        setDeviceToken(s);
+    }
 
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
@@ -79,4 +85,5 @@ public class MessagingService extends FirebaseMessagingService {
     }
 
     protected native void onRemoteNotification();
+    protected native void setDeviceToken(String value);
 }

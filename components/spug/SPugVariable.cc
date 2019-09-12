@@ -173,6 +173,7 @@ bool VarStorage::assign(const Var &var) {
 	clear();
 	switch (var.type) {
 	case Var::Undefined: break;
+	case Var::SoftUndefined: break;
 	case Var::Writable: break;
 	case Var::Static: value.assign(var.staticStorage); type = ValueReference; return true; break;
 	case Var::Temporary: *this = var.temporaryStorage; return true; break;
@@ -225,10 +226,13 @@ Var::~Var() {
 
 Var::Var() { }
 
+Var::Var(nullptr_t) : type(SoftUndefined) { }
+
 Var::Var(const Var &var) {
 	type = var.type;
 	switch (type) {
 	case Undefined: break;
+	case SoftUndefined: break;
 	case Static: new (&staticStorage) VarData(var.staticStorage);  break;
 	case Temporary: new (&temporaryStorage) VarStorage(var.temporaryStorage);  break;
 	case Variable: variableStorage = var.variableStorage; break;
@@ -239,6 +243,7 @@ Var::Var(Var &&var) {
 	type = var.type;
 	switch (type) {
 	case Undefined: break;
+	case SoftUndefined: break;
 	case Static: new (&staticStorage) VarData(move(var.staticStorage));  break;
 	case Temporary: new (&temporaryStorage) VarStorage(move(var.temporaryStorage));  break;
 	case Variable: variableStorage = var.variableStorage; break;
@@ -293,6 +298,7 @@ Var& Var::operator=(const Var &var) {
 	type = var.type;
 	switch (type) {
 	case Undefined: break;
+	case SoftUndefined: break;
 	case Static: new (&staticStorage) VarData(var.staticStorage);  break;
 	case Temporary: new (&temporaryStorage) VarStorage(var.temporaryStorage);  break;
 	case Variable: variableStorage = var.variableStorage; break;
@@ -305,6 +311,7 @@ Var& Var::operator=(Var &&var) {
 	type = var.type;
 	switch (type) {
 	case Undefined: break;
+	case SoftUndefined: break;
 	case Static: new (&staticStorage) VarData(move(var.staticStorage));  break;
 	case Temporary: new (&temporaryStorage) VarStorage(move(var.temporaryStorage));  break;
 	case Variable: variableStorage = var.variableStorage; break;
@@ -320,6 +327,7 @@ Var::operator bool () const {
 const Value &Var::readValue() const {
 	switch (type) {
 	case Undefined: break;
+	case SoftUndefined: break;
 	case Writable: break;
 	case Static: return staticStorage.readValue(); break;
 	case Temporary: return temporaryStorage.readValue(); break;
@@ -331,6 +339,7 @@ const Value &Var::readValue() const {
 Value *Var::getMutable() const {
 	switch (type) {
 	case Undefined: break;
+	case SoftUndefined: break;
 	case Writable: break;
 	case Static: return staticStorage.getMutable(); break;
 	case Temporary: return temporaryStorage.getMutable(); break;
@@ -342,6 +351,7 @@ Value *Var::getMutable() const {
 void Var::clear() {
 	switch (type) {
 	case Undefined: break;
+	case SoftUndefined: break;
 	case Static: staticStorage.~VarData(); break;
 	case Temporary: temporaryStorage.~VarStorage(); break;
 	case Variable: break;
@@ -353,6 +363,7 @@ void Var::clear() {
 bool Var::assign(const Var &var) {
 	switch (type) {
 	case Undefined: break;
+	case SoftUndefined: break;
 	case Static: break;
 	case Temporary: return temporaryStorage.assign(var); break;
 	case Variable: return variableStorage->assign(var); break;
@@ -454,6 +465,7 @@ Var Var::subscript(int64_t idx, bool mut) {
 Var::Callback * Var::getCallable() const {
 	switch (type) {
 	case Undefined:
+	case SoftUndefined:
 	case Static:
 	case Writable:
 		 break;
@@ -466,6 +478,7 @@ Var::Callback * Var::getCallable() const {
 VarStorage * Var::getStorage() const {
 	switch (type) {
 	case Undefined:
+	case SoftUndefined:
 	case Static:
 	case Writable:
 		 break;
@@ -473,6 +486,10 @@ VarStorage * Var::getStorage() const {
 	case Variable: return variableStorage; break;
 	}
 	return nullptr;
+}
+
+Var::Type Var::getType() const {
+	return type;
 }
 
 NS_SP_EXT_END(pug)

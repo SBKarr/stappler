@@ -83,6 +83,18 @@ void _addDebugMessage(mem::Value &&data) {
 	// not implemented
 }
 
+void broadcast(const mem::Value &val) {
+	if (auto a = db::Adapter::FromContext()) {
+		a.broadcast(val);
+	}
+}
+
+void broadcast(const mem::Bytes &val) {
+	if (auto a = db::Adapter::FromContext()) {
+		a.broadcast(val);
+	}
+}
+
 }
 
 Transaction Transaction::acquire(const Adapter &adapter) {

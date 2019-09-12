@@ -32,15 +32,7 @@ THE SOFTWARE.
 NS_SP_BEGIN
 
 static constexpr auto TEST_STRING(
-R"Test((
-	field: value;
-	arrayField: array1, array2, array3;
-	flagField;
-	dictField: (
-		field1: value1;
-		field2: value2
-	)
-))Test");
+R"Test((field:value;arrayField:array1,array2,array3;flagField;dictField:(field1:value1;field2:value2)))Test");
 
 static constexpr auto TEST_STRING_2(
 R"Test((
@@ -85,9 +77,39 @@ R"Test((
 
 static constexpr auto TEST_STRING_4 = "(applications(fields:name,tags,data.deprecated,issues;order(asc:t;by:mtime;limit:10;offset:20);select(name:org.stappler.stappler));articles(delta:ASD12345,full;select:~(num,gt,10),~(approved,t));issues(delta(format:minimal;token:ASD12345);exclude:content,data.articles;order:mtime,desc,20,40;resolve:ids,files,objects,sets,all;select:12345))\n";
 
-static constexpr auto TEST_STRING_5 = "(\n"
-		"arrayField : array1, (field:value), ~(val1, val2), false;\n"
-		")\n";
+static constexpr auto TEST_STRING_5 = "(articles(delta:ASD12345,full;select:~(num,gt,10),~(approved,t)))";
+
+static constexpr auto TEST_STRING_6 = "(test:field1,field2(sub1,sub2,sub3)field3(sub1:s,u,b;sub2:1,2,3),field4,field5)\n";
+
+static constexpr auto TEST_STRING_7 = "(test:field1,field2(sub1,sub2,sub3))\n";
+
+static constexpr auto TEST_STRING_8 = R"TEST((
+	test (
+		field1: true;
+		field2 : 
+			sub1,
+			sub2,
+			sub3
+		;
+		field3  (
+			sub1 : 
+				s,
+				u,
+				b
+			;
+			sub2 :  
+				1,
+				2,
+				3
+			
+		);
+		field4: true;
+		field5: true
+	)
+))TEST";
+
+static constexpr auto TEST_STRING_9 = "(fields($defaults;content;terms;images:$all;documents($all;content;images:$all)))";
+static constexpr auto TEST_STRING_10 = "(fields:$defaults,content,terms,images($all)documents($all,content,images($all)))";
 
 struct PoolSerenityTest : MemPoolTest {
 	PoolSerenityTest() : MemPoolTest("PoolSerenityTest") { }
@@ -98,8 +120,11 @@ struct PoolSerenityTest : MemPoolTest {
 		size_t passed = 0;
 		stream << "\n";
 
-		auto d = data::read<String, memory::PoolInterface>(String(TEST_STRING_5));
-		std::cout << data::EncodeFormat::SerenityPretty << d << "\n" << data::EncodeFormat::Pretty << d << "\n";
+		/*auto d = data::read<String, memory::PoolInterface>(String(TEST_STRING_10));
+		std::cout << data::EncodeFormat::Pretty << d << "\n";
+
+		d = data::read<String, memory::PoolInterface>(String(TEST_STRING_9));
+		std::cout << data::EncodeFormat::Pretty << d << "\n";*/
 
 		runTest(stream, "First", count, passed, [&] {
 			auto t = Time::now();
@@ -146,9 +171,80 @@ struct PoolSerenityTest : MemPoolTest {
 			auto d3 = data::read<String, memory::PoolInterface>(str2);
 
 			stream << (Time::now() - t).toMicroseconds();
+			if (d == d2 && d2 == d3) {
+				return true;
+			} else {
+				std::cout << data::EncodeFormat::Pretty << d << "\n" << d2 << "\n" << d3 << "\n";
+			}
+			return false;
+		});
+
+		runTest(stream, "Reduced", count, passed, [&] {
+			auto t = Time::now();
+			auto d = data::read<String, memory::PoolInterface>(String(TEST_STRING_5));
+			auto str = data::toString<memory::PoolInterface>(d, data::EncodeFormat::Serenity);
+			auto d2 = data::read<String, memory::PoolInterface>(str);
+			auto str2 = data::toString<memory::PoolInterface>(d, data::EncodeFormat::SerenityPretty);
+			auto d3 = data::read<String, memory::PoolInterface>(str2);
+
+			stream << (Time::now() - t).toMicroseconds();
 			return d == d2 && d2 == d3;
 		});
 
+		runTest(stream, "SubParentesis", count, passed, [&] {
+			auto t = Time::now();
+			auto d = data::read<String, memory::PoolInterface>(String(TEST_STRING_6));
+			auto str = data::toString<memory::PoolInterface>(d, data::EncodeFormat::Serenity);
+			auto d2 = data::read<String, memory::PoolInterface>(str);
+			auto str2 = data::toString<memory::PoolInterface>(d, data::EncodeFormat::SerenityPretty);
+			auto d3 = data::read<String, memory::PoolInterface>(str2);
+
+			stream << (Time::now() - t).toMicroseconds();
+			return d == d2 && d2 == d3;
+		});
+
+		runTest(stream, "SubParentesis2", count, passed, [&] {
+			auto t = Time::now();
+			auto d = data::read<String, memory::PoolInterface>(String(TEST_STRING_7));
+			auto str = data::toString<memory::PoolInterface>(d, data::EncodeFormat::Serenity);
+			auto d2 = data::read<String, memory::PoolInterface>(str);
+			auto str2 = data::toString<memory::PoolInterface>(d, data::EncodeFormat::SerenityPretty);
+			auto d3 = data::read<String, memory::PoolInterface>(str2);
+
+			stream << (Time::now() - t).toMicroseconds();
+			return d == d2 && d2 == d3;
+		});
+
+		runTest(stream, "SubParentesis3", count, passed, [&] {
+			auto t = Time::now();
+			auto d = data::read<String, memory::PoolInterface>(String(TEST_STRING_8));
+			auto str = data::toString<memory::PoolInterface>(d, data::EncodeFormat::Serenity);
+			auto d2 = data::read<String, memory::PoolInterface>(str);
+			auto str2 = data::toString<memory::PoolInterface>(d, data::EncodeFormat::SerenityPretty);
+			auto d3 = data::read<String, memory::PoolInterface>(str2);
+
+			stream << (Time::now() - t).toMicroseconds();
+			return d == d2 && d2 == d3;
+		});
+
+		runTest(stream, "FieldsMatch", count, passed, [&] {
+			auto t = Time::now();
+			auto d = data::read<String, memory::PoolInterface>(String(TEST_STRING_9));
+			auto dn = data::read<String, memory::PoolInterface>(String(TEST_STRING_10));
+
+			auto str = data::toString<memory::PoolInterface>(d, data::EncodeFormat::Serenity);
+			auto d2 = data::read<String, memory::PoolInterface>(str);
+			auto str2 = data::toString<memory::PoolInterface>(d, data::EncodeFormat::SerenityPretty);
+			auto d3 = data::read<String, memory::PoolInterface>(str2);
+
+			auto strn = data::toString<memory::PoolInterface>(d, data::EncodeFormat::Serenity);
+			auto dn2 = data::read<String, memory::PoolInterface>(strn);
+			auto strn2 = data::toString<memory::PoolInterface>(d, data::EncodeFormat::SerenityPretty);
+			auto dn3 = data::read<String, memory::PoolInterface>(strn2);
+
+			stream << (Time::now() - t).toMicroseconds();
+			return d == d2 && d2 == d3 && dn == dn2 && dn2 == dn3 && d == dn;
+		});
 		_desc = stream.str();
 
 		return count == passed;

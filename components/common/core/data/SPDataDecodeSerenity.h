@@ -39,31 +39,32 @@ struct Decoder : public Interface::AllocBaseType {
 
 	enum BackType {
 		BackIsPlain,
+		BackIsPlainList,
+		BackIsPlainStop,
 		BackIsArray,
 		BackIsDict,
-		BackIsEmpty
+		BackIsGeneric,
 	};
 
 	enum TokenType {
 		Generic,
-		Binary,
-		Text,
 	};
 
-	Decoder(StringView &r) : backType(BackIsEmpty), r(r), back(nullptr) {
+	Decoder(StringView &r) : backType(BackIsGeneric), r(r), back(nullptr) {
 		stack.reserve(10);
 	}
 
 	inline void parseBufferString(StringType &ref);
 	inline void parseNumber(StringView &token, ValueType &ref) SPINLINE;
 
-	inline void parseToken(StringType &current);
-	inline void parseToken(ValueType &current, TokenType type);
-	inline void parseValue(ValueType &current);
+	inline void parsePlainToken(ValueType &current, StringView v);
+
+	inline void transformToDict(ValueType &current);
+
 	void parse(ValueType &val);
 
 	inline void push(BackType t, ValueType *v) {
-		if (t != BackIsPlain) {
+		if (t != BackIsPlain && t != BackIsGeneric) {
 			++ r;
 		}
 		back = v;
@@ -72,13 +73,13 @@ struct Decoder : public Interface::AllocBaseType {
 	}
 
 	inline void pop() {
-		if (backType != BackIsPlain || r.is(';')) {
+		if (backType != BackIsPlain && backType != BackIsPlainList && backType != BackIsPlainStop) {
 			r ++;
 		}
 		stack.pop_back();
 		if (stack.empty()) {
 			back = nullptr;
-			backType = BackIsEmpty;
+			backType = BackIsGeneric;
 		} else {
 			back = stack.back().second;
 			backType = stack.back().first;
@@ -127,168 +128,322 @@ inline void Decoder<Interface>::parseNumber(StringView &token, ValueType &result
 }
 
 template <typename Interface>
-inline void Decoder<Interface>::parseToken(StringType &current) {
-	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-	StringView token = r.readUntil<StringView::Chars<':', ',', ';', ')', '('>, StringView::CharGroup<CharGroupId::WhiteSpace>>();
-	string::urldecode(current, token);
-}
-
-template <typename Interface>
-inline void Decoder<Interface>::parseToken(ValueType &current, TokenType type) {
-	StringView token = r.readUntil<StringView::Chars<':', ',', ';', ')'>, StringView::CharGroup<CharGroupId::WhiteSpace>>();
-
-	switch (type) {
-	case Generic:
-		switch (token[0]) {
-		case '0': case '1': case '2': case '3': case '4': case '5': case '6':
-		case '7': case '8': case '9': case '+': case '-':
-			parseNumber(token, current);
+inline void Decoder<Interface>::parsePlainToken(ValueType &current, StringView token) {
+	switch (token[0]) {
+	case '0': case '1': case '2': case '3': case '4': case '5': case '6':
+	case '7': case '8': case '9': case '+': case '-':
+		parseNumber(token, current);
+		return;
+		break;
+	case 't':
+		if (token == "true") {
+			current._type = ValueType::Type::BOOLEAN;
+			current.boolVal = true;
 			return;
-			break;
-		case 't':
-			if (token == "true" || token == "t") {
-				current._type = ValueType::Type::BOOLEAN;
-				current.boolVal = true;
-				return;
-			}
-			break;
-		case 'f':
-			if (token == "false" || token == "f") {
-				current._type = ValueType::Type::BOOLEAN;
-				current.boolVal = false;
-				return;
-			}
-			break;
-		case 'n':
-			if (token == "nan") {
-				current._type = ValueType::Type::DOUBLE;
-				current.doubleVal = nan();
-				return;
-			} else if (token == "null" || token == "n") {
-				current._type = ValueType::Type::EMPTY;
-				return;
-			}
-			break;
-		case 'i':
-			if (token == "inf") {
-				current._type = ValueType::Type::DOUBLE;
-				current.doubleVal = NumericLimits<double>::infinity();
-				return;
-			}
-			break;
 		}
-		current._type = ValueType::Type::CHARSTRING;
-		current.strVal = new StringType();
-		string::urldecode(*current.strVal, token);
 		break;
-	case Text:
-		current._type = ValueType::Type::CHARSTRING;
-		current.strVal = new StringType();
-		string::urldecode(*current.strVal, token);
+	case 'f':
+		if (token == "false") {
+			current._type = ValueType::Type::BOOLEAN;
+			current.boolVal = false;
+			return;
+		}
 		break;
-	case Binary:
+	case 'n':
+		if (token == "nan") {
+			current._type = ValueType::Type::DOUBLE;
+			current.doubleVal = nan();
+			return;
+		} else if (token == "null") {
+			current._type = ValueType::Type::EMPTY;
+			return;
+		}
+		break;
+	case 'i':
+		if (token == "inf") {
+			current._type = ValueType::Type::DOUBLE;
+			current.doubleVal = NumericLimits<double>::infinity();
+			return;
+		}
+		break;
+	case '~':
 		current._type = ValueType::Type::BYTESTRING;
 		current.bytesVal = new BytesType();
 		string::urldecode(*current.bytesVal, token);
+		return;
 		break;
 	}
-
-	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+	current._type = ValueType::Type::CHARSTRING;
+	current.strVal = new StringType();
+	string::urldecode(*current.strVal, token);
 }
 
 template <typename Interface>
-inline void Decoder<Interface>::parseValue(ValueType &current) {
-	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-	switch (r[0]) {
-	case '(':
-		current._type = ValueType::Type::DICTIONARY;
-		current.dictVal = new typename ValueType::DictionaryType();
-		push(BackIsDict, &current);
-		return;
-		break;
-	case '~':
-		++ r;
-		if (r.is('(')) {
-			current._type = ValueType::Type::ARRAY;
-			current.arrayVal = new typename ValueType::ArrayType();
-			push(BackIsArray, &current);
-			return;
+inline void Decoder<Interface>::transformToDict(ValueType &current) {
+	typename ValueType::DictionaryType dict;
+	for (auto &it : *current.arrayVal) {
+		auto str = it.asString();
+		if (!str.empty()) {
+			dict.emplace(move(str), ValueType(true));
 		} else {
-			parseToken(current, Binary);
-			return;
+			log::text("DataSerenityDecoder", "Invalid token within SubArray");
 		}
-		break;
-	default:
-		parseToken(current, Generic);
-		break;
 	}
+	current = ValueType(move(dict));
 }
 
-using TokenSpecials = StringView::Chars<'/', '?', '@', '-', '.', '_', '!', '$', '\'', '*', '+'>;
+using TokenSpecials = StringView::Chars<'/', '?', '@', '-', '.', '_', '!', '$', '\'', '*', '+', '%'>;
 
 template <typename Interface>
 void Decoder<Interface>::parse(ValueType &val) {
+	backType = BackIsGeneric;
+	back = &val;
+	stack.push_back(pair(backType, back));
+
 	StringType key;
 	do {
+		r.skipUntil<TokenSpecials, StringView::Chars<'(', '~', ';', ')', ','>, StringView::CharGroup<CharGroupId::Alphanumeric>>();
 		switch (backType) {
 		case BackIsPlain:
-			r.skipUntil<TokenSpecials, StringView::Chars<'(', '~', ';', ')', ','>, StringView::CharGroup<CharGroupId::Alphanumeric>>();
-			if (r.is(';') || r.is(')')) {
-				back->arrayVal->shrink_to_fit();
+			if (r.is(')') || r.is(';')) {
 				pop();
-			} else if (r.is(',') || r.is('~') || r.is('(')) {
+			} else if (r.is(',')) {
+				typename ValueType::ArrayType arr;
+				arr.emplace_back(move(back));
+				*back = ValueType(move(arr));
+				backType = stack.back().first = BackIsPlainList;
+			} else if (r.is('(') || r.is("~(")) {
+				backType = stack.back().first = BackIsPlainStop;
+				push(BackIsGeneric, back);
+			} else {
+				r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+				StringView token = r.readUntil<StringView::Chars<'~', ':', ',', ';', '(', ')'>, StringView::CharGroup<CharGroupId::WhiteSpace>>();
+				r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+				if (r.is(':')) {
+					log::text("DataSerenityDecoder", "Colon sequence within plain list is invalid");
+					stop = true;
+					break;
+				} else if (token.empty()) {
+					// do nothing
+				} else if (r.is('(') || r.is("~(")) {
+					key.clear(); string::urldecode(key, token);
+					back->_type = ValueType::Type::DICTIONARY;
+					back->dictVal = new typename ValueType::DictionaryType();
+					backType = stack.back().first = BackIsPlainList;
+					push(BackIsGeneric, &back->dictVal->emplace(key, ValueType::Type::EMPTY).first->second);
+				} else if (r.is(',')) {
+					back->_type = ValueType::Type::ARRAY;
+					back->arrayVal = new typename ValueType::ArrayType();
+					back->arrayVal->emplace_back(ValueType::Type::EMPTY);
+					backType = stack.back().first = BackIsPlainList;
+					parsePlainToken(back->arrayVal->back(), token);
+				} else if (r.empty() || r.is(')') || r.is(';')) {
+					parsePlainToken(*back, token);
+					pop();
+				}
+			}
+			break;
+		case BackIsPlainList:
+			if (r.is(')') || r.is(';')) {
+				pop();
+				continue;
+			} else if (r.is('(') || r.is("~(") || r.is(",~(") || r.is(",(")) {
 				if (r.is(',')) {
 					++ r;
 				}
-				back->arrayVal->emplace_back(ValueType::Type::EMPTY);
-				parseValue(back->arrayVal->back());
+				if (back->_type == ValueType::Type::ARRAY) {
+					back->arrayVal->emplace_back(ValueType::Type::EMPTY);
+					push(BackIsGeneric, &back->arrayVal->back());
+				} else {
+					log::text("DataSerenityDecoder", "Generic value can not be used as key");
+					stop = true;
+					break;
+				}
+				break;
+			} else if (r.is(',') || r.is<TokenSpecials>() || r.is<CharGroupId::Alphanumeric>()) {
+				if (r.is(',')) {
+					++ r;
+					r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+				}
+
+				r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+				StringView token = r.readUntil<StringView::Chars<'~', ':', ',', ';', '(', ')'>, StringView::CharGroup<CharGroupId::WhiteSpace>>();
+				r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+				if (r.is(':')) {
+					pop();
+					if (backType == BackIsDict) {
+						push(BackIsPlain, &back->dictVal->emplace(key, ValueType::Type::EMPTY).first->second);
+					} else {
+						log::text("DataSerenityDecoder", "Colon sequence within plain list is invalid");
+						stop = true;
+						break;
+					}
+				} else if (token.empty()) {
+					// do nothing
+				}
+				if (back->_type == ValueType::Type::ARRAY) {
+					if (r.is('(')) {
+						key.clear(); string::urldecode(key, token);
+						transformToDict(*back);
+						push(BackIsGeneric, &back->dictVal->emplace(key, ValueType::Type::EMPTY).first->second);
+					} else if (r.is("~(")) {
+						back->arrayVal->emplace_back(ValueType::Type::EMPTY);
+						push(BackIsGeneric, &back->arrayVal->back());
+					} else {
+						back->arrayVal->emplace_back(ValueType::Type::EMPTY);
+						parsePlainToken(back->arrayVal->back(), token);
+					}
+				} else {
+					key.clear(); string::urldecode(key, token);
+					if (r.is('(') || r.is("~(")) {
+						push(BackIsGeneric, &back->dictVal->emplace(key, ValueType::Type::EMPTY).first->second);
+					} else {
+						back->dictVal->emplace(key, ValueType(true));
+					}
+				}
 			} else {
-				back->arrayVal->shrink_to_fit();
+				log::text("DataSerenityDecoder", "Invalid token in plain list");
+				stop = true;
+				break;
+			}
+			break;
+		case BackIsPlainStop:
+			if (r.is(')') || r.is(';')) {
 				pop();
+				continue;
+			} else if (r.is(',') || r.is("~(")) {
+				typename ValueType::ArrayType arr;
+				arr.emplace_back(move(*back));
+				*back = ValueType(move(arr));
+				backType = stack.back().first = BackIsPlainList;
+			} else if (r.is<TokenSpecials>() || r.is<CharGroupId::Alphanumeric>()) {
+				pop();
+				continue;
+			} else {
+				log::text("DataSerenityDecoder", "Invalid token in plain stop");
+				stop = true;
 			}
 			break;
 		case BackIsArray:
-			r.skipUntil<TokenSpecials, StringView::Chars<')', '(', '~'>, StringView::CharGroup<CharGroupId::Alphanumeric>>();
 			if (!r.is(')')) {
-				back->arrayVal->emplace_back(ValueType::Type::EMPTY);
-				parseValue(back->arrayVal->back());
+				if (r.is(';') || r.is(',')) {
+					++ r;
+					r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+				}
+				if (r.is('(')) {
+					back->arrayVal->emplace_back(ValueType::Type::EMPTY);
+					backType = stack.back().first = BackIsArray;
+					push(BackIsGeneric, &back->arrayVal->back());
+				} else {
+					r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+					StringView token = r.readUntil<StringView::Chars<'~', ':', ',', ';', '(', ')'>, StringView::CharGroup<CharGroupId::WhiteSpace>>();
+					r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+					if (token.empty()) {
+						// do nothing
+					} else if (r.is(':')) {
+						key.clear(); string::urldecode(key, token);
+						transformToDict(*back);
+						backType = stack.back().first = BackIsDict;
+						push(BackIsPlain, &back->dictVal->emplace(key, ValueType::Type::EMPTY).first->second);
+					} else if (r.is('(') || r.is("~(")) {
+						key.clear();
+						string::urldecode(key, token);
+						transformToDict(*back);
+						backType = stack.back().first = BackIsDict;
+						push(BackIsGeneric, &back->dictVal->emplace(key, ValueType::Type::EMPTY).first->second);
+					} else {
+						back->arrayVal->emplace_back(ValueType::Type::EMPTY);
+						parsePlainToken(back->arrayVal->back(), token);
+						// continue
+					}
+				}
 			} else {
 				back->arrayVal->shrink_to_fit();
 				pop();
 			}
 			break;
 		case BackIsDict:
-			r.skipUntil<TokenSpecials, StringView::Chars<')', '(', '~', ','>, StringView::CharGroup<CharGroupId::Alphanumeric>>();
 			if (!r.is(')')) {
-				if (r.is(',') || r.is('~') || r.is('(')) {
-					typename ValueType::ArrayType arr;
-					auto dictIt = back->dictVal->find(key);
-					if (dictIt != back->dictVal->end()) {
-						arr.emplace_back(move(dictIt->second));
-						dictIt->second = ValueType(move(arr));
-						push(BackIsPlain, &dictIt->second);
-					} else {
-						push(BackIsPlain, &back->dictVal->emplace(key, ValueType::Type::ARRAY).first->second);
-					}
+				if (r.is(';') || r.is(',')) {
+					++ r;
+				}
+
+				r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+				if (r.is(')')) {
+					pop();
+					continue;
+				}
+
+				if (!r.is<TokenSpecials>() && !r.is<StringView::CharGroup<CharGroupId::Alphanumeric>>()) {
+					stop = true;
+					log::text("DataSerenityDecoder", "Invalid key");
+					break;
+				}
+
+				StringView token = r.readUntil<StringView::Chars<'~', ':', ',', ';', '(', ')'>, StringView::CharGroup<CharGroupId::WhiteSpace>>();
+				r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+				key.clear(); string::urldecode(key, token);
+				if (r.is(':')) {
+					push(BackIsPlain, &back->dictVal->emplace(key, ValueType::Type::EMPTY).first->second);
+				} else if (r.is('(') || r.is("~(")) {
+					push(BackIsGeneric, &back->dictVal->emplace(key, ValueType::Type::EMPTY).first->second);
+				} else if (r.is(';') || r.is(',')) {
+					back->dictVal->emplace(key, ValueType(true));
 				} else {
-					key.clear();
-					parseToken(key);
-					r.skipUntil<StringView::Chars<':', ';', '(', ')'>>();
-					if (r.is(':')) {
-						++ r;
-						parseValue(back->dictVal->emplace(key, ValueType::Type::EMPTY).first->second);
-					} else if (r.is('(')) {
-						parseValue(back->dictVal->emplace(key, ValueType::Type::EMPTY).first->second);
-					} else {
-						back->dictVal->emplace(key, ValueType(true));
-					}
+					stop = true;
+					log::text("DataSerenityDecoder", "Invalid token in value");
+					break;
 				}
 			} else {
 				pop();
 			}
 			break;
-		case BackIsEmpty:
-			parseValue(val);
+		case BackIsGeneric:
+			if (r.is('(') || r.is("~(")) {
+				if (r.is('(')) {
+					++ r;
+				} else if (r.is("~(")) {
+					r += 2;
+				}
+				if (r.is('(')) {
+					back->_type = ValueType::Type::ARRAY;
+					back->arrayVal = new typename ValueType::ArrayType();
+					back->arrayVal->emplace_back(ValueType::Type::EMPTY);
+					backType = stack.back().first = BackIsArray;
+					push(BackIsGeneric, &back->arrayVal->back());
+				} else {
+					r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+					StringView token = r.readUntil<StringView::Chars<'~', ':', ',', ';', '(', ')'>, StringView::CharGroup<CharGroupId::WhiteSpace>>();
+					r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+					if (token.empty()) {
+						pop();
+					} else if (r.is(')') || r.empty()) {
+						parsePlainToken(*back, token);
+						pop();
+					} else if (r.is(':')) {
+						key.clear(); string::urldecode(key, token);
+						back->_type = ValueType::Type::DICTIONARY;
+						back->dictVal = new typename ValueType::DictionaryType();
+						backType = stack.back().first = BackIsDict;
+						push(BackIsPlain, &back->dictVal->emplace(key, ValueType::Type::EMPTY).first->second);
+					} else if (r.is('(') || r.is("~(")) {
+						key.clear(); string::urldecode(key, token);
+						back->_type = ValueType::Type::DICTIONARY;
+						back->dictVal = new typename ValueType::DictionaryType();
+						backType = stack.back().first = BackIsDict;
+						push(BackIsGeneric, &back->dictVal->emplace(key, ValueType::Type::EMPTY).first->second);
+					} else if (r.is(',') || r.is(';')) {
+						back->_type = ValueType::Type::ARRAY;
+						back->arrayVal = new typename ValueType::ArrayType();
+						back->arrayVal->emplace_back(ValueType::Type::EMPTY);
+						backType = stack.back().first = BackIsArray;
+						parsePlainToken(back->arrayVal->back(), token);
+					}
+				}
+			} else {
+				log::vtext("DataSerenityDecoder", "Invalid token in plain stop: '", r.sub(16), "'");
+			}
+
 			break;
 		}
 	} while (!r.empty() && !stack.empty() && !stop);

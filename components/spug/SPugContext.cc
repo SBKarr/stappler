@@ -274,6 +274,10 @@ Var ContextFn::execExpr(const Expression &expr, Expression::Op op, bool assignab
 			break;
 		case Expression::Subscript:
 			if (auto var = execExpr(*expr.left, expr.op, assignable)) {
+				if (var.getType() == Var::SoftUndefined) {
+					onError("Invalid subscription [] from <undefined>");
+					return Var();
+				}
 				Context::VarList list;
 				if (prepareArgsList(list, *expr.right, Expression::Composition) == 1) {
 					if (auto &val = list.data()->readValue()) {
@@ -281,20 +285,14 @@ Var ContextFn::execExpr(const Expression &expr, Expression::Op op, bool assignab
 							if (auto ret = var.subscript(val.asInteger(), assignable)) {
 								return ret;
 							} else {
-								if (!allowUndefined) {
-									onError(toString("Access to undefined member [", val.getInteger(), "]"));
-								}
-								return Var();
+								return Var(nullptr);
 							}
 						} else if (!val.isDictionary() && !val.isArray()) {
 							auto str = val.asString();
 							if (auto ret = var.subscript(str, assignable)) {
 								return ret;
 							} else {
-								if (!allowUndefined) {
-									onError(toString("Access to undefined member ['", str, "']"));
-								}
-								return Var();
+								return Var(nullptr);
 							}
 						}
 					}
@@ -364,17 +362,19 @@ Var ContextFn::execExpr(const Expression &expr, Expression::Op op, bool assignab
 		}
 		case Expression::Dot: {
 			auto l = execExpr(*expr.left, expr.op, assignable);
-			if (expr.right && expr.right->isToken && expr.right->value.isString()) {
-				if (auto v = l.subscript(expr.right->value.getString(), assignable)) {
-					return v;
-				} else {
-					if (!allowUndefined) {
-						onError(toString("Fail to read undefined subscript for <dot> .", expr.right->value.getString()));
+			if (l && l.getType() != Var::SoftUndefined) {
+				if (expr.right && expr.right->isToken && expr.right->value.isString()) {
+					if (auto v = l.subscript(expr.right->value.getString(), assignable)) {
+						return v;
+					} else {
+						return Var(nullptr);
 					}
+				} else {
+					onError(toString("Invalid argument for <dot> operator"));
 					return Var();
 				}
 			} else {
-				onError(toString("Invalid argument for <dot> operator"));
+				onError(toString("Fail to read <dot>: <undefined>.", expr.right->value.getString()));
 				return Var();
 			}
 			break;
@@ -387,12 +387,13 @@ Var ContextFn::execExpr(const Expression &expr, Expression::Op op, bool assignab
 		}
 		}
 	} else if (expr.left) {
-		if (expr.op == Expression::Neg && allowUndefined) {
+		if (expr.op == Expression::Neg) {
 			auto var = execExpr(*expr.left, expr.op, assignable);
 			if (var) {
 				return performUnaryOp(var, expr.op);
 			} else {
-				return Var(data::Value(true));
+				onError(toString("Invalid call <neg> <undefined>"));
+				return Var(Value(true));
 			}
 		} else if (expr.op != Expression::Var) {
 			if (auto var = execExpr(*expr.left, expr.op, assignable)) {
@@ -537,6 +538,13 @@ Var ContextFn::performUnaryOp(Var &v, Expression::Op op) {
 			return Var();
 			break;
 		}
+	} else if (allowUndefined) {
+		switch (op) {
+		case Expression::Neg:
+			return Var(Value(true));
+			break;
+		default: break;
+		}
 	}
 
 	onError("Unexpected null value on unary op");
@@ -616,40 +624,42 @@ Var ContextFn::performBinaryOp(Var &l, Var &r, Expression::Op op) {
 	};
 
 	// try assignment
-	switch (op) {
-	case Expression::Assignment:
-		if (variableAssign(l, r)) {
-			return Var(l);
-		} else {
-			onError("Invalid assignment operator");
-			return Var();
+	if (r.getType() != Var::SoftUndefined) {
+		switch (op) {
+		case Expression::Assignment:
+			if (variableAssign(l, r)) {
+				return Var(l);
+			} else {
+				onError("Invalid assignment operator");
+				return Var();
+			}
+			break;
+		case Expression::SumAssignment:
+			if (Variable_assign(l, r, [this] (Value &mut, const Value &r) -> bool {
+				if (!mut) { mut = r; return true; }
+				else if (mut.isString()) { mut.getString() += r.asString(); return true; }
+				else if (mut.isInteger() && !r.isDouble()) { mut.setInteger(mut.getInteger() + r.asInteger()); return true; }
+				else if ((mut.isInteger() && r.isDouble()) || mut.isDouble()) { mut.setDouble(mut.asDouble() + r.asDouble()); return true; }
+				else if (mut.isBool()) { mut.setBool(mut.asBool() + r.asBool()); return true; }
+				else { onError("Invalid SumAssignment operator"); return false; }
+			})) {
+				return Var(l);
+			} else {
+				onError("Invalid assignment operator");
+				return Var();
+			}
+			break;
+		case Expression::DiffAssignment: return numberAssignment([] (int64_t l, int64_t r) { return l - r; }, [] (double l, double r) { return l - r; }); break;
+		case Expression::MultAssignment: return numberAssignment([] (int64_t l, int64_t r) { return l * r; }, [] (double l, double r) { return l * r; }); break;
+		case Expression::DivAssignment: return numberAssignment([] (int64_t l, int64_t r) { return l / r; }, [] (double l, double r) { return l / r; }); break;
+		case Expression::RemAssignment: return intAssignment([] (int64_t l, int64_t r) { return l % r; }); break;
+		case Expression::LShiftAssignment: return intAssignment([] (int64_t l, int64_t r) { return l << r; }); break;
+		case Expression::RShiftAssignment: return intAssignment([] (int64_t l, int64_t r) { return l >> r; }); break;
+		case Expression::AndAssignment: return intAssignment([] (int64_t l, int64_t r) { return l & r; }); break;
+		case Expression::XorAssignment: return intAssignment([] (int64_t l, int64_t r) { return l ^ r; }); break;
+		case Expression::OrAssignment: return intAssignment([] (int64_t l, int64_t r) { return l | r; }); break;
+		default: break;
 		}
-		break;
-	case Expression::SumAssignment:
-		if (Variable_assign(l, r, [this] (Value &mut, const Value &r) -> bool {
-			if (!mut) { mut = r; return true; }
-			else if (mut.isString()) { mut.getString() += r.asString(); return true; }
-			else if (mut.isInteger() && !r.isDouble()) { mut.setInteger(mut.getInteger() + r.asInteger()); return true; }
-			else if ((mut.isInteger() && r.isDouble()) || mut.isDouble()) { mut.setDouble(mut.asDouble() + r.asDouble()); return true; }
-			else if (mut.isBool()) { mut.setBool(mut.asBool() + r.asBool()); return true; }
-			else { onError("Invalid SumAssignment operator"); return false; }
-		})) {
-			return Var(l);
-		} else {
-			onError("Invalid assignment operator");
-			return Var();
-		}
-		break;
-	case Expression::DiffAssignment: return numberAssignment([] (int64_t l, int64_t r) { return l - r; }, [] (double l, double r) { return l - r; }); break;
-	case Expression::MultAssignment: return numberAssignment([] (int64_t l, int64_t r) { return l * r; }, [] (double l, double r) { return l * r; }); break;
-	case Expression::DivAssignment: return numberAssignment([] (int64_t l, int64_t r) { return l / r; }, [] (double l, double r) { return l / r; }); break;
-	case Expression::RemAssignment: return intAssignment([] (int64_t l, int64_t r) { return l % r; }); break;
-	case Expression::LShiftAssignment: return intAssignment([] (int64_t l, int64_t r) { return l << r; }); break;
-	case Expression::RShiftAssignment: return intAssignment([] (int64_t l, int64_t r) { return l >> r; }); break;
-	case Expression::AndAssignment: return intAssignment([] (int64_t l, int64_t r) { return l & r; }); break;
-	case Expression::XorAssignment: return intAssignment([] (int64_t l, int64_t r) { return l ^ r; }); break;
-	case Expression::OrAssignment: return intAssignment([] (int64_t l, int64_t r) { return l | r; }); break;
-	default: break;
 	}
 
 	if (lV && rV) {
@@ -747,6 +757,42 @@ Var ContextFn::performBinaryOp(Var &l, Var &r, Expression::Op op) {
 		}
 
 		return Var();
+	} else if (lV || rV) {
+		auto valToInt = [&] (const Value &v, const Var &var) {
+			return (v) ? v.asInteger() : int64_t(0);
+		};
+
+		auto valToDouble = [&] (const Value &v, const Var &var) {
+			return (v) ? v.asInteger() : ((var.getType() == Var::SoftUndefined) ? std::numeric_limits<double>::quiet_NaN() : double(0.0));
+		};
+
+		auto numNullOp = [&] (const Value &lVal, const Value &rVal, auto intOp, auto doubleOp) {
+			if (lVal.isInteger() || rVal.isInteger()) {
+				return Var(Value(intOp(valToInt(lVal, l), valToInt(rVal, r))));
+			} else if (lVal.isBasicType() && rVal.isBasicType()) {
+				return Var(Value(doubleOp(valToDouble(lVal, l), valToDouble(rVal, r))));
+			} else {
+				onError("Invalid type for numeric operation");
+				return Var();
+			}
+		};
+
+		switch (op) {
+		case Expression::Lt: return numNullOp(lV, rV, [] (int64_t l, int64_t r) { return l < r; }, [] (double l, double r) { return l < r; }); break;
+		case Expression::LtEq: return numNullOp(lV, rV, [] (int64_t l, int64_t r) { return l <= r; }, [] (double l, double r) { return l <= r; }); break;
+		case Expression::Gt: return numNullOp(lV, rV, [] (int64_t l, int64_t r) { return l > r; }, [] (double l, double r) { return l > r; }); break;
+		case Expression::GtEq: return numNullOp(lV, rV, [] (int64_t l, int64_t r) { return l >= r; }, [] (double l, double r) { return l >= r; }); break;
+
+		case Expression::Eq: return Var(Value(lV.isNull() && rV.isNull())); break;
+		case Expression::NotEq: return Var(Value(!lV.isNull() || !rV.isNull())); break;
+
+		case Expression::And: return Var(Value(false)); break;
+		case Expression::Or: return Var(Value(ContextFn_asBool(lV) || ContextFn_asBool(rV))); break;
+		default:
+			onError(toString("Invalid operation with undefined"));
+			return Var();
+			break;
+		}
 	}
 	return Var();
 }
@@ -774,6 +820,10 @@ Var ContextFn::getVar(const StringView &key) const {
 	}
 	if (!ret && !allowUndefined) {
 		onError(toString("Access to undefined variable: ", key));
+	}
+
+	if (!ret && allowUndefined) {
+		return Var(nullptr);
 	}
 
 	return ret;
