@@ -23,6 +23,8 @@ mixin header(name)
 			p.nav
 				if auth
 					span.id= "#" + auth.id
-					span= " " + auth.name
+					span= " " + auth.name + " "
+					if auth.cancel
+						a(href=auth.cancel) (Exit)
 				else
 					a(href=window.location.pathname+"?auth") Not authorized

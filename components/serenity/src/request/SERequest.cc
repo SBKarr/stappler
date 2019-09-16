@@ -56,10 +56,24 @@ struct Request::Config : public AllocPool {
 		ap_set_module_config(r->request_config, &serenity_module, this);
 
 		if (r->args) {
-			if (*r->args == '(') {
-				_data = data::read(String::make_weak(r->args));
-			} else {
-				_data = Url::parseDataArgs(String::make_weak(r->args), 1_KiB);
+			StringView str(String::make_weak(r->args));
+			if (str.is('(')) {
+				_data = data::serenity::read<mem::Interface>(str);
+			}
+			if (!str.empty()) {
+				if (str.is('?') || str.is('&')) {
+					++ str;
+				}
+				auto d = Url::parseDataArgs(str, 1_KiB);
+				if (_data.empty()) {
+					_data = std::move(d);
+				} else {
+					for (auto &it : d.asDict()) {
+						if (!_data.hasValue(it.first)) {
+							_data.setValue(std::move(it.second), it.first);
+						}
+					}
+				}
 			}
 		}
 

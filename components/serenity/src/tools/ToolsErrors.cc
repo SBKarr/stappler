@@ -77,7 +77,8 @@ int ErrorsGui::onTranslateName(Request &req) {
 			exec.set("setup", data::Value(true));
 			exec.set("auth", data::Value({
 				pair("id", data::Value(u->getObjectId())),
-				pair("name", data::Value(u->getString("name")))
+				pair("name", data::Value(u->getString("name"))),
+				pair("cancel", data::Value(Tools_getCancelUrl(req)))
 			}));
 			if (errorsData.size() > 0) {
 				exec.set("errors", true, &errorsData);
@@ -152,7 +153,8 @@ int HandlersGui::onTranslateName(Request &req) {
 			exec.set("setup", data::Value(true));
 			exec.set("auth", data::Value({
 				pair("id", data::Value(u->getObjectId())),
-				pair("name", data::Value(u->getString("name")))
+				pair("name", data::Value(u->getString("name"))),
+				pair("cancel", data::Value(Tools_getCancelUrl(req)))
 			}));
 
 			if (auto iface = dynamic_cast<db::sql::SqlHandle *>(req.storage().interface())) {

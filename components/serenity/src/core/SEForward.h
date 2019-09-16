@@ -217,6 +217,8 @@ void debug(Args && ...args) {
 void broadcast(const data::Value &);
 void broadcast(const Bytes &);
 
+void broadcastAsync(const data::Value &);
+
 void setNotifications(apr_pool_t *, const Function<void(data::Value &&)> &error, const Function<void(data::Value &&)> &debug);
 
 NS_SA_EXT_END(messages)

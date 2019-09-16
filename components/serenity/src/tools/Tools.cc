@@ -37,4 +37,16 @@ void registerTools(const String &prefix, Server &serv) {
 	serv.addHandler(prefix + config::getServerVirtualFilesystem(), SA_HANDLER(tools::VirtualFilesystem));
 }
 
+static String Tools_getCancelUrl(Request &rctx) {
+	StringStream cancelUrl;
+	bool isSecure = rctx.isSecureConnection();
+	cancelUrl << (isSecure?"https":"http") << "://nobody@" << rctx.getHostname();
+	auto port = rctx.getParsedURI().port();
+	if (port && ((isSecure && port != 443) || (!isSecure && port != 80))) {
+		cancelUrl << ':' << port;
+	}
+	cancelUrl << "/__server";
+	return cancelUrl.str();
+}
+
 NS_SA_EXT_END(tools)

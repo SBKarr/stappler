@@ -270,6 +270,19 @@ void broadcast(const Bytes &val) {
 	}
 }
 
+void broadcastAsync(const data::Value &val) {
+	Task::perform([&] (Task &task) {
+		auto v = new data::Value(val);
+		task.addExecuteFn([v] (const Task &task) -> bool {
+			task.performWithStorage([&] (const storage::Transaction &t) {
+				db::Adapter(t.getAdapter()).broadcast(*v);
+			});
+			return true;
+		});
+		return true;
+	});
+}
+
 void setNotifications(apr_pool_t *pool,
 		const Function<void(data::Value &&)> &error,
 		const Function<void(data::Value &&)> &debug) {

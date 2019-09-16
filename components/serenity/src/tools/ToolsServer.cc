@@ -53,7 +53,8 @@ int ServerGui::onTranslateName(Request &rctx) {
 			if (auto u = rctx.getAuthorizedUser()) {
 				exec.set("auth", data::Value({
 					pair("id", data::Value(u->getObjectId())),
-					pair("name", data::Value(u->getString("name")))
+					pair("name", data::Value(u->getString("name"))),
+					pair("cancel", data::Value(Tools_getCancelUrl(rctx)))
 				}));
 
 				if (auto iface = dynamic_cast<db::sql::SqlHandle *>(rctx.storage().interface())) {
