@@ -34,7 +34,10 @@ THE SOFTWARE.
 #include "SPHtmlParser.h"
 #include "jpeglib.h"
 #include "png.h"
+
+#if LINUX
 #include "gif_lib.h"
+#endif
 
 #include "webp/decode.h"
 #include "webp/encode.h"

@@ -284,7 +284,7 @@ void CommonSource::tryLoadDocument() {
 	_documentLoading = true;
 	onUpdate(this);
 
-	thread.perform([this, doc, asset, assets] (const Task &) -> bool {
+	thread.perform([doc, asset, assets] (const Task &) -> bool {
 		*doc = asset->get()->openDocument();
 		if (*doc) {
 			auto &pages = (*doc)->getContentPages();

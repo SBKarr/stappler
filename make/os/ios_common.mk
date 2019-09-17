@@ -22,40 +22,36 @@ DEF_SYSROOT_SIM := "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneS
 DEF_SYSROOT_OS := "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk"
 XCODE_BIN_PATH := /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin
 
-DEF_MIN_IOS_VERSION := 10.0
+DEF_MIN_IOS_VERSION := 11.0
 
 IOS_EXPORT_PREFIX ?= $(realpath $(GLOBAL_ROOT))
 IOS_EXPORT_PATH := $(if $(LOCAL_ROOT),,$(GLOBAL_ROOT)/)$(BUILD_OUTDIR)
 IOS_ROOT := $(TOOLKIT_OUTPUT)/ios/$(if $(RELEASE),release,debug)
 
+IOS_LIBS := $(OSTYPE_STAPPLER_LIBS_LIST) \
+	-lz -lsqlite3 -liconv \
+	-framework Foundation \
+	-framework UIKit \
+	-framework OpenGLES \
+	-framework Security \
+	-framework SystemConfiguration \
+	-framework StoreKit \
+	-framework CoreGraphics \
+	-framework QuartzCore \
+	-framework UserNotifications
+
 ios:
-	$(MAKE) -f $(THIS_FILE) IOS_ARCH=armv7 MIN_IOS_VERSION=$(DEF_MIN_IOS_VERSION) SYSROOT=$(DEF_SYSROOT_OS) all ios-export
-	$(MAKE) -f $(THIS_FILE) IOS_ARCH=armv7s MIN_IOS_VERSION=$(DEF_MIN_IOS_VERSION) SYSROOT=$(DEF_SYSROOT_OS) all
-	$(MAKE) -f $(THIS_FILE) IOS_ARCH=arm64 MIN_IOS_VERSION=$(DEF_MIN_IOS_VERSION) SYSROOT=$(DEF_SYSROOT_OS) all
-	$(MAKE) -f $(THIS_FILE) IOS_ARCH=i386 MIN_IOS_VERSION=$(DEF_MIN_IOS_VERSION) SYSROOT=$(DEF_SYSROOT_SIM) all
+	$(MAKE) -f $(THIS_FILE) IOS_ARCH=arm64 MIN_IOS_VERSION=$(DEF_MIN_IOS_VERSION) SYSROOT=$(DEF_SYSROOT_OS) all ios-export
 	$(MAKE) -f $(THIS_FILE) IOS_ARCH=x86_64 MIN_IOS_VERSION=$(DEF_MIN_IOS_VERSION) SYSROOT=$(DEF_SYSROOT_SIM) all
-
-ios-armv7:
-	$(MAKE) -f $(THIS_FILE) IOS_ARCH=armv7 MIN_IOS_VERSION=$(DEF_MIN_IOS_VERSION) SYSROOT=$(DEF_SYSROOT_OS) all ios-export
-
-ios-armv7s:
-	$(MAKE) -f $(THIS_FILE) IOS_ARCH=armv7s MIN_IOS_VERSION=$(DEF_MIN_IOS_VERSION) SYSROOT=$(DEF_SYSROOT_OS) all ios-export
 
 ios-arm64:
 	$(MAKE) -f $(THIS_FILE) IOS_ARCH=arm64 MIN_IOS_VERSION=$(DEF_MIN_IOS_VERSION) SYSROOT=$(DEF_SYSROOT_OS) all ios-export
 
-ios-i386:
-	$(MAKE) -f $(THIS_FILE) IOS_ARCH=i386 MIN_IOS_VERSION=$(DEF_MIN_IOS_VERSION) SYSROOT=$(DEF_SYSROOT_SIM) all ios-export
-
 ios-x86_64:
 	$(MAKE) -f $(THIS_FILE) IOS_ARCH=x86_64 MIN_IOS_VERSION=$(DEF_MIN_IOS_VERSION) SYSROOT=$(DEF_SYSROOT_SIM) all ios-export
 
-
 ios-clean:
-	$(MAKE) -f $(THIS_FILE) IOS_ARCH=armv7 MIN_IOS_VERSION=$(DEF_MIN_IOS_VERSION) SYSROOT=$(DEF_SYSROOT_OS) clean
-	$(MAKE) -f $(THIS_FILE) IOS_ARCH=armv7s MIN_IOS_VERSION=$(DEF_MIN_IOS_VERSION) SYSROOT=$(DEF_SYSROOT_OS) clean
 	$(MAKE) -f $(THIS_FILE) IOS_ARCH=arm64 MIN_IOS_VERSION=$(DEF_MIN_IOS_VERSION) SYSROOT=$(DEF_SYSROOT_OS) clean
-	$(MAKE) -f $(THIS_FILE) IOS_ARCH=i386 MIN_IOS_VERSION=$(DEF_MIN_IOS_VERSION) SYSROOT=$(DEF_SYSROOT_SIM) clean
 	$(MAKE) -f $(THIS_FILE) IOS_ARCH=x86_64 MIN_IOS_VERSION=$(DEF_MIN_IOS_VERSION) SYSROOT=$(DEF_SYSROOT_SIM) clean
 
 ios_make_stappler_includes = \
@@ -82,7 +78,7 @@ ios-export:
 	@echo '\nSTAPPLER_INCLUDES = $(call ios_make_stappler_includes)' >> $(IOS_EXPORT_PATH)/export.xcconfig
 	@echo '\nMATERIAL_INCLUDES = $(call ios_make_material_includes)' >> $(IOS_EXPORT_PATH)/export.xcconfig
 	@echo '\nBUILD_INCLUDES = $(call ios_make_build_includes)' >> $(IOS_EXPORT_PATH)/export.xcconfig
-	@echo '\nSTAPPLER_LDFLAGS = $(call ios_make_library) -lc++' >> $(IOS_EXPORT_PATH)/export.xcconfig
+	@echo '\nSTAPPLER_LDFLAGS = $(call ios_make_library) -lc++ $(IOS_LIBS)' >> $(IOS_EXPORT_PATH)/export.xcconfig
 	@echo '\nSTAPPLER_LIBPATH_DEBUG = $(abspath $(IOS_EXPORT_PATH))/debug/$$(CURRENT_ARCH)' >> $(IOS_EXPORT_PATH)/export.xcconfig
 	@echo '\nSTAPPLER_LIBPATH_RELEASE = $(abspath $(IOS_EXPORT_PATH))/release/$$(CURRENT_ARCH)' >> $(IOS_EXPORT_PATH)/export.xcconfig
 

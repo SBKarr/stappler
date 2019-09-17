@@ -29,10 +29,10 @@ OSTYPE_COMMON_LIBS_LIST := \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libbrotlidec.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libbrotlienc.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libbrotlicommon.a \
-	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libgif.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libpng.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libjpeg.a \
-	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libwebp.a
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libwebp.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libidn2.a
 
 OSTYPE_STAPPLER_LIBS_LIST := \
 	$(OSTYPE_COMMON_LIBS_LIST) \
@@ -43,7 +43,7 @@ OSTYPE_COMMON_LIBS := $(OSTYPE_COMMON_LIBS_LIST) -lz
 OSTYPE_CLI_LIBS :=  $(OSTYPE_COMMON_LIBS)
 
 OSTYPE_STAPPLER_LIBS := $(OSTYPE_STAPPLER_LIBS_LIST) \
-	-lz -lsqlite3 \
+	-lz -lsqlite3 -liconv \
 	-framework Foundation \
 	-framework UIKit \
 	-framework OpenGLES \

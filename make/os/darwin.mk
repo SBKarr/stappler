@@ -32,9 +32,9 @@ OSTYPE_COMMON_LIBS := -lpthread \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libcurl.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libwebp.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libpng.a \
-	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libgif.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libjpeg.a \
-	-framework Foundation -lz -framework Security
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libidn2.a \
+	-framework Foundation -lz -framework Security -lunistring -liconv
 
 OSTYPE_CLI_LIBS += $(OSTYPE_COMMON_LIBS) \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libsqlite3.a \
