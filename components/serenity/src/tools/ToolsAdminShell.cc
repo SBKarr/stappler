@@ -881,16 +881,17 @@ struct TimeCmd : SocketCommand {
 
 		if (t) {
 			if (r == "s" || r == "sec") {
-				h.send(Time::seconds(t).toHttp());
+				h.send(toString(t, " sec -> ", Time::seconds(t).toHttp()));
 			} else if (r == "ms" || r == "msec") {
-				h.send(Time::milliseconds(t).toHttp());
-			} else if (r == "mcs" || r == "mcsec" || r.empty()) {
-				h.send(Time::microseconds(t).toHttp());
+				h.send(toString(t, " ms -> ", Time::milliseconds(t).toHttp()));
+			} else if (r == "mcs" || r == "μs" || r == "mcsec" || r.empty()) {
+				h.send(toString(t, " μs -> ", Time::microseconds(t).toHttp()));
 			} else {
 				h.send("Invalid input");
 			}
 		} else if (r.empty()) {
-			h.send(Time::now().toHttp());
+			auto now = Time::now();
+			h.send(toString(now.toMicros(), " μs -> ", now.toHttp()));
 		} else {
 			h.send("Invalid input");
 		}

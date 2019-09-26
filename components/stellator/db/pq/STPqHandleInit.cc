@@ -198,7 +198,7 @@ static void writeAfterTrigger(mem::StringStream &stream, const db::Scheme *s, co
 	auto writeInsertDelta = [&] (Handle::DeltaAction a) {
 		if (a == Handle::DeltaAction::Create || a == Handle::DeltaAction::Update) {
 			stream << "\t\tINSERT INTO " << TableRec::getNameForDelta(*s) << "(\"object\",\"action\",\"time\",\"user\")"
-				"VALUES(NEW.__oid,1,current_setting('serenity.now')::bigint,current_setting('serenity.user')::bigint);\n";
+				"VALUES(NEW.__oid," << stappler::toInt(a) << ",current_setting('serenity.now')::bigint,current_setting('serenity.user')::bigint);\n";
 		} else {
 			stream << "\t\tINSERT INTO " << TableRec::getNameForDelta(*s) << "(\"object\",\"action\",\"time\",\"user\")"
 				"VALUES(OLD.__oid," << stappler::toInt(a) << ",current_setting('serenity.now')::bigint,current_setting('serenity.user')::bigint);\n";
@@ -867,8 +867,17 @@ TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme) {
 			if (type == db::Type::Object) {
 				auto ref = static_cast<const db::FieldObject *>(f.getSlot());
 				auto target = ref->scheme->getName();
-				auto cname = mem::toString(name, "_ref_", it.first, "_", target);
-				constraints.emplace(cname, ConstraintRec(ConstraintRec::Reference, it.first, target.str<mem::Interface>(), ref->onRemove));
+				mem::StringStream cname; cname << name << "_ref_" << it.first << "_" << target;
+
+				switch (ref->onRemove) {
+				case RemovePolicy::Cascade: cname << "_csc"; break;
+				case RemovePolicy::Restrict: cname << "_rst"; break;
+				case RemovePolicy::Reference: cname << "_ref"; break;
+				case RemovePolicy::StrongReference: cname << "_sref"; break;
+				case RemovePolicy::Null: break;
+				}
+
+				constraints.emplace(cname.str(), ConstraintRec(ConstraintRec::Reference, it.first, target.str<mem::Interface>(), ref->onRemove));
 				indexes.emplace(mem::toString(name, "_idx_", it.first), mem::toString("( \"", it.first, "\" )"));
 			} else if (type == db::Type::File || type == db::Type::Image) {
 				auto ref = cfg.fileScheme;
