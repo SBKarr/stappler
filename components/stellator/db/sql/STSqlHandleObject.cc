@@ -147,6 +147,10 @@ mem::Value SqlHandle::save(Worker &worker, uint64_t oid, const mem::Value &data,
 					auto type = f_it->getType();
 					if (type == db::Type::FullTextView) {
 						upd.set(it, db::Binder::FullTextField{val});
+					} else if (type == db::Type::Object && val.isDictionary()) {
+						if (auto oid = val.getInteger("__oid")) {
+							upd.set(it, oid);
+						}
 					} else if (type != db::Type::Set && type != db::Type::Array && type != db::Type::View) {
 						upd.set(it, db::Binder::DataField{f_it, val, f_it->isDataLayout()});
 					}

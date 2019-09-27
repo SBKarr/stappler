@@ -139,6 +139,11 @@ int ResourceHandler::onTranslateName(Request &rctx) {
 		if (_resource->removeObject()) {
 			if (data.isString("location")) {
 				return rctx.redirectTo(String(data.getString("location")));
+			} else if (data.isString("target")) {
+				auto &target = data.getString("target");
+				if (!target.empty() && (StringView(target).starts_with(StringView(rctx.getFullHostname())) || target[0] == '/')) {
+					return rctx.redirectTo(String(target));
+				}
 			}
 			return HTTP_NO_CONTENT;
 		} else {
@@ -215,7 +220,7 @@ void ResourceHandler::onFilterComplete(InputFilter *filter) {
 		auto result = _resource->updateObject(filter->getData(), filter->getFiles());
 		if (result) {
 			auto &target = rctx.getParsedQueryArgs().getValue("target");
-			if (target.isString() && StringView(target.getString()).starts_with(StringView(rctx.getFullHostname()))) {
+			if (target.isString() && (StringView(target.getString()).starts_with(StringView(rctx.getFullHostname())) || target.getString()[0] == '/')) {
 				rctx.setStatus(rctx.redirectTo(String(target.getString())));
 			} else {
 				writeDataToRequest(rctx, move(result));
@@ -233,7 +238,7 @@ void ResourceHandler::onFilterComplete(InputFilter *filter) {
 		auto result = _resource->createObject(d, filter->getFiles());
 		if (result) {
 			auto &target = rctx.getParsedQueryArgs().getValue("target");
-			if (target.isString() && StringView(target.getString()).starts_with(StringView(rctx.getFullHostname()))) {
+			if (target.isString() && (StringView(target.getString()).starts_with(StringView(rctx.getFullHostname())) || target.getString()[0] == '/')) {
 				rctx.setStatus(rctx.redirectTo(String(target.getString())));
 			} else {
 				writeDataToRequest(rctx, move(result));
@@ -249,7 +254,7 @@ void ResourceHandler::onFilterComplete(InputFilter *filter) {
 		auto result = _resource->appendObject(filter->getData());
 		if (result) {
 			auto &target = rctx.getParsedQueryArgs().getValue("target");
-			if (target.isString() && StringView(target.getString()).starts_with(StringView(rctx.getFullHostname()))) {
+			if (target.isString() && (StringView(target.getString()).starts_with(StringView(rctx.getFullHostname())) || target.getString()[0] == '/')) {
 				rctx.setStatus(rctx.redirectTo(String(target.getString())));
 			} else {
 				writeDataToRequest(rctx, move(result));
