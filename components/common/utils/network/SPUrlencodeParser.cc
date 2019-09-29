@@ -194,6 +194,7 @@ data::Value *UrlencodeParser::flushString(StringView &r, data::Value *cur, VarSt
 		}
 		break;
 	case VarState::Value:
+	case VarState::End:
 		if (cur) {
 			if (!str.empty()) {
 				cur->setString(str);

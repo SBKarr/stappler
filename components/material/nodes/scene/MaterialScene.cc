@@ -519,6 +519,7 @@ void Scene::takeScreenshoot() {
 
 void Scene::saveScreenshot(const String &filename, cocos2d::Texture2D *tex) {
 	auto bmp = _captureCanvas->captureTexture(tex);
+	bmp.convert(stappler::BitmapFormat::Color::RGB888);
 	bmp.save(filename, true);
 }
 

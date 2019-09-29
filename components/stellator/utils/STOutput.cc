@@ -453,7 +453,9 @@ bool writeFileHeaders(Request &rctx, const data::Value &file, const String &conv
 	req->filename = db::File::getFilesystemPath(file.getInteger("__oid")).extract();
 
 	apr_stat(&req->finfo, req->filename, APR_FINFO_NORM, req->pool);
-	req->mtime = req->finfo.mtime;
+
+	auto mtime = file.getInteger("mtime");
+	req->mtime = mtime ? mtime : req->finfo.mtime;
 
 	ap_set_etag(req);
 
@@ -475,7 +477,7 @@ bool writeFileHeaders(Request &rctx, const data::Value &file, const String &conv
 
 	ap_set_last_modified(req);
 
-	h.emplace("X-FileModificationTime", toString(file.getInteger("mtime")));
+	h.emplace("X-FileModificationTime", toString(mtime));
 
 	if (file.isString("location")) {
 		h.emplace("X-FileLocation", file.getString("location"));
