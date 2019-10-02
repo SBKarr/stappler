@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "SPCommon.h"
 #include "SPString.h"
 #include "SPUrlencodeParser.h"
+#include "SPValid.h"
 
 NS_SP_BEGIN
 
@@ -176,6 +177,22 @@ data::Value *UrlencodeParser::flushString(StringView &r, data::Value *cur, VarSt
 		break;
 	case VarState::SubKey:
 		if (cur) {
+			if (!str.empty() && valid::validateNumber(str)) {
+				auto num = StringView(str).readInteger().get();
+				if (cur->isArray()) {
+					if (num < int64_t(cur->size())) {
+						cur = &cur->getValue(num);
+						return cur;
+					} else if (num == int64_t(cur->size())) {
+						cur = &cur->addValue(data::Value(true));
+						return cur;
+					}
+				} else if (!cur->isDictionary() && num == 0) {
+					cur->setArray(data::Array());
+					cur = &cur->addValue(data::Value(true));
+					return cur;
+				}
+			}
 			if (str.empty()) {
 				if (!cur->isArray()) {
 					cur->setArray(data::Array());

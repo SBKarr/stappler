@@ -168,8 +168,8 @@ protected:
 	Pair<FILE *, size_t> openFile(const String &filename, bool readOnly = false, bool resume = false);
 
 	int _connectTimeout = 20;
-	int _lowSpeedTime = 20;
-	int _lowSpeedLimit = 20_KiB;
+	int _lowSpeedTime = 120;
+	int _lowSpeedLimit = 10_KiB;
 
 	String _proxyAddress;
 	String _proxyAuth;

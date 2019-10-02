@@ -263,8 +263,14 @@ size_t getUtf16Length(const StringView &input) {
 	size_t counter = 0;
 	char_const_ptr_t ptr = input.data();
 	const char_const_ptr_t end = ptr + input.size();
+	char_const_ptr_t c = ptr;
 	while (ptr < end) {
-		ptr = Utf8NextChar(ptr, counter);
+		c = Utf8NextChar(ptr, counter);
+		if (c != ptr) {
+			ptr = c;
+		} else {
+			break;
+		}
 	};
 	return counter;
 }
