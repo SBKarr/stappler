@@ -122,6 +122,10 @@ bool ResultRow::toBool(size_t n) const {
 	return result->_interface->toBool(row, n);
 }
 
+mem::Value ResultRow::toTypedData(size_t n) const {
+	return result->_interface->toTypedData(row, n);
+}
+
 mem::Value ResultRow::toData(size_t n, const db::Field &f) {
 	switch(f.getType()) {
 	case db::Type::Integer:

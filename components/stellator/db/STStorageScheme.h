@@ -107,8 +107,8 @@ public:
 	const Field *getForeignLink(const mem::StringView &f) const;
 
 	size_t getMaxRequestSize() const { return maxRequestSize; }
-	size_t getMaxVarSize() const { return maxRequestSize; }
-	size_t getMaxFileSize() const { return maxRequestSize; }
+	size_t getMaxVarSize() const { return maxVarSize; }
+	size_t getMaxFileSize() const { return std::max(maxFileSize, maxVarSize); }
 
 	bool isAtomicPatch(const mem::Value &) const;
 

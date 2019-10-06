@@ -260,8 +260,9 @@ void SqlQuery::writeWhere(SqlQuery::WhereContinue &w, db::Operator op, const db:
 							if (it.compare == Comparation::Equal && (type == Type::Integer || type == Type::Float || type == Type::Object) && it.value1.isArray()) {
 								whi.parenthesis(db::Operator::And, [&] (WhereBegin &wb) {
 									auto wwb = wb.where();
+									auto op = it.compare == db::Comparation::NotEqual ? db::Operator::And : db::Operator::Or;
 									for (auto &id : it.value1.asArray()) {
-										wwb.where(db::Operator::Or, SqlQuery::Field(scheme.getName(), it.field), it.compare, id);
+										wwb.where(op, SqlQuery::Field(scheme.getName(), it.field), it.compare, id);
 									}
 								});
 							} else {
@@ -270,7 +271,17 @@ void SqlQuery::writeWhere(SqlQuery::WhereContinue &w, db::Operator op, const db:
 						}
 					}
 				} else if (it.field == "__oid" && db::checkIfComparationIsValid(db::Type::Integer, it.compare)) {
-					whi.where(db::Operator::And, SqlQuery::Field(scheme.getName(), it.field), it.compare, it.value1, it.value2);
+					if (it.value1.isArray()) {
+						whi.parenthesis(db::Operator::And, [&] (WhereBegin &wb) {
+							auto wwb = wb.where();
+							auto op = it.compare == db::Comparation::NotEqual ? db::Operator::And : db::Operator::Or;
+							for (auto &id : it.value1.asArray()) {
+								wwb.where(op, SqlQuery::Field(scheme.getName(), it.field), it.compare, id);
+							}
+						});
+					} else if (it.value1.isInteger()) {
+						whi.where(db::Operator::And, SqlQuery::Field(scheme.getName(), it.field), it.compare, it.value1, it.value2);
+					}
 				}
 			}
 		});

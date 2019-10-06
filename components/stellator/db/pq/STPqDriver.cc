@@ -104,6 +104,10 @@ char *Driver::getName(Result res, size_t field) const {
 	return PQfname((PGresult *)res.get(), field);
 }
 
+unsigned int Driver::getType(Result res, size_t field) const {
+	return PQftype((PGresult *)res.get(), field);
+}
+
 size_t Driver::getNTuples(Result res) const {
 	return size_t(PQntuples((PGresult *)res.get()));
 }
@@ -196,6 +200,7 @@ struct DriverSym : mem::AllocBase {
 	using PQgetvalueType = char *(*) (const void *res, int tup_num, int field_num);
 	using PQgetlengthType = int	(*) (const void *res, int tup_num, int field_num);
 	using PQfnameType = char *(*) (const void *res, int field_num);
+	using PQftypeType = unsigned int (*) (const void *res, int field_num);
 	using PQntuplesType = int (*) (const void *res);
 	using PQnfieldsType = int (*) (const void *res);
 	using PQcmdTuplesType = char *(*) (void *res);
@@ -222,6 +227,7 @@ struct DriverSym : mem::AllocBase {
 	PQgetvalueType PQgetvalue = nullptr;
 	PQgetlengthType PQgetlength = nullptr;
 	PQfnameType PQfname = nullptr;
+	PQftypeType PQftype = nullptr;
 	PQntuplesType PQntuples = nullptr;
 	PQnfieldsType PQnfields = nullptr;
 	PQcmdTuplesType PQcmdTuples = nullptr;
@@ -319,6 +325,10 @@ char *Driver::getName(Result res, size_t field) const {
 	return ((DriverSym *)_handle)->PQfname(res.get(), field);
 }
 
+unsigned int Driver::getType(Result res, size_t field) const {
+	return ((DriverSym *)_handle)->PQftype(res.get(), field);
+}
+
 size_t Driver::getNTuples(Result res) const {
 	return size_t(((DriverSym *)_handle)->PQntuples(res.get()));
 }
@@ -386,6 +396,7 @@ Driver::Driver(const mem::StringView &path) {
 		h->PQgetvalue = DriverSym::PQgetvalueType(dlsym(d, "PQgetvalue"));
 		h->PQgetlength = DriverSym::PQgetlengthType(dlsym(d, "PQgetlength"));
 		h->PQfname = DriverSym::PQfnameType(dlsym(d, "PQfname"));
+		h->PQftype = DriverSym::PQfnameType(dlsym(d, "PQftype"));
 		h->PQntuples = DriverSym::PQntuplesType(dlsym(d, "PQntuples"));
 		h->PQnfields = DriverSym::PQnfieldsType(dlsym(d, "PQnfields"));
 		h->PQcmdTuples = DriverSym::PQcmdTuplesType(dlsym(d, "PQcmdTuples"));
@@ -399,7 +410,7 @@ Driver::Driver(const mem::StringView &path) {
 		h->PQsetNoticeProcessor = DriverSym::PQsetNoticeProcessorType(dlsym(d, "PQsetNoticeProcessor"));
 
 		if (h->PQresultStatus && h->PQconnectdbParams && h->PQfinish && h->PQfformat && h->PQgetisnull && h->PQgetvalue && h->PQgetlength
-				&& h->PQfname && h->PQntuples && h->PQnfields && h->PQcmdTuples && h->PQresStatus && h->PQresultErrorMessage && h->PQclear
+				&& h->PQfname && h->PQftype && h->PQntuples && h->PQnfields && h->PQcmdTuples && h->PQresStatus && h->PQresultErrorMessage && h->PQclear
 				&& h->PQexec && h->PQexecParams && h->PQstatus && h->PQtransactionStatus && h->PQsetNoticeProcessor) {
 			_handle = h;
 		}

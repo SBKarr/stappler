@@ -100,6 +100,11 @@ struct Request::Config : public AllocPool {
 			auto handle = Root::getInstance()->dbdRequestAcquire(r);
 			if (handle) {
 				_database = new db::pq::Handle(db::pq::Driver::open(), db::pq::Driver::Handle(handle));
+				if (_database) {
+					auto conf = (Server::Config *)Request(r).server().getConfig();
+					_database->setStorageTypeMap(&conf->storageTypes);
+					_database->setCustomTypeMap(&conf->customTypes);
+				}
 			}
 		}
 		return _database;

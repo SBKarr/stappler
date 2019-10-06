@@ -74,6 +74,7 @@ public:
 	size_t getLength(Result res, size_t row, size_t field) const;
 
 	char *getName(Result res, size_t field) const;
+	unsigned int getType(Result res, size_t field) const;
 
 	size_t getNTuples(Result res) const;
 	size_t getNFields(Result res) const;

@@ -334,12 +334,17 @@ void Field::Slot::hash(mem::StringStream &stream, ValidationLevel l) const {
 
 bool FieldText::transformValue(const Scheme &scheme, const mem::Value &obj, mem::Value &val, bool isCreate) const {
 	switch (type) {
-	case Type::Text:
+	case Type::Text: {
 		if (!val.isBasicType()) {
 			return false;
 		}
 		if (!val.isString()) {
-			val.setString(val.asString());
+			if (val.isBool()) {
+				val.setValue(mem::Value());
+				return true;
+			} else {
+				val.setString(val.asString());
+			}
 		}
 		if (val.isString()) {
 			auto &str = val.getString();
@@ -347,41 +352,50 @@ bool FieldText::transformValue(const Scheme &scheme, const mem::Value &obj, mem:
 				return false;
 			}
 		}
+		auto &str = val.getString();
+		if (str.empty()) {
+			if (minLength == 0) {
+				return true;
+			} else {
+				val.setValue(mem::Value());
+				return true;
+			}
+		}
 		switch (transform) {
 		case Transform::None:
 		case Transform::Text:
-			if (!stappler::valid::validateText(val.getString())) {
+			if ( !stappler::valid::validateText(str)) {
 				return false;
 			}
 			break;
 		case Transform::Identifier:
 		case Transform::Alias:
-			if (!stappler::valid::validateIdentifier(val.getString())) {
+			if (!stappler::valid::validateIdentifier(str)) {
 				return false;
 			}
 			break;
 		case Transform::Url:
-			if (!stappler::valid::validateUrl(val.getString())) {
+			if (!stappler::valid::validateUrl(str)) {
 				return false;
 			}
 			break;
 		case Transform::Email:
-			if (!stappler::valid::validateEmail(val.getString())) {
+			if (!stappler::valid::validateEmail(str)) {
 				return false;
 			}
 			break;
 		case Transform::Number:
-			if (!stappler::valid::validateNumber(val.getString())) {
+			if (!stappler::valid::validateNumber(str)) {
 				return false;
 			}
 			break;
 		case Transform::Hexadecimial:
-			if (!stappler::valid::validateHexadecimial(val.getString())) {
+			if (!stappler::valid::validateHexadecimial(str)) {
 				return false;
 			}
 			break;
 		case Transform::Base64:
-			if (!stappler::valid::validateBase64(val.getString())) {
+			if (!stappler::valid::validateBase64(str)) {
 				return false;
 			}
 			break;
@@ -389,6 +403,7 @@ bool FieldText::transformValue(const Scheme &scheme, const mem::Value &obj, mem:
 			break;
 		}
 		break;
+	}
 	case Type::Bytes:
 		if (val.isString()) {
 			auto &str = val.getString();

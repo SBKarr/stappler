@@ -165,6 +165,8 @@ public: // httpd server info
 	StringView getSessionPublicKey() const;
 	StringView getSessionPrivateKey() const;
 
+	struct Config;
+
 public: // compression
 	enum EtagMode {
 		AddSuffix,
@@ -194,8 +196,6 @@ protected:
 	ServerComponent *getServerComponent(std::type_index name) const;
 
 	void runErrorReportTask(request_rec *, const Vector<data::Value> &);
-
-	struct Config;
 
 	server_rec *_server = nullptr;
 	Config *_config = nullptr;

@@ -29,9 +29,26 @@ NS_DB_BEGIN
 
 class Interface : public mem::AllocBase {
 public:
+	enum class StorageType {
+		Unknown,
+		Bool,
+		Char,
+		Float4,
+		Float8,
+		Int2,
+		Int4,
+		Int8,
+		Text,
+		VarChar,
+		Numeric,
+		Bytes,
+	};
+
 	struct Config {
 		mem::String name;
-		const Scheme *fileScheme;
+		const Scheme *fileScheme = nullptr;
+		mem::Vector<mem::Pair<uint32_t, StorageType>> *storageTypes = nullptr;
+		mem::Vector<mem::Pair<uint32_t, mem::String>> *customTypes = nullptr;
 	};
 
 	virtual ~Interface() { }
@@ -178,6 +195,8 @@ public:
 	virtual int64_t toInteger(size_t row, size_t field) = 0;
 	virtual double toDouble(size_t row, size_t field) = 0;
 	virtual bool toBool(size_t row, size_t field) = 0;
+
+	virtual mem::Value toTypedData(size_t row, size_t field) = 0;
 
 	virtual int64_t toId() = 0;
 

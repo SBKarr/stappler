@@ -35,6 +35,7 @@ struct InputFile : public mem::AllocBase {
 	mem::String original;
 	file_t file;
 
+	bool isBinary = false;
 	size_t writeSize;
 	size_t headerSize;
 	int64_t id;
@@ -48,6 +49,8 @@ struct InputFile : public mem::AllocBase {
 	void close();
 
 	bool save(const mem::StringView &) const;
+	mem::Bytes readBytes();
+	mem::String readText();
 
 	int64_t negativeId() const { return - id - 1; }
 

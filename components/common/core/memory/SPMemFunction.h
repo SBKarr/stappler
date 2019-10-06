@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define COMMON_MEMORY_SPMEMFUNCTION_H_
 
 #include "SPMemAlloc.h"
+#include <cxxabi.h>
 
 NS_SP_EXT_BEGIN(memory)
 
@@ -51,131 +52,175 @@ public:
 	using signature_type = ReturnType (ArgumentTypes ...);
 	using allocator_type = Allocator<void *>;
 
-	function(const allocator_type &alloc = allocator_type()) noexcept : mAllocator(alloc), mInvoker(nullptr) { }
+private:
+	static constexpr auto OptBufferSize = 16;
 
-	function(nullptr_t, const allocator_type &alloc = allocator_type()) noexcept : mAllocator(alloc), mInvoker(nullptr) { }
-	function &operator= (nullptr_t) noexcept { mInvoker = nullptr; return *this; }
+	using invoke_pointer = ReturnType (*) (const void *, ArgumentTypes ...);
+	using destroy_pointer = void (*) (void *);
+	using copy_pointer = void * (*) (const void *, allocator_type &, uint8_t *);
+	using move_pointer = void * (*) (void *, allocator_type &, uint8_t *);
+
+	struct functor_traits {
+		invoke_pointer invoke;
+		destroy_pointer destroy;
+		copy_pointer copy;
+		move_pointer move;
+	};
+
+	using traits_callback = functor_traits (*) ();
 
 	template <typename FunctionT>
-	function(FunctionT && f, const allocator_type &alloc = allocator_type()) noexcept
-		: mAllocator(alloc), mInvoker(
-				new (alloc)free_function_holder<
-						typename std::remove_cv<typename std::remove_reference<FunctionT>::type>::type
-				>(mAllocator, std::forward<FunctionT>(f))) { }
+	static functor_traits makeFunctionTraits() noexcept {
+		using BaseType = typename std::remove_cv<typename std::remove_reference<FunctionT>::type>::type;
+		using BaseTypePtr = BaseType *;
+		if constexpr(sizeof(BaseType) <= OptBufferSize) {
+			return functor_traits{
+				[] (const void* arg, ArgumentTypes ... args) -> ReturnType {
+					return (*static_cast<const BaseType *>(arg))(std::forward<ArgumentTypes>(args) ...);
+				},
+				[] (void *arg) {
+					if (arg) { (*static_cast<BaseType *>(arg)).~BaseType(); }
+				},
+				[] (const void *arg, allocator_type &alloc, uint8_t *buf) -> void * {
+					return new (buf) BaseType(*static_cast<const BaseType *>(arg));
+				},
+				[] (void *arg, allocator_type &alloc, uint8_t *buf) -> void * {
+					return new (buf) BaseType(std::move(*static_cast<BaseType *>(arg)));
+				},
+			};
+		} else {
+			return functor_traits{
+				[] (const void* arg, ArgumentTypes ... args) -> ReturnType {
+					return (*(*static_cast<const BaseTypePtr *>(arg)))(std::forward<ArgumentTypes>(args) ...);
+				},
+				[] (void *arg) {
+					auto ptr = *static_cast<BaseTypePtr *>(arg);
+					if (ptr) {
+						ptr->~BaseType();
+						new (arg) (const BaseType *)(nullptr);
+					}
+				},
+				[] (const void *arg, allocator_type &alloc, uint8_t *buf) -> void * {
+					Allocator<BaseType> ialloc = alloc;
+					auto mem = ialloc.allocate(1);
+					ialloc.construct(mem, *(*static_cast<const BaseTypePtr *>(arg)));
+					return new (buf) (const BaseType *)(mem);
+				},
+				[] (void *arg, allocator_type &alloc, uint8_t *buf) -> void * {
+					auto ret = new (buf) (const BaseType *)((*static_cast<BaseTypePtr *>(arg)));
+					new (arg) (const BaseType *)(nullptr);
+					return ret;
+				},
+			};
+		}
+	}
 
 	template <typename FunctionT>
-	function & operator= (FunctionT f) noexcept {
-		mInvoker = new (mAllocator) free_function_holder<
-				typename std::remove_cv<typename std::remove_reference<FunctionT>::type>::type
-		>(mAllocator, f);
-		return *this;
+	static traits_callback makeFreeFunction(FunctionT && f, allocator_type &alloc, uint8_t *buf) noexcept {
+		using BaseType = typename std::remove_cv<typename std::remove_reference<FunctionT>::type>::type;
+		if constexpr(sizeof(BaseType) <= OptBufferSize) {
+			new (buf) BaseType(std::forward<FunctionT>(f));
+		} else {
+			Allocator<BaseType> ialloc = alloc;
+			auto mem = ialloc.allocate(1);
+
+			memory::pool::push(alloc);
+			new (mem) BaseType(std::forward<FunctionT>(f));
+			memory::pool::pop();
+
+			new (buf) (const BaseType *)(mem);
+		}
+		return [] () { return makeFunctionTraits<FunctionT>(); };
 	}
 
-	template <typename FunctionType, typename ClassType>
-	function(FunctionType ClassType::* f, const allocator_type &alloc = allocator_type()) noexcept
-		:mAllocator(alloc),  mInvoker(new (alloc) member_function_holder<FunctionType, ArgumentTypes ...>(f)) { }
+public:
+	~function() { clear(); }
 
-	template <typename FunctionType, typename ClassType>
-	function & operator= (FunctionType ClassType::* f) noexcept {
-		mInvoker = new (mAllocator) member_function_holder<FunctionType, ArgumentTypes ...>(f);
-		return *this;
+	function(const allocator_type &alloc = allocator_type()) noexcept : mAllocator(alloc), mCallback(nullptr) { }
+
+	function(nullptr_t, const allocator_type &alloc = allocator_type()) noexcept : mAllocator(alloc), mCallback(nullptr) { }
+	function &operator= (nullptr_t) noexcept { clear(); mCallback = nullptr; return *this; }
+
+	function(const function & other, const allocator_type &alloc = allocator_type()) noexcept : mAllocator(alloc) {
+		mCallback = other.mCallback;
+		if (mCallback) {
+			mCallback().copy(other.mBuffer, mAllocator, mBuffer);
+		}
 	}
-
-
-	function(const function & other, const allocator_type &alloc = allocator_type()) noexcept
-	: mAllocator(alloc), mInvoker(other.mInvoker?other.mInvoker->clone(alloc):nullptr) { }
 
 	function & operator = (const function & other) noexcept {
-		if (other.mInvoker) {
-			mInvoker = other.mInvoker->clone(mAllocator);
-		} else {
-			mInvoker = nullptr;
+		clear();
+		mCallback = other.mCallback;
+		if (mCallback) {
+			mCallback().copy(other.mBuffer, mAllocator, mBuffer);
 		}
 		return *this;
 	}
 
-
-	function(function && other, const allocator_type &alloc = allocator_type()) noexcept
-	: mAllocator(alloc),
-	  mInvoker((alloc==other.mAllocator) ? other.mInvoker : (other.mInvoker?other.mInvoker->clone(mAllocator):nullptr)) {
-		other.mInvoker = nullptr;
+	function(function && other, const allocator_type &alloc = allocator_type()) noexcept : mAllocator(alloc) {
+		mCallback = other.mCallback;
+		if (mCallback) {
+			if (other.mAllocator == mAllocator) {
+				mCallback().move(other.mBuffer, mAllocator, mBuffer);
+			} else {
+				mCallback().copy(other.mBuffer, mAllocator, mBuffer);
+			}
+		}
 	}
+
 	function & operator = (function && other) noexcept {
-		mInvoker = (mAllocator==other.mAllocator) ? other.mInvoker : (other.mInvoker?other.mInvoker->clone(mAllocator):nullptr);
-		other.mInvoker = nullptr;
+		clear();
+		mCallback = other.mCallback;
+		if (mCallback) {
+			if (other.mAllocator == mAllocator) {
+				mCallback().move(other.mBuffer, mAllocator, mBuffer);
+			} else {
+				mCallback().copy(other.mBuffer, mAllocator, mBuffer);
+			}
+		}
+		return *this;
+	}
+
+	template <typename FunctionT,
+		class = typename std::enable_if<!std::is_same<
+			typename std::remove_cv<typename std::remove_reference<FunctionT>::type>::type,
+			function<ReturnType (ArgumentTypes ...)
+		>>::value>::type>
+	function(FunctionT && f, const allocator_type &alloc = allocator_type()) noexcept
+	: mAllocator(alloc) {
+		mCallback = makeFreeFunction(std::forward<FunctionT>(f), mAllocator, mBuffer);
+	}
+
+	template <typename FunctionT>
+	function & operator= (FunctionT &&f) noexcept {
+		clear();
+		mCallback = makeFreeFunction(std::forward<FunctionT>(f), mAllocator, mBuffer);
 		return *this;
 	}
 
 	ReturnType operator () (ArgumentTypes ... args) const {
-		return mInvoker->invoke(std::forward<ArgumentTypes>(args) ...);
+		return mCallback().invoke(mBuffer, std::forward<ArgumentTypes>(args) ...);
 	}
 
-	inline operator bool () const noexcept { return mInvoker != nullptr; }
+	inline operator bool () const noexcept { return mCallback != nullptr; }
 
-	inline bool operator == (nullptr_t) const noexcept { return mInvoker == nullptr; }
-	inline bool operator != (nullptr_t) const noexcept { return mInvoker != nullptr; }
+	inline bool operator == (nullptr_t) const noexcept { return mCallback == nullptr; }
+	inline bool operator != (nullptr_t) const noexcept { return mCallback != nullptr; }
 
 	const allocator_type &get_allocator() const { return mAllocator; }
 
 private:
-	class function_holder_base : public AllocPool {
-	public:
-		function_holder_base() noexcept { }
-		virtual ~function_holder_base() noexcept { }
-
-		virtual ReturnType invoke(ArgumentTypes && ... args) = 0;
-		virtual function_holder_base * clone(const allocator_type &) = 0;
-
-		function_holder_base(const function_holder_base & ) = delete;
-		void operator = (const function_holder_base &)  = delete;
-	};
-
-	// Мы не используем умные указатели, поскольку память из pool_t не требует освобождения
-	using invoker_t = function_holder_base *;
-
-	template <typename FunctionT>
-	class free_function_holder : public function_holder_base {
-	public:
-		free_function_holder(const allocator_type &alloc, const FunctionT &func) noexcept : function_holder_base(), mFunction(func) {
-			registerCleanupDestructor(this, alloc.getPool());
+	void clear() {
+		if (mCallback) {
+			auto t = mCallback();
+			t.destroy(mBuffer);
+			mCallback = nullptr;
 		}
-		free_function_holder(const allocator_type &alloc, FunctionT &&func) noexcept : function_holder_base(), mFunction(std::move(func)) {
-			registerCleanupDestructor(this, alloc.getPool());
-		}
-
-		virtual ReturnType invoke(ArgumentTypes && ... args) override {
-			return mFunction(std::forward<ArgumentTypes>(args)...);
-		}
-
-		virtual invoker_t clone(const allocator_type &alloc) override {
-			return invoker_t(new (alloc) free_function_holder(alloc, mFunction));
-		}
-
-	private:
-		FunctionT mFunction;
-	};
-
-	template <typename FunctionType, typename ClassType, typename ... RestArgumentTypes>
-	class member_function_holder : public function_holder_base {
-	public:
-		using member_function_signature_t = FunctionType ClassType::*;
-
-		member_function_holder(member_function_signature_t f) noexcept : mFunction(f) {}
-
-		virtual ReturnType invoke(ClassType obj, RestArgumentTypes &&... restArgs) override {
-			return (obj.*mFunction)(std::forward<RestArgumentTypes>(restArgs) ...);
-		}
-
-		virtual invoker_t clone(const allocator_type &alloc) override {
-			return invoker_t(new (alloc) member_function_holder(mFunction));
-		}
-
-	private:
-		member_function_signature_t mFunction;
-	};
+	}
 
 	allocator_type mAllocator;
-	invoker_t mInvoker;
+	traits_callback mCallback = nullptr;
+	uint8_t mBuffer[OptBufferSize];
 };
 
 
@@ -185,47 +230,15 @@ class callback;
 template <typename ReturnType, typename ... ArgumentTypes>
 class callback <ReturnType (ArgumentTypes ...)> : public AllocPool {
 private:
-	class function_holder_base : public AllocPool {
-	public:
-		function_holder_base() noexcept { }
-		virtual ~function_holder_base() noexcept { }
-
-		virtual ReturnType invoke(ArgumentTypes && ... args) = 0;
-
-		function_holder_base(const function_holder_base & ) = delete;
-		void operator = (const function_holder_base &)  = delete;
-	};
-
-	using invoker_t = function_holder_base *;
-
-	template <typename FunctionT>
-	class free_function_holder : public function_holder_base {
-	public:
-		free_function_holder(const FunctionT &func) noexcept : function_holder_base(), mFunction(func) { }
-		free_function_holder(FunctionT &&func) noexcept : function_holder_base(), mFunction(std::move(func)) { }
-
-		virtual ReturnType invoke(ArgumentTypes && ... args) override {
-			return mFunction(std::forward<ArgumentTypes>(args)...);
-		}
-
-	private:
-		FunctionT mFunction;
-	};
+	// Modern version. inspired by http://bannalia.blogspot.com/2016/07/passing-capturing-c-lambda-functions-as.html
+	using FunctionPointer = ReturnType (*) (const void *, ArgumentTypes ...);
 
 	template <typename FunctionType, typename ClassType, typename ... RestArgumentTypes>
-	class member_function_holder : public function_holder_base {
-	public:
-		using member_function_signature_t = FunctionType ClassType::*;
-
-		member_function_holder(member_function_signature_t f) noexcept : mFunction(f) {}
-
-		virtual ReturnType invoke(ClassType obj, RestArgumentTypes &&... restArgs) override {
-			return (obj.*mFunction)(std::forward<RestArgumentTypes>(restArgs) ...);
-		}
-
-	private:
-		member_function_signature_t mFunction;
-	};
+	static FunctionPointer makeMemberFunction(FunctionType ClassType::* f) {
+		return [] (const void* arg, ClassType && obj, RestArgumentTypes ... args) { // note thunk is captureless
+			return (obj.*static_cast<const FunctionType ClassType::*>(arg))(std::forward<RestArgumentTypes>(args) ...);
+		};
+	}
 
 public:
 	static constexpr size_t BufferSize = 256;
@@ -233,41 +246,33 @@ public:
 	using signature_type = ReturnType (ArgumentTypes ...);
 
 	~callback() {
-		clear();
+		// functor is not owned, so, no cleanup
 	}
 
-	template <
-		typename FunctionT,
-		typename = typename std::enable_if<sizeof( free_function_holder <
-				typename std::remove_cv<typename std::remove_reference<FunctionT>::type>::type
-			> ) < BufferSize>::type>
-	callback(FunctionT && f) noexcept
-	: mInvoker(new (mBuffer) free_function_holder <
-		typename std::remove_cv<typename std::remove_reference<FunctionT>::type>::type
-	> (std::forward<FunctionT>(f))) { }
+	template <typename FunctionT>
+	callback(const FunctionT & f) noexcept
+	: mFunctor(&f), mCallback([] (const void* arg, ArgumentTypes ... args) {
+		return (*static_cast<const FunctionT *>(arg))(std::forward<ArgumentTypes>(args) ...);
+	}) { }
 
-	template <
-		typename FunctionT,
-		typename = typename std::enable_if<sizeof( free_function_holder <
-				typename std::remove_cv<typename std::remove_reference<FunctionT>::type>::type
-			> ) < BufferSize>::type>
-	callback & operator= (FunctionT f) noexcept {
-		clear();
-		mInvoker = new (mBuffer) free_function_holder <
-				typename std::remove_cv<typename std::remove_reference<FunctionT>::type>::type
-			> (std::forward<FunctionT>(f));
+	template <typename FunctionT>
+	callback & operator= (const FunctionT &f) noexcept {
+		mFunctor = &f;
+		mCallback = [] (const void* arg, ArgumentTypes ... args) {
+			return (*static_cast<const FunctionT *>(arg))(std::forward<ArgumentTypes>(args) ...);
+		};
 	}
 
-	template <
-		typename FunctionType, typename ClassType,
-		typename = typename std::enable_if<sizeof(member_function_holder<FunctionType, ArgumentTypes ...>) < BufferSize>::type>
+	template <typename FunctionType, typename ClassType>
 	callback(FunctionType ClassType::* f) noexcept
-	: mInvoker(new (mBuffer) member_function_holder<FunctionType, ArgumentTypes ...>(f)) { }
+	: mFunctor(f) {
+		mCallback = makeMemberFunction<FunctionType, ArgumentTypes ...>(f);
+	}
 
 	template <typename FunctionType, typename ClassType>
 	callback & operator= (FunctionType ClassType::* f) noexcept {
-		clear();
-		mInvoker = new (mBuffer) member_function_holder<FunctionType, ArgumentTypes ...>(f);
+		mFunctor = f;
+		mCallback = makeMemberFunction<FunctionType, ArgumentTypes ...>(f);
 	}
 
 	callback(const callback & other) noexcept = delete;
@@ -277,28 +282,15 @@ public:
 	callback & operator = (callback && other) noexcept = delete;
 
 	ReturnType operator () (ArgumentTypes ... args) const {
-		return mInvoker->invoke(std::forward<ArgumentTypes>(args) ...);
+		return mCallback(mFunctor, std::forward<ArgumentTypes>(args) ...);
 	}
 
-	inline operator bool () const noexcept { return mInvoker != nullptr; }
-
-	void clear() {
-		if (mInvoker) {
-			mInvoker->~function_holder_base();
-			mInvoker = nullptr;
-		}
-	}
+	inline operator bool () const noexcept { return mFunctor != nullptr && mCallback != nullptr; }
 
 private:
-	uint8_t mBuffer[BufferSize] = {0};
-	invoker_t mInvoker;
+	const void * mFunctor;
+	FunctionPointer mCallback;
 };
-
-namespace pool {
-
-void cleanup_register(pool_t *, memory::function<void()> &&);
-
-}
 
 NS_SP_EXT_END(memory)
 

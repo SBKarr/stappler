@@ -27,6 +27,78 @@ THE SOFTWARE.
 
 NS_DB_PQ_BEGIN
 
+static mem::String pg_numeric_to_string(stappler::DataReader<stappler::ByteOrder::Network> r) {
+	using NumericDigit = int16_t;
+	static constexpr auto DEC_DIGITS = 4;
+	static constexpr auto NUMERIC_NEG = 0x4000;
+
+	int d;
+	NumericDigit dig;
+	NumericDigit d1;
+
+	uint16_t ndigits = uint16_t(r.readUnsigned16());
+	int16_t weight = int16_t(r.readUnsigned16());
+	int16_t sign = int16_t(r.readUnsigned16());
+	int16_t dscale = int16_t(r.readUnsigned16());
+
+	mem::Vector<int16_t> digits;
+	for (uint16_t i = 0; i < ndigits && !r.empty(); i++) {
+		digits.emplace_back(r.readUnsigned16());
+	}
+
+	int i = (weight + 1) * DEC_DIGITS;
+	if (i <= 0) {
+		i = 1;
+	}
+
+	mem::String str; str.reserve(i + dscale + DEC_DIGITS + 2);
+
+	if (sign == NUMERIC_NEG) { str.push_back('-'); }
+	if (weight < 0) {
+		d = weight + 1;
+		str.push_back('0');
+	} else {
+		for (d = 0; d <= weight; d++) {
+			dig = (d < ndigits) ? digits[d] : 0;
+
+			bool putit = (d > 0);
+			d1 = dig / 1000;
+			dig -= d1 * 1000;
+			putit |= (d1 > 0);
+			if (putit) { str.push_back(d1 + '0'); }
+			d1 = dig / 100;
+			dig -= d1 * 100;
+			putit |= (d1 > 0);
+			if (putit) { str.push_back(d1 + '0'); }
+			d1 = dig / 10;
+			dig -= d1 * 10;
+			putit |= (d1 > 0);
+			if (putit) { str.push_back(d1 + '0'); }
+			str.push_back(dig + '0');
+		}
+	}
+
+	if (dscale > 0) {
+		str.push_back('.');
+		for (i = 0; i < dscale; d++, i += DEC_DIGITS) {
+			dig = (d >= 0 && d < ndigits) ? digits[d] : 0;
+
+			d1 = dig / 1000;
+			dig -= d1 * 1000;
+			str.push_back(d1 + '0');
+			d1 = dig / 100;
+			dig -= d1 * 100;
+			str.push_back(d1 + '0');
+			d1 = dig / 10;
+			dig -= d1 * 10;
+			str.push_back(d1 + '0');
+			str.push_back(dig + '0');
+		}
+	}
+
+	return str;
+}
+
 class PgQueryInterface : public db::QueryInterface {
 public:
 	using Binder = db::Binder;
@@ -218,7 +290,7 @@ public:
 		return (x == Driver::Status::Empty) || (x == Driver::Status::CommandOk) || (x == Driver::Status::TuplesOk) || (x == Driver::Status::SingleTuple);
 	}
 
-	PgResultInterface(Driver *d, Driver::Result res) : driver(d), result(res) {
+	PgResultInterface(const Handle *h, Driver *d, Driver::Result res) : handle(h), driver(d), result(res) {
 		err = result.get() ? driver->getStatus(result) : Driver::Status::FatalError;
 	}
 	virtual ~PgResultInterface() {
@@ -291,6 +363,51 @@ public:
 			return val && *val != 0;
 		}
 	}
+	virtual mem::Value toTypedData(size_t row, size_t field) override {
+		auto t = driver->getType(result, field);
+		auto s = handle->getTypeById(t);
+		switch (s) {
+		case Interface::StorageType::Unknown:
+			std::cout << "Unknown type conversion: " << handle->getTypeNameById(t) << "\n";
+			messages::error("DB", "Unknown type conversion", mem::Value(handle->getTypeNameById(t)));
+			return mem::Value();
+			break;
+		case Interface::StorageType::Bool:
+			return mem::Value(toBool(row, field));
+			break;
+		case Interface::StorageType::Char:
+			break;
+		case Interface::StorageType::Float4:
+		case Interface::StorageType::Float8:
+			return mem::Value(toDouble(row, field));
+			break;
+		case Interface::StorageType::Int2:
+		case Interface::StorageType::Int4:
+		case Interface::StorageType::Int8:
+			return mem::Value(toInteger(row, field));
+			break;
+		case Interface::StorageType::Text:
+		case Interface::StorageType::VarChar:
+			return mem::Value(toString(row, field));
+			break;
+		case Interface::StorageType::Numeric: {
+			stappler::DataReader<stappler::ByteOrder::Network> r((const uint8_t *)driver->getValue(result, row, field), driver->getLength(result, row, field));
+			auto str = pg_numeric_to_string(r);
+
+			auto v = mem::StringView(str).readDouble();
+			if (v.valid()) {
+				return mem::Value(v.get());
+			} else {
+				return mem::Value(str);
+			}
+			break;
+		}
+		case Interface::StorageType::Bytes:
+			return mem::Value(toBytes(row, field));
+			break;
+		}
+		return mem::Value();
+	}
 	virtual int64_t toId() override {
 		if (isBinaryFormat(0)) {
 			stappler::DataReader<stappler::ByteOrder::Network> r((const uint8_t *)driver->getValue(result, 0, 0), driver->getLength(result, 0, 0));
@@ -345,6 +462,7 @@ public:
 	}
 
 public:
+	const Handle *handle = nullptr;
 	Driver *driver = nullptr;
 	Driver::Result result = Driver::Result(nullptr);
 	Driver::Status err = Driver::Status::Empty;
@@ -434,6 +552,37 @@ Driver::Connection Handle::getConnection() const {
 	return conn;
 }
 
+void Handle::setStorageTypeMap(const mem::Vector<mem::Pair<uint32_t, Interface::StorageType>> *vec) {
+	storageTypes = vec;
+}
+void Handle::setCustomTypeMap(const mem::Vector<mem::Pair<uint32_t, mem::String>> *vec) {
+	customTypes = vec;
+}
+
+Interface::StorageType Handle::getTypeById(uint32_t oid) const {
+	if (storageTypes) {
+		auto it = std::lower_bound(storageTypes->begin(), storageTypes->end(), oid, [] (const mem::Pair<uint32_t, Interface::StorageType> &l, uint32_t r) -> bool {
+			return l.first < r;
+		});
+		if (it != storageTypes->end() && it->first == oid) {
+			return it->second;
+		}
+	}
+	return Interface::StorageType::Unknown;
+}
+
+mem::StringView Handle::getTypeNameById(uint32_t oid) const {
+	if (customTypes) {
+		auto it = std::lower_bound(customTypes->begin(), customTypes->end(), oid, [] (const mem::Pair<uint32_t, mem::String> &l, uint32_t r) -> bool {
+			return l.first < r;
+		});
+		if (it != customTypes->end() && it->first == oid) {
+			return it->second;
+		}
+	}
+	return mem::StringView();
+}
+
 void Handle::makeQuery(const stappler::Callback<void(sql::SqlQuery &)> &cb) {
 	PgQueryInterface interface;
 	db::sql::SqlQuery query(&interface);
@@ -448,7 +597,7 @@ bool Handle::selectQuery(const sql::SqlQuery &query, const stappler::Callback<vo
 	auto queryInterface = static_cast<PgQueryInterface *>(query.getInterface());
 
 	ExecParamData data(query);
-	PgResultInterface res(driver, driver->exec(conn, query.getQuery().weak().data(), queryInterface->params.size(),
+	PgResultInterface res(this, driver, driver->exec(conn, query.getQuery().weak().data(), queryInterface->params.size(),
 			data.paramValues, data.paramLengths, data.paramFormats, 1));
 	if (!res.isSuccess()) {
 		auto info = res.getInfo();
@@ -474,7 +623,7 @@ bool Handle::performSimpleQuery(const mem::StringView &query) {
 		return false;
 	}
 
-	PgResultInterface res(driver, driver->exec(conn, query.data()));
+	PgResultInterface res(this, driver, driver->exec(conn, query.data()));
 	lastError = res.getError();
 	if (!res.isSuccess()) {
 		auto info = res.getInfo();
@@ -490,7 +639,7 @@ bool Handle::performSimpleSelect(const mem::StringView &query, const stappler::C
 		return false;
 	}
 
-	PgResultInterface res(driver, driver->exec(conn, query.data()));
+	PgResultInterface res(this, driver, driver->exec(conn, query.data()));
 	lastError = res.getError();
 
 	if (res.isSuccess()) {

@@ -153,6 +153,34 @@ void Resource::encodeFiles(data::Value &data, apr::array<db::InputFile> &files) 
 			if (!data.hasValue(it.name)) {
 				data.setInteger(it.negativeId(), it.name);
 			}
+		} else if (f && f->getType() == db::Type::Extra) {
+			auto fobj = f->getSlot<db::FieldExtra>();
+			auto cIt = fobj->fields.find("content");
+			auto tIt = fobj->fields.find("type");
+			auto mIt = fobj->fields.find("mtime");
+			if (cIt != fobj->fields.end() && tIt != fobj->fields.end() && tIt->second.getType() == db::Type::Text) {
+				if (cIt->second.getType() == db::Type::Text && !it.isBinary) {
+					auto patch = data::Value({
+						pair("content", data::Value(it.readText())),
+						pair("type", data::Value(it.type)),
+					});
+
+					if (mIt != fobj->fields.end()) {
+						patch.setInteger(mem::Time::now().toMicros(), "mtime");
+					}
+					data.setValue(move(patch), f->getName().str());
+				} else if (cIt->second.getType() == db::Type::Bytes) {
+					auto patch = data::Value({
+						pair("content", data::Value(it.readBytes())),
+						pair("type", data::Value(it.type)),
+					});
+
+					if (mIt != fobj->fields.end()) {
+						patch.setInteger(mem::Time::now().toMicros(), "mtime");
+					}
+					data.setValue(move(patch), f->getName().str());
+				}
+			}
 		}
 	}
 }

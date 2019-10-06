@@ -203,6 +203,15 @@ typename basic_file::streamsize basic_file::xsgetn(char* s, streamsize n) {
 	return ret;
 }
 
+size_t basic_file::seek(int64_t offset, stappler::io::Seek s) {
+	switch (s) {
+	case stappler::io::Seek::Set: return seekoff(offset, std::ios_base::beg); break;
+	case stappler::io::Seek::Current: return seekoff(offset, std::ios_base::cur); break;
+	case stappler::io::Seek::End: return seekoff(offset, std::ios_base::end); break;
+	}
+	return 0;
+}
+
 typename basic_file::streamoff basic_file::seekoff(streamoff off, std::ios_base::seekdir way) {
 	streamoff ret = -1;
 	if (_file) {

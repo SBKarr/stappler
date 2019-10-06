@@ -23,6 +23,7 @@ THE SOFTWARE.
 #ifndef COMMON_APR_SPAPRFILESTREAM_H_
 #define COMMON_APR_SPAPRFILESTREAM_H_
 
+#include "SPIOCommon.h"
 #include "SPMemString.h"
 
 #if SPAPR
@@ -80,6 +81,7 @@ public:
 	streamsize xsputn(const char* s, streamsize n);
 	streamsize xsgetn(char* s, streamsize n);
 
+	size_t seek(int64_t offset, stappler::io::Seek s);
 	streamoff seekoff(streamoff off, std::ios_base::seekdir way);
 
 	int sync();

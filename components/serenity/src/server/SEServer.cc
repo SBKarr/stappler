@@ -222,7 +222,7 @@ struct Server::Config : public AllocPool {
 				auto db = root->dbdOpen(pool, serv);
 				if (db) {
 					db::pq::Handle h(db::pq::Driver::open(), db::pq::Driver::Handle(db));
-					h.init(db::Interface::Config{serv.getServerHostname(), serv.getFileScheme()}, schemes);
+					h.init(db::Interface::Config{serv.getServerHostname(), serv.getFileScheme(), &storageTypes, &customTypes}, schemes);
 
 					for (auto &it : components) {
 						currentComponent = it.second->getName();
@@ -322,6 +322,9 @@ struct Server::Config : public AllocPool {
 
 	String publicSessionKey;
 	String privateSessionKey;
+
+	mem::Vector<mem::Pair<uint32_t, db::Interface::StorageType>> storageTypes;
+	mem::Vector<mem::Pair<uint32_t, mem::String>> customTypes;
 };
 
 void * Server::merge(void *base, void *add) {
@@ -763,6 +766,8 @@ void Server::onHeartBeat(apr_pool_t *pool) {
 			auto root = Root::getInstance();
 			if (auto dbd = root->dbdOpen(pool, _server)) {
 				db::pq::Handle h(db::pq::Driver::open(), db::pq::Driver::Handle(dbd));
+				h.setStorageTypeMap(&_config->storageTypes);
+				h.setCustomTypeMap(&_config->customTypes);
 				if (now - _config->lastDatabaseCleanup > config::getDefaultDatabaseCleanupInterval()) {
 					_config->lastDatabaseCleanup = now;
 					h.makeSessionsCleanup();

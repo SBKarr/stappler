@@ -99,6 +99,9 @@ struct TableRec {
 
 constexpr static uint32_t getDefaultFunctionVersion() { return 10; }
 
+constexpr static auto LIST_DB_TYPES = "SELECT oid, typname, typcategory FROM pg_type WHERE typcategory = 'B'"
+		" OR typcategory = 'D' OR typcategory = 'I' OR typcategory = 'N' OR typcategory = 'S' OR typcategory = 'U';";
+
 constexpr static const char * DATABASE_DEFAULTS = R"Sql(
 CREATE TABLE IF NOT EXISTS __objects (
 	__oid bigserial NOT NULL,
@@ -925,13 +928,70 @@ TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme) {
 	}
 }
 
+
+void Handle_insert_sorted(mem::Vector<mem::Pair<uint32_t, Interface::StorageType>> & vec, uint32_t oid, Interface::StorageType type) {
+	auto it = std::upper_bound(vec.begin(), vec.end(), oid, [] (uint32_t l, const mem::Pair<uint32_t, Interface::StorageType> &r) -> bool {
+		return l < r.first;
+	});
+	vec.emplace(it, oid, type);
+}
+
+void Handle_insert_sorted(mem::Vector<mem::Pair<uint32_t, mem::String>> & vec, uint32_t oid, mem::StringView type) {
+	auto it = std::upper_bound(vec.begin(), vec.end(), oid, [] (uint32_t l, const mem::Pair<uint32_t, mem::String> &r) -> bool {
+		return l < r.first;
+	});
+	vec.emplace(it, oid, type.str<mem::Interface>());
+}
+
 bool Handle::init(const Interface::Config &cfg, const mem::Map<mem::String, const Scheme *> &s) {
 	if (!performSimpleQuery(mem::String::make_weak(DATABASE_DEFAULTS))) {
 		return false;
 	}
 
-	if (!performSimpleQuery("START TRANSACTION; LOCK TABLE __objects;"_weak)) {
+	if (!performSimpleQuery("START TRANSACTION; LOCK TABLE __objects;")) {
 		return false;
+	}
+
+	if (cfg.storageTypes && cfg.customTypes) {
+		performSimpleSelect(LIST_DB_TYPES, [&] (db::sql::Result &types) {
+			for (auto it : types) {
+				auto tid = it.toInteger(0);
+				auto tname = it.at(1);
+				if (cfg.storageTypes) {
+					if (tname == "bool") {
+						Handle_insert_sorted(*cfg.storageTypes, uint32_t(tid), Interface::StorageType::Bool);
+					} else if (tname == "bytea") {
+						Handle_insert_sorted(*cfg.storageTypes, uint32_t(tid), Interface::StorageType::Bytes);
+					} else if (tname == "char") {
+						Handle_insert_sorted(*cfg.storageTypes, uint32_t(tid), Interface::StorageType::Char);
+					} else if (tname == "int8") {
+						Handle_insert_sorted(*cfg.storageTypes, uint32_t(tid), Interface::StorageType::Int8);
+					} else if (tname == "int4") {
+						Handle_insert_sorted(*cfg.storageTypes, uint32_t(tid), Interface::StorageType::Int4);
+					} else if (tname == "int2") {
+						Handle_insert_sorted(*cfg.storageTypes, uint32_t(tid), Interface::StorageType::Int2);
+					} else if (tname == "float4") {
+						Handle_insert_sorted(*cfg.storageTypes, uint32_t(tid), Interface::StorageType::Float4);
+					} else if (tname == "float8") {
+						Handle_insert_sorted(*cfg.storageTypes, uint32_t(tid), Interface::StorageType::Float8);
+					} else if (tname == "varchar") {
+						Handle_insert_sorted(*cfg.storageTypes, uint32_t(tid), Interface::StorageType::VarChar);
+					} else if (tname == "text") {
+						Handle_insert_sorted(*cfg.storageTypes, uint32_t(tid), Interface::StorageType::Text);
+					} else if (tname == "numeric") {
+						Handle_insert_sorted(*cfg.storageTypes, uint32_t(tid), Interface::StorageType::Numeric);
+					} else if (cfg.customTypes) {
+						Handle_insert_sorted(*cfg.customTypes, uint32_t(tid), tname);
+					}
+				}
+				if (cfg.customTypes) {
+					Handle_insert_sorted(*cfg.customTypes, uint32_t(tid), tname);
+				}
+			}
+		});
+
+		storageTypes = cfg.storageTypes;
+		customTypes = cfg.customTypes;
 	}
 
 	mem::StringStream tables;

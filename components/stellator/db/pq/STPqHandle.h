@@ -52,11 +52,17 @@ public:
 	Driver::Handle getHandle() const;
 	Driver::Connection getConnection() const;
 
+	void setStorageTypeMap(const mem::Vector<mem::Pair<uint32_t, Interface::StorageType>> *);
+	void setCustomTypeMap(const mem::Vector<mem::Pair<uint32_t, mem::String>> *);
+
 	virtual void makeQuery(const stappler::Callback<void(sql::SqlQuery &)> &cb);
 
 	virtual bool selectQuery(const db::sql::SqlQuery &, const stappler::Callback<void(sql::Result &)> &cb);
 	virtual bool performSimpleQuery(const mem::StringView &);
 	virtual bool performSimpleSelect(const mem::StringView &, const stappler::Callback<void(sql::Result &)> &cb);
+
+	Interface::StorageType getTypeById(uint32_t) const;
+	mem::StringView getTypeNameById(uint32_t) const;
 
 public: // adapter interface
 	virtual bool init(const Interface::Config &cfg, const mem::Map<mem::String, const Scheme *> &) override;
@@ -76,6 +82,9 @@ protected:
 	Driver::Connection conn = Driver::Connection(nullptr);
 	Driver::Status lastError = Driver::Status::Empty;
 	TransactionLevel level = TransactionLevel::ReadCommited;
+
+	const mem::Vector<mem::Pair<uint32_t, StorageType>> *storageTypes = nullptr;
+	const mem::Vector<mem::Pair<uint32_t, mem::String>> *customTypes = nullptr;
 };
 
 NS_DB_PQ_END

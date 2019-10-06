@@ -40,6 +40,13 @@ bool InputFile::isOpen() const {
 }
 
 size_t InputFile::write(const char *s, size_t n) {
+	auto tmp = s;
+	for (size_t i = 0; i < n; ++ i) {
+		if (*tmp == 0) {
+			isBinary = true;
+		}
+		++ tmp;
+	}
 	writeSize += n;
 	return file.xsputn(s, n);
 }
@@ -50,6 +57,25 @@ void InputFile::close() {
 
 bool InputFile::save(const mem::StringView &ipath) const {
 	return const_cast<file_t &>(file).close_rename(stappler::filesystem::cachesPath(ipath).c_str());
+}
+
+mem::Bytes InputFile::readBytes() {
+	mem::Bytes ret;
+	ret.resize(writeSize);
+	file.seek(0, stappler::io::Seek::Set);
+	file.xsgetn((char *)ret.data(), ret.size());
+	return ret;
+}
+
+mem::String InputFile::readText() {
+	if (!isBinary) {
+		mem::String ret;
+		ret.resize(writeSize);
+		file.seek(0, stappler::io::Seek::Set);
+		file.xsgetn((char *)ret.data(), ret.size());
+		return ret;
+	}
+	return mem::String();
 }
 
 NS_DB_END

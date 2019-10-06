@@ -49,6 +49,8 @@ struct ResultRow {
 	double toDouble(size_t) const;
 	bool toBool(size_t) const;
 
+	mem::Value toTypedData(size_t n) const;
+
 	mem::Value toData(size_t n, const db::Field &);
 
 	const Result *result = nullptr;
