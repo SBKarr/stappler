@@ -228,7 +228,7 @@ struct CharGroup<char, GroupId::Hexadecimial> : Compose<char,
 
 template <>
 struct CharGroup<char, GroupId::Base64> : Compose<char,
-		Range<char, '0', '9'>, Range<char, 'A', 'Z'>, Range<char, 'a', 'z'>, Chars<char, '=', '/'>
+		Range<char, '0', '9'>, Range<char, 'A', 'Z'>, Range<char, 'a', 'z'>, Chars<char, '=', '/', '+', '_', '-'>
 > { };
 
 template <>
@@ -354,7 +354,7 @@ struct CharGroup<char16_t, GroupId::Base64> : Compose<char16_t,
 		Range<char16_t, u'0', u'9'>,
 		Range<char16_t, u'A', u'Z'>,
 		Range<char16_t, u'a', u'z'>,
-		Chars<char16_t, u'=', u'/'>
+		Chars<char16_t, u'=', u'/', u'+', u'-', u'_'>
 > { };
 
 template <>

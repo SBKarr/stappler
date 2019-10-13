@@ -217,8 +217,9 @@ function push(data) {
 function connect() {
 	ws = new WebSocket(wsaddress);
 	ws.onopen = function(event) {
-		document.getElementById("login").style.visibility = "hidden";
 		document.getElementById("main").style.visibility = "visible";
+		document.getElementById("login").style.display = "none";
+		document.getElementById("main").style.display = "block";
 		document.getElementById("output").innerHTML = "";
 	};
 	ws.onmessage = function(event) {
@@ -234,8 +235,8 @@ function connect() {
 	ws.onclose = function(event) {
 		ws = null;
 		console.log(event);
-		document.getElementById("login").style.visibility = "visible";
-		document.getElementById("main").style.visibility = "hidden";
+		document.getElementById("login").style.display = "block";
+		document.getElementById("main").style.display = "none";
 	}
 	return false;
 }

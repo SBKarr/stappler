@@ -57,8 +57,12 @@ auto makePassword(const StringView &str, const StringView &key = StringView()) -
 
 bool validatePassord(const StringView &str, const BytesView &passwd, const StringView &key = StringView());
 
+// Minimal length is 6
 template <typename Interface = memory::DefaultInterface>
 auto generatePassword(size_t len) -> typename Interface::StringType;
+
+template <typename Interface = memory::DefaultInterface>
+auto convertOpenSSHKey(const StringView &) -> typename Interface::BytesType;
 
 NS_SP_EXT_END(valid)
 

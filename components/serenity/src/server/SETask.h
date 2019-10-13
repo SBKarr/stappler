@@ -132,7 +132,7 @@ Task *Task::prepare(memory::pool_t *rootPool, const Callback &cb) {
 			apr::pool::perform([&] {
 				task = new (p) Task(p);
 				cb(*task);
-			}, p);
+			}, p, memory::pool::Task);
 			return task;
 		}
 	}
@@ -175,7 +175,7 @@ stappler::Rc<T> SharedObject::create(mem::pool_t *rootPool, const Callback &cb) 
 				cb(*obj);
 				ret = stappler::Rc<T>(obj);
 				obj->release();
-			}, p);
+			}, p, memory::pool::SharedObject);
 			return ret;
 		}
 	}

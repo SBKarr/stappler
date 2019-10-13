@@ -66,7 +66,7 @@ void Handler::run() {
 
 	apr::pool::perform([&] {
 		onBegin();
-	}, _reader.pool);
+	}, _reader.pool, memory::pool::Socket);
 
 	while (true) {
 		apr_int32_t num = 0;
@@ -95,8 +95,8 @@ void Handler::run() {
 
 	apr::pool::perform([&] {
 		onEnd();
-	}, _reader.pool);
-	apr_pool_clear(_reader.pool);
+	}, _reader.pool, memory::pool::Socket);
+	memory::pool::clear(_reader.pool);
 
 	cancel();
 }
@@ -195,7 +195,7 @@ void Handler::receiveBroadcast(const data::Value &data) {
 	if (_valid) {
 		_broadcastMutex.lock();
 		if (!_broadcastsPool) {
-			apr_pool_create(&_broadcastsPool, _connection.pool());
+			_broadcastsPool = memory::pool::create(_connection.pool());
 		}
 		if (_broadcastsPool) {
 			apr::pool::perform([&] {
@@ -204,7 +204,7 @@ void Handler::receiveBroadcast(const data::Value &data) {
 				}
 
 				_broadcastsMessages->emplace_back(data);
-			}, _broadcastsPool);
+			}, _broadcastsPool, memory::pool::Broadcast);
 		}
 		_broadcastMutex.unlock();
 		apr_pollset_wakeup(_poll);
@@ -238,7 +238,7 @@ bool Handler::processBroadcasts() {
 					}
 				}
 			}
-		}, pool);
+		}, pool, memory::pool::Broadcast);
 		apr_pool_destroy(pool);
 	}
 
@@ -264,21 +264,21 @@ static apr_status_t Handler_readSocket_request(Request &req, apr_bucket_brigade 
 	auto r = req.request();
     apr_status_t rv = APR_SUCCESS;
     apr_size_t readbufsiz = *len;
+	ap_filter_t *f = r->input_filters;
+	if (f->frec && f->frec->name && !strcasecmp(f->frec->name, "reqtimeout")) {
+		f = f->next;
+	}
 
-    ap_filter_t *f = r->input_filters;
-    if (f->frec && f->frec->name && !strcasecmp(f->frec->name, "reqtimeout")) {
-    	f = f->next;
-    }
+	if (bb != NULL) {
+		rv = ap_get_brigade(f, bb, AP_MODE_READBYTES, APR_NONBLOCK_READ, readbufsiz);
+		if (rv == APR_SUCCESS) {
+			if ((rv = apr_brigade_flatten(bb, buf, len)) == APR_SUCCESS) {
+				readbufsiz = *len;
+			}
+		}
+		apr_brigade_cleanup(bb);
+	}
 
-    if (bb != NULL) {
-    	rv = ap_get_brigade(f, bb, AP_MODE_READBYTES, APR_NONBLOCK_READ, readbufsiz);
-        if (rv == APR_SUCCESS) {
-            if ((rv = apr_brigade_flatten(bb, buf, len)) == APR_SUCCESS) {
-                readbufsiz = *len;
-            }
-        }
-        apr_brigade_cleanup(bb);
-    }
     if (readbufsiz == 0 && (rv == APR_SUCCESS || APR_STATUS_IS_EAGAIN(rv))) {
     	return APR_EAGAIN;
     }
@@ -313,7 +313,7 @@ bool Handler::readSocket(const apr_pollfd_t *fd) {
 						return false;
 					}
 					return true;
-				}, _reader.pool);
+				}, _reader.pool, memory::pool::Socket);
 				_reader.popFrame();
 				if (!ret) {
 					return false;
@@ -479,7 +479,7 @@ void Handler::pushNotificator(apr_pool_t *pool) {
 				std::make_pair("debug", data::Value(std::move(data)))
 			});
 		});
-	}, pool);
+	}, pool, memory::pool::Broadcast);
 }
 
 void Handler::cancel() {

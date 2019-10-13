@@ -38,17 +38,11 @@ namespace pool {
 
 using namespace memory::pool;
 
-enum Info : uint32_t {
-	Pool = 0,
-	Request = 1,
-	Connection = 2,
-	Server = 3
-};
-
 template <typename T>
 struct CallableContext {
 public:
 	CallableContext(pool_t *p) : type(p), pool(p) { push(pool, uint32_t(Pool), type); }
+	CallableContext(pool_t *p, Info i) : type(p), pool(p) { push(pool, uint32_t(i), type); }
 	CallableContext(request_rec *r) : type(r), pool(r->pool) { push(pool, uint32_t(Request), type); }
 	CallableContext(conn_rec *c) : type(c), pool(c->pool) { push(pool, uint32_t(Connection), type); }
 	CallableContext(server_rec *s) : type(s), pool(s->process->pconf) { push(pool, uint32_t(Server), type); }
@@ -62,6 +56,13 @@ protected:
 template <typename Callback, typename T>
 inline auto perform(const Callback &cb, const T &t) {
 	CallableContext<T> holder(t);
+
+	return cb();
+}
+
+template <typename Callback, typename T>
+inline auto perform(const Callback &cb, const T &t, Info tag) {
+	CallableContext<T> holder(t, tag);
 
 	return cb();
 }

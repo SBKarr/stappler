@@ -34,14 +34,19 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(memory)
 
-std::mutex s_globalLogMutex;
-
 class AllocStack {
 public:
+	struct Info {
+		pool_t *pool;
+		uint32_t tag;
+		const void *ptr;
+	};
+
 	AllocStack();
 
 	pool_t *top() const;
 	Pair<uint32_t, const void *> info() const;
+	const Info &back() const;
 
 	void push(pool_t *);
 	void push(pool_t *, uint32_t, const void *);
@@ -78,12 +83,6 @@ protected:
 		const T &get() const { return data[size - 1]; }
 	};
 
-	struct Info {
-		pool_t *pool;
-		uint32_t tag;
-		const void *ptr;
-	};
-
 	stack<Info> _stack;
 };
 
@@ -97,6 +96,10 @@ pool_t *AllocStack::top() const {
 
 Pair<uint32_t, const void *> AllocStack::info() const {
 	return pair(_stack.get().tag, _stack.get().ptr);
+}
+
+const AllocStack::Info &AllocStack::back() const {
+	return _stack.get();
 }
 
 void AllocStack::push(pool_t *p) {
@@ -129,6 +132,8 @@ void AllocStack::foreachInfo(void *data, bool(*cb)(void *, pool_t *, uint32_t, c
 
 namespace pool {
 
+static void setPoolInfo(pool_t *p, uint32_t tag, const void *ptr);
+
 thread_local AllocStack tl_stack;
 
 pool_t *acquire() {
@@ -143,6 +148,7 @@ void push(pool_t *p) {
 	return tl_stack.push(p);
 }
 void push(pool_t *p, uint32_t tag, const void *ptr) {
+	setPoolInfo(p, tag, ptr);
 	return tl_stack.push(p, tag, ptr);
 }
 void pop() {
@@ -197,6 +203,10 @@ pool_t *createTagged(pool_t *p, const char *tag) {
 void destroy(pool_t *p) { internals::destroy(p); }
 void clear(pool_t *p) { internals::clear(p); }
 
+internals::allocmngr_t<memory::pool_t> *allocmngr_get(pool_t *pool) {
+	return &pool->allocmngr;
+}
+
 void *alloc(pool_t *p, size_t &size) { return internals::alloc(p, size); }
 void free(pool_t *p, void *ptr, size_t size) { internals::free(p, ptr, size); }
 
@@ -246,15 +256,23 @@ pool_t *create() {
 }
 pool_t *create(pool_t *p) {
 	pool_t *ret = nullptr;
-	apr_pool_create(&ret, p);
+	if (!p) {
+		apr_pool_create(&ret, nullptr);
+	} else {
+		apr_pool_create(&ret, p);
+	}
 	return ret;
 }
 
 pool_t *createTagged(const char *tag) {
-	return create();
+	auto ret = create();
+	apr_pool_tag(ret, tag);
+	return ret;
 }
 pool_t *createTagged(pool_t *p, const char *tag) {
-	return create(p);
+	auto ret = create(p);
+	apr_pool_tag(ret, tag);
+	return ret;
 }
 
 void destroy(pool_t *p) {
@@ -265,22 +283,15 @@ void clear(pool_t *p) {
 }
 
 internals::allocmngr_t<memory::pool_t> *allocmngr_get(pool_t *pool) {
-	internals::allocmngr_t<memory::pool_t> *ret = nullptr;
-	auto r = apr_pool_userdata_get((void **)&ret, "SP.Mngr", pool);
-	if (!ret || r != APR_SUCCESS) {
-		ret = new (apr_palloc(pool, sizeof(internals::allocmngr_t<memory::pool_t>))) internals::allocmngr_t<memory::pool_t>{pool};
-		apr_pool_userdata_setn(ret, "SP.Mngr", NULL, pool);
-	}
-	return ret;
+	return (internals::allocmngr_t<memory::pool_t> *)serenity_allocmngr_get(pool);
 }
 
 void *alloc(pool_t *p, size_t &size) {
+	auto mngr = allocmngr_get(p);
 	if (size >= internals::BlockThreshold) {
-		return allocmngr_get(p)->alloc(size);
+		return mngr->alloc(size);
 	} else {
-#if DEBUG
-		allocmngr_get(p)->increment_alloc(size);
-#endif
+		mngr->increment_alloc(size);
 		return apr_palloc(p, size);
 	}
 }
@@ -308,25 +319,13 @@ size_t get_allocator_allocated_bytes(pool_t *p) {
 	return 0;
 }
 size_t get_allocated_bytes(pool_t *p) {
-#if DEBUG
 	return allocmngr_get(p)->get_alloc();
-#else
-	return 0;
-#endif
 }
 size_t get_return_bytes(pool_t *p) {
-#if DEBUG
 	return allocmngr_get(p)->get_return();
-#else
-	return 0;
-#endif
 }
 size_t get_opts_bytes(pool_t *p) {
-#if DEBUG
 	return allocmngr_get(p)->get_opts();
-#else
-	return 0;
-#endif
 }
 
 void *pmemdup(pool_t *a, const void *m, size_t n) { return apr_pmemdup(a, m, n); }
@@ -357,6 +356,15 @@ static status_t cleanup_register_fn(void *ptr) {
 void cleanup_register(pool_t *p, Function<void()> &&cb) {
 	auto fn = new (p) Function<void()>(move(cb));
 	pool::cleanup_register(p, fn, &cleanup_register_fn);
+}
+
+void setPoolInfo(pool_t *p, uint32_t tag, const void *ptr) {
+	if (auto mngr = allocmngr_get(p)) {
+		if (tag > mngr->tag) {
+			mngr->tag = tag;
+		}
+		mngr->ptr = ptr;
+	}
 }
 
 }

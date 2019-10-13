@@ -226,6 +226,7 @@ bool JsonWebToken::validate(SigAlg a, const StringView &key) {
 			case ES256: {
 				auto hash = string::Sha256().update(message).final();
 				if (mbedtls_pk_verify(&ctx, MBEDTLS_MD_SHA256, hash.data(), hash.size(), sig.data(), sig.size()) == 0) {
+					mbedtls_pk_free(&ctx);
 					return true;
 				}
 				break;
@@ -234,11 +235,13 @@ bool JsonWebToken::validate(SigAlg a, const StringView &key) {
 			case ES512: {
 				auto hash = string::Sha512().update(message).final();
 				if (mbedtls_pk_verify(&ctx, MBEDTLS_MD_SHA512, hash.data(), hash.size(), sig.data(), sig.size()) == 0) {
+					mbedtls_pk_free(&ctx);
 					return true;
 				}
 				break;
 			}
 			default:
+				mbedtls_pk_free(&ctx);
 				return false;
 				break;
 			}

@@ -93,6 +93,10 @@ apr_status_t OutputFilter::func(ap_filter_t *f, apr_bucket_brigade *bb) {
 		return APR_SUCCESS;
 	}
 	if (_skipFilter || _state == State::Body || f->r->proto_num == 9) {
+		if (_tmpBB) {
+			apr_brigade_destroy(_tmpBB);
+			_tmpBB = nullptr;
+		}
 		return ap_pass_brigade(f->next, bb);
 	}
 	apr_bucket *e;
@@ -101,7 +105,7 @@ apr_status_t OutputFilter::func(ap_filter_t *f, apr_bucket_brigade *bb) {
 	apr_status_t rv;
 
 	if (!_tmpBB) {
-		_tmpBB = apr_brigade_create(f->c->pool, f->c->bucket_alloc);
+		_tmpBB = apr_brigade_create(f->r->pool, f->c->bucket_alloc);
 	}
 
 	apr_read_type_e mode = APR_NONBLOCK_READ;
@@ -111,7 +115,7 @@ apr_status_t OutputFilter::func(ap_filter_t *f, apr_bucket_brigade *bb) {
         if (APR_BUCKET_IS_EOS(e)) {
 			_seenEOS = true;
 			APR_BUCKET_REMOVE(e);
-            APR_BRIGADE_INSERT_TAIL(_tmpBB,e);
+            APR_BRIGADE_INSERT_TAIL(_tmpBB, e);
             break;
         }
 
@@ -126,15 +130,19 @@ apr_status_t OutputFilter::func(ap_filter_t *f, apr_bucket_brigade *bb) {
 			APR_BRIGADE_INSERT_TAIL(_tmpBB, e);
 			break;
 		}
+
+		//APR_BUCKET_REMOVE(e);
+		//APR_BRIGADE_INSERT_TAIL(_tmpBB, e);
+
 		rv = apr_bucket_read(e, &data, &len, mode);
 		if (rv == APR_EAGAIN && mode == APR_NONBLOCK_READ) {
-			/* Pass down a brigade containing a flush bucket: */
+			// Pass down a brigade containing a flush bucket:
 			APR_BRIGADE_INSERT_TAIL(_tmpBB, apr_bucket_flush_create(_tmpBB->bucket_alloc));
 			rv = ap_pass_brigade(f->next, _tmpBB);
 			apr_brigade_cleanup(_tmpBB);
 			if (rv != APR_SUCCESS) return rv;
 
-			/* Retry, using a blocking read. */
+			// Retry, using a blocking read.
 			mode = APR_BLOCK_READ;
 			continue;
 		} else if (rv != APR_SUCCESS) {
@@ -147,9 +155,10 @@ apr_status_t OutputFilter::func(ap_filter_t *f, apr_bucket_brigade *bb) {
 				return rv;
 			}
 		}
-		/* Remove bucket e from bb. */
+		// Remove bucket e from bb.
 		APR_BUCKET_REMOVE(e);
-		/* Pass brigade downstream. */
+		apr_bucket_destroy(e);
+		// Pass brigade downstream.
 		rv = ap_pass_brigade(f->next, _tmpBB);
 		apr_brigade_cleanup(_tmpBB);
 		if (rv != APR_SUCCESS) return rv;
@@ -169,6 +178,7 @@ apr_status_t OutputFilter::func(ap_filter_t *f, apr_bucket_brigade *bb) {
 
 	if (!APR_BRIGADE_EMPTY(bb)) {
 		rv = ap_pass_brigade(f->next, bb);
+		apr_brigade_cleanup(bb);
 		if (rv != APR_SUCCESS) return rv;
 	}
 
@@ -197,8 +207,11 @@ apr_status_t OutputFilter::process(ap_filter_t* f, apr_bucket *e, const char *da
 		}
 		if (_state == State::Body) {
 			if (!reader.empty()) {
-				APR_BRIGADE_INSERT_TAIL(_tmpBB, apr_bucket_transient_create(
-						reader.data(), reader.size(), _tmpBB->bucket_alloc));
+				auto d = memory::pool::palloc(f->r->pool, reader.size());
+				memcpy(d, reader.data(), reader.size());
+
+				APR_BRIGADE_INSERT_TAIL(_tmpBB, apr_bucket_pool_create(
+						(const char *)d, reader.size(), f->r->pool, _tmpBB->bucket_alloc));
 			}
 		}
 	}
@@ -263,7 +276,7 @@ void OutputFilter::writeHeader(ap_filter_t* f, StringStream &output) const {
 }
 
 apr_status_t OutputFilter::outputHeaders(ap_filter_t* f, apr_bucket *e, const char *data, size_t len) {
-    conn_rec *c =  f->c;
+    auto r =  f->r;
 	apr_status_t rv = APR_SUCCESS;
 
 	apr::ostringstream servVersion;
@@ -276,15 +289,15 @@ apr_status_t OutputFilter::outputHeaders(ap_filter_t* f, apr_bucket *e, const ch
 		output::writeData(_request, _buffer, [&] (const String &ct) {
 			_headers.emplace("Content-Type", ct);
 		}, resultForRequest(), true);
-		_headers.emplace("Content-Length", apr_psprintf(c->pool, "%lu", _buffer.size()));
+		_headers.emplace("Content-Length", apr_psprintf(r->pool, "%lu", _buffer.size()));
 		// provide additional info for 416 if we can
 		if (_responseCode == 416) {
 			// we need to determine requested file size
 			if (const char *filename = f->r->filename) {
 				apr_finfo_t info;
 				memset(&info, 0, sizeof(info));
-				if (apr_stat(&info, filename, APR_FINFO_SIZE, c->pool) == APR_SUCCESS) {
-					_headers.emplace("X-Range", apr_psprintf(c->pool, "%ld", info.size));
+				if (apr_stat(&info, filename, APR_FINFO_SIZE, r->pool) == APR_SUCCESS) {
+					_headers.emplace("X-Range", apr_psprintf(r->pool, "%ld", info.size));
 				} else {
 					_headers.emplace("X-Range", "0");
 				}
@@ -298,22 +311,18 @@ apr_status_t OutputFilter::outputHeaders(ap_filter_t* f, apr_bucket *e, const ch
 		}
 	}
 
-	// create ostream with preallocated storage
-	auto bufLen = calcHeaderSize();
-	char dataBuf[bufLen+1];
-	apr::ostringstream output(dataBuf, bufLen);
+	_headersBuffer.reserve(calcHeaderSize()+1);
+	writeHeader(f, _headersBuffer);
 
-	writeHeader(f, output);
-
-	apr_bucket *b = apr_bucket_transient_create(output.data(), output.size(),
+	apr_bucket *b = apr_bucket_pool_create(_headersBuffer.data(), _headersBuffer.size(), r->pool,
 			_tmpBB->bucket_alloc);
 
 	APR_BRIGADE_INSERT_TAIL(_tmpBB, b);
 
 	if (!_buffer.empty()) {
 		APR_BUCKET_REMOVE(e);
-		APR_BRIGADE_INSERT_TAIL(_tmpBB, apr_bucket_transient_create(
-				_buffer.data(), _buffer.size(), _tmpBB->bucket_alloc));
+		APR_BRIGADE_INSERT_TAIL(_tmpBB, apr_bucket_pool_create(
+				_buffer.data(), _buffer.size(), r->pool, _tmpBB->bucket_alloc));
 		APR_BRIGADE_INSERT_TAIL(_tmpBB, apr_bucket_flush_create(_tmpBB->bucket_alloc));
 		APR_BRIGADE_INSERT_TAIL(_tmpBB, apr_bucket_eos_create(
 				_tmpBB->bucket_alloc));

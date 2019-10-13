@@ -83,6 +83,7 @@ protected:
 
 	apr::ostringstream _nameBuffer;
 	apr::ostringstream _buffer;
+	apr::ostringstream _headersBuffer;
 	apr_bucket *_bucket = nullptr;
 	apr::string _responseLine;
 	apr::string _statusText;

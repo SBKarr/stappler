@@ -93,6 +93,7 @@ SP_DEFINE_ENUM_AS_MASK(Flags)
 enum class Transform {
 	None,
 
+	// Text
 	Text,
 	Identifier,
 	Alias,
@@ -102,7 +103,11 @@ enum class Transform {
 	Hexadecimial,
 	Base64,
 
+	// Bytes
 	Uuid,
+	PublicKey,
+
+	// Extra
 	Array, // handle extra field as array
 
 	Password, // deprecated

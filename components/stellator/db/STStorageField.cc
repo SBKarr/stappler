@@ -25,6 +25,9 @@ THE SOFTWARE.
 #include "STStorageField.h"
 #include "STStorageScheme.h"
 
+#include "mbedtls/config.h"
+#include "mbedtls/pk.h"
+
 NS_DB_BEGIN
 
 AutoFieldScheme::AutoFieldScheme(const Scheme &s, ReqVec &&vec, ViewLinkageFn &&fn, ReqVec &&lvec)
@@ -100,6 +103,7 @@ mem::Value Field::getTypeDesc() const {
 		case Transform::Hexadecimial: ret.setString("hexadecimal", "transform"); break;
 		case Transform::Base64: ret.setString("base64", "transform"); break;
 		case Transform::Uuid: ret.setString("uuid", "transform"); break;
+		case Transform::PublicKey: ret.setString("publickey", "transform"); break;
 		case Transform::Password: ret.setString("password", "transform"); break;
 		default: break;
 		}
@@ -428,9 +432,54 @@ bool FieldText::transformValue(const Scheme &scheme, const mem::Value &obj, mem:
 				}
 
 				val.setBytes(std::move(b));
+			} else if (transform == Transform::PublicKey) {
+				if (mem::StringView(str).starts_with("ssh-")) {
+					auto bytes = stappler::valid::convertOpenSSHKey(str);
+					if (!bytes.empty()) {
+						val.setBytes(std::move(bytes));
+						return true;
+					}
+					return false;
+				}
+
+				mbedtls_pk_context pk;
+				mbedtls_pk_init( &pk );
+
+				if (mbedtls_pk_parse_public_key(&pk, (const uint8_t *)str.data(), str.size() + 1) != 0) {
+					mbedtls_pk_free( &pk );
+					return false;
+				}
+
+				uint8_t out[2_KiB];
+				auto bytesCount = mbedtls_pk_write_pubkey_der(&pk, out, sizeof(out));
+				mbedtls_pk_free( &pk );
+				if (bytesCount <= 0) {
+					return false;
+				}
+				val.setBytes(mem::Bytes(out + sizeof(out) - bytesCount, out + sizeof(out)));
+				return true;
 			}
 		} else if (val.isBytes()) {
 			auto &bytes = val.getBytes();
+			if (transform == Transform::PublicKey) {
+				mbedtls_pk_context pk;
+				mbedtls_pk_init( &pk );
+
+				if (mbedtls_pk_parse_public_key(&pk, bytes.data(), bytes.size()) != 0) {
+					mbedtls_pk_free( &pk );
+					return false;
+				}
+
+				uint8_t out[2_KiB];
+				auto bytesCount = mbedtls_pk_write_pubkey_der(&pk, out, sizeof(out));
+				mbedtls_pk_free( &pk );
+				if (bytesCount <= 0) {
+					return false;
+				}
+				val.setBytes(mem::Bytes(out + sizeof(out) - bytesCount, out + sizeof(out)));
+				return true;
+			}
+
 			if (bytes.size() < minLength || bytes.size() > maxLength) {
 				return false;
 			}

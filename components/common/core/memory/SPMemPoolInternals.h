@@ -43,24 +43,26 @@ struct allocmngr_t {
 	memaddr_t *buffered = nullptr;
 	memaddr_t *free_buffered = nullptr;
 
+	uint32_t tag = 0;
+	const void *ptr = 0;
+
+	size_t alloc_buffer = 0;
+	size_t allocated = 0;
+	size_t returned = 0;
+	size_t opts = 0;
+
 	void reset(Pool *);
 
 	void *alloc(size_t &sizeInBytes);
 	void free(void *ptr, size_t sizeInBytes);
 
-#if DEBUG
-	size_t _allocated = 0;
-	size_t _returned = 0;
-	size_t _opts = 0;
+	void increment_alloc(size_t s) { allocated += s; alloc_buffer += s; }
+	void increment_return(size_t s) { returned += s; }
+	void increment_opts(size_t s) { opts += s; }
 
-	void increment_alloc(size_t s) { _allocated += s; }
-	void increment_return(size_t s) { _returned += s; }
-	void increment_opts(size_t s) { _opts += s; }
-
-	size_t get_alloc() { return _allocated; }
-	size_t get_return() { return _returned; }
-	size_t get_opts() { return _opts; }
-#endif
+	size_t get_alloc() { return allocated; }
+	size_t get_return() { return returned; }
+	size_t get_opts() { return opts; }
 };
 
 #ifndef SPAPR

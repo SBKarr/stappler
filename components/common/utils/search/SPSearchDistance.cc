@@ -246,6 +246,20 @@ int32_t Distance::diff_canonical(size_t pos, bool forward) const {
 	return ret;
 }
 
+size_t Distance::nmatch() const {
+	size_t ret = 0;
+	for (size_t i = 0; i < _storage.size(); ++ i) {
+		switch (_storage.at(i)) {
+		case Value::Match:
+			++ ret;
+			break;
+		default:
+			break;
+		}
+	}
+	return ret;
+}
+
 memory::string Distance::info() const {
 	const auto s = _storage.size();
 	memory::string ret; ret.reserve(s);

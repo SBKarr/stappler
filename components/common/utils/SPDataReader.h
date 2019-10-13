@@ -79,9 +79,10 @@ public:
 	float readFloat32();
 	float readFloat16();
 
-
 	StringView readString(); // read null-terminated string
 	StringView readString(size_t s); // read fixed-size string
+
+	DataReader readBytes(size_t s); // read fixed-size string
 };
 
 using DataReaderNetwork = DataReader<ByteOrder::Endian::Network>;
@@ -280,8 +281,17 @@ auto DataReader<Endianess>::readString(size_t s) -> StringView {
 	if (len < s) {
 		s = len;
 	}
-	size_t offset = 0; while (len - offset && ptr[offset]) { offset ++; }
 	StringView ret((const char *)ptr, s);
+	ptr += s; len -= s;
+	return ret;
+}
+
+template <ByteOrder::Endian Endianess>
+auto DataReader<Endianess>::readBytes(size_t s) -> DataReader {
+	if (len < s) {
+		s = len;
+	}
+	DataReader ret(ptr, s);
 	ptr += s; len -= s;
 	return ret;
 }

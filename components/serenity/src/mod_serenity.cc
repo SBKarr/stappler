@@ -42,7 +42,7 @@ static void *mod_serenity_create_server_config(apr_pool_t *p, server_rec *s) {
 static void* mod_serenity_merge_config(apr_pool_t* pool, void* BASE, void* ADD) {
 	return apr::pool::perform([&] () -> auto {
 		return Server::merge(BASE, ADD);
-	}, pool);
+	}, pool, memory::pool::Config);
 }
 static void mod_serenity_child_init(apr_pool_t *p, server_rec *s) {
 	Root::getInstance()->onServerChildInit(p, s);
@@ -95,42 +95,42 @@ static void mod_serenity_register_hooks(apr_pool_t *pool) {
 static const char *mod_serenity_set_source_root(cmd_parms *parms, void *mconfig, const char *w) {
 	apr::pool::perform([&] {
 		Server(parms->server).setSourceRoot(apr::string::make_weak(w));
-	}, parms->pool);
+	}, parms->pool, memory::pool::Config);
 	return NULL;
 }
 
 static const char *mod_serenity_add_handler_source(cmd_parms *parms, void *mconfig, const char *w) {
 	apr::pool::perform([&] {
 		Server(parms->server).addHanderSource(apr::string::make_weak(w));
-	}, parms->pool);
+	}, parms->pool, memory::pool::Config);
 	return NULL;
 }
 
 static const char *mod_serenity_set_session_params(cmd_parms *parms, void *mconfig, const char *w) {
 	apr::pool::perform([&] {
 		Server(parms->server).setSessionParams(apr::string::make_weak(w));
-	}, parms->pool);
+	}, parms->pool, memory::pool::Config);
 	return NULL;
 }
 
 static const char *mod_serenity_set_webhook_params(cmd_parms *parms, void *mconfig, const char *w) {
 	apr::pool::perform([&] {
 		Server(parms->server).setWebHookParams(apr::string::make_weak(w));
-	}, parms->pool);
+	}, parms->pool, memory::pool::Config);
 	return NULL;
 }
 
 static const char *mod_serenity_set_force_https(cmd_parms *parms, void *mconfig) {
 	apr::pool::perform([&] {
 		Server(parms->server).setForceHttps();
-	}, parms->pool);
+	}, parms->pool, memory::pool::Config);
 	return NULL;
 }
 
 static const char *mod_serenity_set_protected(cmd_parms *parms, void *mconfig, const char *w) {
 	apr::pool::perform([&] {
 		Server(parms->server).setProtectedList(apr::string::make_weak(w));
-	}, parms->pool);
+	}, parms->pool, memory::pool::Config);
 	return NULL;
 }
 

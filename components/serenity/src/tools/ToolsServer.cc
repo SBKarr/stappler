@@ -77,6 +77,22 @@ int ServerGui::onTranslateName(Request &rctx) {
 				}
 				exec.set("components", move(components));
 				exec.set("root", data::Value(rctx.server().getDocumentRoot()));
+
+
+				auto root = Root::getInstance();
+				auto stat = root->getStat();
+
+				StringStream ret;
+				ret << "\nResource stat:\n";
+				ret << "\tRequests recieved: " << stat.requestsRecieved << "\n";
+				ret << "\tFilters init: " << stat.filtersInit << "\n";
+				ret << "\tTasks runned: " << stat.tasksRunned << "\n";
+				ret << "\tHeartbeat counter: " << stat.heartbeatCounter << "\n";
+				ret << "\tDB queries performed: " << stat.dbQueriesPerformed << " (" << stat.dbQueriesReleased << " " << stat.dbQueriesPerformed - stat.dbQueriesReleased << ")\n";
+				ret << "\n";
+
+				exec.set("resStat", data::Value(ret.str()));
+				exec.set("memStat", data::Value(root->getMemoryMap(false)));
 			}
 
 			return true;

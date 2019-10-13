@@ -51,6 +51,19 @@ using cleanup_fn = status_t(*)(void *);
 
 namespace pool {
 
+enum Info : uint32_t {
+	Pool = 0,
+	Request = 1,
+	Connection = 2,
+	Server = 3,
+	Template,
+	Config,
+	Task,
+	SharedObject,
+	Socket,
+	Broadcast,
+};
+
 void initialize();
 void terminate();
 

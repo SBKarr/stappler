@@ -119,6 +119,8 @@ public: // httpd server info
     mem::StringView getServerHostname() const;
     mem::StringView getDocumentRoot() const;
 
+    uint16_t getServerPort() const;
+
     mem::TimeInterval getTimeout() const;
     mem::TimeInterval getKeepAliveTimeout() const;
 

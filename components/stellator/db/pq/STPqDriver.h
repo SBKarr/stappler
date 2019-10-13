@@ -91,10 +91,13 @@ public:
 
 	void release();
 
+	void setDbCtrl(mem::Function<void(bool)> &&);
+
 protected:
 	Driver(const mem::StringView &);
 
 	void *_handle = nullptr;
+	mem::Function<void(bool)> _dbCtrl = nullptr;
 };
 
 NS_DB_PQ_END

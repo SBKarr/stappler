@@ -252,6 +252,7 @@ struct Server::Config : public AllocPool {
 
 	db::Scheme userScheme = storage::Scheme(SA_SERVER_USER_SCHEME_NAME, {
 		db::Field::Text("name", db::Transform::Alias, db::Flags::Required),
+		db::Field::Bytes("pubkey", db::Transform::PublicKey, db::Flags::Indexed),
 		db::Field::Password("password", db::PasswordSalt(config::getDefaultPasswordSalt()), db::Flags::Required | db::Flags::Protected),
 		db::Field::Boolean("isAdmin", data::Value(false)),
 		db::Field::Extra("data", Vector<db::Field>{

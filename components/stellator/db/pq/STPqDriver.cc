@@ -141,21 +141,36 @@ char *Driver::getResultErrorMessage(Result res) const {
 }
 
 void Driver::clearResult(Result res) const {
+	if (_dbCtrl) {
+		_dbCtrl(true);
+	}
 	PQclear((PGresult *)res.get());
 }
 
 Driver::Result Driver::exec(Connection conn, const char *query) {
+	if (_dbCtrl) {
+		_dbCtrl(false);
+	}
 	return Driver::Result(PQexec((PGconn *)conn.get(), query));
 }
 
 Driver::Result Driver::exec(Connection conn, const char *command, int nParams, const char *const *paramValues,
 		const int *paramLengths, const int *paramFormats, int resultFormat) {
+	if (_dbCtrl) {
+		_dbCtrl(false);
+	}
 	return Driver::Result(PQexecParams((PGconn *)conn.get(), command, nParams, nullptr, paramValues, paramLengths, paramFormats, resultFormat));
 }
 
 Driver::~Driver() { }
 
 Driver::Driver(const mem::StringView &) { }
+
+void Driver::release() { }
+
+void Driver::setDbCtrl(mem::Function<void(bool)> &&cb) {
+	_dbCtrl = std::move(cb);
+}
 
 NS_DB_PQ_END
 #elif STELLATOR
@@ -396,7 +411,7 @@ Driver::Driver(const mem::StringView &path) {
 		h->PQgetvalue = DriverSym::PQgetvalueType(dlsym(d, "PQgetvalue"));
 		h->PQgetlength = DriverSym::PQgetlengthType(dlsym(d, "PQgetlength"));
 		h->PQfname = DriverSym::PQfnameType(dlsym(d, "PQfname"));
-		h->PQftype = DriverSym::PQfnameType(dlsym(d, "PQftype"));
+		h->PQftype = DriverSym::PQftypeType(dlsym(d, "PQftype"));
 		h->PQntuples = DriverSym::PQntuplesType(dlsym(d, "PQntuples"));
 		h->PQnfields = DriverSym::PQnfieldsType(dlsym(d, "PQnfields"));
 		h->PQcmdTuples = DriverSym::PQcmdTuplesType(dlsym(d, "PQcmdTuples"));

@@ -274,6 +274,7 @@ struct Server::Config : public mem::AllocBase {
 
 	db::Scheme userScheme = db::Scheme(SA_SERVER_USER_SCHEME_NAME, {
 		db::Field::Text("name", db::Transform::Alias, db::Flags::Required),
+		db::Field::Bytes("pubkey", db::Transform::PublicKey, db::Flags::Indexed),
 		db::Field::Password("password", db::PasswordSalt(stellator::config::getDefaultPasswordSalt()), db::Flags::Required | db::Flags::Protected),
 		db::Field::Boolean("isAdmin", mem::Value(false)),
 		db::Field::Extra("data", mem::Vector<db::Field>{
@@ -642,6 +643,9 @@ mem::StringView Server::getDocumentRoot() const {
 	return _config->documentRoot;
 }
 
+uint16_t Server::getServerPort() const {
+	return _config->port;
+}
 
 mem::StringView Server::getSessionKey() const {
 	return _config->sessionKey;

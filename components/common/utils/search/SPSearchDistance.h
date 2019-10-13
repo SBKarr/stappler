@@ -130,6 +130,8 @@ public:
 	// calculate position difference from original to canonical
 	int32_t diff_canonical(size_t pos, bool forward = false) const;
 
+	size_t nmatch() const;
+
 	memory::string info() const;
 
 protected:

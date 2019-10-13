@@ -23,6 +23,9 @@ THE SOFTWARE.
 #include "RequestHandler.h"
 #include "InputFilter.h"
 
+#include "mbedtls/config.h"
+#include "mbedtls/pk.h"
+
 NS_SA_ST_BEGIN
 
 int RequestHandler::onRequestRecieved(Request & rctx, mem::String &&originPath, mem::String &&path, const mem::Value &data) {
@@ -54,6 +57,22 @@ int RequestHandler::onRequestRecieved(Request & rctx, mem::String &&originPath, 
 					rctx.setUser(u);
 				}
 			}
+		/*} else if (method == "pkey") {
+			r.skipChars<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>();
+			auto d = stappler::data::read(stappler::base64::decode(r));
+			if (d.isArray() && d.size() == 2 && d.isBytes(0) && d.isBytes(1)) {
+				auto &key = d.getBytes(0);
+				auto &sign = d.getBytes(1);
+
+
+				mbedtls_pk_context pk;
+				mbedtls_pk_init( &pk );
+
+				if (mbedtls_pk_parse_public_key(&pk, (const uint8_t *)key.data(), key.size()) != 0) {
+					mbedtls_pk_free( &pk );
+					return false;
+				}
+			}*/
 		}
 	}
 

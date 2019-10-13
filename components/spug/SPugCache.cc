@@ -28,7 +28,7 @@ NS_SP_EXT_BEGIN(pug)
 
 Rc<FileRef> FileRef::read(const FilePath &path, Template::Options opts, const Function<void(const StringView &)> &cb) {
 	auto pool = memory::pool::create(memory::pool::acquire());
-	memory::pool::push(pool);
+	memory::pool::push(pool, memory::pool::Template);
 
 	auto ret = Rc<FileRef>::alloc(pool, path, opts, cb);
 
@@ -39,7 +39,7 @@ Rc<FileRef> FileRef::read(const FilePath &path, Template::Options opts, const Fu
 
 Rc<FileRef> FileRef::read(String && content, bool isTemplate, Template::Options opts, const Function<void(const StringView &)> &cb) {
 	auto pool = memory::pool::create(memory::pool::acquire());
-	memory::pool::push(pool);
+	memory::pool::push(pool, memory::pool::Template);
 
 	auto ret = Rc<FileRef>::alloc(pool, move(content), isTemplate, opts, cb);
 

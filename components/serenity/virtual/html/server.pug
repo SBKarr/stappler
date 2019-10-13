@@ -18,6 +18,7 @@ html
 					div.console
 						#login
 							button(onclick="return connect();") Run server console
+							pre: code= resStat + memStat
 						#main(style="visibility:hidden")
 							input#input(type="text",name="message",value="",size="80")
 							button(onclick="return closeSocket();") Close

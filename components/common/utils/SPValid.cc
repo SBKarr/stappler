@@ -31,6 +31,9 @@ THE SOFTWARE.
 #include "httpd.h"
 #endif
 
+#include "mbedtls/config.h"
+#include "mbedtls/pk.h"
+
 NS_SP_EXT_BEGIN(valid)
 
 inline auto Config_getInternalPasswordKey() { return "Serenity Password Salt"_weak; }
@@ -544,6 +547,113 @@ auto generatePassword<memory::StandartInterface>(size_t len) -> memory::Standart
 		ret.push_back(c);
 	});
 	return ret;
+}
+
+
+template <typename Interface>
+static size_t doConvertOpenSSHKey(StringView r, uint8_t * outBuf, size_t outSize) {
+	uint8_t out[2_KiB];
+	uint8_t *buf = out;
+
+	auto keyType = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+	auto dataBlock = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+	if (validateBase64(dataBlock)) {
+		auto data = base64::decode<Interface>(dataBlock);
+		DataReader<ByteOrder::Network> dataView(data);
+		auto len = dataView.readUnsigned32();
+		keyType = dataView.readString(len);
+
+		if (keyType != "ssh-rsa") {
+			return 0;
+		}
+
+		auto mlen = dataView.readUnsigned32();
+		auto modulus = dataView.readBytes(mlen);
+
+		auto elen = dataView.readUnsigned32();
+		auto exp = dataView.readBytes(elen);
+
+		size_t modSize = 1;
+		size_t expSize = 1;
+
+		auto readSize = [&] (size_t s) {
+			if (s < 128) {
+				return 1;
+			} else if (s < 256) {
+				return 2;
+			} else {
+				return 3;
+			}
+		};
+
+		auto writeSize = [&] (size_t s) {
+			if (s < 128) {
+				*buf = uint8_t(s); ++ buf;
+			} else if (s < 256) {
+				*buf = uint8_t(0x81); ++ buf;
+				*buf = uint8_t(s); ++ buf;
+			} else {
+				*buf = uint8_t(0x82); ++ buf;
+				*buf = uint8_t((s >> 8) & 0xFF); ++ buf;
+				*buf = uint8_t(s & 0xFF); ++ buf;
+			}
+		};
+
+		modSize += readSize(mlen) + modulus.size();
+		expSize += readSize(elen) + exp.size();
+
+		*buf = uint8_t(0x30); ++ buf;
+		writeSize(modSize + expSize);
+
+		*buf = uint8_t(0x02); ++ buf;
+		writeSize(exp.size());
+		for (size_t i = 0; i < exp.size(); ++ i) {
+			*buf = exp.at(i); ++ buf;
+		}
+
+		*buf = uint8_t(0x02); ++ buf;
+		writeSize(modulus.size());
+		for (size_t i = 0; i < modulus.size(); ++ i) {
+			*buf = modulus.at(i); ++ buf;
+		}
+
+		mbedtls_pk_context pk;
+		mbedtls_pk_init( &pk );
+
+		if (mbedtls_pk_parse_public_key(&pk, (const uint8_t *)out, buf - out) != 0) {
+			mbedtls_pk_free( &pk );
+			return false;
+		}
+
+		auto bytesCount = mbedtls_pk_write_pubkey_der(&pk, outBuf, outSize);
+		mbedtls_pk_free( &pk );
+		if (bytesCount <= 0) {
+			return 0;
+		}
+		return size_t(bytesCount);
+	}
+	return 0;
+}
+
+template <>
+auto convertOpenSSHKey<memory::PoolInterface>(const StringView &key) -> memory::PoolInterface::BytesType {
+	uint8_t out[2_KiB];
+	auto ret = doConvertOpenSSHKey<memory::PoolInterface>(key, out, sizeof(out));
+	if (ret > 0) {
+		return memory::PoolInterface::BytesType(out + sizeof(out) - ret, out + sizeof(out));
+	}
+	return memory::PoolInterface::BytesType();
+}
+
+template <>
+auto convertOpenSSHKey<memory::StandartInterface>(const StringView &key) -> memory::StandartInterface::BytesType {
+	uint8_t out[2_KiB];
+	auto ret = doConvertOpenSSHKey<memory::StandartInterface>(key, out, sizeof(out));
+	if (ret > 0) {
+		return memory::StandartInterface::BytesType(out + sizeof(out) - ret, out + sizeof(out));
+	}
+	return memory::StandartInterface::BytesType();
 }
 
 NS_SP_EXT_END(valid)

@@ -50,6 +50,7 @@ THE SOFTWARE.
 #include "apr_time.h"
 #include "apr_tables.h"
 #include "apr_pools.h"
+#include "apr_serenity.h"
 #include "apr_portable.h"
 #include "apr_strings.h"
 #include "apr_uri.h"
@@ -362,7 +363,7 @@ template <typename T> auto StringToNumber(const char *ptr, char ** tail) -> T;
 template <> inline auto
 StringToNumber<unsigned int>(const char *ptr, char ** tail) -> unsigned int {
 	if (ptr) {
-		return (unsigned int)strtoul(ptr, tail, 10);
+		return (unsigned int)strtoul(ptr, tail, 0);
 	}
 	return 0;
 }
@@ -370,7 +371,7 @@ StringToNumber<unsigned int>(const char *ptr, char ** tail) -> unsigned int {
 template <> inline auto
 StringToNumber<unsigned long>(const char *ptr, char ** tail) -> unsigned long {
 	if (ptr) {
-		return strtoul(ptr, tail, 10);
+		return strtoul(ptr, tail, 0);
 	}
 	return 0;
 }
@@ -378,7 +379,7 @@ StringToNumber<unsigned long>(const char *ptr, char ** tail) -> unsigned long {
 template <> inline auto
 StringToNumber<unsigned long long>(const char *ptr, char ** tail) -> unsigned long long {
 	if (ptr) {
-		return strtoull(ptr, tail, 10);
+		return strtoull(ptr, tail, 0);
 	}
 	return 0;
 }
@@ -386,7 +387,7 @@ StringToNumber<unsigned long long>(const char *ptr, char ** tail) -> unsigned lo
 template <> inline auto
 StringToNumber<int>(const char *ptr, char ** tail) -> int {
 	if (ptr) {
-		return (int)strtol(ptr, tail, 10);
+		return (int)strtol(ptr, tail, 0);
 	}
 	return 0;
 }
@@ -394,7 +395,7 @@ StringToNumber<int>(const char *ptr, char ** tail) -> int {
 template <> inline auto
 StringToNumber<long>(const char *ptr, char ** tail) -> long {
 	if (ptr) {
-		return strtol(ptr, tail, 10);
+		return strtol(ptr, tail, 0);
 	}
 	return 0;
 }
@@ -402,7 +403,7 @@ StringToNumber<long>(const char *ptr, char ** tail) -> long {
 template <> inline auto
 StringToNumber<long long>(const char *ptr, char ** tail) -> long long {
 	if (ptr) {
-		return strtoll(ptr, tail, 10);
+		return strtoll(ptr, tail, 0);
 	}
 	return 0;
 }

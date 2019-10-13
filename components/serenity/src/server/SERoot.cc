@@ -46,6 +46,14 @@ THE SOFTWARE.
 #include <cxxabi.h>
 #include <signal.h>
 
+// Hidden control interfaces for stats
+
+
+NS_DB_PQ_BEGIN
+void setDbCtrl(mem::Function<void(bool)> &&cb);
+NS_DB_PQ_END
+
+
 NS_SA_BEGIN
 
 void PrintBacktrace(FILE *f, int len) {
@@ -98,6 +106,67 @@ void PrintBacktrace(FILE *f, int len) {
     }
 
     free(bt_syms);
+}
+
+std::vector<std::string> GetBacktrace(int len) {
+	std::vector<std::string> ret; ret.reserve(len);
+
+    void *bt[len + 5];
+    char **bt_syms;
+    int bt_size;
+    char tmpBuf[1_KiB] = { 0 };
+
+    bt_size = backtrace(bt, len + 5);
+    bt_syms = backtrace_symbols(bt, bt_size);
+
+    for (int i = 4; i < bt_size; i++) {
+    	StringView str = bt_syms[i];
+    	auto first = str.rfind('(');
+    	auto second = str.rfind('+');
+    	if (first != maxOf<size_t>()) {
+    		if (second == maxOf<size_t>()) {
+    			second = str.size();
+    		}
+        	str = str.sub(first + 1, second - first - 1);
+
+        	if (!str.empty()) {
+            	int status = 0;
+
+            	char *extraBuf = nullptr;
+            	if (str.size() < 1_KiB) {
+            		extraBuf = tmpBuf;
+            	} else {
+            		extraBuf = new char[str.size() + 1];
+            	}
+
+        		memcpy(tmpBuf, str.data(), str.size());
+        		tmpBuf[str.size()] = 0;
+
+            	auto ptr = abi::__cxa_demangle (tmpBuf, nullptr, nullptr, &status);
+            	if (ptr) {
+            		std::ostringstream f;
+            		f << "[" << i - 4 << "] " << (const char *)ptr << " [" << bt_syms[i] << "]";
+            		ret.emplace_back(f.str());
+    				free(ptr);
+    			} else {
+            		std::ostringstream f;
+            		f << "[" << i - 4 << "] " << (const char *)tmpBuf << " [" << bt_syms[i] << "]";
+            		ret.emplace_back(f.str());
+    			}
+            	if (str.size() >= 1_KiB) {
+            		delete [] extraBuf;
+            	}
+				continue;
+        	}
+    	}
+
+		std::ostringstream f;
+    	f << "[" << i - 4 << "] " << bt_syms[i];
+		ret.emplace_back(f.str());
+    }
+
+    free(bt_syms);
+    return ret;
 }
 
 NS_SA_END
@@ -196,9 +265,333 @@ Root *Root::getInstance() {
     return s_sharedServer;
 }
 
+struct Alloc {
+	struct MemNode {
+		void *ptr = nullptr;
+		uint32_t status = 0;
+		uint32_t size = 0;
+		void *owner = nullptr;
+		std::vector<std::string> backtrace;
+	};
+	std::array<std::vector<MemNode>, 20> nodes;
+};
+
+static std::unordered_map<void *, Alloc> s_allocators;
+static std::atomic<size_t> s_alloc_allocated = 0;
+static std::atomic<size_t> s_free_allocated = 0;
+static std::mutex s_allocMutex;
+
+static void *Root_alloc(void *alloc, size_t s, void *) {
+	void *ret = nullptr;
+
+	ret = (void *)malloc(s);
+
+#if DEBUG
+	if (alloc) {
+		s_alloc_allocated += s;
+		s_allocMutex.lock();
+		auto it = s_allocators.find(alloc);
+		if (it == s_allocators.end()) {
+			it = s_allocators.emplace((void *)alloc, Alloc()).first;
+		}
+
+		if (it != s_allocators.end()) {
+			auto slot = (s <= 4_KiB * 20) ? s / 4_KiB - 1 : 0;
+			if (it->second.nodes[slot].empty() || ret > it->second.nodes[slot].back().ptr) {
+				it->second.nodes[slot].emplace_back(Alloc::MemNode{ret, 0, uint32_t(s)});
+			} else {
+				it->second.nodes[slot].emplace(
+					std::upper_bound( it->second.nodes[slot].begin(), it->second.nodes[slot].end(), ret,
+					[] (void *l, const Alloc::MemNode &node) {
+						return l < node.ptr;
+				}), Alloc::MemNode{ret, 0, uint32_t(s)});
+			}
+		} else {
+			std::cout << "Fail to associate memory with allocator: " << ret << " ( " << s << " )\n";
+		}
+		s_allocMutex.unlock();
+	} else {
+		s_free_allocated += s;
+	}
+#else
+	if (alloc) {
+		s_alloc_allocated += s;
+	} else {
+		s_free_allocated += s;
+	}
+#endif // DEBUG
+	return ret;
+}
+
+static void Root_free(void *alloc, void *mem, size_t s, void *) {
+#if DEBUG
+	if (alloc) {
+		s_alloc_allocated -= s;
+		s_allocMutex.lock();
+		auto it = s_allocators.find(alloc);
+		if (it != s_allocators.end()) {
+			auto slot = (s <= 4_KiB * 20) ? s / 4_KiB - 1 : 0;
+			auto iit = std::lower_bound( it->second.nodes[slot].begin(), it->second.nodes[slot].end(), mem,
+				[] (const Alloc::MemNode &node, void *r) {
+					return node.ptr < r;
+			});
+			if (iit != it->second.nodes[slot].end() && iit->ptr == mem) {
+				it->second.nodes[slot].erase(iit);
+			}
+		}
+		s_allocMutex.unlock();
+	} else {
+		s_free_allocated -= s;
+	}
+#else
+	if (alloc) {
+		s_alloc_allocated -= s;
+	} else {
+		s_free_allocated -= s;
+	}
+#endif // DEBUG
+	free(mem);
+}
+
+#if DEBUG
+static void Root_node_alloc(void *alloc, void *node, size_t s, void *owner, void *) {
+	if (alloc) {
+		s_allocMutex.lock();
+		//std::cout << "Alloc: ( " << alloc << ") " << node << "\n";
+		auto it = s_allocators.find(alloc);
+		if (it != s_allocators.end()) {
+			auto slot = (s <= 4_KiB * 20) ? s / 4_KiB - 1 : 0;
+			auto iit = std::lower_bound( it->second.nodes[slot].begin(), it->second.nodes[slot].end(), node,
+				[] (const Alloc::MemNode &node, void *r) {
+					return node.ptr < r;
+			});
+			if (iit != it->second.nodes[slot].end() && iit->ptr == node) {
+				iit->backtrace = GetBacktrace(30);
+				iit->status = 1;
+				iit->owner = owner;
+			} else if (iit == it->second.nodes[slot].end()) {
+				std::cout << "Node not found\n";
+			}
+		}
+		s_allocMutex.unlock();
+	}
+}
+
+static void Root_node_free(void *alloc, void *node, size_t s, void *) {
+	if (alloc) {
+		s_allocMutex.lock();
+		//std::cout << "Free: ( " << alloc << ") " << node << "\n";
+		auto it = s_allocators.find(alloc);
+		if (it != s_allocators.end()) {
+			auto slot = (s <= 4_KiB * 20) ? s / 4_KiB - 1 : 0;
+			auto iit = std::lower_bound( it->second.nodes[slot].begin(), it->second.nodes[slot].end(), node,
+				[] (const Alloc::MemNode &node, void *r) {
+					return node.ptr < r;
+			});
+			if (iit != it->second.nodes[slot].end() && iit->ptr == node) {
+				iit->backtrace.clear();
+				iit->status = 0;
+			} else if (iit == it->second.nodes[slot].end()) {
+				std::cout << "Node not found\n";
+			}
+		}
+		s_allocMutex.unlock();
+	}
+}
+
+#endif // DEBUG
+
+static String Root_writeMemoryMap(bool full) {
+	auto formatSize = [&] (std::ostringstream &out, size_t val) {
+		if (val > int64_t(1_MiB)) {
+			out << std::setprecision(4) << double(val) / 1_MiB << " MiB";
+		} else if (val > int64_t(1_KiB)) {
+			out << std::setprecision(4) << double(val) / 1_KiB << " KiB";
+		} else {
+			out << val << " bytes";
+		}
+	};
+
+	size_t allocSize = s_alloc_allocated.load();
+	size_t freeAllocSize = s_free_allocated.load();
+	size_t fullSize = 0;
+	std::ostringstream ret;
+
+	ret << "Allocated (free) : ";
+	formatSize(ret, freeAllocSize);
+	ret << " ( " << freeAllocSize << " )\n";
+
+	ret << "Allocated (counter) : ";
+	formatSize(ret, allocSize);
+	ret << " ( " << allocSize << " )\n";
+
+#if DEBUG
+	s_allocMutex.lock();
+	ret << "Allocators:\n";
+	for (auto &it : s_allocators) {
+		ret << "\t [ " << it.first << " ] : ";
+		size_t size = 0;
+		for (size_t i = 0; i < it.second.nodes.size(); ++ i) {
+			if (i == 0) {
+				for (auto &iit : it.second.nodes[i]) {
+					size += iit.size;
+				}
+			} else {
+				size += it.second.nodes[i].size() * ((i + 1) * 4_KiB);
+			}
+		}
+
+		fullSize += size;
+		formatSize(ret, size);
+		ret << " ( " << size << " )\n";
+
+		if (full) {
+			for (size_t i = 0; i < it.second.nodes.size(); ++ i) {
+				if (!it.second.nodes[i].empty()) {
+					size_t size = 0;
+					ret << "\t\t[ " << i  << " ] : ";
+					if (i == 0) {
+						for (auto &iit : it.second.nodes[i]) {
+							size += iit.size;
+						}
+					} else {
+						size = it.second.nodes[i].size() * ((i + 1) * 4_KiB);
+					}
+
+					formatSize(ret, size);
+					ret << " ( " << size << " )\n";
+
+					for (auto &iit : it.second.nodes[i]) {
+						ret << "\t\t\t[ " << iit.ptr  << " ] : ";
+						formatSize(ret, iit.size);
+						ret << " ( " << iit.size << " ) ";
+						if (iit.status) {
+							ret << " [allocated]\n";
+						} else {
+							ret << " [free]\n";
+						}
+					}
+				}
+			}
+		}
+	}
+
+	ret << "Allocated (calculated) : ";
+	formatSize(ret, fullSize);
+	ret << " ( " << fullSize << " )\n";
+	s_allocMutex.unlock();
+#endif
+	ret << "\n";
+
+	auto str = ret.str();
+
+	return String(str.data(), str.size());
+}
+
+static String Root_writeAllocatorMemoryMap(void *alloc) {
+#if DEBUG
+	auto formatSize = [&] (std::ostringstream &out, size_t val) {
+		if (val > int64_t(1_MiB)) {
+			out << std::setprecision(4) << double(val) / 1_MiB << " MiB";
+		} else if (val > int64_t(1_KiB)) {
+			out << std::setprecision(4) << double(val) / 1_KiB << " KiB";
+		} else {
+			out << val << " bytes";
+		}
+	};
+
+	size_t fullSize = 0;
+	std::ostringstream ret;
+
+	s_allocMutex.lock();
+
+	auto it = s_allocators.find(alloc);
+	if (it != s_allocators.end()) {
+		size_t size = 0;
+		for (size_t i = 0; i < it->second.nodes.size(); ++ i) {
+			if (i == 0) {
+				for (auto &iit : it->second.nodes[i]) {
+					size += iit.size;
+				}
+			} else {
+				size += it->second.nodes[i].size() * ((i + 1) * 4_KiB);
+			}
+		}
+
+		fullSize += size;
+		ret << "Allocator: " << it->first << " ";
+		formatSize(ret, size);
+		ret << " ( " << size << " )\n";
+
+		for (size_t i = 0; i < it->second.nodes.size(); ++ i) {
+			if (!it->second.nodes[i].empty()) {
+				size_t size = 0;
+				ret << "[ " << i  << " ] : ";
+				if (i == 0) {
+					for (auto &iit : it->second.nodes[i]) {
+						size += iit.size;
+					}
+				} else {
+					size = it->second.nodes[i].size() * ((i + 1) * 4_KiB);
+				}
+
+				formatSize(ret, size);
+				ret << " ( " << size << " )\n";
+
+				for (auto &iit : it->second.nodes[i]) {
+					ret << "\t[ " << iit.ptr  << " ] : ";
+					formatSize(ret, iit.size);
+					ret << " ( " << iit.size << " ) ";
+					if (iit.owner) {
+						ret << " owner: [ " << iit.owner  << " ]";
+					}
+					if (iit.status) {
+						ret << " [allocated]\n";
+						for (auto &ibt : iit.backtrace) {
+							ret << "\t\t" << ibt << "\n";
+						}
+					} else {
+						ret << " [free]\n";
+					}
+				}
+			}
+		}
+	}
+
+	auto str = ret.str();
+	s_allocMutex.unlock();
+	return String(str.data(), str.size());
+#else
+	return "Available only in debug mode\n";
+#endif
+}
+
 Root::Root() {
     assert(! s_sharedServer);
     s_sharedServer = this;
+
+	_requestsRecieved.store(0);
+	_filtersInit.store(0);
+	_tasksRunned.store(0);
+	_heartbeatCounter.store(0);
+
+	_dbQueriesPerformed.store(0);
+	_dbQueriesReleased.store(0);
+
+	// memory interface binding
+	serenity_set_alloc_fn(Root_alloc, Root_free, (void *)this);
+
+#if DEBUG
+	serenity_set_node_ctrl_fn(Root_node_alloc, Root_node_free, (void *)this);
+#endif
+
+	db::pq::Driver::open(StringView())->setDbCtrl([this] (bool complete) {
+		if (complete) {
+			_dbQueriesReleased += 1;
+		} else {
+			_dbQueriesPerformed += 1;
+		}
+	});
 }
 
 Root::~Root() {
@@ -321,6 +714,7 @@ static void *Root_performTask(apr_thread_t *, void *ptr) {
 
 bool Root::performTask(const Server &serv, Task *task, bool performFirst) {
 	if (_threadPool && task) {
+		_tasksRunned += 1;
 		task->setServer(serv);
 		memory::pool::store(task->pool(), serv.server(), "Apr.Server");
 		auto ctx = new (task->pool()) TaskContext( task, serv.server() );
@@ -335,12 +729,32 @@ bool Root::performTask(const Server &serv, Task *task, bool performFirst) {
 
 bool Root::scheduleTask(const Server &serv, Task *task, TimeInterval interval) {
 	if (_threadPool && task) {
+		_tasksRunned += 1;
 		task->setServer(serv);
 		memory::pool::store(task->pool(), serv.server(), "Apr.Server");
 		auto ctx = new (task->pool()) TaskContext( task, serv.server() );
 		return apr_thread_pool_schedule(_threadPool, &Root_performTask, ctx, interval.toMicroseconds(), nullptr) == APR_SUCCESS;
 	}
 	return false;
+}
+
+Root::Stat Root::getStat() const {
+	return Root::Stat({
+		_requestsRecieved.load(),
+		_filtersInit.load(),
+		_tasksRunned.load(),
+		_heartbeatCounter.load(),
+		_dbQueriesPerformed.load(),
+		_dbQueriesReleased.load(),
+	});
+}
+
+String Root::getMemoryMap(bool full) const {
+	return Root_writeMemoryMap(full);
+}
+
+String Root::getAllocatorMemoryMap(uint64_t ptr) const {
+	return Root_writeAllocatorMemoryMap((void *)ptr);
 }
 
 void Root::onChildInit() {
@@ -361,13 +775,14 @@ void Root::onHeartBeat() {
 		return;
 	}
 
+	_heartbeatCounter += 1;
 	auto serv = _rootServerContext;
 	while (serv) {
 		apr::pool::perform([&] {
 			serv.onHeartBeat(_heartBeatPool);
 		}, serv.server());
 		serv = serv.next();
-		apr_pool_clear(_heartBeatPool);
+		mem::pool::clear(_heartBeatPool);
 	}
 }
 
@@ -406,7 +821,7 @@ void Root::onServerChildInit(apr_pool_t *p, server_rec* s) {
 			apr_thread_create(&_timerThread, attr,
 					sa_server_timer_thread_fn, this, _pool);
 		}
-	}, p);
+	}, p, memory::pool::Config);
 }
 
 void *Root::logWriterInit(apr_pool_t *p, server_rec *s, const char *name) {
@@ -471,6 +886,7 @@ const char * Root::getProtocol(const conn_rec *c) {
 
 int Root::onPostReadRequest(request_rec *r) {
 	return apr::pool::perform([&] () -> int {
+		_requestsRecieved += 1;
 		OutputFilter::insert(r);
 
 		Request request(r);
@@ -568,6 +984,7 @@ int Root::onHandler(request_rec *r) {
 }
 
 void Root::onFilterInit(InputFilter *f) {
+	_filtersInit += 1;
 	RequestHandler *rhdl = f->getRequest().getRequestHandler();
 	if (rhdl) {
 		rhdl->onFilterInit(f);

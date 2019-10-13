@@ -57,7 +57,7 @@ Handler::FrameReader::FrameReader(const Request &req, apr_pool_t *p, size_t maxF
 : fin(false), masked(false), status(Status::Head), error(Error::None), type(FrameType::None), extra(0)
 , mask(0) , size(0), max(maxFrameSize), frame(Frame{false, FrameType::None, Bytes(), 0, 0})
 , pool(nullptr), bucket_alloc(nullptr), tmpbb(nullptr) {
-	apr_pool_create(&pool, p);
+	pool = memory::pool::create(p);
 	if (!pool) {
 		error = Error::NotInitialized;
 	} else {
@@ -244,7 +244,7 @@ void Handler::FrameReader::popFrame() {
 		frame.buffer.force_clear();
 		frame.buffer.clear();
 		apr_brigade_cleanup(tmpbb);
-		apr_pool_clear(pool); // clear frame-related data
+		memory::pool::clear(pool); // clear frame-related data
 	    tmpbb = apr_brigade_create(pool, bucket_alloc);
 		status = Status::Head;
 		frame.block = 0;

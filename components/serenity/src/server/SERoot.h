@@ -90,6 +90,20 @@ public:
 	bool performTask(const Server &server, Task *task, bool performFirst);
 	bool scheduleTask(const Server &server, Task *task, TimeInterval);
 
+	struct Stat {
+		uint64_t requestsRecieved = 0;
+		uint64_t filtersInit = 0;
+		uint64_t tasksRunned = 0;
+		uint64_t heartbeatCounter = 0;
+
+		uint64_t dbQueriesPerformed = 0;
+		uint64_t dbQueriesReleased = 0;
+	};
+
+	Stat getStat() const;
+	String getMemoryMap(bool full) const;
+	String getAllocatorMemoryMap(uint64_t) const;
+
 protected:
 	static Root *s_sharedServer;
 
@@ -117,6 +131,14 @@ protected:
 	ap_log_writer *_defaultWriter = nullptr;
 
 	apr_thread_pool_t *_threadPool = nullptr;
+
+	std::atomic<uint64_t> _requestsRecieved;
+	std::atomic<uint64_t> _filtersInit;
+	std::atomic<uint64_t> _tasksRunned;
+	std::atomic<uint64_t> _heartbeatCounter;
+
+	std::atomic<uint64_t> _dbQueriesPerformed;
+	std::atomic<uint64_t> _dbQueriesReleased;
 
 #if DEBUG
 	bool _debug = true;

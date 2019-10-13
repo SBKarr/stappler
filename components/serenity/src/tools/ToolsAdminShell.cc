@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "STPqHandle.h"
 #include "SPugContext.h"
 #include "InputFilter.h"
+#include "Root.h"
 
 NS_SA_EXT_BEGIN(tools)
 
@@ -910,6 +911,44 @@ struct TimeCmd : SocketCommand {
 	}
 };
 
+struct StatCmd : SocketCommand {
+	StatCmd() : SocketCommand("stat") { }
+
+	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+
+		StringStream ret;
+
+		auto root = Root::getInstance();
+		auto stat = root->getStat();
+
+		if (r.starts_with("0x")) {
+			ret << root->getAllocatorMemoryMap(r.readInteger().get()) << "\n";
+		} else {
+			ret << "Resource stat:\n";
+			ret << "\tRequests recieved: " << stat.requestsRecieved << "\n";
+			ret << "\tFilters init: " << stat.filtersInit << "\n";
+			ret << "\tTasks runned: " << stat.tasksRunned << "\n";
+			ret << "\tHeartbeat counter: " << stat.heartbeatCounter << "\n";
+			ret << "\tDB queries performed: " << stat.dbQueriesPerformed << " (" << stat.dbQueriesReleased << " " << stat.dbQueriesPerformed - stat.dbQueriesReleased << ")\n";
+			ret << "\n";
+
+			ret << root->getMemoryMap(r == "full");
+		}
+
+		h.send(ret.str());
+		return true;
+	}
+
+	virtual StringView desc() const {
+		return " - show server instance statistics (current instance only)";
+	}
+	virtual StringView help() const {
+		return " - server instance statistics (current instance only)\n"
+				"    full - view all allocators with slots\n"
+				"    <allocator-name> - allocator statistics with memory owners and backtraces";
+	}
+};
 
 ShellSocketHandler::ShellSocketHandler(Manager *m, const Request &req, User *user) : Handler(m, req, 600_sec), _user(user) {
 	sendBroadcast(data::Value{
@@ -940,6 +979,7 @@ ShellSocketHandler::ShellSocketHandler(Manager *m, const Request &req, User *use
 	_cmds.push_back(new GenPasswordCmd());
 	_cmds.push_back(new KillCmd());
 	_cmds.push_back(new TimeCmd());
+	_cmds.push_back(new StatCmd());
 
 	auto serv = req.server();
 	_external.reserve(serv.getComponents().size());

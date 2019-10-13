@@ -53,15 +53,8 @@ void *pool_palloc(Pool *, size_t);
 
 template <typename Pool>
 void allocmngr_t<Pool>::reset(Pool *p) {
-#if DEBUG
-	_allocated = 0;
-	_returned = 0;
-	_opts = 0;
-#endif
-
+	memset(this, 0, sizeof(allocmngr_t<Pool>));
 	pool = p;
-	buffered = nullptr;
-	free_buffered = nullptr;
 }
 
 template <typename Pool>
@@ -79,9 +72,7 @@ void *allocmngr_t<Pool>::alloc(size_t &sizeInBytes) {
 				c->next = free_buffered;
 				free_buffered = c;
 				sizeInBytes = c->size;
-#if DEBUG
 				increment_return(sizeInBytes);
-#endif
 				return c->address;
 			}
 
@@ -89,9 +80,7 @@ void *allocmngr_t<Pool>::alloc(size_t &sizeInBytes) {
 			c = c->next;
 		}
 	}
-#if DEBUG
 	increment_alloc(sizeInBytes);
-#endif
 	return pool_palloc(pool, sizeInBytes);
 }
 
@@ -104,9 +93,8 @@ void allocmngr_t<Pool>::free(void *ptr, size_t sizeInBytes) {
 		free_buffered = addr->next;
 	} else {
 		addr = (memaddr_t *)pool_palloc(pool, sizeof(memaddr_t));
-#if DEBUG
+		increment_alloc(sizeof(memaddr_t));
 		increment_opts(sizeof(memaddr_t));
-#endif
 	}
 
 	if (addr) {
@@ -305,9 +293,7 @@ memnode_t *allocator_t::alloc(uint32_t in_size) {
 		return nullptr;
 	}
 
-#if DEBUG
 	allocated += size;
-#endif
 
 	node->next = nullptr;
 	node->index = (uint32_t)index;
@@ -404,10 +390,7 @@ void *pool_t::alloc(size_t &sizeInBytes) {
 		return allocmngr.alloc(sizeInBytes);
 	}
 
-#if DEBUG
 	allocmngr.increment_alloc(sizeInBytes);
-#endif
-
 	return palloc(sizeInBytes);
 }
 void pool_t::free(void *ptr, size_t sizeInBytes) {
@@ -818,32 +801,16 @@ status_t userdata_get(void **data, const char *key, pool_t *pool) {
 }
 
 size_t get_allocator_allocated_bytes(pool_t *p) {
-#if DEBUG
 	return p->allocator->allocated;
-#else
-	return 0;
-#endif
 }
 size_t get_allocated_bytes(pool_t *p) {
-#if DEBUG
 	return p->allocmngr.get_alloc();
-#else
-	return 0;
-#endif
 }
 size_t get_return_bytes(pool_t *p) {
-#if DEBUG
 	return p->allocmngr.get_return();
-#else
-	return 0;
-#endif
 }
 size_t get_opts_bytes(pool_t *p) {
-#if DEBUG
 	return p->allocmngr.get_opts();
-#else
-	return 0;
-#endif
 }
 
 

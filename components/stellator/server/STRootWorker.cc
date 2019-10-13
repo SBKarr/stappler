@@ -494,13 +494,14 @@ bool ConnectionWorker::poll(int epollFd) {
 void ConnectionWorker::finalizeThread() { }
 
 void ConnectionWorker::runTask(Task *task) {
+	auto serv = task->getServer();
 	mem::perform([&] {
 		mem::perform([&] {
 			task->setSuccessful(task->execute());
 			task->onComplete();
 		}, task->pool());
-	}, task->getServer());
-	Task::destroy(task);
+		Task::destroy(task);
+	}, serv);
 }
 
 void ConnectionWorker::pushFd(int epollFd, int fd) {
