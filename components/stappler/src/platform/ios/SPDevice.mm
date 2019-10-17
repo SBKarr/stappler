@@ -37,9 +37,7 @@ THE SOFTWARE.
 
 #import <UIKit/UIKit.h>
 
-NS_SP_PLATFORM_BEGIN
-
-namespace device {
+namespace stappler::platform::device {
 	bool _isTablet() {
 		return (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad);
 	}
@@ -158,7 +156,5 @@ namespace device {
 		return [UIScreen mainScreen].scale;
 	}
 }
-
-NS_SP_PLATFORM_END
 
 #endif

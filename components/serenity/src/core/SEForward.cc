@@ -100,8 +100,9 @@ Adapter getAdapterFromContext() {
 	if (log.first == uint32_t(stappler::apr::pool::Info::Request)) {
 		return stappler::serenity::Request((request_rec *)log.second).storage();
 	} else if (log.first == uint32_t(stappler::apr::pool::Info::Pool)) {
+		auto p = mem::pool::acquire();
 		stappler::serenity::websocket::Handler *h = nullptr;
-		apr_pool_userdata_get((void **)&h, config::getSerenityWebsocketHandleName(), (apr_pool_t *)log.second);
+		apr_pool_userdata_get((void **)&h, config::getSerenityWebsocketHandleName(), p);
 		if (h) {
 			return Adapter(h->storage());
 		}

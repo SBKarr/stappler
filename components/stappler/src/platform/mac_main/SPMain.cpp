@@ -33,9 +33,7 @@ THE SOFTWARE.
 
 #include "platform/CCApplication.h"
 
-NS_SP_PLATFORM_BEGIN
-
-namespace desktop {
+namespace stappler::platform::desktop {
 	cocos2d::Size _screenSize;
 	bool _isTablet = false;
 	bool _isFixed = false;
@@ -51,8 +49,6 @@ namespace desktop {
 	float getDensity() { return _density; }
 	std::string getUserLanguage() { return _userLanguage; }
 }
-
-NS_SP_PLATFORM_END
 
 USING_NS_CC;
 

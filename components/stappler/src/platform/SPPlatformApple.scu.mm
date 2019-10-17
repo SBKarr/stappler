@@ -34,6 +34,7 @@
 #include "ios/NSStringPunycodeAdditions.mm"
 #include "ios/SPAppController.mm"
 #include "ios/SPClipboard.mm"
+#include "ios/SPProc.mm"
 #include "ios/SPDevice.mm"
 #include "ios/SPFilesystem.mm"
 #include "ios/SPIME.mm"

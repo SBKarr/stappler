@@ -56,11 +56,11 @@ bool CommonSource::init() {
 		} else if (str.compare(0, "local://"_len, "local://") == 0) {
 			auto path = str.substr("local://"_len);
 			if (filesystem::exists(path)) {
-				return filesystem::readFile(path);
+				return filesystem::readIntoMemory(path);
 			} else if (filesystem::exists("fonts/" + path)) {
-				return filesystem::readFile("fonts/" + path);
+				return filesystem::readIntoMemory("fonts/" + path);
 			} else if (filesystem::exists("common/fonts/" + path)) {
-				return filesystem::readFile("common/fonts/" + path);
+				return filesystem::readIntoMemory("common/fonts/" + path);
 			}
 		}
 		return Bytes();
@@ -284,7 +284,7 @@ void CommonSource::tryLoadDocument() {
 	_documentLoading = true;
 	onUpdate(this);
 
-	thread.perform([doc, asset, assets] (const Task &) -> bool {
+	thread.perform([doc, asset, assets] (const thread::Task &) -> bool {
 		*doc = asset->get()->openDocument();
 		if (*doc) {
 			auto &pages = (*doc)->getContentPages();
@@ -295,7 +295,7 @@ void CommonSource::tryLoadDocument() {
 			}
 		}
 		return true;
-	}, [this, doc, asset, assets] (const Task &, bool success) {
+	}, [this, doc, asset, assets] (const thread::Task &, bool success) {
 		if (success && *doc) {
 			auto l = [this, doc, asset] {
 				_documentLoading = false;

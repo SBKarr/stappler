@@ -382,9 +382,7 @@ class StoreKitLinux : public EventHandler {
 
 NS_SP_END
 
-NS_SP_PLATFORM_BEGIN
-
-namespace storekit {
+namespace stappler::platform::storekit {
 	void _saveProducts(const std::unordered_map<std::string, StoreProduct *> &val) {
 		StoreKitLinux::getInstance()->saveProductDictionary(val);
 	}
@@ -405,11 +403,9 @@ namespace storekit {
 	}
 }
 
-NS_SP_PLATFORM_END
 #else
-NS_SP_PLATFORM_BEGIN
 
-namespace storekit {
+namespace stappler::platform::storekit {
 	void _saveProducts(const std::unordered_map<std::string, StoreProduct *> &val) {
 		
 	}
@@ -430,6 +426,5 @@ namespace storekit {
 	}
 }
 
-NS_SP_PLATFORM_END
 #endif
 #endif

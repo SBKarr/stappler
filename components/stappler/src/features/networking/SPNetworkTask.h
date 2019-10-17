@@ -24,12 +24,11 @@ THE SOFTWARE.
 #define STAPPLER_SRC_FEATURES_NETWORKING_SPNETWORKTASK_H_
 
 #include "SPNetworkHandle.h"
-#include "SPTask.h"
 #include "SPThread.h"
 
 NS_SP_BEGIN
 
-class NetworkTask : public Task {
+class NetworkTask : public thread::Task {
 public:
 	using Method = NetworkHandle::Method;
 
@@ -49,6 +48,7 @@ public:
 	virtual void run();
 
     void setAuthority(const StringView &user, const StringView &passwd = StringView());
+	bool setPrivateKeyAuth(const BytesView &priv);
 
 	/* Adds HTTP header line to request */
     void addHeader(const StringView &header);

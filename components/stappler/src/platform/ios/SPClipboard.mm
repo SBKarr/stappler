@@ -29,9 +29,7 @@ THE SOFTWARE.
 
 #import <UIKit/UIKit.h>
 
-NS_SP_PLATFORM_BEGIN
-
-namespace clipboard {
+namespace stappler::platform::clipboard {
 	bool _isAvailable() {
 		return [UIPasteboard generalPasteboard].string != nil;
 	}
@@ -47,7 +45,5 @@ namespace clipboard {
 		[UIPasteboard generalPasteboard].string = [NSString stringWithUTF8String:value.c_str()];
 	}
 }
-
-NS_SP_PLATFORM_END
 
 #endif

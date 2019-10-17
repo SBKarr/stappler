@@ -28,7 +28,6 @@ THE SOFTWARE.
 #include "SPFilesystem.h"
 #include "SPAssetLibrary.h"
 #include "SPThreadManager.h"
-#include "SPTaskManager.h"
 #include "SPTextureCache.h"
 #include "SPString.h"
 #include "renderer/CCTexture2D.h"

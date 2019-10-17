@@ -122,12 +122,12 @@ void TextureCache::renderImageInBackground(const Callback &cb, cocos2d::Texture2
 	auto texPtr = new Rc<cocos2d::Texture2D>(tex);
 	auto imagePtr = new Rc<layout::Image>(image.clone());
 
-	s_textureCacheThread.perform([this, texPtr, imagePtr, fmt, contentSize, autofit, autofitPos, density] (const Task &) -> bool {
+	s_textureCacheThread.perform([this, texPtr, imagePtr, fmt, contentSize, autofit, autofitPos, density] (const thread::Task &) -> bool {
 		return performWithGL([&] {
 			*texPtr = doRenderImage(texPtr->get(), fmt, *imagePtr->get(), contentSize, autofit, autofitPos, density);
 			return true;
 		});
-	}, [cb, texPtr, imagePtr] (const Task &, bool) {
+	}, [cb, texPtr, imagePtr] (const thread::Task &, bool) {
 		cb(*texPtr);
 		delete texPtr;
 		delete imagePtr;
@@ -221,10 +221,10 @@ void TextureCache::addTexture(const StringView &ifile, float density, BitmapForm
 
 		auto &thread = s_textureCacheThread;
         auto imagePtr = new Rc<cocos2d::Texture2D>;
-		thread.perform([this, index, imagePtr] (const Task &) -> bool {
+		thread.perform([this, index, imagePtr] (const thread::Task &) -> bool {
 			*imagePtr = loadTexture(index);
 			return true;
-		}, [this, index, imagePtr] (const Task &, bool) {
+		}, [this, index, imagePtr] (const thread::Task &, bool) {
 			auto image = *imagePtr;
 			if (image) {
 				auto texIt = _textures.find(index);
@@ -340,7 +340,7 @@ bool TextureCache::hasTexture(const StringView &path, float d, BitmapFormat fmt)
 TextureCache::TextureCache() {
 	_mainProgramSet = Rc<GLProgramSet>::create();
 
-	s_textureCacheThread.perform([this] (const Task &) -> bool {
+	s_textureCacheThread.perform([this] (const thread::Task &) -> bool {
 		performWithGL([&] {
 			_threadProgramSet = Rc<GLProgramSet>::create();
 		});
@@ -372,12 +372,12 @@ void TextureCache::uploadBitmap(Bitmap && bmp, const Function<void(cocos2d::Text
 	auto bmpPtr = new Bitmap(std::move(bmp));
 	auto texPtr = new Rc<cocos2d::Texture2D>;
 
-	s_textureCacheThread.perform([this, bmpPtr, texPtr] (const Task &) -> bool {
+	s_textureCacheThread.perform([this, bmpPtr, texPtr] (const thread::Task &) -> bool {
 		performWithGL([&] {
 			uploadTextureBackground(*texPtr, *bmpPtr);
 		});
 		return true;
-	}, [bmpPtr, texPtr, cb] (const Task &, bool) {
+	}, [bmpPtr, texPtr, cb] (const thread::Task &, bool) {
 		cb(*texPtr);
 		delete texPtr;
 		delete bmpPtr;
@@ -388,12 +388,12 @@ void TextureCache::uploadBitmap(Vector<Bitmap> &&bmp, const Function<void(Vector
 	auto bmpPtr = new Vector<Bitmap>(std::move(bmp));
 	auto texPtr = new Vector<Rc<cocos2d::Texture2D>>;
 
-	s_textureCacheThread.perform([this, bmpPtr, texPtr] (const Task &) -> bool {
+	s_textureCacheThread.perform([this, bmpPtr, texPtr] (const thread::Task &) -> bool {
 		performWithGL([&] {
 			uploadTextureBackground(*texPtr, *bmpPtr);
 		});
 		return true;
-	}, [bmpPtr, texPtr, cb] (const Task &, bool) {
+	}, [bmpPtr, texPtr, cb] (const thread::Task &, bool) {
 		cb(std::move(*texPtr));
 		delete texPtr;
 		delete bmpPtr;
@@ -460,7 +460,7 @@ void TextureCache::freeCurrentContext() {
 void TextureCache::reloadTextures() {
 	_mainProgramSet->reloadPrograms();
 
-	s_textureCacheThread.perform([this] (const Task &) -> bool {
+	s_textureCacheThread.perform([this] (const thread::Task &) -> bool {
 		performWithGL([&] {
 			_threadProgramSet->reloadPrograms();
 		});
@@ -593,7 +593,7 @@ void TextureCache::reloadTexture(cocos2d::Texture2D *tex, const TextureIndex &in
 		return;
 	}
 
-	auto data = filesystem::readFile(index.file);
+	auto data = filesystem::readIntoMemory(index.file);
 	if (layout::Image::isSvg(data)) {
 		if (auto img = draw::Cache::getInstance()->addImage(index.file, data)) {
 			if (!_vectorCanvas) {
@@ -644,13 +644,13 @@ Rc<cocos2d::Texture2D> TextureCache::loadTexture(const TextureIndex &index) {
 		return renderVg(img);
 	}
 
-	auto data = filesystem::readFile(index.file);
+	auto data = filesystem::readIntoMemory(index.file);
 	if (layout::Image::isSvg(data)) {
 		if (auto img = draw::Cache::getInstance()->addImage(index.file, data)) {
 			return renderVg(img);
 		}
 	} else {
-		Bitmap bitmap(filesystem::readFile(index.file));
+		Bitmap bitmap(filesystem::readIntoMemory(index.file));
 		if (bitmap) {
 			if (index.fmt != BitmapFormat::Auto) {
 				bitmap.convert(index.fmt);

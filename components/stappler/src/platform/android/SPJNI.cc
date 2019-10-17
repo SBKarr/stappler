@@ -45,14 +45,10 @@ THE SOFTWARE.
 #include "CCApplication-android.h"
 #include "platform/android/jni/JniHelper.h"
 
-NS_SP_PLATFORM_BEGIN
-
-namespace render {
+namespace stappler::platform::render {
 	void _stop();
 	void _start();
 }
-
-NS_SP_PLATFORM_END
 
 NS_SP_BEGIN
 

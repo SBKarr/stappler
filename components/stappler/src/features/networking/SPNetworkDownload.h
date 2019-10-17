@@ -41,9 +41,9 @@ public:
     virtual bool performQuery() override;
     virtual void onComplete() override;
 
-    virtual void notifyOnStarted(bool bind = false);
-    virtual void notifyOnProgress(float progress, bool bind = false);
-    virtual void notifyOnComplete(bool success, bool bind = false);
+    virtual void notifyOnStarted();
+    virtual void notifyOnProgress(float progress);
+    virtual void notifyOnComplete(bool success);
 
 	virtual void setStartedCallback(StartedCallback func);
 	virtual void setProgressCallback(ProgressCallback func);

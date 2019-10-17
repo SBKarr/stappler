@@ -294,10 +294,10 @@ bool Renderer::requestRendering() {
 
 		retain();
 		auto &thread = resource::thread();
-		thread.perform([impl] (const Task &) -> bool {
+		thread.perform([impl] (const thread::Task &) -> bool {
 			impl->render();
 			return true;
-		}, [this, impl] (const Task &, bool) {
+		}, [this, impl] (const thread::Task &, bool) {
 			auto result = impl->getResult();
 			if (result) {
 				onResult(result);

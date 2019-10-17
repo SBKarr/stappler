@@ -51,10 +51,10 @@ UserFontConfig::Source * UserFontConfig::getSafeSource() const {
 void UserFontConfig::onSourceUpdated(Source *source) {
 	font::FontController::onSourceUpdated(source);
 	auto ptr = new Rc<Source>(source);
-	ResourceManager::thread().perform([this, ptr] (const Task &) -> bool {
+	ResourceManager::thread().perform([this, ptr] (const thread::Task &) -> bool {
 		_threadSource.swap(*ptr); // no retain/release
 		return true;
-	}, [ptr] (const Task &, bool) {
+	}, [ptr] (const thread::Task &, bool) {
 		delete ptr;
 	});
 	ResourceManager::onUserFont(ResourceManager::getInstance(), this);

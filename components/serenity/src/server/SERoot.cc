@@ -370,7 +370,7 @@ static void Root_node_alloc(void *alloc, void *node, size_t s, void *owner, void
 				iit->status = 1;
 				iit->owner = owner;
 			} else if (iit == it->second.nodes[slot].end()) {
-				std::cout << "Node not found\n";
+				//std::cout << "Node not found\n";
 			}
 		}
 		s_allocMutex.unlock();
@@ -392,7 +392,7 @@ static void Root_node_free(void *alloc, void *node, size_t s, void *) {
 				iit->backtrace.clear();
 				iit->status = 0;
 			} else if (iit == it->second.nodes[slot].end()) {
-				std::cout << "Node not found\n";
+				// std::cout << "Node not found\n";
 			}
 		}
 		s_allocMutex.unlock();
@@ -414,7 +414,6 @@ static String Root_writeMemoryMap(bool full) {
 
 	size_t allocSize = s_alloc_allocated.load();
 	size_t freeAllocSize = s_free_allocated.load();
-	size_t fullSize = 0;
 	std::ostringstream ret;
 
 	ret << "Allocated (free) : ";
@@ -426,6 +425,7 @@ static String Root_writeMemoryMap(bool full) {
 	ret << " ( " << allocSize << " )\n";
 
 #if DEBUG
+	size_t fullSize = 0;
 	s_allocMutex.lock();
 	ret << "Allocators:\n";
 	for (auto &it : s_allocators) {
@@ -581,7 +581,7 @@ Root::Root() {
 	// memory interface binding
 	serenity_set_alloc_fn(Root_alloc, Root_free, (void *)this);
 
-#if DEBUG
+#if SPAPR && DEBUG
 	serenity_set_node_ctrl_fn(Root_node_alloc, Root_node_free, (void *)this);
 #endif
 

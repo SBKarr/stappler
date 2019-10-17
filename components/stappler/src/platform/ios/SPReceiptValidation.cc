@@ -110,18 +110,6 @@ operator >>(std::basic_istream<charT,traits>& is, system_clock::time_point& item
 
 NS_SP_EXT_BEGIN(platform)
 
-InvokerCallTest_MakeInvoker(Asn1, onBeginSet);
-InvokerCallTest_MakeInvoker(Asn1, onEndSet);
-InvokerCallTest_MakeInvoker(Asn1, onBeginSequence);
-InvokerCallTest_MakeInvoker(Asn1, onEndSequence);
-InvokerCallTest_MakeInvoker(Asn1, onOid);
-InvokerCallTest_MakeInvoker(Asn1, onNull);
-InvokerCallTest_MakeInvoker(Asn1, onInteger);
-InvokerCallTest_MakeInvoker(Asn1, onBoolean);
-InvokerCallTest_MakeInvoker(Asn1, onBytes);
-InvokerCallTest_MakeInvoker(Asn1, onString);
-InvokerCallTest_MakeInvoker(Asn1, onCustom);
-
 template <typename T>
 struct Asn1DecoderTraits {
 	using success = char;
@@ -138,19 +126,6 @@ struct Asn1DecoderTraits {
 	InvokerCallTest_MakeCallTest(onBytes, success, failure);
 	InvokerCallTest_MakeCallTest(onString, success, failure);
 	InvokerCallTest_MakeCallTest(onCustom, success, failure);
-
-public:
-	InvokerCallTest_MakeCallMethod(Asn1, onBeginSet, T);
-	InvokerCallTest_MakeCallMethod(Asn1, onEndSet, T);
-	InvokerCallTest_MakeCallMethod(Asn1, onBeginSequence, T);
-	InvokerCallTest_MakeCallMethod(Asn1, onEndSequence, T);
-	InvokerCallTest_MakeCallMethod(Asn1, onOid, T);
-	InvokerCallTest_MakeCallMethod(Asn1, onNull, T);
-	InvokerCallTest_MakeCallMethod(Asn1, onInteger, T);
-	InvokerCallTest_MakeCallMethod(Asn1, onBoolean, T);
-	InvokerCallTest_MakeCallMethod(Asn1, onBytes, T);
-	InvokerCallTest_MakeCallMethod(Asn1, onString, T);
-	InvokerCallTest_MakeCallMethod(Asn1, onCustom, T);
 };
 
 template <typename ReaderType, typename Traits = Asn1DecoderTraits<ReaderType>>
@@ -217,7 +192,9 @@ struct Asn1Decoder {
 		case OctetString: return decodeOctetString(reader, r); break;
 		case Null:
 			r += decodeSize(r);
-			Traits::onNull(reader, *this);
+			if constexpr (Traits::onNull) {
+				reader.onNull(*this);
+			}
 			return true;
 			break;
 		case Utf8String:
@@ -251,14 +228,15 @@ struct Asn1Decoder {
 		DataReader<ByteOrder::Network> nextR(r.data(), size);
 		r += size;
 
-		Traits::onBeginSequence(reader, *this);
+
+		if constexpr (Traits::onBeginSequence) { reader.onBeginSequence(*this); }
 		while(!nextR.empty()) {
 			if (!decodeValue(reader, nextR)) {
-				Traits::onEndSequence(reader, *this);
+				if constexpr (Traits::onEndSequence) { reader.onEndSequence(*this); }
 				return false;
 			}
 		}
-		Traits::onEndSequence(reader, *this);
+		if constexpr (Traits::onEndSequence) { reader.onEndSequence(*this); }
 
 		return true;
 	}
@@ -272,14 +250,14 @@ struct Asn1Decoder {
 		DataReader<ByteOrder::Network> nextR(r.data(), size);
 		r += size;
 
-		Traits::onBeginSet(reader, *this);
+		if constexpr (Traits::onBeginSet) { reader.onBeginSet(*this); }
 		while(!nextR.empty()) {
 			if (!decodeValue(reader, nextR)) {
-				Traits::onEndSet(reader, *this);
+				if constexpr (Traits::onEndSet) { reader.onEndSet(*this); }
 				return false;
 			}
 		}
-		Traits::onEndSet(reader, *this);
+		if constexpr (Traits::onEndSet) { reader.onEndSet(*this); }
 
 		return true;
 	}
@@ -287,7 +265,8 @@ struct Asn1Decoder {
 	bool decodeUnknown(ReaderType &reader, DataReader<ByteOrder::Network> &r, uint8_t t) {
 		auto size = decodeSize(r);
 		r += size;
-		Traits::onCustom(reader, *this, t, DataReader<ByteOrder::Network>(r.data(), size));
+
+		if constexpr (Traits::onCustom) { reader.onCustom(*this, t, DataReader<ByteOrder::Network>(r.data(), size)); }
 		return true;
 	}
 
@@ -332,7 +311,9 @@ struct Asn1Decoder {
 
 		r += size;
 
-		Traits::onOid(reader, *this, str.str());
+		if constexpr (Traits::onOid) {
+			reader.onOid(*this, str.str());
+		}
 
 		return true;
 	}
@@ -343,37 +324,41 @@ struct Asn1Decoder {
 			return false;
 		}
 
-		switch(size) {
-		case 1: Traits::onInteger(reader, *this, reinterpretValue<int8_t>(r.readUnsigned())); break;
-		case 2: Traits::onInteger(reader, *this, reinterpretValue<int16_t>(r.readUnsigned16())); break;
-		case 3: {
-			auto val = r.readUnsigned24();
-			if (val <= 0x7FFFFF) {
-				Traits::onInteger(reader, *this, val);
-			} else {
-				Traits::onInteger(reader, *this, val - 0x1000000);
-			}
-		}
-			break;
-		case 4: Traits::onInteger(reader, *this, reinterpretValue<int32_t>(r.readUnsigned32())); break;
-		case 8: Traits::onInteger(reader, *this, reinterpretValue<int64_t>(r.readUnsigned64())); break;
-		default:
-			if (size >= 8) {
-				return false;
-			} else {
-				uint64_t accum = 0;
-				for (uint32_t i = 0; i < size; ++ i) {
-					accum = (accum << 8) | r.readUnsigned();
-				}
-				uint64_t base = 1ULL << (size * 8 - 1);
-				if (accum > base) {
-					Traits::onInteger(reader, *this, accum - (1ULL << (size * 8)));
+		if constexpr (Traits::onInteger) {
+			switch(size) {
+			case 1: reader.onInteger(*this, reinterpretValue<int8_t>(r.readUnsigned())); break;
+			case 2: reader.onInteger(*this, reinterpretValue<int16_t>(r.readUnsigned16())); break;
+			case 3: {
+				auto val = r.readUnsigned24();
+				if (val <= 0x7FFFFF) {
+					reader.onInteger(*this, val);
 				} else {
-					Traits::onInteger(reader, *this, accum);
+					reader.onInteger(*this, val - 0x1000000);
 				}
 			}
+				break;
+			case 4: reader.onInteger(*this, reinterpretValue<int32_t>(r.readUnsigned32())); break;
+			case 8: reader.onInteger(*this, reinterpretValue<int64_t>(r.readUnsigned64())); break;
+			default:
+				if (size >= 8) {
+					return false;
+				} else {
+					uint64_t accum = 0;
+					for (uint32_t i = 0; i < size; ++ i) {
+						accum = (accum << 8) | r.readUnsigned();
+					}
+					uint64_t base = 1ULL << (size * 8 - 1);
+					if (accum > base) {
+						reader.onInteger(*this, accum - (1ULL << (size * 8)));
+					} else {
+						reader.onInteger(*this, accum);
+					}
+				}
 
-			break;
+				break;
+			}
+		} else {
+			r += size;
 		}
 
 		return true;
@@ -383,7 +368,7 @@ struct Asn1Decoder {
 		auto size = decodeSize(r);
 		if (size == 1) {
 			auto value = r.readUnsigned();
-			Traits::onBoolean(reader, *this, value != 0);
+			if constexpr (Traits::onBoolean) { reader.onBoolean(*this, value != 0); }
 			return true;
 		}
 
@@ -393,8 +378,7 @@ struct Asn1Decoder {
 	bool decodeOctetString(ReaderType &reader, DataReader<ByteOrder::Network> &r) {
 		auto size = decodeSize(r);
 		if (size > 0) {
-
-			Traits::onBytes(reader, *this, DataReader<ByteOrder::Network>(r.data(), size));
+			if constexpr (Traits::onBytes) { reader.onBytes(*this, DataReader<ByteOrder::Network>(r.data(), size)); }
 			r += size;
 			return true;
 		}
@@ -404,7 +388,7 @@ struct Asn1Decoder {
 
 	bool decodeString(ReaderType &reader, DataReader<ByteOrder::Network> &r, Type t) {
 		auto size = decodeSize(r);
-		Traits::onString(reader, *this, DataReader<ByteOrder::Network>(r.data(), size), t);
+		if constexpr (Traits::onString) { reader.onString(*this, DataReader<ByteOrder::Network>(r.data(), size), t); }
 		r += size;
 		return true;
 	}
@@ -423,11 +407,11 @@ struct Asn1Decoder {
 					uint8_t mask = 0xFF << unused;
 					b.back() = b.back() & mask;
 
-					Traits::onBytes(reader, *this, DataReader<ByteOrder::Network>(b.data(), b.size()));
+					if constexpr (Traits::onBytes) { reader.onBytes(*this, DataReader<ByteOrder::Network>(b.data(), b.size())); }
 					r += size - 1;
 					return true;
 				} else if (unused == 0) {
-					Traits::onBytes(reader, *this, DataReader<ByteOrder::Network>(r.data(), size - 1));
+					if constexpr (Traits::onBytes) { reader.onBytes(*this, DataReader<ByteOrder::Network>(r.data(), size - 1)); }
 					r += size - 1;
 					return true;
 				}
@@ -654,7 +638,7 @@ struct Asn1Reader {
 		SignedData,
 		Payload,
 	};
-	
+
 	Asn1Reader(const Bytes &source) {
 		Decoder dec;
 		dec.decode(*this, source);
@@ -801,7 +785,7 @@ data::Value validateReceipt(const Bytes &data) {
 }
 
 data::Value validateReceipt(const String &path) {
-	return validateReceipt(stappler::filesystem::readFile(path));
+	return validateReceipt(stappler::filesystem::readIntoMemory(path));
 }
 
 NS_SP_EXT_END(platform)

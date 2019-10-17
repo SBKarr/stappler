@@ -32,11 +32,9 @@ THE SOFTWARE.
 #include "SPFilesystem.h"
 #include "SPJNI.h"
 
-NS_SP_PLATFORM_BEGIN
-
 #define SP_TERMINATED_DATA(view) (view.terminated()?view.data():view.str().data())
 
-namespace filesystem {
+namespace stappler::platform::filesystem {
 	String _getWritablePath() {
 		return cocos2d::FileUtils::getInstance()->getWritablePath();
 	}
@@ -159,7 +157,5 @@ namespace filesystem {
 }
 
 #undef SP_TERMINATED_DATA
-
-NS_SP_PLATFORM_END
 
 #endif

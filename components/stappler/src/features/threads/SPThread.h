@@ -24,12 +24,13 @@ THE SOFTWARE.
 #define LIBS_STAPPLER_FEATURES_THREADS_SPTHREAD_H
 
 #include "SPDefine.h"
-#include "SPTask.h"
+#include "SPThreadTaskQueue.h"
 
 NS_SP_BEGIN
 
 class Thread {
 public:
+	using Task = thread::Task;
 	using Callback = Function<void()>;
 	using ExecuteCallback = Function<bool(const Task &)>;
 	using CompleteCallback = Function<void(const Task &, bool)>;
@@ -51,20 +52,6 @@ public:
 
 	/* Spawns new thread for a single task, then thread will be terminated */
 	static void performAsync(const ExecuteCallback &, const CompleteCallback & = nullptr, Ref * = nullptr);
-
-	/* returns thread-local storage value (Dictionary) */
-	static data::Value &getThreadLocalStorage();
-
-	/* returns current thread id (ThreadManager id), only valid on threads represented by this class */
-	static uint32_t getThreadId();
-
-	/* returns current worker id, only valid on threads represented by this class */
-	static uint32_t getWorkerId();
-
-	static const std::string &getThreadName();
-
-	/* returns unique number for current thread, it's computed from thread id and worker id */
-	static uint64_t getUniqueThreadId();
 
 	/* Performs action in this thread, task will be constructed in place */
 	void perform(const ExecuteCallback &, const CompleteCallback & = nullptr, Ref * = nullptr);

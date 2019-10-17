@@ -1124,7 +1124,7 @@ template <typename Interface>
 template <class Stream, class Traits>
 void ValueTemplate<Interface>::encode(Stream &stream) const {
 	bool begin = false;
-	Traits::onValue(stream, *this);
+	if constexpr (Traits::onValue) { stream.onValue(*this); }
 	switch (_type) {
 	case Type::EMPTY: stream.write(nullptr); break;
 	case Type::BOOLEAN: stream.write(boolVal); break;
@@ -1133,40 +1133,40 @@ void ValueTemplate<Interface>::encode(Stream &stream) const {
 	case Type::CHARSTRING: stream.write(*strVal); break;
 	case Type::BYTESTRING: stream.write(*bytesVal); break;
 	case Type::ARRAY:
-		Traits::onBeginArray(stream, *arrayVal);
+		if constexpr (Traits::onBeginArray) { stream.onBeginArray(*arrayVal); }
 		for (auto &it : *arrayVal) {
 			if (!begin) {
 				begin = true;
 			} else {
-				Traits::onNextValue(stream);
+				if constexpr (Traits::onNextValue) { stream.onNextValue(); }
 			}
-			if (Traits::hasMethod_onArrayValue) {
-				Traits::onArrayValue(stream, it);
+			if constexpr (Traits::onArrayValue) {
+				stream.onArrayValue(it);
 			} else {
 				it.encode(stream);
 			}
 		}
-		Traits::onEndArray(stream, *arrayVal);
+		if constexpr (Traits::onEndArray) { stream.onEndArray(*arrayVal); }
 		break;
 	case Type::DICTIONARY:
-		Traits::onBeginDict(stream, *dictVal);
+		if constexpr (Traits::onBeginDict) { stream.onBeginDict(*dictVal); }
 		for (auto &it : *dictVal) {
 			if (!begin) {
 				begin = true;
 			} else {
-				Traits::onNextValue(stream);
+				if constexpr (Traits::onNextValue) { stream.onNextValue(); }
 			}
-			if (Traits::hasMethod_onKeyValuePair) {
-				Traits::onKeyValuePair(stream, it.first, it.second);
-			} else if (Traits::hasMethod_onKey) {
-				Traits::onKey(stream, it.first);
+			if constexpr (Traits::onKeyValuePair) {
+				stream.onKeyValuePair(it.first, it.second);
+			} else if constexpr (Traits::onKey) {
+				stream.onKey(it.first);
 				it.second.encode(stream);
 			} else {
 				stream.write(it.first);
 				it.second.encode(stream);
 			}
 		}
-		Traits::onEndDict(stream, *dictVal);
+		if constexpr (Traits::onEndDict) { stream.onEndDict(*dictVal); }
 		break;
 	default:
 		break;

@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "Material.h"
 #include "MaterialResourceManager.h"
 #include "RTSource.h"
+#include "MaterialFontSource.h"
 
 NS_RT_BEGIN
 
@@ -38,52 +39,52 @@ Source::Source() {
 	using namespace layout::style;
 
 	addFontFaceMap(FontFaceMap{
-		pair("default",  Vector<FontFace>{
-			FontFace("Roboto-Black.woff", FontStyle::Normal, FontWeight::W800),
-			FontFace("Roboto-BlackItalic.woff", FontStyle::Italic, FontWeight::W800),
-			FontFace("Roboto-Bold.woff", FontStyle::Normal, FontWeight::W700),
-			FontFace("Roboto-BoldItalic.woff", FontStyle::Italic, FontWeight::W700),
-			FontFace("RobotoCondensed-Bold.woff", FontStyle::Normal, FontWeight::W700, FontStretch::Condensed),
-			FontFace("RobotoCondensed-BoldItalic.woff", FontStyle::Italic, FontWeight::W700, FontStretch::Condensed),
-			FontFace("RobotoCondensed-Italic.woff", FontStyle::Italic, FontWeight::Normal, FontStretch::Condensed),
-			FontFace("RobotoCondensed-Light.woff", FontStyle::Normal, FontWeight::W200, FontStretch::Condensed),
-			FontFace("RobotoCondensed-LightItalic.woff", FontStyle::Italic, FontWeight::W200, FontStretch::Condensed),
-			FontFace("RobotoCondensed-Regular.woff", FontStyle::Normal, FontWeight::Normal, FontStretch::Condensed),
-			FontFace("Roboto-Italic.woff", FontStyle::Italic),
-			FontFace("Roboto-Light.woff", FontStyle::Normal, FontWeight::W200),
-			FontFace("Roboto-LightItalic.woff", FontStyle::Italic, FontWeight::W200),
-			FontFace("Roboto-Medium.woff", FontStyle::Normal, FontWeight::W500),
-			FontFace("Roboto-MediumItalic.woff", FontStyle::Italic, FontWeight::W500),
-			FontFace("Roboto-Regular.woff"),
-			FontFace("Roboto-Thin.woff", FontStyle::Normal, FontWeight::W100),
-			FontFace("Roboto-ThinItalic.woff", FontStyle::Italic, FontWeight::W100),
+		pair("default", Vector<FontFace>{
+			FontFace(getSystemFont(material::SystemFontName::Roboto_Black), FontStyle::Normal, FontWeight::W800),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_BlackItalic), FontStyle::Italic, FontWeight::W800),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_Bold), FontStyle::Normal, FontWeight::W700),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_BoldItalic), FontStyle::Italic, FontWeight::W700),
+			FontFace(getSystemFont(material::SystemFontName::RobotoCondensed_Bold), FontStyle::Normal, FontWeight::W700, FontStretch::Condensed),
+			FontFace(getSystemFont(material::SystemFontName::RobotoCondensed_BoldItalic), FontStyle::Italic, FontWeight::W700, FontStretch::Condensed),
+			FontFace(getSystemFont(material::SystemFontName::RobotoCondensed_Italic), FontStyle::Italic, FontWeight::Normal, FontStretch::Condensed),
+			FontFace(getSystemFont(material::SystemFontName::RobotoCondensed_Light), FontStyle::Normal, FontWeight::W200, FontStretch::Condensed),
+			FontFace(getSystemFont(material::SystemFontName::RobotoCondensed_LightItalic), FontStyle::Italic, FontWeight::W200, FontStretch::Condensed),
+			FontFace(getSystemFont(material::SystemFontName::RobotoCondensed_Regular), FontStyle::Normal, FontWeight::Normal, FontStretch::Condensed),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_Italic), FontStyle::Italic),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_Light), FontStyle::Normal, FontWeight::W200),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_LightItalic), FontStyle::Italic, FontWeight::W200),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_Medium), FontStyle::Normal, FontWeight::W500),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_MediumItalic), FontStyle::Italic, FontWeight::W500),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_Regular)),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_Thin), FontStyle::Normal, FontWeight::W100),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_ThinItalic), FontStyle::Italic, FontWeight::W100)
 		}),
 		pair("system", Vector<FontFace>{
-			FontFace("DejaVuSansStappler.woff"),
+			FontFace(getSystemFont(material::SystemFontName::DejaVuSansStappler)),
 		}),
 		pair("monospace", Vector<FontFace>{
-			FontFace("DejaVuSansMono.woff"),
-			FontFace("DejaVuSansMono-Bold.woff", FontStyle::Normal, FontWeight::W700),
+			FontFace(getSystemFont(material::SystemFontName::DejaVuSansMono)),
+			FontFace(getSystemFont(material::SystemFontName::DejaVuSansMono_Bold), FontStyle::Normal, FontWeight::W700),
 		}),
 		pair("Roboto",  Vector<FontFace>{
-			FontFace("Roboto-Black.woff", FontStyle::Normal, FontWeight::W800),
-			FontFace("Roboto-BlackItalic.woff", FontStyle::Italic, FontWeight::W800),
-			FontFace("Roboto-Bold.woff", FontStyle::Normal, FontWeight::W700),
-			FontFace("Roboto-BoldItalic.woff", FontStyle::Italic, FontWeight::W700),
-			FontFace("RobotoCondensed-Bold.woff", FontStyle::Normal, FontWeight::W700, FontStretch::Condensed),
-			FontFace("RobotoCondensed-BoldItalic.woff", FontStyle::Italic, FontWeight::W700, FontStretch::Condensed),
-			FontFace("RobotoCondensed-Italic.woff", FontStyle::Italic, FontWeight::Normal, FontStretch::Condensed),
-			FontFace("RobotoCondensed-Light.woff", FontStyle::Normal, FontWeight::W200, FontStretch::Condensed),
-			FontFace("RobotoCondensed-LightItalic.woff", FontStyle::Italic, FontWeight::W200, FontStretch::Condensed),
-			FontFace("RobotoCondensed-Regular.woff", FontStyle::Normal, FontWeight::Normal, FontStretch::Condensed),
-			FontFace("Roboto-Italic.woff", FontStyle::Italic),
-			FontFace("Roboto-Light.woff", FontStyle::Normal, FontWeight::W200),
-			FontFace("Roboto-LightItalic.woff", FontStyle::Italic, FontWeight::W200),
-			FontFace("Roboto-Medium.woff", FontStyle::Normal, FontWeight::W500),
-			FontFace("Roboto-MediumItalic.woff", FontStyle::Italic, FontWeight::W500),
-			FontFace("Roboto-Regular.woff"),
-			FontFace("Roboto-Thin.woff", FontStyle::Normal, FontWeight::W100),
-			FontFace("Roboto-ThinItalic.woff", FontStyle::Italic, FontWeight::W100),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_Black), FontStyle::Normal, FontWeight::W800),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_BlackItalic), FontStyle::Italic, FontWeight::W800),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_Bold), FontStyle::Normal, FontWeight::W700),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_BoldItalic), FontStyle::Italic, FontWeight::W700),
+			FontFace(getSystemFont(material::SystemFontName::RobotoCondensed_Bold), FontStyle::Normal, FontWeight::W700, FontStretch::Condensed),
+			FontFace(getSystemFont(material::SystemFontName::RobotoCondensed_BoldItalic), FontStyle::Italic, FontWeight::W700, FontStretch::Condensed),
+			FontFace(getSystemFont(material::SystemFontName::RobotoCondensed_Italic), FontStyle::Italic, FontWeight::Normal, FontStretch::Condensed),
+			FontFace(getSystemFont(material::SystemFontName::RobotoCondensed_Light), FontStyle::Normal, FontWeight::W200, FontStretch::Condensed),
+			FontFace(getSystemFont(material::SystemFontName::RobotoCondensed_LightItalic), FontStyle::Italic, FontWeight::W200, FontStretch::Condensed),
+			FontFace(getSystemFont(material::SystemFontName::RobotoCondensed_Regular), FontStyle::Normal, FontWeight::Normal, FontStretch::Condensed),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_Italic), FontStyle::Italic),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_Light), FontStyle::Normal, FontWeight::W200),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_LightItalic), FontStyle::Italic, FontWeight::W200),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_Medium), FontStyle::Normal, FontWeight::W500),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_MediumItalic), FontStyle::Italic, FontWeight::W500),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_Regular)),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_Thin), FontStyle::Normal, FontWeight::W100),
+			FontFace(getSystemFont(material::SystemFontName::Roboto_ThinItalic), FontStyle::Italic, FontWeight::W100)
 		})
 	});
 }

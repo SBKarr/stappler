@@ -30,9 +30,7 @@ THE SOFTWARE.
 
 #include "SPFilesystem.h"
 
-NS_SP_PLATFORM_BEGIN
-
-namespace filesystem {
+namespace stappler::platform::filesystem {
 	struct PathSource {
 		String _appPath;
 		String _defaultPath;
@@ -98,5 +96,4 @@ namespace filesystem {
 	void _close(void *) { }
 }
 
-NS_SP_PLATFORM_END
 #endif

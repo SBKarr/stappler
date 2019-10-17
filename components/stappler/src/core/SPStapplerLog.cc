@@ -53,11 +53,18 @@ static void __log2(const StringView &tag, const StringView &text) {
 	stream << tag << ": ";
 #endif
 
-#ifndef NOCC
-	stream << ThreadManager::getInstance()->getThreadInfo() << ": ";
-#else
-	stream << "[Log]: ";
-#endif
+	if (auto local = thread::ThreadInfo::getThreadLocal()) {
+		if (!local->managed) {
+			stream << "[Native:" << ThreadManager::getInstance()->getNativeThreadId() << "] ";
+		} else if (local->threadId == thread::ThreadInfo::mainThreadId) {
+			stream << "[MainThread] ";
+		} else {
+			stream << "[" << local->name << ":" << local->threadId << ":" << local->workerId << "] ";
+		}
+
+	} else {
+		stream << "[Log] ";
+	}
 
 	stream << text;
 #ifndef __apple__

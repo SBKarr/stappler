@@ -222,7 +222,6 @@ status_t userdata_get(void **data, const char *key, pool_t *pool) {
 	return internals::userdata_get(data, key, pool);
 }
 
-size_t get_allocator_allocated_bytes(pool_t *p) { return internals::get_allocator_allocated_bytes(p); }
 size_t get_allocated_bytes(pool_t *p) { return internals::get_allocated_bytes(p); }
 size_t get_return_bytes(pool_t *p) { return internals::get_return_bytes(p); }
 size_t get_opts_bytes(pool_t *p) { return internals::get_opts_bytes(p); }

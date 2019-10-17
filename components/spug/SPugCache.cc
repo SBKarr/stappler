@@ -55,7 +55,7 @@ FileRef::FileRef(memory::pool_t *pool, const FilePath &path, Template::Options o
 
 	StringStream readStream;
 	readStream.reserve(filesystem::size(fpath));
-	filesystem::readFile(readStream, fpath);
+	filesystem::readWithConsumer(readStream, fpath);
 
 	_content = readStream.str();
 	if (fpath.ends_with(".pug") || fpath.ends_with(".stl") || fpath.ends_with(".spug")) {

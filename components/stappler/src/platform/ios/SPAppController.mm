@@ -46,13 +46,9 @@ struct CCEAGLViewStorage {
 
 NS_CC_END
 
-NS_SP_PLATFORM_BEGIN
-
-namespace interaction {
+namespace stappler::platform::interaction {
     void _setAppId(NSString *_Nonnull appId);
 }
-
-NS_SP_PLATFORM_END
 
 @implementation SPAppController
 

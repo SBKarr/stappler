@@ -127,10 +127,6 @@ struct allocator_t {
 	std::mutex mutex;
 	std::array<memnode_t *, MAX_INDEX> buf;
 
-#if DEBUG
-	size_t allocated = 0;
-#endif
-
 	allocator_t();
 	~allocator_t();
 
@@ -280,7 +276,6 @@ status_t userdata_setn(const void *data, const char *key, cleanup_fn, pool_t *);
 status_t userdata_get(void **data, const char *key, pool_t *);
 
 // debug counters
-size_t get_allocator_allocated_bytes(pool_t *);
 size_t get_allocated_bytes(pool_t *);
 size_t get_return_bytes(pool_t *);
 size_t get_opts_bytes(pool_t *);

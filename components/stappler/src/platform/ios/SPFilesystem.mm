@@ -31,9 +31,7 @@ THE SOFTWARE.
 
 #import <Foundation/Foundation.h>
 
-NS_SP_PLATFORM_BEGIN
-
-namespace filesystem {
+namespace stappler::platform::filesystem {
 	String _getWritablePath() {
 		NSArray *paths = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES);
 		NSString *libraryDirectory = [paths objectAtIndex:0];
@@ -116,7 +114,5 @@ namespace filesystem {
 	bool _eof(void *) { return true; }
 	void _close(void *) { }
 }
-
-NS_SP_PLATFORM_END
 
 #endif

@@ -32,9 +32,7 @@ THE SOFTWARE.
 #import <netinet/in.h>
 #import <SystemConfiguration/SystemConfiguration.h>
 
-NS_SP_PLATFORM_BEGIN
-
-namespace network {
+namespace stappler::platform::network {
 	bool _init = false;
 	std::function<void(bool isOnline)> _callback;
 
@@ -104,7 +102,5 @@ namespace network {
 		return result;
 	}
 }
-
-NS_SP_PLATFORM_END
 
 #endif

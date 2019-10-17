@@ -29,9 +29,7 @@ THE SOFTWARE.
 
 #if (MACOSX)
 
-NS_SP_PLATFORM_BEGIN
-
-namespace statusbar {
+namespace stappler::platform::statusbar {
 	void _setEnabled(bool enabled) {
 		
 	}
@@ -45,7 +43,5 @@ namespace statusbar {
 		return 0;
 	}
 }
-
-NS_SP_PLATFORM_END
 
 #endif

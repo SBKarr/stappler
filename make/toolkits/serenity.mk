@@ -62,6 +62,7 @@ SERENITY_INCLUDES_OBJS += \
 	components/layout/style \
 	components/layout/document \
 	components/layout/vg \
+	components/layout/vg/tess \
 	components/layout
 
 SERENITY_LIBS += -L$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH) $(OSTYPE_SERENITY_LIBS) -lpq

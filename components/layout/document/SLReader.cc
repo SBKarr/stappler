@@ -338,8 +338,8 @@ static void Reader_resolveFontPaths(const String &root, Map<String, Vector<style
 	for (auto &it : fonts) {
 		for (auto &vit : it.second) {
 			for (auto &fit : vit.src) {
-				String &path = fit;
-				if (path.front() != '/' && path.find(":") == String::npos) {
+				String &path = fit.file;
+				if (!path.empty() && path.front() != '/' && path.find(":") == String::npos) {
 					path = String("document://") + filepath::reconstructPath(filepath::merge(filepath::root(root), path));
 					SP_RTREADER_LOG("Resolve font path: '%s' '%s'", it.first.c_str(), path.c_str());
 				}

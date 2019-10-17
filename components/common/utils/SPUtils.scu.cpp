@@ -48,3 +48,6 @@ THE SOFTWARE.
 #include "SPSnowballStemmer.cc"
 #include "SPSerenityPathQuery.cc"
 #include "SPValid.cc"
+
+#include "SPThreadTask.cc"
+#include "SPThreadTaskQueue.cc"

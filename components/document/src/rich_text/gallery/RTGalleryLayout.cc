@@ -150,11 +150,11 @@ void GalleryLayout::onAssetCaptured(const String &imageLink, const Function<void
 	}
 
 	Rc<cocos2d::Texture2D> *tex = new Rc<cocos2d::Texture2D>();
-	s_galleryRendererThread.perform([this, image, tex] (const Task &) -> bool {
+	s_galleryRendererThread.perform([this, image, tex] (const thread::Task &) -> bool {
 		auto doc = _source->getDocument();
 		(*tex) = TextureCache::uploadTexture(doc->getImageData(image));
 		return true;
-	}, [this, tex, cb] (const Task &, bool) {
+	}, [this, tex, cb] (const thread::Task &, bool) {
 		_source->releaseReadLock(this);
 
 		cb(*tex);

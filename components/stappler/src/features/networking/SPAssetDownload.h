@@ -44,9 +44,9 @@ public:
 
 	virtual bool execute() override;
 
-	virtual void notifyOnStarted(bool bind = false) override;
-	virtual void notifyOnProgress(float progress, bool bind = false) override;
-	virtual void notifyOnComplete(bool success, bool bind = false) override;
+	virtual void notifyOnStarted() override;
+	virtual void notifyOnProgress(float progress) override;
+	virtual void notifyOnComplete(bool success) override;
 protected:
 
 	bool executeLoop();

@@ -28,11 +28,14 @@ THE SOFTWARE.
 
 #if (ANDROID)
 
+#include <jni.h>
+#include "platform/android/jni/JniHelper.h"
+#include "SPJNI.h"
+
 #include <cpu-features.h>
 
-NS_SP_PLATFORM_BEGIN
+namespace stappler::platform::proc {
 
-namespace proc {
 bool _isArmNeonSupported() {
 #if defined (__arm64__) || defined (__aarch64__)
 	return true;
@@ -57,8 +60,19 @@ bool _isArmNeonSupported() {
 	return false;
 #endif
 }
+
+void _workerThread(thread::ThreadHandlerInterface *tm) {
+	JavaVM *vm = cocos2d::JniHelper::getJavaVM();
+	JNIEnv *env = NULL;
+	vm->AttachCurrentThread(&env, NULL);
+	spjni::attachJniEnv(env);
+
+	tm->threadInit();
+    while (tm->worker()) { }
+
+    vm->DetachCurrentThread();
 }
 
-NS_SP_PLATFORM_END
+}
 
 #endif

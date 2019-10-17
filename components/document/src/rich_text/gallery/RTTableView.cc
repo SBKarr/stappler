@@ -148,7 +148,7 @@ void TableView::onAssetCaptured(const StringView &src) {
 
 		Rc<cocos2d::Texture2D> *img = new Rc<cocos2d::Texture2D>(nullptr);
 		Rc<CommonSource> *source = new Rc<CommonSource>(_source);
-		thread.perform([impl, img, source] (const Task &) -> bool {
+		thread.perform([impl, img, source] (const thread::Task &) -> bool {
 			impl->render();
 
 			auto result = impl->getResult();
@@ -158,7 +158,7 @@ void TableView::onAssetCaptured(const StringView &src) {
 				drawer.free();
 			}
 			return true;
-		}, [this, impl, img, source] (const Task &, bool) {
+		}, [this, impl, img, source] (const thread::Task &, bool) {
 			onImage(img->get());
 			_source->releaseReadLock(this);
 			delete impl;

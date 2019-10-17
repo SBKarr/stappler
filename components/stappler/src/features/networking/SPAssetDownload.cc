@@ -101,34 +101,30 @@ bool AssetDownload::execute() {
 	return false;
 }
 
-void AssetDownload::notifyOnStarted(bool bind) {
+void AssetDownload::notifyOnStarted() {
 	Thread::onMainThread([this] () {
 		_asset->onStarted();
 		if (_onStarted) {
 			_onStarted(this);
 		}
-	}, bind ? this : nullptr);
+	}, this);
 }
-void AssetDownload::notifyOnProgress(float progress, bool bind) {
+void AssetDownload::notifyOnProgress(float progress) {
 	Thread::onMainThread([this, progress] () {
 		_asset->onProgress(progress);
 		if (_onProgress) {
 			_onProgress(this, progress);
 		}
-	}, bind ? this : nullptr);
+	}, this);
 }
-void AssetDownload::notifyOnComplete(bool success, bool bind) {
-	auto ct = getReceivedHeaderString("Content-Type");
-	auto mtime = _mtime;
-	auto etag = _etag;
-	auto size = _size;
+void AssetDownload::notifyOnComplete(bool success) {
 	auto file = (_handle.getResponseCode() < 300) ? getReceiveFile() : String();
-	Thread::onMainThread([this, success, file, ct, mtime, etag, size] () {
+	Thread::onMainThread([this, success, file, ct = getReceivedHeaderString("Content-Type"), mtime = _mtime, etag = _etag, size = _size] () {
 		if (_onCompleted) {
 			_onCompleted(this, success);
 		}
 		_asset->onCompleted(success, _cacheRequest, file, ct, etag, mtime, size);
-	}, bind ? this : nullptr);
+	}, this);
 }
 
 NS_SP_END

@@ -34,6 +34,4 @@ THE SOFTWARE.
 #include "networking/SPNetworkDownload.cc"
 #include "networking/SPNetworkTask.cc"
 #include "storage/SPStorage.cc"
-#include "threads/SPTaskManager.cc"
-#include "threads/SPTaskStack.cc"
 #include "threads/SPThreadManager.cc"

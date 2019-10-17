@@ -309,7 +309,7 @@ inline auto write(const ValueTemplate<Interface> &val, bool pretty = false) -> t
 
 template <typename Interface>
 bool save(const ValueTemplate<Interface> &val, const String &path, bool pretty) {
-	OutputFileStream stream(path);
+	OutputFileStream stream(path.data());
 	if (stream.is_open()) {
 		write(stream, val, pretty);
 		stream.flush();

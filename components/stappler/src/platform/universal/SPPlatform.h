@@ -29,7 +29,7 @@ THE SOFTWARE.
 #include "SPCommonPlatform.h"
 
 /* Platform-depended functions interface */
-NS_SP_PLATFORM_BEGIN
+namespace stappler::platform {
 
 namespace network {
 	void _setNetworkCallback(const Function<void(bool isOnline)> &callback);
@@ -135,6 +135,6 @@ namespace debug {
 	void _backtrace(StringStream &);
 }
 
-NS_SP_PLATFORM_END
+}
 
 #endif

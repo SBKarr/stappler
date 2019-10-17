@@ -36,9 +36,8 @@ THE SOFTWARE.
 #if (MACOSX)
 
 #ifndef SP_RESTRICT
-NS_SP_PLATFORM_BEGIN
 
-namespace desktop {
+namespace stappler::platform::desktop {
 	void setScreenSize(const cocos2d::Size &size);
 	cocos2d::Size getScreenSize();
 	bool isTablet();
@@ -47,12 +46,9 @@ namespace desktop {
 	std::string getUserLanguage();
 }
 
-NS_SP_PLATFORM_END
 #endif
 
-NS_SP_PLATFORM_BEGIN
-
-namespace device {
+namespace stappler::platform::device {
 	bool _isTablet() {
 		return YES;
 	}
@@ -123,7 +119,5 @@ namespace device {
 
 	void _onDirectorStarted() { }
 }
-
-NS_SP_PLATFORM_END
 
 #endif

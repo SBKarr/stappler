@@ -424,9 +424,15 @@ Time Time::fromHttp(const StringView &ir) {
 			ds.tm_mday = ((date[8] - '0') * 10) + (date[9] - '0');
 
 			timstr = &date[11];
-			TIMEPARSE(ds, timstr[0], timstr[1], timstr[3], timstr[4], timstr[6], timstr[7]);
+			TIMEPARSE_STD(ds, timstr);
 
-			return subParseTime(ds, nullptr, timstr, &date[19]);
+			auto t = subParseTime(ds, nullptr, timstr, &date[19]);
+			if (timstr[8] == '.') {
+				double v = std::strtod(&timstr[8], nullptr);
+				return Time::microseconds(t.toMicros() + uint64_t(1000000 * v));
+			} else {
+				return t;
+			}
 		} else if (sp_date_checkmask(date, "####-##-##")) {
 			ds.tm_year = ((date[0] - '0') * 10 + (date[1] - '0') - 19) * 100;
 			if (ds.tm_year < 0)

@@ -27,7 +27,6 @@ THE SOFTWARE.
 #include "SPAsset.h"
 #include "SPFilesystem.h"
 #include "SPThreadManager.h"
-#include "SPTaskManager.h"
 #include "SPAssetDownload.h"
 #include "SPAssetLibrary.h"
 
@@ -68,7 +67,7 @@ AssetFile::~AssetFile() {
 
 Bytes AssetFile::readFile() const {
 	if (_exists) {
-		return filesystem::readFile(_path);
+		return filesystem::readIntoMemory(_path);
 	}
 	return Bytes();
 }
@@ -256,13 +255,13 @@ bool Asset::swapFiles(const StringView &file, const StringView &ct, const String
 			String original = _path;
 			String cache = _cachePath;
 			auto &thread = storage::thread();
-			thread.perform([original, cache, file] (const Task &) -> bool {
+			thread.perform([original, cache, file] (const thread::Task &) -> bool {
 				filesystem::remove(original);
 				if (!cache.empty()) {
 					filesystem::remove(cache, true, true);
 				}
 				return filesystem::move(file, original);
-			}, [this, original, ct, etag, mtime, size] (const Task &, bool) {
+			}, [this, original, ct, etag, mtime, size] (const thread::Task &, bool) {
 				_fileUpdate = false;
 				_unupdated = false;
 				_waitFileSwap = false;

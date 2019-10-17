@@ -721,6 +721,9 @@ template <typename F> struct FieldOption<F, const Scheme *> {
 template <typename F> struct FieldOption<F, Scheme> {
 	static inline void assign(F & f, const Scheme &s) { f.scheme = &s; }
 };
+template <typename F> struct FieldOption<F, const Scheme> {
+	static inline void assign(F & f, const Scheme &s) { f.scheme = &s; }
+};
 template <typename F> struct FieldOption<F, Field> {
 	static inline void assign(F & f, Field && s) { f.tfield = s; }
 };

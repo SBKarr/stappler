@@ -253,7 +253,7 @@ bool Document::init(const FilePath &path, const StringView &ct) {
 
 	_filePath = path.get().str();
 
-	auto data = filesystem::readFile(path.get());
+	auto data = filesystem::readIntoMemory(path.get());
 	return init(data, ct);
 }
 
@@ -360,7 +360,7 @@ Bytes Document::readData(size_t offset, size_t len) {
 	}
 
 	if (!_filePath.empty()) {
-		return filesystem::readFile(_filePath, offset, len);
+		return filesystem::readIntoMemory(_filePath, offset, len);
 	}
 
 	return Bytes();

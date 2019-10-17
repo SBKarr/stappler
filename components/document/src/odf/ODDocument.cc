@@ -587,7 +587,7 @@ Buffer Document::save() const {
 					}
 					break;
 				case Filesystem: {
-					auto bytes = stappler::filesystem::readFile(StringView((const char *)it.data.data(), it.data.size() - 1));
+					auto bytes = stappler::filesystem::readIntoMemory(StringView((const char *)it.data.data(), it.data.size() - 1));
 					if ((err = zipWriteInFileInZip(zf, (const void *)bytes.data(), (unsigned long)bytes.size())) == Z_OK) {
 						err = zipCloseFileInZip(zf);
 					}

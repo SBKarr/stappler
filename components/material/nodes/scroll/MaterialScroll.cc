@@ -460,7 +460,7 @@ void Scroll::onSliceData(DataMap &val, Time time, Request type) {
 	auto itemPtr = new ItemMap();
 	auto dataPtr = new DataMap(std::move(val));
 	auto handlerPtr = new Rc<Handler>(onHandler());
-	ResourceManager::thread().perform([this, handlerPtr, itemPtr, dataPtr, time, type] (const Task &) -> bool {
+	ResourceManager::thread().perform([this, handlerPtr, itemPtr, dataPtr, time, type] (const thread::Task &) -> bool {
 		(*itemPtr) = (*handlerPtr)->run(type, std::move(*dataPtr));
 		auto interval = Time::now() - time;
 		if (interval < _minLoadTime && type != Request::Update) {
@@ -471,7 +471,7 @@ void Scroll::onSliceData(DataMap &val, Time time, Request type) {
 			it.second->setId(it.first.get());
 		}
 		return true;
-	}, [this, handlerPtr, itemPtr, dataPtr, time, type] (const Task &, bool) {
+	}, [this, handlerPtr, itemPtr, dataPtr, time, type] (const thread::Task &, bool) {
 		onSliceItems(std::move(*itemPtr), time, type);
 
 		const auto & cb = handlerPtr->get()->getCompleteCallback();

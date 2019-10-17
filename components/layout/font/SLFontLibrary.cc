@@ -135,7 +135,7 @@ static FontStructMap::iterator processFile(FontStructMap & openedFiles, Bytes &&
 	}
 	auto it = openedFiles.find(file);
 	if (it == openedFiles.end()) {
-		return openedFiles.insert(std::make_pair(file, FontStruct{file, std::move(data)})).first;
+		return openedFiles.insert(std::make_pair(file, FontStruct(file, std::move(data)))).first;
 	} else {
 		return it;
 	}
@@ -256,7 +256,7 @@ void LayoutNode::finalize(uint8_t tex) {
 	}
 }
 
-FT_Face FreeTypeInterface::openFontFace(const Bytes &data, const String &font, uint16_t fontSize) {
+FT_Face FreeTypeInterface::openFontFace(const BytesView &data, const String &font, uint16_t fontSize) {
 	FT_Face face;
 
 	if (data.empty()) {
@@ -303,28 +303,58 @@ FontStructMap::iterator FreeTypeInterface::openFile(const FontSource *source, co
 					return processFile(openedFiles, std::move(data), file);
 				}
 			}
-			return processFile(openedFiles, filesystem::readFile(file), file);
+			return processFile(openedFiles, filesystem::readIntoMemory(file), file);
 		}
 	}
 	return openedFiles.end();
 }
 
-FT_Face FreeTypeInterface::getFace(const FontSource *source, const ReceiptCallback &cb, const String &file, uint16_t size) {
-	String fontname = toString(file, ":", size);
-	auto it = openedFaces.find(fontname);
-	if (it != openedFaces.end()) {
-		return it->second;
+FontStructMap::iterator FreeTypeInterface::openFile(const FontSource *source, const String &name, const BytesView &file) {
+	auto key = toString("bytes://", (void *)file.data());
+	auto it = openedFiles.find(key);
+	if (it != openedFiles.end()) {
+		return it;
 	} else {
-		auto fileIt = openFile(source, cb, fontname, file);
-		if (fileIt == openedFiles.end()) {
-			return nullptr;
-		} else {
-			return openFontFace(fileIt->second.data, fontname, size);
+		if (files.find(key) == files.end()) {
+			files.insert(key);
+			return openedFiles.insert(std::make_pair(key, FontStruct(file))).first;
 		}
 	}
+	return openedFiles.end();
 }
 
-void FreeTypeInterface::requestCharUpdate(const FontSource *source, const ReceiptCallback &cb, const Vector<String> &srcs, uint16_t size,
+FT_Face FreeTypeInterface::getFace(const FontSource *source, const ReceiptCallback &cb, const FontFace::FontFaceSource &file, uint16_t size) {
+	if (!file.bytes.empty()) {
+		String fontname = toString("bytes://", (void *)file.bytes.data(), ":", size);
+		auto it = openedFaces.find(fontname);
+		if (it != openedFaces.end()) {
+			return it->second;
+		} else {
+			auto fileIt = openFile(source, fontname, file.bytes);
+			if (fileIt == openedFiles.end()) {
+				return nullptr;
+			} else {
+				return openFontFace(fileIt->second.view, fontname, size);
+			}
+		}
+	} else if (!file.file.empty()) {
+		String fontname = toString(file.file, ":", size);
+		auto it = openedFaces.find(fontname);
+		if (it != openedFaces.end()) {
+			return it->second;
+		} else {
+			auto fileIt = openFile(source, cb, fontname, file.file);
+			if (fileIt == openedFiles.end()) {
+				return nullptr;
+			} else {
+				return openFontFace(fileIt->second.data, fontname, size);
+			}
+		}
+	}
+	return nullptr;
+}
+
+void FreeTypeInterface::requestCharUpdate(const FontSource *source, const ReceiptCallback &cb, const Vector<FontFace::FontFaceSource> &srcs, uint16_t size,
 		Vector<FT_Face> &faces, Vector<CharLayout> &layout, char16_t theChar) {
 	for (uint32_t i = 0; i <= srcs.size(); ++ i) {
 		FT_Face face = nullptr;
@@ -397,7 +427,15 @@ bool FontTextureLayout::init(uint32_t i, FontTextureMap &&m) {
 }
 
 bool FreeTypeInterface::init(const String &def) {
-	fallbackFont = def;
+	fallbackFont.bytes = BytesView();
+	fallbackFont.file = def;
+	FT_Init_FreeType( &FTlibrary );
+	return true;
+}
+
+bool FreeTypeInterface::init(const BytesView &def) {
+	fallbackFont.bytes = def;
+	fallbackFont.file.clear();
 	FT_Init_FreeType( &FTlibrary );
 	return true;
 }
@@ -422,7 +460,7 @@ void FreeTypeInterface::clear() {
 	openedFaces.clear();
 }
 
-Metrics FreeTypeInterface::requestMetrics(const FontSource *source, const Vector<String> &srcs, uint16_t size, const ReceiptCallback &cb) {
+Metrics FreeTypeInterface::requestMetrics(const FontSource *source, const Vector<FontFace::FontFaceSource> &srcs, uint16_t size, const ReceiptCallback &cb) {
 	for (auto &it : srcs) {
 		if (auto face = getFace(source, cb, it, size)) {
 			return getMetrics(face, size);
@@ -431,7 +469,7 @@ Metrics FreeTypeInterface::requestMetrics(const FontSource *source, const Vector
 	return Metrics();
 }
 
-Rc<FontData> FreeTypeInterface::requestLayoutUpgrade(const FontSource *source, const Vector<String> &srcs,
+Rc<FontData> FreeTypeInterface::requestLayoutUpgrade(const FontSource *source, const Vector<FontFace::FontFaceSource> &srcs,
 		const Rc<FontData> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
 	Rc<FontData> ret;
 	if (!data || data->metrics.size == 0) {

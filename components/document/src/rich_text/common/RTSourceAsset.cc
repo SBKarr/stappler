@@ -89,7 +89,7 @@ Rc<Document> SourceFileAsset::openDocument() {
 }
 
 Bytes SourceFileAsset::getData() const {
-	return filesystem::readFile(_file);
+	return filesystem::readIntoMemory(_file);
 }
 
 bool SourceFileAsset::getImageSize(size_t &w, size_t &h) const {
@@ -204,7 +204,7 @@ StringView SourceNetworkAsset::getContentType() const {
 }
 
 Bytes SourceNetworkAsset::getData() const {
-	return filesystem::readFile(_asset->getFilePath());
+	return filesystem::readIntoMemory(_asset->getFilePath());
 }
 
 bool SourceNetworkAsset::getImageSize(size_t &w, size_t &h) const {

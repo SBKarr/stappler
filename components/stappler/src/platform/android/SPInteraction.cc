@@ -30,11 +30,9 @@ THE SOFTWARE.
 
 #if (ANDROID)
 
-NS_SP_PLATFORM_BEGIN
-
 #define SP_TERMINATED_DATA(view) (view.terminated()?view.data():view.str().data())
 
-namespace interaction {
+namespace stappler::platform::interaction {
 	void _goToUrl(const StringView &url, bool external) {
 		auto env = spjni::getJniEnv();
 		auto & activity = spjni::getActivity(env);
@@ -102,7 +100,5 @@ namespace interaction {
 }
 
 #undef SP_TERMINATED_DATA
-
-NS_SP_PLATFORM_END
 
 #endif

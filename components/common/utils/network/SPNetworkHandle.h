@@ -67,6 +67,7 @@ public:
 	void setMailFrom(const StringView &);
 	void addMailTo(const StringView &);
 	void setAuthority(const StringView &user, const StringView &passwd = StringView());
+	bool setPrivateKeyAuth(const BytesView &priv);
 
 	// user: [proxyhost]:[port], auth: [name]:[passwd]
 	void setProxy(const StringView &proxy, const StringView &auth);
@@ -119,6 +120,7 @@ protected:
 	String _user;
 	String _password;
 	String _from;
+	String _keySign;
 	Vector<String> _recv;
 
 	String _url;
@@ -189,7 +191,7 @@ protected:
 	bool setupCurl(CURL *curl, char *errorBuffer);
 	bool setupDebug(CURL *curl, bool debug);
 	bool setupRootCert(CURL *curl, const StringView &certPath);
-	bool setupHeaders(CURL *curl, const Vector<String> &vec, curl_slist **headers);
+	bool setupHeaders(CURL *curl, const Vector<String> &vec, curl_slist **headers, const StringView &);
 	bool setupUserAgent(CURL *curl, const StringView &agent);
 	bool setupUser(CURL *curl, const StringView &user, const StringView &password);
 	bool setupFrom(CURL *curl, const StringView &from);

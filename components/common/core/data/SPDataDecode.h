@@ -32,12 +32,15 @@ THE SOFTWARE.
 NS_SP_EXT_BEGIN(data)
 
 enum class DataFormat {
+	Unknown,
 	Json,
 	Cbor,
-	Serenity
+	Serenity,
 
 	// for future implementations
-	// LZ4,
+	LZ4_Short,
+	LZ4_Word,
+	Brotli,
 	// LZ4HC,
 	// Encrypt,
 };
@@ -45,15 +48,30 @@ enum class DataFormat {
 inline DataFormat detectDataFormat(const uint8_t *ptr, size_t size) {
 	if (size > 3 && ptr[0] == 0xd9 && ptr[1] == 0xd9 && ptr[2] == 0xf7) {
 		return DataFormat::Cbor;
+	} else if (size > 3 && ptr[0] == 'L' && ptr[1] == 'Z' && ptr[2] == '4') {
+		if (ptr[3] == 'S') {
+			return DataFormat::LZ4_Short;
+		} else if (ptr[3] == 'W') {
+			return DataFormat::LZ4_Word;
+		}
+	} else if (size > 3 && ptr[0] == 'S' && ptr[1] == 'P' && ptr[2] == 'B' && ptr[3] == 'r') {
+		return DataFormat::Brotli;
 	} else if (ptr[0] == '(') {
 		return DataFormat::Serenity;
 	} else {
 		return DataFormat::Json;
 	}
+	return DataFormat::Unknown;
 }
 
+template <typename Interface>
+auto decompressLZ4(const uint8_t *, size_t, bool sh) -> ValueTemplate<Interface>;
+
+template <typename Interface>
+auto decompressBrotli(const uint8_t *, size_t) -> ValueTemplate<Interface>;
+
 template <typename StringType, typename Interface = DefaultInterface>
-auto read(const StringType &data, const String &key = "") -> ValueTemplate<Interface> {
+auto read(const StringType &data, const StringView &key = StringView()) -> ValueTemplate<Interface> {
 	if (data.size() == 0) {
 		return ValueTemplate<Interface>();
 	}
@@ -68,6 +86,15 @@ auto read(const StringType &data, const String &key = "") -> ValueTemplate<Inter
 	case DataFormat::Serenity:
 		return serenity::read<Interface>(StringView((char *)data.data(), data.size()));
 		break;
+	case DataFormat::LZ4_Short:
+		return decompressLZ4<Interface>((const uint8_t *)data.data() + 4, data.size() - 4, true);
+		break;
+	case DataFormat::LZ4_Word:
+		return decompressLZ4<Interface>((const uint8_t *)data.data() + 4, data.size() - 4, false);
+		break;
+	case DataFormat::Brotli:
+		return decompressBrotli<Interface>((const uint8_t *)data.data() + 4, data.size() - 4);
+		break;
 	default:
 		break;
 	}
@@ -76,9 +103,7 @@ auto read(const StringType &data, const String &key = "") -> ValueTemplate<Inter
 
 template <typename Interface = DefaultInterface>
 auto readFile(const StringView &filename, const StringView &key = StringView()) -> ValueTemplate<Interface> {
-	Stream stream;
-	filesystem::readFile(stream, filename);
-	return stream.extract<Interface>();
+	return read(filesystem::readIntoMemory<Interface>(filename));
 }
 
 NS_SP_EXT_END(data)

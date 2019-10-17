@@ -45,6 +45,7 @@ STELLATOR_INCLUDES_OBJS += \
 	components/layout/style \
 	components/layout/document \
 	components/layout/vg \
+	components/layout/vg/tess \
 	components/layout
 
 TOOLKIT_NAME := STELLATOR

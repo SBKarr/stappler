@@ -51,9 +51,6 @@ struct AllocPool {
 	static void registerCleanupDestructor(T *obj, pool_t *pool);
 };
 
-template <typename T, bool IsTrivial>
-struct __AllocatorTraits;
-
 template <typename T>
 struct __AllocatorTriviallyCopyable : std::is_trivially_copyable<T> { };
 
@@ -64,151 +61,6 @@ SP_TEMPLATE_MARK
 template <typename K, typename V>
 struct __AllocatorTriviallyMoveable<Pair<K, V>> : std::integral_constant<bool,
 	__AllocatorTriviallyMoveable<std::remove_cv<K>>::value && __AllocatorTriviallyMoveable<std::remove_cv<V>>::value> { };
-
-template <typename T>
-struct __AllocatorTraits<T, true> {
-	template <typename Alloc>
-	static void copy(T *dest, const T *source, size_t count, Alloc &alloc) noexcept {
-		memmove(dest, source, count * sizeof(T));
-	}
-
-	template <typename Alloc>
-	static void move(T *dest, T *source, size_t count, Alloc &alloc) noexcept {
-		memmove(dest, source, count * sizeof(T));
-	}
-
-	template <typename Alloc>
-	static void copy_rewrite(T *dest, size_t, const T *source, size_t count, Alloc &alloc) noexcept {
-		memmove(dest, source, count * sizeof(T));
-	}
-
-	template <typename Alloc>
-	static void move_rewrite(T *dest, size_t, T *source, size_t count, Alloc &alloc) noexcept {
-		memmove(dest, source, count * sizeof(T));
-	}
-
-	static void destroy(pool_t *pool, T *p) noexcept { }
-
-	static void destroy(pool_t *pool, T *p, size_t size) noexcept { }
-};
-
-template <typename T>
-struct __AllocatorTraits<T, false> {
-	template <typename Alloc>
-	static void copy(T *dest, const T *source, size_t count, Alloc &alloc) noexcept {
-		if (dest == source) {
-			return;
-		} else if (uintptr_t(dest) > uintptr_t(source)) {
-			for (size_t i = count; i > 0; i--) {
-				alloc.construct(dest + i - 1, *(source + i - 1));
-			}
-		} else {
-			for (size_t i = 0; i < count; i++) {
-				alloc.construct(dest + i, *(source + i));
-			}
-		}
-	}
-
-	template <typename Alloc>
-	static void move(T *dest, T *source, size_t count, Alloc &alloc) noexcept {
-		if (dest == source) {
-			return;
-		} else if (uintptr_t(dest) > uintptr_t(source)) {
-			for (size_t i = count; i > 0; i--) {
-				alloc.construct(dest + i - 1, std::move(*(source + i - 1)));
-				alloc.destroy(source + i - 1);
-			}
-		} else {
-			for (size_t i = 0; i < count; i++) {
-				alloc.construct(dest + i, std::move(*(source + i)));
-				alloc.destroy(source + i);
-			}
-		}
-	}
-
-	template <typename Alloc>
-	static void copy_rewrite(T *dest, size_t dcount, const T *source, size_t count, Alloc &alloc) noexcept {
-		if (dest == source) {
-			return;
-		} else if (uintptr_t(dest) > uintptr_t(source)) {
-			size_t i = count;
-			size_t m = std::min(count, dcount);
-			for (; i > m; i--) {
-				alloc.construct(dest + i - 1, *(source + i - 1));
-			}
-			for (; i > 0; i--) {
-				alloc.destroy(dest + i - 1);
-				alloc.construct(dest + i - 1, *(source + i - 1));
-			}
-		} else {
-			size_t i = 0;
-			size_t m = std::min(count, dcount);
-			for (; i < m; ++ i) {
-				alloc.destroy(dest + i);
-				alloc.construct(dest + i, *(source + i));
-			}
-			for (; i < count; ++ i) {
-				alloc.construct(dest + i, *(source + i));
-			}
-		}
-	}
-
-	template <typename Alloc>
-	static void move_rewrite(T *dest, size_t dcount, T *source, size_t count, Alloc &alloc) noexcept {
-		if (dest == source) {
-			return;
-		} else if (uintptr_t(dest) > uintptr_t(source)) {
-			size_t i = count;
-			size_t m = std::min(count, dcount);
-			for (; i > m; i--) {
-				alloc.construct(dest + i - 1, std::move(*(source + i - 1)));
-				alloc.destroy(source + i - 1);
-			}
-			for (; i > 0; i--) {
-				alloc.destroy(dest + i - 1);
-				alloc.construct(dest + i - 1, std::move(*(source + i - 1)));
-				alloc.destroy(source + i - 1);
-			}
-		} else {
-			size_t i = 0;
-			size_t m = std::min(count, dcount);
-			for (; i < m; ++ i) {
-				alloc.destroy(dest + i);
-				alloc.construct(dest + i, std::move(*(source + i)));
-				alloc.destroy(source + i);
-			}
-			for (; i < count; ++ i) {
-				alloc.construct(dest + i, std::move(*(source + i)));
-				alloc.destroy(source + i);
-			}
-		}
-	}
-
-	template <typename ...Args>
-	static void construct(pool_t *pool, T * p, Args &&...args) noexcept {
-		memory::pool::push(pool);
-		new ((T*) p) T(std::forward<Args>(args)...);
-		memory::pool::pop();
-	}
-
-	static void __destroy(T *p) noexcept {
-		p->~T();
-	}
-
-	static void destroy(pool_t *pool, T *p) noexcept {
-		memory::pool::push(pool);
-		__destroy(p);
-		memory::pool::pop();
-	}
-
-	static void destroy(pool_t *pool, T *p, size_t size) noexcept {
-		memory::pool::push(pool);
-		for (size_t i = 0; i < size; ++i) {
-			__destroy(p + i);
-		}
-		memory::pool::pop();
-	}
-};
 
 template <class T>
 class Allocator {
@@ -291,32 +143,138 @@ public:
 
 	template <typename ...Args>
 	void construct(pointer p, Args &&...args) {
-		__AllocatorTraits<T, !std::is_constructible<T, Args...>::value>::construct(pool_ptr(pool), p, std::forward<Args>(args)...);
+		if constexpr (!std::is_constructible<T, Args...>::value) {
+			static_assert("Invalid arguments for constructor");
+		} else {
+			memory::pool::push(pool_ptr(pool));
+			new ((T*)p) T(std::forward<Args>(args)...);
+			memory::pool::pop();
+		}
 	}
 
 	void destroy(pointer p) {
-		__AllocatorTraits<T, !std::is_destructible<T>::value || std::is_scalar<T>::value>::destroy(pool_ptr(pool), p);
+		if constexpr (!std::is_destructible<T>::value || std::is_scalar<T>::value) {
+			// do nothing
+		} else {
+			memory::pool::push(pool_ptr(pool));
+			do { p->~T(); } while (0);
+			memory::pool::pop();
+		}
 	}
 
 	void destroy(pointer p, size_t size) {
-		__AllocatorTraits<T, !std::is_destructible<T>::value || std::is_scalar<T>::value>::destroy(pool_ptr(pool), p, size);
+		if constexpr (!std::is_destructible<T>::value || std::is_scalar<T>::value) {
+			// do nothing
+		} else {
+			memory::pool::push(pool);
+			for (size_t i = 0; i < size; ++i) {
+				(p + i)->~T();
+			}
+			memory::pool::pop();
+		}
 	}
 
 	operator pool_t * () const noexcept { return pool_ptr(pool); }
 	pool_t *getPool() const noexcept { return pool_ptr(pool); }
 
 	void copy(T *dest, const T *source, size_t count) noexcept {
-		__AllocatorTraits<T, __AllocatorTriviallyCopyable<T>::value>::copy(dest, source, count, *this);
+		if constexpr (__AllocatorTriviallyCopyable<T>::value) {
+			memmove(dest, source, count * sizeof(T));
+		} else {
+			if (dest == source) {
+				return;
+			} else if (uintptr_t(dest) > uintptr_t(source)) {
+				for (size_t i = count; i > 0; i--) {
+					construct(dest + i - 1, *(source + i - 1));
+				}
+			} else {
+				for (size_t i = 0; i < count; i++) {
+					construct(dest + i, *(source + i));
+				}
+			}
+		}
 	}
 	void copy_rewrite(T *dest, size_t dcount, const T *source, size_t count) noexcept {
-		__AllocatorTraits<T, __AllocatorTriviallyCopyable<T>::value>::copy_rewrite(dest, dcount, source, count, *this);
+		if constexpr (__AllocatorTriviallyCopyable<T>::value) {
+			memmove(dest, source, count * sizeof(T));
+		} else {
+			if (dest == source) {
+				return;
+			} else if (uintptr_t(dest) > uintptr_t(source)) {
+				size_t i = count;
+				size_t m = std::min(count, dcount);
+				for (; i > m; i--) {
+					construct(dest + i - 1, *(source + i - 1));
+				}
+				for (; i > 0; i--) {
+					destroy(dest + i - 1);
+					construct(dest + i - 1, *(source + i - 1));
+				}
+			} else {
+				size_t i = 0;
+				size_t m = std::min(count, dcount);
+				for (; i < m; ++ i) {
+					destroy(dest + i);
+					construct(dest + i, *(source + i));
+				}
+				for (; i < count; ++ i) {
+					construct(dest + i, *(source + i));
+				}
+			}
+		}
 	}
 
 	void move(T *dest, T *source, size_t count) noexcept {
-		__AllocatorTraits<T, __AllocatorTriviallyMoveable<T>::value>::move(dest, source, count, *this);
+		if constexpr (__AllocatorTriviallyCopyable<T>::value) {
+			memmove(dest, source, count * sizeof(T));
+		} else {
+			if (dest == source) {
+				return;
+			} else if (uintptr_t(dest) > uintptr_t(source)) {
+				for (size_t i = count; i > 0; i--) {
+					construct(dest + i - 1, std::move(*(source + i - 1)));
+					destroy(source + i - 1);
+				}
+			} else {
+				for (size_t i = 0; i < count; i++) {
+					construct(dest + i, std::move(*(source + i)));
+					destroy(source + i);
+				}
+			}
+		}
 	}
 	void move_rewrite(T *dest, size_t dcount, T *source, size_t count) noexcept {
-		__AllocatorTraits<T, __AllocatorTriviallyMoveable<T>::value>::move_rewrite(dest, dcount, source, count, *this);
+		if constexpr (__AllocatorTriviallyCopyable<T>::value) {
+			memmove(dest, source, count * sizeof(T));
+		} else {
+			if (dest == source) {
+				return;
+			} else if (uintptr_t(dest) > uintptr_t(source)) {
+				size_t i = count;
+				size_t m = std::min(count, dcount);
+				for (; i > m; i--) {
+					construct(dest + i - 1, std::move(*(source + i - 1)));
+					destroy(source + i - 1);
+				}
+				for (; i > 0; i--) {
+					destroy(dest + i - 1);
+					construct(dest + i - 1, std::move(*(source + i - 1)));
+					destroy(source + i - 1);
+				}
+			} else {
+				size_t i = 0;
+				size_t m = std::min(count, dcount);
+				for (; i < m; ++ i) {
+					destroy(dest + i);
+					construct(dest + i, std::move(*(source + i)));
+					destroy(source + i);
+				}
+				for (; i < count; ++ i) {
+					construct(dest + i, std::move(*(source + i)));
+					destroy(source + i);
+				}
+			}
+		}
 	}
 
 	bool test(AllocFlag f) const { return (uintptr_t(pool) & toInt(f)) != uintptr_t(0); }

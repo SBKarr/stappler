@@ -68,12 +68,10 @@ static void IconStorage_drawIcons(cocos2d::Texture2D *tex, const Vector<IconName
 		});
 
 		if (iconIt == icons.end() || iconIt->_name != it) {
-			auto dataIt = std::lower_bound(s_iconTable, s_iconTable + s_iconCount, it, [] (const IconDataStruct &d, IconName n) -> bool {
-				return d.name < n;
-			});
+			auto iconBytes = getSystemIcon(it);
 
 			layout::Path path;
-			path.init(dataIt->data, dataIt->len);
+			path.init(iconBytes.data(), iconBytes.size());
 			path.setFillColor(Color4B(255, 255, 255, 255));
 
 			iconIt = icons.emplace(iconIt, IconStorage::Icon(it, c * iconWidth, r * iconHeight, iconWidth, iconHeight, density, std::move(path)));
@@ -123,12 +121,10 @@ static Rc<cocos2d::Texture2D> IconStorage_updateIcons(const Vector<IconName> &na
 }
 
 layout::Path IconStorage::getIconPath(IconName n) {
-	auto dataIt = std::lower_bound(s_iconTable, s_iconTable + s_iconCount, n, [] (const IconDataStruct &d, IconName n) -> bool {
-		return d.name < n;
-	});
+	auto iconBytes = getSystemIcon(n);
 
 	layout::Path path;
-	path.init(dataIt->data, dataIt->len);
+	path.init(iconBytes.data(), iconBytes.size());
 	path.setFillColor(Color4B(255, 255, 255, 255));
 	return path;
 }
@@ -199,12 +195,12 @@ void IconStorage::reload() {
 	Vector<Icon> *icons = new Vector<Icon>(_icons);
 	Vector<IconName> *names = new Vector<IconName>(_names);
 	Rc<cocos2d::Texture2D> *texPtr = new Rc<cocos2d::Texture2D>;
-	thread.perform([this, icons, names, texPtr] (const Task &) -> bool {
+	thread.perform([this, icons, names, texPtr] (const thread::Task &) -> bool {
 		TextureCache::getInstance()->performWithGL([&] {
 			*texPtr = IconStorage_updateIcons(*names, *icons, _density, _width, _height);
 		});
 		return true;
-	}, [this, icons, names, texPtr] (const Task &, bool) {
+	}, [this, icons, names, texPtr] (const thread::Task &, bool) {
 		if (*texPtr) {
 			onUpdateTexture(*texPtr, std::move(*icons));
 		}

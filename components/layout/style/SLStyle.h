@@ -743,7 +743,17 @@ namespace style {
 	};
 
 	struct FontFace {
-		Vector<String> src;
+		struct FontFaceSource {
+			String file;
+			BytesView bytes;
+
+			FontFaceSource() { }
+			FontFaceSource(String &&str) : file(move(str)) { }
+			FontFaceSource(const String &str) : file(str) { }
+			FontFaceSource(const BytesView &bytes) : bytes(bytes) { }
+		};
+
+		Vector<FontFaceSource> src;
 
 		FontStyle fontStyle = FontStyle::Normal;
 		FontWeight fontWeight = FontWeight::Normal;
@@ -757,9 +767,13 @@ namespace style {
 
 		FontFace(String && src, FontStyle style = FontStyle::Normal,
 				FontWeight weight = FontWeight::Normal, FontStretch stretch = FontStretch::Normal)
+		: src{FontFaceSource(std::move(src))}, fontStyle(style), fontWeight(weight), fontStretch(stretch) { }
+
+		FontFace(FontFaceSource && src, FontStyle style = FontStyle::Normal,
+				FontWeight weight = FontWeight::Normal, FontStretch stretch = FontStretch::Normal)
 		: src{std::move(src)}, fontStyle(style), fontWeight(weight), fontStretch(stretch) { }
 
-		FontFace(Vector<String> && src, FontStyle style = FontStyle::Normal,
+		FontFace(Vector<FontFaceSource> && src, FontStyle style = FontStyle::Normal,
 				FontWeight weight = FontWeight::Normal, FontStretch stretch = FontStretch::Normal)
 		: src(std::move(src)), fontStyle(style), fontWeight(weight), fontStretch(stretch) { }
 	};

@@ -75,7 +75,7 @@ struct Encoder : public Interface::AllocBaseType {
 
 	Encoder(bool prefix = false) : type(Interface::usesMemoryPool()?Vector:Buffered) {
 		static thread_local typename ValueType::BytesType tl_buffer;
-		if (Interface::usesMemoryPool()) {
+		if constexpr (Interface::usesMemoryPool()) {
 			buffer = new typename ValueType::BytesType();
 		} else {
 			buffer = &tl_buffer;

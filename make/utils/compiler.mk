@@ -19,7 +19,7 @@
 # THE SOFTWARE.
 
 GLOBAL_ROOT ?= .
-COCOS2D_ROOT ?= libs/external/stappler-cocos2d-x
+COCOS2D_ROOT ?= components/stappler-cocos2d-x
 TOOLKIT_OUTPUT ?= $(GLOBAL_ROOT)/build
 
 UNAME := $(shell uname)

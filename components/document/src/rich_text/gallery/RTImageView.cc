@@ -121,10 +121,10 @@ void ImageView::onImage(cocos2d::Texture2D *img) {
 
 void ImageView::onAssetCaptured(const StringView &src) {
 	Rc<cocos2d::Texture2D> *img = new Rc<cocos2d::Texture2D>(nullptr);
-	rich_text::Drawer::thread().perform([this, img, src] (const Task &) -> bool {
+	rich_text::Drawer::thread().perform([this, img, src] (const thread::Task &) -> bool {
 		*img = readImage(src);
 		return true;
-	}, [this, img] (const Task &, bool) {
+	}, [this, img] (const thread::Task &, bool) {
 		onImage(*img);
 		_source->releaseReadLock(this);
 		delete img;

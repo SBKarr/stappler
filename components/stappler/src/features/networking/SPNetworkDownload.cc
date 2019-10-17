@@ -26,7 +26,6 @@ THE SOFTWARE.
 #include "SPDefine.h"
 #include "SPNetworkDownload.h"
 #include "SPFilesystem.h"
-#include "SPTaskStack.h"
 #include "SPThread.h"
 
 #include "platform/CCFileUtils.h"
@@ -64,27 +63,27 @@ void NetworkDownload::onComplete() {
 	NetworkTask::onComplete();
 }
 
-void NetworkDownload::notifyOnStarted(bool bind) {
+void NetworkDownload::notifyOnStarted() {
 	Thread::onMainThread([this] () {
 		if (_onStarted) {
 			_onStarted(this);
 		}
-	}, bind ? this : nullptr);
+	}, this);
 }
-void NetworkDownload::notifyOnProgress(float progress, bool bind) {
+void NetworkDownload::notifyOnProgress(float progress) {
 	Thread::onMainThread([this, progress] () {
 		if (_onProgress) {
 			_onProgress(this, progress);
 		}
-	}, bind ? this : nullptr);
+	}, this);
 }
 
-void NetworkDownload::notifyOnComplete(bool success, bool bind) {
+void NetworkDownload::notifyOnComplete(bool success) {
 	Thread::onMainThread([this, success] () {
 		if (_onCompleted) {
 			_onCompleted(this, success);
 		}
-	}, bind ? this : nullptr);
+	}, this);
 }
 
 void NetworkDownload::setStartedCallback(StartedCallback func) {

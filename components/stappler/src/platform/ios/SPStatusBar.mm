@@ -34,9 +34,7 @@ THE SOFTWARE.
 #import "SPRootViewController.h"
 #import <UIKit/UIKit.h>
 
-NS_SP_PLATFORM_BEGIN
-
-namespace statusbar {
+namespace stappler::platform::statusbar {
 	float _statusBarHeight = nan();
 	
 	void _setEnabled(bool enabled) {
@@ -92,8 +90,6 @@ namespace statusbar {
 		return _statusBarHeight;
 	}
 }
-
-NS_SP_PLATFORM_END
 
 #endif
 #endif

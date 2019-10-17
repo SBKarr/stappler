@@ -42,6 +42,3 @@ THE SOFTWARE.
 #include "SLDocument.cc"
 
 #include "SLCanvas.cc"
-#include "SLDraw.cc"
-#include "SLImage.cc"
-#include "SLPath.cc"

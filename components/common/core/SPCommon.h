@@ -54,7 +54,7 @@ struct PoolInterface : public memory::AllocPool {
 
 	using StringStreamType = memory::ostringstream;
 
-	static bool usesMemoryPool() { return true; }
+	static constexpr bool usesMemoryPool() { return true; }
 };
 
 struct StandartInterface : public memory::AllocBase {
@@ -76,7 +76,7 @@ struct StandartInterface : public memory::AllocBase {
 
 	using StringStreamType = std::ostringstream;
 
-	static bool usesMemoryPool() { return false; }
+	static constexpr bool usesMemoryPool() { return false; }
 };
 
 NS_SP_EXT_END(memory)

@@ -64,7 +64,7 @@ public:
 	virtual ~StoreKitAndroid() { }
 
 	void init() {
-		sStoreKitThread.perform([] (const Task & obj) -> bool {
+		sStoreKitThread.perform([] (const thread::Task & obj) -> bool {
 			auto env = spjni::getJniEnv();
 			auto storeKit = spjni::getService(spjni::Service::StoreKit, env);
 			auto storeKitClass = spjni::getClassID(env, storeKit);
@@ -126,7 +126,7 @@ public:
 		if (!_init) {
 			return false;
 		}
-		sStoreKitThread.perform([] (const Task & ) -> bool {
+		sStoreKitThread.perform([] (const thread::Task & ) -> bool {
 			auto env = spjni::getJniEnv();
 			auto storeKit = spjni::getService(spjni::Service::StoreKit, env);
 			if (!storeKit) {
@@ -360,7 +360,7 @@ public:
 			}
 		}
 
-		sStoreKitThread.perform([subs, products] (const Task & ) -> bool {
+		sStoreKitThread.perform([subs, products] (const thread::Task & ) -> bool {
 			auto env = spjni::getJniEnv();
 			auto storeKit = spjni::getService(spjni::Service::StoreKit, env);
 			if (!storeKit) {
@@ -415,9 +415,7 @@ protected:
 
 NS_SP_END
 
-NS_SP_PLATFORM_BEGIN
-
-namespace storekit {
+namespace stappler::platform::storekit {
 	void _saveProducts(const std::unordered_map<std::string, StoreProduct *> &val) {
 		StoreKitAndroid::getInstance()->saveProductDictionary(val);
 	}
@@ -437,8 +435,6 @@ namespace storekit {
 		return StoreKitAndroid::getInstance()->restorePurchases();
 	}
 }
-
-NS_SP_PLATFORM_END
 
 NS_SP_EXTERN_BEGIN
 stappler::StoreKitAndroid *getAndroidStoreKit() {

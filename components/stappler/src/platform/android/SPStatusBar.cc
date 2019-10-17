@@ -31,9 +31,7 @@ THE SOFTWARE.
 
 #if (ANDROID)
 
-NS_SP_PLATFORM_BEGIN
-
-namespace statusbar {
+namespace stappler::platform::statusbar {
 	float _height = 0.0f;
 	float _commonHeight = 0.0f;
 
@@ -96,8 +94,6 @@ namespace statusbar {
 		return _height;
 	}
 }
-
-NS_SP_PLATFORM_END
 
 NS_SP_EXTERN_BEGIN
 

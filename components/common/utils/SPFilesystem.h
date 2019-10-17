@@ -184,15 +184,34 @@ ifile openForReading(const StringView &path);
 // read file to string (if it was a binary file, string will be invalid)
 String readTextFile(const StringView &path);
 
-// read binary data from file
-Bytes readFile(const StringView &path, size_t off = 0, size_t size = maxOf<size_t>());
-bool readFile(const io::Consumer &stream, uint8_t *buf, size_t bsize, const StringView &path, size_t off, size_t size);
+bool readWithConsumer(const io::Consumer &stream, uint8_t *buf, size_t bsize, const StringView &path, size_t off, size_t size);
 
 template <size_t Buffer = 1_KiB>
-bool readFile(const io::Consumer &stream, const StringView &path,
+bool readWithConsumer(const io::Consumer &stream, const StringView &path,
 		size_t off = 0, size_t size = maxOf<size_t>()) {
 	uint8_t b[Buffer];
-	return readFile(stream, b, Buffer, path, off, size);
+	return readWithConsumer(stream, b, Buffer, path, off, size);
+}
+
+template <typename Interface = memory::DefaultInterface>
+auto readIntoMemory(const StringView &ipath, size_t off = 0, size_t size = maxOf<size_t>()) -> typename Interface::BytesType {
+	auto f = openForReading(ipath);
+	if (f) {
+		auto fsize = f.size();
+		if (fsize <= off) {
+			f.close();
+			return Bytes();
+		}
+		if (fsize - off < size) {
+			size = fsize - off;
+		}
+		typename Interface::BytesType ret; ret.resize(size);
+		f.seek(off, io::Seek::Set);
+		f.read(ret.data(), size);
+		f.close();
+		return ret;
+	}
+	return typename Interface::BytesType();
 }
 
 NS_SP_EXT_END(filesystem)

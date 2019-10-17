@@ -31,9 +31,7 @@ THE SOFTWARE.
 #include "SPAprAllocator.h"
 #include "SPFilesystem.h"
 
-NS_SP_PLATFORM_BEGIN
-
-namespace filesystem {
+namespace stappler::platform::filesystem {
 	const char *getDocumentRoot() {
 		auto server = apr::pool::server();
 
@@ -88,5 +86,4 @@ namespace filesystem {
 	void _close(void *) { }
 }
 
-NS_SP_PLATFORM_END
 #endif

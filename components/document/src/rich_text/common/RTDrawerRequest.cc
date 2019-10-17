@@ -118,12 +118,12 @@ void Request::onAssetCaptured() {
 
 	Rc<cocos2d::Texture2D> *ptr = new Rc<cocos2d::Texture2D>(nullptr);
 
-	TextureCache::thread().perform([this, ptr] (const Task &) -> bool {
+	TextureCache::thread().perform([this, ptr] (const thread::Task &) -> bool {
 		TextureCache::getInstance()->performWithGL([&] {
 			*ptr = makeTexture();
 		});
 		return true;
-	}, [this, ptr] (const Task &, bool) {
+	}, [this, ptr] (const thread::Task &, bool) {
 		onDrawed(*ptr);
 		_source->releaseReadLock(this);
 		delete ptr;

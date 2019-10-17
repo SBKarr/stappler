@@ -826,7 +826,7 @@ int Server::onRequest(Request &req) {
 		if (uri.starts_with("/.well-known/acme-challenge/")) {
 			++ uri;
 			if (filesystem::exists(uri)) {
-				auto content = filesystem::readFile(uri);
+				auto content = filesystem::readIntoMemory(uri);
 				req.write((const char *)content.data(), content.size());
 				return DONE;
 			}

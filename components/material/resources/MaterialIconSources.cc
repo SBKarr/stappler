@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2018-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -973,955 +973,957 @@ static const uint8_t s_icon_toggle_radio_button_checked[] = { 0x12,0x00,0x18,0x1
 static const uint8_t s_icon_toggle_radio_button_unchecked[] = { 0x0c,0x00,0x18,0x18,0x04,0x03,0xfa,0x41,0x4f,0x33,0x33,0x04,0x04,0xfa,0x41,0x4f,0x33,0x33,0x04,0x18,0x18,0x03,0x04,0xfa,0x42,0x0c,0x33,0x33,0xfa,0x41,0x4f,0x33,0x33,0x18,0x2c,0x18,0x18,0x18,0x2c,0x03,0xfa,0x42,0x0c,0x33,0x33,0x18,0x2c,0x18,0x2c,0xfa,0x42,0x0c,0x33,0x33,0x18,0x2c,0x18,0x18,0x03,0x18,0x2c,0xfa,0x41,0x4f,0x33,0x34,0xfa,0x42,0x0c,0x33,0x33,0x04,0x18,0x18,0x04,0x05,0x00,0x18,0x18,0x18,0x28,0x03,0xfa,0x41,0x72,0x8f,0x5c,0x18,0x28,0x08,0xfa,0x42,0x03,0x5c,0x29,0x08,0x18,0x18,0x03,0x08,0xfa,0x41,0x72,0x8f,0x5c,0xfa,0x41,0x72,0x8f,0x5c,0x08,0x18,0x18,0x08,0x03,0xfa,0x42,0x03,0x5c,0x29,0x08,0x18,0x28,0xfa,0x41,0x72,0x8f,0x5c,0x18,0x28,0x18,0x18,0x03,0x18,0x28,0xfa,0x42,0x03,0x5c,0x29,0xfa,0x42,0x03,0x5c,0x29,0x18,0x28,0x18,0x18,0x18,0x28,0x05};
 static const uint8_t s_icon_toggle_star_half[] = { 0x14,0x00,0x18,0x2c,0xfa,0x41,0x93,0xd7,0x0a,0x01,0xfa,0x41,0xec,0xf5,0xc2,0xfa,0x41,0x89,0xeb,0x85,0x01,0x18,0x18,0x04,0x01,0xfa,0x41,0x93,0x0a,0x3e,0xfa,0x41,0x8a,0x14,0x7b,0x01,0x04,0xfa,0x41,0x93,0xd7,0x0a,0x01,0xfa,0x41,0x6e,0xb8,0x52,0xfa,0x41,0xdf,0x85,0x1e,0x01,0xfa,0x41,0x3a,0x3d,0x71,0x18,0x2a,0x01,0x18,0x18,0xfa,0x42,0x0a,0x28,0xf6,0x01,0xfa,0x42,0x11,0x70,0xa4,0x18,0x2a,0x01,0xfa,0x42,0x04,0x66,0x66,0xfa,0x41,0xdf,0x85,0x1f,0x01,0x18,0x2c,0xfa,0x41,0x93,0xd7,0x0a,0x05,0x00,0x18,0x18,0xfa,0x41,0xf6,0x66,0x66,0x01,0x18,0x18,0xfa,0x41,0x43,0x33,0x33,0x01,0xfa,0x41,0xdb,0x5c,0x29,0xfa,0x41,0xa2,0x3d,0x70,0x01,0xfa,0x42,0x10,0xb8,0x52,0xfa,0x41,0xa8,0x51,0xeb,0x01,0xfa,0x41,0xec,0x51,0xec,0xfa,0x41,0xd6,0x66,0x66,0x01,0xfa,0x41,0xfc,0x51,0xec,0xfa,0x42,0x0d,0x70,0xa4,0x01,0x18,0x18,0xfa,0x41,0xf6,0x66,0x66,0x05};
 
-static struct IconDataStruct { IconName name; size_t len; const uint8_t *data; } s_iconTable[945] = {
-	{ IconName::Action_3d_rotation, 2168, s_icon_action_3d_rotation },
-	{ IconName::Action_accessibility, 124, s_icon_action_accessibility },
-	{ IconName::Action_accessible, 459, s_icon_action_accessible },
-	{ IconName::Action_account_balance, 107, s_icon_action_account_balance },
-	{ IconName::Action_account_balance_wallet, 245, s_icon_action_account_balance_wallet },
-	{ IconName::Action_account_box, 213, s_icon_action_account_box },
-	{ IconName::Action_account_circle, 266, s_icon_action_account_circle },
-	{ IconName::Action_add_shopping_cart, 499, s_icon_action_add_shopping_cart },
-	{ IconName::Action_alarm, 303, s_icon_action_alarm },
-	{ IconName::Action_alarm_add, 319, s_icon_action_alarm_add },
-	{ IconName::Action_alarm_off, 541, s_icon_action_alarm_off },
-	{ IconName::Action_alarm_on, 340, s_icon_action_alarm_on },
-	{ IconName::Action_all_out, 326, s_icon_action_all_out },
-	{ IconName::Action_android, 630, s_icon_action_android },
-	{ IconName::Action_announcement, 128, s_icon_action_announcement },
-	{ IconName::Action_aspect_ratio, 190, s_icon_action_aspect_ratio },
-	{ IconName::Action_assessment, 158, s_icon_action_assessment },
-	{ IconName::Action_assignment, 276, s_icon_action_assignment },
-	{ IconName::Action_assignment_ind, 339, s_icon_action_assignment_ind },
-	{ IconName::Action_assignment_late, 257, s_icon_action_assignment_late },
-	{ IconName::Action_assignment_return, 248, s_icon_action_assignment_return },
-	{ IconName::Action_assignment_returned, 247, s_icon_action_assignment_returned },
-	{ IconName::Action_assignment_turned_in, 257, s_icon_action_assignment_turned_in },
-	{ IconName::Action_autorenew, 242, s_icon_action_autorenew },
-	{ IconName::Action_backup, 186, s_icon_action_backup },
-	{ IconName::Action_book, 111, s_icon_action_book },
-	{ IconName::Action_bookmark, 67, s_icon_action_bookmark },
-	{ IconName::Action_bookmark_border, 97, s_icon_action_bookmark_border },
-	{ IconName::Action_bug_report, 447, s_icon_action_bug_report },
-	{ IconName::Action_build, 231, s_icon_action_build },
-	{ IconName::Action_cached, 235, s_icon_action_cached },
-	{ IconName::Action_card_giftcard, 487, s_icon_action_card_giftcard },
-	{ IconName::Action_card_membership, 157, s_icon_action_card_membership },
-	{ IconName::Action_card_travel, 229, s_icon_action_card_travel },
-	{ IconName::Action_change_history, 51, s_icon_action_change_history },
-	{ IconName::Action_check_circle, 122, s_icon_action_check_circle },
-	{ IconName::Action_chrome_reader_mode, 174, s_icon_action_chrome_reader_mode },
-	{ IconName::Action_class, 111, s_icon_action_class },
-	{ IconName::Action_code, 110, s_icon_action_code },
-	{ IconName::Action_compare_arrows, 103, s_icon_action_compare_arrows },
-	{ IconName::Action_copyright, 1191, s_icon_action_copyright },
-	{ IconName::Action_credit_card, 141, s_icon_action_credit_card },
-	{ IconName::Action_dashboard, 87, s_icon_action_dashboard },
-	{ IconName::Action_date_range, 211, s_icon_action_date_range },
-	{ IconName::Action_delete, 91, s_icon_action_delete },
-	{ IconName::Action_delete_forever, 220, s_icon_action_delete_forever },
-	{ IconName::Action_description, 155, s_icon_action_description },
-	{ IconName::Action_dns, 318, s_icon_action_dns },
-	{ IconName::Action_done, 47, s_icon_action_done },
-	{ IconName::Action_done_all, 157, s_icon_action_done_all },
-	{ IconName::Action_donut_large, 199, s_icon_action_donut_large },
-	{ IconName::Action_donut_small, 209, s_icon_action_donut_small },
-	{ IconName::Action_euro_symbol, 356, s_icon_action_euro_symbol },
-	{ IconName::Action_event, 175, s_icon_action_event },
-	{ IconName::Action_event_seat, 131, s_icon_action_event_seat },
-	{ IconName::Action_exit_to_app, 189, s_icon_action_exit_to_app },
-	{ IconName::Action_explore, 239, s_icon_action_explore },
-	{ IconName::Action_extension, 354, s_icon_action_extension },
-	{ IconName::Action_face, 436, s_icon_action_face },
-	{ IconName::Action_favorite, 152, s_icon_action_favorite },
-	{ IconName::Action_favorite_border, 316, s_icon_action_favorite_border },
-	{ IconName::Action_feedback, 128, s_icon_action_feedback },
-	{ IconName::Action_find_in_page, 295, s_icon_action_find_in_page },
-	{ IconName::Action_find_replace, 320, s_icon_action_find_replace },
-	{ IconName::Action_fingerprint, 2100, s_icon_action_fingerprint },
-	{ IconName::Action_flight_land, 220, s_icon_action_flight_land },
-	{ IconName::Action_flight_takeoff, 233, s_icon_action_flight_takeoff },
-	{ IconName::Action_flip_to_back, 336, s_icon_action_flip_to_back },
-	{ IconName::Action_flip_to_front, 269, s_icon_action_flip_to_front },
-	{ IconName::Action_g_translate, 856, s_icon_action_g_translate },
-	{ IconName::Action_gavel, 151, s_icon_action_gavel },
-	{ IconName::Action_get_app, 55, s_icon_action_get_app },
-	{ IconName::Action_grade, 85, s_icon_action_grade },
-	{ IconName::Action_group_work, 301, s_icon_action_group_work },
-	{ IconName::Action_help, 306, s_icon_action_help },
-	{ IconName::Action_highlight_off, 253, s_icon_action_highlight_off },
-	{ IconName::Action_history, 259, s_icon_action_history },
-	{ IconName::Action_home, 51, s_icon_action_home },
-	{ IconName::Action_hourglass_empty, 99, s_icon_action_hourglass_empty },
-	{ IconName::Action_hourglass_full, 118, s_icon_action_hourglass_full },
-	{ IconName::Action_http, 206, s_icon_action_http },
-	{ IconName::Action_https, 297, s_icon_action_https },
-	{ IconName::Action_important_devices, 514, s_icon_action_important_devices },
-	{ IconName::Action_info, 117, s_icon_action_info },
-	{ IconName::Action_info_outline, 192, s_icon_action_info_outline },
-	{ IconName::Action_input, 212, s_icon_action_input },
-	{ IconName::Action_invert_colors, 255, s_icon_action_invert_colors },
-	{ IconName::Action_label, 135, s_icon_action_label },
-	{ IconName::Action_label_outline, 165, s_icon_action_label_outline },
-	{ IconName::Action_language, 865, s_icon_action_language },
-	{ IconName::Action_launch, 163, s_icon_action_launch },
-	{ IconName::Action_lightbulb_outline, 338, s_icon_action_lightbulb_outline },
-	{ IconName::Action_line_style, 250, s_icon_action_line_style },
-	{ IconName::Action_line_weight, 87, s_icon_action_line_weight },
-	{ IconName::Action_list, 120, s_icon_action_list },
-	{ IconName::Action_lock, 297, s_icon_action_lock },
-	{ IconName::Action_lock_open, 301, s_icon_action_lock_open },
-	{ IconName::Action_lock_outline, 319, s_icon_action_lock_outline },
-	{ IconName::Action_loyalty, 456, s_icon_action_loyalty },
-	{ IconName::Action_markunread_mailbox, 118, s_icon_action_markunread_mailbox },
-	{ IconName::Action_motorcycle, 390, s_icon_action_motorcycle },
-	{ IconName::Action_note_add, 165, s_icon_action_note_add },
-	{ IconName::Action_opacity, 272, s_icon_action_opacity },
-	{ IconName::Action_open_in_browser, 161, s_icon_action_open_in_browser },
-	{ IconName::Action_open_in_new, 163, s_icon_action_open_in_new },
-	{ IconName::Action_open_with, 136, s_icon_action_open_with },
-	{ IconName::Action_pageview, 303, s_icon_action_pageview },
-	{ IconName::Action_pan_tool, 356, s_icon_action_pan_tool },
-	{ IconName::Action_payment, 141, s_icon_action_payment },
-	{ IconName::Action_perm_camera_mic, 302, s_icon_action_perm_camera_mic },
-	{ IconName::Action_perm_contact_calendar, 244, s_icon_action_perm_contact_calendar },
-	{ IconName::Action_perm_data_setting, 1033, s_icon_action_perm_data_setting },
-	{ IconName::Action_perm_device_information, 165, s_icon_action_perm_device_information },
-	{ IconName::Action_perm_identity, 343, s_icon_action_perm_identity },
-	{ IconName::Action_perm_media, 191, s_icon_action_perm_media },
-	{ IconName::Action_perm_phone_msg, 287, s_icon_action_perm_phone_msg },
-	{ IconName::Action_perm_scan_wifi, 100, s_icon_action_perm_scan_wifi },
-	{ IconName::Action_pets, 626, s_icon_action_pets },
-	{ IconName::Action_picture_in_picture, 162, s_icon_action_picture_in_picture },
-	{ IconName::Action_picture_in_picture_alt, 165, s_icon_action_picture_in_picture_alt },
-	{ IconName::Action_play_for_work, 137, s_icon_action_play_for_work },
-	{ IconName::Action_polymer, 74, s_icon_action_polymer },
-	{ IconName::Action_power_settings_new, 226, s_icon_action_power_settings_new },
-	{ IconName::Action_pregnant_woman, 161, s_icon_action_pregnant_woman },
-	{ IconName::Action_print, 193, s_icon_action_print },
-	{ IconName::Action_query_builder, 198, s_icon_action_query_builder },
-	{ IconName::Action_question_answer, 148, s_icon_action_question_answer },
-	{ IconName::Action_receipt, 177, s_icon_action_receipt },
-	{ IconName::Action_record_voice_over, 272, s_icon_action_record_voice_over },
-	{ IconName::Action_redeem, 487, s_icon_action_redeem },
-	{ IconName::Action_remove_shopping_cart, 518, s_icon_action_remove_shopping_cart },
-	{ IconName::Action_report_problem, 65, s_icon_action_report_problem },
-	{ IconName::Action_restore, 259, s_icon_action_restore },
-	{ IconName::Action_restore_page, 308, s_icon_action_restore_page },
-	{ IconName::Action_room, 134, s_icon_action_room },
-	{ IconName::Action_rounded_corner, 322, s_icon_action_rounded_corner },
-	{ IconName::Action_rowing, 424, s_icon_action_rowing },
-	{ IconName::Action_schedule, 198, s_icon_action_schedule },
-	{ IconName::Action_search, 228, s_icon_action_search },
-	{ IconName::Action_settings, 849, s_icon_action_settings },
-	{ IconName::Action_settings_applications, 970, s_icon_action_settings_applications },
-	{ IconName::Action_settings_backup_restore, 264, s_icon_action_settings_backup_restore },
-	{ IconName::Action_settings_bluetooth, 254, s_icon_action_settings_bluetooth },
-	{ IconName::Action_settings_brightness, 247, s_icon_action_settings_brightness },
-	{ IconName::Action_settings_cell, 195, s_icon_action_settings_cell },
-	{ IconName::Action_settings_ethernet, 209, s_icon_action_settings_ethernet },
-	{ IconName::Action_settings_input_antenna, 313, s_icon_action_settings_input_antenna },
-	{ IconName::Action_settings_input_component, 433, s_icon_action_settings_input_component },
-	{ IconName::Action_settings_input_composite, 433, s_icon_action_settings_input_composite },
-	{ IconName::Action_settings_input_hdmi, 133, s_icon_action_settings_input_hdmi },
-	{ IconName::Action_settings_input_svideo, 527, s_icon_action_settings_input_svideo },
-	{ IconName::Action_settings_overscan, 215, s_icon_action_settings_overscan },
-	{ IconName::Action_settings_phone, 323, s_icon_action_settings_phone },
-	{ IconName::Action_settings_power, 293, s_icon_action_settings_power },
-	{ IconName::Action_settings_remote, 416, s_icon_action_settings_remote },
-	{ IconName::Action_settings_voice, 287, s_icon_action_settings_voice },
-	{ IconName::Action_shop, 140, s_icon_action_shop },
-	{ IconName::Action_shop_two, 205, s_icon_action_shop_two },
-	{ IconName::Action_shopping_basket, 367, s_icon_action_shopping_basket },
-	{ IconName::Action_shopping_cart, 470, s_icon_action_shopping_cart },
-	{ IconName::Action_speaker_notes, 201, s_icon_action_speaker_notes },
-	{ IconName::Action_speaker_notes_off, 261, s_icon_action_speaker_notes_off },
-	{ IconName::Action_spellcheck, 161, s_icon_action_spellcheck },
-	{ IconName::Action_stars, 188, s_icon_action_stars },
-	{ IconName::Action_store, 114, s_icon_action_store },
-	{ IconName::Action_subject, 86, s_icon_action_subject },
-	{ IconName::Action_supervisor_account, 301, s_icon_action_supervisor_account },
-	{ IconName::Action_swap_horiz, 98, s_icon_action_swap_horiz },
-	{ IconName::Action_swap_vert, 98, s_icon_action_swap_vert },
-	{ IconName::Action_swap_vertical_circle, 143, s_icon_action_swap_vertical_circle },
-	{ IconName::Action_system_update_alt, 213, s_icon_action_system_update_alt },
-	{ IconName::Action_tab, 120, s_icon_action_tab },
-	{ IconName::Action_tab_unselected, 362, s_icon_action_tab_unselected },
-	{ IconName::Action_theaters, 214, s_icon_action_theaters },
-	{ IconName::Action_thumb_down, 269, s_icon_action_thumb_down },
-	{ IconName::Action_thumb_up, 270, s_icon_action_thumb_up },
-	{ IconName::Action_thumbs_up_down, 467, s_icon_action_thumbs_up_down },
-	{ IconName::Action_timeline, 599, s_icon_action_timeline },
-	{ IconName::Action_toc, 135, s_icon_action_toc },
-	{ IconName::Action_today, 166, s_icon_action_today },
-	{ IconName::Action_toll, 257, s_icon_action_toll },
-	{ IconName::Action_touch_app, 454, s_icon_action_touch_app },
-	{ IconName::Action_track_changes, 483, s_icon_action_track_changes },
-	{ IconName::Action_translate, 315, s_icon_action_translate },
-	{ IconName::Action_trending_down, 90, s_icon_action_trending_down },
-	{ IconName::Action_trending_flat, 32, s_icon_action_trending_flat },
-	{ IconName::Action_trending_up, 90, s_icon_action_trending_up },
-	{ IconName::Action_turned_in, 67, s_icon_action_turned_in },
-	{ IconName::Action_turned_in_not, 97, s_icon_action_turned_in_not },
-	{ IconName::Action_update, 325, s_icon_action_update },
-	{ IconName::Action_verified_user, 108, s_icon_action_verified_user },
-	{ IconName::Action_view_agenda, 180, s_icon_action_view_agenda },
-	{ IconName::Action_view_array, 64, s_icon_action_view_array },
-	{ IconName::Action_view_carousel, 64, s_icon_action_view_carousel },
-	{ IconName::Action_view_column, 64, s_icon_action_view_column },
-	{ IconName::Action_view_day, 131, s_icon_action_view_day },
-	{ IconName::Action_view_headline, 84, s_icon_action_view_headline },
-	{ IconName::Action_view_list, 120, s_icon_action_view_list },
-	{ IconName::Action_view_module, 127, s_icon_action_view_module },
-	{ IconName::Action_view_quilt, 88, s_icon_action_view_quilt },
-	{ IconName::Action_view_stream, 42, s_icon_action_view_stream },
-	{ IconName::Action_view_week, 268, s_icon_action_view_week },
-	{ IconName::Action_visibility, 233, s_icon_action_visibility },
-	{ IconName::Action_visibility_off, 543, s_icon_action_visibility_off },
-	{ IconName::Action_watch_later, 129, s_icon_action_watch_later },
-	{ IconName::Action_work, 163, s_icon_action_work },
-	{ IconName::Action_youtube_searched_for, 360, s_icon_action_youtube_searched_for },
-	{ IconName::Alert_add_alert, 338, s_icon_alert_add_alert },
-	{ IconName::Alert_error, 122, s_icon_alert_error },
-	{ IconName::Alert_error_outline, 197, s_icon_alert_error_outline },
-	{ IconName::Alert_warning, 65, s_icon_alert_warning },
-	{ IconName::Av_add_to_queue, 190, s_icon_av_add_to_queue },
-	{ IconName::Av_airplay, 139, s_icon_av_airplay },
-	{ IconName::Av_album, 227, s_icon_av_album },
-	{ IconName::Av_art_track, 193, s_icon_av_art_track },
-	{ IconName::Av_av_timer, 454, s_icon_av_av_timer },
-	{ IconName::Av_branding_watermark, 116, s_icon_av_branding_watermark },
-	{ IconName::Av_call_to_action, 114, s_icon_av_call_to_action },
-	{ IconName::Av_closed_caption, 332, s_icon_av_closed_caption },
-	{ IconName::Av_equalizer, 66, s_icon_av_equalizer },
-	{ IconName::Av_explicit, 144, s_icon_av_explicit },
-	{ IconName::Av_fast_forward, 37, s_icon_av_fast_forward },
-	{ IconName::Av_fast_rewind, 35, s_icon_av_fast_rewind },
-	{ IconName::Av_featured_play_list, 128, s_icon_av_featured_play_list },
-	{ IconName::Av_featured_video, 112, s_icon_av_featured_video },
-	{ IconName::Av_fiber_dvr, 333, s_icon_av_fiber_dvr },
-	{ IconName::Av_fiber_manual_record, 39, s_icon_av_fiber_manual_record },
-	{ IconName::Av_fiber_new, 360, s_icon_av_fiber_new },
-	{ IconName::Av_fiber_pin, 250, s_icon_av_fiber_pin },
-	{ IconName::Av_fiber_smart_record, 155, s_icon_av_fiber_smart_record },
-	{ IconName::Av_forward_10, 1186, s_icon_av_forward_10 },
-	{ IconName::Av_forward_30, 2499, s_icon_av_forward_30 },
-	{ IconName::Av_forward_5, 1045, s_icon_av_forward_5 },
-	{ IconName::Av_games, 103, s_icon_av_games },
-	{ IconName::Av_hearing, 634, s_icon_av_hearing },
-	{ IconName::Av_high_quality, 282, s_icon_av_high_quality },
-	{ IconName::Av_library_add, 189, s_icon_av_library_add },
-	{ IconName::Av_library_books, 198, s_icon_av_library_books },
-	{ IconName::Av_library_music, 238, s_icon_av_library_music },
-	{ IconName::Av_loop, 236, s_icon_av_loop },
-	{ IconName::Av_mic, 219, s_icon_av_mic },
-	{ IconName::Av_mic_none, 372, s_icon_av_mic_none },
-	{ IconName::Av_mic_off, 458, s_icon_av_mic_off },
-	{ IconName::Av_movie, 124, s_icon_av_movie },
-	{ IconName::Av_music_video, 221, s_icon_av_music_video },
-	{ IconName::Av_new_releases, 248, s_icon_av_new_releases },
-	{ IconName::Av_not_interested, 248, s_icon_av_not_interested },
-	{ IconName::Av_note, 103, s_icon_av_note },
-	{ IconName::Av_pause, 43, s_icon_av_pause },
-	{ IconName::Av_pause_circle_filled, 119, s_icon_av_pause_circle_filled },
-	{ IconName::Av_pause_circle_outline, 196, s_icon_av_pause_circle_outline },
-	{ IconName::Av_play_arrow, 14, s_icon_av_play_arrow },
-	{ IconName::Av_play_circle_filled, 93, s_icon_av_play_circle_filled },
-	{ IconName::Av_play_circle_filled_white, 93, s_icon_av_play_circle_filled_white },
-	{ IconName::Av_play_circle_outline, 169, s_icon_av_play_circle_outline },
-	{ IconName::Av_playlist_add, 127, s_icon_av_playlist_add },
-	{ IconName::Av_playlist_add_check, 102, s_icon_av_playlist_add_check },
-	{ IconName::Av_playlist_play, 70, s_icon_av_playlist_play },
-	{ IconName::Av_queue, 189, s_icon_av_queue },
-	{ IconName::Av_queue_music, 171, s_icon_av_queue_music },
-	{ IconName::Av_queue_play_next, 205, s_icon_av_queue_play_next },
-	{ IconName::Av_radio, 248, s_icon_av_radio },
-	{ IconName::Av_recent_actors, 273, s_icon_av_recent_actors },
-	{ IconName::Av_remove_from_queue, 158, s_icon_av_remove_from_queue },
-	{ IconName::Av_repeat, 83, s_icon_av_repeat },
-	{ IconName::Av_repeat_one, 116, s_icon_av_repeat_one },
-	{ IconName::Av_replay, 133, s_icon_av_replay },
-	{ IconName::Av_replay_10, 1239, s_icon_av_replay_10 },
-	{ IconName::Av_replay_30, 2508, s_icon_av_replay_30 },
-	{ IconName::Av_replay_5, 1046, s_icon_av_replay_5 },
-	{ IconName::Av_shuffle, 175, s_icon_av_shuffle },
-	{ IconName::Av_skip_next, 41, s_icon_av_skip_next },
-	{ IconName::Av_skip_previous, 30, s_icon_av_skip_previous },
-	{ IconName::Av_slow_motion_video, 564, s_icon_av_slow_motion_video },
-	{ IconName::Av_snooze, 316, s_icon_av_snooze },
-	{ IconName::Av_stop, 18, s_icon_av_stop },
-	{ IconName::Av_subscriptions, 157, s_icon_av_subscriptions },
-	{ IconName::Av_subtitles, 186, s_icon_av_subtitles },
-	{ IconName::Av_surround_sound, 504, s_icon_av_surround_sound },
-	{ IconName::Av_video_call, 159, s_icon_av_video_call },
-	{ IconName::Av_video_label, 112, s_icon_av_video_label },
-	{ IconName::Av_video_library, 155, s_icon_av_video_library },
-	{ IconName::Av_videocam, 108, s_icon_av_videocam },
-	{ IconName::Av_videocam_off, 167, s_icon_av_videocam_off },
-	{ IconName::Av_volume_down, 89, s_icon_av_volume_down },
-	{ IconName::Av_volume_mute, 28, s_icon_av_volume_mute },
-	{ IconName::Av_volume_off, 383, s_icon_av_volume_off },
-	{ IconName::Av_volume_up, 208, s_icon_av_volume_up },
-	{ IconName::Av_web, 169, s_icon_av_web },
-	{ IconName::Av_web_asset, 112, s_icon_av_web_asset },
-	{ IconName::Communication_business, 290, s_icon_communication_business },
-	{ IconName::Communication_call, 263, s_icon_communication_call },
-	{ IconName::Communication_call_end, 491, s_icon_communication_call_end },
-	{ IconName::Communication_call_made, 52, s_icon_communication_call_made },
-	{ IconName::Communication_call_merge, 94, s_icon_communication_call_merge },
-	{ IconName::Communication_call_missed, 64, s_icon_communication_call_missed },
-	{ IconName::Communication_call_missed_outgoing, 76, s_icon_communication_call_missed_outgoing },
-	{ IconName::Communication_call_received, 52, s_icon_communication_call_received },
-	{ IconName::Communication_call_split, 114, s_icon_communication_call_split },
-	{ IconName::Communication_chat, 147, s_icon_communication_chat },
-	{ IconName::Communication_chat_bubble, 77, s_icon_communication_chat_bubble },
-	{ IconName::Communication_chat_bubble_outline, 103, s_icon_communication_chat_bubble_outline },
-	{ IconName::Communication_clear_all, 63, s_icon_communication_clear_all },
-	{ IconName::Communication_comment, 148, s_icon_communication_comment },
-	{ IconName::Communication_contact_mail, 267, s_icon_communication_contact_mail },
-	{ IconName::Communication_contact_phone, 421, s_icon_communication_contact_phone },
-	{ IconName::Communication_contacts, 282, s_icon_communication_contacts },
-	{ IconName::Communication_dialer_sip, 386, s_icon_communication_dialer_sip },
-	{ IconName::Communication_dialpad, 729, s_icon_communication_dialpad },
-	{ IconName::Communication_email, 126, s_icon_communication_email },
-	{ IconName::Communication_forum, 148, s_icon_communication_forum },
-	{ IconName::Communication_import_contacts, 407, s_icon_communication_import_contacts },
-	{ IconName::Communication_import_export, 98, s_icon_communication_import_export },
-	{ IconName::Communication_invert_colors_off, 400, s_icon_communication_invert_colors_off },
-	{ IconName::Communication_live_help, 334, s_icon_communication_live_help },
-	{ IconName::Communication_location_off, 305, s_icon_communication_location_off },
-	{ IconName::Communication_location_on, 134, s_icon_communication_location_on },
-	{ IconName::Communication_mail_outline, 141, s_icon_communication_mail_outline },
-	{ IconName::Communication_message, 148, s_icon_communication_message },
-	{ IconName::Communication_no_sim, 176, s_icon_communication_no_sim },
-	{ IconName::Communication_phone, 263, s_icon_communication_phone },
-	{ IconName::Communication_portable_wifi_off, 672, s_icon_communication_portable_wifi_off },
-	{ IconName::Communication_present_to_all, 166, s_icon_communication_present_to_all },
-	{ IconName::Communication_ring_volume, 679, s_icon_communication_ring_volume },
-	{ IconName::Communication_rss_feed, 264, s_icon_communication_rss_feed },
-	{ IconName::Communication_screen_share, 207, s_icon_communication_screen_share },
-	{ IconName::Communication_speaker_phone, 432, s_icon_communication_speaker_phone },
-	{ IconName::Communication_stay_current_landscape, 122, s_icon_communication_stay_current_landscape },
-	{ IconName::Communication_stay_current_portrait, 140, s_icon_communication_stay_current_portrait },
-	{ IconName::Communication_stay_primary_landscape, 122, s_icon_communication_stay_primary_landscape },
-	{ IconName::Communication_stay_primary_portrait, 140, s_icon_communication_stay_primary_portrait },
-	{ IconName::Communication_stop_screen_share, 428, s_icon_communication_stop_screen_share },
-	{ IconName::Communication_swap_calls, 199, s_icon_communication_swap_calls },
-	{ IconName::Communication_textsms, 142, s_icon_communication_textsms },
-	{ IconName::Communication_voicemail, 324, s_icon_communication_voicemail },
-	{ IconName::Communication_vpn_key, 212, s_icon_communication_vpn_key },
-	{ IconName::Content_add, 55, s_icon_content_add },
-	{ IconName::Content_add_box, 145, s_icon_content_add_box },
-	{ IconName::Content_add_circle, 130, s_icon_content_add_circle },
-	{ IconName::Content_add_circle_outline, 206, s_icon_content_add_circle_outline },
-	{ IconName::Content_archive, 248, s_icon_content_archive },
-	{ IconName::Content_backspace, 222, s_icon_content_backspace },
-	{ IconName::Content_block, 241, s_icon_content_block },
-	{ IconName::Content_clear, 94, s_icon_content_clear },
-	{ IconName::Content_content_copy, 155, s_icon_content_content_copy },
-	{ IconName::Content_content_cut, 504, s_icon_content_content_cut },
-	{ IconName::Content_content_paste, 247, s_icon_content_content_paste },
-	{ IconName::Content_create, 158, s_icon_content_create },
-	{ IconName::Content_delete_sweep, 144, s_icon_content_delete_sweep },
-	{ IconName::Content_drafts, 163, s_icon_content_drafts },
-	{ IconName::Content_filter_list, 63, s_icon_content_filter_list },
-	{ IconName::Content_flag, 50, s_icon_content_flag },
-	{ IconName::Content_forward, 32, s_icon_content_forward },
-	{ IconName::Content_gesture, 792, s_icon_content_gesture },
-	{ IconName::Content_inbox, 177, s_icon_content_inbox },
-	{ IconName::Content_link, 286, s_icon_content_link },
-	{ IconName::Content_low_priority, 162, s_icon_content_low_priority },
-	{ IconName::Content_mail, 126, s_icon_content_mail },
-	{ IconName::Content_markunread, 126, s_icon_content_markunread },
-	{ IconName::Content_move_to_inbox, 209, s_icon_content_move_to_inbox },
-	{ IconName::Content_next_week, 215, s_icon_content_next_week },
-	{ IconName::Content_redo, 138, s_icon_content_redo },
-	{ IconName::Content_remove, 23, s_icon_content_remove },
-	{ IconName::Content_remove_circle, 98, s_icon_content_remove_circle },
-	{ IconName::Content_remove_circle_outline, 172, s_icon_content_remove_circle_outline },
-	{ IconName::Content_reply, 49, s_icon_content_reply },
-	{ IconName::Content_reply_all, 80, s_icon_content_reply_all },
-	{ IconName::Content_report, 224, s_icon_content_report },
-	{ IconName::Content_save, 175, s_icon_content_save },
-	{ IconName::Content_select_all, 416, s_icon_content_select_all },
-	{ IconName::Content_send, 34, s_icon_content_send },
-	{ IconName::Content_sort, 61, s_icon_content_sort },
-	{ IconName::Content_text_format, 113, s_icon_content_text_format },
-	{ IconName::Content_unarchive, 248, s_icon_content_unarchive },
-	{ IconName::Content_undo, 130, s_icon_content_undo },
-	{ IconName::Content_weekend, 252, s_icon_content_weekend },
-	{ IconName::Device_access_alarm, 303, s_icon_device_access_alarm },
-	{ IconName::Device_access_alarms, 280, s_icon_device_access_alarms },
-	{ IconName::Device_access_time, 198, s_icon_device_access_time },
-	{ IconName::Device_add_alarm, 319, s_icon_device_add_alarm },
-	{ IconName::Device_airplanemode_active, 114, s_icon_device_airplanemode_active },
-	{ IconName::Device_airplanemode_inactive, 174, s_icon_device_airplanemode_inactive },
-	{ IconName::Device_battery_20, 168, s_icon_device_battery_20 },
-	{ IconName::Device_battery_30, 168, s_icon_device_battery_30 },
-	{ IconName::Device_battery_50, 168, s_icon_device_battery_50 },
-	{ IconName::Device_battery_60, 163, s_icon_device_battery_60 },
-	{ IconName::Device_battery_80, 163, s_icon_device_battery_80 },
-	{ IconName::Device_battery_90, 163, s_icon_device_battery_90 },
-	{ IconName::Device_battery_alert, 203, s_icon_device_battery_alert },
-	{ IconName::Device_battery_charging_20, 218, s_icon_device_battery_charging_20 },
-	{ IconName::Device_battery_charging_30, 210, s_icon_device_battery_charging_30 },
-	{ IconName::Device_battery_charging_50, 230, s_icon_device_battery_charging_50 },
-	{ IconName::Device_battery_charging_60, 219, s_icon_device_battery_charging_60 },
-	{ IconName::Device_battery_charging_80, 219, s_icon_device_battery_charging_80 },
-	{ IconName::Device_battery_charging_90, 219, s_icon_device_battery_charging_90 },
-	{ IconName::Device_battery_charging_full, 187, s_icon_device_battery_charging_full },
-	{ IconName::Device_battery_full, 156, s_icon_device_battery_full },
-	{ IconName::Device_battery_std, 156, s_icon_device_battery_std },
-	{ IconName::Device_battery_unknown, 497, s_icon_device_battery_unknown },
-	{ IconName::Device_bluetooth, 186, s_icon_device_bluetooth },
-	{ IconName::Device_bluetooth_connected, 230, s_icon_device_bluetooth_connected },
-	{ IconName::Device_bluetooth_disabled, 230, s_icon_device_bluetooth_disabled },
-	{ IconName::Device_bluetooth_searching, 406, s_icon_device_bluetooth_searching },
-	{ IconName::Device_brightness_auto, 221, s_icon_device_brightness_auto },
-	{ IconName::Device_brightness_high, 270, s_icon_device_brightness_high },
-	{ IconName::Device_brightness_low, 195, s_icon_device_brightness_low },
-	{ IconName::Device_brightness_medium, 165, s_icon_device_brightness_medium },
-	{ IconName::Device_data_usage, 279, s_icon_device_data_usage },
-	{ IconName::Device_developer_mode, 358, s_icon_device_developer_mode },
-	{ IconName::Device_devices, 180, s_icon_device_devices },
-	{ IconName::Device_dvr, 217, s_icon_device_dvr },
-	{ IconName::Device_gps_fixed, 333, s_icon_device_gps_fixed },
-	{ IconName::Device_gps_not_fixed, 258, s_icon_device_gps_not_fixed },
-	{ IconName::Device_gps_off, 484, s_icon_device_gps_off },
-	{ IconName::Device_graphic_eq, 108, s_icon_device_graphic_eq },
-	{ IconName::Device_location_disabled, 544, s_icon_device_location_disabled },
-	{ IconName::Device_location_searching, 334, s_icon_device_location_searching },
-	{ IconName::Device_network_cell, 29, s_icon_device_network_cell },
-	{ IconName::Device_network_wifi, 186, s_icon_device_network_wifi },
-	{ IconName::Device_nfc, 402, s_icon_device_nfc },
-	{ IconName::Device_screen_lock_landscape, 324, s_icon_device_screen_lock_landscape },
-	{ IconName::Device_screen_lock_portrait, 324, s_icon_device_screen_lock_portrait },
-	{ IconName::Device_screen_lock_rotation, 590, s_icon_device_screen_lock_rotation },
-	{ IconName::Device_screen_rotation, 461, s_icon_device_screen_rotation },
-	{ IconName::Device_sd_storage, 144, s_icon_device_sd_storage },
-	{ IconName::Device_settings_system_daydream, 278, s_icon_device_settings_system_daydream },
-	{ IconName::Device_signal_cellular_0_bar, 15, s_icon_device_signal_cellular_0_bar },
-	{ IconName::Device_signal_cellular_1_bar, 30, s_icon_device_signal_cellular_1_bar },
-	{ IconName::Device_signal_cellular_2_bar, 29, s_icon_device_signal_cellular_2_bar },
-	{ IconName::Device_signal_cellular_3_bar, 29, s_icon_device_signal_cellular_3_bar },
-	{ IconName::Device_signal_cellular_4_bar, 15, s_icon_device_signal_cellular_4_bar },
-	{ IconName::Device_signal_cellular_connected_no_internet_0_bar, 72, s_icon_device_signal_cellular_connected_no_internet_0_bar },
-	{ IconName::Device_signal_cellular_connected_no_internet_1_bar, 92, s_icon_device_signal_cellular_connected_no_internet_1_bar },
-	{ IconName::Device_signal_cellular_connected_no_internet_2_bar, 91, s_icon_device_signal_cellular_connected_no_internet_2_bar },
-	{ IconName::Device_signal_cellular_connected_no_internet_3_bar, 91, s_icon_device_signal_cellular_connected_no_internet_3_bar },
-	{ IconName::Device_signal_cellular_connected_no_internet_4_bar, 77, s_icon_device_signal_cellular_connected_no_internet_4_bar },
-	{ IconName::Device_signal_cellular_no_sim, 176, s_icon_device_signal_cellular_no_sim },
-	{ IconName::Device_signal_cellular_null, 48, s_icon_device_signal_cellular_null },
-	{ IconName::Device_signal_cellular_off, 90, s_icon_device_signal_cellular_off },
-	{ IconName::Device_signal_wifi_0_bar, 93, s_icon_device_signal_wifi_0_bar },
-	{ IconName::Device_signal_wifi_1_bar, 196, s_icon_device_signal_wifi_1_bar },
-	{ IconName::Device_signal_wifi_1_bar_lock, 442, s_icon_device_signal_wifi_1_bar_lock },
-	{ IconName::Device_signal_wifi_2_bar, 193, s_icon_device_signal_wifi_2_bar },
-	{ IconName::Device_signal_wifi_2_bar_lock, 422, s_icon_device_signal_wifi_2_bar_lock },
-	{ IconName::Device_signal_wifi_3_bar, 186, s_icon_device_signal_wifi_3_bar },
-	{ IconName::Device_signal_wifi_3_bar_lock, 426, s_icon_device_signal_wifi_3_bar_lock },
-	{ IconName::Device_signal_wifi_4_bar, 93, s_icon_device_signal_wifi_4_bar },
-	{ IconName::Device_signal_wifi_4_bar_lock, 348, s_icon_device_signal_wifi_4_bar_lock },
-	{ IconName::Device_signal_wifi_off, 212, s_icon_device_signal_wifi_off },
-	{ IconName::Device_storage, 119, s_icon_device_storage },
-	{ IconName::Device_usb, 355, s_icon_device_usb },
-	{ IconName::Device_wallpaper, 293, s_icon_device_wallpaper },
-	{ IconName::Device_widgets, 114, s_icon_device_widgets },
-	{ IconName::Device_wifi_lock, 309, s_icon_device_wifi_lock },
-	{ IconName::Device_wifi_tethering, 460, s_icon_device_wifi_tethering },
-	{ IconName::Editor_attach_file, 255, s_icon_editor_attach_file },
-	{ IconName::Editor_attach_money, 438, s_icon_editor_attach_money },
-	{ IconName::Editor_border_all, 106, s_icon_editor_border_all },
-	{ IconName::Editor_border_bottom, 349, s_icon_editor_border_bottom },
-	{ IconName::Editor_border_clear, 443, s_icon_editor_border_clear },
-	{ IconName::Editor_border_color, 159, s_icon_editor_border_color },
-	{ IconName::Editor_border_horizontal, 359, s_icon_editor_border_horizontal },
-	{ IconName::Editor_border_inner, 307, s_icon_editor_border_inner },
-	{ IconName::Editor_border_left, 369, s_icon_editor_border_left },
-	{ IconName::Editor_border_outer, 149, s_icon_editor_border_outer },
-	{ IconName::Editor_border_right, 348, s_icon_editor_border_right },
-	{ IconName::Editor_border_style, 195, s_icon_editor_border_style },
-	{ IconName::Editor_border_top, 369, s_icon_editor_border_top },
-	{ IconName::Editor_border_vertical, 361, s_icon_editor_border_vertical },
-	{ IconName::Editor_bubble_chart, 256, s_icon_editor_bubble_chart },
-	{ IconName::Editor_drag_handle, 43, s_icon_editor_drag_handle },
-	{ IconName::Editor_format_align_center, 105, s_icon_editor_format_align_center },
-	{ IconName::Editor_format_align_justify, 105, s_icon_editor_format_align_justify },
-	{ IconName::Editor_format_align_left, 107, s_icon_editor_format_align_left },
-	{ IconName::Editor_format_align_right, 105, s_icon_editor_format_align_right },
-	{ IconName::Editor_format_bold, 228, s_icon_editor_format_bold },
-	{ IconName::Editor_format_clear, 145, s_icon_editor_format_clear },
-	{ IconName::Editor_format_color_fill, 307, s_icon_editor_format_color_fill },
-	{ IconName::Editor_format_color_reset, 228, s_icon_editor_format_color_reset },
-	{ IconName::Editor_format_color_text, 91, s_icon_editor_format_color_text },
-	{ IconName::Editor_format_indent_decrease, 121, s_icon_editor_format_indent_decrease },
-	{ IconName::Editor_format_indent_increase, 120, s_icon_editor_format_indent_increase },
-	{ IconName::Editor_format_italic, 64, s_icon_editor_format_italic },
-	{ IconName::Editor_format_line_spacing, 103, s_icon_editor_format_line_spacing },
-	{ IconName::Editor_format_list_bulleted, 270, s_icon_editor_format_list_bulleted },
-	{ IconName::Editor_format_list_numbered, 193, s_icon_editor_format_list_numbered },
-	{ IconName::Editor_format_paint, 162, s_icon_editor_format_paint },
-	{ IconName::Editor_format_quote, 62, s_icon_editor_format_quote },
-	{ IconName::Editor_format_shapes, 339, s_icon_editor_format_shapes },
-	{ IconName::Editor_format_size, 74, s_icon_editor_format_size },
-	{ IconName::Editor_format_strikethrough, 79, s_icon_editor_format_strikethrough },
-	{ IconName::Editor_format_textdirection_l_to_r, 114, s_icon_editor_format_textdirection_l_to_r },
-	{ IconName::Editor_format_textdirection_r_to_l, 112, s_icon_editor_format_textdirection_r_to_l },
-	{ IconName::Editor_format_underlined, 122, s_icon_editor_format_underlined },
-	{ IconName::Editor_functions, 51, s_icon_editor_functions },
-	{ IconName::Editor_highlight, 130, s_icon_editor_highlight },
-	{ IconName::Editor_insert_chart, 158, s_icon_editor_insert_chart },
-	{ IconName::Editor_insert_comment, 139, s_icon_editor_insert_comment },
-	{ IconName::Editor_insert_drive_file, 105, s_icon_editor_insert_drive_file },
-	{ IconName::Editor_insert_emoticon, 360, s_icon_editor_insert_emoticon },
-	{ IconName::Editor_insert_invitation, 175, s_icon_editor_insert_invitation },
-	{ IconName::Editor_insert_link, 286, s_icon_editor_insert_link },
-	{ IconName::Editor_insert_photo, 121, s_icon_editor_insert_photo },
-	{ IconName::Editor_linear_scale, 310, s_icon_editor_linear_scale },
-	{ IconName::Editor_merge_type, 94, s_icon_editor_merge_type },
-	{ IconName::Editor_mode_comment, 85, s_icon_editor_mode_comment },
-	{ IconName::Editor_mode_edit, 158, s_icon_editor_mode_edit },
-	{ IconName::Editor_monetization_on, 531, s_icon_editor_monetization_on },
-	{ IconName::Editor_multiline_chart, 268, s_icon_editor_multiline_chart },
-	{ IconName::Editor_pie_chart, 157, s_icon_editor_pie_chart },
-	{ IconName::Editor_pie_chart_outlined, 201, s_icon_editor_pie_chart_outlined },
-	{ IconName::Editor_publish, 55, s_icon_editor_publish },
-	{ IconName::Editor_short_text, 35, s_icon_editor_short_text },
-	{ IconName::Editor_show_chart, 65, s_icon_editor_show_chart },
-	{ IconName::Editor_space_bar, 34, s_icon_editor_space_bar },
-	{ IconName::Editor_strikethrough_s, 1413, s_icon_editor_strikethrough_s },
-	{ IconName::Editor_text_fields, 76, s_icon_editor_text_fields },
-	{ IconName::Editor_title, 32, s_icon_editor_title },
-	{ IconName::Editor_vertical_align_bottom, 60, s_icon_editor_vertical_align_bottom },
-	{ IconName::Editor_vertical_align_center, 89, s_icon_editor_vertical_align_center },
-	{ IconName::Editor_vertical_align_top, 50, s_icon_editor_vertical_align_top },
-	{ IconName::Editor_wrap_text, 168, s_icon_editor_wrap_text },
-	{ IconName::File_attachment, 249, s_icon_file_attachment },
-	{ IconName::File_cloud, 149, s_icon_file_cloud },
-	{ IconName::File_cloud_circle, 207, s_icon_file_cloud_circle },
-	{ IconName::File_cloud_done, 202, s_icon_file_cloud_done },
-	{ IconName::File_cloud_download, 185, s_icon_file_cloud_download },
-	{ IconName::File_cloud_off, 378, s_icon_file_cloud_off },
-	{ IconName::File_cloud_queue, 283, s_icon_file_cloud_queue },
-	{ IconName::File_cloud_upload, 186, s_icon_file_cloud_upload },
-	{ IconName::File_create_new_folder, 168, s_icon_file_create_new_folder },
-	{ IconName::File_file_download, 55, s_icon_file_file_download },
-	{ IconName::File_file_upload, 48, s_icon_file_file_upload },
-	{ IconName::File_folder, 104, s_icon_file_folder },
-	{ IconName::File_folder_open, 127, s_icon_file_folder_open },
-	{ IconName::File_folder_shared, 238, s_icon_file_folder_shared },
-	{ IconName::Hardware_cast, 221, s_icon_hardware_cast },
-	{ IconName::Hardware_cast_connected, 273, s_icon_hardware_cast_connected },
-	{ IconName::Hardware_computer, 135, s_icon_hardware_computer },
-	{ IconName::Hardware_desktop_mac, 139, s_icon_hardware_desktop_mac },
-	{ IconName::Hardware_desktop_windows, 149, s_icon_hardware_desktop_windows },
-	{ IconName::Hardware_developer_board, 235, s_icon_hardware_developer_board },
-	{ IconName::Hardware_devices_other, 369, s_icon_hardware_devices_other },
-	{ IconName::Hardware_dock, 147, s_icon_hardware_dock },
-	{ IconName::Hardware_gamepad, 103, s_icon_hardware_gamepad },
-	{ IconName::Hardware_headset, 150, s_icon_hardware_headset },
-	{ IconName::Hardware_headset_mic, 170, s_icon_hardware_headset_mic },
-	{ IconName::Hardware_keyboard, 320, s_icon_hardware_keyboard },
-	{ IconName::Hardware_keyboard_arrow_down, 49, s_icon_hardware_keyboard_arrow_down },
-	{ IconName::Hardware_keyboard_arrow_left, 52, s_icon_hardware_keyboard_arrow_left },
-	{ IconName::Hardware_keyboard_arrow_right, 51, s_icon_hardware_keyboard_arrow_right },
-	{ IconName::Hardware_keyboard_arrow_up, 45, s_icon_hardware_keyboard_arrow_up },
-	{ IconName::Hardware_keyboard_backspace, 59, s_icon_hardware_keyboard_backspace },
-	{ IconName::Hardware_keyboard_capslock, 80, s_icon_hardware_keyboard_capslock },
-	{ IconName::Hardware_keyboard_hide, 327, s_icon_hardware_keyboard_hide },
-	{ IconName::Hardware_keyboard_return, 67, s_icon_hardware_keyboard_return },
-	{ IconName::Hardware_keyboard_tab, 94, s_icon_hardware_keyboard_tab },
-	{ IconName::Hardware_keyboard_voice, 226, s_icon_hardware_keyboard_voice },
-	{ IconName::Hardware_laptop, 129, s_icon_hardware_laptop },
-	{ IconName::Hardware_laptop_chromebook, 87, s_icon_hardware_laptop_chromebook },
-	{ IconName::Hardware_laptop_mac, 242, s_icon_hardware_laptop_mac },
-	{ IconName::Hardware_laptop_windows, 144, s_icon_hardware_laptop_windows },
-	{ IconName::Hardware_memory, 284, s_icon_hardware_memory },
-	{ IconName::Hardware_mouse, 133, s_icon_hardware_mouse },
-	{ IconName::Hardware_phone_android, 143, s_icon_hardware_phone_android },
-	{ IconName::Hardware_phone_iphone, 188, s_icon_hardware_phone_iphone },
-	{ IconName::Hardware_phonelink, 180, s_icon_hardware_phonelink },
-	{ IconName::Hardware_phonelink_off, 289, s_icon_hardware_phonelink_off },
-	{ IconName::Hardware_power_input, 90, s_icon_hardware_power_input },
-	{ IconName::Hardware_router, 463, s_icon_hardware_router },
-	{ IconName::Hardware_scanner, 196, s_icon_hardware_scanner },
-	{ IconName::Hardware_security, 139, s_icon_hardware_security },
-	{ IconName::Hardware_sim_card, 227, s_icon_hardware_sim_card },
-	{ IconName::Hardware_smartphone, 124, s_icon_hardware_smartphone },
-	{ IconName::Hardware_speaker, 322, s_icon_hardware_speaker },
-	{ IconName::Hardware_speaker_group, 403, s_icon_hardware_speaker_group },
-	{ IconName::Hardware_tablet, 118, s_icon_hardware_tablet },
-	{ IconName::Hardware_tablet_android, 143, s_icon_hardware_tablet_android },
-	{ IconName::Hardware_tablet_mac, 188, s_icon_hardware_tablet_mac },
-	{ IconName::Hardware_toys, 185, s_icon_hardware_toys },
-	{ IconName::Hardware_tv, 136, s_icon_hardware_tv },
-	{ IconName::Hardware_videogame_asset, 297, s_icon_hardware_videogame_asset },
-	{ IconName::Hardware_watch, 217, s_icon_hardware_watch },
-	{ IconName::Image_add_a_photo, 344, s_icon_image_add_a_photo },
-	{ IconName::Image_add_to_photos, 189, s_icon_image_add_to_photos },
-	{ IconName::Image_adjust, 228, s_icon_image_adjust },
-	{ IconName::Image_assistant, 156, s_icon_image_assistant },
-	{ IconName::Image_assistant_photo, 50, s_icon_image_assistant_photo },
-	{ IconName::Image_audiotrack, 115, s_icon_image_audiotrack },
-	{ IconName::Image_blur_circular, 1029, s_icon_image_blur_circular },
-	{ IconName::Image_blur_linear, 925, s_icon_image_blur_linear },
-	{ IconName::Image_blur_off, 1644, s_icon_image_blur_off },
-	{ IconName::Image_blur_on, 1754, s_icon_image_blur_on },
-	{ IconName::Image_brightness_1, 41, s_icon_image_brightness_1 },
-	{ IconName::Image_brightness_2, 127, s_icon_image_brightness_2 },
-	{ IconName::Image_brightness_3, 130, s_icon_image_brightness_3 },
-	{ IconName::Image_brightness_4, 267, s_icon_image_brightness_4 },
-	{ IconName::Image_brightness_5, 195, s_icon_image_brightness_5 },
-	{ IconName::Image_brightness_6, 165, s_icon_image_brightness_6 },
-	{ IconName::Image_brightness_7, 270, s_icon_image_brightness_7 },
-	{ IconName::Image_broken_image, 190, s_icon_image_broken_image },
-	{ IconName::Image_brush, 202, s_icon_image_brush },
-	{ IconName::Image_burst_mode, 162, s_icon_image_burst_mode },
-	{ IconName::Image_camera, 448, s_icon_image_camera },
-	{ IconName::Image_camera_alt, 276, s_icon_image_camera_alt },
-	{ IconName::Image_camera_front, 282, s_icon_image_camera_front },
-	{ IconName::Image_camera_rear, 239, s_icon_image_camera_rear },
-	{ IconName::Image_camera_roll, 279, s_icon_image_camera_roll },
-	{ IconName::Image_center_focus_strong, 261, s_icon_image_center_focus_strong },
-	{ IconName::Image_center_focus_weak, 337, s_icon_image_center_focus_weak },
-	{ IconName::Image_collections, 170, s_icon_image_collections },
-	{ IconName::Image_color_lens, 461, s_icon_image_color_lens },
-	{ IconName::Image_colorize, 232, s_icon_image_colorize },
-	{ IconName::Image_compare, 162, s_icon_image_compare },
-	{ IconName::Image_control_point, 206, s_icon_image_control_point },
-	{ IconName::Image_control_point_duplicate, 327, s_icon_image_control_point_duplicate },
-	{ IconName::Image_crop, 127, s_icon_image_crop },
-	{ IconName::Image_crop_16_9, 112, s_icon_image_crop_16_9 },
-	{ IconName::Image_crop_3_2, 112, s_icon_image_crop_3_2 },
-	{ IconName::Image_crop_5_4, 112, s_icon_image_crop_5_4 },
-	{ IconName::Image_crop_7_5, 112, s_icon_image_crop_7_5 },
-	{ IconName::Image_crop_din, 112, s_icon_image_crop_din },
-	{ IconName::Image_crop_free, 186, s_icon_image_crop_free },
-	{ IconName::Image_crop_landscape, 112, s_icon_image_crop_landscape },
-	{ IconName::Image_crop_original, 164, s_icon_image_crop_original },
-	{ IconName::Image_crop_portrait, 112, s_icon_image_crop_portrait },
-	{ IconName::Image_crop_rotate, 350, s_icon_image_crop_rotate },
-	{ IconName::Image_crop_square, 112, s_icon_image_crop_square },
-	{ IconName::Image_dehaze, 62, s_icon_image_dehaze },
-	{ IconName::Image_details, 38, s_icon_image_details },
-	{ IconName::Image_edit, 158, s_icon_image_edit },
-	{ IconName::Image_exposure, 192, s_icon_image_exposure },
-	{ IconName::Image_exposure_neg_1, 70, s_icon_image_exposure_neg_1 },
-	{ IconName::Image_exposure_neg_2, 799, s_icon_image_exposure_neg_2 },
-	{ IconName::Image_exposure_plus_1, 98, s_icon_image_exposure_plus_1 },
-	{ IconName::Image_exposure_plus_2, 829, s_icon_image_exposure_plus_2 },
-	{ IconName::Image_exposure_zero, 1025, s_icon_image_exposure_zero },
-	{ IconName::Image_filter, 210, s_icon_image_filter },
-	{ IconName::Image_filter_1, 190, s_icon_image_filter_1 },
-	{ IconName::Image_filter_2, 262, s_icon_image_filter_2 },
-	{ IconName::Image_filter_3, 286, s_icon_image_filter_3 },
-	{ IconName::Image_filter_4, 204, s_icon_image_filter_4 },
-	{ IconName::Image_filter_5, 248, s_icon_image_filter_5 },
-	{ IconName::Image_filter_6, 289, s_icon_image_filter_6 },
-	{ IconName::Image_filter_7, 191, s_icon_image_filter_7 },
-	{ IconName::Image_filter_8, 366, s_icon_image_filter_8 },
-	{ IconName::Image_filter_9, 284, s_icon_image_filter_9 },
-	{ IconName::Image_filter_9_plus, 329, s_icon_image_filter_9_plus },
-	{ IconName::Image_filter_b_and_w, 126, s_icon_image_filter_b_and_w },
-	{ IconName::Image_filter_center_focus, 261, s_icon_image_filter_center_focus },
-	{ IconName::Image_filter_drama, 325, s_icon_image_filter_drama },
-	{ IconName::Image_filter_frames, 161, s_icon_image_filter_frames },
-	{ IconName::Image_filter_hdr, 52, s_icon_image_filter_hdr },
-	{ IconName::Image_filter_none, 158, s_icon_image_filter_none },
-	{ IconName::Image_filter_tilt_shift, 764, s_icon_image_filter_tilt_shift },
-	{ IconName::Image_filter_vintage, 815, s_icon_image_filter_vintage },
-	{ IconName::Image_flare, 384, s_icon_image_flare },
-	{ IconName::Image_flash_auto, 125, s_icon_image_flash_auto },
-	{ IconName::Image_flash_off, 107, s_icon_image_flash_off },
-	{ IconName::Image_flash_on, 29, s_icon_image_flash_on },
-	{ IconName::Image_flip, 270, s_icon_image_flip },
-	{ IconName::Image_gradient, 348, s_icon_image_gradient },
-	{ IconName::Image_grain, 598, s_icon_image_grain },
-	{ IconName::Image_grid_off, 424, s_icon_image_grid_off },
-	{ IconName::Image_grid_on, 283, s_icon_image_grid_on },
-	{ IconName::Image_hdr_off, 306, s_icon_image_hdr_off },
-	{ IconName::Image_hdr_on, 243, s_icon_image_hdr_on },
-	{ IconName::Image_hdr_strong, 215, s_icon_image_hdr_strong },
-	{ IconName::Image_hdr_weak, 224, s_icon_image_hdr_weak },
-	{ IconName::Image_healing, 821, s_icon_image_healing },
-	{ IconName::Image_image, 121, s_icon_image_image },
-	{ IconName::Image_image_aspect_ratio, 201, s_icon_image_image_aspect_ratio },
-	{ IconName::Image_iso, 176, s_icon_image_iso },
-	{ IconName::Image_landscape, 52, s_icon_image_landscape },
-	{ IconName::Image_leak_add, 254, s_icon_image_leak_add },
-	{ IconName::Image_leak_remove, 576, s_icon_image_leak_remove },
-	{ IconName::Image_lens, 76, s_icon_image_lens },
-	{ IconName::Image_linked_camera, 398, s_icon_image_linked_camera },
-	{ IconName::Image_looks, 166, s_icon_image_looks },
-	{ IconName::Image_looks_3, 339, s_icon_image_looks_3 },
-	{ IconName::Image_looks_4, 136, s_icon_image_looks_4 },
-	{ IconName::Image_looks_5, 181, s_icon_image_looks_5 },
-	{ IconName::Image_looks_6, 218, s_icon_image_looks_6 },
-	{ IconName::Image_looks_one, 120, s_icon_image_looks_one },
-	{ IconName::Image_looks_two, 195, s_icon_image_looks_two },
-	{ IconName::Image_loupe, 216, s_icon_image_loupe },
-	{ IconName::Image_monochrome_photos, 709, s_icon_image_monochrome_photos },
-	{ IconName::Image_movie_creation, 124, s_icon_image_movie_creation },
-	{ IconName::Image_movie_filter, 250, s_icon_image_movie_filter },
-	{ IconName::Image_music_note, 104, s_icon_image_music_note },
-	{ IconName::Image_nature, 165, s_icon_image_nature },
-	{ IconName::Image_nature_people, 293, s_icon_image_nature_people },
-	{ IconName::Image_navigate_before, 45, s_icon_image_navigate_before },
-	{ IconName::Image_navigate_next, 44, s_icon_image_navigate_next },
-	{ IconName::Image_palette, 461, s_icon_image_palette },
-	{ IconName::Image_panorama, 120, s_icon_image_panorama },
-	{ IconName::Image_panorama_fish_eye, 152, s_icon_image_panorama_fish_eye },
-	{ IconName::Image_panorama_horizontal, 470, s_icon_image_panorama_horizontal },
-	{ IconName::Image_panorama_vertical, 467, s_icon_image_panorama_vertical },
-	{ IconName::Image_panorama_wide_angle, 487, s_icon_image_panorama_wide_angle },
-	{ IconName::Image_photo, 121, s_icon_image_photo },
-	{ IconName::Image_photo_album, 155, s_icon_image_photo_album },
-	{ IconName::Image_photo_camera, 276, s_icon_image_photo_camera },
-	{ IconName::Image_photo_filter, 251, s_icon_image_photo_filter },
-	{ IconName::Image_photo_library, 170, s_icon_image_photo_library },
-	{ IconName::Image_picture_as_pdf, 332, s_icon_image_picture_as_pdf },
-	{ IconName::Image_portrait, 254, s_icon_image_portrait },
-	{ IconName::Image_remove_red_eye, 230, s_icon_image_remove_red_eye },
-	{ IconName::Image_rotate_90_degrees_ccw, 370, s_icon_image_rotate_90_degrees_ccw },
-	{ IconName::Image_rotate_left, 399, s_icon_image_rotate_left },
-	{ IconName::Image_rotate_right, 394, s_icon_image_rotate_right },
-	{ IconName::Image_slideshow, 128, s_icon_image_slideshow },
-	{ IconName::Image_straighten, 177, s_icon_image_straighten },
-	{ IconName::Image_style, 495, s_icon_image_style },
-	{ IconName::Image_switch_camera, 159, s_icon_image_switch_camera },
-	{ IconName::Image_switch_video, 156, s_icon_image_switch_video },
-	{ IconName::Image_tag_faces, 360, s_icon_image_tag_faces },
-	{ IconName::Image_texture, 330, s_icon_image_texture },
-	{ IconName::Image_timelapse, 262, s_icon_image_timelapse },
-	{ IconName::Image_timer, 288, s_icon_image_timer },
-	{ IconName::Image_timer_10, 2559, s_icon_image_timer_10 },
-	{ IconName::Image_timer_3, 2861, s_icon_image_timer_3 },
-	{ IconName::Image_timer_off, 494, s_icon_image_timer_off },
-	{ IconName::Image_tonality, 439, s_icon_image_tonality },
-	{ IconName::Image_transform, 150, s_icon_image_transform },
-	{ IconName::Image_tune, 176, s_icon_image_tune },
-	{ IconName::Image_view_comfy, 262, s_icon_image_view_comfy },
-	{ IconName::Image_view_compact, 63, s_icon_image_view_compact },
-	{ IconName::Image_wb_auto, 277, s_icon_image_wb_auto },
-	{ IconName::Image_wb_cloudy, 149, s_icon_image_wb_cloudy },
-	{ IconName::Image_wb_incandescent, 290, s_icon_image_wb_incandescent },
-	{ IconName::Image_wb_iridescent, 310, s_icon_image_wb_iridescent },
-	{ IconName::Image_wb_sunny, 403, s_icon_image_wb_sunny },
-	{ IconName::Maps_add_location, 113, s_icon_maps_add_location },
-	{ IconName::Maps_beenhere, 178, s_icon_maps_beenhere },
-	{ IconName::Maps_directions, 250, s_icon_maps_directions },
-	{ IconName::Maps_directions_bike, 616, s_icon_maps_directions_bike },
-	{ IconName::Maps_directions_boat, 538, s_icon_maps_directions_boat },
-	{ IconName::Maps_directions_bus, 368, s_icon_maps_directions_bus },
-	{ IconName::Maps_directions_car, 356, s_icon_maps_directions_car },
-	{ IconName::Maps_directions_railway, 196, s_icon_maps_directions_railway },
-	{ IconName::Maps_directions_run, 330, s_icon_maps_directions_run },
-	{ IconName::Maps_directions_subway, 290, s_icon_maps_directions_subway },
-	{ IconName::Maps_directions_transit, 290, s_icon_maps_directions_transit },
-	{ IconName::Maps_directions_walk, 284, s_icon_maps_directions_walk },
-	{ IconName::Maps_edit_location, 228, s_icon_maps_edit_location },
-	{ IconName::Maps_ev_station, 418, s_icon_maps_ev_station },
-	{ IconName::Maps_flight, 114, s_icon_maps_flight },
-	{ IconName::Maps_hotel, 139, s_icon_maps_hotel },
-	{ IconName::Maps_layers, 113, s_icon_maps_layers },
-	{ IconName::Maps_layers_clear, 246, s_icon_maps_layers_clear },
-	{ IconName::Maps_local_activity, 295, s_icon_maps_local_activity },
-	{ IconName::Maps_local_airport, 107, s_icon_maps_local_airport },
-	{ IconName::Maps_local_atm, 275, s_icon_maps_local_atm },
-	{ IconName::Maps_local_bar, 92, s_icon_maps_local_bar },
-	{ IconName::Maps_local_cafe, 145, s_icon_maps_local_cafe },
-	{ IconName::Maps_local_car_wash, 558, s_icon_maps_local_car_wash },
-	{ IconName::Maps_local_convenience_store, 145, s_icon_maps_local_convenience_store },
-	{ IconName::Maps_local_dining, 297, s_icon_maps_local_dining },
-	{ IconName::Maps_local_drink, 189, s_icon_maps_local_drink },
-	{ IconName::Maps_local_florist, 598, s_icon_maps_local_florist },
-	{ IconName::Maps_local_gas_station, 410, s_icon_maps_local_gas_station },
-	{ IconName::Maps_local_grocery_store, 470, s_icon_maps_local_grocery_store },
-	{ IconName::Maps_local_hospital, 153, s_icon_maps_local_hospital },
-	{ IconName::Maps_local_hotel, 139, s_icon_maps_local_hotel },
-	{ IconName::Maps_local_laundry_service, 392, s_icon_maps_local_laundry_service },
-	{ IconName::Maps_local_library, 178, s_icon_maps_local_library },
-	{ IconName::Maps_local_mall, 257, s_icon_maps_local_mall },
-	{ IconName::Maps_local_movies, 214, s_icon_maps_local_movies },
-	{ IconName::Maps_local_offer, 277, s_icon_maps_local_offer },
-	{ IconName::Maps_local_parking, 128, s_icon_maps_local_parking },
-	{ IconName::Maps_local_pharmacy, 135, s_icon_maps_local_pharmacy },
-	{ IconName::Maps_local_phone, 263, s_icon_maps_local_phone },
-	{ IconName::Maps_local_pizza, 205, s_icon_maps_local_pizza },
-	{ IconName::Maps_local_play, 295, s_icon_maps_local_play },
-	{ IconName::Maps_local_post_office, 126, s_icon_maps_local_post_office },
-	{ IconName::Maps_local_printshop, 193, s_icon_maps_local_printshop },
-	{ IconName::Maps_local_see, 276, s_icon_maps_local_see },
-	{ IconName::Maps_local_shipping, 313, s_icon_maps_local_shipping },
-	{ IconName::Maps_local_taxi, 370, s_icon_maps_local_taxi },
-	{ IconName::Maps_map, 225, s_icon_maps_map },
-	{ IconName::Maps_my_location, 333, s_icon_maps_my_location },
-	{ IconName::Maps_navigation, 42, s_icon_maps_navigation },
-	{ IconName::Maps_near_me, 51, s_icon_maps_near_me },
-	{ IconName::Maps_person_pin, 279, s_icon_maps_person_pin },
-	{ IconName::Maps_person_pin_circle, 242, s_icon_maps_person_pin_circle },
-	{ IconName::Maps_pin_drop, 154, s_icon_maps_pin_drop },
-	{ IconName::Maps_place, 134, s_icon_maps_place },
-	{ IconName::Maps_rate_review, 219, s_icon_maps_rate_review },
-	{ IconName::Maps_restaurant, 149, s_icon_maps_restaurant },
-	{ IconName::Maps_restaurant_menu, 297, s_icon_maps_restaurant_menu },
-	{ IconName::Maps_satellite, 209, s_icon_maps_satellite },
-	{ IconName::Maps_store_mall_directory, 114, s_icon_maps_store_mall_directory },
-	{ IconName::Maps_streetview, 266, s_icon_maps_streetview },
-	{ IconName::Maps_subway, 363, s_icon_maps_subway },
-	{ IconName::Maps_terrain, 52, s_icon_maps_terrain },
-	{ IconName::Maps_traffic, 516, s_icon_maps_traffic },
-	{ IconName::Maps_train, 312, s_icon_maps_train },
-	{ IconName::Maps_tram, 309, s_icon_maps_tram },
-	{ IconName::Maps_transfer_within_a_station, 380, s_icon_maps_transfer_within_a_station },
-	{ IconName::Maps_zoom_out_map, 230, s_icon_maps_zoom_out_map },
-	{ IconName::Navigation_apps, 191, s_icon_navigation_apps },
-	{ IconName::Navigation_arrow_back, 65, s_icon_navigation_arrow_back },
-	{ IconName::Navigation_arrow_downward, 65, s_icon_navigation_arrow_downward },
-	{ IconName::Navigation_arrow_drop_down, 14, s_icon_navigation_arrow_drop_down },
-	{ IconName::Navigation_arrow_drop_down_circle, 94, s_icon_navigation_arrow_drop_down_circle },
-	{ IconName::Navigation_arrow_drop_up, 15, s_icon_navigation_arrow_drop_up },
-	{ IconName::Navigation_arrow_forward, 60, s_icon_navigation_arrow_forward },
-	{ IconName::Navigation_arrow_upward, 65, s_icon_navigation_arrow_upward },
-	{ IconName::Navigation_cancel, 177, s_icon_navigation_cancel },
-	{ IconName::Navigation_check, 47, s_icon_navigation_check },
-	{ IconName::Navigation_chevron_left, 45, s_icon_navigation_chevron_left },
-	{ IconName::Navigation_chevron_right, 44, s_icon_navigation_chevron_right },
-	{ IconName::Navigation_close, 94, s_icon_navigation_close },
-	{ IconName::Navigation_expand_less, 45, s_icon_navigation_expand_less },
-	{ IconName::Navigation_expand_more, 44, s_icon_navigation_expand_more },
-	{ IconName::Navigation_first_page, 60, s_icon_navigation_first_page },
-	{ IconName::Navigation_fullscreen, 118, s_icon_navigation_fullscreen },
-	{ IconName::Navigation_fullscreen_exit, 118, s_icon_navigation_fullscreen_exit },
-	{ IconName::Navigation_last_page, 63, s_icon_navigation_last_page },
-	{ IconName::Navigation_menu, 63, s_icon_navigation_menu },
-	{ IconName::Navigation_more_horiz, 223, s_icon_navigation_more_horiz },
-	{ IconName::Navigation_more_vert, 225, s_icon_navigation_more_vert },
-	{ IconName::Navigation_refresh, 217, s_icon_navigation_refresh },
-	{ IconName::Navigation_subdirectory_arrow_left, 72, s_icon_navigation_subdirectory_arrow_left },
-	{ IconName::Navigation_subdirectory_arrow_right, 156, s_icon_navigation_subdirectory_arrow_right },
-	{ IconName::Navigation_unfold_less, 124, s_icon_navigation_unfold_less },
-	{ IconName::Navigation_unfold_more, 118, s_icon_navigation_unfold_more },
-	{ IconName::Notification_adb, 367, s_icon_notification_adb },
-	{ IconName::Notification_airline_seat_flat, 216, s_icon_notification_airline_seat_flat },
-	{ IconName::Notification_airline_seat_flat_angled, 291, s_icon_notification_airline_seat_flat_angled },
-	{ IconName::Notification_airline_seat_individual_suite, 121, s_icon_notification_airline_seat_individual_suite },
-	{ IconName::Notification_airline_seat_legroom_extra, 243, s_icon_notification_airline_seat_legroom_extra },
-	{ IconName::Notification_airline_seat_legroom_normal, 181, s_icon_notification_airline_seat_legroom_normal },
-	{ IconName::Notification_airline_seat_legroom_reduced, 207, s_icon_notification_airline_seat_legroom_reduced },
-	{ IconName::Notification_airline_seat_recline_extra, 504, s_icon_notification_airline_seat_recline_extra },
-	{ IconName::Notification_airline_seat_recline_normal, 438, s_icon_notification_airline_seat_recline_normal },
-	{ IconName::Notification_bluetooth_audio, 406, s_icon_notification_bluetooth_audio },
-	{ IconName::Notification_confirmation_number, 253, s_icon_notification_confirmation_number },
-	{ IconName::Notification_disc_full, 196, s_icon_notification_disc_full },
-	{ IconName::Notification_do_not_disturb, 248, s_icon_notification_do_not_disturb },
-	{ IconName::Notification_do_not_disturb_alt, 213, s_icon_notification_do_not_disturb_alt },
-	{ IconName::Notification_do_not_disturb_off, 264, s_icon_notification_do_not_disturb_off },
-	{ IconName::Notification_do_not_disturb_on, 98, s_icon_notification_do_not_disturb_on },
-	{ IconName::Notification_drive_eta, 354, s_icon_notification_drive_eta },
-	{ IconName::Notification_enhanced_encryption, 276, s_icon_notification_enhanced_encryption },
-	{ IconName::Notification_event_available, 220, s_icon_notification_event_available },
-	{ IconName::Notification_event_busy, 258, s_icon_notification_event_busy },
-	{ IconName::Notification_event_note, 194, s_icon_notification_event_note },
-	{ IconName::Notification_folder_special, 199, s_icon_notification_folder_special },
-	{ IconName::Notification_live_tv, 173, s_icon_notification_live_tv },
-	{ IconName::Notification_mms, 113, s_icon_notification_mms },
-	{ IconName::Notification_more, 351, s_icon_notification_more },
-	{ IconName::Notification_network_check, 465, s_icon_notification_network_check },
-	{ IconName::Notification_network_locked, 300, s_icon_notification_network_locked },
-	{ IconName::Notification_no_encryption, 299, s_icon_notification_no_encryption },
-	{ IconName::Notification_ondemand_video, 149, s_icon_notification_ondemand_video },
-	{ IconName::Notification_personal_video, 136, s_icon_notification_personal_video },
-	{ IconName::Notification_phone_bluetooth_speaker, 444, s_icon_notification_phone_bluetooth_speaker },
-	{ IconName::Notification_phone_forwarded, 295, s_icon_notification_phone_forwarded },
-	{ IconName::Notification_phone_in_talk, 362, s_icon_notification_phone_in_talk },
-	{ IconName::Notification_phone_locked, 476, s_icon_notification_phone_locked },
-	{ IconName::Notification_phone_missed, 547, s_icon_notification_phone_missed },
-	{ IconName::Notification_phone_paused, 304, s_icon_notification_phone_paused },
-	{ IconName::Notification_power, 125, s_icon_notification_power },
-	{ IconName::Notification_priority_high, 59, s_icon_notification_priority_high },
-	{ IconName::Notification_rv_hookup, 259, s_icon_notification_rv_hookup },
-	{ IconName::Notification_sd_card, 144, s_icon_notification_sd_card },
-	{ IconName::Notification_sim_card_alert, 128, s_icon_notification_sim_card_alert },
-	{ IconName::Notification_sms, 142, s_icon_notification_sms },
-	{ IconName::Notification_sms_failed, 128, s_icon_notification_sms_failed },
-	{ IconName::Notification_sync, 236, s_icon_notification_sync },
-	{ IconName::Notification_sync_disabled, 482, s_icon_notification_sync_disabled },
-	{ IconName::Notification_sync_problem, 304, s_icon_notification_sync_problem },
-	{ IconName::Notification_system_update, 161, s_icon_notification_system_update },
-	{ IconName::Notification_tap_and_play, 290, s_icon_notification_tap_and_play },
-	{ IconName::Notification_time_to_leave, 354, s_icon_notification_time_to_leave },
-	{ IconName::Notification_vibration, 198, s_icon_notification_vibration },
-	{ IconName::Notification_voice_chat, 132, s_icon_notification_voice_chat },
-	{ IconName::Notification_vpn_lock, 583, s_icon_notification_vpn_lock },
-	{ IconName::Notification_wc, 308, s_icon_notification_wc },
-	{ IconName::Notification_wifi, 161, s_icon_notification_wifi },
-	{ IconName::Places_ac_unit, 319, s_icon_places_ac_unit },
-	{ IconName::Places_airport_shuttle, 334, s_icon_places_airport_shuttle },
-	{ IconName::Places_all_inclusive, 598, s_icon_places_all_inclusive },
-	{ IconName::Places_beach_access, 363, s_icon_places_beach_access },
-	{ IconName::Places_business_center, 313, s_icon_places_business_center },
-	{ IconName::Places_casino, 459, s_icon_places_casino },
-	{ IconName::Places_child_care, 1042, s_icon_places_child_care },
-	{ IconName::Places_child_friendly, 413, s_icon_places_child_friendly },
-	{ IconName::Places_fitness_center, 257, s_icon_places_fitness_center },
-	{ IconName::Places_free_breakfast, 140, s_icon_places_free_breakfast },
-	{ IconName::Places_golf_course, 205, s_icon_places_golf_course },
-	{ IconName::Places_hot_tub, 741, s_icon_places_hot_tub },
-	{ IconName::Places_kitchen, 182, s_icon_places_kitchen },
-	{ IconName::Places_pool, 1593, s_icon_places_pool },
-	{ IconName::Places_room_service, 168, s_icon_places_room_service },
-	{ IconName::Places_rv_hookup, 259, s_icon_places_rv_hookup },
-	{ IconName::Places_smoke_free, 462, s_icon_places_smoke_free },
-	{ IconName::Places_smoking_rooms, 504, s_icon_places_smoking_rooms },
-	{ IconName::Places_spa, 574, s_icon_places_spa },
-	{ IconName::Social_cake, 598, s_icon_social_cake },
-	{ IconName::Social_domain, 290, s_icon_social_domain },
-	{ IconName::Social_group, 304, s_icon_social_group },
-	{ IconName::Social_group_add, 394, s_icon_social_group_add },
-	{ IconName::Social_location_city, 237, s_icon_social_location_city },
-	{ IconName::Social_mood, 360, s_icon_social_mood },
-	{ IconName::Social_mood_bad, 354, s_icon_social_mood_bad },
-	{ IconName::Social_notifications, 172, s_icon_social_notifications },
-	{ IconName::Social_notifications_active, 433, s_icon_social_notifications_active },
-	{ IconName::Social_notifications_none, 224, s_icon_social_notifications_none },
-	{ IconName::Social_notifications_off, 447, s_icon_social_notifications_off },
-	{ IconName::Social_notifications_paused, 250, s_icon_social_notifications_paused },
-	{ IconName::Social_pages, 186, s_icon_social_pages },
-	{ IconName::Social_party_mode, 355, s_icon_social_party_mode },
-	{ IconName::Social_people, 304, s_icon_social_people },
-	{ IconName::Social_people_outline, 537, s_icon_social_people_outline },
-	{ IconName::Social_person, 131, s_icon_social_person },
-	{ IconName::Social_person_add, 178, s_icon_social_person_add },
-	{ IconName::Social_person_outline, 343, s_icon_social_person_outline },
-	{ IconName::Social_plus_one, 89, s_icon_social_plus_one },
-	{ IconName::Social_poll, 158, s_icon_social_poll },
-	{ IconName::Social_public, 334, s_icon_social_public },
-	{ IconName::Social_school, 88, s_icon_social_school },
-	{ IconName::Social_sentiment_dissatisfied, 414, s_icon_social_sentiment_dissatisfied },
-	{ IconName::Social_sentiment_neutral, 318, s_icon_social_sentiment_neutral },
-	{ IconName::Social_sentiment_satisfied, 416, s_icon_social_sentiment_satisfied },
-	{ IconName::Social_sentiment_very_dissatisfied, 463, s_icon_social_sentiment_very_dissatisfied },
-	{ IconName::Social_sentiment_very_satisfied, 334, s_icon_social_sentiment_very_satisfied },
-	{ IconName::Social_share, 479, s_icon_social_share },
-	{ IconName::Social_whatshot, 348, s_icon_social_whatshot },
-	{ IconName::Stappler_fav_icon, 89, s_icon_stappler_fav_icon },
-	{ IconName::Stappler_fav_outline, 211, s_icon_stappler_fav_outline },
-	{ IconName::Stappler_layout_horizontal, 54, s_icon_stappler_layout_horizontal },
-	{ IconName::Stappler_layout_vertical, 54, s_icon_stappler_layout_vertical },
-	{ IconName::Stappler_text_format_100, 163, s_icon_stappler_text_format_100 },
-	{ IconName::Stappler_text_format_125, 193, s_icon_stappler_text_format_125 },
-	{ IconName::Stappler_text_format_150, 224, s_icon_stappler_text_format_150 },
-	{ IconName::Stappler_text_format_175, 257, s_icon_stappler_text_format_175 },
-	{ IconName::Stappler_text_format_200, 312, s_icon_stappler_text_format_200 },
-	{ IconName::Toggle_check_box, 136, s_icon_toggle_check_box },
-	{ IconName::Toggle_check_box_outline_blank, 110, s_icon_toggle_check_box_outline_blank },
-	{ IconName::Toggle_radio_button_checked, 227, s_icon_toggle_radio_button_checked },
-	{ IconName::Toggle_radio_button_unchecked, 152, s_icon_toggle_radio_button_unchecked },
-	{ IconName::Toggle_star_half, 166, s_icon_toggle_star_half },
-};
+static BytesView getSystemIcon(IconName name) {
+	switch (name) {
+	case IconName::Action_3d_rotation: return BytesView(s_icon_action_3d_rotation, 2168); break;
+	case IconName::Action_accessibility: return BytesView(s_icon_action_accessibility, 124); break;
+	case IconName::Action_accessible: return BytesView(s_icon_action_accessible, 459); break;
+	case IconName::Action_account_balance: return BytesView(s_icon_action_account_balance, 107); break;
+	case IconName::Action_account_balance_wallet: return BytesView(s_icon_action_account_balance_wallet, 245); break;
+	case IconName::Action_account_box: return BytesView(s_icon_action_account_box, 213); break;
+	case IconName::Action_account_circle: return BytesView(s_icon_action_account_circle, 266); break;
+	case IconName::Action_add_shopping_cart: return BytesView(s_icon_action_add_shopping_cart, 499); break;
+	case IconName::Action_alarm: return BytesView(s_icon_action_alarm, 303); break;
+	case IconName::Action_alarm_add: return BytesView(s_icon_action_alarm_add, 319); break;
+	case IconName::Action_alarm_off: return BytesView(s_icon_action_alarm_off, 541); break;
+	case IconName::Action_alarm_on: return BytesView(s_icon_action_alarm_on, 340); break;
+	case IconName::Action_all_out: return BytesView(s_icon_action_all_out, 326); break;
+	case IconName::Action_android: return BytesView(s_icon_action_android, 630); break;
+	case IconName::Action_announcement: return BytesView(s_icon_action_announcement, 128); break;
+	case IconName::Action_aspect_ratio: return BytesView(s_icon_action_aspect_ratio, 190); break;
+	case IconName::Action_assessment: return BytesView(s_icon_action_assessment, 158); break;
+	case IconName::Action_assignment: return BytesView(s_icon_action_assignment, 276); break;
+	case IconName::Action_assignment_ind: return BytesView(s_icon_action_assignment_ind, 339); break;
+	case IconName::Action_assignment_late: return BytesView(s_icon_action_assignment_late, 257); break;
+	case IconName::Action_assignment_return: return BytesView(s_icon_action_assignment_return, 248); break;
+	case IconName::Action_assignment_returned: return BytesView(s_icon_action_assignment_returned, 247); break;
+	case IconName::Action_assignment_turned_in: return BytesView(s_icon_action_assignment_turned_in, 257); break;
+	case IconName::Action_autorenew: return BytesView(s_icon_action_autorenew, 242); break;
+	case IconName::Action_backup: return BytesView(s_icon_action_backup, 186); break;
+	case IconName::Action_book: return BytesView(s_icon_action_book, 111); break;
+	case IconName::Action_bookmark: return BytesView(s_icon_action_bookmark, 67); break;
+	case IconName::Action_bookmark_border: return BytesView(s_icon_action_bookmark_border, 97); break;
+	case IconName::Action_bug_report: return BytesView(s_icon_action_bug_report, 447); break;
+	case IconName::Action_build: return BytesView(s_icon_action_build, 231); break;
+	case IconName::Action_cached: return BytesView(s_icon_action_cached, 235); break;
+	case IconName::Action_card_giftcard: return BytesView(s_icon_action_card_giftcard, 487); break;
+	case IconName::Action_card_membership: return BytesView(s_icon_action_card_membership, 157); break;
+	case IconName::Action_card_travel: return BytesView(s_icon_action_card_travel, 229); break;
+	case IconName::Action_change_history: return BytesView(s_icon_action_change_history, 51); break;
+	case IconName::Action_check_circle: return BytesView(s_icon_action_check_circle, 122); break;
+	case IconName::Action_chrome_reader_mode: return BytesView(s_icon_action_chrome_reader_mode, 174); break;
+	case IconName::Action_class: return BytesView(s_icon_action_class, 111); break;
+	case IconName::Action_code: return BytesView(s_icon_action_code, 110); break;
+	case IconName::Action_compare_arrows: return BytesView(s_icon_action_compare_arrows, 103); break;
+	case IconName::Action_copyright: return BytesView(s_icon_action_copyright, 1191); break;
+	case IconName::Action_credit_card: return BytesView(s_icon_action_credit_card, 141); break;
+	case IconName::Action_dashboard: return BytesView(s_icon_action_dashboard, 87); break;
+	case IconName::Action_date_range: return BytesView(s_icon_action_date_range, 211); break;
+	case IconName::Action_delete: return BytesView(s_icon_action_delete, 91); break;
+	case IconName::Action_delete_forever: return BytesView(s_icon_action_delete_forever, 220); break;
+	case IconName::Action_description: return BytesView(s_icon_action_description, 155); break;
+	case IconName::Action_dns: return BytesView(s_icon_action_dns, 318); break;
+	case IconName::Action_done: return BytesView(s_icon_action_done, 47); break;
+	case IconName::Action_done_all: return BytesView(s_icon_action_done_all, 157); break;
+	case IconName::Action_donut_large: return BytesView(s_icon_action_donut_large, 199); break;
+	case IconName::Action_donut_small: return BytesView(s_icon_action_donut_small, 209); break;
+	case IconName::Action_euro_symbol: return BytesView(s_icon_action_euro_symbol, 356); break;
+	case IconName::Action_event: return BytesView(s_icon_action_event, 175); break;
+	case IconName::Action_event_seat: return BytesView(s_icon_action_event_seat, 131); break;
+	case IconName::Action_exit_to_app: return BytesView(s_icon_action_exit_to_app, 189); break;
+	case IconName::Action_explore: return BytesView(s_icon_action_explore, 239); break;
+	case IconName::Action_extension: return BytesView(s_icon_action_extension, 354); break;
+	case IconName::Action_face: return BytesView(s_icon_action_face, 436); break;
+	case IconName::Action_favorite: return BytesView(s_icon_action_favorite, 152); break;
+	case IconName::Action_favorite_border: return BytesView(s_icon_action_favorite_border, 316); break;
+	case IconName::Action_feedback: return BytesView(s_icon_action_feedback, 128); break;
+	case IconName::Action_find_in_page: return BytesView(s_icon_action_find_in_page, 295); break;
+	case IconName::Action_find_replace: return BytesView(s_icon_action_find_replace, 320); break;
+	case IconName::Action_fingerprint: return BytesView(s_icon_action_fingerprint, 2100); break;
+	case IconName::Action_flight_land: return BytesView(s_icon_action_flight_land, 220); break;
+	case IconName::Action_flight_takeoff: return BytesView(s_icon_action_flight_takeoff, 233); break;
+	case IconName::Action_flip_to_back: return BytesView(s_icon_action_flip_to_back, 336); break;
+	case IconName::Action_flip_to_front: return BytesView(s_icon_action_flip_to_front, 269); break;
+	case IconName::Action_g_translate: return BytesView(s_icon_action_g_translate, 856); break;
+	case IconName::Action_gavel: return BytesView(s_icon_action_gavel, 151); break;
+	case IconName::Action_get_app: return BytesView(s_icon_action_get_app, 55); break;
+	case IconName::Action_grade: return BytesView(s_icon_action_grade, 85); break;
+	case IconName::Action_group_work: return BytesView(s_icon_action_group_work, 301); break;
+	case IconName::Action_help: return BytesView(s_icon_action_help, 306); break;
+	case IconName::Action_highlight_off: return BytesView(s_icon_action_highlight_off, 253); break;
+	case IconName::Action_history: return BytesView(s_icon_action_history, 259); break;
+	case IconName::Action_home: return BytesView(s_icon_action_home, 51); break;
+	case IconName::Action_hourglass_empty: return BytesView(s_icon_action_hourglass_empty, 99); break;
+	case IconName::Action_hourglass_full: return BytesView(s_icon_action_hourglass_full, 118); break;
+	case IconName::Action_http: return BytesView(s_icon_action_http, 206); break;
+	case IconName::Action_https: return BytesView(s_icon_action_https, 297); break;
+	case IconName::Action_important_devices: return BytesView(s_icon_action_important_devices, 514); break;
+	case IconName::Action_info: return BytesView(s_icon_action_info, 117); break;
+	case IconName::Action_info_outline: return BytesView(s_icon_action_info_outline, 192); break;
+	case IconName::Action_input: return BytesView(s_icon_action_input, 212); break;
+	case IconName::Action_invert_colors: return BytesView(s_icon_action_invert_colors, 255); break;
+	case IconName::Action_label: return BytesView(s_icon_action_label, 135); break;
+	case IconName::Action_label_outline: return BytesView(s_icon_action_label_outline, 165); break;
+	case IconName::Action_language: return BytesView(s_icon_action_language, 865); break;
+	case IconName::Action_launch: return BytesView(s_icon_action_launch, 163); break;
+	case IconName::Action_lightbulb_outline: return BytesView(s_icon_action_lightbulb_outline, 338); break;
+	case IconName::Action_line_style: return BytesView(s_icon_action_line_style, 250); break;
+	case IconName::Action_line_weight: return BytesView(s_icon_action_line_weight, 87); break;
+	case IconName::Action_list: return BytesView(s_icon_action_list, 120); break;
+	case IconName::Action_lock: return BytesView(s_icon_action_lock, 297); break;
+	case IconName::Action_lock_open: return BytesView(s_icon_action_lock_open, 301); break;
+	case IconName::Action_lock_outline: return BytesView(s_icon_action_lock_outline, 319); break;
+	case IconName::Action_loyalty: return BytesView(s_icon_action_loyalty, 456); break;
+	case IconName::Action_markunread_mailbox: return BytesView(s_icon_action_markunread_mailbox, 118); break;
+	case IconName::Action_motorcycle: return BytesView(s_icon_action_motorcycle, 390); break;
+	case IconName::Action_note_add: return BytesView(s_icon_action_note_add, 165); break;
+	case IconName::Action_opacity: return BytesView(s_icon_action_opacity, 272); break;
+	case IconName::Action_open_in_browser: return BytesView(s_icon_action_open_in_browser, 161); break;
+	case IconName::Action_open_in_new: return BytesView(s_icon_action_open_in_new, 163); break;
+	case IconName::Action_open_with: return BytesView(s_icon_action_open_with, 136); break;
+	case IconName::Action_pageview: return BytesView(s_icon_action_pageview, 303); break;
+	case IconName::Action_pan_tool: return BytesView(s_icon_action_pan_tool, 356); break;
+	case IconName::Action_payment: return BytesView(s_icon_action_payment, 141); break;
+	case IconName::Action_perm_camera_mic: return BytesView(s_icon_action_perm_camera_mic, 302); break;
+	case IconName::Action_perm_contact_calendar: return BytesView(s_icon_action_perm_contact_calendar, 244); break;
+	case IconName::Action_perm_data_setting: return BytesView(s_icon_action_perm_data_setting, 1033); break;
+	case IconName::Action_perm_device_information: return BytesView(s_icon_action_perm_device_information, 165); break;
+	case IconName::Action_perm_identity: return BytesView(s_icon_action_perm_identity, 343); break;
+	case IconName::Action_perm_media: return BytesView(s_icon_action_perm_media, 191); break;
+	case IconName::Action_perm_phone_msg: return BytesView(s_icon_action_perm_phone_msg, 287); break;
+	case IconName::Action_perm_scan_wifi: return BytesView(s_icon_action_perm_scan_wifi, 100); break;
+	case IconName::Action_pets: return BytesView(s_icon_action_pets, 626); break;
+	case IconName::Action_picture_in_picture: return BytesView(s_icon_action_picture_in_picture, 162); break;
+	case IconName::Action_picture_in_picture_alt: return BytesView(s_icon_action_picture_in_picture_alt, 165); break;
+	case IconName::Action_play_for_work: return BytesView(s_icon_action_play_for_work, 137); break;
+	case IconName::Action_polymer: return BytesView(s_icon_action_polymer, 74); break;
+	case IconName::Action_power_settings_new: return BytesView(s_icon_action_power_settings_new, 226); break;
+	case IconName::Action_pregnant_woman: return BytesView(s_icon_action_pregnant_woman, 161); break;
+	case IconName::Action_print: return BytesView(s_icon_action_print, 193); break;
+	case IconName::Action_query_builder: return BytesView(s_icon_action_query_builder, 198); break;
+	case IconName::Action_question_answer: return BytesView(s_icon_action_question_answer, 148); break;
+	case IconName::Action_receipt: return BytesView(s_icon_action_receipt, 177); break;
+	case IconName::Action_record_voice_over: return BytesView(s_icon_action_record_voice_over, 272); break;
+	case IconName::Action_redeem: return BytesView(s_icon_action_redeem, 487); break;
+	case IconName::Action_remove_shopping_cart: return BytesView(s_icon_action_remove_shopping_cart, 518); break;
+	case IconName::Action_report_problem: return BytesView(s_icon_action_report_problem, 65); break;
+	case IconName::Action_restore: return BytesView(s_icon_action_restore, 259); break;
+	case IconName::Action_restore_page: return BytesView(s_icon_action_restore_page, 308); break;
+	case IconName::Action_room: return BytesView(s_icon_action_room, 134); break;
+	case IconName::Action_rounded_corner: return BytesView(s_icon_action_rounded_corner, 322); break;
+	case IconName::Action_rowing: return BytesView(s_icon_action_rowing, 424); break;
+	case IconName::Action_schedule: return BytesView(s_icon_action_schedule, 198); break;
+	case IconName::Action_search: return BytesView(s_icon_action_search, 228); break;
+	case IconName::Action_settings: return BytesView(s_icon_action_settings, 849); break;
+	case IconName::Action_settings_applications: return BytesView(s_icon_action_settings_applications, 970); break;
+	case IconName::Action_settings_backup_restore: return BytesView(s_icon_action_settings_backup_restore, 264); break;
+	case IconName::Action_settings_bluetooth: return BytesView(s_icon_action_settings_bluetooth, 254); break;
+	case IconName::Action_settings_brightness: return BytesView(s_icon_action_settings_brightness, 247); break;
+	case IconName::Action_settings_cell: return BytesView(s_icon_action_settings_cell, 195); break;
+	case IconName::Action_settings_ethernet: return BytesView(s_icon_action_settings_ethernet, 209); break;
+	case IconName::Action_settings_input_antenna: return BytesView(s_icon_action_settings_input_antenna, 313); break;
+	case IconName::Action_settings_input_component: return BytesView(s_icon_action_settings_input_component, 433); break;
+	case IconName::Action_settings_input_composite: return BytesView(s_icon_action_settings_input_composite, 433); break;
+	case IconName::Action_settings_input_hdmi: return BytesView(s_icon_action_settings_input_hdmi, 133); break;
+	case IconName::Action_settings_input_svideo: return BytesView(s_icon_action_settings_input_svideo, 527); break;
+	case IconName::Action_settings_overscan: return BytesView(s_icon_action_settings_overscan, 215); break;
+	case IconName::Action_settings_phone: return BytesView(s_icon_action_settings_phone, 323); break;
+	case IconName::Action_settings_power: return BytesView(s_icon_action_settings_power, 293); break;
+	case IconName::Action_settings_remote: return BytesView(s_icon_action_settings_remote, 416); break;
+	case IconName::Action_settings_voice: return BytesView(s_icon_action_settings_voice, 287); break;
+	case IconName::Action_shop: return BytesView(s_icon_action_shop, 140); break;
+	case IconName::Action_shop_two: return BytesView(s_icon_action_shop_two, 205); break;
+	case IconName::Action_shopping_basket: return BytesView(s_icon_action_shopping_basket, 367); break;
+	case IconName::Action_shopping_cart: return BytesView(s_icon_action_shopping_cart, 470); break;
+	case IconName::Action_speaker_notes: return BytesView(s_icon_action_speaker_notes, 201); break;
+	case IconName::Action_speaker_notes_off: return BytesView(s_icon_action_speaker_notes_off, 261); break;
+	case IconName::Action_spellcheck: return BytesView(s_icon_action_spellcheck, 161); break;
+	case IconName::Action_stars: return BytesView(s_icon_action_stars, 188); break;
+	case IconName::Action_store: return BytesView(s_icon_action_store, 114); break;
+	case IconName::Action_subject: return BytesView(s_icon_action_subject, 86); break;
+	case IconName::Action_supervisor_account: return BytesView(s_icon_action_supervisor_account, 301); break;
+	case IconName::Action_swap_horiz: return BytesView(s_icon_action_swap_horiz, 98); break;
+	case IconName::Action_swap_vert: return BytesView(s_icon_action_swap_vert, 98); break;
+	case IconName::Action_swap_vertical_circle: return BytesView(s_icon_action_swap_vertical_circle, 143); break;
+	case IconName::Action_system_update_alt: return BytesView(s_icon_action_system_update_alt, 213); break;
+	case IconName::Action_tab: return BytesView(s_icon_action_tab, 120); break;
+	case IconName::Action_tab_unselected: return BytesView(s_icon_action_tab_unselected, 362); break;
+	case IconName::Action_theaters: return BytesView(s_icon_action_theaters, 214); break;
+	case IconName::Action_thumb_down: return BytesView(s_icon_action_thumb_down, 269); break;
+	case IconName::Action_thumb_up: return BytesView(s_icon_action_thumb_up, 270); break;
+	case IconName::Action_thumbs_up_down: return BytesView(s_icon_action_thumbs_up_down, 467); break;
+	case IconName::Action_timeline: return BytesView(s_icon_action_timeline, 599); break;
+	case IconName::Action_toc: return BytesView(s_icon_action_toc, 135); break;
+	case IconName::Action_today: return BytesView(s_icon_action_today, 166); break;
+	case IconName::Action_toll: return BytesView(s_icon_action_toll, 257); break;
+	case IconName::Action_touch_app: return BytesView(s_icon_action_touch_app, 454); break;
+	case IconName::Action_track_changes: return BytesView(s_icon_action_track_changes, 483); break;
+	case IconName::Action_translate: return BytesView(s_icon_action_translate, 315); break;
+	case IconName::Action_trending_down: return BytesView(s_icon_action_trending_down, 90); break;
+	case IconName::Action_trending_flat: return BytesView(s_icon_action_trending_flat, 32); break;
+	case IconName::Action_trending_up: return BytesView(s_icon_action_trending_up, 90); break;
+	case IconName::Action_turned_in: return BytesView(s_icon_action_turned_in, 67); break;
+	case IconName::Action_turned_in_not: return BytesView(s_icon_action_turned_in_not, 97); break;
+	case IconName::Action_update: return BytesView(s_icon_action_update, 325); break;
+	case IconName::Action_verified_user: return BytesView(s_icon_action_verified_user, 108); break;
+	case IconName::Action_view_agenda: return BytesView(s_icon_action_view_agenda, 180); break;
+	case IconName::Action_view_array: return BytesView(s_icon_action_view_array, 64); break;
+	case IconName::Action_view_carousel: return BytesView(s_icon_action_view_carousel, 64); break;
+	case IconName::Action_view_column: return BytesView(s_icon_action_view_column, 64); break;
+	case IconName::Action_view_day: return BytesView(s_icon_action_view_day, 131); break;
+	case IconName::Action_view_headline: return BytesView(s_icon_action_view_headline, 84); break;
+	case IconName::Action_view_list: return BytesView(s_icon_action_view_list, 120); break;
+	case IconName::Action_view_module: return BytesView(s_icon_action_view_module, 127); break;
+	case IconName::Action_view_quilt: return BytesView(s_icon_action_view_quilt, 88); break;
+	case IconName::Action_view_stream: return BytesView(s_icon_action_view_stream, 42); break;
+	case IconName::Action_view_week: return BytesView(s_icon_action_view_week, 268); break;
+	case IconName::Action_visibility: return BytesView(s_icon_action_visibility, 233); break;
+	case IconName::Action_visibility_off: return BytesView(s_icon_action_visibility_off, 543); break;
+	case IconName::Action_watch_later: return BytesView(s_icon_action_watch_later, 129); break;
+	case IconName::Action_work: return BytesView(s_icon_action_work, 163); break;
+	case IconName::Action_youtube_searched_for: return BytesView(s_icon_action_youtube_searched_for, 360); break;
+	case IconName::Alert_add_alert: return BytesView(s_icon_alert_add_alert, 338); break;
+	case IconName::Alert_error: return BytesView(s_icon_alert_error, 122); break;
+	case IconName::Alert_error_outline: return BytesView(s_icon_alert_error_outline, 197); break;
+	case IconName::Alert_warning: return BytesView(s_icon_alert_warning, 65); break;
+	case IconName::Av_add_to_queue: return BytesView(s_icon_av_add_to_queue, 190); break;
+	case IconName::Av_airplay: return BytesView(s_icon_av_airplay, 139); break;
+	case IconName::Av_album: return BytesView(s_icon_av_album, 227); break;
+	case IconName::Av_art_track: return BytesView(s_icon_av_art_track, 193); break;
+	case IconName::Av_av_timer: return BytesView(s_icon_av_av_timer, 454); break;
+	case IconName::Av_branding_watermark: return BytesView(s_icon_av_branding_watermark, 116); break;
+	case IconName::Av_call_to_action: return BytesView(s_icon_av_call_to_action, 114); break;
+	case IconName::Av_closed_caption: return BytesView(s_icon_av_closed_caption, 332); break;
+	case IconName::Av_equalizer: return BytesView(s_icon_av_equalizer, 66); break;
+	case IconName::Av_explicit: return BytesView(s_icon_av_explicit, 144); break;
+	case IconName::Av_fast_forward: return BytesView(s_icon_av_fast_forward, 37); break;
+	case IconName::Av_fast_rewind: return BytesView(s_icon_av_fast_rewind, 35); break;
+	case IconName::Av_featured_play_list: return BytesView(s_icon_av_featured_play_list, 128); break;
+	case IconName::Av_featured_video: return BytesView(s_icon_av_featured_video, 112); break;
+	case IconName::Av_fiber_dvr: return BytesView(s_icon_av_fiber_dvr, 333); break;
+	case IconName::Av_fiber_manual_record: return BytesView(s_icon_av_fiber_manual_record, 39); break;
+	case IconName::Av_fiber_new: return BytesView(s_icon_av_fiber_new, 360); break;
+	case IconName::Av_fiber_pin: return BytesView(s_icon_av_fiber_pin, 250); break;
+	case IconName::Av_fiber_smart_record: return BytesView(s_icon_av_fiber_smart_record, 155); break;
+	case IconName::Av_forward_10: return BytesView(s_icon_av_forward_10, 1186); break;
+	case IconName::Av_forward_30: return BytesView(s_icon_av_forward_30, 2499); break;
+	case IconName::Av_forward_5: return BytesView(s_icon_av_forward_5, 1045); break;
+	case IconName::Av_games: return BytesView(s_icon_av_games, 103); break;
+	case IconName::Av_hearing: return BytesView(s_icon_av_hearing, 634); break;
+	case IconName::Av_high_quality: return BytesView(s_icon_av_high_quality, 282); break;
+	case IconName::Av_library_add: return BytesView(s_icon_av_library_add, 189); break;
+	case IconName::Av_library_books: return BytesView(s_icon_av_library_books, 198); break;
+	case IconName::Av_library_music: return BytesView(s_icon_av_library_music, 238); break;
+	case IconName::Av_loop: return BytesView(s_icon_av_loop, 236); break;
+	case IconName::Av_mic: return BytesView(s_icon_av_mic, 219); break;
+	case IconName::Av_mic_none: return BytesView(s_icon_av_mic_none, 372); break;
+	case IconName::Av_mic_off: return BytesView(s_icon_av_mic_off, 458); break;
+	case IconName::Av_movie: return BytesView(s_icon_av_movie, 124); break;
+	case IconName::Av_music_video: return BytesView(s_icon_av_music_video, 221); break;
+	case IconName::Av_new_releases: return BytesView(s_icon_av_new_releases, 248); break;
+	case IconName::Av_not_interested: return BytesView(s_icon_av_not_interested, 248); break;
+	case IconName::Av_note: return BytesView(s_icon_av_note, 103); break;
+	case IconName::Av_pause: return BytesView(s_icon_av_pause, 43); break;
+	case IconName::Av_pause_circle_filled: return BytesView(s_icon_av_pause_circle_filled, 119); break;
+	case IconName::Av_pause_circle_outline: return BytesView(s_icon_av_pause_circle_outline, 196); break;
+	case IconName::Av_play_arrow: return BytesView(s_icon_av_play_arrow, 14); break;
+	case IconName::Av_play_circle_filled: return BytesView(s_icon_av_play_circle_filled, 93); break;
+	case IconName::Av_play_circle_filled_white: return BytesView(s_icon_av_play_circle_filled_white, 93); break;
+	case IconName::Av_play_circle_outline: return BytesView(s_icon_av_play_circle_outline, 169); break;
+	case IconName::Av_playlist_add: return BytesView(s_icon_av_playlist_add, 127); break;
+	case IconName::Av_playlist_add_check: return BytesView(s_icon_av_playlist_add_check, 102); break;
+	case IconName::Av_playlist_play: return BytesView(s_icon_av_playlist_play, 70); break;
+	case IconName::Av_queue: return BytesView(s_icon_av_queue, 189); break;
+	case IconName::Av_queue_music: return BytesView(s_icon_av_queue_music, 171); break;
+	case IconName::Av_queue_play_next: return BytesView(s_icon_av_queue_play_next, 205); break;
+	case IconName::Av_radio: return BytesView(s_icon_av_radio, 248); break;
+	case IconName::Av_recent_actors: return BytesView(s_icon_av_recent_actors, 273); break;
+	case IconName::Av_remove_from_queue: return BytesView(s_icon_av_remove_from_queue, 158); break;
+	case IconName::Av_repeat: return BytesView(s_icon_av_repeat, 83); break;
+	case IconName::Av_repeat_one: return BytesView(s_icon_av_repeat_one, 116); break;
+	case IconName::Av_replay: return BytesView(s_icon_av_replay, 133); break;
+	case IconName::Av_replay_10: return BytesView(s_icon_av_replay_10, 1239); break;
+	case IconName::Av_replay_30: return BytesView(s_icon_av_replay_30, 2508); break;
+	case IconName::Av_replay_5: return BytesView(s_icon_av_replay_5, 1046); break;
+	case IconName::Av_shuffle: return BytesView(s_icon_av_shuffle, 175); break;
+	case IconName::Av_skip_next: return BytesView(s_icon_av_skip_next, 41); break;
+	case IconName::Av_skip_previous: return BytesView(s_icon_av_skip_previous, 30); break;
+	case IconName::Av_slow_motion_video: return BytesView(s_icon_av_slow_motion_video, 564); break;
+	case IconName::Av_snooze: return BytesView(s_icon_av_snooze, 316); break;
+	case IconName::Av_stop: return BytesView(s_icon_av_stop, 18); break;
+	case IconName::Av_subscriptions: return BytesView(s_icon_av_subscriptions, 157); break;
+	case IconName::Av_subtitles: return BytesView(s_icon_av_subtitles, 186); break;
+	case IconName::Av_surround_sound: return BytesView(s_icon_av_surround_sound, 504); break;
+	case IconName::Av_video_call: return BytesView(s_icon_av_video_call, 159); break;
+	case IconName::Av_video_label: return BytesView(s_icon_av_video_label, 112); break;
+	case IconName::Av_video_library: return BytesView(s_icon_av_video_library, 155); break;
+	case IconName::Av_videocam: return BytesView(s_icon_av_videocam, 108); break;
+	case IconName::Av_videocam_off: return BytesView(s_icon_av_videocam_off, 167); break;
+	case IconName::Av_volume_down: return BytesView(s_icon_av_volume_down, 89); break;
+	case IconName::Av_volume_mute: return BytesView(s_icon_av_volume_mute, 28); break;
+	case IconName::Av_volume_off: return BytesView(s_icon_av_volume_off, 383); break;
+	case IconName::Av_volume_up: return BytesView(s_icon_av_volume_up, 208); break;
+	case IconName::Av_web: return BytesView(s_icon_av_web, 169); break;
+	case IconName::Av_web_asset: return BytesView(s_icon_av_web_asset, 112); break;
+	case IconName::Communication_business: return BytesView(s_icon_communication_business, 290); break;
+	case IconName::Communication_call: return BytesView(s_icon_communication_call, 263); break;
+	case IconName::Communication_call_end: return BytesView(s_icon_communication_call_end, 491); break;
+	case IconName::Communication_call_made: return BytesView(s_icon_communication_call_made, 52); break;
+	case IconName::Communication_call_merge: return BytesView(s_icon_communication_call_merge, 94); break;
+	case IconName::Communication_call_missed: return BytesView(s_icon_communication_call_missed, 64); break;
+	case IconName::Communication_call_missed_outgoing: return BytesView(s_icon_communication_call_missed_outgoing, 76); break;
+	case IconName::Communication_call_received: return BytesView(s_icon_communication_call_received, 52); break;
+	case IconName::Communication_call_split: return BytesView(s_icon_communication_call_split, 114); break;
+	case IconName::Communication_chat: return BytesView(s_icon_communication_chat, 147); break;
+	case IconName::Communication_chat_bubble: return BytesView(s_icon_communication_chat_bubble, 77); break;
+	case IconName::Communication_chat_bubble_outline: return BytesView(s_icon_communication_chat_bubble_outline, 103); break;
+	case IconName::Communication_clear_all: return BytesView(s_icon_communication_clear_all, 63); break;
+	case IconName::Communication_comment: return BytesView(s_icon_communication_comment, 148); break;
+	case IconName::Communication_contact_mail: return BytesView(s_icon_communication_contact_mail, 267); break;
+	case IconName::Communication_contact_phone: return BytesView(s_icon_communication_contact_phone, 421); break;
+	case IconName::Communication_contacts: return BytesView(s_icon_communication_contacts, 282); break;
+	case IconName::Communication_dialer_sip: return BytesView(s_icon_communication_dialer_sip, 386); break;
+	case IconName::Communication_dialpad: return BytesView(s_icon_communication_dialpad, 729); break;
+	case IconName::Communication_email: return BytesView(s_icon_communication_email, 126); break;
+	case IconName::Communication_forum: return BytesView(s_icon_communication_forum, 148); break;
+	case IconName::Communication_import_contacts: return BytesView(s_icon_communication_import_contacts, 407); break;
+	case IconName::Communication_import_export: return BytesView(s_icon_communication_import_export, 98); break;
+	case IconName::Communication_invert_colors_off: return BytesView(s_icon_communication_invert_colors_off, 400); break;
+	case IconName::Communication_live_help: return BytesView(s_icon_communication_live_help, 334); break;
+	case IconName::Communication_location_off: return BytesView(s_icon_communication_location_off, 305); break;
+	case IconName::Communication_location_on: return BytesView(s_icon_communication_location_on, 134); break;
+	case IconName::Communication_mail_outline: return BytesView(s_icon_communication_mail_outline, 141); break;
+	case IconName::Communication_message: return BytesView(s_icon_communication_message, 148); break;
+	case IconName::Communication_no_sim: return BytesView(s_icon_communication_no_sim, 176); break;
+	case IconName::Communication_phone: return BytesView(s_icon_communication_phone, 263); break;
+	case IconName::Communication_portable_wifi_off: return BytesView(s_icon_communication_portable_wifi_off, 672); break;
+	case IconName::Communication_present_to_all: return BytesView(s_icon_communication_present_to_all, 166); break;
+	case IconName::Communication_ring_volume: return BytesView(s_icon_communication_ring_volume, 679); break;
+	case IconName::Communication_rss_feed: return BytesView(s_icon_communication_rss_feed, 264); break;
+	case IconName::Communication_screen_share: return BytesView(s_icon_communication_screen_share, 207); break;
+	case IconName::Communication_speaker_phone: return BytesView(s_icon_communication_speaker_phone, 432); break;
+	case IconName::Communication_stay_current_landscape: return BytesView(s_icon_communication_stay_current_landscape, 122); break;
+	case IconName::Communication_stay_current_portrait: return BytesView(s_icon_communication_stay_current_portrait, 140); break;
+	case IconName::Communication_stay_primary_landscape: return BytesView(s_icon_communication_stay_primary_landscape, 122); break;
+	case IconName::Communication_stay_primary_portrait: return BytesView(s_icon_communication_stay_primary_portrait, 140); break;
+	case IconName::Communication_stop_screen_share: return BytesView(s_icon_communication_stop_screen_share, 428); break;
+	case IconName::Communication_swap_calls: return BytesView(s_icon_communication_swap_calls, 199); break;
+	case IconName::Communication_textsms: return BytesView(s_icon_communication_textsms, 142); break;
+	case IconName::Communication_voicemail: return BytesView(s_icon_communication_voicemail, 324); break;
+	case IconName::Communication_vpn_key: return BytesView(s_icon_communication_vpn_key, 212); break;
+	case IconName::Content_add: return BytesView(s_icon_content_add, 55); break;
+	case IconName::Content_add_box: return BytesView(s_icon_content_add_box, 145); break;
+	case IconName::Content_add_circle: return BytesView(s_icon_content_add_circle, 130); break;
+	case IconName::Content_add_circle_outline: return BytesView(s_icon_content_add_circle_outline, 206); break;
+	case IconName::Content_archive: return BytesView(s_icon_content_archive, 248); break;
+	case IconName::Content_backspace: return BytesView(s_icon_content_backspace, 222); break;
+	case IconName::Content_block: return BytesView(s_icon_content_block, 241); break;
+	case IconName::Content_clear: return BytesView(s_icon_content_clear, 94); break;
+	case IconName::Content_content_copy: return BytesView(s_icon_content_content_copy, 155); break;
+	case IconName::Content_content_cut: return BytesView(s_icon_content_content_cut, 504); break;
+	case IconName::Content_content_paste: return BytesView(s_icon_content_content_paste, 247); break;
+	case IconName::Content_create: return BytesView(s_icon_content_create, 158); break;
+	case IconName::Content_delete_sweep: return BytesView(s_icon_content_delete_sweep, 144); break;
+	case IconName::Content_drafts: return BytesView(s_icon_content_drafts, 163); break;
+	case IconName::Content_filter_list: return BytesView(s_icon_content_filter_list, 63); break;
+	case IconName::Content_flag: return BytesView(s_icon_content_flag, 50); break;
+	case IconName::Content_forward: return BytesView(s_icon_content_forward, 32); break;
+	case IconName::Content_gesture: return BytesView(s_icon_content_gesture, 792); break;
+	case IconName::Content_inbox: return BytesView(s_icon_content_inbox, 177); break;
+	case IconName::Content_link: return BytesView(s_icon_content_link, 286); break;
+	case IconName::Content_low_priority: return BytesView(s_icon_content_low_priority, 162); break;
+	case IconName::Content_mail: return BytesView(s_icon_content_mail, 126); break;
+	case IconName::Content_markunread: return BytesView(s_icon_content_markunread, 126); break;
+	case IconName::Content_move_to_inbox: return BytesView(s_icon_content_move_to_inbox, 209); break;
+	case IconName::Content_next_week: return BytesView(s_icon_content_next_week, 215); break;
+	case IconName::Content_redo: return BytesView(s_icon_content_redo, 138); break;
+	case IconName::Content_remove: return BytesView(s_icon_content_remove, 23); break;
+	case IconName::Content_remove_circle: return BytesView(s_icon_content_remove_circle, 98); break;
+	case IconName::Content_remove_circle_outline: return BytesView(s_icon_content_remove_circle_outline, 172); break;
+	case IconName::Content_reply: return BytesView(s_icon_content_reply, 49); break;
+	case IconName::Content_reply_all: return BytesView(s_icon_content_reply_all, 80); break;
+	case IconName::Content_report: return BytesView(s_icon_content_report, 224); break;
+	case IconName::Content_save: return BytesView(s_icon_content_save, 175); break;
+	case IconName::Content_select_all: return BytesView(s_icon_content_select_all, 416); break;
+	case IconName::Content_send: return BytesView(s_icon_content_send, 34); break;
+	case IconName::Content_sort: return BytesView(s_icon_content_sort, 61); break;
+	case IconName::Content_text_format: return BytesView(s_icon_content_text_format, 113); break;
+	case IconName::Content_unarchive: return BytesView(s_icon_content_unarchive, 248); break;
+	case IconName::Content_undo: return BytesView(s_icon_content_undo, 130); break;
+	case IconName::Content_weekend: return BytesView(s_icon_content_weekend, 252); break;
+	case IconName::Device_access_alarm: return BytesView(s_icon_device_access_alarm, 303); break;
+	case IconName::Device_access_alarms: return BytesView(s_icon_device_access_alarms, 280); break;
+	case IconName::Device_access_time: return BytesView(s_icon_device_access_time, 198); break;
+	case IconName::Device_add_alarm: return BytesView(s_icon_device_add_alarm, 319); break;
+	case IconName::Device_airplanemode_active: return BytesView(s_icon_device_airplanemode_active, 114); break;
+	case IconName::Device_airplanemode_inactive: return BytesView(s_icon_device_airplanemode_inactive, 174); break;
+	case IconName::Device_battery_20: return BytesView(s_icon_device_battery_20, 168); break;
+	case IconName::Device_battery_30: return BytesView(s_icon_device_battery_30, 168); break;
+	case IconName::Device_battery_50: return BytesView(s_icon_device_battery_50, 168); break;
+	case IconName::Device_battery_60: return BytesView(s_icon_device_battery_60, 163); break;
+	case IconName::Device_battery_80: return BytesView(s_icon_device_battery_80, 163); break;
+	case IconName::Device_battery_90: return BytesView(s_icon_device_battery_90, 163); break;
+	case IconName::Device_battery_alert: return BytesView(s_icon_device_battery_alert, 203); break;
+	case IconName::Device_battery_charging_20: return BytesView(s_icon_device_battery_charging_20, 218); break;
+	case IconName::Device_battery_charging_30: return BytesView(s_icon_device_battery_charging_30, 210); break;
+	case IconName::Device_battery_charging_50: return BytesView(s_icon_device_battery_charging_50, 230); break;
+	case IconName::Device_battery_charging_60: return BytesView(s_icon_device_battery_charging_60, 219); break;
+	case IconName::Device_battery_charging_80: return BytesView(s_icon_device_battery_charging_80, 219); break;
+	case IconName::Device_battery_charging_90: return BytesView(s_icon_device_battery_charging_90, 219); break;
+	case IconName::Device_battery_charging_full: return BytesView(s_icon_device_battery_charging_full, 187); break;
+	case IconName::Device_battery_full: return BytesView(s_icon_device_battery_full, 156); break;
+	case IconName::Device_battery_std: return BytesView(s_icon_device_battery_std, 156); break;
+	case IconName::Device_battery_unknown: return BytesView(s_icon_device_battery_unknown, 497); break;
+	case IconName::Device_bluetooth: return BytesView(s_icon_device_bluetooth, 186); break;
+	case IconName::Device_bluetooth_connected: return BytesView(s_icon_device_bluetooth_connected, 230); break;
+	case IconName::Device_bluetooth_disabled: return BytesView(s_icon_device_bluetooth_disabled, 230); break;
+	case IconName::Device_bluetooth_searching: return BytesView(s_icon_device_bluetooth_searching, 406); break;
+	case IconName::Device_brightness_auto: return BytesView(s_icon_device_brightness_auto, 221); break;
+	case IconName::Device_brightness_high: return BytesView(s_icon_device_brightness_high, 270); break;
+	case IconName::Device_brightness_low: return BytesView(s_icon_device_brightness_low, 195); break;
+	case IconName::Device_brightness_medium: return BytesView(s_icon_device_brightness_medium, 165); break;
+	case IconName::Device_data_usage: return BytesView(s_icon_device_data_usage, 279); break;
+	case IconName::Device_developer_mode: return BytesView(s_icon_device_developer_mode, 358); break;
+	case IconName::Device_devices: return BytesView(s_icon_device_devices, 180); break;
+	case IconName::Device_dvr: return BytesView(s_icon_device_dvr, 217); break;
+	case IconName::Device_gps_fixed: return BytesView(s_icon_device_gps_fixed, 333); break;
+	case IconName::Device_gps_not_fixed: return BytesView(s_icon_device_gps_not_fixed, 258); break;
+	case IconName::Device_gps_off: return BytesView(s_icon_device_gps_off, 484); break;
+	case IconName::Device_graphic_eq: return BytesView(s_icon_device_graphic_eq, 108); break;
+	case IconName::Device_location_disabled: return BytesView(s_icon_device_location_disabled, 544); break;
+	case IconName::Device_location_searching: return BytesView(s_icon_device_location_searching, 334); break;
+	case IconName::Device_network_cell: return BytesView(s_icon_device_network_cell, 29); break;
+	case IconName::Device_network_wifi: return BytesView(s_icon_device_network_wifi, 186); break;
+	case IconName::Device_nfc: return BytesView(s_icon_device_nfc, 402); break;
+	case IconName::Device_screen_lock_landscape: return BytesView(s_icon_device_screen_lock_landscape, 324); break;
+	case IconName::Device_screen_lock_portrait: return BytesView(s_icon_device_screen_lock_portrait, 324); break;
+	case IconName::Device_screen_lock_rotation: return BytesView(s_icon_device_screen_lock_rotation, 590); break;
+	case IconName::Device_screen_rotation: return BytesView(s_icon_device_screen_rotation, 461); break;
+	case IconName::Device_sd_storage: return BytesView(s_icon_device_sd_storage, 144); break;
+	case IconName::Device_settings_system_daydream: return BytesView(s_icon_device_settings_system_daydream, 278); break;
+	case IconName::Device_signal_cellular_0_bar: return BytesView(s_icon_device_signal_cellular_0_bar, 15); break;
+	case IconName::Device_signal_cellular_1_bar: return BytesView(s_icon_device_signal_cellular_1_bar, 30); break;
+	case IconName::Device_signal_cellular_2_bar: return BytesView(s_icon_device_signal_cellular_2_bar, 29); break;
+	case IconName::Device_signal_cellular_3_bar: return BytesView(s_icon_device_signal_cellular_3_bar, 29); break;
+	case IconName::Device_signal_cellular_4_bar: return BytesView(s_icon_device_signal_cellular_4_bar, 15); break;
+	case IconName::Device_signal_cellular_connected_no_internet_0_bar: return BytesView(s_icon_device_signal_cellular_connected_no_internet_0_bar, 72); break;
+	case IconName::Device_signal_cellular_connected_no_internet_1_bar: return BytesView(s_icon_device_signal_cellular_connected_no_internet_1_bar, 92); break;
+	case IconName::Device_signal_cellular_connected_no_internet_2_bar: return BytesView(s_icon_device_signal_cellular_connected_no_internet_2_bar, 91); break;
+	case IconName::Device_signal_cellular_connected_no_internet_3_bar: return BytesView(s_icon_device_signal_cellular_connected_no_internet_3_bar, 91); break;
+	case IconName::Device_signal_cellular_connected_no_internet_4_bar: return BytesView(s_icon_device_signal_cellular_connected_no_internet_4_bar, 77); break;
+	case IconName::Device_signal_cellular_no_sim: return BytesView(s_icon_device_signal_cellular_no_sim, 176); break;
+	case IconName::Device_signal_cellular_null: return BytesView(s_icon_device_signal_cellular_null, 48); break;
+	case IconName::Device_signal_cellular_off: return BytesView(s_icon_device_signal_cellular_off, 90); break;
+	case IconName::Device_signal_wifi_0_bar: return BytesView(s_icon_device_signal_wifi_0_bar, 93); break;
+	case IconName::Device_signal_wifi_1_bar: return BytesView(s_icon_device_signal_wifi_1_bar, 196); break;
+	case IconName::Device_signal_wifi_1_bar_lock: return BytesView(s_icon_device_signal_wifi_1_bar_lock, 442); break;
+	case IconName::Device_signal_wifi_2_bar: return BytesView(s_icon_device_signal_wifi_2_bar, 193); break;
+	case IconName::Device_signal_wifi_2_bar_lock: return BytesView(s_icon_device_signal_wifi_2_bar_lock, 422); break;
+	case IconName::Device_signal_wifi_3_bar: return BytesView(s_icon_device_signal_wifi_3_bar, 186); break;
+	case IconName::Device_signal_wifi_3_bar_lock: return BytesView(s_icon_device_signal_wifi_3_bar_lock, 426); break;
+	case IconName::Device_signal_wifi_4_bar: return BytesView(s_icon_device_signal_wifi_4_bar, 93); break;
+	case IconName::Device_signal_wifi_4_bar_lock: return BytesView(s_icon_device_signal_wifi_4_bar_lock, 348); break;
+	case IconName::Device_signal_wifi_off: return BytesView(s_icon_device_signal_wifi_off, 212); break;
+	case IconName::Device_storage: return BytesView(s_icon_device_storage, 119); break;
+	case IconName::Device_usb: return BytesView(s_icon_device_usb, 355); break;
+	case IconName::Device_wallpaper: return BytesView(s_icon_device_wallpaper, 293); break;
+	case IconName::Device_widgets: return BytesView(s_icon_device_widgets, 114); break;
+	case IconName::Device_wifi_lock: return BytesView(s_icon_device_wifi_lock, 309); break;
+	case IconName::Device_wifi_tethering: return BytesView(s_icon_device_wifi_tethering, 460); break;
+	case IconName::Editor_attach_file: return BytesView(s_icon_editor_attach_file, 255); break;
+	case IconName::Editor_attach_money: return BytesView(s_icon_editor_attach_money, 438); break;
+	case IconName::Editor_border_all: return BytesView(s_icon_editor_border_all, 106); break;
+	case IconName::Editor_border_bottom: return BytesView(s_icon_editor_border_bottom, 349); break;
+	case IconName::Editor_border_clear: return BytesView(s_icon_editor_border_clear, 443); break;
+	case IconName::Editor_border_color: return BytesView(s_icon_editor_border_color, 159); break;
+	case IconName::Editor_border_horizontal: return BytesView(s_icon_editor_border_horizontal, 359); break;
+	case IconName::Editor_border_inner: return BytesView(s_icon_editor_border_inner, 307); break;
+	case IconName::Editor_border_left: return BytesView(s_icon_editor_border_left, 369); break;
+	case IconName::Editor_border_outer: return BytesView(s_icon_editor_border_outer, 149); break;
+	case IconName::Editor_border_right: return BytesView(s_icon_editor_border_right, 348); break;
+	case IconName::Editor_border_style: return BytesView(s_icon_editor_border_style, 195); break;
+	case IconName::Editor_border_top: return BytesView(s_icon_editor_border_top, 369); break;
+	case IconName::Editor_border_vertical: return BytesView(s_icon_editor_border_vertical, 361); break;
+	case IconName::Editor_bubble_chart: return BytesView(s_icon_editor_bubble_chart, 256); break;
+	case IconName::Editor_drag_handle: return BytesView(s_icon_editor_drag_handle, 43); break;
+	case IconName::Editor_format_align_center: return BytesView(s_icon_editor_format_align_center, 105); break;
+	case IconName::Editor_format_align_justify: return BytesView(s_icon_editor_format_align_justify, 105); break;
+	case IconName::Editor_format_align_left: return BytesView(s_icon_editor_format_align_left, 107); break;
+	case IconName::Editor_format_align_right: return BytesView(s_icon_editor_format_align_right, 105); break;
+	case IconName::Editor_format_bold: return BytesView(s_icon_editor_format_bold, 228); break;
+	case IconName::Editor_format_clear: return BytesView(s_icon_editor_format_clear, 145); break;
+	case IconName::Editor_format_color_fill: return BytesView(s_icon_editor_format_color_fill, 307); break;
+	case IconName::Editor_format_color_reset: return BytesView(s_icon_editor_format_color_reset, 228); break;
+	case IconName::Editor_format_color_text: return BytesView(s_icon_editor_format_color_text, 91); break;
+	case IconName::Editor_format_indent_decrease: return BytesView(s_icon_editor_format_indent_decrease, 121); break;
+	case IconName::Editor_format_indent_increase: return BytesView(s_icon_editor_format_indent_increase, 120); break;
+	case IconName::Editor_format_italic: return BytesView(s_icon_editor_format_italic, 64); break;
+	case IconName::Editor_format_line_spacing: return BytesView(s_icon_editor_format_line_spacing, 103); break;
+	case IconName::Editor_format_list_bulleted: return BytesView(s_icon_editor_format_list_bulleted, 270); break;
+	case IconName::Editor_format_list_numbered: return BytesView(s_icon_editor_format_list_numbered, 193); break;
+	case IconName::Editor_format_paint: return BytesView(s_icon_editor_format_paint, 162); break;
+	case IconName::Editor_format_quote: return BytesView(s_icon_editor_format_quote, 62); break;
+	case IconName::Editor_format_shapes: return BytesView(s_icon_editor_format_shapes, 339); break;
+	case IconName::Editor_format_size: return BytesView(s_icon_editor_format_size, 74); break;
+	case IconName::Editor_format_strikethrough: return BytesView(s_icon_editor_format_strikethrough, 79); break;
+	case IconName::Editor_format_textdirection_l_to_r: return BytesView(s_icon_editor_format_textdirection_l_to_r, 114); break;
+	case IconName::Editor_format_textdirection_r_to_l: return BytesView(s_icon_editor_format_textdirection_r_to_l, 112); break;
+	case IconName::Editor_format_underlined: return BytesView(s_icon_editor_format_underlined, 122); break;
+	case IconName::Editor_functions: return BytesView(s_icon_editor_functions, 51); break;
+	case IconName::Editor_highlight: return BytesView(s_icon_editor_highlight, 130); break;
+	case IconName::Editor_insert_chart: return BytesView(s_icon_editor_insert_chart, 158); break;
+	case IconName::Editor_insert_comment: return BytesView(s_icon_editor_insert_comment, 139); break;
+	case IconName::Editor_insert_drive_file: return BytesView(s_icon_editor_insert_drive_file, 105); break;
+	case IconName::Editor_insert_emoticon: return BytesView(s_icon_editor_insert_emoticon, 360); break;
+	case IconName::Editor_insert_invitation: return BytesView(s_icon_editor_insert_invitation, 175); break;
+	case IconName::Editor_insert_link: return BytesView(s_icon_editor_insert_link, 286); break;
+	case IconName::Editor_insert_photo: return BytesView(s_icon_editor_insert_photo, 121); break;
+	case IconName::Editor_linear_scale: return BytesView(s_icon_editor_linear_scale, 310); break;
+	case IconName::Editor_merge_type: return BytesView(s_icon_editor_merge_type, 94); break;
+	case IconName::Editor_mode_comment: return BytesView(s_icon_editor_mode_comment, 85); break;
+	case IconName::Editor_mode_edit: return BytesView(s_icon_editor_mode_edit, 158); break;
+	case IconName::Editor_monetization_on: return BytesView(s_icon_editor_monetization_on, 531); break;
+	case IconName::Editor_multiline_chart: return BytesView(s_icon_editor_multiline_chart, 268); break;
+	case IconName::Editor_pie_chart: return BytesView(s_icon_editor_pie_chart, 157); break;
+	case IconName::Editor_pie_chart_outlined: return BytesView(s_icon_editor_pie_chart_outlined, 201); break;
+	case IconName::Editor_publish: return BytesView(s_icon_editor_publish, 55); break;
+	case IconName::Editor_short_text: return BytesView(s_icon_editor_short_text, 35); break;
+	case IconName::Editor_show_chart: return BytesView(s_icon_editor_show_chart, 65); break;
+	case IconName::Editor_space_bar: return BytesView(s_icon_editor_space_bar, 34); break;
+	case IconName::Editor_strikethrough_s: return BytesView(s_icon_editor_strikethrough_s, 1413); break;
+	case IconName::Editor_text_fields: return BytesView(s_icon_editor_text_fields, 76); break;
+	case IconName::Editor_title: return BytesView(s_icon_editor_title, 32); break;
+	case IconName::Editor_vertical_align_bottom: return BytesView(s_icon_editor_vertical_align_bottom, 60); break;
+	case IconName::Editor_vertical_align_center: return BytesView(s_icon_editor_vertical_align_center, 89); break;
+	case IconName::Editor_vertical_align_top: return BytesView(s_icon_editor_vertical_align_top, 50); break;
+	case IconName::Editor_wrap_text: return BytesView(s_icon_editor_wrap_text, 168); break;
+	case IconName::File_attachment: return BytesView(s_icon_file_attachment, 249); break;
+	case IconName::File_cloud: return BytesView(s_icon_file_cloud, 149); break;
+	case IconName::File_cloud_circle: return BytesView(s_icon_file_cloud_circle, 207); break;
+	case IconName::File_cloud_done: return BytesView(s_icon_file_cloud_done, 202); break;
+	case IconName::File_cloud_download: return BytesView(s_icon_file_cloud_download, 185); break;
+	case IconName::File_cloud_off: return BytesView(s_icon_file_cloud_off, 378); break;
+	case IconName::File_cloud_queue: return BytesView(s_icon_file_cloud_queue, 283); break;
+	case IconName::File_cloud_upload: return BytesView(s_icon_file_cloud_upload, 186); break;
+	case IconName::File_create_new_folder: return BytesView(s_icon_file_create_new_folder, 168); break;
+	case IconName::File_file_download: return BytesView(s_icon_file_file_download, 55); break;
+	case IconName::File_file_upload: return BytesView(s_icon_file_file_upload, 48); break;
+	case IconName::File_folder: return BytesView(s_icon_file_folder, 104); break;
+	case IconName::File_folder_open: return BytesView(s_icon_file_folder_open, 127); break;
+	case IconName::File_folder_shared: return BytesView(s_icon_file_folder_shared, 238); break;
+	case IconName::Hardware_cast: return BytesView(s_icon_hardware_cast, 221); break;
+	case IconName::Hardware_cast_connected: return BytesView(s_icon_hardware_cast_connected, 273); break;
+	case IconName::Hardware_computer: return BytesView(s_icon_hardware_computer, 135); break;
+	case IconName::Hardware_desktop_mac: return BytesView(s_icon_hardware_desktop_mac, 139); break;
+	case IconName::Hardware_desktop_windows: return BytesView(s_icon_hardware_desktop_windows, 149); break;
+	case IconName::Hardware_developer_board: return BytesView(s_icon_hardware_developer_board, 235); break;
+	case IconName::Hardware_devices_other: return BytesView(s_icon_hardware_devices_other, 369); break;
+	case IconName::Hardware_dock: return BytesView(s_icon_hardware_dock, 147); break;
+	case IconName::Hardware_gamepad: return BytesView(s_icon_hardware_gamepad, 103); break;
+	case IconName::Hardware_headset: return BytesView(s_icon_hardware_headset, 150); break;
+	case IconName::Hardware_headset_mic: return BytesView(s_icon_hardware_headset_mic, 170); break;
+	case IconName::Hardware_keyboard: return BytesView(s_icon_hardware_keyboard, 320); break;
+	case IconName::Hardware_keyboard_arrow_down: return BytesView(s_icon_hardware_keyboard_arrow_down, 49); break;
+	case IconName::Hardware_keyboard_arrow_left: return BytesView(s_icon_hardware_keyboard_arrow_left, 52); break;
+	case IconName::Hardware_keyboard_arrow_right: return BytesView(s_icon_hardware_keyboard_arrow_right, 51); break;
+	case IconName::Hardware_keyboard_arrow_up: return BytesView(s_icon_hardware_keyboard_arrow_up, 45); break;
+	case IconName::Hardware_keyboard_backspace: return BytesView(s_icon_hardware_keyboard_backspace, 59); break;
+	case IconName::Hardware_keyboard_capslock: return BytesView(s_icon_hardware_keyboard_capslock, 80); break;
+	case IconName::Hardware_keyboard_hide: return BytesView(s_icon_hardware_keyboard_hide, 327); break;
+	case IconName::Hardware_keyboard_return: return BytesView(s_icon_hardware_keyboard_return, 67); break;
+	case IconName::Hardware_keyboard_tab: return BytesView(s_icon_hardware_keyboard_tab, 94); break;
+	case IconName::Hardware_keyboard_voice: return BytesView(s_icon_hardware_keyboard_voice, 226); break;
+	case IconName::Hardware_laptop: return BytesView(s_icon_hardware_laptop, 129); break;
+	case IconName::Hardware_laptop_chromebook: return BytesView(s_icon_hardware_laptop_chromebook, 87); break;
+	case IconName::Hardware_laptop_mac: return BytesView(s_icon_hardware_laptop_mac, 242); break;
+	case IconName::Hardware_laptop_windows: return BytesView(s_icon_hardware_laptop_windows, 144); break;
+	case IconName::Hardware_memory: return BytesView(s_icon_hardware_memory, 284); break;
+	case IconName::Hardware_mouse: return BytesView(s_icon_hardware_mouse, 133); break;
+	case IconName::Hardware_phone_android: return BytesView(s_icon_hardware_phone_android, 143); break;
+	case IconName::Hardware_phone_iphone: return BytesView(s_icon_hardware_phone_iphone, 188); break;
+	case IconName::Hardware_phonelink: return BytesView(s_icon_hardware_phonelink, 180); break;
+	case IconName::Hardware_phonelink_off: return BytesView(s_icon_hardware_phonelink_off, 289); break;
+	case IconName::Hardware_power_input: return BytesView(s_icon_hardware_power_input, 90); break;
+	case IconName::Hardware_router: return BytesView(s_icon_hardware_router, 463); break;
+	case IconName::Hardware_scanner: return BytesView(s_icon_hardware_scanner, 196); break;
+	case IconName::Hardware_security: return BytesView(s_icon_hardware_security, 139); break;
+	case IconName::Hardware_sim_card: return BytesView(s_icon_hardware_sim_card, 227); break;
+	case IconName::Hardware_smartphone: return BytesView(s_icon_hardware_smartphone, 124); break;
+	case IconName::Hardware_speaker: return BytesView(s_icon_hardware_speaker, 322); break;
+	case IconName::Hardware_speaker_group: return BytesView(s_icon_hardware_speaker_group, 403); break;
+	case IconName::Hardware_tablet: return BytesView(s_icon_hardware_tablet, 118); break;
+	case IconName::Hardware_tablet_android: return BytesView(s_icon_hardware_tablet_android, 143); break;
+	case IconName::Hardware_tablet_mac: return BytesView(s_icon_hardware_tablet_mac, 188); break;
+	case IconName::Hardware_toys: return BytesView(s_icon_hardware_toys, 185); break;
+	case IconName::Hardware_tv: return BytesView(s_icon_hardware_tv, 136); break;
+	case IconName::Hardware_videogame_asset: return BytesView(s_icon_hardware_videogame_asset, 297); break;
+	case IconName::Hardware_watch: return BytesView(s_icon_hardware_watch, 217); break;
+	case IconName::Image_add_a_photo: return BytesView(s_icon_image_add_a_photo, 344); break;
+	case IconName::Image_add_to_photos: return BytesView(s_icon_image_add_to_photos, 189); break;
+	case IconName::Image_adjust: return BytesView(s_icon_image_adjust, 228); break;
+	case IconName::Image_assistant: return BytesView(s_icon_image_assistant, 156); break;
+	case IconName::Image_assistant_photo: return BytesView(s_icon_image_assistant_photo, 50); break;
+	case IconName::Image_audiotrack: return BytesView(s_icon_image_audiotrack, 115); break;
+	case IconName::Image_blur_circular: return BytesView(s_icon_image_blur_circular, 1029); break;
+	case IconName::Image_blur_linear: return BytesView(s_icon_image_blur_linear, 925); break;
+	case IconName::Image_blur_off: return BytesView(s_icon_image_blur_off, 1644); break;
+	case IconName::Image_blur_on: return BytesView(s_icon_image_blur_on, 1754); break;
+	case IconName::Image_brightness_1: return BytesView(s_icon_image_brightness_1, 41); break;
+	case IconName::Image_brightness_2: return BytesView(s_icon_image_brightness_2, 127); break;
+	case IconName::Image_brightness_3: return BytesView(s_icon_image_brightness_3, 130); break;
+	case IconName::Image_brightness_4: return BytesView(s_icon_image_brightness_4, 267); break;
+	case IconName::Image_brightness_5: return BytesView(s_icon_image_brightness_5, 195); break;
+	case IconName::Image_brightness_6: return BytesView(s_icon_image_brightness_6, 165); break;
+	case IconName::Image_brightness_7: return BytesView(s_icon_image_brightness_7, 270); break;
+	case IconName::Image_broken_image: return BytesView(s_icon_image_broken_image, 190); break;
+	case IconName::Image_brush: return BytesView(s_icon_image_brush, 202); break;
+	case IconName::Image_burst_mode: return BytesView(s_icon_image_burst_mode, 162); break;
+	case IconName::Image_camera: return BytesView(s_icon_image_camera, 448); break;
+	case IconName::Image_camera_alt: return BytesView(s_icon_image_camera_alt, 276); break;
+	case IconName::Image_camera_front: return BytesView(s_icon_image_camera_front, 282); break;
+	case IconName::Image_camera_rear: return BytesView(s_icon_image_camera_rear, 239); break;
+	case IconName::Image_camera_roll: return BytesView(s_icon_image_camera_roll, 279); break;
+	case IconName::Image_center_focus_strong: return BytesView(s_icon_image_center_focus_strong, 261); break;
+	case IconName::Image_center_focus_weak: return BytesView(s_icon_image_center_focus_weak, 337); break;
+	case IconName::Image_collections: return BytesView(s_icon_image_collections, 170); break;
+	case IconName::Image_color_lens: return BytesView(s_icon_image_color_lens, 461); break;
+	case IconName::Image_colorize: return BytesView(s_icon_image_colorize, 232); break;
+	case IconName::Image_compare: return BytesView(s_icon_image_compare, 162); break;
+	case IconName::Image_control_point: return BytesView(s_icon_image_control_point, 206); break;
+	case IconName::Image_control_point_duplicate: return BytesView(s_icon_image_control_point_duplicate, 327); break;
+	case IconName::Image_crop: return BytesView(s_icon_image_crop, 127); break;
+	case IconName::Image_crop_16_9: return BytesView(s_icon_image_crop_16_9, 112); break;
+	case IconName::Image_crop_3_2: return BytesView(s_icon_image_crop_3_2, 112); break;
+	case IconName::Image_crop_5_4: return BytesView(s_icon_image_crop_5_4, 112); break;
+	case IconName::Image_crop_7_5: return BytesView(s_icon_image_crop_7_5, 112); break;
+	case IconName::Image_crop_din: return BytesView(s_icon_image_crop_din, 112); break;
+	case IconName::Image_crop_free: return BytesView(s_icon_image_crop_free, 186); break;
+	case IconName::Image_crop_landscape: return BytesView(s_icon_image_crop_landscape, 112); break;
+	case IconName::Image_crop_original: return BytesView(s_icon_image_crop_original, 164); break;
+	case IconName::Image_crop_portrait: return BytesView(s_icon_image_crop_portrait, 112); break;
+	case IconName::Image_crop_rotate: return BytesView(s_icon_image_crop_rotate, 350); break;
+	case IconName::Image_crop_square: return BytesView(s_icon_image_crop_square, 112); break;
+	case IconName::Image_dehaze: return BytesView(s_icon_image_dehaze, 62); break;
+	case IconName::Image_details: return BytesView(s_icon_image_details, 38); break;
+	case IconName::Image_edit: return BytesView(s_icon_image_edit, 158); break;
+	case IconName::Image_exposure: return BytesView(s_icon_image_exposure, 192); break;
+	case IconName::Image_exposure_neg_1: return BytesView(s_icon_image_exposure_neg_1, 70); break;
+	case IconName::Image_exposure_neg_2: return BytesView(s_icon_image_exposure_neg_2, 799); break;
+	case IconName::Image_exposure_plus_1: return BytesView(s_icon_image_exposure_plus_1, 98); break;
+	case IconName::Image_exposure_plus_2: return BytesView(s_icon_image_exposure_plus_2, 829); break;
+	case IconName::Image_exposure_zero: return BytesView(s_icon_image_exposure_zero, 1025); break;
+	case IconName::Image_filter: return BytesView(s_icon_image_filter, 210); break;
+	case IconName::Image_filter_1: return BytesView(s_icon_image_filter_1, 190); break;
+	case IconName::Image_filter_2: return BytesView(s_icon_image_filter_2, 262); break;
+	case IconName::Image_filter_3: return BytesView(s_icon_image_filter_3, 286); break;
+	case IconName::Image_filter_4: return BytesView(s_icon_image_filter_4, 204); break;
+	case IconName::Image_filter_5: return BytesView(s_icon_image_filter_5, 248); break;
+	case IconName::Image_filter_6: return BytesView(s_icon_image_filter_6, 289); break;
+	case IconName::Image_filter_7: return BytesView(s_icon_image_filter_7, 191); break;
+	case IconName::Image_filter_8: return BytesView(s_icon_image_filter_8, 366); break;
+	case IconName::Image_filter_9: return BytesView(s_icon_image_filter_9, 284); break;
+	case IconName::Image_filter_9_plus: return BytesView(s_icon_image_filter_9_plus, 329); break;
+	case IconName::Image_filter_b_and_w: return BytesView(s_icon_image_filter_b_and_w, 126); break;
+	case IconName::Image_filter_center_focus: return BytesView(s_icon_image_filter_center_focus, 261); break;
+	case IconName::Image_filter_drama: return BytesView(s_icon_image_filter_drama, 325); break;
+	case IconName::Image_filter_frames: return BytesView(s_icon_image_filter_frames, 161); break;
+	case IconName::Image_filter_hdr: return BytesView(s_icon_image_filter_hdr, 52); break;
+	case IconName::Image_filter_none: return BytesView(s_icon_image_filter_none, 158); break;
+	case IconName::Image_filter_tilt_shift: return BytesView(s_icon_image_filter_tilt_shift, 764); break;
+	case IconName::Image_filter_vintage: return BytesView(s_icon_image_filter_vintage, 815); break;
+	case IconName::Image_flare: return BytesView(s_icon_image_flare, 384); break;
+	case IconName::Image_flash_auto: return BytesView(s_icon_image_flash_auto, 125); break;
+	case IconName::Image_flash_off: return BytesView(s_icon_image_flash_off, 107); break;
+	case IconName::Image_flash_on: return BytesView(s_icon_image_flash_on, 29); break;
+	case IconName::Image_flip: return BytesView(s_icon_image_flip, 270); break;
+	case IconName::Image_gradient: return BytesView(s_icon_image_gradient, 348); break;
+	case IconName::Image_grain: return BytesView(s_icon_image_grain, 598); break;
+	case IconName::Image_grid_off: return BytesView(s_icon_image_grid_off, 424); break;
+	case IconName::Image_grid_on: return BytesView(s_icon_image_grid_on, 283); break;
+	case IconName::Image_hdr_off: return BytesView(s_icon_image_hdr_off, 306); break;
+	case IconName::Image_hdr_on: return BytesView(s_icon_image_hdr_on, 243); break;
+	case IconName::Image_hdr_strong: return BytesView(s_icon_image_hdr_strong, 215); break;
+	case IconName::Image_hdr_weak: return BytesView(s_icon_image_hdr_weak, 224); break;
+	case IconName::Image_healing: return BytesView(s_icon_image_healing, 821); break;
+	case IconName::Image_image: return BytesView(s_icon_image_image, 121); break;
+	case IconName::Image_image_aspect_ratio: return BytesView(s_icon_image_image_aspect_ratio, 201); break;
+	case IconName::Image_iso: return BytesView(s_icon_image_iso, 176); break;
+	case IconName::Image_landscape: return BytesView(s_icon_image_landscape, 52); break;
+	case IconName::Image_leak_add: return BytesView(s_icon_image_leak_add, 254); break;
+	case IconName::Image_leak_remove: return BytesView(s_icon_image_leak_remove, 576); break;
+	case IconName::Image_lens: return BytesView(s_icon_image_lens, 76); break;
+	case IconName::Image_linked_camera: return BytesView(s_icon_image_linked_camera, 398); break;
+	case IconName::Image_looks: return BytesView(s_icon_image_looks, 166); break;
+	case IconName::Image_looks_3: return BytesView(s_icon_image_looks_3, 339); break;
+	case IconName::Image_looks_4: return BytesView(s_icon_image_looks_4, 136); break;
+	case IconName::Image_looks_5: return BytesView(s_icon_image_looks_5, 181); break;
+	case IconName::Image_looks_6: return BytesView(s_icon_image_looks_6, 218); break;
+	case IconName::Image_looks_one: return BytesView(s_icon_image_looks_one, 120); break;
+	case IconName::Image_looks_two: return BytesView(s_icon_image_looks_two, 195); break;
+	case IconName::Image_loupe: return BytesView(s_icon_image_loupe, 216); break;
+	case IconName::Image_monochrome_photos: return BytesView(s_icon_image_monochrome_photos, 709); break;
+	case IconName::Image_movie_creation: return BytesView(s_icon_image_movie_creation, 124); break;
+	case IconName::Image_movie_filter: return BytesView(s_icon_image_movie_filter, 250); break;
+	case IconName::Image_music_note: return BytesView(s_icon_image_music_note, 104); break;
+	case IconName::Image_nature: return BytesView(s_icon_image_nature, 165); break;
+	case IconName::Image_nature_people: return BytesView(s_icon_image_nature_people, 293); break;
+	case IconName::Image_navigate_before: return BytesView(s_icon_image_navigate_before, 45); break;
+	case IconName::Image_navigate_next: return BytesView(s_icon_image_navigate_next, 44); break;
+	case IconName::Image_palette: return BytesView(s_icon_image_palette, 461); break;
+	case IconName::Image_panorama: return BytesView(s_icon_image_panorama, 120); break;
+	case IconName::Image_panorama_fish_eye: return BytesView(s_icon_image_panorama_fish_eye, 152); break;
+	case IconName::Image_panorama_horizontal: return BytesView(s_icon_image_panorama_horizontal, 470); break;
+	case IconName::Image_panorama_vertical: return BytesView(s_icon_image_panorama_vertical, 467); break;
+	case IconName::Image_panorama_wide_angle: return BytesView(s_icon_image_panorama_wide_angle, 487); break;
+	case IconName::Image_photo: return BytesView(s_icon_image_photo, 121); break;
+	case IconName::Image_photo_album: return BytesView(s_icon_image_photo_album, 155); break;
+	case IconName::Image_photo_camera: return BytesView(s_icon_image_photo_camera, 276); break;
+	case IconName::Image_photo_filter: return BytesView(s_icon_image_photo_filter, 251); break;
+	case IconName::Image_photo_library: return BytesView(s_icon_image_photo_library, 170); break;
+	case IconName::Image_picture_as_pdf: return BytesView(s_icon_image_picture_as_pdf, 332); break;
+	case IconName::Image_portrait: return BytesView(s_icon_image_portrait, 254); break;
+	case IconName::Image_remove_red_eye: return BytesView(s_icon_image_remove_red_eye, 230); break;
+	case IconName::Image_rotate_90_degrees_ccw: return BytesView(s_icon_image_rotate_90_degrees_ccw, 370); break;
+	case IconName::Image_rotate_left: return BytesView(s_icon_image_rotate_left, 399); break;
+	case IconName::Image_rotate_right: return BytesView(s_icon_image_rotate_right, 394); break;
+	case IconName::Image_slideshow: return BytesView(s_icon_image_slideshow, 128); break;
+	case IconName::Image_straighten: return BytesView(s_icon_image_straighten, 177); break;
+	case IconName::Image_style: return BytesView(s_icon_image_style, 495); break;
+	case IconName::Image_switch_camera: return BytesView(s_icon_image_switch_camera, 159); break;
+	case IconName::Image_switch_video: return BytesView(s_icon_image_switch_video, 156); break;
+	case IconName::Image_tag_faces: return BytesView(s_icon_image_tag_faces, 360); break;
+	case IconName::Image_texture: return BytesView(s_icon_image_texture, 330); break;
+	case IconName::Image_timelapse: return BytesView(s_icon_image_timelapse, 262); break;
+	case IconName::Image_timer: return BytesView(s_icon_image_timer, 288); break;
+	case IconName::Image_timer_10: return BytesView(s_icon_image_timer_10, 2559); break;
+	case IconName::Image_timer_3: return BytesView(s_icon_image_timer_3, 2861); break;
+	case IconName::Image_timer_off: return BytesView(s_icon_image_timer_off, 494); break;
+	case IconName::Image_tonality: return BytesView(s_icon_image_tonality, 439); break;
+	case IconName::Image_transform: return BytesView(s_icon_image_transform, 150); break;
+	case IconName::Image_tune: return BytesView(s_icon_image_tune, 176); break;
+	case IconName::Image_view_comfy: return BytesView(s_icon_image_view_comfy, 262); break;
+	case IconName::Image_view_compact: return BytesView(s_icon_image_view_compact, 63); break;
+	case IconName::Image_wb_auto: return BytesView(s_icon_image_wb_auto, 277); break;
+	case IconName::Image_wb_cloudy: return BytesView(s_icon_image_wb_cloudy, 149); break;
+	case IconName::Image_wb_incandescent: return BytesView(s_icon_image_wb_incandescent, 290); break;
+	case IconName::Image_wb_iridescent: return BytesView(s_icon_image_wb_iridescent, 310); break;
+	case IconName::Image_wb_sunny: return BytesView(s_icon_image_wb_sunny, 403); break;
+	case IconName::Maps_add_location: return BytesView(s_icon_maps_add_location, 113); break;
+	case IconName::Maps_beenhere: return BytesView(s_icon_maps_beenhere, 178); break;
+	case IconName::Maps_directions: return BytesView(s_icon_maps_directions, 250); break;
+	case IconName::Maps_directions_bike: return BytesView(s_icon_maps_directions_bike, 616); break;
+	case IconName::Maps_directions_boat: return BytesView(s_icon_maps_directions_boat, 538); break;
+	case IconName::Maps_directions_bus: return BytesView(s_icon_maps_directions_bus, 368); break;
+	case IconName::Maps_directions_car: return BytesView(s_icon_maps_directions_car, 356); break;
+	case IconName::Maps_directions_railway: return BytesView(s_icon_maps_directions_railway, 196); break;
+	case IconName::Maps_directions_run: return BytesView(s_icon_maps_directions_run, 330); break;
+	case IconName::Maps_directions_subway: return BytesView(s_icon_maps_directions_subway, 290); break;
+	case IconName::Maps_directions_transit: return BytesView(s_icon_maps_directions_transit, 290); break;
+	case IconName::Maps_directions_walk: return BytesView(s_icon_maps_directions_walk, 284); break;
+	case IconName::Maps_edit_location: return BytesView(s_icon_maps_edit_location, 228); break;
+	case IconName::Maps_ev_station: return BytesView(s_icon_maps_ev_station, 418); break;
+	case IconName::Maps_flight: return BytesView(s_icon_maps_flight, 114); break;
+	case IconName::Maps_hotel: return BytesView(s_icon_maps_hotel, 139); break;
+	case IconName::Maps_layers: return BytesView(s_icon_maps_layers, 113); break;
+	case IconName::Maps_layers_clear: return BytesView(s_icon_maps_layers_clear, 246); break;
+	case IconName::Maps_local_activity: return BytesView(s_icon_maps_local_activity, 295); break;
+	case IconName::Maps_local_airport: return BytesView(s_icon_maps_local_airport, 107); break;
+	case IconName::Maps_local_atm: return BytesView(s_icon_maps_local_atm, 275); break;
+	case IconName::Maps_local_bar: return BytesView(s_icon_maps_local_bar, 92); break;
+	case IconName::Maps_local_cafe: return BytesView(s_icon_maps_local_cafe, 145); break;
+	case IconName::Maps_local_car_wash: return BytesView(s_icon_maps_local_car_wash, 558); break;
+	case IconName::Maps_local_convenience_store: return BytesView(s_icon_maps_local_convenience_store, 145); break;
+	case IconName::Maps_local_dining: return BytesView(s_icon_maps_local_dining, 297); break;
+	case IconName::Maps_local_drink: return BytesView(s_icon_maps_local_drink, 189); break;
+	case IconName::Maps_local_florist: return BytesView(s_icon_maps_local_florist, 598); break;
+	case IconName::Maps_local_gas_station: return BytesView(s_icon_maps_local_gas_station, 410); break;
+	case IconName::Maps_local_grocery_store: return BytesView(s_icon_maps_local_grocery_store, 470); break;
+	case IconName::Maps_local_hospital: return BytesView(s_icon_maps_local_hospital, 153); break;
+	case IconName::Maps_local_hotel: return BytesView(s_icon_maps_local_hotel, 139); break;
+	case IconName::Maps_local_laundry_service: return BytesView(s_icon_maps_local_laundry_service, 392); break;
+	case IconName::Maps_local_library: return BytesView(s_icon_maps_local_library, 178); break;
+	case IconName::Maps_local_mall: return BytesView(s_icon_maps_local_mall, 257); break;
+	case IconName::Maps_local_movies: return BytesView(s_icon_maps_local_movies, 214); break;
+	case IconName::Maps_local_offer: return BytesView(s_icon_maps_local_offer, 277); break;
+	case IconName::Maps_local_parking: return BytesView(s_icon_maps_local_parking, 128); break;
+	case IconName::Maps_local_pharmacy: return BytesView(s_icon_maps_local_pharmacy, 135); break;
+	case IconName::Maps_local_phone: return BytesView(s_icon_maps_local_phone, 263); break;
+	case IconName::Maps_local_pizza: return BytesView(s_icon_maps_local_pizza, 205); break;
+	case IconName::Maps_local_play: return BytesView(s_icon_maps_local_play, 295); break;
+	case IconName::Maps_local_post_office: return BytesView(s_icon_maps_local_post_office, 126); break;
+	case IconName::Maps_local_printshop: return BytesView(s_icon_maps_local_printshop, 193); break;
+	case IconName::Maps_local_see: return BytesView(s_icon_maps_local_see, 276); break;
+	case IconName::Maps_local_shipping: return BytesView(s_icon_maps_local_shipping, 313); break;
+	case IconName::Maps_local_taxi: return BytesView(s_icon_maps_local_taxi, 370); break;
+	case IconName::Maps_map: return BytesView(s_icon_maps_map, 225); break;
+	case IconName::Maps_my_location: return BytesView(s_icon_maps_my_location, 333); break;
+	case IconName::Maps_navigation: return BytesView(s_icon_maps_navigation, 42); break;
+	case IconName::Maps_near_me: return BytesView(s_icon_maps_near_me, 51); break;
+	case IconName::Maps_person_pin: return BytesView(s_icon_maps_person_pin, 279); break;
+	case IconName::Maps_person_pin_circle: return BytesView(s_icon_maps_person_pin_circle, 242); break;
+	case IconName::Maps_pin_drop: return BytesView(s_icon_maps_pin_drop, 154); break;
+	case IconName::Maps_place: return BytesView(s_icon_maps_place, 134); break;
+	case IconName::Maps_rate_review: return BytesView(s_icon_maps_rate_review, 219); break;
+	case IconName::Maps_restaurant: return BytesView(s_icon_maps_restaurant, 149); break;
+	case IconName::Maps_restaurant_menu: return BytesView(s_icon_maps_restaurant_menu, 297); break;
+	case IconName::Maps_satellite: return BytesView(s_icon_maps_satellite, 209); break;
+	case IconName::Maps_store_mall_directory: return BytesView(s_icon_maps_store_mall_directory, 114); break;
+	case IconName::Maps_streetview: return BytesView(s_icon_maps_streetview, 266); break;
+	case IconName::Maps_subway: return BytesView(s_icon_maps_subway, 363); break;
+	case IconName::Maps_terrain: return BytesView(s_icon_maps_terrain, 52); break;
+	case IconName::Maps_traffic: return BytesView(s_icon_maps_traffic, 516); break;
+	case IconName::Maps_train: return BytesView(s_icon_maps_train, 312); break;
+	case IconName::Maps_tram: return BytesView(s_icon_maps_tram, 309); break;
+	case IconName::Maps_transfer_within_a_station: return BytesView(s_icon_maps_transfer_within_a_station, 380); break;
+	case IconName::Maps_zoom_out_map: return BytesView(s_icon_maps_zoom_out_map, 230); break;
+	case IconName::Navigation_apps: return BytesView(s_icon_navigation_apps, 191); break;
+	case IconName::Navigation_arrow_back: return BytesView(s_icon_navigation_arrow_back, 65); break;
+	case IconName::Navigation_arrow_downward: return BytesView(s_icon_navigation_arrow_downward, 65); break;
+	case IconName::Navigation_arrow_drop_down: return BytesView(s_icon_navigation_arrow_drop_down, 14); break;
+	case IconName::Navigation_arrow_drop_down_circle: return BytesView(s_icon_navigation_arrow_drop_down_circle, 94); break;
+	case IconName::Navigation_arrow_drop_up: return BytesView(s_icon_navigation_arrow_drop_up, 15); break;
+	case IconName::Navigation_arrow_forward: return BytesView(s_icon_navigation_arrow_forward, 60); break;
+	case IconName::Navigation_arrow_upward: return BytesView(s_icon_navigation_arrow_upward, 65); break;
+	case IconName::Navigation_cancel: return BytesView(s_icon_navigation_cancel, 177); break;
+	case IconName::Navigation_check: return BytesView(s_icon_navigation_check, 47); break;
+	case IconName::Navigation_chevron_left: return BytesView(s_icon_navigation_chevron_left, 45); break;
+	case IconName::Navigation_chevron_right: return BytesView(s_icon_navigation_chevron_right, 44); break;
+	case IconName::Navigation_close: return BytesView(s_icon_navigation_close, 94); break;
+	case IconName::Navigation_expand_less: return BytesView(s_icon_navigation_expand_less, 45); break;
+	case IconName::Navigation_expand_more: return BytesView(s_icon_navigation_expand_more, 44); break;
+	case IconName::Navigation_first_page: return BytesView(s_icon_navigation_first_page, 60); break;
+	case IconName::Navigation_fullscreen: return BytesView(s_icon_navigation_fullscreen, 118); break;
+	case IconName::Navigation_fullscreen_exit: return BytesView(s_icon_navigation_fullscreen_exit, 118); break;
+	case IconName::Navigation_last_page: return BytesView(s_icon_navigation_last_page, 63); break;
+	case IconName::Navigation_menu: return BytesView(s_icon_navigation_menu, 63); break;
+	case IconName::Navigation_more_horiz: return BytesView(s_icon_navigation_more_horiz, 223); break;
+	case IconName::Navigation_more_vert: return BytesView(s_icon_navigation_more_vert, 225); break;
+	case IconName::Navigation_refresh: return BytesView(s_icon_navigation_refresh, 217); break;
+	case IconName::Navigation_subdirectory_arrow_left: return BytesView(s_icon_navigation_subdirectory_arrow_left, 72); break;
+	case IconName::Navigation_subdirectory_arrow_right: return BytesView(s_icon_navigation_subdirectory_arrow_right, 156); break;
+	case IconName::Navigation_unfold_less: return BytesView(s_icon_navigation_unfold_less, 124); break;
+	case IconName::Navigation_unfold_more: return BytesView(s_icon_navigation_unfold_more, 118); break;
+	case IconName::Notification_adb: return BytesView(s_icon_notification_adb, 367); break;
+	case IconName::Notification_airline_seat_flat: return BytesView(s_icon_notification_airline_seat_flat, 216); break;
+	case IconName::Notification_airline_seat_flat_angled: return BytesView(s_icon_notification_airline_seat_flat_angled, 291); break;
+	case IconName::Notification_airline_seat_individual_suite: return BytesView(s_icon_notification_airline_seat_individual_suite, 121); break;
+	case IconName::Notification_airline_seat_legroom_extra: return BytesView(s_icon_notification_airline_seat_legroom_extra, 243); break;
+	case IconName::Notification_airline_seat_legroom_normal: return BytesView(s_icon_notification_airline_seat_legroom_normal, 181); break;
+	case IconName::Notification_airline_seat_legroom_reduced: return BytesView(s_icon_notification_airline_seat_legroom_reduced, 207); break;
+	case IconName::Notification_airline_seat_recline_extra: return BytesView(s_icon_notification_airline_seat_recline_extra, 504); break;
+	case IconName::Notification_airline_seat_recline_normal: return BytesView(s_icon_notification_airline_seat_recline_normal, 438); break;
+	case IconName::Notification_bluetooth_audio: return BytesView(s_icon_notification_bluetooth_audio, 406); break;
+	case IconName::Notification_confirmation_number: return BytesView(s_icon_notification_confirmation_number, 253); break;
+	case IconName::Notification_disc_full: return BytesView(s_icon_notification_disc_full, 196); break;
+	case IconName::Notification_do_not_disturb: return BytesView(s_icon_notification_do_not_disturb, 248); break;
+	case IconName::Notification_do_not_disturb_alt: return BytesView(s_icon_notification_do_not_disturb_alt, 213); break;
+	case IconName::Notification_do_not_disturb_off: return BytesView(s_icon_notification_do_not_disturb_off, 264); break;
+	case IconName::Notification_do_not_disturb_on: return BytesView(s_icon_notification_do_not_disturb_on, 98); break;
+	case IconName::Notification_drive_eta: return BytesView(s_icon_notification_drive_eta, 354); break;
+	case IconName::Notification_enhanced_encryption: return BytesView(s_icon_notification_enhanced_encryption, 276); break;
+	case IconName::Notification_event_available: return BytesView(s_icon_notification_event_available, 220); break;
+	case IconName::Notification_event_busy: return BytesView(s_icon_notification_event_busy, 258); break;
+	case IconName::Notification_event_note: return BytesView(s_icon_notification_event_note, 194); break;
+	case IconName::Notification_folder_special: return BytesView(s_icon_notification_folder_special, 199); break;
+	case IconName::Notification_live_tv: return BytesView(s_icon_notification_live_tv, 173); break;
+	case IconName::Notification_mms: return BytesView(s_icon_notification_mms, 113); break;
+	case IconName::Notification_more: return BytesView(s_icon_notification_more, 351); break;
+	case IconName::Notification_network_check: return BytesView(s_icon_notification_network_check, 465); break;
+	case IconName::Notification_network_locked: return BytesView(s_icon_notification_network_locked, 300); break;
+	case IconName::Notification_no_encryption: return BytesView(s_icon_notification_no_encryption, 299); break;
+	case IconName::Notification_ondemand_video: return BytesView(s_icon_notification_ondemand_video, 149); break;
+	case IconName::Notification_personal_video: return BytesView(s_icon_notification_personal_video, 136); break;
+	case IconName::Notification_phone_bluetooth_speaker: return BytesView(s_icon_notification_phone_bluetooth_speaker, 444); break;
+	case IconName::Notification_phone_forwarded: return BytesView(s_icon_notification_phone_forwarded, 295); break;
+	case IconName::Notification_phone_in_talk: return BytesView(s_icon_notification_phone_in_talk, 362); break;
+	case IconName::Notification_phone_locked: return BytesView(s_icon_notification_phone_locked, 476); break;
+	case IconName::Notification_phone_missed: return BytesView(s_icon_notification_phone_missed, 547); break;
+	case IconName::Notification_phone_paused: return BytesView(s_icon_notification_phone_paused, 304); break;
+	case IconName::Notification_power: return BytesView(s_icon_notification_power, 125); break;
+	case IconName::Notification_priority_high: return BytesView(s_icon_notification_priority_high, 59); break;
+	case IconName::Notification_rv_hookup: return BytesView(s_icon_notification_rv_hookup, 259); break;
+	case IconName::Notification_sd_card: return BytesView(s_icon_notification_sd_card, 144); break;
+	case IconName::Notification_sim_card_alert: return BytesView(s_icon_notification_sim_card_alert, 128); break;
+	case IconName::Notification_sms: return BytesView(s_icon_notification_sms, 142); break;
+	case IconName::Notification_sms_failed: return BytesView(s_icon_notification_sms_failed, 128); break;
+	case IconName::Notification_sync: return BytesView(s_icon_notification_sync, 236); break;
+	case IconName::Notification_sync_disabled: return BytesView(s_icon_notification_sync_disabled, 482); break;
+	case IconName::Notification_sync_problem: return BytesView(s_icon_notification_sync_problem, 304); break;
+	case IconName::Notification_system_update: return BytesView(s_icon_notification_system_update, 161); break;
+	case IconName::Notification_tap_and_play: return BytesView(s_icon_notification_tap_and_play, 290); break;
+	case IconName::Notification_time_to_leave: return BytesView(s_icon_notification_time_to_leave, 354); break;
+	case IconName::Notification_vibration: return BytesView(s_icon_notification_vibration, 198); break;
+	case IconName::Notification_voice_chat: return BytesView(s_icon_notification_voice_chat, 132); break;
+	case IconName::Notification_vpn_lock: return BytesView(s_icon_notification_vpn_lock, 583); break;
+	case IconName::Notification_wc: return BytesView(s_icon_notification_wc, 308); break;
+	case IconName::Notification_wifi: return BytesView(s_icon_notification_wifi, 161); break;
+	case IconName::Places_ac_unit: return BytesView(s_icon_places_ac_unit, 319); break;
+	case IconName::Places_airport_shuttle: return BytesView(s_icon_places_airport_shuttle, 334); break;
+	case IconName::Places_all_inclusive: return BytesView(s_icon_places_all_inclusive, 598); break;
+	case IconName::Places_beach_access: return BytesView(s_icon_places_beach_access, 363); break;
+	case IconName::Places_business_center: return BytesView(s_icon_places_business_center, 313); break;
+	case IconName::Places_casino: return BytesView(s_icon_places_casino, 459); break;
+	case IconName::Places_child_care: return BytesView(s_icon_places_child_care, 1042); break;
+	case IconName::Places_child_friendly: return BytesView(s_icon_places_child_friendly, 413); break;
+	case IconName::Places_fitness_center: return BytesView(s_icon_places_fitness_center, 257); break;
+	case IconName::Places_free_breakfast: return BytesView(s_icon_places_free_breakfast, 140); break;
+	case IconName::Places_golf_course: return BytesView(s_icon_places_golf_course, 205); break;
+	case IconName::Places_hot_tub: return BytesView(s_icon_places_hot_tub, 741); break;
+	case IconName::Places_kitchen: return BytesView(s_icon_places_kitchen, 182); break;
+	case IconName::Places_pool: return BytesView(s_icon_places_pool, 1593); break;
+	case IconName::Places_room_service: return BytesView(s_icon_places_room_service, 168); break;
+	case IconName::Places_rv_hookup: return BytesView(s_icon_places_rv_hookup, 259); break;
+	case IconName::Places_smoke_free: return BytesView(s_icon_places_smoke_free, 462); break;
+	case IconName::Places_smoking_rooms: return BytesView(s_icon_places_smoking_rooms, 504); break;
+	case IconName::Places_spa: return BytesView(s_icon_places_spa, 574); break;
+	case IconName::Social_cake: return BytesView(s_icon_social_cake, 598); break;
+	case IconName::Social_domain: return BytesView(s_icon_social_domain, 290); break;
+	case IconName::Social_group: return BytesView(s_icon_social_group, 304); break;
+	case IconName::Social_group_add: return BytesView(s_icon_social_group_add, 394); break;
+	case IconName::Social_location_city: return BytesView(s_icon_social_location_city, 237); break;
+	case IconName::Social_mood: return BytesView(s_icon_social_mood, 360); break;
+	case IconName::Social_mood_bad: return BytesView(s_icon_social_mood_bad, 354); break;
+	case IconName::Social_notifications: return BytesView(s_icon_social_notifications, 172); break;
+	case IconName::Social_notifications_active: return BytesView(s_icon_social_notifications_active, 433); break;
+	case IconName::Social_notifications_none: return BytesView(s_icon_social_notifications_none, 224); break;
+	case IconName::Social_notifications_off: return BytesView(s_icon_social_notifications_off, 447); break;
+	case IconName::Social_notifications_paused: return BytesView(s_icon_social_notifications_paused, 250); break;
+	case IconName::Social_pages: return BytesView(s_icon_social_pages, 186); break;
+	case IconName::Social_party_mode: return BytesView(s_icon_social_party_mode, 355); break;
+	case IconName::Social_people: return BytesView(s_icon_social_people, 304); break;
+	case IconName::Social_people_outline: return BytesView(s_icon_social_people_outline, 537); break;
+	case IconName::Social_person: return BytesView(s_icon_social_person, 131); break;
+	case IconName::Social_person_add: return BytesView(s_icon_social_person_add, 178); break;
+	case IconName::Social_person_outline: return BytesView(s_icon_social_person_outline, 343); break;
+	case IconName::Social_plus_one: return BytesView(s_icon_social_plus_one, 89); break;
+	case IconName::Social_poll: return BytesView(s_icon_social_poll, 158); break;
+	case IconName::Social_public: return BytesView(s_icon_social_public, 334); break;
+	case IconName::Social_school: return BytesView(s_icon_social_school, 88); break;
+	case IconName::Social_sentiment_dissatisfied: return BytesView(s_icon_social_sentiment_dissatisfied, 414); break;
+	case IconName::Social_sentiment_neutral: return BytesView(s_icon_social_sentiment_neutral, 318); break;
+	case IconName::Social_sentiment_satisfied: return BytesView(s_icon_social_sentiment_satisfied, 416); break;
+	case IconName::Social_sentiment_very_dissatisfied: return BytesView(s_icon_social_sentiment_very_dissatisfied, 463); break;
+	case IconName::Social_sentiment_very_satisfied: return BytesView(s_icon_social_sentiment_very_satisfied, 334); break;
+	case IconName::Social_share: return BytesView(s_icon_social_share, 479); break;
+	case IconName::Social_whatshot: return BytesView(s_icon_social_whatshot, 348); break;
+	case IconName::Stappler_fav_icon: return BytesView(s_icon_stappler_fav_icon, 89); break;
+	case IconName::Stappler_fav_outline: return BytesView(s_icon_stappler_fav_outline, 211); break;
+	case IconName::Stappler_layout_horizontal: return BytesView(s_icon_stappler_layout_horizontal, 54); break;
+	case IconName::Stappler_layout_vertical: return BytesView(s_icon_stappler_layout_vertical, 54); break;
+	case IconName::Stappler_text_format_100: return BytesView(s_icon_stappler_text_format_100, 163); break;
+	case IconName::Stappler_text_format_125: return BytesView(s_icon_stappler_text_format_125, 193); break;
+	case IconName::Stappler_text_format_150: return BytesView(s_icon_stappler_text_format_150, 224); break;
+	case IconName::Stappler_text_format_175: return BytesView(s_icon_stappler_text_format_175, 257); break;
+	case IconName::Stappler_text_format_200: return BytesView(s_icon_stappler_text_format_200, 312); break;
+	case IconName::Toggle_check_box: return BytesView(s_icon_toggle_check_box, 136); break;
+	case IconName::Toggle_check_box_outline_blank: return BytesView(s_icon_toggle_check_box_outline_blank, 110); break;
+	case IconName::Toggle_radio_button_checked: return BytesView(s_icon_toggle_radio_button_checked, 227); break;
+	case IconName::Toggle_radio_button_unchecked: return BytesView(s_icon_toggle_radio_button_unchecked, 152); break;
+	case IconName::Toggle_star_half: return BytesView(s_icon_toggle_star_half, 166); break;
+	default: break;
+	}
 
-static uint16_t s_iconCount = 945;
-
+	return BytesView();
+}
 
 NS_MD_END

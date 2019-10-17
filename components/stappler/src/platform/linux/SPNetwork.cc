@@ -29,9 +29,7 @@ THE SOFTWARE.
 
 #if (LINUX)
 
-NS_SP_PLATFORM_BEGIN
-
-namespace network {
+namespace stappler::platform::network {
 	bool _init = false;
 	Function<void(bool isOnline)> _callback;
 
@@ -42,7 +40,5 @@ namespace network {
 		return true;
 	}
 }
-
-NS_SP_PLATFORM_END
 
 #endif

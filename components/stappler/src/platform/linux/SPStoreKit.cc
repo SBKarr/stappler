@@ -129,7 +129,7 @@ public:
 
 		auto features = new std::map<std::string, data::Value>();
 		auto &thread = storage::thread(_handle);
-		thread.perform([this, features] (const Task &) -> bool {
+		thread.perform([this, features] (const thread::Task &) -> bool {
 			_products.get([&] (data::Value &&d) {
 				if (d.isArray()) {
 					for (auto &it : d.getArray()) {
@@ -140,7 +140,7 @@ public:
 				}
 			})->perform();
 			return true;
-		}, [this, features] (const Task &, bool) {
+		}, [this, features] (const thread::Task &, bool) {
 			auto &f = *features;
 			for (auto &it : f) {
 				onTransactionRestored(it.first, it.second);
@@ -274,7 +274,7 @@ public:
 		auto data = new data::Value;
 
 		auto &thread = storage::thread(_handle);
-		thread.perform([this, productId, data] (const Task &) -> bool {
+		thread.perform([this, productId, data] (const thread::Task &) -> bool {
 			bool ret = false;
 			_products.get([&] (data::Value &&d) {
 				if (d.isArray()) {
@@ -289,7 +289,7 @@ public:
 				}
 			})->select(productId)->perform();
 			return ret;
-		}, [this, productId, data] (const Task &, bool success) {
+		}, [this, productId, data] (const thread::Task &, bool success) {
 			if (success) {
 				onTransactionCompleted(productId, *data);
 			} else {
@@ -326,7 +326,7 @@ public:
 
 		auto features = new std::map<std::string, data::Value>();
 		auto &thread = storage::thread(_handle);
-		thread.perform([this, val, features] (const Task &) -> bool {
+		thread.perform([this, val, features] (const thread::Task &) -> bool {
 			for (auto &it : val) {
 				data::Value info;
 				_products.get([&] (data::Value &&d) {
@@ -350,7 +350,7 @@ public:
 				}
 			}
 			return true;
-		}, [this, features] (const Task &, bool) {
+		}, [this, features] (const thread::Task &, bool) {
 			auto &f = *features;
 			for (auto &it : f) {
 				onFeatureInfo(it.first, it.second);
@@ -381,9 +381,7 @@ protected:
 
 NS_SP_END
 
-NS_SP_PLATFORM_BEGIN
-
-namespace storekit {
+namespace stappler::platform::storekit {
 	void _saveProducts(const std::unordered_map<std::string, StoreProduct *> &val) {
 		StoreKitLinux::getInstance()->saveProductDictionary(val);
 	}
@@ -404,11 +402,9 @@ namespace storekit {
 	}
 }
 
-NS_SP_PLATFORM_END
 #else
-NS_SP_PLATFORM_BEGIN
 
-namespace storekit {
+namespace stappler::platform::storekit {
 	void _saveProducts(const std::unordered_map<std::string, StoreProduct *> &val) {
 
 	}
@@ -429,6 +425,5 @@ namespace storekit {
 	}
 }
 
-NS_SP_PLATFORM_END
 #endif
 #endif

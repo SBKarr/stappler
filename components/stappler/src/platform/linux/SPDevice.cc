@@ -34,9 +34,8 @@ THE SOFTWARE.
 #if (LINUX)
 
 #ifndef SP_RESTRICT
-NS_SP_PLATFORM_BEGIN
 
-namespace desktop {
+namespace stappler::platform::desktop {
 	void setScreenSize(const Size &size);
 	Size getScreenSize();
 	bool isTablet();
@@ -46,12 +45,9 @@ namespace desktop {
 	String getAppVersion();
 }
 
-NS_SP_PLATFORM_END
 #endif
 
-NS_SP_PLATFORM_BEGIN
-
-namespace device {
+namespace stappler::platform::device {
 	bool _isTablet() {
 #ifndef SP_RESTRICT
 		return desktop::isTablet();
@@ -66,7 +62,7 @@ namespace device {
 		auto path = platform::filesystem::_getCachesPath();
 		auto devIdPath = path + "/.devid";
 		if (stappler::filesystem::exists(devIdPath)) {
-			auto data = stappler::filesystem::readFile(devIdPath);
+			auto data = stappler::filesystem::readIntoMemory(devIdPath);
 			return base16::encode(data);
 		} else {
 			Bytes data; data.resize(16);
@@ -166,7 +162,5 @@ namespace device {
 #endif
 	}
 }
-
-NS_SP_PLATFORM_END
 
 #endif

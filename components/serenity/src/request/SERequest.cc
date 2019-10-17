@@ -36,6 +36,7 @@ THE SOFTWARE.
 
 #include "Session.h"
 
+#include "SPUrl.h"
 #include "Output.h"
 #include "TemplateCache.h"
 

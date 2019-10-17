@@ -31,7 +31,13 @@ THE SOFTWARE.
 #include "SPString.h"
 #include "SPDataStream.h"
 
+#include "lz4frame.h"
+#include "lz4hc.h"
+
 NS_SP_EXT_BEGIN(data)
+
+EncodeFormat EncodeFormat::CborCompressed(EncodeFormat::Cbor, EncodeFormat::LZ4HCCompression);
+EncodeFormat EncodeFormat::JsonCompressed(EncodeFormat::Json, EncodeFormat::LZ4HCCompression);
 
 Value parseCommandLineOptions(int argc, const char * argv[],
 		const Function<int (Value &ret, char c, const char *str)> &switchCallback,
@@ -427,6 +433,168 @@ auto ValueTemplate<memory::StandartInterface>::convert<memory::PoolInterface>() 
 		break;
 	}
 	return ValueTemplate<memory::PoolInterface>();
+}
+
+static size_t getBoundSize(size_t size, EncodeFormat::Compression c) {
+	switch (c) {
+	case EncodeFormat::LZ4Compression:
+	case EncodeFormat::LZ4HCCompression: {
+		if (size < LZ4_MAX_INPUT_SIZE) {
+			return LZ4_compressBound(size) + ((size <= 0xFFFF) ? 2 : 4);
+		}
+		return 0;
+		break;
+	}
+	case EncodeFormat::BrotliLowCompression:
+		break;
+	case EncodeFormat::BrotliHighCompression:
+		break;
+	case EncodeFormat::NoCompression:
+		break;
+	}
+	return 0;
+}
+
+thread_local uint8_t tl_lz4HCEncodeState[std::max(sizeof(LZ4_streamHC_t), sizeof(LZ4_stream_t))];
+thread_local uint8_t tl_compressBuffer[128_KiB];
+
+static size_t compressData(const uint8_t *src, size_t srcSize, uint8_t *dest, size_t destSize, EncodeFormat::Compression c) {
+	switch (c) {
+	case EncodeFormat::LZ4Compression: {
+		const int offSize = ((srcSize <= 0xFFFF) ? 2 : 4);
+		const int ret = LZ4_compress_fast_extState(tl_lz4HCEncodeState, (const char *)src, (char *)dest + offSize, srcSize, destSize + offSize, 1);
+		if (ret > 0) {
+			if (srcSize <= 0xFFFF) {
+				uint16_t sz = srcSize;
+				memcpy(dest, &sz, sizeof(sz));
+			} else {
+				uint32_t sz = srcSize;
+				memcpy(dest, &sz, sizeof(sz));
+			}
+			return ret + offSize;
+		}
+		break;
+	}
+	case EncodeFormat::LZ4HCCompression: {
+		const int offSize = ((srcSize <= 0xFFFF) ? 2 : 4);
+		const int ret = LZ4_compress_HC_extStateHC(tl_lz4HCEncodeState, (const char *)src, (char *)dest + offSize, srcSize, destSize + offSize, LZ4HC_CLEVEL_MAX);
+		if (ret > 0) {
+			if (srcSize <= 0xFFFF) {
+				uint16_t sz = srcSize;
+				memcpy(dest, &sz, sizeof(sz));
+			} else {
+				uint32_t sz = srcSize;
+				memcpy(dest, &sz, sizeof(sz));
+			}
+			return ret + offSize;
+		}
+		break;
+	}
+	case EncodeFormat::BrotliLowCompression:
+		break;
+	case EncodeFormat::BrotliHighCompression:
+		break;
+	case EncodeFormat::NoCompression:
+		break;
+	}
+	return 0;
+}
+
+static void writeCompressionMark(uint8_t *data, size_t sourceSize, EncodeFormat::Compression c) {
+	switch (c) {
+	case EncodeFormat::LZ4Compression:
+	case EncodeFormat::LZ4HCCompression:
+		if (sourceSize <= 0xFFFF) {
+			memcpy(data, "LZ4S", 4);
+		} else {
+			memcpy(data, "LZ4W", 4);
+		}
+		break;
+	case EncodeFormat::BrotliLowCompression:
+	case EncodeFormat::BrotliHighCompression:
+		memcpy(data, "SPBr", 4);
+		break;
+	case EncodeFormat::NoCompression:
+		break;
+	}
+}
+
+template <typename Interface>
+static inline auto doCompress(const uint8_t *src, size_t size, EncodeFormat::Compression c, bool conditional) -> typename Interface::BytesType {
+	auto bufferSize = getBoundSize(size, c);
+	if (bufferSize == 0) {
+		return typename Interface::BytesType();
+	} else if (bufferSize <= sizeof(tl_compressBuffer)) {
+		auto encodeSize = compressData(src, size, tl_compressBuffer, sizeof(tl_compressBuffer), c);
+		if (encodeSize == 0 || (conditional && encodeSize + 4 > size)) { return typename Interface::BytesType(); }
+		typename Interface::BytesType ret; ret.resize(encodeSize + 4);
+		writeCompressionMark(ret.data(), size, c);
+		memcpy(ret.data() + 4, tl_compressBuffer, encodeSize);
+		return ret;
+	} else {
+		typename Interface::BytesType ret; ret.resize(bufferSize + 4);
+		auto encodeSize = compressData(src, size, ret.data() + 4, bufferSize, c);
+		if (encodeSize == 0 || (conditional && encodeSize + 4 > size)) { return typename Interface::BytesType(); }
+		writeCompressionMark(ret.data(), size, c);
+		ret.resize(encodeSize + 4);
+		ret.shrink_to_fit();
+		return ret;
+	}
+	return typename Interface::BytesType();
+}
+
+template <>
+auto compress<memory::PoolInterface>(const uint8_t *src, size_t size, EncodeFormat::Compression c, bool conditional) -> memory::PoolInterface::BytesType {
+	return doCompress<memory::PoolInterface>(src, size, c, conditional);
+}
+
+template <>
+auto compress<memory::StandartInterface>(const uint8_t *src, size_t size, EncodeFormat::Compression c, bool conditional) -> memory::StandartInterface::BytesType {
+	return doCompress<memory::StandartInterface>(src, size, c, conditional);
+}
+
+using decompress_ptr = const uint8_t *;
+
+static bool doDecompressLZ4Frame(const uint8_t *src, size_t srcSize, uint8_t *dest, size_t destSize) {
+	return LZ4_decompress_safe((const char *)src, (char *)dest, srcSize, destSize) > 0;
+}
+
+template <typename Interface>
+static inline auto doDecompressLZ4(BytesView data, bool sh) -> ValueTemplate<Interface> {
+	size_t size = sh ? data.readUnsigned16() : data.readUnsigned32();
+
+	ValueTemplate<Interface> ret;
+	if (size <= sizeof(tl_compressBuffer)) {
+		if (doDecompressLZ4Frame(data.data(), data.size(), tl_compressBuffer, size)) {
+			ret = data::read<BytesView, Interface>(BytesView(tl_compressBuffer, size));
+		}
+	} else {
+		typename Interface::BytesType res; res.resize(size);
+		if (doDecompressLZ4Frame(data.data(), data.size(), res.data(), size)) {
+			ret = data::read<typename Interface::BytesType, Interface>(res);
+		}
+	}
+	return ret;
+}
+
+template <>
+auto decompressLZ4(const uint8_t *srcPtr, size_t srcSize, bool sh) -> ValueTemplate<memory::PoolInterface> {
+	return doDecompressLZ4<memory::PoolInterface>(BytesView(srcPtr, srcSize), sh);
+}
+
+template <>
+auto decompressLZ4(const uint8_t *srcPtr, size_t srcSize, bool sh) -> ValueTemplate<memory::StandartInterface> {
+	return doDecompressLZ4<memory::StandartInterface>(BytesView(srcPtr, srcSize), sh);
+}
+
+template <>
+auto decompressBrotli(const uint8_t *data, size_t size) -> ValueTemplate<memory::PoolInterface> {
+	return ValueTemplate<memory::PoolInterface>();
+}
+
+template <>
+auto decompressBrotli(const uint8_t *data, size_t size) -> ValueTemplate<memory::StandartInterface> {
+	return ValueTemplate<memory::StandartInterface>();
 }
 
 NS_SP_EXT_END(data)

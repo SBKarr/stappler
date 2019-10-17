@@ -35,9 +35,7 @@ THE SOFTWARE.
 
 #include "SPMainSocket.cc"
 
-NS_SP_PLATFORM_BEGIN
-
-namespace desktop {
+namespace stappler::platform::desktop {
 	Size _screenSize;
 	bool _isTablet = false;
 	bool _isFixed = false;
@@ -55,8 +53,6 @@ namespace desktop {
 	String getUserLanguage() { return _userLanguage; }
 	String getAppVersion() { return _appVersion; }
 }
-
-NS_SP_PLATFORM_END
 
 NS_SP_BEGIN
 

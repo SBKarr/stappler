@@ -30,11 +30,9 @@ THE SOFTWARE.
 
 #if (ANDROID)
 
-using namespace stappler::spjni;
+namespace stappler::platform::network {
+	using namespace stappler::spjni;
 
-NS_SP_PLATFORM_BEGIN
-
-namespace network {
 	bool _init = false;
 	std::function<void(bool isOnline)> _callback;
 
@@ -52,8 +50,6 @@ namespace network {
 		return true;
 	}
 }
-
-NS_SP_PLATFORM_END
 
 NS_SP_EXTERN_BEGIN
 

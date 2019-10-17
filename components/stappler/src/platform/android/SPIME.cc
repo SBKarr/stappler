@@ -31,9 +31,7 @@ THE SOFTWARE.
 
 #if (ANDROID)
 
-NS_SP_PLATFORM_BEGIN
-
-namespace ime {
+namespace stappler::platform::ime {
 	void _updateCursor(uint32_t pos, uint32_t len) {
 		auto env = spjni::getJniEnv();
 		auto & activity = spjni::getActivity();
@@ -74,8 +72,6 @@ namespace ime {
 		}
 	}
 }
-
-NS_SP_PLATFORM_END
 
 NS_SP_EXTERN_BEGIN
 

@@ -49,10 +49,10 @@ bool Drawer::init(StencilDepthFormat fmt) {
 		_cacheUpdated = true;
 		return true;
 	} else {
-		thread.perform([this, fmt] (const Task &) -> bool {
+		thread.perform([this, fmt] (const thread::Task &) -> bool {
 			initWithThread(fmt);
 			return true;
-		}, [this] (const Task &, bool) {
+		}, [this] (const thread::Task &, bool) {
 			_cacheUpdated = true;
 		}, this);
 		return true;
@@ -74,7 +74,7 @@ void Drawer::free() {
 	if (thread.isOnThisThread()) {
 		GLRenderSurface::finalizeSurface();
 	} else {
-		thread.perform([this] (const Task &) -> bool {
+		thread.perform([this] (const thread::Task &) -> bool {
 			TextureCache::getInstance()->performWithGL([&] {
 				GLRenderSurface::finalizeSurface();
 			});
@@ -370,12 +370,12 @@ void Drawer::update() {
 			_cacheUpdated = true;
 			_updated = Time::now();
 		} else {
-			thread.perform([this] (const Task &) -> bool {
+			thread.perform([this] (const thread::Task &) -> bool {
 				TextureCache::getInstance()->performWithGL([&] {
 					performUpdate();
 				});
 				return true;
-			}, [this] (const Task &, bool) {
+			}, [this] (const thread::Task &, bool) {
 				_cacheUpdated = true;
 				_updated = Time::now();
 			});
@@ -390,7 +390,7 @@ void Drawer::clearCache() {
 			_cache.clear();
 		});
 	} else {
-		thread.perform([this] (const Task &) -> bool {
+		thread.perform([this] (const thread::Task &) -> bool {
 			TextureCache::getInstance()->performWithGL([&] {
 				_cache.clear();
 			});

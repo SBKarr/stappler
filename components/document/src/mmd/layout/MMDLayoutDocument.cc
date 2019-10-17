@@ -96,7 +96,7 @@ bool LayoutDocument::init(const FilePath &path, const StringView &ct) {
 
 	_filePath = path.get().str();
 
-	auto data = filesystem::readFile(path.get());
+	auto data = filesystem::readIntoMemory(path.get());
 
 	return init(data, ct);
 }

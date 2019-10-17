@@ -34,6 +34,9 @@ OSTYPE_COMMON_LIBS := -lpthread \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libpng.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libjpeg.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libidn2.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libmbedx509.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libmbedcrypto.a \
+	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libmbedtls.a \
 	-framework Foundation -lz -framework Security -lunistring -liconv
 
 OSTYPE_CLI_LIBS += $(OSTYPE_COMMON_LIBS) \

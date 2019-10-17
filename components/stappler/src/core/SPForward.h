@@ -129,11 +129,9 @@ class Bitmap;
 class SyncRWLock;
 
 class Thread;
-class Task;
 class ThreadManager;
 class ThreadHandlerInterface;
 class TaskManager;
-class TaskStack;
 
 class NetworkTask;
 class NetworkDownload;

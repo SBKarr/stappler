@@ -28,12 +28,15 @@ THE SOFTWARE.
 
 #if (MACOSX)
 
-NS_SP_PLATFORM_BEGIN
+namespace stappler::platform::proc {
 
-namespace proc {
 bool _isArmNeonSupported() { return false; }
+
+void _workerThread(thread::ThreadHandlerInterface *tm) {
+	tm->threadInit();
+    while (tm->worker()) { }
 }
 
-NS_SP_PLATFORM_END
+}
 
 #endif

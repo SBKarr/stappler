@@ -298,7 +298,7 @@ using std::max;
  */
 
 template <typename... Args>
-inline auto pair(Args&&... args) -> decltype(std::make_pair(forward<Args>(args)...)) {
+inline constexpr auto pair(Args&&... args) -> decltype(std::make_pair(forward<Args>(args)...)) {
 	return std::make_pair(forward<Args>(args)...);
 }
 
@@ -312,12 +312,12 @@ template <typename T>
 using InitializerList = std::initializer_list<T>;
 
 template <typename T = float>
-inline auto nan() -> T {
+inline constexpr auto nan() -> T {
 	return NumericLimits<T>::quiet_NaN();
 }
 
 template <typename T = float>
-inline auto epsilon() -> T {
+inline constexpr auto epsilon() -> T {
 	return NumericLimits<T>::epsilon();
 }
 
@@ -336,7 +336,7 @@ inline constexpr T minOf() {
 	return NumericLimits<T>::min();
 }
 
-template <class T> inline T progress(const T &a, const T &b, float p) { return (a * (1.0f - p) + b * p); }
+template <class T> constexpr inline T progress(const T &a, const T &b, float p) { return (a * (1.0f - p) + b * p); }
 
 template <class T, class V>
 struct _ValueReinterpretator {
@@ -546,27 +546,12 @@ struct Result {
  * 		Invoker/CallTest macro
  */
 
-#define InvokerCallTest_MakeInvoker(Module, Name) \
-	template <typename T, bool Value> struct Module ## _ ## Name; \
-	template <typename T> struct Module ## _ ## Name <T, false> { \
-		template <typename ... Args> static inline void call(T &t, Args && ...args) { } \
-	}; \
-	template <typename T> struct Module ## _ ## Name <T, true> { \
-		template <typename ... Args> static inline void call(T &t, Args && ...args) { t.Name(std::forward<Args>(args)...);} \
-	};
-
 #define InvokerCallTest_MakeCallTest(Name, Success, Failure) \
 	private: \
 		template <typename C> static Success CallTest_ ## Name( typeof(&C::Name) ); \
 		template <typename C> static Failure CallTest_ ## Name(...); \
 	public: \
-		static const bool hasMethod_ ## Name = sizeof(CallTest_ ## Name<T>(0)) == sizeof(success);
-
-#define InvokerCallTest_MakeCallMethod(Module, Name, Type) \
-	template <typename ... Args> \
-	static inline void Name(Type &t, Args && ... args) { \
-		Module ## _ ## Name <Type, sizeof(CallTest_ ## Name<Type>(0)) == sizeof(success)>::call(t, std::forward<Args>(args)...); \
-	}
+		static constexpr bool Name = sizeof(CallTest_ ## Name<T>(0)) == sizeof(success);
 
 /*
  * 		Extra math functions

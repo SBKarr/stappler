@@ -28,7 +28,6 @@ THE SOFTWARE.
 #include "SPScheme.h"
 
 #include "SPThread.h"
-#include "SPTask.h"
 #include "SPData.h"
 #include "SPString.h"
 #include "SPAssetLibrary.h"
@@ -52,6 +51,8 @@ THE SOFTWARE.
 #define LIBRARY_KV_REMOVE	"DELETE FROM kvstorage WHERE key=?;"
 
 NS_SP_EXT_BEGIN(storage)
+
+using Task = thread::Task;
 
 class Handle {
 public:

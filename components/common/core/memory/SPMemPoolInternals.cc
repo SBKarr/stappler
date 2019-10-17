@@ -87,6 +87,9 @@ void *allocmngr_t<Pool>::alloc(size_t &sizeInBytes) {
 template <typename Pool>
 void allocmngr_t<Pool>::free(void *ptr, size_t sizeInBytes) {
 	memaddr_t *addr = nullptr;
+	if (allocated == 0) {
+		return;
+	}
 
 	if (free_buffered) {
 		addr = free_buffered;
@@ -292,8 +295,6 @@ memnode_t *allocator_t::alloc(uint32_t in_size) {
 	if ((node = (memnode_t *)malloc(size)) == nullptr) {
 		return nullptr;
 	}
-
-	allocated += size;
 
 	node->next = nullptr;
 	node->index = (uint32_t)index;
@@ -800,9 +801,6 @@ status_t userdata_get(void **data, const char *key, pool_t *pool) {
 	return pool->userdata_get(data, key);
 }
 
-size_t get_allocator_allocated_bytes(pool_t *p) {
-	return p->allocator->allocated;
-}
 size_t get_allocated_bytes(pool_t *p) {
 	return p->allocmngr.get_alloc();
 }

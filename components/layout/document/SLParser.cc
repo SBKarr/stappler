@@ -277,7 +277,7 @@ namespace parser {
 		}
 	}
 
-	void readFontFaceSrc(const String &src, Vector<String> &vec) {
+	void readFontFaceSrc(const String &src, Vector<style::FontFace::FontFaceSource> &vec) {
 		StringReader r(src);
 		String url, format;
 		while (!r.empty()) {

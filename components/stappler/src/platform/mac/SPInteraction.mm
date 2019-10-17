@@ -27,9 +27,7 @@ THE SOFTWARE.
 
 #if (MACOSX)
 
-NS_SP_PLATFORM_BEGIN
-
-namespace interaction {
+namespace stappler::platform::interaction {
 	void _goToUrl(const StringView &url, bool external) {
 		
 	}
@@ -45,7 +43,5 @@ namespace interaction {
 	}
 	void _rateApplication() { }
 }
-
-NS_SP_PLATFORM_END
 
 #endif

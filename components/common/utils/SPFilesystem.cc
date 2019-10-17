@@ -620,27 +620,7 @@ String readTextFile(const StringView &ipath) {
 	return String();
 }
 
-Bytes readFile(const StringView &ipath, size_t off, size_t size) {
-	auto f = openForReading(ipath);
-	if (f) {
-		auto fsize = f.size();
-		if (fsize <= off) {
-			f.close();
-			return Bytes();
-		}
-		if (fsize - off < size) {
-			size = fsize - off;
-		}
-		Bytes ret; ret.resize(size);
-		f.seek(off, io::Seek::Set);
-		f.read(ret.data(), size);
-		f.close();
-		return ret;
-	}
-	return Bytes();
-}
-
-bool readFile(const io::Consumer &stream, uint8_t *buf, size_t bsize, const StringView &ipath, size_t off, size_t size) {
+bool readWithConsumer(const io::Consumer &stream, uint8_t *buf, size_t bsize, const StringView &ipath, size_t off, size_t size) {
 	auto f = openForReading(ipath);
 	if (f) {
 		size_t fsize = f.size();

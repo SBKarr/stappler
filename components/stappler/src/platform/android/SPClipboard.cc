@@ -28,9 +28,8 @@ THE SOFTWARE.
 #include "SPJNI.h"
 
 #if (ANDROID)
-NS_SP_PLATFORM_BEGIN
 
-namespace clipboard {
+namespace stappler::platform::clipboard {
 	bool _isAvailable() {
 		auto env = spjni::getJniEnv();
 		if (auto clipboard = spjni::getService(spjni::Service::Clipboard, env)) {
@@ -71,5 +70,4 @@ namespace clipboard {
 	}
 }
 
-NS_SP_PLATFORM_END
 #endif

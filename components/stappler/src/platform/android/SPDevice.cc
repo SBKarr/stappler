@@ -35,9 +35,7 @@ THE SOFTWARE.
 
 #if (ANDROID)
 
-NS_SP_PLATFORM_BEGIN
-
-namespace device {
+namespace stappler::platform::device {
 	bool _valIsTablet = false;
 	std::string _valUserAgent;
 	std::string _valDeviceIdentifier;
@@ -149,8 +147,6 @@ namespace device {
 		}
 	}
 }
-
-NS_SP_PLATFORM_END
 
 using namespace stappler::platform::device;
 using namespace stappler::spjni;

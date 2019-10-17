@@ -129,9 +129,7 @@ void setSignalHandler() {
 
 NS_SP_EXTERN_END
 
-NS_SP_PLATFORM_BEGIN
-
-namespace debug {
+namespace stappler::platform::debug {
 	data::Value getExceptionData(const String &path) {
 		data::Value d(s_applicationData);
 		d.setValue(data::readFile(path), "info");
@@ -181,7 +179,5 @@ namespace debug {
 		free(bt_syms);
 	}
 }
-
-NS_SP_PLATFORM_END
 
 #endif

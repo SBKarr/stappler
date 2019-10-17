@@ -126,7 +126,7 @@ void AssetLibrary::init() {
 	Downloads *downloads = new Downloads();
 
 	auto &thread = storage::thread(getAssetStorage());
-	thread.perform([this, downloads] (const Task &) -> bool {
+	thread.perform([this, downloads] (const thread::Task &) -> bool {
 		storage::get("SP.AssetLibrary.Time", [this] (const StringView &key, data::Value &&value) {
 			_correctionTime.setMicroseconds(value.getInteger("time"));
 			_correctionNegative = value.getBool("negative");
@@ -144,7 +144,7 @@ void AssetLibrary::init() {
 		restoreDownloads(data, *downloads);
 		cleanup();
 		return true;
-	}, [this, downloads] (const Task &, bool) {
+	}, [this, downloads] (const thread::Task &, bool) {
 		for (auto &it : *downloads) {
 			_assets.insert(pair(it.first->getId(), it.first));
 			_downloads.emplace(it.first, it.second);
@@ -326,7 +326,7 @@ bool AssetLibrary::getAsset(const AssetCallback &cb, const StringView &url,
 
 		auto &thread = storage::thread(getAssetStorage());
 		Asset ** assetPtr = new (Asset *) (nullptr);
-		thread.perform([this, assetPtr, id, url = url.str(), path = path.str(), cache = cache.str(), ttl, dcb] (const Task &) -> bool {
+		thread.perform([this, assetPtr, id, url = url.str(), path = path.str(), cache = cache.str(), ttl, dcb] (const thread::Task &) -> bool {
 			data::Value data;
 			_assetsClass.get([&data] (data::Value &&d) {
 				if (d.isArray() && d.size() > 0) {
@@ -351,7 +351,7 @@ bool AssetLibrary::getAsset(const AssetCallback &cb, const StringView &url,
 
 			(*assetPtr) = new Asset(data, dcb);
 			return true;
-		}, [this, assetPtr] (const Task &, bool) {
+		}, [this, assetPtr] (const thread::Task &, bool) {
 			onAssetCreated(*assetPtr);
 			delete assetPtr;
 		}, this);
@@ -427,11 +427,11 @@ bool AssetLibrary::getAssets(const Vector<AssetRequest> &vec, const AssetVecCall
 
 	auto &thread = storage::thread(getAssetStorage());
 	auto assetsVec = new AssetVec;
-	thread.perform([this, assetsVec, requests] (const Task &) -> bool {
+	thread.perform([this, assetsVec, requests] (const thread::Task &) -> bool {
 		performGetAssets(*assetsVec, *requests);
 
 		return true;
-	}, [this, assetsVec, requests, retVec, assetCount, cb] (const Task &, bool) {
+	}, [this, assetsVec, requests, retVec, assetCount, cb] (const thread::Task &, bool) {
 		for (auto &it : (*assetsVec)) {
 			if (retVec) {
 				retVec->emplace_back(it);

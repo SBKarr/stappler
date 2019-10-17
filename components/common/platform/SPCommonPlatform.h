@@ -26,12 +26,10 @@ THE SOFTWARE.
 /* Do NOT include this header into public headers! */
 
 #include "SPFilesystem.h"
-
-#define NS_SP_PLATFORM_BEGIN		namespace stappler { namespace platform {
-#define NS_SP_PLATFORM_END		} }
+#include "SPThreadTaskQueue.h"
 
 /* Platform-depended functions interface */
-NS_SP_PLATFORM_BEGIN
+namespace stappler::platform {
 
 namespace filesystem {
 	String _getWritablePath();
@@ -51,8 +49,9 @@ namespace filesystem {
 
 namespace proc {
 	bool _isArmNeonSupported();
+	void _workerThread(thread::ThreadHandlerInterface *tm);
 }
 
-NS_SP_PLATFORM_END
+}
 
 #endif /* COMMON_PLATFORM_SPCOMMONPLATFORM_H_ */

@@ -26,8 +26,6 @@ THE SOFTWARE.
 #include "SPDefine.h"
 #include "SPNetworkTask.h"
 #include "SPFilesystem.h"
-#include "SPTaskManager.h"
-#include "SPTaskStack.h"
 #include "SPDevice.h"
 #include "SPData.h"
 #include "SPThread.h"
@@ -97,13 +95,11 @@ bool NetworkTask::performQuery() {
 	if (_handle.getCookieFile().empty()) {
 		String cookies("network.cookies");
 		if (!ThreadManager::getInstance()->isMainThread()) {
-			auto &local = Thread::getThreadLocalStorage();
-			if (!local.isNull() && local.getBool("managed_thread")) {
-				cookies = filesystem::writablePath(
-						toString(cookies, ".", Thread::getThreadName(), ".", Thread::getThreadId(), ".", Thread::getWorkerId()));
+			auto local = thread::ThreadInfo::getThreadLocal();
+			if (local && local->managed) {
+				cookies = filesystem::writablePath(toString(cookies, ".", local->name, ".", local->threadId, ".", local->workerId));
 			} else {
-				cookies = filesystem::writablePath(
-						toString(cookies, ".native.", ThreadManager::getInstance()->getNativeThreadId()));
+				cookies = filesystem::writablePath(toString(cookies, ".native.", ThreadManager::getInstance()->getNativeThreadId()));
 			}
 		} else {
 			cookies = filesystem::writablePath(String(cookies) + ".main");
@@ -123,6 +119,10 @@ void NetworkTask::run() {
 
 void NetworkTask::setAuthority(const StringView &user, const StringView &passwd) {
 	_handle.setAuthority(user, passwd);
+}
+
+bool NetworkTask::setPrivateKeyAuth(const BytesView &priv) {
+	return _handle.setPrivateKeyAuth(priv);
 }
 
 void NetworkTask::addHeader(const StringView &header) {

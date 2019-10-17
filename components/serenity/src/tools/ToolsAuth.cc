@@ -29,7 +29,7 @@ NS_SA_EXT_BEGIN(tools)
 inline TimeInterval getMaxAuthTimeInSeconds() { return config::getMaxAuthTime(); }
 
 bool AuthHandler::isRequestPermitted(Request &rctx) {
-	if (_subPath != "/login" && _subPath != "/update" && _subPath != "/cancel" && _subPath != "/setup" && _subPath != "/basic") {
+	if (_subPath != "/login" && _subPath != "/update" && _subPath != "/cancel" && _subPath != "/setup" && _subPath != "/basic" && _subPath != "/touch") {
 		rctx.setStatus(HTTP_NOT_FOUND);
 		return false;
 	}
@@ -109,6 +109,13 @@ bool AuthHandler::processDataHandler(Request &rctx, data::Value &result, data::V
 
 		messages::error("Auth", "Fail to create session");
 
+		return false;
+	} else if (_subPath == "/touch") {
+		if (auto u = rctx.getAuthorizedUser()) {
+			result.setInteger(u->getObjectId(), "userId");
+			result.setString(u->getName(), "userName");
+			return true;
+		}
 		return false;
 	} else if (_subPath == "/update") {
 		if (auto session = rctx.getSession()) {

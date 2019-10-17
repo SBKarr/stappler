@@ -63,5 +63,3 @@ THE SOFTWARE.
 #endif
 
 #include "ios/SPReceiptValidation.cc"
-#include "ios/SPProc.cc"
-

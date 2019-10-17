@@ -108,8 +108,8 @@ struct FontData final : public AtomicRef {
 
 class FontLayout final : public AtomicRef {
 public:
-	using MetricCallback = Function<Metrics(const FontSource *, const Vector<String> &, uint16_t, const ReceiptCallback &)>;
-	using UpdateCallback = Function<Rc<FontData>(const FontSource *, const Vector<String> &, const Rc<FontData> &, const Vector<char16_t> &, const ReceiptCallback &)>;
+	using MetricCallback = Function<Metrics(const FontSource *, const Vector<FontFace::FontFaceSource> &, uint16_t, const ReceiptCallback &)>;
+	using UpdateCallback = Function<Rc<FontData>(const FontSource *, const Vector<FontFace::FontFaceSource> &, const Rc<FontData> &, const Vector<char16_t> &, const ReceiptCallback &)>;
 
 	bool init(const FontSource *, const String &name, const StringView &family, uint8_t size, const FontFace &, const ReceiptCallback &,
 			const MetricCallback &, const UpdateCallback &);

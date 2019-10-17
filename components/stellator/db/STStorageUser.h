@@ -35,6 +35,7 @@ public:
 
 	static User *get(const Adapter &, const mem::StringView &name, const mem::StringView &password);
 	static User *get(const Adapter &, const Scheme &scheme, const mem::StringView &name, const mem::StringView &password);
+	static User *get(const Adapter &, const Scheme &scheme, const mem::BytesView &key);
 
 	static User *get(const Adapter &, uint64_t oid);
 	static User *get(const Adapter &, const Scheme &scheme, uint64_t oid);

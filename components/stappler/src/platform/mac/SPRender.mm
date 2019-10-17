@@ -31,9 +31,7 @@ THE SOFTWARE.
 #include "CCGLViewImpl-desktop.h"
 #include "base/CCDirector.h"
 
-NS_SP_PLATFORM_BEGIN
-
-namespace render {
+namespace stappler::platform::render {
 	void _init() { }
 	void _requestRender() { }
 	void _framePerformed() { }
@@ -58,7 +56,5 @@ namespace render {
 	}
 #endif
 }
-
-NS_SP_PLATFORM_END
 
 #endif

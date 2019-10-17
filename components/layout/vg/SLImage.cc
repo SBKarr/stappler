@@ -613,7 +613,7 @@ bool Image::isSvg(const Bytes &data) {
 }
 
 bool Image::isSvg(const FilePath &file) {
-	auto d = filesystem::readFile(file.get(), 0, 512);
+	auto d = filesystem::readIntoMemory(file.get(), 0, 512);
 	return Bitmap::check(Bitmap::FileFormat::Svg, d.data(), d.size());
 }
 

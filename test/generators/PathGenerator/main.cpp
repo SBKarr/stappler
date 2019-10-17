@@ -128,7 +128,7 @@ R"Text(pathgen <path-to-material-icons-repo>
 
 auto LICENSE_STRING =
 R"Text(/**
-Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2018-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -161,7 +161,7 @@ int parseOptionSwitch(data::Value &ret, char c, const char *str) {
 	return 1;
 }
 
-int parseOptionString(data::Value &ret, const String &str, int argc, const char * argv[]) {
+int parseOptionString(data::Value &ret, const StringView &str, int argc, const char * argv[]) {
 	if (str == "help") {
 		ret.setBool(true, "help");
 	}
@@ -202,7 +202,6 @@ NS_MD_BEGIN
 )Text";
 
 	for (auto &it : icons) {
-		layout::Path path;
 		auto text = base16::encode(CoderSource(it.second.data));
 		auto d = text.c_str();
 		bool first = false;
@@ -218,21 +217,17 @@ NS_MD_BEGIN
 		sourceFile << "};\n";
 	}
 
-	sourceFile << "\nstatic struct IconDataStruct { IconName name; size_t len; const uint8_t *data; } s_iconTable["
-			<< icons.size() << "] = {\n";
 
-	size_t i = 0;
+	sourceFile << "\nstatic BytesView getSystemIcon(IconName name) {\n"
+			"\tswitch (name) {\n";
+
 	for (auto &it : icons) {
-		sourceFile << "\t{ IconName::" << it.second.title << ", " << it.second.data.size() << ", s_icon_" << it.first << " },\n";
-		++ i;
+		sourceFile << "\tcase IconName::" << it.second.title
+				<< ": return BytesView(s_icon_" << it.first << ", " << it.second.data.size() << "); break;\n";
 	}
 
-	sourceFile << "};\n\nstatic uint16_t s_iconCount = " << icons.size() << ";\n\n";
+	sourceFile << "\tdefault: break;\n\t}\n\n\treturn BytesView();\n}\n\nNS_MD_END\n";
 
-	sourceFile <<
-R"Text(
-NS_MD_END
-)Text";
 
 	headerFile << LICENSE_STRING <<
 R"Text(

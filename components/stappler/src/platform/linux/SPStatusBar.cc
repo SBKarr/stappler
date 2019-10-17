@@ -30,9 +30,7 @@ THE SOFTWARE.
 
 #if (LINUX)
 
-NS_SP_PLATFORM_BEGIN
-
-namespace statusbar {
+namespace stappler::platform::statusbar {
 	float _height = 20.0f;
 	float _commonHeight = 20.0f;
 
@@ -65,7 +63,5 @@ namespace statusbar {
 		return _height * stappler::platform::device::_density();
 	}
 }
-
-NS_SP_PLATFORM_END
 
 #endif

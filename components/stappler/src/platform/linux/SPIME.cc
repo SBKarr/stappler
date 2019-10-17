@@ -29,9 +29,7 @@ THE SOFTWARE.
 
 #if (LINUX)
 
-NS_SP_PLATFORM_BEGIN
-
-namespace ime {
+namespace stappler::platform::ime {
 	Function<void(bool)> _enabledCallback;
 
 	void setEnabledCallback(const Function<void(bool)> &f) {
@@ -64,7 +62,5 @@ namespace ime {
 #endif
 	}
 }
-
-NS_SP_PLATFORM_END
 
 #endif

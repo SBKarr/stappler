@@ -244,7 +244,34 @@ THE SOFTWARE.
 }
 
 +(NSString*)getLaunchImageName {
-	NSLog(@"getLaunchImageName");
+	CGSize screenSize = [UIScreen mainScreen].fixedCoordinateSpace.bounds.size;
+
+	NSString *interfaceOrientation = nil;
+	if (([[UIApplication sharedApplication] statusBarOrientation] == UIInterfaceOrientationPortraitUpsideDown) ||
+		([[UIApplication sharedApplication] statusBarOrientation] == UIInterfaceOrientationPortrait)) {
+		interfaceOrientation = @"Portrait";
+	} else {
+		interfaceOrientation = @"Landscape";
+	}
+
+	NSString *launchImageName = nil;
+
+	NSArray *launchImages = [[[NSBundle mainBundle] infoDictionary] valueForKey:@"UILaunchImages"];
+	for (NSDictionary *launchImage in launchImages) {
+		CGSize launchImageSize = CGSizeFromString(launchImage[@"UILaunchImageSize"]);
+		NSString *launchImageOrientation = launchImage[@"UILaunchImageOrientation"];
+
+		if (CGSizeEqualToSize(launchImageSize, screenSize) &&
+			[launchImageOrientation isEqualToString:interfaceOrientation]) {
+			launchImageName = launchImage[@"UILaunchImageName"];
+			break;
+		}
+	}
+	
+	return launchImageName;
+
+	
+	/*NSLog(@"getLaunchImageName");
 	NSArray* images= @[@"LaunchImage.png", @"LaunchImage@2x.png",@"LaunchImage-700@2x.png",@"LaunchImage-568h@2x.png",@"LaunchImage-700-568h@2x.png",@"LaunchImage-700-Portrait@2x~ipad.png",@"LaunchImage-Portrait@2x~ipad.png",@"LaunchImage-700-Portrait~ipad.png",@"LaunchImage-Portrait~ipad.png",@"LaunchImage-Landscape@2x~ipad.png",@"LaunchImage-700-Landscape@2x~ipad.png",@"LaunchImage-Landscape~ipad.png",@"LaunchImage-700-Landscape~ipad.png"];
 	
 	UIImage *splashImage;
@@ -284,7 +311,7 @@ THE SOFTWARE.
 				return images[12];
 			}
 		}
-	}
+	}*/
 }
 
 - (void)userNotificationCenter:(UNUserNotificationCenter *)center

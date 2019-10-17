@@ -234,9 +234,7 @@ void doMainLoop(MainLoop *loop) {
 
 NS_SP_END
 
-NS_SP_PLATFORM_BEGIN
-
-namespace render {
+namespace stappler::platform::render {
 	MainLoop *_loop = nullptr;
 
 	void _init() {
@@ -299,7 +297,5 @@ namespace render {
 		env->CallVoidMethod(activity, disableOffscreenContext);
 	}
 }
-
-NS_SP_PLATFORM_END
 
 #endif

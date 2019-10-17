@@ -170,7 +170,7 @@ template <> WideStringView Tag_readName<WideStringView>(WideStringView &is, bool
 	s.skipUntil<HtmlIdentifier16, WideStringView::MatchChars<u'>', u'?'>>();
 	WideStringView name(s.readChars<HtmlIdentifier16, WideStringView::MatchChars<u'?'>>());
 	if (!keepClean) {
-		string::tolower_buf((char *)name.data(), name.size());
+		string::tolower_buf((char16_t *)name.data(), name.size());
 	}
 	if (name.size() > 1 && name.back() == '/') {
 		name.set(name.data(), name.size() - 1);
@@ -186,7 +186,7 @@ template <> WideStringView Tag_readAttrName<WideStringView>(WideStringView &s, b
 	s.skipUntil<HtmlIdentifier16>();
 	WideStringView name(s.readChars<HtmlIdentifier16>());
 	if (!keepClean) {
-		string::tolower_buf((char *)name.data(), name.size());
+		string::tolower_buf((char16_t *)name.data(), name.size());
 	}
 	return name;
 }
@@ -198,8 +198,8 @@ template <> WideStringView Tag_readAttrValue<WideStringView>(WideStringView &s, 
 	}
 
 	s ++;
-	char quoted = 0;
-	if (s.is('"') || s.is('\'')) {
+	char16_t quoted = 0;
+	if (s.is(u'"') || s.is(u'\'')) {
 		quoted = s[0];
 		s ++;
 		WideStringView tmp = s;

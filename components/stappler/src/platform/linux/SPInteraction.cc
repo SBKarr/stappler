@@ -29,9 +29,7 @@ THE SOFTWARE.
 
 #if (LINUX)
 
-NS_SP_PLATFORM_BEGIN
-
-namespace interaction {
+namespace stappler::platform::interaction {
 	bool _dialogOpened = false;
 	void _goToUrl(const StringView &url, bool external) {
 		log::format("Interaction", "GoTo url: %s", url.data());
@@ -59,7 +57,5 @@ namespace interaction {
 		}
 	}
 }
-
-NS_SP_PLATFORM_END
 
 #endif

@@ -495,7 +495,7 @@ protected:
 	NodeBase _header; // root is _header.left
 	comparator_type _comp;
 	value_allocator_type _allocator;
-	size_t _size;
+	size_t _size = 0;
 	Node<Value> *_tmp = nullptr;
 
 	inline node_ptr root() { return static_cast<node_ptr>(_header.left); }

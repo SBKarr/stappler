@@ -483,13 +483,13 @@ Bytes FontSource::acquireFontData(const layout::FontSource *lsource, const Strin
 	}
 	if (!resource::isReceiptUrl(path)) {
 		if (filesystem::exists(path) && !filesystem::isdir(path)) {
-			return filesystem::readFile(path);
+			return filesystem::readIntoMemory(path);
 		}
 		auto &dirs = source->getSearchDirs();
 		for (auto &it : dirs) {
 			auto ipath = filepath::merge(it, path);
 			if (filesystem::exists(ipath) && !filesystem::isdir(ipath)) {
-				return filesystem::readFile(ipath);
+				return filesystem::readIntoMemory(ipath);
 			}
 		}
 	} else {
@@ -515,11 +515,11 @@ bool FontSource::init(FontFaceMap &&map, const ReceiptCallback &cb, float scale,
 		updateTexture(v, m);
 	};
 
-	_metricCallback = [] (const layout::FontSource *source, const Vector<String> &srcs, uint16_t size, const ReceiptCallback &cb) {
+	_metricCallback = [] (const layout::FontSource *source, const Vector<FontFace::FontFaceSource> &srcs, uint16_t size, const ReceiptCallback &cb) {
 		return requestMetrics(source, srcs, size, cb);
 	};
 
-	_layoutCallback = [] (const layout::FontSource *source, const Vector<String> &srcs, const Rc<FontData> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
+	_layoutCallback = [] (const layout::FontSource *source, const Vector<FontFace::FontFaceSource> &srcs, const Rc<FontData> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
 		return requestLayoutUpgrade(source, srcs, data, chars, cb);
 	};
 
@@ -566,7 +566,7 @@ void FontSource::unschedule() {
 void FontSource::cleanup() {
 	FontSource *s = this;
 	auto &thread = TextureCache::thread();
-	thread.perform([s] (const Task &) -> bool {
+	thread.perform([s] (const thread::Task &) -> bool {
 		auto cache = FontLibrary::getInstance();
 		cache->cleanupSource(s);
 		return true;
@@ -657,13 +657,13 @@ void FontSource::updateTexture(uint32_t v, const Map<String, Vector<char16_t>> &
 	} else {
 		auto lPtr = new Map<String, Vector<char16_t>>(l);
 		auto tPtr = new Vector<Rc<cocos2d::Texture2D>>();
-		thread.perform([this, lPtr, tPtr, v] (const Task &) -> bool {
+		thread.perform([this, lPtr, tPtr, v] (const thread::Task &) -> bool {
 			auto ret = TextureCache::getInstance()->performWithGL([&] {
 				return doUpdateTexture(v, *tPtr, *lPtr);
 			});
 			delete lPtr;
 			return ret;
-		}, [this, tPtr, v] (const Task &, bool success) {
+		}, [this, tPtr, v] (const thread::Task &, bool success) {
 			if (success) {
 				onTextureResult(std::move(*tPtr), v);
 			}
@@ -685,7 +685,7 @@ void FontSource::clone(FontSource *source, const Function<void(FontSource *)> &c
 	uint32_t *vPtr = new uint32_t(0);
 
 	auto &thread = TextureCache::thread();
-	thread.perform([this, lPtr, tlPtr, tPtr, vPtr] (const Task &) -> bool {
+	thread.perform([this, lPtr, tlPtr, tPtr, vPtr] (const thread::Task &) -> bool {
 		Vector<char16_t> vec;;
 		for (auto &it : (*lPtr)) {
 			Rc<FontLayout> l(it.second);
@@ -727,7 +727,7 @@ void FontSource::clone(FontSource *source, const Function<void(FontSource *)> &c
 		});
 		delete lPtr;
 		return ret;
-	}, [this, tlPtr, tPtr, sPtr, vPtr, cb] (const Task &, bool success) {
+	}, [this, tlPtr, tPtr, sPtr, vPtr, cb] (const thread::Task &, bool success) {
 		if (success) {
 			onTextureResult(std::move(*tlPtr), std::move(*tPtr), *vPtr);
 			if (cb) {
@@ -741,12 +741,12 @@ void FontSource::clone(FontSource *source, const Function<void(FontSource *)> &c
 	}, this);
 }
 
-Metrics FontSource::requestMetrics(const layout::FontSource *source, const Vector<String> &srcs, uint16_t size, const ReceiptCallback &cb) {
+Metrics FontSource::requestMetrics(const layout::FontSource *source, const Vector<FontFace::FontFaceSource> &srcs, uint16_t size, const ReceiptCallback &cb) {
 	auto cache = FontLibrary::getInstance()->getCache();
 	return cache->requestMetrics(source, srcs, size, cb);
 }
 
-Rc<FontData> FontSource::requestLayoutUpgrade(const layout::FontSource *source, const Vector<String> &srcs, const Rc<FontData> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
+Rc<FontData> FontSource::requestLayoutUpgrade(const layout::FontSource *source, const Vector<FontFace::FontFaceSource> &srcs, const Rc<FontData> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
 	auto cache = FontLibrary::getInstance()->getCache();
 	return cache->requestLayoutUpgrade(source, srcs, data, chars, cb);
 }
@@ -892,8 +892,8 @@ void FontController::updateSource() {
 	for (auto &f_it : _fontFaces) {
 		for (auto &vec_it : f_it.second) {
 			for (auto &src : vec_it.src) {
-				if (resource::isReceiptUrl(src)) {
-					_urls.insert(src);
+				if (!src.file.empty() && resource::isReceiptUrl(src.file)) {
+					_urls.insert(src.file);
 				}
 			}
 		}
@@ -1042,10 +1042,10 @@ void DynamicLabel::updateQuadsBackground(Source *source, FormatSpec *format) {
 	auto cPtr = new Vector<Vector<bool>>();
 
 	auto &thread = TextureCache::thread();
-	thread.perform([sourceRef, formatRef, tPtr, qPtr, cPtr, v] (const Task &) -> bool {
+	thread.perform([sourceRef, formatRef, tPtr, qPtr, cPtr, v] (const thread::Task &) -> bool {
 		auto cache = font::FontLibrary::getInstance();
 		return cache->writeTextureQuads(v, *sourceRef, *formatRef, *tPtr, *qPtr, *cPtr);
-	}, [this, time, sourceRef, formatRef, tPtr, qPtr, cPtr] (const Task &, bool success) {
+	}, [this, time, sourceRef, formatRef, tPtr, qPtr, cPtr] (const thread::Task &, bool success) {
 		if (success) {
 			onQuads(time, *tPtr, std::move(*qPtr), std::move(*cPtr));
 		}

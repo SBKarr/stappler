@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include "SPFilesystem.h"
 #include "SPLog.h"
 #include "SPBitmap.h"
+#include "SPValid.h"
 
 #ifdef LINUX
 #include <sys/types.h>
@@ -38,6 +39,13 @@ THE SOFTWARE.
 #include <sys/stat.h>
 #include <fcntl.h>
 #endif
+
+#include "mbedtls/config.h"
+#include "mbedtls/pk.h"
+#include "mbedtls/error.h"
+#include "mbedtls/pem.h"
+#include "mbedtls/entropy.h"
+#include "mbedtls/ctr_drbg.h"
 
 #ifdef __MINGW32__
 #define CURL_STATICLIB 1
@@ -364,11 +372,14 @@ bool NetworkHandle::setupRootCert(CURL *curl, const StringView &certPath) {
 	return check;
 }
 
-bool NetworkHandle::setupHeaders(CURL *curl, const Vector<String> &vec, curl_slist **headers) {
+bool NetworkHandle::setupHeaders(CURL *curl, const Vector<String> &vec, curl_slist **headers, const StringView &keySign) {
 	bool check = true;
-	if (vec.size() > 0) {
+	if (vec.size() > 0 || !keySign.empty()) {
 		for (const auto &str : vec) {
 			*headers = curl_slist_append(*headers, str.c_str());
+		}
+		if (!keySign.empty()) {
+			*headers = curl_slist_append(*headers, toString("Authorization: pkey ", keySign).data());
 		}
 		SETOPT(check, curl, CURLOPT_HTTPHEADER, *headers);
 	}
@@ -609,7 +620,7 @@ bool NetworkHandle::perform() {
 	check = (check) ? setupCurl(curl, errorBuffer) : false;
 	check = (check) ? setupDebug(curl, _debug) : false;
 	check = (check) ? setupRootCert(curl, _rootCertFile) : false;
-	check = (check) ? setupHeaders(curl, _sendedHeaders, &headers) : false;
+	check = (check) ? setupHeaders(curl, _sendedHeaders, &headers, _user.empty() ? _keySign : StringView()) : false;
 	check = (check) ? setupUserAgent(curl, _userAgent) : false;
 	check = (check) ? setupUser(curl, _user, _password) : false;
 	check = (check) ? setupFrom(curl, _from) : false;
@@ -786,6 +797,55 @@ void NetworkHandle::setAuthority(const StringView &user, const StringView &passw
 	_user = user.str();
 	_password = passwd.str();
 }
+bool NetworkHandle::setPrivateKeyAuth(const BytesView &priv) {
+	mbedtls_pk_context pk;
+	mbedtls_pk_init( &pk );
+
+	if (mbedtls_pk_parse_key(&pk, (const uint8_t *)priv.data(), priv.size(), nullptr, 0) != 0) {
+		mbedtls_pk_free( &pk );
+		return false;
+	}
+
+	uint8_t out[2_KiB];
+	auto bytesCount = mbedtls_pk_write_pubkey_der(&pk, out, sizeof(out));
+	if (bytesCount <= 0) {
+		mbedtls_pk_free( &pk );
+		return false;
+	}
+
+	BytesView outView(out + sizeof(out) - bytesCount, bytesCount);
+
+	mbedtls_entropy_context entropy;
+	mbedtls_ctr_drbg_context ctr_drbg;
+
+	mbedtls_entropy_init( &entropy );
+	mbedtls_ctr_drbg_init( &ctr_drbg );
+
+	auto msec = Time::now().toMicroseconds();
+	Bytes pers; pers.reserve(22);
+	valid::makeRandomBytes(pers.data(), 14);
+	memcpy(pers.data() + 14, &msec, sizeof(msec));
+
+	if (mbedtls_ctr_drbg_seed( &ctr_drbg, mbedtls_entropy_func, &entropy, pers.data(), pers.size()) == 0) {
+		std::array<uint8_t, 1_KiB> buf;
+		size_t writeLen = buf.size();
+		auto hash = string::Sha512().update(outView).final();
+		if (mbedtls_pk_sign(&pk, MBEDTLS_MD_SHA512, hash.data(), hash.size(), buf.data(), &writeLen, mbedtls_ctr_drbg_random, &ctr_drbg) == 0) {
+			auto sign = BytesView(buf.data(), writeLen);
+			_keySign = base64::encode(data::write(data::Value({
+				data::Value(outView),
+				data::Value(sign)
+			})));
+		}
+	}
+
+	mbedtls_pk_free(&pk);
+	mbedtls_entropy_free( &entropy );
+	mbedtls_ctr_drbg_free( &ctr_drbg );
+
+	return !_keySign.empty();
+}
+
 void NetworkHandle::setProxy(const StringView &proxy, const StringView &auth) {
 	_proxyAddress = proxy.str();
 	_proxyAuth = auth.str();

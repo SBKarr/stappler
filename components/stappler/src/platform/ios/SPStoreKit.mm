@@ -548,10 +548,7 @@ void StoreKitIOS::parseValidationReceipt(const data::Value & info, Set<String> &
 
 NS_SP_END
 
-
-NS_SP_PLATFORM_BEGIN
-
-namespace storekit {
+namespace stappler::platform::storekit {
 	void _saveProducts(const std::unordered_map<std::string, StoreProduct *> &val) {
 		if (auto sk = StoreKitIOS::getInstance()) {
 			sk->saveProductDictionary(val);
@@ -583,8 +580,6 @@ namespace storekit {
 		return false;
 	}
 }
-
-NS_SP_PLATFORM_END
 
 #endif
 #endif

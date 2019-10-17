@@ -361,6 +361,24 @@ template <typename L, typename R, typename CharType
 		typename L::value_type>::type>
 inline int compareCaseInsensivive(const L &l, const R &r);
 
+template<typename _CharT>
+constexpr size_t length(const _CharT *__p) {
+	size_t __i = 0;
+	while (__p[__i] != _CharT()) {
+		++__i;
+	}
+	return __i;
+}
+
+template<typename _CharT>
+constexpr size_t length(const _CharT *__p, size_t max) {
+	size_t __i = 0;
+	while (__p[__i] != _CharT() && __i < max) {
+		++__i;
+	}
+	return __i;
+}
+
 NS_SP_EXT_END(string)
 
 
@@ -586,11 +604,11 @@ inline constexpr StringViewBase<_CharType>::StringViewBase() : BytesReader<_Char
 
 template <typename _CharType>
 inline constexpr StringViewBase<_CharType>::StringViewBase(const CharType *ptr, size_t len)
-: BytesReader<_CharType>(ptr, min(std::char_traits<CharType>::length(ptr), len)) { }
+: BytesReader<_CharType>(ptr, string::length(ptr, len)) { }
 
 template <typename _CharType>
 inline constexpr StringViewBase<_CharType>::StringViewBase(const CharType *ptr, size_t pos, size_t len)
-: BytesReader<_CharType>(ptr + pos, min(len, std::char_traits<CharType>::length(ptr) - pos)) { }
+: BytesReader<_CharType>(ptr + pos, string::length(ptr + pos, len)) { }
 
 template <typename _CharType>
 inline constexpr StringViewBase<_CharType>::StringViewBase(const Self &ptr, size_t pos, size_t len)
@@ -920,10 +938,10 @@ auto StringViewBase<_CharType>::match (CharType c) -> bool {
 inline StringViewUtf8::StringViewUtf8() : BytesReader(nullptr, 0) { }
 
 inline StringViewUtf8::StringViewUtf8(const char *ptr, size_t len)
-: BytesReader(ptr, min(std::char_traits<char>::length(ptr), len)) { }
+: BytesReader(ptr, string::length(ptr, len)) { }
 
 inline StringViewUtf8::StringViewUtf8(const char *ptr, size_t pos, size_t len)
-: BytesReader(ptr + pos, min(len, std::char_traits<char>::length(ptr) - pos)) { }
+: BytesReader(ptr + pos, string::length(ptr + pos, len)) { }
 
 inline StringViewUtf8::StringViewUtf8(const StringViewUtf8 &ptr, size_t pos, size_t len)
 : BytesReader(ptr.data() + pos, min(len, ptr.size() - pos)) { }

@@ -75,17 +75,6 @@ template <typename ReaderType, typename StringReader = StringViewUtf8,
 	>::type>
 void parse(ReaderType &r, const StringReader &s, bool rootOnly = true);
 
-InvokerCallTest_MakeInvoker(Html, onBeginTag);
-InvokerCallTest_MakeInvoker(Html, onEndTag);
-InvokerCallTest_MakeInvoker(Html, onTagAttribute);
-InvokerCallTest_MakeInvoker(Html, onPushTag);
-InvokerCallTest_MakeInvoker(Html, onPopTag);
-InvokerCallTest_MakeInvoker(Html, onInlineTag);
-InvokerCallTest_MakeInvoker(Html, onTagContent);
-InvokerCallTest_MakeInvoker(Html, onReadTagName);
-InvokerCallTest_MakeInvoker(Html, onReadAttributeName);
-InvokerCallTest_MakeInvoker(Html, onReadAttributeValue);
-
 template <typename T>
 struct ParserTraits {
 	using success = char;
@@ -101,18 +90,7 @@ struct ParserTraits {
 	InvokerCallTest_MakeCallTest(onReadTagName, success, failure);
 	InvokerCallTest_MakeCallTest(onReadAttributeName, success, failure);
 	InvokerCallTest_MakeCallTest(onReadAttributeValue, success, failure);
-
-public:
-	InvokerCallTest_MakeCallMethod(Html, onBeginTag, T);
-	InvokerCallTest_MakeCallMethod(Html, onEndTag, T);
-	InvokerCallTest_MakeCallMethod(Html, onTagAttribute, T);
-	InvokerCallTest_MakeCallMethod(Html, onPushTag, T);
-	InvokerCallTest_MakeCallMethod(Html, onPopTag, T);
-	InvokerCallTest_MakeCallMethod(Html, onInlineTag, T);
-	InvokerCallTest_MakeCallMethod(Html, onTagContent, T);
-	InvokerCallTest_MakeCallMethod(Html, onReadTagName, T);
-	InvokerCallTest_MakeCallMethod(Html, onReadAttributeName, T);
-	InvokerCallTest_MakeCallMethod(Html, onReadAttributeValue, T);
+	InvokerCallTest_MakeCallTest(shouldLowercaseTokens, success, failure);
 };
 
 template <typename StringReader>
@@ -152,6 +130,7 @@ template <typename ReaderType, typename __StringReader = StringViewUtf8,
 		typename Traits = ParserTraits<ReaderType>>
 struct Parser {
 	using StringReader = __StringReader;
+	using OrigCharType = typename StringReader::CharType;
 	using CharType = typename StringReader::MatchCharType;
 	using Tag = TagType;
 
@@ -168,7 +147,11 @@ struct Parser {
 
 	using LtChar = Chars<'<'>;
 
-	Parser(ReaderType &r) : reader(&r) { }
+	Parser(ReaderType &r) : reader(&r) {
+		if constexpr (Traits::shouldLowercaseTokens) {
+			lowercase = reader->shouldLowercaseTokens(*this);
+		}
+	}
 
 	inline void cancel() {
 		current.clear();
@@ -205,7 +188,13 @@ struct Parser {
 					do {
 						-- it;
 						auto &name = it->getName();
-						string::tolower_buf((char *)tag.data(), tag.size());
+						if (lowercase) {
+							if constexpr (sizeof(OrigCharType) == 2) {
+								string::tolower_buf((char16_t *)tag.data(), tag.size());
+							} else {
+								string::tolower_buf((char *)tag.data(), tag.size());
+							}
+						}
 						if (tag.size() == name.size() && tag.compare(name.data(), name.size())) {
 							// close all tag after <tag>
 							auto nit = tagStack.end();
@@ -235,30 +224,53 @@ struct Parser {
 					continue;
 				}
 
-				if (name.prefix("!--", "!--"_len)) { // process comment
-					current.skipUntilString("-->", false);
-					continue;
-				}
+				if constexpr (sizeof(OrigCharType) == 2) {
+					if (name.prefix(u"!--", "!--"_len)) { // process comment
+						current.skipUntilString(u"-->", false);
+						continue;
+					}
 
-				if (name.is('?')) { // found processing-instruction
-					current.skipUntilString("?>", false);
-					continue;
+					if (name.is(u'?')) { // found processing-instruction
+						current.skipUntilString(u"?>", false);
+						continue;
+					}
+				} else {
+					if (name.prefix("!--", "!--"_len)) { // process comment
+						current.skipUntilString("-->", false);
+						continue;
+					}
+
+					if (name.is('?')) { // found processing-instruction
+						current.skipUntilString("?>", false);
+						continue;
+					}
 				}
 
 				if (name.is('!')) {
-					if (current.is("CDATA[")) {
-						auto data = current.readUntilString("]]>");
-						data += "CDATA["_len;
-						current += "]]>"_len;
+					StringReader cdata;
+					if constexpr (sizeof(OrigCharType) == 2) {
+						if (current.starts_with(u"CDATA[")) {
+							cdata = current.readUntilString(u"]]>");
+							cdata += "CDATA["_len;
+							current += "]]>"_len;
+						}
+					} else {
+						if (current.starts_with("CDATA[")) {
+							cdata = current.readUntilString("]]>");
+							cdata += "CDATA["_len;
+							current += "]]>"_len;
+						}
+					}
 
+					if (!cdata.empty()) {
 						if (!tagStack.empty()) {
 							tagStack.back().setHasContent(true);
-							onTagContent(tagStack.back(), data);
+							onTagContent(tagStack.back(), cdata);
 						} else {
 							StringReader r;
 							Tag t(r);
 							t.setHasContent(true);
-							onTagContent(t, data);
+							onTagContent(t, cdata);
 						}
 						continue;
 					} else {
@@ -320,43 +332,58 @@ struct Parser {
 	}
 
 	inline StringReader onReadTagName(StringReader &str) {
-		if (Traits::hasMethod_onReadTagName) {
+		if constexpr (Traits::onReadTagName) {
 			StringReader ret(str);
-			Traits::onReadTagName(*reader, *this, ret);
+			reader->onReadTagName(*this, ret);
 			return ret;
 		} else {
-			return Tag_readName(str);
+			return Tag_readName(str, !lowercase);
 		}
 	}
 
 	inline StringReader onReadAttributeName(StringReader &str) {
-		if (Traits::hasMethod_onReadAttributeName) {
+		if constexpr (Traits::onReadAttributeName) {
 			StringReader ret(str);
-			Traits::onReadAttributeName(*reader, *this, ret);
+			reader->onReadAttributeName(*this, ret);
 			return ret;
 		} else {
-			return Tag_readAttrName(str);
+			return Tag_readAttrName(str, !lowercase);
 		}
 	}
 
 	inline StringReader onReadAttributeValue(StringReader &str) {
-		if (Traits::hasMethod_onReadAttributeValue) {
+		if constexpr (Traits::onReadAttributeValue) {
 			StringReader ret(str);
-			Traits::onReadAttributeValue(*reader, *this, ret);
+			reader->onReadAttributeValue(*this, ret);
 			return ret;
 		} else {
-			return Tag_readAttrValue(str);
+			return Tag_readAttrValue(str, !lowercase);
 		}
 	}
 
-	inline void onBeginTag(TagType &tag) { Traits::onBeginTag(*reader, *this, tag); }
-	inline void onEndTag(TagType &tag, bool isClosed) { Traits::onEndTag(*reader, *this, tag, isClosed); }
-	inline void onTagAttribute(TagType &tag, StringReader &name, StringReader &value) { Traits::onTagAttribute(*reader, *this, tag, name, value); }
-	inline void onPushTag(TagType &tag) { Traits::onPushTag(*reader, *this, tag); }
-	inline void onPopTag(TagType &tag) { Traits::onPopTag(*reader, *this, tag); }
-	inline void onInlineTag(TagType &tag) { Traits::onInlineTag(*reader, *this, tag); }
-	inline void onTagContent(TagType &tag, StringReader &s) { Traits::onTagContent(*reader, *this, tag, s); }
+	inline void onBeginTag(TagType &tag) {
+		if constexpr (Traits::onBeginTag) { reader->onBeginTag(*this, tag); }
+	}
+	inline void onEndTag(TagType &tag, bool isClosed) {
+		if constexpr (Traits::onEndTag) { reader->onEndTag(*this, tag, isClosed); }
+	}
+	inline void onTagAttribute(TagType &tag, StringReader &name, StringReader &value) {
+		if constexpr (Traits::onTagAttribute) { reader->onTagAttribute(*this, tag, name, value); }
+	}
+	inline void onPushTag(TagType &tag) {
+		if constexpr (Traits::onPushTag) { reader->onPushTag(*this, tag); }
+	}
+	inline void onPopTag(TagType &tag) {
+		if constexpr (Traits::onPopTag) { reader->onPopTag(*this, tag); }
+	}
+	inline void onInlineTag(TagType &tag) {
+		if constexpr (Traits::onInlineTag) { reader->onInlineTag(*this, tag); }
+	}
+	inline void onTagContent(TagType &tag, StringReader &s) {
+		if constexpr (Traits::onTagContent) { reader->onTagContent(*this, tag, s); }
+	}
 
+	bool lowercase = true;
 	bool canceled = false;
 	ReaderType *reader;
 	StringReader current;

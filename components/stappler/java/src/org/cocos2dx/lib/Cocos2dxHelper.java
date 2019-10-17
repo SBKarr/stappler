@@ -55,8 +55,6 @@ public class Cocos2dxHelper {
 	private static Cocos2dxMusic sCocos2dMusic;
 	private static Cocos2dxSound sCocos2dSound;
 	private static AssetManager sAssetManager;
-	private static Cocos2dxAccelerometer sCocos2dxAccelerometer;
-	private static boolean sAccelerometerEnabled;
 	private static boolean sActivityVisible;
 	private static String sPackageName;
 	private static String sFileDirectory;
@@ -83,8 +81,7 @@ public class Cocos2dxHelper {
     		Cocos2dxHelper.sPackageName = applicationInfo.packageName;
     		Cocos2dxHelper.sFileDirectory = activity.getFilesDir().getAbsolutePath();
             Cocos2dxHelper.nativeSetApkPath(applicationInfo.sourceDir);
-    
-    		Cocos2dxHelper.sCocos2dxAccelerometer = new Cocos2dxAccelerometer(activity);
+
     		Cocos2dxHelper.sCocos2dMusic = new Cocos2dxMusic(activity);
     		Cocos2dxHelper.sCocos2dSound = new Cocos2dxSound(activity);
     		Cocos2dxHelper.sAssetManager = activity.getAssets();
@@ -149,21 +146,6 @@ public class Cocos2dxHelper {
 
 	public static AssetManager getAssetManager() {
 		return Cocos2dxHelper.sAssetManager;
-	}
-
-	public static void enableAccelerometer() {
-		Cocos2dxHelper.sAccelerometerEnabled = true;
-		Cocos2dxHelper.sCocos2dxAccelerometer.enable();
-	}
-
-
-	public static void setAccelerometerInterval(float interval) {
-		Cocos2dxHelper.sCocos2dxAccelerometer.setInterval(interval);
-	}
-
-	public static void disableAccelerometer() {
-		Cocos2dxHelper.sAccelerometerEnabled = false;
-		Cocos2dxHelper.sCocos2dxAccelerometer.disable();
 	}
 
 	public static void preloadBackgroundMusic(final String pPath) {
@@ -253,16 +235,10 @@ public class Cocos2dxHelper {
 
 	public static void onResume() {
 		sActivityVisible = true;
-		if (Cocos2dxHelper.sAccelerometerEnabled) {
-			Cocos2dxHelper.sCocos2dxAccelerometer.enable();
-		}
 	}
 
 	public static void onPause() {
 		sActivityVisible = false;
-		if (Cocos2dxHelper.sAccelerometerEnabled) {
-			Cocos2dxHelper.sCocos2dxAccelerometer.disable();
-		}
 	}
 
 	public static void onEnterBackground() {

@@ -29,9 +29,7 @@ THE SOFTWARE.
 
 #import <UserNotifications/UserNotifications.h>
 
-NS_SP_PLATFORM_BEGIN
-
-namespace interaction {
+namespace stappler::platform::interaction {
 	void _goToUrl(const StringView &url, bool external) {
 		NSString *urlString = [[NSString alloc] initWithBytes:url.data() length:(NSUInteger)url.size() encoding:NSUTF8StringEncoding];
 		NSURL *urlObj = [[NSURL alloc] initWithString:urlString];
@@ -79,7 +77,5 @@ namespace interaction {
 		}
 	}
 }
-
-NS_SP_PLATFORM_END
 
 #endif

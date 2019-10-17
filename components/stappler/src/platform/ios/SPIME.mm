@@ -601,9 +601,7 @@ using Cursor = stappler::ime::Cursor;
 
 @end
 
-NS_SP_PLATFORM_BEGIN
-
-namespace ime {
+namespace stappler::platform::ime {
 	using InputType = stappler::ime::InputType;
 	SPNativeInputView *_IMEView = nil;
 	int32_t _inputFlags = 0;
@@ -725,8 +723,6 @@ namespace ime {
 		}
 	}
 }
-
-NS_SP_PLATFORM_END
 
 #endif
 #endif

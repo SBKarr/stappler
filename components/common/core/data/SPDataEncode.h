@@ -45,10 +45,11 @@ struct EncodeFormat {
 
 	// We use LZ4 for compression, it's very fast to decode
 	enum Compression {
-		NoCompression		= 0b0000 << 4,
-		LowCompression		= 0b0001 << 4,
-		MediumCompression	= 0b0010 << 4,
-		HighCompression		= 0b0011 << 4, // LZ4-HC
+		NoCompression			= 0b0000 << 4,
+		LZ4Compression			= 0b0001 << 4,
+		LZ4HCCompression		= 0b0011 << 4,
+		BrotliLowCompression	= 0b0100 << 4,
+		BrotliHighCompression	= 0b1100 << 4,
 
 		DefaultCompress = NoCompression
 	};
@@ -58,10 +59,13 @@ struct EncodeFormat {
 		Encrypted			= 0b0001 << 8
 	};
 
-	EncodeFormat(Format fmt = DefaultFormat, Compression cmp = DefaultCompress, Encryption enc = Unencrypted, const String &key = "")
+	static EncodeFormat CborCompressed;
+	static EncodeFormat JsonCompressed;
+
+	constexpr EncodeFormat(Format fmt = DefaultFormat, Compression cmp = DefaultCompress, Encryption enc = Unencrypted, const String &key = "")
 	: format(fmt), compression(cmp), encryption(enc) { }
 
-	explicit EncodeFormat(long flag)
+	constexpr explicit EncodeFormat(long flag)
 	: format((Format)(flag & 0x0F)), compression((Compression)(flag & 0xF0))
 	, encryption((Encryption)(flag &0xF00)) { }
 
@@ -94,6 +98,9 @@ struct EncodeFormat {
 
 
 template <typename Interface>
+auto compress(const uint8_t *, size_t, EncodeFormat::Compression, bool conditional) -> typename Interface::BytesType;
+
+template <typename Interface>
 struct EncodeTraits {
 	using InterfaceType = Interface;
 	using ValueType = ValueTemplate<Interface>;
@@ -101,35 +108,37 @@ struct EncodeTraits {
 	using StringType = typename ValueType::StringType;
 
 	static BytesType write(const ValueType &data, EncodeFormat fmt) {
-		if (fmt.isRaw()) {
-			switch (fmt.format) {
-			case EncodeFormat::Json:
-			case EncodeFormat::Pretty:
-			case EncodeFormat::PrettyTime:
-			{
-				StringType s = json::write(data, (fmt.format == EncodeFormat::Pretty), (fmt.format == EncodeFormat::PrettyTime));
-				BytesType ret; ret.reserve(s.length());
-				ret.assign(s.begin(), s.end());
-				return ret;
-			}
-				break;
-			case EncodeFormat::Cbor:
-			case EncodeFormat::DefaultFormat:
-				return cbor::write(data);
-				break;
+		BytesType ret;
+		switch (fmt.format) {
+		case EncodeFormat::Json:
+		case EncodeFormat::Pretty:
+		case EncodeFormat::PrettyTime: {
+			StringType s = json::write(data, (fmt.format == EncodeFormat::Pretty), (fmt.format == EncodeFormat::PrettyTime));
+			ret.reserve(s.length());
+			ret.assign(s.begin(), s.end());
+			break;
+		}
+		case EncodeFormat::Cbor:
+		case EncodeFormat::DefaultFormat:
+			ret = cbor::write(data);
+			break;
 
-			case EncodeFormat::Serenity:
-			case EncodeFormat::SerenityPretty:
-			{
-				StringType s = serenity::write(data, (fmt.format == EncodeFormat::SerenityPretty));
-				BytesType ret; ret.reserve(s.length());
-				ret.assign(s.begin(), s.end());
-				return ret;
-			}
-				break;
+		case EncodeFormat::Serenity:
+		case EncodeFormat::SerenityPretty: {
+			StringType s = serenity::write(data, (fmt.format == EncodeFormat::SerenityPretty));
+			ret.reserve(s.length());
+			ret.assign(s.begin(), s.end());
+			break;
+		}
+		}
+
+		if (fmt.compression != EncodeFormat::NoCompression) {
+			auto tmp = compress<Interface>(ret.data(), ret.size(), fmt.compression, true);
+			if (!tmp.empty()) {
+				return tmp;
 			}
 		}
-		return BytesType();
+		return ret;
 	}
 
 	static bool write(std::ostream &stream, const ValueType &data, EncodeFormat fmt) {
@@ -145,6 +154,13 @@ struct EncodeTraits {
 			case EncodeFormat::Serenity: serenity::write(stream, data, false); return true; break;
 			case EncodeFormat::SerenityPretty: serenity::write(stream, data, true); return true; break;
 			}
+		} else {
+			auto ret = write(data, fmt);
+			if (!ret.empty()) {
+				stream.write((const char *)ret.data(), ret.size());
+				return true;
+			}
+			return false;
 		}
 		return false;
 	}
@@ -171,6 +187,13 @@ struct EncodeTraits {
 			case EncodeFormat::Serenity: return serenity::save(data, path, false); break;
 			case EncodeFormat::SerenityPretty: return serenity::save(data, path, true); break;
 			}
+		} else {
+			auto ret = write(data, fmt);
+			if (!ret.empty()) {
+				filesystem::write(file, ret);
+				return true;
+			}
+			return false;
 		}
 		return false;
 	}
