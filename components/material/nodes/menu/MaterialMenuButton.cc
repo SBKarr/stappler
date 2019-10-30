@@ -51,7 +51,7 @@ bool MenuButton::init() {
 	auto menuNameLabel = Rc<Label>::create(FontType::Subhead);
 	menuNameLabel->setVisible(false);
 	menuNameLabel->setAnchorPoint(Vec2(0, 0.5f));
-	menuNameLabel->setLocaleEnabled(true);
+	menuNameLabel->setLocaleEnabled(true);\
 	_menuNameLabel = addChildNode(menuNameLabel);
 
 	auto menuValueLabel = Rc<Label>::create(FontType::Subhead);
@@ -85,7 +85,15 @@ void MenuButton::setMenuSourceItem(MenuSourceItem *iitem) {
 }
 
 void MenuButton::setMenu(Menu *m) {
-	_menu = m;
+	if (_menu != m) {
+		_menu = m;
+
+		auto menuMetrics = _menu->getMetrics();
+		auto font = (menuMetrics == MenuMetrics::Navigation)?FontType::Body_1:FontType::Subhead;
+
+		_menuNameLabel->setFont(font);
+		_menuValueLabel->setFont(font);
+	}
 }
 
 Menu *MenuButton::getMenu() {
@@ -100,11 +108,6 @@ void MenuButton::layoutSubviews() {
 		return;
 	}
 	auto menuMetrics = menu->getMetrics();
-
-	auto font = (menuMetrics == MenuMetrics::Navigation)?FontType::Body_1:FontType::Subhead;
-
-	_menuNameLabel->setFont(font);
-	_menuValueLabel->setFont(font);
 
 	_menuNameLabel->setVisible(false);
 	_menuValueLabel->setVisible(false);
@@ -274,6 +277,21 @@ void MenuButton::onLightLevel() {
 		_menuValueIcon->setColor(Color::Black);
 		break;
 	};
+}
+
+Label *MenuButton::getNameLabel() const {
+	return _menuNameLabel;
+}
+
+Label *MenuButton::getValueLabel() const {
+	return _menuValueLabel;
+}
+
+IconSprite *MenuButton::getNameIcon() const {
+	return _menuNameIcon;
+}
+IconSprite *MenuButton::getValueIcon() const {
+	return _menuValueIcon;
 }
 
 NS_MD_END

@@ -257,7 +257,7 @@ public:
 
 	template< class K > size_t count( const K& x ) const { return _tree.count_unique(x); }
 
-	void reserve(size_t) { }
+	void reserve(size_t c) { _tree.reserve(c); }
 
 protected:
 	template <class A, class B>

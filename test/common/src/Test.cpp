@@ -26,7 +26,6 @@ THE SOFTWARE.
 #include "SPCommon.h"
 
 #include "Test.h"
-#include "Format.h"
 
 #include <random>
 
@@ -108,12 +107,12 @@ double TestManager::rand_double() {
 bool TestManager::runAll() const {
 	bool success = true;
 	for (auto &it : tests) {
-		std::cout << format::color(format::Cyan) << format::bold() << it->name() << format::drop() << ": ";
+		std::cout << it->name() << ": ";
 		if (!it->run()) {
 			success = false;
-			std::cout << format::color(format::Red) << format::bold() << "[Failed]" << format::drop();
+			std::cout << "[Failed]";
 		} else {
-			std::cout << format::color(format::Green) << format::bold() << "[Passed]" << format::drop();
+			std::cout << "[Passed]";
 		}
 
 		const auto &desc = it->desc();
@@ -129,12 +128,12 @@ bool TestManager::run(const String &str) const {
 	bool success = true;
 	for (auto &it : tests) {
 		if (it->name() == str) {
-			std::cout << format::color(format::Cyan) << format::bold() << it->name() << format::drop() << ": ";
+			std::cout << it->name() << ": ";
 			if (!it->run()) {
 				success = false;
-				std::cout << format::color(format::Red) << format::bold() << "[Failed]" << format::drop();
+				std::cout << "[Failed]";
 			} else {
-				std::cout << format::color(format::Green) << format::bold() << "[Passed]" << format::drop();
+				std::cout << "[Passed]";
 			}
 
 			const auto &desc = it->desc();

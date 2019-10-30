@@ -318,7 +318,10 @@ DynamicLabel::LineSpec DynamicLabel::getLine(uint32_t num) const {
 }
 
 uint16_t DynamicLabel::getFontHeight() const {
-	return const_cast<Source *>(_source.get())->getLayout(_style.font)->getData()->metrics.height;
+	if (auto l = const_cast<Source *>(_source.get())->getLayout(_style.font)) {
+		return l->getData()->metrics.height;
+	}
+	return 0;
 }
 
 void DynamicLabel::updateQuads(uint32_t f) {

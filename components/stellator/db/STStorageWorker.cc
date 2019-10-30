@@ -246,6 +246,10 @@ bool Worker::isSystem() const {
 	return _isSystem;
 }
 
+const Worker::RequiredFields &Worker::getRequiredFields() const {
+	return _required;
+}
+
 mem::Value Worker::get(uint64_t oid, bool forUpdate) {
 	Query query;
 	prepareGetQuery(query, oid, forUpdate);

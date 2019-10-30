@@ -46,6 +46,12 @@ public:
 
 	virtual void onLightLevel() override;
 
+	virtual Label *getNameLabel() const;
+	virtual Label *getValueLabel() const;
+
+	virtual IconSprite *getNameIcon() const;
+	virtual IconSprite *getValueIcon() const;
+
 protected:
 	virtual void layoutSubviews();
 	virtual void onButton();

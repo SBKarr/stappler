@@ -31,10 +31,13 @@ THE SOFTWARE.
 NS_MD_BEGIN
 
 static auto Label_systemFontFamily = "system";
+static constexpr uint32_t Label_systemFontTag = 1;
 
-DynamicLabel::DescriptionStyle Label::getFontStyle(FontType t) {
-	DescriptionStyle ret;
-	ret.font.fontFamily = StringView(Label_systemFontFamily);
+DynamicLabel::DescriptionStyle Label::getFontStyle(FontType t, DescriptionStyle ret) {
+	if (ret.font.fontFamily.empty() || ret.font.fontFamily == "default") {
+		ret.font.fontFamily = StringView(Label_systemFontFamily);
+	}
+	ret.tag = Label_systemFontTag;
 	switch (t) {
 	case FontType::Headline:
 		ret.font.fontSize = 24;
@@ -126,7 +129,7 @@ DynamicLabel::DescriptionStyle Label::getFontStyle(const String &name) {
 
 static font::FontSource *Label_getSourceForStyle(const DynamicLabel::DescriptionStyle &style) {
 	auto m = ResourceManager::getInstance();
-	if (style.font.fontFamily == "system") {
+	if (style.tag == Label_systemFontTag) {
 		return m->getSystemFontSource();
 	} else {
 		return m->getUserFontSource();
@@ -151,55 +154,55 @@ bool Label::ExternalFormatter::init(bool userFont, float w) {
 	return true;
 }
 
-void Label::ExternalFormatter::addString(FontType style, const String &str, bool localized) {
+void Label::ExternalFormatter::addString(FontType style, const StringView &str, bool localized) {
 	DynamicLabel::ExternalFormatter::addString(getFontStyle(style), string::toUtf16(str), localized);
 }
-void Label::ExternalFormatter::addString(FontType style, const WideString &str, bool localized) {
+void Label::ExternalFormatter::addString(FontType style, const WideStringView &str, bool localized) {
 	DynamicLabel::ExternalFormatter::addString(getFontStyle(style), str, localized);
 }
-void Label::ExternalFormatter::addString(const String &style, const String &str, bool localized) {
+void Label::ExternalFormatter::addString(const String &style, const StringView &str, bool localized) {
 	DynamicLabel::ExternalFormatter::addString(getFontStyle(style), string::toUtf16(str), localized);
 }
-void Label::ExternalFormatter::addString(const String &style, const WideString &str, bool localized) {
+void Label::ExternalFormatter::addString(const String &style, const WideStringView &str, bool localized) {
 	DynamicLabel::ExternalFormatter::addString(getFontStyle(style), str, localized);
 }
-void Label::ExternalFormatter::addString(const DescriptionStyle &style, const String &str, bool localized) {
+void Label::ExternalFormatter::addString(const DescriptionStyle &style, const StringView &str, bool localized) {
 	DynamicLabel::ExternalFormatter::addString(style, string::toUtf16(str), localized);
 }
-void Label::ExternalFormatter::addString(const DescriptionStyle &style, const WideString &str, bool localized) {
+void Label::ExternalFormatter::addString(const DescriptionStyle &style, const WideStringView &str, bool localized) {
 	DynamicLabel::ExternalFormatter::addString(style, str, localized);
 }
 
-Size Label::getLabelSize(FontType t, const String &str, float w, float density, bool localized) {
+Size Label::getLabelSize(FontType t, const StringView &str, float w, float density, bool localized) {
 	return getLabelSize(getFontStyle(t), string::toUtf16(str), w, density, localized);
 }
-Size Label::getLabelSize(FontType t, const WideString &str, float w, float density, bool localized) {
+Size Label::getLabelSize(FontType t, const WideStringView &str, float w, float density, bool localized) {
 	return getLabelSize(getFontStyle(t), str, w, density, localized);
 }
 
-Size Label::getLabelSize(const String &style, const String &str, float w, float density, bool localized) {
+Size Label::getLabelSize(const String &style, const StringView &str, float w, float density, bool localized) {
 	return getLabelSize(getFontStyle(style), string::toUtf16(str), w, density, localized);
 }
-Size Label::getLabelSize(const String &style, const WideString &str, float w, float density, bool localized) {
+Size Label::getLabelSize(const String &style, const WideStringView &str, float w, float density, bool localized) {
 	return getLabelSize(getFontStyle(style), str, w, density, localized);
 }
-Size Label::getLabelSize(const DescriptionStyle &style, const WideString &str, float w, float density, bool localized) {
+Size Label::getLabelSize(const DescriptionStyle &style, const WideStringView &str, float w, float density, bool localized) {
 	return DynamicLabel::getLabelSize(Label_getSourceForStyle(style), style, str, w, density, localized);
 }
 
-float Label::getStringWidth(FontType t, const String &str, float density, bool localized) {
+float Label::getStringWidth(FontType t, const StringView &str, float density, bool localized) {
 	return getStringWidth(getFontStyle(t), string::toUtf16(str), density, localized);
 }
-float Label::getStringWidth(FontType t, const WideString &str, float density, bool localized) {
+float Label::getStringWidth(FontType t, const WideStringView &str, float density, bool localized) {
 	return getStringWidth(getFontStyle(t), str, density, localized);
 }
-float Label::getStringWidth(const String &t, const String &str, float density, bool localized) {
+float Label::getStringWidth(const String &t, const StringView &str, float density, bool localized) {
 	return getStringWidth(getFontStyle(t), string::toUtf16(str), density, localized);
 }
-float Label::getStringWidth(const String &t, const WideString &str, float density, bool localized) {
+float Label::getStringWidth(const String &t, const WideStringView &str, float density, bool localized) {
 	return getStringWidth(getFontStyle(t), str, density, localized);
 }
-float Label::getStringWidth(const DescriptionStyle &style, const WideString &str, float density, bool localized) {
+float Label::getStringWidth(const DescriptionStyle &style, const WideStringView &str, float density, bool localized) {
 	return DynamicLabel::getStringWidth(Label_getSourceForStyle(style), style, str, density, localized);
 }
 
@@ -223,7 +226,7 @@ bool Label::init(const DescriptionStyle &style, Alignment a, float w) {
 }
 
 void Label::setFont(FontType t) {
-	setStyle(getFontStyle(t));
+	setStyle(getFontStyle(t, _style));
 }
 
 void Label::setStyle(const DescriptionStyle &style) {

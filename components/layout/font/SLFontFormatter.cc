@@ -993,6 +993,10 @@ uint16_t Formatter::getLineHeight() const {
 	return lineHeight;
 }
 
+float Formatter::getDensity() const {
+	return density;
+}
+
 FormatSpec *Formatter::getOutput() const {
 	return output;
 }

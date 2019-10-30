@@ -200,7 +200,7 @@ auto readIntoMemory(const StringView &ipath, size_t off = 0, size_t size = maxOf
 		auto fsize = f.size();
 		if (fsize <= off) {
 			f.close();
-			return Bytes();
+			return typename Interface::BytesType();
 		}
 		if (fsize - off < size) {
 			size = fsize - off;

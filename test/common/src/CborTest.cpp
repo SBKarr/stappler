@@ -50,7 +50,7 @@ struct PoolCborTest : MemPoolTest {
 		});
 
 		runTest(stream, "StdCborTest", count, passed, [&] {
-			auto data = filesystem::readFile(filesystem::currentDir("test/app.cbor"));
+			auto data = filesystem::readIntoMemory(filesystem::currentDir("test/app.cbor"));
 
 			uint64_t v = 0;
 			for (size_t i = 0; i < ntests; ++i) {
@@ -63,7 +63,7 @@ struct PoolCborTest : MemPoolTest {
 		});
 
 		runTest(stream, "PoolCborTest", count, passed, [&] {
-			auto data = filesystem::readFile(filesystem::currentDir("test/app.cbor"));
+			auto data = filesystem::readIntoMemory(filesystem::currentDir("test/app.cbor"));
 
 			uint64_t v = 0;
 			for (size_t i = 0; i < ntests; ++i) {
@@ -82,7 +82,7 @@ struct PoolCborTest : MemPoolTest {
 		runTest(stream, "CompareCborTest", count, passed, [&] {
 			memory::pool::clear(pool);
 			auto t = Time::now();
-			auto data = filesystem::readFile(filesystem::currentDir("test/app.cbor"));
+			auto data = filesystem::readIntoMemory(filesystem::currentDir("test/app.cbor"));
 			stream << (Time::now() - t).toMicroseconds() << " ";
 
 			t = Time::now();
@@ -125,7 +125,7 @@ struct CborDataTest : Test {
 			if (isFile) {
 				auto ext = filepath::lastExtension(path);
 
-				auto fileData = filesystem::readFile(path);
+				auto fileData = filesystem::readIntoMemory(path);
 
 				if (ext == "cbor") {
 					cborData.emplace(filepath::name(path).str(), data::read(fileData));

@@ -279,9 +279,7 @@ public:
 
 	String name() const;
 
-	static Color getColorByName(const String &, const Color & = Color::Black);
 	static Color getColorByName(const StringView &, const Color & = Color::Black);
-
 	static Color progress(const Color &a, const Color &b, float p);
 
 private:

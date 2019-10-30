@@ -100,6 +100,8 @@ protected:
 
 	virtual void onPosition() override;
 
+	virtual Rc<ScrollController> onScrollController() const;
+
 	bool _linksEnabled = true;
 	Margin _pageMargin;
 	Renderer *_renderer = nullptr;

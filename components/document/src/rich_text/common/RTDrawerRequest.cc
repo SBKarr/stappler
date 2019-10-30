@@ -246,6 +246,7 @@ void Request::draw(cocos2d::Texture2D *data) {
 			bg.g = 255;
 			bg.b = 255;
 		}
+
 		if (!_drawer->begin(data, bg, _density)) {
 			return;
 		}

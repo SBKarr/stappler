@@ -40,7 +40,9 @@ using Storage = memory::Storage<Value>;
 struct NodeBase : public AllocPool {
 	struct Flag {
 		uintptr_t color : 1;
-		uintptr_t size : (sizeof(intptr_t) * 8) - 1;
+		uintptr_t prealloc : 1;
+		uintptr_t count : (sizeof(uintptr_t) / 2) * 8 - 2;
+		uintptr_t size : (sizeof(uintptr_t) / 2) * 8;
 	};
 
 	NodeBase *parent = nullptr;
@@ -48,14 +50,20 @@ struct NodeBase : public AllocPool {
 	NodeBase *right = nullptr;
 	Flag flag;
 
-	NodeBase() noexcept : flag(Flag{0, 0}) { }
-	NodeBase(NodeColor c) noexcept : flag(Flag{uintptr_t(c ? 1 : 0), 0}) { }
+	NodeBase() noexcept : flag(Flag{0, 0, 0, 0}) { }
+	NodeBase(NodeColor c) noexcept : flag(Flag{uintptr_t(c ? 1 : 0), 0, 0, 0}) { }
 
 	inline void setColor(NodeColor c) { flag.color = c ? 1 : 0; }
 	inline NodeColor getColor() const { return NodeColor(flag.color); }
 
+	inline void setPrealloc(bool v) { flag.prealloc = v ? 1 : 0; }
+	inline bool isPrealloc() const { return flag.prealloc != 0; }
+
 	inline void setSize(uintptr_t s) { flag.size = s; }
 	inline uintptr_t getSize() const { return flag.size; }
+
+	inline void setCount(uintptr_t s) { flag.count = s; }
+	inline uintptr_t getCount() const { return flag.count; }
 
 	static inline NodeBase * min (NodeBase * x) {
 		while (x->left != 0) x = x->left;
@@ -417,7 +425,12 @@ public:
 		_header.left = nullptr;
 		_header.right = nullptr;
 		_header.parent = nullptr;
+		if (_allocator.test(value_allocator_type::SecondFlag)) {
+			node_allocator_type(_allocator).__deallocate(_tmp, _size, _tmp->getSize());
+			_tmp = nullptr;
+		}
 		_size = 0;
+		_allocator.reset(value_allocator_type::SecondFlag);
 	}
 
 	size_t size() const noexcept {
@@ -489,6 +502,12 @@ public:
 		return findNode(x)?1:0;
 	}
 
+	void reserve(size_t c) {
+		if (c > _size) {
+			allocateTmp(c - _size);
+		}
+	}
+
 protected:
 	friend class TreeDebug;
 
@@ -534,15 +553,7 @@ protected:
 
 	template <typename ... Args> InsertData
 	constructNode(Args && ... args) {
-		Node<Value> * ret;
-		if (!_tmp) {
-			size_t s;
-			ret = node_allocator_type(_allocator).__allocate(1, s);
-			ret->setSize(s);
-		} else {
-			ret = _tmp;
-			_tmp = nullptr;
-		}
+		Node<Value> * ret = allocateNode();
 		ret->parent = nullptr;
 		ret->left = nullptr;
 		ret->right = nullptr;
@@ -562,15 +573,7 @@ protected:
 
 	template <typename K, typename ... Args>
 	Node<Value> *constructEmplace(K &&k, Args && ... args) {
-		Node<Value> * ret;
-		if (!_tmp) {
-			size_t s;
-			ret = node_allocator_type(_allocator).__allocate(1, s);
-			ret->setSize(s);
-		} else {
-			ret = _tmp;
-			_tmp = nullptr;
-		}
+		Node<Value> * ret = allocateNode();
 		ret->parent = nullptr;
 		ret->left = nullptr;
 		ret->right = nullptr;
@@ -588,15 +591,6 @@ protected:
 	template <typename M>
 	void constructAssign(Node<Value> *n, M &&m) {
 		n->value.ref() = std::move(m);
-	}
-
-	void destroyNode(Node<Value> *n) {
-	    _allocator.destroy(n->value.ptr());
-	    if (_tmp) {
-		    node_allocator_type(_allocator).__deallocate(n, 1, n->getSize());
-	    } else {
-	    	_tmp = n;
-	    }
 	}
 
 	bool getInsertPositionUnique_search(InsertData &d) {
@@ -892,17 +886,22 @@ protected:
 		if (target->right) {
 			clear_visit(static_cast<Node<Value> *>(target->right));
 		}
+		if (_allocator.test(value_allocator_type::SecondFlag)) {
+			destroyNode(target);
+			return;
+		}
+
 		_allocator.destroy(target->value.ptr());
-		node_allocator_type(_allocator).__deallocate(target, 1, target->getSize());
+		if (target->getSize()) {
+			node_allocator_type(_allocator).__deallocate(target, 1, target->getSize());
+		}
 	}
 
 	void clone_visit(const Node<Value> *source, Node<Value> *target) {
 		_allocator.construct(target->value.ptr(), source->value.ref());
 		target->setColor(source->getColor());
 		if (source->left) {
-			size_t s;
-			target->left = node_allocator_type(_allocator).__allocate(1, s);
-			target->left->setSize(s);
+			target->left = allocateNode();
 			target->left->parent = target;
 			clone_visit(static_cast<Node<Value> *>(source->left), static_cast<Node<Value> *>(target->left));
 			if (_header.parent == source->left) { // check for leftmost node
@@ -913,9 +912,7 @@ protected:
 		}
 
 		if (source->right) {
-			size_t s;
-			target->right = node_allocator_type(_allocator).__allocate(1, s);
-			target->right->setSize(s);
+			target->right = allocateNode();
 			target->right->parent = target;
 			clone_visit(static_cast<Node<Value> *>(source->right), static_cast<Node<Value> *>(target->right));
 			if (_header.right == source->right) { // check for rightmost node
@@ -929,13 +926,13 @@ protected:
 	void clone(const Tree &other) {
 		clear();
 
+		allocateTmp(other.size());
+
 		_comp = other._comp;
 		_size = other._size;
 		_header = other._header;
 		if (other._header.left) {
-			size_t s;
-			_header.left = node_allocator_type(_allocator).__allocate(1, s);
-			_header.left->setSize(s);
+			_header.left = allocateNode();
 			_header.left->parent = &_header;
 			if (other._header.left == other._header.parent) {
 				_header.parent = _header.left;
@@ -1021,6 +1018,69 @@ protected:
 		}
 	}
 
+	void destroyNode(Node<Value> *n) {
+		_allocator.destroy(n->value.ptr());
+		if (_tmp) {
+			if (_allocator.test(value_allocator_type::SecondFlag)) {
+				if (n < _tmp) {
+					n->setSize(n->getSize() + _tmp->getSize());
+					_tmp = n;
+				} else {
+					_tmp->setSize(n->getSize() + _tmp->getSize());
+				}
+			} else if (n->getSize()) {
+				node_allocator_type(_allocator).__deallocate(n, 1, n->isPrealloc() ? sizeof(Node<Value>) : n->getSize());
+			}
+		} else {
+			_tmp = n;
+		}
+	}
+
+	void allocateTmp(size_t count) {
+		if (!_tmp) {
+			size_t s;
+			auto ret = node_allocator_type(_allocator).__allocate(count, s);
+			auto n = ret;
+			for (size_t i = 0; i < count; ++ i) {
+				n->setPrealloc(true);
+				n->setCount(count - i - 1);
+				if (i < count - 1) {
+					n->setSize(sizeof(Node<Value>));
+					s -= sizeof(Node<Value>);
+				} else {
+					n->setSize(s);
+				}
+				++ n;
+			}
+			if (_size == 0) {
+				_allocator.set(value_allocator_type::AllocFlag::SecondFlag);
+			}
+			_tmp = ret;
+		}
+	}
+
+	Node<Value> * allocateNode() {
+		if (_tmp) {
+			auto ret = _tmp;
+			if (_tmp->getCount()) {
+				_tmp->setCount(0);
+				_tmp = _tmp + 1;
+			} else {
+				_tmp = nullptr;
+			}
+			return ret;
+		} else {
+			size_t s;
+			if (_allocator.test(value_allocator_type::SecondFlag)) {
+				_allocator.reset(value_allocator_type::SecondFlag);
+			}
+			auto ret = node_allocator_type(_allocator).__allocate(1, s);
+			ret->setSize(s);
+			ret->setCount(0);
+			ret->setPrealloc(false);
+			return ret;
+		}
+	}
 };
 
 }

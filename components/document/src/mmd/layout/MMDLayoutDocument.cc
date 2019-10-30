@@ -437,10 +437,10 @@ static void LayoutDocument_onClass(layout::Style &style, const StringView &name,
 	}
 
 	if (name == "figure") {
-		if (classStr == "middle") {
+		/*if (classStr == "middle") {
 			style.set(Parameter::create<ParameterName::Float>(Float::Right), true);
 			style.set(Parameter::create<ParameterName::Width>(Metric(1.0f, Metric::Units::Percent)), true);
-		}
+		}*/
 
 	} else if (name == "img") {
 		if (classStr == "middle") {

@@ -769,6 +769,7 @@ mem::Map<mem::String, TableRec> TableRec::get(Handle &h, mem::StringStream &stre
 		}
 		triggers.clear();
 	});
+
 	return ret;
 }
 

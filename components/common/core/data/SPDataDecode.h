@@ -103,7 +103,7 @@ auto read(const StringType &data, const StringView &key = StringView()) -> Value
 
 template <typename Interface = DefaultInterface>
 auto readFile(const StringView &filename, const StringView &key = StringView()) -> ValueTemplate<Interface> {
-	return read(filesystem::readIntoMemory<Interface>(filename));
+	return read<typename Interface::BytesType, Interface>(filesystem::readIntoMemory<Interface>(filename));
 }
 
 NS_SP_EXT_END(data)

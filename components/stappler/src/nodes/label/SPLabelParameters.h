@@ -133,6 +133,7 @@ public:
 
 		bool colorDirty = false;
 		bool opacityDirty = false;
+		uint32_t tag = 0;
 
 		DescriptionStyle();
 
@@ -181,14 +182,18 @@ public:
 	public:
 		bool init(Source *, float w = 0.0f, float density = 0.0f);
 
+		void setLineHeightAbsolute(float value);
+		void setLineHeightRelative(float value);
+
 		void reserve(size_t chars, size_t ranges = 1);
 
-		void addString(const DescriptionStyle &, const String &, bool localized = false);
-		void addString(const DescriptionStyle &, const WideString &, bool localized = false);
+		void addString(const DescriptionStyle &, const StringView &, bool localized = false);
+		void addString(const DescriptionStyle &, const WideStringView &, bool localized = false);
 
 		Size finalize();
 
 	protected:
+		bool begin = false;
 		layout::FormatSpec _spec;
 		layout::Formatter _formatter;
 		float _density = 1.0f;
@@ -197,14 +202,14 @@ public:
 	using StyleVec = Vector< StyleSpec >;
 
 public:
-	static WideString getLocalizedString(const String &);
-	static WideString getLocalizedString(const WideString &);
+	static WideString getLocalizedString(const StringView &);
+	static WideString getLocalizedString(const WideStringView &);
 
-	static Size getLabelSize(Source *, const DescriptionStyle &, const String &, float w = 0.0f, float density = 0.0f, bool localized = false);
-	static Size getLabelSize(Source *, const DescriptionStyle &, const WideString &, float w = 0.0f, float density = 0.0f, bool localized = false);
+	static Size getLabelSize(Source *, const DescriptionStyle &, const StringView &, float w = 0.0f, float density = 0.0f, bool localized = false);
+	static Size getLabelSize(Source *, const DescriptionStyle &, const WideStringView &, float w = 0.0f, float density = 0.0f, bool localized = false);
 
-	static float getStringWidth(Source *, const DescriptionStyle &, const String &, float density = 0.0f, bool localized = false);
-	static float getStringWidth(Source *, const DescriptionStyle &, const WideString &, float density = 0.0f, bool localized = false);
+	static float getStringWidth(Source *, const DescriptionStyle &, const StringView &, float density = 0.0f, bool localized = false);
+	static float getStringWidth(Source *, const DescriptionStyle &, const WideStringView &, float density = 0.0f, bool localized = false);
 
 public:
 	virtual ~LabelParameters();

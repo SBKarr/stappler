@@ -208,6 +208,8 @@ public:
 	uint16_t getMaxLineX() const;
 	uint16_t getLineHeight() const;
 
+	float getDensity() const;
+
 	FormatSpec *getOutput() const;
 
 protected:

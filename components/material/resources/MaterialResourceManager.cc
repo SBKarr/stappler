@@ -44,6 +44,47 @@ THE SOFTWARE.
 
 NS_MD_BEGIN
 
+struct StaticResources {
+	Mutex mutex;
+	Vector<FontResourceHeader *> resources;
+
+	static StaticResources *getInstance() {
+		static StaticResources s_resources;
+		return &s_resources;
+	}
+
+	void addFont(FontResourceHeader *ptr) {
+		mutex.lock();
+		resources.emplace_back(ptr);
+		mutex.unlock();
+	}
+
+	void removeFont(FontResourceHeader *ptr) {
+		mutex.lock();
+		auto it = std::find(resources.begin(), resources.end(), ptr);
+		if (it != resources.end()) {
+			resources.erase(it);
+		}
+		mutex.unlock();
+	}
+};
+
+FontResourceHeader::FontResourceHeader(layout::FontSource::FontFaceMap &&map, bool user) : _userFont(user), _faceMap(move(map)) {
+	StaticResources::getInstance()->addFont(this);
+}
+
+FontResourceHeader::~FontResourceHeader() {
+	StaticResources::getInstance()->removeFont(this);
+}
+
+bool FontResourceHeader::isUserFont() const {
+	return _userFont;
+}
+
+layout::FontSource::FontFaceMap &FontResourceHeader::get() {
+	return _faceMap;
+}
+
 SP_DECLARE_EVENT(ResourceManager, "Material", onLoaded);
 SP_DECLARE_EVENT(ResourceManager, "Material", onLightLevel);
 SP_DECLARE_EVENT(ResourceManager, "Material", onUserFont);
@@ -109,31 +150,9 @@ ResourceManager::ResourceManager() {
 	});
 
 	using namespace font;
-	_source = Rc<FontSource>::create(FontSource::FontFaceMap{
-		pair("system", Vector<FontFace>{
-			FontFace(getSystemFont(SystemFontName::Roboto_Black), FontStyle::Normal, FontWeight::W800),
-			FontFace(getSystemFont(SystemFontName::Roboto_BlackItalic), FontStyle::Italic, FontWeight::W800),
-			FontFace(getSystemFont(SystemFontName::Roboto_Bold), FontStyle::Normal, FontWeight::W700),
-			FontFace(getSystemFont(SystemFontName::Roboto_BoldItalic), FontStyle::Italic, FontWeight::W700),
-			FontFace(getSystemFont(SystemFontName::RobotoCondensed_Bold), FontStyle::Normal, FontWeight::W700, FontStretch::Condensed),
-			FontFace(getSystemFont(SystemFontName::RobotoCondensed_BoldItalic), FontStyle::Italic, FontWeight::W700, FontStretch::Condensed),
-			FontFace(getSystemFont(SystemFontName::RobotoCondensed_Italic), FontStyle::Italic, FontWeight::Normal, FontStretch::Condensed),
-			FontFace(getSystemFont(SystemFontName::RobotoCondensed_Light), FontStyle::Normal, FontWeight::W200, FontStretch::Condensed),
-			FontFace(getSystemFont(SystemFontName::RobotoCondensed_LightItalic), FontStyle::Italic, FontWeight::W200, FontStretch::Condensed),
-			FontFace(getSystemFont(SystemFontName::RobotoCondensed_Regular), FontStyle::Normal, FontWeight::Normal, FontStretch::Condensed),
-			FontFace(getSystemFont(SystemFontName::Roboto_Italic), FontStyle::Italic),
-			FontFace(getSystemFont(SystemFontName::Roboto_Light), FontStyle::Normal, FontWeight::W200),
-			FontFace(getSystemFont(SystemFontName::Roboto_LightItalic), FontStyle::Italic, FontWeight::W200),
-			FontFace(getSystemFont(SystemFontName::Roboto_Medium), FontStyle::Normal, FontWeight::W500),
-			FontFace(getSystemFont(SystemFontName::Roboto_MediumItalic), FontStyle::Italic, FontWeight::W500),
-			FontFace(getSystemFont(SystemFontName::Roboto_Regular)),
-			FontFace(getSystemFont(SystemFontName::Roboto_Thin), FontStyle::Normal, FontWeight::W100),
-			FontFace(getSystemFont(SystemFontName::Roboto_ThinItalic), FontStyle::Italic, FontWeight::W100)
-		})
-	}, nullptr, 1.0f, Vector<String>{ "fonts/", "common/fonts/" });
 
-	_textFont = Rc<UserFontConfig>::create(FontSource::FontFaceMap{
-		pair("default", Vector<FontFace>{
+	FontSource::FontFaceMap systemMap({
+		pair("system", Vector<FontFace>({
 			FontFace(getSystemFont(SystemFontName::Roboto_Black), FontStyle::Normal, FontWeight::W800),
 			FontFace(getSystemFont(SystemFontName::Roboto_BlackItalic), FontStyle::Italic, FontWeight::W800),
 			FontFace(getSystemFont(SystemFontName::Roboto_Bold), FontStyle::Normal, FontWeight::W700),
@@ -152,8 +171,50 @@ ResourceManager::ResourceManager() {
 			FontFace(getSystemFont(SystemFontName::Roboto_Regular)),
 			FontFace(getSystemFont(SystemFontName::Roboto_Thin), FontStyle::Normal, FontWeight::W100),
 			FontFace(getSystemFont(SystemFontName::Roboto_ThinItalic), FontStyle::Italic, FontWeight::W100)
-		})
-	}, 1.0f);
+		}))
+	});
+
+	FontSource::FontFaceMap userMap({
+		pair("default", Vector<FontFace>({
+			FontFace(getSystemFont(SystemFontName::Roboto_Black), FontStyle::Normal, FontWeight::W800),
+			FontFace(getSystemFont(SystemFontName::Roboto_BlackItalic), FontStyle::Italic, FontWeight::W800),
+			FontFace(getSystemFont(SystemFontName::Roboto_Bold), FontStyle::Normal, FontWeight::W700),
+			FontFace(getSystemFont(SystemFontName::Roboto_BoldItalic), FontStyle::Italic, FontWeight::W700),
+			FontFace(getSystemFont(SystemFontName::RobotoCondensed_Bold), FontStyle::Normal, FontWeight::W700, FontStretch::Condensed),
+			FontFace(getSystemFont(SystemFontName::RobotoCondensed_BoldItalic), FontStyle::Italic, FontWeight::W700, FontStretch::Condensed),
+			FontFace(getSystemFont(SystemFontName::RobotoCondensed_Italic), FontStyle::Italic, FontWeight::Normal, FontStretch::Condensed),
+			FontFace(getSystemFont(SystemFontName::RobotoCondensed_Light), FontStyle::Normal, FontWeight::W200, FontStretch::Condensed),
+			FontFace(getSystemFont(SystemFontName::RobotoCondensed_LightItalic), FontStyle::Italic, FontWeight::W200, FontStretch::Condensed),
+			FontFace(getSystemFont(SystemFontName::RobotoCondensed_Regular), FontStyle::Normal, FontWeight::Normal, FontStretch::Condensed),
+			FontFace(getSystemFont(SystemFontName::Roboto_Italic), FontStyle::Italic),
+			FontFace(getSystemFont(SystemFontName::Roboto_Light), FontStyle::Normal, FontWeight::W200),
+			FontFace(getSystemFont(SystemFontName::Roboto_LightItalic), FontStyle::Italic, FontWeight::W200),
+			FontFace(getSystemFont(SystemFontName::Roboto_Medium), FontStyle::Normal, FontWeight::W500),
+			FontFace(getSystemFont(SystemFontName::Roboto_MediumItalic), FontStyle::Italic, FontWeight::W500),
+			FontFace(getSystemFont(SystemFontName::Roboto_Regular)),
+			FontFace(getSystemFont(SystemFontName::Roboto_Thin), FontStyle::Normal, FontWeight::W100),
+			FontFace(getSystemFont(SystemFontName::Roboto_ThinItalic), FontStyle::Italic, FontWeight::W100)
+		}))
+	});
+
+	auto res = StaticResources::getInstance();
+	res->mutex.lock();
+	for (auto &it : res->resources) {
+		auto &m = it->get();
+		if (it->isUserFont()) {
+			for (auto &iit : m) {
+				userMap.emplace(iit.first, move(iit.second));
+			}
+		} else {
+			for (auto &iit : m) {
+				systemMap.emplace(iit.first, move(iit.second));
+			}
+		}
+	}
+	res->mutex.unlock();
+
+	_source = Rc<FontSource>::create(move(systemMap), nullptr, 1.0f, Vector<String>{ "fonts/", "common/fonts/" });
+	_textFont = Rc<UserFontConfig>::create(move(userMap), 1.0f);
 
 	_iconStorage = Rc<IconStorage>::create(stappler::screen::density());
 	_iconStorageSmall = Rc<IconStorage>::create(stappler::screen::density(), 18, 18);

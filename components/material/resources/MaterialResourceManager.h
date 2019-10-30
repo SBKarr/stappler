@@ -33,6 +33,20 @@ THE SOFTWARE.
 
 NS_MD_BEGIN
 
+class FontResourceHeader {
+public:
+	FontResourceHeader(layout::FontSource::FontFaceMap &&, bool user = false);
+	~FontResourceHeader();
+
+	bool isUserFont() const;
+	layout::FontSource::FontFaceMap &get();
+
+protected:
+	size_t _idx = 0;
+	bool _userFont = false;
+	layout::FontSource::FontFaceMap _faceMap;
+};
+
 class ResourceManager : public Ref, EventHandler {
 public:
 	using LightLevel = layout::style::LightLevel;

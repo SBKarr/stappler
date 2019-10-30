@@ -94,6 +94,8 @@ public:
 	Worker &asSystem();
 	bool isSystem() const;
 
+	const RequiredFields &getRequiredFields() const;
+
 public:
 	mem::Value get(uint64_t oid, bool forUpdate = false);
 	mem::Value get(const mem::StringView &alias, bool forUpdate = false);

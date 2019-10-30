@@ -45,8 +45,8 @@ public:
 	virtual void setCustomData(data::Value &&);
 	virtual const data::Value &getCustomData() const;
 
-	virtual void setAttachCallback(const AttachCallback &);
-	virtual void setDetachCallback(const AttachCallback &);
+	virtual MenuSourceItem *setAttachCallback(const AttachCallback &);
+	virtual MenuSourceItem *setDetachCallback(const AttachCallback &);
 
 	virtual Type getType() const;
 

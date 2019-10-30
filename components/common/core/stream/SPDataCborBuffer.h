@@ -144,7 +144,9 @@ protected:
 	void writeDict(ValueType &val, size_t s) {
 		val._type = ValueType::Type::DICTIONARY;
 		val.dictVal = new DictionaryType();
-		cbor::__DecoderMapReserve<Interface>::reserve(*val.dictVal, s);
+		if constexpr (Interface::usesMemoryPool()) {
+			val.dictVal->reserve(s);
+		}
 		stack.push_back(pair(&val, s));
 		state = State::DictKey;
 	}

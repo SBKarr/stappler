@@ -825,9 +825,6 @@ String Color::name() const {
 	return ret;
 }
 
-Color Color::getColorByName(const String &str, const Color &def) {
-	return getColorByName(StringView(str), def);
-}
 Color Color::getColorByName(const StringView &str, const Color &def) {
 	Color3B color;
 	if (style::readColor(str, color)) {

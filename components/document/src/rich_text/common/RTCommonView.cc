@@ -103,7 +103,7 @@ bool CommonView::init(Layout l, CommonSource *source, const Vector<String> &ids)
 		return false;
 	}
 
-	setController(Rc<ScrollController>::create());
+	setController(onScrollController());
 
 	auto renderer = Rc<Renderer>::create(ids);
 	renderer->setRenderingCallback(std::bind(&CommonView::onRenderer, this,
@@ -570,6 +570,10 @@ void CommonView::onPosition() {
 	if (_movement == Movement::None) {
 		_gestureStart = nan();
 	}
+}
+
+Rc<ScrollController> CommonView::onScrollController() const {
+	return Rc<ScrollController>::create();
 }
 
 NS_SP_EXT_END(rich_text)

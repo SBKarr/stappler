@@ -189,27 +189,6 @@ void Decoder<Interface>::decodeArray(uint8_t type, ValueType &ret) {
 }
 
 template <typename Interface>
-struct __DecoderMapReserve;
-
-template <>
-struct __DecoderMapReserve<memory::PoolInterface> {
-	using ValueType = ValueTemplate<memory::PoolInterface>;
-	using DictionaryType = typename ValueType::DictionaryType;
-
-	static void reserve(DictionaryType &dict, size_t s) {
-		dict.reserve(s);
-	}
-};
-
-template <>
-struct __DecoderMapReserve<memory::StandartInterface> {
-	using ValueType = ValueTemplate<memory::StandartInterface>;
-	using DictionaryType = typename ValueType::DictionaryType;
-
-	static void reserve(DictionaryType &dict, size_t s) { }
-};
-
-template <typename Interface>
 void Decoder<Interface>::decodeMap(uint8_t type, ValueType &ret) {
 	size_t size = maxOf<size_t>();
 	if (type != toInt(Flags::UndefinedLength)) {
@@ -230,8 +209,11 @@ void Decoder<Interface>::decodeMap(uint8_t type, ValueType &ret) {
 
 	ret._type = ValueType::Type::DICTIONARY;
 	ret.dictVal = new DictionaryType();
-	if (size != maxOf<size_t>()) {
-		__DecoderMapReserve<Interface>::reserve(*ret.dictVal, size);
+
+	if constexpr (Interface::usesMemoryPool()) {
+		if (size != maxOf<size_t>()) {
+			ret.dictVal->reserve(size);
+		}
 	}
 
 	while (!r.empty() && size > 0 && !(majorType == MajorTypeEncoded::Simple && type == toInt(Flags::UndefinedLength))) {

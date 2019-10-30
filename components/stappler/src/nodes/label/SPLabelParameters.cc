@@ -113,18 +113,29 @@ bool LabelParameters::ExternalFormatter::init(Source *s, float w, float density)
 	if (w > 0.0f) {
 		_formatter.setWidth((uint16_t)roundf(w * _density));
 	}
-	_formatter.begin(0, 0);
 	return true;
+}
+
+void LabelParameters::ExternalFormatter::setLineHeightAbsolute(float value) {
+	_formatter.setLineHeightAbsolute((uint16_t)(value * _formatter.getDensity()));
+}
+
+void LabelParameters::ExternalFormatter::setLineHeightRelative(float value) {
+	_formatter.setLineHeightRelative(value);
 }
 
 void LabelParameters::ExternalFormatter::reserve(size_t chars, size_t ranges) {
 	_spec.reserve(chars, ranges);
 }
 
-void LabelParameters::ExternalFormatter::addString(const DescriptionStyle &style, const String &str, bool localized) {
+void LabelParameters::ExternalFormatter::addString(const DescriptionStyle &style, const StringView &str, bool localized) {
 	addString(style, string::toUtf16(str), localized);
 }
-void LabelParameters::ExternalFormatter::addString(const DescriptionStyle &style, const WideString &str, bool localized) {
+void LabelParameters::ExternalFormatter::addString(const DescriptionStyle &style, const WideStringView &str, bool localized) {
+	if (!begin) {
+		_formatter.begin(0, 0);
+		begin = true;
+	}
 	if (localized && locale::hasLocaleTags(str)) {
 		auto u16str = locale::resolveLocaleTags(str);
 		_formatter.read(style.font, style.text, u16str.data(), u16str.size());
@@ -138,21 +149,21 @@ Size LabelParameters::ExternalFormatter::finalize() {
 	return Size(_spec.width / _density, _spec.height / _density);
 }
 
-WideString LabelParameters::getLocalizedString(const String &s) {
+WideString LabelParameters::getLocalizedString(const StringView &s) {
 	return getLocalizedString(string::toUtf16(s));
 }
-WideString LabelParameters::getLocalizedString(const WideString &s) {
+WideString LabelParameters::getLocalizedString(const WideStringView &s) {
 	if (locale::hasLocaleTags(s)) {
 		return locale::resolveLocaleTags(s);
 	}
-	return s;
+	return s.str();
 }
 
-float LabelParameters::getStringWidth(Source *source, const DescriptionStyle &style, const String &str, float density, bool localized) {
+float LabelParameters::getStringWidth(Source *source, const DescriptionStyle &style, const StringView &str, float density, bool localized) {
 	return getStringWidth(source, style, string::toUtf16(str), density, localized);
 }
 
-float LabelParameters::getStringWidth(Source *source, const DescriptionStyle &style, const WideString &str, float density, bool localized) {
+float LabelParameters::getStringWidth(Source *source, const DescriptionStyle &style, const WideStringView &str, float density, bool localized) {
 	if (!source) {
 		return 0.0f;
 	}
@@ -178,11 +189,11 @@ float LabelParameters::getStringWidth(Source *source, const DescriptionStyle &st
 	return spec.width / density;
 }
 
-Size LabelParameters::getLabelSize(Source *source, const DescriptionStyle &style, const String &s, float w, float density, bool localized) {
+Size LabelParameters::getLabelSize(Source *source, const DescriptionStyle &style, const StringView &s, float w, float density, bool localized) {
 	return getLabelSize(source, style, string::toUtf16(s), w, density, localized);
 }
 
-Size LabelParameters::getLabelSize(Source *source, const DescriptionStyle &style, const WideString &str, float w, float density, bool localized) {
+Size LabelParameters::getLabelSize(Source *source, const DescriptionStyle &style, const WideStringView &str, float w, float density, bool localized) {
 	if (str.empty()) {
 		return Size(0.0f, 0.0f);
 	}

@@ -67,31 +67,31 @@ public:
 	public:
 		bool init(bool userFonts, float w = 0.0f);
 
-		void addString(FontType, const String &, bool localized = false);
-		void addString(FontType, const WideString &, bool localized = false);
-		void addString(const String &, const String &, bool localized = false);
-		void addString(const String &, const WideString &, bool localized = false);
-		void addString(const DescriptionStyle &, const String &, bool localized = false);
-		void addString(const DescriptionStyle &, const WideString &, bool localized = false);
+		void addString(FontType, const StringView &, bool localized = false);
+		void addString(FontType, const WideStringView &, bool localized = false);
+		void addString(const String &, const StringView &, bool localized = false);
+		void addString(const String &, const WideStringView &, bool localized = false);
+		void addString(const DescriptionStyle &, const StringView &, bool localized = false);
+		void addString(const DescriptionStyle &, const WideStringView &, bool localized = false);
 	};
 
-	static DescriptionStyle getFontStyle(FontType);
+	static DescriptionStyle getFontStyle(FontType, DescriptionStyle = DescriptionStyle());
 	static DescriptionStyle getFontStyle(const String &);
 
 	static void preloadChars(FontType, const Vector<char16_t> &);
 	static void preloadChars(const String &, const Vector<char16_t> &);
 
-	static Size getLabelSize(FontType, const String &, float w = 0.0f, float density = 0.0f, bool localized = false);
-	static Size getLabelSize(FontType, const WideString &, float w = 0.0f, float density = 0.0f, bool localized = false);
-	static Size getLabelSize(const String &, const String &, float w = 0.0f, float density = 0.0f, bool localized = false);
-	static Size getLabelSize(const String &, const WideString &, float w = 0.0f, float density = 0.0f, bool localized = false);
-	static Size getLabelSize(const DescriptionStyle &, const WideString &, float w = 0.0f, float density = 0.0f, bool localized = false);
+	static Size getLabelSize(FontType, const StringView &, float w = 0.0f, float density = 0.0f, bool localized = false);
+	static Size getLabelSize(FontType, const WideStringView &, float w = 0.0f, float density = 0.0f, bool localized = false);
+	static Size getLabelSize(const String &, const StringView &, float w = 0.0f, float density = 0.0f, bool localized = false);
+	static Size getLabelSize(const String &, const WideStringView &, float w = 0.0f, float density = 0.0f, bool localized = false);
+	static Size getLabelSize(const DescriptionStyle &, const WideStringView &, float w = 0.0f, float density = 0.0f, bool localized = false);
 
-	static float getStringWidth(FontType, const String &, float density = 0.0f, bool localized = false);
-	static float getStringWidth(FontType, const WideString &, float density = 0.0f, bool localized = false);
-	static float getStringWidth(const String &, const String &, float density = 0.0f, bool localized = false);
-	static float getStringWidth(const String &, const WideString &, float density = 0.0f, bool localized = false);
-	static float getStringWidth(const DescriptionStyle &, const WideString &, float density = 0.0f, bool localized = false);
+	static float getStringWidth(FontType, const StringView &, float density = 0.0f, bool localized = false);
+	static float getStringWidth(FontType, const WideStringView &, float density = 0.0f, bool localized = false);
+	static float getStringWidth(const String &, const StringView &, float density = 0.0f, bool localized = false);
+	static float getStringWidth(const String &, const WideStringView &, float density = 0.0f, bool localized = false);
+	static float getStringWidth(const DescriptionStyle &, const WideStringView &, float density = 0.0f, bool localized = false);
 
 	virtual ~Label();
 

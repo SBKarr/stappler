@@ -48,11 +48,13 @@ const stappler::data::Value &MenuSourceItem::getCustomData() const {
 	return _customData;
 }
 
-void MenuSourceItem::setAttachCallback(const AttachCallback &cb) {
+MenuSourceItem * MenuSourceItem::setAttachCallback(const AttachCallback &cb) {
 	_attachCallback = cb;
+	return this;
 }
-void MenuSourceItem::setDetachCallback(const AttachCallback &cb) {
+MenuSourceItem * MenuSourceItem::setDetachCallback(const AttachCallback &cb) {
 	_detachCallback = cb;
+	return this;
 }
 
 MenuSourceItem::Type MenuSourceItem::getType() const {
