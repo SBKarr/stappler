@@ -18,14 +18,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-STAPPLER_ROOT = ../../..
+STAPPLER_ROOT = ../..
 
 LOCAL_OUTDIR := build
-LOCAL_OUTPUT_EXECUTABLE := $(LOCAL_OUTDIR)/gui-test
+LOCAL_EXECUTABLE := gui-test
 
 LOCAL_TOOLKIT := material
 
-LOCAL_ROOT = ..
+LOCAL_ROOT = .
 
 LOCAL_SRCS_DIRS :=  Classes
 LOCAL_SRCS_OBJS :=
@@ -33,9 +33,6 @@ LOCAL_SRCS_OBJS :=
 LOCAL_INCLUDES_DIRS := Classes
 LOCAL_INCLUDES_OBJS :=
 
-$(LOCAL_OUTDIR)/common:
-	cp -f -r $(STAPPLER_ROOT)/test/resources/common $(LOCAL_OUTDIR)/common
-
 .local_prebuild: $(LOCAL_OUTDIR)/common
 
-include $(STAPPLER_ROOT)/make/local.mk
+include $(STAPPLER_ROOT)/make/universal.mk

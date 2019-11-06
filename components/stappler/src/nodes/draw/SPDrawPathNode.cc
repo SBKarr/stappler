@@ -150,6 +150,9 @@ void PathNode::setImage(Image *img) {
 	if (_image) {
 		_baseWidth = _image->getWidth();
 		_baseHeight = _image->getHeight();
+	} else {
+		_baseWidth = 0;
+		_baseHeight = 0;
 	}
 }
 Image * PathNode::getImage() const {

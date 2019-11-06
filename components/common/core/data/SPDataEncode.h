@@ -100,6 +100,8 @@ struct EncodeFormat {
 template <typename Interface>
 auto compress(const uint8_t *, size_t, EncodeFormat::Compression, bool conditional) -> typename Interface::BytesType;
 
+size_t getCompressBounds(size_t, EncodeFormat::Compression);
+
 template <typename Interface>
 struct EncodeTraits {
 	using InterfaceType = Interface;

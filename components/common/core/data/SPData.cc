@@ -435,7 +435,7 @@ auto ValueTemplate<memory::StandartInterface>::convert<memory::PoolInterface>() 
 	return ValueTemplate<memory::PoolInterface>();
 }
 
-static size_t getBoundSize(size_t size, EncodeFormat::Compression c) {
+size_t getCompressBounds(size_t size, EncodeFormat::Compression c) {
 	switch (c) {
 	case EncodeFormat::LZ4Compression:
 	case EncodeFormat::LZ4HCCompression: {
@@ -521,7 +521,7 @@ static void writeCompressionMark(uint8_t *data, size_t sourceSize, EncodeFormat:
 
 template <typename Interface>
 static inline auto doCompress(const uint8_t *src, size_t size, EncodeFormat::Compression c, bool conditional) -> typename Interface::BytesType {
-	auto bufferSize = getBoundSize(size, c);
+	auto bufferSize = getCompressBounds(size, c);
 	if (bufferSize == 0) {
 		return typename Interface::BytesType();
 	} else if (bufferSize <= sizeof(tl_compressBuffer)) {
@@ -595,6 +595,45 @@ auto decompressBrotli(const uint8_t *data, size_t size) -> ValueTemplate<memory:
 template <>
 auto decompressBrotli(const uint8_t *data, size_t size) -> ValueTemplate<memory::StandartInterface> {
 	return ValueTemplate<memory::StandartInterface>();
+}
+
+template <typename Interface>
+static inline auto doDecompress(const uint8_t *d, size_t size) -> typename Interface::BytesType {
+	BytesView data(d, size);
+	auto ff = detectDataFormat(data.data(), data.size());
+	switch (ff) {
+	case DataFormat::LZ4_Short: {
+		data += 4;
+		size_t size = data.readUnsigned16();
+		typename Interface::BytesType res; res.resize(size);
+		if (doDecompressLZ4Frame(data.data(), data.size(), res.data(), size)) {
+			return res;
+		}
+		break;
+	}
+	case DataFormat::LZ4_Word: {
+		data += 4;
+		size_t size = data.readUnsigned32();
+		typename Interface::BytesType res; res.resize(size);
+		if (doDecompressLZ4Frame(data.data(), data.size(), res.data(), size)) {
+			return res;
+		}
+		break;
+	}
+	case DataFormat::Brotli: break;
+	default: break;
+	}
+	return typename Interface::BytesType();
+}
+
+template <>
+auto decompress<memory::PoolInterface>(const uint8_t *d, size_t size) -> typename memory::PoolInterface::BytesType {
+	return doDecompress<memory::PoolInterface>(d, size);
+}
+
+template <>
+auto decompress<memory::StandartInterface>(const uint8_t *d, size_t size) -> typename memory::StandartInterface::BytesType {
+	return doDecompress<memory::StandartInterface>(d, size);
 }
 
 NS_SP_EXT_END(data)

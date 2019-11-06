@@ -99,7 +99,7 @@ Adapter getAdapterFromContext() {
 	auto log = stappler::apr::pool::info();
 	if (log.first == uint32_t(stappler::apr::pool::Info::Request)) {
 		return stappler::serenity::Request((request_rec *)log.second).storage();
-	} else if (log.first == uint32_t(stappler::apr::pool::Info::Pool)) {
+	} else {
 		auto p = mem::pool::acquire();
 		stappler::serenity::websocket::Handler *h = nullptr;
 		apr_pool_userdata_get((void **)&h, config::getSerenityWebsocketHandleName(), p);

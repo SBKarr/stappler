@@ -1162,6 +1162,7 @@ uint32_t Node::processParentFlags(const Mat4& parentTransform, uint32_t parentFl
     }
 
     if (_contentSizeDirty) {
+    	_anchorPointInPoints.set(_contentSize.width * _anchorPoint.x, _contentSize.height * _anchorPoint.y);
         _contentSizeDirty = false;
     }
 

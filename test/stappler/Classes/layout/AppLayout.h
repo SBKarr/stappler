@@ -33,8 +33,7 @@ public:
 	virtual void onContentSizeDirty() override;
 
 protected:
-	material::FloatingActionButton *_button = nullptr;
-	material::FloatingActionButton *_button2 = nullptr;
+	material::IconSprite *_button = nullptr;
 };
 
 NS_SP_EXT_END(app)

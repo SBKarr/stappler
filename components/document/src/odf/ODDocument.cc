@@ -544,7 +544,7 @@ Buffer Document::save() const {
 	zipFile zf = zipOpen3((const void *)"@stappler", 0, nullptr, &defs);
 
 	auto writeData = [&] () -> bool {
-		zip_fileinfo zfi = { 0 };
+		zip_fileinfo zfi; memset(&zfi, 0, sizeof(zfi));
 		auto err = Z_OK;
 		if (err == Z_OK && (err = zipOpenNewFileInZip(zf, "META-INF/manifest.xml", &zfi,
 				nullptr, 0, nullptr, 0, nullptr, Z_DEFLATED, Z_DEFAULT_COMPRESSION)) == Z_OK) {
@@ -617,7 +617,7 @@ Buffer Document::save() const {
 		return err == Z_OK;
 	};
 
-	zip_fileinfo zfi = { 0 };
+	zip_fileinfo zfi; memset(&zfi, 0, sizeof(zfi));
 	if (Z_OK == zipOpenNewFileInZip(zf, "mimetype", &zfi, nullptr, 0, nullptr, 0, nullptr, Z_BINARY, Z_NO_COMPRESSION)) {
 		switch (_type) {
 		case DocumentType::Text:

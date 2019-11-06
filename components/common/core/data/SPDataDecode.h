@@ -70,6 +70,9 @@ auto decompressLZ4(const uint8_t *, size_t, bool sh) -> ValueTemplate<Interface>
 template <typename Interface>
 auto decompressBrotli(const uint8_t *, size_t) -> ValueTemplate<Interface>;
 
+template <typename Interface>
+auto decompress(const uint8_t *, size_t) -> typename Interface::BytesType;
+
 template <typename StringType, typename Interface = DefaultInterface>
 auto read(const StringType &data, const StringView &key = StringView()) -> ValueTemplate<Interface> {
 	if (data.size() == 0) {

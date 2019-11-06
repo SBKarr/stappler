@@ -371,8 +371,30 @@ mem::Value SqlHandle::field(db::Action a, Worker &w, uint64_t oid, const Field &
 			case db::Type::Image: ret = getFileField(w, query, oid, 0, f); break;
 			case db::Type::Array: ret = getArrayField(w, query, oid, f); break;
 			case db::Type::Object: ret = getObjectField(w, query, oid, 0, f); break;
-			case db::Type::Set: ret = getSetField(w, query, oid, f, db::Query()); break;
-			case db::Type::View: ret = getViewField(w, query, oid, f, db::Query()); break;
+			case db::Type::Set: {
+				db::Query db;
+				auto &fields = w.getRequiredFields();
+				for (auto &it : fields.includeFields) {
+					if (it) { db.include(it->getName()); }
+				}
+				for (auto &it : fields.excludeFields) {
+					if (it) { db.exclude(it->getName()); }
+				}
+				ret = getSetField(w, query, oid, f, db);
+				break;
+			}
+			case db::Type::View: {
+				db::Query db;
+				auto &fields = w.getRequiredFields();
+				for (auto &it : fields.includeFields) {
+					if (it) { db.include(it->getName()); }
+				}
+				for (auto &it : fields.excludeFields) {
+					if (it) { db.exclude(it->getName()); }
+				}
+				ret = getViewField(w, query, oid, f, db);
+				break;
+			}
 			default: ret = getSimpleField(w, query, oid, f); break;
 			}
 		});
@@ -565,10 +587,10 @@ mem::Value SqlHandle::field(db::Action a, Worker &w, const mem::Value &obj, cons
 				db::Query db;
 				auto &fields = w.getRequiredFields();
 				for (auto &it : fields.includeFields) {
-					db.include(it->getName());
+					if (it) { db.include(it->getName()); }
 				}
 				for (auto &it : fields.excludeFields) {
-					db.exclude(it->getName());
+					if (it) { db.exclude(it->getName()); }
 				}
 				ret = getSetField(w, query, oid, f, db);
 				break;
@@ -577,10 +599,10 @@ mem::Value SqlHandle::field(db::Action a, Worker &w, const mem::Value &obj, cons
 				db::Query db;
 				auto &fields = w.getRequiredFields();
 				for (auto &it : fields.includeFields) {
-					db.include(it->getName());
+					if (it) { db.include(it->getName()); }
 				}
 				for (auto &it : fields.excludeFields) {
-					db.exclude(it->getName());
+					if (it) { db.exclude(it->getName()); }
 				}
 				ret = getViewField(w, query, oid, f, db);
 				break;

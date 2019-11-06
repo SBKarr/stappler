@@ -28,6 +28,8 @@ THE SOFTWARE.
 
 #include "MaterialFloatingActionButton.h"
 
+#include "SPActions.h"
+
 NS_SP_EXT_BEGIN(app)
 
 bool AppLayout::init() {
@@ -35,16 +37,17 @@ bool AppLayout::init() {
 		return false;
 	}
 
-	auto button = Rc<material::FloatingActionButton>::create([this] { });
-	button->setBackgroundColor(material::Color::Green_500);
+	auto button = Rc<material::IconSprite>::create();
+	button->setColor(material::Color::Green_500);
 	button->setAnchorPoint(Anchor::Middle);
+	button->setIconName(material::IconName::Action_3d_rotation);
 	_button = addChildNode(button);
 
-	auto button2 = Rc<material::FloatingActionButton>::create([this] { });
-	button2->setBackgroundColor(material::Color::Green_500);
-	button2->setAnchorPoint(Anchor::Middle);
-	button2->setOpacity(127);
-	_button2 = addChildNode(button2);
+	runAction(cocos2d::RepeatForever::create((cocos2d::ActionInterval *)action::sequence(2.0f, [this] {
+		auto t = _button->getNodeToParentTransform();
+		std::cout <<  t.m[12] << " " <<  t.m[13] << " " << _button->getAnchorPointInPoints() << "\n";
+		_button->setIconName(material::IconName(toInt(_button->getIconName()) + 1));
+	})));
 
 	return true;
 }
@@ -53,7 +56,6 @@ void AppLayout::onContentSizeDirty() {
 	Layout::onContentSizeDirty();
 
 	_button->setPosition(_contentSize.width / 2.0f, _contentSize.height / 2.0f);
-	_button2->setPosition(_contentSize.width / 2.0f, _contentSize.height / 4.0f);
 }
 
 NS_SP_EXT_END(app)

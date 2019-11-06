@@ -72,7 +72,7 @@ Application::~Application() {
 void Application::init() {
 	rebuildMenu();
 
-	storage::get("applicaton_layout", [this] (const std::string &key, data::Value &&val) {
+	storage::get("applicaton_layout", [this] (const StringView &key, data::Value &&val) {
 		auto scene = Rc<material::Scene>::create();
 		scene->getNavigationLayer()->setNavigationMenuSource(_appMenu);
 		scene->setDisplayStats(true);

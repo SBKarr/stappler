@@ -353,6 +353,10 @@ bool FieldText::transformValue(const Scheme &scheme, const mem::Value &obj, mem:
 		if (val.isString()) {
 			auto &str = val.getString();
 			if (str.size() < minLength || str.size() > maxLength) {
+				if (str.size() == 0) {
+					val.setValue(mem::Value());
+					return true;
+				}
 				return false;
 			}
 		}
