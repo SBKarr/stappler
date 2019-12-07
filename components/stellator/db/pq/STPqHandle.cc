@@ -27,6 +27,8 @@ THE SOFTWARE.
 
 NS_DB_PQ_BEGIN
 
+static std::mutex s_logMutex;
+
 static mem::String pg_numeric_to_string(stappler::DataReader<stappler::ByteOrder::Network> r) {
 	using NumericDigit = int16_t;
 	static constexpr auto DEC_DIGITS = 4;
@@ -627,8 +629,10 @@ bool Handle::performSimpleQuery(const mem::StringView &query) {
 	lastError = res.getError();
 	if (!res.isSuccess()) {
 		auto info = res.getInfo();
+		s_logMutex.lock();
 		std::cout << query << "\n";
 		std::cout << info << "\n";
+		s_logMutex.unlock();
 		cancelTransaction_pg();
 	}
 	return res.isSuccess();
@@ -647,12 +651,18 @@ bool Handle::performSimpleSelect(const mem::StringView &query, const stappler::C
 		cb(ret);
 	} else {
 		auto info = res.getInfo();
+		s_logMutex.lock();
 		std::cout << query << "\n";
 		std::cout << info << "\n";
+		s_logMutex.unlock();
 		cancelTransaction_pg();
 	}
 
 	return res.isSuccess();
+}
+
+bool Handle::isSuccess() const {
+	return PgResultInterface::pgsql_is_success(lastError);
 }
 
 bool Handle::beginTransaction_pg(TransactionLevel l) {

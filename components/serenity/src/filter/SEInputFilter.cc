@@ -36,7 +36,7 @@ THE SOFTWARE.
 
 NS_SA_BEGIN
 
-InputParser::InputParser(const InputConfig &cfg, size_t len)
+InputParser::InputParser(const db::InputConfig &cfg, size_t len)
 : config(cfg), length(len), basicParser(root, len, cfg.maxVarSize) { }
 
 void InputParser::cleanup() {
@@ -46,7 +46,7 @@ void InputParser::cleanup() {
 	files.clear();
 }
 
-const InputConfig &InputParser::getConfig() const {
+const db::InputConfig &InputParser::getConfig() const {
 	return config;
 }
 
@@ -84,8 +84,8 @@ static InputFilter::Accept getAcceptedData(const Request &req, InputFilter::Exce
 
  		if (!ct.empty() && cl != 0 && cl < config::getMaxInputPostSize()) {
 			if (ct.compare(0, 16, "application/json") == 0 || ct.compare(0, 16, "application/cbor") == 0) {
-				if ((cfg.required & InputConfig::Require::Data) == InputConfig::Require::None
-						&& (cfg.required & InputConfig::Require::Body) == InputConfig::Require::None) {
+				if ((cfg.required & db::InputConfig::Require::Data) == db::InputConfig::Require::None
+						&& (cfg.required & db::InputConfig::Require::Body) == db::InputConfig::Require::None) {
 					messages::error("InputFilter", "No data to process", data::Value{
 						std::make_pair("content", data::Value(ct)),
 						std::make_pair("available", data::Value("data, body")),
@@ -95,8 +95,8 @@ static InputFilter::Accept getAcceptedData(const Request &req, InputFilter::Exce
 				}
 				ret = InputFilter::Accept::Json;
 			} else if (ct.compare(0, 33, "application/x-www-form-urlencoded") == 0) {
-				if ((cfg.required & InputConfig::Require::Data) == InputConfig::Require::None
-						&& (cfg.required & InputConfig::Require::Body) == InputConfig::Require::None) {
+				if ((cfg.required & db::InputConfig::Require::Data) == db::InputConfig::Require::None
+						&& (cfg.required & db::InputConfig::Require::Body) == db::InputConfig::Require::None) {
 					messages::error("InputFilter", "No data to process", data::Value{
 						std::make_pair("content", data::Value(ct)),
 						std::make_pair("available", data::Value("data, body")),
@@ -106,10 +106,10 @@ static InputFilter::Accept getAcceptedData(const Request &req, InputFilter::Exce
 				}
 				ret = InputFilter::Accept::Urlencoded;
 			} else if (ct.compare(0, 30, "multipart/form-data; boundary=") == 0) {
-				if ((cfg.required & InputConfig::Require::Data) == InputConfig::Require::None
-						&& (cfg.required & InputConfig::Require::Body) == InputConfig::Require::None
-						&& (cfg.required & InputConfig::Require::Files) == InputConfig::Require::None
-						&& (cfg.required & InputConfig::Require::FilesAsData) == InputConfig::Require::None) {
+				if ((cfg.required & db::InputConfig::Require::Data) == db::InputConfig::Require::None
+						&& (cfg.required & db::InputConfig::Require::Body) == db::InputConfig::Require::None
+						&& (cfg.required & db::InputConfig::Require::Files) == db::InputConfig::Require::None
+						&& (cfg.required & db::InputConfig::Require::FilesAsData) == db::InputConfig::Require::None) {
 					messages::error("InputFilter", "No data to process", data::Value{
 						std::make_pair("content", data::Value(ct)),
 						std::make_pair("available", data::Value("data, body, files")),
@@ -119,7 +119,7 @@ static InputFilter::Accept getAcceptedData(const Request &req, InputFilter::Exce
 				}
 				ret = InputFilter::Accept::Multipart;
 			} else {
-				if ((cfg.required & InputConfig::Require::Files) == InputConfig::Require::None) {
+				if ((cfg.required & db::InputConfig::Require::Files) == db::InputConfig::Require::None) {
 					messages::error("InputFilter", "No data to process", data::Value{
 						std::make_pair("content", data::Value(ct)),
 						std::make_pair("available", data::Value("files")),
@@ -237,7 +237,7 @@ apr_status_t InputFilter::func(ap_filter_t *f, apr_bucket_brigade *bb,
 		ap_input_mode_t mode, apr_read_type_e block, apr_off_t readbytes) {
 
 	apr_status_t rv = ap_get_brigade(f->next, bb, mode, block, readbytes);
-	if (rv == APR_SUCCESS && _parser && getConfig().required != InputConfig::Require::None && _accept != Accept::None) {
+	if (rv == APR_SUCCESS && _parser && getConfig().required != db::InputConfig::Require::None && _accept != Accept::None) {
 		if (_read + readbytes > _contentLength) {
 			_unupdated += _contentLength - _read;
 			_read = _contentLength;
@@ -272,7 +272,7 @@ apr_status_t InputFilter::func(ap_filter_t *f, apr_bucket_brigade *bb,
 }
 
 void InputFilter::step(apr_bucket* b, apr_read_type_e block) {
-	if (getConfig().required == InputConfig::Require::None || _accept == Accept::None) {
+	if (getConfig().required == db::InputConfig::Require::None || _accept == Accept::None) {
 		return;
 	}
 	if (!APR_BUCKET_IS_METADATA(b)) {
@@ -333,13 +333,13 @@ TimeInterval InputFilter::getElapsedTimeSinceUpdate() const {
 }
 
 bool InputFilter::isFileUploadAllowed() const {
-	return (getConfig().required & InputConfig::Require::Files) != InputConfig::Require::None;
+	return (getConfig().required & db::InputConfig::Require::Files) != db::InputConfig::Require::None;
 }
 bool InputFilter::isDataParsingAllowed() const {
-	return (getConfig().required & InputConfig::Require::Data) != InputConfig::Require::None;
+	return (getConfig().required & db::InputConfig::Require::Data) != db::InputConfig::Require::None;
 }
 bool InputFilter::isBodySavingAllowed() const {
-	return (getConfig().required & InputConfig::Require::Body) != InputConfig::Require::None;
+	return (getConfig().required & db::InputConfig::Require::Body) != db::InputConfig::Require::None;
 }
 
 bool InputFilter::isCompleted() const {
@@ -368,7 +368,7 @@ db::InputFile * InputFilter::getInputFile(int64_t idx) const {
 	return &files.at(size_t(idx));
 }
 
-const InputConfig & InputFilter::getConfig() const {
+const db::InputConfig & InputFilter::getConfig() const {
 	return _request.getInputConfig();
 }
 

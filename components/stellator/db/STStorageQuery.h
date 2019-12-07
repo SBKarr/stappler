@@ -79,12 +79,13 @@ public:
 	using FieldsVec = mem::Vector<Field>;
 
 	struct Select : public mem::AllocBase {
-		Comparation compare;
+		Comparation compare = Comparation::Equal;
 		mem::Value value1;
 		mem::Value value2;
 		mem::String field;
 		mem::Vector<stappler::search::SearchData> searchData;
 
+		Select() { }
 		Select(const mem::StringView & f, Comparation c, mem::Value && v1, mem::Value && v2);
 		Select(const mem::StringView & f, Comparation c, int64_t v1, int64_t v2);
 		Select(const mem::StringView & f, Comparation c, const mem::String & v);

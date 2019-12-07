@@ -41,6 +41,10 @@ public:
 
 	void writeWhere(SqlQuery::SelectWhere &, db::Operator op, const db::Scheme &, const db::Query &);
 	void writeWhere(SqlQuery::WhereContinue &, db::Operator op, const db::Scheme &, const db::Query &);
+
+	void writeWhere(SqlQuery::WhereContinue &w, db::Operator op, const db::Scheme &scheme, const db::Query::Select &sel);
+	void writeWhere(SqlQuery::WhereContinue &w, db::Operator op, const db::Scheme &scheme, const db::Worker::ConditionData &sel);
+
 	void writeOrdering(SqlQuery::SelectFrom &, const db::Scheme &, const db::Query &, bool dropLimits = false);
 
 	SelectFrom writeSelectFrom(GenericQuery &q, const db::QueryList::Item &item, bool idOnly, const mem::StringView &scheme, const mem::StringView &field, bool isSimpleGet = false);

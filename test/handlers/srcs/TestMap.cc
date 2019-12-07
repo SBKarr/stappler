@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,18 +24,43 @@ THE SOFTWARE.
 **/
 
 #include "Define.h"
-#include "UrlEncodeParser.h"
-#include "SPStringView.h"
+#include "ServerComponent.h"
+#include "RequestHandler.h"
 
-NS_SA_BEGIN
+NS_SA_EXT_BEGIN(test)
 
-UrlEncodeParser::UrlEncodeParser(const db::InputConfig &c, size_t s) : InputParser(c, s) { }
-UrlEncodeParser::~UrlEncodeParser() { }
+class TestHandlerMapVariant1 : public HandlerMap::Handler {
+public:
+	virtual bool isPermitted() override { return true; }
 
-void UrlEncodeParser::run(const char *str, size_t len) {
-	basicParser.read((const uint8_t *)str, len);
-}
+	virtual mem::Value onData() override {
+		return mem::Value({
+			pair("params", mem::Value(_params)),
+			pair("query", mem::Value(_queryFields)),
+			pair("query", mem::Value(_inputFields))
+		});
+	}
+};
 
-void UrlEncodeParser::finalize() { }
+class TestHandlerMap : public HandlerMap {
+public:
+	TestHandlerMap() {
+		addHandler("Variant1", Request::Method::Get, "/map/:id/:page", SA_HANDLER(TestHandlerMapVariant1))
+				.addQueryFields({
+			db::Field::Integer("intValue", db::Flags::Required),
+			db::Field::Integer("mtime", db::Flags::AutoMTime),
+		});
 
-NS_SA_END
+		addHandler("Variant1Post", Request::Method::Post, "/map/:id/:page", SA_HANDLER(TestHandlerMapVariant1))
+				.addQueryFields({
+			db::Field::Integer("intValue", db::Flags::Required),
+			db::Field::Integer("mtime", db::Flags::AutoMTime),
+		}).addInputFields({
+			db::Field::Text("text", db::Flags::Required),
+			db::Field::File("file", db::MaxFileSize(2_MiB)),
+		});
+	}
+};
+
+
+NS_SA_EXT_END(test)

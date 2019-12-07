@@ -8,6 +8,29 @@ body {
 	padding: 0;
 }
 
+h6.components {
+	font-family: "Roboto";
+	margin: 0;
+	padding: 0 0 0 1rem;
+	font-weigth: bold;
+	font-size: 0.9rem;
+	color: #999;
+}
+
+span {
+	font-family: "Roboto";
+}
+
+span.method {
+	font-weight: bold;
+	color: #666;
+}
+
+span.pattern {
+	font-family: "monospace";
+	color: #333;
+}
+
 .body {
 	margin: 1% auto;
 	padding: 4px;
@@ -67,6 +90,15 @@ a {
 	padding: 0;
 }
 
+div.map {
+	padding-left: 2rem;
+}
+
+div.map > p.components {
+	padding: 0;
+	margin: 0;
+}
+
 p.components > span.component {
 	font-family: "Roboto";
 	display: inline-block;
@@ -91,6 +123,10 @@ p.components > span.root {
 }
 p.components > span.rootserver {
 	background-color: #eee;
+	outline: 1px #999 solid;
+}
+p.components > span.map {
+	background-color: #ccc;
 	outline: 1px #999 solid;
 }
 

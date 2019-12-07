@@ -71,6 +71,8 @@ public:
 
 	void addHandler(const mem::String &, const HandlerCallback &, const mem::Value & = mem::Value());
 	void addHandler(std::initializer_list<mem::String>, const HandlerCallback &, const mem::Value & = mem::Value());
+	void addHandler(const mem::String &, const HandlerMap *);
+	void addHandler(std::initializer_list<mem::String>, const HandlerMap *);
 
 	void addResourceHandler(const mem::String &, const db::Scheme &);
 	void addResourceHandler(const mem::String &, const db::Scheme &, const mem::Value &);
@@ -101,6 +103,7 @@ public:
 		HandlerCallback callback;
 		mem::Value data;
 		const db::Scheme *scheme;
+		const HandlerMap *map;
 	};
 
 	const mem::Map<mem::String, const db::Scheme *> &getSchemes() const;

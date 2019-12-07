@@ -144,6 +144,7 @@ mem::Value ContinueToken::perform(const Scheme &scheme, const Transaction &t, Qu
 		return mem::Value();
 	}
 
+	q.select(field, db::Comparation::IsNotNull, mem::Value(true));
 	if (total == 0) {
 		total = scheme.count(t, q);
 		if (hasFlag(Flags::Reverse) && !fetched) {
@@ -201,6 +202,7 @@ mem::Value ContinueToken::performOrdered(const Scheme &scheme, const Transaction
 }
 
 void ContinueToken::refresh(const Scheme &scheme, const Transaction &t, Query &q) {
+	q.select(field, db::Comparation::IsNotNull, mem::Value(true));
 	auto newTotal = scheme.count(t, q);
 
 	q.select(field, db::Comparation::LessThen, initVec);

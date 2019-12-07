@@ -43,6 +43,8 @@ public:
 	bool performTask(const Server &server, Task *task, bool performFirst);
 	bool scheduleTask(const Server &server, Task *task, mem::TimeInterval);
 
+	bool runFollowedTask(const Server &server, Task *task);
+
 	db::pq::Driver::Handle dbdOpen(mem::pool_t *, const Server &) const;
 	void dbdClose(mem::pool_t *, const Server &, const db::pq::Driver::Handle &);
 

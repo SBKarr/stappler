@@ -1187,7 +1187,7 @@ void ShellGui::onInsertFilter(Request &rctx) {
 		return;
 	}
 
-	rctx.setRequiredData(InputConfig::Require::Files);
+	rctx.setRequiredData(db::InputConfig::Require::Files);
 	rctx.setMaxRequestSize(_resource->getMaxRequestSize());
 	rctx.setMaxVarSize(_resource->getMaxVarSize());
 	rctx.setMaxFileSize(_resource->getMaxFileSize());

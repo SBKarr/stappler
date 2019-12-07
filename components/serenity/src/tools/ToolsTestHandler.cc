@@ -33,7 +33,7 @@ TestHandler::TestHandler() : DataHandler() {
 }
 bool TestHandler::isRequestPermitted(Request &rctx) {
 	if (_subPath == "/image") {
-		_required |= InputConfig::Require::Files;
+		_required |= db::InputConfig::Require::Files;
 	}
 	return true;
 }

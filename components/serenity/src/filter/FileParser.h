@@ -29,10 +29,10 @@ NS_SA_BEGIN
 
 class FileParser : public InputParser {
 public:
-	FileParser(const InputConfig &c, const apr::string &ct, const apr::string &name, size_t cl)
+	FileParser(const db::InputConfig &c, const mem::StringView &ct, const mem::StringView &name, size_t cl)
 	: InputParser(c, cl) {
 		if (cl < getConfig().maxFileSize) {
-			files.emplace_back(String(name), String(ct), String(), String(), cl, files.size());
+			files.emplace_back(name.str<mem::Interface>(), ct.str<mem::Interface>(), String(), String(), cl, files.size());
 			file = &files.back();
 		}
 	}

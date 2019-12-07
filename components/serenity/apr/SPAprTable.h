@@ -229,6 +229,7 @@ public:
 	apr::weak_string operator[](const apr::string &pos) const { return at(pos); }
 
 	void clear() { apr_table_clear(_table); }
+
 protected:
 	table_type _table;
 };

@@ -32,7 +32,7 @@ NS_SA_BEGIN
 
 class InputParser : public AllocPool {
 public:
-	InputParser(const InputConfig &, size_t);
+	InputParser(const db::InputConfig &, size_t);
 	virtual ~InputParser() { }
 
 	virtual void run(const char *str, size_t len) = 0;
@@ -47,14 +47,14 @@ public:
 		return files;
 	}
 
-	const InputConfig &getConfig() const;
+	const db::InputConfig &getConfig() const;
 
 protected:
 	using VarState = UrlencodeParser::VarState;
 
 	data::Value *flushString(StringView &r, data::Value *, VarState state);
 
-	InputConfig config;
+	db::InputConfig config;
 	size_t length;
 	data::Value root;
 	UrlencodeParser basicParser;
@@ -115,7 +115,7 @@ public:
 
 	db::InputFile * getInputFile(int64_t) const;
 
-	const InputConfig & getConfig() const;
+	const db::InputConfig & getConfig() const;
 
 	Request getRequest() const;
 

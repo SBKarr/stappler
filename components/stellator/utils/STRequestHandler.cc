@@ -23,9 +23,6 @@ THE SOFTWARE.
 #include "RequestHandler.h"
 #include "InputFilter.h"
 
-#include "mbedtls/config.h"
-#include "mbedtls/pk.h"
-
 NS_SA_ST_BEGIN
 
 int RequestHandler::onRequestRecieved(Request & rctx, mem::String &&originPath, mem::String &&path, const mem::Value &data) {
@@ -34,132 +31,7 @@ int RequestHandler::onRequestRecieved(Request & rctx, mem::String &&originPath, 
 	_subPath = std::move(path);
 	_options = data;
 	_subPathVec = stappler::Url::parsePath(_subPath);
-
-	auto auth = rctx.getRequestHeaders().at("Authorization");
-	if (!auth.empty()) {
-		mem::StringView r(auth);
-		r.skipChars<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>();
-		auto method = r.readUntil<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>().str();
-		stappler::string::tolower(method);
-		auto userIp = rctx.getUseragentIp();
-		if (method == "basic" && (rctx.isSecureConnection() || strncmp(userIp.data(), "127.", 4) == 0 || userIp == "::1")) {
-			r.skipChars<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>();
-			auto str = stappler::base64::decode(r);
-			mem::StringView source((const char *)str.data(), str.size());
-			mem::StringView user = source.readUntil<mem::StringView::Chars<':'>>();
-			if (source.is(':')) {
-				++ source;
-
-				if (!user.empty() && !source.empty()) {
-					auto storage = rctx.storage();
-					auto u = db::User::get(storage, mem::String::make_weak(user.data(), user.size()),
-							mem::String::make_weak(source.data(), source.size()));
-					if (u) {
-						rctx.setUser(u);
-					}
-				}
-			}
-		} else if (method == "pkey") {
-			r.skipChars<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>();
-			auto d = stappler::data::read(stappler::base64::decode(r));
-			if (d.isArray() && d.size() == 2 && d.isBytes(0) && d.isBytes(1)) {
-				auto &key = d.getBytes(0);
-				auto &sig = d.getBytes(1);
-
-				mbedtls_pk_context pk;
-				mbedtls_pk_init( &pk );
-
-				do {
-					if (key.size() < 128 || sig.size() < 128) {
-						break;
-					}
-
-					if (memcmp(key.data(), "ssh-", 4) == 0) {
-						auto derKey = stappler::valid::convertOpenSSHKey(mem::StringView((const char *)key.data(), key.size()));
-						if (!derKey.empty()) {
-							if (mbedtls_pk_parse_public_key(&pk, (const uint8_t *)derKey.data(), derKey.size()) != 0) {
-								break;
-							}
-						} else {
-							break;
-						}
-					} else {
-						if (mbedtls_pk_parse_public_key(&pk, (const uint8_t *)key.data(), key.size()) != 0) {
-							break;
-						}
-					}
-
-					auto hash = stappler::string::Sha512().update(key).final();
-					if (mbedtls_pk_verify(&pk, MBEDTLS_MD_SHA512, hash.data(), hash.size(), sig.data(), sig.size()) != 0) {
-						break;
-					}
-
-					uint8_t out[2_KiB];
-					auto bytesCount = mbedtls_pk_write_pubkey_der(&pk, out, sizeof(out));
-					if (bytesCount <= 0) {
-						break;
-					}
-
-					auto searchKey = mem::BytesView(out + sizeof(out) - bytesCount, bytesCount);
-					if (auto u = db::User::get(rctx.storage(), *db::internals::getUserScheme(), searchKey)) {
-						rctx.setUser(u);
-					}
-				} while (0);
-
-				mbedtls_pk_free( &pk );
-			}
-		}
-	}
-
-	auto &origin = rctx.getRequestHeaders().at("Origin");
-	if (origin.empty()) {
-		return OK;
-	}
-
-	if (rctx.getMethod() != Request::Options) {
-		// non-preflightted request
-		if (isCorsPermitted(rctx, origin)) {
-			rctx.getResponseHeaders().emplace("Access-Control-Allow-Origin", origin);
-			rctx.getResponseHeaders().emplace("Access-Control-Allow-Credentials", "true");
-
-			rctx.getErrorHeaders().emplace("Access-Control-Allow-Origin", origin);
-			rctx.getErrorHeaders().emplace("Access-Control-Allow-Credentials", "true");
-			return OK;
-		} else {
-			return HTTP_METHOD_NOT_ALLOWED;
-		}
-	} else {
-		auto &method = rctx.getRequestHeaders().at("Access-Control-Request-Method");
-		auto &headers = rctx.getRequestHeaders().at("Access-Control-Request-Headers");
-
-		if (isCorsPermitted(rctx, origin, true, method, headers)) {
-			rctx.getResponseHeaders().emplace("Access-Control-Allow-Origin", origin);
-			rctx.getResponseHeaders().emplace("Access-Control-Allow-Credentials", "true");
-
-			auto c_methods = getCorsAllowMethods(rctx);
-			if (!c_methods.empty()) {
-				rctx.getResponseHeaders().emplace("Access-Control-Allow-Methods", c_methods);
-			} else if (!method.empty()) {
-				rctx.getResponseHeaders().emplace("Access-Control-Allow-Methods", method);
-			}
-
-			auto c_headers = getCorsAllowHeaders(rctx);
-			if (!c_headers.empty()) {
-				rctx.getResponseHeaders().emplace("Access-Control-Allow-Headers", c_headers);
-			} else if (!headers.empty()) {
-				rctx.getResponseHeaders().emplace("Access-Control-Allow-Headers", headers);
-			}
-
-			auto c_maxAge = getCorsMaxAge(rctx);
-			if (!c_maxAge.empty()) {
-				rctx.getResponseHeaders().emplace("Access-Control-Max-Age", c_maxAge);
-			}
-
-			return DONE;
-		} else {
-			return HTTP_METHOD_NOT_ALLOWED;
-		}
-	}
+	return OK;
 }
 
 int DataHandler::writeResult(mem::Value &data) {
@@ -304,6 +176,336 @@ bool DataMapHandler::processDataHandler(Request &req, mem::Value &result, mem::V
 	} else {
 		return _selectedProcessFunction(req, result, input);
 	}
+}
+
+
+void HandlerMap::Handler::onParams(const HandlerInfo *info, mem::Value &&val) {
+	_info = info;
+	_params = std::move(val);
+}
+
+int HandlerMap::Handler::onTranslateName(Request &rctx) {
+	if (rctx.getMethod() != _info->getMethod()) {
+		return HTTP_METHOD_NOT_ALLOWED;
+	}
+
+	switch (rctx.getMethod()) {
+	case Request::Method::Post:
+	case Request::Method::Put:
+	case Request::Method::Patch:
+		return OK;
+		break;
+	default: {
+		if (!processQueryFields(mem::Value(rctx.getParsedQueryArgs()))) {
+			return HTTP_BAD_REQUEST;
+		}
+		auto ret = onRequest();
+		if (ret == DECLINED) {
+			if (auto data = onData()) {
+				data.setBool(true, "OK");
+				return writeResult(data);
+			} else {
+				mem::Value ret({ stappler::pair("OK", mem::Value(false)) });
+				return writeResult(ret);
+			}
+		}
+		return ret;
+		break;
+	}
+	}
+	return HTTP_BAD_REQUEST;
+}
+
+void HandlerMap::Handler::onInsertFilter(Request &rctx) {
+	switch (rctx.getMethod()) {
+	case Request::Method::Post:
+	case Request::Method::Put:
+	case Request::Method::Patch: {
+		rctx.setRequiredData(db::InputConfig::Require::Data | db::InputConfig::Require::Files);
+		rctx.setMaxRequestSize(_info->getInputConfig().maxRequestSize);
+		rctx.setMaxVarSize(_info->getInputConfig().maxVarSize);
+		rctx.setMaxFileSize(_info->getInputConfig().maxFileSize);
+
+		auto ex = InputFilter::insert(rctx);
+		if (ex != InputFilter::Exception::None) {
+			if (ex == InputFilter::Exception::TooLarge) {
+				rctx.setStatus(HTTP_REQUEST_ENTITY_TOO_LARGE);
+			} else if (ex == InputFilter::Exception::Unrecognized) {
+				rctx.setStatus(HTTP_UNSUPPORTED_MEDIA_TYPE);
+			}
+		}
+		break;
+	}
+	default:
+		break;
+	}
+}
+
+int HandlerMap::Handler::onHandler(Request &) {
+	return OK;
+}
+
+void HandlerMap::Handler::onFilterComplete(InputFilter *filter) {
+	_filter = filter;
+
+	if (!processQueryFields(mem::Value(_request.getParsedQueryArgs()))) {
+		_request.setStatus(HTTP_BAD_REQUEST);
+		return;
+	}
+	if (!processInputFields(_filter)) {
+		_request.setStatus(HTTP_BAD_REQUEST);
+		return;
+	}
+	auto ret = onRequest();
+	if (ret == DECLINED) {
+		if (auto data = onData()) {
+			data.setBool(true, "OK");
+			writeResult(data);
+		} else {
+			mem::Value ret({ stappler::pair("OK", mem::Value(false)) });
+			writeResult(ret);
+		}
+	}
+	_request.setStatus(ret);
+}
+
+bool HandlerMap::Handler::processQueryFields(mem::Value &&args) {
+	_queryFields = std::move(args);
+	if (_info->getQueryScheme().getFields().empty()) {
+		return true;
+	}
+
+	_info->getQueryScheme().transform(_queryFields, db::Scheme::TransformAction::ProtectedCreate);
+
+	bool success = true;
+	for (auto &it : _info->getQueryScheme().getFields()) {
+		auto &val = _queryFields.getValue(it.first);
+		if (val.isNull() && it.second.hasFlag(db::Flags::Required)) {
+			messages::error("HandlerMap", "No value for required field",
+					mem::Value({ std::make_pair("field", mem::Value(it.first)) }));
+			success = false;
+		}
+	}
+	return success;
+}
+
+bool HandlerMap::Handler::processInputFields(InputFilter *f) {
+	_inputFields = std::move(f->getData());
+
+	if (_info->getInputScheme().getFields().empty()) {
+		return true;
+	}
+
+	_info->getInputScheme().transform(_inputFields, db::Scheme::TransformAction::ProtectedCreate);
+
+	for (auto &it : f->getFiles()) {
+		if (auto f = _info->getInputScheme().getField(it.name)) {
+			if (db::File::validateFileField(*f, it)) {
+				_inputFields.setInteger(it.negativeId(), it.name);
+			}
+		}
+	}
+
+	bool success = true;
+	for (auto &it : _info->getQueryScheme().getFields()) {
+		auto &val = _inputFields.getValue(it.first);
+		if (val.isNull() && it.second.hasFlag(db::Flags::Required)) {
+			messages::error("HandlerMap", "No value for required field",
+					mem::Value({ std::make_pair("field", mem::Value(it.first)) }));
+			success = false;
+		}
+	}
+	return success;
+}
+
+int HandlerMap::Handler::writeResult(mem::Value &data) {
+	auto status = _request.getStatus();
+	if (status >= 400) {
+		return status;
+	}
+
+	data.setInteger(mem::Time::now().toMicros(), "date");
+#if DEBUG
+	auto &debug = _request.getDebugMessages();
+	if (!debug.empty()) {
+		data.setArray(debug, "debug");
+	}
+#endif
+	auto &error = _request.getErrorMessages();
+	if (!error.empty()) {
+		data.setArray(error, "errors");
+	}
+
+	_request.writeData(data, allowJsonP());
+	return DONE;
+}
+
+db::InputFile *HandlerMap::Handler::getInputFile(const mem::StringView &name) {
+	if (!_filter) {
+		return nullptr;
+	}
+
+	for (auto &it : _filter->getFiles()) {
+		if (it.name == name) {
+			return &it;
+		}
+	}
+
+	return nullptr;
+}
+
+
+HandlerMap::HandlerInfo::HandlerInfo(const mem::StringView &name, Request::Method m, const mem::StringView &pt,
+		mem::Function<Handler *()> &&cb, mem::Value &&opts)
+: name(name.str<mem::Interface>()), method(m), pattern(pt.str<mem::Interface>()), handler(std::move(cb)), options(std::move(opts))
+, queryFields(name), inputFields(name) {
+	mem::StringView p(pattern);
+	while (!p.empty()) {
+		auto tmp = p.readUntil<mem::StringView::Chars<':'>>();
+		if (!tmp.empty()) {
+			fragments.emplace_back(Fragment::Text, tmp);
+		}
+		if (p.is(':')) {
+			auto ptrn = p.readUntil<mem::StringView::Chars<'/'>>();
+			if (!ptrn.empty()) {
+				fragments.emplace_back(Fragment::Pattern, ptrn);
+			}
+		}
+	}
+}
+
+HandlerMap::HandlerInfo &HandlerMap::HandlerInfo::addQueryFields(std::initializer_list<db::Field> il) {
+	queryFields.define(il);
+	return *this;
+}
+HandlerMap::HandlerInfo &HandlerMap::HandlerInfo::addQueryFields(mem::Vector<db::Field> &&il) {
+	queryFields.define(std::move(il));
+	return *this;
+}
+
+HandlerMap::HandlerInfo &HandlerMap::HandlerInfo::addInputFields(std::initializer_list<db::Field> il) {
+	inputFields.define(il);
+	return *this;
+}
+HandlerMap::HandlerInfo &HandlerMap::HandlerInfo::addInputFields(mem::Vector<db::Field> &&il) {
+	inputFields.define(std::move(il));
+	return *this;
+}
+
+mem::Value HandlerMap::HandlerInfo::match(const mem::StringView &path, size_t &match) const {
+	size_t nmatch = 0;
+	mem::Value ret({ stappler::pair("path", mem::Value(path)) });
+	auto it = fragments.begin();
+	mem::StringView r(path);
+	while (!r.empty() && it != fragments.end()) {
+		switch (it->type) {
+		case Fragment::Text:
+			if (r.starts_with(mem::StringView(it->string))) {
+				r += it->string.size();
+				nmatch += it->string.size();
+				++ it;
+			} else {
+				return mem::Value();
+			}
+			break;
+		case Fragment::Pattern:
+			if (mem::StringView(it->string).is(':')) {
+				mem::StringView name(it->string.data() + 1, it->string.size() - 1);
+				if (name.empty()) {
+					return mem::Value();
+				}
+
+				++ it;
+				if (it != fragments.end()) {
+					auto tmp = r.readUntilString(it->string);
+					if (tmp.empty()) {
+						return mem::Value();
+					}
+					ret.setString(tmp, name.str<mem::Interface>());
+				} else {
+					ret.setString(r, name.str<mem::Interface>());
+					r += r.size();
+				}
+			}
+			break;
+		}
+	}
+
+	if (!r.empty() || it != fragments.end()) {
+		return mem::Value();
+	}
+
+	match = nmatch;
+	return ret;
+}
+
+HandlerMap::Handler *HandlerMap::HandlerInfo::onHandler(mem::Value &&p) const {
+	if (auto h = handler()) {
+		h->onParams(this, std::move(p));
+		return h;
+	}
+	return nullptr;
+}
+
+Request::Method HandlerMap::HandlerInfo::getMethod() const {
+	return method;
+}
+
+const db::InputConfig &HandlerMap::HandlerInfo::getInputConfig() const {
+	return inputFields.getConfig();
+}
+
+mem::StringView HandlerMap::HandlerInfo::getName() const {
+	return name;
+}
+mem::StringView HandlerMap::HandlerInfo::getPattern() const {
+	return pattern;
+}
+
+const db::Scheme &HandlerMap::HandlerInfo::getQueryScheme() const {
+	return queryFields;
+}
+const db::Scheme &HandlerMap::HandlerInfo::getInputScheme() const {
+	return inputFields;
+}
+
+HandlerMap::HandlerMap() { }
+
+HandlerMap::~HandlerMap() { }
+
+HandlerMap::Handler *HandlerMap::onRequest(Request &req, const mem::StringView &ipath) const {
+	mem::StringView path(ipath.empty() ? mem::StringView("/") : ipath);
+	const HandlerInfo *info = nullptr;
+	mem::Value params;
+	size_t score = 0;
+	for (auto &it : _handlers) {
+		size_t pscore = 0;
+		if (auto val = it.match(path, pscore)) {
+			if (pscore > score) {
+				params = std::move(val);
+				if (it.getMethod() == req.getMethod() || !info || info->getMethod() != it.getMethod()) {
+					info = &it;
+					score = pscore;
+				}
+			}
+		}
+	}
+
+	if (info) {
+		return info->onHandler(std::move(params));
+	}
+
+	return nullptr;
+}
+
+const mem::Vector<HandlerMap::HandlerInfo> &HandlerMap::getHandlers() const {
+	return _handlers;
+}
+
+HandlerMap::HandlerInfo &HandlerMap::addHandler(const mem::StringView &name, Request::Method m, const mem::StringView &pattern,
+		mem::Function<Handler *()> &&cb, mem::Value &&opts) {
+	_handlers.emplace_back(name, m, pattern, std::move(cb), std::move(opts));
+	return _handlers.back();
 }
 
 NS_SA_ST_END

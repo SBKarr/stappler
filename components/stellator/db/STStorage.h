@@ -175,6 +175,37 @@ void debug(Args && ...args) {
 
 }
 
+
+struct InputConfig {
+	enum class Require {
+		None = 0,
+		Data = 1,
+		Files = 2,
+		Body = 4,
+		FilesAsData = 8,
+	};
+
+	InputConfig() = default;
+	InputConfig(const InputConfig &) = default;
+	InputConfig & operator=(const InputConfig &) = default;
+
+	InputConfig(InputConfig &&) = default;
+	InputConfig & operator=(InputConfig &&) = default;
+
+	void updateLimits(const mem::Map<mem::String, Field> &vec);
+
+	Require required = Require::None;
+	size_t maxRequestSize = config::getMaxRequestSize();
+	size_t maxVarSize = config::getMaxVarSize();
+	size_t maxFileSize = config::getMaxFileSize();
+
+	mem::TimeInterval updateTime = config::getInputUpdateTime();
+	float updateFrequency = config::getInputUpdateFrequency();
+};
+
+SP_DEFINE_ENUM_AS_MASK(InputConfig::Require);
+
+
 NS_DB_END
 
 #endif /* STELLATOR_DB_STSTORAGE_H_ */

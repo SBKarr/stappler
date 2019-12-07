@@ -54,6 +54,7 @@ public:
 
 	void pushTask(Task *);
 	Task * popTask();
+	void releaseTask(Task *);
 
 	bool hasTasks();
 
@@ -67,10 +68,8 @@ protected:
 	mem::pool_t *_pool = nullptr;
 	Root *_root = nullptr;
 
+	std::atomic<size_t> _taskCounter;
 	moodycamel::ConcurrentQueue<Task *> _taskQueue;
-
-	//stappler::Mutex _taskMutex;
-	//mem::Vector<Task *> _taskQueue;
 
 	int _pipe[2] = { -1, -1 };
 	int _eventFd = -1;
@@ -245,6 +244,7 @@ static bool ConnectionHandler_setNonblocking(int fd) {
 
 ConnectionQueue::ConnectionQueue(mem::pool_t *p, Root *h, int socket) : _finalized(false), _refCount(1), _pool(p), _root(h), _socket(socket) {
 	_eventFd = eventfd(0, EFD_NONBLOCK);
+	_taskCounter.store(0);
 }
 
 void ConnectionQueue::run() {
@@ -298,6 +298,7 @@ void ConnectionQueue::finalize() {
 void ConnectionQueue::pushTask(Task *task) {
 	uint64_t value = 1;
 	_taskQueue.enqueue(task);
+	++ _taskCounter;
 	write(_eventFd, &value, sizeof(uint64_t));
 }
 
@@ -310,8 +311,13 @@ Task * ConnectionQueue::popTask() {
 	return nullptr;
 }
 
+void ConnectionQueue::releaseTask(Task *task) {
+	Task::destroy(task);
+	-- _taskCounter;
+}
+
 bool ConnectionQueue::hasTasks() {
-	return _taskQueue.size_approx() != 0;
+	return _taskCounter.load();
 }
 
 ConnectionWorker::ConnectionWorker(ConnectionQueue *queue, Root *h, int socket, int pipe, int event)
@@ -500,7 +506,7 @@ void ConnectionWorker::runTask(Task *task) {
 			task->setSuccessful(task->execute());
 			task->onComplete();
 		}, task->pool());
-		Task::destroy(task);
+		_queue->releaseTask(task);
 	}, serv);
 }
 
@@ -781,8 +787,14 @@ bool Root::run(const mem::StringView &_addr, int _port) {
 				onHeartBeat();
 				bool close = false;
 				_internal->mutex.lock();
-				if (_internal->shouldClose && !_internal->queue->hasTasks()) {
-					close = true;
+				if (!_internal->queue->hasTasks()) {
+					if (!_internal->followed.empty()) {
+						auto t = _internal->followed.front();
+						_internal->followed.erase(_internal->followed.begin());
+						performTask(t->getServer(), t, false);
+					} else if (_internal->shouldClose) {
+						close = true;
+					}
 				}
 				_internal->mutex.unlock();
 				sig = 0;
@@ -821,6 +833,22 @@ bool Root::performTask(const Server &serv, Task *task, bool performFirst) {
 		task->setServer(serv);
 		_internal->queue->pushTask(task);
 		return true;
+	}
+	return false;
+}
+
+bool Root::runFollowedTask(const Server &serv, Task *task) {
+	if (_internal->queue) {
+		task->setServer(serv);
+		if (!_internal->queue->hasTasks()) {
+			performTask(serv, task, false);
+			return true;
+		} else {
+			_internal->mutex.lock();
+			_internal->followed.emplace_back(task);
+			_internal->mutex.unlock();
+			return true;
+		}
 	}
 	return false;
 }

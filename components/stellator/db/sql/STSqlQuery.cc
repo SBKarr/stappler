@@ -49,11 +49,11 @@ static inline mem::StringView SqlQuery_getSoftLimitField(const db::Scheme &schem
 	if (q.isSoftLimit()) {
 		auto &field = q.getOrderField();
 		auto f = scheme.getField(field);
-		if (f) {
+		if (field == "__oid") {
+			softLimitField = field;
+		} else if (f) {
 			softLimitField = f->getName();
 			hasAltLimit = true;
-		} else if (field == "__oid") {
-			softLimitField = field;
 		} else {
 			messages::error("SqlQuery", "Invalid soft limit field", mem::Value(field));
 			return mem::StringView();
@@ -241,51 +241,53 @@ void SqlQuery::writeWhere(SqlQuery::WhereContinue &w, db::Operator op, const db:
 	} else if (q.getSelectList().size() > 0) {
 		w.parenthesis(op, [&] (SqlQuery::WhereBegin &wh) {
 			auto whi = wh.where();
-			auto &fields = scheme.getFields();
 			for (auto &it : q.getSelectList()) {
-				auto f_it = fields.find(it.field);
-				if (f_it != fields.end()) {
-					auto type = f_it->second.getType();
-					if (type == db::Type::FullTextView) {
-						auto ftsQuery = getFullTextQuery(scheme, f_it->second, it);
-						if (!ftsQuery.empty()) {
-							whi.where(db::Operator::And, SqlQuery::Field(scheme.getName(), it.field),
-									db::Comparation::Includes, RawStringView{ftsQuery});
-						}
-					} else if ((f_it->second.isIndexed() && SqlQuery_comparationIsValid(f_it->second, it.compare))) {
-						if (type == Type::Custom) {
-							auto c = f_it->second.getSlot<FieldCustom>();
-							c->writeQuery(scheme, whi, db::Operator::And, it.field, it.compare, it.value1, it.value2);
-						} else {
-							if (it.compare == Comparation::Equal && (type == Type::Integer || type == Type::Float || type == Type::Object) && it.value1.isArray()) {
-								whi.parenthesis(db::Operator::And, [&] (WhereBegin &wb) {
-									auto wwb = wb.where();
-									auto op = it.compare == db::Comparation::NotEqual ? db::Operator::And : db::Operator::Or;
-									for (auto &id : it.value1.asArray()) {
-										wwb.where(op, SqlQuery::Field(scheme.getName(), it.field), it.compare, id);
-									}
-								});
-							} else {
-								whi.where(db::Operator::And, SqlQuery::Field(scheme.getName(), it.field), it.compare, it.value1, it.value2);
-							}
-						}
-					}
-				} else if (it.field == "__oid" && db::checkIfComparationIsValid(db::Type::Integer, it.compare)) {
-					if (it.value1.isArray()) {
-						whi.parenthesis(db::Operator::And, [&] (WhereBegin &wb) {
-							auto wwb = wb.where();
-							auto op = it.compare == db::Comparation::NotEqual ? db::Operator::And : db::Operator::Or;
-							for (auto &id : it.value1.asArray()) {
-								wwb.where(op, SqlQuery::Field(scheme.getName(), it.field), it.compare, id);
-							}
-						});
-					} else if (it.value1.isInteger()) {
-						whi.where(db::Operator::And, SqlQuery::Field(scheme.getName(), it.field), it.compare, it.value1, it.value2);
-					}
-				}
+				writeWhere(whi, db::Operator::And, scheme, it);
 			}
 		});
 	}
+}
+
+static void SqlQuery_writeWhereData(SqlQuery::WhereContinue &whi, db::Operator op, const db::Scheme &scheme, const db::Field &f,
+		Comparation compare, const mem::Value &value1, const mem::Value &value2) {
+	if ((f.isIndexed() && SqlQuery_comparationIsValid(f, compare))) {
+		auto type = f.getType();
+		if (type == Type::Custom) {
+			auto c = f.getSlot<FieldCustom>();
+			c->writeQuery(scheme, whi, op, f.getName(), compare, value1, value2);
+		} else {
+			if (compare == Comparation::Equal && (type == Type::Integer || type == Type::Float || type == Type::Object) && value1.isArray()) {
+				whi.parenthesis(op, [&] (SqlQuery::WhereBegin &wb) {
+					auto wwb = wb.where();
+					auto op = compare == db::Comparation::NotEqual ? db::Operator::And : db::Operator::Or;
+					for (auto &id : value1.asArray()) {
+						wwb.where(op, SqlQuery::Field(scheme.getName(), f.getName()), compare, id);
+					}
+				});
+			} else {
+				whi.where(op, SqlQuery::Field(scheme.getName(), f.getName()), compare, value1, value2);
+			}
+		}
+	}
+}
+
+void SqlQuery::writeWhere(SqlQuery::WhereContinue &whi, db::Operator op, const db::Scheme &scheme, const db::Query::Select &sel) {
+	if (auto f = scheme.getField(sel.field)) {
+		auto type = f->getType();
+		if (type == db::Type::FullTextView) {
+			auto ftsQuery = getFullTextQuery(scheme, *f, sel);
+			if (!ftsQuery.empty()) {
+				whi.where(op, SqlQuery::Field(scheme.getName(), sel.field),
+						db::Comparation::Includes, RawStringView{ftsQuery});
+			}
+		} else if ((f->isIndexed() && SqlQuery_comparationIsValid(*f, sel.compare))) {
+			SqlQuery_writeWhereData(whi, op, scheme, *f, sel.compare, sel.value1, sel.value2);
+		}
+	}
+}
+
+void SqlQuery::writeWhere(SqlQuery::WhereContinue &whi, db::Operator op, const db::Scheme &scheme, const db::Worker::ConditionData &sel) {
+	SqlQuery_writeWhereData(whi, op, scheme, *sel.field, sel.compare, sel.value1, sel.value2);
 }
 
 void SqlQuery::writeOrdering(SqlQuery::SelectFrom &s, const db::Scheme &scheme, const db::Query &q, bool dropLimits) {
@@ -301,8 +303,6 @@ void SqlQuery::writeOrdering(SqlQuery::SelectFrom &s, const db::Scheme &scheme, 
 				} else {
 					orderField = q.getOrderField();
 				}
-			} else if (q.getOrderField() == "__oid") {
-				orderField = q.getOrderField();
 			} else {
 				return;
 			}

@@ -32,7 +32,7 @@ class UrlEncodeParser : public InputParser {
 public:
 	using Reader = StringView;
 
-	UrlEncodeParser(const InputConfig &, size_t);
+	UrlEncodeParser(const db::InputConfig &, size_t);
 	virtual ~UrlEncodeParser();
 
 	virtual void run(const char *str, size_t len) override;

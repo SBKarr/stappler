@@ -21,6 +21,7 @@ THE SOFTWARE.
 **/
 
 #include "STInputFile.h"
+#include "STStorageField.h"
 
 NS_DB_BEGIN
 
@@ -76,6 +77,66 @@ mem::String InputFile::readText() {
 		return ret;
 	}
 	return mem::String();
+}
+
+static size_t processExtraVarSize(const FieldExtra *s) {
+	size_t ret = 256;
+	for (auto it : s->fields) {
+		auto t = it.second.getType();
+		if (t == Type::Text || t == Type::Bytes) {
+			auto f = static_cast<const FieldText *>(it.second.getSlot());
+			ret = std::max(f->maxLength, ret);
+		} else if (t == Type::Extra) {
+			auto f = static_cast<const FieldExtra *>(it.second.getSlot());
+			ret = std::max(processExtraVarSize(f), ret);
+		}
+	}
+	return ret;
+}
+
+static size_t updateFieldLimits(const mem::Map<mem::String, Field> &vec) {
+	size_t ret = 256 * vec.size();
+	for (auto &it : vec) {
+		auto t = it.second.getType();
+		if (t == Type::Text || t == Type::Bytes) {
+			auto f = static_cast<const FieldText *>(it.second.getSlot());
+			ret += f->maxLength;
+		} else if (t == Type::Data || t == Type::Array) {
+			ret += config::getMaxExtraFieldSize();
+		} else if (t == Type::Extra) {
+			auto f = static_cast<const FieldExtra *>(it.second.getSlot());
+			ret += updateFieldLimits(f->fields);
+		} else {
+			ret += 256;
+		}
+	}
+	return ret;
+}
+
+void InputConfig::updateLimits(const mem::Map<mem::String, Field> &fields) {
+	maxRequestSize = 256 * fields.size();
+	for (auto &it : fields) {
+		auto t = it.second.getType();
+		if (t == Type::File) {
+			auto f = static_cast<const FieldFile *>(it.second.getSlot());
+			maxFileSize = std::max(f->maxSize, maxFileSize);
+			maxRequestSize += f->maxSize + 256;
+		} else if (t == Type::Image) {
+			auto f = static_cast<const FieldImage *>(it.second.getSlot());
+			maxFileSize = std::max(f->maxSize, maxFileSize);
+			maxRequestSize += f->maxSize + 256;
+		} else if (t == Type::Text || t == Type::Bytes) {
+			auto f = static_cast<const FieldText *>(it.second.getSlot());
+			maxVarSize = std::max(f->maxLength, maxVarSize);
+			maxRequestSize += f->maxLength;
+		} else if (t == Type::Data || t == Type::Array) {
+			maxRequestSize += config::getMaxExtraFieldSize();
+		} else if (t == Type::Extra) {
+			auto f = static_cast<const FieldExtra *>(it.second.getSlot());
+			maxRequestSize += updateFieldLimits(f->fields);
+			maxVarSize = std::max(processExtraVarSize(f), maxVarSize);
+		}
+	}
 }
 
 NS_DB_END

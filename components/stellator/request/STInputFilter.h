@@ -83,7 +83,7 @@ public:
 
 	db::InputFile * getInputFile(int64_t) const;
 
-	const InputConfig & getConfig() const;
+	const db::InputConfig & getConfig() const;
 
 	Request getRequest() const;
 

@@ -95,8 +95,10 @@ class RequestHandler;
 class AccessControl;
 class Resource;
 class ResourceHandler;
+class HandlerMap;
 
 using AllocPool = memory::AllocPool;
+using InputConfig = db::InputConfig;
 
 class Session;
 class Task;

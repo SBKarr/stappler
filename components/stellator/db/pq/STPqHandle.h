@@ -55,11 +55,13 @@ public:
 	void setStorageTypeMap(const mem::Vector<mem::Pair<uint32_t, Interface::StorageType>> *);
 	void setCustomTypeMap(const mem::Vector<mem::Pair<uint32_t, mem::String>> *);
 
-	virtual void makeQuery(const stappler::Callback<void(sql::SqlQuery &)> &cb);
+	virtual void makeQuery(const stappler::Callback<void(sql::SqlQuery &)> &cb) override;
 
-	virtual bool selectQuery(const db::sql::SqlQuery &, const stappler::Callback<void(sql::Result &)> &cb);
-	virtual bool performSimpleQuery(const mem::StringView &);
-	virtual bool performSimpleSelect(const mem::StringView &, const stappler::Callback<void(sql::Result &)> &cb);
+	virtual bool selectQuery(const db::sql::SqlQuery &, const stappler::Callback<void(sql::Result &)> &cb) override;
+	virtual bool performSimpleQuery(const mem::StringView &) override;
+	virtual bool performSimpleSelect(const mem::StringView &, const stappler::Callback<void(sql::Result &)> &cb) override;
+
+	virtual bool isSuccess() const override;
 
 	Interface::StorageType getTypeById(uint32_t) const;
 	mem::StringView getTypeNameById(uint32_t) const;

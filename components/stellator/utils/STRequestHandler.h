@@ -46,27 +46,27 @@ public:
      * @param headers - extra (X-*) headers for preflighted request
      * @return for forbidden CORS requests server will return "405 Method Not Allowed"
      */
-	virtual bool isCorsPermitted(Request &, const mem::String &origin, bool isPreflight = false,
-		const mem::String &method = "", const mem::String &headers = "") { return true; }
+	virtual bool isCorsPermitted(Request &, const mem::StringView &origin, bool isPreflight = false,
+		const mem::StringView &method = "", const mem::StringView &headers = "") { return true; }
 
 	/**
 	 * Available method for CORS preflighted requests
      */
-	virtual const mem::String getCorsAllowMethods(Request &) {
+	virtual mem::StringView getCorsAllowMethods(Request &) {
 		return "GET, HEAD, POST, PUT, DELETE, OPTIONS"_weak;
 	}
 
 	/**
 	 * Available extra headers for CORS preflighted requests
      */
-	virtual const mem::String getCorsAllowHeaders(Request &) {
+	virtual mem::StringView getCorsAllowHeaders(Request &) {
 		return ""_weak;
 	}
 
 	/**
 	 * Caching time for preflight response
      */
-	virtual const mem::String getCorsMaxAge(Request &) {
+	virtual mem::StringView getCorsMaxAge(Request &) {
 		return "1728000"_weak; // 20 days
 	}
 
@@ -131,7 +131,7 @@ protected:
 	int writeResult(mem::Value &);
 
 	AllowMethod _allow = AllowMethod::All;
-	InputConfig::Require _required = InputConfig::Require::Data | InputConfig::Require::FilesAsData;
+	db::InputConfig::Require _required = db::InputConfig::Require::Data | db::InputConfig::Require::FilesAsData;
 	size_t _maxRequestSize = 0;
 	size_t _maxVarSize = 256;
 	size_t _maxFileSize = 0;
@@ -175,6 +175,115 @@ protected:
 };
 
 SP_DEFINE_ENUM_AS_MASK(DataHandler::AllowMethod)
+
+
+class HandlerMap : public mem::AllocBase {
+public:
+	struct HandlerInfo;
+
+	class Handler : public RequestHandler {
+	public: // simplified interface
+		virtual bool isPermitted() { return false; }
+		virtual int onRequest() { return DECLINED; }
+		virtual mem::Value onData() { return mem::Value(); }
+
+	public:
+		Handler() { }
+		virtual ~Handler() { }
+
+		virtual void onParams(const HandlerInfo *, mem::Value &&);
+		virtual bool isRequestPermitted(Request &) override { return isPermitted(); }
+		virtual int onTranslateName(Request &) override;
+		virtual void onInsertFilter(Request &) override;
+		virtual int onHandler(Request &) override;
+
+		virtual void onFilterComplete(InputFilter *f);
+
+	protected:
+		virtual bool allowJsonP() { return true; }
+
+		bool processQueryFields(mem::Value &&);
+		bool processInputFields(InputFilter *);
+
+		int writeResult(mem::Value &);
+
+		db::InputFile *getInputFile(const mem::StringView &);
+
+		const HandlerInfo *_info = nullptr;
+		mem::Value _params;
+		InputFilter *_filter = nullptr;
+
+		mem::Value _queryFields;
+		mem::Value _inputFields;
+	};
+
+	class HandlerInfo : public mem::AllocBase {
+	public:
+		HandlerInfo(const mem::StringView &name, Request::Method, const mem::StringView &pattern,
+				mem::Function<Handler *()> &&, mem::Value && = mem::Value());
+
+		HandlerInfo &addQueryFields(std::initializer_list<db::Field> il);
+		HandlerInfo &addQueryFields(mem::Vector<db::Field> &&il);
+
+		HandlerInfo &addInputFields(std::initializer_list<db::Field> il);
+		HandlerInfo &addInputFields(mem::Vector<db::Field> &&il);
+
+		mem::Value match(const mem::StringView &path, size_t &score) const;
+
+		Handler *onHandler(mem::Value &&) const;
+
+		Request::Method getMethod() const;
+		const db::InputConfig &getInputConfig() const;
+
+		mem::StringView getName() const;
+		mem::StringView getPattern() const;
+
+		const db::Scheme &getQueryScheme() const;
+		const db::Scheme &getInputScheme() const;
+
+	protected:
+		struct Fragment {
+			enum Type : uint16_t {
+				Text,
+				Pattern,
+			};
+
+			Fragment(Type t, mem::StringView s) : type(t), string(s.str<mem::Interface>()) { }
+
+			Type type;
+			mem::String string;
+		};
+
+		mem::String name;
+		Request::Method method = Request::Method::Get;
+		mem::String pattern;
+		mem::Function<Handler *()> handler;
+		mem::Value options;
+
+		db::Scheme queryFields;
+		db::Scheme inputFields;
+		mem::Vector<Fragment> fragments;
+	};
+
+	HandlerMap();
+	virtual ~HandlerMap();
+
+	HandlerMap(HandlerMap &&) = default;
+	HandlerMap &operator=(HandlerMap &&) = default;
+
+	HandlerMap(const HandlerMap &) = delete;
+	HandlerMap &operator=(const HandlerMap &) = delete;
+
+	Handler *onRequest(Request &req, const mem::StringView &path) const;
+
+	HandlerInfo &addHandler(const mem::StringView &name, Request::Method, const mem::StringView &pattern,
+			mem::Function<Handler *()> &&, mem::Value && = mem::Value());
+
+	const mem::Vector<HandlerInfo> &getHandlers() const;
+
+protected:
+	mem::Vector<HandlerInfo> _handlers;
+};
 
 NS_SA_ST_END
 

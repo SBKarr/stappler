@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2017-2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,7 @@ THE SOFTWARE.
 
 #include "PugTest.cc"
 #include "UploadTest.cc"
+#include "TestMap.cc"
 
 NS_SA_EXT_BEGIN(test)
 
@@ -100,7 +101,6 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 		Field::Set("images", _images, Flags::Composed),
 	},
 	AccessRole::Admin(AccessRoleId::Authorized));
-	_objects.setDelta(true);
 
 	_refs.define({
 		Field::Text("alias", storage::Transform::Alias),
@@ -123,7 +123,6 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 
 		Field::Data("data")
 	});
-	_refs.setDelta(true);
 
 	_subobjects.define({
 		Field::Text("text", storage::MinLength(3)),
@@ -142,7 +141,7 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 			Thumbnail("thumb", 380, 380)
 		}),
 	},
-			AccessRole::Admin(AccessRoleId::Authorized)
+		AccessRole::Admin(AccessRoleId::Authorized)
 	);
 }
 
@@ -159,6 +158,8 @@ void TestHandler::onChildInit(Server &serv) {
 	serv.addHandler("/handler", SA_HANDLER(TestSelectHandler));
 	serv.addHandler("/pug/", SA_HANDLER(TestPugHandler));
 	serv.addHandler("/upload/", SA_HANDLER(TestUploadHandler));
+
+	serv.addHandler("/map/", new TestHandlerMap);
 }
 
 void TestHandler::onStorageTransaction(storage::Transaction &t) {

@@ -28,3 +28,28 @@ html
 									span.name= value.component
 							if value.scheme
 								span.component.scheme= "Scheme: " + value.scheme
+						if value.map
+							.map
+								each m in value.map
+									p.components
+										span.method= m.method + " "
+										span.pattern= m.pattern + " : "
+										span.version= m.name
+									if m.query
+										h6.components Query fields
+										.map
+											each f in m.query
+												p.components
+													span.pattern= f.type + " "
+													span.method= f.name
+													if f.documentation
+														span.version= " - " + f.documentation
+									if m.input
+										h6.components Input fields
+										.map
+											each f in m.input
+												p.components
+													span.pattern= f.type + " "
+													span.method= f.name
+													if f.documentation
+														span.version= " - " + f.documentation

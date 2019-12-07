@@ -162,7 +162,9 @@ void cleanup_t::run(cleanup_t **cref) {
 	cleanup_t *c = *cref;
 	while (c) {
 		*cref = c->next;
-		(*c->fn)((void *)c->data);
+		if (c->fn) {
+			(*c->fn)((void *)c->data);
+		}
 		c = *cref;
 	}
 }

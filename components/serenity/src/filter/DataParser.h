@@ -30,7 +30,7 @@ NS_SA_BEGIN
 
 class DataParser : public InputParser {
 public:
-	DataParser(const InputConfig &c, size_t s) : InputParser(c, s) { }
+	DataParser(const db::InputConfig &c, size_t s) : InputParser(c, s) { }
 
 	virtual void run(const char *str, size_t len) override {
 		stream.write(str, len);

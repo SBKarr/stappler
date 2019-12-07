@@ -54,6 +54,15 @@ public:
 		ParentScheme(const Scheme *s, const Field *v) : scheme(s), pointerField(v) { }
 	};
 
+	enum class TransformAction {
+		Create,
+		Update,
+		Compare,
+		ProtectedCreate,
+		ProtectedUpdate,
+		Touch
+	};
+
 	using FieldVec = mem::Vector<const Field *>;
 	using AccessTable = std::array<AccessRole *, stappler::toInt(AccessRoleId::Max)>;
 
@@ -106,9 +115,11 @@ public:
 	const Field *getForeignLink(const Field &f) const;
 	const Field *getForeignLink(const mem::StringView &f) const;
 
-	size_t getMaxRequestSize() const { return maxRequestSize; }
-	size_t getMaxVarSize() const { return maxVarSize; }
-	size_t getMaxFileSize() const { return std::max(maxFileSize, maxVarSize); }
+	const InputConfig &getConfig() const { return config; }
+
+	size_t getMaxRequestSize() const { return config.maxRequestSize; }
+	size_t getMaxVarSize() const { return config.maxVarSize; }
+	size_t getMaxFileSize() const { return std::max(config.maxFileSize, config.maxVarSize); }
 
 	bool isAtomicPatch(const mem::Value &) const;
 
@@ -120,6 +131,8 @@ public:
 	const AccessTable &getAccessTable() const;
 	const AccessRole *getAccessRole(AccessRoleId) const;
 	void setAccessRole(AccessRoleId, AccessRole &&);
+
+	mem::Value &transform(mem::Value &, TransformAction = TransformAction::Create) const;
 
 public: // worker interface
 	template <typename Storage, typename _Value> auto get(Storage &&, _Value &&, bool forUpdate = false) const -> mem::Value;
@@ -201,17 +214,6 @@ protected:
 	mem::Value removeField(const Transaction &, mem::Value &, const Field &, const mem::Value &old);
 	void finalizeField(const Transaction &, const Field &, const mem::Value &old);
 
-	enum class TransformAction {
-		Create,
-		Update,
-		Compare,
-		ProtectedCreate,
-		ProtectedUpdate,
-		Touch
-	};
-
-	mem::Value &transform(mem::Value &, TransformAction = TransformAction::Create) const;
-
 	// call before object is created, used for additional checking or default values
 	mem::Value createFile(const Transaction &, const Field &, InputFile &) const;
 
@@ -238,9 +240,7 @@ protected:
 
 	Options flags = Options::None;
 
-	size_t maxRequestSize = 0;
-	size_t maxVarSize = 256;
-	size_t maxFileSize = 0;
+	InputConfig config;
 
 	mem::Vector<ViewScheme *> views;
 	mem::Vector<ParentScheme *> parents;
@@ -253,6 +253,7 @@ protected:
 	bool _hasAccessControl = false;
 
 	AccessTable roles;
+	Field oidField;
 };
 
 SP_DEFINE_ENUM_AS_MASK(Scheme::Options)

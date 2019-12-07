@@ -264,6 +264,11 @@ mem::Value Field::getTypeDesc() const {
 		break;
 	default: break;
 	}
+
+	if (!slot->documentation.empty()) {
+		ret.setString(slot->documentation, "documentation");
+	}
+
 	return ret;
 }
 

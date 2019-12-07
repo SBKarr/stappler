@@ -83,7 +83,7 @@ struct Request::Config : public AllocPool {
 
 	mem::Vector<mem::Value> _debug;
 	mem::Vector<mem::Value> _errors;
-	InputConfig _config;
+	db::InputConfig _config;
 
 	db::pq::Handle *_database = nullptr;
 	RequestHandler *_handler = nullptr;
@@ -382,14 +382,14 @@ void Request::setStatus(int status, mem::String && str) {
 	}*/
 }
 
-InputConfig & Request::getInputConfig() {
+db::InputConfig & Request::getInputConfig() {
 	return _config->_config;
 }
-const InputConfig & Request::getInputConfig() const {
+const db::InputConfig & Request::getInputConfig() const {
 	return _config->_config;
 }
 
-void Request::setRequiredData(InputConfig::Require r) {
+void Request::setRequiredData(db::InputConfig::Require r) {
 	_config->_config.required = r;
 }
 void Request::setMaxRequestSize(size_t s) {

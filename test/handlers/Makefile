@@ -4,6 +4,7 @@ LOCAL_OUTDIR := lib
 LOCAL_LIBRARY := Handlers
 
 LOCAL_TOOLKIT := serenity
+LOCAL_INSTALL_DIR := $(LOCAL_OUTDIR)
 
 LOCAL_ROOT = .
 
@@ -33,7 +34,7 @@ $(LOCAL_OUTDIR)/httpd.conf: Makefile
 	@echo 'DBDriver pgsql' >> $@
 	@echo 'DBDPersist On' >> $@
 	@echo 'DBDParams "$(CONF_DB)"\n' >> $@
-	@echo 'SerenitySourceRoot "$(CONF_DIR)lib/host"' >> $@
+	@echo 'SerenitySourceRoot "$(CONF_DIR)lib"' >> $@
 	@echo '<Directory "$(CONF_DIR)www">' >> $@
 	@echo '\tRequire all granted' >> $@
 	@echo '</Directory>\n' >> $@

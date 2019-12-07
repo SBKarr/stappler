@@ -44,7 +44,7 @@ public:
 	using char_type = char;
 	using traits_type = std::char_traits<char>;
 	using ostream_type = std::basic_ostream<char_type, traits_type>;
-	using Require = InputConfig::Require;
+	using Require = db::InputConfig::Require;
 
 	enum Method : int {
 		Get =				M_GET,
@@ -194,12 +194,12 @@ public: /* request params setters */
 	bool checkCacheHeaders(Time, uint32_t idHash);
 
 public: /* input config */
-	InputConfig & getInputConfig();
-	const InputConfig & getInputConfig() const;
+	db::InputConfig & getInputConfig();
+	const db::InputConfig & getInputConfig() const;
 
 	/* Sets required data flags for input filter on POST and PUT queries
 	 * if no data is requested, onInsertFilter and onFilterComplete phases will be ignored */
-	void setRequiredData(InputConfig::Require);
+	void setRequiredData(db::InputConfig::Require);
 
 	/* Sets max size for input query content length, checked from Content-Length header */
 	void setMaxRequestSize(size_t);
@@ -223,6 +223,7 @@ public: /* engine and errors */
 
 	const apr::vector<apr::string> & getParsedQueryPath() const;
 	const data::Value &getParsedQueryArgs() const;
+	data::Value &extractParsedQueryArgs() const;
 
 	Server server() const;
 	Connection connection() const;

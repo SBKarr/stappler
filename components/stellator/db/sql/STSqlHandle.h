@@ -75,6 +75,8 @@ public: // interface
 	virtual bool performSimpleQuery(const mem::StringView &) = 0;
 	virtual bool performSimpleSelect(const mem::StringView &, const stappler::Callback<void(Result &)> &cb) = 0;
 
+	virtual bool isSuccess() const = 0;
+
 public:
 	virtual mem::Value select(Worker &, const db::Query &) override;
 

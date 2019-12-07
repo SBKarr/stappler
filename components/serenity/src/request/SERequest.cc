@@ -92,10 +92,6 @@ struct Request::Config : public AllocPool {
 		return _path;
 	}
 
-	const data::Value &getData() {
-		return _data;
-	}
-
 	db::pq::Handle *acquireDatabase(request_rec *r) {
 		if (!_database) {
 			auto handle = Root::getInstance()->dbdRequestAcquire(r);
@@ -120,7 +116,7 @@ struct Request::Config : public AllocPool {
 
 	Vector<data::Value> _debug;
 	Vector<data::Value> _errors;
-	InputConfig _config;
+	db::InputConfig _config;
 
 	db::pq::Handle *_database = nullptr;
 	RequestHandler *_handler = nullptr;
@@ -432,6 +428,9 @@ User *Request::getUser() {
 	if (!_config->_user) {
 		if (auto s = getSession()) {
 			_config->_user = s->getUser();
+			if (_config->_user && _config->_user->isAdmin()) {
+				setAccessRole(db::AccessRoleId::Admin);
+			}
 		}
 	}
 	return _config->_user;
@@ -467,14 +466,14 @@ void Request::setStatus(int status, apr::string && str) {
 	}
 }
 
-InputConfig & Request::getInputConfig() {
+db::InputConfig & Request::getInputConfig() {
 	return _config->_config;
 }
-const InputConfig & Request::getInputConfig() const {
+const db::InputConfig & Request::getInputConfig() const {
 	return _config->_config;
 }
 
-void Request::setRequiredData(InputConfig::Require r) {
+void Request::setRequiredData(db::InputConfig::Require r) {
 	_config->_config.required = r;
 }
 void Request::setMaxRequestSize(size_t s) {
@@ -495,7 +494,11 @@ const apr::vector<apr::string> & Request::getParsedQueryPath() const {
 	return _config->getPath();
 }
 const data::Value & Request::getParsedQueryArgs() const {
-	return _config->getData();
+	return _config->_data;
+}
+
+data::Value &Request::extractParsedQueryArgs() const {
+	return _config->_data;
 }
 
 Server Request::server() const {

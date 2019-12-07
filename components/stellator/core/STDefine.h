@@ -50,6 +50,7 @@ class Connection;
 
 class ServerComponent;
 class RequestHandler;
+class HandlerMap;
 
 class Session;
 
@@ -84,33 +85,6 @@ enum class ResourceType {
 	Array,
 	Search
 };
-
-struct InputConfig {
-	enum class Require {
-		None = 0,
-		Data = 1,
-		Files = 2,
-		Body = 4,
-		FilesAsData = 8,
-	};
-
-	InputConfig() = default;
-	InputConfig(const InputConfig &) = default;
-	InputConfig & operator=(const InputConfig &) = default;
-
-	InputConfig(InputConfig &&) = default;
-	InputConfig & operator=(InputConfig &&) = default;
-
-	Require required = Require::None;
-	size_t maxRequestSize = config::getMaxRequestSize();
-	size_t maxVarSize = config::getMaxVarSize();
-	size_t maxFileSize = config::getMaxFileSize();
-
-	mem::TimeInterval updateTime = config::getInputUpdateTime();
-	float updateFrequency = config::getInputUpdateFrequency();
-};
-
-SP_DEFINE_ENUM_AS_MASK(InputConfig::Require)
 
 static constexpr int OK = 0;
 static constexpr int DECLINED = -1;

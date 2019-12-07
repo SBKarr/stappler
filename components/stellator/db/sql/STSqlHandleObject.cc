@@ -97,6 +97,29 @@ mem::Value SqlHandle::create(Worker &worker, const mem::Value &data) {
 			}
 		}
 
+		auto &conflicts = worker.getConflicts();
+		for (auto &it : conflicts) {
+			if (it.second.isDoNothing()) {
+				val.onConflict(it.first->getName()).doNothing();
+			} else {
+				auto c = val.onConflict(it.first->getName()).doUpdate();
+				if (it.second.mask.empty()) {
+					for (auto &it : ret.asDict()) {
+						if (scheme.getField(it.first)) {
+							c.excluded(it.first);
+						}
+					}
+				}
+
+				if (it.second.hasCondition()) {
+					c.where().parenthesis(db::Operator::And, [&] (SqlQuery::WhereBegin &wh) {
+						SqlQuery::WhereContinue iw(wh.query, wh.state);
+						query.writeWhere(iw, db::Operator::And, worker.scheme(), it.second.condition);
+					});
+				}
+			}
+		}
+
 		if (id == 0) {
 			val.returning().field(SqlQuery::Field("__oid").as("id")).finalize();
 			id = selectQueryId(query);
@@ -169,8 +192,19 @@ mem::Value SqlHandle::save(Worker &worker, uint64_t oid, const mem::Value &data,
 			}
 		}
 
-		upd.where("__oid", Comparation::Equal, oid).finalize();
-		if (performQuery(query) == 1) {
+		auto q = upd.where("__oid", Comparation::Equal, oid);
+		auto &cond = worker.getConditions();
+		if (!cond.empty()) {
+			q.parenthesis(db::Operator::And, [&] (SqlQuery::WhereBegin &wh) {
+				SqlQuery::WhereContinue iw(wh.query, wh.state);
+				for (auto &it : cond) {
+					query.writeWhere(iw, db::Operator::And, worker.scheme(), it);
+				}
+			});
+		}
+		q.finalize();
+		auto count = performQuery(query);
+		if (count == 1) {
 			if (worker.shouldIncludeNone() && worker.scheme().hasForceExclude()) {
 				ret.setInteger(oid, "__oid");
 				ret.asDict().reserve(data.size() + 1);
@@ -182,6 +216,8 @@ mem::Value SqlHandle::save(Worker &worker, uint64_t oid, const mem::Value &data,
 			} else {
 				ret = data;
 			}
+		} else if (count == 0 && !cond.empty() && isSuccess()) {
+			ret = data;
 		}
 	});
 	return ret;
@@ -233,6 +269,15 @@ mem::Value SqlHandle::patch(Worker &worker, uint64_t oid, const mem::Value &patc
 		}
 
 		auto q = upd.where("__oid", Comparation::Equal, oid);
+		auto &cond = worker.getConditions();
+		if (!cond.empty()) {
+			q.parenthesis(db::Operator::And, [&] (SqlQuery::WhereBegin &wh) {
+				SqlQuery::WhereContinue iw(wh.query, wh.state);
+				for (auto &it : cond) {
+					query.writeWhere(iw, db::Operator::And, worker.scheme(), it);
+				}
+			});
+		}
 		if (!worker.shouldIncludeNone()) {
 			auto returning = q.returning();
 			worker.readFields(worker.scheme(), [&] (const mem::StringView &name, const Field *) {
@@ -250,6 +295,8 @@ mem::Value SqlHandle::patch(Worker &worker, uint64_t oid, const mem::Value &patc
 				performPostUpdate(worker.transaction(), query, scheme, obj, id, postUpdate, false);
 			}
 			ret = std::move(obj);
+		} else if (!cond.empty() && isSuccess()) {
+			ret = mem::Value({ stappler::pair("__oid", mem::Value(oid)) });
 		}
 	});
 	return ret;

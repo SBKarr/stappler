@@ -92,7 +92,7 @@ auto Query<Binder, Interface>::InsertValues::def() -> InsertValues & {
 }
 
 template <typename Binder, typename Interface>
-auto Query<Binder, Interface>::InsertValues::onConflict(const String &field) -> InsertConflict {
+auto Query<Binder, Interface>::InsertValues::onConflict(const StringView &field) -> InsertConflict {
 	switch (this->state) {
 	case State::None: break;
 	case State::Init: break;
@@ -101,6 +101,8 @@ auto Query<Binder, Interface>::InsertValues::onConflict(const String &field) -> 
 		this->query->finalization = FinalizationState::None;
 		break;
 	}
+
+	this->state = State::None;
 	this->query->stream << "ON CONFLICT(\"" << field << "\")";
 	return InsertConflict(this->query);
 }
@@ -135,7 +137,7 @@ auto Query<Binder, Interface>::InsertValues::returning() -> Returning {
 
 template <typename Binder, typename Interface>
 auto Query<Binder, Interface>::InsertConflict::doNothing() -> InsertPostConflict {
-	this->query->stream << " DO NOTHING";
+	this->query->stream << " DO NOTHING ";
 	return InsertPostConflict(this->query);
 }
 

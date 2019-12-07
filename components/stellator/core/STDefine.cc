@@ -73,13 +73,19 @@ NS_DB_BEGIN
 
 namespace messages {
 
+static std::mutex s_debugMutex;
+
 void _addErrorMessage(mem::Value &&data) {
+	s_debugMutex.lock();
 	std::cout << "[Error]: " << stappler::data::EncodeFormat::Pretty << data << "\n";
+	s_debugMutex.unlock();
 	// not implemented
 }
 
 void _addDebugMessage(mem::Value &&data) {
+	s_debugMutex.lock();
 	std::cout << "[Debug]: " << stappler::data::EncodeFormat::Pretty << data << "\n";
+	s_debugMutex.unlock();
 	// not implemented
 }
 

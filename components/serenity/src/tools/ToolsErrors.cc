@@ -140,6 +140,44 @@ int HandlersGui::onTranslateName(Request &req) {
 			if (it.first.back() == '/') {
 				v.setBool(true, "forSubPaths");
 			}
+			if (it.second.map) {
+				auto &m = v.emplace("map");
+				for (auto &iit : it.second.map->getHandlers()) {
+					auto &mVal = m.emplace();
+					mVal.setString(iit.getName(), "name");
+					mVal.setString(iit.getPattern(), "pattern");
+
+					switch (iit.getMethod()) {
+					case Request::Method::Get: mVal.setString("GET", "method"); break;
+					case Request::Method::Put: mVal.setString("PUT", "method"); break;
+					case Request::Method::Post: mVal.setString("POST", "method"); break;
+					case Request::Method::Delete: mVal.setString("DELETE", "method"); break;
+					case Request::Method::Connect: mVal.setString("CONNECT", "method"); break;
+					case Request::Method::Options: mVal.setString("OPTIONS", "method"); break;
+					case Request::Method::Trace: mVal.setString("TRACE", "method"); break;
+					case Request::Method::Patch: mVal.setString("PATCH", "method"); break;
+					default: break;
+					}
+
+					auto &qScheme = iit.getQueryScheme().getFields();
+					if (!qScheme.empty()) {
+						auto &qVal = mVal.emplace("query");
+						for (auto &it : qScheme) {
+							auto &v = qVal.addValue(it.second.getTypeDesc());
+							v.setString(it.first, "name");
+						}
+					}
+
+					auto &iScheme = iit.getInputScheme().getFields();
+					if (!iScheme.empty()) {
+						auto &qVal = mVal.emplace("input");
+						for (auto &it : iScheme) {
+							auto &v = qVal.addValue(it.second.getTypeDesc());
+							v.setString(it.first, "name");
+						}
+					}
+				}
+			}
 		}
 
 		for (auto &it : servh.asArray()) {

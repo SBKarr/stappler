@@ -49,8 +49,8 @@ static InputFilter::Accept getAcceptedData(const Request &req, InputFilter::Exce
 
  		if (!ct.empty() && cl != 0 && cl < config::getMaxInputPostSize()) {
 			if (ct.compare(0, 16, "application/json") == 0 || ct.compare(0, 16, "application/cbor") == 0) {
-				if ((cfg.required & InputConfig::Require::Data) == InputConfig::Require::None
-						&& (cfg.required & InputConfig::Require::Body) == InputConfig::Require::None) {
+				if ((cfg.required & db::InputConfig::Require::Data) == db::InputConfig::Require::None
+						&& (cfg.required & db::InputConfig::Require::Body) == db::InputConfig::Require::None) {
 					messages::error("InputFilter", "No data to process", mem::Value{
 						std::make_pair("content", mem::Value(ct)),
 						std::make_pair("available", mem::Value("data, body")),
@@ -60,8 +60,8 @@ static InputFilter::Accept getAcceptedData(const Request &req, InputFilter::Exce
 				}
 				ret = InputFilter::Accept::Json;
 			} else if (ct.compare(0, 33, "application/x-www-form-urlencoded") == 0) {
-				if ((cfg.required & InputConfig::Require::Data) == InputConfig::Require::None
-						&& (cfg.required & InputConfig::Require::Body) == InputConfig::Require::None) {
+				if ((cfg.required & db::InputConfig::Require::Data) == db::InputConfig::Require::None
+						&& (cfg.required & db::InputConfig::Require::Body) == db::InputConfig::Require::None) {
 					messages::error("InputFilter", "No data to process", mem::Value{
 						std::make_pair("content", mem::Value(ct)),
 						std::make_pair("available", mem::Value("data, body")),
@@ -71,10 +71,10 @@ static InputFilter::Accept getAcceptedData(const Request &req, InputFilter::Exce
 				}
 				ret = InputFilter::Accept::Urlencoded;
 			} else if (ct.compare(0, 30, "multipart/form-data; boundary=") == 0) {
-				if ((cfg.required & InputConfig::Require::Data) == InputConfig::Require::None
-						&& (cfg.required & InputConfig::Require::Body) == InputConfig::Require::None
-						&& (cfg.required & InputConfig::Require::Files) == InputConfig::Require::None
-						&& (cfg.required & InputConfig::Require::FilesAsData) == InputConfig::Require::None) {
+				if ((cfg.required & db::InputConfig::Require::Data) == db::InputConfig::Require::None
+						&& (cfg.required & db::InputConfig::Require::Body) == db::InputConfig::Require::None
+						&& (cfg.required & db::InputConfig::Require::Files) == db::InputConfig::Require::None
+						&& (cfg.required & db::InputConfig::Require::FilesAsData) == db::InputConfig::Require::None) {
 					messages::error("InputFilter", "No data to process", mem::Value{
 						std::make_pair("content", mem::Value(ct)),
 						std::make_pair("available", mem::Value("data, body, files")),
@@ -84,7 +84,7 @@ static InputFilter::Accept getAcceptedData(const Request &req, InputFilter::Exce
 				}
 				ret = InputFilter::Accept::Multipart;
 			} else {
-				if ((cfg.required & InputConfig::Require::Files) == InputConfig::Require::None) {
+				if ((cfg.required & db::InputConfig::Require::Files) == db::InputConfig::Require::None) {
 					messages::error("InputFilter", "No data to process", mem::Value{
 						std::make_pair("content", mem::Value(ct)),
 						std::make_pair("available", mem::Value("files")),
@@ -298,13 +298,13 @@ mem::TimeInterval InputFilter::getElapsedTimeSinceUpdate() const {
 }
 
 bool InputFilter::isFileUploadAllowed() const {
-	return (getConfig().required & InputConfig::Require::Files) != InputConfig::Require::None;
+	return (getConfig().required & db::InputConfig::Require::Files) != db::InputConfig::Require::None;
 }
 bool InputFilter::isDataParsingAllowed() const {
-	return (getConfig().required & InputConfig::Require::Data) != InputConfig::Require::None;
+	return (getConfig().required & db::InputConfig::Require::Data) != db::InputConfig::Require::None;
 }
 bool InputFilter::isBodySavingAllowed() const {
-	return (getConfig().required & InputConfig::Require::Body) != InputConfig::Require::None;
+	return (getConfig().required & db::InputConfig::Require::Body) != db::InputConfig::Require::None;
 }
 
 bool InputFilter::isCompleted() const {
@@ -334,7 +334,7 @@ db::InputFile * InputFilter::getInputFile(int64_t idx) const {
 	return nullptr;
 }
 
-const InputConfig & InputFilter::getConfig() const {
+const db::InputConfig & InputFilter::getConfig() const {
 	return _request.getInputConfig();
 }
 

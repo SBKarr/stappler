@@ -45,7 +45,7 @@ public:
 	using char_type = char;
 	using traits_type = std::char_traits<char>;
 	using ostream_type = std::basic_ostream<char_type, traits_type>;
-	using Require = InputConfig::Require;
+	using Require = db::InputConfig::Require;
 
 	struct Config;
 
@@ -159,12 +159,12 @@ public: /* request params setters */
 	bool checkCacheHeaders(mem::Time, uint32_t idHash);
 
 public: /* input config */
-	InputConfig & getInputConfig();
-	const InputConfig & getInputConfig() const;
+	db::InputConfig & getInputConfig();
+	const db::InputConfig & getInputConfig() const;
 
 	/* Sets required data flags for input filter on POST and PUT queries
 	 * if no data is requested, onInsertFilter and onFilterComplete phases will be ignored */
-	void setRequiredData(InputConfig::Require);
+	void setRequiredData(db::InputConfig::Require);
 
 	/* Sets max size for input query content length, checked from Content-Length header */
 	void setMaxRequestSize(size_t);

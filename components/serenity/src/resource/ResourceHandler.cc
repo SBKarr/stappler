@@ -183,7 +183,7 @@ int ResourceHandler::onTranslateName(Request &rctx) {
 
 void ResourceHandler::onInsertFilter(Request &rctx) {
 	if (_method == Request::Post || _method == Request::Put || _method == Request::Patch) {
-		rctx.setRequiredData(InputConfig::Require::Data | InputConfig::Require::Files);
+		rctx.setRequiredData(db::InputConfig::Require::Data | db::InputConfig::Require::Files);
 		rctx.setMaxRequestSize(_resource->getMaxRequestSize());
 		rctx.setMaxVarSize(_resource->getMaxVarSize());
 		rctx.setMaxFileSize(_resource->getMaxFileSize());

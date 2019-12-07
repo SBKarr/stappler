@@ -30,6 +30,7 @@ class ConnectionQueue;
 struct Root::Internal : mem::AllocBase {
 	mem::Map<mem::String, Server> servers;
 	mem::Vector<Task *> scheduled;
+	mem::Vector<Task *> followed;
 
 	bool isRunned = false;
 	ConnectionQueue *queue = nullptr;
@@ -43,6 +44,7 @@ struct Root::Internal : mem::AllocBase {
 
 	Internal() {
 		scheduled.reserve(128);
+		followed.reserve(16);
 		heartBeatPool = mem::pool::create(mem::pool::acquire());
 	}
 };
@@ -138,9 +140,13 @@ bool Root::scheduleTask(const Server &serv, Task *task, mem::TimeInterval ival) 
 		task->setServer(serv);
 		if (ival.toMillis() == 0) {
 			performTask(serv, task, false);
+			return true;
 		} else {
 			task->setScheduled(mem::Time::now() + ival);
+			_internal->mutex.lock();
 			_internal->scheduled.emplace_back(task);
+			_internal->mutex.unlock();
+			return true;
 		}
 	}
 	return false;
@@ -161,6 +167,7 @@ void Root::onHeartBeat() {
 
 	mem::perform([&] {
 		// schedule pending tasks
+		_internal->mutex.lock();
 		auto now = mem::Time::now();
 		auto it = _internal->scheduled.begin();
 		while (it != _internal->scheduled.end()) {
@@ -171,6 +178,7 @@ void Root::onHeartBeat() {
 				++ it;
 			}
 		}
+		_internal->mutex.unlock();
 
 		// run servers
 		for (auto &it : _internal->servers) {

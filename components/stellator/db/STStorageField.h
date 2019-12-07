@@ -129,6 +129,7 @@ using MinLength = stappler::ValueWrapper<size_t, class MinLengthTag>; // min utf
 using MaxLength = stappler::ValueWrapper<size_t, class MaxLengthTag>; // max utf8 length for string
 using PasswordSalt = stappler::ValueWrapper<mem::String, class PasswordSaltTag>; // hashing salt for password
 using ForeignLink = stappler::ValueWrapper<mem::String, class ForeignLinkTag>; // hashing salt for password
+using Documentation = stappler::ValueWrapper<mem::String, class DocumentationTag>; // hashing salt for password
 
 // policy for images, that do not match bounds
 enum class ImagePolicy {
@@ -294,6 +295,7 @@ public:
 
 		mem::Value def;
 		mem::String name;
+		mem::String documentation;
 		Flags flags = Flags::None;
 		Type type = Type::None;
 		Transform transform = Transform::None;
@@ -304,6 +306,9 @@ public:
 		ReplaceFilterFn replaceFilterFn;
 
 		AutoFieldDef autoField;
+
+		const Scheme *owner = nullptr;
+		const Field::Slot *root = nullptr;
 	};
 
 	mem::StringView getName() const { return slot->getName(); }
@@ -327,6 +332,7 @@ public:
 
 	bool transform(const Scheme &, int64_t, mem::Value &, bool isCreate = false) const;
 	bool transform(const Scheme &, const mem::Value &, mem::Value &, bool isCreate) const;
+	bool transform(const mem::Value &, mem::Value &) const;
 
 	operator bool () const { return slot != nullptr; }
 
@@ -640,6 +646,10 @@ template <typename F> struct FieldOption<F, Transform> {
 	static inline void assign(F & f, Transform t) { f.transform = t; }
 };
 
+template <typename F> struct FieldOption<F, Documentation> {
+	static inline void assign(F & f, Documentation && doc) { f.documentation = doc.get(); }
+};
+
 template <typename F> struct FieldOption<F, MinLength> {
 	static inline void assign(F & f, MinLength l) { f.minLength = l.get(); }
 };
@@ -663,6 +673,7 @@ template <typename F> struct FieldOption<F, ForeignLink> {
 template <typename F> struct FieldOption<F, mem::Vector<Field>> {
 	static inline void assign(F & f, mem::Vector<Field> && s) {
 		for (auto &it : s) {
+			const_cast<Field::Slot *>(it.getSlot())->root = &f;
 			f.fields.emplace(it.getName().str<mem::Interface>(), it);
 		}
 	}
@@ -677,7 +688,8 @@ template <typename F> struct FieldOption<F, AutoFieldDef> {
 template <typename F> struct FieldOption<F, std::initializer_list<Field>> {
 	static inline void assign(F & f, std::initializer_list<Field> && s) {
 		for (auto &it : s) {
-			f.fields.emplace(it.getName().str(), it);
+			const_cast<Field::Slot *>(it.getSlot())->root = &f;
+			f.fields.emplace(it.getName().str<mem::Interface>(), it);
 		}
 	}
 };

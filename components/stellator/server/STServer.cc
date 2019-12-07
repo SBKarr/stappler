@@ -571,6 +571,8 @@ void Server::addPreRequest(mem::Function<int(Request &)> &&) { }
 
 void Server::addHandler(const mem::String &, const HandlerCallback &, const mem::Value &) { }
 void Server::addHandler(std::initializer_list<mem::String>, const HandlerCallback &, const mem::Value &) { }
+void Server::addHandler(const mem::String &, const HandlerMap *) { }
+void Server::addHandler(std::initializer_list<mem::String>, const HandlerMap *) { }
 
 void Server::addResourceHandler(const mem::String &, const db::Scheme &) { }
 void Server::addResourceHandler(const mem::String &, const db::Scheme &, const mem::Value &) { }

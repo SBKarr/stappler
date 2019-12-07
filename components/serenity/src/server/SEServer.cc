@@ -41,6 +41,9 @@ THE SOFTWARE.
 #include "TemplateCache.h"
 #include "SPugCache.h"
 
+#include "mbedtls/config.h"
+#include "mbedtls/pk.h"
+
 NS_SA_BEGIN
 
 #define SA_SERVER_FILE_SCHEME_NAME "__files"
@@ -819,6 +822,134 @@ void Server::onBroadcast(const DataReaderHost &bytes) {
 	onBroadcast(data::read(bytes));
 }
 
+static int Server_onRequestRecieved(Request &rctx, RequestHandler &h) {
+	auto auth = rctx.getRequestHeaders().at("Authorization");
+	if (!auth.empty()) {
+		mem::StringView r(auth);
+		r.skipChars<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>();
+		auto method = r.readUntil<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>().str();
+		stappler::string::tolower(method);
+		auto userIp = rctx.getUseragentIp();
+		if (method == "basic" && (rctx.isSecureConnection() || strncmp(userIp.data(), "127.", 4) == 0 || userIp == "::1")) {
+			r.skipChars<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>();
+			auto str = stappler::base64::decode(r);
+			mem::StringView source((const char *)str.data(), str.size());
+			mem::StringView user = source.readUntil<mem::StringView::Chars<':'>>();
+			if (source.is(':')) {
+				++ source;
+
+				if (!user.empty() && !source.empty()) {
+					auto storage = rctx.storage();
+					auto u = db::User::get(storage, mem::String::make_weak(user.data(), user.size()),
+							mem::String::make_weak(source.data(), source.size()));
+					if (u) {
+						rctx.setUser(u);
+					}
+				}
+			}
+		} else if (method == "pkey") {
+			r.skipChars<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>();
+			auto d = stappler::data::read(stappler::base64::decode(r));
+			if (d.isArray() && d.size() == 2 && d.isBytes(0) && d.isBytes(1)) {
+				auto &key = d.getBytes(0);
+				auto &sig = d.getBytes(1);
+
+				mbedtls_pk_context pk;
+				mbedtls_pk_init( &pk );
+
+				do {
+					if (key.size() < 128 || sig.size() < 128) {
+						break;
+					}
+
+					if (memcmp(key.data(), "ssh-", 4) == 0) {
+						auto derKey = stappler::valid::convertOpenSSHKey(mem::StringView((const char *)key.data(), key.size()));
+						if (!derKey.empty()) {
+							if (mbedtls_pk_parse_public_key(&pk, (const uint8_t *)derKey.data(), derKey.size()) != 0) {
+								break;
+							}
+						} else {
+							break;
+						}
+					} else {
+						if (mbedtls_pk_parse_public_key(&pk, (const uint8_t *)key.data(), key.size()) != 0) {
+							break;
+						}
+					}
+
+					auto hash = stappler::string::Sha512().update(key).final();
+					if (mbedtls_pk_verify(&pk, MBEDTLS_MD_SHA512, hash.data(), hash.size(), sig.data(), sig.size()) != 0) {
+						break;
+					}
+
+					uint8_t out[2_KiB];
+					auto bytesCount = mbedtls_pk_write_pubkey_der(&pk, out, sizeof(out));
+					if (bytesCount <= 0) {
+						break;
+					}
+
+					auto searchKey = mem::BytesView(out + sizeof(out) - bytesCount, bytesCount);
+					if (auto u = db::User::get(rctx.storage(), *db::internals::getUserScheme(), searchKey)) {
+						rctx.setUser(u);
+					}
+				} while (0);
+
+				mbedtls_pk_free( &pk );
+			}
+		}
+	}
+
+	auto &origin = rctx.getRequestHeaders().at("Origin");
+	if (origin.empty()) {
+		return OK;
+	}
+
+	if (rctx.getMethod() != Request::Options) {
+		// non-preflightted request
+		if (h.isCorsPermitted(rctx, origin)) {
+			rctx.getResponseHeaders().emplace("Access-Control-Allow-Origin", origin);
+			rctx.getResponseHeaders().emplace("Access-Control-Allow-Credentials", "true");
+
+			rctx.getErrorHeaders().emplace("Access-Control-Allow-Origin", origin);
+			rctx.getErrorHeaders().emplace("Access-Control-Allow-Credentials", "true");
+			return OK;
+		} else {
+			return HTTP_METHOD_NOT_ALLOWED;
+		}
+	} else {
+		auto &method = rctx.getRequestHeaders().at("Access-Control-Request-Method");
+		auto &headers = rctx.getRequestHeaders().at("Access-Control-Request-Headers");
+
+		if (h.isCorsPermitted(rctx, origin, true, method, headers)) {
+			rctx.getResponseHeaders().emplace("Access-Control-Allow-Origin", origin);
+			rctx.getResponseHeaders().emplace("Access-Control-Allow-Credentials", "true");
+
+			auto c_methods = h.getCorsAllowMethods(rctx);
+			if (!c_methods.empty()) {
+				rctx.getResponseHeaders().emplace("Access-Control-Allow-Methods", c_methods.str<mem::Interface>());
+			} else if (!method.empty()) {
+				rctx.getResponseHeaders().emplace("Access-Control-Allow-Methods", method);
+			}
+
+			auto c_headers = h.getCorsAllowHeaders(rctx);
+			if (!c_headers.empty()) {
+				rctx.getResponseHeaders().emplace("Access-Control-Allow-Headers", c_headers.str<mem::Interface>());
+			} else if (!headers.empty()) {
+				rctx.getResponseHeaders().emplace("Access-Control-Allow-Headers", headers);
+			}
+
+			auto c_maxAge = h.getCorsMaxAge(rctx);
+			if (!c_maxAge.empty()) {
+				rctx.getResponseHeaders().emplace("Access-Control-Max-Age", c_maxAge.str<mem::Interface>());
+			}
+
+			return DONE;
+		} else {
+			return HTTP_METHOD_NOT_ALLOWED;
+		}
+	}
+}
+
 int Server::onRequest(Request &req) {
 	memory::pool::store(req.pool(), _server, "Apr.Server");
 	if (_config->forceHttps) {
@@ -887,21 +1018,33 @@ int Server::onRequest(Request &req) {
 	}
 
 	auto ret = Server_resolvePath(_config->requests, path);
-	if (ret != _config->requests.end() && ret->second.callback) {
-		RequestHandler *h = ret->second.callback();
+	if (ret != _config->requests.end() && (ret->second.callback || ret->second.map)) {
+		String subPath((ret->first.back() == '/')?path.substr(ret->first.size() - 1):"");
+		String originPath = subPath.size() == 0 ? String(path) : String(ret->first);
+		if (originPath.back() == '/' && !subPath.empty()) {
+			originPath.pop_back();
+		}
+
+		RequestHandler *h = nullptr;
+		if (ret->second.map) {
+			h = ret->second.map->onRequest(req, subPath);
+		} else if (ret->second.callback) {
+			h = ret->second.callback();
+		}
 		if (h) {
 			auto role = h->getAccessRole();
 			if (role != storage::AccessRoleId::Nobody) {
 				req.setAccessRole(role);
 			}
-			String subPath((ret->first.back() == '/')?path.substr(ret->first.size() - 1):"");
-			String originPath = subPath.size() == 0 ? String(path) : String(ret->first);
-			if (originPath.back() == '/' && !subPath.empty()) {
-				originPath.pop_back();
+
+			int preflight = h->onRequestRecieved(req, move(originPath), move(subPath), ret->second.data);
+			if (preflight > 0 || preflight == DONE) {
+				ap_send_interim_response(req.request(), 1);
+				return preflight;
 			}
-			// preflight request (for CORS implementation)
-			int preflight = h->onRequestRecieved(req, std::move(originPath), std::move(subPath), ret->second.data);
-			if (preflight > 0 || preflight == DONE) { // cors error or successful preflight
+
+			preflight = Server_onRequestRecieved(req, *h);
+			if (preflight > 0 || preflight == DONE) {
 				ap_send_interim_response(req.request(), 1);
 				return preflight;
 			}
@@ -1009,6 +1152,22 @@ void Server::addHandler(std::initializer_list<String> paths, const HandlerCallba
 	for (auto &it : paths) {
 		if (!it.empty() && it.front() == '/') {
 			_config->requests.emplace(std::move(const_cast<String &>(it)), RequestScheme{_config->currentComponent.str(), cb, d});
+		}
+	}
+}
+
+void Server::addHandler(const String &path, const HandlerMap *map) {
+	if (!path.empty() && path.front() == '/') {
+		_config->requests.emplace(path,
+				RequestScheme{_config->currentComponent.str(), nullptr, mem::Value(), nullptr, map});
+	}
+}
+
+void Server::addHandler(std::initializer_list<String> paths, const HandlerMap *map) {
+	for (auto &it : paths) {
+		if (!it.empty() && it.front() == '/') {
+			_config->requests.emplace(std::move(const_cast<String &>(it)),
+					RequestScheme{_config->currentComponent.str(), nullptr, mem::Value(), nullptr, map});
 		}
 	}
 }

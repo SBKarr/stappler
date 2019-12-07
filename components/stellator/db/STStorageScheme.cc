@@ -29,10 +29,21 @@ THE SOFTWARE.
 
 NS_DB_BEGIN
 
+static void Scheme_setOwner(const Scheme *scheme, const mem::Map<mem::String, Field> &map) {
+	for (auto &it : map) {
+		const_cast<Field::Slot *>(it.second.getSlot())->owner = scheme;
+		if (it.second.getType() == Type::Extra) {
+			auto slot = static_cast<const FieldExtra *>(it.second.getSlot());
+			Scheme_setOwner(scheme, slot->fields);
+		}
+	}
+}
+
 bool Scheme::initSchemes(const mem::Map<mem::String, const Scheme *> &schemes) {
 	for (auto &it : schemes) {
 		const_cast<Scheme *>(it.second)->initScheme();
 		for (auto &fit : it.second->getFields()) {
+			const_cast<Field::Slot *>(fit.second.getSlot())->owner = it.second;
 			if (fit.second.getType() == Type::View) {
 				auto slot = static_cast<const FieldView *>(fit.second.getSlot());
 				if (slot->scheme) {
@@ -45,6 +56,9 @@ bool Scheme::initSchemes(const mem::Map<mem::String, const Scheme *> &schemes) {
 						const_cast<Scheme *>(it.second)->fullTextFields.emplace(f);
 					}
 				}
+			} else if (fit.second.getType() == Type::Extra) {
+				auto slot = static_cast<const FieldExtra *>(fit.second.getSlot());
+				Scheme_setOwner(it.second, slot->fields);
 			}
 			if (fit.second.getSlot()->autoField.defaultFn) {
 				auto &autoF = fit.second.getSlot()->autoField;
@@ -58,6 +72,7 @@ bool Scheme::initSchemes(const mem::Map<mem::String, const Scheme *> &schemes) {
 					const_cast<Scheme *>(slot->scheme)->addParent(it.second, &fit.second);
 				}
 			}
+
 		}
 	}
 	return true;
@@ -65,13 +80,15 @@ bool Scheme::initSchemes(const mem::Map<mem::String, const Scheme *> &schemes) {
 
 Scheme::Scheme(const mem::StringView &ns, bool delta) : Scheme(ns, delta ? Options::WithDelta : Options::None) { }
 
-Scheme::Scheme(const mem::StringView &ns, Options f) : name(ns.str<mem::Interface>()), flags(f) {
+Scheme::Scheme(const mem::StringView &ns, Options f)
+: name(ns.str<mem::Interface>()), flags(f), oidField(Field::Integer("__oid", Flags::Indexed | Flags::ForceInclude)) {
+	const_cast<Field::Slot *>(oidField.getSlot())->owner = this;
 	for (size_t i = 0; i < roles.size(); ++ i) {
 		roles[i] = nullptr;
 	}
 }
 
-Scheme::Scheme(const mem::StringView &name, std::initializer_list<Field> il, bool delta) :  Scheme(name, delta ? Options::WithDelta : Options::None) {
+Scheme::Scheme(const mem::StringView &name, std::initializer_list<Field> il, bool delta) : Scheme(name, delta ? Options::WithDelta : Options::None) {
 	for (auto &it : il) {
 		auto fname = it.getName();
 		fields.emplace(fname.str<mem::Interface>(), std::move(const_cast<Field &>(it)));
@@ -80,7 +97,7 @@ Scheme::Scheme(const mem::StringView &name, std::initializer_list<Field> il, boo
 	updateLimits();
 }
 
-Scheme::Scheme(const mem::StringView &name, std::initializer_list<Field> il, Options f) :  Scheme(name, f) {
+Scheme::Scheme(const mem::StringView &name, std::initializer_list<Field> il, Options f) : Scheme(name, f) {
 	for (auto &it : il) {
 		auto fname = it.getName();
 		fields.emplace(fname.str<mem::Interface>(), std::move(const_cast<Field &>(it)));
@@ -202,6 +219,9 @@ const Field *Scheme::getField(const mem::StringView &key) const {
 	auto it = fields.find(key);
 	if (it != fields.end()) {
 		return &it->second;
+	}
+	if (key == "__oid") {
+		return &oidField;
 	}
 	return nullptr;
 }
@@ -1092,64 +1112,8 @@ void Scheme::finalizeField(const Transaction &t, const Field &f, const mem::Valu
 	}
 }
 
-static size_t processExtraVarSize(const FieldExtra *s) {
-	size_t ret = 256;
-	for (auto it : s->fields) {
-		auto t = it.second.getType();
-		if (t == Type::Text || t == Type::Bytes) {
-			auto f = static_cast<const FieldText *>(it.second.getSlot());
-			ret = std::max(f->maxLength, ret);
-		} else if (t == Type::Extra) {
-			auto f = static_cast<const FieldExtra *>(it.second.getSlot());
-			ret = std::max(processExtraVarSize(f), ret);
-		}
-	}
-	return ret;
-}
-
-static size_t updateFieldLimits(const mem::Map<mem::String, Field> &vec) {
-	size_t ret = 256 * vec.size();
-	for (auto &it : vec) {
-		auto t = it.second.getType();
-		if (t == Type::Text || t == Type::Bytes) {
-			auto f = static_cast<const FieldText *>(it.second.getSlot());
-			ret += f->maxLength;
-		} else if (t == Type::Data || t == Type::Array) {
-			ret += config::getMaxExtraFieldSize();
-		} else if (t == Type::Extra) {
-			auto f = static_cast<const FieldExtra *>(it.second.getSlot());
-			ret += updateFieldLimits(f->fields);
-		} else {
-			ret += 256;
-		}
-	}
-	return ret;
-}
-
 void Scheme::updateLimits() {
-	maxRequestSize = 256 * fields.size();
-	for (auto &it : fields) {
-		auto t = it.second.getType();
-		if (t == Type::File) {
-			auto f = static_cast<const FieldFile *>(it.second.getSlot());
-			maxFileSize = std::max(f->maxSize, maxFileSize);
-			maxRequestSize += f->maxSize + 256;
-		} else if (t == Type::Image) {
-			auto f = static_cast<const FieldImage *>(it.second.getSlot());
-			maxFileSize = std::max(f->maxSize, maxFileSize);
-			maxRequestSize += f->maxSize + 256;
-		} else if (t == Type::Text || t == Type::Bytes) {
-			auto f = static_cast<const FieldText *>(it.second.getSlot());
-			maxVarSize = std::max(f->maxLength, maxVarSize);
-			maxRequestSize += f->maxLength;
-		} else if (t == Type::Data || t == Type::Array) {
-			maxRequestSize += config::getMaxExtraFieldSize();
-		} else if (t == Type::Extra) {
-			auto f = static_cast<const FieldExtra *>(it.second.getSlot());
-			maxRequestSize += updateFieldLimits(f->fields);
-			maxVarSize = std::max(processExtraVarSize(f), maxVarSize);
-		}
-	}
+	config.updateLimits(fields);
 }
 
 bool Scheme::validateHint(uint64_t oid, const mem::Value &hint) {

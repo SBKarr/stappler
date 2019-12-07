@@ -582,7 +582,7 @@ Root::Root() {
 	serenity_set_alloc_fn(Root_alloc, Root_free, (void *)this);
 
 #if SPAPR && DEBUG
-	serenity_set_node_ctrl_fn(Root_node_alloc, Root_node_free, (void *)this);
+	//serenity_set_node_ctrl_fn(Root_node_alloc, Root_node_free, (void *)this);
 #endif
 
 	db::pq::Driver::open(StringView())->setDbCtrl([this] (bool complete) {

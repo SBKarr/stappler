@@ -75,6 +75,8 @@ public:
 
 	void addHandler(const String &, const HandlerCallback &, const data::Value & = data::Value::Null);
 	void addHandler(std::initializer_list<String>, const HandlerCallback &, const data::Value & = data::Value::Null);
+	void addHandler(const String &, const HandlerMap *);
+	void addHandler(std::initializer_list<String>, const HandlerMap *);
 
 	void addResourceHandler(const String &, const storage::Scheme &);
 	void addResourceHandler(const String &, const storage::Scheme &, const data::Value &val);
@@ -104,7 +106,8 @@ public:
 		String component;
 		HandlerCallback callback;
 		data::Value data;
-		const storage::Scheme *scheme;
+		const storage::Scheme *scheme = nullptr;
+		const HandlerMap *map = nullptr;
 	};
 
 	const Map<String, const storage::Scheme *> &getSchemes() const;

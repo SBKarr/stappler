@@ -33,8 +33,7 @@ class MultipartParser : public InputParser {
 public:
 	using Reader = StringView;
 
-	MultipartParser(const InputConfig &, size_t, const apr::string &);
-	MultipartParser(const InputConfig &, size_t, const char *);
+	MultipartParser(const db::InputConfig &, size_t, const mem::StringView &);
 
 	virtual void run(const char *str, size_t len) override;
 	virtual void finalize() override;

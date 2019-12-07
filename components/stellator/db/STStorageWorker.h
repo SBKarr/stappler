@@ -39,6 +39,24 @@ enum class UpdateFlags : uint32_t {
 
 SP_DEFINE_ENUM_AS_MASK(UpdateFlags)
 
+struct Conflict {
+	enum Flags {
+		None,
+		DoNothing,
+		WithoutCondition,
+	};
+
+	mem::String field;
+	Query::Select condition;
+	mem::Vector<mem::String> mask;
+	Flags flags = DoNothing;
+
+	Conflict(const mem::StringView & field, Query::Select &&, Flags = None);
+	Conflict(const mem::StringView & field, Query::Select &&, mem::Vector<mem::String> &&);
+};
+
+SP_DEFINE_ENUM_AS_MASK(Conflict::Flags)
+
 class Worker : public mem::AllocBase {
 public:
 	using FieldCallback = stappler::Callback<void(const mem::StringView &name, const Field *f)>;
@@ -62,6 +80,30 @@ public:
 		void exclude(const mem::Set<const Field *> &);
 		void exclude(const mem::StringView &);
 		void exclude(const Field *);
+	};
+
+	struct ConditionData {
+		Comparation compare = Comparation::Equal;
+		mem::Value value1;
+		mem::Value value2;
+		const Field *field = nullptr;
+
+		ConditionData() { }
+		ConditionData(const Query::Select &, const Field *);
+		ConditionData(Query::Select &&, const Field *);
+
+		void set(Query::Select &&, const Field *);
+		void set(const Query::Select &, const Field *);
+	};
+
+	struct ConflictData {
+		const Field *field;
+		ConditionData condition;
+		mem::Vector<const Field *> mask;
+		Conflict::Flags flags = Conflict::None;
+
+		bool isDoNothing() const { return (flags & Conflict::DoNothing) != Conflict::None; }
+		bool hasCondition() const { return (flags & Conflict::WithoutCondition) == Conflict::None; }
 	};
 
 	Worker(const Scheme &);
@@ -95,6 +137,8 @@ public:
 	bool isSystem() const;
 
 	const RequiredFields &getRequiredFields() const;
+	const mem::Map<const Field *, ConflictData> &getConflicts() const;
+	const mem::Vector<ConditionData> &getConditions() const;
 
 public:
 	mem::Value get(uint64_t oid, bool forUpdate = false);
@@ -123,12 +167,26 @@ public:
 	// returns Dictionary with single object data or Null value
 	mem::Value create(const mem::Value &data, bool isProtected = false);
 	mem::Value create(const mem::Value &data, UpdateFlags);
+	mem::Value create(const mem::Value &data, UpdateFlags, const Conflict &);
+	mem::Value create(const mem::Value &data, UpdateFlags, const mem::Vector<Conflict> &);
+	mem::Value create(const mem::Value &data, const Conflict &);
+	mem::Value create(const mem::Value &data, const mem::Vector<Conflict> &);
 
 	mem::Value update(uint64_t oid, const mem::Value &data, bool isProtected = false);
 	mem::Value update(const mem::Value & obj, const mem::Value &data, bool isProtected = false);
 
 	mem::Value update(uint64_t oid, const mem::Value &data, UpdateFlags);
 	mem::Value update(const mem::Value & obj, const mem::Value &data, UpdateFlags);
+
+	mem::Value update(uint64_t oid, const mem::Value &data, UpdateFlags, const Query::Select &);
+	mem::Value update(const mem::Value & obj, const mem::Value &data, UpdateFlags, const Query::Select &);
+	mem::Value update(uint64_t oid, const mem::Value &data, UpdateFlags, const mem::Vector<Query::Select> &);
+	mem::Value update(const mem::Value & obj, const mem::Value &data, UpdateFlags, const mem::Vector<Query::Select> &);
+
+	mem::Value update(uint64_t oid, const mem::Value &data, const Query::Select &);
+	mem::Value update(const mem::Value & obj, const mem::Value &data, const Query::Select &);
+	mem::Value update(uint64_t oid, const mem::Value &data, const mem::Vector<Query::Select> &);
+	mem::Value update(const mem::Value & obj, const mem::Value &data, const mem::Vector<Query::Select> &);
 
 	bool remove(uint64_t oid);
 
@@ -181,6 +239,14 @@ public:
 protected:
 	mem::Set<const Field *> getFieldSet(const Field &f, std::initializer_list<mem::StringView> il) const;
 
+	bool addConflict(const Conflict &);
+	bool addConflict(const mem::Vector<Conflict> &);
+
+	bool addCondition(const Query::Select &);
+	bool addCondition(const mem::Vector<Query::Select> &);
+
+	mem::Map<const Field *, ConflictData> _conflict;
+	mem::Vector<ConditionData> _conditions;
 	RequiredFields _required;
 	const Scheme *_scheme = nullptr;
 	Transaction _transaction;

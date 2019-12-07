@@ -367,7 +367,7 @@ public:
 		template <typename ...Args>
 		auto values(Args && ... args) -> InsertValues &;
 
-		auto onConflict(const String &) -> InsertConflict;
+		auto onConflict(const StringView &) -> InsertConflict;
 		auto onConflictDoNothing() -> InsertPostConflict;
 		auto returning() -> Returning;
 

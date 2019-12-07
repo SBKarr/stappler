@@ -28,19 +28,11 @@ THE SOFTWARE.
 
 NS_SA_BEGIN
 
-MultipartParser::MultipartParser(const InputConfig &c, size_t s, const apr::string &b)
+MultipartParser::MultipartParser(const db::InputConfig &c, size_t s, const mem::StringView &b)
 : InputParser(c, s) {
 	boundary.reserve(b.size() + 4);
 	boundary.append("\r\n--");
-	boundary.append(b);
-	match = 2;
-}
-
-MultipartParser::MultipartParser(const InputConfig &c, size_t s, const char *b)
-: InputParser(c, s) {
-	boundary.reserve(strlen(b) + 4);
-	boundary.append("\r\n--");
-	boundary.append(b);
+	boundary.append(b.data(), b.size());
 	match = 2;
 }
 
@@ -222,13 +214,13 @@ void MultipartParser::readHeaderBegin(Reader &r) {
 		if ((tmp.empty() || tmp.is('\r')) && (str.empty() || str.is('\r'))) {
 			state = State::Data;
 			if (!file.empty() || !type.empty()) {
-				if ((config.required & InputConfig::Require::FilesAsData) != InputConfig::Require::None
+				if ((config.required & db::InputConfig::Require::FilesAsData) != db::InputConfig::Require::None
 						&& (size == 0 || size < getConfig().maxFileSize)
 						&& ((type.compare(0, "application/cbor"_len, "application/cbor") == 0)
 								|| (type.compare(0, "application/json"_len, "application/json") == 0))) {
 					dataBuf.clear();
 					data = Data::FileAsData;
-				} else if ((config.required & InputConfig::Require::Files) != 0
+				} else if ((config.required & db::InputConfig::Require::Files) != 0
 						&& (size == 0 || size < getConfig().maxFileSize)) {
 					files.emplace_back(std::move(name), std::move(type), std::move(encoding), std::move(file), size, files.size());
 					data = Data::File;
@@ -236,7 +228,7 @@ void MultipartParser::readHeaderBegin(Reader &r) {
 					data = Data::Skip;
 				}
 			} else {
-				if ((config.required & InputConfig::Require::Data) != 0 &&
+				if ((config.required & db::InputConfig::Require::Data) != 0 &&
 						(size == 0 || size < getConfig().maxVarSize)) {
 					data = Data::Var;
 				} else {

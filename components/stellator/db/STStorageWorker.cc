@@ -26,6 +26,13 @@ THE SOFTWARE.
 
 NS_DB_BEGIN
 
+Conflict::Conflict(const mem::StringView & field, Query::Select &&cond, Flags f)
+: field(field.str<mem::Interface>()), condition(std::move(cond)), flags(f) { }
+
+Conflict::Conflict(const mem::StringView & field, Query::Select &&cond, mem::Vector<mem::String> &&mask)
+: field(field.str<mem::Interface>()), condition(std::move(cond)), mask(std::move(mask)) { }
+
+
 static void prepareGetQuery(Query &query, uint64_t oid, bool forUpdate) {
 	query.select(oid);
 	if (forUpdate) {
@@ -105,6 +112,35 @@ void Worker::RequiredFields::exclude(const Field *f) {
 		excludeFields.emplace(it, f);
 	}
 	includeNone = false;
+}
+
+
+Worker::ConditionData::ConditionData(const Query::Select &sel, const Field *f) {
+	compare = sel.compare;
+	value1 = sel.value1;
+	value2 = sel.value2;
+	field = f;
+}
+
+Worker::ConditionData::ConditionData(Query::Select &&sel, const Field *f) {
+	compare = sel.compare;
+	value1 = std::move(sel.value1);
+	value2 = std::move(sel.value2);
+	field = f;
+}
+
+void Worker::ConditionData::set(Query::Select &&sel, const Field *f) {
+	compare = sel.compare;
+	value1 = std::move(sel.value1);
+	value2 = std::move(sel.value2);
+	field = f;
+}
+
+void Worker::ConditionData::set(const Query::Select &sel, const Field *f) {
+	compare = sel.compare;
+	value1 = sel.value1;
+	value2 = sel.value2;
+	field = f;
 }
 
 Worker::Worker(const Scheme &s) : _scheme(&s), _transaction(Transaction::acquire()) { }
@@ -248,6 +284,14 @@ bool Worker::isSystem() const {
 
 const Worker::RequiredFields &Worker::getRequiredFields() const {
 	return _required;
+}
+
+const mem::Map<const Field *, Worker::ConflictData> &Worker::getConflicts() const {
+	return _conflict;
+}
+
+const mem::Vector<Worker::ConditionData> &Worker::getConditions() const {
+	return _conditions;
 }
 
 mem::Value Worker::get(uint64_t oid, bool forUpdate) {
@@ -466,6 +510,37 @@ mem::Value Worker::create(const mem::Value &data, UpdateFlags flags) {
 	return _scheme->createWithWorker(*this, data, (flags & UpdateFlags::Protected) != UpdateFlags::None);
 }
 
+mem::Value Worker::create(const mem::Value &data, UpdateFlags flags, const Conflict &c) {
+	if ((flags & UpdateFlags::NoReturn) != UpdateFlags::None) {
+		includeNone();
+	}
+	if (!addConflict(c)) {
+		return mem::Value();
+	}
+	return _scheme->createWithWorker(*this, data, (flags & UpdateFlags::Protected) != UpdateFlags::None);
+}
+mem::Value Worker::create(const mem::Value &data, UpdateFlags flags, const mem::Vector<Conflict> &c) {
+	if ((flags & UpdateFlags::NoReturn) != UpdateFlags::None) {
+		includeNone();
+	}
+	if (!addConflict(c)) {
+		return mem::Value();
+	}
+	return _scheme->createWithWorker(*this, data, (flags & UpdateFlags::Protected) != UpdateFlags::None);
+}
+mem::Value Worker::create(const mem::Value &data, const Conflict &c) {
+	if (!addConflict(c)) {
+		return mem::Value();
+	}
+	return _scheme->createWithWorker(*this, data, false);
+}
+mem::Value Worker::create(const mem::Value &data, const mem::Vector<Conflict> &c) {
+	if (!addConflict(c)) {
+		return mem::Value();
+	}
+	return _scheme->createWithWorker(*this, data, false);
+}
+
 mem::Value Worker::update(uint64_t oid, const mem::Value &data, bool isProtected) {
 	return _scheme->updateWithWorker(*this, oid, data, isProtected);
 }
@@ -486,6 +561,56 @@ mem::Value Worker::update(const mem::Value & obj, const mem::Value &data, Update
 		includeNone();
 	}
 	return _scheme->updateWithWorker(*this, obj, data, (flags & UpdateFlags::Protected) != UpdateFlags::None);
+}
+
+mem::Value Worker::update(uint64_t oid, const mem::Value &data, UpdateFlags flags, const Query::Select &sel) {
+	if (!addCondition(sel)) {
+		return mem::Value();
+	}
+	return update(oid, data, flags);
+}
+mem::Value Worker::update(const mem::Value & obj, const mem::Value &data, UpdateFlags flags, const Query::Select &sel) {
+	if (!addCondition(sel)) {
+		return mem::Value();
+	}
+	return update(obj, data, flags);
+}
+mem::Value Worker::update(uint64_t oid, const mem::Value &data, UpdateFlags flags, const mem::Vector<Query::Select> &sel) {
+	if (!addCondition(sel)) {
+		return mem::Value();
+	}
+	return update(oid, data, flags);
+}
+mem::Value Worker::update(const mem::Value & obj, const mem::Value &data, UpdateFlags flags, const mem::Vector<Query::Select> &sel) {
+	if (!addCondition(sel)) {
+		return mem::Value();
+	}
+	return update(obj, data, flags);
+}
+
+mem::Value Worker::update(uint64_t oid, const mem::Value &data, const Query::Select &sel) {
+	if (!addCondition(sel)) {
+		return mem::Value();
+	}
+	return update(oid, data);
+}
+mem::Value Worker::update(const mem::Value & obj, const mem::Value &data, const Query::Select &sel) {
+	if (!addCondition(sel)) {
+		return mem::Value();
+	}
+	return update(obj, data);
+}
+mem::Value Worker::update(uint64_t oid, const mem::Value &data, const mem::Vector<Query::Select> &sel) {
+	if (!addCondition(sel)) {
+		return mem::Value();
+	}
+	return update(oid, data);
+}
+mem::Value Worker::update(const mem::Value & obj, const mem::Value &data, const mem::Vector<Query::Select> &sel) {
+	if (!addCondition(sel)) {
+		return mem::Value();
+	}
+	return update(obj, data);
 }
 
 bool Worker::remove(uint64_t oid) {
@@ -716,6 +841,72 @@ mem::Set<const Field *> Worker::getFieldSet(const Field &f, std::initializer_lis
 		ret.emplace(target->getField(it));
 	}
 	return ret;
+}
+
+bool Worker::addConflict(const Conflict &c) {
+	auto f = scheme().getField(c.field);
+	if (!f || !f->hasFlag(Flags::Unique)) {
+		messages::error("db::Worker", "Invalid ON CONFLICT field - no unique constraint");
+		return false;
+	}
+
+	const Field *selField = nullptr;
+
+	ConflictData d;
+	if (c.condition.field.empty()) {
+		d.flags = Conflict::WithoutCondition;
+	} else {
+		selField = scheme().getField(c.condition.field);
+		if (!selField || !selField->isIndexed() || !checkIfComparationIsValid(selField->getType(), c.condition.compare) || !c.condition.searchData.empty()) {
+			messages::error("db::Worker", "Invalid ON CONFLICT condition - not applicable");
+			return false;
+		}
+	}
+
+	d.field = f;
+	if (selField) {
+		d.condition.set(std::move(c.condition), selField);
+	}
+
+	for (auto &it : c.mask) {
+		if (auto field = scheme().getField(it)) {
+			d.mask.emplace_back(field);
+		}
+	}
+
+	d.flags |= c.flags;
+
+	_conflict.emplace(f, std::move(d));
+	return true;
+}
+
+bool Worker::addConflict(const mem::Vector<Conflict> &c) {
+	for (auto &it : c) {
+		if (!addConflict(it)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+bool Worker::addCondition(const Query::Select &sel) {
+	auto selField = scheme().getField(sel.field);
+	if (!selField || !checkIfComparationIsValid(selField->getType(), sel.compare) || !sel.searchData.empty()) {
+		messages::error("db::Worker", "Invalid ON CONFLICT condition - not applicable");
+		return false;
+	}
+
+	_conditions.emplace_back(sel, selField);
+	return true;
+}
+
+bool Worker::addCondition(const mem::Vector<Query::Select> &sel) {
+	for (auto &it : sel) {
+		if (!addCondition(it)) {
+			return false;
+		}
+	}
+	return true;
 }
 
 NS_DB_END
