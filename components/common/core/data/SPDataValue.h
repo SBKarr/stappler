@@ -480,6 +480,11 @@ ValueTemplate<Interface>::ValueTemplate(InitializerList<Pair<StringType, Self>> 
 	}
 }
 
+#if MSYS
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wclass-memaccess"
+#endif
+
 template <typename Interface>
 auto ValueTemplate<Interface>::operator= (const Self& other) noexcept -> Self & {
 	if (_type == Type::NONE) {
@@ -525,6 +530,10 @@ auto ValueTemplate<Interface>::operator= (Self&& other) noexcept -> Self & {
 	}
 	return *this;
 }
+
+#if MSYS
+#pragma GCC diagnostic pop
+#endif
 
 template <typename Interface>
 template <typename OtherInterface>

@@ -147,27 +147,6 @@ GLProgram* GLProgram::createWithByteArrays(const GLchar* vShaderByteArray, const
     return nullptr;
 }
 
-
-GLProgram* GLProgram::createWithFilenames(const std::string& vShaderFilename, const std::string& fShaderFilename)
-{
-    return createWithFilenames(vShaderFilename, fShaderFilename, EMPTY_DEFINE);
-}
-
-GLProgram* GLProgram::createWithFilenames(const std::string& vShaderFilename, const std::string& fShaderFilename, const std::string& compileTimeDefines)
-{
-    auto ret = new (std::nothrow) GLProgram();
-    if(ret && ret->initWithFilenames(vShaderFilename, fShaderFilename, compileTimeDefines)) {
-        ret->link();
-        ret->updateUniforms();
-        ret->autorelease();
-        return ret;
-    }
-
-    CC_SAFE_DELETE(ret);
-    return nullptr;
-}
-
-
 GLProgram::GLProgram()
 : _program(0)
 , _vertShader(0)
@@ -259,20 +238,6 @@ bool GLProgram::initWithByteArrays(const GLchar* vShaderByteArray, const GLchar*
     CHECK_GL_ERROR_DEBUG();
 
     return true;
-}
-
-bool GLProgram::initWithFilenames(const std::string& vShaderFilename, const std::string& fShaderFilename)
-{
-    return initWithFilenames(vShaderFilename, fShaderFilename, EMPTY_DEFINE);
-}
-
-bool GLProgram::initWithFilenames(const std::string& vShaderFilename, const std::string& fShaderFilename, const std::string& compileTimeDefines)
-{
-    auto fileUtils = FileUtils::getInstance();
-    std::string vertexSource = fileUtils->getStringFromFile(FileUtils::getInstance()->fullPathForFilename(vShaderFilename));
-    std::string fragmentSource = fileUtils->getStringFromFile(FileUtils::getInstance()->fullPathForFilename(fShaderFilename));
-
-    return initWithByteArrays(vertexSource.c_str(), fragmentSource.c_str(), compileTimeDefines);
 }
 
 void GLProgram::bindPredefinedVertexAttribs()

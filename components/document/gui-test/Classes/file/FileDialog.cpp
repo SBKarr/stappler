@@ -28,8 +28,55 @@ THE SOFTWARE.
 #include "SPPlatform.h"
 #include "SPThread.h"
 
+#if MSYS
+#include <windows.h>
+#include <shlobj.h>
+#endif
+
 NS_SP_EXT_BEGIN(app)
 
+#if MSYS
+namespace dialog {
+	static int CALLBACK BrowseCallbackProc(HWND hwnd,UINT uMsg, LPARAM lParam, LPARAM lpData) {
+		if (uMsg == BFFM_INITIALIZED) {
+			String tmp = string::toUtf8((const char16_t *) lpData);
+			std::cout << "path: " << tmp << std::endl;
+			SendMessage(hwnd, BFFM_SETSELECTION, TRUE, lpData);
+		}
+		return 0;
+	}
+
+	void open(const String &saved, const Function<void(const String &)> &func, Mode m) {
+		TCHAR path[MAX_PATH];
+
+		auto wsaved = string::toUtf16(filesystem_native::posixToNative(saved));
+
+		BROWSEINFO bi = { 0 };
+		bi.lpszTitle  = (L"Browse for folder...");
+		bi.ulFlags    = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+		bi.lpfn       = BrowseCallbackProc;
+		bi.lParam     = (LPARAM) wsaved.data();
+
+		LPITEMIDLIST pidl = SHBrowseForFolder ( &bi );
+
+		if (pidl != 0) {
+			//get the name of the folder and put it in path
+			SHGetPathFromIDList ( pidl, path );
+
+			//free memory used
+			IMalloc * imalloc = 0;
+			if (SUCCEEDED( SHGetMalloc ( &imalloc ))) {
+				imalloc->Free ( pidl );
+				imalloc->Release ( );
+			}
+
+			func(filesystem_native::nativeToPosix(string::toUtf8((const char16_t *)path)));
+		}
+	}
+}
+#endif
+
+#if LINUX
 namespace dialog {
 	bool _dialogOpened = false;
 	Thread dialogThread("Linux.DialogThread");
@@ -42,7 +89,7 @@ namespace dialog {
 
 		_dialogOpened = true;
 		auto ret = new std::string();
-		dialogThread.perform([ret, path, m] (const Task &) -> bool {
+		dialogThread.perform([ret, path, m] (const thread::Task &) -> bool {
 			std::string cmd("zenity --file-selection");
 			if (m == Mode::SelectDir) {
 				cmd.append(" --directory");
@@ -63,12 +110,13 @@ namespace dialog {
 			}
 
 			return true;
-		}, [ret, func] (const Task &, bool success) {
+		}, [ret, func] (const thread::Task &, bool success) {
 			func(*ret);
 			delete ret;
 			_dialogOpened = false;
 		});
 	}
 }
+#endif
 
 NS_SP_EXT_END(app)

@@ -306,9 +306,7 @@ NS_SP_END
 
 NS_SP_EXT_BEGIN(io)
 
-#ifndef __clang__
-template <>
-#endif
+SP_TEMPLATE_MARK
 template <typename Interface>
 struct BufferTraits<stappler::BufferTemplate<Interface>> {
 	using type = stappler::BufferTemplate<Interface>;
@@ -328,9 +326,7 @@ struct BufferTraits<stappler::BufferTemplate<Interface>> {
 	static void ClearFn(void *ptr) { ((type *)ptr)->clear(); }
 };
 
-#ifndef __clang__
-template <>
-#endif
+SP_TEMPLATE_MARK
 template <size_t Size>
 struct BufferTraits<StackBuffer<Size>> {
 	using type = StackBuffer<Size>;

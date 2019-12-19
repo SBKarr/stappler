@@ -53,21 +53,21 @@ public:
 	 * Available method for CORS preflighted requests
      */
 	virtual mem::StringView getCorsAllowMethods(Request &) {
-		return "GET, HEAD, POST, PUT, DELETE, OPTIONS"_weak;
+		return "GET, HEAD, POST, PUT, DELETE, OPTIONS";
 	}
 
 	/**
 	 * Available extra headers for CORS preflighted requests
      */
 	virtual mem::StringView getCorsAllowHeaders(Request &) {
-		return ""_weak;
+		return mem::StringView();
 	}
 
 	/**
 	 * Caching time for preflight response
      */
 	virtual mem::StringView getCorsMaxAge(Request &) {
-		return "1728000"_weak; // 20 days
+		return "1728000"; // 20 days
 	}
 
 	/** Be sure to call supermethod when overload this method! */

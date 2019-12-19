@@ -94,7 +94,9 @@ sp_time_exp_t::sp_time_exp_t(Time t, int32_t offset, bool use_localtime) {
 	tm_wday = tm.tm_wday;
 	tm_yday = tm.tm_yday;
 	tm_isdst = tm.tm_isdst;
+#ifndef __MINGW32__
 	tm_gmtoff = tm.tm_gmtoff;
+#endif
 }
 
 // apr_time_exp_tz
@@ -139,7 +141,11 @@ Time sp_time_exp_t::ltz_get() const {
 	struct tm lt = {0};
 	localtime_r(&t, &lt);
 
+#ifndef __MINGW32__
 	return Time::microseconds(get().toMicroseconds() - lt.tm_gmtoff * SP_USEC_PER_SEC);
+#else
+	return Time::microseconds(get().toMicroseconds() - tm_gmtoff * SP_USEC_PER_SEC);
+#endif
 }
 
 /*

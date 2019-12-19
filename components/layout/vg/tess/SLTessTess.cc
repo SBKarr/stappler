@@ -310,10 +310,14 @@ TESStesselator* tessNewTess( TESSalloc* alloc )
 	*/
 
 	tess = (TESStesselator *)alloc->memalloc( alloc->userData, sizeof( TESStesselator ));
+	memset((void *)tess, 0, sizeof(TESStesselator));
+
 	if ( tess == NULL ) {
 		return 0;          /* out of memory */
 	}
-	tess->alloc = *alloc;
+	tess->alloc.memalloc = alloc->memalloc;
+	tess->alloc.memfree = alloc->memfree;
+	tess->alloc.userData = alloc->userData;
 
 	tess->bmin[0] = 0;
 	tess->bmin[1] = 0;
@@ -341,7 +345,10 @@ TESStesselator* tessNewTess( TESSalloc* alloc )
 
 void tessDeleteTess( TESStesselator *tess )
 {
-	struct TESSalloc alloc = tess->alloc;
+	struct TESSalloc alloc;
+	alloc.memalloc = tess->alloc.memalloc;
+	alloc.memfree = tess->alloc.memfree;
+	alloc.userData = tess->alloc.userData;
 
 	if( tess->mesh != NULL ) {
 		tessMeshDeleteMesh( &alloc, tess->mesh );
@@ -436,10 +443,12 @@ static int prepareTess(TESStesselator *tess, int windingRule, int isContours) {
 	tess->vertexIndexCounter = 0;
 	tess->windingRule = windingRule;
 
+#ifndef MSYS
 	if (setjmp(tess->env) != 0) {
 		/* come back here if out of memory */
 		return 0;
 	}
+#endif
 
 	if (!tess->mesh)
 	{

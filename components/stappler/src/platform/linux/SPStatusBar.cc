@@ -26,9 +26,10 @@ THE SOFTWARE.
 #include "SPDefine.h"
 #include "SPPlatform.h"
 #include "SPDevice.h"
-#include "math/CCGeometry.h"
 
 #if (LINUX)
+
+#include "math/CCGeometry.h"
 
 namespace stappler::platform::statusbar {
 	float _height = 20.0f;

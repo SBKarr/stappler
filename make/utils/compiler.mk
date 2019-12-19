@@ -23,7 +23,12 @@ COCOS2D_ROOT ?= components/stappler-cocos2d-x
 TOOLKIT_OUTPUT ?= $(GLOBAL_ROOT)/build
 
 UNAME := $(shell uname)
+
 ifneq ($(UNAME),Darwin)
+UNAME := $(shell uname -o)
+endif
+
+ifeq ($(findstring MSYS_NT,$(UNAME)),MSYS_NT)
 UNAME := $(shell uname -o)
 endif
 
@@ -44,6 +49,8 @@ ifeq ($(UNAME),Darwin)
 include $(GLOBAL_ROOT)/make/os/darwin.mk
 else ifeq ($(UNAME),Cygwin)
 include $(GLOBAL_ROOT)/make/os/cygwin.mk
+else ifeq ($(UNAME),Msys)
+include $(GLOBAL_ROOT)/make/os/msys.mk
 else
 include $(GLOBAL_ROOT)/make/os/linux.mk
 endif
@@ -108,34 +115,45 @@ GLOBAL_MAKE ?= make
 GLOBAL_MKDIR ?= mkdir -p
 GLOBAL_AR ?= ar rcs
 
-ifeq ($(shell uname),Darwin)
-sp_convert_path = $(1)
-else
-ifeq ($(shell uname -o),Cygwin)
+ifeq ($(UNAME),Cygwin)
 sp_convert_path = $(shell cygpath -w $1)
+sp_unconvert_path =  $1)
+else ifeq ($(UNAME),Msys)
+sp_convert_path = $(1)
+sp_unconvert_path = $(1)
 else
 sp_convert_path = $(1)
-endif
+sp_unconvert_path = $(1)
 endif
 
-sp_compile_gch = $(GLOBAL_QUIET_CPP) $(GLOBAL_MKDIR) $(dir $@); $(GLOBAL_CPP) $(OSTYPE_GCHFLAGS) -MMD -MP -MF $(dir $@)/$(notdir $*).d $(1) -c -o $@ $(call sp_convert_path,$<)
-sp_compile_c = $(GLOBAL_QUIET_CC) $(GLOBAL_MKDIR) $(dir $@); $(GLOBAL_CC) -MMD -MP -MF $(dir $@)/$(notdir $*).d $(1) -c -o $@ $(call sp_convert_path,$<)
-sp_compile_cpp = $(GLOBAL_QUIET_CPP) $(GLOBAL_MKDIR) $(dir $@); $(GLOBAL_CPP) -MMD -MP -MF $(dir $@)/$(notdir $*).d $(1) -c -o $@ $(call sp_convert_path,$<)
-sp_compile_mm = $(GLOBAL_QUIET_CPP) $(GLOBAL_MKDIR) $(dir $@); $(GLOBAL_CPP) -MMD -MP -MF $(dir $@)/$(notdir $*).d $(1) -fobjc-arc -c -o $@ $(call sp_convert_path,$<)
+ifeq ($(UNAME),Msys)
+sp_compile_dep = -MMD -MP -MF $1.d $(2) -MT $(subst /,_,$1)
+sp_make_dep = $(subst /,_,$1)
+else
+sp_compile_dep = -MMD -MP -MF $1.d $(2)
+sp_make_dep = 
+endif
 
-sp_toolkit_source_list = $(realpath\
+sp_compile_gch = $(GLOBAL_QUIET_CPP) $(GLOBAL_MKDIR) $(dir $@); $(GLOBAL_CPP) $(OSTYPE_GCHFLAGS) $(call sp_compile_dep, $@, $(1)) -c -o $@ $(call sp_convert_path,$<)
+sp_compile_c = $(GLOBAL_QUIET_CC) $(GLOBAL_MKDIR) $(dir $@); $(GLOBAL_CC) $(call sp_compile_dep, $@, $(1)) -c -o $@ $(call sp_convert_path,$<)
+sp_compile_cpp = $(GLOBAL_QUIET_CPP) $(GLOBAL_MKDIR) $(dir $@); $(GLOBAL_CPP) $(call sp_compile_dep, $@, $(1))  -c -o $@ $(call sp_convert_path,$<)
+sp_compile_mm = $(GLOBAL_QUIET_CPP) $(GLOBAL_MKDIR) $(dir $@); $(GLOBAL_CPP) $(call sp_compile_dep, $@, $(1)) -fobjc-arc -c -o $@ $(call sp_convert_path,$<)
+
+$(call sp_toolkit_source_list, $($(TOOLKIT_NAME)_SRCS_DIRS), $($(TOOLKIT_NAME)_SRCS_OBJS))
+
+sp_toolkit_source_list = $(foreach f,$(realpath\
 	$(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) \( -name "*.c" -or -name "*.cpp" \)))\
 	$(addprefix $(GLOBAL_ROOT)/,$(filter-out %.mm,$(2)))\
 	$(if $(BUILD_OBJC),\
 		$(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.mm'))\
 		$(addprefix $(GLOBAL_ROOT)/,$(filter %.mm,$(2)))\
 	)\
-)
+),$(call sp_unconvert_path,$(f)))
 
-sp_toolkit_include_list = $(realpath\
+sp_toolkit_include_list = $(foreach f,$(realpath\
 	$(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) -type d)) \
 	$(addprefix $(GLOBAL_ROOT)/,$(2))\
-)
+),$(call sp_unconvert_path,$(f)))
 
 sp_toolkit_object_list = $(abspath $(addprefix $(1),$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(patsubst %.mm,%.o,$(2))))))
 

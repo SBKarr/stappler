@@ -23,7 +23,12 @@ THE SOFTWARE.
 #include "SPValid.h"
 #include "SPUrl.h"
 
+#ifdef MSYS
+#include "Windows.h"
+#include "winnls.h"
+#else
 #include "idn2.h"
+#endif
 
 #if SPAPR
 #include "apr_general.h"
@@ -57,6 +62,14 @@ String idnToAscii(const StringView &source, bool validate) {
 		return String();
 	}
 
+#ifdef MSYS
+	auto in_w = string::toUtf16(source);
+	wchar_t punycode[256] = { 0 };
+	int chars = IdnToAscii(0, (const wchar_t *)in_w.data(), -1, punycode, 255);
+	if (chars) {
+		return string::toUtf8<memory::PoolInterface>((char16_t *)punycode);
+	}
+#else
 	char *out = nullptr;
 	auto err = idn2_to_ascii_8z(source.data(), &out, IDN2_NFC_INPUT|IDN2_NONTRANSITIONAL);
 	if (err == IDN2_OK) {
@@ -64,6 +77,7 @@ String idnToAscii(const StringView &source, bool validate) {
 		free(out);
 		return ret;
 	}
+#endif
 	return String();
 }
 
@@ -80,6 +94,14 @@ String idnToUnicode(const StringView &source, bool validate) {
 		return String();
 	}
 
+#ifdef MSYS
+	auto in_w = string::toUtf16(source);
+	wchar_t unicode[256] = { 0 };
+	int chars = IdnToUnicode(0, (const wchar_t *)in_w.data(), int(in_w.size()), unicode, 255);
+	if (chars) {
+		return string::toUtf8<memory::PoolInterface>((char16_t *)unicode);
+	}
+#else
 	char *out = nullptr;
 	auto err = idn2_to_unicode_8z8z(source.data(), &out, 0);
 	if (err == IDN2_OK) {
@@ -87,6 +109,7 @@ String idnToUnicode(const StringView &source, bool validate) {
 		free(out);
 		return ret;
 	}
+#endif
 	return String();
 }
 

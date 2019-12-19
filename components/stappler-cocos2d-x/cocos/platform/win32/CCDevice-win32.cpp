@@ -52,12 +52,6 @@ void Device::setAccelerometerEnabled(bool isEnabled)
 void Device::setAccelerometerInterval(float interval)
 {}
 
-Data Device::getTextureDataForText(const char * text, const FontDefinition& textDefinition, TextAlign align, int &width, int &height, bool& hasPremultipliedAlpha)
-{
-    Data ret;
-    return ret;
-}
-
 void Device::setKeepScreenOn(bool value)
 {
     CC_UNUSED_PARAM(value);

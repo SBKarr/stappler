@@ -56,11 +56,13 @@ include $(GLOBAL_ROOT)/make/toolkits/cli.mk
 # libcommon - stappler embeddable minimal toolkit with no cocos2d-x
 include $(GLOBAL_ROOT)/make/toolkits/common.mk
 
+ifneq ($(UNAME),Msys)
 # serenity - apache httpd module. based on stappler toolkit
 include $(GLOBAL_ROOT)/make/toolkits/serenity.mk
 
 # stellator - minimal http server library
 include $(GLOBAL_ROOT)/make/toolkits/stellator.mk
+endif
 
 ifeq (4.1,$(firstword $(sort $(MAKE_VERSION) 4.1)))
 sp_counter_text = [$(BUILD_LIBRARY): $$(($(BUILD_CURRENT_COUNTER)*100/$(BUILD_FILES_COUNTER)))% $(BUILD_CURRENT_COUNTER)/$(BUILD_FILES_COUNTER)]

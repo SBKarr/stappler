@@ -45,6 +45,10 @@ THE SOFTWARE.
 #include "SPMemPoolInternals.h"
 #include "SPTime.h"
 
+#if LINUX
+#include <sys/mman.h>
+#endif
+
 NS_SP_EXT_BEGIN(memory)
 namespace internals {
 
@@ -176,13 +180,70 @@ allocator_t::allocator_t() {
 allocator_t::~allocator_t() {
 	memnode_t *node, **ref;
 
-	for (uint32_t index = 0; index < MAX_INDEX; index++) {
-		ref = &buf[index];
-		while ((node = *ref) != nullptr) {
-			*ref = node->next;
-			::free(node);
+	if (!mmapPtr) {
+		for (uint32_t index = 0; index < MAX_INDEX; index++) {
+			ref = &buf[index];
+			while ((node = *ref) != nullptr) {
+				*ref = node->next;
+				::free(node);
+			}
 		}
+	} else {
+#if LINUX
+		munmap(mmapPtr, mmapMax * BOUNDARY_SIZE);
+		close(mmapdes);
+#endif
 	}
+}
+
+bool allocator_t::run_mmap(uint32_t idx) {
+#if LINUX
+	if (idx == 0) {
+		idx = 1_KiB;
+	}
+
+	std::unique_lock<allocator_t> lock(*this);
+
+	if (mmapdes != -1) {
+		return true;
+	}
+
+	char nameBuff[256] = { 0 };
+	snprintf(nameBuff, 255, "/tmp/stappler.mmap.%d.%p.XXXXXX", getpid(), (void *)this);
+
+	mmapdes = mkstemp(nameBuff);
+	unlink(nameBuff);
+
+	size_t size = BOUNDARY_SIZE * idx;
+
+	if (lseek(mmapdes, size - 1, SEEK_SET) == -1) {
+		close(mmapdes);
+		perror("Error calling lseek() to 'stretch' the file");
+		return false;
+	}
+
+	if (write(mmapdes, "", 1) == -1) {
+		close(mmapdes);
+		perror("Error writing last byte of the file");
+		return false;
+	}
+
+	void *reserveMem = mmap(NULL, 64_GiB, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+
+	// Now the file is ready to be mmapped.
+	void *map = mmap(reserveMem, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, mmapdes, 0);
+	if (map == MAP_FAILED) {
+		close(mmapdes);
+		perror("Error mmapping the file");
+		return false;
+	}
+
+	mmapPtr = map;
+	mmapMax = idx;
+	return true;
+#else
+	return false;
+#endif
 }
 
 void allocator_t::set_max(uint32_t size) {
@@ -195,6 +256,30 @@ void allocator_t::set_max(uint32_t size) {
 	if (current > max) {
 		current = max;
 	}
+}
+
+static uint32_t allocator_mmap_realloc(int filedes, void *ptr, uint32_t idx) {
+#if LINUX
+	auto newSize = idx * 2 * BOUNDARY_SIZE;
+	if (lseek(filedes, newSize - 1, SEEK_SET) == -1) {
+		close(filedes);
+		perror("Error calling lseek() to 'stretch' the file");
+		return 0;
+	}
+
+	if (write(filedes, "", 1) == -1) {
+		close(filedes);
+		perror("Error writing last byte of the file");
+		return 0;
+	}
+
+	if (mremap(ptr, idx * BOUNDARY_SIZE, newSize, 0) != MAP_FAILED) {
+		return idx * 2;
+	}
+	return 0;
+#else
+	return 0;
+#endif
 }
 
 memnode_t *allocator_t::alloc(uint32_t in_size) {
@@ -286,16 +371,34 @@ memnode_t *allocator_t::alloc(uint32_t in_size) {
 		}
 	}
 
-	if (lock.owns_lock()) {
-		lock.unlock();
-	}
-
 	/* If we haven't got a suitable node, malloc a new one
 	 * and initialize it.
 	 */
 	memnode_t *node = nullptr;
-	if ((node = (memnode_t *)malloc(size)) == nullptr) {
-		return nullptr;
+	if (mmapPtr) {
+		if (mmapCurrent + (index + 1) > mmapMax) {
+			auto newMax = allocator_mmap_realloc(mmapdes, mmapPtr, mmapMax);
+			if (!newMax) {
+				return nullptr;
+			} else {
+				mmapMax = newMax;
+			}
+		}
+
+		node = (memnode_t *) ((char *)mmapPtr + mmapCurrent * BOUNDARY_SIZE);
+		mmapCurrent += index + 1;
+
+		if (lock.owns_lock()) {
+			lock.unlock();
+		}
+	} else {
+		if (lock.owns_lock()) {
+			lock.unlock();
+		}
+
+		if ((node = (memnode_t *)malloc(size)) == nullptr) {
+			return nullptr;
+		}
 	}
 
 	node->next = nullptr;
@@ -373,10 +476,12 @@ void allocator_t::free(memnode_t *node) {
 	last = max_index;
 	current = current_free_index;
 
-	while (freelist != NULL) {
-		node = freelist;
-		freelist = node->next;
-		::free(node);
+	if (!mmapPtr) {
+		while (freelist != NULL) {
+			node = freelist;
+			freelist = node->next;
+			::free(node);
+		}
 	}
 }
 
@@ -764,6 +869,9 @@ void terminate() {
 
 pool_t *create() {
 	return pool_t::create();
+}
+pool_t *createWithAllocator(allocator_t *alloc) {
+	return pool_t::create(alloc);
 }
 pool_t *create(pool_t *p) {
 	if (p) {

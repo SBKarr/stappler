@@ -34,7 +34,9 @@ NS_SP_BEGIN
 namespace mem_pool {
 
 namespace pool = memory::pool;
+namespace allocator = memory::allocator;
 
+using allocator_t = memory::allocator_t;
 using pool_t = memory::pool_t;
 
 using Time = stappler::Time;
@@ -95,6 +97,10 @@ using Mutex = toolkit::TypeTraits::mutex_type;
 
 namespace mem_std {
 
+namespace pool = memory::pool;
+namespace allocator = memory::allocator;
+
+using allocator_t = memory::allocator_t;
 using pool_t = memory::pool_t;
 
 using Time = stappler::Time;

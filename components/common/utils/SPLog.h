@@ -33,11 +33,11 @@ struct CustomLog {
 	union VA {
 		StringView text;
 		struct {
-			const char *format;
+			const char *format = nullptr;
 			va_list args;
 		} format;
 
-		VA() { memset(this, 0, sizeof(VA)); }
+		VA() { }
 	};
 
 	enum Type {

@@ -44,6 +44,10 @@ THE SOFTWARE.
 #endif
 #endif
 
+#ifdef __MINGW32__
+#define _POSIX_THREAD_SAFE_FUNCTIONS 1
+#endif
+
 #if SPAPR
 
 #include "apr_file_io.h"
@@ -137,6 +141,8 @@ using std::nullptr_t;
 
 #if (__clang__)
 #define SP_TEMPLATE_MARK
+#elif (MSYS)
+#define SP_TEMPLATE_MARK
 #else
 #define SP_TEMPLATE_MARK template <>
 #endif
@@ -183,6 +189,11 @@ using _spChar = char16_t;
 using _spChar = char;
 #endif
 
+#if MSYS
+NS_SP_BEGIN
+using nullptr_t = std::nullptr_t;
+NS_SP_END
+#endif
 
 /*
  *   User Defined literals
@@ -220,12 +231,30 @@ constexpr T _fnv1(const uint8_t* ptr, size_t len) {
 	return hash;
 }
 
+template <class T>
+constexpr T _fnv1Signed(const char* ptr, size_t len) {
+	T hash = _fnv_offset_basis<T>();
+	for (size_t i = 0; i < len; i++) {
+	     hash *= _fnv_prime<T>();
+	     if constexpr (std::numeric_limits<char>::is_signed) {
+		     if (ptr[i] >= 0) {
+			     hash ^= ptr[i];
+		     } else {
+		    	 hash ^= -ptr[i] + 127;
+		     }
+	     } else {
+		     hash ^= ptr[i];
+	     }
+	}
+	return hash;
+}
+
 constexpr uint32_t hash32(const char* str, size_t len) {
-    return _fnv1<uint32_t>((uint8_t*)str, len);
+    return _fnv1Signed<uint32_t>(str, len);
 }
 
 constexpr uint64_t hash64(const char* str, size_t len) {
-    return _fnv1<uint64_t>((uint8_t*)str, len);
+    return _fnv1Signed<uint64_t>(str, len);
 }
 
 NS_SP_EXT_END(hash)

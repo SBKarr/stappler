@@ -25,10 +25,10 @@ THE SOFTWARE.
 
 #include "SPDefine.h"
 #include "SPPlatform.h"
-#include "base/CCDirector.h"
 
 #if (LINUX)
 
+#include "base/CCDirector.h"
 #include "CCGLViewImpl-desktop.h"
 
 namespace stappler::platform::clipboard {

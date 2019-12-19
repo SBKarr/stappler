@@ -28,7 +28,6 @@ THE SOFTWARE.
 #include "base/CCAutoreleasePool.cpp"
 #include "base/CCScheduler.cpp"
 #include "base/CCRef.cpp"
-#include "base/CCData.cpp"
 #include "base/ccUtils.cpp"
 #include "base/ZipUtils.cpp"
 #include "platform/CCFileUtils.cpp"

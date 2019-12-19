@@ -26,13 +26,28 @@ THE SOFTWARE.
 #include "SPDefine.h"
 #include "SPPlatform.h"
 
+#if (CYGWIN || MSYS)
+
 #include "math/CCGeometry.h"
 
-#if (CYGWIN)
+namespace stappler::platform::statusbar {
+	float _height = 20.0f;
+	float _commonHeight = 20.0f;
 
-NS_SP_PLATFORM_BEGIN
+	void collapseStatusBar() {
+		if (_height != 0.0f) {
+			Device::onStatusBar(Device::getInstance(), 0.0f);
+			_height = 0.0f;
+		}
+	}
 
-namespace statusbar {
+	void restoreStatusBar() {
+		if (_height != _commonHeight) {
+			Device::onStatusBar(Device::getInstance(), _commonHeight * stappler::platform::device::_density());
+			_height = _commonHeight;
+		}
+	}
+
 	bool _enabled = true;
 
 	void _setEnabled(bool enabled) {
@@ -45,10 +60,8 @@ namespace statusbar {
 
 	}
 	float _getHeight(const cocos2d::Size &screenSize, bool isTablet) {
-		return 20.0f * stappler::platform::device::_density();
+		return _height * stappler::platform::device::_density();
 	}
 }
-
-NS_SP_PLATFORM_END
 
 #endif

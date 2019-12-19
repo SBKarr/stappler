@@ -27,6 +27,19 @@ THE SOFTWARE.
 #define __CCGL_H__
 
 #include "platform/CCPlatformConfig.h"
+
+#ifdef SP_RESTRICT
+
+#include "GL/gl.h"
+
+using GLfloat = float;
+using GLuint = uint32_t;
+using GLushort = uint16_t;
+using GLchar = char;
+using GLvoid = void;
+
+#else
+
 #if CC_TARGET_PLATFORM == CC_PLATFORM_WIN32
 
 #include "GL/glew.h"
@@ -34,5 +47,8 @@ THE SOFTWARE.
 #define CC_GL_DEPTH24_STENCIL8      GL_DEPTH24_STENCIL8
 
 #endif // CC_TARGET_PLATFORM == CC_PLATFORM_WIN32
+
+
+#endif
 
 #endif // __CCGL_H__

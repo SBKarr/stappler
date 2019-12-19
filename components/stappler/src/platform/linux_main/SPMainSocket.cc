@@ -30,6 +30,8 @@ THE SOFTWARE.
 #include <atomic>
 #include <condition_variable>
 
+#if LINUX
+
 #include <netdb.h>
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -285,3 +287,5 @@ void UnixSocketServer::log(const StringView &str) {
 }
 
 NS_SP_END
+
+#endif

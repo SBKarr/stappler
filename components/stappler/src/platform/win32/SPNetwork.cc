@@ -27,13 +27,11 @@ THE SOFTWARE.
 #include "SPPlatform.h"
 #include "SPThread.h"
 
-#if (CYGWIN)
+#if (CYGWIN || MSYS)
 
-NS_SP_PLATFORM_BEGIN
-
-namespace network {
+namespace stappler::platform::network {
 	bool _init = false;
-	std::function<void(bool isOnline)> _callback;
+	Function<void(bool isOnline)> _callback;
 
 	void _setNetworkCallback(const Function<void(bool isOnline)> &callback) {
 		_callback = callback;
@@ -42,7 +40,5 @@ namespace network {
 		return true;
 	}
 }
-
-NS_SP_PLATFORM_END
 
 #endif

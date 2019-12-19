@@ -35,7 +35,6 @@ THE SOFTWARE.
 #include "base/CCConfiguration.h"
 #include "base/CCEventDispatcher.h"
 #include "base/CCEventListenerCustom.h"
-#include "renderer/CCTextureCache.h"
 #include "renderer/CCGLProgram.h"
 #include "renderer/ccGLStateCache.h"
 #include "renderer/CCRenderer.h"
@@ -115,18 +114,6 @@ void TextureAtlas::setQuads(V3F_C4B_T2F_Quad* quads)
 
 // TextureAtlas - alloc & init
 
-TextureAtlas * TextureAtlas::create(const std::string& file, ssize_t capacity)
-{
-    TextureAtlas * textureAtlas = new (std::nothrow) TextureAtlas();
-    if(textureAtlas && textureAtlas->initWithFile(file, capacity))
-    {
-        textureAtlas->autorelease();
-        return textureAtlas;
-    }
-    CC_SAFE_DELETE(textureAtlas);
-    return nullptr;
-}
-
 TextureAtlas * TextureAtlas::createWithTexture(Texture2D *texture, ssize_t capacity)
 {
     TextureAtlas * textureAtlas = new (std::nothrow) TextureAtlas();
@@ -137,22 +124,6 @@ TextureAtlas * TextureAtlas::createWithTexture(Texture2D *texture, ssize_t capac
     }
     CC_SAFE_DELETE(textureAtlas);
     return nullptr;
-}
-
-bool TextureAtlas::initWithFile(const std::string& file, ssize_t capacity)
-{
-    // retained in property
-    Texture2D *texture = Director::getInstance()->getTextureCache()->addImage(file);
-
-    if (texture)
-    {
-        return initWithTexture(texture, capacity);
-    }
-    else
-    {
-        CCLOG("cocos2d: Could not open file: %s", file.c_str());
-        return false;
-    }
 }
 
 bool TextureAtlas::initWithTexture(Texture2D *texture, ssize_t capacity)

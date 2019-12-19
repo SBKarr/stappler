@@ -39,7 +39,8 @@ size_t ResultRow::size() const {
 	return result->_nfields;
 }
 mem::Value ResultRow::toData(const db::Scheme &scheme, const mem::Map<mem::String, db::Field> &viewFields) {
-	mem::Value row;
+	mem::Value row(mem::Value::Type::DICTIONARY);
+	row.asDict().reserve(result->_nfields);
 	mem::Value *deltaPtr = nullptr;
 	for (size_t i = 0; i < result->_nfields; i++) {
 		auto n = result->name(i);
@@ -244,7 +245,8 @@ mem::StringView Result::name(size_t n) const {
 }
 
 mem::Value Result::decode(const db::Scheme &scheme) const {
-	mem::Value ret;
+	mem::Value ret(mem::Value::Type::ARRAY);
+	ret.asArray().reserve(nrows());
 	for (auto it : *this) {
 		ret.addValue(it.toData(scheme));
 	}

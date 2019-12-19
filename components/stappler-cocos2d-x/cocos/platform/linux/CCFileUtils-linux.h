@@ -36,28 +36,6 @@ THE SOFTWARE.
 
 NS_CC_BEGIN
 
-/**
- * @addtogroup platform
- * @{
- */
-
-//! @brief  Helper class to handle file operations
-class CC_DLL FileUtilsLinux : public FileUtils
-{
-    friend class FileUtils;
-    FileUtilsLinux();
-    std::string _writablePath;
-public:
-    /* override funtions */
-    bool init();
-    virtual std::string getWritablePath() const;
-private:
-    virtual bool isFileExistInternal(const std::string& strFilePath) const;
-};
-
-// end of platform group
-/// @}
-
 NS_CC_END
 
 #endif // CC_TARGET_PLATFORM == CC_PLATFORM_LINUX

@@ -62,18 +62,6 @@ $(CLI_OUTPUT_DIR)/include/%.h : /%.h
 	@$(GLOBAL_MKDIR) $(dir $(CLI_OUTPUT_DIR)/include/$*.h)
 	@cp -f $< $(CLI_OUTPUT_DIR)/include/$*.h
 
-$(CLI_OUTPUT_DIR)/include/%.h.gch: $(CLI_OUTPUT_DIR)/include/%.h
-	$(call sp_compile_gch,$(CLI_CXXFLAGS))
-
-$(CLI_OUTPUT_DIR)/%.o: /%.cpp $(CLI_H_GCH) $(CLI_GCH)
-	$(call sp_compile_cpp,$(CLI_CXXFLAGS))
-
-$(CLI_OUTPUT_DIR)/%.o: /%.mm $(CLI_H_GCH) $(CLI_GCH)
-	$(call sp_compile_mm,$(CLI_CXXFLAGS))
-
-$(CLI_OUTPUT_DIR)/%.o: /%.c $(CLI_H_GCH) $(CLI_GCH)
-	$(call sp_compile_c,$(CLI_CFLAGS))
-
 $(CLI_OUTPUT_STATIC) : $(CLI_H_GCH) $(CLI_GCH) $(CLI_OBJS)
 	$(GLOBAL_QUIET_LINK) $(GLOBAL_AR) $(CLI_OUTPUT_STATIC) $(CLI_OBJS)
 

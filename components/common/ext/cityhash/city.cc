@@ -59,7 +59,12 @@ static uint32 UNALIGNED_LOAD32(const char *p) {
 
 #else
 
+#if defined(__linux__)
 #include <byteswap.h>
+#else
+inline uint32_t bswap_32(uint32_t x) { return __builtin_bswap32(x); }
+inline uint64_t bswap_64(uint64_t x) { return __builtin_bswap64(x); }
+#endif
 
 #endif
 

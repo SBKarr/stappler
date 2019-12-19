@@ -29,12 +29,14 @@ NS_SP_EXT_BEGIN(memory)
 
 namespace internals {
 struct pool_t;
+struct allocator_t;
 }
 
 #if (SPAPR)
 
 using pool_t = apr_pool_t;
 using status_t = apr_status_t;
+using allocator_t = apr_allocator_t;
 
 constexpr status_t SUCCESS(APR_SUCCESS);
 
@@ -42,12 +44,25 @@ constexpr status_t SUCCESS(APR_SUCCESS);
 
 using pool_t = internals::pool_t;
 using status_t = int;
+using allocator_t = internals::allocator_t;
 
 constexpr status_t SUCCESS(0);
 
 #endif
 
 using cleanup_fn = status_t(*)(void *);
+
+namespace allocator {
+
+allocator_t *create();
+allocator_t *createWithMmap(uint32_t initialPages = 0);
+
+void destroy(allocator_t *);
+void owner_set(allocator_t *allocator, pool_t *pool);
+pool_t * owner_get(allocator_t *allocator);
+void max_free_set(allocator_t *allocator, size_t size);
+
+}
 
 namespace pool {
 
@@ -76,6 +91,7 @@ void pop();
 
 // creates unmanaged pool
 pool_t *create();
+pool_t *createWithAllocator(allocator_t *);
 
 // creates managed pool (managed by root, if parent in mullptr)
 pool_t *create(pool_t *);

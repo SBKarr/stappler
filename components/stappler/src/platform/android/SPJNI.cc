@@ -28,18 +28,19 @@ THE SOFTWARE.
 #include "SPDevice.h"
 #include "SPScreen.h"
 #include "SPPlatform.h"
-#include "platform/CCCommon.h"
-#include "base/CCDirector.h"
 #include "SPThreadManager.h"
 
 #include "base/CCEventDispatcher.h"
 #include "base/CCEventCustom.h"
 #include "base/CCEventType.h"
+
+#if (ANDROID)
+
+#include "platform/CCCommon.h"
+#include "base/CCDirector.h"
 #include "renderer/CCGLProgramCache.h"
 #include "renderer/CCTextureCache.h"
 #include "renderer/ccGLStateCache.h"
-
-#if (ANDROID)
 
 #include "CCGLViewImpl-android.h"
 #include "CCApplication-android.h"

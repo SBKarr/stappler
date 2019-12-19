@@ -28,7 +28,6 @@ THE SOFTWARE.
 #include "renderer/CCGLProgramStateCache.cpp"
 #include "renderer/CCBatchCommand.cpp"
 #include "renderer/CCCustomCommand.cpp"
-#include "renderer/CCTextureCache.cpp"
 #include "renderer/CCQuadCommand.cpp"
 #include "renderer/CCTexture2D.cpp"
 #include "renderer/CCRenderCommand.cpp"

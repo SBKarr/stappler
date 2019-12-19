@@ -43,8 +43,6 @@ THE SOFTWARE.
 #include "base/CCVector.h"
 #include "base/CCMap.h"
 #include "base/CCAutoreleasePool.h"
-#include "base/CCNS.h"
-#include "base/CCData.h"
 #include "base/ccConfig.h"
 #include "base/ccMacros.h"
 #include "base/ccTypes.h"
@@ -106,7 +104,6 @@ THE SOFTWARE.
 #include "renderer/ccGLStateCache.h"
 #include "renderer/ccShaders.h"
 #include "renderer/CCTexture2D.h"
-#include "renderer/CCTextureCache.h"
 
 // platform
 #include "platform/CCDevice.h"

@@ -27,11 +27,12 @@ THE SOFTWARE.
 #include "SPDefine.h"
 #include "SPPlatform.h"
 
-#include "platform/CCFileUtils.h"
 #include "SPJNI.h"
 #include "SPThreadManager.h"
 
 #if (ANDROID)
+
+#include "platform/CCFileUtils.h"
 
 #define MAIN_LOOP_FRAME_TIME 16000
 #define MAIN_LOOP_FRAME_PAUSE 500000

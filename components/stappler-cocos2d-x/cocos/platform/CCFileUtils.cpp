@@ -27,7 +27,6 @@ THE SOFTWARE.
 
 #include <stack>
 
-#include "base/CCData.h"
 #include "base/ccMacros.h"
 #include "base/CCDirector.h"
 #include "base/ccUtils.h"
@@ -54,7 +53,7 @@ THE SOFTWARE.
 #endif
 
 NS_CC_BEGIN
-
+#if (0)
 FileUtils* FileUtils::s_sharedFileUtils = nullptr;
 
 void FileUtils::destroyInstance()
@@ -954,6 +953,6 @@ std::string FileUtils::getSuitableFOpen(const std::string& filenameUtf8) const
     return filenameUtf8;
 }
 #endif
-
+#endif
 NS_CC_END
 

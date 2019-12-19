@@ -127,9 +127,15 @@ struct allocator_t {
 	std::mutex mutex;
 	std::array<memnode_t *, MAX_INDEX> buf;
 
+	int mmapdes = -1;
+	void *mmapPtr = nullptr;
+	uint32_t mmapCurrent = 0;
+	uint32_t mmapMax = 0;
+
 	allocator_t();
 	~allocator_t();
 
+	bool run_mmap(uint32_t);
 	void set_max(uint32_t);
 
 	memnode_t *alloc(uint32_t);

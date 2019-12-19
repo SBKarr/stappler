@@ -257,23 +257,6 @@ public:
     static GLProgram* createWithByteArrays(const GLchar* vShaderByteArray, const GLchar* fShaderByteArray, const std::string& compileTimeDefines);
     bool initWithByteArrays(const GLchar* vShaderByteArray, const GLchar* fShaderByteArray, const std::string& compileTimeDefines);
 
-    /**
-    @}
-    */
-    /** @{
-    Create or Initializes the GLProgram with a vertex and fragment with contents of filenames.
-     * @js init
-     * @lua init
-     */
-    static GLProgram* createWithFilenames(const std::string& vShaderFilename, const std::string& fShaderFilename);
-    bool initWithFilenames(const std::string& vShaderFilename, const std::string& fShaderFilename);
-
-    static GLProgram* createWithFilenames(const std::string& vShaderFilename, const std::string& fShaderFilename, const std::string& compileTimeDefines);
-    bool initWithFilenames(const std::string& vShaderFilename, const std::string& fShaderFilename, const std::string& compileTimeDefines);
-    /**
-    @}
-    */
-
     /**@{ Get the uniform or vertex attribute by string name in shader, return null if it does not exist.*/
     Uniform* getUniform(const std::string& name);
     VertexAttrib* getVertexAttrib(const std::string& name);
@@ -404,14 +387,6 @@ public:
     void reset();
     /*Get the built in openGL handle of the program.*/
     inline const GLuint getProgram() const { return _program; }
-
-    //DEPRECATED
-    CC_DEPRECATED_ATTRIBUTE bool initWithVertexShaderByteArray(const GLchar* vertexByteArray, const GLchar* fragByteArray)
-    { return initWithByteArrays(vertexByteArray, fragByteArray); }
-    CC_DEPRECATED_ATTRIBUTE bool initWithVertexShaderFilename(const std::string &vertexFilename, const std::string& fragFilename)
-    { return initWithFilenames(vertexFilename, fragFilename); }
-    CC_DEPRECATED_ATTRIBUTE void addAttribute(const std::string &attributeName, GLuint index) const { return bindAttribLocation(attributeName, index); }
-
 
 protected:
     /**

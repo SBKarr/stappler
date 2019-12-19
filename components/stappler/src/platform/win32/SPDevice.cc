@@ -31,26 +31,23 @@ THE SOFTWARE.
 
 #include "math/CCGeometry.h"
 
-#if (CYGWIN)
+#if (CYGWIN || MSYS)
 
 #ifndef SP_RESTRICT
-NS_SP_PLATFORM_BEGIN
 
-namespace desktop {
-	void setScreenSize(const cocos2d::Size &size);
-	cocos2d::Size getScreenSize();
+namespace stappler::platform::desktop {
+	void setScreenSize(const Size &size);
+	Size getScreenSize();
 	bool isTablet();
-	std::string getPackageName();
+	String getPackageName();
 	float getDensity();
-	std::string getUserLanguage();
+	String getUserLanguage();
+	String getAppVersion();
 }
 
-NS_SP_PLATFORM_END
 #endif
 
-NS_SP_PLATFORM_BEGIN
-
-namespace device {
+namespace stappler::platform::device {
 	bool _isTablet() {
 #ifndef SP_RESTRICT
 		return desktop::isTablet();
@@ -58,57 +55,76 @@ namespace device {
 		return true;
 #endif
 	}
-	std::string _userAgent() {
-		return "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:41.0) Gecko/20100101 Firefox/41.0";
+	String _userAgent() {
+		return "Mozilla/5.0 (Windows;)";
 	}
-	std::string _deviceIdentifier() {
-		return "Linux Desktop";
+	String _deviceIdentifier() {
+		auto path = platform::filesystem::_getCachesPath();
+		auto devIdPath = path + "/.devid";
+		if (stappler::filesystem::exists(devIdPath)) {
+			auto data = stappler::filesystem::readIntoMemory(devIdPath);
+			return base16::encode(data);
+		} else {
+			Bytes data; data.resize(16);
+			auto fp = fopen("/dev/urandom", "r");
+			if (fread(data.data(), 1, data.size(), fp) == 0) {
+				log::text("Device", "Fail to read random bytes");
+			}
+			fclose(fp);
+
+			stappler::filesystem::write(devIdPath, data);
+			return base16::encode(data);
+		}
 	}
-	std::string _bundleName() {
+	String _bundleName() {
 #ifndef SP_RESTRICT
 		return desktop::getPackageName();
 #else
 		return "org.stappler.stappler";
 #endif
 	}
-	std::string _userLanguage() {
+	String _userLanguage() {
 #ifndef SP_RESTRICT
 		return desktop::getUserLanguage();
 #else
 		return "en-us";
 #endif
 	}
-	std::string _applicationName() {
+	String _applicationName() {
 		return "Linux App";
 	}
-	std::string _applicationVersion() {
-		return "2.0";
+	String _applicationVersion() {
+#ifndef SP_RESTRICT
+		return desktop::getAppVersion();
+#else
+		return "1.0";
+#endif
 	}
-	cocos2d::Size _screenSize() {
+	Size _screenSize() {
 #ifndef SP_RESTRICT
 		auto size =  desktop::getScreenSize();
 		if (size.width <= size.height) {
 			return size;
 		} else {
-			return cocos2d::Size(size.height, size.width);
+			return Size(size.height, size.width);
 		}
 #else
-		return cocos2d::Size(1024, 768);
+		return Size(1024, 768);
 #endif
 	}
-	cocos2d::Size _viewportSize(const cocos2d::Size &screenSize, bool isTablet) {
+	Size _viewportSize(const Size &screenSize, bool isTablet) {
 #ifndef SP_RESTRICT
 		auto size =  desktop::getScreenSize();
 		if (size.width <= size.height) {
 			return size;
 		} else {
-			return cocos2d::Size(size.height, size.width);
+			return Size(size.height, size.width);
 		}
 #else
-		return cocos2d::Size(1024, 768);
+		return Size(1024, 768);
 #endif
 	}
-	float _designScale(const cocos2d::Size &screenSize, bool isTablet) {
+	float _designScale(const Size &screenSize, bool isTablet) {
 		return 1.0f;
 	}
 	const ScreenOrientation &_currentDeviceOrientation() {
@@ -123,11 +139,11 @@ namespace device {
 		return ScreenOrientation::LandscapeLeft;
 #endif
 	}
-	std::pair<uint64_t, uint64_t> _diskSpace() {
+	Pair<uint64_t, uint64_t> _diskSpace() {
 		uint64_t totalSpace = 0;
 		uint64_t totalFreeSpace = 0;
 
-		return std::make_pair(totalSpace, totalFreeSpace);
+		return pair(totalSpace, totalFreeSpace);
 	}
 	int _dpi() {
 #ifdef SP_RESTRICT
@@ -146,7 +162,5 @@ namespace device {
 #endif
 	}
 }
-
-NS_SP_PLATFORM_END
 
 #endif

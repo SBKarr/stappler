@@ -414,7 +414,7 @@ bool GLViewImpl::initWithRect(const std::string& viewName, Rect rect, float fram
     // check OpenGL version at first
     const GLubyte* glVersion = glGetString(GL_VERSION);
 
-    if ( utils::atof((const char*)glVersion) < 1.5 )
+    if ( ::atof((const char*)glVersion) < 1.5 )
     {
         char strComplain[256] = {0};
         sprintf(strComplain,

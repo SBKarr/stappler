@@ -115,24 +115,6 @@ void Application::setAnimationInterval(double interval)
     _animationInterval = interval*1000.0f;
 }
 
-void Application::setResourceRootPath(const std::string& rootResDir)
-{
-    _resourceRootPath = rootResDir;
-    if (_resourceRootPath[_resourceRootPath.length() - 1] != '/')
-    {
-        _resourceRootPath += '/';
-    }
-    FileUtils* pFileUtils = FileUtils::getInstance();
-    std::vector<std::string> searchPaths = pFileUtils->getSearchPaths();
-    searchPaths.insert(searchPaths.begin(), _resourceRootPath);
-    pFileUtils->setSearchPaths(searchPaths);
-}
-
-const std::string& Application::getResourceRootPath(void)
-{
-    return _resourceRootPath;
-}
-
 Application::Platform Application::getTargetPlatform()
 {
     return Platform::OS_LINUX;
@@ -186,7 +168,7 @@ LanguageType Application::getCurrentLanguage()
 	{
 		return LanguageType::ENGLISH;
 	}
-	
+
 	if (0 == strcmp("zh", pLanguageName))
 	{
 		ret = LanguageType::CHINESE;
@@ -247,7 +229,7 @@ LanguageType Application::getCurrentLanguage()
     {
         ret = LanguageType::POLISH;
     }
-    
+
     return ret;
 }
 

@@ -63,14 +63,6 @@ To render the quads using an interleaved vertex array list, you should modify th
 class CC_DLL TextureAtlas : public Ref 
 {
 public:
-    /** Creates a TextureAtlas with an filename and with an initial capacity for Quads.
-
-     * The TextureAtlas capacity can be increased in runtime.
-     @param file A null terminated string contains the file path.
-     @param capacity Capacity for Quads.
-    */
-    static TextureAtlas* create(const std::string& file , ssize_t capacity);
-
     /** Creates a TextureAtlas with a previously initialized Texture2D object, and
      * with an initial capacity for n Quads.
 
@@ -88,15 +80,6 @@ public:
      * @lua NA
      */
     virtual ~TextureAtlas();
-
-    /** Initializes a TextureAtlas with a filename and with a certain capacity for Quads.
-    * The TextureAtlas capacity can be increased in runtime.
-    *
-     @attention Do not reinitialize the TextureAtlas because it will leak memory (issue #706).
-     @param file A null terminated string contains the file path.
-     @param capacity Capacity for Quads.
-    */
-    bool initWithFile(const std::string& file, ssize_t capacity);
 
     /** Initializes a TextureAtlas with a previously initialized Texture2D object, and
     * with an initial capacity for Quads. 

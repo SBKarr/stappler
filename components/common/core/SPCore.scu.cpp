@@ -48,6 +48,9 @@ THE SOFTWARE.
 #include "cygwin/SPFilesystem.cc"
 #include "cygwin/SPProc.cc"
 
+#include "msys/SPFilesystem.cc"
+#include "msys/SPProc.cc"
+
 #include "linux/SPFilesystem.cc"
 #include "linux/SPProc.cc"
 

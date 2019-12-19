@@ -31,7 +31,6 @@ THE SOFTWARE.
 
 #include "platform/CCPlatformMacros.h"
 #include "base/ccTypes.h"
-#include "base/CCData.h"
 
 NS_CC_BEGIN
 
@@ -41,6 +40,7 @@ NS_CC_BEGIN
  */
 
 /** Helper class to handle file operations. */
+#if (0)
 class CC_DLL FileUtils
 {
 public:
@@ -478,6 +478,7 @@ protected:
     static FileUtils* s_sharedFileUtils;
     
 };
+#endif
 
 // end of support group
 /** @} */

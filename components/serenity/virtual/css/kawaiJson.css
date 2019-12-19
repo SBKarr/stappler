@@ -126,6 +126,11 @@ li {
 	font-family: monospace;
 }
 
+#output span {
+	white-space: pre;
+	font-family: monospace;
+}
+
 .property {
 	font-weight: bold;
 }

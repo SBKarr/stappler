@@ -169,12 +169,6 @@ public:
      */
     void setOpenGLView(GLView *openGLView);
 
-    /*
-     * Gets singleton of TextureCache.
-     * @js NA
-     */
-    TextureCache* getTextureCache() const;
-
     /** Whether or not `_nextDeltaTimeZero` is set to 0. */
     inline bool isNextDeltaTimeZero() { return _nextDeltaTimeZero; }
     /**
@@ -499,10 +493,6 @@ protected:
     /** calculates delta time since last time it was called */
     void calculateDeltaTime();
 
-    //textureCache creation or release
-    void initTextureCache();
-    void destroyTextureCache();
-
     void initMatrixStack();
 
     std::stack<Mat4> _modelViewMatrixStack;
@@ -531,9 +521,6 @@ protected:
     /* The _openGLView, where everything is rendered, GLView is a abstract class,cocos2d-x provide GLViewImpl
      which inherit from it as default renderer context,you can have your own by inherit from it*/
     GLView *_openGLView;
-
-    //texture cache belongs to this director
-    TextureCache *_textureCache;
 
     double _animationInterval;
     double _oldAnimationInterval;

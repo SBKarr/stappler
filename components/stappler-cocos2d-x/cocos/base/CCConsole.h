@@ -119,13 +119,10 @@ protected:
     // Add commands here
     void commandHelp(int fd, const std::string &args);
     void commandExit(int fd, const std::string &args);
-    void commandFileUtils(int fd, const std::string &args);
     void commandConfig(int fd, const std::string &args);
-    void commandTextures(int fd, const std::string &args);
     void commandResolution(int fd, const std::string &args);
     void commandProjection(int fd, const std::string &args);
     void commandDirector(int fd, const std::string &args);
-    void commandTouch(int fd, const std::string &args);
     void commandAllocator(int fd, const std::string &args);
     // file descriptor: socket, console, etc.
     int _listenfd;

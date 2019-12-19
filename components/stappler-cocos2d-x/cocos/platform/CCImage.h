@@ -101,13 +101,6 @@ public:
     };
 
     /**
-    @brief Load the image from the specified path.
-    @param path   the absolute file path.
-    @return true if loaded correctly.
-    */
-    bool initWithImageFile(const std::string& path);
-
-    /**
     @brief Load image from stream buffer.
     @param data  stream buffer which holds the image data.
     @param dataLen  data length expressed in (number of) bytes.
@@ -136,15 +129,6 @@ public:
     bool                     hasAlpha();
     bool                     isCompressed();
 
-
-    /**
-     @brief    Save Image data to the specified file, with specified format.
-     @param    filePath        the file's absolute path, including file suffix.
-     @param    isToRGB        whether the image is saved as RGB format.
-     */
-    bool saveToFile(const std::string &filename, bool isToRGB = true);
-
-
     /** treats (or not) PVR files as if they have alpha premultiplied.
      Since it is impossible to know at runtime if the PVR images have the alpha channel premultiplied, it is
      possible load them as if they have (or not) the alpha channel premultiplied.
@@ -169,9 +153,6 @@ protected:
     bool initWithS3TCData(const unsigned char * data, ssize_t dataLen);
     bool initWithATITCData(const unsigned char *data, ssize_t dataLen);
 
-    bool saveImageToPNG(const std::string& filePath, bool isToRGB = true);
-    bool saveImageToJPG(const std::string& filePath);
-
     void premultipliedAlpha();
 
 protected:
@@ -193,20 +174,10 @@ protected:
     bool _hasPremultipliedAlpha;
     std::string _filePath;
 
-
 protected:
     // noncopyable
     Image(const Image&    rImg);
     Image & operator=(const Image&);
-
-    /*
-     @brief The same result as with initWithImageFile, but thread safe. It is caused by
-     loadImage() in TextureCache.cpp.
-     @param fullpath  full path of the file.
-     @param imageType the type of image, currently only supporting two types.
-     @return  true if loaded correctly.
-     */
-    bool initWithImageFileThreadSafe(const std::string& fullpath);
 
     Format detectFormat(const unsigned char * data, ssize_t dataLen);
     bool isPng(const unsigned char * data, ssize_t dataLen);

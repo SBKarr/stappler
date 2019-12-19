@@ -23,13 +23,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "base/CCData.cpp"
 #include "base/CCScheduler.cpp"
 #include "base/CCProfiling.cpp"
 #include "base/CCDirector.cpp"
 #include "base/CCAutoreleasePool.cpp"
 #include "base/CCRef.cpp"
-#include "base/CCNS.cpp"
 #include "base/CCTouch.cpp"
 #include "base/atitc.cpp"
 #include "base/etc1.cpp"

@@ -48,4 +48,8 @@ THE SOFTWARE.
 #include "platform/android/jni/JniHelper.cpp"
 #include "platform/android/jni/TouchesJni.cpp"
 
+#include "platform/win32/CCApplication-win32.cpp"
+#include "platform/win32/CCDevice-win32.cpp"
+#include "platform/win32/CCStdC-win32.cpp"
+#include "platform/win32/CCCommon-win32.cpp"
 #include "platform/win32/CCFileUtils-win32.cpp"

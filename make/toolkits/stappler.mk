@@ -71,6 +71,10 @@ else ifeq ($(UNAME),Cygwin)
 ifndef LOCAL_MAIN
 STAPPLER_SRCS_DIRS += components/stappler/src/platform/win32_main
 endif
+else ifeq ($(UNAME),Msys)
+ifndef LOCAL_MAIN
+STAPPLER_SRCS_DIRS += components/stappler/src/platform/win32_main
+endif
 else
 ifndef LOCAL_MAIN
 STAPPLER_SRCS_DIRS += components/stappler/src/platform/linux_main
@@ -89,18 +93,6 @@ include $(GLOBAL_ROOT)/make/utils/toolkit.mk
 $(STAPPLER_OUTPUT_DIR)/include/%.h : /%.h
 	@$(GLOBAL_MKDIR) $(dir $(STAPPLER_OUTPUT_DIR)/include/$*.h)
 	@cp -f $< $(STAPPLER_OUTPUT_DIR)/include/$*.h
-
-$(STAPPLER_OUTPUT_DIR)/include/%.h.gch: $(STAPPLER_OUTPUT_DIR)/include/%.h
-	$(call sp_compile_gch,$(STAPPLER_CXXFLAGS))
-
-$(STAPPLER_OUTPUT_DIR)/%.o: /%.cpp $(STAPPLER_H_GCH) $(STAPPLER_GCH)
-	$(call sp_compile_cpp,$(STAPPLER_CXXFLAGS))
-
-$(STAPPLER_OUTPUT_DIR)/%.o: /%.mm $(STAPPLER_H_GCH) $(STAPPLER_GCH)
-	$(call sp_compile_mm,$(STAPPLER_CXXFLAGS))
-
-$(STAPPLER_OUTPUT_DIR)/%.o: /%.c $(STAPPLER_H_GCH) $(STAPPLER_GCH)
-	$(call sp_compile_c,$(STAPPLER_CFLAGS))
 
 $(STAPPLER_OUTPUT_STATIC) : $(STAPPLER_H_GCH) $(STAPPLER_GCH) $(STAPPLER_OBJS)
 	$(GLOBAL_QUIET_LINK) $(GLOBAL_AR) $(STAPPLER_OUTPUT_STATIC) $(STAPPLER_OBJS)

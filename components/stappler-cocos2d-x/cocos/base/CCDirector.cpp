@@ -36,7 +36,6 @@ THE SOFTWARE.
 #include "2d/CCActionManager.h"
 #include "renderer/CCGLProgramCache.h"
 #include "renderer/CCGLProgramStateCache.h"
-#include "renderer/CCTextureCache.h"
 #include "renderer/ccGLStateCache.h"
 #include "renderer/CCRenderer.h"
 #include "renderer/CCRenderState.h"
@@ -48,6 +47,7 @@ THE SOFTWARE.
 #include "base/CCAutoreleasePool.h"
 #include "base/CCConfiguration.h"
 #include "platform/CCApplication.h"
+#include "platform/CCImage.h"
 //#include "platform/CCGLViewImpl.h"
 
 /**
@@ -144,7 +144,6 @@ bool Director::init(void)
     _eventProjectionChanged->setUserData(this);
 
     //init TextureCache
-    initTextureCache();
     initMatrixStack();
 
     _renderer = new (std::nothrow) RendererView;
@@ -359,29 +358,6 @@ void Director::setOpenGLView(GLView *openGLView)
         {
             _eventDispatcher->setEnabled(true);
         }
-    }
-}
-
-TextureCache* Director::getTextureCache() const
-{
-    return _textureCache;
-}
-
-void Director::initTextureCache()
-{
-#ifdef EMSCRIPTEN
-    _textureCache = new (std::nothrow) TextureCacheEmscripten();
-#else
-    _textureCache = new (std::nothrow) TextureCache();
-#endif // EMSCRIPTEN
-}
-
-void Director::destroyTextureCache()
-{
-    if (_textureCache)
-    {
-        _textureCache->waitForQuit();
-        CC_SAFE_RELEASE_NULL(_textureCache);
     }
 }
 
@@ -641,18 +617,7 @@ void Director::setProjection(Projection projection)
     _eventDispatcher->dispatchEvent(_eventProjectionChanged);
 }
 
-void Director::purgeCachedData(void)
-{
-    if (s_SharedDirector->getOpenGLView())
-    {
-        _textureCache->removeUnusedTextures();
-
-        // Note: some tests such as ActionsTest are leaking refcounted textures
-        // There should be no test textures left in the cache
-        log("%s\n", _textureCache->getCachedTextureInfo().c_str());
-    }
-    FileUtils::getInstance()->purgeCachedEntries();
-}
+void Director::purgeCachedData(void) { }
 
 float Director::getZEye(void) const
 {
@@ -948,13 +913,9 @@ void Director::reset()
 #endif
     GLProgramCache::destroyInstance();
     GLProgramStateCache::destroyInstance();
-    FileUtils::destroyInstance();
-
     GL::invalidateStateCache();
 
     RenderState::finalize();
-
-    destroyTextureCache();
 }
 
 void Director::purgeDirector()
@@ -977,9 +938,6 @@ void Director::purgeDirector()
 void Director::restartDirector()
 {
     reset();
-
-    // Texture cache need to be reinitialized
-    initTextureCache();
 
     // Reschedule for action manager
     getScheduler()->scheduleUpdate(getActionManager(), Scheduler::PRIORITY_SYSTEM, false);

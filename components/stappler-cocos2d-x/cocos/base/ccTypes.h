@@ -293,30 +293,6 @@ struct CC_DLL BlendFunc
     }
 };
 
-/** @struct TextVAlignment
- * Vertical text alignment type.
- *
- * @note If any of these enums are edited and/or reordered, update Texture2D.m.
- */
-enum class CC_DLL TextVAlignment
-{
-    TOP,
-    CENTER,
-    BOTTOM
-};
-
-/** @struct TextHAlignment
- * Horizontal text alignment type.
- *
- * @note If any of these enums are edited and/or reordered, update Texture2D.m.
- */
-enum class CC_DLL TextHAlignment
-{
-    LEFT,
-    CENTER,
-    RIGHT
-};
-
 // Types for animation in particle systems
 
 /** @struct T2F_Quad

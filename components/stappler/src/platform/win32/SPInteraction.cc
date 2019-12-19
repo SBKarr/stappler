@@ -27,36 +27,35 @@ THE SOFTWARE.
 #include "SPPlatform.h"
 #include "SPThread.h"
 
-#if (CYGWIN)
+#if (CYGWIN || MSYS)
 
-NS_SP_PLATFORM_BEGIN
-
-namespace interaction {
+namespace stappler::platform::interaction {
 	bool _dialogOpened = false;
-	void _goToUrl(const std::string &url, bool external) {
-		stappler::log::format("Intercation", "GoTo url: %s", url.c_str());
+	void _goToUrl(const StringView &url, bool external) {
+		log::format("Interaction", "GoTo url: %s", url.data());
+		//::system(toString("xdg-open ", url).data());
 	}
-	void _makePhoneCall(const std::string &str) {
-		stappler::log::format("Intercation", "phone: %s", str.c_str());
+	void _makePhoneCall(const StringView &str) {
+		log::format("Interaction", "phone: %s", str.data());
+		//::system(toString("xdg-open ", str).data());
 	}
-	void _mailTo(const std::string &address) {
-		stappler::log::format("Intercation", "MailTo phone: %s", address.c_str());
+	void _mailTo(const StringView &address) {
+		log::format("Interaction", "MailTo: %s", address.data());
+		//::system(toString("xdg-open ", address).data());
 	}
 	void _backKey() { }
-	void _notification(const std::string &title, const std::string &text) {
+	void _notification(const StringView &title, const StringView &text) {
 
 	}
 	void _rateApplication() {
-		stappler::log::text("Intercation", "Rate app");
+		log::text("Interaction", "Rate app");
 	}
 
-	void _openFileDialog(const std::string &path, const std::function<void(const std::string &)> &func) {
+	void _openFileDialog(const String &path, const Function<void(const String &)> &func) {
 		if (func) {
 			func("");
 		}
 	}
 }
-
-NS_SP_PLATFORM_END
 
 #endif

@@ -28,10 +28,9 @@ THE SOFTWARE.
 #include "SPPlatform.h"
 #include "SPThreadManager.h"
 
-#include "base/CCDirector.h"
-
 #if (LINUX)
 
+#include "base/CCDirector.h"
 #include "CCGLViewImpl-desktop.h"
 
 namespace stappler::platform::render {

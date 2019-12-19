@@ -1,15 +1,15 @@
-# Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
-# 
+# Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in
 # all copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -18,31 +18,22 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-COMMON_OUTPUT_DIR = $(abspath $(TOOLKIT_OUTPUT)/common)
-COMMON_OUTPUT_STATIC = $(abspath $(TOOLKIT_OUTPUT)/libcommon.a)
+ifeq ($(UNAME),Msys)
 
-COMMON_FLAGS := -DNOCC
+OSTYPE_PREBUILT_PATH := libs/win32/x86_64/lib
+OSTYPE_INCLUDE := libs/win32/x86_64/include
+OSTYPE_CFLAGS := -DMSYS -Wall -DGLEW_STATIC -DCC_STATIC  -fPIC
+OSTYPE_CPPFLAGS := -Wno-overloaded-virtual -Wno-class-memaccess -frtti
+OSTYPE_COMMON_LIBS := -static -l:libcurl.a \
+	-l:libbrotlidec.a -l:libbrotlicommon.a \
+	-l:libmbedtls.a -l:libmbedx509.a -l:libmbedcrypto.a \
+	-l:libpng.a -l:libjpeg.a -l:libwebp.a \
+	-lz -lws2_32 -lcrypt32
 
-COMMON_PRECOMPILED_HEADERS += \
-	components/common/core/SPCommon.h
+OSTYPE_CLI_LIBS += $(OSTYPE_COMMON_LIBS) -l:libsqlite3.a
 
-COMMON_SRCS_DIRS += components/common
-COMMON_SRCS_OBJS += 
-COMMON_INCLUDES_DIRS += components/common
-COMMON_INCLUDES_OBJS += $(OSTYPE_INCLUDE)
+OSTYPE_STAPPLER_LIBS += $(OSTYPE_CLI_LIBS) -l:libhyphen.a -l:libglfw3.a -l:libfreetype.a -lglew32 -lopengl32 -lGdi32
+OSTYPE_LDFLAGS := -municode
+OSTYPE_EXEC_FLAGS := -static-libgcc -static-libstdc++ -fno-lto
 
-TOOLKIT_NAME := COMMON
-TOOLKIT_TITLE := common
-
-include $(GLOBAL_ROOT)/make/utils/toolkit.mk
-
-$(COMMON_OUTPUT_DIR)/include/%.h : /%.h
-	@$(GLOBAL_MKDIR) $(dir $(COMMON_OUTPUT_DIR)/include/$*.h)
-	@cp -f $< $(COMMON_OUTPUT_DIR)/include/$*.h
-
-$(COMMON_OUTPUT_STATIC) : $(COMMON_H_GCH) $(COMMON_GCH) $(COMMON_OBJS)
-	$(GLOBAL_QUIET_LINK) $(GLOBAL_AR) $(COMMON_OUTPUT_STATIC) $(COMMON_OBJS)
-
-libcommon: $(COMMON_OUTPUT_STATIC)
-
-.PHONY: libcommon
+endif

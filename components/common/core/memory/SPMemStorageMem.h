@@ -28,6 +28,11 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(memory)
 
+#if MSYS
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wclass-memaccess"
+#endif
+
 // memory block to store objects data
 // memory block always uses current context or specified allocator
 // allocator is not copied by copy or move constructors or assignment operators
@@ -438,6 +443,10 @@ private:
 
 template <typename Type, size_t Extra = 0>
 using storage_mem = storage_mem_soo<Type, Extra>;
+
+#if MSYS
+#pragma GCC diagnostic pop
+#endif
 
 NS_SP_EXT_END(memory)
 

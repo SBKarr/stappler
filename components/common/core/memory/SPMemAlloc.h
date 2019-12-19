@@ -292,7 +292,7 @@ struct Storage {
 
 	alignas(__alignof__(Image::_value)) uint8_t _storage[sizeof(Value)];
 
-	Storage()  noexcept { };
+	Storage()  noexcept { }
 	Storage(nullptr_t)  noexcept {}
 
 	void * addr() noexcept { return static_cast<void *>(&_storage); }

@@ -162,6 +162,33 @@ void foreach_info(void *data, bool(*cb)(void *, pool_t *, uint32_t, const void *
 }
 
 #if !SPAPR
+
+namespace allocator {
+
+allocator_t *create() {
+	return new allocator_t();
+}
+allocator_t *createWithMmap(uint32_t initialPages) {
+	auto alloc = new allocator_t();
+	alloc->run_mmap(initialPages);
+	return alloc;
+}
+void destroy(allocator_t *alloc) {
+	delete alloc;
+}
+void owner_set(allocator_t *alloc, pool_t *pool) {
+	alloc->owner = pool;
+}
+pool_t * owner_get(allocator_t *alloc) {
+	return alloc->owner;
+}
+void max_free_set(allocator_t *allocator, size_t in_size) {
+	allocator->set_max(in_size);
+}
+
+}
+
+
 namespace pool {
 
 void initialize() { internals::initialize(); }
@@ -170,6 +197,13 @@ void terminate() { internals::terminate(); }
 
 pool_t *create() {
 	if (auto ret = internals::create()) {
+		SP_POOL_LOG("create %p", ret);
+		return ret;
+	}
+	return nullptr;
+}
+pool_t *createWithAllocator(allocator_t *alloc) {
+	if (auto ret = internals::createWithAllocator(alloc)) {
 		SP_POOL_LOG("create %p", ret);
 		return ret;
 	}
@@ -230,6 +264,7 @@ void *pmemdup(pool_t *a, const void *m, size_t n) { return internals::pmemdup(a,
 char *pstrdup(pool_t *a, const char *s) { return internals::pstrdup(a, s); }
 
 }
+
 #else
 
 namespace internals {
@@ -238,19 +273,49 @@ template <> void *pool_palloc<memory::pool_t>(memory::pool_t *pool, size_t size)
 }
 }
 
+
+namespace allocator {
+
+allocator_t *create() {
+	allocator_t *ret = nullptr;
+	apr_allocator_create(&ret);
+	return ret;
+}
+allocator_t *createWithMmap(uint32_t initialPages) {
+	return nullptr;
+}
+void destroy(allocator_t *alloc) {
+	apr_allocator_destroy(alloc);
+}
+void owner_set(allocator_t *alloc, pool_t *pool) {
+	apr_allocator_owner_set(alloc, pool);
+}
+pool_t * owner_get(allocator_t *alloc) {
+	return apr_allocator_owner_get(alloc);
+}
+void max_free_set(allocator_t *alloc, size_t size) {
+	apr_allocator_max_free_set(alloc, size);
+}
+
+}
+
+
 namespace pool {
 
 void initialize() {
 	apr_pool_initialize();
 }
-
 void terminate() {
 	apr_pool_terminate();
 }
-
 pool_t *create() {
 	pool_t *ret = nullptr;
 	apr_pool_create_unmanaged(&ret);
+	return ret;
+}
+pool_t *createWithAllocator(apr_allocator_t *alloc) {
+	pool_t *ret = nullptr;
+	apr_pool_create_unmanaged_ex(&ret, NULL, alloc);
 	return ret;
 }
 pool_t *create(pool_t *p) {
@@ -262,7 +327,6 @@ pool_t *create(pool_t *p) {
 	}
 	return ret;
 }
-
 pool_t *createTagged(const char *tag) {
 	auto ret = create();
 	apr_pool_tag(ret, tag);
@@ -273,18 +337,15 @@ pool_t *createTagged(pool_t *p, const char *tag) {
 	apr_pool_tag(ret, tag);
 	return ret;
 }
-
 void destroy(pool_t *p) {
 	apr_pool_destroy(p);
 }
 void clear(pool_t *p) {
 	apr_pool_clear(p);
 }
-
 internals::allocmngr_t<memory::pool_t> *allocmngr_get(pool_t *pool) {
 	return (internals::allocmngr_t<memory::pool_t> *)serenity_allocmngr_get(pool);
 }
-
 void *alloc(pool_t *p, size_t &size) {
 	auto mngr = allocmngr_get(p);
 	if (size >= internals::BlockThreshold) {

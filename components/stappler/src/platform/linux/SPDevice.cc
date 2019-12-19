@@ -24,14 +24,14 @@ THE SOFTWARE.
 **/
 
 #include "SPDefine.h"
-#include "platform/CCDevice.h"
 
 #include "SPPlatform.h"
 #include "SPScreenOrientation.h"
 
-#include "math/CCGeometry.h"
-
 #if (LINUX)
+
+#include "platform/CCDevice.h"
+#include "math/CCGeometry.h"
 
 #ifndef SP_RESTRICT
 

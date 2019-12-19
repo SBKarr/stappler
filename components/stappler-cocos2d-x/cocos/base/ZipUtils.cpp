@@ -32,7 +32,6 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include "base/CCData.h"
 #include "base/ccMacros.h"
 #include "platform/CCFileUtils.h"
 #include <map>
@@ -316,15 +315,14 @@ int ZipUtils::inflateGZipFile(const char *path, unsigned char **out)
 bool ZipUtils::isCCZFile(const char *path)
 {
     // load file into memory
-    Data compressedData = FileUtils::getInstance()->getDataFromFile(path);
+    auto compressedData = stappler::filesystem::readIntoMemory(path);
 
-    if (compressedData.isNull())
-    {
+    if (compressedData.empty()) {
         CCLOG("cocos2d: ZipUtils: loading file failed");
         return false;
     }
 
-    return isCCZBuffer(compressedData.getBytes(), compressedData.getSize());
+    return isCCZBuffer(compressedData.data(), compressedData.size());
 }
 
 bool ZipUtils::isCCZBuffer(const unsigned char *buffer, ssize_t len)
@@ -342,15 +340,14 @@ bool ZipUtils::isCCZBuffer(const unsigned char *buffer, ssize_t len)
 bool ZipUtils::isGZipFile(const char *path)
 {
     // load file into memory
-    Data compressedData = FileUtils::getInstance()->getDataFromFile(path);
+    auto compressedData = stappler::filesystem::readIntoMemory(path);
 
-    if (compressedData.isNull())
-    {
+    if (compressedData.empty()) {
         CCLOG("cocos2d: ZipUtils: loading file failed");
         return false;
     }
 
-    return isGZipBuffer(compressedData.getBytes(), compressedData.getSize());
+    return isGZipBuffer(compressedData.data(), compressedData.size());
 }
 
 bool ZipUtils::isGZipBuffer(const unsigned char *buffer, ssize_t len)
@@ -459,15 +456,15 @@ int ZipUtils::inflateCCZFile(const char *path, unsigned char **out)
     CCASSERT(out, "Invalid pointer for buffer!");
 
     // load file into memory
-    Data compressedData = FileUtils::getInstance()->getDataFromFile(path);
+    auto compressedData = stappler::filesystem::readIntoMemory(path);
 
-    if (compressedData.isNull())
+    if (compressedData.empty())
     {
         CCLOG("cocos2d: Error loading CCZ compressed file");
         return -1;
     }
 
-    return inflateCCZBuffer(compressedData.getBytes(), compressedData.getSize(), out);
+    return inflateCCZBuffer(compressedData.data(), compressedData.size(), out);
 }
 
 void ZipUtils::setPvrEncryptionKeyPart(int index, unsigned int value)

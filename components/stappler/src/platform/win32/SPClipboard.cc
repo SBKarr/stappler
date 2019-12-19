@@ -27,13 +27,11 @@ THE SOFTWARE.
 #include "SPPlatform.h"
 #include "base/CCDirector.h"
 
-#if (CYGWIN)
+#if (CYGWIN || MSYS)
 
 #include "CCGLViewImpl-desktop.h"
 
-NS_SP_PLATFORM_BEGIN
-
-namespace clipboard {
+namespace stappler::platform::clipboard {
 #if SP_RESTRICT
 	bool _isAvailable() { return false; }
 	String _getString() { return String(); }
@@ -62,7 +60,5 @@ namespace clipboard {
 	}
 #endif
 }
-
-NS_SP_PLATFORM_END
 
 #endif

@@ -31,12 +31,15 @@ THE SOFTWARE.
 #include "SPDevice.h"
 #include "SPPlatform.h"
 
-#include "base/CCDirector.h"
 #include "base/CCEventDispatcher.h"
 #include "base/CCScheduler.h"
 #include "base/CCEventListenerTouch.h"
 #include "base/CCTouch.h"
+
+#ifndef SP_RESTRICT
+#include "base/CCDirector.h"
 #include "platform/CCGLView.h"
+#endif
 
 NS_SP_BEGIN
 

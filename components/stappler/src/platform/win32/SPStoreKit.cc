@@ -38,7 +38,7 @@ THE SOFTWARE.
 #include "SPStorage.h"
 #include "SPScheme.h"
 
-#if (CYGWIN)
+#if (CYGWIN || MSYS)
 
 #ifndef SP_RESTRICT
 NS_SP_BEGIN
@@ -80,13 +80,13 @@ public:
 	~StoreKitLinux() { }
 
 	void init() {
-		onEvent(Device::onNetwork, [this] (const Event *ev) {
+		onEvent(Device::onNetwork, [this] (const Event &ev) {
 			if (Device::getInstance()->isNetworkOnline()) {
 				this->updateProducts();
 			}
 		});
 
-		onEvent(Device::onBackground, [this] (const Event *ev) {
+		onEvent(Device::onBackground, [this] (const Event &ev) {
 			if (!Device::getInstance()->isInBackground()) {
 				this->restorePurchases();
 			}
@@ -131,8 +131,8 @@ public:
 
 		auto features = new std::map<std::string, data::Value>();
 		auto &thread = storage::thread(_handle);
-		thread.perform([this, features] (Ref *obj) -> bool {
-			_products.get([&] (data::Value &d) {
+		thread.perform([this, features] (const thread::Task &) -> bool {
+			_products.get([&] (data::Value &&d) {
 				if (d.isArray()) {
 					for (auto &it : d.getArray()) {
 						if (it.isDictionary() && it.getBool("purchased")) {
@@ -142,7 +142,7 @@ public:
 				}
 			})->perform();
 			return true;
-		}, [this, features] (Ref *, bool) {
+		}, [this, features] (const thread::Task &, bool) {
 			auto &f = *features;
 			for (auto &it : f) {
 				onTransactionRestored(it.first, it.second);
@@ -276,9 +276,9 @@ public:
 		auto data = new data::Value;
 
 		auto &thread = storage::thread(_handle);
-		thread.perform([this, productId, data] (Ref *obj) -> bool {
+		thread.perform([this, productId, data] (const thread::Task &) -> bool {
 			bool ret = false;
-			_products.get([&] (data::Value &d) {
+			_products.get([&] (data::Value &&d) {
 				if (d.isArray()) {
 					auto &p = d.getValue(0);
 					if (p.isDictionary()) {
@@ -291,7 +291,7 @@ public:
 				}
 			})->select(productId)->perform();
 			return ret;
-		}, [this, productId, data] (Ref *, bool success) {
+		}, [this, productId, data] (const thread::Task &, bool success) {
 			if (success) {
 				onTransactionCompleted(productId, *data);
 			} else {
@@ -328,10 +328,10 @@ public:
 
 		auto features = new std::map<std::string, data::Value>();
 		auto &thread = storage::thread(_handle);
-		thread.perform([this, val, features] (Ref *) -> bool {
+		thread.perform([this, val, features] (const thread::Task &) -> bool {
 			for (auto &it : val) {
 				data::Value info;
-				_products.get([&] (data::Value &d) {
+				_products.get([&] (data::Value &&d) {
 					if (d.isArray()) {
 						info = std::move(d.getValue(0));
 					}
@@ -352,7 +352,7 @@ public:
 				}
 			}
 			return true;
-		}, [this, features] (Ref *, bool) {
+		}, [this, features] (const thread::Task &, bool) {
 			auto &f = *features;
 			for (auto &it : f) {
 				onFeatureInfo(it.first, it.second);
@@ -383,9 +383,7 @@ protected:
 
 NS_SP_END
 
-NS_SP_PLATFORM_BEGIN
-
-namespace storekit {
+namespace stappler::platform::storekit {
 	void _saveProducts(const std::unordered_map<std::string, StoreProduct *> &val) {
 		StoreKitLinux::getInstance()->saveProductDictionary(val);
 	}
@@ -406,11 +404,9 @@ namespace storekit {
 	}
 }
 
-NS_SP_PLATFORM_END
 #else
-NS_SP_PLATFORM_BEGIN
 
-namespace storekit {
+namespace stappler::platform::storekit {
 	void _saveProducts(const std::unordered_map<std::string, StoreProduct *> &val) {
 
 	}
@@ -431,7 +427,5 @@ namespace storekit {
 	}
 }
 
-NS_SP_PLATFORM_END
 #endif
-
 #endif

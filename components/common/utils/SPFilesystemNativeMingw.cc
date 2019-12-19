@@ -31,8 +31,8 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(filesystem_native)
 
-String nativeToPosix(const String &ipath) {
-	String path(ipath);
+String nativeToPosix(const StringView &ipath) {
+	String path(ipath.str());
 	if (path.size() >= 2) {
 		char first = path[0];
 		char second = path[1];
@@ -51,8 +51,8 @@ String nativeToPosix(const String &ipath) {
 	return path;
 }
 
-String posixToNative(const String &ipath) {
-	String path(ipath);
+String posixToNative(const StringView &ipath) {
+	String path(ipath.str());
 	if (!path.empty() && path.front() == '/' && path.size() >= 2) {
 		path[0] = path[1];
 		path[1] = ':';
@@ -66,12 +66,12 @@ String posixToNative(const String &ipath) {
 	return path;
 }
 
-bool remove_fn(const stappler::String &path) {
+bool remove_fn(const stappler::StringView &path) {
 	WideString str = string::toUtf16(posixToNative(path));
 	return _wremove((wchar_t *)str.c_str()) == 0;
 }
 
-bool mkdir_fn(const stappler::String &path) {
+bool mkdir_fn(const stappler::StringView &path) {
 	WideString str = string::toUtf16(posixToNative(path));
     mode_t process_mask = umask(0);
 	bool ret = _wmkdir((wchar_t *)str.c_str()) == 0;
@@ -79,7 +79,7 @@ bool mkdir_fn(const stappler::String &path) {
     return ret;
 }
 
-bool access_fn(const stappler::String &path, Access mode) {
+bool access_fn(const stappler::StringView &path, Access mode) {
 	int m = 0;
 	switch (mode) {
 	case Access::Execute: m = X_OK; break;
@@ -91,7 +91,7 @@ bool access_fn(const stappler::String &path, Access mode) {
 	return _waccess((wchar_t *)str.c_str(), m) == 0;
 }
 
-bool isdir_fn(const String &path) {
+bool isdir_fn(const StringView &path) {
 	WideString str = string::toUtf16(path);
 	struct _stat64 s;
 	if( _wstat64((wchar_t *)str.c_str(), &s) == 0 ) {
@@ -100,7 +100,7 @@ bool isdir_fn(const String &path) {
 		return false;
 	}
 }
-size_t size_fn(const String &path) {
+size_t size_fn(const StringView &path) {
 	WideString str = string::toUtf16(posixToNative(path));
 	struct _stat64 s;
 	if( _wstat64((wchar_t *)str.c_str(), &s) == 0 ) {
@@ -109,7 +109,7 @@ size_t size_fn(const String &path) {
         return 0;
     }
 }
-time_t mtime_fn(const String &path) {
+time_t mtime_fn(const StringView &path) {
 	WideString str = string::toUtf16(posixToNative(path));
 	struct _stat64 s;
 	if( _wstat64((wchar_t *)str.c_str(), &s) == 0 ) {
@@ -118,7 +118,10 @@ time_t mtime_fn(const String &path) {
         return 0;
     }
 }
-time_t ctime_fn(const String &path) {
+Time mtime_v_fn(const StringView &path) {
+	return Time::seconds(mtime_fn(path));
+}
+time_t ctime_fn(const StringView &path) {
 	WideString str = string::toUtf16(posixToNative(path));
 	struct _stat64 s;
 	if( _wstat64((wchar_t *)str.c_str(), &s) == 0 ) {
@@ -128,12 +131,12 @@ time_t ctime_fn(const String &path) {
     }
 }
 
-bool touch_fn(const String &path) {
+bool touch_fn(const StringView &path) {
 	WideString str = string::toUtf16(posixToNative(path));
 	return _wutime((wchar_t *)str.c_str(), NULL) == 0;
 }
 
-void ftw_fn(const String &path, const Function<void(const String &path, bool isFile)> &callback, int depth, bool dirFirst) {
+void ftw_fn(const StringView &path, const Function<void(const StringView &path, bool isFile)> &callback, int depth, bool dirFirst) {
 	WideString str = string::toUtf16(posixToNative(path));
 	auto dp = _wopendir((wchar_t *)str.c_str());
 	if (dp == NULL) {
@@ -160,7 +163,7 @@ void ftw_fn(const String &path, const Function<void(const String &path, bool isF
 		}
 	}
 }
-bool ftw_b_fn(const String &path, const Function<bool(const String &path, bool isFile)> &callback, int depth, bool dirFirst) {
+bool ftw_b_fn(const StringView &path, const Function<bool(const StringView &path, bool isFile)> &callback, int depth, bool dirFirst) {
 	WideString str = string::toUtf16(posixToNative(path));
 	auto dp = _wopendir((wchar_t *)str.c_str());
 	if (dp == NULL) {
@@ -194,7 +197,7 @@ bool ftw_b_fn(const String &path, const Function<bool(const String &path, bool i
 	return true;
 }
 
-bool rename_fn(const String &source, const String &dest) {
+bool rename_fn(const StringView &source, const StringView &dest) {
 	WideString wsource = string::toUtf16(posixToNative(source));
 	WideString wdest = string::toUtf16(posixToNative(dest));
 	return _wrename((const wchar_t *)wsource.c_str(), (const wchar_t *)wdest.c_str()) == 0;
@@ -208,7 +211,7 @@ String getcwd_fn() {
 	return String();
 }
 
-FILE *fopen_fn(const String &path, const String &mode) {
+FILE *fopen_fn(const StringView &path, const StringView &mode) {
 	WideString str = string::toUtf16(posixToNative(path));
 	WideString wmode = string::toUtf16(mode);
 	return _wfopen((const wchar_t *)str.c_str(), (const wchar_t *)wmode.c_str());

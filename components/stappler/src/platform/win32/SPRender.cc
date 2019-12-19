@@ -26,22 +26,35 @@ THE SOFTWARE.
 #include "SPDefine.h"
 #include "SPPlatform.h"
 
+#if (CYGWIN || MSYS)
+
 #include "base/CCDirector.h"
-
-#if (CYGWIN)
-
 #include "CCGLViewImpl-desktop.h"
 
-NS_SP_PLATFORM_BEGIN
-
-namespace render {
+namespace stappler::platform::render {
 	void _init() { }
 	void _requestRender() { }
 	void _framePerformed() { }
 	void _blockRendering() { }
 	void _unblockRendering() { }
-}
 
-NS_SP_PLATFORM_END
+#ifdef SP_RESTRICT
+	bool _enableOffscreenContext() { return false; }
+	void _disableOffscreenContext() { }
+#else
+	bool _enableOffscreenContext() {
+		if (!ThreadManager::getInstance()->isMainThread()) {
+			auto view = cocos2d::Director::getInstance()->getOpenGLView();
+			static_cast<cocos2d::GLViewImpl *>(view)->enableOffscreenContext();
+			return true;
+		}
+		return false;
+	}
+	void _disableOffscreenContext() {
+		auto view = cocos2d::Director::getInstance()->getOpenGLView();
+		static_cast<cocos2d::GLViewImpl *>(view)->disableOffscreenContext();
+	}
+#endif
+}
 
 #endif

@@ -35,26 +35,24 @@ THE SOFTWARE.
 
 #include "Shellapi.h"
 
-NS_SP_PLATFORM_BEGIN
-
-namespace desktop {
-	cocos2d::Size _screenSize;
+namespace stappler::platform::desktop {
+	Size _screenSize;
 	bool _isTablet = false;
 	bool _isFixed = false;
-	std::string _package;
-	std::string _userLanguage;
+	String _package;
+	String _userLanguage;
+	String _appVersion;
 	float _density = 1.0f;
 
-	void setScreenSize(const cocos2d::Size &size) { _screenSize = size; }
-	cocos2d::Size getScreenSize() { return _screenSize; }
+	void setScreenSize(const Size &size) { _screenSize = size; }
+	Size getScreenSize() { return _screenSize; }
 	bool isTablet() { return _isTablet; }
 	bool isFixed() { return _isFixed; }
-	std::string getPackageName() { return _package; }
+	String getPackageName() { return _package; }
 	float getDensity() { return _density; }
-	std::string getUserLanguage() { return _userLanguage; }
+	String getUserLanguage() { return _userLanguage; }
+	String getAppVersion() { return _appVersion; }
 }
-
-NS_SP_PLATFORM_END
 
 USING_NS_CC;
 
@@ -62,25 +60,25 @@ int parseOptionSwitch(stappler::data::Value &ret, char c, const char *str) {
 	return 1;
 }
 
-int parseOptionString(stappler::data::Value &ret, const std::string &str,
+int parseOptionString(stappler::data::Value &ret, const stappler::StringView &str,
 					  int argc, const char * argv[]) {
-	if (str.compare(0, 2, "w=") == 0) {
-		auto s = std::stoi( str.substr(2) );
+	if (str.starts_with("w=") == 0) {
+		auto s = str.sub(2).readInteger().get(0);
 		if (s > 0) {
 			ret.setInteger(s, "width");
 		}
-	} else if (str.compare(0, 2, "h=") == 0) {
-		auto s = std::stoi( str.substr(2) );
+	} else if (str.starts_with("h=") == 0) {
+		auto s = str.sub(2).readInteger().get(0);
 		if (s > 0) {
 			ret.setInteger(s, "height");
 		}
-	} else if (str.compare(0, 2, "d=") == 0) {
-		auto s = std::stod( str.substr(2) );
+	} else if (str.starts_with("d=") == 0) {
+		auto s = str.sub(2).readDouble().get(0.0);
 		if (s > 0) {
 			ret.setDouble(s, "density");
 		}
-	} else if (str.compare(0, 2, "l=") == 0) {
-		ret.setString(str.substr(2), "locale");
+	} else if (str.starts_with("l=") == 0) {
+		ret.setString(str.sub(2), "locale");
 	} else if (str == "tablet") {
 		ret.setBool(true, "isTablet");
 	} else if (str == "phone") {
@@ -127,14 +125,7 @@ void sp_android_terminate () {
   __gnu_cxx::__verbose_terminate_handler();
 }
 
-int APIENTRY _tWinMain(HINSTANCE hInstance,
-                       HINSTANCE hPrevInstance,
-                       LPTSTR    lpCmdLine,
-                       int       nCmdShow)
-{
-	UNREFERENCED_PARAMETER(hPrevInstance);
-	UNREFERENCED_PARAMETER(lpCmdLine);
-
+int _spMain(argc, argv) {
 	std::set_terminate(sp_android_terminate);
 	std::string packageName = "org.stappler.stappler";
 	stappler::data::Value val = stappler::data::readFile("app.json");
