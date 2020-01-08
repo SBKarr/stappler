@@ -142,7 +142,7 @@ TaskQueue::~TaskQueue() {
 	_inputQueue.clear();
 	_inputMutex.unlock();
 
-	update(0.0f);
+	update();
 }
 
 void TaskQueue::finalize() {
@@ -226,7 +226,7 @@ Rc<Task> TaskQueue::popTask() {
 	return task;
 }
 
-void TaskQueue::update(float dt) {
+void TaskQueue::update() {
     _outputMutex.lock();
 
 	std::vector<Rc<Task>> stack;
@@ -304,8 +304,7 @@ void TaskQueue::performAll() {
 
 void TaskQueue::waitForAll() {
 	while (tasksAdded != tasksCompleted) {
-		auto tmp = Time::now();
-	    update((Time::now() - tmp).toFloatSeconds());
+	    update();
 		std::unique_lock<std::mutex> exitLock(_exitMutex);
 		_exitCondition.wait_for(exitLock,  std::chrono::seconds(1));
 	}

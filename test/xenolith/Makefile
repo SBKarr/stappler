@@ -18,23 +18,25 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-ifeq ($(UNAME),Msys)
+STAPPLER_ROOT = ../..
 
-OSTYPE_PREBUILT_PATH := libs/win32/x86_64/lib
-OSTYPE_INCLUDE := libs/win32/x86_64/include
-OSTYPE_CFLAGS := -DMSYS -Wall -DGLEW_STATIC -DCC_STATIC  -fPIC
-OSTYPE_CPPFLAGS := -Wno-overloaded-virtual -Wno-class-memaccess -frtti
-OSTYPE_COMMON_LIBS := -static -l:libcurl.a \
-	-l:libbrotlidec.a -l:libbrotlicommon.a \
-	-l:libmbedtls.a -l:libmbedx509.a -l:libmbedcrypto.a \
-	-l:libpng.a -l:libjpeg.a -l:libwebp.a \
-	-lz -lws2_32 -lcrypt32
+LOCAL_OUTDIR := stappler-build
+LOCAL_EXECUTABLE := testapp
 
-OSTYPE_CLI_LIBS += $(OSTYPE_COMMON_LIBS) -l:libsqlite3.a
+LOCAL_TOOLKIT := xenolith
 
-OSTYPE_STAPPLER_LIBS += $(OSTYPE_CLI_LIBS) -l:libhyphen.a -l:libglfw3.a -l:libfreetype.a -lglew32 -lopengl32 -lGdi32
-OSTYPE_XENOLITH_LIBS += $(OSTYPE_CLI_LIBS) -l:libhyphen.a -l:libglfw3.a -l:libfreetype.a -l:libshaderc_combined.a -lglew32 -lopengl32 -lGdi32
-OSTYPE_LDFLAGS := -municode -fuse-ld=lld
-OSTYPE_EXEC_FLAGS := -static-libgcc -static-libstdc++ -fno-lto -Wl,--subsystem,windows
+LOCAL_ROOT = .
 
-endif
+LOCAL_SRCS_DIRS :=  src
+LOCAL_SRCS_OBJS :=
+
+LOCAL_INCLUDES_DIRS := src
+LOCAL_INCLUDES_OBJS :=
+
+include $(STAPPLER_ROOT)/make/universal.mk
+
+host-install: prepare-linux
+host-debug: prepare-linux
+host-release: prepare-linux
+
+.PHONY: prepare-linux

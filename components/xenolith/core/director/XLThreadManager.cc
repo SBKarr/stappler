@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2020 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,47 +20,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "SPDefine.h"
-#include "SPThreadManager.h"
-#include "SPThread.h"
+#include "XLThreadManager.h"
+#include "XLDirector.h"
 
-#include "base/CCDirector.h"
-#include "base/CCScheduler.h"
-#include "platform/CCPlatformMacros.h"
-
-NS_SP_BEGIN
-
-static ThreadManager *s_sharedInstance = nullptr;
-static bool s_validState = true;
-
-ThreadManager *ThreadManager::getInstance() {
-	if (!s_validState) {
-		return nullptr;
-	}
-	if (!s_sharedInstance && s_validState) {
-		s_sharedInstance = new ThreadManager;
-	}
-	return s_sharedInstance;
-}
+namespace stappler::xenolith {
 
 ThreadManager::ThreadManager() {
-    CCAssert(s_sharedInstance == NULL, "ThreadManager must follow singleton pattern");
-    s_sharedInstance = this;
 	_threadId = std::this_thread::get_id();
 
-#ifndef SP_RESTRICT
-	auto scheduler = cocos2d::Director::getInstance()->getScheduler();
-	scheduler->schedulePerFrame([this] (float dt){
-		update();
-	}, this, 0, false);
-#endif
 }
-ThreadManager::~ThreadManager() {
-#ifndef SP_RESTRICT
-	cocos2d::Director::getInstance()->getScheduler()->unscheduleUpdate(this);
-#endif
-	s_validState = false;
-}
+ThreadManager::~ThreadManager() { }
 
 void ThreadManager::update() {
 	auto id = std::this_thread::get_id();
@@ -83,6 +49,11 @@ bool ThreadManager::isMainThread() {
 }
 
 void ThreadManager::performOnMainThread(const Callback &func, Ref *target, bool onNextFrame) {
+	if (!_attached) {
+		func();
+		return;
+	}
+
 	if ((isMainThread() || _singleThreaded) && !onNextFrame) {
 		func();
 	} else {
@@ -93,6 +64,10 @@ void ThreadManager::performOnMainThread(const Callback &func, Ref *target, bool 
 }
 
 void ThreadManager::performOnMainThread(Rc<thread::Task> &&task, bool onNextFrame) {
+	if (!_attached) {
+		return;
+	}
+
 	if ((isMainThread() || _singleThreaded) && !onNextFrame) {
 		task->onComplete();
 	} else {
@@ -101,6 +76,10 @@ void ThreadManager::performOnMainThread(Rc<thread::Task> &&task, bool onNextFram
 }
 
 void ThreadManager::perform(Rc<thread::Task> &&task) {
+	if (!_attached) {
+		return;
+	}
+
 	if (task && !_singleThreaded) {
 		_defaultQueue.performAsync(std::move(task));
 	} else if (task) {
@@ -110,6 +89,10 @@ void ThreadManager::perform(Rc<thread::Task> &&task) {
 }
 
 uint32_t ThreadManager::perform(Thread *thread, Rc<thread::Task> &&task) {
+	if (!_attached) {
+		return 0;
+	}
+
 	if (task && !_singleThreaded) {
 		if (thread->getId() == maxOf<uint32_t>()) {
 			thread->setId(_nextId);
@@ -127,6 +110,10 @@ uint32_t ThreadManager::perform(Thread *thread, Rc<thread::Task> &&task) {
 }
 
 uint32_t ThreadManager::performWithPriority(Thread *thread, Rc<thread::Task> &&task, bool performFirst) {
+	if (!_attached) {
+		return 0;
+	}
+
 	if (task && !_singleThreaded) {
 		if (thread->getId() == maxOf<uint32_t>()) {
 			thread->setId(_nextId);
@@ -146,6 +133,7 @@ uint32_t ThreadManager::performWithPriority(Thread *thread, Rc<thread::Task> &&t
 void ThreadManager::setSingleThreaded(bool value) {
 	_singleThreaded = value;
 }
+
 bool ThreadManager::isSingleThreaded() {
 	return _singleThreaded;
 }
@@ -155,7 +143,7 @@ TaskManager &ThreadManager::getTaskManager(Thread *thread) {
 	if (it == _threads.end()) {
 #if DEBUG && !ANDROID
 		if (!isMainThread()) {
-			CCASSERT(isMainThread(), "Fail to perform task on thread, that was not initialized by main thread");
+			XLASSERT(isMainThread(), "Fail to perform task on thread, that was not initialized by main thread");
 		}
 #endif
 		auto p = _threads.insert(std::make_pair(thread->getId(), TaskManager(thread)));
@@ -181,33 +169,20 @@ uint64_t ThreadManager::getNativeThreadId() {
 }
 
 void Thread::onMainThread(const Callback &func, Ref *target, bool onNextFrame) {
-	if (s_validState) {
-		if (auto tm = ThreadManager::getInstance()) {
-			tm->performOnMainThread(func, target, onNextFrame);
-		}
-	} else {
-		func();
+	if (auto tm = Director::getInstance()->getThreadManager()) {
+		tm->performOnMainThread(func, target, onNextFrame);
 	}
 }
 
 void Thread::onMainThread(Rc<Task> &&task, bool onNextFrame) {
-	if (s_validState) {
-		if (auto tm = ThreadManager::getInstance()) {
-			tm->performOnMainThread(std::move(task), onNextFrame);
-		}
-	} else {
-		task->onComplete();
+	if (auto tm = Director::getInstance()->getThreadManager()) {
+		tm->performOnMainThread(std::move(task), onNextFrame);
 	}
 }
 
 void Thread::performAsync(Rc<Task> &&task) {
-	if (s_validState) {
-		if (auto tm = ThreadManager::getInstance()) {
-			tm->perform(std::move(task));
-		}
-	} else {
-		task->setSuccessful(false);
-		task->onComplete();
+	if (auto tm = Director::getInstance()->getThreadManager()) {
+		tm->perform(std::move(task));
 	}
 }
 
@@ -216,8 +191,9 @@ void Thread::performAsync(const ExecuteCallback &exec, const CompleteCallback & 
 }
 
 Thread::Thread(const StringView &name) : _name(name.str()) { }
+
 Thread::~Thread() {
-	if (auto tm = ThreadManager::getInstance()) {
+	if (auto tm = Director::getInstance()->getThreadManager()) {
 		tm->removeThread(_id);
 	}
 }
@@ -229,6 +205,7 @@ Thread::Thread(Thread &&other) {
 	_count = other._count;
 	other._id = maxOf<uint32_t>();
 }
+
 Thread &Thread::operator=(Thread &&other) {
 	_id = other._id;
 	_count = other._count;
@@ -237,27 +214,31 @@ Thread &Thread::operator=(Thread &&other) {
 }
 
 void Thread::perform(Rc<Task> &&task) {
-	if (auto tm = ThreadManager::getInstance()) {
+	if (auto tm = Director::getInstance()->getThreadManager()) {
 		tm->perform(this, std::move(task));
 	}
 }
+
 void Thread::perform(Rc<Task> &&task, int tag) {
-    task->setTag(tag);
-    perform(std::move(task));
+	task->setTag(tag);
+	perform(std::move(task));
 }
+
 void Thread::perform(const ExecuteCallback &exec, const CompleteCallback &complete, Ref *obj) {
 	perform(Rc<Task>::create(exec, complete, obj));
 }
 
 void Thread::performWithPriority(Rc<Task> &&task, bool performFirst) {
-	if (auto tm = ThreadManager::getInstance()) {
+	if (auto tm = Director::getInstance()->getThreadManager()) {
 		tm->performWithPriority(this, std::move(task), performFirst);
 	}
 }
+
 void Thread::performWithPriority(Rc<Task> &&task, bool performFirst, int priority) {
 	task->setPriority(priority);
 	performWithPriority(std::move(task), performFirst);
 }
+
 void Thread::performWithPriority(Rc<Task> &&task, bool performFirst, int priority, int tag) {
 	task->setPriority(priority);
 	task->setTag(tag);
@@ -266,7 +247,7 @@ void Thread::performWithPriority(Rc<Task> &&task, bool performFirst, int priorit
 
 bool Thread::isOnThisThread() {
 	if (auto local = thread::ThreadInfo::getThreadLocal()) {
-		if (!ThreadManager::getInstance()->isSingleThreaded()) {
+		if (!Director::getInstance()->getThreadManager()->isSingleThreaded()) {
 			return local->threadId == _id;
 		} else {
 			return true;
@@ -277,7 +258,7 @@ bool Thread::isOnThisThread() {
 
 bool Thread::isOnThisThread(uint32_t workerId) {
 	if (auto local = thread::ThreadInfo::getThreadLocal()) {
-		if (!ThreadManager::getInstance()->isSingleThreaded()) {
+		if (!Director::getInstance()->getThreadManager()->isSingleThreaded()) {
 			return local->threadId == _id && local->workerId == workerId;
 		} else {
 			return true;
@@ -331,40 +312,42 @@ TaskManager &TaskManager::operator=(TaskManager &&other) {
 }
 
 void TaskManager::perform(Rc<Task> &&task) {
-    if (!task) {
-        return;
-    }
+	if (!task) {
+		return;
+	}
 
-    if (!_queue) {
-    	_queue = Rc<thread::TaskQueue>::alloc(_maxWorkers);
-    }
+	if (!_queue) {
+		_queue = Rc<thread::TaskQueue>::alloc(_maxWorkers);
+	}
 
 	if (_queue && _queue->spawnWorkers(_threadId, _name)) {
 		_queue->perform(std::move(task));
 	}
 }
 void TaskManager::perform(Rc<Task> &&task, int tag) {
-    task->setTag(tag);
-    perform(std::move(task));
+	task->setTag(tag);
+	perform(std::move(task));
 }
 
 void TaskManager::performWithPriority(Rc<Task> &&task, bool performFirst) {
-    if (!task) {
-        return;
-    }
+	if (!task) {
+		return;
+	}
 
-    if (!_queue) {
-    	_queue = Rc<thread::TaskQueue>::alloc(_maxWorkers);
-    }
+	if (!_queue) {
+		_queue = Rc<thread::TaskQueue>::alloc(_maxWorkers);
+	}
 
 	if (_queue && _queue->spawnWorkers(_threadId, _name)) {
 		_queue->performWithPriority(std::move(task), performFirst);
 	}
 }
+
 void TaskManager::performWithPriority(Rc<Task> &&task, bool performFirst, int priority) {
 	task->setPriority(priority);
 	performWithPriority(std::move(task), performFirst);
 }
+
 void TaskManager::performWithPriority(Rc<Task> &&task, bool performFirst, int priority, int tag) {
 	task->setPriority(priority);
 	task->setTag(tag);
@@ -377,4 +360,4 @@ void TaskManager::update() {
 	}
 }
 
-NS_SP_END
+}

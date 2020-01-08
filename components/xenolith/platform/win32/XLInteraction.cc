@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2020 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,20 +20,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "SPDefine.h"
-#include "SPPlatform.h"
-#include "SPThread.h"
+#include "XLPlatform.h"
 
 #if (CYGWIN || MSYS)
 
-namespace stappler::platform::interaction {
+#include <shellapi.h>
+#include <WinVer.h>
+
+namespace stappler::xenolith::platform::interaction {
 	bool _dialogOpened = false;
-	void _goToUrl(const StringView &url, bool external) {
+	bool _goToUrl(const StringView &url, bool external) {
 		log::format("Interaction", "GoTo url: %s", url.data());
 
 		auto wurl = string::toUtf16(url);
-	    HINSTANCE r = ShellExecuteW(NULL, L"open", wurl.data(), NULL, NULL, SW_SHOWNORMAL);
-	    return (size_t)r>32;
+		return (size_t)ShellExecuteW(NULL, L"open", (WCHAR *)wurl.data(), NULL, NULL, SW_SHOWNORMAL) > 32;
 	}
 	void _makePhoneCall(const StringView &str) {
 		log::format("Interaction", "phone: %s", str.data());

@@ -54,7 +54,7 @@ public:
 	void performWithPriority(Rc<Task> &&task, bool performFirst);
 	Rc<Task> popTask();
 
-	void update(float dt);
+	void update();
 	void onMainThread(Rc<Task> &&task);
 
 	void wait();

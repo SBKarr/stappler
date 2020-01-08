@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2020 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,13 +20,86 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef LIBS_STAPPLER_FEATURES_THREADS_SPTHREADMANAGER_H
-#define LIBS_STAPPLER_FEATURES_THREADS_SPTHREADMANAGER_H
+#ifndef COMPONENTS_XENOLITH_CORE_DIRECTOR_XLTHREADMANAGER_H_
+#define COMPONENTS_XENOLITH_CORE_DIRECTOR_XLTHREADMANAGER_H_
 
-#include "SPData.h"
-#include "SPThread.h"
+#include "SPThreadTaskQueue.h"
+#include "XLDefine.h"
 
-NS_SP_BEGIN
+namespace stappler::xenolith {
+
+class Thread {
+public:
+	using Task = thread::Task;
+	using Callback = Function<void()>;
+	using ExecuteCallback = Function<bool(const Task &)>;
+	using CompleteCallback = Function<void(const Task &, bool)>;
+
+	/*
+	 If current thread is main thread: executes function/task
+	 If not: action will be added to queue for main thread
+	 */
+	static void onMainThread(const Callback &func, Ref *target = nullptr, bool onNextFrame = false);
+
+	/*
+	 If current thread is main thread: executes function/task
+	 If not: action will be added to queue for main thread
+	 */
+	static void onMainThread(Rc<Task> &&task, bool onNextFrame = false);
+
+	/* Spawns new thread for a single task, then thread will be terminated */
+	static void performAsync(Rc<Task> &&task);
+
+	/* Spawns new thread for a single task, then thread will be terminated */
+	static void performAsync(const ExecuteCallback &, const CompleteCallback & = nullptr, Ref * = nullptr);
+
+	/* Performs action in this thread, task will be constructed in place */
+	void perform(const ExecuteCallback &, const CompleteCallback & = nullptr, Ref * = nullptr);
+
+	/* Performs task in this thread */
+    void perform(Rc<Task> &&task);
+
+	/* Performs task in this thread */
+    void perform(Rc<Task> &&task, int tag);
+
+	/* Performs task in this thread, priority used to order tasks in queue */
+    void performWithPriority(Rc<Task> &&task, bool insertFirst);
+
+	/* Performs task in this thread, priority used to order tasks in queue */
+    void performWithPriority(Rc<Task> &&task, bool insertFirst, int priority);
+
+	/* Performs task in this thread, priority used to order tasks in queue */
+    void performWithPriority(Rc<Task> &&task, bool insertFirst, int priority, int tag);
+
+	/* Checks if execution is on specific thread */
+	bool isOnThisThread();
+
+	/* Checks if execution is on specific worker of thread */
+	bool isOnThisThread(uint32_t workerId);
+
+public:
+	Thread(const StringView &name);
+	Thread(const StringView &name, uint32_t count);
+	~Thread();
+
+    Thread(const Thread &) = delete;
+	Thread &operator=(const Thread &) = delete;
+
+    Thread(Thread &&);
+	Thread &operator=(Thread &&);
+
+	inline StringView getName() { return _name; }
+
+	inline uint32_t getId() { return _id; }
+	inline void setId(uint32_t newId) { _id = newId; }
+
+	inline uint32_t getCount() { return _count; }
+
+private:
+	uint32_t _id = maxOf<uint32_t>();
+	uint32_t _count = 1;
+	String _name;
+};
 
 class TaskManager {
 public:
@@ -58,15 +131,11 @@ protected:
 	Rc<thread::TaskQueue> _queue = nullptr;
 };
 
-class ThreadManager {
+class ThreadManager : public Ref {
 public:
-	using Callback = std::function<void()>;
+	using Callback = Function<void()>;
 
-	/*
-	 Be ready to recieve nullptr, if you use this when
-	 application performs unloading/finalising
-	 */
-	static ThreadManager *getInstance();
+	ThreadManager();
 
 	/*
 	 Checks if current calling thread is application (cocos) main thread
@@ -110,15 +179,14 @@ public:
 
 	uint64_t getNativeThreadId();
 
-public:
-	/* used by cocos scheduler, should not be used manually */
-    void update();
+	~ThreadManager();
 
 protected:
-    ThreadManager();
-    ~ThreadManager();
+	friend class Director;
 
-	TaskManager &getTaskManager(Thread *thread);
+	void update();
+
+	TaskManager & getTaskManager(Thread *thread);
 
 	thread::TaskQueue _defaultQueue;
 	std::unordered_map<uint32_t, TaskManager> _threads;
@@ -128,8 +196,9 @@ protected:
 	/* Main thread id */
 	std::thread::id _threadId;
 	bool _singleThreaded = false;
+	bool _attached = false;
 };
 
-NS_SP_END
+}
 
-#endif
+#endif /* COMPONENTS_XENOLITH_CORE_DIRECTOR_XLTHREADMANAGER_H_ */

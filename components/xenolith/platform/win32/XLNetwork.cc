@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2020 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,41 +23,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "SPDefine.h"
-#include "SPPlatform.h"
-#include "SPThread.h"
+#include "XLPlatform.h"
 
 #if (CYGWIN || MSYS)
 
-namespace stappler::platform::interaction {
-	bool _dialogOpened = false;
-	void _goToUrl(const StringView &url, bool external) {
-		log::format("Interaction", "GoTo url: %s", url.data());
+namespace stappler::xenolith::platform::network {
+	bool _init = false;
+	Function<void(bool isOnline)> _callback;
 
-		auto wurl = string::toUtf16(url);
-	    HINSTANCE r = ShellExecuteW(NULL, L"open", wurl.data(), NULL, NULL, SW_SHOWNORMAL);
-	    return (size_t)r>32;
+	void _setNetworkCallback(const Function<void(bool isOnline)> &callback) {
+		_callback = callback;
 	}
-	void _makePhoneCall(const StringView &str) {
-		log::format("Interaction", "phone: %s", str.data());
-		//::system(toString("xdg-open ", str).data());
-	}
-	void _mailTo(const StringView &address) {
-		log::format("Interaction", "MailTo: %s", address.data());
-		//::system(toString("xdg-open ", address).data());
-	}
-	void _backKey() { }
-	void _notification(const StringView &title, const StringView &text) {
-
-	}
-	void _rateApplication() {
-		log::text("Interaction", "Rate app");
-	}
-
-	void _openFileDialog(const String &path, const Function<void(const String &)> &func) {
-		if (func) {
-			func("");
-		}
+	bool _isNetworkOnline() {
+		return true;
 	}
 }
 

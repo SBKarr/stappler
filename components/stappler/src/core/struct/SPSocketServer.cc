@@ -327,7 +327,7 @@ public:
 	bool readData(int fd) { return false; }
 	bool loop() { return false; }
 	void end() { }
-	void log(const char *str, size_t n) { }
+	void log(const StringView &str) { }
 	uint16_t getPort() const { return 0; }
 	bool isListening() const { return false; }
 };

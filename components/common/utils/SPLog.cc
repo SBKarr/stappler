@@ -35,8 +35,13 @@ static std::atomic<int> s_logFuncCount;
 static std::mutex s_logFuncMutex;
 
 static void DefaultLog2(const StringView &tag, const StringView &text) {
+#if MSYS
+	std::cout << '[' << tag << "] " << text << '\n';
+	std::cout.flush();
+#else
 	std::cerr << '[' << tag << "] " << text << '\n';
 	std::cerr.flush();
+#endif
 }
 
 static void DefaultLog(const StringView &tag, CustomLog::Type t, CustomLog::VA &va) {
