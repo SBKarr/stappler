@@ -91,7 +91,7 @@ void pop();
 
 // creates unmanaged pool
 pool_t *create();
-pool_t *createWithAllocator(allocator_t *);
+pool_t *createWithAllocator(allocator_t *, bool threadSafe = false);
 
 // creates managed pool (managed by root, if parent in mullptr)
 pool_t *create(pool_t *);

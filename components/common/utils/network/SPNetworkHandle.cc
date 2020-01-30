@@ -593,6 +593,10 @@ bool NetworkHandle::setupMethodSmpt(CURL *curl, FILE * & outputFile) {
 }
 
 bool NetworkHandle::perform() {
+	return perform(nullptr, nullptr);
+}
+
+bool NetworkHandle::perform(const Callback<bool(CURL *)> &onBeforePerform, const Callback<bool(CURL *)> &onAfterPerform) {
 	_isRequestPerformed = false;
 	_errorCode = CURLE_OK;
 
@@ -659,6 +663,15 @@ bool NetworkHandle::perform() {
     	}
         return false;
     }
+
+	if (onBeforePerform) {
+		if (!onBeforePerform(curl)) {
+	    	if (!_silent) {
+	        	log::text("CURL", "onBeforePerform failed");
+	    	}
+	        return false;
+		}
+	}
 
 	_debugData.clear();
 	_parsedHeaders.clear();
@@ -736,6 +749,12 @@ bool NetworkHandle::perform() {
 		_error = errorBuffer;
 		success = false;
     }
+
+	if (onAfterPerform) {
+		if (!onAfterPerform(curl)) {
+			success = false;
+		}
+	}
 
 	Network::releaseHandle(curl, _reuse, success);
 

@@ -308,7 +308,7 @@ bool SqlHandle::insertIntoArray(SqlQuery &query, const Scheme &scheme, int64_t i
 				auto vals = query.insert(mem::toString(scheme.getName(), "_f_", field.getName()))
 						.fields(mem::toString(scheme.getName(), "_id"), "data").values();
 				for (auto &it : d.asArray()) {
-					vals.values(id, db::Binder::DataField {&arrf, it, arrf.isDataLayout()});
+					vals.values(id, db::Binder::DataField {&arrf, it, arrf.isDataLayout(), arrf.hasFlag(db::Flags::Compressed)});
 				}
 				vals.onConflictDoNothing().finalize();
 				return performQuery(query) != stappler::maxOf<size_t>();

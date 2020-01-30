@@ -54,11 +54,15 @@ ifndef LOCAL_MAIN
 XENOLITH_SRCS_DIRS += components/xenolith/platform/win32_main
 endif
 
+XENOLITH_FLAGS := -I$(shell cygpath -u $(VULKAN_SDK))/Include
+
 else ifeq ($(UNAME),Msys)
 
 ifndef LOCAL_MAIN
 XENOLITH_SRCS_DIRS += components/xenolith/platform/win32_main
 endif
+
+XENOLITH_FLAGS := -I$(shell cygpath -u $(VULKAN_SDK))/Include
 
 else
 
@@ -68,7 +72,6 @@ endif
 
 endif
 
-XENOLITH_FLAGS := -I$(shell cygpath -u $(VULKAN_SDK))/Include
 
 TOOLKIT_NAME := XENOLITH
 TOOLKIT_TITLE := xenolith

@@ -34,13 +34,13 @@ using const_char_ptr = const char *;
 using const_char16_ptr = const char16_t *;
 
 template <typename T>
-inline auto StringView_readNumber(const_char_ptr &ptr, size_t &len) -> Result<T> {
+inline auto StringView_readNumber(const_char_ptr &ptr, size_t &len, size_t base) -> Result<T> {
 	char * ret = nullptr;
 	char buf[32] = { 0 }; // int64_t/scientific double character length max
 	size_t m = min(size_t(31), len);
 	memcpy(buf, (const void *)ptr, m);
 
-	auto val = StringToNumber<T>(buf, &ret);
+	auto val = StringToNumber<T>(buf, &ret, base);
 	if (*ret == 0) {
 		ptr += m; len -= m;
 	} else if (ret && ret != buf) {
@@ -52,7 +52,7 @@ inline auto StringView_readNumber(const_char_ptr &ptr, size_t &len) -> Result<T>
 }
 
 template <typename T>
-inline auto StringView_readNumber(const_char16_ptr &ptr, size_t &len) -> Result<T> {
+inline auto StringView_readNumber(const_char16_ptr &ptr, size_t &len, size_t base) -> Result<T> {
 	char * ret = nullptr;
 	char buf[32] = { 0 }; // int64_t/scientific double character length max
 	size_t m = min(size_t(31), len);
@@ -66,7 +66,7 @@ inline auto StringView_readNumber(const_char16_ptr &ptr, size_t &len) -> Result<
 		}
 	}
 
-	auto val = StringToNumber<T>(buf, &ret);
+	auto val = StringToNumber<T>(buf, &ret, base);
 	if (*ret == 0) {
 		ptr += i; len -= i;
 	} else if (ret) {
@@ -158,6 +158,8 @@ public:
 
 	Self sub(size_t pos = 0, size_t len = maxOf<size_t>()) const { return StringViewBase(*this, pos, len); }
 
+	Self pdup(memory::pool_t *) const;
+
 	template <typename Interface = memory::DefaultInterface>
 	auto str() const -> typename Interface::template BasicStringType<CharType>;
 
@@ -174,7 +176,7 @@ public:
 public:
 	Result<float> readFloat();
 	Result<double> readDouble();
-	Result<int64_t> readInteger();
+	Result<int64_t> readInteger(size_t base = 0);
 
 public:
 	template<typename ... Args> void skipChars();
@@ -311,7 +313,7 @@ public:
 public:
 	Result<float> readFloat();
 	Result<double> readDouble();
-	Result<int64_t> readInteger();
+	Result<int64_t> readInteger(size_t base = 0);
 
 public:
 	template<typename ... Args> void skipChars();
@@ -373,7 +375,7 @@ constexpr size_t length(const _CharT *__p) {
 template<typename _CharT>
 constexpr size_t length(const _CharT *__p, size_t max) {
 	size_t __i = 0;
-	while (__p[__i] != _CharT() && __i < max) {
+	while (__i < max && __p[__i] != _CharT()) {
 		++__i;
 	}
 	return __i;
@@ -684,6 +686,14 @@ auto StringViewBase<_CharType>::operator != (const Self &other) const -> bool {
 }
 
 template <typename _CharType>
+auto StringViewBase<_CharType>::pdup(memory::pool_t *p) const -> Self {
+	auto buf = (_CharType *)memory::pool::palloc(p, (this->size() + 1) * sizeof(_CharType));
+	memcpy(buf, this->data(), this->size() * sizeof(_CharType));
+	buf[this->size()] = 0;
+	return Self(buf, this->size());
+}
+
+template <typename _CharType>
 template <typename Interface>
 auto StringViewBase<_CharType>::str() const -> typename Interface::template BasicStringType<CharType> {
 	if (this->ptr && this->len > 0) {
@@ -777,17 +787,17 @@ auto StringViewBase<_CharType>::operator -= (const Self &other) const -> Self & 
 
 template <typename _CharType>
 auto StringViewBase<_CharType>::readFloat() -> Result<float> {
-	return StringView_readNumber<float>(this->ptr, this->len);
+	return StringView_readNumber<float>(this->ptr, this->len, 0);
 }
 
 template <typename _CharType>
 auto StringViewBase<_CharType>::readDouble() -> Result<double> {
-	return StringView_readNumber<double>(this->ptr, this->len);
+	return StringView_readNumber<double>(this->ptr, this->len, 0);
 }
 
 template <typename _CharType>
-auto StringViewBase<_CharType>::readInteger() -> Result<int64_t> {
-	return StringView_readNumber<int64_t>(this->ptr, this->len);
+auto StringViewBase<_CharType>::readInteger(size_t base) -> Result<int64_t> {
+	return StringView_readNumber<int64_t>(this->ptr, this->len, base);
 }
 
 template <typename _CharType>
@@ -1123,13 +1133,13 @@ inline StringViewUtf8::operator StringViewBase<char> () const {
 }
 
 inline Result<float> StringViewUtf8::readFloat() {
-	return StringView_readNumber<float>(ptr, len);
+	return StringView_readNumber<float>(ptr, len, 0);
 }
 inline Result<double> StringViewUtf8::readDouble() {
-	return StringView_readNumber<double>(ptr, len);
+	return StringView_readNumber<double>(ptr, len, 0);
 }
-inline Result<int64_t> StringViewUtf8::readInteger() {
-	return StringView_readNumber<int64_t>(ptr, len);
+inline Result<int64_t> StringViewUtf8::readInteger(size_t base) {
+	return StringView_readNumber<int64_t>(ptr, len, base);
 }
 
 template<typename ... Args>

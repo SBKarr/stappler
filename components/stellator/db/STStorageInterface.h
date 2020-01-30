@@ -110,6 +110,7 @@ public:
 		const db::Field *field;
 		const mem::Value &data;
 		bool force = false;
+		bool compress = false;
 	};
 
 	struct FullTextField {

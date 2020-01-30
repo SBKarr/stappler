@@ -161,12 +161,13 @@ struct pool_t {
     hash_t *user_data = nullptr;
 
 	allocmngr_t<pool_t> allocmngr;
+	bool threadSafe = false;
 
-	static pool_t *create(allocator_t *alloc = nullptr);
+	static pool_t *create(allocator_t *alloc = nullptr, bool threadSafe = false);
 	static void destroy(pool_t *);
 
 	pool_t();
-	pool_t(allocator_t *alloc, memnode_t *node);
+	pool_t(allocator_t *alloc, memnode_t *node, bool threadSafe = false);
 	pool_t(pool_t *parent, allocator_t *alloc, memnode_t *node);
 	~pool_t();
 
@@ -189,6 +190,9 @@ struct pool_t {
 	status_t userdata_set(const void *data, const char *key, cleanup_t::callback_t cb);
 	status_t userdata_setn(const void *data, const char *key, cleanup_t::callback_t cb);
 	status_t userdata_get(void **data, const char *key);
+
+	void lock();
+	void unlock();
 };
 
 using hashfunc_t = uint32_t (*)(const char *key, ssize_t *klen);

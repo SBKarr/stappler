@@ -55,6 +55,7 @@ public:
 
 	bool init(Method method, const StringView &url);
 	bool perform();
+	bool perform(const Callback<bool(CURL *)> &onBeforePerform, const Callback<bool(CURL *)> &onAfterPerform);
 
 	void setRootCertificateFile(const StringView &);
 	void setCookieFile(const StringView &);

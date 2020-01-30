@@ -957,4 +957,12 @@ void Time::encodeIso8601(char *date_str) {
 	*date_str++ = 0;
 }
 
+size_t Time::encodeToFormat(char *buf, size_t bufSize, const char *fmt) {
+	struct tm tm;
+	time_t tt = toSeconds();
+	gmtime_r(&tt, &tm);
+
+	return strftime(buf, bufSize, fmt, &tm);
+}
+
 NS_SP_END

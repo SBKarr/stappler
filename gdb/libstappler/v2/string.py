@@ -34,7 +34,10 @@ class MemoryStringPrinter(object):
         if (int(memVal['_allocator']['pool']) & 1) == 1:
             return "%s" % (memVal['_small']['storage']['_M_elems'][0].address.string())
         else:
-            return "%s" % (memVal['_large']['_ptr'])
+            if int(memVal['_large']['_ptr']) == 0:
+                return ""
+            else:
+                return "%s" % (memVal['_large']['_ptr'].string())
 
     def display_hint(self):
         return 'string'

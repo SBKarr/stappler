@@ -176,6 +176,9 @@ storage::Adapter Handler::storage() const {
 	apr_pool_userdata_get((void **)&db, (const char *)config::getSerenityWebsocketDatabaseName(), pool);
 	if (!db) {
 		db = new (pool) db::pq::Handle(db::pq::Driver::open(), db::pq::Driver::Handle(Root::getInstance()->dbdPoolAcquire(_request.server(), pool)));
+		auto cfg = (Server::Config *)_request.server().getConfig();
+		db->setStorageTypeMap(&cfg->storageTypes);
+		db->setCustomTypeMap(&cfg->customTypes);
 		apr_pool_userdata_set(db, (const char *)config::getSerenityWebsocketDatabaseName(), NULL, pool);
 	}
 	return db;

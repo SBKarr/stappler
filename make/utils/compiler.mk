@@ -152,7 +152,8 @@ sp_toolkit_source_list = $(foreach f,$(realpath\
 
 sp_toolkit_include_list = $(foreach f,$(realpath\
 	$(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) -type d)) \
-	$(addprefix $(GLOBAL_ROOT)/,$(2))\
+	$(addprefix $(GLOBAL_ROOT)/,$(filter-out /%,$(2))) \
+	$(filter /%,$(2)) \
 ),$(call sp_unconvert_path,$(f)))
 
 sp_toolkit_object_list = $(abspath $(addprefix $(1),$(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(patsubst %.mm,%.o,$(2))))))

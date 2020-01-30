@@ -144,4 +144,4 @@ BUILD_CXXFLAGS += $(addprefix -I,$(BUILD_INCLUDES))
 
 BUILD_LIBS := $(foreach lib,$(LOCAL_LIBS),-L$(dir $(lib)) -l:$(notdir $(lib))) $(TOOLKIT_LIBS)
 
--include $(patsubst %.o,%.d,$(BUILD_OBJS) $(BUILD_MAIN_OBJ))
+-include $(patsubst %.o,%.o.d,$(BUILD_OBJS) $(BUILD_MAIN_OBJ))

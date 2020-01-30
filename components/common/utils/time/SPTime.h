@@ -196,6 +196,13 @@ public:
 		return StringType(buf);
 	}
 
+	template <typename Interface = memory::DefaultInterface>
+	auto toFormat(const char *fmt) -> typename Interface::StringType {
+		using StringType = typename Interface::StringType;
+		char buf[1_KiB] = { 0 }; // should be enough
+		return StringType(buf, encodeToFormat(buf, 1_KiB, fmt));
+	}
+
     inline const Time operator+(const TimeInterval& v) const;
     inline Time& operator+=(const TimeInterval& v);
 
@@ -227,6 +234,8 @@ protected:
 	void encodeRfc822(char *);
 	void encodeCTime(char *);
 	void encodeIso8601(char *);
+
+	size_t encodeToFormat(char *, size_t, const char *fmt);
 };
 
 struct sp_time_exp_t {

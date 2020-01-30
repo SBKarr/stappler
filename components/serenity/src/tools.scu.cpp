@@ -48,7 +48,3 @@ THE SOFTWARE.
 #include "ToolsErrors.cc"
 #include "ToolsTestHandler.cc"
 #include "ToolsVirtual.cc"
-#include "WebSocket.cc"
-#include "WebSocketManager.cc"
-#include "WebSocketReader.cc"
-#include "WebSocketWriter.cc"

@@ -74,6 +74,7 @@ protected:
 	int _pipe[2] = { -1, -1 };
 	int _eventFd = -1;
 	int _socket = -1;
+	mem::Time _start = mem::Time::now();
 };
 
 class ConnectionWorker : public mem::AllocBase {
@@ -265,7 +266,7 @@ void ConnectionQueue::run() {
 }
 
 ConnectionQueue::~ConnectionQueue() {
-	std::cout << "Cancel\n";
+	std::cout << "Cancel (with " << (mem::Time::now() - _start).toMicros() << "mks)\n";
 	if (_pipe[0] > -1) { close(_pipe[0]); }
 	if (_pipe[1] > -1) { close(_pipe[1]); }
 	if (_eventFd > -1) { close(_eventFd); }

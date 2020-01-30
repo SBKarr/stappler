@@ -250,15 +250,15 @@ using AllocBase = toolkit::TypeTraits::allocator_base;
 using Mutex = toolkit::TypeTraits::mutex_type;
 
 template <typename T> auto StringToNumber(const memory::StandartInterface::StringType &str) -> T {
-	return StringToNumber<T>(str.data(), nullptr);
+	return StringToNumber<T>(str.data(), nullptr, 0);
 }
 
 template <typename T> auto StringToNumber(const memory::PoolInterface::StringType &str) -> T {
-	return StringToNumber<T>(str.data(), nullptr);
+	return StringToNumber<T>(str.data(), nullptr, 0);
 }
 
 template <typename T> auto StringToNumber(const char *str) -> T {
-	return StringToNumber<T>(str, nullptr);
+	return StringToNumber<T>(str, nullptr, 0);
 }
 
 NS_SP_END

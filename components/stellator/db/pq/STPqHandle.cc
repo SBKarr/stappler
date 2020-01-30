@@ -124,7 +124,7 @@ public:
 		binary.emplace_back(true);
 		return params.size();
 	}
-	size_t push(mem::StringStream &query, const mem::Value &val, bool force) {
+	size_t push(mem::StringStream &query, const mem::Value &val, bool force, bool compress = false) {
 		if (!force) {
 			switch (val.getType()) {
 			case mem::Value::Type::EMPTY:
@@ -164,14 +164,16 @@ public:
 				break;
 			case mem::Value::Type::ARRAY:
 			case mem::Value::Type::DICTIONARY:
-				params.emplace_back(mem::writeData(val, mem::EncodeFormat::Cbor));
+				params.emplace_back(mem::writeData(val, mem::EncodeFormat(mem::EncodeFormat::Cbor,
+						compress ? mem::EncodeFormat::LZ4HCCompression : mem::EncodeFormat::DefaultCompress)));
 				binary.emplace_back(true);
 				query << "$" << params.size() << "::bytea";
 				break;
 			default: break;
 			}
 		} else {
-			params.emplace_back(mem::writeData(val, mem::EncodeFormat::Cbor));
+			params.emplace_back(mem::writeData(val, mem::EncodeFormat(mem::EncodeFormat::Cbor,
+					compress ? mem::EncodeFormat::LZ4HCCompression : mem::EncodeFormat::DefaultCompress)));
 			binary.emplace_back(true);
 			query << "$" << params.size() << "::bytea";
 		}
@@ -227,7 +229,7 @@ public:
 				query << "NULL";
 			}
 		} else {
-			push(query, f.data, f.force);
+			push(query, f.data, f.force, f.compress);
 		}
 	}
 	virtual void bindTypeString(db::Binder &, mem::StringStream &query, const db::Binder::TypeString &type) override {
@@ -336,7 +338,7 @@ public:
 			return 0;
 		} else {
 			auto val = driver->getValue(result, row, field);
-			return stappler::StringToNumber<int64_t>(val, nullptr);
+			return stappler::StringToNumber<int64_t>(val, nullptr, 0);
 		}
 	}
 	virtual double toDouble(size_t row, size_t field) override {
@@ -351,7 +353,7 @@ public:
 			return 0;
 		} else {
 			auto val = driver->getValue(result, row, field);
-			return stappler::StringToNumber<int64_t>(val, nullptr);
+			return stappler::StringToNumber<int64_t>(val, nullptr, 0);
 		}
 	}
 	virtual bool toBool(size_t row, size_t field) override {
@@ -423,7 +425,7 @@ public:
 			return 0;
 		} else {
 			auto val = driver->getValue(result, 0, 0);
-			return stappler::StringToNumber<int64_t>(val, nullptr);
+			return stappler::StringToNumber<int64_t>(val, nullptr, 0);
 		}
 	}
 	virtual mem::StringView getFieldName(size_t field) override {

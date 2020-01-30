@@ -202,8 +202,8 @@ pool_t *create() {
 	}
 	return nullptr;
 }
-pool_t *createWithAllocator(allocator_t *alloc) {
-	if (auto ret = internals::createWithAllocator(alloc)) {
+pool_t *createWithAllocator(allocator_t *alloc, bool threadSafe) {
+	if (auto ret = internals::createWithAllocator(alloc, threadSafe)) {
 		SP_POOL_LOG("create %p", ret);
 		return ret;
 	}
@@ -313,7 +313,7 @@ pool_t *create() {
 	apr_pool_create_unmanaged(&ret);
 	return ret;
 }
-pool_t *createWithAllocator(apr_allocator_t *alloc) {
+pool_t *createWithAllocator(apr_allocator_t *alloc, bool threadSafe) {
 	pool_t *ret = nullptr;
 	apr_pool_create_unmanaged_ex(&ret, NULL, alloc);
 	return ret;

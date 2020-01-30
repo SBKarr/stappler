@@ -249,6 +249,10 @@ public:
 		// functor is not owned, so, no cleanup
 	}
 
+	callback(nullptr_t) noexcept : mFunctor(nullptr), mCallback(nullptr) { }
+
+	callback& operator=(nullptr_t) noexcept { mFunctor = nullptr; mCallback = nullptr; }
+
 	template <typename FunctionT>
 	callback(const FunctionT & f) noexcept
 	: mFunctor(&f), mCallback([] (const void* arg, ArgumentTypes ... args) {

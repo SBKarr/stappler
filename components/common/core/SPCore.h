@@ -387,58 +387,58 @@ constexpr typename std::underlying_type<E>::type toInt(const E &e) {
     return static_cast<typename std::underlying_type<E>::type>(e);
 }
 
-template <typename T> auto StringToNumber(const char *ptr, char ** tail) -> T;
+template <typename T> auto StringToNumber(const char *ptr, char ** tail, size_t base) -> T;
 
 template <> inline auto
-StringToNumber<unsigned int>(const char *ptr, char ** tail) -> unsigned int {
+StringToNumber<unsigned int>(const char *ptr, char ** tail, size_t base) -> unsigned int {
 	if (ptr) {
-		return (unsigned int)strtoul(ptr, tail, 0);
+		return (unsigned int)strtoul(ptr, tail, base);
 	}
 	return 0;
 }
 
 template <> inline auto
-StringToNumber<unsigned long>(const char *ptr, char ** tail) -> unsigned long {
+StringToNumber<unsigned long>(const char *ptr, char ** tail, size_t base) -> unsigned long {
 	if (ptr) {
-		return strtoul(ptr, tail, 0);
+		return strtoul(ptr, tail, base);
 	}
 	return 0;
 }
 
 template <> inline auto
-StringToNumber<unsigned long long>(const char *ptr, char ** tail) -> unsigned long long {
+StringToNumber<unsigned long long>(const char *ptr, char ** tail, size_t base) -> unsigned long long {
 	if (ptr) {
-		return strtoull(ptr, tail, 0);
+		return strtoull(ptr, tail, base);
 	}
 	return 0;
 }
 
 template <> inline auto
-StringToNumber<int>(const char *ptr, char ** tail) -> int {
+StringToNumber<int>(const char *ptr, char ** tail, size_t base) -> int {
 	if (ptr) {
-		return (int)strtol(ptr, tail, 0);
+		return (int)strtol(ptr, tail, base);
 	}
 	return 0;
 }
 
 template <> inline auto
-StringToNumber<long>(const char *ptr, char ** tail) -> long {
+StringToNumber<long>(const char *ptr, char ** tail, size_t base) -> long {
 	if (ptr) {
-		return strtol(ptr, tail, 0);
+		return strtol(ptr, tail, base);
 	}
 	return 0;
 }
 
 template <> inline auto
-StringToNumber<long long>(const char *ptr, char ** tail) -> long long {
+StringToNumber<long long>(const char *ptr, char ** tail, size_t base) -> long long {
 	if (ptr) {
-		return strtoll(ptr, tail, 0);
+		return strtoll(ptr, tail, base);
 	}
 	return 0;
 }
 
 template <> inline auto
-StringToNumber<float>(const char *ptr, char ** tail) -> float {
+StringToNumber<float>(const char *ptr, char ** tail, size_t base) -> float {
 	if (ptr) {
 		return strtof(ptr, tail);
 	}
@@ -446,7 +446,7 @@ StringToNumber<float>(const char *ptr, char ** tail) -> float {
 }
 
 template <> inline auto
-StringToNumber<double>(const char *ptr, char ** tail) -> double {
+StringToNumber<double>(const char *ptr, char ** tail, size_t base) -> double {
 	if (ptr) {
 		return strtod(ptr, tail);
 	}

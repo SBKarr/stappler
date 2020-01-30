@@ -374,7 +374,7 @@ bool Url::parseInternal(const StringView &str) {
 				} else {
 					return false;
 				}
-				_port = StringToNumber<uint32_t>(port.data(), nullptr);
+				_port = StringToNumber<uint32_t>(port.data(), nullptr, 0);
 				s = tmpS;
 				if (s.is('/')) {
 					++ s;
@@ -478,7 +478,7 @@ bool Url::parseInternal(const StringView &str) {
 			++ s;
 			auto port = s.readChars<Range<'0', '9'>>();
 			if (!port.empty()) {
-				_port = StringToNumber<uint32_t>(port.data(), nullptr);
+				_port = StringToNumber<uint32_t>(port.data(), nullptr, 0);
 			} else {
 				return false;
 			}
@@ -628,7 +628,7 @@ Url &Url::setHost(const StringView &str) {
 		_host = str.str();
 	} else {
 		_host = str.sub(0, pos).str();
-		_port = StringToNumber<uint32_t>(str.data() + pos + 1, nullptr);
+		_port = StringToNumber<uint32_t>(str.data() + pos + 1, nullptr, 0);
 	}
 	return *this;
 }

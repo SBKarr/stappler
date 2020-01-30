@@ -18,12 +18,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-ifndef APACHE_INCLUDE
-APACHE_INCLUDE := /usr/local/include/apache
-endif
+APACHE_INCLUDE ?= /usr/local/include/apache
 
-SERENITY_OUTPUT_DIR = $(TOOLKIT_OUTPUT)/serenity
-SERENITY_OUTPUT = $(TOOLKIT_OUTPUT)/mod_serenity.so
+SERENITY_OUTPUT_DIR = $(abspath $(TOOLKIT_OUTPUT)/serenity)
+SERENITY_OUTPUT = $(abspath $(TOOLKIT_OUTPUT)/mod_serenity.so)
 SERENITY_SRCS_DIRS += \
 	components/common \
 	components/spug \
@@ -55,6 +53,7 @@ SERENITY_INCLUDES_DIRS += \
 	components/stellator/utils \
 
 SERENITY_INCLUDES_OBJS += \
+	$(OSTYPE_INCLUDE) \
 	components/document/src/mmd/common \
 	components/document/src/mmd/processors \
 	components/serenity/ext/cityhash \
@@ -63,7 +62,8 @@ SERENITY_INCLUDES_OBJS += \
 	components/layout/document \
 	components/layout/vg \
 	components/layout/vg/tess \
-	components/layout
+	components/layout \
+	$(APACHE_INCLUDE)
 
 SERENITY_LIBS += -L$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH) $(OSTYPE_SERENITY_LIBS) -lpq
 
@@ -88,38 +88,14 @@ SERENITY_VIRTUAL_SRCS := \
 	$(shell find $(GLOBAL_ROOT)/components/serenity/virtual/html -name '*.html') \
 	$(shell find $(GLOBAL_ROOT)/components/serenity/virtual/html -name '*.pug')
 
-SERENITY_GCH := $(addprefix $(GLOBAL_ROOT)/,$(SERENITY_PRECOMPILED_HEADERS))
-SERENITY_H_GCH := $(patsubst $(GLOBAL_ROOT)/%,$(SERENITY_OUTPUT_DIR)/include/%,$(SERENITY_GCH))
-SERENITY_GCH := $(addsuffix .gch,$(SERENITY_H_GCH))
-
-SERENITY_OBJS := $(patsubst %.c,%.o,$(patsubst %.cpp,%.o,$(patsubst $(GLOBAL_ROOT)/%,$(SERENITY_OUTPUT_DIR)/%,$(SERENITY_SRCS))))
-SERENITY_DIRS := $(sort $(dir $(SERENITY_OBJS))) $(sort $(dir $(SERENITY_GCH)))
-
-SERENITY_INPUT_CFLAGS := $(addprefix -I,$(sort $(dir $(SERENITY_GCH)))) $(addprefix -I,$(SERENITY_INCLUDES))
-
-SERENITY_CXXFLAGS := $(GLOBAL_CXXFLAGS) $(SERENITY_FLAGS) $(SERENITY_INPUT_CFLAGS)
-SERENITY_CFLAGS := $(GLOBAL_CFLAGS) $(SERENITY_FLAGS) $(SERENITY_INPUT_CFLAGS)
-
 # Progress counter
-SERENITY_COUNTER := 0
-SERENITY_WORDS := $(words $(SERENITY_GCH) $(SERENITY_OBJS))
 
-define SERENITY_template =
-$(eval SERENITY_COUNTER=$(shell echo $$(($(SERENITY_COUNTER)+1))))
-$(1):BUILD_CURRENT_COUNTER:=$(SERENITY_COUNTER)
-$(1):BUILD_FILES_COUNTER:=$(SERENITY_WORDS)
-$(1):BUILD_LIBRARY := serenity
-endef
+TOOLKIT_NAME := SERENITY
+TOOLKIT_TITLE := serenity
 
-STAPPLER_MAKE_ROOT ?= $(realpath $(GLOBAL_ROOT))
-STAPPLER_REPO_TAG := $(shell $(STAPPLER_MAKE_ROOT)/make-version.sh $(STAPPLER_MAKE_ROOT))
+include $(GLOBAL_ROOT)/make/utils/toolkit.mk
 
-$(foreach obj,$(SERENITY_GCH) $(SERENITY_OBJS),$(eval $(call SERENITY_template,$(obj))))
-
--include $(patsubst %.o,%.d,$(SERENITY_OBJS))
--include $(patsubst %.gch,%.d,$(SERENITY_GCH))
-
-$(SERENITY_OUTPUT_DIR)/include/%.h : $(GLOBAL_ROOT)/%.h
+$(SERENITY_OUTPUT_DIR)/include/%.h : /%.h
 	@$(GLOBAL_MKDIR) $(dir $(SERENITY_OUTPUT_DIR)/include/$*.h)
 	@cp -f $< $(SERENITY_OUTPUT_DIR)/include/$*.h
 

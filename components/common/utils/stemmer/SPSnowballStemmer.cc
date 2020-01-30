@@ -264,6 +264,25 @@ bool Stemmer::isStopwordsEnabled() const {
 	return _stopwordsEnabled;
 }
 
+void Stemmer::stemPhrase(const StringView &words, const Callback<void(StringView, StringView, Language)> &cb, Language ilang) {
+	splitPhrase(words, [&] (const StringView &word) {
+		String w = string::tolower<memory::PoolInterface>(word);
+
+		auto lang = ilang;
+		if (lang == Unknown) {
+			lang = detectWordLanguage(w);
+			if (lang == Unknown) {
+				return;
+			}
+		}
+
+		auto ret = stemWord(w, lang);
+		if (!ret.empty()) {
+			cb(word, ret, lang);
+		}
+	});
+}
+
 StringView Stemmer::stemWord(const StringView &word, Language lang) {
 	if (lang == Unknown) {
 		lang = detectWordLanguage(word);
@@ -693,7 +712,17 @@ Stemmer::String Stemmer::makeProducerHeadlines(const Callback<void(const Functio
 	return ret.str();
 }
 
-void Stemmer::splitHtmlText(const StringView &data, const Function<void(const StringView &)> &cb) {
+void Stemmer::splitPhrase(const StringView &words, const Callback<void(StringView)> &cb) {
+	StringViewUtf8(words).split<SplitTokens>([&] (StringViewUtf8 word) {
+		StringView r(word);
+		r.trimChars<TrimToken>();
+		if (!r.empty()) {
+			cb(r);
+		}
+	});
+}
+
+void Stemmer::splitHtmlText(const StringView &data, const Callback<void(StringView)> &cb) {
 	Stemmer_Reader r;
 	r.callback = [&] (Stemmer_Reader::Parser &p, const StringView &str) {
 		cb(str);

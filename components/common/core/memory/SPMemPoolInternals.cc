@@ -231,7 +231,7 @@ bool allocator_t::run_mmap(uint32_t idx) {
 	void *reserveMem = mmap(NULL, 64_GiB, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
 	// Now the file is ready to be mmapped.
-	void *map = mmap(reserveMem, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED, mmapdes, 0);
+	void *map = mmap(reserveMem, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED | MAP_NORESERVE, mmapdes, 0);
 	if (map == MAP_FAILED) {
 		close(mmapdes);
 		perror("Error mmapping the file");
@@ -258,9 +258,13 @@ void allocator_t::set_max(uint32_t size) {
 	}
 }
 
-static uint32_t allocator_mmap_realloc(int filedes, void *ptr, uint32_t idx) {
+static uint32_t allocator_mmap_realloc(int filedes, void *ptr, uint32_t idx, uint32_t required) {
 #if LINUX
+	auto oldSize = idx * BOUNDARY_SIZE;
 	auto newSize = idx * 2 * BOUNDARY_SIZE;
+	if (newSize / BOUNDARY_SIZE < required) {
+		newSize = required * BOUNDARY_SIZE;
+	}
 	if (lseek(filedes, newSize - 1, SEEK_SET) == -1) {
 		close(filedes);
 		perror("Error calling lseek() to 'stretch' the file");
@@ -273,8 +277,18 @@ static uint32_t allocator_mmap_realloc(int filedes, void *ptr, uint32_t idx) {
 		return 0;
 	}
 
-	if (mremap(ptr, idx * BOUNDARY_SIZE, newSize, 0) != MAP_FAILED) {
-		return idx * 2;
+	munmap((char *)ptr + oldSize, newSize - oldSize);
+	auto err = mremap(ptr, oldSize, newSize, 0);
+	if (err != MAP_FAILED) {
+		return newSize / BOUNDARY_SIZE;
+	}
+	auto memerr = errno;
+	switch (memerr) {
+	case EAGAIN: perror("EAGAIN"); break;
+	case EFAULT: perror("EFAULT"); break;
+	case EINVAL: perror("EINVAL"); break;
+	case ENOMEM: perror("ENOMEM"); break;
+	default: break;
 	}
 	return 0;
 #else
@@ -377,7 +391,7 @@ memnode_t *allocator_t::alloc(uint32_t in_size) {
 	memnode_t *node = nullptr;
 	if (mmapPtr) {
 		if (mmapCurrent + (index + 1) > mmapMax) {
-			auto newMax = allocator_mmap_realloc(mmapdes, mmapPtr, mmapMax);
+			auto newMax = allocator_mmap_realloc(mmapdes, mmapPtr, mmapMax, mmapCurrent + index + 1);
 			if (!newMax) {
 				return nullptr;
 			} else {
@@ -494,6 +508,7 @@ void allocator_t::unlock() {
 }
 
 void *pool_t::alloc(size_t &sizeInBytes) {
+	std::unique_lock<pool_t> lock(*this);
 	if (sizeInBytes >= BlockThreshold) {
 		return allocmngr.alloc(sizeInBytes);
 	}
@@ -501,8 +516,10 @@ void *pool_t::alloc(size_t &sizeInBytes) {
 	allocmngr.increment_alloc(sizeInBytes);
 	return palloc(sizeInBytes);
 }
+
 void pool_t::free(void *ptr, size_t sizeInBytes) {
 	if (sizeInBytes >= BlockThreshold) {
+		std::unique_lock<pool_t> lock(*this);
 		allocmngr.free(ptr, sizeInBytes);
 	}
 }
@@ -599,7 +616,7 @@ void pool_t::clear() {
 	this->allocmngr.reset(this);
 }
 
-pool_t *pool_t::create(allocator_t *alloc) {
+pool_t *pool_t::create(allocator_t *alloc, bool threadSafe) {
 	allocator_t *allocator = alloc;
 	if (allocator == nullptr) {
 		allocator = new allocator_t();
@@ -609,7 +626,7 @@ pool_t *pool_t::create(allocator_t *alloc) {
 	node->next = node;
 	node->ref = &node->next;
 
-	pool_t *pool = new (node->first_avail) pool_t(allocator, node);
+	pool_t *pool = new (node->first_avail) pool_t(allocator, node, threadSafe);
 	node->first_avail = pool->self_first_avail = (uint8_t *)pool + SIZEOF_POOL_T;
 
 	if (!alloc) {
@@ -626,8 +643,8 @@ void pool_t::destroy(pool_t *pool) {
 
 pool_t::pool_t() : allocmngr{this} { }
 
-pool_t::pool_t(allocator_t *alloc, memnode_t *node)
-: allocator(alloc), active(node), self(node), allocmngr{this} { }
+pool_t::pool_t(allocator_t *alloc, memnode_t *node, bool threadSafe)
+: allocator(alloc), active(node), self(node), allocmngr{this}, threadSafe(threadSafe) { }
 
 pool_t::pool_t(pool_t *p, allocator_t *alloc, memnode_t *node)
 : allocator(alloc), active(node), self(node), allocmngr{this} {
@@ -835,6 +852,18 @@ status_t pool_t::userdata_get(void **data, const char *key) {
     return SUCCESS;
 }
 
+void pool_t::lock() {
+	if (threadSafe) {
+		allocator->mutex.lock();
+	}
+}
+
+void pool_t::unlock() {
+	if (threadSafe) {
+		allocator->mutex.unlock();
+	}
+}
+
 struct StaticHolder {
 	StaticHolder() {
 		initialize();
@@ -870,8 +899,8 @@ void terminate() {
 pool_t *create() {
 	return pool_t::create();
 }
-pool_t *createWithAllocator(allocator_t *alloc) {
-	return pool_t::create(alloc);
+pool_t *createWithAllocator(allocator_t *alloc, bool threadSafe) {
+	return pool_t::create(alloc, threadSafe);
 }
 pool_t *create(pool_t *p) {
 	if (p) {

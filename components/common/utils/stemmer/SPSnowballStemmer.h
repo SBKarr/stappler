@@ -103,10 +103,9 @@ public:
 	static Language parseLanguage(const StringView &);
 
 	// split phrase
-	template <typename Callback>
-	static void splitPhrase(const StringView &, const Callback &);
+	static void splitPhrase(const StringView &, const Callback<void(StringView)> &);
 
-	static void splitHtmlText(const StringView &, const Function<void(const StringView &)> &);
+	static void splitHtmlText(const StringView &, const Callback<void(StringView)> &);
 
 	static Language detectWordDefaultLanguage(const StringView &);
 
@@ -123,8 +122,7 @@ public:
 	void setStopwordsEnabled(bool);
 	bool isStopwordsEnabled() const;
 
-	template <typename Callback>
-	void stemPhrase(const StringView &, const Callback &, Language = Unknown);
+	void stemPhrase(const StringView &, const Callback<void(StringView, StringView, Language)> &, Language = Unknown);
 
 	StringView stemWord(const StringView &, Language = Unknown);
 	Language detectWordLanguage(const StringView &) const;
@@ -207,37 +205,6 @@ struct SearchData {
 	static StringView getLanguageString(Language);
 	StringView getLanguageString() const;
 };
-
-template <typename Callback>
-void Stemmer::splitPhrase(const StringView &words, const Callback &cb) {
-	StringViewUtf8(words).split<SplitTokens>([&] (StringViewUtf8 word) {
-		StringView r(word);
-		r.trimChars<TrimToken>();
-		if (!r.empty()) {
-			cb(r);
-		}
-	});
-}
-
-template <typename Callback>
-void Stemmer::stemPhrase(const StringView &words, const Callback &cb, Language ilang) {
-	splitPhrase(words, [&] (const StringView &word) {
-		String w = string::tolower<memory::PoolInterface>(word);
-
-		auto lang = ilang;
-		if (lang == Unknown) {
-			lang = detectWordLanguage(w);
-			if (lang == Unknown) {
-				return;
-			}
-		}
-
-		auto ret = stemWord(w, lang);
-		if (!ret.empty()) {
-			cb(word, ret, lang);
-		}
-	});
-}
 
 NS_SP_EXT_END(search)
 

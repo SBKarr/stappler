@@ -331,6 +331,7 @@ bool validateNumber(const StringView &str) {
 	}
 
 	StringView r(str);
+	if (r.is('-')) { ++ r; }
 	r.skipChars<chars::Range<char, '0', '9'>>();
 	if (!r.empty()) {
 		return false;

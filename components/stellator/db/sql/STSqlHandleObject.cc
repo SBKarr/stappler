@@ -92,7 +92,7 @@ mem::Value SqlHandle::create(Worker &worker, const mem::Value &data) {
 				if (f->getType() == db::Type::FullTextView) {
 					val.value(db::Binder::FullTextField{it.second});
 				} else {
-					val.value(db::Binder::DataField{f, it.second, f->isDataLayout()});
+					val.value(db::Binder::DataField{f, it.second, f->isDataLayout(), f->hasFlag(db::Flags::Compressed)});
 				}
 			}
 		}
@@ -175,7 +175,7 @@ mem::Value SqlHandle::save(Worker &worker, uint64_t oid, const mem::Value &data,
 							upd.set(it, oid);
 						}
 					} else if (type != db::Type::Set && type != db::Type::Array && type != db::Type::View) {
-						upd.set(it, db::Binder::DataField{f_it, val, f_it->isDataLayout()});
+						upd.set(it, db::Binder::DataField{f_it, val, f_it->isDataLayout(), f_it->hasFlag(db::Flags::Compressed)});
 					}
 				}
 			}
@@ -186,7 +186,7 @@ mem::Value SqlHandle::save(Worker &worker, uint64_t oid, const mem::Value &data,
 					if (type == db::Type::FullTextView) {
 						upd.set(it.first, db::Binder::FullTextField{it.second});
 					} else if (type != db::Type::Set && type != db::Type::Array && type != db::Type::View) {
-						upd.set(it.first, db::Binder::DataField{f_it, it.second, f_it->isDataLayout()});
+						upd.set(it.first, db::Binder::DataField{f_it, it.second, f_it->isDataLayout(), f_it->hasFlag(db::Flags::Compressed)});
 					}
 				}
 			}
@@ -263,7 +263,7 @@ mem::Value SqlHandle::patch(Worker &worker, uint64_t oid, const mem::Value &patc
 				if (f_it->getType() == db::Type::FullTextView) {
 					upd.set(it.first, db::Binder::FullTextField{it.second});
 				} else {
-					upd.set(it.first, db::Binder::DataField{f_it, it.second, f_it->isDataLayout()});
+					upd.set(it.first, db::Binder::DataField{f_it, it.second, f_it->isDataLayout(), f_it->hasFlag(db::Flags::Compressed)});
 				}
 			}
 		}

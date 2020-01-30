@@ -296,6 +296,139 @@ auto DataReader<Endianess>::readBytes(size_t s) -> DataReader {
 	return ret;
 }
 
+
+
+template <typename Compare>
+inline int compareDataRanges(const uint8_t *l, size_t __lsize,  const uint8_t *r, size_t __rsize, const Compare &cmp) {
+	return std::lexicographical_compare(l, l + __lsize, r, r + __rsize, cmp);
+}
+
+template <ByteOrder::Endian Endianess>
+inline bool operator== (const memory::PoolInterface::BytesType &l, const DataReader<Endianess> &r) {
+	return DataReader<Endianess>(l) == r;
+}
+
+template <ByteOrder::Endian Endianess>
+inline bool operator== (const memory::StandartInterface::BytesType &l, const DataReader<Endianess> &r) {
+	return DataReader<Endianess>(l) == r;
+}
+
+template <ByteOrder::Endian Endianess>
+inline bool operator== (const DataReader<Endianess> &l, const memory::PoolInterface::BytesType &r) {
+	return l == DataReader<Endianess>(r);
+}
+
+template <ByteOrder::Endian Endianess>
+inline bool operator== (const DataReader<Endianess> &l, const memory::StandartInterface::BytesType &r) {
+	return l == DataReader<Endianess>(r);
+}
+
+
+template <ByteOrder::Endian Endianess>
+inline bool operator!= (const memory::PoolInterface::BytesType &l, const DataReader<Endianess> &r) {
+	return DataReader<Endianess>(l) != r;
+}
+
+template <ByteOrder::Endian Endianess>
+inline bool operator!= (const memory::StandartInterface::BytesType &l, const DataReader<Endianess> &r) {
+	return DataReader<Endianess>(l) != r;
+}
+
+template <ByteOrder::Endian Endianess>
+inline bool operator!= (const DataReader<Endianess> &l, const memory::PoolInterface::BytesType &r) {
+	return l != DataReader<Endianess>(r);
+}
+
+template <ByteOrder::Endian Endianess>
+inline bool operator!= (const DataReader<Endianess> &l, const memory::StandartInterface::BytesType &r) {
+	return l != DataReader<Endianess>(r);
+}
+
+
+template <ByteOrder::Endian Endianess>
+inline bool operator< (const memory::PoolInterface::BytesType &l, const DataReader<Endianess> &r) {
+	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less<uint8_t>());
+}
+
+template <ByteOrder::Endian Endianess>
+inline bool operator< (const memory::StandartInterface::BytesType &l, const DataReader<Endianess> &r) {
+	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less<uint8_t>());
+}
+
+template <ByteOrder::Endian Endianess>
+inline bool operator< (const DataReader<Endianess> &l, const memory::PoolInterface::BytesType &r) {
+	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less<uint8_t>());
+}
+
+template <ByteOrder::Endian Endianess>
+inline bool operator< (const DataReader<Endianess> &l, const memory::StandartInterface::BytesType &r) {
+	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less<uint8_t>());
+}
+
+
+template <ByteOrder::Endian Endianess>
+inline bool operator<= (const memory::PoolInterface::BytesType &l, const DataReader<Endianess> &r) {
+	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less_equal<uint8_t>());
+}
+
+template <ByteOrder::Endian Endianess>
+inline bool operator<= (const memory::StandartInterface::BytesType &l, const DataReader<Endianess> &r) {
+	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less_equal<uint8_t>());
+}
+
+template <ByteOrder::Endian Endianess>
+inline bool operator<= (const DataReader<Endianess> &l, const memory::PoolInterface::BytesType &r) {
+	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less_equal<uint8_t>());
+}
+
+template <ByteOrder::Endian Endianess>
+inline bool operator<= (const DataReader<Endianess> &l, const memory::StandartInterface::BytesType &r) {
+	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less_equal<uint8_t>());
+}
+
+
+template <ByteOrder::Endian Endianess>
+inline bool operator> (const memory::PoolInterface::BytesType &l, const DataReader<Endianess> &r) {
+	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater<uint8_t>());
+}
+
+template <ByteOrder::Endian Endianess>
+inline bool operator> (const memory::StandartInterface::BytesType &l, const DataReader<Endianess> &r) {
+	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater<uint8_t>());
+}
+
+template <ByteOrder::Endian Endianess>
+inline bool operator> (const DataReader<Endianess> &l, const memory::PoolInterface::BytesType &r) {
+	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater<uint8_t>());
+}
+
+template <ByteOrder::Endian Endianess>
+inline bool operator> (const DataReader<Endianess> &l, const memory::StandartInterface::BytesType &r) {
+	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater<uint8_t>());
+}
+
+
+template <ByteOrder::Endian Endianess>
+inline bool operator>= (const memory::PoolInterface::BytesType &l, const DataReader<Endianess> &r) {
+	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater_equal<uint8_t>());
+}
+
+template <ByteOrder::Endian Endianess>
+inline bool operator>= (const memory::StandartInterface::BytesType &l, const DataReader<Endianess> &r) {
+	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater_equal<uint8_t>());
+}
+
+template <ByteOrder::Endian Endianess>
+inline bool operator>= (const DataReader<Endianess> &l, const memory::PoolInterface::BytesType &r) {
+	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater_equal<uint8_t>());
+}
+
+template <ByteOrder::Endian Endianess>
+inline bool operator>= (const DataReader<Endianess> &l, const memory::StandartInterface::BytesType &r) {
+	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater_equal<uint8_t>());
+}
+
+
 using BytesView = DataReader<ByteOrder::Host>;
 
 NS_SP_END

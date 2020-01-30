@@ -592,7 +592,7 @@ int64_t ValueTemplate<Interface>::asInteger() const {
 	case Type::INTEGER: return intVal; break;
 	case Type::DOUBLE: return static_cast<int64_t>(doubleVal); break;
 	case Type::BOOLEAN: return boolVal ? 1 : 0; break;
-	case Type::CHARSTRING: return StringToNumber<int64_t>(strVal->c_str(), nullptr); break;
+	case Type::CHARSTRING: return StringToNumber<int64_t>(strVal->c_str(), nullptr, 0); break;
 	default: return 0; break;
 	}
 	return 0;
@@ -604,7 +604,7 @@ double ValueTemplate<Interface>::asDouble() const {
 	case Type::INTEGER: return static_cast<double>(intVal); break;
 	case Type::DOUBLE: return doubleVal; break;
 	case Type::BOOLEAN: return boolVal ? 1.0 : 0.0; break;
-	case Type::CHARSTRING: return StringToNumber<double>(strVal->c_str(), nullptr); break;
+	case Type::CHARSTRING: return StringToNumber<double>(strVal->c_str(), nullptr, 0); break;
 	default: return 0.0; break;
 	}
 	return 0.0;
