@@ -128,7 +128,11 @@ struct DataHolder {
 
 mem::Value Transaction::select(Worker &w, const Query &query) const {
 	if (!w.scheme().hasAccessControl()) {
-		return _data->adapter.select(w, query);
+		auto val = _data->adapter.select(w, query);
+		if (val.empty()) {
+			return mem::Value();
+		}
+		return val;
 	}
 
 	DataHolder h(_data, w);
@@ -156,6 +160,9 @@ mem::Value Transaction::select(Worker &w, const Query &query) const {
 		}
 	}
 
+	if (val.empty()) {
+		return mem::Value();
+	}
 	return val;
 }
 

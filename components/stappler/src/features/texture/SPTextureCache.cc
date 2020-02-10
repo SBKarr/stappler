@@ -180,9 +180,9 @@ void TextureCache::addTexture(const StringView &ifile, float density, BitmapForm
 	TextureIndex index{ifile.str(), fmt, density};
 	auto pos = index.file.find("://");
 	if (pos != String::npos) {
-		Url url(index.file);
-		if (url.getScheme() == "file" && (url.getHost() == "localhost" || url.getHost().empty())) {
-			index.file = String("/") + toStringConcat(url.getPath(), '/');
+		UrlView url(index.file);
+		if (url.scheme == "file" && (url.host == "localhost" || url.host.empty())) {
+			index.file = String("/") + toStringConcat(url.path, '/');
 		} else {
 			auto lib = AssetLibrary::getInstance();
 			auto path = getPathForUrl(index.file);

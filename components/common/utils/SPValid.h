@@ -40,6 +40,7 @@ bool validateIdentifier(const StringView &str);
 /** Text can contain all characters above 0x1F and \t, \r, \n, \b, \f */
 bool validateText(const StringView &str);
 
+bool validateEmailWithoutNormalization(const StringView &str);
 bool validateEmail(String &str);
 bool validateUrl(String &str);
 

@@ -24,7 +24,7 @@ THE SOFTWARE.
 #define STELLATOR_DB_STSTORAGEQUERY_H_
 
 #include "SPSql.h"
-#include "SPSnowballStemmer.h"
+#include "SPSearchConfiguration.h"
 #include "STStorage.h"
 
 NS_DB_BEGIN

@@ -293,10 +293,6 @@ operator>=(const vector<_Tp>& __x, const vector<_Tp>& __y) {
 	return !(__x < __y);
 }
 
-SP_TEMPLATE_MARK
-template <typename T>
-struct __AllocatorTriviallyMoveable<vector<T>> : std::integral_constant<bool, true> { };
-
 NS_SP_EXT_END(memory)
 
 #endif /* COMMON_MEMORY_SPMEMVECTOR_H_ */

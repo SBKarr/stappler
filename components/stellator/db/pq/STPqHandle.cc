@@ -245,7 +245,7 @@ public:
 			bool first = true;
 			for (auto &it : d.data.asArray()) {
 				auto &data = it.getString(0);
-				auto lang = db::FullTextData::Language(it.getInteger(1));
+				auto lang = stappler::search::Language(it.getInteger(1));
 				auto rank = it.getInteger(2);
 
 				if (!data.empty()) {
@@ -253,7 +253,7 @@ public:
 
 					auto dataIdx = push(data);
 
-					query << " setweight(to_tsvector('" << db::FullTextData::getLanguageString(lang) << "', $" << dataIdx << "::text), '" << char('A' + char(rank)) << "')";
+					query << " setweight(to_tsvector('" << stappler::search::getLanguageName(lang) << "', $" << dataIdx << "::text), '" << char('A' + char(rank)) << "')";
 				}
 			}
 		}
@@ -275,7 +275,7 @@ public:
 
 	virtual void bindFullTextData(db::Binder &, mem::StringStream &query, const db::FullTextData &d) override {
 		auto idx = push(mem::String(d.buffer));
-		query  << " websearch_to_tsquery('" << d.getLanguageString() << "', $" << idx << "::text)";
+		query  << " websearch_to_tsquery('" << d.getLanguage() << "', $" << idx << "::text)";
 	}
 
 	virtual void clear() override {

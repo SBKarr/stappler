@@ -55,7 +55,7 @@ using ostringstream = stappler::memory::ostringstream;
 using AllocPool = stappler::memory::AllocPool;
 using User = db::User;
 using Buffer = stappler::BufferTemplate<mem::Interface>;
-using Url = stappler::Url;
+using UrlView = stappler::UrlView;
 
 using ByteOrder = stappler::ByteOrder;
 using CharGroupId = stappler::CharGroupId;

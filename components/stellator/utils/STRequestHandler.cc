@@ -30,7 +30,7 @@ int RequestHandler::onRequestRecieved(Request & rctx, mem::String &&originPath, 
 	_originPath = std::move(originPath);
 	_subPath = std::move(path);
 	_options = data;
-	_subPathVec = stappler::Url::parsePath(_subPath);
+	_subPathVec = stappler::UrlView::parsePath(_subPath);
 	return OK;
 }
 

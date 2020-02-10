@@ -251,6 +251,18 @@ public:
 	template <typename ... Args>
 	using MatchCompose = chars::Compose<MatchCharType, Args ...>;
 
+	template <MatchCharType ... Args>
+	using Chars = chars::Chars<MatchCharType, Args...>;
+
+	template <char First, char Last>
+	using Range = chars::Range<MatchCharType, First, Last>;
+
+	template <CharGroupId Group>
+	using CharGroup = chars::CharGroup<MatchCharType, Group>;
+
+	template <typename ... Args>
+	using Compose = chars::Compose<MatchCharType, Args ...>;
+
 	StringViewUtf8();
 	StringViewUtf8(const char *ptr, size_t len = maxOf<size_t>());
 	StringViewUtf8(const char *ptr, size_t pos, size_t len);
@@ -999,7 +1011,7 @@ inline bool StringViewUtf8::is(const char &c) const {
 	return len > 0 && *ptr == c;
 }
 inline bool StringViewUtf8::is(const char16_t &c) const {
-	return len > 0 && len >= unicode::utf8DecodeLength(*ptr) && unicode::utf8Decode(ptr) == c;
+	return len > 0 && len >= unicode::utf8_length_data[((const uint8_t *)ptr)[0]] && unicode::utf8Decode(ptr) == c;
 }
 inline bool StringViewUtf8::is(const char *c) const {
 	return prefix(c, std::char_traits<char>::length(c));
@@ -1010,23 +1022,23 @@ inline bool StringViewUtf8::is(const Self &c) const {
 
 template <char16_t C>
 inline bool StringViewUtf8::is() const {
-	return len > 0 && len >= unicode::utf8DecodeLength(*ptr) && unicode::utf8Decode(ptr) == C;
+	return len > 0 && len >= unicode::utf8_length_data[((const uint8_t *)ptr)[0]] && unicode::utf8Decode(ptr) == C;
 }
 
 template <CharGroupId G>
 inline bool StringViewUtf8::is() const {
-	return len > 0 && len >= unicode::utf8DecodeLength(*ptr) && chars::CharGroup<char16_t, G>::match(unicode::utf8Decode(ptr));
+	return len > 0 && len >= unicode::utf8_length_data[((const uint8_t *)ptr)[0]] && chars::CharGroup<char16_t, G>::match(unicode::utf8Decode(ptr));
 }
 
 template <typename M>
 inline bool StringViewUtf8::is() const {
-	return len > 0 && len >= unicode::utf8DecodeLength(*ptr) && M::match(unicode::utf8Decode(ptr));
+	return len > 0 && len >= unicode::utf8_length_data[((const uint8_t *)ptr)[0]] && M::match(unicode::utf8Decode(ptr));
 }
 
 template <typename Interface>
 inline auto StringViewUtf8::letter() const -> typename Interface::StringType {
 	if (this->len > 0) {
-		return typename Interface::StringType(this->ptr, std::min(this->len, size_t(unicode::utf8DecodeLength(*ptr))));
+		return typename Interface::StringType(this->ptr, std::min(this->len, size_t( unicode::utf8_length_data[((const uint8_t *)ptr)[0]] )));
 	}
 	return typename Interface::StringType();
 }
@@ -1039,7 +1051,7 @@ inline auto StringViewUtf8::str() const -> typename Interface::StringType {
 }
 
 inline bool StringViewUtf8::operator == (const Self &other) const {
-	return len == other.len && ptr == other.ptr;
+	return this->len == other.len && memcmp(this->ptr, other.ptr, other.len * sizeof(char)) == 0;
 }
 inline bool StringViewUtf8::operator != (const Self &other) const {
 	return !(*this == other);
@@ -1053,7 +1065,7 @@ inline void StringViewUtf8::offset(size_t l) {
 }
 inline auto StringViewUtf8::operator ++ () -> Self & {
 	if (len > 0) {
-		auto l = std::min(size_t(unicode::utf8DecodeLength(*ptr)), len);
+		auto l = std::min(size_t( unicode::utf8_length_data[((const uint8_t *)ptr)[0]] ), len);
 		ptr += l; len -= l;
 	}
 	return *this;
@@ -1101,8 +1113,8 @@ inline void StringViewUtf8::foreach(const Callback &cb) {
 	auto p = ptr;
 	const auto e = ptr + len;
 	while (p < e) {
-		uint8_t mask = 0;
-		const uint8_t len = unicode::utf8DecodeLength(*p, mask);
+		const uint8_t mask = unicode::utf8_length_mask[((const uint8_t *)p)[0]];
+		const uint8_t len = unicode::utf8_length_data[((const uint8_t *)p)[0]];
 		uint32_t ret = *p++ & mask;
 		for (uint8_t c = 1; c < len; ++c) {
 			const auto ch =  *p++;
@@ -1123,7 +1135,7 @@ inline size_t StringViewUtf8::code_size() const {
 	const auto e = ptr + len;
 	while (p < e) {
 		++ ret;
-		p += unicode::utf8DecodeLength(*p);
+		p += unicode::utf8_length_data[((const uint8_t *)p)[0]];
 	}
 	return ret;
 }

@@ -53,9 +53,6 @@ struct Decoder;
 
 }
 
-template <typename Interface, bool IsIntegral>
-struct __ValueTemplateTraits;
-
 template <typename Interface>
 class ValueTemplate;
 
@@ -351,9 +348,6 @@ protected:
 	template <typename Iface>
 	friend struct serenity::Decoder;
 
-	template <typename Iface, bool IsIntegral>
-	friend struct __ValueTemplateTraits;
-
 	template <typename Iface>
 	friend class ValueTemplate;
 
@@ -633,9 +627,18 @@ auto ValueTemplate<Interface>::asString() const -> StringType {
 	case Type::INTEGER:
 		ret << intVal;
 		break;
-	case Type::DOUBLE:
-		ret << std::fixed << std::setprecision( 16 ) << doubleVal;
+	case Type::DOUBLE: {
+		ret << std::fixed << std::setprecision(std::numeric_limits<double>::digits10 + 1) << doubleVal;
+		typename Interface::StringType r = ret.str();
+		auto pos = r.find_last_of('.');
+		if (pos != Interface::StringType::npos) {
+			while (r.size() > pos + 2 && r.back() == '0') {
+				r.pop_back();
+			}
+		}
+		return r;
 		break;
+	}
 	case Type::BOOLEAN:
 		ret << (boolVal ? "true" : "false");
 		break;
@@ -800,171 +803,30 @@ void ValueTemplate<Interface>::reset(Type type) {
 }
 
 template <typename Interface>
-struct __ValueTemplateTraits<Interface, false> {
-	using ValueType = ValueTemplate<Interface>;
-
-	template <class Val>
-	static ValueType & set(ValueType &target, Val &&value, const StringView & key) {
-		if (target.convertToDict()) {
-			auto i = target.dictVal->find(key);
-			if (i != target.dictVal->end()) {
-				i->second = std::forward<Val>(value);
-				return i->second;
-			} else {
-				return target.dictVal->emplace(key.str<Interface>(), std::forward<Val>(value)).first->second;
-			}
-		}
-		return const_cast<ValueType &>(ValueType::Null);
-	}
-
-	template <class Val, class Key>
-	static ValueType & set(ValueType &target, Val &&value, Key && key) {
-		if (target.convertToDict()) {
-			auto i = target.dictVal->find(key);
-			if (i != target.dictVal->end()) {
-				i->second = std::forward<Val>(value);
-				return i->second;
-			} else {
-				return target.dictVal->emplace(std::forward<Key>(key), std::forward<Val>(value)).first->second;
-			}
-		}
-		return const_cast<ValueType &>(ValueType::Null);
-	}
-
-	template <class Key>
-	static ValueType &get(ValueType &target, Key && key) {
-		if (target._type == ValueType::Type::DICTIONARY) {
-			auto it = target.dictVal->find(key);
-			if (it != target.dictVal->end()) {
-				return it->second;
-			}
-		}
-		return const_cast<ValueType &>(ValueType::Null);
-	}
-
-	template <class Key>
-	static const ValueType &get(const ValueType &target, Key && key) {
-		if (target._type == ValueType::Type::DICTIONARY) {
-			auto it = target.dictVal->find(key);
-			if (it != target.dictVal->end()) {
-				return it->second;
-			}
-		}
-		return ValueType::Null;
-	}
-
-	template <class Key>
-	static typename ValueType::Type type(const ValueType &target, Key && key) {
-		if (target._type == ValueType::Type::DICTIONARY) {
-			auto it = target.dictVal->find(key);
-			if (it != target.dictVal->end()) {
-				return it->second.getType();
-			}
-		}
-		return ValueType::Type::NONE;
-	}
-
-	template <class Key>
-	static ValueType &emplace(ValueType &target, Key &&key) {
-		if (target.convertToDict()) {
-			auto it = target.dictVal->find(key);
-			if (it == target.dictVal->end()) {
-				return target.dictVal->emplace(std::forward<Key>(key), ValueType::Type::EMPTY).first->second;
-			} else {
-				return it->second;
-			}
-		}
-		return const_cast<ValueType &>(ValueType::Null);
-	}
-
-	template <class Key>
-	static bool has(const ValueType &target, Key &&key) {
-		if (target._type == ValueType::Type::DICTIONARY) {
-			return target.dictVal->find(key) != target.dictVal->end();
-		}
-		return false;
-	}
-
-	template <class Key>
-	static bool erase(ValueType &target, Key &&key) {
-		if (target._type != ValueType::Type::DICTIONARY) {
-			return false;
-		}
-
-		auto it = target.dictVal->find(key);
-		if (it != target.dictVal->end()) {
-			target.dictVal->erase(it);
-			return true;
-		}
-		return false;
-	}
-};
-
-template <typename Interface>
-struct __ValueTemplateTraits<Interface, true> {
-	using ValueType = ValueTemplate<Interface>;
-
-	template <class Val>
-	static ValueType & set(ValueType &target, Val &&value, size_t key) {
-		if (target.convertToArray((int)key)) {
-			target.arrayVal->at(key) = std::forward<Val>(value);
-			return target.arrayVal->at(key);
-		}
-		return const_cast<ValueType &>(ValueType::Null);
-	}
-
-	static ValueType &get(ValueType &target, size_t key) {
-		if (target._type == ValueType::Type::ARRAY) {
-			if (key < target.arrayVal->size()) {
-				return target.arrayVal->at(key);
-			}
-		}
-		return const_cast<ValueType &>(ValueType::Null);
-	}
-
-	static const ValueType &get(const ValueType &target, size_t key) {
-		if (target._type == ValueType::Type::ARRAY) {
-			if (key < target.arrayVal->size()) {
-				return target.arrayVal->at(key);
-			}
-		}
-		return ValueType::Null;
-	}
-
-	static typename ValueType::Type type(const ValueType &target, size_t key) {
-		if (target._type == ValueType::Type::ARRAY) {
-			if (key < target.arrayVal->size()) {
-				return target.arrayVal->at(key).getType();
-			}
-		}
-		return ValueType::Type::NONE;
-	}
-
-	static bool has(const ValueType &target, size_t key) {
-		if (target._type == ValueType::Type::ARRAY) {
-			return key < target.arrayVal->size();
-		}
-		return false;
-	}
-
-	static bool erase(ValueType &target, size_t key) {
-		if (target._type != ValueType::Type::ARRAY) {
-			return false;
-		}
-
-		if (key < target.arrayVal->size()) {
-			target.arrayVal->erase(target.arrayVal->begin() + key);
-			return true;
-		}
-		return false;
-	}
-};
-
-template <typename Interface>
 template <class Val, class Key>
 auto ValueTemplate<Interface>::setValue(Val &&value, Key &&key) -> Self & {
-	return __ValueTemplateTraits<Interface, std::is_integral<typename std::remove_reference<Key>::type>::value>::
-			set(*this, std::forward<Val>(value), std::forward<Key>(key));
+	if constexpr (std::is_integral<typename std::remove_reference<Key>::type>::value) {
+		if (convertToArray((int)key)) {
+			arrayVal->at(key) = std::forward<Val>(value);
+			return arrayVal->at(key);
+		}
+		return const_cast<Self &>(Null);
+	} else {
+		if (convertToDict()) {
+			auto i = dictVal->find(key);
+			if (i != dictVal->end()) {
+				i->second = std::forward<Val>(value);
+				return i->second;
+			} else {
+				if constexpr (std::is_same<StringView, typename std::remove_cv<typename std::remove_reference<Key>::type>::type>()) {
+					return dictVal->emplace(key.template str<Interface>(), std::forward<Val>(value)).first->second;
+				} else {
+					return dictVal->emplace(std::forward<Key>(key), std::forward<Val>(value)).first->second;
+				}
+			}
+		}
+		return const_cast<Self &>(Null);
+	}
 }
 
 template <typename Interface>
@@ -987,29 +849,77 @@ auto ValueTemplate<Interface>::addValue(Val &&value) -> Self & {
 template <typename Interface>
 template <class Key>
 auto ValueTemplate<Interface>::getValue(Key &&key) -> Self & {
-	return __ValueTemplateTraits<Interface, std::is_integral<typename std::remove_reference<Key>::type>::value>::
-			get(*this, std::forward<Key>(key));
+	if constexpr (std::is_integral<typename std::remove_reference<Key>::type>::value) {
+		if (_type == Type::ARRAY) {
+			if (size_t(key) < arrayVal->size()) {
+				return arrayVal->at(key);
+			}
+		}
+		return const_cast<Self &>(Null);
+	} else {
+		if (_type == Type::DICTIONARY) {
+			auto it = dictVal->find(key);
+			if (it != dictVal->end()) {
+				return it->second;
+			}
+		}
+		return const_cast<Self &>(Null);
+	}
 }
 
 template <typename Interface>
 template <class Key>
 auto ValueTemplate<Interface>::getValue(Key &&key) const -> const Self & {
-	return __ValueTemplateTraits<Interface, std::is_integral<typename std::remove_reference<Key>::type>::value>::
-			get(*this, std::forward<Key>(key));
+	if constexpr (std::is_integral<typename std::remove_reference<Key>::type>::value) {
+		if (_type == Type::ARRAY) {
+			if (size_t(key) < arrayVal->size()) {
+				return arrayVal->at(key);
+			}
+		}
+		return Null;
+	} else {
+		if (_type == Type::DICTIONARY) {
+			auto it = dictVal->find(key);
+			if (it != dictVal->end()) {
+				return it->second;
+			}
+		}
+		return Null;
+	}
 }
 
 template <typename Interface>
 template <class Key>
 auto ValueTemplate<Interface>::emplace(Key &&key) -> Self & {
-	return __ValueTemplateTraits<Interface, std::is_integral<typename std::remove_reference<Key>::type>::value>::
-			emplace(*this, std::forward<Key>(key));
+	if (convertToDict()) {
+		auto it = dictVal->find(key);
+		if (it == dictVal->end()) {
+			if constexpr (std::is_same<StringView, typename std::remove_cv<typename std::remove_reference<Key>::type>::type>()) {
+				return dictVal->emplace(key.template str<Interface>(), Type::EMPTY).first->second;
+			} else {
+				return dictVal->emplace(std::forward<Key>(key), Type::EMPTY).first->second;
+			}
+		} else {
+			return it->second;
+		}
+	}
+	return const_cast<Self &>(Null);
 }
 
 template <typename Interface>
 template <class Key>
 bool ValueTemplate<Interface>::hasValue(Key &&key) const {
-	return __ValueTemplateTraits<Interface, std::is_integral<typename std::remove_reference<Key>::type>::value>::
-			has(*this, std::forward<Key>(key));
+	if constexpr (std::is_integral<typename std::remove_reference<Key>::type>::value) {
+		if (_type == Type::ARRAY) {
+			return size_t(key) < arrayVal->size();
+		}
+		return false;
+	} else {
+		if (_type == Type::DICTIONARY) {
+			return dictVal->find(key) != dictVal->end();
+		}
+		return false;
+	}
 }
 
 template <typename Interface>
@@ -1125,8 +1035,28 @@ auto ValueTemplate<Interface>::getDict(Key &&key) const -> const DictionaryType 
 template <typename Interface>
 template <class Key>
 bool ValueTemplate<Interface>::erase(Key &&key) {
-	return __ValueTemplateTraits<Interface, std::is_integral<typename std::remove_reference<Key>::type>::value>::
-			erase(*this, std::forward<Key>(key));
+	if constexpr (std::is_integral<typename std::remove_reference<Key>::type>::value) {
+		if (_type != Type::ARRAY) {
+			return false;
+		}
+
+		if (key < arrayVal->size()) {
+			arrayVal->erase(arrayVal->begin() + key);
+			return true;
+		}
+		return false;
+	} else {
+		if (_type != Type::DICTIONARY) {
+			return false;
+		}
+
+		auto it = dictVal->find(key);
+		if (it != dictVal->end()) {
+			dictVal->erase(it);
+			return true;
+		}
+		return false;
+	}
 }
 
 template <typename Interface>
@@ -1240,10 +1170,23 @@ bool ValueTemplate<Interface>::isBytes(Key &&key) const {
 template <typename Interface>
 template <typename Key>
 auto ValueTemplate<Interface>::getType(Key &&key) const -> Type {
-	return __ValueTemplateTraits<Interface, std::is_integral<typename std::remove_reference<Key>::type>::value>::
-			type(*this, std::forward<Key>(key));
+	if constexpr (std::is_integral<typename std::remove_reference<Key>::type>::value) {
+		if (_type == Type::ARRAY) {
+			if (size_t(key) < arrayVal->size()) {
+				return arrayVal->at(key).getType();
+			}
+		}
+		return Type::NONE;
+	} else {
+		if (_type == Type::DICTIONARY) {
+			auto it = dictVal->find(key);
+			if (it != dictVal->end()) {
+				return it->second.getType();
+			}
+		}
+		return Type::NONE;
+	}
 }
-
 
 using DefaultInterface = toolkit::TypeTraits::primary_interface;
 using Value = ValueTemplate<DefaultInterface>;
@@ -1251,13 +1194,5 @@ using Array = Value::ArrayType;
 using Dictionary = Value::DictionaryType;
 
 NS_SP_EXT_END(data)
-
-
-NS_SP_EXT_BEGIN(memory)
-
-template <>
-struct __AllocatorTriviallyMoveable<data::ValueTemplate<memory::PoolInterface>> : std::integral_constant<bool, true> { };
-
-NS_SP_EXT_END(memory)
 
 #endif /* COMMON_DATA_SPDATAVALUE_H_ */

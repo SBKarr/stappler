@@ -1,0 +1,22 @@
+STAPPLER_ROOT = ../../..
+
+LOCAL_OUTDIR := bin
+LOCAL_EXECUTABLE := table
+
+LOCAL_TOOLKIT := common
+
+LOCAL_ROOT = .
+
+LOCAL_SRCS_DIRS :=
+LOCAL_SRCS_OBJS :=
+
+LOCAL_INCLUDES_DIRS :=
+LOCAL_INCLUDES_OBJS :=
+
+LOCAL_MAIN := main.cpp
+
+LOCAL_LIBS =
+
+LOCAL_FORCE_INSTALL := 1
+
+include $(STAPPLER_ROOT)/make/universal.mk

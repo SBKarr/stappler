@@ -27,23 +27,12 @@ THE SOFTWARE.
 #include "SPString.h"
 #include "SPUnicode.h"
 
-NS_SP_EXT_BEGIN(unicode)
+namespace stappler::unicode {
 
-const uint8_t utf8_length_data[256] = {
-    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 1, 1
-};
-
-NS_SP_EXT_END(unicode)
+}
 
 
-NS_SP_EXT_BEGIN(string)
+namespace stappler::string {
 
 static const char * const sp_uppercase_set = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
 static const char * const sp_lowercase_set = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя";
@@ -225,6 +214,42 @@ char16_t utf8HtmlDecode(char_const_ptr_ref_t utf8) {
 	}
 }
 
+bool isValidUtf8(StringView r) {
+	static const uint8_t utf8_valid_data[256] = {
+	//	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, a, b, c, d, e, f, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, a, b, c, d, e, f
+		0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+		2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+		3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 0, 0
+	};
+
+	char_const_ptr_t ptr = r.data();
+	const char_const_ptr_t end = ptr + r.size();
+	while (ptr < end && *ptr != 0) {
+		auto l = utf8_valid_data[ ((const uint8_t *)ptr)[0] ];
+		if (l == 0) {
+			return false;
+		} else if (l == 1) {
+			++ ptr;
+		} else {
+			while (l > 1) {
+				-- l;
+				++ ptr;
+
+				if ((((const uint8_t *)ptr)[0] & 0b1100'0000) != 0b1000'0000) {
+					return false;
+				}
+			}
+			++ ptr;
+		}
+	};
+	return true;
+}
+
 bool isspace(char ch) {
 	return ::isspace(ch) != 0;
 }
@@ -249,8 +274,8 @@ bool isspace(const char *ch) {
 }
 
 Pair<char16_t, uint8_t> read(char_const_ptr_t ptr) {
-	uint8_t mask = 0;
-	uint8_t len = unicode::utf8DecodeLength(*ptr, mask);
+	uint8_t mask = unicode::utf8_length_mask[ ((const uint8_t *)ptr)[0] ];
+	uint8_t len = unicode::utf8_length_data[ ((const uint8_t *)ptr)[0] ];
 	uint32_t ret = ptr[0] & mask;
 	for (uint8_t c = 1; c < len; ++c) {
 		if ((ptr[c] & 0xc0) != 0x80) { ret = 0; break; }
@@ -263,14 +288,9 @@ size_t getUtf16Length(const StringView &input) {
 	size_t counter = 0;
 	char_const_ptr_t ptr = input.data();
 	const char_const_ptr_t end = ptr + input.size();
-	char_const_ptr_t c = ptr;
-	while (ptr < end) {
-		c = Utf8NextChar(ptr, counter);
-		if (c != ptr) {
-			ptr = c;
-		} else {
-			break;
-		}
+	while (ptr < end && *ptr != 0) {
+		ptr += unicode::utf8_length_data[ ((const uint8_t *)ptr)[0] ];
+		++ counter;
 	};
 	return counter;
 }
@@ -292,10 +312,12 @@ size_t getUtf16HtmlLength(const StringView &input) {
 			} else if (ptr[len] == 0) {
 				ptr += len;
 			} else {
-				ptr = Utf8NextChar(ptr, counter);
+				ptr += unicode::utf8_length_data[ ((const uint8_t *)ptr)[0] ];
+				++ counter;
 			}
 		} else {
-			ptr = Utf8NextChar(ptr, counter);
+			ptr += unicode::utf8_length_data[ ((const uint8_t *)ptr)[0] ];
+			++ counter;
 		}
 	};
 	return counter;
@@ -407,4 +429,4 @@ char charToKoi8r(char16_t c) {
 	return ' ';
 }
 
-NS_SP_EXT_END(string)
+}

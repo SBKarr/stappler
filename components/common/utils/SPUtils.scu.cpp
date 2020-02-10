@@ -43,9 +43,10 @@ THE SOFTWARE.
 #include "SPBitmapResample.cc"
 #include "SPSearchDistance.cc"
 #include "SPSearchDistanceEdLib.cc"
+#include "SPSearchUrl.cc"
+#include "SPSearchParser.cc"
 #include "SPSearchIndex.cc"
-#include "SPSnowballStopwords.cc"
-#include "SPSnowballStemmer.cc"
+#include "SPSearchConfiguration.cc"
 #include "SPSerenityPathQuery.cc"
 #include "SPValid.cc"
 

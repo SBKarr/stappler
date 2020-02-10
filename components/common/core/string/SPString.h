@@ -63,6 +63,8 @@ struct InterfaceForString<typename memory::PoolInterface::WideStringType> {
 char16_t utf8Decode(char_const_ptr_ref_t utf8);
 char16_t utf8HtmlDecode(char_const_ptr_ref_t utf8);
 
+bool isValidUtf8(StringView);
+
 template <typename StringType, typename Interface = typename InterfaceForString<StringType>::Type>
 inline uint8_t utf8Encode(StringType &str, char16_t c);
 

@@ -65,7 +65,7 @@ struct Request::Config : public AllocPool {
 				if (str.is('?') || str.is('&')) {
 					++ str;
 				}
-				auto d = Url::parseDataArgs(str, 1_KiB);
+				auto d = UrlView::parseArgs(str, 1_KiB);
 				if (_data.empty()) {
 					_data = std::move(d);
 				} else {
@@ -78,7 +78,7 @@ struct Request::Config : public AllocPool {
 			}
 		}
 
-		_path = Url::parsePath(apr::string::make_weak(r->uri));
+		_path = UrlView::parsePath(StringView(r->uri));
 		registerCleanupDestructor(this, r->pool);
 	}
 

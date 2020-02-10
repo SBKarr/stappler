@@ -103,7 +103,7 @@ bool isspace(CharType);
 using GroupId = CharGroupId;
 
 struct UniChar {
-	static inline bool match(char c) { return (c & 128) != 0; }
+	static inline bool match(char c) { return ((*(const uint8_t *)&c) & 128) != 0; }
 	static inline void get(Set<char> &) { }
 };
 
@@ -117,7 +117,7 @@ struct Chars {
 
 	static inline Set<CharType> toSet() {
 		Set<CharType> ret;
-		foreach([&] (char16_t c) {
+		foreach([&] (CharType c) {
 			ret.insert(c);
 		});
 		return ret;
@@ -125,7 +125,7 @@ struct Chars {
 
 	static inline Vector<CharType> toVector() {
 		Vector<CharType> ret;
-		foreach([&] (char16_t c) {
+		foreach([&] (CharType c) {
 			ret.push_back(c);
 		});
 		return ret;
@@ -142,7 +142,7 @@ struct Range {
 
 	static inline Set<CharType> toSet() {
 		Set<CharType> ret;
-		foreach([&] (char16_t c) {
+		foreach([&] (CharType c) {
 			ret.insert(c);
 		});
 		return ret;
@@ -150,7 +150,7 @@ struct Range {
 
 	static inline Vector<CharType> toVector() {
 		Vector<CharType> ret;
-		foreach([&] (char16_t c) {
+		foreach([&] (CharType c) {
 			ret.push_back(c);
 		});
 		return ret;
@@ -167,7 +167,7 @@ struct Compose {
 
 	static inline Set<CharType> toSet() {
 		Set<CharType> ret;
-		foreach([&] (char16_t c) {
+		foreach([&] (CharType c) {
 			ret.insert(c);
 		});
 		return ret;
@@ -175,7 +175,7 @@ struct Compose {
 
 	static inline Vector<CharType> toVector() {
 		Vector<CharType> ret;
-		foreach([&] (char16_t c) {
+		foreach([&] (CharType c) {
 			ret.push_back(c);
 		});
 		return ret;
@@ -189,18 +189,24 @@ struct CharGroup;
 template <>
 struct CharGroup<char, GroupId::PunctuationBasic> : Compose<char,
 		Range<char, '\x21', '\x2F'>, Range<char, '\x3A', '\x40'>, Range<char, '\x5B', '\x7F'>
-> { };
+> {
+	static bool match(char c);
+};
 
 template <>
-struct CharGroup<char, GroupId::Numbers> : Compose<char, Range<char, '0', '9'> > { };
+struct CharGroup<char, GroupId::Numbers> : Compose<char, Range<char, '0', '9'> > {
+	static bool match(char c);
+};
 
 template <>
-struct CharGroup<char, GroupId::Latin> : Compose<char, Range<char, 'A', 'Z'>, Range<char, 'a', 'z'> > { };
+struct CharGroup<char, GroupId::Latin> : Compose<char, Range<char, 'A', 'Z'>, Range<char, 'a', 'z'> > {
+	static bool match(char c);
+};
 
 template <>
-struct CharGroup<char, GroupId::WhiteSpace> : Compose<char,
-		Range<char, '\x09', '\x0D'>, Chars<char, '\x20'>
-> { };
+struct CharGroup<char, GroupId::WhiteSpace> : Compose<char, Range<char, '\x09', '\x0D'>, Chars<char, '\x20'> > {
+	static bool match(char c);
+};
 
 template <>
 struct CharGroup<char, GroupId::Controls> : Compose<char, Range<char, '\x01', '\x20'> > { };
@@ -211,30 +217,42 @@ struct CharGroup<char, GroupId::NonPrintable> : Compose<char,
 > { };
 
 template <>
-struct CharGroup<char, GroupId::LatinLowercase> : Compose<char, Range<char, 'a', 'z'> > { };
+struct CharGroup<char, GroupId::LatinLowercase> : Compose<char, Range<char, 'a', 'z'> > {
+	static bool match(char c);
+};
 
 template <>
-struct CharGroup<char, GroupId::LatinUppercase> : Compose<char, Range<char, 'A', 'Z'> > { };
+struct CharGroup<char, GroupId::LatinUppercase> : Compose<char, Range<char, 'A', 'Z'> > {
+	static bool match(char c);
+};
 
 template <>
 struct CharGroup<char, GroupId::Alphanumeric> : Compose<char,
 		Range<char, '0', '9'>, Range<char, 'A', 'Z'>, Range<char, 'a', 'z'>
-> { };
+> {
+	static bool match(char c);
+};
 
 template <>
 struct CharGroup<char, GroupId::Hexadecimial> : Compose<char,
 		Range<char, '0', '9'>, Range<char, 'A', 'F'>, Range<char, 'a', 'f'>
-> { };
+> {
+	static bool match(char c);
+};
 
 template <>
 struct CharGroup<char, GroupId::Base64> : Compose<char,
 		Range<char, '0', '9'>, Range<char, 'A', 'Z'>, Range<char, 'a', 'z'>, Chars<char, '=', '/', '+', '_', '-'>
-> { };
+> {
+	static bool match(char c);
+};
 
 template <>
 struct CharGroup<char, GroupId::TextPunctuation> : Compose<char,
 		Chars<char, '=', '/', '(', ')', '.', ',', '-', '\'', '"', ':', ';', '?', '!', '@', '#', '$', '%', '^', '*', '\\', '_', '+', '[', ']'>
-> { };
+> {
+	static bool match(char c);
+};
 
 
 template <>
@@ -511,7 +529,7 @@ inline void MatchTraits::foreachChar(const Func &f) {
 
 template <typename CharType, typename Func, CharType First, CharType Last>
 inline void MatchTraits::foreachPair(const Func &f) {
-	for (CharType c = First; c <= Last; c++) {
+	for (CharType c = First; c >= 0 && c <= Last; c++) {
 		f(c);
 	}
 }

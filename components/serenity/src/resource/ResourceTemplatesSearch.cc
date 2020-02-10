@@ -35,6 +35,15 @@ data::Value ResourceSearch::getResultObject() {
 	auto slot = _field->getSlot<db::FieldFullTextView>();
 	if (auto &searchData = _queries.getExtraData().getValue("search")) {
 		Vector<db::FullTextData> q = slot->parseQuery(searchData);
+		stappler::search::Language lang = stappler::search::Language::English;
+		for (auto &it : q) {
+			if (it.language != lang) {
+				lang = it.language;
+				break;
+			}
+		}
+		_config.setLanguage(lang);
+
 		if (!q.empty()) {
 			_queries.setFullTextQuery(_field, Vector<db::FullTextData>(q));
 			auto ret = _transaction.performQueryListField(_queries, *_field);
@@ -45,7 +54,7 @@ data::Value ResourceSearch::getResultObject() {
 			auto res = processResultList(_queries, ret);
 			if (!res.empty()) {
 				if (auto &headlines = _queries.getExtraData().getValue("headlines")) {
-					auto ql = _stemmer.stemQuery(q);
+					auto ql = _config.stemQuery(q);
 					for (auto &it : res.asArray()) {
 						makeHeadlines(it, headlines, ql);
 					}
@@ -57,7 +66,7 @@ data::Value ResourceSearch::getResultObject() {
 	return data::Value();
 }
 
-Vector<String> ResourceSearch::stemQuery(const Vector<db::FullTextData> &query) {
+/* Vector<String> ResourceSearch::stemQuery(const Vector<db::FullTextData> &query) {
 	Vector<String> ret; ret.reserve(256 / sizeof(String)); // memory manager hack
 
 	for (auto &it : query) {
@@ -72,7 +81,7 @@ Vector<String> ResourceSearch::stemQuery(const Vector<db::FullTextData> &query) 
 	}
 
 	return ret;
-}
+} */
 
 void ResourceSearch::makeHeadlines(data::Value &obj, const data::Value &headlineInfo, const Vector<String> &ql) {
 	auto &h = obj.emplace("__headlines");
@@ -88,40 +97,43 @@ void ResourceSearch::makeHeadlines(data::Value &obj, const data::Value &headline
 }
 
 String ResourceSearch::makeHeadline(const StringView &value, const data::Value &headlineInfo, const Vector<String> &ql) {
+	stappler::search::Configuration::HeadlineConfig cfg;
 	if (headlineInfo.isString()) {
 		if (headlineInfo.getString() == "plain") {
-			_stemmer.setHighlightParams("<b>", "</b>");
-			return _stemmer.makeHighlight(value, ql);
+			cfg.startToken = StringView("<b>"); cfg.stopToken = StringView("</b>");
+			return _config.makeHeadline(cfg, value, ql);
 		} else if (headlineInfo.getString() == "html") {
-			_stemmer.setHighlightParams("<b>", "</b>");
-			_stemmer.setFragmentParams("<p>", "</p>");
-			//_stemmer.setHighlightParams("<span style=\"headline\">", "</span>");
-			return _stemmer.makeHtmlHeadlines(value, ql);
+			cfg.startToken = StringView("<b>"); cfg.stopToken = StringView("</b>");
+			cfg.startFragment = StringView("<p>"); cfg.stopFragment = StringView("</p>");
+			return _config.makeHtmlHeadlines(cfg, value, ql);
 		}
 	} else if (headlineInfo.isDictionary()) {
 		auto type = headlineInfo.getString("type");
 		auto start = headlineInfo.getString("start");
 		auto end = headlineInfo.getString("end");
 
-		auto l = search::Stemmer::parseLanguage(headlineInfo.getString("lang"));
+		auto l = search::parseLanguage(headlineInfo.getString("lang"));
+		if (l != search::Language::Unknown && l != _config.getLanguage()) {
+			_config.setLanguage(l);
+		}
 		if (type == "html") {
 			if (!start.empty() && start.size() < 24 && !end.empty() && end.size() < 24) {
-				_stemmer.setHighlightParams(start, end);
+				cfg.startToken = start; cfg.stopToken = end;
 			} else {
-				_stemmer.setHighlightParams("<b>", "</b>");
+				cfg.startToken = StringView("<b>"); cfg.stopToken = StringView("</b>");
 			}
 
 			auto fragStart = headlineInfo.getString("fragStart");
 			auto fragEnd = headlineInfo.getString("fragStop");
 			if (!fragStart.empty() && fragStart.size() < 24 && !fragEnd.empty() && fragEnd.size() < 24) {
-				_stemmer.setFragmentParams(fragStart, fragEnd);
+				cfg.startFragment = fragStart; cfg.stopFragment = fragEnd;
 			} else {
-				_stemmer.setFragmentParams("<p>", "</p>");
+				cfg.startFragment = StringView("<p>"); cfg.stopFragment = StringView("</p>");
 			}
 
-			_stemmer.setFragmentMaxWords(headlineInfo.getInteger("maxWords", search::Stemmer::DefaultMaxWords));
-			_stemmer.setFragmentMinWords(headlineInfo.getInteger("minWords", search::Stemmer::DefaultMinWords));
-			_stemmer.setFragmentShortWord(headlineInfo.getInteger("shortWord", search::Stemmer::DefaultShortWord));
+			cfg.maxWords = headlineInfo.getInteger("maxWords", search::Configuration::HeadlineConfig::DefaultMaxWords);
+			cfg.minWords = headlineInfo.getInteger("minWords", search::Configuration::HeadlineConfig::DefaultMinWords);
+			cfg.shortWord = headlineInfo.getInteger("shortWord", search::Configuration::HeadlineConfig::DefaultShortWord);
 
 			size_t frags = 1;
 			auto fragments = headlineInfo.getValue("fragments");
@@ -131,15 +143,15 @@ String ResourceSearch::makeHeadline(const StringView &value, const data::Value &
 				frags = f;
 			}
 
-			return _stemmer.makeHtmlHeadlines(value, ql, frags, l);
+			return _config.makeHtmlHeadlines(cfg, value, ql, frags);
 		} else {
 			if (!start.empty() && start.size() < 24 && !end.empty() && end.size() < 24) {
-				_stemmer.setHighlightParams(start, end);
+				cfg.startToken = start; cfg.stopToken = end;
 			} else {
-				_stemmer.setHighlightParams("<b>", "</b>");
+				cfg.startToken = StringView("<b>"); cfg.stopToken = StringView("</b>");
 			}
 
-			return _stemmer.makeHighlight(value, ql, l);
+			return _config.makeHeadline(cfg, value, ql);
 		}
 	}
 	return String();

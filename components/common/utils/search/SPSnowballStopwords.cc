@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2018-2020 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,7 @@ THE SOFTWARE.
 
 #include "SPCommon.h"
 
-NS_SP_EXT_BEGIN(search)
+namespace stappler::search {
 
 static StringView s_turkish_stopwords[] = {
 	StringView("acaba", 5),
@@ -2808,4 +2808,4 @@ static StringView s_english_stopwords[] = {
 	StringView()
 };
 
-NS_SP_EXT_END(search)
+}

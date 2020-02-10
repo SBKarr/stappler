@@ -413,7 +413,7 @@ struct CreateCmd : ResourceCmd {
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		}
 
-		data::Value patch = (r.is('{') || r.is('[') || r.is('(')) ? data::read(r) : Url::parseDataArgs(r, 1_KiB);
+		data::Value patch = (r.is('{') || r.is('[') || r.is('(')) ? data::read(r) : UrlView::parseArgs(r, 1_KiB);
 		if (auto r = acquireResource(h, schemeName, path, StringView())) {
 			apr::array<db::InputFile> f;
 			if (r->prepareCreate()) {
@@ -452,7 +452,7 @@ struct UpdateCmd : ResourceCmd {
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		}
 
-		data::Value patch = (r.is('{') || r.is('[') || r.is('(')) ? data::read(r) : Url::parseDataArgs(r, 1_KiB);
+		data::Value patch = (r.is('{') || r.is('[') || r.is('(')) ? data::read(r) : UrlView::parseArgs(r, 1_KiB);
 		if (auto r = acquireResource(h, schemeName, path, StringView())) {
 			apr::array<db::InputFile> f;
 			if (r->prepareUpdate()) {
@@ -547,7 +547,7 @@ struct AppendCmd : ResourceCmd {
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		}
 
-		data::Value patch = (r.is('{') || r.is('[') || r.is('(')) ? data::read(r) : Url::parseDataArgs(r, 1_KiB);
+		data::Value patch = (r.is('{') || r.is('[') || r.is('(')) ? data::read(r) : UrlView::parseArgs(r, 1_KiB);
 		if (auto r = acquireResource(h, schemeName, path, StringView())) {
 			if (r->prepareAppend()) {
 				auto ret = r->appendObject(patch);
@@ -724,7 +724,7 @@ struct ParseCmd : SocketCommand {
 	ParseCmd() : SocketCommand("parse") { }
 
 	virtual bool run(ShellSocketHandler &h, StringView &r) override {
-		data::Value patch = (r.is('{') || r.is('[') || r.is('(')) ? data::read(r) : Url::parseDataArgs(r, 1_KiB);
+		data::Value patch = (r.is('{') || r.is('[') || r.is('(')) ? data::read(r) : UrlView::parseArgs(r, 1_KiB);
 		h.sendData(patch);
 		return true;
 	}

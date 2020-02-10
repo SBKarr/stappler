@@ -284,15 +284,15 @@ static bool Lexer_Expression_readOperandValue(Expression *current, StringView &r
 
 			if (value.empty() && (op == Expression::Call || op == Expression::Subscript || op == Expression::Construct)) {
 				current->isToken = true;
-			} else if (value.is("true")) {
+			} else if (value == "true") {
 				current->set(data::Value(true));
-			} else if (value.is("false")) {
+			} else if (value == "false") {
 				current->set(data::Value(false));
-			} else if (value.is("null")) {
+			} else if (value == "null") {
 				current->set(data::Value());
-			} else if (value.is("inf")) {
+			} else if (value == "inf") {
 				current->set(data::Value(std::numeric_limits<double>::infinity()));
-			} else if (value.is("nan")) {
+			} else if (value == "nan") {
 				current->set(data::Value(nan()));
 			} else if (!value.empty()) {
 				current->set(String(value.data(), value.size()));

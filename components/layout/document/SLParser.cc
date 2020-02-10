@@ -552,7 +552,7 @@ namespace parser {
 				readRef("mailto:", 7);
 			} else {
 				isStart = string::isspace(ptr + idx);
-				idx += unicode::utf8DecodeLength(ptr[idx]);
+				idx += unicode::utf8_length_data[((const uint8_t *)ptr)[idx]];
 			}
 		}
 

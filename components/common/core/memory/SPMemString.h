@@ -926,10 +926,6 @@ using u32string = basic_string<char32_t>;
 
 using weak_string = const string;
 
-SP_TEMPLATE_MARK
-template <typename CharType>
-struct __AllocatorTriviallyMoveable<basic_string<CharType>> : std::integral_constant<bool, true> { };
-
 NS_SP_EXT_END(memory)
 
 inline stappler::memory::basic_string<char> operator"" _weak ( const char* str, size_t len) {

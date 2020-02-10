@@ -30,14 +30,11 @@ typedef unsigned char symbol;
 
 */
 
-struct SN_alloc {
+struct SN_env {
 	void *(*memalloc)( void *userData, unsigned int size );
 	void (*memfree)( void *userData, void *ptr );
 	void* userData;	// User data passed to the allocator functions.
-};
 
-struct SN_env {
-	struct SN_alloc *alloc;
 	int (*stem)(struct SN_env *);
 
     symbol * p;
@@ -45,6 +42,8 @@ struct SN_env {
     symbol * * S;
     int * I;
     unsigned char * B;
+
+	const void *stopwords;
 };
 
 static struct SN_env * SN_create_env(struct SN_env *z, int S_size, int I_size, int B_size);
@@ -59,8 +58,8 @@ struct among {
     int (* function)(struct SN_env *);
 };
 
-static symbol * create_s(struct SN_alloc *alloc);
-static void lose_s(struct SN_alloc *alloc, symbol * p);
+static symbol * create_s(struct SN_env *alloc);
+static void lose_s(struct SN_env *alloc, symbol * p);
 
 static int skip_utf8(const symbol * p, int c, int lb, int l, int n) __attribute__ ((unused));
 
@@ -181,9 +180,9 @@ static struct stemmer_modules modules[] = {
 
 #define CREATE_SIZE 1
 
-static symbol * create_s(struct SN_alloc *alloc) {
+static symbol * create_s(struct SN_env *env) {
     symbol * p;
-    void * mem = alloc->memalloc(alloc->userData, HEAD + (CREATE_SIZE + 1) * sizeof(symbol));
+    void * mem = env->memalloc(env->userData, HEAD + (CREATE_SIZE + 1) * sizeof(symbol));
     if (mem == NULL) return NULL;
     p = (symbol *) (HEAD + (char *) mem);
     CAPACITY(p) = CREATE_SIZE;
@@ -191,9 +190,9 @@ static symbol * create_s(struct SN_alloc *alloc) {
     return p;
 }
 
-static void lose_s(struct SN_alloc *alloc, symbol * p) {
+static void lose_s(struct SN_env *env, symbol * p) {
     if (p == NULL) return;
-    alloc->memfree(alloc->userData, (char *) p - HEAD);
+    env->memfree(env->userData, (char *) p - HEAD);
 }
 
 /*
@@ -498,7 +497,7 @@ static int find_among_b(struct SN_env * z, const struct among * v, int v_size) {
 /* Increase the size of the buffer pointed to by p to at least n symbols.
  * If insufficient memory, returns NULL and frees the old buffer.
  */
-static symbol * increase_size(struct SN_alloc *alloc, symbol * p, int n) {
+static symbol * increase_size(struct SN_env *alloc, symbol * p, int n) {
     symbol * q;
     int new_size = n + 20;
     void * mem = alloc->memalloc(alloc->userData, HEAD + (new_size + 1) * sizeof(symbol));
@@ -522,14 +521,14 @@ static int replace_s(struct SN_env * z, int c_bra, int c_ket, int s_size, const 
     int adjustment;
     int len;
     if (z->p == NULL) {
-        z->p = create_s(z->alloc);
+        z->p = create_s(z);
         if (z->p == NULL) return -1;
     }
     adjustment = s_size - (c_ket - c_bra);
     len = SIZE(z->p);
     if (adjustment != 0) {
         if (adjustment + len > CAPACITY(z->p)) {
-            z->p = increase_size(z->alloc, z->p, adjustment + len);
+            z->p = increase_size(z, z->p, adjustment + len);
             if (z->p == NULL) return -1;
         }
         memmove(z->p + c_ket + adjustment,
@@ -594,13 +593,13 @@ static int insert_v(struct SN_env * z, int bra, int ket, const symbol * p) {
 
 static symbol * slice_to(struct SN_env * z, symbol * p) {
     if (slice_check(z)) {
-        lose_s(z->alloc, p);
+        lose_s(z, p);
         return NULL;
     }
     {
         int len = z->ket - z->bra;
         if (CAPACITY(p) < len) {
-            p = increase_size(z->alloc, p, len);
+            p = increase_size(z, p, len);
             if (p == NULL)
                 return NULL;
         }
@@ -613,7 +612,7 @@ static symbol * slice_to(struct SN_env * z, symbol * p) {
 static symbol * assign_to(struct SN_env * z, symbol * p) {
     int len = z->l;
     if (CAPACITY(p) < len) {
-        p = increase_size(z->alloc, p, len);
+        p = increase_size(z, p, len);
         if (p == NULL)
             return NULL;
     }
@@ -636,30 +635,30 @@ static int len_utf8(const symbol * p) {
 static struct SN_env * SN_create_env(struct SN_env *z, int S_size, int I_size, int B_size)
 {
     if (z == NULL) return NULL;
-    z->p = create_s(z->alloc);
+    z->p = create_s(z);
     if (z->p == NULL) goto error;
     if (S_size)
     {
         int i;
-        z->S = (symbol * *) z->alloc->memalloc(z->alloc->userData, S_size * sizeof(symbol *));
+        z->S = (symbol * *) z->memalloc(z->userData, S_size * sizeof(symbol *));
         if (z->S == NULL) goto error;
 
         for (i = 0; i < S_size; i++)
         {
-            z->S[i] = create_s(z->alloc);
+            z->S[i] = create_s(z);
             if (z->S[i] == NULL) goto error;
         }
     }
 
     if (I_size)
     {
-        z->I = (int *) z->alloc->memalloc(z->alloc->userData, I_size * sizeof(int));
+        z->I = (int *) z->memalloc(z->userData, I_size * sizeof(int));
         if (z->I == NULL) goto error;
     }
 
     if (B_size)
     {
-        z->B = (unsigned char *) z->alloc->memalloc(z->alloc->userData, B_size * sizeof(unsigned char));
+        z->B = (unsigned char *) z->memalloc(z->userData, B_size * sizeof(unsigned char));
         if (z->B == NULL) goto error;
     }
 
@@ -677,13 +676,13 @@ static void SN_close_env(struct SN_env * z, int S_size)
         int i;
         for (i = 0; i < S_size; i++)
         {
-            lose_s(z->alloc, z->S[i]);
+            lose_s(z, z->S[i]);
         }
-        z->alloc->memfree(z->alloc->userData, z->S);
+        z->memfree(z->userData, z->S);
     }
-    z->alloc->memfree(z->alloc->userData, z->I);
-    z->alloc->memfree(z->alloc->userData, z->B);
-    if (z->p) lose_s(z->alloc, z->p);
+    z->memfree(z->userData, z->I);
+    z->memfree(z->userData, z->B);
+    if (z->p) lose_s(z, z->p);
 }
 
 static int SN_set_current(struct SN_env * z, int size, const symbol * s)

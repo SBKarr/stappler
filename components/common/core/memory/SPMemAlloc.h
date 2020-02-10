@@ -51,17 +51,6 @@ struct AllocPool {
 	static void registerCleanupDestructor(T *obj, pool_t *pool);
 };
 
-template <typename T>
-struct __AllocatorTriviallyCopyable : std::is_trivially_copyable<T> { };
-
-template <typename T>
-struct __AllocatorTriviallyMoveable : std::is_trivially_copyable<T> { };
-
-SP_TEMPLATE_MARK
-template <typename K, typename V>
-struct __AllocatorTriviallyMoveable<Pair<K, V>> : std::integral_constant<bool,
-	__AllocatorTriviallyMoveable<std::remove_cv<K>>::value && __AllocatorTriviallyMoveable<std::remove_cv<V>>::value> { };
-
 template <class T>
 class Allocator {
 public:
@@ -178,7 +167,7 @@ public:
 	pool_t *getPool() const noexcept { return pool_ptr(pool); }
 
 	void copy(T *dest, const T *source, size_t count) noexcept {
-		if constexpr (__AllocatorTriviallyCopyable<T>::value) {
+		if constexpr (std::is_trivially_copyable<T>::value) {
 			memmove(dest, source, count * sizeof(T));
 		} else {
 			if (dest == source) {
@@ -194,8 +183,9 @@ public:
 			}
 		}
 	}
+
 	void copy_rewrite(T *dest, size_t dcount, const T *source, size_t count) noexcept {
-		if constexpr (__AllocatorTriviallyCopyable<T>::value) {
+		if constexpr (std::is_trivially_copyable<T>::value) {
 			memmove(dest, source, count * sizeof(T));
 		} else {
 			if (dest == source) {
@@ -225,7 +215,7 @@ public:
 	}
 
 	void move(T *dest, T *source, size_t count) noexcept {
-		if constexpr (__AllocatorTriviallyCopyable<T>::value) {
+		if constexpr (std::is_trivially_copyable<T>::value) {
 			memmove(dest, source, count * sizeof(T));
 		} else {
 			if (dest == source) {
@@ -244,7 +234,7 @@ public:
 		}
 	}
 	void move_rewrite(T *dest, size_t dcount, T *source, size_t count) noexcept {
-		if constexpr (__AllocatorTriviallyCopyable<T>::value) {
+		if constexpr (std::is_trivially_copyable<T>::value) {
 			memmove(dest, source, count * sizeof(T));
 		} else {
 			if (dest == source) {

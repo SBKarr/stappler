@@ -724,9 +724,9 @@ mem::Vector<FullTextData> FieldFullTextView::parseQuery(const mem::Value &data) 
 		stappler::StringViewUtf8 r(data.getString());
 		r.skipUntil<stappler::StringViewUtf8::MatchCharGroup<stappler::CharGroupId::Latin>, stappler::StringViewUtf8::MatchCharGroup<stappler::CharGroupId::Cyrillic>>();
 		if (r.is<stappler::StringViewUtf8::MatchCharGroup<stappler::CharGroupId::Latin>>()) {
-			return mem::Vector<FullTextData>{FullTextData{data.getString(), FullTextData::Language::English}};
+			return mem::Vector<FullTextData>{FullTextData{data.getString(), stappler::search::Language::English}};
 		} else if (r.is<stappler::StringViewUtf8::MatchCharGroup<stappler::CharGroupId::Cyrillic>>()) {
-			return mem::Vector<FullTextData>{FullTextData{data.getString(), FullTextData::Language::Russian}};
+			return mem::Vector<FullTextData>{FullTextData{data.getString(), stappler::search::Language::Russian}};
 		}
 	}
 	return mem::Vector<FullTextData>();

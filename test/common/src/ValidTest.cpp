@@ -40,6 +40,8 @@ struct ValidTest : MemPoolTest {
 		uint32_t failed = 0;
 
 		Value urls;
+		urls.addString("https://йакреведко.рф/test/.././..////?query[креведко][treas][ds][]=qwert#аяклешня");
+		urls.addString("ssh://git@atom0.stappler.org:21002/StapplerApi.git?qwr#test");
 		urls.addString("localhost");
 		urls.addString("localhost:8080");
 		urls.addString("localhost/test1/test2");
@@ -47,8 +49,6 @@ struct ValidTest : MemPoolTest {
 		urls.addString("https://localhost/test/.././..////?query[test][treas][ds][]=qwert#rest");
 		urls.addString("http://localhost");
 		urls.addString("йакреведко.рф");
-		urls.addString("https://йакреведко.рф/test/.././..////?query[креведко][treas][ds][]=qwert#аяклешня");
-		urls.addString("ssh://git@atom0.stappler.org:21002/StapplerApi.git?qwr#test");
 
 		for (auto &it : urls.asArray()) {
 			memory::string str(it.getString());

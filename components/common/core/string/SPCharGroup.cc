@@ -116,4 +116,78 @@ WideString getCharGroup(CharGroupId mask) {
 	return ret;
 }
 
+namespace chars {
+
+enum class SmartType : uint8_t {
+	PunctuationBasic = 1 << 0,
+	Numbers = 1 << 1,
+	WhiteSpace = 1 << 2,
+	LatinLowercase = 1 << 3,
+	LatinUppercase = 1 << 4,
+	Hexadecimial = 1 << 5,
+	Base64 = 1 << 6,
+	TextPunctuation = 1 << 7
+};
+
+static uint8_t smart_lookup_table[256] = {
+	   0,   0,   0,   0,   0,   0,   0,   0,   0,   4,   4,   4,   4,   4,   0,   0,
+	   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+	   4, 129, 129, 129, 129, 129,   1, 129, 129, 129, 129, 193, 129, 193, 129, 193,
+	  98,  98,  98,  98,  98,  98,  98,  98,  98,  98, 129, 129,   1, 193,   1, 129,
+	 129, 112, 112, 112, 112, 112, 112,  80,  80,  80,  80,  80,  80,  80,  80,  80,
+	  80,  80,  80,  80,  80,  80,  80,  80,  80,  80,  80, 129, 129, 129, 129, 193,
+	   1, 105, 105, 105, 105, 105, 105,  73,  73,  73,  73,  73,  73,  73,  73,  73,
+	  73,  73,  73,  73,  73,  73,  73,  73,  73,  73,  73,   1,   1,   1,   1,   1,
+	   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+	   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+	   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+	   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+	   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+	   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+	   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+	   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+};
+
+bool CharGroup<char, GroupId::PunctuationBasic>::match(char c) {
+	return smart_lookup_table[((const uint8_t *)&c)[0]] & toInt(SmartType::PunctuationBasic);
+}
+
+bool CharGroup<char, GroupId::Numbers>::match(char c) {
+	return smart_lookup_table[((const uint8_t *)&c)[0]] & toInt(SmartType::Numbers);
+}
+
+bool CharGroup<char, GroupId::Latin>::match(char c) {
+	return smart_lookup_table[((const uint8_t *)&c)[0]] & (toInt(SmartType::LatinLowercase) | toInt(SmartType::LatinUppercase));
+}
+
+bool CharGroup<char, GroupId::WhiteSpace>::match(char c) {
+	return smart_lookup_table[((const uint8_t *)&c)[0]] & toInt(SmartType::WhiteSpace);
+}
+
+bool CharGroup<char, GroupId::LatinLowercase>::match(char c) {
+	return smart_lookup_table[((const uint8_t *)&c)[0]] & toInt(SmartType::LatinLowercase);
+}
+
+bool CharGroup<char, GroupId::LatinUppercase>::match(char c) {
+	return smart_lookup_table[((const uint8_t *)&c)[0]] & toInt(SmartType::LatinUppercase);
+}
+
+bool CharGroup<char, GroupId::Alphanumeric>::match(char c) {
+	return smart_lookup_table[((const uint8_t *)&c)[0]] & (toInt(SmartType::LatinLowercase) | toInt(SmartType::LatinUppercase) | toInt(SmartType::Numbers));
+}
+
+bool CharGroup<char, GroupId::Hexadecimial>::match(char c) {
+	return smart_lookup_table[((const uint8_t *)&c)[0]] & toInt(SmartType::Hexadecimial);
+}
+
+bool CharGroup<char, GroupId::Base64>::match(char c) {
+	return smart_lookup_table[((const uint8_t *)&c)[0]] & toInt(SmartType::Base64);
+}
+
+bool CharGroup<char, GroupId::TextPunctuation>::match(char c) {
+	return smart_lookup_table[((const uint8_t *)&c)[0]] & toInt(SmartType::TextPunctuation);
+}
+
+}
+
 NS_SP_END

@@ -33,10 +33,6 @@ NS_SP_EXT_BEGIN(memory)
 #pragma GCC diagnostic ignored "-Wclass-memaccess"
 #endif
 
-// memory block to store objects data
-// memory block always uses current context or specified allocator
-// allocator is not copied by copy or move constructors or assignment operators
-
 template <typename Type>
 struct mem_sso_test {
 	static constexpr bool value = std::is_scalar<Type>::value;

@@ -433,7 +433,7 @@ static void ContextFn_printVar(const Var &var, std::ostream &out, bool escapeOut
 		ContextFn_printEscapedString(val.getString(), out, escapeOutput);
 		break;
 	case Value::Type::INTEGER: out << val.asInteger(); break;
-	case Value::Type::DOUBLE: out << val.asDouble(); break;
+	case Value::Type::DOUBLE: out << val.asString(); break; // use internal converter
 	case Value::Type::BOOLEAN: out << (val.asBool() ? "true" : "false"); break;
 	case Value::Type::EMPTY: out << "null"; break;
 	default: out << data::EncodeFormat::Json << val; break;

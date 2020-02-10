@@ -148,20 +148,20 @@ bool validateText(const StringView &str) {
 	return true;
 }
 
-static bool valid_validateEmailQuotation(String &ret, StringView &r) {
+static bool valid_validateEmailQuotation(StringView &r, String *target) {
 	++ r;
-	ret.push_back('"');
+	if (target) { target->push_back('"'); }
 	while (!r.empty() && !r.is('"')) {
 		auto pos = r.readUntil<StringView::Chars<'"', '\\'>>();
 		if (!pos.empty()) {
-			ret.append(pos.data(), pos.size());
+			if (target) { target->append(pos.data(), pos.size()); }
 		}
 
 		if (r.is('\\')) {
-			ret.push_back(r[0]);
+			if (target) { target->push_back(r[0]); }
 			++ r;
 			if (!r.empty()) {
-				ret.push_back(r[0]);
+				if (target) { target->push_back(r[0]); }
 				++ r;
 			}
 		}
@@ -169,28 +169,13 @@ static bool valid_validateEmailQuotation(String &ret, StringView &r) {
 	if (r.empty()) {
 		return false;
 	} else {
-		ret.push_back('"');
+		if (target) { target->push_back('"'); }
 		++ r;
 		return true;
 	}
 }
 
-bool validateEmail(String &str) {
-	string::trim<String, memory::PoolInterface>(str);
-	if (str.empty()) {
-		return false;
-	}
-
-	if (str.back() == ')') {
-		auto pos = str.rfind('(');
-		if (pos != String::npos) {
-			str.erase(str.begin() + pos, str.end());
-		} else {
-			return false;
-		}
-	}
-	String ret; ret.reserve(str.size());
-
+static bool doValidateEmail(StringView r, String *target) {
 	using namespace chars;
 	using LocalChars = StringView::Compose<StringView::CharGroup<CharGroupId::Alphanumeric>,
 			StringView::Chars<'_', '-', '+', '#', '!', '$', '%', '&', '\'', '*', '/', '=', '?', '^', '`', '{', '}', '|', '~' >,
@@ -198,8 +183,7 @@ bool validateEmail(String &str) {
 
 	using Whitespace =  CharGroup<char, CharGroupId::WhiteSpace>;
 
-	StringView r(str);
-	r.skipChars<Whitespace>();
+	r.trimChars<Whitespace>();
 
 	if (r.is('(')) {
 		r.skipUntil<StringView::Chars<')'>>();
@@ -210,7 +194,7 @@ bool validateEmail(String &str) {
 		r.skipChars<Whitespace>();
 	}
 	if (r.is('"')) {
-		if (!valid_validateEmailQuotation(ret, r)) {
+		if (!valid_validateEmailQuotation(r, target)) {
 			return false;
 		}
 	}
@@ -218,20 +202,20 @@ bool validateEmail(String &str) {
 	while (!r.empty() && !r.is('@')) {
 		auto pos = r.readChars<LocalChars>();
 		if (!pos.empty()) {
-			ret.append(pos.data(), pos.size());
+			if (target) { target->append(pos.data(), pos.size()); }
 		}
 
 		if (r.is('.')) {
-			ret.push_back('.');
+			if (target) { target->push_back('.'); }
 			++ r;
 			if (r.is('"')) {
-				if (!valid_validateEmailQuotation(ret, r)) {
+				if (!valid_validateEmailQuotation(r, target)) {
 					return false;
 				}
 				if (!r.is('.') && !r.is('@')) {
 					return false;
 				} else if (r.is('.')) {
-					ret.push_back('.');
+					if (target) { target->push_back('.'); }
 					++ r;
 				}
 			} else if (!r.is<LocalChars>()) {
@@ -256,7 +240,7 @@ bool validateEmail(String &str) {
 		return false;
 	}
 
-	ret.push_back('@');
+	if (target) { target->push_back('@'); }
 	++ r;
 	if (r.is('(')) {
 		r.skipUntil<StringView::Chars<')'>>();
@@ -268,13 +252,13 @@ bool validateEmail(String &str) {
 	}
 
 	if (r.is('[')) {
-		ret.push_back('[');
+		if (target) { target->push_back('['); }
 		auto pos = r.readUntil<StringView::Chars<']'>>();
 		if (r.is(']')) {
 			r ++;
 			if (r.empty()) {
-				ret.append(pos.data(), pos.size());
-				ret.push_back(']');
+				if (target) { target->append(pos.data(), pos.size()); }
+				if (target) { target->push_back(']'); }
 			}
 		}
 	} else {
@@ -294,21 +278,48 @@ bool validateEmail(String &str) {
 			return false;
 		}
 
-		ret.append(host);
+		if (target) { target->append(host); }
 	}
 
-	str = std::move(ret);
 	return true;
 }
 
+bool validateEmailWithoutNormalization(const StringView &str) {
+	return doValidateEmail(str, nullptr);
+}
+
+bool validateEmail(String &str) {
+	string::trim<String, memory::PoolInterface>(str);
+	if (str.empty()) {
+		return false;
+	}
+
+	if (str.back() == ')') {
+		auto pos = str.rfind('(');
+		if (pos != String::npos) {
+			str.erase(str.begin() + pos, str.end());
+		} else {
+			return false;
+		}
+	}
+	String ret; ret.reserve(str.size());
+
+	if (doValidateEmail(str, &ret)) {
+		str = std::move(ret);
+		return true;
+	}
+
+	return false;
+}
+
 bool validateUrl(String &str) {
-	Url url;
+	UrlView url;
 	if (!url.parse(str)) {
 		return false;
 	}
 
-	auto oldHost = url.getHost();
-	if (url.getHost().empty() && url.getPath().size() < 2) {
+	auto oldHost = url.host;
+	if (url.host.empty() && url.path.size() < 2) {
 		return false;
 	}
 
@@ -317,10 +328,10 @@ bool validateUrl(String &str) {
 		if (newHost.empty()) {
 			return false;
 		}
-		url.setHost(newHost);
+		url.host = newHost;
 	}
 
-	auto newUrl = url.get();
+	auto newUrl = url.get<memory::PoolInterface>();
 	str = String(newUrl.data(), newUrl.size());
 	return true;
 }

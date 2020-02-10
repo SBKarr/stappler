@@ -94,11 +94,6 @@ bool TestHandler::processEmailTest(Request &rctx, data::Value &ret, const data::
 bool TestHandler::processUrlTest(Request &rctx, data::Value &ret, const data::Value &input) {
 	if (!input.hasValue("url")) {
 
-		String testString("https://йакреведко.рф/test/.././..////?query[креведко][treas][ds][]=qwert#аяклешня");
-		Url testUrl(testString);
-		ret.setValue(testUrl.encode(), "urls");
-		ret.setString(testUrl.get(), "urls_get");
-
 		data::Value urls;
 
 		urls.addString("localhost");

@@ -199,7 +199,7 @@ public:
 	virtual data::Value getResultObject() override;
 
 protected:
-	Vector<String> stemQuery(const Vector<db::FullTextData> &);
+	// Vector<String> stemQuery(const Vector<db::FullTextData> &);
 
 	void makeHeadlines(data::Value &obj, const data::Value &headlineInfo, const Vector<String> &);
 	String makeHeadline(const StringView &value, const data::Value &headlineInfo, const Vector<String> &);
@@ -207,7 +207,7 @@ protected:
 	const data::Value *getObjectLine(const data::Value &obj, const StringView &);
 
 	const Field *_field = nullptr;
-	search::Stemmer _stemmer;
+	search::Configuration _config;
 };
 
 NS_SA_END
