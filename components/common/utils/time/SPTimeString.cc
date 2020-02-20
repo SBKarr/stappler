@@ -80,10 +80,13 @@ sp_time_exp_t::sp_time_exp_t(Time t, int32_t offset, bool use_localtime) {
 	time_t tt = (t.toSeconds()) + offset;
 	tm_usec = t.toMicroseconds() % SP_USEC_PER_SEC;
 
-	if (use_localtime)
+	if (use_localtime) {
 		localtime_r(&tt, &tm);
-	else
+		tm_gmt_type = gmt_local;
+	} else {
 		gmtime_r(&tt, &tm);
+		tm_gmt_type = gmt_set;
+	}
 
 	tm_sec = tm.tm_sec;
 	tm_min = tm.tm_min;
@@ -105,7 +108,7 @@ sp_time_exp_t::sp_time_exp_t(Time t, int32_t offs) : sp_time_exp_t(t, offs, fals
 }
 
 // apr_time_exp_gmt
-sp_time_exp_t::sp_time_exp_t(Time t) : sp_time_exp_t(t, 0, 0) {
+sp_time_exp_t::sp_time_exp_t(Time t) : sp_time_exp_t(t, 0, false) {
 	tm_gmtoff = 0;
 }
 
@@ -159,46 +162,46 @@ Time sp_time_exp_t::ltz_get() const {
  *   * - swallow remaining characters
  *  <x> - exact match for any other character
  */
-static int sp_date_checkmask(const char *data, const char *mask) {
-	int i;
-	char d;
-
-	for (i = 0; i < 256; i++) {
-		d = data[i];
-		switch (mask[i]) {
+static bool sp_date_checkmask(StringView data, StringView mask) {
+	while (!mask.empty() && !data.empty()) {
+		auto d = data.front();
+		switch (mask.front()) {
 		case '\0':
 			return (d == '\0');
 
 		case '*':
-			return 1;
+			return true;
 
 		case '@':
 			if (!chars::isupper(d))
-				return 0;
+				return false;
 			break;
 		case '$':
 			if (!chars::islower(d))
-				return 0;
+				return false;
 			break;
 		case '#':
 			if (!chars::isdigit(d))
-				return 0;
+				return false;
 			break;
 		case '&':
 			if (!chars::isxdigit(d))
-				return 0;
+				return false;
 			break;
 		case '~':
 			if ((d != ' ') && !chars::isdigit(d))
-				return 0;
+				return false;
 			break;
 		default:
-			if (mask[i] != d)
-				return 0;
+			if (*mask != d)
+				return false;
 			break;
 		}
+		++ mask;
+		++ data;
 	}
-	return 0; /* We only get here if mask is corrupted (exceeds 256) */
+
+	return mask.empty() && data.empty();
 }
 
 /*
@@ -259,6 +262,368 @@ static const int s_months[12] = {
 		('N' << 16) | ('o' << 8) | 'v', ('D' << 16) | ('e' << 8) | 'c'
 };
 
+static inline bool sp_time_exp_read_time(sp_time_exp_t &ds, StringView timstr) {
+	ds.tm_hour = ((timstr[0] - '0') * 10) + (timstr[1] - '0');
+	ds.tm_min = ((timstr[3] - '0') * 10) + (timstr[4] - '0');
+	ds.tm_sec = ((timstr[6] - '0') * 10) + (timstr[7] - '0');
+
+	if ((ds.tm_hour > 23) || (ds.tm_min > 59) || (ds.tm_sec > 61)) { return false; }
+
+	return true;
+}
+
+static inline bool sp_time_exp_check_mon(sp_time_exp_t &ds) {
+	if (ds.tm_mday <= 0 || ds.tm_mday > 31) { return false; }
+	if (ds.tm_mon >= 12) { return false; }
+	if ((ds.tm_mday == 31) && (ds.tm_mon == 3 || ds.tm_mon == 5 || ds.tm_mon == 8 || ds.tm_mon == 10)) { return false; }
+
+	if ((ds.tm_mon == 1)
+			&& ((ds.tm_mday > 29)
+					|| ((ds.tm_mday == 29)
+							&& ((ds.tm_year & 3) || (((ds.tm_year % 100) == 0) && (((ds.tm_year % 400) != 100)))))
+			))
+		return false;
+	return true;
+}
+
+static inline bool sp_time_exp_read_mon(sp_time_exp_t &ds, StringView monstr) {
+	int mon = 0;
+	if (ds.tm_mday <= 0 || ds.tm_mday > 31) { return false; }
+
+	if (monstr.size() >= 3) {
+		auto mint = (monstr[0] << 16) | (monstr[1] << 8) | monstr[2];
+		for (mon = 0; mon < 12; mon++)
+			if (mint == s_months[mon])
+				break;
+	} else {
+		mon = ds.tm_mon - 1;
+	}
+
+	if (mon >= 12) { return false; }
+	if ((ds.tm_mday == 31) && (mon == 3 || mon == 5 || mon == 8 || mon == 10)) { return false; }
+
+	if ((mon == 1)
+			&& ((ds.tm_mday > 29)
+					|| ((ds.tm_mday == 29)
+							&& ((ds.tm_year & 3) || (((ds.tm_year % 100) == 0) && (((ds.tm_year % 400) != 100)))))
+			))
+		return false;
+
+	ds.tm_mon = mon;
+	return true;
+}
+
+static inline bool sp_time_exp_read_gmt(sp_time_exp_t &ds, StringView gmtstr) {
+	ds.tm_gmtoff = 0;
+	/* Do we have a timezone ? */
+	if (!gmtstr.empty()) {
+		if (gmtstr == "GMT") {
+			ds.tm_gmt_type = sp_time_exp_t::gmt_set;
+			return true;
+		}
+		int sign = 0;
+		switch (*gmtstr) {
+		case '-': sign = -1; break;
+		case '+': sign = 1; break;
+		case 'Z': ds.tm_gmt_type = sp_time_exp_t::gmt_set; break;
+		default: break;
+		}
+
+		++ gmtstr;
+		auto off1 = gmtstr.readChars<StringView::CharGroup<CharGroupId::Numbers>>();
+		if (off1.size() == 2 && gmtstr.is(':')) {
+			auto off2 = gmtstr.readChars<StringView::CharGroup<CharGroupId::Numbers>>();
+			if (off2.size() == 2) {
+				ds.tm_gmtoff += sign * off1.readInteger().get() * 60 * 60;
+				ds.tm_gmtoff += sign * off2.readInteger().get() * 60;
+				ds.tm_gmt_type = sp_time_exp_t::gmt_set;
+			}
+		} else if (off1.size() == 4) {
+			auto offset = off1.readInteger().get();
+			ds.tm_gmtoff += sign * (offset / 100) * 60 * 60;
+			ds.tm_gmtoff += sign * (offset % 100) * 60;
+			ds.tm_gmt_type = sp_time_exp_t::gmt_set;
+		}
+	} else {
+		ds.tm_gmt_type = sp_time_exp_t::gmt_local;
+	}
+	return true;
+}
+
+/*
+ * Parses an HTTP date in one of three standard forms:
+ *
+ *     Sun, 06 Nov 1994 08:49:37 GMT  ; RFC 822, updated by RFC 1123
+ *     Sunday, 06-Nov-94 08:49:37 GMT ; RFC 850, obsoleted by RFC 1036
+ *     Sun Nov  6 08:49:37 1994       ; ANSI C's asctime() format
+ *     2011-04-28T06:34:00+09:00      ; Atom time format
+ */
+
+bool sp_time_exp_t::read(StringView r) {
+	StringView monstr, timstr, gmtstr;
+
+	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+
+	if (r.empty()) {
+		return false;
+	}
+
+	auto tmp = r;
+	tmp.skipUntil<StringView::Chars<' '>>();
+
+	tm_gmt_type = gmt_unset;
+	if (!tmp.is(' ')) {
+		if (sp_date_checkmask(r, "####-##-##T##:##:##*")) {
+			// 2011-04-28T06:34:00+09:00 ; Atom time format
+			tm_year = ((r[0] - '0') * 10 + (r[1] - '0') - 19) * 100;
+			if (tm_year < 0) { return false; }
+
+			tm_year += ((r[2] - '0') * 10) + (r[3] - '0');
+			tm_mon = ((r[5] - '0') * 10) + (r[6] - '0') - 1;
+			tm_mday = ((r[8] - '0') * 10) + (r[9] - '0');
+
+			r += 11;
+			if (!sp_time_exp_read_time(*this, r.sub(0, 8))) { return false; }
+			if (!sp_time_exp_check_mon(*this)) { return false; }
+			r += 8;
+
+			if (r.is('.')) {
+				double v = r.readDouble().get();
+				tm_usec = 1000000 * v;
+			}
+			return sp_time_exp_read_gmt(*this, r.empty()?"Z":r);
+		} else if (sp_date_checkmask(r, "####-##-##")) {
+			// 2011-04-28 ; Atom date format
+			tm_year = ((r[0] - '0') * 10 + (r[1] - '0') - 19) * 100;
+			if (tm_year < 0)
+				return Time();
+
+			tm_year += ((r[2] - '0') * 10) + (r[3] - '0');
+			tm_mon = ((r[5] - '0') * 10) + (r[6] - '0') - 1;
+			tm_mday = ((r[8] - '0') * 10) + (r[9] - '0');
+			if (!sp_time_exp_check_mon(*this)) { return false; }
+			return sp_time_exp_read_gmt(*this, StringView("Z"));
+		}
+		return false;
+	}
+
+	 if (sp_date_checkmask(r, "@$$ @$$ ~# ##:##:## *")) {
+		// Sun Nov  6 08:49:37 1994       ; ANSI C's asctime() format
+		auto ydate = r.sub(20); // StringView(r.data() + 20, r.size() - 20);
+		ydate.skipUntil<StringView::CharGroup<CharGroupId::Numbers>>();
+		if (ydate.size() < 4) {
+			return false;
+		}
+
+		tm_year = ((ydate[0] - '0') * 10 + (ydate[1] - '0') - 19) * 100;
+		if (tm_year < 0) { return false; }
+		tm_year += ((ydate[2] - '0') * 10) + (ydate[3] - '0');
+		tm_mday = (r[8] == ' ') ? (r[9] - '0') : (((r[8] - '0') * 10) + (r[9] - '0'));
+
+		monstr = r.sub(4, 3);
+		timstr = r.sub(11, 8);
+
+		if (!sp_time_exp_read_time(*this, timstr)) { return false; }
+		if (!sp_time_exp_read_mon(*this, monstr)) { return false; }
+
+		tm_usec = 0;
+		tm_gmtoff = 0;
+		tm_gmt_type = gmt_local;
+		return true;
+	}
+
+	r.skipUntil<StringView::CharGroup<CharGroupId::Numbers>>();
+
+	if (sp_date_checkmask(r, "## @$$ #### ##:##:## *")) {
+		// Sun, 06 Nov 1994 08:49:37 GMT  ; RFC 822, updated by RFC 1123
+		tm_year = ((r[7] - '0') * 10 + (r[8] - '0') - 19) * 100;
+		if (tm_year < 0) { return false; }
+
+		tm_year += ((r[9] - '0') * 10) + (r[10] - '0');
+		tm_mday = ((r[0] - '0') * 10) + (r[1] - '0');
+
+		monstr = r.sub(3, 3);
+		timstr = r.sub(12, 8);
+		gmtstr = r.sub(21);
+	} else if (sp_date_checkmask(r, "# @$$ #### ##:##:## *")) {
+		/* RFC 1123 format with one day */
+		tm_year = ((r[6] - '0') * 10 + (r[7] - '0') - 19) * 100;
+		if (tm_year < 0)
+			return Time();
+
+		tm_year += ((r[8] - '0') * 10) + (r[9] - '0');
+		tm_mday = (r[0] - '0');
+
+		monstr = r.sub(2, 3);
+		timstr = r.sub(11, 8);
+		gmtstr = r.sub(20);
+	} else if (sp_date_checkmask(r, "##-@$$-## ##:##:## *")) {
+		// Sunday, 06-Nov-94 08:49:37 GMT ; RFC 850, obsoleted by RFC 1036
+		tm_year = ((r[7] - '0') * 10) + (r[8] - '0');
+		if (tm_year < 70)
+			tm_year += 100;
+
+		tm_mday = ((r[0] - '0') * 10) + (r[1] - '0');
+
+		monstr = r.sub(3, 3);
+		timstr = r.sub(10, 8);
+		gmtstr = r.sub(19);
+	} else {
+		return false;
+	}
+
+	if (!sp_time_exp_read_time(*this, timstr)) { return false; }
+	if (!sp_time_exp_read_mon(*this, monstr)) { return false; }
+
+	tm_usec = 0;
+
+	if (!gmtstr.empty()) {
+		if (!sp_time_exp_read_gmt(*this, gmtstr)) {
+			return false;
+		}
+	} else {
+		tm_gmtoff = 0;
+	}
+
+	return true;
+}
+
+static const char sp_month_snames[12][4] = {
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+};
+static const char sp_day_snames[7][4] = {
+    "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
+};
+
+void sp_time_exp_t::encodeRfc822(char *date_str) const {
+	const char *s;
+	int real_year;
+
+	/* example: "Sat, 08 Jan 2000 18:31:41 GMT" */
+	/*           12345678901234567890123456789  */
+
+	s = &sp_day_snames[tm_wday][0];
+	*date_str++ = *s++;
+	*date_str++ = *s++;
+	*date_str++ = *s++;
+	*date_str++ = ',';
+	*date_str++ = ' ';
+	*date_str++ = tm_mday / 10 + '0';
+	*date_str++ = tm_mday % 10 + '0';
+	*date_str++ = ' ';
+	s = &sp_month_snames[tm_mon][0];
+	*date_str++ = *s++;
+	*date_str++ = *s++;
+	*date_str++ = *s++;
+	*date_str++ = ' ';
+	real_year = 1900 + tm_year;
+	/* This routine isn't y10k ready. */
+	*date_str++ = real_year / 1000 + '0';
+	*date_str++ = real_year % 1000 / 100 + '0';
+	*date_str++ = real_year % 100 / 10 + '0';
+	*date_str++ = real_year % 10 + '0';
+	*date_str++ = ' ';
+	*date_str++ = tm_hour / 10 + '0';
+	*date_str++ = tm_hour % 10 + '0';
+	*date_str++ = ':';
+	*date_str++ = tm_min / 10 + '0';
+	*date_str++ = tm_min % 10 + '0';
+	*date_str++ = ':';
+	*date_str++ = tm_sec / 10 + '0';
+	*date_str++ = tm_sec % 10 + '0';
+	*date_str++ = ' ';
+	*date_str++ = 'G';
+	*date_str++ = 'M';
+	*date_str++ = 'T';
+	*date_str++ = 0;
+}
+
+void sp_time_exp_t::encodeCTime(char *date_str) const {
+	const char *s;
+	int real_year;
+
+	/* example: "Wed Jun 30 21:49:08 1993" */
+	/*           123456789012345678901234  */
+
+	s = &sp_day_snames[tm_wday][0];
+	*date_str++ = *s++;
+	*date_str++ = *s++;
+	*date_str++ = *s++;
+	*date_str++ = ' ';
+	s = &sp_month_snames[tm_mon][0];
+	*date_str++ = *s++;
+	*date_str++ = *s++;
+	*date_str++ = *s++;
+	*date_str++ = ' ';
+	*date_str++ = tm_mday / 10 + '0';
+	*date_str++ = tm_mday % 10 + '0';
+	*date_str++ = ' ';
+	*date_str++ = tm_hour / 10 + '0';
+	*date_str++ = tm_hour % 10 + '0';
+	*date_str++ = ':';
+	*date_str++ = tm_min / 10 + '0';
+	*date_str++ = tm_min % 10 + '0';
+	*date_str++ = ':';
+	*date_str++ = tm_sec / 10 + '0';
+	*date_str++ = tm_sec % 10 + '0';
+	*date_str++ = ' ';
+	real_year = 1900 + tm_year;
+	*date_str++ = real_year / 1000 + '0';
+	*date_str++ = real_year % 1000 / 100 + '0';
+	*date_str++ = real_year % 100 / 10 + '0';
+	*date_str++ = real_year % 10 + '0';
+	*date_str++ = 0;
+}
+
+void sp_time_exp_t::encodeIso8601(char *date_str, size_t precision) const {
+	int real_year;
+
+	real_year = 1900 + tm_year;
+	*date_str++ = real_year / 1000 + '0';		// 1
+	*date_str++ = real_year % 1000 / 100 + '0';	// 2
+	*date_str++ = real_year % 100 / 10 + '0';	// 3
+	*date_str++ = real_year % 10 + '0';			// 4
+	*date_str++ = '-';							// 5
+	*date_str++ = (tm_mon + 1) / 10 + '0';	// 6
+	*date_str++ = (tm_mon + 1) % 10 + '0';	// 7
+	*date_str++ = '-';							// 8
+	*date_str++ = tm_mday / 10 + '0';		// 9
+	*date_str++ = tm_mday % 10 + '0';		// 10
+	*date_str++ = 'T';							// 11
+	*date_str++ = tm_hour / 10 + '0';		// 12
+	*date_str++ = tm_hour % 10 + '0';		// 13
+	*date_str++ = ':';							// 14
+	*date_str++ = tm_min / 10 + '0';			// 15
+	*date_str++ = tm_min % 10 + '0';			// 16
+	*date_str++ = ':';							// 17
+	*date_str++ = tm_sec / 10 + '0';			// 18
+	*date_str++ = tm_sec % 10 + '0';			// 19
+
+	if (precision > 0 && precision <= 6) {
+		auto intpow = [] (int val, int p) {
+			int ret = 1;
+			while (p > 0) {
+				ret *= val;
+				-- p;
+			}
+			return ret;
+		};
+
+		*date_str++ = '.';
+		const int desc = SP_USEC_PER_SEC / intpow(10, precision);
+		auto val = int32_t(std::round(tm_usec / double(desc)));
+		while (precision > 0) {
+			auto d = val / intpow(10, precision - 1);
+			*date_str++ = '0' + d;
+			val = val % intpow(10, precision - 1);
+			-- precision;
+		}
+	}
+
+	*date_str++ = 'Z';							// 20
+	*date_str++ = 0;
+}
+
 Time Time::fromCompileTime(const char *date, const char *time) {
 	sp_time_exp_t ds;
 	ds.tm_year = ((date[7] - '0') * 10 + (date[8] - '0') - 19) * 100;
@@ -306,658 +671,22 @@ Time Time::fromCompileTime(const char *date, const char *time) {
 	return ds.ltz_get();
 }
 
-#define TIMEPARSE(ds,hr10,hr1,min10,min1,sec10,sec1)        \
-    {                                                       \
-        ds.tm_hour = ((hr10 - '0') * 10) + (hr1 - '0');     \
-        ds.tm_min = ((min10 - '0') * 10) + (min1 - '0');    \
-        ds.tm_sec = ((sec10 - '0') * 10) + (sec1 - '0');    \
-    }
-#define TIMEPARSE_STD(ds,timstr)                            \
-    {                                                       \
-        TIMEPARSE(ds, timstr[0],timstr[1],                  \
-                      timstr[3],timstr[4],                  \
-                      timstr[6],timstr[7]);                 \
-    }
-
-static Time subParseTime(sp_time_exp_t &ds, const char *monstr, const char *timstr, const char *gmtstr) {
-	int mint, mon;
-
-	if (ds.tm_mday <= 0 || ds.tm_mday > 31)
-		return Time();
-
-	if ((ds.tm_hour > 23) || (ds.tm_min > 59) || (ds.tm_sec > 61))
-		return Time();
-
-	if (monstr) {
-		mint = (monstr[0] << 16) | (monstr[1] << 8) | monstr[2];
-		for (mon = 0; mon < 12; mon++)
-			if (mint == s_months[mon])
-				break;
-
-	} else {
-		mon = ds.tm_mon - 1;
-	}
-
-	if (mon >= 12)
-		return Time();
-
-	if ((ds.tm_mday == 31) && (mon == 3 || mon == 5 || mon == 8 || mon == 10))
-		return Time();
-
-    /* February gets special check for leapyear */
-
-	if ((mon == 1)
-			&& ((ds.tm_mday > 29)
-					|| ((ds.tm_mday == 29)
-							&& ((ds.tm_year & 3) || (((ds.tm_year % 100) == 0) && (((ds.tm_year % 400) != 100)))))
-			))
-		return Time();
-
-	ds.tm_mon = mon;
-
-	/* tm_gmtoff is the number of seconds off of GMT the time is.
-	 *
-	 * We only currently support: [+-]ZZZZ where Z is the offset in
-	 * hours from GMT.
-	 *
-	 * If there is any confusion, tm_gmtoff will remain 0.
-	 */
-	ds.tm_gmtoff = 0;
-
-	/* Do we have a timezone ? */
-	if (gmtstr) {
-		int offset;
-		switch (*gmtstr) {
-		case '-':
-			if (gmtstr[3] == ':') {
-				offset = atoi(gmtstr + 1) * 100 + atoi(gmtstr + 4);
-			} else {
-				offset = atoi(gmtstr + 1);
-			}
-			ds.tm_gmtoff -= (offset / 100) * 60 * 60;
-			ds.tm_gmtoff -= (offset % 100) * 60;
-			break;
-		case '+':
-			if (gmtstr[3] == ':') {
-				offset = atoi(gmtstr + 1) * 100 + atoi(gmtstr + 4);
-			} else {
-				offset = atoi(gmtstr + 1);
-			}
-			ds.tm_gmtoff += (offset / 100) * 60 * 60;
-			ds.tm_gmtoff += (offset % 100) * 60;
-			break;
-		}
-	}
-
-	/* apr_time_exp_get uses tm_usec field, but it hasn't been set yet.
-	 * It should be safe to just zero out this value.
-	 * tm_usec is the number of microseconds into the second.  HTTP only
-	 * cares about second granularity.
-	 */
-	ds.tm_usec = 0;
-
-	if (gmtstr) {
-		return ds.gmt_get();
-	} else {
-		return ds.ltz_get();
-	}
-}
-
-Time Time::fromHttp(const StringView &ir) {
-	StringView r(ir);
+Time Time::fromHttp(StringView r) {
 	sp_time_exp_t ds;
-	int mint, mon;
-	const char *monstr, *timstr;
-
-	if (r.empty())
-		return Time();
-
-	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-
-	if (r.empty())
-		return Time();
-
-	auto date = r.data();
-	if ((date = strchr(date, ' ')) == NULL) { /* Find space after weekday */
-		date = r.data();
-		if (sp_date_checkmask(date, "####-##-##T##:##:##*")) {
-			ds.tm_year = ((date[0] - '0') * 10 + (date[1] - '0') - 19) * 100;
-			if (ds.tm_year < 0)
-				return Time();
-
-			ds.tm_year += ((date[2] - '0') * 10) + (date[3] - '0');
-			ds.tm_mon = ((date[5] - '0') * 10) + (date[6] - '0');
-			ds.tm_mday = ((date[8] - '0') * 10) + (date[9] - '0');
-
-			timstr = &date[11];
-			TIMEPARSE_STD(ds, timstr);
-
-			auto t = subParseTime(ds, nullptr, timstr, &date[19]);
-			if (timstr[8] == '.') {
-				double v = std::strtod(&timstr[8], nullptr);
-				return Time::microseconds(t.toMicros() + uint64_t(1000000 * v));
-			} else {
-				return t;
-			}
-		} else if (sp_date_checkmask(date, "####-##-##")) {
-			ds.tm_year = ((date[0] - '0') * 10 + (date[1] - '0') - 19) * 100;
-			if (ds.tm_year < 0)
-				return Time();
-
-			ds.tm_year += ((date[2] - '0') * 10) + (date[3] - '0');
-			ds.tm_mon = ((date[5] - '0') * 10) + (date[6] - '0');
-			ds.tm_mday = ((date[8] - '0') * 10) + (date[9] - '0');
-
-			return subParseTime(ds, nullptr, nullptr, "Z");
-		}
-
+	if (!ds.read(r)) {
 		return Time();
 	}
 
-	++date; /* Now pointing to first char after space, which should be */
-
-	/* start of the actual date information for all 4 formats. */
-
-	if (sp_date_checkmask(date, "## @$$ #### ##:##:## *")) {
-		/* RFC 1123 format with two days */
-		ds.tm_year = ((date[7] - '0') * 10 + (date[8] - '0') - 19) * 100;
-		if (ds.tm_year < 0)
-			return Time();
-
-		ds.tm_year += ((date[9] - '0') * 10) + (date[10] - '0');
-
-		ds.tm_mday = ((date[0] - '0') * 10) + (date[1] - '0');
-
-		monstr = date + 3;
-		timstr = date + 12;
-	} else if (sp_date_checkmask(date, "##-@$$-## ##:##:## *")) {
-		/* RFC 850 format */
-		ds.tm_year = ((date[7] - '0') * 10) + (date[8] - '0');
-		if (ds.tm_year < 70)
-			ds.tm_year += 100;
-
-		ds.tm_mday = ((date[0] - '0') * 10) + (date[1] - '0');
-
-		monstr = date + 3;
-		timstr = date + 10;
-	} else if (sp_date_checkmask(date, "@$$ ~# ##:##:## ####*")) {
-		/* asctime format */
-		ds.tm_year = ((date[16] - '0') * 10 + (date[17] - '0') - 19) * 100;
-		if (ds.tm_year < 0)
-			return Time();
-
-		ds.tm_year += ((date[18] - '0') * 10) + (date[19] - '0');
-
-		if (date[4] == ' ')
-			ds.tm_mday = 0;
-		else
-			ds.tm_mday = (date[4] - '0') * 10;
-
-		ds.tm_mday += (date[5] - '0');
-
-		monstr = date;
-		timstr = date + 7;
-	} else if (sp_date_checkmask(date, "# @$$ #### ##:##:## *")) {
-		/* RFC 1123 format with one day */
-		ds.tm_year = ((date[6] - '0') * 10 + (date[7] - '0') - 19) * 100;
-		if (ds.tm_year < 0)
-			return Time();
-
-		ds.tm_year += ((date[8] - '0') * 10) + (date[9] - '0');
-
-		ds.tm_mday = (date[0] - '0');
-
-		monstr = date + 2;
-		timstr = date + 11;
-	} else
-		return Time();
-
-	if (ds.tm_mday <= 0 || ds.tm_mday > 31)
-		return Time();
-
-	ds.tm_hour = ((timstr[0] - '0') * 10) + (timstr[1] - '0');
-	ds.tm_min = ((timstr[3] - '0') * 10) + (timstr[4] - '0');
-	ds.tm_sec = ((timstr[6] - '0') * 10) + (timstr[7] - '0');
-
-	if ((ds.tm_hour > 23) || (ds.tm_min > 59) || (ds.tm_sec > 61))
-		return Time();
-
-	mint = (monstr[0] << 16) | (monstr[1] << 8) | monstr[2];
-	for (mon = 0; mon < 12; mon++)
-		if (mint == s_months[mon])
-			break;
-
-	if (mon >= 12)
-		return Time();
-
-	if ((ds.tm_mday == 31) && (mon == 3 || mon == 5 || mon == 8 || mon == 10))
-		return Time();
-
-	/* February gets special check for leapyear */
-	if ((mon == 1)
-			&& ((ds.tm_mday > 29)
-					|| ((ds.tm_mday == 29)
-							&& ((ds.tm_year & 3) || (((ds.tm_year % 100) == 0) && (((ds.tm_year % 400) != 100))))
-					)
-			))
-		return Time();
-
-	ds.tm_mon = mon;
-
-	/* ap_mplode_time uses tm_usec and tm_gmtoff fields, but they haven't
-	 * been set yet.
-	 * It should be safe to just zero out these values.
-	 * tm_usec is the number of microseconds into the second.  HTTP only
-	 * cares about second granularity.
-	 * tm_gmtoff is the number of seconds off of GMT the time is.  By
-	 * definition all times going through this function are in GMT, so this
-	 * is zero.
-	 */
-	ds.tm_usec = 0;
-	ds.tm_gmtoff = 0;
-
-	return ds.get();
-}
-
-/*
- * Parses a string resembling an RFC 822 date.  This is meant to be
- * leinent in its parsing of dates.  Hence, this will parse a wider
- * range of dates than apr_date_parse_http.
- *
- * The prominent mailer (or poster, if mailer is unknown) that has
- * been seen in the wild is included for the unknown formats.
- *
- *     Sun, 06 Nov 1994 08:49:37 GMT  ; RFC 822, updated by RFC 1123
- *     Sunday, 06-Nov-94 08:49:37 GMT ; RFC 850, obsoleted by RFC 1036
- *     Sun Nov  6 08:49:37 1994       ; ANSI C's asctime() format
- *     Sun, 6 Nov 1994 08:49:37 GMT   ; RFC 822, updated by RFC 1123
- *     Sun, 06 Nov 94 08:49:37 GMT    ; RFC 822
- *     Sun, 6 Nov 94 08:49:37 GMT     ; RFC 822
- *     Sun, 06 Nov 94 08:49 GMT       ; Unknown [drtr@ast.cam.ac.uk]
- *     Sun, 6 Nov 94 08:49 GMT        ; Unknown [drtr@ast.cam.ac.uk]
- *     Sun, 06 Nov 94 8:49:37 GMT     ; Unknown [Elm 70.85]
- *     Sun, 6 Nov 94 8:49:37 GMT      ; Unknown [Elm 70.85]
- *     Mon,  7 Jan 2002 07:21:22 GMT  ; Unknown [Postfix]
- *     Sun, 06-Nov-1994 08:49:37 GMT  ; RFC 850 with four digit years
- *
- */
-
-Time Time::fromRfc(const StringView &r) {
-	auto date = r.data();
-	sp_time_exp_t ds;
-	const char *monstr, *timstr, *gmtstr;
-
-	if (!date) {
-		return Time();
+	switch (ds.tm_gmt_type) {
+	case sp_time_exp_t::gmt_set: return ds.gmt_get();
+	case sp_time_exp_t::gmt_local: return ds.ltz_get();
+	case sp_time_exp_t::gmt_unset: return ds.get();
 	}
 
-	 if (sp_date_checkmask(date, "@$$ @$$ ## ##:##:## *")) {
-		auto extra_str = StringView(r.data() + 20, r.size() - 20);
-		extra_str.skipUntil<StringView::CharGroup<CharGroupId::Numbers>>();
-
-		auto ydate = extra_str.data();
-		ds.tm_year = ((ydate[0] - '0') * 10 + (ydate[1] - '0') - 19) * 100;
-
-		if (ds.tm_year < 0) { return Time(); }
-
-		ds.tm_year += ((ydate[2] - '0') * 10) + (ydate[3] - '0');
-		ds.tm_mday = ((date[8] - '0') * 10) + (date[9] - '0');
-
-		monstr = date + 4;
-		timstr = date + 11;
-
-		TIMEPARSE_STD(ds, timstr);
-
-		gmtstr = nullptr;
-
-		return subParseTime(ds, monstr, timstr, gmtstr);
-	}
-
-	/* Not all dates have text days at the beginning. */
-	if (!chars::isdigit(date[0])) {
-		while (*date && chars::isspace(*date)) /* Find first non-whitespace char */
-			++date;
-
-		if (*date == '\0')
-			return Time();
-
-		if ((date = strchr(date, ' ')) == NULL) /* Find space after weekday */
-			return Time();
-
-		++date; /* Now pointing to first char after space, which should be */
-	}
-
-	/* start of the actual date information for all 11 formats. */
-	if (sp_date_checkmask(date, "## @$$ #### ##:##:## *")) { /* RFC 1123 format */
-		ds.tm_year = ((date[7] - '0') * 10 + (date[8] - '0') - 19) * 100;
-
-		if (ds.tm_year < 0)
-			return Time();
-
-		ds.tm_year += ((date[9] - '0') * 10) + (date[10] - '0');
-
-		ds.tm_mday = ((date[0] - '0') * 10) + (date[1] - '0');
-
-		monstr = date + 3;
-		timstr = date + 12;
-		gmtstr = date + 21;
-
-		TIMEPARSE_STD(ds, timstr);
-	} else if (sp_date_checkmask(date, "##-@$$-## ##:##:## *")) {/* RFC 850 format  */
-		ds.tm_year = ((date[7] - '0') * 10) + (date[8] - '0');
-
-		if (ds.tm_year < 70)
-			ds.tm_year += 100;
-
-		ds.tm_mday = ((date[0] - '0') * 10) + (date[1] - '0');
-
-		monstr = date + 3;
-		timstr = date + 10;
-		gmtstr = date + 19;
-
-		TIMEPARSE_STD(ds, timstr);
-	} else if (sp_date_checkmask(date, "@$$ ~# ##:##:## ####*")) {
-		/* asctime format */
-		ds.tm_year = ((date[16] - '0') * 10 + (date[17] - '0') - 19) * 100;
-		if (ds.tm_year < 0)
-			return Time();
-
-		ds.tm_year += ((date[18] - '0') * 10) + (date[19] - '0');
-
-		if (date[4] == ' ')
-			ds.tm_mday = 0;
-		else
-			ds.tm_mday = (date[4] - '0') * 10;
-
-		ds.tm_mday += (date[5] - '0');
-
-		monstr = date;
-		timstr = date + 7;
-		gmtstr = NULL;
-
-		TIMEPARSE_STD(ds, timstr);
-	} else if (sp_date_checkmask(date, "# @$$ #### ##:##:## *")) {
-		/* RFC 1123 format*/
-		ds.tm_year = ((date[6] - '0') * 10 + (date[7] - '0') - 19) * 100;
-
-		if (ds.tm_year < 0)
-			return Time();
-
-		ds.tm_year += ((date[8] - '0') * 10) + (date[9] - '0');
-		ds.tm_mday = (date[0] - '0');
-
-		monstr = date + 2;
-		timstr = date + 11;
-		gmtstr = date + 20;
-
-		TIMEPARSE_STD(ds, timstr);
-	} else if (sp_date_checkmask(date, "## @$$ ## ##:##:## *")) {
-		/* This is the old RFC 1123 date format - many many years ago, people
-		 * used two-digit years.  Oh, how foolish.
-		 *
-		 * Two-digit day, two-digit year version. */
-		ds.tm_year = ((date[7] - '0') * 10) + (date[8] - '0');
-
-		if (ds.tm_year < 70)
-			ds.tm_year += 100;
-
-		ds.tm_mday = ((date[0] - '0') * 10) + (date[1] - '0');
-
-		monstr = date + 3;
-		timstr = date + 10;
-		gmtstr = date + 19;
-
-		TIMEPARSE_STD(ds, timstr);
-	} else if (sp_date_checkmask(date, " # @$$ ## ##:##:## *")) {
-		/* This is the old RFC 1123 date format - many many years ago, people
-		 * used two-digit years.  Oh, how foolish.
-		 *
-		 * Space + one-digit day, two-digit year version.*/
-		ds.tm_year = ((date[7] - '0') * 10) + (date[8] - '0');
-
-		if (ds.tm_year < 70)
-			ds.tm_year += 100;
-
-		ds.tm_mday = (date[1] - '0');
-
-		monstr = date + 3;
-		timstr = date + 10;
-		gmtstr = date + 19;
-
-		TIMEPARSE_STD(ds, timstr);
-	} else if (sp_date_checkmask(date, "# @$$ ## ##:##:## *")) {
-		/* This is the old RFC 1123 date format - many many years ago, people
-		 * used two-digit years.  Oh, how foolish.
-		 *
-		 * One-digit day, two-digit year version. */
-		ds.tm_year = ((date[6] - '0') * 10) + (date[7] - '0');
-
-		if (ds.tm_year < 70)
-			ds.tm_year += 100;
-
-		ds.tm_mday = (date[0] - '0');
-
-		monstr = date + 2;
-		timstr = date + 9;
-		gmtstr = date + 18;
-
-		TIMEPARSE_STD(ds, timstr);
-	} else if (sp_date_checkmask(date, "## @$$ ## ##:## *")) {
-		/* Loser format.  This is quite bogus.  */
-		ds.tm_year = ((date[7] - '0') * 10) + (date[8] - '0');
-
-		if (ds.tm_year < 70)
-			ds.tm_year += 100;
-
-		ds.tm_mday = ((date[0] - '0') * 10) + (date[1] - '0');
-
-		monstr = date + 3;
-		timstr = date + 10;
-		gmtstr = NULL;
-
-		TIMEPARSE(ds, timstr[0], timstr[1], timstr[3], timstr[4], '0', '0');
-	} else if (sp_date_checkmask(date, "# @$$ ## ##:## *")) {
-		/* Loser format.  This is quite bogus.  */
-		ds.tm_year = ((date[6] - '0') * 10) + (date[7] - '0');
-
-		if (ds.tm_year < 70)
-			ds.tm_year += 100;
-
-		ds.tm_mday = (date[0] - '0');
-
-		monstr = date + 2;
-		timstr = date + 9;
-		gmtstr = NULL;
-
-		TIMEPARSE(ds, timstr[0], timstr[1], timstr[3], timstr[4], '0', '0');
-	} else if (sp_date_checkmask(date, "## @$$ ## #:##:## *")) {
-		/* Loser format.  This is quite bogus.  */
-		ds.tm_year = ((date[7] - '0') * 10) + (date[8] - '0');
-
-		if (ds.tm_year < 70)
-			ds.tm_year += 100;
-
-		ds.tm_mday = ((date[0] - '0') * 10) + (date[1] - '0');
-
-		monstr = date + 3;
-		timstr = date + 9;
-		gmtstr = date + 18;
-
-		TIMEPARSE(ds, '0', timstr[1], timstr[3], timstr[4], timstr[6], timstr[7]);
-	} else if (sp_date_checkmask(date, "# @$$ ## #:##:## *")) {
-		/* Loser format.  This is quite bogus.  */
-		ds.tm_year = ((date[6] - '0') * 10) + (date[7] - '0');
-
-		if (ds.tm_year < 70)
-			ds.tm_year += 100;
-
-		ds.tm_mday = (date[0] - '0');
-
-		monstr = date + 2;
-		timstr = date + 8;
-		gmtstr = date + 17;
-
-		TIMEPARSE(ds, '0', timstr[1], timstr[3], timstr[4], timstr[6], timstr[7]);
-	} else if (sp_date_checkmask(date, " # @$$ #### ##:##:## *")) {
-		/* RFC 1123 format with a space instead of a leading zero. */
-		ds.tm_year = ((date[7] - '0') * 10 + (date[8] - '0') - 19) * 100;
-
-		if (ds.tm_year < 0)
-			return Time();
-
-		ds.tm_year += ((date[9] - '0') * 10) + (date[10] - '0');
-
-		ds.tm_mday = (date[1] - '0');
-
-		monstr = date + 3;
-		timstr = date + 12;
-		gmtstr = date + 21;
-
-		TIMEPARSE_STD(ds, timstr);
-	} else if (sp_date_checkmask(date, "##-@$$-#### ##:##:## *")) {
-		/* RFC 1123 with dashes instead of spaces between date/month/year
-		 * This also looks like RFC 850 with four digit years.
-		 */
-		ds.tm_year = ((date[7] - '0') * 10 + (date[8] - '0') - 19) * 100;
-		if (ds.tm_year < 0)
-			return Time();
-
-		ds.tm_year += ((date[9] - '0') * 10) + (date[10] - '0');
-
-		ds.tm_mday = ((date[0] - '0') * 10) + (date[1] - '0');
-
-		monstr = date + 3;
-		timstr = date + 12;
-		gmtstr = date + 21;
-
-		TIMEPARSE_STD(ds, timstr);
-	} else {
-		return Time();
-	}
-
-	return subParseTime(ds, monstr, timstr, gmtstr);
+	return Time();
 }
 
-static const char sp_month_snames[12][4] = {
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-};
-static const char sp_day_snames[7][4] = {
-    "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
-};
-
-void Time::encodeRfc822(char *date_str) {
-	sp_time_exp_t xt(*this);
-	const char *s;
-	int real_year;
-
-	/* example: "Sat, 08 Jan 2000 18:31:41 GMT" */
-	/*           12345678901234567890123456789  */
-
-	s = &sp_day_snames[xt.tm_wday][0];
-	*date_str++ = *s++;
-	*date_str++ = *s++;
-	*date_str++ = *s++;
-	*date_str++ = ',';
-	*date_str++ = ' ';
-	*date_str++ = xt.tm_mday / 10 + '0';
-	*date_str++ = xt.tm_mday % 10 + '0';
-	*date_str++ = ' ';
-	s = &sp_month_snames[xt.tm_mon][0];
-	*date_str++ = *s++;
-	*date_str++ = *s++;
-	*date_str++ = *s++;
-	*date_str++ = ' ';
-	real_year = 1900 + xt.tm_year;
-	/* This routine isn't y10k ready. */
-	*date_str++ = real_year / 1000 + '0';
-	*date_str++ = real_year % 1000 / 100 + '0';
-	*date_str++ = real_year % 100 / 10 + '0';
-	*date_str++ = real_year % 10 + '0';
-	*date_str++ = ' ';
-	*date_str++ = xt.tm_hour / 10 + '0';
-	*date_str++ = xt.tm_hour % 10 + '0';
-	*date_str++ = ':';
-	*date_str++ = xt.tm_min / 10 + '0';
-	*date_str++ = xt.tm_min % 10 + '0';
-	*date_str++ = ':';
-	*date_str++ = xt.tm_sec / 10 + '0';
-	*date_str++ = xt.tm_sec % 10 + '0';
-	*date_str++ = ' ';
-	*date_str++ = 'G';
-	*date_str++ = 'M';
-	*date_str++ = 'T';
-	*date_str++ = 0;
-}
-
-void Time::encodeCTime(char *date_str) {
-	sp_time_exp_t xt(*this, true);
-	const char *s;
-	int real_year;
-
-	/* example: "Wed Jun 30 21:49:08 1993" */
-	/*           123456789012345678901234  */
-
-	s = &sp_day_snames[xt.tm_wday][0];
-	*date_str++ = *s++;
-	*date_str++ = *s++;
-	*date_str++ = *s++;
-	*date_str++ = ' ';
-	s = &sp_month_snames[xt.tm_mon][0];
-	*date_str++ = *s++;
-	*date_str++ = *s++;
-	*date_str++ = *s++;
-	*date_str++ = ' ';
-	*date_str++ = xt.tm_mday / 10 + '0';
-	*date_str++ = xt.tm_mday % 10 + '0';
-	*date_str++ = ' ';
-	*date_str++ = xt.tm_hour / 10 + '0';
-	*date_str++ = xt.tm_hour % 10 + '0';
-	*date_str++ = ':';
-	*date_str++ = xt.tm_min / 10 + '0';
-	*date_str++ = xt.tm_min % 10 + '0';
-	*date_str++ = ':';
-	*date_str++ = xt.tm_sec / 10 + '0';
-	*date_str++ = xt.tm_sec % 10 + '0';
-	*date_str++ = ' ';
-	real_year = 1900 + xt.tm_year;
-	*date_str++ = real_year / 1000 + '0';
-	*date_str++ = real_year % 1000 / 100 + '0';
-	*date_str++ = real_year % 100 / 10 + '0';
-	*date_str++ = real_year % 10 + '0';
-	*date_str++ = 0;
-}
-
-void Time::encodeIso8601(char *date_str) {
-	// [-]CCYY-MM-DDThh:mm:ssZ
-
-	sp_time_exp_t xt(*this, false);
-	int real_year;
-
-	real_year = 1900 + xt.tm_year;
-	*date_str++ = real_year / 1000 + '0';		// 1
-	*date_str++ = real_year % 1000 / 100 + '0';	// 2
-	*date_str++ = real_year % 100 / 10 + '0';	// 3
-	*date_str++ = real_year % 10 + '0';			// 4
-	*date_str++ = '-';							// 5
-	*date_str++ = (xt.tm_mon + 1) / 10 + '0';	// 6
-	*date_str++ = (xt.tm_mon + 1) % 10 + '0';	// 7
-	*date_str++ = '-';							// 8
-	*date_str++ = xt.tm_mday / 10 + '0';		// 9
-	*date_str++ = xt.tm_mday % 10 + '0';		// 10
-	*date_str++ = 'T';							// 11
-	*date_str++ = xt.tm_hour / 10 + '0';		// 12
-	*date_str++ = xt.tm_hour % 10 + '0';		// 13
-	*date_str++ = ':';							// 14
-	*date_str++ = xt.tm_min / 10 + '0';			// 15
-	*date_str++ = xt.tm_min % 10 + '0';			// 16
-	*date_str++ = ':';							// 17
-	*date_str++ = xt.tm_sec / 10 + '0';			// 18
-	*date_str++ = xt.tm_sec % 10 + '0';			// 19
-	*date_str++ = 'Z';							// 20
-	*date_str++ = 0;
-}
-
-size_t Time::encodeToFormat(char *buf, size_t bufSize, const char *fmt) {
+size_t Time::encodeToFormat(char *buf, size_t bufSize, const char *fmt) const {
 	struct tm tm;
 	time_t tt = toSeconds();
 	gmtime_r(&tt, &tm);

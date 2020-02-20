@@ -137,15 +137,26 @@ struct TimeTest : Test {
 			auto http = t.toHttp();
 
 			auto t1 = Time::fromHttp(http);
-			auto t2 = Time::fromRfc(ctime);
-
-			auto ti = TimeInterval::microseconds(rand());
+			auto t2 = Time::fromHttp(ctime);
 
 			stream << "\n\t" << t.toSeconds() << " | Rfc822: " << http << " | " << t1.toSeconds() << " " << (t1.toSeconds() == t.toSeconds());
 			stream << " | CTime: " << ctime << " | " << t2.toSeconds() << " " << (t2.toSeconds() == t.toSeconds());
-			stream << " | " << ti.toMicros();
 
 			if (!(t1.toSeconds() == t.toSeconds() && t2.toSeconds() == t.toSeconds())) {
+				success = false;
+			}
+		}
+
+		for (int i = 0; i <= 10; ++ i) {
+			auto t = now + TimeInterval::milliseconds( (i == 0) ? 0 : rand());
+
+			auto xml = t.toIso8601(6);
+
+			auto t1 = Time::fromHttp(xml);
+
+			stream << "\n\t" << t.toMicros() << " | Iso8601: " << xml << " | " << t1.toMicros() << " " << t1.toIso8601(3) << " " << (t1.toMicros() == t.toMicros());
+
+			if (!(t1.toMicros() == t.toMicros())) {
 				success = false;
 			}
 		}

@@ -130,7 +130,7 @@ Device::Device() : _deviceLog(&log::__stappler_log) {
     _backToForegroundlistener = cocos2d::EventListenerCustom::create(EVENT_RENDERER_RECREATED,
         [this] (cocos2d::EventCustom*) {
 
-        ThreadManager::getInstance()->update(0.0f);
+        ThreadManager::getInstance()->update();
         TextureCache::getInstance()->reloadTextures();
     	stappler::log::text("Device", "onAndroidReset");
     	onRegenerateResources(this);

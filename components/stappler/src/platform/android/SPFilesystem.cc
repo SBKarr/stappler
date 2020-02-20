@@ -31,15 +31,16 @@ THE SOFTWARE.
 #include "platform/CCFileUtils.h"
 #include "SPFilesystem.h"
 #include "SPJNI.h"
+#include "jni/Java_org_cocos2dx_lib_Cocos2dxHelper.h"
 
 #define SP_TERMINATED_DATA(view) (view.terminated()?view.data():view.str().data())
 
 namespace stappler::platform::filesystem {
 	String _getWritablePath() {
-		return cocos2d::FileUtils::getInstance()->getWritablePath();
+		return getFileDirectoryJNI();
 	}
 	String _getDocumentsPath() {
-		return cocos2d::FileUtils::getInstance()->getWritablePath();
+		return getFileDirectoryJNI();
 	}
 	String _getCachesPath() {
 		auto env = spjni::getJniEnv();

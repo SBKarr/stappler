@@ -47,13 +47,7 @@ THE SOFTWARE.
 #include "renderer/CCGLProgramCache.h"
 
 
-#if CC_ENABLE_CACHE_TEXTURE_DATA
-    #include "renderer/CCTextureCache.h"
-#endif
-
 NS_CC_BEGIN
-
-
 
 namespace {
     typedef Texture2D::PixelFormatInfoMap::value_type PixelFormatInfoMapValue;
@@ -459,10 +453,6 @@ Texture2D::Texture2D()
 
 Texture2D::~Texture2D()
 {
-#if CC_ENABLE_CACHE_TEXTURE_DATA
-    VolatileTextureMgr::removeTexture(this);
-#endif
-
     CCLOGINFO("deallocing Texture2D: %p - id=%u", this, _name);
     CC_SAFE_RELEASE(_shaderProgram);
 
@@ -848,19 +838,6 @@ bool Texture2D::initWithMipmaps(MipmapInfo* mipmaps, int mipmapsNum, PixelFormat
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, _antialiasEnabled ? GL_LINEAR : GL_NEAREST );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
-
-#if CC_ENABLE_CACHE_TEXTURE_DATA
-    if (_antialiasEnabled)
-    {
-        TexParams texParams = {(GLuint)(_hasMipmaps?GL_LINEAR_MIPMAP_NEAREST:GL_LINEAR),GL_LINEAR,GL_NONE,GL_NONE};
-        VolatileTextureMgr::setTexParameters(this, texParams);
-    }
-    else
-    {
-        TexParams texParams = {(GLuint)(_hasMipmaps?GL_NEAREST_MIPMAP_NEAREST:GL_NEAREST),GL_NEAREST,GL_NONE,GL_NONE};
-        VolatileTextureMgr::setTexParameters(this, texParams);
-    }
-#endif
 
     // clean possible GL error
     GLenum err = glGetError();
@@ -1383,9 +1360,6 @@ void Texture2D::generateMipmap()
     GL::bindTexture2D( _name );
     glGenerateMipmap(GL_TEXTURE_2D);
     _hasMipmaps = true;
-#if CC_ENABLE_CACHE_TEXTURE_DATA
-    VolatileTextureMgr::setHasMipmaps(this, _hasMipmaps);
-#endif
 }
 
 bool Texture2D::hasMipmaps() const
@@ -1408,10 +1382,6 @@ void Texture2D::setTexParameters(const TexParams &texParams)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, texParams.magFilter );
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, texParams.wrapS );
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, texParams.wrapT );
-
-#if CC_ENABLE_CACHE_TEXTURE_DATA
-    VolatileTextureMgr::setTexParameters(this, texParams);
-#endif
 }
 
 void Texture2D::setAliasTexParameters()
@@ -1440,10 +1410,6 @@ void Texture2D::setAliasTexParameters()
     }
 
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-#if CC_ENABLE_CACHE_TEXTURE_DATA
-    TexParams texParams = {(GLuint)(_hasMipmaps?GL_NEAREST_MIPMAP_NEAREST:GL_NEAREST),GL_NEAREST,GL_NONE,GL_NONE};
-    VolatileTextureMgr::setTexParameters(this, texParams);
-#endif
 }
 
 void Texture2D::setAntiAliasTexParameters()
@@ -1472,10 +1438,6 @@ void Texture2D::setAntiAliasTexParameters()
     }
 
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-#if CC_ENABLE_CACHE_TEXTURE_DATA
-    TexParams texParams = {(GLuint)(_hasMipmaps?GL_LINEAR_MIPMAP_NEAREST:GL_LINEAR),GL_LINEAR,GL_NONE,GL_NONE};
-    VolatileTextureMgr::setTexParameters(this, texParams);
-#endif
 }
 
 const char* Texture2D::getStringForFormat() const

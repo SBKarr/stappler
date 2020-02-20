@@ -755,7 +755,7 @@ void Info::processPublication() {
 				if (eit.name == "alternate-script") {
 					title.localizedTitle.emplace(eit.lang, it.value);
 				} else if (eit.name == "display-seq") {
-					title.sequence = StringToNumber<int64_t>(eit.value.c_str(), nullptr);
+					title.sequence = StringToNumber<int64_t>(eit.value.c_str(), nullptr, 0);
 				} else if (eit.name == "title-type") {
 					if (eit.value == "main") {
 						title.type = TitleMeta::Main;

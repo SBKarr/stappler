@@ -58,7 +58,7 @@ bool GalleryLayout::init(CommonSource *source, const StringView &name, const Str
 		StringView r(images[i]);
 		std::string image = r.readUntil<StringView::Chars<'?'>>().str();
 		if (!r.empty()) {
-			data::Value args = Url::parseDataArgs(r.str());
+			data::Value args = UrlView::parseArgs(r, 256);
 			std::string title = args.getString("title");
 			_title.emplace_back(title);
 			log::text("Data", data::toString(args, true));

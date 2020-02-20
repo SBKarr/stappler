@@ -31,6 +31,51 @@ NS_SP_BEGIN
 
 class Time;
 
+struct sp_time_exp_t {
+	enum tm_gmt_e {
+		gmt_unset,
+		gmt_local,
+		gmt_set,
+	};
+
+	int32_t tm_usec; /** microseconds past tm_sec */
+	int32_t tm_sec; /** (0-61) seconds past tm_min */
+	int32_t tm_min; /** (0-59) minutes past tm_hour */
+	int32_t tm_hour; /** (0-23) hours past midnight */
+	int32_t tm_mday; /** (1-31) day of the month */
+	int32_t tm_mon; /** (0-11) month of the year */
+	int32_t tm_year; /** year since 1900 */
+	int32_t tm_wday; /** (0-6) days since Sunday */
+	int32_t tm_yday; /** (0-365) days since January 1 */
+	int32_t tm_isdst; /** daylight saving time */
+	int32_t tm_gmtoff; /** seconds east of UTC */
+	tm_gmt_e tm_gmt_type = gmt_unset;
+
+	sp_time_exp_t();
+	sp_time_exp_t(Time t, int32_t offset, bool use_localtime);
+	sp_time_exp_t(Time t, int32_t offs);
+	sp_time_exp_t(Time t);
+	sp_time_exp_t(Time t, bool use_localtime);
+
+	/*
+	 * Parses an HTTP date in one of three standard forms:
+	 *
+	 *     Sun, 06 Nov 1994 08:49:37 GMT  ; RFC 822, updated by RFC 1123
+	 *     Sunday, 06-Nov-94 08:49:37 GMT ; RFC 850, obsoleted by RFC 1036
+	 *     Sun Nov  6 08:49:37 1994       ; ANSI C's asctime() format
+	 *     2011-04-28T06:34:00+09:00      ; Atom time format
+	 */
+	bool read(StringView);
+
+	Time get() const;
+	Time gmt_get() const;
+	Time ltz_get() const;
+
+	void encodeRfc822(char *) const;
+	void encodeCTime(char *) const;
+	void encodeIso8601(char *, size_t precision) const;
+};
+
 class TimeStorage {
 public:
 	uint64_t toMicroseconds() const;
@@ -139,27 +184,7 @@ public:
 	 *     Sun Nov  6 08:49:37 1994       ; ANSI C's asctime() format
 	 *     2011-04-28T06:34:00+09:00      ; Atom time format
 	 */
-	static Time fromHttp(const StringView &);
-
-	/*
-	 * Parses a string resembling an RFC 822 date.  This is meant to be
-	 * leinent in its parsing of dates.  Hence, this will parse a wider
-	 * range of dates than Time::fromHttp.
-	 *
-	 *     Sun, 06 Nov 1994 08:49:37 GMT  ; RFC 822, updated by RFC 1123
-	 *     Sunday, 06-Nov-94 08:49:37 GMT ; RFC 850, obsoleted by RFC 1036
-	 *     Sun Nov  6 08:49:37 1994       ; ANSI C's asctime() format
-	 *     Sun, 6 Nov 1994 08:49:37 GMT   ; RFC 822, updated by RFC 1123
-	 *     Sun, 06 Nov 94 08:49:37 GMT    ; RFC 822
-	 *     Sun, 6 Nov 94 08:49:37 GMT     ; RFC 822
-	 *     Sun, 06 Nov 94 08:49 GMT       ; Unknown [drtr@ast.cam.ac.uk]
-	 *     Sun, 6 Nov 94 08:49 GMT        ; Unknown [drtr@ast.cam.ac.uk]
-	 *     Sun, 06 Nov 94 8:49:37 GMT     ; Unknown [Elm 70.85]
-	 *     Sun, 6 Nov 94 8:49:37 GMT      ; Unknown [Elm 70.85]
-	 *     Mon,  7 Jan 2002 07:21:22 GMT  ; Unknown [Postfix]
-	 *     Sun, 06-Nov-1994 08:49:37 GMT  ; RFC 850 with four digit years
-	 */
-	static Time fromRfc(const StringView &);
+	static Time fromHttp(StringView);
 
 	static Time microseconds(uint64_t mksec);
 	static Time milliseconds(uint64_t msec);
@@ -167,40 +192,49 @@ public:
 	static Time floatSeconds(float sec);
 
 	template <typename Interface = memory::DefaultInterface>
-	auto toHttp() -> typename Interface::StringType {
+	auto toHttp() const -> typename Interface::StringType {
 		return toRfc822<Interface>();
 	}
 
 	template <typename Interface = memory::DefaultInterface>
-	auto toRfc822() -> typename Interface::StringType {
-		using StringType = typename Interface::StringType;
+	auto toAtomXml() const -> typename Interface::StringType {
+		return toIso8601<Interface>(0);
+	}
+
+	template <typename Interface = memory::DefaultInterface>
+	auto toRfc822() const -> typename Interface::StringType {
+		sp_time_exp_t xt(*this);
 		char buf[30] = { 0 };
-		encodeRfc822(buf);
-		return StringType(buf, 29);
+		xt.encodeRfc822(buf);
+		return typename Interface::StringType(buf, 29);
 	}
 
 	template <typename Interface = memory::DefaultInterface>
-	auto toCTime() -> typename Interface::StringType {
-		using StringType = typename Interface::StringType;
+	auto toCTime() const -> typename Interface::StringType {
+		sp_time_exp_t xt(*this, true);
 		char buf[25] = { 0 };
-		encodeCTime(buf);
-		return StringType(buf, 24);
+		xt.encodeCTime(buf);
+		return typename Interface::StringType(buf, 24);
 	}
 
-	// XML dateTime format
+	// ISO 8601 dateTime format, used by XML/Atom
+	// - YYYY-MM-DDThh:mm:ss[.sss]
+	// precision defined as digit after decimal sep
+	// min - 0 - no decimal
+	//       3 - milliseconds precision
+	// max - 6 - microseconds precision
 	template <typename Interface = memory::DefaultInterface>
-	auto toIso8601() -> typename Interface::StringType {
-		using StringType = typename Interface::StringType;
-		char buf[20] = { 0 };
-		encodeIso8601(buf);
-		return StringType(buf);
+	auto toIso8601(size_t precision = 0) const -> typename Interface::StringType {
+		sp_time_exp_t xt(*this, false);
+		char buf[30] = { 0 };
+		xt.encodeIso8601(buf, precision);
+		return typename Interface::StringType(buf);
 	}
 
 	template <typename Interface = memory::DefaultInterface>
-	auto toFormat(const char *fmt) -> typename Interface::StringType {
-		using StringType = typename Interface::StringType;
-		char buf[1_KiB] = { 0 }; // should be enough
-		return StringType(buf, encodeToFormat(buf, 1_KiB, fmt));
+	auto toFormat(const char *fmt) const -> typename Interface::StringType {
+		char buf[256] = { 0 }; // should be enough
+		return typename Interface::StringType(buf, encodeToFormat(buf, 256, fmt));
 	}
 
     inline const Time operator+(const TimeInterval& v) const;
@@ -231,46 +265,7 @@ protected:
 
     using TimeStorage::TimeStorage;
 
-	void encodeRfc822(char *);
-	void encodeCTime(char *);
-	void encodeIso8601(char *);
-
-	size_t encodeToFormat(char *, size_t, const char *fmt);
-};
-
-struct sp_time_exp_t {
-	/** microseconds past tm_sec */
-	int32_t tm_usec;
-	/** (0-61) seconds past tm_min */
-	int32_t tm_sec;
-	/** (0-59) minutes past tm_hour */
-	int32_t tm_min;
-	/** (0-23) hours past midnight */
-	int32_t tm_hour;
-	/** (1-31) day of the month */
-	int32_t tm_mday;
-	/** (0-11) month of the year */
-	int32_t tm_mon;
-	/** year since 1900 */
-	int32_t tm_year;
-	/** (0-6) days since Sunday */
-	int32_t tm_wday;
-	/** (0-365) days since January 1 */
-	int32_t tm_yday;
-	/** daylight saving time */
-	int32_t tm_isdst;
-	/** seconds east of UTC */
-	int32_t tm_gmtoff;
-
-	sp_time_exp_t();
-	sp_time_exp_t(Time t, int32_t offset, bool use_localtime);
-	sp_time_exp_t(Time t, int32_t offs);
-	sp_time_exp_t(Time t);
-	sp_time_exp_t(Time t, bool use_localtime);
-
-	Time get() const;
-	Time gmt_get() const;
-	Time ltz_get() const;
+	size_t encodeToFormat(char *, size_t, const char *fmt) const ;
 };
 
 constexpr TimeInterval operator"" _sec ( unsigned long long int val ) { return TimeInterval::seconds((time_t)val); }

@@ -292,14 +292,14 @@ static void UrlView_get(std::ostream &stream, const UrlView &view) {
 	}
 }
 
-SP_TEMPLATE_MARK
+template <>
 auto UrlView::get<memory::PoolInterface>() const -> memory::PoolInterface::StringType {
 	memory::PoolInterface::StringStreamType stream;
 	UrlView_get(stream, *this);
 	return stream.str();
 }
 
-SP_TEMPLATE_MARK
+template <>
 auto UrlView::get<memory::StandartInterface>() const -> memory::StandartInterface::StringType {
 	memory::StandartInterface::StringStreamType stream;
 	UrlView_get(stream, *this);

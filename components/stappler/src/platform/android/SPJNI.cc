@@ -39,7 +39,6 @@ THE SOFTWARE.
 #include "platform/CCCommon.h"
 #include "base/CCDirector.h"
 #include "renderer/CCGLProgramCache.h"
-#include "renderer/CCTextureCache.h"
 #include "renderer/ccGLStateCache.h"
 
 #include "CCGLViewImpl-android.h"
@@ -382,7 +381,7 @@ void Java_org_cocos2dx_lib_Cocos2dxRenderer_nativeInit(JNIEnv*  env, jobject thi
     auto director = cocos2d::Director::getInstance();
     auto glview = director->getOpenGLView();
     if (!glview) {
-        stappler::ThreadManager::getInstance()->update(0);
+        stappler::ThreadManager::getInstance()->update();
         glview = cocos2d::GLViewImpl::create("Android app");
         glview->setFrameSize(w, h);
         director->setOpenGLView(glview);
@@ -394,11 +393,10 @@ void Java_org_cocos2dx_lib_Cocos2dxRenderer_nativeInit(JNIEnv*  env, jobject thi
         	stappler::log::text("JNI", "No AppDelegate initialized");
         }
     } else {
-        stappler::ThreadManager::getInstance()->update(0);
+        stappler::ThreadManager::getInstance()->update();
         glview->setFrameSize(w, h);
         cocos2d::GL::invalidateStateCache();
         cocos2d::GLProgramCache::getInstance()->reloadDefaultGLPrograms();
-        cocos2d::VolatileTextureMgr::reloadAllTextures();
 
         cocos2d::EventCustom recreatedEvent(EVENT_RENDERER_RECREATED);
         director->getEventDispatcher()->dispatchEvent(&recreatedEvent);
