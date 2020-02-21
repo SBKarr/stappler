@@ -88,24 +88,40 @@ bool FieldIntArray::isSimpleLayout() const {
 mem::String FieldIntArray::getIndexName() const { return mem::toString(name, "_gin_int"); }
 mem::String FieldIntArray::getIndexField() const { return mem::toString("USING GIN ( \"", name, "\"  gin__int_ops)"); }
 
-bool FieldIntArray::isComparationAllowed(db::Comparation c) const { return c == db::Comparation::Includes || c == db::Comparation::Equal; }
+bool FieldIntArray::isComparationAllowed(db::Comparation c) const {
+	switch (c) {
+	case db::Comparation::Includes:
+	case db::Comparation::Equal:
+	case db::Comparation::IsNotNull:
+	case db::Comparation::IsNull:
+		return true;
+		break;
+	default:
+		break;
+	}
+	return false;
+}
 
 void FieldIntArray::writeQuery(const db::Scheme &s, stappler::sql::Query<db::Binder, mem::Interface>::WhereContinue &whi,
-			stappler::sql::Operator op, const mem::StringView &f, stappler::sql::Comparation, const mem::Value &val, const mem::Value &) const {
-	if (val.isInteger()) {
-		whi.where(op, db::sql::SqlQuery::Field(s.getName(), f), "@>", db::sql::SqlQuery::RawString{mem::toString("ARRAY[", val.asInteger(), ']')});
-	} else if (val.isArray()) {
-		mem::StringStream str; str << "ARRAY[";
-		bool init = false;
-		for (auto &it : val.asArray()) {
-			if (it.isInteger()) {
-				if (init) { str << ","; } else { init = true; }
-				str << it.getInteger();
+			stappler::sql::Operator op, const mem::StringView &f, stappler::sql::Comparation cmp, const mem::Value &val, const mem::Value &) const {
+	if (cmp == db::Comparation::IsNull || cmp == db::Comparation::IsNotNull) {
+		whi.where(op, db::sql::SqlQuery::Field(s.getName(), f), cmp, val);
+	} else {
+		if (val.isInteger()) {
+			whi.where(op, db::sql::SqlQuery::Field(s.getName(), f), "@>", db::sql::SqlQuery::RawString{mem::toString("ARRAY[", val.asInteger(), ']')});
+		} else if (val.isArray()) {
+			mem::StringStream str; str << "ARRAY[";
+			bool init = false;
+			for (auto &it : val.asArray()) {
+				if (it.isInteger()) {
+					if (init) { str << ","; } else { init = true; }
+					str << it.getInteger();
+				}
 			}
-		}
-		str << "]";
-		if (init) {
-			whi.where(op, db::sql::SqlQuery::Field(s.getName(), f), "&&", db::sql::SqlQuery::RawString{str.str()});
+			str << "]";
+			if (init) {
+				whi.where(op, db::sql::SqlQuery::Field(s.getName(), f), "&&", db::sql::SqlQuery::RawString{str.str()});
+			}
 		}
 	}
 }
