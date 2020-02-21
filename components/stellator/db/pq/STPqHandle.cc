@@ -148,7 +148,7 @@ public:
 				} else if (-val.asDouble() == std::numeric_limits<double>::infinity()) {
 					query << "Infinity";
 				} else {
-					query << std::setprecision(std::numeric_limits<double>::max_digits10) << val.asDouble();
+					query << std::setprecision(std::numeric_limits<double>::max_digits10 + 1) << val.asDouble();
 				}
 				break;
 			case mem::Value::Type::CHARSTRING:
@@ -188,7 +188,7 @@ public:
 		query << val;
 	}
 	virtual void bindDouble(db::Binder &, mem::StringStream &query, double val) override {
-		query << std::setprecision(std::numeric_limits<double>::max_digits10) << val;
+		query << std::setprecision(std::numeric_limits<double>::max_digits10 + 1) << val;
 	}
 	virtual void bindString(db::Binder &, mem::StringStream &query, const mem::String &val) override {
 		if (auto num = push(mem::String(val))) {
