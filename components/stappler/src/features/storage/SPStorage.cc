@@ -342,21 +342,21 @@ Scheme::Filter::~Filter() {
 
 
 Scheme::Command::Callback::Callback() {
-	memset(this, 0, sizeof(Callback));
+	memset((void *)this, 0, sizeof(Callback));
 }
 
 Scheme::Command::Callback::~Callback() {
-	memset(this, 0, sizeof(Callback));
+	memset((void *)this, 0, sizeof(Callback));
 }
 
 
 
 Scheme::Command::Data::Data() {
-	memset(this, 0, sizeof(Data));
+	memset((void *)this, 0, sizeof(Data));
 }
 
 Scheme::Command::Data::~Data() {
-	memset(this, 0, sizeof(Data));
+	memset((void *)this, 0, sizeof(Data));
 }
 
 
@@ -399,7 +399,7 @@ Scheme::Command::~Command() {
 		_callback.success.~function();
 		break;
 	}
-	memset(&_data, 0, sizeof(_data));
+	memset((void *)&_data, 0, sizeof(_data));
 }
 
 Scheme::Command *Scheme::Command::select(int64_t value) {

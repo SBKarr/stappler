@@ -326,6 +326,7 @@ struct Server::Config : public AllocPool {
 
 	String publicSessionKey;
 	String privateSessionKey;
+	String serverKey;
 
 	mem::Vector<mem::Pair<uint32_t, db::Interface::StorageType>> storageTypes;
 	mem::Vector<mem::Pair<uint32_t, mem::String>> customTypes;
@@ -510,9 +511,10 @@ void Server::performStorage(apr_pool_t *pool, const Callback<void(const storage:
 	Root::getInstance()->performStorage(pool, *this, cb);
 }
 
-void Server::setSessionKeys(const StringView &pub, const StringView &priv) const {
+void Server::setSessionKeys(StringView pub, StringView priv, StringView sec) const {
 	_config->publicSessionKey = pub.str();
 	_config->privateSessionKey = priv.str();
+	_config->serverKey = sec.str();
 }
 
 StringView Server::getSessionPublicKey() const {
@@ -521,6 +523,10 @@ StringView Server::getSessionPublicKey() const {
 
 StringView Server::getSessionPrivateKey() const {
 	return _config->privateSessionKey;
+}
+
+StringView Server::getServerSecret() const {
+	return _config->serverKey;
 }
 
 void Server::setSourceRoot(const StringView &file) {

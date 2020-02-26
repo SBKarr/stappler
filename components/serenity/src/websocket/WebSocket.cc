@@ -41,7 +41,7 @@ Handler::Handler(Manager *m, const Request &req, TimeInterval ttl, size_t max)
 	apr_pollset_create(&_poll, 1, pool, APR_POLLSET_WAKEABLE | APR_POLLSET_NOCOPY);
 
 	if (_poll && _socket && _manager && _broadcastMutex) {
-		memset(&_pollfd, 0, sizeof(apr_pollfd_t));
+		memset((void *)&_pollfd, 0, sizeof(apr_pollfd_t));
 		_pollfd.p = pool;
 		_pollfd.reqevents = APR_POLLIN;
 		_pollfd.desc_type = APR_POLL_SOCKET;

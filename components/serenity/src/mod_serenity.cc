@@ -31,8 +31,8 @@ static stappler::serenity::Root s_sharedServer;
 
 extern module AP_MODULE_DECLARE_DATA serenity_module;
 
-USING_NS_SP;
-USING_NS_SA;
+using namespace stappler;
+using namespace stappler::serenity;
 
 static void *mod_serenity_create_server_config(apr_pool_t *p, server_rec *s) {
 	s_sharedServer.setProcPool(s->process->pool);

@@ -51,7 +51,7 @@ public:
 
 	uri clone(apr_pool_t *p = getCurrentPool()) const {
 		apr_uri_t ret;
-		memset(&ret, 0, sizeof(apr_uri_t));
+		memset((void *)&ret, 0, sizeof(apr_uri_t));
 		ret.scheme = apr_pstrdup(p, _uri.scheme);
 		ret.hostinfo = apr_pstrdup(p, _uri.hostinfo);
 		ret.user = apr_pstrdup(p, _uri.user);

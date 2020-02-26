@@ -295,7 +295,7 @@ apr_status_t OutputFilter::outputHeaders(ap_filter_t* f, apr_bucket *e, const ch
 			// we need to determine requested file size
 			if (const char *filename = f->r->filename) {
 				apr_finfo_t info;
-				memset(&info, 0, sizeof(info));
+				memset((void *)&info, 0, sizeof(info));
 				if (apr_stat(&info, filename, APR_FINFO_SIZE, r->pool) == APR_SUCCESS) {
 					_headers.emplace("X-Range", apr_psprintf(r->pool, "%ld", info.size));
 				} else {

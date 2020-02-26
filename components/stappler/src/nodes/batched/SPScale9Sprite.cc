@@ -27,7 +27,7 @@ THE SOFTWARE.
 #include "SPScale9Sprite.h"
 #include "SPFilesystem.h"
 
-USING_NS_SP;
+namespace stappler {
 
 bool Scale9Sprite::init(cocos2d::Texture2D *tex, Rect capInsets) {
 	return init(tex, Rect::ZERO, capInsets);
@@ -286,4 +286,6 @@ void Scale9Sprite::updateSprites() {
 	}
 
 	_quads->shrinkToFit();
+}
+
 }

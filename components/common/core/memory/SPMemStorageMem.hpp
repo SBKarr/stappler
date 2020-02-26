@@ -27,11 +27,6 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(memory)
 
-#if MSYS
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wclass-memaccess"
-#endif
-
 namespace impl {
 
 // small object optimization type (based on SSO-23: https://github.com/elliotgoodrich/SSO-23)
@@ -69,7 +64,8 @@ struct mem_small {
 
 	void drop_unused() {
 		auto s = size();
-		memset(data() + s, 0, ByteCount - 1 - s * sizeof(Type));
+		// data is already garbage, bypass -Wclass-memaccess
+		memset((void *)(data() + s), 0, ByteCount - 1 - s * sizeof(Type));
 	}
 
 	void set_size(size_t s) {
@@ -203,7 +199,8 @@ public:
 
 	void drop_unused() {
 		if (_allocated > 0 && _allocated >= _used && _ptr) {
-			memset(_ptr + _used, 0, (_allocated - _used + Extra) * sizeof(Type));
+			// data is already garbage, bypass -Wclass-memaccess
+			memset((void *)(_ptr + _used), 0, (_allocated - _used + Extra) * sizeof(Type));
 		}
 	}
 
@@ -466,8 +463,9 @@ public:
 			auto s = _small.size();
 			auto ptr = _allocator.allocate(s + Extra);
 			_allocator.move(ptr, _small.data(), s);
-			if (Extra) {
-				memset(ptr + s, 0, Extra * sizeof(Type));
+			if constexpr (Extra) {
+				// zero-terminated, bypass -Wclass-memaccess
+				memset((void *)(ptr + s), 0, Extra * sizeof(Type));
 			}
 			force_clear();
 			return ptr;
@@ -541,10 +539,6 @@ private:
 };
 
 }
-
-#if MSYS
-#pragma GCC diagnostic pop
-#endif
 
 NS_SP_EXT_END(memory)
 

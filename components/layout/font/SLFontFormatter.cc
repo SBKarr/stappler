@@ -1286,8 +1286,8 @@ bool HyphenMap::init() {
 	return true;
 }
 
-void HyphenMap::addHyphenDict(CharGroupId id, const String &file) {
-	auto data = filesystem::readTextFile(file);
+void HyphenMap::addHyphenDict(CharGroupId id, FilePath file) {
+	auto data = filesystem::readTextFile(file.get());
 	if (!data.empty()) {
 		auto dict = hnj_hyphen_load_data(data.data(), data.size());
 		if (dict) {
@@ -1301,6 +1301,22 @@ void HyphenMap::addHyphenDict(CharGroupId id, const String &file) {
 		}
 	}
 }
+
+void HyphenMap::addHyphenDict(CharGroupId id, BytesView data) {
+	if (!data.empty()) {
+		auto dict = hnj_hyphen_load_data((const char *)data.data(), data.size());
+		if (dict) {
+			auto it = _dicts.find(id);
+			if (it == _dicts.end()) {
+				_dicts.emplace(id, dict);
+			} else {
+				hnj_hyphen_free(it->second);
+				it->second = dict;
+			}
+		}
+	}
+}
+
 Vector<uint8_t> HyphenMap::makeWordHyphens(const char16_t *ptr, size_t len) {
 	if (len < 4 || len >= 255) {
 		return Vector<uint8_t>();

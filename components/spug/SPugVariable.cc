@@ -82,7 +82,7 @@ void VarData::clear() {
 	case Inline: value.~Value(); break;
 	default: break;
 	}
-	memset(this, 0, sizeof(VarData));
+	memset((void *)this, 0, sizeof(VarData));
 }
 
 const Value &VarData::readValue() const {

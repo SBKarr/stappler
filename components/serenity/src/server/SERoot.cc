@@ -353,7 +353,7 @@ static void Root_free(void *alloc, void *mem, size_t s, void *) {
 	free(mem);
 }
 
-#if DEBUG
+#if 0 && DEBUG
 static void Root_node_alloc(void *alloc, void *node, size_t s, void *owner, void *) {
 	if (alloc) {
 		s_allocMutex.lock();

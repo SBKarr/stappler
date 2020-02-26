@@ -293,7 +293,7 @@ float Metric::computeValueAuto(float base, const MediaParameters &media, float f
 }
 
 ParameterValue::ParameterValue() {
-	memset(this, 0, sizeof(ParameterValue));
+	memset((void *)this, 0, sizeof(ParameterValue));
 }
 
 Parameter::Parameter(ParameterName name, MediaQueryId query)

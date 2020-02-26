@@ -31,7 +31,6 @@ THE SOFTWARE.
 #include "SPString.h"
 #include "SPDataStream.h"
 
-#include "lz4frame.h"
 #include "lz4hc.h"
 
 NS_SP_EXT_BEGIN(data)

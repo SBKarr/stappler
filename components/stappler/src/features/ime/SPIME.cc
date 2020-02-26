@@ -258,10 +258,12 @@ bool IMEImpl::run(ime::Handler *h, const WideStringView &str, const Cursor &curs
 	if (!_running) {
 		platform::ime::_runWithText(_string, cursor.start, cursor.length, type);
 		_running = true;
-#if (CC_TARGET_PLATFORM == CC_PLATFORM_IOS)
+#ifndef SP_RESTRICT
+#if (IOS)
 		if (!_isKeyboardVisible) {
 			cocos2d::Director::getInstance()->getOpenGLView()->setIMEKeyboardState(true);
 		}
+#endif
 #endif
 	} else {
 		platform::ime::_updateText(_string, cursor.start, cursor.length, type);

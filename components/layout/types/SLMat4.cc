@@ -47,7 +47,7 @@ Mat4::Mat4(const float* mat) {
 }
 
 Mat4::Mat4(const Mat4& copy) {
-	memcpy(m, copy.m, MATRIX_SIZE);
+	memcpy((void *)m, (const void *)copy.m, MATRIX_SIZE);
 }
 
 Mat4::~Mat4() {
@@ -114,7 +114,7 @@ void Mat4::createPerspective(float fieldOfView, float aspectRatio, float zNearPl
 	assert(divisor);
 	float factor = 1.0f / divisor;
 
-	memset(dst, 0, MATRIX_SIZE);
+	memset((void *)dst, 0, MATRIX_SIZE);
 
 	assert(aspectRatio);
 	dst->m[0] = (1.0f / aspectRatio) * factor;
@@ -137,7 +137,7 @@ void Mat4::createOrthographicOffCenter(float left, float right, float bottom, fl
 	assert(top != bottom);
 	assert(zFarPlane != zNearPlane);
 
-	memset(dst, 0, MATRIX_SIZE);
+	memset((void *)dst, 0, MATRIX_SIZE);
 	dst->m[0] = 2 / (right - left);
 	dst->m[5] = 2 / (top - bottom);
 	dst->m[10] = 2 / (zNearPlane - zFarPlane);
@@ -192,7 +192,7 @@ void Mat4::createBillboardHelper(const Vec3& objectPosition, const Vec3& cameraP
         dst->m[10] = lookAt.m[10];
     }
 }
-    
+
 // void Mat4::createReflection(const Plane& plane, Mat4* dst)
 // {
 //     Vec3 normal(plane.getNormal());
@@ -206,7 +206,7 @@ void Mat4::createBillboardHelper(const Vec3& objectPosition, const Vec3& cameraP
 //     dst->m[1] = dst->m[4] = -2.0f * normal.x * normal.y;
 //     dst->m[2] = dst->m[8] = -2.0f * normal.x * normal.z;
 //     dst->m[6] = dst->m[9] = -2.0f * normal.y * normal.z;
-    
+
 //     dst->m[3] = k * normal.x;
 //     dst->m[7] = k * normal.y;
 //     dst->m[11] = k * normal.z;
@@ -216,7 +216,7 @@ void Mat4::createScale(const Vec3& scale, Mat4* dst)
 {
     assert(dst);
 
-    memcpy(dst, &IDENTITY, MATRIX_SIZE);
+    memcpy((void *)dst, (const void *)&IDENTITY, MATRIX_SIZE);
 
     dst->m[0] = scale.x;
     dst->m[5] = scale.y;
@@ -227,7 +227,7 @@ void Mat4::createScale(float xScale, float yScale, float zScale, Mat4* dst)
 {
     assert(dst);
 
-    memcpy(dst, &IDENTITY, MATRIX_SIZE);
+    memcpy((void *)dst, (const void *)&IDENTITY, MATRIX_SIZE);
 
     dst->m[0] = xScale;
     dst->m[5] = yScale;
@@ -337,7 +337,7 @@ void Mat4::createRotationX(float angle, Mat4* dst)
 {
     assert(dst);
 
-    memcpy(dst, &IDENTITY, MATRIX_SIZE);
+    memcpy((void *)dst, (const void *)&IDENTITY, MATRIX_SIZE);
 
     float c = cos(angle);
     float s = sin(angle);
@@ -352,7 +352,7 @@ void Mat4::createRotationY(float angle, Mat4* dst)
 {
     assert(dst);
 
-    memcpy(dst, &IDENTITY, MATRIX_SIZE);
+    memcpy((void *)dst, (const void *)&IDENTITY, MATRIX_SIZE);
 
     float c = cos(angle);
     float s = sin(angle);
@@ -367,7 +367,7 @@ void Mat4::createRotationZ(float angle, Mat4* dst)
 {
     assert(dst);
 
-    memcpy(dst, &IDENTITY, MATRIX_SIZE);
+    memcpy((void *)dst, (const void *)&IDENTITY, MATRIX_SIZE);
 
     float c = cos(angle);
     float s = sin(angle);
@@ -382,7 +382,7 @@ void Mat4::createTranslation(const Vec3& translation, Mat4* dst)
 {
     assert(dst);
 
-    memcpy(dst, &IDENTITY, MATRIX_SIZE);
+    memcpy((void *)dst, (const void *)&IDENTITY, MATRIX_SIZE);
 
     dst->m[12] = translation.x;
     dst->m[13] = translation.y;
@@ -393,7 +393,7 @@ void Mat4::createTranslation(float xTranslation, float yTranslation, float zTran
 {
     assert(dst);
 
-    memcpy(dst, &IDENTITY, MATRIX_SIZE);
+    memcpy((void *)dst, (const void *)&IDENTITY, MATRIX_SIZE);
 
     dst->m[12] = xTranslation;
     dst->m[13] = yTranslation;
@@ -507,7 +507,7 @@ bool Mat4::decompose(Vec3* scale, Quaternion* rotation, Vec3* translation) const
     }
     else
     {
-        // Note: since xaxis, yaxis, and zaxis are normalized, 
+        // Note: since xaxis, yaxis, and zaxis are normalized,
         // we will never divide by zero in the code below.
         if (xaxis.x > yaxis.y && xaxis.x > zaxis.z)
         {
@@ -584,7 +584,7 @@ void Mat4::getUpVector(Vec3* dst) const
 void Mat4::getDownVector(Vec3* dst) const
 {
     assert(dst);
-    
+
     dst->x = -m[4];
     dst->y = -m[5];
     dst->z = -m[6];
@@ -873,22 +873,22 @@ void Mat4::set(float a, float b, float c, float d, float e, float f) {
 void Mat4::set(const float* mat)
 {
     assert(mat);
-    memcpy(this->m, mat, MATRIX_SIZE);
+    memcpy((void *)this->m, (const void *)mat, MATRIX_SIZE);
 }
 
 void Mat4::set(const Mat4& mat)
 {
-    memcpy(this->m, mat.m, MATRIX_SIZE);
+    memcpy((void *)this->m, (const void *)mat.m, MATRIX_SIZE);
 }
 
 void Mat4::setIdentity()
 {
-    memcpy(m, &IDENTITY, MATRIX_SIZE);
+    memcpy((void *)m, (const void *)&IDENTITY, MATRIX_SIZE);
 }
 
 void Mat4::setZero()
 {
-    memset(m, 0, MATRIX_SIZE);
+    memset((void *)m, 0, MATRIX_SIZE);
 }
 
 void Mat4::subtract(const Mat4& mat)

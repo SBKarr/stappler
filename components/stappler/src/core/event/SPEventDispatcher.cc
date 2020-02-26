@@ -32,7 +32,7 @@ THE SOFTWARE.
 //#define SPEVENT_LOG(...) stappler::logTag("Event", __VA_ARGS__)
 #define SPEVENT_LOG(...)
 
-USING_NS_SP;
+namespace stappler {
 
 EventDispatcher *EventDispatcher::s_sharedInstance = nullptr;
 
@@ -93,4 +93,6 @@ void EventDispatcher::dispatchEvent(const Event &ev) {
 
 const Set<const EventHeader *> &EventDispatcher::getKnownEvents() {
 	return _knownEvents;
+}
+
 }

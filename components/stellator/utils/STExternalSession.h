@@ -28,9 +28,10 @@ THE SOFTWARE.
 
 NS_SA_BEGIN
 
-struct SessionKeyPair {
+struct SessionKeys {
 	StringView pub;
 	StringView priv;
+	StringView secret;
 };
 
 class ExternalSession : public stappler::data::WrapperTemplate<mem::Interface> {
@@ -42,10 +43,10 @@ public:
 
 	static ExternalSession *get();
 	static ExternalSession *get(const Request &);
-	static ExternalSession *get(const Request &, const SessionKeyPair &keys);
+	static ExternalSession *get(const Request &, const SessionKeys &keys);
 
 	static ExternalSession *acquire(const Request &, TimeInterval = TimeInterval::seconds(60 * 60 * 12));
-	static ExternalSession *acquire(const Request &, const SessionKeyPair &keys, TimeInterval = TimeInterval::seconds(60 * 60 * 12));
+	static ExternalSession *acquire(const Request &, const SessionKeys &keys, TimeInterval = TimeInterval::seconds(60 * 60 * 12));
 
 	~ExternalSession();
 
@@ -67,9 +68,9 @@ public:
 	bool touch(TimeInterval maxAge = TimeInterval());
 
 protected:
-	ExternalSession(const Request &, const SessionKeyPair &key);
-	ExternalSession(const Request &, const SessionKeyPair &key, TimeInterval);
-	ExternalSession(const Request &, const SessionKeyPair &key, const mem::uuid &, data::Value &&);
+	ExternalSession(const Request &, const SessionKeys &key);
+	ExternalSession(const Request &, const SessionKeys &key, TimeInterval);
+	ExternalSession(const Request &, const SessionKeys &key, const mem::uuid &, data::Value &&);
 
 	void setCookie();
 
@@ -77,7 +78,7 @@ protected:
 
 	Request _request;
 
-	SessionKeyPair _keys;
+	SessionKeys _keys;
 
 	Token _token;
 	mem::uuid _uuid;
@@ -93,10 +94,10 @@ public:
 	static constexpr auto SessionCookie = "LongToken";
 
 	static LongSession *acquire(const Request &rctx);
-	static LongSession *acquire(const Request &rctx, const SessionKeyPair &);
+	static LongSession *acquire(const Request &rctx, const SessionKeys &);
 
 	static LongSession *create(const Request &rctx, uint64_t uid);
-	static LongSession *create(const Request &rctx, const SessionKeyPair &, uint64_t uid);
+	static LongSession *create(const Request &rctx, const SessionKeys &, uint64_t uid);
 
 	void assignUser(uint64_t);
 	void cancel();
@@ -105,13 +106,40 @@ public:
 	const Bytes &getSignature() const;
 
 protected:
-	LongSession(const Request &, const SessionKeyPair &);
-	LongSession(const Request &, const SessionKeyPair &, uint64_t uid);
+	string::Sha512::Buf getUserFingerprint(const Request &, Time);
+
+	LongSession(const Request &, const SessionKeys &);
+	LongSession(const Request &, const SessionKeys &, uint64_t uid);
 
 	Request _request;
-	SessionKeyPair _keys;
+	SessionKeys _keys;
 	uint64_t _user = 0;
 	Bytes _sig;
+};
+
+
+class AuthToken : public stappler::data::WrapperTemplate<mem::Interface> {
+public:
+	static AuthToken *parse(StringView token, Request, SessionKeys = SessionKeys());
+	static AuthToken *parse(StringView token, BytesView fp, StringView iss, StringView aud = StringView(), SessionKeys = SessionKeys());
+
+	static AuthToken *create(SessionKeys = SessionKeys());
+	//static AuthToken *create(BytesView fp, StringView iss, StringView aud, TimeInterval maxage = config::getInternalsStorageTime(), SessionKeys = SessionKeys(), StringView sub = StringView());
+
+	String exportToken(Request &req, TimeInterval maxage, StringView sub) const;
+
+protected:
+	static string::Sha512::Buf getFingerprint(const Request &rctx, Time t, StringView secret);
+	static string::Sha512::Buf getFingerprint(BytesView, Time t, StringView secret);
+
+	Bytes encryptAes(const string::Sha256::Buf &, const data::Value &) const;
+	static data::Value decryptAes(const string::Sha256::Buf &, BytesView);
+	static string::Sha256::Buf makeAesKey(BytesView, StringView priv);
+
+	AuthToken(SessionKeys keys);
+	AuthToken(data::Value &&, SessionKeys keys);
+
+	SessionKeys _keys;
 };
 
 NS_SA_END

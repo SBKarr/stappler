@@ -1086,8 +1086,9 @@ protected:
 }
 NS_SP_EXT_END(memory)
 
-#define APR_RBTREE_DEBUG 0
-#if APR_RBTREE_DEBUG
+#define MEM_RBTREE_DEBUG 0
+
+#if MEM_RBTREE_DEBUG
 
 NS_SP_BEGIN_END(memory)
 
@@ -1189,6 +1190,6 @@ operator << (std::basic_ostream<CharType> & os, const TreeDebug::Validation & v)
 }
 NS_SP_EXT_END(memory)
 
-#endif // APR_RBTREE_DEBUG
+#endif // MEM_RBTREE_DEBUG
 
 #endif /* COMMON_MEMORY_SPMEMRBTREE_H_ */

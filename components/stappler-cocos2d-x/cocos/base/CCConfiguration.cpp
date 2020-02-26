@@ -28,17 +28,15 @@ THE SOFTWARE.
 #include "base/CCConfiguration.h"
 #include "platform/CCFileUtils.h"
 
-USING_NS_SP;
-
 NS_CC_BEGIN
 
 static uint32_t s_supportedRenderTarget =
 #ifndef GL_ES_VERSION_2_0
-		toInt(Configuration::RenderTarget::RGBA8)
-		| toInt(Configuration::RenderTarget::RGB8)
-		| toInt(Configuration::RenderTarget::RG8)
-		| toInt(Configuration::RenderTarget::R8)
-		| toInt(Configuration::RenderTarget::A8);
+		stappler::toInt(Configuration::RenderTarget::RGBA8)
+		| stappler::toInt(Configuration::RenderTarget::RGB8)
+		| stappler::toInt(Configuration::RenderTarget::RG8)
+		| stappler::toInt(Configuration::RenderTarget::R8)
+		| stappler::toInt(Configuration::RenderTarget::A8);
 #else
 		0;
 #endif
@@ -48,7 +46,7 @@ extern const char* cocos2dVersion();
 Configuration* Configuration::s_sharedConfiguration = nullptr;
 
 bool Configuration::isRenderTargetSupported(RenderTarget target) {
-	return (s_supportedRenderTarget & toInt(target)) != 0;
+	return (s_supportedRenderTarget & stappler::toInt(target)) != 0;
 }
 
 Configuration::Configuration()
@@ -124,11 +122,11 @@ void Configuration::gatherGPUInfo()
 	_data.setString((const char*)glGetString(GL_RENDERER), "gl.renderer");
 	_data.setString(glVersion, "gl.version");
 
-	StringView vReader(glVersion);
+	stappler::StringView vReader(glVersion);
 	if (vReader.is("OpenGL ES 3.")) {
 		_supportsEs30Api = true;
-		s_supportedRenderTarget |= toInt(Configuration::RenderTarget::R8) | toInt(Configuration::RenderTarget::RG8)
-				| toInt(Configuration::RenderTarget::RGBA8) | toInt(Configuration::RenderTarget::RGB8);
+		s_supportedRenderTarget |= stappler::toInt(Configuration::RenderTarget::R8) | stappler::toInt(Configuration::RenderTarget::RG8)
+				| stappler::toInt(Configuration::RenderTarget::RGBA8) | stappler::toInt(Configuration::RenderTarget::RGB8);
 		_supportsBlendMinMax = true;
 	}
 
@@ -153,9 +151,9 @@ void Configuration::gatherGPUInfo()
 	_supportsBlendMinMax = true;
 #endif
 
-	StringView r(_glExtensions, strlen(_glExtensions));
+	stappler::StringView r(_glExtensions, strlen(_glExtensions));
 
-    r.split<StringView::Chars<' '>>([&] (StringView &b) {
+    r.split<stappler::StringView::Chars<' '>>([&] (stappler::StringView &b) {
     	//stappler::log::text("GLext", b.data(), b.size());
     	if (b == "GL_OES_compressed_ETC1_RGB8_texture") {
     		_supportsETC1 = true;
@@ -177,29 +175,29 @@ void Configuration::gatherGPUInfo()
     	} else if (b == "GL_OES_mapbuffer") {
     		_supportsMapBuffer = true;
     	} else if (b == "GL_OES_rgb8_rgba8") {
-    		s_supportedRenderTarget |= (toInt(Configuration::RenderTarget::RGBA8) | toInt(Configuration::RenderTarget::RGB8));
+    		s_supportedRenderTarget |= (stappler::toInt(Configuration::RenderTarget::RGBA8) | stappler::toInt(Configuration::RenderTarget::RGB8));
     	} else if (b == "GL_EXT_texture_rg") {
-    		s_supportedRenderTarget |= toInt(Configuration::RenderTarget::R8) | toInt(Configuration::RenderTarget::RG8);
+    		s_supportedRenderTarget |= stappler::toInt(Configuration::RenderTarget::R8) | stappler::toInt(Configuration::RenderTarget::RG8);
     	} else if (b == "GL_ARM_rgba8") {
-    		s_supportedRenderTarget |= toInt(Configuration::RenderTarget::RGBA8);
+    		s_supportedRenderTarget |= stappler::toInt(Configuration::RenderTarget::RGBA8);
 #endif
     	}
     });
 
-    String extraTargets;
-    if (s_supportedRenderTarget & toInt(Configuration::RenderTarget::RGBA8)) {
+    stappler::String extraTargets;
+    if (s_supportedRenderTarget & stappler::toInt(Configuration::RenderTarget::RGBA8)) {
     	extraTargets += "RGBA8 ";
     }
-    if (s_supportedRenderTarget & toInt(Configuration::RenderTarget::RGB8)) {
+    if (s_supportedRenderTarget & stappler::toInt(Configuration::RenderTarget::RGB8)) {
     	extraTargets += "RGB8 ";
     }
-    if (s_supportedRenderTarget & toInt(Configuration::RenderTarget::RG8)) {
+    if (s_supportedRenderTarget & stappler::toInt(Configuration::RenderTarget::RG8)) {
     	extraTargets += "RG8 ";
     }
-    if (s_supportedRenderTarget & toInt(Configuration::RenderTarget::R8)) {
+    if (s_supportedRenderTarget & stappler::toInt(Configuration::RenderTarget::R8)) {
     	extraTargets += "R8 ";
     }
-    if (s_supportedRenderTarget & toInt(Configuration::RenderTarget::A8)) {
+    if (s_supportedRenderTarget & stappler::toInt(Configuration::RenderTarget::A8)) {
     	extraTargets += "A8 ";
     }
 

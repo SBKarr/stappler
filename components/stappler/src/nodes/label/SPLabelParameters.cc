@@ -70,7 +70,7 @@ bool LabelParameters::DescriptionStyle::operator != (const DescriptionStyle &sty
 }
 
 LabelParameters::Style::Value::Value() {
-	memset(this, 0, sizeof(Value));
+	memset((void *)this, 0, sizeof(Value));
 }
 
 void LabelParameters::Style::set(const Param &p, bool force) {

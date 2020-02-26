@@ -36,6 +36,8 @@ namespace mem_pool {
 namespace pool = memory::pool;
 namespace allocator = memory::allocator;
 
+using CharGroupId = stappler::CharGroupId;
+
 using allocator_t = memory::allocator_t;
 using pool_t = memory::pool_t;
 

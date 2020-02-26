@@ -28,7 +28,7 @@ THE SOFTWARE.
 #include "SPThread.h"
 #include "SPEventDispatcher.h"
 
-USING_NS_SP;
+namespace stappler {
 
 String Event::ZERO_STRING = "";
 
@@ -113,4 +113,6 @@ void Event::send(const EventHeader &header, Ref *object) {
 		Event event(header, object);
 		event.dispatch();
 	});
+}
+
 }

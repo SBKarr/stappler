@@ -474,11 +474,6 @@ ValueTemplate<Interface>::ValueTemplate(InitializerList<Pair<StringType, Self>> 
 	}
 }
 
-#if MSYS
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wclass-memaccess"
-#endif
-
 template <typename Interface>
 auto ValueTemplate<Interface>::operator= (const Self& other) noexcept -> Self & {
 	if (_type == Type::NONE) {
@@ -486,8 +481,8 @@ auto ValueTemplate<Interface>::operator= (const Self& other) noexcept -> Self & 
 	}
 	if (this != &other) {
 		Self mv;
-		memcpy(&mv, this, sizeof(Self));
-		memset(this, 0, sizeof(Self));
+		memcpy((void *)&mv, (const void *)this, sizeof(Self));
+		memset((void *)this, 0, sizeof(Self));
 
 		switch (other._type) {
 		case Type::NONE: _type = Type::EMPTY; return *this; break;
@@ -517,17 +512,13 @@ auto ValueTemplate<Interface>::operator= (Self&& other) noexcept -> Self & {
 			_type = Type::EMPTY;
 		} else {
 			Self mv;
-			memcpy(&mv, this, sizeof(Self));
-			memcpy(this, &other, sizeof(Self));
+			memcpy((void *)&mv, (const void *)this, sizeof(Self));
+			memcpy((void *)this, (const void *)&other, sizeof(Self));
 			other._type = Type::EMPTY;
 		}
 	}
 	return *this;
 }
-
-#if MSYS
-#pragma GCC diagnostic pop
-#endif
 
 template <typename Interface>
 template <typename OtherInterface>

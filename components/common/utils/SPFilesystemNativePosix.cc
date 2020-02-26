@@ -106,7 +106,7 @@ bool touch_fn(const StringView &path) {
 	return utime(SP_TERMINATED_DATA(path), NULL) == 0;
 }
 
-void ftw_fn(const StringView &path, const Function<void(const StringView &path, bool isFile)> &callback, int depth, bool dirFirst) {
+void ftw_fn(const StringView &path, const Callback<void(const StringView &path, bool isFile)> &callback, int depth, bool dirFirst) {
 	auto dp = opendir(SP_TERMINATED_DATA(path));
 	if (dp == NULL) {
 		if (access(SP_TERMINATED_DATA(path), F_OK) != -1) {
@@ -131,7 +131,7 @@ void ftw_fn(const StringView &path, const Function<void(const StringView &path, 
 		closedir(dp);
 	}
 }
-bool ftw_b_fn(const StringView &path, const Function<bool(const StringView &path, bool isFile)> &callback, int depth, bool dirFirst) {
+bool ftw_b_fn(const StringView &path, const Callback<bool(const StringView &path, bool isFile)> &callback, int depth, bool dirFirst) {
 	auto dp = opendir(SP_TERMINATED_DATA(path));
 	if (dp == NULL) {
 		if (access(SP_TERMINATED_DATA(path), F_OK) != -1) {

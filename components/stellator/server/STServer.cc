@@ -89,7 +89,7 @@ struct DbConnList : public mem::AllocBase {
 	db::pq::Driver *driver = nullptr;
 
 	DbConnList(mem::pool_t *p, db::pq::Driver *d) : driver(d) {
-		memset(array.data(), 0, sizeof(DbConnection) * array.size());
+		memset((void *)array.data(), 0, sizeof(DbConnection) * array.size());
 
 		DbConnection *target = nullptr;
 		for (auto &it : array) {
@@ -271,6 +271,7 @@ struct Server::Config : public mem::AllocBase {
 
 	mem::String publicSessionKey;
 	mem::String privateSessionKey;
+	mem::String serverSecret;
 
 	db::Scheme userScheme = db::Scheme(SA_SERVER_USER_SCHEME_NAME, {
 		db::Field::Text("name", db::Transform::Alias, db::Flags::Required),
@@ -678,9 +679,10 @@ void Server::performStorage(mem::pool_t *pool, const mem::Callback<void(const db
 	Root::getInstance()->performStorage(pool, *this, cb);
 }
 
-void Server::setSessionKeys(const mem::StringView &pub, const mem::StringView &priv) const {
+void Server::setSessionKeys(mem::StringView pub, mem::StringView priv, mem::StringView sec) const {
 	_config->publicSessionKey = pub.str<mem::Interface>();
 	_config->privateSessionKey = priv.str<mem::Interface>();
+	_config->serverSecret = sec.str<mem::Interface>();
 }
 
 mem::StringView Server::getSessionPublicKey() const {
@@ -689,6 +691,10 @@ mem::StringView Server::getSessionPublicKey() const {
 
 mem::StringView Server::getSessionPrivateKey() const {
 	return _config->privateSessionKey;
+}
+
+mem::StringView Server::getServerSecret() const {
+	return _config->serverSecret;
 }
 
 ServerComponent *Server::getServerComponent(const mem::StringView &name) const {

@@ -230,10 +230,10 @@ void Quaternion::lerp(const Quaternion& q1, const Quaternion& q2, float t, Quate
 	assert(!(t < 0.0f || t > 1.0f));
 
 	if (t == 0.0f) {
-		memcpy(dst, &q1, sizeof(float) * 4);
+		memcpy((void *)dst, (const void *)&q1, sizeof(float) * 4);
 		return;
 	} else if (t == 1.0f) {
-		memcpy(dst, &q2, sizeof(float) * 4);
+		memcpy((void *)dst, (const void *)&q2, sizeof(float) * 4);
 		return;
 	}
 

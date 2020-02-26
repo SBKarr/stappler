@@ -135,10 +135,10 @@ bool remove(const StringView &path, bool recursive = false, bool withDirs = fals
 // depth = -1 - unlimited
 // dirFirst == true - directory will be shown before files inside them, useful for listings and copy
 // dirFirst == false - directory will be shown after files, useful for remove
-void ftw(const StringView &path, const Function<void(const StringView &path, bool isFile)> &, int depth = -1, bool dirFirst = false);
+void ftw(const StringView &path, const Callback<void(const StringView &path, bool isFile)> &, int depth = -1, bool dirFirst = false);
 
 // same as ftw, but iteration can be stopped by returning false from callback
-bool ftw_b(const StringView &path, const Function<bool(const StringView &path, bool isFile)> &, int depth = -1, bool dirFirst = false);
+bool ftw_b(const StringView &path, const Callback<bool(const StringView &path, bool isFile)> &, int depth = -1, bool dirFirst = false);
 
 // returns application writable path (or path inside writable dir, if path is set
 // if relative == false - do not merge paths, if provided path is absolute
@@ -242,8 +242,8 @@ time_t ctime_fn(const StringView &path);
 
 bool touch_fn(const StringView &path);
 
-void ftw_fn(const StringView &path, const Function<void(const StringView &path, bool isFile)> &, int depth, bool dirFirst);
-bool ftw_b_fn(const StringView &path, const Function<bool(const StringView &path, bool isFile)> &, int depth, bool dirFirst);
+void ftw_fn(const StringView &path, const Callback<void(const StringView &path, bool isFile)> &, int depth, bool dirFirst);
+bool ftw_b_fn(const StringView &path, const Callback<bool(const StringView &path, bool isFile)> &, int depth, bool dirFirst);
 
 bool rename_fn(const StringView &source, const StringView &dest);
 

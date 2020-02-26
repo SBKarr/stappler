@@ -33,8 +33,9 @@ THE SOFTWARE.
 #include "renderer/CCRenderer.h"
 #include "2d/CCComponentContainer.h"
 
-USING_NS_SP;
 USING_NS_CC;
+
+namespace stappler {
 
 bool StrictNode::isClippingEnabled() {
 	return _isClippingEnabled;
@@ -257,3 +258,6 @@ void AlwaysDrawedNode::onAfterDraw() {
 	}
 	_scissorEnabled = false;
 }
+
+}
+

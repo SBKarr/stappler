@@ -164,9 +164,10 @@ public: // httpd server info
 
 	void performStorage(apr_pool_t *pool, const Callback<void(const storage::Adapter &)> &cb);
 
-	void setSessionKeys(const StringView &pub, const StringView &priv) const;
+	void setSessionKeys(StringView pub, StringView priv, StringView sec = StringView()) const;
 	StringView getSessionPublicKey() const;
 	StringView getSessionPrivateKey() const;
+	StringView getServerSecret() const;
 
 	struct Config;
 

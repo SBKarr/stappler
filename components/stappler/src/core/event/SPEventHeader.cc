@@ -29,7 +29,7 @@ THE SOFTWARE.
 #include "SPEventDispatcher.h"
 #include "SPString.h"
 
-USING_NS_SP;
+namespace stappler {
 
 EventHeader::Category EventHeader::getCategoryForName(const String &catName) {
 	return string::hash32(catName);
@@ -114,4 +114,6 @@ void EventHeader::send(Ref *object, const data::Value &value) const {
 }
 void EventHeader::send(Ref *object) const {
 	Event::send(*this, object);
+}
+
 }

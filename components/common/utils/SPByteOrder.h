@@ -43,7 +43,7 @@ NS_SP_EXT_BEGIN(intrinsics)
   || (defined(__GNUC__) &&(__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 8)))
 inline uint16_t bswap16(uint16_t x) { return __builtin_bswap16(x); }
 # else
-inline uint16_t bswap16(uint16_t x) { return __builtin_bswap32((x) << 16; }
+inline uint16_t bswap16(uint16_t x) { return __builtin_bswap32(x) << 16; }
 # endif
 inline uint32_t bswap32(uint32_t x) { return __builtin_bswap32(x); }
 inline uint64_t bswap64(uint64_t x) { return __builtin_bswap64(x); }

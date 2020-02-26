@@ -35,30 +35,6 @@
 
 NS_CC_BEGIN
 
-/**
- * @addtogroup platform
- * @{
- */
-
-//! @brief  Helper class to handle file operations
-class CC_DLL FileUtilsApple : public FileUtils
-{
-public:
-    FileUtilsApple();
-    /* override funtions */
-    virtual std::string getWritablePath() const override;
-    virtual std::string getFullPathForDirectoryAndFilename(const std::string& directory, const std::string& filename) const override;
-
-    void setBundle(NSBundle* bundle);
-private:
-    virtual bool isFileExistInternal(const std::string& filePath) const override;
-    NSBundle* getBundle() const;
-    NSBundle* _bundle;
-};
-
-// end of platform group
-/// @}
-
 NS_CC_END
 
 #endif    // __CC_FILEUTILS_APPLE_H__

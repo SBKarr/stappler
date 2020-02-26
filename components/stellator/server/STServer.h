@@ -152,9 +152,10 @@ public: // httpd server info
 
 	void performStorage(mem::pool_t *pool, const mem::Callback<void(const db::Adapter &)> &cb);
 
-	void setSessionKeys(const mem::StringView &pub, const mem::StringView &priv) const;
+	void setSessionKeys(mem::StringView pub, mem::StringView priv, mem::StringView secret = mem::StringView()) const;
 	mem::StringView getSessionPublicKey() const;
 	mem::StringView getSessionPrivateKey() const;
+	mem::StringView getServerSecret() const;
 
 public: // compression
 	enum EtagMode {

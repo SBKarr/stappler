@@ -100,7 +100,7 @@ db::User * SqlHandle::authorizeUser(const db::Auth &auth, const mem::StringView 
 			}
 
 			count = res.front().toInteger(0);
-			if (count >= config::getMaxLoginFailure()) {
+			if (count >= size_t(config::getMaxLoginFailure())) {
 				messages::error("Auth", "Autorization blocked", mem::Value{
 					stappler::pair("cooldown", mem::Value((int64_t)config::getMaxAuthTime().toSeconds())),
 					stappler::pair("failedAttempts", mem::Value((int64_t)count)),

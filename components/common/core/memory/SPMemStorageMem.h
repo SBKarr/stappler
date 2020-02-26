@@ -28,11 +28,6 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(memory)
 
-#if MSYS
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wclass-memaccess"
-#endif
-
 template <typename Type>
 struct mem_sso_test {
 	static constexpr bool value = std::is_scalar<Type>::value;
@@ -137,7 +132,7 @@ public:
 			const auto size = modify_size(-1);
 			auto ptr = data() + size;
 			_allocator.destroy(ptr);
-			memset(ptr, 0, sizeof(Type));
+			memset((void *)ptr, 0, sizeof(Type));
 		}
 	}
 
@@ -260,7 +255,7 @@ public:
 			_allocator.move(_ptr + pos, _ptr + pos + len, _used - pos - len);
 		}
 		auto s = modify_size(-len);
-		memset(_ptr + s, 0, len * sizeof(Type));
+		memset((void *)(_ptr + s), 0, len * sizeof(Type));
 	}
 
 	iterator erase(const_iterator it) {
@@ -272,7 +267,7 @@ public:
 			_allocator.move(_ptr + pos, _ptr + pos + 1, _used - pos - 1);
 		}
 		auto s = modify_size(-1);
-		memset(_ptr + s, 0, sizeof(Type));
+		memset((void *)(_ptr + s), 0, sizeof(Type));
 		return iterator(_ptr + pos);
 	}
 
@@ -302,7 +297,7 @@ public:
 		const auto s = modify_size(nlen - len);
 
 		if (nlen < len) {
-			memset(data() + s, 0, (len - nlen) * sizeof(Type));
+			memset((void *)(data() + s), 0, (len - nlen) * sizeof(Type));
 		}
 	}
 
@@ -325,7 +320,7 @@ public:
 		const auto s = modify_size(nlen - len);
 
 		if (nlen < len) {
-			memset(data() + s, 0, (len - nlen) * sizeof(Type));
+			memset((void *)(data() + s), 0, (len - nlen) * sizeof(Type));
 		}
 	}
 
@@ -345,7 +340,7 @@ public:
 		const auto s = modify_size(nlen - len);
 
 		if (nlen < len) {
-			memset(data() + s, 0, (len - nlen) * sizeof(Type));
+			memset((void *)(data() + s), 0, (len - nlen) * sizeof(Type));
 		}
 		return iterator(pos);
 	}
@@ -439,10 +434,6 @@ private:
 
 template <typename Type, size_t Extra = 0>
 using storage_mem = storage_mem_soo<Type, Extra>;
-
-#if MSYS
-#pragma GCC diagnostic pop
-#endif
 
 NS_SP_EXT_END(memory)
 

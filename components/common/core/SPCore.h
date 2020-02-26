@@ -139,12 +139,10 @@ using std::nullptr_t;
 
 #endif
 
-#if (__clang__)
-#define SP_TEMPLATE_MARK
-#elif (MSYS)
-#define SP_TEMPLATE_MARK
-#else
+#if !defined(__clang__) && defined(__GNUC__) && __GNUC__ < 8
 #define SP_TEMPLATE_MARK template <>
+#else
+#define SP_TEMPLATE_MARK
 #endif
 
 #define SPUNUSED __attribute__((unused))
@@ -162,11 +160,9 @@ using std::nullptr_t;
 
 #define NS_SP_BEGIN			namespace stappler {
 #define NS_SP_END			}
-#define USING_NS_SP			using namespace stappler
 
 #define NS_SP_EXT_BEGIN(v)	namespace stappler { namespace v {
 #define NS_SP_EXT_END(v)	} }
-#define USING_NS_SP_EXT(v)	using namespace stappler::v
 
 #define NS_SP_EXTERN_BEGIN 	extern "C" {
 #define NS_SP_EXTERN_END 	}
@@ -176,7 +172,6 @@ using std::nullptr_t;
 
 #define NS_APR_BEGIN		NS_SP_EXT_BEGIN(apr)
 #define NS_APR_END			NS_SP_EXT_END(apr)
-#define USING_NS_APR		using namespace stappler::apr
 
 #endif
 
@@ -190,9 +185,9 @@ using _spChar = char;
 #endif
 
 #if MSYS
-NS_SP_BEGIN
+namespace stappler {
 using nullptr_t = std::nullptr_t;
-NS_SP_END
+}
 #endif
 
 /*
@@ -207,7 +202,7 @@ NS_SP_END
  *   - _c8 / _c16         - convert integer literal to character
  */
 
-NS_SP_EXT_BEGIN(hash)
+namespace stappler::hash {
 
 // see https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function#FNV-1_hash
 // parameters from http://www.boost.org/doc/libs/1_38_0/libs/unordered/examples/fnv1.hpp
@@ -257,7 +252,7 @@ constexpr uint64_t hash64(const char* str, size_t len) {
     return _fnv1Signed<uint64_t>(str, len);
 }
 
-NS_SP_EXT_END(hash)
+}
 
 // used for naming/hashing (like "MyTag"_tag)
 constexpr uint32_t operator"" _hash ( const char* str, size_t len) {
@@ -293,7 +288,7 @@ constexpr auto to_rad(T val) -> T {
 	return T(val) * T(M_PI) / T(180);
 }
 
-NS_SP_BEGIN
+namespace stappler {
 
 using std::forward;
 using std::move;
@@ -622,6 +617,6 @@ T clamp_distance(const T& v, const T& lo, const T& hi) {
 
 }
 
-NS_SP_END
+}
 
 #endif /* COMMON_CORE_SPCORE_H_ */

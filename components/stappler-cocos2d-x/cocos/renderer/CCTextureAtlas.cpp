@@ -156,8 +156,8 @@ bool TextureAtlas::initWithTexture(Texture2D *texture, ssize_t capacity)
         return false;
     }
 
-    memset( _quads, 0, _capacity * sizeof(V3F_C4B_T2F_Quad) );
-    memset( _indices, 0, _capacity * 6 * sizeof(GLushort) );
+    memset( (void *)_quads, 0, _capacity * sizeof(V3F_C4B_T2F_Quad) );
+    memset( (void *)_indices, 0, _capacity * 6 * sizeof(GLushort) );
 
 #if CC_ENABLE_CACHE_TEXTURE_DATA
     /** listen the event that renderer was recreated on Android/WP8 */
@@ -303,7 +303,7 @@ void TextureAtlas::insertQuad(V3F_C4B_T2F_Quad *quad, ssize_t index)
     if( remaining > 0)
     {
         // texture coordinates
-        memmove( &_quads[index+1],&_quads[index], sizeof(_quads[0]) * remaining );
+        memmove( (void *)&_quads[index+1], (const void *)&_quads[index], sizeof(_quads[0]) * remaining );
     }
 
     _quads[index] = *quad;
@@ -328,7 +328,7 @@ void TextureAtlas::insertQuads(V3F_C4B_T2F_Quad* quads, ssize_t index, ssize_t a
     if( remaining > 0)
     {
         // tex coordinates
-        memmove( &_quads[index+amount],&_quads[index], sizeof(_quads[0]) * remaining );
+        memmove( (void *)&_quads[index+amount], (const void *)&_quads[index], sizeof(_quads[0]) * remaining );
     }
 
 
@@ -366,7 +366,7 @@ void TextureAtlas::insertQuadFromIndex(ssize_t oldIndex, ssize_t newIndex)
 
     // texture coordinates
     V3F_C4B_T2F_Quad quadsBackup = _quads[oldIndex];
-    memmove( &_quads[dst],&_quads[src], sizeof(_quads[0]) * howMany );
+    memmove( (void *)&_quads[dst], (const void *)&_quads[src], sizeof(_quads[0]) * howMany );
     _quads[newIndex] = quadsBackup;
 
 
@@ -383,7 +383,7 @@ void TextureAtlas::removeQuadAtIndex(ssize_t index)
     if( remaining )
     {
         // texture coordinates
-        memmove( &_quads[index],&_quads[index+1], sizeof(_quads[0]) * remaining );
+        memmove( (void *)&_quads[index], (const void *)&_quads[index+1], sizeof(_quads[0]) * remaining );
     }
 
     _totalQuads--;
@@ -402,7 +402,7 @@ void TextureAtlas::removeQuadsAtIndex(ssize_t index, ssize_t amount)
 
     if ( remaining )
     {
-        memmove( &_quads[index], &_quads[index+amount], sizeof(_quads[0]) * remaining );
+        memmove( (void *)&_quads[index], (const void *)&_quads[index+amount], sizeof(_quads[0]) * remaining );
     }
 
     _dirty = true;
@@ -436,15 +436,15 @@ bool TextureAtlas::resizeCapacity(ssize_t newCapacity)
         tmpQuads = (V3F_C4B_T2F_Quad*)malloc( _capacity * sizeof(_quads[0]) );
         if (tmpQuads != nullptr)
         {
-            memset(tmpQuads, 0, _capacity * sizeof(_quads[0]) );
+            memset((void *)tmpQuads, 0, _capacity * sizeof(_quads[0]) );
         }
     }
     else
     {
-        tmpQuads = (V3F_C4B_T2F_Quad*)realloc( _quads, sizeof(_quads[0]) * _capacity );
+        tmpQuads = (V3F_C4B_T2F_Quad*)realloc( (void *)_quads, sizeof(_quads[0]) * _capacity );
         if (tmpQuads != nullptr && _capacity > oldCapactiy)
         {
-            memset(tmpQuads+oldCapactiy, 0, (_capacity - oldCapactiy)*sizeof(_quads[0]) );
+            memset((void *)(tmpQuads + oldCapactiy), 0, (_capacity - oldCapactiy)*sizeof(_quads[0]) );
         }
         _quads = nullptr;
     }
@@ -454,7 +454,7 @@ bool TextureAtlas::resizeCapacity(ssize_t newCapacity)
         tmpIndices = (GLushort*)malloc( _capacity * 6 * sizeof(_indices[0]) );
         if (tmpIndices != nullptr)
         {
-            memset( tmpIndices, 0, _capacity * 6 * sizeof(_indices[0]) );
+            memset((void *)tmpIndices, 0, _capacity * 6 * sizeof(_indices[0]) );
         }
     }
     else
@@ -462,7 +462,7 @@ bool TextureAtlas::resizeCapacity(ssize_t newCapacity)
         tmpIndices = (GLushort*)realloc( _indices, sizeof(_indices[0]) * _capacity * 6 );
         if (tmpIndices != nullptr && _capacity > oldCapactiy)
         {
-            memset( tmpIndices+oldCapactiy, 0, (_capacity-oldCapactiy) * 6 * sizeof(_indices[0]) );
+            memset((void *)(tmpIndices+oldCapactiy), 0, (_capacity-oldCapactiy) * 6 * sizeof(_indices[0]) );
         }
         _indices = nullptr;
     }
@@ -508,19 +508,19 @@ void TextureAtlas::moveQuadsFromIndex(ssize_t oldIndex, ssize_t amount, ssize_t 
     //create buffer
     size_t quadSize = sizeof(V3F_C4B_T2F_Quad);
     V3F_C4B_T2F_Quad* tempQuads = (V3F_C4B_T2F_Quad*)malloc( quadSize * amount);
-    memcpy( tempQuads, &_quads[oldIndex], quadSize * amount );
+    memcpy( (void *)tempQuads, (const void *)&_quads[oldIndex], quadSize * amount );
 
     if (newIndex < oldIndex)
     {
         // move quads from newIndex to newIndex + amount to make room for buffer
-        memmove( &_quads[newIndex], &_quads[newIndex+amount], (oldIndex-newIndex)*quadSize);
+        memmove( (void *)&_quads[newIndex], (const void *)&_quads[newIndex+amount], (oldIndex-newIndex)*quadSize);
     }
     else
     {
         // move quads above back
-        memmove( &_quads[oldIndex], &_quads[oldIndex+amount], (newIndex-oldIndex)*quadSize);
+        memmove( (void *)&_quads[oldIndex], (const void *)&_quads[oldIndex+amount], (newIndex-oldIndex)*quadSize);
     }
-    memcpy( &_quads[newIndex], tempQuads, amount*quadSize);
+    memcpy( (void *)&_quads[newIndex], (const void *)tempQuads, amount*quadSize);
 
     free(tempQuads);
 
@@ -532,14 +532,14 @@ void TextureAtlas::moveQuadsFromIndex(ssize_t index, ssize_t newIndex)
     CCASSERT(index>=0 && newIndex>=0, "values must be >= 0");
     CCASSERT(newIndex + (_totalQuads - index) <= _capacity, "moveQuadsFromIndex move is out of bounds");
 
-    memmove(_quads + newIndex,_quads + index, (_totalQuads - index) * sizeof(_quads[0]));
+    memmove((void *)(_quads + newIndex), (const void *)(_quads + index), (_totalQuads - index) * sizeof(_quads[0]));
 }
 
 void TextureAtlas::fillWithEmptyQuadsFromIndex(ssize_t index, ssize_t amount)
 {
     CCASSERT(index>=0 && amount>=0, "values must be >= 0");
     V3F_C4B_T2F_Quad quad;
-    memset(&quad, 0, sizeof(quad));
+    memset((void *)&quad, 0, sizeof(quad));
 
     auto to = index + amount;
     for (ssize_t i = index ; i < to ; i++)
@@ -589,7 +589,7 @@ void TextureAtlas::drawNumberOfQuads(ssize_t numberOfQuads, ssize_t start)
             // option 3: orphaning + glMapBuffer
             glBufferData(GL_ARRAY_BUFFER, sizeof(_quads[0]) * _capacity, nullptr, GL_DYNAMIC_DRAW);
             void *buf = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-            memcpy(buf, _quads, sizeof(_quads[0])* _totalQuads);
+            memcpy((void *)buf, (const void *)_quads, sizeof(_quads[0])* _totalQuads);
             glUnmapBuffer(GL_ARRAY_BUFFER);
 
             glBindBuffer(GL_ARRAY_BUFFER, 0);
