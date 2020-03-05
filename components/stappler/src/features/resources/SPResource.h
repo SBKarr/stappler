@@ -34,8 +34,8 @@ bool isReceiptUrl(const String &);
 
 Thread &thread();
 
-void setFallbackFont(const String &);
-const String &getFallbackFont();
+void setFallbackFont(BytesView);
+BytesView getFallbackFont();
 
 NS_SP_EXT_END(resource)
 

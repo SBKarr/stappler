@@ -406,6 +406,11 @@ Session *Request::authorizeUser(User *user, TimeInterval maxAge) {
 void Request::setUser(User *u) {
 	if (u) {
 		_config->_user = u;
+		if (_config->_user->isAdmin()) {
+			_config->_accessRole = std::max(db::AccessRoleId::Admin, _config->_accessRole);
+		} else {
+			_config->_accessRole = std::max(db::AccessRoleId::Authorized, _config->_accessRole);
+		}
 	}
 }
 

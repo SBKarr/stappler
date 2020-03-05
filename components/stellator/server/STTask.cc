@@ -60,10 +60,14 @@ void Task::performWithStorage(const mem::Callback<void(const db::Transaction &)>
 	auto dbd = root->dbdOpen(pool(), _server);
 	if (dbd.get()) {
 		db::pq::Handle h(root->getDbDriver(), dbd);
+
+		db::Interface *iface = &h;
+		stappler::memory::pool::userdata_set((void *)iface, config::getStorageInterfaceKey(), nullptr, mem::pool::acquire());
 		if (auto t = db::Transaction::acquire(&h)) {
 			cb(t);
 		}
 		root->dbdClose(pool(), _server, dbd);
+		stappler::memory::pool::userdata_set((void *)nullptr, config::getStorageInterfaceKey(), nullptr, mem::pool::acquire());
 	}
 }
 

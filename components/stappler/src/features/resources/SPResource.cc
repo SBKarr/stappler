@@ -34,6 +34,8 @@ THE SOFTWARE.
 #include "SPResource.h"
 #include "SPFilesystem.h"
 
+#include "SPFallbackFont-DejaVuSansStappler.cc"
+
 NS_SP_EXT_BEGIN(resource)
 
 static Thread s_resourceThread("ResourceLibraryThread");
@@ -62,14 +64,23 @@ Thread &thread() {
 	return s_resourceThread;
 }
 
-static String s_fallbackFont;
+static std::mutex s_fallbackFontMutex;
+static BytesView s_fallbackFontBytes(s_font_DejaVuSansStappler, 376604);
 
-void setFallbackFont(const String &str) {
-	s_fallbackFont = str;
+BytesView extern_font_DejaVuSansStappler(s_font_DejaVuSansStappler, 376604);
+
+void setFallbackFont(BytesView v) {
+	s_fallbackFontMutex.lock();
+	s_fallbackFontBytes = v;
+	s_fallbackFontMutex.unlock();
 }
 
-const String &getFallbackFont() {
-	return s_fallbackFont;
+BytesView getFallbackFont() {
+	BytesView ret;
+	s_fallbackFontMutex.lock();
+	ret = s_fallbackFontBytes;
+	s_fallbackFontMutex.unlock();
+	return ret;
 }
 
 NS_SP_EXT_END(resource)

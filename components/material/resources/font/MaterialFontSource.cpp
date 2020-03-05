@@ -27,7 +27,7 @@ THE SOFTWARE.
 
 #include "MaterialFont-DejaVuSansMono.cc"
 #include "MaterialFont-DejaVuSansMono-Bold.cc"
-#include "MaterialFont-DejaVuSansStappler.cc"
+//#include "MaterialFont-DejaVuSansStappler.cc"
 #include "MaterialFont-Roboto-Black.cc"
 #include "MaterialFont-Roboto-BlackItalic.cc"
 #include "MaterialFont-Roboto-Bold.cc"
@@ -47,13 +47,17 @@ THE SOFTWARE.
 #include "MaterialFont-RobotoCondensed-LightItalic.cc"
 #include "MaterialFont-RobotoCondensed-Regular.cc"
 
+NS_SP_EXT_BEGIN(resource)
+extern BytesView extern_font_DejaVuSansStappler;
+NS_SP_EXT_END(resource)
+
 NS_MD_BEGIN
 
 BytesView getSystemFont(SystemFontName name) {
 	switch (name) {
 		case SystemFontName::DejaVuSansMono: return BytesView(s_font_DejaVuSansMono, 196176); break;
 		case SystemFontName::DejaVuSansMono_Bold: return BytesView(s_font_DejaVuSansMono_Bold, 191148); break;
-		case SystemFontName::DejaVuSansStappler: return BytesView(s_font_DejaVuSansStappler, 376604); break;
+		case SystemFontName::DejaVuSansStappler: return resource::extern_font_DejaVuSansStappler; break;
 		case SystemFontName::Roboto_Black: return BytesView(s_font_Roboto_Black, 66448); break;
 		case SystemFontName::Roboto_BlackItalic: return BytesView(s_font_Roboto_BlackItalic, 73468); break;
 		case SystemFontName::Roboto_Bold: return BytesView(s_font_Roboto_Bold, 66588); break;

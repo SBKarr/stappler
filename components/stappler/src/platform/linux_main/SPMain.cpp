@@ -36,6 +36,8 @@ THE SOFTWARE.
 
 #include "SPMainSocket.cc"
 
+#include "glfw3.h"
+
 namespace stappler::platform::desktop {
 	Size _screenSize;
 	bool _isTablet = false;
@@ -44,6 +46,7 @@ namespace stappler::platform::desktop {
 	String _userLanguage;
 	String _appVersion;
 	float _density = 1.0f;
+	Vector<GLFWimage> _icons;
 
 	void setScreenSize(const Size &size) { _screenSize = size; }
 	Size getScreenSize() { return _screenSize; }
@@ -53,6 +56,7 @@ namespace stappler::platform::desktop {
 	float getDensity() { return _density; }
 	String getUserLanguage() { return _userLanguage; }
 	String getAppVersion() { return _appVersion; }
+	const Vector<GLFWimage> &getIcons() { return _icons; }
 }
 
 NS_SP_BEGIN
@@ -131,20 +135,43 @@ void sp_android_terminate () {
 int main(int argc, char **argv) {
 	std::set_terminate(sp_android_terminate);
 	String packageName = "org.stappler.stappler";
-	data::Value val = stappler::data::readFile("app.json");
-	if (val.isDictionary()) {
-		data::Value &resultObj = val.getValue("result");
-		if (resultObj.isArray()) {
-			data::Value &obj = resultObj.getValue(0);
-			if (obj.isDictionary()) {
-				String name = obj.getString("alias");
-				if (name.empty()) {
-					name = obj.getString("name");
+
+	data::Value val = stappler::data::readFile("manifest.json");
+	if (!val) {
+		val = stappler::data::readFile("app.json");
+		if (val.isDictionary()) {
+			data::Value &resultObj = val.getValue("result");
+			if (resultObj.isArray()) {
+				data::Value &obj = resultObj.getValue(0);
+				if (obj.isDictionary()) {
+					String name = obj.getString("alias");
+					if (name.empty()) {
+						name = obj.getString("name");
+					}
+					if (!name.empty()) {
+						packageName = name;
+					}
+					platform::desktop::_appVersion = obj.getString("appVersion");
 				}
-				if (!name.empty()) {
-					packageName = name;
+			}
+		}
+	} else {
+		for (auto &it : val.asDict()) {
+			if (it.first == "name") {
+				packageName = it.second.getString();
+			} else if (it.first == "versionString") {
+				platform::desktop::_appVersion = it.second.getString();
+			} else if (it.first == "icons") {
+				for (auto &iit : it.second.asArray()) {
+					auto d = filesystem::readIntoMemory(iit.getString());
+					Bitmap bmp(d);
+					if (bmp) {
+						bmp.convert(Bitmap::PixelFormat::RGBA8888);
+						auto buf = new uint8_t[bmp.data().size()];
+						memcpy(buf, bmp.data().data(), bmp.data().size());
+						platform::desktop::_icons.emplace_back(GLFWimage{int(bmp.width()), int(bmp.height()), buf});
+					}
 				}
-				platform::desktop::_appVersion = obj.getString("appVersion");
 			}
 		}
 	}

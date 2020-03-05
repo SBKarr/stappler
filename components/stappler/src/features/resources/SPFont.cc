@@ -42,6 +42,7 @@ class FontLibraryCache;
 class FontLibraryCache : public layout::FreeTypeInterface {
 public:
 	bool init(const String &, FontLibrary *);
+	bool init(BytesView, FontLibrary *);
 
 	void update();
 	Time getTimer() const;
@@ -93,6 +94,17 @@ protected:
 
 bool FontLibraryCache::init(const String &str, FontLibrary *lib) {
 	if (!FreeTypeInterface::init(str)) {
+		return false;
+	}
+
+	library = lib;
+	timer = Time::now();
+
+	return true;
+}
+
+bool FontLibraryCache::init(BytesView b, FontLibrary *lib) {
+	if (!FreeTypeInterface::init(b)) {
 		return false;
 	}
 
@@ -203,6 +215,7 @@ Rc<FontLibraryCache> FontLibrary::getCache() {
 	} else {
 		ret = _cache.emplace(id, Rc<FontLibraryCache>::create(resource::getFallbackFont(), this)).first->second;
 	}
+
 
 	_mutex.unlock();
 	return ret;

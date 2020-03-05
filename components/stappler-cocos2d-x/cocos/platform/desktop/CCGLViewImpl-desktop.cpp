@@ -45,6 +45,7 @@ namespace stappler::platform::desktop {
 	void setScreenSize(const cocos2d::Size &size);
 	bool isFixed();
 	float getDensity();
+	const stappler::Vector<GLFWimage> &getIcons();
 }
 
 namespace stappler::platform::ime {
@@ -389,6 +390,11 @@ bool GLViewImpl::initWithRect(const std::string& viewName, Rect rect, float fram
                                    _viewName.c_str(),
                                    _monitor,
                                    nullptr);
+
+    auto &icons = stappler::platform::desktop::getIcons();
+    if (!icons.empty()) {
+    	glfwSetWindowIcon(_mainWindow, icons.size(), icons.data());
+    }
 
 	glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
 	_offscreenWindow = glfwCreateWindow(640, 480, "", nullptr, _mainWindow);
