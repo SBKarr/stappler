@@ -290,6 +290,26 @@ private:
 	uint16_t _index = uint16_t(19 * 16 + 1);
 };
 
+inline std::ostream & operator<<(std::ostream & stream, const Color & obj) {
+	stream << "Color:" << obj.name() << ";";
+	return stream;
+}
+
+inline std::ostream & operator<<(std::ostream & stream, const Color3B & obj) {
+	stream << "Color3B(r:" << obj.r << " g:" << obj.g << " b:" << obj.b << ");";
+	return stream;
+}
+
+inline std::ostream & operator<<(std::ostream & stream, const Color4B & obj) {
+	stream << "Color4B(r:" << obj.r << " g:" << obj.g << " b:" << obj.b << " a:" << obj.a << ");";
+	return stream;
+}
+
+inline std::ostream & operator<<(std::ostream & stream, const Color4F & obj) {
+	stream << "Color4F(r:" << obj.r << " g:" << obj.g << " b:" << obj.b << " a:" << obj.a << ");";
+	return stream;
+}
+
 NS_LAYOUT_END
 
 NS_SP_BEGIN

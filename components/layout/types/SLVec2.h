@@ -95,6 +95,8 @@ public:
 	 */
 	Vec2(const Vec2& copy);
 
+	explicit Vec2(const Size &);
+
 	/**
 	 * Destructor.
 	 */

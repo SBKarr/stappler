@@ -100,8 +100,8 @@ bool FileNavigator::init() {
 	}
 
 	_hyphens = Rc<font::HyphenMap>::create();
-	_hyphens->addHyphenDict(CharGroupId::Latin, "common/hyphen/hyph_en_GB.dic");
-	_hyphens->addHyphenDict(CharGroupId::Cyrillic, "common/hyphen/hyph_ru_RU.dic");
+	_hyphens->addHyphenDict(CharGroupId::Latin, FilePath("common/hyphen/hyph_en_GB.dic"));
+	_hyphens->addHyphenDict(CharGroupId::Cyrillic, FilePath("common/hyphen/hyph_ru_RU.dic"));
 
 	setToolbarColor(material::Color::Grey_300);
 	setTitle("Files");

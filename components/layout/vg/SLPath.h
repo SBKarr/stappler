@@ -160,6 +160,7 @@ public:
 	Path &setAntialiased(bool);
 	bool isAntialiased() const;
 
+	// transform should be applied in reverse order
 	Path & setTransform(const Mat4 &);
 	Path & applyTransform(const Mat4 &);
 	const Mat4 &getTransform() const;

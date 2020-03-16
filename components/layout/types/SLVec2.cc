@@ -61,6 +61,8 @@ float crossProduct2Vector(const Vec2& A, const Vec2& B, const Vec2& C, const Vec
 	return (D.y - C.y) * (B.x - A.x) - (D.x - C.x) * (B.y - A.y);
 }
 
+Vec2::Vec2(const Size &s) : x(s.width), y(s.height) { }
+
 float Vec2::angle(const Vec2& v1, const Vec2& v2) {
 	const float dz = v1.x * v2.y - v1.y * v2.x;
 	return atan2f(fabsf(dz) + MATH_FLOAT_SMALL, dot(v1, v2));

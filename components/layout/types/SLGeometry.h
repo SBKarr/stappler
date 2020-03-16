@@ -209,6 +209,17 @@ public:
 Rect TransformRect(const Rect& rect, const Mat4& transform);
 Vec2 TransformPoint(const Vec2& point, const Mat4& transform);
 
+inline std::ostream & operator<<(std::ostream & stream, const Rect & obj) {
+	stream << "Rect(x:" << obj.origin.x << " y:" << obj.origin.y
+			<< " width:" << obj.size.width << " height:" << obj.size.height << ");";
+	return stream;
+}
+
+inline std::ostream & operator<<(std::ostream & stream, const Size & obj) {
+	stream << "Size(width:" << obj.width << " height:" << obj.height << ");";
+	return stream;
+}
+
 NS_LAYOUT_END
 
 #endif /* LAYOUT_TYPES_SLGEOMETRY_H_ */

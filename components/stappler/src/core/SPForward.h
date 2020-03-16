@@ -26,64 +26,9 @@ THE SOFTWARE.
 #include "SPLayout.h"
 #include "platform/CCStdC.h"
 
-NS_CC_BEGIN
+namespace cocos2d {
 
 class Renderer;
-class Node;
-
-NS_CC_END
-
-NS_SP_BEGIN
-
-using Vec2 = layout::Vec2;
-using Vec3 = layout::Vec3;
-using Vec4 = layout::Vec4;
-using Size = layout::Size;
-using Rect = layout::Rect;
-
-using Mat4 = layout::Mat4;
-using Quaternion = layout::Quaternion;
-
-using Color4B = layout::Color4B;
-using Color4F = layout::Color4F;
-using Color3B = layout::Color3B;
-
-using Renderer = cocos2d::Renderer;
-
-using Padding = layout::Padding;
-using Margin = layout::Margin;
-
-template <size_t Count>
-using MovingAverage = layout::MovingAverage<Count>;
-using FilePath = layout::FilePath;
-
-namespace Anchor {
-extern const Vec2 Middle; /** equals to Vec2(0.5, 0.5) */
-extern const Vec2 BottomLeft; /** equals to Vec2(0, 0) */
-extern const Vec2 TopLeft; /** equals to Vec2(0, 1) */
-extern const Vec2 BottomRight; /** equals to Vec2(1, 0) */
-extern const Vec2 TopRight; /** equals to Vec2(1, 1) */
-extern const Vec2 MiddleRight; /** equals to Vec2(1, 0.5) */
-extern const Vec2 MiddleLeft; /** equals to Vec2(0, 0.5) */
-extern const Vec2 MiddleTop; /** equals to Vec2(0.5, 1) */
-extern const Vec2 MiddleBottom; /** equals to Vec2(0.5, 0) */
-}
-
-struct AlphaTest {
-	enum State : uint8_t {
-		Disabled,
-		LessThen,
-		GreatherThen,
-	};
-
-	State state = State::Disabled;
-	uint8_t value = 0;
-};
-
-NS_SP_END
-
-NS_CC_BEGIN
-
 class Node;
 class Sprite;
 class Scene;
@@ -115,10 +60,56 @@ class CustomCommand;
 class FiniteTimeAction;
 class ActionInterval;
 
-NS_CC_END
+}
 
+namespace stappler {
 
-NS_SP_BEGIN
+using Vec2 = layout::Vec2;
+using Vec3 = layout::Vec3;
+using Vec4 = layout::Vec4;
+using Size = layout::Size;
+using Rect = layout::Rect;
+
+using Mat4 = layout::Mat4;
+using Quaternion = layout::Quaternion;
+
+using Color4B = layout::Color4B;
+using Color4F = layout::Color4F;
+using Color3B = layout::Color3B;
+using Color = layout::Color;
+
+using Node = cocos2d::Node;
+using Renderer = cocos2d::Renderer;
+
+using Padding = layout::Padding;
+using Margin = layout::Margin;
+
+template <size_t Count>
+using MovingAverage = layout::MovingAverage<Count>;
+using FilePath = layout::FilePath;
+
+namespace Anchor {
+extern const Vec2 Middle; /** equals to Vec2(0.5, 0.5) */
+extern const Vec2 BottomLeft; /** equals to Vec2(0, 0) */
+extern const Vec2 TopLeft; /** equals to Vec2(0, 1) */
+extern const Vec2 BottomRight; /** equals to Vec2(1, 0) */
+extern const Vec2 TopRight; /** equals to Vec2(1, 1) */
+extern const Vec2 MiddleRight; /** equals to Vec2(1, 0.5) */
+extern const Vec2 MiddleLeft; /** equals to Vec2(0, 0.5) */
+extern const Vec2 MiddleTop; /** equals to Vec2(0.5, 1) */
+extern const Vec2 MiddleBottom; /** equals to Vec2(0.5, 0) */
+}
+
+struct AlphaTest {
+	enum State : uint8_t {
+		Disabled,
+		LessThen,
+		GreatherThen,
+	};
+
+	State state = State::Disabled;
+	uint8_t value = 0;
+};
 
 class EventHeader;
 class Event;
@@ -193,10 +184,10 @@ class Timeout;
 
 class DynamicLabel;
 
-NS_SP_END
+}
 
 
-NS_SP_EXT_BEGIN(data)
+namespace stappler::data {
 
 class Source;
 
@@ -204,10 +195,10 @@ using Subscription = layout::Subscription;
 template <class T> using Binding = layout::Binding<T>;
 template <class T> class Listener;
 
-NS_SP_EXT_END(data)
+}
 
 
-NS_SP_EXT_BEGIN(gesture)
+namespace stappler::gesture {
 
 struct Touch;
 struct Tap;
@@ -231,47 +222,47 @@ class PinchRecognizer;
 class RotateRecognizer;
 class WheelRecognizer;
 
-NS_SP_EXT_END(gesture)
+}
 
 
-NS_SP_EXT_BEGIN(storage)
+namespace stappler::storage {
 
 class Scheme;
 class Handle;
 
-NS_SP_EXT_END(storage)
+}
 
 
-NS_SP_EXT_BEGIN(rich_text)
+namespace stappler::rich_text {
 
 class Renderer;
 class View;
 class Drawer;
 
-NS_SP_EXT_END(rich_text)
+}
 
 
-NS_SP_EXT_BEGIN(draw)
+namespace stappler::draw {
 
 class PathNode;
 class Canvas;
 
-NS_SP_EXT_END(draw)
+}
 
 
-NS_SP_EXT_BEGIN(ime)
+namespace stappler::ime {
 
 struct Cursor;
 struct Handler;
 
-NS_SP_EXT_END(ime)
+}
 
 
-NS_SP_EXT_BEGIN(font)
+namespace stappler::font {
 
 class FontSource;
 class Controller;
 
-NS_SP_EXT_END(font)
+}
 
 #endif /* LIBS_STAPPLER_CORE_SPFORWARD_H_ */

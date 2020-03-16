@@ -104,6 +104,9 @@ class Image;
 
 using FilePath = ValueWrapper<StringView, class FilePathTag>;
 
+class Size;
+class Rect;
+
 NS_LAYOUT_END
 
 #include "SPLog.h"

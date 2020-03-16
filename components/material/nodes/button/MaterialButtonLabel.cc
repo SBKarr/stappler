@@ -41,10 +41,23 @@ bool ButtonLabel::init(FontType fnt, const TapCallback &tapCallback, const TapCa
 	label->setTextTransform(Label::TextTransform::Uppercase);
 	_label = addChildNode(label);
 
-	_labelOpacity = _label->getOpacity();
-
 	setContentSize(Size(_labelPadding.horizontal(), _label->getFontHeight() / _label->getDensity() + _labelPadding.vertical()));
 
+	auto clipNode = Rc<draw::PathNode>::create(16, 16);
+	clipNode->setPosition(Vec2(0, 0));
+	clipNode->setAnchorPoint(Vec2(0, 0));
+	clipNode->setOpacity(255);
+	clipNode->setColor(Color::Black);
+	clipNode->setAutofit(DynamicSprite::Autofit::Cover);
+	clipNode->setAutofitPosition(Anchor::Middle);
+	clipNode->setAntialiased(true);
+	clipNode->setAlphaTest(AlphaTest::GreatherThen, 1);
+	clipNode->addPath().addCircle(8, 8, 8).setFillOpacity(255);
+	_highlight->setClipNode(clipNode, [&, node = clipNode.get()] (Size cs) {
+		node->setContentSize(Size(cs.width, cs.height));
+	});
+
+	_labelOpacity = _label->getOpacity();
 	return true;
 }
 bool ButtonLabel::init(const TapCallback &tapCallback, const TapCallback &longTapCallback) {

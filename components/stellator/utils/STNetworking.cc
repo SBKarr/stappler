@@ -56,6 +56,8 @@ data::Value Handle::performDataQuery() {
 	});
 	if (perform()) {
 		return stream.extract<mem::Interface>();
+	} else {
+		std::cout << stream.extract<mem::Interface>() << "\n";
 	}
 	return data::Value();
 }

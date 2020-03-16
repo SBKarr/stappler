@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2020 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -42,6 +39,8 @@ THE SOFTWARE.
 #include "SPEventListener.h"
 #include "SPLayer.h"
 
+#include "MaterialButtonHighlight.cc"
+
 NS_MD_BEGIN
 
 bool Button::init(const TapCallback &tapCallback, const TapCallback &longTapCallback) {
@@ -71,17 +70,30 @@ bool Button::init(const TapCallback &tapCallback, const TapCallback &longTapCall
 		}
 	});
 	l->setSwallowTouches(true);
-	addComponent(l);
+	_listener = addComponentItem(l);
 
 	_source.setCallback(std::bind(&Button::updateFromSource, this));
 
-	_listener = l;
 	_tapCallback = tapCallback;
 	_longTapCallback = longTapCallback;
 
 	auto el = Rc<EventListener>::create();
-	addComponent(el);
-	_formEventListener = el;
+	_formEventListener = addComponentItem(el);
+
+	auto highlight = Rc<ButtonHighLight>::create(_backgroundClipper, [this] {
+		if (_style == Style::Raised) {
+			 setLocalZOrder(getLocalZOrder() + 1);
+		}
+	}, [this] {
+		if (_style == Style::Raised) {
+			 setLocalZOrder(getLocalZOrder() - 1);
+		}
+	}, [this] (float pr) {
+		if (_style == Style::Raised) {
+			setShadowZIndex(progress(_raisedDefaultZIndex, _raisedActiveZIndex, pr));
+		}
+	});
+	_highlight = addChildNode(highlight, 2);
 
 	updateStyle();
 	updateEnabled();
@@ -105,9 +117,9 @@ void Button::updateStyle() {
 	} else {
 		setShadowZIndex(0);
 		if (_style == FlatWhite) {
-			bg->setColor(Color::White);
+			_highlight->setAnimationColor(Color::White);
 		} else {
-			bg->setColor(Color::Black);
+			_highlight->setAnimationColor(Color::Black);
 		}
 		bg->setOpacity(0);
 	}
@@ -159,8 +171,11 @@ void Button::setSwallowTouches(bool value) {
 void Button::setGesturePriority(int32_t value) {
 	static_cast<stappler::gesture::Listener *>(_listener)->setPriority(value);
 }
-void Button::setAnimationOpacity(uint8_t value) {
-	_animationOpacity = value;
+void Button::setAnimationOpacity(uint8_t op) {
+	_highlight->setAnimationOpacity(op);
+}
+void Button::setSpawnDelay(float s) {
+	_highlight->setSpawnDelay(s);
 }
 
 bool Button::onPressBegin(const Vec2 &location) {
@@ -170,7 +185,7 @@ bool Button::onPressBegin(const Vec2 &location) {
 	if (!_touchFilter || _touchFilter(location)) {
 		if (stappler::node::isTouched(this, location, 8)) {
 			_touchPoint = location;
-			animateSelection();
+			_highlight->animateSelection(location);
 			return true;
 		}
 	}
@@ -182,7 +197,7 @@ void Button::onLongPress() {
 	}
 }
 bool Button::onPressEnd() {
-	animateDeselection();
+	_highlight->animateDeselection();
 	if (_enabled) {
 		if (_floatingMenuSource) {
 			onOpenMenuSource();
@@ -194,8 +209,8 @@ bool Button::onPressEnd() {
 	return true;
 }
 void Button::onPressCancel() {
-	animateDeselection();
-	dropSpawn();
+	_highlight->animateDeselection();
+	_highlight->dropSpawn();
 }
 
 void Button::onOpenMenuSource() {
@@ -212,42 +227,11 @@ bool Button::isEnabled() const {
 }
 
 void Button::setSelected(bool value, bool instant) {
-	if (_selected != value) {
-		_selected = value;
-		if (_selected) {
-			if (!instant) {
-				stopActionByTag(2);
-				auto a = cocos2d::EaseQuadraticActionInOut::create(Rc<ProgressAction>::create(
-						progress(0.4f, 0.0f, _animationProgress), 1.0f,
-						[this] (ProgressAction *a, float progress) {
-					updateSelection(progress);
-				}, [this] (ProgressAction *a) {
-					a->setSourceProgress(getSelectionProgress());
-					beginSelection();
-				}, [this] (ProgressAction *a) {
-					endSelection();
-				}));
-				a->setTag(2);
-				runAction(a);
-			} else {
-				beginSelection();
-				updateSelection(1.0f);
-				endSelection();
-			}
-		} else {
-			animateDeselection();
-		}
-	}
-}
-bool Button::isSelected() const {
-	return _selected;
+	_highlight->setSelected(value, instant);
 }
 
-void Button::setSpawnDelay(float value) {
-	_spawnDelay = value;
-}
-float Button::getSpawnDelay() const {
-	return _spawnDelay;
+bool Button::isSelected() const {
+	return _highlight->isSelected();
 }
 
 void Button::setRaisedDefaultZIndex(float value) {
@@ -283,197 +267,15 @@ gesture::Listener * Button::getListener() const {
 	return _listener;
 }
 
-void Button::animateSelection() {
-	if (!_selected) {
-		stopActionByTag(2);
-		auto a = cocos2d::EaseQuadraticActionInOut::create(Rc<ProgressAction>::create(
-				progress(0.4f, 0.0f, _animationProgress), 1.0f,
-				[this] (ProgressAction *a, float progress) {
-			updateSelection(progress);
-		}, [this] (ProgressAction *a) {
-			a->setSourceProgress(getSelectionProgress());
-			beginSelection();
-		}, [this] (ProgressAction *a) {
-			endSelection();
-		}));
-		a->setTag(2);
-		runAction(a);
-	}
-
-	draw::Image::PathRef *path = new draw::Image::PathRef();
-	Size *size = new Size();
-	Vec2 *point = new Vec2();
-
-	auto a = Rc<ProgressAction>::create(0.4, 1.0,
-			[this, path, size, point] (ProgressAction *a, float progress) {
-		updateSpawn(progress, (*path), (*size), (*point));
-	}, [this, path, size, point] (ProgressAction *a) {
-		(*path) = beginSpawn();
-		if (_animationNode) {
-			(*size) = _animationNode->getContentSize();
-			(*point) = _animationNode->convertToNodeSpace(_touchPoint);
-		}
-	}, [this, path, size, point] (ProgressAction *a) {
-		if (_animationNode) {
-			_animationNode->removePath((*path));
-		}
-		endSpawn();
-		delete path;
-		delete size;
-		delete point;
-	});
-	a->setForceStopCallback(true);
-
-	auto b = action::sequence(_spawnDelay, a);
-	runAction(b, 3);
-}
-
-void Button::animateDeselection() {
-	if (!_selected) {
-		stopActionByTag(2);
-		auto a = cocos2d::EaseQuadraticActionInOut::create(Rc<ProgressAction>::create(
-				progress(0.35f, 0.0f, 1.0f - _animationProgress), 0.0f,
-				[this] (ProgressAction *a, float progress) {
-			updateSelection(progress);
-		}, [this] (ProgressAction *a) {
-			a->setSourceProgress(getSelectionProgress());
-			beginSelection();
-		}, [this] (ProgressAction *a) {
-			endSelection();
-		}));
-		a->setTag(2);
-		runAction(a);
-	}
-}
-
-
-void Button::beginSelection() {
-	if (_animationProgress == 0.0f && _style == Style::Raised) {
-		setLocalZOrder(getLocalZOrder() + 1);
-	}
-}
-
-void Button::endSelection() {
-	if (_animationProgress == 0.0f && _style == Style::Raised) {
-		setLocalZOrder(getLocalZOrder() - 1);
-	}
-}
-
-void Button::updateSelection(float progress) {
-	_animationProgress = progress;
-	updateSelectionProgress(progress);
-}
-
-float Button::getSelectionProgress() const {
-	return _animationProgress;
-}
-
-void Button::updateSelectionProgress(float pr) {
-	if (_style == Raised) {
-		setShadowZIndex(progress(_raisedDefaultZIndex, _raisedActiveZIndex, pr));
-	} else {
-		auto c = getBackground()->getColor();
-		if (c == Color3B::WHITE || c == Color3B::BLACK) {
-			if (pr > 0.5) {
-				uint8_t op = (uint8_t)progress(0.0f, 20.0f, (pr - 0.5) * 2.0);
-				getBackground()->setOpacity(op);
-			} else {
-				getBackground()->setOpacity((uint8_t)0);
-			}
-		}
-	}
-}
-
-draw::Image::PathRef Button::beginSpawn() {
-	float downscale = 4.0f;
-	uint32_t width = _contentSize.width / downscale;
-	uint32_t height = _contentSize.height / downscale;
-
-	if (_animationNode && _animationNode->getBaseWidth() == width && _animationNode->getBaseHeight() == height) {
-		// do nothing, our node is perfect
-	} else {
-		if (_animationNode) {
-			_animationNode->removeFromParent();
-			_animationNode = nullptr;
-		}
-		auto animationNode = Rc<draw::PathNode>::create(width, height);
-		animationNode->setContentSize(Size(_contentSize.width / downscale, _contentSize.height / downscale));
-		animationNode->setPosition(Vec2(0, 0));
-		animationNode->setAnchorPoint(Vec2(0, 0));
-		animationNode->setScale(downscale);
-		animationNode->setColor((_style == FlatWhite)?(Color::White):(Color::Black));
-		animationNode->setOpacity(_animationOpacity);
-		animationNode->setAntialiased(true);
-		_animationNode = addChildNode(animationNode, 1);
-	}
-
-	auto path = _animationNode->addPath();
-	_animationCount ++;
-
-	return path;
-}
-
-void Button::updateSpawn(float pr, draw::Image::PathRef &path, const Size &size, const Vec2 &point) {
-	if (_animationNode) {
-		float threshold = 0.6f;
-		float rad = 0.0f;
-
-		if (pr > threshold) {
-			rad = std::max(size.width, size.height);
-			path.setFillOpacity(uint8_t(progress(255.0f, 0.0f, (pr - threshold) / (1.0 - threshold))));
-		} else {
-			if (pr < 0.2) {
-				path.setFillOpacity(uint8_t(progress(0, 255, pr * 5.0f)));
-			} else {
-				path.setFillOpacity(255);
-			}
-
-			float a = point.length();
-			float b = Vec2(point.x, size.height - point.y).length();
-			float c = Vec2(size.width - point.x, size.height - point.y).length();
-			float d = Vec2(size.width - point.x, point.y).length();
-
-			float minRad = std::min(size.width, size.height) / 8.0f;
-			float maxRad = std::max(std::max(a, b), std::max(c, d));
-
-			rad = progress(minRad, maxRad, pr / threshold);
-		}
-
-		path.clear().addCircle(point.x, size.height - point.y, rad);
-	}
-}
-
-void Button::endSpawn() {
-	if (_animationCount > 0) {
-		_animationCount --;
-	}
-	if (_animationCount == 0 && _animationNode) {
-		_animationNode->removeFromParent();
-		_animationNode = nullptr;
-	}
-}
-
-void Button::dropSpawn() {
-	if (_animationNode) {
-		_animationCount = 0;
-		_animationNode->runAction(cocos2d::Sequence::createWithTwoActions(
-				cocos2d::FadeTo::create(0.15f, 0), cocos2d::RemoveSelf::create()));
-		_animationNode = nullptr;
-	} else {
-		stopActionByTag(3);
-	}
+ButtonHighLight *Button::getHighlight() const {
+	return _highlight;
 }
 
 void Button::onContentSizeDirty() {
 	MaterialNode::onContentSizeDirty();
-	if (_animationNode) {
-		float downscale = 4.0f;
-		auto size = getContentSizeWithPadding();
-		auto pos = getAnchorPositionWithPadding();
 
-		_animationNode->setPosition(pos);
-		_animationNode->setContentSize(Size(size.width / downscale, size.height / downscale));
-	}
+	_highlight->setPosition(_content->getPosition());
+	_highlight->setContentSize(_content->getContentSize());
 }
 
 void Button::setMenuSourceButton(MenuSourceButton *source) {

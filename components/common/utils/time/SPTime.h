@@ -228,7 +228,7 @@ public:
 		sp_time_exp_t xt(*this, false);
 		char buf[30] = { 0 };
 		xt.encodeIso8601(buf, precision);
-		return typename Interface::StringType(buf);
+		return typename Interface::StringType(buf, strlen(buf));
 	}
 
 	template <typename Interface = memory::DefaultInterface>

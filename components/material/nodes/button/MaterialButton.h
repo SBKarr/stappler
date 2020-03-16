@@ -30,16 +30,64 @@ THE SOFTWARE.
 
 NS_MD_BEGIN
 
+class ButtonHighLight : public Node {
+public:
+	virtual bool init(Node *stencil, const Function<void()> &b, const Function<void()> &e, const Function<void(float)> &);
+	virtual void onContentSizeDirty() override;
+
+	virtual void animateSelection(const Vec2 &);
+	virtual void animateDeselection();
+	virtual void dropSpawn();
+
+	virtual void setSelected(bool value, bool instant = false);
+	virtual bool isSelected() const;
+
+	virtual void setSpawnDelay(float);
+	virtual void setAnimationColor(Color);
+	virtual void setAnimationOpacity(uint8_t);
+
+	virtual void setClipNode(Node *, const Function<void(Size)> &);
+
+protected:
+	virtual void beginSelection();
+	virtual void updateSelection(float progress, uint8_t op);
+	virtual void endSelection();
+	virtual float getSelectionProgress() const;
+
+	virtual draw::Image::PathRef beginSpawn();
+	virtual void updateSpawn(float progress, draw::Image::PathRef & path, const Size &size, const Vec2 &point);
+	virtual void endSpawn();
+
+	ClippingNode *_clip = nullptr;
+	RoundedSprite *_background = nullptr;
+
+	draw::PathNode *_animationNode = nullptr;
+	uint32_t _animationCount = 0;
+	uint8_t _animationOpacity = 22;
+	float _animationProgress = 0.0f;
+	Color _animationColor = Color::Black;
+	float _spawnDelay = 0.0f;
+	bool _selected = false;
+	bool _highlighted = false;
+
+	Function<void()> _beginCallback;
+	Function<void()> _endCallback;
+	Function<void(float)> _progressCallback;
+	Function<void(Size)> _sizeCallback;
+};
+
 class Button : public MaterialNode {
 public:
-	using TapCallback = std::function<void()>;
-	using TouchFilter = std::function<bool(const Vec2 &)>;
+	using TapCallback = Function<void()>;
+	using TouchFilter = Function<bool(const Vec2 &)>;
 
 	enum Style {
 		Raised,
 		FlatWhite,
 		FlatBlack,
 	};
+
+	virtual ~Button() { }
 
 	virtual bool init(const TapCallback &tapCallback = nullptr, const TapCallback &longTapCallback = nullptr);
 	virtual void onContentSizeDirty() override;
@@ -60,6 +108,7 @@ public:
 	virtual void setSwallowTouches(bool value);
 	virtual void setGesturePriority(int32_t);
 	virtual void setAnimationOpacity(uint8_t);
+	virtual void setSpawnDelay(float);
 
 	virtual bool onPressBegin(const Vec2 &location);
     virtual void onLongPress();
@@ -71,9 +120,6 @@ public:
 
 	virtual void setSelected(bool value, bool instant = false);
 	virtual bool isSelected() const;
-
-	virtual void setSpawnDelay(float value);
-	virtual float getSpawnDelay() const;
 
 	virtual void setRaisedDefaultZIndex(float value);
 	virtual void setRaisedActiveZIndex(float value);
@@ -92,22 +138,9 @@ public:
 	virtual void cancel();
 
 	virtual gesture::Listener * getListener() const;
+	virtual ButtonHighLight *getHighlight() const;
 
 protected:
-	virtual void animateSelection();
-	virtual void animateDeselection();
-
-	virtual void beginSelection();
-	virtual void updateSelection(float progress);
-	virtual void endSelection();
-	virtual float getSelectionProgress() const;
-
-	virtual draw::Image::PathRef beginSpawn();
-	virtual void updateSpawn(float progress, draw::Image::PathRef & path, const Size &size, const Vec2 &point);
-	virtual void endSpawn();
-	virtual void dropSpawn();
-
-	virtual void updateSelectionProgress(float progress);
 	virtual void updateStyle();
 	virtual void updateEnabled();
 
@@ -117,24 +150,17 @@ protected:
 
 	virtual void onOpenMenuSource();
 
-	Function<void()> _tapCallback = nullptr;
-	Function<void()> _longTapCallback = nullptr;
+	TapCallback _tapCallback = nullptr;
+	TapCallback _longTapCallback = nullptr;
 	TouchFilter _touchFilter = nullptr;
 	gesture::Listener *_listener = nullptr;
 
-	draw::PathNode *_animationNode = nullptr;
-	uint32_t _animationCount = 0;
+	ButtonHighLight *_highlight = nullptr;
 
 	Vec2 _touchPoint;
 
 	Style _style = FlatBlack;
-
-	float _animationProgress = 0.0f;
-	float _spawnDelay = 0.0f;
-	bool _selected = false;
 	bool _enabled = true;
-
-	uint8_t _animationOpacity = 36;
 
 	float _raisedDefaultZIndex = 1.5f;
 	float _raisedActiveZIndex = 3.0f;

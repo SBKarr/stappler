@@ -672,6 +672,10 @@ Rc<cocos2d::Texture2D> TextureCache::loadTexture(const TextureIndex &index) {
 
 Rc<cocos2d::Texture2D> TextureCache::doRenderImage(cocos2d::Texture2D *tex, TextureFormat fmt, const layout::Image &image,
 		const Size &size, layout::style::Autofit autofit, const Vec2 &autofitPos, float density) {
+	if (density == 0.0f) {
+		density = screen::density();
+	}
+
 	auto baseWidth = image.getWidth();
 	auto baseHeight = image.getHeight();
 
@@ -752,7 +756,7 @@ Rc<cocos2d::Texture2D> TextureCache::doRenderImage(cocos2d::Texture2D *tex, Text
 	if (t) {
 		canvas->begin(t.get(), Color4B(0, 0, 0, 0));
 		canvas->save();
-		canvas->translate(offsetX, offsetY);
+		canvas->translate(offsetX, -offsetY);
 		canvas->scale(scaleX, scaleY);
 		canvas->transform(image.getViewBoxTransform());
 

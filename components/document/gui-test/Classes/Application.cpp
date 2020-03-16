@@ -63,7 +63,41 @@ THE SOFTWARE.
 #include "SLReader.h"
 #include "SLImage.h"
 
+#include "SPGestureListener.h"
+
 NS_SP_EXT_BEGIN(app)
+
+
+class TestLayout : public material::Layout {
+public:
+	virtual bool init() override {
+		if (!Layout::init()) {
+			return false;
+		}
+
+		auto icon = Rc<material::IconSprite>::create(material::IconName::Action_3d_rotation);
+		icon->setAnchorPoint(Anchor::BottomLeft);
+		icon->setColor(Color::Black);
+		_icon = addChildNode(icon);
+
+		auto g = Rc<gesture::Listener>::create();
+		g->setTapCallback([this] (gesture::Event, const gesture::Tap &) -> bool {
+			_icon->setIconName(material::IconName(toInt(_icon->getIconName()) + 1));
+			return true;
+		});
+		addComponentItem(g);
+
+		return true;
+	}
+
+	virtual void onContentSizeDirty() override {
+		Layout::onContentSizeDirty();
+		_icon->setPosition(_contentSize / 2.0f);
+	}
+
+protected:
+	material::IconSprite *_icon = nullptr;
+};
 
 static Application *s_sharedApplication = nullptr;
 
@@ -93,7 +127,7 @@ void Application::init() {
 
 	storage::get("applicaton_layout", [this] (const StringView &key, data::Value &&val) {
 		auto scene = Rc<material::Scene>::create();
-		scene->getNavigationLayer()->setNavigationMenuSource(_appMenu);
+		// scene->getNavigationLayer()->setNavigationMenuSource(_appMenu);
 		//scene->setDisplayStats(true);
 		if (val) {
 			_assetsDir = val.getString("assetsDir");
@@ -114,7 +148,9 @@ void Application::init() {
 		});
 
 		scene->pushContentNode(l);*/
-		scene->pushContentNode(Rc<FileNavigator>::create());
+		// scene->pushContentNode(Rc<FileNavigator>::create());
+
+		scene->pushContentNode(Rc<TestLayout>::create());
 
 		material::Scene::run(scene);
 

@@ -490,7 +490,7 @@ public:
 
 /**
  * Calculates the scalar product of the given vector with the given value.
- * 
+ *
  * @param x The value to scale by.
  * @param v The vector to scale.
  * @return The scaled vector.

@@ -45,8 +45,6 @@ AppDelegate::~AppDelegate() { }
 bool AppDelegate::applicationDidFinishLaunching() {
 	Device::getInstance();
 
-	resource::setFallbackFont("common/fonts/DejaVuSansStappler.woff");
-
     auto director = cocos2d::Director::getInstance();
     auto glview = director->getOpenGLView();
     if (!glview) {

@@ -35,9 +35,9 @@ public:
 	virtual ~IconSprite() { }
 
 	enum class SizeHint {
-		Small,
-		Normal,
-		Large
+		Small, // 18.0f
+		Normal, // 24.0f
+		Large // 32.0f
 	};
 
 	virtual bool init(IconName name = IconName::None, SizeHint = SizeHint::Normal);
