@@ -1,5 +1,6 @@
 
 #include "ODDocument.h"
+#include "SPZip.h"
 
 #include <ios>
 #include <iostream>
@@ -537,103 +538,61 @@ static auto s_manifestEnd = R"(</manifest:manifest>
 )";
 
 Buffer Document::save() const {
-	Buffer b;
-	auto defs = FileContainer_makeDefs(&b);
-
-	bool success = false;
-	zipFile zf = zipOpen3((const void *)"@stappler", 0, nullptr, &defs);
+	stappler::ZipArchive<Interface> archive;
 
 	auto writeData = [&] () -> bool {
-		zip_fileinfo zfi; memset(&zfi, 0, sizeof(zfi));
-		auto err = Z_OK;
-		if (err == Z_OK && (err = zipOpenNewFileInZip(zf, "META-INF/manifest.xml", &zfi,
-				nullptr, 0, nullptr, 0, nullptr, Z_DEFLATED, Z_DEFAULT_COMPRESSION)) == Z_OK) {
-			auto cb = [&] (const StringView &bytes) {
-				if (err == Z_OK) {
-					err = zipWriteInFileInZip(zf, (const void *)bytes.data(), (unsigned long)bytes.size());
-				}
-			};
+		Buffer tmp;
 
-			cb << s_manifestBegin <<"<manifest:file-entry manifest:full-path=\"/\" manifest:version=\"1.2\" manifest:media-type=\"";
-			switch (_type) {
-			case DocumentType::Text: cb << "application/vnd.oasis.opendocument.text"; break;
-			}
-			cb << "\"/>\n";
+		auto cb = [&] (const StringView &bytes) {
+			tmp.put(bytes.data(), bytes.size());
+		};
 
-			for (auto &it : _files) {
-				cb << "<manifest:file-entry manifest:full-path=\"" << Escaped(it.name) << "\" manifest:media-type=\""
-					<< Escaped(it.type) << "\"/>\n";
-			}
-
-			cb << s_manifestEnd;
-			if (err == Z_OK) {
-				err = zipCloseFileInZip(zf);
-			}
+		cb << s_manifestBegin <<"<manifest:file-entry manifest:full-path=\"/\" manifest:version=\"1.2\" manifest:media-type=\"";
+		switch (_type) {
+		case DocumentType::Text: cb << "application/vnd.oasis.opendocument.text"; break;
 		}
-		if (err != Z_OK) {
-			stappler::log::vtext("opendocument::Document", "ZIP error: ", err);
-			return false;
-		}
+		cb << "\"/>\n";
 
 		for (auto &it : _files) {
-			if (err == Z_OK && (err = zipOpenNewFileInZip(zf, it.name.data(), &zfi,
-					nullptr, 0, nullptr, 0, nullptr, Z_DEFLATED, Z_DEFAULT_COMPRESSION)) == Z_OK) {
-
-				switch (it.fileType) {
-				case Text:
-				case Binary:
-					if ((err = zipWriteInFileInZip(zf, (const void *)it.data.data(), (unsigned long)it.data.size())) == Z_OK) {
-						err = zipCloseFileInZip(zf);
-					}
-					break;
-				case Filesystem: {
-					auto bytes = stappler::filesystem::readIntoMemory(StringView((const char *)it.data.data(), it.data.size() - 1));
-					if ((err = zipWriteInFileInZip(zf, (const void *)bytes.data(), (unsigned long)bytes.size())) == Z_OK) {
-						err = zipCloseFileInZip(zf);
-					}
-					break;
-				}
-				case Functional: {
-					it.callback([&] (const StringView &bytes) {
-						//std::cout << bytes;
-						if (err == Z_OK) {
-							err = zipWriteInFileInZip(zf, (const void *)bytes.data(), (unsigned long)bytes.size());
-						}
-					});
-					//std::cout << "\n";
-					if (err == Z_OK) {
-						err = zipCloseFileInZip(zf);
-					}
-					break;
-				}
-				}
-			}
-			if (err != Z_OK) {
-				stappler::log::vtext("opendocument::Document", "ZIP error: ", err);
-				return false;
-			}
+			cb << "<manifest:file-entry manifest:full-path=\"" << Escaped(it.name) << "\" manifest:media-type=\""
+				<< Escaped(it.type) << "\"/>\n";
 		}
 
-		return err == Z_OK;
+		cb << s_manifestEnd;
+		archive.addFile("META-INF/manifest.xml", tmp.get());
+		tmp.clear();
+
+		for (auto &it : _files) {
+			switch (it.fileType) {
+			case Text:
+			case Binary:
+				if (!archive.addFile(it.name, BytesView((const uint8_t *)it.data.data(), it.data.size()))) {
+					return false;
+				}
+				break;
+			case Filesystem: {
+				auto bytes = stappler::filesystem::readIntoMemory(StringView((const char *)it.data.data(), it.data.size() - 1));
+				if (!archive.addFile(it.name, BytesView((const uint8_t *)bytes.data(), bytes.size()))) {
+					return false;
+				}
+				break;
+			}
+			case Functional:
+				it.callback([&] (const StringView &bytes) {
+					tmp.put(bytes.data(), bytes.size());
+				});
+				archive.addFile(it.name, tmp.get());
+				tmp.clear();
+				break;
+			}
+		}
+		return true;
 	};
 
-	zip_fileinfo zfi; memset(&zfi, 0, sizeof(zfi));
-	if (Z_OK == zipOpenNewFileInZip(zf, "mimetype", &zfi, nullptr, 0, nullptr, 0, nullptr, Z_BINARY, Z_NO_COMPRESSION)) {
-		switch (_type) {
-		case DocumentType::Text:
-			if (Z_OK == zipWriteInFileInZip(zf, "application/vnd.oasis.opendocument.text", "application/vnd.oasis.opendocument.text"_len)) {
-				if (Z_OK == zipCloseFileInZip(zf)) {
-					success = writeData();
-				}
-			}
-			break;
+	if (archive.addFile("mimetype", "application/vnd.oasis.opendocument.text", true)) {
+		if (writeData()) {
+			return archive.save();
 		}
-
-		zipClose(zf, nullptr);
-	}
-
-	if (success) {
-		return b;
 	}
 	return Buffer();
 }

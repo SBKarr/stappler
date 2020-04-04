@@ -135,6 +135,15 @@ public:
 		return r;
 	}
 
+	template <typename Reader = StringView>
+	Reader read(size_t len) {
+		size_t input = _input;
+		size_t sz = size();
+		len = min(len, input - sz);
+		Reader r((const typename Reader::CharType *)(_buffer.data() + sz), len);
+		return r;
+	}
+
 	void clear() {
 		_ptr = (byte_type *)_buffer.data();
 		_input = 0;
