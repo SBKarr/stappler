@@ -125,7 +125,7 @@ public:
 		return params.size();
 	}
 	size_t push(mem::StringStream &query, const mem::Value &val, bool force, bool compress = false) {
-		if (!force) {
+		if (!force || val.getType() == mem::Value::Type::EMPTY) {
 			switch (val.getType()) {
 			case mem::Value::Type::EMPTY:
 				query << "NULL";
