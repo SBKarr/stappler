@@ -24,7 +24,7 @@ THE SOFTWARE.
 
 namespace stappler::search {
 
-static bool stemWordDefault(Language lang, StemmerEnv *env, ParserToken tok, StringView word, const Callback<void(StringView)> &cb) {
+static bool stemWordDefault(Language lang, StemmerEnv *env, ParserToken tok, StringView word, const Callback<void(StringView)> &cb, const StringView *stopwords) {
 	switch (tok) {
 	case ParserToken::AsciiWord:
 	case ParserToken::AsciiHyphenatedWord:
@@ -35,11 +35,17 @@ static bool stemWordDefault(Language lang, StemmerEnv *env, ParserToken tok, Str
 		switch (lang) {
 		case Language::Simple: {
 			auto str = normalizeWord(word);
+			if (stopwords && isStopword(str, stopwords)) {
+				return false;
+			}
 			cb(str);
 			break;
 		}
 		default: {
 			auto str = normalizeWord(word);
+			if (stopwords && isStopword(str, stopwords)) {
+				return false;
+			}
 			return stemWord(str, cb, env);
 			break;
 		}
@@ -50,6 +56,9 @@ static bool stemWordDefault(Language lang, StemmerEnv *env, ParserToken tok, Str
 	case ParserToken::NumHyphenatedWord:
 	case ParserToken::HyphenatedWord_NumPart: {
 		auto str = normalizeWord(word);
+		if (stopwords && isStopword(str, stopwords)) {
+			return false;
+		}
 		cb(str);
 		break;
 	}
@@ -57,6 +66,9 @@ static bool stemWordDefault(Language lang, StemmerEnv *env, ParserToken tok, Str
 	case ParserToken::Email: {
 		auto str = normalizeWord(word);
 		valid::validateEmail(str);
+		if (stopwords && isStopword(str, stopwords)) {
+			return false;
+		}
 		cb(str);
 		break;
 	}
@@ -64,6 +76,9 @@ static bool stemWordDefault(Language lang, StemmerEnv *env, ParserToken tok, Str
 	case ParserToken::Url: {
 		auto str = normalizeWord(word);
 		valid::validateUrl(str);
+		if (stopwords && isStopword(str, stopwords)) {
+			return false;
+		}
 		cb(str);
 		break;
 	}
@@ -72,6 +87,9 @@ static bool stemWordDefault(Language lang, StemmerEnv *env, ParserToken tok, Str
 	case ParserToken::Path:
 	case ParserToken::ScientificFloat: {
 		auto str = normalizeWord(word);
+		if (stopwords && isStopword(str, stopwords)) {
+			return false;
+		}
 		cb(str);
 		break;
 	}
@@ -127,6 +145,9 @@ static bool stemWordDefault(Language lang, StemmerEnv *env, ParserToken tok, Str
 			}
 		}
 		auto str = normalizeWord(word);
+		if (stopwords && isStopword(str, stopwords)) {
+			return false;
+		}
 		cb(str);
 		break;
 	}
@@ -165,9 +186,17 @@ Configuration::StemmerCallback Configuration::getStemmer(ParserToken tok) const 
 		return it->second;
 	}
 
-	return StemmerCallback([&, lang = _language, env = getEnvForToken(tok)] (StringView word, const Callback<void(StringView)> &cb) -> bool {
-		return stemWordDefault(lang, env, tok, word, cb);
+	return StemmerCallback([&, lang = _language, env = getEnvForToken(tok), stopwords = _customStopwords] (StringView word, const Callback<void(StringView)> &cb) -> bool {
+		return stemWordDefault(lang, env, tok, word, cb, stopwords);
 	});
+}
+
+void Configuration::setCustomStopwords(const StringView *w) {
+	_customStopwords = w;
+}
+
+const StringView *Configuration::getCustomStopwords() const {
+	return _customStopwords;
 }
 
 void Configuration::stemPhrase(const StringView &str, const StemWordCallback &cb) const {
@@ -175,6 +204,59 @@ void Configuration::stemPhrase(const StringView &str, const StemWordCallback &cb
 		stemWord(word, tok, cb);
 		return ParserStatus::Continue;
 	});
+}
+
+size_t Configuration::makeSearchVector(SearchVector &vec, StringView str, SearchData::Rank rank, size_t counter) const {
+	if (str.empty()) {
+		return counter;
+	}
+
+	parsePhrase(str, [&] (StringView word, ParserToken tok) {
+		stemWord(word, tok, [&] (StringView w, StringView s, ParserToken tok) {
+			if (!s.empty()) {
+				auto it = vec.find(s);
+				if (it == vec.end()) {
+					vec.emplace(s.str(), Vector<Pair<size_t, SearchData::Rank>>({pair(counter + 1, rank)}));
+				} else {
+					it->second.emplace_back(pair(counter + 1, rank));
+				}
+			}
+		});
+		if (tok != ParserToken::Blank) {
+			++ counter;
+		}
+		return ParserStatus::Continue;
+	});
+
+	return counter;
+}
+
+String Configuration::encodeSearchVector(const SearchVector &vec, SearchData::Rank rank) const {
+	StringStream ret;
+	for (auto &it : vec) {
+		if (!ret.empty()) {
+			ret << " ";
+		}
+
+		ret << "'" << it.first << "':";
+		for (auto &v : it.second) {
+			if (ret.weak().back() != ':') { ret << ","; }
+			ret << v.first;
+			auto r = v.second;
+			if (r == SearchData::Unknown) {
+				r = rank;
+			}
+			switch (r) {
+			case SearchData::A: ret << 'A'; break;
+			case SearchData::B: ret << 'B'; break;
+			case SearchData::C: ret << 'C'; break;
+			case SearchData::D:
+			case SearchData::Unknown:
+				break;
+			}
+		}
+	}
+	return ret.str();
 }
 
 void Configuration::stemHtml(const StringView &str, const StemWordCallback &cb) const {
@@ -192,7 +274,7 @@ bool Configuration::stemWord(const StringView &word, ParserToken tok, const Stem
 	} else {
 		return stemWordDefault(_language, getEnvForToken(tok), tok, word, [&] (StringView stem) {
 			cb(word, stem, tok);
-		});
+		}, _customStopwords);
 	}
 }
 

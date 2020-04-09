@@ -39,14 +39,14 @@ data::Value ResourceSearch::getResultObject() {
 		for (auto &it : q) {
 			if (it.language != lang) {
 				lang = it.language;
-				break;
 			}
+			it.language = search::Language::Simple; // prevent to secondary stem
 		}
 		_config.setLanguage(lang);
 
 		if (!q.empty()) {
 			_queries.setFullTextQuery(_field, Vector<db::FullTextData>(q));
-			auto ret = _transaction.performQueryListField(_queries, *_field);
+			auto ret = _transaction.performQueryList(_queries);
 			if (!ret.isArray()) {
 				return data::Value();
 			}

@@ -44,6 +44,8 @@ public:
 	using StemmerCallback = Function<bool(StringView, const Callback<void(StringView)> &)>;
 	using StemWordCallback = Callback<void(StringView, StringView, ParserToken)>;
 
+	using SearchVector = Map<String, Vector<Pair<size_t, SearchData::Rank>>>;
+
 	struct HeadlineConfig {
 		static constexpr size_t DefaultMaxWords = 24;
 		static constexpr size_t DefaultMinWords = 12;
@@ -73,6 +75,9 @@ public:
 	void setStemmer(ParserToken, StemmerCallback &&);
 	StemmerCallback getStemmer(ParserToken) const;
 
+	void setCustomStopwords(const StringView *);
+	const StringView *getCustomStopwords() const;
+
 	void stemPhrase(const StringView &, const StemWordCallback &) const;
 	void stemHtml(const StringView &, const StemWordCallback &) const;
 
@@ -87,6 +92,9 @@ public:
 
 	Vector<String> stemQuery(const Vector<SearchData> &query) const;
 
+	size_t makeSearchVector(SearchVector &, StringView phrase, SearchData::Rank rank = SearchData::Rank::Unknown, size_t counter = 0) const;
+	String encodeSearchVector(const SearchVector &, SearchData::Rank rank = SearchData::Rank::Unknown) const;
+
 protected:
 	StemmerEnv *getEnvForToken(ParserToken) const;
 
@@ -95,6 +103,8 @@ protected:
 	StemmerEnv *_secondary = nullptr;
 
 	Map<ParserToken, StemmerCallback> _stemmers;
+
+	const StringView *_customStopwords = nullptr;
 };
 
 }

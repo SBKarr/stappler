@@ -78,6 +78,7 @@ ExternalSession *ExternalSession::get(const Request &rctx, const SessionKeys &ke
 	if (auto obj = rctx.getObject<ExternalSession>("ExternalSession"_weak)) {
 		return obj;
 	} else {
+		mem::pool::push(rctx.pool());
 		auto data = rctx.getCookie(SessionCookie);
 		if (!data.empty()) {
 			JsonWebToken token(data);
@@ -93,6 +94,7 @@ ExternalSession *ExternalSession::get(const Request &rctx, const SessionKeys &ke
 							obj = new (rctx.pool()) ExternalSession(rctx, keys, sessionId, move(d));
 							if (obj->isValid()) {
 								rctx.storeObject(obj, "ExternalSession"_weak);
+								mem::pool::pop();
 								return obj;
 							}
 						}
@@ -101,12 +103,7 @@ ExternalSession *ExternalSession::get(const Request &rctx, const SessionKeys &ke
 			}
 		}
 
-
-		obj = new (rctx.pool()) ExternalSession(rctx, keys);
-		if (obj->isValid()) {
-			rctx.storeObject(obj, "ExternalSession"_weak);
-			return obj;
-		}
+		mem::pool::pop();
 		return nullptr;
 	}
 }

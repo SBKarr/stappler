@@ -68,13 +68,7 @@ bool isStopword(const StringView &word, Language lang) {
 	}
 
 	if (auto dict = getLanguageStopwords(lang)) {
-		while (dict && !dict->empty()) {
-			if (word == *dict) {
-				return true;
-			} else {
-				++ dict;
-			}
-		}
+		return isStopword(word, dict);
 	}
 
 	return false;
@@ -895,13 +889,19 @@ StemmerEnv *getStemmer(Language lang) {
 }
 
 bool isStopword(const StringView &word, StemmerEnv *env) {
-	if (env && env->stopwords) {
-		auto dict = env->stopwords;
-		while (dict && !dict->empty()) {
-			if (word == *dict) {
+	if (env) {
+		return isStopword(word, env->stopwords);
+	}
+	return false;
+}
+
+bool isStopword(const StringView &word, const StringView *stopwords) {
+	if (stopwords) {
+		while (stopwords && !stopwords->empty()) {
+			if (word == *stopwords) {
 				return true;
 			} else {
-				++ dict;
+				++ stopwords;
 			}
 		}
 	}

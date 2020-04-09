@@ -36,12 +36,15 @@ void SqlQuery::clear() {
 }
 
 static inline bool SqlQuery_comparationIsValid(const Field &f, Comparation comp) {
-	if (f.getType() == Type::Custom) {
-		auto c = f.getSlot<FieldCustom>();
-		return c->isComparationAllowed(comp);
-	} else {
-		return db::checkIfComparationIsValid(f.getType(), comp);
+	if (f.isIndexed() || comp == Comparation::IsNull || comp == Comparation::IsNotNull) {
+		if (f.getType() == Type::Custom) {
+			auto c = f.getSlot<FieldCustom>();
+			return c->isComparationAllowed(comp);
+		} else {
+			return db::checkIfComparationIsValid(f.getType(), comp);
+		}
 	}
+	return false;
 }
 
 static inline mem::StringView SqlQuery_getSoftLimitField(const db::Scheme &scheme, const db::Query &q, bool &hasAltLimit) {
@@ -250,7 +253,7 @@ void SqlQuery::writeWhere(SqlQuery::WhereContinue &w, db::Operator op, const db:
 
 static void SqlQuery_writeWhereData(SqlQuery::WhereContinue &whi, db::Operator op, const db::Scheme &scheme, const db::Field &f,
 		Comparation compare, const mem::Value &value1, const mem::Value &value2) {
-	if ((f.isIndexed() && SqlQuery_comparationIsValid(f, compare))) {
+	if (SqlQuery_comparationIsValid(f, compare)) {
 		auto type = f.getType();
 		if (type == Type::Custom) {
 			auto c = f.getSlot<FieldCustom>();
@@ -280,7 +283,7 @@ void SqlQuery::writeWhere(SqlQuery::WhereContinue &whi, db::Operator op, const d
 				whi.where(op, SqlQuery::Field(scheme.getName(), sel.field),
 						db::Comparation::Includes, RawStringView{ftsQuery});
 			}
-		} else if ((f->isIndexed() && SqlQuery_comparationIsValid(*f, sel.compare))) {
+		} else if (SqlQuery_comparationIsValid(*f, sel.compare)) {
 			SqlQuery_writeWhereData(whi, op, scheme, *f, sel.compare, sel.value1, sel.value2);
 		}
 	}
@@ -351,7 +354,10 @@ static void SqlQuery_writeJoin(SqlQuery::SelectFrom &s, const mem::StringView &s
 
 auto SqlQuery::writeSelectFrom(GenericQuery &q, const db::QueryList::Item &item, bool idOnly, const mem::StringView &schemeName, const mem::StringView &fieldName, bool isSimpleGet) -> SelectFrom {
 	if (idOnly) {
-		return q.select(SqlQuery::Field(schemeName, fieldName).as("id")).from(schemeName);
+		auto sel = q.select();
+		sel.field(SqlQuery::Field(schemeName, fieldName).as("id"));
+		writeFullTextRank(sel, *item.scheme, item.query);
+		return sel.from(schemeName);
 	}
 
 	auto sel = q.select();
@@ -614,11 +620,14 @@ void SqlQuery::writeFullTextRank(Select &sel, const db::Scheme &scheme, const db
 	for (auto &it : q.getSelectList()) {
 		if (auto f = scheme.getField(it.field)) {
 			if (f->getType() == db::Type::FullTextView) {
-
 				auto ftsQuery = getFullTextQuery(scheme, *f, it);
 				if (!ftsQuery.empty()) {
+					if (sel.state == SqlQuery::State::Some) {
+						sel.query->getStream() << ", ";
+					}
 					sel.query->writeBind(db::Binder::FullTextRank{scheme.getName(), f, ftsQuery});
-					sel.query->getStream() << " AS __ts_rank_" << it.field << ", ";
+					sel.query->getStream() << " AS __ts_rank_" << it.field;
+					sel.state = SqlQuery::State::Some;
 				}
 			}
 		}

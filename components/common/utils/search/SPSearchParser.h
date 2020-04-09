@@ -102,12 +102,19 @@ struct SearchData {
 		A,
 		B,
 		C,
-		D
+		D,
+		Unknown,
+	};
+
+	enum Type {
+		Parse,
+		Cast,
 	};
 
 	String buffer;
 	Language language = Language::Unknown;
 	Rank rank = D;
+	Type type = Parse;
 
 	StringView getLanguage() const;
 };
@@ -116,6 +123,7 @@ struct StemmerEnv;
 
 bool isStopword(const StringView &word, Language lang = Language::Unknown);
 bool isStopword(const StringView &word, StemmerEnv *);
+bool isStopword(const StringView &word, const StringView *);
 
 StringView getLanguageName(Language);
 Language parseLanguage(const StringView &);

@@ -56,6 +56,8 @@ inline bool checkIfComparationIsValid(Type t, Comparation c) {
 		return true;
 	} else if (t == Type::Bytes || t == Type::Text || t == Type::Boolean) {
 		return c == Comparation::Equal || c == Comparation::NotEqual || c == Comparation::IsNull || c == Comparation::IsNotNull;
+	} else if (t == Type::Data || t == Type::Extra) {
+		return c == Comparation::IsNull || c == Comparation::IsNotNull;
 	} else if (t == Type::Custom) {
 		return true;
 	}

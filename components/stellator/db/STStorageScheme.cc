@@ -1022,6 +1022,7 @@ void Scheme::processFullTextFields(mem::Value &patch, mem::Vector<mem::String> *
 					value.addString(r_it.buffer);
 					value.addInteger(stappler::toInt(r_it.language));
 					value.addInteger(stappler::toInt(r_it.rank));
+					value.addInteger(stappler::toInt(r_it.type));
 				}
 				if (val) {
 					patch.setValue(std::move(val), it->name);

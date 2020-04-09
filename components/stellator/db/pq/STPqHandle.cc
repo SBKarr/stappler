@@ -246,14 +246,22 @@ public:
 			for (auto &it : d.data.asArray()) {
 				auto &data = it.getString(0);
 				auto lang = stappler::search::Language(it.getInteger(1));
-				auto rank = it.getInteger(2);
+				auto rank = stappler::search::SearchData::Rank(it.getInteger(2));
+				auto type = stappler::search::SearchData::Type(it.getInteger(3));
 
 				if (!data.empty()) {
 					if (!first) { query << " || "; } else { first = false; }
 
 					auto dataIdx = push(data);
-
-					query << " setweight(to_tsvector('" << stappler::search::getLanguageName(lang) << "', $" << dataIdx << "::text), '" << char('A' + char(rank)) << "')";
+					if (type == stappler::search::SearchData::Parse) {
+						if (rank == stappler::search::SearchData::Unknown) {
+							query << " to_tsvector('" << stappler::search::getLanguageName(lang) << "', $" << dataIdx << "::text)";
+						} else {
+							query << " setweight(to_tsvector('" << stappler::search::getLanguageName(lang) << "', $" << dataIdx << "::text), '" << char('A' + char(rank)) << "')";
+						}
+					} else {
+						query << " $" << dataIdx << "::tsvector";
+					}
 				}
 			}
 		}
