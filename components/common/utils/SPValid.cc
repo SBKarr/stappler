@@ -324,7 +324,8 @@ bool validateUrl(String &str) {
 	}
 
 	if (!oldHost.empty()) {
-		auto newHost = idnToAscii(oldHost);
+		auto str = oldHost.str();
+		auto newHost = idnToAscii(str);
 		if (newHost.empty()) {
 			return false;
 		}

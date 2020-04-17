@@ -158,7 +158,7 @@ public:
 
 	Self sub(size_t pos = 0, size_t len = maxOf<size_t>()) const { return StringViewBase(*this, pos, len); }
 
-	Self pdup(memory::pool_t *) const;
+	Self pdup(memory::pool_t * = nullptr) const;
 
 	template <typename Interface = memory::DefaultInterface>
 	auto str() const -> typename Interface::template BasicStringType<CharType>;
@@ -357,6 +357,20 @@ protected: // char-matching inline functions
 using StringView = StringViewBase<char>;
 using WideStringView = StringViewBase<char16_t>;
 
+// Experimental: using callbacks instead of stream for << with StringViews
+// useful for custom output function within libraries
+
+template <typename Char>
+inline auto operator<<(const Callback<void(StringViewBase<Char>)> &cb, int64_t) -> const Callback<void(StringViewBase<Char>)> &;
+template <typename Char>
+inline auto operator<<(const Callback<void(StringViewBase<Char>)> &cb, uint64_t) -> const Callback<void(StringViewBase<Char>)> &;
+template <typename Char>
+inline auto operator<<(const Callback<void(StringViewBase<Char>)> &cb, StringViewBase<Char> str) -> const Callback<void(StringViewBase<Char>)> &;
+
+inline auto operator<<(const Callback<void(StringViewUtf8)> &cb, int64_t) -> const Callback<void(StringViewUtf8)> &;
+inline auto operator<<(const Callback<void(StringViewUtf8)> &cb, uint64_t) -> const Callback<void(StringViewUtf8)> &;
+inline auto operator<<(const Callback<void(StringViewUtf8)> &cb, StringViewUtf8 str) -> const Callback<void(StringViewUtf8)> &;
+
 NS_SP_END
 
 
@@ -366,7 +380,7 @@ template <typename L, typename R, typename CharType
 	= typename std::enable_if<
 		std::is_same< typename L::value_type, typename R::value_type >::value,
 		typename L::value_type>::type>
-int compare(const L &l, const R &r);
+inline int compare(const L &l, const R &r);
 
 
 template <typename L, typename R, typename CharType
@@ -699,6 +713,9 @@ auto StringViewBase<_CharType>::operator != (const Self &other) const -> bool {
 
 template <typename _CharType>
 auto StringViewBase<_CharType>::pdup(memory::pool_t *p) const -> Self {
+	if (!p) {
+		p = memory::pool::acquire();
+	}
 	auto buf = (_CharType *)memory::pool::palloc(p, (this->size() + 1) * sizeof(_CharType));
 	memcpy(buf, this->data(), this->size() * sizeof(_CharType));
 	buf[this->size()] = 0;
@@ -1305,6 +1322,39 @@ inline bool StringViewUtf8::rv_match_utf8 (const CharType *ptr, size_t len, uint
 template <typename ...Args>
 inline bool StringViewUtf8::match (char16_t c) {
 	return chars::Compose<char16_t, Args...>::match(c);
+}
+
+template <typename Char>
+inline auto operator<<(const Callback<void(StringViewBase<Char>)> &cb, StringViewBase<Char> str) -> const Callback<void(StringViewBase<Char>)> & {
+	cb(str);
+	return cb;
+}
+
+template <typename Char>
+inline auto operator<<(const Callback<void(StringViewBase<Char>)> &cb, int64_t i) -> const Callback<void(StringViewBase<Char>)> & {
+	Char buf[std::numeric_limits<int64_t>::max_digits10 + 1];
+	return cb << StringViewBase<Char>(buf, string::_to_decimal(i, buf));
+}
+
+template <typename Char>
+inline auto operator<<(const Callback<void(StringViewBase<Char>)> &cb, uint64_t i) -> const Callback<void(StringViewBase<Char>)> & {
+	Char buf[std::numeric_limits<int64_t>::max_digits10 + 1];
+	return cb << StringViewBase<Char>(buf, string::_to_decimal(i, buf));
+}
+
+inline auto operator<<(const Callback<void(StringViewUtf8)> &cb, StringViewUtf8 str) -> const Callback<void(StringViewUtf8)> & {
+	cb(str);
+	return cb;
+}
+
+inline auto operator<<(const Callback<void(StringViewUtf8)> &cb, int64_t i) -> const Callback<void(StringViewUtf8)> & {
+	char buf[std::numeric_limits<int64_t>::max_digits10 + 1];
+	return cb << StringViewUtf8(buf, string::_to_decimal(i, buf));
+}
+
+inline auto operator<<(const Callback<void(StringViewUtf8)> &cb, uint64_t i) -> const Callback<void(StringViewUtf8)> & {
+	char buf[std::numeric_limits<int64_t>::max_digits10 + 1];
+	return cb << StringViewUtf8(buf, string::_to_decimal(i, buf));
 }
 
 NS_SP_END

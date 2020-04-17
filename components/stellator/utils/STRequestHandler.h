@@ -210,9 +210,9 @@ public:
 		db::InputFile *getInputFile(const mem::StringView &);
 
 		const HandlerInfo *_info = nullptr;
-		mem::Value _params;
 		InputFilter *_filter = nullptr;
 
+		mem::Value _params; // query path params
 		mem::Value _queryFields;
 		mem::Value _inputFields;
 	};

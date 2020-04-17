@@ -53,6 +53,8 @@ struct Conflict {
 
 	Conflict(const mem::StringView & field, Query::Select &&, Flags = None);
 	Conflict(const mem::StringView & field, Query::Select &&, mem::Vector<mem::String> &&);
+
+	Conflict &setFlags(Flags);
 };
 
 SP_DEFINE_ENUM_AS_MASK(Conflict::Flags)

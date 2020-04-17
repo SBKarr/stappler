@@ -27,6 +27,8 @@ THE SOFTWARE.
 
 namespace stappler::search {
 
+/* API based on postgresql full-text, but parser more correct with urls, emails and paths */
+
 enum class ParserToken {
 	AsciiWord,
 	Word,
@@ -34,7 +36,7 @@ enum class ParserToken {
 	Email,
 	Url,
 	ScientificFloat,
-	Version, // or ip-address
+	Version, // or ip-address, or some date
 	Blank,
 	NumHyphenatedWord,
 	AsciiHyphenatedWord,
@@ -89,9 +91,9 @@ enum class Language {
 };
 
 enum ParserStatus {
-	Continue = 0,
-	PreventSubdivide = 1,
-	Stop = 2,
+	Continue = 0, // just continue parsing
+	PreventSubdivide = 1, // do not subdivide complex token (works with isComplexWord(ParserToken))
+	Stop = 2, // stop parsing in place
 };
 
 struct SearchData {
@@ -116,7 +118,47 @@ struct SearchData {
 	Rank rank = D;
 	Type type = Parse;
 
-	StringView getLanguage() const;
+	StringView getLanguage() const; // compatibility
+};
+
+enum class SearchOp {
+	None,
+	Not,
+	And,
+	Or,
+	Follow,
+};
+
+struct SearchQuery {
+	enum Block {
+		None,
+		Parentesis,
+		Quoted,
+	};
+
+	enum Format {
+		Stappler,
+		Postgresql,
+	};
+
+	using String = memory::PoolInterface::StringType;
+
+	Block block = None;
+	size_t offset = 0;
+	SearchOp op = SearchOp::None;
+	String value;
+	StringView source;
+	Vector<SearchQuery> args;
+
+	SearchQuery() = default;
+	SearchQuery(StringView value, size_t offset = 1, StringView source = StringView());
+	SearchQuery(SearchOp, StringView);
+
+	void clear();
+	void encode(const Callback<void(StringView)> &, Format = Stappler) const;
+
+	void describe(std::ostream &stream, size_t depth = 0) const;
+	void foreach(const Callback<void(StringView value, StringView source)> &) const;
 };
 
 struct StemmerEnv;

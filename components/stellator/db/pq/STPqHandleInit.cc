@@ -144,7 +144,9 @@ CREATE TABLE IF NOT EXISTS __login (
 CREATE INDEX IF NOT EXISTS __login_user ON __login ("user");
 CREATE INDEX IF NOT EXISTS __login_date ON __login (date);
 
-CREATE EXTENSION IF NOT EXISTS intarray;)Sql";
+CREATE EXTENSION IF NOT EXISTS intarray;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+)Sql";
 
 constexpr static const char * INDEX_QUERY = R"Sql(
 WITH tables AS (SELECT table_name AS name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE')
@@ -897,11 +899,16 @@ TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme) {
 
 			if ((type == db::Type::Text && f.getTransform() == db::Transform::Alias)
 					|| (f.hasFlag(db::Flags::Indexed) && !f.hasFlag(db::Flags::Unique))) {
-				if (type != db::Type::Custom) {
-					indexes.emplace(mem::toString(name, "_idx_", it.first), mem::toString("( \"", it.first, "\" )"));
-				} else {
+				if (type == db::Type::Custom) {
 					auto c = f.getSlot<db::FieldCustom>();
 					indexes.emplace(mem::toString(name, "_idx_", c->getIndexName()), c->getIndexField());
+				} else if (type == db::Type::FullTextView) {
+					indexes.emplace(mem::toString(name, "_idx_", it.first), mem::toString("USING GIN ( \"", it.first, "\" )"));
+				} else {
+					indexes.emplace(mem::toString(name, "_idx_", it.first), mem::toString("( \"", it.first, "\" )"));
+					if (type == db::Type::Text && it.second.getTransform() == db::Transform::Trigram) {
+						indexes.emplace(mem::toString(name, "_idx_", it.first, "_trgm"), mem::toString("USING GIN ( \"", it.first, "\" gin_trgm_ops)"));
+					}
 				}
 			}
 		}

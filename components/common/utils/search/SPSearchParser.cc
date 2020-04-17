@@ -787,6 +787,10 @@ struct Stemmer_Reader {
 };
 
 void parseHtml(StringView str, const Callback<void(StringView)> &cb) {
+	if (str.empty()) {
+		return;
+	}
+
 	Stemmer_Reader r;
 	r.callback = [&] (Stemmer_Reader::Parser &p, const StringView &str) {
 		cb(str);
@@ -961,6 +965,205 @@ mem_pool::String normalizeWord(const StringView &str) {
 		}
 	}
 	return ret;
+}
+
+SearchQuery::SearchQuery(StringView w, size_t off, StringView source) : offset(off), value(w.str<memory::PoolInterface>()), source(source) { }
+
+SearchQuery::SearchQuery(SearchOp op, StringView w) : op(op), value(w.str<memory::PoolInterface>()) { }
+
+void SearchQuery::clear() {
+	block = None;
+	offset = 0;
+	op = SearchOp::None;
+	value.clear();
+	args.clear();
+}
+
+static void SearchQuery_encode_Stappler(const Callback<void(StringView)> &cb, const SearchQuery * t) {
+	if (t->args.empty()) {
+		if (!t->value.empty()) {
+			switch (t->block) {
+			case SearchQuery::None: break;
+			case SearchQuery::Parentesis: cb << "("; break;
+			case SearchQuery::Quoted: cb << "("; break;
+			}
+
+			if (t->op == SearchOp::Not) {
+				cb << "!";
+			}
+			cb << t->value;
+		}
+	} else {
+		if (!t->args.empty()) {
+			switch (t->block) {
+			case SearchQuery::None: break;
+			case SearchQuery::Parentesis: cb << "("; break;
+			case SearchQuery::Quoted: cb << "\""; break;
+			}
+
+			auto it = t->args.begin();
+			if (t->op == SearchOp::Not) {
+				cb << "!";
+			}
+			SearchQuery_encode_Stappler(cb, &(*it));
+			++ it;
+
+			for (;it != t->args.end(); ++ it) {
+				cb << " ";
+				switch (t->op) {
+				case SearchOp::None:
+				case SearchOp::And:
+					break;
+				case SearchOp::Not: cb << " !"; break;
+				case SearchOp::Or: cb << " | "; break;
+				case SearchOp::Follow:
+					if (t->offset > 1 && t->offset <= 5) {
+						for (size_t i = 1; i < t->offset; ++ i) {
+							cb << "a ";
+						}
+					}
+					break;
+				}
+				SearchQuery_encode_Stappler(cb, &(*it));
+			}
+
+			switch (t->block) {
+			case SearchQuery::None: break;
+			case SearchQuery::Parentesis: cb << ")"; break;
+			case SearchQuery::Quoted: cb << "\""; break;
+			}
+		}
+	}
+}
+
+static void SearchQuery_encode_Postgresql(const Callback<void(StringView)> &cb, const SearchQuery * t) {
+	if (t->args.empty()) {
+		if (!t->value.empty()) {
+			switch (t->block) {
+			case SearchQuery::None: break;
+			case SearchQuery::Parentesis: cb << "("; break;
+			case SearchQuery::Quoted: cb << "("; break;
+			}
+
+			if (t->op == SearchOp::Not) {
+				cb << "!";
+			}
+			cb << t->value;
+		}
+	} else {
+		if (!t->args.empty()) {
+			switch (t->block) {
+			case SearchQuery::None: break;
+			case SearchQuery::Parentesis: cb << "("; break;
+			case SearchQuery::Quoted: cb << "("; break;
+			}
+
+			auto it = t->args.begin();
+			if (t->op == SearchOp::Not) {
+				cb << "!";
+			}
+			SearchQuery_encode_Postgresql(cb, &(*it));
+			++ it;
+
+			for (;it != t->args.end(); ++ it) {
+				switch (t->op) {
+				case SearchOp::None: cb << " "; break;
+				case SearchOp::Not: cb << " !"; break;
+				case SearchOp::And: cb << " & "; break;
+				case SearchOp::Or: cb << " | "; break;
+				case SearchOp::Follow:
+					if (it->offset > 1 && it->offset <= 5) {
+						cb << " <" << it->offset << "> ";
+					} else {
+						cb << " <-> ";
+					}
+					break;
+				}
+				SearchQuery_encode_Postgresql(cb, &(*it));
+			}
+
+			switch (t->block) {
+			case SearchQuery::None: break;
+			case SearchQuery::Parentesis: cb << ")"; break;
+			case SearchQuery::Quoted: cb << ")"; break;
+			}
+		}
+	}
+}
+
+void SearchQuery::encode(const Callback<void(StringView)> &cb, Format fmt) const {
+	switch (fmt) {
+	case Stappler: SearchQuery_encode_Stappler(cb, this); break;
+	case Postgresql: SearchQuery_encode_Postgresql(cb, this); break;
+	}
+}
+
+static void SearchQuery_print(std::ostream &stream, const SearchQuery * t, uint16_t depth) {
+	if (t->args.empty()) {
+		for (size_t i = 0; i < depth; ++ i) { stream << "  "; }
+
+		switch (t->block) {
+		case SearchQuery::None: break;
+		case SearchQuery::Parentesis: stream << "(parentesis) "; break;
+		case SearchQuery::Quoted: stream << "(quoted) "; break;
+		}
+
+		if (t->op == SearchOp::Not) {
+			stream << "(not) ";
+		}
+
+		if (t->offset > 1) {
+			stream << "<" << t->offset << "> ";
+		}
+
+		if (!t->value.empty()) {
+			stream << "'" << t->value << "'";
+		}
+		stream << "\n";
+
+	} else {
+		for (size_t i = 0; i < depth; ++ i) { stream << "  "; }
+		stream << "-> ";
+
+		switch (t->block) {
+		case SearchQuery::None: break;
+		case SearchQuery::Parentesis: stream << "(parentesis)"; break;
+		case SearchQuery::Quoted: stream << "(quoted)"; break;
+		}
+
+		switch (t->op) {
+		case SearchOp::None: stream << " (none)"; break;
+		case SearchOp::Not: stream << " (not)"; break;
+		case SearchOp::And: stream << " (and)"; break;
+		case SearchOp::Or: stream << " (or)"; break;
+		case SearchOp::Follow: stream << " (follow)"; break;
+		}
+		stream << "\n";
+
+		for (auto &it : t->args) {
+			SearchQuery_print(stream, &it, depth + 1);
+		}
+	}
+}
+
+void SearchQuery::describe(std::ostream &stream, size_t depth) const {
+	SearchQuery_print(stream, this, depth);
+}
+
+static void SearchQuery_foreach(const SearchQuery * t, const Callback<void(StringView value, StringView source)> &cb) {
+	if (t->args.empty()) {
+		if (!t->value.empty()) {
+			cb(t->value, t->source);
+		}
+	} else {
+		for (auto &it : t->args) {
+			SearchQuery_foreach(&it, cb);
+		}
+	}
+}
+
+void SearchQuery::foreach(const Callback<void(StringView value, StringView source)> &cb) const {
+	SearchQuery_foreach(this, cb);
 }
 
 }

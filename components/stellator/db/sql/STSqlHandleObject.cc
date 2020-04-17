@@ -103,11 +103,10 @@ mem::Value SqlHandle::create(Worker &worker, const mem::Value &data) {
 				val.onConflict(it.first->getName()).doNothing();
 			} else {
 				auto c = val.onConflict(it.first->getName()).doUpdate();
-				if (it.second.mask.empty()) {
-					for (auto &it : ret.asDict()) {
-						if (scheme.getField(it.first)) {
-							c.excluded(it.first);
-						}
+				for (auto &iit : ret.asDict()) {
+					auto f = scheme.getField(iit.first);
+					if (f && (it.second.mask.empty() || std::find(it.second.mask.begin(), it.second.mask.end(), f) != it.second.mask.end())) {
+						c.excluded(iit.first);
 					}
 				}
 

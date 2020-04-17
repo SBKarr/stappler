@@ -865,4 +865,12 @@ mem::pool_t * Root::pool() const {
 	return _pool;
 }
 
+bool Root::isDebugEnabled() const {
+	return _debug;
+}
+
+void Root::setDebugEnabled(bool d) {
+	_debug = d;
+}
+
 }

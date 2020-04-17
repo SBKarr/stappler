@@ -686,11 +686,11 @@ bool Root::isDebugEnabled() const {
 	return _debug;
 }
 void Root::setDebugEnabled(bool val) {
-	messages::broadcast(data::Value {
+	messages::broadcast(mem::Value({
 		std::make_pair("system", data::Value(true)),
 		std::make_pair("option", data::Value("debug")),
 		std::make_pair("debug", data::Value(val)),
-	});
+	}));
 }
 
 struct TaskContext : AllocPool {
@@ -1012,6 +1012,15 @@ void Root::onBroadcast(const data::Value &res) {
 			}
 		}
 		return;
+	} else if (res.getBool("local")) {
+		auto serv = _rootServerContext;
+		while (serv) {
+			server_rec *servPtr = serv.server();
+			apr::pool::perform([&] {
+				serv.onBroadcast(res);
+			}, servPtr);
+			serv = serv.next();
+		}
 	}
 }
 

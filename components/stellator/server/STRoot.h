@@ -61,6 +61,9 @@ public:
 	size_t getThreadCount() const;
 	mem::pool_t *pool() const;
 
+	bool isDebugEnabled() const;
+	void setDebugEnabled(bool);
+
 protected:
 	struct Internal;
 
@@ -72,11 +75,7 @@ protected:
 	mem::pool_t *_pool = nullptr;
 	Internal *_internal = nullptr;
 
-#if DEBUG
-	bool _debug = true;
-#else
-	bool _debug = false;
-#endif
+	std::atomic<bool> _debug = false;
 };
 
 }

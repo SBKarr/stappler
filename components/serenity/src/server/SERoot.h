@@ -140,11 +140,7 @@ protected:
 	std::atomic<uint64_t> _dbQueriesPerformed;
 	std::atomic<uint64_t> _dbQueriesReleased;
 
-#if DEBUG
-	bool _debug = true;
-#else
-	bool _debug = false;
-#endif
+	std::atomic<bool> _debug = false;
 };
 
 /* Also export them as optional functions for modules that prefer it */

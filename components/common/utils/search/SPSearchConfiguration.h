@@ -44,7 +44,10 @@ public:
 	using StemmerCallback = Function<bool(StringView, const Callback<void(StringView)> &)>;
 	using StemWordCallback = Callback<void(StringView, StringView, ParserToken)>;
 
+	using PreStemCallback = Function<Vector<StringView>(StringView, ParserToken)>;
+
 	using SearchVector = Map<String, Vector<Pair<size_t, SearchData::Rank>>>;
+	using WordMap = memory::dict<StringView, StringView>;
 
 	struct HeadlineConfig {
 		static constexpr size_t DefaultMaxWords = 24;
@@ -78,6 +81,9 @@ public:
 	void setCustomStopwords(const StringView *);
 	const StringView *getCustomStopwords() const;
 
+	void setPreStem(PreStemCallback &&);
+	const PreStemCallback &getPreStem() const;
+
 	void stemPhrase(const StringView &, const StemWordCallback &) const;
 	void stemHtml(const StringView &, const StemWordCallback &) const;
 
@@ -92,8 +98,14 @@ public:
 
 	Vector<String> stemQuery(const Vector<SearchData> &query) const;
 
-	size_t makeSearchVector(SearchVector &, StringView phrase, SearchData::Rank rank = SearchData::Rank::Unknown, size_t counter = 0) const;
+	size_t makeSearchVector(SearchVector &, StringView phrase, SearchData::Rank rank = SearchData::Rank::Unknown, size_t counter = 0,
+			const Callback<void(StringView, StringView, ParserToken)> & = nullptr) const;
 	String encodeSearchVector(const SearchVector &, SearchData::Rank rank = SearchData::Rank::Unknown) const;
+
+	SearchQuery parseQuery(StringView) const;
+
+	bool isMatch(const SearchVector &, StringView) const;
+	bool isMatch(const SearchVector &, const SearchQuery &) const;
 
 protected:
 	StemmerEnv *getEnvForToken(ParserToken) const;
@@ -104,6 +116,7 @@ protected:
 
 	Map<ParserToken, StemmerCallback> _stemmers;
 
+	PreStemCallback _preStem;
 	const StringView *_customStopwords = nullptr;
 };
 

@@ -188,6 +188,11 @@ bool isspace(char ch);
 bool isspace(char16_t ch);
 bool isspace(char_const_ptr_t ch);
 
+size_t _to_decimal(int64_t number, char* buffer);
+size_t _to_decimal(uint64_t number, char* buffer);
+size_t _to_decimal(int64_t number, char16_t* buffer);
+size_t _to_decimal(uint64_t number, char16_t* buffer);
+
 }
 
 #endif /* COMMON_STRING_SPUNICODE_H_ */
