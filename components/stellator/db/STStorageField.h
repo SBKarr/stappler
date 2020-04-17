@@ -105,6 +105,7 @@ enum class Transform {
 	Number,
 	Hexadecimial,
 	Base64,
+	Trigram,
 
 	// Bytes
 	Uuid,

@@ -469,10 +469,13 @@ public:
 
 	Stream &getStream();
 
+	StringView getTarget() const;
+
 protected:
 	FinalizationState finalization = FinalizationState::None;
 	Binder binder;
 	Stream stream;
+	StringView target;
 	bool subquery = false;
 };
 
@@ -578,6 +581,11 @@ void Query<Binder, Interface>::writeBind(const StringView &func, const Field &f)
 template <typename Binder, typename Interface>
 auto Query<Binder, Interface>::getStream() -> typename Query<Binder, Interface>::Stream & {
 	return stream;
+}
+
+template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::getTarget() const -> StringView {
+	return target;
 }
 
 template <typename Binder, typename Interface>

@@ -131,7 +131,7 @@ auto Query<Binder, Interface>::InsertValues::returning() -> Returning {
 		this->query->finalization = FinalizationState::None;
 		break;
 	}
-	this->query->stream << "RETURNING";
+	this->query->stream << " RETURNING";
 	return Returning(this->query);
 }
 
@@ -218,12 +218,14 @@ auto Query<Binder, Interface>::Returning::count(const StringView &alias) -> Retu
 template <typename Binder, typename Interface>
 auto Query<Binder, Interface>::insert(const StringView & field) -> Insert {
 	stream << "INSERT INTO " << field;
+	target = field;
 	return Insert(this, State::Init);
 }
 
 template <typename Binder, typename Interface>
 auto Query<Binder, Interface>::insert(const StringView &field, const StringView &alias) -> Insert {
 	stream << "INSERT INTO " << field << " AS " << alias;
+	target = field;
 	return Insert(this, State::Init);
 }
 

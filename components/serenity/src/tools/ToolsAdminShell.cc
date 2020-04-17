@@ -1038,8 +1038,16 @@ bool ShellSocketHandler::onFrame(FrameType t, const Bytes &b) {
 }
 
 bool ShellSocketHandler::onMessage(const data::Value &val) {
-	if (val.isBool("message")) {
-		sendData(val);
+	if (val.getBool("message")) {
+		if (auto &d = val.getValue("data")) {
+			if (d.getString("source") == "Database-Query") {
+				StringStream resp;
+				resp << " - [Query] " << d.getString("text") << "\n";
+				send(resp.weak());
+			} else {
+				sendData(d);
+			}
+		}
 	} else  if (val.isString("event")) {
 		auto &ev = val.getString("event");
 		if (ev == "enter") {

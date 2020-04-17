@@ -251,3 +251,7 @@ zip_error_to_data(const zip_error_t *error, void *data, zip_uint64_t length) {
     e[1] = zip_error_code_system(error);
     return sizeof(int) * 2;
 }
+
+#undef N
+#undef S
+#undef Z

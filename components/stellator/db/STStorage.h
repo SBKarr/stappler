@@ -123,6 +123,9 @@ namespace messages {
  *   NOTE: All broadcast messages coded as CBOR, so, BYTESTRING type is safe
  */
 
+bool isDebugEnabled();
+void setDebugEnabled(bool);
+
 void _addErrorMessage(mem::Value &&);
 void _addDebugMessage(mem::Value &&);
 
@@ -163,6 +166,31 @@ void _addDebug(Source &&source, Text &&text, mem::Value &&d) {
 	});
 }
 
+template <typename Source, typename Text>
+void _addLocal(Source &&source, Text &&text) {
+	broadcast(mem::Value{
+		std::make_pair("local", mem::Value(true)),
+		std::make_pair("message", mem::Value(true)),
+		std::make_pair("data", mem::Value({
+			std::make_pair("source", mem::Value(std::forward<Source>(source))),
+			std::make_pair("text", mem::Value(std::forward<Text>(text)))
+		})),
+	});
+}
+
+template <typename Source, typename Text>
+void _addLocal(Source &&source, Text &&text, mem::Value &&d) {
+	broadcast(mem::Value{
+		std::make_pair("local", mem::Value(true)),
+		std::make_pair("message", mem::Value(true)),
+		std::make_pair("data", mem::Value({
+			std::make_pair("source", mem::Value(std::forward<Source>(source))),
+			std::make_pair("text", mem::Value(std::forward<Text>(text))),
+			std::make_pair("data", std::move(d))
+		})),
+	});
+}
+
 template <typename ... Args>
 void error(Args && ...args) {
 	_addError(std::forward<Args>(args)...);
@@ -171,6 +199,11 @@ void error(Args && ...args) {
 template <typename ... Args>
 void debug(Args && ...args) {
 	_addDebug(std::forward<Args>(args)...);
+}
+
+template <typename ... Args>
+void local(Args && ...args) {
+	_addLocal(std::forward<Args>(args)...);
 }
 
 }

@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include "STServer.h"
 #include "STMemory.h"
 #include "STTask.h"
+#include "STRoot.h"
 
 namespace stellator::mem {
 
@@ -75,6 +76,14 @@ namespace messages {
 
 static std::mutex s_debugMutex;
 
+bool isDebugEnabled() {
+	return stellator::Root::getInstance()->isDebugEnabled();
+}
+
+void setDebugEnabled(bool v) {
+	stellator::Root::getInstance()->setDebugEnabled(v);
+}
+
 void _addErrorMessage(mem::Value &&data) {
 	s_debugMutex.lock();
 	std::cout << "[Error]: " << stappler::data::EncodeFormat::Pretty << data << "\n";
@@ -90,8 +99,12 @@ void _addDebugMessage(mem::Value &&data) {
 }
 
 void broadcast(const mem::Value &val) {
-	if (auto a = db::Adapter::FromContext()) {
-		a.broadcast(val);
+	if (val.getBool("local")) {
+		stellator::Root::getInstance()->onBroadcast(val);
+	} else {
+		if (auto a = db::Adapter::FromContext()) {
+			a.broadcast(val);
+		}
 	}
 }
 

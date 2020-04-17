@@ -33,6 +33,9 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
+static constexpr auto SearchParserTest =
+R"( 7'/10,5' 2011 шт. 20 лестница крыши 7\' 2011 шт. 20 X - арматурный прут 2011 шт.7 шт. 10)";
+
 struct SearchTest : MemPoolTest {
 	SearchTest() : MemPoolTest("SearchTest") { }
 
@@ -84,32 +87,79 @@ struct SearchTest : MemPoolTest {
 			return r2 == " \n\t " && r3 == "tEst12TeST" && test2 == " test";
 		});
 
-		runTest(stream, "Search configuration", count, passed, [&] {
+		runTest(stream, "Search parser 2", count, passed, [&] {
+			bool success = true;
+
+			size_t count = 0;
+			memory::dict<StringView, StringView> dict;
 			search::Configuration cfg(search::Language::Russian);
 
-			String str = "кад. №31:26:00 00 :14239/0/11/04:1001/Б условный номер: 36–34–6:00–00–00:00:2780:2–27–3. Кадастровый №52:18:05 00 00:0000:05965:II."
-					"Нижний Новгород, ул. Правдинская, д.27. Ограничение (обременение) права: ипотека."
-					"3 км Юго-Запад от х. Новая Паника. 	 	86 611,00	34:34:110011:322  50-50-49 008 2012-057Вто­рой и 50-50-49 008 2012-057 тре­тий эта­пы этой мо­де­ли когда-то - сбор и об­ра­ботка ин­фор­ма­ции - ха­рак­те­ри­зу­ют способ­ность "
-					"че­ло­ве­ка быть ра­ци­о­наль­ным. Ра­ци­о­наль­ность - это способ­ность че­ло­ве­ка при­ни­мать пра­виль­ные ре­ше­ния "
-					"в де­лу ин­фор­ма­цию, а так­же при­нять ре­ше­ние (по­дроб­но эти во­про­сы изу­ча­ют в раз­де­ле «По­тре­би­тель­ский вы­бор» эко­но­ми­че­ской тео­рии).";
+			auto stemUrlCb = [&] (StringView v, const Callback<void(StringView)> &stemCb) -> bool {
+				UrlView u(v);
+				if (!u.user.empty()) { stemCb(u.user); }
+				if (!u.host.empty()) { stemCb(u.host); }
+				if (!u.port.empty()) { stemCb(u.port); }
+				u.path.split<StringView::Chars<'/'>>([&] (StringView cmp) {
+					stemCb(cmp);
+				});
+				return true;
+			};
 
-			cfg.stemPhrase(str, [&] (StringView word, StringView stem, search::ParserToken tok) {
-				std::cout << word << " -> " << stem << " (" << search::getParserTokenName(tok) << ")\n";
+			cfg.setStemmer(search::ParserToken::Email, stemUrlCb);
+			cfg.setStemmer(search::ParserToken::Path, stemUrlCb);
+			cfg.setStemmer(search::ParserToken::Url, stemUrlCb);
+			cfg.setStemmer(search::ParserToken::Custom, [&] (StringView v, const Callback<void(StringView)> &stemCb) -> bool {
+				stemCb(v);
+				return true;
 			});
 
-			search::Configuration::HeadlineConfig hcfg;
-			hcfg.startToken = StringView("<b>");
-			hcfg.stopToken = StringView("</b>");
+			search::Configuration::SearchVector vec;
 
-			std::cout << cfg.makeHeadline(hcfg, str, Vector<String>{ "когда-т", "модел", "сбор" }) << "\n";
-			std::cout << cfg.makeHeadline(hcfg, str, Vector<String>{ "модел", "сбор" }) << "\n";
-			std::cout << cfg.makeHeadline(hcfg, str, Vector<String>{ "втор", "трет" }) << "\n";
+			auto pushWord = [&] (StringView stem, StringView word, search::ParserToken) {
+				std::cout << stem << " " << word << "\n";
+			};
 
-			return true;
+			count = cfg.makeSearchVector(vec, SearchParserTest, search::SearchData::A, count, pushWord);
+
+			/*search::parsePhrase(SearchParserTest, [&] (StringView str, search::ParserToken tok) {
+				switch (tok) {
+				case search::ParserToken::Blank: break;
+				default:
+					std::cout << str << " " << search::getParserTokenName(tok) << "\n";
+					break;
+				}
+				return search::ParserStatus::Continue;
+			});*/
+			return success;
 		});
 
-		runTest(stream, "Search parser offset", count, passed, [&] {
-			//auto str = StringView("up-to-date postgresql-beta1 123test  123.test -1.234e56 -1.234 -1234 1234 8.3.0 &amp;");
+		runTest(stream, "Search configuration", count, passed, [&] {
+			auto str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
+					"Mauris dapibus, ex nec varius euismod, mi orci cursus sapien, "
+					"sed pharetra lorem lorem non urna. Lorem ipsum dolor sit amet, "
+					"consectetur adipiscing elit. Curabitur erat ex, consectetur "
+					"consequat porta sed, maximus id sem. Nulla at mi augue. Donec "
+					"sapien felis, bibendum a sem in, elementum tincidunt ipsum. "
+					"Phasellus eget dapibus metus, vitae dignissim nisl. Integer "
+					"mauris est, sagittis ac quam vitae, efficitur interdum velit. "
+					"Fusce ut velit at elit rhoncus pharetra vitae sit amet elit. ";
+
+			search::Configuration cfg(search::Language::Russian);
+			search::Configuration::SearchVector vec;
+
+			cfg.makeSearchVector(vec, str);
+
+			std::cout << "\n" << cfg.encodeSearchVector(vec) << "\n";
+
+			auto q = cfg.parseQuery(R"Query("bibendum a sem")Query");
+
+			if (cfg.isMatch(vec, q)) {
+				return true;
+			}
+			return false;
+		});
+
+		/*runTest(stream, "Search parser offset", count, passed, [&] {
 			auto str = StringView("-1.234e56 -1.234 -1234 1234 8.3.0 &amp; a_nichkov@mail.ru");
 
 			Vector<Pair<StringView, search::ParserToken>> vec{
@@ -137,7 +187,7 @@ struct SearchTest : MemPoolTest {
 				return search::ParserStatus::Continue;
 			});
 			return success;
-		});
+		});*/
 
 		runTest(stream, "Search parser", count, passed, [&] {
 			//auto str = StringView("up-to-date postgresql-beta1 123test  123.test -1.234e56 -1.234 -1234 1234 8.3.0 &amp;");
@@ -232,22 +282,9 @@ struct SearchTest : MemPoolTest {
 			urls.emplace_back("йакреведко.рф");
 
 			for (auto &it : urls) {
-				// std::cout << "Url: " << it << "\n";
 				StringView r(it);
 				if (search::parseUrl(r, [&] (StringView r, search::UrlToken tok) {
-					/* std::cout << "\t'" << r << "' ";
-					switch (tok) {
-					case search::UrlParserToken::Scheme: std::cout << "Scheme"; break;
-					case search::UrlParserToken::User: std::cout << "User"; break;
-					case search::UrlParserToken::Password: std::cout << "Password"; break;
-					case search::UrlParserToken::Host: std::cout << "Host"; break;
-					case search::UrlParserToken::Port: std::cout << "Port"; break;
-					case search::UrlParserToken::Path: std::cout << "Path"; break;
-					case search::UrlParserToken::Query: std::cout << "Query"; break;
-					case search::UrlParserToken::Fragment: std::cout << "Fragment"; break;
-					case search::UrlParserToken::Blank: std::cout << "Blank"; break;
-					}
-					// std::cout << '\n';*/
+
 				})) {
 					if (!r.empty()) {
 						return false;

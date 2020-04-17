@@ -32,6 +32,10 @@ Conflict::Conflict(const mem::StringView & field, Query::Select &&cond, Flags f)
 Conflict::Conflict(const mem::StringView & field, Query::Select &&cond, mem::Vector<mem::String> &&mask)
 : field(field.str<mem::Interface>()), condition(std::move(cond)), mask(std::move(mask)) { }
 
+Conflict &Conflict::setFlags(Flags f) {
+	flags = f;
+	return *this;
+}
 
 static void prepareGetQuery(Query &query, uint64_t oid, bool forUpdate) {
 	query.select(oid);

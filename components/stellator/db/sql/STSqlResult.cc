@@ -74,7 +74,9 @@ mem::Value ResultRow::toData(const db::Scheme &scheme, const mem::Map<mem::Strin
 			}
 			deltaPtr->setInteger(toInteger(i), "time");
 		} else if (n.starts_with("__ts_rank_")) {
-			row.setDouble(toDouble(i), n.str<mem::Interface>());
+			auto d = toDouble(i);
+			row.setDouble(d, n.sub("__ts_rank_"_len).str<mem::Interface>());
+			row.setDouble(d, n.str<mem::Interface>());
 		} else if (!isNull(i)) {
 			if (auto f_it = scheme.getField(n)) {
 				row.setValue(toData(i, *f_it), n.str<mem::Interface>());

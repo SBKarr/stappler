@@ -111,6 +111,7 @@ auto Query<Binder, Interface>::Select::from(const Field &field) -> SelectFrom {
 		this->query->stream << " *";
 	}
 	this->query->stream << " FROM " << field.name;
+	this->query->target = field.name;
 	if (!field.alias.empty()) {
 		this->query->stream << " " << field.alias;
 	}
@@ -129,6 +130,9 @@ template <typename Binder, typename Interface>
 auto Query<Binder, Interface>::SelectFrom::from(const Field &field) -> SelectFrom & {
 	if (this->state == State::None) { this->state = State::Some; } else { this->query->stream << ","; }
 	this->query->stream << " " << field.name;
+	if (this->query->target.empty()) {
+		this->query->target = field.name;
+	}
 	if (!field.alias.empty()) {
 		this->query->stream << " " << field.alias;
 	}

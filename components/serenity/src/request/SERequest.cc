@@ -587,6 +587,12 @@ storage::AccessRoleId Request::getAccessRole() const {
 			}
 #endif
 		}
+		if (auto t = db::Transaction::acquireIfExists(pool())) {
+			auto role = t.getRole();
+			if (role != db::AccessRoleId::System && toInt(t.getRole()) > toInt(_config->_accessRole)) {
+				_config->_accessRole = role;
+			}
+		}
 	}
 	return _config->_accessRole;
 }

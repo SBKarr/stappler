@@ -199,39 +199,95 @@ const StringView *Configuration::getCustomStopwords() const {
 	return _customStopwords;
 }
 
+void Configuration::setPreStem(PreStemCallback &&cb) {
+	_preStem = move(cb);
+}
+const Configuration::PreStemCallback &Configuration::getPreStem() const {
+	return _preStem;
+}
+
 void Configuration::stemPhrase(const StringView &str, const StemWordCallback &cb) const {
 	parsePhrase(str, [&] (StringView word, ParserToken tok) {
+		if (_preStem && !isWordPart(tok)) {
+			auto ret = _preStem(word, tok);
+			if (!ret.empty()) {
+				for (auto &it : ret) {
+					auto str = normalizeWord(it);
+					cb(word, str, tok);
+				}
+				return isComplexWord(tok) ? ParserStatus::PreventSubdivide : ParserStatus::Continue;
+			}
+		}
 		stemWord(word, tok, cb);
 		return ParserStatus::Continue;
 	});
 }
 
-size_t Configuration::makeSearchVector(SearchVector &vec, StringView str, SearchData::Rank rank, size_t counter) const {
+size_t Configuration::makeSearchVector(SearchVector &vec, StringView str, SearchData::Rank rank, size_t counter,
+		const Callback<void(StringView, StringView, ParserToken)> &cb) const {
 	if (str.empty()) {
 		return counter;
 	}
 
+	auto pushWord = [&] (StringView s) -> const String * {
+		auto it = vec.find(s);
+		if (it == vec.end()) {
+			return &vec.emplace(s.str<memory::PoolInterface>(), Vector<Pair<size_t, SearchData::Rank>>({pair(counter, rank)})).first->first;
+		} else {
+			auto value = pair(counter, rank);
+			auto iit = std::lower_bound(it->second.begin(), it->second.end(), value,
+					[&] (const Pair<size_t, SearchData::Rank> &l, const Pair<size_t, SearchData::Rank> &r) {
+				if (l.first != r.first) {
+					return l.first < r.first;
+				} else {
+					return toInt(l.second) < toInt(r.second);
+				}
+			});
+			if (iit == it->second.end()) {
+				it->second.emplace_back(value);
+			} else if (*iit != value) {
+				it->second.emplace(iit, value);
+			}
+			return &it->first;
+		}
+	};
+
 	parsePhrase(str, [&] (StringView word, ParserToken tok) {
+		if (tok != ParserToken::Blank && !isWordPart(tok)) {
+			++ counter;
+		}
+
+		if (_preStem && !isWordPart(tok)) {
+			auto ret = _preStem(word, tok);
+			if (ret.size() == 1) {
+				auto str = normalizeWord(ret.back());
+				if (auto sPtr = pushWord(str)) {
+					if (cb) { cb(*sPtr, word, tok); }
+					return isComplexWord(tok) ? ParserStatus::PreventSubdivide : ParserStatus::Continue;
+				}
+			} else if (!ret.empty()) {
+				for (auto &it : ret) {
+					auto str = normalizeWord(it);
+					pushWord(str);
+				}
+				return isComplexWord(tok) ? ParserStatus::PreventSubdivide : ParserStatus::Continue;
+			}
+		}
+
 		stemWord(word, tok, [&] (StringView w, StringView s, ParserToken tok) {
 			if (!s.empty()) {
-				auto it = vec.find(s);
-				if (it == vec.end()) {
-					vec.emplace(s.str(), Vector<Pair<size_t, SearchData::Rank>>({pair(counter + 1, rank)}));
-				} else {
-					it->second.emplace_back(pair(counter + 1, rank));
+				if (auto sPtr = pushWord(s)) {
+					if (cb) { cb(*sPtr, word, tok); }
 				}
 			}
 		});
-		if (tok != ParserToken::Blank) {
-			++ counter;
-		}
 		return ParserStatus::Continue;
 	});
 
 	return counter;
 }
 
-String Configuration::encodeSearchVector(const SearchVector &vec, SearchData::Rank rank) const {
+Configuration::String Configuration::encodeSearchVector(const SearchVector &vec, SearchData::Rank rank) const {
 	StringStream ret;
 	for (auto &it : vec) {
 		if (!ret.empty()) {
@@ -630,6 +686,285 @@ Configuration::Vector<Configuration::String> Configuration::stemQuery(const Vect
 		});
 	}
 	return queryList;
+}
+
+void Configuration_parseQueryBlank(Configuration::Vector<SearchQuery *> &stack, StringView r) {
+	auto makeShift = [&] (SearchQuery *q, SearchOp op) {
+		SearchQuery tmp = move(*q);
+		q->clear();
+		q->op = op;
+		q->args.emplace_back(move(tmp));
+	};
+
+	while (!r.empty()) {
+		auto q = stack.back();
+		r.skipUntil<StringView::Chars<'"', '|', '!', '(', ')'>>();
+		if (q->block == SearchQuery::Quoted) {
+			if (r[0] != '"') {
+				++ r;
+				continue;
+			}
+		}
+		switch (r[0]) {
+		case '"':
+			if (q->block == SearchQuery::None) {
+				if (q->op == SearchOp::None) {
+					q->op = SearchOp::Follow;
+					q->block = SearchQuery::Quoted;
+				} else {
+					if (q->op == SearchOp::Or) {
+						makeShift(q, SearchOp::And);
+					}
+					auto &top = q->args.emplace_back();
+					top.op = SearchOp::Follow;
+					top.block = SearchQuery::Quoted;
+					stack.emplace_back(&top);
+				}
+			} else if (q->block == SearchQuery::Quoted) {
+				stack.pop_back();
+			}
+			break;
+		case '|':
+			if (q->op == SearchOp::None || q->op == SearchOp::Not) {
+				if (!q->value.empty()) {
+					makeShift(q, SearchOp::Or);
+					auto &top = q->args.emplace_back();
+					stack.emplace_back(&top);
+				}
+			} else if (q->op == SearchOp::Or) {
+				auto &top = q->args.emplace_back();
+				stack.emplace_back(&top);
+			} else {
+				if (q->op == SearchOp::And && q->args.size() <= 1) {
+					q->op = SearchOp::Or;
+					auto &top = q->args.emplace_back();
+					stack.emplace_back(&top);
+				} else {
+					makeShift(q, SearchOp::Or);
+					auto &top = q->args.emplace_back();
+					stack.emplace_back(&top);
+				}
+			}
+			break;
+		case '!': {
+			if (q->op == SearchOp::Or) {
+				makeShift(q, SearchOp::And);
+				auto &top = q->args.emplace_back();
+				top.op = SearchOp::Not;
+				stack.emplace_back(&top);
+			} else if (q->op != SearchOp::None && q->op != SearchOp::Not) {
+				auto &top = q->args.emplace_back();
+				top.op = SearchOp::Not;
+				stack.emplace_back(&top);
+			} else {
+				q->op = SearchOp::Not;
+			}
+			break;
+		}
+		case '(':
+			if (q->block == SearchQuery::None) {
+				if (q->op == SearchOp::None) {
+					q->op = SearchOp::And;
+					q->block = SearchQuery::Parentesis;
+				} else {
+					if (q->op == SearchOp::Or) {
+						makeShift(q, SearchOp::And);
+					}
+					auto &top = q->args.emplace_back();
+					top.op = SearchOp::Follow;
+					top.block = SearchQuery::Parentesis;
+					stack.emplace_back(&top);
+				}
+			}
+			break;
+		case ')':
+			if (q->block == SearchQuery::Parentesis) {
+				stack.pop_back();
+			}
+			break;
+		default: break;
+		}
+
+		++ r;
+	}
+}
+
+void Configuration_parseQueryWord(Configuration::Vector<SearchQuery *> &stack, StringView word, size_t offset = 0, StringView source = StringView()) {
+	auto q = stack.back();
+
+	if (q->op == SearchOp::None || q->op == SearchOp::Not) {
+		if (q->value.empty()) {
+			q->value = word.str<memory::PoolInterface>();
+			q->source = source;
+			q->offset = offset;
+			if (stack.size() > 1) {
+				stack.pop_back();
+			}
+		} else {
+			SearchQuery tmp = move(*q);
+			q->clear();
+			q->op = SearchOp::And;
+			q->args.emplace_back(move(tmp));
+			q->args.emplace_back(SearchQuery(word, offset, source));
+		}
+	} else if (q->op == SearchOp::And || q->op == SearchOp::Follow) {
+		q->args.emplace_back(SearchQuery(word, offset, source));
+	} else {
+		SearchQuery tmp = move(*q);
+		q->clear();
+		q->op = SearchOp::And;
+		q->args.emplace_back(move(tmp));
+		q->args.emplace_back(SearchQuery(word, offset, source));
+	}
+}
+
+SearchQuery Configuration::parseQuery(StringView str) const {
+	SearchQuery query;
+	query.op = SearchOp::And;
+
+	Vector<SearchQuery *> stack;
+	stack.emplace_back(&query);
+
+	size_t prev = 0;
+	size_t counter = 0;
+	search::parsePhrase(str, [&] (StringView word, ParserToken tok) {
+		if (tok == ParserToken::Blank) {
+			Configuration_parseQueryBlank(stack, word);
+		} else {
+			++ counter;
+			if (_preStem && !isWordPart(tok)) {
+				auto ret = _preStem(word, tok);
+				if (!ret.empty()) {
+					auto offset = counter - prev;
+					prev = counter;
+					for (auto &it : ret) {
+						auto str = normalizeWord(it);
+						Configuration_parseQueryWord(stack, str, offset, word);
+					}
+					return isComplexWord(tok) ? ParserStatus::PreventSubdivide : ParserStatus::Continue;
+				}
+			}
+			stemWord(word, tok, [&] (StringView w, StringView s, ParserToken tok) {
+				if (!s.empty()) {
+					Configuration_parseQueryWord(stack, s, counter - prev, w);
+					prev = counter;
+				}
+			});
+		}
+		return isComplexWord(tok) ? ParserStatus::PreventSubdivide : ParserStatus::Continue;
+	});
+
+	return query;
+}
+
+bool Configuration::isMatch(const SearchVector &vec, StringView q) const {
+	auto query = parseQuery(q);
+	return isMatch(vec, query);
+}
+
+static const Configuration::Vector<Pair<size_t, SearchData::Rank>> *Configuration_isMatch(const Configuration::SearchVector &vec, StringView stem) {
+	auto it = vec.find(stem);
+	if (it != vec.end()) {
+		return &it->second;
+	}
+	return nullptr;
+}
+
+static bool Configuration_isFollow(Configuration::Vector< Pair<SearchData::Rank, Configuration::Vector<size_t>> > & path,
+		const Configuration::Vector<Pair<size_t, SearchData::Rank>> * v2, size_t offset) {
+	if (offset < 1) {
+		offset = 1;
+	}
+
+	if (path.empty()) {
+		for (auto &it : *v2) {
+			auto &obj = path.emplace_back();
+			obj.first = it.second;
+			obj.second.emplace_back(it.first);
+		}
+	} else {
+		auto it = path.begin();
+		while (it != path.end()) {
+			auto target = it->second.back();
+			auto iit = std::lower_bound(v2->begin(), v2->end(), pair(target, it->first),
+					[&] (const Pair<size_t, SearchData::Rank> &l, const Pair<size_t, SearchData::Rank> &r) {
+				if (l.first != r.first) {
+					return l.first < r.first;
+				} else {
+					return toInt(l.second) < toInt(r.second);
+				}
+			});
+			if (iit != v2->end()) {
+				while (iit != v2->end() && (iit->first == target || iit->second != it->first)) {
+					++ iit;
+				}
+
+				if (iit != v2->end() && (iit->first - target <= offset && iit->second == it->first)) {
+					it->second.emplace_back(iit->first);
+					++ it;
+					continue;
+				}
+			}
+			it = path.erase(it);
+		}
+	}
+
+	return !path.empty();
+}
+
+static bool Configuration_isMatch(const Configuration::SearchVector &vec, const SearchQuery &q) {
+	if (!q.args.empty()) {
+		switch (q.op) {
+		case SearchOp::None: break;
+		case SearchOp::Not:
+			return !Configuration_isMatch(vec, q.args.front());
+			break;
+		case SearchOp::And:
+			for (auto &it : q.args) {
+				if (!Configuration_isMatch(vec, it)) {
+					return false;
+					break;
+				}
+			}
+			return true;
+			break;
+		case SearchOp::Or:
+			for (auto &it : q.args) {
+				if (Configuration_isMatch(vec, it)) {
+					return true;
+					break;
+				}
+			}
+			return false;
+			break;
+		case SearchOp::Follow:
+			Configuration::Vector< Pair<SearchData::Rank, Configuration::Vector<size_t>> > path;
+			for (auto &it : q.args) {
+				auto tmp = Configuration_isMatch(vec, it.value);
+				if (!tmp) {
+					return false;
+				}
+
+				if (!Configuration_isFollow(path, tmp, it.offset)) {
+					return false;
+				}
+			}
+			return true;
+			break;
+		}
+	} else if (!q.value.empty()) {
+		auto v = Configuration_isMatch(vec, q.value);
+		if (q.op == SearchOp::Not) {
+			return v == nullptr;
+		} else {
+			return v != nullptr;
+		}
+	}
+	return false;
+}
+
+bool Configuration::isMatch(const SearchVector &vec, const SearchQuery &q) const {
+	return Configuration_isMatch(vec, q);
 }
 
 }

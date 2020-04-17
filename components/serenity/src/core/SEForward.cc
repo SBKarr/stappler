@@ -40,12 +40,28 @@ NS_DB_BEGIN
 
 namespace messages {
 
+bool isDebugEnabled() {
+	return stappler::serenity::messages::isDebugEnabled();
+}
+
+void setDebugEnabled(bool v) {
+	stappler::serenity::messages::setDebugEnabled(v);
+}
+
 void _addErrorMessage(mem::Value &&data) {
 	stappler::serenity::messages::_addErrorMessage(std::move(data));
 }
 
 void _addDebugMessage(mem::Value &&data) {
 	stappler::serenity::messages::_addDebugMessage(std::move(data));
+}
+
+void broadcast(const mem::Value &val) {
+	stappler::serenity::messages::broadcast(val);
+}
+
+void broadcast(const mem::Bytes &val) {
+	stappler::serenity::messages::broadcast(val);
 }
 
 }
@@ -261,8 +277,12 @@ void _addDebugMessage(data::Value &&data) {
 }
 
 void broadcast(const data::Value &val) {
-	if (auto a = storage::Adapter::FromContext()) {
-		a.broadcast(val);
+	if (val.getBool("local")) {
+		Root::getInstance()->onBroadcast(val);
+	} else {
+		if (auto a = storage::Adapter::FromContext()) {
+			a.broadcast(val);
+		}
 	}
 }
 void broadcast(const Bytes &val) {

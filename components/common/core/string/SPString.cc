@@ -191,4 +191,44 @@ void _make_footprint(const WideStringView &str, uint8_t *buf) {
 	}
 }
 
+template <typename IntType, typename Char>
+inline size_t unsigned_to_decimal(IntType number, Char *buffer) {
+	if (number != 0) {
+		Char *p_first = buffer;
+		while (number != 0) {
+			*buffer++ = Char('0') + number % 10;
+			number /= 10;
+		}
+		std::reverse( p_first, buffer );
+		return buffer - p_first;
+	}
+	return 0;
+}
+
+size_t _to_decimal(int64_t number, char* buffer) {
+	if (number < 0) {
+		buffer[0] = '-';
+		return unsigned_to_decimal( uint64_t(-number), buffer + 1 ) + 1;
+	} else {
+		return unsigned_to_decimal( uint64_t(number), buffer );
+	}
+}
+
+size_t _to_decimal(uint64_t number, char* buffer) {
+	return unsigned_to_decimal( uint64_t(number), buffer );
+}
+
+size_t _to_decimal(int64_t number, char16_t* buffer) {
+	if (number < 0) {
+		buffer[0] = '-';
+		return unsigned_to_decimal( uint64_t(-number), buffer + 1 ) + 1;
+	} else {
+		return unsigned_to_decimal( uint64_t(number), buffer );
+	}
+}
+
+size_t _to_decimal(uint64_t number, char16_t* buffer) {
+	return unsigned_to_decimal( uint64_t(number), buffer );
+}
+
 NS_SP_EXT_END(string)

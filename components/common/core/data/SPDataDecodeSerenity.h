@@ -202,7 +202,7 @@ void Decoder<Interface>::parse(ValueType &val) {
 
 	StringType key;
 	do {
-		r.skipUntil<TokenSpecials, StringView::Chars<'(', '~', ';', ')', ','>, StringView::CharGroup<CharGroupId::Alphanumeric>>();
+		r.skipUntil<TokenSpecials, StringView::Chars<'(', '~', ';', ')', ','>, StringView::CharGroup<CharGroupId::Alphanumeric>, chars::UniChar>();
 		switch (backType) {
 		case BackIsPlain:
 			if (r.is(')') || r.is(';')) {
@@ -426,6 +426,9 @@ void Decoder<Interface>::parse(ValueType &val) {
 						back->dictVal = new typename ValueType::DictionaryType();
 						backType = stack.back().first = BackIsDict;
 						push(BackIsPlain, &back->dictVal->emplace(key, ValueType::Type::EMPTY).first->second);
+
+						r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+
 					} else if (r.is('(') || r.is("~(")) {
 						key.clear(); string::urldecode(key, token);
 						back->_type = ValueType::Type::DICTIONARY;

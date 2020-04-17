@@ -283,7 +283,14 @@ public:
 
 	virtual void bindFullTextData(db::Binder &, mem::StringStream &query, const db::FullTextData &d) override {
 		auto idx = push(mem::String(d.buffer));
-		query  << " websearch_to_tsquery('" << d.getLanguage() << "', $" << idx << "::text)";
+		switch (d.type) {
+		case db::FullTextData::Parse:
+			query  << " websearch_to_tsquery('" << d.getLanguage() << "', $" << idx << "::text)";
+			break;
+		case db::FullTextData::Cast:
+			query  << " to_tsquery('" << d.getLanguage() << "', $" << idx << "::text)";
+			break;
+		}
 	}
 
 	virtual void clear() override {
@@ -361,7 +368,7 @@ public:
 			return 0;
 		} else {
 			auto val = driver->getValue(result, row, field);
-			return stappler::StringToNumber<int64_t>(val, nullptr, 0);
+			return stappler::StringToNumber<double>(val, nullptr, 0);
 		}
 	}
 	virtual bool toBool(size_t row, size_t field) override {
@@ -608,6 +615,12 @@ bool Handle::selectQuery(const sql::SqlQuery &query, const stappler::Callback<vo
 
 	auto queryInterface = static_cast<PgQueryInterface *>(query.getInterface());
 
+	if (messages::isDebugEnabled()) {
+		if (!query.getTarget().starts_with("__")) {
+			messages::local("Database-Query", query.getQuery().weak());
+		}
+	}
+
 	ExecParamData data(query);
 	PgResultInterface res(this, driver, driver->exec(conn, query.getQuery().weak().data(), queryInterface->params.size(),
 			data.paramValues, data.paramLengths, data.paramFormats, 1));
@@ -659,6 +672,7 @@ bool Handle::performSimpleSelect(const mem::StringView &query, const stappler::C
 	if (res.isSuccess()) {
 		db::sql::Result ret(&res);
 		cb(ret);
+		return true;
 	} else {
 		auto info = res.getInfo();
 		s_logMutex.lock();
@@ -668,7 +682,7 @@ bool Handle::performSimpleSelect(const mem::StringView &query, const stappler::C
 		cancelTransaction_pg();
 	}
 
-	return res.isSuccess();
+	return false;
 }
 
 bool Handle::isSuccess() const {

@@ -377,6 +377,7 @@ bool FieldText::transformValue(const Scheme &scheme, const mem::Value &obj, mem:
 		switch (transform) {
 		case Transform::None:
 		case Transform::Text:
+		case Transform::Trigram:
 			if ( !stappler::valid::validateText(str)) {
 				return false;
 			}

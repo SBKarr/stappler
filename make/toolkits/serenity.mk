@@ -20,6 +20,8 @@
 
 APACHE_INCLUDE ?= /usr/local/include/apache
 
+STAPPLER_REPO_TAG := $(shell $(abspath $(GLOBAL_ROOT))/make-version.sh $(abspath $(GLOBAL_ROOT)))
+
 SERENITY_OUTPUT_DIR = $(abspath $(TOOLKIT_OUTPUT)/serenity)
 SERENITY_OUTPUT = $(abspath $(TOOLKIT_OUTPUT)/mod_serenity.so)
 SERENITY_SRCS_DIRS += \
