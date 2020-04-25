@@ -926,10 +926,12 @@ protected:
 	void clone(const Tree &other) {
 		clear();
 
-		allocateTmp(other.size());
+		_size = other._size;
+		if (_size) {
+			allocateTmp(_size);
+		}
 
 		_comp = other._comp;
-		_size = other._size;
 		_header = other._header;
 		if (other._header.left) {
 			_header.left = allocateNode();

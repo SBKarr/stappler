@@ -621,6 +621,10 @@ bool Worker::remove(uint64_t oid) {
 	return _scheme->removeWithWorker(*this, oid);
 }
 
+bool Worker::remove(const mem::Value &data) {
+	return _scheme->removeWithWorker(*this, data.getInteger("__oid"));
+}
+
 size_t Worker::count() {
 	return _scheme->countWithWorker(*this, Query());
 }

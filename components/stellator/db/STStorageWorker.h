@@ -191,6 +191,7 @@ public:
 	mem::Value update(const mem::Value & obj, const mem::Value &data, const mem::Vector<Query::Select> &);
 
 	bool remove(uint64_t oid);
+	bool remove(const mem::Value &);
 
 	size_t count();
 	size_t count(const Query &);
