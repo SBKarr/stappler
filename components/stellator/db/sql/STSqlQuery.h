@@ -30,13 +30,26 @@ NS_DB_SQL_BEGIN
 
 class SqlQuery : public stappler::sql::Query<db::Binder, mem::Interface> {
 public:
+	struct Context {
+		SqlQuery *_this;
+		Worker *worker;
+		const Scheme *scheme;
+		const db::Query *q;
+
+		bool hasAltLimit = false;
+		bool softLimitIsFts = false;
+		mem::StringView softLimitField;
+
+		mem::StringView getAlt(mem::StringView);
+	};
+
 	using TypeString = db::Binder::TypeString;
 
 	SqlQuery(db::QueryInterface *);
 
 	void clear();
 
-	bool writeQuery(Worker &worker, const db::Scheme &scheme, const db::Query &q);
+	bool writeQuery(Worker &, const db::Scheme &scheme, const db::Query &q);
 	bool writeQuery(Worker &worker, const db::Scheme &scheme, uint64_t, const db::Field &f, const db::Query &q);
 
 	void writeWhere(SqlQuery::SelectWhere &, db::Operator op, const db::Scheme &, const db::Query &);
@@ -72,6 +85,8 @@ public:
 	mem::StringView getFullTextQuery(const db::Scheme &scheme, const db::Field &f, const db::Query::Select &it);
 
 protected:
+	Context initContext(Worker &, const db::Scheme &scheme, const db::Query &q);
+
 	mem::Map<mem::String, mem::String> _fulltextQueries;
 };
 

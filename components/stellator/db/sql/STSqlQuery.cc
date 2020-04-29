@@ -47,104 +47,134 @@ static inline bool SqlQuery_comparationIsValid(const Field &f, Comparation comp)
 	return false;
 }
 
-static inline mem::StringView SqlQuery_getSoftLimitField(const db::Scheme &scheme, const db::Query &q, bool &hasAltLimit) {
-	mem::StringView softLimitField;
-	if (q.isSoftLimit()) {
-		auto &field = q.getOrderField();
-		auto f = scheme.getField(field);
-		if (field == "__oid") {
-			softLimitField = field;
-		} else if (f) {
-			softLimitField = f->getName();
-			hasAltLimit = true;
-		} else {
-			messages::error("SqlQuery", "Invalid soft limit field", mem::Value(field));
-			return mem::StringView();
-		}
-	}
-	return softLimitField;
-}
+static inline auto SqlQuery_makeSoftLimitWith(SqlQuery::Context &ictx,
+		bool isSubField = false, const mem::StringView &lName = mem::StringView(), uint64_t oid = 0) {
+	return [ctx = &ictx, isSubField, lName, oid] (SqlQuery::GenericQuery &subq) {
+		SqlQuery &query = *ctx->_this;
+		const Scheme &scheme = *ctx->scheme;
 
-static inline auto SqlQuery_makeSoftLimitWith(SqlQuery &iquery, const db::Scheme &ischeme, const db::Query &iq,
-		const mem::StringView &softLimitField, bool isSubField = false, const mem::StringView &lName = mem::StringView(), uint64_t oid = 0) {
-	return [pquery = &iquery, pscheme = &ischeme, pq = &iq, isSubField, softLimitField, lName, oid] (SqlQuery::GenericQuery &subq) {
-		SqlQuery &query = *pquery;
-		const db::Scheme &scheme = *pscheme;
-		const db::Query &q = *pq;
+		auto writeFullTextSel = [&] (SqlQuery::GenericQuery &subQ) {
+			auto sel = subQ.select(SqlQuery::Field(scheme.getName(), "__oid"));
+			auto ftsQuery = ctx->getAlt(ctx->softLimitField);
+			if (!ftsQuery.empty()) {
+				if (sel.state == SqlQuery::State::Some) {
+					sel.query->getStream() << ", ";
+				}
+				sel.query->writeBind(db::Binder::FullTextRank{scheme.getName(), scheme.getField(ctx->softLimitField), ftsQuery});
+				sel.query->getStream() << " AS __ts_rank_" << ctx->softLimitField;
+				sel.state = SqlQuery::State::Some;
+			}
+			return sel;
+		};
 
-		auto sel = subq.select(SqlQuery::Field(scheme.getName(), "__oid"), SqlQuery::Field(scheme.getName(), softLimitField));
+		auto sel = (ctx->softLimitIsFts)
+				? writeFullTextSel(subq)
+				: subq.select(SqlQuery::Field(scheme.getName(), "__oid"), SqlQuery::Field(scheme.getName(), ctx->softLimitField));
 		auto s = isSubField ? sel.from(scheme.getName()).innerJoinOn("s", [&] (SqlQuery::WhereBegin &q) {
 			q.where(SqlQuery::Field(scheme.getName(), "__oid"), Comparation::Equal, SqlQuery::Field("s", "id"));
 		}) : sel.from(scheme.getName());
 
-		if (auto &val = q.getSoftLimitValue()) {
-			auto w = s.where(SqlQuery::Field(scheme.getName(), softLimitField),
-					q.getOrdering() == Ordering::Ascending ? Comparation::GreatherThen : Comparation::LessThen, val.asInteger());
-			if (!lName.empty()) {
-				w.where(Operator::And, SqlQuery::Field(scheme.getName(), lName), Comparation::Equal, oid);
+		if (auto &val = ctx->q->getSoftLimitValue()) {
+			if (ctx->softLimitIsFts) {
+				auto ftsQuery = ctx->getAlt(ctx->softLimitField);
+
+				s.query->getStream() << " WHERE(";
+				s.query->writeBind(db::Binder::FullTextRank{ctx->scheme->getName(), ctx->scheme->getField(ctx->softLimitField), ftsQuery});
+				s.query->getStream() << ((ctx->q->getOrdering() == Ordering::Ascending) ? '>' : '<');
+				s.query->writeBind(val);
+				s.query->getStream() << ')';
+
+				SqlQuery::SelectWhere w(s.query, SqlQuery::State::Some);
+				if (!lName.empty()) {
+					w.where(Operator::And, SqlQuery::Field(scheme.getName(), lName), Comparation::Equal, oid);
+				}
+				query.writeWhere(w, Operator::And, scheme, *ctx->q);
+
+			} else {
+				auto w = s.where(SqlQuery::Field(scheme.getName(), ctx->softLimitField),
+						ctx->q->getOrdering() == Ordering::Ascending ? Comparation::GreatherThen : Comparation::LessThen, val);
+				if (!lName.empty()) {
+					w.where(Operator::And, SqlQuery::Field(scheme.getName(), lName), Comparation::Equal, oid);
+				}
+				query.writeWhere(w, Operator::And, scheme, *ctx->q);
 			}
-			query.writeWhere(w, Operator::And, scheme, q);
-		} else if (q.hasSelect() || !lName.empty()) {
+		} else if (ctx->q->hasSelect() || !lName.empty()) {
 			auto w = lName.empty() ? s.where() : s.where(SqlQuery::Field(scheme.getName(), lName), Comparation::Equal, oid);
-			query.writeWhere(w, Operator::And, scheme, q);
+			query.writeWhere(w, Operator::And, scheme, *ctx->q);
 		}
 
-		query.writeOrdering(s, scheme, q);
+		query.writeOrdering(s, scheme, *ctx->q);
 	};
 }
 
 template <typename Clause>
-static inline auto SqlQuery_makeWhereClause(SqlQuery &query, Clause &tmp, const db::Scheme &scheme, const db::Query &q,
-		const mem::StringView &softLimitField, const mem::StringView &lName = mem::StringView(), uint64_t oid = 0) {
-	bool isAsc = q.getOrdering() == Ordering::Ascending;
-	if (q.hasSelect() || !softLimitField.empty() || !lName.empty()) {
-		if (softLimitField == "__oid") {
-			if (auto &val = q.getSoftLimitValue()) {
-				auto w = tmp.where(SqlQuery::Field(scheme.getName(), softLimitField),
+static inline auto SqlQuery_makeWhereClause(SqlQuery::Context &ctx, Clause &tmp, const mem::StringView &lName = mem::StringView(), uint64_t oid = 0) {
+	bool isAsc = ctx.q->getOrdering() == Ordering::Ascending;
+	if (ctx.q->hasSelect() || !ctx.softLimitField.empty() || !lName.empty()) {
+		if (ctx.softLimitField == "__oid") {
+			if (auto &val = ctx.q->getSoftLimitValue()) {
+				auto w = tmp.where(SqlQuery::Field(ctx.scheme->getName(), ctx.softLimitField),
 						isAsc ? Comparation::GreatherThen : Comparation::LessThen, val.asInteger());
 				if (!lName.empty()) {
-					w.where(Operator::And, SqlQuery::Field(scheme.getName(), lName), Comparation::Equal, oid);
+					w.where(Operator::And, SqlQuery::Field(ctx.scheme->getName(), lName), Comparation::Equal, oid);
 				}
-				query.writeWhere(w, Operator::And,scheme, q);
-			} else if (q.hasSelect() || !lName.empty()) {
-				auto w = lName.empty() ? tmp.where() : tmp.where(SqlQuery::Field(scheme.getName(), lName), Comparation::Equal, oid);
-				query.writeWhere(w, Operator::And, scheme, q);
+				ctx._this->writeWhere(w, Operator::And, *ctx.scheme, *ctx.q);
+			} else if (ctx.q->hasSelect() || !lName.empty()) {
+				auto w = lName.empty() ? tmp.where() : tmp.where(SqlQuery::Field(ctx.scheme->getName(), lName), Comparation::Equal, oid);
+				ctx._this->writeWhere(w, Operator::And, *ctx.scheme, *ctx.q);
 			}
-		} else if (softLimitField.empty()) {
-			if (q.hasSelect() || !lName.empty()) {
-				auto whi = lName.empty() ? tmp.where() : tmp.where(SqlQuery::Field(scheme.getName(), lName), Comparation::Equal, oid);
-				query.writeWhere(whi, db::Operator::And, scheme, q);
+		} else if (ctx.softLimitField.empty()) {
+			if (ctx.q->hasSelect() || !lName.empty()) {
+				auto whi = lName.empty() ? tmp.where() : tmp.where(SqlQuery::Field(ctx.scheme->getName(), lName), Comparation::Equal, oid);
+				ctx._this->writeWhere(whi, db::Operator::And, *ctx.scheme, *ctx.q);
 			}
 		} else {
+			auto softLimitFieldStr = (ctx.softLimitIsFts
+				? toString("__ts_rank_", ctx.softLimitField)
+				: ctx.softLimitField.str());
+
 			// write soft limit query like WHERE __oid IN (SELECT __oid FROM u) OR (field = (SELECT MAX(mtime) FROM u))
-			tmp.where(SqlQuery::Field(scheme.getName(), "__oid"), Comparation::In, mem::Callback<void(SqlQuery::Select &)>([&] (SqlQuery::Select &subQ) {
+			tmp.where(SqlQuery::Field(ctx.scheme->getName(), "__oid"), Comparation::In, mem::Callback<void(SqlQuery::Select &)>([&] (SqlQuery::Select &subQ) {
 				subQ.field(SqlQuery::Field("u", "__oid")).from("u").finalize();
 			})).parenthesis(Operator::Or, [&] (SqlQuery::WhereBegin &whi) {
-				auto w = whi.where(SqlQuery::Field(scheme.getName(), softLimitField), Comparation::Equal,
-						mem::Callback<void(SqlQuery::Select &)>([&] (SqlQuery::Select &subQ) {
-					subQ.aggregate(isAsc ? "MAX" : "MIN", SqlQuery::Field("u", softLimitField)).from("u").finalize();
-				}));
-				if (!lName.empty()) {
-					w.where(Operator::And, SqlQuery::Field(scheme.getName(), lName), Comparation::Equal, oid);
+				if (ctx.softLimitIsFts) {
+					auto ftsQuery = ctx.getAlt(ctx.softLimitField);
+
+					whi.query->getStream() << '(';
+					whi.query->writeBind(db::Binder::FullTextRank{ctx.scheme->getName(), ctx.scheme->getField(ctx.softLimitField), ftsQuery});
+					whi.query->getStream() << "=(SELECT " << (isAsc ? "MAX" : "MIN") << "(u.\"__ts_rank_" << ctx.softLimitField << "\") FROM u))";
+
+					SqlQuery::WhereContinue w(whi.query, SqlQuery::State::Some);
+					if (!lName.empty()) {
+						w.where(Operator::And, SqlQuery::Field(ctx.scheme->getName(), lName), Comparation::Equal, oid);
+					}
+					ctx._this->writeWhere(w, Operator::And, *ctx.scheme, *ctx.q);
+				} else {
+					auto w = whi.where(SqlQuery::Field(ctx.scheme->getName(), ctx.softLimitField), Comparation::Equal,
+							mem::Callback<void(SqlQuery::Select &)>([&] (SqlQuery::Select &subQ) {
+						subQ.aggregate(isAsc ? "MAX" : "MIN", SqlQuery::Field("u", softLimitFieldStr)).from("u").finalize();
+					}));
+					if (!lName.empty()) {
+						w.where(Operator::And, SqlQuery::Field(ctx.scheme->getName(), lName), Comparation::Equal, oid);
+					}
+					ctx._this->writeWhere(w, Operator::And, *ctx.scheme, *ctx.q);
 				}
-				query.writeWhere(w, Operator::And, scheme, q);
 			});
 		}
 	}
 }
 
-bool SqlQuery::writeQuery(Worker &worker, const db::Scheme &scheme, const db::Query &q) {\
-	bool hasAltLimit = false;
-	mem::StringView softLimitField = SqlQuery_getSoftLimitField(scheme, q, hasAltLimit);
+bool SqlQuery::writeQuery(Worker &worker, const db::Scheme &scheme, const db::Query &q) {
+	auto ctx = initContext(worker, scheme, q);
 
-	auto sel = (hasAltLimit)
-		? with("u", SqlQuery_makeSoftLimitWith(*this, scheme, q, softLimitField, false)).select()
+	auto sel = (ctx.hasAltLimit)
+		? with("u", SqlQuery_makeSoftLimitWith(ctx, false)).select()
 		: select();
 	auto s = writeSelectFrom(sel, worker, q);
 
-	SqlQuery_makeWhereClause(*this, s, scheme, q, softLimitField);
+	SqlQuery_makeWhereClause(ctx, s);
 
-	writeOrdering(s, scheme, q, hasAltLimit);
+	writeOrdering(s, scheme, q, ctx.hasAltLimit);
 	if (q.isForUpdate()) { s.forUpdate(); }
 	s.finalize();
 
@@ -158,15 +188,14 @@ bool SqlQuery::writeQuery(Worker &w, const db::Scheme &scheme, uint64_t oid, con
 		return false;
 	}
 
+	Context ctx = initContext(w, *fs, q);
+
 	mem::StringView lName;
 	if (type == Type::Set && !f.isReference()) {
 		if (auto l = w.scheme().getForeignLink(f)) {
 			lName = l->getName();
 		}
 	}
-
-	bool hasAltLimit = false;
-	mem::StringView softLimitField = SqlQuery_getSoftLimitField(*fs, q, hasAltLimit);
 
 	auto writeFields = [&] (Select &sel) {
 		writeFullTextRank(sel, *fs, q);
@@ -187,14 +216,14 @@ bool SqlQuery::writeQuery(Worker &w, const db::Scheme &scheme, uint64_t oid, con
 					.where(mem::toString(w.scheme().getName(), "_id"), Comparation::Equal, oid);
 			});
 
-			if (hasAltLimit) {
-				wtmp.with("u", SqlQuery_makeSoftLimitWith(*this, *fs, q, softLimitField, true, lName, oid));
+			if (ctx.hasAltLimit) {
+				wtmp.with("u", SqlQuery_makeSoftLimitWith(ctx, true, lName, oid));
 			}
 
 			return wtmp.select();
 		} else {
-			return (hasAltLimit)
-				? with("u", SqlQuery_makeSoftLimitWith(*this, *fs, q, softLimitField, false, lName, oid)).select()
+			return (ctx.hasAltLimit)
+				? with("u", SqlQuery_makeSoftLimitWith(ctx, false, lName, oid)).select()
 				: select();
 		}
 	};
@@ -208,9 +237,9 @@ bool SqlQuery::writeQuery(Worker &w, const db::Scheme &scheme, uint64_t oid, con
 			})
 		: sel.from(fs->getName());
 
-	SqlQuery_makeWhereClause(*this, tmp, *fs, q, softLimitField, lName, oid);
+	SqlQuery_makeWhereClause(ctx, tmp, lName, oid);
 
-	writeOrdering(tmp, *fs, q, hasAltLimit);
+	writeOrdering(tmp, *fs, q, ctx.hasAltLimit);
 	if (q.isForUpdate()) { tmp.forUpdate(); }
 	finalize();
 
@@ -277,7 +306,7 @@ static void SqlQuery_writeWhereData(SqlQuery::WhereContinue &whi, db::Operator o
 void SqlQuery::writeWhere(SqlQuery::WhereContinue &whi, db::Operator op, const db::Scheme &scheme, const db::Query::Select &sel) {
 	if (auto f = scheme.getField(sel.field)) {
 		auto type = f->getType();
-		if (type == db::Type::FullTextView) {
+		if (type == db::Type::FullTextView && sel.compare != db::Comparation::IsNull && sel.compare != db::Comparation::IsNotNull) {
 			auto ftsQuery = getFullTextQuery(scheme, *f, sel);
 			if (!ftsQuery.empty()) {
 				whi.where(op, SqlQuery::Field(scheme.getName(), sel.field),
@@ -617,17 +646,21 @@ db::QueryInterface * SqlQuery::getInterface() const {
 }
 
 void SqlQuery::writeFullTextRank(Select &sel, const db::Scheme &scheme, const db::Query &q) {
+	mem::Set<const db::Field *> fields;
 	for (auto &it : q.getSelectList()) {
 		if (auto f = scheme.getField(it.field)) {
 			if (f->getType() == db::Type::FullTextView) {
-				auto ftsQuery = getFullTextQuery(scheme, *f, it);
-				if (!ftsQuery.empty()) {
-					if (sel.state == SqlQuery::State::Some) {
-						sel.query->getStream() << ", ";
+				if (fields.find(f) == fields.end()) {
+					fields.emplace(f);
+					auto ftsQuery = getFullTextQuery(scheme, *f, it);
+					if (!ftsQuery.empty()) {
+						if (sel.state == SqlQuery::State::Some) {
+							sel.query->getStream() << ", ";
+						}
+						sel.query->writeBind(db::Binder::FullTextRank{scheme.getName(), f, ftsQuery});
+						sel.query->getStream() << " AS __ts_rank_" << it.field;
+						sel.state = SqlQuery::State::Some;
 					}
-					sel.query->writeBind(db::Binder::FullTextRank{scheme.getName(), f, ftsQuery});
-					sel.query->getStream() << " AS __ts_rank_" << it.field;
-					sel.state = SqlQuery::State::Some;
 				}
 			}
 		}
@@ -670,6 +703,41 @@ mem::StringView SqlQuery::getFullTextQuery(const db::Scheme &scheme, const db::F
 		}
 	}
 
+	return mem::StringView();
+}
+
+SqlQuery::Context SqlQuery::initContext(Worker &w, const db::Scheme &scheme, const db::Query &q) {
+	SqlQuery::Context ctx;
+	ctx._this = this;
+	ctx.worker = &w;
+	ctx.scheme = &scheme;
+	ctx.q = &q;
+
+	ctx.hasAltLimit = false;
+	if (ctx.q->isSoftLimit()) {
+		auto &field = ctx.q->getOrderField();
+		auto f = ctx.scheme->getField(field);
+		if (field == "__oid") {
+			ctx.softLimitField = field;
+		} else if (f) {
+			ctx.softLimitField = f->getName();
+			ctx.hasAltLimit = true;
+			ctx.softLimitIsFts = (f->getType() == Type::FullTextView);
+		} else {
+			messages::error("SqlQuery", "Invalid soft limit field", mem::Value(field));
+		}
+	}
+
+	return ctx;
+}
+
+mem::StringView SqlQuery::Context::getAlt(mem::StringView key) {
+	auto f = scheme->getField(key);
+	for (auto &it : q->getSelectList()) {
+		if (it.field == key) {
+			return _this->getFullTextQuery(*scheme, *f, it);
+		}
+	}
 	return mem::StringView();
 }
 

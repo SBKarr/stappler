@@ -880,7 +880,7 @@ protected:
 	}
 
 	void clear_visit(Node<Value> *target) {
-		if (target->left) {
+ 		if (target->left) {
 			clear_visit(static_cast<Node<Value> *>(target->left));
 		}
 		if (target->right) {

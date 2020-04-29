@@ -35,13 +35,21 @@ static inline void Query_writeOperator(Stream &stream, Operator op) {
 	}
 }
 
+template <typename Interface>
+static inline auto Query_writeFieldName(typename Interface::StringStreamType &stream, const StringView &cmp, bool plain)
+	-> typename Interface::StringStreamType & {
+	if (!plain) { stream << '"'; }
+	stream << cmp;
+	if (!plain) { stream << '"'; }
+	return stream;
+}
 
 template <typename Binder, typename Interface, typename Value1>
 static inline void Query_writeComparationStr(Query<Binder, Interface> &q, typename Interface::StringStreamType &stream,
 		const typename Query<Binder, Interface>::Field &f, const StringView &cmp, Value1 &&v1) {
 	stream << "(";
 	if (!f.source.empty()) { stream << f.source << "."; }
-	stream << '"' << f.name << '"' << cmp;
+	Query_writeFieldName<Interface>(stream, f.name, f.plain) << cmp;
 	q.writeBind(forward<Value1>(v1));
 	stream << ")";
 }
@@ -51,11 +59,11 @@ static inline void Query_writeComparationStr(Query<Binder, Interface> &q, typena
 		const typename Query<Binder, Interface>::Field &f, const StringView &cmp1, Value1 &&v1, const StringView &cmp2, Value2 &&v2, const StringView &op) {
 	stream << "(";
 	if (!f.source.empty()) { stream << f.source << "."; }
-	stream << '"' << f.name << '"' << cmp1;
+	Query_writeFieldName<Interface>(stream, f.name, f.plain) << cmp1;
 	q.writeBind(forward<Value1>(v1));
 	stream << " " << op << " ";
 	if (!f.source.empty()) { stream << f.source << "."; }
-	stream << '"' << f.name << '"' << cmp2;
+	Query_writeFieldName<Interface>(stream, f.name, f.plain) << cmp2;
 	q.writeBind(forward<Value2>(v2));
 	stream << ")";
 }
@@ -64,7 +72,7 @@ template <typename Binder, typename Interface, typename Value1, typename Value2>
 static inline void Query_writeComparationBetween(Query<Binder, Interface> &q, typename Interface::StringStreamType &stream,
 		const typename Query<Binder, Interface>::Field &f, Value1 &&v1, Value2 &&v2) {
 	if (!f.source.empty()) { stream << f.source << "."; }
-	stream << '"' << f.name << '"' << " BETWEEN ";
+	Query_writeFieldName<Interface>(stream, f.name, f.plain) << " BETWEEN ";
 	q.writeBind(forward<Value1>(v1));
 	stream << " AND ";
 	q.writeBind(forward<Value2>(v2));
@@ -75,7 +83,7 @@ static inline void Query_writeComparationStrNoArg(Query<Binder, Interface> &q, t
 		const typename Query<Binder, Interface>::Field &f, const StringView &cmp) {
 	stream << "(";
 	if (!f.source.empty()) { stream << f.source << "."; }
-	stream << '"' << f.name << '"' << cmp << ")";
+	Query_writeFieldName<Interface>(stream, f.name, f.plain) << cmp << ")";
 }
 
 template <typename Binder, typename Interface, typename Value1>

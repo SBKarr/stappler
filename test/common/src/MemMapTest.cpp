@@ -80,6 +80,16 @@ struct MemMapTest : MemPoolTest {
 			return vec == data;
 		});
 
+		runTest(stream, "ptrset test", count, passed, [&] {
+			memory::set<memory::map<size_t, String> *> data;
+
+			data.emplace(&vec);
+			data.emplace(&vec2);
+
+			return data.find(&vec) != data.end() && data.find(&vec2) != data.end();
+		});
+
+
 		_desc = stream.str();
 
 		return count == passed;

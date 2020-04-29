@@ -51,6 +51,11 @@ struct AllocPool {
 	static void registerCleanupDestructor(T *obj, pool_t *pool);
 };
 
+namespace {
+template< class...Args> struct Allocator_SelectFirst;
+template< class A, class ...Args> struct Allocator_SelectFirst<A,Args...>{ using type = A; };
+}
+
 template <class T>
 class Allocator {
 public:
@@ -132,9 +137,19 @@ public:
 
 	template <typename ...Args>
 	void construct(pointer p, Args &&...args) {
-		if constexpr (!std::is_constructible<T, Args...>::value) {
-			static_assert("Invalid arguments for constructor");
-		} else {
+		static_assert(std::is_constructible<T, Args...>::value, "Invalid arguments for constructor");
+		if constexpr (std::is_constructible<T, Args...>::value) {
+			if constexpr (sizeof...(Args) == 1) {
+				if constexpr (std::is_trivially_copyable<T>::value && std::is_convertible_v<typename Allocator_SelectFirst<Args...>::type, const T &>) {
+					auto construct_memcpy = [] (pointer p, const T &source) {
+						memcpy(p, &source, sizeof(T));
+					};
+
+					construct_memcpy(p, std::forward<Args>(args)...);
+					return;
+				}
+			}
+
 			memory::pool::push(pool_ptr(pool));
 			new ((T*)p) T(std::forward<Args>(args)...);
 			memory::pool::pop();

@@ -140,6 +140,8 @@ public:
 		Field(const std::string &str) : name(str) { }
 		Field(const memory::string &str) : name(str) { }
 
+		Field(const StringView &str, bool plain) : name(str), plain(plain) { }
+
 		template <typename SourceString, typename FieldString>
 		Field(SourceString &&t, FieldString &&f) : source(t), name(f) { }
 
@@ -154,6 +156,7 @@ public:
 		StringView source;
 		StringView name;
 		StringView alias;
+		bool plain = false;
 	};
 
 	template <typename Clause>
