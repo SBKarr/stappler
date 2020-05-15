@@ -27,16 +27,16 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(thread)
 
-class Task : public AtomicRef {
+class Task : public RefBase<AtomicCounter, memory::StandartInterface> {
 public: /* typedefs */
 	/* Function to be executed in init phase */
-	using PrepareCallback = Function<bool(const Task &)>;
+	using PrepareCallback = std::function<bool(const Task &)>;
 
 	/* Function to be executed in other thread */
-	using ExecuteCallback = Function<bool(const Task &)>;
+	using ExecuteCallback = std::function<bool(const Task &)>;
 
 	/* Function to be executed after task is performed */
-	using CompleteCallback = Function<void(const Task &, bool)>;
+	using CompleteCallback = std::function<void(const Task &, bool)>;
 
 public: /* interface */
 	/* creates empty task with only complete function to be used as callback from other thread */
@@ -101,9 +101,9 @@ protected:
 
 	Rc<Ref> _target;
 
-	Vector<PrepareCallback> _prepare;
-	Vector<ExecuteCallback> _execute;
-	Vector<CompleteCallback> _complete;
+	std::vector<PrepareCallback> _prepare;
+	std::vector<ExecuteCallback> _execute;
+	std::vector<CompleteCallback> _complete;
 };
 
 NS_SP_EXT_END(thread)

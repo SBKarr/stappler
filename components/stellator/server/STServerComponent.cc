@@ -37,6 +37,8 @@ void ServerComponent::onStorageInit(Server &, const db::Adapter &) { }
 
 void ServerComponent::onStorageTransaction(db::Transaction &) { }
 
+void ServerComponent::onHeartbeat(Server &, db::Transaction &) { }
+
 const db::Scheme * ServerComponent::exportScheme(const db::Scheme &scheme) {
 	return _server.exportScheme(scheme);
 }

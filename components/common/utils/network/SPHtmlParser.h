@@ -91,6 +91,7 @@ struct ParserTraits {
 	InvokerCallTest_MakeCallTest(onReadAttributeName, success, failure);
 	InvokerCallTest_MakeCallTest(onReadAttributeValue, success, failure);
 	InvokerCallTest_MakeCallTest(shouldLowercaseTokens, success, failure);
+	InvokerCallTest_MakeCallTest(shouldParseTag, success, failure);
 };
 
 template <typename StringReader>
@@ -313,6 +314,35 @@ struct Parser {
 				if (tag.isClosable()) {
 					onPushTag(tag);
 					tagStack.emplace_back(std::move(tag));
+					if (!shouldParseTag(tag)) {
+						auto start = current;
+						while (!current.empty()) {
+							current.template skipUntil<Chars<'<'>>();
+							if (current.is('<')) {
+								auto tmp = current.sub(1);
+								if (tmp.is('/')) {
+									++ tmp;
+									if (tmp.starts_with(tag.name)) {
+										tmp += tag.name.size();
+										tmp.template skipChars<Group<GroupId::WhiteSpace>>();
+										if (tmp.is('>')) {
+											StringReader content(start.data(), current.data() - start.data());
+											if (!content.empty()) {
+												onTagContent(tag, content);
+											}
+											onPopTag(tag);
+											tagStack.pop_back();
+
+											++ tmp;
+											current = tmp;
+											break;
+										}
+									}
+								}
+								++ current;
+							}
+						}
+					}
 				} else {
 					onInlineTag(tag);
 				}
@@ -381,6 +411,10 @@ struct Parser {
 	}
 	inline void onTagContent(TagType &tag, StringReader &s) {
 		if constexpr (Traits::onTagContent) { reader->onTagContent(*this, tag, s); }
+	}
+	inline bool shouldParseTag(TagType &tag) {
+		if constexpr (Traits::shouldParseTag) { return reader->shouldParseTag(*this, tag); }
+		return true;
 	}
 
 	bool lowercase = true;

@@ -509,6 +509,12 @@ void Server::onHeartBeat(mem::pool_t *pool) {
 				_config->broadcastId = hdb.processBroadcasts([&] (stappler::BytesView bytes) {
 					onBroadcast(bytes);
 				}, _config->broadcastId);
+
+				db::Transaction t = db::Transaction::acquire(&hdb);
+				for (auto &it : _config->components) {
+					it.second->onHeartbeat(*this, t);
+				}
+
 				root->dbdClose(pool, *this, dbd);
 			}
 		}

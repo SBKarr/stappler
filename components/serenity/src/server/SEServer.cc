@@ -785,6 +785,12 @@ void Server::onHeartBeat(apr_pool_t *pool) {
 				_config->broadcastId = h.processBroadcasts([&] (BytesView bytes) {
 					onBroadcast(bytes);
 				}, _config->broadcastId);
+
+				db::Transaction t = db::Transaction::acquire(&h);
+				for (auto &it : _config->components) {
+					it.second->onHeartbeat(*this, t);
+				}
+
 				root->dbdClose(_server, dbd);
 			}
 		}

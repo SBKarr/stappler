@@ -33,7 +33,7 @@ THE SOFTWARE.
 NS_SA_EXT_BEGIN(config)
 
 constexpr auto getHeartbeatPause() { return 1_sec; }
-constexpr auto getHeartbeatTime() { return 2_sec; }
+constexpr auto getHeartbeatTime() { return 1_sec; }
 
 constexpr auto getMaxAuthTime() { return 720_sec; }
 constexpr auto getMaxLoginFailure() { return 4; }

@@ -53,6 +53,7 @@ public:
 	virtual void onChildInit(Server &);
 	virtual void onStorageInit(Server &, const db::Adapter &);
 	virtual void onStorageTransaction(db::Transaction &);
+	virtual void onHeartbeat(Server &, db::Transaction &);
 
 	const mem::Value & getConfig() const { return _config; }
 	mem::StringView getName() const { return _name; }

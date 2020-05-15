@@ -43,7 +43,7 @@ class ConnectionWorker;
 
 class ConnectionQueue : public mem::AllocBase {
 public:
-	ConnectionQueue(mem::pool_t *p, Root *h, int socket);
+	ConnectionQueue(mem::pool_t *p, Root *h, int socket, size_t nWorkers = std::thread::hardware_concurrency());
 	~ConnectionQueue();
 
 	void run();
@@ -61,6 +61,7 @@ public:
 	size_t getWorkersCount() const { return _workers.size(); }
 
 protected:
+	size_t _nWorkers = std::thread::hardware_concurrency();
 	std::atomic<bool> _finalized;
 	std::atomic<int32_t> _refCount;
 
@@ -243,20 +244,20 @@ static bool ConnectionHandler_setNonblocking(int fd) {
 	return true;
 }
 
-ConnectionQueue::ConnectionQueue(mem::pool_t *p, Root *h, int socket) : _finalized(false), _refCount(1), _pool(p), _root(h), _socket(socket) {
+ConnectionQueue::ConnectionQueue(mem::pool_t *p, Root *h, int socket, size_t nWorker)
+: _nWorkers(nWorker), _finalized(false), _refCount(1), _pool(p), _root(h), _socket(socket) {
 	_eventFd = eventfd(0, EFD_NONBLOCK);
 	_taskCounter.store(0);
 }
 
 void ConnectionQueue::run() {
 	mem::pool::push(_pool);
-	auto nWorkers = std::thread::hardware_concurrency();
-	_workers.reserve(nWorkers);
+	_workers.reserve(_nWorkers);
 	if (pipe2(_pipe, O_NONBLOCK) == 0) {
 		ConnectionHandler_setNonblocking(_pipe[0]);
 		ConnectionHandler_setNonblocking(_pipe[1]);
 
-		for (uint32_t i = 0; i < nWorkers; i++) {
+		for (uint32_t i = 0; i < _nWorkers; i++) {
 			ConnectionWorker *worker = new (_pool) ConnectionWorker(this, _root, _socket, _pipe[0], _eventFd);
 			_workers.push_back(worker);
 		}
@@ -707,22 +708,25 @@ ConnectionWorker::Generation *ConnectionWorker::makeGeneration() {
 	return new (p) Generation(p);
 }
 
-bool Root::run(const mem::StringView &_addr, int _port) {
+bool Root::run(const mem::StringView &_addr, int _port, size_t nWorkers) {
 	struct sigaction s_sharedSigAction;
 	struct sigaction s_sharedSigOldUsr1Action;
 	struct sigaction s_sharedSigOldUsr2Action;
+	struct sigaction s_sharedSigOldPipeAction;
 
 	memset(&s_sharedSigAction, 0, sizeof(s_sharedSigAction));
 	s_sharedSigAction.sa_handler = SIG_IGN;
 	sigemptyset(&s_sharedSigAction.sa_mask);
 	sigaction(SIGUSR1, &s_sharedSigAction, &s_sharedSigOldUsr1Action);
 	sigaction(SIGUSR2, &s_sharedSigAction, &s_sharedSigOldUsr2Action);
+	sigaction(SIGPIPE, &s_sharedSigAction, &s_sharedSigOldPipeAction);
 
 	sigset_t mask;
 	sigset_t oldmask;
 	sigemptyset(&mask);
 	sigaddset(&mask, SIGUSR1);
 	sigaddset(&mask, SIGUSR2);
+	sigaddset(&mask, SIGPIPE);
 	::sigprocmask(SIG_BLOCK, &mask, &oldmask);
 
 	int socket = ::socket(AF_INET, SOCK_STREAM, 0);
@@ -764,7 +768,7 @@ bool Root::run(const mem::StringView &_addr, int _port) {
 	auto p = mem::pool::create(_pool);
 	auto ret = mem::perform([&] () -> bool {
 		_internal->isRunned = true;
-		_internal->queue = new (p) ConnectionQueue(p, this, socket);
+		_internal->queue = new (p) ConnectionQueue(p, this, socket, nWorkers);
 
 		onChildInit();
 
@@ -825,6 +829,7 @@ bool Root::run(const mem::StringView &_addr, int _port) {
 
 	sigaction(SIGUSR1, &s_sharedSigOldUsr1Action, nullptr);
 	sigaction(SIGUSR2, &s_sharedSigOldUsr2Action, nullptr);
+	sigaction(SIGPIPE, &s_sharedSigOldPipeAction, nullptr);
 	::sigprocmask(SIG_SETMASK, &oldmask, nullptr);
 	return ret;
 }

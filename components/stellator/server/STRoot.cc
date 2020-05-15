@@ -70,6 +70,12 @@ bool Root::run(const mem::Value &config) {
 	return mem::perform([&] {
 		auto db = mem::StringView(config.getString("libpq"));
 		auto l = mem::StringView(config.getString("listen"));
+		auto w = config.getInteger("workers");
+
+		size_t workers = std::thread::hardware_concurrency();
+		if (w >= 2 && w <= 256) {
+			workers = size_t(w);
+		}
 
 		auto del = l.rfind(":");
 		if (del != stappler::maxOf<size_t>()) {
@@ -92,7 +98,7 @@ bool Root::run(const mem::Value &config) {
 				addServer(it);
 			}
 
-			auto ret = run(addr, port);
+			auto ret = run(addr, port, workers);
 			_internal->dbDriver->release();
 			_internal->dbDriver = nullptr;
 			return ret;

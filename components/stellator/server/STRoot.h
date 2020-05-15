@@ -37,7 +37,7 @@ public:
 	~Root();
 
 	bool run(const mem::Value &);
-	bool run(const mem::StringView &addr = mem::StringView(), int port = 8080);
+	bool run(const mem::StringView &addr = mem::StringView(), int port = 8080, size_t nWorkers = std::thread::hardware_concurrency());
 
 	void onBroadcast(const mem::Value &);
 	bool performTask(const Server &server, Task *task, bool performFirst);

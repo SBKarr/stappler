@@ -41,7 +41,9 @@ void ServerComponent::onChildInit(Server &serv) { }
 
 void ServerComponent::onStorageInit(Server &, const storage::Adapter &) { }
 
-void ServerComponent::onStorageTransaction(storage::Transaction &) { }
+void ServerComponent::onStorageTransaction(db::Transaction &) { }
+
+void ServerComponent::onHeartbeat(Server &, db::Transaction &) { }
 
 const storage::Scheme * ServerComponent::exportScheme(const storage::Scheme &scheme) {
 	return _server.exportScheme(scheme);

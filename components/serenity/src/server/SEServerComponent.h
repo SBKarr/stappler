@@ -50,8 +50,9 @@ public:
 	virtual ~ServerComponent() { }
 
 	virtual void onChildInit(Server &);
-	virtual void onStorageInit(Server &, const storage::Adapter &);
-	virtual void onStorageTransaction(storage::Transaction &);
+	virtual void onStorageInit(Server &, const db::Adapter &);
+	virtual void onStorageTransaction(db::Transaction &);
+	virtual void onHeartbeat(Server &, db::Transaction &);
 
 	const data::Value & getConfig() const { return _config; }
 	StringView getName() const { return _name; }
