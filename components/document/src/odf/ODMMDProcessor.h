@@ -30,18 +30,25 @@ public:
 	struct Config {
 		Document *document = nullptr;
 		Node *root = nullptr;
-		Function<ImageData(const StringView &)> onImage;
-		Function<ImageData(const StringView &)> onVideo;
-		Function<String(const StringView &)> onLink;
-		Function<String(const StringView &)> onId;
-		Function<void(Node *, const StringView &)> onInsert;
-		Function<void(Node *, const StringView &)> onMath;
+		Function<ImageData(StringView)> onImage;
+		Function<ImageData(StringView)> onVideo;
+		Function<String(StringView)> onLink;
+		Function<String(StringView)> onId;
+		Function<void(Node *, StringView)> onInsert;
+		Function<void(Node *, StringView)> onMath;
+		Function<style::Style *(style::Style *, StringView, StringView)> onClass;
 		StringStream *errorStream = nullptr;
 
 		Config() = default;
-		Config(Document *, Node *, Function<ImageData(const StringView &)> &&, Function<ImageData(const StringView &)> &&,
-				Function<String(const StringView &)> &&, Function<String(const StringView &)> &&,
-				Function<void(Node *, const StringView &)> &&, Function<void(Node *, const StringView &)> &&, StringStream * = nullptr);
+		Config(Document *, Node *,
+				Function<ImageData(const StringView &)> &&,
+				Function<ImageData(const StringView &)> &&,
+				Function<String(const StringView &)> &&,
+				Function<String(const StringView &)> &&,
+				Function<void(Node *, const StringView &)> &&,
+				Function<void(Node *, const StringView &)> &&,
+				Function<style::Style *(style::Style *, StringView, StringView)> &&,
+				StringStream * = nullptr);
 
 		Config(const Config &) = default;
 		Config &operator=(const Config &) = default;

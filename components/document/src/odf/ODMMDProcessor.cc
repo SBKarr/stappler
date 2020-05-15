@@ -6,12 +6,17 @@
 
 namespace opendocument {
 
-MmdProcessor::Config::Config(Document *doc, Node *n, Function<ImageData(const StringView &)> &&img, Function<ImageData(const StringView &)> &&video,
-		Function<String(const StringView &)> &&link, Function<String(const StringView &)> &&id,
-		Function<void(Node *, const StringView &)> &&insert, Function<void(Node *, const StringView &)> &&math,
+MmdProcessor::Config::Config(Document *doc, Node *n,
+		Function<ImageData(const StringView &)> &&img,
+		Function<ImageData(const StringView &)> &&video,
+		Function<String(const StringView &)> &&link,
+		Function<String(const StringView &)> &&id,
+		Function<void(Node *, const StringView &)> &&insert,
+		Function<void(Node *, const StringView &)> &&math,
+		Function<style::Style *(style::Style *, StringView, StringView)> &&cl,
 		StringStream *stream)
 : document(doc), root(n), onImage(move(img)), onVideo(move(video)), onLink(move(link))
-, onId(move(id)), onInsert(move(insert)), onMath(move(math)), errorStream(stream) { }
+, onId(move(id)), onInsert(move(insert)), onMath(move(math)), onClass(move(cl)), errorStream(stream) { }
 
 void MmdProcessor::run(const Config &cfg, pool_t *pool, const StringView &str, const Value *meta, const Extensions &ext) {
 	Engine e; e.init(pool, str, ext);
@@ -56,13 +61,48 @@ void MmdProcessor::exportMath(std::ostream &, token *t) {
 }
 
 Node *MmdProcessor::makeNode(const StringView &name, InitList &&attr, VecList &&vec) {
+	if (name == "div") {
+		StringView cl;
+		for (auto &it : vec) {
+			if (it.first == "class") {
+				cl = it.second;
+			}
+		}
+		if (!cl.empty() && _config.onClass) {
+			auto s = _config.document->getDefaultStyle(style::Style::Family::Paragraph);
+			if (s) {
+				s = _config.onClass(s, name, cl);
+				if (!s) {
+					return nullptr;
+				}
+			}
+		}
+		return _nodeStack.back();
+	}
 	if (name == "p" && attr.size() == 0 && vec.empty()) {
 		if (_nodeStack.back()->getTag() == "text:p") {
 			return _nodeStack.back();
 		}
 		return _nodeStack.back()->addNode("text:p", _inFootnote ? getNoteStyle() : getParagraphStyle());
 	}
-	if (name == "h1" && attr.size() <= 1) {
+	if (name == "p" && attr.size() == 0 && vec.size() == 1 && vec.front().first == "class") {
+		if (_nodeStack.back()->getTag() == "text:p") {
+			return _nodeStack.back();
+		}
+
+		auto c = _inFootnote ? getNoteStyle() : getParagraphStyle();
+
+		auto cl = vec.front().second;
+		if (!cl.empty() && _config.onClass) {
+			c = _config.onClass(c, name, cl);
+		}
+
+		if (c) {
+			return _nodeStack.back()->addNode("text:p", c);
+		}
+		return nullptr;
+	}
+	if ((name == "h1" || name == "h2" || name == "h3" || name == "h4" || name == "h5" || name == "h6") && attr.size() <= 1) {
 		StringView id;
 		for (auto &it : attr) {
 			if (it.first == "id") {
@@ -70,13 +110,29 @@ Node *MmdProcessor::makeNode(const StringView &name, InitList &&attr, VecList &&
 			}
 		}
 
-		if (attr.size() == 1 && attr.begin()->first == "id") {
-			auto node = _nodeStack.back()->addNode("text:p", getHeaderStyle(1));
-			node->addNode("text:bookmark", { stappler::pair("text:name", _config.onId(id)) });
-			return node;
-		} else if (attr.size() == 0) {
-			return _nodeStack.back()->addNode("text:p", getHeaderStyle(1));
+		StringView cl;
+		for (auto &it : vec) {
+			if (it.first == "class") {
+				cl = it.second;
+			}
 		}
+
+		auto n = name.sub(1).readInteger().get() + 1 - base_header_level;
+		auto c = getHeaderStyle(n);
+		if (!cl.empty() && _config.onClass) {
+			c = _config.onClass(c, name, cl);
+		}
+
+		if (c) {
+			if (attr.size() == 1 && attr.begin()->first == "id") {
+				auto node = _nodeStack.back()->addNode("text:p", c);
+				node->addNode("text:bookmark", { stappler::pair("text:name", _config.onId(id)) });
+				return node;
+			} else if (attr.size() == 0) {
+				return _nodeStack.back()->addNode("text:p", c);
+			}
+		}
+		return nullptr;
 	}
 	if (name == "ol" && attr.size() <= 1 && vec.empty()) {
 		if (attr.size() == 0) {
@@ -102,10 +158,10 @@ Node *MmdProcessor::makeNode(const StringView &name, InitList &&attr, VecList &&
 			return _nodeStack.back()->addNode("text:list-item")->addNode("text:p", getParagraphStyle());
 		}
 	}
-	if (name == "em" && attr.size() == 0 && vec.empty()) {
+	if ((name == "em" || name == "i") && attr.size() == 0 && vec.empty()) {
 		return _nodeStack.back()->addNode("text:span", getEmStyle());
 	}
-	if (name == "strong" && attr.size() == 0 && vec.empty()) {
+	if ((name == "strong" || name == "b") && attr.size() == 0 && vec.empty()) {
 		return _nodeStack.back()->addNode("text:span", getStrongStyle());
 	}
 	if (name == "span" && attr.size() == 0) {
@@ -338,20 +394,22 @@ void MmdProcessor::popNode() {
 }
 
 void MmdProcessor::flushBuffer() {
-	auto str = buffer.str();
-	StringView r(str);
-	if (!r.empty()) {
-		r.skipChars<StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>();
+	if (_nodeStack.back()) {
+		auto str = buffer.str();
+		StringView r(str);
 		if (!r.empty()) {
-			r = StringView(str);
-			if (r.back() == '\n') {
-				size_t s = r.size();
-				while (s > 0 && (r[s - 1] == '\n' || r[s - 1] == '\r')) {
-					-- s;
+			r.skipChars<StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>();
+			if (!r.empty()) {
+				r = StringView(str);
+				if (r.back() == '\n') {
+					size_t s = r.size();
+					while (s > 0 && (r[s - 1] == '\n' || r[s - 1] == '\r')) {
+						-- s;
+					}
+					r = StringView(r.data(), s);
 				}
-				r = StringView(r.data(), s);
+				_nodeStack.back()->addContent(r);
 			}
-			_nodeStack.back()->addContent(r);
 		}
 	}
 	buffer.clear();
@@ -457,6 +515,14 @@ style::Style *MmdProcessor::getHeaderStyle(size_t idx) {
 		case 2:
 			s->set<style::Name::TextFontSize>(14.0_pt)
 				.set<style::Name::TextFontWeight>(style::FontWeight::W600)
+				.set<style::Name::TextColor>(style::Color::Grey_700.asColor3B());
+			break;
+		case 3:
+		case 4:
+		case 5:
+		case 6:
+			s->set<style::Name::TextFontSize>(14.0_pt)
+				.set<style::Name::TextFontWeight>(style::FontWeight::W500)
 				.set<style::Name::TextColor>(style::Color::Grey_700.asColor3B());
 			break;
 		}

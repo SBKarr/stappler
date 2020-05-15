@@ -395,6 +395,7 @@ void HtmlProcessor::pushHtmlEntityText(std::ostream &out, StringView r, token *t
 			if (r.is('>')) {
 				++ r;
 				popNode();
+				out << r.readUntil<StringView::Chars<'<'>>();
 			}
 		} else {
 			auto name = html::Tag_readName(r, true);
