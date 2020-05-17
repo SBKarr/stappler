@@ -26,6 +26,8 @@ THE SOFTWARE.
 
 NS_DB_BEGIN
 
+Conflict::Conflict(Conflict::Flags f): flags(f) { }
+
 Conflict::Conflict(const mem::StringView & field, Query::Select &&cond, Flags f)
 : field(field.str<mem::Interface>()), condition(std::move(cond)), flags(f) { }
 

@@ -264,6 +264,10 @@ void SqlHandle::broadcast(const mem::Bytes &bytes) {
 			query.insert("__broadcasts").fields("date", "msg").values(stappler::Time::now(), mem::Bytes(bytes)).finalize();
 			performQuery(query);
 		});
+		makeQuery([&] (SqlQuery &query) {
+			query.getStream() << "NOTIFY " << config::getSerenityBroadcastChannelName() << ";";
+			performQuery(query);
+		});
 	} else {
 		_bcasts.emplace_back(stappler::Time::now(), bytes);
 	}

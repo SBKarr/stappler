@@ -1038,7 +1038,7 @@ bool ShellSocketHandler::onFrame(FrameType t, const Bytes &b) {
 }
 
 bool ShellSocketHandler::onMessage(const data::Value &val) {
-	if (val.getBool("message")) {
+	if (val.isBool("message") && val.getBool("message")) {
 		if (auto &d = val.getValue("data")) {
 			if (d.getString("source") == "Database-Query") {
 				StringStream resp;

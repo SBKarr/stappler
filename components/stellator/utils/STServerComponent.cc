@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,15 +20,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "Define.h"
-#include "ServerComponent.h"
+#include "STServerComponent.h"
 
-NS_SA_BEGIN
+NS_SA_ST_BEGIN
 
+#if SERENITY
 ServerComponent::Loader::Loader(const mem::StringView &str, Symbol s) : name(str), loader(s) { }
+#endif
 
-ServerComponent::ServerComponent(Server &serv, const String &name, const data::Value &dict)
-: _server(serv), _name(name), _version("1.0"), _config(dict) {
+ServerComponent::ServerComponent(Server &serv, const mem::StringView &name, const mem::Value &dict)
+: _server(serv), _name(name.str<mem::Interface>()), _version("1.0"), _config(dict) {
 	if (_config.isString("version")) {
 		_version = _config.getString("version");
 	}
@@ -39,21 +37,21 @@ ServerComponent::ServerComponent(Server &serv, const String &name, const data::V
 
 void ServerComponent::onChildInit(Server &serv) { }
 
-void ServerComponent::onStorageInit(Server &, const storage::Adapter &) { }
+void ServerComponent::onStorageInit(Server &, const db::Adapter &) { }
 
 void ServerComponent::onStorageTransaction(db::Transaction &) { }
 
-void ServerComponent::onHeartbeat(Server &, db::Transaction &) { }
+void ServerComponent::onHeartbeat(Server &) { }
 
-const storage::Scheme * ServerComponent::exportScheme(const storage::Scheme &scheme) {
+const db::Scheme * ServerComponent::exportScheme(const db::Scheme &scheme) {
 	return _server.exportScheme(scheme);
 }
 
-void ServerComponent::addCommand(const StringView &name, Function<data::Value(const StringView &)> &&cb, const StringView &desc, const StringView &help) {
-	_commands.emplace(name.str(), Command{name, desc, help, move(cb)});
+void ServerComponent::addCommand(const mem::StringView &name, mem::Function<mem::Value(const mem::StringView &)> &&cb, const mem::StringView &desc, const mem::StringView &help) {
+	_commands.emplace(name.str<mem::Interface>(), Command{name.str<mem::Interface>(), desc.str<mem::Interface>(), help.str<mem::Interface>(), move(cb)});
 }
 
-const ServerComponent::Command *ServerComponent::getCommand(const StringView &name) const {
+const ServerComponent::Command *ServerComponent::getCommand(const mem::StringView &name) const {
 	auto it = _commands.find(name);
 	if (it != _commands.end()) {
 		return &it->second;
@@ -61,8 +59,8 @@ const ServerComponent::Command *ServerComponent::getCommand(const StringView &na
 	return nullptr;
 }
 
-const Map<String, ServerComponent::Command> &ServerComponent::getCommands() const {
+const mem::Map<mem::String, ServerComponent::Command> &ServerComponent::getCommands() const {
 	return _commands;
 }
 
-NS_SA_END
+NS_SA_ST_END

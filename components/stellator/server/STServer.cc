@@ -509,13 +509,11 @@ void Server::onHeartBeat(mem::pool_t *pool) {
 				_config->broadcastId = hdb.processBroadcasts([&] (stappler::BytesView bytes) {
 					onBroadcast(bytes);
 				}, _config->broadcastId);
-
-				db::Transaction t = db::Transaction::acquire(&hdb);
-				for (auto &it : _config->components) {
-					it.second->onHeartbeat(*this, t);
-				}
-
 				root->dbdClose(pool, *this, dbd);
+
+				for (auto &it : _config->components) {
+					it.second->onHeartbeat(*this);
+				}
 			}
 		}
 		if (now - _config->lastTemplateUpdate > config::getDefaultPugTemplateUpdateInterval()) {
@@ -681,8 +679,15 @@ void Server::processReports() {
 
 }
 
-void Server::performStorage(mem::pool_t *pool, const mem::Callback<void(const db::Adapter &)> &cb) {
-	Root::getInstance()->performStorage(pool, *this, cb);
+void Server::performWithStorage(const mem::Callback<void(db::Transaction &)> &cb) const {
+	if (auto t = db::Transaction::acquireIfExists()) {
+		cb(t);
+	} else {
+		Root::getInstance()->performStorage(mem::pool::acquire(), *this, [&] (const db::Adapter &ad) {
+			auto t = db::Transaction::acquire(ad);
+			cb(t);
+		});
+	}
 }
 
 void Server::setSessionKeys(mem::StringView pub, mem::StringView priv, mem::StringView sec) const {

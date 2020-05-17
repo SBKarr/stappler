@@ -25,7 +25,6 @@ THE SOFTWARE.
 #include "STDefine.cc"
 #include "STTable.cc"
 #include "STServer.cc"
-#include "STServerComponent.cc"
 #include "STRoot.cc"
 #include "STRootWorker.cc"
 #include "STTask.cc"

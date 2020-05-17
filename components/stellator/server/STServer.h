@@ -115,6 +115,8 @@ public:
 	bool performTask(Task *task, bool performFirst = false) const;
 	bool scheduleTask(Task *task, mem::TimeInterval) const;
 
+	void performWithStorage(const mem::Callback<void(db::Transaction &)> &cb) const;
+
 public: // httpd server info
 	mem::StringView getDefaultName() const;
     mem::StringView getServerScheme() const;
@@ -148,10 +150,6 @@ public: // httpd server info
 
 	stappler::pug::Cache *getPugCache() const;
 
-	void processReports();
-
-	void performStorage(mem::pool_t *pool, const mem::Callback<void(const db::Adapter &)> &cb);
-
 	void setSessionKeys(mem::StringView pub, mem::StringView priv, mem::StringView secret = mem::StringView()) const;
 	mem::StringView getSessionPublicKey() const;
 	mem::StringView getSessionPrivateKey() const;
@@ -180,6 +178,8 @@ public: // compression
 	CompressionConfig *getCompressionConfig() const;
 
 protected:
+	void processReports();
+
 	void addComponentWithName(const mem::StringView &, ServerComponent *);
 
 	ServerComponent *getServerComponent(const mem::StringView &name) const;

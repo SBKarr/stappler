@@ -33,7 +33,6 @@ APLOG_USE_MODULE(serenity);
 #include "SEForward.cc"
 #include "SERoot.cc"
 #include "SEServer.cc"
-#include "SEServerComponent.cc"
 #include "SETask.cc"
 
 #include "SEConnection.cc"

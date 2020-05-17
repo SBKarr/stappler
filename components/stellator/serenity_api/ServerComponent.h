@@ -24,15 +24,6 @@ THE SOFTWARE.
 #define STELLATOR_SERENITY_API_SERVERCOMPONENT_H_
 
 #include "Define.h"
-
-#if STELLATOR
-
 #include "STServerComponent.h"
-
-#else
-
-#include "SEServerComponent.h"
-
-#endif
 
 #endif /* STELLATOR_SERENITY_API_SERVERCOMPONENT_H_ */

@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,17 +20,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef SERENITY_SRC_SERVER_SERVERCOMPONENT_H_
-#define SERENITY_SRC_SERVER_SERVERCOMPONENT_H_
+#ifndef STELLATOR_SERVER_STSERVERCOMPONENT_H_
+#define STELLATOR_SERVER_STSERVERCOMPONENT_H_
 
-#include "Server.h"
+#include "Request.h"
 
-NS_SA_BEGIN
+NS_SA_ST_BEGIN
 
-class ServerComponent : public AllocPool {
+class ServerComponent : public mem::AllocBase {
 public:
-	using Symbol = ServerComponent * (*) (Server &serv, const String &name, const data::Value &dict);
-	using Scheme = storage::Scheme;
+	using Symbol = ServerComponent * (*) (Server &serv, const mem::String &name, const mem::Value &dict);
+	using Scheme = db::Scheme;
 
 	struct Loader {
 		mem::StringView name;
@@ -40,31 +40,31 @@ public:
 	};
 
 	struct Command {
-		StringView name;
-		StringView desc;
-		StringView help;
-		Function<data::Value(const StringView &)> callback;
+		mem::String name;
+		mem::String desc;
+		mem::String help;
+		mem::Function<mem::Value(const mem::StringView &)> callback;
 	};
 
-	ServerComponent(Server &serv, const String &name, const data::Value &dict);
+	ServerComponent(Server &serv, const mem::StringView &name, const mem::Value &dict);
 	virtual ~ServerComponent() { }
 
 	virtual void onChildInit(Server &);
 	virtual void onStorageInit(Server &, const db::Adapter &);
 	virtual void onStorageTransaction(db::Transaction &);
-	virtual void onHeartbeat(Server &, db::Transaction &);
+	virtual void onHeartbeat(Server &);
 
-	const data::Value & getConfig() const { return _config; }
-	StringView getName() const { return _name; }
-	StringView getVersion() const { return _version; }
+	const mem::Value & getConfig() const { return _config; }
+	mem::StringView getName() const { return _name; }
+	mem::StringView getVersion() const { return _version; }
 
-	const storage::Scheme * exportScheme(const storage::Scheme &);
+	const db::Scheme * exportScheme(const db::Scheme &);
 
-	void addCommand(const StringView &name, Function<data::Value(const StringView &)> &&,
-			const StringView &desc = StringView(), const StringView &help = StringView());
-	const Command *getCommand(const StringView &name) const;
+	void addCommand(const mem::StringView &name, mem::Function<mem::Value(const mem::StringView &)> &&,
+			const mem::StringView &desc = mem::StringView(), const mem::StringView &help = mem::StringView());
+	const Command *getCommand(const mem::StringView &name) const;
 
-	const Map<String, Command> &getCommands() const;
+	const mem::Map<mem::String, Command> &getCommands() const;
 
 	template <typename Value>
 	void exportValues(Value &&val) {
@@ -73,20 +73,19 @@ public:
 
 	template <typename Value, typename ... Args>
 	void exportValues(Value &&val, Args && ... args) {
-		exportValues(forward<Value>(val));
-		exportValues(forward<Args>(args)...);
+		exportValues(std::forward<Value>(val));
+		exportValues(std::forward<Args>(args)...);
 	}
 
 protected:
-	Map<String, Command> _commands;
+	mem::Map<mem::String, Command> _commands;
 
 	Server _server;
-	String _name;
-	String _version;
-	data::Value _config;
+	mem::String _name;
+	mem::String _version;
+	mem::Value _config;
 };
 
+NS_SA_ST_END
 
-NS_SA_END
-
-#endif /* SERENITY_SRC_SERVER_SERVERCOMPONENT_H_ */
+#endif /* STELLATOR_SERVER_STSERVERCOMPONENT_H_ */

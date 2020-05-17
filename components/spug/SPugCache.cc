@@ -24,52 +24,66 @@
 #include "SPugContext.h"
 #include "SPugTemplate.h"
 
+#include <sys/inotify.h>
+
 NS_SP_EXT_BEGIN(pug)
 
-Rc<FileRef> FileRef::read(const FilePath &path, Template::Options opts, const Function<void(const StringView &)> &cb) {
-	auto pool = memory::pool::create(memory::pool::acquire());
-	memory::pool::push(pool, memory::pool::Template);
+Rc<FileRef> FileRef::read(memory::pool_t *p, FilePath path, Template::Options opts, const Callback<void(const StringView &)> &cb, int watch, int wId) {
+	auto fpath = path.get();
+	if (filesystem::exists(fpath)) {
+		auto pool = memory::pool::create(p);
 
-	auto ret = Rc<FileRef>::alloc(pool, path, opts, cb);
+		memory::pool::context ctx(pool, memory::pool::Template);
+		return Rc<FileRef>::alloc(pool, path, opts, cb, watch, wId);
+	}
 
-	memory::pool::pop();
-
-	return ret->getMtime() > 0 ? ret : nullptr;
+	return nullptr;
 }
 
-Rc<FileRef> FileRef::read(String && content, bool isTemplate, Template::Options opts, const Function<void(const StringView &)> &cb) {
-	auto pool = memory::pool::create(memory::pool::acquire());
-	memory::pool::push(pool, memory::pool::Template);
+Rc<FileRef> FileRef::read(memory::pool_t *p, String && content, bool isTemplate, Template::Options opts, const Callback<void(const StringView &)> &cb) {
+	auto pool = memory::pool::create(p);
 
-	auto ret = Rc<FileRef>::alloc(pool, move(content), isTemplate, opts, cb);
-
-	memory::pool::pop();
-
-	return ret;
+	memory::pool::context ctx(pool, memory::pool::Template);
+	return Rc<FileRef>::alloc(pool, move(content), isTemplate, opts, cb);
 }
 
-FileRef::FileRef(memory::pool_t *pool, const FilePath &path, Template::Options opts, const Function<void(const StringView &)> &cb)
+FileRef::FileRef(memory::pool_t *pool, const FilePath &path, Template::Options opts, const Callback<void(const StringView &)> &cb, int watch, int wId)
 : _pool(pool) {
 	auto fpath = path.get();
+
 	_mtime = filesystem::mtime(fpath);
+	_content.resize(filesystem::size(fpath));
+	filesystem::readIntoBuffer((uint8_t *)_content.data(), fpath);
 
-	StringStream readStream;
-	readStream.reserve(filesystem::size(fpath));
-	filesystem::readWithConsumer(readStream, fpath);
-
-	_content = readStream.str();
-	if (fpath.ends_with(".pug") || fpath.ends_with(".stl") || fpath.ends_with(".spug")) {
+	if (_content.size() > 0) {
+		if (wId < 0 && watch >= 0) {
+			_watch = inotify_add_watch(watch, SP_TERMINATED_DATA(fpath), IN_CLOSE_WRITE);
+			if (_watch == -1 && errno == ENOSPC) {
+				cb("inotify limit is reached: fall back to timed watcher");
+			}
+		} else {
+			_watch = wId;
+		}
+		_valid = true;
+	}
+	if (_valid && (fpath.ends_with(".pug") || fpath.ends_with(".stl") || fpath.ends_with(".spug"))) {
 		_template = Template::read(_pool, _content, opts, cb);
 		if (!_template) {
-			_mtime = 0;
+			_valid = false;
 		}
 	}
 }
 
-FileRef::FileRef(memory::pool_t *pool, String &&src, bool isTemplate, Template::Options opts, const Function<void(const StringView &)> &cb)
+FileRef::FileRef(memory::pool_t *pool, String &&src, bool isTemplate, Template::Options opts, const Callback<void(const StringView &)> &cb)
 : _pool(pool), _content(move(src)) {
-	if (isTemplate) {
+	if (_content.size() > 0) {
+		_valid = true;
+	}
+	if (isTemplate && _valid) {
 		_template = Template::read(_pool, _content, opts, cb);
+		if (!_template) {
+			_valid = false;
+		}
 	}
 }
 
@@ -87,31 +101,55 @@ const Template *FileRef::getTemplate() const {
 	return _template;
 }
 
+int FileRef::getWatch() const {
+	return _watch;
+}
+
 time_t FileRef::getMtime() const {
 	return _mtime;
 }
 
-
-Cache::Cache(Template::Options opts, const Function<void(const StringView &)> &err)
-: _pool(memory::pool::acquire()), _opts(opts), _errorCallback(err) { }
-
-template <typename Callback>
-static inline auto perform(const Callback &cb) {
-	struct Context {
-		Context() {
-			pool = memory::pool::create(memory::pool::acquire());
-		}
-		~Context() {
-			memory::pool::destroy(pool);
-		}
-
-		memory::pool_t *pool = nullptr;
-	} holder;
-	return cb();
+bool FileRef::isValid() const {
+	return _valid;
 }
 
-void Cache::update(memory::pool_t *) {
-	_mutex.lock();
+
+Cache::Cache(Template::Options opts, const Function<void(const StringView &)> &err)
+: _pool(memory::pool::acquire()), _opts(opts), _errorCallback(err) {
+	_inotify = inotify_init1(IN_NONBLOCK);
+	if (_inotify != -1) {
+		_inotifyAvailable = true;
+	}
+}
+
+Cache::~Cache() {
+	if (_inotify > 0) {
+		for (auto &it : _templates) {
+			auto fd = it.second->getWatch();
+			if (fd >= 0) {
+				inotify_rm_watch(_inotify, fd);
+			}
+		}
+
+		close(_inotify);
+	}
+}
+
+void Cache::update(int watch) {
+	std::unique_lock<Mutex> lock(_mutex);
+	auto it = _watches.find(watch);
+	if (it != _watches.end()) {
+		auto tIt = _templates.find(it->second);
+		if (tIt != _templates.end()) {
+			if (auto tpl = openTemplate(it->second, tIt->second->getWatch())) {
+				tIt->second = tpl;
+			}
+		}
+	}
+}
+
+void Cache::update(memory::pool_t *pool) {
+	memory::pool::context ctx(pool);
 	for (auto &it : _templates) {
 		if (it.second->getMtime() != 0) {
 			auto mtime = filesystem::mtime(it.first);
@@ -122,7 +160,15 @@ void Cache::update(memory::pool_t *) {
 			}
 		}
 	}
-	_mutex.unlock();
+}
+
+int Cache::getNotify() const {
+	return _inotify;
+}
+
+bool Cache::isNotifyAvailable() {
+	std::unique_lock<Mutex> lock(_mutex);
+	return _inotifyAvailable;
 }
 
 bool Cache::runTemplate(const StringView &ipath, const RunCallback &cb, std::ostream &out) {
@@ -170,62 +216,88 @@ bool Cache::runTemplate(const StringView &ipath, const RunCallback &cb, std::ost
 	return false;
 }
 
-void Cache::addFile(const StringView &path) {
-	if (auto tpl = openTemplate(path)) {
-		memory::pool::push(_pool);
-		_templates.emplace(String(path.data(), path.size()), tpl);
-		memory::pool::pop();
+bool Cache::addFile(StringView path) {
+	std::unique_lock<Mutex> lock(_mutex);
+	auto it = _templates.find(path);
+	if (it == _templates.end()) {
+		memory::pool::context ctx(_pool);
+		if (auto tpl = openTemplate(path)) {
+			auto it = _templates.emplace(path.pdup(_templates.get_allocator()), tpl).first;
+			if (tpl->getWatch() >= 0) {
+				_watches.emplace(tpl->getWatch(), it->first);
+			}
+			return true;
+		}
+	} else {
+		onError(toString("Already added: '", path, "'"));
 	}
+	return false;
 }
 
-void Cache::addContent(const StringView &key, String &&data) {
-	memory::pool::push(_pool);
-	auto tpl = FileRef::read(move(data), false, _opts);
-	_templates.emplace(String(key.data(), key.size()), tpl);
-	memory::pool::pop();
+bool Cache::addContent(StringView key, String &&data) {
+	std::unique_lock<Mutex> lock(_mutex);
+	auto it = _templates.find(key);
+	if (it == _templates.end()) {
+		auto tpl = FileRef::read(_pool, move(data), false, _opts);
+		_templates.emplace(key.pdup(_templates.get_allocator()), tpl);
+		return true;
+	} else {
+		onError(toString("Already added: '", key, "'"));
+	}
+	return false;
 }
 
-void Cache::addTemplate(const StringView &key, String &&data) {
-	memory::pool::push(_pool);
-	auto tpl = FileRef::read(move(data), true, _opts);
-	_templates.emplace(String(key.data(), key.size()), tpl);
-	memory::pool::pop();
+bool Cache::addTemplate(StringView key, String &&data) {
+	std::unique_lock<Mutex> lock(_mutex);
+	auto it = _templates.find(key);
+	if (it == _templates.end()) {
+		auto tpl = FileRef::read(_pool, move(data), true, _opts, [&] (const StringView &err) {
+			std::cout << key << ":\n";
+			std::cout << err << "\n";
+		});
+		_templates.emplace(key.pdup(_templates.get_allocator()), tpl);
+		return true;
+	} else {
+		onError(toString("Already added: '", key, "'"));
+	}
+	return false;
 }
 
-Rc<FileRef> Cache::acquireTemplate(const StringView &path, bool readOnly) {
-	Rc<FileRef> tpl;
-
-	_mutex.lock();
+Rc<FileRef> Cache::acquireTemplate(StringView path, bool readOnly) {
+	std::unique_lock<Mutex> lock(_mutex);
 	auto it = _templates.find(path);
 	if (it != _templates.end()) {
-		tpl = it->second;
+		return it->second;
 	} else if (!readOnly) {
-		tpl = openTemplate(path);
-		if (tpl) {
-			memory::pool::push(_pool);
-			_templates.emplace(String(path.data(), path.size()), tpl);
-			memory::pool::pop();
+		if (auto tpl = openTemplate(path)) {
+			auto it = _templates.emplace(path.pdup(_templates.get_allocator()), tpl).first;
+			if (tpl->getWatch() >= 0) {
+				_watches.emplace(tpl->getWatch(), it->first);
+			}
+			return tpl;
 		}
 	}
-	_mutex.unlock();
-
-	return tpl;
+	return nullptr;
 }
 
-Rc<FileRef> Cache::openTemplate(const StringView &path) {
-	memory::pool::push(_pool);
-	auto ret = FileRef::read(FilePath(path), _opts, [&] (const StringView &err) {
+Rc<FileRef> Cache::openTemplate(StringView path, int wId) {
+	auto ret = FileRef::read(_pool, FilePath(path), _opts, [&] (const StringView &err) {
 		std::cout << path << ":\n";
 		std::cout << err << "\n";
-	});
-	memory::pool::pop();
+	}, _inotify, wId);
 	if (!ret) {
 		onError(toString("File not found: ", path));
+	}  else if (ret->isValid()) {
+		return ret;
 	}
-	return ret;
+	return nullptr;
 }
 
 void Cache::onError(const StringView &str) {
+	if (str == "inotify limit is reached: fall back to timed watcher") {
+		std::unique_lock<Mutex> lock(_mutex);
+		_inotifyAvailable = false;
+	}
 	if (_errorCallback) {
 		_errorCallback(str);
 	} else {

@@ -600,19 +600,19 @@ bool Template::Options::hasFlag(Flags f) const {
 	return flags.test(toInt(f));
 }
 
-Template *Template::read(const StringView &str, const Options &opts, const Function<void(const StringView &)> &err) {
+Template *Template::read(const StringView &str, const Options &opts, const Callback<void(const StringView &)> &err) {
 	auto p = memory::pool::create(memory::pool::acquire());
 	return read(p, str, opts, err);
 }
 
-Template *Template::read(memory::pool_t *p, const StringView &str, const Options &opts, const Function<void(const StringView &)> &err) {
+Template *Template::read(memory::pool_t *p, const StringView &str, const Options &opts, const Callback<void(const StringView &)> &err) {
 	memory::pool::push(p);
 	auto ret = new (p) Template(p, str, opts, err);
 	memory::pool::pop();
 	return ret;
 }
 
-Template::Template(memory::pool_t *p, const StringView &str, const Options &opts, const Function<void(const StringView &)> &err)
+Template::Template(memory::pool_t *p, const StringView &str, const Options &opts, const Callback<void(const StringView &)> &err)
 : _pool(p), _lexer(str, err), _opts(opts) {
 	if (_lexer) {
 		TemplateRender renderer(&_root, opts.hasFlag(Options::Pretty));

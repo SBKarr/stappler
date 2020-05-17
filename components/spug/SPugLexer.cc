@@ -24,13 +24,13 @@
 
 NS_SP_EXT_BEGIN(pug)
 
-Lexer::Lexer(const StringView &str, const Function<void(const StringView &)> &err)
-: content(str), root(Token::Root, content), errorCallback(err) {
-	success = perform();
+Lexer::Lexer(const StringView &str, const ErrCb &err)
+: content(str), root(Token::Root, content) {
+	success = perform(err);
 }
 
-bool Lexer::perform() {
-	return parseToken(root);
+bool Lexer::perform(const ErrCb &errCb) {
+	return parseToken(errCb, root);
 }
 
 static uint32_t checkIndent(uint32_t &indent, StringView &str) {
@@ -66,7 +66,7 @@ using AttrWordFilter = StringView::Compose<StringView::CharGroup<CharGroupId::Al
 using SpacingFilter = StringView::Chars<' ', '\t'>;
 using NewLineFilter = StringView::Chars<'\n', '\r'>;
 
-bool Lexer::parseToken(Token &tok) {
+bool Lexer::parseToken(const ErrCb &errCb, Token &tok) {
 	StringView r = tok.data;
 
 	Token *currentTok = &tok;
@@ -86,7 +86,7 @@ bool Lexer::parseToken(Token &tok) {
 			if (indent == 0 && !r.is<NewLineFilter>()) {
 				indentStep = maxOf<uint32_t>();
 			} else if (indent == maxOf<uint32_t>() && !r.is<NewLineFilter>() && !r.empty()) {
-				onError(r, "Mixed tab and spaces indentations");
+				onError(errCb, r, "Mixed tab and spaces indentations");
 				return false;
 			}
 		}
@@ -106,11 +106,11 @@ bool Lexer::parseToken(Token &tok) {
 				currentTok = stack[indent];
 				indentLevel = indent;
 			} else {
-				onError(tmp, "Wrong indentation markup");
+				onError(errCb, tmp, "Wrong indentation markup");
 				return false; // invalid indentation
 			}
 
-			if (auto line = readLine(tmp, r, currentTok)) {
+			if (auto line = readLine(errCb, tmp, r, currentTok)) {
 				if (followTag) {
 					currentTok->tail->addChild(line);
 					currentTok = line;
@@ -137,7 +137,7 @@ bool Lexer::parseToken(Token &tok) {
 	return true;
 }
 
-bool Lexer::readAttributes(Token *data, StringView &r) const {
+bool Lexer::readAttributes(const ErrCb &errCb, Token *data, StringView &r) const {
 	auto attrs = new Token{Token::TagAttrList, r};
 
 	auto readAttrName = [] (StringView &r) -> Token * {
@@ -208,7 +208,7 @@ bool Lexer::readAttributes(Token *data, StringView &r) const {
 		auto tok = new Token{Token::AttrPairEscaped, r};
 		auto name = readAttrName(r);
 		if (!name) {
-			onError(r, StringView("Invalid attribute name"));
+			onError(errCb, r, StringView("Invalid attribute name"));
 			return false;
 		}
 
@@ -227,7 +227,7 @@ bool Lexer::readAttributes(Token *data, StringView &r) const {
 			attrs->addChild(tok);
 			continue;
 		} else {
-			onError(r, StringView("Invalid attribute operator"));
+			onError(errCb, r, StringView("Invalid attribute operator"));
 			return false;
 		}
 
@@ -235,7 +235,7 @@ bool Lexer::readAttributes(Token *data, StringView &r) const {
 
 		auto valTok = new Token{Token::AttrValue, r};
 		if (!readOutputExpression(valTok, r)) {
-			onError(r, StringView("Invalid attribute value"));
+			onError(errCb, r, StringView("Invalid attribute value"));
 			return false;
 		}
 
@@ -252,7 +252,7 @@ bool Lexer::readAttributes(Token *data, StringView &r) const {
 	}
 
 	if (!r.is(')')) {
-		onError(r, StringView("Invalid attribute list"));
+		onError(errCb, r, StringView("Invalid attribute list"));
 		return false;
 	} else {
 		attrs->data = StringView(attrs->data, attrs->data.size() - r.size());
@@ -274,7 +274,7 @@ bool Lexer::readOutputExpression(Token *valTok, StringView &r) const {
 	return false;
 }
 
-bool Lexer::readTagInfo(Token *data, StringView &r, bool interpolated) const {
+bool Lexer::readTagInfo(const ErrCb &errCb, Token *data, StringView &r, bool interpolated) const {
 	while (r.is('.') || r.is('#') || r.is('(') || r.is('/') || r.is('=') || r.is('!') || r.is('&') || r.is(':')) {
 		if (r.is(':')) {
 			return true;
@@ -293,7 +293,7 @@ bool Lexer::readTagInfo(Token *data, StringView &r, bool interpolated) const {
 		}
 		case '#': data->addChild(new Token{Token::TagIdNote, r.readChars<TagWordFilter>()}); break;
 		case '(':
-			if (!readAttributes(data, r)) {
+			if (!readAttributes(errCb, data, r)) {
 				return false; // wrong attribute format
 			}
 			break;
@@ -306,15 +306,15 @@ bool Lexer::readTagInfo(Token *data, StringView &r, bool interpolated) const {
 						++ r;
 						data->addChild(new Token{Token::TagAttrExpr, StringView(tmp, tmp.size() - r.size()), expr});
 					} else {
-						onError(r, "Invalid expression in &attributes");
+						onError(errCb, r, "Invalid expression in &attributes");
 						return false;
 					}
 				} else {
-					onError(r, "Invalid expression in &attributes");
+					onError(errCb, r, "Invalid expression in &attributes");
 					return false;
 				}
 			} else {
-				onError(r, "Unknown expression in tag");
+				onError(errCb, r, "Unknown expression in tag");
 				return false;
 			}
 			break;
@@ -333,7 +333,7 @@ bool Lexer::readTagInfo(Token *data, StringView &r, bool interpolated) const {
 		if (data->tail->type == Token::TagTrailingSlash || data->tail->type == Token::TagTrailingDot) {
 			r.skipChars<SpacingFilter>();
 			if (!r.is<NewLineFilter>()) {
-				onError(r, "Data after endline tag");
+				onError(errCb, r, "Data after endline tag");
 				return false; // data after closed tag
 			}
 			break;
@@ -351,14 +351,14 @@ bool Lexer::readTagInfo(Token *data, StringView &r, bool interpolated) const {
 					return true;
 				}
 			}
-			onError(r, "Invalid expression in tag attribute output block");
+			onError(errCb, r, "Invalid expression in tag attribute output block");
 			return false; // invalid expression
 		}
 	}
 
 	r.skipChars<SpacingFilter>();
 	if (!r.is<NewLineFilter>()) {
-		return readPlainTextInterpolation(data, r, interpolated);
+		return readPlainTextInterpolation(errCb, data, r, interpolated);
 	}
 	return true;
 };
@@ -403,7 +403,7 @@ bool Lexer::readCodeBlock(Token *data, StringView &r) const {
 	return true;
 }
 
-bool Lexer::readPlainTextInterpolation(Token *data, StringView &r, bool interpolated) const {
+bool Lexer::readPlainTextInterpolation(const ErrCb &errCb, Token *data, StringView &r, bool interpolated) const {
 	auto line = interpolated ? r : r.readUntil<NewLineFilter>();
 	StringView tmp(line);
 
@@ -452,7 +452,7 @@ bool Lexer::readPlainTextInterpolation(Token *data, StringView &r, bool interpol
 				if (line.is('}')) {
 					++ line;
 				} else {
-					onError(tmp, "Invalid interpolation expression");
+					onError(errCb, tmp, "Invalid interpolation expression");
 					return false;
 				}
 			}
@@ -464,14 +464,14 @@ bool Lexer::readPlainTextInterpolation(Token *data, StringView &r, bool interpol
 			line.skipChars<SpacingFilter>();
 			auto retData = new Token{Token::LineData, tmp};
 			retData->addChild(new Token{Token::Tag, word});
-			if (!readTagInfo(retData, line, true)) {
+			if (!readTagInfo(errCb, retData, line, true)) {
 				return false;
 			}
 			if (line.is(']')) {
 				++ line;
 				data->addChild(retData);
 			} else {
-				onError(word, "Invalid tag interpolation expression");
+				onError(errCb, word, "Invalid tag interpolation expression");
 				return false;
 			}
 		} else if (line.is("!{")) {
@@ -484,7 +484,7 @@ bool Lexer::readPlainTextInterpolation(Token *data, StringView &r, bool interpol
 				if (line.is('}')) {
 					++ line;
 				} else {
-					onError(tmp, "Invalid interpolation expression");
+					onError(errCb, tmp, "Invalid interpolation expression");
 					return false;
 				}
 			}
@@ -511,43 +511,43 @@ static Token *Lexer_completeLine(Token * retData, const StringView &line, String
 	return retTok;
 };
 
-Token *Lexer::readLine(const StringView &line, StringView &r, Token *rootLine) {
+Token *Lexer::readLine(const ErrCb &errCb, const StringView &line, StringView &r, Token *rootLine) {
 	if (rootLine && rootLine->child) {
 		switch (rootLine->child->type) {
 		case Token::LineComment:
 		case Token::LineDot:
-			return readPlainLine(line, r);
+			return readPlainLine(errCb, line, r);
 			break;
 		case Token::LineData:
 			if (rootLine->child->tail && rootLine->child->tail->type == Token::TagTrailingDot) {
-				return readPlainLine(line, r);
+				return readPlainLine(errCb, line, r);
 			} else {
-				return readCommonLine(line, r);
+				return readCommonLine(errCb, line, r);
 			}
 			break;
 		case Token::LinePlainText:
-			return readPlainLine(line, r);
+			return readPlainLine(errCb, line, r);
 			break;
 		default:
 			break;
 		}
 	}
 
-	return readCommonLine(line, r);
+	return readCommonLine(errCb, line, r);
 }
 
-Token *Lexer::readPlainLine(const StringView &line, StringView &r) {
+Token *Lexer::readPlainLine(const ErrCb &errCb, const StringView &line, StringView &r) {
 	auto retData = new Token{Token::LinePlainText, r};
 	r.skipChars<SpacingFilter>();
 	if (!r.is<NewLineFilter>()) {
-		if (!readPlainTextInterpolation(retData, r)) {
+		if (!readPlainTextInterpolation(errCb, retData, r)) {
 			return nullptr;
 		}
 	}
 	return Lexer_completeLine(retData, line, r);
 }
 
-Token *Lexer::readCommonLine(const StringView &line, StringView &r) {
+Token *Lexer::readCommonLine(const ErrCb &errCb, const StringView &line, StringView &r) {
 	StringView tmp(r);
 	if (r.is("//")) {
 		bool isHtml = false;
@@ -563,7 +563,7 @@ Token *Lexer::readCommonLine(const StringView &line, StringView &r) {
 
 		if (!r.is<NewLineFilter>()) {
 			if (isHtml) {
-				if (!readPlainTextInterpolation(retData, r)) {
+				if (!readPlainTextInterpolation(errCb, retData, r)) {
 					return nullptr;
 				}
 			} else {
@@ -573,13 +573,13 @@ Token *Lexer::readCommonLine(const StringView &line, StringView &r) {
 
 		return Lexer_completeLine(retData, line, r);
 	} else if (r.is<StringView::CharGroup<CharGroupId::Latin>>()) {
-		return readKeywordLine(line, r);
+		return readKeywordLine(errCb, line, r);
 	} else if (r.is('.') || r.is('#') || r.is('(') || r.is('&')) {
 		StringView t(r, 1, 1);
 		if (t.is<TagWordFilter>()) {
 			auto retData = new Token{Token::LineData, tmp};
 			retData->addChild(new Token{Token::Tag, r.readChars<TagWordFilter>()});
-			if (!readTagInfo(retData, r)) {
+			if (!readTagInfo(errCb, retData, r)) {
 				return nullptr;
 			}
 			return Lexer_completeLine(retData, line, r);
@@ -594,7 +594,7 @@ Token *Lexer::readCommonLine(const StringView &line, StringView &r) {
 		retData->addChild(new Token{Token::PipeMark, StringView()});
 		++ r; r.skipChars<SpacingFilter>();
 		if (!r.is<NewLineFilter>()) {
-			if (!readPlainTextInterpolation(retData, r)) {
+			if (!readPlainTextInterpolation(errCb, retData, r)) {
 				return nullptr;
 			}
 		}
@@ -614,7 +614,7 @@ Token *Lexer::readCommonLine(const StringView &line, StringView &r) {
 			if (auto expr = Expression::parse(r, Expression::Options::getDefaultInline())) {
 				r.skipChars<SpacingFilter>();
 				if (!r.is<NewLineFilter>() && !r.empty()) {
-					onError(r, "Invalid expression after output expression block");
+					onError(errCb, r, "Invalid expression after output expression block");
 					return nullptr;
 				} else {
 					exprToken->data = StringView(tmp, tmp.size() - r.size());
@@ -622,7 +622,7 @@ Token *Lexer::readCommonLine(const StringView &line, StringView &r) {
 					retData->addChild(exprToken);
 				}
 			} else {
-				onError(r, "Invalid expression in output block");
+				onError(errCb, r, "Invalid expression in output block");
 				return nullptr;
 			}
 		}
@@ -634,7 +634,7 @@ Token *Lexer::readCommonLine(const StringView &line, StringView &r) {
 			if (readCode(retData, r)) {
 				return Lexer_completeLine(retData, line, r);
 			} else {
-				onError(r, "Fail to read line of code");
+				onError(errCb, r, "Fail to read line of code");
 				return nullptr;
 			}
 		} else {
@@ -642,7 +642,7 @@ Token *Lexer::readCommonLine(const StringView &line, StringView &r) {
 			if (readCodeBlock(retData, r)) {
 				return Lexer_completeLine(retData, line, r);
 			} else {
-				onError(r, "Fail to read block of code");
+				onError(errCb, r, "Fail to read block of code");
 				return nullptr;
 			}
 		}
@@ -653,7 +653,7 @@ Token *Lexer::readCommonLine(const StringView &line, StringView &r) {
 
 		auto name = r.readChars<TagWordFilter>();
 		if (name.empty()) {
-			onError(r, "Invalid mixin name");
+			onError(errCb, r, "Invalid mixin name");
 			return nullptr;
 		}
 
@@ -665,7 +665,7 @@ Token *Lexer::readCommonLine(const StringView &line, StringView &r) {
 				auto exprToken = new Token{Token::MixinArgs, tmp};
 				r.skipChars<SpacingFilter>();
 				if (!r.is<NewLineFilter>() && !r.empty()) {
-					onError(r, "Invalid expression after mixin call block");
+					onError(errCb, r, "Invalid expression after mixin call block");
 					return nullptr;
 				} else {
 					exprToken->data = StringView(tmp, tmp.size() - r.size());
@@ -673,7 +673,7 @@ Token *Lexer::readCommonLine(const StringView &line, StringView &r) {
 					retData->addChild(exprToken);
 				}
 			} else {
-				onError(r, "Invalid expression in mixin call block");
+				onError(errCb, r, "Invalid expression in mixin call block");
 				return nullptr;
 			}
 		}
@@ -688,11 +688,11 @@ Token *Lexer::readCommonLine(const StringView &line, StringView &r) {
 		return nullptr;
 	}
 
-	onError(r, "Fail to recognize line type");
+	onError(errCb, r, "Fail to recognize line type");
 	return nullptr;
 }
 
-Token *Lexer::readKeywordLine(const StringView &line, StringView &r) {
+Token *Lexer::readKeywordLine(const ErrCb &errCb, const StringView &line, StringView &r) {
 	StringView tmp(r);
 
 	auto readKeywordExpression = [&] (StringView &r, Token::Type t) -> Token * {
@@ -702,13 +702,13 @@ Token *Lexer::readKeywordLine(const StringView &line, StringView &r) {
 			if (t == Token::ControlMixin) {
 				if (!((retData->expression->op == Expression::Call && retData->expression->left->isToken)
 						|| (retData->expression->op == Expression::NoOp && retData->expression->isToken))) {
-					onError(r, "Invalid mixin definition");
+					onError(errCb, r, "Invalid mixin definition");
 					return nullptr;
 				}
 			}
 			return retData;
 		} else {
-			onError(r, "Invalid expression in control statement");
+			onError(errCb, r, "Invalid expression in control statement");
 			return nullptr;
 		}
 	};
@@ -754,7 +754,7 @@ Token *Lexer::readKeywordLine(const StringView &line, StringView &r) {
 				r.skipChars<SpacingFilter>();
 				return readKeywordExpression(r, Token::ControlElseIf);
 			} else {
-				onError(r, "Invalid expression in 'else if' statement");
+				onError(errCb, r, "Invalid expression in 'else if' statement");
 				return nullptr;
 			}
 		} else if (word == "each" || word == "for") {
@@ -767,7 +767,7 @@ Token *Lexer::readKeywordLine(const StringView &line, StringView &r) {
 					r.skipChars<SpacingFilter>();
 					var2 = r.readChars<TagWordFilter>();
 					if (!r.is<SpacingFilter>()) {
-						onError(r, "Invalid variable expression in 'each' statement");
+						onError(errCb, r, "Invalid variable expression in 'each' statement");
 						return nullptr;
 					}
 					r.skipChars<SpacingFilter>();
@@ -791,13 +791,13 @@ Token *Lexer::readKeywordLine(const StringView &line, StringView &r) {
 								return retData;
 							}
 						} else {
-							onError(r, "Invalid expression in 'each' statement");
+							onError(errCb, r, "Invalid expression in 'each' statement");
 							return nullptr;
 						}
 					}
 				}
 			}
-			onError(r, "Invalid 'each' statement");
+			onError(errCb, r, "Invalid 'each' statement");
 			return nullptr;
 		}
 	}
@@ -806,14 +806,14 @@ Token *Lexer::readKeywordLine(const StringView &line, StringView &r) {
 		if (r.is(':') || r.is<NewLineFilter>()) {
 			return new Token{Token::ControlDefault, StringView(tmp, tmp.size() - r.size())};
 		} else {
-			onError(r, "Invalid 'default' line");
+			onError(errCb, r, "Invalid 'default' line");
 			return nullptr;
 		}
 	} else if (word == "else") {
 		if (r.is(':') || r.is<NewLineFilter>()) {
 			return new Token{Token::ControlElse, StringView(tmp, tmp.size() - r.size())};
 		} else {
-			onError(r, "Invalid 'else' line");
+			onError(errCb, r, "Invalid 'else' line");
 			return nullptr;
 		}
 	}
@@ -821,12 +821,12 @@ Token *Lexer::readKeywordLine(const StringView &line, StringView &r) {
 	auto retData = new Token{Token::LineData, tmp};
 	retData->addChild(new Token{Token::Tag, word});
 	if (!hasSpacing) {
-		if (!readTagInfo(retData, r)) {
+		if (!readTagInfo(errCb, retData, r)) {
 			return nullptr;
 		}
 	} else {
 		if (!r.is<NewLineFilter>()) {
-			if (!readPlainTextInterpolation(retData, r, false)) {
+			if (!readPlainTextInterpolation(errCb, retData, r, false)) {
 				return nullptr;
 			}
 		}
@@ -834,11 +834,11 @@ Token *Lexer::readKeywordLine(const StringView &line, StringView &r) {
 	return Lexer_completeLine(retData, line, r);
 }
 
-bool Lexer::onError(const StringView &pos, const StringView &str) const {
+bool Lexer::onError(const ErrCb &errCb, const StringView &pos, const StringView &str) const {
 	StringStream tmpOut;
 	std::ostream *out = &std::cout;
 
-	if (errorCallback) {
+	if (errCb) {
 		out = &tmpOut;
 	}
 
@@ -889,8 +889,8 @@ bool Lexer::onError(const StringView &pos, const StringView &str) const {
 	*out << "^\n";
 	*out << "Lexer error: " << str << "\n";
 
-	if (errorCallback) {
-		errorCallback(tmpOut.weak());
+	if (errCb) {
+		errCb(tmpOut.weak());
 	}
 
 	return false;

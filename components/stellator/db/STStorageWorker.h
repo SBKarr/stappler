@@ -51,6 +51,7 @@ struct Conflict {
 	mem::Vector<mem::String> mask;
 	Flags flags = DoNothing;
 
+	Conflict(Conflict::Flags);
 	Conflict(const mem::StringView & field, Query::Select &&, Flags = None);
 	Conflict(const mem::StringView & field, Query::Select &&, mem::Vector<mem::String> &&);
 

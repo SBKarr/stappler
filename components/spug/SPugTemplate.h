@@ -86,17 +86,17 @@ public:
 	};
 
 	static Template *read(const StringView &, const Options & = Options::getDefault(),
-			const Function<void(const StringView &)> &err = nullptr);
+			const Callback<void(const StringView &)> &err = nullptr);
 
 	static Template *read(memory::pool_t *, const StringView &, const Options & = Options::getDefault(),
-			const Function<void(const StringView &)> &err = nullptr);
+			const Callback<void(const StringView &)> &err = nullptr);
 
 	bool run(Context &, std::ostream &) const;
 
 	void describe(std::ostream &stream, bool tokens = false) const;
 
 protected:
-	Template(memory::pool_t *, const StringView &, const Options &opts, const Function<void(const StringView &)> &err);
+	Template(memory::pool_t *, const StringView &, const Options &opts, const Callback<void(const StringView &)> &err);
 
 	bool runChunk(const Chunk &chunk, Context &, std::ostream &) const;
 	bool runCase(const Chunk &chunk, Context &, std::ostream &) const;

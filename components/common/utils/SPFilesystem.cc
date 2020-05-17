@@ -620,6 +620,29 @@ String readTextFile(const StringView &ipath) {
 	return String();
 }
 
+bool readIntoBuffer(uint8_t *buf, const StringView &ipath, size_t off, size_t size) {
+	auto f = openForReading(ipath);
+	if (f) {
+		size_t fsize = f.size();
+		if (fsize <= off) {
+			f.close();
+			return false;
+		}
+		if (fsize - off < size) {
+			size = fsize - off;
+		}
+
+		bool ret = true;
+		f.seek(off, io::Seek::Set);
+		if (f.read(buf, size) != size) {
+			ret = false;
+		}
+		f.close();
+		return ret;
+	}
+	return false;
+}
+
 bool readWithConsumer(const io::Consumer &stream, uint8_t *buf, size_t bsize, const StringView &ipath, size_t off, size_t size) {
 	auto f = openForReading(ipath);
 	if (f) {

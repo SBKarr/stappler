@@ -44,7 +44,9 @@ public:
 	Server & operator =(const Server &);
 
 	void onChildInit();
+	void initHeartBeat(apr_pool_t *, int);
 	void onHeartBeat(apr_pool_t *);
+	void checkBroadcasts();
 	void onBroadcast(const data::Value &);
 	void onBroadcast(const BytesView &);
 	int onRequest(Request &);
@@ -119,6 +121,8 @@ public:
 	bool performTask(Task *task, bool performFirst = false) const;
 	bool scheduleTask(Task *task, TimeInterval) const;
 
+	void performWithStorage(const Callback<void(db::Transaction &)> &cb) const;
+
 public: // httpd server info
 	apr::weak_string getDefaultName() const;
 
@@ -160,10 +164,6 @@ public: // httpd server info
 	tpl::Cache *getTemplateCache() const;
 	pug::Cache *getPugCache() const;
 
-	void processReports();
-
-	void performStorage(apr_pool_t *pool, const Callback<void(const storage::Adapter &)> &cb);
-
 	void setSessionKeys(StringView pub, StringView priv, StringView sec = StringView()) const;
 	StringView getSessionPublicKey() const;
 	StringView getSessionPrivateKey() const;
@@ -194,6 +194,8 @@ public: // compression
 	CompressionConfig *getCompressionConfig() const;
 
 protected:
+	void processReports();
+
 	void addComponentWithName(const StringView &, ServerComponent *);
 
 	ServerComponent *getServerComponent(const StringView &name) const;

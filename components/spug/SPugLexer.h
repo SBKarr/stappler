@@ -28,25 +28,27 @@
 NS_SP_EXT_BEGIN(pug)
 
 struct Lexer {
-	Lexer(const StringView &, const Function<void(const StringView &)> & = nullptr);
+	using ErrCb = Callback<void(const StringView &)>;
 
-	bool perform();
-	bool parseToken(Token &);
+	Lexer(const StringView &, const ErrCb & = nullptr);
 
-	bool readAttributes(Token *, StringView &) const;
+	bool perform(const ErrCb &);
+	bool parseToken(const ErrCb &, Token &);
+
+	bool readAttributes(const ErrCb &, Token *, StringView &) const;
 	bool readOutputExpression(Token *, StringView &) const;
-	bool readTagInfo(Token *, StringView &, bool interpolated = false) const;
+	bool readTagInfo(const ErrCb &, Token *, StringView &, bool interpolated = false) const;
 	bool readCode(Token *, StringView &) const;
 	bool readCodeBlock(Token *, StringView &) const;
 
-	bool readPlainTextInterpolation(Token *, StringView &, bool interpolated = false) const;
+	bool readPlainTextInterpolation(const ErrCb &errCb, Token *, StringView &, bool interpolated = false) const;
 
-	Token *readLine(const StringView &line, StringView &, Token *rootLine);
-	Token *readPlainLine(const StringView &line, StringView &);
-	Token *readCommonLine(const StringView &line, StringView &);
-	Token *readKeywordLine(const StringView &line, StringView &);
+	Token *readLine(const ErrCb &errCb, const StringView &line, StringView &, Token *rootLine);
+	Token *readPlainLine(const ErrCb &errCb, const StringView &line, StringView &);
+	Token *readCommonLine(const ErrCb &errCb, const StringView &line, StringView &);
+	Token *readKeywordLine(const ErrCb &errCb, const StringView &line, StringView &);
 
-	bool onError(const StringView &r, const StringView &) const;
+	bool onError(const ErrCb &, const StringView &r, const StringView &) const;
 
 	operator bool () const { return success; }
 
@@ -60,8 +62,6 @@ struct Lexer {
 
 	StringView content;
 	Token root;
-
-	Function<void(const StringView &)> errorCallback;
 };
 
 NS_SP_EXT_END(pug)

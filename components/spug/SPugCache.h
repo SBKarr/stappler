@@ -30,26 +30,30 @@ NS_SP_EXT_BEGIN(pug)
 
 class FileRef : public AtomicRef {
 public:
-	static Rc<FileRef> read(const FilePath &path, Template::Options opts = Template::Options::getDefault(),
-			const Function<void(const StringView &)> & = nullptr);
+	static Rc<FileRef> read(memory::pool_t *, FilePath path, Template::Options opts = Template::Options::getDefault(),
+			const Callback<void(const StringView &)> & = nullptr, int watch = -1, int wId = -1);
 
-	static Rc<FileRef> read(String && content, bool isTemplate, Template::Options opts = Template::Options::getDefault(),
-			const Function<void(const StringView &)> & = nullptr);
+	static Rc<FileRef> read(memory::pool_t *, String && content, bool isTemplate, Template::Options opts = Template::Options::getDefault(),
+			const Callback<void(const StringView &)> & = nullptr);
 
 	const String &getContent() const;
 	const Template *getTemplate() const;
+	int getWatch() const;
 	time_t getMtime() const;
+	bool isValid() const;
 
-	FileRef(memory::pool_t *, const FilePath &path, Template::Options opts, const Function<void(const StringView &)> &cb);
-	FileRef(memory::pool_t *, String && content, bool isTemplate, Template::Options opts, const Function<void(const StringView &)> &cb);
+	FileRef(memory::pool_t *, const FilePath &path, Template::Options opts, const Callback<void(const StringView &)> &cb, int watch, int wId);
+	FileRef(memory::pool_t *, String && content, bool isTemplate, Template::Options opts, const Callback<void(const StringView &)> &cb);
 
 	virtual ~FileRef();
 
 protected:
-	time_t _mtime = 0;
+	int _watch = -1;
 	memory::pool_t *_pool = nullptr;
+	time_t _mtime = 0;
 	String _content;
 	Template * _template = nullptr;
+	bool _valid = false;
 };
 
 class Cache : public memory::AllocPool {
@@ -58,26 +62,35 @@ public:
 	using Options = Template::Options;
 
 	Cache(Template::Options opts = Template::Options::getDefault(), const Function<void(const StringView &)> &err = nullptr);
-
-	void update(memory::pool_t *);
+	~Cache();
 
 	bool runTemplate(const StringView &, const RunCallback &, std::ostream &);
 
-	void addFile(const StringView &);
-	void addContent(const StringView &key, String &&);
-	void addTemplate(const StringView &key, String &&);
+	bool addFile(StringView);
+	bool addContent(StringView, String &&);
+	bool addTemplate(StringView, String &&);
 
 	Rc<FileRef> get(const StringView &key) const;
 
+	void update(int watch);
+	void update(memory::pool_t *);
+
+	int getNotify() const;
+	bool isNotifyAvailable();
+
 protected:
-	Rc<FileRef> acquireTemplate(const StringView &, bool readOnly);
-	Rc<FileRef> openTemplate(const StringView &);
+	Rc<FileRef> acquireTemplate(StringView, bool readOnly);
+	Rc<FileRef> openTemplate(StringView, int wId = -1);
 
 	void onError(const StringView &);
 
+	int _inotify = -1;
+	bool _inotifyAvailable = false;
+
 	memory::pool_t *_pool = nullptr;
 	Mutex _mutex;
-	Map<String, Rc<FileRef>> _templates;
+	Map<StringView, Rc<FileRef>> _templates;
+	Map<int, StringView> _watches;
 	Template::Options _opts;
 	Function<void(const StringView &)> _errorCallback;
 };

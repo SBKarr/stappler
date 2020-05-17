@@ -126,6 +126,73 @@ size_t get_opts_bytes(pool_t *);
 void *pmemdup(pool_t *a, const void *m, size_t n);
 char *pstrdup(pool_t *a, const char *s);
 
+
+template<typename _Pool = pool_t *>
+class context {
+public:
+	using pool_type = _Pool;
+
+	explicit context(pool_type &__m) : _pool(std::__addressof(__m)), _owns(false) { push(); }
+	context(pool_type &__m, uint32_t tag) : _pool(std::__addressof(__m)), _owns(false) { push(tag); }
+	~context() { if (_owns) { pop(); } }
+
+	context(const context &) = delete;
+	context& operator=(const context &) = delete;
+
+	context(context && u) noexcept
+	: _pool(u._pool), _owns(u._owns) {
+		u._pool = 0;
+		u._owns = false;
+	}
+
+	context & operator=(context && u) noexcept {
+		if (_owns) {
+			pop();
+		}
+
+		context(std::move(u)).swap(*this);
+
+		u._pool = 0;
+		u._owns = false;
+		return *this;
+	}
+
+	void push() {
+		if (_pool && !_owns) {
+			stappler::memory::pool::push(*_pool);
+			_owns = true;
+		}
+	}
+
+	void push(uint32_t tag) {
+		if (_pool && !_owns) {
+			stappler::memory::pool::push(*_pool, tag);
+			_owns = true;
+		}
+	}
+
+	void pop() {
+		if (_owns) {
+			stappler::memory::pool::pop();
+			_owns = false;
+		}
+	}
+
+	void swap(context &u) noexcept {
+		std::swap(_pool, u._pool);
+		std::swap(_owns, u._owns);
+	}
+
+	bool owns() const noexcept { return _owns; }
+	explicit operator bool() const noexcept { return owns(); }
+	pool_type* pool() const noexcept { return _pool; }
+
+private:
+	pool_type *_pool;
+	bool _owns;
+};
+
+
 }
 
 NS_SP_EXT_END(memory)

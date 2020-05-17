@@ -41,7 +41,7 @@ public:
 	void onServerChildInit(apr_pool_t *p, server_rec *s);
 	void onOpenLogs(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s);
 
-	void initHeartBeat();
+	void initHeartBeat(int epollfd);
 	void onHeartBeat();
 
 	/* Connection Handling */

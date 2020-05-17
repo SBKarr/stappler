@@ -64,6 +64,7 @@ constexpr uint16_t getResourceResolverMaxDepth() { return 4; }
 constexpr auto getDefaultSessionName() { return "SID"; }
 constexpr auto getDefaultSessionKey() { return "SerenitySession"; }
 
+constexpr auto getSerenityBroadcastChannelName() { return "serenity_broadcast"; }
 
 #if DEBUG
 constexpr auto getDefaultPugTemplateUpdateInterval() { return stappler::TimeInterval::seconds(3); }

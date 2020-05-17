@@ -116,20 +116,20 @@ struct Server::Config : public AllocPool {
 					typedComponents.emplace(std::type_index(typeid(*h)), h);
 				} else {
 					log::format("Server", "DSO (%s) returns nullptr handler", name.data());
-					serv.reportError(data::Value {
+					serv.reportError(data::Value({
 						pair("source", data::Value("Server")),
 						pair("text", data::Value(toString("DSO (", name, ") returns nullptr handler")))
-					});
+					}));
 					loadingFalled = true;
 				}
 			} else {
 				/* fail to load symbol, terminating process */
 				char buf[256] = {0};
 				log::format("Server", "DSO (%s) error: %s", name.data(), apr_dso_error(obj, buf, 255));
-				serv.reportError(data::Value {
+				serv.reportError(data::Value({
 					pair("source", data::Value("Server")),
 					pair("text", data::Value(toString("DSO (", name, ") error: ", apr_dso_error(obj, buf, 255))))
-				});
+				}));
 				apr_dso_unload(obj);
 				loadingFalled = true;
 			}
@@ -137,10 +137,10 @@ struct Server::Config : public AllocPool {
 			/* fail to load object, terminating process */
 			char buf[256] = {0};
 			log::format("Server", "Fail to load DSO (%s): %s", name.data(), apr_dso_error(obj, buf, 255));
-			serv.reportError(data::Value {
+			serv.reportError(data::Value({
 				pair("source", data::Value("Server")),
 				pair("text", data::Value(toString("Fail to load DSO (", name, "): ", apr_dso_error(obj, buf, 255))))
-			});
+			}));
 			loadingFalled = true;
 		}
 	}
@@ -258,11 +258,11 @@ struct Server::Config : public AllocPool {
 		db::Field::Bytes("pubkey", db::Transform::PublicKey, db::Flags::Indexed),
 		db::Field::Password("password", db::PasswordSalt(config::getDefaultPasswordSalt()), db::Flags::Required | db::Flags::Protected),
 		db::Field::Boolean("isAdmin", data::Value(false)),
-		db::Field::Extra("data", Vector<db::Field>{
+		db::Field::Extra("data", Vector<db::Field>({
 			db::Field::Text("email", db::Transform::Email),
 			db::Field::Text("public"),
 			db::Field::Text("desc"),
-		}),
+		})),
 		db::Field::Text("email", db::Transform::Email, db::Flags::Unique),
 	});
 
@@ -507,8 +507,20 @@ void Server::processReports() {
 	}
 }
 
-void Server::performStorage(apr_pool_t *pool, const Callback<void(const storage::Adapter &)> &cb) {
-	Root::getInstance()->performStorage(pool, *this, cb);
+void Server::performWithStorage(const Callback<void(db::Transaction &)> &cb) const {
+	if (auto t = db::Transaction::acquireIfExists()) {
+		cb(t);
+	} else {
+		Root::getInstance()->performStorage(mem::pool::acquire(), *this, [&] (const db::Adapter &ad) {
+			auto h = dynamic_cast<db::pq::Handle *>(ad.interface());
+			h->setStorageTypeMap(&_config->storageTypes);
+			h->setCustomTypeMap(&_config->customTypes);
+
+			auto t = db::Transaction::acquire(ad);
+
+			cb(t);
+		});
+	}
 }
 
 void Server::setSessionKeys(StringView pub, StringView priv, StringView sec) const {
@@ -768,39 +780,112 @@ auto Server_resolvePath(Map<String, T> &map, const String &path) -> typename Map
 	return ret;
 }
 
+void Server::initHeartBeat(apr_pool_t *, int epoll) {
+	auto p = _config->_pugCache.getNotify();
+	if (p >= 0) {
+		auto c = new (getPool()) PollClient();
+		c->type = PollClient::INotify;
+		c->ptr = &_config->_pugCache;
+		c->fd = p;
+		c->server = Server(*this);
+		c->event.data.ptr = c;
+		c->event.events = EPOLLIN;
+
+		auto err = epoll_ctl(epoll, EPOLL_CTL_ADD, p, &c->event);
+		if (err == -1) {
+			char buf[256] = { 0 };
+			std::cout << "Failed to start thread worker with socket epoll_ctl("
+					<< p << ", EPOLL_CTL_ADD): " << strerror_r(errno, buf, 255) << "\n";
+		}
+	}
+
+	auto root = Root::getInstance();
+	if (auto dbd = root->dbdOpen(getPool(), _server)) {
+		auto conn = (PGconn *)db::pq::Driver::open()->getConnection(db::pq::Driver::Handle(dbd)).get();
+
+		auto query = toString("LISTEN ", config::getSerenityBroadcastChannelName(), ";");
+		int querySent = PQsendQuery(conn, query.data());
+		if (querySent == 0) {
+			std::cout << PQerrorMessage(conn) << "\n";
+			root->dbdClose(_server, dbd);
+			return;
+		}
+
+		if (PQsetnonblocking(conn, 1) == -1) {
+			std::cout << PQerrorMessage(conn) << "\n";
+			root->dbdClose(_server, dbd);
+			return;
+		} else {
+			int sock = PQsocket(conn);
+
+			auto c = new (getPool()) PollClient();
+			c->type = PollClient::Postgres;
+			c->ptr = dbd;
+			c->fd = sock;
+			c->server = Server(*this);
+			c->event.data.ptr = c;
+			c->event.events = EPOLLIN | EPOLLERR | EPOLLET;
+
+			auto err = epoll_ctl(epoll, EPOLL_CTL_ADD, sock, &c->event);
+			if (err == -1) {
+				char buf[256] = { 0 };
+				std::cout << "Failed to start thread worker with socket epoll_ctl("
+						<< sock << ", EPOLL_CTL_ADD): " << strerror_r(errno, buf, 255) << "\n";
+				root->dbdClose(_server, dbd);
+				return;
+			}
+		}
+	}
+}
+
 void Server::onHeartBeat(apr_pool_t *pool) {
 	memory::pool::store(pool, _server, "Apr.Server");
 	apr::pool::perform([&] {
 		auto now = Time::now();
 		if (!_config->loadingFalled) {
 			auto root = Root::getInstance();
-			if (auto dbd = root->dbdOpen(pool, _server)) {
-				db::pq::Handle h(db::pq::Driver::open(), db::pq::Driver::Handle(dbd));
-				h.setStorageTypeMap(&_config->storageTypes);
-				h.setCustomTypeMap(&_config->customTypes);
-				if (now - _config->lastDatabaseCleanup > config::getDefaultDatabaseCleanupInterval()) {
+			if (now - _config->lastDatabaseCleanup > config::getDefaultDatabaseCleanupInterval()) {
+				if (auto dbd = root->dbdOpen(pool, _server)) {
+					db::pq::Handle h(db::pq::Driver::open(), db::pq::Driver::Handle(dbd));
+					h.setStorageTypeMap(&_config->storageTypes);
+					h.setCustomTypeMap(&_config->customTypes);
 					_config->lastDatabaseCleanup = now;
 					h.makeSessionsCleanup();
+					root->dbdClose(_server, dbd);
 				}
-				_config->broadcastId = h.processBroadcasts([&] (BytesView bytes) {
-					onBroadcast(bytes);
-				}, _config->broadcastId);
+			}
 
-				db::Transaction t = db::Transaction::acquire(&h);
-				for (auto &it : _config->components) {
-					it.second->onHeartbeat(*this, t);
-				}
-
-				root->dbdClose(_server, dbd);
+			for (auto &it : _config->components) {
+				it.second->onHeartbeat(*this);
 			}
 		}
 		if (now - _config->lastTemplateUpdate > config::getDefaultPugTemplateUpdateInterval()) {
 			_config->_templateCache.update(pool);
-			_config->_pugCache.update(pool);
+			if (!_config->_pugCache.isNotifyAvailable()) {
+				_config->_pugCache.update(pool);
+			}
 			_config->lastTemplateUpdate = now;
 		}
 	}, pool);
 	memory::pool::store(pool, nullptr, "Apr.Server");
+}
+
+void Server::checkBroadcasts() {
+	Task::perform(*this, [&] (Task &task) {
+		task.addExecuteFn([this] (const Task &task) -> bool {
+			auto root = Root::getInstance();
+			if (auto dbd = root->dbdOpen(task.pool(), *this)) {
+				db::pq::Handle h(db::pq::Driver::open(), db::pq::Driver::Handle(dbd));
+				h.setStorageTypeMap(&_config->storageTypes);
+				h.setCustomTypeMap(&_config->customTypes);
+				_config->broadcastId = h.processBroadcasts([&] (BytesView bytes) {
+					onBroadcast(bytes);
+				}, _config->broadcastId);
+				root->dbdClose(*this, dbd);
+			}
+			return true;
+		});
+	});
 }
 
 void Server::onBroadcast(const data::Value &val) {

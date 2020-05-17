@@ -184,6 +184,7 @@ ifile openForReading(const StringView &path);
 // read file to string (if it was a binary file, string will be invalid)
 String readTextFile(const StringView &path);
 
+bool readIntoBuffer(uint8_t *buf, const StringView &path, size_t off = 0, size_t size = maxOf<size_t>());
 bool readWithConsumer(const io::Consumer &stream, uint8_t *buf, size_t bsize, const StringView &path, size_t off, size_t size);
 
 template <size_t Buffer = 1_KiB>

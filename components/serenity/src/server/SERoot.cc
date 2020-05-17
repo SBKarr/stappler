@@ -38,6 +38,7 @@ THE SOFTWARE.
 #include "Task.h"
 
 #include "STPqHandle.h"
+#include "SPugCache.h"
 
 #ifdef LINUX
 
@@ -48,6 +49,8 @@ THE SOFTWARE.
 
 // Hidden control interfaces for stats
 
+#include <sys/epoll.h>
+#include <sys/inotify.h>
 
 NS_DB_PQ_BEGIN
 void setDbCtrl(mem::Function<void(bool)> &&cb);
@@ -185,19 +188,164 @@ NS_SA_BEGIN
 
 static std::atomic_flag s_timerExitFlag;
 
+struct PollClient : mem::AllocBase {
+	enum Type {
+		None,
+		INotify,
+		Postgres,
+	};
+
+	Server server;
+	void *ptr = nullptr;
+	Type type = None;
+	int fd = -1;
+    struct epoll_event event;
+};
+
+static void sa_server_timer_push_notify(PollClient *cl, int fd) {
+	apr::pool::perform([&] {
+		auto c = (pug::Cache *)cl->ptr;
+		c->update(fd);
+	}, cl->server);
+}
+
+static void sa_server_timer_postgres_error(PollClient *cl, int epoll) {
+	auto root = Root::getInstance();
+
+	epoll_ctl(epoll, EPOLL_CTL_DEL, cl->fd, &cl->event);
+	root->dbdClose(cl->server, (ap_dbd_t *)cl->ptr);
+
+	// reopen connection
+	if (auto dbd = root->dbdOpen(cl->server.getPool(), cl->server)) {
+		auto conn = (PGconn *)db::pq::Driver::open()->getConnection(db::pq::Driver::Handle(dbd)).get();
+
+		auto query = toString("LISTEN ", config::getSerenityBroadcastChannelName(), ";");
+		int querySent = PQsendQuery(conn, query.data());
+		if (querySent == 0) {
+			std::cout << PQerrorMessage(conn);
+			root->dbdClose(cl->server, (ap_dbd_t *)cl->ptr);
+			return;
+		}
+
+		if (PQsetnonblocking(conn, 1) == -1) {
+			std::cout << PQerrorMessage(conn) << "\n";
+			root->dbdClose(cl->server, (ap_dbd_t *)cl->ptr);
+			return;
+		} else {
+			int sock = PQsocket(conn);
+
+			cl->ptr = dbd;
+			cl->fd = sock;
+
+			auto err = epoll_ctl(epoll, EPOLL_CTL_ADD, sock, &cl->event);
+			if (err == -1) {
+				char buf[256] = { 0 };
+				std::cout << "Failed to start thread worker with socket epoll_ctl("
+						<< sock << ", EPOLL_CTL_ADD): " << strerror_r(errno, buf, 255) << "\n";
+				root->dbdClose(cl->server, dbd);
+			}
+		}
+	}
+}
+
+static void sa_server_timer_postgres_process(PollClient *cl, int epoll) {
+	auto conn = (PGconn *)db::pq::Driver::open()->getConnection(db::pq::Driver::Handle(cl->ptr)).get();
+
+	const ConnStatusType &connStatusType = PQstatus(conn);
+	if (connStatusType == CONNECTION_BAD) {
+		sa_server_timer_postgres_error(cl, epoll);
+		return;
+	}
+
+	int rc = PQconsumeInput(conn);
+	if (rc == 0) {
+		std::cout << PQerrorMessage(conn) << "\n";
+		sa_server_timer_postgres_error(cl, epoll);
+		return;
+	}
+	PGnotify *notify;
+	while ((notify = PQnotifies(conn)) != NULL) {
+		if (StringView(notify->relname) == config::getSerenityBroadcastChannelName()) {
+			cl->server.checkBroadcasts();
+		}
+		PQfreemem(notify);
+	}
+	if (PQisBusy(conn) == 0) {
+		PGresult *result;
+		while ((result = PQgetResult(conn)) != NULL) {
+			PQclear(result);
+		}
+	}
+}
+
+static bool sa_server_timer_thread_poll(int epollFd) {
+	std::array<struct epoll_event, 64> _events;
+
+	int nevents = epoll_wait(epollFd, _events.data(), 64, config::getHeartbeatTime().toMillis());
+	if (nevents == -1 && errno != EINTR) {
+		char buf[256] = { 0 };
+		std::cout << mem::toString("epoll_wait() failed with errno ", errno, " (", strerror_r(errno, buf, 255), ")") << "\n";
+		return false;
+	} else if (nevents == 0 || errno == EINTR) {
+		return true;
+	}
+
+	/// process high-priority events
+	for (int i = 0; i < nevents; i++) {
+		PollClient *client = (PollClient *)_events[i].data.ptr;
+		switch (client->type) {
+		case PollClient::INotify:
+			if ((_events[i].events & EPOLLIN)) {
+				struct inotify_event event;
+				int nbytes = 0;
+				do {
+					nbytes = read(client->fd, &event, sizeof(event));
+					sa_server_timer_push_notify(client, event.wd);
+					if (nbytes == sizeof(event)) {
+						if (event.len > 0) {
+							char buf[event.len] = { 0 };
+							read(client->fd, buf, event.len);
+						}
+					}
+				} while (nbytes == sizeof(event));
+			}
+			break;
+		case PollClient::Postgres:
+			if (_events[i].events & EPOLLERR) {
+				sa_server_timer_postgres_error(client, epollFd);
+			} else if (_events[i].events & EPOLLIN) {
+				sa_server_timer_postgres_process(client, epollFd);
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
+	return false;
+}
+
 void *sa_server_timer_thread_fn(apr_thread_t *self, void *data) {
 	Root *serv = (Root *)data;
 	apr_sleep(config::getHeartbeatPause().toMicroseconds());
-	serv->initHeartBeat();
-	while(s_timerExitFlag.test_and_set()) {
-		auto exec = Time::now();
-		serv->onHeartBeat();
 
-		auto execTime = Time::now() - exec;
-		if (execTime < config::getHeartbeatTime()) {
-			apr_sleep((config::getHeartbeatTime() - execTime).toMicroseconds());
+	int epollFd = epoll_create1(0);
+	serv->initHeartBeat(epollFd);
+
+	Time t = Time::now();
+	while (s_timerExitFlag.test_and_set()) {
+		if (sa_server_timer_thread_poll(epollFd)) {
+			serv->onHeartBeat();
+		} else {
+			auto nt = Time::now();
+			if (nt - t > config::getHeartbeatTime()) {
+				serv->onHeartBeat();
+				t = nt;
+			}
 		}
 	}
+
+	close(epollFd);
 	return NULL;
 }
 
@@ -673,7 +821,7 @@ void Root::performStorage(apr_pool_t *pool, const Server &serv, const Callback<v
 	apr::pool::perform([&] {
 		if (auto dbd = dbdOpen(pool, serv.server())) {
 			db::pq::Handle h(db::pq::Driver::open(), db::pq::Driver::Handle(dbd));
-			storage::Adapter storage(&h);
+			db::Adapter storage(&h);
 
 			cb(storage);
 
@@ -766,8 +914,17 @@ void Root::onChildInit() {
 	}
 }
 
-void Root::initHeartBeat() {
+void Root::initHeartBeat(int epollfd) {
 	_heartBeatPool = apr::pool::create(_pool);
+
+	auto serv = _rootServerContext;
+	while (serv) {
+		apr::pool::perform([&] {
+			serv.initHeartBeat(_heartBeatPool, epollfd);
+		}, serv.server());
+		serv = serv.next();
+		mem::pool::clear(_heartBeatPool);
+	}
 }
 
 void Root::onHeartBeat() {
