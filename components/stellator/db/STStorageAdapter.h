@@ -41,9 +41,9 @@ public:
 	Interface *interface() const;
 
 public: // key-value storage
-	bool set(const stappler::CoderSource &, const mem::Value &, stappler::TimeInterval = config::getKeyValueStorageTime());
-	mem::Value get(const stappler::CoderSource &);
-	bool clear(const stappler::CoderSource &);
+	bool set(const stappler::CoderSource &, const mem::Value &, stappler::TimeInterval = config::getKeyValueStorageTime()) const;
+	mem::Value get(const stappler::CoderSource &) const;
+	bool clear(const stappler::CoderSource &) const;
 
 public:
 	bool init(const Interface::Config &cfg, const mem::Map<mem::String, const Scheme *> &);

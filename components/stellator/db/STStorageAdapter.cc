@@ -37,15 +37,15 @@ Interface *Adapter::interface() const {
 	return _interface;
 }
 
-bool Adapter::set(const stappler::CoderSource &key, const mem::Value &val, stappler::TimeInterval maxAge) {
+bool Adapter::set(const stappler::CoderSource &key, const mem::Value &val, stappler::TimeInterval maxAge) const {
 	return _interface->set(key, val, maxAge);
 }
 
-mem::Value Adapter::get(const stappler::CoderSource &key) {
+mem::Value Adapter::get(const stappler::CoderSource &key) const {
 	return _interface->get(key);
 }
 
-bool Adapter::clear(const stappler::CoderSource &key) {
+bool Adapter::clear(const stappler::CoderSource &key) const {
 	return _interface->clear(key);
 }
 
