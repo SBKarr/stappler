@@ -56,7 +56,7 @@ Root *Root::getInstance() {
 }
 
 Root::Root() {
-	_pool = mem::pool::create(nullptr);
+	_pool = mem::pool::create((mem::pool_t *)nullptr);
 	mem::pool::push(_pool);
 	_internal = new (_pool) Internal;
 	mem::pool::pop();

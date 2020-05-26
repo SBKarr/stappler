@@ -33,16 +33,26 @@ NS_SP_EXT_BEGIN(apr)
 
 class mutex : public memory::AllocPool {
 public:
-	mutex() {
-		apr_thread_mutex_create(&_mutex, APR_THREAD_MUTEX_DEFAULT, getCurrentPool());
-	}
+	mutex() : mutex(getCurrentPool()) { }
+
 	mutex(apr_pool_t *p) {
-		apr_thread_mutex_create(&_mutex, APR_THREAD_MUTEX_DEFAULT, p);
+		if (isCustomPool(p)) {
+			_isCustom = true;
+			_stdMutex = new std::mutex;
+		} else {
+			apr_thread_mutex_create(&_aprMutex, APR_THREAD_MUTEX_DEFAULT, p);
+		}
 	}
 
 	~mutex() {
-		if (_mutex) {
-			apr_thread_mutex_destroy(_mutex);
+		if (!_isCustom) {
+			if (_aprMutex) {
+				apr_thread_mutex_destroy(_aprMutex);
+			}
+		} else {
+			if (_stdMutex) {
+				delete _stdMutex;
+			}
 		}
 	}
 
@@ -53,21 +63,33 @@ public:
 	mutex& operator =(mutex &&) = delete;
 
 	void lock() {
-		apr_thread_mutex_lock(_mutex);
+		if (_isCustom) {
+			_stdMutex->lock();
+		} else {
+			apr_thread_mutex_lock(_aprMutex);
+		}
 	}
 
 	void unlock() {
-		apr_thread_mutex_unlock(_mutex);
+		if (_isCustom) {
+			_stdMutex->unlock();
+		} else {
+			apr_thread_mutex_unlock(_aprMutex);
+		}
 	}
 
 	bool try_lock() {
-		return !APR_STATUS_IS_EBUSY(apr_thread_mutex_trylock(_mutex));
+		return _isCustom ? _stdMutex->try_lock() : !APR_STATUS_IS_EBUSY(apr_thread_mutex_trylock(_aprMutex));
 	}
 
-	operator bool() { return _mutex !=  nullptr; }
+	operator bool() const { return _isCustom ? (_stdMutex !=  nullptr) : (_aprMutex !=  nullptr); }
 
 protected:
-	apr_thread_mutex_t *_mutex = nullptr;
+	bool _isCustom = false;
+	union {
+		apr_thread_mutex_t *_aprMutex = nullptr;
+		std::mutex *_stdMutex;
+	};
 };
 
 NS_SP_EXT_END(apr)

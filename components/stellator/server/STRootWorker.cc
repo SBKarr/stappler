@@ -221,7 +221,7 @@ static void s_ConnectionWorker_workerThread(ConnectionWorker *tm) {
 	sigaddset(&mask, SIGUSR2);
 	::sigprocmask(SIG_BLOCK, &mask, nullptr);
 
-	auto pool = mem::pool::create(nullptr);
+	auto pool = mem::pool::create((mem::pool_t *)nullptr);
 	mem::pool::push(pool);
 
 	tm->worker();

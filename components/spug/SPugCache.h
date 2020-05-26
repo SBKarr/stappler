@@ -42,6 +42,8 @@ public:
 	time_t getMtime() const;
 	bool isValid() const;
 
+	const Template::Options &getOpts() const;
+
 	FileRef(memory::pool_t *, const FilePath &path, Template::Options opts, const Callback<void(const StringView &)> &cb, int watch, int wId);
 	FileRef(memory::pool_t *, String && content, bool isTemplate, Template::Options opts, const Callback<void(const StringView &)> &cb);
 
@@ -53,22 +55,25 @@ protected:
 	time_t _mtime = 0;
 	String _content;
 	Template * _template = nullptr;
+	Template::Options _opts;
 	bool _valid = false;
 };
 
 class Cache : public memory::AllocPool {
 public:
-	using RunCallback = Function<bool(Context &, const Template &)>;
+	using RunCallback = Callback<bool(Context &, const Template &)>;
 	using Options = Template::Options;
 
 	Cache(Template::Options opts = Template::Options::getDefault(), const Function<void(const StringView &)> &err = nullptr);
 	~Cache();
 
 	bool runTemplate(const StringView &, const RunCallback &, std::ostream &);
+	bool runTemplate(const StringView &, const RunCallback &, std::ostream &, Template::Options opts);
 
 	bool addFile(StringView);
 	bool addContent(StringView, String &&);
 	bool addTemplate(StringView, String &&);
+	bool addTemplate(StringView, String &&, Template::Options opts);
 
 	Rc<FileRef> get(const StringView &key) const;
 
@@ -79,9 +84,10 @@ public:
 	bool isNotifyAvailable();
 
 protected:
-	Rc<FileRef> acquireTemplate(StringView, bool readOnly);
-	Rc<FileRef> openTemplate(StringView, int wId = -1);
+	Rc<FileRef> acquireTemplate(StringView, bool readOnly, const Template::Options &);
+	Rc<FileRef> openTemplate(StringView, int wId, const Template::Options &);
 
+	bool runTemplate(Rc<FileRef>, StringView ipath, const RunCallback &cb, std::ostream &out);
 	void onError(const StringView &);
 
 	int _inotify = -1;

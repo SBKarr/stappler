@@ -29,7 +29,7 @@ NS_SP_EXT_BEGIN(thread)
 
 class Worker : public ThreadHandlerInterface {
 public:
-	Worker(TaskQueue *queue, uint32_t threadId, uint32_t workerId, const StringView &name);
+	Worker(TaskQueue *queue, uint32_t threadId, uint32_t workerId, const StringView &name, memory::pool_t *p);
 	virtual ~Worker();
 
 	void retain();
@@ -48,6 +48,7 @@ protected:
 	std::atomic<int32_t> _refCount;
 	std::atomic_flag _shouldQuit;
 	memory::pool_t *_pool = nullptr;
+	memory::pool_t *_rootPool = nullptr;
 
 	uint32_t _managerId;
 	uint32_t _workerId;
@@ -80,7 +81,8 @@ void ThreadInfo::setMainThread() {
 
 class _SingleTaskWorker : public ThreadHandlerInterface {
 public:
-	_SingleTaskWorker(const Rc<TaskQueue> &q, Rc<Task> &&task) : _queue(q), _task(std::move(task)), _managerId(getNextThreadId()) { }
+	_SingleTaskWorker(const Rc<TaskQueue> &q, Rc<Task> &&task, memory::pool_t *p)
+	: _queue(q), _task(std::move(task)), _managerId(getNextThreadId()), _pool(p) { }
 	virtual ~_SingleTaskWorker() { }
 
 	bool execute(Task *task) {
@@ -97,7 +99,7 @@ public:
 	virtual bool worker() override {
 		if (_task) {
 			memory::pool::initialize();
-			auto pool = memory::pool::create(nullptr);
+			auto pool = memory::pool::create(_pool);
 
 			memory::pool::push(pool);
 			auto ret = execute(_task);
@@ -118,15 +120,16 @@ protected:
 	Rc<TaskQueue> _queue;
 	Rc<Task> _task;
 	uint32_t _managerId;
+	memory::pool_t *_pool = nullptr;
 };
 
 void ThreadHandlerInterface::workerThread(ThreadHandlerInterface *tm) {
 	platform::proc::_workerThread(tm);
 }
 
-TaskQueue::TaskQueue() : _finalized(false) { }
+TaskQueue::TaskQueue(memory::pool_t *p) : _finalized(false), _pool(p) { }
 
-TaskQueue::TaskQueue(uint16_t count) : _finalized(false), _threadsCount(count) { }
+TaskQueue::TaskQueue(uint16_t count, memory::pool_t *p) : _finalized(false), _threadsCount(count), _pool(p) { }
 
 TaskQueue::~TaskQueue() {
 	cancelWorkers();
@@ -152,7 +155,7 @@ void TaskQueue::finalize() {
 
 void TaskQueue::performAsync(Rc<Task> &&task) {
 	if (task) {
-		_SingleTaskWorker *worker = new _SingleTaskWorker(this, std::move(task));
+		_SingleTaskWorker *worker = new _SingleTaskWorker(this, std::move(task), _pool);
 		std::thread wThread(ThreadHandlerInterface::workerThread, worker);
 		wThread.detach();
 	}
@@ -271,7 +274,7 @@ bool TaskQueue::spawnWorkers() {
 bool TaskQueue::spawnWorkers(uint32_t threadId, const StringView &name) {
 	if (_workers.empty()) {
 		for (uint32_t i = 0; i < _threadsCount; i++) {
-			_workers.push_back(new Worker(this, threadId, i, name));
+			_workers.push_back(new Worker(this, threadId, i, name, _pool));
 		}
 	}
 	return true;
@@ -311,8 +314,8 @@ void TaskQueue::waitForAll() {
 }
 
 
-Worker::Worker(TaskQueue *queue, uint32_t threadId, uint32_t workerId, const StringView &name)
-: _queue(queue), _refCount(1), _shouldQuit(), _managerId(threadId), _workerId(workerId), _name(name)
+Worker::Worker(TaskQueue *queue, uint32_t threadId, uint32_t workerId, const StringView &name, memory::pool_t *p)
+: _queue(queue), _refCount(1), _shouldQuit(), _rootPool(p), _managerId(threadId), _workerId(workerId), _name(name)
 , _thread(ThreadHandlerInterface::workerThread, this) {
 	_queue->retain();
 }
@@ -341,7 +344,7 @@ bool Worker::execute(Task *task) {
 
 void Worker::threadInit() {
 	memory::pool::initialize();
-	_pool = memory::pool::create(nullptr);
+	_pool = memory::pool::create((memory::pool_t *)_rootPool);
 
 	_shouldQuit.test_and_set();
 	_threadId = std::this_thread::get_id();
@@ -357,6 +360,8 @@ bool Worker::worker() {
 		memory::pool::destroy(_pool);
 		memory::pool::terminate();
 		return false;
+	} else {
+		memory::pool::clear(_pool);
 	}
 
 	auto task = _queue->popTask();

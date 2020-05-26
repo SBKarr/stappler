@@ -43,6 +43,7 @@ struct AllocPool {
 	void operator delete(void *) noexcept;
 
 	static pool_t *getCurrentPool();
+	static bool isCustomPool(pool_t *);
 
 	template <typename T>
 	static status_t cleanupObjectFromPool(void *data);

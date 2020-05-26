@@ -1004,7 +1004,7 @@ public:
 
 	memory::pool_t * getPool() {
 		if (!pool) {
-			pool = memory::pool::create(nullptr);
+			pool = memory::pool::create((memory::pool_t *)nullptr);
 		}
 		return pool;
 	}

@@ -48,4 +48,12 @@ pool_t *AllocPool::getCurrentPool() {
 	return pool::acquire();
 }
 
+bool AllocPool::isCustomPool(pool_t *p) {
+	if (p && *((uintptr_t *)p) == stappler::mempool::custom::POOL_MAGIC) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
 NS_SP_EXT_END(memory)

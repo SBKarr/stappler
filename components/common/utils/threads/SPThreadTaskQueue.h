@@ -43,8 +43,8 @@ struct ThreadInfo {
 
 class TaskQueue : public AtomicRef {
 public:
-	TaskQueue();
-	TaskQueue(uint16_t count);
+	TaskQueue(memory::pool_t *p = nullptr);
+	TaskQueue(uint16_t count, memory::pool_t *p = nullptr);
 	~TaskQueue();
 
 	void finalize();
@@ -86,6 +86,8 @@ protected:
 
     size_t tasksAdded = 0;
     size_t tasksCompleted = 0;
+
+    memory::pool_t *_pool = nullptr;
 };
 
 /* Interface for thread workers or handlers */

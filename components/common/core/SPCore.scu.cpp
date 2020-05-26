@@ -28,7 +28,14 @@ THE SOFTWARE.
 
 #include "SPIO.cc"
 #include "SPMemAlloc.cc"
-#include "SPMemPoolImpl.cc"
+
+#include "SPMemPoolApr.cc"
+#include "SPMemPoolAllocator.cc"
+#include "SPMemPoolHash.cc"
+#include "SPMemPoolInterface.cc"
+#include "SPMemPoolPool.cc"
+#include "SPMemPoolUtils.cc"
+
 #include "SPMemRbtree.cc"
 #include "SPMemUuid.cc"
 
