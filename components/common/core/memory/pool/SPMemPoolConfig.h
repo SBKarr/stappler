@@ -54,11 +54,11 @@ static constexpr uint32_t ALLOCATOR_MAX_FREE_UNLIMITED ( 0 );
 
 // address space (not actual mem) reservation for mmap allocator
 // you can not allocate more then this with mmap
-static constexpr size_t ALLOCATOR_MMAP_RESERVED = 64_GiB;
+static constexpr size_t ALLOCATOR_MMAP_RESERVED = size_t(64_GiB);
 
 static constexpr Status SUCCESS = 0;
 
-static constexpr uintptr_t POOL_MAGIC = 0xDEAD7fffDEADBEEF;
+static constexpr uint64_t POOL_MAGIC = 0xDEAD7fffDEADBEEF;
 
 enum PoolFlags : uint32_t {
 	None,

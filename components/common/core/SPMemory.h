@@ -23,13 +23,12 @@ THE SOFTWARE.
 #ifndef COMMON_CORE_SPMEMORY_H_
 #define COMMON_CORE_SPMEMORY_H_
 
-#include "SPCommon.h"
+#include "SPMemInterface.h"
 #include "SPStringView.h"
 #include "SPData.h"
 #include "SPString.h"
 
 NS_SP_BEGIN
-
 
 namespace mem_pool {
 

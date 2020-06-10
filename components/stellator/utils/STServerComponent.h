@@ -32,6 +32,8 @@ public:
 	using Symbol = ServerComponent * (*) (Server &serv, const mem::String &name, const mem::Value &dict);
 	using Scheme = db::Scheme;
 
+	using CommandCallback = mem::Function<bool(mem::StringView, const mem::Callback<void(const mem::Value &)> &)>;
+
 	struct Loader {
 		mem::StringView name;
 		Symbol loader;
@@ -43,7 +45,7 @@ public:
 		mem::String name;
 		mem::String desc;
 		mem::String help;
-		mem::Function<mem::Value(const mem::StringView &)> callback;
+		CommandCallback callback;
 	};
 
 	ServerComponent(Server &serv, const mem::StringView &name, const mem::Value &dict);
@@ -61,6 +63,8 @@ public:
 	const db::Scheme * exportScheme(const db::Scheme &);
 
 	void addCommand(const mem::StringView &name, mem::Function<mem::Value(const mem::StringView &)> &&,
+			const mem::StringView &desc = mem::StringView(), const mem::StringView &help = mem::StringView());
+	void addOutputCommand(const mem::StringView &name, CommandCallback &&,
 			const mem::StringView &desc = mem::StringView(), const mem::StringView &help = mem::StringView());
 	const Command *getCommand(const mem::StringView &name) const;
 

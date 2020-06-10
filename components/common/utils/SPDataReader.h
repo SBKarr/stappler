@@ -23,9 +23,9 @@ THE SOFTWARE.
 #ifndef COMMON_UTILS_SPDATAREADER_H_
 #define COMMON_UTILS_SPDATAREADER_H_
 
-#include "SPStringView.h"
 #include "SPByteOrder.h"
 #include "SPHalfFloat.h"
+#include "SPStringView.h"
 
 NS_SP_BEGIN
 

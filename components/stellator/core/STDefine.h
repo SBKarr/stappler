@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "STConfig.h"
 #include "SPMemory.h"
 #include "SPValid.h"
+#include "SPThreadTaskQueue.h"
 
 #include "SPug.h"
 
@@ -39,6 +40,7 @@ THE SOFTWARE.
 
 namespace stellator {
 
+namespace thread = stappler::thread;
 namespace pug = stappler::pug;
 namespace messages = db::messages;
 

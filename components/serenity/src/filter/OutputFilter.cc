@@ -265,6 +265,17 @@ void OutputFilter::writeHeader(ap_filter_t* f, StringStream &output) const {
 			if ((it.second.flags & CookieFlags::HttpOnly) != 0) {
 				output << ";HttpOnly";
 			}
+			auto sameSite = it.second.flags & CookieFlags::SameSiteStrict;
+			switch (sameSite) {
+			case CookieFlags::SameSiteNone:
+				if ((it.second.flags & CookieFlags::Secure) != 0 && Connection(f->c).isSecureConnection()) {
+					output << ";SameSite=None";
+				}
+				break;
+			case CookieFlags::SameSiteLux: output << ";SameSite=Lax"; break;
+			case CookieFlags::SameSiteStrict: output << ";SameSite=Strict"; break;
+			default: break;
+			}
 			if ((it.second.flags & CookieFlags::Secure) != 0 && Connection(f->c).isSecureConnection()) {
 				output << ";Secure";
 			}

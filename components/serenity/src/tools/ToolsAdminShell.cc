@@ -1003,9 +1003,9 @@ bool ShellSocketHandler::onCommand(StringView &r) {
 	for (auto &it : _external) {
 		for (auto &eit : *it.second) {
 			if (cmd == eit.second.name) {
-				auto val = eit.second.callback(r);
-				send(val);
-				return !val.isNull();
+				return eit.second.callback(r, [&] (const mem::Value &val) {
+					send(val);
+				});
 			}
 		}
 	}

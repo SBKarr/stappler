@@ -48,6 +48,17 @@ const db::Scheme * ServerComponent::exportScheme(const db::Scheme &scheme) {
 }
 
 void ServerComponent::addCommand(const mem::StringView &name, mem::Function<mem::Value(const mem::StringView &)> &&cb, const mem::StringView &desc, const mem::StringView &help) {
+	addOutputCommand(name, [cb] (mem::StringView v, const mem::Callback<void(const mem::Value &)> &scb) -> bool {
+		auto val = cb(v);
+		if (!val.isNull()) {
+			scb(val);
+			return true;
+		}
+		return false;
+	}, desc, help);
+}
+
+void ServerComponent::addOutputCommand(const mem::StringView &name, CommandCallback &&cb, const mem::StringView &desc, const mem::StringView &help) {
 	_commands.emplace(name.str<mem::Interface>(), Command{name.str<mem::Interface>(), desc.str<mem::Interface>(), help.str<mem::Interface>(), move(cb)});
 }
 

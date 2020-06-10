@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef COMMON_STRING_SPCHARMATCHING_H_
 #define COMMON_STRING_SPCHARMATCHING_H_
 
-#include "SPCommon.h"
+#include "SPCore.h"
 
 #define SPCHARMATCHING_LOG(...)
 
@@ -68,7 +68,7 @@ SP_DEFINE_ENUM_AS_MASK(CharGroupId)
 
 bool inCharGroup(CharGroupId mask, char16_t);
 bool inCharGroupMask(CharGroupId mask, char16_t);
-WideString getCharGroup(CharGroupId mask);
+// WideString getCharGroup(CharGroupId mask);
 
 NS_SP_END
 
@@ -104,82 +104,30 @@ using GroupId = CharGroupId;
 
 struct UniChar {
 	static inline bool match(char c) { return ((*(const uint8_t *)&c) & 128) != 0; }
-	static inline void get(Set<char> &) { }
 };
 
 template <typename CharType, CharType ... Args>
 struct Chars {
 	static inline bool match(CharType c) SPINLINE;
-	static inline void get(Set<CharType> &) SPINLINE;
 
 	template <typename Func>
 	static inline void foreach(const Func &) SPINLINE;
-
-	static inline Set<CharType> toSet() {
-		Set<CharType> ret;
-		foreach([&] (CharType c) {
-			ret.insert(c);
-		});
-		return ret;
-	}
-
-	static inline Vector<CharType> toVector() {
-		Vector<CharType> ret;
-		foreach([&] (CharType c) {
-			ret.push_back(c);
-		});
-		return ret;
-	}
 };
 
 template <typename CharType, CharType First, CharType Last>
 struct Range {
 	static inline bool match(CharType c) SPINLINE;
-	static inline void get(Set<CharType> &) SPINLINE;
 
 	template <typename Func>
 	static inline void foreach(const Func &) SPINLINE;
-
-	static inline Set<CharType> toSet() {
-		Set<CharType> ret;
-		foreach([&] (CharType c) {
-			ret.insert(c);
-		});
-		return ret;
-	}
-
-	static inline Vector<CharType> toVector() {
-		Vector<CharType> ret;
-		foreach([&] (CharType c) {
-			ret.push_back(c);
-		});
-		return ret;
-	}
 };
 
 template <typename CharType, typename ...Args>
 struct Compose {
 	static inline bool match(CharType c) SPINLINE;
-	static inline void get(Set<CharType> &) SPINLINE;
 
 	template <typename Func>
 	static inline void foreach(const Func &) SPINLINE;
-
-	static inline Set<CharType> toSet() {
-		Set<CharType> ret;
-		foreach([&] (CharType c) {
-			ret.insert(c);
-		});
-		return ret;
-	}
-
-	static inline Vector<CharType> toVector() {
-		Vector<CharType> ret;
-		foreach([&] (CharType c) {
-			ret.push_back(c);
-		});
-		return ret;
-	}
 };
 
 
@@ -455,13 +403,6 @@ inline bool Chars<CharType, Args...>::match(CharType c) {
 }
 
 template <typename CharType, CharType ... Args>
-inline void Chars<CharType, Args...>::get(Set<CharType> &s) {
-	foreach([&] (char16_t c) {
-		s.insert(c);
-	});
-}
-
-template <typename CharType, CharType ... Args>
 template <typename Func>
 inline void Chars<CharType, Args...>::foreach(const Func &f) {
 	MatchTraits::foreachChar<CharType, Func, Args...>(f);
@@ -473,13 +414,6 @@ inline bool Range<CharType, First, Last>::match(CharType c) {
 }
 
 template <typename CharType, CharType First, CharType Last>
-inline void Range<CharType, First, Last>::get(Set<CharType> &s) {
-	foreach([&] (char16_t c) {
-		s.insert(c);
-	});
-}
-
-template <typename CharType, CharType First, CharType Last>
 template <typename Func>
 inline void Range<CharType, First, Last>::foreach(const Func &f) {
 	MatchTraits::foreachPair<CharType, Func, First, Last>(f);
@@ -488,13 +422,6 @@ inline void Range<CharType, First, Last>::foreach(const Func &f) {
 template <typename CharType, typename ...Args>
 inline bool Compose<CharType, Args...>::match(CharType c) {
 	return MatchTraits::matchCompose<CharType, Args...>(c);
-}
-
-template <typename CharType, typename ... Args>
-inline void Compose<CharType, Args...>::get(Set<CharType> &s) {
-	foreach([&] (char16_t c) {
-		s.insert(c);
-	});
 }
 
 template <typename CharType, typename ... Args>

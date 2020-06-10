@@ -25,6 +25,8 @@ THE SOFTWARE.
 
 #include "SPMemString.h"
 #include "SPMemVector.h"
+#include "SPStringView.h"
+#include "SPDataReader.h"
 
 NS_SP_EXT_BEGIN(memory)
 
@@ -41,21 +43,11 @@ struct uuid : AllocPool {
 		memset(_uuid.data(), 0, 16);
 	}
 
-	uuid(const memory::string &str) {
+	uuid(StringView str) {
 		parse(_uuid, str.data());
 	}
 
-	uuid(const std::string &str) {
-		parse(_uuid, str.data());
-	}
-
-	uuid(const memory::vector<uint8_t> &b) {
-		if (b.size() == 16) {
-			memcpy(_uuid.data(), b.data(), 16);
-		}
-	}
-
-	uuid(const std::vector<uint8_t> &b) {
+	uuid(BytesView b) {
 		if (b.size() == 16) {
 			memcpy(_uuid.data(), b.data(), 16);
 		}

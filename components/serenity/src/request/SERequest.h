@@ -38,7 +38,7 @@ enum class CookieFlags {
 	SameSiteLux = 2 << 4,
 	SameSiteStrict = 3 << 4,
 
-	Default = 1 | 2 | 8 // Secure | HttpOnly | SetOnSuccess
+	Default = 1 | 2 | 8 | 16 // Secure | HttpOnly | SetOnSuccess
 };
 
 SP_DEFINE_ENUM_AS_MASK(CookieFlags)

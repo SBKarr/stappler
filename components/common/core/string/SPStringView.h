@@ -23,6 +23,7 @@ THE SOFTWARE.
 #ifndef COMMON_STRING_SPSTRINGVIEW_H_
 #define COMMON_STRING_SPSTRINGVIEW_H_
 
+#include "SPMemInterface.h"
 #include "SPBytesReader.h"
 #include "SPUnicode.h"
 

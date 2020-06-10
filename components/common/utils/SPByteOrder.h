@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef COMMON_UTILS_SPBYTEORDER_H_
 #define COMMON_UTILS_SPBYTEORDER_H_
 
-#include "SPCommon.h"
+#include "SPCore.h"
 
 #ifndef __has_builtin         // Optional of course
   #define __has_builtin(x) 0  // Compatibility with non-clang compilers

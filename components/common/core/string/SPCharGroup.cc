@@ -71,7 +71,7 @@ bool inCharGroupMask(CharGroupId mask, char16_t c) {
 	return false;
 }
 
-WideString getCharGroup(CharGroupId mask) {
+/*WideString getCharGroup(CharGroupId mask) {
 	Set<char16_t> set;
 
 	for (size_t i = 1; i < sizeof(CharGroupId) * 8; i++) {
@@ -114,7 +114,7 @@ WideString getCharGroup(CharGroupId mask) {
 	}
 
 	return ret;
-}
+}*/
 
 namespace chars {
 

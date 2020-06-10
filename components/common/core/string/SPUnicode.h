@@ -23,7 +23,8 @@ THE SOFTWARE.
 #ifndef COMMON_STRING_SPUNICODE_H_
 #define COMMON_STRING_SPUNICODE_H_
 
-#include "SPCommon.h"
+#include "SPCore.h"
+#include "SPMemString.h"
 
 namespace stappler::unicode {
 
@@ -125,7 +126,7 @@ inline uint8_t utf8EncodeBuf(char *ptr, char16_t c) {
 	}
 }
 
-inline uint8_t utf8Encode(String &str, char16_t c) {
+inline uint8_t utf8Encode(std::string &str, char16_t c) {
 	if (c < 0x80) {
 		str.push_back((char)c);
 		return 1;
@@ -141,7 +142,23 @@ inline uint8_t utf8Encode(String &str, char16_t c) {
 	}
 }
 
-inline uint8_t utf8Encode(OutputStream &str, char16_t c) {
+inline uint8_t utf8Encode(memory::string &str, char16_t c) {
+	if (c < 0x80) {
+		str.push_back((char)c);
+		return 1;
+	} else if (c < 0x800) {
+		str.push_back((char)(0xc0 | (c >> 6)));
+		str.push_back((char)(0x80 | (c & 0x3f)));
+		return 2;
+	} else {
+		str.push_back((char)(0xe0 | (c >> 12)));
+		str.push_back((char)(0x80 | (c >> 6 & 0x3f)));
+		str.push_back((char)(0x80 | (c & 0x3f)));
+		return 3;
+	}
+}
+
+inline uint8_t utf8Encode(std::ostream &str, char16_t c) {
 	if (c < 0x80) {
 		str << ((char)c);
 		return 1;

@@ -1073,7 +1073,7 @@ static void SearchQuery_encode_Postgresql(const Callback<void(StringView)> &cb, 
 				case SearchOp::Or: cb << " | "; break;
 				case SearchOp::Follow:
 					if (it->offset > 1 && it->offset <= 5) {
-						cb << " <" << it->offset << "> ";
+						cb << " <" << uint64_t(it->offset) << "> ";
 					} else {
 						cb << " <-> ";
 					}

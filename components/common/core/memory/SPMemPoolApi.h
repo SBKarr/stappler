@@ -41,8 +41,8 @@ class context {
 public:
 	using pool_type = _Pool;
 
-	explicit context(pool_type &__m) : _pool(std::__addressof(__m)), _owns(false) { push(); }
-	context(pool_type &__m, uint32_t tag) : _pool(std::__addressof(__m)), _owns(false) { push(tag); }
+	explicit context(pool_type &__m) : _pool(std::addressof(__m)), _owns(false) { push(); }
+	context(pool_type &__m, uint32_t tag) : _pool(std::addressof(__m)), _owns(false) { push(tag); }
 	~context() { if (_owns) { pop(); } }
 
 	context(const context &) = delete;

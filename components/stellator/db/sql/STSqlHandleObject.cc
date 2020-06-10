@@ -296,6 +296,12 @@ mem::Value SqlHandle::patch(Worker &worker, uint64_t oid, const mem::Value &patc
 			ret = std::move(obj);
 		} else if (!cond.empty() && isSuccess()) {
 			ret = mem::Value({ stappler::pair("__oid", mem::Value(oid)) });
+		} else {
+			messages::debug("Storage", "Fail to update object", mem::Value({
+				std::make_pair("id", mem::Value(oid)),
+				std::make_pair("query", mem::Value(query.getStream().weak())),
+				std::make_pair("data", mem::Value(patch)),
+			}));
 		}
 	});
 	return ret;

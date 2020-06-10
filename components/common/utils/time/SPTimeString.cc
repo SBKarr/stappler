@@ -201,6 +201,10 @@ static bool sp_date_checkmask(StringView data, StringView mask) {
 		++ data;
 	}
 
+	while (data.empty() && mask.is('*')) {
+		++ mask;
+	}
+
 	return mask.empty() && data.empty();
 }
 

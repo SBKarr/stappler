@@ -118,7 +118,7 @@ Adapter getAdapterFromContext() {
 	} else {
 		auto p = mem::pool::acquire();
 		stappler::serenity::websocket::Handler *h = nullptr;
-		apr_pool_userdata_get((void **)&h, config::getSerenityWebsocketHandleName(), p);
+		mem::pool::userdata_get((void **)&h, config::getSerenityWebsocketHandleName(), p);
 		if (h) {
 			return Adapter(h->storage());
 		}
@@ -233,7 +233,7 @@ void _addErrorMessage(data::Value &&data) {
 	} else {
 		auto pool = apr::pool::acquire();
 		ErrorNotificator *err = nullptr;
-		apr_pool_userdata_get((void **)&err, "Serenity.ErrorNotificator", pool);
+		mem::pool::userdata_get((void **)&err, "Serenity.ErrorNotificator", pool);
 		if (err && err->error) {
 			err->error(std::move(data));
 		} else {
@@ -266,7 +266,7 @@ void _addDebugMessage(data::Value &&data) {
 		} else {
 			auto pool = apr::pool::acquire();
 			ErrorNotificator *err = nullptr;
-			apr_pool_userdata_get((void **)&err, (const char *)config::getSerenityErrorNotificatorName(), pool);
+			mem::pool::userdata_get((void **)&err, (const char *)config::getSerenityErrorNotificatorName(), pool);
 			if (err && err->debug) {
 				err->debug(std::move(data));
 			} else {
@@ -274,6 +274,9 @@ void _addDebugMessage(data::Value &&data) {
 			}
 		}
 	}
+#if DEBUG
+	log::text("Debug", data::toString(data, false));
+#endif
 }
 
 void broadcast(const data::Value &val) {
@@ -312,7 +315,7 @@ void setNotifications(apr_pool_t *pool,
 	err->error = error;
 	err->debug = debug;
 
-	apr_pool_userdata_set(err, (const char *)config::getSerenityErrorNotificatorName(), nullptr, pool);
+	mem::pool::userdata_set(err, (const char *)config::getSerenityErrorNotificatorName(), nullptr, pool);
 }
 
 NS_SA_EXT_END(messages)

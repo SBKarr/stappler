@@ -95,7 +95,7 @@ struct Allocator {
 	uint32_t current = 0; // current allocated size in BOUNDARY_SIZE
 	Pool *owner = nullptr;
 
-	std::mutex mutex;
+	std::recursive_mutex mutex;
 	std::array<MemNode *, MAX_INDEX> buf;
 
 	int mmapdes = -1;
