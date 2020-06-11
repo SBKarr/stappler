@@ -45,6 +45,7 @@ public:
 	static ExternalSession *get(const Request &);
 	static ExternalSession *get(const Request &, const SessionKeys &keys);
 
+	// get OR create session
 	static ExternalSession *acquire(const Request &, TimeInterval = TimeInterval::seconds(60 * 60 * 12));
 	static ExternalSession *acquire(const Request &, const SessionKeys &keys, TimeInterval = TimeInterval::seconds(60 * 60 * 12));
 
@@ -63,6 +64,8 @@ public:
 	data::Value getUserData() const;
 	TimeInterval getMaxAge() const;
 
+	mem::String exportToken() const;
+
 	bool save();
 	bool cancel();
 	bool touch(TimeInterval maxAge = TimeInterval());
@@ -75,6 +78,7 @@ protected:
 	void setCookie();
 
 	static Token makeToken(const Request &rctx, const mem::uuid & uuid);
+	static ExternalSession *getFromData(const Request &, const SessionKeys &keys, StringView data);
 
 	Request _request;
 

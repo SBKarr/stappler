@@ -62,6 +62,32 @@ ExternalSession::Token ExternalSession::makeToken(const Request &rctx, const mem
 		.final();
 }
 
+ExternalSession *ExternalSession::getFromData(const Request &rctx, const SessionKeys &keys, StringView data) {
+	if (!data.empty()) {
+		JsonWebToken token(data);
+		if (token.validate(JsonWebToken::RS512, keys.pub)) {
+			auto iss = rctx.getFullHostname();
+			if (token.validatePayload(iss, iss)) {
+				mem::uuid sessionId(token.payload.getBytes("sub"));
+				Bytes secToken(token.payload.getBytes("tkn"));
+
+				auto testToken = ExternalSession::makeToken(rctx, sessionId);
+				if (secToken.size() == testToken.size() && memcmp(secToken.data(), testToken.data(), testToken.size()) == 0) {
+					if (auto d = Session_getStorageData(rctx, sessionId)) {
+						auto obj = new (rctx.pool()) ExternalSession(rctx, keys, sessionId, move(d));
+						if (obj->isValid()) {
+							rctx.storeObject(obj, "ExternalSession"_weak);
+							mem::pool::pop();
+							return obj;
+						}
+					}
+				}
+			}
+		}
+	}
+	return nullptr;
+}
+
 ExternalSession *ExternalSession::get() {
 	if (auto req = mem::request()) {
 		return get(Request(req));
@@ -79,28 +105,14 @@ ExternalSession *ExternalSession::get(const Request &rctx, const SessionKeys &ke
 		return obj;
 	} else {
 		mem::pool::push(rctx.pool());
+		auto v = rctx.getRequestHeaders().at("X-ExternalSession");
+		if (!v.empty()) {
+			return getFromData(rctx, keys, v);
+		}
+
 		auto data = rctx.getCookie(SessionCookie);
 		if (!data.empty()) {
-			JsonWebToken token(data);
-			if (token.validate(JsonWebToken::RS512, keys.pub)) {
-				auto iss = rctx.getFullHostname();
-				if (token.validatePayload(iss, iss)) {
-					mem::uuid sessionId(token.payload.getBytes("sub"));
-					Bytes secToken(token.payload.getBytes("tkn"));
-
-					auto testToken = makeToken(rctx, sessionId);
-					if (secToken.size() == testToken.size() && memcmp(secToken.data(), testToken.data(), testToken.size()) == 0) {
-						if (auto d = Session_getStorageData(rctx, sessionId)) {
-							obj = new (rctx.pool()) ExternalSession(rctx, keys, sessionId, move(d));
-							if (obj->isValid()) {
-								rctx.storeObject(obj, "ExternalSession"_weak);
-								mem::pool::pop();
-								return obj;
-							}
-						}
-					}
-				}
-			}
+			return getFromData(rctx, keys, data);
 		}
 
 		mem::pool::pop();
@@ -231,6 +243,17 @@ TimeInterval ExternalSession::getMaxAge() const {
 	return _maxAge;
 }
 
+mem::String ExternalSession::exportToken() const {
+	auto secToken = makeToken(_request, _uuid);
+	auto iss = _request.getFullHostname();
+
+	JsonWebToken token = JsonWebToken::make(iss, iss);
+	token.payload.setBytes(Bytes(_uuid.data(), _uuid.data() + _uuid.size()), "sub");
+	token.payload.setBytes(Bytes(secToken.data(), secToken.data() + secToken.size()), "tkn");
+
+	return token.exportSigned(JsonWebToken::RS512, _keys.priv, CoderSource(), data::EncodeFormat::Cbor);
+}
+
 bool ExternalSession::save() {
 	setModified(false);
 	return Session_setStorageData(_request, _uuid, _data, _maxAge);
@@ -252,15 +275,7 @@ bool ExternalSession::touch(TimeInterval maxAge) {
 }
 
 void ExternalSession::setCookie() {
-	auto secToken = makeToken(_request, _uuid);
-	auto iss = _request.getFullHostname();
-
-	JsonWebToken token = JsonWebToken::make(iss, iss);
-	token.payload.setBytes(Bytes(_uuid.data(), _uuid.data() + _uuid.size()), "sub");
-	token.payload.setBytes(Bytes(secToken.data(), secToken.data() + secToken.size()), "tkn");
-
-	auto str = token.exportSigned(JsonWebToken::RS512, _keys.priv, CoderSource(), data::EncodeFormat::Cbor);
-	_request.setCookie(SessionCookie, str);
+	_request.setCookie(SessionCookie, exportToken());
 }
 
 LongSession *LongSession::acquire(const Request &rctx) {
