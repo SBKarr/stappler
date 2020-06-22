@@ -37,6 +37,8 @@ enum class DataFormat {
 	Cbor,
 	Serenity,
 
+	CborBase64,
+
 	// for future implementations
 	LZ4_Short,
 	LZ4_Word,
@@ -48,6 +50,8 @@ enum class DataFormat {
 inline DataFormat detectDataFormat(const uint8_t *ptr, size_t size) {
 	if (size > 3 && ptr[0] == 0xd9 && ptr[1] == 0xd9 && ptr[2] == 0xf7) {
 		return DataFormat::Cbor;
+	} else if (size > 4 && ptr[0] == '2' && ptr[1] == 'd' && ptr[2] == 'n' && ptr[3] == '3') {
+		return DataFormat::CborBase64;
 	} else if (size > 3 && ptr[0] == 'L' && ptr[1] == 'Z' && ptr[2] == '4') {
 		if (ptr[3] == 'S') {
 			return DataFormat::LZ4_Short;
@@ -88,6 +92,9 @@ auto read(const StringType &data, const StringView &key = StringView()) -> Value
 		break;
 	case DataFormat::Serenity:
 		return serenity::read<Interface>(StringView((char *)data.data(), data.size()));
+		break;
+	case DataFormat::CborBase64:
+		return read<typename Interface::BytesType, Interface>(base64::decode<Interface>(CoderSource(data)), key);
 		break;
 	case DataFormat::LZ4_Short:
 		return decompressLZ4<Interface>((const uint8_t *)data.data() + 4, data.size() - 4, true);

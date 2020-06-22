@@ -145,6 +145,7 @@ public: // httpd server info
 	mem::TimeInterval getSessionMaxAge() const;
 	bool isSessionSecure() const;
 
+	void *server() const { return (void *)_config; }
 	void *getConfig() const { return (void *)_config; }
 	mem::pool_t *getPool() const;
 
