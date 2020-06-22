@@ -20,10 +20,25 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "XLDefine.h"
+#ifndef COMPONENTS_XENOLITH_CORE_XLGRAPHICS_H_
+#define COMPONENTS_XENOLITH_CORE_XLGRAPHICS_H_
 
-#include "XLEvent.cc"
-#include "XLEventHeader.cc"
-#include "XLEventHandler.cc"
+#include "XLForward.h"
 
-#include "XLDirector.cc"
+namespace stappler::xenolith {
+
+struct GraphicsParams {
+	struct URect {
+		uint32_t x;
+		uint32_t y;
+		uint32_t width;
+		uint32_t height;
+	};
+
+	Rect viewport;
+	URect scissor;
+};
+
+}
+
+#endif /* COMPONENTS_XENOLITH_CORE_XLGRAPHICS_H_ */

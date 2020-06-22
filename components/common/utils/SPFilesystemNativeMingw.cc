@@ -136,7 +136,7 @@ bool touch_fn(const StringView &path) {
 	return _wutime((wchar_t *)str.c_str(), NULL) == 0;
 }
 
-void ftw_fn(const StringView &path, const Function<void(const StringView &path, bool isFile)> &callback, int depth, bool dirFirst) {
+void ftw_fn(const StringView &path, const Callback<void(const StringView &path, bool isFile)> &callback, int depth, bool dirFirst) {
 	WideString str = string::toUtf16(posixToNative(path));
 	auto dp = _wopendir((wchar_t *)str.c_str());
 	if (dp == NULL) {
@@ -163,7 +163,7 @@ void ftw_fn(const StringView &path, const Function<void(const StringView &path, 
 		}
 	}
 }
-bool ftw_b_fn(const StringView &path, const Function<bool(const StringView &path, bool isFile)> &callback, int depth, bool dirFirst) {
+bool ftw_b_fn(const StringView &path, const Callback<bool(const StringView &path, bool isFile)> &callback, int depth, bool dirFirst) {
 	WideString str = string::toUtf16(posixToNative(path));
 	auto dp = _wopendir((wchar_t *)str.c_str());
 	if (dp == NULL) {

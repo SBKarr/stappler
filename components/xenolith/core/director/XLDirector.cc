@@ -21,9 +21,6 @@
  **/
 
 #include "XLDirector.h"
-#include "XLThreadManager.h"
-#include "XLEventHeader.h"
-#include "XLEventDispatcher.h"
 #include "XLVkView.h"
 
 namespace stappler::xenolith {
@@ -33,34 +30,28 @@ XL_DECLARE_EVENT_CLASS(Director, onAfterUpdate);
 XL_DECLARE_EVENT_CLASS(Director, onAfterVisit);
 XL_DECLARE_EVENT_CLASS(Director, onAfterDraw);
 
-static Director *s_sharedDirector = nullptr;
-
-Director* Director::getInstance() {
-    if (!s_sharedDirector) {
-    	s_sharedDirector = new (std::nothrow) Director();
-        s_sharedDirector->init();
-    }
-
-    return s_sharedDirector;
-}
-
 Director::Director() { }
 
 Director::~Director() { }
 
 bool Director::init() {
-	_threadManager = Rc<ThreadManager>::alloc();
-	_eventDispatcher = Rc<EventDispatcher>::alloc();
-
 	return true;
 }
 
-void Director::setView(VkView *view) {
-	_view = view;
+void Director::setView(vk::View *view) {
+	if (view != _view) {
+		_view = view;
+	}
 }
 
-bool Director::mainLoop() {
+bool Director::mainLoop(double t) {
+	update(t);
+	_view->drawFrame(t);
 	return false;
+}
+
+void Director::update(double t) {
+
 }
 
 void Director::end() {

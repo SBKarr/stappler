@@ -20,35 +20,58 @@
  THE SOFTWARE.
  **/
 
-#ifndef COMPONENTS_XENOLITH_GL_XLPROGRAMMANAGER_H_
-#define COMPONENTS_XENOLITH_GL_XLPROGRAMMANAGER_H_
+#ifndef COMPONENTS_XENOLITH_GL_XLVKPIPELINE_H_
+#define COMPONENTS_XENOLITH_GL_XLVKPIPELINE_H_
 
-#include "XLVk.h"
+#include "XLVkDevice.h"
 
-namespace stappler::xenolith {
+namespace stappler::xenolith::vk {
 
-class ProgramModule : public Ref {
+class Pipeline : public Ref {
 public:
+	struct Options {
+		VkPipelineLayout pipelineLayout;
+		VkRenderPass renderPass;
+		Vector<Pair<ProgramStage, VkShaderModule>> shaders;
+	};
+
+	virtual ~Pipeline();
+
+	bool init(PresentationDevice &dev, const Options &, const GraphicsParams &);
+	void invalidate(PresentationDevice &dev);
+
+	VkPipeline getPipeline() const { return _pipeline; }
 
 protected:
-	VkShaderModule _shaderModule = VK_NULL_HANDLE;
+	VkPipeline _pipeline = VK_NULL_HANDLE;
 };
 
-class ProgramManager : public Ref {
+class PipelineLayout : public Ref {
 public:
-	using Callback = Function<void(Rc<ProgramModule>)>;
+	virtual ~PipelineLayout();
 
-	ProgramManager();
+	bool init(PresentationDevice &dev);
+	void invalidate(PresentationDevice &dev);
 
-	bool init(Rc<VkInstanceImpl>);
-
-	bool addProgram(const StringView &, const Callback &);
-	bool addProgram(const FilePath &, const Callback &);
+	VkPipelineLayout getPipelineLayout() const { return _pipelineLayout; }
 
 protected:
-	Rc<VkInstanceImpl> _instance;
+	VkPipelineLayout _pipelineLayout = VK_NULL_HANDLE;
+};
+
+class RenderPass : public Ref {
+public:
+	virtual ~RenderPass();
+
+	bool init(PresentationDevice &dev, VkFormat);
+	void invalidate(PresentationDevice &dev);
+
+	VkRenderPass getRenderPass() const { return _renderPass; }
+
+protected:
+	VkRenderPass _renderPass = VK_NULL_HANDLE;
 };
 
 }
 
-#endif /* COMPONENTS_XENOLITH_GL_XLPROGRAMMANAGER_H_ */
+#endif /* COMPONENTS_XENOLITH_GL_XLVKPIPELINE_H_ */

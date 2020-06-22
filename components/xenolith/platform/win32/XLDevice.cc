@@ -24,6 +24,37 @@ THE SOFTWARE.
 
 #if (CYGWIN || MSYS)
 
+#include <wincrypt.h>
+
+class RandomSequence {
+	HCRYPTPROV hProvider;
+public:
+	RandomSequence(void) : hProvider(0) {
+		if (FALSE == CryptAcquireContext(&hProvider, NULL, NULL, PROV_RSA_FULL, 0)) {
+			// failed, should we try to create a default provider?
+			if (NTE_BAD_KEYSET == HRESULT(GetLastError())) {
+				if (FALSE == CryptAcquireContext(&hProvider, NULL, NULL, PROV_RSA_FULL, CRYPT_NEWKEYSET)) {
+					// ensure the provider is NULL so we could use a backup plan
+					hProvider = 0;
+				}
+			}
+		}
+	}
+
+	~RandomSequence(void) {
+		if (0 != hProvider) {
+			CryptReleaseContext(hProvider, 0U);
+		}
+	}
+
+	BOOL generate(BYTE *buf, DWORD len) {
+		if (0 != hProvider) {
+			return CryptGenRandom(hProvider, len, buf);
+		}
+		return FALSE;
+	}
+};
+
 namespace stappler::xenolith::platform::device {
 	bool _isTablet() {
 		return desktop::isTablet();
@@ -38,14 +69,13 @@ namespace stappler::xenolith::platform::device {
 			auto data = stappler::filesystem::readIntoMemory(devIdPath);
 			return base16::encode(data);
 		} else {
+			RandomSequence rnd;
 			Bytes data; data.resize(16);
-			auto fp = fopen("/dev/urandom", "r");
-			if (fread(data.data(), 1, data.size(), fp) == 0) {
+			if (!rnd.generate(data.data(), 16)) {
 				log::text("Device", "Fail to read random bytes");
+			} else {
+				stappler::filesystem::write(devIdPath, data);
 			}
-			fclose(fp);
-
-			stappler::filesystem::write(devIdPath, data);
 			return base16::encode(data);
 		}
 	}

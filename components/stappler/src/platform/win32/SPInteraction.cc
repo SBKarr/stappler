@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "SPDefine.h"
 #include "SPPlatform.h"
 #include "SPThread.h"
+#include "shellapi.h"
 
 #if (CYGWIN || MSYS)
 
@@ -35,8 +36,7 @@ namespace stappler::platform::interaction {
 		log::format("Interaction", "GoTo url: %s", url.data());
 
 		auto wurl = string::toUtf16(url);
-	    HINSTANCE r = ShellExecuteW(NULL, L"open", wurl.data(), NULL, NULL, SW_SHOWNORMAL);
-	    return (size_t)r>32;
+	    ShellExecuteW(NULL, L"open", (const wchar_t *)wurl.data(), NULL, NULL, SW_SHOWNORMAL);
 	}
 	void _makePhoneCall(const StringView &str) {
 		log::format("Interaction", "phone: %s", str.data());

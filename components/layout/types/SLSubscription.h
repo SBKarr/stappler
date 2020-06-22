@@ -27,7 +27,7 @@ THE SOFTWARE.
 
 NS_LAYOUT_BEGIN
 
-class Subscription : public AtomicRef {
+class Subscription : public Ref {
 public:
 	using Id = ValueWrapper<uint64_t, class IdClassFlag>;
 

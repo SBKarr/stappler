@@ -20,12 +20,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "XLVk.h"
-#include "XLVkViewImpl-desktop.h"
+#include "XLVkDevice.h"
+//#include "XLVkViewImpl-desktop.h"
 
-namespace stappler::xenolith {
+#if (MSYS || CYGWIN || LINUX || MACOS)
 
-Rc<VkInstanceImpl> VkInstanceImpl::create() {
+#include "glfw3.h"
+
+namespace stappler::xenolith::vk {
+
+Rc<Instance> Instance::create() {
 	const auto pfnCreateInstance [[gnu::unused]] = (PFN_vkCreateInstance) glfwGetInstanceProcAddress(VK_NULL_HANDLE, "vkCreateInstance");
 	const auto pfnEnumerateInstanceVersion [[gnu::unused]] = (PFN_vkEnumerateInstanceVersion) glfwGetInstanceProcAddress(VK_NULL_HANDLE, "vkEnumerateInstanceVersion");
 	const auto pfnEnumerateInstanceLayerProperties [[gnu::unused]] = (PFN_vkEnumerateInstanceLayerProperties) glfwGetInstanceProcAddress(VK_NULL_HANDLE, "vkEnumerateInstanceLayerProperties");
@@ -112,7 +116,9 @@ Rc<VkInstanceImpl> VkInstanceImpl::create() {
 		log::text("Vk", "Fail to create Vulkan instance");
 		return nullptr;
 	}
-	return Rc<VkInstanceImpl>::alloc(instance, pfnGetInstanceProcAddr);
+	return Rc<Instance>::alloc(instance, pfnGetInstanceProcAddr);
 }
 
 }
+
+#endif

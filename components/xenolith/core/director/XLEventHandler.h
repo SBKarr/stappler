@@ -61,30 +61,24 @@ public:
 	void clearEvents();
 
 private:
-	Set<EventHandlerNode *> _handlers;
+	Set<Rc<EventHandlerNode>> _handlers;
 };
 
 class EventHandlerNode : public Ref {
 public:
 	using Callback = Function<void(const Event &)>;
 
-	static EventHandlerNode * onEvent(const EventHeader &header, Ref *ref, Callback && callback, EventHandler *obj, bool destroyAfterEvent);
+	static Rc<EventHandlerNode> onEvent(const EventHeader &header, Ref *ref, Callback && callback, EventHandler *obj, bool destroyAfterEvent);
 
-	void setSupport(EventHandler *);
-
-	bool shouldRecieveEventWithObject(EventHeader::EventID eventID, Ref *object) const {
-		return _eventID == eventID && (!_obj || object == _obj);
-	};
-
-	EventHeader::EventID getEventID() const { return _eventID; }
-
-	void onEventRecieved(const Event &event) const;
-
+	EventHandlerNode(const EventHeader &header, Ref *ref, Callback && callback, EventHandler *obj, bool destroyAfterEvent);
 	~EventHandlerNode();
 
-private:
-	EventHandlerNode(const EventHeader &header, Ref *ref, Callback && callback, EventHandler *obj, bool destroyAfterEvent);
+	void setSupport(EventHandler *s);
+	bool shouldRecieveEventWithObject(EventHeader::EventID eventID, Ref *object) const;
+	EventHeader::EventID getEventID() const;
+	void onEventRecieved(const Event &event) const;
 
+private:
 	bool _destroyAfterEvent = false;
 
 	EventHeader::EventID _eventID;

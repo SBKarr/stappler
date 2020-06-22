@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define COMPONENTS_XENOLITH_CORE_XLDEFINE_H_
 
 #include "XLForward.h"
+#include "XLGraphics.h"
 
 
 

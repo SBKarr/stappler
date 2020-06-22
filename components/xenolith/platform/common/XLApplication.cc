@@ -23,6 +23,8 @@ THE SOFTWARE.
 #include "XLApplication.h"
 #include "XLPlatform.h"
 #include "XLDirector.h"
+#include "XLEvent.h"
+#include "XLEventHandler.h"
 
 namespace stappler::xenolith {
 
@@ -67,11 +69,18 @@ Application::Application() {
 Application::~Application() { }
 
 bool Application::applicationDidFinishLaunching() {
-	auto director = Director::getInstance();
-	auto view = director->getView();
+	_queue = Rc<thread::TaskQueue>::alloc();
+	if (!_queue->spawnWorkers()) {
+		log::text("Application", "Fail to spawn worker threads");
+		return false;
+	}
+
+	_director = Rc<Director>::create();
+	auto view = _director->getView();
 	if (!view) {
-		if (auto v = Rc<VkViewImpl>::create(getBundleName(), Rect(Vec2(0.0f, 0.0f), platform::desktop::getScreenSize()))) {
-			director->setView(v);
+		if (auto v = Rc<vk::ViewImpl>::create(getBundleName(), Rect(Vec2(0.0f, 0.0f), platform::desktop::getScreenSize()))) {
+			_mainView = v.get();
+			_director->setView(v);
 		}
 	}
 
@@ -82,20 +91,23 @@ void Application::applicationDidReceiveMemoryWarning() {
 
 }
 
-int Application::run() {
-	// Initialize instance and cocos2d.
+int Application::run(Director *director) {
 	if (!applicationDidFinishLaunching()) {
 		return 1;
 	}
 
-	auto director = Director::getInstance();
-	Rc<VkView> glview = director->getView();
+	if (!director) {
+		director = _director;
+	}
+
+	Rc<vk::View> glview = director->getView();
 	if (!glview) {
 		return -1;
 	}
 
-	glview->run([&] (double) -> bool {
-        director->mainLoop();
+	glview->run([&] (double val) -> bool {
+		update(val);
+		director->mainLoop(val);
 		return true;
 	});
 
@@ -111,7 +123,17 @@ bool Application::openURL(const StringView &url) {
 	return platform::interaction::_goToUrl(url, true);
 }
 
-void Application::update(float dt) {
+void Application::update(double dt) {
+	auto id = std::this_thread::get_id();
+	if (id != _threadId) {
+		thread::ThreadInfo::setMainThread();
+		_threadId = id;
+	}
+
+	if (_queue) {
+		_queue->update();
+	}
+
     if (!_isNetworkOnline) {
         _updateTimer += dt;
         if (_updateTimer >= 10) {
@@ -232,6 +254,106 @@ void Application::processLaunchUrl(const StringView &url) {
 
 StringView Application::getLaunchUrl() const {
     return _launchUrl;
+}
+
+
+bool Application::isMainThread() const {
+	return _threadId == std::this_thread::get_id();
+}
+
+void Application::performOnMainThread(const Callback &func, Ref *target, bool onNextFrame) {
+	if ((isMainThread() || _singleThreaded) && !onNextFrame) {
+		func();
+	} else {
+		_queue->onMainThread(Rc<thread::Task>::create([func] (const thread::Task &, bool success) {
+			if (success) { func(); }
+		}));
+	}
+}
+
+void Application::performOnMainThread(Rc<thread::Task> &&task, bool onNextFrame) {
+	if ((isMainThread() || _singleThreaded) && !onNextFrame) {
+		task->onComplete();
+	} else {
+		_queue->onMainThread(std::move(task));
+	}
+}
+
+void Application::perform(const ExecuteCallback &exec, const CompleteCallback &complete, Ref *obj) {
+	perform(Rc<Task>::create(exec, complete, obj));
+}
+
+void Application::perform(Rc<thread::Task> &&task) {
+	if (_singleThreaded) {
+		task->setSuccessful(task->execute());
+		task->onComplete();
+	} else {
+		_queue->perform(std::move(task));
+	}
+}
+
+void Application::perform(Rc<thread::Task> &&task, bool performFirst) {
+	if (_singleThreaded) {
+		task->setSuccessful(task->execute());
+		task->onComplete();
+	} else {
+		_queue->performWithPriority(std::move(task), performFirst);
+	}
+}
+
+void Application::performAsync(Rc<Task> &&task) {
+	if (_singleThreaded) {
+		task->setSuccessful(task->execute());
+		task->onComplete();
+	} else {
+		_queue->performAsync(std::move(task));
+	}
+}
+
+void Application::setSingleThreaded(bool value) {
+	_singleThreaded = value;
+}
+
+bool Application::isSingleThreaded() const {
+	return _singleThreaded;
+}
+
+void Application::addEventListener(const EventHandlerNode *listener) {
+	auto it = _eventListeners.find(listener->getEventID());
+	if (it != _eventListeners.end()) {
+		it->second.insert(listener);
+	} else {
+		_eventListeners.emplace(listener->getEventID(), std::unordered_set<const EventHandlerNode *>{listener});
+	}
+}
+void Application::removeEventListner(const EventHandlerNode *listener) {
+	auto it = _eventListeners.find(listener->getEventID());
+	if (it != _eventListeners.end()) {
+		it->second.erase(listener);
+	}
+}
+
+void Application::removeAllListeners() {
+	_eventListeners.clear();
+}
+
+void Application::dispatchEvent(const Event &ev) {
+	if (_eventListeners.size() > 0) {
+		auto it = _eventListeners.find(ev.getHeader().getEventID());
+		if (it != _eventListeners.end() && it->second.size() != 0) {
+			Vector<const EventHandlerNode *> listenersToExecute;
+			auto &listeners = it->second;
+			for (auto l : listeners) {
+				if (l->shouldRecieveEventWithObject(ev.getEventID(), ev.getObject())) {
+					listenersToExecute.push_back(l);
+				}
+			}
+
+			for (auto l : listenersToExecute) {
+				l->onEventRecieved(ev);
+			}
+		}
+	}
 }
 
 }

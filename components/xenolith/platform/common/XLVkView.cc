@@ -22,72 +22,88 @@ THE SOFTWARE.
 
 #include "XLVkView.h"
 #include "XLPlatform.h"
+#include "XLVkProgram.h"
 
-namespace stappler::xenolith {
+namespace stappler::xenolith::vk {
 
-XL_DECLARE_EVENT_CLASS(VkView, onClipboard);
-XL_DECLARE_EVENT_CLASS(VkView, onBackground);
-XL_DECLARE_EVENT_CLASS(VkView, onFocus);
+XL_DECLARE_EVENT_CLASS(View, onClipboard);
+XL_DECLARE_EVENT_CLASS(View, onBackground);
+XL_DECLARE_EVENT_CLASS(View, onFocus);
 
-VkView::VkView() { }
+View::View() { }
 
-VkView::~VkView() { }
+View::~View() { }
 
-void VkView::pollEvents() { }
+bool View::init(Instance *impl, PresentationDevice *dev) {
+	_instance = impl;
+	_device = dev;
 
-int VkView::getDpi() const {
+	return true;
+}
+
+void View::drawFrame(double val) {
+	_device->drawFrame(val);
+}
+
+void View::pollEvents() { }
+
+int View::getDpi() const {
 	return _dpi;
 }
-float VkView::getDensity() const {
+float View::getDensity() const {
 	return _density;
 }
 
-const Size & VkView::getScreenSize() const {
+const Size & View::getScreenSize() const {
     return _screenSize;
 }
 
-void VkView::setScreenSize(float width, float height) {
+void View::setScreenSize(float width, float height) {
     _screenSize = Size(width, height);
 }
 
-void VkView::setViewName(const StringView& viewname) {
+void View::setViewName(const StringView& viewname) {
     _viewName = viewname.str();
 }
 
-StringView VkView::getViewName() const {
+StringView View::getViewName() const {
     return _viewName;
 }
 
-void VkView::handleTouchesBegin(int num, intptr_t ids[], float xs[], float ys[]) { }
+void View::handleTouchesBegin(int num, intptr_t ids[], float xs[], float ys[]) { }
 
-void VkView::handleTouchesMove(int num, intptr_t ids[], float xs[], float ys[]) { }
+void View::handleTouchesMove(int num, intptr_t ids[], float xs[], float ys[]) { }
 
-void VkView::handleTouchesEnd(int num, intptr_t ids[], float xs[], float ys[]) { }
+void View::handleTouchesEnd(int num, intptr_t ids[], float xs[], float ys[]) { }
 
-void VkView::handleTouchesCancel(int num, intptr_t ids[], float xs[], float ys[]) { }
+void View::handleTouchesCancel(int num, intptr_t ids[], float xs[], float ys[]) { }
 
-void VkView::enableOffscreenContext() { }
+void View::enableOffscreenContext() { }
 
-void VkView::disableOffscreenContext() { }
+void View::disableOffscreenContext() { }
 
-void VkView::setClipboardString(const StringView &) { }
+void View::setClipboardString(const StringView &) { }
 
-StringView VkView::getClipboardString() const { return StringView(); }
+StringView View::getClipboardString() const { return StringView(); }
 
-ScreenOrientation VkView::getScreenOrientation() const {
+ScreenOrientation View::getScreenOrientation() const {
 	return _orientation;
 }
 
-bool VkView::isTouchDevice() const {
+bool View::isTouchDevice() const {
 	return _isTouchDevice;
 }
 
-bool VkView::hasFocus() const {
+bool View::hasFocus() const {
 	return _hasFocus;
 }
 
-bool VkView::isInBackground() const {
+bool View::isInBackground() const {
 	return _inBackground;
+}
+
+void View::dropFrameDelay() {
+	_dropFrameDelay = true;
 }
 
 }

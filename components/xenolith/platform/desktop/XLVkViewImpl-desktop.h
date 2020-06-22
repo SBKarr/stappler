@@ -49,12 +49,18 @@
 #include "glfw3native.h"
 #endif // MACOS
 
-namespace stappler::xenolith {
+/*
+GLFWAPI GLFWvkproc glfwGetInstanceProcAddress(VkInstance instance, const char* procname);
+GLFWAPI int glfwGetPhysicalDevicePresentationSupport(VkInstance instance, VkPhysicalDevice device, uint32_t queuefamily);
+GLFWAPI VkResult glfwCreateWindowSurface(VkInstance instance, GLFWwindow* window, const VkAllocationCallbacks* allocator, VkSurfaceKHR* surface);
+*/
 
-class VkViewImpl : public VkView {
+namespace stappler::xenolith::vk {
+
+class ViewImpl : public View {
 public:
-	VkViewImpl();
-    virtual ~VkViewImpl();
+	ViewImpl();
+    virtual ~ViewImpl();
 
     bool init(const StringView & viewName, Rect rect);
     bool init(const StringView & viewName);
@@ -76,6 +82,10 @@ public:
 	virtual void setClipboardString(const StringView &) override;
 	virtual StringView getClipboardString() const override;
 
+	virtual void selectPresentationOptions(Instance::PresentationOptions &opts) const override;
+
+	void onGLFWWindowSizeFunCallback(GLFWwindow *window, int width, int height);
+
 protected:
 	void updateFrameSize();
 
@@ -87,7 +97,6 @@ protected:
 	void onGLFWCharCallback(GLFWwindow* window, unsigned int character);
 	void onGLFWWindowPosCallback(GLFWwindow* windows, int x, int y);
 	void onGLFWframebuffersize(GLFWwindow* window, int w, int h);
-	void onGLFWWindowSizeFunCallback(GLFWwindow *window, int width, int height);
 	void onGLFWWindowIconifyCallback(GLFWwindow* window, int iconified);
 	void onGLFWWindowFocusCallback(GLFWwindow* window, int focus);*/
 
@@ -96,6 +105,7 @@ protected:
 	VkSurfaceKHR _surface = nullptr;
 
 	double _animationInterval = 1.0 / 60.0;
+	bool _framebufferResized = false;
 };
 
 }

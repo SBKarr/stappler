@@ -123,8 +123,15 @@ protected:
 	memory::pool_t *_pool = nullptr;
 };
 
-void ThreadHandlerInterface::workerThread(ThreadHandlerInterface *tm) {
+thread_local const TaskQueue *tl_owner = nullptr;
+
+void ThreadHandlerInterface::workerThread(ThreadHandlerInterface *tm, const TaskQueue *q) {
+	tl_owner = q;
 	platform::proc::_workerThread(tm);
+}
+
+const TaskQueue *TaskQueue::getOwner() {
+	return tl_owner;
 }
 
 TaskQueue::TaskQueue(memory::pool_t *p) : _finalized(false), _pool(p) { }
@@ -156,7 +163,7 @@ void TaskQueue::finalize() {
 void TaskQueue::performAsync(Rc<Task> &&task) {
 	if (task) {
 		_SingleTaskWorker *worker = new _SingleTaskWorker(this, std::move(task), _pool);
-		std::thread wThread(ThreadHandlerInterface::workerThread, worker);
+		std::thread wThread(ThreadHandlerInterface::workerThread, worker, this);
 		wThread.detach();
 	}
 }
@@ -272,6 +279,9 @@ bool TaskQueue::spawnWorkers() {
 }
 
 bool TaskQueue::spawnWorkers(uint32_t threadId, const StringView &name) {
+	if (threadId == maxOf<uint32_t>()) {
+		threadId = getNextThreadId();
+	}
 	if (_workers.empty()) {
 		for (uint32_t i = 0; i < _threadsCount; i++) {
 			_workers.push_back(new Worker(this, threadId, i, name, _pool));
@@ -316,7 +326,7 @@ void TaskQueue::waitForAll() {
 
 Worker::Worker(TaskQueue *queue, uint32_t threadId, uint32_t workerId, const StringView &name, memory::pool_t *p)
 : _queue(queue), _refCount(1), _shouldQuit(), _rootPool(p), _managerId(threadId), _workerId(workerId), _name(name)
-, _thread(ThreadHandlerInterface::workerThread, this) {
+, _thread(ThreadHandlerInterface::workerThread, this, queue) {
 	_queue->retain();
 }
 

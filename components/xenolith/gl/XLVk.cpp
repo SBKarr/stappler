@@ -22,4 +22,12 @@ THE SOFTWARE.
 
 #include "XLDefine.h"
 
-#include "XLProgramManager.cc"
+#include "XLVkUtils.cc"
+
+#include "XLVkProgram.cc"
+#include "XLVkPipeline.cc"
+#include "XLVkFramebuffer.cc"
+#include "XLVkInstance.cc"
+#include "XLVkDevice.cc"
+
+#include "XLVkInstance-desktop.cc"

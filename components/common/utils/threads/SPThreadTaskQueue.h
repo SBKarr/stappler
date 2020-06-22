@@ -41,8 +41,10 @@ struct ThreadInfo {
 	bool managed = false;
 };
 
-class TaskQueue : public AtomicRef {
+class TaskQueue : public Ref {
 public:
+	static const TaskQueue *getOwner();
+
 	TaskQueue(memory::pool_t *p = nullptr);
 	TaskQueue(uint16_t count, memory::pool_t *p = nullptr);
 	~TaskQueue();
@@ -59,6 +61,8 @@ public:
 
 	void wait();
 	bool spawnWorkers();
+
+	// maxOf<uint32_t> - set id to next available
 	bool spawnWorkers(uint32_t threadId, const StringView &name);
 	void cancelWorkers();
 
@@ -95,7 +99,7 @@ class ThreadHandlerInterface : public AllocBase {
 public:
 	virtual ~ThreadHandlerInterface() { }
 
-	static void workerThread(ThreadHandlerInterface *tm);
+	static void workerThread(ThreadHandlerInterface *tm, const TaskQueue *q);
 
 	virtual void threadInit() { }
 	virtual bool worker() { return false; }

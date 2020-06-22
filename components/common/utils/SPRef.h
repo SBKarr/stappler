@@ -70,8 +70,7 @@ protected:
 	Counter _counter;
 };
 
-using AtomicRef = RefBase<AtomicCounter, memory::DefaultInterface>;
-using Ref = AtomicRef;
+using Ref = RefBase<AtomicCounter, memory::DefaultInterface>;
 
 namespace memleak {
 

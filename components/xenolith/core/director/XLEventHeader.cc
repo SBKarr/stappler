@@ -24,6 +24,26 @@
 
 namespace stappler::xenolith {
 
+struct EventList {
+	static EventList *getInstance() {
+		static EventList *instance = nullptr;
+		if (!instance) {
+			instance = new EventList();
+		}
+		return instance;
+	}
+
+	uint32_t addEventHeader(const EventHeader *header) {
+		_knownEvents.insert(header);
+		return (uint32_t)_knownEvents.size();
+	}
+	void removeEventHeader(const EventHeader *header) {
+		_knownEvents.erase(header);
+	}
+
+	Set<const EventHeader *> _knownEvents;
+};
+
 EventHeader::Category EventHeader::getCategoryForName(const String &catName) {
 	return string::hash32(catName);
 }
@@ -31,7 +51,7 @@ EventHeader::Category EventHeader::getCategoryForName(const String &catName) {
 EventHeader::EventHeader(Category cat, const String &name)
 : _category(cat), _name(name) {
 	assert(!name.empty());
-	_id = Director::getInstance()->getEventDispatcher()->addEventHeader(this);
+	_id = EventList::getInstance()->addEventHeader(this);
 }
 
 EventHeader::EventHeader(const String &catName, const String &eventName)
@@ -54,7 +74,7 @@ EventHeader &EventHeader::operator=(EventHeader &&other) {
 }
 
 EventHeader::~EventHeader() {
-	Director::getInstance()->getEventDispatcher()->removeEventHeader(this);
+	EventList::getInstance()->removeEventHeader(this);
 }
 
 EventHeader::Category EventHeader::getCategory() const {

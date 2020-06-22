@@ -20,14 +20,33 @@
  THE SOFTWARE.
  **/
 
-#include "XLProgramManager.h"
+#ifndef COMPONENTS_XENOLITH_GL_XLVKPROGRAM_H_
+#define COMPONENTS_XENOLITH_GL_XLVKPROGRAM_H_
 
-XLProgramManager::XLProgramManager() {
-	// TODO Auto-generated constructor stub
+#include "XLVkDevice.h"
+
+namespace stappler::xenolith::vk {
+
+class ProgramModule : public Ref {
+public:
+	virtual ~ProgramModule();
+
+	bool init(PresentationDevice &dev, ProgramSource, ProgramStage, FilePath);
+	bool init(PresentationDevice &dev, ProgramSource, ProgramStage, StringView data, StringView key);
+	bool init(PresentationDevice &dev, ProgramSource, ProgramStage, BytesView data, StringView key);
+
+	void invalidate(PresentationDevice &dev);
+
+	StringView getName() const { return _name; }
+	ProgramStage getStage() const { return _stage; }
+	VkShaderModule getModule() const { return _shaderModule; }
+
+protected:
+	String _name;
+	ProgramStage _stage = ProgramStage::None;
+	VkShaderModule _shaderModule = VK_NULL_HANDLE;
+};
 
 }
 
-XLProgramManager::~XLProgramManager() {
-	// TODO Auto-generated destructor stub
-}
-
+#endif /* COMPONENTS_XENOLITH_GL_XLPROGRAMMANAGER_H_ */

@@ -43,14 +43,14 @@ using FontStructMap = Map<String, FontStruct>;
 using FontFaceMap = Map<String, FT_Face>;
 using FontFacePriority = Vector<Pair<String, uint16_t>>;
 
-struct FontTextureLayout final : AtomicRef {
+struct FontTextureLayout final : Ref {
 	bool init(uint32_t, FontTextureMap &&);
 
 	uint32_t index;
 	FontTextureMap map;
 };
 
-class FreeTypeInterface : public AtomicRef {
+class FreeTypeInterface : public Ref {
 public: /* common functions */
 	using FontTextureInterface = layout::FontTextureInterface;
 

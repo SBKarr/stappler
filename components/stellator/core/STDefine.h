@@ -42,6 +42,7 @@ namespace stellator {
 
 namespace thread = stappler::thread;
 namespace pug = stappler::pug;
+namespace unicode = stappler::unicode;
 namespace messages = db::messages;
 
 class Root;

@@ -20,10 +20,43 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
+#ifndef COMPONENTS_XENOLITH_GL_XLVK_H_
+#define COMPONENTS_XENOLITH_GL_XLVK_H_
+
+#include <vulkan/vulkan.h>
 #include "XLDefine.h"
 
-#include "XLEvent.cc"
-#include "XLEventHeader.cc"
-#include "XLEventHandler.cc"
+namespace stappler::xenolith::vk {
 
-#include "XLDirector.cc"
+class View;
+class ProgramModule;
+class Pipeline;
+class PipelineLayout;
+class RenderPass;
+class ImageView;
+class Framebuffer;
+class CommandPool;
+
+enum class ProgramStage {
+	None = 0,
+	Vertex,
+	TesselationControl,
+	TesselationEvaluation,
+	Geometry,
+	Fragment,
+	Compute,
+};
+
+enum class ProgramSource {
+	SpirV,
+	Glsl,
+};
+
+VkShaderStageFlagBits getVkStageBits(ProgramStage);
+
+StringView getVkFormatName(VkFormat fmt);
+StringView getVkColorSpaceName(VkColorSpaceKHR fmt);
+
+}
+
+#endif /* COMPONENTS_XENOLITH_GL_XLVK_H_ */

@@ -24,7 +24,7 @@
 #define COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDIRECTOR_H_
 
 #include "XLEventHeader.h"
-#include "XLEventDispatcher.h"
+#include "XLVk.h"
 
 namespace stappler::xenolith {
 
@@ -43,26 +43,24 @@ public:
 		Default = Euclid,
 	};
 
-	static Director* getInstance();
-
 	Director();
 
 	virtual ~Director();
 	virtual bool init();
 
-	EventDispatcher *getEventDispatcher() const { return _eventDispatcher; }
-	ThreadManager *getThreadManager() const { return _threadManager; }
+	inline vk::View* getView() { return _view; }
+	void setView(vk::View *view);
 
-	inline VkView* getView() { return _view; }
-	void setView(VkView *view);
+	bool mainLoop(double);
 
-	bool mainLoop();
+	void update(double);
+
+	/* If waitUntilComplete is set - Director will wait for all tasks in queue (and all tasks, that will be spawned) to complete,
+	 * if waitUntilComplete is not set - tasks `onComplete` callback may never be called, so custom data will never been freed  */
 	void end();
 
 protected:
-	Rc<VkView> _view;
-	Rc<EventDispatcher> _eventDispatcher;
-	Rc<ThreadManager> _threadManager;
+	Rc<vk::View> _view;
 };
 
 }

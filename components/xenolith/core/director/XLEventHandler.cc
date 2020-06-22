@@ -21,9 +21,7 @@
  **/
 
 #include "XLEventHandler.h"
-#include "XLEventDispatcher.h"
 #include "XLDirector.h"
-#include "XLThreadManager.h"
 
 namespace stappler::xenolith {
 
@@ -34,17 +32,21 @@ EventHandler::~EventHandler() {
 }
 
 void EventHandler::addHandlerNode(EventHandlerNode *handler) {
+	handler->retain();
 	_handlers.insert(handler);
-	Thread::onMainThread([handler] {
-		Director::getInstance()->getEventDispatcher()->addEventListener(handler);
+	Application::getInstance()->performOnMainThread([handler] {
+		Application::getInstance()->addEventListener(handler);
+
+		handler->release();
 	});
 }
 void EventHandler::removeHandlerNode(EventHandlerNode *handler) {
+	handler->retain();
 	_handlers.erase(handler);
 	handler->setSupport(nullptr);
-	Thread::onMainThread([handler] {
-		Director::getInstance()->getEventDispatcher()->removeEventListner(handler);
-		delete handler;
+	Application::getInstance()->performOnMainThread([handler] {
+		Application::getInstance()->removeEventListner(handler);
+		handler->release();
 	});
 }
 
@@ -64,25 +66,24 @@ Ref *EventHandler::getInterface() const {
 }
 
 void EventHandler::clearEvents() {
-	for (auto it : _handlers) {
+	auto h = move(_handlers);
+	_handlers.clear();
+
+	for (auto it : h) {
 		it->setSupport(nullptr);
 	}
 
-	auto h = new Set<EventHandlerNode *>(std::move(_handlers));
-	Thread::onMainThread([h] {
-		for (auto it : (*h)) {
-			Director::getInstance()->getEventDispatcher()->removeEventListner(it);
-			delete it;
+	Application::getInstance()->performOnMainThread([h = move(h)] {
+		for (auto it : h) {
+			Application::getInstance()->removeEventListner(it);
 		}
-		delete h;
 	}, nullptr, true);
-
-	_handlers.clear();
 }
 
-EventHandlerNode * EventHandlerNode::onEvent(const EventHeader &header, Ref *ref, Callback && callback, EventHandler *obj, bool destroyAfterEvent) {
+
+Rc<EventHandlerNode> EventHandlerNode::onEvent(const EventHeader &header, Ref *ref, Callback && callback, EventHandler *obj, bool destroyAfterEvent) {
 	if (callback) {
-		auto h = new EventHandlerNode(header, ref, std::move(callback), obj, destroyAfterEvent);
+		auto h = Rc<EventHandlerNode>::alloc(header, ref, std::move(callback), obj, destroyAfterEvent);
 		obj->addHandlerNode(h);
 		return h;
 	}
@@ -97,6 +98,12 @@ EventHandlerNode::~EventHandlerNode() { }
 void EventHandlerNode::setSupport(EventHandler *s) {
 	_support = s;
 }
+
+bool EventHandlerNode::shouldRecieveEventWithObject(EventHeader::EventID eventID, Ref *object) const {
+	return _eventID == eventID && (!_obj || object == _obj);
+};
+
+EventHeader::EventID EventHandlerNode::getEventID() const { return _eventID; }
 
 void EventHandlerNode::onEventRecieved(const Event &event) const {
 	auto s = _support.load();

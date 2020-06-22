@@ -45,6 +45,9 @@ public:
 	DataReader(const PoolBytes &vec);
 	DataReader(const StdBytes &vec);
 
+	template <size_t Size>
+	DataReader(const std::array<uint8_t, Size> &arr);
+
 	template<ByteOrder::Endian OtherEndianess>
 	DataReader(const DataReader<OtherEndianess> &vec);
 
@@ -102,6 +105,10 @@ DataReader<Endianess>::DataReader(const PoolBytes &vec)
 template <ByteOrder::Endian Endianess>
 DataReader<Endianess>::DataReader(const StdBytes &vec)
 : BytesReader(vec.data(), vec.size()) { }
+
+template <ByteOrder::Endian Endianess>
+template <size_t Size>
+DataReader<Endianess>::DataReader(const std::array<uint8_t, Size> &arr) : BytesReader(arr.data(), Size) { }
 
 template <ByteOrder::Endian Endianess>
 template<ByteOrder::Endian OtherEndianess>

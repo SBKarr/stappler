@@ -20,15 +20,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef COMPONENTS_XENOLITH_PLATFORM_COMMON_XLVK_H_
-#define COMPONENTS_XENOLITH_PLATFORM_COMMON_XLVK_H_
+#ifndef COMPONENTS_XENOLITH_GL_XLVKINSTANCE_H_
+#define COMPONENTS_XENOLITH_GL_XLVKINSTANCE_H_
 
-#include <vulkan/vulkan.h>
-#include "XLDefine.h"
+#include "XLVk.h"
 
-namespace stappler::xenolith {
+namespace stappler::xenolith::vk {
 
-class VkInstanceImpl : public Ref {
+class Instance : public Ref {
 public:
 	struct PresentationOptions {
 		VkPhysicalDevice device = VK_NULL_HANDLE;
@@ -50,18 +49,26 @@ public:
         String description() const;
 	};
 
-	static Rc<VkInstanceImpl> create();
+	static Rc<Instance> create();
 
-	VkInstanceImpl(VkInstance, const PFN_vkGetInstanceProcAddr getInstanceProcAddr);
-	virtual ~VkInstanceImpl();
+	Instance(VkInstance, const PFN_vkGetInstanceProcAddr getInstanceProcAddr);
+	virtual ~Instance();
 
-	Vector<PresentationOptions> getPresentationOptions(VkSurfaceKHR) const;
+	Vector<PresentationOptions> getPresentationOptions(VkSurfaceKHR, const VkPhysicalDeviceProperties *ptr = nullptr) const;
 
 	VkInstance getInstance() const;
 
 private:
-	friend class VkViewImpl;
-	friend class VkPresentationDevice;
+	friend class ViewImpl;
+	friend class PresentationDevice;
+	friend class ProgramModule;
+	friend class Pipeline;
+	friend class PipelineLayout;
+	friend class RenderPass;
+	friend class ImageView;
+	friend class Framebuffer;
+	friend class CommandPool;
+
 #if DEBUG
 	VkDebugUtilsMessengerEXT debugMessenger;
 #endif
@@ -87,30 +94,42 @@ private:
 	const PFN_vkCreateSwapchainKHR vkCreateSwapchainKHR;
 	const PFN_vkGetSwapchainImagesKHR vkGetSwapchainImagesKHR;
 	const PFN_vkCreateImageView vkCreateImageView;
-};
 
-class VkPresentationDevice : public Ref {
-public:
-	VkPresentationDevice();
+	const PFN_vkCreateShaderModule vkCreateShaderModule;
+	const PFN_vkDestroyShaderModule vkDestroyShaderModule;
+	const PFN_vkCreatePipelineLayout vkCreatePipelineLayout;
+	const PFN_vkDestroyPipelineLayout vkDestroyPipelineLayout;
+	const PFN_vkCreateRenderPass vkCreateRenderPass;
+	const PFN_vkDestroyRenderPass vkDestroyRenderPass;
+	const PFN_vkCreateGraphicsPipelines vkCreateGraphicsPipelines;
+	const PFN_vkDestroyPipeline vkDestroyPipeline;
+	const PFN_vkCreateFramebuffer vkCreateFramebuffer;
+	const PFN_vkDestroyFramebuffer vkDestroyFramebuffer;
+	const PFN_vkCreateCommandPool vkCreateCommandPool;
+	const PFN_vkDestroyCommandPool vkDestroyCommandPool;
+	const PFN_vkCreateSemaphore vkCreateSemaphore;
+	const PFN_vkDestroySemaphore vkDestroySemaphore;
+	const PFN_vkCreateFence vkCreateFence;
+	const PFN_vkDestroyFence vkDestroyFence;
+	const PFN_vkAllocateCommandBuffers vkAllocateCommandBuffers;
+	const PFN_vkFreeCommandBuffers vkFreeCommandBuffers;
+	const PFN_vkBeginCommandBuffer vkBeginCommandBuffer;
+	const PFN_vkEndCommandBuffer vkEndCommandBuffer;
 
-	bool init(Rc<VkInstanceImpl> instance, VkSurfaceKHR, VkInstanceImpl::PresentationOptions &&, VkPhysicalDeviceFeatures);
+	const PFN_vkCmdBeginRenderPass vkCmdBeginRenderPass;
+	const PFN_vkCmdBindPipeline vkCmdBindPipeline;
+	const PFN_vkCmdDraw vkCmdDraw;
+	const PFN_vkCmdEndRenderPass vkCmdEndRenderPass;
 
-	virtual ~VkPresentationDevice();
+	const PFN_vkAcquireNextImageKHR vkAcquireNextImageKHR;
+	const PFN_vkQueuePresentKHR vkQueuePresentKHR;
 
-private:
-	Rc<VkInstanceImpl> instance;
-	VkInstanceImpl::PresentationOptions options;
-
-    VkDevice device = VK_NULL_HANDLE;
-
-    VkQueue graphicsQueue = VK_NULL_HANDLE;
-    VkQueue presentQueue = VK_NULL_HANDLE;
-
-    VkSwapchainKHR swapChain = VK_NULL_HANDLE;
-    std::vector<VkImage> swapChainImages;
-    std::vector<VkImageView> swapChainImageViews;
+	const PFN_vkQueueSubmit vkQueueSubmit;
+	const PFN_vkDeviceWaitIdle vkDeviceWaitIdle;
+	const PFN_vkWaitForFences vkWaitForFences;
+	const PFN_vkResetFences vkResetFences;
 };
 
 }
 
-#endif /* COMPONENTS_XENOLITH_PLATFORM_COMMON_XLVK_H_ */
+#endif // COMPONENTS_XENOLITH_GL_XLVKINSTANCE_H_

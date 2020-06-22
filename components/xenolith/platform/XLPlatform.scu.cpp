@@ -24,11 +24,9 @@ THE SOFTWARE.
 
 #include "common/XLApplication.cc"
 #include "common/XLVkView.cc"
-#include "common/XLVk.cc"
 
 #include "win32/XLDevice.cc"
 #include "win32/XLInteraction.cc"
 #include "win32/XLNetwork.cc"
 
 #include "desktop/XLVkViewImpl-desktop.cc"
-#include "desktop/XLVk-desktop.cc"

@@ -21,13 +21,12 @@ THE SOFTWARE.
 **/
 
 #include "XLEvent.h"
-#include "XLDirector.h"
-#include "XLThreadManager.h"
+#include "XLApplication.h"
 
 namespace stappler::xenolith {
 
 void Event::dispatch() const {
-	Director::getInstance()->getEventDispatcher()->dispatchEvent(*this);
+	Application::getInstance()->dispatchEvent(*this);
 }
 
 Ref *Event::getObject() const {
@@ -80,7 +79,7 @@ void Event::send(const EventHeader &header, Ref *object, const char *value) {
 	send(header, object, str);
 }
 void Event::send(const EventHeader &header, Ref *object, const String &value) {
-	Thread::onMainThread([header, object, value] () {
+	Application::getInstance()->performOnMainThread([header, object, value] () {
 		Value val; val.strValue = &value;
 		Event event(header, object, val, Type::String);
 		event.dispatch();
@@ -90,20 +89,20 @@ void Event::send(const EventHeader &header, Ref *object, const StringView &value
 	send(header, object, value.str());
 }
 void Event::send(const EventHeader &header, Ref *object, const data::Value &value) {
-	Thread::onMainThread([header, object, value] () {
+	Application::getInstance()->performOnMainThread([header, object, value] () {
 		Value val; val.dataValue = &value;
 		Event event(header, object, val, Type::Data);
 		event.dispatch();
 	});
 }
 void Event::send(const EventHeader &header, Ref *object, Value val, Type type) {
-	Thread::onMainThread([header, object, val, type] () {
+	Application::getInstance()->performOnMainThread([header, object, val, type] () {
 		Event event(header, object, val, type);
 		event.dispatch();
 	});
 }
 void Event::send(const EventHeader &header, Ref *object) {
-	Thread::onMainThread([header, object] () {
+	Application::getInstance()->performOnMainThread([header, object] () {
 		Event event(header, object);
 		event.dispatch();
 	});

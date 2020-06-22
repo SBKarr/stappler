@@ -20,39 +20,24 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "XLVk.h"
-#include "XLVkViewImpl-desktop.h"
+#include "XLVkInstance.h"
 
-namespace stappler::xenolith {
+namespace stappler::xenolith::vk {
 
-#if DEBUG
-static constexpr bool s_enableValidationLayers = true;
-static const Vector<const char*> s_validationLayers = {
-    "VK_LAYER_KHRONOS_validation"
-};
-
-VkResult s_createDebugUtilsMessengerEXT(VkInstance instance, const PFN_vkGetInstanceProcAddr getInstanceProcAddr, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
-    auto func = (PFN_vkCreateDebugUtilsMessengerEXT) getInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-    if (func != nullptr) {
-        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-    } else {
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
+VkShaderStageFlagBits getVkStageBits(ProgramStage stage) {
+	switch (stage) {
+	case ProgramStage::Vertex: return VK_SHADER_STAGE_VERTEX_BIT; break;
+	case ProgramStage::TesselationControl: return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT; break;
+	case ProgramStage::TesselationEvaluation: return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT; break;
+	case ProgramStage::Geometry: return VK_SHADER_STAGE_GEOMETRY_BIT; break;
+	case ProgramStage::Fragment: return VK_SHADER_STAGE_FRAGMENT_BIT; break;
+	case ProgramStage::Compute: return VK_SHADER_STAGE_COMPUTE_BIT; break;
+	case ProgramStage::None: break;
+	}
+	return VkShaderStageFlagBits(0);
 }
 
-void s_destroyDebugUtilsMessengerEXT(VkInstance instance, const PFN_vkGetInstanceProcAddr getInstanceProcAddr, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
-    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) getInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-    if (func != nullptr) {
-        func(instance, debugMessenger, pAllocator);
-    }
-}
-
-#else
-static constexpr bool s_enableValidationLayers = false;
-static const Vector<const char*> s_validationLayers;
-#endif
-
-static StringView getVkFormatName(VkFormat fmt) {
+StringView getVkFormatName(VkFormat fmt) {
 	switch (fmt) {
 	case VK_FORMAT_UNDEFINED: return "UNDEFINED"; break;
 	case VK_FORMAT_R4G4_UNORM_PACK8: return "R4G4_UNORM_PACK8"; break;
@@ -300,7 +285,7 @@ static StringView getVkFormatName(VkFormat fmt) {
 	return "UNDEFINED";
 }
 
-static StringView getVkColorSpaceName(VkColorSpaceKHR fmt) {
+StringView getVkColorSpaceName(VkColorSpaceKHR fmt) {
 	switch (fmt) {
 	case VK_COLOR_SPACE_SRGB_NONLINEAR_KHR: return "SRGB_NONLINEAR"; break;
 	case VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT: return "DISPLAY_P3_NONLINEAR"; break;
@@ -323,16 +308,15 @@ static StringView getVkColorSpaceName(VkColorSpaceKHR fmt) {
 	return "UNKNOWN";
 }
 
+Instance::PresentationOptions::PresentationOptions() { }
 
-VkInstanceImpl::PresentationOptions::PresentationOptions() { }
-
-VkInstanceImpl::PresentationOptions::PresentationOptions(VkPhysicalDevice dev, uint32_t gr, uint32_t pres,
+Instance::PresentationOptions::PresentationOptions(VkPhysicalDevice dev, uint32_t gr, uint32_t pres,
 		const VkSurfaceCapabilitiesKHR &cap, Vector<VkSurfaceFormatKHR> &&fmt, Vector<VkPresentModeKHR> &&modes)
 : device(dev), graphicsFamily(gr), presentFamily(pres), formats(move(fmt)), presentModes(move(modes)) {
 	memcpy(&capabilities, &cap, sizeof(VkSurfaceCapabilitiesKHR));
 }
 
-VkInstanceImpl::PresentationOptions::PresentationOptions(const PresentationOptions &opts) {
+Instance::PresentationOptions::PresentationOptions(const PresentationOptions &opts) {
 	device = opts.device;
 	graphicsFamily = opts.graphicsFamily;
 	presentFamily = opts.presentFamily;
@@ -343,7 +327,7 @@ VkInstanceImpl::PresentationOptions::PresentationOptions(const PresentationOptio
 	memcpy((void*) &deviceProperties, (const void*) &opts.deviceProperties, sizeof(VkPhysicalDeviceProperties));
 }
 
-VkInstanceImpl::PresentationOptions &VkInstanceImpl::PresentationOptions::operator=(const PresentationOptions &opts) {
+Instance::PresentationOptions &Instance::PresentationOptions::operator=(const PresentationOptions &opts) {
 	device = opts.device;
 	graphicsFamily = opts.graphicsFamily;
 	presentFamily = opts.presentFamily;
@@ -355,7 +339,7 @@ VkInstanceImpl::PresentationOptions &VkInstanceImpl::PresentationOptions::operat
 	return *this;
 }
 
-VkInstanceImpl::PresentationOptions::PresentationOptions(PresentationOptions &&opts) {
+Instance::PresentationOptions::PresentationOptions(PresentationOptions &&opts) {
 	device = opts.device;
 	graphicsFamily = opts.graphicsFamily;
 	presentFamily = opts.presentFamily;
@@ -366,7 +350,7 @@ VkInstanceImpl::PresentationOptions::PresentationOptions(PresentationOptions &&o
 	memcpy((void*) &deviceProperties, (const void*) &opts.deviceProperties, sizeof(VkPhysicalDeviceProperties));
 }
 
-VkInstanceImpl::PresentationOptions &VkInstanceImpl::PresentationOptions::operator=(PresentationOptions &&opts) {
+Instance::PresentationOptions &Instance::PresentationOptions::operator=(PresentationOptions &&opts) {
 	device = opts.device;
 	graphicsFamily = opts.graphicsFamily;
 	presentFamily = opts.presentFamily;
@@ -378,7 +362,7 @@ VkInstanceImpl::PresentationOptions &VkInstanceImpl::PresentationOptions::operat
 	return *this;
 }
 
-String VkInstanceImpl::PresentationOptions::description() const {
+String Instance::PresentationOptions::description() const {
 	StringStream stream;
 	stream << "PresentationOptions for device: (";
 
@@ -430,13 +414,6 @@ String VkInstanceImpl::PresentationOptions::description() const {
 	if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) { stream << " INHERIT"; }
 	stream << "\n";
 
-	stream << "\tSupported Alpha:";
-	if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR) { stream << " OPAQUE"; }
-	if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR) { stream << " PRE_MULTIPLIED"; }
-	if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR) { stream << " POST_MULTIPLIED"; }
-	if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) { stream << " INHERIT"; }
-	stream << "\n";
-
 	stream << "\tSupported Usage:";
 	if (capabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) { stream << " TRANSFER_SRC"; }
 	if (capabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT) { stream << " TRANSFER_DST"; }
@@ -475,386 +452,5 @@ String VkInstanceImpl::PresentationOptions::description() const {
 	return stream.str();
 }
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL s_debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-		VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
-	if (messageSeverity <= VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
-		log::text("Vk-Validation-Verbose", pCallbackData->pMessage);
-	} else if (messageSeverity <= VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
-		log::text("Vk-Validation-Info", pCallbackData->pMessage);
-	} else if (messageSeverity <= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-		log::text("Vk-Validation-Warning", pCallbackData->pMessage);
-	} else if (messageSeverity <= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
-		log::text("Vk-Validation-Error", pCallbackData->pMessage);
-	}
-	return VK_FALSE;
-}
-
-static const Vector<const char*> s_deviceExtensions = {
-	VK_KHR_SWAPCHAIN_EXTENSION_NAME
-};
-
-static constexpr bool s_printVkInfo = true;
-
-VkInstanceImpl::VkInstanceImpl(VkInstance inst, const PFN_vkGetInstanceProcAddr getInstanceProcAddr)
-: instance(inst)
-, vkGetInstanceProcAddr(getInstanceProcAddr)
-, vkDestroyInstance((PFN_vkDestroyInstance)vkGetInstanceProcAddr(inst, "vkDestroyInstance"))
-, vkEnumeratePhysicalDevices((PFN_vkEnumeratePhysicalDevices)vkGetInstanceProcAddr(inst, "vkEnumeratePhysicalDevices"))
-, vkGetPhysicalDeviceQueueFamilyProperties((PFN_vkGetPhysicalDeviceQueueFamilyProperties)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceQueueFamilyProperties"))
-, vkGetPhysicalDeviceProperties((PFN_vkGetPhysicalDeviceProperties)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceProperties"))
-, vkDestroySurfaceKHR((PFN_vkDestroySurfaceKHR)vkGetInstanceProcAddr(inst, "vkDestroySurfaceKHR"))
-, vkGetPhysicalDeviceSurfaceSupportKHR((PFN_vkGetPhysicalDeviceSurfaceSupportKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSurfaceSupportKHR"))
-, vkEnumerateDeviceExtensionProperties((PFN_vkEnumerateDeviceExtensionProperties)vkGetInstanceProcAddr(inst, "vkEnumerateDeviceExtensionProperties"))
-, vkGetPhysicalDeviceSurfaceCapabilitiesKHR((PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR"))
-, vkGetPhysicalDeviceSurfaceFormatsKHR((PFN_vkGetPhysicalDeviceSurfaceFormatsKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSurfaceFormatsKHR"))
-, vkGetPhysicalDeviceSurfacePresentModesKHR((PFN_vkGetPhysicalDeviceSurfacePresentModesKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSurfacePresentModesKHR"))
-, vkDestroyImageView((PFN_vkDestroyImageView)vkGetInstanceProcAddr(inst, "vkDestroyImageView"))
-, vkDestroySwapchainKHR((PFN_vkDestroySwapchainKHR)vkGetInstanceProcAddr(inst, "vkDestroySwapchainKHR"))
-, vkDestroyDevice((PFN_vkDestroyDevice)vkGetInstanceProcAddr(inst, "vkDestroyDevice"))
-, vkCreateDevice((PFN_vkCreateDevice)vkGetInstanceProcAddr(inst, "vkCreateDevice"))
-, vkGetDeviceQueue((PFN_vkGetDeviceQueue)vkGetInstanceProcAddr(inst, "vkGetDeviceQueue"))
-, vkCreateSwapchainKHR((PFN_vkCreateSwapchainKHR)vkGetInstanceProcAddr(inst, "vkCreateSwapchainKHR"))
-, vkGetSwapchainImagesKHR((PFN_vkGetSwapchainImagesKHR)vkGetInstanceProcAddr(inst, "vkGetSwapchainImagesKHR"))
-, vkCreateImageView((PFN_vkCreateImageView)vkGetInstanceProcAddr(inst, "vkCreateImageView"))
-{
-
-	if constexpr (s_enableValidationLayers) {
-		VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = { };
-		debugCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-		debugCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-		debugCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-		debugCreateInfo.pfnUserCallback = s_debugCallback;
-
-		if (s_createDebugUtilsMessengerEXT(instance, vkGetInstanceProcAddr, &debugCreateInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
-			log::text("Vk", "failed to set up debug messenger!");
-		} else {
-			log::text("Vk", "Debug messenger setup successful");
-		}
-	}
-
-	uint32_t deviceCount = 0;
-	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
-
-	if (deviceCount) {
-		Vector<VkPhysicalDevice> devices(deviceCount);
-		vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
-
-		VkPhysicalDeviceProperties deviceProperties;
-
-		for (const auto &device : devices) {
-			vkGetPhysicalDeviceProperties(device, &deviceProperties);
-
-			if constexpr (s_printVkInfo) {
-				auto getDeviceTypeString = [&] (VkPhysicalDeviceType type) -> const char * {
-					switch (type) {
-					case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: return "Integrated GPU"; break;
-					case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU: return "Discrete GPU"; break;
-					case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU: return "Virtual GPU"; break;
-					case VK_PHYSICAL_DEVICE_TYPE_CPU: return "CPU"; break;
-					default: return "Other"; break;
-					}
-					return "Other";
-				};
-
-				log::format("Vk-Info", "Device: %s: %s (API: %u, Driver: %u)", getDeviceTypeString(deviceProperties.deviceType),
-						deviceProperties.deviceName, deviceProperties.apiVersion, deviceProperties.driverVersion);
-			}
-
-	        uint32_t queueFamilyCount = 0;
-	        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
-	        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-	        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
-	        int i = 0;
-	        for (const auto& queueFamily : queueFamilies) {
-				if constexpr (s_printVkInfo) {
-					bool empty = true;
-					StringStream info;
-					info << "[" << i << "] Queue family; Flags: ";
-					if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-						if (!empty) { info << ", "; } else { empty = false; }
-						info << "Graphics";
-					}
-					if (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) {
-						if (!empty) { info << ", "; } else { empty = false; }
-						info << "Compute";
-					}
-					if (queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) {
-						if (!empty) { info << ", "; } else { empty = false; }
-						info << "Transfer";
-					}
-					if (queueFamily.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT) {
-						if (!empty) { info << ", "; } else { empty = false; }
-						info << "SparseBinding";
-					}
-					if (queueFamily.queueFlags & VK_QUEUE_PROTECTED_BIT) {
-						if (!empty) { info << ", "; } else { empty = false; }
-						info << "Protected";
-					}
-					info << "; Count: " << queueFamily.queueCount;
-					log::text("Vk-Info", info.str());
-				}
-
-	            i++;
-	        }
-		}
-	}
-}
-
-VkInstanceImpl::~VkInstanceImpl() {
-	if constexpr (s_enableValidationLayers) {
-		s_destroyDebugUtilsMessengerEXT(instance, vkGetInstanceProcAddr, debugMessenger, nullptr);
-	}
-	vkDestroyInstance(instance, nullptr);
-}
-
-Vector<VkInstanceImpl::PresentationOptions> VkInstanceImpl::getPresentationOptions(VkSurfaceKHR surface) const {
-	Vector<VkInstanceImpl::PresentationOptions> ret;
-
-    uint32_t deviceCount = 0;
-    vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
-
-    if (deviceCount == 0) {
-        throw std::runtime_error("failed to find GPUs with Vulkan support!");
-    }
-
-    std::vector<VkPhysicalDevice> devices(deviceCount);
-    vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
-
-    for (const auto& device : devices) {
-    	bool graphicsFamilyFound = false; uint32_t graphicsFamily;
-    	bool presentFamilyFound = false; uint32_t presentFamily;
-		uint32_t queueFamilyCount = 0;
-		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
-		std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
-		int i = 0;
-		for (const auto &queueFamily : queueFamilies) {
-			if ((queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) && !graphicsFamilyFound) {
-				graphicsFamily = i;
-				graphicsFamilyFound = true;
-			}
-
-			VkBool32 presentSupport = false;
-			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
-
-			if (presentSupport && !presentFamilyFound) {
-				presentFamily = i;
-				presentFamilyFound = true;
-			}
-
-			i++;
-		}
-
-		if (!presentFamilyFound || !graphicsFamilyFound) {
-			continue;
-		}
-
-		uint32_t extensionCount;
-		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
-
-		std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
-
-		size_t extFound = 0;
-		for (auto &it : s_deviceExtensions) {
-			for (const auto &extension : availableExtensions) {
-				if (strcmp(it, extension.extensionName) == 0) {
-					++ extFound;
-					break;
-				}
-			}
-		}
-
-		if (extFound == s_deviceExtensions.size()) {
-			VkSurfaceCapabilitiesKHR capabilities;
-			Vector<VkSurfaceFormatKHR> formats;
-			Vector<VkPresentModeKHR> presentModes;
-
-			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &capabilities);
-
-			uint32_t formatCount;
-			vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
-
-			if (formatCount != 0) {
-				formats.resize(formatCount);
-				vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, formats.data());
-			}
-
-			uint32_t presentModeCount;
-			vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
-
-			if (presentModeCount != 0) {
-				presentModes.resize(presentModeCount);
-				vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, presentModes.data());
-			}
-
-			if (!formats.empty() && !presentModes.empty()) {
-				ret.emplace_back(VkInstanceImpl::PresentationOptions(device, graphicsFamily, presentFamily, capabilities, move(formats), move(presentModes)));
-
-				vkGetPhysicalDeviceProperties(device, &ret.back().deviceProperties);
-			}
-        }
-    }
-
-    return ret;
-}
-
-VkInstance VkInstanceImpl::getInstance() const {
-	return instance;
-}
-
-VkPresentationDevice::VkPresentationDevice() { }
-
-bool VkPresentationDevice::init(Rc<VkInstanceImpl> inst, VkSurfaceKHR surface, VkInstanceImpl::PresentationOptions && opts,
-		VkPhysicalDeviceFeatures deviceFeatures) {
-	instance = inst;
-	options = move(opts);
-
-	if constexpr (s_printVkInfo) {
-		log::vtext("Vk-Info", "Presentation options: ", options.description());
-	}
-
-	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-	std::set<uint32_t> uniqueQueueFamilies = { options.graphicsFamily, options.presentFamily };
-
-	float queuePriority = 1.0f;
-	for (uint32_t queueFamily : uniqueQueueFamilies) {
-		VkDeviceQueueCreateInfo queueCreateInfo = { };
-		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		queueCreateInfo.queueFamilyIndex = queueFamily;
-		queueCreateInfo.queueCount = 1;
-		queueCreateInfo.pQueuePriorities = &queuePriority;
-		queueCreateInfos.push_back(queueCreateInfo);
-	}
-
-	VkDeviceCreateInfo deviceCreateInfo = { };
-	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-
-	deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
-	deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
-
-	deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
-
-	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(s_deviceExtensions.size());
-	deviceCreateInfo.ppEnabledExtensionNames = s_deviceExtensions.data();
-
-	if constexpr (s_enableValidationLayers) {
-		deviceCreateInfo.enabledLayerCount = static_cast<uint32_t>(s_validationLayers.size());
-		deviceCreateInfo.ppEnabledLayerNames = s_validationLayers.data();
-	} else {
-		deviceCreateInfo.enabledLayerCount = 0;
-	}
-
-	if (instance->vkCreateDevice(opts.device, &deviceCreateInfo, nullptr, &device) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create logical device!");
-	}
-
-	instance->vkGetDeviceQueue(device, options.graphicsFamily, 0, &graphicsQueue);
-	instance->vkGetDeviceQueue(device, options.presentFamily, 0, &presentQueue);
-
-	VkSurfaceFormatKHR surfaceFormat;
-	VkPresentModeKHR presentMode;
-
-	if (options.formats.empty()) {
-		surfaceFormat = VkSurfaceFormatKHR { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-	} else {
-		options.formats.resize(1);
-		surfaceFormat = options.formats.front();
-	}
-
-	if (options.presentModes.empty()) {
-		presentMode = VK_PRESENT_MODE_FIFO_KHR;
-	} else {
-		options.presentModes.resize(1);
-		presentMode = options.presentModes.front();
-	}
-
-	VkExtent2D extent = options.capabilities.currentExtent;
-
-	uint32_t imageCount = options.capabilities.minImageCount + 1;
-	if (options.capabilities.maxImageCount > 0 && imageCount > options.capabilities.maxImageCount) {
-		imageCount = options.capabilities.maxImageCount;
-	}
-
-	VkSwapchainCreateInfoKHR swapChainCreateInfo = { };
-	swapChainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-	swapChainCreateInfo.surface = surface;
-
-	swapChainCreateInfo.minImageCount = imageCount;
-	swapChainCreateInfo.imageFormat = surfaceFormat.format;
-	swapChainCreateInfo.imageColorSpace = surfaceFormat.colorSpace;
-	swapChainCreateInfo.imageExtent = extent;
-	swapChainCreateInfo.imageArrayLayers = options.capabilities.maxImageArrayLayers;
-	swapChainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-	uint32_t queueFamilyIndices[] = { options.graphicsFamily, options.presentFamily };
-
-	if (options.graphicsFamily != options.presentFamily) {
-		swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-		swapChainCreateInfo.queueFamilyIndexCount = 2;
-		swapChainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
-	} else {
-		swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	}
-
-	swapChainCreateInfo.preTransform = options.capabilities.currentTransform;
-	swapChainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	swapChainCreateInfo.presentMode = presentMode;
-	swapChainCreateInfo.clipped = VK_TRUE;
-
-	swapChainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
-
-	if (instance->vkCreateSwapchainKHR(device, &swapChainCreateInfo, nullptr, &swapChain) != VK_SUCCESS) {
-		return false;
-	}
-
-	instance->vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
-	swapChainImages.resize(imageCount);
-	instance->vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
-
-	swapChainImageViews.resize(swapChainImages.size());
-
-	for (size_t i = 0; i < swapChainImages.size(); i++) {
-		VkImageViewCreateInfo createInfo = { };
-		createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		createInfo.image = swapChainImages[i];
-		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-		createInfo.format = options.formats.front().format;
-		createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		createInfo.subresourceRange.baseMipLevel = 0;
-		createInfo.subresourceRange.levelCount = 1;
-		createInfo.subresourceRange.baseArrayLayer = 0;
-		createInfo.subresourceRange.layerCount = 1;
-
-		if (instance->vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS) {
-			return false;
-		}
-	}
-
-	return true;
-}
-
-VkPresentationDevice::~VkPresentationDevice() {
-	for (auto imageView : swapChainImageViews) {
-		instance->vkDestroyImageView(device, imageView, nullptr);
-	}
-
-	if (instance) {
-		if (device != VK_NULL_HANDLE) {
-			if (swapChain != VK_NULL_HANDLE) {
-				instance->vkDestroySwapchainKHR(device, swapChain, nullptr);
-			}
-			instance->vkDestroyDevice(device, nullptr);
-		}
-	}
-}
 
 }

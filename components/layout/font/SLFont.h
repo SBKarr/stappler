@@ -88,7 +88,7 @@ struct FontTextureInterface {
 	Function<bool(size_t, const void *data, uint16_t offsetX, uint16_t offsetY, uint16_t width, uint16_t height)> draw;
 };
 
-struct FontData final : public AtomicRef {
+struct FontData final : public Ref {
 	bool init();
 	bool init(const FontData &data);
 
@@ -106,7 +106,7 @@ struct FontData final : public AtomicRef {
 	Map<uint32_t, int16_t> kerning;
 };
 
-class FontLayout final : public AtomicRef {
+class FontLayout final : public Ref {
 public:
 	using MetricCallback = Function<Metrics(const FontSource *, const Vector<FontFace::FontFaceSource> &, uint16_t, const ReceiptCallback &)>;
 	using UpdateCallback = Function<Rc<FontData>(const FontSource *, const Vector<FontFace::FontFaceSource> &, const Rc<FontData> &, const Vector<char16_t> &, const ReceiptCallback &)>;

@@ -22,7 +22,7 @@
 
 #include "XLVkViewImpl-desktop.h"
 
-namespace stappler::xenolith {
+namespace stappler::xenolith::vk {
 
 /*class GLFWEventHandler {
 public:
@@ -151,9 +151,15 @@ static void onGLFWError(int errorID, const char* errorDesc) {
 	log::format("GLFW", "GLFWError #%d Happen, %s\n", errorID, errorDesc);
 }
 
+static void onGLFWWindowSizeFunCallback(GLFWwindow *window, int width, int height) {
+	if (auto view = reinterpret_cast<ViewImpl *>(glfwGetWindowUserPointer(window))) {
+		view->onGLFWWindowSizeFunCallback(window, width, height);
+	}
 }
 
-VkViewImpl::VkViewImpl() {
+}
+
+ViewImpl::ViewImpl() {
 	_viewName = "cocos2dx";
 
 	s_glfwErrorMutex.lock();
@@ -162,7 +168,7 @@ VkViewImpl::VkViewImpl() {
 	glfwInit();
 }
 
-VkViewImpl::~VkViewImpl() {
+ViewImpl::~ViewImpl() {
 	_device = nullptr;
 	_instance->vkDestroySurfaceKHR(_instance->getInstance(), _surface, nullptr);
 	_instance = nullptr;
@@ -170,7 +176,7 @@ VkViewImpl::~VkViewImpl() {
 	glfwTerminate();
 }
 
-bool VkViewImpl::init(const StringView & viewName, Rect rect) {
+bool ViewImpl::init(const StringView & viewName, Rect rect) {
 	setViewName(viewName);
 
 	if (!glfwVulkanSupported()) {
@@ -178,62 +184,40 @@ bool VkViewImpl::init(const StringView & viewName, Rect rect) {
 	}
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	//glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 	_mainWindow = glfwCreateWindow(rect.size.width, rect.size.height, "Vulkan", _monitor, nullptr);
-	_instance = VkInstanceImpl::create();
-	if (!_instance) {
+	glfwSetWindowUserPointer(_mainWindow, this);
+	glfwSetFramebufferSizeCallback(_mainWindow, vk::onGLFWWindowSizeFunCallback);
+	auto instance = Instance::create();
+	if (!instance) {
 		return false;
 	}
 
-	if (glfwCreateWindowSurface(_instance->getInstance(), _mainWindow, nullptr, &_surface) != VK_SUCCESS) {
+	if (glfwCreateWindowSurface(instance->getInstance(), _mainWindow, nullptr, &_surface) != VK_SUCCESS) {
 		log::text("VkView", "Fail to create Vulkan surface for window");
 		return false;
 	}
 
-	auto opts = _instance->getPresentationOptions(_surface);
+	auto opts = instance->getPresentationOptions(_surface);
 	if (opts.empty()) {
 		log::text("VkView", "No available Vulkan devices for presentation on surface");
 		return false;
 	}
 
 	auto targetOpts = opts.front();
+	selectPresentationOptions(targetOpts);
 
-    for (const auto& availableFormat : targetOpts.formats) {
-        if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-        	targetOpts.formats.clear();
-        	targetOpts.formats.emplace_back(VkSurfaceFormatKHR{VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR});
-        }
-    }
-
-	for (const auto& availablePresentMode : targetOpts.presentModes) {
-		if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
-			targetOpts.presentModes.clear();
-			targetOpts.presentModes.emplace_back(VK_PRESENT_MODE_MAILBOX_KHR);
-		}
-	}
-
-	if (targetOpts.capabilities.currentExtent.width == UINT32_MAX) {
-		VkExtent2D actualExtent{uint32_t(rect.size.width), uint32_t(rect.size.height)};
-
-		actualExtent.width = std::max(targetOpts.capabilities.minImageExtent.width, std::min(targetOpts.capabilities.maxImageExtent.width, actualExtent.width));
-		actualExtent.height = std::max(targetOpts.capabilities.minImageExtent.height, std::min(targetOpts.capabilities.maxImageExtent.height, actualExtent.height));
-
-		targetOpts.capabilities.currentExtent = actualExtent;
-	}
-
-	targetOpts.capabilities.maxImageArrayLayers = 1;
-
-	_device = Rc<VkPresentationDevice>::create(_instance, _surface, move(targetOpts), VkPhysicalDeviceFeatures{});
-	if (!_device) {
+	auto device = Rc<PresentationDevice>::create(instance, this, _surface, move(targetOpts), VkPhysicalDeviceFeatures{});
+	if (!device) {
 		log::text("VkView", "Fail to create Vulkan presentation device");
 		return false;
 	}
 
-	return true;
+	return View::init(instance, device);
 }
 
-bool VkViewImpl::init(const StringView & viewName) {
+bool ViewImpl::init(const StringView & viewName) {
 	_monitor = glfwGetPrimaryMonitor();
 	if (nullptr == _monitor) {
 		return false;
@@ -244,7 +228,7 @@ bool VkViewImpl::init(const StringView & viewName) {
 	return init(viewName, Rect(0, 0, videoMode->width, videoMode->height));
 }
 
-bool VkViewImpl::init(const StringView & viewname, const GLFWvidmode &videoMode, GLFWmonitor *monitor) {
+bool ViewImpl::init(const StringView & viewname, const GLFWvidmode &videoMode, GLFWmonitor *monitor) {
 	_monitor = monitor;
 	if (nullptr == _monitor) {
 		return false;
@@ -258,11 +242,11 @@ bool VkViewImpl::init(const StringView & viewname, const GLFWvidmode &videoMode,
 	return init(viewname, Rect(0, 0, videoMode.width, videoMode.height));
 }
 
-bool VkViewImpl::isVkReady() const {
+bool ViewImpl::isVkReady() const {
 	return nullptr != _mainWindow;
 }
 
-void VkViewImpl::end() {
+void ViewImpl::end() {
 	if (_mainWindow) {
 		glfwSetWindowShouldClose(_mainWindow, 1);
 		_mainWindow = nullptr;
@@ -271,53 +255,64 @@ void VkViewImpl::end() {
 	release();
 }
 
-void VkViewImpl::swapBuffers() {
+void ViewImpl::swapBuffers() {
 	if (_mainWindow) {
 		glfwSwapBuffers(_mainWindow);
 	}
 }
 
-void VkViewImpl::pollEvents() {
+void ViewImpl::pollEvents() {
 	glfwPollEvents();
 }
 
-void VkViewImpl::setIMEKeyboardState(bool open) {
+void ViewImpl::setIMEKeyboardState(bool open) {
 
 }
 
-bool VkViewImpl::windowShouldClose() const {
+bool ViewImpl::windowShouldClose() const {
 	return glfwWindowShouldClose(_mainWindow);
 }
 
-double VkViewImpl::getTimeCounter() const {
+double ViewImpl::getTimeCounter() const {
 	return glfwGetTime();
 }
 
-void VkViewImpl::setAnimationInterval(double val) {
+void ViewImpl::setAnimationInterval(double val) {
 	_animationInterval = val;
 }
 
-bool VkViewImpl::run(const Callback<bool(double)> &cb) {
+bool ViewImpl::run(const Callback<bool(double)> &cb) {
 	double nNow = 0.0;
 	double nLast = glfwGetTime();
 
-    while (!glfwWindowShouldClose(_mainWindow)) {
-    	nNow =  glfwGetTime();
-        if (nNow - nLast > _animationInterval) {
-        	if (!cb(nNow - nLast)) {
-        		return false;
-        	}
-            pollEvents();
-            nLast = nNow;
-        } else {
-            Sleep(1);
-        }
-    }
+	while (!glfwWindowShouldClose(_mainWindow)) {
+		nNow = glfwGetTime();
+		if (nNow - nLast >= _animationInterval || _dropFrameDelay) {
+			_dropFrameDelay = false;
+			if (_framebufferResized) {
+				_framebufferResized = false;
+				if (!_device->recreateSwapChain()) {
+					_framebufferResized = true;
+					pollEvents();
+					continue;
+				}
+			}
+			nLast = nNow;
+			if (!cb(nNow - nLast)) {
+				return false;
+			}
+			pollEvents();
+		} else {
+			Sleep(uint32_t(ceilf((_animationInterval - (nNow - nLast)) * 1000)));
+		}
+	}
 
-    return true;
+	_instance->vkDeviceWaitIdle(_device->getDevice());
+
+	return true;
 }
 
-void VkViewImpl::updateFrameSize() {
+void ViewImpl::updateFrameSize() {
 	if (_screenSize.width > 0.0f && _screenSize.height > 0.0f) {
 		// int frameBufferW = 0, frameBufferH = 0;
 		// glfwGetFramebufferSize(_mainWindow, &frameBufferW, &frameBufferH);
@@ -326,8 +321,13 @@ void VkViewImpl::updateFrameSize() {
 	}
 }
 
-void VkViewImpl::setScreenSize(float width, float height) {
-	VkView::setScreenSize(width, height);
+void ViewImpl::onGLFWWindowSizeFunCallback(GLFWwindow *window, int width, int height) {
+	_framebufferResized = true;
+	dropFrameDelay();
+}
+
+void ViewImpl::setScreenSize(float width, float height) {
+	View::setScreenSize(width, height);
 	updateFrameSize();
 }
 
@@ -680,17 +680,52 @@ static bool glew_dynamic_binding()
 }
 #endif*/
 
-void VkViewImpl::setClipboardString(const StringView &str) {
+void ViewImpl::setClipboardString(const StringView &str) {
 	glfwSetClipboardString(_mainWindow, str.str().data());
 }
 
-StringView VkViewImpl::getClipboardString() const {
+StringView ViewImpl::getClipboardString() const {
 	auto str = glfwGetClipboardString(_mainWindow);
 	if (str) {
 		return StringView(str);
 	} else {
 		return StringView();
 	}
+}
+
+void ViewImpl::selectPresentationOptions(Instance::PresentationOptions &targetOpts) const {
+    for (const auto& availableFormat : targetOpts.formats) {
+        if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+        	targetOpts.formats.clear();
+        	targetOpts.formats.emplace_back(VkSurfaceFormatKHR{VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR});
+        	break;
+        }
+    }
+
+	for (const auto& availablePresentMode : targetOpts.presentModes) {
+		if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+			targetOpts.presentModes.clear();
+			targetOpts.presentModes.emplace_back(VK_PRESENT_MODE_MAILBOX_KHR);
+        	break;
+		}
+	}
+
+	if (targetOpts.capabilities.currentExtent.width == UINT32_MAX) {
+		int width, height;
+		glfwGetFramebufferSize(_mainWindow, &width, &height);
+
+		VkExtent2D actualExtent = {
+			static_cast<uint32_t>(width),
+			static_cast<uint32_t>(height)
+		};
+
+		actualExtent.width = std::max(targetOpts.capabilities.minImageExtent.width, std::min(targetOpts.capabilities.maxImageExtent.width, actualExtent.width));
+		actualExtent.height = std::max(targetOpts.capabilities.minImageExtent.height, std::min(targetOpts.capabilities.maxImageExtent.height, actualExtent.height));
+
+		targetOpts.capabilities.currentExtent = actualExtent;
+	}
+
+	targetOpts.capabilities.maxImageArrayLayers = 1;
 }
 
 }

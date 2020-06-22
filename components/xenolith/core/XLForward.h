@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "SPLayout.h"
 #include "SPFilesystem.h"
+#include "SPThreadTask.h"
 #include "SPData.h"
 #include "SPLog.h"
 
@@ -99,12 +100,11 @@ class EventHeader;
 class EventHandler;
 class EventHandlerNode;
 
-class Thread;
-class TaskManager;
-class ThreadManager;
 class Director;
-class VkView;
 class Scene;
+class ProgramManager;
+
+using Task = thread::Task;
 
 } // stappler::xenolith
 

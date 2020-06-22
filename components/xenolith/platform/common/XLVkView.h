@@ -25,9 +25,9 @@ THE SOFTWARE.
 
 #include "XLGestureData.h"
 #include "XLEventHeader.h"
-#include "XLVk.h"
+#include "XLVkDevice.h"
 
-namespace stappler::xenolith {
+namespace stappler::xenolith::vk {
 
 struct ContextAttrs {
 	int redBits;
@@ -38,14 +38,16 @@ struct ContextAttrs {
 	int stencilBits;
 };
 
-class VkView : public Ref {
+class View : public Ref {
 public:
 	static EventHeader onClipboard;
 	static EventHeader onBackground;
 	static EventHeader onFocus;
 
-	VkView();
-	virtual ~VkView();
+	View();
+	virtual ~View();
+
+	virtual bool init(Instance *, PresentationDevice *);
 
 	virtual void end() = 0;
 	virtual bool isVkReady() const = 0;
@@ -59,6 +61,7 @@ public:
 	virtual void setAnimationInterval(double) = 0;
 
 	virtual bool run(const Callback<bool(double)> &) = 0;
+	virtual void drawFrame(double);
 
 	virtual void pollEvents();
 
@@ -90,6 +93,11 @@ public:
 	virtual bool hasFocus() const;
 	virtual bool isInBackground() const;
 
+	Instance *getInstance() const { return _instance; }
+
+	virtual void dropFrameDelay();
+	virtual void selectPresentationOptions(Instance::PresentationOptions &opts) const = 0;
+
 public: /* render-on-demand engine */
 	// virtual void requestRender();
 	// virtual void framePerformed();
@@ -108,8 +116,10 @@ protected:
 
 	String _viewName;
 
-	Rc<VkInstanceImpl> _instance;
-	Rc<VkPresentationDevice> _device;
+	Rc<Instance> _instance; // api instance
+	Rc<PresentationDevice> _device; // logical presentation device
+
+	bool _dropFrameDelay = false;
 };
 
 }
