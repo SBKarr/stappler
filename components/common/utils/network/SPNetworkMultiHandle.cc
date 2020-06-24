@@ -67,6 +67,13 @@ bool NetworkHandle::perform(const Callback<bool(CURL *)> &onBeforePerform, const
 }
 
 bool NetworkHandle::prepare(Context *ctx, const Callback<bool(CURL *)> &onBeforePerform) {
+	if (_debug) {
+		_debugData = StringStream();
+	}
+
+	_recievedHeaders.clear();
+	_parsedHeaders.clear();
+
 	ctx->handle = this;
 	bool check = true;
 	check = (check) ? setupCurl(ctx->curl, ctx->errorBuffer.data()) : false;
@@ -280,13 +287,14 @@ bool NetworkMultiHandle::perform(const Callback<bool(NetworkHandle *, void *)> &
 				auto it = handles.find(e);
 				if (it != handles.end()) {
 					it->second.handle->finalize(&it->second, nullptr, msg->data.result);
-					handles.erase(it);
-				}
-				if (cb) {
-					if (!cb(it->second.handle, it->second.userdata)) {
-						cancel();
-						return false;
+					if (cb) {
+						if (!cb(it->second.handle, it->second.userdata)) {
+							handles.erase(it);
+							cancel();
+							return false;
+						}
 					}
+					handles.erase(it);
 				}
 				curl_easy_cleanup(e);
 			}

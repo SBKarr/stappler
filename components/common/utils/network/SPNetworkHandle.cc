@@ -611,11 +611,17 @@ void NetworkHandle::setUrl(const StringView &url) {
 	_url = url.str();
 }
 
+void NetworkHandle::clearHeaders() {
+	_sendedHeaders.clear();
+}
 void NetworkHandle::addHeader(const StringView &header) {
     _sendedHeaders.push_back(header.str());
 }
 void NetworkHandle::addHeader(const StringView &header, const StringView &value) {
     _sendedHeaders.push_back(toString(header, ": ", value));
+}
+const Vector<String> &NetworkHandle::getRequestHeaders() const {
+	return _sendedHeaders;
 }
 
 void NetworkHandle::setDownloadProgress(const ProgressCallback &callback) {

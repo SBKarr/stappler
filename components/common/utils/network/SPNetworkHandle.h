@@ -65,8 +65,10 @@ public:
 	void setUserAgent(const StringView &);
 	void setUrl(const StringView &);
 
+	void clearHeaders();
 	void addHeader(const StringView &header);
 	void addHeader(const StringView &header, const StringView &value);
+	const Vector<String> &getRequestHeaders() const;
 
 	void setMailFrom(const StringView &);
 	void addMailTo(const StringView &);
