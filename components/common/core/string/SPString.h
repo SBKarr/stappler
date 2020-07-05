@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef COMMON_STRING_SPSTRING_H_
 #define COMMON_STRING_SPSTRING_H_
 
-#include "SPDataReader.h"
+#include "SPBytesView.h"
 #include "SPIO.h"
 
 NS_SP_EXT_BEGIN(string)
@@ -242,7 +242,7 @@ struct CoderSource {
 	CoderSource(const typename memory::StandartInterface::StringType &d) : _data((const uint8_t *)d.data(), d.size()) { }
 
 	template <ByteOrder::Endian Order>
-	CoderSource(const DataReader<Order> &d) : _data(d.data(), d.size()) { }
+	CoderSource(const BytesViewTemplate<Order> &d) : _data(d.data(), d.size()) { }
 
 	CoderSource(const BytesReader<uint8_t> &d) : _data(d.data(), d.size()) { }
 	CoderSource(const BytesReader<char> &d) : _data((const uint8_t *)d.data(), d.size()) { }
@@ -255,7 +255,7 @@ struct CoderSource {
 
 	CoderSource() { }
 
-	DataReader<ByteOrder::Network> _data;
+	BytesViewTemplate<ByteOrder::Network> _data;
 	size_t _offset = 0;
 
 	CoderSource(const CoderSource &) = delete;

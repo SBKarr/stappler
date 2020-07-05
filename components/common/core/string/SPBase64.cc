@@ -28,7 +28,7 @@ THE SOFTWARE.
 
 NS_SP_EXT_BEGIN(base64)
 
-using Reader = DataReader<ByteOrder::Network>;
+using Reader = BytesViewNetwork;
 
 // Mapping from 6 bit pattern to ASCII character.
 static const char * base64EncodeLookup = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -171,7 +171,7 @@ NS_SP_EXT_END(base64)
 
 NS_SP_EXT_BEGIN(base64url)
 
-using Reader = DataReader<ByteOrder::Network>;
+using Reader = BytesViewNetwork;
 
 // Mapping from 6 bit pattern to ASCII character.
 static const char * base64EncodeLookup = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
@@ -232,7 +232,7 @@ NS_SP_EXT_END(base64url)
 
 NS_SP_EXT_BEGIN(base16)
 
-using Reader = DataReader<ByteOrder::Network>;
+using Reader = BytesViewNetwork;
 
 static const char* s_hexTable[256] = {
     "00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "0a", "0b", "0c", "0d", "0e", "0f", "10", "11",

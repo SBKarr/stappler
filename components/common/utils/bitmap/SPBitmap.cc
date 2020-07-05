@@ -25,7 +25,7 @@ THE SOFTWARE.
 
 #include "SPBitmap.h"
 
-#include "SPDataReader.h"
+#include "SPBytesView.h"
 #include "SPFilesystem.h"
 #include "SPLog.h"
 #include "SPCommon.h"

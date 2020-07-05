@@ -23,8 +23,8 @@ THE SOFTWARE.
 #ifndef COMMON_UTILS_NETWORK_SPMULTIPARTPARSER_H_
 #define COMMON_UTILS_NETWORK_SPMULTIPARTPARSER_H_
 
+#include "SPBytesView.h"
 #include "SPStringView.h"
-#include "SPDataReader.h"
 
 NS_SP_BEGIN
 
@@ -82,11 +82,11 @@ struct MultipartParser {
     Reader origData;
 
 	/* read file width header */
-	bool parse(const DataReader<ByteOrder::Network> &, bool readFiles = true);
+	bool parse(const BytesViewNetwork &, bool readFiles = true);
 	bool parse(const uint8_t *, size_t, bool readFiles = true);
 
 	/* read content only */
-	bool parse(const DataReader<ByteOrder::Network> &, const StringView &contentType, bool readFiles = true);
+	bool parse(const BytesViewNetwork &, const StringView &contentType, bool readFiles = true);
 	bool parse(const uint8_t *, size_t, const StringView &contentType, bool readFiles = true);
 
 	bool parseBody();

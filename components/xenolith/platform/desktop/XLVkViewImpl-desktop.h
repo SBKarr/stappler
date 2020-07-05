@@ -104,8 +104,10 @@ protected:
 	GLFWmonitor* _monitor = nullptr;
 	VkSurfaceKHR _surface = nullptr;
 
-	double _animationInterval = 1.0 / 60.0;
-	bool _framebufferResized = false;
+	uint32_t _frameWidth;
+	uint32_t _frameHeight;
+
+	double _animationInterval = 1.0 / 120.0;
 };
 
 }

@@ -20,41 +20,40 @@
  THE SOFTWARE.
  **/
 
-#include "XLDirector.h"
-#include "XLVkView.h"
+#include "XLVkDraw.h"
 
-namespace stappler::xenolith {
+namespace stappler::xenolith::vk {
 
-XL_DECLARE_EVENT_CLASS(Director, onProjectionChanged);
-XL_DECLARE_EVENT_CLASS(Director, onAfterUpdate);
-XL_DECLARE_EVENT_CLASS(Director, onAfterVisit);
-XL_DECLARE_EVENT_CLASS(Director, onAfterDraw);
+DrawDevice::~DrawDevice() { }
 
-Director::Director() { }
+bool DrawDevice::init(Rc<Instance>, Rc<Allocator>, VkQueue, uint32_t qIdx) {
 
-Director::~Director() { }
-
-bool Director::init() {
-	return true;
 }
 
-void Director::setView(vk::View *view) {
-	if (view != _view) {
-		_view = view;
+bool DrawDevice::drawFrame(thread::TaskQueue &) {
+
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+	VkSemaphore waitSemaphores[] = {_imageAvailableSemaphores[_currentFrame]};
+	VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = waitSemaphores;
+	submitInfo.pWaitDstStageMask = waitStages;
+	submitInfo.commandBufferCount = 1;
+
+	VkCommandBuffer commandBuffers[] = {_defaultCommandBuffers[imageIndex]};
+	submitInfo.pCommandBuffers = commandBuffers;
+	VkSemaphore signalSemaphores[] = {_renderFinishedSemaphores[_currentFrame]};
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = signalSemaphores;
+
+	if (_instance->vkQueueSubmit(_queue, 1, &submitInfo, _inFlightFences[_currentFrame]) != VK_SUCCESS) {
+		stappler::log::vtext("VK-Error", "Fail to vkQueueSubmit");
+		return false;
 	}
-}
 
-bool Director::mainLoop(double t) {
-	update(t);
-	return false;
-}
-
-void Director::update(double t) {
-
-}
-
-void Director::end() {
-	_view = nullptr;
+	return true;
 }
 
 }

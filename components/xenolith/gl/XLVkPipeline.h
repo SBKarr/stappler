@@ -37,8 +37,8 @@ public:
 
 	virtual ~Pipeline();
 
-	bool init(PresentationDevice &dev, const Options &, const GraphicsParams &);
-	void invalidate(PresentationDevice &dev);
+	bool init(VirtualDevice &dev, const Options &, const GraphicsParams &);
+	void invalidate(VirtualDevice &dev);
 
 	VkPipeline getPipeline() const { return _pipeline; }
 
@@ -50,8 +50,8 @@ class PipelineLayout : public Ref {
 public:
 	virtual ~PipelineLayout();
 
-	bool init(PresentationDevice &dev);
-	void invalidate(PresentationDevice &dev);
+	bool init(VirtualDevice &dev);
+	void invalidate(VirtualDevice &dev);
 
 	VkPipelineLayout getPipelineLayout() const { return _pipelineLayout; }
 
@@ -63,8 +63,8 @@ class RenderPass : public Ref {
 public:
 	virtual ~RenderPass();
 
-	bool init(PresentationDevice &dev, VkFormat);
-	void invalidate(PresentationDevice &dev);
+	bool init(VirtualDevice &dev, VkFormat);
+	void invalidate(VirtualDevice &dev);
 
 	VkRenderPass getRenderPass() const { return _renderPass; }
 

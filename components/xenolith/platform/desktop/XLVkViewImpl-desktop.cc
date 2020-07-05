@@ -160,7 +160,7 @@ static void onGLFWWindowSizeFunCallback(GLFWwindow *window, int width, int heigh
 }
 
 ViewImpl::ViewImpl() {
-	_viewName = "cocos2dx";
+	_viewName = "Xenolith";
 
 	s_glfwErrorMutex.lock();
 	glfwSetErrorCallback(onGLFWError);
@@ -170,7 +170,9 @@ ViewImpl::ViewImpl() {
 
 ViewImpl::~ViewImpl() {
 	_device = nullptr;
-	_instance->vkDestroySurfaceKHR(_instance->getInstance(), _surface, nullptr);
+	if (_instance) {
+		_instance->vkDestroySurfaceKHR(_instance->getInstance(), _surface, nullptr);
+	}
 	_instance = nullptr;
 	glfwDestroyWindow(_mainWindow);
 	glfwTerminate();
@@ -193,6 +195,9 @@ bool ViewImpl::init(const StringView & viewName, Rect rect) {
 	if (!instance) {
 		return false;
 	}
+
+	_frameWidth = uint32_t(rect.size.width);
+	_frameHeight = uint32_t(rect.size.height);
 
 	if (glfwCreateWindowSurface(instance->getInstance(), _mainWindow, nullptr, &_surface) != VK_SUCCESS) {
 		log::text("VkView", "Fail to create Vulkan surface for window");
@@ -282,34 +287,32 @@ void ViewImpl::setAnimationInterval(double val) {
 }
 
 bool ViewImpl::run(const Callback<bool(double)> &cb) {
+	bool ret = true;
 	double nNow = 0.0;
 	double nLast = glfwGetTime();
 
+	_loop = Rc<PresentationLoop>::alloc(this, _device, _animationInterval, [] () -> double {
+		return glfwGetTime();
+	});
+
+	_loop->begin();
 	while (!glfwWindowShouldClose(_mainWindow)) {
 		nNow = glfwGetTime();
 		if (nNow - nLast >= _animationInterval || _dropFrameDelay) {
 			_dropFrameDelay = false;
-			if (_framebufferResized) {
-				_framebufferResized = false;
-				if (!_device->recreateSwapChain()) {
-					_framebufferResized = true;
-					pollEvents();
-					continue;
-				}
-			}
 			nLast = nNow;
 			if (!cb(nNow - nLast)) {
-				return false;
+				ret = false;
+				break;
 			}
-			pollEvents();
-		} else {
-			Sleep(uint32_t(ceilf((_animationInterval - (nNow - nLast)) * 1000)));
 		}
+		pollEvents();
 	}
+	_loop->end();
 
 	_instance->vkDeviceWaitIdle(_device->getDevice());
 
-	return true;
+	return ret;
 }
 
 void ViewImpl::updateFrameSize() {
@@ -322,13 +325,73 @@ void ViewImpl::updateFrameSize() {
 }
 
 void ViewImpl::onGLFWWindowSizeFunCallback(GLFWwindow *window, int width, int height) {
-	_framebufferResized = true;
-	dropFrameDelay();
+	if (_loop) {
+		std::lock_guard<PresentationLoop> lock(*_loop);
+
+		_frameWidth = uint32_t(width);
+		_frameHeight = uint32_t(height);
+
+		if (_loop->isStalled()) {
+			_device->recreateSwapChain();
+			_loop->forceFrame();
+			_loop->reset();
+		}
+	}
 }
 
 void ViewImpl::setScreenSize(float width, float height) {
 	View::setScreenSize(width, height);
 	updateFrameSize();
+}
+
+void ViewImpl::setClipboardString(const StringView &str) {
+	glfwSetClipboardString(_mainWindow, str.str().data());
+}
+
+StringView ViewImpl::getClipboardString() const {
+	auto str = glfwGetClipboardString(_mainWindow);
+	if (str) {
+		return StringView(str);
+	} else {
+		return StringView();
+	}
+}
+
+void ViewImpl::selectPresentationOptions(Instance::PresentationOptions &targetOpts) const {
+    for (const auto& availableFormat : targetOpts.formats) {
+        if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+        	targetOpts.formats.clear();
+        	targetOpts.formats.emplace_back(VkSurfaceFormatKHR{VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR});
+        	break;
+        }
+    }
+
+	for (const auto& availablePresentMode : targetOpts.presentModes) {
+		if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+			targetOpts.presentModes.clear();
+			targetOpts.presentModes.emplace_back(VK_PRESENT_MODE_MAILBOX_KHR);
+        	break;
+		}
+	}
+
+	if (targetOpts.capabilities.currentExtent.width == UINT32_MAX) {
+		int width, height;
+		glfwGetFramebufferSize(_mainWindow, &width, &height);
+
+		VkExtent2D actualExtent = {
+			static_cast<uint32_t>(width),
+			static_cast<uint32_t>(height)
+		};
+
+		actualExtent.width = std::max(targetOpts.capabilities.minImageExtent.width, std::min(targetOpts.capabilities.maxImageExtent.width, actualExtent.width));
+		actualExtent.height = std::max(targetOpts.capabilities.minImageExtent.height, std::min(targetOpts.capabilities.maxImageExtent.height, actualExtent.height));
+
+		targetOpts.capabilities.currentExtent = actualExtent;
+	}
+
+	targetOpts.capabilities.maxImageArrayLayers = 1;
+}
+
 }
 
 /*void VkViewImpl::setViewPortInPoints(float x, float y, float w, float h) {
@@ -679,53 +742,3 @@ static bool glew_dynamic_binding()
 	return true;
 }
 #endif*/
-
-void ViewImpl::setClipboardString(const StringView &str) {
-	glfwSetClipboardString(_mainWindow, str.str().data());
-}
-
-StringView ViewImpl::getClipboardString() const {
-	auto str = glfwGetClipboardString(_mainWindow);
-	if (str) {
-		return StringView(str);
-	} else {
-		return StringView();
-	}
-}
-
-void ViewImpl::selectPresentationOptions(Instance::PresentationOptions &targetOpts) const {
-    for (const auto& availableFormat : targetOpts.formats) {
-        if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-        	targetOpts.formats.clear();
-        	targetOpts.formats.emplace_back(VkSurfaceFormatKHR{VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR});
-        	break;
-        }
-    }
-
-	for (const auto& availablePresentMode : targetOpts.presentModes) {
-		if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
-			targetOpts.presentModes.clear();
-			targetOpts.presentModes.emplace_back(VK_PRESENT_MODE_MAILBOX_KHR);
-        	break;
-		}
-	}
-
-	if (targetOpts.capabilities.currentExtent.width == UINT32_MAX) {
-		int width, height;
-		glfwGetFramebufferSize(_mainWindow, &width, &height);
-
-		VkExtent2D actualExtent = {
-			static_cast<uint32_t>(width),
-			static_cast<uint32_t>(height)
-		};
-
-		actualExtent.width = std::max(targetOpts.capabilities.minImageExtent.width, std::min(targetOpts.capabilities.maxImageExtent.width, actualExtent.width));
-		actualExtent.height = std::max(targetOpts.capabilities.minImageExtent.height, std::min(targetOpts.capabilities.maxImageExtent.height, actualExtent.height));
-
-		targetOpts.capabilities.currentExtent = actualExtent;
-	}
-
-	targetOpts.capabilities.maxImageArrayLayers = 1;
-}
-
-}

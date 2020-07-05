@@ -27,8 +27,8 @@ THE SOFTWARE.
 #include "SPCommonPlatform.h"
 #include <setjmp.h>
 
+#include "SPBytesView.h"
 #include "SPBitmap.h"
-#include "SPDataReader.h"
 #include "SPFilesystem.h"
 #include "SPLog.h"
 #include "SPHtmlParser.h"
@@ -955,7 +955,7 @@ static bool BitmapFormat_isPng(const uint8_t * data, size_t dataLen) {
 
 static bool BitmapFormat_getPngImageSize(const io::Producer &file, StackBuffer<512> &data, size_t &width, size_t &height) {
 	if (BitmapFormat_isPng(data.data(), data.size()) && data.size() >= 24) {
-		auto reader = DataReader<ByteOrder::Network>(data.data() + 16, 8);
+		auto reader = BytesViewNetwork(data.data() + 16, 8);
 
 		width = reader.readUnsigned32();
 		height = reader.readUnsigned32();
@@ -980,7 +980,7 @@ static bool BitmapFormat_getJpegImageSize(const io::Producer &file, StackBuffer<
 		uint16_t len = 0;
 		uint8_t marker = 0;
 
-		auto reader = DataReader<ByteOrder::Network>(data.data() + 2, data.size() - 2);
+		auto reader = BytesViewNetwork(data.data() + 2, data.size() - 2);
 		while (reader.is((uint8_t) 0xFF)) {
 			++reader;
 			++offset;
@@ -998,7 +998,7 @@ static bool BitmapFormat_getJpegImageSize(const io::Producer &file, StackBuffer<
 			}
 
 			if (data.size() >= 12) {
-				reader = data.get<DataReader<ByteOrder::Network>>();
+				reader = data.get<BytesViewNetwork>();
 
 				while (reader.is((uint8_t) 0xFF)) {
 					++reader;
@@ -1039,7 +1039,7 @@ static bool BitmapFormat_isWebpLossless(const uint8_t * data, size_t dataLen) {
 
 static bool BitmapFormat_getWebpLosslessImageSize(const io::Producer &file, StackBuffer<512> &data, size_t &width, size_t &height) {
 	if (BitmapFormat_isWebpLossless(data.data(), data.size())) {
-		auto reader = DataReader<ByteOrder::Big>(data.data() + 21, 4);
+		auto reader = BytesViewTemplate<ByteOrder::Big>(data.data() + 21, 4);
 
 		auto b0 = reader.readUnsigned();
 		auto b1 = reader.readUnsigned();
@@ -1070,7 +1070,7 @@ static bool BitmapFormat_isWebp(const uint8_t * data, size_t dataLen) {
 
 static bool BitmapFormat_getWebpImageSize(const io::Producer &file, StackBuffer<512> &data, size_t &width, size_t &height) {
 	if (BitmapFormat_isWebp(data.data(), data.size())) {
-		auto reader = DataReader<ByteOrder::Little>(data.data() + 24, 6);
+		auto reader = BytesViewTemplate<ByteOrder::Little>(data.data() + 24, 6);
 
 		auto b0 = reader.readUnsigned();
 		auto b1 = reader.readUnsigned();
@@ -1192,7 +1192,7 @@ static bool BitmapFormat_isGif(const uint8_t * data, size_t dataLen) {
 
 static bool BitmapFormat_getGifImageSize(const io::Producer &file, StackBuffer<512> &data, size_t &width, size_t &height) {
 	if (BitmapFormat_isGif(data.data(), data.size())) {
-		auto reader = DataReader<ByteOrder::Little>(data.data() + 6, 4);
+		auto reader = BytesViewTemplate<ByteOrder::Little>(data.data() + 6, 4);
 
 		width = reader.readUnsigned16();
 		height = reader.readUnsigned16();
@@ -1273,11 +1273,11 @@ static bool BitmapFormat_getTiffImageSizeImpl(const io::Producer &file, StackBuf
 static bool BitmapFormat_getTiffImageSize(const io::Producer &file, StackBuffer<512> &data, size_t &width, size_t &height) {
 	if (BitmapFormat_isTiff(data.data(), data.size())) {
 		if (memcmp(data.data(), "II", 2) == 0) {
-			if (BitmapFormat_getTiffImageSizeImpl<DataReader<ByteOrder::Little>>(file, data, width, height)) {
+			if (BitmapFormat_getTiffImageSizeImpl<BytesViewTemplate<ByteOrder::Little>>(file, data, width, height)) {
 				return true;
 			}
 		} else {
-			if (BitmapFormat_getTiffImageSizeImpl<DataReader<ByteOrder::Big>>(file, data, width, height)) {
+			if (BitmapFormat_getTiffImageSizeImpl<BytesViewTemplate<ByteOrder::Big>>(file, data, width, height)) {
 				return true;
 			}
 		}

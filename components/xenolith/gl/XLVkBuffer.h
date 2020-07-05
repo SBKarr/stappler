@@ -20,33 +20,48 @@
  THE SOFTWARE.
  **/
 
-#ifndef COMPONENTS_XENOLITH_GL_XLVKPROGRAM_H_
-#define COMPONENTS_XENOLITH_GL_XLVKPROGRAM_H_
+#ifndef COMPONENTS_XENOLITH_GL_XLVKBUFFER_H_
+#define COMPONENTS_XENOLITH_GL_XLVKBUFFER_H_
 
-#include "XLVkDevice.h"
+#include "XLVkAllocator.h"
 
 namespace stappler::xenolith::vk {
 
-class ProgramModule : public Ref {
+class Buffer : public Ref {
 public:
-	virtual ~ProgramModule();
+	enum Usage {
+		Staging = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		UniformTexel = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT,
+		StorageTexel = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT,
+		Uniform = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		Storage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		Index = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+		Vertex = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		Indirect = VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
+	};
 
-	bool init(VirtualDevice &dev, ProgramSource, ProgramStage, FilePath);
-	bool init(VirtualDevice &dev, ProgramSource, ProgramStage, StringView data, StringView key);
-	bool init(VirtualDevice &dev, ProgramSource, ProgramStage, BytesView data, StringView key);
+	virtual ~Buffer();
+
+	bool init(VirtualDevice &dev, Allocator::Type, Usage, uint32_t size, bool persistentMapping = false);
+	bool init(VirtualDevice &dev, VkBuffer, Allocator::Block, uint32_t);
 
 	void invalidate(VirtualDevice &dev);
 
-	StringView getName() const { return _name; }
-	ProgramStage getStage() const { return _stage; }
-	VkShaderModule getModule() const { return _shaderModule; }
+	bool setData(void *data, uint32_t size = UINT32_MAX, uint32_t offset = 0);
+	Bytes getData(uint32_t size = UINT32_MAX, uint32_t offset = 0);
+
+	VkBuffer getBuffer() const { return _buffer; }
+	uint64_t getVersion() const { return _version; }
 
 protected:
-	String _name;
-	ProgramStage _stage = ProgramStage::None;
-	VkShaderModule _shaderModule = VK_NULL_HANDLE;
+	VkBuffer _buffer;
+	Allocator::Block _memory;
+	uint32_t _size = 0;
+	void *_mapped = nullptr;
+	bool _persistentMapping = false;
+	uint64_t _version = 0;
 };
 
 }
 
-#endif /* COMPONENTS_XENOLITH_GL_XLPROGRAMMANAGER_H_ */
+#endif /* COMPONENTS_XENOLITH_GL_XLVKBUFFER_H_ */

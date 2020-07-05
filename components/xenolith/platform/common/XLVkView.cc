@@ -41,10 +41,6 @@ bool View::init(Instance *impl, PresentationDevice *dev) {
 	return true;
 }
 
-void View::drawFrame(double val) {
-	_device->drawFrame(val);
-}
-
 void View::pollEvents() { }
 
 int View::getDpi() const {

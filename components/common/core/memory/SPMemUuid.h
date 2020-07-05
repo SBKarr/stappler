@@ -23,10 +23,10 @@ THE SOFTWARE.
 #ifndef COMMON_CORE_MEMORY_SPMEMUUID_H_
 #define COMMON_CORE_MEMORY_SPMEMUUID_H_
 
+#include "SPBytesView.h"
 #include "SPMemString.h"
 #include "SPMemVector.h"
 #include "SPStringView.h"
-#include "SPDataReader.h"
 
 NS_SP_EXT_BEGIN(memory)
 
@@ -47,7 +47,8 @@ struct uuid : AllocPool {
 		parse(_uuid, str.data());
 	}
 
-	uuid(BytesView b) {
+	template <ByteOrder::Endian Order>
+	uuid(BytesViewTemplate<Order> b) {
 		if (b.size() == 16) {
 			memcpy(_uuid.data(), b.data(), 16);
 		}

@@ -31,8 +31,8 @@ class ImageView : public Ref {
 public:
 	virtual ~ImageView();
 
-	bool init(PresentationDevice &dev, VkImage, VkFormat format);
-	void invalidate(PresentationDevice &dev);
+	bool init(VirtualDevice &dev, VkImage, VkFormat format);
+	void invalidate(VirtualDevice &dev);
 
 	VkImageView getImageView() const { return _imageView; }
 
@@ -44,8 +44,8 @@ class Framebuffer : public Ref {
 public:
 	virtual ~Framebuffer();
 
-	bool init(PresentationDevice &dev, VkRenderPass renderPass, VkImageView imageView, uint32_t width, uint32_t height);
-	void invalidate(PresentationDevice &dev);
+	bool init(VirtualDevice &dev, VkRenderPass renderPass, VkImageView imageView, uint32_t width, uint32_t height);
+	void invalidate(VirtualDevice &dev);
 
 	VkFramebuffer getFramebuffer() const { return _framebuffer; }
 
@@ -57,13 +57,14 @@ class CommandPool : public Ref {
 public:
 	virtual ~CommandPool();
 
-	bool init(PresentationDevice &dev, uint32_t familyIdx);
-	void invalidate(PresentationDevice &dev);
+	bool init(VirtualDevice &dev, uint32_t familyIdx);
+	void invalidate(VirtualDevice &dev);
 
 	VkCommandPool getCommandPool() const { return _commandPool; }
 
-	Vector<VkCommandBuffer> allocBuffers(PresentationDevice &dev, uint32_t);
-	void freeDefaultBuffers(PresentationDevice &dev, Vector<VkCommandBuffer> &);
+	Vector<VkCommandBuffer> allocBuffers(VirtualDevice &dev, uint32_t);
+	void freeDefaultBuffers(VirtualDevice &dev, Vector<VkCommandBuffer> &);
+	void reset(VirtualDevice &dev, bool release = false);
 
 protected:
 	VkCommandPool _commandPool = VK_NULL_HANDLE;

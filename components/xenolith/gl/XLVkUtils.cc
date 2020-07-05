@@ -308,11 +308,24 @@ StringView getVkColorSpaceName(VkColorSpaceKHR fmt) {
 	return "UNKNOWN";
 }
 
+String getVkMemoryPropertyFlags(VkMemoryPropertyFlags flags) {
+	StringStream ret;
+	if (flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) { ret << " DEVICE_LOCAL"; }
+	if (flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) { ret << " HOST_VISIBLE"; }
+	if (flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) { ret << " HOST_COHERENT"; }
+	if (flags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) { ret << " HOST_CACHED"; }
+	if (flags & VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT) { ret << " LAZILY_ALLOCATED"; }
+	if (flags & VK_MEMORY_PROPERTY_PROTECTED_BIT) { ret << " PROTECTED"; }
+	if (flags & VK_MEMORY_PROPERTY_DEVICE_COHERENT_BIT_AMD) { ret << " DEVICE_COHERENT_AMD"; }
+	if (flags & VK_MEMORY_PROPERTY_DEVICE_UNCACHED_BIT_AMD) { ret << " DEVICE_UNCACHED_AMD"; }
+	return ret.str();
+}
+
 Instance::PresentationOptions::PresentationOptions() { }
 
-Instance::PresentationOptions::PresentationOptions(VkPhysicalDevice dev, uint32_t gr, uint32_t pres,
+Instance::PresentationOptions::PresentationOptions(VkPhysicalDevice dev, uint32_t gr, uint32_t pres, uint32_t tr,
 		const VkSurfaceCapabilitiesKHR &cap, Vector<VkSurfaceFormatKHR> &&fmt, Vector<VkPresentModeKHR> &&modes)
-: device(dev), graphicsFamily(gr), presentFamily(pres), formats(move(fmt)), presentModes(move(modes)) {
+: device(dev), graphicsFamily(gr), presentFamily(pres), transferFamily(tr), formats(move(fmt)), presentModes(move(modes)) {
 	memcpy(&capabilities, &cap, sizeof(VkSurfaceCapabilitiesKHR));
 }
 
@@ -364,7 +377,7 @@ Instance::PresentationOptions &Instance::PresentationOptions::operator=(Presenta
 
 String Instance::PresentationOptions::description() const {
 	StringStream stream;
-	stream << "PresentationOptions for device: (";
+	stream << "\nPresentationOptions for device: (";
 
 	switch (deviceProperties.deviceType) {
 	case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: stream << "Integrated GPU"; break;
@@ -375,8 +388,7 @@ String Instance::PresentationOptions::description() const {
 	}
 	stream << ") " << deviceProperties.deviceName
 			<< " (API: " << deviceProperties.apiVersion << ", Driver: " << deviceProperties.driverVersion << ")\n";
-	stream << "\tGraphicsQueue: [" << graphicsFamily << "]\n";
-	stream << "\tPresentationQueue: [" << presentFamily << "]\n";
+	stream << "\t[Queue] Graphics: [" << graphicsFamily << "]; Presentation: [" << presentFamily << "]; Transfer: [" << transferFamily << "];\n";
 	stream << "\tImageCount: " << capabilities.minImageCount << "-" << capabilities.maxImageCount << "\n";
 	stream << "\tExtent: " << capabilities.currentExtent.width << "x" << capabilities.currentExtent.height
 			<< " (" << capabilities.minImageExtent.width << "x" << capabilities.minImageExtent.height
@@ -428,7 +440,7 @@ String Instance::PresentationOptions::description() const {
 	stream << "\n";
 
 	stream << "\tSurface format:";
-	for (auto &it : formats) {
+	for (VkSurfaceFormatKHR it : formats) {
 		stream << " (" << getVkColorSpaceName(it.colorSpace) << ":" << getVkFormatName(it.format) << ")";
 	}
 	stream << "\n";
@@ -449,8 +461,46 @@ String Instance::PresentationOptions::description() const {
 	}
 	stream << "\n";
 
+	stream << "\t[Limits-DescriptorSet]"
+			<< " Samplers: " << deviceProperties.limits.maxDescriptorSetSamplers << ";"
+			<< " UniformBuffers: " << deviceProperties.limits.maxDescriptorSetUniformBuffers << " (dyn: " << deviceProperties.limits.maxDescriptorSetUniformBuffersDynamic << ");"
+			<< " StorageBuffers: " << deviceProperties.limits.maxDescriptorSetStorageBuffers << " (dyn: " << deviceProperties.limits.maxDescriptorSetStorageBuffersDynamic << ");"
+			<< " SampledImages: " << deviceProperties.limits.maxDescriptorSetSampledImages << ";"
+			<< " StorageImages: " << deviceProperties.limits.maxDescriptorSetStorageImages << ";"
+			<< " InputAttachments: " << deviceProperties.limits.maxDescriptorSetInputAttachments << ";"
+			<< "\n";
+
+	stream << "\t[Limits-PerStage]"
+			<< " Samplers: " << deviceProperties.limits.maxPerStageDescriptorSamplers << ";"
+			<< " UniformBuffers: " << deviceProperties.limits.maxPerStageDescriptorUniformBuffers << ";"
+			<< " StorageBuffers: " << deviceProperties.limits.maxPerStageDescriptorStorageBuffers << ";"
+			<< " SampledImages: " << deviceProperties.limits.maxPerStageDescriptorSampledImages << ";"
+			<< " StorageImages: " << deviceProperties.limits.maxPerStageDescriptorStorageImages << ";"
+			<< " InputAttachments: " << deviceProperties.limits.maxPerStageDescriptorInputAttachments << ";"
+			<< " Resources: " << deviceProperties.limits.maxPerStageResources << ";"
+			<< "\n";
+
 	return stream.str();
 }
 
+#if DEBUG
+
+static VkResult s_createDebugUtilsMessengerEXT(VkInstance instance, const PFN_vkGetInstanceProcAddr getInstanceProcAddr, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
+    auto func = (PFN_vkCreateDebugUtilsMessengerEXT) getInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+    if (func != nullptr) {
+        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+    } else {
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
+    }
+}
+
+static void s_destroyDebugUtilsMessengerEXT(VkInstance instance, const PFN_vkGetInstanceProcAddr getInstanceProcAddr, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
+    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) getInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+    if (func != nullptr) {
+        func(instance, debugMessenger, pAllocator);
+    }
+}
+
+#endif
 
 }

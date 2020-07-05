@@ -30,7 +30,7 @@ Pipeline::~Pipeline() {
 	}
 }
 
-bool Pipeline::init(PresentationDevice &dev, const Options &opts, const GraphicsParams &params) {
+bool Pipeline::init(VirtualDevice &dev, const Options &opts, const GraphicsParams &params) {
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vertexInputInfo.vertexBindingDescriptionCount = 0;
@@ -119,7 +119,7 @@ bool Pipeline::init(PresentationDevice &dev, const Options &opts, const Graphics
 
 	Vector<VkPipelineShaderStageCreateInfo> shaderStages; shaderStages.resize(opts.shaders.size());
 	size_t i = 0;
-	for (auto &it : opts.shaders) {
+	for (const Pair<ProgramStage, VkShaderModule> &it : opts.shaders) {
 		shaderStages[i].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		shaderStages[i].stage = getVkStageBits(it.first);
 		shaderStages[i].module = it.second;
@@ -149,7 +149,7 @@ bool Pipeline::init(PresentationDevice &dev, const Options &opts, const Graphics
 	return dev.getInstance()->vkCreateGraphicsPipelines(dev.getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_pipeline) == VK_SUCCESS;
 }
 
-void Pipeline::invalidate(PresentationDevice &dev) {
+void Pipeline::invalidate(VirtualDevice &dev) {
 	if (_pipeline) {
 		dev.getInstance()->vkDestroyPipeline(dev.getDevice(), _pipeline, nullptr);
 		_pipeline = VK_NULL_HANDLE;
@@ -162,7 +162,7 @@ PipelineLayout::~PipelineLayout() {
 	}
 }
 
-bool PipelineLayout::init(PresentationDevice &dev) {
+bool PipelineLayout::init(VirtualDevice &dev) {
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutInfo.setLayoutCount = 0; // Optional
@@ -173,7 +173,7 @@ bool PipelineLayout::init(PresentationDevice &dev) {
 	return dev.getInstance()->vkCreatePipelineLayout(dev.getDevice(), &pipelineLayoutInfo, nullptr, &_pipelineLayout) == VK_SUCCESS;
 }
 
-void PipelineLayout::invalidate(PresentationDevice &dev) {
+void PipelineLayout::invalidate(VirtualDevice &dev) {
 	if (_pipelineLayout) {
 		dev.getInstance()->vkDestroyPipelineLayout(dev.getDevice(), _pipelineLayout, nullptr);
 		_pipelineLayout = VK_NULL_HANDLE;
@@ -187,7 +187,7 @@ RenderPass::~RenderPass() {
 	}
 }
 
-bool RenderPass::init(PresentationDevice &dev, VkFormat imageFormat) {
+bool RenderPass::init(VirtualDevice &dev, VkFormat imageFormat) {
 	VkAttachmentDescription colorAttachment{};
 	colorAttachment.format = imageFormat;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -227,7 +227,7 @@ bool RenderPass::init(PresentationDevice &dev, VkFormat imageFormat) {
 	return dev.getInstance()->vkCreateRenderPass(dev.getDevice(), &renderPassInfo, nullptr, &_renderPass) == VK_SUCCESS;
 }
 
-void RenderPass::invalidate(PresentationDevice &dev) {
+void RenderPass::invalidate(VirtualDevice &dev) {
 	if (_renderPass) {
 		dev.getInstance()->vkDestroyRenderPass(dev.getDevice(), _renderPass, nullptr);
 		_renderPass = VK_NULL_HANDLE;

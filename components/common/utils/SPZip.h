@@ -24,10 +24,10 @@ THE SOFTWARE.
 #define COMPONENTS_COMMON_UTILS_SPZIP_H_
 
 #include "SPCommon.h"
-#include "SPDataReader.h"
 #include "SPBuffer.h"
 
 #include "libzip.h"
+#include "SPBytesView.h"
 
 namespace stappler {
 

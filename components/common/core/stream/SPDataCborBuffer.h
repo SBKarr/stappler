@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef COMMON_STREAM_SPDATACBORBUFFER_H_
 #define COMMON_STREAM_SPDATACBORBUFFER_H_
 
-#include "SPDataReader.h"
+#include "SPBytesView.h"
 #include "SPData.h"
 #include "SPTransferBuffer.h"
 #include "SPBuffer.h"
@@ -33,7 +33,7 @@ NS_SP_EXT_BEGIN(data)
 template <typename Interface>
 class CborBuffer : public AllocBase {
 public:
-	using Reader = DataReader<ByteOrder::Network>;
+	using Reader = BytesViewNetwork;
 
 	using InterfaceType = Interface;
 	using BufferType = BufferTemplate<Interface>;

@@ -55,8 +55,6 @@ public:
 
 	void update(double);
 
-	/* If waitUntilComplete is set - Director will wait for all tasks in queue (and all tasks, that will be spawned) to complete,
-	 * if waitUntilComplete is not set - tasks `onComplete` callback may never be called, so custom data will never been freed  */
 	void end();
 
 protected:

@@ -44,7 +44,7 @@ Rc<Instance> Instance::create() {
 
 	if constexpr (s_printVkInfo) {
 		for (const auto &layerProperties : availableLayers) {
-			log::format("Vk-Info", "Layer: %s (%u/%u)\n\t - %s", layerProperties.layerName, layerProperties.specVersion, layerProperties.implementationVersion, layerProperties.description);
+			log::format("Vk-Info", "Layer: %s (%u/%u)\t - %s", layerProperties.layerName, layerProperties.specVersion, layerProperties.implementationVersion, layerProperties.description);
 		}
 	}
 
@@ -100,8 +100,8 @@ Rc<Instance> Instance::create() {
 	    debugCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 	    debugCreateInfo.pfnUserCallback = s_debugCallback;
 
-		createInfo.enabledLayerCount = static_cast<uint32_t>(s_validationLayers.size());
-		createInfo.ppEnabledLayerNames = s_validationLayers.data();
+		createInfo.enabledLayerCount = static_cast<uint32_t>(sizeof(s_validationLayers) / sizeof(const char *));
+		createInfo.ppEnabledLayerNames = s_validationLayers;
 		createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &debugCreateInfo;
 
 		ret = pfnCreateInstance(&createInfo, nullptr, &instance);

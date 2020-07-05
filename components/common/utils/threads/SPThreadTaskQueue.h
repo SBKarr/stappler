@@ -95,7 +95,7 @@ protected:
 };
 
 /* Interface for thread workers or handlers */
-class ThreadHandlerInterface : public AllocBase {
+class ThreadHandlerInterface : public Ref {
 public:
 	virtual ~ThreadHandlerInterface() { }
 

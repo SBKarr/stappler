@@ -24,67 +24,25 @@ THE SOFTWARE.
 #define COMPONENTS_XENOLITH_GL_XLVKDEVICE_H_
 
 #include "XLVkInstance.h"
+#include "SPThreadTaskQueue.h"
 
 namespace stappler::xenolith::vk {
 
-class PresentationDevice : public Ref {
+class VirtualDevice : public Ref {
 public:
-	static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+	virtual ~VirtualDevice();
+	virtual bool init(Rc<Instance>, VkPhysicalDevice, const Set<uint32_t> &, VkPhysicalDeviceFeatures);
+	virtual bool init(Rc<Instance>, Rc<Allocator>);
 
-	using ProgramCallback = Function<void(Rc<ProgramModule>)>;
+	Instance *getInstance() const;
+	VkDevice getDevice() const;
+	Rc<Allocator> getAllocator() const;
 
-	PresentationDevice();
-	virtual ~PresentationDevice();
-
-	bool init(Rc<Instance> instance, Rc<View> v, VkSurfaceKHR, Instance::PresentationOptions &&, VkPhysicalDeviceFeatures);
-
-	bool addProgram(StringView, StringView, ProgramSource, ProgramStage, const ProgramCallback &);
-	bool addProgram(FilePath, ProgramSource, ProgramStage, const ProgramCallback &);
-
-	void drawFrame(double);
-
-	Instance *getInstance() const { return _instance; }
-	VkDevice getDevice() const { return _device; }
-
-	bool recreateSwapChain();
-
-private:
-	friend class ProgramManager;
-
-	bool createSwapChain(VkSurfaceKHR surface);
-	bool createDefaultPipeline();
-
-	void cleanupSwapChain();
-
-	size_t _currentFrame = 0;
-	Instance::PresentationOptions _options;
-
-	VkSurfaceKHR _surface = VK_NULL_HANDLE;
-	VkDevice _device = VK_NULL_HANDLE;
-
-	VkQueue _graphicsQueue = VK_NULL_HANDLE;
-	VkQueue _presentQueue = VK_NULL_HANDLE;
-
-	VkSwapchainKHR _swapChain = VK_NULL_HANDLE;
-	Vector<VkImage> _swapChainImages;
-	Vector<Rc<ImageView>> _swapChainImageViews;
-	Vector<Rc<Framebuffer>> _swapChainFramebuffers;
-
-	Map<String, Rc<ProgramModule>> _shaders;
-
-	Rc<Pipeline> _defaultPipeline;
-	Rc<PipelineLayout> _defaultPipelineLayout;
-	Rc<RenderPass> _defaultRenderPass;
-	Rc<CommandPool> _defaultCommandPool;
-	Vector<VkCommandBuffer> _defaultCommandBuffers;
-
+protected:
+	bool _managedDevice = false;
 	Rc<Instance> _instance;
-	Rc<View> _view;
-
-	Vector<VkSemaphore> _imageAvailableSemaphores;
-	Vector<VkSemaphore> _renderFinishedSemaphores;
-	Vector<VkFence> _inFlightFences;
-	Vector<VkFence> _imagesInFlight;
+	Rc<Allocator> _allocator;
+	VkDevice _device = VK_NULL_HANDLE;
 };
 
 }

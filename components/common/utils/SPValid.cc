@@ -596,7 +596,7 @@ static size_t doConvertOpenSSHKey(StringView r, uint8_t * outBuf, size_t outSize
 	auto dataBlock = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 	if (validateBase64(dataBlock)) {
 		auto data = base64::decode<Interface>(dataBlock);
-		DataReader<ByteOrder::Network> dataView(data);
+		BytesViewNetwork dataView(data);
 		auto len = dataView.readUnsigned32();
 		keyType = dataView.readString(len);
 

@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef COMMON_STREAM_SPDATADECOMPRESSBUFFER_H_
 #define COMMON_STREAM_SPDATADECOMPRESSBUFFER_H_
 
-#include "SPDataReader.h"
+#include "SPBytesView.h"
 #include "SPData.h"
 #include "SPBuffer.h"
 

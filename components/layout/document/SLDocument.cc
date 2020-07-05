@@ -106,7 +106,7 @@ bool Document_isAloowedByContentType(const StringView &ctView) {
 	return ctView.is("text/html") || ctView.is("multipart/mixed") || ctView.is("multipart/form-data");
 }
 
-static bool Document_canOpenData(const DataReader<ByteOrder::Network> &data) {
+static bool Document_canOpenData(const BytesViewNetwork &data) {
 	StringView r((const char *)data.data(), data.size());
 	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 	if (r.is("<html>") || r.is("<!doctype") || r.is("Content-Type: multipart/mixed; boundary=")) {
@@ -129,14 +129,14 @@ static bool Document_canOpen(const StringView &path, const StringView &ct) {
 	if (auto file = filesystem::openForReading(path)) {
 		StackBuffer<256> data;
 		if (io::Producer(file).seekAndRead(0, data, 512) > 0) {
-			return Document_canOpenData(DataReader<ByteOrder::Network>(data.data(), data.size()));
+			return Document_canOpenData(BytesViewNetwork(data.data(), data.size()));
 		}
 	}
 
 	return false;
 }
 
-static bool Document_canOpen(const DataReader<ByteOrder::Network> &data, const StringView &ct) {
+static bool Document_canOpen(const BytesViewNetwork &data, const StringView &ct) {
 	if (Document_isAloowedByContentType(ct)) {
 		return true;
 	}
@@ -156,7 +156,7 @@ bool Document::canOpenDocumnt(const StringView &path, const StringView &ct) {
 	return Document_canOpen(path, ct);
 }
 
-bool Document::canOpenDocumnt(const DataReader<ByteOrder::Network> &data, const StringView &ct) {
+bool Document::canOpenDocumnt(const BytesViewNetwork &data, const StringView &ct) {
 	std::set<DocumentFormat *, DocumentFormatStorageLess> formatList(DocumentFormatStorage::getInstance()->get());
 
 	for (auto &it : formatList) {
@@ -184,7 +184,7 @@ Rc<Document> Document::openDocument(const StringView &path, const StringView &ct
 	return ret;
 }
 
-Rc<Document> Document::openDocument(const DataReader<ByteOrder::Network> &data, const StringView &ct) {
+Rc<Document> Document::openDocument(const BytesViewNetwork &data, const StringView &ct) {
 	Rc<Document> ret;
 	std::set<DocumentFormat *, DocumentFormatStorageLess> formatList(DocumentFormatStorage::getInstance()->get());
 
@@ -257,7 +257,7 @@ bool Document::init(const FilePath &path, const StringView &ct) {
 	return init(data, ct);
 }
 
-bool Document::init(const DataReader<ByteOrder::Network> &vec, const StringView &ct) {
+bool Document::init(const BytesViewNetwork &vec, const StringView &ct) {
 	if (vec.empty()) {
 		return false;
 	}
@@ -317,7 +317,7 @@ String Document::getMeta(const String &key) const {
 	return String();
 }
 
-void Document::storeData(const DataReader<ByteOrder::Network> &data) {
+void Document::storeData(const BytesViewNetwork &data) {
 	_data = Bytes(data.data(), data.data() + data.size());
 }
 

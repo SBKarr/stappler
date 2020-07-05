@@ -46,16 +46,16 @@ ProgramModule::~ProgramModule() {
 	}
 }
 
-bool ProgramModule::init(PresentationDevice &dev, ProgramSource source, ProgramStage stage, FilePath path) {
+bool ProgramModule::init(VirtualDevice &dev, ProgramSource source, ProgramStage stage, FilePath path) {
 	auto data = filesystem::readIntoMemory(path.get());
 	return init(dev, source, stage, data, path.get());
 }
 
-bool ProgramModule::init(PresentationDevice &dev, ProgramSource source, ProgramStage stage, StringView data, StringView name) {
+bool ProgramModule::init(VirtualDevice &dev, ProgramSource source, ProgramStage stage, StringView data, StringView name) {
 	return init(dev, source, stage, BytesView((const uint8_t *)data.data(), data.size()), name);
 }
 
-bool ProgramModule::init(PresentationDevice &dev, ProgramSource source, ProgramStage stage, BytesView data, StringView name) {
+bool ProgramModule::init(VirtualDevice &dev, ProgramSource source, ProgramStage stage, BytesView data, StringView name) {
 	_stage = stage;
 	_name = name.str();
 
@@ -111,7 +111,7 @@ bool ProgramModule::init(PresentationDevice &dev, ProgramSource source, ProgramS
 	return ret;
 }
 
-void ProgramModule::invalidate(PresentationDevice &dev) {
+void ProgramModule::invalidate(VirtualDevice &dev) {
 	if (_shaderModule) {
 		dev.getInstance()->vkDestroyShaderModule(dev.getDevice(), _shaderModule, VK_NULL_HANDLE);
 		_shaderModule = VK_NULL_HANDLE;

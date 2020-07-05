@@ -46,6 +46,10 @@ Application *Application::getInstance() {
 	return s_application;
 }
 
+void Application::sleep(double v) {
+	Sleep(uint32_t(ceilf(v * 1000)));
+}
+
 Application::Application() {
 	XLASSERT(s_application == nullptr, "Application should be only one");
 

@@ -560,7 +560,7 @@ bool Path::init(const uint8_t *data, size_t len) {
 	float x1, y1, x2, y2, x3, y3;
 	uint8_t tmp;
 
-	DataReader<ByteOrder::Network> reader(data, len);
+	BytesViewNetwork reader(data, len);
 
 	auto size = data::cbor::_readInt(reader);
 	_commands.reserve(size);

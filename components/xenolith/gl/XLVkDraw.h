@@ -20,41 +20,47 @@
  THE SOFTWARE.
  **/
 
-#include "XLDirector.h"
-#include "XLVkView.h"
+#ifndef COMPONENTS_XENOLITH_GL_XLVKDRAW_H_
+#define COMPONENTS_XENOLITH_GL_XLVKDRAW_H_
 
-namespace stappler::xenolith {
+#include "XLVkDevice.h"
 
-XL_DECLARE_EVENT_CLASS(Director, onProjectionChanged);
-XL_DECLARE_EVENT_CLASS(Director, onAfterUpdate);
-XL_DECLARE_EVENT_CLASS(Director, onAfterVisit);
-XL_DECLARE_EVENT_CLASS(Director, onAfterDraw);
+namespace stappler::xenolith::vk {
 
-Director::Director() { }
+class DrawDevice : public VirtualDevice {
+public:
+	class Requisite : public Ref {
+	public:
+	protected:
+		// statics
+		Rc<Buffer> materials; // storage
+		Vector<Rc<Buffer>> statics; // storage
+		Vector<Rc<Buffer>> uniforms; // uniform
 
-Director::~Director() { }
+		// dynamics
+		Rc<Buffer> draws; // storage
+		Rc<Buffer> transforms;  // uniform
+		Vector<Rc<Buffer>> dynamics; // storage
+		Rc<Buffer> index;
+	};
 
-bool Director::init() {
-	return true;
+	virtual ~DrawDevice();
+	bool init(Rc<Instance>, Rc<Allocator>, VkQueue, uint32_t qIdx);
+
+	bool drawFrame(thread::TaskQueue &, );
+
+protected:
+	Rc<Requisite> _current;
+	Rc<Requisite> _next;
+
+	VkQueue _queue = VK_NULL_HANDLE;
+	size_t _currentFrame = 0;
+	uint32_t _queueIdx = 0;
+
+	Vector<VkFence> _inFlightFences;
+	Vector<VkFence> _imagesInFlight;
+};
+
 }
 
-void Director::setView(vk::View *view) {
-	if (view != _view) {
-		_view = view;
-	}
-}
-
-bool Director::mainLoop(double t) {
-	update(t);
-	return false;
-}
-
-void Director::update(double t) {
-
-}
-
-void Director::end() {
-	_view = nullptr;
-}
-
-}
+#endif /* COMPONENTS_XENOLITH_GL_XLVKDRAW_H_ */

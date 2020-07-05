@@ -29,7 +29,7 @@ THE SOFTWARE.
 NS_SP_BEGIN
 
 /* read file width header */
-bool MultipartParser::parse(const DataReader<ByteOrder::Network> &vec, bool files) {
+bool MultipartParser::parse(const BytesViewNetwork &vec, bool files) {
 	return parse(vec.data(), vec.size(), files);
 }
 bool MultipartParser::parse(const uint8_t *d, size_t l, bool files) {
@@ -56,7 +56,7 @@ bool MultipartParser::parse(const uint8_t *d, size_t l, bool files) {
 }
 
 /* read content only */
-bool MultipartParser::parse(const DataReader<ByteOrder::Network> &vec, const StringView &ct, bool files) {
+bool MultipartParser::parse(const BytesViewNetwork &vec, const StringView &ct, bool files) {
 	return parse(vec.data(), vec.size(), ct, files);
 }
 bool MultipartParser::parse(const uint8_t *d, size_t l, const StringView &ct, bool files) {

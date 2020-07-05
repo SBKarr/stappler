@@ -31,8 +31,8 @@ NS_LAYOUT_BEGIN
 
 class Document : public Ref {
 public:
-	using check_data_fn = bool (*) (const DataReader<ByteOrder::Network> &str, const StringView &ct);
-	using load_data_fn = Rc<Document> (*) (const DataReader<ByteOrder::Network> &, const StringView &ct);
+	using check_data_fn = bool (*) (const BytesViewNetwork &str, const StringView &ct);
+	using load_data_fn = Rc<Document> (*) (const BytesViewNetwork &, const StringView &ct);
 
 	using check_file_fn = bool (*) (const StringView &path, const StringView &ct);
 	using load_file_fn = Rc<Document> (*) (const StringView &path, const StringView &ct);
@@ -100,10 +100,10 @@ public:
 	using StringDocument = ValueWrapper<String, class StringDocumentTag>;
 
 	static bool canOpenDocumnt(const StringView &path, const StringView &ct = StringView());
-	static bool canOpenDocumnt(const DataReader<ByteOrder::Network> &data, const StringView &ct = StringView());
+	static bool canOpenDocumnt(const BytesViewNetwork &data, const StringView &ct = StringView());
 
 	static Rc<Document> openDocument(const StringView &path, const StringView &ct = StringView());
-	static Rc<Document> openDocument(const DataReader<ByteOrder::Network> &data, const StringView &ct = StringView());
+	static Rc<Document> openDocument(const BytesViewNetwork &data, const StringView &ct = StringView());
 
 	static StringView resolveName(const StringView &);
 	static StringView getImageName(const StringView &);
@@ -115,7 +115,7 @@ public:
 
 	virtual bool init(const StringDocument &);
 	virtual bool init(const FilePath &, const StringView &ct = StringView());
-	virtual bool init(const DataReader<ByteOrder::Network> &, const StringView &ct = StringView());
+	virtual bool init(const BytesViewNetwork &, const StringView &ct = StringView());
 
 	virtual void setMeta(const String &key, const String &value);
 	virtual String getMeta(const String &) const;
@@ -125,7 +125,7 @@ public:
 	virtual Bytes getImageData(const StringView &);
 	virtual Pair<uint16_t, uint16_t> getImageSize(const StringView &);
 
-	void storeData(const DataReader<ByteOrder::Network> &);
+	void storeData(const BytesViewNetwork &);
 	bool prepare();
 
 	const Vector<String> &getSpine() const;

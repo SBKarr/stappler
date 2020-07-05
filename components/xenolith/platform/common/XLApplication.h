@@ -51,6 +51,8 @@ public:
 
 	static EventHeader onLaunchUrl;
 
+	static void sleep(double);
+
 public:
 	Application();
 	virtual ~Application();

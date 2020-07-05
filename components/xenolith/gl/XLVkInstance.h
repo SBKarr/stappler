@@ -33,6 +33,7 @@ public:
 		VkPhysicalDevice device = VK_NULL_HANDLE;
 		uint32_t graphicsFamily = 0;
 		uint32_t presentFamily = 0;
+		uint32_t transferFamily = 0;
 
         VkSurfaceCapabilitiesKHR capabilities;
         Vector<VkSurfaceFormatKHR> formats;
@@ -40,7 +41,7 @@ public:
 		VkPhysicalDeviceProperties deviceProperties;
 
 		PresentationOptions();
-		PresentationOptions(VkPhysicalDevice, uint32_t, uint32_t, const VkSurfaceCapabilitiesKHR &, Vector<VkSurfaceFormatKHR> &&, Vector<VkPresentModeKHR> &&);
+		PresentationOptions(VkPhysicalDevice, uint32_t, uint32_t, uint32_t, const VkSurfaceCapabilitiesKHR &, Vector<VkSurfaceFormatKHR> &&, Vector<VkPresentModeKHR> &&);
 		PresentationOptions(const PresentationOptions &);
 		PresentationOptions &operator=(const PresentationOptions &);
 		PresentationOptions(PresentationOptions &&);
@@ -59,8 +60,10 @@ public:
 	VkInstance getInstance() const;
 
 private:
-	friend class ViewImpl;
+	friend class VirtualDevice;
 	friend class PresentationDevice;
+	friend class TransferDevice;
+	friend class ViewImpl;
 	friend class ProgramModule;
 	friend class Pipeline;
 	friend class PipelineLayout;
@@ -68,6 +71,9 @@ private:
 	friend class ImageView;
 	friend class Framebuffer;
 	friend class CommandPool;
+	friend class Allocator;
+	friend class Buffer;
+	friend class TransferGeneration;
 
 #if DEBUG
 	VkDebugUtilsMessengerEXT debugMessenger;
@@ -79,6 +85,7 @@ private:
 	const PFN_vkDestroyInstance vkDestroyInstance;
 	const PFN_vkEnumeratePhysicalDevices vkEnumeratePhysicalDevices;
 	const PFN_vkGetPhysicalDeviceQueueFamilyProperties vkGetPhysicalDeviceQueueFamilyProperties;
+	const PFN_vkGetPhysicalDeviceMemoryProperties vkGetPhysicalDeviceMemoryProperties;
 	const PFN_vkGetPhysicalDeviceProperties vkGetPhysicalDeviceProperties;
 	const PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR;
 	const PFN_vkGetPhysicalDeviceSurfaceSupportKHR vkGetPhysicalDeviceSurfaceSupportKHR;
@@ -107,6 +114,7 @@ private:
 	const PFN_vkDestroyFramebuffer vkDestroyFramebuffer;
 	const PFN_vkCreateCommandPool vkCreateCommandPool;
 	const PFN_vkDestroyCommandPool vkDestroyCommandPool;
+	const PFN_vkResetCommandPool vkResetCommandPool;
 	const PFN_vkCreateSemaphore vkCreateSemaphore;
 	const PFN_vkDestroySemaphore vkDestroySemaphore;
 	const PFN_vkCreateFence vkCreateFence;
@@ -120,6 +128,7 @@ private:
 	const PFN_vkCmdBindPipeline vkCmdBindPipeline;
 	const PFN_vkCmdDraw vkCmdDraw;
 	const PFN_vkCmdEndRenderPass vkCmdEndRenderPass;
+	const PFN_vkCmdCopyBuffer vkCmdCopyBuffer;
 
 	const PFN_vkAcquireNextImageKHR vkAcquireNextImageKHR;
 	const PFN_vkQueuePresentKHR vkQueuePresentKHR;
@@ -128,6 +137,20 @@ private:
 	const PFN_vkDeviceWaitIdle vkDeviceWaitIdle;
 	const PFN_vkWaitForFences vkWaitForFences;
 	const PFN_vkResetFences vkResetFences;
+
+	const PFN_vkCreateDescriptorSetLayout vkCreateDescriptorSetLayout;
+	const PFN_vkDestroyDescriptorSetLayout vkDestroyDescriptorSetLayout;
+
+	const PFN_vkCreateBuffer vkCreateBuffer;
+	const PFN_vkDestroyBuffer vkDestroyBuffer;
+	const PFN_vkGetBufferMemoryRequirements vkGetBufferMemoryRequirements;
+	const PFN_vkAllocateMemory vkAllocateMemory;
+	const PFN_vkFreeMemory vkFreeMemory;
+	const PFN_vkBindBufferMemory vkBindBufferMemory;
+	const PFN_vkMapMemory vkMapMemory;
+	const PFN_vkUnmapMemory vkUnmapMemory;
+	const PFN_vkInvalidateMappedMemoryRanges vkInvalidateMappedMemoryRanges;
+	const PFN_vkFlushMappedMemoryRanges vkFlushMappedMemoryRanges;
 };
 
 }

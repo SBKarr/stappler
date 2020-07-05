@@ -23,9 +23,9 @@ THE SOFTWARE.
 #ifndef COMMON_UTILS_BITMAP_SPBITMAP_H_
 #define COMMON_UTILS_BITMAP_SPBITMAP_H_
 
+#include "SPBytesView.h"
 #include "SPCommon.h"
 #include "SPIO.h"
-#include "SPDataReader.h"
 
 NS_SP_BEGIN
 

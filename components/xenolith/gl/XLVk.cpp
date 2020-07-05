@@ -24,10 +24,14 @@ THE SOFTWARE.
 
 #include "XLVkUtils.cc"
 
+#include "XLVkAllocator.cc"
+#include "XLVkBuffer.cc"
 #include "XLVkProgram.cc"
 #include "XLVkPipeline.cc"
 #include "XLVkFramebuffer.cc"
 #include "XLVkInstance.cc"
 #include "XLVkDevice.cc"
+#include "XLVkPresentation.cc"
+#include "XLVkTransfer.cc"
 
 #include "XLVkInstance-desktop.cc"

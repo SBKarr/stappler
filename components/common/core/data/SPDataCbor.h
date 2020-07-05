@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef COMMON_DATA_SPDATACBOR_H_
 #define COMMON_DATA_SPDATACBOR_H_
 
-#include "SPDataReader.h"
+#include "SPBytesView.h"
 #include "SPHalfFloat.h"
 #include "SPCommon.h"
 
@@ -175,7 +175,17 @@ constexpr bool operator == (uint8_t v, Flags f) {
 }
 
 constexpr MajorType type(uint8_t v) {
-	return MajorType((v >> toInt(Flags::MajorTypeShift)) & toInt(Flags::MajorTypeMask));
+	switch (MajorTypeEncoded(v)) {
+	case MajorTypeEncoded::Unsigned: return MajorType::Unsigned; break;
+	case MajorTypeEncoded::Negative: return MajorType::Negative; break;
+	case MajorTypeEncoded::ByteString: return MajorType::ByteString; break;
+	case MajorTypeEncoded::CharString: return MajorType::CharString; break;
+	case MajorTypeEncoded::Array: return MajorType::Array; break;
+	case MajorTypeEncoded::Map: return MajorType::Map; break;
+	case MajorTypeEncoded::Tag: return MajorType::Tag; break;
+	case MajorTypeEncoded::Simple: return MajorType::Simple; break;
+	}
+	return MajorType::Unsigned;
 }
 
 constexpr uint8_t data(uint8_t v) {
@@ -347,7 +357,7 @@ inline void _writeBytes(Writer &w, const Bytes &data) {
 }
 
 template <class Writer>
-inline void _writeBytes(Writer &w, const DataReader<ByteOrder::Network> &data) {
+inline void _writeBytes(Writer &w, const BytesViewTemplate<ByteOrder::Network> &data) {
 	auto size = data.size();
 	_writeInt(w, size, MajorTypeEncoded::ByteString);
 	w.emplace(data.data(), size);
@@ -362,7 +372,7 @@ inline void _writeNumber(Writer &w, float n) {
 	}
 };
 
-inline uint64_t _readIntValue(DataReader<ByteOrder::Network> &r, uint8_t type) {
+inline uint64_t _readIntValue(BytesViewTemplate<ByteOrder::Network> &r, uint8_t type) {
 	if (type < toInt(Flags::MaxAdditionalNumber)) {
 		return type;
 	} else if (type == toInt(Flags::AdditionalNumber8Bit)) {
@@ -378,7 +388,7 @@ inline uint64_t _readIntValue(DataReader<ByteOrder::Network> &r, uint8_t type) {
 	}
 }
 
-inline int64_t _readInt(DataReader<ByteOrder::Network> &r) {
+inline int64_t _readInt(BytesViewTemplate<ByteOrder::Network> &r) {
 	uint8_t type = r.readUnsigned();
 	MajorTypeEncoded majorType = (MajorTypeEncoded)(type & toInt(Flags::MajorTypeMaskEncoded));;
 	type = type & toInt(Flags::AdditionalInfoMask);
@@ -391,7 +401,7 @@ inline int64_t _readInt(DataReader<ByteOrder::Network> &r) {
 	return 0;
 }
 
-inline float _readNumber(DataReader<ByteOrder::Network> &r) {
+inline float _readNumber(BytesViewTemplate<ByteOrder::Network> &r) {
 	uint8_t type = r.readUnsigned();
 	MajorTypeEncoded majorType = (MajorTypeEncoded)(type & toInt(Flags::MajorTypeMaskEncoded));;
 	type = type & toInt(Flags::AdditionalInfoMask);

@@ -28,6 +28,7 @@ THE SOFTWARE.
 
 namespace stappler::xenolith::vk {
 
+class TransferDevice;
 class View;
 class ProgramModule;
 class Pipeline;
@@ -36,6 +37,11 @@ class RenderPass;
 class ImageView;
 class Framebuffer;
 class CommandPool;
+class Allocator;
+struct AllocatorHeapBlock;
+struct AllocatorBufferBlock;
+class Buffer;
+class TransferGeneration;
 
 enum class ProgramStage {
 	None = 0,
@@ -52,10 +58,33 @@ enum class ProgramSource {
 	Glsl,
 };
 
+enum AllocationType {
+	Unknown,
+	Local,
+	LocalVisible,
+	GpuUpload,
+	GpuDownload
+};
+
 VkShaderStageFlagBits getVkStageBits(ProgramStage);
 
 StringView getVkFormatName(VkFormat fmt);
 StringView getVkColorSpaceName(VkColorSpaceKHR fmt);
+
+String getVkMemoryPropertyFlags(VkMemoryPropertyFlags);
+
+#if DEBUG
+static constexpr bool s_enableValidationLayers = true;
+static const char * const s_validationLayers[] = {
+    "VK_LAYER_KHRONOS_validation"
+};
+
+#else
+static constexpr bool s_enableValidationLayers = false;
+static const char * const * s_validationLayers = nullptr;
+#endif
+
+static constexpr bool s_printVkInfo = true;
 
 }
 

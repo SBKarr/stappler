@@ -20,41 +20,26 @@
  THE SOFTWARE.
  **/
 
-#include "XLDirector.h"
-#include "XLVkView.h"
+#ifndef COMPONENTS_XENOLITH_GL_XLVKDESCRIPTORS_H_
+#define COMPONENTS_XENOLITH_GL_XLVKDESCRIPTORS_H_
 
-namespace stappler::xenolith {
+#include "XLVkDevice.h"
 
-XL_DECLARE_EVENT_CLASS(Director, onProjectionChanged);
-XL_DECLARE_EVENT_CLASS(Director, onAfterUpdate);
-XL_DECLARE_EVENT_CLASS(Director, onAfterVisit);
-XL_DECLARE_EVENT_CLASS(Director, onAfterDraw);
+namespace stappler::xenolith::vk {
 
-Director::Director() { }
+class DescriptorSetLayout : public Ref {
+public:
+	virtual ~DescriptorSetLayout();
 
-Director::~Director() { }
+	bool init(PresentationDevice &dev, uint32_t samplers, uint32_t textures, uint32_t uniforms, uint32_t storages);
+	void invalidate(PresentationDevice &dev);
 
-bool Director::init() {
-	return true;
-}
+	VkDescriptorSetLayout getLayout() const { return _layout; }
 
-void Director::setView(vk::View *view) {
-	if (view != _view) {
-		_view = view;
-	}
-}
-
-bool Director::mainLoop(double t) {
-	update(t);
-	return false;
-}
-
-void Director::update(double t) {
+protected:
+	VkDescriptorSetLayout _layout = VK_NULL_HANDLE;
+};
 
 }
 
-void Director::end() {
-	_view = nullptr;
-}
-
-}
+#endif /* COMPONENTS_XENOLITH_GL_XLVKDESCRIPTORS_H_ */

@@ -23,8 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
+#include "SPBytesView.h"
 #include "SPDefine.h"
-#include "SPDataReader.h"
 #include "SPFilesystem.h"
 #include "SPData.h"
 #include "SPDataStream.h"

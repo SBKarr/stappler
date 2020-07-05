@@ -128,8 +128,8 @@ public:
 	explicit ValueTemplate(StringType &&v) : _type(Type::CHARSTRING) { strVal = new StringType(std::move(v)); }
 	explicit ValueTemplate(const BytesType &v) : _type(Type::BYTESTRING) { bytesVal = new BytesType(v); }
 	explicit ValueTemplate(BytesType &&v) : _type(Type::BYTESTRING) { bytesVal = new BytesType(std::move(v)); }
-	explicit ValueTemplate(const DataReader<ByteOrder::Big> &v) : _type(Type::BYTESTRING) { bytesVal = new BytesType(v.data(), v.data() + v.size()); }
-	explicit ValueTemplate(const DataReader<ByteOrder::Little> &v) : _type(Type::BYTESTRING) { bytesVal = new BytesType(v.data(), v.data() + v.size()); }
+	explicit ValueTemplate(const BytesViewTemplate<ByteOrder::Big> &v) : _type(Type::BYTESTRING) { bytesVal = new BytesType(v.data(), v.data() + v.size()); }
+	explicit ValueTemplate(const BytesViewTemplate<ByteOrder::Little> &v) : _type(Type::BYTESTRING) { bytesVal = new BytesType(v.data(), v.data() + v.size()); }
 	explicit ValueTemplate(const ArrayType &v) : _type(Type::ARRAY) { arrayVal = new ArrayType(v); }
 	explicit ValueTemplate(ArrayType &&v) : _type(Type::ARRAY) { arrayVal = new ArrayType(std::move(v)); }
 	explicit ValueTemplate(const DictionaryType &v) : _type(Type::DICTIONARY) { dictVal = new DictionaryType(v); }
@@ -208,8 +208,8 @@ public:
 	template <class Key> void setString(const StringView &v, Key &&key) { setValue(Self(std::move(v)), std::forward<Key>(key)); }
 	template <class Key> void setBytes(const BytesType &v, Key &&key) { setValue(Self(v), std::forward<Key>(key)); }
 	template <class Key> void setBytes(BytesType &&v, Key &&key) { setValue(Self(std::move(v)), std::forward<Key>(key)); }
-	template <class Key> void setBytes(const DataReader<ByteOrder::Big> &v, Key &&key) { setValue(Self(v), std::forward<Key>(key)); }
-	template <class Key> void setBytes(const DataReader<ByteOrder::Little> &v, Key &&key) { setValue(Self(v), std::forward<Key>(key)); }
+	template <class Key> void setBytes(const BytesViewTemplate<ByteOrder::Big> &v, Key &&key) { setValue(Self(v), std::forward<Key>(key)); }
+	template <class Key> void setBytes(const BytesViewTemplate<ByteOrder::Little> &v, Key &&key) { setValue(Self(v), std::forward<Key>(key)); }
 	template <class Key> void setArray(const ArrayType &v, Key &&key) { setValue(Self(v), std::forward<Key>(key)); }
 	template <class Key> void setArray(ArrayType &&v, Key &&key) { setValue(Self(std::move(v)), std::forward<Key>(key)); }
 	template <class Key> void setDict(const DictionaryType &v, Key &&key) { setValue(Self(v), std::forward<Key>(key)); }

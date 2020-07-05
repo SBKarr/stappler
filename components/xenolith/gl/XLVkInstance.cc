@@ -25,31 +25,12 @@ THE SOFTWARE.
 namespace stappler::xenolith::vk {
 
 #if DEBUG
-static constexpr bool s_enableValidationLayers = true;
-static const Vector<const char*> s_validationLayers = {
-    "VK_LAYER_KHRONOS_validation"
-};
 
-VkResult s_createDebugUtilsMessengerEXT(VkInstance instance, const PFN_vkGetInstanceProcAddr getInstanceProcAddr, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger) {
-    auto func = (PFN_vkCreateDebugUtilsMessengerEXT) getInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-    if (func != nullptr) {
-        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-    } else {
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-}
+static VkResult s_createDebugUtilsMessengerEXT(VkInstance instance, const PFN_vkGetInstanceProcAddr getInstanceProcAddr,
+	const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
 
-void s_destroyDebugUtilsMessengerEXT(VkInstance instance, const PFN_vkGetInstanceProcAddr getInstanceProcAddr, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
-    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) getInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-    if (func != nullptr) {
-        func(instance, debugMessenger, pAllocator);
-    }
-}
-
-#else
-static constexpr bool s_enableValidationLayers = false;
-static const Vector<const char*> s_validationLayers;
-#endif
+static void s_destroyDebugUtilsMessengerEXT(VkInstance instance, const PFN_vkGetInstanceProcAddr getInstanceProcAddr,
+	VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL s_debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 		VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
@@ -65,11 +46,11 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL s_debugCallback(VkDebugUtilsMessageSeverit
 	return VK_FALSE;
 }
 
+#endif
+
 static const Vector<const char*> s_deviceExtensions = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
-
-static constexpr bool s_printVkInfo = true;
 
 Instance::Instance(VkInstance inst, const PFN_vkGetInstanceProcAddr getInstanceProcAddr)
 : instance(inst)
@@ -78,6 +59,7 @@ Instance::Instance(VkInstance inst, const PFN_vkGetInstanceProcAddr getInstanceP
 , vkDestroyInstance((PFN_vkDestroyInstance)vkGetInstanceProcAddr(inst, "vkDestroyInstance"))
 , vkEnumeratePhysicalDevices((PFN_vkEnumeratePhysicalDevices)vkGetInstanceProcAddr(inst, "vkEnumeratePhysicalDevices"))
 , vkGetPhysicalDeviceQueueFamilyProperties((PFN_vkGetPhysicalDeviceQueueFamilyProperties)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceQueueFamilyProperties"))
+, vkGetPhysicalDeviceMemoryProperties((PFN_vkGetPhysicalDeviceMemoryProperties)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceMemoryProperties"))
 , vkGetPhysicalDeviceProperties((PFN_vkGetPhysicalDeviceProperties)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceProperties"))
 , vkDestroySurfaceKHR((PFN_vkDestroySurfaceKHR)vkGetInstanceProcAddr(inst, "vkDestroySurfaceKHR"))
 , vkGetPhysicalDeviceSurfaceSupportKHR((PFN_vkGetPhysicalDeviceSurfaceSupportKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSurfaceSupportKHR"))
@@ -105,6 +87,7 @@ Instance::Instance(VkInstance inst, const PFN_vkGetInstanceProcAddr getInstanceP
 , vkDestroyFramebuffer((PFN_vkDestroyFramebuffer)vkGetInstanceProcAddr(inst, "vkDestroyFramebuffer"))
 , vkCreateCommandPool((PFN_vkCreateCommandPool)vkGetInstanceProcAddr(inst, "vkCreateCommandPool"))
 , vkDestroyCommandPool((PFN_vkDestroyCommandPool)vkGetInstanceProcAddr(inst, "vkDestroyCommandPool"))
+, vkResetCommandPool((PFN_vkResetCommandPool)vkGetInstanceProcAddr(inst, "vkResetCommandPool"))
 , vkCreateSemaphore((PFN_vkCreateSemaphore)vkGetInstanceProcAddr(inst, "vkCreateSemaphore"))
 , vkDestroySemaphore((PFN_vkDestroySemaphore)vkGetInstanceProcAddr(inst, "vkDestroySemaphore"))
 , vkCreateFence((PFN_vkCreateFence)vkGetInstanceProcAddr(inst, "vkCreateFence"))
@@ -117,12 +100,25 @@ Instance::Instance(VkInstance inst, const PFN_vkGetInstanceProcAddr getInstanceP
 , vkCmdBindPipeline((PFN_vkCmdBindPipeline)vkGetInstanceProcAddr(inst, "vkCmdBindPipeline"))
 , vkCmdDraw((PFN_vkCmdDraw)vkGetInstanceProcAddr(inst, "vkCmdDraw"))
 , vkCmdEndRenderPass((PFN_vkCmdEndRenderPass)vkGetInstanceProcAddr(inst, "vkCmdEndRenderPass"))
+, vkCmdCopyBuffer((PFN_vkCmdCopyBuffer)vkGetInstanceProcAddr(inst, "vkCmdCopyBuffer"))
 , vkAcquireNextImageKHR((PFN_vkAcquireNextImageKHR)vkGetInstanceProcAddr(inst, "vkAcquireNextImageKHR"))
 , vkQueuePresentKHR((PFN_vkQueuePresentKHR)vkGetInstanceProcAddr(inst, "vkQueuePresentKHR"))
 , vkQueueSubmit((PFN_vkQueueSubmit)vkGetInstanceProcAddr(inst, "vkQueueSubmit"))
 , vkDeviceWaitIdle((PFN_vkDeviceWaitIdle)vkGetInstanceProcAddr(inst, "vkDeviceWaitIdle"))
 , vkWaitForFences((PFN_vkWaitForFences)vkGetInstanceProcAddr(inst, "vkWaitForFences"))
 , vkResetFences((PFN_vkResetFences)vkGetInstanceProcAddr(inst, "vkResetFences"))
+, vkCreateDescriptorSetLayout((PFN_vkCreateDescriptorSetLayout)vkGetInstanceProcAddr(inst, "vkCreateDescriptorSetLayout"))
+, vkDestroyDescriptorSetLayout((PFN_vkDestroyDescriptorSetLayout)vkGetInstanceProcAddr(inst, "vkDestroyDescriptorSetLayout"))
+, vkCreateBuffer((PFN_vkCreateBuffer)vkGetInstanceProcAddr(inst, "vkCreateBuffer"))
+, vkDestroyBuffer((PFN_vkDestroyBuffer)vkGetInstanceProcAddr(inst, "vkDestroyBuffer"))
+, vkGetBufferMemoryRequirements((PFN_vkGetBufferMemoryRequirements)vkGetInstanceProcAddr(inst, "vkGetBufferMemoryRequirements"))
+, vkAllocateMemory((PFN_vkAllocateMemory)vkGetInstanceProcAddr(inst, "vkAllocateMemory"))
+, vkFreeMemory((PFN_vkFreeMemory)vkGetInstanceProcAddr(inst, "vkFreeMemory"))
+, vkBindBufferMemory((PFN_vkBindBufferMemory)vkGetInstanceProcAddr(inst, "vkBindBufferMemory"))
+, vkMapMemory((PFN_vkMapMemory)vkGetInstanceProcAddr(inst, "vkMapMemory"))
+, vkUnmapMemory((PFN_vkUnmapMemory)vkGetInstanceProcAddr(inst, "vkUnmapMemory"))
+, vkInvalidateMappedMemoryRanges((PFN_vkInvalidateMappedMemoryRanges)vkGetInstanceProcAddr(inst, "vkInvalidateMappedMemoryRanges"))
+, vkFlushMappedMemoryRanges((PFN_vkFlushMappedMemoryRanges)vkGetInstanceProcAddr(inst, "vkFlushMappedMemoryRanges"))
 #else
 , vkDestroyInstance(&::vkDestroyInstance)
 , vkEnumeratePhysicalDevices(&::vkEnumeratePhysicalDevices)
@@ -222,7 +218,7 @@ Instance::Instance(VkInstance inst, const PFN_vkGetInstanceProcAddr getInstanceP
 	        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
 	        int i = 0;
-	        for (const auto& queueFamily : queueFamilies) {
+	        for (const VkQueueFamilyProperties& queueFamily : queueFamilies) {
 				if constexpr (s_printVkInfo) {
 					bool empty = true;
 					StringStream info;
@@ -286,9 +282,10 @@ Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurface
     std::vector<VkPhysicalDevice> devices(deviceCount);
     vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
-    for (const auto& device : devices) {
+    for (const VkPhysicalDevice& device : devices) {
     	bool graphicsFamilyFound = false; uint32_t graphicsFamily;
     	bool presentFamilyFound = false; uint32_t presentFamily;
+    	bool transferFamilyFound = false; uint32_t transferFamily;
 		uint32_t queueFamilyCount = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
@@ -296,10 +293,15 @@ Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurface
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
 		int i = 0;
-		for (const auto &queueFamily : queueFamilies) {
+		for (const VkQueueFamilyProperties &queueFamily : queueFamilies) {
 			if ((queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) && !graphicsFamilyFound) {
 				graphicsFamily = i;
 				graphicsFamilyFound = true;
+			}
+
+			if ((queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) && ((queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) && !transferFamilyFound) {
+				transferFamily = i;
+				transferFamilyFound = true;
 			}
 
 			VkBool32 presentSupport = false;
@@ -317,6 +319,10 @@ Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurface
 			continue;
 		}
 
+		if (!transferFamilyFound) {
+			transferFamily = graphicsFamily;
+		}
+
 		uint32_t extensionCount;
 		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
 
@@ -324,8 +330,8 @@ Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurface
 		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
 
 		size_t extFound = 0;
-		for (auto &it : s_deviceExtensions) {
-			for (const auto &extension : availableExtensions) {
+		for (const char* it : s_deviceExtensions) {
+			for (const VkExtensionProperties &extension : availableExtensions) {
 				if (strcmp(it, extension.extensionName) == 0) {
 					++ extFound;
 					break;
@@ -362,11 +368,13 @@ Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurface
 					vkGetPhysicalDeviceProperties(device, &deviceProperties);
 
 					if (isMatch(deviceProperties, ptr)) {
-						ret.emplace_back(Instance::PresentationOptions(device, graphicsFamily, presentFamily, capabilities, move(formats), move(presentModes)));
+						ret.emplace_back(Instance::PresentationOptions(device, graphicsFamily, presentFamily, transferFamily,
+								capabilities, move(formats), move(presentModes)));
 						vkGetPhysicalDeviceProperties(device, &ret.back().deviceProperties);
 					}
 				} else {
-					ret.emplace_back(Instance::PresentationOptions(device, graphicsFamily, presentFamily, capabilities, move(formats), move(presentModes)));
+					ret.emplace_back(Instance::PresentationOptions(device, graphicsFamily, presentFamily, transferFamily,
+							capabilities, move(formats), move(presentModes)));
 
 					vkGetPhysicalDeviceProperties(device, &ret.back().deviceProperties);
 				}

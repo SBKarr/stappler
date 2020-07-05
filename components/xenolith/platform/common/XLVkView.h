@@ -25,7 +25,7 @@ THE SOFTWARE.
 
 #include "XLGestureData.h"
 #include "XLEventHeader.h"
-#include "XLVkDevice.h"
+#include "XLVkPresentation.h"
 
 namespace stappler::xenolith::vk {
 
@@ -61,7 +61,6 @@ public:
 	virtual void setAnimationInterval(double) = 0;
 
 	virtual bool run(const Callback<bool(double)> &) = 0;
-	virtual void drawFrame(double);
 
 	virtual void pollEvents();
 
@@ -118,6 +117,7 @@ protected:
 
 	Rc<Instance> _instance; // api instance
 	Rc<PresentationDevice> _device; // logical presentation device
+	Rc<PresentationLoop> _loop;
 
 	bool _dropFrameDelay = false;
 };
