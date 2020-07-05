@@ -506,7 +506,7 @@ void Server::onHeartBeat(mem::pool_t *pool) {
 					hdb.makeSessionsCleanup();
 				}
 
-				_config->broadcastId = hdb.processBroadcasts([&] (stappler::BytesView bytes) {
+				_config->broadcastId = hdb.processBroadcasts([&] (mem::BytesView bytes) {
 					onBroadcast(bytes);
 				}, _config->broadcastId);
 				root->dbdClose(pool, *this, dbd);
@@ -551,7 +551,7 @@ void Server::onBroadcast(const mem::Value &val) {
 	}
 }
 
-void Server::onBroadcast(const stappler::BytesView &bytes) {
+void Server::onBroadcast(const mem::BytesView &bytes) {
 	onBroadcast(stappler::data::read<stappler::BytesView, mem::Interface>(bytes));
 }
 

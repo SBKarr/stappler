@@ -47,8 +47,7 @@ struct uuid : AllocPool {
 		parse(_uuid, str.data());
 	}
 
-	template <ByteOrder::Endian Order>
-	uuid(BytesViewTemplate<Order> b) {
+	uuid(BytesView b) {
 		if (b.size() == 16) {
 			memcpy(_uuid.data(), b.data(), 16);
 		}

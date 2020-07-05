@@ -44,7 +44,7 @@ struct ResultRow {
 	mem::StringView at(size_t) const;
 
 	mem::StringView toString(size_t) const;
-	stappler::DataReader<stappler::ByteOrder::Host> toBytes(size_t) const;
+	mem::BytesView toBytes(size_t) const;
 	int64_t toInteger(size_t) const;
 	double toDouble(size_t) const;
 	bool toBool(size_t) const;

@@ -170,7 +170,7 @@ bool Handler::FrameReader::updateState() {
 		return true;
 		break;
 	case Status::Size16:
-		size = buffer.get<DataReader<ByteOrder::Network>>().readUnsigned16();
+		size = buffer.get<BytesViewNetwork>().readUnsigned16();
 		if (size > max) {
 			error = Error::InvalidSize;
 			return false;
@@ -180,7 +180,7 @@ bool Handler::FrameReader::updateState() {
 		shouldPrepareBody = true;
 		break;
 	case Status::Size64:
-		size = buffer.get<DataReader<ByteOrder::Network>>().readUnsigned64();
+		size = buffer.get<BytesViewNetwork>().readUnsigned64();
 		if (size > max) {
 			error = Error::InvalidSize;
 			return false;
@@ -190,7 +190,7 @@ bool Handler::FrameReader::updateState() {
 		shouldPrepareBody = true;
 		break;
 	case Status::Mask:
-		mask = buffer.get<DataReader<ByteOrder::Host>>().readUnsigned32();
+		mask = buffer.get<BytesView>().readUnsigned32();
 		status = Status::Body;
 		buffer.clear();
 		shouldPrepareBody = true;

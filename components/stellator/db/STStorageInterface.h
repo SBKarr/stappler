@@ -191,7 +191,7 @@ public:
 	virtual bool isNull(size_t row, size_t field) = 0;
 
 	virtual mem::StringView toString(size_t row, size_t field) = 0;
-	virtual stappler::DataReader<stappler::ByteOrder::Host> toBytes(size_t row, size_t field) = 0;
+	virtual stappler::BytesView toBytes(size_t row, size_t field) = 0;
 
 	virtual int64_t toInteger(size_t row, size_t field) = 0;
 	virtual double toDouble(size_t row, size_t field) = 0;

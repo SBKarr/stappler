@@ -26,9 +26,10 @@ THE SOFTWARE.
 #include "SPDefine.h"
 #include "SPPlatform.h"
 #include "SPThread.h"
-#include "shellapi.h"
 
 #if (CYGWIN || MSYS)
+
+#include "shellapi.h"
 
 namespace stappler::platform::interaction {
 	bool _dialogOpened = false;

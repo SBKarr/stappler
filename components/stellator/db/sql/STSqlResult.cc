@@ -109,7 +109,7 @@ mem::StringView ResultRow::at(size_t n) const {
 mem::StringView ResultRow::toString(size_t n) const {
 	return result->_interface->toString(row, n);
 }
-stappler::DataReader<stappler::ByteOrder::Host> ResultRow::toBytes(size_t n) const {
+mem::BytesView ResultRow::toBytes(size_t n) const {
 	return result->_interface->toBytes(row, n);
 }
 
@@ -153,7 +153,7 @@ mem::Value ResultRow::toData(size_t n, const db::Field &f) {
 		break;
 	case db::Type::Data:
 	case db::Type::Extra:
-		return stappler::data::read<stappler::DataReader<stappler::ByteOrder::Host>, mem::Interface>(toBytes(n));
+		return stappler::data::read<mem::BytesView, mem::Interface>(toBytes(n));
 		break;
 	case db::Type::Custom:
 		return f.getSlot<db::FieldCustom>()->readFromStorage(*result->_interface, row, n);

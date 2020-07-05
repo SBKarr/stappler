@@ -38,7 +38,7 @@ bool FieldIntArray::transformValue(const db::Scheme &, const mem::Value &obj, me
 
 mem::Value FieldIntArray::readFromStorage(db::ResultInterface &iface, size_t row, size_t field) const {
 	if (iface.isBinaryFormat(field)) {
-		auto r = stappler::DataReader<stappler::ByteOrder::Network>(iface.toBytes(row, field));
+		auto r = stappler::BytesViewNetwork(iface.toBytes(row, field));
 		auto SPUNUSED ndim = r.readUnsigned32();
 		r.offset(4); // ignored;
 		auto SPUNUSED oid = r.readUnsigned32();

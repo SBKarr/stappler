@@ -56,7 +56,7 @@ public:
 
 	void makeSessionsCleanup();
 	void finalizeBroadcast();
-	int64_t processBroadcasts(const stappler::Callback<void(stappler::DataReader<stappler::ByteOrder::Host>)> &, int64_t value);
+	int64_t processBroadcasts(const stappler::Callback<void(stappler::BytesView)> &, int64_t value);
 	virtual void broadcast(const mem::Bytes &) override;
 
 	virtual int64_t getDeltaValue(const Scheme &scheme) override;

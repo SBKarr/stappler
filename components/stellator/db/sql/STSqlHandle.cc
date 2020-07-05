@@ -40,7 +40,7 @@ mem::Value SqlHandle::get(const stappler::CoderSource &key) {
 		query.select("data").from(getKeyValueSchemeName()).where("name", Comparation::Equal, key).finalize();
 		selectQuery(query, [&] (Result &res) {
 			if (res.nrows() == 1) {
-				ret = stappler::data::read<stappler::DataReader<stappler::ByteOrder::Host>, mem::Interface>(res.front().toBytes(0));
+				ret = stappler::data::read<mem::BytesView, mem::Interface>(res.front().toBytes(0));
 			}
 		});
 	});
@@ -230,7 +230,7 @@ void SqlHandle::finalizeBroadcast() {
 	}
 }
 
-int64_t SqlHandle::processBroadcasts(const stappler::Callback<void(stappler::DataReader<stappler::ByteOrder::Host>)> &cb, int64_t value) {
+int64_t SqlHandle::processBroadcasts(const stappler::Callback<void(mem::BytesView)> &cb, int64_t value) {
 	int64_t maxId = value;
 	makeQuery([&] (SqlQuery &query) {
 		if (value <= 0) {

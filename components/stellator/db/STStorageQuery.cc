@@ -334,7 +334,7 @@ Query & Query::delta(uint64_t id) {
 
 Query & Query::delta(const mem::StringView &str) {
 	auto b = stappler::base64::decode(str);
-	stappler::DataReaderNetwork r(b);
+	stappler::BytesViewNetwork r(b);
 	switch (r.size()) {
 	case 2: deltaToken = r.readUnsigned16(); break;
 	case 4: deltaToken = r.readUnsigned32(); break;

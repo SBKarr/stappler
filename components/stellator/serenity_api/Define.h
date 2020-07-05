@@ -61,7 +61,7 @@ using ByteOrder = stappler::ByteOrder;
 using CharGroupId = stappler::CharGroupId;
 
 template <ByteOrder::Endian Endianess = ByteOrder::Endian::Network>
-using DataReader = stappler::DataReader<Endianess>;
+using DataReader = stappler::BytesViewTemplate<Endianess>;
 
 using BytesView = stappler::BytesView;
 using CoderSource = stappler::CoderSource;

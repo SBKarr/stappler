@@ -250,7 +250,7 @@ bool NetworkMultiHandle::perform(const Callback<bool(NetworkHandle *, void *)> &
 	auto initPending = [&] {
 		for (auto &it : pending) {
 			auto h = curl_easy_init();
-			auto i = handles.emplace(h).first;
+			auto i = handles.emplace(h, NetworkHandle::Context()).first;
 			i->second.userdata = it.second;
 			i->second.curl = h;
 			it.first->prepare(&i->second, nullptr);

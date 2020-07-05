@@ -29,7 +29,7 @@ NS_DB_PQ_BEGIN
 
 static std::mutex s_logMutex;
 
-static mem::String pg_numeric_to_string(stappler::DataReader<stappler::ByteOrder::Network> r) {
+static mem::String pg_numeric_to_string(stappler::BytesViewNetwork r) {
 	using NumericDigit = int16_t;
 	static constexpr auto DEC_DIGITS = 4;
 	static constexpr auto NUMERIC_NEG = 0x4000;
@@ -327,22 +327,22 @@ public:
 	virtual mem::StringView toString(size_t row, size_t field) override {
 		return mem::StringView(driver->getValue(result, row, field), driver->getLength(result, row, field));
 	}
-	virtual stappler::DataReader<stappler::ByteOrder::Host> toBytes(size_t row, size_t field) override {
+	virtual mem::BytesView toBytes(size_t row, size_t field) override {
 		if (isBinaryFormat(field)) {
-			return stappler::DataReader<stappler::ByteOrder::Host>((uint8_t *)driver->getValue(result, row, field), driver->getLength(result, row, field));
+			return mem::BytesView((uint8_t *)driver->getValue(result, row, field), driver->getLength(result, row, field));
 		} else {
 			auto val = driver->getValue(result, row, field);
 			auto len = driver->getLength(result, row, field);
 			if (len > 2 && memcmp(val, "\\x", 2) == 0) {
 				auto d = new mem::Bytes(stappler::base16::decode<mem::Interface>(stappler::CoderSource(val + 2, len - 2)));
-				return stappler::DataReader<stappler::ByteOrder::Host>(*d);
+				return mem::BytesView(*d);
 			}
-			return stappler::DataReader<stappler::ByteOrder::Host>((uint8_t *)val, len);
+			return mem::BytesView((uint8_t *)val, len);
 		}
 	}
 	virtual int64_t toInteger(size_t row, size_t field) override {
 		if (isBinaryFormat(field)) {
-			stappler::DataReader<stappler::ByteOrder::Network> r((const uint8_t *)driver->getValue(result, row, field), driver->getLength(result, row, field));
+			stappler::BytesViewNetwork r((const uint8_t *)driver->getValue(result, row, field), driver->getLength(result, row, field));
 			switch (r.size()) {
 			case 1: return r.readUnsigned(); break;
 			case 2: return r.readUnsigned16(); break;
@@ -358,7 +358,7 @@ public:
 	}
 	virtual double toDouble(size_t row, size_t field) override {
 		if (isBinaryFormat(field)) {
-			stappler::DataReader<stappler::ByteOrder::Network> r((const uint8_t *)driver->getValue(result, row, field), driver->getLength(result, row, field));
+			stappler::BytesViewNetwork r((const uint8_t *)driver->getValue(result, row, field), driver->getLength(result, row, field));
 			switch (r.size()) {
 			case 2: return r.readFloat16(); break;
 			case 4: return r.readFloat32(); break;
@@ -410,7 +410,7 @@ public:
 			return mem::Value(toString(row, field));
 			break;
 		case Interface::StorageType::Numeric: {
-			stappler::DataReader<stappler::ByteOrder::Network> r((const uint8_t *)driver->getValue(result, row, field), driver->getLength(result, row, field));
+			stappler::BytesViewNetwork r((const uint8_t *)driver->getValue(result, row, field), driver->getLength(result, row, field));
 			auto str = pg_numeric_to_string(r);
 
 			auto v = mem::StringView(str).readDouble();
@@ -429,7 +429,7 @@ public:
 	}
 	virtual int64_t toId() override {
 		if (isBinaryFormat(0)) {
-			stappler::DataReader<stappler::ByteOrder::Network> r((const uint8_t *)driver->getValue(result, 0, 0), driver->getLength(result, 0, 0));
+			stappler::BytesViewNetwork r((const uint8_t *)driver->getValue(result, 0, 0), driver->getLength(result, 0, 0));
 			switch (r.size()) {
 			case 1: return int64_t(r.readUnsigned()); break;
 			case 2: return int64_t(r.readUnsigned16()); break;

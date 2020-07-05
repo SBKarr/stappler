@@ -1654,7 +1654,7 @@ data::Value Handle::getData(const StringView &key) {
 	if ( ok == SQLITE_ROW ) {
 		const uint8_t *data = (const uint8_t *)sqlite3_column_blob(_kv_select_stmt, 0);
 		size_t bytes(sqlite3_column_bytes(_kv_select_stmt, 0));
-		ret = data::read(DataReader<ByteOrder::Host>(data, bytes));
+		ret = data::read(BytesView(data, bytes));
 	}
 
 	sqlite3_reset(_kv_select_stmt);

@@ -522,7 +522,7 @@ void Handler::cancel() {
 
 bool Handler::onControlFrame(FrameType type, const StackBuffer<128> &b) {
 	if (type == FrameType::Close) {
-		_clientCloseCode = (StatusCode)(b.get<DataReader<ByteOrder::Network>>().readUnsigned16());
+		_clientCloseCode = (StatusCode)(b.get<BytesViewNetwork>().readUnsigned16());
 		return false;
 	} else if (type == FrameType::Ping) {
 		trySend(FrameType::Pong, nullptr, 0);

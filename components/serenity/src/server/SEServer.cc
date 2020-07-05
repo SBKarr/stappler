@@ -915,7 +915,7 @@ void Server::onBroadcast(const data::Value &val) {
 	}
 }
 
-void Server::onBroadcast(const DataReaderHost &bytes) {
+void Server::onBroadcast(const BytesView &bytes) {
 	onBroadcast(data::read(bytes));
 }
 

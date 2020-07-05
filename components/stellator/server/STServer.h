@@ -48,7 +48,7 @@ public:
 	void onChildInit();
 	void onHeartBeat(mem::pool_t *);
 	void onBroadcast(const mem::Value &);
-	void onBroadcast(const stappler::DataReaderHost &);
+	void onBroadcast(const mem::BytesView &);
 
 	void onStorageTransaction(db::Transaction &);
 

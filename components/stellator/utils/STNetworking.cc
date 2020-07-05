@@ -64,7 +64,7 @@ data::Value Handle::performDataQuery() {
 data::Value Handle::performDataQuery(const data::Value &val, data::EncodeFormat fmt) {
 	mem::ostringstream stream;
 	stream << fmt << val;
-	DataReader<ByteOrder::Network> r((const uint8_t *)stream.data(), stream.size());
+	stappler::BytesViewNetwork r((const uint8_t *)stream.data(), stream.size());
 	setSendCallback([&] (char *data, size_t size) -> size_t {
 		auto writeSize = std::min(size, r.size());
 		memcpy(data, r.data(), writeSize);
