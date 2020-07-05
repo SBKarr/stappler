@@ -837,8 +837,9 @@ auto StringViewBase<_CharType>::skipChars() -> void {
 	while (this->len > offset && match<Args...>(this->ptr[offset])) {
 		++offset;
 	}
-	this->len -= offset;
-	this->ptr += offset;
+	auto off = std::min(offset, this->len);
+	this->len -= off;
+	this->ptr += off;
 }
 
 template <typename _CharType>
@@ -848,8 +849,9 @@ auto StringViewBase<_CharType>::skipUntil() -> void {
 	while (this->len > offset && !match<Args...>(this->ptr[offset])) {
 		++offset;
 	}
-	this->len -= offset;
-	this->ptr += offset;
+	auto off = std::min(offset, this->len);
+	this->len -= off;
+	this->ptr += off;
 }
 
 template <typename _CharType>
@@ -874,8 +876,9 @@ auto StringViewBase<_CharType>::skipString(const Self &str) -> bool {
 		return false;
 	}
 	if (this->prefix(str.data(), str.size())) {
-		this->ptr += str.size();
-		this->len -= str.size();
+		auto s = std::min(str.size(), this->len);
+		this->ptr += s;
+		this->len -= s;
 		return true;
 	}
 	return false;
@@ -887,7 +890,7 @@ auto StringViewBase<_CharType>::skipUntilString(const Self &str, bool stopBefore
 		return false;
 	}
 
-	while (this->len >= 1 && !this->prefix(str.data(), str.size())) {
+	while (this->len > 0 && !this->prefix(str.data(), str.size())) {
 		this->ptr += 1;
 		this->len -= 1;
 	}
@@ -1176,22 +1179,24 @@ template<typename ... Args>
 inline void StringViewUtf8::skipChars() {
 	uint8_t clen = 0;
 	size_t offset = 0;
-	while (len > offset && match<Args...>(unicode::utf8Decode(ptr + offset, clen))) {
+	while (len > offset && match<Args...>(unicode::utf8Decode(ptr + offset, clen)) && clen > 0) {
 		offset += clen;
 	}
-	len -= offset;
-	ptr += offset;
+	auto off = std::min(offset, len);
+	len -= off;
+	ptr += off;
 }
 
 template<typename ... Args>
 inline void StringViewUtf8::skipUntil() {
 	uint8_t clen = 0;
 	size_t offset = 0;
-	while (len > offset && !match<Args...>(unicode::utf8Decode(ptr + offset, clen))) {
+	while (len > offset && !match<Args...>(unicode::utf8Decode(ptr + offset, clen)) && clen > 0) {
 		offset += clen;
 	}
-	len -= offset;
-	ptr += offset;
+	auto off = std::min(offset, len);
+	len -= off;
+	ptr += off;
 }
 
 template<typename ... Args>
@@ -1199,7 +1204,7 @@ inline void StringViewUtf8::backwardSkipChars() {
 	uint8_t clen = 0;
 	while (this->len > 0 && rv_match_utf8<Args...>(this->ptr, this->len, clen)) {
 		if (clen > 0) {
-			this->len -= clen;
+			this->len -= std::min(size_t(clen), this->len);
 		} else {
 			return;
 		}
@@ -1211,7 +1216,7 @@ inline void StringViewUtf8::backwardSkipUntil() {
 	uint8_t clen = 0;
 	while (this->len > 0 && !rv_match_utf8<Args...>(this->ptr, this->len, clen)) {
 		if (clen > 0) {
-			this->len -= clen;
+			this->len -= std::min(size_t(clen), this->len);;
 		} else {
 			return;
 		}
@@ -1223,8 +1228,9 @@ inline bool StringViewUtf8::skipString(const Self &str) {
 		return false;
 	}
 	if (this->prefix(str.data(), str.size())) {
-		ptr += str.size();
-		len -= str.size();
+		auto s = std::min(len, str.size());
+		ptr += s;
+		len -= s;
 		return true;
 	}
 	return false;
@@ -1234,7 +1240,7 @@ inline bool StringViewUtf8::skipUntilString(const Self &str, bool stopBeforeStri
 		return false;
 	}
 
-	while (this->len >= 1 && !this->prefix(str.data(), str.size())) {
+	while (this->len > 0 && !this->prefix(str.data(), str.size())) {
 		this->ptr += 1;
 		this->len -= 1;
 	}

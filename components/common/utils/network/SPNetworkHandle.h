@@ -110,6 +110,7 @@ public:
 
 	void setDebug(bool value) { _debug = value; }
 	void setReuse(bool value) { _reuse = value; }
+	void setShared(bool value) { _shared = value; }
 	void setSilent(bool value) { _silent = value; }
 	const StringStream &getDebugData() const { return _debugData; }
 
@@ -147,6 +148,7 @@ protected:
 	bool _isRequestPerformed;
 	bool _debug = false;
 	bool _reuse = true;
+	bool _shared = false;
 
 	Vector<String> _sendedHeaders;
 	Vector<String> _recievedHeaders;
@@ -184,6 +186,8 @@ protected:
 
 	String _proxyAddress;
 	String _proxyAuth;
+
+	void *_sharedHandle = nullptr;
 
 protected:
 	/* protocol parameter */

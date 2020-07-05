@@ -278,7 +278,11 @@ NetworkHandle::NetworkHandle() {
 #endif
 }
 
-NetworkHandle::~NetworkHandle() { }
+NetworkHandle::~NetworkHandle() {
+	if (_sharedHandle) {
+		curl_share_cleanup(_sharedHandle);
+	}
+}
 
 bool NetworkHandle::init(Method method, const StringView &url) {
 	if (url.size() == 0 || method == Method::Unknown) {

@@ -587,11 +587,30 @@ bool write(const StringView &path, const Bytes &vec) {
 }
 bool write(const StringView &ipath, const unsigned char *data, size_t len) {
 	String path = filepath::absolute(ipath, true);
-	OutputFileStream f(path.data());
-	if (f.is_open()) {
-		f.write((const char *)data, len);
-		f.close();
-		return true;
+	if constexpr (std::is_same<memory::DefaultInterface, memory::PoolInterface>::value) {
+		auto p = memory::pool::acquire();
+		if (memory::AllocPool::isCustomPool(p)) {
+			std::ofstream f(path.data());
+			if (f.is_open()) {
+				f.write((const char *)data, len);
+				f.close();
+				return true;
+			}
+		} else {
+			OutputFileStream f(path.data());
+			if (f.is_open()) {
+				f.write((const char *)data, len);
+				f.close();
+				return true;
+			}
+		}
+	} else {
+		OutputFileStream f(path.data());
+		if (f.is_open()) {
+			f.write((const char *)data, len);
+			f.close();
+			return true;
+		}
 	}
 	return false;
 }

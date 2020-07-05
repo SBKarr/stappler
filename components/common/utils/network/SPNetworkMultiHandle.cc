@@ -75,7 +75,20 @@ bool NetworkHandle::prepare(Context *ctx, const Callback<bool(CURL *)> &onBefore
 	_parsedHeaders.clear();
 
 	ctx->handle = this;
+
 	bool check = true;
+	if (_shared) {
+		if (!_sharedHandle) {
+			_sharedHandle = curl_share_init();
+			curl_share_setopt(_sharedHandle, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
+			curl_share_setopt(_sharedHandle, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
+			curl_share_setopt(_sharedHandle, CURLSHOPT_SHARE, CURL_LOCK_DATA_SSL_SESSION);
+			curl_share_setopt(_sharedHandle, CURLSHOPT_SHARE, CURL_LOCK_DATA_CONNECT);
+		}
+		SetOpt(check, ctx->curl, CURLOPT_COOKIEFILE, "/undefined");
+		SetOpt(check, ctx->curl, CURLOPT_SHARE, _sharedHandle);
+	}
+
 	check = (check) ? setupCurl(ctx->curl, ctx->errorBuffer.data()) : false;
 	check = (check) ? setupDebug(ctx->curl, _debug) : false;
 	check = (check) ? setupRootCert(ctx->curl, _rootCertFile) : false;
@@ -258,7 +271,7 @@ bool NetworkMultiHandle::perform(const Callback<bool(NetworkHandle *, void *)> &
 		curl_multi_cleanup(m);
 	};
 
-	handles.reserve(pending.size());
+	//handles.reserve(pending.size());
 
 	int running = initPending();
 	do {
@@ -304,7 +317,7 @@ bool NetworkMultiHandle::perform(const Callback<bool(NetworkHandle *, void *)> &
 	} while (running > 0);
 
 	curl_multi_cleanup(m);
-	return true;
+ 	return true;
 }
 
 }
