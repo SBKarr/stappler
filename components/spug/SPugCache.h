@@ -28,7 +28,7 @@
 
 NS_SP_EXT_BEGIN(pug)
 
-class FileRef : public AtomicRef {
+class FileRef : public RefBase<AtomicCounter, memory::PoolInterface> {
 public:
 	static Rc<FileRef> read(memory::pool_t *, FilePath path, Template::Options opts = Template::Options::getDefault(),
 			const Callback<void(const StringView &)> & = nullptr, int watch = -1, int wId = -1);

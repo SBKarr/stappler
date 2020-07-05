@@ -27,33 +27,52 @@ THE SOFTWARE.
 
 NS_LAYOUT_BEGIN
 
-template <size_t Count>
+template <size_t Count, typename T = float>
 class MovingAverage {
 public:
-    void dropValues() {
-        for (size_t i = 0; i < Count; i++) {
-            _values[i] = 0;
-        }
-    }
-    void addValue(float value) {
-        _values[_current] = value;
-        if ((++_current) >= Count) _current = 0;
-    }
-    float getAverage() {
-        float s = 0;
-        for (size_t i = 0; i < Count; i++) {
-            s += _values[i];
-        }
-        return s / Count;
-    }
-    float step(float value) {
-        addValue(value);
-        return getAverage();
-    }
+	void dropValues() {
+		for (size_t i = 0; i < Count; i++) {
+			_values[i] = 0;
+		}
+	}
+	void addValue(T value) {
+		_values[_current] = value;
+		if ((++_current) >= Count) _current = 0;
+	}
+	T getAverage() {
+		T s = 0;
+		for (size_t i = 0; i < Count; i++) {
+			s += _values[i];
+		}
+		return s / Count;
+	}
+	T step(T value) {
+		addValue(value);
+		return getAverage();
+	}
+
+	T range(bool exceptZero = false) {
+		Pair<T, T> minmax(std::numeric_limits<T>::max(), std::numeric_limits<T>::min());
+
+		for (size_t i = 0; i < Count; i++) {
+			if (!exceptZero || _values[i] != 0) {
+				if (_values[i] < minmax.first) { minmax.first = _values[i]; }
+				if (_values[i] > minmax.second) { minmax.second = _values[i]; }
+			}
+		}
+
+		if (minmax.first <= minmax.second) {
+			return minmax.second - minmax.first;
+		} else {
+			return 0;
+		}
+	}
+
+	size_t size() const { return Count; }
 
 protected:
 	size_t _current = 0;
-    std::array<float, Count> _values;
+    std::array<T, Count> _values;
 };
 
 NS_LAYOUT_END

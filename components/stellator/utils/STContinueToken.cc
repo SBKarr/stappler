@@ -105,6 +105,13 @@ void ContinueToken::unsetFlag(Flags fl) {
 	flags &= (~fl);
 }
 
+const mem::Value &ContinueToken::getFirstVec() const {
+	return firstVec;
+}
+const mem::Value &ContinueToken::getLastVec() const {
+	return lastVec;
+}
+
 bool ContinueToken::hasPrevImpl() const {
 	return _init && fetched != 0;
 }

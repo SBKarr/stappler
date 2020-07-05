@@ -75,6 +75,9 @@ public:
 	void setFlag(Flags);
 	void unsetFlag(Flags);
 
+	const mem::Value &getFirstVec() const;
+	const mem::Value &getLastVec() const;
+
 protected:
 	bool hasPrevImpl() const;
 	bool hasNextImpl() const;

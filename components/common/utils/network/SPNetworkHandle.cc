@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2020 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -58,7 +58,7 @@ THE SOFTWARE.
 #define SP_NETWORK_LOG(...)
 //#define SP_NETWORK_LOG(...) log::format("Network", __VA_ARGS__)
 
-NS_SP_BEGIN
+namespace stappler {
 
 #define SP_TERMINATED_DATA(view) (view.terminated()?view.data():view.str().data())
 
@@ -293,52 +293,54 @@ bool NetworkHandle::init(Method method, const StringView &url) {
 	return true;
 }
 
+
+template <typename K, typename T>
+inline void SetOpt(bool &check, CURL *curl, K opt, const T &value) {
 #ifdef DEBUG
-#define SETOPT(check, curl, name, value) \
-	do { \
-		int err = CURLE_OK; \
-		if (check) { \
-			err = curl_easy_setopt(curl, name, value); \
-			if (err != CURLE_OK) { \
-				SP_NETWORK_LOG("curl_easy_setopt failed: %d %s %s", err, #name, #value); \
-				check = false; \
-			} \
-		} \
-	} while (false);
+	int err = CURLE_OK;
+	if (check) {
+		err = curl_easy_setopt(curl, opt, value);
+		if (err != CURLE_OK) {
+			SP_NETWORK_LOG("curl_easy_setopt failed: %d %s %s", err, #name, #value);
+			check = false;
+		}
+	}
 #else
-#define SETOPT(check, curl, name, value) check = (check) ? curl_easy_setopt(curl, name, value) == CURLE_OK : false;
+	check = (check) ? curl_easy_setopt(curl, opt, value) == CURLE_OK : false;
 #endif
+}
+
 
 bool NetworkHandle::setupCurl(CURL *curl, char *errorBuffer) {
 	bool check = true;
 
-	SETOPT(check, curl, CURLOPT_USE_SSL, CURLUSESSL_TRY);
+	SetOpt(check, curl, CURLOPT_USE_SSL, CURLUSESSL_TRY);
 
-	SETOPT(check, curl, CURLOPT_NOSIGNAL, 1);
-	SETOPT(check, curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_WHATEVER);
+	SetOpt(check, curl, CURLOPT_NOSIGNAL, 1);
+	SetOpt(check, curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_WHATEVER);
 
-	SETOPT(check, curl, CURLOPT_ERRORBUFFER, errorBuffer);
-	SETOPT(check, curl, CURLOPT_LOW_SPEED_TIME, _lowSpeedTime);
-	SETOPT(check, curl, CURLOPT_LOW_SPEED_LIMIT, _lowSpeedLimit);
-	//SETOPT(check, curl, CURLOPT_TIMEOUT, SP_NW_READ_TIMEOUT);
-	SETOPT(check, curl, CURLOPT_CONNECTTIMEOUT, _connectTimeout);
+	SetOpt(check, curl, CURLOPT_ERRORBUFFER, errorBuffer);
+	SetOpt(check, curl, CURLOPT_LOW_SPEED_TIME, _lowSpeedTime);
+	SetOpt(check, curl, CURLOPT_LOW_SPEED_LIMIT, _lowSpeedLimit);
+	//SetOpt(check, curl, CURLOPT_TIMEOUT, SP_NW_READ_TIMEOUT);
+	SetOpt(check, curl, CURLOPT_CONNECTTIMEOUT, _connectTimeout);
 
 #if (DEBUG || LINUX)
-	SETOPT(check, curl, CURLOPT_SSL_VERIFYPEER, 0L);
-	SETOPT(check, curl, CURLOPT_SSL_VERIFYHOST, 0L);
+	SetOpt(check, curl, CURLOPT_SSL_VERIFYPEER, 0L);
+	SetOpt(check, curl, CURLOPT_SSL_VERIFYHOST, 0L);
 #else
-	SETOPT(check, curl, CURLOPT_SSL_VERIFYPEER, 1L);
-	SETOPT(check, curl, CURLOPT_SSL_VERIFYHOST, 2L);
+	SetOpt(check, curl, CURLOPT_SSL_VERIFYPEER, 1L);
+	SetOpt(check, curl, CURLOPT_SSL_VERIFYHOST, 2L);
 #endif
 
-	SETOPT(check, curl, CURLOPT_URL, _url.c_str());
-	SETOPT(check, curl, CURLOPT_RESUME_FROM, 0); // drop byte-ranged GET
+	SetOpt(check, curl, CURLOPT_URL, _url.c_str());
+	SetOpt(check, curl, CURLOPT_RESUME_FROM, 0); // drop byte-ranged GET
 
-	SETOPT(check, curl, CURLOPT_WRITEFUNCTION, Network::writeDummy);
-	SETOPT(check, curl, CURLOPT_WRITEDATA, this);
+	SetOpt(check, curl, CURLOPT_WRITEFUNCTION, Network::writeDummy);
+	SetOpt(check, curl, CURLOPT_WRITEDATA, this);
 
 	/* enable all supported built-in compressions */
-	SETOPT(check, curl, CURLOPT_ACCEPT_ENCODING, "");
+	SetOpt(check, curl, CURLOPT_ACCEPT_ENCODING, "");
 
 	return check;
 }
@@ -346,9 +348,9 @@ bool NetworkHandle::setupCurl(CURL *curl, char *errorBuffer) {
 bool NetworkHandle::setupDebug(CURL *curl, bool debug) {
 	bool check = true;
 	if (debug) {
-		SETOPT(check, curl, CURLOPT_VERBOSE, 1);
-		SETOPT(check, curl, CURLOPT_DEBUGFUNCTION, Network::writeDebug);
-		SETOPT(check, curl, CURLOPT_DEBUGDATA, this);
+		SetOpt(check, curl, CURLOPT_VERBOSE, 1);
+		SetOpt(check, curl, CURLOPT_DEBUGFUNCTION, Network::writeDebug);
+		SetOpt(check, curl, CURLOPT_DEBUGDATA, this);
 	}
 	return check;
 }
@@ -360,13 +362,13 @@ bool NetworkHandle::setupRootCert(CURL *curl, const StringView &certPath) {
 		if (bundle.empty() || bundle.back() != '/') {
 			String path = filepath::root(certPath);
 
-			SETOPT(check, curl, CURLOPT_CAINFO, SP_TERMINATED_DATA(bundle));
+			SetOpt(check, curl, CURLOPT_CAINFO, SP_TERMINATED_DATA(bundle));
 #ifndef ANDROID
-			SETOPT(check, curl, CURLOPT_CAPATH, path.c_str());
+			SetOpt(check, curl, CURLOPT_CAPATH, path.c_str());
 #endif
 		} else {
 			StringView path = bundle.sub(0, bundle.size() - 1);
-			SETOPT(check, curl, CURLOPT_CAPATH, SP_TERMINATED_DATA(path));
+			SetOpt(check, curl, CURLOPT_CAPATH, SP_TERMINATED_DATA(path));
 		}
 	}
 	return check;
@@ -381,11 +383,11 @@ bool NetworkHandle::setupHeaders(CURL *curl, const Vector<String> &vec, curl_sli
 		if (!keySign.empty()) {
 			*headers = curl_slist_append(*headers, toString("Authorization: pkey ", keySign).data());
 		}
-		SETOPT(check, curl, CURLOPT_HTTPHEADER, *headers);
+		SetOpt(check, curl, CURLOPT_HTTPHEADER, *headers);
 	}
 
-	SETOPT(check, curl, CURLOPT_HEADERFUNCTION, Network::writeHeaders);
-	SETOPT(check, curl, CURLOPT_HEADERDATA, this);
+	SetOpt(check, curl, CURLOPT_HEADERFUNCTION, Network::writeHeaders);
+	SetOpt(check, curl, CURLOPT_HEADERDATA, this);
 
 	return check;
 }
@@ -393,9 +395,9 @@ bool NetworkHandle::setupHeaders(CURL *curl, const Vector<String> &vec, curl_sli
 bool NetworkHandle::setupUserAgent(CURL *curl, const StringView &agent) {
 	bool check = true;
 	if (!agent.empty()) {
-		SETOPT(check, curl, CURLOPT_USERAGENT, SP_TERMINATED_DATA(agent));
+		SetOpt(check, curl, CURLOPT_USERAGENT, SP_TERMINATED_DATA(agent));
 	} else {
-		SETOPT(check, curl, CURLOPT_USERAGENT, "Stappler/0 CURL");
+		SetOpt(check, curl, CURLOPT_USERAGENT, "Stappler/0 CURL");
 	}
 	return check;
 }
@@ -403,9 +405,9 @@ bool NetworkHandle::setupUserAgent(CURL *curl, const StringView &agent) {
 bool NetworkHandle::setupUser(CURL *curl, const StringView &user, const StringView &password) {
 	bool check = true;
 	if (!user.empty()) {
-		SETOPT(check, curl, CURLOPT_USERNAME, SP_TERMINATED_DATA(user));
+		SetOpt(check, curl, CURLOPT_USERNAME, SP_TERMINATED_DATA(user));
 		if (!password.empty()) {
-			SETOPT(check, curl, CURLOPT_PASSWORD, SP_TERMINATED_DATA(password));
+			SetOpt(check, curl, CURLOPT_PASSWORD, SP_TERMINATED_DATA(password));
 		}
 	}
 	return check;
@@ -414,7 +416,7 @@ bool NetworkHandle::setupUser(CURL *curl, const StringView &user, const StringVi
 bool NetworkHandle::setupFrom(CURL *curl, const StringView &from) {
 	bool check = true;
 	if (_method == Method::Smtp && !from.empty()) {
-		SETOPT(check, curl, CURLOPT_MAIL_FROM, SP_TERMINATED_DATA(from));
+		SetOpt(check, curl, CURLOPT_MAIL_FROM, SP_TERMINATED_DATA(from));
 	}
 	return check;
 }
@@ -425,7 +427,7 @@ bool NetworkHandle::setupRecv(CURL *curl, const Vector<String> &vec, curl_slist 
 		for (const auto &str : vec) {
 			*mailTo = curl_slist_append(*mailTo, str.c_str());
 		}
-		SETOPT(check, curl, CURLOPT_MAIL_RCPT, *mailTo);
+		SetOpt(check, curl, CURLOPT_MAIL_RCPT, *mailTo);
 	}
 	return check;
 }
@@ -433,13 +435,13 @@ bool NetworkHandle::setupRecv(CURL *curl, const Vector<String> &vec, curl_slist 
 bool NetworkHandle::setupProgress(CURL *curl, bool progress) {
 	bool check = true;
 	if (progress) {
-		SETOPT(check, curl, CURLOPT_NOPROGRESS, 0);
-		SETOPT(check, curl, CURLOPT_XFERINFOFUNCTION, Network::progress);
-		SETOPT(check, curl, CURLOPT_XFERINFODATA, this);
+		SetOpt(check, curl, CURLOPT_NOPROGRESS, 0);
+		SetOpt(check, curl, CURLOPT_XFERINFOFUNCTION, Network::progress);
+		SetOpt(check, curl, CURLOPT_XFERINFODATA, this);
 	} else {
-		SETOPT(check, curl, CURLOPT_NOPROGRESS, 1);
-		SETOPT(check, curl, CURLOPT_XFERINFOFUNCTION, Network::progress);
-		SETOPT(check, curl, CURLOPT_XFERINFODATA, NULL);
+		SetOpt(check, curl, CURLOPT_NOPROGRESS, 1);
+		SetOpt(check, curl, CURLOPT_XFERINFOFUNCTION, Network::progress);
+		SetOpt(check, curl, CURLOPT_XFERINFODATA, NULL);
 	}
 	return check;
 }
@@ -447,8 +449,8 @@ bool NetworkHandle::setupProgress(CURL *curl, bool progress) {
 bool NetworkHandle::setupCookies(CURL *curl, const StringView &cookiePath) {
 	bool check = true;
 	if (!cookiePath.empty()) {
-		SETOPT(check, curl, CURLOPT_COOKIEFILE, SP_TERMINATED_DATA(cookiePath));
-		SETOPT(check, curl, CURLOPT_COOKIEJAR, SP_TERMINATED_DATA(cookiePath));
+		SetOpt(check, curl, CURLOPT_COOKIEFILE, SP_TERMINATED_DATA(cookiePath));
+		SetOpt(check, curl, CURLOPT_COOKIEJAR, SP_TERMINATED_DATA(cookiePath));
 	}
 	return check;
 }
@@ -456,15 +458,15 @@ bool NetworkHandle::setupCookies(CURL *curl, const StringView &cookiePath) {
 bool NetworkHandle::setupProxy(CURL *curl, const StringView &proxy, const StringView &auth) {
 	bool check = true;
 	if (!proxy.empty()) {
-		SETOPT(check, curl, CURLOPT_PROXY, SP_TERMINATED_DATA(proxy));
+		SetOpt(check, curl, CURLOPT_PROXY, SP_TERMINATED_DATA(proxy));
 	} else {
-		SETOPT(check, curl, CURLOPT_PROXY, nullptr);
+		SetOpt(check, curl, CURLOPT_PROXY, nullptr);
 	}
 
 	if (!auth.empty()) {
-		SETOPT(check, curl, CURLOPT_PROXYUSERPWD, SP_TERMINATED_DATA(auth));
+		SetOpt(check, curl, CURLOPT_PROXYUSERPWD, SP_TERMINATED_DATA(auth));
 	} else {
-		SETOPT(check, curl, CURLOPT_PROXYUSERPWD, nullptr);
+		SetOpt(check, curl, CURLOPT_PROXYUSERPWD, nullptr);
 	}
 
 	return true;
@@ -477,16 +479,16 @@ bool NetworkHandle::setupReceive(CURL *curl, FILE * & inputFile, size_t &inputPo
 		if (!_receiveFileName.empty()) {
 			std::tie(inputFile, inputPos) = openFile(_receiveFileName, false, _resumeDownload);
 			if (inputFile) {
-				SETOPT(check, curl, CURLOPT_WRITEFUNCTION, NULL);
-				SETOPT(check, curl, CURLOPT_WRITEDATA, inputFile);
+				SetOpt(check, curl, CURLOPT_WRITEFUNCTION, NULL);
+				SetOpt(check, curl, CURLOPT_WRITEDATA, inputFile);
 				if (inputPos != 0 && _resumeDownload) {
 					_receiveOffset = inputPos;
-					SETOPT(check, curl, CURLOPT_RESUME_FROM, inputPos);
+					SetOpt(check, curl, CURLOPT_RESUME_FROM, inputPos);
 				}
 			}
 		} else if (_receiveCallback) {
-			SETOPT(check, curl, CURLOPT_WRITEFUNCTION, Network::writeData);
-			SETOPT(check, curl, CURLOPT_WRITEDATA, this);
+			SetOpt(check, curl, CURLOPT_WRITEFUNCTION, Network::writeData);
+			SetOpt(check, curl, CURLOPT_WRITEDATA, this);
 		}
 	}
 	return check;
@@ -495,280 +497,105 @@ bool NetworkHandle::setupReceive(CURL *curl, FILE * & inputFile, size_t &inputPo
 
 bool NetworkHandle::setupMethodGet(CURL *curl) {
 	bool check = true;
-    SETOPT(check, curl, CURLOPT_HTTPGET, 1);
-    SETOPT(check, curl, CURLOPT_FOLLOWLOCATION, 1);
+    SetOpt(check, curl, CURLOPT_HTTPGET, 1);
+    SetOpt(check, curl, CURLOPT_FOLLOWLOCATION, 1);
 	return check;
 }
 bool NetworkHandle::setupMethodHead(CURL *curl) {
 	bool check = true;
-    SETOPT(check, curl, CURLOPT_HTTPGET, 1);
-    SETOPT(check, curl, CURLOPT_FOLLOWLOCATION, 1);
-    SETOPT(check, curl, CURLOPT_NOBODY, 1);
+    SetOpt(check, curl, CURLOPT_HTTPGET, 1);
+    SetOpt(check, curl, CURLOPT_FOLLOWLOCATION, 1);
+    SetOpt(check, curl, CURLOPT_NOBODY, 1);
 	return check;
 }
 
 bool NetworkHandle::setupMethodPost(CURL *curl, FILE * & outputFile) {
 	bool check = true;
-    SETOPT(check, curl, CURLOPT_POST, 1);
+    SetOpt(check, curl, CURLOPT_POST, 1);
 
-	SETOPT(check, curl, CURLOPT_READFUNCTION, NULL);
-	SETOPT(check, curl, CURLOPT_READDATA, NULL);
-    SETOPT(check, curl, CURLOPT_POSTFIELDS, NULL);
-    SETOPT(check, curl, CURLOPT_POSTFIELDSIZE, 0);
+	SetOpt(check, curl, CURLOPT_READFUNCTION, NULL);
+	SetOpt(check, curl, CURLOPT_READDATA, NULL);
+    SetOpt(check, curl, CURLOPT_POSTFIELDS, NULL);
+    SetOpt(check, curl, CURLOPT_POSTFIELDSIZE, 0);
 
 	if (!_sendFileName.empty()) {
 		size_t size;
 		std::tie(outputFile, size) = openFile(_sendFileName, true);
 		if (outputFile) {
-            SETOPT(check, curl, CURLOPT_READFUNCTION, NULL);
-            SETOPT(check, curl, CURLOPT_READDATA, outputFile);
-            SETOPT(check, curl, CURLOPT_POSTFIELDSIZE, size);
+            SetOpt(check, curl, CURLOPT_READFUNCTION, NULL);
+            SetOpt(check, curl, CURLOPT_READDATA, outputFile);
+            SetOpt(check, curl, CURLOPT_POSTFIELDSIZE, size);
 		}
 	} else if (_sendCallback) {
-		SETOPT(check, curl, CURLOPT_READFUNCTION, Network::readData);
-		SETOPT(check, curl, CURLOPT_READDATA, this);
-		SETOPT(check, curl, CURLOPT_POSTFIELDSIZE, _sendSize);
+		SetOpt(check, curl, CURLOPT_READFUNCTION, Network::readData);
+		SetOpt(check, curl, CURLOPT_READDATA, this);
+		SetOpt(check, curl, CURLOPT_POSTFIELDSIZE, _sendSize);
 	} else if (_sendData.size() != 0) {
-		SETOPT(check, curl, CURLOPT_POSTFIELDS, _sendData.data());
-		SETOPT(check, curl, CURLOPT_POSTFIELDSIZE, _sendData.size());
+		SetOpt(check, curl, CURLOPT_POSTFIELDS, _sendData.data());
+		SetOpt(check, curl, CURLOPT_POSTFIELDSIZE, _sendData.size());
 	}
 	return check;
 }
 bool NetworkHandle::setupMethodPut(CURL *curl, FILE * & outputFile) {
 	bool check = true;
-    SETOPT(check, curl, CURLOPT_UPLOAD, 1);
+    SetOpt(check, curl, CURLOPT_UPLOAD, 1);
 
-	SETOPT(check, curl, CURLOPT_READFUNCTION, NULL);
-	SETOPT(check, curl, CURLOPT_READDATA, NULL);
-    SETOPT(check, curl, CURLOPT_INFILESIZE, 0);
+	SetOpt(check, curl, CURLOPT_READFUNCTION, NULL);
+	SetOpt(check, curl, CURLOPT_READDATA, NULL);
+    SetOpt(check, curl, CURLOPT_INFILESIZE, 0);
 
 	if (!_sendFileName.empty()) {
 		size_t size;
 		std::tie(outputFile, size) = openFile(_sendFileName, true);
 		if (outputFile) {
-            SETOPT(check, curl, CURLOPT_READFUNCTION, NULL);
-            SETOPT(check, curl, CURLOPT_READDATA, outputFile);
-            SETOPT(check, curl, CURLOPT_INFILESIZE, size);
+            SetOpt(check, curl, CURLOPT_READFUNCTION, NULL);
+            SetOpt(check, curl, CURLOPT_READDATA, outputFile);
+            SetOpt(check, curl, CURLOPT_INFILESIZE, size);
 		}
 	} else if (_sendCallback || _sendData.size() != 0) {
 		size_t size = (_sendCallback)?_sendSize:_sendData.size();
-		SETOPT(check, curl, CURLOPT_READFUNCTION, Network::readData);
-		SETOPT(check, curl, CURLOPT_READDATA, this);
-		SETOPT(check, curl, CURLOPT_INFILESIZE, size);
+		SetOpt(check, curl, CURLOPT_READFUNCTION, Network::readData);
+		SetOpt(check, curl, CURLOPT_READDATA, this);
+		SetOpt(check, curl, CURLOPT_INFILESIZE, size);
 	}
 	return check;
 }
 bool NetworkHandle::setupMethodDelete(CURL *curl) {
 	bool check = true;
-    SETOPT(check, curl, CURLOPT_FOLLOWLOCATION, 1);
-    SETOPT(check, curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+    SetOpt(check, curl, CURLOPT_FOLLOWLOCATION, 1);
+    SetOpt(check, curl, CURLOPT_CUSTOMREQUEST, "DELETE");
 	return check;
 }
 bool NetworkHandle::setupMethodSmpt(CURL *curl, FILE * & outputFile) {
 	bool check = true;
 
-    SETOPT(check, curl, CURLOPT_UPLOAD, 1);
+    SetOpt(check, curl, CURLOPT_UPLOAD, 1);
 
-	SETOPT(check, curl, CURLOPT_READFUNCTION, NULL);
-	SETOPT(check, curl, CURLOPT_READDATA, NULL);
-    SETOPT(check, curl, CURLOPT_INFILESIZE, 0);
+	SetOpt(check, curl, CURLOPT_READFUNCTION, NULL);
+	SetOpt(check, curl, CURLOPT_READDATA, NULL);
+    SetOpt(check, curl, CURLOPT_INFILESIZE, 0);
 
 	if (!_sendFileName.empty()) {
 		size_t size;
 		std::tie(outputFile, size) = openFile(_sendFileName, true);
 		if (outputFile) {
-            SETOPT(check, curl, CURLOPT_READFUNCTION, NULL);
-            SETOPT(check, curl, CURLOPT_READDATA, outputFile);
-            SETOPT(check, curl, CURLOPT_INFILESIZE, size);
+            SetOpt(check, curl, CURLOPT_READFUNCTION, NULL);
+            SetOpt(check, curl, CURLOPT_READDATA, outputFile);
+            SetOpt(check, curl, CURLOPT_INFILESIZE, size);
 		}
 	} else if (_sendCallback || _sendData.size() != 0) {
 		size_t size = (_sendCallback)?_sendSize:_sendData.size();
-		SETOPT(check, curl, CURLOPT_READFUNCTION, Network::readData);
-		SETOPT(check, curl, CURLOPT_READDATA, this);
-		SETOPT(check, curl, CURLOPT_INFILESIZE, size);
+		SetOpt(check, curl, CURLOPT_READFUNCTION, Network::readData);
+		SetOpt(check, curl, CURLOPT_READDATA, this);
+		SetOpt(check, curl, CURLOPT_INFILESIZE, size);
 	}
 
-    SETOPT(check, curl, CURLOPT_USE_SSL, CURLUSESSL_ALL);
+    SetOpt(check, curl, CURLOPT_USE_SSL, CURLUSESSL_ALL);
 	return check;
 }
 
 bool NetworkHandle::perform() {
 	return perform(nullptr, nullptr);
-}
-
-bool NetworkHandle::perform(const Callback<bool(CURL *)> &onBeforePerform, const Callback<bool(CURL *)> &onAfterPerform) {
-	_isRequestPerformed = false;
-	_errorCode = CURLE_OK;
-
-	CURL *curl = Network::getHandle(_reuse);
-
-	curl_slist *headers = nullptr;
-	curl_slist *mailTo = nullptr;
-
-	FILE *inputFile = nullptr;
-	FILE *outputFile = nullptr;
-	size_t inputPos = 0;
-
-	_responseCode = -1;
-
-	if (!curl) {
-		return false;
-	}
-
-	bool check = true;
-	bool success = false;
-
-	char errorBuffer[CURL_ERROR_SIZE];
-	memset(errorBuffer, 0, CURL_ERROR_SIZE);
-
-	check = (check) ? setupCurl(curl, errorBuffer) : false;
-	check = (check) ? setupDebug(curl, _debug) : false;
-	check = (check) ? setupRootCert(curl, _rootCertFile) : false;
-	check = (check) ? setupHeaders(curl, _sendedHeaders, &headers, _user.empty() ? _keySign : StringView()) : false;
-	check = (check) ? setupUserAgent(curl, _userAgent) : false;
-	check = (check) ? setupUser(curl, _user, _password) : false;
-	check = (check) ? setupFrom(curl, _from) : false;
-	check = (check) ? setupRecv(curl, _recv, &mailTo) : false;
-	check = (check) ? setupProgress(curl, _method != Method::Head && (_uploadProgress || _downloadProgress)) : false;
-	check = (check) ? setupCookies(curl, _cookieFile) : false;
-	check = (check) ? setupProxy(curl, _proxyAddress, _proxyAuth) : false;
-	check = (check) ? setupReceive(curl, inputFile, inputPos) : false;
-
-    switch (_method) {
-        case Method::Get:
-        	check = (check) ? setupMethodGet(curl) : false;
-            break;
-        case Method::Head:
-        	check = (check) ? setupMethodHead(curl) : false;
-            break;
-        case Method::Post:
-        	check = (check) ? setupMethodPost(curl, outputFile) : false;
-            break;
-        case Method::Put:
-        	check = (check) ? setupMethodPut(curl, outputFile) : false;
-            break;
-        case Method::Delete:
-        	check = (check) ? setupMethodDelete(curl) : false;
-            break;
-        case Method::Smtp:
-        	check = (check) ? setupMethodSmpt(curl, outputFile) : false;
-        	break;
-        default:
-            break;
-    }
-
-    if (!check) {
-    	if (!_silent) {
-        	log::format("CURL", "Fail to setup %s", _url.c_str());
-    	}
-        return false;
-    }
-
-	if (onBeforePerform) {
-		if (!onBeforePerform(curl)) {
-	    	if (!_silent) {
-	        	log::text("CURL", "onBeforePerform failed");
-	    	}
-	        return false;
-		}
-	}
-
-	_debugData.clear();
-	_parsedHeaders.clear();
-	_recievedHeaders.clear();
-
-    _errorCode = curl_easy_perform(curl);
-
-	if (headers) {
-		curl_slist_free_all(headers);
-		headers = nullptr;
-	}
-	if (mailTo) {
-		curl_slist_free_all(mailTo);
-		mailTo = nullptr;
-	}
-
-	if (CURLE_RANGE_ERROR == _errorCode && _method == Method::Get) {
-		size_t allowedRange = size_t(getReceivedHeaderInt("X-Range"));
-		if (allowedRange == inputPos) {
-			if (!_silent) {
-				log::text("CURL", "Get 0-range is not an error, fixed error code to CURLE_OK");
-			}
-			success = true;
-			_errorCode = CURLE_OK;
-		}
-    }
-
-	if (CURLE_OK == _errorCode) {
-        _isRequestPerformed = true;
-        if (_method != Method::Smtp) {
-            const char *ct = NULL;
-            long code = 200;
-
-        	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &code);
-        	curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &ct);
-			if (ct) {
-				_contentType = ct;
-#if LINUX
-				if (inputFile && !_contentType.empty()) {
-					fflush(inputFile);
-					NetworkHandle_setUserAttributes(inputFile, _contentType,
-							Time::microseconds(getReceivedHeaderInt("X-FileModificationTime")));
-					fclose(inputFile);
-					inputFile = nullptr;
-				}
-#endif
-			}
-
-            _responseCode = (long)code;
-
-        	SP_NETWORK_LOG("performed: %d %s %ld", (int)_method, _url.c_str(), _responseCode);
-
-	        if (_responseCode == 416) {
-	        	size_t allowedRange = size_t(getReceivedHeaderInt("X-Range"));
-				if (allowedRange == inputPos) {
-					_responseCode = 200;
-					if (!_silent) {
-						log::text("CURL", toString(_url, ": Get 0-range is not an error, fixed response code to 200"));
-					}
-				}
-	        }
-
-			if (_responseCode >= 200 && _responseCode < 400) {
-				success = true;
-			} else {
-				success = false;
-			}
-        } else {
-    		success = true;
-        }
-	} else {
-		if (!_silent) {
-			log::format("CURL", "fail to perform %s: (%ld) %s",  _url.c_str(), _errorCode, errorBuffer);
-		}
-		_error = errorBuffer;
-		success = false;
-    }
-
-	if (onAfterPerform) {
-		if (!onAfterPerform(curl)) {
-			success = false;
-		}
-	}
-
-	Network::releaseHandle(curl, _reuse, success);
-
-	if (inputFile) {
-		fflush(inputFile);
-		fclose(inputFile);
-		inputFile = nullptr;
-	}
-	if (outputFile) {
-		fclose(outputFile);
-		outputFile = nullptr;
-	}
-
-	return success;
 }
 
 void NetworkHandle::setRootCertificateFile(const StringView &str) {
@@ -784,11 +611,17 @@ void NetworkHandle::setUrl(const StringView &url) {
 	_url = url.str();
 }
 
+void NetworkHandle::clearHeaders() {
+	_sendedHeaders.clear();
+}
 void NetworkHandle::addHeader(const StringView &header) {
     _sendedHeaders.push_back(header.str());
 }
 void NetworkHandle::addHeader(const StringView &header, const StringView &value) {
     _sendedHeaders.push_back(toString(header, ": ", value));
+}
+const Vector<String> &NetworkHandle::getRequestHeaders() const {
+	return _sendedHeaders;
 }
 
 void NetworkHandle::setDownloadProgress(const ProgressCallback &callback) {
@@ -1094,4 +927,4 @@ int64_t NetworkHandle::getReceivedHeaderInt(const StringView &ch) const {
 
 #undef SP_TERMINATED_DATA
 
-NS_SP_END
+}

@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include "SPHtmlParser.cc"
 #include "SPLog.cc"
 #include "SPNetworkHandle.cc"
+#include "SPNetworkMultiHandle.cc"
 #include "SPRef.cc"
 #include "SPUrl.cc"
 #include "SPUrlencodeParser.cc"

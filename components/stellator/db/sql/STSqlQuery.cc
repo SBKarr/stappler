@@ -288,7 +288,7 @@ static void SqlQuery_writeWhereData(SqlQuery::WhereContinue &whi, db::Operator o
 			auto c = f.getSlot<FieldCustom>();
 			c->writeQuery(scheme, whi, op, f.getName(), compare, value1, value2);
 		} else {
-			if (compare == Comparation::Equal && (type == Type::Integer || type == Type::Float || type == Type::Object) && value1.isArray()) {
+			if (compare == Comparation::Equal && (type == Type::Integer || type == Type::Float || type == Type::Object || type == Type::Text) && value1.isArray()) {
 				whi.parenthesis(op, [&] (SqlQuery::WhereBegin &wb) {
 					auto wwb = wb.where();
 					auto op = compare == db::Comparation::NotEqual ? db::Operator::And : db::Operator::Or;

@@ -217,7 +217,7 @@ void Decoder<Interface>::parse(ValueType &val) {
 				push(BackIsGeneric, back);
 			} else {
 				r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-				StringView token = r.readUntil<StringView::Chars<'~', ':', ',', ';', '(', ')'>, StringView::CharGroup<CharGroupId::WhiteSpace>>();
+				StringView token = r.readUntil<StringView::Chars<'~', ',', ';', '(', ')'>, StringView::CharGroup<CharGroupId::WhiteSpace>>();
 				r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 				if (r.is(':')) {
 					log::text("DataSerenityDecoder", "Colon sequence within plain list is invalid");
@@ -268,6 +268,13 @@ void Decoder<Interface>::parse(ValueType &val) {
 
 				r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 				StringView token = r.readUntil<StringView::Chars<'~', ':', ',', ';', '(', ')'>, StringView::CharGroup<CharGroupId::WhiteSpace>>();
+				if (r.is(':')) {
+					auto tmp = token; tmp.skipChars<StringView::CharGroup<CharGroupId::Numbers>>();
+					if (tmp.empty()) {
+						tmp = r.readUntil<StringView::Chars<'~', ',', ';', '(', ')'>, StringView::CharGroup<CharGroupId::WhiteSpace>>();
+						token = StringView(token.data(), token.size() + tmp.size());
+					}
+				}
 				r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 				if (r.is(':')) {
 					pop();

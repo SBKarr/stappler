@@ -407,6 +407,17 @@ bool sp_time_exp_t::read(StringView r) {
 			tm_mday = ((r[8] - '0') * 10) + (r[9] - '0');
 			if (!sp_time_exp_check_mon(*this)) { return false; }
 			return sp_time_exp_read_gmt(*this, StringView("Z"));
+		} else if (sp_date_checkmask(r, "##.##.####")) {
+			// 12.03.2010
+			tm_year = ((r[6] - '0') * 10 + (r[7] - '0') - 19) * 100;
+			if (tm_year < 0)
+				return Time();
+
+			tm_year += ((r[8] - '0') * 10) + (r[9] - '0');
+			tm_mday = ((r[0] - '0') * 10) + (r[1] - '0');
+			tm_mon = ((r[3] - '0') * 10) + (r[4] - '0') - 1;
+			if (!sp_time_exp_check_mon(*this)) { return false; }
+			return sp_time_exp_read_gmt(*this, StringView("Z"));
 		}
 		return false;
 	}

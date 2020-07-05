@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2020 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -53,6 +53,9 @@ public:
 	NetworkHandle();
 	~NetworkHandle();
 
+	NetworkHandle(NetworkHandle &&) = default;
+	NetworkHandle &operator=(NetworkHandle &&) = default;
+
 	bool init(Method method, const StringView &url);
 	bool perform();
 	bool perform(const Callback<bool(CURL *)> &onBeforePerform, const Callback<bool(CURL *)> &onAfterPerform);
@@ -62,8 +65,10 @@ public:
 	void setUserAgent(const StringView &);
 	void setUrl(const StringView &);
 
+	void clearHeaders();
 	void addHeader(const StringView &header);
 	void addHeader(const StringView &header, const StringView &value);
+	const Vector<String> &getRequestHeaders() const;
 
 	void setMailFrom(const StringView &);
 	void addMailTo(const StringView &);
@@ -116,7 +121,10 @@ public:
 
 protected:
 	struct Network;
+	struct Context;
+
 	friend struct Network;
+	friend class NetworkMultiHandle;
 
 	String _user;
 	String _password;
@@ -209,6 +217,21 @@ protected:
 	bool setupMethodPut(CURL *curl, FILE * & outputFile);
 	bool setupMethodDelete(CURL *curl);
 	bool setupMethodSmpt(CURL *curl, FILE * & outputFile);
+
+	bool prepare(Context *, const Callback<bool(CURL *)> &onBeforePerform);
+	bool finalize(Context *, const Callback<bool(CURL *)> &onAfterPerform, long code);
+};
+
+class NetworkMultiHandle {
+public:
+	void addHandle(NetworkHandle *, void *);
+
+	// sync interface:
+	// returns completed handles, so it can be immediately recharged with addHandle
+	bool perform(const Callback<bool(NetworkHandle *, void *)> &);
+
+protected:
+	Vector<Pair<NetworkHandle *, void *>> pending;
 };
 
 NS_SP_END

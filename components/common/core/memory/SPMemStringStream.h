@@ -64,6 +64,14 @@ public:
 		streambuf_type::setp(base + diff, base + _buf.size() - 1);
 	}
 
+	basic_ostringbuf &operator=(basic_ostringbuf &&other) noexcept {
+		_buf = move(other._buf);
+		char *base = &_buf.front();
+		auto diff = (_buf.size() - 1) - (other.epptr() - other.pptr());
+		streambuf_type::setp(base + diff, base + _buf.size() - 1);
+		return *this;
+	}
+
 	virtual ~basic_ostringbuf() noexcept { }
 
 	bool empty() const noexcept {
