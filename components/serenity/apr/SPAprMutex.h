@@ -82,6 +82,10 @@ public:
 		return _isCustom ? _stdMutex->try_lock() : !APR_STATUS_IS_EBUSY(apr_thread_mutex_trylock(_aprMutex));
 	}
 
+	void *ptr() const {
+		return _isCustom ? nullptr : _aprMutex;
+	}
+
 	operator bool() const { return _isCustom ? (_stdMutex !=  nullptr) : (_aprMutex !=  nullptr); }
 
 protected:

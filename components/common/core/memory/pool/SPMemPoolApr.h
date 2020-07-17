@@ -45,6 +45,7 @@ using cleanup_fn = status_t(*)(void *);
 namespace allocator {
 
 allocator_t *create();
+allocator_t *create(void *);
 void destroy(allocator_t *alloc);
 void owner_set(allocator_t *alloc, pool_t *pool);
 pool_t * owner_get(allocator_t *alloc);

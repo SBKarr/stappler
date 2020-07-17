@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include "SPStringView.h"
 #include "SPData.h"
 #include "SPString.h"
+#include "SPSpanView.h"
 
 NS_SP_BEGIN
 
@@ -47,6 +48,9 @@ using StringView = stappler::StringView;
 using StringViewUtf8 = stappler::StringViewUtf8;
 using WideStringView = stappler::WideStringView;
 using BytesView = stappler::BytesView;
+
+template <typename T>
+using SpanView = stappler::SpanView<T>;
 
 using AllocBase = stappler::memory::AllocPool;
 
@@ -108,7 +112,12 @@ using Time = stappler::Time;
 using TimeInterval = stappler::TimeInterval;
 
 using StringView = stappler::StringView;
+using StringViewUtf8 = stappler::StringViewUtf8;
+using WideStringView = stappler::WideStringView;
 using BytesView = stappler::BytesView;
+
+template <typename T>
+using SpanView = stappler::SpanView<T>;
 
 using AllocBase = stappler::memory::AllocPool;
 

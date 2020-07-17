@@ -66,6 +66,8 @@ public:
 	Interface::StorageType getTypeById(uint32_t) const;
 	mem::StringView getTypeNameById(uint32_t) const;
 
+	void close();
+
 public: // adapter interface
 	virtual bool init(const Interface::Config &cfg, const mem::Map<mem::String, const Scheme *> &) override;
 

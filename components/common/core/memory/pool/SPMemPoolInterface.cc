@@ -183,6 +183,14 @@ allocator_t *create(bool custom) {
 	return (allocator_t *) (new custom::Allocator());
 }
 
+allocator_t *create(void *mutex) {
+	if constexpr (apr::SPAprDefined) {
+		return apr::allocator::create(mutex);
+	}
+	abort(); // custom allocator with mutex is not available
+	return nullptr;
+}
+
 allocator_t *createWithMmap(uint32_t initialPages) {
 	auto alloc = new custom::Allocator();
 	alloc->run_mmap(initialPages);

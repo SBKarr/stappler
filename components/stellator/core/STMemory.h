@@ -74,6 +74,12 @@ inline auto perform(const Callback &cb) {
 stellator::Server server();
 stellator::Request request();
 
+static constexpr uint8_t PriorityLowest = 0;
+static constexpr uint8_t PriorityLow = 63;
+static constexpr uint8_t PriorityNormal = 127;
+static constexpr uint8_t PriorityHigh = 191;
+static constexpr uint8_t PriorityHighest = 255;
+
 }
 
 #endif /* STELLATOR_CORE_STMEMORY_H_ */

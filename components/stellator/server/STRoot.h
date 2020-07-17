@@ -24,7 +24,7 @@ THE SOFTWARE.
 #define STELLATOR_SERVER_STROOT_H_
 
 #include "STDefine.h"
-#include "STPqDriver.h"
+#include "STPqHandle.h"
 
 namespace stellator {
 
@@ -47,6 +47,9 @@ public:
 
 	db::pq::Driver::Handle dbdOpen(mem::pool_t *, const Server &) const;
 	void dbdClose(mem::pool_t *, const Server &, const db::pq::Driver::Handle &);
+
+	db::pq::Handle dbOpenHandle(mem::pool_t *, const Server &);
+	void dbCloseHandle(const Server &, db::pq::Handle &);
 
 	//ap_dbd_t * dbdRequestAcquire(request_rec *);
 	//ap_dbd_t * dbdConnectionAcquire(conn_rec *);

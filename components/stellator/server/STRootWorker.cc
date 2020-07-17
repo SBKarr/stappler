@@ -298,6 +298,9 @@ void ConnectionQueue::finalize() {
 }
 
 void ConnectionQueue::pushTask(Task *task) {
+	if (auto g = task->getGroup()) {
+		g->onAdded(task);
+	}
 	uint64_t value = 1;
 	_taskQueue.enqueue(task);
 	++ _taskCounter;
@@ -314,7 +317,9 @@ Task * ConnectionQueue::popTask() {
 }
 
 void ConnectionQueue::releaseTask(Task *task) {
-	Task::destroy(task);
+	if (!task->getGroup()) {
+		Task::destroy(task);
+	}
 	-- _taskCounter;
 }
 
@@ -506,7 +511,9 @@ void ConnectionWorker::runTask(Task *task) {
 	mem::perform([&] {
 		mem::perform([&] {
 			task->setSuccessful(task->execute());
-			task->onComplete();
+			if (!task->getGroup()) {
+				task->onComplete();
+			}
 		}, task->pool());
 		_queue->releaseTask(task);
 	}, serv);

@@ -24,15 +24,6 @@ THE SOFTWARE.
 #define STELLATOR_SERENITY_API_TASK_H_
 
 #include "Define.h"
-
-#if STELLATOR
-
 #include "STTask.h"
-
-#else
-
-#include "SETask.h"
-
-#endif
 
 #endif /* STELLATOR_SERENITY_API_TASK_H_ */

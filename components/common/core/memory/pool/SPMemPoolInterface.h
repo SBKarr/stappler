@@ -64,6 +64,7 @@ void foreach_info(void *, bool(*)(void *, pool_t *, uint32_t, const void *));
 namespace stappler::mempool::base::allocator {
 
 allocator_t *create(bool custom = false);
+allocator_t *create(void *mutex);
 
 // always custom
 allocator_t *createWithMmap(uint32_t initialPages = 0);

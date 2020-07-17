@@ -199,6 +199,7 @@ void TaskQueue::performWithPriority(Rc<Task> &&task, bool performFirst) {
 
 	int p = task->getPriority();
 
+	++ tasksAdded;
 	_inputMutex.lock();
 	if (_inputQueue.size() == 0) {
 		_inputQueue.push_back(std::move(task));
@@ -255,6 +256,20 @@ void TaskQueue::update() {
 }
 
 void TaskQueue::onMainThread(Rc<Task> &&task) {
+    if (!task) {
+        return;
+    }
+
+	++ tasksAdded;
+    _outputMutex.lock();
+    _outputQueue.push_back(std::move(task));
+	_outputMutex.unlock();
+	_flag.clear();
+
+	_exitCondition.notify_one();
+}
+
+void TaskQueue::onMainThreadWorker(Rc<Task> &&task) {
     if (!task) {
         return;
     }
@@ -382,7 +397,7 @@ bool Worker::worker() {
 	}
 
 	task->setSuccessful(execute(task));
-	_queue->onMainThread(std::move(task));
+	_queue->onMainThreadWorker(std::move(task));
 
 	return true;
 }

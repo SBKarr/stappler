@@ -84,12 +84,6 @@ constexpr auto getDefaultPugTemplateUpdateInterval() { return 30_sec; }
 constexpr auto getDefaultDatabaseCleanupInterval() { return 180_sec; }
 #endif
 
-// MTU configured to use local loopback interface
-// for network, you should use smaller value, like 1472 (1464 for PPPoE)
-// constexpr auto getBroadcastProtocolMtu() { return 8_KiB; }
-// constexpr auto getBroadcastSocketAddr() { return "127.0.21.255"; }
-// constexpr uint16_t getBroadcastSocketPort() { return 21050; }
-
 constexpr auto getServerToolsPrefix() { return "/__server"; }
 constexpr auto getServerToolsShell() { return "/shell"; }
 constexpr auto getServerToolsErrors() { return "/errors"; }
@@ -100,6 +94,8 @@ constexpr auto getSerenityErrorNotificatorName() { return "Serenity.ErrorNotific
 constexpr auto getSerenityDBDHandleName() { return "Serenity.DBD.Handle"; }
 constexpr auto getSerenityWebsocketDatabaseName() { return "Serenity.Websocket.Database"; }
 constexpr auto getSerenityWebsocketHandleName() { return "Serenity.Websocket.Handle"; }
+
+constexpr auto getStorageInterfaceKey() { return "StorageInterface"; }
 
 constexpr uint16_t getResourceResolverMaxDepth() { return 4; }
 

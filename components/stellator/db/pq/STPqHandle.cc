@@ -538,9 +538,11 @@ struct ExecParamData {
 };
 
 Handle::Handle(Driver *d, Driver::Handle h) : driver(d), handle(h) {
-	auto c = d->getConnection(h);
-	if (c.get()) {
-		conn = c;
+	if (h.get()) {
+		auto c = d->getConnection(h);
+		if (c.get()) {
+			conn = c;
+		}
 	}
 }
 Handle::Handle(Handle &&h) : driver(h.driver), handle(h.handle), conn(h.conn), lastError(h.lastError), level(h.level) {
@@ -600,6 +602,10 @@ mem::StringView Handle::getTypeNameById(uint32_t oid) const {
 		}
 	}
 	return mem::StringView();
+}
+
+void Handle::close() {
+	conn = Driver::Connection(nullptr);
 }
 
 void Handle::makeQuery(const stappler::Callback<void(sql::SqlQuery &)> &cb) {

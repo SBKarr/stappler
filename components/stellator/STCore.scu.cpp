@@ -27,7 +27,6 @@ THE SOFTWARE.
 #include "STServer.cc"
 #include "STRoot.cc"
 #include "STRootWorker.cc"
-#include "STTask.cc"
 
 #include "STInputFilter.cc"
 #include "STRequest.cc"

@@ -125,6 +125,18 @@ void Root::dbdClose(mem::pool_t *p, const Server &serv, const db::pq::Driver::Ha
 	mem::pool::pop();
 }
 
+db::pq::Handle Root::dbOpenHandle(mem::pool_t *p, const Server &serv) {
+	auto dbd = dbdOpen(p, serv);
+	if (dbd.get()) {
+		return db::pq::Handle(getDbDriver(), dbd);
+	}
+	return db::pq::Handle(getDbDriver(), db::pq::Driver::Handle(nullptr));
+}
+
+void Root::dbCloseHandle(const Server &serv, db::pq::Handle &h) {
+	dbdClose(mem::pool::acquire(), serv, h.getHandle());
+}
+
 void Root::performStorage(mem::pool_t *pool, const Server &serv, const mem::Callback<void(const db::Adapter &)> &cb) {
 	mem::perform([&] {
 		auto dbd = dbdOpen(pool, serv);

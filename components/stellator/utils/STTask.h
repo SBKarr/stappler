@@ -23,13 +23,38 @@ THE SOFTWARE.
 #ifndef STELLATOR_SERVER_STTASK_H_
 #define STELLATOR_SERVER_STTASK_H_
 
-#include "STDefine.h"
-#include "STMemory.h"
+#include "Define.h"
 
-namespace stellator {
+NS_SA_ST_BEGIN
+
+class TaskGroup : public mem::AllocBase {
+public:
+	void onAdded(Task *);
+	void onPerformed(Task *);
+
+	void update();
+	void waitForAll();
+
+protected:
+	mem::Time _lastUpdate = mem::Time::now();
+	std::thread::id _threadId = std::this_thread::get_id();
+	std::mutex _mutex;
+	std::mutex _condMutex;
+	std::condition_variable _condition;
+
+	std::vector<Task *> _queue;
+	std::atomic<size_t> _added = 0;
+	std::atomic<size_t> _completed = 0;
+};
 
 class Task : public mem::AllocBase {
 public:
+	static constexpr uint8_t PriorityLowest = mem::PriorityLowest;
+	static constexpr uint8_t PriorityLow = mem::PriorityLow;
+	static constexpr uint8_t PriorityNormal = mem::PriorityNormal;
+	static constexpr uint8_t PriorityHigh = mem::PriorityHigh;
+	static constexpr uint8_t PriorityHighest = mem::PriorityHighest;
+
 	using ExecuteCallback = mem::Function<bool(const Task &)>;
 	using CompleteCallback = mem::Function<void(const Task &, bool)>;
 
@@ -39,16 +64,16 @@ public:
 	// });
 	//
 	template <typename Callback>
-	static Task *prepare(mem::pool_t *rootPool, const Callback &cb);
+	static Task *prepare(mem::pool_t *rootPool, const Callback &cb, TaskGroup * = nullptr);
 
 	template <typename Callback>
-	static Task *prepare(const Callback &cb);
+	static Task *prepare(const Callback &cb, TaskGroup * = nullptr);
 
 	template <typename Callback>
-	static bool perform(const Server &, const Callback &cb);
+	static bool perform(const Server &, const Callback &cb, TaskGroup * = nullptr);
 
 	template <typename Callback>
-	static bool perform(const Callback &cb);
+	static bool perform(const Callback &cb, TaskGroup * = nullptr);
 
 	static void destroy(Task *);
 
@@ -58,6 +83,12 @@ public: /* interface */
 
 	void addCompleteFn(const CompleteCallback &);
 	void addCompleteFn(CompleteCallback &&);
+
+	/* set default task priority */
+    void setPriority(uint8_t priority) { _priority = priority; }
+
+	/* get task priority */
+    uint8_t getPriority() const { return _priority; }
 
 	/* used by task manager to set success state */
 	void setSuccessful(bool value) { _isSuccessful = value; }
@@ -71,6 +102,8 @@ public: /* interface */
 	void setScheduled(mem::Time t) { _scheduled = t; }
 	mem::Time getScheduled() const { return _scheduled; }
 
+	TaskGroup *getGroup() const { return _group; }
+
 	void performWithStorage(const mem::Callback<void(const db::Transaction &)> &) const;
 
 public: /* overloads */
@@ -80,15 +113,18 @@ public: /* overloads */
 	mem::pool_t *pool() const { return _pool; }
 
 protected:
-	Task(mem::pool_t *);
+	Task(mem::pool_t *, TaskGroup *);
 
 	mem::pool_t *_pool = nullptr;
+    uint8_t _priority = PriorityNormal;
 	mem::Time _scheduled;
 	bool _isSuccessful = false;
 
 	Server _server;
 	mem::Vector<ExecuteCallback> _execute;
 	mem::Vector<CompleteCallback> _complete;
+
+	TaskGroup *_group = nullptr;
 };
 
 class SharedObject : public mem::AllocBase {
@@ -117,12 +153,12 @@ protected:
 };
 
 template <typename Callback>
-Task *Task::prepare(mem::pool_t *rootPool, const Callback &cb) {
+Task *Task::prepare(mem::pool_t *rootPool, const Callback &cb, TaskGroup *g) {
 	if (rootPool) {
 		if (auto p = mem::pool::create(rootPool)) {
 			Task * task = nullptr;
 			mem::perform([&] {
-				task = new (p) Task(p);
+				task = new (p) Task(p, g);
 				cb(*task);
 			}, p);
 			return task;
@@ -132,17 +168,17 @@ Task *Task::prepare(mem::pool_t *rootPool, const Callback &cb) {
 }
 
 template <typename Callback>
-Task *Task::prepare(const Callback &cb) {
-	if (auto serv = mem::server()) {
-		return prepare(serv.getPool(), cb);
+Task *Task::prepare(const Callback &cb, TaskGroup *g) {
+	if (auto serv = Server(mem::server())) {
+		return prepare(serv.getPool(), cb, g);
 	}
 	return nullptr;
 }
 
 template <typename Callback>
-bool Task::perform(const Server &serv, const Callback &cb) {
+bool Task::perform(const Server &serv, const Callback &cb, TaskGroup *g) {
 	if (serv) {
-		if (auto t = prepare(serv.getPool(), cb)) {
+		if (auto t = prepare(serv.getPool(), cb, g)) {
 			return serv.performTask(t);
 		}
 	}
@@ -150,9 +186,9 @@ bool Task::perform(const Server &serv, const Callback &cb) {
 }
 
 template <typename Callback>
-bool Task::perform(const Callback &cb) {
+bool Task::perform(const Callback &cb, TaskGroup *g) {
 	if (auto serv = mem::server()) {
-		return perform(Server(serv), cb);
+		return perform(Server(serv), cb, g);
 	}
 	return false;
 }
@@ -177,12 +213,12 @@ stappler::Rc<T> SharedObject::create(mem::pool_t *rootPool, const Callback &cb) 
 
 template <typename T, typename Callback>
 stappler::Rc<T> SharedObject::create(const Callback &cb) {
-	if (auto serv = mem::server()) {
+	if (auto serv = Server(mem::server())) {
 		return create<T>(serv.getPool(), cb);
 	}
 	return stappler::Rc<T>(nullptr);
 }
 
-}
+NS_SA_ST_END
 
 #endif /* STELLATOR_SERVER_STTASK_H_ */

@@ -70,28 +70,32 @@ public:
 	void waitForAll();
 
 protected:
-    std::mutex _sleepMutex;
+	friend class Worker;
+
+	void onMainThreadWorker(Rc<Task> &&task);
+
+	std::mutex _sleepMutex;
 	std::condition_variable _sleepCondition;
 
 	std::mutex _inputMutex;
 	std::vector<Rc<Task>> _inputQueue;
 	std::atomic<bool> _finalized;
 
-    std::mutex _outputMutex;
+	std::mutex _outputMutex;
 	std::vector<Rc<Task>> _outputQueue;
-    std::atomic_flag _flag;
+	std::atomic_flag _flag;
 
-    std::mutex _exitMutex;
+	std::mutex _exitMutex;
 	std::condition_variable _exitCondition;
 
 	std::vector<Worker *> _workers;
 
 	uint16_t _threadsCount = std::thread::hardware_concurrency();
 
-    size_t tasksAdded = 0;
-    size_t tasksCompleted = 0;
+	size_t tasksAdded = 0;
+	size_t tasksCompleted = 0;
 
-    memory::pool_t *_pool = nullptr;
+	memory::pool_t *_pool = nullptr;
 };
 
 /* Interface for thread workers or handlers */

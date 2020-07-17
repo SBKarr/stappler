@@ -32,6 +32,16 @@ allocator_t *create() {
 	return ret;
 }
 
+allocator_t *create(void *mutex) {
+	if (!mutex) {
+		abort();
+	}
+	allocator_t *ret = nullptr;
+	apr_allocator_create(&ret);
+	apr_allocator_mutex_set(ret, (apr_thread_mutex_t *)mutex);
+	return ret;
+}
+
 void destroy(allocator_t *alloc) {
 	apr_allocator_destroy(alloc);
 }
@@ -171,6 +181,7 @@ void setPoolInfo(pool_t *p, uint32_t tag, const void *ptr) {
 namespace stappler::mempool::apr::allocator {
 
 static custom::Allocator *create() { return nullptr; }
+static custom::Allocator *create(void *) { return nullptr; }
 static void destroy(custom::Allocator *alloc) { }
 static void owner_set(custom::Allocator *alloc, custom::Pool *pool) { }
 static custom::Pool * owner_get(custom::Allocator *alloc) { return nullptr; }

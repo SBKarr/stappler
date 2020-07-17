@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define	SASERVER_H
 
 #include "Server.h"
+#include "STPqHandle.h"
 
 NS_SA_BEGIN
 
@@ -81,6 +82,9 @@ public:
 	ap_dbd_t * dbdConnectionAcquire(conn_rec *);
 	ap_dbd_t * dbdPoolAcquire(server_rec *, apr_pool_t *);
 	void dbdPrepare(server_rec *, const char *, const char *);
+
+	db::pq::Handle dbOpenHandle(mem::pool_t *, const Server &);
+	void dbCloseHandle(const Server &, db::pq::Handle &);
 
 	void performStorage(apr_pool_t *, const Server &, const Callback<void(const storage::Adapter &)> &);
 

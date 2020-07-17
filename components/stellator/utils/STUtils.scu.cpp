@@ -32,3 +32,5 @@ THE SOFTWARE.
 #include "STJsonWebToken.cc"
 #include "STOutput.cc"
 #include "STServerComponent.cc"
+
+#include "STTask.cc"

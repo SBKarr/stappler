@@ -48,6 +48,13 @@ using ostringstream = stappler::memory::ostringstream;
 
 using apr::pool::request;
 using apr::pool::server;
+using apr::pool::perform;
+
+static constexpr uint8_t PriorityLowest = APR_THREAD_TASK_PRIORITY_LOWEST;
+static constexpr uint8_t PriorityLow = APR_THREAD_TASK_PRIORITY_LOW;
+static constexpr uint8_t PriorityNormal = APR_THREAD_TASK_PRIORITY_NORMAL;
+static constexpr uint8_t PriorityHigh = APR_THREAD_TASK_PRIORITY_HIGH;
+static constexpr uint8_t PriorityHighest = APR_THREAD_TASK_PRIORITY_HIGHEST;
 
 NS_SA_EXT_END(mem)
 

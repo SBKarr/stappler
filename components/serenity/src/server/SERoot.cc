@@ -817,6 +817,20 @@ void Root::dbdPrepare(server_rec *s, const char *l, const char *q) {
 	}
 }
 
+db::pq::Handle Root::dbOpenHandle(mem::pool_t *p, const Server &serv) {
+	if (auto dbd = dbdOpen(p, serv.server())) {
+		return db::pq::Handle(db::pq::Driver::open(), db::pq::Driver::Handle(dbd));
+	}
+	return db::pq::Handle(db::pq::Driver::open(), db::pq::Driver::Handle(nullptr));
+}
+
+void Root::dbCloseHandle(const Server &serv, db::pq::Handle &h) {
+	if (h) {
+		dbdClose(serv, (ap_dbd_t *)h.getHandle().get());
+		h.close();
+	}
+}
+
 void Root::performStorage(apr_pool_t *pool, const Server &serv, const Callback<void(const storage::Adapter &)> &cb) {
 	apr::pool::perform([&] {
 		if (auto dbd = dbdOpen(pool, serv.server())) {
@@ -853,10 +867,16 @@ static void *Root_performTask(apr_thread_t *, void *ptr) {
 	apr::pool::perform([&] {
 		apr::pool::perform([&] {
 			ctx->task->setSuccessful(ctx->task->execute());
-			ctx->task->onComplete();
+			if (!ctx->task->getGroup()) {
+				ctx->task->onComplete();
+			}
 		}, ctx->task->pool());
 	}, ctx->serv);
-	Task::destroy(ctx->task);
+	if (!ctx->task->getGroup()) {
+		Task::destroy(ctx->task);
+	} else {
+		ctx->task->getGroup()->onPerformed(ctx->task);
+	}
 	return nullptr;
 }
 
@@ -865,6 +885,9 @@ bool Root::performTask(const Server &serv, Task *task, bool performFirst) {
 		_tasksRunned += 1;
 		task->setServer(serv);
 		memory::pool::store(task->pool(), serv.server(), "Apr.Server");
+		if (auto g = task->getGroup()) {
+			g->onAdded(task);
+		}
 		auto ctx = new (task->pool()) TaskContext( task, serv.server() );
 		if (performFirst) {
 			return apr_thread_pool_top(_threadPool, &Root_performTask, ctx, apr_byte_t(task->getPriority()), nullptr) == APR_SUCCESS;
@@ -880,6 +903,9 @@ bool Root::scheduleTask(const Server &serv, Task *task, TimeInterval interval) {
 		_tasksRunned += 1;
 		task->setServer(serv);
 		memory::pool::store(task->pool(), serv.server(), "Apr.Server");
+		if (auto g = task->getGroup()) {
+			g->onAdded(task);
+		}
 		auto ctx = new (task->pool()) TaskContext( task, serv.server() );
 		return apr_thread_pool_schedule(_threadPool, &Root_performTask, ctx, interval.toMicroseconds(), nullptr) == APR_SUCCESS;
 	}
@@ -906,7 +932,7 @@ String Root::getAllocatorMemoryMap(uint64_t ptr) const {
 }
 
 void Root::onChildInit() {
-	if (apr_thread_pool_create(&_threadPool, 3, 10, _pool) == APR_SUCCESS) {
+	if (apr_thread_pool_create(&_threadPool, 3, std::thread::hardware_concurrency(), _pool) == APR_SUCCESS) {
 		apr_thread_pool_idle_wait_set(_threadPool, (5_sec).toMicroseconds());
 		apr_thread_pool_threshold_set(_threadPool, 5);
 	} else {

@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2019 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,9 +20,60 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "Task.h"
+#include "STTask.h"
+#include "Root.h"
+#include "STPqHandle.h"
 
-NS_SA_BEGIN
+NS_SA_ST_BEGIN
+
+void TaskGroup::onAdded(Task *task) {
+	++ _added;
+
+	if (std::this_thread::get_id() == _threadId) {
+		if (mem::Time::now() - _lastUpdate > mem::TimeInterval::microseconds(1000 * 50)) {
+			update();
+		}
+	}
+}
+
+void TaskGroup::onPerformed(Task *task) {
+    _mutex.lock();
+    _queue.push_back(task);
+    _mutex.unlock();
+
+	_condition.notify_one();
+}
+
+void TaskGroup::update() {
+    _mutex.lock();
+
+	std::vector<Task *> stack;
+	stack.swap(_queue);
+
+	_mutex.unlock();
+
+    if (stack.empty()) {
+        return;
+    }
+
+    for (auto task : stack) {
+		task->onComplete();
+		++ _completed;
+
+		Task::destroy(task);
+    }
+
+    _lastUpdate = mem::Time::now();
+}
+
+void TaskGroup::waitForAll() {
+    update();
+	while (_added != _completed) {
+		std::unique_lock<std::mutex> lock(_condMutex);
+		_condition.wait_for(lock, std::chrono::microseconds(1000 * 50));
+	    update();
+	}
+}
 
 void Task::destroy(Task *t) {
 	auto p = t->pool();
@@ -31,35 +82,39 @@ void Task::destroy(Task *t) {
 }
 
 void Task::addExecuteFn(const ExecuteCallback &cb) {
-	apr::pool::perform([&] {
+	mem::perform([&] {
 		_execute.push_back(cb);
 	}, _pool);
 }
+
 void Task::addExecuteFn(ExecuteCallback &&cb) {
-	apr::pool::perform([&] {
-		_execute.push_back(move(cb));
+	mem::perform([&] {
+		_execute.push_back(std::move(cb));
 	}, _pool);
 }
 
 void Task::addCompleteFn(const CompleteCallback &cb) {
-	apr::pool::perform([&] {
+	mem::perform([&] {
 		_complete.push_back(cb);
 	}, _pool);
 }
 void Task::addCompleteFn(CompleteCallback &&cb) {
-	apr::pool::perform([&] {
-		_complete.push_back(move(cb));
+	mem::perform([&] {
+		_complete.push_back(std::move(cb));
 	}, _pool);
 }
 
-void Task::performWithStorage(const Callback<void(const storage::Transaction &)> &cb) const {
+void Task::performWithStorage(const mem::Callback<void(const db::Transaction &)> &cb) const {
 	auto root = Root::getInstance();
-	if (auto dbd = root->dbdOpen(pool(), _server)) {
-		db::pq::Handle h(db::pq::Driver::open(), db::pq::Driver::Handle(dbd));
-		if (auto t = storage::Transaction::acquire(&h)) {
+	auto p = pool();
+	if (auto h = root->dbOpenHandle(pool(), _server)) {
+		db::Interface *iface = &h;
+		stappler::memory::pool::userdata_set((void *)iface, config::getStorageInterfaceKey(), nullptr, p);
+		if (auto t = db::Transaction::acquire(&h)) {
 			cb(t);
 		}
-		root->dbdClose(_server, dbd);
+		root->dbCloseHandle(_server, h);
+		stappler::memory::pool::userdata_set((void *)nullptr, config::getStorageInterfaceKey(), nullptr, p);
 	}
 }
 
@@ -78,7 +133,11 @@ void Task::onComplete() {
 	}
 }
 
-Task::Task(memory::pool_t *p) : _pool(p) { }
+Task::Task(mem::pool_t *p, TaskGroup *g) : _pool(p), _group(g) {
+	if (!p) {
+		abort();
+	}
+}
 
 void SharedObject::destroy(SharedObject *obj) {
 	auto p = obj->pool();
@@ -86,6 +145,8 @@ void SharedObject::destroy(SharedObject *obj) {
 	mem::pool::destroy(p);
 }
 
-SharedObject::SharedObject(mem::pool_t *p) : _pool(p) { }
+SharedObject::SharedObject(mem::pool_t *p) : _pool(p) {
 
-NS_SA_END
+}
+
+NS_SA_ST_END
