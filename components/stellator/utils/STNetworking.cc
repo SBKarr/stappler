@@ -49,6 +49,8 @@ Bytes Handle::performBytesQuery() {
 }
 
 data::Value Handle::performDataQuery() {
+	addHeader("Accept", "application/cbor, application/json");
+
 	data::Stream stream;
 	setReceiveCallback([&] (char *data, size_t size) -> size_t {
 		stream.write(data, size);
@@ -62,6 +64,8 @@ data::Value Handle::performDataQuery() {
 	return data::Value();
 }
 data::Value Handle::performDataQuery(const data::Value &val, data::EncodeFormat fmt) {
+	addHeader("Accept", "application/cbor, application/json");
+
 	mem::ostringstream stream;
 	stream << fmt << val;
 	stappler::BytesViewNetwork r((const uint8_t *)stream.data(), stream.size());

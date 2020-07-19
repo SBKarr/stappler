@@ -227,6 +227,7 @@ public:
 
 		HandlerInfo &addInputFields(std::initializer_list<db::Field> il);
 		HandlerInfo &addInputFields(mem::Vector<db::Field> &&il);
+		HandlerInfo &setInputConfig(db::InputConfig);
 
 		mem::Value match(const mem::StringView &path, size_t &score) const;
 

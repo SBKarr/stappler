@@ -356,6 +356,11 @@ inline bool operator!= (const BytesViewTemplate<Endianess> &l, const memory::Sta
 
 
 template <ByteOrder::Endian Endianess>
+inline bool operator< (const BytesViewTemplate<Endianess> &l, const BytesViewTemplate<Endianess> &r) {
+	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less<uint8_t>());
+}
+
+template <ByteOrder::Endian Endianess>
 inline bool operator< (const memory::PoolInterface::BytesType &l, const BytesViewTemplate<Endianess> &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less<uint8_t>());
 }
@@ -375,6 +380,11 @@ inline bool operator< (const BytesViewTemplate<Endianess> &l, const memory::Stan
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less<uint8_t>());
 }
 
+
+template <ByteOrder::Endian Endianess>
+inline bool operator<= (const BytesViewTemplate<Endianess> &l, const BytesViewTemplate<Endianess> &r) {
+	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less_equal<uint8_t>());
+}
 
 template <ByteOrder::Endian Endianess>
 inline bool operator<= (const memory::PoolInterface::BytesType &l, const BytesViewTemplate<Endianess> &r) {
@@ -398,6 +408,11 @@ inline bool operator<= (const BytesViewTemplate<Endianess> &l, const memory::Sta
 
 
 template <ByteOrder::Endian Endianess>
+inline bool operator> (const BytesViewTemplate<Endianess> &l, const BytesViewTemplate<Endianess> &r) {
+	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater<uint8_t>());
+}
+
+template <ByteOrder::Endian Endianess>
 inline bool operator> (const memory::PoolInterface::BytesType &l, const BytesViewTemplate<Endianess> &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater<uint8_t>());
 }
@@ -417,6 +432,11 @@ inline bool operator> (const BytesViewTemplate<Endianess> &l, const memory::Stan
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater<uint8_t>());
 }
 
+
+template <ByteOrder::Endian Endianess>
+inline bool operator>= (const BytesViewTemplate<Endianess> &l, const BytesViewTemplate<Endianess> &r) {
+	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater_equal<uint8_t>());
+}
 
 template <ByteOrder::Endian Endianess>
 inline bool operator>= (const memory::PoolInterface::BytesType &l, const BytesViewTemplate<Endianess> &r) {

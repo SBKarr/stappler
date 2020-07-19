@@ -392,6 +392,11 @@ HandlerMap::HandlerInfo &HandlerMap::HandlerInfo::addInputFields(mem::Vector<db:
 	return *this;
 }
 
+HandlerMap::HandlerInfo &HandlerMap::HandlerInfo::setInputConfig(db::InputConfig cfg) {
+	inputFields.setConfig(cfg);
+	return *this;
+}
+
 mem::Value HandlerMap::HandlerInfo::match(const mem::StringView &path, size_t &match) const {
 	size_t nmatch = 0;
 	mem::Value ret({ stappler::pair("path", mem::Value(path)) });

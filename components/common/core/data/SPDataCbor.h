@@ -175,7 +175,7 @@ constexpr bool operator == (uint8_t v, Flags f) {
 }
 
 constexpr MajorType type(uint8_t v) {
-	switch (MajorTypeEncoded(v)) {
+	switch (MajorTypeEncoded(v & 0b11100000)) {
 	case MajorTypeEncoded::Unsigned: return MajorType::Unsigned; break;
 	case MajorTypeEncoded::Negative: return MajorType::Negative; break;
 	case MajorTypeEncoded::ByteString: return MajorType::ByteString; break;

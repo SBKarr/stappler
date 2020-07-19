@@ -115,6 +115,7 @@ public:
 	const Field *getForeignLink(const Field &f) const;
 	const Field *getForeignLink(const mem::StringView &f) const;
 
+	void setConfig(InputConfig cfg) { config = cfg; }
 	const InputConfig &getConfig() const { return config; }
 
 	size_t getMaxRequestSize() const { return config.maxRequestSize; }

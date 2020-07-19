@@ -42,8 +42,8 @@ constexpr size_t getMaxVarSize() { return 255; }
 constexpr size_t getMaxRequestSize() { return 0; }
 constexpr size_t getMaxFileSize() { return 0; }
 
-constexpr size_t getMaxInputPostSize() { return 250_MiB; }
-constexpr size_t getMaxInputFileSize() { return 250_MiB; }
+constexpr size_t getMaxInputPostSize() { return 500_MiB; }
+constexpr size_t getMaxInputFileSize() { return 500_MiB; }
 constexpr size_t getMaxInputVarSize() { return 8_KiB; }
 
 constexpr size_t getMaxExtraFieldSize() { return 8_KiB; }
