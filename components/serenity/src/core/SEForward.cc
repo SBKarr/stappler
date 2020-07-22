@@ -303,7 +303,6 @@ void broadcastAsync(const data::Value &val) {
 			});
 			return true;
 		});
-		return true;
 	});
 }
 

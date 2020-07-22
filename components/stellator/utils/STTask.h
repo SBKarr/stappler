@@ -29,11 +29,16 @@ NS_SA_ST_BEGIN
 
 class TaskGroup : public mem::AllocBase {
 public:
+	TaskGroup();
+	TaskGroup(Server);
+
 	void onAdded(Task *);
 	void onPerformed(Task *);
 
 	void update();
 	void waitForAll();
+
+	bool perform(const mem::Callback<void(Task &)> &cb);
 
 protected:
 	mem::Time _lastUpdate = mem::Time::now();
@@ -45,6 +50,7 @@ protected:
 	std::vector<Task *> _queue;
 	std::atomic<size_t> _added = 0;
 	std::atomic<size_t> _completed = 0;
+	Server _server;
 };
 
 class Task : public mem::AllocBase {
@@ -63,17 +69,11 @@ public:
 	//    // do configuration in Task's memory pool context
 	// });
 	//
-	template <typename Callback>
-	static Task *prepare(mem::pool_t *rootPool, const Callback &cb, TaskGroup * = nullptr);
+	static Task *prepare(mem::pool_t *rootPool, const mem::Callback<void(Task &)> &cb, TaskGroup * = nullptr);
+	static Task *prepare(const mem::Callback<void(Task &)> &cb, TaskGroup * = nullptr);
 
-	template <typename Callback>
-	static Task *prepare(const Callback &cb, TaskGroup * = nullptr);
-
-	template <typename Callback>
-	static bool perform(const Server &, const Callback &cb, TaskGroup * = nullptr);
-
-	template <typename Callback>
-	static bool perform(const Callback &cb, TaskGroup * = nullptr);
+	static bool perform(const Server &, const mem::Callback<void(Task &)> &cb, TaskGroup * = nullptr);
+	static bool perform(const mem::Callback<void(Task &)> &cb, TaskGroup * = nullptr);
 
 	static void destroy(Task *);
 
@@ -151,48 +151,6 @@ protected:
 	mem::pool_t *_pool;
 	stappler::AtomicCounter _counter;
 };
-
-template <typename Callback>
-Task *Task::prepare(mem::pool_t *rootPool, const Callback &cb, TaskGroup *g) {
-	if (rootPool) {
-		if (auto p = mem::pool::create(rootPool)) {
-			Task * task = nullptr;
-			mem::perform([&] {
-				task = new (p) Task(p, g);
-				cb(*task);
-			}, p);
-			return task;
-		}
-	}
-	return nullptr;
-}
-
-template <typename Callback>
-Task *Task::prepare(const Callback &cb, TaskGroup *g) {
-	if (auto serv = Server(mem::server())) {
-		return prepare(serv.getPool(), cb, g);
-	}
-	return nullptr;
-}
-
-template <typename Callback>
-bool Task::perform(const Server &serv, const Callback &cb, TaskGroup *g) {
-	if (serv) {
-		if (auto t = prepare(serv.getPool(), cb, g)) {
-			return serv.performTask(t);
-		}
-	}
-	return false;
-}
-
-template <typename Callback>
-bool Task::perform(const Callback &cb, TaskGroup *g) {
-	if (auto serv = mem::server()) {
-		return perform(Server(serv), cb, g);
-	}
-	return false;
-}
-
 
 template <typename T, typename Callback>
 stappler::Rc<T> SharedObject::create(mem::pool_t *rootPool, const Callback &cb) {

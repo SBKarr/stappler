@@ -26,6 +26,14 @@ THE SOFTWARE.
 
 NS_SA_ST_BEGIN
 
+TaskGroup::TaskGroup() {
+	_server = Server(mem::server());
+}
+
+TaskGroup::TaskGroup(Server serv) {
+	_server = serv;
+}
+
 void TaskGroup::onAdded(Task *task) {
 	++ _added;
 
@@ -73,6 +81,47 @@ void TaskGroup::waitForAll() {
 		_condition.wait_for(lock, std::chrono::microseconds(1000 * 50));
 	    update();
 	}
+}
+
+bool TaskGroup::perform(const mem::Callback<void(Task &)> &cb) {
+	return Task::perform(_server, cb, this);
+}
+
+Task *Task::prepare(mem::pool_t *rootPool, const mem::Callback<void(Task &)> &cb, TaskGroup *g) {
+	if (rootPool) {
+		if (auto p = mem::pool::create(rootPool)) {
+			Task * task = nullptr;
+			mem::perform([&] {
+				task = new (p) Task(p, g);
+				cb(*task);
+			}, p);
+			return task;
+		}
+	}
+	return nullptr;
+}
+
+Task *Task::prepare(const mem::Callback<void(Task &)> &cb, TaskGroup *g) {
+	if (auto serv = Server(mem::server())) {
+		return prepare(serv.getPool(), cb, g);
+	}
+	return nullptr;
+}
+
+bool Task::perform(const Server &serv, const mem::Callback<void(Task &)> &cb, TaskGroup *g) {
+	if (serv) {
+		if (auto t = prepare(serv.getPool(), cb, g)) {
+			return serv.performTask(t);
+		}
+	}
+	return false;
+}
+
+bool Task::perform(const mem::Callback<void(Task &)> &cb, TaskGroup *g) {
+	if (auto serv = mem::server()) {
+		return perform(Server(serv), cb, g);
+	}
+	return false;
 }
 
 void Task::destroy(Task *t) {
