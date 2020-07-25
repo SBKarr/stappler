@@ -334,17 +334,54 @@ bool Configuration::stemWord(const StringView &word, ParserToken tok, const Stem
 	}
 }
 
+StemmerEnv *Configuration_makeLocalConfig(StemmerEnv *orig) {
+	auto p = memory::pool::acquire();
+
+	char buf[20] = { 0 };
+	sprintf(buf, "%#018" PRIx64, uintptr_t(orig));
+
+	StemmerEnv *ret = nullptr;
+	memory::pool::userdata_get((void **)&ret, buf, p);
+
+	if (ret) {
+		return ret;
+	}
+
+	ret = (StemmerEnv *)memory::pool::palloc(p, sizeof(StemmerEnv));
+	memset(ret, 0, sizeof(StemmerEnv));
+	ret->memalloc = orig->memalloc;
+	ret->memfree = orig->memfree;
+	ret->userData = p;
+
+	if (auto env = orig->mod->create(ret)) {
+		env->stem = orig->mod->stem;
+		env->stopwords = orig->stopwords;
+		env->mod = orig->mod;
+		memory::pool::userdata_set(env, buf, nullptr, p);
+		return env;
+	}
+	return nullptr;
+}
+
 StemmerEnv *Configuration::getEnvForToken(ParserToken tok) const {
 	switch (tok) {
 	case ParserToken::AsciiWord:
 	case ParserToken::AsciiHyphenatedWord:
 	case ParserToken::HyphenatedWord_AsciiPart:
-		return _secondary;
+		if (memory::pool::acquire() == _secondary->userData) {
+			return _secondary;
+		} else {
+			return Configuration_makeLocalConfig(_secondary);
+		}
 		break;
 	case ParserToken::Word:
 	case ParserToken::HyphenatedWord:
 	case ParserToken::HyphenatedWord_Part:
-		return _primary;
+		if (memory::pool::acquire() == _primary->userData) {
+			return _primary;
+		} else {
+			return Configuration_makeLocalConfig(_primary);
+		}
 		break;
 
 	case ParserToken::NumWord:

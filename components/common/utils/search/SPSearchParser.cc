@@ -839,6 +839,7 @@ struct StemmerEnv {
 	unsigned char * B;
 
 	const StringView *stopwords;
+	struct stemmer_modules *mod;
 };
 
 struct stemmer_modules {
@@ -886,6 +887,7 @@ StemmerEnv *getStemmer(Language lang) {
 	if (auto env = mod->create(data)) {
 		env->stem = mod->stem;
 		env->stopwords = getLanguageStopwords(lang);
+		env->mod = mod;
 		memory::pool::userdata_set(data, key.data(), nullptr, pool);
 		return env;
 	}

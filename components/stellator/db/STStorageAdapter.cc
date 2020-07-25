@@ -61,7 +61,10 @@ bool Adapter::init(const Interface::Config &cfg, const mem::Map<mem::String, con
 }
 
 User * Adapter::authorizeUser(const Auth &auth, const mem::StringView &name, const mem::StringView &password) const {
-	return _interface->authorizeUser(auth, name, password);
+	if (_interface) {
+		return _interface->authorizeUser(auth, name, password);
+	}
+	return nullptr;
 }
 
 void Adapter::broadcast(const mem::Bytes &data) {

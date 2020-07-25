@@ -251,7 +251,6 @@ public:
 
 				if (!data.empty()) {
 					if (!first) { query << " || "; } else { first = false; }
-
 					auto dataIdx = push(data);
 					if (type == stappler::search::SearchData::Parse) {
 						if (rank == stappler::search::SearchData::Unknown) {
@@ -262,6 +261,8 @@ public:
 					} else {
 						query << " $" << dataIdx << "::tsvector";
 					}
+				} else {
+					query << " NULL";
 				}
 			}
 		}
