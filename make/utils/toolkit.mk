@@ -19,7 +19,8 @@
 # THE SOFTWARE.
 
 $(TOOLKIT_NAME)_LIBS := -L$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH) $(OSTYPE_$(TOOLKIT_NAME)_LIBS)
-$(TOOLKIT_NAME)_SRCS := $(call sp_toolkit_source_list, $($(TOOLKIT_NAME)_SRCS_DIRS), $($(TOOLKIT_NAME)_SRCS_OBJS))
+$(TOOLKIT_NAME)_SRCS := $(call sp_toolkit_source_list, $($(TOOLKIT_NAME)_SRCS_DIRS), $($(TOOLKIT_NAME)_SRCS_OBJS))\
+	$(call sp_toolkit_source_list_abs, $($(TOOLKIT_NAME)_SRCS_DIRS_ABS), $($(TOOLKIT_NAME)_SRCS_OBJS_ABS))
 $(TOOLKIT_NAME)_INCLUDES := $(call sp_toolkit_include_list, $($(TOOLKIT_NAME)_INCLUDES_DIRS), $($(TOOLKIT_NAME)_INCLUDES_OBJS))
 
 $(TOOLKIT_NAME)_H_GCH := $(call sp_toolkit_prefix_files_list,$($(TOOLKIT_NAME)_OUTPUT_DIR), $($(TOOLKIT_NAME)_PRECOMPILED_HEADERS))

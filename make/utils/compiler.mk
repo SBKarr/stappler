@@ -117,7 +117,7 @@ GLOBAL_AR ?= ar rcs
 
 ifeq ($(UNAME),Cygwin)
 sp_convert_path = $(shell cygpath -w $1)
-sp_unconvert_path =  $1)
+sp_unconvert_path =  $(1)
 else ifeq ($(UNAME),Msys)
 sp_convert_path = $(1)
 sp_unconvert_path = $(1)
@@ -142,6 +142,15 @@ sp_compile_mm = $(GLOBAL_QUIET_CPP) $(GLOBAL_MKDIR) $(dir $@); $(GLOBAL_CPP) $(c
 $(call sp_toolkit_source_list, $($(TOOLKIT_NAME)_SRCS_DIRS), $($(TOOLKIT_NAME)_SRCS_OBJS))
 
 sp_toolkit_source_list = $(foreach f,$(realpath\
+	$(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) \( -name "*.c" -or -name "*.cpp" \)))\
+	$(addprefix $(GLOBAL_ROOT)/,$(filter-out %.mm,$(2)))\
+	$(if $(BUILD_OBJC),\
+		$(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) -name '*.mm'))\
+		$(addprefix $(GLOBAL_ROOT)/,$(filter %.mm,$(2)))\
+	)\
+),$(call sp_unconvert_path,$(f)))
+
+sp_toolkit_source_list_abs = $(foreach f,$(abspath\
 	$(foreach dir,$(1),$(shell find $(GLOBAL_ROOT)/$(dir) \( -name "*.c" -or -name "*.cpp" \)))\
 	$(addprefix $(GLOBAL_ROOT)/,$(filter-out %.mm,$(2)))\
 	$(if $(BUILD_OBJC),\
