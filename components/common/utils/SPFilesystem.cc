@@ -455,12 +455,12 @@ bool mkdir_recursive(const StringView &ipath, bool appWide) {
 	return true;
 }
 
-void ftw(const StringView &ipath, const Callback<void(const StringView &path, bool isFile)> &callback, int depth, bool dir_first) {
+void ftw(StringView ipath, const Callback<void(StringView path, bool isFile)> &callback, int depth, bool dir_first) {
 	String path = filepath::absolute(ipath, true);
 	filesystem_native::ftw_fn(path, callback, depth, dir_first);
 }
 
-bool ftw_b(const StringView &ipath, const Callback<bool(const StringView &path, bool isFile)> &callback, int depth, bool dir_first) {
+bool ftw_b(StringView ipath, const Callback<bool(StringView path, bool isFile)> &callback, int depth, bool dir_first) {
 	String path = filepath::absolute(ipath, true);
 	return filesystem_native::ftw_b_fn(path, callback, depth, dir_first);
 }

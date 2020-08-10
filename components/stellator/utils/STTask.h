@@ -40,6 +40,8 @@ public:
 
 	bool perform(const mem::Callback<void(Task &)> &cb);
 
+	Pair<size_t, size_t> getCounters() const; // <completed, added>
+
 protected:
 	mem::Time _lastUpdate = mem::Time::now();
 	std::thread::id _threadId = std::this_thread::get_id();
