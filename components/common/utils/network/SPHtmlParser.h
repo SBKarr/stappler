@@ -209,6 +209,9 @@ struct Parser {
 					} while(it != tagStack.begin());
 
 					if (rootOnly && tagStack.empty()) {
+						if (current.is('>')) {
+							++ current; // drop '>'
+						}
 						break;
 					}
 				} else if (current.empty()) {

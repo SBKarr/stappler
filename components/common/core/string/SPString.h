@@ -434,7 +434,7 @@ NS_SP_EXT_END(string)
 
 NS_SP_EXT_BEGIN(base16)
 
-const char *charToHex(const char &c);
+const char *charToHex(const char &c, bool upper = false);
 uint8_t hexToChar(const char &c);
 uint8_t hexToChar(const char &c, const char &d);
 
@@ -703,7 +703,7 @@ auto StringTraits<Interface>::urlencode(const StringView &data) -> String {
 	for (auto &c : data) {
         if (isUrlencodeChar(c)) {
         	ret.push_back('%');
-        	ret.append(base16::charToHex(c), 2);
+        	ret.append(base16::charToHex(c, true), 2);
         } else {
         	ret.push_back(c);
         }
