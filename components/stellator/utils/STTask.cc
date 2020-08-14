@@ -159,16 +159,11 @@ void Task::addCompleteFn(CompleteCallback &&cb) {
 
 void Task::performWithStorage(const mem::Callback<void(const db::Transaction &)> &cb) const {
 	auto root = Root::getInstance();
-	auto p = pool();
-	if (auto h = root->dbOpenHandle(pool(), _server)) {
-		db::Interface *iface = &h;
-		stappler::memory::pool::userdata_set((void *)iface, config::getStorageInterfaceKey(), nullptr, p);
-		if (auto t = db::Transaction::acquire(&h)) {
+	root->performStorage(pool(), _server, [&] (const db::Adapter &a) {
+		if (auto t = db::Transaction::acquire(a)) {
 			cb(t);
 		}
-		root->dbCloseHandle(_server, h);
-		stappler::memory::pool::userdata_set((void *)nullptr, config::getStorageInterfaceKey(), nullptr, p);
-	}
+	});
 }
 
 bool Task::execute() {

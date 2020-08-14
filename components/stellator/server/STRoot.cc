@@ -142,8 +142,13 @@ void Root::performStorage(mem::pool_t *pool, const Server &serv, const mem::Call
 		auto dbd = dbdOpen(pool, serv);
 		if (dbd.get()) {
 			db::pq::Handle h(_internal->dbDriver, dbd);
+			db::Interface *iface = &h;
 			db::Adapter storage(&h);
+			mem::pool::userdata_set((void *)iface, config::getStorageInterfaceKey(), nullptr, pool);
+
 			cb(storage);
+
+			mem::pool::userdata_set((void *)nullptr, config::getStorageInterfaceKey(), nullptr, pool);
 			dbdClose(pool, serv, dbd);
 		}
 	}, pool);

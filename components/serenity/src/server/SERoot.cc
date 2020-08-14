@@ -760,7 +760,11 @@ apr_pool_t *Root::getProcPool() const {
 
 ap_dbd_t * Root::dbdOpen(apr_pool_t *p, server_rec *s) {
 	if (_dbdOpen) {
-		return _dbdOpen(p, s);
+		auto ret = _dbdOpen(p, s);
+		if (!ret) {
+			messages::debug("Root", "Failed to open DBD");
+		}
+		return ret;
 	}
 	return nullptr;
 }
@@ -835,10 +839,13 @@ void Root::performStorage(apr_pool_t *pool, const Server &serv, const Callback<v
 	apr::pool::perform([&] {
 		if (auto dbd = dbdOpen(pool, serv.server())) {
 			db::pq::Handle h(db::pq::Driver::open(), db::pq::Driver::Handle(dbd));
+			db::Interface *iface = &h;
 			db::Adapter storage(&h);
+			mem::pool::userdata_set((void *)iface, config::getStorageInterfaceKey(), nullptr, pool);
 
 			cb(storage);
 
+			mem::pool::userdata_set((void *)nullptr, config::getStorageInterfaceKey(), nullptr, pool);
 			dbdClose(serv.server(), dbd);
 		}
 	}, pool);
