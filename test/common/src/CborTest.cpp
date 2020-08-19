@@ -74,8 +74,7 @@ struct PoolCborTest : MemPoolTest {
 			}
 			stream << v / ntests << " "
 					 << memory::pool::get_allocated_bytes(pool) << " "
-					 << memory::pool::get_return_bytes(pool) << " "
-					 << memory::pool::get_opts_bytes(pool);
+					 << memory::pool::get_return_bytes(pool);
 			return true;
 		});
 

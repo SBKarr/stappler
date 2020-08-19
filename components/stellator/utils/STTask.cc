@@ -26,6 +26,13 @@ THE SOFTWARE.
 
 NS_SA_ST_BEGIN
 
+thread_local TaskGroup *tl_currentGroup = nullptr;
+thread_local Task *tl_currentTask = nullptr;
+
+TaskGroup *TaskGroup::getCurrent() {
+	return tl_currentGroup;
+}
+
 TaskGroup::TaskGroup() {
 	_server = Server(mem::server());
 }
@@ -132,6 +139,22 @@ void Task::destroy(Task *t) {
 	auto p = t->pool();
 	delete t;
 	mem::pool::destroy(p);
+}
+
+void Task::run(Task *t) {
+	tl_currentTask = t;
+	if (auto g = t->getGroup()) {
+		tl_currentGroup = g;
+	}
+	t->setSuccessful(t->execute());
+	if (!t->getGroup()) {
+		t->onComplete();
+	}
+	tl_currentTask = nullptr;
+}
+
+Task *Task::getCurrent() {
+	return tl_currentTask;
 }
 
 void Task::addExecuteFn(const ExecuteCallback &cb) {

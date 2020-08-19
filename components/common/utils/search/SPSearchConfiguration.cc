@@ -162,13 +162,14 @@ static bool stemWordDefault(Language lang, StemmerEnv *env, ParserToken tok, Str
 Configuration::Configuration() : Configuration(Language::English) { }
 
 Configuration::Configuration(Language lang)
-: _language(lang), _primary(search::getStemmer(_language)), _secondary(search::getStemmer(Language::English)) { }
+: _language(lang), _primary(search::getStemmer(_language))
+, _secondary(search::getStemmer((lang == Language::Simple) ? Language::Simple : Language::English)) { }
 
 void Configuration::setLanguage(Language lang) {
 	_language = lang;
 	_primary = search::getStemmer(_language);
 	if (!_secondary) {
-		_secondary = search::getStemmer(Language::English);
+		_secondary = search::getStemmer((lang == Language::Simple) ? Language::Simple : Language::English);
 	}
 }
 
@@ -368,19 +369,23 @@ StemmerEnv *Configuration::getEnvForToken(ParserToken tok) const {
 	case ParserToken::AsciiWord:
 	case ParserToken::AsciiHyphenatedWord:
 	case ParserToken::HyphenatedWord_AsciiPart:
-		if (memory::pool::acquire() == _secondary->userData) {
-			return _secondary;
-		} else {
-			return Configuration_makeLocalConfig(_secondary);
+		if (_secondary) {
+			if (memory::pool::acquire() == _secondary->userData) {
+				return _secondary;
+			} else {
+				return Configuration_makeLocalConfig(_secondary);
+			}
 		}
 		break;
 	case ParserToken::Word:
 	case ParserToken::HyphenatedWord:
 	case ParserToken::HyphenatedWord_Part:
-		if (memory::pool::acquire() == _primary->userData) {
-			return _primary;
-		} else {
-			return Configuration_makeLocalConfig(_primary);
+		if (_primary) {
+			if (memory::pool::acquire() == _primary->userData) {
+				return _primary;
+			} else {
+				return Configuration_makeLocalConfig(_primary);
+			}
 		}
 		break;
 

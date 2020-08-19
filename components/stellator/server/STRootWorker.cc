@@ -510,10 +510,7 @@ void ConnectionWorker::runTask(Task *task) {
 	auto serv = task->getServer();
 	mem::perform([&] {
 		mem::perform([&] {
-			task->setSuccessful(task->execute());
-			if (!task->getGroup()) {
-				task->onComplete();
-			}
+			Task::run(task);
 		}, task->pool());
 		_queue->releaseTask(task);
 	}, serv);

@@ -105,7 +105,7 @@ enum class Transform {
 	Number,
 	Hexadecimial,
 	Base64,
-	Trigram,
+	Trigram, // enable trigram index on this field
 
 	// Bytes
 	Uuid,

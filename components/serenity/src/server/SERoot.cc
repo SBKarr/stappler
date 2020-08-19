@@ -873,10 +873,7 @@ static void *Root_performTask(apr_thread_t *, void *ptr) {
 	auto ctx = (TaskContext *)ptr;
 	apr::pool::perform([&] {
 		apr::pool::perform([&] {
-			ctx->task->setSuccessful(ctx->task->execute());
-			if (!ctx->task->getGroup()) {
-				ctx->task->onComplete();
-			}
+			Task::run(ctx->task);
 		}, ctx->task->pool());
 	}, ctx->serv);
 	if (!ctx->task->getGroup()) {

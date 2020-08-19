@@ -29,6 +29,8 @@ NS_SA_ST_BEGIN
 
 class TaskGroup : public mem::AllocBase {
 public:
+	static TaskGroup *getCurrent();
+
 	TaskGroup();
 	TaskGroup(Server);
 
@@ -78,6 +80,10 @@ public:
 	static bool perform(const mem::Callback<void(Task &)> &cb, TaskGroup * = nullptr);
 
 	static void destroy(Task *);
+
+	static void run(Task *);
+
+	static Task *getCurrent();
 
 public: /* interface */
 	void addExecuteFn(const ExecuteCallback &);
