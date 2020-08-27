@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include "SPThreadTask.h"
 #include "SPData.h"
 #include "SPLog.h"
+#include "SPSpanView.h"
 
 #include "XLConfig.h"
 

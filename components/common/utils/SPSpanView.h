@@ -50,6 +50,9 @@ public:
 	SpanView(const memory::vector<Type> &vec, size_t count) : ptr(vec.data()), len(std::min(vec.size(), count)) { }
 	SpanView(const memory::vector<Type> &vec, size_t off, size_t count) : ptr(vec.data() + off), len(std::min(vec.size() - off, count)) { }
 
+    template<size_t Size>
+    SpanView(const Type (&array)[Size]) : ptr(&array[0]), len(Size) { }
+
 	template <size_t Size>
 	SpanView(const std::array<Type, Size> &arr) : ptr(arr.data()), len(arr.size()) { }
 
@@ -69,8 +72,8 @@ public:
 	const Type *data() const { return ptr; }
 	size_t size() const { return len; }
 
-	iterator begin() const { return iterator(ptr); }
-	iterator end() const { return iterator(ptr + len); }
+	iterator begin() const noexcept { return iterator(ptr); }
+	iterator end() const noexcept { return iterator(ptr + len); }
 
     reverse_iterator rbegin() const noexcept { return reverse_iterator(end()); }
     reverse_iterator rend() const noexcept { return reverse_iterator(begin()); }
@@ -131,6 +134,20 @@ operator>=(const SpanView<_Tp>& __x, const SpanView<_Tp>& __y) {
 	return !(__x < __y);
 }
 
+template <typename Type>
+auto makeSpanView(const std::vector<Type> &vec) -> SpanView<Type> {
+	return SpanView<Type>(vec);
+}
+
+template <typename Type>
+auto makeSpanView(const memory::vector<Type> &vec) -> SpanView<Type> {
+	return SpanView<Type>(vec);
+}
+
+template <typename Type, size_t Size>
+auto makeSpanView(const std::array<Type, Size> &vec) -> SpanView<Type> {
+	return SpanView<Type>(vec);
+}
 
 }
 

@@ -57,14 +57,13 @@ class Allocator : public Ref {
 public:
 	using Block = AllocatorBufferBlock;
 	using MemBlock = AllocatorHeapBlock;
-	using Type = AllocationType;
 
 	virtual ~Allocator();
 
 	bool init(VirtualDevice &dev, VkPhysicalDevice device);
 	void invalidate(VirtualDevice &dev);
 
-	Block allocate(uint32_t typeFilter, Type t, VkDeviceSize size, VkDeviceSize align);
+	Block allocate(uint32_t typeFilter, AllocationType t, VkDeviceSize size, VkDeviceSize align);
 	void free(Block &mem);
 	void free(AllocatorHeapBlock &mem);
 
@@ -78,10 +77,10 @@ protected:
 	void lock();
 	void unlock();
 
-	uint32_t findMemoryType(uint32_t typeFilter, Type t, VkMemoryPropertyFlags &prop);
+	uint32_t findMemoryType(uint32_t typeFilter, AllocationType t, VkMemoryPropertyFlags &prop);
 	bool requestTransfer(Rc<Buffer>, void *data, uint32_t size, uint32_t offset);
 
-	AllocatorHeapBlock allocateBlock(uint32_t, uint32_t, Type);
+	AllocatorHeapBlock allocateBlock(uint32_t, uint32_t, AllocationType);
 	Vector<Rc<TransferGeneration>> getTransfers();
 
 	Mutex _mutex;

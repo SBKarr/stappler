@@ -85,14 +85,15 @@ public:
 	virtual void selectPresentationOptions(Instance::PresentationOptions &opts) const override;
 
 	void onGLFWWindowSizeFunCallback(GLFWwindow *window, int width, int height);
+	void onGLFWMouseCallBack(GLFWwindow* window, int button, int action, int modify);
+	void onGLFWMouseMoveCallBack(GLFWwindow* window, double x, double y);
+	void onGLFWMouseScrollCallback(GLFWwindow* window, double x, double y);
+
 
 protected:
 	void updateFrameSize();
 
 	/*void onGLFWError(int errorID, const char* errorDesc);
-	void onGLFWMouseCallBack(GLFWwindow* window, int button, int action, int modify);
-	void onGLFWMouseMoveCallBack(GLFWwindow* window, double x, double y);
-	void onGLFWMouseScrollCallback(GLFWwindow* window, double x, double y);
 	void onGLFWKeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 	void onGLFWCharCallback(GLFWwindow* window, unsigned int character);
 	void onGLFWWindowPosCallback(GLFWwindow* windows, int x, int y);

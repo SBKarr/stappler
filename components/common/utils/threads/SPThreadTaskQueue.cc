@@ -41,6 +41,9 @@ public:
 	virtual bool worker() override;
 
 	std::thread &getThread();
+	std::thread::id getThreadId() const { return _threadId; }
+
+	void perform(Rc<Task> &&);
 
 protected:
 	TaskQueue *_queue;
@@ -54,6 +57,9 @@ protected:
 	uint32_t _workerId;
 	StringView _name;
 	std::thread _thread;
+
+	std::mutex _localMutex;
+	std::vector<Rc<Task>> _localQueue;
 };
 
 thread_local ThreadInfo tl_threadInfo;
@@ -173,17 +179,47 @@ void TaskQueue::perform(Rc<Task> &&task) {
 		return;
 	}
 
+	if (task->getPriority() != 0) {
+		performWithPriority(move(task), false);
+		return;
+	}
+
 	if (!task->prepare()) {
 		task->setSuccessful(false);
 		onMainThread(std::move(task));
 		return;
 	}
-	++ tasksAdded;
+	++ tasksCounter;
 	_inputMutex.lock();
 	_inputQueue.push_back(std::move(task));
 	_inputMutex.unlock();
 
 	_sleepCondition.notify_one();
+}
+
+void TaskQueue::perform(Map<uint32_t, Vector<Rc<Task>>> &&tasks) {
+	if (tasks.empty()) {
+		return;
+	}
+
+	for (auto &it : tasks) {
+		if (it.first > _workers.size()) {
+			continue;
+		}
+
+		Worker * w = _workers[it.first];
+		for (Rc<Task> &t : it.second) {
+			if (!t->prepare()) {
+				t->setSuccessful(false);
+				onMainThread(std::move(t));
+			} else {
+				++ tasksCounter;
+				w->perform(move(t));
+			}
+		}
+	}
+
+	_sleepCondition.notify_all();
 }
 
 void TaskQueue::performWithPriority(Rc<Task> &&task, bool performFirst) {
@@ -199,7 +235,7 @@ void TaskQueue::performWithPriority(Rc<Task> &&task, bool performFirst) {
 
 	int p = task->getPriority();
 
-	++ tasksAdded;
+	++ tasksCounter;
 	_inputMutex.lock();
 	if (_inputQueue.size() == 0) {
 		_inputQueue.push_back(std::move(task));
@@ -224,17 +260,16 @@ void TaskQueue::performWithPriority(Rc<Task> &&task, bool performFirst) {
 	_sleepCondition.notify_one();
 }
 
-Rc<Task> TaskQueue::popTask() {
-	Rc<Task> task;
+Rc<Task> TaskQueue::popTask(uint32_t idx) {
+	std::unique_lock<std::mutex> lock(_inputMutex);
 
-	_inputMutex.lock();
 	if (0 != _inputQueue.size()) {
-		task = std::move(_inputQueue.front());
+		auto task = std::move(_inputQueue.front());
 		_inputQueue.erase(_inputQueue.begin());
+		return task;
 	}
-	_inputMutex.unlock();
 
-	return task;
+	return nullptr;
 }
 
 void TaskQueue::update() {
@@ -251,7 +286,6 @@ void TaskQueue::update() {
 
     for (auto task : stack) {
 		task->onComplete();
-		++ tasksCompleted;
     }
 }
 
@@ -260,13 +294,22 @@ void TaskQueue::onMainThread(Rc<Task> &&task) {
         return;
     }
 
-	++ tasksAdded;
     _outputMutex.lock();
     _outputQueue.push_back(std::move(task));
 	_outputMutex.unlock();
 	_flag.clear();
 
-	_exitCondition.notify_one();
+	if (tasksCounter.load() == 0) {
+		_exitCondition.notify_one();
+	}
+}
+
+std::vector<std::thread::id> TaskQueue::getThreadIds() const {
+	std::vector<std::thread::id> ret;
+	for (Worker *it : _workers) {
+		ret.emplace_back(it->getThreadId());
+	}
+	return ret;
 }
 
 void TaskQueue::onMainThreadWorker(Rc<Task> &&task) {
@@ -279,7 +322,9 @@ void TaskQueue::onMainThreadWorker(Rc<Task> &&task) {
 	_outputMutex.unlock();
 	_flag.clear();
 
-	_exitCondition.notify_one();
+	if (tasksCounter.fetch_sub(1) == 1) {
+		_exitCondition.notify_one();
+	}
 }
 
 void TaskQueue::wait() {
@@ -322,6 +367,7 @@ void TaskQueue::cancelWorkers() {
 	}
 
 	_workers.clear();
+	_inputQueue.clear();
 }
 
 void TaskQueue::performAll() {
@@ -330,11 +376,12 @@ void TaskQueue::performAll() {
 	cancelWorkers();
 }
 
-void TaskQueue::waitForAll() {
-	while (tasksAdded != tasksCompleted) {
-	    update();
+void TaskQueue::waitForAll(TimeInterval iv) {
+	update();
+	while (tasksCounter.load() != 0) {
 		std::unique_lock<std::mutex> exitLock(_exitMutex);
-		_exitCondition.wait_for(exitLock,  std::chrono::seconds(1));
+		_exitCondition.wait_for(exitLock, std::chrono::microseconds(iv.toMicros()));
+		update();
 	}
 }
 
@@ -389,7 +436,18 @@ bool Worker::worker() {
 		memory::pool::clear(_pool);
 	}
 
-	auto task = _queue->popTask();
+	Rc<Task> task;
+	do {
+		std::unique_lock<std::mutex> lock(_localMutex);
+		if (!_localQueue.empty()) {
+			task = std::move(_localQueue.front());
+			_localQueue.erase(_localQueue.begin());
+		}
+	} while (0);
+
+	if (!task) {
+		task = _queue->popTask(_workerId);
+	}
 
 	if (!task) {
 		_queue->wait();
@@ -404,6 +462,12 @@ bool Worker::worker() {
 
 std::thread &Worker::getThread() {
 	return _thread;
+}
+
+void Worker::perform(Rc<Task> &&task) {
+	_localMutex.lock();
+	_localQueue.emplace_back(std::move(task));
+	_localMutex.unlock();
 }
 
 NS_SP_EXT_END(thread)

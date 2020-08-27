@@ -53,8 +53,8 @@ public:
 
 	void performAsync(Rc<Task> &&task);
 	void perform(Rc<Task> &&task);
+	void perform(Map<uint32_t, Vector<Rc<Task>>> &&tasks);
 	void performWithPriority(Rc<Task> &&task, bool performFirst);
-	Rc<Task> popTask();
 
 	void update();
 	void onMainThread(Rc<Task> &&task);
@@ -67,11 +67,16 @@ public:
 	void cancelWorkers();
 
 	void performAll();
-	void waitForAll();
+	void waitForAll(TimeInterval = TimeInterval::seconds(1));
+
+	size_t getThreadsCount() const { return _threadsCount; }
+
+	std::vector<std::thread::id> getThreadIds() const;
 
 protected:
 	friend class Worker;
 
+	Rc<Task> popTask(uint32_t idx);
 	void onMainThreadWorker(Rc<Task> &&task);
 
 	std::mutex _sleepMutex;
@@ -92,8 +97,7 @@ protected:
 
 	uint16_t _threadsCount = std::thread::hardware_concurrency();
 
-	size_t tasksAdded = 0;
-	size_t tasksCompleted = 0;
+	std::atomic<size_t> tasksCounter = 0;
 
 	memory::pool_t *_pool = nullptr;
 };

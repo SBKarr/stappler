@@ -57,11 +57,12 @@ class CommandPool : public Ref {
 public:
 	virtual ~CommandPool();
 
-	bool init(VirtualDevice &dev, uint32_t familyIdx);
+	bool init(VirtualDevice &dev, uint32_t familyIdx, bool transient = false);
 	void invalidate(VirtualDevice &dev);
 
 	VkCommandPool getCommandPool() const { return _commandPool; }
 
+	VkCommandBuffer allocBuffer(VirtualDevice &dev);
 	Vector<VkCommandBuffer> allocBuffers(VirtualDevice &dev, uint32_t);
 	void freeDefaultBuffers(VirtualDevice &dev, Vector<VkCommandBuffer> &);
 	void reset(VirtualDevice &dev, bool release = false);

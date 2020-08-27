@@ -98,8 +98,4 @@ bool View::isInBackground() const {
 	return _inBackground;
 }
 
-void View::dropFrameDelay() {
-	_dropFrameDelay = true;
-}
-
 }

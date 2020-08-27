@@ -157,6 +157,24 @@ static void onGLFWWindowSizeFunCallback(GLFWwindow *window, int width, int heigh
 	}
 }
 
+static void onGLFWMouseCallBack(GLFWwindow* window, int button, int action, int modify) {
+	if (auto view = reinterpret_cast<ViewImpl *>(glfwGetWindowUserPointer(window))) {
+		view->onGLFWMouseCallBack(window, button, action, modify);
+	}
+}
+
+static void onGLFWMouseMoveCallBack(GLFWwindow* window, double x, double y) {
+	if (auto view = reinterpret_cast<ViewImpl *>(glfwGetWindowUserPointer(window))) {
+		view->onGLFWMouseMoveCallBack(window, x, y);
+	}
+}
+
+static void onGLFWMouseScrollCallback(GLFWwindow* window, double x, double y) {
+	if (auto view = reinterpret_cast<ViewImpl *>(glfwGetWindowUserPointer(window))) {
+		view->onGLFWMouseScrollCallback(window, x, y);
+	}
+}
+
 }
 
 ViewImpl::ViewImpl() {
@@ -191,6 +209,10 @@ bool ViewImpl::init(const StringView & viewName, Rect rect) {
 	_mainWindow = glfwCreateWindow(rect.size.width, rect.size.height, "Vulkan", _monitor, nullptr);
 	glfwSetWindowUserPointer(_mainWindow, this);
 	glfwSetFramebufferSizeCallback(_mainWindow, vk::onGLFWWindowSizeFunCallback);
+    glfwSetMouseButtonCallback(_mainWindow, vk::onGLFWMouseCallBack);
+    glfwSetCursorPosCallback(_mainWindow, vk::onGLFWMouseMoveCallBack);
+    glfwSetScrollCallback(_mainWindow, vk::onGLFWMouseScrollCallback);
+
 	auto instance = Instance::create();
 	if (!instance) {
 		return false;
@@ -213,13 +235,22 @@ bool ViewImpl::init(const StringView & viewName, Rect rect) {
 	auto targetOpts = opts.front();
 	selectPresentationOptions(targetOpts);
 
-	auto device = Rc<PresentationDevice>::create(instance, this, _surface, move(targetOpts), VkPhysicalDeviceFeatures{});
-	if (!device) {
-		log::text("VkView", "Fail to create Vulkan presentation device");
-		return false;
+	auto requiredFeatures = Instance::Features::getDefault();
+	if (targetOpts.features.canEnable(requiredFeatures)) {
+		auto device = Rc<PresentationDevice>::create(instance, this, _surface, move(targetOpts), requiredFeatures);
+		if (!device) {
+			log::text("VkView", "Fail to create Vulkan presentation device");
+			return false;
+		}
+
+		return View::init(instance, device);
 	}
 
-	return View::init(instance, device);
+	if (instance) {
+		instance->vkDestroySurfaceKHR(instance->getInstance(), _surface, nullptr);
+	}
+	log::text("VkView", "Unable to create device, not all required features is supported");
+	return false;
 }
 
 bool ViewImpl::init(const StringView & viewName) {
@@ -290,6 +321,7 @@ bool ViewImpl::run(const Callback<bool(double)> &cb) {
 	bool ret = true;
 	double nNow = 0.0;
 	double nLast = glfwGetTime();
+	double dt = 0;
 
 	_loop = Rc<PresentationLoop>::alloc(this, _device, _animationInterval, [] () -> double {
 		return glfwGetTime();
@@ -297,15 +329,20 @@ bool ViewImpl::run(const Callback<bool(double)> &cb) {
 
 	_loop->begin();
 	while (!glfwWindowShouldClose(_mainWindow)) {
+		const auto iv = _animationInterval * 4.0;
 		nNow = glfwGetTime();
-		if (nNow - nLast >= _animationInterval || _dropFrameDelay) {
-			_dropFrameDelay = false;
-			nLast = nNow;
-			if (!cb(nNow - nLast)) {
-				ret = false;
-				break;
-			}
+		if (!cb(nNow - nLast)) {
+			ret = false;
+			break;
 		}
+		nLast = nNow;
+		dt = glfwGetTime() - nLast;
+		if (dt > 0 && dt < iv && _dropFrameDelay.test_and_set()) { // limit framerate
+			 std::unique_lock<std::mutex> lock(_glSync);
+			_glSyncVar.wait_for(lock, std::chrono::duration<double, std::ratio<1>>(iv - dt));
+		}
+
+		std::unique_lock<std::mutex> lock(_glSync);
 		pollEvents();
 	}
 	_loop->end();
@@ -325,19 +362,37 @@ void ViewImpl::updateFrameSize() {
 }
 
 void ViewImpl::onGLFWWindowSizeFunCallback(GLFWwindow *window, int width, int height) {
+	std::cout << "\tonGLFWWindowSizeFunCallback\n";
 	if (_loop) {
+		if (!_loop->isStalled()) {
+			_loop->reset();
+		}
+
 		std::lock_guard<PresentationLoop> lock(*_loop);
 
 		_frameWidth = uint32_t(width);
 		_frameHeight = uint32_t(height);
 
 		if (_loop->isStalled()) {
-			_device->recreateSwapChain();
+			_device->recreateSwapChain(*_loop->getQueue());
 			_loop->forceFrame();
 			_loop->reset();
 		}
 	}
 }
+
+void ViewImpl::onGLFWMouseCallBack(GLFWwindow* window, int button, int action, int modify) {
+	std::cout << "\tonGLFWMouseCallBack\n";
+}
+
+void ViewImpl::onGLFWMouseMoveCallBack(GLFWwindow* window, double x, double y) {
+	std::cout << "\tonGLFWMouseMoveCallBack\n";
+}
+
+void ViewImpl::onGLFWMouseScrollCallback(GLFWwindow* window, double x, double y) {
+	std::cout << "\tonGLFWMouseScrollCallback\n";
+}
+
 
 void ViewImpl::setScreenSize(float width, float height) {
 	View::setScreenSize(width, height);

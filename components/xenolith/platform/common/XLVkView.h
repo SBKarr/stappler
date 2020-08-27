@@ -94,8 +94,13 @@ public:
 
 	Instance *getInstance() const { return _instance; }
 
-	virtual void dropFrameDelay();
 	virtual void selectPresentationOptions(Instance::PresentationOptions &opts) const = 0;
+
+	void lock() { _glSync.lock(); }
+	void unlock() { _glSync.unlock(); }
+	bool try_lock() { return _glSync.try_lock(); }
+
+	void resetFrame() { _dropFrameDelay.clear(); _glSyncVar.notify_all(); }
 
 public: /* render-on-demand engine */
 	// virtual void requestRender();
@@ -112,6 +117,7 @@ protected:
 	bool _isTouchDevice = false;
 	bool _inBackground = false;
 	bool _hasFocus = true;
+	std::atomic_flag _dropFrameDelay;
 
 	String _viewName;
 
@@ -119,7 +125,8 @@ protected:
 	Rc<PresentationDevice> _device; // logical presentation device
 	Rc<PresentationLoop> _loop;
 
-	bool _dropFrameDelay = false;
+	std::mutex _glSync;
+	std::condition_variable _glSyncVar;
 };
 
 }

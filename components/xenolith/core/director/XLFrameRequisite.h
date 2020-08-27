@@ -20,26 +20,23 @@
  THE SOFTWARE.
  **/
 
-#ifndef COMPONENTS_XENOLITH_GL_XLVKDESCRIPTORS_H_
-#define COMPONENTS_XENOLITH_GL_XLVKDESCRIPTORS_H_
+#ifndef COMPONENTS_XENOLITH_CORE_DIRECTOR_XLFRAMEREQUISITE_H_
+#define COMPONENTS_XENOLITH_CORE_DIRECTOR_XLFRAMEREQUISITE_H_
 
-#include "XLVkDevice.h"
+#include "XLDefine.h"
 
-namespace stappler::xenolith::vk {
+namespace stappler::xenolith {
 
-class DescriptorSetLayout : public Ref {
-public:
-	virtual ~DescriptorSetLayout();
+struct FrameRequisite {
+	struct DrawData {
 
-	bool init(PresentationDevice &dev, uint32_t samplers, uint32_t textures, uint32_t uniforms, uint32_t storages);
-	void invalidate(PresentationDevice &dev);
+	};
 
-	VkDescriptorSetLayout getLayout() const { return _layout; }
-
-protected:
-	VkDescriptorSetLayout _layout = VK_NULL_HANDLE;
+	Vector<uint32_t> indexes;
+	Vector<Vertex_V4F_C4F_T2F> dynamicVertexes;
+	Vector<Vertex_V4F_C4F_T2F> staticVertexes;
 };
 
 }
 
-#endif /* COMPONENTS_XENOLITH_GL_XLVKDESCRIPTORS_H_ */
+#endif /* COMPONENTS_XENOLITH_CORE_DIRECTOR_XLFRAMEREQUISITE_H_ */

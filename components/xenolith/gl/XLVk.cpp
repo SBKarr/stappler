@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include "XLVkFramebuffer.cc"
 #include "XLVkInstance.cc"
 #include "XLVkDevice.cc"
+#include "XLVkDraw.cc"
 #include "XLVkPresentation.cc"
 #include "XLVkTransfer.cc"
 

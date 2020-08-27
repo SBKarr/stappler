@@ -42,7 +42,7 @@ public:
 
 	virtual ~Buffer();
 
-	bool init(VirtualDevice &dev, Allocator::Type, Usage, uint32_t size, bool persistentMapping = false);
+	bool init(VirtualDevice &dev, AllocationType, Usage, uint32_t size, bool persistentMapping = false);
 	bool init(VirtualDevice &dev, VkBuffer, Allocator::Block, uint32_t);
 
 	void invalidate(VirtualDevice &dev);

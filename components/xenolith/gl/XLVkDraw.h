@@ -27,38 +27,101 @@
 
 namespace stappler::xenolith::vk {
 
+class DrawRequisite : public Ref {
+public:
+protected:
+	uint32_t version = 0;
+
+	Rc<Buffer> index;
+};
+
+class DrawImageProcessor : public Ref {
+public:
+
+private:
+	VkDescriptorPool _pool = VK_NULL_HANDLE;
+	Vector<VkDescriptorSet> _sets;
+};
+
+class DrawLayout : public Ref {
+public:
+	virtual ~DrawLayout();
+	bool init(VirtualDevice *, DescriptorCount);
+
+protected:
+	VirtualDevice *_device = nullptr;
+
+	DescriptorCount _maxDesriptorCount;
+	DescriptorCount _currentDesriptorCount;
+
+	Rc<PipelineLayout> _defaultPipelineLayout;
+	Map<PipelineLayout::Type, Rc<PipelineLayout>> _pipelineLayouts;
+};
+
 class DrawDevice : public VirtualDevice {
 public:
-	class Requisite : public Ref {
-	public:
-	protected:
-		// statics
-		Rc<Buffer> materials; // storage
-		Vector<Rc<Buffer>> statics; // storage
-		Vector<Rc<Buffer>> uniforms; // uniform
-
-		// dynamics
-		Rc<Buffer> draws; // storage
-		Rc<Buffer> transforms;  // uniform
-		Vector<Rc<Buffer>> dynamics; // storage
-		Rc<Buffer> index;
+	struct FrameInfo {
+		Instance::PresentationOptions *options;
+		Framebuffer *framebuffer;
+		SpanView<VkSemaphore> wait;
+		SpanView<VkSemaphore> signal;
+		VkFence fence;
+		uint32_t frameIdx;
+		uint32_t imageIdx;
 	};
+
+	struct BufferTask {
+		static constexpr uint32_t HardTask = 0;
+		static constexpr uint32_t MediumTask = 0;
+		static constexpr uint32_t EasyTask = 0;
+
+		uint32_t index = 0;
+		Function<bool(const FrameInfo &, VkCommandBuffer)> callback;
+
+		BufferTask(uint32_t idx, Function<bool(const FrameInfo &, VkCommandBuffer)> &&cb) : index(idx), callback(move(cb)) { }
+
+		operator bool () const { return callback != nullptr; }
+	};
+
+	class Worker;
 
 	virtual ~DrawDevice();
 	bool init(Rc<Instance>, Rc<Allocator>, VkQueue, uint32_t qIdx);
 
-	bool drawFrame(thread::TaskQueue &, );
+	bool spawnWorkers(thread::TaskQueue &, size_t, const Instance::PresentationOptions &, VkFormat format);
+	void invalidate();
+
+	Vector<VkCommandBuffer> fillBuffers(thread::TaskQueue &, FrameInfo &frame);
+
+	bool drawFrame(thread::TaskQueue &, FrameInfo &frame);
+
+	RenderPass *getDefaultRenderPass() const { return _defaultRenderPass; }
 
 protected:
-	Rc<Requisite> _current;
-	Rc<Requisite> _next;
+	BufferTask getTaskForWorker(Vector<BufferTask> &, Worker *);
+
+	Map<String, Rc<ProgramModule>> _shaders;
+
+	std::mutex _mutex;
+	std::condition_variable _condvar;
+
+	Map<std::thread::id, Rc<Worker>> _workers;
+	Vector<BufferTask> _frameTasks;
 
 	VkQueue _queue = VK_NULL_HANDLE;
 	size_t _currentFrame = 0;
 	uint32_t _queueIdx = 0;
+	uint32_t _nImages = 0;
 
-	Vector<VkFence> _inFlightFences;
-	Vector<VkFence> _imagesInFlight;
+	Rc<PipelineLayout> _defaultPipelineLayout;
+	Map<PipelineLayout::Type, Rc<PipelineLayout>> _pipelineLayouts;
+
+	DescriptorCount _maxDesriptorCount;
+	DescriptorCount _currentDesriptorCount;
+
+	Rc<Pipeline> _defaultPipeline;
+	Rc<RenderPass> _defaultRenderPass;
+	Rc<Worker> _defaultWorker;
 };
 
 }

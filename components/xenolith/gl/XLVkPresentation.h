@@ -36,9 +36,9 @@ public:
 	PresentationDevice();
 	virtual ~PresentationDevice();
 
-	bool init(Rc<Instance> instance, Rc<View> v, VkSurfaceKHR, Instance::PresentationOptions &&, VkPhysicalDeviceFeatures);
+	bool init(Rc<Instance> instance, Rc<View> v, VkSurfaceKHR, Instance::PresentationOptions &&, const Features &);
 
-	void drawFrame(thread::TaskQueue &);
+	bool drawFrame(thread::TaskQueue &);
 
 	Instance *getInstance() const { return _instance; }
 	VkDevice getDevice() const { return _device; }
@@ -48,17 +48,17 @@ public:
 	void begin(thread::TaskQueue &);
 	void end(thread::TaskQueue &);
 
-	bool recreateSwapChain();
+	bool recreateSwapChain(thread::TaskQueue &q);
 
 private:
 	friend class ProgramManager;
 
-	bool createSwapChain(VkSurfaceKHR surface);
+	bool createSwapChain(thread::TaskQueue &q, VkSurfaceKHR surface);
 	bool createDefaultPipeline();
 
 	void cleanupSwapChain();
 
-	size_t _currentFrame = 0;
+	uint32_t _currentFrame = 0;
 	Instance::PresentationOptions _options;
 
 	VkSurfaceKHR _surface = VK_NULL_HANDLE;
@@ -70,16 +70,9 @@ private:
 	Vector<Rc<ImageView>> _swapChainImageViews;
 	Vector<Rc<Framebuffer>> _swapChainFramebuffers;
 
-	Map<String, Rc<ProgramModule>> _shaders;
-
-	Rc<Pipeline> _defaultPipeline;
-	Rc<PipelineLayout> _defaultPipelineLayout;
-	Rc<RenderPass> _defaultRenderPass;
-	Rc<CommandPool> _defaultCommandPool;
-	Vector<VkCommandBuffer> _defaultCommandBuffers;
-
 	Rc<View> _view;
 	Rc<TransferDevice> _transfer;
+	Rc<DrawDevice> _draw;
 
 	Vector<VkSemaphore> _imageAvailableSemaphores;
 	Vector<VkSemaphore> _renderFinishedSemaphores;
@@ -103,11 +96,12 @@ public:
 	void lock();
 	void unlock();
 	void reset();
-	void forceFrame();
+	bool forceFrame();
 
 	std::mutex &getMutex() { return _glSync; }
 
 	bool isStalled() const { return _stalled; }
+	Rc<thread::TaskQueue> getQueue() const { return _queue; }
 
 protected:
 	std::atomic_flag _swapChainFlag;
@@ -127,7 +121,7 @@ protected:
 	double _time = 0.0;
 	std::mutex _glSync;
 	std::condition_variable _glSyncVar;
-	bool _stalled = false;
+	std::atomic<bool> _stalled = false;
 };
 
 }
