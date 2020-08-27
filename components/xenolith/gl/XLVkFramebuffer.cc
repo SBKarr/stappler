@@ -91,11 +91,11 @@ CommandPool::~CommandPool() {
 	}
 }
 
-bool CommandPool::init(VirtualDevice &dev, uint32_t familyIdx) {
+bool CommandPool::init(VirtualDevice &dev, uint32_t familyIdx, bool transient) {
 	VkCommandPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolInfo.queueFamilyIndex = familyIdx;
-	poolInfo.flags = 0; // Optional
+	poolInfo.flags = transient ? VK_COMMAND_POOL_CREATE_TRANSIENT_BIT : 0;
 
 	return dev.getInstance()->vkCreateCommandPool(dev.getDevice(), &poolInfo, nullptr, &_commandPool) == VK_SUCCESS;
 }
@@ -105,6 +105,22 @@ void CommandPool::invalidate(VirtualDevice &dev) {
 		dev.getInstance()->vkDestroyCommandPool(dev.getDevice(), _commandPool, nullptr);
 		_commandPool = VK_NULL_HANDLE;
 	}
+}
+
+VkCommandBuffer CommandPool::allocBuffer(VirtualDevice &dev) {
+	if (_commandPool) {
+		VkCommandBufferAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.commandPool = _commandPool;
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocInfo.commandBufferCount = 1;
+
+		VkCommandBuffer ret;
+		if (dev.getInstance()->vkAllocateCommandBuffers(dev.getDevice(), &allocInfo, &ret) == VK_SUCCESS) {
+			return ret;
+		}
+	}
+	return nullptr;
 }
 
 Vector<VkCommandBuffer> CommandPool::allocBuffers(VirtualDevice &dev, uint32_t count) {

@@ -29,6 +29,7 @@ THE SOFTWARE.
 namespace stappler::xenolith::vk {
 
 class TransferDevice;
+class DrawDevice;
 class View;
 class ProgramModule;
 class Pipeline;
@@ -42,6 +43,7 @@ struct AllocatorHeapBlock;
 struct AllocatorBufferBlock;
 class Buffer;
 class TransferGeneration;
+class DescriptorSetLayout;
 
 enum class ProgramStage {
 	None = 0,
@@ -64,6 +66,18 @@ enum AllocationType {
 	LocalVisible,
 	GpuUpload,
 	GpuDownload
+};
+
+struct DescriptorCount {
+	uint32_t samplers;
+	uint32_t sampledImages;
+	uint32_t storageBuffers;
+	uint32_t uniformBuffers;
+
+	// default initializers not available: clang/gcc bug
+	// (clang: https://bugs.llvm.org/show_bug.cgi?id=36684)
+	DescriptorCount() : samplers(0), sampledImages(0), storageBuffers(0), uniformBuffers(0) { }
+	DescriptorCount(uint32_t Sm, uint32_t I, uint32_t St, uint32_t U) : samplers(Sm), sampledImages(I), storageBuffers(St), uniformBuffers(U) { }
 };
 
 VkShaderStageFlagBits getVkStageBits(ProgramStage);

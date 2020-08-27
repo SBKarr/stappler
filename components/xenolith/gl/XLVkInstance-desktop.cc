@@ -44,7 +44,10 @@ Rc<Instance> Instance::create() {
 
 	if constexpr (s_printVkInfo) {
 		for (const auto &layerProperties : availableLayers) {
-			log::format("Vk-Info", "Layer: %s (%u/%u)\t - %s", layerProperties.layerName, layerProperties.specVersion, layerProperties.implementationVersion, layerProperties.description);
+			log::format("Vk-Info", "Layer: %s (%s/%s)\t - %s", layerProperties.layerName,
+				getVersionDescription(layerProperties.specVersion).data(),
+				getVersionDescription(layerProperties.implementationVersion).data(),
+				layerProperties.description);
 		}
 	}
 
@@ -83,7 +86,7 @@ Rc<Instance> Instance::create() {
 	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 	appInfo.pEngineName = "Stappler+Xenolith";
 	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.apiVersion = VK_API_VERSION_1_0;
+	appInfo.apiVersion = VK_API_VERSION_1_2;
 
 	VkInstanceCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;

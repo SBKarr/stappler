@@ -29,6 +29,30 @@ namespace stappler::xenolith::vk {
 
 class Instance : public Ref {
 public:
+	struct Features {
+		static Features getDefault();
+
+		VkPhysicalDeviceVulkan12Features device12 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES, nullptr };
+		VkPhysicalDeviceVulkan11Features device11 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES, nullptr };
+		VkPhysicalDeviceFeatures2 device10 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, nullptr };
+
+		bool canEnable(const Features &) const;
+
+		Features();
+		Features(const Features &);
+		Features &operator=(const Features &);
+	};
+
+	struct Properties {
+		VkPhysicalDeviceVulkan12Properties device12 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES, nullptr };
+		VkPhysicalDeviceVulkan11Properties device11 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES, nullptr };
+		VkPhysicalDeviceProperties2 device10 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, nullptr };
+
+		Properties();
+		Properties(const Properties &);
+		Properties &operator=(const Properties &);
+	};
+
 	struct PresentationOptions {
 		VkPhysicalDevice device = VK_NULL_HANDLE;
 		uint32_t graphicsFamily = 0;
@@ -38,7 +62,9 @@ public:
         VkSurfaceCapabilitiesKHR capabilities;
         Vector<VkSurfaceFormatKHR> formats;
         Vector<VkPresentModeKHR> presentModes;
-		VkPhysicalDeviceProperties deviceProperties;
+
+		Properties properties;
+		Features features;
 
 		PresentationOptions();
 		PresentationOptions(VkPhysicalDevice, uint32_t, uint32_t, uint32_t, const VkSurfaceCapabilitiesKHR &, Vector<VkSurfaceFormatKHR> &&, Vector<VkPresentModeKHR> &&);
@@ -50,6 +76,7 @@ public:
         String description() const;
 	};
 
+	static String getVersionDescription(uint32_t);
 	static Rc<Instance> create();
 
 	Instance(VkInstance, const PFN_vkGetInstanceProcAddr getInstanceProcAddr);
@@ -61,6 +88,7 @@ public:
 
 private:
 	friend class VirtualDevice;
+	friend class DrawDevice;
 	friend class PresentationDevice;
 	friend class TransferDevice;
 	friend class ViewImpl;
@@ -87,6 +115,9 @@ private:
 	const PFN_vkGetPhysicalDeviceQueueFamilyProperties vkGetPhysicalDeviceQueueFamilyProperties;
 	const PFN_vkGetPhysicalDeviceMemoryProperties vkGetPhysicalDeviceMemoryProperties;
 	const PFN_vkGetPhysicalDeviceProperties vkGetPhysicalDeviceProperties;
+	const PFN_vkGetPhysicalDeviceProperties2 vkGetPhysicalDeviceProperties2;
+	const PFN_vkGetPhysicalDeviceFeatures vkGetPhysicalDeviceFeatures;
+	const PFN_vkGetPhysicalDeviceFeatures2 vkGetPhysicalDeviceFeatures2 = nullptr;
 	const PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR;
 	const PFN_vkGetPhysicalDeviceSurfaceSupportKHR vkGetPhysicalDeviceSurfaceSupportKHR;
 	const PFN_vkEnumerateDeviceExtensionProperties vkEnumerateDeviceExtensionProperties;

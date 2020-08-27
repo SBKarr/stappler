@@ -46,10 +46,15 @@ void Director::setView(vk::View *view) {
 
 bool Director::mainLoop(double t) {
 	update(t);
+	construct();
 	return false;
 }
 
 void Director::update(double t) {
+
+}
+
+void Director::construct() {
 
 }
 

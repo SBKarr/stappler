@@ -20,48 +20,14 @@
  THE SOFTWARE.
  **/
 
-#ifndef COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDIRECTOR_H_
-#define COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDIRECTOR_H_
+#include "XLFrameRequisite.h"
 
-#include "XLEventHeader.h"
-#include "XLVk.h"
-
-namespace stappler::xenolith {
-
-class Director : public Ref {
-public:
-	static EventHeader onProjectionChanged;
-	static EventHeader onAfterUpdate;
-	static EventHeader onAfterVisit;
-	static EventHeader onAfterDraw;
-
-	enum class Projection {
-		_2D,
-		_3D,
-		Euclid,
-		Custom,
-		Default = Euclid,
-	};
-
-	Director();
-
-	virtual ~Director();
-	virtual bool init();
-
-	inline vk::View* getView() { return _view; }
-	void setView(vk::View *view);
-
-	bool mainLoop(double);
-
-	void update(double);
-	void construct();
-
-	void end();
-
-protected:
-	Rc<vk::View> _view;
-};
+XLFrameRequisite::XLFrameRequisite() {
+	// TODO Auto-generated constructor stub
 
 }
 
-#endif /* COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDIRECTOR_H_ */
+XLFrameRequisite::~XLFrameRequisite() {
+	// TODO Auto-generated destructor stub
+}
+

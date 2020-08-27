@@ -33,7 +33,7 @@ VirtualDevice::~VirtualDevice() {
 	}
 }
 
-bool VirtualDevice::init(Rc<Instance> instance, VkPhysicalDevice p, const Set<uint32_t> &uniqueQueueFamilies, VkPhysicalDeviceFeatures deviceFeatures) {
+bool VirtualDevice::init(Rc<Instance> instance, VkPhysicalDevice p, const Set<uint32_t> &uniqueQueueFamilies, const Features &features) {
 	_instance = instance;
 	_allocator = Rc<Allocator>::create(*this, p);
 	if (!_allocator) {
@@ -54,9 +54,10 @@ bool VirtualDevice::init(Rc<Instance> instance, VkPhysicalDevice p, const Set<ui
 
 	VkDeviceCreateInfo deviceCreateInfo = { };
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	deviceCreateInfo.pNext = &features.device11;
 	deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
 	deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
-	deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
+	deviceCreateInfo.pEnabledFeatures = &features.device10.features;
 	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(s_deviceExtensions.size());
 	deviceCreateInfo.ppEnabledExtensionNames = s_deviceExtensions.data();
 

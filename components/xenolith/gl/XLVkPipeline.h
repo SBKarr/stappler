@@ -48,14 +48,26 @@ protected:
 
 class PipelineLayout : public Ref {
 public:
+	enum Type {
+		None,
+
+		/* Set 0:	0 - samplers [opts]
+		 * 			1 - sampled images
+		 * Set 1: 	0 - uniform buffers
+		 *			1 - storage buffers
+		 */
+		T_0SmI_1USt,
+	};
+
 	virtual ~PipelineLayout();
 
-	bool init(VirtualDevice &dev);
+	bool init(VirtualDevice &dev, Type = T_0SmI_1USt, DescriptorCount c = DescriptorCount());
 	void invalidate(VirtualDevice &dev);
 
 	VkPipelineLayout getPipelineLayout() const { return _pipelineLayout; }
 
 protected:
+	Vector<VkDescriptorSetLayout> _descriptors;
 	VkPipelineLayout _pipelineLayout = VK_NULL_HANDLE;
 };
 

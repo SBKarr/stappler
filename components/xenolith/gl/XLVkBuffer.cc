@@ -30,9 +30,9 @@ Buffer::~Buffer() {
 	}
 }
 
-bool Buffer::init(VirtualDevice &dev, Allocator::Type t, Usage usage, uint32_t size, bool persistent) {
+bool Buffer::init(VirtualDevice &dev, AllocationType t, Usage usage, uint32_t size, bool persistent) {
 	switch (t) {
-	case Allocator::Type::Local:
+	case AllocationType::Local:
 		usage = Usage(usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 		break;
 	default:
@@ -96,7 +96,7 @@ bool Buffer::setData(void *data, uint32_t size, uint32_t offset) {
 	size = std::min(_size - offset, size);
 
 	switch (_memory.type) {
-	case Allocator::Type::Local:
+	case AllocationType::Local:
 		_memory.alloc->requestTransfer(this, data, size, offset);
 		// perform staging transfer
 		break;
@@ -156,7 +156,7 @@ Bytes Buffer::getData(uint32_t size, uint32_t offset) {
 	size = std::min(_size - offset, size);
 
 	switch (_memory.type) {
-	case Allocator::Type::Local:
+	case AllocationType::Local:
 		// not available
 		break;
 	default: {

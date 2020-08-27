@@ -157,23 +157,128 @@ void Pipeline::invalidate(VirtualDevice &dev) {
 }
 
 PipelineLayout::~PipelineLayout() {
-	if (_pipelineLayout) {
+	if (_pipelineLayout || !_descriptors.empty()) {
 		log::vtext("VK-Error", "PipelineLayout was not destroyed");
 	}
 }
 
-bool PipelineLayout::init(VirtualDevice &dev) {
-	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 0; // Optional
-	pipelineLayoutInfo.pSetLayouts = nullptr; // Optional
+bool PipelineLayout::init(VirtualDevice &dev, Type t, DescriptorCount count) {
+	static constexpr uint32_t DescriptorIndexingFlags = VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT
+			| VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+
+	switch (t) {
+	case None:
+		pipelineLayoutInfo.setLayoutCount = 0; // Optional
+		pipelineLayoutInfo.pSetLayouts = nullptr; // Optional
+		break;
+	case T_0SmI_1USt:
+		do {
+			VkDescriptorSetLayout layout = VK_NULL_HANDLE;
+			VkDescriptorSetLayoutBinding bindings[2];
+			bindings[0].binding = 0;
+			bindings[0].descriptorCount = count.samplers;
+			bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+			bindings[0].pImmutableSamplers = nullptr;
+			bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+			bindings[1].binding = 1;
+			bindings[1].descriptorCount = count.sampledImages;
+			bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+			bindings[1].pImmutableSamplers = nullptr;
+			bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+			VkDescriptorBindingFlags flagsInfo[2];
+			flagsInfo[0] = DescriptorIndexingFlags;
+			flagsInfo[1] = DescriptorIndexingFlags | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
+
+			VkDescriptorSetLayoutBindingFlagsCreateInfo createInfo;
+			createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+			createInfo.pNext = nullptr;
+			createInfo.bindingCount = 2;
+			createInfo.pBindingFlags = flagsInfo;
+
+			VkDescriptorSetLayoutCreateInfo layoutInfo { };
+			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+			layoutInfo.pNext = &createInfo;
+			layoutInfo.bindingCount = 2;
+			layoutInfo.pBindings = bindings;
+			layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+
+			if (dev.getInstance()->vkCreateDescriptorSetLayout(dev.getDevice(), &layoutInfo, nullptr, &layout) == VK_SUCCESS) {
+				_descriptors.emplace_back(layout);
+			}
+		} while (0);
+
+		do {
+			VkDescriptorSetLayout layout = VK_NULL_HANDLE;
+			VkDescriptorSetLayoutBinding bindings[2];
+			bindings[0].binding = 0;
+			bindings[0].descriptorCount = count.uniformBuffers;
+			bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			bindings[0].pImmutableSamplers = nullptr;
+			bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+			bindings[1].binding = 1;
+			bindings[1].descriptorCount = count.storageBuffers;
+			bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+			bindings[1].pImmutableSamplers = nullptr;
+			bindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+			VkDescriptorBindingFlags flagsInfo[2];
+			flagsInfo[0] = DescriptorIndexingFlags;
+			flagsInfo[1] = DescriptorIndexingFlags | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
+
+			VkDescriptorSetLayoutBindingFlagsCreateInfo createInfo;
+			createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+			createInfo.pNext = nullptr;
+			createInfo.bindingCount = 2;
+			createInfo.pBindingFlags = flagsInfo;
+
+			VkDescriptorSetLayoutCreateInfo layoutInfo { };
+			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+			layoutInfo.pNext = &createInfo;
+			layoutInfo.bindingCount = 2;
+			layoutInfo.pBindings = bindings;
+			layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+
+			if (dev.getInstance()->vkCreateDescriptorSetLayout(dev.getDevice(), &layoutInfo, nullptr, &layout) == VK_SUCCESS) {
+				_descriptors.emplace_back(layout);
+			}
+		} while (0);
+
+		if (_descriptors.size() != 2) {
+			for (VkDescriptorSetLayout &it : _descriptors) {
+				dev.getInstance()->vkDestroyDescriptorSetLayout(dev.getDevice(), it, nullptr);
+			}
+			_descriptors.clear();
+			return false;
+		}
+		break;
+	}
 	pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
 	pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
 
-	return dev.getInstance()->vkCreatePipelineLayout(dev.getDevice(), &pipelineLayoutInfo, nullptr, &_pipelineLayout) == VK_SUCCESS;
+	if (dev.getInstance()->vkCreatePipelineLayout(dev.getDevice(), &pipelineLayoutInfo, nullptr, &_pipelineLayout) == VK_SUCCESS) {
+		return true;
+	}
+
+	for (VkDescriptorSetLayout &it : _descriptors) {
+		dev.getInstance()->vkDestroyDescriptorSetLayout(dev.getDevice(), it, nullptr);
+	}
+	_descriptors.clear();
+	return false;
 }
 
 void PipelineLayout::invalidate(VirtualDevice &dev) {
+	if (!_descriptors.empty()) {
+		for (VkDescriptorSetLayout &it : _descriptors) {
+			dev.getInstance()->vkDestroyDescriptorSetLayout(dev.getDevice(), it, nullptr);
+		}
+		_descriptors.clear();
+	}
+
 	if (_pipelineLayout) {
 		dev.getInstance()->vkDestroyPipelineLayout(dev.getDevice(), _pipelineLayout, nullptr);
 		_pipelineLayout = VK_NULL_HANDLE;

@@ -321,6 +321,73 @@ String getVkMemoryPropertyFlags(VkMemoryPropertyFlags flags) {
 	return ret.str();
 }
 
+bool Instance::Features::canEnable(const Features &features) const {
+	SpanView<VkBool32> src_f0(&device10.features.robustBufferAccess, sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32));
+	SpanView<VkBool32> trg_f0(&features.device10.features.robustBufferAccess, sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32));
+
+	for (size_t i = 0; i < src_f0.size(); ++ i) {
+		if (trg_f0[i] && !src_f0[i]) {
+			return false;
+		}
+	}
+
+	SpanView<VkBool32> src_f1(&device11.storageBuffer16BitAccess, (sizeof(VkPhysicalDeviceVulkan11Features) - offsetof(VkPhysicalDeviceVulkan11Features, storageBuffer16BitAccess)) / sizeof(VkBool32));
+	SpanView<VkBool32> trg_f1(&features.device11.storageBuffer16BitAccess, (sizeof(VkPhysicalDeviceVulkan11Features) - offsetof(VkPhysicalDeviceVulkan11Features, storageBuffer16BitAccess)) / sizeof(VkBool32));
+
+	for (size_t i = 0; i < src_f1.size(); ++ i) {
+		if (trg_f1[i] && !src_f1[i]) {
+			return false;
+		}
+	}
+
+	SpanView<VkBool32> src_f2(&device12.samplerMirrorClampToEdge, (sizeof(VkPhysicalDeviceVulkan12Features) - offsetof(VkPhysicalDeviceVulkan12Features, samplerMirrorClampToEdge)) / sizeof(VkBool32));
+	SpanView<VkBool32> trg_f2(&features.device12.samplerMirrorClampToEdge, (sizeof(VkPhysicalDeviceVulkan12Features) - offsetof(VkPhysicalDeviceVulkan12Features, samplerMirrorClampToEdge)) / sizeof(VkBool32));
+
+	for (size_t i = 0; i < src_f2.size(); ++ i) {
+		if (trg_f2[i] && !src_f2[i]) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+Instance::Features::Features() {
+	device11.pNext = &device12;
+	device10.pNext = &device11;
+}
+
+Instance::Features::Features(const Features &f) {
+	memcpy(this, &f, sizeof(Features));
+	device11.pNext = &device12;
+	device10.pNext = &device11;
+}
+
+Instance::Features &Instance::Features::operator=(const Features &f) {
+	memcpy(this, &f, sizeof(Features));
+	device11.pNext = &device12;
+	device10.pNext = &device11;
+	return *this;
+}
+
+Instance::Properties::Properties() {
+	device11.pNext = &device12;
+	device10.pNext = &device11;
+}
+
+Instance::Properties::Properties(const Properties &p) {
+	memcpy(this, &p, sizeof(Properties));
+	device11.pNext = &device12;
+	device10.pNext = &device11;
+}
+
+Instance::Properties &Instance::Properties::operator=(const Properties &p) {
+	memcpy(this, &p, sizeof(Properties));
+	device11.pNext = &device12;
+	device10.pNext = &device11;
+	return *this;
+}
+
 Instance::PresentationOptions::PresentationOptions() { }
 
 Instance::PresentationOptions::PresentationOptions(VkPhysicalDevice dev, uint32_t gr, uint32_t pres, uint32_t tr,
@@ -335,9 +402,10 @@ Instance::PresentationOptions::PresentationOptions(const PresentationOptions &op
 	presentFamily = opts.presentFamily;
 	formats = opts.formats;
 	presentModes = opts.presentModes;
+	properties = opts.properties;
+	features = opts.features;
 
 	memcpy((void*) &capabilities, (const void*) &opts.capabilities, sizeof(VkSurfaceCapabilitiesKHR));
-	memcpy((void*) &deviceProperties, (const void*) &opts.deviceProperties, sizeof(VkPhysicalDeviceProperties));
 }
 
 Instance::PresentationOptions &Instance::PresentationOptions::operator=(const PresentationOptions &opts) {
@@ -346,9 +414,10 @@ Instance::PresentationOptions &Instance::PresentationOptions::operator=(const Pr
 	presentFamily = opts.presentFamily;
 	formats = opts.formats;
 	presentModes = opts.presentModes;
+	properties = opts.properties;
+	features = opts.features;
 
 	memcpy((void*) &capabilities, (const void*) &opts.capabilities, sizeof(VkSurfaceCapabilitiesKHR));
-	memcpy((void*) &deviceProperties, (const void*) &opts.deviceProperties, sizeof(VkPhysicalDeviceProperties));
 	return *this;
 }
 
@@ -358,9 +427,10 @@ Instance::PresentationOptions::PresentationOptions(PresentationOptions &&opts) {
 	presentFamily = opts.presentFamily;
 	formats = move(opts.formats);
 	presentModes = move(opts.presentModes);
+	properties = opts.properties;
+	features = opts.features;
 
 	memcpy((void*) &capabilities, (const void*) &opts.capabilities, sizeof(VkSurfaceCapabilitiesKHR));
-	memcpy((void*) &deviceProperties, (const void*) &opts.deviceProperties, sizeof(VkPhysicalDeviceProperties));
 }
 
 Instance::PresentationOptions &Instance::PresentationOptions::operator=(PresentationOptions &&opts) {
@@ -369,9 +439,10 @@ Instance::PresentationOptions &Instance::PresentationOptions::operator=(Presenta
 	presentFamily = opts.presentFamily;
 	formats = move(opts.formats);
 	presentModes = move(opts.presentModes);
+	properties = opts.properties;
+	features = opts.features;
 
 	memcpy((void*) &capabilities, (const void*) &opts.capabilities, sizeof(VkSurfaceCapabilitiesKHR));
-	memcpy((void*) &deviceProperties, (const void*) &opts.deviceProperties, sizeof(VkPhysicalDeviceProperties));
 	return *this;
 }
 
@@ -379,15 +450,16 @@ String Instance::PresentationOptions::description() const {
 	StringStream stream;
 	stream << "\nPresentationOptions for device: (";
 
-	switch (deviceProperties.deviceType) {
+	switch (properties.device10.properties.deviceType) {
 	case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: stream << "Integrated GPU"; break;
 	case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU: stream << "Discrete GPU"; break;
 	case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU: stream << "Virtual GPU"; break;
 	case VK_PHYSICAL_DEVICE_TYPE_CPU: stream << "CPU"; break;
 	default: stream << "Other"; break;
 	}
-	stream << ") " << deviceProperties.deviceName
-			<< " (API: " << deviceProperties.apiVersion << ", Driver: " << deviceProperties.driverVersion << ")\n";
+	stream << ") " << properties.device10.properties.deviceName
+			<< " (API: " << getVersionDescription(properties.device10.properties.apiVersion)
+			<< ", Driver: " << getVersionDescription(properties.device10.properties.driverVersion) << ")\n";
 	stream << "\t[Queue] Graphics: [" << graphicsFamily << "]; Presentation: [" << presentFamily << "]; Transfer: [" << transferFamily << "];\n";
 	stream << "\tImageCount: " << capabilities.minImageCount << "-" << capabilities.maxImageCount << "\n";
 	stream << "\tExtent: " << capabilities.currentExtent.width << "x" << capabilities.currentExtent.height
@@ -461,26 +533,69 @@ String Instance::PresentationOptions::description() const {
 	}
 	stream << "\n";
 
-	stream << "\t[Limits-DescriptorSet]"
-			<< " Samplers: " << deviceProperties.limits.maxDescriptorSetSamplers << ";"
-			<< " UniformBuffers: " << deviceProperties.limits.maxDescriptorSetUniformBuffers << " (dyn: " << deviceProperties.limits.maxDescriptorSetUniformBuffersDynamic << ");"
-			<< " StorageBuffers: " << deviceProperties.limits.maxDescriptorSetStorageBuffers << " (dyn: " << deviceProperties.limits.maxDescriptorSetStorageBuffersDynamic << ");"
-			<< " SampledImages: " << deviceProperties.limits.maxDescriptorSetSampledImages << ";"
-			<< " StorageImages: " << deviceProperties.limits.maxDescriptorSetStorageImages << ";"
-			<< " InputAttachments: " << deviceProperties.limits.maxDescriptorSetInputAttachments << ";"
+	stream << "\t[Limits: Samplers]"
+			" PerSet: " << properties.device10.properties.limits.maxDescriptorSetSamplers
+			<< " (updatable: " << properties.device12.maxDescriptorSetUpdateAfterBindSamplers << ");"
+			" PerStage: " << properties.device10.properties.limits.maxPerStageDescriptorSamplers
+			<< " (updatable: " << properties.device12.maxPerStageDescriptorUpdateAfterBindSamplers << ");"
+			"\n";
+
+	stream << "\t[Limits: UniformBuffers]"
+			" PerSet: " << properties.device10.properties.limits.maxDescriptorSetUniformBuffers
+			<< " dyn: " << properties.device10.properties.limits.maxDescriptorSetUniformBuffersDynamic
+			<< " (updatable: " << properties.device12.maxDescriptorSetUpdateAfterBindUniformBuffers
+			<< " dyn: " << properties.device12.maxDescriptorSetUpdateAfterBindUniformBuffersDynamic << ");"
+			" PerStage: " << properties.device10.properties.limits.maxPerStageDescriptorUniformBuffers
+			<< " (updatable: " << properties.device12.maxPerStageDescriptorUpdateAfterBindUniformBuffers << ");"
+			<< (properties.device12.shaderUniformBufferArrayNonUniformIndexingNative ? StringView(" NonUniformIndexingNative;") : StringView())
 			<< "\n";
 
-	stream << "\t[Limits-PerStage]"
-			<< " Samplers: " << deviceProperties.limits.maxPerStageDescriptorSamplers << ";"
-			<< " UniformBuffers: " << deviceProperties.limits.maxPerStageDescriptorUniformBuffers << ";"
-			<< " StorageBuffers: " << deviceProperties.limits.maxPerStageDescriptorStorageBuffers << ";"
-			<< " SampledImages: " << deviceProperties.limits.maxPerStageDescriptorSampledImages << ";"
-			<< " StorageImages: " << deviceProperties.limits.maxPerStageDescriptorStorageImages << ";"
-			<< " InputAttachments: " << deviceProperties.limits.maxPerStageDescriptorInputAttachments << ";"
-			<< " Resources: " << deviceProperties.limits.maxPerStageResources << ";"
+	stream << "\t[Limits: StorageBuffers]"
+			" PerSet: " << properties.device10.properties.limits.maxDescriptorSetStorageBuffers
+			<< " dyn: " << properties.device10.properties.limits.maxDescriptorSetStorageBuffersDynamic
+			<< " (updatable: " << properties.device12.maxDescriptorSetUpdateAfterBindStorageBuffers
+			<< " dyn: " << properties.device12.maxDescriptorSetUpdateAfterBindStorageBuffersDynamic << ");"
+			" PerStage: " << properties.device10.properties.limits.maxPerStageDescriptorStorageBuffers
+			<< " (updatable: " << properties.device12.maxPerStageDescriptorUpdateAfterBindStorageBuffers << ");"
+			<< (properties.device12.shaderStorageBufferArrayNonUniformIndexingNative ? StringView(" NonUniformIndexingNative;") : StringView())
 			<< "\n";
+
+	stream << "\t[Limits: SampledImages]"
+			" PerSet: " << properties.device10.properties.limits.maxDescriptorSetSampledImages
+			<< " (updatable: " << properties.device12.maxDescriptorSetUpdateAfterBindSampledImages << ");"
+			" PerStage: " << properties.device10.properties.limits.maxPerStageDescriptorSampledImages
+			<< " (updatable: " << properties.device12.maxPerStageDescriptorUpdateAfterBindSampledImages << ");"
+			<< (properties.device12.shaderSampledImageArrayNonUniformIndexingNative ? StringView(" NonUniformIndexingNative;") : StringView())
+			<< "\n";
+
+	stream << "\t[Limits: StorageImages]"
+			" PerSet: " << properties.device10.properties.limits.maxDescriptorSetStorageImages
+			<< " (updatable: " << properties.device12.maxDescriptorSetUpdateAfterBindStorageImages << ");"
+			" PerStage: " << properties.device10.properties.limits.maxPerStageDescriptorStorageImages
+			<< " (updatable: " << properties.device12.maxPerStageDescriptorUpdateAfterBindStorageImages << ");"
+			<< (properties.device12.shaderStorageImageArrayNonUniformIndexingNative ? StringView(" NonUniformIndexingNative;") : StringView())
+			<< "\n";
+
+	stream << "\t[Limits: InputAttachments]"
+			" PerSet: " << properties.device10.properties.limits.maxDescriptorSetInputAttachments
+			<< " (updatable: " << properties.device12.maxDescriptorSetUpdateAfterBindInputAttachments << ");"
+			" PerStage: " << properties.device10.properties.limits.maxPerStageDescriptorInputAttachments
+			<< " (updatable: " << properties.device12.maxPerStageDescriptorUpdateAfterBindInputAttachments << ");"
+			<< (properties.device12.shaderInputAttachmentArrayNonUniformIndexingNative ? StringView(" NonUniformIndexingNative;") : StringView())
+			<< "\n";
+
+	stream << "\t[Limits: Resources]"
+			" PerStage: " << properties.device10.properties.limits.maxPerStageDescriptorInputAttachments
+			<< " (updatable: " << properties.device12.maxPerStageUpdateAfterBindResources << ");"
+			"\n";
+	stream << "\t[Limits: Allocations] " << properties.device10.properties.limits.maxMemoryAllocationCount << " blocks, "
+			<< properties.device10.properties.limits.maxSamplerAllocationCount << " samplers;\n";
 
 	return stream.str();
+}
+
+String Instance::getVersionDescription(uint32_t version) {
+	return toString(version >> 22, ".", (version >> 12) & 0b1111111111, ".", version & 0b111111111111);
 }
 
 #if DEBUG

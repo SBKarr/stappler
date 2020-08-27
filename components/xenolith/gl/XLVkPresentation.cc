@@ -28,70 +28,12 @@
 
 namespace stappler::xenolith::vk {
 
-static constexpr auto defaultVert =
-R"(#version 450
-#extension GL_ARB_separate_shader_objects : enable
-
-struct MaterialData {
-	float tilingX;
-	float tilingY;
-	float reflectance;
-	float padding0;
-
-	uint albedoTexture;
-	uint normalTexture;
-	uint roughnessTexture;
-	uint padding1;
-};
-
-struct DrawData {
-	uint material;
-	uint transform;
-	uint offset;
-	uint padding;
-};
-
-layout(set = 0, binding = 2) buffer Materials { MaterialData data[]; } materials[];
-layout(set = 0, binding = 2) buffer Draws { DrawData data[]; } draws[];
-
-layout(location = 0) out vec3 fragColor;
-
-vec2 positions[3] = vec2[](
-	vec2(0.0, -0.5),
-	vec2(0.5, 0.5),
-	vec2(-0.5, 0.5)
-);
-
-vec3 colors[3] = vec3[](
-	vec3(1.0, 0.0, 0.0),
-	vec3(0.0, 1.0, 0.0),
-	vec3(0.0, 0.0, 1.0)
-);
-
-void main() {
-	gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
-	fragColor = colors[gl_VertexIndex];
-}
-)";
-
-
-static constexpr auto defaultFrag =
-R"(#version 450
-#extension GL_ARB_separate_shader_objects : enable
-
-layout(location = 0) in vec3 fragColor;
-
-layout(location = 0) out vec4 outColor;
-
-void main() {
-	outColor = vec4(fragColor, 1.0);
-}
-)";
-
 PresentationDevice::PresentationDevice() { }
 
 PresentationDevice::~PresentationDevice() {
 	_transfer = nullptr; // force destroy transfer device
+	_draw = nullptr;
+
 	if (_instance && _device) {
 		if (_swapChain) {
 			cleanupSwapChain();
@@ -102,21 +44,13 @@ PresentationDevice::~PresentationDevice() {
 			_instance->vkDestroySemaphore(_device, _imageAvailableSemaphores[i], nullptr);
 			_instance->vkDestroyFence(_device, _inFlightFences[i], nullptr);
 		}
-
-		_defaultCommandPool->invalidate(*this);
-
-		for (auto shader : _shaders) {
-			shader.second->invalidate(*this);
-		}
-		_shaders.clear();
 	}
 }
 
-bool PresentationDevice::init(Rc<Instance> inst, Rc<View> v, VkSurfaceKHR surface, Instance::PresentationOptions && opts,
-		VkPhysicalDeviceFeatures deviceFeatures) {
+bool PresentationDevice::init(Rc<Instance> inst, Rc<View> v, VkSurfaceKHR surface, Instance::PresentationOptions && opts, const Features &features) {
 	Set<uint32_t> uniqueQueueFamilies = { opts.graphicsFamily, opts.presentFamily };
 
-	if (!VirtualDevice::init(inst, _options.device, uniqueQueueFamilies, deviceFeatures)) {
+	if (!VirtualDevice::init(inst, opts.device, uniqueQueueFamilies, features)) {
 		return false;
 	}
 
@@ -131,12 +65,8 @@ bool PresentationDevice::init(Rc<Instance> inst, Rc<View> v, VkSurfaceKHR surfac
 	_instance->vkGetDeviceQueue(_device, _options.graphicsFamily, 0, &_graphicsQueue);
 	_instance->vkGetDeviceQueue(_device, _options.presentFamily, 0, &_presentQueue);
 
-	_defaultCommandPool = Rc<CommandPool>::create(*this, _options.graphicsFamily);
-	if (!_defaultCommandPool) {
-		return false;
-	}
-
 	_transfer = Rc<TransferDevice>::create(_instance, _allocator, _graphicsQueue, _options.graphicsFamily);
+	_draw = Rc<DrawDevice>::create(_instance, _allocator, _graphicsQueue, _options.graphicsFamily);
 
 	VkSemaphoreCreateInfo semaphoreInfo{};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -157,18 +87,13 @@ bool PresentationDevice::init(Rc<Instance> inst, Rc<View> v, VkSurfaceKHR surfac
 		}
 	}
 
-	auto vert = Rc<ProgramModule>::create(*this, ProgramSource::Glsl, ProgramStage::Vertex, defaultVert, "default.vert");
-	auto frag = Rc<ProgramModule>::create(*this, ProgramSource::Glsl, ProgramStage::Fragment, defaultFrag, "default.frag");
-
-	_shaders.emplace(vert->getName().str(), vert);
-	_shaders.emplace(frag->getName().str(), frag);
-
 	return true;
 }
 
-void PresentationDevice::drawFrame(thread::TaskQueue &q) {
+bool PresentationDevice::drawFrame(thread::TaskQueue &q) {
 	if (!_swapChain) {
-		return;
+		log::vtext("VK-Error", "No available swapchain");
+		return false;
 	}
 
 	_transfer->wait(VK_NULL_HANDLE);
@@ -179,10 +104,11 @@ void PresentationDevice::drawFrame(thread::TaskQueue &q) {
 	VkResult result = _instance->vkAcquireNextImageKHR(_device, _swapChain, UINT64_MAX, _imageAvailableSemaphores[_currentFrame], VK_NULL_HANDLE, &imageIndex);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 		cleanupSwapChain();
-		return;
+		log::vtext("VK-Error", "vkAcquireNextImageKHR: VK_ERROR_OUT_OF_DATE_KHR");
+		return false;
 	} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
 		log::vtext("VK-Error", "Fail to vkAcquireNextImageKHR");
-		return;
+		return false;
 	}
 
 	// Check if a previous frame is using this image (i.e. there is its fence to wait on)
@@ -195,25 +121,22 @@ void PresentationDevice::drawFrame(thread::TaskQueue &q) {
 
 	_instance->vkResetFences(_device, 1, &_inFlightFences[_currentFrame]);
 
-	VkSubmitInfo submitInfo{};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
 	VkSemaphore waitSemaphores[] = {_imageAvailableSemaphores[_currentFrame]};
-	VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = waitSemaphores;
-	submitInfo.pWaitDstStageMask = waitStages;
-	submitInfo.commandBufferCount = 1;
-
-	VkCommandBuffer commandBuffers[] = {_defaultCommandBuffers[imageIndex]};
-	submitInfo.pCommandBuffers = commandBuffers;
 	VkSemaphore signalSemaphores[] = {_renderFinishedSemaphores[_currentFrame]};
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = signalSemaphores;
 
-	if (_instance->vkQueueSubmit(_graphicsQueue, 1, &submitInfo, _inFlightFences[_currentFrame]) != VK_SUCCESS) {
-		stappler::log::vtext("VK-Error", "Fail to vkQueueSubmit");
-		return;
+	DrawDevice::FrameInfo info({
+		&_options,
+		_swapChainFramebuffers[imageIndex],
+		waitSemaphores,
+		signalSemaphores,
+		_inFlightFences[_currentFrame],
+		_currentFrame,
+		imageIndex
+	});
+
+	if (!_draw->drawFrame(q, info)) {
+		log::vtext("VK-Error", "drawFrame: VK_ERROR_OUT_OF_DATE_KHR");
+		return false;
 	}
 
 	VkPresentInfoKHR presentInfo{};
@@ -231,7 +154,8 @@ void PresentationDevice::drawFrame(thread::TaskQueue &q) {
 	result = _instance->vkQueuePresentKHR(_presentQueue, &presentInfo);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 		cleanupSwapChain();
-		return;
+		log::vtext("VK-Error", "vkQueuePresentKHR: VK_ERROR_OUT_OF_DATE_KHR");
+		return false;
 	} else if (result != VK_SUCCESS) {
 		log::vtext("VK-Error", "Fail to vkQueuePresentKHR");
 	}
@@ -239,14 +163,16 @@ void PresentationDevice::drawFrame(thread::TaskQueue &q) {
 	_currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 
 	_transfer->performTransfer(q);
+
+	return true;
 }
 
 Rc<Allocator> PresentationDevice::getAllocator() const {
 	return _allocator;
 }
 
-void PresentationDevice::begin(thread::TaskQueue &) {
-	createSwapChain(_surface);
+void PresentationDevice::begin(thread::TaskQueue &q) {
+	createSwapChain(q, _surface);
 	createDefaultPipeline();
 }
 
@@ -255,8 +181,8 @@ void PresentationDevice::end(thread::TaskQueue &) {
 	cleanupSwapChain();
 }
 
-bool PresentationDevice::recreateSwapChain() {
-	auto opts = _instance->getPresentationOptions(_surface, &_options.deviceProperties);
+bool PresentationDevice::recreateSwapChain(thread::TaskQueue &q) {
+	auto opts = _instance->getPresentationOptions(_surface, &_options.properties.device10.properties);
 
 	if (!opts.empty()) {
 		_view->selectPresentationOptions(opts.at(0));
@@ -274,13 +200,13 @@ bool PresentationDevice::recreateSwapChain() {
 		_instance->vkDeviceWaitIdle(_device);
 	}
 
-	createSwapChain(_surface);
+	createSwapChain(q, _surface);
 	createDefaultPipeline();
 
 	return true;
 }
 
-bool PresentationDevice::createSwapChain(VkSurfaceKHR surface) {
+bool PresentationDevice::createSwapChain(thread::TaskQueue &q, VkSurfaceKHR surface) {
 	VkSurfaceFormatKHR surfaceFormat;
 	VkPresentModeKHR presentMode;
 
@@ -350,22 +276,17 @@ bool PresentationDevice::createSwapChain(VkSurfaceKHR surface) {
 		}
 	}
 
-	_defaultRenderPass = Rc<RenderPass>::create(*this, surfaceFormat.format);
-	if (!_defaultRenderPass) {
-		return false;
-	}
+	_draw->spawnWorkers(q, _swapChainImageViews.size(), _options, surfaceFormat.format);
 
 	_swapChainFramebuffers.reserve(_swapChainImageViews.size());
 	for (size_t i = 0; i < _swapChainImageViews.size(); i++) {
-		if (auto f = Rc<Framebuffer>::create(*this, _defaultRenderPass->getRenderPass(), _swapChainImageViews[i]->getImageView(),
+		if (auto f = Rc<Framebuffer>::create(*this, _draw->getDefaultRenderPass()->getRenderPass(), _swapChainImageViews[i]->getImageView(),
 				extent.width, extent.height)) {
 			_swapChainFramebuffers.emplace_back(f);
 		} else {
 			return false;
 		}
 	}
-
-	_defaultCommandBuffers = _defaultCommandPool->allocBuffers(*this, _swapChainFramebuffers.size());
 
 	_imagesInFlight.clear();
 	_imagesInFlight.resize(_swapChainImages.size(), VK_NULL_HANDLE);
@@ -374,64 +295,17 @@ bool PresentationDevice::createSwapChain(VkSurfaceKHR surface) {
 }
 
 bool PresentationDevice::createDefaultPipeline() {
-	auto vert = _shaders.at("default.vert");
-	auto frag = _shaders.at("default.frag");
-
-	_defaultPipelineLayout = Rc<PipelineLayout>::create(*this);
-	_defaultPipeline = Rc<Pipeline>::create(*this,
-		Pipeline::Options({_defaultPipelineLayout->getPipelineLayout(), _defaultRenderPass->getRenderPass(), {
-			pair(vert->getStage(), vert->getModule()), pair(frag->getStage(), frag->getModule())
-		}}),
-		GraphicsParams({
-			Rect(0.0f, 0.0f, _options.capabilities.currentExtent.width, _options.capabilities.currentExtent.height),
-			GraphicsParams::URect{0, 0, _options.capabilities.currentExtent.width, _options.capabilities.currentExtent.height}
-		}));
-
-	for (size_t i = 0; i < _defaultCommandBuffers.size(); i++) {
-		VkCommandBufferBeginInfo beginInfo { };
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.flags = 0; // Optional
-		beginInfo.pInheritanceInfo = nullptr; // Optional
-
-		auto buf = _defaultCommandBuffers[i];
-		if (_instance->vkBeginCommandBuffer(buf, &beginInfo) != VK_SUCCESS) {
-			return false;
-		}
-
-		VkRenderPassBeginInfo renderPassInfo { };
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = _defaultRenderPass->getRenderPass();
-		renderPassInfo.framebuffer = _swapChainFramebuffers[i]->getFramebuffer();
-		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = _options.capabilities.currentExtent;
-		VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-		renderPassInfo.clearValueCount = 1;
-		renderPassInfo.pClearValues = &clearColor;
-		_instance->vkCmdBeginRenderPass(buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-		_instance->vkCmdBindPipeline(buf, VK_PIPELINE_BIND_POINT_GRAPHICS, _defaultPipeline->getPipeline());
-		_instance->vkCmdDraw(buf, 3, 1, 0, 0);
-		_instance->vkCmdEndRenderPass(buf);
-		if (_instance->vkEndCommandBuffer(buf) != VK_SUCCESS) {
-			return false;
-		}
-	}
-
 	return true;
 }
 
 void PresentationDevice::cleanupSwapChain() {
 	_instance->vkDeviceWaitIdle(_device);
 
+	_draw->invalidate();
+
 	for (const Rc<Framebuffer> &framebuffer : _swapChainFramebuffers) {
 		framebuffer->invalidate(*this);
 	}
-
-	_defaultCommandPool->freeDefaultBuffers(*this, _defaultCommandBuffers);
-
-	_defaultPipeline->invalidate(*this);
-	_defaultPipelineLayout->invalidate(*this);
-	_defaultRenderPass->invalidate(*this);
 
 	for (const Rc<ImageView> &imageView : _swapChainImageViews) {
 		imageView->invalidate(*this);
@@ -484,31 +358,44 @@ bool PresentationLoop::worker() {
 		memory::pool::clear(_pool);
 	}
 
-	if (!_swapChainFlag.test_and_set() || !_device->getSwapChain()) {
-		std::unique_lock<std::mutex> lock(_glSync);
-		_stalled = true;
-		_glSyncVar.wait(lock);
-		//_device->recreateSwapChain();
-		//_device->drawFrame(*_queue);
-		return true;
-	}
+	std::unique_lock<std::mutex> lock;
 
 	const auto iv = _interval.load();
 	const auto t = _timeSource();
 	const auto dt = t - _time;
-	if (dt > 0 && dt < iv) { // limit FPS
-		Application::sleep(iv - dt);
+	if (dt > 0 && dt < iv && !_stalled) { // limit FPS
+		lock = std::unique_lock<std::mutex>(_glSync);
+		_glSyncVar.wait_for(lock, std::chrono::duration<double, std::ratio<1>>(iv - dt));
 		_time = _timeSource();
 	} else {
 		_time = t;
 	}
 
-	_device->drawFrame(*_queue);
+	if (!lock) {
+		//std::cout << "Lock\n"; std::cout.flush();
+		lock = std::unique_lock<std::mutex>(_glSync);
+	}
 
-	_rate.store(_timeSource() - _time);
-
-	if (t > 0 && t < iv) {
-		Application::sleep(iv - t);
+	//std::cout << "Frame\n"; std::cout.flush();
+	bool drawSuccess = _device->drawFrame(*_queue);
+	if (_stalled || !_swapChainFlag.test_and_set() || !drawSuccess) {
+		std::cout << "Frame failed: " << _stalled << " | " << drawSuccess << "\n"; std::cout.flush();
+		_stalled = true;
+		if (_glSyncVar.wait_for(lock, std::chrono::duration<double, std::ratio<1>>(iv)) == std::cv_status::timeout) {
+			if (lock.owns_lock() && _view->try_lock()) {
+				std::cout << "Recreate by timeout\n"; std::cout.flush();
+				_device->recreateSwapChain(*_queue);
+				_stalled = false;
+				_device->drawFrame(*_queue);
+				_view->unlock();
+			}
+		}
+		_rate.store(_timeSource() - _time);
+		return true;
+	} else {
+		_rate.store(_timeSource() - _time);
+		// std::cout << "Rate: " << _rate.load() << " - " << iv << "\n"; std::cout.flush();
+		_view->resetFrame();
 	}
 
 	return true;
@@ -540,18 +427,23 @@ void PresentationLoop::unlock() {
 }
 
 void PresentationLoop::reset() {
+	_time = 0;
 	_glSyncVar.notify_all();
 }
 
-void PresentationLoop::forceFrame() {
+bool PresentationLoop::forceFrame() {
+	bool ret = true;
 	const auto iv = _interval.load();
 	const auto t = _timeSource();
 	const auto dt = t - _time;
 
 	if (dt < 0 || dt >= iv) {
 		_time = t;
-		_device->drawFrame(*_queue);
+		ret = _device->drawFrame(*_queue);
 	}
+
+	_stalled = false;
+	return ret;
 }
 
 }

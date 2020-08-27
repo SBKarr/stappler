@@ -49,8 +49,34 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL s_debugCallback(VkDebugUtilsMessageSeverit
 #endif
 
 static const Vector<const char*> s_deviceExtensions = {
-	VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+	VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME,
+	VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+	VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME
 };
+
+Instance::Features Instance::Features::getDefault() {
+	Features ret;
+	ret.device10.features.shaderSampledImageArrayDynamicIndexing = VK_TRUE;
+	ret.device10.features.shaderStorageBufferArrayDynamicIndexing = VK_TRUE;
+	ret.device10.features.shaderStorageBufferArrayDynamicIndexing = VK_TRUE;
+	ret.device12.drawIndirectCount = VK_TRUE;
+	ret.device12.descriptorIndexing = VK_TRUE;
+	ret.device12.shaderUniformBufferArrayNonUniformIndexing = VK_TRUE;
+	ret.device12.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+	ret.device12.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE;
+	ret.device12.shaderStorageImageArrayNonUniformIndexing = VK_TRUE;
+	// ret.device12.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
+	ret.device12.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+	ret.device12.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
+	ret.device12.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
+	ret.device12.descriptorBindingUpdateUnusedWhilePending = VK_TRUE;
+	ret.device12.descriptorBindingPartiallyBound = VK_TRUE;
+	ret.device12.descriptorBindingVariableDescriptorCount = VK_TRUE;
+	ret.device12.runtimeDescriptorArray = VK_TRUE;
+	ret.device12.bufferDeviceAddress = VK_TRUE;
+	return ret;
+}
 
 Instance::Instance(VkInstance inst, const PFN_vkGetInstanceProcAddr getInstanceProcAddr)
 : instance(inst)
@@ -61,6 +87,9 @@ Instance::Instance(VkInstance inst, const PFN_vkGetInstanceProcAddr getInstanceP
 , vkGetPhysicalDeviceQueueFamilyProperties((PFN_vkGetPhysicalDeviceQueueFamilyProperties)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceQueueFamilyProperties"))
 , vkGetPhysicalDeviceMemoryProperties((PFN_vkGetPhysicalDeviceMemoryProperties)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceMemoryProperties"))
 , vkGetPhysicalDeviceProperties((PFN_vkGetPhysicalDeviceProperties)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceProperties"))
+, vkGetPhysicalDeviceProperties2((PFN_vkGetPhysicalDeviceProperties2)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceProperties2"))
+, vkGetPhysicalDeviceFeatures((PFN_vkGetPhysicalDeviceFeatures)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceFeatures"))
+, vkGetPhysicalDeviceFeatures2((PFN_vkGetPhysicalDeviceFeatures2)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceFeatures2"))
 , vkDestroySurfaceKHR((PFN_vkDestroySurfaceKHR)vkGetInstanceProcAddr(inst, "vkDestroySurfaceKHR"))
 , vkGetPhysicalDeviceSurfaceSupportKHR((PFN_vkGetPhysicalDeviceSurfaceSupportKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSurfaceSupportKHR"))
 , vkEnumerateDeviceExtensionProperties((PFN_vkEnumerateDeviceExtensionProperties)vkGetInstanceProcAddr(inst, "vkEnumerateDeviceExtensionProperties"))
@@ -207,8 +236,10 @@ Instance::Instance(VkInstance inst, const PFN_vkGetInstanceProcAddr getInstanceP
 					return "Other";
 				};
 
-				log::format("Vk-Info", "Device: %s: %s (API: %u, Driver: %u)", getDeviceTypeString(deviceProperties.deviceType),
-						deviceProperties.deviceName, deviceProperties.apiVersion, deviceProperties.driverVersion);
+				log::format("Vk-Info", "Device: %s: %s (API: %s, Driver: %s)", getDeviceTypeString(deviceProperties.deviceType),
+						deviceProperties.deviceName,
+						getVersionDescription(deviceProperties.apiVersion).data(),
+						getVersionDescription(deviceProperties.driverVersion).data());
 			}
 
 	        uint32_t queueFamilyCount = 0;
@@ -263,10 +294,10 @@ Instance::~Instance() {
 Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurfaceKHR surface, const VkPhysicalDeviceProperties *ptr) const {
 	Vector<Instance::PresentationOptions> ret;
 
-	auto isMatch = [&] (const VkPhysicalDeviceProperties &val, const VkPhysicalDeviceProperties *ptr) {
-		if (val.apiVersion == ptr->apiVersion && val.driverVersion == ptr->driverVersion
-				&& val.vendorID == ptr->vendorID && val.deviceType == ptr->deviceType
-				&& strcmp(val.deviceName, ptr->deviceName) == 0) {
+	auto isMatch = [&] (const Properties &val, const VkPhysicalDeviceProperties *ptr) {
+		if (val.device10.properties.apiVersion == ptr->apiVersion && val.device10.properties.driverVersion == ptr->driverVersion
+				&& val.device10.properties.vendorID == ptr->vendorID && val.device10.properties.deviceType == ptr->deviceType
+				&& strcmp(val.device10.properties.deviceName, ptr->deviceName) == 0) {
 			return true;
 		}
 		return false;
@@ -364,21 +395,24 @@ Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurface
 
 			if (!formats.empty() && !presentModes.empty()) {
 				if (ptr) {
-					VkPhysicalDeviceProperties deviceProperties;
-					vkGetPhysicalDeviceProperties(device, &deviceProperties);
+					Properties deviceProperties;
+					vkGetPhysicalDeviceProperties2(device, &deviceProperties.device10);
 
 					if (isMatch(deviceProperties, ptr)) {
 						ret.emplace_back(Instance::PresentationOptions(device, graphicsFamily, presentFamily, transferFamily,
 								capabilities, move(formats), move(presentModes)));
-						vkGetPhysicalDeviceProperties(device, &ret.back().deviceProperties);
+						vkGetPhysicalDeviceProperties2(device, &ret.back().properties.device10);
 					}
 				} else {
 					ret.emplace_back(Instance::PresentationOptions(device, graphicsFamily, presentFamily, transferFamily,
 							capabilities, move(formats), move(presentModes)));
 
-					vkGetPhysicalDeviceProperties(device, &ret.back().deviceProperties);
+					vkGetPhysicalDeviceProperties2(device, &ret.back().properties.device10);
 				}
 
+				if (vkGetPhysicalDeviceFeatures2) {
+					vkGetPhysicalDeviceFeatures2(device, &ret.back().features.device10);
+				}
 			}
         }
     }

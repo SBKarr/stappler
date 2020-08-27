@@ -73,7 +73,7 @@ Application::Application() {
 Application::~Application() { }
 
 bool Application::applicationDidFinishLaunching() {
-	_queue = Rc<thread::TaskQueue>::alloc();
+	_queue = Rc<thread::TaskQueue>::alloc(2);
 	if (!_queue->spawnWorkers()) {
 		log::text("Application", "Fail to spawn worker threads");
 		return false;

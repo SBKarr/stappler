@@ -344,12 +344,12 @@ void Allocator::free(MemNode *node) {
 	}
 #endif
 
+	last = max_index;
+	current = current_free_index;
+
 	if (lock.owns_lock()) {
 		lock.unlock();
 	}
-
-	last = max_index;
-	current = current_free_index;
 
 	if (!mmapPtr) {
 		while (freelist != NULL) {
