@@ -75,6 +75,8 @@ protected:
 /* WebSocket shell interface GUI */
 class ServerGui : public DataHandler {
 public:
+	static void defineBasics(pug::Context &exec, Request &req, User *u);
+
 	ServerGui() { _allow = AllowMethod::Get | AllowMethod::Post; _maxRequestSize = 512; }
 
 	virtual bool isRequestPermitted(Request &) override { return true; }
@@ -99,24 +101,24 @@ class ErrorsGui : public RequestHandler {
 public:
 	virtual bool isRequestPermitted(Request &) override { return true; }
 	virtual int onTranslateName(Request &) override;
-
-	//virtual int onHandler(Request &) override;
 };
 
 class HandlersGui : public RequestHandler {
 public:
 	virtual bool isRequestPermitted(Request &) override { return true; }
 	virtual int onTranslateName(Request &) override;
+};
 
-	//virtual int onHandler(Request &) override;
+class ReportsGui : public RequestHandler {
+public:
+	virtual bool isRequestPermitted(Request &) override { return true; }
+	virtual int onTranslateName(Request &) override;
 };
 
 class DocsGui : public RequestHandler {
 public:
 	virtual bool isRequestPermitted(Request &) override { return true; }
 	virtual int onTranslateName(Request &) override;
-
-	//virtual int onHandler(Request &) override;
 };
 
 class VirtualFilesystem : public RequestHandler {

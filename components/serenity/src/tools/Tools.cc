@@ -31,6 +31,7 @@ void registerTools(const String &prefix, Server &serv) {
 	serv.addHandler(toString(prefix, config::getServerToolsErrors(), "/"), SA_HANDLER(tools::ErrorsGui));
 	serv.addHandler(toString(prefix, "/docs/"), SA_HANDLER(tools::DocsGui));
 	serv.addHandler(toString(prefix, "/handlers"), SA_HANDLER(tools::HandlersGui));
+	serv.addHandler(toString(prefix, "/reports/"), SA_HANDLER(tools::ReportsGui));
 	serv.addWebsocket(prefix + config::getServerToolsShell(), new tools::ShellSocket());
 
 	serv.addHandler(prefix + config::getServerToolsAuth(), SA_HANDLER(tools::AuthHandler));

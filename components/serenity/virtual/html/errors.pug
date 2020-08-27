@@ -35,5 +35,17 @@ html
 								p.code #[= key]: #[= value]
 						.data
 							pre: code.code= serenity.prettify(val.data)
+				
+				p
+					if cursor.prev
+						a.nav(href=window.location.pathname+"?c="+cursor.prev+"#cursor") Prev
+						|
+						|
+					span= cursor.start + " - " + cursor.end + " из " + cursor.total
+					if cursor.next
+						|
+						|
+						a.nav(href=window.location.pathname+"?c="+cursor.next+"#cursor") Next
+
 				else
 					p No errors found

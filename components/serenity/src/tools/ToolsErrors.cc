@@ -71,15 +71,8 @@ int ErrorsGui::onTranslateName(Request &req) {
 		}
 
 		req.runPug("virtual://html/errors.pug", [&] (pug::Context &exec, const pug::Template &tpl) -> bool {
-			exec.set("version", data::Value(getVersionString()));
-			exec.set("user", true, &u->getData());
-			exec.set("hasDb", data::Value(true));
-			exec.set("setup", data::Value(true));
-			exec.set("auth", data::Value({
-				pair("id", data::Value(u->getObjectId())),
-				pair("name", data::Value(u->getString("name"))),
-				pair("cancel", data::Value(Tools_getCancelUrl(req)))
-			}));
+			ServerGui::defineBasics(exec, req, u);
+
 			if (errorsData.size() > 0) {
 				exec.set("errors", true, &errorsData);
 			}
@@ -141,11 +134,15 @@ int HandlersGui::onTranslateName(Request &req) {
 				v.setBool(true, "forSubPaths");
 			}
 			if (it.second.map) {
+				auto base = StringView(it.first);
+				if (base.ends_with("/")) {
+					base = StringView(base, base.size() - 1);
+				}
 				auto &m = v.emplace("map");
 				for (auto &iit : it.second.map->getHandlers()) {
 					auto &mVal = m.emplace();
 					mVal.setString(iit.getName(), "name");
-					mVal.setString(iit.getPattern(), "pattern");
+					mVal.setString(toString(base, iit.getPattern()), "pattern");
 
 					switch (iit.getMethod()) {
 					case Request::Method::Get: mVal.setString("GET", "method"); break;
@@ -185,40 +182,91 @@ int HandlersGui::onTranslateName(Request &req) {
 		}
 
 		req.runPug("virtual://html/handlers.pug", [&] (pug::Context &exec, const pug::Template &tpl) -> bool {
-			exec.set("version", data::Value(getVersionString()));
-			exec.set("user", true, &u->getData());
-			exec.set("hasDb", data::Value(true));
-			exec.set("setup", data::Value(true));
-			exec.set("auth", data::Value({
-				pair("id", data::Value(u->getObjectId())),
-				pair("name", data::Value(u->getString("name"))),
-				pair("cancel", data::Value(Tools_getCancelUrl(req)))
-			}));
-
-			if (auto iface = dynamic_cast<db::sql::SqlHandle *>(req.storage().interface())) {
-				iface->makeQuery([&] (db::sql::SqlQuery &query) {
-					query << "SELECT current_database();";
-					iface->selectQuery(query, [&] (db::sql::Result &qResult) {
-						if (!qResult.empty()) {
-							exec.set("dbName", data::Value(qResult.front().toString(0)));
-						}
-					});
-				});
-			}
-
-			data::Value components;
-			for (auto &it : req.server().getComponents()) {
-				components.addValue(data::Value({
-					pair("name", data::Value(it.second->getName())),
-					pair("version", data::Value(it.second->getVersion())),
-				}));
-			}
-			exec.set("components", move(components));
-			exec.set("root", data::Value(req.server().getDocumentRoot()));
-
+			ServerGui::defineBasics(exec, req, u);
 			exec.set("handlers", std::move(ret));
 			return true;
 		});
+		return DONE;
+	} else {
+		req.runPug("virtual://html/errors_unauthorized.pug", [&] (pug::Context &exec, const pug::Template &) -> bool {
+			exec.set("version", data::Value(getVersionString()));
+			return true;
+		});
+		return HTTP_UNAUTHORIZED;
+	}
+}
+
+int ReportsGui::onTranslateName(Request &req) {
+	req.getResponseHeaders().emplace("WWW-Authenticate", req.server().getServerHostname());
+
+	auto u = req.getAuthorizedUser();
+	if (u && u->isAdmin()) {
+		auto reportsAddress = filesystem::writablePath(".serenity");
+
+		auto readTime = [&] (StringView name) {
+			if (name.starts_with("crash.")) {
+				name.skipUntil<StringView::CharGroup<CharGroupId::Numbers>>();
+				return Time::microseconds(name.readInteger(10).get());
+			} else {
+				name.skipUntil<StringView::CharGroup<CharGroupId::Numbers>>();
+				return Time::milliseconds(name.readInteger(10).get());
+			}
+		};
+
+		data::Value paths;
+		data::Value file;
+		if (_subPath.empty() || _subPath == "/") {
+			filesystem::ftw(reportsAddress, [&] (StringView path, bool isFile) {
+				if (isFile) {
+					auto name = filepath::lastComponent(path);
+					if (name.starts_with("crash.") || name.starts_with("update.")) {
+						auto &info = paths.emplace();
+						info.setString(name, "name");
+						if (auto t = readTime(name)) {
+							info.setInteger(t.toMicros(), "time");
+							info.setString(t.toHttp(), "date");
+						}
+					}
+				}
+			}, 1);
+
+			if (paths) {
+				std::sort(paths.asArray().begin(), paths.asArray().end(), [&] (const data::Value &l, const data::Value &r) {
+					return l.getInteger("time") > r.getInteger("time");
+				});
+			}
+		} else if (_subPathVec.size() == 1) {
+			auto name = _subPathVec.front();
+
+			auto reportsAddress = filesystem::writablePath(filepath::merge(".serenity", name));
+			if (filesystem::exists(reportsAddress) && !filesystem::isdir(reportsAddress)) {
+				if (req.getParsedQueryArgs().getBool("remove")) {
+					filesystem::remove(reportsAddress);
+					return req.redirectTo(StringView(_originPath, _originPath.size() - _subPath.size()).str());
+				}
+				auto data = filesystem::readTextFile(reportsAddress);
+				if (!data.empty()) {
+					file.setString(move(data), "data");
+					auto name = filepath::lastComponent(reportsAddress);
+					file.setString(name, "name");
+					if (auto t = readTime(name)) {
+						file.setInteger(t.toMicros(), "time");
+						file.setString(t.toHttp(), "date");
+					}
+				}
+			}
+		}
+
+		req.runPug("virtual://html/reports.pug", [&] (pug::Context &exec, const pug::Template &tpl) -> bool {
+			ServerGui::defineBasics(exec, req, u);
+			if (paths) {
+				exec.set("files", move(paths));
+			} else if (file) {
+				exec.set("file", move(file));
+			}
+			return true;
+		});
+
 		return DONE;
 	} else {
 		req.runPug("virtual://html/errors_unauthorized.pug", [&] (pug::Context &exec, const pug::Template &) -> bool {

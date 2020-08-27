@@ -15,6 +15,9 @@ mixin header(name)
 				|
 				|
 				a(href="/__server/errors") Errors
+				|
+				|
+				a(href="/__server/reports") Reports
 			else if hasDb && !setup
 				span Waiting for setup
 			else if !hasDb

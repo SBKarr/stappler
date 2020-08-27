@@ -28,6 +28,41 @@ THE SOFTWARE.
 
 NS_SA_EXT_BEGIN(tools)
 
+void ServerGui::defineBasics(pug::Context &exec, Request &req, User *u) {
+	exec.set("version", data::Value(getVersionString()));
+	exec.set("hasDb", data::Value(true));
+	exec.set("setup", data::Value(true));
+	if (u) {
+		exec.set("user", true, &u->getData());
+		exec.set("auth", data::Value({
+			pair("id", data::Value(u->getObjectId())),
+			pair("name", data::Value(u->getString("name"))),
+			pair("cancel", data::Value(Tools_getCancelUrl(req)))
+		}));
+
+		if (auto iface = dynamic_cast<db::sql::SqlHandle *>(req.storage().interface())) {
+			iface->makeQuery([&] (db::sql::SqlQuery &query) {
+				query << "SELECT current_database();";
+				iface->selectQuery(query, [&] (db::sql::Result &qResult) {
+					if (!qResult.empty()) {
+						exec.set("dbName", data::Value(qResult.front().toString(0)));
+					}
+				});
+			});
+		}
+
+		data::Value components;
+		for (auto &it : req.server().getComponents()) {
+			components.addValue(data::Value({
+				pair("name", data::Value(it.second->getName())),
+				pair("version", data::Value(it.second->getVersion())),
+			}));
+		}
+		exec.set("components", move(components));
+		exec.set("root", data::Value(req.server().getDocumentRoot()));
+	}
+}
+
 int ServerGui::onTranslateName(Request &rctx) {
 	if (rctx.getParsedQueryArgs().getBool("auth")) {
 		if (rctx.getAuthorizedUser()) {
@@ -47,37 +82,8 @@ int ServerGui::onTranslateName(Request &rctx) {
 		}
 		rctx.runPug("virtual://html/server.pug", [&] (pug::Context &exec, const pug::Template &) -> bool {
 			exec.set("count", data::Value(count));
-			exec.set("setup", data::Value(count != 0));
-			exec.set("hasDb", data::Value(hasDb));
-			exec.set("version", data::Value(getVersionString()));
 			if (auto u = rctx.getAuthorizedUser()) {
-				exec.set("auth", data::Value({
-					pair("id", data::Value(u->getObjectId())),
-					pair("name", data::Value(u->getString("name"))),
-					pair("cancel", data::Value(Tools_getCancelUrl(rctx)))
-				}));
-
-				if (auto iface = dynamic_cast<db::sql::SqlHandle *>(rctx.storage().interface())) {
-					iface->makeQuery([&] (db::sql::SqlQuery &query) {
-						query << "SELECT current_database();";
-						iface->selectQuery(query, [&] (db::sql::Result &qResult) {
-							if (!qResult.empty()) {
-								exec.set("dbName", data::Value(qResult.front().toString(0)));
-							}
-						});
-					});
-				}
-
-				data::Value components;
-				for (auto &it : rctx.server().getComponents()) {
-					components.addValue(data::Value({
-						pair("name", data::Value(it.second->getName())),
-						pair("version", data::Value(it.second->getVersion())),
-					}));
-				}
-				exec.set("components", move(components));
-				exec.set("root", data::Value(rctx.server().getDocumentRoot()));
-
+				defineBasics(exec, rctx, u);
 
 				auto root = Root::getInstance();
 				auto stat = root->getStat();
@@ -93,6 +99,10 @@ int ServerGui::onTranslateName(Request &rctx) {
 
 				exec.set("resStat", data::Value(ret.str()));
 				exec.set("memStat", data::Value(root->getMemoryMap(false)));
+			} else {
+				exec.set("setup", data::Value(count != 0));
+				exec.set("hasDb", data::Value(hasDb));
+				exec.set("version", data::Value(getVersionString()));
 			}
 
 			return true;
