@@ -272,7 +272,7 @@ float Metric::computeValueStrong(float base, const MediaParameters &media, float
 	case Units::Px: return value; break;
 	case Units::Em: return (!isnan(fontSize)) ? fontSize * value : media.getDefaultFontSize() * value; break;
 	case Units::Rem: return media.getDefaultFontSize() * value; break;
-	case Units::Percent: return (!isnanf(base)?(base * value):nan()); break;
+	case Units::Percent: return (!std::isnan(base)?(base * value):nan()); break;
 	case Units::Cover: return base; break;
 	case Units::Contain: return base; break;
 	case Units::Vw: return value * media.surfaceSize.width * 0.01; break;

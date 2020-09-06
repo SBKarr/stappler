@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 UNAME=`uname`
 if [ "$UNAME" == "Darwin" ];then
 echo $1;

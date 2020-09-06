@@ -32,6 +32,8 @@ THE SOFTWARE.
 
 NS_DB_BEGIN
 
+using nullptr_t = std::nullptr_t;
+
 namespace mem {
 
 using namespace stappler::mem_pool;
@@ -237,7 +239,6 @@ struct InputConfig {
 };
 
 SP_DEFINE_ENUM_AS_MASK(InputConfig::Require);
-
 
 NS_DB_END
 

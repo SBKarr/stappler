@@ -156,8 +156,10 @@ public:
 	template <class Key> void setDouble(double value, Key && key) { _modified = true; _data.template setDouble<Key>(value, std::forward<Key>(key)); }
 	template <class Key> void setString(const String &v, Key &&key) { _modified = true; _data.template setString<Key>(v, std::forward<Key>(key)); }
 	template <class Key> void setString(String &&v, Key &&key) { _modified = true; _data.template setString<Key>(std::move(v), std::forward<Key>(key)); }
+	template <class Key> void setString(StringView v, Key &&key) { _modified = true; _data.template setString<Key>(v, std::forward<Key>(key)); }
 	template <class Key> void setBytes(const Bytes &v, Key &&key) { _modified = true; _data.template setBytes<Key>(v, std::forward<Key>(key)); }
 	template <class Key> void setBytes(Bytes &&v, Key &&key) { _modified = true; _data.template setBytes<Key>(std::move(v), std::forward<Key>(key)); }
+	template <class Key> void setBytes(BytesView v, Key &&key) { _modified = true; _data.template setBytes<Key>(std::move(v), std::forward<Key>(key)); }
 	template <class Key> void setArray(const Array &v, Key &&key) { _modified = true; _data.template setArray<Key>(v, std::forward<Key>(key)); }
 	template <class Key> void setArray(Array &&v, Key &&key) { _modified = true; _data.template setArray<Key>(std::move(v), std::forward<Key>(key)); }
 	template <class Key> void setDict(const Dictionary &v, Key &&key) { _modified = true; _data.template setDict<Key>(v, std::forward<Key>(key)); }

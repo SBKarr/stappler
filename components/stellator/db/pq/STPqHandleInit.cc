@@ -914,6 +914,13 @@ TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme) {
 		}
 	}
 
+	for (auto &it : scheme->getUnique()) {
+		auto &c = constraints.emplace(it.name.str(), ConstraintRec(ConstraintRec::Unique)).first->second;
+		for (auto &f : it.fields) {
+			c.fields.emplace_back(f->getName().str());
+		}
+	}
+
 	if (scheme->isDetouched()) {
 		cols.emplace("__oid", ColRec(ColRec::Type::Serial, true));
 		objects = false;

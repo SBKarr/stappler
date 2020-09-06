@@ -177,6 +177,24 @@ void Scheme::define(AccessRole &&role) {
 	}
 }
 
+void Scheme::define(UniqueConstraintDef &&def) {
+	mem::Vector<const Field *> fields; fields.reserve(def.fields.size());
+	for (auto &it : def.fields) {
+		if (auto f = getField(it)) {
+			auto iit = std::lower_bound(fields.begin(), fields.end(), f);
+			if (iit == fields.end()) {
+				fields.emplace_back(f);
+			} else if (*iit != f) {
+				fields.emplace(iit, f);
+			}
+		} else {
+			messages::error("Scheme", "Field for unique constraint not found", mem::Value(it));
+		}
+	}
+
+	unique.emplace_back(mem::StringView(mem::toString(name, "_", stappler::string::tolower(def.name), "_unique")).pdup(unique.get_allocator()), std::move(fields));
+}
+
 void Scheme::addFlags(Options opts) {
 	flags |= opts;
 }
@@ -224,6 +242,10 @@ const Field *Scheme::getField(const mem::StringView &key) const {
 		return &oidField;
 	}
 	return nullptr;
+}
+
+const mem::Vector<Scheme::UniqueConstraint> &Scheme::getUnique() const {
+	return unique;
 }
 
 const Field *Scheme::getForeignLink(const FieldObject *f) const {

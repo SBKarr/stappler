@@ -199,6 +199,11 @@ public:
 
 		virtual void onFilterComplete(InputFilter *f);
 
+		const Request &getRequest() const { return _request; }
+		const mem::Value &getParams() const { return _params; }
+		const mem::Value &getQueryFields() const { return _queryFields; }
+		const mem::Value &getInputFields() const { return _inputFields; }
+
 	protected:
 		virtual bool allowJsonP() { return true; }
 
@@ -238,6 +243,7 @@ public:
 
 		mem::StringView getName() const;
 		mem::StringView getPattern() const;
+		const data::Value &getOptions() const;
 
 		const db::Scheme &getQueryScheme() const;
 		const db::Scheme &getInputScheme() const;
@@ -279,6 +285,9 @@ public:
 
 	HandlerInfo &addHandler(const mem::StringView &name, Request::Method, const mem::StringView &pattern,
 			mem::Function<Handler *()> &&, mem::Value && = mem::Value());
+
+	HandlerInfo &addHandler(const mem::StringView &name, Request::Method, const mem::StringView &pattern,
+			mem::Function<bool(Handler &)> &&, mem::Function<data::Value(Handler &)> &&, mem::Value && = mem::Value());
 
 	const mem::Vector<HandlerInfo> &getHandlers() const;
 

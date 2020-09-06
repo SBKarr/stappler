@@ -199,15 +199,29 @@ int HandlerMap::Handler::onTranslateName(Request &rctx) {
 		if (!processQueryFields(mem::Value(rctx.getParsedQueryArgs()))) {
 			return HTTP_BAD_REQUEST;
 		}
+		bool hasLocation = false;
 		auto ret = onRequest();
 		if (ret == DECLINED) {
 			if (auto data = onData()) {
-				data.setBool(true, "OK");
-				return writeResult(data);
+				auto loc = _request.getResponseHeaders().at("Location");
+				if (!loc.empty()) {
+					hasLocation = true;
+				} else {
+					data.setBool(true, "OK");
+					return writeResult(data);
+				}
 			} else {
-				mem::Value ret({ stappler::pair("OK", mem::Value(false)) });
-				return writeResult(ret);
+				auto loc = _request.getResponseHeaders().at("Location");
+				if (!loc.empty()) {
+					hasLocation = true;
+				} else {
+					mem::Value ret({ stappler::pair("OK", mem::Value(false)) });
+					return writeResult(ret);
+				}
 			}
+		}
+		if (ret <= 0 && hasLocation) {
+			return HTTP_SEE_OTHER;
 		}
 		return ret;
 		break;
@@ -256,17 +270,33 @@ void HandlerMap::Handler::onFilterComplete(InputFilter *filter) {
 		_request.setStatus(HTTP_BAD_REQUEST);
 		return;
 	}
+
+	bool hasLocation = false;
 	auto ret = onRequest();
 	if (ret == DECLINED) {
 		if (auto data = onData()) {
-			data.setBool(true, "OK");
-			writeResult(data);
+			auto loc = _request.getResponseHeaders().at("Location");
+			if (!loc.empty()) {
+				hasLocation = true;
+			} else {
+				data.setBool(true, "OK");
+				writeResult(data);
+			}
 		} else {
-			mem::Value ret({ stappler::pair("OK", mem::Value(false)) });
-			writeResult(ret);
+			auto loc = _request.getResponseHeaders().at("Location");
+			if (!loc.empty()) {
+				hasLocation = true;
+			} else {
+				mem::Value ret({ stappler::pair("OK", mem::Value(false)) });
+				writeResult(ret);
+			}
 		}
 	}
-	_request.setStatus(ret);
+	if (ret > 0) {
+		_request.setStatus(ret);
+	} else if (hasLocation) {
+		_request.setStatus(HTTP_SEE_OTHER);
+	}
 }
 
 bool HandlerMap::Handler::processQueryFields(mem::Value &&args) {
@@ -466,6 +496,9 @@ mem::StringView HandlerMap::HandlerInfo::getName() const {
 mem::StringView HandlerMap::HandlerInfo::getPattern() const {
 	return pattern;
 }
+const data::Value &HandlerMap::HandlerInfo::getOptions() const {
+	return options;
+}
 
 const db::Scheme &HandlerMap::HandlerInfo::getQueryScheme() const {
 	return queryFields;
@@ -511,6 +544,44 @@ HandlerMap::HandlerInfo &HandlerMap::addHandler(const mem::StringView &name, Req
 		mem::Function<Handler *()> &&cb, mem::Value &&opts) {
 	_handlers.emplace_back(name, m, pattern, std::move(cb), std::move(opts));
 	return _handlers.back();
+}
+
+
+
+class HandlerCallback : public HandlerMap::Handler {
+public: // simplified interface
+	HandlerCallback(const mem::Function<bool(Handler &)> &accessControl, const mem::Function<data::Value(Handler &)> &process)
+	: _accessControl(accessControl), _process(process) { }
+
+	virtual ~HandlerCallback() { }
+
+	virtual bool isPermitted() override { return _process && _accessControl && _accessControl(*this); }
+	virtual mem::Value onData() override {
+		auto ret = _process(*this);
+		if (ret) {
+			if (_info->getOptions().isString("location")) {
+				auto locVar = _info->getOptions().getString("location");
+				auto loc = StringView(_request.getParsedQueryArgs().getString(locVar));
+				if (!loc.empty()) {
+					if (loc.starts_with("/") || loc.starts_with(StringView(_request.getFullHostname()))) {
+						_request.redirectTo(loc.str());
+					}
+				}
+			}
+		}
+		return ret;
+	}
+
+public:
+	mem::Function<bool(Handler &)> _accessControl;
+	mem::Function<data::Value(Handler &)> _process;
+};
+
+HandlerMap::HandlerInfo &HandlerMap::addHandler(const mem::StringView &name, Request::Method m, const mem::StringView &pattern,
+		mem::Function<bool(Handler &)> &&accessControl, mem::Function<data::Value(Handler &)> &&process, mem::Value &&opts) {
+	return addHandler(name, m, pattern, [accessControl = move(accessControl), process = move(process)] () -> Handler * {
+		return new HandlerCallback(accessControl, process);
+	}, move(opts));
 }
 
 NS_SA_ST_END

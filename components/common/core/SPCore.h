@@ -132,13 +132,6 @@ THE SOFTWARE.
 #include <Windows.h>
 #endif
 
-#if (__clang__)
-
-using std::nullptr_t;
-#define isnanf(X) (isnan(X))
-
-#endif
-
 #if !defined(__clang__) && defined(__GNUC__) && __GNUC__ < 8
 #define SP_TEMPLATE_MARK template <>
 #else
@@ -182,12 +175,6 @@ using _spChar = char16_t;
 #else
 #define _spMain(argc, argv) main(int argc, const char *argv[])
 using _spChar = char;
-#endif
-
-#if MSYS
-namespace stappler {
-using nullptr_t = std::nullptr_t;
-}
 #endif
 
 /*
@@ -294,6 +281,8 @@ using std::forward;
 using std::move;
 using std::min;
 using std::max;
+
+using nullptr_t = std::nullptr_t;
 
 /*
  *   Misc templates

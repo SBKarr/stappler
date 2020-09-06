@@ -21,7 +21,7 @@
 OSTYPE_PREBUILT_PATH := libs/linux/x86_64/lib
 OSTYPE_INCLUDE :=  libs/linux/x86_64/include
 OSTYPE_CFLAGS := -DLINUX -Wall -fPIC
-OSTYPE_CPPFLAGS :=  -Wno-overloaded-virtual -frtti
+OSTYPE_CPPFLAGS :=  -Wno-overloaded-virtual -Wno-class-memaccess -frtti
 
 OSTYPE_COMMON_LIBS := -lpthread \
 	-l:libcurl.a -l:libidn2.a \

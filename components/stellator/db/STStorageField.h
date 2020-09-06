@@ -231,6 +231,12 @@ struct AutoFieldDef {
 	mem::Vector<mem::String> requires;
 };
 
+// definition for scheme's unique constraints
+struct UniqueConstraintDef {
+	mem::StringView name;
+	mem::Vector<mem::StringView> fields;
+};
+
 struct FieldCustom;
 
 class Field : public mem::AllocBase {

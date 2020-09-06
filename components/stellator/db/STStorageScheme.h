@@ -54,6 +54,13 @@ public:
 		ParentScheme(const Scheme *s, const Field *v) : scheme(s), pointerField(v) { }
 	};
 
+	struct UniqueConstraint {
+		mem::StringView name;
+		mem::Vector<const Field *> fields;
+
+		UniqueConstraint(mem::StringView n, mem::Vector<const Field *> &&f) : name(n), fields(std::move(f)) { }
+	};
+
 	enum class TransformAction {
 		Create,
 		Update,
@@ -89,6 +96,7 @@ public:
 	void define(std::initializer_list<Field> il);
 	void define(mem::Vector<Field> &&il);
 	void define(AccessRole &&role);
+	void define(UniqueConstraintDef &&);
 
 	template <typename T, typename ... Args>
 	void define(T &&il, Args && ... args);
@@ -110,6 +118,7 @@ public:
 	const mem::Set<const Field *> & getForceInclude() const;
 	const mem::Map<mem::String, Field> & getFields() const;
 	const Field *getField(const mem::StringView &str) const;
+	const mem::Vector<UniqueConstraint> &getUnique() const;
 
 	const Field *getForeignLink(const FieldObject *f) const;
 	const Field *getForeignLink(const Field &f) const;
@@ -255,6 +264,7 @@ protected:
 
 	AccessTable roles;
 	Field oidField;
+	mem::Vector<UniqueConstraint> unique;
 };
 
 SP_DEFINE_ENUM_AS_MASK(Scheme::Options)

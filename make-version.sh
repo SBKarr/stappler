@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 export GIT_DIR=$1/.git
 export GIT_WORK_TREE=$1
