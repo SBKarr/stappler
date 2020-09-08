@@ -44,6 +44,11 @@ static void* mod_serenity_merge_config(apr_pool_t* pool, void* BASE, void* ADD) 
 		return Server::merge(BASE, ADD);
 	}, pool, memory::pool::Config);
 }
+static int mod_serenity_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s) {
+	return apr::pool::perform([&] () -> int {
+		return Root::getInstance()->onPostConfig(p, s);
+	}, p);
+}
 static void mod_serenity_child_init(apr_pool_t *p, server_rec *s) {
 	Root::getInstance()->onServerChildInit(p, s);
 }
@@ -54,6 +59,9 @@ static int mod_serenity_open_logs(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_
 
 static int mod_serenity_check_access_ex(request_rec *r) {
 	return Root::getInstance()->onCheckAccess(r);
+}
+static int mod_serenity_type_checker(request_rec *r) {
+	return Root::getInstance()->onTypeChecker(r);
 }
 static int mod_serenity_post_read_request(request_rec *r) {
 	return Root::getInstance()->onPostReadRequest(r);
@@ -78,10 +86,13 @@ static apr_status_t mod_serenity_compress(ap_filter_t *f, apr_bucket_brigade *bb
 }
 
 static void mod_serenity_register_hooks(apr_pool_t *pool) {
+    ap_hook_post_config(mod_serenity_post_config, NULL,NULL,APR_HOOK_MIDDLE);
 	ap_hook_child_init(mod_serenity_child_init, NULL, NULL, APR_HOOK_MIDDLE);
     ap_hook_open_logs(mod_serenity_open_logs, NULL, NULL, APR_HOOK_FIRST);
 
     ap_hook_check_access_ex(mod_serenity_check_access_ex, NULL, NULL, APR_HOOK_FIRST, AP_AUTH_INTERNAL_PER_URI);
+
+    ap_hook_type_checker(mod_serenity_type_checker,NULL,NULL,APR_HOOK_FIRST);
 
 	ap_hook_post_read_request(mod_serenity_post_read_request, NULL, NULL, APR_HOOK_MIDDLE);
     ap_hook_translate_name(mod_serenity_translate_name, NULL, NULL, APR_HOOK_LAST);

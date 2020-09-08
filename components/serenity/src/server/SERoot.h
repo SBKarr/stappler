@@ -39,6 +39,7 @@ public:
 
 	/* Server Handling */
 
+	int onPostConfig(apr_pool_t *p, server_rec *s);
 	void onServerChildInit(apr_pool_t *p, server_rec *s);
 	void onOpenLogs(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s);
 
@@ -59,7 +60,7 @@ public:
 	const char * getProtocol(const conn_rec *c);
 
 	/* Request protocol */
-
+	int onTypeChecker(request_rec *r);
 	int onPostReadRequest(request_rec *r);
 	int onTranslateName(request_rec *r);
 	int onCheckAccess(request_rec *r);
@@ -115,6 +116,12 @@ protected:
 	static apr_status_t logWriter(request_rec *r, void *handle, const char **portions,
 			int *lengths, int nelts, apr_size_t len);
 
+	// callbacks for mod_mime replacement
+	StringView onTypeCheckerContentType(request_rec *r, StringView ext) const;
+	StringView onTypeCheckerCharset(request_rec *r, StringView ext) const;
+	StringView onTypeCheckerContentLanguage(request_rec *r, StringView ext) const;
+	StringView onTypeCheckerContentEncoding(request_rec *r, StringView ext) const;
+
 	apr_pool_t *_pool = nullptr;
 	apr_pool_t *_heartBeatPool = nullptr;
 
@@ -145,6 +152,8 @@ protected:
 	std::atomic<uint64_t> _dbQueriesReleased;
 
 	std::atomic<bool> _debug = false;
+
+	apr_hash_t *_extensions = nullptr;
 };
 
 /* Also export them as optional functions for modules that prefer it */

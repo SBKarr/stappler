@@ -32,6 +32,7 @@ APLOG_USE_MODULE(serenity);
 #include "SPAprFilesystem.cc"
 #include "SEForward.cc"
 #include "SERoot.cc"
+#include "SERootMime.cc"
 #include "SEServer.cc"
 
 #include "SEConnection.cc"
