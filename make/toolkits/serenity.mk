@@ -115,4 +115,28 @@ serenity: libserenity
 	$(APXS) -i -n serenity -a $(SERENITY_OUTPUT)
 	@echo "=== Complete! ==="
 
+
+SERENITY_DEFAULT_CONFIG_START_SERVERS ?= 10
+SERENITY_DEFAULT_CONFIG_DIRECTORY_INDEX ?= index.html
+
+
+define SERENITY_DEFAULT_CONFIG
+StartServers $(SERENITY_DEFAULT_CONFIG_START_SERVERS)
+DirectoryIndex $(SERENITY_DEFAULT_CONFIG_DIRECTORY_INDEX)
+LogLevel warn
+LogFormat "%h %l %u %t \"%r\" %>s %b" common
+
+SSLRandomSeed startup builtin
+SSLRandomSeed connect builtin
+SSLCipherSuite HIGH:MEDIUM:!aNULL:!MD5
+SSLProtocol all -SSLv2 -SSLv3
+SSLPassPhraseDialog  builtin
+SSLSessionCache "shmcb:/home/apache/server/logs/ssl_scache(512000)"
+SSLSessionCacheTimeout 300
+
+LoadModule serenity_module $(abspath $(SERENITY_OUTPUT))
+
+endef
+
+
 .PHONY: libserenity serenity serenity-version

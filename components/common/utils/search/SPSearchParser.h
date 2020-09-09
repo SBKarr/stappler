@@ -111,6 +111,7 @@ struct SearchData {
 	enum Type {
 		Parse,
 		Cast,
+		ForceCast,
 	};
 
 	String buffer;

@@ -291,6 +291,9 @@ public:
 		case db::FullTextData::Cast:
 			query  << " to_tsquery('" << d.getLanguage() << "', $" << idx << "::text)";
 			break;
+		case db::FullTextData::ForceCast:
+			query  << " $" << idx << "::tsquery ";
+			break;
 		}
 	}
 
