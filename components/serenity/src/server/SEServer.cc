@@ -197,6 +197,13 @@ struct Server::Config : public AllocPool {
 		forceHttps = true;
 	}
 
+	void addAllowed(StringView r) {
+		auto p = valid::readIpRange(r);
+		if (p.first && p.second) {
+			allowedIps.emplace_back(p.first, p.second);
+		}
+	}
+
 	void init(Server &serv) {
 		schemes.emplace(userScheme.getName().str(), &userScheme);
 		schemes.emplace(fileScheme.getName().str(), &fileScheme);
@@ -330,6 +337,8 @@ struct Server::Config : public AllocPool {
 
 	mem::Vector<mem::Pair<uint32_t, db::Interface::StorageType>> storageTypes;
 	mem::Vector<mem::Pair<uint32_t, mem::String>> customTypes;
+
+	Vector<Pair<uint32_t, uint32_t>> allowedIps;
 };
 
 void * Server::merge(void *base, void *add) {
@@ -377,6 +386,19 @@ void * Server::merge(void *base, void *add) {
 
 			for (auto &it : tmp) {
 				addCfg->handlers.emplace_back(move(it));
+			}
+		}
+	}
+
+	if (!baseCfg->allowedIps.empty()) {
+		if (addCfg->allowedIps.empty()) {
+			addCfg->allowedIps = baseCfg->allowedIps;
+		} else {
+			auto tmp = move(addCfg->allowedIps);
+			addCfg->allowedIps = baseCfg->allowedIps;
+
+			for (auto &it : tmp) {
+				addCfg->allowedIps.emplace_back(move(it));
 			}
 		}
 	}
@@ -541,10 +563,10 @@ StringView Server::getServerSecret() const {
 	return _config->serverKey;
 }
 
-void Server::setSourceRoot(const StringView &file) {
+void Server::setSourceRoot(StringView file) {
 	_config->sourceRoot.emplace_back(file.str());
 }
-void Server::addHanderSource(const StringView &str) {
+void Server::addHanderSource(StringView str) {
 	StringView r(str);
 	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
@@ -612,7 +634,14 @@ void Server::addHanderSource(const StringView &str) {
 	}
 }
 
-void Server::setSessionParams(const StringView &str) {
+void Server::addAllow(StringView ips) {
+	ips.split<StringView::CharGroup<CharGroupId::WhiteSpace>>([&] (StringView r) {
+		_config->addAllowed(r);
+	});
+
+}
+
+void Server::setSessionParams(StringView str) {
 	StringView r(str);
 	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 	while (!r.empty()) {
@@ -641,7 +670,7 @@ void Server::setSessionParams(const StringView &str) {
 	}
 }
 
-void Server::setWebHookParams(const StringView &str) {
+void Server::setWebHookParams(StringView str) {
 	StringView r(str);
 	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 	while (!r.empty()) {
@@ -670,7 +699,7 @@ void Server::setWebHookParams(const StringView &str) {
 	}
 }
 
-void Server::setProtectedList(const StringView &str) {
+void Server::setProtectedList(StringView str) {
 	str.split<StringView::Chars<' '>>([&] (StringView &value) {
 		addProtectedLocation(value);
 	});
@@ -919,6 +948,23 @@ void Server::onBroadcast(const BytesView &bytes) {
 	onBroadcast(data::read(bytes));
 }
 
+bool Server::isSecureAuthAllowed(const Request &rctx) const {
+	auto userIp = rctx.getUseragentIp();
+	if (rctx.isSecureConnection() || strncmp(userIp.data(), "127.", 4) == 0 || userIp == "::1") {
+		return true;
+	}
+
+	if (auto ip = valid::readIp(userIp)) {
+		for (auto &it : _config->allowedIps) {
+			if (ip >= it.first && ip <= it.second) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 static int Server_onRequestRecieved(Request &rctx, RequestHandler &h) {
 	auto auth = rctx.getRequestHeaders().at("Authorization");
 	if (!auth.empty()) {
@@ -926,8 +972,7 @@ static int Server_onRequestRecieved(Request &rctx, RequestHandler &h) {
 		r.skipChars<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>();
 		auto method = r.readUntil<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>().str();
 		stappler::string::tolower(method);
-		auto userIp = rctx.getUseragentIp();
-		if (method == "basic" && (rctx.isSecureConnection() || strncmp(userIp.data(), "127.", 4) == 0 || userIp == "::1")) {
+		if (method == "basic" && rctx.isSecureAuthAllowed()) {
 			r.skipChars<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>();
 			auto str = stappler::base64::decode(r);
 			mem::StringView source((const char *)str.data(), str.size());
@@ -1156,7 +1201,7 @@ int Server::onRequest(Request &req) {
 	auto &data = req.getParsedQueryArgs();
 	auto userIp = req.getUseragentIp();
 	if (data.hasValue("basic_auth")) {
-		if (req.isSecureConnection() || strncmp(userIp.c_str(), "127.", 4) == 0 || userIp == "::1") {
+		if (req.isSecureAuthAllowed()) {
 			if (req.getAuthorizedUser()) {
 				return req.redirectTo(String(req.getUri()));
 			}

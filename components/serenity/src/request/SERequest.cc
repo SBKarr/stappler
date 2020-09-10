@@ -345,6 +345,10 @@ bool Request::isSecureConnection() const {
 	return Root::getInstance()->isSecureConnection(_request->connection);
 }
 
+bool Request::isSecureAuthAllowed() const {
+	return server().isSecureAuthAllowed(*this);
+}
+
 apr::weak_string Request::getUseragentIp() const {
 	return apr::string::make_weak(_request->useragent_ip);
 }

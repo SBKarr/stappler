@@ -10,4 +10,5 @@ RUN \
 
 EXPOSE 8080
 
+ENTRYPOINT [ "/serenity/handler/lib/ctrl.sh" ]
 

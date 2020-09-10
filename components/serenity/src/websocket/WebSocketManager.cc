@@ -113,7 +113,7 @@ int Manager::accept(Request &req) {
 		auto method = r.readUntil<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>().str();
 		stappler::string::tolower(method);
 		auto userIp = req.getUseragentIp();
-		if (method == "basic" && (req.isSecureConnection() || strncmp(userIp.data(), "127.", 4) == 0 || userIp == "::1")) {
+		if (method == "basic" && (req.isSecureAuthAllowed())) {
 			r.skipChars<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>();
 			auto str = stappler::base64::decode(r);
 			mem::StringView source((const char *)str.data(), str.size());

@@ -1091,7 +1091,7 @@ void ShellSocketHandler::sendData(const data::Value & data) {
 
 ShellSocket::Handler * ShellSocket::onAccept(const Request &req) {
 	Request rctx(req);
-	if (!req.isSecureConnection() && req.getUseragentIp() != "127.0.0.1" && req.getUseragentIp() != "::1") {
+	if (!req.isSecureAuthAllowed()) {
 		rctx.setStatus(HTTP_FORBIDDEN);
 		return nullptr;
 	}

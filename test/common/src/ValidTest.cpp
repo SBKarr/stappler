@@ -34,10 +34,58 @@ NS_SP_BEGIN
 struct ValidTest : MemPoolTest {
 	ValidTest() : MemPoolTest("ValidTest") { }
 
+	static uint32_t makeIp(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
+		return (a << 24) | (b << 16) | (c << 8) | d;
+	};
+
 	virtual bool run(pool_t *) override {
-		StringStream stream;
+		StringStream stream; stream << "\n";
 
 		uint32_t failed = 0;
+
+		if (valid::readIpRange("123.45.67.89-98.76.54.32") == pair(makeIp(123,45,67,89), makeIp(98,76,54,32))) {
+			stream << "123.45.67.89-98.76.54.32 : [valid]\n";
+		} else {
+			stream << "123.45.67.89-98.76.54.32 : [failed]\n";
+			++ failed;
+		}
+		if (valid::readIpRange("127.0.0.123/24") == pair(makeIp(127,0,0,0), makeIp(127,0,0,255))) {
+			stream << "127.0.0.123/24 : [valid]\n";
+		} else {
+			stream << "127.0.0.123/24 : [failed]\n";
+			++ failed;
+		}
+		if (valid::readIpRange("127.0.0.123/255.255.0.0") == pair(makeIp(127,0,0,0), makeIp(127,0,255,255))) {
+			stream << "127.0.0.123/255.255.0.0 : [valid]\n";
+		} else {
+			stream << "127.0.0.123/255.255.0.0 : [failed]\n";
+			++ failed;
+		}
+		if (valid::readIpRange("127.0.0.123") == pair(makeIp(127,0,0,123), makeIp(127,0,0,123))) {
+			stream << "127.0.0.123 : [valid]\n";
+		} else {
+			stream << "127.0.0.123 : [failed]\n";
+			++ failed;
+		}
+
+		if (valid::readIpRange("127.0.256.123") == pair(uint32_t(0), uint32_t(0))) {
+			stream << "127.0.256.123 : [failed-correct]\n";
+		} else {
+			stream << "127.0.256.123 : [valid]\n";
+			++ failed;
+		}
+		if (valid::readIpRange("127.0.254.123/32") == pair(uint32_t(0), uint32_t(0))) {
+			stream << "127.0.254.123/32 : [failed-correct]\n";
+		} else {
+			stream << "127.0.254.123/32 : [valid]\n";
+			++ failed;
+		}
+		if (valid::readIpRange("127.0.0.123/255.255.0.1") == pair(uint32_t(0), uint32_t(0))) {
+			stream << "127.0.0.123/255.255.0.1 : [failed-correct]\n";
+		} else {
+			stream << "127.0.0.123/255.255.0.1 : [valid]\n";
+			++ failed;
+		}
 
 		Value urls;
 		urls.addString("https://йакреведко.рф/test/.././..////?query[креведко][treas][ds][]=qwert#аяклешня");

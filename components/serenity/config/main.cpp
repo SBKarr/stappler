@@ -23,6 +23,7 @@ THE SOFTWARE.
 #include "SPCommon.h"
 #include "SPData.h"
 #include "SPFilesystem.h"
+#include "SPValid.h"
 
 NS_SP_BEGIN
 
@@ -53,6 +54,8 @@ struct Config {
 	String publicKey;
 	String customConfig;
 	bool hasHttps = false;
+
+	Set<String> allow;
 
 	Flags flags = None;
 };
@@ -103,6 +106,8 @@ static int parseOptionString(data::Value &ret, const StringView &str, int argc, 
 		ret.setString(StringView(str, "admin="_len, str.size() - "admin="_len), "admin");
 	} else if (str.starts_with("session=")) {
 		ret.setString(StringView(str, "session="_len, str.size() - "session="_len), "session");
+	} else if (str.starts_with("allow=")) {
+		ret.emplace("allow").addString(StringView(str, "allow="_len, str.size() - "allow="_len));
 	}
 	return 1;
 }
@@ -221,6 +226,14 @@ static bool write(Config &cfg, HttpdConfig &httpd, StringView path) {
 		stream << "Listen " << cfg.httpsPort << "\n";
 	}
 	stream << "\n";
+
+	if (!cfg.allow.empty()) {
+		stream << "SerenityAllowIp";
+		for (auto &it : cfg.allow) {
+			 stream << " " << it;
+		}
+		stream << "\n";
+	}
 
 	for (auto &it : httpd.cfg) {
 		if (it.first == "ServerAdmin" && (cfg.flags & Config::Flags::AdminChanged)) {
@@ -344,6 +357,13 @@ SP_EXTERN_C int _spMain(argc, argv) {
 		} else if (it.first == "session") {
 			cfg.sessionKey = it.second.getString();
 			cfg.flags |= Config::SessionKeyChanged;
+		} else if (it.first == "allow") {
+			cfg.allow.clear();
+			for (auto &iit : it.second.asArray()) {
+				if (valid::readIpRange(iit.getString()) != pair(uint32_t(0), uint32_t(0))) {
+					cfg.allow.emplace(iit.asString());
+				}
+			}
 		}
 	}
 

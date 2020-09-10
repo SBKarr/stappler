@@ -65,6 +65,10 @@ auto generatePassword(size_t len) -> typename Interface::StringType;
 template <typename Interface = memory::DefaultInterface>
 auto convertOpenSSHKey(const StringView &) -> typename Interface::BytesType;
 
+uint32_t readIp(StringView r);
+uint32_t readIp(StringView r, bool &err);
+Pair<uint32_t, uint32_t> readIpRange(StringView r);
+
 NS_SP_EXT_END(valid)
 
 #endif /* COMMON_UTILS_SPVALID_H_ */

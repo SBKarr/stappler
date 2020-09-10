@@ -160,6 +160,7 @@ public: /* request data */
 	bool hasCache() const;
 	bool hasLocalCopy() const;
 	bool isSecureConnection() const;
+	bool isSecureAuthAllowed() const;
 
 	apr::weak_string getUseragentIp() const;
 

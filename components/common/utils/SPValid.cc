@@ -692,4 +692,131 @@ auto convertOpenSSHKey<memory::StandartInterface>(const StringView &key) -> memo
 	return memory::StandartInterface::BytesType();
 }
 
+uint32_t readIp(StringView r) {
+	bool err = false;
+	return readIp(r, err);
+}
+
+uint32_t readIp(StringView r, bool &err) {
+	uint32_t octets = 0;
+	uint32_t ret = 0;
+	while (!r.empty() && octets < 4) {
+		auto n = r.readChars<StringView::CharGroup<CharGroupId::Numbers>>();
+		if (!n.empty()) {
+			auto num = n.readInteger(10).get(256);
+			if (num < 256) {
+				ret = (ret << 8) | uint32_t(num);
+			} else {
+				err = true;
+				return 0;
+			}
+		}
+		if (r.is('.') && octets < 3) {
+			++ r;
+			++ octets;
+		} else if (octets == 3 && r.empty()) {
+			return ret;
+		} else {
+			err = true;
+			return 0;
+		}
+	}
+	err = true;
+	return 0;
+}
+
+Pair<uint32_t, uint32_t> readIpRange(StringView r) {
+	uint32_t start = 0;
+	uint32_t end = 0;
+	uint32_t mask = 0;
+
+	auto fnReadIp = [] (StringView &r, bool &err) -> uint32_t {
+		uint32_t octets = 0;
+		uint32_t ret = 0;
+		while (!r.empty() && octets < 4) {
+			auto n = r.readChars<StringView::CharGroup<CharGroupId::Numbers>>();
+			if (!n.empty()) {
+				auto num = n.readInteger(10).get(256);
+				if (num < 256) {
+					ret = (ret << 8) | uint32_t(num);
+				} else {
+					err = true;
+					return 0;
+				}
+			}
+			if (r.is('.') && octets < 3) {
+				++ r;
+				++ octets;
+			} else if (octets == 3) {
+				if (r.empty()) {
+					return ret;
+				} else if (r.is('/') || r.is('-')) {
+					return ret;
+				}
+			} else {
+				err = true;
+				return 0;
+			}
+		}
+		err = true;
+		return 0;
+	};
+
+	bool err = false;
+	start = fnReadIp(r, err);
+	if (err) {
+		return pair(0, 0);
+	}
+	if (r.empty()) {
+		return pair(start, start);
+	} else if (r.is('-')) {
+		++ r;
+		end = fnReadIp(r, err);
+		if (err || !r.empty()) {
+			return pair(0, 0);
+		} else {
+			return pair(start, end);
+		}
+	} else if (r.is('/')) {
+		++ r;
+		auto tmp = r;
+		auto n = tmp.readChars<StringView::CharGroup<CharGroupId::Numbers>>();
+		auto num = n.readInteger(10).get(256);
+		if (tmp.is('.') && num < 256) {
+			mask = fnReadIp(r, err);
+			if (err || !r.empty()) {
+				return pair(0, 0);
+			}
+
+			uint32_t i = 0;
+			while ((mask & (1 << i)) == 0) {
+				++ i;
+			}
+
+			while ((mask & (1 << i)) != 0 && i < 32) {
+				++ i;
+			}
+
+			if (i != 32) {
+				return pair(0, 0);
+			}
+		} else if (num < 32 && tmp.empty()) {
+			mask = maxOf<uint32_t>() << (32 - num);
+			r = tmp;
+		} else {
+			return pair(0, 0);
+		}
+
+		if (!r.empty()) {
+			return pair(0, 0);
+		}
+
+		uint32_t netstart = (start & mask); // first ip in subnet
+		uint32_t netend = (netstart | ~mask); // last ip in subnet
+
+		return pair(netstart, netend);
+	}
+	return pair(0, 0);
+}
+
 NS_SP_EXT_END(valid)

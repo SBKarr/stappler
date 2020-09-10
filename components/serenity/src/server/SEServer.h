@@ -53,12 +53,13 @@ public:
 
 	void onStorageTransaction(storage::Transaction &);
 
-	void setSourceRoot(const StringView &file);
-	void addHanderSource(const StringView &w);
-	void setSessionParams(const StringView &w);
-	void setWebHookParams(const StringView &w);
+	void setSourceRoot(StringView file);
+	void addHanderSource(StringView w);
+	void addAllow(StringView);
+	void setSessionParams(StringView w);
+	void setWebHookParams(StringView w);
 	void setForceHttps();
-	void setProtectedList(const StringView &w);
+	void setProtectedList(StringView w);
 
 	void addProtectedLocation(const StringView &);
 
@@ -168,6 +169,8 @@ public: // httpd server info
 	StringView getSessionPublicKey() const;
 	StringView getSessionPrivateKey() const;
 	StringView getServerSecret() const;
+
+	bool isSecureAuthAllowed(const Request &rctx) const;
 
 	struct Config;
 

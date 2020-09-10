@@ -117,6 +117,15 @@ static const char *mod_serenity_add_handler_source(cmd_parms *parms, void *mconf
 	return NULL;
 }
 
+static const char *mod_serenity_add_allow(cmd_parms *parms, void *mconfig, const char *w) {
+	apr::pool::perform([&] {
+		Server(parms->server).addAllow(apr::string::make_weak(w));
+	}, parms->pool, memory::pool::Config);
+	return NULL;
+}
+
+
+
 static const char *mod_serenity_set_session_params(cmd_parms *parms, void *mconfig, const char *w) {
 	apr::pool::perform([&] {
 		Server(parms->server).setSessionParams(apr::string::make_weak(w));
@@ -184,6 +193,8 @@ static const command_rec mod_serenity_directives[] = {
 		"Space-separated list of location prefixes, which should be invisible for clients"),
 	AP_INIT_RAW_ARGS("SerenityServerNames", (cmd_func)mod_serenity_set_server_names, NULL, RSRC_CONF,
 		"Space-separated list of server names (first would be ServerName, others - ServerAliases)"),
+	AP_INIT_RAW_ARGS("SerenityAllowIp", (cmd_func)mod_serenity_add_allow, NULL, RSRC_CONF,
+			"Additional IPv4 masks to thrust whed admin access is requested"),
     { NULL }
 };
 
