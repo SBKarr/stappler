@@ -142,6 +142,6 @@ BUILD_OBJS += $(TOOLKIT_OBJS)
 BUILD_CFLAGS += $(addprefix -I,$(BUILD_INCLUDES))
 BUILD_CXXFLAGS += $(addprefix -I,$(BUILD_INCLUDES))
 
-BUILD_LIBS := $(foreach lib,$(LOCAL_LIBS),-L$(dir $(lib)) -l:$(notdir $(lib))) $(TOOLKIT_LIBS)
+BUILD_LIBS := $(foreach lib,$(LOCAL_LIBS),-L$(dir $(lib)) -l:$(notdir $(lib))) $(TOOLKIT_LIBS) $(LDFLAGS)
 
 -include $(patsubst %.o,%.o.d,$(BUILD_OBJS) $(BUILD_MAIN_OBJ))

@@ -69,8 +69,6 @@ SERENITY_INCLUDES_OBJS += \
 	components/layout \
 	$(APACHE_INCLUDE)
 
-SERENITY_LIBS += -L$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH) $(OSTYPE_SERENITY_LIBS) -lpq
-
 SERENITY_VIRTUAL_SRCS := \
 	$(shell find $(GLOBAL_ROOT)/components/serenity/virtual/js -name '*.js') \
 	$(shell find $(GLOBAL_ROOT)/components/serenity/virtual/css -name '*.css') \
@@ -119,7 +117,6 @@ serenity: libserenity
 SERENITY_DEFAULT_CONFIG_START_SERVERS ?= 10
 SERENITY_DEFAULT_CONFIG_DIRECTORY_INDEX ?= index.html
 
-
 define SERENITY_DEFAULT_CONFIG
 StartServers $(SERENITY_DEFAULT_CONFIG_START_SERVERS)
 DirectoryIndex $(SERENITY_DEFAULT_CONFIG_DIRECTORY_INDEX)
@@ -138,5 +135,38 @@ LoadModule serenity_module $(abspath $(SERENITY_OUTPUT))
 
 endef
 
+
+SERENITY_DOCKER_CTRL_HTTPD ?= /serenity/apache/bin/httpd
+SERENITY_DOCKER_CTRL_HTTPD_CONF ?= $(abspath $(GLOBAL_ROOT)/test/handlers/lib/httpd.conf)
+SERENITY_DOCKER_CTRL_CONFIG ?= $(abspath $(GLOBAL_ROOT)/test/handlers/conf/serenity-docker.conf)
+
+define SERENITY_DOCKER_CTRL
+#!/bin/sh
+CONFIG='$(abspath $(GLOBAL_ROOT)/components/serenity/config/bin/host/config)'
+HTTPD='$(SERENITY_DOCKER_CTRL_HTTPD) -f $(SERENITY_DOCKER_CTRL_HTTPD_CONF)'
+ACMD="$$1"
+
+case $$ACMD in
+stop|restart|graceful|graceful-stop)
+    $$HTTPD -k "$$@"
+    ERROR=$$?
+    ;;
+start)
+	$$CONFIG $(SERENITY_DOCKER_CTRL_CONFIG) "$$@"
+    $$HTTPD -k start
+    ERROR=$$?
+    ;;
+start-sync)
+	$$CONFIG $(SERENITY_DOCKER_CTRL_CONFIG) "$$@"
+    $$HTTPD -k start -X
+    ERROR=$$?
+    ;;
+*)
+    $$HTTPD "$$@"
+    ERROR=$$?
+esac
+
+exit $$ERROR
+endef
 
 .PHONY: libserenity serenity serenity-version
