@@ -3,7 +3,7 @@
 export GIT_DIR=$1/.git
 export GIT_WORK_TREE=$1
 
-REPO_TAG=`git describe --tags`
+REPO_TAG=`git describe --tags --always`
 FILE=$1/components/serenity/gen/__Version.cpp.tmp
 TARGET=$1/components/serenity/gen/__Version.cpp
 

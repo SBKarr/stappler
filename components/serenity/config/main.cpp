@@ -63,18 +63,68 @@ struct Config {
 SP_DEFINE_ENUM_AS_MASK(Config::Flags);
 
 static constexpr auto HELP_STRING(
-R"HelpString(config <options> <handlers-conf-dir>
+R"HelpString(Docker container configuration script for Serenity handlers
+
+Usage:
+
+config <handlers-conf-dir> <options>                    # directly from shell
+
+   -- OR --
+
+docker container run <container-name> start <options>   # From docker entrypoint
+docker container run <container-name> help              # From docker entrypoint
+
+This tool configures Apache HTTPD before it's started in Docker container.
+
+Example:
+
+docker container run serenity-test start \
+  --db="host=172.17.0.1 dbname=test user=serenity password=serenity" \
+  --port=7777 --allow=172.17.0.1/24
+
+  Starts server on port 7777 instead of default in configuration, with
+  172.17.0.1/24 (range 172.17.0.0 - 172.17.0.255) as local network addresses
+  for Serenity authentication. Connect to Postgresql database with
+  "host=172.17.0.1 dbname=test user=serenity password=serenity" connection
+  string.
+
 Options are one of:
-    -v (--verbose)
-    -h (--help)
-	--db="<db-params>"
-	--port=<http-port>
-	--sport=<https-port>
-	--name=<server-name>
-	--alias=<server-alias>
-	--root=<root-server-name>
-	--admin=<server-admin>
-	--session=<session-key>)HelpString");
+  -v (--verbose)
+  -h (--help)
+
+  --allow=<ip-mask>
+      IPv4 mask in form AA.BB.CC.DD/XX or range in form AA.BB.CC.DD-AA.BB.CC.DD
+      to allow serenity secure auth from (for insecure connections). Should be
+      used when there is no HTTPS support in container. You can add multiple
+      ranges with multiple --allow options.
+
+  --db="<db-params>"
+      Postgresql connection string as described in
+      https://www.postgresql.org/docs/12/libpq-connect.html#LIBPQ-CONNSTRING.
+      Should be quoted to pass it as a single argument with spaces inside
+
+  --port=<http-port>
+      HTTP port replacement
+
+  --sport=<https-port>
+      HTTPS port replacement (if HTTPS is enabled in handler's config)
+
+  --name=<server-name>
+      ServerName replacement for both HTTP/HTTPS hosts
+
+  --alias=<server-alias>
+      ServerAlias replacement for both HTTP/HTTPS hosts. You can add multiple
+      aliases with multiple --alias options.
+
+  --root=<root-server-name>
+      ServerName replacement for root configuration (rarely used)
+
+  --admin=<server-admin>
+      ServerAdmin replacement for root configuration
+
+  --session=<session-key>
+      SerenitySession `key` component replacement
+)HelpString");
 
 static int parseOptionSwitch(data::Value &ret, char c, const char *str) {
 	if (c == 'h') {

@@ -148,25 +148,18 @@ ACMD="$$1"
 
 case $$ACMD in
 stop|restart|graceful|graceful-stop)
-    $$HTTPD -k "$$@"
-    ERROR=$$?
+    exec $$HTTPD -k "$$@"
     ;;
-start)
+start|start-sync)
 	$$CONFIG $(SERENITY_DOCKER_CTRL_CONFIG) "$$@"
-    $$HTTPD -k start
-    ERROR=$$?
+    exec $$HTTPD -k start -X
     ;;
-start-sync)
-	$$CONFIG $(SERENITY_DOCKER_CTRL_CONFIG) "$$@"
-    $$HTTPD -k start -X
-    ERROR=$$?
+help|--help)
+	$$CONFIG $(SERENITY_DOCKER_CTRL_CONFIG) --help
     ;;
 *)
-    $$HTTPD "$$@"
-    ERROR=$$?
+    exec $$HTTPD "$$@"
 esac
-
-exit $$ERROR
 endef
 
 .PHONY: libserenity serenity serenity-version
