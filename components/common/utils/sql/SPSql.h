@@ -374,6 +374,8 @@ public:
 		auto onConflictDoNothing() -> InsertPostConflict;
 		auto returning() -> Returning;
 
+		auto next() -> InsertValues;
+
 		using QueryHandle::QueryHandle;
 	};
 
@@ -384,8 +386,8 @@ public:
 	};
 
 	struct InsertUpdateValues : SetClause<InsertUpdateValues> {
-		auto excluded(const String &f) -> InsertUpdateValues &;
-		auto excluded(const String &f, const String &v) -> InsertUpdateValues &;
+		auto excluded(StringView f) -> InsertUpdateValues &;
+		auto excluded(StringView f, StringView v) -> InsertUpdateValues &;
 		template <typename ... Args>
 		auto where(Args && ... args) -> InsertWhereValues;
 		auto where() -> InsertWhereValues;

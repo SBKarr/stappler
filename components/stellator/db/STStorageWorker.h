@@ -46,14 +46,16 @@ struct Conflict {
 		WithoutCondition,
 	};
 
+	static Conflict update(mem::StringView);
+
 	mem::String field;
 	Query::Select condition;
 	mem::Vector<mem::String> mask;
 	Flags flags = DoNothing;
 
 	Conflict(Conflict::Flags);
-	Conflict(const mem::StringView & field, Query::Select &&, Flags = None);
-	Conflict(const mem::StringView & field, Query::Select &&, mem::Vector<mem::String> &&);
+	Conflict(mem::StringView field, Query::Select &&, Flags = None);
+	Conflict(mem::StringView field, Query::Select &&, mem::Vector<mem::String> &&);
 
 	Conflict &setFlags(Flags);
 };

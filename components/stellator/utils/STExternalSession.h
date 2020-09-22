@@ -25,14 +25,11 @@ THE SOFTWARE.
 
 #include "Request.h"
 #include "SPDataWrapper.h"
+#include "SPJsonWebToken.h"
 
 NS_SA_BEGIN
 
-struct SessionKeys {
-	StringView pub;
-	StringView priv;
-	StringView secret;
-};
+using SessionKeys = stappler::AesToken::Keys;
 
 class ExternalSession : public stappler::data::WrapperTemplate<mem::Interface> {
 public:
@@ -119,31 +116,6 @@ protected:
 	SessionKeys _keys;
 	uint64_t _user = 0;
 	Bytes _sig;
-};
-
-
-class AuthToken : public stappler::data::WrapperTemplate<mem::Interface> {
-public:
-	static AuthToken *parse(StringView token, Request, SessionKeys = SessionKeys());
-	static AuthToken *parse(StringView token, BytesView fp, StringView iss, StringView aud = StringView(), SessionKeys = SessionKeys());
-
-	static AuthToken *create(SessionKeys = SessionKeys());
-	//static AuthToken *create(BytesView fp, StringView iss, StringView aud, TimeInterval maxage = config::getInternalsStorageTime(), SessionKeys = SessionKeys(), StringView sub = StringView());
-
-	String exportToken(Request &req, TimeInterval maxage, StringView sub) const;
-
-protected:
-	static string::Sha512::Buf getFingerprint(const Request &rctx, Time t, StringView secret);
-	static string::Sha512::Buf getFingerprint(BytesView, Time t, StringView secret);
-
-	Bytes encryptAes(const string::Sha256::Buf &, const data::Value &) const;
-	static data::Value decryptAes(const string::Sha256::Buf &, BytesView);
-	static string::Sha256::Buf makeAesKey(BytesView, StringView priv);
-
-	AuthToken(SessionKeys keys);
-	AuthToken(data::Value &&, SessionKeys keys);
-
-	SessionKeys _keys;
 };
 
 NS_SA_END

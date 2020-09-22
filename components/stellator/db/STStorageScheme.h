@@ -151,11 +151,31 @@ public: // worker interface
 	template <typename Storage, typename _Value> auto get(Storage &&, _Value &&, std::initializer_list<const char *> &&fields, bool forUpdate = false) const -> mem::Value;
 	template <typename Storage, typename _Value> auto get(Storage &&, _Value &&, std::initializer_list<const Field *> &&fields, bool forUpdate = false) const -> mem::Value;
 
+	// Select objects by query
+	// - db::Transaction, db::Query
 	template <typename T, typename ... Args> auto select(T &&t, Args && ... args) const -> mem::Value;
+
+	// Create new object (single for dict or multi for array)
+	// - db::Transaction, mem::Value[, UpdateFlags][, Conflict]
 	template <typename T, typename ... Args> auto create(T &&t, Args && ... args) const -> mem::Value;
+
+	// Update object
+	// - db::Transaction, mem::Value obj, mem::Value patch[, UpdateFlags]
+	// - db::Transaction, int64_t id, mem::Value patch[, UpdateFlags]
 	template <typename T, typename ... Args> auto update(T &&t, Args && ... args) const  -> mem::Value;
+
+	// Remove object
+	// - db::Transaction, mem::Value obj
+	// - db::Transaction, int64_t id
 	template <typename T, typename ... Args> auto remove(T &&t, Args && ... args) const -> bool;
+
+	// Count resulting objects by query
+	// - db::Transaction, db::Query
 	template <typename T, typename ... Args> auto count(T &&t, Args && ... args) const -> size_t;
+
+	// Touch object (update autofields)
+	// - db::Transaction, mem::Value obj
+	// - db::Transaction, int64_t id
 	template <typename T, typename ... Args> auto touch(T &&t, Args && ... args) const -> void;
 
 	template <typename _Storage, typename _Value, typename _Field>
@@ -202,7 +222,7 @@ protected:
 	void addAutoField(const Scheme *, const Field *f, const AutoFieldScheme &);
 	void addParent(const Scheme *, const Field *);
 
-	mem::Value createFilePatch(const Transaction &, const mem::Value &val) const;
+	mem::Value createFilePatch(const Transaction &, const mem::Value &val, mem::Value &changeSet) const;
 	void purgeFilePatch(const Transaction &t, const mem::Value &) const;
 	void mergeValues(const Field &f, const mem::Value &obj, mem::Value &original, mem::Value &newVal) const;
 

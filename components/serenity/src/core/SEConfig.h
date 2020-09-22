@@ -102,6 +102,37 @@ constexpr uint16_t getResourceResolverMaxDepth() { return 4; }
 inline TimeInterval getKeyValueStorageTime() { return TimeInterval::seconds(60 * 60 * 24 * 365); } // one year
 inline TimeInterval getInternalsStorageTime() { return TimeInterval::seconds(60 * 60 * 24 * 30); }
 
+// this key used only with custom SerenityServerKey to protect database entry with real generated private key
+static constexpr auto INTERNAL_PRIVATE_KEY =
+R"PubKey(-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEAwA+bb6EnVO9LKDg2X2Casr7FcnCaE6O98CV2FSn0+AezS8k3
+sRzbOdLiHaA5zkvAVZFF1EQrjU2rgqqCm+uZAXvSBETxHUUSDN3Ivj9kS8SzYQuk
+A0eidYmoTmIokqS86LF55kXjtJLPKH+gdMOgZfJpvIeF/2fHMJw660jikyGJ5ig4
+8KNYkue3pToa2gykZv1BC6q8XTK+zMbg1ueW9WfJ+SIk84AoxHYlpMnim+ngF2E6
+vTxScxOGIdeDQ9RSJ0GtsN8Nrt2eYhG2RkI4349n1H1ZQ+DmOPlxVliKijLvKnJo
+PDMVDFenv7eDNgPVFSX/E+OkCAvFYtK7ebzdtQIDAQABAoIBAQCoNYMW83d1JdcX
+NJQ6WGtknTxkjEYFaWVSzBxtUL/h8yyO9X43OmSucgnjlI7MJQAgcQlNbR8PtLS/
+zgJx+Jea+wzm/FKIJhQ2/I9yQCbhTTcliYJt9PFOK/AiJkoOlQV2bumqSg+x+NpC
+R/UKDsOORg9hNPigxg1of4wCwWTfIf3VjA23ZeVokbY6cG3SlK1mu428454wP2o6
+5fwYEMrspa65RaSDU3lyC/NTgWmFmGHGx/3Ok0dw52yN3NjePlgS5/CyY4x1iwrs
+Le2QeSl8xIEkiagLNM0CmpjID+7gbbHcFAQ5sNKDxo0UFMbYKL3i+W3JmxNDiSHa
+EDdTTQgBAoGBAOeISj4JKS66M3qEwkga89wAlMT6OIWOi7egpNMYCIKgm5G/e0ox
+YTEFwjH/LkpcuSUhAYJ5DaFs8VX8F9AGr3OtdcBC89MCL3UjEvnjjjqbxot2389i
+RH/wXwYVC4Lt7FqUoz5sj4xIHUUqtclluI0i1KXirYMw4by8YU4vx/8BAoGBANRb
+fGWOZKdAzCZzeesVyitfOSAXHQNCFxTBpJ9rsh4J9Gz3Rm/2MCUCDYx6h2vvlAhQ
+HKMxweRgZt3sq9vCISOVbBvW7RAe1X87J9UOlSgHgtQ1P3/jCM4wPCvSICg2SfEo
+5P1YaDkdmnpw0Xj1t03aXHo1yJyIpab6VkSI55K1AoGATOnml+MdLium7D1r+N4T
+QnNi+GiTHDL1UQPpnUJvmU1XQLyWbVgoDEv4bflyXDufOalUQg6Kq6RwK3s6Qd3m
+rQvjgQH804z3TPdg12hzmB6lfzD3OoJPdRzZxEB7eXwmNxUHgbY4nYZbSt3cU9IZ
+07DNaWn68AjuBG+j94BB9QECgYAe7nx+JnGO0ydpamSV04SxMJuXiwZU1SmbgmFC
+P2OgcH7D6HjAEjINEfF7RtW26Ry84T5qnvLJGymgpbqatfoxvrASlgnN0U/zymAQ
+7qDXRdDOrDrlm+JKdkgtcdvxP4chs303UctMln1L3GcGoXPjySyzOGZSNq06Vzh9
+nxtsCQKBgQDcPy1R2BFvT4GE3AcSTYfeGkSrPY+09KCeFAIsjrpTZRdhbyD2ZyYa
+iqR1BRzqFGXzVlTVm/B/yTekDjkjn6JoocUoWed6xourrpDJt/UicL6cKx7c1j4/
+M1AppdVrnIu/Wfx8CKDqzXgl1u1PvHDnVMv1+nW0MlHPAi48mArmlQ==
+-----END RSA PRIVATE KEY-----
+)PubKey";
+
 NS_SA_EXT_END(config)
 
 #endif /* SERENITY_SRC_CORE_CONFIG_H_ */

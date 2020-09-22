@@ -42,7 +42,7 @@ public:
 
 	bool perform(const mem::Callback<void(Task &)> &cb);
 
-	Pair<size_t, size_t> getCounters() const; // <completed, added>
+	mem::Pair<size_t, size_t> getCounters() const; // <completed, added>
 
 protected:
 	mem::Time _lastUpdate = mem::Time::now();

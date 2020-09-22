@@ -232,13 +232,41 @@ mem::Value Transaction::create(Worker &w, mem::Value &data) const {
 		auto r = w.scheme().getAccessRole(_data->role);
 		auto d = w.scheme().getAccessRole(AccessRoleId::Default);
 
-		if ((d && d->onCreate && !d->onCreate(w, data)) || (r && r->onCreate && !r->onCreate(w, data))) {
-			return false;
-		}
+		if (data.isArray()) {
+			auto &arr = data.asArray();
+			auto it = arr.begin();
+			while (it != arr.end()) {
+				if ((d && d->onCreate && !d->onCreate(w, *it)) || (r && r->onCreate && !r->onCreate(w, *it))) {
+					it = arr.erase(it);
+				} else {
+					++ it;
+				}
+			}
 
-		if (auto val = _data->adapter.create(w, data)) {
-			ret =  processReturnObject(w.scheme(), val) ? std::move(val) : mem::Value(true);
-			return true; // if user can not see result - return success but with no object
+			if (auto val = _data->adapter.create(w, data)) {
+				auto &arr = val.asArray();
+				auto it = arr.begin();
+
+				while (it != arr.end()) {
+					if ((d && d->onCreate && !d->onCreate(w, *it)) || (r && r->onCreate && !r->onCreate(w, *it))) {
+						it = arr.erase(it);
+					} else {
+						++ it;
+					}
+				}
+
+				ret =  !arr.empty() ? std::move(val) : mem::Value(true);
+				return true; // if user can not see result - return success but with no object
+			}
+		} else {
+			if ((d && d->onCreate && !d->onCreate(w, data)) || (r && r->onCreate && !r->onCreate(w, data))) {
+				return false;
+			}
+
+			if (auto val = _data->adapter.create(w, data)) {
+				ret =  processReturnObject(w.scheme(), val) ? std::move(val) : mem::Value(true);
+				return true; // if user can not see result - return success but with no object
+			}
 		}
 		return false;
 	})) {

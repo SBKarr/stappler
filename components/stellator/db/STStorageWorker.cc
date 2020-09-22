@@ -26,12 +26,16 @@ THE SOFTWARE.
 
 NS_DB_BEGIN
 
+Conflict Conflict::update(mem::StringView f) {
+	return Conflict(f, Query::Select(), Conflict::Flags::WithoutCondition);
+}
+
 Conflict::Conflict(Conflict::Flags f): flags(f) { }
 
-Conflict::Conflict(const mem::StringView & field, Query::Select &&cond, Flags f)
+Conflict::Conflict(mem::StringView field, Query::Select &&cond, Flags f)
 : field(field.str<mem::Interface>()), condition(std::move(cond)), flags(f) { }
 
-Conflict::Conflict(const mem::StringView & field, Query::Select &&cond, mem::Vector<mem::String> &&mask)
+Conflict::Conflict(mem::StringView field, Query::Select &&cond, mem::Vector<mem::String> &&mask)
 : field(field.str<mem::Interface>()), condition(std::move(cond)), mask(std::move(mask)) { }
 
 Conflict &Conflict::setFlags(Flags f) {

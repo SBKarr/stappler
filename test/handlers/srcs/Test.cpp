@@ -76,11 +76,12 @@ protected:
 	Scheme _refs = Scheme("refs");
 	Scheme _subobjects = Scheme("subobjects");
 	Scheme _images = Scheme("images");
+	Scheme _test = Scheme("test");
 };
 
 TestHandler::TestHandler(Server &serv, const String &name, const data::Value &dict)
 : ServerComponent(serv, name, dict) {
-	exportValues(_objects, _refs, _subobjects, _images);
+	exportValues(_objects, _refs, _subobjects, _images, _test);
 
 	using namespace storage;
 
@@ -143,6 +144,12 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 	},
 		AccessRole::Admin(AccessRoleId::Authorized)
 	);
+
+	_test.define({
+		Field::Text("key"),
+		Field::Integer("time", storage::Flags::Indexed),
+		Field::Data("data")
+	});
 }
 
 void TestHandler::onChildInit(Server &serv) {
@@ -160,6 +167,22 @@ void TestHandler::onChildInit(Server &serv) {
 	serv.addHandler("/upload/", SA_HANDLER(TestUploadHandler));
 
 	serv.addHandler("/map/", new TestHandlerMap);
+
+	addOutputCommand("test", [&] (mem::StringView str, const mem::Callback<void(const mem::Value &)> &cb) -> bool {
+		if (auto t = storage::Transaction::acquire()) {
+			cb(_test.create(t, data::Value({
+				data::Value({
+					pair("time", data::Value(Time::now().toMicros())),
+					pair("key", data::Value(valid::generatePassword(6)))
+				}),
+				data::Value({
+					pair("time", data::Value(Time::now().toMicros())),
+					pair("key", data::Value(valid::generatePassword(6)))
+				})
+			})));
+		}
+		return true;
+	}, " - test");
 }
 
 void TestHandler::onStorageTransaction(storage::Transaction &t) {

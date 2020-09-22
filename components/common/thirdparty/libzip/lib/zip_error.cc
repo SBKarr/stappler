@@ -112,6 +112,14 @@ static const int _zip_err_type[] = {
     N,
 };
 
+
+ZIP_EXTERN zip_error_t * zip_get_error(zip_t *za) {
+    if (za == NULL) {
+    	return NULL;
+    }
+	return &za->error;
+}
+
 ZIP_EXTERN void
 zip_error_clear(zip_t *za) {
     if (za == NULL)

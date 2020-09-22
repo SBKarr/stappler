@@ -496,7 +496,7 @@ mem::StringView HandlerMap::HandlerInfo::getName() const {
 mem::StringView HandlerMap::HandlerInfo::getPattern() const {
 	return pattern;
 }
-const data::Value &HandlerMap::HandlerInfo::getOptions() const {
+const mem::Value &HandlerMap::HandlerInfo::getOptions() const {
 	return options;
 }
 
@@ -550,7 +550,7 @@ HandlerMap::HandlerInfo &HandlerMap::addHandler(const mem::StringView &name, Req
 
 class HandlerCallback : public HandlerMap::Handler {
 public: // simplified interface
-	HandlerCallback(const mem::Function<bool(Handler &)> &accessControl, const mem::Function<data::Value(Handler &)> &process)
+	HandlerCallback(const mem::Function<bool(Handler &)> &accessControl, const mem::Function<mem::Value(Handler &)> &process)
 	: _accessControl(accessControl), _process(process) { }
 
 	virtual ~HandlerCallback() { }
@@ -561,9 +561,9 @@ public: // simplified interface
 		if (ret) {
 			if (_info->getOptions().isString("location")) {
 				auto locVar = _info->getOptions().getString("location");
-				auto loc = StringView(_request.getParsedQueryArgs().getString(locVar));
+				auto loc = mem::StringView(_request.getParsedQueryArgs().getString(locVar));
 				if (!loc.empty()) {
-					if (loc.starts_with("/") || loc.starts_with(StringView(_request.getFullHostname()))) {
+					if (loc.starts_with("/") || loc.starts_with(mem::StringView(_request.getFullHostname()))) {
 						_request.redirectTo(loc.str());
 					}
 				}
@@ -574,14 +574,14 @@ public: // simplified interface
 
 public:
 	mem::Function<bool(Handler &)> _accessControl;
-	mem::Function<data::Value(Handler &)> _process;
+	mem::Function<mem::Value(Handler &)> _process;
 };
 
 HandlerMap::HandlerInfo &HandlerMap::addHandler(const mem::StringView &name, Request::Method m, const mem::StringView &pattern,
-		mem::Function<bool(Handler &)> &&accessControl, mem::Function<data::Value(Handler &)> &&process, mem::Value &&opts) {
-	return addHandler(name, m, pattern, [accessControl = move(accessControl), process = move(process)] () -> Handler * {
+		mem::Function<bool(Handler &)> &&accessControl, mem::Function<mem::Value(Handler &)> &&process, mem::Value &&opts) {
+	return addHandler(name, m, pattern, [accessControl = std::move(accessControl), process = std::move(process)] () -> Handler * {
 		return new HandlerCallback(accessControl, process);
-	}, move(opts));
+	}, std::move(opts));
 }
 
 NS_SA_ST_END

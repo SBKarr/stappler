@@ -57,6 +57,7 @@ public:
 	void addHanderSource(StringView w);
 	void addAllow(StringView);
 	void setSessionParams(StringView w);
+	void setServerKey(StringView w);
 	void setWebHookParams(StringView w);
 	void setForceHttps();
 	void setProtectedList(StringView w);
@@ -165,10 +166,10 @@ public: // httpd server info
 	tpl::Cache *getTemplateCache() const;
 	pug::Cache *getPugCache() const;
 
-	void setSessionKeys(StringView pub, StringView priv, StringView sec = StringView()) const;
+	void setSessionKeys(StringView pub, StringView priv) const;
 	StringView getSessionPublicKey() const;
 	StringView getSessionPrivateKey() const;
-	StringView getServerSecret() const;
+	BytesView getServerSecret() const;
 
 	bool isSecureAuthAllowed(const Request &rctx) const;
 

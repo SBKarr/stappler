@@ -171,6 +171,11 @@ bool ZipArchive<Interface>::addFile(StringView name, BytesView data, bool uncomp
 	if (source) {
 		auto idx = zip_file_add(_handle, name.terminated() ? name.data() : name.str().data(), source, ZIP_FL_ENC_UTF_8);
 		if (idx < 0) {
+			auto err = zip_get_error(_handle);
+			if (err) {
+				std::cout << "ZIP error: " << zip_error_strerror(err) << "\n";
+			}
+
 			zip_source_free(source);
 			return false;
 		}

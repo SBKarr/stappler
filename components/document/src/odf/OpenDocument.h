@@ -31,11 +31,11 @@ enum FileType {
 };
 
 struct File {
-	static File makeText(const StringView &, const StringView &, const StringView &);
-	static File makeBinary(const StringView &, const StringView &, Bytes &&);
-	static File makeFilesystem(const StringView &, const StringView &, const StringView &);
-	static File makeNetwork(const StringView &, const StringView &);
-	static File makeFunctional(const StringView &, const StringView &, FileReaderCallback &&);
+	static File makeText(StringView, StringView, StringView);
+	static File makeBinary(StringView , StringView, Bytes &&);
+	static File makeFilesystem(StringView, StringView, StringView);
+	static File makeNetwork(StringView, StringView);
+	static File makeFunctional(StringView, StringView, FileReaderCallback &&);
 
 	FileType fileType;
 

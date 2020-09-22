@@ -25,6 +25,32 @@ THE SOFTWARE.
 
 NS_DB_SQL_BEGIN
 
+static bool Handle_hasPostUpdate(const mem::Value &idata, const mem::Map<mem::String, db::Field> &fields) {
+	auto check = [&] (const mem::Value &data) {
+		for (auto &data_it : data.asDict()) {
+			auto f_it = fields.find(data_it.first);
+			if (f_it != fields.end()) {
+				auto t = f_it->second.getType();
+				if (t == db::Type::Array || t == db::Type::Set || (t == db::Type::Object && !data_it.second.isBasicType())) {
+					return true;
+				}
+			}
+		}
+		return false;
+	};
+
+	if (idata.isDictionary()) {
+		return check(idata);
+	} else if (idata.isArray()) {
+		for (auto &it : idata.asArray()) {
+			if (check(it)) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 static mem::Value Handle_preparePostUpdate(mem::Value &data, const mem::Map<mem::String, db::Field> &fields) {
 	mem::Value postUpdate(mem::Value::Type::DICTIONARY);
 	auto &data_dict = data.asDict();
@@ -73,82 +99,186 @@ mem::Value SqlHandle::select(Worker &worker, const db::Query &q) {
 	return ret;
 }
 
-mem::Value SqlHandle::create(Worker &worker, const mem::Value &data) {
-	mem::Value ret(data);
-	int64_t id = 0;
+mem::Value SqlHandle::create(Worker &worker, const mem::Value &idata) {
 	auto &scheme = worker.scheme();
 	auto &fields = scheme.getFields();
-	mem::Value postUpdate(Handle_preparePostUpdate(ret, fields));
+	auto perform = [&] (const mem::Value &data) {
+		int64_t id = 0;
+		mem::Value ret(data);
+		mem::Value postUpdate(Handle_preparePostUpdate(ret, fields));
 
-	makeQuery([&] (SqlQuery &query) {
-		auto ins = query.insert(scheme.getName());
-		for (auto &it : ret.asDict()) {
-			ins.field(it.first);
-		}
-
-		auto val = ins.values();
-		for (auto &it : ret.asDict()) {
-			if (auto f = scheme.getField(it.first)) {
-				if (f->getType() == db::Type::FullTextView) {
-					val.value(db::Binder::FullTextField{it.second});
-				} else {
-					val.value(db::Binder::DataField{f, it.second, f->isDataLayout(), f->hasFlag(db::Flags::Compressed)});
-				}
+		makeQuery([&] (SqlQuery &query) {
+			auto ins = query.insert(scheme.getName());
+			for (auto &it : ret.asDict()) {
+				ins.field(it.first);
 			}
-		}
 
-		auto &conflicts = worker.getConflicts();
-		for (auto &it : conflicts) {
-			if (it.second.isDoNothing()) {
-				val.onConflict(it.first->getName()).doNothing();
-			} else {
-				auto c = val.onConflict(it.first->getName()).doUpdate();
-				for (auto &iit : ret.asDict()) {
-					auto f = scheme.getField(iit.first);
-					if (f && (it.second.mask.empty() || std::find(it.second.mask.begin(), it.second.mask.end(), f) != it.second.mask.end())) {
-						c.excluded(iit.first);
+			auto val = ins.values();
+			for (auto &it : ret.asDict()) {
+				if (auto f = scheme.getField(it.first)) {
+					if (f->getType() == db::Type::FullTextView) {
+						val.value(db::Binder::FullTextField{it.second});
+					} else {
+						val.value(db::Binder::DataField{f, it.second, f->isDataLayout(), f->hasFlag(db::Flags::Compressed)});
 					}
 				}
+			}
 
-				if (it.second.hasCondition()) {
-					c.where().parenthesis(db::Operator::And, [&] (SqlQuery::WhereBegin &wh) {
-						SqlQuery::WhereContinue iw(wh.query, wh.state);
-						query.writeWhere(iw, db::Operator::And, worker.scheme(), it.second.condition);
-					});
+			auto &conflicts = worker.getConflicts();
+			for (auto &it : conflicts) {
+				if (it.second.isDoNothing()) {
+					val.onConflict(it.first->getName()).doNothing();
+				} else {
+					auto c = val.onConflict(it.first->getName()).doUpdate();
+					for (auto &iit : ret.asDict()) {
+						auto f = scheme.getField(iit.first);
+						if (f && (it.second.mask.empty() || std::find(it.second.mask.begin(), it.second.mask.end(), f) != it.second.mask.end())) {
+							c.excluded(iit.first);
+						}
+					}
+
+					if (it.second.hasCondition()) {
+						c.where().parenthesis(db::Operator::And, [&] (SqlQuery::WhereBegin &wh) {
+							SqlQuery::WhereContinue iw(wh.query, wh.state);
+							query.writeWhere(iw, db::Operator::And, worker.scheme(), it.second.condition);
+						});
+					}
 				}
 			}
-		}
 
-		if (id == 0) {
-			val.returning().field(SqlQuery::Field("__oid").as("id")).finalize();
-			id = selectQueryId(query);
-			if (id) {
-				if (worker.shouldIncludeNone() && worker.scheme().hasForceExclude()) {
-					for (auto &it : worker.scheme().getFields()) {
-						if (it.second.hasFlag(db::Flags::ForceExclude)) {
-							ret.erase(it.second.getName());
+			if (id == 0) {
+				val.returning().field(SqlQuery::Field("__oid").as("id")).finalize();
+				id = selectQueryId(query);
+				if (id) {
+					if (worker.shouldIncludeNone() && worker.scheme().hasForceExclude()) {
+						for (auto &it : worker.scheme().getFields()) {
+							if (it.second.hasFlag(db::Flags::ForceExclude)) {
+								ret.erase(it.second.getName());
+							}
+						}
+					}
+					ret.setInteger(id, "__oid");
+				} else {
+					ret = mem::Value();
+					return;
+				}
+			} else {
+				val.finalize();
+				if (performQuery(query) != 1) {
+					ret = mem::Value();
+					return;
+				}
+			}
+
+			if (id > 0) {
+				performPostUpdate(worker.transaction(), query, scheme, ret, id, postUpdate, false);
+			}
+		});
+
+		return ret;
+	};
+
+	if (Handle_hasPostUpdate(idata, fields)) {
+		if (idata.isDictionary()) {
+			return perform(idata);
+		} else if (idata.isArray()) {
+			mem::Value ret;
+			for (auto &it : idata.asArray()) {
+				if (auto v = perform(it)) {
+					ret.addValue(std::move(v));
+				}
+			}
+			return ret;
+		}
+	} else {
+		if (idata.isDictionary()) {
+			return perform(idata);
+		} else if (idata.isArray()) {
+			mem::Vector<mem::StringView> fields;
+			for (auto &it : idata.asArray()) {
+				for (auto &f : it.asDict()) {
+					auto iit = std::lower_bound(fields.begin(), fields.end(), f.first);
+					if (iit == fields.end()) {
+						fields.emplace_back(f.first);
+					} else if (*iit != f.first) {
+						fields.emplace(iit, f.first);
+					}
+				}
+			}
+
+			mem::Value ret(idata);
+			makeQuery([&] (SqlQuery &query) {
+				auto ins = query.insert(scheme.getName());
+				for (auto &it : fields) {
+					ins.field(it);
+				}
+
+				auto val = ins.values();
+				for (auto &it : ret.asArray()) {
+					for (auto &fIt : fields) {
+						if (auto f = scheme.getField(fIt)) {
+							auto &v = it.getValue(fIt);
+							if (v) {
+								if (f->getType() == db::Type::FullTextView) {
+									val.value(db::Binder::FullTextField{v});
+								} else {
+									val.value(db::Binder::DataField{f, v, f->isDataLayout(), f->hasFlag(db::Flags::Compressed)});
+								}
+							} else {
+								val.def();
+							}
+						}
+					}
+
+					val = val.next();
+				}
+
+				auto &conflicts = worker.getConflicts();
+				for (auto &it : conflicts) {
+					if (it.second.isDoNothing()) {
+						val.onConflict(it.first->getName()).doNothing();
+					} else {
+						auto c = val.onConflict(it.first->getName()).doUpdate();
+						for (auto &iit : fields) {
+							auto f = scheme.getField(iit);
+							if (f && (it.second.mask.empty() || std::find(it.second.mask.begin(), it.second.mask.end(), f) != it.second.mask.end())) {
+								c.excluded(iit);
+							}
+						}
+
+						if (it.second.hasCondition()) {
+							c.where().parenthesis(db::Operator::And, [&] (SqlQuery::WhereBegin &wh) {
+								SqlQuery::WhereContinue iw(wh.query, wh.state);
+								query.writeWhere(iw, db::Operator::And, worker.scheme(), it.second.condition);
+							});
 						}
 					}
 				}
-				ret.setInteger(id, "__oid");
-			} else {
-				ret = mem::Value();
-				return;
-			}
-		} else {
-			val.finalize();
-			if (performQuery(query) != 1) {
-				ret = mem::Value();
-				return;
-			}
-		}
 
-		if (id > 0) {
-			performPostUpdate(worker.transaction(), query, scheme, ret, id, postUpdate, false);
-		}
-	});
+				val.returning().field(SqlQuery::Field("__oid").as("id")).finalize();
+				selectQuery(query, [&] (Result &res) {
+					size_t i = 0;
+					for (auto it : res) {
+						ret.getValue(i).setInteger(it.toInteger(0), "__oid");
+						++ i;
+					}
 
-	return ret;
+					for (auto &iit : ret.asArray()) {
+						if (worker.shouldIncludeNone() && worker.scheme().hasForceExclude()) {
+							for (auto &it : worker.scheme().getFields()) {
+								if (it.second.hasFlag(db::Flags::ForceExclude)) {
+									iit.erase(it.second.getName());
+								}
+							}
+						}
+					}
+				});
+			});
+
+			return ret;
+		}
+	}
+	return mem::Value();
 }
 
 mem::Value SqlHandle::save(Worker &worker, uint64_t oid, const mem::Value &data, const mem::Vector<mem::String> &fields) {

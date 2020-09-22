@@ -367,23 +367,42 @@ bool Scheme::hasAccessControl() const {
 }
 
 mem::Value Scheme::createWithWorker(Worker &w, const mem::Value &data, bool isProtected) const {
-	if (!data.isDictionary()) {
+	if (!data.isDictionary() && !data.isArray()) {
 		messages::error("Storage", "Invalid data for object");
 		return mem::Value();
 	}
 
-	mem::Value changeSet = data;
-	transform(changeSet, isProtected?TransformAction::ProtectedCreate:TransformAction::Create);
+	auto checkRequired = [] (mem::StringView f, const mem::Value &changeSet) {
+		auto &val = changeSet.getValue(f);
+		if (val.isNull()) {
+			messages::error("Storage", "No value for required field",
+					mem::Value({ std::make_pair("field", mem::Value(f)) }));
+			return false;
+		}
+		return true;
+	};
 
-	processFullTextFields(changeSet);
+	mem::Value changeSet = data;
+	if (data.isDictionary()) {
+		transform(changeSet, isProtected?TransformAction::ProtectedCreate:TransformAction::Create);
+		processFullTextFields(changeSet);
+	} else {
+		for (auto &it : changeSet.asArray()) {
+			transform(it, isProtected?TransformAction::ProtectedCreate:TransformAction::Create);
+			processFullTextFields(it);
+		}
+	}
 
 	bool stop = false;
 	for (auto &it : fields) {
-		auto &val = changeSet.getValue(it.first);
-		if (val.isNull() && it.second.hasFlag(Flags::Required)) {
-			messages::error("Storage", "No value for required field",
-					mem::Value({ std::make_pair("field", mem::Value(it.first)) }));
-			stop = true;
+		if (it.second.hasFlag(Flags::Required)) {
+			if (changeSet.isDictionary()) {
+				if (!checkRequired(it.first, changeSet)) { stop = true; }
+			} else {
+				for (auto &iit : changeSet.asArray()) {
+					if (!checkRequired(it.first, iit)) { iit = mem::Value(); }
+				}
+			}
 		}
 	}
 
@@ -393,13 +412,7 @@ mem::Value Scheme::createWithWorker(Worker &w, const mem::Value &data, bool isPr
 
 	mem::Value retVal;
 	if (w.perform([&] (const Transaction &t) -> bool {
-		mem::Value patch(createFilePatch(t, data));
-		if (patch.isDictionary()) {
-			for (auto &it : patch.asDict()) {
-				changeSet.setValue(it.second, it.first);
-			}
-		}
-
+		mem::Value patch(createFilePatch(t, data, changeSet));
 		if (auto ret = t.create(w, changeSet)) {
 			touchParents(t, ret);
 			for (auto &it : views) {
@@ -408,7 +421,7 @@ mem::Value Scheme::createWithWorker(Worker &w, const mem::Value &data, bool isPr
 			retVal = std::move(ret);
 			return true;
 		} else {
-			if (patch.isDictionary()) {
+			if (patch.isDictionary() || patch.isArray()) {
 				purgeFilePatch(t, patch);
 			}
 		}
@@ -431,13 +444,7 @@ mem::Value Scheme::updateWithWorker(Worker &w, uint64_t oid, const mem::Value &d
 
 	mem::Value ret;
 	w.perform([&] (const Transaction &t) -> bool {
-		mem::Value filePatch(createFilePatch(t, data));
-		if (filePatch.isDictionary()) {
-			for (auto &it : filePatch.asDict()) {
-				changeSet.setValue(it.second, it.first);
-			}
-		}
-
+		mem::Value filePatch(createFilePatch(t, data, changeSet));
 		if (changeSet.empty()) {
 			messages::error("Storage", "Empty changeset for id", mem::Value({ std::make_pair("oid", mem::Value((int64_t)oid)) }));
 			return false;
@@ -474,13 +481,7 @@ mem::Value Scheme::updateWithWorker(Worker &w, const mem::Value & obj, const mem
 
 	mem::Value ret;
 	w.perform([&] (const Transaction &t) -> bool {
-		mem::Value filePatch(createFilePatch(t, data));
-		if (filePatch.isDictionary()) {
-			for (auto &it : filePatch.asDict()) {
-				changeSet.setValue(it.second, it.first);
-			}
-		}
-
+		mem::Value filePatch(createFilePatch(t, data, changeSet));
 		if (changeSet.empty()) {
 			messages::error("Storage", "Empty changeset for id", mem::Value({ std::make_pair("oid", mem::Value((int64_t)oid)) }));
 			return false;
@@ -1187,51 +1188,85 @@ bool Scheme::validateHint(const mem::Value &hint) {
 	return false;
 }
 
-mem::Value Scheme::createFilePatch(const Transaction &t, const mem::Value &val) const {
-	mem::Value patch;
-	for (auto &it : val.asDict()) {
-		auto f = getField(it.first);
-		if (f && (f->getType() == Type::File || (f->getType() == Type::Image && static_cast<const FieldImage *>(f->getSlot())->primary))) {
-			if (it.second.isInteger() && it.second.getInteger() < 0) {
-				auto file = internals::getFileFromContext(it.second.getInteger());
-				if (file && file->isOpen()) {
-					auto d = createFile(t, *f, *file);
-					if (d.isInteger()) {
-						patch.setValue(d, f->getName().str<mem::Interface>());
-					} else if (d.isDictionary()) {
-						for (auto & it : d.asDict()) {
-							patch.setValue(std::move(it.second), it.first);
+mem::Value Scheme::createFilePatch(const Transaction &t, const mem::Value &ival, mem::Value &iChangeSet) const {
+	auto createPatch = [&] (const mem::Value &val, mem::Value &changeSet) {
+		mem::Value patch;
+		for (auto &it : val.asDict()) {
+			auto f = getField(it.first);
+			if (f && (f->getType() == Type::File || (f->getType() == Type::Image && static_cast<const FieldImage *>(f->getSlot())->primary))) {
+				if (it.second.isInteger() && it.second.getInteger() < 0) {
+					auto file = internals::getFileFromContext(it.second.getInteger());
+					if (file && file->isOpen()) {
+						auto d = createFile(t, *f, *file);
+						if (d.isInteger()) {
+							patch.setValue(d, f->getName().str<mem::Interface>());
+						} else if (d.isDictionary()) {
+							for (auto & it : d.asDict()) {
+								patch.setValue(std::move(it.second), it.first);
+							}
 						}
 					}
-				}
-			} else if (it.second.isDictionary()) {
-				if ((it.second.isBytes("content") || it.second.isString("content")) && it.second.isString("type")) {
-					auto &c = it.second.getValue("content");
-					mem::Value d;
-					if (c.isBytes()) {
-						d = createFile(t, *f, c.getBytes(), it.second.getString("type"), it.second.getInteger("mtime"));
-					} else {
-						auto &str = it.second.getString("content");
-						d = createFile(t, *f, mem::BytesView((const uint8_t *)str.data(), str.size()), it.second.getString("type"), it.second.getInteger("mtime"));
-					}
-					if (d.isInteger()) {
-						patch.setValue(d, f->getName().str<mem::Interface>());
-					} else if (d.isDictionary()) {
-						for (auto & it : d.asDict()) {
-							patch.setValue(std::move(it.second), it.first);
+				} else if (it.second.isDictionary()) {
+					if ((it.second.isBytes("content") || it.second.isString("content")) && it.second.isString("type")) {
+						auto &c = it.second.getValue("content");
+						mem::Value d;
+						if (c.isBytes()) {
+							d = createFile(t, *f, c.getBytes(), it.second.getString("type"), it.second.getInteger("mtime"));
+						} else {
+							auto &str = it.second.getString("content");
+							d = createFile(t, *f, mem::BytesView((const uint8_t *)str.data(), str.size()), it.second.getString("type"), it.second.getInteger("mtime"));
+						}
+						if (d.isInteger()) {
+							patch.setValue(d, f->getName().str<mem::Interface>());
+						} else if (d.isDictionary()) {
+							for (auto & it : d.asDict()) {
+								patch.setValue(std::move(it.second), it.first);
+							}
 						}
 					}
 				}
 			}
 		}
+		if (patch.isDictionary()) {
+			for (auto &it : patch.asDict()) {
+				changeSet.setValue(it.second, it.first);
+			}
+		}
+		return patch;
+	};
+
+	if (ival.isDictionary()) {
+		return createPatch(ival, iChangeSet);
+	} else {
+		size_t i = 0;
+		mem::Value ret;
+		for (auto &it : ival.asArray()) {
+			auto &changeSet = iChangeSet.getValue(i);
+			if (!changeSet.isNull()) {
+				if (auto vl = createPatch(it, changeSet)) {
+					ret.addValue(std::move(vl));
+				}
+			}
+			++ i;
+		}
+		return ret;
 	}
-	return patch;
 }
 
 void Scheme::purgeFilePatch(const Transaction &t, const mem::Value &patch) const {
-	for (auto &it : patch.asDict()) {
-		if (getField(it.first)) {
-			File::purgeFile(t, it.second);
+	if (patch.isDictionary()) {
+		for (auto &it : patch.asDict()) {
+			if (getField(it.first)) {
+				File::purgeFile(t, it.second);
+			}
+		}
+	} else if (patch.isArray()) {
+		for (auto &v : patch.asArray()) {
+			for (auto &it : v.asDict()) {
+				if (getField(it.first)) {
+					File::purgeFile(t, it.second);
+				}
+			}
 		}
 	}
 }

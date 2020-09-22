@@ -14,11 +14,11 @@ public:
 	virtual ~Document();
 
 public: // content
-	const File & addTextFile(const StringView &name, const StringView &type, const StringView &data);
-	const File & addBinaryFile(const StringView &name, const StringView &type, Bytes &&data);
-	const File & addFilesystemFile(const StringView &name, const StringView &type, const StringView &path);
-	const File & addFunctionalFile(const StringView &name, const StringView &type, FileReaderCallback &&);
-	const File & addNetworkFile(const StringView &name, const StringView &url);
+	const File & addTextFile(StringView name, StringView type, StringView data);
+	const File & addBinaryFile(StringView name, StringView type, Bytes &&data);
+	const File & addFilesystemFile(StringView name, StringView type, StringView path);
+	const File & addFunctionalFile(StringView name, StringView type, FileReaderCallback &&);
+	const File & addNetworkFile(StringView name, StringView url);
 
 	Buffer save() const;
 

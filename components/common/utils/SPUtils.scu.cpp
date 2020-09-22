@@ -53,3 +53,5 @@ THE SOFTWARE.
 
 #include "SPThreadTask.cc"
 #include "SPThreadTaskQueue.cc"
+
+#include "SPJsonWebToken.cc"

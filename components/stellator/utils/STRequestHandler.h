@@ -243,7 +243,7 @@ public:
 
 		mem::StringView getName() const;
 		mem::StringView getPattern() const;
-		const data::Value &getOptions() const;
+		const mem::Value &getOptions() const;
 
 		const db::Scheme &getQueryScheme() const;
 		const db::Scheme &getInputScheme() const;
@@ -287,7 +287,7 @@ public:
 			mem::Function<Handler *()> &&, mem::Value && = mem::Value());
 
 	HandlerInfo &addHandler(const mem::StringView &name, Request::Method, const mem::StringView &pattern,
-			mem::Function<bool(Handler &)> &&, mem::Function<data::Value(Handler &)> &&, mem::Value && = mem::Value());
+			mem::Function<bool(Handler &)> &&, mem::Function<mem::Value(Handler &)> &&, mem::Value && = mem::Value());
 
 	const mem::Vector<HandlerInfo> &getHandlers() const;
 

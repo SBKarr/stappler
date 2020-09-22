@@ -94,8 +94,8 @@ bool TaskGroup::perform(const mem::Callback<void(Task &)> &cb) {
 	return Task::perform(_server, cb, this);
 }
 
-Pair<size_t, size_t> TaskGroup::getCounters() const {
-	return pair(_completed.load(), _added.load());
+mem::Pair<size_t, size_t> TaskGroup::getCounters() const {
+	return stappler::pair(_completed.load(), _added.load());
 }
 
 Task *Task::prepare(mem::pool_t *rootPool, const mem::Callback<void(Task &)> &cb, TaskGroup *g) {

@@ -510,24 +510,59 @@ void Document::writeContentNode(const WriteCallback &cb, const Node &node, bool 
 	if (pretty) { cb << "\n"; }
 }
 
-const File & Document::addTextFile(const StringView &name, const StringView &type, const StringView &data) {
-	return _files.emplace_back(File::makeText(name, type, data));
+const File & Document::addTextFile(StringView name, StringView type, StringView data) {
+	auto it = std::find_if(_files.begin(), _files.end(), [name] (const File &f) {
+		return f.name == name;
+	});
+	if (it == _files.end()) {
+		return _files.emplace_back(File::makeText(name, type, data));
+	} else {
+		return *it;
+	}
 }
 
-const File & Document::addBinaryFile(const StringView &name, const StringView &type, Bytes &&data) {
-	return _files.emplace_back(File::makeBinary(name, type, std::move(data)));
+const File & Document::addBinaryFile(StringView name, StringView type, Bytes &&data) {
+	auto it = std::find_if(_files.begin(), _files.end(), [name] (const File &f) {
+		return f.name == name;
+	});
+	if (it == _files.end()) {
+		return _files.emplace_back(File::makeBinary(name, type, std::move(data)));
+	} else {
+		return *it;
+	}
 }
 
-const File & Document::addFilesystemFile(const StringView &name, const StringView &type, const StringView &path) {
-	return _files.emplace_back(File::makeFilesystem(name, type, path));
+const File & Document::addFilesystemFile(StringView name, StringView type, StringView path) {
+	auto it = std::find_if(_files.begin(), _files.end(), [name] (const File &f) {
+		return f.name == name;
+	});
+	if (it == _files.end()) {
+		return _files.emplace_back(File::makeFilesystem(name, type, path));
+	} else {
+		return *it;
+	}
 }
 
-const File & Document::addFunctionalFile(const StringView &name, const StringView &type, FileReaderCallback &&fn) {
-	return _files.emplace_back(File::makeFunctional(name, type, move(fn)));
+const File & Document::addFunctionalFile(StringView name, StringView type, FileReaderCallback &&fn) {
+	auto it = std::find_if(_files.begin(), _files.end(), [name] (const File &f) {
+		return f.name == name;
+	});
+	if (it == _files.end()) {
+		return _files.emplace_back(File::makeFunctional(name, type, move(fn)));
+	} else {
+		return *it;
+	}
 }
 
-const File & Document::addNetworkFile(const StringView &name, const StringView &url) {
-	return _files.emplace_back(File::makeNetwork(name, url));
+const File & Document::addNetworkFile(StringView name, StringView url) {
+	auto it = std::find_if(_files.begin(), _files.end(), [name] (const File &f) {
+		return f.name == name;
+	});
+	if (it == _files.end()) {
+		return _files.emplace_back(File::makeNetwork(name, url));
+	} else {
+		return *it;
+	}
 }
 
 static auto s_manifestBegin = R"(<?xml version="1.0" encoding="UTF-8"?>

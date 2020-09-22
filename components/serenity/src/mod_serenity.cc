@@ -133,6 +133,13 @@ static const char *mod_serenity_set_session_params(cmd_parms *parms, void *mconf
 	return NULL;
 }
 
+static const char *mod_serenity_set_server_key_params(cmd_parms *parms, void *mconfig, const char *w) {
+	apr::pool::perform([&] {
+		Server(parms->server).setServerKey(StringView(w));
+	}, parms->pool, memory::pool::Config);
+	return NULL;
+}
+
 static const char *mod_serenity_set_webhook_params(cmd_parms *parms, void *mconfig, const char *w) {
 	apr::pool::perform([&] {
 		Server(parms->server).setWebHookParams(apr::string::make_weak(w));
@@ -185,6 +192,8 @@ static const command_rec mod_serenity_directives[] = {
 		"Serenity handler definition in format (Name:File:Func Args)"),
 	AP_INIT_RAW_ARGS("SerenitySession", (cmd_func)mod_serenity_set_session_params, NULL, RSRC_CONF,
 		"Serenity session params (name, key, host, maxage, secure)"),
+	AP_INIT_TAKE1("SerenityServerKey", (cmd_func)mod_serenity_set_server_key_params, NULL, RSRC_CONF,
+		"Security key for serenity server, that will be used for cryptographic proposes"),
 	AP_INIT_RAW_ARGS("SerenityWebHook", (cmd_func)mod_serenity_set_webhook_params, NULL, RSRC_CONF,
 		"Serenity webhook error reporter address in format: SerenityWebHook name=<name> url=<url>"),
 	AP_INIT_NO_ARGS("SerenityForceHttps", (cmd_func)mod_serenity_set_force_https, NULL, RSRC_CONF,

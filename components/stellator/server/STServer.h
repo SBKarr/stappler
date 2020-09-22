@@ -151,10 +151,10 @@ public: // httpd server info
 
 	stappler::pug::Cache *getPugCache() const;
 
-	void setSessionKeys(mem::StringView pub, mem::StringView priv, mem::StringView secret = mem::StringView()) const;
+	void setSessionKeys(mem::StringView pub, mem::StringView priv) const;
 	mem::StringView getSessionPublicKey() const;
 	mem::StringView getSessionPrivateKey() const;
-	mem::StringView getServerSecret() const;
+	mem::BytesView getServerSecret() const;
 
 public: // compression
 	enum EtagMode {

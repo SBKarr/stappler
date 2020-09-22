@@ -64,17 +64,7 @@ data::Value Handle::performDataQuery() {
 	return data::Value();
 }
 data::Value Handle::performDataQuery(const data::Value &val, data::EncodeFormat fmt) {
-	addHeader("Accept", "application/cbor, application/json");
-
-	mem::ostringstream stream;
-	stream << fmt << val;
-	stappler::BytesViewNetwork r((const uint8_t *)stream.data(), stream.size());
-	setSendCallback([&] (char *data, size_t size) -> size_t {
-		auto writeSize = std::min(size, r.size());
-		memcpy(data, r.data(), writeSize);
-		r.offset(writeSize);
-		return writeSize;
-	}, r.size());
+	setSendData(val, fmt);
 	return performDataQuery();
 }
 bool Handle::performCallbackQuery(const IOCallback &cb) {

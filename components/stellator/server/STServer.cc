@@ -271,7 +271,7 @@ struct Server::Config : public mem::AllocBase {
 
 	mem::String publicSessionKey;
 	mem::String privateSessionKey;
-	mem::String serverSecret;
+	stappler::string::Sha512::Buf serverKey;
 
 	db::Scheme userScheme = db::Scheme(SA_SERVER_USER_SCHEME_NAME, {
 		db::Field::Text("name", db::Transform::Alias, db::Flags::Required),
@@ -690,10 +690,9 @@ void Server::performWithStorage(const mem::Callback<void(db::Transaction &)> &cb
 	}
 }
 
-void Server::setSessionKeys(mem::StringView pub, mem::StringView priv, mem::StringView sec) const {
+void Server::setSessionKeys(mem::StringView pub, mem::StringView priv) const {
 	_config->publicSessionKey = pub.str<mem::Interface>();
 	_config->privateSessionKey = priv.str<mem::Interface>();
-	_config->serverSecret = sec.str<mem::Interface>();
 }
 
 mem::StringView Server::getSessionPublicKey() const {
@@ -704,8 +703,8 @@ mem::StringView Server::getSessionPrivateKey() const {
 	return _config->privateSessionKey;
 }
 
-mem::StringView Server::getServerSecret() const {
-	return _config->serverSecret;
+mem::BytesView Server::getServerSecret() const {
+	return _config->serverKey;
 }
 
 ServerComponent *Server::getServerComponent(const mem::StringView &name) const {

@@ -40,15 +40,61 @@ THE SOFTWARE.
 #include "Tools.h"
 #include "TemplateCache.h"
 #include "SPugCache.h"
+#include "ExternalSession.h"
 
 #include "mbedtls/config.h"
+#include "mbedtls/pk.h"
+#include "mbedtls/entropy.h"
+#include "mbedtls/ctr_drbg.h"
+#include "mbedtls/rsa.h"
 #include "mbedtls/pk.h"
 
 NS_SA_BEGIN
 
-#define SA_SERVER_FILE_SCHEME_NAME "__files"
-#define SA_SERVER_USER_SCHEME_NAME "__users"
-#define SA_SERVER_ERROR_SCHEME_NAME "__error"
+static constexpr auto SA_SERVER_FILE_SCHEME_NAME = "__files";
+static constexpr auto SA_SERVER_USER_SCHEME_NAME = "__users";
+static constexpr auto SA_SERVER_ERROR_SCHEME_NAME = "__error";
+static constexpr auto DEV_RANDOM_THRESHOLD = 32;
+
+static int dev_random_entropy_poll(void *data, unsigned char *output, size_t len, size_t *olen) {
+	FILE *file;
+	size_t ret, left = len;
+	unsigned char *p = output;
+	((void) data);
+
+	*olen = 0;
+
+	file = fopen( "/dev/random", "rb" );
+	if (file == NULL) {
+		valid::makeRandomBytes(output, left);
+		return 0;
+	}
+
+	size_t limit = 0;
+	while (left > 0 && limit < 5) {
+		/* /dev/random can return much less than requested. If so, try again */
+		ret = fread(p, 1, left, file);
+		if (ret == 0 && ferror(file)) {
+			fclose(file);
+			return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
+		}
+
+		p += ret;
+		left -= ret;
+		++ limit;
+		if (left > 0) {
+			sleep(1);
+		}
+	}
+
+	if (left > 0) {
+		valid::makeRandomBytes(p, left);
+	}
+
+	fclose(file);
+	*olen = len;
+	return 0;
+}
 
 struct Server::Config : public AllocPool {
 	static Config *get(server_rec *server) {
@@ -80,6 +126,7 @@ struct Server::Config : public AllocPool {
 		}
 
 		ap_set_module_config(server->module_config, &serenity_module, this);
+		memset(serverKey.data(), 0, serverKey.size());
 	}
 
 	void onHandler(Server &serv, const StringView &name, const StringView &ifile, const StringView &symbol, const data::Value &handlerData) {
@@ -197,6 +244,10 @@ struct Server::Config : public AllocPool {
 		forceHttps = true;
 	}
 
+	void setServerKey(StringView w) {
+		serverKey = string::Sha512::hmac(w, w);
+	}
+
 	void addAllowed(StringView r) {
 		auto p = valid::readIpRange(r);
 		if (p.first && p.second) {
@@ -211,6 +262,82 @@ struct Server::Config : public AllocPool {
 
 		if (!handlers.empty()) {
 			initHandlers(serv, handlers);
+		}
+	}
+
+	bool initKeyPair(Server &serv, const db::Adapter &a, BytesView fp) {
+		auto pers = serv.getServerHostname();
+
+		mbedtls_pk_context key;
+		mbedtls_entropy_context entropy;
+		mbedtls_ctr_drbg_context ctr_drbg;
+		mbedtls_entropy_init( &entropy );
+
+		mbedtls_entropy_add_source(&entropy, dev_random_entropy_poll, NULL, DEV_RANDOM_THRESHOLD, MBEDTLS_ENTROPY_SOURCE_STRONG);
+		if (mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, (void *)&entropy, (const unsigned char *)pers.data(), pers.size()) != 0) {
+			return false;
+		}
+
+		if (mbedtls_pk_setup(&key, mbedtls_pk_info_from_type(mbedtls_pk_type_t(MBEDTLS_PK_RSA))) != 0) {
+			return false;
+		}
+
+		if (mbedtls_rsa_gen_key(mbedtls_pk_rsa(key), mbedtls_ctr_drbg_random, &ctr_drbg, 4096, 65537) != 0) {
+			return false;
+		}
+
+		unsigned char priv_buf[16_KiB] = { 0 };
+		unsigned char pub_buf[16_KiB] = { 0 };
+
+		if (mbedtls_pk_write_key_pem( &key, priv_buf, 16_KiB) != 0) {
+			return false;
+		}
+
+		if (mbedtls_pk_write_pubkey_pem( &key, pub_buf, 16_KiB) != 0) {
+			return false;
+		}
+
+		privateSessionKey = (const char *)priv_buf;
+		publicSessionKey = (const char *)pub_buf;
+
+	    mbedtls_pk_free( &key );
+	    mbedtls_ctr_drbg_free( &ctr_drbg );
+	    mbedtls_entropy_free( &entropy );
+
+	    auto tok = AesToken::create(AesToken::Keys{ StringView(), StringView(config::INTERNAL_PRIVATE_KEY), BytesView(serverKey) });
+		tok.setString(privateSessionKey, "priv");
+		tok.setString(publicSessionKey, "pub");
+		if (auto d = tok.exportData(fp)) {
+			std::array<uint8_t, string::Sha512::Length + 4> data;
+			memcpy(data.data(), "srv:", 4);
+			memcpy(data.data() + 4, fp.data(), fp.size());
+
+			a.set(data, d, TimeInterval::seconds(60 * 60 * 365 * 100)); // 100 years
+			return true;
+		}
+	    return false;
+	}
+
+	void initServerKeys(Server &serv, const db::Adapter &a) {
+		if (!privateSessionKey.empty() || !publicSessionKey.empty()) {
+			return;
+		}
+
+		auto fp = string::Sha512::hmac(serv.getServerHostname(), serverKey);
+
+		std::array<uint8_t, string::Sha512::Length + 4> data;
+		memcpy(data.data(), "srv:", 4);
+		memcpy(data.data() + 4, fp.data(), fp.size());
+
+		if (auto d = a.get(data)) {
+			if (auto tok = AesToken::parse(d, BytesView(fp), AesToken::Keys{ StringView(), StringView(config::INTERNAL_PRIVATE_KEY), BytesView(serverKey) })) {
+				privateSessionKey = tok.getString("priv");
+				publicSessionKey = tok.getString("pub");
+			}
+		}
+
+		if (privateSessionKey.empty()) {
+			initKeyPair(serv, a, fp);
 		}
 	}
 
@@ -233,6 +360,10 @@ struct Server::Config : public AllocPool {
 				if (db) {
 					db::pq::Handle h(db::pq::Driver::open(), db::pq::Driver::Handle(db));
 					h.init(db::Interface::Config{serv.getServerHostname(), serv.getFileScheme(), &storageTypes, &customTypes}, schemes);
+
+					if (serverKey != string::Sha512::Buf{0}) {
+						initServerKeys(serv, &h);
+					}
 
 					for (auto &it : components) {
 						currentComponent = it.second->getName();
@@ -333,7 +464,7 @@ struct Server::Config : public AllocPool {
 
 	String publicSessionKey;
 	String privateSessionKey;
-	String serverKey;
+	string::Sha512::Buf serverKey;
 
 	mem::Vector<mem::Pair<uint32_t, db::Interface::StorageType>> storageTypes;
 	mem::Vector<mem::Pair<uint32_t, mem::String>> customTypes;
@@ -545,10 +676,9 @@ void Server::performWithStorage(const Callback<void(db::Transaction &)> &cb) con
 	}
 }
 
-void Server::setSessionKeys(StringView pub, StringView priv, StringView sec) const {
+void Server::setSessionKeys(StringView pub, StringView priv) const {
 	_config->publicSessionKey = pub.str();
 	_config->privateSessionKey = priv.str();
-	_config->serverKey = sec.str();
 }
 
 StringView Server::getSessionPublicKey() const {
@@ -559,7 +689,7 @@ StringView Server::getSessionPrivateKey() const {
 	return _config->privateSessionKey;
 }
 
-StringView Server::getServerSecret() const {
+BytesView Server::getServerSecret() const {
 	return _config->serverKey;
 }
 
@@ -667,6 +797,12 @@ void Server::setSessionParams(StringView str) {
 		}
 
 		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+	}
+}
+
+void Server::setServerKey(StringView w) {
+	if (!w.empty()) {
+		_config->setServerKey(w);
 	}
 }
 

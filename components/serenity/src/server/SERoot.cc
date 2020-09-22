@@ -936,9 +936,9 @@ String Root::getAllocatorMemoryMap(uint64_t ptr) const {
 }
 
 void Root::onChildInit() {
-	if (apr_thread_pool_create(&_threadPool, 3, std::thread::hardware_concurrency(), _pool) == APR_SUCCESS) {
+	if (apr_thread_pool_create(&_threadPool, std::thread::hardware_concurrency() / 2, std::thread::hardware_concurrency(), _pool) == APR_SUCCESS) {
 		apr_thread_pool_idle_wait_set(_threadPool, (5_sec).toMicroseconds());
-		apr_thread_pool_threshold_set(_threadPool, 5);
+		apr_thread_pool_threshold_set(_threadPool, 2);
 	} else {
 		_threadPool = nullptr;
 	}

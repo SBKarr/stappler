@@ -636,10 +636,10 @@ bool Handle::selectQuery(const sql::SqlQuery &query, const stappler::Callback<vo
 			data.paramValues, data.paramLengths, data.paramFormats, 1));
 	if (!res.isSuccess()) {
 		auto info = res.getInfo();
-		info.setString(query.getQuery().str(), "query");
 #if DEBUG
 		std::cout << query.getQuery().weak() << "\n";
 		std::cout << mem::EncodeFormat::Pretty << info << "\n";
+		info.setString(query.getQuery().str(), "query");
 #endif
 		messages::debug("Database", "Fail to perform query", std::move(info));
 		messages::error("Database", "Fail to perform query");

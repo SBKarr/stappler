@@ -80,13 +80,22 @@ auto Query<Binder, Interface>::InsertValues::value(Value &&val) -> InsertValues 
 
 template <typename Binder, typename Interface>
 auto Query<Binder, Interface>::InsertValues::def() -> InsertValues & {
-	if (this->state == State::None) {
+	switch (this->state) {
+	case State::None:
 		this->query->stream << ",(";
 		this->state = State::Some;
 		this->query->finalization = FinalizationState::Parentesis;
-	} else {
+		break;
+	case State::Init:
+		this->query->stream << "(";
+		this->state = State::Some;
+		this->query->finalization = FinalizationState::Parentesis;
+		break;
+	case State::Some:
 		this->query->stream << ",";
+		break;
 	}
+
 	this->query->stream << "DEFAULT";
 	return *this;
 }
@@ -136,6 +145,23 @@ auto Query<Binder, Interface>::InsertValues::returning() -> Returning {
 }
 
 template <typename Binder, typename Interface>
+auto Query<Binder, Interface>::InsertValues::next() -> InsertValues {
+	switch (this->state) {
+	case State::None:
+	case State::Init:
+		this->query->stream << "\n";
+		break;
+	case State::Some:
+		this->query->stream << ")\n";
+		break;
+	}
+
+	this->query->finalization = FinalizationState::None;
+	InsertValues v(this->query, State::None);
+	return v;
+}
+
+template <typename Binder, typename Interface>
 auto Query<Binder, Interface>::InsertConflict::doNothing() -> InsertPostConflict {
 	this->query->stream << " DO NOTHING ";
 	return InsertPostConflict(this->query);
@@ -148,14 +174,14 @@ auto Query<Binder, Interface>::InsertConflict::doUpdate() -> InsertUpdateValues 
 }
 
 template <typename Binder, typename Interface>
-auto Query<Binder, Interface>::InsertUpdateValues::excluded(const String &f) -> InsertUpdateValues & {
+auto Query<Binder, Interface>::InsertUpdateValues::excluded(StringView f) -> InsertUpdateValues & {
 	if (this->state == State::None) { this->state = State::Some; } else { this->query->stream << ","; }
 	this->query->stream << " \"" << f << "\"=EXCLUDED.\"" << f << "\"";
 	return *this;
 }
 
 template <typename Binder, typename Interface>
-auto Query<Binder, Interface>::InsertUpdateValues::excluded(const String &f, const String &v) -> InsertUpdateValues & {
+auto Query<Binder, Interface>::InsertUpdateValues::excluded(StringView f, StringView v) -> InsertUpdateValues & {
 	if (this->state == State::None) { this->state = State::Some; } else { this->query->stream << ","; }
 	this->query->stream << " \"" << f << "\"=EXCLUDED.\"" << v << "\"";
 	return *this;

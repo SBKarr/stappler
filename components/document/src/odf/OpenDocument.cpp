@@ -5,16 +5,16 @@
 
 namespace opendocument {
 
-File File::makeText(const StringView &name, const StringView &type, const StringView &data) {
+File File::makeText(StringView name, StringView type, StringView data) {
 	return File{Text, name.str<Interface>(), type.str<Interface>(), Bytes((uint8_t *)data.data(), (uint8_t *)data.data() + data.size())};
 }
-File File::makeBinary(const StringView &name, const StringView &type, Bytes &&data) {
+File File::makeBinary(StringView name, StringView type, Bytes &&data) {
 	return File{Binary, name.str<Interface>(), type.str<Interface>(), std::move(data)};
 }
-File File::makeFilesystem(const StringView &name, const StringView &type, const StringView &path) {
+File File::makeFilesystem(StringView name, StringView type, StringView path) {
 	return File{Filesystem, name.str<Interface>(), type.str<Interface>(), Bytes((uint8_t *)path.data(), (uint8_t *)path.data() + path.size() + 1)};
 }
-File File::makeNetwork(const StringView &name, const StringView &url) {
+File File::makeNetwork(StringView name, StringView url) {
 	String type;
 	Bytes data;
 
@@ -34,7 +34,7 @@ File File::makeNetwork(const StringView &name, const StringView &url) {
 
 	return makeBinary(name, type, std::move(data));
 }
-File File::makeFunctional(const StringView &name, const StringView &type, FileReaderCallback &&fn) {
+File File::makeFunctional(StringView name, StringView type, FileReaderCallback &&fn) {
 	return File{Functional, name.str<Interface>(), type.str<Interface>(), Bytes(), move(fn)};
 }
 

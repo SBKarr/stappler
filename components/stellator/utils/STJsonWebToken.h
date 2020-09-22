@@ -24,57 +24,14 @@ THE SOFTWARE.
 #define STELLATOR_UTILS_STJSONWEBTOKEN_H_
 
 #include "Define.h"
+#include "SPJsonWebToken.h"
 
 NS_SA_BEGIN
 
-struct JsonWebToken {
-	enum SigAlg {
-		None,
-		HS256,
-		HS512,
-		RS256,
-		RS512,
-		ES256,
-		ES512,
-	};
+using JsonWebToken = stappler::JsonWebToken;
+using AesToken = stappler::AesToken;
 
-	struct KeyData {
-		SigAlg alg = None;
-		Bytes key;
-
-		KeyData(SigAlg, const Bytes &n, const Bytes &e);
-	};
-
-	static SigAlg getAlg(const StringView &);
-	static String getAlgName(const SigAlg &);
-
-	static JsonWebToken make(const StringView &iss, const StringView &aud, TimeInterval maxage = TimeInterval(), const StringView &sub = StringView());
-
-	bool validate(const KeyData &key);
-	bool validate(SigAlg, const StringView &key);
-
-	bool validatePayload(const StringView &issuer, const StringView &aud);
-	bool validatePayload();
-
-	void setMaxAge(TimeInterval maxage);
-
-	data::Value data() const;
-
-	String exportPlain(data::EncodeFormat = data::EncodeFormat::Json) const;
-	String exportSigned(SigAlg, const StringView &key,
-			const CoderSource &passwd = CoderSource(), data::EncodeFormat = data::EncodeFormat::Json) const;
-
-	JsonWebToken(data::Value &&payload, TimeInterval maxage = TimeInterval());
-	JsonWebToken(const StringView &);
-
-	String message;
-	data::Value header;
-	data::Value payload;
-	Bytes sig;
-
-	SigAlg alg = None;
-	String kid;
-};
+AesToken::Fingerprint getReqeustFingerprint(const Request &);
 
 NS_SA_END
 
