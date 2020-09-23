@@ -61,7 +61,11 @@ void MmdProcessor::exportMath(std::ostream &, token *t) {
 }
 
 Node *MmdProcessor::makeNode(const StringView &name, InitList &&attr, VecList &&vec) {
-	if (name == "div") {
+	if (_nodeStack.back() == nullptr) {
+		return nullptr;
+	}
+
+	if (name == "div" || name == "blockquote") {
 		StringView cl;
 		for (auto &it : vec) {
 			if (it.first == "class") {
