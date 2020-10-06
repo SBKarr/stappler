@@ -371,9 +371,8 @@ void Decoder<Interface>::decode(ValueType &ret) {
 	}
 }
 
-
 template <typename Interface>
-auto read(const BytesViewTemplate<ByteOrder::Endian::Network> &data) -> ValueTemplate<Interface> {
+auto read(BytesViewTemplate<ByteOrder::Endian::Network> &data) -> ValueTemplate<Interface> {
 	// read CBOR id ( 0xd9d9f7 )
 	if (data.size() <= 3 || data[0] != 0xd9 || data[1] != 0xd9 || data[2] != 0xf7) {
 		return ValueTemplate<Interface>();
@@ -385,6 +384,24 @@ auto read(const BytesViewTemplate<ByteOrder::Endian::Network> &data) -> ValueTem
 	ValueTemplate<Interface> ret;
 	Decoder<Interface> dec(reader);
 	dec.decode(ret);
+	data = dec.r;
+	return ret;
+}
+
+template <typename Interface>
+auto read(BytesViewTemplate<ByteOrder::Endian::Little> &data) -> ValueTemplate<Interface> {
+	// read CBOR id ( 0xd9d9f7 )
+	if (data.size() <= 3 || data[0] != 0xd9 || data[1] != 0xd9 || data[2] != 0xf7) {
+		return ValueTemplate<Interface>();
+	}
+
+	BytesViewTemplate<ByteOrder::Endian::Network> reader(data);
+	reader.offset(3);
+
+	ValueTemplate<Interface> ret;
+	Decoder<Interface> dec(reader);
+	dec.decode(ret);
+	data = dec.r;
 	return ret;
 }
 

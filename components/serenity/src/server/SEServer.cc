@@ -256,9 +256,9 @@ struct Server::Config : public AllocPool {
 	}
 
 	void init(Server &serv) {
-		schemes.emplace(userScheme.getName().str(), &userScheme);
-		schemes.emplace(fileScheme.getName().str(), &fileScheme);
-		schemes.emplace(errorScheme.getName().str(), &errorScheme);
+		schemes.emplace(userScheme.getName(), &userScheme);
+		schemes.emplace(fileScheme.getName(), &fileScheme);
+		schemes.emplace(errorScheme.getName(), &errorScheme);
 
 		if (!handlers.empty()) {
 			initHandlers(serv, handlers);
@@ -437,7 +437,7 @@ struct Server::Config : public AllocPool {
 	Map<std::type_index, ServerComponent *> typedComponents;
 	Map<String, RequestScheme> requests;
 	Map<const storage::Scheme *, ResourceScheme> resources;
-	Map<String, const storage::Scheme *> schemes;
+	Map<StringView, const storage::Scheme *> schemes;
 
 	Map<String, websocket::Manager *> websockets;
 
@@ -1455,7 +1455,7 @@ void Server::addWebsocket(const String &str, websocket::Manager *m) {
 }
 
 const storage::Scheme * Server::exportScheme(const storage::Scheme &scheme) {
-	_config->schemes.emplace(scheme.getName().str(), &scheme);
+	_config->schemes.emplace(scheme.getName(), &scheme);
 	return &scheme;
 }
 
@@ -1499,7 +1499,7 @@ String Server::getResourcePath(const storage::Scheme &scheme) const {
 	return String();
 }
 
-const Map<String, const storage::Scheme *> &Server::getSchemes() const {
+const Map<StringView, const storage::Scheme *> &Server::getSchemes() const {
 	return _config->schemes;
 }
 const Map<const storage::Scheme *, Server::ResourceScheme> &Server::getResources() const {

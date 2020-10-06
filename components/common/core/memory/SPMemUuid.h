@@ -23,10 +23,10 @@ THE SOFTWARE.
 #ifndef COMMON_CORE_MEMORY_SPMEMUUID_H_
 #define COMMON_CORE_MEMORY_SPMEMUUID_H_
 
-#include "SPBytesView.h"
 #include "SPMemString.h"
 #include "SPMemVector.h"
 #include "SPStringView.h"
+#include "SPBytesView.h"
 
 NS_SP_EXT_BEGIN(memory)
 

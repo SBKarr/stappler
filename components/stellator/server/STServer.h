@@ -106,7 +106,7 @@ public:
 		const HandlerMap *map;
 	};
 
-	const mem::Map<mem::String, const db::Scheme *> &getSchemes() const;
+	const mem::Map<mem::StringView, const db::Scheme *> &getSchemes() const;
 	const mem::Map<const db::Scheme *, ResourceScheme> &getResources() const;
 	const mem::Map<mem::String, RequestScheme> &getRequestHandlers() const;
 

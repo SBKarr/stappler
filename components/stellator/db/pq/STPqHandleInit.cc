@@ -42,8 +42,8 @@ struct ConstraintRec {
 
 	ConstraintRec(Type t) : type(t) { }
 	ConstraintRec(Type t, std::initializer_list<mem::String> il) : type(t), fields(il) { }
-	ConstraintRec(Type t, const mem::String &col, const mem::String &ref = "", db::RemovePolicy r = db::RemovePolicy::Null)
-	: type(t), fields{col}, reference(ref), remove(r) { }
+	ConstraintRec(Type t, const mem::String &col, mem::StringView ref = mem::StringView(), db::RemovePolicy r = db::RemovePolicy::Null)
+	: type(t), fields{col}, reference(ref.str()), remove(r) { }
 };
 
 struct ColRec {
@@ -72,12 +72,12 @@ struct TableRec {
 
 	static mem::String getNameForDelta(const Scheme &);
 
-	static mem::Map<mem::String, TableRec> parse(const db::Interface::Config &cfg, const mem::Map<mem::String, const Scheme *> &s);
-	static mem::Map<mem::String, TableRec> get(Handle &h, mem::StringStream &stream);
+	static mem::Map<mem::StringView, TableRec> parse(const db::Interface::Config &cfg, const mem::Map<mem::StringView, const Scheme *> &s);
+	static mem::Map<mem::StringView, TableRec> get(Handle &h, mem::StringStream &stream);
 
 	static void writeCompareResult(mem::StringStream &stream,
-			mem::Map<mem::String, TableRec> &required, mem::Map<mem::String, TableRec> &existed,
-			const mem::Map<mem::String, const db::Scheme *> &s);
+			mem::Map<mem::StringView, TableRec> &required, mem::Map<mem::StringView, TableRec> &existed,
+			const mem::Map<mem::StringView, const db::Scheme *> &s);
 
 	TableRec();
 	TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme);
@@ -311,8 +311,8 @@ static void writeDeltaTrigger(mem::StringStream &stream, const mem::StringView &
 }
 
 void TableRec::writeCompareResult(mem::StringStream &stream,
-		mem::Map<mem::String, TableRec> &required, mem::Map<mem::String, TableRec> &existed,
-		const mem::Map<mem::String, const db::Scheme *> &s) {
+		mem::Map<mem::StringView, TableRec> &required, mem::Map<mem::StringView, TableRec> &existed,
+		const mem::Map<mem::StringView, const db::Scheme *> &s) {
 	for (auto &ex_it : existed) {
 		auto req_it = required.find(ex_it.first);
 		if (req_it != required.end()) {
@@ -523,8 +523,8 @@ mem::String TableRec::getNameForDelta(const Scheme &scheme) {
 	return mem::toString("__delta_", scheme.getName());
 }
 
-mem::Map<mem::String, TableRec> TableRec::parse(const db::Interface::Config &cfg, const mem::Map<mem::String, const db::Scheme *> &s) {
-	mem::Map<mem::String, TableRec> tables;
+mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config &cfg, const mem::Map<mem::StringView, const db::Scheme *> &s) {
+	mem::Map<mem::StringView, TableRec> tables;
 	for (auto &it : s) {
 		auto scheme = it.second;
 		tables.emplace(it.first, TableRec(cfg, scheme));
@@ -537,22 +537,22 @@ mem::Map<mem::String, TableRec> TableRec::parse(const db::Interface::Config &cfg
 			if (type == db::Type::Set) {
 				auto ref = static_cast<const db::FieldObject *>(f.getSlot());
 				if (ref->onRemove == db::RemovePolicy::Reference || ref->onRemove == db::RemovePolicy::StrongReference) {
-					mem::String name = it.first + "_f_" + fit.first;
+					mem::String name = toString(it.first, "_f_", fit.first);
 					auto & source = it.first;
 					auto target = ref->scheme->getName();
 					TableRec table;
-					table.cols.emplace(source + "_id", ColRec(ColRec::Type::Integer, true));
+					table.cols.emplace(mem::toString(source, "_id"), ColRec(ColRec::Type::Integer, true));
 					table.cols.emplace(mem::toString(target, "_id"), ColRec(ColRec::Type::Integer, true));
 
-					table.constraints.emplace(name + "_ref_" + source, ConstraintRec(
-							ConstraintRec::Reference, source + "_id", source, db::RemovePolicy::Cascade));
+					table.constraints.emplace(mem::toString(name, "_ref_", source), ConstraintRec(
+							ConstraintRec::Reference, mem::toString(source, "_id"), source, db::RemovePolicy::Cascade));
 					table.constraints.emplace(name + "_ref_" + ref->getName(), ConstraintRec(
 							ConstraintRec::Reference, mem::toString(target, "_id"), target.str<mem::Interface>(), db::RemovePolicy::Cascade));
 
-					table.indexes.emplace(name + "_idx_" + source, source + "_id");
+					table.indexes.emplace(mem::toString(name, "_idx_", source), mem::toString(source, "_id"));
 					table.indexes.emplace(mem::toString(name, "_idx_", target), mem::toString(target, "_id"));
 
-					table.pkey.emplace_back(source + "_id");
+					table.pkey.emplace_back(mem::toString(source, "_id"));
 					table.pkey.emplace_back(mem::toString(target, "_id"));
 					tables.emplace(std::move(stappler::string::tolower(name)), std::move(table));
 				}
@@ -560,12 +560,12 @@ mem::Map<mem::String, TableRec> TableRec::parse(const db::Interface::Config &cfg
 				auto slot = static_cast<const db::FieldArray *>(f.getSlot());
 				if (slot->tfield && slot->tfield.isSimpleLayout()) {
 
-					mem::String name = it.first + "_f_" + fit.first;
+					mem::String name = mem::toString(it.first, "_f_", fit.first);
 					auto & source = it.first;
 
 					TableRec table;
 					table.cols.emplace("id", ColRec(ColRec::Type::Serial, true));
-					table.cols.emplace(source + "_id", ColRec(ColRec::Type::Integer));
+					table.cols.emplace(mem::toString(source, "_id"), ColRec(ColRec::Type::Integer));
 
 					auto type = slot->tfield.getType();
 					switch (type) {
@@ -591,14 +591,14 @@ mem::Map<mem::String, TableRec> TableRec::parse(const db::Interface::Config &cfg
 					}
 
 					table.constraints.emplace(name + "_ref_" + source, ConstraintRec (
-							ConstraintRec::Reference, source + "_id", source, db::RemovePolicy::Cascade));
+							ConstraintRec::Reference, mem::toString(source, "_id"), source, db::RemovePolicy::Cascade));
 					table.pkey.emplace_back("id");
 
 					if (f.hasFlag(db::Flags::Unique)) {
-						table.constraints.emplace(name + "_unique", ConstraintRec(ConstraintRec::Unique, {source + "_id", "data"}));
+						table.constraints.emplace(name + "_unique", ConstraintRec(ConstraintRec::Unique, {mem::toString(source, "_id"), "data"}));
 					}
 
-					table.indexes.emplace(name + "_idx_" + source, source + "_id");
+					table.indexes.emplace(mem::toString(name, "_idx_", source), mem::toString(source, "_id"));
 					tables.emplace(std::move(name), std::move(table));
 				}
 			} else if (type == db::Type::View) {
@@ -612,15 +612,15 @@ mem::Map<mem::String, TableRec> TableRec::parse(const db::Interface::Config &cfg
 				table.viewScheme = it.second;
 				table.viewField = slot;
 				table.cols.emplace("__vid", ColRec(ColRec::Type::Serial, true));
-				table.cols.emplace(source + "_id", ColRec(ColRec::Type::Integer, true));
+				table.cols.emplace(mem::toString(source, "_id"), ColRec(ColRec::Type::Integer, true));
 				table.cols.emplace(mem::toString(target, "_id"), ColRec(ColRec::Type::Integer, true));
 
 				table.constraints.emplace(name + "_ref_" + source, ConstraintRec(
-						ConstraintRec::Reference, source + "_id", source, db::RemovePolicy::Cascade));
+						ConstraintRec::Reference, mem::toString(source, "_id"), source, db::RemovePolicy::Cascade));
 				table.constraints.emplace(name + "_ref_" + slot->getName(), ConstraintRec(
 						ConstraintRec::Reference, mem::toString(target, "_id"), target.str<mem::Interface>(), db::RemovePolicy::Cascade));
 
-				table.indexes.emplace(name + "_idx_" + source, source + "_id");
+				table.indexes.emplace(mem::toString(name, "_idx_", source), mem::toString(source, "_id"));
 				table.indexes.emplace(mem::toString(name, "_idx_", target), mem::toString(target, "_id"));
 
 				table.pkey.emplace_back("__vid");
@@ -669,14 +669,14 @@ mem::Map<mem::String, TableRec> TableRec::parse(const db::Interface::Config &cfg
 	return tables;
 }
 
-mem::Map<mem::String, TableRec> TableRec::get(Handle &h, mem::StringStream &stream) {
-	mem::Map<mem::String, TableRec> ret;
+mem::Map<mem::StringView, TableRec> TableRec::get(Handle &h, mem::StringStream &stream) {
+	mem::Map<mem::StringView, TableRec> ret;
 
 	h.performSimpleSelect("SELECT table_name FROM information_schema.tables "
 			"WHERE table_schema='public' AND table_type='BASE TABLE';",
 			[&] (db::sql::Result &tables) {
 		for (auto it : tables) {
-			ret.emplace(it.at(0).str<mem::Interface>(), TableRec());
+			ret.emplace(it.at(0).pdup(), TableRec());
 			stream << "TABLE " << it.at(0) << "\n";
 		}
 		tables.clear();
@@ -958,7 +958,7 @@ void Handle_insert_sorted(mem::Vector<mem::Pair<uint32_t, mem::String>> & vec, u
 	vec.emplace(it, oid, type.str<mem::Interface>());
 }
 
-bool Handle::init(const Interface::Config &cfg, const mem::Map<mem::String, const Scheme *> &s) {
+bool Handle::init(const Interface::Config &cfg, const mem::Map<mem::StringView, const Scheme *> &s) {
 	if (!performSimpleQuery(mem::String::make_weak(DATABASE_DEFAULTS))) {
 		return false;
 	}

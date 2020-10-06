@@ -323,6 +323,7 @@ public:
 
 	mem::StringView getName() const { return slot->getName(); }
 	Type getType() const { return slot->getType(); }
+	Flags getFlags() const { return slot->flags; }
 	Transform getTransform() const { return slot->getTransform(); }
 	mem::Value getDefault(const mem::Value &patch) const { return slot->getDefault(patch); }
 

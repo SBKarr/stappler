@@ -31,7 +31,7 @@
  */
 
 /**
-Copyright (c) 2017-2019 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2020 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -75,10 +75,10 @@ sp_time_exp_t::sp_time_exp_t() {
 	tm_gmtoff = 0;
 }
 
-sp_time_exp_t::sp_time_exp_t(Time t, int32_t offset, bool use_localtime) {
+sp_time_exp_t::sp_time_exp_t(int64_t t, int32_t offset, bool use_localtime) {
 	struct tm tm;
-	time_t tt = (t.toSeconds()) + offset;
-	tm_usec = t.toMicroseconds() % SP_USEC_PER_SEC;
+	time_t tt = time_t(t / int64_t(SP_USEC_PER_SEC));
+	tm_usec = t % int64_t(SP_USEC_PER_SEC);
 
 	if (use_localtime) {
 		localtime_r(&tt, &tm);
@@ -102,22 +102,46 @@ sp_time_exp_t::sp_time_exp_t(Time t, int32_t offset, bool use_localtime) {
 #endif
 }
 
-// apr_time_exp_tz
-sp_time_exp_t::sp_time_exp_t(Time t, int32_t offs) : sp_time_exp_t(t, offs, false) {
+sp_time_exp_t::sp_time_exp_t(int64_t t, int32_t offs) : sp_time_exp_t(t, offs, false) {
 	tm_gmtoff = offs;
 }
 
-// apr_time_exp_gmt
-sp_time_exp_t::sp_time_exp_t(Time t) : sp_time_exp_t(t, 0, false) {
+sp_time_exp_t::sp_time_exp_t(int64_t t) : sp_time_exp_t(t, 0, false) {
 	tm_gmtoff = 0;
 }
 
+sp_time_exp_t::sp_time_exp_t(int64_t t, bool use_localtime) : sp_time_exp_t(t, 0, use_localtime) { }
+
+sp_time_exp_t::sp_time_exp_t(Time t, int32_t offset, bool use_localtime)
+: sp_time_exp_t(int64_t(t.toMicroseconds()), offset, use_localtime) { }
+
+// apr_time_exp_tz
+sp_time_exp_t::sp_time_exp_t(Time t, int32_t offs)
+: sp_time_exp_t(int64_t(t.toMicros()), offs) { }
+
+// apr_time_exp_gmt
+sp_time_exp_t::sp_time_exp_t(Time t)
+: sp_time_exp_t(int64_t(t.toMicros())) { }
+
 // apr_time_exp_lt
-sp_time_exp_t::sp_time_exp_t(Time t, bool use_localtime) : sp_time_exp_t(t, 0, use_localtime) { }
+sp_time_exp_t::sp_time_exp_t(Time t, bool use_localtime)
+: sp_time_exp_t(int64_t(t.toMicros()), 0, use_localtime) { }
 
 Time sp_time_exp_t::get() const {
+	return Time::microseconds(geti());
+}
+
+Time sp_time_exp_t::gmt_get() const {
+	return Time::microseconds(gmt_geti());
+}
+
+Time sp_time_exp_t::ltz_get() const {
+	return Time::microseconds(ltz_geti());
+}
+
+int64_t sp_time_exp_t::geti() const {
 	sp_time_t year = tm_year;
-	sp_time_t days;
+	int64_t days = 0;
 	static const int dayoffset[12] = { 306, 337, 0, 31, 61, 92, 122, 153, 184, 214, 245, 275 };
 
 	/* shift new year to 1st March in order to make leap year calc easy */
@@ -130,25 +154,24 @@ Time sp_time_exp_t::get() const {
 	days = year * 365 + year / 4 - year / 100 + (year / 100 + 3) / 4;
 	days += dayoffset[tm_mon] + tm_mday - 1;
 	days -= 25508; /* 1 jan 1970 is 25508 days since 1 mar 1900 */
-	days = ((days * 24 + tm_hour) * 60 + tm_min) * 60 + tm_sec;
 
-	return Time::microseconds(days * SP_USEC_PER_SEC + tm_usec);
+	return int64_t( ( ((days * 24 + tm_hour) * 60 + tm_min) * 60 + tm_sec ) * SP_USEC_PER_SEC + tm_usec );
 }
 
-Time sp_time_exp_t::gmt_get() const {
-	return Time::microseconds(get().toMicroseconds() - tm_gmtoff * SP_USEC_PER_SEC);
+int64_t sp_time_exp_t::gmt_geti() const {
+	return int64_t( geti() - tm_gmtoff * SP_USEC_PER_SEC );
 }
 
-Time sp_time_exp_t::ltz_get() const {
+int64_t sp_time_exp_t::ltz_geti() const {
 	time_t t = time(NULL);
 	struct tm lt = {0};
 	localtime_r(&t, &lt);
 
-#ifndef __MINGW32__
-	return Time::microseconds(get().toMicroseconds() - lt.tm_gmtoff * SP_USEC_PER_SEC);
-#else
-	return Time::microseconds(get().toMicroseconds() - tm_gmtoff * SP_USEC_PER_SEC);
-#endif
+	#ifndef __MINGW32__
+		return int64_t( geti() - lt.tm_gmtoff * SP_USEC_PER_SEC );
+	#else
+		return int64_t( geti() - tm_gmtoff * SP_USEC_PER_SEC );
+	#endif
 }
 
 /*

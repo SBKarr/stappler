@@ -33,6 +33,7 @@ public:
 		None = 0,
 		WithDelta = 1 << 0,
 		Detouched = 1 << 1,
+		Compressed = 1 << 2,
 	};
 
 	struct ViewScheme : mem::AllocBase {
@@ -76,7 +77,7 @@ public:
 	// field list to send, when no field is required to return
 	static FieldVec EmptyFieldList() { return FieldVec{nullptr}; }
 
-	static bool initSchemes(const mem::Map<mem::String, const Scheme *> &);
+	static bool initSchemes(const mem::Map<mem::StringView, const Scheme *> &);
 
 public:
 	Scheme(const mem::StringView &name, bool delta = false);
@@ -92,6 +93,7 @@ public:
 
 	bool hasDelta() const;
 	bool isDetouched() const;
+	bool isCompressed() const;
 
 	void define(std::initializer_list<Field> il);
 	void define(mem::Vector<Field> &&il);

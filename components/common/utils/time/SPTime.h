@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2020 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -52,6 +52,11 @@ struct sp_time_exp_t {
 	tm_gmt_e tm_gmt_type = gmt_unset;
 
 	sp_time_exp_t();
+	sp_time_exp_t(int64_t t, int32_t offset, bool use_localtime);
+	sp_time_exp_t(int64_t t, int32_t offs);
+	sp_time_exp_t(int64_t t);
+	sp_time_exp_t(int64_t t, bool use_localtime);
+
 	sp_time_exp_t(Time t, int32_t offset, bool use_localtime);
 	sp_time_exp_t(Time t, int32_t offs);
 	sp_time_exp_t(Time t);
@@ -70,6 +75,10 @@ struct sp_time_exp_t {
 	Time get() const;
 	Time gmt_get() const;
 	Time ltz_get() const;
+
+	int64_t geti() const;
+	int64_t gmt_geti() const;
+	int64_t ltz_geti() const;
 
 	void encodeRfc822(char *) const;
 	void encodeCTime(char *) const;

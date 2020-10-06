@@ -56,7 +56,7 @@ mem::Value Adapter::performQueryList(const QueryList &ql, size_t count, bool for
 	return _interface->performQueryList(ql, count, forUpdate);
 }
 
-bool Adapter::init(const Interface::Config &cfg, const mem::Map<mem::String, const Scheme *> &schemes) {
+bool Adapter::init(const Interface::Config &cfg, const mem::Map<mem::StringView, const Scheme *> &schemes) {
 	return _interface->init(cfg, schemes);
 }
 

@@ -63,7 +63,7 @@ public: // resource requests
 	virtual mem::Value performQueryList(const QueryList &, size_t count, bool forUpdate) = 0;
 
 public:
-	virtual bool init(const Config &serv, const mem::Map<mem::String, const Scheme *> &) = 0;
+	virtual bool init(const Config &serv, const mem::Map<mem::StringView, const Scheme *> &) = 0;
 
 	virtual mem::Value select(Worker &, const Query &) = 0;
 

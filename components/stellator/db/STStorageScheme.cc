@@ -39,7 +39,7 @@ static void Scheme_setOwner(const Scheme *scheme, const mem::Map<mem::String, Fi
 	}
 }
 
-bool Scheme::initSchemes(const mem::Map<mem::String, const Scheme *> &schemes) {
+bool Scheme::initSchemes(const mem::Map<mem::StringView, const Scheme *> &schemes) {
 	for (auto &it : schemes) {
 		const_cast<Scheme *>(it.second)->initScheme();
 		for (auto &fit : it.second->getFields()) {
@@ -112,6 +112,10 @@ bool Scheme::hasDelta() const {
 
 bool Scheme::isDetouched() const {
 	return (flags & Options::Detouched) != Options::None;
+}
+
+bool Scheme::isCompressed() const {
+	return (flags & Options::Compressed) != Options::None;
 }
 
 void Scheme::define(std::initializer_list<Field> il) {

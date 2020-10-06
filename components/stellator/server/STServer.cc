@@ -245,7 +245,7 @@ struct Server::Config : public mem::AllocBase {
 	mem::Map<std::type_index, ServerComponent *> typedComponents;
 	mem::Map<mem::String, RequestScheme> requests;
 	mem::Map<const db::Scheme *, ResourceScheme> resources;
-	mem::Map<mem::String, const db::Scheme *> schemes;
+	mem::Map<mem::StringView, const db::Scheme *> schemes;
 
 	mem::Map<mem::String, websocket::Manager *> websockets;
 
@@ -365,9 +365,9 @@ void Server::Config::setForceHttps() {
 }
 
 void Server::Config::init(Server &serv) {
-	schemes.emplace(userScheme.getName().str<mem::Interface>(), &userScheme);
-	schemes.emplace(fileScheme.getName().str<mem::Interface>(), &fileScheme);
-	schemes.emplace(errorScheme.getName().str<mem::Interface>(), &errorScheme);
+	schemes.emplace(userScheme.getName(), &userScheme);
+	schemes.emplace(fileScheme.getName(), &fileScheme);
+	schemes.emplace(errorScheme.getName(), &errorScheme);
 
 	for (auto &it : componentLoaders) {
 		if (it.symbol) {
@@ -586,7 +586,7 @@ void Server::addMultiResourceHandler(const mem::String &, std::initializer_list<
 void Server::addWebsocket(const mem::String &, websocket::Manager *) { }
 
 const db::Scheme * Server::exportScheme(const db::Scheme &scheme) {
-	_config->schemes.emplace(scheme.getName().str<mem::Interface>(), &scheme);
+	_config->schemes.emplace(scheme.getName(), &scheme);
 	return &scheme;
 }
 
@@ -723,7 +723,7 @@ ServerComponent *Server::getServerComponent(std::type_index name) const {
 	return nullptr;
 }
 
-const mem::Map<mem::String, const db::Scheme *> &Server::getSchemes() const {
+const mem::Map<mem::StringView, const db::Scheme *> &Server::getSchemes() const {
 	return _config->schemes;
 }
 

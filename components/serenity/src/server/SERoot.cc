@@ -434,7 +434,7 @@ static void *Root_alloc(void *alloc, size_t s, void *) {
 
 	ret = (void *)malloc(s);
 
-#if DEBUG
+#if DEBUG && 0
 	if (alloc) {
 		s_alloc_allocated += s;
 		s_allocMutex.lock();
@@ -551,9 +551,9 @@ static void Root_node_free(void *alloc, void *node, size_t s, void *) {
 
 static String Root_writeMemoryMap(bool full) {
 	auto formatSize = [&] (std::ostringstream &out, size_t val) {
-		if (val > int64_t(1_MiB)) {
+		if (val > size_t(1_MiB)) {
 			out << std::setprecision(4) << double(val) / 1_MiB << " MiB";
-		} else if (val > int64_t(1_KiB)) {
+		} else if (val > size_t(1_KiB)) {
 			out << std::setprecision(4) << double(val) / 1_KiB << " KiB";
 		} else {
 			out << val << " bytes";
@@ -639,9 +639,9 @@ static String Root_writeMemoryMap(bool full) {
 static String Root_writeAllocatorMemoryMap(void *alloc) {
 #if DEBUG
 	auto formatSize = [&] (std::ostringstream &out, size_t val) {
-		if (val > int64_t(1_MiB)) {
+		if (val > size_t(1_MiB)) {
 			out << std::setprecision(4) << double(val) / 1_MiB << " MiB";
-		} else if (val > int64_t(1_KiB)) {
+		} else if (val > size_t(1_KiB)) {
 			out << std::setprecision(4) << double(val) / 1_KiB << " KiB";
 		} else {
 			out << val << " bytes";

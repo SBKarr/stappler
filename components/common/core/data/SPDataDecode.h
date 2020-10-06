@@ -45,6 +45,9 @@ enum class DataFormat {
 	Brotli,
 	// LZ4HC,
 	// Encrypt,
+
+	// from submodules
+	MiniDbOverflow,
 };
 
 inline DataFormat detectDataFormat(const uint8_t *ptr, size_t size) {
@@ -60,6 +63,8 @@ inline DataFormat detectDataFormat(const uint8_t *ptr, size_t size) {
 		}
 	} else if (size > 3 && ptr[0] == 'S' && ptr[1] == 'P' && ptr[2] == 'B' && ptr[3] == 'r') {
 		return DataFormat::Brotli;
+	} else if (size >= 3 && ptr[0] == 'O' && ptr[1] == 'v' && ptr[2] == 'f' && ptr[3] == 'l') {
+		return DataFormat::MiniDbOverflow;
 	} else if (ptr[0] == '(') {
 		return DataFormat::Serenity;
 	} else {

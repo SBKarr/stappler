@@ -114,7 +114,7 @@ public:
 		const HandlerMap *map = nullptr;
 	};
 
-	const Map<String, const storage::Scheme *> &getSchemes() const;
+	const Map<StringView, const storage::Scheme *> &getSchemes() const;
 	const Map<const storage::Scheme *, ResourceScheme> &getResources() const;
 	const Map<String, RequestScheme> &getRequestHandlers() const;
 

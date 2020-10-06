@@ -46,7 +46,7 @@ public: // key-value storage
 	bool clear(const stappler::CoderSource &) const;
 
 public:
-	bool init(const Interface::Config &cfg, const mem::Map<mem::String, const Scheme *> &);
+	bool init(const Interface::Config &cfg, const mem::Map<mem::StringView, const Scheme *> &);
 
 	User * authorizeUser(const Auth &, const mem::StringView &name, const mem::StringView &password) const;
 

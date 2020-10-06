@@ -69,7 +69,7 @@ public:
 	void close();
 
 public: // adapter interface
-	virtual bool init(const Interface::Config &cfg, const mem::Map<mem::String, const Scheme *> &) override;
+	virtual bool init(const Interface::Config &cfg, const mem::Map<mem::StringView, const Scheme *> &) override;
 
 protected:
 	virtual bool beginTransaction() override { return beginTransaction_pg(TransactionLevel::ReadCommited); }
