@@ -1331,22 +1331,34 @@ inline bool StringViewUtf8::match (char16_t c) {
 	return chars::Compose<char16_t, Args...>::match(c);
 }
 
-template <typename Char>
-inline auto operator<<(const Callback<void(StringViewBase<Char>)> &cb, StringViewBase<Char> str) -> const Callback<void(StringViewBase<Char>)> & {
+inline auto operator<<(const Callback<void(StringViewBase<char>)> &cb, StringViewBase<char> str) -> const Callback<void(StringViewBase<char>)> & {
 	cb(str);
 	return cb;
 }
 
-template <typename Char>
-inline auto operator<<(const Callback<void(StringViewBase<Char>)> &cb, int64_t i) -> const Callback<void(StringViewBase<Char>)> & {
-	Char buf[std::numeric_limits<int64_t>::max_digits10 + 1];
-	return cb << StringViewBase<Char>(buf, string::_to_decimal(i, buf));
+inline auto operator<<(const Callback<void(StringViewBase<char>)> &cb, int64_t i) -> const Callback<void(StringViewBase<char>)> & {
+	std::array<char, std::numeric_limits<int64_t>::digits10 + 2> buf;
+	return cb << StringViewBase<char>(buf.data(), string::_to_decimal(i, buf.data()));
 }
 
-template <typename Char>
-inline auto operator<<(const Callback<void(StringViewBase<Char>)> &cb, uint64_t i) -> const Callback<void(StringViewBase<Char>)> & {
-	Char buf[std::numeric_limits<int64_t>::max_digits10 + 1];
-	return cb << StringViewBase<Char>(buf, string::_to_decimal(i, buf));
+inline auto operator<<(const Callback<void(StringViewBase<char>)> &cb, uint64_t i) -> const Callback<void(StringViewBase<char>)> & {
+	std::array<char, std::numeric_limits<int64_t>::digits10 + 2> buf;
+	return cb << StringViewBase<char>(buf.data(), string::_to_decimal(i, buf.data()));
+}
+
+inline auto operator<<(const Callback<void(StringViewBase<char16_t>)> &cb, StringViewBase<char16_t> str) -> const Callback<void(StringViewBase<char16_t>)> & {
+	cb(str);
+	return cb;
+}
+
+inline auto operator<<(const Callback<void(StringViewBase<char16_t>)> &cb, int64_t i) -> const Callback<void(StringViewBase<char16_t>)> & {
+	std::array<char16_t, std::numeric_limits<int64_t>::digits10 + 2> buf;
+	return cb << StringViewBase<char16_t>(buf.data(), string::_to_decimal(i, buf.data()));
+}
+
+inline auto operator<<(const Callback<void(StringViewBase<char16_t>)> &cb, uint64_t i) -> const Callback<void(StringViewBase<char16_t>)> & {
+	std::array<char16_t, std::numeric_limits<int64_t>::digits10 + 2> buf;
+	return cb << StringViewBase<char16_t>(buf.data(), string::_to_decimal(i, buf.data()));
 }
 
 inline auto operator<<(const Callback<void(StringViewUtf8)> &cb, StringViewUtf8 str) -> const Callback<void(StringViewUtf8)> & {
@@ -1355,13 +1367,13 @@ inline auto operator<<(const Callback<void(StringViewUtf8)> &cb, StringViewUtf8 
 }
 
 inline auto operator<<(const Callback<void(StringViewUtf8)> &cb, int64_t i) -> const Callback<void(StringViewUtf8)> & {
-	char buf[std::numeric_limits<int64_t>::max_digits10 + 1];
-	return cb << StringViewUtf8(buf, string::_to_decimal(i, buf));
+	std::array<char, std::numeric_limits<int64_t>::digits10 + 2> buf;
+	return cb << StringViewUtf8(buf.data(), string::_to_decimal(i, buf.data()));
 }
 
 inline auto operator<<(const Callback<void(StringViewUtf8)> &cb, uint64_t i) -> const Callback<void(StringViewUtf8)> & {
-	char buf[std::numeric_limits<int64_t>::max_digits10 + 1];
-	return cb << StringViewUtf8(buf, string::_to_decimal(i, buf));
+	std::array<char, std::numeric_limits<int64_t>::digits10 + 2> buf;
+	return cb << StringViewUtf8(buf.data(), string::_to_decimal(i, buf.data()));
 }
 
 NS_SP_END

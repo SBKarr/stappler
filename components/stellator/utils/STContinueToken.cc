@@ -86,6 +86,9 @@ size_t ContinueToken::getTotal() const {
 size_t ContinueToken::getCount() const {
 	return count;
 }
+size_t ContinueToken::getFetched() const {
+	return fetched;
+}
 mem::StringView ContinueToken::getField() const {
 	return field;
 }

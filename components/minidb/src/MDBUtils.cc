@@ -24,8 +24,8 @@ THE SOFTWARE.
 
 NS_MDB_BEGIN
 
-constexpr inline Storage::UpdateFlags operator & (const Storage::UpdateFlags &l, const Storage::UpdateFlags &r) {
-	return Storage::UpdateFlags(stappler::toInt(l) & stappler::toInt(r));
+constexpr inline UpdateFlags operator & (const UpdateFlags &l, const UpdateFlags &r) {
+	return UpdateFlags(stappler::toInt(l) & stappler::toInt(r));
 }
 
 uint32_t getSystemPageSize() {
@@ -164,6 +164,133 @@ size_t writeVarUint(uint8_t *p, uint64_t id) {
 		return 8;
 	}
 	return 0;
+}
+
+const mem::Callback<void(mem::StringView)> &operator<<(const mem::Callback<void(mem::StringView)> &cb, mem::BytesView v) {
+	for (size_t i = 0; i < v.size(); ++ i) {
+		cb << stappler::base16::charToHex(*((const char *)(v.data() + i))) << " ";
+	}
+	return cb;
+}
+
+/*const mem::Callback<void(mem::StringView)> &operator<<(const mem::Callback<void(mem::StringView)> &cb, uint16_t v) {
+	cb << stappler::toString(v);
+	return cb;
+}
+
+const mem::Callback<void(mem::StringView)> &operator<<(const mem::Callback<void(mem::StringView)> &cb, uint32_t v) {
+	cb << stappler::toString(v);
+	return cb;
+}
+
+const mem::Callback<void(mem::StringView)> &operator<<(const mem::Callback<void(mem::StringView)> &cb, uint64_t v) {
+	cb << stappler::toString(v);
+	return cb;
+}*/
+
+void inspectManifestPage(const mem::Callback<void(mem::StringView)> &cb, void *iptr, size_t size) {
+	uint8_p ptr = uint8_p(iptr);
+	auto h = (StorageHeader *)ptr;
+	if (!validateHeader(*h, h->pageSize * h->pageCount)) {
+		cb << "Invalid header\n";
+		return;
+	}
+
+	cb << "StorageHeader:\n";
+	cb << "\t" << mem::BytesView((const uint8_p)h->title, 6) << mem::StringView((const char *)h->title, 6) << " - title - (0 - 6)\n";
+	cb << "\t" << mem::BytesView(ptr + 6, 2) << "- " << uint64_t(h->version) << " - version - (6 - 8)\n";
+	cb << "\t" << mem::BytesView(ptr + 8, 4) << "- " << uint64_t(h->pageSize) << " - pageSize - (8 - 12)\n";
+	cb << "\t" << mem::BytesView(ptr + 12, 4) << "- " << uint64_t(h->pageCount) << " - pageCount - (12 - 16)\n";
+	cb << "\t" << mem::BytesView(ptr + 16, 4) << "- " << uint64_t(h->freeList) << " - freeList - (16 - 20)\n";
+	cb << "\t" << mem::BytesView(ptr + 20, 4) << "- " << uint64_t(h->entities) << " - entities - (20 - 24)\n";
+	cb << "\t" << mem::BytesView(ptr + 24, 4) << "- " << h->oid << " - oid - (24 - 32)\n";
+	cb << "\t" << mem::BytesView(ptr + 32, 8) << "- " << h->mtime << " - mtime - (32 - 40)\n";
+	cb << "\t" << mem::BytesView(ptr + 40, 4 * 6) << "(reserved) (40 - 64)\n";
+
+	auto m = (ManifestPageHeader *)(ptr + sizeof(StorageHeader));
+
+	cb << "Manifest\n";
+	cb << "\t" << mem::BytesView(ptr + 64, 4) << "- " << uint64_t(m->next) << " - next - (64 - 68)\n";
+	cb << "\t" << mem::BytesView(ptr + 68, 4) << "- " << uint64_t(m->remains) << " - remains - (68 - 72)\n";
+
+	if (h->entities > 0) {
+		EntityCell *cell = (EntityCell *)(ptr + sizeof(StorageHeader) + sizeof(ManifestPageHeader));
+		for (size_t i = 0; i < h->entities; ++ i) {
+			auto target = cell + i;
+			cb << "\tEntity " << i << ":\n";
+			cb << "\t\t" << mem::BytesView(ptr + 72 + sizeof(EntityCell) * i, 4) << "- " << uint64_t(target->page) << " - page - ("
+					<< uint64_t(72 + sizeof(EntityCell) * i) << " - " <<  uint64_t(72 + sizeof(EntityCell) * i + 4) << ")\n";
+			cb << "\t\t" << mem::BytesView(ptr + 72 + sizeof(EntityCell) * i + 4, 8) << "- " << target->counter << " - counter - ("
+					<< uint64_t(72 + sizeof(EntityCell) * i + 4) << " - " <<  uint64_t(72 + sizeof(EntityCell) * i + 4 + 8) << ")\n";
+		}
+	}
+
+	auto remains = m->remains - sizeof(EntityCell) * h->entities;
+	cb << "Schemes payload (size: " << remains << ")\n";
+
+	auto offset = sizeof(EntityCell) * h->entities + sizeof(ManifestPageHeader) + sizeof(StorageHeader);
+	if (remains < size - offset) {
+		mem::BytesView r(ptr + offset, remains);
+		while (!r.empty()) {
+			auto v = stappler::data::cbor::read<mem::Interface>(r);
+			cb << "\tScheme: " << v.getString(0) << " (entity: " << v.getInteger(1) << ")";
+			if (!v.isBool(2)) {
+				cb << " (detouched, sequence: " << v.getInteger(2) << ")";
+			}
+			cb << "\n\tFields:\n";
+			for (auto &it : v.getArray(3)) {
+				cb << "\t\t";
+				switch (Type(it.getInteger(1))) {
+				case Type::None: cb << "(none) "; break;
+				case Type::Integer: cb << "(integer) "; break;
+				case Type::Float: cb << "(float) "; break;
+				case Type::Boolean: cb << "(boolean) "; break;
+				case Type::Text: cb << "(text) "; break;
+				case Type::Bytes: cb << "(bytes) "; break;
+				case Type::Data: cb << "(data) "; break;
+				case Type::Extra: cb << "(extra) "; break;
+				case Type::Object: cb << "(object) "; break;
+				case Type::Set: cb << "(set) "; break;
+				case Type::Array: cb << "(array) "; break;
+				case Type::File: cb << "(file) "; break;
+				case Type::Image: cb << "(image) "; break;
+				case Type::View: cb << "(view) "; break;
+				case Type::FullTextView: cb << "(fts) "; break;
+				case Type::Custom: cb << "(custom) "; break;
+				default: break;
+				}
+				cb << it.getString(0) << " < " << it.getInteger(2) << " >\n";
+			}
+			cb << "\tIndex:\n";
+			for (auto &it : v.getArray(4)) {
+				cb << "\t\t";
+				switch (Type(it.getInteger(1))) {
+				case Type::None: cb << "(none) "; break;
+				case Type::Integer: cb << "(integer) "; break;
+				case Type::Float: cb << "(float) "; break;
+				case Type::Boolean: cb << "(boolean) "; break;
+				case Type::Text: cb << "(text) "; break;
+				case Type::Bytes: cb << "(bytes) "; break;
+				case Type::Data: cb << "(data) "; break;
+				case Type::Extra: cb << "(extra) "; break;
+				case Type::Object: cb << "(object) "; break;
+				case Type::Set: cb << "(set) "; break;
+				case Type::Array: cb << "(array) "; break;
+				case Type::File: cb << "(file) "; break;
+				case Type::Image: cb << "(image) "; break;
+				case Type::View: cb << "(view) "; break;
+				case Type::FullTextView: cb << "(fts) "; break;
+				case Type::Custom: cb << "(custom) "; break;
+				default: break;
+				}
+				cb << it.getString(0) << " < entity: " << it.getInteger(2) << " >\n";
+			}
+		}
+	}
+}
+
+void inspectTreePage(const mem::Callback<void(mem::StringView)> &cb, void *ptr, size_t size) {
+
 }
 
 NS_MDB_END

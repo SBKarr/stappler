@@ -201,6 +201,9 @@ inline size_t unsigned_to_decimal(IntType number, Char *buffer) {
 		}
 		std::reverse( p_first, buffer );
 		return buffer - p_first;
+	} else {
+		*buffer++ = Char('0');
+		return 1;
 	}
 	return 0;
 }

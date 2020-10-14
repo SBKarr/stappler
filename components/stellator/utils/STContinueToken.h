@@ -67,6 +67,7 @@ public:
 	size_t getEnd() const;
 	size_t getTotal() const;
 	size_t getCount() const;
+	size_t getFetched() const;
 	mem::StringView getField() const;
 
 	size_t getNumResults() const;

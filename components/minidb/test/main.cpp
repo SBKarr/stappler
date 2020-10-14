@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #include "STRoot.h"
 #include "MDBStorage.h"
+#include "MDBTransaction.h"
 
 namespace stappler {
 
@@ -159,15 +160,20 @@ SP_EXTERN_C int _spMain(argc, argv) {
 
 	db::Scheme::initSchemes(schemes);
 
-	db::minidb::Storage *storage = nullptr;
 	auto writablePath = filesystem::writablePath("tmp.minidb");
-	if (filesystem::exists(writablePath)) {
-		storage = db::minidb::Storage::open(pool, writablePath);
-	} else {
-		storage = db::minidb::Storage::create(pool, writablePath);
-	}
+	db::minidb::Storage *storage = db::minidb::Storage::open(pool, writablePath);
 
 	storage->init(schemes);
+
+	db::minidb::Transaction t;
+	if (t.open(*storage, db::minidb::OpenMode::Read)) {
+		t.openPageForReading(0, [&] (void *ptr, size_t size) {
+			db::minidb::inspectManifestPage([&] (StringView str) {
+				std::cout << str;
+			}, ptr, size);
+			return true;
+		});
+	}
 
 	return 0;
 }

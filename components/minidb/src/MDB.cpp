@@ -21,8 +21,10 @@ THE SOFTWARE.
 **/
 
 #include "MDB.h"
+#include "MDBCbor.cc"
 #include "MDBUtils.cc"
 #include "MDBHandle.cc"
-#include "MDBStoragePage.cc"
-#include "MDBStorageManifest.cc"
+#include "MDBManifest.cc"
 #include "MDBStorage.cc"
+#include "MDBTransaction.cc"
+#include "MDBTransactionActions.cc"

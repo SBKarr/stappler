@@ -465,12 +465,14 @@ template <typename Interface = memory::DefaultInterface>
 auto encode(const CoderSource &source) -> typename Interface::StringType;
 
 void encode(std::basic_ostream<char> &stream, const CoderSource &source);
+void encode(const Callback<void(char)> &cb, const CoderSource &source);
 
 
 template <typename Interface = memory::DefaultInterface>
 auto decode(const CoderSource &source) -> typename Interface::BytesType;
 
 void decode(std::basic_ostream<char> &stream, const CoderSource &source);
+void decode(const Callback<void(uint8_t)> &cb, const CoderSource &source);
 
 NS_SP_EXT_END(base64)
 
@@ -484,12 +486,14 @@ template <typename Interface = memory::DefaultInterface>
 auto encode(const CoderSource &source) -> typename Interface::StringType;
 
 void encode(std::basic_ostream<char> &stream, const CoderSource &source);
+void encode(const Callback<void(char)> &cb, const CoderSource &source);
 
 
 template <typename Interface = memory::DefaultInterface>
 auto decode(const CoderSource &source) -> typename Interface::BytesType;
 
 void decode(std::basic_ostream<char> &stream, const CoderSource &source);
+void decode(const Callback<void(uint8_t)> &cb, const CoderSource &source);
 
 NS_SP_EXT_END(base64url)
 
@@ -1015,6 +1019,10 @@ inline auto decode(const CoderSource &source) -> typename Interface::BytesType {
 
 inline void decode(std::basic_ostream<char> &stream, const CoderSource &source) {
 	base64::decode(stream, source);
+}
+
+inline void decode(const Callback<void(uint8_t)> &cb, const CoderSource &source) {
+	base64::decode(cb, source);
 }
 
 NS_SP_EXT_END(base64url)

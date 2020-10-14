@@ -145,6 +145,10 @@ void encode(std::basic_ostream<char> &stream, const CoderSource &source) {
 	});
 }
 
+void encode(const Callback<void(char)> &cb, const CoderSource &source) {
+	make_encode(source, cb);
+}
+
 typename memory::PoolInterface::BytesType __decode_pool(const CoderSource &source) {
 	typename memory::PoolInterface::BytesType output;
 	output.reserve(encodeSize(source.size()));
@@ -165,6 +169,10 @@ void decode(std::basic_ostream<char> &stream, const CoderSource &source) {
 	make_decode(source, [&] (const uint8_t &c) {
 		stream << char(c);
 	});
+}
+
+void decode(const Callback<void(uint8_t)> &cb, const CoderSource &source) {
+	make_decode(source, cb);
 }
 
 NS_SP_EXT_END(base64)
@@ -226,6 +234,10 @@ void encode(std::basic_ostream<char> &stream, const CoderSource &source) {
 	make_encode(source, [&] (const char &c) {
 		stream << c;
 	});
+}
+
+void encode(const Callback<void(char)> &cb, const CoderSource &source) {
+	make_encode(source, cb);
 }
 
 NS_SP_EXT_END(base64url)

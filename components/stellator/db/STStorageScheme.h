@@ -33,7 +33,6 @@ public:
 		None = 0,
 		WithDelta = 1 << 0,
 		Detouched = 1 << 1,
-		Compressed = 1 << 2,
 	};
 
 	struct ViewScheme : mem::AllocBase {
@@ -93,7 +92,6 @@ public:
 
 	bool hasDelta() const;
 	bool isDetouched() const;
-	bool isCompressed() const;
 
 	void define(std::initializer_list<Field> il);
 	void define(mem::Vector<Field> &&il);
