@@ -30,6 +30,7 @@ THE SOFTWARE.
 #include "SPUrl.h"
 #include "SPHtmlParser.h"
 #include "SPBitmap.h"
+#include "SPNetworkHandle.h"
 
 #define NS_SA_BEGIN				namespace stellator::serenity {
 #define NS_SA_END				}
@@ -130,6 +131,9 @@ using stappler::pair;
 constexpr TimeInterval operator"" _sec ( unsigned long long int val ) { return TimeInterval::seconds((time_t)val); }
 constexpr TimeInterval operator"" _msec ( unsigned long long int val ) { return TimeInterval::milliseconds(val); }
 constexpr TimeInterval operator"" _mksec ( unsigned long long int val ) { return TimeInterval::microseconds(val); }
+
+using InputConfig = db::InputConfig;
+using NetworkHandle = stappler::NetworkHandle;
 
 }
 

@@ -174,6 +174,28 @@ STYLE_SETTER(		PageWidth, Metric, pageLayout)
 STYLE_SETTER(		PageFirstPageNumber, uint32_t, pageLayout)
 STYLE_SETTER(		PageFootnoteMaxHeight, Metric, pageLayout)
 
+STYLE_SETTER(		PageHeaderMinHeight, Metric, pageLayout)
+STYLE_SETTER(		PageHeaderHeight, Metric, pageLayout)
+STYLE_SETTER(		PageHeaderMarginTop, Metric, pageLayout)
+STYLE_SETTER(		PageHeaderMarginRight, Metric, pageLayout)
+STYLE_SETTER(		PageHeaderMarginBottom, Metric, pageLayout)
+STYLE_SETTER(		PageHeaderMarginLeft, Metric, pageLayout)
+STYLE_SETTER(		PageHeaderPaddingTop, Metric, pageLayout)
+STYLE_SETTER(		PageHeaderPaddingRight, Metric, pageLayout)
+STYLE_SETTER(		PageHeaderPaddingBottom, Metric, pageLayout)
+STYLE_SETTER(		PageHeaderPaddingLeft, Metric, pageLayout)
+
+STYLE_SETTER(		PageFooterMinHeight, Metric, pageLayout)
+STYLE_SETTER(		PageFooterHeight, Metric, pageLayout)
+STYLE_SETTER(		PageFooterMarginTop, Metric, pageLayout)
+STYLE_SETTER(		PageFooterMarginRight, Metric, pageLayout)
+STYLE_SETTER(		PageFooterMarginBottom, Metric, pageLayout)
+STYLE_SETTER(		PageFooterMarginLeft, Metric, pageLayout)
+STYLE_SETTER(		PageFooterPaddingTop, Metric, pageLayout)
+STYLE_SETTER(		PageFooterPaddingRight, Metric, pageLayout)
+STYLE_SETTER(		PageFooterPaddingBottom, Metric, pageLayout)
+STYLE_SETTER(		PageFooterPaddingLeft, Metric, pageLayout)
+
 STYLE_SETTER(		TableBackgroundColor, Color3B, table)
 STYLE_SETTER(		TableBreakAfter, BreakMode, table)
 STYLE_SETTER(		TableBreakBefore, BreakMode, table)
@@ -191,7 +213,7 @@ STYLE_SETTER(		TableBorderModel, BorderModel, table)
 
 STYLE_SETTER(		TableColumnBreakAfter, BreakMode, tableColumn)
 STYLE_SETTER(		TableColumnBreakBefore, BreakMode, tableColumn)
-STYLE_SETTER(		TableColumnRelWidth, Metric, tableColumn)
+STYLE_SETTER(		TableColumnRelWidth, uint32_t, tableColumn)
 STYLE_SETTER(		TableColumnWidth, Metric, tableColumn)
 STYLE_SETTER(		TableColumnUseOptimalWidth, bool, tableColumn)
 
@@ -418,6 +440,38 @@ template<> Style & Style::set<Name::PagePadding, Metric>(const Metric &v) {
 	return *this;
 }
 
+template<> Style & Style::set<Name::PageHeaderMargin, Metric>(const Metric &v) {
+	pageLayout.emplace_back(Name::PageHeaderMarginTop).value.metric = v;
+	pageLayout.emplace_back(Name::PageHeaderMarginRight).value.metric = v;
+	pageLayout.emplace_back(Name::PageHeaderMarginBottom).value.metric = v;
+	pageLayout.emplace_back(Name::PageHeaderMarginLeft).value.metric = v;
+	return *this;
+}
+
+template<> Style & Style::set<Name::PageHeaderPadding, Metric>(const Metric &v) {
+	pageLayout.emplace_back(Name::PageHeaderPaddingTop).value.metric = v;
+	pageLayout.emplace_back(Name::PageHeaderPaddingRight).value.metric = v;
+	pageLayout.emplace_back(Name::PageHeaderPaddingBottom).value.metric = v;
+	pageLayout.emplace_back(Name::PageHeaderPaddingLeft).value.metric = v;
+	return *this;
+}
+
+template<> Style & Style::set<Name::PageFooterMargin, Metric>(const Metric &v) {
+	pageLayout.emplace_back(Name::PageFooterMarginTop).value.metric = v;
+	pageLayout.emplace_back(Name::PageFooterMarginRight).value.metric = v;
+	pageLayout.emplace_back(Name::PageFooterMarginBottom).value.metric = v;
+	pageLayout.emplace_back(Name::PageFooterMarginLeft).value.metric = v;
+	return *this;
+}
+
+template<> Style & Style::set<Name::PageFooterPadding, Metric>(const Metric &v) {
+	pageLayout.emplace_back(Name::PageFooterPaddingTop).value.metric = v;
+	pageLayout.emplace_back(Name::PageFooterPaddingRight).value.metric = v;
+	pageLayout.emplace_back(Name::PageFooterPaddingBottom).value.metric = v;
+	pageLayout.emplace_back(Name::PageFooterPaddingLeft).value.metric = v;
+	return *this;
+}
+
 template<> Style & Style::set<Name::TableMargin, Metric>(const Metric &v) {
 	table.emplace_back(Name::TableMarginTop).value.metric = v;
 	table.emplace_back(Name::TableMarginRight).value.metric = v;
@@ -606,10 +660,6 @@ void Style::write(const WriteCallback &cb, const Callback<StringView(StringId)> 
 		writeStyleProperties(cb, stringIdCb, pretty);
 	}
 
-	if (family == PageLayout && type != Default) {
-		cb << "\t<style:header-style/><style:footer-style/>\n";
-	}
-
 	if (pretty) { cb << "\t"; }
 	if (type != Default) {
 		if (family == Family::PageLayout) {
@@ -652,9 +702,40 @@ void Style::writePageProperties(const WriteCallback &cb, const Callback<StringVi
 	if (pretty) { cb << "\t\t"; }
 	cb << "<style:page-layout-properties";
 
+	auto writeMargin = [] (const WriteCallback &cb, const Margin &margin) {
+		if (margin.isSingle()) {
+			if (margin.top.isValid()) {
+				cb << " fo:margin=\"" << margin.top << "\"";
+			}
+		} else {
+			if (margin.top.isValid()) { cb << " fo:margin-top=\"" << margin.top << "\""; }
+			if (margin.left.isValid()) { cb << " fo:margin-left=\"" << margin.left << "\""; }
+			if (margin.bottom.isValid()) { cb << " fo:margin-bottom=\"" << margin.bottom << "\""; }
+			if (margin.right.isValid()) { cb << " fo:margin-right=\"" << margin.right << "\""; }
+		}
+	};
+
+	auto writePadding = [] (const WriteCallback &cb, const Padding &padding) {
+		if (padding.isSingle()) {
+			if (padding.top.isValid()) {
+				cb << " fo:padding=\"" << padding.top << "\"";
+			}
+		} else {
+			if (padding.top.isValid()) { cb << " fo:padding-top=\"" << padding.top << "\""; }
+			if (padding.left.isValid()) { cb << " fo:padding-left=\"" << padding.left << "\""; }
+			if (padding.bottom.isValid()) { cb << " fo:padding-bottom=\"" << padding.bottom << "\""; }
+			if (padding.right.isValid()) { cb << " fo:padding-right=\"" << padding.right << "\""; }
+		}
+	};
+
+	bool hasHeaderInfo = false;
+	bool hasFooterInfo = false;
+
 	Border borderleft, borderright, bordertop, borderbottom;
-	Margin margin;
-	Padding padding;
+	Margin margin, headerMargin, footerMargin;
+	Padding padding, headerPadding, footerPadding;
+	Metric headerHeight, headerMinHeight, footerHeight, footerMinHeight;
+
 	for (auto &it : pageLayout) {
 		switch (it.name) {
 		case Name::PageBackgroundColor: cb << " fo:background-color=\"" << it.value.color << "\""; break;
@@ -682,6 +763,26 @@ void Style::writePageProperties(const WriteCallback &cb, const Callback<StringVi
 		case Name::PageWidth: cb << " fo:page-width=\"" << it.value.metric << "\""; break;
 		case Name::PageFirstPageNumber: cb << " style:first-page-number=\"" << it.value.unsignedValue << "\""; break;
 		case Name::PageFootnoteMaxHeight: cb << " style:footnote-max-height=\"" << it.value.metric << "\""; break;
+		case Name::PageHeaderMinHeight: hasHeaderInfo = true; headerMinHeight = it.value.metric; break;
+		case Name::PageHeaderHeight: hasHeaderInfo = true; headerHeight = it.value.metric; break;
+		case Name::PageHeaderMarginTop: hasHeaderInfo = true; headerMargin.top = it.value.metric; break;
+		case Name::PageHeaderMarginRight: hasHeaderInfo = true; headerMargin.right = it.value.metric; break;
+		case Name::PageHeaderMarginBottom: hasHeaderInfo = true; headerMargin.bottom = it.value.metric; break;
+		case Name::PageHeaderMarginLeft: hasHeaderInfo = true; headerMargin.left = it.value.metric; break;
+		case Name::PageHeaderPaddingTop: hasHeaderInfo = true; headerPadding.top = it.value.metric; break;
+		case Name::PageHeaderPaddingRight: hasHeaderInfo = true; headerPadding.right = it.value.metric; break;
+		case Name::PageHeaderPaddingBottom: hasHeaderInfo = true; headerPadding.bottom = it.value.metric; break;
+		case Name::PageHeaderPaddingLeft: hasHeaderInfo = true; headerPadding.left = it.value.metric; break;
+		case Name::PageFooterMinHeight: hasFooterInfo = true; footerMinHeight = it.value.metric; break;
+		case Name::PageFooterHeight: hasFooterInfo = true; footerHeight = it.value.metric; break;
+		case Name::PageFooterMarginTop: hasFooterInfo = true; footerMargin.top = it.value.metric; break;
+		case Name::PageFooterMarginRight: hasFooterInfo = true; footerMargin.right = it.value.metric; break;
+		case Name::PageFooterMarginBottom: hasFooterInfo = true; footerMargin.bottom = it.value.metric; break;
+		case Name::PageFooterMarginLeft: hasFooterInfo = true; footerMargin.left = it.value.metric; break;
+		case Name::PageFooterPaddingTop: hasFooterInfo = true; footerMargin.top = it.value.metric; break;
+		case Name::PageFooterPaddingRight: hasFooterInfo = true; footerMargin.right = it.value.metric; break;
+		case Name::PageFooterPaddingBottom: hasFooterInfo = true; footerMargin.bottom = it.value.metric; break;
+		case Name::PageFooterPaddingLeft: hasFooterInfo = true; footerMargin.left = it.value.metric; break;
 		default: break;
 		}
 	}
@@ -691,26 +792,45 @@ void Style::writePageProperties(const WriteCallback &cb, const Callback<StringVi
 	if (bordertop.style != LineStyle::None) { cb << " fo:border-top=\"" << bordertop << "\""; }
 	if (borderright.style != LineStyle::None) { cb << " fo:border-right=\"" << borderright << "\""; }
 
-	if (margin.isSingle()) {
-		cb << " fo:margin=\"" << margin.top << "\"";
-	} else {
-		if (margin.top.isValid()) { cb << " fo:margin-top=\"" << margin.top << "\""; }
-		if (margin.left.isValid()) { cb << " fo:margin-left=\"" << margin.left << "\""; }
-		if (margin.bottom.isValid()) { cb << " fo:margin-bottom=\"" << margin.bottom << "\""; }
-		if (margin.right.isValid()) { cb << " fo:margin-right=\"" << margin.right << "\""; }
-	}
-
-	if (padding.isSingle()) {
-		cb << " fo:padding=\"" << padding.top << "\"";
-	} else {
-		if (padding.top.isValid()) { cb << " fo:padding-top=\"" << padding.top << "\""; }
-		if (padding.left.isValid()) { cb << " fo:padding-left=\"" << padding.left << "\""; }
-		if (padding.bottom.isValid()) { cb << " fo:padding-bottom=\"" << padding.bottom << "\""; }
-		if (padding.right.isValid()) { cb << " fo:padding-right=\"" << padding.right << "\""; }
-	}
+	writeMargin(cb, margin);
+	writePadding(cb, padding);
 
 	cb << "/>";
 	if (pretty) { cb << "\n"; }
+
+	if (type != Default) {
+		if (pretty) { cb << "\t\t"; }
+		if (hasHeaderInfo) {
+			cb << "<style:header-style><style:header-footer-properties";
+			writeMargin(cb, headerMargin);
+			writePadding(cb, headerPadding);
+			if (headerMinHeight.isValid()) {
+				cb << " fo:min-height=\"" << headerMinHeight << "\"";
+			}
+			if (headerHeight.isValid()) {
+				cb << " svg:height=\"" << headerMinHeight << "\"";
+			}
+			cb << "/></style:header-style>";
+		} else {
+			cb << "<style:header-style/>";
+		}
+		if (pretty) { cb << "\n\t\t"; }
+		if (hasFooterInfo) {
+			cb << "<style:footer-style><style:header-footer-properties";
+			writeMargin(cb, footerMargin);
+			writePadding(cb, footerPadding);
+			if (footerMinHeight.isValid()) {
+				cb << " fo:min-height=\"" << headerMinHeight << "\"";
+			}
+			if (footerHeight.isValid()) {
+				cb << " svg:height=\"" << headerMinHeight << "\"";
+			}
+			cb << "/></style:footer-style>";
+		} else {
+			cb << "<style:footer-style/>";
+		}
+		if (pretty) { cb << "\n"; }
+	}
 }
 
 static void writeTextProperties(const WriteCallback &cb, const Callback<StringView(StringId)> &stringIdCb,
@@ -1007,7 +1127,7 @@ void Style::writeStyleProperties(const WriteCallback &cb, const Callback<StringV
 			case Name::TableColumnBreakAfter: cb << " fo:break-after=\"" << it.value.breakMode << "\""; break;
 			case Name::TableColumnBreakBefore: cb << " fo:break-before=\"" << it.value.breakMode << "\""; break;
 			case Name::TableColumnUseOptimalWidth: cb << " style:use-optimal-column-width=\"" << it.value.boolValue << "\""; break;
-			case Name::TableColumnRelWidth: cb << " style:rel-column-width=\"" << it.value.metric << "\""; break;
+			case Name::TableColumnRelWidth: cb << " style:rel-column-width=\"" << it.value.unsignedValue << "*\""; break;
 			case Name::TableColumnWidth: cb << " style:column-width=\"" << it.value.metric << "\""; break;
 			default: break;
 			}

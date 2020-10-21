@@ -80,21 +80,21 @@ TextDocument::TextDocument(bool singleDocument)
 , _content("office:text"/*, Map<String, String>{ stappler::pair("text:use-soft-page-breaks", "true") }*/)
 , _singleDocument(singleDocument) {
 	if (_singleDocument) {
-		addFunctionalFile("content.xml", "text/xml", [this] (const WriteCallback &cb) {
-			writeSingleContentFile(cb);
+		addFunctionalFile("content.xml", "text/xml", [this] (const WriteCallback &cb, bool pretty) {
+			writeSingleContentFile(cb, pretty);
 		});
 	} else {
-		addFunctionalFile("settings.xml", "text/xml", [this] (const WriteCallback &cb) {
-			writeSettingsFile(cb);
+		addFunctionalFile("settings.xml", "text/xml", [this] (const WriteCallback &cb, bool pretty) {
+			writeSettingsFile(cb, pretty);
 		});
-		addFunctionalFile("meta.xml", "text/xml", [this] (const WriteCallback &cb) {
-			writeMetaFile(cb);
+		addFunctionalFile("meta.xml", "text/xml", [this] (const WriteCallback &cb, bool pretty) {
+			writeMetaFile(cb, pretty);
 		});
-		addFunctionalFile("content.xml", "text/xml", [this] (const WriteCallback &cb) {
-			writeContentFile(cb);
+		addFunctionalFile("content.xml", "text/xml", [this] (const WriteCallback &cb, bool pretty) {
+			writeContentFile(cb, pretty);
 		});
-		addFunctionalFile("styles.xml", "text/xml", [this] (const WriteCallback &cb) {
-			writeStyleFile(cb);
+		addFunctionalFile("styles.xml", "text/xml", [this] (const WriteCallback &cb, bool pretty) {
+			writeStyleFile(cb, pretty);
 		});
 	}
 }
@@ -134,10 +134,8 @@ void TextDocument::addFamilyFont(const StringView &name, const StringView &famil
 	}
 }
 
-void TextDocument::writeSingleContentFile(const WriteCallback &cb) {
+void TextDocument::writeSingleContentFile(const WriteCallback &cb, bool pretty) {
 	cb << R"(<?xml version="1.0" encoding="UTF-8"?>)" << "\n" << "<office:document " << s_xml_ns << ">";
-
-	bool pretty = false;
 
 	writeMeta(cb, pretty);
 
@@ -163,10 +161,9 @@ void TextDocument::writeSingleContentFile(const WriteCallback &cb) {
 	cb << "</office:document>";
 }
 
-void TextDocument::writeContentFile(const WriteCallback &cb) {
+void TextDocument::writeContentFile(const WriteCallback &cb, bool pretty) {
 	cb << R"(<?xml version="1.0" encoding="UTF-8"?>)" << "\n" << "<office:document-content " << s_xml_ns << ">";
 
-	bool pretty = false;
 	writeScripts(cb, pretty);
 	writeFonts(cb, pretty, true);
 
@@ -203,17 +200,16 @@ void TextDocument::writeContentFile(const WriteCallback &cb) {
 	cb << "</office:document-content>";
 }
 
-void TextDocument::writeStyleFile(const WriteCallback &cb) {
+void TextDocument::writeStyleFile(const WriteCallback &cb, bool pretty) {
 	cb << R"(<?xml version="1.0" encoding="UTF-8"?>)" << "\n" << "<office:document-styles " << s_xml_ns_styles << ">";
 
-	bool pretty = false;
 	writeFonts(cb, pretty, false);
 	writeStyles(cb, pretty);
 
 	cb << "</office:document-styles>";
 }
 
-void TextDocument::writeSettingsFile(const WriteCallback &cb) {
+void TextDocument::writeSettingsFile(const WriteCallback &cb, bool pretty) {
 	cb << R"(<?xml version="1.0" encoding="UTF-8"?>)" << "\n" << "<office:document-settings " << s_xml_ns_settings << ">";
 
 	//bool pretty = true;
@@ -231,10 +227,9 @@ void TextDocument::writeSettingsFile(const WriteCallback &cb) {
 	cb << "</office:document-settings>";
 }
 
-void TextDocument::writeMetaFile(const WriteCallback &cb) {
+void TextDocument::writeMetaFile(const WriteCallback &cb, bool pretty) {
 	cb << R"(<?xml version="1.0" encoding="UTF-8"?>)" << "\n" << "<office:document-meta " << s_xml_ns_meta << ">";
 
-	bool pretty = true;
 	writeMeta(cb, pretty);
 
 	cb << "</office:document-meta>";

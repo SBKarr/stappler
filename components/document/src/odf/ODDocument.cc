@@ -572,7 +572,7 @@ static auto s_manifestBegin = R"(<?xml version="1.0" encoding="UTF-8"?>
 static auto s_manifestEnd = R"(</manifest:manifest>
 )";
 
-Buffer Document::save() const {
+Buffer Document::save(bool pretty) const {
 	stappler::ZipArchive<Interface> archive;
 
 	auto writeData = [&] () -> bool {
@@ -615,7 +615,7 @@ Buffer Document::save() const {
 			case Functional:
 				it.callback([&] (const StringView &bytes) {
 					tmp.put(bytes.data(), bytes.size());
-				});
+				}, pretty);
 				archive.addFile(it.name, tmp.get());
 				tmp.clear();
 				break;

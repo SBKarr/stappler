@@ -537,6 +537,30 @@ enum class Name : NameSize {
 	PageWidth, // Metric
 	PageFirstPageNumber, // uint32_t
 	PageFootnoteMaxHeight, // Metric
+	PageHeaderMinHeight, // size
+	PageHeaderHeight, // size
+	PageHeaderMargin,
+	PageHeaderMarginTop, // size
+	PageHeaderMarginRight, // size
+	PageHeaderMarginBottom, // size
+	PageHeaderMarginLeft, // size
+	PageHeaderPadding,
+	PageHeaderPaddingTop, // size
+	PageHeaderPaddingRight, // size
+	PageHeaderPaddingBottom, // size
+	PageHeaderPaddingLeft, // size
+	PageFooterMinHeight, // size
+	PageFooterHeight, // size
+	PageFooterMargin,
+	PageFooterMarginTop, // size
+	PageFooterMarginRight, // size
+	PageFooterMarginBottom, // size
+	PageFooterMarginLeft, // size
+	PageFooterPadding,
+	PageFooterPaddingTop, // size
+	PageFooterPaddingRight, // size
+	PageFooterPaddingBottom, // size
+	PageFooterPaddingLeft, // size
 	__EndPageParameters,
 
 	__BeginTableParameters,
@@ -560,7 +584,7 @@ enum class Name : NameSize {
 	__BeginTableColumnParameters,
 	TableColumnBreakAfter, // enum BreakMode
 	TableColumnBreakBefore, // enum BreakMode
-	TableColumnRelWidth, // Metric
+	TableColumnRelWidth, // uint32_t
 	TableColumnWidth, // Metric
 	TableColumnUseOptimalWidth, // bool
 	__EndTableColumnParameters,

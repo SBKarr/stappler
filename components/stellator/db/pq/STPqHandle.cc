@@ -378,8 +378,10 @@ public:
 	virtual bool toBool(size_t row, size_t field) override {
 		auto val = driver->getValue(result, row, field);
 		if (!isBinaryFormat(field)) {
-			if (val && (*val == 'T' || *val == 'y')) {
-				return true;
+			if (val) {
+				if (*val == 'T' || *val == 't' || *val == 'y') {
+					return true;
+				}
 			}
 			return false;
 		} else {

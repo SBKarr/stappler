@@ -16,11 +16,11 @@ public:
 	Node &getContent();
 
 protected:
-	void writeSingleContentFile(const WriteCallback &);
-	void writeContentFile(const WriteCallback &);
-	void writeStyleFile(const WriteCallback &);
-	void writeSettingsFile(const WriteCallback &);
-	void writeMetaFile(const WriteCallback &);
+	void writeSingleContentFile(const WriteCallback &, bool pretty);
+	void writeContentFile(const WriteCallback &, bool pretty);
+	void writeStyleFile(const WriteCallback &, bool pretty);
+	void writeSettingsFile(const WriteCallback &, bool pretty);
+	void writeMetaFile(const WriteCallback &, bool pretty);
 
 	void writeScripts(const WriteCallback &, bool pretty);
 	void writeFonts(const WriteCallback &, bool pretty, bool full);

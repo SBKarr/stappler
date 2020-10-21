@@ -21,7 +21,7 @@ enum class DocumentType {
 
 
 using WriteCallback = Callback<void(const StringView &)>;
-using FileReaderCallback = Function<void(const WriteCallback &)>;
+using FileReaderCallback = Function<void(const WriteCallback &, bool pretty)>;
 
 enum FileType {
 	Text,

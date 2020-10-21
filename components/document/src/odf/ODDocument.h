@@ -20,7 +20,7 @@ public: // content
 	const File & addFunctionalFile(StringView name, StringView type, FileReaderCallback &&);
 	const File & addNetworkFile(StringView name, StringView url);
 
-	Buffer save() const;
+	Buffer save(bool pretty = false) const;
 
 public: // meta
 	void setMetaGenerator(const StringView &);
