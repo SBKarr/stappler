@@ -43,12 +43,12 @@ void _addDebugMessage(mem::Value &&data) {
 
 Transaction Transaction::acquire(const Adapter &adapter) {
 	if (auto pool = stappler::memory::pool::acquire()) {
-		if (auto d = stappler::memory::pool::get<Data>(pool, "current_transaction")) {
+		if (auto d = stappler::memory::pool::get<Data>(pool, config::getCurrentTransactionKey())) {
 			return Transaction(d);
 		} else {
 			d = new (pool) Data{adapter};
 			d->role = AccessRoleId::System;
-			stappler::memory::pool::store(pool, d, "current_transaction");
+			stappler::memory::pool::store(pool, d, config::getCurrentTransactionKey());
 			return Transaction(d);
 		}
 	}

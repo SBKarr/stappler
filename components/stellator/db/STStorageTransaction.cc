@@ -52,10 +52,46 @@ Transaction Transaction::acquireIfExists() {
 }
 
 Transaction Transaction::acquireIfExists(stappler::memory::pool_t *pool) {
-	if (auto d = stappler::memory::pool::get<Data>(pool, "current_transaction")) {
+	if (auto d = stappler::memory::pool::get<Data>(pool, config::getCurrentTransactionKey())) {
 		return Transaction(d);
 	}
 	return Transaction(nullptr);
+}
+
+void Transaction::retain() const {
+	auto p = mem::pool::acquire();
+	if (p == _data->pool) {
+		++ _data->refCount;
+	} else {
+		auto it = _data->pools.find(p);
+		if (it == _data->pools.end()) {
+			_data->pools.emplace(p, 1);
+			mem::pool::store(p, _data, config::getCurrentTransactionKey());
+		} else {
+			++ it->second;
+		}
+	}
+}
+
+void Transaction::release() const {
+	auto p = mem::pool::acquire();
+	if (p == _data->pool) {
+		if (_data->refCount == 1) {
+			mem::pool::store(p, nullptr, config::getCurrentTransactionKey());
+		} else {
+			-- _data->refCount;
+		}
+	} else {
+		auto it = _data->pools.find(p);
+		if (it != _data->pools.end()) {
+			if (it->second == 1) {
+				mem::pool::store(p, nullptr, config::getCurrentTransactionKey());
+				_data->pools.erase(it);
+			} else {
+				-- it->second;
+			}
+		}
+	}
 }
 
 Transaction::Transaction(nullptr_t) : Transaction((Data *)nullptr) { }

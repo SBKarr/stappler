@@ -148,6 +148,7 @@ void Root::performStorage(mem::pool_t *pool, const Server &serv, const mem::Call
 
 			cb(storage);
 
+			mem::pool::userdata_set((void *)nullptr, config::getCurrentTransactionKey(), nullptr, pool); // drop transaction
 			mem::pool::userdata_set((void *)nullptr, config::getStorageInterfaceKey(), nullptr, pool);
 			dbdClose(pool, serv, dbd);
 		}

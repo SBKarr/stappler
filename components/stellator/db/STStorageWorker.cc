@@ -153,10 +153,21 @@ void Worker::ConditionData::set(const Query::Select &sel, const Field *f) {
 	field = f;
 }
 
-Worker::Worker(const Scheme &s) : _scheme(&s), _transaction(Transaction::acquire()) { }
-Worker::Worker(const Scheme &s, const Adapter &a) : _scheme(&s), _transaction(Transaction::acquire(a)) { }
-Worker::Worker(const Scheme &s, const Transaction &t) : _scheme(&s), _transaction(t) { }
-Worker::Worker(const Worker &w) : _scheme(w._scheme), _transaction(w._transaction) { }
+Worker::Worker(const Scheme &s) : _scheme(&s), _transaction(Transaction::acquire()) {
+	_transaction.retain();
+}
+Worker::Worker(const Scheme &s, const Adapter &a) : _scheme(&s), _transaction(Transaction::acquire(a)) {
+	_transaction.retain();
+}
+Worker::Worker(const Scheme &s, const Transaction &t) : _scheme(&s), _transaction(t) {
+	_transaction.retain();
+}
+Worker::Worker(const Worker &w) : _scheme(w._scheme), _transaction(w._transaction) {
+	_transaction.retain();
+}
+Worker::~Worker() {
+	_transaction.release();
+}
 
 const Transaction &Worker::transaction() const {
 	return _transaction;

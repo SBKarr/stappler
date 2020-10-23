@@ -74,12 +74,14 @@ public:
 
 	struct Data : AllocPool {
 		Adapter adapter;
-		stappler::memory::pool_t * pool;
+		mem::pool_t * pool;
 		mem::Map<mem::String, mem::Value> data;
 		int status = 0;
 
+		mutable uint32_t refCount = 1;
 		mutable mem::Map<int64_t, mem::Value> objects;
 		mutable AccessRoleId role = AccessRoleId::Nobody;
+		mutable mem::Map<mem::pool_t *, uint32_t> pools;
 
 		Data(const Adapter &, stappler::memory::pool_t * = nullptr);
 	};
@@ -150,6 +152,16 @@ public: // adapter interface
 	void scheduleAutoField(const Scheme &, const Field &, uint64_t id) const;
 
 protected:
+	struct TransactionGuard {
+		TransactionGuard(const Transaction &t) : _t(&t) { _t->retain(); }
+		~TransactionGuard() { _t->release(); }
+
+		const Transaction *_t;
+	};
+
+	friend struct TransactionGuard;
+	friend class Worker;
+
 	bool beginTransaction() const;
 	bool endTransaction() const;
 	void cancelTransaction() const;
@@ -161,6 +173,9 @@ protected:
 
 	bool isOpAllowed(const Scheme &, Op, const Field * = nullptr) const;
 
+	void retain() const;
+	void release() const;
+
 	Transaction(Data *);
 
 	Data *_data = nullptr;
@@ -168,6 +183,8 @@ protected:
 
 template <typename Callback>
 inline bool Transaction::perform(Callback && cb) const {
+	TransactionGuard g(*this);
+
 	if (isInTransaction()) {
 		if (!cb()) {
 			cancelTransaction();

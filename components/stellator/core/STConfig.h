@@ -53,7 +53,8 @@ inline auto getInternalPasswordKey() { return "Serenity Password Salt"_weak; }
 inline stappler::TimeInterval getKeyValueStorageTime() { return stappler::TimeInterval::seconds(60 * 60 * 24 * 365); }
 inline stappler::TimeInterval getInternalsStorageTime() { return stappler::TimeInterval::seconds(60 * 60 * 24 * 30); }
 
-inline auto getStorageInterfaceKey() { return "StorageInterface"; }
+constexpr auto getStorageInterfaceKey() { return "ST.StorageInterface"; }
+constexpr auto getCurrentTransactionKey() { return "ST.CurrentTransaction"; }
 
 constexpr auto getUploadTmpFilePrefix() { return "sa.upload"; }
 constexpr auto getUploadTmpImagePrefix() { return "sa.image"; }

@@ -116,6 +116,12 @@ public:
 	Worker(const Scheme &, const Transaction &);
 	explicit Worker(const Worker &);
 
+	Worker(Worker &&) = delete;
+	Worker& operator=(Worker &&) = delete;
+	Worker& operator=(const Worker &) = delete;
+
+	~Worker();
+
 	template <typename Callback>
 	bool perform(const Callback &) const;
 

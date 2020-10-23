@@ -68,13 +68,13 @@ void broadcast(const mem::Bytes &val) {
 
 Transaction Transaction::acquire(const Adapter &adapter) {
 	auto makeRequestTransaction = [&] (request_rec *req) -> Transaction {
-		if (auto d = stappler::serenity::Request(req).getObject<Data>("current_transaction")) {
+		if (auto d = stappler::serenity::Request(req).getObject<Data>(config::getCurrentTransactionKey())) {
 			return Transaction(d);
 		} else {
 			stappler::serenity::Request rctx(req);
 			d = new (req->pool) Data{adapter, rctx.pool()};
 			d->role = AccessRoleId::System;
-			rctx.storeObject(d, "current_transaction");
+			rctx.storeObject(d, config::getCurrentTransactionKey());
 			d->role = rctx.getAccessRole();
 			auto ret = Transaction(d);
 			if (auto serv = stappler::apr::pool::server()) {
@@ -88,12 +88,12 @@ Transaction Transaction::acquire(const Adapter &adapter) {
 	if (log.first == uint32_t(stappler::apr::pool::Info::Request)) {
 		return makeRequestTransaction((request_rec *)log.second);
 	} else if (auto pool = stappler::apr::pool::acquire()) {
-		if (auto d = stappler::memory::pool::get<Data>(pool, "current_transaction")) {
+		if (auto d = stappler::memory::pool::get<Data>(pool, config::getCurrentTransactionKey())) {
 			return Transaction(d);
 		} else {
 			d = new (pool) Data{adapter};
 			d->role = AccessRoleId::System;
-			stappler::apr::pool::store(pool, d, "current_transaction");
+			stappler::apr::pool::store(pool, d, config::getCurrentTransactionKey());
 			if (auto req = stappler::apr::pool::request()) {
 				d->role = stappler::serenity::Request(req).getAccessRole();
 			} else {

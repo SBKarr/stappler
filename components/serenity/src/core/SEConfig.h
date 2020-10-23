@@ -95,7 +95,8 @@ constexpr auto getSerenityDBDHandleName() { return "Serenity.DBD.Handle"; }
 constexpr auto getSerenityWebsocketDatabaseName() { return "Serenity.Websocket.Database"; }
 constexpr auto getSerenityWebsocketHandleName() { return "Serenity.Websocket.Handle"; }
 
-constexpr auto getStorageInterfaceKey() { return "StorageInterface"; }
+constexpr auto getStorageInterfaceKey() { return "ST.StorageInterface"; }
+constexpr auto getCurrentTransactionKey() { return "ST.CurrentTransaction"; }
 
 constexpr uint16_t getResourceResolverMaxDepth() { return 4; }
 

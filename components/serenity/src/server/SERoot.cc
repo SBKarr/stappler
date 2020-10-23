@@ -845,6 +845,7 @@ void Root::performStorage(apr_pool_t *pool, const Server &serv, const Callback<v
 
 			cb(storage);
 
+			mem::pool::userdata_set((void *)nullptr, config::getCurrentTransactionKey(), nullptr, pool); // drop transaction
 			mem::pool::userdata_set((void *)nullptr, config::getStorageInterfaceKey(), nullptr, pool);
 			dbdClose(serv.server(), dbd);
 		}
