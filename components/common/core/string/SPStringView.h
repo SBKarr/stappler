@@ -1331,9 +1331,24 @@ inline bool StringViewUtf8::match (char16_t c) {
 	return chars::Compose<char16_t, Args...>::match(c);
 }
 
+inline auto operator<<(const Callback<void(StringViewBase<char>)> &cb, const char *str) -> const Callback<void(StringViewBase<char>)> & {
+	cb(StringView(str));
+	return cb;
+}
+
+template <size_t N>
+inline auto operator<<(const Callback<void(StringViewBase<char>)> &cb, const char str[N]) -> const Callback<void(StringViewBase<char>)> & {
+	cb(StringView(str, N));
+	return cb;
+}
+
 inline auto operator<<(const Callback<void(StringViewBase<char>)> &cb, StringViewBase<char> str) -> const Callback<void(StringViewBase<char>)> & {
 	cb(str);
 	return cb;
+}
+
+inline auto operator<<(const Callback<void(StringViewBase<char>)> &cb, double d) -> const Callback<void(StringViewBase<char>)> & {
+	return cb << StringViewBase<char>(std::to_string(d));
 }
 
 inline auto operator<<(const Callback<void(StringViewBase<char>)> &cb, int64_t i) -> const Callback<void(StringViewBase<char>)> & {

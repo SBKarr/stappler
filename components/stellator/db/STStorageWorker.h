@@ -131,10 +131,10 @@ public:
 	void includeNone();
 
 	template <typename T>
-	void include(T && t) { _required.include(std::forward<T>(t)); }
+	Worker& include(T && t) { _required.include(std::forward<T>(t)); return *this; }
 
 	template <typename T>
-	void exclude(T && t) { _required.exclude(std::forward<T>(t)); }
+	Worker& exclude(T && t) { _required.exclude(std::forward<T>(t)); return *this; }
 
 	void clearRequiredFields();
 

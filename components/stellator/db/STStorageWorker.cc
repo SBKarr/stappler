@@ -154,15 +154,19 @@ void Worker::ConditionData::set(const Query::Select &sel, const Field *f) {
 }
 
 Worker::Worker(const Scheme &s) : _scheme(&s), _transaction(Transaction::acquire()) {
+	_required.scheme = _scheme;
 	_transaction.retain();
 }
 Worker::Worker(const Scheme &s, const Adapter &a) : _scheme(&s), _transaction(Transaction::acquire(a)) {
+	_required.scheme = _scheme;
 	_transaction.retain();
 }
 Worker::Worker(const Scheme &s, const Transaction &t) : _scheme(&s), _transaction(t) {
+	_required.scheme = _scheme;
 	_transaction.retain();
 }
 Worker::Worker(const Worker &w) : _scheme(w._scheme), _transaction(w._transaction) {
+	_required.scheme = _scheme;
 	_transaction.retain();
 }
 Worker::~Worker() {
@@ -318,6 +322,16 @@ const mem::Vector<Worker::ConditionData> &Worker::getConditions() const {
 mem::Value Worker::get(uint64_t oid, bool forUpdate) {
 	Query query;
 	prepareGetQuery(query, oid, forUpdate);
+	if (!_required.excludeFields.empty()) {
+		for (auto &it : _required.excludeFields) {
+			query.exclude(it->getName());
+		}
+	}
+	if (!_required.includeFields.empty()) {
+		for (auto &it : _required.includeFields) {
+			query.include(it->getName());
+		}
+	}
 	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
 }
 

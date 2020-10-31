@@ -319,6 +319,8 @@ Task * ConnectionQueue::popTask() {
 void ConnectionQueue::releaseTask(Task *task) {
 	if (!task->getGroup()) {
 		Task::destroy(task);
+	} else {
+		task->getGroup()->onPerformed(task);
 	}
 	-- _taskCounter;
 }

@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define COMPONENTS_MINIDB_SRC_MDBHANDLE_H_
 
 #include "MDB.h"
+#include "MDBTransaction.h"
 
 NS_MDB_BEGIN
 
@@ -36,7 +37,13 @@ public:
 	using Comparation = stappler::sql::Comparation;
 	using QueryList = db::QueryList;
 
+	Handle(const Storage &, OpenMode);
+
+	operator bool () const { return _transaction.isOpen(); }
+
 public:
+	virtual bool init(const Config &serv, const mem::Map<mem::StringView, const Scheme *> &) override;
+
 	virtual bool set(const stappler::CoderSource &, const mem::Value &, stappler::TimeInterval) override;
 	virtual mem::Value get(const stappler::CoderSource &) override;
 	virtual bool clear(const stappler::CoderSource &) override;
@@ -47,6 +54,9 @@ public:
 
 	virtual int64_t getDeltaValue(const Scheme &scheme) override;
 	virtual int64_t getDeltaValue(const Scheme &scheme, const db::FieldView &view, uint64_t tag) override;
+
+	virtual bool beginTransaction() override;
+	virtual bool endTransaction() override;
 
 public:
 	virtual mem::Value select(Worker &, const db::Query &) override;
@@ -71,8 +81,9 @@ protected: // prop interface
 
 	virtual mem::Vector<int64_t> getReferenceParents(const Scheme &, uint64_t oid, const Scheme *, const Field *) override;
 
-protected:
-	mem::Vector<stappler::Pair<stappler::Time, mem::Bytes>> _bcasts;
+	const Storage *_storage = nullptr;
+	OpenMode _mode = OpenMode::ReadWrite;
+	minidb::Transaction _transaction;
 };
 
 NS_MDB_END

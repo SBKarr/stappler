@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #include "MDBStorage.h"
 #include "MDBTransaction.h"
+#include "MDBCbor.h"
 
 NS_MDB_BEGIN
 
@@ -239,7 +240,7 @@ private:
 	size_t _remains = stappler::maxOf<size_t>();
 
 	const Transaction *_transaction = nullptr;
-	mem::Vector<Transaction::TreeStackFrame> _frames;
+	mem::Vector<TreePage> _frames;
 };
 
 size_t getPayloadSize(PageType type, const mem::Value &data) {
@@ -258,6 +259,164 @@ size_t writeOverflowPayload(const Transaction &t, PageType type, uint32_t page, 
 	MapEncoder enc(t, page, (type == PageType::LeafTable) ? true : false);
 	data.encode(enc);
 	return enc.size();
+}
+
+
+struct Decoder {
+	Decoder(cbor::IteratorContext *ctx, mem::Value *val) : ctx(ctx), back(val) { }
+
+	cbor::IteratorToken parse() {
+		auto stackSize = ctx->stackSize;
+		while (ctx->token != cbor::IteratorToken::Done
+				|| (stackSize != ctx->stackSize && ctx->token != cbor::IteratorToken::Key && ctx->token != cbor::IteratorToken::EndObject)) {
+			parseToken();
+			ctx->next();
+		}
+		return ctx->token;
+	}
+
+	void parseToken() {
+		switch (ctx->token) {
+		case cbor::IteratorToken::Done: break;
+		case cbor::IteratorToken::Key:
+			switch (ctx->getType()) {
+			case cbor::Type::ByteString: buf.append((const char *)ctx->getBytePtr(), ctx->getObjectSize()); break;
+			case cbor::Type::CharString: buf.append(ctx->getCharPtr(), ctx->getObjectSize()); break;
+			default: break;
+			}
+			break;
+		case cbor::IteratorToken::Value:
+			// spawn next value in parent
+			if (auto p = getStackValue()) {
+				if (p->isArray()) {
+					back = &p->emplace();
+				} else if (p->isDictionary()) {
+					back = &p->emplace(buf);
+					buf.clear();
+				}
+			}
+			onValue();
+			break;
+		case cbor::IteratorToken::BeginArray:
+		case cbor::IteratorToken::BeginObject:
+		case cbor::IteratorToken::BeginByteStrings:
+		case cbor::IteratorToken::BeginCharStrings:
+			pushValue(back);
+			break;
+		case cbor::IteratorToken::EndArray:
+		case cbor::IteratorToken::EndObject:
+		case cbor::IteratorToken::EndByteStrings:
+		case cbor::IteratorToken::EndCharStrings:
+			popValue();
+			break;
+		default: break;
+		}
+	}
+
+	void onValue() {
+		switch (ctx->getType()) {
+		case cbor::Type::Unsigned: back->setInteger(ctx->getUnsigned()); break;
+		case cbor::Type::Negative: back->setInteger(ctx->getInteger()); break;
+		case cbor::Type::ByteString:
+			if (back->isBytes()) {
+				back->getBytes().insert(back->getBytes().end(), ctx->getBytePtr(), ctx->getBytePtr() + ctx->getObjectSize());
+			} else {
+				back->setBytes(mem::BytesView(ctx->getBytePtr(), ctx->getObjectSize()));
+			}
+			break;
+		case cbor::Type::CharString:
+			if (back->isString()) {
+				back->getString().append(ctx->getCharPtr(), ctx->getObjectSize());
+			} else {
+				back->setString(mem::StringView(ctx->getCharPtr(), ctx->getObjectSize()));
+			}
+			break;
+		case cbor::Type::Array: back->setArray(mem::Value::ArrayType()); back->getArray().reserve(ctx->getContainerSize()); break;
+		case cbor::Type::Map: back->setDict(mem::Value::DictionaryType()); back->getDict().reserve(ctx->getContainerSize()); break;
+		case cbor::Type::Tag:
+			break;
+		case cbor::Type::Simple: back->setInteger(ctx->getUnsigned()); break;
+		case cbor::Type::Float:	back->setDouble(ctx->getFloat()); break;
+		case cbor::Type::False: back->setBool(false); break;
+		case cbor::Type::True:  back->setBool(true); break;
+		case cbor::Type::Null: break;
+		case cbor::Type::Undefined: break;
+		default: break;
+		}
+	}
+
+	void pushValue(mem::Value *val) {
+		if (stackSize < cbor::CBOR_STACK_DEFAULT_SIZE) {
+			staticStack[stackSize] = val;
+		} else {
+			dynamicStack.push_back(val);
+		}
+		++ stackSize;
+	}
+
+	void popValue() {
+		if (stackSize > cbor::CBOR_STACK_DEFAULT_SIZE) {
+			back = dynamicStack.back();
+			dynamicStack.pop_back();
+		} else {
+			back = staticStack[stackSize - 1];
+		}
+		-- stackSize;
+	}
+
+	mem::Value *getStackValue() const {
+		if (stackSize == 0) {
+			return nullptr;
+		} else if (stackSize < cbor::CBOR_STACK_DEFAULT_SIZE) {
+			return staticStack[stackSize - 1];
+		} else {
+			return dynamicStack[stackSize - cbor::CBOR_STACK_DEFAULT_SIZE - 1];
+		}
+	}
+
+	cbor::IteratorContext *ctx;
+	mem::String buf;
+	mem::Value *back;
+
+	uint32_t stackSize = 0;
+	std::array<mem::Value *, cbor::CBOR_STACK_DEFAULT_SIZE> staticStack;
+	mem::Vector<mem::Value *> dynamicStack;
+};
+
+mem::Value readPayload(const uint8_p ptr, const mem::Vector<mem::StringView> &filter) {
+	mem::Value ret;
+	cbor::IteratorContext ctx;
+	if (ctx.init(ptr, stappler::maxOf<size_t>())) {
+		auto tok = ctx.next();
+		if (tok == cbor::IteratorToken::BeginObject) {
+			tok = ctx.next();
+			while (tok != cbor::IteratorToken::EndObject && tok != cbor::IteratorToken::Done) {
+				if (tok == cbor::IteratorToken::Key) {
+					if ((ctx.type == cbor::MajorType::ByteString || ctx.type == cbor::MajorType::CharString) && !ctx.isStreaming) {
+						auto key = mem::StringView((const char *)ctx.current.ptr, ctx.objectSize);
+						auto it = std::lower_bound(filter.begin(), filter.end(), key);
+						if (it != filter.end() && *it == key) {
+							auto val = ret.emplace(key);
+							tok = ctx.next();
+							Decoder dec(&ctx, &val);
+							tok = dec.parse();
+							if (tok != cbor::IteratorToken::Key && tok != cbor::IteratorToken::EndObject) {
+								tok = cbor::IteratorToken::Done;
+								continue;
+							}
+						}
+					} else {
+						tok = cbor::IteratorToken::Done;
+						continue;
+					}
+				}
+			}
+		}
+
+		ctx.finalize();
+	}
+
+	return ret;
 }
 
 NS_MDB_END

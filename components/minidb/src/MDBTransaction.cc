@@ -44,19 +44,6 @@ static inline bool Storage_mmapError(int memerr) {
 	return false;
 }
 
-size_t Transaction::TreeCell::size() const {
-	if (!_size) {
-		switch (type) {
-		case PageType::InteriorIndex: _size = sizeof(uint32_t) + getPayloadSize(type, *payload); break;
-		case PageType::InteriorTable: _size = sizeof(uint32_t) + getVarUintSize(oid); break;
-		case PageType::LeafIndex: _size = sizeof(uint32_t) + getVarUintSize(oid) + getPayloadSize(type, *payload); break;
-		case PageType::LeafTable: _size = getVarUintSize(oid) + getPayloadSize(type, *payload); break;
-		default: break;
-		}
-	}
-	return _size;
-}
-
 Transaction::Transaction() { }
 
 Transaction::Transaction(const Storage &storage, OpenMode m) {
@@ -136,21 +123,21 @@ void Transaction::close() {
 	}
 }
 
-Transaction::TreeStackFrame Transaction::openFrame(uint32_t idx, OpenMode mode, uint32_t nPages, const Manifest *manifest) const {
+TreePage Transaction::openFrame(uint32_t idx, OpenMode mode, uint32_t nPages, const Manifest *manifest) const {
 	if (!manifest) {
 		manifest = _manifest;
 	}
 
 	if (!_storage || !_fd || !manifest) {
-		return TreeStackFrame(idx, nullptr);
+		return TreePage(idx, nullptr);
 	}
 
 	if ((!_manifest && idx == 0) || (manifest && idx >= manifest->getPageCount())) {
-		return TreeStackFrame(idx, nullptr);
+		return TreePage(idx, nullptr);
 	}
 
 	if (!isModeAllowed(mode)) {
-		return TreeStackFrame(idx, nullptr);
+		return TreePage(idx, nullptr);
 	}
 
 	auto pageSize = _storage->getPageSize();
@@ -161,21 +148,21 @@ Transaction::TreeStackFrame Transaction::openFrame(uint32_t idx, OpenMode mode, 
 
 	switch (mode) {
 	case OpenMode::Read:		prot = PROT_READ;				opts = MAP_PRIVATE | MAP_NONBLOCK; break;
-	case OpenMode::Write:		prot = PROT_WRITE;				opts = MAP_SHARED_VALIDATE | MAP_POPULATE;    break;
-	case OpenMode::ReadWrite:	prot = PROT_READ | PROT_WRITE;	opts = MAP_SHARED_VALIDATE | MAP_POPULATE;    break;
-	default: return TreeStackFrame(idx, nullptr); break;
+	case OpenMode::Write:		prot = PROT_WRITE;				opts = MAP_SHARED | MAP_POPULATE;    break;
+	case OpenMode::ReadWrite:	prot = PROT_READ | PROT_WRITE;	opts = MAP_SHARED | MAP_POPULATE;    break;
+	default: return TreePage(idx, nullptr); break;
 	}
 
 	auto mem = ::mmap(nullptr, s, prot, opts, _fd, idx * pageSize);
 	if (mem != MAP_FAILED) {
-		return TreeStackFrame(idx, s, (void *)mem, mode);
+		return TreePage(idx, s, (void *)mem, mode);
 	}
 
 	Storage_mmapError(errno);
-	return TreeStackFrame(idx, nullptr);
+	return TreePage(idx, nullptr);
 }
 
-void Transaction::closeFrame(const TreeStackFrame &frame, bool async) const {
+void Transaction::closeFrame(const TreePage &frame, bool async) const {
 	switch (frame.mode) {
 	case OpenMode::Write:
 	case OpenMode::ReadWrite:
@@ -241,31 +228,177 @@ bool Transaction::readHeader(StorageHeader *target) const {
 	return false;
 }
 
-stappler::Pair<size_t, uint16_t> Transaction::getFrameFreeSpace(const TreeStackFrame &frame) const {
-	size_t fullSize = _manifest->getPageSize();
-	uint8_t *startPtr = uint8_p(frame.ptr);
-	auto h = (TreePageHeader *)frame.ptr;
-	switch (frame.type) {
-	case PageType::InteriorIndex:
-	case PageType::InteriorTable:
-		fullSize -= sizeof(TreePageInteriorHeader);
-		startPtr += sizeof(TreePageInteriorHeader);
-		break;
-	default:
-		fullSize -= sizeof(TreePageHeader);
-		startPtr += sizeof(TreePageHeader);
-		break;
+static mem::Vector<mem::StringView> Transaction_getQueryName(Worker &worker, const db::Query &query) {
+	mem::Vector<mem::StringView> names;
+	if (!worker.shouldIncludeAll()) {
+		names.reserve(worker.scheme().getFields().size());
+		worker.readFields(worker.scheme(), query, [&] (const mem::StringView &name, const db::Field *) {
+			auto it = std::upper_bound(names.begin(), names.end(), name);
+			if (it == names.end()) {
+				names.emplace_back(name);
+			} else if (*it != name) {
+				names.emplace(it, name);
+			}
+		});
 	}
-
-	fullSize -= h->ncells * sizeof(uint16_t);
-
-	uint16_t min = 0;
-	if (h->ncells > 0) {
-		min = *std::min_element(uint16_p(startPtr), uint16_p(startPtr) + h->ncells);
-		fullSize -= (_manifest->getPageSize() - min);
-	}
-	return stappler::pair(fullSize, min);
+	return names;
 }
 
+mem::Value Transaction::select(Worker &worker, const db::Query &query) {
+	auto scheme = _manifest->getScheme(worker.scheme());
+	if (!scheme) {
+		return mem::Value();
+	}
+
+	if (auto target = query.getSingleSelectId()) {
+		std::shared_lock<std::shared_mutex> lock(scheme->scheme->mutex);
+		TreeStack stack({*this, scheme, OpenMode::Read});
+		auto it = stack.openOnOid(target);
+		if (it && it != stack.frames.back().end()) {
+			auto cell = it.getTableLeafCell();
+			auto names = Transaction_getQueryName(worker, query);
+			return mem::Value({ readPayload(cell.payload, names) });
+		}
+	} else if (!query.getSelectIds().empty()) {
+		std::shared_lock<std::shared_mutex> lock(scheme->scheme->mutex);
+		TreeStack stack({*this, scheme, OpenMode::Read});
+		auto names = Transaction_getQueryName(worker, query);
+
+		mem::Value ret;
+		for (auto &id : query.getSelectIds()) {
+			auto it = stack.openOnOid(id);
+			if (it && it != stack.frames.back().end()) {
+				auto cell = it.getTableLeafCell();
+				ret.addValue(readPayload(cell.payload, names));
+			}
+		}
+		return ret;
+	} else if (!query.getSelectList().empty()) {
+
+	} else if (!query.getSelectAlias().empty()) {
+
+	} else {
+		std::shared_lock<std::shared_mutex> lock(scheme->scheme->mutex);
+		TreeStack stack({*this, scheme, OpenMode::Read});
+		auto names = Transaction_getQueryName(worker, query);
+		auto it = stack.open();
+
+		size_t offset = query.getOffsetValue();
+		size_t limit = query.getLimitValue();
+
+		mem::Value ret;
+		while (offset > 0 && limit > 0 && it) {
+			if (offset == 0) {
+				auto cell = it.getTableLeafCell();
+				ret.addValue(readPayload(cell.payload, names));
+				-- limit;
+			} else {
+				-- offset;
+			}
+			it = stack.next(it);
+		}
+		return ret;
+	}
+
+	return mem::Value();
+}
+
+mem::Value Transaction::create(Worker &worker, const mem::Value &idata) {
+	auto scheme = _manifest->getScheme(worker.scheme());
+	if (!scheme) {
+		return mem::Value();
+	}
+
+	auto perform = [&] (const mem::Value &data) -> mem::Value {
+		uint64_t id = 0;
+
+		// check unique
+		// - not implemented
+
+		id = _manifest->getNextOid();
+
+		if (pushObject(*scheme, id, data)) {
+			mem::Value ret(data);
+			ret.setInteger(id, "__oid");
+			if (worker.shouldIncludeNone() && worker.scheme().hasForceExclude()) {
+				for (auto &it : worker.scheme().getFields()) {
+					if (it.second.hasFlag(db::Flags::ForceExclude)) {
+						ret.erase(it.second.getName());
+					}
+				}
+			}
+			return ret;
+		}
+		return mem::Value();
+	};
+
+	if (idata.isDictionary()) {
+		return perform(idata);
+	} else if (idata.isArray()) {
+		mem::Value ret;
+		for (auto &it : idata.asArray()) {
+			if (auto v = perform(it)) {
+				ret.addValue(std::move(v));
+			}
+		}
+		return ret;
+	}
+
+	return mem::Value();
+}
+
+mem::Value Transaction::save(Worker &, uint64_t oid, const mem::Value &obj, const mem::Vector<mem::String> &fields) {
+	return mem::Value();
+}
+
+mem::Value Transaction::patch(Worker &, uint64_t oid, const mem::Value &patch) {
+	return mem::Value();
+}
+
+bool Transaction::remove(Worker &, uint64_t oid) {
+	return false;
+}
+
+size_t Transaction::count(Worker &, const db::Query &) {
+	return 0;
+}
+
+bool Transaction::pushObject(const Scheme &scheme, uint64_t oid, const mem::Value &data) const {
+	// lock sheme on write
+	std::unique_lock<std::shared_mutex> lock(scheme.scheme->mutex);
+	TreeStack stack({*this, &scheme, OpenMode::ReadWrite});
+	if (!stack.openOnOid(oid)) {
+		return false;
+	}
+
+	if (!stack.frames.empty() || stack.frames.back().type != PageType::LeafTable) {
+		return false;
+	}
+
+	auto cell = TreeCell(PageType::LeafTable, Oid(oid), &data);
+
+	auto overflow = [this] (const TreeCell &cell) -> uint32_t {
+		return _manifest->writeOverflow(*this, cell.type, *cell.payload);
+	};
+
+	if (!stack.frames.back().pushCell(nullptr, cell, overflow)) {
+		if (auto newPage = stack.splitPage(cell, true, [this] () -> TreePage {
+			if (auto pageId = _manifest->allocatePage(*this)) {
+				return openFrame(pageId, OpenMode::Write, 0, _manifest);
+			}
+			return TreePage(0, nullptr);
+		})) {
+			if (!newPage.pushCell(nullptr, cell, overflow)) {
+				return false;
+			}
+		} else {
+			return false;
+		}
+	}
+
+	++ scheme.scheme->counter;
+	scheme.scheme->dirty = true;
+	return true;
+}
 
 NS_MDB_END

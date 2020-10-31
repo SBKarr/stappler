@@ -75,6 +75,11 @@ struct TreePageInteriorHeader {
 	uint32_t right;
 };
 
+struct TreeTableLeafCell {
+	uint64_t value;
+	uint8_p payload;
+};
+
 struct TreeTableInteriorCell {
 	uint32_t pointer;
 	uint64_t value;
@@ -140,6 +145,8 @@ void inspectTreePage(const mem::Callback<void(mem::StringView)> &, void *, size_
 size_t getPayloadSize(PageType, const mem::Value &);
 size_t writePayload(PageType, uint8_p, const mem::Value &);
 size_t writeOverflowPayload(const Transaction &, PageType, uint32_t page, const mem::Value &);
+
+mem::Value readPayload(const uint8_p ptr, const mem::Vector<mem::StringView> &filter);
 
 NS_MDB_END
 

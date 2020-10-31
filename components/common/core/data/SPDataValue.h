@@ -152,6 +152,7 @@ public:
 	Self& operator= (const StringView &v) { return (*this = Self(v)); }
 	Self& operator= (const StringType &v) { return (*this = Self(v)); }
 	Self& operator= (StringType &&v) { return (*this = Self(std::move(v))); }
+	Self& operator= (const BytesView &v) { return (*this = Self(v)); }
 	Self& operator= (const BytesType &v) { return (*this = Self(v)); }
 	Self& operator= (BytesType &&v) { return (*this = Self(std::move(v))); }
 	Self& operator= (const ArrayType &v) { return (*this = Self(v)); }
@@ -228,6 +229,7 @@ public:
 	void setString(StringType &&value) { *this = std::move(value); }
 	void setBytes(const BytesType &value) { *this = value; }
 	void setBytes(BytesType &&value) { *this = std::move(value); }
+	void setBytes(const BytesView &value) { *this = value; }
 	void setArray(const ArrayType &value) { *this = value; }
 	void setArray(ArrayType &&value) { *this = std::move(value); }
 	void setDict(const DictionaryType &value) { *this = value; }

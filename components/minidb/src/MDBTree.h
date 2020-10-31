@@ -1,0 +1,131 @@
+/**
+Copyright (c) 2020 Roman Katuntsev <sbkarr@stappler.org>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+**/
+
+#ifndef COMPONENTS_MINIDB_SRC_MDBTREE_H_
+#define COMPONENTS_MINIDB_SRC_MDBTREE_H_
+
+#include "MDBManifest.h"
+
+NS_MDB_BEGIN
+
+using Oid = stappler::ValueWrapper<uint64_t, class OidTag>;
+using PageNumber = stappler::ValueWrapper<uint32_t, class PageNumberTag>;
+
+struct TreeCell {
+	PageType type;				//	LeafTable	InteriorTable	LeafIndex	InteriorIndex
+	uint32_t page;				//	-			+				+			+
+	uint64_t oid;				//	+			+				+			-
+	const mem::Value * payload; //	+			-				+			+
+
+	mutable size_t _size = 0;
+
+	size_t size() const;
+
+	TreeCell(PageType t, Oid o, const mem::Value *p) : type(t), page(0), oid(o.get()), payload(p) { }
+	TreeCell(PageType t, PageNumber p, Oid o, const mem::Value * v = nullptr) : type(t), page(p.get()), oid(o.get()), payload(v) { }
+	TreeCell(PageType t, PageNumber p, const mem::Value *v) : type(t), page(p.get()), oid(0), payload(v) { }
+};
+
+struct TreePageIterator {
+	void *ptr = nullptr;
+	uint16_p index = nullptr;
+
+	TreePageIterator(void *ptr, uint16_p idx) : ptr(ptr), index(idx) { }
+	TreePageIterator(nullptr_t) { }
+
+	operator bool() const { return ptr != nullptr; }
+
+	bool operator==(const TreePageIterator &it) const { return it.ptr == ptr && it.index == index; }
+	bool operator!=(const TreePageIterator &it) const { return it.ptr != ptr || it.index != index; }
+
+	TreePageIterator & operator ++() { ++ index; return *this; }
+	TreePageIterator operator++ (int) { TreePageIterator result(*this); ++(*this); return result; }
+
+	TreePageIterator & operator --() { -- index; return *this; }
+	TreePageIterator operator-- (int) { TreePageIterator result(*this); --(*this); return result; }
+
+	TreeTableInteriorCell getTableInteriorCell() const;
+	TreeTableLeafCell getTableLeafCell() const;
+};
+
+inline bool operator<(const TreePageIterator &l, const TreePageIterator &r) { return l.index < r.index; }
+inline bool operator<=(const TreePageIterator &l, const TreePageIterator &r) { return l.index <= r.index; }
+inline bool operator>(const TreePageIterator &l, const TreePageIterator &r) { return l.index > r.index; }
+inline bool operator>=(const TreePageIterator &l, const TreePageIterator &r) { return l.index >= r.index; }
+
+struct TreePage {
+	uint32_t number;
+	uint32_t size;
+	void *ptr;
+	OpenMode mode;
+	PageType type = PageType::None;
+
+	operator bool () const { return ptr != nullptr; }
+
+	TreePage(uint32_t page, nullptr_t)
+	: number(page), size(0), ptr(nullptr), mode(OpenMode::Read) { }
+
+	TreePage(uint32_t page, uint32_t size, void *mem, OpenMode mode)
+	: number(page), size(size), ptr(mem), mode(mode) { }
+
+	// returns freeBytes + offset for last cell
+	// page can be opened partially, so, if type is None (as for partial pages) - returns (0, 0)
+	stappler::Pair<size_t, uint16_t> getFreeSpace() const;
+	size_t getHeaderSize() const;
+
+	TreePageIterator begin() const;
+	TreePageIterator end() const;
+
+	TreePageIterator find(uint64_t oid) const;
+
+	// write cell to page
+	bool pushCell(uint16_p cellTarget, TreeCell, const mem::Callback<uint32_t(const TreeCell &)> &) const;
+
+	uint32_t findTargetPage(uint64_t oid) const;
+
+	TreeTableInteriorCell getTableInteriorCell(uint16_t off) const;
+	TreeTableLeafCell getTableLeafCell(uint16_t off) const;
+};
+
+struct TreeStack {
+	using Scheme = Manifest::Scheme;
+
+	const Transaction *transaction;
+	const Scheme *scheme;
+	OpenMode mode;
+	mem::Vector<TreePage> frames;
+
+	TreeStack(const Transaction &t, const Scheme *s, OpenMode mode) : transaction(&t), scheme(s), mode(mode) { }
+	~TreeStack() { close(); }
+
+	TreePage splitPage(TreeCell cell, bool unbalanced, const mem::Callback<TreePage()> &);
+
+	TreePageIterator openOnOid(uint64_t oid = 0);
+	TreePageIterator open();
+	void close();
+
+	TreePageIterator next(TreePageIterator);
+};
+
+NS_MDB_END
+
+#endif /* COMPONENTS_MINIDB_SRC_MDBTREE_H_ */

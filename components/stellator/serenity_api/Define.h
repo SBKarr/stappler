@@ -176,7 +176,7 @@ using ReplaceFilterFn = db::ReplaceFilterFn;
 using FilterFn = db::FilterFn;
 using DefaultFn = db::DefaultFn;
 using FullTextViewFn = db::FullTextViewFn;
-using FullTextQueryFn = db::FullTextViewFn;
+using FullTextQueryFn = db::FullTextQueryFn;
 
 using Action = db::Action;
 
