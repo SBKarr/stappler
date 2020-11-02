@@ -134,6 +134,7 @@ constexpr TimeInterval operator"" _mksec ( unsigned long long int val ) { return
 
 using InputConfig = db::InputConfig;
 using NetworkHandle = stappler::NetworkHandle;
+using NetworkMultiHandle = stappler::NetworkMultiHandle;
 
 }
 
@@ -191,6 +192,7 @@ using Stream = stappler::data::Stream;
 
 using stappler::data::read;
 using stappler::data::write;
+using stappler::data::save;
 using stappler::data::readFile;
 
 }

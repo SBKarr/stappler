@@ -429,7 +429,7 @@ void Server::Config::onError(const mem::StringView &str) {
 }
 
 void Server::Config::setDocumentRoot(const mem::StringView &str) {
-	documentRoot = stappler::filepath::absolute(str);
+	documentRoot = stappler::filepath::reconstructPath(stappler::filepath::absolute(str));
 
 	std::cout << "DocumentRoot for " << name << ": " << documentRoot << "\n";
 }
