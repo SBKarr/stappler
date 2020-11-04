@@ -109,6 +109,8 @@ public:
 	String getMemoryMap(bool full) const;
 	String getAllocatorMemoryMap(uint64_t) const;
 
+	Server getRootServer() const;
+
 protected:
 	static Root *s_sharedServer;
 

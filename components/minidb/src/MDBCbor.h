@@ -29,7 +29,7 @@ NS_MDB_BEGIN
 
 namespace cbor {
 
-static constexpr size_t CBOR_STACK_DEFAULT_SIZE = 8; // Preallocated iterator stack
+static constexpr size_t CBOR_STACK_DEFAULT_SIZE = 16; // Preallocated iterator stack
 
 using MajorType = stappler::data::cbor::MajorType;
 using SimpleValue = stappler::data::cbor::SimpleValue;

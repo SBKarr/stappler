@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "STMemory.h"
 #include "STTask.h"
 #include "STRoot.h"
+#include "STServer.h"
 
 namespace stellator::mem {
 
@@ -118,13 +119,21 @@ void broadcast(const mem::Bytes &val) {
 
 Transaction Transaction::acquire(const Adapter &adapter) {
 	if (auto pool = stappler::memory::pool::acquire()) {
-		if (auto d = stappler::memory::pool::get<Data>(pool, config::getCurrentTransactionKey())) {
-			return Transaction(d);
+		if (auto d = stappler::memory::pool::get<Data>(pool, adapter.getTransactionKey())) {
+			auto ret = Transaction(d);
+			ret.retain();
+			return ret;
 		} else {
 			d = new (pool) Data{adapter};
 			d->role = AccessRoleId::System;
-			stappler::memory::pool::store(pool, d, config::getCurrentTransactionKey());
-			return Transaction(d);
+			stappler::memory::pool::store(pool, d, adapter.getTransactionKey());
+			auto ret = Transaction(d);
+			ret.retain();
+
+			if (auto serv = stellator::Server(stellator::mem::server())) {
+				serv.onStorageTransaction(ret);
+			}
+			return ret;
 		}
 	}
 	return Transaction(nullptr);

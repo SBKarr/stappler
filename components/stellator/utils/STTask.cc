@@ -185,6 +185,7 @@ void Task::performWithStorage(const mem::Callback<void(const db::Transaction &)>
 	root->performStorage(pool(), _server, [&] (const db::Adapter &a) {
 		if (auto t = db::Transaction::acquire(a)) {
 			cb(t);
+			t.release();
 		}
 	});
 }

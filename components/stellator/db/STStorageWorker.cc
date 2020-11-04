@@ -155,11 +155,11 @@ void Worker::ConditionData::set(const Query::Select &sel, const Field *f) {
 
 Worker::Worker(const Scheme &s) : _scheme(&s), _transaction(Transaction::acquire()) {
 	_required.scheme = _scheme;
-	_transaction.retain();
+	// _transaction.retain(); //  acquire = retain
 }
 Worker::Worker(const Scheme &s, const Adapter &a) : _scheme(&s), _transaction(Transaction::acquire(a)) {
 	_required.scheme = _scheme;
-	_transaction.retain();
+	// _transaction.retain(); //  acquire = retain
 }
 Worker::Worker(const Scheme &s, const Transaction &t) : _scheme(&s), _transaction(t) {
 	_required.scheme = _scheme;

@@ -25,17 +25,14 @@ THE SOFTWARE.
 
 NS_MDB_BEGIN
 
-size_t TreeCell::size() const {
-	if (!_size) {
-		switch (type) {
-		case PageType::InteriorIndex: _size = sizeof(uint32_t) + getPayloadSize(type, *payload); break;
-		case PageType::InteriorTable: _size = sizeof(uint32_t) + getVarUintSize(oid); break;
-		case PageType::LeafIndex: _size = sizeof(uint32_t) + getVarUintSize(oid) + getPayloadSize(type, *payload); break;
-		case PageType::LeafTable: _size = getVarUintSize(oid) + getPayloadSize(type, *payload); break;
-		default: break;
-		}
+void TreeCell::updateSize() {
+	switch (type) {
+	case PageType::InteriorIndex: size = sizeof(uint32_t) + getPayloadSize(type, *payload); break;
+	case PageType::InteriorTable: size = sizeof(uint32_t) + getVarUintSize(oid); break;
+	case PageType::LeafIndex: size = sizeof(uint32_t) + getVarUintSize(oid) + getPayloadSize(type, *payload); break;
+	case PageType::LeafTable: size = getVarUintSize(oid) + getPayloadSize(type, *payload); break;
+	default: break;
 	}
-	return _size;
 }
 
 TreeTableInteriorCell TreePageIterator::getTableInteriorCell() const {
@@ -51,7 +48,7 @@ TreeTableLeafCell TreePageIterator::getTableLeafCell() const {
 	return ret;
 }
 
-stappler::Pair<size_t, uint16_t> TreePage::getFreeSpace() const {
+stappler::Pair<size_t, uint32_t> TreePage::getFreeSpace() const {
 	auto fullSize = size;
 	uint8_t *startPtr = uint8_p(ptr);
 	auto h = (TreePageHeader *)ptr;
@@ -72,7 +69,7 @@ stappler::Pair<size_t, uint16_t> TreePage::getFreeSpace() const {
 
 	fullSize -= h->ncells * sizeof(uint16_t);
 
-	uint16_t min = 0;
+	uint32_t min = size;
 	if (h->ncells > 0) {
 		min = *std::min_element(uint16_p(startPtr), uint16_p(startPtr) + h->ncells);
 		fullSize -= (size - min);
@@ -205,7 +202,7 @@ bool TreePage::pushCell(uint16_p cellTarget, TreeCell cell, const mem::Callback<
 	// with incremental oids new cell will be at the end of cell pointer array
 	auto h = (TreePageHeader *)ptr;
 	auto freeSpace = getFreeSpace();
-	auto payloadSize = cell.size();
+	auto payloadSize = cell.size;
 
 	bool isOverflow = false;
 
@@ -225,11 +222,13 @@ bool TreePage::pushCell(uint16_p cellTarget, TreeCell cell, const mem::Callback<
 		return false;
 	}
 
-	auto cellStart = uint16_p( uint8_p(ptr)
-		+ ((PageType(h->type) == PageType::InteriorIndex || PageType(h->type) == PageType::InteriorTable)
-			? sizeof(TreePageHeader)
-			: sizeof(TreePageInteriorHeader)) );
-	auto cellEnd = cellStart + sizeof(uint16_t) * h->ncells;
+	uint8_p cellStartPointer = uint8_p(ptr) + sizeof(TreePageHeader);
+	if (PageType(h->type) == PageType::InteriorIndex || PageType(h->type) == PageType::InteriorTable) {
+		cellStartPointer = uint8_p(ptr) + sizeof(TreePageInteriorHeader);
+	}
+
+	auto cellStart = uint16_p( cellStartPointer );
+	auto cellEnd = cellStart + h->ncells;
 
 	if (cellTarget == nullptr) {
 		// use last cell
@@ -412,7 +411,7 @@ TreePageIterator TreeStack::openOnOid(uint64_t oid) {
 
 	auto openMode = mode == OpenMode::Read ? OpenMode::Read : OpenMode::ReadWrite;
 	auto type = PageType::InteriorTable;
-	auto target = scheme->scheme->idx;
+	auto target = scheme->scheme->root;
 
 	while (type != PageType::LeafTable && target) {
 		if (auto frame = transaction->openFrame(target, openMode)) {
@@ -446,7 +445,7 @@ TreePageIterator TreeStack::open() {
 
 	auto openMode = mode == OpenMode::Read ? OpenMode::Read : OpenMode::ReadWrite;
 	auto type = PageType::InteriorTable;
-	auto target = scheme->scheme->idx;
+	auto target = scheme->scheme->root;
 
 	while (type != PageType::LeafTable && target) {
 		if (auto frame = transaction->openFrame(target, openMode)) {
@@ -498,8 +497,14 @@ TreePageIterator TreeStack::next(TreePageIterator it) {
 					if (PageType(h->type) == PageType::LeafTable) {
 						frames.emplace_back(frame);
 						return frame.begin();
+					} else {
+						return TreePageIterator(nullptr);
 					}
+				} else {
+					return TreePageIterator(nullptr);
 				}
+			} else {
+				return TreePageIterator(nullptr);
 			}
 		}
 		return it;

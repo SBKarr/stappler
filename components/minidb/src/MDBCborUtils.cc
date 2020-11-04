@@ -24,6 +24,8 @@ THE SOFTWARE.
 #include "SPByteOrder.h"
 #include "SPHalfFloat.h"
 
+#define CBOR_DEBUG 0
+
 NS_MDB_BEGIN
 
 namespace cbor {
@@ -41,6 +43,66 @@ static void *CborRealloc(void *ptr, size_t bytes) {
 
 static void CborFree(void *ptr) {
 	free(ptr);
+}
+
+#if CBOR_DEBUG
+static const char *getCborTokenName(IteratorToken tok) {
+	switch (tok) {
+	case IteratorToken::Done: return "Done"; break;
+	case IteratorToken::Key: return "Key"; break;
+	case IteratorToken::Value: return "Value"; break;
+	case IteratorToken::BeginArray: return "BeginArray"; break;
+	case IteratorToken::EndArray: return "EndArray"; break;
+	case IteratorToken::BeginObject: return "BeginObject"; break;
+	case IteratorToken::EndObject: return "EndObject"; break;
+	case IteratorToken::BeginByteStrings: return "BeginByteStrings"; break;
+	case IteratorToken::EndByteStrings: return "EndByteStrings"; break;
+	case IteratorToken::BeginCharStrings: return "BeginCharStrings"; break;
+	case IteratorToken::EndCharStrings: return "EndCharStrings"; break;
+	}
+	return nullptr;
+}
+#endif
+
+static void writeTokenInfo(IteratorContext *ctx) {
+#if CBOR_DEBUG
+	auto indent = ctx->stackSize;
+	if (ctx->token == IteratorToken::BeginObject || ctx->token == IteratorToken::BeginArray) {
+		-- indent;
+	}
+
+	for (size_t i = 0; i < indent; ++ i) {
+		std::cout << "\t";
+	}
+	std::cout << getCborTokenName(ctx->token);
+	switch (ctx->token) {
+	case IteratorToken::Key:
+		if (MajorType(ctx->type) == MajorType::ByteString || MajorType(ctx->type) == MajorType::CharString) {
+			auto key = mem::StringView((const char *)ctx->current.ptr, ctx->objectSize);
+			std::cout << ": \"" << key << "\"";
+		}
+		break;
+	case IteratorToken::Value:
+		switch (MajorType(ctx->type)) {
+		case MajorType::Unsigned: std::cout << ": (unsigned)"; break;
+		case MajorType::Negative: std::cout << ": (negative)"; break;
+		case MajorType::ByteString: std::cout << ": (bytes)"; break;
+		case MajorType::CharString: std::cout << ": (string)"; break;
+		case MajorType::Array: std::cout << ": (array)"; break;
+		case MajorType::Map: std::cout << ": (map)"; break;
+		case MajorType::Tag: std::cout << ": (tag)"; break;
+		case MajorType::Simple: std::cout << ": (simple)"; break;
+		}
+		break;
+	case IteratorToken::BeginObject:
+	case IteratorToken::BeginArray:
+		std::cout << ": [" << ctx->getContainerSize() << "]";
+		break;
+	default:
+		break;
+	}
+	std::cout << "\n";
+#endif
 }
 
 bool data_is_cbor(const uint8_t *data, uint32_t size) {
@@ -272,6 +334,7 @@ IteratorToken IteratorContext::next() {
 			token = IteratorToken::Done;
 		}
 		value = current.ptr;
+		writeTokenInfo(this);
 		return token;
 	}
 
@@ -281,6 +344,7 @@ IteratorToken IteratorContext::next() {
 	if (head && head->position >= head->count) {
 		token = CborIteratorPopStack(this);
 		value = current.ptr;
+		writeTokenInfo(this);
 		return token;
 	}
 
@@ -292,6 +356,7 @@ IteratorToken IteratorContext::next() {
 	// pop stack value for undefined length container
 	if (head && head->count == UINT32_MAX && type == (stappler::toInt(Flags::UndefinedLength) | stappler::toInt(MajorTypeEncoded::Simple))) {
 		token = CborIteratorPopStack(this);
+		writeTokenInfo(this);
 		return token;
 	}
 
@@ -305,16 +370,13 @@ IteratorToken IteratorContext::next() {
 	case MajorType::Negative:
 		this->objectSize = get_cbor_integer_length(this->info);
 		if (head) { ++ head->position; }
-
 		break;
 	case MajorType::Tag:
 		this->objectSize = get_cbor_integer_length(this->info);
 		break;
-
 	case MajorType::Simple:
 		this->objectSize = get_cbor_integer_length(this->info);
 		if (head) { ++ head->position; }
-
 		break;
 	case MajorType::ByteString:
 		if (this->info == Flags::UndefinedLength) {
@@ -350,12 +412,14 @@ IteratorToken IteratorContext::next() {
 		} else {
 			this->token = CborIteratorPushStack(this, nextStackType, this->current.readUnsignedValue(this->info), ptr);
 		}
+		writeTokenInfo(this);
 		return this->token;
 	}
 
 	this->token = (head && head->type == StackType::Object)
 		? ( head->position % 2 == 1 ? IteratorToken::Key : IteratorToken::Value )
 		: IteratorToken::Value;
+	writeTokenInfo(this);
 	return this->token;
 }
 

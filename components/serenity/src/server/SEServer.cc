@@ -669,9 +669,10 @@ void Server::performWithStorage(const Callback<void(db::Transaction &)> &cb) con
 			h->setStorageTypeMap(&_config->storageTypes);
 			h->setCustomTypeMap(&_config->customTypes);
 
-			auto t = db::Transaction::acquire(ad);
-
-			cb(t);
+			if (auto t = db::Transaction::acquire(ad)) {
+				cb(t);
+				t.release();
+			}
 		});
 	}
 }
@@ -1615,6 +1616,7 @@ void Server::runErrorReportTask(request_rec *req, const Vector<data::Value> &err
 						std::cout << "Fail to report error: " << *err << "\n";
 						return false;
 					});
+					t.release();
 				}
 
 				root->dbdClose(serv, dbd);

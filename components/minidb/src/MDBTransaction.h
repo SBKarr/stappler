@@ -74,9 +74,11 @@ public:
 	bool isOpen() const { return _storage != nullptr && _manifest != nullptr; }
 	operator bool() const { return _storage != nullptr && _manifest != nullptr; }
 
+	void invalidate();
+
 public: // CRUD
 	mem::Value select(Worker &, const db::Query &);
-	mem::Value create(Worker &, const mem::Value &);
+	mem::Value create(Worker &, mem::Value &);
 	mem::Value save(Worker &, uint64_t oid, const mem::Value &obj, const mem::Vector<mem::String> &fields);
 	mem::Value patch(Worker &, uint64_t oid, const mem::Value &patch);
 	bool remove(Worker &, uint64_t oid);
@@ -95,7 +97,7 @@ protected:
 	int _fd = -1;
 	const Storage *_storage = nullptr;
 	size_t _fileSize = 0;
-	bool _success = false;
+	bool _success = true;
 
 	Manifest *_manifest = nullptr; // actual and updated
 	mutable mem::Mutex _pageAllocMutex;

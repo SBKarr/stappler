@@ -77,11 +77,12 @@ public:
 		mem::pool_t * pool;
 		mem::Map<mem::String, mem::Value> data;
 		int status = 0;
+		Data *next = nullptr;
 
-		mutable uint32_t refCount = 1;
+		mutable uint32_t refCount = 0;
 		mutable mem::Map<int64_t, mem::Value> objects;
 		mutable AccessRoleId role = AccessRoleId::Nobody;
-		mutable mem::Map<mem::pool_t *, uint32_t> pools;
+		mutable mem::Map<mem::pool_t *, mem::Pair<uint32_t, Data *>> pools;
 
 		Data(const Adapter &, stappler::memory::pool_t * = nullptr);
 	};
@@ -151,6 +152,9 @@ public: // adapter interface
 
 	void scheduleAutoField(const Scheme &, const Field &, uint64_t id) const;
 
+	void retain() const;
+	void release() const;
+
 protected:
 	struct TransactionGuard {
 		TransactionGuard(const Transaction &t) : _t(&t) { _t->retain(); }
@@ -172,9 +176,6 @@ protected:
 	bool processReturnField(const Scheme &, const mem::Value &obj, const Field &, mem::Value &) const;
 
 	bool isOpAllowed(const Scheme &, Op, const Field * = nullptr) const;
-
-	void retain() const;
-	void release() const;
 
 	Transaction(Data *);
 

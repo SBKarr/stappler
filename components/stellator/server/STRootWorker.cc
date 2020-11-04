@@ -884,4 +884,22 @@ void Root::setDebugEnabled(bool d) {
 	_debug = d;
 }
 
+Server Root::getRootServer() const {
+	return _internal->servers.begin()->second;
+}
+
+Server Root::getNextServer(const Server &serv) const {
+	auto it = _internal->servers.begin();
+	while (it != _internal->servers.end() && it->second.server() != serv.server()) {
+		++ it;
+	}
+	if (it != _internal->servers.end() && it->second.server() == serv.server()) {
+		++ it;
+	}
+	if (it != _internal->servers.end()) {
+		return it->second;
+	}
+	return Server();
+}
+
 }

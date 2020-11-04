@@ -845,7 +845,10 @@ void Root::performStorage(apr_pool_t *pool, const Server &serv, const Callback<v
 
 			cb(storage);
 
-			mem::pool::userdata_set((void *)nullptr, config::getCurrentTransactionKey(), nullptr, pool); // drop transaction
+			if (auto tmp = stappler::memory::pool::get<db::Transaction::Data>(pool, config::getTransactionCurrentKey())) {
+				tmp->refCount = 0;
+				mem::pool::userdata_set((void *)nullptr, storage.getTransactionKey().data(), nullptr, pool); // drop transaction
+			}
 			mem::pool::userdata_set((void *)nullptr, config::getStorageInterfaceKey(), nullptr, pool);
 			dbdClose(serv.server(), dbd);
 		}
@@ -934,6 +937,10 @@ String Root::getMemoryMap(bool full) const {
 
 String Root::getAllocatorMemoryMap(uint64_t ptr) const {
 	return Root_writeAllocatorMemoryMap((void *)ptr);
+}
+
+Server Root::getRootServer() const {
+	return _rootServerContext;
 }
 
 void Root::onChildInit() {

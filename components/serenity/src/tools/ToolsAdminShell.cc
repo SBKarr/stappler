@@ -1227,6 +1227,7 @@ void ShellGui ::onFilterComplete(InputFilter *filter) {
 				data.setBool(true, "OK");
 				return true;
 			});
+			t.release();
 		}
 	}
 

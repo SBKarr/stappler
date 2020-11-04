@@ -67,6 +67,9 @@ public:
 	bool isDebugEnabled() const;
 	void setDebugEnabled(bool);
 
+	Server getRootServer() const;
+	Server getNextServer(const Server &) const;
+
 protected:
 	struct Internal;
 

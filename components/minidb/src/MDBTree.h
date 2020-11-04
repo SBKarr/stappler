@@ -36,13 +36,13 @@ struct TreeCell {
 	uint64_t oid;				//	+			+				+			-
 	const mem::Value * payload; //	+			-				+			+
 
-	mutable size_t _size = 0;
+	size_t size = 0;
 
-	size_t size() const;
+	void updateSize();
 
-	TreeCell(PageType t, Oid o, const mem::Value *p) : type(t), page(0), oid(o.get()), payload(p) { }
-	TreeCell(PageType t, PageNumber p, Oid o, const mem::Value * v = nullptr) : type(t), page(p.get()), oid(o.get()), payload(v) { }
-	TreeCell(PageType t, PageNumber p, const mem::Value *v) : type(t), page(p.get()), oid(0), payload(v) { }
+	TreeCell(PageType t, Oid o, const mem::Value *p) : type(t), page(0), oid(o.get()), payload(p) { updateSize(); }
+	TreeCell(PageType t, PageNumber p, Oid o, const mem::Value * v = nullptr) : type(t), page(p.get()), oid(o.get()), payload(v) { updateSize(); }
+	TreeCell(PageType t, PageNumber p, const mem::Value *v) : type(t), page(p.get()), oid(0), payload(v) { updateSize(); }
 };
 
 struct TreePageIterator {
@@ -89,7 +89,7 @@ struct TreePage {
 
 	// returns freeBytes + offset for last cell
 	// page can be opened partially, so, if type is None (as for partial pages) - returns (0, 0)
-	stappler::Pair<size_t, uint16_t> getFreeSpace() const;
+	stappler::Pair<size_t, uint32_t> getFreeSpace() const;
 	size_t getHeaderSize() const;
 
 	TreePageIterator begin() const;

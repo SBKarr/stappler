@@ -655,7 +655,7 @@ void Manifest::pushManifestUpdate(UpdateFlags flags) {
 }
 
 void Manifest::performManifestUpdate(const Transaction &t) {
-	auto size = sizeof(StorageHeader) + _entities.size() * sizeof(EntityCell);
+	auto size = sizeof(StorageHeader) + sizeof(ManifestPageHeader) + _entities.size() * sizeof(EntityCell);
 
 	auto flags = UpdateFlags(_updateFlags.exchange(0));
 	t.openPageForWriting(0, [&] (void *ptr, uint32_t) {
@@ -669,7 +669,7 @@ void Manifest::performManifestUpdate(const Transaction &t) {
 		for (auto &it : _entities) {
 			it->mutex.lock();
 			if (it->dirty) {
-				auto cell = (EntityCell *) (uint8_p(ptr) + sizeof(StorageHeader) + it->idx * sizeof(EntityCell));
+				auto cell = (EntityCell *) (uint8_p(ptr) + sizeof(StorageHeader) + sizeof(ManifestPageHeader) + it->idx * sizeof(EntityCell));
 				cell->counter = it->counter;
 				cell->page = it->root;
 				it->dirty = false;

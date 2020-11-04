@@ -26,6 +26,21 @@ THE SOFTWARE.
 
 NS_MDB_BEGIN
 
+struct TransactionContext {
+	TransactionContext(Handle *h) : _handle(h) {
+		if (_handle) {
+			_handle->beginTransaction();
+		}
+	}
+	~TransactionContext() {
+		if (_handle) {
+			_handle->endTransaction();
+		}
+	}
+
+	Handle *_handle = nullptr;
+};
+
 Handle::Handle(const Storage &storage, OpenMode mode) : _storage(&storage), _mode(mode) {
 	switch (_mode) {
 	case OpenMode::Create: _mode = OpenMode::ReadWrite; break;
@@ -74,26 +89,32 @@ int64_t Handle::getDeltaValue(const Scheme &scheme, const db::FieldView &view, u
 }
 
 mem::Value Handle::select(Worker &w, const db::Query &q) {
+	TransactionContext ctx(this);
 	return _transaction.select(w, q);
 }
 
-mem::Value Handle::create(Worker &w, const mem::Value &val) {
+mem::Value Handle::create(Worker &w, mem::Value &val) {
+	TransactionContext ctx(this);
 	return _transaction.create(w, val);
 }
 
 mem::Value Handle::save(Worker &w, uint64_t oid, const mem::Value &obj, const mem::Vector<mem::String> &fields) {
+	TransactionContext ctx(this);
 	return _transaction.save(w, oid, obj, fields);
 }
 
 mem::Value Handle::patch(Worker &w, uint64_t oid, const mem::Value &patch) {
+	TransactionContext ctx(this);
 	return _transaction.patch(w, oid, patch);
 }
 
 bool Handle::remove(Worker &w, uint64_t oid) {
+	TransactionContext ctx(this);
 	return _transaction.remove(w, oid);
 }
 
 size_t Handle::count(Worker &w, const db::Query &query) {
+	TransactionContext ctx(this);
 	return _transaction.count(w, query);
 }
 
@@ -133,13 +154,29 @@ mem::Vector<int64_t> Handle::getReferenceParents(const Scheme &, uint64_t oid, c
 }
 
 bool Handle::beginTransaction() {
-	return _transaction.open(*_storage, _mode);
+	if (_transactionCounter == 0) {
+		if (_transaction.open(*_storage, _mode)) {
+			++ _transactionCounter;
+			return true;
+		}
+	} else {
+		++ _transactionCounter;
+		return true;
+	}
+	return false;
 }
 
 bool Handle::endTransaction() {
-	if (_transaction.isOpen()) {
-		_transaction.close();
-		return true;
+	if (_transactionCounter == 0) {
+		return false;
+	} else if (_transactionCounter == 1) {
+		_transactionCounter = 0;
+		if (_transaction.isOpen()) {
+			_transaction.close();
+			return true;
+		}
+	} else {
+		-- _transactionCounter;
 	}
 	return false;
 }

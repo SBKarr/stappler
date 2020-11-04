@@ -67,7 +67,7 @@ public:
 
 	virtual mem::Value select(Worker &, const Query &) = 0;
 
-	virtual mem::Value create(Worker &, const mem::Value &) = 0;
+	virtual mem::Value create(Worker &, mem::Value &) = 0;
 	virtual mem::Value save(Worker &, uint64_t oid, const mem::Value &obj, const mem::Vector<mem::String> &fields) = 0;
 	virtual mem::Value patch(Worker &, uint64_t oid, const mem::Value &patch) = 0;
 

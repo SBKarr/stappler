@@ -156,6 +156,8 @@ public: // httpd server info
 	mem::StringView getSessionPrivateKey() const;
 	mem::BytesView getServerSecret() const;
 
+	Server next() const;
+
 public: // compression
 	enum EtagMode {
 		AddSuffix,

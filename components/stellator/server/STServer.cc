@@ -684,8 +684,10 @@ void Server::performWithStorage(const mem::Callback<void(db::Transaction &)> &cb
 		cb(t);
 	} else {
 		Root::getInstance()->performStorage(mem::pool::acquire(), *this, [&] (const db::Adapter &ad) {
-			auto t = db::Transaction::acquire(ad);
-			cb(t);
+			if (auto t = db::Transaction::acquire(ad)) {
+				cb(t);
+				t.release();
+			}
 		});
 	}
 }
@@ -705,6 +707,10 @@ mem::StringView Server::getSessionPrivateKey() const {
 
 mem::BytesView Server::getServerSecret() const {
 	return _config->serverKey;
+}
+
+Server Server::next() const {
+	return Root::getInstance()->getNextServer(*this);
 }
 
 ServerComponent *Server::getServerComponent(const mem::StringView &name) const {

@@ -81,6 +81,8 @@ public:
 		exportValues(std::forward<Args>(args)...);
 	}
 
+	Server getServer() const { return _server; }
+
 protected:
 	mem::Map<mem::String, Command> _commands;
 

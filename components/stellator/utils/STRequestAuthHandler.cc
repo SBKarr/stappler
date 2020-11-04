@@ -29,7 +29,7 @@ bool RequestAuthHandler::isRequestPermitted(Request & rctx) {
 	if (!_userScheme) {
 		_userScheme = acquireScheme(rctx);
 	}
-	_storage = storage::Transaction::acquire(rctx.storage());
+	_storage = db::Transaction::acquire(rctx.storage());
 
 	return _userScheme && _storage;
 }

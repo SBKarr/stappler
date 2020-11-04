@@ -67,16 +67,25 @@ void broadcast(const mem::Bytes &val) {
 }
 
 Transaction Transaction::acquire(const Adapter &adapter) {
+	if (adapter.interface() == nullptr) {
+		return Transaction(nullptr);
+	}
+
+	auto key = adapter.getTransactionKey();
+
 	auto makeRequestTransaction = [&] (request_rec *req) -> Transaction {
-		if (auto d = stappler::serenity::Request(req).getObject<Data>(config::getCurrentTransactionKey())) {
-			return Transaction(d);
+		if (auto d = stappler::serenity::Request(req).getObject<Data>(key)) {
+			auto t = Transaction(d);
+			t.retain();
+			return t;
 		} else {
 			stappler::serenity::Request rctx(req);
 			d = new (req->pool) Data{adapter, rctx.pool()};
 			d->role = AccessRoleId::System;
-			rctx.storeObject(d, config::getCurrentTransactionKey());
+			rctx.storeObject(d, key);
 			d->role = rctx.getAccessRole();
 			auto ret = Transaction(d);
+			ret.retain();
 			if (auto serv = stappler::apr::pool::server()) {
 				stappler::serenity::Server(serv).onStorageTransaction(ret);
 			}
@@ -88,18 +97,21 @@ Transaction Transaction::acquire(const Adapter &adapter) {
 	if (log.first == uint32_t(stappler::apr::pool::Info::Request)) {
 		return makeRequestTransaction((request_rec *)log.second);
 	} else if (auto pool = stappler::apr::pool::acquire()) {
-		if (auto d = stappler::memory::pool::get<Data>(pool, config::getCurrentTransactionKey())) {
-			return Transaction(d);
+		if (auto d = stappler::memory::pool::get<Data>(pool, key)) {
+			auto t = Transaction(d);
+			t.retain();
+			return t;
 		} else {
-			d = new (pool) Data{adapter};
+			d = new (pool) Data{adapter, pool};
 			d->role = AccessRoleId::System;
-			stappler::apr::pool::store(pool, d, config::getCurrentTransactionKey());
+			stappler::apr::pool::store(pool, d, key);
 			if (auto req = stappler::apr::pool::request()) {
 				d->role = stappler::serenity::Request(req).getAccessRole();
 			} else {
 				d->role = AccessRoleId::Nobody;
 			}
 			auto ret = Transaction(d);
+			ret.retain();
 			if (auto serv = stappler::apr::pool::server()) {
 				stappler::serenity::Server(serv).onStorageTransaction(ret);
 			}

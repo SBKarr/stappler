@@ -94,7 +94,7 @@ uint64_t readVarUint(uint8_p ptr, uint8_p *pl) {
 
 	auto m = (*ptr) & mask;
 	switch (m) {
-	case 0b0000'0000: if (pl) { *pl = ptr + 1; } return uint64_t(ptr); break;
+	case 0b0000'0000: if (pl) { *pl = ptr + 1; } return uint64_t(*ptr); break;
 	case 0b0010'0000: if (pl) { *pl = ptr + 2; } return ROFF( 8) | OFF(1, 0); break;
 	case 0b0100'0000: if (pl) { *pl = ptr + 3; } return ROFF(16) | OFF(1, 8) | OFF(2, 0); break;
 	case 0b0110'0000: if (pl) { *pl = ptr + 4; } return ROFF(24) | OFF(1,16) | OFF(2, 8) | OFF(3, 0); break;
@@ -289,8 +289,43 @@ void inspectManifestPage(const mem::Callback<void(mem::StringView)> &cb, void *i
 	}
 }
 
-void inspectTreePage(const mem::Callback<void(mem::StringView)> &cb, void *ptr, size_t size) {
+const mem::Callback<void(mem::StringView)> &operator << (const mem::Callback<void(mem::StringView)> &cb, PageType t) {
+	switch (t) {
+	case PageType::InteriorIndex: cb("InteriorIndex"); break;
+	case PageType::InteriorTable: cb("InteriorTable"); break;
+	case PageType::LeafIndex: cb("LeafIndex"); break;
+	case PageType::LeafTable: cb("LeafTable"); break;
+	default: cb("Unknown"); break;
+	}
+	return cb;
+}
 
+void inspectTreePage(const mem::Callback<void(mem::StringView)> &cb, void *iptr, size_t size) {
+	uint8_p ptr = uint8_p(iptr);
+	auto h = (TreePageHeader *)ptr;
+
+	size_t cellsStart = sizeof(TreePageHeader);
+
+	cb << "PageHeader:\n";
+	cb << "\t" << mem::BytesView(&h->type, 1) << PageType(h->type) << " - type - (0 - 1)\n";
+	cb << "\t" << mem::BytesView(ptr + 1, 1) << " - reserved - (0 - 1)\n";
+	cb << "\t" << mem::BytesView(ptr + 2, 2) << "- " << uint64_t(h->ncells) << " - ncells - (2 - 4)\n";
+	cb << "\t" << mem::BytesView(ptr + 4, 4) << "- " << uint64_t(h->root) << " - root - (4 - 8)\n";
+	cb << "\t" << mem::BytesView(ptr + 8, 4) << "- " << uint64_t(h->prev) << " - prev - (8 - 12)\n";
+	cb << "\t" << mem::BytesView(ptr + 12, 4) << "- " << uint64_t(h->next) << " - next - (12 - 16)\n";
+	if (PageType(h->type) == PageType::InteriorIndex || PageType(h->type) == PageType::InteriorTable) {
+		cellsStart = sizeof(TreePageInteriorHeader);
+		cb << "\t" << mem::BytesView(ptr + 16, 4) << "- " << uint64_t(((TreePageInteriorHeader *)h)->right) << " - right - (16 - 20)\n";
+	}
+
+	mem::Vector<uint16_t> cells;
+	for (size_t i = 0; i < h->ncells; ++i) {
+		auto p = ptr + cellsStart + i * sizeof(uint16_t);
+
+		;
+		cb << "\t" << mem::BytesView(p, 2) << "- cell " << i << ": " << uint64_t(cells.emplace_back(*(uint16_p(p))))
+				<< " - (" << cellsStart  + i * sizeof(uint16_t) << " - " << cellsStart  + i * sizeof(uint16_t) + 2 << ")\n";
+	}
 }
 
 NS_MDB_END

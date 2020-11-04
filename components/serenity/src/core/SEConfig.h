@@ -96,7 +96,8 @@ constexpr auto getSerenityWebsocketDatabaseName() { return "Serenity.Websocket.D
 constexpr auto getSerenityWebsocketHandleName() { return "Serenity.Websocket.Handle"; }
 
 constexpr auto getStorageInterfaceKey() { return "ST.StorageInterface"; }
-constexpr auto getCurrentTransactionKey() { return "ST.CurrentTransaction"; }
+constexpr auto getTransactionPrefixKey() { return "ST.Tr."; } // limit for 6 chars to use with SOO opts (6 + 16 < 23)
+constexpr auto getTransactionCurrentKey() { return "ST.Transaction.Current"; }
 
 constexpr uint16_t getResourceResolverMaxDepth() { return 4; }
 

@@ -40,6 +40,8 @@ public:
 
 	Interface *interface() const;
 
+	mem::String getTransactionKey() const;
+
 public: // key-value storage
 	bool set(const stappler::CoderSource &, const mem::Value &, stappler::TimeInterval = config::getKeyValueStorageTime()) const;
 	mem::Value get(const stappler::CoderSource &) const;
@@ -69,7 +71,7 @@ protected:
 
 	mem::Value select(Worker &, const Query &) const;
 
-	mem::Value create(Worker &, const mem::Value &) const;
+	mem::Value create(Worker &, mem::Value &) const;
 	mem::Value save(Worker &, uint64_t oid, const mem::Value &obj, const mem::Vector<mem::String> &fields) const;
 	mem::Value patch(Worker &, uint64_t oid, const mem::Value &patch) const;
 

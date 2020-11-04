@@ -104,10 +104,10 @@ bool Transaction::open(const Storage &storage, OpenMode mode) {
 }
 
 void Transaction::close() {
+	if (!_success && _mode == OpenMode::Create) {
+		::unlink(_storage->getSourceName().data());
+	}
 	if (_storage && _manifest) {
-		if (!_success && _mode == OpenMode::Create) {
-			::unlink(_storage->getSourceName().data());
-		}
 		if (_success && _mode != OpenMode::Read) {
 			_manifest->performManifestUpdate(*this);
 		}
@@ -204,6 +204,10 @@ bool Transaction::openPageForReading(uint32_t idx, const mem::Callback<bool(void
 	return false;
 }
 
+void Transaction::invalidate() {
+	_success = false;
+}
+
 bool Transaction::isModeAllowed(OpenMode mode) const {
 	switch (mode) {
 	case OpenMode::Read: return (_mode == OpenMode::Read) || (_mode == OpenMode::ReadWrite); break;
@@ -245,6 +249,24 @@ static mem::Vector<mem::StringView> Transaction_getQueryName(Worker &worker, con
 }
 
 mem::Value Transaction::select(Worker &worker, const db::Query &query) {
+	if (!_manifest) {
+		return mem::Value();
+	}
+
+	auto decodeValue = [] (const db::Scheme &scheme, mem::Value &val, const TreeTableLeafCell &cell) {
+		auto it = val.asDict().begin();
+		while (it != val.asDict().end()) {
+			if (auto f = scheme.getField(it->first)) {
+				if (f->hasFlag(db::Flags::Composed) && it->second.isBytes()) {
+					it->second.setValue(stappler::data::read(it->second.getBytes()));
+				}
+				++ it;
+			} else {
+				it = val.asDict().erase(it);
+			}
+		}
+	};
+
 	auto scheme = _manifest->getScheme(worker.scheme());
 	if (!scheme) {
 		return mem::Value();
@@ -287,15 +309,18 @@ mem::Value Transaction::select(Worker &worker, const db::Query &query) {
 		size_t limit = query.getLimitValue();
 
 		mem::Value ret;
-		while (offset > 0 && limit > 0 && it) {
-			if (offset == 0) {
+		while (offset > 0 && it) {
+			-- offset;
+			it = stack.next(it);
+		}
+
+		if (offset == 0) {
+			while (limit > 0 && it) {
 				auto cell = it.getTableLeafCell();
 				ret.addValue(readPayload(cell.payload, names));
 				-- limit;
-			} else {
-				-- offset;
+				it = stack.next(it);
 			}
-			it = stack.next(it);
 		}
 		return ret;
 	}
@@ -303,17 +328,29 @@ mem::Value Transaction::select(Worker &worker, const db::Query &query) {
 	return mem::Value();
 }
 
-mem::Value Transaction::create(Worker &worker, const mem::Value &idata) {
+mem::Value Transaction::create(Worker &worker, mem::Value &idata) {
+	if (!_manifest) {
+		return mem::Value();
+	}
+
 	auto scheme = _manifest->getScheme(worker.scheme());
 	if (!scheme) {
 		return mem::Value();
 	}
 
-	auto perform = [&] (const mem::Value &data) -> mem::Value {
+	auto perform = [&] (mem::Value &data) -> mem::Value {
 		uint64_t id = 0;
 
 		// check unique
 		// - not implemented
+
+		for (auto &it : data.asDict()) {
+			auto f = worker.scheme().getField(it.first);
+			if (f && f->hasFlag(db::Flags::Compressed)) {
+				it.second.setBytes(mem::writeData(it.second, mem::EncodeFormat(mem::EncodeFormat::Cbor,
+						mem::EncodeFormat::LZ4HCCompression)));
+			}
+		}
 
 		id = _manifest->getNextOid();
 
@@ -348,14 +385,26 @@ mem::Value Transaction::create(Worker &worker, const mem::Value &idata) {
 }
 
 mem::Value Transaction::save(Worker &, uint64_t oid, const mem::Value &obj, const mem::Vector<mem::String> &fields) {
+	if (!_manifest) {
+		return mem::Value();
+	}
+
 	return mem::Value();
 }
 
 mem::Value Transaction::patch(Worker &, uint64_t oid, const mem::Value &patch) {
+	if (!_manifest) {
+		return mem::Value();
+	}
+
 	return mem::Value();
 }
 
 bool Transaction::remove(Worker &, uint64_t oid) {
+	if (!_manifest) {
+		return mem::Value();
+	}
+
 	return false;
 }
 
@@ -371,7 +420,7 @@ bool Transaction::pushObject(const Scheme &scheme, uint64_t oid, const mem::Valu
 		return false;
 	}
 
-	if (!stack.frames.empty() || stack.frames.back().type != PageType::LeafTable) {
+	if (stack.frames.empty() || stack.frames.back().type != PageType::LeafTable) {
 		return false;
 	}
 

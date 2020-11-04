@@ -37,6 +37,19 @@ Interface *Adapter::interface() const {
 	return _interface;
 }
 
+mem::String Adapter::getTransactionKey() const {
+	if (!_interface) {
+		return mem::String();
+	}
+
+	char buf[32] = { 0 };
+	auto prefix = mem::StringView(config::getTransactionPrefixKey());
+	memcpy(buf, prefix.data(), prefix.size());
+	stappler::base16::encode(buf + prefix.size(), 32 - prefix.size(),
+			stappler::CoderSource((const uint8_t *)_interface, sizeof(void *)));
+	return mem::String(buf, prefix.size() + sizeof(void *) * 2);
+}
+
 bool Adapter::set(const stappler::CoderSource &key, const mem::Value &val, stappler::TimeInterval maxAge) const {
 	return _interface->set(key, val, maxAge);
 }
@@ -87,7 +100,7 @@ mem::Value Adapter::select(Worker &w, const Query &q) const {
 	return _interface->select(w, q);
 }
 
-mem::Value Adapter::create(Worker &w, const mem::Value &d) const {
+mem::Value Adapter::create(Worker &w, mem::Value &d) const {
 	return _interface->create(w, d);
 }
 

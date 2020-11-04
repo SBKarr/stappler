@@ -55,7 +55,12 @@ bool Object::isFieldProtected(const mem::StringView &key) const {
 bool Object::save(const Adapter &a, bool force) {
 	if (_modified || force) {
 		_modified = false;
-		return _scheme.save(Transaction::acquire(a), this);
+		bool ret = false;
+		if (auto t = Transaction::acquire(a)) {
+			ret = _scheme.save(t, this);
+			t.release();
+		}
+		return ret;
 	}
 	return true;
 }

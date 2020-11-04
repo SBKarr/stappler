@@ -109,7 +109,9 @@ inline auto getInternalPasswordKey() { return "Stappler Password Salt"_weak; }
 inline stappler::TimeInterval getKeyValueStorageTime() { return stappler::TimeInterval::seconds(60 * 60 * 24 * 365); } // one year
 inline stappler::TimeInterval getInternalsStorageTime() { return stappler::TimeInterval::seconds(60 * 60 * 24 * 30); }
 
-inline auto getStorageInterfaceKey() { return "StorageInterface"; }
+constexpr auto getStorageInterfaceKey() { return "ST.StorageInterface"; }
+constexpr auto getTransactionPrefixKey() { return "ST.Tr."; } // limit for 6 chars to use with SOO opts (6 + 16 < 23)
+constexpr auto getTransactionCurrentKey() { return "ST.Transaction.Current"; }
 
 constexpr auto getUploadTmpFilePrefix() { return "sa.upload"; }
 constexpr auto getUploadTmpImagePrefix() { return "sa.image"; }

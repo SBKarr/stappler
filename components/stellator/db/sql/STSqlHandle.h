@@ -80,7 +80,7 @@ public: // interface
 public:
 	virtual mem::Value select(Worker &, const db::Query &) override;
 
-	virtual mem::Value create(Worker &, const mem::Value &) override;
+	virtual mem::Value create(Worker &, mem::Value &) override;
 	virtual mem::Value save(Worker &, uint64_t oid, const mem::Value &obj, const mem::Vector<mem::String> &fields) override;
 	virtual mem::Value patch(Worker &, uint64_t oid, const mem::Value &patch) override;
 

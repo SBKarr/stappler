@@ -54,7 +54,8 @@ inline stappler::TimeInterval getKeyValueStorageTime() { return stappler::TimeIn
 inline stappler::TimeInterval getInternalsStorageTime() { return stappler::TimeInterval::seconds(60 * 60 * 24 * 30); }
 
 constexpr auto getStorageInterfaceKey() { return "ST.StorageInterface"; }
-constexpr auto getCurrentTransactionKey() { return "ST.CurrentTransaction"; }
+constexpr auto getTransactionPrefixKey() { return "ST.Tr."; } // limit for 6 chars to use with SOO opts (6 + 16 < 23)
+constexpr auto getTransactionCurrentKey() { return "ST.Transaction.Current"; }
 
 constexpr auto getUploadTmpFilePrefix() { return "sa.upload"; }
 constexpr auto getUploadTmpImagePrefix() { return "sa.image"; }

@@ -99,7 +99,7 @@ mem::Value SqlHandle::select(Worker &worker, const db::Query &q) {
 	return ret;
 }
 
-mem::Value SqlHandle::create(Worker &worker, const mem::Value &idata) {
+mem::Value SqlHandle::create(Worker &worker, mem::Value &idata) {
 	auto &scheme = worker.scheme();
 	auto &fields = scheme.getFields();
 	auto perform = [&] (const mem::Value &data) {
