@@ -43,6 +43,9 @@ struct TreeCell {
 	TreeCell(PageType t, Oid o, const mem::Value *p) : type(t), page(0), oid(o.get()), payload(p) { updateSize(); }
 	TreeCell(PageType t, PageNumber p, Oid o, const mem::Value * v = nullptr) : type(t), page(p.get()), oid(o.get()), payload(v) { updateSize(); }
 	TreeCell(PageType t, PageNumber p, const mem::Value *v) : type(t), page(p.get()), oid(0), payload(v) { updateSize(); }
+
+	TreeCell(const TreeCell &) = default;
+	TreeCell &operator=(const TreeCell &) = default;
 };
 
 struct TreePageIterator {
@@ -78,6 +81,7 @@ struct TreePage {
 	void *ptr;
 	OpenMode mode;
 	PageType type = PageType::None;
+	size_t level = 0;
 
 	operator bool () const { return ptr != nullptr; }
 
@@ -117,7 +121,8 @@ struct TreeStack {
 	TreeStack(const Transaction &t, const Scheme *s, OpenMode mode) : transaction(&t), scheme(s), mode(mode) { }
 	~TreeStack() { close(); }
 
-	TreePage splitPage(TreeCell cell, bool unbalanced, const mem::Callback<TreePage()> &);
+	bool splitPage(TreeCell cell, bool unbalanced, const mem::Callback<TreePage()> &,
+			const mem::Callback<uint32_t(const TreeCell &)> &);
 
 	TreePageIterator openOnOid(uint64_t oid = 0);
 	TreePageIterator open();

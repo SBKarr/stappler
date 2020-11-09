@@ -116,10 +116,10 @@ void Transaction::close() {
 		_manifest = nullptr;
 	}
 
-	if (_fd) {
+	if (_fd >= 0) {
 		::flock(_fd, LOCK_UN);
 		::close(_fd);
-		_fd = 0;
+		_fd = -1;
 	}
 }
 
@@ -128,7 +128,7 @@ TreePage Transaction::openFrame(uint32_t idx, OpenMode mode, uint32_t nPages, co
 		manifest = _manifest;
 	}
 
-	if (!_storage || !_fd || !manifest) {
+	if (!_storage || _fd == -1 || !manifest) {
 		return TreePage(idx, nullptr);
 	}
 
@@ -257,7 +257,7 @@ mem::Value Transaction::select(Worker &worker, const db::Query &query) {
 		auto it = val.asDict().begin();
 		while (it != val.asDict().end()) {
 			if (auto f = scheme.getField(it->first)) {
-				if (f->hasFlag(db::Flags::Composed) && it->second.isBytes()) {
+				if (f->hasFlag(db::Flags::Compressed) && it->second.isBytes()) {
 					it->second.setValue(stappler::data::read(it->second.getBytes()));
 				}
 				++ it;
@@ -265,6 +265,7 @@ mem::Value Transaction::select(Worker &worker, const db::Query &query) {
 				it = val.asDict().erase(it);
 			}
 		}
+		val.setInteger(cell.value, "__oid");
 	};
 
 	auto scheme = _manifest->getScheme(worker.scheme());
@@ -317,7 +318,9 @@ mem::Value Transaction::select(Worker &worker, const db::Query &query) {
 		if (offset == 0) {
 			while (limit > 0 && it) {
 				auto cell = it.getTableLeafCell();
-				ret.addValue(readPayload(cell.payload, names));
+				auto val = readPayload(cell.payload, names);
+				decodeValue(worker.scheme(), val, cell);
+				ret.addValue(std::move(val));
 				-- limit;
 				it = stack.next(it);
 			}
@@ -431,16 +434,12 @@ bool Transaction::pushObject(const Scheme &scheme, uint64_t oid, const mem::Valu
 	};
 
 	if (!stack.frames.back().pushCell(nullptr, cell, overflow)) {
-		if (auto newPage = stack.splitPage(cell, true, [this] () -> TreePage {
+		if (!stack.splitPage(cell, true, [this] () -> TreePage {
 			if (auto pageId = _manifest->allocatePage(*this)) {
 				return openFrame(pageId, OpenMode::Write, 0, _manifest);
 			}
 			return TreePage(0, nullptr);
-		})) {
-			if (!newPage.pushCell(nullptr, cell, overflow)) {
-				return false;
-			}
-		} else {
+		}, overflow)) {
 			return false;
 		}
 	}

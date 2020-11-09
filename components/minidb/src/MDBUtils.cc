@@ -21,6 +21,7 @@ THE SOFTWARE.
 **/
 
 #include "MDBStorage.h"
+#include "STStorageScheme.h"
 
 NS_MDB_BEGIN
 
@@ -300,7 +301,7 @@ const mem::Callback<void(mem::StringView)> &operator << (const mem::Callback<voi
 	return cb;
 }
 
-void inspectTreePage(const mem::Callback<void(mem::StringView)> &cb, void *iptr, size_t size) {
+void inspectTreePage(const mem::Callback<void(mem::StringView)> &cb, void *iptr, size_t size, mem::Map<uint64_t, uint32_t> *pages, bool deepInspect) {
 	uint8_p ptr = uint8_p(iptr);
 	auto h = (TreePageHeader *)ptr;
 
@@ -308,7 +309,7 @@ void inspectTreePage(const mem::Callback<void(mem::StringView)> &cb, void *iptr,
 
 	cb << "PageHeader:\n";
 	cb << "\t" << mem::BytesView(&h->type, 1) << PageType(h->type) << " - type - (0 - 1)\n";
-	cb << "\t" << mem::BytesView(ptr + 1, 1) << " - reserved - (0 - 1)\n";
+	cb << "\t" << mem::BytesView(ptr + 1, 1) << " - reserved - (1 - 2)\n";
 	cb << "\t" << mem::BytesView(ptr + 2, 2) << "- " << uint64_t(h->ncells) << " - ncells - (2 - 4)\n";
 	cb << "\t" << mem::BytesView(ptr + 4, 4) << "- " << uint64_t(h->root) << " - root - (4 - 8)\n";
 	cb << "\t" << mem::BytesView(ptr + 8, 4) << "- " << uint64_t(h->prev) << " - prev - (8 - 12)\n";
@@ -316,15 +317,157 @@ void inspectTreePage(const mem::Callback<void(mem::StringView)> &cb, void *iptr,
 	if (PageType(h->type) == PageType::InteriorIndex || PageType(h->type) == PageType::InteriorTable) {
 		cellsStart = sizeof(TreePageInteriorHeader);
 		cb << "\t" << mem::BytesView(ptr + 16, 4) << "- " << uint64_t(((TreePageInteriorHeader *)h)->right) << " - right - (16 - 20)\n";
+
+		if (pages) {
+			pages->emplace(stappler::maxOf<uint64_t>(), ((TreePageInteriorHeader *)h)->right);
+		}
 	}
 
 	mem::Vector<uint16_t> cells;
 	for (size_t i = 0; i < h->ncells; ++i) {
 		auto p = ptr + cellsStart + i * sizeof(uint16_t);
-
-		;
 		cb << "\t" << mem::BytesView(p, 2) << "- cell " << i << ": " << uint64_t(cells.emplace_back(*(uint16_p(p))))
 				<< " - (" << cellsStart  + i * sizeof(uint16_t) << " - " << cellsStart  + i * sizeof(uint16_t) + 2 << ")\n";
+	}
+
+	std::sort(cells.begin(), cells.end(), std::less<>());
+	if (!cells.empty()) {
+		cb << "Unallocated: " << uint64_t(cellsStart + h->ncells * sizeof(uint16_t)) << " - " << uint64_t(cells.front() - 1)
+				<< ", " << uint64_t(cells.front() - (cellsStart + h->ncells * sizeof(uint16_t))) << " bytes\n";
+	}
+
+	cb << "Objects:\n";
+	for (size_t i = 0; i < cells.size(); ++ i) {
+		auto it = cells[i];
+		size_t bytesCount = 0;
+		if (i + 1 < cells.size()) {
+			bytesCount = cells[i + 1] - cells[i];
+			cb << "\toffset: " << uint64_t(cells[i]) << " - " << uint64_t(cells[i + 1]) - 1 << " ";
+		} else {
+			bytesCount = uint64_t(stappler::maxOf<uint16_t>()) + 1 - cells[i];
+			cb << "\toffset: " << uint64_t(cells[i]) << " - " << uint64_t(stappler::maxOf<uint16_t>()) << " ";
+		}
+		cb << "(" << bytesCount << " bytes): ";
+		switch (PageType(h->type)) {
+		case PageType::InteriorIndex: cb << "\n"; break;
+		case PageType::InteriorTable: {
+			uint8_p ptr = uint8_p(iptr); ptr += it;
+			auto page = *uint32_p(ptr);
+			auto oid = readVarUint(ptr + sizeof(uint32_t));
+			cb << "Page: " << uint64_t(page) << "; __oid: " << oid << "\n";
+			if (pages) {
+				pages->emplace(oid, page);
+			}
+			break;
+		}
+		case PageType::LeafIndex: cb << "\n"; break;
+		case PageType::LeafTable: {
+			uint8_p ptr = uint8_p(iptr); ptr += it;
+			auto oid = readVarUint(ptr, &ptr);
+			cb << "__oid: " << uint64_t(oid) << "\n";
+
+			if (deepInspect) {
+				cb << "\t\t(cbor) " << uint64_t(ptr - uint8_p(iptr));
+				cbor::IteratorContext ctx;
+				if (ctx.init(ptr, stappler::maxOf<size_t>())) {
+					cb << " - " << uint64_t(ctx.current.ptr - uint8_p(iptr)) - 1 << ": ";
+					auto tok = ctx.next();
+					if (tok == cbor::IteratorToken::BeginObject) {
+						cb << uint64_t(ctx.valueStart - uint8_p(iptr)) << " object (" << uint64_t(ctx.getContainerSize()) << ")\n";
+						tok = ctx.next();
+						while (tok != cbor::IteratorToken::EndObject && tok != cbor::IteratorToken::Done) {
+							if (tok == cbor::IteratorToken::Key) {
+								if ((cbor::MajorType(ctx.type) == cbor::MajorType::ByteString || cbor::MajorType(ctx.type) == cbor::MajorType::CharString)
+										&& !ctx.isStreaming) {
+									auto kptr = ctx.valueStart;
+									auto key = mem::StringView((const char *)ctx.current.ptr, ctx.objectSize);
+									cb << "\t\t";
+									auto stackSize = ctx.stackSize;
+									ctx.next();
+									switch (ctx.getType()) {
+									case cbor::Type::Unsigned: cb << "(integer) " << key << ": " << ctx.getInteger(); break;
+									case cbor::Type::Negative: cb << "(integer) " << key << ": " << ctx.getInteger(); break;
+									case cbor::Type::ByteString: cb << "(bytes) " << key; break;
+									case cbor::Type::CharString: cb << "(string) " << key; break;
+									case cbor::Type::Array: cb << "(array) " << key; break;
+									case cbor::Type::Map: cb << "(map) " << key; break;
+									case cbor::Type::Tag: cb << "(tag) " << key << ": " << ctx.getInteger(); break;
+									case cbor::Type::Simple: cb << "(simple) " << key << ": " << ctx.getInteger(); break;
+									case cbor::Type::Float: cb << "(float) " << key << ": " << ctx.getFloat(); break;
+									case cbor::Type::True: cb << "(bool) " << key << ": false"; break;
+									case cbor::Type::False: cb << "(bool) " << key << ": true"; break;
+									case cbor::Type::Null: cb << "(null) " << key; break;
+									case cbor::Type::Undefined: cb << "(undefined) " << key; break;
+									case cbor::Type::Unknown: cb << "(unknown) " << key; break;
+									}
+									auto vptr = ctx.valueStart;
+									cb << " (key: " << uint64_t(kptr - uint8_p(iptr)) << " - " << uint64_t(ctx.valueStart - uint8_p(iptr)) - 1
+											<< ", " << uint64_t(ctx.valueStart - kptr) << " bytes" << "; ";
+									while ((stackSize != ctx.stackSize || ctx.token != cbor::IteratorToken::Key)
+											&& (stackSize != ctx.stackSize + 1 || ctx.token != cbor::IteratorToken::EndObject)
+											&& ctx.token != cbor::IteratorToken::Done) {
+										ctx.next();
+										if (ctx.token == cbor::IteratorToken::Done) {
+											tok = cbor::IteratorToken::Done;
+											break;
+										}
+									}
+									if (ctx.token == cbor::IteratorToken::Key) {
+										cb << " object: " << uint64_t(vptr - uint8_p(iptr)) << " - " << uint64_t(ctx.valueStart - uint8_p(iptr)) - 1
+												<< ", " << ctx.valueStart - vptr << " bytes)\n";
+									} else {
+										cb << " object: " << uint64_t(vptr - uint8_p(iptr)) << " - " << uint64_t(ctx.current.ptr - uint8_p(iptr)) - 1
+												<< ", " << ctx.current.ptr - vptr << " bytes)\n";
+									}
+								} else {
+									tok = cbor::IteratorToken::Done;
+									continue;
+								}
+							}
+						}
+					}
+					cb << "\t\t" << uint64_t(ptr - uint8_p(iptr)) << " - " << uint64_t(ctx.current.ptr - uint8_p(iptr)) - 1
+							<< ", " << uint64_t(ctx.current.ptr - ptr) << " bytes\n";
+					ctx.finalize();
+				}
+			}
+			break;
+		}
+		default: cb << "\n"; break;
+		}
+	}
+	cb << "\n";
+}
+
+void inspectScheme(const Transaction &t, const db::Scheme &s, const mem::Callback<void(mem::StringView)> &cb, uint32_t depth) {
+	auto scheme = t.getManifest()->getScheme(s);
+	if (!scheme) {
+		cb << "No scheme " << s.getName() << " found\n";
+		return;
+	}
+
+	mem::Map<uint64_t, uint32_t> pages;
+	t.openPageForReading(scheme->scheme->root, [&] (void *mem, uint32_t size) -> bool {
+		cb << "<< Inspect scheme root: " << uint64_t(scheme->scheme->root) << " >>\n";
+		inspectTreePage(cb, mem, size, &pages);
+		return true;
+	});
+
+	size_t xdepth = 1;
+	while (depth > 0 && !pages.empty()) {
+		auto tmp = std::move(pages);
+		pages.clear();
+
+		for (auto &it : tmp) {
+			t.openPageForReading(it.second, [&] (void *mem, uint32_t size) -> bool {
+				cb << "<< Inspect scheme depth " << uint64_t(xdepth) << " page: " << uint64_t(it.second) << " >>\n";
+				inspectTreePage(cb, mem, size, &pages, false);
+				return true;
+			});
+		}
+
+		++ xdepth;
+		-- depth;
 	}
 }
 

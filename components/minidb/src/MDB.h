@@ -140,7 +140,8 @@ uint64_t readVarUint(uint8_p, uint8_p *pl = nullptr);
 size_t writeVarUint(uint8_t *p, uint64_t);
 
 void inspectManifestPage(const mem::Callback<void(mem::StringView)> &, void *, size_t);
-void inspectTreePage(const mem::Callback<void(mem::StringView)> &, void *, size_t);
+void inspectTreePage(const mem::Callback<void(mem::StringView)> &, void *, size_t, mem::Map<uint64_t, uint32_t> * = nullptr, bool deepInspect = true);
+void inspectScheme(const Transaction &, const db::Scheme &, const mem::Callback<void(mem::StringView)> &, uint32_t depth = stappler::maxOf<uint32_t>());
 
 size_t getPayloadSize(PageType, const mem::Value &);
 size_t writePayload(PageType, uint8_p, const mem::Value &);

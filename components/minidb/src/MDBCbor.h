@@ -139,6 +139,8 @@ struct IteratorContext {
 	IteratorStackValue *extendedStack; // palloc'ed stack
 	IteratorStackValue defaultStack[CBOR_STACK_DEFAULT_SIZE]; // preallocated stack
 
+	const uint8_t * valueStart;
+
 	bool init(const uint8_t *, size_t);
 	void finalize();
 	void reset();

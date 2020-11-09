@@ -98,24 +98,28 @@ size_t TreePage::getHeaderSize() const {
 TreePageIterator TreePage::begin() const {
 	switch (type) {
 	case PageType::None:
-		return TreePageIterator(ptr, nullptr);
+		return TreePageIterator(nullptr);
 		break;
 	case PageType::InteriorTable:
 	case PageType::InteriorIndex:
-		return TreePageIterator(ptr, uint16_p(uint8_p(ptr) + sizeof(TreePageInteriorHeader)));
+		if (((TreePageHeader *)ptr)->ncells) {
+			return TreePageIterator(ptr, uint16_p(uint8_p(ptr) + sizeof(TreePageInteriorHeader)));
+		}
 		break;
 	default:
-		return TreePageIterator(ptr, uint16_p(uint8_p(ptr) + sizeof(TreePageHeader)));
+		if (((TreePageHeader *)ptr)->ncells) {
+			return TreePageIterator(ptr, uint16_p(uint8_p(ptr) + sizeof(TreePageHeader)));
+		}
 		break;
 	}
 
-	return TreePageIterator(ptr, nullptr);
+	return TreePageIterator(nullptr);
 }
 
 TreePageIterator TreePage::end() const {
 	switch (type) {
 	case PageType::None:
-		return TreePageIterator(ptr, nullptr);
+		return TreePageIterator(nullptr);
 		break;
 	case PageType::InteriorIndex:
 	case PageType::InteriorTable:
@@ -126,12 +130,12 @@ TreePageIterator TreePage::end() const {
 		break;
 	}
 
-	return TreePageIterator(ptr, nullptr);
+	return TreePageIterator(nullptr);
 }
 
 TreePageIterator TreePage::find(uint64_t oid) const {
 	auto p = (TreePageHeader *)ptr;
-	uint16_t *begin = (uint16_t *) ( ((uint16_t *)ptr) + sizeof(TreePageHeader) );
+	uint16_t *begin = (uint16_t *) ( uint8_p(ptr) + sizeof(TreePageHeader) );
 
 	if (p->ncells == 0) {
 		return end();
@@ -287,7 +291,7 @@ bool TreePage::pushCell(uint16_p cellTarget, TreeCell cell, const mem::Callback<
 
 uint32_t TreePage::findTargetPage(uint64_t oid) const {
 	auto p = (TreePageInteriorHeader *)ptr;
-	uint16_t *begin = (uint16_t *) ( ((uint16_t *)ptr) + sizeof(TreePageInteriorHeader) );
+	uint16_t *begin = (uint16_t *) ( uint8_p(ptr) + sizeof(TreePageInteriorHeader) );
 
 	if (p->ncells == 0) {
 		return 0;
@@ -367,43 +371,123 @@ TreeTableLeafCell TreePage::getTableLeafCell(uint16_t offset) const {
 	return ret;
 }
 
-TreePage TreeStack::splitPage(TreeCell cell, bool unbalanced, const mem::Callback<TreePage()> &alloc) {
+bool TreeStack::splitPage(TreeCell cell, bool unbalanced, const mem::Callback<TreePage()> &alloc,
+		const mem::Callback<uint32_t(const TreeCell &)> &overflow) {
+
 	auto &frameToSplit = frames.back();
-
-	// key is greater then any other
-	if (frames.size() == 1) {
-		auto newRootFrane = alloc();
-		auto newLeafFrame = alloc();
-
-		if (!newRootFrane || !newLeafFrame) {
-			return TreePage{0, nullptr};
-		}
-
-		// form new root
-
-		auto prevRootHeader = (TreePageHeader *)frameToSplit.ptr;
-		auto rootHeader = (TreePageInteriorHeader *)newRootFrane.ptr;
-
-		switch (PageType(prevRootHeader->type)) {
-		case PageType::InteriorTable:
-		case PageType::LeafTable:
-			rootHeader->type = stappler::toInt(PageType::InteriorTable);
-			break;
-		case PageType::InteriorIndex:
-		case PageType::LeafIndex:
-			rootHeader->type = stappler::toInt(PageType::InteriorIndex);
-			break;
-		default: break;
-		}
-
-		rootHeader->root = 0;
-		rootHeader->prev = 0;
-		rootHeader->next = 0;
-		rootHeader->right = newLeafFrame.number;
-
+	PageType rootPageType = PageType::None;
+	switch (PageType(frameToSplit.type)) {
+	case PageType::InteriorTable:
+	case PageType::LeafTable:
+		rootPageType = PageType::InteriorTable;
+		break;
+	case PageType::InteriorIndex:
+	case PageType::LeafIndex:
+		rootPageType = PageType::InteriorIndex;
+		break;
+	default: break;
 	}
 
-	return TreePage{0, nullptr};
+	auto nextCell = TreeCell(PageType(rootPageType), PageNumber(0), Oid(cell.oid));
+	auto nextPayloadSize = nextCell.size;
+
+	mem::Vector<TreeCell> targets; targets.reserve(frames.size());
+	targets.emplace_back(cell);
+
+	if (unbalanced) {
+		size_t level = frames.size() - 1;
+		while (level > 0) {
+			auto freeSpace = frames[level - 1].getFreeSpace();
+			if (nextPayloadSize + sizeof(uint16_t) > freeSpace.first) {
+				-- level;
+			} else {
+				break;
+			}
+		}
+
+		mem::Vector<TreePage> newFrames;
+		for (size_t i = 0; i < level; ++ i) {
+			newFrames.emplace_back(frames[i]);
+		}
+
+		uint32_t newRootPage = 0;
+
+		while (level < frames.size()) {
+			if (level == 0) {
+				// split root
+				auto root = alloc(); root.level = 0; root.type = rootPageType;
+				auto newPage = alloc(); newPage.level = 1; newPage.type = frames[level].type;
+				if (!root || !newPage) {
+					return false;
+				}
+
+				auto rootHeader = (TreePageInteriorHeader *)root.ptr;
+				rootHeader->type = stappler::toInt(rootPageType);
+				rootHeader->root = 0;
+				rootHeader->prev = 0;
+				rootHeader->next = 0;
+				rootHeader->right = newPage.number;
+				newRootPage = root.number;
+
+				auto rootCell = TreeCell(rootPageType, PageNumber(frames[level].number), Oid(cell.oid));
+				if (!root.pushCell(nullptr, rootCell, overflow)) {
+					return false; // should always work
+				}
+
+				newFrames.emplace_back(root);
+
+				auto newPageHeader = (TreePageHeader *)newPage.ptr;
+				newPageHeader->type = stappler::toInt(frames[level].type);
+				newPageHeader->root = root.number;
+				newPageHeader->prev = frames[level].number;
+				newPageHeader->next = 0;
+				newFrames.emplace_back(newPage);
+
+				auto pageHeader = (TreePageHeader *)frames[level].ptr;
+				pageHeader->root = root.number;
+				pageHeader->next = newPage.number;
+			} else {
+				// split leaf
+				auto newPage = alloc(); newPage.level = newFrames.size(); newPage.type = frames[level].type;
+				if (!newPage) {
+					return false;
+				}
+
+				auto rootCell = TreeCell(rootPageType, PageNumber(frames[level].number), Oid(cell.oid));
+				if (!newFrames.back().pushCell(nullptr, rootCell, overflow)) {
+					return false; // should always work
+				}
+				((TreePageInteriorHeader *)newFrames.back().ptr)->right = newPage.number;
+
+				auto newPageHeader = (TreePageHeader *)newPage.ptr;
+				newPageHeader->type = stappler::toInt(frames[level].type);
+				newPageHeader->root = newFrames.back().number;
+				newPageHeader->prev = frames[level].number;
+				newPageHeader->next = 0;
+				newFrames.emplace_back(newPage);
+
+				auto pageHeader = (TreePageHeader *)frames[level].ptr;
+				pageHeader->next = newPage.number;
+			}
+
+			if (level == frames.size() - 1) {
+				if (!newFrames.back().pushCell(nullptr, cell, overflow)) {
+					return false; // should always work
+				} else {
+					frames = std::move(newFrames);
+					if (newRootPage) {
+						scheme->scheme->root = newRootPage;
+						scheme->scheme->dirty = true;
+					}
+					return true;
+				}
+			}
+
+			++ level;
+		}
+	}
+
+	return false;
 }
 
 TreePageIterator TreeStack::openOnOid(uint64_t oid) {
@@ -421,12 +505,14 @@ TreePageIterator TreeStack::openOnOid(uint64_t oid) {
 				// find next page;
 				if (auto next = frame.findTargetPage(oid)) {
 					target = next;
+					frame.level = frames.size();
 					frames.emplace_back(frame);
 				} else {
 					close();
 					return TreePageIterator(nullptr);
 				}
 			} else {
+				frame.level = frames.size();
 				frames.emplace_back(frame);
 				return frames.back().find(oid);
 			}
@@ -455,8 +541,11 @@ TreePageIterator TreeStack::open() {
 				auto it = frame.begin();
 				if (it != frame.end()) {
 					target = frame.getTableInteriorCell(*it.index).pointer;
+					frame.level = frames.size();
+					frames.emplace_back(frame);
 				}
 			} else {
+				frame.level = frames.size();
 				frames.emplace_back(frame);
 				return frame.begin();
 			}

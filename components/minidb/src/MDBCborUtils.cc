@@ -212,6 +212,7 @@ bool IteratorContext::init(const uint8_t *data, size_t size) {
 		return false;
 	}
 
+	valueStart = data;
 	current.ptr = data;
 	current.size = size;
 
@@ -349,7 +350,7 @@ IteratorToken IteratorContext::next() {
 	}
 
 	// read flag value
-	ptr = current.ptr;
+	valueStart = ptr = current.ptr;
 	type = current.getUnsigned();
 	current.offset(1);
 
