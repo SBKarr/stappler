@@ -140,7 +140,7 @@ bool Manifest::init(const Transaction &t, const mem::Map<mem::StringView, const 
 			for (auto &ex_idx_it : ex_t.indexes) {
 				auto req_idx_it = req_t.indexes.find(ex_idx_it.first);
 				if (req_idx_it == req_t.indexes.end()) {
-					dropIndex(t, req_idx_it->second);
+					dropIndex(t, ex_idx_it.second);
 				} else {
 					req_idx_it->second.index = ex_idx_it.second.index;
 				}

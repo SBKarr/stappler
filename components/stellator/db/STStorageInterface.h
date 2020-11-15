@@ -100,7 +100,10 @@ public:
 	bool isInTransaction() const { return transactionStatus != TransactionStatus::None; }
 	TransactionStatus getTransactionStatus() const { return transactionStatus; }
 
+	mem::StringView getDatabaseName() const { return dbName; }
+
 protected:
+	mem::StringView dbName;
     TransactionStatus transactionStatus = TransactionStatus::None;
 };
 

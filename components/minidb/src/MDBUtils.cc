@@ -364,9 +364,12 @@ void inspectTreePage(const mem::Callback<void(mem::StringView)> &cb, void *iptr,
 		case PageType::LeafTable: {
 			uint8_p ptr = uint8_p(iptr); ptr += it;
 			auto oid = readVarUint(ptr, &ptr);
-			cb << "__oid: " << uint64_t(oid) << "\n";
+			cb << "__oid: " << uint64_t(oid);
 
-			if (deepInspect) {
+			if (memcmp(ptr, OverflowMark.data(), OverflowMark.size()) == 0) {
+				cb << " overflow page: " << uint64_t(*uint32_p(ptr + OverflowMark.size())) << "\n";
+			} else if (deepInspect) {
+				cb << "\n";
 				cb << "\t\t(cbor) " << uint64_t(ptr - uint8_p(iptr));
 				cbor::IteratorContext ctx;
 				if (ctx.init(ptr, stappler::maxOf<size_t>())) {
@@ -430,6 +433,8 @@ void inspectTreePage(const mem::Callback<void(mem::StringView)> &cb, void *iptr,
 							<< ", " << uint64_t(ctx.current.ptr - ptr) << " bytes\n";
 					ctx.finalize();
 				}
+			} else {
+				cb << "\n";
 			}
 			break;
 		}

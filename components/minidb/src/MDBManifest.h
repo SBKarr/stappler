@@ -85,6 +85,12 @@ public:
 	// allocate new page on disk (with transaction `pageAllocMutex`)
 	uint32_t allocatePage(const Transaction &t);
 
+	uint32_t writeOverflow(const Transaction &t, PageType, const mem::Value &val);
+
+	// attach page or page chain to free list (sets `freeList` = `page`, set `next` field of last page in chain to previous value of FreeList)
+	// lock-free, CAS
+	void invalidateOverflowChain(const Transaction &t, uint32_t page);
+
 protected:
 	friend class Transaction;
 	struct ManifestWriteIter;
@@ -94,10 +100,6 @@ protected:
 
 	// read next page from chain or 0
 	uint32_t popPageFromChain(const Transaction &t, uint32_t page) const;
-
-	// attach page or page chain to free list (sets `freeList` = `page`, set `next` field of last page in chain to previous value of FreeList)
-	// lock-free, CAS
-	void invalidateOverflowChain(const Transaction &t, uint32_t page);
 
 	void dropTree(const Transaction &, uint32_t);
 	uint32_t createTree(const Transaction &, PageType t);
@@ -112,8 +114,6 @@ protected:
 	uint64_t getNextOid();
 
 	uint32_t writeManifestData(const Transaction &, ManifestWriteIter &, uint32_t page, uint32_t offset);
-
-	uint32_t writeOverflow(const Transaction &t, PageType, const mem::Value &val);
 
 	bool encodeManifest(const Transaction &);
 	bool readManifest(const Transaction &);

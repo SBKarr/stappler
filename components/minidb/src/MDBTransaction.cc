@@ -253,21 +253,6 @@ mem::Value Transaction::select(Worker &worker, const db::Query &query) {
 		return mem::Value();
 	}
 
-	auto decodeValue = [] (const db::Scheme &scheme, mem::Value &val, const TreeTableLeafCell &cell) {
-		auto it = val.asDict().begin();
-		while (it != val.asDict().end()) {
-			if (auto f = scheme.getField(it->first)) {
-				if (f->hasFlag(db::Flags::Compressed) && it->second.isBytes()) {
-					it->second.setValue(stappler::data::read(it->second.getBytes()));
-				}
-				++ it;
-			} else {
-				it = val.asDict().erase(it);
-			}
-		}
-		val.setInteger(cell.value, "__oid");
-	};
-
 	auto scheme = _manifest->getScheme(worker.scheme());
 	if (!scheme) {
 		return mem::Value();
@@ -280,19 +265,34 @@ mem::Value Transaction::select(Worker &worker, const db::Query &query) {
 		if (it && it != stack.frames.back().end()) {
 			auto cell = it.getTableLeafCell();
 			auto names = Transaction_getQueryName(worker, query);
-			return mem::Value({ readPayload(cell.payload, names) });
+			return mem::Value({ decodeValue(worker.scheme(), cell, names) });
 		}
 	} else if (!query.getSelectIds().empty()) {
 		std::shared_lock<std::shared_mutex> lock(scheme->scheme->mutex);
 		TreeStack stack({*this, scheme, OpenMode::Read});
 		auto names = Transaction_getQueryName(worker, query);
 
+		size_t offset = query.getOffsetValue();
+		size_t limit = query.getLimitValue();
+
 		mem::Value ret;
-		for (auto &id : query.getSelectIds()) {
-			auto it = stack.openOnOid(id);
-			if (it && it != stack.frames.back().end()) {
-				auto cell = it.getTableLeafCell();
-				ret.addValue(readPayload(cell.payload, names));
+		auto &ids = query.getSelectIds();
+		auto it = ids.begin();
+
+		while (offset > 0 && it != ids.end()) {
+			-- offset;
+			++ it;
+		}
+
+		if (offset == 0) {
+			while (limit > 0 && it != ids.end()) {
+				auto iit = stack.openOnOid(*it);
+				if (iit && iit != stack.frames.back().end()) {
+					auto cell = iit.getTableLeafCell();
+					ret.addValue(decodeValue(worker.scheme(), cell, names));
+				}
+				-- limit;
+				++ it;
 			}
 		}
 		return ret;
@@ -318,9 +318,7 @@ mem::Value Transaction::select(Worker &worker, const db::Query &query) {
 		if (offset == 0) {
 			while (limit > 0 && it) {
 				auto cell = it.getTableLeafCell();
-				auto val = readPayload(cell.payload, names);
-				decodeValue(worker.scheme(), val, cell);
-				ret.addValue(std::move(val));
+				ret.addValue(decodeValue(worker.scheme(), cell, names));
 				-- limit;
 				it = stack.next(it);
 			}
@@ -344,12 +342,11 @@ mem::Value Transaction::create(Worker &worker, mem::Value &idata) {
 	auto perform = [&] (mem::Value &data) -> mem::Value {
 		uint64_t id = 0;
 
-		// check unique
-		// - not implemented
-
+		mem::Value tmp;
 		for (auto &it : data.asDict()) {
 			auto f = worker.scheme().getField(it.first);
 			if (f && f->hasFlag(db::Flags::Compressed)) {
+				tmp.setValue(std::move(it.second), f->getName());
 				it.second.setBytes(mem::writeData(it.second, mem::EncodeFormat(mem::EncodeFormat::Cbor,
 						mem::EncodeFormat::LZ4HCCompression)));
 			}
@@ -366,6 +363,9 @@ mem::Value Transaction::create(Worker &worker, mem::Value &idata) {
 						ret.erase(it.second.getName());
 					}
 				}
+			}
+			for (auto &iit : tmp.asDict()) {
+				ret.setValue(std::move(iit.second), iit.first);
 			}
 			return ret;
 		}
@@ -395,8 +395,57 @@ mem::Value Transaction::save(Worker &, uint64_t oid, const mem::Value &obj, cons
 	return mem::Value();
 }
 
-mem::Value Transaction::patch(Worker &, uint64_t oid, const mem::Value &patch) {
+mem::Value Transaction::patch(Worker &worker, uint64_t target, const mem::Value &patch) {
 	if (!_manifest) {
+		return mem::Value();
+	}
+
+	auto scheme = _manifest->getScheme(worker.scheme());
+	if (!scheme) {
+		return mem::Value();
+	}
+
+	std::unique_lock<std::shared_mutex> lock(scheme->scheme->mutex);
+	TreeStack stack({*this, scheme, OpenMode::Read});
+	auto it = stack.openOnOid(target);
+	if (!it || it == stack.frames.back().end()) {
+		return mem::Value();
+	}
+
+	auto cell = it.getTableLeafCell();
+	if (auto v = decodeValue(worker.scheme(), cell, mem::Vector<mem::StringView>())) {
+		mem::Value tmp;
+		for (auto &it : patch.asDict()) {
+			auto f = worker.scheme().getField(it.first);
+			if (f) {
+				if (f->hasFlag(db::Flags::Compressed)) {
+					tmp.setValue(std::move(it.second), f->getName());
+					v.setBytes(mem::writeData(it.second, mem::EncodeFormat(mem::EncodeFormat::Cbor,
+							mem::EncodeFormat::LZ4HCCompression)), it.first);
+				} else {
+					v.setValue(std::move(it.second), it.first);
+				}
+			}
+		}
+
+		if (!checkUnique(*scheme, v)) {
+			return mem::Value();
+		}
+
+		if (stack.rewrite(it, cell, v)) {
+			v.setInteger(cell.value, "__oid");
+			if (worker.shouldIncludeNone() && worker.scheme().hasForceExclude()) {
+				for (auto &it : worker.scheme().getFields()) {
+					if (it.second.hasFlag(db::Flags::ForceExclude)) {
+						v.erase(it.second.getName());
+					}
+				}
+			}
+			for (auto &iit : tmp.asDict()) {
+				v.setValue(std::move(iit.second), iit.first);
+			}
+			return v;
+		}
 		return mem::Value();
 	}
 
@@ -418,6 +467,11 @@ size_t Transaction::count(Worker &, const db::Query &) {
 bool Transaction::pushObject(const Scheme &scheme, uint64_t oid, const mem::Value &data) const {
 	// lock sheme on write
 	std::unique_lock<std::shared_mutex> lock(scheme.scheme->mutex);
+
+	if (!checkUnique(scheme, data)) {
+		return mem::Value();
+	}
+
 	TreeStack stack({*this, &scheme, OpenMode::ReadWrite});
 	if (!stack.openOnOid(oid)) {
 		return false;
@@ -447,6 +501,33 @@ bool Transaction::pushObject(const Scheme &scheme, uint64_t oid, const mem::Valu
 	++ scheme.scheme->counter;
 	scheme.scheme->dirty = true;
 	return true;
+}
+
+bool Transaction::checkUnique(const Scheme &scheme, const mem::Value &) const {
+	return false;
+}
+
+mem::Value Transaction::decodeValue(const db::Scheme &scheme, const TreeTableLeafCell &cell, const mem::Vector<mem::StringView> &names) const {
+	mem::Value val;
+	if (cell.overflow) {
+		val = readOverflowPayload(*this, cell.overflow, names);
+	} else {
+		val = readPayload(cell.payload, names);
+	}
+
+	auto it = val.asDict().begin();
+	while (it != val.asDict().end()) {
+		if (auto f = scheme.getField(it->first)) {
+			if (f->hasFlag(db::Flags::Compressed) && it->second.isBytes()) {
+				it->second.setValue(stappler::data::read(it->second.getBytes()));
+			}
+			++ it;
+		} else {
+			it = val.asDict().erase(it);
+		}
+	}
+	val.setInteger(cell.value, "__oid");
+	return val;
 }
 
 NS_MDB_END

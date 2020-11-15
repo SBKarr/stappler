@@ -60,6 +60,8 @@ public:
 
 	mem::Vector<int64_t> getReferenceParents(const Scheme &, uint64_t oid, const Scheme *, const Field *) const;
 
+	mem::StringView getDatabaseName() const { return _interface->getDatabaseName(); }
+
 protected:
 	friend class Transaction;
 

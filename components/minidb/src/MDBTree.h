@@ -108,6 +108,8 @@ struct TreePage {
 
 	TreeTableInteriorCell getTableInteriorCell(uint16_t off) const;
 	TreeTableLeafCell getTableLeafCell(uint16_t off) const;
+
+	uint32_t getCellSize(TreePageIterator) const;
 };
 
 struct TreeStack {
@@ -129,6 +131,9 @@ struct TreeStack {
 	void close();
 
 	TreePageIterator next(TreePageIterator);
+
+	bool rewrite(TreePageIterator, TreeTableLeafCell, const mem::Value &);
+	void offset(TreePage &page, uint16_p cell, int32_t offset);
 };
 
 NS_MDB_END

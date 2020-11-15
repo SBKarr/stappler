@@ -46,7 +46,7 @@ mem::String Adapter::getTransactionKey() const {
 	auto prefix = mem::StringView(config::getTransactionPrefixKey());
 	memcpy(buf, prefix.data(), prefix.size());
 	stappler::base16::encode(buf + prefix.size(), 32 - prefix.size(),
-			stappler::CoderSource((const uint8_t *)_interface, sizeof(void *)));
+			stappler::CoderSource((const uint8_t *)(&_interface), sizeof(void *)));
 	return mem::String(buf, prefix.size() + sizeof(void *) * 2);
 }
 

@@ -548,9 +548,16 @@ Handle::Handle(Driver *d, Driver::Handle h) : driver(d), handle(h) {
 		auto c = d->getConnection(h);
 		if (c.get()) {
 			conn = c;
+
+			performSimpleSelect("SELECT current_database();", [&] (db::sql::Result &qResult) {
+				if (!qResult.empty()) {
+					dbName = qResult.front().toString(0).pdup();
+				}
+			});
 		}
 	}
 }
+
 Handle::Handle(Handle &&h) : driver(h.driver), handle(h.handle), conn(h.conn), lastError(h.lastError), level(h.level) {
 	h.conn = Driver::Connection(nullptr);
 	h.driver = nullptr;

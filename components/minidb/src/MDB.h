@@ -78,6 +78,7 @@ struct TreePageInteriorHeader {
 struct TreeTableLeafCell {
 	uint64_t value;
 	uint8_p payload;
+	uint32_t overflow;
 };
 
 struct TreeTableInteriorCell {
@@ -121,6 +122,7 @@ enum class OpenMode {
 };
 
 constexpr uint32_t DefaultPageSize = 64_KiB;
+constexpr mem::StringView OverflowMark = "Ovfl";
 
 template <typename T>
 static constexpr bool has_single_bit(T x) noexcept {
@@ -147,6 +149,7 @@ size_t getPayloadSize(PageType, const mem::Value &);
 size_t writePayload(PageType, uint8_p, const mem::Value &);
 size_t writeOverflowPayload(const Transaction &, PageType, uint32_t page, const mem::Value &);
 
+mem::Value readOverflowPayload(const Transaction &t, uint32_t ptr, const mem::Vector<mem::StringView> &filter);
 mem::Value readPayload(const uint8_p ptr, const mem::Vector<mem::StringView> &filter);
 
 NS_MDB_END

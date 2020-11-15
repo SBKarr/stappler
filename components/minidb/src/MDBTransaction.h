@@ -92,6 +92,9 @@ protected:
 
 	bool pushObject(const Scheme &scheme, uint64_t oid, const mem::Value &) const;
 
+	bool checkUnique(const Scheme &scheme, const mem::Value &) const;
+	mem::Value decodeValue(const db::Scheme &scheme, const TreeTableLeafCell &cell, const mem::Vector<mem::StringView> &names) const;
+
 	mem::pool_t *_pool = nullptr;
 	OpenMode _mode = OpenMode::Read;
 	int _fd = -1;

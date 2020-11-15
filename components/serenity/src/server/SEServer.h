@@ -123,7 +123,7 @@ public:
 	bool performTask(Task *task, bool performFirst = false) const;
 	bool scheduleTask(Task *task, TimeInterval) const;
 
-	void performWithStorage(const Callback<void(db::Transaction &)> &cb) const;
+	void performWithStorage(const Callback<void(const db::Transaction &)> &cb, bool openNewConnecton = false) const;
 
 public: // httpd server info
 	apr::weak_string getDefaultName() const;

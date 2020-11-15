@@ -115,7 +115,7 @@ public:
 	bool performTask(Task *task, bool performFirst = false) const;
 	bool scheduleTask(Task *task, mem::TimeInterval) const;
 
-	void performWithStorage(const mem::Callback<void(db::Transaction &)> &cb) const;
+	void performWithStorage(const mem::Callback<void(const db::Transaction &)> &cb, bool openNewConnecton = false) const;
 
 public: // httpd server info
 	mem::StringView getDefaultName() const;

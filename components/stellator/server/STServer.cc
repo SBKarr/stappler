@@ -679,17 +679,22 @@ void Server::processReports() {
 
 }
 
-void Server::performWithStorage(const mem::Callback<void(db::Transaction &)> &cb) const {
-	if (auto t = db::Transaction::acquireIfExists()) {
-		cb(t);
-	} else {
-		Root::getInstance()->performStorage(mem::pool::acquire(), *this, [&] (const db::Adapter &ad) {
-			if (auto t = db::Transaction::acquire(ad)) {
-				cb(t);
-				t.release();
-			}
-		});
+
+void Server::performWithStorage(const mem::Callback<void(const db::Transaction &)> &cb, bool openNewConnecton) const {
+	if (!openNewConnecton) {
+		if (auto t = db::Transaction::acquireIfExists()) {
+			cb(t);
+			return;
+		}
 	}
+
+	auto targetPool = mem::pool::acquire();
+	Root::getInstance()->performStorage(targetPool, *this, [&] (const db::Adapter &ad) {
+		if (auto t = db::Transaction::acquire(ad)) {
+			cb(t);
+			t.release();
+		}
+	});
 }
 
 void Server::setSessionKeys(mem::StringView pub, mem::StringView priv) const {

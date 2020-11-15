@@ -181,13 +181,7 @@ void Task::addCompleteFn(CompleteCallback &&cb) {
 }
 
 void Task::performWithStorage(const mem::Callback<void(const db::Transaction &)> &cb) const {
-	auto root = Root::getInstance();
-	root->performStorage(pool(), _server, [&] (const db::Adapter &a) {
-		if (auto t = db::Transaction::acquire(a)) {
-			cb(t);
-			t.release();
-		}
-	});
+	_server.performWithStorage(cb);
 }
 
 bool Task::execute() {

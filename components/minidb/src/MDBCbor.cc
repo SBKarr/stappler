@@ -389,4 +389,45 @@ mem::Value readPayload(const uint8_p ptr, const mem::Vector<mem::StringView> &fi
 	return ret;
 }
 
+mem::Value readOverflowPayload(const Transaction &t, uint32_t page, const mem::Vector<mem::StringView> &filter) {
+	mem::Value ret;
+
+	uint32_t next = 0;
+	size_t offset = 0;
+	mem::Bytes buf;
+	t.openPageForReading(page, [&] (void *ptr, uint32_t size) -> bool {
+		auto h = (PayloadPageHeader *)ptr;
+		if (h->remains <= size - sizeof(PayloadPageHeader)) {
+			ret = readPayload(uint8_p(ptr) + sizeof(PayloadPageHeader), filter);
+		} else {
+			next = h->next;
+			offset = size - sizeof(PayloadPageHeader);
+			buf.resize(h->remains);
+			memcpy(buf.data(), uint8_p(ptr) + sizeof(PayloadPageHeader), offset);
+		}
+		return true;
+	});
+
+	while (next) {
+		t.openPageForReading(next, [&] (void *ptr, uint32_t size) -> bool {
+			auto h = (PayloadPageHeader *)ptr;
+			next = h->next;
+			if (h->remains <= size - sizeof(PayloadPageHeader)) {
+				memcpy(buf.data() + offset, uint8_p(ptr) + sizeof(PayloadPageHeader), h->remains);
+				offset += h->remains;
+			} else {
+				memcpy(buf.data() + offset, uint8_p(ptr) + sizeof(PayloadPageHeader), size - sizeof(PayloadPageHeader));
+				offset += size - sizeof(PayloadPageHeader);
+			}
+			return true;
+		});
+	}
+
+	if (!buf.empty()) {
+		return readPayload(buf.data(), filter);
+	}
+
+	return ret;
+}
+
 NS_MDB_END

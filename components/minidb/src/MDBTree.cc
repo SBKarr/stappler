@@ -45,6 +45,11 @@ TreeTableInteriorCell TreePageIterator::getTableInteriorCell() const {
 TreeTableLeafCell TreePageIterator::getTableLeafCell() const {
 	TreeTableLeafCell ret;
 	ret.value = readVarUint(uint8_p(ptr) + *index, &ret.payload);
+	if (memcmp(ret.payload, OverflowMark.data(), OverflowMark.size()) == 0) {
+		ret.overflow = *uint32_p(ret.payload + OverflowMark.size());
+	} else {
+		ret.overflow = 0;
+	}
 	return ret;
 }
 
@@ -250,7 +255,7 @@ bool TreePage::pushCell(uint16_p cellTarget, TreeCell cell, const mem::Callback<
 		memcpy(revTarget, &cell.page, sizeof(uint32_t)); revTarget += sizeof(uint32_t);
 		if (isOverflow) {
 			uint32_t page = overflowCb(cell); // _manifest->writeOverflow(*this, cell.type, *cell.payload);
-			memcpy(revTarget, "Ovfl", 4); revTarget += 4;
+			memcpy(revTarget, OverflowMark.data(), OverflowMark.size()); revTarget += 4;
 			memcpy(revTarget, &page, sizeof(uint32_t));
 		} else {
 			revTarget += writePayload(cell.type, revTarget, *cell.payload);
@@ -265,7 +270,7 @@ bool TreePage::pushCell(uint16_p cellTarget, TreeCell cell, const mem::Callback<
 		revTarget += writeVarUint(revTarget, cell.oid);
 		if (isOverflow) {
 			uint32_t page = overflowCb(cell); // _manifest->writeOverflow(*this, cell.type, *cell.payload);
-			memcpy(revTarget, "Ovfl", 4); revTarget += 4;
+			memcpy(revTarget, OverflowMark.data(), OverflowMark.size()); revTarget += OverflowMark.size();
 			memcpy(revTarget, &page, sizeof(uint32_t));
 		} else {
 			revTarget += writePayload(cell.type, revTarget, *cell.payload);
@@ -275,7 +280,7 @@ bool TreePage::pushCell(uint16_p cellTarget, TreeCell cell, const mem::Callback<
 		revTarget += writeVarUint(revTarget, cell.oid);
 		if (isOverflow) {
 			uint32_t page = overflowCb(cell); // _manifest->writeOverflow(*this, cell.type, *cell.payload);
-			memcpy(revTarget, "Ovfl", 4); revTarget += 4;
+			memcpy(revTarget, OverflowMark.data(), OverflowMark.size()); revTarget += OverflowMark.size();
 			memcpy(revTarget, &page, sizeof(uint32_t));
 		} else {
 			revTarget += writePayload(cell.type, revTarget, *cell.payload);
@@ -368,7 +373,29 @@ TreeTableInteriorCell TreePage::getTableInteriorCell(uint16_t offset) const {
 TreeTableLeafCell TreePage::getTableLeafCell(uint16_t offset) const {
 	TreeTableLeafCell ret;
 	ret.value = readVarUint(uint8_p(ptr) + offset, &ret.payload);
+	if (memcmp(ret.payload, OverflowMark.data(), OverflowMark.size()) == 0) {
+		ret.overflow = *uint32_p(ret.payload + OverflowMark.size());
+	} else {
+		ret.overflow = 0;
+	}
 	return ret;
+}
+
+uint32_t TreePage::getCellSize(TreePageIterator it) const {
+	if (!it || it == end()) {
+		return 0;
+	}
+
+	auto e = end();
+
+	uint32_t end = uint32_t(stappler::maxOf<uint16_t>()) + 1;
+
+	auto idx = it.index + 1;
+	if (idx != e.index) {
+		return *idx - *it.index;
+	} else {
+		return end - *it.index;
+	}
 }
 
 bool TreeStack::splitPage(TreeCell cell, bool unbalanced, const mem::Callback<TreePage()> &alloc,
@@ -474,6 +501,9 @@ bool TreeStack::splitPage(TreeCell cell, bool unbalanced, const mem::Callback<Tr
 				if (!newFrames.back().pushCell(nullptr, cell, overflow)) {
 					return false; // should always work
 				} else {
+					for (size_t i = level; i < frames.size(); ++ i) {
+						transaction->closeFrame(frames[i]);
+					}
 					frames = std::move(newFrames);
 					if (newRootPage) {
 						scheme->scheme->root = newRootPage;
@@ -599,6 +629,111 @@ TreePageIterator TreeStack::next(TreePageIterator it) {
 		return it;
 	}
 	return TreePageIterator(nullptr);
+}
+
+bool TreeStack::rewrite(TreePageIterator it, TreeTableLeafCell sourceCell, const mem::Value &data) {
+	if (frames.empty() || frames.back().type != PageType::LeafTable) {
+		return false;
+	}
+
+	const auto maxPayloadSize = (frames.back().size - frames.back().getHeaderSize()) / 4;
+	auto cell = TreeCell(frames.back().type, Oid(sourceCell.value), &data);
+	auto targetSize = cell.size;
+
+	if (sourceCell.overflow) {
+		transaction->getManifest()->invalidateOverflowChain(*transaction, sourceCell.overflow);
+		if (targetSize + sizeof(uint16_t) > maxPayloadSize) {
+			auto revTarget = uint8_p(frames.back().ptr) + *it.index;
+			auto page = transaction->getManifest()->writeOverflow(*transaction, cell.type, *cell.payload);
+			revTarget += writeVarUint(revTarget, cell.oid);
+			memcpy(revTarget, OverflowMark.data(), OverflowMark.size()); revTarget += OverflowMark.size();
+			memcpy(revTarget, &page, sizeof(uint32_t));
+			return true;
+		} else {
+			// act like normal
+		}
+	}
+
+	auto currentSize = frames.back().getCellSize(it);
+	auto target = uint8_p(frames.back().ptr) + *it.index;
+
+	if (currentSize < targetSize) {
+		if (targetSize + sizeof(uint16_t) > maxPayloadSize) {
+			targetSize = getVarUintSize(cell.oid) + 8;
+			auto off = currentSize - targetSize;
+			auto revTarget = target + off;
+
+			auto page = transaction->getManifest()->writeOverflow(*transaction, cell.type, *cell.payload);
+			revTarget += writeVarUint(revTarget, cell.oid);
+			memcpy(revTarget, OverflowMark.data(), OverflowMark.size()); revTarget += OverflowMark.size();
+			memcpy(revTarget, &page, sizeof(uint32_t));
+			*it.index += off;
+			offset(frames.back(), it.index, off);
+			return true;
+		} else {
+			int32_t off = targetSize - currentSize;
+			auto freeSpace = frames.back().getFreeSpace();
+			if (off <= int32_t(freeSpace.first)) {
+				// enough space in cell
+				offset(frames.back(), it.index, -off);
+				auto revTarget = target - off;
+
+				switch (cell.type) {
+				case PageType::InteriorIndex:
+				case PageType::InteriorTable:
+				case PageType::LeafIndex:
+				case PageType::LeafTable:
+					revTarget += writeVarUint(revTarget, cell.oid);
+					revTarget += writePayload(cell.type, revTarget, *cell.payload);
+					break;
+				default: break;
+				}
+
+				*it.index += off;
+				return true;
+			} else {
+				return splitPage(cell, false, [this] () -> TreePage {
+					if (auto pageId = transaction->getManifest()->allocatePage(*transaction)) {
+						return transaction->openFrame(pageId, OpenMode::Write, 0, transaction->getManifest());
+					}
+					return TreePage(0, nullptr);
+				}, nullptr);
+			}
+		}
+	} else {
+		auto off = currentSize - targetSize;
+		auto revTarget = target + off;
+
+		switch (cell.type) {
+		case PageType::InteriorIndex:
+		case PageType::InteriorTable:
+		case PageType::LeafIndex:
+		case PageType::LeafTable:
+			revTarget += writeVarUint(revTarget, cell.oid);
+			revTarget += writePayload(cell.type, revTarget, *cell.payload);
+			break;
+		default: break;
+		}
+
+		*it.index += off;
+		offset(frames.back(), it.index, off);
+		return true;
+	}
+	return false;
+}
+
+void TreeStack::offset(TreePage &page, uint16_p cell, int32_t offset) {
+	auto root = uint8_p(page.ptr);
+	auto end = page.end();
+	auto ptr = end.index - 1;
+	if (*cell - *ptr > 0) {
+		memmove(root + *ptr + offset, root + *ptr, *cell - *ptr);
+		++ cell;
+		while (cell != end.index) {
+			*cell += offset;
+			++ cell;
+		}
+	}
 }
 
 NS_MDB_END
