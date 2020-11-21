@@ -124,7 +124,7 @@ public:
 	using FilePtr = void *;
 
 public:
-	static bool isEpub(const StringView &path);
+	static bool isEpub(StringView path);
 
 	Info();
 	~Info();
@@ -135,7 +135,7 @@ public:
 	Info(const Info & doc) = delete;
 	Info & operator=(const Info & doc) = delete;
 
-	bool init(const StringView &path);
+	bool init(StringView path);
 
 	bool valid() const;
 
@@ -145,26 +145,26 @@ public:
 	const Vector<SpineFile> &getSpine() const;
 	const Map<String, ManifestFile> &getManifest() const;
 
-	const String & getUniqueId() const;
-	const String & getModificationTime() const;
-	const String & getCoverFile() const;
-	const String & getTocFile() const;
+	StringView getUniqueId() const;
+	StringView getModificationTime() const;
+	StringView getCoverFile() const;
+	StringView getTocFile() const;
 
-	bool isFileExists(const String &path, const String &root) const;
-	size_t getFileSize(const String &path, const String &root) const;
-	Bytes getFileData(const String &path, const String &root) const;
+	bool isFileExists(StringView path, StringView root) const;
+	size_t getFileSize(StringView path, StringView root) const;
+	Bytes getFileData(StringView path, StringView root) const;
 	Bytes getFileData(const SpineFile &file) const;
 	Bytes getFileData(const ManifestFile &file) const;
 
-	bool isImage(const String &path, const String &root) const;
-	bool isImage(const String &path, size_t &width, size_t &height, const String &root) const;
+	bool isImage(StringView path, StringView root) const;
+	bool isImage(StringView path, size_t &width, size_t &height, StringView root) const;
 
-	String resolvePath(const String &path, const String &root) const;
+	String resolvePath(StringView path, StringView root) const;
 
-	bool isHtml(const String &path);
+	bool isHtml(StringView path);
 
 protected:
-	Bytes openFile(const String &) const;
+	Bytes openFile(StringView) const;
 	Bytes openFile(const ManifestFile &) const;
 	Map<String, ManifestFile> getFileList(FilePtr file);
 	String getRootPath();

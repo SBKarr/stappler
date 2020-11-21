@@ -135,9 +135,9 @@ layout::Node *LayoutProcessor::makeNode(const StringView &name, InitList &&attr,
 
 	if (name == "table" && id.empty()) {
 		++ _tableIdx;
-		return &_nodeStack.back()->pushNode(name.str(), toString("__table:", _tableIdx), style, std::move(attributes));
+		return &_nodeStack.back()->pushNode(name, toString("__table:", _tableIdx), move(style), std::move(attributes));
 	} else {
-		return &_nodeStack.back()->pushNode(name.str(), id.str(), style, std::move(attributes));
+		return &_nodeStack.back()->pushNode(name, id, move(style), std::move(attributes));
 	}
 }
 

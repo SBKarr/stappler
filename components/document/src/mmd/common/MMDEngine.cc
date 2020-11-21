@@ -73,10 +73,10 @@ struct Engine::Internal : memory::PoolInterface {
 	using mmd_engine = _sp_mmd_engine;
 	using token = _sp_mmd_token;
 
-	Internal(memory::pool_t *p, const StringView &v, const Extensions &ext);
+	Internal(memory::pool_t *p, StringView v, const Extensions &ext);
 	~Internal();
 
-	token * parse(const StringView &);
+	token * parse(StringView);
 	bool prepare();
 	void reset();
 
@@ -93,7 +93,7 @@ struct Engine::Internal : memory::PoolInterface {
 	StringStreamType debug;
 };
 
-Engine::Internal::Internal(memory::pool_t *p, const StringView &v, const Extensions & ext)
+Engine::Internal::Internal(memory::pool_t *p, StringView v, const Extensions & ext)
 : content(ext) {
 
 #ifdef DEBUG
@@ -320,7 +320,7 @@ static void automatic_search(const StringView &str, token * t, const Trie & ac) 
 	}
 }
 
-auto Engine::Internal::parse(const StringView &str) -> token * {
+auto Engine::Internal::parse(StringView str) -> token * {
 	reset();
 
 	// Tokenize the string
@@ -420,7 +420,7 @@ Engine::~Engine() {
 	clear();
 }
 
-bool Engine::init(memory::pool_t *p, const StringView &source, const Extensions & ext) {
+bool Engine::init(memory::pool_t *p, StringView source, const Extensions & ext) {
 	clear();
 
 	auto pool = memory::pool::create(p);
@@ -430,7 +430,7 @@ bool Engine::init(memory::pool_t *p, const StringView &source, const Extensions 
 	return true;
 }
 
-bool Engine::init(const StringView &source, const Extensions & ext) {
+bool Engine::init(StringView source, const Extensions & ext) {
 	clear();
 
 	auto pool = memory::pool::create(tl_pool.getPool());

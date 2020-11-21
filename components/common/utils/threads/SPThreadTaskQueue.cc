@@ -387,9 +387,9 @@ void TaskQueue::waitForAll(TimeInterval iv) {
 
 
 Worker::Worker(TaskQueue *queue, uint32_t threadId, uint32_t workerId, const StringView &name, memory::pool_t *p)
-: _queue(queue), _refCount(1), _shouldQuit(), _rootPool(p), _managerId(threadId), _workerId(workerId), _name(name)
-, _thread(ThreadHandlerInterface::workerThread, this, queue) {
+: _queue(queue), _refCount(1), _shouldQuit(), _rootPool(p), _managerId(threadId), _workerId(workerId), _name(name) {
 	_queue->retain();
+	_thread = std::thread(ThreadHandlerInterface::workerThread, this, queue);
 }
 
 Worker::~Worker() {

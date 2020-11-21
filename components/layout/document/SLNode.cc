@@ -32,7 +32,7 @@ THE SOFTWARE.
 
 NS_LAYOUT_BEGIN
 
-void Node::pushValue(const String &str) {
+void Node::pushValue(StringView str) {
 	pushValue(string::toUtf16Html(str));
 }
 
@@ -76,16 +76,16 @@ NodeId Node::getNodeId() const {
 const Node::Style &Node::getStyle() const {
 	return _style;
 }
-const String &Node::getHtmlId() const {
+StringView Node::getHtmlId() const {
 	return _htmlId;
 }
-const String &Node::getHtmlName() const {
+StringView Node::getHtmlName() const {
 	return _htmlName;
 }
 const Node::NodeVec &Node::getNodes() const {
 	return _nodes;
 }
-const WideString &Node::getValue() const {
+WideStringView Node::getValue() const {
 	return _value;
 }
 
@@ -93,12 +93,12 @@ const Node::AttrMap &Node::getAttributes() const {
 	return _attributes;
 }
 
-const String *Node::getAttribute(const StringView &key) const {
+StringView Node::getAttribute(StringView key) const {
 	auto it = _attributes.find(key);
 	if (it != _attributes.end()) {
-		return &it->second;
+		return it->second;
 	}
-	return nullptr;
+	return StringView();
 }
 
 bool Node::empty() const {

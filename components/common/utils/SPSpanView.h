@@ -106,6 +106,11 @@ public:
 	Self pop_front(size_t count = 1) { auto ret = first(count); offset(count); return ret; }
 	Self pop_back(size_t count = 1) { auto ret = last(count); len -= ret.size(); return ret; }
 
+	template <typename Interface = memory::DefaultInterface>
+	auto vec() const -> typename Interface::template VectorType<Type> {
+		return typename Interface::template VectorType<Type>(ptr, ptr + len);
+	}
+
 protected:
 	const Type *ptr = nullptr;
 	size_t len = 0;

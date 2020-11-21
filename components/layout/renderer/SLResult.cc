@@ -52,8 +52,8 @@ Document *Result::getDocument() const {
 	return _document;
 }
 
-void Result::pushIndex(const String &str, const Vec2 &pos) {
-	_index.emplace(str, pos);
+void Result::pushIndex(StringView str, const Vec2 &pos) {
+	_index.emplace(str.str(), pos);
 }
 
 void Result::processContents(const Document::ContentRecord & rec, size_t level) {
@@ -89,7 +89,7 @@ void Result::finalize() {
 	auto & toc = _document->getTableOfContents();
 
 	_bounds.emplace_back(BoundIndex{0, 0, 0.0f, _size.height, 0,
-		toc.label.empty() ? _document->getMeta("title") : toc.label,
+		StringView(toc.label.empty() ? _document->getMeta("title") : StringView(toc.label)).str(),
 		toc.href});
 
 	for (auto &it : toc.childs) {
@@ -170,13 +170,14 @@ Label *Result::emplaceLabel(const Layout &l, bool isBullet) {
 
 	if (!isBullet) {
 		auto &node = l.node.node;
-		if (auto hashPtr = node->getAttribute("x-data-hash")) {
-			ret->hash = addString(*hashPtr);
+		auto hashPtr = node->getAttribute("x-data-hash");
+		if (!hashPtr.empty()) {
+			ret->hash = addString(hashPtr);
 		}
 
-		if (auto indexPtr = node->getAttribute("x-data-index")) {
-			StringView r(*indexPtr);
-			r.readInteger().unwrap([&] (int64_t val) {
+		auto indexPtr = node->getAttribute("x-data-index");
+		if (!indexPtr.empty()) {
+			indexPtr.readInteger().unwrap([&] (int64_t val) {
 				ret->sourceIndex = size_t(val);
 			});
 		}
@@ -198,7 +199,7 @@ Background *Result::emplaceBackground(const Layout &l, const Rect &rect, const B
 	return ret;
 }
 
-Link *Result::emplaceLink(const Layout &l, const Rect &rect, const StringView &href, const StringView &target) {
+Link *Result::emplaceLink(const Layout &l, const Rect &rect, StringView href, StringView target) {
 	auto ret = &_links.emplace();
 	ret->type = Object::Type::Link;
 	ret->depth = l.depth;
@@ -265,7 +266,7 @@ const Object *Result::getObject(size_t size) const {
 	return nullptr;
 }
 
-const Label *Result::getLabelByHash(const StringView &hash, size_t idx) const {
+const Label *Result::getLabelByHash(StringView hash, size_t idx) const {
 	const Label *indexed = nullptr;
 	for (auto &it : _objects) {
 		if (auto l = it->asLabel()) {
@@ -283,12 +284,12 @@ const Map<CssStringId, String> &Result::getStrings() const {
 	return _strings;
 }
 
-StringView Result::addString(CssStringId id, const StringView &str) {
+StringView Result::addString(CssStringId id, StringView str) {
 	auto it = _strings.emplace(id, str.str());
 	return it.first->second;
 }
 
-StringView Result::addString(const StringView &str) {
+StringView Result::addString(StringView str) {
 	return addString(hash::hash32(str.data(), str.size()), str);
 }
 

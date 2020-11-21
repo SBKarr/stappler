@@ -55,7 +55,7 @@ public:
 	Document *getDocument() const;
 
 	// void pushObject(Object &&);
-	void pushIndex(const String &, const Vec2 &);
+	void pushIndex(StringView, const Vec2 &);
 	void finalize();
 
 	void setBackgroundColor(const Color4B &c);
@@ -81,18 +81,18 @@ public:
 	void emplaceBorder(Layout &, const Rect &, const OutlineStyle &, float width);
 	PathObject *emplacePath(const Layout &);
 	Label *emplaceLabel(const Layout &, bool isBullet = false);
-	Link *emplaceLink(const Layout &, const Rect &, const StringView &, const StringView &);
+	Link *emplaceLink(const Layout &, const Rect &, StringView, StringView);
 	//Outline *emplaceBorder(const Rect &, const Outline::Params &);
 
 	//size_t getSizeInMemory() const;
 
 	const Object *getObject(size_t size) const;
-	const Label *getLabelByHash(const StringView &, size_t idx) const;
+	const Label *getLabelByHash(StringView, size_t idx) const;
 
 	const Map<CssStringId, String> &getStrings() const;
 
-	StringView addString(CssStringId, const StringView &);
-	StringView addString(const StringView &);
+	StringView addString(CssStringId, StringView);
+	StringView addString(StringView);
 
 protected:
 	void processContents(const Document::ContentRecord & rec, size_t level);

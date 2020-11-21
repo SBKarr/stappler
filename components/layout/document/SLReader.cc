@@ -305,7 +305,7 @@ void Reader::onTagContent(Tag &tag, StringReader &s) {
 					attr.emplace("class", "auto");
 					attr.emplace("x-refs", "auto");
 
-					Node &hrefNode = node->pushNode("a", "", refStyle, std::move(attr));
+					Node &hrefNode = node->pushNode("a", "", move(refStyle), std::move(attr));
 					hrefNode.pushValue(ref);
 				}
 			});

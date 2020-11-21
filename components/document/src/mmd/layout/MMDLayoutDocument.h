@@ -37,24 +37,24 @@ public:
 	using MediaParameters = layout::MediaParameters;
 	using FilePath = layout::FilePath;
 
-	static bool isMmdData(const DataReader<ByteOrder::Network> &data);
-	static bool isMmdFile(const StringView &path);
+	static bool isMmdData(BytesView data);
+	static bool isMmdFile(StringView path);
 
 	virtual ~LayoutDocument() { }
 
-	virtual bool init(const FilePath &, const StringView &ct = StringView()) override;
-	virtual bool init(const DataReader<ByteOrder::Network> &, const StringView &ct = StringView()) override;
+	virtual bool init(FilePath, StringView ct = StringView()) override;
+	virtual bool init(BytesView, StringView ct = StringView()) override;
 
 	// Default style, that can be redefined with css
-	virtual Style beginStyle(const Node &, const Vector<const Node *> &, const MediaParameters &) const override;
+	virtual Style beginStyle(const Node &, SpanView<const Node *>, const MediaParameters &) const override;
 
 	// Default style, that can NOT be redefined with css
-	virtual Style endStyle(const Node &, const Vector<const Node *> &, const MediaParameters &) const override;
+	virtual Style endStyle(const Node &, SpanView<const Node *>, const MediaParameters &) const override;
 
 protected:
 	friend class LayoutProcessor;
 
-	void onTag(layout::Style &style, const StringView &tag, const StringView &parent, const MediaParameters &media) const;
+	void onTag(layout::Style &style, StringView tag, StringView parent, const MediaParameters &media) const;
 
 	layout::ContentPage *acquireRootPage();
 

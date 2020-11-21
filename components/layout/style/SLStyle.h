@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define LAYOUT_STYLE_SLSTYLE_H_
 
 #include "SPStringView.h"
+#include "SPSpanView.h"
 #include "SPLayout.h"
 
 NS_LAYOUT_BEGIN

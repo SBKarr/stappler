@@ -39,14 +39,13 @@ public:
 	using ForeachIter = Function<void(Node &, size_t level)>;
 	using ForeachConstIter = Function<void(const Node &, size_t level)>;
 
-	template <typename Name, typename Id, typename TStyle>
-	Node & pushNode(Name &&htmlName, Id &&htmlId, TStyle &&style, AttrMap &&map) {
+	Node & pushNode(StringView htmlName, StringView htmlId, Style &&style, AttrMap &&map) {
 		dropValue();
-		_nodes.emplace_back(std::forward<Name>(htmlName), std::forward<Id>(htmlId), std::forward<TStyle>(style), std::move(map));
+		_nodes.emplace_back(htmlName, htmlId, std::move(style), std::move(map));
 		return _nodes.back();
 	}
 
-	void pushValue(const String &str);
+	void pushValue(StringView str);
 	void pushValue(WideString &&str);
 	void pushValue(WideString &&str, Style &&s);
 	void pushLineBreak();
@@ -58,12 +57,12 @@ public:
 	NodeId getNodeId() const;
 
 	const Style &getStyle() const;
-	const String &getHtmlId() const;
-	const String &getHtmlName() const;
+	StringView getHtmlId() const;
+	StringView getHtmlName() const;
 	const NodeVec &getNodes() const;
-	const WideString &getValue() const;
+	WideStringView getValue() const;
 	const AttrMap &getAttributes() const;
-	const String *getAttribute(const StringView &) const;
+	StringView getAttribute(StringView) const;
 
 	bool empty() const;
 	bool hasValue() const;
@@ -85,17 +84,15 @@ public:
 
 	Node(Style &&style, WideString &&);
 
-	template <typename Name, typename Id>
-	Node(Name &&htmlName, Id &&htmlId)
-	: _htmlId(std::forward<Id>(htmlId))
-	, _htmlName(std::forward<Name>(htmlName)) { }
+	Node(StringView htmlName, StringView htmlId)
+	: _htmlId(htmlId.str())
+	, _htmlName(htmlName.str()) { }
 
-	template <typename Name, typename Id, typename TStyle>
-	Node(Name &&htmlName, Id &&htmlId, TStyle &&style, AttrMap &&map)
-	: _htmlId(std::forward<Id>(htmlId))
-	, _htmlName(std::forward<Name>(htmlName))
-	, _style(std::forward<TStyle>(style))
-	, _attributes(std::move(map)) { }
+	Node(StringView htmlName, StringView htmlId, Style &&style, AttrMap &&map)
+	: _htmlId(htmlId.str())
+	, _htmlName(htmlName.str())
+	, _style(move(style))
+	, _attributes(move(map)) { }
 
 protected:
 	void dropValue();

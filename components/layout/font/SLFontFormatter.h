@@ -196,7 +196,7 @@ public:
 	void setFontScale(float);
 
 	void begin(uint16_t indent, uint16_t blockMargin = 0);
-	bool read(const FontParameters &f, const TextParameters &s, const WideString &str, uint16_t front = 0, uint16_t back = 0);
+	bool read(const FontParameters &f, const TextParameters &s, WideStringView str, uint16_t front = 0, uint16_t back = 0);
 	bool read(const FontParameters &f, const TextParameters &s, const char16_t *str, size_t len, uint16_t front = 0, uint16_t back = 0);
 	bool read(const FontParameters &f, const TextParameters &s, uint16_t width, uint16_t height);
 

@@ -144,7 +144,7 @@ static bool Document_canOpen(const BytesViewNetwork &data, const StringView &ct)
 	return Document_canOpenData(data);
 }
 
-bool Document::canOpenDocumnt(const StringView &path, const StringView &ct) {
+bool Document::canOpenDocumnt(StringView path, StringView ct) {
 	std::set<DocumentFormat *, DocumentFormatStorageLess> formatList(DocumentFormatStorage::getInstance()->get());
 
 	for (auto &it : formatList) {
@@ -156,7 +156,7 @@ bool Document::canOpenDocumnt(const StringView &path, const StringView &ct) {
 	return Document_canOpen(path, ct);
 }
 
-bool Document::canOpenDocumnt(const BytesViewNetwork &data, const StringView &ct) {
+bool Document::canOpenDocumnt(BytesView data, StringView ct) {
 	std::set<DocumentFormat *, DocumentFormatStorageLess> formatList(DocumentFormatStorage::getInstance()->get());
 
 	for (auto &it : formatList) {
@@ -168,7 +168,7 @@ bool Document::canOpenDocumnt(const BytesViewNetwork &data, const StringView &ct
 	return Document_canOpen(data, ct);
 }
 
-Rc<Document> Document::openDocument(const StringView &path, const StringView &ct) {
+Rc<Document> Document::openDocument(StringView path, StringView ct) {
 	Rc<Document> ret;
 	std::set<DocumentFormat *, DocumentFormatStorageLess> formatList(DocumentFormatStorage::getInstance()->get());
 
@@ -184,7 +184,7 @@ Rc<Document> Document::openDocument(const StringView &path, const StringView &ct
 	return ret;
 }
 
-Rc<Document> Document::openDocument(const BytesViewNetwork &data, const StringView &ct) {
+Rc<Document> Document::openDocument(BytesView data, StringView ct) {
 	Rc<Document> ret;
 	std::set<DocumentFormat *, DocumentFormatStorageLess> formatList(DocumentFormatStorage::getInstance()->get());
 
@@ -205,10 +205,10 @@ Document::Image::Image(const MultipartParser::Image &img)
 : type(Type::Embed), width(img.width), height(img.height), offset(img.offset), length(img.length)
 , encoding(img.encoding), name(img.name), ref("embed://" + img.name) { }
 
-Document::Image::Image(uint16_t width, uint16_t height, size_t size, const String &path, const String &ref)
-: type(Type::Embed), width(width), height(height), offset(0), length(size), name(path), ref(ref.empty()?("embed://" + path):ref) { }
+Document::Image::Image(uint16_t width, uint16_t height, size_t size, StringView path, StringView ref)
+: type(Type::Embed), width(width), height(height), offset(0), length(size), name(path.str()), ref(ref.empty()?(toString("embed://", path)):ref.str()) { }
 
-StringView Document::getImageName(const StringView &name) {
+StringView Document::getImageName(StringView name) {
 	StringView src(resolveName(name));
 	auto pos = src.find('?');
 	if (pos != maxOf<size_t>()) {
@@ -219,7 +219,7 @@ StringView Document::getImageName(const StringView &name) {
 
 Document::Document() { }
 
-Vector<StringView> Document::getImageOptions(const StringView &isrc) {
+Vector<StringView> Document::getImageOptions(StringView isrc) {
 	StringView src(resolveName(isrc));
 	auto pos = src.find('?');
 	if (pos != maxOf<size_t>() && pos < src.size() - 1) {
@@ -246,7 +246,7 @@ bool Document::init(const StringDocument &html) {
 	return init(_data, String());
 }
 
-bool Document::init(const FilePath &path, const StringView &ct) {
+bool Document::init(FilePath path, StringView ct) {
 	if (path.get().empty()) {
 		return false;
 	}
@@ -257,7 +257,7 @@ bool Document::init(const FilePath &path, const StringView &ct) {
 	return init(data, ct);
 }
 
-bool Document::init(const BytesViewNetwork &vec, const StringView &ct) {
+bool Document::init(BytesView vec, StringView ct) {
 	if (vec.empty()) {
 		return false;
 	}
@@ -305,19 +305,19 @@ bool Document::init(const BytesViewNetwork &vec, const StringView &ct) {
 	return false;
 }
 
-void Document::setMeta(const String &key, const String &value) {
-	_meta.emplace(key, value);
+void Document::setMeta(StringView key, StringView value) {
+	_meta.emplace(key.str(), value.str());
 }
 
-String Document::getMeta(const String &key) const {
+StringView Document::getMeta(StringView key) const {
 	auto it = _meta.find(key);
 	if (it != _meta.end()) {
 		return it->second;
 	}
-	return String();
+	return StringView();
 }
 
-void Document::storeData(const BytesViewNetwork &data) {
+void Document::storeData(BytesView data) {
 	_data = Bytes(data.data(), data.data() + data.size());
 }
 
@@ -329,7 +329,7 @@ bool Document::prepare() {
 	return false;
 }
 
-StringView Document::resolveName(const StringView &str) {
+StringView Document::resolveName(StringView str) {
 	StringView r(str);
 	r.trimChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
@@ -366,7 +366,7 @@ Bytes Document::readData(size_t offset, size_t len) {
 	return Bytes();
 }
 
-bool Document::isFileExists(const StringView &iname) const {
+bool Document::isFileExists(StringView iname) const {
 	StringView name(resolveName(iname));
 	auto imageIt = _images.find(name);
 	if (imageIt != _images.end()) {
@@ -375,7 +375,7 @@ bool Document::isFileExists(const StringView &iname) const {
 	return false;
 }
 
-Bytes Document::getFileData(const StringView &iname) {
+Bytes Document::getFileData(StringView iname) {
 	StringView name(resolveName(iname));
 	auto imageIt = _images.find(name);
 	if (imageIt != _images.end()) {
@@ -385,7 +385,7 @@ Bytes Document::getFileData(const StringView &iname) {
 	return Bytes();
 }
 
-static Document::ImageMap::const_iterator getImageFromMap(const Document::ImageMap &images, const StringView &name) {
+static Document::ImageMap::const_iterator getImageFromMap(const Document::ImageMap &images, StringView name) {
 	auto it = name.find('?');
 	if (it != String::npos) {
 		return images.find(name.sub(0, it));
@@ -394,7 +394,7 @@ static Document::ImageMap::const_iterator getImageFromMap(const Document::ImageM
 	}
 }
 
-Bytes Document::getImageData(const StringView &iname) {
+Bytes Document::getImageData(StringView iname) {
 	auto imageIt = getImageFromMap(_images, resolveName(iname));
 	if (imageIt != _images.end()) {
 		auto &img = imageIt->second;
@@ -408,7 +408,7 @@ Bytes Document::getImageData(const StringView &iname) {
 	return Bytes();
 }
 
-Pair<uint16_t, uint16_t> Document::getImageSize(const StringView &iname) {
+Pair<uint16_t, uint16_t> Document::getImageSize(StringView iname) {
 	auto imageIt = getImageFromMap(_images, resolveName(iname));
 	if (imageIt != _images.end()) {
 		return pair(imageIt->second.width, imageIt->second.height);
@@ -424,8 +424,8 @@ void Document::updateNodes() {
 			node.setNodeId(nextId);
 			auto htmlId = node.getHtmlId();
 			if (!htmlId.empty()) {
-				page.ids.insert(pair(htmlId, &node));
-				SP_RTDOC_LOG("id : %s", node.getHtmlId().c_str());
+				page.ids.insert(pair(htmlId.str(), &node));
+				SP_RTDOC_LOG("id : %s", node.getHtmlId().data());
 			}
 			nextId ++;
 		});
@@ -433,7 +433,7 @@ void Document::updateNodes() {
 	_maxNodeId = nextId;
 }
 
-const Vector<String> &Document::getSpine() const {
+SpanView<String> Document::getSpine() const {
 	return _spine;
 }
 
@@ -448,7 +448,7 @@ const ContentPage *Document::getRoot() const {
 	return nullptr;
 }
 
-const ContentPage *Document::getContentPage(const StringView &name) const {
+const ContentPage *Document::getContentPage(StringView name) const {
 	auto it = _pages.find(name);
 	if (it != _pages.end()) {
 		return &it->second;
@@ -476,7 +476,7 @@ NodeId Document::getMaxNodeId() const {
 	return _maxNodeId;
 }
 
-const Node *Document::getNodeById(const StringView &path, const StringView &str) const {
+const Node *Document::getNodeById(StringView path, StringView str) const {
 	if (auto page = getContentPage(path)) {
 		auto it = page->ids.find(str);
 		if (it != page->ids.end()) {
@@ -486,7 +486,7 @@ const Node *Document::getNodeById(const StringView &path, const StringView &str)
 	return nullptr;
 }
 
-Pair<const ContentPage *, const Node *> Document::getNodeByIdGlobal(const StringView &id) const {
+Pair<const ContentPage *, const Node *> Document::getNodeByIdGlobal(StringView id) const {
 	for (auto &it : _pages) {
 		auto &page = it.second;
 		auto id_it = page.ids.find(id);
@@ -497,19 +497,19 @@ Pair<const ContentPage *, const Node *> Document::getNodeByIdGlobal(const String
 	return Pair<const ContentPage *, const Node *>(nullptr, nullptr);
 }
 
-void Document::processCss(const String &path, const StringView &str) {
+void Document::processCss(StringView path, StringView str) {
 	Reader r;
-	auto it = _pages.emplace(path, ContentPage{path, Node("html", path)}).first;
+	auto it = _pages.emplace(path.str(), ContentPage{path.str(), Node("html", path)}).first;
 	it->second.queries = style::MediaQuery::getDefaultQueries(it->second.strings);
 	if (!r.readCss(it->second, str)) {
 		_pages.erase(it);
 	}
 }
 
-void Document::processHtml(const String &path, const StringView &html, bool linear) {
+void Document::processHtml(StringView path, StringView html, bool linear) {
 	Reader r;
 	Vector<Pair<String, String>> meta;
-	auto it = _pages.emplace(path, ContentPage{path, Node("html", path), linear}).first;
+	auto it = _pages.emplace(path.str(), ContentPage{path.str(), Node("html", path), linear}).first;
 	it->second.strings.insert(pair(layout::CssStringId("monospace"_hash), "monospace"));
 	it->second.queries = style::MediaQuery::getDefaultQueries(it->second.strings);
 	if (r.readHtml(it->second, html, meta)) {
@@ -519,7 +519,7 @@ void Document::processHtml(const String &path, const StringView &html, bool line
 	}
 }
 
-void Document::processMeta(ContentPage &c, const Vector<Pair<String, String>> &vec) {
+void Document::processMeta(ContentPage &c, SpanView<Pair<String, String>> vec) {
 	for (auto &it : vec) {
 		if (it.first == "gallery") {
 			auto git = _gallery.find(it.second);
@@ -544,7 +544,7 @@ void Document::processMeta(ContentPage &c, const Vector<Pair<String, String>> &v
 	}
 }
 
-Style Document::beginStyle(const Node &node, const Vector<const Node *> &stack, const MediaParameters &media) const {
+Style Document::beginStyle(const Node &node, SpanView<const Node *> stack, const MediaParameters &media) const {
 	const Node *parent = nullptr;
 	if (stack.size() > 1) {
 		parent = stack.at(stack.size() - 2);
@@ -561,11 +561,11 @@ Style Document::beginStyle(const Node &node, const Vector<const Node *> &stack, 
 	return style;
 }
 
-Style Document::endStyle(const Node &node, const Vector<const Node *> &stack, const MediaParameters &media) const {
+Style Document::endStyle(const Node &node, SpanView<const Node *> stack, const MediaParameters &media) const {
 	return Style();
 }
 
-void Document::onStyleAttribute(Style &style, const StringView &tag, const StringView &name, const StringView &value, const MediaParameters &) const {
+void Document::onStyleAttribute(Style &style, StringView tag, StringView name, StringView value, const MediaParameters &) const {
 	if (name == "align") {
 		style.read("text-align", value);
 		style.read("text-indent", "0px");

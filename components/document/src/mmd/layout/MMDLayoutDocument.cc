@@ -33,7 +33,7 @@ THE SOFTWARE.
 
 NS_MMD_BEGIN
 
-bool LayoutDocument::isMmdData(const DataReader<ByteOrder::Network> &data) {
+bool LayoutDocument::isMmdData(BytesView data) {
 	StringView str((const char *)data.data(), data.size());
 	str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
@@ -49,7 +49,7 @@ bool LayoutDocument::isMmdData(const DataReader<ByteOrder::Network> &data) {
 	return false;
 }
 
-bool LayoutDocument::isMmdFile(const StringView &path) {
+bool LayoutDocument::isMmdFile(StringView path) {
 	auto ext = filepath::lastExtension(path);
 	if (ext == "md" || ext == "markdown") {
 		return true;
@@ -59,7 +59,7 @@ bool LayoutDocument::isMmdFile(const StringView &path) {
 		if (auto file = filesystem::openForReading(path)) {
 			StackBuffer<512> data;
 			if (io::Producer(file).seekAndRead(0, data, 512) > 0) {
-				return isMmdData(DataReader<ByteOrder::Network>(data.data(), data.size()));
+				return isMmdData(BytesView(data.data(), data.size()));
 			}
 		}
 	}
@@ -67,29 +67,29 @@ bool LayoutDocument::isMmdFile(const StringView &path) {
 	return false;
 }
 
-static bool checkMmdFile(const StringView &path, const StringView &ct) {
+static bool checkMmdFile(StringView path, StringView ct) {
 	StringView ctView(ct);
 
 	return ctView.is("text/markdown") || ctView.is("text/x-markdown") || LayoutDocument::isMmdFile(path);
 }
 
-static Rc<layout::Document> loadMmdFile(const StringView &path, const StringView &ct) {
+static Rc<layout::Document> loadMmdFile(StringView path, StringView ct) {
 	return Rc<LayoutDocument>::create(layout::FilePath(path), ct);
 }
 
-static bool checkMmdData(const DataReader<ByteOrder::Network> &data, const StringView &ct) {
+static bool checkMmdData(BytesView data, StringView ct) {
 	StringView ctView(ct);
 
 	return ctView.is("text/markdown") || ctView.is("text/x-markdown") || LayoutDocument::isMmdData(data);
 }
 
-static Rc<layout::Document> loadMmdData(const DataReader<ByteOrder::Network> &data, const StringView &ct) {
+static Rc<layout::Document> loadMmdData(BytesView data, StringView ct) {
 	return Rc<LayoutDocument>::create(data, ct);
 }
 
 LayoutDocument::DocumentFormat LayoutDocument::MmdFormat(&checkMmdFile, &loadMmdFile, &checkMmdData, &loadMmdData);
 
-bool LayoutDocument::init(const FilePath &path, const StringView &ct) {
+bool LayoutDocument::init(FilePath path, StringView ct) {
 	if (path.get().empty()) {
 		return false;
 	}
@@ -101,7 +101,7 @@ bool LayoutDocument::init(const FilePath &path, const StringView &ct) {
 	return init(data, ct);
 }
 
-bool LayoutDocument::init(const DataReader<ByteOrder::Network> &data, const StringView &ct) {
+bool LayoutDocument::init(BytesView data, StringView ct) {
 	if (data.empty()) {
 		return false;
 	}
@@ -144,7 +144,7 @@ layout::ContentPage *LayoutDocument::acquireRootPage() {
 	return page;
 }
 
-void LayoutDocument::onTag(layout::Style &style, const StringView &tag, const StringView &parent, const MediaParameters &media) const {
+void LayoutDocument::onTag(layout::Style &style, StringView tag, StringView parent, const MediaParameters &media) const {
 	using namespace layout;
 	using namespace layout::style;
 
@@ -456,7 +456,7 @@ static void LayoutDocument_onClass(layout::Style &style, const StringView &name,
 }
 
 // Default style, that can be redefined with css
-layout::Style LayoutDocument::beginStyle(const Node &node, const Vector<const Node *> &stack, const MediaParameters &media) const {
+layout::Style LayoutDocument::beginStyle(const Node &node, SpanView<const Node *> stack, const MediaParameters &media) const {
 	using namespace layout;
 	using namespace layout::style;
 
@@ -498,7 +498,7 @@ layout::Style LayoutDocument::beginStyle(const Node &node, const Vector<const No
 }
 
 // Default style, that can NOT be redefined with css
-layout::Style LayoutDocument::endStyle(const Node &node, const Vector<const Node *> &stack, const MediaParameters &media) const {
+layout::Style LayoutDocument::endStyle(const Node &node, SpanView<const Node *> stack, const MediaParameters &media) const {
 	return Document::endStyle(node, stack, media);
 }
 

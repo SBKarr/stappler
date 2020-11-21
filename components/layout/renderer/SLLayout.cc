@@ -126,8 +126,8 @@ void Layout::applyStyle(Builder *b, const Node *node, const BlockStyle &block, P
 
 	if (node && node->getHtmlName() == "img") {
 		auto srcPtr = node->getAttribute("src");
-		if (srcPtr && b->isFileExists(*srcPtr)) {
-			auto size = b->getImageSize(*srcPtr);
+		if (b->isFileExists(srcPtr)) {
+			auto size = b->getImageSize(srcPtr);
 			if (size.first > 0 && size.second > 0) {
 				if (isnan(width) && isnan(height)) {
 					if (context == style::Display::InlineBlock) {
@@ -307,15 +307,18 @@ bool Layout::init(const Vec2 &parentPos, const Size &parentSize, float collapsab
 	node.context = builder->getLayoutContext(*node.node);
 	if (node.node->getHtmlName() == "ol" || node.node->getHtmlName() == "ul") {
 		listItem = Layout::ListForward;
-		if (node.node->getAttribute("reversed")) {
+		if (!node.node->getAttribute("reversed").empty()) {
 			listItem = Layout::ListReversed;
 			auto counter = Layout_getListItemCount(builder, *node.node, *node.style);
 			if (counter != 0) {
 				listItemIndex = counter;
 			}
 		}
-		if (auto startPtr = node.node->getAttribute("start")) {
-			listItemIndex = StringToNumber<int64_t>(*startPtr);
+		auto startPtr = node.node->getAttribute("start");
+		if (!startPtr.empty()) {
+			startPtr.readInteger().unwrap([&] (int64_t id) {
+				listItemIndex = id;
+			});
 		}
 	}
 
@@ -616,8 +619,9 @@ void Layout::processBackground(float parentPosY) {
 
 	auto style = node.style->compileBackground(builder);
 	if (style.backgroundImage.empty()) {
-		if (auto srcPtr = node.node->getAttribute("src")) {
-			style.backgroundImage = *srcPtr;
+		auto srcPtr = node.node->getAttribute("src");
+		if (!srcPtr.empty()) {
+			style.backgroundImage = srcPtr;
 		}
 	}
 
@@ -707,19 +711,18 @@ void Layout::processOutline(bool withBorder) {
 }
 
 void Layout::processRef() {
-	if (auto hrefPtr = node.node->getAttribute("href")) {
+	auto hrefPtr = node.node->getAttribute("href");
+	if (!hrefPtr.empty()) {
 		auto targetPtr = node.node->getAttribute("target");
-		if (!targetPtr && (node.node->getHtmlName() == "img" || node.node->getHtmlName() == "figure")) {
+		if (targetPtr.empty() && (node.node->getHtmlName() == "img" || node.node->getHtmlName() == "figure")) {
 			targetPtr = node.node->getAttribute("type");
 		}
 
 		auto res = builder->getResult();
-		if (!hrefPtr->empty()) {
-			objects.emplace_back(res->emplaceLink(*this,
-				Rect(-pos.padding.left, -pos.padding.top,
-					pos.size.width + pos.padding.left + pos.padding.right, pos.size.height + pos.padding.top + pos.padding.bottom),
-				*hrefPtr, targetPtr?*targetPtr:StringView()));
-		}
+		objects.emplace_back(res->emplaceLink(*this,
+			Rect(-pos.padding.left, -pos.padding.top,
+				pos.size.width + pos.padding.left + pos.padding.right, pos.size.height + pos.padding.top + pos.padding.bottom),
+			hrefPtr, targetPtr));
 	}
 }
 

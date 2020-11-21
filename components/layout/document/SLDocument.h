@@ -31,11 +31,11 @@ NS_LAYOUT_BEGIN
 
 class Document : public Ref {
 public:
-	using check_data_fn = bool (*) (const BytesViewNetwork &str, const StringView &ct);
-	using load_data_fn = Rc<Document> (*) (const BytesViewNetwork &, const StringView &ct);
+	using check_data_fn = bool (*) (BytesView str, StringView ct);
+	using load_data_fn = Rc<Document> (*) (BytesView , StringView ct);
 
-	using check_file_fn = bool (*) (const StringView &path, const StringView &ct);
-	using load_file_fn = Rc<Document> (*) (const StringView &path, const StringView &ct);
+	using check_file_fn = bool (*) (StringView path, StringView ct);
+	using load_file_fn = Rc<Document> (*) (StringView path, StringView ct);
 
 	struct DocumentFormat {
 		check_data_fn check_data;
@@ -75,7 +75,7 @@ public:
 		String ref;
 
 		Image(const MultipartParser::Image &);
-		Image(uint16_t width, uint16_t height, size_t size, const String &path, const String &ref = String());
+		Image(uint16_t width, uint16_t height, size_t size, StringView path, StringView ref = StringView());
 	};
 
 	struct ContentRecord {
@@ -99,41 +99,41 @@ public:
 	using GalleryMap = Map<String, Vector<String>>;
 	using StringDocument = ValueWrapper<String, class StringDocumentTag>;
 
-	static bool canOpenDocumnt(const StringView &path, const StringView &ct = StringView());
-	static bool canOpenDocumnt(const BytesViewNetwork &data, const StringView &ct = StringView());
+	static bool canOpenDocumnt(StringView path, StringView ct = StringView());
+	static bool canOpenDocumnt(BytesView data, StringView ct = StringView());
 
-	static Rc<Document> openDocument(const StringView &path, const StringView &ct = StringView());
-	static Rc<Document> openDocument(const BytesViewNetwork &data, const StringView &ct = StringView());
+	static Rc<Document> openDocument(StringView path, StringView ct = StringView());
+	static Rc<Document> openDocument(BytesView data, StringView ct = StringView());
 
-	static StringView resolveName(const StringView &);
-	static StringView getImageName(const StringView &);
-	static Vector<StringView> getImageOptions(const StringView &);
+	static StringView resolveName(StringView);
+	static StringView getImageName(StringView);
+	static Vector<StringView> getImageOptions(StringView);
 
 	Document();
 
 	virtual ~Document() { }
 
 	virtual bool init(const StringDocument &);
-	virtual bool init(const FilePath &, const StringView &ct = StringView());
-	virtual bool init(const BytesViewNetwork &, const StringView &ct = StringView());
+	virtual bool init(FilePath, StringView ct = StringView());
+	virtual bool init(BytesView, StringView ct = StringView());
 
-	virtual void setMeta(const String &key, const String &value);
-	virtual String getMeta(const String &) const;
+	virtual void setMeta(StringView key, StringView value);
+	virtual StringView getMeta(StringView) const;
 
-	virtual bool isFileExists(const StringView &) const;
-	virtual Bytes getFileData(const StringView &);
-	virtual Bytes getImageData(const StringView &);
-	virtual Pair<uint16_t, uint16_t> getImageSize(const StringView &);
+	virtual bool isFileExists(StringView) const;
+	virtual Bytes getFileData(StringView);
+	virtual Bytes getImageData(StringView);
+	virtual Pair<uint16_t, uint16_t> getImageSize(StringView);
 
-	void storeData(const BytesViewNetwork &);
+	void storeData(BytesView);
 	bool prepare();
 
-	const Vector<String> &getSpine() const;
+	SpanView<String> getSpine() const;
 
 	const ContentPage *getRoot() const;
-	const ContentPage *getContentPage(const StringView &) const;
-	const Node *getNodeById(const StringView &pagePath, const StringView &id) const;
-	Pair<const ContentPage *, const Node *> getNodeByIdGlobal(const StringView &id) const;
+	const ContentPage *getContentPage(StringView) const;
+	const Node *getNodeById(StringView pagePath, StringView id) const;
+	Pair<const ContentPage *, const Node *> getNodeByIdGlobal(StringView id) const;
 
 	const ImageMap & getImages() const;
 	const GalleryMap & getGalleryMap() const;
@@ -143,19 +143,19 @@ public:
 	NodeId getMaxNodeId() const;
 
 	// Default style, that can be redefined with css
-	virtual Style beginStyle(const Node &, const Vector<const Node *> &, const MediaParameters &) const;
+	virtual Style beginStyle(const Node &, SpanView<const Node *>, const MediaParameters &) const;
 
 	// Default style, that can NOT be redefined with css
-	virtual Style endStyle(const Node &, const Vector<const Node *> &, const MediaParameters &) const;
+	virtual Style endStyle(const Node &, SpanView<const Node *>, const MediaParameters &) const;
 
 protected:
 	Bytes readData(size_t offset, size_t len);
 
-	virtual void processCss(const String &, const StringView &);
-	virtual void processHtml(const String &, const StringView &, bool linear = true);
-	virtual void processMeta(ContentPage &c, const Vector<Pair<String, String>> &);
+	virtual void processCss(StringView, StringView);
+	virtual void processHtml(StringView, StringView, bool linear = true);
+	virtual void processMeta(ContentPage &c, SpanView<Pair<String, String>>);
 
-	virtual void onStyleAttribute(Style &style, const StringView &tag, const StringView &name, const StringView &value, const MediaParameters &) const;
+	virtual void onStyleAttribute(Style &style, StringView tag, StringView name, StringView value, const MediaParameters &) const;
 
 	void updateNodes();
 

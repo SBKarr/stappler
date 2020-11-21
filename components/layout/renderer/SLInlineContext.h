@@ -57,7 +57,7 @@ struct InlineContext : public Ref {
 		uint16_t firstCharId;
 		uint16_t lastCharId;
 
-		String id;
+		StringView id;
 	};
 
 	static void initFormatter(Layout &l, const FontParameters &fStyle, const ParagraphStyle &pStyle, float parentPosY, Formatter &reader);

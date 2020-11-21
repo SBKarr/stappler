@@ -32,11 +32,11 @@ THE SOFTWARE.
 
 NS_EPUB_BEGIN
 
-static bool checkEpub(const StringView &path, const StringView &ct) {
+static bool checkEpub(StringView path, StringView ct) {
 	return (ct == "application/epub+zip") || Document::isEpub(path);
 }
 
-static Rc<layout::Document> loadEpub(const StringView &path, const StringView &ct) {
+static Rc<layout::Document> loadEpub(StringView path, StringView ct) {
 	return Rc<epub::Document>::create(FilePath(path));
 }
 
@@ -51,7 +51,7 @@ Document::Document() { }
 bool Document::init(const FilePath &path) {
 	_info = Rc<Info>::create(path.get());
 	if (_info && _info->valid()) {
-		auto &tocFile = _info->getTocFile();
+		auto tocFile = _info->getTocFile();
 		if (!tocFile.empty()) {
 			readTocFile(tocFile);
 		}
@@ -84,7 +84,7 @@ bool Document::init(const FilePath &path) {
 	}
 	return false;
 }
-bool Document::isFileExists(const StringView &ipath) const {
+bool Document::isFileExists(StringView ipath) const {
 	StringView path(resolveName(ipath));
 	auto &manifest = _info->getManifest();
 	auto fileIt = manifest.find(path);
@@ -93,7 +93,7 @@ bool Document::isFileExists(const StringView &ipath) const {
 	}
 	return false;
 }
-Bytes Document::getFileData(const StringView &ipath) {
+Bytes Document::getFileData(StringView ipath) {
 	StringView path(resolveName(ipath));
 	auto &manifest = _info->getManifest();
 	auto fileIt = manifest.find(path);
@@ -103,11 +103,11 @@ Bytes Document::getFileData(const StringView &ipath) {
 	}
 	return Bytes();
 }
-Bytes Document::getImageData(const StringView &ipath) {
+Bytes Document::getImageData(StringView ipath) {
 	return getFileData(ipath);
 }
 
-Pair<uint16_t, uint16_t> Document::getImageSize(const StringView &ipath) {
+Pair<uint16_t, uint16_t> Document::getImageSize(StringView ipath) {
 	StringView path(resolveName(ipath));
 	auto &manifest = _info->getManifest();
 	auto fileIt = manifest.find(path);
@@ -128,30 +128,30 @@ data::Value Document::encode() const {
 	return _info->encode();
 }
 
-const String & Document::getUniqueId() const {
+StringView Document::getUniqueId() const {
 	return _info->getUniqueId();
 }
-const String & Document::getModificationTime() const {
+StringView Document::getModificationTime() const {
 	return _info->getModificationTime();
 }
-const String & Document::getCoverFile() const {
+StringView Document::getCoverFile() const {
 	return _info->getCoverFile();
 }
 
-bool Document::isFileExists(const String &path, const String &root) const {
+bool Document::isFileExists(StringView path, StringView root) const {
 	return _info->isFileExists(path, root);
 }
-size_t Document::getFileSize(const String &path, const String &root) const {
+size_t Document::getFileSize(StringView path, StringView root) const {
 	return _info->getFileSize(path, root);
 }
-Bytes Document::getFileData(const String &path, const String &root) const {
+Bytes Document::getFileData(StringView path, StringView root) const {
 	return _info->getFileData(path, root);
 }
 
-bool Document::isImage(const String &path, const String &root) const {
+bool Document::isImage(StringView path, StringView root) const {
 	return _info->isImage(path, root);
 }
-bool Document::isImage(const String &path, size_t &width, size_t &height, const String &root) const {
+bool Document::isImage(StringView path, size_t &width, size_t &height, StringView root) const {
 	return _info->isImage(path, width, height, root);
 }
 
@@ -206,12 +206,12 @@ String Document::getLanguage() const {
 	return String();
 }
 
-void Document::processHtml(const String &path, const StringView &html, bool linear) {
+void Document::processHtml(StringView path, StringView html, bool linear) {
 	using ContentPage = layout::ContentPage;
 
 	epub::Reader r;
 	Vector<Pair<String, String>> meta;
-	auto it = _pages.emplace(path, ContentPage{path, layout::Node("html", path), linear}).first;
+	auto it = _pages.emplace(path.str(), ContentPage{path.str(), layout::Node("html", path), linear}).first;
 	it->second.queries = layout::style::MediaQuery::getDefaultQueries(it->second.strings);
 	if (r.readHtml(it->second, html, meta)) {
 		processMeta(it->second, meta);
@@ -220,7 +220,7 @@ void Document::processHtml(const String &path, const StringView &html, bool line
 	}
 }
 
-void Document::readTocFile(const String &fileName) {
+void Document::readTocFile(StringView fileName) {
 	auto &manifest = _info->getManifest();
 	auto fileIt = manifest.find(fileName);
 	if (fileIt == manifest.end()) {
@@ -235,7 +235,7 @@ void Document::readTocFile(const String &fileName) {
 	}
 }
 
-void Document::readNcxNav(const String &filePath) {
+void Document::readNcxNav(StringView filePath) {
 	auto toc = _info->getFileData(filePath, "");
 	struct NcxReader {
 		using Parser = html::Parser<NcxReader>;
@@ -253,10 +253,10 @@ void Document::readNcxNav(const String &filePath) {
 		} section = None;
 
 		Info *info;
-		String path;
+		StringView path;
 		Vector<ContentRecord *> contents;
 
-		NcxReader(Info *info, const String &path, ContentRecord *c) : info(info), path(path) { contents.push_back(c); }
+		NcxReader(Info *info, StringView path, ContentRecord *c) : info(info), path(path) { contents.push_back(c); }
 
 		inline void onTagAttribute(Parser &p, Tag &tag, StringReader &name, StringReader &value) {
 			switch (section) {
@@ -368,7 +368,7 @@ void Document::readNcxNav(const String &filePath) {
 	}
 }
 
-void Document::readXmlNav(const String &filePath) {
+void Document::readXmlNav(StringView filePath) {
 	auto toc = _info->getFileData(filePath, "");
 	struct TocReader {
 		using Parser = html::Parser<TocReader>;
@@ -385,10 +385,10 @@ void Document::readXmlNav(const String &filePath) {
 		} section = None;
 
 		Info *info;
-		String path;
+		StringView path;
 		Vector<ContentRecord *> contents;
 
-		TocReader(Info *info, const String &path, ContentRecord *c) : info(info), path(path) { contents.push_back(c); }
+		TocReader(Info *info, StringView path, ContentRecord *c) : info(info), path(path) { contents.push_back(c); }
 
 		inline void onTagAttribute(Parser &p, Tag &tag, StringReader &name, StringReader &value) {
 			switch (section) {
@@ -503,8 +503,7 @@ data::Value Document::encodeContents(const ContentRecord &rec) {
 	return ret;
 }
 
-void Document::onStyleAttribute(Style &style, const StringView &tag, const StringView &name, const StringView &value,
-	const MediaParameters &media) const {
+void Document::onStyleAttribute(Style &style, StringView tag, StringView name, StringView value, const MediaParameters &media) const {
 	if (name == "epub:type") {
 		if (value == "footnote" || value == "endnote" || value == "footnotes" || value == "endnotes") {
 			if (media.hasOption("tooltip")) {

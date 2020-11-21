@@ -25,15 +25,17 @@ THE SOFTWARE.
 NS_LAYOUT_BEGIN
 
 static uint16_t Cell_getColSpan(const Node &node) {
-	if (auto colSpan = node.getAttribute("colspan")) {
-		return min(uint16_t(32), uint16_t(StringView(*colSpan).readInteger().get(1)));
+	auto colSpan = node.getAttribute("colspan");
+	if (!colSpan.empty()) {
+		return min(uint16_t(32), uint16_t(colSpan.readInteger().get(1)));
 	}
 	return 1;
 }
 
 static uint16_t Cell_getRowSpan(const Node &node) {
-	if (auto colSpan = node.getAttribute("rowspan")) {
-		return min(uint16_t(32), uint16_t(StringView(*colSpan).readInteger().get(1)));
+	auto colSpan = node.getAttribute("rowspan");
+	if (!colSpan.empty()) {
+		return min(uint16_t(32), uint16_t(colSpan.readInteger().get(1)));
 	}
 	return 1;
 }
@@ -136,8 +138,9 @@ uint32_t Table::makeCells(NodeId nodeId) {
 		return 0;
 	}
 
-	if (auto colsAttr = layout->node.node->getAttribute("cols")) {
-		StringView(*colsAttr).readInteger().unwrap([&] (int64_t colNum) {
+	auto colsAttr = layout->node.node->getAttribute("cols");
+	if (!colsAttr.empty()) {
+		colsAttr.readInteger().unwrap([&] (int64_t colNum) {
 			if (colNum > 0 && colNum <= 32) {
 				for (size_t i = cols.size(); i < size_t(colNum); ++ i) {
 					cols.emplace_back(Col{uint16_t(cols.size()), maxOf<uint16_t>(), nullptr});

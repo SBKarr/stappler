@@ -49,12 +49,12 @@ NS_MMD_BEGIN
 
 class Engine : public Ref {
 public:
-	using ProcessCallback = Function<void(const Content &, const StringView &, const Token &)>;
+	using ProcessCallback = Function<void(const Content &, StringView, const Token &)>;
 
 	~Engine();
 
-	bool init(memory::pool_t *, const StringView &, const Extensions & = DefaultExtensions);
-	bool init(const StringView &, const Extensions & = DefaultExtensions);
+	bool init(memory::pool_t *, StringView, const Extensions & = DefaultExtensions);
+	bool init(StringView, const Extensions & = DefaultExtensions);
 
 	void clear();
 

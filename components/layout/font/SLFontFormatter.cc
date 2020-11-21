@@ -658,8 +658,8 @@ bool Formatter::readChars(WideStringView &r, const Vector<uint8_t> &hyph) {
 	return true;
 }
 
-bool Formatter::read(const FontParameters &f, const TextParameters &s, const WideString &str, uint16_t frontOffset, uint16_t backOffset) {
-	return read(f, s, str.c_str(), str.length(), frontOffset, backOffset);
+bool Formatter::read(const FontParameters &f, const TextParameters &s, WideStringView str, uint16_t frontOffset, uint16_t backOffset) {
+	return read(f, s, str.data(), str.size(), frontOffset, backOffset);
 }
 bool Formatter::read(const FontParameters &f, const TextParameters &s, const char16_t *str, size_t len, uint16_t frontOffset, uint16_t backOffset) {
 	if (!str) {

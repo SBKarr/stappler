@@ -43,26 +43,26 @@ public:
 	Document();
 
 	virtual bool init(const FilePath &);
-	virtual bool isFileExists(const StringView &) const override;
-	virtual Bytes getFileData(const StringView &) override;
-	virtual Bytes getImageData(const StringView &) override;
-	virtual Pair<uint16_t, uint16_t> getImageSize(const StringView &) override;
+	virtual bool isFileExists(StringView) const override;
+	virtual Bytes getFileData(StringView) override;
+	virtual Bytes getImageData(StringView) override;
+	virtual Pair<uint16_t, uint16_t> getImageSize(StringView) override;
 
 	bool valid() const;
 	operator bool () const;
 
 	data::Value encode() const;
 
-	const String & getUniqueId() const;
-	const String & getModificationTime() const;
-	const String & getCoverFile() const;
+	StringView getUniqueId() const;
+	StringView getModificationTime() const;
+	StringView getCoverFile() const;
 
-	bool isFileExists(const String &path, const String &root = "") const;
-	size_t getFileSize(const String &path, const String &root = "") const;
-	Bytes getFileData(const String &path, const String &root = "") const;
+	bool isFileExists(StringView path, StringView root = StringView()) const;
+	size_t getFileSize(StringView path, StringView root = StringView()) const;
+	Bytes getFileData(StringView path, StringView root = StringView()) const;
 
-	bool isImage(const String &path, const String &root = "") const;
-	bool isImage(const String &path, size_t &width, size_t &height, const String &root = "") const;
+	bool isImage(StringView path, StringView root = StringView()) const;
+	bool isImage(StringView path, size_t &width, size_t &height, StringView root = StringView()) const;
 
 	Vector<SpineFile> getSpine(bool linearOnly = true) const;
 
@@ -72,14 +72,14 @@ public: // meta
 	String getLanguage() const;
 
 protected:
-	virtual void onStyleAttribute(Style &style, const StringView &tag, const StringView &name, const StringView &value,
+	virtual void onStyleAttribute(Style &style, StringView tag, StringView name, StringView value,
 		const MediaParameters &) const override;
 
-	virtual void processHtml(const String &, const StringView &, bool linear = true) override;
+	virtual void processHtml(StringView, StringView, bool linear = true) override;
 
-	void readTocFile(const String &);
-	void readNcxNav(const String &filePath);
-	void readXmlNav(const String &filePath);
+	void readTocFile(StringView);
+	void readNcxNav(StringView filePath);
+	void readXmlNav(StringView filePath);
 
 	data::Value encodeContents(const ContentRecord &);
 

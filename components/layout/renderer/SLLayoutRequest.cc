@@ -31,7 +31,7 @@ static float Layout_requestWidth(Layout &l, const Node &, Layout::ContentRequest
 static void Layout_processInlineNode(Layout &l, const Node &node, const Style *style) {
 	auto &media = l.builder->getMedia();
 
-	auto &v = node.getValue();
+	auto v = node.getValue();
 	if (!v.empty()) {
 		const float density = media.density;
 		auto fstyle = style->compileFontStyle(l.builder);

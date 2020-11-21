@@ -113,7 +113,7 @@ struct EpubFileApi {
 
 static EpubFileApi s_fileApi;
 
-bool Info::isEpub(const StringView &path) {
+bool Info::isEpub(StringView path) {
 	bool ret = false;
 	auto file = filesystem::openForReading(path);
 	if (!file) {
@@ -189,7 +189,7 @@ Info & Info::operator=(Info && doc) {
 	return *this;
 }
 
-bool Info::init(const StringView &path) {
+bool Info::init(StringView path) {
 	_file = cocos2d::unzOpen2_64((void *)&path, &s_fileApi.pathFunc);
 	if (_file) {
 		_manifest = getFileList(_file);
@@ -201,7 +201,7 @@ bool Info::init(const StringView &path) {
 	return valid();
 }
 
-Bytes Info::openFile(const String &file) const {
+Bytes Info::openFile(StringView file) const {
 	auto containerIt = _manifest.find(file);
 	if (containerIt != _manifest.end()) {
 		return openFile(containerIt->second);
@@ -846,24 +846,24 @@ const Map<String, ManifestFile> &Info::getManifest() const {
 const Vector<SpineFile> &Info::getSpine() const {
 	return _spine;
 }
-const String & Info::getUniqueId() const {
+StringView Info::getUniqueId() const {
 	return _uniqueId;
 }
-const String & Info::getModificationTime() const {
+StringView Info::getModificationTime() const {
 	return _modified;
 }
-const String & Info::getCoverFile() const {
+StringView Info::getCoverFile() const {
 	return _coverFile;
 }
-const String & Info::getTocFile() const {
+StringView Info::getTocFile() const {
 	return _tocFile;
 }
 
-bool Info::isFileExists(const String &path, const String &root) const {
+bool Info::isFileExists(StringView path, StringView root) const {
 	auto str = resolvePath(path, root);
 	return _manifest.find(str) != _manifest.end();
 }
-size_t Info::getFileSize(const String &path, const String &root) const {
+size_t Info::getFileSize(StringView path, StringView root) const {
 	auto str = resolvePath(path, root);
 	auto it = _manifest.find(str);
 	if (it != _manifest.end()) {
@@ -871,7 +871,7 @@ size_t Info::getFileSize(const String &path, const String &root) const {
 	}
 	return 0;
 }
-Bytes Info::getFileData(const String &path, const String &root) const {
+Bytes Info::getFileData(StringView path, StringView root) const {
 	auto str = resolvePath(path, root);
 	return openFile(str);
 }
@@ -882,7 +882,7 @@ Bytes Info::getFileData(const ManifestFile &file) const {
 	return openFile(file);
 }
 
-bool Info::isImage(const String &path, const String &root) const {
+bool Info::isImage(StringView path, StringView root) const {
 	auto str = resolvePath(path, root);
 	auto it = _manifest.find(str);
 	if (it != _manifest.end()) {
@@ -890,7 +890,7 @@ bool Info::isImage(const String &path, const String &root) const {
 	}
 	return false;
 }
-bool Info::isImage(const String &path, size_t &width, size_t &height, const String &root) const {
+bool Info::isImage(StringView path, size_t &width, size_t &height, StringView root) const {
 	auto str = resolvePath(path, root);
 	auto it = _manifest.find(str);
 	if (it != _manifest.end()) {
@@ -903,7 +903,7 @@ bool Info::isImage(const String &path, size_t &width, size_t &height, const Stri
 	return false;
 }
 
-String Info::resolvePath(const String &path, const String &root) const {
+String Info::resolvePath(StringView path, StringView root) const {
 	if (root.empty()) {
 		return filepath::reconstructPath(path);
 	} else if (isFileExists(root, "")) {

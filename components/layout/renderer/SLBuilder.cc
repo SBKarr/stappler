@@ -62,11 +62,11 @@ void Builder::compileNodeStyle(Style &style, const ContentPage *page, const Node
 		});
 	}
 	if (!node.getHtmlId().empty()) {
-		it = page->styles.find(String("#") + node.getHtmlId());
+		it = page->styles.find(toString("#", node.getHtmlId()));
 		if (it != page->styles.end()) {
 			style.merge(it->second, resolved);
 		}
-		it = page->styles.find(node.getHtmlName() + "#" + node.getHtmlId());
+		it = page->styles.find(toString(node.getHtmlName(), "#", node.getHtmlId()));
 		if (it != page->styles.end()) {
 			style.merge(it->second, resolved);
 		}
@@ -188,7 +188,7 @@ InlineContext *Builder::acquireInlineContext(FontSource *source, float d) {
 	return _contextStorage.back();
 }
 
-bool Builder::isFileExists(const StringView &url) const {
+bool Builder::isFileExists(StringView url) const {
 	auto it = _externalAssets.find(url);
 	if (it != _externalAssets.end()) {
 		return true;
@@ -197,7 +197,7 @@ bool Builder::isFileExists(const StringView &url) const {
 	return _document->isFileExists(url);
 }
 
-Pair<uint16_t, uint16_t> Builder::getImageSize(const StringView &url) const {
+Pair<uint16_t, uint16_t> Builder::getImageSize(StringView url) const {
 	auto it = _externalAssets.find(url);
 	if (it != _externalAssets.end()) {
 		if ((it->second.type.empty() || StringView(it->second.type).starts_with("image/")) && it->second.image.width > 0 && it->second.image.height > 0) {
@@ -389,7 +389,7 @@ Layout *Builder::getTopLayout() const {
 
 void Builder::render() {
 	if (_spine.empty()) {
-		_spine = _document->getSpine();
+		_spine = _document->getSpine().vec();
 	}
 
 	auto root = _document->getRoot();
@@ -868,8 +868,11 @@ bool Builder::processNode(Layout &l, const Vec2 &origin, const Size &size, float
 		if (_layoutStack.size() > 1) {
 			parent = _layoutStack.at(_layoutStack.size() - 1);
 			if (parent && parent->listItem != Layout::ListNone && l.node.block.display == style::Display::ListItem) {
-				if (auto valuePtr = l.node.node->getAttribute("value")) {
-					parent->listItemIndex = StringToNumber<int64_t>(*valuePtr);
+				auto valuePtr = l.node.node->getAttribute("value");
+				if (!valuePtr.empty()) {
+					valuePtr.readInteger().unwrap([&] (int64_t id) {
+						 parent->listItemIndex = id;
+					});
 				}
 			}
 		}

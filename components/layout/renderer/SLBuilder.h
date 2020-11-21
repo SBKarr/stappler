@@ -66,8 +66,8 @@ public:
 
 	InlineContext *acquireInlineContext(FontSource *, float);
 
-	bool isFileExists(const StringView &) const;
-	Pair<uint16_t, uint16_t> getImageSize(const StringView &) const;
+	bool isFileExists(StringView) const;
+	Pair<uint16_t, uint16_t> getImageSize(StringView) const;
 
 	const Style *compileStyle(const Node &);
 	const Style *getStyle(const Node &) const;
