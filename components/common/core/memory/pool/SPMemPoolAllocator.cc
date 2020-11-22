@@ -148,7 +148,7 @@ bool Allocator::run_mmap(uint32_t idx) {
 void Allocator::set_max(uint32_t size) {
 	std::unique_lock<Allocator> lock(*this);
 
-	uint32_t max_free_index = uint32_t(ALIGN(size, BOUNDARY_SIZE) >> BOUNDARY_INDEX);
+	uint32_t max_free_index = uint32_t(SPALIGN(size, BOUNDARY_SIZE) >> BOUNDARY_INDEX);
 	current += max_free_index;
 	current -= max;
 	max = max_free_index;
@@ -160,7 +160,7 @@ void Allocator::set_max(uint32_t size) {
 MemNode *Allocator::alloc(uint32_t in_size) {
 	std::unique_lock<Allocator> lock;
 
-	uint32_t size = uint32_t(ALIGN(in_size + SIZEOF_MEMNODE, BOUNDARY_SIZE));
+	uint32_t size = uint32_t(SPALIGN(in_size + SIZEOF_MEMNODE, BOUNDARY_SIZE));
 	if (size < in_size) {
 		return nullptr;
 	}

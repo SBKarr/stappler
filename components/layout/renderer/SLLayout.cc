@@ -95,18 +95,18 @@ Rect Layout::PositionInfo::getInsideBoundingBox() const {
 	return Rect(- padding.left - margin.left,
 			- padding.top - margin.top,
 			size.width + padding.left + padding.right + margin.left + margin.right,
-			(!isnanf(size.height)?( size.height + padding.top + padding.bottom + margin.top + margin.bottom):nan()));
+			(!std::isnan(size.height)?( size.height + padding.top + padding.bottom + margin.top + margin.bottom):nan()));
 }
 Rect Layout::PositionInfo::getBoundingBox() const {
 	return Rect(position.x - padding.left - margin.left,
 			position.y - padding.top - margin.top,
 			size.width + padding.left + padding.right + margin.left + margin.right,
-			(!isnanf(size.height)?( size.height + padding.top + padding.bottom + margin.top + margin.bottom):nan()));
+			(!std::isnan(size.height)?( size.height + padding.top + padding.bottom + margin.top + margin.bottom):nan()));
 }
 Rect Layout::PositionInfo::getPaddingBox() const {
 	return Rect(position.x - padding.left, position.y - padding.top,
 			size.width + padding.left + padding.right,
-			(!isnanf(size.height)?( size.height + padding.top + padding.bottom):nan()));
+			(!std::isnan(size.height)?( size.height + padding.top + padding.bottom):nan()));
 }
 Rect Layout::PositionInfo::getContentBox() const {
 	return Rect(position.x, position.y, size.width, size.height);
@@ -168,11 +168,11 @@ void Layout::applyStyle(Builder *b, const Node *node, const BlockStyle &block, P
 	pos.margin.right = block.marginRight.computeValueStrong(parentSize.width, _media);
 	pos.margin.left = block.marginLeft.computeValueStrong(parentSize.width, _media);
 
-	if (!isnanf(minWidth) && (width < minWidth || isnanf(width))) {
+	if (!std::isnan(minWidth) && (width < minWidth || std::isnan(width))) {
 		width = minWidth;
 	}
 
-	if (!isnanf(maxWidth) && (width > maxWidth || isnanf(width))) {
+	if (!std::isnan(maxWidth) && (width > maxWidth || std::isnan(width))) {
 		if (node && node->getHtmlName() == "img") {
 			auto scale = maxWidth / width;
 			height *= scale;
@@ -180,22 +180,22 @@ void Layout::applyStyle(Builder *b, const Node *node, const BlockStyle &block, P
 		width = maxWidth;
 	}
 
-	if (isnanf(width) && req == ContentRequest::Normal) {
-		if (isnanf(pos.margin.right)) {
+	if (std::isnan(width) && req == ContentRequest::Normal) {
+		if (std::isnan(pos.margin.right)) {
 			pos.margin.right = 0;
 		}
-		if (isnanf(pos.margin.left)) {
+		if (std::isnan(pos.margin.left)) {
 			pos.margin.left = 0;
 		}
 		width = parentSize.width - pos.padding.left - pos.padding.right - pos.margin.left - pos.margin.right;
 	}
 
-	if (!isnanf(height)) {
-		if (!isnanf(minHeight) && height < minHeight) {
+	if (!std::isnan(height)) {
+		if (!std::isnan(minHeight) && height < minHeight) {
 			height = minHeight;
 		}
 
-		if (!isnanf(maxHeight) && height > maxHeight) {
+		if (!std::isnan(maxHeight) && height > maxHeight) {
 			if (node && node->getHtmlName() == "img") {
 				auto scale = maxHeight / height;
 				width *= scale;
@@ -215,21 +215,21 @@ void Layout::applyStyle(Builder *b, const Node *node, const BlockStyle &block, P
 			&& block.display != style::Display::InlineBlock
 			&& block.display != style::Display::TableCell
 			&& block.display != style::Display::TableColumn) {
-		if (isnanf(pos.margin.right) && isnanf(pos.margin.left)) {
+		if (std::isnan(pos.margin.right) && std::isnan(pos.margin.left)) {
 			float contentWidth = width + pos.padding.left + pos.padding.right;
 			pos.margin.right = pos.margin.left = (parentSize.width - contentWidth) / 2.0f;
-		} else if (isnanf(pos.margin.right)) {
+		} else if (std::isnan(pos.margin.right)) {
 			float contentWidth = width + pos.padding.left + pos.padding.right + pos.margin.left;
 			pos.margin.right = parentSize.width - contentWidth;
-		} else if (isnanf(pos.margin.left)) {
+		} else if (std::isnan(pos.margin.left)) {
 			float contentWidth = width + pos.padding.left + pos.padding.right + pos.margin.right;
 			pos.margin.left = parentSize.width - contentWidth;
 		}
 	} else {
-		if (isnanf(pos.margin.right)) {
+		if (std::isnan(pos.margin.right)) {
 			pos.margin.right = 0;
 		}
-		if (isnanf(pos.margin.left)) {
+		if (std::isnan(pos.margin.left)) {
 			pos.margin.left = 0;
 		}
 	}
@@ -554,7 +554,7 @@ float Layout::finalizeInlineContext() {
 
 	context->reader.finalize();
 
-	if (node.block.floating != style::Float::None && (node.block.width.value == 0 || isnanf(node.block.width.value))) {
+	if (node.block.floating != style::Float::None && (node.block.width.value == 0 || std::isnan(node.block.width.value))) {
 		pos.size.width = context->reader.getMaxLineX() / density;
 	}
 

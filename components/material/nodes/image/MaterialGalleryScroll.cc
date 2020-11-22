@@ -261,9 +261,9 @@ bool GalleryScroll::onSwipe(const Vec2 &delta) {
 
 	if (_hasPinch || _progress == 0.0f) {
 		if (!_hasPinch) {
-			if (delta.x > 0.0f && (isnanf(vec.x) || vec.x == 0.0f)) {
+			if (delta.x > 0.0f && (std::isnan(vec.x) || vec.x == 0.0f)) {
 				onMove(delta.x);
-			} else if (delta.x < 0.0f && (isnanf(vec.x) || vec.x == 1.0f)) {
+			} else if (delta.x < 0.0f && (std::isnan(vec.x) || vec.x == 1.0f)) {
 				onMove(delta.x);
 			}
 		}

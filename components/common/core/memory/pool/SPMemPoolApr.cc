@@ -180,40 +180,40 @@ void setPoolInfo(pool_t *p, uint32_t tag, const void *ptr) {
 
 namespace stappler::mempool::apr::allocator {
 
-static custom::Allocator *create() { return nullptr; }
-static custom::Allocator *create(void *) { return nullptr; }
-static void destroy(custom::Allocator *alloc) { }
-static void owner_set(custom::Allocator *alloc, custom::Pool *pool) { }
-static custom::Pool * owner_get(custom::Allocator *alloc) { return nullptr; }
-static void max_free_set(custom::Allocator *alloc, size_t size) { }
+static inline custom::Allocator *create() { return nullptr; }
+static inline custom::Allocator *create(void *) { return nullptr; }
+static inline void destroy(custom::Allocator *alloc) { }
+static inline void owner_set(custom::Allocator *alloc, custom::Pool *pool) { }
+static inline custom::Pool * owner_get(custom::Allocator *alloc) { return nullptr; }
+static inline void max_free_set(custom::Allocator *alloc, size_t size) { }
 
 }
 
 
 namespace stappler::mempool::apr::pool {
 
-static void initialize() { }
-static void terminate() { }
-static custom::Pool *create() { return nullptr; }
-static custom::Pool *create(custom::Allocator *) { return nullptr; }
-static custom::Pool *create(custom::Pool *) { return nullptr; }
-static custom::Pool *createTagged(const char *tag) { return nullptr; }
-static custom::Pool *createTagged(custom::Pool *p, const char *tag) { return nullptr; }
-static void destroy(custom::Pool *p) { }
-static void clear(custom::Pool *p) { }
-static void *alloc(custom::Pool *p, size_t &size) { return nullptr; }
-static void free(custom::Pool *p, void *ptr, size_t size) { }
-static void *palloc(custom::Pool *p, size_t size) { return nullptr; }
-static void *calloc(custom::Pool *p, size_t count, size_t eltsize) { return nullptr; }
-static void cleanup_register(custom::Pool *p, void *ptr, custom::Status(*cb)(void *)) { }
-static custom::Status userdata_set(const void *data, const char *key, custom::Status(*cb)(void *), custom::Pool *pool) { return custom::SUCCESS; }
-static custom::Status userdata_setn(const void *data, const char *key, custom::Status(*cb)(void *), custom::Pool *pool) { return custom::SUCCESS; }
-static custom::Status userdata_get(void **data, const char *key, custom::Pool *pool) { return custom::SUCCESS; }
-static size_t get_allocated_bytes(custom::Pool *p) { return 0; }
-static size_t get_return_bytes(custom::Pool *p) { return 0; }
-static void *pmemdup(custom::Pool *a, const void *m, size_t n) { return nullptr; }
-static char *pstrdup(custom::Pool *a, const char *s) { return nullptr; }
-static void setPoolInfo(custom::Pool *p, uint32_t tag, const void *ptr) { }
+static inline void initialize() { }
+static inline void terminate() { }
+static inline custom::Pool *create() { return nullptr; }
+static inline custom::Pool *create(custom::Allocator *) { return nullptr; }
+static inline custom::Pool *create(custom::Pool *) { return nullptr; }
+static inline custom::Pool *createTagged(const char *tag) { return nullptr; }
+static inline custom::Pool *createTagged(custom::Pool *p, const char *tag) { return nullptr; }
+static inline void destroy(custom::Pool *p) { }
+static inline void clear(custom::Pool *p) { }
+static inline void *alloc(custom::Pool *p, size_t &size) { return nullptr; }
+static inline void free(custom::Pool *p, void *ptr, size_t size) { }
+static inline void *palloc(custom::Pool *p, size_t size) { return nullptr; }
+static inline void *calloc(custom::Pool *p, size_t count, size_t eltsize) { return nullptr; }
+static inline void cleanup_register(custom::Pool *p, void *ptr, custom::Status(*cb)(void *)) { }
+static inline custom::Status userdata_set(const void *data, const char *key, custom::Status(*cb)(void *), custom::Pool *pool) { return custom::SUCCESS; }
+static inline custom::Status userdata_setn(const void *data, const char *key, custom::Status(*cb)(void *), custom::Pool *pool) { return custom::SUCCESS; }
+static inline custom::Status userdata_get(void **data, const char *key, custom::Pool *pool) { return custom::SUCCESS; }
+static inline size_t get_allocated_bytes(custom::Pool *p) { return 0; }
+static inline size_t get_return_bytes(custom::Pool *p) { return 0; }
+static inline void *pmemdup(custom::Pool *a, const void *m, size_t n) { return nullptr; }
+static inline char *pstrdup(custom::Pool *a, const char *s) { return nullptr; }
+static inline void setPoolInfo(custom::Pool *p, uint32_t tag, const void *ptr) { }
 
 }
 

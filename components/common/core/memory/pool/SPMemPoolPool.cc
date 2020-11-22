@@ -50,7 +50,7 @@ void *Pool::palloc(size_t in_size) {
 	void *mem;
 	size_t size, free_index;
 
-	size = ALIGN_DEFAULT(in_size);
+	size = SPALIGN_DEFAULT(in_size);
 	if (size < in_size) {
 		return nullptr;
 	}
@@ -81,7 +81,7 @@ void *Pool::palloc(size_t in_size) {
 
 	this->active = node;
 
-	free_index = (ALIGN(active->endp - active->first_avail + 1, BOUNDARY_SIZE) - BOUNDARY_SIZE) >> BOUNDARY_INDEX;
+	free_index = (SPALIGN(active->endp - active->first_avail + 1, BOUNDARY_SIZE) - BOUNDARY_SIZE) >> BOUNDARY_INDEX;
 
 	active->free_index = (uint32_t)free_index;
 	node = active->next;

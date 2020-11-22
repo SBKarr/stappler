@@ -49,7 +49,7 @@ NS_SP_EXT_BEGIN(platform)
 
 data::Value validateReceipt(const String &path);
 data::Value validateReceipt(const Bytes &data);
-data::Value validateReceipt(const DataReader<ByteOrder::Network> &data);
+data::Value validateReceipt(const BytesViewNetwork &data);
 
 NS_SP_EXT_END(platform)
 
@@ -467,7 +467,7 @@ void StoreKitIOS::validateReceipts() {
 	if (receipt) {
 		Set<String> updatedProducts;
 		Map<String, data::Value> latestReceipts;
-		auto data = platform::validateReceipt(DataReader<ByteOrder::Network>((uint8_t *)receipt.bytes, receipt.length));
+		auto data = platform::validateReceipt(BytesViewNetwork((uint8_t *)receipt.bytes, receipt.length));
 		SPSTOREKIT_LOG("appReceipt: %s", data::toString(data, true).c_str());
 		if (data.isArray("in_app")) {
 			auto &inApp = data.getArray("in_app");

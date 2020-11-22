@@ -60,7 +60,7 @@
 			</matcher>
 		</filter>
 		<filter>
-			<id>1566160350983</id>
+			<id>1606040953105</id>
 			<name>libs</name>
 			<type>10</type>
 			<matcher>
@@ -69,16 +69,7 @@
 			</matcher>
 		</filter>
 		<filter>
-			<id>1566160350997</id>
-			<name>libs</name>
-			<type>14</type>
-			<matcher>
-				<id>org.eclipse.ui.ide.multiFilter</id>
-				<arguments>1.0-name-matches-false-false-ios</arguments>
-			</matcher>
-		</filter>
-		<filter>
-			<id>1566160351000</id>
+			<id>1606040953108</id>
 			<name>libs</name>
 			<type>14</type>
 			<matcher>
@@ -87,12 +78,30 @@
 			</matcher>
 		</filter>
 		<filter>
-			<id>1566160351005</id>
+			<id>1606040953110</id>
 			<name>libs</name>
 			<type>10</type>
 			<matcher>
 				<id>org.eclipse.ui.ide.multiFilter</id>
 				<arguments>1.0-name-matches-false-false-src</arguments>
+			</matcher>
+		</filter>
+		<filter>
+			<id>1606041093660</id>
+			<name>libs/ios</name>
+			<type>10</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.multiFilter</id>
+				<arguments>1.0-name-matches-false-false-arm64</arguments>
+			</matcher>
+		</filter>
+		<filter>
+			<id>1606041093663</id>
+			<name>libs/ios</name>
+			<type>10</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.multiFilter</id>
+				<arguments>1.0-name-matches-false-false-x86_64</arguments>
 			</matcher>
 		</filter>
 	</filteredResources>

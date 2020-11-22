@@ -154,7 +154,7 @@ struct Asn1Decoder {
 		ContextSpecificBit = 0x80,
 	};
 
-	size_t decodeSize(DataReader<ByteOrder::Network> &r) {
+	size_t decodeSize(BytesViewNetwork &r) {
 		size_t size = 0;
 		auto sizeByte = r.readUnsigned();
 		if (sizeByte & 0x80) {
@@ -173,7 +173,7 @@ struct Asn1Decoder {
 		return size;
 	}
 
-	bool decodeValue(ReaderType &reader, DataReader<ByteOrder::Network> &r) {
+	bool decodeValue(ReaderType &reader, BytesViewNetwork &r) {
 		auto b = r.readUnsigned();
 		Type type = Type(b & 0x1F);
 		switch (type) {
@@ -219,13 +219,13 @@ struct Asn1Decoder {
 		return false;
 	}
 
-	bool decodeSequence(ReaderType &reader, DataReader<ByteOrder::Network> &r) {
+	bool decodeSequence(ReaderType &reader, BytesViewNetwork &r) {
 		auto size = decodeSize(r);
 		if (size == 0) {
 			return false;
 		}
 
-		DataReader<ByteOrder::Network> nextR(r.data(), size);
+		BytesViewNetwork nextR(r.data(), size);
 		r += size;
 
 
@@ -241,13 +241,13 @@ struct Asn1Decoder {
 		return true;
 	}
 
-	bool decodeSet(ReaderType &reader, DataReader<ByteOrder::Network> &r) {
+	bool decodeSet(ReaderType &reader, BytesViewNetwork &r) {
 		auto size = decodeSize(r);
 		if (size == 0) {
 			return false;
 		}
 
-		DataReader<ByteOrder::Network> nextR(r.data(), size);
+		BytesViewNetwork nextR(r.data(), size);
 		r += size;
 
 		if constexpr (Traits::onBeginSet) { reader.onBeginSet(*this); }
@@ -262,21 +262,21 @@ struct Asn1Decoder {
 		return true;
 	}
 
-	bool decodeUnknown(ReaderType &reader, DataReader<ByteOrder::Network> &r, uint8_t t) {
+	bool decodeUnknown(ReaderType &reader, BytesViewNetwork &r, uint8_t t) {
 		auto size = decodeSize(r);
 		r += size;
 
-		if constexpr (Traits::onCustom) { reader.onCustom(*this, t, DataReader<ByteOrder::Network>(r.data(), size)); }
+		if constexpr (Traits::onCustom) { reader.onCustom(*this, t, BytesViewNetwork(r.data(), size)); }
 		return true;
 	}
 
-	bool decodeAny(ReaderType &reader, DataReader<ByteOrder::Network> &r) {
+	bool decodeAny(ReaderType &reader, BytesViewNetwork &r) {
 		auto size = decodeSize(r);
 		if (size == 0) {
 			return false;
 		}
 
-		DataReader<ByteOrder::Network> nextR(r.data(), size);
+		BytesViewNetwork nextR(r.data(), size);
 		if (decodeValue(reader, nextR)) {
 			r += size;
 			return true;
@@ -284,7 +284,7 @@ struct Asn1Decoder {
 		return false;
 	}
 
-	bool decodeOid(ReaderType &reader, DataReader<ByteOrder::Network> &r) {
+	bool decodeOid(ReaderType &reader, BytesViewNetwork &r) {
 		auto size = decodeSize(r);
 		if (size == 0) {
 			return false;
@@ -292,7 +292,7 @@ struct Asn1Decoder {
 
 		StringStream str;
 
-		DataReader<ByteOrder::Network> nextR(r.data(), size);
+		BytesViewNetwork nextR(r.data(), size);
 
 		auto first = nextR.readUnsigned();
 
@@ -318,7 +318,7 @@ struct Asn1Decoder {
 		return true;
 	}
 
-	bool decodeInteger(ReaderType &reader, DataReader<ByteOrder::Network> &r) {
+	bool decodeInteger(ReaderType &reader, BytesViewNetwork &r) {
 		auto size = decodeSize(r);
 		if (size == 0) {
 			return false;
@@ -364,7 +364,7 @@ struct Asn1Decoder {
 		return true;
 	}
 
-	bool decodeBoolean(ReaderType &reader, DataReader<ByteOrder::Network> &r) {
+	bool decodeBoolean(ReaderType &reader, BytesViewNetwork &r) {
 		auto size = decodeSize(r);
 		if (size == 1) {
 			auto value = r.readUnsigned();
@@ -375,10 +375,10 @@ struct Asn1Decoder {
 		return false;
 	}
 
-	bool decodeOctetString(ReaderType &reader, DataReader<ByteOrder::Network> &r) {
+	bool decodeOctetString(ReaderType &reader, BytesViewNetwork &r) {
 		auto size = decodeSize(r);
 		if (size > 0) {
-			if constexpr (Traits::onBytes) { reader.onBytes(*this, DataReader<ByteOrder::Network>(r.data(), size)); }
+			if constexpr (Traits::onBytes) { reader.onBytes(*this, BytesViewNetwork(r.data(), size)); }
 			r += size;
 			return true;
 		}
@@ -386,14 +386,14 @@ struct Asn1Decoder {
 		return true;
 	}
 
-	bool decodeString(ReaderType &reader, DataReader<ByteOrder::Network> &r, Type t) {
+	bool decodeString(ReaderType &reader, BytesViewNetwork &r, Type t) {
 		auto size = decodeSize(r);
-		if constexpr (Traits::onString) { reader.onString(*this, DataReader<ByteOrder::Network>(r.data(), size), t); }
+		if constexpr (Traits::onString) { reader.onString(*this, BytesViewNetwork(r.data(), size), t); }
 		r += size;
 		return true;
 	}
 
-	bool decodeBitString(ReaderType &reader, DataReader<ByteOrder::Network> &r, bool constructed) {
+	bool decodeBitString(ReaderType &reader, BytesViewNetwork &r, bool constructed) {
 		auto size = decodeSize(r);
 
 		if (!constructed) {
@@ -407,11 +407,11 @@ struct Asn1Decoder {
 					uint8_t mask = 0xFF << unused;
 					b.back() = b.back() & mask;
 
-					if constexpr (Traits::onBytes) { reader.onBytes(*this, DataReader<ByteOrder::Network>(b.data(), b.size())); }
+					if constexpr (Traits::onBytes) { reader.onBytes(*this, BytesViewNetwork(b.data(), b.size())); }
 					r += size - 1;
 					return true;
 				} else if (unused == 0) {
-					if constexpr (Traits::onBytes) { reader.onBytes(*this, DataReader<ByteOrder::Network>(r.data(), size - 1)); }
+					if constexpr (Traits::onBytes) { reader.onBytes(*this, BytesViewNetwork(r.data(), size - 1)); }
 					r += size - 1;
 					return true;
 				}
@@ -424,11 +424,11 @@ struct Asn1Decoder {
 	}
 
 	bool decode(ReaderType &reader, const Bytes &source) {
-		return decode(reader, DataReader<ByteOrder::Network>(source));
+		return decode(reader, BytesViewNetwork(source));
 	}
 
-	bool decode(ReaderType &reader, const DataReader<ByteOrder::Network> &source) {
-		DataReader<ByteOrder::Network> r(source);
+	bool decode(ReaderType &reader, const BytesViewNetwork &source) {
+		BytesViewNetwork r(source);
 
 		while (!r.empty()) {
 			if (!decodeValue(reader, r)) {
@@ -443,7 +443,7 @@ struct Asn1Decoder {
 struct Asn1ItemReader {
 	using Decoder = Asn1Decoder<Asn1ItemReader>;
 
-	Asn1ItemReader(const DataReader<ByteOrder::Network> &source, data::Value &val) {
+	Asn1ItemReader(const BytesViewNetwork &source, data::Value &val) {
 		result = &val;
 		Decoder dec;
 		dec.decode(*this, source);
@@ -465,11 +465,11 @@ struct Asn1ItemReader {
 		result->setBool(val);
 	}
 
-	void onBytes(Decoder &, const DataReader<ByteOrder::Network> &r) {
+	void onBytes(Decoder &, const BytesViewNetwork &r) {
 		result->setBytes(Bytes(r.data(), r.data() + r.size()));
 	}
 
-	void onString(Decoder &, const DataReader<ByteOrder::Network> &r, Decoder::Type t) {
+	void onString(Decoder &, const BytesViewNetwork &r, Decoder::Type t) {
 		if (r.size() > 0) {
 			result->setString(String((char*)r.data(), r.size()));
 		}
@@ -507,7 +507,7 @@ struct Asn1PayloadReader {
 		Item,
 	};
 
-	Asn1PayloadReader(const DataReader<ByteOrder::Network> &source) {
+	Asn1PayloadReader(const BytesViewNetwork &source) {
 		Decoder dec;
 		dec.decode(*this, source);
 	}
@@ -527,7 +527,7 @@ struct Asn1PayloadReader {
 		}
 	}
 
-	void onBytes(Decoder &, const DataReader<ByteOrder::Network> &r) {
+	void onBytes(Decoder &, const BytesViewNetwork &r) {
 		if (state == State::Item && currentItem != 0) {
 			switch (currentItem) {
 			case BundleIdentifier:
@@ -614,13 +614,13 @@ struct Asn1PayloadReader {
 		return s;
 	}
 
-	data::Value readItem(const DataReader<ByteOrder::Network> &r) {
+	data::Value readItem(const BytesViewNetwork &r) {
 		data::Value ret;
 		Asn1ItemReader reader(r, ret);
 		return ret;
 	}
 
-	data::Value readSubItems(const DataReader<ByteOrder::Network> &r) {
+	data::Value readSubItems(const BytesViewNetwork &r) {
 		Asn1PayloadReader reader(r);
 		return reader.result;
 	}
@@ -644,7 +644,7 @@ struct Asn1Reader {
 		dec.decode(*this, source);
 	}
 
-	Asn1Reader(const DataReader<ByteOrder::Network> &source) {
+	Asn1Reader(const BytesViewNetwork &source) {
 		Decoder dec;
 		dec.decode(*this, source);
 	}
@@ -738,7 +738,7 @@ struct Asn1Reader {
 		}
 	}
 
-	void onBytes(Decoder &, const DataReader<ByteOrder::Network> &r) {
+	void onBytes(Decoder &, const BytesViewNetwork &r) {
 		if (verbose) {
 			doIndent();
 			std::cout << "Bytes: (" << r.size() << ") " << base16::encode(CoderSource(r)) << '\n';
@@ -751,7 +751,7 @@ struct Asn1Reader {
 		}
 	}
 
-	void onString(Decoder &, const DataReader<ByteOrder::Network> &r, Decoder::Type t) {
+	void onString(Decoder &, const BytesViewNetwork &r, Decoder::Type t) {
 		if (verbose) {
 			doIndent();
 			std::cout << "String: " << String((char*)r.data(), r.size()) << '\n';
@@ -772,7 +772,7 @@ struct Asn1Reader {
 	data::Value payload;
 };
 
-data::Value validateReceipt(const DataReader<ByteOrder::Network> &data) {
+data::Value validateReceipt(const BytesViewNetwork &data) {
 	if (data.size() > 0) {
 		Asn1Reader reader(data);
 		return reader.payload;
@@ -781,7 +781,7 @@ data::Value validateReceipt(const DataReader<ByteOrder::Network> &data) {
 }
 
 data::Value validateReceipt(const Bytes &data) {
-	return validateReceipt(DataReader<ByteOrder::Network>(data));
+	return validateReceipt(BytesViewNetwork(data));
 }
 
 data::Value validateReceipt(const String &path) {

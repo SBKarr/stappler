@@ -472,12 +472,12 @@ string::Sha512::Buf AesToken::getFingerprint(const Fingerprint &fp, Time t, Byte
 	}
 }
 
-static constexpr size_t ALIGN(size_t size) { return (((size) + ((16) - 1)) & ~((16) - 1)); }
+static constexpr size_t SPALIGN(size_t size) { return (((size) + ((16) - 1)) & ~((16) - 1)); }
 
 Bytes AesToken::encryptAes(const string::Sha256::Buf &key, const data::Value &val) const {
 	auto d = data::write(val, data::EncodeFormat::CborCompressed);
 	auto dataSize = d.size();
-	auto blockSize = ALIGN(dataSize);
+	auto blockSize = SPALIGN(dataSize);
 
 	Bytes input; input.resize(blockSize);
 	Bytes output; output.resize(blockSize + 16);
@@ -495,7 +495,7 @@ Bytes AesToken::encryptAes(const string::Sha256::Buf &key, const data::Value &va
 
 data::Value AesToken::decryptAes(const string::Sha256::Buf &key, BytesView val) {
 	auto dataSize = val.readUnsigned64();
-	auto blockSize = ALIGN(dataSize);
+	auto blockSize = SPALIGN(dataSize);
 
 	val.offset(8);
 

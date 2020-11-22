@@ -235,8 +235,8 @@ Pool *create(Pool *);
 void destroy(Pool *);
 void clear(Pool *);
 
-constexpr size_t SIZEOF_MEMNODE ( ALIGN_DEFAULT(sizeof(MemNode)) );
-constexpr size_t SIZEOF_POOL ( ALIGN_DEFAULT(sizeof(Pool)) );
+constexpr size_t SIZEOF_MEMNODE ( SPALIGN_DEFAULT(sizeof(MemNode)) );
+constexpr size_t SIZEOF_POOL ( SPALIGN_DEFAULT(sizeof(Pool)) );
 
 }
 

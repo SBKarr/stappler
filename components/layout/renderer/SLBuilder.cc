@@ -476,7 +476,7 @@ Pair<float, float> Builder::getFloatBounds(const Layout *l, float y, float heigh
 	}
 
 	float minX = 0, maxWidth = _media.surfaceSize.width;
-	if (l->pos.size.width == 0 || isnanf(l->pos.size.width)) {
+	if (l->pos.size.width == 0 || std::isnan(l->pos.size.width)) {
 		auto f = _floatStack.back();
 		minX = f->root->pos.position.x;
 		maxWidth = f->root->pos.size.width;
@@ -854,7 +854,7 @@ bool Builder::processBlockNode(Layout &l, Layout::NodeInfo && node, Vec2 &pos, f
 		collapsableMarginTop = newL.pos.margin.bottom;
 
 		l.layouts.emplace_back(&newL);
-		if (!isnanf(l.pos.maxHeight) && height > l.pos.maxHeight) {
+		if (!std::isnan(l.pos.maxHeight) && height > l.pos.maxHeight) {
 			height = l.pos.maxHeight;
 			return false;
 		}
@@ -929,7 +929,7 @@ bool Builder::processTableNode(Layout &l, Layout::NodeInfo &&node, Vec2 &pos, fl
 		collapsableMarginTop = table.layout->pos.margin.bottom;
 
 		l.layouts.emplace_back(std::move(table.layout));
-		if (!isnanf(l.pos.maxHeight) && height > l.pos.maxHeight) {
+		if (!std::isnan(l.pos.maxHeight) && height > l.pos.maxHeight) {
 			height = l.pos.maxHeight;
 			return false;
 		}

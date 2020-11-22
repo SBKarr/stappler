@@ -714,12 +714,12 @@ static void Table_procesRowCell(Table &table, Table::Row &row, Table::Cell &cell
 
 	newL.pos.margin = Margin(0.0f);
 
-	if (!isnanf(height)) {
-		if (!isnanf(minHeight) && height < minHeight) {
+	if (!std::isnan(height)) {
+		if (!std::isnan(minHeight) && height < minHeight) {
 			height = minHeight;
 		}
 
-		if (!isnanf(maxHeight) && height > maxHeight) {
+		if (!std::isnan(maxHeight) && height > maxHeight) {
 			height = maxHeight;
 		}
 
@@ -746,7 +746,7 @@ static void Table_procesRowCell(Table &table, Table::Row &row, Table::Cell &cell
 
 	newL.finalizeInlineContext();
 
-	if (!isnanf(newL.pos.maxHeight) && newL.pos.size.height > newL.pos.maxHeight) {
+	if (!std::isnan(newL.pos.maxHeight) && newL.pos.size.height > newL.pos.maxHeight) {
 		newL.pos.size.height = newL.pos.maxHeight;
 	}
 }
