@@ -49,7 +49,7 @@ pool_t *AllocPool::getCurrentPool() {
 }
 
 bool AllocPool::isCustomPool(pool_t *p) {
-	if (p && *((uintptr_t *)p) == stappler::mempool::custom::POOL_MAGIC) {
+	if (p && *((uint64_t *)p) == stappler::mempool::custom::POOL_MAGIC) {
 		return true;
 	} else {
 		return false;

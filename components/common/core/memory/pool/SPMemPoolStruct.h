@@ -118,7 +118,7 @@ struct Allocator {
 
 struct Pool {
 #if SPAPR
-	uintptr_t magic = POOL_MAGIC; // used to detect stappler pools
+	uint64_t magic = POOL_MAGIC; // used to detect stappler pools
 #endif
 	const char *tag = nullptr;
 	Pool *parent = nullptr;

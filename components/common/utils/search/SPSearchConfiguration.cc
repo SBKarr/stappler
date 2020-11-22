@@ -338,8 +338,8 @@ bool Configuration::stemWord(const StringView &word, ParserToken tok, const Stem
 StemmerEnv *Configuration_makeLocalConfig(StemmerEnv *orig) {
 	auto p = memory::pool::acquire();
 
-	char buf[20] = { 0 };
-	sprintf(buf, "%#018" PRIx64, uintptr_t(orig));
+	char buf[24] = { 0 };
+	sprintf(buf, "%#018" PRIx64, (uintptr_t)orig);
 
 	StemmerEnv *ret = nullptr;
 	memory::pool::userdata_get((void **)&ret, buf, p);

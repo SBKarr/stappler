@@ -39,7 +39,6 @@ THE SOFTWARE.
 
 // base
 #include "base/CCRef.h"
-#include "base/CCRefPtr.h"
 #include "base/CCVector.h"
 #include "base/CCMap.h"
 #include "base/CCAutoreleasePool.h"
