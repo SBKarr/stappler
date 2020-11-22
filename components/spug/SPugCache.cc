@@ -24,7 +24,9 @@
 #include "SPugContext.h"
 #include "SPugTemplate.h"
 
+#if LINUX
 #include <sys/inotify.h>
+#endif
 
 NS_SP_EXT_BEGIN(pug)
 
@@ -57,10 +59,12 @@ FileRef::FileRef(memory::pool_t *pool, const FilePath &path, Template::Options o
 
 	if (_content.size() > 0) {
 		if (wId < 0 && watch >= 0) {
+#if LINUX
 			_watch = inotify_add_watch(watch, SP_TERMINATED_DATA(fpath), IN_CLOSE_WRITE);
 			if (_watch == -1 && errno == ENOSPC) {
 				cb("inotify limit is reached: fall back to timed watcher");
 			}
+#endif
 		} else {
 			_watch = wId;
 		}
@@ -119,7 +123,9 @@ const Template::Options &FileRef::getOpts() const {
 
 Cache::Cache(Template::Options opts, const Function<void(const StringView &)> &err)
 : _pool(memory::pool::acquire()), _opts(opts), _errorCallback(err) {
+#if LINUX
 	_inotify = inotify_init1(IN_NONBLOCK);
+#endif
 	if (_inotify != -1) {
 		_inotifyAvailable = true;
 	}
@@ -128,10 +134,12 @@ Cache::Cache(Template::Options opts, const Function<void(const StringView &)> &e
 Cache::~Cache() {
 	if (_inotify > 0) {
 		for (auto &it : _templates) {
+#if LINUX
 			auto fd = it.second->getWatch();
 			if (fd >= 0) {
 				inotify_rm_watch(_inotify, fd);
 			}
+#endif
 		}
 
 		close(_inotify);

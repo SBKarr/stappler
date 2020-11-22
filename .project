@@ -60,7 +60,7 @@
 			</matcher>
 		</filter>
 		<filter>
-			<id>1606040953105</id>
+			<id>1606047221120</id>
 			<name>libs</name>
 			<type>10</type>
 			<matcher>
@@ -69,16 +69,7 @@
 			</matcher>
 		</filter>
 		<filter>
-			<id>1606040953108</id>
-			<name>libs</name>
-			<type>14</type>
-			<matcher>
-				<id>org.eclipse.ui.ide.multiFilter</id>
-				<arguments>1.0-name-matches-false-false-mac</arguments>
-			</matcher>
-		</filter>
-		<filter>
-			<id>1606040953110</id>
+			<id>1606047221124</id>
 			<name>libs</name>
 			<type>10</type>
 			<matcher>
@@ -98,6 +89,15 @@
 		<filter>
 			<id>1606041093663</id>
 			<name>libs/ios</name>
+			<type>10</type>
+			<matcher>
+				<id>org.eclipse.ui.ide.multiFilter</id>
+				<arguments>1.0-name-matches-false-false-x86_64</arguments>
+			</matcher>
+		</filter>
+		<filter>
+			<id>1606047244357</id>
+			<name>libs/mac</name>
 			<type>10</type>
 			<matcher>
 				<id>org.eclipse.ui.ide.multiFilter</id>
