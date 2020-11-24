@@ -295,7 +295,19 @@ Configuration::String Configuration::encodeSearchVector(const SearchVector &vec,
 			ret << " ";
 		}
 
-		ret << "'" << it.first << "':";
+		StringView r(it.first);
+		ret << "'";
+		while (!r.empty()) {
+			auto v = r.readUntil<StringView::Chars<'\''>>();
+			if (!v.empty()) {
+				ret << v;
+			}
+			if (r.is('\'')) {
+				ret << "''";
+				++ r;
+			}
+		}
+		ret << "':";
 		for (auto &v : it.second) {
 			if (ret.weak().back() != ':') { ret << ","; }
 			ret << v.first;
