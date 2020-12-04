@@ -172,6 +172,15 @@ static apr_status_t compress_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
 			return ap_pass_brigade(f->next, bb);
 		}
 
+		if (auto e = apr_table_get(r->headers_out, "Content-Encoding")) {
+			auto enc = StringView(e);
+			if (enc == "gzip" || enc == "br") {
+				// Already encoded, drop
+				ap_remove_output_filter(f);
+				return ap_pass_brigade(f->next, bb);
+			}
+		}
+
 		/* Let's see what our current Content-Encoding is. */
 		auto encoding = rctx.getContentEncoding();
 		if (!encoding.empty()) {

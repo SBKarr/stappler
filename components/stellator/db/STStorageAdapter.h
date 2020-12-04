@@ -38,6 +38,8 @@ public:
 
 	operator bool () const { return _interface != nullptr; }
 
+	bool operator == (const Adapter &a) const { return _interface == a._interface; }
+
 	Interface *interface() const;
 
 	mem::String getTransactionKey() const;

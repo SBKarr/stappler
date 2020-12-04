@@ -77,14 +77,15 @@ public:
 		mem::pool_t * pool;
 		mem::Map<mem::String, mem::Value> data;
 		int status = 0;
-		Data *next = nullptr;
 
-		mutable uint32_t refCount = 0;
 		mutable mem::Map<int64_t, mem::Value> objects;
 		mutable AccessRoleId role = AccessRoleId::Nobody;
-		mutable mem::Map<mem::pool_t *, mem::Pair<uint32_t, Data *>> pools;
 
 		Data(const Adapter &, stappler::memory::pool_t * = nullptr);
+	};
+
+	struct Stack : AllocPool {
+		mem::Vector<Data *> stack;
 	};
 
 	static Op getTransactionOp(Action);

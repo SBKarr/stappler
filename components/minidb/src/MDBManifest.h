@@ -24,7 +24,6 @@ THE SOFTWARE.
 #define COMPONENTS_MINIDB_SRC_MDBMANIFEST_H_
 
 #include "MDB.h"
-#include <shared_mutex>
 
 NS_MDB_BEGIN
 
@@ -47,8 +46,11 @@ public:
 	};
 
 	struct Index {
-		Type type = Type::None;
+		IndexType type = IndexType::Bytes;
 		Entity *index = nullptr;
+
+		PageType getTablePageType() const;
+		PageType getContentPageType() const;
 
 		bool operator == (const Index &o) const { return type == o.type && index == o.index; }
 		bool operator != (const Index &o) const { return type != o.type || index != o.index; }
@@ -67,7 +69,7 @@ public:
 		bool operator != (const Scheme &) const;
 	};
 
-	static Manifest *create(mem::pool_t *, const Transaction &);
+	static Manifest *create(mem::pool_t *, mem::BytesView);
 	static void destroy(Manifest *);
 
 	bool init(const Transaction &, const mem::Map<mem::StringView, const db::Scheme *> &);
@@ -121,7 +123,7 @@ protected:
 	void pushManifestUpdate(UpdateFlags);
 	void performManifestUpdate(const Transaction &t);
 
-	Manifest(mem::pool_t *, const Transaction &, bool cr);
+	Manifest(mem::pool_t *, mem::BytesView);
 
 	void free();
 
@@ -129,6 +131,7 @@ protected:
 	mem::pool_t *_pool = nullptr;
 	uint32_t _pageSize = DefaultPageSize;
 	uint32_t _pageCount = 0; // can be updated only from write transaction
+	uint32_t _multiplier = 1;
 	uint64_t _mtime = 0;
 	std::atomic<uint32_t> _freeList = 0;
 	std::atomic<uint32_t> _updateFlags = 0;

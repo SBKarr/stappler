@@ -29,9 +29,14 @@ NS_MDB_BEGIN
 
 class Storage : public mem::AllocBase {
 public:
+	struct Params {
+		uint32_t pageSize = DefaultPageSize;
+	};
+
 	using PageCallback = mem::Callback<bool(void *mem, uint32_t size)>;
 
-	static Storage *open(mem::pool_t *, mem::StringView path);
+	static Storage *open(mem::pool_t *, mem::StringView path, Params = Params());
+	static Storage *open(mem::pool_t *, mem::BytesView data, Params = Params());
 
 	static void destroy(Storage *);
 
@@ -45,6 +50,10 @@ public:
 	bool isValid() const;
 	operator bool() const;
 
+	mem::BytesView openPage(uint32_t idx, int fd) const;
+	void closePage(mem::BytesView) const;
+	bool writePage(uint32_t idx, int fd, mem::BytesView) const;
+
 protected:
 	friend class Manifest;
 	friend class Transaction;
@@ -55,14 +64,16 @@ protected:
 
 	void free();
 
-	Storage(mem::pool_t *, mem::StringView path);
+	Storage(mem::pool_t *, mem::StringView path, Params params);
+	Storage(mem::pool_t *, mem::BytesView data, Params params);
 
 	mem::pool_t *_pool = nullptr;
 	mem::StringView _sourceName;
-	mem::BytesView _sourceMemory;
+	mutable mem::Vector<mem::BytesView> _sourceMemory;
+	Params _params = Params();
 
 	mutable mem::Mutex _mutex;
-	mutable Manifest * _manifest;
+	mutable Manifest * _manifest = nullptr;
 };
 
 NS_MDB_END

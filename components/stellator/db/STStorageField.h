@@ -84,6 +84,7 @@ enum class Flags : uint32_t {
 	ForceExclude = 1 << 12, /** field will be excluded, if not requested directly */
 	Composed = 1 << 13, /** propagate modification events from objects in that field (for object and set fields) */
 	Compressed = 1 << 14, /** Try to compress data field with lz-hc (incompatible with pg-cbor) */
+	Enum = 1 << 15, /** Value is enumeration with fixed (or low-distributed) number of values (enables more effective index in MDB) */
 
 	TsNormalize_DocLengthLog = 1 << 24, /** Text search normalization: divides the rank by 1 + the logarithm of the document length */
 	TsNormalize_DocLength = 1 << 25, /** Text search normalization: divides the rank by the document length */

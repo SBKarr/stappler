@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define COMPONENTS_MINIDB_SRC_MDBTREE_H_
 
 #include "MDBManifest.h"
+#include "MDBPageCache.h"
 
 NS_MDB_BEGIN
 
@@ -76,20 +77,14 @@ inline bool operator>(const TreePageIterator &l, const TreePageIterator &r) { re
 inline bool operator>=(const TreePageIterator &l, const TreePageIterator &r) { return l.index >= r.index; }
 
 struct TreePage {
-	uint32_t number;
-	uint32_t size;
-	void *ptr;
-	OpenMode mode;
-	PageType type = PageType::None;
-	size_t level = 0;
+	const PageCache::Node *node = nullptr;
+	uint32_t level = 0;
 
-	operator bool () const { return ptr != nullptr; }
+	TreePage(nullptr_t) : node(nullptr) { }
+	TreePage(const PageCache::Node *n) : node(n) { }
 
-	TreePage(uint32_t page, nullptr_t)
-	: number(page), size(0), ptr(nullptr), mode(OpenMode::Read) { }
-
-	TreePage(uint32_t page, uint32_t size, void *mem, OpenMode mode)
-	: number(page), size(size), ptr(mem), mode(mode) { }
+	operator bool () const { return node != nullptr; }
+	mem::BytesView bytes() const { return node->bytes; }
 
 	// returns freeBytes + offset for last cell
 	// page can be opened partially, so, if type is None (as for partial pages) - returns (0, 0)
@@ -106,8 +101,8 @@ struct TreePage {
 
 	uint32_t findTargetPage(uint64_t oid) const;
 
-	TreeTableInteriorCell getTableInteriorCell(uint16_t off) const;
-	TreeTableLeafCell getTableLeafCell(uint16_t off) const;
+	// TreeTableInteriorCell getTableInteriorCell(uint16_t off) const;
+	// TreeTableLeafCell getTableLeafCell(uint16_t off) const;
 
 	uint32_t getCellSize(TreePageIterator) const;
 };

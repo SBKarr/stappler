@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "SPCommon.h"
 #include "STStorageInterface.h"
 #include "STStorageField.h"
+#include <shared_mutex>
 
 #define NS_MDB_BEGIN		namespace db::minidb {
 #define NS_MDB_END			}
@@ -41,6 +42,25 @@ class Page;
 class Storage;
 class Transaction;
 class Manifest;
+class PageCache;
+
+enum IndexType {
+	Bytes,
+	Numeric,
+	Reverse,
+};
+
+enum class PageType : uint8_t {
+	None,
+	OidTable = 0b0001'0001,
+	OidContent = 0b0001'0010,
+	NumIndexTable = 0b0010'0001,
+	NumIndexContent = 0b0010'0010,
+	RevIndexTable =		0b0100'0001,
+	RevIndexContent =	0b0100'0010,
+	BytIndexTable =		0b1000'0001,
+	BytIndexContent =	0b1000'0010,
+};
 
 struct StorageHeader {
 	uint8_t title[6]; // 0-6
@@ -50,10 +70,12 @@ struct StorageHeader {
 	uint32_t freeList; // 16-20
 	uint32_t entities; // 20-24
 	uint64_t oid; // 24-32
-
 	uint64_t mtime; // 32-40
-	uint32_t reserved2[2]; // 48
-	uint32_t reserved3[4]; // 64
+
+	uint32_t reserved[4]; // 40-56
+
+	uint32_t next; // 56-60
+	uint32_t remains; // 60-64
 };
 
 struct TreePageHeader {
@@ -65,17 +87,7 @@ struct TreePageHeader {
 	uint32_t next;
 };
 
-struct TreePageInteriorHeader {
-	uint8_t type;
-	uint8_t reserved;
-	uint16_t ncells;
-	uint32_t root;
-	uint32_t prev;
-	uint32_t next;
-	uint32_t right;
-};
-
-struct TreeTableLeafCell {
+/*struct TreeTableLeafCell {
 	uint64_t value;
 	uint8_p payload;
 	uint32_t overflow;
@@ -86,7 +98,9 @@ struct TreeTableInteriorCell {
 	uint64_t value;
 };
 
-struct PayloadPageHeader {
+*/
+
+struct ContentPageHeader {
 	uint32_t next;
 	uint32_t remains;
 };
@@ -96,7 +110,7 @@ struct EntityCell {
 	uint64_t counter;
 };
 
-using ManifestPageHeader = PayloadPageHeader;
+// using ManifestPageHeader = PayloadPageHeader;
 
 enum class UpdateFlags : uint32_t {
 	None = 0,
@@ -104,14 +118,6 @@ enum class UpdateFlags : uint32_t {
 	FreeList = 1 << 1,
 	PageCount = 1 << 2,
 	EntityCount = 1 << 3
-};
-
-enum class PageType : uint8_t {
-	None,
-	InteriorIndex = 2,
-	InteriorTable = 5,
-	LeafIndex = 10,
-	LeafTable = 13,
 };
 
 enum class OpenMode {
@@ -130,10 +136,7 @@ static constexpr bool has_single_bit(T x) noexcept {
 }
 
 uint32_t getSystemPageSize();
-
-bool validateHeader(const StorageHeader &target, size_t memsize);
-bool readHeader(mem::StringView path, StorageHeader &target);
-bool readHeader(mem::BytesView data, StorageHeader &target);
+IndexType getDefaultIndexType(db::Type, db::Flags);
 
 static constexpr uint64_t VarUintMax = 0x1FFFFFFFFFFFFFFFULL; // 2305843009213693951
 
@@ -151,6 +154,14 @@ size_t writeOverflowPayload(const Transaction &, PageType, uint32_t page, const 
 
 mem::Value readOverflowPayload(const Transaction &t, uint32_t ptr, const mem::Vector<mem::StringView> &filter);
 mem::Value readPayload(const uint8_p ptr, const mem::Vector<mem::StringView> &filter);
+
+namespace pages {
+
+mem::BytesView alloc(size_t pageSize);
+mem::BytesView alloc(mem::BytesView);
+void free(mem::BytesView);
+
+}
 
 NS_MDB_END
 

@@ -24,18 +24,79 @@ THE SOFTWARE.
 #include "MDBManifest.h"
 #include "MDBTransaction.h"
 
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/file.h>
+
 NS_MDB_BEGIN
 
-uint32_t Storage::getPageSize() const { return _manifest->getPageSize(); }
+uint32_t Storage::getPageSize() const { return _manifest ? _manifest->getPageSize() : _params.pageSize; }
 uint32_t Storage::getPageCount() const { return _manifest->getPageCount(); }
 
 bool Storage::isValid() const { return _manifest != nullptr; }
 Storage::operator bool() const { return _manifest != nullptr; }
 
-Storage *Storage::open(mem::pool_t *p, mem::StringView path) {
+mem::BytesView Storage::openPage(uint32_t idx, int fd) const {
+	if (!_sourceMemory.empty()) {
+		if (idx < _sourceMemory.size()) {
+			return _sourceMemory.at(idx);
+		}
+	} else {
+		auto s = _manifest->getPageSize();
+		auto mem = ::mmap(nullptr, s, PROT_READ, MAP_PRIVATE | MAP_NONBLOCK, fd, idx * s);
+		if (mem != MAP_FAILED) {
+			return mem::BytesView(uint8_p(mem), s);
+		}
+		Storage_mmapError(errno);
+	}
+	return mem::BytesView();
+}
+
+void Storage::closePage(mem::BytesView mem) const {
+	if (_sourceMemory.empty()) {
+		::munmap((void *)mem.data(), mem.size());
+	}
+}
+
+bool Storage::writePage(uint32_t idx, int fd, mem::BytesView bytes) const {
+	if (_sourceMemory.empty()) {
+		auto s = _manifest->getPageSize();
+		if (idx >= _manifest->getPageCount()) {
+			if (::lseek(fd, DefaultPageSize - 1, SEEK_SET) == -1 || ::write(fd, "", 1) == -1) {
+				return false;
+			}
+		}
+		auto mem = ::mmap(nullptr, bytes.size(), PROT_WRITE, MAP_PRIVATE | MAP_NONBLOCK, fd, idx * s);
+		if (mem != MAP_FAILED) {
+			memcpy(mem, bytes.data(), bytes.size());
+			::msync(mem, bytes.size(), MS_ASYNC);
+			::munmap(mem, bytes.size());
+		}
+	} else {
+		auto s = _manifest->getPageSize();
+		if (idx >= _sourceMemory.size()) {
+			auto current = _sourceMemory.size();
+			for (size_t i = current; i <= idx; ++ i) {
+				_sourceMemory.emplace_back(pages::alloc(s));
+			}
+		}
+
+		memcpy((void *)_sourceMemory[idx].data(), bytes.data(), bytes.size());
+	}
+	return true;
+}
+
+Storage *Storage::open(mem::pool_t *p, mem::StringView path, Params params) {
 	auto pool = mem::pool::create(p);
 	mem::pool::context ctx(pool);
-	return new (pool) Storage(pool, path);
+	return new (pool) Storage(pool, path, params);
+}
+
+Storage *Storage::open(mem::pool_t *p, mem::BytesView data, Params params) {
+	auto pool = mem::pool::create(p);
+	mem::pool::context ctx(pool);
+	return new (pool) Storage(pool, data, params);
 }
 
 void Storage::destroy(Storage *s) {
@@ -79,16 +140,71 @@ void Storage::releaseManifest(Manifest *mem) const {
 	}
 }
 
-void Storage::free() { }
+void Storage::free() {
+	for (auto &it : _sourceMemory) {
+		pages::free(it);
+	}
+	_sourceMemory.clear();
+}
 
-Storage::Storage(mem::pool_t *p, mem::StringView path)
-: _pool(p), _sourceName(path) {
+Storage::Storage(mem::pool_t *p, mem::StringView path, Params params)
+: _pool(p), _sourceName(path), _params(params) {
 	mem::pool::context ctx(_pool);
 	_sourceName = mem::StringView(stappler::filesystem::writablePath(path)).pdup();
 
 	Transaction t;
 	if (t.open(*this, OpenMode::Create)) {
-		_manifest = Manifest::create(_pool, t);
+		auto fd = t.getFd();
+		if (t.getFileSize() == 0) {
+			_manifest = Manifest::create(p, mem::BytesView());
+			if (_manifest) {
+				_manifest->encodeManifest(t);
+			}
+		} else {
+			::lseek(fd, 0, SEEK_SET);
+			uint8_t buf[sizeof(StorageHeader)] = { 0 };
+			if (::read(fd, buf, sizeof(StorageHeader)) == sizeof(StorageHeader)) {
+				_manifest = Manifest::create(p, mem::BytesView(buf, sizeof(StorageHeader)));
+				if (_manifest) {
+					_manifest->readManifest(t);
+				}
+			}
+		}
+		t.close();
+	}
+}
+
+Storage::Storage(mem::pool_t *p, mem::BytesView data, Params params)
+: _pool(p), _params(params) {
+	mem::pool::context ctx(_pool);
+
+	if (data.empty()) {
+		_manifest = Manifest::create(p, data);
+		if (_manifest) {
+			auto page = pages::alloc(_manifest->getPageSize());
+			_sourceMemory.emplace_back(page);
+
+			Transaction t;
+			if (t.open(*this, OpenMode::Create)) {
+				_manifest->encodeManifest(t);
+			}
+		}
+	} else {
+		_manifest = Manifest::create(p, data);
+		if (_manifest) {
+			if (_manifest->getPageSize() * _manifest->getPageCount() == data.size()) {
+				_sourceMemory.reserve(_manifest->getPageCount());
+				for (size_t i = 0; i < _manifest->getPageCount(); ++ i) {
+					auto page = pages::alloc(mem::BytesView(data.data() + i * _manifest->getPageSize(), _manifest->getPageSize()));
+					_sourceMemory.emplace_back(page);
+				}
+
+				Transaction t;
+				if (t.open(*this, OpenMode::Create)) {
+					_manifest->readManifest(t);
+				}
+			}
+		}
 	}
 }
 

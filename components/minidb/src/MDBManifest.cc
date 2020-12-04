@@ -37,6 +37,36 @@ struct Manifest::ManifestWriteIter {
 	uint32_t nextPageChain;
 };
 
+PageType Manifest::Index::getTablePageType() const {
+	switch (type) {
+	case IndexType::Bytes:
+		return PageType::BytIndexTable;
+		break;
+	case IndexType::Numeric:
+		return PageType::NumIndexTable;
+		break;
+	case IndexType::Reverse:
+		return PageType::RevIndexTable;
+		break;
+	}
+	return PageType::BytIndexTable;
+}
+
+PageType Manifest::Index::getContentPageType() const {
+	switch (type) {
+	case IndexType::Bytes:
+		return PageType::BytIndexContent;
+		break;
+	case IndexType::Numeric:
+		return PageType::NumIndexContent;
+		break;
+	case IndexType::Reverse:
+		return PageType::RevIndexContent;
+		break;
+	}
+	return PageType::BytIndexTable;
+}
+
 mem::Value Manifest::Scheme::encode(mem::StringView name) const {
 	mem::Value val(mem::Value::Type::ARRAY); val.asArray().reserve(4);
 	val.addString(name);
@@ -84,24 +114,21 @@ bool Manifest::Scheme::operator != (const Scheme &other) const {
 			|| sequence != other.sequence || fields != other.fields || indexes != other.indexes;
 }
 
-Manifest *Manifest::create(mem::pool_t *p, const Transaction &t) {
-	auto fd = t.getFd();
-
-	if (t.getFileSize() == 0) {
-		// db creation mode - create single-page db
-		if (::lseek(fd, DefaultPageSize - 1, SEEK_SET) != -1) {
-			if (::write(fd, "", 1) != -1) {
-				auto pool = mem::pool::create(p);
-				mem::pool::context ctx(pool);
-				return new (pool) Manifest(pool, t, true);
-			}
+Manifest *Manifest::create(mem::pool_t *p, mem::BytesView bytes) {
+	if (!bytes.empty()) {
+		auto header = (const StorageHeader *)bytes.data();
+		if (bytes.size() > sizeof(StorageHeader) && memcmp(header->title, "minidb", 6) == 0 && header->version == 1
+				&& has_single_bit(header->pageSize) && header->pageSize >= DefaultPageSize) {
+			auto pool = mem::pool::create(p);
+			mem::pool::context ctx(pool);
+			return new (pool) Manifest(pool, bytes);
 		}
-		return nullptr;
+	} else {
+		auto pool = mem::pool::create(p);
+		mem::pool::context ctx(pool);
+		return new (pool) Manifest(pool, bytes);
 	}
-
-	auto pool = mem::pool::create(p);
-	mem::pool::context ctx(pool);
-	return new (pool) Manifest(pool, t, false);
+	return nullptr;
 }
 
 void Manifest::destroy(Manifest *m) {
@@ -125,7 +152,7 @@ bool Manifest::init(const Transaction &t, const mem::Map<mem::StringView, const 
 		for (auto &f : it.second->getFields()) {
 			iit->second.fields.emplace(f.second.getName(), Field({f.second.getType(), f.second.getFlags()}));
 			if (f.second.isIndexed()) {
-				iit->second.indexes.emplace(f.second.getName(), Index({f.second.getType(), 0}));
+				iit->second.indexes.emplace(f.second.getName(), Index({getDefaultIndexType(f.second.getType(), f.second.getFlags()), 0}));
 			}
 		}
 	}
@@ -139,7 +166,7 @@ bool Manifest::init(const Transaction &t, const mem::Map<mem::StringView, const 
 
 			for (auto &ex_idx_it : ex_t.indexes) {
 				auto req_idx_it = req_t.indexes.find(ex_idx_it.first);
-				if (req_idx_it == req_t.indexes.end()) {
+				if (req_idx_it == req_t.indexes.end() || req_idx_it->second.type != ex_idx_it.second.type) {
 					dropIndex(t, ex_idx_it.second);
 				} else {
 					req_idx_it->second.index = ex_idx_it.second.index;
@@ -205,110 +232,19 @@ const Manifest::Scheme *Manifest::getScheme(const db::Scheme &scheme) const {
 	return nullptr;
 }
 
-uint32_t Manifest::allocatePage(const Transaction &t) {
-	uint32_t v = 0;
-	uint32_t target = 0;
-	do {
-		v = _freeList.load();
-		if (!v) {
-			break;
-		}
-		t.openPageForWriting(v, [&] (void *ptr, uint32_t) {
-			auto h = (PayloadPageHeader *)ptr;
-			target = h->next;
-			return true;
-		}, 1, true);
-	} while (v && !_freeList.compare_exchange_weak(v, target));
-
-	if (v) {
-		pushManifestUpdate(UpdateFlags::FreeList);
-		return v;
-	} else {
-		std::unique_lock<mem::Mutex> lock(t.getPageAllocMutex());
-		auto pageCount = _pageCount + 1;
-		if (::lseek(t.getFd(), pageCount * _pageSize - 1, SEEK_SET) != -1) {
-			if (::write(t.getFd(), "", 1) != -1) {
-				v = pageCount - 1;
-				_pageCount = pageCount;
-				pushManifestUpdate(UpdateFlags::PageCount);
-			}
-		}
-		return v;
-	}
-}
-
-void Manifest::dropPage(const Transaction &t, uint32_t page) {
-	if (page >= _pageCount) {
-		return;
-	}
-
-	uint32_t v;
-	do {
-		v = _freeList.load();
-		t.openPageForWriting(page, [&] (void *ptr, uint32_t) {
-			auto h = (PayloadPageHeader *)ptr;
-			h->next = v;
-			return true;
-		}, 1, true);
-	} while (!_freeList.compare_exchange_weak(v, page));
-
-	pushManifestUpdate(UpdateFlags::FreeList);
-}
-
-uint32_t Manifest::popPageFromChain(const Transaction &t, uint32_t page) const {
-	uint32_t next = 0;
-	t.openPageForReading(page, [&] (void *ptr, uint32_t) {
-		auto h = (PayloadPageHeader *)ptr;
-		next = h->next;
-		return true;
-	}, 1);
-	return next;
-}
-
-void Manifest::invalidateOverflowChain(const Transaction &t, uint32_t page) {
-	if (page >= _pageCount) {
-		return;
-	}
-
-	auto target = page;
-	uint32_t last = 0;
-	while (page) {
-		if (!t.openPageForReading(page, [&] (void *ptr, uint32_t) {
-			auto h = (PayloadPageHeader *)ptr;
-			if (h->next == 0) {
-				last = page;
-			}
-			page = h->next;
-			return true;
-		}, 1)) {
-			page = 0;
-		}
-	}
-
-	if (last) {
-		uint32_t v;
-		do {
-			v = _freeList.load();
-			t.openPageForWriting(last, [&] (void *ptr, uint32_t) {
-				auto h = (PayloadPageHeader *)ptr;
-				h->next = v;
-				return true;
-			}, 1, true);
-		} while (!_freeList.compare_exchange_weak(v, target));
-
-		pushManifestUpdate(UpdateFlags::FreeList);
-	}
-}
-
 void Manifest::dropTree(const Transaction &t, uint32_t root) {
 	if (t.openPageForReading(root, [&] (void *mem, size_t) {
 		auto h = (TreePageHeader *)mem;
 		switch (PageType(h->type)) {
-		case PageType::InteriorIndex:
-		case PageType::InteriorTable:
+		case PageType::OidTable:
+		case PageType::OidContent:
 			break;
-		case PageType::LeafIndex:
-		case PageType::LeafTable:
+		case PageType::NumIndexTable:
+		case PageType::NumIndexContent:
+		case PageType::RevIndexTable:
+		case PageType::RevIndexContent:
+		case PageType::BytIndexTable:
+		case PageType::BytIndexContent:
 			break;
 		case PageType::None:
 			break;
@@ -351,7 +287,7 @@ void Manifest::dropIndex(const Transaction &t, const Index &index) {
 }
 
 Manifest::Entity *Manifest::createScheme(const Transaction &t, const Scheme &scheme) {
-	auto page = createTree(t, PageType::LeafTable);
+	auto page = createTree(t, PageType::OidContent);
 	auto e = new (_entities.get_allocator().getPool()) Entity;
 	e->root = page;
 	e->counter = 0;
@@ -370,7 +306,7 @@ Manifest::Entity *Manifest::createSequence(const Transaction &, const Scheme &sc
 }
 
 Manifest::Entity *Manifest::createIndex(const Transaction &t, const Index &index) {
-	auto page = createTree(t, PageType::LeafIndex);
+	auto page = createTree(t, index.getContentPageType());
 	auto e = new (_entities.get_allocator().getPool()) Entity;
 	e->root = page;
 	e->counter = 0;
@@ -394,9 +330,9 @@ uint32_t Manifest::writeOverflow(const Transaction &t, PageType type, const mem:
 uint32_t Manifest::writeManifestData(const Transaction &t, ManifestWriteIter &it, uint32_t page, uint32_t offset) {
 	uint32_t size = 0;
 	t.openPageForWriting(page, [&] (void *mem, uint32_t free) {
-		free -= (offset + sizeof(ManifestPageHeader));
-		auto head = (ManifestPageHeader *)( ((uint8_t *)mem) + offset );
-		auto target = ((uint8_t *)mem) + offset + sizeof(ManifestPageHeader);
+		free -= (offset + sizeof(ContentPageHeader));
+		auto head = (ContentPageHeader *)( ((uint8_t *)mem) + offset );
+		auto target = ((uint8_t *)mem) + offset + sizeof(ContentPageHeader);
 
 		if (!it.buf.empty()) {
 			if (it.buf.size() - it.offset <= free) {
@@ -474,7 +410,7 @@ uint32_t Manifest::writeManifestData(const Transaction &t, ManifestWriteIter &it
 		size += writeManifestData(t, it, p, 0);
 
 		t.openPageForWriting(page, [&] (void *mem, uint32_t free) {
-			auto head = (ManifestPageHeader *)( ((uint8_t *)mem) + offset );
+			auto head = (ContentPageHeader *)( ((uint8_t *)mem) + offset );
 			head->remains = size;
 			head->next = p;
 			return true;
@@ -488,10 +424,9 @@ bool Manifest::encodeManifest(const Transaction &t) {
 	uint32_t next = 0;
 	if (!t.openPageForReadWrite(0, [&] (void *mem, uint32_t size) {
 		auto ptr = (StorageHeader *)mem;
-		auto head = (ManifestPageHeader *)( ((uint8_t *)mem) + sizeof(StorageHeader) );
 
-		if (head->next != 0) {
-			next = head->next;
+		if (ptr->next != 0) {
+			next = ptr->next;
 		}
 
 		memcpy(ptr->title, "minidb", 6);
@@ -511,7 +446,7 @@ bool Manifest::encodeManifest(const Transaction &t) {
 	it.it = _schemes.begin();
 	it.nextPageChain = next;
 
-	writeManifestData(t, it, 0, sizeof(StorageHeader));
+	writeManifestData(t, it, 0, sizeof(StorageHeader) - sizeof(uint32_t) * 2);
 
 	if (it.nextPageChain) {
 		invalidateOverflowChain(t, it.nextPageChain);
@@ -533,17 +468,15 @@ bool Manifest::readManifest(const Transaction &t) {
 	mem::Vector<Entity *> entities;
 	if (!t.openPageForReading(0, [&] (void *mem, uint32_t size) {
 		auto ptr = (StorageHeader *)mem;
-		auto head = (ManifestPageHeader *)( ((uint8_t *)mem) + sizeof(StorageHeader) );
 
 		_freeList = ptr->freeList;
+		_mtime = ptr->mtime;
 		entitiesRemains = entitiesCount = ptr->entities;
 		entities.reserve(entitiesCount);
 		_entities.reserve(entitiesCount);
-		_oid = ptr->oid;
-		_mtime = ptr->mtime;
 
-		size -= sizeof(StorageHeader) + sizeof(ManifestPageHeader);
-		auto target = ((uint8_t *)mem) + sizeof(StorageHeader) + sizeof(ManifestPageHeader);
+		size -= sizeof(StorageHeader);
+		auto target = ((uint8_t *)mem) + sizeof(StorageHeader);
 		while (entitiesRemains > 0 && size >= sizeof(EntityCell)) {
 			auto cell = (EntityCell *)target;
 
@@ -565,8 +498,8 @@ bool Manifest::readManifest(const Transaction &t) {
 			size = 0;
 		}
 
-		remains = head->remains;
-		next = head->next;
+		remains = ptr->remains;
+		next = ptr->next;
 
 		if (entitiesRemains == 0 && remains > 0 && size > 0) {
 			if (b.empty()) {
@@ -583,9 +516,9 @@ bool Manifest::readManifest(const Transaction &t) {
 
 	while (next) {
 		t.openPageForReading(next, [&] (void *mem, uint32_t size) {
-			auto head = (ManifestPageHeader *)mem;
-			size -= sizeof(ManifestPageHeader);
-			auto target = ((uint8_t *)mem) + sizeof(ManifestPageHeader);
+			auto head = (ContentPageHeader *)mem;
+			size -= sizeof(ContentPageHeader);
+			auto target = ((uint8_t *)mem) + sizeof(ContentPageHeader);
 
 			while (entitiesRemains > 0 && size >= sizeof(EntityCell)) {
 				auto cell = (EntityCell *)target;
@@ -641,7 +574,7 @@ bool Manifest::readManifest(const Transaction &t) {
 				it->second.indexes.reserve(v.getArray(3).size());
 				for (auto &iit : v.getArray(4)) {
 					it->second.indexes.emplace(mem::StringView(iit.getString(0)).pdup(_schemes.get_allocator()),
-							Index({Type(iit.getInteger(1)), entities[iit.getInteger(2)]}));
+							Index({IndexType(iit.getInteger(1)), entities[iit.getInteger(2)]}));
 				}
 			}
 		}
@@ -655,11 +588,11 @@ void Manifest::pushManifestUpdate(UpdateFlags flags) {
 }
 
 void Manifest::performManifestUpdate(const Transaction &t) {
-	auto size = sizeof(StorageHeader) + sizeof(ManifestPageHeader) + _entities.size() * sizeof(EntityCell);
+	auto size = sizeof(StorageHeader) + _entities.size() * sizeof(EntityCell);
 
 	auto flags = UpdateFlags(_updateFlags.exchange(0));
-	t.openPageForWriting(0, [&] (void *ptr, uint32_t) {
-		auto h = (StorageHeader *)ptr;
+	t.openPageForWriting(0, [&] (mem::BytesView bytes) {
+		auto h = (StorageHeader *)bytes.data();
 		if ((flags & UpdateFlags::Oid) != UpdateFlags::None) { h->oid = _oid.load(); }
 		if ((flags & UpdateFlags::FreeList) != UpdateFlags::None) { h->freeList = _freeList.load(); }
 		if ((flags & UpdateFlags::PageCount) != UpdateFlags::None) { h->pageCount = _pageCount; }
@@ -669,7 +602,7 @@ void Manifest::performManifestUpdate(const Transaction &t) {
 		for (auto &it : _entities) {
 			it->mutex.lock();
 			if (it->dirty) {
-				auto cell = (EntityCell *) (uint8_p(ptr) + sizeof(StorageHeader) + sizeof(ManifestPageHeader) + it->idx * sizeof(EntityCell));
+				auto cell = (EntityCell *) (bytes.data() + sizeof(StorageHeader) + it->idx * sizeof(EntityCell));
 				cell->counter = it->counter;
 				cell->page = it->root;
 				it->dirty = false;
@@ -680,21 +613,17 @@ void Manifest::performManifestUpdate(const Transaction &t) {
 	}, ((size - 1) / getSystemPageSize()) + 1);
 }
 
-Manifest::Manifest(mem::pool_t *pool, const Transaction &t, bool cr)
+Manifest::Manifest(mem::pool_t *pool, mem::BytesView bytes)
 : _pool(pool) {
-	if (cr) {
+	if (bytes.empty()) {
 		_pageCount = 1;
-		encodeManifest(t);
-	} else {
-		StorageHeader header;
-		if (t.readHeader(&header)) {
-			if (validateHeader(header, t.getFileSize())) {
-				_pageSize = header.pageSize;
-				_pageCount = header.pageCount;
-				_oid = header.oid;
-				readManifest(t);
-			}
-		}
+	} else if (bytes.size() > sizeof(StorageHeader)) {
+		auto header = (const StorageHeader *)bytes.data();
+		_pageCount = header->pageCount;
+		_oid = header->oid;
+		_freeList = header->freeList;
+		_mtime = header->mtime;
+		_multiplier = _pageSize / DefaultPageSize;
 	}
 }
 

@@ -424,7 +424,7 @@ AesToken::operator bool () const {
 String AesToken::exportToken(StringView iss, const Fingerprint &fpb, TimeInterval maxage, StringView sub) const {
 	auto t = Time::now();
 
-	JsonWebToken token = JsonWebToken::make(iss, iss, maxage);
+	JsonWebToken token = JsonWebToken::make(iss, iss, maxage, sub);
 	auto fp = getFingerprint(fpb, t, _keys.secret);
 
 	token.payload.setBytes(BytesView(fp.data(), fp.size()), "fp");

@@ -52,76 +52,32 @@ Transaction Transaction::acquireIfExists() {
 }
 
 Transaction Transaction::acquireIfExists(stappler::memory::pool_t *pool) {
-	if (auto tmp = stappler::memory::pool::get<Data>(pool, config::getTransactionCurrentKey())) {
-		auto d = tmp;
-		while (d && d->refCount == 0) {
-			d = d->next;
-		}
-		if (d != tmp) {
-			mem::pool::store(pool, d, config::getTransactionCurrentKey());
-		}
-		if (d) {
-			return Transaction(d);
-		}
+	auto stack = stappler::memory::pool::get<Stack>(pool, config::getTransactionStackKey());
+	if (!stack) {
+		return Transaction(nullptr);
 	}
-	return Transaction(nullptr);
+
+	return stack->stack.empty() ? Transaction(nullptr) : Transaction(stack->stack.back());
 }
 
 void Transaction::retain() const {
 	auto p = mem::pool::acquire();
-	if (p == _data->pool) {
-		if (_data->refCount == 0) {
-			if (auto d = stappler::memory::pool::get<Data>(p, config::getTransactionCurrentKey())) {
-				_data->next = d;
-			}
-			mem::pool::store(p, _data, config::getTransactionCurrentKey());
-		}
-		++ _data->refCount;
-	} else {
-		auto it = _data->pools.find(p);
-		if (it == _data->pools.end()) {
-			if (auto d = stappler::memory::pool::get<Data>(p, config::getTransactionCurrentKey())) {
-				_data->pools.emplace(p, 1, d);
-			} else {
-				_data->pools.emplace(p, 1, nullptr);
-			}
-			mem::pool::store(p, _data, config::getTransactionCurrentKey());
-		} else {
-			++ it->second.first;
-		}
+	auto stack = stappler::memory::pool::get<Stack>(p, config::getTransactionStackKey());
+	if (!stack) {
+		stack = new (p) Stack;
+		stappler::memory::pool::store(p, stack, config::getTransactionStackKey());
 	}
+
+	stack->stack.emplace_back(_data);
 }
 
 void Transaction::release() const {
 	auto p = mem::pool::acquire();
-	if (p == _data->pool) {
-		if (_data->refCount == 0) {
-			return;
-		} else if (_data->refCount == 1) {
-			auto next = _data->next;
-			while (next && next->refCount == 0) {
-				next = next->next;
-			}
-			mem::pool::store(p, next, config::getTransactionCurrentKey());
-			mem::pool::store(p, nullptr, _data->adapter.getTransactionKey());
-		} else {
-			-- _data->refCount;
-		}
-	} else {
-		auto it = _data->pools.find(p);
-		if (it != _data->pools.end()) {
-			if (it->second.first == 0) {
-				return;
-			} else if (it->second.first == 1) {
-				auto next = it->second.second;
-				while (next && next->refCount == 0) {
-					next = next->next;
-				}
-				mem::pool::store(p, next, config::getTransactionCurrentKey());
-				_data->pools.erase(it);
-			} else {
-				-- it->second.first;
-			}
+	auto stack = stappler::memory::pool::get<Stack>(p, config::getTransactionStackKey());
+	if (stack) {
+		auto it = std::find(stack->stack.rbegin(), stack->stack.rend(), _data);
+		if (it != stack->stack.rend()) {
+			stack->stack.erase( std::next(it).base() );
 		}
 	}
 }

@@ -23,26 +23,14 @@ THE SOFTWARE.
 #include "MDBTransaction.h"
 #include "MDBManifest.h"
 #include "MDBStorage.h"
+#include "MDBPageCache.h"
 
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>
-#include <semaphore.h>
 
 NS_MDB_BEGIN
-
-static inline bool Storage_mmapError(int memerr) {
-	switch (memerr) {
-	case EAGAIN: perror("Storage::openPageForReading: EAGAIN"); break;
-	case EFAULT: perror("Storage::openPageForReading: EFAULT"); break;
-	case EINVAL: perror("Storage::openPageForReading: EINVAL"); break;
-	case ENOMEM: perror("Storage::openPageForReading: ENOMEM"); break;
-	case EOPNOTSUPP: perror("Storage::openPageForReading: EOPNOTSUPP"); break;
-	default: perror("Storage::openPageForReading"); break;
-	}
-	return false;
-}
 
 Transaction::Transaction() { }
 
@@ -75,27 +63,41 @@ bool Transaction::open(const Storage &storage, OpenMode mode) {
 	auto manifest = storage.retainManifest();
 	_fileSize = ::lseek(_fd, 0, SEEK_END);
 
+	if (manifest && mode == OpenMode::Create) {
+		return false;
+	}
+
+	if (!manifest && mode != OpenMode::Create) {
+		return false;
+	}
+
 	if (_fileSize == 0 && mode == OpenMode::Create) {
 		_storage = &storage;
 		_manifest = manifest;
+		_pageCache = new (_pool) PageCache(_storage, _manifest ? _manifest->getPageSize() : _storage->getPageSize(), _fd, true);
 		return true;
 	} else if (_fileSize > 0) {
 		_mode = mode == OpenMode::Create ? OpenMode::ReadWrite : mode;
 		_storage = &storage;
 		_manifest = manifest;
 
-		if (mode != OpenMode::Create && mode != OpenMode::Write) {
-			openPageForReading(0, [&] (void *ptr, uint32_t) {
-				auto h = (StorageHeader *)ptr;
+		if (mode != OpenMode::Create) {
+			openPageForReading(0, [&] (mem::BytesView bytes) {
+				auto h = (StorageHeader *)bytes.data();
 				if (h->mtime != manifest->getMtime()) {
 					storage.releaseManifest(manifest);
-					manifest = Manifest::create(storage.getPool(), *this);
-					storage.swapManifest(manifest);
-					_manifest = manifest;
+					manifest = Manifest::create(storage.getPool(), bytes);
+					if (manifest) {
+						manifest->readManifest(*this);
+						storage.swapManifest(manifest);
+						_manifest = manifest;
+					}
 				}
-				return true;
-			}, 1);
+			});
+		} else {
+			return false;
 		}
+		_pageCache = new (_pool) PageCache(_storage, _manifest ? _manifest->getPageSize() : _storage->getPageSize(), _fd, true);
 		return true;
 	}
 
@@ -123,82 +125,51 @@ void Transaction::close() {
 	}
 }
 
-TreePage Transaction::openFrame(uint32_t idx, OpenMode mode, uint32_t nPages, const Manifest *manifest) const {
-	if (!manifest) {
-		manifest = _manifest;
+TreePage Transaction::openPage(uint32_t idx, OpenMode mode) const {
+	if (!_storage || _fd == -1 || !_pageCache) {
+		return TreePage(nullptr);
 	}
 
-	if (!_storage || _fd == -1 || !manifest) {
-		return TreePage(idx, nullptr);
-	}
-
-	if ((!_manifest && idx == 0) || (manifest && idx >= manifest->getPageCount())) {
-		return TreePage(idx, nullptr);
+	if ((!_manifest && idx == 0) || (_manifest && idx >= _manifest->getPageCount())) {
+		return TreePage(nullptr);
 	}
 
 	if (!isModeAllowed(mode)) {
-		return TreePage(idx, nullptr);
+		return TreePage(nullptr);
 	}
 
-	auto pageSize = _storage->getPageSize();
-	auto s = (nPages ? (std::min(pageSize, nPages * getSystemPageSize())) : pageSize);
-
-	int prot = 0;
-	int opts = 0;
-
-	switch (mode) {
-	case OpenMode::Read:		prot = PROT_READ;				opts = MAP_PRIVATE | MAP_NONBLOCK; break;
-	case OpenMode::Write:		prot = PROT_WRITE;				opts = MAP_SHARED | MAP_POPULATE;    break;
-	case OpenMode::ReadWrite:	prot = PROT_READ | PROT_WRITE;	opts = MAP_SHARED | MAP_POPULATE;    break;
-	default: return TreePage(idx, nullptr); break;
+	if (auto node = _pageCache->openPage(idx, mode)) {
+		return TreePage(node);
 	}
-
-	auto mem = ::mmap(nullptr, s, prot, opts, _fd, idx * pageSize);
-	if (mem != MAP_FAILED) {
-		return TreePage(idx, s, (void *)mem, mode);
-	}
-
-	Storage_mmapError(errno);
-	return TreePage(idx, nullptr);
+	return TreePage(nullptr);
 }
 
-void Transaction::closeFrame(const TreePage &frame, bool async) const {
-	switch (frame.mode) {
-	case OpenMode::Write:
-	case OpenMode::ReadWrite:
-		::msync(frame.ptr, frame.size, async ? MS_ASYNC : MS_SYNC);
-		break;
-	default:
-		break;
-	}
-	::munmap(frame.ptr, frame.size);
+void Transaction::closePage(const TreePage &frame, bool async) const {
+	_pageCache->closePage(frame.node);
 }
 
-bool Transaction::openPageForWriting(uint32_t idx, const mem::Callback<bool(void *mem, uint32_t size)> &cb,
-		uint32_t nPages, bool async, const Manifest *manifest) const {
-	if (auto frame = openFrame(idx, OpenMode::Write, nPages, manifest)) {
-		auto ret = cb(frame.ptr, frame.size);
-		closeFrame(frame, async);
+bool Transaction::openPageForWriting(uint32_t idx, const PageCallback &cb) const {
+	if (auto frame = openPage(idx, OpenMode::Write)) {
+		auto ret = cb(frame.bytes());
+		closePage(frame);
 		return ret;
 	}
 	return false;
 }
 
-bool Transaction::openPageForReadWrite(uint32_t idx, const mem::Callback<bool(void *mem, uint32_t size)> &cb,
-		uint32_t nPages, bool async, const Manifest *manifest) const {
-	if (auto frame = openFrame(idx, OpenMode::ReadWrite, nPages, manifest)) {
-		auto ret = cb(frame.ptr, frame.size);
-		closeFrame(frame, async);
+bool Transaction::openPageForReadWrite(uint32_t idx, const PageCallback &cb) const {
+	if (auto frame = openPage(idx, OpenMode::ReadWrite)) {
+		auto ret = cb(frame.bytes());
+		closePage(frame);
 		return ret;
 	}
 	return false;
 }
 
-bool Transaction::openPageForReading(uint32_t idx, const mem::Callback<bool(void *mem, uint32_t size)> &cb,
-		uint32_t nPages, const Manifest *manifest) const {
-	if (auto frame = openFrame(idx, OpenMode::Read, nPages, manifest)) {
-		auto ret = cb(frame.ptr, frame.size);
-		closeFrame(frame);
+bool Transaction::openPageForReading(uint32_t idx, const PageCallback &cb) const {
+	if (auto frame = openPage(idx, OpenMode::Read)) {
+		auto ret = cb(frame.bytes());
+		closePage(frame);
 		return ret;
 	}
 	return false;

@@ -44,6 +44,7 @@ NS_MDB_BEGIN
 class Transaction : public mem::AllocBase {
 public:
 	using Scheme = Manifest::Scheme;
+	using PageCallback = mem::Callback<bool(mem::BytesView)>;
 
 	Transaction();
 	Transaction(const Storage &, OpenMode);
@@ -52,29 +53,24 @@ public:
 	bool open(const Storage &, OpenMode);
 	void close();
 
-	TreePage openFrame(uint32_t idx, OpenMode, uint32_t nPages = 0, const Manifest * = nullptr) const;
-	void closeFrame(const TreePage &, bool async = false) const;
+	TreePage openPage(uint32_t idx, OpenMode) const;
+	void closePage(const TreePage &, bool async = false) const;
 
 	// nPages - in system pages (use getSystemPageSize)
-	bool openPageForWriting(uint32_t idx, const mem::Callback<bool(void *mem, uint32_t size)> &,
-			uint32_t nPages = 0, bool async = false, const Manifest * = nullptr) const;
-
-	bool openPageForReadWrite(uint32_t idx, const mem::Callback<bool(void *mem, uint32_t size)> &,
-			uint32_t nPages = 0, bool async = false, const Manifest * = nullptr) const;
-
-	bool openPageForReading(uint32_t idx, const mem::Callback<bool(void *mem, uint32_t size)> &,
-			uint32_t nPages = 0, const Manifest * = nullptr) const;
+	bool openPageForWriting(uint32_t idx, const PageCallback &) const;
+	bool openPageForReadWrite(uint32_t idx, const PageCallback &) const;
+	bool openPageForReading(uint32_t idx, const PageCallback &) const;
 
 	OpenMode getMode() const { return _mode; }
 	int getFd() const { return _fd; }
 	size_t getFileSize() const { return _fileSize; }
 	Manifest *getManifest() const { return _manifest; }
-	mem::Mutex &getPageAllocMutex() const { return _pageAllocMutex; }
 
 	bool isOpen() const { return _storage != nullptr && _manifest != nullptr; }
 	operator bool() const { return _storage != nullptr && _manifest != nullptr; }
 
 	void invalidate();
+	void commit();
 
 public: // CRUD
 	mem::Value select(Worker &, const db::Query &);
@@ -93,7 +89,7 @@ protected:
 	bool pushObject(const Scheme &scheme, uint64_t oid, const mem::Value &) const;
 
 	bool checkUnique(const Scheme &scheme, const mem::Value &) const;
-	mem::Value decodeValue(const db::Scheme &scheme, const TreeTableLeafCell &cell, const mem::Vector<mem::StringView> &names) const;
+	// mem::Value decodeValue(const db::Scheme &scheme, const TreeTableLeafCell &cell, const mem::Vector<mem::StringView> &names) const;
 
 	mem::pool_t *_pool = nullptr;
 	OpenMode _mode = OpenMode::Read;
@@ -103,7 +99,7 @@ protected:
 	bool _success = true;
 
 	Manifest *_manifest = nullptr; // actual and updated
-	mutable mem::Mutex _pageAllocMutex;
+	PageCache *_pageCache = nullptr;
 };
 
 NS_MDB_END

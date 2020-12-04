@@ -817,17 +817,32 @@ auto StringViewBase<_CharType>::operator -= (const Self &other) const -> Self & 
 
 template <typename _CharType>
 auto StringViewBase<_CharType>::readFloat() -> Result<float> {
-	return StringView_readNumber<float>(this->ptr, this->len, 0);
+	Self tmp = *this;
+	tmp.skipChars<typename Self::template CharGroup<CharGroupId::WhiteSpace>>();
+	auto targetPtr = tmp.ptr; auto targetLen = tmp.len;
+	auto ret = StringView_readNumber<float>(targetPtr, targetLen, 0);
+	this->ptr = targetPtr; this->len = targetLen;
+	return ret;
 }
 
 template <typename _CharType>
 auto StringViewBase<_CharType>::readDouble() -> Result<double> {
-	return StringView_readNumber<double>(this->ptr, this->len, 0);
+	Self tmp = *this;
+	tmp.skipChars<typename Self::template CharGroup<CharGroupId::WhiteSpace>>();
+	auto targetPtr = tmp.ptr; auto targetLen = tmp.len;
+	auto ret = StringView_readNumber<double>(targetPtr, targetLen, 0);
+	this->ptr = targetPtr; this->len = targetLen;
+	return ret;
 }
 
 template <typename _CharType>
 auto StringViewBase<_CharType>::readInteger(size_t base) -> Result<int64_t> {
-	return StringView_readNumber<int64_t>(this->ptr, this->len, base);
+	Self tmp = *this;
+	tmp.skipChars<typename Self::template CharGroup<CharGroupId::WhiteSpace>>();
+	auto targetPtr = tmp.ptr; auto targetLen = tmp.len;
+	auto ret = StringView_readNumber<int64_t>(targetPtr, targetLen, base);
+	this->ptr = targetPtr; this->len = targetLen;
+	return ret;
 }
 
 template <typename _CharType>
@@ -1166,13 +1181,28 @@ inline StringViewUtf8::operator StringViewBase<char> () const {
 }
 
 inline Result<float> StringViewUtf8::readFloat() {
-	return StringView_readNumber<float>(ptr, len, 0);
+	Self tmp = *this;
+	tmp.skipChars<CharGroup<CharGroupId::WhiteSpace>>();
+	auto targetPtr = tmp.ptr; auto targetLen = tmp.len;
+	auto ret = StringView_readNumber<float>(targetPtr, targetLen, 0);
+	this->ptr = targetPtr; this->len = targetLen;
+	return ret;
 }
 inline Result<double> StringViewUtf8::readDouble() {
-	return StringView_readNumber<double>(ptr, len, 0);
+	Self tmp = *this;
+	tmp.skipChars<CharGroup<CharGroupId::WhiteSpace>>();
+	auto targetPtr = tmp.ptr; auto targetLen = tmp.len;
+	auto ret = StringView_readNumber<double>(targetPtr, targetLen, 0);
+	this->ptr = targetPtr; this->len = targetLen;
+	return ret;
 }
 inline Result<int64_t> StringViewUtf8::readInteger(size_t base) {
-	return StringView_readNumber<int64_t>(ptr, len, base);
+	Self tmp = *this;
+	tmp.skipChars<CharGroup<CharGroupId::WhiteSpace>>();
+	auto targetPtr = tmp.ptr; auto targetLen = tmp.len;
+	auto ret = StringView_readNumber<int64_t>(targetPtr, targetLen, base);
+	this->ptr = targetPtr; this->len = targetLen;
+	return ret;
 }
 
 template<typename ... Args>

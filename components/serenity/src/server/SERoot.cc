@@ -845,10 +845,14 @@ void Root::performStorage(apr_pool_t *pool, const Server &serv, const Callback<v
 
 			cb(storage);
 
-			if (auto tmp = stappler::memory::pool::get<db::Transaction::Data>(pool, config::getTransactionCurrentKey())) {
-				tmp->refCount = 0;
-				mem::pool::userdata_set((void *)nullptr, storage.getTransactionKey().data(), nullptr, pool); // drop transaction
+			auto stack = stappler::memory::pool::get<db::Transaction::Stack>(pool, config::getTransactionStackKey());
+			for (auto &it : stack->stack) {
+				if (it->adapter == storage) {
+					it->adapter == db::Adapter(nullptr);
+					messages::error("Root", "Incomplete transaction found");
+				}
 			}
+			mem::pool::userdata_set((void *)nullptr, storage.getTransactionKey().data(), nullptr, pool);
 			mem::pool::userdata_set((void *)nullptr, config::getStorageInterfaceKey(), nullptr, pool);
 			dbdClose(serv.server(), dbd);
 		}

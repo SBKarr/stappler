@@ -23,7 +23,24 @@ THE SOFTWARE.
 #include "MDBStorage.h"
 #include "STStorageScheme.h"
 
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/file.h>
+
 NS_MDB_BEGIN
+
+static inline bool Storage_mmapError(int memerr) {
+	switch (memerr) {
+	case EAGAIN: perror("Storage::openPageForReading: EAGAIN"); break;
+	case EFAULT: perror("Storage::openPageForReading: EFAULT"); break;
+	case EINVAL: perror("Storage::openPageForReading: EINVAL"); break;
+	case ENOMEM: perror("Storage::openPageForReading: ENOMEM"); break;
+	case EOPNOTSUPP: perror("Storage::openPageForReading: EOPNOTSUPP"); break;
+	default: perror("Storage::openPageForReading"); break;
+	}
+	return false;
+}
 
 constexpr inline UpdateFlags operator & (const UpdateFlags &l, const UpdateFlags &r) {
 	return UpdateFlags(stappler::toInt(l) & stappler::toInt(r));
@@ -34,31 +51,12 @@ uint32_t getSystemPageSize() {
 	return s;
 }
 
-bool validateHeader(const StorageHeader &target, size_t memsize) {
+/*bool validateHeader(const StorageHeader &target, size_t memsize) {
 	if (memcmp(target.title, "minidb", 6) == 0 && target.version == 1 && has_single_bit(target.pageSize)) {
 		if (memsize == target.pageSize * target.pageCount) {
 			return true;
 		}
 	}
-	return false;
-}
-
-bool readHeader(mem::StringView path, StorageHeader &target) {
-	if (!stappler::filesystem::exists(path)) {
-		return false;
-	}
-
-	auto f = stappler::filesystem::openForReading(path);
-	if (f.size() < sizeof(StorageHeader)) {
-		return false;
-	}
-
-	if (f.read((uint8_t *)(&target), sizeof(StorageHeader)) == sizeof(StorageHeader)) {
-		if (validateHeader(target, f.size())) {
-			return true;
-		}
-	}
-
 	return false;
 }
 
@@ -73,6 +71,32 @@ bool readHeader(mem::BytesView data, StorageHeader &target) {
 	}
 
 	return false;
+}*/
+
+IndexType getDefaultIndexType(db::Type type, db::Flags flags) {
+	if (flags & db::Flags::Enum) {
+		switch (type) {
+		case Type::Text:
+		case Type::Bytes:
+		case Type::Boolean:
+			return IndexType::Reverse;
+			break;
+		default:
+			break;
+		}
+	}
+	switch (type) {
+	case Type::Integer:
+	case Type::Float:
+		return IndexType::Numeric;
+		break;
+	case Type::Boolean:
+		return IndexType::Reverse;
+		break;
+	default:
+		break;
+	}
+	return IndexType::Bytes;
 }
 
 size_t getVarUintSize(uint64_t id) {
@@ -474,6 +498,43 @@ void inspectScheme(const Transaction &t, const db::Scheme &s, const mem::Callbac
 		++ xdepth;
 		-- depth;
 	}
+}
+
+
+namespace pages {
+
+mem::BytesView alloc(size_t pageSize) {
+	int prot = PROT_READ | PROT_WRITE;
+
+	void *ptr = nullptr;
+	if (pageSize >= 2_MiB) {
+		// try MAP_HUGETLB
+		ptr = ::mmap(nullptr, pageSize, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, 0, 0);
+		if (ptr == MAP_FAILED) {
+			ptr = ::mmap(nullptr, pageSize, prot, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+		}
+	} else {
+		ptr = ::mmap(nullptr, pageSize, prot, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+	}
+	if (!ptr || ptr == MAP_FAILED) {
+		return mem::BytesView();
+	}
+	return mem::BytesView(uint8_p(ptr), pageSize);
+}
+
+mem::BytesView alloc(mem::BytesView src) {
+	if (!src.empty()) {
+		auto ret = alloc(src.size());
+		memcpy((void *)ret.data(), src.data(), src.size());
+		return ret;
+	}
+	return mem::BytesView();
+}
+
+void free(mem::BytesView mem) {
+	::munmap((void *)mem.data(), mem.size());
+}
+
 }
 
 NS_MDB_END
