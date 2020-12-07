@@ -1290,7 +1290,7 @@ int Server::onRequest(Request &req) {
 		if (it != _config->websockets.end() && it->second) {
 			return it->second->accept(req);
 		}
-		return HTTP_NOT_FOUND;
+		return DECLINED;
 	}
 
 	for (auto &it : _config->preRequest) {
