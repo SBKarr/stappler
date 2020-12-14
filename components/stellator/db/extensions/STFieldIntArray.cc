@@ -126,4 +126,100 @@ void FieldIntArray::writeQuery(const db::Scheme &s, stappler::sql::Query<db::Bin
 	}
 }
 
+bool FieldBigIntArray::transformValue(const db::Scheme &, const mem::Value &obj, mem::Value &val, bool isCreate) const {
+	if (val.isArray()) {
+		for (auto &it : val.asArray()) {
+			if (!it.isInteger()) {
+				return false;
+			}
+		}
+		return true;
+	}
+	return false;
+}
+
+mem::Value FieldBigIntArray::readFromStorage(db::ResultInterface &iface, size_t row, size_t field) const {
+	if (iface.isBinaryFormat(field)) {
+		auto r = stappler::BytesViewNetwork(iface.toBytes(row, field));
+		auto SPUNUSED ndim = r.readUnsigned32();
+		r.offset(4); // ignored;
+		auto SPUNUSED oid = r.readUnsigned32();
+		auto size = r.readUnsigned32();
+		auto SPUNUSED index = r.readUnsigned32();
+
+		if (size > 0) {
+			mem::Value ret;
+			while (!r.empty()) {
+				auto size = r.readUnsigned32();
+				switch (size) {
+				case 1: ret.addInteger(r.readUnsigned()); break;
+				case 2: ret.addInteger(r.readUnsigned16()); break;
+				case 4: ret.addInteger(r.readUnsigned32()); break;
+				case 8: ret.addInteger(r.readUnsigned64()); break;
+				default: break;
+				}
+			}
+			return ret;
+		}
+	}
+	return mem::Value();
+}
+
+bool FieldBigIntArray::writeToStorage(db::QueryInterface &iface, mem::StringStream &query, const mem::Value &val) const {
+	if (val.isArray()) {
+		query << "'{";
+		bool init = true;
+		for (auto &it : val.asArray()) {
+			if (init) { init = false; } else { query << ","; }
+			query << it.asInteger();
+		}
+		query << "}'";
+		return true;
+	}
+	return false;
+}
+
+mem::StringView FieldBigIntArray::getTypeName() const { return "bigint[]"; }
+bool FieldBigIntArray::isSimpleLayout() const { return true; }
+mem::String FieldBigIntArray::getIndexName() const { return mem::toString(name, "_gin_bigint"); }
+mem::String FieldBigIntArray::getIndexField() const { return mem::toString("USING GIN ( \"", name, "\"  array_ops)"); }
+
+bool FieldBigIntArray::isComparationAllowed(db::Comparation c) const {
+	switch (c) {
+	case db::Comparation::Includes:
+	case db::Comparation::Equal:
+	case db::Comparation::IsNotNull:
+	case db::Comparation::IsNull:
+		return true;
+		break;
+	default:
+		break;
+	}
+	return false;
+}
+
+void FieldBigIntArray::writeQuery(const db::Scheme &s, stappler::sql::Query<db::Binder, mem::Interface>::WhereContinue &whi, stappler::sql::Operator op,
+		const mem::StringView &f, stappler::sql::Comparation cmp, const mem::Value &val, const mem::Value &) const {
+	if (cmp == db::Comparation::IsNull || cmp == db::Comparation::IsNotNull) {
+		whi.where(op, db::sql::SqlQuery::Field(s.getName(), f), cmp, val);
+	} else {
+		if (val.isInteger()) {
+			whi.where(op, db::sql::SqlQuery::Field(s.getName(), f), "@>", db::sql::SqlQuery::RawString{mem::toString("ARRAY[", val.asInteger(), "::bigint]")});
+		} else if (val.isArray()) {
+			mem::StringStream str; str << "ARRAY[";
+			bool init = false;
+			for (auto &it : val.asArray()) {
+				if (it.isInteger()) {
+					if (init) { str << ","; } else { init = true; }
+					str << it.getInteger() << "::bigint";
+				}
+			}
+			str << "]";
+			if (init) {
+				whi.where(op, db::sql::SqlQuery::Field(s.getName(), f), "&&", db::sql::SqlQuery::RawString{str.str()});
+			}
+		}
+	}
+}
+
 NS_DB_END

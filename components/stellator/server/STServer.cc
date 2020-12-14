@@ -468,8 +468,11 @@ Server & Server::operator =(Server &&s) { _config = s._config; return *this; }
 Server::Server(const Server &s) : _config(s._config) { }
 Server & Server::operator =(const Server &s) { _config = s._config; return *this; }
 
-void Server::onChildInit() {
+void Server::onServerInit() {
 	_config->init(*this);
+}
+
+void Server::onChildInit() {
 	_config->onChildInit(*this);
 
 	stappler::filesystem::mkdir(getDocumentRoot());

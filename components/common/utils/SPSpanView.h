@@ -154,6 +154,11 @@ auto makeSpanView(const std::array<Type, Size> &vec) -> SpanView<Type> {
 	return SpanView<Type>(vec);
 }
 
+template <typename Type>
+auto makeSpanView(const Type *ptr, size_t size) -> SpanView<Type> {
+	return SpanView<Type>(ptr, size);
+}
+
 }
 
 #endif /* COMPONENTS_COMMON_UTILS_SPSPANVIEW_H_ */

@@ -186,6 +186,11 @@ bool Root::scheduleTask(const Server &serv, Task *task, mem::TimeInterval ival) 
 void Root::onChildInit() {
 	for (auto &it : _internal->servers) {
 		mem::perform([&] {
+			it.second.onServerInit();
+		}, it.second);
+	}
+	for (auto &it : _internal->servers) {
+		mem::perform([&] {
 			it.second.onChildInit();
 		}, it.second);
 	}

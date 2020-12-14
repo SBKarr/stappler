@@ -45,6 +45,7 @@ public:
 	Server(const Server &);
 	Server & operator =(const Server &);
 
+	void onServerInit();
 	void onChildInit();
 	void onHeartBeat(mem::pool_t *);
 	void onBroadcast(const mem::Value &);
