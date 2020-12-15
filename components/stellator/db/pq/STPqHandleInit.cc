@@ -527,7 +527,7 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 	mem::Map<mem::StringView, TableRec> tables;
 	for (auto &it : s) {
 		auto scheme = it.second;
-		tables.emplace(it.first, TableRec(cfg, scheme));
+		tables.emplace(scheme->getName(), TableRec(cfg, scheme));
 
 		// check for extra tables
 		for (auto &fit : scheme->getFields()) {
@@ -554,7 +554,7 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 
 					table.pkey.emplace_back(mem::toString(source, "_id"));
 					table.pkey.emplace_back(mem::toString(target, "_id"));
-					tables.emplace(std::move(stappler::string::tolower(name)), std::move(table));
+					tables.emplace(mem::StringView(stappler::string::tolower(name)).pdup(), std::move(table));
 				}
 			} else if (type == db::Type::Array) {
 				auto slot = static_cast<const db::FieldArray *>(f.getSlot());
@@ -599,7 +599,7 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 					}
 
 					table.indexes.emplace(mem::toString(name, "_idx_", source), mem::toString(source, "_id"));
-					tables.emplace(std::move(name), std::move(table));
+					tables.emplace(mem::StringView(name).pdup(), std::move(table));
 				}
 			} else if (type == db::Type::View) {
 				auto slot = static_cast<const db::FieldView *>(f.getSlot());
@@ -624,7 +624,7 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 				table.indexes.emplace(mem::toString(name, "_idx_", target), mem::toString(target, "_id"));
 
 				table.pkey.emplace_back("__vid");
-				auto tblIt = tables.emplace(std::move(name), std::move(table)).first;
+				auto tblIt = tables.emplace(mem::StringView(name).pdup(), std::move(table)).first;
 
 				if (slot->delta) {
 					mem::StringStream hashStream;
@@ -646,7 +646,7 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 					table.indexes.emplace(name + "_idx_tag", "tag");
 					table.indexes.emplace(name + "_idx_object", "object");
 					table.indexes.emplace(name + "_idx_time", "time");
-					tables.emplace(std::move(name), std::move(table));
+					tables.emplace(mem::StringView(name).pdup(), std::move(table));
 				}
 			}
 
@@ -662,7 +662,7 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 				table.pkey.emplace_back("id");
 				table.indexes.emplace(name + "_idx_object", "object");
 				table.indexes.emplace(name + "_idx_time", "time");
-				tables.emplace(std::move(name), std::move(table));
+				tables.emplace(mem::StringView(name).pdup(), std::move(table));
 			}
 		}
 	}
