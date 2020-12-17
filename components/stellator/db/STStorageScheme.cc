@@ -128,6 +128,9 @@ void Scheme::define(std::initializer_list<Field> il) {
 		if (it.hasFlag(Flags::ForceExclude)) {
 			_hasForceExclude = true;
 		}
+		if (it.getType() == Type::Virtual) {
+			_hasVirtuals = true;
+		}
 		if (it.isFile()) {
 			_hasFiles = true;
 		}
@@ -150,6 +153,9 @@ void Scheme::define(mem::Vector<Field> &&il) {
 		}
 		if (it.hasFlag(Flags::ForceExclude)) {
 			_hasForceExclude = true;
+		}
+		if (it.getType() == Type::Virtual) {
+			_hasVirtuals = true;
 		}
 		if (it.isFile()) {
 			_hasFiles = true;
@@ -364,6 +370,10 @@ bool Scheme::hasForceExclude() const {
 
 bool Scheme::hasAccessControl() const {
 	return _hasAccessControl;
+}
+
+bool Scheme::hasVirtuals() const {
+	return _hasVirtuals;
 }
 
 mem::Value Scheme::createWithWorker(Worker &w, const mem::Value &data, bool isProtected) const {

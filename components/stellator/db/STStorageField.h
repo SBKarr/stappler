@@ -47,6 +47,7 @@ enum class Type {
 	Image,
 	View, // immutable predicate-based reference set of objects
 	FullTextView, // full-text search resource
+	Virtual,
 
 	Custom
 };
@@ -213,6 +214,10 @@ using FullTextViewFn = mem::Function<mem::Vector<FullTextData>(const Scheme &obj
 // function to prepare fulltext query from input string
 using FullTextQueryFn = mem::Function<mem::Vector<FullTextData>(const mem::Value &searchData)>;
 
+using VirtualReadFn = mem::Function<mem::Value(const Scheme &objScheme, const mem::Value &)>;
+
+using VirtualWriteFn = mem::Function<bool(const Scheme &objScheme, mem::Value &)>;
+
 struct AutoFieldScheme : mem::AllocBase {
 	using ReqVec = mem::Vector<mem::String>;
 
@@ -258,6 +263,7 @@ public:
 	template <typename ... Args> static Field Array(mem::String && name, Args && ... args);
 	template <typename ... Args> static Field View(mem::String && name, Args && ... args);
 	template <typename ... Args> static Field FullTextView(mem::String && name, Args && ... args);
+	template <typename ... Args> static Field Virtual(mem::String && name, Args && ... args);
 	template <typename ... Args> static Field Custom(FieldCustom *);
 
 	struct Slot : public mem::AllocBase {
@@ -291,7 +297,7 @@ public:
 
 		virtual bool isSimpleLayout() const { return type == Type::Integer || type == Type::Float ||
 				type == Type::Boolean || type == Type::Text || type == Type::Bytes ||
-				type == Type::Data || type == Type::Extra; }
+				type == Type::Data || type == Type::Extra || type == Type::Virtual; }
 
 		virtual bool isDataLayout() const { return type == Type::Data || type == Type::Extra; }
 
@@ -544,6 +550,21 @@ struct FieldCustom : Field::Slot {
 			stappler::sql::Operator, const mem::StringView &, stappler::sql::Comparation, const mem::Value &, const mem::Value &) const { };
 };
 
+struct FieldVirtual : Field::Slot {
+	virtual ~FieldVirtual() { }
+
+	template <typename ... Args>
+	FieldVirtual(mem::String && n, Args && ... args) : Field::Slot(std::move(n), Type::Virtual) {
+		init<FieldVirtual, Args...>(*this, std::forward<Args>(args)...);
+	}
+
+	virtual void hash(mem::StringStream &stream, ValidationLevel l) const override { }
+
+	mem::Vector<mem::String> requires;
+	VirtualReadFn readFn;
+	VirtualWriteFn writeFn;
+};
+
 template <typename ... Args> Field Field::Data(mem::String && name, Args && ... args) {
 	auto newSlot = new Field::Slot(std::move(name), Type::Data);
 	Slot::init<Field::Slot>(*newSlot, std::forward<Args>(args)...);
@@ -614,6 +635,10 @@ template <typename ... Args> Field Field::View(mem::String && name, Args && ... 
 
 template <typename ... Args> Field Field::FullTextView(mem::String && name, Args && ... args) {
 	return Field(new FieldFullTextView(std::move(name), std::forward<Args>(args)...));
+}
+
+template <typename ... Args> Field Field::Virtual(mem::String && name, Args && ... args) {
+	return Field(new FieldVirtual(std::move(name), std::forward<Args>(args)...));
 }
 
 template <typename ... Args> Field Field::Custom(FieldCustom *custom) {
@@ -793,6 +818,26 @@ template <typename F> struct FieldOption<F, FullTextQueryFn> {
 template <typename F> struct FieldOption<F, FieldView::DeltaOptions> {
 	static inline void assign(F & f, FieldView::DeltaOptions d) {
 		if (d == FieldView::Delta) { f.delta = true; } else { f.delta = false; }
+	}
+};
+
+// virtual options
+
+template <> struct FieldOption<FieldVirtual, mem::Vector<mem::String>> {
+	static inline void assign(FieldVirtual & f, mem::Vector<mem::String> && s) {
+		f.requires = std::move(s);
+	}
+};
+
+template <> struct FieldOption<FieldVirtual, VirtualReadFn> {
+	static inline void assign(FieldVirtual & f, VirtualReadFn && r) {
+		f.readFn = std::move(r);
+	}
+};
+
+template <> struct FieldOption<FieldVirtual, VirtualWriteFn> {
+	static inline void assign(FieldVirtual & f, VirtualWriteFn && r) {
+		f.writeFn = std::move(r);
 	}
 };
 

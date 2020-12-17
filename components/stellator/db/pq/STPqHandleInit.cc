@@ -804,6 +804,7 @@ TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme) {
 		case db::Type::None:
 		case db::Type::Array:
 		case db::Type::View:
+		case db::Type::Virtual:
 			break;
 
 		case db::Type::Float:

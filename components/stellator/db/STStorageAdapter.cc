@@ -66,7 +66,27 @@ mem::Vector<int64_t> Adapter::performQueryListForIds(const QueryList &ql, size_t
 	return _interface->performQueryListForIds(ql, count);
 }
 mem::Value Adapter::performQueryList(const QueryList &ql, size_t count, bool forUpdate) const {
-	return _interface->performQueryList(ql, count, forUpdate);
+	auto targetScheme = ql.getScheme();
+	if (targetScheme) {
+		auto fields = Worker::getRequiredVirtualFields(*targetScheme, ql.getTopQuery());
+		auto ret = _interface->performQueryList(ql, count, forUpdate);
+		if (ret && targetScheme->hasVirtuals()) {
+			for (auto &retIt : ret.asArray()) {
+				if (!fields.empty()) {
+					for (auto &it : fields) {
+						auto slot = it->getSlot<FieldVirtual>();
+						if (slot->readFn) {
+							if (auto v = slot->readFn(*targetScheme, retIt)) {
+								retIt.setValue(std::move(v), it->getName());
+							}
+						}
+					}
+				}
+			}
+		}
+		return ret;
+	}
+	return mem::Value();
 }
 
 bool Adapter::init(const Interface::Config &cfg, const mem::Map<mem::StringView, const Scheme *> &schemes) {
@@ -97,7 +117,36 @@ int64_t Adapter::getDeltaValue(const Scheme &s, const FieldView &v, uint64_t id)
 }
 
 mem::Value Adapter::select(Worker &w, const Query &q) const {
-	return _interface->select(w, q);
+	auto targetScheme = &w.scheme();
+	auto ordField = q.getQueryField();
+	if (!ordField.empty()) {
+		if (auto f = targetScheme->getField(ordField)) {
+			targetScheme = f->getForeignScheme();
+		} else {
+			return mem::Value();
+		}
+	}
+
+	if (targetScheme) {
+		auto fields = w.getRequiredVirtualFields(*targetScheme, q);
+		auto ret = _interface->select(w, q);
+		if (ret && targetScheme->hasVirtuals()) {
+			for (auto &retIt : ret.asArray()) {
+				if (!fields.empty()) {
+					for (auto &it : fields) {
+						auto slot = it->getSlot<FieldVirtual>();
+						if (slot->readFn) {
+							if (auto v = slot->readFn(*targetScheme, retIt)) {
+								retIt.setValue(std::move(v), it->getName());
+							}
+						}
+					}
+				}
+			}
+		}
+		return ret;
+	}
+	return mem::Value();
 }
 
 mem::Value Adapter::create(Worker &w, mem::Value &d) const {

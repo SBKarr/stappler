@@ -118,7 +118,7 @@ mem::Value SqlHandle::create(Worker &worker, mem::Value &idata) {
 				if (auto f = scheme.getField(it.first)) {
 					if (f->getType() == db::Type::FullTextView) {
 						val.value(db::Binder::FullTextField{it.second});
-					} else {
+					} else if (f->getType() != db::Type::Virtual) {
 						val.value(db::Binder::DataField{f, it.second, f->isDataLayout(), f->hasFlag(db::Flags::Compressed)});
 					}
 				}
@@ -303,7 +303,7 @@ mem::Value SqlHandle::save(Worker &worker, uint64_t oid, const mem::Value &data,
 						if (auto oid = val.getInteger("__oid")) {
 							upd.set(it, oid);
 						}
-					} else if (type != db::Type::Set && type != db::Type::Array && type != db::Type::View) {
+					} else if (type != db::Type::Set && type != db::Type::Array && type != db::Type::View && type != db::Type::Virtual) {
 						upd.set(it, db::Binder::DataField{f_it, val, f_it->isDataLayout(), f_it->hasFlag(db::Flags::Compressed)});
 					}
 				}
@@ -314,7 +314,7 @@ mem::Value SqlHandle::save(Worker &worker, uint64_t oid, const mem::Value &data,
 					auto type = f_it->getType();
 					if (type == db::Type::FullTextView) {
 						upd.set(it.first, db::Binder::FullTextField{it.second});
-					} else if (type != db::Type::Set && type != db::Type::Array && type != db::Type::View) {
+					} else if (type != db::Type::Set && type != db::Type::Array && type != db::Type::View && type != db::Type::Virtual) {
 						upd.set(it.first, db::Binder::DataField{f_it, it.second, f_it->isDataLayout(), f_it->hasFlag(db::Flags::Compressed)});
 					}
 				}
@@ -391,7 +391,7 @@ mem::Value SqlHandle::patch(Worker &worker, uint64_t oid, const mem::Value &patc
 			if (auto f_it = scheme.getField(it.first)) {
 				if (f_it->getType() == db::Type::FullTextView) {
 					upd.set(it.first, db::Binder::FullTextField{it.second});
-				} else {
+				} else if (f_it->getType() != db::Type::Virtual) {
 					upd.set(it.first, db::Binder::DataField{f_it, it.second, f_it->isDataLayout(), f_it->hasFlag(db::Flags::Compressed)});
 				}
 			}

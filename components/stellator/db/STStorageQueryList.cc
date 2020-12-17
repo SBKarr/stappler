@@ -245,7 +245,7 @@ void QueryFieldResolver::doResolve(Data *data, const mem::Vector<mem::String> &e
 		} else if (it->getType() == Type::Extra) {
 			scheme = data->scheme;
 			fields = &static_cast<const FieldExtra *>(it->getSlot())->fields;
-		} else if (it->getType() == Type::Data) {
+		} else if (it->getType() == Type::Data || it->getType() == Type::Virtual) {
 			scheme = data->scheme;
 			if (depth < max) {
 				auto n_it = data->next.emplace(it->getName().str<mem::Interface>(), Data{scheme, nullptr, getFieldsVec(data->include, it->getName()), getFieldsVec(data->exclude, it->getName())}).first;
@@ -294,7 +294,16 @@ void QueryList::readFields(const Scheme &scheme, const mem::Set<const Field *> &
 		for (auto &it : fields) {
 			if (it != nullptr) {
 				auto type = it->getType();
-				if (type != Type::Set && type != Type::Array && type != Type::View) {
+				if (type == Type::Virtual) {
+					auto slot = it->getSlot<FieldVirtual>();
+					for (auto &it : slot->requires) {
+						if (auto f = scheme.getField(it)) {
+							if (!f->hasFlag(db::Flags::ForceInclude) && fields.find(f) == fields.end()) {
+								cb(f->getName(), f);
+							}
+						}
+					}
+				} else if (type != Type::Set && type != Type::Array && type != Type::View) {
 					cb(it->getName(), it);
 				}
 			}
@@ -302,8 +311,7 @@ void QueryList::readFields(const Scheme &scheme, const mem::Set<const Field *> &
 		auto &forced = scheme.getForceInclude();
 		for (auto &it : scheme.getFields()) {
 			if ((it.second.hasFlag(db::Flags::ForceInclude) || (!isSimpleGet && forced.find(&it.second) != forced.end()))
-					&& fields.find(&it.second) == fields.end()
-					) {
+					&& fields.find(&it.second) == fields.end()) {
 				cb(it.first, &it.second);
 			}
 		}
@@ -649,7 +657,7 @@ static uint16_t QueryList_emplaceItem(const Scheme &scheme, const Field *f, mem:
 			dec.emplace_back(mem::String(name));
 			return 0;
 		}
-	} else if (f->getType() == Type::Data) {
+	} else if (f->getType() == Type::Data || f->getType() == Type::Virtual) {
 		dec.emplace_back(mem::String(name));
 		return 0;
 	}

@@ -111,6 +111,8 @@ public:
 		bool hasCondition() const { return (flags & Conflict::WithoutCondition) == Conflict::None; }
 	};
 
+	static mem::Vector<const Field *> getRequiredVirtualFields(const Scheme &, const Query &);
+
 	Worker(const Scheme &);
 	Worker(const Scheme &, const Adapter &);
 	Worker(const Scheme &, const Transaction &);

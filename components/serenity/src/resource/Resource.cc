@@ -348,7 +348,7 @@ int64_t Resource::processResolveResult(const QueryFieldResolver &res, const Set<
 		auto f = res.getField(it->first);
 		if (!f || f->isProtected() || (fields.find(f) == fields.end())) {
 			it = dict.erase(it);
-		} else if ((f->getType() == db::Type::Extra || f->getType() == db::Type::Data) && it->second.isDictionary()) {
+		} else if ((f->getType() == db::Type::Extra || f->getType() == db::Type::Data || f->getType() == db::Type::Virtual) && it->second.isDictionary()) {
 			QueryFieldResolver next(res.next(it->first));
 			if (next) {
 				Resource_resolveExtra(next, it->second);

@@ -202,7 +202,7 @@ bool Worker::readFields(const Scheme &scheme, const FieldCallback &cb, const mem
 				}
 
 				auto type = it.second.getType();
-				if (type == Type::Set || type == Type::Array || type == Type::View || type == Type::FullTextView) {
+				if (type == Type::Set || type == Type::Array || type == Type::View || type == Type::FullTextView || type == Type::Virtual) {
 					continue;
 				}
 
@@ -226,14 +226,53 @@ bool Worker::readFields(const Scheme &scheme, const FieldCallback &cb, const mem
 			return false;
 		};
 
+		mem::Vector<const Field *> virtuals;
 		auto &forceInclude = scheme.getForceInclude();
 		for (auto &it : scheme.getFields()) {
 			auto type = it.second.getType();
-			if (type == Type::Set || type == Type::Array || type == Type::View || type == Type::FullTextView) {
+			if (type == Type::Virtual) {
+				if (it.second.hasFlag(Flags::ForceInclude) || forceInclude.find(&it.second) != forceInclude.end()) {
+					auto lb = std::lower_bound(virtuals.begin(), virtuals.end(), &it.second);
+					if (lb == virtuals.end()) {
+						virtuals.emplace_back(&it.second);
+					} else if (*lb != &it.second) {
+						virtuals.emplace(lb, &it.second);
+					}
+				} else if (_required.includeFields.empty() || hasField(_required.includeFields, it.second) || hasPatchField(it.second)) {
+					if (_required.excludeFields.empty() || !hasField(_required.excludeFields, it.second)) {
+						auto lb = std::lower_bound(virtuals.begin(), virtuals.end(), &it.second);
+						if (lb == virtuals.end()) {
+							virtuals.emplace_back(&it.second);
+						} else if (*lb != &it.second) {
+							virtuals.emplace(lb, &it.second);
+						}
+					}
+				}
+			}
+		}
+
+		mem::Vector<const Field *> required;
+		for (auto &it : virtuals) {
+			auto slot = it->getSlot<FieldVirtual>();
+			for (auto &iit : slot->requires) {
+				if (auto f = scheme.getField(iit)) {
+					auto lb = std::lower_bound(required.begin(), required.end(), f);
+					if (lb == required.end()) {
+						required.emplace_back(f);
+					} else if (*lb != f) {
+						required.emplace(lb, f);
+					}
+				}
+			}
+		}
+
+		for (auto &it : scheme.getFields()) {
+			auto type = it.second.getType();
+			if (type == Type::Set || type == Type::Array || type == Type::View || type == Type::FullTextView || type == Type::Virtual) {
 				continue;
 			}
 
-			if (it.second.hasFlag(Flags::ForceInclude) || forceInclude.find(&it.second) != forceInclude.end()) {
+			if (it.second.hasFlag(Flags::ForceInclude) || forceInclude.find(&it.second) != forceInclude.end() || hasField(required, it.second)) {
 				cb(it.second.getName(), &it.second);
 			} else if (_required.includeFields.empty() || hasField(_required.includeFields, it.second) || hasPatchField(it.second)) {
 				if (_required.excludeFields.empty() || !hasField(_required.excludeFields, it.second)) {
@@ -244,13 +283,14 @@ bool Worker::readFields(const Scheme &scheme, const FieldCallback &cb, const mem
 	}
 	return true;
 }
+
 void Worker::readFields(const Scheme &scheme, const Query &q, const FieldCallback &cb) {
 	if (q.getIncludeFields().empty() && q.getExcludeFields().empty()) {
 		if (scheme.hasForceExclude()) {
 			cb("__oid", nullptr);
 			for (auto &it : scheme.getFields()) {
 				auto type = it.second.getType();
-				if (type == Type::Set || type == Type::Array || type == Type::View || type == Type::FullTextView) {
+				if (type == Type::Set || type == Type::Array || type == Type::View || type == Type::FullTextView || type == Type::Virtual) {
 					continue;
 				}
 
@@ -272,14 +312,38 @@ void Worker::readFields(const Scheme &scheme, const Query &q, const FieldCallbac
 			return false;
 		};
 
+		auto hasReqField = [&] (const mem::Vector<const Field *> &vec, const Field &f) -> bool {
+			auto it = std::lower_bound(vec.begin(), vec.end(), &f);
+			if (it == vec.end() || *it != &f) {
+				return false;
+			}
+			return true;
+		};
+
+		mem::Vector<const Field *> virtuals = getRequiredVirtualFields(scheme, q);
+		mem::Vector<const Field *> required;
+		for (auto &it : virtuals) {
+			auto slot = it->getSlot<FieldVirtual>();
+			for (auto &iit : slot->requires) {
+				if (auto f = scheme.getField(iit)) {
+					auto lb = std::lower_bound(required.begin(), required.end(), f);
+					if (lb == required.end()) {
+						required.emplace_back(f);
+					} else if (*lb != f) {
+						required.emplace(lb, f);
+					}
+				}
+			}
+		}
+
 		auto &forceInclude = scheme.getForceInclude();
 		for (auto &it : scheme.getFields()) {
 			auto type = it.second.getType();
-			if (type == Type::Set || type == Type::Array || type == Type::View || type == Type::FullTextView) {
+			if (type == Type::Set || type == Type::Array || type == Type::View || type == Type::FullTextView || type == Type::Virtual) {
 				continue;
 			}
 
-			if (it.second.hasFlag(Flags::ForceInclude) || forceInclude.find(&it.second) != forceInclude.end()) {
+			if (it.second.hasFlag(Flags::ForceInclude) || forceInclude.find(&it.second) != forceInclude.end() || hasReqField(required, it.second)) {
 				cb(it.second.getName(), &it.second);
 			} else if (q.getIncludeFields().empty() || hasField(q.getIncludeFields(), it.second)) {
 				if (q.getExcludeFields().empty() || !hasField(q.getExcludeFields(), it.second)) {
@@ -288,6 +352,58 @@ void Worker::readFields(const Scheme &scheme, const Query &q, const FieldCallbac
 			}
 		}
 	}
+}
+
+mem::Vector<const Field *> Worker::getRequiredVirtualFields(const Scheme &scheme, const Query &q) {
+	mem::Vector<const Field *> required;
+	if (q.getIncludeFields().empty() && q.getExcludeFields().empty()) {
+		for (auto &it : scheme.getFields()) {
+			auto type = it.second.getType();
+			if (type == Type::Virtual && !it.second.hasFlag(Flags::ForceExclude)) {
+				auto lb = std::lower_bound(required.begin(), required.end(), &it.second);
+				if (lb == required.end()) {
+					required.emplace_back(&it.second);
+				} else if (*lb != &it.second) {
+					required.emplace(lb, &it.second);
+				}
+			}
+		}
+	} else {
+		auto hasField = [&] (const Query::FieldsVec &vec, const Field &f) -> bool {
+			for (auto &it : vec) {
+				if (it.name == f.getName()) {
+					return true;
+				}
+			}
+			return false;
+		};
+
+		auto &forceInclude = scheme.getForceInclude();
+		for (auto &it : scheme.getFields()) {
+			auto type = it.second.getType();
+			if (type == Type::Virtual) {
+				if (it.second.hasFlag(Flags::ForceInclude) || forceInclude.find(&it.second) != forceInclude.end()) {
+					auto lb = std::lower_bound(required.begin(), required.end(), &it.second);
+					if (lb == required.end()) {
+						required.emplace_back(&it.second);
+					} else if (*lb != &it.second) {
+						required.emplace(lb, &it.second);
+					}
+				} else if (q.getIncludeFields().empty() || hasField(q.getIncludeFields(), it.second)) {
+					if (q.getExcludeFields().empty() || !hasField(q.getExcludeFields(), it.second)) {
+						auto lb = std::lower_bound(required.begin(), required.end(), &it.second);
+						if (lb == required.end()) {
+							required.emplace_back(&it.second);
+						} else if (*lb != &it.second) {
+							required.emplace(lb, &it.second);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return required;
 }
 
 bool Worker::shouldIncludeNone() const {

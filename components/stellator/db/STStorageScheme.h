@@ -114,6 +114,7 @@ public:
 	bool hasFiles() const;
 	bool hasForceExclude() const;
 	bool hasAccessControl() const;
+	bool hasVirtuals() const;
 
 	const mem::Set<const Field *> & getForceInclude() const;
 	const mem::Map<mem::String, Field> & getFields() const;
@@ -281,6 +282,7 @@ protected:
 	bool _hasFiles = false;
 	bool _hasForceExclude = false;
 	bool _hasAccessControl = false;
+	bool _hasVirtuals = false;
 
 	AccessTable roles;
 	Field oidField;
