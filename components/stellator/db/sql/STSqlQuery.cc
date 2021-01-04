@@ -270,6 +270,12 @@ void SqlQuery::writeWhere(SqlQuery::WhereContinue &w, db::Operator op, const db:
 				}
 			}
 		});
+	} else if (q.hasSelectName()) {
+		// failsafe
+		w.parenthesis(op, [&] (SqlQuery::WhereBegin &wh) {
+			auto whi = wh.where();
+			whi.where(db::Operator::Or, SqlQuery::Field(scheme.getName(), "__oid"), db::Comparation::Equal, mem::Value(0));
+		});
 	} else if (q.getSelectList().size() > 0) {
 		w.parenthesis(op, [&] (SqlQuery::WhereBegin &wh) {
 			auto whi = wh.where();

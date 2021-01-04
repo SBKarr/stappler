@@ -109,6 +109,7 @@ public:
 	Query & select(const mem::StringView &alias);
 	Query & select(int64_t id);
 	Query & select(mem::Vector<int64_t> &&id);
+	Query & select(mem::SpanView<int64_t> id);
 	Query & select(std::initializer_list<int64_t> &&id);
 
 	Query & select(const mem::StringView &f, Comparation c, const mem::Value & v1, const mem::Value &v2 = mem::Value());
@@ -213,6 +214,7 @@ protected:
 	FieldsVec fieldsExclude;
 	bool update = false;
 	bool _softLimit = false;
+	bool _selected = false;
 };
 
 template <typename Str>

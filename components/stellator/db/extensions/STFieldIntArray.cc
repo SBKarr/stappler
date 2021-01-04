@@ -46,7 +46,7 @@ mem::Value FieldIntArray::readFromStorage(db::ResultInterface &iface, size_t row
 		auto SPUNUSED index = r.readUnsigned32();
 
 		if (size > 0) {
-			mem::Value ret;
+			mem::Value ret(mem::Value::Type::ARRAY); ret.getArray().reserve(size);
 			while (!r.empty()) {
 				auto size = r.readUnsigned32();
 				switch (size) {
@@ -148,7 +148,7 @@ mem::Value FieldBigIntArray::readFromStorage(db::ResultInterface &iface, size_t 
 		auto SPUNUSED index = r.readUnsigned32();
 
 		if (size > 0) {
-			mem::Value ret;
+			mem::Value ret(mem::Value::Type::ARRAY); ret.getArray().reserve(size);
 			while (!r.empty()) {
 				auto size = r.readUnsigned32();
 				switch (size) {

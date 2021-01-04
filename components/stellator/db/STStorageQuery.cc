@@ -214,6 +214,15 @@ Query & Query::select(mem::Vector<int64_t> &&id) {
 	selectIds = std::move(id);
 	selectAlias.clear();
 	selectList.clear();
+	_selected = true;
+	return *this;
+}
+
+Query & Query::select(mem::SpanView<int64_t> id) {
+	selectIds = id.vec();
+	selectAlias.clear();
+	selectList.clear();
+	_selected = true;
 	return *this;
 }
 
@@ -417,7 +426,7 @@ const mem::Value &Query::getSoftLimitValue() const {
 }
 
 bool Query::hasSelectName() const {
-	return !selectIds.empty() || !selectAlias.empty();
+	return !selectIds.empty() || !selectAlias.empty() || _selected;
 }
 bool Query::hasSelectList() const {
 	return !selectList.empty();

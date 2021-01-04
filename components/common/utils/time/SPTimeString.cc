@@ -419,7 +419,7 @@ bool sp_time_exp_t::read(StringView r) {
 				tm_usec = 1000000 * v;
 			}
 			return sp_time_exp_read_gmt(*this, r.empty()?"Z":r);
-		} else if (sp_date_checkmask(r, "####-##-##")) {
+		} else if (sp_date_checkmask(r, "####-##-##*")) {
 			// 2011-04-28 ; Atom date format
 			tm_year = ((r[0] - '0') * 10 + (r[1] - '0') - 19) * 100;
 			if (tm_year < 0)
@@ -429,7 +429,8 @@ bool sp_time_exp_t::read(StringView r) {
 			tm_mon = ((r[5] - '0') * 10) + (r[6] - '0') - 1;
 			tm_mday = ((r[8] - '0') * 10) + (r[9] - '0');
 			if (!sp_time_exp_check_mon(*this)) { return false; }
-			return sp_time_exp_read_gmt(*this, StringView("Z"));
+			r += "####-##-##"_len;
+			return sp_time_exp_read_gmt(*this, r.empty()?"Z":r);
 		} else if (sp_date_checkmask(r, "##.##.####")) {
 			// 12.03.2010
 			tm_year = ((r[6] - '0') * 10 + (r[7] - '0') - 19) * 100;

@@ -63,6 +63,15 @@ enum class PageType : uint8_t {
 };
 
 struct StorageHeader {
+	uint8_t title[6]; // 0 - 5
+	uint8_t version; // 6
+	uint8_t pageSize; // 7 ( size = 1 << value)
+	uint32_t pageCount; // 8 - 11
+	uint64_t mtime; // 12 - 19
+
+};
+
+struct StorageHeader {
 	uint8_t title[6]; // 0-6
 	uint16_t version; // 6-8
 	uint32_t pageSize; // 8-12
