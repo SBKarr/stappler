@@ -349,7 +349,7 @@ public:
 	void hash(mem::StringStream &stream, ValidationLevel l) const { slot->hash(stream, l); }
 
 	bool transform(const Scheme &, int64_t, mem::Value &, bool isCreate = false) const;
-	bool transform(const Scheme &, const mem::Value &, mem::Value &, bool isCreate) const;
+	bool transform(const Scheme &, const mem::Value &, mem::Value &, bool isCreate = false) const;
 	bool transform(const mem::Value &, mem::Value &) const;
 
 	operator bool () const { return slot != nullptr; }

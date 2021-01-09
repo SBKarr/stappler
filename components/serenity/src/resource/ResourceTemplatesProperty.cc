@@ -303,7 +303,7 @@ int64_t ResourceFieldObject::getObjectId() {
 	if (!_objectId) {
 		if (auto id = getRootId()) {
 			if (auto obj = Worker(getScheme(), _transaction).get(id, {_field->getName()})) {
-				_objectId = obj.getValue(_field->getName());
+				_objectId = obj.getInteger(_field->getName());
 			}
 		}
 	}

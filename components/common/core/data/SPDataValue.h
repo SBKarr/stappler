@@ -286,6 +286,9 @@ public:
 	Self slice(int start, int count);
 
 	operator bool() const noexcept { return (_type != Type::EMPTY && _type != Type::NONE); }
+	operator int32_t() const noexcept = delete; // internal protection for bool cast
+	operator int64_t() const noexcept = delete; // internal protection for bool cast
+	operator size_t() const noexcept = delete; // internal protection for bool cast
 
 	int64_t asInteger() const;
 	double asDouble() const;

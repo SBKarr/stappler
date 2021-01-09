@@ -382,6 +382,11 @@ bool NetworkHandle::setupHeaders(CURL *curl, const Vector<String> &vec, curl_sli
 	bool check = true;
 	if (vec.size() > 0 || !keySign.empty()) {
 		for (const auto &str : vec) {
+			if (_method == Method::Get || _method == Method::Head || _method == Method::Delete) {
+				if (StringView(str).starts_with("Content-Type:")) {
+					continue;
+				}
+			}
 			*headers = curl_slist_append(*headers, str.c_str());
 		}
 		if (!keySign.empty()) {

@@ -209,6 +209,33 @@ Query & Query::select(int64_t id) {
 	selectList.clear();
 	return *this;
 }
+Query & Query::select(const mem::Value &val) {
+	if (val.isInteger()) {
+		selectIds.clear();
+		selectIds.push_back(val.getInteger());
+		selectAlias.clear();
+		selectList.clear();
+	} else if (val.isString()) {
+		selectIds.clear();
+		selectAlias = val.getString();
+		selectList.clear();
+	} else if (val.isArray()) {
+		selectIds.clear();
+		selectAlias.clear();
+		selectList.clear();
+		for (auto &it : val.asArray()) {
+			selectIds.emplace_back(it.asInteger());
+		}
+	} else if (val.isDictionary()) {
+		selectIds.clear();
+		selectAlias.clear();
+		selectList.clear();
+		for (auto &it : val.asDict()) {
+			selectList.emplace_back(it.first, Comparation::Equal, mem::Value(it.second), mem::Value());
+		}
+	}
+	return *this;
+}
 
 Query & Query::select(mem::Vector<int64_t> &&id) {
 	selectIds = std::move(id);
