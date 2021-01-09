@@ -39,25 +39,6 @@ struct GraphicsParams {
 	URect scissor;
 };
 
-struct Vertex_V4F_C4F_T2F {
-	alignas(16) Vec4 pos;
-	alignas(16) Color4F color;
-	alignas(16) Vec2 tex;
-};
-
-struct Triangle_V3F_C4F_T2F {
-	Vertex_V4F_C4F_T2F a;
-	Vertex_V4F_C4F_T2F b;
-	Vertex_V4F_C4F_T2F c;
-};
-
-struct Quad_V3F_C4F_T2F {
-	Vertex_V4F_C4F_T2F bl;
-	Vertex_V4F_C4F_T2F br;
-	Vertex_V4F_C4F_T2F tl;
-	Vertex_V4F_C4F_T2F tr;
-};
-
 }
 
 #endif /* COMPONENTS_XENOLITH_CORE_XLGRAPHICS_H_ */

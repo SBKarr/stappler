@@ -20,58 +20,24 @@
  THE SOFTWARE.
  **/
 
-#ifndef COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDIRECTOR_H_
-#define COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDIRECTOR_H_
+#include "XLDrawBuffer.h"
 
-#include "XLEventHeader.h"
-#include "XLExecFlow.h"
+namespace stappler::xenolith::draw {
 
-namespace stappler::xenolith {
-
-class Director : public Ref {
-public:
-	static EventHeader onProjectionChanged;
-	static EventHeader onAfterUpdate;
-	static EventHeader onAfterVisit;
-	static EventHeader onAfterDraw;
-
-	enum class Projection {
-		_2D,
-		_3D,
-		Euclid,
-		Custom,
-		Default = Euclid,
-	};
-
-	Director();
-
-	virtual ~Director();
-	virtual bool init();
-
-	inline vk::View* getView() { return _view; }
-	void setView(vk::View *view);
-
-	bool mainLoop(double);
-
-	void update(double);
-	void construct();
-
-	void end();
-
-	Rc<TransferFlow> swapTransferFlow();
-	Rc<PipelineFlow> swapPipelineFlow();
-	Rc<DrawFlow> swapDrawFlow();
-
-protected:
-	Rc<vk::View> _view;
-
-	Mutex _mutex;
-
-	Rc<TransferFlow> _transferFlow;
-	Rc<PipelineFlow> _pipelineFlow;
-	Rc<DrawFlow> _drawFlow;
-};
+BufferHandle *BufferHandle::create(memory::pool_t *p, size_t reserve) {
 
 }
 
-#endif /* COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDIRECTOR_H_ */
+bool BufferHandle::append(BytesView) {
+
+}
+
+void BufferHandle::acquireData(const Callback<void(BytesView)> &) {
+
+}
+
+void BufferHandle::setGl(void *, BufferHandleGlAcquire) {
+
+}
+
+}

@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #include "XLVkAllocator.h"
 #include "XLVkTransfer.h"
+#include "XLDrawBuffer.h"
 
 namespace stappler::xenolith::vk {
 
@@ -29,7 +30,6 @@ namespace mem {
 
 // Align on a power of 2 boundary
 static constexpr uint64_t ALIGN(uint64_t size, uint64_t boundary) { return (((size) + ((boundary) - 1)) & ~((boundary) - 1)); }
-static constexpr uint64_t ALIGN_DEFAULT(uint64_t size) { return ALIGN(size, 16); }
 
 static constexpr uint64_t BOUNDARY_INDEX ( 23 );
 static constexpr uint64_t BOUNDARY_SIZE ( 1 << BOUNDARY_INDEX ); // 8_MiB
@@ -50,9 +50,7 @@ struct MemNode {
 };
 
 struct Allocator {
-	static constexpr uint64_t getIndexSize(uint64_t idx) {
-		return 1 << (idx + 1 + BOUNDARY_INDEX);
-	}
+	static constexpr uint64_t getIndexSize(uint64_t idx) { return 1 << (idx + 1 + BOUNDARY_INDEX); }
 
 	uint32_t typeIndex = 0;
 	const PFN_vkAllocateMemory vkAllocateMemory = nullptr;
@@ -60,10 +58,10 @@ struct Allocator {
 	VkDevice device = VK_NULL_HANDLE;
 
 	uint64_t last = 0; // largest used index into free
-	uint64_t max = ALLOCATOR_MAX_FREE_UNLIMITED; // Total size (in BOUNDARY_SIZE multiples) of unused memory before blocks are given back
+	uint64_t max = 0; // Total size (in BOUNDARY_SIZE multiples) of unused memory before blocks are given back
 	uint64_t current = 0; // current allocated size in BOUNDARY_SIZE
 
-	Mutex *mutex = nullptr;
+	Mutex mutex;
 
 	std::array<Vector<MemNode>, MAX_INDEX> buf;
 
@@ -77,12 +75,6 @@ struct Allocator {
 	void unlock();
 };
 
-struct MemBlock {
-	VkDeviceMemory mem = VK_NULL_HANDLE;
-	VkDeviceSize offset = 0;
-	VkDeviceSize size = 0;
-};
-
 struct Pool {
 	Allocator *allocator = nullptr;
 
@@ -91,9 +83,7 @@ struct Pool {
 	Vector<MemNode> mem;
 	Vector<MemBlock> freed;
 
-	bool threadSafe = false;
-
-	Pool(Allocator *alloc, uint64_t rank = 0, bool threadSafe = false);
+	Pool(Allocator *alloc, uint64_t rank = 0);
 	~Pool();
 
 	MemBlock alloc(VkDeviceSize size, VkDeviceSize alignment);
@@ -103,7 +93,6 @@ struct Pool {
 	void lock();
 	void unlock();
 };
-
 
 Allocator::Allocator(uint32_t idx, const PFN_vkAllocateMemory alloc, const PFN_vkFreeMemory free, VkDevice dev)
 : typeIndex(idx), vkAllocateMemory(alloc), vkFreeMemory(free), device(dev) { }
@@ -265,20 +254,16 @@ void Allocator::free(SpanView<MemNode> nodes) {
 }
 
 void Allocator::lock() {
-	if (mutex) {
-		mutex->lock();
-	}
+	mutex.lock();
 }
 
 void Allocator::unlock() {
-	if (mutex) {
-		mutex->unlock();
-	}
+	mutex.unlock();
 }
 
 
-Pool::Pool(Allocator *alloc, uint64_t rank, bool threadSafe)
-: allocator(alloc), rank(0), threadSafe(threadSafe) { }
+Pool::Pool(Allocator *alloc, uint64_t rank)
+: allocator(alloc), rank(0) { }
 
 Pool::~Pool() {
 	allocator->free(mem);
@@ -300,7 +285,6 @@ MemBlock Pool::alloc(VkDeviceSize in_size, VkDeviceSize alignment) {
 		}
 	}
 
-
 	if (!node) {
 		size_t reqSize = size;
 		if (rank > 0) {
@@ -314,7 +298,7 @@ MemBlock Pool::alloc(VkDeviceSize in_size, VkDeviceSize alignment) {
 
 	if (node) {
 		const_cast<MemNode *>(node)->offset = offset + size;
-		return MemBlock({node->mem, offset, size});
+		return MemBlock({node->mem, offset, size, allocator->typeIndex});
 	}
 
 	return MemBlock();
@@ -331,35 +315,97 @@ void Pool::clear() {
 }
 
 void Pool::lock() {
-	if (threadSafe) {
-		allocator->lock();
-	}
+	allocator->lock();
 }
 
 void Pool::unlock() {
-	if (threadSafe) {
-		allocator->unlock();
+	allocator->unlock();
+}
+
+}
+
+
+AllocPool::~AllocPool() { }
+
+bool AllocPool::init(Rc<Allocator> alloc) {
+	_allocator = alloc;
+	return true;
+}
+
+Rc<Buffer> AllocPool::spawn(AllocationType type, AllocationUsage usage, VkDeviceSize size) {
+	VkBufferCreateInfo bufferInfo { };
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.size = size;
+	bufferInfo.usage = VkBufferUsageFlags(usage);
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	VkBuffer target = VK_NULL_HANDLE;
+	auto dev = _allocator->getDevice();
+	if (dev->getInstance()->vkCreateBuffer(dev->getDevice(), &bufferInfo, nullptr, &target) != VK_SUCCESS) {
+		return nullptr;
 	}
-}
 
-}
+	VkMemoryDedicatedRequirements memDedicatedReqs = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS };
+	VkMemoryRequirements2 memRequirements = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2, &memDedicatedReqs };
+	VkBufferMemoryRequirementsInfo2 info = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2, nullptr, target };
 
+	dev->getInstance()->vkGetBufferMemoryRequirements2(dev->getDevice(), &info, &memRequirements);
 
+	mem::Allocator * heap = _allocator->getHeap(memRequirements.memoryRequirements.memoryTypeBits, type);
 
-bool AllocatorBufferBlock::isCoherent() const {
-	return (flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0;
-}
-
-void AllocatorBufferBlock::free() {
-	if (gen) {
-		gen->free(*this);
+	mem::Pool *pool = nullptr;
+	auto it = _heaps.find(heap->typeIndex);
+	if (it == _heaps.end()) {
+		pool = &_heaps.emplace(heap->typeIndex, mem::Pool(heap, 0)).first->second;
 	} else {
-		alloc->free(*this);
+		pool = &it->second;
 	}
-	alloc = nullptr;
-	mem = VK_NULL_HANDLE;
-	size = 0;
-	offset = 0;
+
+	if (auto mem = pool->alloc(memRequirements.memoryRequirements.size, memRequirements.memoryRequirements.alignment)) {
+		if (dev->getInstance()->vkBindBufferMemory(dev->getDevice(), target, mem.mem, mem.offset) == VK_SUCCESS) {
+			return Rc<Buffer>::create(this, target, mem, type, usage, size);
+		}
+	}
+
+	dev->getInstance()->vkDestroyBuffer(dev->getDevice(), target, nullptr);
+	return nullptr;
+}
+
+Rc<Buffer> AllocPool::upload(memory::pool_t *p, draw::BufferHandle *buf, AllocationType type, AllocationUsage usage) {
+	Rc<Buffer> ret;
+	buf->acquireData([&] (BytesView bytes) {
+		if ((ret = spawn(type, usage, bytes.size()))) {
+			ret->setData((void *)bytes.data(), VkDeviceSize(bytes.size()));
+		}
+	});
+	if (ret) {
+		ret->retain();
+		memory::pool::cleanup_register(p, ret.get(), [] (void *ptr) -> memory::status_t {
+			((Buffer *)ptr)->release();
+			return 0;
+		});
+		buf->setGl(ret.data());
+	}
+	return ret;
+}
+
+VirtualDevice *AllocPool::getDevice() const {
+	return _allocator->getDevice();
+}
+
+Rc<Allocator> AllocPool::getAllocator() const {
+	return _allocator;
+}
+
+bool AllocPool::isCoherent(uint32_t idx) const {
+	return _allocator->isCoherent(idx);
+}
+
+void AllocPool::free(mem::MemBlock mem) {
+	auto it = _heaps.find(mem.type);
+	if (it != _heaps.end()) {
+		it->second.free(mem);
+	}
 }
 
 Allocator::~Allocator() { }
@@ -374,23 +420,26 @@ void Allocator::invalidate(VirtualDevice &dev) {
 	_device = nullptr;
 }
 
-Allocator::Block Allocator::allocate(uint32_t bits, AllocationType type, VkDeviceSize size, VkDeviceSize align) {
-	VkMemoryPropertyFlags flags = 0;
-	VkDeviceMemory memory;
-	VkMemoryAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = size;
-	allocInfo.memoryTypeIndex = findMemoryType(bits, type, flags);
-
-	if (_device->getInstance()->vkAllocateMemory(_device->getDevice(), &allocInfo, nullptr, &memory) != VK_SUCCESS) {
-		return Block();
-	}
-
-	return Block{this, nullptr, memory, type, flags, size, 0, true};
-}
-
 VirtualDevice *Allocator::getDevice() const {
 	return _device;
+}
+
+bool Allocator::isCoherent(uint32_t idx) const {
+	return (_memProperties.memoryTypes[idx].propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0;
+}
+
+mem::Allocator *Allocator::getHeap(uint32_t typeFilter, AllocationType t) {
+	VkMemoryPropertyFlags prop = 0;
+	auto v = findMemoryType(typeFilter, t, prop);
+
+	std::unique_lock<Mutex> lock(_mutex);
+	auto it = _heaps.find(v);
+	if (it != _heaps.end()) {
+		return &it->second;
+	} else {
+		return &_heaps.emplace(std::piecewise_construct, std::forward_as_tuple(v),
+				std::forward_as_tuple(v, _device->getInstance()->vkAllocateMemory, _device->getInstance()->vkFreeMemory, _device->getDevice())).first->second;
+	}
 }
 
 void Allocator::lock() {
@@ -402,10 +451,12 @@ void Allocator::unlock() {
 }
 
 uint32_t Allocator::findMemoryType(uint32_t typeFilter, AllocationType type, VkMemoryPropertyFlags &prop) {
+	// best match
 	for (uint32_t i = 0; i < _memProperties.memoryTypeCount; i++) {
 		if ((typeFilter & (1 << i))) {
 			switch (type) {
 			case AllocationType::Local:
+				// device local, inaccessible from host
 				if ((_memProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0
 						&& (_memProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) == 0) {
 					prop = _memProperties.memoryTypes[i].propertyFlags;
@@ -413,6 +464,7 @@ uint32_t Allocator::findMemoryType(uint32_t typeFilter, AllocationType type, VkM
 				}
 				break;
 			case AllocationType::LocalVisible:
+				// device local, visible from host (shared 256 MiB by default)
 				if ((_memProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0
 						&& (_memProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0) {
 					prop = _memProperties.memoryTypes[i].propertyFlags;
@@ -420,6 +472,7 @@ uint32_t Allocator::findMemoryType(uint32_t typeFilter, AllocationType type, VkM
 				}
 				break;
 			case AllocationType::GpuUpload:
+				// host visible, not cached
 				if ((_memProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0
 						&& (_memProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) == 0) {
 					prop = _memProperties.memoryTypes[i].propertyFlags;
@@ -427,8 +480,36 @@ uint32_t Allocator::findMemoryType(uint32_t typeFilter, AllocationType type, VkM
 				}
 				break;
 			case AllocationType::GpuDownload:
+				// host visible, cached
 				if ((_memProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0
 						&& (_memProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) != 0) {
+					prop = _memProperties.memoryTypes[i].propertyFlags;
+					return i;
+				}
+				break;
+			default:
+				break;
+			}
+		}
+	}
+
+	// fallback
+	for (uint32_t i = 0; i < _memProperties.memoryTypeCount; i++) {
+		if ((typeFilter & (1 << i))) {
+			switch (type) {
+			case AllocationType::Local:
+				// device local
+				if ((_memProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0) {
+					prop = _memProperties.memoryTypes[i].propertyFlags;
+					return i;
+				}
+				break;
+			case AllocationType::LocalVisible:
+				break;
+			case AllocationType::GpuUpload:
+			case AllocationType::GpuDownload:
+				// host visible
+				if ((_memProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0) {
 					prop = _memProperties.memoryTypes[i].propertyFlags;
 					return i;
 				}
@@ -454,87 +535,17 @@ uint32_t Allocator::findMemoryType(uint32_t typeFilter, AllocationType type, VkM
 	return UINT32_MAX;
 }
 
-
 bool Allocator::requestTransfer(Rc<Buffer> tar, void *data, uint32_t size, uint32_t offset) {
 	Rc<TransferGeneration> gen;
 
-	_mutex.lock();
+	lock();
 	if (!_writable) {
 		_writable = Rc<TransferGeneration>::create(this);
 	}
 	gen = _writable;
-	_mutex.unlock();
+	unlock();
 
 	return _writable->requestTransfer(tar, data, size, offset);
-}
-
-void Allocator::free(Block &mem) {
-	if (mem.mem && mem.dedicated) {
-		_device->getInstance()->vkFreeMemory(_device->getDevice(), mem.mem, nullptr);
-	}
-}
-
-void Allocator::free(MemBlock &mem) {
-	lock();
-	auto it = _blocks.find(mem.key());
-	if (it == _blocks.end()) {
-		_blocks.emplace(mem.key(), Vector<MemBlock>{mem});
-	} else {
-		it->second.emplace_back(mem);
-	}
-	unlock();
-}
-
-Allocator::MemBlock Allocator::allocateBlock(uint32_t size, uint32_t bits, AllocationType t) {
-	auto allocate = [&] {
-		MemBlock target;
-		VkMemoryPropertyFlags flags = 0;
-		VkDeviceMemory memory;
-		VkMemoryAllocateInfo allocInfo{};
-		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocInfo.allocationSize = size;
-		allocInfo.memoryTypeIndex = findMemoryType(bits, AllocationType::GpuUpload, flags);
-
-		if (_device->getInstance()->vkAllocateMemory(_device->getDevice(), &allocInfo, nullptr, &memory) != VK_SUCCESS) {
-			return Allocator::MemBlock();
-		}
-
-		target.mem = memory;
-		target.size = size;
-		target.offset = 0;
-		target.type = allocInfo.allocationSize;
-		target.flags = flags;
-		return target;
-	};
-
-	lock();
-
-	auto it = _blocks.find(bits);
-	if (it != _blocks.end()) {
-		size_t target = std::numeric_limits<size_t>::max();
-		for (size_t i = it->second.size(); i > 0; -- i) {
-			if (it->second[i - 1].size >= size) {
-				target = i - 1;
-			}
-		}
-
-		if (target == std::numeric_limits<size_t>::max()) {
-			unlock();
-			return allocate();
-		} else {
-			MemBlock ret = it->second[target];
-			if (target + 1 == it->second.size()) {
-				it->second.pop_back();
-			} else {
-				it->second.erase(it->second.begin() + target);
-			}
-			unlock();
-			return ret;
-		}
-	} else {
-		unlock();
-		return allocate();
-	}
 }
 
 Vector<Rc<TransferGeneration>> Allocator::getTransfers() {
@@ -564,5 +575,164 @@ Vector<Rc<TransferGeneration>> Allocator::getTransfers() {
 	return ret;
 }
 
+
+Buffer::~Buffer() {
+	if (_buffer) {
+		log::vtext("VK-Error", "Buffer was not destroyed");
+	}
+}
+
+bool Buffer::init(Rc<AllocPool> p, VkBuffer buf, mem::MemBlock mem, AllocationType type, AllocationUsage usage, VkDeviceSize size) {
+	_pool = p;
+	_buffer = buf;
+	_memory = mem;
+	_type = type;
+	_usage = usage;
+	_size = size;
+	return true;
+}
+
+void Buffer::invalidate(VirtualDevice &dev) {
+	if (_buffer) {
+		if (_mapped) {
+			_pool->getDevice()->getInstance()->vkUnmapMemory(_pool->getDevice()->getDevice(), _memory.mem);
+			_mapped = nullptr;
+		}
+		_pool->free(_memory);
+		_memory = mem::MemBlock();
+		dev.getInstance()->vkDestroyBuffer(dev.getDevice(), _buffer, nullptr);
+		_buffer = VK_NULL_HANDLE;
+	}
+}
+
+void Buffer::setPersistentMapping(bool value) {
+	if (value != _persistentMapping) {
+		_persistentMapping = value;
+		if (!_persistentMapping && _mapped) {
+			_pool->getDevice()->getInstance()->vkUnmapMemory(_pool->getDevice()->getDevice(), _memory.mem);
+			_mapped = nullptr;
+		}
+	}
+}
+bool Buffer::isPersistentMapping() const {
+	return _persistentMapping;
+}
+
+bool Buffer::setData(void *data, VkDeviceSize size, VkDeviceSize offset) {
+	size = std::min(_size - offset, size);
+
+	switch (_type) {
+	case AllocationType::Local:
+		_pool->getAllocator()->requestTransfer(this, data, size, offset);
+		// perform staging transfer
+		break;
+	default: {
+		void *mapped;
+
+		VkMappedMemoryRange range;
+		range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+		range.pNext = nullptr;
+		range.memory = _memory.mem;
+		range.offset = offset;
+		range.size = size;
+
+		if (_mapped) {
+			mapped = _mapped;
+		} else {
+			if (_persistentMapping) {
+				if (_pool->getDevice()->getInstance()->vkMapMemory(_pool->getDevice()->getDevice(),
+						_memory.mem, 0, _size, 0, &mapped) == VK_SUCCESS) {
+					return false;
+				}
+
+				_mapped = mapped;
+			} else {
+				if (_pool->getDevice()->getInstance()->vkMapMemory(_pool->getDevice()->getDevice(),
+						_memory.mem, offset, size, 0, &mapped) == VK_SUCCESS) {
+					return false;
+				}
+			}
+		}
+
+		if (!_pool->isCoherent(_memory.type)) {
+			_pool->getDevice()->getInstance()->vkInvalidateMappedMemoryRanges(_pool->getDevice()->getDevice(), 1, &range);
+		}
+
+		if (_persistentMapping) {
+			memcpy((char *)mapped + offset, data, size);
+		} else {
+			memcpy(mapped, data, size);
+		}
+
+		if (!_pool->isCoherent(_memory.type)) {
+			_pool->getDevice()->getInstance()->vkFlushMappedMemoryRanges(_pool->getDevice()->getDevice(), 1, &range);
+		}
+
+		if (!_persistentMapping) {
+			_pool->getDevice()->getInstance()->vkUnmapMemory(_pool->getDevice()->getDevice(), _memory.mem);
+		}
+		break;
+	}
+	}
+
+	return true;
+}
+
+Bytes Buffer::getData(VkDeviceSize size, VkDeviceSize offset) {
+	size = std::min(_size - offset, size);
+
+	switch (_type) {
+	case AllocationType::Local:
+		// not available
+		break;
+	default: {
+		void *mapped;
+
+		VkMappedMemoryRange range;
+		range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+		range.pNext = nullptr;
+		range.memory = _memory.mem;
+		range.offset = offset;
+		range.size = size;
+
+		if (_mapped) {
+			mapped = _mapped;
+		} else {
+			if (_persistentMapping) {
+				if (_pool->getDevice()->getInstance()->vkMapMemory(_pool->getDevice()->getDevice(),
+						_memory.mem, 0, _size, 0, &mapped) == VK_SUCCESS) {
+					return Bytes();
+				}
+
+				_mapped = mapped;
+			} else {
+				if (_pool->getDevice()->getInstance()->vkMapMemory(_pool->getDevice()->getDevice(),
+						_memory.mem, offset, size, 0, &mapped) == VK_SUCCESS) {
+					return Bytes();
+				}
+			}
+		}
+
+		if (!_pool->isCoherent(_memory.type)) {
+			_pool->getDevice()->getInstance()->vkInvalidateMappedMemoryRanges(_pool->getDevice()->getDevice(), 1, &range);
+		}
+
+		Bytes ret; ret.reserve(size);
+		if (_persistentMapping) {
+			memcpy(ret.data(), (char *)mapped + offset, size);
+		} else {
+			memcpy(ret.data(), mapped, size);
+		}
+
+		if (!_persistentMapping) {
+			_pool->getDevice()->getInstance()->vkUnmapMemory(_pool->getDevice()->getDevice(), _memory.mem);
+		}
+		return ret;
+		break;
+	}
+	}
+
+	return Bytes();
+}
 
 }

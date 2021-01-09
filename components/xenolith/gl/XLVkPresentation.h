@@ -38,7 +38,7 @@ public:
 
 	bool init(Rc<Instance> instance, Rc<View> v, VkSurfaceKHR, Instance::PresentationOptions &&, const Features &);
 
-	bool drawFrame(thread::TaskQueue &);
+	bool drawFrame(Rc<Director>, thread::TaskQueue &);
 
 	Instance *getInstance() const { return _instance; }
 	VkDevice getDevice() const { return _device; }
@@ -54,9 +54,14 @@ private:
 	friend class ProgramManager;
 
 	bool createSwapChain(thread::TaskQueue &q, VkSurfaceKHR surface);
-	bool createDefaultPipeline();
 
 	void cleanupSwapChain();
+
+	void prepareDrawScheme(draw::DrawScheme *, thread::TaskQueue &q);
+
+	bool performPipelineFlow(Rc<PipelineFlow> pf, thread::TaskQueue &q);
+	bool performTransferFlow(Rc<TransferFlow> pf, thread::TaskQueue &q);
+	bool performDrawFlow(Rc<DrawFlow> df, thread::TaskQueue &q);
 
 	uint32_t _currentFrame = 0;
 	Instance::PresentationOptions _options;
@@ -78,11 +83,13 @@ private:
 	Vector<VkSemaphore> _renderFinishedSemaphores;
 	Vector<VkFence> _inFlightFences;
 	Vector<VkFence> _imagesInFlight;
+
+	draw::DrawScheme *_drawScheme = nullptr;
 };
 
 class PresentationLoop : public thread::ThreadHandlerInterface {
 public:
-	PresentationLoop(Rc<View>, Rc<PresentationDevice>, double, Function<double()> &&);
+	PresentationLoop(Rc<View>, Rc<PresentationDevice>, Rc<Director>, double, Function<double()> &&);
 
 	virtual void threadInit() override;
 	virtual bool worker() override;
@@ -109,7 +116,7 @@ protected:
 
 	Rc<View> _view;
 	Rc<PresentationDevice> _device; // logical presentation device
-	//Rc<Director> _diractor;
+	Rc<Director> _director;
 	std::atomic<double> _interval;
 	std::atomic<double> _rate;
 	std::thread _thread;

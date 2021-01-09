@@ -21,26 +21,19 @@
  **/
 
 #include "XLVkTransfer.h"
-#include "XLVkBuffer.h"
 #include "XLVkFramebuffer.h"
 
 namespace stappler::xenolith::vk {
 
-static constexpr uint32_t ALIGN(uint32_t size, uint32_t boundary) { return (((size) + ((boundary) - 1)) & ~((boundary) - 1)); }
-
-TransferGeneration::~TransferGeneration() {
-	for (AllocatorHeapBlock &it : _staging) {
-		_allocator->free(it);
-	}
-}
+TransferGeneration::~TransferGeneration() { }
 
 bool TransferGeneration::init(Rc<Allocator> alloc) {
-	_allocator = alloc;
+	_pool = Rc<AllocPool>::create(alloc);
 	return true;
 }
 
 bool TransferGeneration::requestTransfer(Rc<Buffer> tar, void *data, uint32_t size, uint32_t offset) {
-	auto b = allocateStaging(size);
+	auto b =_pool->spawn(AllocationType::GpuUpload, AllocationUsage::Staging, size);
 	if (!b) {
 		-- _count;
 		return false;
@@ -57,69 +50,9 @@ bool TransferGeneration::requestTransfer(Rc<Buffer> tar, void *data, uint32_t si
 	return false;
 }
 
-Rc<Buffer> TransferGeneration::allocateStaging(VkDeviceSize size) {
-	VkBuffer buffer;
-	VkBufferCreateInfo bufferInfo { };
-	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferInfo.size = size;
-	bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-	if (_allocator->getDevice()->getInstance()->vkCreateBuffer(_allocator->getDevice()->getDevice(), &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
-		return nullptr;
-	}
-
-	VkMemoryRequirements memRequirements;
-	_allocator->getDevice()->getInstance()->vkGetBufferMemoryRequirements(_allocator->getDevice()->getDevice(), buffer, &memRequirements);
-
-	// synchronize access to allocator
-	_allocator->lock();
-	AllocatorHeapBlock *target = nullptr;
-	for (AllocatorHeapBlock &it : _staging) {
-		auto off = ALIGN(it.offset, memRequirements.alignment);
-		if (it.size - off >= memRequirements.size) {
-			target = &it;
-			break;
-		}
-	}
-
-	if (!target) {
-		auto newSize = std::max(StagingPageSize, memRequirements.size);
-
-		if (AllocatorHeapBlock b = _allocator->allocateBlock(newSize, memRequirements.memoryTypeBits, Type::GpuUpload)) {
-			target = &_staging.emplace_back(b);
-		} else {
-			_allocator->unlock();
-			return nullptr;
-		}
-	}
-
-	AllocatorBufferBlock block;
-	block.alloc = _allocator;
-	block.gen = this;
-	block.mem = target->mem;
-	block.type = GpuUpload;
-	block.flags = target->flags;
-	block.size = memRequirements.size;
-	block.offset = ALIGN(target->offset, memRequirements.alignment);
-	block.dedicated = false;
-	target->offset += block.size;
-
-	++ _count;
-
-	_allocator->unlock();
-
-	return Rc<Buffer>::create(*_allocator->getDevice(), buffer, block, size);
-}
-
-void TransferGeneration::free(AllocatorBufferBlock &mem) {
-	if (mem.mem && mem.dedicated) {
-		_allocator->getDevice()->getInstance()->vkFreeMemory(_allocator->getDevice()->getDevice(), mem.mem, nullptr);
-	}
-}
-
 void TransferGeneration::invalidate() {
 	_transfer.clear();
+	_pool = nullptr;
 }
 
 

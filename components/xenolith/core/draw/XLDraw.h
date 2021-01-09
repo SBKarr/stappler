@@ -20,18 +20,53 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "XLDefine.h"
+#ifndef COMPONENTS_XENOLITH_CORE_DRAW_XLDRAW_H_
+#define COMPONENTS_XENOLITH_CORE_DRAW_XLDRAW_H_
 
-#include "XLVkUtils.cc"
+#include "XLVk.h"
 
-#include "XLVkAllocator.cc"
-#include "XLVkProgram.cc"
-#include "XLVkPipeline.cc"
-#include "XLVkFramebuffer.cc"
-#include "XLVkInstance.cc"
-#include "XLVkDevice.cc"
-#include "XLVkDraw.cc"
-#include "XLVkPresentation.cc"
-#include "XLVkTransfer.cc"
+namespace stappler::xenolith::draw {
 
-#include "XLVkInstance-desktop.cc"
+enum class BufferHandleType {
+	Data,
+	GL,
+};
+
+enum class CommandType {
+	CommandGroup,
+	DrawIndexedIndirectCount
+};
+
+enum class VertexBufferFormat {
+	Vertex_V4F_C4F_T2F,
+};
+
+struct alignas(16) DrawData {
+	uint32_t material;
+	uint32_t transform;
+	uint32_t vertexFormat;
+	uint32_t vertexOffset;
+};
+
+struct Vertex_V4F_C4F_T2F {
+	alignas(16) Vec4 pos;
+	alignas(16) Color4F color;
+	alignas(16) Vec2 tex;
+};
+
+struct Triangle_V3F_C4F_T2F {
+	Vertex_V4F_C4F_T2F a;
+	Vertex_V4F_C4F_T2F b;
+	Vertex_V4F_C4F_T2F c;
+};
+
+struct Quad_V3F_C4F_T2F {
+	Vertex_V4F_C4F_T2F bl;
+	Vertex_V4F_C4F_T2F br;
+	Vertex_V4F_C4F_T2F tl;
+	Vertex_V4F_C4F_T2F tr;
+};
+
+}
+
+#endif /* COMPONENTS_XENOLITH_CORE_DRAW_XLDRAW_H_ */

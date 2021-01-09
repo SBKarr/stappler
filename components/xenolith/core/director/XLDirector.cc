@@ -35,6 +35,11 @@ Director::Director() { }
 Director::~Director() { }
 
 bool Director::init() {
+	std::unique_lock<Mutex> lock(_mutex);
+	_transferFlow = Rc<TransferFlow>::create();
+	_pipelineFlow = Rc<PipelineFlow>::create();
+	_drawFlow = Rc<DrawFlow>::create();
+
 	return true;
 }
 
@@ -61,5 +66,33 @@ void Director::construct() {
 void Director::end() {
 	_view = nullptr;
 }
+
+Rc<TransferFlow> Director::swapTransferFlow() {
+	auto tf = Rc<TransferFlow>::create();
+
+	std::unique_lock<Mutex> lock(_mutex);
+	Rc<TransferFlow> ret = _transferFlow;
+	_transferFlow = tf;
+	return ret;
+}
+
+Rc<PipelineFlow> Director::swapPipelineFlow() {
+	auto pf = Rc<PipelineFlow>::create();
+
+	std::unique_lock<Mutex> lock(_mutex);
+	Rc<PipelineFlow> ret = _pipelineFlow;
+	_pipelineFlow = pf;
+	return ret;
+}
+
+Rc<DrawFlow> Director::swapDrawFlow() {
+	auto df = Rc<DrawFlow>::create();
+
+	std::unique_lock<Mutex> lock(_mutex);
+	Rc<DrawFlow> ret = _drawFlow;
+	_drawFlow = df;
+	return ret;
+}
+
 
 }

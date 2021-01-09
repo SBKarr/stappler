@@ -99,6 +99,7 @@ private:
 	friend class ImageView;
 	friend class Framebuffer;
 	friend class CommandPool;
+	friend class AllocPool;
 	friend class Allocator;
 	friend class Buffer;
 	friend class TransferGeneration;
@@ -175,6 +176,7 @@ private:
 	const PFN_vkCreateBuffer vkCreateBuffer;
 	const PFN_vkDestroyBuffer vkDestroyBuffer;
 	const PFN_vkGetBufferMemoryRequirements vkGetBufferMemoryRequirements;
+	const PFN_vkGetBufferMemoryRequirements2 vkGetBufferMemoryRequirements2;
 	const PFN_vkAllocateMemory vkAllocateMemory;
 	const PFN_vkFreeMemory vkFreeMemory;
 	const PFN_vkBindBufferMemory vkBindBufferMemory;

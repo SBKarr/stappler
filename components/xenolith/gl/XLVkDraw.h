@@ -68,6 +68,7 @@ public:
 		VkFence fence;
 		uint32_t frameIdx;
 		uint32_t imageIdx;
+		draw::DrawScheme *scheme;
 	};
 
 	struct BufferTask {

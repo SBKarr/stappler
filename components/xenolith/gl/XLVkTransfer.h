@@ -45,7 +45,6 @@ public:
 
 	bool init(Rc<Allocator>);
 	bool requestTransfer(Rc<Buffer>, void *data, uint32_t size, uint32_t offset);
-	Rc<Buffer> allocateStaging(VkDeviceSize size);
 	void free(AllocatorBufferBlock &mem);
 	void invalidate();
 
@@ -54,9 +53,8 @@ public:
 	const Vector<TransferRequest> &getRequests() const { return _transfer; }
 
 protected:
-	Rc<Allocator> _allocator;
+	Rc<AllocPool> _pool;
 	std::atomic<uint32_t> _count;
-	Vector<AllocatorHeapBlock> _staging;
 	Vector<TransferRequest> _transfer;
 };
 

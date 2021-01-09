@@ -25,6 +25,8 @@
 #include "XLVkPipeline.h"
 #include "XLVkFramebuffer.h"
 #include "XLVkProgram.h"
+#include "XLDirector.h"
+#include "XLDrawScheme.h"
 
 namespace stappler::xenolith::vk {
 
@@ -90,7 +92,7 @@ bool PresentationDevice::init(Rc<Instance> inst, Rc<View> v, VkSurfaceKHR surfac
 	return true;
 }
 
-bool PresentationDevice::drawFrame(thread::TaskQueue &q) {
+bool PresentationDevice::drawFrame(Rc<Director> dir, thread::TaskQueue &q) {
 	if (!_swapChain) {
 		log::vtext("VK-Error", "No available swapchain");
 		return false;
@@ -98,69 +100,20 @@ bool PresentationDevice::drawFrame(thread::TaskQueue &q) {
 
 	_transfer->wait(VK_NULL_HANDLE);
 
-	_instance->vkWaitForFences(_device, 1, &_inFlightFences[_currentFrame], VK_TRUE, UINT64_MAX);
-
-	uint32_t imageIndex;
-	VkResult result = _instance->vkAcquireNextImageKHR(_device, _swapChain, UINT64_MAX, _imageAvailableSemaphores[_currentFrame], VK_NULL_HANDLE, &imageIndex);
-	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-		cleanupSwapChain();
-		log::vtext("VK-Error", "vkAcquireNextImageKHR: VK_ERROR_OUT_OF_DATE_KHR");
-		return false;
-	} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-		log::vtext("VK-Error", "Fail to vkAcquireNextImageKHR");
+	auto pf = dir->swapPipelineFlow();
+	if (!performPipelineFlow(pf, q)) {
 		return false;
 	}
 
-	// Check if a previous frame is using this image (i.e. there is its fence to wait on)
-	if (_imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
-		_instance->vkWaitForFences(_device, 1, &_imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
-	}
-
-	// Mark the image as now being in use by this frame
-	_imagesInFlight[imageIndex] = _inFlightFences[_currentFrame];
-
-	_instance->vkResetFences(_device, 1, &_inFlightFences[_currentFrame]);
-
-	VkSemaphore waitSemaphores[] = {_imageAvailableSemaphores[_currentFrame]};
-	VkSemaphore signalSemaphores[] = {_renderFinishedSemaphores[_currentFrame]};
-
-	DrawDevice::FrameInfo info({
-		&_options,
-		_swapChainFramebuffers[imageIndex],
-		waitSemaphores,
-		signalSemaphores,
-		_inFlightFences[_currentFrame],
-		_currentFrame,
-		imageIndex
-	});
-
-	if (!_draw->drawFrame(q, info)) {
-		log::vtext("VK-Error", "drawFrame: VK_ERROR_OUT_OF_DATE_KHR");
+	auto tf = dir->swapTransferFlow();
+	if (!performTransferFlow(tf, q)) {
 		return false;
 	}
 
-	VkPresentInfoKHR presentInfo{};
-	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = signalSemaphores;
-
-	VkSwapchainKHR swapChains[] = {_swapChain};
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = swapChains;
-	presentInfo.pImageIndices = &imageIndex;
-	presentInfo.pResults = nullptr; // Optional
-
-	result = _instance->vkQueuePresentKHR(_presentQueue, &presentInfo);
-	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-		cleanupSwapChain();
-		log::vtext("VK-Error", "vkQueuePresentKHR: VK_ERROR_OUT_OF_DATE_KHR");
+	auto df = dir->swapDrawFlow();
+	if (!performDrawFlow(df, q)) {
 		return false;
-	} else if (result != VK_SUCCESS) {
-		log::vtext("VK-Error", "Fail to vkQueuePresentKHR");
 	}
-
-	_currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 
 	_transfer->performTransfer(q);
 
@@ -173,7 +126,6 @@ Rc<Allocator> PresentationDevice::getAllocator() const {
 
 void PresentationDevice::begin(thread::TaskQueue &q) {
 	createSwapChain(q, _surface);
-	createDefaultPipeline();
 }
 
 void PresentationDevice::end(thread::TaskQueue &) {
@@ -201,7 +153,6 @@ bool PresentationDevice::recreateSwapChain(thread::TaskQueue &q) {
 	}
 
 	createSwapChain(q, _surface);
-	createDefaultPipeline();
 
 	return true;
 }
@@ -294,10 +245,6 @@ bool PresentationDevice::createSwapChain(thread::TaskQueue &q, VkSurfaceKHR surf
 	return true;
 }
 
-bool PresentationDevice::createDefaultPipeline() {
-	return true;
-}
-
 void PresentationDevice::cleanupSwapChain() {
 	_instance->vkDeviceWaitIdle(_device);
 
@@ -320,9 +267,112 @@ void PresentationDevice::cleanupSwapChain() {
 	}
 }
 
+void PresentationDevice::prepareDrawScheme(draw::DrawScheme *scheme, thread::TaskQueue &q) {
+	auto memPool = Rc<AllocPool>::create(_allocator);
 
-PresentationLoop::PresentationLoop(Rc<View> v, Rc<PresentationDevice> dev, double iv, Function<double()> &&ts)
-: _view(v), _device(dev), _interval(iv), _timeSource(move(ts)) {
+	memPool->upload(scheme->draw);
+	memPool->upload(scheme->drawCount);
+
+
+	memPool->retain();
+	memory::pool::userdata_set(memPool.get(), "VK::Pool", [] (void *ptr) -> memory::status_t {
+		((AllocPool *)ptr)->release();
+		return 0;
+	}, scheme->pool);
+}
+
+bool PresentationDevice::performPipelineFlow(Rc<PipelineFlow> pf, thread::TaskQueue &q) {
+	return true;
+}
+
+bool PresentationDevice::performTransferFlow(Rc<TransferFlow> pf, thread::TaskQueue &q) {
+	return true;
+}
+
+bool PresentationDevice::performDrawFlow(Rc<DrawFlow> df, thread::TaskQueue &q) {
+	auto scheme = df->getScheme();
+	if (!scheme) {
+		scheme = _drawScheme;
+	} else if (_drawScheme) {
+		draw::DrawScheme::destroy(_drawScheme);
+	}
+
+	if (_drawScheme != scheme) {
+		prepareDrawScheme(scheme, q);
+		_drawScheme = scheme;
+	}
+
+	_instance->vkWaitForFences(_device, 1, &_inFlightFences[_currentFrame], VK_TRUE, UINT64_MAX);
+
+	uint32_t imageIndex;
+	VkResult result = _instance->vkAcquireNextImageKHR(_device, _swapChain, UINT64_MAX, _imageAvailableSemaphores[_currentFrame], VK_NULL_HANDLE, &imageIndex);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+		cleanupSwapChain();
+		log::vtext("VK-Error", "vkAcquireNextImageKHR: VK_ERROR_OUT_OF_DATE_KHR");
+		return false;
+	} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+		log::vtext("VK-Error", "Fail to vkAcquireNextImageKHR");
+		return false;
+	}
+
+	// Check if a previous frame is using this image (i.e. there is its fence to wait on)
+	if (_imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
+		_instance->vkWaitForFences(_device, 1, &_imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
+	}
+
+	// Mark the image as now being in use by this frame
+	_imagesInFlight[imageIndex] = _inFlightFences[_currentFrame];
+
+	_instance->vkResetFences(_device, 1, &_inFlightFences[_currentFrame]);
+
+	VkSemaphore waitSemaphores[] = {_imageAvailableSemaphores[_currentFrame]};
+	VkSemaphore signalSemaphores[] = {_renderFinishedSemaphores[_currentFrame]};
+
+	DrawDevice::FrameInfo info({
+		&_options,
+		_swapChainFramebuffers[imageIndex],
+		waitSemaphores,
+		signalSemaphores,
+		_inFlightFences[_currentFrame],
+		_currentFrame,
+		imageIndex,
+		_drawScheme
+	});
+
+	if (!_draw->drawFrame(q, info)) {
+		log::vtext("VK-Error", "drawFrame: VK_ERROR_OUT_OF_DATE_KHR");
+		return false;
+	}
+
+	VkPresentInfoKHR presentInfo{};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = signalSemaphores;
+
+	VkSwapchainKHR swapChains[] = {_swapChain};
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = swapChains;
+	presentInfo.pImageIndices = &imageIndex;
+	presentInfo.pResults = nullptr; // Optional
+
+	result = _instance->vkQueuePresentKHR(_presentQueue, &presentInfo);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+		cleanupSwapChain();
+		log::vtext("VK-Error", "vkQueuePresentKHR: VK_ERROR_OUT_OF_DATE_KHR");
+		return false;
+	} else if (result != VK_SUCCESS) {
+		log::vtext("VK-Error", "Fail to vkQueuePresentKHR");
+	}
+
+	_currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+	return true;
+}
+
+
+
+PresentationLoop::PresentationLoop(Rc<View> v, Rc<PresentationDevice> dev, Rc<Director> dir, double iv, Function<double()> &&ts)
+: _view(v), _device(dev), _director(dir), _interval(iv), _timeSource(move(ts)) {
 	_swapChainFlag.test_and_set();
 	_exitFlag.test_and_set();
 }
@@ -372,12 +422,10 @@ bool PresentationLoop::worker() {
 	}
 
 	if (!lock) {
-		//std::cout << "Lock\n"; std::cout.flush();
 		lock = std::unique_lock<std::mutex>(_glSync);
 	}
 
-	//std::cout << "Frame\n"; std::cout.flush();
-	bool drawSuccess = _device->drawFrame(*_queue);
+	bool drawSuccess = _device->drawFrame(_director, *_queue);
 	if (_stalled || !_swapChainFlag.test_and_set() || !drawSuccess) {
 		std::cout << "Frame failed: " << _stalled << " | " << drawSuccess << "\n"; std::cout.flush();
 		_stalled = true;
@@ -386,7 +434,7 @@ bool PresentationLoop::worker() {
 				std::cout << "Recreate by timeout\n"; std::cout.flush();
 				_device->recreateSwapChain(*_queue);
 				_stalled = false;
-				_device->drawFrame(*_queue);
+				_device->drawFrame(_director, *_queue);
 				_view->unlock();
 			}
 		}
@@ -394,7 +442,6 @@ bool PresentationLoop::worker() {
 		return true;
 	} else {
 		_rate.store(_timeSource() - _time);
-		// std::cout << "Rate: " << _rate.load() << " - " << iv << "\n"; std::cout.flush();
 		_view->resetFrame();
 	}
 
@@ -439,7 +486,7 @@ bool PresentationLoop::forceFrame() {
 
 	if (dt < 0 || dt >= iv) {
 		_time = t;
-		ret = _device->drawFrame(*_queue);
+		ret = _device->drawFrame(_director, *_queue);
 	}
 
 	_stalled = false;

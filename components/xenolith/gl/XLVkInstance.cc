@@ -141,6 +141,7 @@ Instance::Instance(VkInstance inst, const PFN_vkGetInstanceProcAddr getInstanceP
 , vkCreateBuffer((PFN_vkCreateBuffer)vkGetInstanceProcAddr(inst, "vkCreateBuffer"))
 , vkDestroyBuffer((PFN_vkDestroyBuffer)vkGetInstanceProcAddr(inst, "vkDestroyBuffer"))
 , vkGetBufferMemoryRequirements((PFN_vkGetBufferMemoryRequirements)vkGetInstanceProcAddr(inst, "vkGetBufferMemoryRequirements"))
+, vkGetBufferMemoryRequirements2((PFN_vkGetBufferMemoryRequirements2)vkGetInstanceProcAddr(inst, "vkGetBufferMemoryRequirements2"))
 , vkAllocateMemory((PFN_vkAllocateMemory)vkGetInstanceProcAddr(inst, "vkAllocateMemory"))
 , vkFreeMemory((PFN_vkFreeMemory)vkGetInstanceProcAddr(inst, "vkFreeMemory"))
 , vkBindBufferMemory((PFN_vkBindBufferMemory)vkGetInstanceProcAddr(inst, "vkBindBufferMemory"))

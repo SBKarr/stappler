@@ -20,58 +20,31 @@
  THE SOFTWARE.
  **/
 
-#ifndef COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDIRECTOR_H_
-#define COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDIRECTOR_H_
+#ifndef COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDRAWSCHEME_H_
+#define COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDRAWSCHEME_H_
 
-#include "XLEventHeader.h"
-#include "XLExecFlow.h"
+#include "XLDraw.h"
 
-namespace stappler::xenolith {
+namespace stappler::xenolith::draw {
 
-class Director : public Ref {
-public:
-	static EventHeader onProjectionChanged;
-	static EventHeader onAfterUpdate;
-	static EventHeader onAfterVisit;
-	static EventHeader onAfterDraw;
+struct DrawScheme : memory::AllocPool {
+	static DrawScheme *create();
+	static void destroy(DrawScheme *);
 
-	enum class Projection {
-		_2D,
-		_3D,
-		Euclid,
-		Custom,
-		Default = Euclid,
-	};
+	memory::pool_t *pool = nullptr;
+	draw::CommandGroup *group = nullptr;
 
-	Director();
+	draw::BufferHandle *draw = nullptr; // not binded
+	draw::BufferHandle *drawCount = nullptr; // not binded
 
-	virtual ~Director();
-	virtual bool init();
+	draw::BufferHandle *index = nullptr; // index binding
 
-	inline vk::View* getView() { return _view; }
-	void setView(vk::View *view);
+	draw::BufferHandle *data = nullptr; // uniforms[0] : draw::DrawData
+	draw::BufferHandle *transforms = nullptr; // uniforms[1] : layout::Mat4
 
-	bool mainLoop(double);
-
-	void update(double);
-	void construct();
-
-	void end();
-
-	Rc<TransferFlow> swapTransferFlow();
-	Rc<PipelineFlow> swapPipelineFlow();
-	Rc<DrawFlow> swapDrawFlow();
-
-protected:
-	Rc<vk::View> _view;
-
-	Mutex _mutex;
-
-	Rc<TransferFlow> _transferFlow;
-	Rc<PipelineFlow> _pipelineFlow;
-	Rc<DrawFlow> _drawFlow;
+	memory::map<draw::VertexBufferFormat, draw::BufferHandle *> vertex;
 };
 
 }
 
-#endif /* COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDIRECTOR_H_ */
+#endif /* COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDRAWSCHEME_H_ */

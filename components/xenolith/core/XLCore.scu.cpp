@@ -27,3 +27,5 @@ THE SOFTWARE.
 #include "XLEventHandler.cc"
 
 #include "XLDirector.cc"
+#include "XLExecFlow.cc"
+#include "XLDrawScheme.cc"

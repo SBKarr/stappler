@@ -109,7 +109,7 @@ int Application::run(Director *director) {
 		return -1;
 	}
 
-	glview->run([&] (double val) -> bool {
+	glview->run(director, [&] (double val) -> bool {
 		update(val);
 		director->mainLoop(val);
 		return true;

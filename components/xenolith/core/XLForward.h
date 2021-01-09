@@ -105,8 +105,23 @@ class Director;
 class Scene;
 class ProgramManager;
 
+class PipelineFlow;
+class TransferFlow;
+class DrawFlow;
+
 using Task = thread::Task;
 
 } // stappler::xenolith
+
+
+namespace stappler::xenolith::draw {
+
+struct BufferHandle;
+struct Command;
+struct CommandGroup;
+struct DrawScheme;
+
+}
+
 
 #endif /* COMPONENTS_XENOLITH_CORE_XLFORWARD_H_ */

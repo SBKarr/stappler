@@ -317,13 +317,13 @@ void ViewImpl::setAnimationInterval(double val) {
 	_animationInterval = val;
 }
 
-bool ViewImpl::run(const Callback<bool(double)> &cb) {
+bool ViewImpl::run(Rc<Director> dir, const Callback<bool(double)> &cb) {
 	bool ret = true;
 	double nNow = 0.0;
 	double nLast = glfwGetTime();
 	double dt = 0;
 
-	_loop = Rc<PresentationLoop>::alloc(this, _device, _animationInterval, [] () -> double {
+	_loop = Rc<PresentationLoop>::alloc(this, _device, dir, _animationInterval, [] () -> double {
 		return glfwGetTime();
 	});
 

@@ -20,58 +20,42 @@
  THE SOFTWARE.
  **/
 
-#ifndef COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDIRECTOR_H_
-#define COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDIRECTOR_H_
+#ifndef COMPONENTS_XENOLITH_CORE_DIRECTOR_XLEXECFLOW_H_
+#define COMPONENTS_XENOLITH_CORE_DIRECTOR_XLEXECFLOW_H_
 
-#include "XLEventHeader.h"
-#include "XLExecFlow.h"
+#include "XLDraw.h"
 
 namespace stappler::xenolith {
 
-class Director : public Ref {
+class ExecFlow : public Ref {
 public:
-	static EventHeader onProjectionChanged;
-	static EventHeader onAfterUpdate;
-	static EventHeader onAfterVisit;
-	static EventHeader onAfterDraw;
+	ExecFlow();
+	virtual ~ExecFlow();
 
-	enum class Projection {
-		_2D,
-		_3D,
-		Euclid,
-		Custom,
-		Default = Euclid,
-	};
-
-	Director();
-
-	virtual ~Director();
 	virtual bool init();
 
-	inline vk::View* getView() { return _view; }
-	void setView(vk::View *view);
+protected:
+	memory::pool_t *_pool = nullptr;
+};
 
-	bool mainLoop(double);
+class PipelineFlow : public ExecFlow {
+public:
+protected:
+};
 
-	void update(double);
-	void construct();
+class TransferFlow : public ExecFlow {
+public:
+protected:
+};
 
-	void end();
-
-	Rc<TransferFlow> swapTransferFlow();
-	Rc<PipelineFlow> swapPipelineFlow();
-	Rc<DrawFlow> swapDrawFlow();
+class DrawFlow : public ExecFlow {
+public:
+	draw::DrawScheme *getScheme() { return _scheme; }
 
 protected:
-	Rc<vk::View> _view;
-
-	Mutex _mutex;
-
-	Rc<TransferFlow> _transferFlow;
-	Rc<PipelineFlow> _pipelineFlow;
-	Rc<DrawFlow> _drawFlow;
+	draw::DrawScheme *_scheme = nullptr;
 };
 
 }
 
-#endif /* COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDIRECTOR_H_ */
+#endif /* COMPONENTS_XENOLITH_CORE_DIRECTOR_XLEXECFLOW_H_ */

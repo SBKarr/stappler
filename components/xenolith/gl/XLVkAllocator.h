@@ -27,47 +27,100 @@ THE SOFTWARE.
 
 namespace stappler::xenolith::vk {
 
-struct AllocatorHeapBlock {
-	VkDeviceMemory mem = VK_NULL_HANDLE;
-	uint32_t size = 0;
-	uint32_t offset = 0;
-	uint32_t type = 0;
-	VkMemoryPropertyFlags flags = 0;
+namespace mem {
 
-	uint64_t key() const { return type; }
-	operator bool() const { return mem != VK_NULL_HANDLE; }
+struct MemBlock {
+	VkDeviceMemory mem = VK_NULL_HANDLE;
+	VkDeviceSize offset = 0;
+	VkDeviceSize size = 0;
+	uint32_t type = 0;
+
+	operator bool () const { return mem != VK_NULL_HANDLE; }
 };
 
-struct AllocatorBufferBlock {
-	Rc<Allocator> alloc;
-	Rc<TransferGeneration> gen;
-	VkDeviceMemory mem = VK_NULL_HANDLE;
-	AllocationType type = AllocationType::Unknown;
-	VkMemoryPropertyFlags flags = 0;
-	VkDeviceSize size = 0;
-	VkDeviceSize offset = 0;
-	bool dedicated = false;
+struct Allocator;
+struct Pool;
 
-	bool isCoherent() const;
-	void free();
-	operator bool() const { return mem != VK_NULL_HANDLE; }
+}
+
+
+class Buffer : public Ref {
+public:
+	enum class MemoryUsage {
+		Staging = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		UniformTexel = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT,
+		StorageTexel = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT,
+		Uniform = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		Storage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		Index = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+		Vertex = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		Indirect = VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
+	};
+
+	virtual ~Buffer();
+
+	bool init(Rc<AllocPool>, VkBuffer, mem::MemBlock, AllocationType, AllocationUsage, VkDeviceSize size);
+
+	void invalidate(VirtualDevice &dev);
+
+	void setPersistentMapping(bool);
+	bool isPersistentMapping() const;
+
+	bool setData(void *data, VkDeviceSize size = maxOf<VkDeviceSize>(), VkDeviceSize offset = 0);
+	Bytes getData(VkDeviceSize size = maxOf<VkDeviceSize>(), VkDeviceSize offset = 0);
+
+	VkBuffer getBuffer() const { return _buffer; }
+	VkDeviceSize getSize() const { return _size; }
+	AllocationType getType() const { return _type; }
+	AllocationUsage getUsage() const { return _usage; }
+
+protected:
+	Rc<AllocPool> _pool;
+	VkBuffer _buffer;
+	mem::MemBlock _memory;
+	AllocationType _type;
+	AllocationUsage _usage;
+	VkDeviceSize _size = 0;
+
+	void *_mapped = nullptr;
+	bool _persistentMapping = false;
+};
+
+class AllocPool : public Ref {
+public:
+	virtual ~AllocPool();
+
+	bool init(Rc<Allocator>);
+
+	Rc<Buffer> spawn(AllocationType, AllocationUsage, VkDeviceSize size);
+	Rc<Buffer> upload(memory::pool_t *p, draw::BufferHandle *, AllocationType, AllocationUsage);
+
+	VirtualDevice *getDevice() const;
+	Rc<Allocator> getAllocator() const;
+
+	bool isCoherent(uint32_t) const;
+
+protected:
+	friend class Buffer;
+
+	void free(mem::MemBlock);
+
+	Rc<Allocator> _allocator;
+	Map<int64_t, mem::Pool> _heaps;
 };
 
 class Allocator : public Ref {
 public:
-	using Block = AllocatorBufferBlock;
-	using MemBlock = AllocatorHeapBlock;
-
 	virtual ~Allocator();
 
 	bool init(VirtualDevice &dev, VkPhysicalDevice device);
 	void invalidate(VirtualDevice &dev);
 
-	Block allocate(uint32_t typeFilter, AllocationType t, VkDeviceSize size, VkDeviceSize align);
-	void free(Block &mem);
-	void free(AllocatorHeapBlock &mem);
-
 	VirtualDevice *getDevice() const;
+
+	bool isCoherent(uint32_t) const;
+
+	mem::Allocator *getHeap(uint32_t typeFilter, AllocationType t);
 
 protected:
 	friend class Buffer;
@@ -84,13 +137,13 @@ protected:
 	Vector<Rc<TransferGeneration>> getTransfers();
 
 	Mutex _mutex;
+	VirtualDevice *_device = nullptr;
+	VkPhysicalDeviceMemoryProperties _memProperties;
+
+	Map<uint32_t, mem::Allocator> _heaps;
 
 	Rc<TransferGeneration> _writable;
 	Vector<Rc<TransferGeneration>> _pending;
-
-	Map<uint64_t, Vector<AllocatorHeapBlock>> _blocks;
-	VirtualDevice *_device = nullptr;
-	VkPhysicalDeviceMemoryProperties _memProperties;
 };
 
 }

@@ -38,6 +38,7 @@ class RenderPass;
 class ImageView;
 class Framebuffer;
 class CommandPool;
+class AllocPool;
 class Allocator;
 struct AllocatorHeapBlock;
 struct AllocatorBufferBlock;
@@ -60,13 +61,32 @@ enum class ProgramSource {
 	Glsl,
 };
 
-enum AllocationType {
+enum class AllocationType {
 	Unknown,
 	Local,
 	LocalVisible,
-	GpuUpload,
+	GpuUpload, // upload-to-gpu staging
 	GpuDownload
 };
+
+enum class AllocationUsage {
+	Staging = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+	Dst = VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+	UniformTexel = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT,
+	StorageTexel = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT,
+	Uniform = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+	Storage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+	Index = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+	Vertex = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+	Indirect = VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
+	DeviceAddress = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+	TransformFeedback = VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT,
+	TransformFeedbackCounter = VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT,
+	ConditioanalRendering = VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT,
+	RayTracing = VK_BUFFER_USAGE_RAY_TRACING_BIT_KHR,
+};
+
+SP_DEFINE_ENUM_AS_MASK(AllocationUsage)
 
 struct DescriptorCount {
 	uint32_t samplers;

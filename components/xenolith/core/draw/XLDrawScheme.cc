@@ -20,58 +20,23 @@
  THE SOFTWARE.
  **/
 
-#ifndef COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDIRECTOR_H_
-#define COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDIRECTOR_H_
+#include "XLDrawScheme.h"
 
-#include "XLEventHeader.h"
-#include "XLExecFlow.h"
+namespace stappler::xenolith::draw {
 
-namespace stappler::xenolith {
+DrawScheme *DrawScheme::create() {
+	auto p = memory::pool::create((memory::pool_t *)nullptr);
+	auto s = new (p) DrawScheme;
 
-class Director : public Ref {
-public:
-	static EventHeader onProjectionChanged;
-	static EventHeader onAfterUpdate;
-	static EventHeader onAfterVisit;
-	static EventHeader onAfterDraw;
+	s->pool = p;
 
-	enum class Projection {
-		_2D,
-		_3D,
-		Euclid,
-		Custom,
-		Default = Euclid,
-	};
-
-	Director();
-
-	virtual ~Director();
-	virtual bool init();
-
-	inline vk::View* getView() { return _view; }
-	void setView(vk::View *view);
-
-	bool mainLoop(double);
-
-	void update(double);
-	void construct();
-
-	void end();
-
-	Rc<TransferFlow> swapTransferFlow();
-	Rc<PipelineFlow> swapPipelineFlow();
-	Rc<DrawFlow> swapDrawFlow();
-
-protected:
-	Rc<vk::View> _view;
-
-	Mutex _mutex;
-
-	Rc<TransferFlow> _transferFlow;
-	Rc<PipelineFlow> _pipelineFlow;
-	Rc<DrawFlow> _drawFlow;
-};
-
+	return s;
 }
 
-#endif /* COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDIRECTOR_H_ */
+void DrawScheme::destroy(DrawScheme *s) {
+	auto p = s->pool;
+	delete s;
+	memory::pool::destroy(p);
+}
+
+}

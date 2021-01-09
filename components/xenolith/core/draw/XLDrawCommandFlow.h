@@ -20,58 +20,39 @@
  THE SOFTWARE.
  **/
 
-#ifndef COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDIRECTOR_H_
-#define COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDIRECTOR_H_
+#ifndef COMPONENTS_XENOLITH_CORE_DRAW_XLDRAWCOMMANDFLOW_H_
+#define COMPONENTS_XENOLITH_CORE_DRAW_XLDRAWCOMMANDFLOW_H_
 
-#include "XLEventHeader.h"
-#include "XLExecFlow.h"
+#include "XLDraw.h"
 
-namespace stappler::xenolith {
+namespace stappler::xenolith::draw {
 
-class Director : public Ref {
-public:
-	static EventHeader onProjectionChanged;
-	static EventHeader onAfterUpdate;
-	static EventHeader onAfterVisit;
-	static EventHeader onAfterDraw;
+struct CmdCommandGroup {
+	CommandGroup *group;
+};
 
-	enum class Projection {
-		_2D,
-		_3D,
-		Euclid,
-		Custom,
-		Default = Euclid,
-	};
+struct CmdDrawIndexedIndirectCount {
+	BufferHandle *buffer;
+	uint64_t offset;
+	BufferHandle *countBuffer;
+	uint64_t countBufferOffset;
+    uint32_t maxDrawCount;
+    uint32_t stride;
+};
 
-	Director();
+struct Command {
+	Command *next;
+	CommandType type;
+	void *cmd;
+};
 
-	virtual ~Director();
-	virtual bool init();
-
-	inline vk::View* getView() { return _view; }
-	void setView(vk::View *view);
-
-	bool mainLoop(double);
-
-	void update(double);
-	void construct();
-
-	void end();
-
-	Rc<TransferFlow> swapTransferFlow();
-	Rc<PipelineFlow> swapPipelineFlow();
-	Rc<DrawFlow> swapDrawFlow();
-
-protected:
-	Rc<vk::View> _view;
-
-	Mutex _mutex;
-
-	Rc<TransferFlow> _transferFlow;
-	Rc<PipelineFlow> _pipelineFlow;
-	Rc<DrawFlow> _drawFlow;
+struct CommandGroup {
+	CommandGroup *next;
+	Command *cmd;
 };
 
 }
 
-#endif /* COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDIRECTOR_H_ */
+
+
+#endif /* COMPONENTS_XENOLITH_CORE_DRAW_XLDRAWCOMMANDFLOW_H_ */

@@ -75,7 +75,7 @@ public:
 	virtual double getTimeCounter() const override;
 
 	virtual void setAnimationInterval(double) override;
-	virtual bool run(const Callback<bool(double)> &) override;
+	virtual bool run(Rc<Director>, const Callback<bool(double)> &) override;
 
 	virtual void setScreenSize(float width, float height) override;
 
