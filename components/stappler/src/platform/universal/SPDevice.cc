@@ -332,6 +332,10 @@ void Device::setLaunchUrl(const StringView &url) {
     _launchUrl = url.str();
 }
 
+void Device::setUserAgent(StringView str) {
+	_userAgent = str.str();
+}
+
 void Device::processLaunchUrl(const StringView &url) {
     _launchUrl = url.str();
     onLaunchUrl(this, url);

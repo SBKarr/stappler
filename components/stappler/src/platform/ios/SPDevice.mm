@@ -42,11 +42,7 @@ namespace stappler::platform::device {
 		return (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad);
 	}
 	std::string _userAgent() {
-		UIWebView *webView = [[UIWebView alloc] init];
-		NSString* secretAgent = [webView stringByEvaluatingJavaScriptFromString:@"navigator.userAgent"];
-		std::string ret = secretAgent.UTF8String;
-		webView = nil;
-		return ret;
+		return std::string();
 	}
 	std::string _deviceIdentifier() {
 		if (SYSTEM_VERSION_LESS_THAN(@"6.0")) {

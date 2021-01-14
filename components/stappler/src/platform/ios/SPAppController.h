@@ -21,6 +21,7 @@ THE SOFTWARE.
 **/
 
 #import <UIKit/UIKit.h>
+#import <WebKit/WebKit.h>
 #import <UserNotifications/UserNotifications.h>
 
 @class SPRootViewController;
@@ -29,6 +30,7 @@ THE SOFTWARE.
     UIWindow *window;
     NSURL *launchUrl;
     BOOL isNotificationWakeUp;
+    WKWebView *webView;
 }
 
 @property(nonatomic, readonly, nullable) SPRootViewController* viewController;

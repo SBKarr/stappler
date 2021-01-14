@@ -92,6 +92,12 @@ namespace stappler::platform::interaction {
 	[window setRootViewController:_viewController];
     [window makeKeyAndVisible];
 
+    webView = [[WKWebView alloc] init];
+    [webView evaluateJavaScript:@"navigator.userAgent" completionHandler:^(id __nullable userAgent, NSError * __nullable error) {
+        stappler::Device::getInstance()->setUserAgent(((NSString *)userAgent).UTF8String);
+        webView = nil;
+    }];
+
     // IMPORTANT: Setting the GLView should be done after creating the RootViewController
     cocos2d::GLView *glview = cocos2d::GLViewImpl::createWithEAGLView(new cocos2d::CCEAGLViewStorage{_viewController.glview});
     cocos2d::Director::getInstance()->setOpenGLView(glview);

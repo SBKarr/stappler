@@ -177,6 +177,8 @@ public: /* launch with url options */
 public:
     bool listen(uint16_t port = 0);
 
+    void setUserAgent(StringView);
+
 private:
 	String _userAgent;
 	String _deviceIdentifier;
