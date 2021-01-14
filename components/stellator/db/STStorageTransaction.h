@@ -118,11 +118,8 @@ public:
 	const mem::Value &acquireObject(const Scheme &, uint64_t oid) const;
 
 public: // adapter interface
-	template <typename Callback>
-	bool perform(Callback && cb) const;
-
-	template <typename Callback>
-	bool performAsSystem(Callback && cb) const;
+	bool perform(const mem::Callback<bool()> & cb) const;
+	bool performAsSystem(const mem::Callback<bool()> & cb) const;
 
 	bool isInTransaction() const;
 	TransactionStatus getTransactionStatus() const;
@@ -183,8 +180,7 @@ protected:
 	Data *_data = nullptr;
 };
 
-template <typename Callback>
-inline bool Transaction::perform(Callback && cb) const {
+inline bool Transaction::perform(const mem::Callback<bool()> &cb) const {
 	TransactionGuard g(*this);
 
 	if (isInTransaction()) {
@@ -204,11 +200,10 @@ inline bool Transaction::perform(Callback && cb) const {
 	return false;
 }
 
-template <typename Callback>
-inline bool Transaction::performAsSystem(Callback && cb) const {
+inline bool Transaction::performAsSystem(const mem::Callback<bool()> &cb) const {
 	auto tmpRole = getRole();
 	setRole(AccessRoleId::System);
-	auto ret = perform(std::forward<Callback>(cb));
+	auto ret = perform(cb);
 	setRole(tmpRole);
 	return ret;
 }

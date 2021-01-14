@@ -128,7 +128,9 @@ mem::Value Adapter::select(Worker &w, const Query &q) const {
 	}
 
 	if (targetScheme) {
-		auto fields = w.getRequiredVirtualFields(*targetScheme, q);
+		UpdateFlags flags = UpdateFlags::None;
+		if (w.shouldIncludeAll()) { flags |= UpdateFlags::GetAll; }
+		auto fields = w.getRequiredVirtualFields(*targetScheme, q, flags);
 		auto ret = _interface->select(w, q);
 		if (ret && targetScheme->hasVirtuals()) {
 			for (auto &retIt : ret.asArray()) {

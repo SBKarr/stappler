@@ -355,7 +355,7 @@ int64_t ResourceRefSet::getObjectId() {
 
 data::Value ResourceRefSet::getObjectValue() {
 	if (!_objectValue) {
-		_objectValue = Worker(*_sourceScheme, _transaction).get(getObjectId(), false);
+		_objectValue = Worker(*_sourceScheme, _transaction).get(getObjectId(), db::UpdateFlags::None);
 	}
 	return _objectValue;
 }

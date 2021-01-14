@@ -354,12 +354,12 @@ void Worker::readFields(const Scheme &scheme, const Query &q, const FieldCallbac
 	}
 }
 
-mem::Vector<const Field *> Worker::getRequiredVirtualFields(const Scheme &scheme, const Query &q) {
+mem::Vector<const Field *> Worker::getRequiredVirtualFields(const Scheme &scheme, const Query &q, UpdateFlags flags) {
 	mem::Vector<const Field *> required;
 	if (q.getIncludeFields().empty() && q.getExcludeFields().empty()) {
 		for (auto &it : scheme.getFields()) {
 			auto type = it.second.getType();
-			if (type == Type::Virtual && !it.second.hasFlag(Flags::ForceExclude)) {
+			if (type == Type::Virtual && (!it.second.hasFlag(Flags::ForceExclude) || (flags & UpdateFlags::GetAll) != UpdateFlags::None)) {
 				auto lb = std::lower_bound(required.begin(), required.end(), &it.second);
 				if (lb == required.end()) {
 					required.emplace_back(&it.second);
@@ -435,59 +435,9 @@ const mem::Vector<Worker::ConditionData> &Worker::getConditions() const {
 	return _conditions;
 }
 
-mem::Value Worker::get(uint64_t oid, bool forUpdate) {
-	Query query;
-	prepareGetQuery(query, oid, forUpdate);
-	if (!_required.excludeFields.empty()) {
-		for (auto &it : _required.excludeFields) {
-			query.exclude(it->getName());
-		}
-	}
-	if (!_required.includeFields.empty()) {
-		for (auto &it : _required.includeFields) {
-			query.include(it->getName());
-		}
-	}
-	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
-}
-
-mem::Value Worker::get(const mem::StringView &alias, bool forUpdate) {
-	if (!_scheme->hasAliases()) {
-		return mem::Value();
-	}
-
-	Query query;
-	prepareGetQuery(query, alias, forUpdate);
-	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
-}
-
-mem::Value Worker::get(const mem::Value &id, bool forUpdate) {
-	if (id.isDictionary()) {
-		if (auto oid = id.getInteger("__oid")) {
-			return get(oid, forUpdate);
-		}
-	} else {
-		if ((id.isString() && stappler::valid::validateNumber(id.getString())) || id.isInteger()) {
-			if (auto oid = id.getInteger()) {
-				return get(oid, forUpdate);
-			}
-		}
-
-		auto &str = id.getString();
-		if (!str.empty()) {
-			return get(str, forUpdate);
-		}
-	}
-	return mem::Value();
-}
-
 mem::Value Worker::get(uint64_t oid, UpdateFlags flags) {
 	Query query;
-
-	if ((flags & UpdateFlags::GetAll) != UpdateFlags::None) {
-		_required.includeAll = true;
-	}
-
+	if ((flags & UpdateFlags::GetAll) != UpdateFlags::None) { _required.includeAll = true; }
 	prepareGetQuery(query, oid, (flags & UpdateFlags::GetForUpdate) != UpdateFlags::None);
 	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
 }
@@ -496,12 +446,8 @@ mem::Value Worker::get(const mem::StringView &alias, UpdateFlags flags) {
 	if (!_scheme->hasAliases()) {
 		return mem::Value();
 	}
-
-	if ((flags & UpdateFlags::GetAll) != UpdateFlags::None) {
-		_required.includeAll = true;
-	}
-
 	Query query;
+	if ((flags & UpdateFlags::GetAll) != UpdateFlags::None) { _required.includeAll = true; }
 	prepareGetQuery(query, alias, (flags & UpdateFlags::GetForUpdate) != UpdateFlags::None);
 	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
 }
@@ -526,9 +472,10 @@ mem::Value Worker::get(const mem::Value &id, UpdateFlags flags) {
 	return mem::Value();
 }
 
-mem::Value Worker::get(uint64_t oid, std::initializer_list<mem::StringView> &&fields, bool forUpdate) {
+mem::Value Worker::get(uint64_t oid, std::initializer_list<mem::StringView> &&fields, UpdateFlags flags) {
 	Query query;
-	prepareGetQuery(query, oid, forUpdate);
+	if ((flags & UpdateFlags::GetAll) != UpdateFlags::None) { _required.includeAll = true; }
+	prepareGetQuery(query, oid, (flags & UpdateFlags::GetForUpdate) != UpdateFlags::None);
 	for (auto &it : fields) {
 		if (auto f = _scheme->getField(it)) {
 			query.include(f->getName().str<mem::Interface>());
@@ -536,9 +483,10 @@ mem::Value Worker::get(uint64_t oid, std::initializer_list<mem::StringView> &&fi
 	}
 	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
 }
-mem::Value Worker::get(const mem::StringView &alias, std::initializer_list<mem::StringView> &&fields, bool forUpdate) {
+mem::Value Worker::get(const mem::StringView &alias, std::initializer_list<mem::StringView> &&fields, UpdateFlags flags) {
 	Query query;
-	prepareGetQuery(query, alias, forUpdate);
+	if ((flags & UpdateFlags::GetAll) != UpdateFlags::None) { _required.includeAll = true; }
+	prepareGetQuery(query, alias, (flags & UpdateFlags::GetForUpdate) != UpdateFlags::None);
 	for (auto &it : fields) {
 		if (auto f = _scheme->getField(it)) {
 			query.include(f->getName().str<mem::Interface>());
@@ -546,29 +494,30 @@ mem::Value Worker::get(const mem::StringView &alias, std::initializer_list<mem::
 	}
 	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
 }
-mem::Value Worker::get(const mem::Value &id, std::initializer_list<mem::StringView> &&fields, bool forUpdate) {
+mem::Value Worker::get(const mem::Value &id, std::initializer_list<mem::StringView> &&fields, UpdateFlags flags) {
 	if (id.isDictionary()) {
 		if (auto oid = id.getInteger("__oid")) {
-			return get(oid, move(fields), forUpdate);
+			return get(oid, move(fields), flags);
 		}
 	} else {
 		if ((id.isString() && stappler::valid::validateNumber(id.getString())) || id.isInteger()) {
 			if (auto oid = id.getInteger()) {
-				return get(oid, move(fields), forUpdate);
+				return get(oid, move(fields), flags);
 			}
 		}
 
 		auto &str = id.getString();
 		if (!str.empty()) {
-			return get(str, move(fields), forUpdate);
+			return get(str, move(fields), flags);
 		}
 	}
 	return mem::Value();
 }
 
-mem::Value Worker::get(uint64_t oid, std::initializer_list<const char *> &&fields, bool forUpdate) {
+mem::Value Worker::get(uint64_t oid, std::initializer_list<const char *> &&fields, UpdateFlags flags) {
 	Query query;
-	prepareGetQuery(query, oid, forUpdate);
+	if ((flags & UpdateFlags::GetAll) != UpdateFlags::None) { _required.includeAll = true; }
+	prepareGetQuery(query, oid, (flags & UpdateFlags::GetForUpdate) != UpdateFlags::None);
 	for (auto &it : fields) {
 		if (auto f = _scheme->getField(it)) {
 			query.include(f->getName().str<mem::Interface>());
@@ -576,9 +525,10 @@ mem::Value Worker::get(uint64_t oid, std::initializer_list<const char *> &&field
 	}
 	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
 }
-mem::Value Worker::get(const mem::StringView &alias, std::initializer_list<const char *> &&fields, bool forUpdate) {
+mem::Value Worker::get(const mem::StringView &alias, std::initializer_list<const char *> &&fields, UpdateFlags flags) {
 	Query query;
-	prepareGetQuery(query, alias, forUpdate);
+	if ((flags & UpdateFlags::GetAll) != UpdateFlags::None) { _required.includeAll = true; }
+	prepareGetQuery(query, alias, (flags & UpdateFlags::GetForUpdate) != UpdateFlags::None);
 	for (auto &it : fields) {
 		if (auto f = _scheme->getField(it)) {
 			query.include(f->getName().str<mem::Interface>());
@@ -586,57 +536,97 @@ mem::Value Worker::get(const mem::StringView &alias, std::initializer_list<const
 	}
 	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
 }
-mem::Value Worker::get(const mem::Value &id, std::initializer_list<const char *> &&fields, bool forUpdate) {
+mem::Value Worker::get(const mem::Value &id, std::initializer_list<const char *> &&fields, UpdateFlags flags) {
 	if (id.isDictionary()) {
 		if (auto oid = id.getInteger("__oid")) {
-			return get(oid, move(fields), forUpdate);
+			return get(oid, move(fields), flags);
 		}
 	} else {
 		if ((id.isString() && stappler::valid::validateNumber(id.getString())) || id.isInteger()) {
 			if (auto oid = id.getInteger()) {
-				return get(oid, move(fields), forUpdate);
+				return get(oid, move(fields), flags);
 			}
 		}
 
 		auto &str = id.getString();
 		if (!str.empty()) {
-			return get(str, move(fields), forUpdate);
+			return get(str, move(fields), flags);
 		}
 	}
 	return mem::Value();
 }
 
-mem::Value Worker::get(uint64_t oid, std::initializer_list<const Field *> &&fields, bool forUpdate) {
+mem::Value Worker::get(uint64_t oid, std::initializer_list<const Field *> &&fields, UpdateFlags flags) {
 	Query query;
-	prepareGetQuery(query, oid, forUpdate);
+	if ((flags & UpdateFlags::GetAll) != UpdateFlags::None) { _required.includeAll = true; }
+	prepareGetQuery(query, oid, (flags & UpdateFlags::GetForUpdate) != UpdateFlags::None);
 	for (auto &it : fields) {
 		query.include(it->getName().str<mem::Interface>());
 	}
 	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
 }
-mem::Value Worker::get(const mem::StringView &alias, std::initializer_list<const Field *> &&fields, bool forUpdate) {
+mem::Value Worker::get(const mem::StringView &alias, std::initializer_list<const Field *> &&fields, UpdateFlags flags) {
 	Query query;
-	prepareGetQuery(query, alias, forUpdate);
+	if ((flags & UpdateFlags::GetAll) != UpdateFlags::None) { _required.includeAll = true; }
+	prepareGetQuery(query, alias, (flags & UpdateFlags::GetForUpdate) != UpdateFlags::None);
 	for (auto &it : fields) {
 		query.include(it->getName().str<mem::Interface>());
 	}
 	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
 }
-mem::Value Worker::get(const mem::Value &id, std::initializer_list<const Field *> &&fields, bool forUpdate) {
+mem::Value Worker::get(const mem::Value &id, std::initializer_list<const Field *> &&fields, UpdateFlags flags) {
 	if (id.isDictionary()) {
 		if (auto oid = id.getInteger("__oid")) {
-			return get(oid, move(fields), forUpdate);
+			return get(oid, move(fields), flags);
 		}
 	} else {
 		if ((id.isString() && stappler::valid::validateNumber(id.getString())) || id.isInteger()) {
 			if (auto oid = id.getInteger()) {
-				return get(oid, move(fields), forUpdate);
+				return get(oid, move(fields), flags);
 			}
 		}
 
 		auto &str = id.getString();
 		if (!str.empty()) {
-			return get(str, move(fields), forUpdate);
+			return get(str, move(fields), flags);
+		}
+	}
+	return mem::Value();
+}
+
+mem::Value Worker::get(uint64_t oid, mem::StringView it, UpdateFlags flags) {
+	Query query;
+	if ((flags & UpdateFlags::GetAll) != UpdateFlags::None) { _required.includeAll = true; }
+	prepareGetQuery(query, oid, (flags & UpdateFlags::GetForUpdate) != UpdateFlags::None);
+	if (auto f = _scheme->getField(it)) {
+		query.include(f->getName().str<mem::Interface>());
+	}
+	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
+}
+mem::Value Worker::get(const mem::StringView &alias, mem::StringView it, UpdateFlags flags) {
+	Query query;
+	if ((flags & UpdateFlags::GetAll) != UpdateFlags::None) { _required.includeAll = true; }
+	prepareGetQuery(query, alias, (flags & UpdateFlags::GetForUpdate) != UpdateFlags::None);
+	if (auto f = _scheme->getField(it)) {
+		query.include(f->getName().str<mem::Interface>());
+	}
+	return reduceGetQuery(_scheme->selectWithWorker(*this, query));
+}
+mem::Value Worker::get(const mem::Value &id, mem::StringView it, UpdateFlags flags) {
+	if (id.isDictionary()) {
+		if (auto oid = id.getInteger("__oid")) {
+			return get(oid, it, flags);
+		}
+	} else {
+		if ((id.isString() && stappler::valid::validateNumber(id.getString())) || id.isInteger()) {
+			if (auto oid = id.getInteger()) {
+				return get(oid, it, flags);
+			}
+		}
+
+		auto &str = id.getString();
+		if (!str.empty()) {
+			return get(str, it, flags);
 		}
 	}
 	return mem::Value();

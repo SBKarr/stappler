@@ -312,14 +312,16 @@ int64_t ResourceFieldObject::getObjectId() {
 
 data::Value ResourceFieldObject::getRootObject(bool forUpdate) {
 	if (auto id = getRootId()) {
-		return Worker(*_sourceScheme, _transaction).get(id, {_field->getName()}, forUpdate);
+		return Worker(*_sourceScheme, _transaction).get(id, {_field->getName()},
+				forUpdate ? db::UpdateFlags::GetForUpdate : db::UpdateFlags::None);
 	}
 	return data::Value();
 }
 
 data::Value ResourceFieldObject::getTargetObject(bool forUpdate) {
 	if (auto id = getObjectId()) {
-		return Worker(getScheme(), _transaction).get(id, { StringView() }, forUpdate);
+		return Worker(getScheme(), _transaction).get(id, { StringView() },
+				forUpdate ? db::UpdateFlags::GetForUpdate : db::UpdateFlags::None);
 	}
 	return data::Value();
 }

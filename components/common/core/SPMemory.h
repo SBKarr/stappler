@@ -97,6 +97,8 @@ inline bool writeData(std::ostream &stream, const Value &data, EncodeFormat fmt 
 
 using Mutex = toolkit::TypeTraits::mutex_type;
 
+using stappler::makeSpanView;
+
 }
 
 

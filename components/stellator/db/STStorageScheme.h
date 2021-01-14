@@ -146,11 +146,11 @@ public:
 	mem::Value &transform(mem::Value &, TransformAction = TransformAction::Create) const;
 
 public: // worker interface
-	template <typename Storage, typename _Value> auto get(Storage &&, _Value &&, bool forUpdate = false) const -> mem::Value;
-	template <typename Storage, typename _Value> auto get(Storage &&, _Value &&, UpdateFlags) const -> mem::Value;
-	template <typename Storage, typename _Value> auto get(Storage &&, _Value &&, std::initializer_list<mem::StringView> &&fields, bool forUpdate = false) const -> mem::Value;
-	template <typename Storage, typename _Value> auto get(Storage &&, _Value &&, std::initializer_list<const char *> &&fields, bool forUpdate = false) const -> mem::Value;
-	template <typename Storage, typename _Value> auto get(Storage &&, _Value &&, std::initializer_list<const Field *> &&fields, bool forUpdate = false) const -> mem::Value;
+	template <typename Storage, typename _Value> auto get(Storage &&, _Value &&, UpdateFlags = UpdateFlags::None) const -> mem::Value;
+	template <typename Storage, typename _Value> auto get(Storage &&, _Value &&, mem::StringView, UpdateFlags = UpdateFlags::None) const -> mem::Value;
+	template <typename Storage, typename _Value> auto get(Storage &&, _Value &&, std::initializer_list<mem::StringView> &&fields, UpdateFlags = UpdateFlags::None) const -> mem::Value;
+	template <typename Storage, typename _Value> auto get(Storage &&, _Value &&, std::initializer_list<const char *> &&fields, UpdateFlags = UpdateFlags::None) const -> mem::Value;
+	template <typename Storage, typename _Value> auto get(Storage &&, _Value &&, std::initializer_list<const Field *> &&fields, UpdateFlags = UpdateFlags::None) const -> mem::Value;
 
 	// Select objects by query
 	// - db::Transaction, db::Query
@@ -292,28 +292,28 @@ protected:
 SP_DEFINE_ENUM_AS_MASK(Scheme::Options)
 
 template <typename Storage, typename _Value>
-inline auto Scheme::get(Storage &&s, _Value &&v, bool forUpdate) const -> mem::Value {
-	return Worker(*this, std::forward<Storage>(s)).get(std::forward<_Value>(v), forUpdate);
-}
-
-template <typename Storage, typename _Value>
 inline auto Scheme::get(Storage &&s, _Value &&v, UpdateFlags flags) const -> mem::Value {
 	return Worker(*this, std::forward<Storage>(s)).get(std::forward<_Value>(v), flags);
 }
 
 template <typename Storage, typename _Value>
-inline auto Scheme::get(Storage &&s, _Value &&v, std::initializer_list<mem::StringView> &&fields, bool forUpdate) const -> mem::Value {
-	return Worker(*this, std::forward<Storage>(s)).get(std::forward<_Value>(v), std::move(fields), forUpdate);
+inline auto Scheme::get(Storage &&s, _Value &&v, mem::StringView it, UpdateFlags flags) const -> mem::Value {
+	return Worker(*this, std::forward<Storage>(s)).get(std::forward<_Value>(v), it, flags);
 }
 
 template <typename Storage, typename _Value>
-inline auto Scheme::get(Storage &&s, _Value &&v, std::initializer_list<const char *> &&fields, bool forUpdate) const -> mem::Value {
-	return Worker(*this, std::forward<Storage>(s)).get(std::forward<_Value>(v), std::move(fields), forUpdate);
+inline auto Scheme::get(Storage &&s, _Value &&v, std::initializer_list<mem::StringView> &&fields, UpdateFlags flags) const -> mem::Value {
+	return Worker(*this, std::forward<Storage>(s)).get(std::forward<_Value>(v), std::move(fields), flags);
 }
 
 template <typename Storage, typename _Value>
-inline auto Scheme::get(Storage &&s, _Value &&v, std::initializer_list<const Field *> &&fields, bool forUpdate) const -> mem::Value {
-	return Worker(*this, std::forward<Storage>(s)).get(std::forward<_Value>(v), std::move(fields), forUpdate);
+inline auto Scheme::get(Storage &&s, _Value &&v, std::initializer_list<const char *> &&fields, UpdateFlags flags) const -> mem::Value {
+	return Worker(*this, std::forward<Storage>(s)).get(std::forward<_Value>(v), std::move(fields), flags);
+}
+
+template <typename Storage, typename _Value>
+inline auto Scheme::get(Storage &&s, _Value &&v, std::initializer_list<const Field *> &&fields, UpdateFlags flags) const -> mem::Value {
+	return Worker(*this, std::forward<Storage>(s)).get(std::forward<_Value>(v), std::move(fields), flags);
 }
 
 template <typename T, typename ... Args>

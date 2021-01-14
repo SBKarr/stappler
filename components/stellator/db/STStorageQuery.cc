@@ -223,8 +223,12 @@ Query & Query::select(const mem::Value &val) {
 		selectIds.clear();
 		selectAlias.clear();
 		selectList.clear();
-		for (auto &it : val.asArray()) {
-			selectIds.emplace_back(it.asInteger());
+		if (val.asArray().size() > 0) {
+			for (auto &it : val.asArray()) {
+				selectIds.emplace_back(it.asInteger());
+			}
+		} else {
+			selectIds = mem::Vector<int64_t>{-1};
 		}
 	} else if (val.isDictionary()) {
 		selectIds.clear();
@@ -238,7 +242,11 @@ Query & Query::select(const mem::Value &val) {
 }
 
 Query & Query::select(mem::Vector<int64_t> &&id) {
-	selectIds = std::move(id);
+	if (!id.empty()) {
+		selectIds = std::move(id);
+	} else {
+		selectIds = mem::Vector<int64_t>{-1};
+	}
 	selectAlias.clear();
 	selectList.clear();
 	_selected = true;
@@ -246,7 +254,11 @@ Query & Query::select(mem::Vector<int64_t> &&id) {
 }
 
 Query & Query::select(mem::SpanView<int64_t> id) {
-	selectIds = id.vec();
+	if (!id.empty()) {
+		selectIds = id.vec();
+	} else {
+		selectIds = mem::Vector<int64_t>{-1};
+	}
 	selectAlias.clear();
 	selectList.clear();
 	_selected = true;
@@ -254,7 +266,11 @@ Query & Query::select(mem::SpanView<int64_t> id) {
 }
 
 Query & Query::select(std::initializer_list<int64_t> &&id) {
-	selectIds = std::move(id);
+	if (id.size() > 0) {
+		selectIds = std::move(id);
+	} else {
+		selectIds = mem::Vector<int64_t>{-1};
+	}
 	selectAlias.clear();
 	selectList.clear();
 	return *this;

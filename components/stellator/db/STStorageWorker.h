@@ -111,7 +111,7 @@ public:
 		bool hasCondition() const { return (flags & Conflict::WithoutCondition) == Conflict::None; }
 	};
 
-	static mem::Vector<const Field *> getRequiredVirtualFields(const Scheme &, const Query &);
+	static mem::Vector<const Field *> getRequiredVirtualFields(const Scheme &, const Query &, UpdateFlags = UpdateFlags::None);
 
 	Worker(const Scheme &);
 	Worker(const Scheme &, const Adapter &);
@@ -154,25 +154,26 @@ public:
 	const mem::Vector<ConditionData> &getConditions() const;
 
 public:
-	mem::Value get(uint64_t oid, bool forUpdate = false);
-	mem::Value get(const mem::StringView &alias, bool forUpdate = false);
-	mem::Value get(const mem::Value &id, bool forUpdate = false);
+	mem::Value get(uint64_t oid, UpdateFlags = UpdateFlags::None);
+	mem::Value get(const mem::StringView &alias, UpdateFlags = UpdateFlags::None);
+	mem::Value get(const mem::Value &id, UpdateFlags = UpdateFlags::None);
 
-	mem::Value get(uint64_t oid, UpdateFlags);
-	mem::Value get(const mem::StringView &alias, UpdateFlags);
-	mem::Value get(const mem::Value &id, UpdateFlags);
+	mem::Value get(uint64_t oid, mem::StringView, UpdateFlags = UpdateFlags::None);
+	mem::Value get(const mem::StringView &alias, mem::StringView, UpdateFlags = UpdateFlags::None);
+	mem::Value get(const mem::Value &id, mem::StringView, UpdateFlags = UpdateFlags::None);
 
-	mem::Value get(uint64_t oid, std::initializer_list<mem::StringView> &&fields, bool forUpdate = false);
-	mem::Value get(const mem::StringView &alias, std::initializer_list<mem::StringView> &&fields, bool forUpdate = false);
-	mem::Value get(const mem::Value &id, std::initializer_list<mem::StringView> &&fields, bool forUpdate = false);
+	mem::Value get(uint64_t oid, std::initializer_list<mem::StringView> &&fields, UpdateFlags = UpdateFlags::None);
+	mem::Value get(const mem::StringView &alias, std::initializer_list<mem::StringView> &&fields, UpdateFlags = UpdateFlags::None);
+	mem::Value get(const mem::Value &id, std::initializer_list<mem::StringView> &&fields, UpdateFlags = UpdateFlags::None);
 
-	mem::Value get(uint64_t oid, std::initializer_list<const char *> &&fields, bool forUpdate = false);
-	mem::Value get(const mem::StringView &alias, std::initializer_list<const char *> &&fields, bool forUpdate = false);
-	mem::Value get(const mem::Value &id, std::initializer_list<const char *> &&fields, bool forUpdate = false);
+	mem::Value get(uint64_t oid, std::initializer_list<const char *> &&fields, UpdateFlags = UpdateFlags::None);
+	mem::Value get(const mem::StringView &alias, std::initializer_list<const char *> &&fields, UpdateFlags = UpdateFlags::None);
+	mem::Value get(const mem::Value &id, std::initializer_list<const char *> &&fields, UpdateFlags = UpdateFlags::None);
 
-	mem::Value get(uint64_t oid, std::initializer_list<const Field *> &&fields, bool forUpdate = false);
-	mem::Value get(const mem::StringView &alias, std::initializer_list<const Field *> &&fields, bool forUpdate = false);
-	mem::Value get(const mem::Value &id, std::initializer_list<const Field *> &&fields, bool forUpdate = false);
+	mem::Value get(uint64_t oid, std::initializer_list<const Field *> &&fields, UpdateFlags = UpdateFlags::None);
+	mem::Value get(const mem::StringView &alias, std::initializer_list<const Field *> &&fields, UpdateFlags = UpdateFlags::None);
+	mem::Value get(const mem::Value &id, std::initializer_list<const Field *> &&fields, UpdateFlags = UpdateFlags::None);
+
 
 	// returns Array with zero or more Dictionaries with object data or Null value
 	mem::Value select(const Query &, UpdateFlags = UpdateFlags::None);
