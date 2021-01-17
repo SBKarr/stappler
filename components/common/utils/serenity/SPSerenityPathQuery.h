@@ -33,8 +33,8 @@ using Operator = sql::Operator;
 using Comparation = sql::Comparation;
 using Ordering = sql::Ordering;
 
-Pair<String, bool> encodeComparation(Comparation);
-Pair<Comparation, bool> decodeComparation(const String &);
+Pair<StringView, bool> encodeComparation(Comparation);
+Pair<Comparation, bool> decodeComparation(StringView);
 
 class PathQuery {
 public:

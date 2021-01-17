@@ -329,6 +329,68 @@ void Binder::writeBind(mem::StringStream &query, const FullTextRank &rank) {
 void Binder::writeBind(mem::StringStream &query, const FullTextData &data) {
 	_iface->bindFullTextData(*this, query, data);
 }
+void Binder::writeBind(mem::StringStream &query, const stappler::sql::PatternComparator<const mem::Value &> &cmp) {
+	if (cmp.value->isString()) {
+		switch (cmp.cmp) {
+		case Comparation::Prefix: {
+			mem::String str; str.reserve(cmp.value->getString().size() + 1);
+			str.append(cmp.value->getString());
+			str.append("%");
+			_iface->bindMoveString(*this, query, std::move(str));
+			break;
+		}
+		case Comparation::Suffix: {
+			mem::String str; str.reserve(cmp.value->getString().size() + 1);
+			str.append("%");
+			str.append(cmp.value->getString());
+			_iface->bindMoveString(*this, query, std::move(str));
+			break;
+		}
+		case Comparation::WordPart: {
+			mem::String str; str.reserve(cmp.value->getString().size() + 2);
+			str.append("%");
+			str.append(cmp.value->getString());
+			str.append("%");
+			_iface->bindMoveString(*this, query, std::move(str));
+			break;
+		}
+		default:
+			_iface->bindValue(*this, query, mem::Value());
+			break;
+		}
+	} else {
+		_iface->bindValue(*this, query, mem::Value());
+	}
+}
+void Binder::writeBind(mem::StringStream &query, const stappler::sql::PatternComparator<const mem::StringView &> &cmp) {
+	switch (cmp.cmp) {
+	case Comparation::Prefix: {
+		mem::String str; str.reserve(cmp.value->size() + 1);
+		str.append(cmp.value->data(), cmp.value->size());
+		str.append("%");
+		_iface->bindMoveString(*this, query, std::move(str));
+		break;
+	}
+	case Comparation::Suffix: {
+		mem::String str; str.reserve(cmp.value->size() + 1);
+		str.append("%");
+		str.append(cmp.value->data(), cmp.value->size());
+		_iface->bindMoveString(*this, query, std::move(str));
+		break;
+	}
+	case Comparation::WordPart: {
+		mem::String str; str.reserve(cmp.value->size() + 2);
+		str.append("%");
+		str.append(cmp.value->data(), cmp.value->size());
+		str.append("%");
+		_iface->bindMoveString(*this, query, std::move(str));
+		break;
+	}
+	default:
+		break;
+	}
+	_iface->bindMoveString(*this, query, "NULL");
+}
 void Binder::clear() {
 	_iface->clear();
 }

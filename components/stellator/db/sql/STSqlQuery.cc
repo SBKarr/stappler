@@ -41,7 +41,7 @@ static inline bool SqlQuery_comparationIsValid(const Field &f, Comparation comp)
 			auto c = f.getSlot<FieldCustom>();
 			return c->isComparationAllowed(comp);
 		} else {
-			return db::checkIfComparationIsValid(f.getType(), comp);
+			return db::checkIfComparationIsValid(f.getType(), comp, f.getFlags());
 		}
 	}
 	return false;
@@ -306,6 +306,12 @@ static void SqlQuery_writeWhereData(SqlQuery::WhereContinue &whi, db::Operator o
 				whi.where(op, SqlQuery::Field(scheme.getName(), f.getName()), compare, value1, value2);
 			}
 		}
+	} else {
+		messages::error("Sql", "Condition is not applicable", mem::Value({
+			stappler::pair("scheme", mem::Value(scheme.getName())),
+			stappler::pair("field", mem::Value(f.getName())),
+			stappler::pair("cmp", mem::Value(encodeComparation(compare).first)),
+		}));
 	}
 }
 

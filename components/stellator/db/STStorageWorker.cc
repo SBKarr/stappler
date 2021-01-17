@@ -1002,7 +1002,8 @@ bool Worker::addConflict(const Conflict &c) {
 		d.flags = Conflict::WithoutCondition;
 	} else {
 		selField = scheme().getField(c.condition.field);
-		if (!selField || !selField->isIndexed() || !checkIfComparationIsValid(selField->getType(), c.condition.compare) || !c.condition.searchData.empty()) {
+		if (!selField || !selField->isIndexed()
+				|| !checkIfComparationIsValid(selField->getType(), c.condition.compare, selField->getFlags()) || !c.condition.searchData.empty()) {
 			messages::error("db::Worker", "Invalid ON CONFLICT condition - not applicable");
 			return false;
 		}
@@ -1036,7 +1037,7 @@ bool Worker::addConflict(const mem::Vector<Conflict> &c) {
 
 bool Worker::addCondition(const Query::Select &sel) {
 	auto selField = scheme().getField(sel.field);
-	if (!selField || !checkIfComparationIsValid(selField->getType(), sel.compare) || !sel.searchData.empty()) {
+	if (!selField || !checkIfComparationIsValid(selField->getType(), sel.compare, selField->getFlags()) || !sel.searchData.empty()) {
 		messages::error("db::Worker", "Invalid ON CONFLICT condition - not applicable");
 		return false;
 	}

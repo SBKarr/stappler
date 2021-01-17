@@ -29,6 +29,7 @@ THE SOFTWARE.
 NS_SP_EXT_BEGIN(sql)
 
 enum class Comparation {
+	Invalid,
 	LessThen, // lt
 	LessOrEqual, // le
 	Equal, // eq
@@ -44,6 +45,9 @@ enum class Comparation {
 	In,
 	IsNull,
 	IsNotNull,
+	Prefix, // LIKE 'text%'
+	Suffix, // LIKE '%text'
+	WordPart, // LIKE '%text%'
 };
 
 enum class Ordering {
@@ -62,6 +66,13 @@ enum class Operator {
 	Or,
 };
 
+template <typename T>
+struct PatternComparator {
+	using Type = typename std::remove_reference<T>::type;
+	Comparation cmp = Comparation::Prefix;
+	const Type *value = nullptr;
+};
+
 struct SimpleBinder : public AllocBase {
 	void writeBind(std::ostream &stream, const data::Value &val) {
 		stream << data::toString(val);
@@ -71,6 +82,21 @@ struct SimpleBinder : public AllocBase {
 	}
 	void writeBind(std::ostream &stream, const Bytes &val) {
 		stream << base16::encode(val);
+	}
+	void writeBind(std::ostream &stream, const PatternComparator<const data::Value &> &val) {
+		switch (val.cmp) {
+		case Comparation::Prefix:
+			stream << val.value->asString() << "%";
+			break;
+		case Comparation::Suffix:
+			stream << "&" << val.value->asString();
+			break;
+		case Comparation::WordPart:
+			stream << "&" << val.value->asString() << "%";
+			break;
+		default:
+			break;
+		}
 	}
 };
 

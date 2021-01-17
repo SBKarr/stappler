@@ -104,11 +104,17 @@ inline void Query_writeComparation(Query<Binder, Interface> &q, typename Interfa
 	}
 }
 
+template <typename T>
+auto makePatternComparator(Comparation cmp, T &&value) -> PatternComparator<T> {
+	return PatternComparator<T>{cmp, &value};
+}
+
 template <typename Binder, typename Interface, typename Value1, typename Value2>
 inline void Query_writeComparation(Query<Binder, Interface> &q, typename Interface::StringStreamType &stream,
 		const typename Query<Binder, Interface>::Field &f, Comparation cmp, Value1 &&v1, Value2 &&v2) {
 	stream << "(";
 	switch (cmp) {
+	case Comparation::Invalid:			break;
 	case Comparation::LessThen:			Query_writeComparationStr(q, stream, f, "<",  std::forward<Value1>(v1)); break;
 	case Comparation::LessOrEqual:		Query_writeComparationStr(q, stream, f, "<=", std::forward<Value1>(v1)); break;
 	case Comparation::Equal:			Query_writeComparationStr(q, stream, f, "=",  std::forward<Value1>(v1)); break;
@@ -124,6 +130,9 @@ inline void Query_writeComparation(Query<Binder, Interface> &q, typename Interfa
 	case Comparation::In:				Query_writeComparationStr(q, stream, f, " IN ", std::forward<Value1>(v1)); break;
 	case Comparation::IsNull:			Query_writeComparationStrNoArg(q, stream, f, " IS NULL"); break;
 	case Comparation::IsNotNull:		Query_writeComparationStrNoArg(q, stream, f, " IS NOT NULL"); break;
+	case Comparation::Prefix:			Query_writeComparationStr(q, stream, f, " LIKE ", makePatternComparator(cmp, std::forward<Value1>(v1))); break;
+	case Comparation::Suffix:			Query_writeComparationStr(q, stream, f, " LIKE ", makePatternComparator(cmp, std::forward<Value1>(v1))); break;
+	case Comparation::WordPart:			Query_writeComparationStr(q, stream, f, " LIKE ", makePatternComparator(cmp, std::forward<Value1>(v1))); break;
 	}
 	stream << ")";
 }

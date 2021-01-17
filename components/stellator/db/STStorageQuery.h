@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 #include "SPSql.h"
 #include "SPSearchConfiguration.h"
+#include "SPSerenityPathQuery.h"
 #include "STStorage.h"
 
 NS_DB_BEGIN
@@ -33,8 +34,8 @@ using Operator = stappler::sql::Operator;
 using Comparation = stappler::sql::Comparation;
 using Ordering = stappler::sql::Ordering;
 
-stappler::Pair<mem::String, bool> encodeComparation(Comparation);
-stappler::Pair<Comparation, bool> decodeComparation(const mem::StringView &);
+using stappler::serenity::query::encodeComparation;
+using stappler::serenity::query::decodeComparation;
 
 enum class Resolve {
 	None = 0,

@@ -24,70 +24,6 @@ THE SOFTWARE.
 
 NS_DB_BEGIN
 
-stappler::Pair<mem::String, bool> encodeComparation(Comparation cmp) {
-	bool isTwoArgs = false;
-	mem::String ret;
-
-	switch (cmp) {
-	case Comparation::LessThen: ret = "lt"; break;
-	case Comparation::LessOrEqual: ret = "le"; break;
-	case Comparation::Equal: ret = "eq"; break;
-	case Comparation::NotEqual: ret = "neq"; break;
-	case Comparation::GreatherOrEqual: ret = "ge"; break;
-	case Comparation::GreatherThen: ret = "gt"; break;
-	case Comparation::BetweenValues: ret = "bw"; isTwoArgs = true; break;
-	case Comparation::BetweenEquals: ret = "be"; isTwoArgs = true; break;
-	case Comparation::NotBetweenValues: ret = "nbw"; isTwoArgs = true; break;
-	case Comparation::NotBetweenEquals: ret = "nbe"; isTwoArgs = true; break;
-	case Comparation::Includes: ret = "incl"; break;
-	case Comparation::Between: ret = "sbw"; isTwoArgs = true; break;
-	case Comparation::In: ret = "in"; break;
-	case Comparation::IsNull: ret = "isnull"; break;
-	case Comparation::IsNotNull: ret = "isnotnull"; break;
-	}
-
-	return stappler::pair(std::move(ret), isTwoArgs);
-}
-
-stappler::Pair<Comparation, bool> decodeComparation(const mem::String &str) {
-	bool isTwoArgs = false;
-	Comparation ret = Comparation::Equal;
-
-	if (str == "lt") {
-		ret = Comparation::LessThen;
-	} else if (str == "le") {
-		ret = Comparation::LessOrEqual;
-	} else if (str == "eq") {
-		ret = Comparation::Equal;
-	} else if (str == "neq") {
-		ret = Comparation::NotEqual;
-	} else if (str == "ge") {
-		ret = Comparation::GreatherOrEqual;
-	} else if (str == "gt") {
-		ret = Comparation::GreatherThen;
-	} else if (str == "bw") {
-		ret = Comparation::BetweenValues;
-	} else if (str == "be") {
-		ret = Comparation::BetweenEquals;
-	} else if (str == "nbw") {
-		ret = Comparation::NotBetweenValues;
-	} else if (str == "nbe") {
-		ret = Comparation::NotBetweenEquals;
-	} else if (str == "incl") {
-		ret = Comparation::Includes;
-	} else if (str == "sbw") {
-		ret = Comparation::Between;
-	} else if (str == "in") {
-		ret = Comparation::In;
-	} else if (str == "isnull") {
-		ret = Comparation::IsNull;
-	} else if (str == "isnotnull") {
-		ret = Comparation::IsNotNull;
-	}
-
-	return stappler::pair(ret, isTwoArgs);
-}
-
 Query::Field::Field(Field &&f) : name(std::move(f.name)), fields(std::move(f.fields)) { }
 
 Query::Field::Field(const Field &f) : name(f.name), fields(f.fields) { }
@@ -566,7 +502,7 @@ mem::Value Query::encode() const {
 			auto &s = sel.emplace();
 			s.addString(it.field);
 			bool twoArgs = false;
-			mem::String val;
+			mem::StringView val;
 			std::tie(val, twoArgs) = encodeComparation(it.compare);
 			s.addString(val);
 			s.addValue(it.value1);

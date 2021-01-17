@@ -52,19 +52,6 @@ enum class Type {
 	Custom
 };
 
-inline bool checkIfComparationIsValid(Type t, Comparation c) {
-	if (t == Type::Integer || t == Type::Object || t == Type::Float) {
-		return true;
-	} else if (t == Type::Bytes || t == Type::Text || t == Type::Boolean) {
-		return c == Comparation::Equal || c == Comparation::NotEqual || c == Comparation::IsNull || c == Comparation::IsNotNull;
-	} else if (t == Type::Data || t == Type::Extra || t == Type::FullTextView) {
-		return c == Comparation::IsNull || c == Comparation::IsNotNull;
-	} else if (t == Type::Custom) {
-		return true;
-	}
-	return false;
-}
-
 enum class Flags : uint32_t {
 	/** empty flag */
 	None = 0,
@@ -86,6 +73,8 @@ enum class Flags : uint32_t {
 	Composed = 1 << 13, /** propagate modification events from objects in that field (for object and set fields) */
 	Compressed = 1 << 14, /** Try to compress data field with lz-hc (incompatible with pg-cbor) */
 	Enum = 1 << 15, /** Value is enumeration with fixed (or low-distributed) number of values (enables more effective index in MDB) */
+	PatternIndexed = (1 << 9) | (1 << 16), /** Create index, that allows select queries with textual patterns (also enables normal index) */
+	TrigramIndexed = (1 << 9) | (1 << 17), /** enable trigram index on this field (also enables normal index) */
 
 	TsNormalize_DocLengthLog = 1 << 24, /** Text search normalization: divides the rank by 1 + the logarithm of the document length */
 	TsNormalize_DocLength = 1 << 25, /** Text search normalization: divides the rank by the document length */
@@ -94,6 +83,76 @@ enum class Flags : uint32_t {
 };
 
 SP_DEFINE_ENUM_AS_MASK(Flags)
+
+inline bool checkIfComparationIsValid(Type t, Comparation c, Flags f) {
+	switch (t) {
+	case Type::Integer:
+	case Type::Object:
+	case Type::Float:
+		switch (c) {
+		case Comparation::Includes:
+		case Comparation::In:
+		case Comparation::Prefix:
+		case Comparation::Suffix:
+		case Comparation::WordPart:
+			return false;
+			break;
+		default:
+			return true;
+			break;
+		}
+		break;
+	case Type::Bytes:
+	case Type::Boolean:
+		switch (c) {
+		case Comparation::Equal:
+		case Comparation::NotEqual:
+		case Comparation::IsNull:
+		case Comparation::IsNotNull:
+			return true;
+			break;
+		default:
+			return false;
+			break;
+		}
+		break;
+	case Type::Data:
+	case Type::Extra:
+	case Type::FullTextView:
+		switch (c) {
+		case Comparation::IsNull:
+		case Comparation::IsNotNull:
+			return true;
+			break;
+		default:
+			return false;
+			break;
+		}
+		break;
+	case Type::Text:
+		switch (c) {
+		case Comparation::Equal:
+		case Comparation::NotEqual:
+		case Comparation::IsNull:
+		case Comparation::IsNotNull:
+			return true;
+			break;
+		case Comparation::Prefix:
+		case Comparation::Suffix:
+		case Comparation::WordPart:
+			return ((f & Flags::PatternIndexed) != Flags::None) || ((f & Flags::TrigramIndexed) != Flags::None);
+			break;
+		default:
+			return false;
+			break;
+		}
+		break;
+	default:
+		return false;
+		break;
+	}
+	return false;
+}
 
 enum class Transform {
 	None,
@@ -107,7 +166,6 @@ enum class Transform {
 	Number,
 	Hexadecimial,
 	Base64,
-	Trigram, // enable trigram index on this field
 
 	// Bytes
 	Uuid,

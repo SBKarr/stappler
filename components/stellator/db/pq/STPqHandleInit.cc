@@ -907,9 +907,15 @@ TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme) {
 					indexes.emplace(mem::toString(name, "_idx_", it.first), mem::toString("USING GIN ( \"", it.first, "\" )"));
 				} else {
 					indexes.emplace(mem::toString(name, "_idx_", it.first), mem::toString("( \"", it.first, "\" )"));
-					if (type == db::Type::Text && it.second.getTransform() == db::Transform::Trigram) {
-						indexes.emplace(mem::toString(name, "_idx_", it.first, "_trgm"), mem::toString("USING GIN ( \"", it.first, "\" gin_trgm_ops)"));
-					}
+				}
+			}
+
+			if (type == db::Type::Text) {
+				if (f.hasFlag(db::Flags::PatternIndexed)) {
+					indexes.emplace(mem::toString(name, "_idx_", it.first, "_pattern"), mem::toString("USING btree ( \"", it.first, "\" text_pattern_ops)"));
+				}
+				if (f.hasFlag(db::Flags::TrigramIndexed)) {
+					indexes.emplace(mem::toString(name, "_idx_", it.first, "_trgm"), mem::toString("USING GIN ( \"", it.first, "\" gin_trgm_ops)"));
 				}
 			}
 		}

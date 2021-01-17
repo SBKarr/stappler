@@ -24,6 +24,7 @@ THE SOFTWARE.
 #include "ResourceHandler.h"
 #include "Resource.h"
 #include "StorageResolver.h"
+#include "SPSerenityPathQuery.h"
 
 NS_SA_BEGIN
 
@@ -65,37 +66,12 @@ static bool getSelectResource(storage::Resolver *resv, Vector<StringView> &path,
 
 	StringView cmpStr(path.back()); path.pop_back();
 
-	db::Comparation cmp = db::Comparation::Equal;
-	size_t valuesRequired = 1;
+	auto decComp = stappler::serenity::query::decodeComparation(cmpStr);
+	db::Comparation cmp = decComp.first;
+	size_t valuesRequired = (decComp.second ? 2 : 1);
 
-	if (cmpStr == "lt") {
-		cmp = db::Comparation::LessThen;
-	} else if (cmpStr == "le") {
-		cmp = db::Comparation::LessOrEqual;
-	} else if (cmpStr == "eq") {
+	if (cmp == db::Comparation::Invalid) {
 		cmp = db::Comparation::Equal;
-		if (field->hasFlag(db::Flags::Unique) || field->getTransform() == db::Transform::Alias) {
-			isSingleObject = true;
-		}
-	} else if (cmpStr == "neq") {
-		cmp = db::Comparation::NotEqual;
-	} else if (cmpStr == "ge") {
-		cmp = db::Comparation::GreatherOrEqual;
-	} else if (cmpStr == "gt") {
-		cmp = db::Comparation::GreatherThen;
-	} else if (cmpStr == "bw") {
-		cmp = db::Comparation::BetweenValues;
-		valuesRequired = 2;
-	} else if (cmpStr == "be") {
-		cmp = db::Comparation::BetweenEquals;
-		valuesRequired = 2;
-	} else if (cmpStr == "nbw") {
-		cmp = db::Comparation::NotBetweenValues;
-		valuesRequired = 2;
-	} else if (cmpStr == "nbe") {
-		cmp = db::Comparation::NotBetweenEquals;
-		valuesRequired = 2;
-	} else {
 		if (field->hasFlag(db::Flags::Unique) || field->getTransform() == db::Transform::Alias) {
 			isSingleObject = true;
 		}
@@ -109,7 +85,7 @@ static bool getSelectResource(storage::Resolver *resv, Vector<StringView> &path,
 			} else if (cmpStr == "f" || cmpStr == "false") {
 				return resv->selectByQuery(db::Query::Select(field->getName(), cmp, data::Value(false), data::Value(false)));
 			}
-		} else if (valid::validateNumber(cmpStr) && db::checkIfComparationIsValid(field->getType(), cmp)) {
+		} else if (valid::validateNumber(cmpStr) && db::checkIfComparationIsValid(field->getType(), cmp, field->getFlags())) {
 			return resv->selectByQuery(db::Query::Select(field->getName(), cmp, cmpStr.readInteger().get(), 0));
 		} else {
 			messages::error("ResourceResolver", "invalid 'select' query");
@@ -117,7 +93,7 @@ static bool getSelectResource(storage::Resolver *resv, Vector<StringView> &path,
 		}
 	}
 
-	if (path.size() < valuesRequired || !db::checkIfComparationIsValid(field->getType(), cmp)) {
+	if (path.size() < valuesRequired || !db::checkIfComparationIsValid(field->getType(), cmp, field->getFlags())) {
 		messages::error("ResourceResolver", "invalid 'select' query");
 		return false;
 	}

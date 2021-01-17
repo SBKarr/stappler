@@ -155,6 +155,8 @@ public:
 	void writeBind(mem::StringStream &, const FullTextField &);
 	void writeBind(mem::StringStream &, const FullTextRank &);
 	void writeBind(mem::StringStream &, const FullTextData &);
+	void writeBind(mem::StringStream &, const stappler::sql::PatternComparator<const mem::Value &> &);
+	void writeBind(mem::StringStream &, const stappler::sql::PatternComparator<const mem::StringView &> &);
 
 	void clear();
 
