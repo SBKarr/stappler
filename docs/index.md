@@ -1,3 +1,6 @@
+Title: Documentation
 # Global Documentation Index
 
-Documentation index text
+Root documentation index of Stappler project
+
+Just select your language

@@ -189,6 +189,7 @@ function send(input) {
 		input.value = "";
 	}
 }
+
 function init(consoleTarget) {
 	document.getElementById("main").style.visibility = "hidden";
 	ShellHistory(document.getElementById("input"), send);
@@ -292,3 +293,111 @@ function ShellHistory(node, callback) {
 		}
 	}
 };
+
+function SaveEditorContent(editor) {
+	var xhr = new XMLHttpRequest();
+	xhr.open("POST", window.location.pathname, true);
+
+	xhr.setRequestHeader("Content-type", "application/markdown");
+	
+	xhr.onreadystatechange = function() {//Вызывает функцию при смене состояния.
+		if (xhr.readyState == XMLHttpRequest.DONE && xhr.status == 200) {
+			var jsonResponse = JSON.parse(xhr.responseText);
+			if (jsonResponse.OK) {
+				window.location.reload();
+			}
+		}
+	}
+	xhr.send(editor.value());
+}
+
+var simplemde = null;
+var editorButtons = [
+	"bold", "italic", "heading", "|", "code", "unordered-list", "ordered-list", "|", "link",
+	{
+		name: "toc",
+		action: SimpleMDE.drawHorizontalRule,
+		className: "fa fa-list-alt",
+		title: "Insert TOC"
+	},
+	"|",
+	{
+		name: "save",
+		action: function saveContent(editor) {
+			SaveEditorContent(editor)
+		},
+		className: "fa fa-floppy-o",
+		title: "Save",
+	},
+	{
+		name: "cancel",
+		action: function cancel(editor) {
+			var editor = document.getElementById("editblock")
+			var source = document.getElementById("sourceblock")
+			if (!editor.classList.contains("editorclosed")) {
+				editor.classList.add("editorclosed");
+				if (simplemde != null) {
+					simplemde.toTextArea();
+					simplemde = null;
+				}
+				source.classList.remove("editorclosed");
+			}
+		},
+		className: "fa fa-times",
+		title: "Cancel",
+	},
+];
+
+function ToggleEditor() {
+	var editor = document.getElementById("editblock")
+	var source = document.getElementById("sourceblock")
+	if (editor.classList.contains("editorclosed")) {
+		editor.classList.remove("editorclosed");
+		if (simplemde == null) {
+			simplemde = new SimpleMDE({
+				element: document.getElementById("editor"),
+				spellChecker: false,
+				toolbar: editorButtons,
+				insertTexts: {
+					horizontalRule: ["{{TOC}}"],
+				},
+			})
+		}
+		source.classList.add("editorclosed");
+	} else {
+		editor.classList.add("editorclosed");
+		if (simplemde != null) {
+			simplemde.toTextArea();
+			simplemde = null;
+		}
+		source.classList.remove("editorclosed");
+	}
+	return false;
+}
+
+function EditorDownShortcuts(e) {
+	if (e.ctrlKey && e.which == 83) {
+		e.stopPropagation();
+		e.preventDefault();  
+		e.returnValue = false;
+		e.cancelBubble = true;
+		return false;
+	}
+}
+
+function EditorUpShortcuts(e) {
+	if (e.ctrlKey && e.which == 83) {
+		if (simplemde != null) {
+			SaveEditorContent(simplemde)
+		}
+		return false;
+	} else if (e.which == 27) {
+		if (simplemde != null) {
+			ToggleEditor()
+		}
+		return false;
+	}
+}
+
+document.addEventListener('keydown', EditorDownShortcuts);
+document.addEventListener('keyup', EditorUpShortcuts);

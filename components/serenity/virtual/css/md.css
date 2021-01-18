@@ -6,6 +6,7 @@
 	width: 320px;
 	border-left: 1px #ccc solid;
 	float: right;
+	background: #fff;
 }
 
 .docs > .doc {
@@ -36,6 +37,7 @@
 	margin-bottom: 0.4rem;
 	font-size: 1.1rem;
 	line-height: 1.6rem;
+	color: #333;
 }
 
 .docs li {
@@ -49,8 +51,9 @@
 	margin-bottom: 0.5rem;
 	font-family: "Roboto";
 	font-weight: 400;
-	font-size: 1.5rem;
+	font-size: 1.6rem;
 	color: #666;
+	background-color: #e0f2f1;
 }
 
 .docs h2 {
@@ -58,16 +61,18 @@
 	margin-bottom: 0.5rem;
 	font-family: "Roboto";
 	font-weight: 500;
-	font-size: 1.3rem;
+	font-size: 1.4rem;
 	color: #333;
+	background-color: #e0f2f1;
 }
 .docs h3 {
 	margin-top: 1.1rem;
 	margin-bottom: 0.5rem;
 	font-family: "Roboto";
 	font-weight: 500;
-	font-size: 1.1rem;
+	font-size: 1.3rem;
 	color: #666;
+	background-color: #e0f2f1;
 }
 
 .docs .contents h1 {

@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef TEST_DOCUMENTATOR_SRC_DOCTOKENIZER_H_
 #define TEST_DOCUMENTATOR_SRC_DOCTOKENIZER_H_
 
-#include "SPString.h"
+#include "SPCommon.h"
 #include "SPMemory.h"
 
 namespace doc {

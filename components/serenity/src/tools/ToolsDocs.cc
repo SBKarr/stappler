@@ -47,6 +47,7 @@ int DocsGui::onTranslateName(Request &req) {
 				exec.set("version", data::Value(getVersionString()));
 				exec.set("hasDb", data::Value(true));
 				exec.set("setup", data::Value(true));
+				exec.set("virtual", data::Value(true));
 				exec.set("auth", data::Value({
 					pair("id", data::Value(u->getObjectId())),
 					pair("name", data::Value(u->getString("name"))),

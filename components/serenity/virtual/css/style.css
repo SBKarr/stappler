@@ -221,3 +221,49 @@ span.server {
 	overflow-x: scroll;
 	background-color: #a7ffeb;
 }
+p.editbutton {
+	text-align: right;
+}
+p.editbutton > a {
+	font-size: 0.8rem;
+}
+.editorclosed {
+	display: none;
+}
+.CodeMirror, .CodeMirror-scroll {
+	min-height: 200px;
+}
+a.selected:before {
+  content: "< ";
+}
+a.selected:after {
+  content: " >";
+}
+
+form input[type=submit] {
+	outline:none;
+	border:none;
+	text-transform: uppercase;
+	background-color: #607d8b;
+	padding: 6px 12px;
+	color: white;
+}
+
+form input[type=text] {
+	width: 140px;
+	display: inline;
+}
+
+form input {
+	display: block;
+	padding: 2px 0;
+	margin: 4px;
+	border: none;
+	border-bottom: 2px solid #bbb;
+}
+
+form {
+	background-color: #e0f2f1;
+	padding: 4px;
+	margin: 4px;
+}
