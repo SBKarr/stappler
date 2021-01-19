@@ -54,11 +54,18 @@ protected:
 
 	bool createArticle(const data::Value &);
 	bool createCategory(const data::Value &);
+
+	bool _virtual = false;
+#if DEBUG
+	bool _editable = true;
+#else
+	bool _editable = false;
+#endif
 };
 
 int VirtualGui::onTranslateName(Request &req) {
 	if (req.getMethod() == Request::Method::Post) {
-		return DECLINED;
+		return _editable ? DECLINED : HTTP_FORBIDDEN;
 	} else if (req.getMethod() != Request::Method::Get) {
 		return HTTP_METHOD_NOT_ALLOWED;
 	}
@@ -76,6 +83,9 @@ int VirtualGui::onTranslateName(Request &req) {
 
 		if (filesystem::exists(path)) {
 			if (req.getParsedQueryArgs().getBool("delete")) {
+				if (!_editable) {
+					return HTTP_FORBIDDEN;
+				}
 				if (filepath::name(path) == "index") {
 					filesystem::remove(filepath::root(path), true, true);
 					return req.redirectTo(filepath::merge(filepath::root(filepath::root(req.getUri())), "/index"));
@@ -89,7 +99,8 @@ int VirtualGui::onTranslateName(Request &req) {
 				exec.set("version", data::Value(tools::getVersionString()));
 				exec.set("hasDb", data::Value(true));
 				exec.set("setup", data::Value(true));
-				exec.set("virtual", data::Value(false));
+				exec.set("virtual", data::Value(_virtual));
+				exec.set("editable", data::Value(_editable));
 				exec.set("auth", data::Value({
 					pair("id", data::Value(u->getObjectId())),
 					pair("name", data::Value(u->getString("name"))),
@@ -202,6 +213,10 @@ int VirtualGui::onHandler(Request &) {
 }
 
 void VirtualGui::onInsertFilter(Request &req) {
+	if (!_editable) {
+		return;
+	}
+
 	if (req.getMethod() == Request::Method::Post) {
 		req.setRequiredData(db::InputConfig::Require::Body | db::InputConfig::Require::Data | db::InputConfig::Require::Files);
 		req.setMaxRequestSize(20_MiB);
@@ -220,6 +235,10 @@ void VirtualGui::onInsertFilter(Request &req) {
 }
 
 void VirtualGui::onFilterComplete(InputFilter *filter) {
+	if (!_editable) {
+		return;
+	}
+
 	Request rctx(filter->getRequest());
 
 	auto &args = _request.getParsedQueryArgs();

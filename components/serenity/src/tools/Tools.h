@@ -115,10 +115,28 @@ public:
 	virtual int onTranslateName(Request &) override;
 };
 
-class DocsGui : public RequestHandler {
+class VirtualGui : public RequestHandler {
 public:
 	virtual bool isRequestPermitted(Request &) override { return true; }
 	virtual int onTranslateName(Request &) override;
+	virtual int onHandler(Request &) override;
+
+	virtual void onInsertFilter(Request &) override;
+	virtual void onFilterComplete(InputFilter *filter) override;
+
+protected:
+	data::Value readMeta(StringView) const;
+	void writeData(data::Value &) const;
+
+	bool createArticle(const data::Value &);
+	bool createCategory(const data::Value &);
+
+	bool _virtual = true;
+#if DEBUG
+	bool _editable = true;
+#else
+	bool _editable = false;
+#endif
 };
 
 class VirtualFilesystem : public RequestHandler {

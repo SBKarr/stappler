@@ -361,16 +361,21 @@ function ToggleEditor() {
 				insertTexts: {
 					horizontalRule: ["{{TOC}}"],
 				},
+				indentWithTabs: true,
+				tabSize: 4,
+				renderingConfig: {
+					codeSyntaxHighlighting: true
+				}
 			})
 		}
 		source.classList.add("editorclosed");
 	} else {
+		source.classList.remove("editorclosed");
 		editor.classList.add("editorclosed");
 		if (simplemde != null) {
 			simplemde.toTextArea();
 			simplemde = null;
 		}
-		source.classList.remove("editorclosed");
 	}
 	return false;
 }
@@ -389,6 +394,11 @@ function EditorUpShortcuts(e) {
 	if (e.ctrlKey && e.which == 83) {
 		if (simplemde != null) {
 			SaveEditorContent(simplemde)
+		}
+		return false;
+	} else if (e.ctrlKey && e.which == 69) {
+		if (simplemde == null) {
+			ToggleEditor()
 		}
 		return false;
 	} else if (e.which == 27) {
