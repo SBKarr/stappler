@@ -226,8 +226,12 @@ public:
 	}
 
 	void set_size(size_t s) {
-		_used = s;
-		drop_unused();
+		if (s < _used) {
+			_used = s;
+			drop_unused();
+		} else {
+			_used = s;
+		}
 	}
 
 	size_t size() const noexcept { return _used; }

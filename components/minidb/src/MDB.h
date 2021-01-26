@@ -62,38 +62,32 @@ enum class PageType : uint8_t {
 	BytIndexContent =	0b1000'0010,
 };
 
+struct OidTreePageHeader {
+	uint32_t type : 8;
+	uint32_t ncells : 24; // so, 64MiB pages allows 4-byte min cell
+	uint32_t root;
+	uint32_t prev;
+	uint32_t next;
+	uint32_t right; // rightmost tree pointer
+};
+
+struct OidContentPageHeader {
+	uint32_t type : 8;
+	uint32_t ncells : 24; // so, 64MiB pages allows 4-byte min cell
+	uint32_t root;
+	uint32_t prev;
+	uint32_t next;
+};
+
 struct StorageHeader {
 	uint8_t title[6]; // 0 - 5
 	uint8_t version; // 6
 	uint8_t pageSize; // 7 ( size = 1 << value)
-	uint32_t pageCount; // 8 - 11
-	uint64_t mtime; // 12 - 19
-
-};
-
-struct StorageHeader {
-	uint8_t title[6]; // 0-6
-	uint16_t version; // 6-8
-	uint32_t pageSize; // 8-12
-	uint32_t pageCount; // 12-16
-	uint32_t freeList; // 16-20
-	uint32_t entities; // 20-24
-	uint64_t oid; // 24-32
-	uint64_t mtime; // 32-40
-
-	uint32_t reserved[4]; // 40-56
-
-	uint32_t next; // 56-60
-	uint32_t remains; // 60-64
-};
-
-struct TreePageHeader {
-	uint8_t type;
-	uint8_t reserved;
-	uint16_t ncells;
-	uint32_t root;
-	uint32_t prev;
-	uint32_t next;
+	uint64_t mtime; // 8 - 15
+	uint32_t pageCount; // 16 - 19
+	uint64_t oid; // 20-27
+	uint64_t dict; // 28-35
+	OidTreePageHeader pageHeader;
 };
 
 /*struct TreeTableLeafCell {
@@ -109,31 +103,18 @@ struct TreeTableInteriorCell {
 
 */
 
-struct ContentPageHeader {
-	uint32_t next;
-	uint32_t remains;
-};
-
-struct EntityCell {
-	uint32_t page;
-	uint64_t counter;
-};
-
 // using ManifestPageHeader = PayloadPageHeader;
 
 enum class UpdateFlags : uint32_t {
 	None = 0,
 	Oid = 1 << 0,
-	FreeList = 1 << 1,
-	PageCount = 1 << 2,
-	EntityCount = 1 << 3
+	PageCount = 1 << 1,
 };
 
 enum class OpenMode {
 	Read,
 	Write,
 	ReadWrite,
-	Create,
 };
 
 constexpr uint32_t DefaultPageSize = 64_KiB;
