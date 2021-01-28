@@ -53,9 +53,6 @@ constexpr const uint8_t utf8_length_mask[256] = {
 
 // length of utf8-encoded symbol by it's first char
 
-template <class T>
-static constexpr inline uint8_t utf8DecodeLength(T c, uint8_t &mask);
-
 static constexpr inline char16_t utf8Decode(const char *ptr);
 static constexpr inline char16_t utf8Decode(const char *ptr, uint8_t &offset);
 

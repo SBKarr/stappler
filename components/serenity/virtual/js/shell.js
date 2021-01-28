@@ -411,3 +411,16 @@ function EditorUpShortcuts(e) {
 
 document.addEventListener('keydown', EditorDownShortcuts);
 document.addEventListener('keyup', EditorUpShortcuts);
+
+document.addEventListener('copy', (event) => {
+	var data = document.getSelection();
+	
+	if (data.anchorNode.classList.contains('hljs-ln-line') || data.anchorNode.classList.contains('hljs-ln')) {
+		var str = data.toString()
+		str = str.replace(/\n\t\n/g, '\n');
+		str = str.replace(/\n \n/g, '\n\n');
+		
+		event.clipboardData.setData('text', str);
+		event.preventDefault();
+	}
+});

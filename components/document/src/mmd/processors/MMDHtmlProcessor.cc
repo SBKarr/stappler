@@ -228,6 +228,54 @@ void HtmlProcessor::exportLink(std::ostream &out, token * text, Content::Link * 
 		buffer.clear();
 	}
 
+	StringStream urlRemap;
+	StringView urlView(url);
+	while (!urlView.empty()) {
+		urlRemap << urlView.readUntilString("[%");
+		if (urlView.starts_with("[%")) {
+			auto tmp = urlView;
+			tmp += 2;
+			auto name = tmp.readUntil<StringView::Chars<']'>>();
+			if (tmp.is(']')) {
+				++ tmp;
+				auto tmpName = name;
+				tmpName.skipChars<StringView::CharGroup<CharGroupId::Alphanumeric>, StringView::CharGroup<CharGroupId::WhiteSpace>>();
+				if (tmpName.empty()) {
+					auto temp_char2 = content->getMeta(name);
+					if (!temp_char2.empty()) {
+						printHtml(urlRemap, temp_char2);
+					} else if (content->getExtensions().metaCallback) {
+						String tempStr;
+						MetaType type = MetaType::HtmlString;
+						std::tie(tempStr, type) = content->getExtensions().metaCallback(name);
+						if (!tempStr.empty()) {
+							switch (type) {
+							case MetaType::PlainString:
+								urlRemap << tempStr;
+								break;
+							case MetaType::HtmlString:
+								printHtml(urlRemap, tempStr);
+								break;
+							case MetaType::HtmlEntity:
+								pushHtmlEntityText(urlRemap, tempStr);
+								break;
+							}
+						} else {
+							urlRemap << "[%" << name << "]";
+						}
+					} else {
+						urlRemap << "[%" << name << "]";
+					}
+				}
+				urlView = tmp;
+			} else {
+				urlRemap << urlView;
+				urlView = StringView();
+			}
+		}
+	}
+
+	url = urlRemap.str();
 	attr.emplace_back("href", url);
 
 	String title;

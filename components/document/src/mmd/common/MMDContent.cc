@@ -525,8 +525,27 @@ auto Content::explicitLink(const StringView &s, const Extensions &ext, token * b
 	// Grab attributes, if present
 	attr_len = scan_attributes(&source[pos]);
 
+	Vector<Pair<StringView, StringView>> attrs;
 	if (attr_len) {
 		attributes = StringView(&source[pos], attr_len);
+	} else if (!r.is(')')) {
+		while (!r.is(')') && !r.empty()) {
+			auto name = r.readChars<StringView::CharGroup<CharGroupId::Alphanumeric>, StringView::Chars<'_', '-'>>();
+			if (r.is('=')) {
+				++ r;
+				auto value = r.readChars<StringView::CharGroup<CharGroupId::Alphanumeric>, StringView::Chars<'_', '.', '-'>>();
+				if (r.is<StringView::CharGroup<CharGroupId::WhiteSpace>>()) {
+					attrs.emplace_back(name, value);
+					r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+				} else if (!r.is(')') && !r.empty()) {
+					break;
+				} else {
+					attrs.emplace_back(name, value);
+				}
+			} else {
+				break;
+			}
+		}
 	}
 
 	Link *l = nullptr;
@@ -536,6 +555,10 @@ auto Content::explicitLink(const StringView &s, const Extensions &ext, token * b
 		}
 	} else {
 		l = new Link(source, Token(), move(url), title, attributes, false);
+	}
+
+	if (attributes.empty() && !attrs.empty() && !ext.hasFlag(Extensions::Compatibility)) {
+		l->attributes = std::move(attrs);
 	}
 
 	return l;

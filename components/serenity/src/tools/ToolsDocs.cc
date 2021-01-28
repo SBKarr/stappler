@@ -39,16 +39,26 @@ int VirtualGui::onTranslateName(Request &req) {
 
 	auto u = req.getAuthorizedUser();
 	if (u && u->isAdmin()) {
-		auto path = toString(tools::getDocumentsPath(), _subPath);
-		if (filesystem::isdir(path)) {
-			return req.redirectTo(filepath::merge(req.getUri(), "/index"));
+		String path;
+		bool isSource = false;
+
+		if (StringView(_subPath).starts_with("/_sources")) {
+			isSource = true;
+			auto tmp = StringView(_subPath); tmp += "/_sources"_len;
+			tmp.backwardSkipChars<StringView::Chars<'/'>>();
+			path = filepath::reconstructPath(toString(tools::getDocumentsPath(), "/../components", tmp));
 		} else {
-			path += ".md";
+			path = toString(tools::getDocumentsPath(), _subPath);
+			if (filesystem::isdir(path)) {
+				return req.redirectTo(filepath::merge(req.getUri(), "/index"));
+			} else {
+				path += ".md";
+			}
 		}
 
 		if (filesystem::exists(path)) {
 			if (req.getParsedQueryArgs().getBool("delete")) {
-				if (!_editable) {
+				if (!_editable || isSource) {
 					return HTTP_FORBIDDEN;
 				}
 				if (filepath::name(path) == "index") {
@@ -60,12 +70,13 @@ int VirtualGui::onTranslateName(Request &req) {
 				}
 			}
 
-			return req.runPug("virtual://html/docs.pug", [&] (pug::Context &exec, const pug::Template &tpl) -> bool {
+			return req.runPug("html/docs.pug", [&] (pug::Context &exec, const pug::Template &tpl) -> bool {
 				exec.set("version", data::Value(tools::getVersionString()));
 				exec.set("hasDb", data::Value(true));
 				exec.set("setup", data::Value(true));
 				exec.set("virtual", data::Value(_virtual));
-				exec.set("editable", data::Value(_editable));
+				exec.set("editable", data::Value(_editable && !isSource));
+				exec.set("isSource", data::Value(isSource));
 				exec.set("auth", data::Value({
 					pair("id", data::Value(u->getObjectId())),
 					pair("name", data::Value(u->getString("name"))),
@@ -74,94 +85,67 @@ int VirtualGui::onTranslateName(Request &req) {
 				exec.set("isCategory", data::Value(filepath::name(path) == "index"));
 
 				do {
-					StringStream out;
-					auto data = filesystem::readTextFile(path);
-					exec.set("mdsource", data::Value(data));
-					mmd::HtmlOutputProcessor::run(&out, req.pool(), data);
-					exec.set("source", data::Value(out.str()));
+					if (!isSource) {
+						StringStream out;
+						auto data = filesystem::readTextFile(path);
+						exec.set("mdsource", data::Value(data));
+						auto ext = mmd::DefaultExtensions;
+						ext.flags |= mmd::Extensions::Snippet;
+						ext.metaCallback = [&] (StringView name) -> Pair<String, mmd::MetaType> {
+							if (name == "sources") {
+								StringView tmp(_originPath, 0, _originPath.size() - _subPath.size());
+								return pair(String(toString(tmp, "/_sources")), mmd::MetaType::PlainString);
+							}
+							return pair(String(), mmd::MetaType::PlainString);
+						};
+						mmd::HtmlOutputProcessor::run(&out, req.pool(), data, ext);
+						exec.set("source", data::Value(out.str()));
+					} else {
+						auto tmp = StringView(_subPath); tmp += "/_sources"_len;
+						tmp.backwardSkipChars<StringView::Chars<'/'>>();
+						if (filesystem::isdir(path)) {
+							exec.set("isDir", data::Value(true));
+							exec.set("dir", makeDirInfo(path));
+						} else {
+							auto name = filepath::name(path);
+							StringView sourceClass("cpp");
+							if (name == "Makefile" || name == "makefile" || name.ends_with(".mk")) {
+								sourceClass = StringView("make");
+							} else if (name.ends_with(".c")) {
+								sourceClass = StringView("c");
+							} else if (name.ends_with(".m") || name.ends_with(".mm")) {
+								sourceClass = StringView("objc");
+							} else if (name.ends_with(".java")) {
+								sourceClass = StringView("java");
+							} else if (name.ends_with(".sh")) {
+								sourceClass = StringView("sh");
+							} else if (name.ends_with(".js")) {
+								sourceClass = StringView("js");
+							} else if (name.ends_with(".css")) {
+								sourceClass = StringView("css");
+							} else if (name.ends_with(".html")) {
+								sourceClass = StringView("html");
+							} else if (name.ends_with(".pug")) {
+								sourceClass = StringView("pug");
+							} else if (name.ends_with(".conf")) {
+								sourceClass = StringView("apacheconf");
+							}
+
+							auto source = filesystem::readTextFile(path);
+							exec.set("isDir", data::Value(false));
+							exec.set("mdsource", data::Value(source));
+							exec.set("sourceClass", data::Value(sourceClass));
+							exec.set("dir", makeDirInfo(filepath::root(path), true));
+						}
+
+						exec.set("title", data::Value(toString("$(STAPPLER_ROOT)/components", tmp)));
+					}
 				} while(0);
 
-				// build contents
-				data::Value rootMeta;
-				Vector<data::Value> contentData;
-				auto root = filepath::root(path);
-				auto self = path;
-				filesystem::ftw(root, [&] (StringView path, bool isFile) {
-					if (filepath::name(path) != "index") {
-						StringView target = path;
-						if (!isFile) {
-							auto p = toString(path, "/index.md");
-							if (filesystem::exists(p)) {
-								target = StringView(p).pdup();
-								isFile = true;
-							}
-						}
-						if (isFile && target.ends_with(".md")) {
-							auto data = filesystem::readTextFile(target);
-							if (auto meta = readMeta(data)) {
-								if (root == path) {
-									rootMeta = move(meta);
-								} else {
-									meta.setString(filepath::name(path), "Url");
-									if (self == path) {
-										meta.setBool(true, "selected");
-									}
-									contentData.emplace_back(move(meta));
-								}
-							}
-						}
-					}
-				}, 1);
+				if (isSource) {
 
-				std::sort(contentData.begin(), contentData.end(), [&] (const data::Value &l, const data::Value &r) {
-					return l.getInteger("Priority") > r.getInteger("Priority");
-				});
-
-				StringStream contents;
-				contents << "# Content\n\n";
-				if (rootMeta && rootMeta.isString("Title")) {
-					contents << "[" << rootMeta.getString("Title") << "](index" <<
-							((filepath::name(self) == "index")?StringView(" class=\"selected\""):StringView()) << ")\n\n";
-				}
-
-				for (auto &meta : contentData) {
-					if (meta.isString("Title")) {
-						contents << "[" << meta.getString("Title") << "](" << meta.getString("Url")
-							<< (meta.getBool("selected")?StringView(" class=\"selected\""):StringView()) << ")\n\n";
-					}
-				}
-
-				if (!contents.empty()) {
-					StringStream out;
-					mmd::HtmlOutputProcessor::run(&out, req.pool(), contents.weak());
-					exec.set("contents", data::Value(out.str()));
-				}
-
-				Vector<data::Value> breadcrumbs;
-				auto docPath = StringView(tools::getDocumentsPath());
-				auto selfDir = filepath::root(self);
-				size_t level = 0;
-				do {
-					if (selfDir != filepath::root(self)) {
-						auto target = toString(selfDir, "/index.md");
-						auto data = filesystem::readTextFile(target);
-						if (auto meta = readMeta(data)) {
-							StringStream tmp;
-							for (size_t i = 0; i < level; ++ i) { if (tmp.empty()) { tmp << ".."; } else { tmp << "/.."; } }
-							meta.setString(tmp.weak(), "Url");
-							breadcrumbs.emplace_back(move(meta));
-						}
-					}
-					selfDir = filepath::root(selfDir);
-					++ level;
-				} while (selfDir.size() >= docPath.size());
-
-				std::reverse(breadcrumbs.begin(), breadcrumbs.end());
-				exec.set("breadcrumbs", data::Value(move(breadcrumbs)));
-
-				if (_subPathVec.size() > 1) {
-					auto url = filepath::root(filepath::root(req.getUri())) + "/index";
-					exec.set("root", data::Value(url));
+				} else {
+					makeMdContents(req, exec, path);
 				}
 
 				return true;
@@ -338,6 +322,139 @@ bool VirtualGui::createCategory(const data::Value &data) {
 		return true;
 	}
 	return false;
+}
+
+void VirtualGui::makeMdContents(Request &req, pug::Context &exec, StringView path) const {
+	// build contents
+	data::Value rootMeta;
+	Vector<data::Value> contentData;
+	auto root = filepath::root(path);
+	auto self = path;
+	filesystem::ftw(root, [&] (StringView path, bool isFile) {
+		if (filepath::name(path) != "index") {
+			StringView target = path;
+			if (!isFile) {
+				auto p = toString(path, "/index.md");
+				if (filesystem::exists(p)) {
+					target = StringView(p).pdup();
+					isFile = true;
+				}
+			}
+			if (isFile && target.ends_with(".md")) {
+				auto data = filesystem::readTextFile(target);
+				if (auto meta = readMeta(data)) {
+					if (root == path) {
+						rootMeta = move(meta);
+					} else {
+						meta.setString(filepath::name(path), "Url");
+						if (self == path) {
+							meta.setBool(true, "selected");
+						}
+						contentData.emplace_back(move(meta));
+					}
+				}
+			}
+		}
+	}, 1);
+
+	std::sort(contentData.begin(), contentData.end(), [&] (const data::Value &l, const data::Value &r) {
+		return l.getInteger("Priority") > r.getInteger("Priority");
+	});
+
+	StringStream contents;
+	contents << "# Content\n\n";
+	if (rootMeta && rootMeta.isString("Title")) {
+		contents << "[" << rootMeta.getString("Title") << "](index" <<
+				((filepath::name(self) == "index")?StringView(" class=\"selected\""):StringView()) << ")\n\n";
+	}
+
+	for (auto &meta : contentData) {
+		if (meta.isString("Title")) {
+			contents << "[" << meta.getString("Title") << "](" << meta.getString("Url")
+				<< (meta.getBool("selected")?StringView(" class=\"selected\""):StringView()) << ")\n\n";
+		}
+	}
+
+	if (!contents.empty()) {
+		StringStream out;
+		mmd::HtmlOutputProcessor::run(&out, req.pool(), contents.weak());
+		exec.set("contents", data::Value(out.str()));
+	}
+
+	Vector<data::Value> breadcrumbs;
+	auto docPath = StringView(tools::getDocumentsPath());
+	auto selfDir = filepath::root(self);
+	size_t level = 0;
+	do {
+		if (selfDir != filepath::root(self)) {
+			auto target = toString(selfDir, "/index.md");
+			auto data = filesystem::readTextFile(target);
+			if (auto meta = readMeta(data)) {
+				StringStream tmp;
+				for (size_t i = 0; i < level; ++ i) { if (tmp.empty()) { tmp << ".."; } else { tmp << "/.."; } }
+				meta.setString(tmp.weak(), "Url");
+				breadcrumbs.emplace_back(move(meta));
+			}
+		}
+		selfDir = filepath::root(selfDir);
+		++ level;
+	} while (selfDir.size() >= docPath.size());
+
+	std::reverse(breadcrumbs.begin(), breadcrumbs.end());
+	exec.set("breadcrumbs", data::Value(move(breadcrumbs)));
+
+	if (_subPathVec.size() > 1) {
+		auto url = filepath::root(filepath::root(req.getUri())) + "/index";
+		exec.set("root", data::Value(url));
+	}
+}
+
+data::Value VirtualGui::makeDirInfo(StringView path, bool forFile) const {
+	data::Value ret;
+	bool isRoot = false;
+
+	auto tmpSub = StringView(_subPath);
+	tmpSub.backwardSkipChars<StringView::Chars<'/'>>();
+	if (tmpSub != "/_sources") {
+		ret.setString((_subPath.back() == '/') ? String("..") : String("."), "back");
+	} else {
+		isRoot = true;
+	}
+
+
+	Vector<StringView> dirs;
+	Vector<StringView> files;
+
+	filesystem::ftw(path, [&] (StringView p, bool isFile) {
+		if (isFile) {
+			files.emplace_back(StringView(p, path.size() + 1, p.size() - path.size()).pdup());
+		} else if (p != path) {
+			dirs.emplace_back(StringView(p, path.size() + 1, p.size() - path.size()).pdup());
+		}
+	}, 1);
+
+	std::sort(dirs.begin(), dirs.end());
+	std::sort(files.begin(), files.end());
+
+	auto rootName = (_subPath.back() == '/' || forFile) ? String() : (isRoot ? "_sources/" : toString(filepath::name(path), "/"));
+
+	data::Value &dirsData = ret.emplace("dirs");
+	for (auto &it : dirs) {
+		dirsData.addValue(data::Value({
+			pair("name", data::Value(it)),
+			pair("url", data::Value(toString(rootName, it))),
+		}));
+	}
+
+	data::Value &filesData = ret.emplace("files");
+	for (auto &it : files) {
+		filesData.addValue(data::Value({
+			pair("name", data::Value(it)),
+			pair("url", data::Value(toString(rootName, it))),
+		}));
+	}
+
+	return ret;
 }
 
 NS_SA_EXT_END(tools)

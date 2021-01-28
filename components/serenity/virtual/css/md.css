@@ -90,3 +90,22 @@
 .source a {
 	margin: 0;
 }
+
+/* for block of numbers */
+.hljs-ln-numbers {
+    user-select: none;
+    text-align: center;
+    color: #ccc;
+    border-right: 1px solid #CCC;
+    vertical-align: top;
+	padding-right: 0.3rem !important;
+    /* your custom style here */
+}
+
+.hljs-ln-code .hljs-ln-line {
+	user-select: text;
+}
+
+table.hljs-ln {
+	user-select: none;
+}

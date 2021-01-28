@@ -13,7 +13,9 @@ html
 		link(rel="stylesheet",type="text/css",href="https://fonts.googleapis.com/css?family=Roboto:400,100,100italic,300,300italic,400italic,500,500italic,700,700italic,900italic,900")
 		link(rel="stylesheet",href="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.css")
 		link(rel="stylesheet",href="https://cdn.jsdelivr.net/highlight.js/latest/styles/github.min.css")
+		link(rel="stylesheet",href="https://use.fontawesome.com/releases/v5.0.13/css/all.css")
 		script(src="https://cdn.jsdelivr.net/highlight.js/latest/highlight.min.js")
+		script(src="https://cdn.jsdelivr.net/npm/highlightjs-line-numbers.js@2.6.0/dist/highlightjs-line-numbers.min.js")
 		script(src="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js")
 		if virtual
 			script(src="/__server/virtual/js/shell.js")
@@ -21,6 +23,7 @@ html
 			script(src="/js/shell.js")
 		script.
 			hljs.initHighlightingOnLoad();
+			hljs.initLineNumbersOnLoad();
 	body
 		.body
 			+header("Docs")
@@ -44,6 +47,23 @@ html
 								input(name="name",type="text",placeholder="Name")
 								input(name="title",type="text",placeholder="Title")
 								input(type="submit",value="Create category")
+						if isSource
+							h1(style="margin-left: 0.5rem") Source code browser
+							if dir.back
+								div
+									a(href=dir.back)
+										span(class="fas fa-level-up-alt")
+										span= " .."
+							each val in dir.dirs
+								div
+									a(href=val.url)
+										span(class="fas fa-folder")
+										span= " " + val.name
+							each val in dir.files
+								div
+									a(href=val.url)
+										span(class="fas fa-file-alt")
+										span= " " + val.name
 					.doc
 						if editable
 							.editblock(style="margin-top: -0.5rem;margin-bottom: -0.5rem")
@@ -54,3 +74,24 @@ html
 									textarea(id="editor",style="display:none;")= mdsource
 						if source
 							#sourceblock.source!= source
+						elseif isSource
+							#sourceblock.source
+								h1= title
+								if isDir
+									if dir.back
+										div
+											a(href=dir.back)
+												span(class="fas fa-level-up-alt")
+												span= " .."
+									each val in dir.dirs
+										div
+											a(href=val.url)
+												span(class="fas fa-folder")
+												span= " " + val.name
+									each val in dir.files
+										div
+											a(href=val.url)
+												span(class="fas fa-file-alt")
+												span= " " + val.name
+								else
+									pre(class=sourceClass): code(class=sourceClass)= mdsource

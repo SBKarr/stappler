@@ -131,6 +131,9 @@ protected:
 	bool createArticle(const data::Value &);
 	bool createCategory(const data::Value &);
 
+	void makeMdContents(Request &req, pug::Context &exec, StringView path) const;
+	data::Value makeDirInfo(StringView path, bool forFile = false) const;
+
 	bool _virtual = true;
 #if DEBUG
 	bool _editable = true;

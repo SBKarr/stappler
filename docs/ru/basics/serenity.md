@@ -43,6 +43,8 @@ make install
 ```
 
 ## Разворачиваем проект
+[Исходный код шаблона проекта]([%sources]/templates/serenity target=_blank)
+
 Создаём структуру проекта
 ```sh
 cd ..
@@ -61,7 +63,7 @@ touch src/main.cpp
 # Стандатные параметры конфигурации
 ServerAdmin you@example.com
 ServerName localhost
-Listen 8080
+Listen 8080 # порд нашего приложения
 
 # Параметры конфигурации БД
 DBDriver pgsql
@@ -86,39 +88,45 @@ DBDParams "host=localhost dbname=stappler user=postgres password=secret123"
 ```
 
 Cоздаём **Makefile**:
-```
-STAPPLER_ROOT ?= ../stappler
+```make
+STAPPLER_ROOT ?= ../../..
 LOCAL_ROOT = .
 
-LOCAL_OUTDIR := lib # директория сборки
-LOCAL_LIBRARY := Lib # название собираемой библиотеки
+# директория сборки
+LOCAL_OUTDIR := lib
 
-LOCAL_TOOLKIT := serenity # используем набор инструментов serenity
+# название собираемой библиотеки
+LOCAL_LIBRARY := Lib
+
+# используем набор инструментов serenity
+LOCAL_TOOLKIT := serenity
 
 # определяем путь для установки напрямую в директорию сборки
 LOCAL_INSTALL_DIR := $(LOCAL_OUTDIR)
 
-LOCAL_SRCS_DIRS :=  src # Собираем директорию src
+# Собираем директорию src
+LOCAL_SRCS_DIRS :=  src
 LOCAL_SRCS_OBJS :=
 
-LOCAL_INCLUDES_DIRS := src # Разрешаем включение файлов из src
+# Разрешаем включение файлов из src
+LOCAL_INCLUDES_DIRS := src
 LOCAL_INCLUDES_OBJS :=
 
 # переопределяем стандартные опции оптимизации, чтобы включить названия функции
 LOCAL_OPTIMIZATION := -g -O2
-# вызов make all будет автоматически копировать собранный файл в директорию назначения
+
+#вызов make all будет автоматически копировать собранный файл в директорию назначения
 LOCAL_FORCE_INSTALL := 1
 
-# задаём пути к файлам конфигурации
-CONF ?= local #имя конфигурации по умолчанию
+#задаём путь к файлам конфигурации
 CONF_DIR:= $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 # инициируем сборку как локальную, поскольку serenity собирается
 # только для теущей системы и недоступна для кросс-компиляции
 include $(STAPPLER_ROOT)/make/local.mk
 
-# экспортируем конфигурацию по умолчанию для скрипта сборки конфига
-export SERENITY_DEFAULT_CONFIG 
+#экспортируем конфигурацию по умолчанию для скрипта сборки конфига
+export SERENITY_DEFAULT_CONFIG
 
 # команда для сборки файла конфигурации
 # этот файл конфигурации используется только для отладки,
@@ -132,8 +140,7 @@ $(LOCAL_OUTDIR)/httpd.conf: Makefile
 	@echo 'ErrorLog "$(CONF_DIR)logs/error_log"' >> $@
 	@echo 'CustomLog "$(CONF_DIR)logs/access_log" common' >> $@
 	@echo 'SerenitySourceRoot "$(CONF_DIR)lib"' >> $@
-	@echo 'Include $(CONF_DIR)conf/serenity-$(CONF).conf' >> $@
-	@echo 'IncludeOptional $(CONF_DIR)conf/sites-$(CONF)/*.conf' >> $@
+	@echo 'Include $(CONF_DIR)conf/serenity-local.conf' >> $@
 
 all: $(LOCAL_OUTDIR)/httpd.conf
 ```
@@ -166,6 +173,7 @@ public:
 	virtual int onTranslateName(Request &req) override;
 };
 
+
 // Компонент сервера, отвечающий за назначение хэндлеров
 class HelloWorldComponent : public ServerComponent {
 public:
@@ -178,10 +186,11 @@ public:
 
 
 bool HelloWorldHandler::isRequestPermitted(Request &req) {
-	return true;
+	return true; // разрешаем для всех
 }
 
 int HelloWorldHandler::onTranslateName(Request &req) {
+	// выводим код страницы
 	req << HELLO_WORLD_PAGE << "\n";
 	return DONE;
 }
@@ -192,16 +201,17 @@ HelloWorldComponent::HelloWorldComponent(Server &serv, const String &name, const
 }
 
 void HelloWorldComponent::onChildInit(Server &serv) {
-	// Добавляем хэндлер на все доступные адреса
+	// привязываем хэндлер на все доступные адреса
 	serv.addHandler("/", SA_HANDLER(HelloWorldHandler));
 }
 
-// Функция инициализации компонента, которая указывается в конфигурации
+// Экспортируемая функция, которая будет нашей точкой входа в модуль
 extern "C" ServerComponent * CreateHelloWorldComponent(Server &serv, const String &name, const data::Value &dict) {
+	// возвращаем новый компонент
 	return new HelloWorldComponent(serv, name, dict);
 }
 
-NS_SA_EXT_END(helloworld)
+NS_SA_EXT_END(test)
 ```
 Собираем с помощью
 ```
