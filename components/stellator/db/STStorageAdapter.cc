@@ -391,6 +391,18 @@ void Binder::writeBind(mem::StringStream &query, const stappler::sql::PatternCom
 	}
 	_iface->bindMoveString(*this, query, "NULL");
 }
+void Binder::writeBind(mem::StringStream &query, const mem::Vector<int64_t> &vec) {
+	_iface->bindIntVector(*this, query, vec);
+}
+
+void Binder::writeBind(mem::StringStream &query, const mem::Vector<double> &vec) {
+	_iface->bindDoubleVector(*this, query, vec);
+}
+
+void Binder::writeBind(mem::StringStream &query, const mem::Vector<mem::StringView> &vec) {
+	_iface->bindStringVector(*this, query, vec);
+}
+
 void Binder::clear() {
 	_iface->clear();
 }

@@ -92,6 +92,7 @@ inline bool checkIfComparationIsValid(Type t, Comparation c, Flags f) {
 		switch (c) {
 		case Comparation::Includes:
 		case Comparation::In:
+		case Comparation::NotIn:
 		case Comparation::Prefix:
 		case Comparation::Suffix:
 		case Comparation::WordPart:

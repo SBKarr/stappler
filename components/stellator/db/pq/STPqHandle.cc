@@ -297,6 +297,36 @@ public:
 		}
 	}
 
+	virtual void bindIntVector(Binder &, mem::StringStream &query, const mem::Vector<int64_t> &vec) override {
+		query << "(";
+		bool start = true;
+		for (auto &it : vec) {
+			if (start) { start = false; } else { query << ","; }
+			query << it;
+		}
+		query << ")";
+	}
+
+	virtual void bindDoubleVector(Binder &b, mem::StringStream &query, const mem::Vector<double> &vec) override {
+		query << "(";
+		bool start = true;
+		for (auto &it : vec) {
+			if (start) { start = false; } else { query << ","; }
+			bindDouble(b, query, it);
+		}
+		query << ")";
+	}
+
+	virtual void bindStringVector(Binder &b, mem::StringStream &query, const mem::Vector<mem::StringView> &vec) override {
+		query << "(";
+		bool start = true;
+		for (auto &it : vec) {
+			if (start) { start = false; } else { query << ","; }
+			bindStringView(b, query, it);
+		}
+		query << ")";
+	}
+
 	virtual void clear() override {
 		params.clear();
 		binary.clear();

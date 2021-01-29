@@ -255,12 +255,7 @@ void SqlQuery::writeWhere(SqlQuery::WhereContinue &w, db::Operator op, const db:
 	if (q.getSingleSelectId()) {
 		w.where(op, "__oid", db::Comparation::Equal, q.getSingleSelectId());
 	} else if (!q.getSelectIds().empty()) {
-		w.parenthesis(op, [&] (SqlQuery::WhereBegin &wh) {
-			auto whi = wh.where();
-			for (auto &it : q.getSelectIds()) {
-				whi.where(db::Operator::Or, SqlQuery::Field(scheme.getName(), "__oid"), db::Comparation::Equal, it);
-			}
-		});
+		w.where(op, SqlQuery::Field(scheme.getName(), "__oid"), db::Comparation::In, q.getSelectIds());
 	} else if (!q.getSelectAlias().empty()) {
 		w.parenthesis(op, [&] (SqlQuery::WhereBegin &wh) {
 			auto whi = wh.where();
@@ -294,14 +289,41 @@ static void SqlQuery_writeWhereData(SqlQuery::WhereContinue &whi, db::Operator o
 			auto c = f.getSlot<FieldCustom>();
 			c->writeQuery(scheme, whi, op, f.getName(), compare, value1, value2);
 		} else {
-			if (compare == Comparation::Equal && (type == Type::Integer || type == Type::Float || type == Type::Object || type == Type::Text) && value1.isArray()) {
-				whi.parenthesis(op, [&] (SqlQuery::WhereBegin &wb) {
-					auto wwb = wb.where();
-					auto op = compare == db::Comparation::NotEqual ? db::Operator::And : db::Operator::Or;
-					for (auto &id : value1.asArray()) {
-						wwb.where(op, SqlQuery::Field(scheme.getName(), f.getName()), compare, id);
+			if ((compare == Comparation::Equal || compare == db::Comparation::NotEqual)
+					&& (type == Type::Integer || type == Type::Float || type == Type::Object || type == Type::Text)
+					&& value1.isArray()) {
+				switch (type) {
+				case Type::Integer:
+				case Type::Object: {
+					mem::Vector<int64_t> vec;
+					for (auto &it : value1.asArray()) {
+						vec.emplace_back(it.getInteger());
 					}
-				});
+					whi.where(op, SqlQuery::Field(scheme.getName(), f.getName()),
+							(compare == Comparation::Equal) ? Comparation::In : Comparation::NotIn, vec);
+					break;
+				}
+				case Type::Float: {
+					mem::Vector<double> vec;
+					for (auto &it : value1.asArray()) {
+						vec.emplace_back(it.getDouble());
+					}
+					whi.where(op, SqlQuery::Field(scheme.getName(), f.getName()),
+							(compare == Comparation::Equal) ? Comparation::In : Comparation::NotIn, vec);
+					break;
+				}
+				case Type::Text: {
+					mem::Vector<mem::StringView> vec;
+					for (auto &it : value1.asArray()) {
+						vec.emplace_back(it.getString());
+					}
+					whi.where(op, SqlQuery::Field(scheme.getName(), f.getName()),
+							(compare == Comparation::Equal) ? Comparation::In : Comparation::NotIn, vec);
+					break;
+				}
+				default:
+					break;
+				}
 			} else {
 				whi.where(op, SqlQuery::Field(scheme.getName(), f.getName()), compare, value1, value2);
 			}

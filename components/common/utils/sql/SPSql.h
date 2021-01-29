@@ -43,6 +43,7 @@ enum class Comparation {
 	Includes, // @@ - operation
 	Between, // customized BETWEEN ... AND ...
 	In,
+	NotIn,
 	IsNull,
 	IsNotNull,
 	Prefix, // LIKE 'text%'

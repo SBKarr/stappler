@@ -50,6 +50,7 @@ Pair<StringView, bool> encodeComparation(Comparation cmp) {
 	case Comparation::Includes: ret = StringView("incl"); break;
 	case Comparation::Between: ret = StringView("sbw"); isTwoArgs = true; break;
 	case Comparation::In: ret = StringView("in"); break;
+	case Comparation::NotIn: ret = StringView("notin"); break;
 	case Comparation::IsNull: ret = StringView("isnull"); break;
 	case Comparation::IsNotNull: ret = StringView("isnotnull"); break;
 	case Comparation::Suffix: ret = StringView("suffix"); break;
@@ -90,6 +91,8 @@ Pair<Comparation, bool> decodeComparation(StringView str) {
 		ret = Comparation::Between; isTwoArgs = true;
 	} else if (str == "in") {
 		ret = Comparation::In;
+	} else if (str == "notin") {
+		ret = Comparation::NotIn;
 	} else if (str == "isnull") {
 		ret = Comparation::IsNull;
 	} else if (str == "isnotnull") {
@@ -167,6 +170,7 @@ PathQuery & PathQuery::select(const String &f, Comparation c, const data::Value 
 	case Comparation::Includes: stream << "/"; PathQuery_writeValueQuery(stream, "incl", v1); break;
 	case Comparation::Between: stream << "/"; PathQuery_writeValueQuery(stream, "sbw", v1, v2); break;
 	case Comparation::In: stream << "/"; PathQuery_writeValueQuery(stream, "in", v1); break;
+	case Comparation::NotIn: stream << "/"; PathQuery_writeValueQuery(stream, "notin", v1); break;
 	case Comparation::IsNull: stream << "/"; PathQuery_writeValueQuery(stream, "isnull", data::Value(true)); break;
 	case Comparation::IsNotNull: stream << "/"; PathQuery_writeValueQuery(stream, "isnotnull", data::Value(true)); break;
 	case Comparation::Prefix: stream << "/"; PathQuery_writeValueQuery(stream, "prefix", v1); break;

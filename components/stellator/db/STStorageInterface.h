@@ -157,6 +157,9 @@ public:
 	void writeBind(mem::StringStream &, const FullTextData &);
 	void writeBind(mem::StringStream &, const stappler::sql::PatternComparator<const mem::Value &> &);
 	void writeBind(mem::StringStream &, const stappler::sql::PatternComparator<const mem::StringView &> &);
+	void writeBind(mem::StringStream &, const mem::Vector<int64_t> &);
+	void writeBind(mem::StringStream &, const mem::Vector<double> &);
+	void writeBind(mem::StringStream &, const mem::Vector<mem::StringView> &);
 
 	void clear();
 
@@ -183,6 +186,9 @@ public:
 	virtual void bindFullText(Binder &, mem::StringStream &, const Binder::FullTextField &) = 0;
 	virtual void bindFullTextRank(Binder &, mem::StringStream &, const Binder::FullTextRank &) = 0;
 	virtual void bindFullTextData(Binder &, mem::StringStream &, const FullTextData &) = 0;
+	virtual void bindIntVector(Binder &, mem::StringStream &, const mem::Vector<int64_t> &) = 0;
+	virtual void bindDoubleVector(Binder &, mem::StringStream &, const mem::Vector<double> &) = 0;
+	virtual void bindStringVector(Binder &, mem::StringStream &, const mem::Vector<mem::StringView> &) = 0;
 
 	virtual void clear() = 0;
 };
