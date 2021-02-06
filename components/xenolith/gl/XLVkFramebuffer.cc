@@ -46,12 +46,12 @@ bool ImageView::init(VirtualDevice &dev, VkImage image, VkFormat format) {
 	createInfo.subresourceRange.baseArrayLayer = 0;
 	createInfo.subresourceRange.layerCount = 1;
 
-	return dev.getInstance()->vkCreateImageView(dev.getDevice(), &createInfo, nullptr, &_imageView) == VK_SUCCESS;
+	return dev.getTable()->vkCreateImageView(dev.getDevice(), &createInfo, nullptr, &_imageView) == VK_SUCCESS;
 }
 
 void ImageView::invalidate(VirtualDevice &dev) {
 	if (_imageView) {
-		dev.getInstance()->vkDestroyImageView(dev.getDevice(), _imageView, nullptr);
+		dev.getTable()->vkDestroyImageView(dev.getDevice(), _imageView, nullptr);
 		_imageView = VK_NULL_HANDLE;
 	}
 }
@@ -75,12 +75,12 @@ bool Framebuffer::init(VirtualDevice &dev, VkRenderPass renderPass, VkImageView 
 	framebufferInfo.height = height;
 	framebufferInfo.layers = 1;
 
-   return dev.getInstance()->vkCreateFramebuffer(dev.getDevice(), &framebufferInfo, nullptr, &_framebuffer) == VK_SUCCESS;
+   return dev.getTable()->vkCreateFramebuffer(dev.getDevice(), &framebufferInfo, nullptr, &_framebuffer) == VK_SUCCESS;
 }
 
 void Framebuffer::invalidate(VirtualDevice &dev) {
 	if (_framebuffer) {
-		dev.getInstance()->vkDestroyFramebuffer(dev.getDevice(), _framebuffer, nullptr);
+		dev.getTable()->vkDestroyFramebuffer(dev.getDevice(), _framebuffer, nullptr);
 		_framebuffer = VK_NULL_HANDLE;
 	}
 }
@@ -97,12 +97,12 @@ bool CommandPool::init(VirtualDevice &dev, uint32_t familyIdx, bool transient) {
 	poolInfo.queueFamilyIndex = familyIdx;
 	poolInfo.flags = transient ? VK_COMMAND_POOL_CREATE_TRANSIENT_BIT : 0;
 
-	return dev.getInstance()->vkCreateCommandPool(dev.getDevice(), &poolInfo, nullptr, &_commandPool) == VK_SUCCESS;
+	return dev.getTable()->vkCreateCommandPool(dev.getDevice(), &poolInfo, nullptr, &_commandPool) == VK_SUCCESS;
 }
 
 void CommandPool::invalidate(VirtualDevice &dev) {
 	if (_commandPool) {
-		dev.getInstance()->vkDestroyCommandPool(dev.getDevice(), _commandPool, nullptr);
+		dev.getTable()->vkDestroyCommandPool(dev.getDevice(), _commandPool, nullptr);
 		_commandPool = VK_NULL_HANDLE;
 	}
 }
@@ -116,7 +116,7 @@ VkCommandBuffer CommandPool::allocBuffer(VirtualDevice &dev) {
 		allocInfo.commandBufferCount = 1;
 
 		VkCommandBuffer ret;
-		if (dev.getInstance()->vkAllocateCommandBuffers(dev.getDevice(), &allocInfo, &ret) == VK_SUCCESS) {
+		if (dev.getTable()->vkAllocateCommandBuffers(dev.getDevice(), &allocInfo, &ret) == VK_SUCCESS) {
 			return ret;
 		}
 	}
@@ -133,7 +133,7 @@ Vector<VkCommandBuffer> CommandPool::allocBuffers(VirtualDevice &dev, uint32_t c
 		allocInfo.commandBufferCount = count;
 
 		vec.resize(count);
-		if (dev.getInstance()->vkAllocateCommandBuffers(dev.getDevice(), &allocInfo, vec.data()) == VK_SUCCESS) {
+		if (dev.getTable()->vkAllocateCommandBuffers(dev.getDevice(), &allocInfo, vec.data()) == VK_SUCCESS) {
 			return vec;
 		}
 		vec.clear();
@@ -143,14 +143,14 @@ Vector<VkCommandBuffer> CommandPool::allocBuffers(VirtualDevice &dev, uint32_t c
 
 void CommandPool::freeDefaultBuffers(VirtualDevice &dev, Vector<VkCommandBuffer> &vec) {
 	if (_commandPool) {
-		dev.getInstance()->vkFreeCommandBuffers(dev.getDevice(), _commandPool, static_cast<uint32_t>(vec.size()), vec.data());
+		dev.getTable()->vkFreeCommandBuffers(dev.getDevice(), _commandPool, static_cast<uint32_t>(vec.size()), vec.data());
 	}
 	vec.clear();
 }
 
 void CommandPool::reset(VirtualDevice &dev, bool release) {
 	if (_commandPool) {
-		dev.getInstance()->vkResetCommandPool(dev.getDevice(), _commandPool, release ? VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT : 0);
+		dev.getTable()->vkResetCommandPool(dev.getDevice(), _commandPool, release ? VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT : 0);
 	}
 }
 

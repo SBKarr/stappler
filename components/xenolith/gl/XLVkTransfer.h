@@ -53,7 +53,7 @@ public:
 	const Vector<TransferRequest> &getRequests() const { return _transfer; }
 
 protected:
-	Rc<AllocPool> _pool;
+	Rc<DeviceAllocPool> _pool;
 	std::atomic<uint32_t> _count;
 	Vector<TransferRequest> _transfer;
 };

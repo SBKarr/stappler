@@ -72,8 +72,8 @@ Application::Application() {
 
 Application::~Application() { }
 
-bool Application::applicationDidFinishLaunching() {
-	_queue = Rc<thread::TaskQueue>::alloc(2);
+bool Application::onFinishLaunching() {
+	_queue = Rc<thread::TaskQueue>::alloc(std::min(uint16_t(2), uint16_t(std::thread::hardware_concurrency() / 4)), nullptr, StringView("MainThread"));
 	if (!_queue->spawnWorkers()) {
 		log::text("Application", "Fail to spawn worker threads");
 		return false;
@@ -91,12 +91,16 @@ bool Application::applicationDidFinishLaunching() {
 	return true;
 }
 
-void Application::applicationDidReceiveMemoryWarning() {
+void Application::onMemoryWarning() {
+
+}
+
+void Application::onDeviceInit(vk::PresentationDevice *, const stappler::Callback<void(draw::LoaderStage &&, bool deferred)> &cb) {
 
 }
 
 int Application::run(Director *director) {
-	if (!applicationDidFinishLaunching()) {
+	if (!onFinishLaunching()) {
 		return 1;
 	}
 
@@ -109,7 +113,7 @@ int Application::run(Director *director) {
 		return -1;
 	}
 
-	glview->run(director, [&] (double val) -> bool {
+	glview->run(this, director, [&] (double val) -> bool {
 		update(val);
 		director->mainLoop(val);
 		return true;

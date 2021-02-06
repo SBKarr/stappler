@@ -25,6 +25,14 @@ THE SOFTWARE.
 
 #include "SPCore.h"
 
+namespace stappler::mempool::apr {
+#if SPAPR
+static constexpr int SPAprDefined = 1;
+#else
+static constexpr int SPAprDefined = 0;
+#endif
+}
+
 namespace stappler::memory {
 
 template <typename Sig>
@@ -60,10 +68,13 @@ static constexpr Status SUCCESS = 0;
 
 static constexpr uint64_t POOL_MAGIC = 0xDEAD7fffDEADBEEF;
 
-enum PoolFlags : uint32_t {
-	None,
-	ThreadSafe = 1 << 0,
-	Detouched = 1 << 1,
+enum class PoolFlags {
+	None = 0,
+	ThreadSafePool = 1 | 2,
+	ThreadSafeAllocator = 2,
+	Custom = apr::SPAprDefined ? 4 : 0,
+
+	Default = ThreadSafeAllocator,
 };
 
 SP_DEFINE_ENUM_AS_MASK(PoolFlags)

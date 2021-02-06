@@ -596,12 +596,12 @@ T clamp_distance(const T& v, const T& lo, const T& hi, Compare comp) {
 
 template<class T> constexpr inline
 T clamp_distance(const T& v, const T& lo, const T& hi, const T &z) {
-	return clamp_distance(v, lo, hi, std::less<>(), z);
+	return clamp_distance(v, lo, hi, std::less<void>(), z);
 }
 
 template<class T> constexpr inline
 T clamp_distance(const T& v, const T& lo, const T& hi) {
-	return clamp_distance(v, lo, hi, std::less<>(), T(0));
+	return clamp_distance(v, lo, hi, std::less<void>(), T(0));
 }
 
 }

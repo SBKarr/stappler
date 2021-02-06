@@ -46,25 +46,38 @@ ProgramModule::~ProgramModule() {
 	}
 }
 
-bool ProgramModule::init(VirtualDevice &dev, ProgramSource source, ProgramStage stage, FilePath path) {
+bool ProgramModule::init(VirtualDevice &dev, ProgramSource source, ProgramStage stage, FilePath path,
+		StringView key, const Map<String, String> &defs) {
 	auto data = filesystem::readIntoMemory(path.get());
-	return init(dev, source, stage, data, path.get());
+	return init(dev, source, stage, data, key.empty() ? path.get() : key, defs);
 }
 
-bool ProgramModule::init(VirtualDevice &dev, ProgramSource source, ProgramStage stage, StringView data, StringView name) {
-	return init(dev, source, stage, BytesView((const uint8_t *)data.data(), data.size()), name);
+bool ProgramModule::init(VirtualDevice &dev, ProgramSource source, ProgramStage stage, StringView data,
+		StringView name, const Map<String, String> &defs) {
+	return init(dev, source, stage, BytesView((const uint8_t *)data.data(), data.size()), name, defs);
 }
 
-bool ProgramModule::init(VirtualDevice &dev, ProgramSource source, ProgramStage stage, BytesView data, StringView name) {
+bool ProgramModule::init(VirtualDevice &dev, ProgramSource source, ProgramStage stage, BytesView data,
+		StringView name, const Map<String, String> &defs) {
 	_stage = stage;
 	_name = name.str();
 
 	shaderc_compiler_t compiler = nullptr;
+	shaderc_compile_options_t options = nullptr;
 	shaderc_compilation_result_t result = nullptr;
 
 	if (source == ProgramSource::Glsl) {
 		compiler = shaderc_compiler_initialize();
-		result = shaderc_compile_into_spv(compiler, (const char *)data.data(), data.size(), getShaderKind(stage), _name.data(), "main", nullptr);
+		if (!defs.empty()) {
+			options = shaderc_compile_options_initialize();
+			for (auto &it : defs) {
+				shaderc_compile_options_add_macro_definition(options,
+						it.first.data(), it.first.size(), it.second.data(), it.second.size());
+			}
+		}
+
+		result = shaderc_compile_into_spv(compiler, (const char *)data.data(), data.size(), getShaderKind(stage),
+				_name.data(), "main", nullptr);
 
 		auto status = shaderc_result_get_compilation_status(result);
 		if (status == shaderc_compilation_status_success) {
@@ -87,6 +100,9 @@ bool ProgramModule::init(VirtualDevice &dev, ProgramSource source, ProgramStage 
 			if (shaderc_result_get_num_warnings(result) > 0 || shaderc_result_get_num_errors(result) > 0) {
 				log::vtext("shaderc", "Errors: [\n", shaderc_result_get_error_message(result), "\n]");
 			}
+			if (options) {
+				shaderc_compile_options_release(options);
+			}
 			if (compiler) {
 				shaderc_compiler_release(compiler);
 			}
@@ -97,12 +113,16 @@ bool ProgramModule::init(VirtualDevice &dev, ProgramSource source, ProgramStage 
 	VkShaderModuleCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	createInfo.codeSize = data.size();
+	createInfo.flags = 0;
 	createInfo.pCode = reinterpret_cast<const uint32_t*>(data.data());
 
-	auto ret = (dev.getInstance()->vkCreateShaderModule(dev.getDevice(), &createInfo, nullptr, &_shaderModule) == VK_SUCCESS);
+	auto ret = (dev.getTable()->vkCreateShaderModule(dev.getDevice(), &createInfo, nullptr, &_shaderModule) == VK_SUCCESS);
 
 	if (result) {
 		shaderc_result_release(result);
+	}
+	if (options) {
+		shaderc_compile_options_release(options);
 	}
 	if (compiler) {
 		shaderc_compiler_release(compiler);
@@ -113,7 +133,7 @@ bool ProgramModule::init(VirtualDevice &dev, ProgramSource source, ProgramStage 
 
 void ProgramModule::invalidate(VirtualDevice &dev) {
 	if (_shaderModule) {
-		dev.getInstance()->vkDestroyShaderModule(dev.getDevice(), _shaderModule, VK_NULL_HANDLE);
+		dev.getTable()->vkDestroyShaderModule(dev.getDevice(), _shaderModule, VK_NULL_HANDLE);
 		_shaderModule = VK_NULL_HANDLE;
 	}
 }

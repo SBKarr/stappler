@@ -31,9 +31,12 @@ class ProgramModule : public Ref {
 public:
 	virtual ~ProgramModule();
 
-	bool init(VirtualDevice &dev, ProgramSource, ProgramStage, FilePath);
-	bool init(VirtualDevice &dev, ProgramSource, ProgramStage, StringView data, StringView key);
-	bool init(VirtualDevice &dev, ProgramSource, ProgramStage, BytesView data, StringView key);
+	bool init(VirtualDevice &dev, ProgramSource, ProgramStage, FilePath,
+			StringView key = StringView(), const Map<String, String> & = Map<String, String>());
+	bool init(VirtualDevice &dev, ProgramSource, ProgramStage, StringView data,
+			StringView key, const Map<String, String> & = Map<String, String>());
+	bool init(VirtualDevice &dev, ProgramSource, ProgramStage, BytesView data,
+			StringView key, const Map<String, String> & = Map<String, String>());
 
 	void invalidate(VirtualDevice &dev);
 

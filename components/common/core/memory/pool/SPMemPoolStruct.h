@@ -87,6 +87,8 @@ struct Cleanup {
 };
 
 struct Allocator {
+	using AllocMutex = std::recursive_mutex;
+
 #if SPAPR
 	uintptr_t magic = POOL_MAGIC; // used to detect stappler allocators
 #endif
@@ -95,18 +97,12 @@ struct Allocator {
 	uint32_t current = 0; // current allocated size in BOUNDARY_SIZE
 	Pool *owner = nullptr;
 
-	std::recursive_mutex mutex;
+	AllocMutex *mutex = nullptr;
 	std::array<MemNode *, MAX_INDEX> buf;
 
-	int mmapdes = -1;
-	void *mmapPtr = nullptr;
-	uint32_t mmapCurrent = 0;
-	uint32_t mmapMax = 0;
-
-	Allocator();
+	Allocator(bool threadSafe = true);
 	~Allocator();
 
-	bool run_mmap(uint32_t);
 	void set_max(uint32_t);
 
 	MemNode *alloc(uint32_t);
@@ -114,6 +110,16 @@ struct Allocator {
 
 	void lock();
 	void unlock();
+
+#if LINUX
+	int mmapdes = -1;
+	void *mmapPtr = nullptr;
+	uint32_t mmapCurrent = 0;
+	uint32_t mmapMax = 0;
+
+	bool run_mmap(uint32_t);
+#endif
+
 };
 
 struct Pool {
@@ -137,7 +143,7 @@ struct Pool {
 	AllocManager allocmngr;
 	bool threadSafe = false;
 
-	static Pool *create(Allocator *alloc = nullptr, bool threadSafe = false);
+	static Pool *create(Allocator *alloc = nullptr, PoolFlags flags = PoolFlags::Default);
 	static void destroy(Pool *);
 
 	Pool();

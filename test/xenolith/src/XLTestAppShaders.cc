@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2020 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2021 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,25 +20,43 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef COMPONENTS_XENOLITH_CORE_XLGRAPHICS_H_
-#define COMPONENTS_XENOLITH_CORE_XLGRAPHICS_H_
+#include "XLVk.h"
 
-#include "XLForward.h"
+namespace stappler::xenolith::vk {
 
-namespace stappler::xenolith {
+static constexpr auto VertexListVert =
+R"(#version 450
+#extension GL_ARB_separate_shader_objects : enable
 
-struct GraphicsParams {
-	struct URect {
-		uint32_t x;
-		uint32_t y;
-		uint32_t width;
-		uint32_t height;
-	};
-
-	Rect viewport;
-	URect scissor;
+struct Vertex {
+	vec4 pos;
+	vec4 color;
+	vec2 tex;
 };
 
-}
+layout(set = 2, binding = 0) readonly buffer Vertices {
+	Vertex vertices[];
+};
 
-#endif /* COMPONENTS_XENOLITH_CORE_XLGRAPHICS_H_ */
+layout(location = 0) out vec4 fragColor;
+
+void main() {
+	gl_Position = vertices[gl_VertexIndex].pos;
+	fragColor = vertices[gl_VertexIndex].color;
+}
+)";
+
+
+static constexpr auto VertexListFrag =
+R"(#version 450
+#extension GL_ARB_separate_shader_objects : enable
+
+layout(location = 0) in vec4 fragColor;
+layout(location = 0) out vec4 outColor;
+
+void main() {
+	outColor = fragColor;
+}
+)";
+
+}

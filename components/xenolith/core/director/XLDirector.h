@@ -24,11 +24,12 @@
 #define COMPONENTS_XENOLITH_CORE_DIRECTOR_XLDIRECTOR_H_
 
 #include "XLEventHeader.h"
+#include "XLEventHandler.h"
 #include "XLExecFlow.h"
 
 namespace stappler::xenolith {
 
-class Director : public Ref {
+class Director : public Ref, EventHandler {
 public:
 	static EventHeader onProjectionChanged;
 	static EventHeader onAfterUpdate;
@@ -54,22 +55,22 @@ public:
 	bool mainLoop(double);
 
 	void update(double);
-	void construct();
+	Rc<DrawFlow> construct();
 
 	void end();
 
-	Rc<TransferFlow> swapTransferFlow();
-	Rc<PipelineFlow> swapPipelineFlow();
 	Rc<DrawFlow> swapDrawFlow();
 
 protected:
+	// Vk Swaphain was invalidated, drop all dependent resources;
+	void invalidate();
+
+	bool _running = false;
 	Rc<vk::View> _view;
 
 	Mutex _mutex;
-
-	Rc<TransferFlow> _transferFlow;
-	Rc<PipelineFlow> _pipelineFlow;
 	Rc<DrawFlow> _drawFlow;
+	Rc<PipelineCache> _pipelineCache;
 };
 
 }

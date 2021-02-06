@@ -22,6 +22,7 @@
 
 #include "XLDirector.h"
 #include "XLVkView.h"
+#include "XLPipeline.h"
 
 namespace stappler::xenolith {
 
@@ -35,10 +36,15 @@ Director::Director() { }
 Director::~Director() { }
 
 bool Director::init() {
-	std::unique_lock<Mutex> lock(_mutex);
-	_transferFlow = Rc<TransferFlow>::create();
-	_pipelineFlow = Rc<PipelineFlow>::create();
-	_drawFlow = Rc<DrawFlow>::create();
+	onEvent(vk::PresentationDevice::onSwapChainInvalidated, [this] (const Event &) {
+		invalidate();
+	}, false);
+
+	onEvent(vk::PresentationDevice::onSwapChainCreated, [this] (const Event &) {
+		invalidate();
+	}, false);
+
+	_pipelineCache = Rc<PipelineCache>::create();
 
 	return true;
 }
@@ -51,48 +57,46 @@ void Director::setView(vk::View *view) {
 
 bool Director::mainLoop(double t) {
 	update(t);
-	construct();
-	return false;
+
+	Rc<DrawFlow> df = construct();
+	Rc<DrawFlow> tmp;
+
+	do {
+		std::unique_lock<Mutex> lock(_mutex);
+		if (_drawFlow) {
+			tmp = _drawFlow;
+		}
+		_drawFlow = df;
+	} while(0);
+
+	return true;
 }
 
 void Director::update(double t) {
 
 }
 
-void Director::construct() {
+Rc<DrawFlow> Director::construct() {
+	auto df = Rc<DrawFlow>::create();
 
+	// update draw flow from scene graph
+
+	return df;
 }
 
 void Director::end() {
 	_view = nullptr;
 }
 
-Rc<TransferFlow> Director::swapTransferFlow() {
-	auto tf = Rc<TransferFlow>::create();
-
-	std::unique_lock<Mutex> lock(_mutex);
-	Rc<TransferFlow> ret = _transferFlow;
-	_transferFlow = tf;
-	return ret;
-}
-
-Rc<PipelineFlow> Director::swapPipelineFlow() {
-	auto pf = Rc<PipelineFlow>::create();
-
-	std::unique_lock<Mutex> lock(_mutex);
-	Rc<PipelineFlow> ret = _pipelineFlow;
-	_pipelineFlow = pf;
-	return ret;
-}
-
 Rc<DrawFlow> Director::swapDrawFlow() {
-	auto df = Rc<DrawFlow>::create();
-
 	std::unique_lock<Mutex> lock(_mutex);
 	Rc<DrawFlow> ret = _drawFlow;
-	_drawFlow = df;
+	_drawFlow = nullptr;
 	return ret;
 }
 
+void Director::invalidate() {
+
+}
 
 }

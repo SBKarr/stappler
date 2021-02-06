@@ -29,6 +29,9 @@ namespace stappler::xenolith::vk {
 
 class PresentationDevice : public VirtualDevice {
 public:
+	static EventHeader onSwapChainInvalidated;
+	static EventHeader onSwapChainCreated;
+
 	static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
 	using ProgramCallback = Function<void(Rc<ProgramModule>)>;
@@ -45,7 +48,7 @@ public:
 	VkSwapchainKHR getSwapChain() const { return _swapChain; }
 	Rc<Allocator> getAllocator() const;
 
-	void begin(thread::TaskQueue &);
+	void begin(Application *, thread::TaskQueue &);
 	void end(thread::TaskQueue &);
 
 	bool recreateSwapChain(thread::TaskQueue &q);
@@ -58,13 +61,11 @@ private:
 	void cleanupSwapChain();
 
 	void prepareDrawScheme(draw::DrawScheme *, thread::TaskQueue &q);
-
-	bool performPipelineFlow(Rc<PipelineFlow> pf, thread::TaskQueue &q);
-	bool performTransferFlow(Rc<TransferFlow> pf, thread::TaskQueue &q);
 	bool performDrawFlow(Rc<DrawFlow> df, thread::TaskQueue &q);
 
 	uint32_t _currentFrame = 0;
 	Instance::PresentationOptions _options;
+	Features _enabledFeatures;
 
 	VkSurfaceKHR _surface = VK_NULL_HANDLE;
 	VkQueue _graphicsQueue = VK_NULL_HANDLE;
@@ -84,12 +85,13 @@ private:
 	Vector<VkFence> _inFlightFences;
 	Vector<VkFence> _imagesInFlight;
 
-	draw::DrawScheme *_drawScheme = nullptr;
+	Rc<DrawFlow> _drawFlow;
 };
 
 class PresentationLoop : public thread::ThreadHandlerInterface {
 public:
-	PresentationLoop(Rc<View>, Rc<PresentationDevice>, Rc<Director>, double, Function<double()> &&);
+	PresentationLoop(Application *, Rc<View>, Rc<PresentationDevice>, Rc<Director>,
+			double, Function<double()> &&, Function<bool()> &&);
 
 	virtual void threadInit() override;
 	virtual bool worker() override;
@@ -103,7 +105,7 @@ public:
 	void lock();
 	void unlock();
 	void reset();
-	bool forceFrame();
+	bool forceFrame(bool reset);
 
 	std::mutex &getMutex() { return _glSync; }
 
@@ -114,6 +116,7 @@ protected:
 	std::atomic_flag _swapChainFlag;
 	std::atomic_flag _exitFlag;
 
+	Application *_application = nullptr;
 	Rc<View> _view;
 	Rc<PresentationDevice> _device; // logical presentation device
 	Rc<Director> _director;
@@ -129,6 +132,8 @@ protected:
 	std::mutex _glSync;
 	std::condition_variable _glSyncVar;
 	std::atomic<bool> _stalled = false;
+
+	Function<bool()> _frameCallback; // frame caller for main thread;
 };
 
 }

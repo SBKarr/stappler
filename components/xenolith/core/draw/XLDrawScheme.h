@@ -27,22 +27,24 @@
 
 namespace stappler::xenolith::draw {
 
+using Buffer = memory::impl::mem_large<uint8_t, 0>;
+
 struct DrawScheme : memory::AllocPool {
-	static DrawScheme *create();
+	static DrawScheme *create(memory::pool_t *);
 	static void destroy(DrawScheme *);
 
+	void pushDrawIndexed(CommandGroup *g, vk::Pipeline *, SpanView<Vertex_V4F_C4F_T2F> vertexes, SpanView<uint16_t> indexes);
+
 	memory::pool_t *pool = nullptr;
-	draw::CommandGroup *group = nullptr;
+	CommandGroup *group = nullptr;
 
-	draw::BufferHandle *draw = nullptr; // not binded
-	draw::BufferHandle *drawCount = nullptr; // not binded
+	Buffer draw; // not binded
+	Buffer index; // index binding
 
-	draw::BufferHandle *index = nullptr; // index binding
+	Buffer data; // uniforms[0] : draw::DrawData
+	Buffer transforms; // uniforms[1] : layout::Mat4
 
-	draw::BufferHandle *data = nullptr; // uniforms[0] : draw::DrawData
-	draw::BufferHandle *transforms = nullptr; // uniforms[1] : layout::Mat4
-
-	memory::map<draw::VertexBufferFormat, draw::BufferHandle *> vertex;
+	memory::map<VertexFormat, Buffer> vertex; // buffer[N] : VertexFormat
 };
 
 }

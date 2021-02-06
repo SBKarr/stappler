@@ -44,6 +44,8 @@ using allocator_t = custom::Allocator;
 
 using cleanup_fn = status_t(*)(void *);
 
+using PoolFlags = mempool::custom::PoolFlags;
+
 }
 
 
@@ -80,6 +82,8 @@ void destroy(allocator_t *);
 
 namespace stappler::mempool::base::pool {
 
+using PoolFlags = custom::PoolFlags;
+
 enum Info : uint32_t {
 	Pool = 0,
 	Request = 1,
@@ -97,14 +101,14 @@ void initialize();
 void terminate();
 
 // creates unmanaged pool
-pool_t *create(bool custom = false);
-pool_t *create(allocator_t *, bool threadSafe = false);
+pool_t *create(PoolFlags = PoolFlags::Default);
+pool_t *create(allocator_t *, PoolFlags = PoolFlags::Default);
 
 // creates managed pool (managed by root, if parent in mullptr)
 pool_t *create(pool_t *);
 
 // creates unmanaged pool
-pool_t *createTagged(const char *, bool custom = false);
+pool_t *createTagged(const char *, PoolFlags = PoolFlags::Default);
 
 // creates managed pool (managed by root, if parent in mullptr)
 pool_t *createTagged(pool_t *, const char *);

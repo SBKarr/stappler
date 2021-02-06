@@ -27,32 +27,14 @@
 
 namespace stappler::xenolith::vk {
 
-class DrawDevice::Worker : public Ref {
-public:
-	~Worker();
-
-	bool init(DrawDevice *draws, size_t nImages, uint32_t queue, uint32_t index);
-
-	uint32_t getIndex() const { return _index; }
-
-	void reset(uint32_t);
-	VkCommandBuffer spawnPool(uint32_t);
-
-protected:
-	uint32_t _index = maxOf<uint32_t>();
-	DrawDevice *_draws = nullptr;
-	Vector<Rc<CommandPool>> _pools;
-};
-
-
-DrawDevice::Worker::~Worker() {
+DrawWorker::~DrawWorker() {
 	for (Rc<CommandPool> &it : _pools) {
 		it->invalidate(*_draws);
 	}
 	_pools.clear();
 }
 
-bool DrawDevice::Worker::init(DrawDevice *draws, size_t nImages, uint32_t queue, uint32_t index) {
+bool DrawWorker::init(DrawDevice *draws, size_t nImages, uint32_t queue, uint32_t index) {
 	_draws = draws;
 	_index = index;
 	_pools.reserve(nImages);
@@ -67,24 +49,25 @@ bool DrawDevice::Worker::init(DrawDevice *draws, size_t nImages, uint32_t queue,
 	return true;
 }
 
-void DrawDevice::Worker::reset(uint32_t image) {
+void DrawWorker::reset(uint32_t image) {
 	_pools[image]->reset(*_draws, false);
 }
 
-VkCommandBuffer DrawDevice::Worker::spawnPool(uint32_t image) {
+VkCommandBuffer DrawWorker::spawnPool(uint32_t image) {
 	return _pools[image]->allocBuffer(*_draws);
 }
 
 DrawDevice::~DrawDevice() {
+	invalidate();
+	_pipelines.clear();
 	if (_defaultPipelineLayout) {
 		_defaultPipelineLayout->invalidate(*this);
 	}
+
 	for (auto &it : _pipelineLayouts) {
 		it.second->invalidate(*this);
 	}
 	_pipelineLayouts.clear();
-
-	_workers.clear();
 
 	for (auto shader : _shaders) {
 		shader.second->invalidate(*this);
@@ -105,16 +88,20 @@ bool DrawDevice::init(Rc<Instance> inst, Rc<Allocator> alloc, VkQueue q, uint32_
 
 	_defaultPipelineLayout = Rc<PipelineLayout>::create(*this);
 
+	for (size_t i = toInt(draw::LayoutFormat::None) + 1; i <= toInt(draw::LayoutFormat::Default); ++ i) {
+		_pipelineLayouts.emplace(draw::LayoutFormat(i), Rc<PipelineLayout>::create(*this, draw::LayoutFormat(i), _currentDesriptorCount));
+	}
+
 	_shaders.emplace(vert->getName().str(), vert);
 	_shaders.emplace(frag->getName().str(), frag);
 
-	_frameTasks.emplace_back(BufferTask(BufferTask::HardTask, [&] (const FrameInfo &frame, VkCommandBuffer buf) -> bool {
+	_frameTasks.emplace_back(DrawBufferTask(DrawBufferTask::HardTask, [&] (const DrawFrameInfo &frame, VkCommandBuffer buf) -> bool {
 		VkCommandBufferBeginInfo beginInfo { };
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 		beginInfo.pInheritanceInfo = nullptr;
 
-		if (_instance->vkBeginCommandBuffer(buf, &beginInfo) != VK_SUCCESS) {
+		if (_table->vkBeginCommandBuffer(buf, &beginInfo) != VK_SUCCESS) {
 			return false;
 		}
 
@@ -127,12 +114,12 @@ bool DrawDevice::init(Rc<Instance> inst, Rc<Allocator> alloc, VkQueue q, uint32_
 		VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
 		renderPassInfo.clearValueCount = 1;
 		renderPassInfo.pClearValues = &clearColor;
-		_instance->vkCmdBeginRenderPass(buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		_table->vkCmdBeginRenderPass(buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		_instance->vkCmdBindPipeline(buf, VK_PIPELINE_BIND_POINT_GRAPHICS, _defaultPipeline->getPipeline());
-		_instance->vkCmdDraw(buf, 3, 1, 0, 0);
-		_instance->vkCmdEndRenderPass(buf);
-		if (_instance->vkEndCommandBuffer(buf) != VK_SUCCESS) {
+		_table->vkCmdBindPipeline(buf, VK_PIPELINE_BIND_POINT_GRAPHICS, _defaultPipeline->getPipeline());
+		_table->vkCmdDraw(buf, 3, 1, 0, 0);
+		_table->vkCmdEndRenderPass(buf);
+		if (_table->vkEndCommandBuffer(buf) != VK_SUCCESS) {
 			return false;
 		}
 
@@ -154,12 +141,12 @@ bool DrawDevice::spawnWorkers(thread::TaskQueue &q, size_t nImages, const Instan
 	}
 
 	_defaultPipeline = Rc<Pipeline>::create(*this,
-		Pipeline::Options({_defaultPipelineLayout->getPipelineLayout(), _defaultRenderPass->getRenderPass(), {
+		PipelineOptions({_defaultPipelineLayout->getPipelineLayout(), _defaultRenderPass->getRenderPass(), {
 			pair(vert->getStage(), vert->getModule()), pair(frag->getStage(), frag->getModule())
 		}}),
-		GraphicsParams({
+		draw::PipelineParams({
 			Rect(0.0f, 0.0f, opts.capabilities.currentExtent.width, opts.capabilities.currentExtent.height),
-			GraphicsParams::URect{0, 0, opts.capabilities.currentExtent.width, opts.capabilities.currentExtent.height}
+			URect{0, 0, opts.capabilities.currentExtent.width, opts.capabilities.currentExtent.height}
 		}));
 
 
@@ -180,7 +167,7 @@ bool DrawDevice::spawnWorkers(thread::TaskQueue &q, size_t nImages, const Instan
 		++ i;
 	}
 
-	_defaultWorker = Rc<Worker>::create(this, _nImages, _queueIdx, 0);
+	_defaultWorker = Rc<DrawWorker>::create(this, _nImages, _queueIdx, 0);
 
 	Map<uint32_t, Vector<Rc<Task>>> tasks;
 	for (size_t i = 0; i < q.getThreadsCount(); ++ i) {
@@ -191,7 +178,7 @@ bool DrawDevice::spawnWorkers(thread::TaskQueue &q, size_t nImages, const Instan
 				if (it == _workers.end()) {
 					auto b = indexes.back();
 					indexes.pop_back();
-					_workers.emplace(std::this_thread::get_id(), Rc<Worker>::create(this, _nImages, _queueIdx, b));
+					_workers.emplace(std::this_thread::get_id(), Rc<DrawWorker>::create(this, _nImages, _queueIdx, b));
 					std::cout.flush();
 				}
 				return true;
@@ -202,10 +189,23 @@ bool DrawDevice::spawnWorkers(thread::TaskQueue &q, size_t nImages, const Instan
 	q.perform(move(tasks));
 	q.waitForAll(TimeInterval::microseconds(2000));
 
+	for (auto &it : _pipelines) {
+		auto target = &it.second;
+		q.perform(Rc<Task>::create([this, target] (const thread::Task &) -> bool {
+			(*target)->init(*this, getPipelineOptions((*target)->getParams()), move(const_cast<draw::PipelineParams &>((*target)->getParams())));
+			return true;
+		}));
+	}
+	q.waitForAll();
+
 	return true;
 }
 
 void DrawDevice::invalidate() {
+	for (auto &it : _pipelines) {
+		it.second->invalidate(*this);
+	}
+
 	_defaultWorker = nullptr;
 	_defaultPipeline->invalidate(*this);
 	_defaultRenderPass->invalidate(*this);
@@ -213,11 +213,11 @@ void DrawDevice::invalidate() {
 	_workers.clear();
 }
 
-Vector<VkCommandBuffer> DrawDevice::fillBuffers(thread::TaskQueue &q, FrameInfo &frame) {
+Vector<VkCommandBuffer> DrawDevice::fillBuffers(thread::TaskQueue &q, DrawFrameInfo &frame) {
 	Vector<VkCommandBuffer> ret;
 
-	Vector<BufferTask> tasks(_frameTasks);
-	std::sort(_frameTasks.begin(), _frameTasks.end(), [&] (const BufferTask &l, const BufferTask &r) {
+	Vector<DrawBufferTask> tasks(_frameTasks);
+	std::sort(_frameTasks.begin(), _frameTasks.end(), [&] (const DrawBufferTask &l, const DrawBufferTask &r) {
 		return l.index < r.index;
 	});
 
@@ -237,7 +237,7 @@ Vector<VkCommandBuffer> DrawDevice::fillBuffers(thread::TaskQueue &q, FrameInfo 
 
 		threadTasks.emplace(i, Vector<Rc<thread::Task>>({
 			Rc<thread::Task>::create([this, &tasks, cmds, &frame] (const thread::Task &) -> bool {
-				if (Worker * w = _workers[std::this_thread::get_id()]) {
+				if (DrawWorker * w = _workers[std::this_thread::get_id()]) {
 					w->reset(frame.imageIdx);
 					while (auto t = getTaskForWorker(tasks, w)) {
 						auto buf = w->spawnPool(frame.imageIdx);
@@ -262,7 +262,7 @@ Vector<VkCommandBuffer> DrawDevice::fillBuffers(thread::TaskQueue &q, FrameInfo 
 	return ret;
 }
 
-bool DrawDevice::drawFrame(thread::TaskQueue &q, FrameInfo &frame) {
+bool DrawDevice::drawFrame(thread::TaskQueue &q, DrawFrameInfo &frame) {
 	auto bufs = fillBuffers(q, frame);
 
 	VkSubmitInfo submitInfo{};
@@ -277,7 +277,7 @@ bool DrawDevice::drawFrame(thread::TaskQueue &q, FrameInfo &frame) {
 	submitInfo.signalSemaphoreCount = frame.signal.size();
 	submitInfo.pSignalSemaphores = frame.signal.data();
 
-	if (_instance->vkQueueSubmit(_queue, 1, &submitInfo, frame.fence) != VK_SUCCESS) {
+	if (_table->vkQueueSubmit(_queue, 1, &submitInfo, frame.fence) != VK_SUCCESS) {
 		stappler::log::vtext("VK-Error", "Fail to vkQueueSubmit");
 		return false;
 	}
@@ -285,13 +285,58 @@ bool DrawDevice::drawFrame(thread::TaskQueue &q, FrameInfo &frame) {
 	return true;
 }
 
-DrawDevice::BufferTask DrawDevice::getTaskForWorker(Vector<BufferTask> &tasks, Worker *worker) {
+PipelineOptions DrawDevice::getPipelineOptions(const draw::PipelineParams &params) const {
+	PipelineOptions ret;
+	for (auto &it : params.shaders) {
+		auto sIt = _shaders.find(it);
+		if (sIt != _shaders.end()) {
+			ret.shaders.emplace_back(sIt->second->getStage(), sIt->second->getModule());
+		} else {
+			log::vtext("vk", "Shader not found for key ", it);
+		}
+	}
+
+	auto pIt = _pipelineLayouts.find(params.layoutFormat);
+	if (pIt != _pipelineLayouts.end()) {
+		ret.pipelineLayout = pIt->second->getPipelineLayout();
+	} else {
+		log::vtext("vk", "PipelineLayout not found for value ", toInt(params.layoutFormat));
+	}
+
+	switch (params.renderPass) {
+	case draw::RenderPassBind::Default:
+		ret.renderPass = _defaultRenderPass->getRenderPass();
+		break;
+	default:
+		log::vtext("vk", "RenderPass not found for value ", toInt(params.renderPass));
+	}
+
+	return ret;
+}
+
+void DrawDevice::addProgram(Rc<ProgramModule> program) {
+	auto it = _shaders.find(program->getName());
+	if (it == _shaders.end()) {
+		_shaders.emplace(program->getName().str(), program);
+	}
+}
+
+void DrawDevice::addPipeline(StringView name, Rc<Pipeline> pipeline) {
+	_resourceMutex.lock();
+	auto it = _pipelines.find(name);
+	if (it == _pipelines.end()) {
+		_pipelines.emplace(name.str(), pipeline);
+	}
+	_resourceMutex.unlock();
+}
+
+DrawBufferTask DrawDevice::getTaskForWorker(Vector<DrawBufferTask> &tasks, DrawWorker *worker) {
 	if (tasks.empty()) {
-		return BufferTask({0, nullptr});
+		return DrawBufferTask({0, nullptr});
 	}
 
 	std::unique_lock<std::mutex> lock(_mutex);
-	auto it = std::lower_bound(tasks.begin(), tasks.end(), worker->getIndex(), [&] (const BufferTask &t, uint32_t idx) {
+	auto it = std::lower_bound(tasks.begin(), tasks.end(), worker->getIndex(), [&] (const DrawBufferTask &t, uint32_t idx) {
 		return t.index < idx;
 	});
 
@@ -301,7 +346,7 @@ DrawDevice::BufferTask DrawDevice::getTaskForWorker(Vector<BufferTask> &tasks, W
 		return tmp;
 	}
 
-	return BufferTask({0, nullptr});
+	return DrawBufferTask({0, nullptr});
 }
 
 }

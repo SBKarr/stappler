@@ -24,44 +24,37 @@
 #define COMPONENTS_XENOLITH_GL_XLVKPIPELINE_H_
 
 #include "XLVkDevice.h"
+#include "XLDrawPipeline.h"
 
 namespace stappler::xenolith::vk {
 
+struct PipelineOptions {
+	VkPipelineLayout pipelineLayout;
+	VkRenderPass renderPass;
+	Vector<Pair<ProgramStage, VkShaderModule>> shaders;
+};
+
 class Pipeline : public Ref {
 public:
-	struct Options {
-		VkPipelineLayout pipelineLayout;
-		VkRenderPass renderPass;
-		Vector<Pair<ProgramStage, VkShaderModule>> shaders;
-	};
-
 	virtual ~Pipeline();
 
-	bool init(VirtualDevice &dev, const Options &, const GraphicsParams &);
+	bool init(VirtualDevice &dev, const PipelineOptions &, draw::PipelineParams &&);
 	void invalidate(VirtualDevice &dev);
 
 	VkPipeline getPipeline() const { return _pipeline; }
+	const draw::PipelineParams &getParams() const { return _params; }
 
 protected:
+	draw::PipelineParams _params;
 	VkPipeline _pipeline = VK_NULL_HANDLE;
 };
 
 class PipelineLayout : public Ref {
 public:
-	enum Type {
-		None,
-
-		/* Set 0:	0 - samplers [opts]
-		 * 			1 - sampled images
-		 * Set 1: 	0 - uniform buffers
-		 *			1 - storage buffers
-		 */
-		T_0SmI_1USt,
-	};
-
 	virtual ~PipelineLayout();
 
-	bool init(VirtualDevice &dev, Type = T_0SmI_1USt, DescriptorCount c = DescriptorCount());
+	bool init(VirtualDevice &dev, draw::LayoutFormat = draw::LayoutFormat::Default,
+			DescriptorCount count = DescriptorCount(), bool hasDescriptorIndexing = false);
 	void invalidate(VirtualDevice &dev);
 
 	VkPipelineLayout getPipelineLayout() const { return _pipelineLayout; }

@@ -30,7 +30,7 @@ Pipeline::~Pipeline() {
 	}
 }
 
-bool Pipeline::init(VirtualDevice &dev, const Options &opts, const GraphicsParams &params) {
+bool Pipeline::init(VirtualDevice &dev, const PipelineOptions &opts, draw::PipelineParams &&params) {
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vertexInputInfo.vertexBindingDescriptionCount = 0;
@@ -107,15 +107,20 @@ bool Pipeline::init(VirtualDevice &dev, const Options &opts, const GraphicsParam
 	colorBlending.blendConstants[2] = 0.0f; // Optional
 	colorBlending.blendConstants[3] = 0.0f; // Optional
 
-	/*VkDynamicState dynamicStates[] = {
-	    VK_DYNAMIC_STATE_VIEWPORT,
-	    VK_DYNAMIC_STATE_LINE_WIDTH
-	};
+	Vector<VkDynamicState> dynamicStates;
+
+	if ((_params.dynamicState & draw::DynamicState::Viewport) != draw::DynamicState::None) {
+		dynamicStates.emplace_back(VK_DYNAMIC_STATE_VIEWPORT);
+	}
+
+	if ((_params.dynamicState & draw::DynamicState::Scissor) != draw::DynamicState::None) {
+		dynamicStates.emplace_back(VK_DYNAMIC_STATE_SCISSOR);
+	}
 
 	VkPipelineDynamicStateCreateInfo dynamicState{};
 	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-	dynamicState.dynamicStateCount = 2;
-	dynamicState.pDynamicStates = dynamicStates;*/
+	dynamicState.dynamicStateCount = dynamicStates.size();
+	dynamicState.pDynamicStates = dynamicStates.data();
 
 	Vector<VkPipelineShaderStageCreateInfo> shaderStages; shaderStages.resize(opts.shaders.size());
 	size_t i = 0;
@@ -139,19 +144,25 @@ bool Pipeline::init(VirtualDevice &dev, const Options &opts, const GraphicsParam
 	pipelineInfo.pMultisampleState = &multisampling;
 	pipelineInfo.pDepthStencilState = nullptr; // Optional
 	pipelineInfo.pColorBlendState = &colorBlending;
-	pipelineInfo.pDynamicState = nullptr; // Optional
+	pipelineInfo.pDynamicState = (dynamicStates.size() > 0) ? &dynamicState : nullptr; // Optional
 	pipelineInfo.layout = opts.pipelineLayout;
 	pipelineInfo.renderPass = opts.renderPass;
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
 	pipelineInfo.basePipelineIndex = -1; // Optional
 
-	return dev.getInstance()->vkCreateGraphicsPipelines(dev.getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_pipeline) == VK_SUCCESS;
+	if (dev.getTable()->vkCreateGraphicsPipelines(dev.getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_pipeline) == VK_SUCCESS) {
+		if (&_params != &params) {
+			_params = move(params);
+		}
+		return true;
+	}
+	return false;
 }
 
 void Pipeline::invalidate(VirtualDevice &dev) {
 	if (_pipeline) {
-		dev.getInstance()->vkDestroyPipeline(dev.getDevice(), _pipeline, nullptr);
+		dev.getTable()->vkDestroyPipeline(dev.getDevice(), _pipeline, nullptr);
 		_pipeline = VK_NULL_HANDLE;
 	}
 }
@@ -162,110 +173,164 @@ PipelineLayout::~PipelineLayout() {
 	}
 }
 
-bool PipelineLayout::init(VirtualDevice &dev, Type t, DescriptorCount count) {
-	static constexpr uint32_t DescriptorIndexingFlags = VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT
-			| VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+bool PipelineLayout::init(VirtualDevice &dev, draw::LayoutFormat t, DescriptorCount count, bool hasDescriptorIndexing) {
+	uint32_t DescriptorIndexingFlags =
+			hasDescriptorIndexing ? (VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT | VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT) : 0;
+	uint32_t DescriptorIndexingVariableLengthFlags =
+			hasDescriptorIndexing ? (DescriptorIndexingFlags | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT) : 0;
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
 
 	switch (t) {
-	case None:
-		pipelineLayoutInfo.setLayoutCount = 0; // Optional
-		pipelineLayoutInfo.pSetLayouts = nullptr; // Optional
+	case draw::LayoutFormat::None:
 		break;
-	case T_0SmI_1USt:
-		do {
-			VkDescriptorSetLayout layout = VK_NULL_HANDLE;
-			VkDescriptorSetLayoutBinding bindings[2];
-			bindings[0].binding = 0;
-			bindings[0].descriptorCount = count.samplers;
-			bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-			bindings[0].pImmutableSamplers = nullptr;
-			bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-			bindings[1].binding = 1;
-			bindings[1].descriptorCount = count.sampledImages;
-			bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-			bindings[1].pImmutableSamplers = nullptr;
-			bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-			VkDescriptorBindingFlags flagsInfo[2];
-			flagsInfo[0] = DescriptorIndexingFlags;
-			flagsInfo[1] = DescriptorIndexingFlags | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
-
-			VkDescriptorSetLayoutBindingFlagsCreateInfo createInfo;
-			createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
-			createInfo.pNext = nullptr;
-			createInfo.bindingCount = 2;
-			createInfo.pBindingFlags = flagsInfo;
-
-			VkDescriptorSetLayoutCreateInfo layoutInfo { };
-			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-			layoutInfo.pNext = &createInfo;
-			layoutInfo.bindingCount = 2;
-			layoutInfo.pBindings = bindings;
-			layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
-
-			if (dev.getInstance()->vkCreateDescriptorSetLayout(dev.getDevice(), &layoutInfo, nullptr, &layout) == VK_SUCCESS) {
-				_descriptors.emplace_back(layout);
-			}
-		} while (0);
-
-		do {
-			VkDescriptorSetLayout layout = VK_NULL_HANDLE;
-			VkDescriptorSetLayoutBinding bindings[2];
-			bindings[0].binding = 0;
-			bindings[0].descriptorCount = count.uniformBuffers;
-			bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			bindings[0].pImmutableSamplers = nullptr;
-			bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-			bindings[1].binding = 1;
-			bindings[1].descriptorCount = count.storageBuffers;
-			bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-			bindings[1].pImmutableSamplers = nullptr;
-			bindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-			VkDescriptorBindingFlags flagsInfo[2];
-			flagsInfo[0] = DescriptorIndexingFlags;
-			flagsInfo[1] = DescriptorIndexingFlags | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
-
-			VkDescriptorSetLayoutBindingFlagsCreateInfo createInfo;
-			createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
-			createInfo.pNext = nullptr;
-			createInfo.bindingCount = 2;
-			createInfo.pBindingFlags = flagsInfo;
-
-			VkDescriptorSetLayoutCreateInfo layoutInfo { };
-			layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-			layoutInfo.pNext = &createInfo;
-			layoutInfo.bindingCount = 2;
-			layoutInfo.pBindings = bindings;
-			layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
-
-			if (dev.getInstance()->vkCreateDescriptorSetLayout(dev.getDevice(), &layoutInfo, nullptr, &layout) == VK_SUCCESS) {
-				_descriptors.emplace_back(layout);
-			}
-		} while (0);
-
-		if (_descriptors.size() != 2) {
-			for (VkDescriptorSetLayout &it : _descriptors) {
-				dev.getInstance()->vkDestroyDescriptorSetLayout(dev.getDevice(), it, nullptr);
-			}
-			_descriptors.clear();
-			return false;
-		}
+	case draw::LayoutFormat::Vertexes:
+		count.samplers = 0;
+		count.sampledImages = 0;
+		count.storageBuffers = 0;
+		count.uniformBuffers = 0;
+		count.vertexBuffers = 1;
+		break;
+	case draw::LayoutFormat::Default:
+		count.vertexBuffers = 0;
 		break;
 	}
-	pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
-	pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
 
-	if (dev.getInstance()->vkCreatePipelineLayout(dev.getDevice(), &pipelineLayoutInfo, nullptr, &_pipelineLayout) == VK_SUCCESS) {
+	do {
+		VkDescriptorSetLayout layout = VK_NULL_HANDLE;
+		VkDescriptorSetLayoutBinding bindings[2];
+		bindings[0].binding = 0;
+		bindings[0].descriptorCount = count.samplers;
+		bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+		bindings[0].pImmutableSamplers = nullptr;
+		bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		bindings[1].binding = 1;
+		bindings[1].descriptorCount = count.sampledImages;
+		bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+		bindings[1].pImmutableSamplers = nullptr;
+		bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+		VkDescriptorSetLayoutCreateInfo layoutInfo { };
+		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+
+		if (hasDescriptorIndexing) {
+			VkDescriptorBindingFlags flagsInfo[2];
+			flagsInfo[0] = DescriptorIndexingFlags;
+			flagsInfo[1] = DescriptorIndexingVariableLengthFlags;
+
+			VkDescriptorSetLayoutBindingFlagsCreateInfo createInfo;
+			createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+			createInfo.pNext = nullptr;
+			createInfo.bindingCount = 2;
+			createInfo.pBindingFlags = flagsInfo;
+
+			layoutInfo.pNext = &createInfo;
+		} else {
+			layoutInfo.pNext = nullptr;
+		}
+
+		layoutInfo.bindingCount = 2;
+		layoutInfo.pBindings = bindings;
+		layoutInfo.flags = hasDescriptorIndexing ? VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT : 0;
+
+		if (dev.getTable()->vkCreateDescriptorSetLayout(dev.getDevice(), &layoutInfo, nullptr, &layout) == VK_SUCCESS) {
+			_descriptors.emplace_back(layout);
+		}
+	} while (0);
+
+	do {
+		VkDescriptorSetLayout layout = VK_NULL_HANDLE;
+		VkDescriptorSetLayoutBinding bindings[2];
+		bindings[0].binding = 0;
+		bindings[0].descriptorCount = count.uniformBuffers;
+		bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		bindings[0].pImmutableSamplers = nullptr;
+		bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+		bindings[1].binding = 1;
+		bindings[1].descriptorCount = count.storageBuffers;
+		bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+		bindings[1].pImmutableSamplers = nullptr;
+		bindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+		VkDescriptorSetLayoutCreateInfo layoutInfo { };
+		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+
+		if (hasDescriptorIndexing) {
+			VkDescriptorBindingFlags flagsInfo[2];
+			flagsInfo[0] = DescriptorIndexingFlags;
+			flagsInfo[1] = DescriptorIndexingVariableLengthFlags;
+
+			VkDescriptorSetLayoutBindingFlagsCreateInfo createInfo;
+			createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+			createInfo.pNext = nullptr;
+			createInfo.bindingCount = 2;
+			createInfo.pBindingFlags = flagsInfo;
+
+			layoutInfo.pNext = &createInfo;
+		} else {
+			layoutInfo.pNext = nullptr;
+		}
+
+		layoutInfo.bindingCount = 2;
+		layoutInfo.pBindings = bindings;
+		layoutInfo.flags = hasDescriptorIndexing ? VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT : 0;
+
+		if (dev.getTable()->vkCreateDescriptorSetLayout(dev.getDevice(), &layoutInfo, nullptr, &layout) == VK_SUCCESS) {
+			_descriptors.emplace_back(layout);
+		}
+	} while (0);
+
+	do {
+		VkDescriptorSetLayout layout = VK_NULL_HANDLE;
+		VkDescriptorSetLayoutBinding bindings[1];
+		bindings[0].binding = 0;
+		bindings[0].descriptorCount = count.vertexBuffers;
+		bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		bindings[0].pImmutableSamplers = nullptr;
+		bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+		VkDescriptorSetLayoutCreateInfo layoutInfo { };
+		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		layoutInfo.pNext = nullptr;
+
+		layoutInfo.bindingCount = 1;
+		layoutInfo.pBindings = bindings;
+		layoutInfo.flags = 0;
+
+		if (dev.getTable()->vkCreateDescriptorSetLayout(dev.getDevice(), &layoutInfo, nullptr, &layout) == VK_SUCCESS) {
+			_descriptors.emplace_back(layout);
+		}
+	} while (0);
+
+	if (_descriptors.size() != 3) {
+		for (VkDescriptorSetLayout &it : _descriptors) {
+			dev.getTable()->vkDestroyDescriptorSetLayout(dev.getDevice(), it, nullptr);
+		}
+		_descriptors.clear();
+		return false;
+	}
+
+	// allow 12 bytes for Vertex and fragment shaders
+	VkPushConstantRange range = {
+		VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT | VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT,
+		0,
+		12
+	};
+
+	pipelineLayoutInfo.setLayoutCount = _descriptors.size(); // Optional
+	pipelineLayoutInfo.pSetLayouts = _descriptors.data(); // Optional
+
+	pipelineLayoutInfo.pushConstantRangeCount = 1; // Optional
+	pipelineLayoutInfo.pPushConstantRanges = { &range }; // Optional
+
+	if (dev.getTable()->vkCreatePipelineLayout(dev.getDevice(), &pipelineLayoutInfo, nullptr, &_pipelineLayout) == VK_SUCCESS) {
 		return true;
 	}
 
 	for (VkDescriptorSetLayout &it : _descriptors) {
-		dev.getInstance()->vkDestroyDescriptorSetLayout(dev.getDevice(), it, nullptr);
+		dev.getTable()->vkDestroyDescriptorSetLayout(dev.getDevice(), it, nullptr);
 	}
 	_descriptors.clear();
 	return false;
@@ -274,13 +339,13 @@ bool PipelineLayout::init(VirtualDevice &dev, Type t, DescriptorCount count) {
 void PipelineLayout::invalidate(VirtualDevice &dev) {
 	if (!_descriptors.empty()) {
 		for (VkDescriptorSetLayout &it : _descriptors) {
-			dev.getInstance()->vkDestroyDescriptorSetLayout(dev.getDevice(), it, nullptr);
+			dev.getTable()->vkDestroyDescriptorSetLayout(dev.getDevice(), it, nullptr);
 		}
 		_descriptors.clear();
 	}
 
 	if (_pipelineLayout) {
-		dev.getInstance()->vkDestroyPipelineLayout(dev.getDevice(), _pipelineLayout, nullptr);
+		dev.getTable()->vkDestroyPipelineLayout(dev.getDevice(), _pipelineLayout, nullptr);
 		_pipelineLayout = VK_NULL_HANDLE;
 	}
 }
@@ -329,12 +394,12 @@ bool RenderPass::init(VirtualDevice &dev, VkFormat imageFormat) {
 	renderPassInfo.dependencyCount = 1;
 	renderPassInfo.pDependencies = &dependency;
 
-	return dev.getInstance()->vkCreateRenderPass(dev.getDevice(), &renderPassInfo, nullptr, &_renderPass) == VK_SUCCESS;
+	return dev.getTable()->vkCreateRenderPass(dev.getDevice(), &renderPassInfo, nullptr, &_renderPass) == VK_SUCCESS;
 }
 
 void RenderPass::invalidate(VirtualDevice &dev) {
 	if (_renderPass) {
-		dev.getInstance()->vkDestroyRenderPass(dev.getDevice(), _renderPass, nullptr);
+		dev.getTable()->vkDestroyRenderPass(dev.getDevice(), _renderPass, nullptr);
 		_renderPass = VK_NULL_HANDLE;
 	}
 }

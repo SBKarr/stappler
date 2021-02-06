@@ -25,6 +25,8 @@
 #include "XLTestAppDelegate.h"
 #include "XLPlatform.h"
 
+#include "XLTestAppShaders.cc"
+
 namespace stappler::xenolith::app {
 
 static AppDelegate s_delegate;
@@ -33,12 +35,43 @@ AppDelegate::AppDelegate() { }
 
 AppDelegate::~AppDelegate() { }
 
-bool AppDelegate::applicationDidFinishLaunching() {
-	if (!Application::applicationDidFinishLaunching()) {
+bool AppDelegate::onFinishLaunching() {
+	if (!Application::onFinishLaunching()) {
 		return false;
 	}
 
 	return true;
+}
+
+void AppDelegate::onDeviceInit(vk::PresentationDevice *dev, const stappler::Callback<void(draw::LoaderStage &&, bool deferred)> &cb) {
+	draw::LoaderStage init;
+	init.name = StringView("init");
+	init.programs.emplace_back(draw::ProgramParams({
+		vk::ProgramSource::Glsl,
+		vk::ProgramStage::Vertex,
+		FilePath(StringView()),
+		BytesView((const uint8_t *)vk::VertexListVert, strlen(vk::VertexListVert)),
+		StringView("App::VertexListVert")
+	}));
+	init.programs.emplace_back(draw::ProgramParams({
+		vk::ProgramSource::Glsl,
+		vk::ProgramStage::Fragment,
+		FilePath(StringView()),
+		BytesView((const uint8_t *)vk::VertexListFrag, strlen(vk::VertexListFrag)),
+		StringView("App::VertexListFrag")
+	}));
+	init.pipelines.emplace_back(draw::PipelineParams({
+		Rect(),
+		URect(),
+		draw::VertexFormat::Vertex_V4F_C4F_T2F,
+		draw::LayoutFormat::Vertexes,
+		draw::RenderPassBind::Default,
+		draw::DynamicState::Default,
+		{ "App::VertexListVert", "App::VertexListFrag" },
+		StringView("App::VertexDrawingPipeline")
+	}));
+
+	cb(move(init), false);
 }
 
 }

@@ -1,5 +1,5 @@
 /**
- Copyright (c) 2020 Roman Katuntsev <sbkarr@stappler.org>
+ Copyright (c) 2021 Roman Katuntsev <sbkarr@stappler.org>
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -20,32 +20,43 @@
  THE SOFTWARE.
  **/
 
-#ifndef COMPONENTS_XENOLITH_CORE_DRAW_XLDRAWBUFFER_H_
-#define COMPONENTS_XENOLITH_CORE_DRAW_XLDRAWBUFFER_H_
+#ifndef COMPONENTS_XENOLITH_CORE_BASE_XLPIPELINE_H_
+#define COMPONENTS_XENOLITH_CORE_BASE_XLPIPELINE_H_
 
-#include "XLDraw.h"
+#include "XLDefine.h"
+#include "XLVkPipeline.h"
+#include "XLDrawPipeline.h"
+#include "SPThreadTaskQueue.h"
 
-namespace stappler::xenolith::draw {
+namespace stappler::xenolith {
 
-using BufferHandleGlAcquire = void (*) (void *, const Callback<void(BytesView)> &);
-
-struct BufferHandleGl {
-	void *glHandle;
-	BufferHandleGlAcquire acquire;
+class Pipeline : public Ref {
+public:
+protected:
+	StringView _name;
+	draw::PipelineParams _params;
+	Rc<vk::Pipeline> _pipeline;
 };
 
-struct BufferHandle : memory::AllocPool {
-	static BufferHandle *create(memory::pool_t *, size_t reserve = 0); // with data allocated from pool
+class PipelineCache final : public Ref {
+public:
+	using Callback = Function<void(Pipeline *)>;
+	using CallbackMap = Map<String, Vector<Callback>>;
 
-	BufferHandleType type = BufferHandleType::Data;
-	void *handle = nullptr;
+	bool init();
+	void invalidate();
+	void reload();
 
-	bool append(BytesView);
+	void addPipeline(StringView, draw::PipelineParams, const Callback &cb);
 
-	void acquireData(const Callback<void(BytesView)> &);
-	void setGl(void *, BufferHandleGlAcquire);
+protected:
+
+
+	Map<String, Rc<Pipeline>> _pipelines;
+	CallbackMap _callbackMap;
+	thread::TaskQueue _queue;
 };
 
 }
 
-#endif /* COMPONENTS_XENOLITH_CORE_DRAW_XLDRAWBUFFER_H_ */
+#endif /* COMPONENTS_XENOLITH_CORE_BASE_XLPIPELINE_H_ */

@@ -29,7 +29,7 @@ NS_SP_EXT_BEGIN(thread)
 
 class Worker : public ThreadHandlerInterface {
 public:
-	Worker(TaskQueue *queue, uint32_t threadId, uint32_t workerId, const StringView &name, memory::pool_t *p);
+	Worker(TaskQueue *queue, uint32_t threadId, uint32_t workerId, StringView name, memory::pool_t *p);
 	virtual ~Worker();
 
 	void retain();
@@ -50,6 +50,8 @@ protected:
 	std::thread::id _threadId;
 	std::atomic<int32_t> _refCount;
 	std::atomic_flag _shouldQuit;
+
+	memory::PoolFlags _flags = memory::PoolFlags::None;
 	memory::pool_t *_pool = nullptr;
 	memory::pool_t *_rootPool = nullptr;
 
@@ -59,7 +61,7 @@ protected:
 	std::thread _thread;
 
 	std::mutex _localMutex;
-	std::vector<Rc<Task>> _localQueue;
+	StdVector<Rc<Task>> _localQueue;
 };
 
 thread_local ThreadInfo tl_threadInfo;
@@ -140,9 +142,19 @@ const TaskQueue *TaskQueue::getOwner() {
 	return tl_owner;
 }
 
-TaskQueue::TaskQueue(memory::pool_t *p) : _finalized(false), _pool(p) { }
+TaskQueue::TaskQueue(memory::pool_t *p, StringView name)
+: _finalized(false), _pool(p) {
+	if (!name.empty()) {
+		_name = name;
+	}
+}
 
-TaskQueue::TaskQueue(uint16_t count, memory::pool_t *p) : _finalized(false), _threadsCount(count), _pool(p) { }
+TaskQueue::TaskQueue(uint16_t count, memory::pool_t *p, StringView name)
+: _finalized(false), _threadsCount(count), _pool(p) {
+	if (!name.empty()) {
+		_name = name;
+	}
+}
 
 TaskQueue::~TaskQueue() {
 	cancelWorkers();
@@ -169,7 +181,7 @@ void TaskQueue::finalize() {
 void TaskQueue::performAsync(Rc<Task> &&task) {
 	if (task) {
 		_SingleTaskWorker *worker = new _SingleTaskWorker(this, std::move(task), _pool);
-		std::thread wThread(ThreadHandlerInterface::workerThread, worker, this);
+		StdThread wThread(ThreadHandlerInterface::workerThread, worker, this);
 		wThread.detach();
 	}
 }
@@ -275,8 +287,8 @@ Rc<Task> TaskQueue::popTask(uint32_t idx) {
 void TaskQueue::update() {
     _outputMutex.lock();
 
-	std::vector<Rc<Task>> stack;
-	stack.swap(_outputQueue);
+	StdVector<Rc<Task>> stack = std::move(_outputQueue);
+	_outputQueue.clear();
 
 	_outputMutex.unlock();
 
@@ -304,8 +316,8 @@ void TaskQueue::onMainThread(Rc<Task> &&task) {
 	}
 }
 
-std::vector<std::thread::id> TaskQueue::getThreadIds() const {
-	std::vector<std::thread::id> ret;
+StdVector<std::thread::id> TaskQueue::getThreadIds() const {
+	StdVector<std::thread::id> ret;
 	for (Worker *it : _workers) {
 		ret.emplace_back(it->getThreadId());
 	}
@@ -335,10 +347,10 @@ void TaskQueue::wait() {
 }
 
 bool TaskQueue::spawnWorkers() {
-	return spawnWorkers(getNextThreadId(), "AnonQueue");
+	return spawnWorkers(getNextThreadId(), _name);
 }
 
-bool TaskQueue::spawnWorkers(uint32_t threadId, const StringView &name) {
+bool TaskQueue::spawnWorkers(uint32_t threadId, StringView name) {
 	if (threadId == maxOf<uint32_t>()) {
 		threadId = getNextThreadId();
 	}
@@ -386,10 +398,10 @@ void TaskQueue::waitForAll(TimeInterval iv) {
 }
 
 
-Worker::Worker(TaskQueue *queue, uint32_t threadId, uint32_t workerId, const StringView &name, memory::pool_t *p)
+Worker::Worker(TaskQueue *queue, uint32_t threadId, uint32_t workerId, StringView name, memory::pool_t *p)
 : _queue(queue), _refCount(1), _shouldQuit(), _rootPool(p), _managerId(threadId), _workerId(workerId), _name(name) {
 	_queue->retain();
-	_thread = std::thread(ThreadHandlerInterface::workerThread, this, queue);
+	_thread = StdThread(ThreadHandlerInterface::workerThread, this, queue);
 }
 
 Worker::~Worker() {
@@ -416,7 +428,11 @@ bool Worker::execute(Task *task) {
 
 void Worker::threadInit() {
 	memory::pool::initialize();
-	_pool = memory::pool::create((memory::pool_t *)_rootPool);
+	if (_rootPool) {
+		_pool = memory::pool::createTagged((memory::pool_t *)_rootPool, _name.data());
+	} else {
+		_pool = memory::pool::createTagged(_name.data(), _flags);
+	}
 
 	_shouldQuit.test_and_set();
 	_threadId = std::this_thread::get_id();

@@ -111,6 +111,10 @@ public:
 		return typename Interface::template VectorType<Type>(ptr, ptr + len);
 	}
 
+	BytesView bytes() const {
+		return BytesView((uint8_t *)ptr, len * sizeof(Type));
+	}
+
 protected:
 	const Type *ptr = nullptr;
 	size_t len = 0;

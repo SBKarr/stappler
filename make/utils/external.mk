@@ -137,6 +137,8 @@ endef
 
 $(foreach obj,$(BUILD_OBJS) $(BUILD_MAIN_OBJ),$(eval $(call BUILD_template,$(obj))))
 
+BUILD_LOCAL_OBJS := $(BUILD_OBJS) $(BUILD_MAIN_OBJ)
+
 BUILD_OBJS += $(TOOLKIT_OBJS)
 
 BUILD_CFLAGS += $(addprefix -I,$(BUILD_INCLUDES))

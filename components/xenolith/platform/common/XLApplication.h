@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include "XLEventHeader.h"
 #include "XLVk.h"
 #include "SPThreadTaskQueue.h"
+#include "XLDrawPipeline.h"
 
 namespace stappler::xenolith {
 
@@ -57,8 +58,11 @@ public:
 	Application();
 	virtual ~Application();
 
-	virtual bool applicationDidFinishLaunching();
-	virtual void applicationDidReceiveMemoryWarning();
+	virtual bool onFinishLaunching();
+	virtual void onMemoryWarning();
+
+	virtual void onDeviceInit(vk::PresentationDevice *, const stappler::Callback<void(draw::LoaderStage &&, bool deferred)> &);
+
 	virtual void update(double dt);
 
 public: // Threading, Events

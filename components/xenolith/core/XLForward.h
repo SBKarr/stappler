@@ -60,6 +60,13 @@ using Color3B = layout::Color3B;
 using Padding = layout::Padding;
 using Margin = layout::Margin;
 
+struct URect {
+	uint32_t x = 0;
+	uint32_t y = 0;
+	uint32_t width = 0;
+	uint32_t height = 0;
+};
+
 template <size_t Count>
 using MovingAverage = layout::MovingAverage<Count>;
 using FilePath = layout::FilePath;
@@ -76,17 +83,6 @@ extern const Vec2 MiddleTop; /** equals to Vec2(0.5, 1) */
 extern const Vec2 MiddleBottom; /** equals to Vec2(0.5, 0) */
 }
 
-struct AlphaTest {
-	enum State : uint8_t {
-		Disabled,
-		LessThen,
-		GreatherThen,
-	};
-
-	State state = State::Disabled;
-	uint8_t value = 0;
-};
-
 enum ScreenOrientation {
 	Landscape = 1,
 	LandscapeLeft,
@@ -101,27 +97,16 @@ class EventHeader;
 class EventHandler;
 class EventHandlerNode;
 
+class Application;
 class Director;
-class Scene;
-class ProgramManager;
 
-class PipelineFlow;
-class TransferFlow;
 class DrawFlow;
+
+class PipelineCache;
+class Pipeline;
 
 using Task = thread::Task;
 
 } // stappler::xenolith
-
-
-namespace stappler::xenolith::draw {
-
-struct BufferHandle;
-struct Command;
-struct CommandGroup;
-struct DrawScheme;
-
-}
-
 
 #endif /* COMPONENTS_XENOLITH_CORE_XLFORWARD_H_ */

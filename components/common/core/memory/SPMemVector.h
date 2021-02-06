@@ -239,6 +239,7 @@ public:
 	void force_clear() {
 		_mem.force_clear();
 	}
+
 protected:
 	mem_type _mem;
 };

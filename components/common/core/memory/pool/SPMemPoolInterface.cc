@@ -192,9 +192,12 @@ allocator_t *create(void *mutex) {
 }
 
 allocator_t *createWithMmap(uint32_t initialPages) {
+#if LINUX
 	auto alloc = new custom::Allocator();
 	alloc->run_mmap(initialPages);
 	return (allocator_t *) alloc;
+#endif
+	return (allocator_t *) nullptr;
 }
 
 void destroy(allocator_t *alloc) {
@@ -261,26 +264,26 @@ void terminate() {
 	custom::terminate();
 }
 
-pool_t *create(bool custom) {
+pool_t *create(PoolFlags flags) {
 	if constexpr (apr::SPAprDefined) {
-		if (!custom) {
+		if ((flags & PoolFlags::Custom) == PoolFlags::None) {
 			return apr::pool::create();
 		}
 	}
-	return (pool_t *)custom::Pool::create();
+	return (pool_t *)custom::Pool::create(nullptr, flags);
 }
 
-pool_t *create(allocator_t *alloc, bool threadSafe) {
+pool_t *create(allocator_t *alloc, PoolFlags flags) {
 	if constexpr (apr::SPAprDefined) {
 		if (isCustom(alloc)) {
-			return (pool_t *)custom::Pool::create((custom::Allocator *)alloc, threadSafe);
-		} else if (!threadSafe) {
+			return (pool_t *)custom::Pool::create((custom::Allocator *)alloc, flags);
+		} else if ((flags & PoolFlags::ThreadSafePool) == PoolFlags::None) {
 			return apr::pool::create(alloc);
 		} else {
 			abort(); // thread-safe APR pools is not supported
 		}
 	}
-	return (pool_t *)custom::Pool::create((custom::Allocator *)alloc, threadSafe);
+	return (pool_t *)custom::Pool::create((custom::Allocator *)alloc, flags);
 }
 
 // creates managed pool (managed by root, if parent in mullptr)
@@ -294,13 +297,13 @@ pool_t *create(pool_t *pool) {
 }
 
 // creates unmanaged pool
-pool_t *createTagged(const char *tag, bool custom) {
+pool_t *createTagged(const char *tag, PoolFlags flags) {
 	if constexpr (apr::SPAprDefined) {
-		if (!custom) {
+		if ((flags & PoolFlags::Custom) == PoolFlags::None) {
 			return apr::pool::createTagged(tag);
 		}
 	}
-	if (auto ret = custom::Pool::create()) {
+	if (auto ret = custom::Pool::create(nullptr, flags)) {
 		ret->tag = tag;
 		return (pool_t *)ret;
 	}

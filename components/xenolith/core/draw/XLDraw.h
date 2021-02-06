@@ -23,32 +23,12 @@ THE SOFTWARE.
 #ifndef COMPONENTS_XENOLITH_CORE_DRAW_XLDRAW_H_
 #define COMPONENTS_XENOLITH_CORE_DRAW_XLDRAW_H_
 
-#include "XLVk.h"
+#include "XLDefine.h"
 
 namespace stappler::xenolith::draw {
 
-enum class BufferHandleType {
-	Data,
-	GL,
-};
-
-enum class CommandType {
-	CommandGroup,
-	DrawIndexedIndirectCount
-};
-
-enum class VertexBufferFormat {
-	Vertex_V4F_C4F_T2F,
-};
-
-struct alignas(16) DrawData {
-	uint32_t material;
-	uint32_t transform;
-	uint32_t vertexFormat;
-	uint32_t vertexOffset;
-};
-
-struct Vertex_V4F_C4F_T2F {
+// Designed to use with SSBO and std140
+struct alignas(16) Vertex_V4F_C4F_T2F {
 	alignas(16) Vec4 pos;
 	alignas(16) Color4F color;
 	alignas(16) Vec2 tex;

@@ -20,40 +20,41 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#ifndef COMPONENTS_XENOLITH_GL_XLVKDEVICE_H_
-#define COMPONENTS_XENOLITH_GL_XLVKDEVICE_H_
+#ifndef COMPONENTS_XENOLITH_CORE_DRAW_XLDRAWPIPELINE_H_
+#define COMPONENTS_XENOLITH_CORE_DRAW_XLDRAWPIPELINE_H_
 
-#include "XLVkInstance.h"
-#include "SPThreadTaskQueue.h"
+#include "XLDraw.h"
 
-namespace stappler::xenolith::vk {
+namespace stappler::xenolith::draw {
 
-class VirtualDevice : public Ref {
-public:
-	using Features = Instance::Features;
-	using Properties = Instance::Properties;
+struct ProgramParams {
+	vk::ProgramSource source;
+	vk::ProgramStage stage;
+	FilePath path;
+	BytesView data;
+	StringView key;
+	Map<String, String> defs;
+};
 
-	virtual ~VirtualDevice();
-	virtual bool init(Rc<Instance>, VkPhysicalDevice, const Properties &, const Set<uint32_t> &, const Features &,
-			const Vector<const char *> & exts = Vector<const char *>());
-	virtual bool init(Rc<Instance>, Rc<Allocator>);
+struct PipelineParams {
+	Rect viewport;
+	URect scissor;
 
-	Instance *getInstance() const;
-	VkDevice getDevice() const;
-	Rc<Allocator> getAllocator() const;
+	VertexFormat vertexFormat = VertexFormat::None;
+	LayoutFormat layoutFormat = LayoutFormat::Default;
+	RenderPassBind renderPass = RenderPassBind::Default;
+	DynamicState dynamicState = DynamicState::Default;
 
-	const DeviceCallTable * getTable() const;
+	Vector<String> shaders;
+	StringView key;
+};
 
-protected:
-	void loadTable(VkDevice device, DeviceCallTable *) const;
-
-	bool _managedDevice = false;
-	Rc<Instance> _instance;
-	Rc<Allocator> _allocator;
-	VkDevice _device = VK_NULL_HANDLE;
-	const DeviceCallTable *_table = nullptr;
+struct LoaderStage {
+	StringView name;
+	Vector<ProgramParams> programs;
+	Vector<PipelineParams> pipelines;
 };
 
 }
 
-#endif /* COMPONENTS_XENOLITH_GL_XLVKDEVICE_H_ */
+#endif /* COMPONENTS_XENOLITH_CORE_DRAW_XLDRAWPIPELINE_H_ */

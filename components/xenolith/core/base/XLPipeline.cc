@@ -1,5 +1,5 @@
 /**
- Copyright (c) 2020 Roman Katuntsev <sbkarr@stappler.org>
+ Copyright (c) 2021 Roman Katuntsev <sbkarr@stappler.org>
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -20,23 +20,23 @@
  THE SOFTWARE.
  **/
 
-#include "XLDrawBuffer.h"
+#include "XLPipeline.h"
 
-namespace stappler::xenolith::draw {
+namespace stappler::xenolith {
 
-BufferHandle *BufferHandle::create(memory::pool_t *p, size_t reserve) {
+bool PipelineCache::init() {
+	return true;
+}
+
+void PipelineCache::invalidate() {
 
 }
 
-bool BufferHandle::append(BytesView) {
+void PipelineCache::reload() {
 
 }
 
-void BufferHandle::acquireData(const Callback<void(BytesView)> &) {
-
-}
-
-void BufferHandle::setGl(void *, BufferHandleGlAcquire) {
+void PipelineCache::addPipeline(StringView, draw::PipelineParams, const Callback &cb) {
 
 }
 

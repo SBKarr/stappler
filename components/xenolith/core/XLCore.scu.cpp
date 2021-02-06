@@ -28,4 +28,7 @@ THE SOFTWARE.
 
 #include "XLDirector.cc"
 #include "XLExecFlow.cc"
+#include "XLDrawCommand.cc"
 #include "XLDrawScheme.cc"
+
+#include "XLPipeline.cc"

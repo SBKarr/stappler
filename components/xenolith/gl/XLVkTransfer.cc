@@ -28,7 +28,7 @@ namespace stappler::xenolith::vk {
 TransferGeneration::~TransferGeneration() { }
 
 bool TransferGeneration::init(Rc<Allocator> alloc) {
-	_pool = Rc<AllocPool>::create(alloc);
+	_pool = Rc<DeviceAllocPool>::create(alloc);
 	return true;
 }
 
@@ -77,7 +77,7 @@ bool TransferDevice::init(Rc<Instance> instance, Rc<Allocator> alloc, VkQueue qu
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-	if (_instance->vkCreateFence(_device, &fenceInfo, nullptr, &_fence) != VK_SUCCESS) {
+	if (_table->vkCreateFence(_device, &fenceInfo, nullptr, &_fence) != VK_SUCCESS) {
 		return false;
 	}
 
@@ -102,7 +102,7 @@ void TransferDevice::performTransfer(thread::TaskQueue &) {
 	VkCommandBufferBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	_instance->vkBeginCommandBuffer(bufs.front(), &beginInfo);
+	_table->vkBeginCommandBuffer(bufs.front(), &beginInfo);
 
 	for (Rc<TransferGeneration> it : _generations) {
 		for (const TransferGeneration::TransferRequest &iit : it->getRequests()) {
@@ -110,18 +110,18 @@ void TransferDevice::performTransfer(thread::TaskQueue &) {
 			copyRegion.srcOffset = 0;
 			copyRegion.dstOffset = iit.offset;
 			copyRegion.size = iit.size;
-			_instance->vkCmdCopyBuffer(bufs.front(), iit.source->getBuffer(), iit.target->getBuffer(), 1, &copyRegion);
+			_table->vkCmdCopyBuffer(bufs.front(), iit.source->getBuffer(), iit.target->getBuffer(), 1, &copyRegion);
 		}
 	}
 
-	if (_instance->vkEndCommandBuffer(bufs.front()) == VK_SUCCESS) {
+	if (_table->vkEndCommandBuffer(bufs.front()) == VK_SUCCESS) {
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = bufs.data();
 
-		_instance->vkResetFences(_device, 1, &_fence);
-		if (_instance->vkQueueSubmit(_queue, 1, &submitInfo, _fence) != VK_SUCCESS) {
+		_table->vkResetFences(_device, 1, &_fence);
+		if (_table->vkQueueSubmit(_queue, 1, &submitInfo, _fence) != VK_SUCCESS) {
 			stappler::log::vtext("VK-Error", "Fail to vkQueueSubmit in performTransfer");
 		}
 	}
@@ -133,7 +133,7 @@ void TransferDevice::wait(VkFence f) {
 		f
 	};
 
-	_instance->vkWaitForFences(_device, (f == VK_NULL_HANDLE) ? 1 : 2, fences, VK_TRUE, UINT64_MAX);
+	_table->vkWaitForFences(_device, (f == VK_NULL_HANDLE) ? 1 : 2, fences, VK_TRUE, UINT64_MAX);
 	for (Rc<TransferGeneration> &it : _generations) {
 		it->invalidate();
 	}

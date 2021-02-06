@@ -38,18 +38,12 @@ protected:
 	memory::pool_t *_pool = nullptr;
 };
 
-class PipelineFlow : public ExecFlow {
-public:
-protected:
-};
-
-class TransferFlow : public ExecFlow {
-public:
-protected:
-};
-
 class DrawFlow : public ExecFlow {
 public:
+	virtual ~DrawFlow();
+
+	virtual bool init();
+
 	draw::DrawScheme *getScheme() { return _scheme; }
 
 protected:

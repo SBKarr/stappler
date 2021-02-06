@@ -235,7 +235,9 @@ bool ViewImpl::init(const StringView & viewName, Rect rect) {
 	auto targetOpts = opts.front();
 	selectPresentationOptions(targetOpts);
 
-	auto requiredFeatures = Instance::Features::getDefault();
+	auto requiredFeatures = Instance::Features::getOptional();
+	requiredFeatures.enableFromFeatures(Instance::Features::getRequired());
+	requiredFeatures.disableFromFeatures(targetOpts.features);
 	if (targetOpts.features.canEnable(requiredFeatures)) {
 		auto device = Rc<PresentationDevice>::create(instance, this, _surface, move(targetOpts), requiredFeatures);
 		if (!device) {
@@ -317,25 +319,32 @@ void ViewImpl::setAnimationInterval(double val) {
 	_animationInterval = val;
 }
 
-bool ViewImpl::run(Rc<Director> dir, const Callback<bool(double)> &cb) {
-	bool ret = true;
-	double nNow = 0.0;
+bool ViewImpl::run(Application *app, Rc<Director> dir, const Callback<bool(double)> &cb) {
 	double nLast = glfwGetTime();
+	auto frameCb = [&] () {
+		const double nNow = glfwGetTime();
+		if (!cb(nNow - nLast)) {
+			return false;
+		}
+		nLast = nNow;
+		return true;
+	};
+
+	bool ret = true;
 	double dt = 0;
 
-	_loop = Rc<PresentationLoop>::alloc(this, _device, dir, _animationInterval, [] () -> double {
+	_loop = Rc<PresentationLoop>::alloc(app, this, _device, dir, _animationInterval, [] () -> double {
 		return glfwGetTime();
-	});
+	}, frameCb);
 
 	_loop->begin();
-	while (!glfwWindowShouldClose(_mainWindow)) {
+
+	while (!windowShouldClose()) {
 		const auto iv = _animationInterval * 4.0;
-		nNow = glfwGetTime();
-		if (!cb(nNow - nLast)) {
+		if (!frameCb()) {
 			ret = false;
 			break;
 		}
-		nLast = nNow;
 		dt = glfwGetTime() - nLast;
 		if (dt > 0 && dt < iv && _dropFrameDelay.test_and_set()) { // limit framerate
 			 std::unique_lock<std::mutex> lock(_glSync);
@@ -347,7 +356,7 @@ bool ViewImpl::run(Rc<Director> dir, const Callback<bool(double)> &cb) {
 	}
 	_loop->end();
 
-	_instance->vkDeviceWaitIdle(_device->getDevice());
+	_device->getTable()->vkDeviceWaitIdle(_device->getDevice());
 
 	return ret;
 }
@@ -362,20 +371,26 @@ void ViewImpl::updateFrameSize() {
 }
 
 void ViewImpl::onGLFWWindowSizeFunCallback(GLFWwindow *window, int width, int height) {
-	std::cout << "\tonGLFWWindowSizeFunCallback\n";
+	std::cout << "\tonGLFWWindowSizeFunCallback\n"; std::cout.flush();
 	if (_loop) {
 		if (!_loop->isStalled()) {
 			_loop->reset();
 		}
 
+		bool changed = false;
 		std::lock_guard<PresentationLoop> lock(*_loop);
+		if (uint32_t(width) != _frameWidth) {
+			_frameWidth = uint32_t(width); changed = true;
+		}
 
-		_frameWidth = uint32_t(width);
-		_frameHeight = uint32_t(height);
+		if (uint32_t(height) != _frameHeight) {
+			_frameHeight = uint32_t(height); changed = true;
+		}
 
-		if (_loop->isStalled()) {
+		if (_loop->isStalled() || changed) {
 			_device->recreateSwapChain(*_loop->getQueue());
-			_loop->forceFrame();
+			std::cout << "Recreate by call\n"; std::cout.flush();
+			_loop->forceFrame(true);
 			_loop->reset();
 		}
 	}

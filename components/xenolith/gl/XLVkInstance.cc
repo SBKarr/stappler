@@ -48,14 +48,13 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL s_debugCallback(VkDebugUtilsMessageSeverit
 
 #endif
 
-static const Vector<const char*> s_deviceExtensions = {
-	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-	VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME,
-	VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
-	VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME
-};
+Instance::Features Instance::Features::getRequired() {
+	Features ret;
+	ret.device10.features.shaderSampledImageArrayDynamicIndexing = VK_TRUE;
+	return ret;
+}
 
-Instance::Features Instance::Features::getDefault() {
+Instance::Features Instance::Features::getOptional() {
 	Features ret;
 	ret.device10.features.shaderSampledImageArrayDynamicIndexing = VK_TRUE;
 	ret.device10.features.shaderStorageBufferArrayDynamicIndexing = VK_TRUE;
@@ -78,126 +77,193 @@ Instance::Features Instance::Features::getDefault() {
 	return ret;
 }
 
-Instance::Instance(VkInstance inst, const PFN_vkGetInstanceProcAddr getInstanceProcAddr)
+Instance::Instance(VkInstance inst, const PFN_vkGetInstanceProcAddr getInstanceProcAddr, uint32_t targetVersion, Vector<StringView> &&optionals)
 : instance(inst)
+, _version(targetVersion)
+, _optionals(move(optionals))
 , vkGetInstanceProcAddr(getInstanceProcAddr)
-#if 1
+#if defined(VK_VERSION_1_0)
+, vkCreateDevice((PFN_vkCreateDevice)vkGetInstanceProcAddr(inst, "vkCreateDevice"))
 , vkDestroyInstance((PFN_vkDestroyInstance)vkGetInstanceProcAddr(inst, "vkDestroyInstance"))
+, vkEnumerateDeviceExtensionProperties((PFN_vkEnumerateDeviceExtensionProperties)vkGetInstanceProcAddr(inst, "vkEnumerateDeviceExtensionProperties"))
+, vkEnumerateDeviceLayerProperties((PFN_vkEnumerateDeviceLayerProperties)vkGetInstanceProcAddr(inst, "vkEnumerateDeviceLayerProperties"))
 , vkEnumeratePhysicalDevices((PFN_vkEnumeratePhysicalDevices)vkGetInstanceProcAddr(inst, "vkEnumeratePhysicalDevices"))
-, vkGetPhysicalDeviceQueueFamilyProperties((PFN_vkGetPhysicalDeviceQueueFamilyProperties)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceQueueFamilyProperties"))
+, vkGetDeviceProcAddr((PFN_vkGetDeviceProcAddr)vkGetInstanceProcAddr(inst, "vkGetDeviceProcAddr"))
+, vkGetPhysicalDeviceFeatures((PFN_vkGetPhysicalDeviceFeatures)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceFeatures"))
+, vkGetPhysicalDeviceFormatProperties((PFN_vkGetPhysicalDeviceFormatProperties)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceFormatProperties"))
+, vkGetPhysicalDeviceImageFormatProperties((PFN_vkGetPhysicalDeviceImageFormatProperties)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceImageFormatProperties"))
 , vkGetPhysicalDeviceMemoryProperties((PFN_vkGetPhysicalDeviceMemoryProperties)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceMemoryProperties"))
 , vkGetPhysicalDeviceProperties((PFN_vkGetPhysicalDeviceProperties)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceProperties"))
-, vkGetPhysicalDeviceProperties2((PFN_vkGetPhysicalDeviceProperties2)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceProperties2"))
-, vkGetPhysicalDeviceFeatures((PFN_vkGetPhysicalDeviceFeatures)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceFeatures"))
+, vkGetPhysicalDeviceQueueFamilyProperties((PFN_vkGetPhysicalDeviceQueueFamilyProperties)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceQueueFamilyProperties"))
+, vkGetPhysicalDeviceSparseImageFormatProperties((PFN_vkGetPhysicalDeviceSparseImageFormatProperties)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSparseImageFormatProperties"))
+#endif /* defined(VK_VERSION_1_0) */
+#if defined(VK_VERSION_1_1)
+, vkEnumeratePhysicalDeviceGroups((PFN_vkEnumeratePhysicalDeviceGroups)vkGetInstanceProcAddr(inst, "vkEnumeratePhysicalDeviceGroups"))
+, vkGetPhysicalDeviceExternalBufferProperties((PFN_vkGetPhysicalDeviceExternalBufferProperties)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceExternalBufferProperties"))
+, vkGetPhysicalDeviceExternalFenceProperties((PFN_vkGetPhysicalDeviceExternalFenceProperties)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceExternalFenceProperties"))
+, vkGetPhysicalDeviceExternalSemaphoreProperties((PFN_vkGetPhysicalDeviceExternalSemaphoreProperties)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceExternalSemaphoreProperties"))
 , vkGetPhysicalDeviceFeatures2((PFN_vkGetPhysicalDeviceFeatures2)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceFeatures2"))
+, vkGetPhysicalDeviceFormatProperties2((PFN_vkGetPhysicalDeviceFormatProperties2)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceFormatProperties2"))
+, vkGetPhysicalDeviceImageFormatProperties2((PFN_vkGetPhysicalDeviceImageFormatProperties2)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceImageFormatProperties2"))
+, vkGetPhysicalDeviceMemoryProperties2((PFN_vkGetPhysicalDeviceMemoryProperties2)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceMemoryProperties2"))
+, vkGetPhysicalDeviceProperties2((PFN_vkGetPhysicalDeviceProperties2)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceProperties2"))
+, vkGetPhysicalDeviceQueueFamilyProperties2((PFN_vkGetPhysicalDeviceQueueFamilyProperties2)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceQueueFamilyProperties2"))
+, vkGetPhysicalDeviceSparseImageFormatProperties2((PFN_vkGetPhysicalDeviceSparseImageFormatProperties2)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSparseImageFormatProperties2"))
+#endif /* defined(VK_VERSION_1_1) */
+#if defined(VK_EXT_acquire_xlib_display)
+, vkAcquireXlibDisplayEXT((PFN_vkAcquireXlibDisplayEXT)vkGetInstanceProcAddr(inst, "vkAcquireXlibDisplayEXT"))
+, vkGetRandROutputDisplayEXT((PFN_vkGetRandROutputDisplayEXT)vkGetInstanceProcAddr(inst, "vkGetRandROutputDisplayEXT"))
+#endif /* defined(VK_EXT_acquire_xlib_display) */
+#if defined(VK_EXT_calibrated_timestamps)
+, vkGetPhysicalDeviceCalibrateableTimeDomainsEXT((PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceCalibrateableTimeDomainsEXT"))
+#endif /* defined(VK_EXT_calibrated_timestamps) */
+#if defined(VK_EXT_debug_report)
+, vkCreateDebugReportCallbackEXT((PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(inst, "vkCreateDebugReportCallbackEXT"))
+, vkDebugReportMessageEXT((PFN_vkDebugReportMessageEXT)vkGetInstanceProcAddr(inst, "vkDebugReportMessageEXT"))
+, vkDestroyDebugReportCallbackEXT((PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(inst, "vkDestroyDebugReportCallbackEXT"))
+#endif /* defined(VK_EXT_debug_report) */
+#if defined(VK_EXT_debug_utils)
+, vkCmdBeginDebugUtilsLabelEXT((PFN_vkCmdBeginDebugUtilsLabelEXT)vkGetInstanceProcAddr(inst, "vkCmdBeginDebugUtilsLabelEXT"))
+, vkCmdEndDebugUtilsLabelEXT((PFN_vkCmdEndDebugUtilsLabelEXT)vkGetInstanceProcAddr(inst, "vkCmdEndDebugUtilsLabelEXT"))
+, vkCmdInsertDebugUtilsLabelEXT((PFN_vkCmdInsertDebugUtilsLabelEXT)vkGetInstanceProcAddr(inst, "vkCmdInsertDebugUtilsLabelEXT"))
+, vkCreateDebugUtilsMessengerEXT((PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(inst, "vkCreateDebugUtilsMessengerEXT"))
+, vkDestroyDebugUtilsMessengerEXT((PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(inst, "vkDestroyDebugUtilsMessengerEXT"))
+, vkQueueBeginDebugUtilsLabelEXT((PFN_vkQueueBeginDebugUtilsLabelEXT)vkGetInstanceProcAddr(inst, "vkQueueBeginDebugUtilsLabelEXT"))
+, vkQueueEndDebugUtilsLabelEXT((PFN_vkQueueEndDebugUtilsLabelEXT)vkGetInstanceProcAddr(inst, "vkQueueEndDebugUtilsLabelEXT"))
+, vkQueueInsertDebugUtilsLabelEXT((PFN_vkQueueInsertDebugUtilsLabelEXT)vkGetInstanceProcAddr(inst, "vkQueueInsertDebugUtilsLabelEXT"))
+, vkSetDebugUtilsObjectNameEXT((PFN_vkSetDebugUtilsObjectNameEXT)vkGetInstanceProcAddr(inst, "vkSetDebugUtilsObjectNameEXT"))
+, vkSetDebugUtilsObjectTagEXT((PFN_vkSetDebugUtilsObjectTagEXT)vkGetInstanceProcAddr(inst, "vkSetDebugUtilsObjectTagEXT"))
+, vkSubmitDebugUtilsMessageEXT((PFN_vkSubmitDebugUtilsMessageEXT)vkGetInstanceProcAddr(inst, "vkSubmitDebugUtilsMessageEXT"))
+#endif /* defined(VK_EXT_debug_utils) */
+#if defined(VK_EXT_direct_mode_display)
+, vkReleaseDisplayEXT((PFN_vkReleaseDisplayEXT)vkGetInstanceProcAddr(inst, "vkReleaseDisplayEXT"))
+#endif /* defined(VK_EXT_direct_mode_display) */
+#if defined(VK_EXT_directfb_surface)
+, vkCreateDirectFBSurfaceEXT((PFN_vkCreateDirectFBSurfaceEXT)vkGetInstanceProcAddr(inst, "vkCreateDirectFBSurfaceEXT"))
+, vkGetPhysicalDeviceDirectFBPresentationSupportEXT((PFN_vkGetPhysicalDeviceDirectFBPresentationSupportEXT)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceDirectFBPresentationSupportEXT"))
+#endif /* defined(VK_EXT_directfb_surface) */
+#if defined(VK_EXT_display_surface_counter)
+, vkGetPhysicalDeviceSurfaceCapabilities2EXT((PFN_vkGetPhysicalDeviceSurfaceCapabilities2EXT)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSurfaceCapabilities2EXT"))
+#endif /* defined(VK_EXT_display_surface_counter) */
+#if defined(VK_EXT_full_screen_exclusive)
+, vkGetPhysicalDeviceSurfacePresentModes2EXT((PFN_vkGetPhysicalDeviceSurfacePresentModes2EXT)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSurfacePresentModes2EXT"))
+#endif /* defined(VK_EXT_full_screen_exclusive) */
+#if defined(VK_EXT_headless_surface)
+, vkCreateHeadlessSurfaceEXT((PFN_vkCreateHeadlessSurfaceEXT)vkGetInstanceProcAddr(inst, "vkCreateHeadlessSurfaceEXT"))
+#endif /* defined(VK_EXT_headless_surface) */
+#if defined(VK_EXT_metal_surface)
+, vkCreateMetalSurfaceEXT((PFN_vkCreateMetalSurfaceEXT)vkGetInstanceProcAddr(inst, "vkCreateMetalSurfaceEXT"))
+#endif /* defined(VK_EXT_metal_surface) */
+#if defined(VK_EXT_sample_locations)
+, vkGetPhysicalDeviceMultisamplePropertiesEXT((PFN_vkGetPhysicalDeviceMultisamplePropertiesEXT)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceMultisamplePropertiesEXT"))
+#endif /* defined(VK_EXT_sample_locations) */
+#if defined(VK_EXT_tooling_info)
+, vkGetPhysicalDeviceToolPropertiesEXT((PFN_vkGetPhysicalDeviceToolPropertiesEXT)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceToolPropertiesEXT"))
+#endif /* defined(VK_EXT_tooling_info) */
+#if defined(VK_FUCHSIA_imagepipe_surface)
+, vkCreateImagePipeSurfaceFUCHSIA((PFN_vkCreateImagePipeSurfaceFUCHSIA)vkGetInstanceProcAddr(inst, "vkCreateImagePipeSurfaceFUCHSIA"))
+#endif /* defined(VK_FUCHSIA_imagepipe_surface) */
+#if defined(VK_GGP_stream_descriptor_surface)
+, vkCreateStreamDescriptorSurfaceGGP((PFN_vkCreateStreamDescriptorSurfaceGGP)vkGetInstanceProcAddr(inst, "vkCreateStreamDescriptorSurfaceGGP"))
+#endif /* defined(VK_GGP_stream_descriptor_surface) */
+#if defined(VK_KHR_android_surface)
+, vkCreateAndroidSurfaceKHR((PFN_vkCreateAndroidSurfaceKHR)vkGetInstanceProcAddr(inst, "vkCreateAndroidSurfaceKHR"))
+#endif /* defined(VK_KHR_android_surface) */
+#if defined(VK_KHR_device_group_creation)
+, vkEnumeratePhysicalDeviceGroupsKHR((PFN_vkEnumeratePhysicalDeviceGroupsKHR)vkGetInstanceProcAddr(inst, "vkEnumeratePhysicalDeviceGroupsKHR"))
+#endif /* defined(VK_KHR_device_group_creation) */
+#if defined(VK_KHR_display)
+, vkCreateDisplayModeKHR((PFN_vkCreateDisplayModeKHR)vkGetInstanceProcAddr(inst, "vkCreateDisplayModeKHR"))
+, vkCreateDisplayPlaneSurfaceKHR((PFN_vkCreateDisplayPlaneSurfaceKHR)vkGetInstanceProcAddr(inst, "vkCreateDisplayPlaneSurfaceKHR"))
+, vkGetDisplayModePropertiesKHR((PFN_vkGetDisplayModePropertiesKHR)vkGetInstanceProcAddr(inst, "vkGetDisplayModePropertiesKHR"))
+, vkGetDisplayPlaneCapabilitiesKHR((PFN_vkGetDisplayPlaneCapabilitiesKHR)vkGetInstanceProcAddr(inst, "vkGetDisplayPlaneCapabilitiesKHR"))
+, vkGetDisplayPlaneSupportedDisplaysKHR((PFN_vkGetDisplayPlaneSupportedDisplaysKHR)vkGetInstanceProcAddr(inst, "vkGetDisplayPlaneSupportedDisplaysKHR"))
+, vkGetPhysicalDeviceDisplayPlanePropertiesKHR((PFN_vkGetPhysicalDeviceDisplayPlanePropertiesKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceDisplayPlanePropertiesKHR"))
+, vkGetPhysicalDeviceDisplayPropertiesKHR((PFN_vkGetPhysicalDeviceDisplayPropertiesKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceDisplayPropertiesKHR"))
+#endif /* defined(VK_KHR_display) */
+#if defined(VK_KHR_external_fence_capabilities)
+, vkGetPhysicalDeviceExternalFencePropertiesKHR((PFN_vkGetPhysicalDeviceExternalFencePropertiesKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceExternalFencePropertiesKHR"))
+#endif /* defined(VK_KHR_external_fence_capabilities) */
+#if defined(VK_KHR_external_memory_capabilities)
+, vkGetPhysicalDeviceExternalBufferPropertiesKHR((PFN_vkGetPhysicalDeviceExternalBufferPropertiesKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceExternalBufferPropertiesKHR"))
+#endif /* defined(VK_KHR_external_memory_capabilities) */
+#if defined(VK_KHR_external_semaphore_capabilities)
+, vkGetPhysicalDeviceExternalSemaphorePropertiesKHR((PFN_vkGetPhysicalDeviceExternalSemaphorePropertiesKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceExternalSemaphorePropertiesKHR"))
+#endif /* defined(VK_KHR_external_semaphore_capabilities) */
+#if defined(VK_KHR_fragment_shading_rate)
+, vkGetPhysicalDeviceFragmentShadingRatesKHR((PFN_vkGetPhysicalDeviceFragmentShadingRatesKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceFragmentShadingRatesKHR"))
+#endif /* defined(VK_KHR_fragment_shading_rate) */
+#if defined(VK_KHR_get_display_properties2)
+, vkGetDisplayModeProperties2KHR((PFN_vkGetDisplayModeProperties2KHR)vkGetInstanceProcAddr(inst, "vkGetDisplayModeProperties2KHR"))
+, vkGetDisplayPlaneCapabilities2KHR((PFN_vkGetDisplayPlaneCapabilities2KHR)vkGetInstanceProcAddr(inst, "vkGetDisplayPlaneCapabilities2KHR"))
+, vkGetPhysicalDeviceDisplayPlaneProperties2KHR((PFN_vkGetPhysicalDeviceDisplayPlaneProperties2KHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceDisplayPlaneProperties2KHR"))
+, vkGetPhysicalDeviceDisplayProperties2KHR((PFN_vkGetPhysicalDeviceDisplayProperties2KHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceDisplayProperties2KHR"))
+#endif /* defined(VK_KHR_get_display_properties2) */
+#if defined(VK_KHR_get_physical_device_properties2)
+, vkGetPhysicalDeviceFeatures2KHR((PFN_vkGetPhysicalDeviceFeatures2KHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceFeatures2KHR"))
+, vkGetPhysicalDeviceFormatProperties2KHR((PFN_vkGetPhysicalDeviceFormatProperties2KHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceFormatProperties2KHR"))
+, vkGetPhysicalDeviceImageFormatProperties2KHR((PFN_vkGetPhysicalDeviceImageFormatProperties2KHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceImageFormatProperties2KHR"))
+, vkGetPhysicalDeviceMemoryProperties2KHR((PFN_vkGetPhysicalDeviceMemoryProperties2KHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceMemoryProperties2KHR"))
+, vkGetPhysicalDeviceProperties2KHR((PFN_vkGetPhysicalDeviceProperties2KHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceProperties2KHR"))
+, vkGetPhysicalDeviceQueueFamilyProperties2KHR((PFN_vkGetPhysicalDeviceQueueFamilyProperties2KHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceQueueFamilyProperties2KHR"))
+, vkGetPhysicalDeviceSparseImageFormatProperties2KHR((PFN_vkGetPhysicalDeviceSparseImageFormatProperties2KHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSparseImageFormatProperties2KHR"))
+#endif /* defined(VK_KHR_get_physical_device_properties2) */
+#if defined(VK_KHR_get_surface_capabilities2)
+, vkGetPhysicalDeviceSurfaceCapabilities2KHR((PFN_vkGetPhysicalDeviceSurfaceCapabilities2KHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSurfaceCapabilities2KHR"))
+, vkGetPhysicalDeviceSurfaceFormats2KHR((PFN_vkGetPhysicalDeviceSurfaceFormats2KHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSurfaceFormats2KHR"))
+#endif /* defined(VK_KHR_get_surface_capabilities2) */
+#if defined(VK_KHR_performance_query)
+, vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR((PFN_vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR)vkGetInstanceProcAddr(inst, "vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR"))
+, vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR((PFN_vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR"))
+#endif /* defined(VK_KHR_performance_query) */
+#if defined(VK_KHR_surface)
 , vkDestroySurfaceKHR((PFN_vkDestroySurfaceKHR)vkGetInstanceProcAddr(inst, "vkDestroySurfaceKHR"))
-, vkGetPhysicalDeviceSurfaceSupportKHR((PFN_vkGetPhysicalDeviceSurfaceSupportKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSurfaceSupportKHR"))
-, vkEnumerateDeviceExtensionProperties((PFN_vkEnumerateDeviceExtensionProperties)vkGetInstanceProcAddr(inst, "vkEnumerateDeviceExtensionProperties"))
 , vkGetPhysicalDeviceSurfaceCapabilitiesKHR((PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR"))
 , vkGetPhysicalDeviceSurfaceFormatsKHR((PFN_vkGetPhysicalDeviceSurfaceFormatsKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSurfaceFormatsKHR"))
 , vkGetPhysicalDeviceSurfacePresentModesKHR((PFN_vkGetPhysicalDeviceSurfacePresentModesKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSurfacePresentModesKHR"))
-, vkDestroyImageView((PFN_vkDestroyImageView)vkGetInstanceProcAddr(inst, "vkDestroyImageView"))
-, vkDestroySwapchainKHR((PFN_vkDestroySwapchainKHR)vkGetInstanceProcAddr(inst, "vkDestroySwapchainKHR"))
-, vkDestroyDevice((PFN_vkDestroyDevice)vkGetInstanceProcAddr(inst, "vkDestroyDevice"))
-, vkCreateDevice((PFN_vkCreateDevice)vkGetInstanceProcAddr(inst, "vkCreateDevice"))
-, vkGetDeviceQueue((PFN_vkGetDeviceQueue)vkGetInstanceProcAddr(inst, "vkGetDeviceQueue"))
-, vkCreateSwapchainKHR((PFN_vkCreateSwapchainKHR)vkGetInstanceProcAddr(inst, "vkCreateSwapchainKHR"))
-, vkGetSwapchainImagesKHR((PFN_vkGetSwapchainImagesKHR)vkGetInstanceProcAddr(inst, "vkGetSwapchainImagesKHR"))
-, vkCreateImageView((PFN_vkCreateImageView)vkGetInstanceProcAddr(inst, "vkCreateImageView"))
-, vkCreateShaderModule((PFN_vkCreateShaderModule)vkGetInstanceProcAddr(inst, "vkCreateShaderModule"))
-, vkDestroyShaderModule((PFN_vkDestroyShaderModule)vkGetInstanceProcAddr(inst, "vkDestroyShaderModule"))
-, vkCreatePipelineLayout((PFN_vkCreatePipelineLayout)vkGetInstanceProcAddr(inst, "vkCreatePipelineLayout"))
-, vkDestroyPipelineLayout((PFN_vkDestroyPipelineLayout)vkGetInstanceProcAddr(inst, "vkDestroyPipelineLayout"))
-, vkCreateRenderPass((PFN_vkCreateRenderPass)vkGetInstanceProcAddr(inst, "vkCreateRenderPass"))
-, vkDestroyRenderPass((PFN_vkDestroyRenderPass)vkGetInstanceProcAddr(inst, "vkDestroyRenderPass"))
-, vkCreateGraphicsPipelines((PFN_vkCreateGraphicsPipelines)vkGetInstanceProcAddr(inst, "vkCreateGraphicsPipelines"))
-, vkDestroyPipeline((PFN_vkDestroyPipeline)vkGetInstanceProcAddr(inst, "vkDestroyPipeline"))
-, vkCreateFramebuffer((PFN_vkCreateFramebuffer)vkGetInstanceProcAddr(inst, "vkCreateFramebuffer"))
-, vkDestroyFramebuffer((PFN_vkDestroyFramebuffer)vkGetInstanceProcAddr(inst, "vkDestroyFramebuffer"))
-, vkCreateCommandPool((PFN_vkCreateCommandPool)vkGetInstanceProcAddr(inst, "vkCreateCommandPool"))
-, vkDestroyCommandPool((PFN_vkDestroyCommandPool)vkGetInstanceProcAddr(inst, "vkDestroyCommandPool"))
-, vkResetCommandPool((PFN_vkResetCommandPool)vkGetInstanceProcAddr(inst, "vkResetCommandPool"))
-, vkCreateSemaphore((PFN_vkCreateSemaphore)vkGetInstanceProcAddr(inst, "vkCreateSemaphore"))
-, vkDestroySemaphore((PFN_vkDestroySemaphore)vkGetInstanceProcAddr(inst, "vkDestroySemaphore"))
-, vkCreateFence((PFN_vkCreateFence)vkGetInstanceProcAddr(inst, "vkCreateFence"))
-, vkDestroyFence((PFN_vkDestroyFence)vkGetInstanceProcAddr(inst, "vkDestroyFence"))
-, vkAllocateCommandBuffers((PFN_vkAllocateCommandBuffers)vkGetInstanceProcAddr(inst, "vkAllocateCommandBuffers"))
-, vkFreeCommandBuffers((PFN_vkFreeCommandBuffers)vkGetInstanceProcAddr(inst, "vkFreeCommandBuffers"))
-, vkBeginCommandBuffer((PFN_vkBeginCommandBuffer)vkGetInstanceProcAddr(inst, "vkBeginCommandBuffer"))
-, vkEndCommandBuffer((PFN_vkEndCommandBuffer)vkGetInstanceProcAddr(inst, "vkEndCommandBuffer"))
-, vkCmdBeginRenderPass((PFN_vkCmdBeginRenderPass)vkGetInstanceProcAddr(inst, "vkCmdBeginRenderPass"))
-, vkCmdBindPipeline((PFN_vkCmdBindPipeline)vkGetInstanceProcAddr(inst, "vkCmdBindPipeline"))
-, vkCmdDraw((PFN_vkCmdDraw)vkGetInstanceProcAddr(inst, "vkCmdDraw"))
-, vkCmdEndRenderPass((PFN_vkCmdEndRenderPass)vkGetInstanceProcAddr(inst, "vkCmdEndRenderPass"))
-, vkCmdCopyBuffer((PFN_vkCmdCopyBuffer)vkGetInstanceProcAddr(inst, "vkCmdCopyBuffer"))
-, vkAcquireNextImageKHR((PFN_vkAcquireNextImageKHR)vkGetInstanceProcAddr(inst, "vkAcquireNextImageKHR"))
-, vkQueuePresentKHR((PFN_vkQueuePresentKHR)vkGetInstanceProcAddr(inst, "vkQueuePresentKHR"))
-, vkQueueSubmit((PFN_vkQueueSubmit)vkGetInstanceProcAddr(inst, "vkQueueSubmit"))
-, vkDeviceWaitIdle((PFN_vkDeviceWaitIdle)vkGetInstanceProcAddr(inst, "vkDeviceWaitIdle"))
-, vkWaitForFences((PFN_vkWaitForFences)vkGetInstanceProcAddr(inst, "vkWaitForFences"))
-, vkResetFences((PFN_vkResetFences)vkGetInstanceProcAddr(inst, "vkResetFences"))
-, vkCreateDescriptorSetLayout((PFN_vkCreateDescriptorSetLayout)vkGetInstanceProcAddr(inst, "vkCreateDescriptorSetLayout"))
-, vkDestroyDescriptorSetLayout((PFN_vkDestroyDescriptorSetLayout)vkGetInstanceProcAddr(inst, "vkDestroyDescriptorSetLayout"))
-, vkCreateBuffer((PFN_vkCreateBuffer)vkGetInstanceProcAddr(inst, "vkCreateBuffer"))
-, vkDestroyBuffer((PFN_vkDestroyBuffer)vkGetInstanceProcAddr(inst, "vkDestroyBuffer"))
-, vkGetBufferMemoryRequirements((PFN_vkGetBufferMemoryRequirements)vkGetInstanceProcAddr(inst, "vkGetBufferMemoryRequirements"))
-, vkGetBufferMemoryRequirements2((PFN_vkGetBufferMemoryRequirements2)vkGetInstanceProcAddr(inst, "vkGetBufferMemoryRequirements2"))
-, vkAllocateMemory((PFN_vkAllocateMemory)vkGetInstanceProcAddr(inst, "vkAllocateMemory"))
-, vkFreeMemory((PFN_vkFreeMemory)vkGetInstanceProcAddr(inst, "vkFreeMemory"))
-, vkBindBufferMemory((PFN_vkBindBufferMemory)vkGetInstanceProcAddr(inst, "vkBindBufferMemory"))
-, vkMapMemory((PFN_vkMapMemory)vkGetInstanceProcAddr(inst, "vkMapMemory"))
-, vkUnmapMemory((PFN_vkUnmapMemory)vkGetInstanceProcAddr(inst, "vkUnmapMemory"))
-, vkInvalidateMappedMemoryRanges((PFN_vkInvalidateMappedMemoryRanges)vkGetInstanceProcAddr(inst, "vkInvalidateMappedMemoryRanges"))
-, vkFlushMappedMemoryRanges((PFN_vkFlushMappedMemoryRanges)vkGetInstanceProcAddr(inst, "vkFlushMappedMemoryRanges"))
-#else
-, vkDestroyInstance(&::vkDestroyInstance)
-, vkEnumeratePhysicalDevices(&::vkEnumeratePhysicalDevices)
-, vkGetPhysicalDeviceQueueFamilyProperties(&::vkGetPhysicalDeviceQueueFamilyProperties)
-, vkGetPhysicalDeviceProperties(&::vkGetPhysicalDeviceProperties)
-, vkDestroySurfaceKHR(&::vkDestroySurfaceKHR)
-, vkGetPhysicalDeviceSurfaceSupportKHR(&::vkGetPhysicalDeviceSurfaceSupportKHR)
-, vkEnumerateDeviceExtensionProperties(&::vkEnumerateDeviceExtensionProperties)
-, vkGetPhysicalDeviceSurfaceCapabilitiesKHR(&::vkGetPhysicalDeviceSurfaceCapabilitiesKHR)
-, vkGetPhysicalDeviceSurfaceFormatsKHR(&::vkGetPhysicalDeviceSurfaceFormatsKHR)
-, vkGetPhysicalDeviceSurfacePresentModesKHR(&::vkGetPhysicalDeviceSurfacePresentModesKHR)
-, vkDestroyImageView(&::vkDestroyImageView)
-, vkDestroySwapchainKHR(&::vkDestroySwapchainKHR)
-, vkDestroyDevice(&::vkDestroyDevice)
-, vkCreateDevice(&::vkCreateDevice)
-, vkGetDeviceQueue(&::vkGetDeviceQueue)
-, vkCreateSwapchainKHR(&::vkCreateSwapchainKHR)
-, vkGetSwapchainImagesKHR(&::vkGetSwapchainImagesKHR)
-, vkCreateImageView(&::vkCreateImageView)
-, vkCreateShaderModule(&::vkCreateShaderModule)
-, vkDestroyShaderModule(&::vkDestroyShaderModule)
-, vkCreatePipelineLayout(&::vkCreatePipelineLayout)
-, vkDestroyPipelineLayout(&::vkDestroyPipelineLayout)
-, vkCreateRenderPass(&::vkCreateRenderPass)
-, vkDestroyRenderPass(&::vkDestroyRenderPass)
-, vkCreateGraphicsPipelines(&::vkCreateGraphicsPipelines)
-, vkDestroyPipeline(&::vkDestroyPipeline)
-, vkCreateFramebuffer(&::vkCreateFramebuffer)
-, vkDestroyFramebuffer(&::vkDestroyFramebuffer)
-, vkCreateCommandPool(&::vkCreateCommandPool)
-, vkDestroyCommandPool(&::vkDestroyCommandPool)
-, vkCreateSemaphore(&::vkCreateSemaphore)
-, vkDestroySemaphore(&::vkDestroySemaphore)
-, vkCreateFence(&::vkCreateFence)
-, vkDestroyFence(&::vkDestroyFence)
-, vkAllocateCommandBuffers(&::vkAllocateCommandBuffers)
-, vkBeginCommandBuffer(&::vkBeginCommandBuffer)
-, vkEndCommandBuffer(&::vkEndCommandBuffer)
-, vkCmdBeginRenderPass(&::vkCmdBeginRenderPass)
-, vkCmdBindPipeline(&::vkCmdBindPipeline)
-, vkCmdDraw(&::vkCmdDraw)
-, vkCmdEndRenderPass(&::vkCmdEndRenderPass)
-, vkAcquireNextImageKHR(&::vkAcquireNextImageKHR)
-, vkQueuePresentKHR(&::vkQueuePresentKHR)
-, vkQueueSubmit(&::vkQueueSubmit)
-, vkDeviceWaitIdle(&::vkDeviceWaitIdle)
-, vkWaitForFences(&::vkWaitForFences)
-, vkResetFences(&::vkResetFences)
-#endif
+, vkGetPhysicalDeviceSurfaceSupportKHR((PFN_vkGetPhysicalDeviceSurfaceSupportKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSurfaceSupportKHR"))
+#endif /* defined(VK_KHR_surface) */
+#if defined(VK_KHR_wayland_surface)
+, vkCreateWaylandSurfaceKHR((PFN_vkCreateWaylandSurfaceKHR)vkGetInstanceProcAddr(inst, "vkCreateWaylandSurfaceKHR"))
+, vkGetPhysicalDeviceWaylandPresentationSupportKHR((PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceWaylandPresentationSupportKHR"))
+#endif /* defined(VK_KHR_wayland_surface) */
+#if defined(VK_KHR_win32_surface)
+, vkCreateWin32SurfaceKHR((PFN_vkCreateWin32SurfaceKHR)vkGetInstanceProcAddr(inst, "vkCreateWin32SurfaceKHR"))
+, vkGetPhysicalDeviceWin32PresentationSupportKHR((PFN_vkGetPhysicalDeviceWin32PresentationSupportKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceWin32PresentationSupportKHR"))
+#endif /* defined(VK_KHR_win32_surface) */
+#if defined(VK_KHR_xcb_surface)
+, vkCreateXcbSurfaceKHR((PFN_vkCreateXcbSurfaceKHR)vkGetInstanceProcAddr(inst, "vkCreateXcbSurfaceKHR"))
+, vkGetPhysicalDeviceXcbPresentationSupportKHR((PFN_vkGetPhysicalDeviceXcbPresentationSupportKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceXcbPresentationSupportKHR"))
+#endif /* defined(VK_KHR_xcb_surface) */
+#if defined(VK_KHR_xlib_surface)
+, vkCreateXlibSurfaceKHR((PFN_vkCreateXlibSurfaceKHR)vkGetInstanceProcAddr(inst, "vkCreateXlibSurfaceKHR"))
+, vkGetPhysicalDeviceXlibPresentationSupportKHR((PFN_vkGetPhysicalDeviceXlibPresentationSupportKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceXlibPresentationSupportKHR"))
+#endif /* defined(VK_KHR_xlib_surface) */
+#if defined(VK_MVK_ios_surface)
+, vkCreateIOSSurfaceMVK((PFN_vkCreateIOSSurfaceMVK)vkGetInstanceProcAddr(inst, "vkCreateIOSSurfaceMVK"))
+#endif /* defined(VK_MVK_ios_surface) */
+#if defined(VK_MVK_macos_surface)
+, vkCreateMacOSSurfaceMVK((PFN_vkCreateMacOSSurfaceMVK)vkGetInstanceProcAddr(inst, "vkCreateMacOSSurfaceMVK"))
+#endif /* defined(VK_MVK_macos_surface) */
+#if defined(VK_NN_vi_surface)
+, vkCreateViSurfaceNN((PFN_vkCreateViSurfaceNN)vkGetInstanceProcAddr(inst, "vkCreateViSurfaceNN"))
+#endif /* defined(VK_NN_vi_surface) */
+#if defined(VK_NV_acquire_winrt_display)
+, vkAcquireWinrtDisplayNV((PFN_vkAcquireWinrtDisplayNV)vkGetInstanceProcAddr(inst, "vkAcquireWinrtDisplayNV"))
+, vkGetWinrtDisplayNV((PFN_vkGetWinrtDisplayNV)vkGetInstanceProcAddr(inst, "vkGetWinrtDisplayNV"))
+#endif /* defined(VK_NV_acquire_winrt_display) */
+#if defined(VK_NV_cooperative_matrix)
+, vkGetPhysicalDeviceCooperativeMatrixPropertiesNV((PFN_vkGetPhysicalDeviceCooperativeMatrixPropertiesNV)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceCooperativeMatrixPropertiesNV"))
+#endif /* defined(VK_NV_cooperative_matrix) */
+#if defined(VK_NV_coverage_reduction_mode)
+, vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV((PFN_vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV"))
+#endif /* defined(VK_NV_coverage_reduction_mode) */
+#if defined(VK_NV_external_memory_capabilities)
+, vkGetPhysicalDeviceExternalImageFormatPropertiesNV((PFN_vkGetPhysicalDeviceExternalImageFormatPropertiesNV)vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceExternalImageFormatPropertiesNV"))
+#endif /* defined(VK_NV_external_memory_capabilities) */
+#if (defined(VK_KHR_device_group) && defined(VK_KHR_surface)) || (defined(VK_KHR_swapchain) && defined(VK_VERSION_1_1))
+, vkGetPhysicalDevicePresentRectanglesKHR((PFN_vkGetPhysicalDevicePresentRectanglesKHR)vkGetInstanceProcAddr(inst, "vkGetPhysicalDevicePresentRectanglesKHR"))
+#endif /* (defined(VK_KHR_device_group) && defined(VK_KHR_surface)) || (defined(VK_KHR_swapchain) && defined(VK_VERSION_1_1)) */
 {
 	if constexpr (s_enableValidationLayers) {
 		VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = { };
@@ -213,75 +279,8 @@ Instance::Instance(VkInstance inst, const PFN_vkGetInstanceProcAddr getInstanceP
 		}
 	}
 
-	uint32_t deviceCount = 0;
-	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
-
-	if (deviceCount) {
-		Vector<VkPhysicalDevice> devices(deviceCount);
-		vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
-
-		VkPhysicalDeviceProperties deviceProperties;
-
-		for (const auto &device : devices) {
-			vkGetPhysicalDeviceProperties(device, &deviceProperties);
-
-			if constexpr (s_printVkInfo) {
-				auto getDeviceTypeString = [&] (VkPhysicalDeviceType type) -> const char * {
-					switch (type) {
-					case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: return "Integrated GPU"; break;
-					case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU: return "Discrete GPU"; break;
-					case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU: return "Virtual GPU"; break;
-					case VK_PHYSICAL_DEVICE_TYPE_CPU: return "CPU"; break;
-					default: return "Other"; break;
-					}
-					return "Other";
-				};
-
-				log::format("Vk-Info", "Device: %s: %s (API: %s, Driver: %s)", getDeviceTypeString(deviceProperties.deviceType),
-						deviceProperties.deviceName,
-						getVersionDescription(deviceProperties.apiVersion).data(),
-						getVersionDescription(deviceProperties.driverVersion).data());
-			}
-
-	        uint32_t queueFamilyCount = 0;
-	        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
-	        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-	        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
-	        int i = 0;
-	        for (const VkQueueFamilyProperties& queueFamily : queueFamilies) {
-				if constexpr (s_printVkInfo) {
-					bool empty = true;
-					StringStream info;
-					info << "[" << i << "] Queue family; Flags: ";
-					if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-						if (!empty) { info << ", "; } else { empty = false; }
-						info << "Graphics";
-					}
-					if (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) {
-						if (!empty) { info << ", "; } else { empty = false; }
-						info << "Compute";
-					}
-					if (queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) {
-						if (!empty) { info << ", "; } else { empty = false; }
-						info << "Transfer";
-					}
-					if (queueFamily.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT) {
-						if (!empty) { info << ", "; } else { empty = false; }
-						info << "SparseBinding";
-					}
-					if (queueFamily.queueFlags & VK_QUEUE_PROTECTED_BIT) {
-						if (!empty) { info << ", "; } else { empty = false; }
-						info << "Protected";
-					}
-					info << "; Count: " << queueFamily.queueCount;
-					log::text("Vk-Info", info.str());
-				}
-
-	            i++;
-	        }
-		}
+	if constexpr (s_printVkInfo) {
+		printDevicesInfo();
 	}
 }
 
@@ -304,125 +303,236 @@ Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurface
 		return false;
 	};
 
-    uint32_t deviceCount = 0;
-    vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+	uint32_t deviceCount = 0;
+	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
 
-    if (deviceCount == 0) {
-        throw std::runtime_error("failed to find GPUs with Vulkan support!");
-    }
+	if (deviceCount == 0) {
+		log::text("Vk", "failed to find GPUs with Vulkan support!");
+		return Vector<Instance::PresentationOptions>();
+	}
 
-    std::vector<VkPhysicalDevice> devices(deviceCount);
-    vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+	Vector<VkPhysicalDevice> devices(deviceCount);
+	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
-    for (const VkPhysicalDevice& device : devices) {
-    	bool graphicsFamilyFound = false; uint32_t graphicsFamily;
-    	bool presentFamilyFound = false; uint32_t presentFamily;
-    	bool transferFamilyFound = false; uint32_t transferFamily;
+	for (const VkPhysicalDevice& device : devices) {
+		uint32_t graphicsFamily = maxOf<uint32_t>();
+		uint32_t presentFamily = maxOf<uint32_t>();
+		uint32_t transferFamily = maxOf<uint32_t>();
+
 		uint32_t queueFamilyCount = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
-		std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+		Vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
 		int i = 0;
 		for (const VkQueueFamilyProperties &queueFamily : queueFamilies) {
-			if ((queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) && !graphicsFamilyFound) {
+			if ((queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) && graphicsFamily == maxOf<uint32_t>()) {
 				graphicsFamily = i;
-				graphicsFamilyFound = true;
 			}
 
-			if ((queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) && ((queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) && !transferFamilyFound) {
+			if ((queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) && ((queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) && transferFamily == maxOf<uint32_t>()) {
 				transferFamily = i;
-				transferFamilyFound = true;
 			}
 
 			VkBool32 presentSupport = false;
 			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
 
-			if (presentSupport && !presentFamilyFound) {
+			if (presentSupport && presentFamily == maxOf<uint32_t>()) {
 				presentFamily = i;
-				presentFamilyFound = true;
 			}
 
 			i++;
 		}
 
-		if (!presentFamilyFound || !graphicsFamilyFound) {
+		if (presentFamily == maxOf<uint32_t>() || graphicsFamily == maxOf<uint32_t>()) {
 			continue;
 		}
 
-		if (!transferFamilyFound) {
+		if (transferFamily == maxOf<uint32_t>()) {
 			transferFamily = graphicsFamily;
 		}
 
 		uint32_t extensionCount;
 		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
 
-		std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+		Vector<VkExtensionProperties> availableExtensions(extensionCount);
 		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
 
-		size_t extFound = 0;
-		for (const char* it : s_deviceExtensions) {
-			for (const VkExtensionProperties &extension : availableExtensions) {
-				if (strcmp(it, extension.extensionName) == 0) {
-					++ extFound;
+		Properties deviceProperties;
+		if (vkGetPhysicalDeviceProperties2) {
+			vkGetPhysicalDeviceProperties2(device, &deviceProperties.device10);
+		} else {
+			vkGetPhysicalDeviceProperties(device, &deviceProperties.device10.properties);
+		}
+
+		bool notFound = false;
+		for (auto &extensionName : s_requiredDeviceExtensions) {
+			if (!extensionName) {
+				break;
+			}
+
+			if (isPromotedExtension(deviceProperties.device10.properties.apiVersion, extensionName)) {
+				continue;
+			}
+
+			bool found = false;
+			for (auto &extension : availableExtensions) {
+				if (strcmp(extensionName, extension.extensionName) == 0) {
+					found = true;
 					break;
 				}
 			}
+
+			if (!found) {
+				if constexpr (s_printVkInfo) {
+					log::format("Vk-Info", "Required device extension not found: %s", extensionName);
+				}
+				notFound = true;
+				break;
+			}
 		}
 
-		if (extFound == s_deviceExtensions.size()) {
-			VkSurfaceCapabilitiesKHR capabilities;
-			Vector<VkSurfaceFormatKHR> formats;
-			Vector<VkPresentModeKHR> presentModes;
+		if (notFound) {
+			break;
+		}
 
-			vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &capabilities);
-
-			uint32_t formatCount;
-			vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
-
-			if (formatCount != 0) {
-				formats.resize(formatCount);
-				vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, formats.data());
+		Vector<StringView> enabledOptionals;
+		Vector<StringView> promotedOptionals;
+		for (auto &extensionName : s_optionalDeviceExtensions) {
+			if (!extensionName) {
+				break;
 			}
 
-			uint32_t presentModeCount;
-			vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+			checkIfExtensionAvailable(deviceProperties.device10.properties.apiVersion,
+					extensionName, availableExtensions, enabledOptionals, promotedOptionals);
+		}
 
-			if (presentModeCount != 0) {
-				presentModes.resize(presentModeCount);
-				vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, presentModes.data());
-			}
+		VkSurfaceCapabilitiesKHR capabilities;
+		Vector<VkSurfaceFormatKHR> formats;
+		Vector<VkPresentModeKHR> presentModes;
 
-			if (!formats.empty() && !presentModes.empty()) {
-				if (ptr) {
-					Properties deviceProperties;
-					vkGetPhysicalDeviceProperties2(device, &deviceProperties.device10);
+		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &capabilities);
 
-					if (isMatch(deviceProperties, ptr)) {
-						ret.emplace_back(Instance::PresentationOptions(device, graphicsFamily, presentFamily, transferFamily,
-								capabilities, move(formats), move(presentModes)));
-						vkGetPhysicalDeviceProperties2(device, &ret.back().properties.device10);
-					}
+		uint32_t formatCount;
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+
+		if (formatCount != 0) {
+			formats.resize(formatCount);
+			vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, formats.data());
+		}
+
+		uint32_t presentModeCount;
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+
+		if (presentModeCount != 0) {
+			presentModes.resize(presentModeCount);
+			vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, presentModes.data());
+		}
+
+		if (!formats.empty() && !presentModes.empty()) {
+			if (!ptr || isMatch(deviceProperties, ptr)) {
+				Features features;
+				if (vkGetPhysicalDeviceFeatures2) {
+					vkGetPhysicalDeviceFeatures2(device, &features.device10);
 				} else {
-					ret.emplace_back(Instance::PresentationOptions(device, graphicsFamily, presentFamily, transferFamily,
-							capabilities, move(formats), move(presentModes)));
-
-					vkGetPhysicalDeviceProperties2(device, &ret.back().properties.device10);
+					vkGetPhysicalDeviceFeatures(device, &features.device10.features);
 				}
 
-				if (vkGetPhysicalDeviceFeatures2) {
-					vkGetPhysicalDeviceFeatures2(device, &ret.back().features.device10);
+				auto req = Features::getRequired();
+				if (features.canEnable(req)) {
+					ret.emplace_back(Instance::PresentationOptions(device, graphicsFamily, presentFamily, transferFamily,
+							capabilities, move(formats), move(presentModes), move(enabledOptionals), move(promotedOptionals)));
+					if (vkGetPhysicalDeviceProperties2) {
+						vkGetPhysicalDeviceProperties2(device, &ret.back().properties.device10);
+					} else {
+						vkGetPhysicalDeviceProperties(device, &ret.back().properties.device10.properties);
+					}
+
+					if (vkGetPhysicalDeviceFeatures2) {
+						vkGetPhysicalDeviceFeatures2(device, &ret.back().features.device10);
+					} else {
+						vkGetPhysicalDeviceFeatures(device, &ret.back().features.device10.features);
+					}
 				}
 			}
         }
-    }
+	}
 
-    return ret;
+	return ret;
 }
 
 VkInstance Instance::getInstance() const {
 	return instance;
+}
+
+void Instance::printDevicesInfo() const {
+	uint32_t deviceCount = 0;
+	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+
+	if (deviceCount) {
+		Vector<VkPhysicalDevice> devices(deviceCount);
+		vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+
+		VkPhysicalDeviceProperties deviceProperties;
+
+		for (const auto &device : devices) {
+			vkGetPhysicalDeviceProperties(device, &deviceProperties);
+
+			auto getDeviceTypeString = [&] (VkPhysicalDeviceType type) -> const char * {
+				switch (type) {
+				case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: return "Integrated GPU"; break;
+				case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU: return "Discrete GPU"; break;
+				case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU: return "Virtual GPU"; break;
+				case VK_PHYSICAL_DEVICE_TYPE_CPU: return "CPU"; break;
+				default: return "Other"; break;
+				}
+				return "Other";
+			};
+
+			log::format("Vk-Info", "Device: %s: %s (API: %s, Driver: %s)", getDeviceTypeString(deviceProperties.deviceType),
+					deviceProperties.deviceName,
+					getVersionDescription(deviceProperties.apiVersion).data(),
+					getVersionDescription(deviceProperties.driverVersion).data());
+
+	        uint32_t queueFamilyCount = 0;
+	        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+	        Vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+	        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+	        int i = 0;
+	        for (const VkQueueFamilyProperties& queueFamily : queueFamilies) {
+				bool empty = true;
+				StringStream info;
+				info << "[" << i << "] Queue family; Flags: ";
+				if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+					if (!empty) { info << ", "; } else { empty = false; }
+					info << "Graphics";
+				}
+				if (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) {
+					if (!empty) { info << ", "; } else { empty = false; }
+					info << "Compute";
+				}
+				if (queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) {
+					if (!empty) { info << ", "; } else { empty = false; }
+					info << "Transfer";
+				}
+				if (queueFamily.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT) {
+					if (!empty) { info << ", "; } else { empty = false; }
+					info << "SparseBinding";
+				}
+				if (queueFamily.queueFlags & VK_QUEUE_PROTECTED_BIT) {
+					if (!empty) { info << ", "; } else { empty = false; }
+					info << "Protected";
+				}
+				info << "; Count: " << queueFamily.queueCount;
+				log::text("Vk-Info", info.str());
+
+	            i++;
+	        }
+		}
+	}
 }
 
 }

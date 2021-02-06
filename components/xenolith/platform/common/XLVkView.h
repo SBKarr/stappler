@@ -60,7 +60,7 @@ public:
 
 	virtual void setAnimationInterval(double) = 0;
 
-	virtual bool run(Rc<Director>, const Callback<bool(double)> &) = 0;
+	virtual bool run(Application *, Rc<Director>, const Callback<bool(double)> &) = 0;
 
 	virtual void pollEvents();
 

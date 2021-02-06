@@ -24,6 +24,9 @@ THE SOFTWARE.
 
 namespace stappler::xenolith::vk {
 
+// minimum for Android devices;
+DescriptorCount DescriptorCount::Common(64, 96, 4, 4);
+
 VkShaderStageFlagBits getVkStageBits(ProgramStage stage) {
 	switch (stage) {
 	case ProgramStage::Vertex: return VK_SHADER_STAGE_VERTEX_BIT; break;
@@ -352,9 +355,70 @@ bool Instance::Features::canEnable(const Features &features) const {
 	return true;
 }
 
+void Instance::Features::enableFromFeatures(const Features &features) {
+	SpanView<VkBool32> src_f0(&device10.features.robustBufferAccess, sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32));
+	SpanView<VkBool32> trg_f0(&features.device10.features.robustBufferAccess, sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32));
+
+	for (size_t i = 0; i < src_f0.size(); ++ i) {
+		if (trg_f0[i]) {
+			const_cast<VkBool32 &>(src_f0[i]) = trg_f0[i];
+		}
+	}
+
+	SpanView<VkBool32> src_f1(&device11.storageBuffer16BitAccess, (sizeof(VkPhysicalDeviceVulkan11Features) - offsetof(VkPhysicalDeviceVulkan11Features, storageBuffer16BitAccess)) / sizeof(VkBool32));
+	SpanView<VkBool32> trg_f1(&features.device11.storageBuffer16BitAccess, (sizeof(VkPhysicalDeviceVulkan11Features) - offsetof(VkPhysicalDeviceVulkan11Features, storageBuffer16BitAccess)) / sizeof(VkBool32));
+
+	for (size_t i = 0; i < src_f1.size(); ++ i) {
+		if (trg_f1[i]) {
+			const_cast<VkBool32 &>(src_f1[i]) = trg_f1[i];
+		}
+	}
+
+	SpanView<VkBool32> src_f2(&device12.samplerMirrorClampToEdge, (sizeof(VkPhysicalDeviceVulkan12Features) - offsetof(VkPhysicalDeviceVulkan12Features, samplerMirrorClampToEdge)) / sizeof(VkBool32));
+	SpanView<VkBool32> trg_f2(&features.device12.samplerMirrorClampToEdge, (sizeof(VkPhysicalDeviceVulkan12Features) - offsetof(VkPhysicalDeviceVulkan12Features, samplerMirrorClampToEdge)) / sizeof(VkBool32));
+
+	for (size_t i = 0; i < src_f2.size(); ++ i) {
+		if (trg_f2[i]) {
+			const_cast<VkBool32 &>(src_f2[i]) = trg_f2[i];
+		}
+	}
+}
+
+void Instance::Features::disableFromFeatures(const Features &features) {
+	SpanView<VkBool32> src_f0(&device10.features.robustBufferAccess, sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32));
+	SpanView<VkBool32> trg_f0(&features.device10.features.robustBufferAccess, sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32));
+
+	for (size_t i = 0; i < src_f0.size(); ++ i) {
+		if (!trg_f0[i]) {
+			const_cast<VkBool32 &>(src_f0[i]) = trg_f0[i];
+		}
+	}
+
+	SpanView<VkBool32> src_f1(&device11.storageBuffer16BitAccess, (sizeof(VkPhysicalDeviceVulkan11Features) - offsetof(VkPhysicalDeviceVulkan11Features, storageBuffer16BitAccess)) / sizeof(VkBool32));
+	SpanView<VkBool32> trg_f1(&features.device11.storageBuffer16BitAccess, (sizeof(VkPhysicalDeviceVulkan11Features) - offsetof(VkPhysicalDeviceVulkan11Features, storageBuffer16BitAccess)) / sizeof(VkBool32));
+
+	for (size_t i = 0; i < src_f1.size(); ++ i) {
+		if (!trg_f1[i]) {
+			const_cast<VkBool32 &>(src_f1[i]) = trg_f1[i];
+		}
+	}
+
+	SpanView<VkBool32> src_f2(&device12.samplerMirrorClampToEdge, (sizeof(VkPhysicalDeviceVulkan12Features) - offsetof(VkPhysicalDeviceVulkan12Features, samplerMirrorClampToEdge)) / sizeof(VkBool32));
+	SpanView<VkBool32> trg_f2(&features.device12.samplerMirrorClampToEdge, (sizeof(VkPhysicalDeviceVulkan12Features) - offsetof(VkPhysicalDeviceVulkan12Features, samplerMirrorClampToEdge)) / sizeof(VkBool32));
+
+	for (size_t i = 0; i < src_f2.size(); ++ i) {
+		if (!trg_f2[i]) {
+			const_cast<VkBool32 &>(src_f2[i]) = trg_f2[i];
+		}
+	}
+}
+
 Instance::Features::Features() {
-	device11.pNext = &device12;
-	device10.pNext = &device11;
+	memset(this, 0, sizeof(Features));
+
+	device12 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES, nullptr };
+	device11 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES, &device12 };
+	device10 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &device11 };
 }
 
 Instance::Features::Features(const Features &f) {
@@ -371,8 +435,11 @@ Instance::Features &Instance::Features::operator=(const Features &f) {
 }
 
 Instance::Properties::Properties() {
-	device11.pNext = &device12;
-	device10.pNext = &device11;
+	memset(this, 0, sizeof(Properties));
+
+	device12 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES, nullptr };
+	device11 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES, &device12 };
+	device10 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, &device11 };
 }
 
 Instance::Properties::Properties(const Properties &p) {
@@ -391,8 +458,10 @@ Instance::Properties &Instance::Properties::operator=(const Properties &p) {
 Instance::PresentationOptions::PresentationOptions() { }
 
 Instance::PresentationOptions::PresentationOptions(VkPhysicalDevice dev, uint32_t gr, uint32_t pres, uint32_t tr,
-		const VkSurfaceCapabilitiesKHR &cap, Vector<VkSurfaceFormatKHR> &&fmt, Vector<VkPresentModeKHR> &&modes)
-: device(dev), graphicsFamily(gr), presentFamily(pres), transferFamily(tr), formats(move(fmt)), presentModes(move(modes)) {
+		const VkSurfaceCapabilitiesKHR &cap, Vector<VkSurfaceFormatKHR> &&fmt, Vector<VkPresentModeKHR> &&modes,
+		Vector<StringView> &&optionals, Vector<StringView> &&promoted)
+: device(dev), graphicsFamily(gr), presentFamily(pres), transferFamily(tr), formats(move(fmt)), presentModes(move(modes))
+, optionalExtensions(move(optionals)), promotedExtensions(move(promoted)) {
 	memcpy(&capabilities, &cap, sizeof(VkSurfaceCapabilitiesKHR));
 }
 
@@ -402,6 +471,8 @@ Instance::PresentationOptions::PresentationOptions(const PresentationOptions &op
 	presentFamily = opts.presentFamily;
 	formats = opts.formats;
 	presentModes = opts.presentModes;
+	optionalExtensions = opts.optionalExtensions;
+	promotedExtensions = opts.promotedExtensions;
 	properties = opts.properties;
 	features = opts.features;
 
@@ -414,6 +485,8 @@ Instance::PresentationOptions &Instance::PresentationOptions::operator=(const Pr
 	presentFamily = opts.presentFamily;
 	formats = opts.formats;
 	presentModes = opts.presentModes;
+	optionalExtensions = opts.optionalExtensions;
+	promotedExtensions = opts.promotedExtensions;
 	properties = opts.properties;
 	features = opts.features;
 
@@ -427,6 +500,8 @@ Instance::PresentationOptions::PresentationOptions(PresentationOptions &&opts) {
 	presentFamily = opts.presentFamily;
 	formats = move(opts.formats);
 	presentModes = move(opts.presentModes);
+	optionalExtensions = move(opts.optionalExtensions);
+	promotedExtensions = move(opts.promotedExtensions);
 	properties = opts.properties;
 	features = opts.features;
 
@@ -439,7 +514,10 @@ Instance::PresentationOptions &Instance::PresentationOptions::operator=(Presenta
 	presentFamily = opts.presentFamily;
 	formats = move(opts.formats);
 	presentModes = move(opts.presentModes);
+	optionalExtensions = move(opts.optionalExtensions);
+	promotedExtensions = move(opts.promotedExtensions);
 	properties = opts.properties;
+	features = opts.features;
 	features = opts.features;
 
 	memcpy((void*) &capabilities, (const void*) &opts.capabilities, sizeof(VkSurfaceCapabilitiesKHR));
@@ -617,5 +695,59 @@ static void s_destroyDebugUtilsMessengerEXT(VkInstance instance, const PFN_vkGet
 }
 
 #endif
+
+bool checkIfExtensionAvailable(uint32_t apiVersion, const char *name, const Vector<VkExtensionProperties> &available,
+		Vector<StringView> &optionals, Vector<StringView> &promoted) {
+	if (apiVersion >= VK_API_VERSION_1_2) {
+		for (auto &it : s_promotedVk12Extensions) {
+			if (it) {
+				if (strcmp(name, it) == 0) {
+					promoted.emplace_back(StringView(name));
+					return true;
+				}
+			}
+		}
+	}
+	if (apiVersion >= VK_API_VERSION_1_1) {
+		for (auto &it : s_promotedVk11Extensions) {
+			if (it) {
+				if (strcmp(name, it) == 0) {
+					promoted.emplace_back(StringView(name));
+					return true;
+				}
+			}
+		}
+	}
+
+	for (auto &it : available) {
+		if (strcmp(name, it.extensionName) == 0) {
+			optionals.emplace_back(StringView(name));
+			return true;
+		}
+	}
+	return false;
+}
+
+bool isPromotedExtension(uint32_t apiVersion, StringView name) {
+	if (apiVersion >= VK_API_VERSION_1_2) {
+		for (auto &it : s_promotedVk12Extensions) {
+			if (it) {
+				if (strcmp(name.data(), it) == 0) {
+					return true;
+				}
+			}
+		}
+	}
+	if (apiVersion >= VK_API_VERSION_1_1) {
+		for (auto &it : s_promotedVk11Extensions) {
+			if (it) {
+				if (strcmp(name.data(), it) == 0) {
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
 
 }

@@ -22,7 +22,6 @@ THE SOFTWARE.
 
 #include "XLVkAllocator.h"
 #include "XLVkTransfer.h"
-#include "XLDrawBuffer.h"
 
 namespace stappler::xenolith::vk {
 
@@ -325,14 +324,14 @@ void Pool::unlock() {
 }
 
 
-AllocPool::~AllocPool() { }
+DeviceAllocPool::~DeviceAllocPool() { }
 
-bool AllocPool::init(Rc<Allocator> alloc) {
+bool DeviceAllocPool::init(Rc<Allocator> alloc) {
 	_allocator = alloc;
 	return true;
 }
 
-Rc<Buffer> AllocPool::spawn(AllocationType type, AllocationUsage usage, VkDeviceSize size) {
+Rc<Buffer> DeviceAllocPool::spawn(AllocationType type, AllocationUsage usage, VkDeviceSize size) {
 	VkBufferCreateInfo bufferInfo { };
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	bufferInfo.size = size;
@@ -341,7 +340,7 @@ Rc<Buffer> AllocPool::spawn(AllocationType type, AllocationUsage usage, VkDevice
 
 	VkBuffer target = VK_NULL_HANDLE;
 	auto dev = _allocator->getDevice();
-	if (dev->getInstance()->vkCreateBuffer(dev->getDevice(), &bufferInfo, nullptr, &target) != VK_SUCCESS) {
+	if (dev->getTable()->vkCreateBuffer(dev->getDevice(), &bufferInfo, nullptr, &target) != VK_SUCCESS) {
 		return nullptr;
 	}
 
@@ -349,7 +348,7 @@ Rc<Buffer> AllocPool::spawn(AllocationType type, AllocationUsage usage, VkDevice
 	VkMemoryRequirements2 memRequirements = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2, &memDedicatedReqs };
 	VkBufferMemoryRequirementsInfo2 info = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2, nullptr, target };
 
-	dev->getInstance()->vkGetBufferMemoryRequirements2(dev->getDevice(), &info, &memRequirements);
+	dev->getTable()->vkGetBufferMemoryRequirements2(dev->getDevice(), &info, &memRequirements);
 
 	mem::Allocator * heap = _allocator->getHeap(memRequirements.memoryRequirements.memoryTypeBits, type);
 
@@ -362,46 +361,28 @@ Rc<Buffer> AllocPool::spawn(AllocationType type, AllocationUsage usage, VkDevice
 	}
 
 	if (auto mem = pool->alloc(memRequirements.memoryRequirements.size, memRequirements.memoryRequirements.alignment)) {
-		if (dev->getInstance()->vkBindBufferMemory(dev->getDevice(), target, mem.mem, mem.offset) == VK_SUCCESS) {
+		if (dev->getTable()->vkBindBufferMemory(dev->getDevice(), target, mem.mem, mem.offset) == VK_SUCCESS) {
 			return Rc<Buffer>::create(this, target, mem, type, usage, size);
 		}
 	}
 
-	dev->getInstance()->vkDestroyBuffer(dev->getDevice(), target, nullptr);
+	dev->getTable()->vkDestroyBuffer(dev->getDevice(), target, nullptr);
 	return nullptr;
 }
 
-Rc<Buffer> AllocPool::upload(memory::pool_t *p, draw::BufferHandle *buf, AllocationType type, AllocationUsage usage) {
-	Rc<Buffer> ret;
-	buf->acquireData([&] (BytesView bytes) {
-		if ((ret = spawn(type, usage, bytes.size()))) {
-			ret->setData((void *)bytes.data(), VkDeviceSize(bytes.size()));
-		}
-	});
-	if (ret) {
-		ret->retain();
-		memory::pool::cleanup_register(p, ret.get(), [] (void *ptr) -> memory::status_t {
-			((Buffer *)ptr)->release();
-			return 0;
-		});
-		buf->setGl(ret.data());
-	}
-	return ret;
-}
-
-VirtualDevice *AllocPool::getDevice() const {
+VirtualDevice *DeviceAllocPool::getDevice() const {
 	return _allocator->getDevice();
 }
 
-Rc<Allocator> AllocPool::getAllocator() const {
+Rc<Allocator> DeviceAllocPool::getAllocator() const {
 	return _allocator;
 }
 
-bool AllocPool::isCoherent(uint32_t idx) const {
+bool DeviceAllocPool::isCoherent(uint32_t idx) const {
 	return _allocator->isCoherent(idx);
 }
 
-void AllocPool::free(mem::MemBlock mem) {
+void DeviceAllocPool::free(mem::MemBlock mem) {
 	auto it = _heaps.find(mem.type);
 	if (it != _heaps.end()) {
 		it->second.free(mem);
@@ -438,7 +419,7 @@ mem::Allocator *Allocator::getHeap(uint32_t typeFilter, AllocationType t) {
 		return &it->second;
 	} else {
 		return &_heaps.emplace(std::piecewise_construct, std::forward_as_tuple(v),
-				std::forward_as_tuple(v, _device->getInstance()->vkAllocateMemory, _device->getInstance()->vkFreeMemory, _device->getDevice())).first->second;
+				std::forward_as_tuple(v, _device->getTable()->vkAllocateMemory, _device->getTable()->vkFreeMemory, _device->getDevice())).first->second;
 	}
 }
 
@@ -582,7 +563,7 @@ Buffer::~Buffer() {
 	}
 }
 
-bool Buffer::init(Rc<AllocPool> p, VkBuffer buf, mem::MemBlock mem, AllocationType type, AllocationUsage usage, VkDeviceSize size) {
+bool Buffer::init(Rc<DeviceAllocPool> p, VkBuffer buf, mem::MemBlock mem, AllocationType type, AllocationUsage usage, VkDeviceSize size) {
 	_pool = p;
 	_buffer = buf;
 	_memory = mem;
@@ -595,12 +576,12 @@ bool Buffer::init(Rc<AllocPool> p, VkBuffer buf, mem::MemBlock mem, AllocationTy
 void Buffer::invalidate(VirtualDevice &dev) {
 	if (_buffer) {
 		if (_mapped) {
-			_pool->getDevice()->getInstance()->vkUnmapMemory(_pool->getDevice()->getDevice(), _memory.mem);
+			_pool->getDevice()->getTable()->vkUnmapMemory(_pool->getDevice()->getDevice(), _memory.mem);
 			_mapped = nullptr;
 		}
 		_pool->free(_memory);
 		_memory = mem::MemBlock();
-		dev.getInstance()->vkDestroyBuffer(dev.getDevice(), _buffer, nullptr);
+		dev.getTable()->vkDestroyBuffer(dev.getDevice(), _buffer, nullptr);
 		_buffer = VK_NULL_HANDLE;
 	}
 }
@@ -609,7 +590,7 @@ void Buffer::setPersistentMapping(bool value) {
 	if (value != _persistentMapping) {
 		_persistentMapping = value;
 		if (!_persistentMapping && _mapped) {
-			_pool->getDevice()->getInstance()->vkUnmapMemory(_pool->getDevice()->getDevice(), _memory.mem);
+			_pool->getDevice()->getTable()->vkUnmapMemory(_pool->getDevice()->getDevice(), _memory.mem);
 			_mapped = nullptr;
 		}
 	}
@@ -640,14 +621,14 @@ bool Buffer::setData(void *data, VkDeviceSize size, VkDeviceSize offset) {
 			mapped = _mapped;
 		} else {
 			if (_persistentMapping) {
-				if (_pool->getDevice()->getInstance()->vkMapMemory(_pool->getDevice()->getDevice(),
+				if (_pool->getDevice()->getTable()->vkMapMemory(_pool->getDevice()->getDevice(),
 						_memory.mem, 0, _size, 0, &mapped) == VK_SUCCESS) {
 					return false;
 				}
 
 				_mapped = mapped;
 			} else {
-				if (_pool->getDevice()->getInstance()->vkMapMemory(_pool->getDevice()->getDevice(),
+				if (_pool->getDevice()->getTable()->vkMapMemory(_pool->getDevice()->getDevice(),
 						_memory.mem, offset, size, 0, &mapped) == VK_SUCCESS) {
 					return false;
 				}
@@ -655,7 +636,7 @@ bool Buffer::setData(void *data, VkDeviceSize size, VkDeviceSize offset) {
 		}
 
 		if (!_pool->isCoherent(_memory.type)) {
-			_pool->getDevice()->getInstance()->vkInvalidateMappedMemoryRanges(_pool->getDevice()->getDevice(), 1, &range);
+			_pool->getDevice()->getTable()->vkInvalidateMappedMemoryRanges(_pool->getDevice()->getDevice(), 1, &range);
 		}
 
 		if (_persistentMapping) {
@@ -665,11 +646,11 @@ bool Buffer::setData(void *data, VkDeviceSize size, VkDeviceSize offset) {
 		}
 
 		if (!_pool->isCoherent(_memory.type)) {
-			_pool->getDevice()->getInstance()->vkFlushMappedMemoryRanges(_pool->getDevice()->getDevice(), 1, &range);
+			_pool->getDevice()->getTable()->vkFlushMappedMemoryRanges(_pool->getDevice()->getDevice(), 1, &range);
 		}
 
 		if (!_persistentMapping) {
-			_pool->getDevice()->getInstance()->vkUnmapMemory(_pool->getDevice()->getDevice(), _memory.mem);
+			_pool->getDevice()->getTable()->vkUnmapMemory(_pool->getDevice()->getDevice(), _memory.mem);
 		}
 		break;
 	}
@@ -699,14 +680,14 @@ Bytes Buffer::getData(VkDeviceSize size, VkDeviceSize offset) {
 			mapped = _mapped;
 		} else {
 			if (_persistentMapping) {
-				if (_pool->getDevice()->getInstance()->vkMapMemory(_pool->getDevice()->getDevice(),
+				if (_pool->getDevice()->getTable()->vkMapMemory(_pool->getDevice()->getDevice(),
 						_memory.mem, 0, _size, 0, &mapped) == VK_SUCCESS) {
 					return Bytes();
 				}
 
 				_mapped = mapped;
 			} else {
-				if (_pool->getDevice()->getInstance()->vkMapMemory(_pool->getDevice()->getDevice(),
+				if (_pool->getDevice()->getTable()->vkMapMemory(_pool->getDevice()->getDevice(),
 						_memory.mem, offset, size, 0, &mapped) == VK_SUCCESS) {
 					return Bytes();
 				}
@@ -714,7 +695,7 @@ Bytes Buffer::getData(VkDeviceSize size, VkDeviceSize offset) {
 		}
 
 		if (!_pool->isCoherent(_memory.type)) {
-			_pool->getDevice()->getInstance()->vkInvalidateMappedMemoryRanges(_pool->getDevice()->getDevice(), 1, &range);
+			_pool->getDevice()->getTable()->vkInvalidateMappedMemoryRanges(_pool->getDevice()->getDevice(), 1, &range);
 		}
 
 		Bytes ret; ret.reserve(size);
@@ -725,7 +706,7 @@ Bytes Buffer::getData(VkDeviceSize size, VkDeviceSize offset) {
 		}
 
 		if (!_persistentMapping) {
-			_pool->getDevice()->getInstance()->vkUnmapMemory(_pool->getDevice()->getDevice(), _memory.mem);
+			_pool->getDevice()->getTable()->vkUnmapMemory(_pool->getDevice()->getDevice(), _memory.mem);
 		}
 		return ret;
 		break;

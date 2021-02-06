@@ -20,39 +20,28 @@
  THE SOFTWARE.
  **/
 
-#ifndef COMPONENTS_XENOLITH_CORE_DRAW_XLDRAWCOMMANDFLOW_H_
-#define COMPONENTS_XENOLITH_CORE_DRAW_XLDRAWCOMMANDFLOW_H_
-
-#include "XLDraw.h"
+#include "XLDrawCommand.h"
 
 namespace stappler::xenolith::draw {
 
-struct CmdCommandGroup {
-	CommandGroup *group;
-};
-
-struct CmdDrawIndexedIndirectCount {
-	BufferHandle *buffer;
-	uint64_t offset;
-	BufferHandle *countBuffer;
-	uint64_t countBufferOffset;
-    uint32_t maxDrawCount;
-    uint32_t stride;
-};
-
-struct Command {
-	Command *next;
-	CommandType type;
-	void *cmd;
-};
-
-struct CommandGroup {
-	CommandGroup *next;
-	Command *cmd;
-};
-
+Command *Command::create(memory::pool_t *p, CommandType t, vk::Pipeline *pipeline) {
+	auto c = (Command *)memory::pool::palloc(p, sizeof(Command));
+	c->next = nullptr;
+	c->type = t;
+	c->pipeline = pipeline;
+	switch (t) {
+	case CommandType::CommandGroup:
+		c->data = nullptr;
+		break;
+	case CommandType::DrawIndexedIndirect:
+		c->data = (CmdDrawIndexedIndirect *)memory::pool::palloc(p, sizeof(CmdDrawIndexedIndirect));
+		break;
+	}
+	return c;
 }
 
+CommandGroup *CommandGroup::create(memory::pool_t *p) {
+	return (CommandGroup *)memory::pool::palloc(p, sizeof(Command));
+}
 
-
-#endif /* COMPONENTS_XENOLITH_CORE_DRAW_XLDRAWCOMMANDFLOW_H_ */
+}

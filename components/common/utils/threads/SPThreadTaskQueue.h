@@ -45,8 +45,8 @@ class TaskQueue : public Ref {
 public:
 	static const TaskQueue *getOwner();
 
-	TaskQueue(memory::pool_t *p = nullptr);
-	TaskQueue(uint16_t count, memory::pool_t *p = nullptr);
+	TaskQueue(memory::pool_t *p = nullptr, StringView name = StringView());
+	TaskQueue(uint16_t count, memory::pool_t *p = nullptr, StringView name = StringView());
 	~TaskQueue();
 
 	void finalize();
@@ -63,7 +63,7 @@ public:
 	bool spawnWorkers();
 
 	// maxOf<uint32_t> - set id to next available
-	bool spawnWorkers(uint32_t threadId, const StringView &name);
+	bool spawnWorkers(uint32_t threadId, StringView name);
 	void cancelWorkers();
 
 	void performAll();
@@ -71,7 +71,7 @@ public:
 
 	size_t getThreadsCount() const { return _threadsCount; }
 
-	std::vector<std::thread::id> getThreadIds() const;
+	StdVector<std::thread::id> getThreadIds() const;
 
 protected:
 	friend class Worker;
@@ -83,23 +83,24 @@ protected:
 	std::condition_variable _sleepCondition;
 
 	std::mutex _inputMutex;
-	std::vector<Rc<Task>> _inputQueue;
+	StdVector<Rc<Task>> _inputQueue;
 	std::atomic<bool> _finalized;
 
 	std::mutex _outputMutex;
-	std::vector<Rc<Task>> _outputQueue;
+	StdVector<Rc<Task>> _outputQueue;
 	std::atomic_flag _flag;
 
 	std::mutex _exitMutex;
 	std::condition_variable _exitCondition;
 
-	std::vector<Worker *> _workers;
+	StdVector<Worker *> _workers;
 
 	uint16_t _threadsCount = std::thread::hardware_concurrency();
 
 	std::atomic<size_t> tasksCounter = 0;
 
 	memory::pool_t *_pool = nullptr;
+	StringView _name = StringView("TaskQueue");
 };
 
 /* Interface for thread workers or handlers */

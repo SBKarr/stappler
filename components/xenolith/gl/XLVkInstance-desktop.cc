@@ -27,27 +27,64 @@ THE SOFTWARE.
 
 #include "glfw3.h"
 
+#if __CDT_PARSER__ && MSYS
+GLFWvkproc glfwGetInstanceProcAddress(VkInstance instance, const char* procname);
+#endif
+
 namespace stappler::xenolith::vk {
 
-Rc<Instance> Instance::create() {
-	const auto pfnCreateInstance [[gnu::unused]] = (PFN_vkCreateInstance) glfwGetInstanceProcAddress(VK_NULL_HANDLE, "vkCreateInstance");
-	const auto pfnEnumerateInstanceVersion [[gnu::unused]] = (PFN_vkEnumerateInstanceVersion) glfwGetInstanceProcAddress(VK_NULL_HANDLE, "vkEnumerateInstanceVersion");
-	const auto pfnEnumerateInstanceLayerProperties [[gnu::unused]] = (PFN_vkEnumerateInstanceLayerProperties) glfwGetInstanceProcAddress(VK_NULL_HANDLE, "vkEnumerateInstanceLayerProperties");
-	const auto pfnEnumerateInstanceExtensionProperties [[gnu::unused]] = (PFN_vkEnumerateInstanceExtensionProperties) glfwGetInstanceProcAddress(VK_NULL_HANDLE, "vkEnumerateInstanceExtensionProperties");
-	const auto pfnGetInstanceProcAddr [[gnu::unused]] = (PFN_vkGetInstanceProcAddr) glfwGetInstanceProcAddress(VK_NULL_HANDLE, "vkGetInstanceProcAddr");
+static uint32_t s_InstanceVersion = 0;
+static Vector<VkLayerProperties> s_InstanceAvailableLayers;
+static Vector<VkExtensionProperties> s_InstanceAvailableExtensions;
 
-    uint32_t layerCount;
+Rc<Instance> Instance::create() {
+	const auto pfnCreateInstance [[gnu::unused]] = (PFN_vkCreateInstance)
+			glfwGetInstanceProcAddress(VK_NULL_HANDLE, "vkCreateInstance");
+	const auto pfnEnumerateInstanceVersion [[gnu::unused]] = (PFN_vkEnumerateInstanceVersion)
+			glfwGetInstanceProcAddress(VK_NULL_HANDLE, "vkEnumerateInstanceVersion");
+	const auto pfnEnumerateInstanceLayerProperties [[gnu::unused]] = (PFN_vkEnumerateInstanceLayerProperties)
+			glfwGetInstanceProcAddress(VK_NULL_HANDLE, "vkEnumerateInstanceLayerProperties");
+	const auto pfnEnumerateInstanceExtensionProperties [[gnu::unused]] = (PFN_vkEnumerateInstanceExtensionProperties)
+			glfwGetInstanceProcAddress(VK_NULL_HANDLE, "vkEnumerateInstanceExtensionProperties");
+	const auto pfnGetInstanceProcAddr [[gnu::unused]] = (PFN_vkGetInstanceProcAddr)
+			glfwGetInstanceProcAddress(VK_NULL_HANDLE, "vkGetInstanceProcAddr");
+
+	if (pfnEnumerateInstanceVersion) {
+	    pfnEnumerateInstanceVersion(&s_InstanceVersion);
+	} else {
+		s_InstanceVersion = VK_API_VERSION_1_0;
+	}
+
+	uint32_t targetVersion = VK_API_VERSION_1_0;
+	if (s_InstanceVersion >= VK_API_VERSION_1_2) {
+		targetVersion = VK_API_VERSION_1_2;
+	} else if (s_InstanceVersion >= VK_API_VERSION_1_1) {
+		targetVersion = VK_API_VERSION_1_1;
+	}
+
+    uint32_t layerCount = 0;
 	pfnEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
-	Vector<VkLayerProperties> availableLayers(layerCount);
-	pfnEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+	s_InstanceAvailableLayers.resize(layerCount);
+	pfnEnumerateInstanceLayerProperties(&layerCount, s_InstanceAvailableLayers.data());
+
+    uint32_t extensionCount = 0;
+    pfnEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+
+    s_InstanceAvailableExtensions.resize(extensionCount);
+    pfnEnumerateInstanceExtensionProperties(nullptr, &extensionCount, s_InstanceAvailableExtensions.data());
 
 	if constexpr (s_printVkInfo) {
-		for (const auto &layerProperties : availableLayers) {
+		for (const auto &layerProperties : s_InstanceAvailableLayers) {
 			log::format("Vk-Info", "Layer: %s (%s/%s)\t - %s", layerProperties.layerName,
 				getVersionDescription(layerProperties.specVersion).data(),
 				getVersionDescription(layerProperties.implementationVersion).data(),
 				layerProperties.description);
+		}
+
+		for (const auto &extension : s_InstanceAvailableExtensions) {
+			log::format("Vk-Info", "Extension: %s %s", extension.extensionName,
+				getVersionDescription(extension.specVersion).data());
 		}
 	}
 
@@ -55,7 +92,7 @@ Rc<Instance> Instance::create() {
 		for (const char *layerName : s_validationLayers) {
 			bool layerFound = false;
 
-			for (const auto &layerProperties : availableLayers) {
+			for (const auto &layerProperties : s_InstanceAvailableLayers) {
 				if (strcmp(layerName, layerProperties.layerName) == 0) {
 					layerFound = true;
 					break;
@@ -63,7 +100,7 @@ Rc<Instance> Instance::create() {
 			}
 
 			if (!layerFound) {
-				log::format("Vk", "required validation layer not found: %s", layerName);
+				log::format("Vk", "Required validation layer not found: %s", layerName);
 				return nullptr;
 			}
 		}
@@ -78,6 +115,37 @@ Rc<Instance> Instance::create() {
 		requiredExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 	}
 
+	for (auto &extensionName : requiredExtensions) {
+		bool extensionsFound = false;
+
+		for (auto &extension : s_InstanceAvailableExtensions) {
+			if (strcmp(extensionName, extension.extensionName) == 0) {
+				extensionsFound = true;
+				break;
+			}
+		}
+
+		if (!extensionsFound) {
+			log::format("Vk", "Required extension not found: %s", extensionName);
+			return nullptr;
+		}
+	}
+
+	Vector<StringView> enabledOptionals;
+	for (auto &extensionName : s_optionalExtension) {
+		if (!extensionName) {
+			break;
+		}
+
+		for (auto &extension : s_InstanceAvailableExtensions) {
+			if (strcmp(extensionName, extension.extensionName) == 0) {
+				requiredExtensions.emplace_back(extensionName);
+				enabledOptionals.emplace_back(StringView(extensionName));
+				break;
+			}
+		}
+	}
+
 	VkInstance instance;
 
 	VkApplicationInfo appInfo = {};
@@ -86,7 +154,7 @@ Rc<Instance> Instance::create() {
 	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 	appInfo.pEngineName = "Stappler+Xenolith";
 	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.apiVersion = VK_API_VERSION_1_2;
+	appInfo.apiVersion = targetVersion;
 
 	VkInstanceCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -119,7 +187,8 @@ Rc<Instance> Instance::create() {
 		log::text("Vk", "Fail to create Vulkan instance");
 		return nullptr;
 	}
-	return Rc<Instance>::alloc(instance, pfnGetInstanceProcAddr);
+
+	return Rc<Instance>::alloc(instance, pfnGetInstanceProcAddr, targetVersion, move(enabledOptionals));
 }
 
 }

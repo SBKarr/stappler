@@ -21,6 +21,7 @@
  **/
 
 #include "XLExecFlow.h"
+#include "XLDrawScheme.h"
 
 namespace stappler::xenolith {
 
@@ -32,6 +33,20 @@ ExecFlow::~ExecFlow() {
 }
 
 bool ExecFlow::init() {
+	return true;
+}
+
+DrawFlow::~DrawFlow() {
+	draw::DrawScheme::destroy(_scheme);
+}
+
+bool DrawFlow::init() {
+	if (!ExecFlow::init()) {
+		return false;
+	}
+
+	_scheme = draw::DrawScheme::create(_pool);
+
 	return true;
 }
 

@@ -32,7 +32,8 @@ public:
     AppDelegate();
     virtual ~AppDelegate();
 
-    virtual bool applicationDidFinishLaunching() override;
+    virtual bool onFinishLaunching() override;
+    virtual void onDeviceInit(vk::PresentationDevice *, const stappler::Callback<void(draw::LoaderStage &&, bool deferred)> &) override;
 };
 
 }

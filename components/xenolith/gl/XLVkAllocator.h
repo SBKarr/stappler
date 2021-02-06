@@ -59,7 +59,7 @@ public:
 
 	virtual ~Buffer();
 
-	bool init(Rc<AllocPool>, VkBuffer, mem::MemBlock, AllocationType, AllocationUsage, VkDeviceSize size);
+	bool init(Rc<DeviceAllocPool>, VkBuffer, mem::MemBlock, AllocationType, AllocationUsage, VkDeviceSize size);
 
 	void invalidate(VirtualDevice &dev);
 
@@ -75,7 +75,7 @@ public:
 	AllocationUsage getUsage() const { return _usage; }
 
 protected:
-	Rc<AllocPool> _pool;
+	Rc<DeviceAllocPool> _pool;
 	VkBuffer _buffer;
 	mem::MemBlock _memory;
 	AllocationType _type;
@@ -86,14 +86,13 @@ protected:
 	bool _persistentMapping = false;
 };
 
-class AllocPool : public Ref {
+class DeviceAllocPool : public Ref {
 public:
-	virtual ~AllocPool();
+	virtual ~DeviceAllocPool();
 
 	bool init(Rc<Allocator>);
 
 	Rc<Buffer> spawn(AllocationType, AllocationUsage, VkDeviceSize size);
-	Rc<Buffer> upload(memory::pool_t *p, draw::BufferHandle *, AllocationType, AllocationUsage);
 
 	VirtualDevice *getDevice() const;
 	Rc<Allocator> getAllocator() const;

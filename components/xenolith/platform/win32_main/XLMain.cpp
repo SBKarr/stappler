@@ -118,6 +118,7 @@ void sp_android_terminate () {
 
 SP_EXTERN_C int _spMain(argc, argv) {
 	std::set_terminate(sp_android_terminate);
+	memory::pool::initialize();
 	std::string packageName = "org.stappler.stappler";
 	stappler::data::Value val = stappler::data::readFile("app.json");
 	stappler::data::Value args;
@@ -174,7 +175,9 @@ SP_EXTERN_C int _spMain(argc, argv) {
 	platform::desktop::_userLanguage = args.getString("locale");
 
     // create the application instance
-    return Application::getInstance()->run();
+    auto ret = Application::getInstance()->run();
+    memory::pool::terminate();
+    return ret;
 }
 
 }

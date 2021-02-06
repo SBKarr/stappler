@@ -231,14 +231,26 @@ using OutputStream = toolkit::TypeTraits::output_stream;
 using InputFileStream = toolkit::TypeTraits::input_file_stream;
 using OutputFileStream = toolkit::TypeTraits::output_file_stream;
 
+// Fix for CDT parser on Windows (MSYS)
+#if __CDT_PARSER__ && MSYS
+template <typename T>
+using Vector = memory::PoolInterface::VectorType<T>;
+
+template <typename T>
+using Function = memory::function<T>;
+
+#else
+
 template <typename T>
 using Vector = toolkit::TypeTraits::vector_type<T>;
 
-template <typename K, typename V, typename Compare = std::less<void>>
-using Map = toolkit::TypeTraits::map_type<K, V, Compare>;
-
 template <typename T>
 using Function = toolkit::TypeTraits::function_type<T>;
+
+#endif
+
+template <typename K, typename V, typename Compare = std::less<void>>
+using Map = toolkit::TypeTraits::map_type<K, V, Compare>;
 
 template <typename T>
 using Callback = memory::callback<T>;
@@ -260,6 +272,43 @@ template <typename T> auto StringToNumber(const memory::PoolInterface::StringTyp
 template <typename T> auto StringToNumber(const char *str) -> T {
 	return StringToNumber<T>(str, nullptr, 0);
 }
+
+NS_SP_END
+
+NS_SP_BEGIN
+
+#if __CDT_PARSER__ && MSYS
+template <typename T>
+using StdVector = memory::PoolInterface::VectorType<T>;
+
+class StdThread {
+public:
+	StdThread() noexcept;
+	StdThread( StdThread&& other ) noexcept;
+
+	template< class Function, class... Args >
+	explicit StdThread( Function&& f, Args&&... args );
+
+	StdThread( const StdThread& ) = delete;
+
+	~StdThread();
+
+	StdThread& operator=( StdThread&& other ) noexcept;
+	void swap( std::thread& other ) noexcept;
+
+	bool joinable() const noexcept;
+	std::thread::id get_id() const noexcept;
+	void * native_handle();
+	void join();
+	void detach();
+};
+
+#else
+template <typename T>
+using StdVector = std::vector<T>;
+
+using StdThread = std::thread;
+#endif
 
 NS_SP_END
 

@@ -162,17 +162,17 @@ void Pool::clear() {
 	this->allocmngr.reset(this);
 }
 
-Pool *Pool::create(Allocator *alloc, bool threadSafe) {
+Pool *Pool::create(Allocator *alloc, PoolFlags flags) {
 	Allocator *allocator = alloc;
 	if (allocator == nullptr) {
-		allocator = new Allocator();
+		allocator = new Allocator((flags & PoolFlags::ThreadSafeAllocator) != PoolFlags::None);
 	}
 
 	auto node = allocator->alloc(MIN_ALLOC - SIZEOF_MEMNODE);
 	node->next = node;
 	node->ref = &node->next;
 
-	Pool *pool = new (node->first_avail) Pool(allocator, node, threadSafe);
+	Pool *pool = new (node->first_avail) Pool(allocator, node, (flags & PoolFlags::ThreadSafePool) == PoolFlags::ThreadSafePool);
 	node->first_avail = pool->self_first_avail = (uint8_t *)pool + SIZEOF_POOL;
 
 	if (!alloc) {
@@ -383,14 +383,14 @@ Status Pool::userdata_get(void **data, const char *key) {
 }
 
 void Pool::lock() {
-	if (threadSafe) {
-		allocator->mutex.lock();
+	if (threadSafe && allocator->mutex) {
+		allocator->mutex->lock();
 	}
 }
 
 void Pool::unlock() {
-	if (threadSafe) {
-		allocator->mutex.unlock();
+	if (threadSafe && allocator->mutex) {
+		allocator->mutex->unlock();
 	}
 }
 

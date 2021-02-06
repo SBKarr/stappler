@@ -28,8 +28,8 @@ THE SOFTWARE.
 
 namespace stappler::mempool::custom {
 
-static uint32_t allocator_mmap_realloc(int filedes, void *ptr, uint32_t idx, uint32_t required) {
 #if LINUX
+static uint32_t allocator_mmap_realloc(int filedes, void *ptr, uint32_t idx, uint32_t required) {
 	auto oldSize = idx * BOUNDARY_SIZE;
 	auto newSize = idx * 2 * BOUNDARY_SIZE;
 	if (newSize / BOUNDARY_SIZE < required) {
@@ -67,36 +67,9 @@ static uint32_t allocator_mmap_realloc(int filedes, void *ptr, uint32_t idx, uin
 	default: break;
 	}
 	return 0;
-#else
-	return 0;
-#endif
-}
-
-Allocator::Allocator() {
-	buf.fill(nullptr);
-}
-
-Allocator::~Allocator() {
-	MemNode *node, **ref;
-
-	if (!mmapPtr) {
-		for (uint32_t index = 0; index < MAX_INDEX; index++) {
-			ref = &buf[index];
-			while ((node = *ref) != nullptr) {
-				*ref = node->next;
-				::free(node);
-			}
-		}
-	} else {
-#if LINUX
-		munmap(mmapPtr, mmapMax * BOUNDARY_SIZE);
-		close(mmapdes);
-#endif
-	}
 }
 
 bool Allocator::run_mmap(uint32_t idx) {
-#if LINUX
 	if (idx == 0) {
 		idx = 1_KiB;
 	}
@@ -140,9 +113,40 @@ bool Allocator::run_mmap(uint32_t idx) {
 	mmapPtr = map;
 	mmapMax = idx;
 	return true;
-#else
-	return false;
+}
+
 #endif
+
+Allocator::Allocator(bool threadSafe) {
+	buf.fill(nullptr);
+
+	if (threadSafe) {
+		mutex = new AllocMutex;
+	}
+}
+
+Allocator::~Allocator() {
+	MemNode *node, **ref;
+
+	if (mutex) {
+		delete mutex;
+	}
+
+#if LINUX
+	if (mmapPtr) {
+		munmap(mmapPtr, mmapMax * BOUNDARY_SIZE);
+		close(mmapdes);
+		return;
+	}
+#endif
+
+	for (uint32_t index = 0; index < MAX_INDEX; index++) {
+		ref = &buf[index];
+		while ((node = *ref) != nullptr) {
+			*ref = node->next;
+			::free(node);
+		}
+	}
 }
 
 void Allocator::set_max(uint32_t size) {
@@ -176,8 +180,8 @@ MemNode *Allocator::alloc(uint32_t in_size) {
 	/* First see if there are any nodes in the area we know
 	 * our node will fit into.
 	 */
+	lock = std::unique_lock<Allocator>(*this);
 	if (index <= last) {
-		lock = std::unique_lock<Allocator>(*this);
 		/* Walk the free list to see if there are
 		 * any nodes on it of the requested size
 		 */
@@ -217,7 +221,6 @@ MemNode *Allocator::alloc(uint32_t in_size) {
 			return node;
 		}
 	} else if (buf[0]) {
-		lock = std::unique_lock<Allocator>(*this);
 		/* If we found nothing, seek the sink (at index 0), if
 		 * it is not empty.
 		 */
@@ -250,6 +253,7 @@ MemNode *Allocator::alloc(uint32_t in_size) {
 	 * and initialize it.
 	 */
 	MemNode *node = nullptr;
+#if LINUX
 	if (mmapPtr) {
 		if (mmapCurrent + (index + 1) > mmapMax) {
 			auto newMax = allocator_mmap_realloc(mmapdes, mmapPtr, mmapMax, mmapCurrent + index + 1);
@@ -275,6 +279,15 @@ MemNode *Allocator::alloc(uint32_t in_size) {
 			return nullptr;
 		}
 	}
+#else
+	if (lock.owns_lock()) {
+		lock.unlock();
+	}
+
+	if ((node = (MemNode *)malloc(size)) == nullptr) {
+		return nullptr;
+	}
+#endif
 
 	node->next = nullptr;
 	node->index = (uint32_t)index;
@@ -351,21 +364,29 @@ void Allocator::free(MemNode *node) {
 		lock.unlock();
 	}
 
-	if (!mmapPtr) {
-		while (freelist != NULL) {
-			node = freelist;
-			freelist = node->next;
-			::free(node);
-		}
+#if LINUX
+	if (mmapPtr) {
+		return;
+	}
+#endif
+
+	while (freelist != NULL) {
+		node = freelist;
+		freelist = node->next;
+		::free(node);
 	}
 }
 
 void Allocator::lock() {
-	mutex.lock();
+	if (mutex) {
+		mutex->lock();
+	}
 }
 
 void Allocator::unlock() {
-	mutex.unlock();
+	if (mutex) {
+		mutex->unlock();
+	}
 }
 
 }

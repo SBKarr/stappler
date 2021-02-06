@@ -25,14 +25,6 @@ THE SOFTWARE.
 
 #include "SPMemPoolStruct.h"
 
-namespace stappler::mempool::apr {
-#if SPAPR
-static constexpr int SPAprDefined = 1;
-#else
-static constexpr int SPAprDefined = 0;
-#endif
-}
-
 #if SPAPR
 
 namespace stappler::mempool::apr {
