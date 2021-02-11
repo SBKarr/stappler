@@ -30,9 +30,11 @@ THE SOFTWARE.
 #include <sys/stat.h>
 #include <sys/file.h>
 
-NS_MDB_BEGIN
+namespace db::minidb {
 
-Transaction::Transaction() { }
+Transaction::Transaction() {
+	_pool = mem::pool::create(mem::pool::acquire());
+}
 
 Transaction::Transaction(const Storage &storage, OpenMode m) {
 	open(storage, m);
@@ -40,6 +42,9 @@ Transaction::Transaction(const Storage &storage, OpenMode m) {
 
 Transaction::~Transaction() {
 	close();
+	if (_pool) {
+		mem::pool::destroy(_pool);
+	}
 }
 
 bool Transaction::open(const Storage &storage, OpenMode mode) {
@@ -49,9 +54,7 @@ bool Transaction::open(const Storage &storage, OpenMode mode) {
 
 	switch (mode) {
 	case OpenMode::Read: _fd = ::open(storage.getSourceName().data(), O_RDONLY); break;
-	case OpenMode::ReadWrite: _fd = ::open(storage.getSourceName().data(), O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH ); break;
-	case OpenMode::Write: _fd = ::open(storage.getSourceName().data(), O_WRONLY); break;
-	case OpenMode::Create: _fd = ::open(storage.getSourceName().data(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH ); break;
+	case OpenMode::Write: _fd = ::open(storage.getSourceName().data(), O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH ); break;
 	}
 
 	if (_fd < 0) {
@@ -63,41 +66,28 @@ bool Transaction::open(const Storage &storage, OpenMode mode) {
 	auto manifest = storage.retainManifest();
 	_fileSize = ::lseek(_fd, 0, SEEK_END);
 
-	if (manifest && mode == OpenMode::Create) {
+	if (!manifest) {
 		return false;
 	}
 
-	if (!manifest && mode != OpenMode::Create) {
-		return false;
-	}
-
-	if (_fileSize == 0 && mode == OpenMode::Create) {
-		_storage = &storage;
-		_manifest = manifest;
-		_pageCache = new (_pool) PageCache(_storage, _manifest ? _manifest->getPageSize() : _storage->getPageSize(), _fd, true);
-		return true;
-	} else if (_fileSize > 0) {
-		_mode = mode == OpenMode::Create ? OpenMode::ReadWrite : mode;
+	if (_fileSize > 0) {
+		_mode = mode;
 		_storage = &storage;
 		_manifest = manifest;
 
-		if (mode != OpenMode::Create) {
-			openPageForReading(0, [&] (mem::BytesView bytes) {
-				auto h = (StorageHeader *)bytes.data();
-				if (h->mtime != manifest->getMtime()) {
-					storage.releaseManifest(manifest);
-					manifest = Manifest::create(storage.getPool(), bytes);
-					if (manifest) {
-						manifest->readManifest(*this);
-						storage.swapManifest(manifest);
-						_manifest = manifest;
-					}
+		_storage->openHeader(_fd, [&] (StorageHeader &header) -> bool {
+			if (header.mtime != manifest->getMtime()) {
+				storage.releaseManifest(manifest);
+				manifest = Manifest::create(storage.getPool(), mem::BytesView((const uint8_t *)&header, sizeof(StorageHeader)));
+				if (manifest) {
+					storage.swapManifest(manifest);
+					_manifest = manifest;
 				}
-			});
-		} else {
-			return false;
-		}
-		_pageCache = new (_pool) PageCache(_storage, _manifest ? _manifest->getPageSize() : _storage->getPageSize(), _fd, true);
+			}
+			return true;
+		}, OpenMode::Read);
+
+		_pageCache = new (_pool) PageCache(_storage, _fd, true);
 		return true;
 	}
 
@@ -106,9 +96,6 @@ bool Transaction::open(const Storage &storage, OpenMode mode) {
 }
 
 void Transaction::close() {
-	if (!_success && _mode == OpenMode::Create) {
-		::unlink(_storage->getSourceName().data());
-	}
 	if (_storage && _manifest) {
 		if (_success && _mode != OpenMode::Read) {
 			_manifest->performManifestUpdate(*this);
@@ -125,54 +112,20 @@ void Transaction::close() {
 	}
 }
 
-TreePage Transaction::openPage(uint32_t idx, OpenMode mode) const {
-	if (!_storage || _fd == -1 || !_pageCache) {
-		return TreePage(nullptr);
-	}
-
-	if ((!_manifest && idx == 0) || (_manifest && idx >= _manifest->getPageCount())) {
-		return TreePage(nullptr);
+const PageNode * Transaction::openPage(uint32_t idx, OpenMode mode) const {
+	if (!_storage || !_pageCache) {
+		return nullptr;
 	}
 
 	if (!isModeAllowed(mode)) {
-		return TreePage(nullptr);
+		return nullptr;
 	}
 
-	if (auto node = _pageCache->openPage(idx, mode)) {
-		return TreePage(node);
-	}
-	return TreePage(nullptr);
+	return _pageCache->openPage(idx, mode);
 }
 
-void Transaction::closePage(const TreePage &frame, bool async) const {
-	_pageCache->closePage(frame.node);
-}
-
-bool Transaction::openPageForWriting(uint32_t idx, const PageCallback &cb) const {
-	if (auto frame = openPage(idx, OpenMode::Write)) {
-		auto ret = cb(frame.bytes());
-		closePage(frame);
-		return ret;
-	}
-	return false;
-}
-
-bool Transaction::openPageForReadWrite(uint32_t idx, const PageCallback &cb) const {
-	if (auto frame = openPage(idx, OpenMode::ReadWrite)) {
-		auto ret = cb(frame.bytes());
-		closePage(frame);
-		return ret;
-	}
-	return false;
-}
-
-bool Transaction::openPageForReading(uint32_t idx, const PageCallback &cb) const {
-	if (auto frame = openPage(idx, OpenMode::Read)) {
-		auto ret = cb(frame.bytes());
-		closePage(frame);
-		return ret;
-	}
-	return false;
+void Transaction::closePage(const PageNode *node, bool async) const {
+	_pageCache->closePage(node);
 }
 
 void Transaction::invalidate() {
@@ -181,9 +134,8 @@ void Transaction::invalidate() {
 
 bool Transaction::isModeAllowed(OpenMode mode) const {
 	switch (mode) {
-	case OpenMode::Read: return (_mode == OpenMode::Read) || (_mode == OpenMode::ReadWrite); break;
-	case OpenMode::ReadWrite: return _mode == OpenMode::ReadWrite; break;
-	case OpenMode::Write: return (_mode == OpenMode::Write) || (_mode == OpenMode::ReadWrite); break;
+	case OpenMode::Read: return (_mode == OpenMode::Read) || (_mode == OpenMode::Write); break;
+	case OpenMode::Write: return (_mode == OpenMode::Write); break;
 	default: break;
 	}
 	return false;
@@ -203,7 +155,7 @@ bool Transaction::readHeader(StorageHeader *target) const {
 	return false;
 }
 
-static mem::Vector<mem::StringView> Transaction_getQueryName(Worker &worker, const db::Query &query) {
+/*static mem::Vector<mem::StringView> Transaction_getQueryName(Worker &worker, const db::Query &query) {
 	mem::Vector<mem::StringView> names;
 	if (!worker.shouldIncludeAll()) {
 		names.reserve(worker.scheme().getFields().size());
@@ -217,14 +169,14 @@ static mem::Vector<mem::StringView> Transaction_getQueryName(Worker &worker, con
 		});
 	}
 	return names;
-}
+}*/
 
 mem::Value Transaction::select(Worker &worker, const db::Query &query) {
 	if (!_manifest) {
 		return mem::Value();
 	}
 
-	auto scheme = _manifest->getScheme(worker.scheme());
+	/*auto scheme = _manifest->getScheme(worker.scheme());
 	if (!scheme) {
 		return mem::Value();
 	}
@@ -295,7 +247,7 @@ mem::Value Transaction::select(Worker &worker, const db::Query &query) {
 			}
 		}
 		return ret;
-	}
+	}*/
 
 	return mem::Value();
 }
@@ -305,7 +257,7 @@ mem::Value Transaction::create(Worker &worker, mem::Value &idata) {
 		return mem::Value();
 	}
 
-	auto scheme = _manifest->getScheme(worker.scheme());
+	/*auto scheme = _manifest->getScheme(worker.scheme());
 	if (!scheme) {
 		return mem::Value();
 	}
@@ -353,7 +305,7 @@ mem::Value Transaction::create(Worker &worker, mem::Value &idata) {
 			}
 		}
 		return ret;
-	}
+	}*/
 
 	return mem::Value();
 }
@@ -371,7 +323,7 @@ mem::Value Transaction::patch(Worker &worker, uint64_t target, const mem::Value 
 		return mem::Value();
 	}
 
-	auto scheme = _manifest->getScheme(worker.scheme());
+	/*auto scheme = _manifest->getScheme(worker.scheme());
 	if (!scheme) {
 		return mem::Value();
 	}
@@ -418,7 +370,7 @@ mem::Value Transaction::patch(Worker &worker, uint64_t target, const mem::Value 
 			return v;
 		}
 		return mem::Value();
-	}
+	}*/
 
 	return mem::Value();
 }
@@ -437,7 +389,7 @@ size_t Transaction::count(Worker &, const db::Query &) {
 
 bool Transaction::pushObject(const Scheme &scheme, uint64_t oid, const mem::Value &data) const {
 	// lock sheme on write
-	std::unique_lock<std::shared_mutex> lock(scheme.scheme->mutex);
+	/*std::unique_lock<std::shared_mutex> lock(scheme.scheme->mutex);
 
 	if (!checkUnique(scheme, data)) {
 		return mem::Value();
@@ -470,11 +422,11 @@ bool Transaction::pushObject(const Scheme &scheme, uint64_t oid, const mem::Valu
 	}
 
 	++ scheme.scheme->counter;
-	scheme.scheme->dirty = true;
+	scheme.scheme->dirty = true;*/
 	return true;
 }
 
-bool Transaction::checkUnique(const Scheme &scheme, const mem::Value &) const {
+/*bool Transaction::checkUnique(const Scheme &scheme, const mem::Value &) const {
 	return false;
 }
 
@@ -499,6 +451,6 @@ mem::Value Transaction::decodeValue(const db::Scheme &scheme, const TreeTableLea
 	}
 	val.setInteger(cell.value, "__oid");
 	return val;
-}
+}*/
 
-NS_MDB_END
+}

@@ -380,7 +380,7 @@ bool PresentationDevice::performDrawFlow(Rc<DrawFlow> df, thread::TaskQueue &q) 
 	VkSemaphore waitSemaphores[] = {_imageAvailableSemaphores[_currentFrame]};
 	VkSemaphore signalSemaphores[] = {_renderFinishedSemaphores[_currentFrame]};
 
-	DrawDevice::FrameInfo info({
+	DrawFrameInfo info({
 		&_options,
 		_swapChainFramebuffers[imageIndex],
 		waitSemaphores,

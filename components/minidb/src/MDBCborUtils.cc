@@ -26,9 +26,7 @@ THE SOFTWARE.
 
 #define CBOR_DEBUG 0
 
-NS_MDB_BEGIN
-
-namespace cbor {
+namespace db::minidb::cbor {
 
 const uint8_t CborHeaderData[] = { (uint8_t)0xd9, (uint8_t)0xd9, (uint8_t)0xf7 };
 uint32_t CborHeaderSize = 3;
@@ -800,5 +798,3 @@ bool IteratorContext::pathStrings(const char **path, int npath) {
 }
 
 }
-
-NS_MDB_END

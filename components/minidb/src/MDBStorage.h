@@ -25,18 +25,19 @@ THE SOFTWARE.
 
 #include "MDBHandle.h"
 
-NS_MDB_BEGIN
+namespace db::minidb {
+
+struct StorageParams {
+	uint32_t pageSize = DefaultPageSize;
+	Vector<>
+};
 
 class Storage : public mem::AllocBase {
 public:
-	struct Params {
-		uint32_t pageSize = DefaultPageSize;
-	};
-
 	using PageCallback = mem::Callback<bool(void *mem, uint32_t size)>;
 
-	static Storage *open(mem::pool_t *, mem::StringView path, Params = Params());
-	static Storage *open(mem::pool_t *, mem::BytesView data, Params = Params());
+	static Storage *open(mem::pool_t *, mem::StringView path, StorageParams = StorageParams());
+	static Storage *open(mem::pool_t *, mem::BytesView data, StorageParams = StorageParams());
 
 	static void destroy(Storage *);
 
@@ -49,6 +50,8 @@ public:
 
 	bool isValid() const;
 	operator bool() const;
+
+	bool openHeader(int fd, const mem::Callback<bool(StorageHeader &)> &, OpenMode) const;
 
 	mem::BytesView openPage(uint32_t idx, int fd) const;
 	void closePage(mem::BytesView) const;
@@ -64,18 +67,18 @@ protected:
 
 	void free();
 
-	Storage(mem::pool_t *, mem::StringView path, Params params);
-	Storage(mem::pool_t *, mem::BytesView data, Params params);
+	Storage(mem::pool_t *, mem::StringView path, StorageParams params);
+	Storage(mem::pool_t *, mem::BytesView data, StorageParams params);
 
 	mem::pool_t *_pool = nullptr;
 	mem::StringView _sourceName;
 	mutable mem::Vector<mem::BytesView> _sourceMemory;
-	Params _params = Params();
+	StorageParams _params = StorageParams();
 
 	mutable mem::Mutex _mutex;
 	mutable Manifest * _manifest = nullptr;
 };
 
-NS_MDB_END
+}
 
 #endif /* COMPONENTS_MINIDB_SRC_MDBSTORAGE_H_ */

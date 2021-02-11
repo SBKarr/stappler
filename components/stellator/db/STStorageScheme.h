@@ -97,6 +97,7 @@ public:
 	void define(mem::Vector<Field> &&il);
 	void define(AccessRole &&role);
 	void define(UniqueConstraintDef &&);
+	void define(mem::Bytes &&);
 
 	template <typename T, typename ... Args>
 	void define(T &&il, Args && ... args);
@@ -120,6 +121,7 @@ public:
 	const mem::Map<mem::String, Field> & getFields() const;
 	const Field *getField(const mem::StringView &str) const;
 	const mem::Vector<UniqueConstraint> &getUnique() const;
+	mem::BytesView getCompressDict() const;
 
 	const Field *getForeignLink(const FieldObject *f) const;
 	const Field *getForeignLink(const Field &f) const;
@@ -287,6 +289,7 @@ protected:
 	AccessTable roles;
 	Field oidField;
 	mem::Vector<UniqueConstraint> unique;
+	mem::Bytes _compressDict;
 };
 
 SP_DEFINE_ENUM_AS_MASK(Scheme::Options)

@@ -161,19 +161,17 @@ SP_EXTERN_C int _spMain(argc, argv) {
 	db::Scheme::initSchemes(schemes);
 
 	auto writablePath = filesystem::writablePath("tmp.minidb");
-	db::minidb::Storage *storage = db::minidb::Storage::open(pool, writablePath);
 
-	storage->init(schemes);
+	db::minidb::Storage *storage = db::minidb::Storage::open(pool, writablePath);
 
 	db::minidb::Transaction t;
 	if (t.open(*storage, db::minidb::OpenMode::Read)) {
-		t.openPageForReading(0, [&] (void *ptr, size_t size) {
-			db::minidb::inspectManifestPage([&] (StringView str) {
-				std::cout << str;
-			}, ptr, size);
-			return true;
-		});
+		if (auto p = t.openPage(0, db::minidb::OpenMode::Read)) {
+			minidb::inspectManifestPage([&] (mem::StringView str) { std::cout << str; }, p->bytes.data(), p->bytes.size());
+		}
 	}
+
+	/* storage->init(schemes); */
 
 	return 0;
 }

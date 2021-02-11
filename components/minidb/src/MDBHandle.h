@@ -26,7 +26,7 @@ THE SOFTWARE.
 #include "MDB.h"
 #include "MDBTransaction.h"
 
-NS_MDB_BEGIN
+namespace db::minidb {
 
 class Handle : public db::Interface {
 public:
@@ -83,10 +83,10 @@ protected: // prop interface
 
 	size_t _transactionCounter = 0;
 	const Storage *_storage = nullptr;
-	OpenMode _mode = OpenMode::ReadWrite;
+	OpenMode _mode = OpenMode::Write;
 	minidb::Transaction _transaction;
 };
 
-NS_MDB_END
+}
 
 #endif /* COMPONENTS_MINIDB_SRC_MDBHANDLE_H_ */

@@ -26,7 +26,7 @@ THE SOFTWARE.
 #include "MDBManifest.h"
 #include "MDBPageCache.h"
 
-NS_MDB_BEGIN
+/*NS_MDB_BEGIN
 
 using Oid = stappler::ValueWrapper<uint64_t, class OidTag>;
 using PageNumber = stappler::ValueWrapper<uint32_t, class PageNumberTag>;
@@ -131,6 +131,6 @@ struct TreeStack {
 	void offset(TreePage &page, uint16_p cell, int32_t offset);
 };
 
-NS_MDB_END
+NS_MDB_END*/
 
 #endif /* COMPONENTS_MINIDB_SRC_MDBTREE_H_ */

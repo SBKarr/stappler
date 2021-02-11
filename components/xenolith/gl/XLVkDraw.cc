@@ -88,7 +88,7 @@ bool DrawDevice::init(Rc<Instance> inst, Rc<Allocator> alloc, VkQueue q, uint32_
 
 	_defaultPipelineLayout = Rc<PipelineLayout>::create(*this);
 
-	for (size_t i = toInt(draw::LayoutFormat::None) + 1; i <= toInt(draw::LayoutFormat::Default); ++ i) {
+	for (auto i = toInt(draw::LayoutFormat::None) + 1; i <= toInt(draw::LayoutFormat::Default); ++ i) {
 		_pipelineLayouts.emplace(draw::LayoutFormat(i), Rc<PipelineLayout>::create(*this, draw::LayoutFormat(i), _currentDesriptorCount));
 	}
 
@@ -146,9 +146,12 @@ bool DrawDevice::spawnWorkers(thread::TaskQueue &q, size_t nImages, const Instan
 		}}),
 		draw::PipelineParams({
 			Rect(0.0f, 0.0f, opts.capabilities.currentExtent.width, opts.capabilities.currentExtent.height),
-			URect{0, 0, opts.capabilities.currentExtent.width, opts.capabilities.currentExtent.height}
+			URect{0, 0, opts.capabilities.currentExtent.width, opts.capabilities.currentExtent.height},
+			draw::VertexFormat::None,
+			draw::LayoutFormat::Default,
+			draw::RenderPassBind::Default,
+			draw::DynamicState::None
 		}));
-
 
 	uint32_t idx = std::min(uint32_t(q.getThreadsCount() / 4), uint32_t(1));
 	Vector<uint32_t> indexes;

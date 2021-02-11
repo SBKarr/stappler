@@ -28,10 +28,7 @@ THE SOFTWARE.
 #include "STStorageField.h"
 #include <shared_mutex>
 
-#define NS_MDB_BEGIN		namespace db::minidb {
-#define NS_MDB_END			}
-
-NS_MDB_BEGIN
+namespace db::minidb {
 
 using uint64_p = uint64_t *;
 using uint32_p = uint32_t *;
@@ -44,22 +41,26 @@ class Transaction;
 class Manifest;
 class PageCache;
 
-enum IndexType {
-	Bytes,
-	Numeric,
-	Reverse,
+enum class OpenMode {
+	Read,
+	Write,
 };
 
 enum class PageType : uint8_t {
 	None,
 	OidTable = 0b0001'0001,
 	OidContent = 0b0001'0010,
-	NumIndexTable = 0b0010'0001,
+	/*NumIndexTable = 0b0010'0001,
 	NumIndexContent = 0b0010'0010,
 	RevIndexTable =		0b0100'0001,
 	RevIndexContent =	0b0100'0010,
 	BytIndexTable =		0b1000'0001,
-	BytIndexContent =	0b1000'0010,
+	BytIndexContent =	0b1000'0010,*/
+};
+
+struct VirtualPageHeader {
+	uint32_t type : 8;
+	uint32_t ncells : 24; // so, 64MiB pages allows 4-byte min cell
 };
 
 struct OidTreePageHeader {
@@ -86,8 +87,18 @@ struct StorageHeader {
 	uint64_t mtime; // 8 - 15
 	uint32_t pageCount; // 16 - 19
 	uint64_t oid; // 20-27
-	uint64_t dict; // 28-35
-	OidTreePageHeader pageHeader;
+};
+
+struct PageNode {
+	uint32_t number = 0;
+	mem::BytesView bytes;
+	OpenMode mode = OpenMode::Read;
+	PageType type = PageType::None;
+	mem::Time access;
+	mutable std::atomic<uint32_t> refCount = 1;
+
+	PageNode(uint32_t n, mem::BytesView b, OpenMode m, PageType p, mem::Time t)
+	: number(n), bytes(b), mode(m), type(p), access(t) { }
 };
 
 /*struct TreeTableLeafCell {
@@ -111,14 +122,36 @@ enum class UpdateFlags : uint32_t {
 	PageCount = 1 << 1,
 };
 
-enum class OpenMode {
-	Read,
-	Write,
-	ReadWrite,
+SP_DEFINE_ENUM_AS_MASK(UpdateFlags);
+
+enum class OidFlags : uint8_t {
+	None = 0,
+	Manifest = 1 << 0, // object is manifest block
+	Dictionary = 1 << 1, // object is dictionary
+	Compressed = 1 << 2,
+	CompressedWithDictionary = 1 << 3,
+	Continuation = 1 << 4, // object is continuation after page-wrap
+	Chain = 1 << 5, // object is in next chain in another object
 };
 
-constexpr uint32_t DefaultPageSize = 64_KiB;
-constexpr mem::StringView OverflowMark = "Ovfl";
+struct alignas(8) Oid {
+	uint64_t flags : 8;
+	uint64_t dictId : 8;
+	uint64_t value : 48;
+};
+
+struct OidCell {
+	Oid oid;
+	uint32_t next;
+	mem::BytesView data;
+};
+
+constexpr uint32_t DefaultPageSize = 2_MiB;
+constexpr uint32_t ManifestPageSize = 32_KiB;
+constexpr uint64_t OidMax = 0xFFFF'FFFF'FFFFULL;
+
+constexpr auto FormatTitle = mem::StringView("minidb");
+constexpr uint8_t FormatVersion = 1;
 
 template <typename T>
 static constexpr bool has_single_bit(T x) noexcept {
@@ -126,7 +159,7 @@ static constexpr bool has_single_bit(T x) noexcept {
 }
 
 uint32_t getSystemPageSize();
-IndexType getDefaultIndexType(db::Type, db::Flags);
+uint8_t getPageSizeByte(uint32_t);
 
 static constexpr uint64_t VarUintMax = 0x1FFFFFFFFFFFFFFFULL; // 2305843009213693951
 
@@ -134,13 +167,9 @@ size_t getVarUintSize(uint64_t);
 uint64_t readVarUint(uint8_p, uint8_p *pl = nullptr);
 size_t writeVarUint(uint8_t *p, uint64_t);
 
-void inspectManifestPage(const mem::Callback<void(mem::StringView)> &, void *, size_t);
-void inspectTreePage(const mem::Callback<void(mem::StringView)> &, void *, size_t, mem::Map<uint64_t, uint32_t> * = nullptr, bool deepInspect = true);
-void inspectScheme(const Transaction &, const db::Scheme &, const mem::Callback<void(mem::StringView)> &, uint32_t depth = stappler::maxOf<uint32_t>());
-
-size_t getPayloadSize(PageType, const mem::Value &);
-size_t writePayload(PageType, uint8_p, const mem::Value &);
-size_t writeOverflowPayload(const Transaction &, PageType, uint32_t page, const mem::Value &);
+void inspectManifestPage(const mem::Callback<void(mem::StringView)> &, const void *, size_t);
+// void inspectTreePage(const mem::Callback<void(mem::StringView)> &, void *, size_t, mem::Map<uint64_t, uint32_t> * = nullptr, bool deepInspect = true);
+// void inspectScheme(const Transaction &, const db::Scheme &, const mem::Callback<void(mem::StringView)> &, uint32_t depth = stappler::maxOf<uint32_t>());
 
 mem::Value readOverflowPayload(const Transaction &t, uint32_t ptr, const mem::Vector<mem::StringView> &filter);
 mem::Value readPayload(const uint8_p ptr, const mem::Vector<mem::StringView> &filter);
@@ -153,6 +182,6 @@ void free(mem::BytesView);
 
 }
 
-NS_MDB_END
+}
 
 #endif /* COMPONENTS_MINIDB_SRC_MDB_H_ */

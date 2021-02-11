@@ -26,6 +26,11 @@ THE SOFTWARE.
 #include <vulkan/vulkan.h>
 #include "XLDefine.h"
 
+#if LINUX
+#define VK_BUFFER_USAGE_RAY_TRACING_BIT_KHR 0x00000400
+#define VK_BUFFER_USAGE_RAY_TRACING_BIT_NV VK_BUFFER_USAGE_RAY_TRACING_BIT_KHR
+#endif
+
 namespace stappler::xenolith::vk {
 
 enum class AllocationUsage {

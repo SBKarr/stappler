@@ -23,7 +23,7 @@ THE SOFTWARE.
 #include "MDBTree.h"
 #include "MDBTransaction.h"
 
-NS_MDB_BEGIN
+/*NS_MDB_BEGIN
 
 void TreeCell::updateSize() {
 	switch (type) {
@@ -736,4 +736,4 @@ void TreeStack::offset(TreePage &page, uint16_p cell, int32_t offset) {
 	}
 }
 
-NS_MDB_END
+NS_MDB_END*/

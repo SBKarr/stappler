@@ -201,6 +201,10 @@ void Scheme::define(UniqueConstraintDef &&def) {
 	unique.emplace_back(mem::StringView(mem::toString(name, "_", stappler::string::tolower(def.name), "_unique")).pdup(unique.get_allocator()), std::move(fields));
 }
 
+void Scheme::define(mem::Bytes &&dict) {
+	_compressDict = std::move(dict);
+}
+
 void Scheme::addFlags(Options opts) {
 	flags |= opts;
 }
@@ -252,6 +256,10 @@ const Field *Scheme::getField(const mem::StringView &key) const {
 
 const mem::Vector<Scheme::UniqueConstraint> &Scheme::getUnique() const {
 	return unique;
+}
+
+mem::BytesView Scheme::getCompressDict() const {
+	return _compressDict;
 }
 
 const Field *Scheme::getForeignLink(const FieldObject *f) const {

@@ -109,11 +109,11 @@ bool Pipeline::init(VirtualDevice &dev, const PipelineOptions &opts, draw::Pipel
 
 	Vector<VkDynamicState> dynamicStates;
 
-	if ((_params.dynamicState & draw::DynamicState::Viewport) != draw::DynamicState::None) {
+	if ((params.dynamicState & draw::DynamicState::Viewport) != draw::DynamicState::None) {
 		dynamicStates.emplace_back(VK_DYNAMIC_STATE_VIEWPORT);
 	}
 
-	if ((_params.dynamicState & draw::DynamicState::Scissor) != draw::DynamicState::None) {
+	if ((params.dynamicState & draw::DynamicState::Scissor) != draw::DynamicState::None) {
 		dynamicStates.emplace_back(VK_DYNAMIC_STATE_SCISSOR);
 	}
 

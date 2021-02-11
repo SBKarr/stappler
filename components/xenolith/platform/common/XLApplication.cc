@@ -47,7 +47,7 @@ Application *Application::getInstance() {
 }
 
 void Application::sleep(double v) {
-	Sleep(uint32_t(ceilf(v * 1000)));
+	platform::device::_sleep(v);
 }
 
 Application::Application() {

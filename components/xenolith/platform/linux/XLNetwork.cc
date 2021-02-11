@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2020 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,13 +20,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "MDB.h"
-#include "MDBCbor.cc"
-#include "MDBCborUtils.cc"
-#include "MDBUtils.cc"
-#include "MDBHandle.cc"
-#include "MDBManifest.cc"
-#include "MDBStorage.cc"
-#include "MDBTransaction.cc"
-#include "MDBTree.cc"
-#include "MDBPageCache.cc"
+#include "XLPlatform.h"
+
+#if (LINUX)
+
+namespace stappler::xenolith::platform::network {
+	bool _init = false;
+	Function<void(bool isOnline)> _callback;
+
+	void _setNetworkCallback(const Function<void(bool isOnline)> &callback) {
+		_callback = callback;
+	}
+	bool _isNetworkOnline() {
+		return true;
+	}
+}
+
+#endif

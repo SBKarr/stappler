@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2020 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2021 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,13 +20,37 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "MDB.h"
-#include "MDBCbor.cc"
-#include "MDBCborUtils.cc"
-#include "MDBUtils.cc"
-#include "MDBHandle.cc"
-#include "MDBManifest.cc"
-#include "MDBStorage.cc"
-#include "MDBTransaction.cc"
-#include "MDBTree.cc"
-#include "MDBPageCache.cc"
+#include "XLPlatform.h"
+
+#if (LINUX)
+
+namespace stappler::xenolith::platform::interaction {
+	bool _goToUrl(const StringView &url, bool external) {
+		log::format("Interaction", "GoTo url: %s", url.data());
+		::system(toString("xdg-open ", url).data());
+		return true;
+	}
+	void _makePhoneCall(const StringView &str) {
+		log::format("Interaction", "phone: %s", str.data());
+		::system(toString("xdg-open ", str).data());
+	}
+	void _mailTo(const StringView &address) {
+		log::format("Interaction", "MailTo: %s", address.data());
+		::system(toString("xdg-open ", address).data());
+	}
+	void _backKey() { }
+	void _notification(const StringView &title, const StringView &text) {
+
+	}
+	void _rateApplication() {
+		log::text("Interaction", "Rate app");
+	}
+
+	void _openFileDialog(const String &path, const Function<void(const String &)> &func) {
+		if (func) {
+			func("");
+		}
+	}
+}
+
+#endif

@@ -24,7 +24,7 @@ THE SOFTWARE.
 #include "MDBTransaction.h"
 #include "MDBCbor.h"
 
-NS_MDB_BEGIN
+namespace db::minidb {
 
 struct MapEncoder {
 	MapEncoder(bool prefix) : _map(nullptr) {
@@ -40,7 +40,7 @@ struct MapEncoder {
 	}
 
 	MapEncoder(const Transaction &t, uint32_t page, bool prefix = false) : _transaction(&t) {
-		_frames.reserve(1);
+		/*_frames.reserve(1);
 		_frames.emplace_back(_transaction->openFrame(page, OpenMode::Write));
 
 		auto &f = _frames.back();
@@ -52,11 +52,11 @@ struct MapEncoder {
 
 		if (prefix) {
 			stappler::data::cbor::_writeId(*this);
-		}
+		}*/
 	}
 
 	~MapEncoder() {
-		if (_transaction && !_frames.empty()) {
+		/*if (_transaction && !_frames.empty()) {
 			auto off = _accum % (_transaction->getManifest()->getPageSize() - sizeof(PayloadPageHeader));
 
 			for (auto it = _frames.rbegin(); it != _frames.rend(); ++ it) {
@@ -69,11 +69,11 @@ struct MapEncoder {
 				_transaction->closeFrame(it);
 			}
 			_frames.clear();
-		}
+		}*/
 	}
 
 	void spawnPage() {
-		auto idx = _frames.size() - 1;
+		/*auto idx = _frames.size() - 1;
 		auto page = _transaction->getManifest()->allocatePage(*_transaction);
 		_frames.emplace_back(_transaction->openFrame(page, OpenMode::Write));
 
@@ -84,7 +84,7 @@ struct MapEncoder {
 		((PayloadPageHeader *)_frames[idx].ptr)->next = page;
 
 		_map = uint8_p(f.ptr) + sizeof(PayloadPageHeader);
-		_remains = f.size - sizeof(PayloadPageHeader);
+		_remains = f.size - sizeof(PayloadPageHeader);*/
 	}
 
 	void emplace(uint8_t c) {
@@ -132,10 +132,10 @@ private:
 	size_t _remains = stappler::maxOf<size_t>();
 
 	const Transaction *_transaction = nullptr;
-	mem::Vector<TreePage> _frames;
+	mem::Vector<PageNode *> _frames;
 };
 
-size_t getPayloadSize(PageType type, const mem::Value &data) {
+/*size_t getPayloadSize(PageType type, const mem::Value &data) {
 	MapEncoder enc((type == PageType::LeafTable) ? true : false);
 	data.encode(enc);
 	return enc.size();
@@ -151,7 +151,7 @@ size_t writeOverflowPayload(const Transaction &t, PageType type, uint32_t page, 
 	MapEncoder enc(t, page, (type == PageType::LeafTable) ? true : false);
 	data.encode(enc);
 	return enc.size();
-}
+}*/
 
 
 struct Decoder {
@@ -392,7 +392,7 @@ mem::Value readPayload(const uint8_p ptr, const mem::Vector<mem::StringView> &fi
 mem::Value readOverflowPayload(const Transaction &t, uint32_t page, const mem::Vector<mem::StringView> &filter) {
 	mem::Value ret;
 
-	uint32_t next = 0;
+	/*uint32_t next = 0;
 	size_t offset = 0;
 	mem::Bytes buf;
 	t.openPageForReading(page, [&] (void *ptr, uint32_t size) -> bool {
@@ -425,9 +425,9 @@ mem::Value readOverflowPayload(const Transaction &t, uint32_t page, const mem::V
 
 	if (!buf.empty()) {
 		return readPayload(buf.data(), filter);
-	}
+	}*/
 
 	return ret;
 }
 
-NS_MDB_END
+}

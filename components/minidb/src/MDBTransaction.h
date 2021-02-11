@@ -25,7 +25,7 @@ THE SOFTWARE.
 
 #include "MDBTree.h"
 
-NS_MDB_BEGIN
+namespace db::minidb {
 
 // Transaction access control:
 //
@@ -43,7 +43,6 @@ NS_MDB_BEGIN
 
 class Transaction : public mem::AllocBase {
 public:
-	using Scheme = Manifest::Scheme;
 	using PageCallback = mem::Callback<bool(mem::BytesView)>;
 
 	Transaction();
@@ -53,24 +52,22 @@ public:
 	bool open(const Storage &, OpenMode);
 	void close();
 
-	TreePage openPage(uint32_t idx, OpenMode) const;
-	void closePage(const TreePage &, bool async = false) const;
-
-	// nPages - in system pages (use getSystemPageSize)
-	bool openPageForWriting(uint32_t idx, const PageCallback &) const;
-	bool openPageForReadWrite(uint32_t idx, const PageCallback &) const;
-	bool openPageForReading(uint32_t idx, const PageCallback &) const;
+	const PageNode *openPage(uint32_t idx, OpenMode) const;
+	void closePage(const PageNode *, bool async = false) const;
 
 	OpenMode getMode() const { return _mode; }
 	int getFd() const { return _fd; }
 	size_t getFileSize() const { return _fileSize; }
 	Manifest *getManifest() const { return _manifest; }
+	const Storage *getStorage() const { return _storage; }
 
 	bool isOpen() const { return _storage != nullptr && _manifest != nullptr; }
 	operator bool() const { return _storage != nullptr && _manifest != nullptr; }
 
 	void invalidate();
 	void commit();
+
+	OidCell getOidCell(uint64_t) const;
 
 public: // CRUD
 	mem::Value select(Worker &, const db::Query &);
@@ -88,7 +85,7 @@ protected:
 
 	bool pushObject(const Scheme &scheme, uint64_t oid, const mem::Value &) const;
 
-	bool checkUnique(const Scheme &scheme, const mem::Value &) const;
+	// bool checkUnique(const Scheme &scheme, const mem::Value &) const;
 	// mem::Value decodeValue(const db::Scheme &scheme, const TreeTableLeafCell &cell, const mem::Vector<mem::StringView> &names) const;
 
 	mem::pool_t *_pool = nullptr;
@@ -102,6 +99,6 @@ protected:
 	PageCache *_pageCache = nullptr;
 };
 
-NS_MDB_END
+}
 
 #endif /* COMPONENTS_MINIDB_SRC_MDBTRANSACTION_H_ */

@@ -24,7 +24,7 @@ THE SOFTWARE.
 #include "MDBTransaction.h"
 #include "SPLog.h"
 
-NS_MDB_BEGIN
+namespace db::minidb {
 
 struct TransactionContext {
 	TransactionContext(Handle *h) : _handle(h) {
@@ -41,13 +41,7 @@ struct TransactionContext {
 	Handle *_handle = nullptr;
 };
 
-Handle::Handle(const Storage &storage, OpenMode mode) : _storage(&storage), _mode(mode) {
-	switch (_mode) {
-	case OpenMode::Create: _mode = OpenMode::ReadWrite; break;
-	case OpenMode::Write: _mode = OpenMode::ReadWrite; break;
-	default: break;
-	}
-}
+Handle::Handle(const Storage &storage, OpenMode mode) : _storage(&storage), _mode(mode) { }
 
 bool Handle::init(const Config &serv, const mem::Map<mem::StringView, const Scheme *> &) {
 	stappler::log::vtext("MiniDB", "Not implemented: ", __PRETTY_FUNCTION__);
@@ -181,5 +175,4 @@ bool Handle::endTransaction() {
 	return false;
 }
 
-
-NS_MDB_END
+}

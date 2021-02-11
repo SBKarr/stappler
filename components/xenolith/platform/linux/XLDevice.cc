@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2020 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2021 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -21,46 +21,16 @@ THE SOFTWARE.
 **/
 
 #include "XLPlatform.h"
+#include "SPFilesystem.h"
 
-#if (CYGWIN || MSYS)
-
-#include <wincrypt.h>
-
-class RandomSequence {
-	HCRYPTPROV hProvider;
-public:
-	RandomSequence(void) : hProvider(0) {
-		if (FALSE == CryptAcquireContext(&hProvider, NULL, NULL, PROV_RSA_FULL, 0)) {
-			// failed, should we try to create a default provider?
-			if (NTE_BAD_KEYSET == HRESULT(GetLastError())) {
-				if (FALSE == CryptAcquireContext(&hProvider, NULL, NULL, PROV_RSA_FULL, CRYPT_NEWKEYSET)) {
-					// ensure the provider is NULL so we could use a backup plan
-					hProvider = 0;
-				}
-			}
-		}
-	}
-
-	~RandomSequence(void) {
-		if (0 != hProvider) {
-			CryptReleaseContext(hProvider, 0U);
-		}
-	}
-
-	BOOL generate(BYTE *buf, DWORD len) {
-		if (0 != hProvider) {
-			return CryptGenRandom(hProvider, len, buf);
-		}
-		return FALSE;
-	}
-};
+#if (LINUX)
 
 namespace stappler::xenolith::platform::device {
 	bool _isTablet() {
 		return desktop::isTablet();
 	}
 	String _userAgent() {
-		return "Mozilla/5.0 (Windows;)";
+		return "Mozilla/5.0 (Linux;)";
 	}
 	String _deviceIdentifier() {
 		auto path = stappler::platform::filesystem::_getCachesPath();
@@ -69,13 +39,14 @@ namespace stappler::xenolith::platform::device {
 			auto data = stappler::filesystem::readIntoMemory(devIdPath);
 			return base16::encode(data);
 		} else {
-			RandomSequence rnd;
 			Bytes data; data.resize(16);
-			if (!rnd.generate(data.data(), 16)) {
+			auto fp = fopen("/dev/urandom", "r");
+			if (fread(data.data(), 1, data.size(), fp) == 0) {
 				log::text("Device", "Fail to read random bytes");
-			} else {
-				stappler::filesystem::write(devIdPath, data);
 			}
+			fclose(fp);
+
+			stappler::filesystem::write(devIdPath, data);
 			return base16::encode(data);
 		}
 	}
@@ -114,7 +85,7 @@ namespace stappler::xenolith::platform::device {
 		return desktop::getDensity();
 	}
 	void _sleep(double v) {
-		Sleep(uint32_t(ceilf(v * 1000)));
+		usleep(useconds_t(ceilf(v * 1000000)));
 	}
 }
 

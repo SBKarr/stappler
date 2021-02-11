@@ -25,50 +25,35 @@ THE SOFTWARE.
 
 #include "MDB.h"
 
-NS_MDB_BEGIN
+namespace db::minidb {
 
 class PageCache : public mem::AllocBase {
 public:
-	struct Node {
-		uint32_t number = 0;
-		mem::BytesView bytes;
-		OpenMode mode = OpenMode::Read;
-		PageType type = PageType::None;
-		mutable std::atomic<uint32_t> refCount = 1;
-		mem::Time access;
-	};
-
 	PageCache(const Storage *, int fd, bool writable);
 
-	const Node * openPage(uint32_t idx, OpenMode);
-	void closePage(const Node *);
+	const PageNode * openPage(uint32_t idx, OpenMode);
+	void closePage(const PageNode *);
 
 	// release (and commit) unused pages
 	void clear(bool commit);
 	bool empty() const;
 
-	void dropPage(uint32_t page);
-	uint32_t popPageFromChain(uint32_t page);
-	void invalidateOverflowChain(uint32_t page);
-	uint32_t allocatePage();
-
 protected:
-	bool shouldPromote(const Node &, OpenMode) const;
-	void promote(Node &);
+	bool shouldPromote(const PageNode &, OpenMode) const;
+	void promote(PageNode &);
 
 	const Storage *_storage = nullptr;
 	uint32_t _pageSize = 0;
 	int _fd = -1;
 	bool _writable = false;
 	mem::Vector<mem::BytesView> _alloc;
-	mem::Map<uint32_t, Node> _pages;
+	mem::Map<uint32_t, PageNode> _pages;
 	mem::Mutex _mutex;
 
 	mem::Mutex _headerMutex;
 	StorageHeader *_header = nullptr;
-	EntityCell *_entities = nullptr;
 };
 
-NS_MDB_END
+}
 
 #endif /* COMPONENTS_MINIDB_SRC_MDBPAGECACHE_H_ */

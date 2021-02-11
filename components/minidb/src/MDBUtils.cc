@@ -28,7 +28,7 @@ THE SOFTWARE.
 #include <sys/stat.h>
 #include <sys/file.h>
 
-NS_MDB_BEGIN
+namespace db::minidb {
 
 static inline bool Storage_mmapError(int memerr) {
 	switch (memerr) {
@@ -42,13 +42,17 @@ static inline bool Storage_mmapError(int memerr) {
 	return false;
 }
 
-constexpr inline UpdateFlags operator & (const UpdateFlags &l, const UpdateFlags &r) {
-	return UpdateFlags(stappler::toInt(l) & stappler::toInt(r));
-}
-
 uint32_t getSystemPageSize() {
 	static uint32_t s = ::sysconf(_SC_PAGE_SIZE);
 	return s;
+}
+
+uint8_t getPageSizeByte(uint32_t pageSize) {
+	if (!has_single_bit(pageSize)) {
+		return 0;
+	}
+
+	return __builtin_ctz(pageSize);
 }
 
 /*bool validateHeader(const StorageHeader &target, size_t memsize) {
@@ -72,32 +76,6 @@ bool readHeader(mem::BytesView data, StorageHeader &target) {
 
 	return false;
 }*/
-
-IndexType getDefaultIndexType(db::Type type, db::Flags flags) {
-	if (flags & db::Flags::Enum) {
-		switch (type) {
-		case Type::Text:
-		case Type::Bytes:
-		case Type::Boolean:
-			return IndexType::Reverse;
-			break;
-		default:
-			break;
-		}
-	}
-	switch (type) {
-	case Type::Integer:
-	case Type::Float:
-		return IndexType::Numeric;
-		break;
-	case Type::Boolean:
-		return IndexType::Reverse;
-		break;
-	default:
-		break;
-	}
-	return IndexType::Bytes;
-}
 
 size_t getVarUintSize(uint64_t id) {
 	if (id <= 0x1FULL) { return 1; }
@@ -213,26 +191,19 @@ const mem::Callback<void(mem::StringView)> &operator<<(const mem::Callback<void(
 	return cb;
 }*/
 
-void inspectManifestPage(const mem::Callback<void(mem::StringView)> &cb, void *iptr, size_t size) {
+void inspectManifestPage(const mem::Callback<void(mem::StringView)> &cb, const void *iptr, size_t size) {
 	uint8_p ptr = uint8_p(iptr);
 	auto h = (StorageHeader *)ptr;
-	if (!validateHeader(*h, h->pageSize * h->pageCount)) {
-		cb << "Invalid header\n";
-		return;
-	}
 
 	cb << "StorageHeader:\n";
 	cb << "\t" << mem::BytesView((const uint8_p)h->title, 6) << mem::StringView((const char *)h->title, 6) << " - title - (0 - 6)\n";
-	cb << "\t" << mem::BytesView(ptr + 6, 2) << "- " << uint64_t(h->version) << " - version - (6 - 8)\n";
-	cb << "\t" << mem::BytesView(ptr + 8, 4) << "- " << uint64_t(h->pageSize) << " - pageSize - (8 - 12)\n";
-	cb << "\t" << mem::BytesView(ptr + 12, 4) << "- " << uint64_t(h->pageCount) << " - pageCount - (12 - 16)\n";
-	cb << "\t" << mem::BytesView(ptr + 16, 4) << "- " << uint64_t(h->freeList) << " - freeList - (16 - 20)\n";
-	cb << "\t" << mem::BytesView(ptr + 20, 4) << "- " << uint64_t(h->entities) << " - entities - (20 - 24)\n";
-	cb << "\t" << mem::BytesView(ptr + 24, 4) << "- " << h->oid << " - oid - (24 - 32)\n";
-	cb << "\t" << mem::BytesView(ptr + 32, 8) << "- " << h->mtime << " - mtime - (32 - 40)\n";
-	cb << "\t" << mem::BytesView(ptr + 40, 4 * 6) << "(reserved) (40 - 64)\n";
+	cb << "\t" << mem::BytesView(ptr + 6, 1) << "- " << uint64_t(h->version) << " - version - (6 - 7)\n";
+	cb << "\t" << mem::BytesView(ptr + 7, 1) << "- " << uint64_t(h->pageSize) << " (" << uint64_t(1 << h->pageSize) << " bytes) - pageSize - (7 - 8)\n";
+	cb << "\t" << mem::BytesView(ptr + 8, 8) << "- " << uint64_t(h->mtime) << " - mtime - (8 - 16)\n";
+	cb << "\t" << mem::BytesView(ptr + 16, 4) << "- " << uint64_t(h->pageCount) << " - pageCount - (16 - 20)\n";
+	cb << "\t" << mem::BytesView(ptr + 20, 8) << "- " << h->oid << " - oid - (20 - 28)\n";
 
-	auto m = (ManifestPageHeader *)(ptr + sizeof(StorageHeader));
+	/*auto m = (ManifestPageHeader *)(ptr + sizeof(StorageHeader));
 
 	cb << "Manifest\n";
 	cb << "\t" << mem::BytesView(ptr + 64, 4) << "- " << uint64_t(m->next) << " - next - (64 - 68)\n";
@@ -311,10 +282,10 @@ void inspectManifestPage(const mem::Callback<void(mem::StringView)> &cb, void *i
 				cb << it.getString(0) << " < entity: " << it.getInteger(2) << " >\n";
 			}
 		}
-	}
+	}*/
 }
 
-const mem::Callback<void(mem::StringView)> &operator << (const mem::Callback<void(mem::StringView)> &cb, PageType t) {
+/*const mem::Callback<void(mem::StringView)> &operator << (const mem::Callback<void(mem::StringView)> &cb, PageType t) {
 	switch (t) {
 	case PageType::InteriorIndex: cb("InteriorIndex"); break;
 	case PageType::InteriorTable: cb("InteriorTable"); break;
@@ -498,7 +469,7 @@ void inspectScheme(const Transaction &t, const db::Scheme &s, const mem::Callbac
 		++ xdepth;
 		-- depth;
 	}
-}
+}*/
 
 
 namespace pages {
@@ -537,4 +508,4 @@ void free(mem::BytesView mem) {
 
 }
 
-NS_MDB_END
+}

@@ -25,9 +25,7 @@ THE SOFTWARE.
 
 #include "MDB.h"
 
-NS_MDB_BEGIN
-
-namespace cbor {
+namespace db::minidb::cbor {
 
 static constexpr size_t CBOR_STACK_DEFAULT_SIZE = 16; // Preallocated iterator stack
 
@@ -189,7 +187,5 @@ struct IteratorContext {
 };
 
 }
-
-NS_MDB_END
 
 #endif /* COMPONENTS_MINIDB_SRC_MDBCBOR_H_ */

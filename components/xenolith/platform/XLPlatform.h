@@ -48,6 +48,8 @@ namespace device {
 	Pair<uint64_t, uint64_t> _diskSpace(); // <total, free>
 
 	void _onDirectorStarted();
+
+	void _sleep(double value);
 }
 
 namespace interaction {
