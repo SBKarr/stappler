@@ -67,6 +67,8 @@ public:
 	bool operator == (const Self &other) const;
 	bool operator != (const Self &other) const;
 
+	Self pdup(memory::pool_t * = nullptr) const;
+
 private:
 	template <typename T>
 	auto convert(const uint8_t *data) -> T;
@@ -194,6 +196,18 @@ template <ByteOrder::Endian Endianess>
 auto BytesViewTemplate<Endianess>::operator != (const Self &other) const -> bool {
 	return !(*this == other);
 }
+
+template <ByteOrder::Endian Endianess>
+auto BytesViewTemplate<Endianess>::pdup(memory::pool_t *p) const -> Self {
+	if (!p) {
+		p = memory::pool::acquire();
+	}
+	auto buf = (const uint8_t *)memory::pool::palloc(p, (this->size() + 1) * sizeof(uint8_t));
+	memcpy(buf, this->data(), this->size() * sizeof(uint8_t));
+	buf[this->size()] = 0;
+	return Self(buf, this->size());
+}
+
 
 template <ByteOrder::Endian Endianess>
 template <typename T>

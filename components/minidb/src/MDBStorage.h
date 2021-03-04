@@ -29,12 +29,12 @@ namespace db::minidb {
 
 struct StorageParams {
 	uint32_t pageSize = DefaultPageSize;
-	Vector<>
 };
 
 class Storage : public mem::AllocBase {
 public:
 	using PageCallback = mem::Callback<bool(void *mem, uint32_t size)>;
+	using SchemeMap = mem::Map<const Scheme *, mem::Pair<OidPosition, mem::Map<const Field *, OidPosition>>>;
 
 	static Storage *open(mem::pool_t *, mem::StringView path, StorageParams = StorageParams());
 	static Storage *open(mem::pool_t *, mem::BytesView data, StorageParams = StorageParams());
@@ -45,25 +45,23 @@ public:
 
 	mem::pool_t *getPool() const { return _pool; }
 	mem::StringView getSourceName() const { return _sourceName; }
-	uint32_t getPageSize() const;
-	uint32_t getPageCount() const;
 
 	bool isValid() const;
 	operator bool() const;
 
 	bool openHeader(int fd, const mem::Callback<bool(StorageHeader &)> &, OpenMode) const;
 
-	mem::BytesView openPage(uint32_t idx, int fd) const;
+	mem::BytesView openPage(PageCache *cache, uint32_t idx, int fd) const;
 	void closePage(mem::BytesView) const;
-	bool writePage(uint32_t idx, int fd, mem::BytesView) const;
+	bool writePage(PageCache *cache, uint32_t idx, int fd, mem::BytesView) const;
+
+	const SchemeMap &getSchemes() const { return _schemes; }
+
+	uint8_t getDictId(const db::Scheme *) const;
+	uint64_t getDictOid(uint8_t) const;
 
 protected:
-	friend class Manifest;
 	friend class Transaction;
-
-	Manifest * retainManifest() const;
-	void swapManifest(Manifest *) const;
-	void releaseManifest(Manifest *) const;
 
 	void free();
 
@@ -73,10 +71,12 @@ protected:
 	mem::pool_t *_pool = nullptr;
 	mem::StringView _sourceName;
 	mutable mem::Vector<mem::BytesView> _sourceMemory;
+	mem::Map<const Scheme *, uint8_t> _dicts;
+	mem::Map<uint8_t, uint64_t> _dictsIds;
+	SchemeMap _schemes;
 	StorageParams _params = StorageParams();
 
 	mutable mem::Mutex _mutex;
-	mutable Manifest * _manifest = nullptr;
 };
 
 }

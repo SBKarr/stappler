@@ -20,6 +20,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
+
+#ifndef __clang__
+_Pragma( "GCC optimize (\"O2\")" )
+#endif
+
 #include "libzip.cc"
 #include "lz4.cc"
 

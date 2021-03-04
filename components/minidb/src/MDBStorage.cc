@@ -21,21 +21,15 @@ THE SOFTWARE.
 **/
 
 #include "MDBStorage.h"
-#include "MDBManifest.h"
 #include "MDBTransaction.h"
 
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/file.h>
+#include <alloca.h>
 
 namespace db::minidb {
-
-uint32_t Storage::getPageSize() const { return _manifest ? _manifest->getPageSize() : _params.pageSize; }
-uint32_t Storage::getPageCount() const { return _manifest->getPageCount(); }
-
-bool Storage::isValid() const { return _manifest != nullptr; }
-Storage::operator bool() const { return _manifest != nullptr; }
 
 bool Storage::openHeader(int fd, const mem::Callback<bool(StorageHeader &)> &cb, OpenMode mode) const {
 	if (!_sourceMemory.empty()) {
@@ -64,18 +58,19 @@ bool Storage::openHeader(int fd, const mem::Callback<bool(StorageHeader &)> &cb,
 	return false;
 }
 
-mem::BytesView Storage::openPage(uint32_t idx, int fd) const {
+mem::BytesView Storage::openPage(PageCache *cache, uint32_t idx, int fd) const {
 	if (!_sourceMemory.empty()) {
 		if (idx < _sourceMemory.size()) {
 			return _sourceMemory.at(idx);
 		}
 	} else {
-		auto s = _manifest->getPageSize();
-		auto mem = ::mmap(nullptr, s, PROT_READ, MAP_PRIVATE | MAP_NONBLOCK, fd, idx * s);
+		auto s = cache->getPageSize();
+		off64_t offset = idx; offset *= s;
+		auto mem = ::mmap(nullptr, s, PROT_READ, MAP_PRIVATE | MAP_NONBLOCK, fd, offset);
 		if (mem != MAP_FAILED) {
 			return mem::BytesView(uint8_p(mem), s);
 		}
-		Storage_mmapError(errno);
+		Storage_mmapError(__PRETTY_FUNCTION__, errno);
 	}
 	return mem::BytesView();
 }
@@ -86,23 +81,23 @@ void Storage::closePage(mem::BytesView mem) const {
 	}
 }
 
-bool Storage::writePage(uint32_t idx, int fd, mem::BytesView bytes) const {
+bool Storage::writePage(PageCache *cache, uint32_t idx, int fd, mem::BytesView bytes) const {
+	auto s = cache ? cache->getPageSize() : _params.pageSize;
 	if (_sourceMemory.empty()) {
-		auto s = _manifest->getPageSize();
-		if (idx >= _manifest->getPageCount()) {
-			if (::lseek(fd, idx * s + s - 1, SEEK_SET) == -1 || ::write(fd, "", 1) == -1) {
+		if (idx >= (cache ? cache->getPageCount() : 0)) {
+			off64_t offset = idx; offset = offset * s + s - 1;
+			if (::lseek(fd, offset, SEEK_SET) == -1 || ::write(fd, "", 1) == -1) {
 				return false;
 			}
 		}
-		auto mem = ::mmap(nullptr, bytes.size(), PROT_WRITE, MAP_SHARED | MAP_NONBLOCK, fd, idx * s);
+		off64_t offset = idx; offset *= s;
+		auto mem = ::mmap(nullptr, bytes.size(), PROT_WRITE, MAP_SHARED | MAP_NONBLOCK, fd, offset);
 		if (mem != MAP_FAILED) {
-			std::cout << stappler::base16::encode(bytes) << "\n";
 			memcpy(mem, bytes.data(), bytes.size());
 			::msync(mem, bytes.size(), MS_SYNC);
 			::munmap(mem, bytes.size());
 		}
-	} else if (fd > 0) {
-		auto s = _manifest->getPageSize();
+	} else {
 		if (idx >= _sourceMemory.size()) {
 			auto current = _sourceMemory.size();
 			for (size_t i = current; i <= idx; ++ i) {
@@ -113,6 +108,22 @@ bool Storage::writePage(uint32_t idx, int fd, mem::BytesView bytes) const {
 		memcpy((void *)_sourceMemory[idx].data(), bytes.data(), bytes.size());
 	}
 	return true;
+}
+
+uint8_t Storage::getDictId(const db::Scheme *scheme) const {
+	auto it = _dicts.find(scheme);
+	if (it != _dicts.end()) {
+		return it->second;
+	}
+	return uint8_t(255);
+}
+
+uint64_t Storage::getDictOid(uint8_t val) const {
+	auto it = _dictsIds.find(val);
+	if (it != _dictsIds.end()) {
+		return it->second;
+	}
+	return 0;
 }
 
 Storage *Storage::open(mem::pool_t *p, mem::StringView path, StorageParams params) {
@@ -136,37 +147,284 @@ void Storage::destroy(Storage *s) {
 	}
 }
 
+static bool Storage_init(const Transaction &t, const mem::Map<mem::StringView, const db::Scheme *> &schemes,
+		mem::Map<const Scheme *, uint8_t> &storageDicts,
+		mem::Map<uint8_t, uint64_t> &dictIds,
+		mem::Map<const Scheme *, mem::Pair<OidPosition, mem::Map<const Field *, OidPosition>>> &storageSchemes) {
+	TreeStack stack(t, t.getPageCache()->getRoot());
+
+	auto cell = stack.getOidCell(0, true);
+	mem::Vector<OidCell> cells;
+
+	if (cell) {
+		cells.emplace_back(cell);
+		auto tmp = cell;
+		while (tmp.header->nextObject) {
+			tmp = stack.getOidCell(tmp.header->nextObject);
+			if (tmp) {
+				cells.emplace_back(tmp);
+			}
+		}
+	}
+
+	mem::Value manifestData;
+	if (!cells.empty()) {
+		do {
+			if (cells.size() == 1) {
+				if (cells.front().pages.size() == 1) {
+					manifestData = stappler::data::read(cell.pages.front());
+					break;
+				}
+			}
+
+			size_t dataSize = 0;
+			for (auto &it : cells) {
+				for (auto &iit : it.pages) {
+					dataSize += iit.size();
+				}
+			}
+
+			uint8_p b = uint8_p(alloca(dataSize));
+
+			size_t offset = 0;
+			for (auto &it : cells) {
+				for (auto &iit : it.pages) {
+					memcpy(b + offset, iit.data(), iit.size());
+					offset += iit.size();
+				}
+			}
+
+			manifestData = stappler::data::read(mem::BytesView(b, dataSize));
+		} while (0);
+	}
+
+	struct DictData {
+		uint64_t oid;
+		mem::BytesView hash;
+		mem::Vector<mem::BytesView> pages;
+
+		DictData(uint64_t oid, mem::BytesView b) : oid(oid), hash(b) { }
+		DictData(uint64_t oid, mem::BytesView b, std::initializer_list<mem::BytesView> il) : oid(oid), hash(b), pages(il) { }
+		DictData(uint64_t oid, mem::BytesView b, const mem::Vector<mem::BytesView> &vec) : oid(oid), hash(b), pages(vec) { }
+	};
+
+	mem::Map<uint8_t, DictData> dicts;
+	mem::Map<mem::StringView, mem::Pair<OidPosition, mem::Map<mem::StringView, OidPosition>>> schemesData;
+
+	if (manifestData) {
+		if (auto &d = manifestData.getValue("dicts")) {
+			size_t idx = 0;
+			for (auto &it : d.asArray()) {
+				auto oid = it.getInteger(0);
+				auto hash = mem::BytesView(it.getBytes(1));
+
+				auto iit = dicts.emplace(uint8_t(idx), DictData(oid, hash)).first;
+				dictIds.emplace(uint8_t(idx), oid);
+
+				if (auto obj = stack.getOidCell(oid)) {
+					iit->second.pages = obj.pages;
+				}
+
+				++ idx;
+			}
+		}
+		if (auto &s = manifestData.getValue("schemes")) {
+			for (auto &it : s.asArray()) {
+				auto name = mem::StringView(it.getString(0));
+				auto page = uint32_t(it.getInteger(1));
+				auto offset = uint32_t(it.getInteger(2));
+				auto oid = uint64_t(it.getInteger(3));
+
+				auto &map = schemesData.emplace(name, OidPosition{page, offset, oid}, mem::Map<mem::StringView, OidPosition>()).first->second.second;
+
+				for (auto &iit : it.getArray(4)) {
+					auto name = mem::StringView(iit.getString(0));
+					auto page = uint32_t(iit.getInteger(1));
+					auto offset = uint32_t(iit.getInteger(2));
+					auto oid = uint64_t(iit.getInteger(3));
+
+					map.emplace(name, OidPosition{page, offset, oid});
+				}
+			}
+		}
+	}
+
+	mem::Value manifest;
+	for (auto &it : schemes) {
+		auto dict = it.second->getCompressDict();
+		if (!dict.empty()) {
+			auto hash = stappler::string::Sha512().init().update(dict).final();
+			auto hashBytes = mem::BytesView(hash);
+
+			bool found = false;
+
+			for (auto &d : dicts) {
+				if (d.second.hash == hashBytes) {
+					size_t pagesSize = 0;
+					for (auto &p : d.second.pages) {
+						pagesSize += p.size();
+					}
+
+					if (pagesSize != dict.size()) {
+						continue;
+					}
+
+					size_t offset = 0;
+					found = true;
+					for (auto &p : d.second.pages) {
+						if (memcmp(p.data(), dict.data() + offset, p.size()) == 0) {
+							offset += p.size();
+						} else {
+							found = false;
+							break;
+						}
+					}
+
+					if (found) {
+						storageDicts.emplace(it.second, d.first);
+						break;
+					}
+				}
+			}
+
+			if (!found) {
+				if (dicts.size() < 255) {
+					auto obj = stack.emplaceCell(OidType::Dictionary, OidFlags::None, dict);
+					dictIds.emplace(uint8_t(dicts.size()), uint64_t(obj.header->oid.value));
+					obj.header->oid.dictId = dicts.size();
+					auto iit = dicts.emplace(uint8_t(dicts.size()), DictData(int64_t(obj.header->oid.value), hashBytes, obj.pages)).first;
+					storageDicts.emplace(it.second, iit->first);
+				} else {
+					stappler::log::text("minidb", "More than 255 dicts is not supported");
+					return false;
+				}
+			}
+		}
+
+		auto schemeIt = schemesData.find(it.second->getName());
+		if (schemeIt == schemesData.end()) {
+			auto obj = stack.emplaceScheme();
+			if (obj.value) {
+				auto &map = schemesData.emplace(it.second->getName(), obj,
+						mem::Map<mem::StringView, OidPosition>()).first->second.second;
+
+				auto &m = storageSchemes.emplace(it.second, obj,
+						mem::Map<const Field *, OidPosition>()).first->second.second;
+
+				for (auto &f : it.second->getFields()) {
+					if (f.second.isIndexed()) {
+						auto idx = stack.emplaceIndex(obj.value);
+						if (idx.value) {
+							map.emplace(f.second.getName(), idx);
+							m.emplace(&f.second, idx);
+						}
+					}
+				}
+			}
+		} else {
+			auto &map = schemeIt->second.second;
+
+			auto &m = storageSchemes.emplace(it.second, schemeIt->second.first,
+					mem::Map<const Field *, OidPosition>()).first->second.second;
+
+			for (auto &f : it.second->getFields()) {
+				if (f.second.isIndexed()) {
+					auto iit = map.find(f.second.getName());
+					if (iit == map.end()) {
+						auto idx = stack.emplaceIndex(schemeIt->second.first.value);
+						if (idx.value) {
+							map.emplace(f.second.getName(), idx);
+							m.emplace(&f.second, idx);
+						}
+					} else {
+						m.emplace(&f.second, iit->second);
+					}
+				}
+			}
+		}
+	}
+
+	if (!schemesData.empty()) {
+		auto &data = manifest.emplace("schemes");
+		for (auto &it : schemesData) {
+			auto &s = data.emplace();
+			s.addString(it.first);
+			s.addInteger(it.second.first.page);
+			s.addInteger(it.second.first.offset);
+			s.addInteger(it.second.first.value);
+			if (!it.second.second.empty()) {
+				auto &idxs = s.emplace();
+				for (auto &iit : it.second.second) {
+					auto &idx = idxs.emplace();
+					idx.addString(iit.first);
+					idx.addInteger(iit.second.page);
+					idx.addInteger(iit.second.offset);
+					idx.addInteger(iit.second.value);
+				}
+			}
+		}
+	}
+
+	if (!dicts.empty()) {
+		auto &data = manifest.emplace("dicts");
+		for (auto &it : dicts) {
+			auto &d = data.emplace();
+			d.addValue(it.second.oid);
+			d.addValue(it.second.hash);
+		}
+	}
+
+	if (manifest != manifestData) {
+		auto bytes = mem::writeData(manifest, mem::EncodeFormat::Cbor);
+		auto realPageSize = ManifestPageSize - OidHeaderSize;
+		auto pagesCount = (bytes.size() + (realPageSize - 1)) / realPageSize;
+
+		while (pagesCount > cells.size()) {
+			if (auto obj = stack.emplaceCell(realPageSize)) {
+				obj.header->oid.type = stappler::toInt(OidType::Manifest);
+				obj.header->oid.flags = stappler::toInt(cells.empty() ? OidFlags::None : OidFlags::Chain);
+				obj.header->oid.dictId = 0;
+				if (!cells.empty()) {
+					cells.back().header->nextObject = obj.header->oid.value;
+				}
+				cells.emplace_back(obj);
+			} else {
+				stappler::log::text("minidb", "Fail to allocate manifest pages");
+				return false;
+			}
+		}
+
+		mem::Vector<mem::BytesView> vec;
+		for (auto &it : cells) {
+			for (auto &iit : it.pages) {
+				vec.emplace_back(iit);
+			}
+		}
+
+		size_t offset = 0;
+		auto it = vec.begin();
+		while (offset < bytes.size()) {
+			auto blockSize = std::min(it->size(), bytes.size() - offset);
+			memcpy((uint8_t *)it->data(), bytes.data() + offset, blockSize);
+			offset += blockSize;
+			++ it;
+		}
+	}
+
+	return true;
+}
+
 bool Storage::init(const mem::Map<mem::StringView, const db::Scheme *> &map) {
 	Transaction t;
+	bool ret = false;
 	if (t.open(*this, OpenMode::Write)) {
-		if (auto man = t.getManifest()) {
-			man->init(t, map);
-		}
-		return true;
+		std::unique_lock<std::shared_mutex> lock(t.getMutex());
+		mem::pool::push(t.getPool());
+		Storage_init(t, map, _dicts, _dictsIds, _schemes);
+		mem::pool::pop();
+		ret = true;
 	}
-	return false;
-}
-
-Manifest * Storage::retainManifest() const {
-	std::unique_lock<mem::Mutex> lock(_mutex);
-	if (_manifest) {
-		_manifest->retain();
-	}
-	return _manifest;
-}
-
-void Storage::swapManifest(Manifest *mem) const {
-	std::unique_lock<mem::Mutex> lock(_mutex);
-	mem->retain();
-	auto tmp = _manifest;
-	_manifest = mem;
-	tmp->release();
-}
-
-void Storage::releaseManifest(Manifest *mem) const {
-	if (mem->release() == 0) {
-		Manifest::destroy(mem);
-	}
+	return ret;
 }
 
 void Storage::free() {
@@ -181,7 +439,7 @@ Storage::Storage(mem::pool_t *p, mem::StringView path, StorageParams params)
 	mem::pool::context ctx(_pool);
 	_sourceName = mem::StringView(stappler::filesystem::writablePath(path)).pdup();
 
-	auto fd = ::open(path.data(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
+	auto fd = ::open(_sourceName.data(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
 	if (fd < 0) {
 		return;
 	}
@@ -190,31 +448,60 @@ Storage::Storage(mem::pool_t *p, mem::StringView path, StorageParams params)
 	auto fileSize = ::lseek(fd, 0, SEEK_END);
 
 	if (fileSize == 0) {
-		_manifest = Manifest::create(p, mem::BytesView());
-		if (_manifest) {
-			StorageHeader h;
-			memcpy(h.title, FormatTitle.data(), FormatTitle.size());
-			h.version = FormatVersion;
-			h.pageSize = getPageSizeByte(params.pageSize);
-			h.mtime = mem::Time::now().toMicros();
-			h.pageCount = 1;
-			h.oid = 0;
+		uint8_t buf[sizeof(StorageHeader) + sizeof(OidTreePageHeader)] = { 0 };
 
-			if (::lseek(fd, params.pageSize - 1, SEEK_SET) == -1 || ::write(fd, "", 1) == -1) {
-				return;
-			}
+		StorageHeader *h = (StorageHeader *)buf;
+		memcpy(h->title, FormatTitle.data(), FormatTitle.size());
+		h->version = FormatVersion;
+		h->pageSize = getPageSizeByte(params.pageSize);
+		h->mtime = mem::Time::now().toMicros();
+		h->pageCount = 2;
+		h->oid = 0;
+		h->root = 0;
 
-			writePage(0, fd, mem::BytesView((const uint8_t *)&h, sizeof(StorageHeader)));
+		auto page = (OidTreePageHeader *)(buf + sizeof(StorageHeader));
+		page->type = stappler::toInt(PageType::OidTable);
+		page->ncells = 0;
+		page->root = UndefinedPage;
+		page->prev = UndefinedPage;
+		page->next = UndefinedPage;
+		page->right = 1;
+
+		uint8_t contentBuf[sizeof(OidContentPageHeader)] = { 0 };
+
+		auto content = (OidContentPageHeader *)contentBuf;
+		content->type = stappler::toInt(PageType::OidContent);
+		content->ncells = 0;
+		content->root = 0;
+		content->prev = UndefinedPage;
+		content->next = UndefinedPage;
+
+		if (::lseek(fd, params.pageSize * 2 - 1, SEEK_SET) == -1 || ::write(fd, "", 1) == -1) {
+			return;
 		}
-	} else if (fileSize > 0) {
-		uint8_t buf[sizeof(StorageHeader)];
-		::lseek(fd, 0, SEEK_SET);
-		if (::read(fd, buf, sizeof(StorageHeader)) == sizeof(StorageHeader)) {
-			_manifest = Manifest::create(p, mem::BytesView(buf, sizeof(StorageHeader)));
+
+		writePage(nullptr, 0, fd, mem::BytesView(buf, sizeof(StorageHeader) + sizeof(OidTreePageHeader)));
+		writePage(nullptr, 1, fd, mem::BytesView(contentBuf, sizeof(OidContentPageHeader)));
+
+		::flock(fd, LOCK_UN);
+
+		Transaction t;
+		if (t.open(*this, db::minidb::OpenMode::Write)) {
+			auto realPageSize = ManifestPageSize - OidHeaderSize;
+			do {
+				TreeStack stack(t, t.getPageCache()->getRoot());
+				if (auto obj = stack.emplaceCell(realPageSize)) {
+					obj.header->oid.type = stappler::toInt(OidType::Manifest);
+					obj.header->oid.flags = 0;
+					obj.header->oid.dictId = 0;
+				}
+			} while (0);
+			t.close();
 		}
+	} else {
+		::flock(fd, LOCK_UN);
 	}
 
-	::flock(fd, LOCK_UN);
 	::close(fd);
 }
 
@@ -223,34 +510,52 @@ Storage::Storage(mem::pool_t *p, mem::BytesView data, StorageParams params)
 	mem::pool::context ctx(_pool);
 
 	if (data.empty()) {
-		_manifest = Manifest::create(p, data);
-		if (_manifest) {
-			StorageHeader h;
-			memcpy(h.title, FormatTitle.data(), FormatTitle.size());
-			h.version = FormatVersion;
-			h.pageSize = getPageSizeByte(params.pageSize);
-			h.mtime = mem::Time::now().toMicros();
-			h.pageCount = 1;
-			h.oid = 0;
+		uint8_t buf[sizeof(StorageHeader) + sizeof(OidTreePageHeader)] = { 0 };
 
-			auto page = pages::alloc(_manifest->getPageSize());
-			_sourceMemory.emplace_back(page);
+		StorageHeader *h = (StorageHeader *)buf;
+		memcpy(h->title, FormatTitle.data(), FormatTitle.size());
+		h->version = FormatVersion;
+		h->pageSize = getPageSizeByte(params.pageSize);
+		h->mtime = mem::Time::now().toMicros();
+		h->pageCount = 2;
+		h->oid = 0;
+		h->root = 0;
 
-			writePage(0, -1, mem::BytesView((const uint8_t *)&h, sizeof(StorageHeader)));
-		}
-	} else {
-		_manifest = Manifest::create(p, data);
-		if (_manifest) {
-			if (_manifest->getPageSize() * _manifest->getPageCount() == data.size()) {
-				_sourceMemory.reserve(_manifest->getPageCount());
-				for (size_t i = 0; i < _manifest->getPageCount(); ++ i) {
-					auto page = pages::alloc(mem::BytesView(data.data() + i * _manifest->getPageSize(), _manifest->getPageSize()));
-					_sourceMemory.emplace_back(page);
+		auto page = (OidTreePageHeader *)(buf + sizeof(StorageHeader));
+		page->type = stappler::toInt(PageType::OidTable);
+		page->ncells = 0;
+		page->root = UndefinedPage;
+		page->prev = UndefinedPage;
+		page->next = UndefinedPage;
+		page->right = 1;
+
+		uint8_t contentBuf[sizeof(OidContentPageHeader)] = { 0 };
+
+		auto content = (OidContentPageHeader *)contentBuf;
+		content->type = stappler::toInt(PageType::OidContent);
+		content->ncells = 0;
+		content->root = 0;
+		content->prev = UndefinedPage;
+		content->next = UndefinedPage;
+
+		_sourceMemory.emplace_back(pages::alloc(_params.pageSize));
+		_sourceMemory.emplace_back(pages::alloc(_params.pageSize));
+
+		writePage(nullptr, 0, -1, mem::BytesView(buf, sizeof(StorageHeader) + sizeof(OidTreePageHeader)));
+		writePage(nullptr, 1, -1, mem::BytesView(contentBuf, sizeof(OidContentPageHeader)));
+
+		Transaction t;
+		if (t.open(*this, db::minidb::OpenMode::Write)) {
+			auto realPageSize = ManifestPageSize - OidHeaderSize;
+			do {
+				TreeStack stack(t, t.getPageCache()->getRoot());
+				if (auto obj = stack.emplaceCell(realPageSize)) {
+					obj.header->oid.type = stappler::toInt(OidType::Manifest);
+					obj.header->oid.flags = 0;
+					obj.header->oid.dictId = 0;
 				}
-			} else {
-				Manifest::destroy(_manifest);
-				_manifest = nullptr;
-			}
+			} while(0);
+			t.close();
 		}
 	}
 }

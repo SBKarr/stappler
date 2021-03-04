@@ -79,6 +79,9 @@ SP_EXTERN_C int _spMain(argc, argv) {
 
 	auto val = data::read<StringView, stellator::mem::Interface>(StringView(s_config));
 
+	auto dictPath = filesystem::currentDir("dict.2.dict");
+	auto dictBytes = filesystem::readIntoMemory(dictPath);
+
 	std::cout << data::EncodeFormat::Pretty << val << "\n";
 
 	db::Scheme _objects = db::Scheme("objects");
@@ -89,7 +92,7 @@ SP_EXTERN_C int _spMain(argc, argv) {
 
 	using namespace db;
 
-	_objects.define({
+	_objects.define(mem::Vector<Field>({
 		db::Field::Text("text", db::MinLength(3)),
 		db::Field::Extra("data", Vector<db::Field>{
 			db::Field::Array("strings", db::Field::Text("")),
@@ -103,7 +106,7 @@ SP_EXTERN_C int _spMain(argc, argv) {
 			return true;
 		}), db::FieldView::Delta),
 		db::Field::Set("images", _images, db::Flags::Composed),
-	});
+	}), std::move(dictBytes));
 
 	_refs.define({
 		Field::Text("alias", Transform::Alias),
@@ -162,16 +165,31 @@ SP_EXTERN_C int _spMain(argc, argv) {
 
 	auto writablePath = filesystem::writablePath("tmp.minidb");
 
-	db::minidb::Storage *storage = db::minidb::Storage::open(pool, writablePath);
+	db::minidb::StorageParams params;
+	params.pageSize = 16_KiB;
+
+	db::minidb::Storage *storage = db::minidb::Storage::open(pool, writablePath, params);
+
+	storage->init(schemes);
 
 	db::minidb::Transaction t;
 	if (t.open(*storage, db::minidb::OpenMode::Read)) {
-		if (auto p = t.openPage(0, db::minidb::OpenMode::Read)) {
-			minidb::inspectManifestPage([&] (mem::StringView str) { std::cout << str; }, p->bytes.data(), p->bytes.size());
-		}
+		minidb::inspectTree(t, 0, [&] (mem::StringView str) { std::cout << str; });
+		do {
+			db::minidb::TreeStack stack(t, 0);
+			for (uint64_t i = 0; i <= 26; ++ i) {
+				if (auto it = stack.openOnOid(i)) {
+					auto cell = (db::minidb::OidCellHeader *)it.data;
+					if (cell->oid.value != i) {
+						std::cout << "Invalid oid: " << i << "\n";
+					}
+				} else {
+					std::cout << "Object not found: " << i << "\n";
+				}
+			}
+		} while (0);
+		t.close();
 	}
-
-	/* storage->init(schemes); */
 
 	return 0;
 }

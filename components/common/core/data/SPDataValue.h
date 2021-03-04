@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "SPDataTraits.h"
 #include "SPString.h"
 #include "SPLog.h"
+#include "SPTime.h"
 
 NS_SP_EXT_BEGIN(data)
 
@@ -120,6 +121,8 @@ public:
 	explicit ValueTemplate(int64_t v) : _type(Type::INTEGER) { intVal = v; }
 	explicit ValueTemplate(uint32_t v) : _type(Type::INTEGER) { intVal = int64_t(v); }
 	explicit ValueTemplate(uint64_t v) : _type(Type::INTEGER) { intVal = int64_t(v); }
+	explicit ValueTemplate(Time v) : _type(Type::INTEGER) { intVal = int64_t(v.toMicros()); }
+	explicit ValueTemplate(TimeInterval v) : _type(Type::INTEGER) { intVal = int64_t(v.toMicros()); }
 	explicit ValueTemplate(float v) : _type(Type::DOUBLE) { doubleVal = v; }
 	explicit ValueTemplate(double v) : _type(Type::DOUBLE) { doubleVal = v; }
 	explicit ValueTemplate(const char *v) : _type(Type::CHARSTRING) { strVal = (v ?  new StringType(v) : new StringType()); }

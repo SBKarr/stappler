@@ -31,6 +31,7 @@ THE SOFTWARE.
 #include "SPString.h"
 #include "SPDataStream.h"
 
+#define LZ4_HC_STATIC_LINKING_ONLY 1
 #include "lz4hc.h"
 
 NS_SP_EXT_BEGIN(data)
@@ -457,11 +458,15 @@ size_t getCompressBounds(size_t size, EncodeFormat::Compression c) {
 thread_local uint8_t tl_lz4HCEncodeState[std::max(sizeof(LZ4_streamHC_t), sizeof(LZ4_stream_t))];
 thread_local uint8_t tl_compressBuffer[128_KiB];
 
-static size_t compressData(const uint8_t *src, size_t srcSize, uint8_t *dest, size_t destSize, EncodeFormat::Compression c) {
+uint8_t *getLZ4EncodeState() {
+	return tl_lz4HCEncodeState;
+}
+
+size_t compressData(const uint8_t *src, size_t srcSize, uint8_t *dest, size_t destSize, EncodeFormat::Compression c) {
 	switch (c) {
 	case EncodeFormat::LZ4Compression: {
 		const int offSize = ((srcSize <= 0xFFFF) ? 2 : 4);
-		const int ret = LZ4_compress_fast_extState(tl_lz4HCEncodeState, (const char *)src, (char *)dest + offSize, srcSize, destSize + offSize, 1);
+		const int ret = LZ4_compress_fast_extState(tl_lz4HCEncodeState, (const char *)src, (char *)dest + offSize, srcSize, destSize - offSize, 1);
 		if (ret > 0) {
 			if (srcSize <= 0xFFFF) {
 				uint16_t sz = srcSize;
@@ -499,7 +504,7 @@ static size_t compressData(const uint8_t *src, size_t srcSize, uint8_t *dest, si
 	return 0;
 }
 
-static void writeCompressionMark(uint8_t *data, size_t sourceSize, EncodeFormat::Compression c) {
+void writeCompressionMark(uint8_t *data, size_t sourceSize, EncodeFormat::Compression c) {
 	switch (c) {
 	case EncodeFormat::LZ4Compression:
 	case EncodeFormat::LZ4HCCompression:

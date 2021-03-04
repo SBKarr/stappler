@@ -229,7 +229,7 @@ struct Parser {
 				}
 
 				if constexpr (sizeof(OrigCharType) == 2) {
-					if (name.prefix(u"!--", "!--"_len)) { // process comment
+					if (name.prefix(u"!--", u"!--"_len)) { // process comment
 						current.skipUntilString(u"-->", false);
 						continue;
 					}

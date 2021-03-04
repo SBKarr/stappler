@@ -261,7 +261,9 @@ constexpr long double operator"" _to_rad ( unsigned long long int val ) { return
 
 // string length (useful for comparation: memcmp(str, "Test", "Test"_len) )
 constexpr size_t operator"" _length ( const char* str, size_t len) { return len; }
+constexpr size_t operator"" _length ( const char16_t* str, size_t len) { return len; }
 constexpr size_t operator"" _len ( const char* str, size_t len) { return len; }
+constexpr size_t operator"" _len ( const char16_t* str, size_t len) { return len; }
 
 constexpr unsigned long long int operator"" _GiB ( unsigned long long int val ) { return val * 1024 * 1024 * 1024; }
 constexpr unsigned long long int operator"" _MiB ( unsigned long long int val ) { return val * 1024 * 1024; }

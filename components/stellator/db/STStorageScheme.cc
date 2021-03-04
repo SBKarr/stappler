@@ -114,6 +114,10 @@ bool Scheme::isDetouched() const {
 	return (flags & Options::Detouched) != Options::None;
 }
 
+bool Scheme::isCompressed() const {
+	return (flags & Options::Compressed) != Options::None;
+}
+
 void Scheme::define(std::initializer_list<Field> il) {
 	for (auto &it : il) {
 		auto fname = it.getName();

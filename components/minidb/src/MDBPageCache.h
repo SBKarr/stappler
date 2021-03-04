@@ -30,28 +30,43 @@ namespace db::minidb {
 class PageCache : public mem::AllocBase {
 public:
 	PageCache(const Storage *, int fd, bool writable);
+	~PageCache();
 
 	const PageNode * openPage(uint32_t idx, OpenMode);
+	const PageNode * allocatePage(PageType);
 	void closePage(const PageNode *);
 
 	// release (and commit) unused pages
 	void clear(bool commit);
 	bool empty() const;
 
-protected:
-	bool shouldPromote(const PageNode &, OpenMode) const;
+	uint32_t getRoot() const;
+	uint64_t getOid() const;
+	uint64_t getNextOid();
+	void setRoot(uint32_t);
+
+	uint32_t getPageSize() const { return _pageSize; }
+	uint32_t getPageCount() const { return _pageCount; }
+
 	void promote(PageNode &);
 
+	const StorageHeader &getHeader() const { return _header; }
+
+protected:
 	const Storage *_storage = nullptr;
-	uint32_t _pageSize = 0;
 	int _fd = -1;
 	bool _writable = false;
 	mem::Vector<mem::BytesView> _alloc;
 	mem::Map<uint32_t, PageNode> _pages;
-	mem::Mutex _mutex;
 
-	mem::Mutex _headerMutex;
-	StorageHeader *_header = nullptr;
+	mutable mem::Mutex _mutex;
+	mutable mem::Mutex _headerMutex;
+	uint32_t _pageSize = 0;
+	uint32_t _pageCount = 0;
+	StorageHeader _header;
+
+	size_t _nmapping = 0;
+	size_t _pagesLimit = PageCacheLimit;
 };
 
 }

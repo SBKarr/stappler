@@ -23,8 +23,161 @@ THE SOFTWARE.
 #ifndef COMPONENTS_MINIDB_SRC_MDBTREE_H_
 #define COMPONENTS_MINIDB_SRC_MDBTREE_H_
 
-#include "MDBManifest.h"
 #include "MDBPageCache.h"
+
+namespace db::minidb {
+
+struct TreePageIterator {
+	const PageNode *node = nullptr;
+	const void *data = nullptr;
+	uint32_p index = nullptr; // index in reverse order
+
+	TreePageIterator(const PageNode *node, const void *ptr, uint32_p idx) : node(node), data(ptr), index(idx) { }
+	TreePageIterator(nullptr_t) { }
+
+	operator bool() const { return data != nullptr; }
+
+	bool operator==(const TreePageIterator &it) const { return it.data == data && it.index == index; }
+	bool operator!=(const TreePageIterator &it) const { return it.data != data || it.index != index; }
+
+	TreePageIterator & operator ++() {
+		if (index) {
+			-- index;
+			data = node->bytes.data() + *index;
+		} else {
+			switch (node->type) {
+			case PageType::SchemeContent:
+				data = ((OidPosition *)data) + 1;
+				break;
+			default:
+				data = ((OidIndexCell *)data) + 1;
+				break;
+			}
+		}
+		return *this;
+	}
+	TreePageIterator operator++ (int) { TreePageIterator result(*this); ++(*this); return result; }
+
+	TreePageIterator & operator --() {
+		if (index) {
+			++ index;
+			data = node->bytes.data() + *index;
+		} else {
+			switch (node->type) {
+			case PageType::SchemeContent:
+				data = ((OidPosition *)data) - 1;
+				break;
+			default:
+				data = ((OidIndexCell *)data) - 1;
+				break;
+			}
+		}
+		return *this;
+	}
+	TreePageIterator operator-- (int) { TreePageIterator result(*this); --(*this); return result; }
+
+	TreePageIterator next(uint32_t v = 1) const {
+		if (index) {
+			return TreePageIterator(node, node->bytes.data() + *(index - v), index - v);
+		} else {
+			switch (node->type) {
+			case PageType::SchemeContent:
+				return TreePageIterator(node, ((OidPosition *)data) + v, nullptr);
+				break;
+			default:
+				break;
+			}
+			return TreePageIterator(node, ((OidIndexCell *)data) + v, nullptr);
+		}
+	}
+
+	TreePageIterator prev(uint32_t v = 1) const {
+		if (index) {
+			return TreePageIterator(node, node->bytes.data() + *(index + v), index + v);
+		} else {
+			switch (node->type) {
+			case PageType::SchemeContent:
+				return TreePageIterator(node, ((OidPosition *)data) - v, nullptr);
+				break;
+			default:
+				break;
+			}
+			return TreePageIterator(node, ((OidIndexCell *)data) - v, nullptr);
+		}
+	}
+};
+
+inline bool operator<(const TreePageIterator &l, const TreePageIterator &r) { return l.index < r.index; }
+inline bool operator<=(const TreePageIterator &l, const TreePageIterator &r) { return l.index <= r.index; }
+inline bool operator>(const TreePageIterator &l, const TreePageIterator &r) { return l.index > r.index; }
+inline bool operator>=(const TreePageIterator &l, const TreePageIterator &r) { return l.index >= r.index; }
+
+struct TreePage {
+	const PageNode *page = nullptr;
+
+	TreePage(nullptr_t) : page(nullptr) { }
+	TreePage(const PageNode *n) : page(n) { }
+
+	operator bool () const { return page != nullptr; }
+	mem::BytesView bytes() const { return page->bytes; }
+	mem::BytesView writableData(const Transaction &);
+
+	PageType getType() const;
+	uint32_t getCells() const;
+
+	// returns freeBytes + offset for last cell
+	// page can be opened partially, so, if type is None (as for partial pages) - returns (0, 0)
+	stappler::Pair<size_t, uint32_t> getFreeSpace() const;
+	size_t getHeaderSize(PageType = PageType::None) const;
+
+	TreePageIterator begin() const;
+	TreePageIterator end() const;
+
+	TreePageIterator find(uint64_t oid) const;
+
+	uint32_t findTargetPage(uint64_t oid) const;
+
+	bool pushOidIndex(const Transaction &, uint32_t page, uint64_t oid);
+
+	// TreeTableInteriorCell getTableInteriorCell(uint16_t off) const;
+	// TreeTableLeafCell getTableLeafCell(uint16_t off) const;
+};
+
+struct TreeStack {
+	const Transaction *transaction;
+	mem::Vector<TreePage> frames;
+	mem::Vector<const PageNode *> nodes;
+	uint32_t root = 0;
+
+	TreeStack(const Transaction &t, uint32_t root);
+	~TreeStack();
+
+	TreePageIterator openOnOid(uint64_t oid = 0, OpenMode = OpenMode::Read);
+	TreePageIterator open();
+	bool openLastPage(uint32_t);
+
+	void close();
+
+	OidCell pushCell(size_t payloadSize, uint64_t oid);
+	bool addToScheme(SchemeCell *, uint64_t oid, uint32_t page, uint32_t offset);
+
+	TreePage * splitPage(TreePage *, uint64_t oidValue, PageType type, uint32_t *rootPageLocation = nullptr);
+
+	OidCell getOidCell(uint64_t, bool writable = false);
+	OidCell getOidCell(const OidPosition &, bool writable = false);
+	OidCell getOidCell(const PageNode *page, OidCellHeader *, bool writable = false);
+	OidCell emplaceCell(OidType, OidFlags, mem::BytesView);
+	OidCell emplaceCell(size_t);
+	OidPosition emplaceScheme();
+	OidPosition emplaceIndex(uint64_t oid);
+
+	const PageNode *openPage(uint32_t idx, OpenMode);
+	void closePage(const PageNode *, bool force = false);
+
+	TreePageIterator next(TreePageIterator, bool close = false);
+};
+
+}
 
 /*NS_MDB_BEGIN
 

@@ -70,7 +70,7 @@ int VirtualGui::onTranslateName(Request &req) {
 				}
 			}
 
-			return req.runPug("html/docs.pug", [&] (pug::Context &exec, const pug::Template &tpl) -> bool {
+			return req.runPug(_virtual ? "virtual://html/docs.pug" : "html/docs.pug", [&] (pug::Context &exec, const pug::Template &tpl) -> bool {
 				exec.set("version", data::Value(tools::getVersionString()));
 				exec.set("hasDb", data::Value(true));
 				exec.set("setup", data::Value(true));

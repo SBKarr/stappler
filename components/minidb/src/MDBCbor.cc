@@ -39,59 +39,32 @@ struct MapEncoder {
 		}
 	}
 
-	MapEncoder(const Transaction &t, uint32_t page, bool prefix = false) : _transaction(&t) {
-		/*_frames.reserve(1);
-		_frames.emplace_back(_transaction->openFrame(page, OpenMode::Write));
-
-		auto &f = _frames.back();
-		auto h = (PayloadPageHeader *)f.ptr;
-		h->next = 0;
-
-		_map = uint8_p(f.ptr) + sizeof(PayloadPageHeader);
-		_remains = f.size - sizeof(PayloadPageHeader);
-
+	MapEncoder(const mem::Vector<mem::BytesView> &map, bool prefix = false)
+	: _map(uint8_p(map.front().data())), _remains(map.front().size()), _pages(&map) {
 		if (prefix) {
 			stappler::data::cbor::_writeId(*this);
-		}*/
+		}
 	}
 
-	~MapEncoder() {
-		/*if (_transaction && !_frames.empty()) {
-			auto off = _accum % (_transaction->getManifest()->getPageSize() - sizeof(PayloadPageHeader));
+	~MapEncoder() { }
 
-			for (auto it = _frames.rbegin(); it != _frames.rend(); ++ it) {
-				auto h = (PayloadPageHeader *)it->ptr;
-				h->remains = off;
-				off += (it->size - sizeof(PayloadPageHeader));
-			}
-
-			for (auto &it : _frames) {
-				_transaction->closeFrame(it);
-			}
-			_frames.clear();
-		}*/
-	}
-
-	void spawnPage() {
-		/*auto idx = _frames.size() - 1;
-		auto page = _transaction->getManifest()->allocatePage(*_transaction);
-		_frames.emplace_back(_transaction->openFrame(page, OpenMode::Write));
-
-		auto &f = _frames.back();
-		auto h = (PayloadPageHeader *)f.ptr;
-		h->next = 0;
-
-		((PayloadPageHeader *)_frames[idx].ptr)->next = page;
-
-		_map = uint8_p(f.ptr) + sizeof(PayloadPageHeader);
-		_remains = f.size - sizeof(PayloadPageHeader);*/
+	void swapPage() {
+		if (_pages && _page + 1 < _pages->size()) {
+			++ _page;
+			auto p = _pages->at(_page);
+			_map = uint8_p(p.data());
+			_remains = p.size();
+		} else {
+			_remains = 0;
+			_map = nullptr;
+		}
 	}
 
 	void emplace(uint8_t c) {
+		if (_remains == 0) {
+			swapPage();
+		}
 		if (_map) {
-			if (_remains == 0) {
-				spawnPage();
-			}
 			*_map = c; ++ _map; ++ _accum; -- _remains;
 		} else {
 			++ _accum;
@@ -103,11 +76,12 @@ struct MapEncoder {
 			if (_remains <= size) {
 				memcpy(_map, buf, _remains); _map += _remains; _accum += _remains; buf += _remains; size -= _remains; _remains = 0;
 			}
-			if (size > 0) {
+			while (size > 0) {
 				if (_remains == 0) {
-					spawnPage();
+					swapPage();
 				}
-				memcpy(_map, buf, size); _map += size; _accum += size; _remains -= size;
+				auto tmp = std::min(size, _remains);
+				memcpy(_map, buf, tmp); _map += tmp; buf += tmp; _accum += tmp; _remains -= tmp; size -= tmp;
 			}
 		} else {
 			_accum += size;
@@ -131,23 +105,29 @@ private:
 	size_t _accum = 0;
 	size_t _remains = stappler::maxOf<size_t>();
 
-	const Transaction *_transaction = nullptr;
-	mem::Vector<PageNode *> _frames;
+	size_t _page = 0;
+	const mem::Vector<mem::BytesView> *_pages = nullptr;
 };
 
-/*size_t getPayloadSize(PageType type, const mem::Value &data) {
-	MapEncoder enc((type == PageType::LeafTable) ? true : false);
+size_t getPayloadSize(PageType type, const mem::Value &data) {
+	MapEncoder enc((type == PageType::OidContent) ? true : false);
 	data.encode(enc);
 	return enc.size();
 }
 
 size_t writePayload(PageType type, uint8_p map, const mem::Value &data) {
-	MapEncoder enc(map, (type == PageType::LeafTable) ? true : false);
+	MapEncoder enc(map, (type == PageType::OidContent) ? true : false);
 	data.encode(enc);
 	return enc.size();
 }
 
-size_t writeOverflowPayload(const Transaction &t, PageType type, uint32_t page, const mem::Value &data) {
+size_t writePayload(PageType type, const mem::Vector<mem::BytesView> &map, const mem::Value &data) {
+	MapEncoder enc(map, (type == PageType::OidContent) ? true : false);
+	data.encode(enc);
+	return enc.size();
+}
+
+/*size_t writeOverflowPayload(const Transaction &t, PageType type, uint32_t page, const mem::Value &data) {
 	MapEncoder enc(t, page, (type == PageType::LeafTable) ? true : false);
 	data.encode(enc);
 	return enc.size();
@@ -340,7 +320,11 @@ struct Decoder {
 	mem::Vector<mem::Value *> dynamicStack;
 };
 
-mem::Value readPayload(const uint8_p ptr, const mem::Vector<mem::StringView> &filter) {
+mem::Value readPayload(uint8_p ptr, const mem::Vector<mem::StringView> &filter, uint64_t oid) {
+	bool isFilterEmpty = filter.empty();
+	if (filter.size() == 1 && filter.back() == "*") {
+		isFilterEmpty = true;
+	}
 	mem::Value ret;
 	cbor::IteratorContext ctx;
 	if (ctx.init(ptr, stappler::maxOf<size_t>())) {
@@ -353,7 +337,7 @@ mem::Value readPayload(const uint8_p ptr, const mem::Vector<mem::StringView> &fi
 							&& !ctx.isStreaming) {
 						auto key = mem::StringView((const char *)ctx.current.ptr, ctx.objectSize);
 						auto it = std::lower_bound(filter.begin(), filter.end(), key);
-						if (filter.empty() || (it != filter.end() && *it == key)) {
+						if (isFilterEmpty || (it != filter.end() && *it == key)) {
 							auto &val = ret.emplace(key);
 							Decoder dec(&ctx, &val, ctx.stackSize);
 							tok = ctx.next();
@@ -386,47 +370,9 @@ mem::Value readPayload(const uint8_p ptr, const mem::Vector<mem::StringView> &fi
 		ctx.finalize();
 	}
 
-	return ret;
-}
-
-mem::Value readOverflowPayload(const Transaction &t, uint32_t page, const mem::Vector<mem::StringView> &filter) {
-	mem::Value ret;
-
-	/*uint32_t next = 0;
-	size_t offset = 0;
-	mem::Bytes buf;
-	t.openPageForReading(page, [&] (void *ptr, uint32_t size) -> bool {
-		auto h = (PayloadPageHeader *)ptr;
-		if (h->remains <= size - sizeof(PayloadPageHeader)) {
-			ret = readPayload(uint8_p(ptr) + sizeof(PayloadPageHeader), filter);
-		} else {
-			next = h->next;
-			offset = size - sizeof(PayloadPageHeader);
-			buf.resize(h->remains);
-			memcpy(buf.data(), uint8_p(ptr) + sizeof(PayloadPageHeader), offset);
-		}
-		return true;
-	});
-
-	while (next) {
-		t.openPageForReading(next, [&] (void *ptr, uint32_t size) -> bool {
-			auto h = (PayloadPageHeader *)ptr;
-			next = h->next;
-			if (h->remains <= size - sizeof(PayloadPageHeader)) {
-				memcpy(buf.data() + offset, uint8_p(ptr) + sizeof(PayloadPageHeader), h->remains);
-				offset += h->remains;
-			} else {
-				memcpy(buf.data() + offset, uint8_p(ptr) + sizeof(PayloadPageHeader), size - sizeof(PayloadPageHeader));
-				offset += size - sizeof(PayloadPageHeader);
-			}
-			return true;
-		});
+	if (oid) {
+		ret.setInteger(oid, "__oid");
 	}
-
-	if (!buf.empty()) {
-		return readPayload(buf.data(), filter);
-	}*/
-
 	return ret;
 }
 

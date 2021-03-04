@@ -53,21 +53,28 @@ public:
 	void close();
 
 	const PageNode *openPage(uint32_t idx, OpenMode) const;
-	void closePage(const PageNode *, bool async = false) const;
+	void closePage(const PageNode *) const;
 
 	OpenMode getMode() const { return _mode; }
 	int getFd() const { return _fd; }
 	size_t getFileSize() const { return _fileSize; }
-	Manifest *getManifest() const { return _manifest; }
 	const Storage *getStorage() const { return _storage; }
+	PageCache *getPageCache() const { return _pageCache; }
+	mem::pool_t *getPool() const { return _pool; }
 
-	bool isOpen() const { return _storage != nullptr && _manifest != nullptr; }
-	operator bool() const { return _storage != nullptr && _manifest != nullptr; }
+	bool isOpen() const { return _storage != nullptr; }
+	operator bool() const { return _storage != nullptr; }
 
-	void invalidate();
+	std::shared_mutex &getMutex() const { return _mutex; }
+
+	void invalidate() const;
 	void commit();
 
-	OidCell getOidCell(uint64_t) const;
+	SchemeCell getSchemeCell(const db::Scheme *) const;
+	IndexCell getSchemeCell(const db::Scheme *, mem::StringView) const;
+
+	uint32_t getRoot() const;
+	uint32_t getSchemeRoot(const db::Scheme *) const;
 
 public: // CRUD
 	mem::Value select(Worker &, const db::Query &);
@@ -77,26 +84,32 @@ public: // CRUD
 	bool remove(Worker &, uint64_t oid);
 	size_t count(Worker &, const db::Query &);
 
+	OidPosition createValue(const Scheme &, mem::Value &);
+
+	mem::Value decodeValue(const db::Scheme &scheme, const OidCell &cell, const mem::Vector<mem::StringView> &names) const;
+
+	bool foreach(const db::Scheme &scheme, const mem::Function<void(const mem::Value &)> &cb,
+			const mem::Callback<void(const mem::Function<void()> &)> &spawnThread, const mem::Callback<bool()> &waitForThread) const;
+
 protected:
 	friend class Manifest;
 
 	bool isModeAllowed(OpenMode) const;
 	bool readHeader(StorageHeader *target) const;
 
-	bool pushObject(const Scheme &scheme, uint64_t oid, const mem::Value &) const;
-
-	// bool checkUnique(const Scheme &scheme, const mem::Value &) const;
-	// mem::Value decodeValue(const db::Scheme &scheme, const TreeTableLeafCell &cell, const mem::Vector<mem::StringView> &names) const;
+	OidPosition pushObject(const OidPosition &schemeDataPos, const mem::Value &, bool compress = false,
+			mem::BytesView dict = mem::BytesView(), uint8_t dictId = 0) const;
+	bool checkUnique(const Scheme &scheme, const mem::Value &) const;
 
 	mem::pool_t *_pool = nullptr;
 	OpenMode _mode = OpenMode::Read;
 	int _fd = -1;
 	const Storage *_storage = nullptr;
 	size_t _fileSize = 0;
-	bool _success = true;
+	mutable bool _success = true;
 
-	Manifest *_manifest = nullptr; // actual and updated
 	PageCache *_pageCache = nullptr;
+	mutable std::shared_mutex _mutex;
 };
 
 }

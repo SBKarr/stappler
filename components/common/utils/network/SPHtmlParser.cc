@@ -46,6 +46,12 @@ using HtmlIdentifier8 = chars::Compose<char,
 template <> StringViewUtf8 Tag_readName<StringViewUtf8>(StringViewUtf8 &is, bool keepClean) {
 	StringViewUtf8 s = is;
 	s.skipUntil<HtmlIdentifier16, StringViewUtf8::MatchChars<'>', '?'>>();
+	if (s.is("!--")) {
+		auto ret = StringViewUtf8(s, "!--"_len);
+		s += "!--"_len;
+		is = s;
+		return ret;
+	}
 	StringViewUtf8 name(s.readChars<HtmlIdentifier16, StringViewUtf8::MatchChars<'?'>>());
 	if (!keepClean) {
 		string::tolower_buf((char *)name.data(), name.size());
@@ -107,6 +113,12 @@ template <> StringViewUtf8 Tag_readAttrValue<StringViewUtf8>(StringViewUtf8 &s, 
 template <> StringView Tag_readName<StringView>(StringView &is, bool keepClean) {
 	StringView s = is;
 	s.skipUntil<HtmlIdentifier8, StringView::MatchChars<'>', '?'>>();
+	if (s.is("!--")) {
+		auto ret = StringView(s, "!--"_len);
+		s += "!--"_len;
+		is = s;
+		return ret;
+	}
 	StringView name(s.readChars<HtmlIdentifier8, StringView::MatchChars<'?'>>());
 	if (!keepClean) {
 		string::tolower_buf((char *)name.data(), name.size());
@@ -168,6 +180,12 @@ template <> StringView Tag_readAttrValue<StringView>(StringView &s, bool keepCle
 template <> WideStringView Tag_readName<WideStringView>(WideStringView &is, bool keepClean) {
 	WideStringView s = is;
 	s.skipUntil<HtmlIdentifier16, WideStringView::MatchChars<u'>', u'?'>>();
+	if (s.is(u"!--")) {
+		auto ret = WideStringView(s, u"!--"_len);
+		s += u"!--"_len;
+		is = s;
+		return ret;
+	}
 	WideStringView name(s.readChars<HtmlIdentifier16, WideStringView::MatchChars<u'?'>>());
 	if (!keepClean) {
 		string::tolower_buf((char16_t *)name.data(), name.size());

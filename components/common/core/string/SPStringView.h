@@ -267,6 +267,7 @@ public:
 	StringViewUtf8();
 	StringViewUtf8(const char *ptr, size_t len = maxOf<size_t>());
 	StringViewUtf8(const char *ptr, size_t pos, size_t len);
+	StringViewUtf8(const StringViewUtf8 &, size_t len);
 	StringViewUtf8(const StringViewUtf8 &, size_t pos, size_t len);
 	StringViewUtf8(const PoolString &str);
 	StringViewUtf8(const StdString &str);
@@ -1000,6 +1001,9 @@ inline StringViewUtf8::StringViewUtf8(const char *ptr, size_t len)
 
 inline StringViewUtf8::StringViewUtf8(const char *ptr, size_t pos, size_t len)
 : BytesReader(ptr + pos, string::length(ptr + pos, len)) { }
+
+inline StringViewUtf8::StringViewUtf8(const StringViewUtf8 &ptr, size_t len)
+: StringViewUtf8(ptr, 0, len) { }
 
 inline StringViewUtf8::StringViewUtf8(const StringViewUtf8 &ptr, size_t pos, size_t len)
 : BytesReader(ptr.data() + pos, min(len, ptr.size() - pos)) { }

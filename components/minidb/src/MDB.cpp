@@ -20,13 +20,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
+#ifndef __clang__
+_Pragma( "GCC optimize (\"O2\")" )
+#endif
+
 #include "MDB.h"
 #include "MDBCbor.cc"
 #include "MDBCborUtils.cc"
 #include "MDBUtils.cc"
 #include "MDBHandle.cc"
-#include "MDBManifest.cc"
 #include "MDBStorage.cc"
 #include "MDBTransaction.cc"
 #include "MDBTree.cc"
+#include "MDBTreePage.cc"
 #include "MDBPageCache.cc"
