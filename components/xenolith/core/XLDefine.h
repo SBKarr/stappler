@@ -91,6 +91,7 @@ struct AlphaTest {
 
 namespace stappler::xenolith::vk {
 
+class Instance;
 class PresentationDevice;
 class TransferDevice;
 class DrawDevice;
@@ -109,6 +110,7 @@ struct AllocatorBufferBlock;
 class Buffer;
 class TransferGeneration;
 class DescriptorSetLayout;
+class PipelineCompiler;
 
 enum class ProgramStage {
 	None = 0,

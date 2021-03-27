@@ -33,6 +33,8 @@ THE SOFTWARE.
 
 #define LZ4_HC_STATIC_LINKING_ONLY 1
 #include "lz4hc.h"
+#include "brotli/encode.h"
+#include "brotli/decode.h"
 
 NS_SP_EXT_BEGIN(data)
 
@@ -445,9 +447,11 @@ size_t getCompressBounds(size_t size, EncodeFormat::Compression c) {
 		return 0;
 		break;
 	}
-	case EncodeFormat::BrotliLowCompression:
-		break;
-	case EncodeFormat::BrotliHighCompression:
+	case EncodeFormat::Brotli:
+		if (size < LZ4_MAX_INPUT_SIZE) {
+			return BrotliEncoderMaxCompressedSize(size) + ((size <= 0xFFFF) ? 2 : 4);
+		}
+		return 0;
 		break;
 	case EncodeFormat::NoCompression:
 		break;
@@ -481,7 +485,7 @@ size_t compressData(const uint8_t *src, size_t srcSize, uint8_t *dest, size_t de
 	}
 	case EncodeFormat::LZ4HCCompression: {
 		const int offSize = ((srcSize <= 0xFFFF) ? 2 : 4);
-		const int ret = LZ4_compress_HC_extStateHC(tl_lz4HCEncodeState, (const char *)src, (char *)dest + offSize, srcSize, destSize + offSize, LZ4HC_CLEVEL_MAX);
+		const int ret = LZ4_compress_HC_extStateHC(tl_lz4HCEncodeState, (const char *)src, (char *)dest + offSize, srcSize, destSize - offSize, LZ4HC_CLEVEL_MAX);
 		if (ret > 0) {
 			if (srcSize <= 0xFFFF) {
 				uint16_t sz = srcSize;
@@ -494,10 +498,22 @@ size_t compressData(const uint8_t *src, size_t srcSize, uint8_t *dest, size_t de
 		}
 		break;
 	}
-	case EncodeFormat::BrotliLowCompression:
+	case EncodeFormat::Brotli: {
+		const int offSize = ((srcSize <= 0xFFFF) ? 2 : 4);
+		size_t ret = destSize - offSize;
+		if (BrotliEncoderCompress(BROTLI_MAX_QUALITY, BROTLI_MAX_WINDOW_BITS, BROTLI_DEFAULT_MODE,
+				srcSize, (const uint8_t *)src, &ret,dest + offSize) == BROTLI_TRUE) {
+			if (srcSize <= 0xFFFF) {
+				uint16_t sz = srcSize;
+				memcpy(dest, &sz, sizeof(sz));
+			} else {
+				uint32_t sz = srcSize;
+				memcpy(dest, &sz, sizeof(sz));
+			}
+			return ret + offSize;
+		}
 		break;
-	case EncodeFormat::BrotliHighCompression:
-		break;
+	}
 	case EncodeFormat::NoCompression:
 		break;
 	}
@@ -514,9 +530,12 @@ void writeCompressionMark(uint8_t *data, size_t sourceSize, EncodeFormat::Compre
 			memcpy(data, "LZ4W", 4);
 		}
 		break;
-	case EncodeFormat::BrotliLowCompression:
-	case EncodeFormat::BrotliHighCompression:
-		memcpy(data, "SPBr", 4);
+	case EncodeFormat::Brotli:
+		if (sourceSize <= 0xFFFF) {
+			memcpy(data, "SBrS", 4);
+		} else {
+			memcpy(data, "SBrW", 4);
+		}
 		break;
 	case EncodeFormat::NoCompression:
 		break;
@@ -563,6 +582,11 @@ static bool doDecompressLZ4Frame(const uint8_t *src, size_t srcSize, uint8_t *de
 	return LZ4_decompress_safe((const char *)src, (char *)dest, srcSize, destSize) > 0;
 }
 
+static bool doDecompressBrotliFrame(const uint8_t *src, size_t srcSize, uint8_t *dest, size_t destSize) {
+	size_t ret = destSize;
+	return BrotliDecoderDecompress(srcSize, src, &ret, dest) == BROTLI_DECODER_RESULT_SUCCESS;
+}
+
 template <typename Interface>
 static inline auto doDecompressLZ4(BytesView data, bool sh) -> ValueTemplate<Interface> {
 	size_t size = sh ? data.readUnsigned16() : data.readUnsigned32();
@@ -581,6 +605,24 @@ static inline auto doDecompressLZ4(BytesView data, bool sh) -> ValueTemplate<Int
 	return ret;
 }
 
+template <typename Interface>
+static inline auto doDecompressBrotli(BytesView data, bool sh) -> ValueTemplate<Interface> {
+	size_t size = sh ? data.readUnsigned16() : data.readUnsigned32();
+
+	ValueTemplate<Interface> ret;
+	if (size <= sizeof(tl_compressBuffer)) {
+		if (doDecompressBrotliFrame(data.data(), data.size(), tl_compressBuffer, size)) {
+			ret = data::read<BytesView, Interface>(BytesView(tl_compressBuffer, size));
+		}
+	} else {
+		typename Interface::BytesType res; res.resize(size);
+		if (doDecompressBrotliFrame(data.data(), data.size(), res.data(), size)) {
+			ret = data::read<typename Interface::BytesType, Interface>(res);
+		}
+	}
+	return ret;
+}
+
 template <>
 auto decompressLZ4(const uint8_t *srcPtr, size_t srcSize, bool sh) -> ValueTemplate<memory::PoolInterface> {
 	return doDecompressLZ4<memory::PoolInterface>(BytesView(srcPtr, srcSize), sh);
@@ -592,13 +634,13 @@ auto decompressLZ4(const uint8_t *srcPtr, size_t srcSize, bool sh) -> ValueTempl
 }
 
 template <>
-auto decompressBrotli(const uint8_t *data, size_t size) -> ValueTemplate<memory::PoolInterface> {
-	return ValueTemplate<memory::PoolInterface>();
+auto decompressBrotli(const uint8_t *srcPtr, size_t srcSize, bool sh) -> ValueTemplate<memory::PoolInterface> {
+	return doDecompressBrotli<memory::PoolInterface>(BytesView(srcPtr, srcSize), sh);
 }
 
 template <>
-auto decompressBrotli(const uint8_t *data, size_t size) -> ValueTemplate<memory::StandartInterface> {
-	return ValueTemplate<memory::StandartInterface>();
+auto decompressBrotli(const uint8_t *srcPtr, size_t srcSize, bool sh) -> ValueTemplate<memory::StandartInterface> {
+	return doDecompressBrotli<memory::StandartInterface>(BytesView(srcPtr, srcSize), sh);
 }
 
 template <typename Interface>
@@ -624,7 +666,24 @@ static inline auto doDecompress(const uint8_t *d, size_t size) -> typename Inter
 		}
 		break;
 	}
-	case DataFormat::Brotli: break;
+	case DataFormat::Brotli_Short: {
+		data += 4;
+		size_t size = data.readUnsigned16();
+		typename Interface::BytesType res; res.resize(size);
+		if (doDecompressBrotliFrame(data.data(), data.size(), res.data(), size)) {
+			return res;
+		}
+		break;
+	}
+	case DataFormat::Brotli_Word: {
+		data += 4;
+		size_t size = data.readUnsigned32();
+		typename Interface::BytesType res; res.resize(size);
+		if (doDecompressBrotliFrame(data.data(), data.size(), res.data(), size)) {
+			return res;
+		}
+		break;
+	}
 	default: break;
 	}
 	return typename Interface::BytesType();

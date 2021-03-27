@@ -1,5 +1,5 @@
 /**
- Copyright (c) 2020 Roman Katuntsev <sbkarr@stappler.org>
+ Copyright (c) 2021 Roman Katuntsev <sbkarr@stappler.org>
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,8 @@ public:
     virtual ~AppDelegate();
 
     virtual bool onFinishLaunching() override;
-    virtual void onDeviceInit(vk::PresentationDevice *, const stappler::Callback<void(draw::LoaderStage &&, bool deferred)> &) override;
+
+    bool runScene();
 };
 
 }

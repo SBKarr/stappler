@@ -38,11 +38,13 @@ class Pipeline : public Ref {
 public:
 	virtual ~Pipeline();
 
-	bool init(VirtualDevice &dev, const PipelineOptions &, draw::PipelineParams &&);
+	bool init(VirtualDevice &dev, const PipelineOptions &, const draw::PipelineParams &);
 	void invalidate(VirtualDevice &dev);
 
 	VkPipeline getPipeline() const { return _pipeline; }
 	const draw::PipelineParams &getParams() const { return _params; }
+
+	StringView getName() const { return _params.key; }
 
 protected:
 	draw::PipelineParams _params;

@@ -84,7 +84,7 @@ struct SimpleBinder : public AllocBase {
 	void writeBind(std::ostream &stream, const Bytes &val) {
 		stream << base16::encode(val);
 	}
-	void writeBind(std::ostream &stream, const PatternComparator<const data::Value &> &val) {
+	void writeBind(std::ostream &stream, const PatternComparator<data::Value> &val) {
 		switch (val.cmp) {
 		case Comparation::Prefix:
 			stream << val.value->asString() << "%";

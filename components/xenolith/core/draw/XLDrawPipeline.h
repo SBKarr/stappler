@@ -37,9 +37,6 @@ struct ProgramParams {
 };
 
 struct PipelineParams {
-	Rect viewport;
-	URect scissor;
-
 	VertexFormat vertexFormat = VertexFormat::None;
 	LayoutFormat layoutFormat = LayoutFormat::Default;
 	RenderPassBind renderPass = RenderPassBind::Default;
@@ -49,10 +46,15 @@ struct PipelineParams {
 	StringView key;
 };
 
-struct LoaderStage {
+struct PipelineResponse {
+	Map<String, Rc<vk::Pipeline>> pipelines;
+};
+
+struct PipelineRequest {
 	StringView name;
-	Vector<ProgramParams> programs;
-	Vector<PipelineParams> pipelines;
+	Vector<draw::ProgramParams> programs;
+	Vector<draw::PipelineParams> pipelines;
+	Function<void(StringView, const PipelineResponse &)> callback;
 };
 
 }

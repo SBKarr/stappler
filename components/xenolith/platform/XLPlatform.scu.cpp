@@ -24,7 +24,10 @@ THE SOFTWARE.
 
 #include "common/XLApplication.cc"
 #include "common/XLVkView.cc"
+#include "common/XLLog.cc"
 
+#include "linux/XLVkViewImpl-linux.cc"
+#include "linux/XLVulkan.cc"
 #include "linux/XLDevice.cc"
 #include "linux/XLInteraction.cc"
 #include "linux/XLNetwork.cc"

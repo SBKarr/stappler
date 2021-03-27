@@ -25,9 +25,15 @@ THE SOFTWARE.
 
 #include "XLDefine.h"
 #include "SPCommonPlatform.h"
+#include <vulkan/vulkan.h>
 
 /* Platform-depended functions interface */
 namespace stappler::xenolith::platform {
+
+namespace version {
+	inline const char *_name() { return "Stappler+Xenolith"; }
+	inline uint32_t _version() { return VK_MAKE_VERSION(1, 0, 0); }
+}
 
 namespace network {
 	void _setNetworkCallback(const Function<void(bool isOnline)> &callback);
@@ -49,7 +55,10 @@ namespace device {
 
 	void _onDirectorStarted();
 
-	void _sleep(double value);
+	uint64_t _minFrameTime(); // microseconds;
+	uint64_t _clock(); // microseconds;
+
+	void _sleep(uint64_t microseconds);
 }
 
 namespace interaction {
@@ -73,8 +82,13 @@ namespace statusbar {
 	float _getHeight(const Size &screenSize, bool isTablet);
 }
 
+namespace vulkan {
+	Rc<vk::Instance> create(Application *);
 }
 
+}
+
+#include "XLVkViewImpl-linux.h"
 
 #if (MSYS || CYGWIN || LINUX || MACOS)
 

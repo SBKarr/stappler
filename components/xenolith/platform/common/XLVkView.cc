@@ -41,8 +41,6 @@ bool View::init(Instance *impl, PresentationDevice *dev) {
 	return true;
 }
 
-void View::pollEvents() { }
-
 int View::getDpi() const {
 	return _dpi;
 }
@@ -58,14 +56,6 @@ void View::setScreenSize(float width, float height) {
     _screenSize = Size(width, height);
 }
 
-void View::setViewName(const StringView& viewname) {
-    _viewName = viewname.str();
-}
-
-StringView View::getViewName() const {
-    return _viewName;
-}
-
 void View::handleTouchesBegin(int num, intptr_t ids[], float xs[], float ys[]) { }
 
 void View::handleTouchesMove(int num, intptr_t ids[], float xs[], float ys[]) { }
@@ -78,7 +68,7 @@ void View::enableOffscreenContext() { }
 
 void View::disableOffscreenContext() { }
 
-void View::setClipboardString(const StringView &) { }
+void View::setClipboardString(StringView) { }
 
 StringView View::getClipboardString() const { return StringView(); }
 
@@ -96,6 +86,14 @@ bool View::hasFocus() const {
 
 bool View::isInBackground() const {
 	return _inBackground;
+}
+
+void View::pushEvent(ViewEvent::Value events) {
+	_events |= events;
+}
+
+ViewEvent::Value View::popEvents() {
+	return _events.exchange(ViewEvent::None);
 }
 
 }

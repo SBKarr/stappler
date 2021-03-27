@@ -18,6 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+from .utils import extract_root_class
+from datetime import datetime, timedelta
+
 class TimePrinter(object):
     def __init__(self, val):
         self.val = val
@@ -25,7 +28,7 @@ class TimePrinter(object):
     def to_string(self):
         epoch = datetime(1970, 1, 1)
         rootVal = extract_root_class(self.val)
-        cookie_datetime = epoch + timedelta(microseconds=int(rootVal['_value']))
+        cookie_datetime = epoch + timedelta(microseconds = int(rootVal['_value']))
         return "(time) %d \"%s\"" % (int(rootVal['_value']), cookie_datetime)
 
 class TimeIntervalPrinter(object):

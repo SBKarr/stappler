@@ -74,12 +74,15 @@ public: /* interface */
 	/* get assigned target */
 	Ref *getTarget() const { return _target; }
 
-public: /* behavior */
 	/* used by task manager to set success state */
 	void setSuccessful(bool value) { _isSuccessful = value; }
 
 	/* if task execution was successful */
 	bool isSuccessful() const { return _isSuccessful; }
+
+	const std::vector<PrepareCallback> &getPrepareTasks() const { return _prepare; }
+	const std::vector<ExecuteCallback> &getExecuteTasks() const { return _execute; }
+	const std::vector<CompleteCallback> &getCompleteTasks() const { return _complete; }
 
 public: /* overloads */
 	virtual bool prepare() const;

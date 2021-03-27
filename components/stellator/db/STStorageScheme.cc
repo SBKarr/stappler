@@ -410,8 +410,10 @@ mem::Value Scheme::createWithWorker(Worker &w, const mem::Value &data, bool isPr
 		processFullTextFields(changeSet);
 	} else {
 		for (auto &it : changeSet.asArray()) {
-			transform(it, isProtected?TransformAction::ProtectedCreate:TransformAction::Create);
-			processFullTextFields(it);
+			if (it) {
+				transform(it, isProtected?TransformAction::ProtectedCreate:TransformAction::Create);
+				processFullTextFields(it);
+			}
 		}
 	}
 

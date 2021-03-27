@@ -37,7 +37,7 @@ public:
 	void closePage(const PageNode *);
 
 	// release (and commit) unused pages
-	void clear(bool commit);
+	void clear(const Transaction &, bool commit);
 	bool empty() const;
 
 	uint32_t getRoot() const;
@@ -52,15 +52,23 @@ public:
 
 	const StorageHeader &getHeader() const { return _header; }
 
+	void addIndexValue(OidPosition idx, OidPosition obj, int64_t value);
+	bool hasIndexValue(OidPosition idx, int64_t value);
+
 protected:
+	void writeIndexData(const Transaction &t, const SchemeCell &scheme, IndexCell *cell, mem::Vector<IntegerIndexPayload> &payload);
+	void writeIndexes(const Transaction &);
+
 	const Storage *_storage = nullptr;
 	int _fd = -1;
 	bool _writable = false;
 	mem::Vector<mem::BytesView> _alloc;
 	mem::Map<uint32_t, PageNode> _pages;
+	mem::Map<OidPosition, mem::Vector<IntegerIndexPayload>> _intIndex;
 
 	mutable mem::Mutex _mutex;
 	mutable mem::Mutex _headerMutex;
+	mem::Mutex _indexMutex;
 	uint32_t _pageSize = 0;
 	uint32_t _pageCount = 0;
 	StorageHeader _header;

@@ -44,6 +44,11 @@ PageCache::PageCache(const Storage *s, int fd, bool writable)
 PageCache::~PageCache() {
 	if (!_pages.empty()) {
 		stappler::log::text("minidb", "PageCache is not empty on destruction");
+		for (auto &it : _pages) {
+			stappler::log::vtext("minidb", "Page: ", it.second.number,
+					(it.second.mode == OpenMode::Read) ? " (read)" : " (write)", " type: ", uint32_t(stappler::toInt(it.second.type)),
+					" refs: ", it.second.refCount.load());
+		}
 	}
 }
 
@@ -139,8 +144,9 @@ void PageCache::closePage(const PageNode *node) {
 	-- node->refCount;
 }
 
-void PageCache::clear(bool commit) {
+void PageCache::clear(const Transaction &t, bool commit) {
 	if (commit && _writable) {
+		writeIndexes(t);
 		_header.mtime = mem::Time::now().toMicros();
 		auto page = openPage(0, OpenMode::Write);
 		*((StorageHeader *)page->bytes.data()) = _header;
@@ -214,6 +220,161 @@ void PageCache::promote(PageNode &node) {
 	node.bytes = mem;
 	node.access = mem::Time::now();
 	-- _nmapping;
+}
+
+void PageCache::addIndexValue(OidPosition idx, OidPosition obj, int64_t value) {
+	std::unique_lock<mem::Mutex> lock(_indexMutex);
+
+	auto it = _intIndex.find(idx);
+	if (it != _intIndex.end()) {
+		it->second.emplace(std::upper_bound(it->second.begin(), it->second.end(), IntegerIndexPayload{value, obj}),
+				IntegerIndexPayload{value, obj});
+	} else {
+		_intIndex.emplace(idx, mem::Vector<IntegerIndexPayload>()).first->second.emplace_back(IntegerIndexPayload{value, obj});
+	}
+}
+
+bool PageCache::hasIndexValue(OidPosition idx, int64_t value) {
+	std::unique_lock<mem::Mutex> lock(_indexMutex);
+
+	auto it = _intIndex.find(idx);
+	if (it != _intIndex.end()) {
+		auto lb = std::lower_bound(it->second.begin(), it->second.end(), IntegerIndexPayload{value, OidPosition{0, 0, 0}});
+		if (lb != it->second.end() && lb->value == value) {
+			return true;
+		}
+	}
+	return false;
+}
+
+void PageCache::writeIndexData(const Transaction &t, const SchemeCell &scheme, IndexCell *cell, mem::Vector<IntegerIndexPayload> &inputPayload) {
+	struct ContentPage {
+		IntIndexContentPageHeader header;
+		mem::SpanView<IntegerIndexPayload> data;
+		uint32_t index = UndefinedPage;
+	};
+
+	struct TreePage {
+		IntIndexTreePageHeader header;
+		mem::SpanView<IntegerIndexCell> data;
+		uint32_t index = UndefinedPage;
+	};
+
+	mem::Vector<uint32_t> pagePool;
+
+	size_t counter = 0;
+	auto data = (cell->root == UndefinedPage) ? mem::SpanView<IntegerIndexPayload>() : stappler::makeSpanView(
+			(IntegerIndexPayload *)mem::pool::palloc(mem::pool::acquire(), (scheme.counter + inputPayload.size()) * sizeof(IntegerIndexPayload)),
+			scheme.counter);
+	auto dataView = data;
+
+	auto inputIt = inputPayload.begin();
+
+	auto firstPage = getPageList(t, cell->root, pagePool);
+	while (firstPage != UndefinedPage) {
+		auto page = openPage(firstPage, OpenMode::Read);
+		auto h = (const IntIndexContentPageHeader *)page->bytes.data();
+		firstPage = h->next;
+
+		auto begin = (const IntegerIndexPayload *)(page->bytes.data() + sizeof(IntIndexContentPageHeader));
+		auto end = begin + h->ncells;
+
+		while (begin != end) {
+			if (inputIt == inputPayload.end()) {
+				memcpy((void *)dataView.data(), begin, (end - begin) * sizeof(IntegerIndexPayload));
+				dataView += (end - begin);
+				counter += (end - begin);
+				begin = end;
+			} else {
+				auto cell = std::upper_bound(begin, end, *inputIt);
+
+				if (cell != begin) {
+					memcpy((void *)dataView.data(), begin, (cell - begin) * sizeof(IntegerIndexPayload));
+					dataView += (cell - begin);
+					counter += (cell - begin);
+					begin = cell;
+				}
+
+				if (cell == end) {
+					continue;
+				}
+
+				auto tarIt = std::upper_bound(inputIt, inputPayload.end(), *begin);
+				if (tarIt != inputIt) {
+					memcpy((void *)dataView.data(), &(*inputIt), (tarIt - inputIt) * sizeof(IntegerIndexPayload));
+					dataView += (tarIt - inputIt);
+					counter += (tarIt - inputIt);
+					inputIt = tarIt;
+				}
+			}
+		}
+		closePage(page);
+	}
+
+	if (!data.empty() && inputIt != inputPayload.end()) {
+		memcpy((void *)dataView.data(), &(*inputIt), (inputPayload.end() - inputIt) * sizeof(IntegerIndexPayload));
+		dataView += (inputPayload.end() - inputIt);
+		counter += (inputPayload.end() - inputIt);
+		inputIt = inputPayload.end();
+	}
+
+	std::sort(pagePool.begin(), pagePool.end(), std::greater<>());
+
+	TreeStack stack(t, cell->root);
+	// stack.cellLimit = 33;
+	stack.allocOverload = [this, &pagePool] (PageType t) {
+		if (pagePool.empty()) {
+			return allocatePage(t);
+		} else {
+			auto n = pagePool.back();
+			pagePool.pop_back();
+			auto page = openPage(n, OpenMode::Write);
+			auto h = (VirtualPageHeader *)page->bytes.data();
+			h->type = stappler::toInt(t);
+			h->ncells = 0;
+			return page;
+		}
+	};
+
+	if (data.empty()) {
+		stack.replaceIntegerIndex(cell, inputPayload);
+	} else {
+		auto view = mem::SpanView<IntegerIndexPayload>(data.data(), counter);
+		if (!std::is_sorted(view.data(), view.data() + view.size())) {
+			std::cout << "Range is not sorted\n";
+		}
+
+		/*for (auto &it : view) {
+			std::cout << "\tCell:  (value) " << it.value << "  (oid) " << it.position.value
+					<< "  (page) " << it.position.page << "  (offset) " << it.position.offset << "\n";
+		}*/
+
+		stack.replaceIntegerIndex(cell, mem::SpanView<IntegerIndexPayload>(data.data(), counter));
+	}
+
+
+	/*db::minidb::InspectOptions opts;
+	opts.cb = [&] (mem::StringView str) { std::cout << str; };
+	opts.dataInspect = false;
+	db::minidb::inspectTree(t, cell->root, opts);*/
+}
+
+void PageCache::writeIndexes(const Transaction &t) {
+	auto p = mem::pool::create(mem::pool::acquire());
+	for (auto &it : _intIndex) {
+		if (auto indexPage = openPage(it.first.page, OpenMode::Write)) {
+			auto cell = (IndexCell *)(indexPage->bytes.data() + it.first.offset);
+			if (cell->oid.value == it.first.value) {
+				auto scheme = t.getSchemeCell(cell->schemeOid);
+				mem::pool::push(p);
+				writeIndexData(t, scheme, cell, it.second);
+				mem::pool::pop();
+				mem::pool::clear(p);
+			}
+			closePage(indexPage);
+		}
+	}
+	mem::pool::destroy(p);
 }
 
 }

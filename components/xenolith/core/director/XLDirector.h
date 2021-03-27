@@ -52,14 +52,18 @@ public:
 	inline vk::View* getView() { return _view; }
 	void setView(vk::View *view);
 
-	bool mainLoop(double);
+	bool mainLoop(uint64_t);
 
-	void update(double);
+	void update(uint64_t);
 	Rc<DrawFlow> construct();
 
 	void end();
 
 	Rc<DrawFlow> swapDrawFlow();
+
+	Size getScreenSize() const;
+
+	void runScene(Rc<Scene>);
 
 protected:
 	// Vk Swaphain was invalidated, drop all dependent resources;
@@ -71,6 +75,9 @@ protected:
 	Mutex _mutex;
 	Rc<DrawFlow> _drawFlow;
 	Rc<PipelineCache> _pipelineCache;
+
+	Rc<Scene> _scene;
+	Rc<Scene> _nextScene;
 };
 
 }

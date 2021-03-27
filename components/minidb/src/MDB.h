@@ -40,6 +40,8 @@ class Storage;
 class Transaction;
 class PageCache;
 
+constexpr uint32_t UndefinedPage = stappler::maxOf<uint32_t>();
+
 enum class OpenMode {
 	Read,
 	Write,
@@ -47,10 +49,12 @@ enum class OpenMode {
 
 enum class PageType : uint8_t {
 	None,
-	OidTable = 0b0110'1101, // hack for type-detection for first page
-	OidContent =	0b0001'0010,
-	SchemeTable =	0b0010'0001,
-	SchemeContent =	0b0010'0010,
+	OidTable =			0b0110'1101, // hack for type-detection for first page
+	OidContent =		0b0001'0010,
+	SchemeTable =		0b0010'0001,
+	SchemeContent =		0b0010'0010,
+	IntIndexTable =		0b0100'0001,
+	IntIndexContent =	0b0100'0010,
 	/*RevIndexTable =		0b0100'0001,
 	RevIndexContent =	0b0100'0010,
 	BytIndexTable =		0b1000'0001,
@@ -77,6 +81,9 @@ struct OidContentPageHeader : public VirtualPageHeader {
 
 using SchemeTreePageHeader = OidTreePageHeader;
 using SchemeContentPageHeader = OidContentPageHeader;
+
+using IntIndexTreePageHeader = OidTreePageHeader;
+using IntIndexContentPageHeader = OidContentPageHeader;
 
 struct StorageHeader {
 	uint8_t title[6]; // 0 - 5
@@ -135,9 +142,19 @@ struct [[gnu::packed]] OidIndexCell {
 };
 
 struct OidPosition {
-	uint32_t page = 0;
+	uint32_t page = UndefinedPage;
 	uint32_t offset = 0;
 	uint64_t value = 0;
+};
+
+struct IntegerIndexCell {
+	uint32_t page = UndefinedPage;
+	int64_t value = 0;
+};
+
+struct IntegerIndexPayload {
+	int64_t value = 0;
+	OidPosition position;
 };
 
 struct OidCellHeader {
@@ -173,30 +190,43 @@ struct OidCell {
 	operator bool () const { return !pages.empty(); }
 };
 
-constexpr uint32_t UndefinedPage = stappler::maxOf<uint32_t>();
 constexpr uint32_t DefaultPageSize = 2_MiB;
 constexpr uint32_t ManifestPageSize = 32_KiB;
 constexpr uint64_t OidMax = 0xFFFF'FFFF'FFFFULL;
 constexpr size_t OidHeaderSize = sizeof(OidCellHeader);
-constexpr uint32_t PageCacheLimit = 6;
+constexpr uint32_t PageCacheLimit = 24;
 
 constexpr auto FormatTitle = mem::StringView("minidb");
 constexpr uint8_t FormatVersion = 1;
 
 template <typename T>
-static constexpr bool has_single_bit(T x) noexcept {
+inline constexpr bool has_single_bit(T x) noexcept {
     return x != 0 && (x & (x - 1)) == 0;
+}
+
+inline bool operator<(const IntegerIndexPayload &l, const IntegerIndexPayload &r) {
+	if (l.value != r.value) {
+		return l.value < r.value;
+	} else {
+		return l.position.value < r.position.value;
+	}
+}
+
+inline bool operator<(const OidPosition &l, const OidPosition &r) {
+	return l.value < r.value;
 }
 
 inline bool isContentType(PageType t) {
 	switch (t) {
 	case PageType::OidContent:
 	case PageType::SchemeContent:
+	case PageType::IntIndexContent:
 		return true;
 		break;
 	case PageType::None:
 	case PageType::OidTable:
 	case PageType::SchemeTable:
+	case PageType::IntIndexTable:
 		return false;
 		break;
 	}
@@ -212,18 +242,28 @@ size_t getVarUintSize(uint64_t);
 uint64_t readVarUint(uint8_p, uint8_p *pl = nullptr);
 size_t writeVarUint(uint8_t *p, uint64_t);
 
-void inspectTree(const Transaction &, uint32_t root, const mem::Callback<void(mem::StringView)> &, uint32_t depth = stappler::maxOf<uint32_t>());
-void inspectTreePage(const mem::Callback<void(mem::StringView)> &, const void *, size_t, mem::Map<uint64_t, uint32_t> * = nullptr, bool deepInspect = true);
-// void inspectScheme(const Transaction &, const db::Scheme &, const mem::Callback<void(mem::StringView)> &, uint32_t depth = stappler::maxOf<uint32_t>());
+struct InspectOptions {
+	mem::Function<void(mem::StringView)> cb;
+	uint32_t depth = stappler::maxOf<uint32_t>();
+	bool deepInspect = false;
+	bool dataInspect = true;
+};
+
+void inspectTree(const Transaction &, uint32_t root, const InspectOptions &);
+void inspectTreePage(const InspectOptions &, const void *, size_t, mem::Vector<mem::Pair<int64_t, uint32_t>> * = nullptr);
 
 mem::Map<PageType, uint32_t> inspectPages(const Transaction &);
 mem::Vector<uint32_t> getContentPages(const Transaction &, int64_t root);
+uint32_t getPageList(const Transaction &, int64_t root, mem::Vector<uint32_t> &);
 
 size_t getPayloadSize(PageType type, const mem::Value &data);
 size_t writePayload(PageType type, uint8_p map, const mem::Value &data);
 size_t writePayload(PageType type, const mem::Vector<mem::BytesView> &, const mem::Value &data);
 
 mem::Value readPayload(uint8_p ptr, const mem::Vector<mem::StringView> &filter, uint64_t oid);
+
+void compressData(const mem::Value &data, mem::BytesView dict, const mem::Callback<void(OidType, mem::BytesView)> &cb);
+mem::Value decodeData(const OidCell &cell, mem::BytesView dict, const mem::Vector<mem::StringView> &names);
 
 namespace pages {
 

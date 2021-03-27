@@ -28,6 +28,8 @@ THE SOFTWARE.
 
 namespace stappler::mempool::custom {
 
+static std::atomic<size_t> s_nAllocators = 0;
+
 #if LINUX
 static uint32_t allocator_mmap_realloc(int filedes, void *ptr, uint32_t idx, uint32_t required) {
 	auto oldSize = idx * BOUNDARY_SIZE;
@@ -117,7 +119,12 @@ bool Allocator::run_mmap(uint32_t idx) {
 
 #endif
 
+size_t Allocator::getAllocatorsCount() {
+	return s_nAllocators.load();
+}
+
 Allocator::Allocator(bool threadSafe) {
+	++ s_nAllocators;
 	buf.fill(nullptr);
 
 	if (threadSafe) {
@@ -144,9 +151,12 @@ Allocator::~Allocator() {
 		ref = &buf[index];
 		while ((node = *ref) != nullptr) {
 			*ref = node->next;
+			allocated -= node->endp - (uint8_t *)node;
 			::free(node);
 		}
 	}
+
+	-- s_nAllocators;
 }
 
 void Allocator::set_max(uint32_t size) {
@@ -278,6 +288,7 @@ MemNode *Allocator::alloc(uint32_t in_size) {
 		if ((node = (MemNode *)malloc(size)) == nullptr) {
 			return nullptr;
 		}
+		allocated += size;
 	}
 #else
 	if (lock.owns_lock()) {
@@ -287,6 +298,7 @@ MemNode *Allocator::alloc(uint32_t in_size) {
 	if ((node = (MemNode *)malloc(size)) == nullptr) {
 		return nullptr;
 	}
+	allocated += size;
 #endif
 
 	node->next = nullptr;
@@ -373,6 +385,7 @@ void Allocator::free(MemNode *node) {
 	while (freelist != NULL) {
 		node = freelist;
 		freelist = node->next;
+		allocated -= node->endp - (uint8_t *)node;
 		::free(node);
 	}
 }

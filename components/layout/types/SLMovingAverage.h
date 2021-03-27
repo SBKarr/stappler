@@ -39,12 +39,16 @@ public:
 		_values[_current] = value;
 		if ((++_current) >= Count) _current = 0;
 	}
-	T getAverage() {
+	T getAverage(bool exceptZero = false) {
+		size_t c;
 		T s = 0;
 		for (size_t i = 0; i < Count; i++) {
-			s += _values[i];
+			if (!exceptZero || _values[i] != 0) {
+				s += _values[i];
+				++ c;
+			}
 		}
-		return s / Count;
+		return s / c;
 	}
 	T step(T value) {
 		addValue(value);

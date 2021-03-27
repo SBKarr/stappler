@@ -27,6 +27,7 @@
 #include "XLVkProgram.h"
 #include "XLDirector.h"
 #include "XLDrawScheme.h"
+#include "XLPlatform.h"
 
 namespace stappler::xenolith::vk {
 
@@ -82,15 +83,26 @@ bool PresentationDevice::init(Rc<Instance> inst, Rc<View> v, VkSurfaceKHR surfac
 	_options = move(opts);
 	_enabledFeatures = features;
 
+	if (_options.formats.empty()) {
+		_options.formats.emplace_back(VkSurfaceFormatKHR { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
+	}
+
+	if (_options.presentModes.empty()) {
+		_options.presentModes.emplace_back(VK_PRESENT_MODE_FIFO_KHR);
+	}
+
 	if constexpr (s_printVkInfo) {
-		log::vtext("Vk-Info", "Presentation options: ", _options.description());
+		Application::getInstance()->perform([this, opts = _options] (const Task &) {
+			log::vtext("Vk-Info", "Presentation options: ", _options.description());
+			return true;
+		}, nullptr, this);
 	}
 
 	_table->vkGetDeviceQueue(_device, _options.graphicsFamily, 0, &_graphicsQueue);
 	_table->vkGetDeviceQueue(_device, _options.presentFamily, 0, &_presentQueue);
 
 	_transfer = Rc<TransferDevice>::create(_instance, _allocator, _graphicsQueue, _options.graphicsFamily);
-	_draw = Rc<DrawDevice>::create(_instance, _allocator, _graphicsQueue, _options.graphicsFamily);
+	_draw = Rc<DrawDevice>::create(_instance, _allocator, _graphicsQueue, _options.graphicsFamily, _options.formats.front().format);
 
 	VkSemaphoreCreateInfo semaphoreInfo{};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -143,51 +155,8 @@ Rc<Allocator> PresentationDevice::getAllocator() const {
 }
 
 void PresentationDevice::begin(Application *app, thread::TaskQueue &q) {
-	createSwapChain(q, _surface);
-	Vector<draw::LoaderStage> stages;
-	app->onDeviceInit(this, [&] (draw::LoaderStage &&stage, bool deferred) {
-		if (deferred) {
-			stages.emplace_back(move(stage));
-		} else {
-			auto draw = _draw.get();
-			for (auto &iit : stage.programs) {
-				auto program = new Rc<ProgramModule>();
-				q.perform(Rc<Task>::create([&iit, program, draw] (const thread::Task &) -> bool {
-					if (iit.path.get().empty()) {
-						*program = Rc<ProgramModule>::create(*draw, iit.source, iit.stage, iit.data, iit.key, iit.defs);
-					} else {
-						*program = Rc<ProgramModule>::create(*draw, iit.source, iit.stage, iit.path, iit.key, iit.defs);
-					}
-					if (!*program) {
-						log::vtext("vk", "Fail to compile shader progpam ", iit.key);
-					}
-					return (*program);
-				}, [draw, program] (const thread::Task &task, bool success) {
-					if (success) {
-						draw->addProgram(*program);
-					}
-					delete program;
-				}));
-			}
-			q.waitForAll();
-			for (auto &iit : stage.pipelines) {
-				auto pipeline = new Rc<Pipeline>();
-				q.perform(Rc<Task>::create([&iit, draw, pipeline] (const thread::Task &) -> bool {
-					*pipeline = Rc<Pipeline>::create(*draw, draw->getPipelineOptions(iit), move(iit));
-					if (!*pipeline) {
-						log::vtext("vk", "Fail to compile pipeline ", iit.key);
-					}
-					return (*pipeline);
-				}, [&iit, draw, pipeline] (const thread::Task &task, bool success) {
-					if (success) {
-						draw->addPipeline(iit.key, *pipeline);
-					}
-					delete pipeline;
-				}));
-			}
-			q.waitForAll();
-		}
-	});
+	_draw->spawnWorkers(q, _swapChainImageViews.size());
+
 	onSwapChainCreated(this);
 }
 
@@ -196,12 +165,11 @@ void PresentationDevice::end(thread::TaskQueue &) {
 	cleanupSwapChain();
 }
 
-bool PresentationDevice::recreateSwapChain(thread::TaskQueue &q) {
-	onSwapChainInvalidated(this);
+void PresentationDevice::reset(thread::TaskQueue &q) {
+	_draw->spawnWorkers(q, _swapChainImageViews.size());
+}
 
-	// it's incompatible now
-	_drawFlow = nullptr;
-
+bool PresentationDevice::recreateSwapChain() {
 	auto opts = _instance->getPresentationOptions(_surface, &_options.properties.device10.properties);
 
 	if (!opts.empty()) {
@@ -220,30 +188,13 @@ bool PresentationDevice::recreateSwapChain(thread::TaskQueue &q) {
 		_table->vkDeviceWaitIdle(_device);
 	}
 
-	createSwapChain(q, _surface);
-
-	onSwapChainCreated(this);
-
+	createSwapChain(_surface);
 	return true;
 }
 
-bool PresentationDevice::createSwapChain(thread::TaskQueue &q, VkSurfaceKHR surface) {
-	VkSurfaceFormatKHR surfaceFormat;
-	VkPresentModeKHR presentMode;
-
-	if (_options.formats.empty()) {
-		surfaceFormat = VkSurfaceFormatKHR { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-	} else {
-		_options.formats.resize(1);
-		surfaceFormat = _options.formats.front();
-	}
-
-	if (_options.presentModes.empty()) {
-		presentMode = VK_PRESENT_MODE_FIFO_KHR;
-	} else {
-		_options.presentModes.resize(1);
-		presentMode = _options.presentModes.front();
-	}
+bool PresentationDevice::createSwapChain(VkSurfaceKHR surface) {
+	VkSurfaceFormatKHR surfaceFormat = _options.formats.front();
+	VkPresentModeKHR presentMode = _options.presentModes.front();
 
 	VkExtent2D extent = _options.capabilities.currentExtent;
 	uint32_t imageCount = _options.capabilities.minImageCount + 1;
@@ -297,8 +248,6 @@ bool PresentationDevice::createSwapChain(thread::TaskQueue &q, VkSurfaceKHR surf
 		}
 	}
 
-	_draw->spawnWorkers(q, _swapChainImageViews.size(), _options, surfaceFormat.format);
-
 	_swapChainFramebuffers.reserve(_swapChainImageViews.size());
 	for (size_t i = 0; i < _swapChainImageViews.size(); i++) {
 		if (auto f = Rc<Framebuffer>::create(*this, _draw->getDefaultRenderPass()->getRenderPass(), _swapChainImageViews[i]->getImageView(),
@@ -312,10 +261,14 @@ bool PresentationDevice::createSwapChain(thread::TaskQueue &q, VkSurfaceKHR surf
 	_imagesInFlight.clear();
 	_imagesInFlight.resize(_swapChainImages.size(), VK_NULL_HANDLE);
 
+	onSwapChainCreated(this);
+
 	return true;
 }
 
 void PresentationDevice::cleanupSwapChain() {
+	onSwapChainInvalidated(this);
+
 	_table->vkDeviceWaitIdle(_device);
 
 	_draw->invalidate();
@@ -335,6 +288,13 @@ void PresentationDevice::cleanupSwapChain() {
 		_table->vkDestroySwapchainKHR(_device, _swapChain, nullptr);
 		_swapChain = VK_NULL_HANDLE;
 	}
+
+	// it's incompatible now
+	_drawFlow = nullptr;
+}
+
+Rc<DrawDevice> PresentationDevice::getDraw() const {
+	return _draw;
 }
 
 void PresentationDevice::prepareDrawScheme(draw::DrawScheme *scheme, thread::TaskQueue &q) {
@@ -388,7 +348,7 @@ bool PresentationDevice::performDrawFlow(Rc<DrawFlow> df, thread::TaskQueue &q) 
 		_inFlightFences[_currentFrame],
 		_currentFrame,
 		imageIndex,
-		_drawFlow->getScheme()
+		nullptr//, _drawFlow->getScheme()
 	});
 
 	if (!_draw->drawFrame(q, info)) {
@@ -423,25 +383,32 @@ bool PresentationDevice::performDrawFlow(Rc<DrawFlow> df, thread::TaskQueue &q) 
 
 
 
-PresentationLoop::PresentationLoop(Application *app, Rc<View> v, Rc<PresentationDevice> dev, Rc<Director> dir,
-		double iv, Function<double()> &&ts, Function<bool()> &&fcb)
-: _application(app), _view(v), _device(dev), _director(dir), _interval(iv), _timeSource(move(ts)), _frameCallback(move(fcb)) {
+PresentationLoop::PresentationLoop(Application *app, Rc<View> v, Rc<PresentationDevice> dev, Rc<Director> dir, uint64_t frameMicroseconds)
+: _application(app), _view(v), _device(dev), _director(dir), _frameTimeMicroseconds(frameMicroseconds) {
 	_swapChainFlag.test_and_set();
 	_exitFlag.test_and_set();
 }
 
 void PresentationLoop::threadInit() {
+#if LINUX
+	pthread_setname_np(pthread_self(), "PresentLoop");
+#endif
+
 	memory::pool::initialize();
 	_pool = memory::pool::createTagged("Xenolith::PresentationLoop", mempool::custom::PoolFlags::ThreadSafeAllocator);
 
 	_exitFlag.test_and_set();
+	_resetFlag.test_and_set();
 	_threadId = std::this_thread::get_id();
 
 	memory::pool::push(_pool);
-	_queue = Rc<thread::TaskQueue>::alloc(math::clamp(uint16_t(std::thread::hardware_concurrency()), uint16_t(4), uint16_t(16)), nullptr, "VkThread");
+
+	_queue = Rc<thread::TaskQueue>::alloc(
+			math::clamp(uint16_t(std::thread::hardware_concurrency()), uint16_t(4), uint16_t(16)), nullptr, "VkCommand");
 	_queue->spawnWorkers();
 	_device->begin(_application, *_queue);
 	_queue->waitForAll();
+
 	memory::pool::pop();
 }
 
@@ -462,49 +429,46 @@ bool PresentationLoop::worker() {
 	}
 
 	memory::pool::context<memory::pool_t *> ctx(_pool);
-	std::unique_lock<std::mutex> lock;
 
-	const auto iv = _interval.load();
-	const auto t = _timeSource();
+	bool immidiate = false;
+	if (!_resetFlag.test_and_set()) {
+		_device->reset(*_queue);
+		_swapChainFlag.test_and_set();
+		immidiate = true;
+	}
+
+	const auto iv = _frameTimeMicroseconds.load();
+	const auto t = platform::device::_clock();
 	const auto dt = t - _time;
-	if (dt > 0 && dt < iv && !_stalled) { // limit FPS
-		lock = std::unique_lock<std::mutex>(_glSync);
-		_glSyncVar.wait_for(lock, std::chrono::duration<double, std::ratio<1>>(iv - dt));
-		_time = _timeSource();
+	if (!immidiate && dt > 0 && dt < iv) { // limit FPS
+		platform::device::_sleep(iv - dt);
+		_time = platform::device::_clock();
 	} else {
 		_time = t;
 	}
 
-	if (!lock) {
-		lock = std::unique_lock<std::mutex>(_glSync);
-	}
-
 	bool swapChainFlag = !_swapChainFlag.test_and_set();
-	bool drawSuccess = swapChainFlag ? false : _device->drawFrame(_director, *_queue);
-	if (_stalled || swapChainFlag || !drawSuccess) {
-		std::cout << "Frame failed: " << _stalled << " | " << drawSuccess << "\n"; std::cout.flush();
-		_stalled = true;
-
-		if (_glSyncVar.wait_for(lock, std::chrono::duration<double, std::ratio<1>>(iv)) == std::cv_status::timeout) {
-			if (lock.owns_lock() && _view->try_lock()) {
-				std::cout << "Recreate by timeout\n"; std::cout.flush();
-				_device->recreateSwapChain(*_queue);
-				_stalled = false;
-				_device->drawFrame(_director, *_queue);
-				_view->unlock();
-			}
-		}
-		_rate.store(_timeSource() - _time);
-		return true;
+	bool drawSuccess = (swapChainFlag) ? false : _device->drawFrame(_director, *_queue);
+	if (swapChainFlag || !drawSuccess) {
+		_rate.store(platform::device::_clock() - _time);
+		_device->cleanupSwapChain();
+		std::unique_lock<std::mutex> lock(_mutex);
+		_view->pushEvent(ViewEvent::SwapchainRecreation);
+		_cond.wait(lock);
 	} else {
-		_rate.store(_timeSource() - _time);
+		_rate.store(platform::device::_clock() - _time);
 	}
+
+	if (_compiler) {
+		_compiler->update();
+	}
+	_view->pushEvent(ViewEvent::Update);
 
 	return true;
 }
 
-void PresentationLoop::setInterval(double iv) {
-	_interval.store(iv);
+void PresentationLoop::setInterval(uint64_t iv) {
+	_frameTimeMicroseconds.store(iv);
 }
 
 void PresentationLoop::recreateSwapChain() {
@@ -512,48 +476,32 @@ void PresentationLoop::recreateSwapChain() {
 }
 
 void PresentationLoop::begin() {
+	_compiler = Rc<PipelineCompiler>::create();
 	_thread = StdThread(thread::ThreadHandlerInterface::workerThread, this, nullptr);
 }
 
 void PresentationLoop::end() {
 	_exitFlag.clear();
 	_thread.join();
-}
-
-void PresentationLoop::lock() {
-	_glSync.lock();
-}
-
-void PresentationLoop::unlock() {
-	_glSync.unlock();
+	_compiler->invalidate();
+	_compiler = nullptr;
 }
 
 void PresentationLoop::reset() {
-	_time = 0;
-	_glSyncVar.notify_all();
+	_resetFlag.clear();
+	std::unique_lock<std::mutex> lock(_mutex);
+	_cond.notify_all();
 }
 
-bool PresentationLoop::forceFrame(bool reset) {
-	if (reset && Application::getInstance()->isMainThread()) {
-		if (_frameCallback) {
-			if (!_frameCallback()) {
-				return false;
-			}
-		}
-	}
-
-	bool ret = true;
-	const auto iv = _interval.load();
-	const auto t = _timeSource();
-	const auto dt = t - _time;
-
-	if (dt < 0 || dt >= iv) {
-		_time = t;
-		ret = _device->drawFrame(_director, *_queue);
-	}
-
-	_stalled = false;
-	return ret;
+void PresentationLoop::requestPipeline(const draw::PipelineRequest &req, Function<void(draw::PipelineResponse &&)> &&cb) {
+	_compiler->compile(_device->getDraw(), req, [cb = move(cb), app = _application] (draw::PipelineResponse &&resp) {
+		auto tmp = new draw::PipelineResponse(move(resp));
+		app->performOnMainThread([tmp, cb] () {
+			cb(move(*tmp));
+			delete tmp;
+			return true;
+		});
+	});
 }
 
 }

@@ -38,8 +38,11 @@ public:
 	using QueryList = db::QueryList;
 
 	Handle(const Storage &, OpenMode);
+	Handle(Transaction &);
 
 	operator bool () const { return _transaction.isOpen(); }
+
+	minidb::Transaction &getTransaction();
 
 public:
 	virtual bool init(const Config &serv, const mem::Map<mem::StringView, const Scheme *> &) override;
@@ -85,6 +88,7 @@ protected: // prop interface
 	const Storage *_storage = nullptr;
 	OpenMode _mode = OpenMode::Write;
 	minidb::Transaction _transaction;
+	minidb::Transaction *_external = nullptr;
 };
 
 }

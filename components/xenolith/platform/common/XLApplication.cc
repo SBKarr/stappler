@@ -26,6 +26,12 @@ THE SOFTWARE.
 #include "XLEvent.h"
 #include "XLEventHandler.h"
 
+namespace stappler::log {
+
+void __xenolith_log(const StringView &tag, CustomLog::Type t, CustomLog::VA &va);
+
+}
+
 namespace stappler::xenolith {
 
 XL_DECLARE_EVENT_CLASS(Application, onDeviceToken);
@@ -50,8 +56,10 @@ void Application::sleep(double v) {
 	platform::device::_sleep(v);
 }
 
-Application::Application() {
+Application::Application() : _appLog(&log::__xenolith_log) {
 	XLASSERT(s_application == nullptr, "Application should be only one");
+
+	_clockStart = platform::device::_clock();
 
 	_userAgent = platform::device::_userAgent();
 	_deviceIdentifier  = platform::device::_deviceIdentifier();
@@ -70,19 +78,31 @@ Application::Application() {
 	s_application = this;
 }
 
-Application::~Application() { }
+Application::~Application() {
+	_instance = nullptr;
+}
 
 bool Application::onFinishLaunching() {
-	_queue = Rc<thread::TaskQueue>::alloc(std::min(uint16_t(2), uint16_t(std::thread::hardware_concurrency() / 4)), nullptr, StringView("MainThread"));
-	if (!_queue->spawnWorkers()) {
+	thread::ThreadInfo::setMainThread();
+	_queue = Rc<thread::TaskQueue>::alloc(std::min(uint16_t(2), uint16_t(std::thread::hardware_concurrency() / 4)), nullptr, StringView("Main"));
+	if (!_queue->spawnWorkers(ApplicationThreadId, _queue->getName())) {
 		log::text("Application", "Fail to spawn worker threads");
+		return false;
+	}
+
+	_instance = platform::vulkan::create(this);
+
+	if (!_instance->hasDevices()) {
+		_instance = nullptr;
 		return false;
 	}
 
 	_director = Rc<Director>::create();
 	auto view = _director->getView();
 	if (!view) {
-		if (auto v = Rc<vk::ViewImpl>::create(getBundleName(), Rect(Vec2(0.0f, 0.0f), platform::desktop::getScreenSize()))) {
+		auto screenSize = platform::desktop::getScreenSize();
+		if (auto v = Rc<vk::ViewImpl>::create(_instance, getBundleName(), URect{0, 0,
+				static_cast<uint32_t>(screenSize.width), static_cast<uint32_t>(screenSize.height)})) {
 			_mainView = v.get();
 			_director->setView(v);
 		}
@@ -95,13 +115,13 @@ void Application::onMemoryWarning() {
 
 }
 
-void Application::onDeviceInit(vk::PresentationDevice *, const stappler::Callback<void(draw::LoaderStage &&, bool deferred)> &cb) {
-
-}
-
 int Application::run(Director *director) {
 	if (!onFinishLaunching()) {
 		return 1;
+	}
+
+	if (!_instance) {
+		return -1;
 	}
 
 	if (!director) {
@@ -113,17 +133,14 @@ int Application::run(Director *director) {
 		return -1;
 	}
 
-	glview->run(this, director, [&] (double val) -> bool {
+
+	glview->run(this, director, [&] (uint64_t val) -> bool {
 		update(val);
 		director->mainLoop(val);
 		return true;
 	});
+	director->end();
 
-	// Director should still do a cleanup if the window was closed manually.
-	if (glview->isVkReady()) {
-		director->end();
-		director = nullptr;
-	}
     return 0;
 }
 
@@ -131,7 +148,7 @@ bool Application::openURL(const StringView &url) {
 	return platform::interaction::_goToUrl(url, true);
 }
 
-void Application::update(double dt) {
+void Application::update(uint64_t dt) {
 	auto id = std::this_thread::get_id();
 	if (id != _threadId) {
 		thread::ThreadInfo::setMainThread();
@@ -144,8 +161,8 @@ void Application::update(double dt) {
 
     if (!_isNetworkOnline) {
         _updateTimer += dt;
-        if (_updateTimer >= 10) {
-            _updateTimer = -10;
+        if (_updateTimer >= 10'000'000) {
+            _updateTimer = -10'000'000;
 			setNetworkOnline(platform::network::_isNetworkOnline());
         }
     }
@@ -242,7 +259,7 @@ int64_t Application::getApplicationVersionCode() {
 				break;
 			}
 		}
-		version = major * 1000000 + middle * 1000 + minor;
+		version = VK_MAKE_VERSION(major, middle, minor);
 	}
 	return version;
 }
@@ -264,13 +281,17 @@ StringView Application::getLaunchUrl() const {
     return _launchUrl;
 }
 
+Rc<Director> Application::getDirector() const {
+	return _director;
+}
+
 
 bool Application::isMainThread() const {
 	return _threadId == std::this_thread::get_id();
 }
 
 void Application::performOnMainThread(const Callback &func, Ref *target, bool onNextFrame) {
-	if ((isMainThread() || _singleThreaded) && !onNextFrame) {
+	if (!_queue || ((isMainThread() || _singleThreaded) && !onNextFrame)) {
 		func();
 	} else {
 		_queue->onMainThread(Rc<thread::Task>::create([func] (const thread::Task &, bool success) {
@@ -280,7 +301,7 @@ void Application::performOnMainThread(const Callback &func, Ref *target, bool on
 }
 
 void Application::performOnMainThread(Rc<thread::Task> &&task, bool onNextFrame) {
-	if ((isMainThread() || _singleThreaded) && !onNextFrame) {
+	if (!_queue || ((isMainThread() || _singleThreaded) && !onNextFrame)) {
 		task->onComplete();
 	} else {
 		_queue->onMainThread(std::move(task));
@@ -292,7 +313,7 @@ void Application::perform(const ExecuteCallback &exec, const CompleteCallback &c
 }
 
 void Application::perform(Rc<thread::Task> &&task) {
-	if (_singleThreaded) {
+	if (!_queue || _singleThreaded) {
 		task->setSuccessful(task->execute());
 		task->onComplete();
 	} else {
@@ -301,7 +322,7 @@ void Application::perform(Rc<thread::Task> &&task) {
 }
 
 void Application::perform(Rc<thread::Task> &&task, bool performFirst) {
-	if (_singleThreaded) {
+	if (!_queue || _singleThreaded) {
 		task->setSuccessful(task->execute());
 		task->onComplete();
 	} else {
@@ -310,12 +331,16 @@ void Application::perform(Rc<thread::Task> &&task, bool performFirst) {
 }
 
 void Application::performAsync(Rc<Task> &&task) {
-	if (_singleThreaded) {
+	if (!_queue || _singleThreaded) {
 		task->setSuccessful(task->execute());
 		task->onComplete();
 	} else {
 		_queue->performAsync(std::move(task));
 	}
+}
+
+void Application::performAsync(const ExecuteCallback &exec, const CompleteCallback &complete, Ref *obj) {
+	performAsync(Rc<Task>::create(exec, complete, obj));
 }
 
 void Application::setSingleThreaded(bool value) {
@@ -324,6 +349,10 @@ void Application::setSingleThreaded(bool value) {
 
 bool Application::isSingleThreaded() const {
 	return _singleThreaded;
+}
+
+uint64_t Application::getNativeThreadId() const {
+	return (uint64_t)pthread_self();
 }
 
 void Application::addEventListener(const EventHandlerNode *listener) {

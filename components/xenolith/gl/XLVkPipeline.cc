@@ -30,7 +30,7 @@ Pipeline::~Pipeline() {
 	}
 }
 
-bool Pipeline::init(VirtualDevice &dev, const PipelineOptions &opts, draw::PipelineParams &&params) {
+bool Pipeline::init(VirtualDevice &dev, const PipelineOptions &opts, const draw::PipelineParams &params) {
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vertexInputInfo.vertexBindingDescriptionCount = 0;
@@ -44,18 +44,18 @@ bool Pipeline::init(VirtualDevice &dev, const PipelineOptions &opts, draw::Pipel
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
 
 	VkViewport viewport{};
-	viewport.x = params.viewport.origin.x;
-	viewport.y = params.viewport.origin.y;
-	viewport.width = params.viewport.size.width;
-	viewport.height = params.viewport.size.height;
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = 0.0f;
+	viewport.height = 0.0f;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
 	VkRect2D scissor{};
-	scissor.offset.x = params.scissor.x;
-	scissor.offset.y = params.scissor.y;
-	scissor.extent.width = params.scissor.width;
-	scissor.extent.height = params.scissor.height;
+	scissor.offset.x = 0;
+	scissor.offset.y = 0;
+	scissor.extent.width = 0;
+	scissor.extent.height = 0;
 
 	VkPipelineViewportStateCreateInfo viewportState{};
 	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;

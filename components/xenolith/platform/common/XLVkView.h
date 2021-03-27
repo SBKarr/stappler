@@ -38,6 +38,15 @@ struct ContextAttrs {
 	int stencilBits;
 };
 
+namespace ViewEvent {
+	using Value = uint32_t;
+
+	constexpr uint32_t None = 0;
+	constexpr uint32_t Terminate = 1;
+	constexpr uint32_t SwapchainRecreation = 2;
+	constexpr uint32_t Update = 4;
+}
+
 class View : public Ref {
 public:
 	static EventHeader onClipboard;
@@ -50,19 +59,10 @@ public:
 	virtual bool init(Instance *, PresentationDevice *);
 
 	virtual void end() = 0;
-	virtual bool isVkReady() const = 0;
-	virtual void swapBuffers() = 0;
 
 	virtual void setIMEKeyboardState(bool open) = 0;
-	virtual bool windowShouldClose() const = 0;
 
-	virtual double getTimeCounter() const = 0;
-
-	virtual void setAnimationInterval(double) = 0;
-
-	virtual bool run(Application *, Rc<Director>, const Callback<bool(double)> &) = 0;
-
-	virtual void pollEvents();
+	virtual bool run(Application *, Rc<Director>, const Callback<bool(uint64_t)> &) = 0;
 
 	virtual void setCursorVisible(bool isVisible) { }
 
@@ -72,9 +72,6 @@ public:
 	virtual const Size & getScreenSize() const;
 	virtual void setScreenSize(float width, float height);
 
-	virtual void setViewName(const StringView & viewname);
-	virtual StringView getViewName() const;
-
 	virtual void handleTouchesBegin(int num, intptr_t ids[], float xs[], float ys[]);
 	virtual void handleTouchesMove(int num, intptr_t ids[], float xs[], float ys[]);
 	virtual void handleTouchesEnd(int num, intptr_t ids[], float xs[], float ys[]);
@@ -83,7 +80,7 @@ public:
 	virtual void enableOffscreenContext();
 	virtual void disableOffscreenContext();
 
-	virtual void setClipboardString(const StringView &);
+	virtual void setClipboardString(StringView);
 	virtual StringView getClipboardString() const;
 
 	virtual ScreenOrientation getScreenOrientation() const;
@@ -91,6 +88,10 @@ public:
 	virtual bool isTouchDevice() const;
 	virtual bool hasFocus() const;
 	virtual bool isInBackground() const;
+
+	// Push view event to process in in View's primary thread
+	virtual void pushEvent(ViewEvent::Value);
+	virtual ViewEvent::Value popEvents();
 
 	Instance *getInstance() const { return _instance; }
 
@@ -101,6 +102,9 @@ public:
 	bool try_lock() { return _glSync.try_lock(); }
 
 	void resetFrame() { _dropFrameDelay.clear(); _glSyncVar.notify_all(); }
+
+	Rc<PresentationDevice> getDevice() const { return _device; }
+	Rc<PresentationLoop> getLoop() const { return _loop ; }
 
 public: /* render-on-demand engine */
 	// virtual void requestRender();
@@ -119,8 +123,7 @@ protected:
 	bool _hasFocus = true;
 	std::atomic_flag _dropFrameDelay;
 
-	String _viewName;
-
+	std::atomic<ViewEvent::Value> _events = ViewEvent::None;
 	Rc<Instance> _instance; // api instance
 	Rc<PresentationDevice> _device; // logical presentation device
 	Rc<PresentationLoop> _loop;

@@ -21,6 +21,7 @@ THE SOFTWARE.
 **/
 
 #include "XLVkInstance.h"
+#include "XLPlatform.h"
 
 namespace stappler::xenolith::vk {
 
@@ -32,7 +33,7 @@ static VkResult s_createDebugUtilsMessengerEXT(VkInstance instance, const PFN_vk
 static void s_destroyDebugUtilsMessengerEXT(VkInstance instance, const PFN_vkGetInstanceProcAddr getInstanceProcAddr,
 	VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL s_debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+VKAPI_ATTR VkBool32 VKAPI_CALL s_debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 		VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
 	if (messageSeverity <= VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
 		log::text("Vk-Validation-Verbose", pCallbackData->pMessage);
@@ -77,10 +78,12 @@ Instance::Features Instance::Features::getOptional() {
 	return ret;
 }
 
-Instance::Instance(VkInstance inst, const PFN_vkGetInstanceProcAddr getInstanceProcAddr, uint32_t targetVersion, Vector<StringView> &&optionals)
+Instance::Instance(VkInstance inst, const PFN_vkGetInstanceProcAddr getInstanceProcAddr, uint32_t targetVersion,
+		Vector<StringView> &&optionals, Function<void()> &&terminate)
 : instance(inst)
 , _version(targetVersion)
 , _optionals(move(optionals))
+, _terminate(move(terminate))
 , vkGetInstanceProcAddr(getInstanceProcAddr)
 #if defined(VK_VERSION_1_0)
 , vkCreateDevice((PFN_vkCreateDevice)vkGetInstanceProcAddr(inst, "vkCreateDevice"))
@@ -274,13 +277,21 @@ Instance::Instance(VkInstance inst, const PFN_vkGetInstanceProcAddr getInstanceP
 
 		if (s_createDebugUtilsMessengerEXT(instance, vkGetInstanceProcAddr, &debugCreateInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
 			log::text("Vk", "failed to set up debug messenger!");
-		} else {
-			log::text("Vk", "Debug messenger setup successful");
 		}
 	}
 
+	uint32_t deviceCount = 0;
+	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+
+	if (deviceCount) {
+		_hasDevices = true;
+	}
+
 	if constexpr (s_printVkInfo) {
-		printDevicesInfo();
+		Application::getInstance()->perform([this] (const Task &) {
+			printDevicesInfo();
+			return true;
+		}, nullptr, this);
 	}
 }
 
@@ -289,9 +300,14 @@ Instance::~Instance() {
 		s_destroyDebugUtilsMessengerEXT(instance, vkGetInstanceProcAddr, debugMessenger, nullptr);
 	}
 	vkDestroyInstance(instance, nullptr);
+	if (_terminate) {
+		_terminate();
+		_terminate = nullptr;
+	}
 }
 
-Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurfaceKHR surface, const VkPhysicalDeviceProperties *ptr) const {
+Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurfaceKHR surface, const VkPhysicalDeviceProperties *ptr,
+		const Vector<Pair<VkPhysicalDevice, uint32_t>> &devs) const {
 	Vector<Instance::PresentationOptions> ret;
 
 	auto isMatch = [&] (const Properties &val, const VkPhysicalDeviceProperties *ptr) {
@@ -314,7 +330,7 @@ Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurface
 	Vector<VkPhysicalDevice> devices(deviceCount);
 	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
-	for (const VkPhysicalDevice& device : devices) {
+	auto processDevice = [&] (const VkPhysicalDevice &device, uint32_t availableQueues) {
 		uint32_t graphicsFamily = maxOf<uint32_t>();
 		uint32_t presentFamily = maxOf<uint32_t>();
 		uint32_t transferFamily = maxOf<uint32_t>();
@@ -338,15 +354,23 @@ Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurface
 			VkBool32 presentSupport = false;
 			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
 
-			if (presentSupport && presentFamily == maxOf<uint32_t>()) {
-				presentFamily = i;
+			if (availableQueues) {
+				if (((1 << i) & availableQueues) != 0) {
+					if (presentSupport && presentFamily == maxOf<uint32_t>()) {
+						presentFamily = i;
+					}
+				}
+			} else {
+				if (presentSupport && presentFamily == maxOf<uint32_t>()) {
+					presentFamily = i;
+				}
 			}
 
 			i++;
 		}
 
 		if (presentFamily == maxOf<uint32_t>() || graphicsFamily == maxOf<uint32_t>()) {
-			continue;
+			return;
 		}
 
 		if (transferFamily == maxOf<uint32_t>()) {
@@ -394,7 +418,7 @@ Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurface
 		}
 
 		if (notFound) {
-			break;
+			return;
 		}
 
 		Vector<StringView> enabledOptionals;
@@ -457,6 +481,16 @@ Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurface
 				}
 			}
         }
+	};
+
+	if (!devs.empty()) {
+		for (auto &device : devs) {
+			processDevice(device.first, device.second);
+		}
+	} else {
+		for (auto &device : devices) {
+			processDevice(device, 0);
+		}
 	}
 
 	return ret;
@@ -467,6 +501,7 @@ VkInstance Instance::getInstance() const {
 }
 
 void Instance::printDevicesInfo() const {
+	StringStream out; out << "\n";
 	uint32_t deviceCount = 0;
 	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
 
@@ -490,10 +525,9 @@ void Instance::printDevicesInfo() const {
 				return "Other";
 			};
 
-			log::format("Vk-Info", "Device: %s: %s (API: %s, Driver: %s)", getDeviceTypeString(deviceProperties.deviceType),
-					deviceProperties.deviceName,
-					getVersionDescription(deviceProperties.apiVersion).data(),
-					getVersionDescription(deviceProperties.driverVersion).data());
+			out << "\tDevice: " << getDeviceTypeString(deviceProperties.deviceType) << ": " << deviceProperties.deviceName
+					<< " (API: " << getVersionDescription(deviceProperties.apiVersion)
+					<< ", Driver: " << getVersionDescription(deviceProperties.driverVersion) << ")\n";
 
 	        uint32_t queueFamilyCount = 0;
 	        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
@@ -504,35 +538,34 @@ void Instance::printDevicesInfo() const {
 	        int i = 0;
 	        for (const VkQueueFamilyProperties& queueFamily : queueFamilies) {
 				bool empty = true;
-				StringStream info;
-				info << "[" << i << "] Queue family; Flags: ";
+				out << "\t\t[" << i << "] Queue family; Flags: ";
 				if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-					if (!empty) { info << ", "; } else { empty = false; }
-					info << "Graphics";
+					if (!empty) { out << ", "; } else { empty = false; }
+					out << "Graphics";
 				}
 				if (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) {
-					if (!empty) { info << ", "; } else { empty = false; }
-					info << "Compute";
+					if (!empty) { out << ", "; } else { empty = false; }
+					out << "Compute";
 				}
 				if (queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) {
-					if (!empty) { info << ", "; } else { empty = false; }
-					info << "Transfer";
+					if (!empty) { out << ", "; } else { empty = false; }
+					out << "Transfer";
 				}
 				if (queueFamily.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT) {
-					if (!empty) { info << ", "; } else { empty = false; }
-					info << "SparseBinding";
+					if (!empty) { out << ", "; } else { empty = false; }
+					out << "SparseBinding";
 				}
 				if (queueFamily.queueFlags & VK_QUEUE_PROTECTED_BIT) {
-					if (!empty) { info << ", "; } else { empty = false; }
-					info << "Protected";
+					if (!empty) { out << ", "; } else { empty = false; }
+					out << "Protected";
 				}
-				info << "; Count: " << queueFamily.queueCount;
-				log::text("Vk-Info", info.str());
+				out << "; Count: " << queueFamily.queueCount << "\n";
 
 	            i++;
 	        }
 		}
 	}
+	log::text("Vk-Info", out.str());
 }
 
 }

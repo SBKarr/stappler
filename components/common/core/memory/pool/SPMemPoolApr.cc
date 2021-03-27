@@ -174,6 +174,13 @@ void setPoolInfo(pool_t *p, uint32_t tag, const void *ptr) {
 	}
 }
 
+bool isThreadSafeAsParent(pool_t *pool) {
+	if (auto a = apr_pool_allocator_get(pool)) {
+		return apr_allocator_mutex_get(a) != nullptr;
+	}
+	return false;
+}
+
 }
 
 #else
@@ -214,6 +221,7 @@ static inline size_t get_return_bytes(custom::Pool *p) { return 0; }
 static inline void *pmemdup(custom::Pool *a, const void *m, size_t n) { return nullptr; }
 static inline char *pstrdup(custom::Pool *a, const char *s) { return nullptr; }
 static inline void setPoolInfo(custom::Pool *p, uint32_t tag, const void *ptr) { }
+static inline bool isThreadSafeAsParent(custom::Pool *pool) { return false; }
 
 }
 

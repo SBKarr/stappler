@@ -33,12 +33,10 @@ namespace stappler::xenolith {
 
 class Application : public Ref {
 public:
-	static Application *getInstance();
+	static constexpr uint32_t ApplicationThreadId = 1;
 
 	static EventHeader onDeviceToken;
-
 	static EventHeader onNetwork;
-
 	static EventHeader onUrlOpened;
 	static EventHeader onError;
 
@@ -52,6 +50,8 @@ public:
 
 	static EventHeader onLaunchUrl;
 
+	static Application *getInstance();
+
 	static void sleep(double);
 
 public:
@@ -61,9 +61,7 @@ public:
 	virtual bool onFinishLaunching();
 	virtual void onMemoryWarning();
 
-	virtual void onDeviceInit(vk::PresentationDevice *, const stappler::Callback<void(draw::LoaderStage &&, bool deferred)> &);
-
-	virtual void update(double dt);
+	virtual void update(uint64_t dt);
 
 public: // Threading, Events
 	using Callback = Function<void()>;
@@ -93,11 +91,16 @@ public: // Threading, Events
     /* Spawn exclusive thread for task */
 	void performAsync(Rc<Task> &&task);
 
+    /* Spawn exclusive thread for task */
+	void performAsync(const ExecuteCallback &, const CompleteCallback & = nullptr, Ref * = nullptr);
+
 	/* "Single-threaded" mode allow you to perform async tasks on single thread.
 	 When "perform" function is called, task and all subsequent callbacks will be
 	 executed on current thread. Perform call returns only when task is performed. */
 	void setSingleThreaded(bool value);
 	bool isSingleThreaded() const;
+
+	uint64_t getNativeThreadId() const;
 
 	void addEventListener(const EventHandlerNode *listener);
 	void removeEventListner(const EventHandlerNode *listener);
@@ -144,24 +147,23 @@ public:
 	/* Device token for APNS/GCM */
 	void registerDeviceToken(const String &data);
 
-public: /* networking */
+	/* networking */
 	void setNetworkOnline(bool isOnline);
 	bool isNetworkOnline();
 
-public: /* application actions */
+	/* application actions */
 	void goToUrl(const StringView &url, bool external = true);
 	void makePhoneCall(const StringView &number);
 	void mailTo(const StringView &address);
 	void rateApplication();
 
-public:
 	Pair<uint64_t, uint64_t> getTotalDiskSpace();
 	uint64_t getApplicationDiskSpace();
 
 	/* device local notification */
 	void notification(const String &title, const String &text);
 
-public: /* launch with url options */
+	/* launch with url options */
 	// set in launch process by AppController/Activity/etc...
 	void setLaunchUrl(const StringView &);
 
@@ -171,10 +173,12 @@ public: /* launch with url options */
 
 	StringView getLaunchUrl() const;
 
-public:
 	// bool listen(uint16_t port = 0);
 
+	Rc<Director> getDirector() const;
+
 private:
+	uint64_t _clockStart = 0;
 	String _userAgent;
 	String _deviceIdentifier;
 	String _deviceToken;
@@ -185,7 +189,7 @@ private:
 
 	String _launchUrl;
 
-	double _updateTimer = 0;
+	uint64_t _updateTimer = 0;
 	bool _isNetworkOnline = false;
 
 	Rc<vk::View> _mainView;
@@ -196,6 +200,9 @@ private:
 	bool _singleThreaded = false;
 
 	std::unordered_map<EventHeader::EventID, std::unordered_set<const EventHandlerNode *>> _eventListeners;
+
+	Rc<vk::Instance> _instance; // api instance
+	log::CustomLog _appLog;
 };
 
 }

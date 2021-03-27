@@ -23,8 +23,8 @@ THE SOFTWARE.
 #ifndef COMPONENTS_XENOLITH_GL_XLVK_H_
 #define COMPONENTS_XENOLITH_GL_XLVK_H_
 
-#include <vulkan/vulkan.h>
 #include "XLDefine.h"
+#include <vulkan/vulkan.h>
 
 #if LINUX
 #define VK_BUFFER_USAGE_RAY_TRACING_BIT_KHR 0x00000400

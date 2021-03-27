@@ -42,7 +42,10 @@ bool validateText(const StringView &str);
 
 bool validateEmailWithoutNormalization(const StringView &str);
 bool validateEmail(String &str);
+bool validateEmail(memory::StandartInterface::StringType &str);
+
 bool validateUrl(String &str);
+bool validateUrl(memory::StandartInterface::StringType &str);
 
 bool validateNumber(const StringView &str);
 bool validateHexadecimial(const StringView &str);

@@ -25,7 +25,7 @@
 
 #include "XLVkView.h"
 
-#if (MSYS || CYGWIN || LINUX || MACOS)
+#if (MSYS || CYGWIN || MACOS)
 
 #include "glfw3.h"
 

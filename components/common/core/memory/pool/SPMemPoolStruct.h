@@ -99,6 +99,9 @@ struct Allocator {
 
 	AllocMutex *mutex = nullptr;
 	std::array<MemNode *, MAX_INDEX> buf;
+	std::atomic<size_t> allocated;
+
+	static size_t getAllocatorsCount();
 
 	Allocator(bool threadSafe = true);
 	~Allocator();
@@ -145,6 +148,7 @@ struct Pool {
 
 	static Pool *create(Allocator *alloc = nullptr, PoolFlags flags = PoolFlags::Default);
 	static void destroy(Pool *);
+	static size_t getPoolsCount();
 
 	Pool();
 	Pool(Allocator *alloc, MemNode *node, bool threadSafe = false);

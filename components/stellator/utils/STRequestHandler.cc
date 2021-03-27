@@ -519,9 +519,9 @@ HandlerMap::Handler *HandlerMap::onRequest(Request &req, const mem::StringView &
 	for (auto &it : _handlers) {
 		size_t pscore = 0;
 		if (auto val = it.match(path, pscore)) {
-			if (pscore > score) {
+			if (pscore > score || (pscore == score && info && it.getMethod() == req.getMethod() && it.getMethod() != info->getMethod())) {
 				params = std::move(val);
-				if (it.getMethod() == req.getMethod() || !info || info->getMethod() != it.getMethod()) {
+				if (it.getMethod() == req.getMethod() || !info) {
 					info = &it;
 					score = pscore;
 				}

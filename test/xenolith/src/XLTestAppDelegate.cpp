@@ -1,5 +1,5 @@
 /**
- Copyright (c) 2020 Roman Katuntsev <sbkarr@stappler.org>
+ Copyright (c) 2021 Roman Katuntsev <sbkarr@stappler.org>
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,7 @@
 #include "XLDirector.h"
 #include "XLTestAppDelegate.h"
 #include "XLPlatform.h"
+#include "XLAppScene.h"
 
 #include "XLTestAppShaders.cc"
 
@@ -40,10 +41,21 @@ bool AppDelegate::onFinishLaunching() {
 		return false;
 	}
 
+	if (getDirector()->getView()) {
+		return runScene();
+	}
+	return false;
+}
+
+bool AppDelegate::runScene() {
+	auto dir = getDirector();
+	auto scene = Rc<AppScene>::create(dir);
+
+	dir->runScene(scene);
 	return true;
 }
 
-void AppDelegate::onDeviceInit(vk::PresentationDevice *dev, const stappler::Callback<void(draw::LoaderStage &&, bool deferred)> &cb) {
+/*void AppDelegate::onDeviceInit(vk::PresentationDevice *dev, const stappler::Callback<void(draw::LoaderStage &&, bool deferred)> &cb) {
 	draw::LoaderStage init;
 	init.name = StringView("init");
 	init.programs.emplace_back(draw::ProgramParams({
@@ -61,8 +73,6 @@ void AppDelegate::onDeviceInit(vk::PresentationDevice *dev, const stappler::Call
 		StringView("App::VertexListFrag")
 	}));
 	init.pipelines.emplace_back(draw::PipelineParams({
-		Rect(),
-		URect(),
 		draw::VertexFormat::Vertex_V4F_C4F_T2F,
 		draw::LayoutFormat::Vertexes,
 		draw::RenderPassBind::Default,
@@ -72,6 +82,6 @@ void AppDelegate::onDeviceInit(vk::PresentationDevice *dev, const stappler::Call
 	}));
 
 	cb(move(init), false);
-}
+}*/
 
 }

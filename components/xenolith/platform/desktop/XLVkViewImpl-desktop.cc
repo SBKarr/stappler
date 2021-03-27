@@ -22,6 +22,8 @@
 
 #include "XLVkViewImpl-desktop.h"
 
+#if (MSYS || CYGWIN || MACOS)
+
 namespace stappler::xenolith::vk {
 
 /*class GLFWEventHandler {
@@ -387,21 +389,21 @@ void ViewImpl::onGLFWWindowSizeFunCallback(GLFWwindow *window, int width, int he
 			_frameHeight = uint32_t(height); changed = true;
 		}
 
-		if (_loop->isStalled() || changed) {
+		/*if (_loop->isStalled() || changed) {
 			_device->recreateSwapChain(*_loop->getQueue());
 			std::cout << "Recreate by call\n"; std::cout.flush();
 			_loop->forceFrame(true);
 			_loop->reset();
-		}
+		}*/
 	}
 }
 
 void ViewImpl::onGLFWMouseCallBack(GLFWwindow* window, int button, int action, int modify) {
-	std::cout << "\tonGLFWMouseCallBack\n";
+	// std::cout << "\tonGLFWMouseCallBack\n";
 }
 
 void ViewImpl::onGLFWMouseMoveCallBack(GLFWwindow* window, double x, double y) {
-	std::cout << "\tonGLFWMouseMoveCallBack\n";
+	// std::cout << "\tonGLFWMouseMoveCallBack\n";
 }
 
 void ViewImpl::onGLFWMouseScrollCallback(GLFWwindow* window, double x, double y) {
@@ -463,6 +465,8 @@ void ViewImpl::selectPresentationOptions(Instance::PresentationOptions &targetOp
 }
 
 }
+
+#endif
 
 /*void VkViewImpl::setViewPortInPoints(float x, float y, float w, float h) {
 	glViewport((GLint)(x * _density + _viewPortRect.origin.x * _density),

@@ -80,6 +80,8 @@ char *pstrdup(pool_t *a, const char *s);
 
 void setPoolInfo(pool_t *pool, uint32_t tag, const void *ptr);
 
+bool isThreadSafeAsParent(pool_t *pool);
+
 }
 
 }

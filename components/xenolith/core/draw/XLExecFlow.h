@@ -34,6 +34,8 @@ public:
 
 	virtual bool init();
 
+	memory::pool_t *getPool() { return _pool; }
+
 protected:
 	memory::pool_t *_pool = nullptr;
 };

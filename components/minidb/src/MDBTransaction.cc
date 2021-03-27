@@ -30,10 +30,29 @@ THE SOFTWARE.
 #include <sys/file.h>
 #include <alloca.h>
 
+#include <deque>
+#include <future>
+
 #define LZ4_HC_STATIC_LINKING_ONLY 1
 #include "lz4hc.h"
+#include "brotli/decode.h"
 
 namespace db::minidb {
+
+template <typename Callback>
+static inline auto perform(const Callback &cb, mem::pool_t *p) {
+	struct Context {
+		Context(mem::pool_t *p) {
+			mem::pool::push(p);
+		}
+		~Context() {
+			mem::pool::pop();
+		}
+
+		mem::pool_t *pool = nullptr;
+	} holder(p);
+	return cb();
+}
 
 Transaction::Transaction() {
 	_pool = mem::pool::create(mem::pool::acquire());
@@ -45,9 +64,6 @@ Transaction::Transaction(const Storage &storage, OpenMode m) {
 
 Transaction::~Transaction() {
 	close();
-	if (_pageCache) {
-		delete _pageCache;
-	}
 	if (_pool) {
 		mem::pool::destroy(_pool);
 	}
@@ -84,17 +100,18 @@ bool Transaction::open(const Storage &storage, OpenMode mode) {
 }
 
 void Transaction::close() {
-	if (_storage) {
-		_storage = nullptr;
-	}
-
 	if (_fd >= 0) {
 		if (_pageCache) {
-			_pageCache->clear(_success);
+			_pageCache->clear(*this, _success);
+			delete _pageCache;
+			_pageCache = nullptr;
 		}
 		::flock(_fd, LOCK_UN);
 		::close(_fd);
 		_fd = -1;
+	}
+	if (_storage) {
+		_storage = nullptr;
 	}
 }
 
@@ -115,13 +132,17 @@ void Transaction::closePage(const PageNode *node) const {
 	_pageCache->closePage(node);
 }
 
+void Transaction::setSpawnThread(const mem::Function<void(const mem::Function<void()> &)> &cb) {
+	_spawnThread = cb;
+}
+
 void Transaction::invalidate() const {
 	_success = false;
 }
 
 void Transaction::commit() {
 	if (_success) {
-		_pageCache->clear(true);
+		_pageCache->clear(*this, true);
 	}
 }
 
@@ -141,14 +162,31 @@ SchemeCell Transaction::getSchemeCell(const db::Scheme *scheme) const {
 	return ret;
 }
 
-IndexCell Transaction::getSchemeCell(const db::Scheme *scheme, mem::StringView name) const {
+SchemeCell Transaction::getSchemeCell(uint64_t value) const {
+	for (auto &it : _storage->getSchemes()) {
+		if (it.second.first.value == value) {
+			if (auto schemePage = openPage(it.second.first.page, OpenMode::Read)) {
+				SchemeCell d = *(SchemeCell *)(schemePage->bytes.data() + it.second.first.offset);
+				closePage(schemePage);
+				if (d.oid.value == value) {
+					return d;
+				}
+			}
+		}
+	}
+	auto ret = SchemeCell();
+	ret.root = UndefinedPage;
+	return ret;
+}
+
+IndexCell Transaction::getIndexCell(const db::Scheme *scheme, mem::StringView name) const {
 	auto schemeIt = _storage->getSchemes().find(scheme);
 	if (schemeIt != _storage->getSchemes().end()) {
 		auto f = scheme->getField(name);
 		auto fIt = schemeIt->second.second.find(f);
 		if (fIt != schemeIt->second.second.end()) {
 			if (auto schemePage = openPage(fIt->second.page, OpenMode::Read)) {
-				IndexCell d = *(IndexCell *)(schemePage->bytes.data() + schemeIt->second.first.offset);
+				IndexCell d = *(IndexCell *)(schemePage->bytes.data() + fIt->second.offset);
 				closePage(schemePage);
 				if (d.oid.value == fIt->second.value) {
 					return d;
@@ -237,67 +275,128 @@ mem::Value Transaction::select(Worker &worker, const db::Query &query) {
 				return mem::Value({ decodeValue(worker.scheme(), cell, names) });
 			}
 		}
-	} else if (!query.getSelectIds().empty()) {
-		auto names = Transaction_getQueryName(worker, query);
-
-		size_t offset = query.getOffsetValue();
-		size_t limit = query.getLimitValue();
-
-		mem::Value ret;
-		auto &ids = query.getSelectIds();
-		auto it = ids.begin();
-
-		while (offset > 0 && it != ids.end()) {
-			-- offset;
-			++ it;
-		}
-
-		if (offset == 0) {
-			while (limit > 0 && it != ids.end()) {
-				auto iit = stack.openOnOid(*it);
-				if (iit && iit != stack.frames.back().end()) {
-					if (auto cell = stack.getOidCell(*(OidPosition *)iit.data)) {
-						ret.addValue(decodeValue(worker.scheme(), cell, names));
-					}
-				}
-				-- limit;
-				++ it;
-			}
-		}
-		return ret;
-	} else if (!query.getSelectList().empty()) {
-
 	} else if (!query.getSelectAlias().empty()) {
-
+		// TODO: not implemented
 	} else {
-		auto names = Transaction_getQueryName(worker, query);
-		auto it = stack.open();
-
-		size_t offset = query.getOffsetValue();
-		size_t limit = query.getLimitValue();
-
 		mem::Value ret;
-		while (offset > 0 && it) {
-			-- offset;
-			it = stack.next(it);
-		}
-
-		if (offset == 0) {
-			while (limit > 0 && it) {
-				if (auto cell = stack.getOidCell(*(OidPosition *)it.data)) {
-					auto val = decodeValue(worker.scheme(), cell, names);
-					// std::cout << mem::EncodeFormat::Pretty << val << " - " << cell.header->oid.value << "\n";
-					ret.addValue(std::move(val));
+		auto names = Transaction_getQueryName(worker, query);
+		auto orig = mem::pool::acquire();
+		auto p = mem::pool::create(orig);
+		mem::pool::push(p);
+		performSelectList(stack, worker.scheme(), query, [&] (const OidPosition &pos) {
+			if (auto targetPage = openPage(pos.page, OpenMode::Read)) {
+				auto h = (OidCellHeader *)(targetPage->bytes.data() + pos.offset);
+				if (auto cell = stack.getOidCell(targetPage, h, false)) {
+					mem::pool::push(orig);
+					do {
+						auto val = decodeValue(worker.scheme(), cell, names);
+						ret.addValue(std::move(val));
+					} while (0);
+					mem::pool::pop();
 				}
-				-- limit;
-				it = stack.next(it);
+				closePage(targetPage);
 			}
-		}
+		});
+		mem::pool::pop();
+		mem::pool::destroy(p);
 		return ret;
 	}
 
 	return mem::Value();
 }
+
+struct ObjectData : mem::AllocBase {
+	OidType type;
+	mem::BytesView bytes;
+	mem::Value *data;
+	mem::pool_t *pool;
+	Transaction::IndexMap map;
+	bool dropped = false;
+};
+
+struct ObjectCompressor {
+	std::deque<std::future<ObjectData *>> deque;
+
+	const Transaction *transaction;
+	size_t current = 0;
+	mem::Function<void(const mem::Function<void()> &)> spawnThread;
+	mem::Value *objects;
+	size_t preload = std::thread::hardware_concurrency() + 2;
+	mem::pool_t *pool = nullptr;
+	mem::BytesView dict;
+	const Scheme *scheme;
+	const Worker *worker;
+	bool poolOwner = false;
+
+	ObjectCompressor(const Transaction *t, mem::pool_t *p, mem::Value *objects, mem::BytesView dict, const Scheme *s, const Worker *w)
+	: transaction(t), objects(objects), pool(p), dict(dict), scheme(s), worker(w) {
+		if (!mem::pool::isThreadSafeAsParent(pool)) {
+			// utility is threaded, so, pool should be thread-safe, but we cat create new one
+			// it's less efficient from memory allocation speed side, but it's compensating by threading
+			pool = mem::pool::create(mem::pool::PoolFlags::Custom | mem::pool::PoolFlags::ThreadSafeAllocator);
+			poolOwner = true;
+		}
+	}
+
+	~ObjectCompressor() {
+		if (poolOwner) {
+			mem::pool::destroy(pool);
+			pool = nullptr;
+		}
+	}
+
+	ObjectData *getNext() {
+		auto spawn = [&] {
+			if (current < objects->size()) {
+				auto data = &(objects->asArray()[current]);
+				auto promise = new std::promise<ObjectData *>;
+				deque.push_back(promise->get_future());
+
+				auto p = mem::pool::create(pool);
+				spawnThread([this, p, promise, data] () {
+					ObjectData *d = nullptr;
+					perform([&] {
+						d = new (p) ObjectData;
+						d->pool = p;
+						d->data = data;
+
+						transaction->fillIndexMap(d->map, worker, *scheme, *data);
+
+						if (*d->data && transaction->checkUnique(d->map)) {
+							compressData(*data, dict, [&] (OidType type, mem::BytesView bytes) {
+								auto b = uint8_p(mem::pool::palloc(p, bytes.size()));
+								memcpy(b, bytes.data(), bytes.size());
+								d->bytes = mem::BytesView(b, bytes.size());
+								d->type = type;
+							});
+						} else {
+							d->dropped = true;
+						}
+					}, p);
+					promise->set_value(d);
+					delete promise;
+				});
+
+				++ current;
+			}
+		};
+
+		if (deque.empty()) {
+			for (size_t i = 0; i < preload; ++ i) {
+				spawn();
+			}
+		}
+
+		if (!deque.empty()) {
+			deque.front().wait();
+			auto front = deque.front().get();
+			deque.pop_front();
+			spawn();
+			return front;
+		}
+		return nullptr;
+	}
+};
 
 mem::Value Transaction::create(Worker &worker, mem::Value &idata) {
 	auto schemeData = _storage->getSchemes().find(&worker.scheme());
@@ -307,10 +406,22 @@ mem::Value Transaction::create(Worker &worker, mem::Value &idata) {
 
 	auto dict = worker.scheme().getCompressDict();
 	auto dictId = _storage->getDictId(&worker.scheme());
+	auto compressed = worker.scheme().isCompressed() || !dict.empty();
 
 	auto perform = [&] (mem::Value &data) -> mem::Value {
+		IndexMap map;
+		if (!fillIndexMap(map, &worker, worker.scheme(), data)) {
+			return mem::Value();
+		}
+
 		mem::Value tmp;
-		if (dict.empty()) {
+
+		OidPosition oidPosition;
+		if (compressed) {
+			compressData(data, dict, [&] (OidType type, mem::BytesView bytes) {
+				oidPosition = pushObjectData(map, bytes, type, dictId);
+			});
+		} else {
 			for (auto &it : data.asDict()) {
 				auto f = worker.scheme().getField(it.first);
 				if (f && f->hasFlag(db::Flags::Compressed)) {
@@ -319,10 +430,10 @@ mem::Value Transaction::create(Worker &worker, mem::Value &idata) {
 							mem::EncodeFormat::LZ4HCCompression)));
 				}
 			}
+
+			oidPosition = pushObject(map, data);
 		}
 
-		data.setInteger(schemeData->second.first.value, "__scheme");
-		auto oidPosition = pushObject(schemeData->second.first, data, worker.scheme().isCompressed() || !dict.empty(), dict, dictId);
 		if (oidPosition.value) {
 			mem::Value ret(data);
 			ret.setInteger(oidPosition.value, "__oid");
@@ -344,15 +455,40 @@ mem::Value Transaction::create(Worker &worker, mem::Value &idata) {
 	if (idata.isDictionary()) {
 		return perform(idata);
 	} else if (idata.isArray()) {
-		mem::Value ret;
-		for (auto &it : idata.asArray()) {
-			if (auto v = perform(it)) {
-				ret.addValue(std::move(v));
+		if (_spawnThread && compressed) {
+			ObjectCompressor comp(this, _pool, &idata, dict, &worker.scheme(), &worker);
+			comp.spawnThread = _spawnThread;
+			while (auto data = comp.getNext()) {
+				if (!data->dropped && !data->bytes.empty()) {
+					auto oidPosition = pushObjectData(data->map, data->bytes, data->type, dictId);
+					if (oidPosition.value) {
+						data->data->setInteger(oidPosition.value, "__oid");
+						if (worker.shouldIncludeNone() && worker.scheme().hasForceExclude()) {
+							for (auto &it : worker.scheme().getFields()) {
+								if (it.second.hasFlag(db::Flags::ForceExclude)) {
+									data->data->erase(it.second.getName());
+								}
+							}
+						}
+					}
+				} else {
+					*data->data = mem::Value();
+				}
+				mem::pool::destroy(data->pool);
 			}
+			return idata;
+		} else {
+			mem::Value ret;
+			for (auto &it : idata.asArray()) {
+				if (it) {
+					if (auto v = perform(it)) {
+						ret.addValue(std::move(v));
+					}
+				}
+			}
+			return ret;
 		}
-		return ret;
 	}
-
 	return mem::Value();
 }
 
@@ -361,55 +497,6 @@ mem::Value Transaction::save(Worker &, uint64_t oid, const mem::Value &obj, cons
 }
 
 mem::Value Transaction::patch(Worker &worker, uint64_t target, const mem::Value &patch) {
-	/*auto scheme = _manifest->getScheme(worker.scheme());
-	if (!scheme) {
-		return mem::Value();
-	}
-
-	std::unique_lock<std::shared_mutex> lock(scheme->scheme->mutex);
-	TreeStack stack({*this, scheme, OpenMode::Read});
-	auto it = stack.openOnOid(target);
-	if (!it || it == stack.frames.back().end()) {
-		return mem::Value();
-	}
-
-	auto cell = it.getTableLeafCell();
-	if (auto v = decodeValue(worker.scheme(), cell, mem::Vector<mem::StringView>())) {
-		mem::Value tmp;
-		for (auto &it : patch.asDict()) {
-			auto f = worker.scheme().getField(it.first);
-			if (f) {
-				if (f->hasFlag(db::Flags::Compressed)) {
-					tmp.setValue(std::move(it.second), f->getName());
-					v.setBytes(mem::writeData(it.second, mem::EncodeFormat(mem::EncodeFormat::Cbor,
-							mem::EncodeFormat::LZ4HCCompression)), it.first);
-				} else {
-					v.setValue(std::move(it.second), it.first);
-				}
-			}
-		}
-
-		if (!checkUnique(*scheme, v)) {
-			return mem::Value();
-		}
-
-		if (stack.rewrite(it, cell, v)) {
-			v.setInteger(cell.value, "__oid");
-			if (worker.shouldIncludeNone() && worker.scheme().hasForceExclude()) {
-				for (auto &it : worker.scheme().getFields()) {
-					if (it.second.hasFlag(db::Flags::ForceExclude)) {
-						v.erase(it.second.getName());
-					}
-				}
-			}
-			for (auto &iit : tmp.asDict()) {
-				v.setValue(std::move(iit.second), iit.first);
-			}
-			return v;
-		}
-		return mem::Value();
-	}*/
-
 	return mem::Value();
 }
 
@@ -417,181 +504,635 @@ bool Transaction::remove(Worker &, uint64_t oid) {
 	return false;
 }
 
-size_t Transaction::count(Worker &, const db::Query &) {
+size_t Transaction::count(Worker &worker, const db::Query &query) {
+	auto schemeData = _storage->getSchemes().find(&worker.scheme());
+	if (schemeData == _storage->getSchemes().end()) {
+		return 0;
+	}
+
+	std::shared_lock<std::shared_mutex> lock(_mutex);
+	auto schemePage = openPage(schemeData->second.first.page, OpenMode::Read);
+	if (!schemePage) {
+		return 0;
+	}
+
+	auto schemeCell = (SchemeCell *)(schemePage->bytes.data() + schemeData->second.first.offset);
+	if (schemeCell->oid.value != schemeData->second.first.value || schemeCell->root == UndefinedPage) {
+		closePage(schemePage);
+		return 0;
+	}
+
+	TreeStack stack({*this, schemeCell->root});
+	stack.nodes.emplace_back(schemePage);
+	if (auto target = query.getSingleSelectId()) {
+		auto it = stack.openOnOid(target);
+		if (it && it != stack.frames.back().end()) {
+			if (auto cell = stack.getOidCell(*(OidPosition *)it.data)) {
+				return 1;
+			}
+		}
+	} else if (!query.getSelectAlias().empty()) {
+		// TODO: not implemented
+	} else {
+		mem::Value ret;
+		auto orig = mem::pool::acquire();
+		auto p = mem::pool::create(orig);
+		mem::pool::push(p);
+		size_t counter = 0;
+		performSelectList(stack, worker.scheme(), query, [&] (const OidPosition &pos) {
+			++ counter;
+		});
+		mem::pool::pop();
+		mem::pool::destroy(p);
+		return counter;
+	}
+
 	return 0;
 }
 
-OidPosition Transaction::pushObject(const OidPosition &schemeDataPos, const mem::Value &data, bool compress, mem::BytesView dict, uint8_t dictId) const {
-	auto payloadSize = getPayloadSize(PageType::OidContent, data);
+bool Transaction::fillIndexMap(IndexMap &map, const Worker *worker, const Scheme &scheme, const mem::Value &value) const {
+	auto schemeData = _storage->getSchemes().find(&scheme);
+	if (schemeData == _storage->getSchemes().end()) {
+		return false;
+	}
 
-	uint8_p compressed = nullptr;
-	size_t compressedSize = 0;
-	if (compress) {
-		uint8_p sourceBytes = uint8_p(alloca(payloadSize));
-		writePayload(PageType::OidContent, sourceBytes, data);
+	map.scheme = schemeData->second.first;
 
-		auto c = stappler::data::EncodeFormat::Compression::LZ4HCCompression;
-		auto bufferSize = stappler::data::getCompressBounds(payloadSize, c);
-		uint8_p compressBytes = uint8_p(alloca(bufferSize + 4));
-
-		if (dict.empty()) {
-			auto encodeSize = stappler::data::compressData(sourceBytes, payloadSize, compressBytes + 4, bufferSize, c);
-			if (encodeSize == 0 || (encodeSize + 4 > payloadSize)) {
-				compressed = sourceBytes;
-				compressedSize = payloadSize;
-			} else {
-				stappler::data::writeCompressionMark(compressBytes, payloadSize, c);
-				compressed = compressBytes;
-				compressedSize = encodeSize + 4;
-			}
-		} else {
-			auto state = stappler::data::getLZ4EncodeState();
-			LZ4_streamHC_t *const ctx = LZ4_initStreamHC(state, sizeof(*ctx));
-			if (ctx == NULL) {
-				return OidPosition({0, 0, 0}); /* init failure */
-			}
-
-			LZ4_resetStreamHC_fast(ctx, LZ4HC_CLEVEL_MAX);
-			LZ4_loadDictHC(ctx, (const char*) dict.data(), int(dict.size()));
-
-			const int offSize = ((payloadSize <= 0xFFFF) ? 2 : 4);
-			int encodeSize = LZ4_compress_HC_continue(ctx,
-					(const char *)sourceBytes, (char *)compressBytes + 4 + offSize, payloadSize, bufferSize - offSize);
-			if (encodeSize > 0) {
-				if (payloadSize <= 0xFFFF) {
-					uint16_t sz = payloadSize;
-					memcpy(compressBytes + 4, &sz, sizeof(uint16_t));
-				} else {
-					uint32_t sz = payloadSize;
-					memcpy(compressBytes + 4, &sz, sizeof(uint32_t));
-				}
-				encodeSize += offSize;
-
-				if (encodeSize == 0 || (size_t(encodeSize + 4) > payloadSize)) {
-					compressed = sourceBytes;
-					compressedSize = payloadSize;
-				} else {
-					stappler::data::writeCompressionMark(compressBytes, payloadSize, c);
-					compressed = compressBytes;
-					compressedSize = encodeSize + 4;
+	for (auto &it : scheme.getFields()) {
+		if (it.second.isIndexed()) {
+			if (it.second.getType() == Type::Integer) {
+				if (value.isInteger(it.second.getName())) {
+					auto idxData = schemeData->second.second.find(&it.second);
+					if (idxData != schemeData->second.second.end()) {
+						map.integerValues.emplace_back(idxData->second, value.getInteger(it.second.getName()));
+						if (it.second.hasFlag(Flags::Unique)) {
+							map.integerUniques.emplace_back(idxData->second, value.getInteger(it.second.getName()));
+							if (worker) {
+								auto &c = worker->getConflicts();
+								auto cit = c.find(&it.second);
+								if (cit != c.end()) {
+									map.conflicts.emplace(idxData->second, &(cit->second));
+								}
+							}
+						}
+					}
+					map.fields.emplace(idxData->second, &(it.second));
 				}
 			}
 		}
 	}
+	return true;
+}
 
-	// lock sheme on write
+OidPosition Transaction::pushObjectData(const IndexMap &map, mem::BytesView data, OidType type, uint8_t dictId) {
 	std::unique_lock<std::shared_mutex> lock(_mutex);
-	/*if (!checkUnique(scheme, data)) {
-		return mem::Value();
-	}*/
-
 	TreeStack stack({*this, _pageCache->getRoot()});
-	if (auto cell = stack.emplaceCell(compressedSize ? compressedSize : payloadSize)) {
-		if (!compressedSize) {
-			cell.header->oid.type = stappler::toInt(OidType::Object);
-			cell.header->oid.flags = 0;
-			cell.header->oid.dictId = 0;
-			writePayload(PageType::OidContent, cell.pages, data);
-		} else {
-			if (!dict.empty()) {
-				cell.header->oid.type = stappler::toInt(OidType::ObjectCompressedWithDictionary);
-				cell.header->oid.flags = 0;
-				cell.header->oid.dictId = dictId;
-			} else {
-				cell.header->oid.type = stappler::toInt(OidType::ObjectCompressed);
-				cell.header->oid.flags = 0;
-				cell.header->oid.dictId = 0;
-			}
+	if (!checkUnique(map)) {
+		return OidPosition({ 0, 0, 0 });
+	}
 
-			size_t offset = 0;
-			for (auto &it : cell.pages) {
-				auto c = std::min(compressedSize - offset, it.size());
-				memcpy(uint8_p(it.data()), compressed + offset, c);
-				offset += c;
-			}
+	if (auto cell = stack.emplaceCell(data.size())) {
+		auto compressedSize = data.size();
+		cell.header->oid.type = stappler::toInt(type);
+		cell.header->oid.flags = 0;
+		cell.header->oid.dictId = dictId;
+
+		size_t offset = 0;
+		for (auto &it : cell.pages) {
+			auto c = std::min(compressedSize - offset, it.size());
+			memcpy(uint8_p(it.data()), data.data() + offset, c);
+			offset += c;
 		}
 
-		if (auto schemePage = openPage(schemeDataPos.page, OpenMode::Write)) {
-			stack.nodes.emplace_back(schemePage);
-			auto d = (SchemeCell *)(schemePage->bytes.data() + schemeDataPos.offset);
-			if (d->oid.value == schemeDataPos.value) {
-				stack.addToScheme(d, cell.header->oid.value, cell.page, cell.offset);
-			}
-		}
+		pushIndexMap(stack, map, cell);
 
 		return OidPosition({ cell.page, cell.offset, cell.header->oid.value });
 	}
 	return OidPosition({ 0, 0, 0 });
 }
 
-bool Transaction::checkUnique(const Scheme &scheme, const mem::Value &) const {
-	return false;
+OidPosition Transaction::pushObject(const IndexMap &map, const mem::Value &data) const {
+	auto payloadSize = getPayloadSize(PageType::OidContent, data);
+
+	// lock sheme on write
+	std::unique_lock<std::shared_mutex> lock(_mutex);
+	if (!checkUnique(map)) {
+		return OidPosition({ 0, 0, 0 });
+	}
+
+	TreeStack stack({*this, _pageCache->getRoot()});
+	if (auto cell = stack.emplaceCell(payloadSize)) {
+		cell.header->oid.type = stappler::toInt(OidType::Object);
+		cell.header->oid.flags = 0;
+		cell.header->oid.dictId = 0;
+		writePayload(PageType::OidContent, cell.pages, data);
+
+		pushIndexMap(stack, map, cell);
+
+		return OidPosition({ cell.page, cell.offset, cell.header->oid.value });
+	}
+	return OidPosition({ 0, 0, 0 });
 }
 
-bool Transaction_decompressWithDict(const Storage *storage, const Transaction &t, const db::Scheme &scheme, const OidCell &cell,
-		const char *src, char *dest, size_t srcSize, size_t destSize) {
-	TreeStack stack({t, t.getPageCache()->getRoot()});
-	mem::BytesView dictData;
-	auto dictId = storage->getDictId(&scheme);
-	if (cell.header->oid.dictId != dictId) {
-		auto dictOid = storage->getDictOid(dictId);
-		if (auto dictCell = stack.getOidCell(dictOid)) {
-			if (dictCell.pages.size() == 1) {
-				dictData = dictCell.pages.front();
-			} else {
-				size_t dataSize = 0;
-				for (auto &iit : cell.pages) {
-					dataSize += iit.size();
-				}
-				uint8_p b = uint8_p(alloca(dataSize));
-				size_t offset = 0;
-				for (auto &iit : cell.pages) {
-					memcpy(b + offset, iit.data(), iit.size());
-					offset += iit.size();
-				}
-				dictData = mem::BytesView(b, dataSize);
-			}
-		} else {
-			return false;
+void Transaction::pushIndexMap(TreeStack &stack, const IndexMap &map, const OidCell &cell) const {
+	if (auto schemePage = stack.openPage(map.scheme.page, OpenMode::Write)) {
+		auto d = (SchemeCell *)(schemePage->bytes.data() + map.scheme.offset);
+		if (d->oid.value == map.scheme.value) {
+			stack.addToScheme(d, cell.header->oid.value, cell.page, cell.offset);
 		}
-	} else {
-		dictData = scheme.getCompressDict();
 	}
 
-	if (dictData.empty()) {
-		return false;
+	for (auto &it : map.integerValues) {
+		_pageCache->addIndexValue(it.first, OidPosition{cell.page, cell.offset, cell.header->oid.value}, it.second);
 	}
+}
 
-	if (LZ4_decompress_safe_usingDict(src, dest, srcSize, destSize, (const char *)dictData.data(), dictData.size()) > 0) {
+bool Transaction::checkUnique(const IndexMap &map) const { // false is unique value found
+	if (map.integerUniques.empty()) {
 		return true;
 	}
 
-	return false;
+	auto pushFail = [&map] (const OidPosition &pos, int64_t value) {
+		auto f = map.fields.find(pos);
+		if (f == map.fields.end()) {
+			return false;
+		}
+		bool silent = false;
+		auto c = map.conflicts.find(pos);
+		if (c != map.conflicts.end()) {
+			if ((c->second->flags & Conflict::DoNothing) != Conflict::None) {
+				silent = true;
+			}
+		}
+		if (!silent) {
+			stappler::log::vtext("minidb", "Fail to insert object - unique check on field '", f->second->getName(),
+					"' faild with value ", value);
+		}
+		return false;
+	};
+
+	auto schemeCell = getSchemeCell(map.scheme.value);
+
+	TreeStack stack(*this, 0);
+	for (auto &it : map.integerUniques) {
+		if (_pageCache->hasIndexValue(it.first, it.second)) {
+			return pushFail(it.first, it.second);
+		}
+		if (auto indexPage = openPage(it.first.page, OpenMode::Write)) {
+			auto d = (IndexCell *)(indexPage->bytes.data() + it.first.offset);
+			if (d->oid.value == it.first.value) {
+				Query::Select tmp("NONE", db::Comparation::Equal, mem::Value(it.second), mem::Value());
+				const Query::Select *tmpPtr = &tmp;
+
+				bool found = false;
+				performIndexScan(stack, schemeCell, *d, stappler::makeSpanView(&tmpPtr, 1), db::Ordering::Ascending, [&] (const OidPosition &pos) -> bool {
+					found = true;
+					return false;
+				});
+				if (found) {
+					closePage(indexPage);
+					return pushFail(it.first, it.second);
+				}
+			}
+			closePage(indexPage);
+		}
+	}
+	return true;
+}
+
+static bool Transaction_checkVec(int64_t value, const OidPosition &pos, mem::SpanView<const Query::Select *> vec) {
+	if (vec.empty()) {
+		return true;
+	}
+
+	for (auto &it : vec) {
+		if (it->value1.isInteger()) {
+			switch (it->compare) {
+			case Comparation::LessThen: if (! (value < it->value1.getInteger()) ) { return false; } break;
+			case Comparation::LessOrEqual: if (! (value <= it->value1.getInteger()) ) { return false; } break;
+			case Comparation::Equal: if (! (value == it->value1.getInteger()) ) { return false; } break;
+			case Comparation::NotEqual: if (! (value != it->value1.getInteger()) ) { return false; } break;
+			case Comparation::GreatherOrEqual: if (! (value >= it->value1.getInteger()) ) { return false; } break;
+			case Comparation::GreatherThen: if (! (value > it->value1.getInteger()) ) { return false; } break;
+			case Comparation::BetweenValues: if (! (value > it->value1.getInteger() && value < it->value2.getInteger()) ) { return false; } break;
+			case Comparation::Between:
+			case Comparation::BetweenEquals: if (! (value >= it->value1.getInteger() && value <= it->value2.getInteger()) ) { return false; } break;
+			case Comparation::NotBetweenValues: if (! (value < it->value1.getInteger() || value > it->value2.getInteger()) ) { return false; } break;
+			case Comparation::NotBetweenEquals: if (! (value <= it->value1.getInteger() || value >= it->value2.getInteger()) ) { return false; } break;
+
+			case Comparation::In:
+			case Comparation::NotIn:
+
+			case Comparation::Invalid:
+			case Comparation::Includes:
+			case Comparation::IsNull:
+			case Comparation::IsNotNull:
+			case Comparation::Prefix:
+			case Comparation::Suffix:
+			case Comparation::WordPart:
+				std::cout << "Comparation not implemented: " << stappler::toInt(it->compare) << "\n";
+				return false;
+				break;
+			}
+		} else if (it->value1.isArray()) {
+			switch (it->compare) {
+			case Comparation::Equal:
+			case Comparation::In: {
+				bool found = false;
+				for (auto &i : it->value1.asArray()) {
+					if (i.getInteger() == value) {
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					return false;
+				}
+				break;
+			}
+
+			case Comparation::NotEqual:
+			case Comparation::NotIn: {
+				bool found = false;
+				for (auto &i : it->value1.asArray()) {
+					if (i.getInteger() == value) {
+						found = true;
+						break;
+					}
+				}
+				if (found) {
+					return false;
+				}
+				break;
+			}
+
+			case Comparation::LessThen:
+			case Comparation::LessOrEqual:
+			case Comparation::GreatherOrEqual:
+			case Comparation::GreatherThen:
+			case Comparation::BetweenValues:
+			case Comparation::Between:
+			case Comparation::BetweenEquals:
+			case Comparation::NotBetweenValues:
+			case Comparation::NotBetweenEquals:
+			case Comparation::Invalid:
+			case Comparation::Includes:
+			case Comparation::IsNull:
+			case Comparation::IsNotNull:
+			case Comparation::Prefix:
+			case Comparation::Suffix:
+			case Comparation::WordPart:
+				std::cout << "Comparation not implemented: " << stappler::toInt(it->compare) << "\n";
+				return false;
+				break;
+			}
+		} else {
+			std::cout << "Invalid value type for: " << it->value1 << "\n";
+			return false;
+		}
+	}
+
+	return true;
+}
+
+static void Transaction_getIndexHints(mem::SpanView<const Query::Select *> vec, int64_t &hintMin, int64_t &hintMax) {
+	for (auto &it : vec) {
+		if (it->value1.isInteger()) {
+			switch (it->compare) {
+			case Comparation::LessThen: hintMax = std::min(hintMax, it->value1.getInteger() - 1); break;
+			case Comparation::LessOrEqual: hintMax = std::min(hintMax, it->value1.getInteger());  break;
+			case Comparation::Equal: hintMax = hintMin = it->value1.getInteger(); break;
+			case Comparation::NotEqual: break;
+			case Comparation::GreatherOrEqual: hintMin = std::max(hintMin, it->value1.getInteger()); break;
+			case Comparation::GreatherThen: hintMin = std::max(hintMin, it->value1.getInteger() + 1); break;
+			case Comparation::BetweenValues:
+				hintMin = std::max(hintMin, it->value1.getInteger() + 1);
+				hintMax = std::min(hintMax, it->value2.getInteger() - 1);
+				break;
+			case Comparation::Between:
+			case Comparation::BetweenEquals:
+				hintMin = std::max(hintMin, it->value1.getInteger());
+				hintMax = std::min(hintMax, it->value2.getInteger());
+				break;
+
+			case Comparation::NotBetweenValues:
+			case Comparation::NotBetweenEquals:
+			case Comparation::In:
+			case Comparation::NotIn:
+			case Comparation::Invalid:
+			case Comparation::Includes:
+			case Comparation::IsNull:
+			case Comparation::IsNotNull:
+			case Comparation::Prefix:
+			case Comparation::Suffix:
+			case Comparation::WordPart:
+				break;
+			}
+		} else if (it->value1.isArray()) {
+			switch (it->compare) {
+			case Comparation::Equal:
+			case Comparation::In: {
+				int64_t max = stappler::minOf<int64_t>();
+				int64_t min = stappler::maxOf<int64_t>();
+				for (auto &i : it->value1.asArray()) {
+					if (i.getInteger() > max) {
+						max = i.getInteger();
+					}
+					if (i.getInteger() < min) {
+						min = i.getInteger();
+					}
+				}
+				hintMax = std::min(hintMax, max);
+				hintMin = std::max(hintMin, min);
+				break;
+			}
+
+			case Comparation::NotEqual:
+			case Comparation::NotIn:
+			case Comparation::LessThen:
+			case Comparation::LessOrEqual:
+			case Comparation::GreatherOrEqual:
+			case Comparation::GreatherThen:
+			case Comparation::BetweenValues:
+			case Comparation::Between:
+			case Comparation::BetweenEquals:
+			case Comparation::NotBetweenValues:
+			case Comparation::NotBetweenEquals:
+			case Comparation::Invalid:
+			case Comparation::Includes:
+			case Comparation::IsNull:
+			case Comparation::IsNotNull:
+			case Comparation::Prefix:
+			case Comparation::Suffix:
+			case Comparation::WordPart:
+				break;
+			}
+		}
+	}
+}
+
+bool Transaction::performSelectList(TreeStack &stack, const Scheme &scheme, const db::Query &query,
+		const mem::Callback<void(const OidPosition &)> &cb) const {
+	auto schemeCell = getSchemeCell(&scheme);
+	if (schemeCell.root == UndefinedPage) {
+		return false;
+	}
+
+	auto order = query.getOrderField();
+	size_t offset = query.getOffsetValue();
+	size_t limit = query.getLimitValue();
+
+	struct IndexQuery {
+		const Transaction *transaction;
+		const PageNode *root;
+		mem::StringView field;
+		IndexCell cell;
+		mem::Vector<const Query::Select *> select;
+		mem::Vector<uint64_t> oids;
+
+		IndexQuery(const Transaction *t, const PageNode *node, mem::StringView f, IndexCell index, const Query::Select *sel)
+		: transaction(t), root(node), field(f), cell(index), select({sel}) { }
+
+		~IndexQuery() {
+			transaction->getPageCache()->closePage(root);
+		}
+	};
+
+	mem::Map<mem::StringView, IndexQuery> selectQueries;
+
+	Query::Select tmp;
+	if (!query.getSelectIds().empty()) {
+		mem::Value values;
+		for (auto &it : query.getSelectIds()) {
+			values.addInteger(it);
+		}
+		tmp = Query::Select(mem::StringView("__oid"), Comparation::Equal, std::move(values), mem::Value());
+		if (auto page = _pageCache->openPage(schemeCell.root, OpenMode::Read)) {
+			IndexCell emptyCell; emptyCell.root = UndefinedPage;
+			selectQueries.emplace("__oid", this, page, "__oid", emptyCell, &tmp);
+		} else {
+			return false;
+		}
+	}
+
+	for (auto &it : query.getSelectList()) {
+		auto iit = selectQueries.find(it.field);
+		if (iit != selectQueries.end()) {
+			iit->second.select.emplace_back(&it);
+		} else {
+			if (it.field == "__oid") {
+				if (auto page = _pageCache->openPage(schemeCell.root, OpenMode::Read)) {
+					IndexCell emptyCell; emptyCell.root = UndefinedPage;
+					selectQueries.emplace(it.field, this, page, it.field, emptyCell, &it);
+				} else {
+					return false;
+				}
+			} else {
+				auto index = getIndexCell(&scheme, it.field);
+				if (index.root == UndefinedPage) {
+					return false;
+				} else {
+					if (auto page = _pageCache->openPage(index.root, OpenMode::Read)) {
+						selectQueries.emplace(it.field, this, page, it.field, index, &it);
+					} else {
+						return false;
+					}
+				}
+			}
+		}
+	}
+
+	auto makeOidLists = [&] (mem::StringView ex) {
+		for (auto &it : selectQueries) {
+			if (it.first != ex) {
+				performIndexScan(stack, schemeCell, it.second.cell, it.second.select, Ordering::Ascending, [&] (const OidPosition &pos) -> bool {
+					it.second.oids.emplace_back(pos.value);
+					return true;
+				});
+				stack.close();
+				std::sort(it.second.oids.begin(), it.second.oids.end());
+			}
+		}
+	};
+
+	auto check = [&] (const OidPosition &pos, mem::StringView ex) {
+		for (auto &it : selectQueries) {
+			if (it.first != ex) {
+				auto lb = std::lower_bound(it.second.oids.begin(), it.second.oids.end(), pos.value);
+				if (lb == it.second.oids.end() || *lb != pos.value) {
+					return false;
+				}
+			}
+		}
+		return true;
+	};
+
+	if (selectQueries.empty() && order.empty()) {
+		order = "__oid";
+	}
+
+	auto ordIt = selectQueries.find(order);
+	if (ordIt != selectQueries.end()) {
+		makeOidLists(order);
+		performIndexScan(stack, schemeCell, ordIt->second.cell, ordIt->second.select, query.getOrdering(), [&] (const OidPosition &pos) -> bool {
+			if (check(pos, ordIt->second.field)) {
+				if (offset > 0) {
+					-- offset;
+				} else if (limit > 0) {
+					cb(pos);
+					-- limit;
+				} else {
+					return false; //  stop iteration
+				}
+			}
+			return true;
+		});
+		stack.close();
+	} else if (!order.empty()) {
+		makeOidLists(order);
+		auto index = getIndexCell(&scheme, order);
+		if (index.root == UndefinedPage && order != "__oid") {
+			return false;
+		} else {
+			performIndexScan(stack, schemeCell, index, {}, query.getOrdering(), [&] (const OidPosition &pos) -> bool {
+				if (check(pos, order)) {
+					if (offset > 0) {
+						-- offset;
+					} else if (limit > 0) {
+						cb(pos);
+						-- limit;
+					} else {
+						return false; //  stop iteration
+					}
+				}
+				return true;
+			});
+			stack.close();
+		}
+	} else if (!selectQueries.empty()) {
+		// perform with first queried index
+		auto begin = selectQueries.begin();
+		makeOidLists(begin->second.field);
+		performIndexScan(stack, schemeCell, begin->second.cell, begin->second.select, query.getOrdering(),
+				[&] (const OidPosition &pos) -> bool {
+			if (check(pos, begin->second.field)) {
+				if (offset > 0) {
+					-- offset;
+				} else if (limit > 0) {
+					cb(pos);
+					-- limit;
+				} else {
+					return false; //  stop iteration
+				}
+			}
+			return true;
+		});
+		stack.close();
+	} else {
+		return false;
+	}
+
+	return true;
+}
+
+bool Transaction::performIndexScan(TreeStack &stack, const SchemeCell &scheme, const IndexCell &cell,
+		mem::SpanView<const Query::Select *> vec, Ordering ord, const mem::Callback<bool(const OidPosition &)> &cb) const {
+
+	int64_t hintMin = stappler::minOf<int64_t>();
+	int64_t hintMax = stappler::maxOf<int64_t>();
+
+	Transaction_getIndexHints(vec, hintMin, hintMax);
+
+	if (cell.root != UndefinedPage) {
+		stack.root = cell.root;
+		if (ord == Ordering::Ascending) {
+			auto it = stack.open(true, hintMin);
+			while (it) {
+				auto payload = (IntegerIndexPayload *)it.data;
+				if (payload->value > hintMax) { return true; }
+				if (payload->value < hintMin) { it = stack.next(it, true); continue; }
+				if (Transaction_checkVec(payload->value, payload->position, vec)) {
+					if (!cb(payload->position)) {
+						return true;
+					}
+				}
+				it = stack.next(it, true);
+			}
+		} else {
+			auto it = stack.open(false, hintMax);
+			while (it) {
+				auto payload = (IntegerIndexPayload *)it.prev(1).data;
+				if (payload->value < hintMin) { return true; }
+				if (payload->value > hintMax) { it = stack.prev(it, true); continue; }
+				if (Transaction_checkVec(payload->value, payload->position, vec)) {
+					if (!cb(payload->position)) {
+						return true;
+					}
+				}
+				it = stack.prev(it, true);
+			}
+		}
+	} else {
+		// ordering with __oid
+		stack.root = scheme.root;
+		if (ord == Ordering::Ascending) {
+			auto it = stack.open(true, hintMin);
+			while (it) {
+				auto pos = (OidPosition *)it.data;
+				if (int64_t(pos->value) > hintMax) { return true; }
+				if (int64_t(pos->value) < hintMin) { it = stack.next(it, true); continue; }
+				if (Transaction_checkVec(pos->value, *pos, vec)) {
+					if (!cb(*pos)) {
+						return true;
+					}
+				}
+				it = stack.next(it, true);
+			}
+		} else {
+			auto it = stack.open(false, hintMax);
+			while (it) {
+				auto pos = (OidPosition *)it.prev(1).data;
+				if (int64_t(pos->value) < hintMin) { return true; }
+				if (int64_t(pos->value) > hintMax) { it = stack.prev(it, true); continue; }
+				if (Transaction_checkVec(pos->value, *pos, vec)) {
+					if (!cb(*pos)) {
+						return true;
+					}
+				}
+				it = stack.prev(it, true);
+			}
+		}
+	}
+	return true;
 }
 
 OidPosition Transaction::createValue(const db::Scheme &scheme, mem::Value &data) {
-	auto schemeData = _storage->getSchemes().find(&scheme);
-	if (schemeData == _storage->getSchemes().end()) {
+	IndexMap map;
+	if (!fillIndexMap(map, nullptr, scheme, data)) {
 		return OidPosition({ 0, 0, 0 });
 	}
 
 	auto dict = scheme.getCompressDict();
 	auto dictId = _storage->getDictId(&scheme);
+	auto compressed = scheme.isCompressed() || !dict.empty();
 
-	mem::Value tmp;
-	if (dict.empty()) {
+	OidPosition oidPosition;
+	if (compressed) {
+		compressData(data, dict, [&] (OidType type, mem::BytesView bytes) {
+			oidPosition = pushObjectData(map, bytes, type, dictId);
+		});
+	} else {
 		for (auto &it : data.asDict()) {
 			auto f = scheme.getField(it.first);
 			if (f && f->hasFlag(db::Flags::Compressed)) {
-				tmp.setValue(std::move(it.second), f->getName());
 				it.second.setBytes(mem::writeData(it.second, mem::EncodeFormat(mem::EncodeFormat::Cbor,
 						mem::EncodeFormat::LZ4HCCompression)));
 			}
 		}
+
+		oidPosition = pushObject(map, data);
 	}
 
-	data.setInteger(schemeData->second.first.value, "__scheme");
-	auto oidPosition = pushObject(schemeData->second.first, data, scheme.isCompressed() || !dict.empty(), dict, dictId);
 	if (oidPosition.value) {
 		data.setInteger(oidPosition.value, "__oid");
 	}
@@ -599,130 +1140,102 @@ OidPosition Transaction::createValue(const db::Scheme &scheme, mem::Value &data)
 }
 
 mem::Value Transaction::decodeValue(const db::Scheme &scheme, const OidCell &cell, const mem::Vector<mem::StringView> &names) const {
-	size_t dataSize = 0, offset = 0, uncompressSize = 0;
-	uint8_p b = nullptr, u = nullptr;
-	stappler::data::DataFormat ff = stappler::data::DataFormat::Unknown;
-	switch (OidType(cell.header->oid.type)) {
-	case OidType::Object:
-		if (cell.pages.size() == 1) {
-			return readPayload(uint8_p(cell.pages.front().data()), names, cell.header->oid.value);
+	if (OidType(cell.header->oid.type) == OidType::ObjectCompressedWithDictionary) {
+		auto dictId = _storage->getDictId(&scheme);
+		if (cell.header->oid.dictId != dictId) {
+			mem::BytesView dict;
+			TreeStack stack({*this, _pageCache->getRoot()});
+			auto dictOid = _storage->getDictOid(dictId);
+			if (auto dictCell = stack.getOidCell(dictOid)) {
+				if (dictCell.pages.size() == 1) {
+					dict = dictCell.pages.front();
+				} else {
+					size_t dataSize = 0;
+					for (auto &iit : cell.pages) {
+						dataSize += iit.size();
+					}
+					uint8_p b = uint8_p(alloca(dataSize));
+					size_t offset = 0;
+					for (auto &iit : cell.pages) {
+						memcpy(b + offset, iit.data(), iit.size());
+						offset += iit.size();
+					}
+					dict = mem::BytesView(b, dataSize);
+				}
+				return decodeData(cell, dict, names);
+			} else {
+				return mem::Value();
+			}
 		} else {
-			for (auto &iit : cell.pages) {
-				dataSize += iit.size();
-			}
-			b = uint8_p(alloca(dataSize));
-			for (auto &iit : cell.pages) {
-				memcpy(b + offset, iit.data(), iit.size());
-				offset += iit.size();
-			}
-			return readPayload(b, names, cell.header->oid.value);
+			return decodeData(cell, scheme.getCompressDict(), names);
 		}
-		break;
-	case OidType::ObjectCompressed:
-		for (auto &iit : cell.pages) {
-			dataSize += iit.size();
-		}
-		b = uint8_p(alloca(dataSize));
-		for (auto &iit : cell.pages) {
-			memcpy(b + offset, iit.data(), iit.size());
-			offset += iit.size();
-		}
-
-		ff = stappler::data::detectDataFormat(b, dataSize);
-		switch (ff) {
-			case stappler::data::DataFormat::LZ4_Short: {
-				b += 4; dataSize -= 4;
-				uncompressSize = mem::BytesView(b, dataSize).readUnsigned16(); b += 2; dataSize -= 2;
-				u = uint8_p(alloca(uncompressSize));
-				if (LZ4_decompress_safe((const char *)b, (char *)u, dataSize, uncompressSize) > 0) {
-					return readPayload(u, names, cell.header->oid.value);
-				}
-				break;
-			}
-			case stappler::data::DataFormat::LZ4_Word: {
-				b += 4; dataSize -= 4;
-				uncompressSize = mem::BytesView(b, dataSize - 4).readUnsigned32(); b += 4; dataSize -= 4;
-				u = uint8_p(alloca(uncompressSize));
-				if (LZ4_decompress_safe((const char *)b, (char *)u, dataSize, uncompressSize) > 0) {
-					return readPayload(u, names, cell.header->oid.value);
-				}
-				break;
-			default:
-				break;
-			}
-		}
-		break;
-	case OidType::ObjectCompressedWithDictionary:
-		for (auto &iit : cell.pages) {
-			dataSize += iit.size();
-		}
-		b = uint8_p(alloca(dataSize));
-		for (auto &iit : cell.pages) {
-			memcpy(b + offset, iit.data(), iit.size());
-			offset += iit.size();
-		}
-
-		ff = stappler::data::detectDataFormat(b, dataSize);
-		switch (ff) {
-			case stappler::data::DataFormat::LZ4_Short: {
-				b += 4; dataSize -= 4;
-				uncompressSize = mem::BytesView(b, dataSize).readUnsigned16(); b += 2; dataSize -= 2;
-				u = uint8_p(alloca(uncompressSize));
-				if (Transaction_decompressWithDict(_storage, *this, scheme, cell, (const char *)b, (char *)u, dataSize, uncompressSize) > 0) {
-					return readPayload(u, names, cell.header->oid.value);
-				}
-				break;
-			}
-			case stappler::data::DataFormat::LZ4_Word: {
-				b += 4; dataSize -= 4;
-				uncompressSize = mem::BytesView(b, dataSize).readUnsigned32(); b += 4; dataSize -= 4;
-				u = uint8_p(alloca(uncompressSize));
-				if (Transaction_decompressWithDict(_storage, *this, scheme, cell, (const char *)b, (char *)u, dataSize, uncompressSize) > 0) {
-					return readPayload(u, names, cell.header->oid.value);
-				}
-				break;
-			default:
-				break;
-			}
-		}
-		break;
-	default:
-		break;
+	} else {
+		return decodeData(cell, mem::BytesView(), names);
 	}
-	return mem::Value();
 }
 
-bool Transaction::foreach(const db::Scheme &scheme, const mem::Function<void(const mem::Value &)> &cb,
-		const mem::Callback<void(const mem::Function<void()> &)> &spawnThread, const mem::Callback<bool()> &waitForThread) const {
-	auto cell = getSchemeCell(&scheme);
-	if (cell.root == UndefinedPage) {
+bool Transaction::foreach(const db::Scheme &scheme, const mem::Function<void(uint64_t, uint64_t, mem::Value &)> &cb,
+		const mem::SpanView<uint64_t> &ids) const {
+
+	auto schemeCell = getSchemeCell(&scheme);
+	if (schemeCell.root == UndefinedPage) {
 		return false;
 	}
 
-	auto pages = getContentPages(*this, cell.root);
-	for (auto &it : pages) {
-		spawnThread([this, cb, page = it, scheme = &scheme] {
-			if (auto p = openPage(page, OpenMode::Read)) {
-				auto h = (SchemeContentPageHeader *)p->bytes.data();
-				auto ptr = p->bytes.data() + sizeof(SchemeContentPageHeader);
+	std::atomic<uint64_t> counter = schemeCell.counter;
+	std::atomic<uint64_t> index = 0;
+	auto pages = getContentPages(*this, schemeCell.root);
 
-				for (uint32_t i = 0; i < h->ncells; ++ i) {
-					auto pos = (OidPosition *)(ptr + sizeof(OidPosition) * i);
+	std::mutex mutex;
+	std::condition_variable cond;
+	std::atomic<uint32_t> threads = pages.size();
 
-					db::minidb::TreeStack nstack(*this, getRoot());
-					if (auto cell = nstack.getOidCell(*pos, false)) {
-						if (auto c = decodeValue(*scheme, cell, mem::Vector<mem::StringView>())) {
-							cb(c);
+	if (_spawnThread) {
+		std::unique_lock<std::mutex> lock(mutex);
+		for (auto &it : pages) {
+			_spawnThread([this, cb, page = it, scheme = &scheme, &ids, &counter, &index, &cond, &threads] {
+				auto pool = mem::pool::create(mem::pool::acquire());
+				if (auto p = openPage(page, OpenMode::Read)) {
+					auto h = (SchemeContentPageHeader *)p->bytes.data();
+					auto ptr = p->bytes.data() + sizeof(SchemeContentPageHeader);
+
+					for (uint32_t i = 0; i < h->ncells; ++ i) {
+						auto pos = (OidPosition *)(ptr + sizeof(OidPosition) * i);
+						if (!ids.empty()) {
+							auto lb = std::lower_bound(ids.begin(), ids.end(), pos->value);
+							if (lb != ids.end()) {
+								-- counter;
+								continue;
+							}
+						}
+
+						auto number = index.fetch_add(1);
+						db::minidb::TreeStack nstack(*this, getRoot());
+						if (auto cell = nstack.getOidCell(*pos, false)) {
+							mem::Value *value = nullptr;
+							perform([&] {
+								if (auto c = decodeValue(*scheme, cell, mem::Vector<mem::StringView>())) {
+									value = new mem::Value(std::move(c));
+								}
+							}, pool);
+							if (value) {
+								cb(counter.load(), number, *value);
+							}
+							mem::pool::clear(pool);
 						}
 					}
+
+					closePage(p);
 				}
-
-				closePage(p);
-			}
-		});
+				if (threads.fetch_sub(1) == 1) {
+					cond.notify_all();
+				}
+			});
+		}
+		cond.wait(lock);
+		return true;
 	}
-
-	return waitForThread();
+	return false;
 }
 
 }

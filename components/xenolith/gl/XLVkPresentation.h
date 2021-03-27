@@ -24,6 +24,7 @@
 #define COMPONENTS_XENOLITH_GL_XLVKPRESENTATION_H_
 
 #include "XLVkDevice.h"
+#include "XLDrawPipeline.h"
 
 namespace stappler::xenolith::vk {
 
@@ -50,15 +51,16 @@ public:
 
 	void begin(Application *, thread::TaskQueue &);
 	void end(thread::TaskQueue &);
+	void reset(thread::TaskQueue &);
 
-	bool recreateSwapChain(thread::TaskQueue &q);
+	bool recreateSwapChain();
+	bool createSwapChain(VkSurfaceKHR surface);
+	void cleanupSwapChain();
+
+	Rc<DrawDevice> getDraw() const;
 
 private:
 	friend class ProgramManager;
-
-	bool createSwapChain(thread::TaskQueue &q, VkSurfaceKHR surface);
-
-	void cleanupSwapChain();
 
 	void prepareDrawScheme(draw::DrawScheme *, thread::TaskQueue &q);
 	bool performDrawFlow(Rc<DrawFlow> df, thread::TaskQueue &q);
@@ -90,50 +92,42 @@ private:
 
 class PresentationLoop : public thread::ThreadHandlerInterface {
 public:
-	PresentationLoop(Application *, Rc<View>, Rc<PresentationDevice>, Rc<Director>,
-			double, Function<double()> &&, Function<bool()> &&);
+	PresentationLoop(Application *, Rc<View>, Rc<PresentationDevice>, Rc<Director>, uint64_t frameMicroseconds);
 
 	virtual void threadInit() override;
 	virtual bool worker() override;
 
-	void setInterval(double);
+	void setInterval(uint64_t);
 	void recreateSwapChain();
 
 	void begin();
 	void end();
-
-	void lock();
-	void unlock();
 	void reset();
-	bool forceFrame(bool reset);
 
-	std::mutex &getMutex() { return _glSync; }
-
-	bool isStalled() const { return _stalled; }
 	Rc<thread::TaskQueue> getQueue() const { return _queue; }
+
+	void requestPipeline(const draw::PipelineRequest &, Function<void(draw::PipelineResponse &&)> &&);
 
 protected:
 	std::atomic_flag _swapChainFlag;
 	std::atomic_flag _exitFlag;
+	std::atomic_flag _resetFlag;
 
 	Application *_application = nullptr;
 	Rc<View> _view;
 	Rc<PresentationDevice> _device; // logical presentation device
 	Rc<Director> _director;
-	std::atomic<double> _interval;
-	std::atomic<double> _rate;
+	Rc<PipelineCompiler> _compiler;
+	std::atomic<uint64_t> _frameTimeMicroseconds = 1000'000 / 120;
+	std::atomic<uint64_t> _rate;
 	std::thread _thread;
 	std::thread::id _threadId;
 	Rc<thread::TaskQueue> _queue;
 	memory::pool_t *_pool = nullptr;
-	Function<double()> _timeSource;
 
-	double _time = 0.0;
-	std::mutex _glSync;
-	std::condition_variable _glSyncVar;
-	std::atomic<bool> _stalled = false;
-
-	Function<bool()> _frameCallback; // frame caller for main thread;
+	uint64_t _time = 0;
+	std::mutex _mutex;
+	std::condition_variable _cond;
 };
 
 }

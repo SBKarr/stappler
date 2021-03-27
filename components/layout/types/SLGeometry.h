@@ -48,6 +48,9 @@ public:
 	/**Conversion from Vec2 to Size.*/
 	operator Vec2() const {return Vec2(width, height);}
 
+	bool operator==(const Size &s) const { return s.width == width && s.height == height; }
+	bool operator!=(const Size &s) const { return s.width != width || s.height != height; }
+
 public:
 	/**
 	 @{

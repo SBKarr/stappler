@@ -458,6 +458,29 @@ char *pstrdup(pool_t *pool, const char *s) {
 	return ((custom::Pool *)pool)->pstrdup(s);
 }
 
+bool isThreadSafeForAllocations(pool_t *pool) {
+	if constexpr (apr::SPAprDefined) {
+		if (isCustom(pool)) {
+			return ((custom::Pool *)pool)->threadSafe;
+		}
+		return false; // APR pools can not be thread safe for allocations
+	} else {
+		return ((custom::Pool *)pool)->threadSafe;
+	}
+}
+
+bool isThreadSafeAsParent(pool_t *pool) {
+	if constexpr (apr::SPAprDefined) {
+		if (isCustom(pool)) {
+			return ((custom::Pool *)pool)->allocator->mutex != nullptr;
+		} else {
+			return apr::pool::isThreadSafeAsParent(pool);
+		}
+	} else {
+		return ((custom::Pool *)pool)->allocator->mutex != nullptr;
+	}
+}
+
 void setPoolInfo(pool_t *pool, uint32_t tag, const void *ptr) {
 	if constexpr (apr::SPAprDefined) {
 		if (!isCustom(pool)) {

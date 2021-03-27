@@ -65,6 +65,40 @@ class Mat4;
  */
 class Quaternion : public AllocBase {
 public:
+	static void createFormEulerAngles(const Vec3 &rotation, Quaternion *dst);
+
+	/**
+	 * Creates a quaternion equal to the rotational part of the specified matrix
+	 * and stores the result in dst.
+	 *
+	 * @param m The matrix.
+	 * @param dst A quaternion to store the conjugate in.
+	 */
+	static void createFromRotationMatrix(const Mat4& m, Quaternion* dst);
+
+	/**
+	 * Creates this quaternion equal to the rotation from the specified axis and angle
+	 * and stores the result in dst.
+	 *
+	 * @param axis A vector describing the axis of rotation.
+	 * @param angle The angle of rotation (in radians).
+	 * @param dst A quaternion to store the conjugate in.
+	 */
+	static void createFromAxisAngle(const Vec3& axis, float angle, Quaternion* dst);
+
+	/**
+	 * Returns the identity quaternion.
+	 *
+	 * @return The identity quaternion.
+	 */
+	static const Quaternion& identity();
+
+	/**
+	 * Returns the quaternion with all zeros.
+	 *
+	 * @return The quaternion.
+	 */
+	static const Quaternion& zero();
 
 	/**
 	 * The x-value of the quaternion's vector component.
@@ -132,19 +166,11 @@ public:
 	 */
 	~Quaternion();
 
-	/**
-	 * Returns the identity quaternion.
-	 *
-	 * @return The identity quaternion.
-	 */
-	static const Quaternion& identity();
+public:
+	bool operator==(const Quaternion &q) const { return q.x == x && q.y == y && q.z == z && q.w == w; }
+	bool operator!=(const Quaternion &q) const { return q.x != x || q.y != y || q.z != z || q.w != w; }
 
-	/**
-	 * Returns the quaternion with all zeros.
-	 *
-	 * @return The quaternion.
-	 */
-	static const Quaternion& zero();
+	Vec3 toEulerAngles() const;
 
 	/**
 	 * Determines if this quaternion is equal to the identity quaternion.
@@ -159,25 +185,6 @@ public:
 	 * @return true if this quaternion is all zeros, false otherwise.
 	 */
 	bool isZero() const;
-
-	/**
-	 * Creates a quaternion equal to the rotational part of the specified matrix
-	 * and stores the result in dst.
-	 *
-	 * @param m The matrix.
-	 * @param dst A quaternion to store the conjugate in.
-	 */
-	static void createFromRotationMatrix(const Mat4& m, Quaternion* dst);
-
-	/**
-	 * Creates this quaternion equal to the rotation from the specified axis and angle
-	 * and stores the result in dst.
-	 *
-	 * @param axis A vector describing the axis of rotation.
-	 * @param angle The angle of rotation (in radians).
-	 * @param dst A quaternion to store the conjugate in.
-	 */
-	static void createFromAxisAngle(const Vec3& axis, float angle, Quaternion* dst);
 
 	/**
 	 * Sets this quaternion to the conjugate of itself.

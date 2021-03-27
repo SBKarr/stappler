@@ -21,7 +21,7 @@ THE SOFTWARE.
 **/
 
 #ifndef __clang__
-_Pragma( "GCC optimize (\"O2\")" )
+//_Pragma( "GCC optimize (\"O2\")" )
 #endif
 
 #include "MDB.h"

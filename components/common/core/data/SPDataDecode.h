@@ -39,11 +39,12 @@ enum class DataFormat {
 
 	CborBase64,
 
-	// for future implementations
 	LZ4_Short,
 	LZ4_Word,
-	Brotli,
-	// LZ4HC,
+	Brotli_Short,
+	Brotli_Word,
+
+	// for future implementations
 	// Encrypt,
 };
 
@@ -58,8 +59,12 @@ inline DataFormat detectDataFormat(const uint8_t *ptr, size_t size) {
 		} else if (ptr[3] == 'W') {
 			return DataFormat::LZ4_Word;
 		}
-	} else if (size > 3 && ptr[0] == 'S' && ptr[1] == 'P' && ptr[2] == 'B' && ptr[3] == 'r') {
-		return DataFormat::Brotli;
+	} else if (size > 3 && ptr[0] == 'S' && ptr[1] == 'B' && ptr[2] == 'r') {
+		if (ptr[3] == 'S') {
+			return DataFormat::Brotli_Short;
+		} else if (ptr[3] == 'W') {
+			return DataFormat::Brotli_Word;
+		}
 	} else if (ptr[0] == '(') {
 		return DataFormat::Serenity;
 	} else {
@@ -72,7 +77,7 @@ template <typename Interface>
 auto decompressLZ4(const uint8_t *, size_t, bool sh) -> ValueTemplate<Interface>;
 
 template <typename Interface>
-auto decompressBrotli(const uint8_t *, size_t) -> ValueTemplate<Interface>;
+auto decompressBrotli(const uint8_t *, size_t, bool sh) -> ValueTemplate<Interface>;
 
 template <typename Interface>
 auto decompress(const uint8_t *, size_t) -> typename Interface::BytesType;
@@ -102,8 +107,11 @@ auto read(const StringType &data, const StringView &key = StringView()) -> Value
 	case DataFormat::LZ4_Word:
 		return decompressLZ4<Interface>((const uint8_t *)data.data() + 4, data.size() - 4, false);
 		break;
-	case DataFormat::Brotli:
-		return decompressBrotli<Interface>((const uint8_t *)data.data() + 4, data.size() - 4);
+	case DataFormat::Brotli_Short:
+		return decompressBrotli<Interface>((const uint8_t *)data.data() + 4, data.size() - 4, true);
+		break;
+	case DataFormat::Brotli_Word:
+		return decompressBrotli<Interface>((const uint8_t *)data.data() + 4, data.size() - 4, false);
 		break;
 	default:
 		break;

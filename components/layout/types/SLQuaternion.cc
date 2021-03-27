@@ -391,4 +391,27 @@ void Quaternion::slerpForSquad(const Quaternion& q1, const Quaternion& q2, float
 	dst->w = (q1.w * r1 + q2.w * r2);
 }
 
+
+void Quaternion::createFormEulerAngles(const Vec3 &rotation, Quaternion *dst) {
+	// convert Euler angle to quaternion
+	// when _rotationZ_X == _rotationZ_Y, _rotationQuat = RotationZ_X * RotationY * RotationX
+	// when _rotationZ_X != _rotationZ_Y, _rotationQuat = RotationY * RotationX
+	float halfRadx = rotation.x / 2.f, halfRady = rotation.y, halfRadz = -rotation.z / 2.f;
+	float coshalfRadx = cosf(halfRadx), sinhalfRadx = sinf(halfRadx), coshalfRady = cosf(halfRady), sinhalfRady = sinf(halfRady), coshalfRadz = cosf(halfRadz), sinhalfRadz = sinf(halfRadz);
+
+	dst->x = sinhalfRadx * coshalfRady * coshalfRadz - coshalfRadx * sinhalfRady * sinhalfRadz;
+	dst->y = coshalfRadx * sinhalfRady * coshalfRadz + sinhalfRadx * coshalfRady * sinhalfRadz;
+	dst->z = coshalfRadx * coshalfRady * sinhalfRadz - sinhalfRadx * sinhalfRady * coshalfRadz;
+	dst->w = coshalfRadx * coshalfRady * coshalfRadz + sinhalfRadx * sinhalfRady * sinhalfRadz;
+}
+
+Vec3 Quaternion::toEulerAngles() const {
+	Vec3 ret;
+	//convert quaternion to Euler angle
+	ret.x = atan2f(2.f * (w * x + y * z), 1.f - 2.f * (x * x + y * y));
+	ret.y = asinf(2.f * (w * y - z * x));
+	ret.z = - atanf(2.f * (w * z + x * y) / (1.f - 2.f * (y * y + z * z)));
+	return ret;
+}
+
 NS_LAYOUT_END

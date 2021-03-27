@@ -736,7 +736,7 @@
 					<folderInfo id="cdt.managedbuild.toolchain.gnu.base.1433006399.380183790.699133620.877944243.667481125." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.base.76042257" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.base">
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.target.gnu.platform.base.762128941" name="Debug Platform" osList="linux,hpux,aix,qnx" superClass="cdt.managedbuild.target.gnu.platform.base"/>
-							<builder arguments="-j4" autoBuildTarget="all" buildPath="${workspace_loc:/libstappler}/test/xenolith" cleanBuildTarget="clean" command="make" enableAutoBuild="false" enableCleanBuild="true" enabledIncrementalBuild="true" id="cdt.managedbuild.target.gnu.builder.base.365844343" incrementalBuildTarget="host" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Gnu Make Builder" parallelBuildOn="false" superClass="cdt.managedbuild.target.gnu.builder.base">
+							<builder arguments="-j8" autoBuildTarget="all" buildPath="${workspace_loc:/libstappler}/test/xenolith" cleanBuildTarget="clean" command="make" enableAutoBuild="false" enableCleanBuild="true" enabledIncrementalBuild="true" id="cdt.managedbuild.target.gnu.builder.base.365844343" incrementalBuildTarget="host" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Gnu Make Builder" parallelBuildOn="false" superClass="cdt.managedbuild.target.gnu.builder.base">
 								<outputEntries>
 									<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="outputPath" name=""/>
 								</outputEntries>

@@ -75,7 +75,7 @@ DrawDevice::~DrawDevice() {
 	_shaders.clear();
 }
 
-bool DrawDevice::init(Rc<Instance> inst, Rc<Allocator> alloc, VkQueue q, uint32_t qIdx) {
+bool DrawDevice::init(Rc<Instance> inst, Rc<Allocator> alloc, VkQueue q, uint32_t qIdx, VkFormat format) {
 	if (!VirtualDevice::init(inst, alloc)) {
 		return false;
 	}
@@ -91,6 +91,19 @@ bool DrawDevice::init(Rc<Instance> inst, Rc<Allocator> alloc, VkQueue q, uint32_
 	for (auto i = toInt(draw::LayoutFormat::None) + 1; i <= toInt(draw::LayoutFormat::Default); ++ i) {
 		_pipelineLayouts.emplace(draw::LayoutFormat(i), Rc<PipelineLayout>::create(*this, draw::LayoutFormat(i), _currentDesriptorCount));
 	}
+
+	_defaultRenderPass = Rc<RenderPass>::create(*this, format);
+
+	_defaultPipeline = Rc<Pipeline>::create(*this,
+		PipelineOptions({_defaultPipelineLayout->getPipelineLayout(), _defaultRenderPass->getRenderPass(), {
+			pair(vert->getStage(), vert->getModule()), pair(frag->getStage(), frag->getModule())
+		}}),
+		draw::PipelineParams({
+			draw::VertexFormat::None,
+			draw::LayoutFormat::Default,
+			draw::RenderPassBind::Default,
+			draw::DynamicState::Default
+		}));
 
 	_shaders.emplace(vert->getName().str(), vert);
 	_shaders.emplace(frag->getName().str(), frag);
@@ -116,6 +129,14 @@ bool DrawDevice::init(Rc<Instance> inst, Rc<Allocator> alloc, VkQueue q, uint32_
 		renderPassInfo.pClearValues = &clearColor;
 		_table->vkCmdBeginRenderPass(buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
+		auto currentExtent = frame.options->capabilities.currentExtent;
+
+		VkViewport viewport{ 0.0f, 0.0f, float(currentExtent.width), float(currentExtent.height), 0.0f, 1.0f };
+		_table->vkCmdSetViewport(buf, 0, 1, &viewport);
+
+		VkRect2D scissorRect{ { 0, 0}, { currentExtent.width, currentExtent.height } };
+		_table->vkCmdSetScissor(buf, 0, 1, &scissorRect);
+
 		_table->vkCmdBindPipeline(buf, VK_PIPELINE_BIND_POINT_GRAPHICS, _defaultPipeline->getPipeline());
 		_table->vkCmdDraw(buf, 3, 1, 0, 0);
 		_table->vkCmdEndRenderPass(buf);
@@ -129,29 +150,11 @@ bool DrawDevice::init(Rc<Instance> inst, Rc<Allocator> alloc, VkQueue q, uint32_
 	return true;
 }
 
-bool DrawDevice::spawnWorkers(thread::TaskQueue &q, size_t nImages, const Instance::PresentationOptions &opts, VkFormat format) {
+bool DrawDevice::spawnWorkers(thread::TaskQueue &q, size_t nImages) {
 	_nImages = nImages;
 
 	auto vert = _shaders.at("default.vert");
 	auto frag = _shaders.at("default.frag");
-
-	_defaultRenderPass = Rc<RenderPass>::create(*this, format);
-	if (!_defaultRenderPass) {
-		return false;
-	}
-
-	_defaultPipeline = Rc<Pipeline>::create(*this,
-		PipelineOptions({_defaultPipelineLayout->getPipelineLayout(), _defaultRenderPass->getRenderPass(), {
-			pair(vert->getStage(), vert->getModule()), pair(frag->getStage(), frag->getModule())
-		}}),
-		draw::PipelineParams({
-			Rect(0.0f, 0.0f, opts.capabilities.currentExtent.width, opts.capabilities.currentExtent.height),
-			URect{0, 0, opts.capabilities.currentExtent.width, opts.capabilities.currentExtent.height},
-			draw::VertexFormat::None,
-			draw::LayoutFormat::Default,
-			draw::RenderPassBind::Default,
-			draw::DynamicState::None
-		}));
 
 	uint32_t idx = std::min(uint32_t(q.getThreadsCount() / 4), uint32_t(1));
 	Vector<uint32_t> indexes;
@@ -205,14 +208,7 @@ bool DrawDevice::spawnWorkers(thread::TaskQueue &q, size_t nImages, const Instan
 }
 
 void DrawDevice::invalidate() {
-	for (auto &it : _pipelines) {
-		it.second->invalidate(*this);
-	}
-
 	_defaultWorker = nullptr;
-	_defaultPipeline->invalidate(*this);
-	_defaultRenderPass->invalidate(*this);
-
 	_workers.clear();
 }
 
@@ -317,20 +313,44 @@ PipelineOptions DrawDevice::getPipelineOptions(const draw::PipelineParams &param
 	return ret;
 }
 
-void DrawDevice::addProgram(Rc<ProgramModule> program) {
+Rc<ProgramModule> DrawDevice::getProgram(StringView name) {
+	std::unique_lock<Mutex> lock(_resourceMutex);
+	auto it = _shaders.find(name);
+	if (it != _shaders.end()) {
+		return it->second;
+	}
+	return nullptr;
+}
+
+Rc<ProgramModule> DrawDevice::addProgram(Rc<ProgramModule> program) {
+	std::unique_lock<Mutex> lock(_resourceMutex);
 	auto it = _shaders.find(program->getName());
 	if (it == _shaders.end()) {
 		_shaders.emplace(program->getName().str(), program);
+		return program;
+	} else {
+		return it->second;
 	}
 }
 
-void DrawDevice::addPipeline(StringView name, Rc<Pipeline> pipeline) {
-	_resourceMutex.lock();
+Rc<Pipeline> DrawDevice::getPipeline(StringView name) {
+	std::unique_lock<Mutex> lock(_resourceMutex);
 	auto it = _pipelines.find(name);
-	if (it == _pipelines.end()) {
-		_pipelines.emplace(name.str(), pipeline);
+	if (it != _pipelines.end()) {
+		return it->second;
 	}
-	_resourceMutex.unlock();
+	return nullptr;
+}
+
+Rc<Pipeline> DrawDevice::addPipeline(Rc<Pipeline> pipeline) {
+	std::unique_lock<Mutex> lock(_resourceMutex);
+	auto it = _pipelines.find(pipeline->getName());
+	if (it == _pipelines.end()) {
+		_pipelines.emplace(pipeline->getName().str(), pipeline);
+		return pipeline;
+	} else {
+		return it->second;
+	}
 }
 
 DrawBufferTask DrawDevice::getTaskForWorker(Vector<DrawBufferTask> &tasks, DrawWorker *worker) {
@@ -350,6 +370,125 @@ DrawBufferTask DrawDevice::getTaskForWorker(Vector<DrawBufferTask> &tasks, DrawW
 	}
 
 	return DrawBufferTask({0, nullptr});
+}
+
+PipelineCompiler::CompilationProcess::CompilationProcess(Rc<DrawDevice> dev, Rc<PipelineCompiler> compiler,
+		const draw::PipelineRequest &req, Callback &&cb) : draw(dev), compiler(compiler), req(req), onComplete(move(cb)) {
+
+}
+
+void PipelineCompiler::CompilationProcess::runShaders() {
+	for (auto &it : req.programs) {
+		if (auto v = draw->getProgram(it.key)) {
+			loadedPrograms.emplace(it.key, pair(v, nullptr));
+		} else {
+			loadedPrograms.emplace(it.key, pair(Rc<ProgramModule>::alloc(), &it));
+			++ programsInQueue;
+		}
+	}
+	for (auto &it : loadedPrograms) {
+		if (it.second.second) {
+			compiler->getQueue()->perform(Rc<Task>::create([this, program = &it.second.first, req = it.second.second] (const thread::Task &) -> bool {
+				bool ret = false;
+				if (req->path.get().empty()) {
+					ret = (*program)->init(*draw, req->source, req->stage, req->data, req->key, req->defs);
+				} else {
+					ret = (*program)->init(*draw, req->source, req->stage, req->path, req->key, req->defs);
+				}
+				if (!ret) {
+					log::vtext("vk", "Fail to compile shader program ", req->key);
+					return false;
+				} else {
+					*program = draw->addProgram(*program);
+					if (programsInQueue.fetch_sub(1) == 1) {
+						runPipelines();
+					}
+				}
+				return true;
+			}));
+		}
+	}
+}
+
+void PipelineCompiler::CompilationProcess::runPipelines() {
+	for (auto &it : req.pipelines) {
+		if (auto v = draw->getPipeline(it.key)) {
+			loadedPipelines.emplace(it.key, pair(v, nullptr));
+		} else {
+			loadedPipelines.emplace(it.key, pair(Rc<Pipeline>::alloc(), &it));
+			++ pipelineInQueue;
+		}
+	}
+
+	for (auto &it : loadedPipelines) {
+		if (it.second.second) {
+			compiler->getQueue()->perform(Rc<Task>::create([this, pipeline = &it.second.first, req = it.second.second] (const thread::Task &) -> bool {
+				if (!(*pipeline)->init(*draw, draw->getPipelineOptions(*req), *req)) {
+					log::vtext("vk", "Fail to compile pipeline ", req->key);
+					return false;
+				} else {
+					*pipeline = draw->addPipeline(*pipeline);
+					if (programsInQueue.fetch_sub(1) == 1) {
+						complete();
+					}
+				}
+				return true;
+			}));
+		}
+	}
+}
+
+void PipelineCompiler::CompilationProcess::complete() {
+	draw::PipelineResponse resp;
+	for (auto &it : loadedPipelines) {
+		resp.pipelines.emplace(it.second.first->getName().str(), it.second.first);
+	}
+	onComplete(move(resp));
+	compiler->compileNext(next);
+}
+
+PipelineCompiler::~PipelineCompiler() {
+	_queue = nullptr;
+}
+
+bool PipelineCompiler::init() {
+	_queue = Rc<thread::TaskQueue>::alloc(
+			math::clamp(uint16_t(std::thread::hardware_concurrency() / 2), uint16_t(2), uint16_t(8)), nullptr, "VkPipeline");
+	_queue->spawnWorkers();
+	return true;
+}
+
+void PipelineCompiler::compile(Rc<DrawDevice> dev, const draw::PipelineRequest &req, Function<void(draw::PipelineResponse &&)> &&cb) {
+	auto p = new CompilationProcess(dev, this, req, move(cb));
+	_queue->perform(Rc<Task>::create([this, p] (const thread::Task &) -> bool {
+		std::unique_lock<Mutex> lock(_processMutex);
+		if (_process) {
+			_process->next = p;
+		} else {
+			_process = p;
+			_process->runShaders();
+		}
+		p->release();
+		return true;
+	}));
+}
+
+void PipelineCompiler::compileNext(Rc<CompilationProcess> proc) {
+	std::unique_lock<Mutex> lock(_processMutex);
+	if (proc) {
+		_process = nullptr;
+	} else {
+		_process = proc;
+		_process->runShaders();
+	}
+}
+
+void PipelineCompiler::update() {
+	_queue->update();
+}
+
+void PipelineCompiler::invalidate() {
+	_queue->waitForAll();
 }
 
 }

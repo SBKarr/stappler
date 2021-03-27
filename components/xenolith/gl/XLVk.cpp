@@ -33,5 +33,3 @@ THE SOFTWARE.
 #include "XLVkDraw.cc"
 #include "XLVkPresentation.cc"
 #include "XLVkTransfer.cc"
-
-#include "XLVkInstance-desktop.cc"

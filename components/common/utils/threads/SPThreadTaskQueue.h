@@ -34,9 +34,10 @@ struct ThreadInfo {
 
 	static ThreadInfo *getThreadLocal();
 	static void setMainThread();
+	static void setThreadInfo(uint32_t, uint32_t, StringView, bool);
 
-	size_t threadId = 0;
-	size_t workerId = 0;
+	uint32_t threadId = 0;
+	uint32_t workerId = 0;
 	StringView name;
 	bool managed = false;
 };
@@ -70,6 +71,7 @@ public:
 	void waitForAll(TimeInterval = TimeInterval::seconds(1));
 
 	size_t getThreadsCount() const { return _threadsCount; }
+	StringView getName() const { return _name; }
 
 	StdVector<std::thread::id> getThreadIds() const;
 

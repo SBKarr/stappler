@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define COMPONENTS_MINIDB_SRC_MDBTRANSACTION_H_
 
 #include "MDBTree.h"
+#include "STStorageWorker.h"
 
 namespace db::minidb {
 
@@ -67,11 +68,14 @@ public:
 
 	std::shared_mutex &getMutex() const { return _mutex; }
 
+	void setSpawnThread(const mem::Function<void(const mem::Function<void()> &)> &);
+
 	void invalidate() const;
 	void commit();
 
 	SchemeCell getSchemeCell(const db::Scheme *) const;
-	IndexCell getSchemeCell(const db::Scheme *, mem::StringView) const;
+	SchemeCell getSchemeCell(uint64_t) const;
+	IndexCell getIndexCell(const db::Scheme *, mem::StringView) const;
 
 	uint32_t getRoot() const;
 	uint32_t getSchemeRoot(const db::Scheme *) const;
@@ -88,8 +92,9 @@ public: // CRUD
 
 	mem::Value decodeValue(const db::Scheme &scheme, const OidCell &cell, const mem::Vector<mem::StringView> &names) const;
 
-	bool foreach(const db::Scheme &scheme, const mem::Function<void(const mem::Value &)> &cb,
-			const mem::Callback<void(const mem::Function<void()> &)> &spawnThread, const mem::Callback<bool()> &waitForThread) const;
+	// uses SpawnThread, so, configure transaction with setSpawnThread
+	bool foreach(const db::Scheme &scheme, const mem::Function<void(uint64_t, uint64_t, mem::Value &)> &cb,
+			const mem::SpanView<uint64_t> &ids = mem::SpanView<uint64_t>()) const;
 
 protected:
 	friend class Manifest;
@@ -97,9 +102,30 @@ protected:
 	bool isModeAllowed(OpenMode) const;
 	bool readHeader(StorageHeader *target) const;
 
-	OidPosition pushObject(const OidPosition &schemeDataPos, const mem::Value &, bool compress = false,
-			mem::BytesView dict = mem::BytesView(), uint8_t dictId = 0) const;
-	bool checkUnique(const Scheme &scheme, const mem::Value &) const;
+	struct IndexMap {
+		OidPosition scheme;
+		mem::Vector<mem::Pair<OidPosition, int64_t>> integerValues;
+		mem::Vector<mem::Pair<OidPosition, int64_t>> integerUniques;
+		mem::Map<OidPosition, const Worker::ConflictData *> conflicts;
+		mem::Map<OidPosition, const Field *> fields;
+	};
+
+	bool fillIndexMap(IndexMap &, const Worker *, const Scheme &, const mem::Value &) const;
+
+	// push data of compressed or not compressed object in preallocated buffer
+	OidPosition pushObjectData(const IndexMap &map, mem::BytesView data, OidType type, uint8_t dictId);
+
+	// push data of uncompressed object directly into page buffer
+	OidPosition pushObject(const IndexMap &map, const mem::Value &) const;
+
+	void pushIndexMap(TreeStack &, const IndexMap &map, const OidCell &) const;
+
+	bool checkUnique(const IndexMap &map) const;
+
+	bool performSelectList(TreeStack &, const Scheme &, const db::Query &, const mem::Callback<void(const OidPosition &)> &) const;
+
+	bool performIndexScan(TreeStack &, const SchemeCell &, const IndexCell &, mem::SpanView<const Query::Select *> vec, Ordering,
+			const mem::Callback<bool(const OidPosition &)> &) const;
 
 	mem::pool_t *_pool = nullptr;
 	OpenMode _mode = OpenMode::Read;
@@ -110,6 +136,10 @@ protected:
 
 	PageCache *_pageCache = nullptr;
 	mutable std::shared_mutex _mutex;
+	mem::Function<void(const mem::Function<void()> &)> _spawnThread;
+
+	friend struct ObjectData;
+	friend struct ObjectCompressor;
 };
 
 }

@@ -989,41 +989,53 @@ mem::Set<const Field *> Worker::getFieldSet(const Field &f, std::initializer_lis
 }
 
 bool Worker::addConflict(const Conflict &c) {
-	auto f = scheme().getField(c.field);
-	if (!f || !f->hasFlag(Flags::Unique)) {
-		messages::error("db::Worker", "Invalid ON CONFLICT field - no unique constraint");
-		return false;
-	}
-
-	const Field *selField = nullptr;
-
-	ConflictData d;
-	if (c.condition.field.empty()) {
-		d.flags = Conflict::WithoutCondition;
+	if (c.field.empty()) {
+		// add for all unique fields
+		auto tmpC = c;
+		for (auto &it : scheme().getFields()) {
+			if (it.second.isIndexed() && it.second.hasFlag(Flags::Unique)) {
+				tmpC.field = it.first;
+				addConflict(tmpC);
+			}
+		}
+		return true;
 	} else {
-		selField = scheme().getField(c.condition.field);
-		if (!selField || !selField->isIndexed()
-				|| !checkIfComparationIsValid(selField->getType(), c.condition.compare, selField->getFlags()) || !c.condition.searchData.empty()) {
-			messages::error("db::Worker", "Invalid ON CONFLICT condition - not applicable");
+		auto f = scheme().getField(c.field);
+		if (!f || !f->hasFlag(Flags::Unique)) {
+			messages::error("db::Worker", "Invalid ON CONFLICT field - no unique constraint");
 			return false;
 		}
-	}
 
-	d.field = f;
-	if (selField) {
-		d.condition.set(std::move(c.condition), selField);
-	}
+		const Field *selField = nullptr;
 
-	for (auto &it : c.mask) {
-		if (auto field = scheme().getField(it)) {
-			d.mask.emplace_back(field);
+		ConflictData d;
+		if (c.condition.field.empty()) {
+			d.flags = Conflict::WithoutCondition;
+		} else {
+			selField = scheme().getField(c.condition.field);
+			if (!selField || !selField->isIndexed()
+					|| !checkIfComparationIsValid(selField->getType(), c.condition.compare, selField->getFlags()) || !c.condition.searchData.empty()) {
+				messages::error("db::Worker", "Invalid ON CONFLICT condition - not applicable");
+				return false;
+			}
 		}
+
+		d.field = f;
+		if (selField) {
+			d.condition.set(std::move(c.condition), selField);
+		}
+
+		for (auto &it : c.mask) {
+			if (auto field = scheme().getField(it)) {
+				d.mask.emplace_back(field);
+			}
+		}
+
+		d.flags |= c.flags;
+
+		_conflict.emplace(f, std::move(d));
+		return true;
 	}
-
-	d.flags |= c.flags;
-
-	_conflict.emplace(f, std::move(d));
-	return true;
 }
 
 bool Worker::addConflict(const mem::Vector<Conflict> &c) {

@@ -27,6 +27,13 @@ THE SOFTWARE.
 
 namespace stappler::xenolith::vk {
 
+#if DEBUG
+
+VKAPI_ATTR VkBool32 VKAPI_CALL s_debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+		VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
+
+#endif
+
 class Instance : public Ref {
 public:
 	struct Features {
@@ -87,14 +94,17 @@ public:
 	};
 
 	static String getVersionDescription(uint32_t);
-	static Rc<Instance> create();
 
-	Instance(VkInstance, const PFN_vkGetInstanceProcAddr getInstanceProcAddr, uint32_t targetVersion, Vector<StringView> &&optionals);
+	Instance(VkInstance, const PFN_vkGetInstanceProcAddr getInstanceProcAddr, uint32_t targetVersion,
+			Vector<StringView> &&optionals, Function<void()> &&);
 	virtual ~Instance();
 
-	Vector<PresentationOptions> getPresentationOptions(VkSurfaceKHR, const VkPhysicalDeviceProperties *ptr = nullptr) const;
+	Vector<PresentationOptions> getPresentationOptions(VkSurfaceKHR, const VkPhysicalDeviceProperties *ptr = nullptr,
+			const Vector<Pair<VkPhysicalDevice, uint32_t>> & = Vector<Pair<VkPhysicalDevice, uint32_t>>()) const;
 
 	VkInstance getInstance() const;
+
+	bool hasDevices() const { return _hasDevices; }
 
 private:
 	void printDevicesInfo() const;
@@ -113,7 +123,10 @@ private:
 	VkInstance instance;
 	uint32_t _version = 0;
 	Vector<StringView> _optionals;
+	Function<void()> _terminate;
+	bool _hasDevices = false;
 
+public:
 	const PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = nullptr;
 #if defined(VK_VERSION_1_0)
 	const PFN_vkCreateDevice vkCreateDevice = nullptr;

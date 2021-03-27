@@ -1425,6 +1425,126 @@ inline auto operator<<(const Callback<void(StringViewUtf8)> &cb, uint64_t i) -> 
 	return cb << StringViewUtf8(buf.data(), string::_to_decimal(i, buf.data()));
 }
 
+inline auto operator<<(const std::function<void(StringViewBase<char>)> &cb, const char *str) -> const std::function<void(StringViewBase<char>)> & {
+	cb(StringView(str));
+	return cb;
+}
+
+template <size_t N>
+inline auto operator<<(const std::function<void(StringViewBase<char>)> &cb, const char str[N]) -> const std::function<void(StringViewBase<char>)> & {
+	cb(StringView(str, N));
+	return cb;
+}
+
+inline auto operator<<(const std::function<void(StringViewBase<char>)> &cb, StringViewBase<char> str) -> const std::function<void(StringViewBase<char>)> & {
+	cb(str);
+	return cb;
+}
+
+inline auto operator<<(const std::function<void(StringViewBase<char>)> &cb, double d) -> const std::function<void(StringViewBase<char>)> & {
+	return cb << StringViewBase<char>(std::to_string(d));
+}
+
+inline auto operator<<(const std::function<void(StringViewBase<char>)> &cb, int64_t i) -> const std::function<void(StringViewBase<char>)> & {
+	std::array<char, std::numeric_limits<int64_t>::digits10 + 2> buf;
+	return cb << StringViewBase<char>(buf.data(), string::_to_decimal(i, buf.data()));
+}
+
+inline auto operator<<(const std::function<void(StringViewBase<char>)> &cb, uint64_t i) -> const std::function<void(StringViewBase<char>)> & {
+	std::array<char, std::numeric_limits<int64_t>::digits10 + 2> buf;
+	return cb << StringViewBase<char>(buf.data(), string::_to_decimal(i, buf.data()));
+}
+
+inline auto operator<<(const std::function<void(StringViewBase<char16_t>)> &cb, StringViewBase<char16_t> str) -> const std::function<void(StringViewBase<char16_t>)> & {
+	cb(str);
+	return cb;
+}
+
+inline auto operator<<(const std::function<void(StringViewBase<char16_t>)> &cb, int64_t i) -> const std::function<void(StringViewBase<char16_t>)> & {
+	std::array<char16_t, std::numeric_limits<int64_t>::digits10 + 2> buf;
+	return cb << StringViewBase<char16_t>(buf.data(), string::_to_decimal(i, buf.data()));
+}
+
+inline auto operator<<(const std::function<void(StringViewBase<char16_t>)> &cb, uint64_t i) -> const std::function<void(StringViewBase<char16_t>)> & {
+	std::array<char16_t, std::numeric_limits<int64_t>::digits10 + 2> buf;
+	return cb << StringViewBase<char16_t>(buf.data(), string::_to_decimal(i, buf.data()));
+}
+
+inline auto operator<<(const std::function<void(StringViewUtf8)> &cb, StringViewUtf8 str) -> const std::function<void(StringViewUtf8)> & {
+	cb(str);
+	return cb;
+}
+
+inline auto operator<<(const std::function<void(StringViewUtf8)> &cb, int64_t i) -> const std::function<void(StringViewUtf8)> & {
+	std::array<char, std::numeric_limits<int64_t>::digits10 + 2> buf;
+	return cb << StringViewUtf8(buf.data(), string::_to_decimal(i, buf.data()));
+}
+
+inline auto operator<<(const std::function<void(StringViewUtf8)> &cb, uint64_t i) -> const std::function<void(StringViewUtf8)> & {
+	std::array<char, std::numeric_limits<int64_t>::digits10 + 2> buf;
+	return cb << StringViewUtf8(buf.data(), string::_to_decimal(i, buf.data()));
+}
+
+inline auto operator<<(const memory::function<void(StringViewBase<char>)> &cb, const char *str) -> const memory::function<void(StringViewBase<char>)> & {
+	cb(StringView(str));
+	return cb;
+}
+
+template <size_t N>
+inline auto operator<<(const memory::function<void(StringViewBase<char>)> &cb, const char str[N]) -> const memory::function<void(StringViewBase<char>)> & {
+	cb(StringView(str, N));
+	return cb;
+}
+
+inline auto operator<<(const memory::function<void(StringViewBase<char>)> &cb, StringViewBase<char> str) -> const memory::function<void(StringViewBase<char>)> & {
+	cb(str);
+	return cb;
+}
+
+inline auto operator<<(const memory::function<void(StringViewBase<char>)> &cb, double d) -> const memory::function<void(StringViewBase<char>)> & {
+	return cb << StringViewBase<char>(std::to_string(d));
+}
+
+inline auto operator<<(const memory::function<void(StringViewBase<char>)> &cb, int64_t i) -> const memory::function<void(StringViewBase<char>)> & {
+	std::array<char, std::numeric_limits<int64_t>::digits10 + 2> buf;
+	return cb << StringViewBase<char>(buf.data(), string::_to_decimal(i, buf.data()));
+}
+
+inline auto operator<<(const memory::function<void(StringViewBase<char>)> &cb, uint64_t i) -> const memory::function<void(StringViewBase<char>)> & {
+	std::array<char, std::numeric_limits<int64_t>::digits10 + 2> buf;
+	return cb << StringViewBase<char>(buf.data(), string::_to_decimal(i, buf.data()));
+}
+
+inline auto operator<<(const memory::function<void(StringViewBase<char16_t>)> &cb, StringViewBase<char16_t> str) -> const memory::function<void(StringViewBase<char16_t>)> & {
+	cb(str);
+	return cb;
+}
+
+inline auto operator<<(const memory::function<void(StringViewBase<char16_t>)> &cb, int64_t i) -> const memory::function<void(StringViewBase<char16_t>)> & {
+	std::array<char16_t, std::numeric_limits<int64_t>::digits10 + 2> buf;
+	return cb << StringViewBase<char16_t>(buf.data(), string::_to_decimal(i, buf.data()));
+}
+
+inline auto operator<<(const memory::function<void(StringViewBase<char16_t>)> &cb, uint64_t i) -> const memory::function<void(StringViewBase<char16_t>)> & {
+	std::array<char16_t, std::numeric_limits<int64_t>::digits10 + 2> buf;
+	return cb << StringViewBase<char16_t>(buf.data(), string::_to_decimal(i, buf.data()));
+}
+
+inline auto operator<<(const memory::function<void(StringViewUtf8)> &cb, StringViewUtf8 str) -> const memory::function<void(StringViewUtf8)> & {
+	cb(str);
+	return cb;
+}
+
+inline auto operator<<(const memory::function<void(StringViewUtf8)> &cb, int64_t i) -> const memory::function<void(StringViewUtf8)> & {
+	std::array<char, std::numeric_limits<int64_t>::digits10 + 2> buf;
+	return cb << StringViewUtf8(buf.data(), string::_to_decimal(i, buf.data()));
+}
+
+inline auto operator<<(const memory::function<void(StringViewUtf8)> &cb, uint64_t i) -> const memory::function<void(StringViewUtf8)> & {
+	std::array<char, std::numeric_limits<int64_t>::digits10 + 2> buf;
+	return cb << StringViewUtf8(buf.data(), string::_to_decimal(i, buf.data()));
+}
+
 NS_SP_END
 
 NS_SP_EXT_BEGIN(string)

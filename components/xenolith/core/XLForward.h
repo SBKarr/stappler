@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2020 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2020-2021 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -32,11 +32,11 @@ THE SOFTWARE.
 
 #include "XLConfig.h"
 
-#define XL_ASSERT(cond)    assert(cond)
+#define XL_ASSERT(cond, msg)  do { if (!(cond)) { stappler::log::text("Assert", msg); } assert((cond)); } while (0)
 
 #ifndef XLASSERT
 #if DEBUG
-#define XLASSERT(cond, msg) XL_ASSERT(cond)
+#define XLASSERT(cond, msg) XL_ASSERT(cond, msg)
 #else
 #define XLASSERT(cond, msg)
 #endif
@@ -106,6 +106,11 @@ class PipelineCache;
 class Pipeline;
 
 using Task = thread::Task;
+
+class Node;
+class Scene;
+
+class RenderFrameInfo;
 
 } // stappler::xenolith
 

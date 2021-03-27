@@ -58,12 +58,10 @@ TreePageIterator TreeStack::openOnOid(uint64_t oid, OpenMode mode) {
 					return TreePageIterator(nullptr);
 				}
 			} else {
+				auto &p = frames.emplace_back(TreePage(frame));
 				if (mode == OpenMode::Write) {
-					auto f = transaction->openPage(target, mode);
-					transaction->closePage(frame);
-					frame = f;
+					p.writableData(*transaction);
 				}
-				frames.emplace_back(TreePage(frame));
 				return frames.back().find(oid);
 			}
 		} else {
@@ -76,7 +74,11 @@ TreePageIterator TreeStack::openOnOid(uint64_t oid, OpenMode mode) {
 	return TreePageIterator(nullptr);
 }
 
-TreePageIterator TreeStack::open() {
+TreePageIterator TreeStack::open(bool forward) {
+	return open(forward, forward ? stappler::minOf<int64_t>() : stappler::maxOf<int64_t>());
+}
+
+TreePageIterator TreeStack::open(bool forward, int64_t hint) {
 	close();
 
 	uint32_t target = root;
@@ -92,21 +94,58 @@ TreePageIterator TreeStack::open() {
 			if (!isContentType(type)) {
 				auto page = TreePage(frame);
 				auto h = (OidTreePageHeader *)frame->bytes.data();
-				if (h->ncells == 0) {
-					target = h->right;
-					frames.emplace_back(page);
-				} else {
-					auto it = page.begin();
-					if (it != page.end()) {
-						target = ((OidIndexCell *)it.data)->page;
+				if (forward) {
+					if (h->ncells == 0) {
+						target = h->right;
 						frames.emplace_back(page);
 					} else {
-						break;
+						if (hint != stappler::minOf<int64_t>()) {
+							target = page.findTargetPage(hint, forward);
+							frames.emplace_back(page);
+						} else {
+							auto it = page.begin();
+							if (it != page.end()) {
+								if (type != PageType::IntIndexTable) {
+									target = ((OidIndexCell *)it.data)->page;
+									frames.emplace_back(page);
+								} else {
+									target = ((IntegerIndexCell *)it.data)->page;
+									frames.emplace_back(page);
+								}
+							} else {
+								break;
+							}
+						}
+					}
+				} else {
+					if (hint != stappler::maxOf<int64_t>()) {
+						target = page.findTargetPage(hint, forward);
+						frames.emplace_back(page);
+					} else {
+						target = h->right;
+						frames.emplace_back(page);
 					}
 				}
 			} else {
 				frames.emplace_back(TreePage(frame));
-				return frames.back().begin();
+				if (forward) {
+					if (hint != stappler::minOf<int64_t>()) {
+						auto it = frames.back().findValue(hint, forward);
+						if (it == frames.back().end()) {
+							-- it;
+							it = next(it, true);
+						}
+						return it;
+					} else {
+						return frames.back().begin();
+					}
+				} else {
+					if (hint != stappler::maxOf<int64_t>()) {
+						return frames.back().findValue(hint, forward);
+					} else {
+						return frames.back().end();
+					}
+				}
 			}
 		}
 	}
@@ -117,9 +156,7 @@ TreePageIterator TreeStack::open() {
 
 bool TreeStack::openLastPage(uint32_t target) {
 	close();
-
 	auto type = PageType::OidTable;
-
 	while (!isContentType(type)) {
 		if (auto frame = openPage(target, OpenMode::Read)) {
 			auto p = (VirtualPageHeader *)frame->bytes.data();
@@ -129,6 +166,35 @@ bool TreeStack::openLastPage(uint32_t target) {
 				auto p = (OidTreePageHeader *)(frame->bytes.data() + ((frame->number == 0) ? sizeof(StorageHeader) : 0));
 				if (p->right != UndefinedPage) {
 					target = p->right;
+					frames.emplace_back(page);
+				} else {
+					close();
+					return false;
+				}
+			} else {
+				frames.emplace_back(TreePage(frame));
+			}
+		} else {
+			close();
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool TreeStack::openIntegerIndexPage(uint32_t root, int64_t value, bool front) {
+	close();
+	auto type = PageType::OidTable;
+	while (!isContentType(type)) {
+		if (auto frame = openPage(root, OpenMode::Read)) {
+			auto p = (VirtualPageHeader *)frame->bytes.data();
+			type = PageType(p->type);
+			if (!isContentType(type)) {
+				auto page = TreePage(frame);
+				auto next = page.findTargetPage(value, front);
+				if (next != UndefinedPage) {
+					root = next;
 					frames.emplace_back(page);
 				} else {
 					close();
@@ -247,7 +313,7 @@ OidCell TreeStack::pushCell(size_t payloadSize, uint64_t oid) {
 
 bool TreeStack::addToScheme(SchemeCell *scheme, uint64_t oid, uint32_t pageTarget, uint32_t offset) {
 	if (scheme->root == UndefinedPage) {
-		if (auto frame = transaction->getPageCache()->allocatePage(PageType::SchemeContent)) {
+		if (auto frame = allocatePage(PageType::SchemeContent)) {
 			auto &page = frames.emplace_back(TreePage(frame));
 
 			auto rootHeader = (SchemeTreePageHeader *)page.writableData(*transaction).data();
@@ -256,7 +322,6 @@ bool TreeStack::addToScheme(SchemeCell *scheme, uint64_t oid, uint32_t pageTarge
 			rootHeader->prev = UndefinedPage;
 			rootHeader->next = UndefinedPage;
 
-			nodes.emplace_back(frame);
 			scheme->root = frame->number;
 		} else {
 			return false;
@@ -273,7 +338,7 @@ bool TreeStack::addToScheme(SchemeCell *scheme, uint64_t oid, uint32_t pageTarge
 	auto freeSpace = page->getFreeSpace();
 	auto payloadSize = sizeof(OidPosition);
 
-	if (freeSpace.first < payloadSize) {
+	if (h->ncells >= cellLimit || freeSpace.first < payloadSize) {
 		// allocate next page
 		page = splitPage(page, oid, PageType::SchemeTable, &scheme->root);
 		pageBytes = page->writableData(*transaction);
@@ -293,19 +358,149 @@ bool TreeStack::addToScheme(SchemeCell *scheme, uint64_t oid, uint32_t pageTarge
 	return true;
 }
 
-TreePage * TreeStack::splitPage(TreePage *page, uint64_t oidValue, PageType rootType, uint32_t *rootPageLocation) {
+bool TreeStack::addToIntegerIndex(IndexCell *index, uint64_t oid, uint32_t pageTarget, uint32_t offset, int64_t value) {
+	if (index->root == UndefinedPage) {
+		if (auto frame = allocatePage(PageType::IntIndexContent)) {
+			auto &page = frames.emplace_back(TreePage(frame));
+
+			auto rootHeader = (SchemeTreePageHeader *)page.writableData(*transaction).data();
+			rootHeader->ncells = 0;
+			rootHeader->root = UndefinedPage;
+			rootHeader->prev = UndefinedPage;
+			rootHeader->next = UndefinedPage;
+
+			index->root = frame->number;
+		} else {
+			return false;
+		}
+	} else {
+		if (!openIntegerIndexPage(index->root, value, false)) {
+			return false;
+		}
+	}
+
+	auto page = &frames.back();
+	auto pageBytes = page->writableData(*transaction);
+	auto h = (IntIndexContentPageHeader *)pageBytes.data();
+	auto freeSpace = page->getFreeSpace();
+	auto payloadSize = sizeof(IntegerIndexPayload);
+
+	auto max = (IntegerIndexPayload *)(pageBytes.data() + freeSpace.second - sizeof(IntegerIndexPayload));
+	if (h->ncells >= cellLimit || freeSpace.first < payloadSize) {
+		page = splitPageBalanced(page, value, PageType::IntIndexTable, &index->root);
+		pageBytes = page->writableData(*transaction);
+		h = (IntIndexContentPageHeader *)pageBytes.data();
+		freeSpace = page->getFreeSpace();
+		if (!page) {
+			return false;
+		}
+	}
+
+	if (h->ncells == 0 || value >= max->value) {
+		auto cell = (IntegerIndexPayload *)(pageBytes.data() + freeSpace.second);
+		cell->value = value;
+		cell->position.page = pageTarget;
+		cell->position.offset = offset;
+		cell->position.value = oid;
+	} else {
+		auto begin = (IntegerIndexPayload *)(pageBytes.data() + sizeof(IntIndexContentPageHeader));
+		auto end = begin + h->ncells;
+
+		auto cell = std::upper_bound(begin, end, value, [] (int64_t l, const IntegerIndexPayload &r) {
+			return l < r.value;
+		});
+
+		memmove(cell + 1, cell, (end - cell) * sizeof(IntegerIndexPayload));
+		cell->value = value;
+		cell->position.page = pageTarget;
+		cell->position.offset = offset;
+		cell->position.value = oid;
+	}
+
+	h->ncells += 1;
+	return true;
+}
+
+bool TreeStack::replaceIntegerIndex(IndexCell *index, mem::SpanView<IntegerIndexPayload> payload) {
+	uint32_t root = UndefinedPage;
+	while (!payload.empty()) {
+		TreePage *page = nullptr;
+		if (root == UndefinedPage) {
+			auto contentPage = allocatePage(PageType::IntIndexContent);
+			auto &frame = frames.emplace_back(contentPage);
+			auto pageBytes = frame.writableData(*transaction);
+			auto h = (SchemeContentPageHeader *)pageBytes.data();
+
+			h->root = UndefinedPage;
+			h->prev = UndefinedPage;
+			h->next = UndefinedPage;
+
+			root = contentPage->number;
+			page = &frame;
+		} else {
+			page = &frames.back();
+			page = splitPage(page, payload.front().value, PageType::IntIndexTable, &root);
+		}
+
+		auto pageBytes = page->writableData(*transaction);
+		auto h = (SchemeContentPageHeader *)pageBytes.data();
+		auto freeSpace = page->getFreeSpace();
+		auto maxCells = freeSpace.first / sizeof(IntegerIndexPayload);
+		auto emplaceCells = std::min(std::min(maxCells, payload.size()), size_t(cellLimit));
+
+		memcpy(uint8_p(pageBytes.data()) + freeSpace.second, payload.data(),
+				emplaceCells * sizeof(IntegerIndexPayload));
+
+		h->ncells = emplaceCells;
+		payload += emplaceCells;
+	}
+
+	index->root = root;
+
+	return true;
+}
+
+static void writeInitialPageInfo(PageType type, mem::BytesView data, uint32_t root = UndefinedPage, uint32_t prev = UndefinedPage,
+		uint32_t next = UndefinedPage, uint32_t right = UndefinedPage) {
+	switch (type) {
+	case PageType::None:
+		break;
+	case PageType::OidTable:
+	case PageType::SchemeTable:
+	case PageType::IntIndexTable: {
+		auto newPageHeader = (OidTreePageHeader *)data.data();
+		newPageHeader->ncells = 0;
+		newPageHeader->root = root;
+		newPageHeader->prev = prev;
+		newPageHeader->next = next;
+		newPageHeader->right = right;
+		break;
+	}
+	case PageType::OidContent:
+	case PageType::SchemeContent:
+	case PageType::IntIndexContent: {
+		auto newPageHeader = (OidContentPageHeader *)data.data();
+		newPageHeader->ncells = 0;
+		newPageHeader->root = root;
+		newPageHeader->prev = prev;
+		newPageHeader->next = next;
+		break;
+	}
+	}
+}
+
+TreePage * TreeStack::splitPage(TreePage *page, int64_t oidValue, PageType rootType, uint32_t *rootPageLocation) {
 	auto alloc = [&] (PageType t) -> TreePage {
-		auto page = transaction->getPageCache()->allocatePage(t);
-		nodes.emplace_back(page);
+		auto page = allocatePage(t);
 		return TreePage(page);
 	};
 
-	auto nextPayloadSize = sizeof(OidIndexCell);
+	auto nextPayloadSize = (rootType == PageType::IntIndexTable) ? sizeof(IntegerIndexCell) : sizeof(OidIndexCell);
 
 	size_t level = frames.size() - 1;
 	while (level > 0) {
 		auto freeSpace = frames[level - 1].getFreeSpace();
-		if (nextPayloadSize + sizeof(uint16_t) > freeSpace.first) {
+		if (frames[level - 1].getCells() >= cellLimit || nextPayloadSize + sizeof(uint16_t) > freeSpace.first) {
 			-- level;
 		} else {
 			break;
@@ -328,12 +523,8 @@ TreePage * TreeStack::splitPage(TreePage *page, uint64_t oidValue, PageType root
 				return nullptr;
 			}
 
-			auto rootHeader = (OidTreePageHeader *)root.writableData(*transaction).data();
-			rootHeader->ncells = 0;
-			rootHeader->root = UndefinedPage;
-			rootHeader->prev = UndefinedPage;
-			rootHeader->next = UndefinedPage;
-			rootHeader->right = frames[level].page->number;
+			writeInitialPageInfo(rootType, root.writableData(*transaction),
+					UndefinedPage, UndefinedPage, UndefinedPage, frames[level].page->number);
 			newRootPage = root.page->number;
 
 			if (!root.pushOidIndex(*transaction, newPage.page->number, oidValue)) {
@@ -342,12 +533,8 @@ TreePage * TreeStack::splitPage(TreePage *page, uint64_t oidValue, PageType root
 
 			newFrames.emplace_back(root);
 
-			auto newPageHeader = (OidTreePageHeader *)newPage.writableData(*transaction).data();
-			newPageHeader->ncells = 0;
-			newPageHeader->root = root.page->number;
-			newPageHeader->prev = frames[level].page->number;
-			newPageHeader->next = UndefinedPage;
-			newPageHeader->right = UndefinedPage;
+			writeInitialPageInfo(frames[0].page->type, newPage.writableData(*transaction),
+					root.page->number, frames[level].page->number);
 			newFrames.emplace_back(newPage);
 
 			auto pageHeader = (OidTreePageHeader *)frames[level].writableData(*transaction).data();
@@ -366,45 +553,15 @@ TreePage * TreeStack::splitPage(TreePage *page, uint64_t oidValue, PageType root
 				return nullptr; // should always work
 			}
 
-			((OidTreePageHeader *)newFrames.back().writableData(*transaction).data())->right = newPage.page->number;
+			writeInitialPageInfo(type, newPage.writableData(*transaction),
+					newFrames.back().page->number, frames[level].page->number);
 
-			switch (type) {
-			case PageType::None:
-				break;
-			case PageType::OidTable:
-			case PageType::SchemeTable: {
-				auto newPageHeader = (OidTreePageHeader *)newPage.writableData(*transaction).data();
-				newPageHeader->ncells = 0;
-				newPageHeader->root = newFrames.back().page->number;
-				newPageHeader->prev = frames[level].page->number;
-				newPageHeader->next = UndefinedPage;
-				newPageHeader->right = UndefinedPage;
-				newFrames.emplace_back(newPage);
-
-				((OidTreePageHeader *)frames[level].writableData(*transaction).data())->next = newPage.page->number;
-				break;
-			}
-			case PageType::OidContent:
-			case PageType::SchemeContent: {
-				auto newPageHeader = (OidContentPageHeader *)newPage.writableData(*transaction).data();
-				newPageHeader->ncells = 0;
-				newPageHeader->root = newFrames.back().page->number;
-				newPageHeader->prev = frames[level].page->number;
-				newPageHeader->next = UndefinedPage;
-				newFrames.emplace_back(newPage);
-
-				((OidContentPageHeader *)frames[level].writableData(*transaction).data())->next = newPage.page->number;
-				break;
-			}
-			}
+			newFrames.emplace_back(newPage);
+			((OidTreePageHeader *)(frames[level].writableData(*transaction).data()))->next = newPage.page->number;
 		}
 
 		if (level == frames.size() - 1) {
-			for (size_t i = level; i < frames.size(); ++ i) {
-				closePage(frames[i].page);
-			}
 			frames = std::move(newFrames);
-
 			if (newRootPage) {
 				if (rootPageLocation) {
 					*rootPageLocation = newRootPage;
@@ -412,7 +569,160 @@ TreePage * TreeStack::splitPage(TreePage *page, uint64_t oidValue, PageType root
 					transaction->getPageCache()->setRoot(newRootPage);
 				}
 			}
+			return &frames.back();
+		}
 
+		++ level;
+	}
+	return nullptr;
+}
+
+static TreePage performRebalance(PageType type, TreePage &leftPage, TreePage &rightPage, uint32_t splitPos, int64_t targetValue) {
+	if (leftPage.getType() != rightPage.getType()) {
+		std::cout << "Trying to rebalance pages with incompatible types\n";
+		return nullptr;
+	}
+
+	auto ncells = leftPage.getCells();
+
+	auto hs = leftPage.getHeaderSize(type);
+	switch (type) {
+	case PageType::IntIndexTable: {
+		auto targetPos = (IntegerIndexCell *)(leftPage.bytes().data() + hs) + splitPos;
+		auto copySize = (ncells - splitPos - 1) * sizeof(IntegerIndexCell);
+		auto lHead = ((IntIndexTreePageHeader *)leftPage.bytes().data());
+		auto rHead = ((IntIndexTreePageHeader *)rightPage.bytes().data());
+		rHead->ncells = ncells - splitPos - 1;
+		rHead->right = lHead->right;
+		lHead->ncells = splitPos;
+		lHead->right = targetPos->page;
+		memmove((void *)(rightPage.bytes().data() + hs), targetPos + 1, copySize);
+		if (targetValue < targetPos->value) {
+			return leftPage;
+		} else {
+			return rightPage;
+		}
+		break;
+	}
+	case PageType::IntIndexContent:
+		memmove((void *)(rightPage.bytes().data() + hs), leftPage.bytes().data() + hs + splitPos * sizeof(IntegerIndexPayload),
+				(ncells - splitPos) * sizeof(IntegerIndexPayload));
+		((VirtualPageHeader *)rightPage.bytes().data())->ncells = ncells - splitPos;
+		((VirtualPageHeader *)leftPage.bytes().data())->ncells = splitPos;
+		if (targetValue < ((IntegerIndexPayload *)(rightPage.bytes().data() + hs))->value) {
+			return leftPage;
+		} else {
+			return rightPage;
+		}
+		break;
+	case PageType::None:
+	case PageType::OidTable:
+	case PageType::OidContent:
+	case PageType::SchemeTable:
+	case PageType::SchemeContent:
+		std::cout << "Balanced split with invalid page type detected\n";
+		break;
+	}
+	return nullptr;
+}
+
+TreePage * TreeStack::splitPageBalanced(TreePage *, int64_t oidValue, PageType rootType, uint32_t *rootPageLocation) {
+	auto alloc = [&] (PageType t) -> TreePage {
+		auto page = allocatePage(t);
+		return TreePage(page);
+	};
+
+	auto nextPayloadSize = (rootType == PageType::IntIndexTable) ? sizeof(IntegerIndexCell) : sizeof(OidIndexCell);
+
+	size_t level = frames.size() - 1;
+	while (level > 0) {
+		auto freeSpace = frames[level - 1].getFreeSpace();
+		if (frames[level - 1].getCells() >= cellLimit || nextPayloadSize + sizeof(uint16_t) > freeSpace.first) {
+			-- level;
+		} else {
+			break;
+		}
+	}
+
+	mem::Vector<TreePage> newFrames;
+	for (size_t i = 0; i < level; ++ i) {
+		newFrames.emplace_back(frames[i]);
+	}
+
+	uint32_t newRootPage = 0;
+
+	while (level < frames.size()) {
+		// TODO - key propagation algorithm
+		auto ncells = frames[level].getCells();
+		auto splitPos = ncells / 2;
+		int64_t splitValue = frames[level].getSplitValue(splitPos);
+
+		if (level == 0) {
+			// split root
+			auto root = alloc(rootType);
+			auto newPage = alloc(frames[0].page->type);
+			if (!root || !newPage) {
+				return nullptr;
+			}
+
+			writeInitialPageInfo(rootType, root.writableData(*transaction),
+					UndefinedPage, UndefinedPage, UndefinedPage, frames[level].page->number);
+			newRootPage = root.page->number;
+
+			if (!root.pushOidIndex(*transaction, newPage.page->number, splitValue)) {
+				return nullptr; // should always work
+			}
+
+			newFrames.emplace_back(root);
+
+			// create new leaf page
+			writeInitialPageInfo(frames[0].page->type, newPage.writableData(*transaction),
+					root.page->number, frames[level].page->number);
+
+			auto pageHeader = (OidTreePageHeader *)frames[level].writableData(*transaction).data();
+			pageHeader->root = root.page->number;
+			pageHeader->next = newPage.page->number;
+
+			// rebalance and choose new target page
+			newFrames.emplace_back(performRebalance(frames[level].page->type, frames[level], newPage, splitPos, oidValue));
+		} else {
+			// TODO
+			// split leaf
+			auto type = PageType(((VirtualPageHeader *)frames[level].bytes().data())->type);
+
+			auto newPage = alloc(type);
+			if (!newPage) {
+				return nullptr;
+			}
+
+			if (!newFrames.back().pushOidIndex(*transaction, newPage.page->number, splitValue, true)) {
+				return nullptr; // should always work
+			}
+
+			auto frameheader = (OidTreePageHeader *)(frames[level].writableData(*transaction).data());
+
+			writeInitialPageInfo(type, newPage.writableData(*transaction),
+					newFrames.back().page->number, frames[level].page->number, frameheader->next);
+
+			if (frameheader->next != UndefinedPage) {
+				auto nextPage = TreePage(openPage(frameheader->next, OpenMode::Write));
+				auto nextheader = (OidTreePageHeader *)(nextPage.writableData(*transaction).data());
+				nextheader->prev = newPage.page->number;
+			}
+			frameheader->next = newPage.page->number;
+
+			newFrames.emplace_back(performRebalance(frames[level].page->type, frames[level], newPage, splitPos, oidValue));
+		}
+
+		if (level == frames.size() - 1) {
+			frames = std::move(newFrames);
+			if (newRootPage) {
+				if (rootPageLocation) {
+					*rootPageLocation = newRootPage;
+				} else {
+					transaction->getPageCache()->setRoot(newRootPage);
+				}
+			}
 			return &frames.back();
 		}
 
@@ -521,6 +831,17 @@ OidPosition TreeStack::emplaceIndex(uint64_t scheme) {
 	return OidPosition();
 }
 
+const PageNode *TreeStack::allocatePage(PageType type) {
+	const PageNode *node = nullptr;
+	if (allocOverload) {
+		node = allocOverload(type);
+	} else {
+		node = transaction->getPageCache()->allocatePage(type);
+	}
+	nodes.emplace_back(node);
+	return node;
+}
+
 const PageNode *TreeStack::openPage(uint32_t idx, OpenMode mode) {
 	for (auto &it : nodes) {
 		if (it->number == idx) {
@@ -586,7 +907,52 @@ TreePageIterator TreeStack::next(TreePageIterator it, bool close) {
 	}
 	if (close) {
 		for (auto &it : nodes) {
-			closePage(it, true);
+			transaction->getPageCache()->closePage(it);
+		}
+		nodes.clear();
+		frames.clear();
+	}
+	return TreePageIterator(nullptr);
+}
+
+TreePageIterator TreeStack::prev(TreePageIterator it, bool close) {
+	auto begin = frames.back().begin();
+	if (it && it != begin) {
+		-- it;
+		do {
+			if (it == frames.back().begin()) {
+				// prev page
+				auto h = (OidContentPageHeader *)it.node->bytes.data();
+				if (h->prev != UndefinedPage) {
+					auto prev = h->prev;
+					auto type = it.node->type;
+					auto openMode = it.node->mode;
+
+					if (auto frame = openPage(prev, openMode)) {
+						if (close) {
+							closePage(frames.back().page, true);
+						}
+						frames.pop_back();
+						frames.emplace_back(frame);
+						h = (OidContentPageHeader *)frame->bytes.data();
+						if (PageType(h->type) == type) {
+							return TreePage(frame).end();
+						} else {
+							break;
+						}
+					} else {
+						break;
+					}
+				} else {
+					break;
+				}
+			}
+			return it;
+		} while (0);
+	}
+	if (close) {
+		for (auto &it : nodes) {
+			transaction->getPageCache()->closePage(it);
 		}
 		nodes.clear();
 		frames.clear();

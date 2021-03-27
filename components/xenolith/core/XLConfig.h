@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2020 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2021 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,8 +23,11 @@ THE SOFTWARE.
 #ifndef COMPONENTS_XENOLITH_CORE_XLCONFIG_H_
 #define COMPONENTS_XENOLITH_CORE_XLCONFIG_H_
 
+namespace stappler::xenolith::config {
 
+/* Number of child slot, that will be preallocated on first child addition (not on node creation!) */
+static constexpr size_t NODE_PREALLOCATE_CHILDS = 4;
 
-
+}
 
 #endif /* COMPONENTS_XENOLITH_CORE_XLCONFIG_H_ */

@@ -153,7 +153,7 @@ static bool Storage_init(const Transaction &t, const mem::Map<mem::StringView, c
 		mem::Map<const Scheme *, mem::Pair<OidPosition, mem::Map<const Field *, OidPosition>>> &storageSchemes) {
 	TreeStack stack(t, t.getPageCache()->getRoot());
 
-	auto cell = stack.getOidCell(0, true);
+	auto cell = stack.getOidCell(0, (t.getMode() == OpenMode::Read) ? false : true);
 	mem::Vector<OidCell> cells;
 
 	if (cell) {
@@ -289,11 +289,15 @@ static bool Storage_init(const Transaction &t, const mem::Map<mem::StringView, c
 
 			if (!found) {
 				if (dicts.size() < 255) {
-					auto obj = stack.emplaceCell(OidType::Dictionary, OidFlags::None, dict);
-					dictIds.emplace(uint8_t(dicts.size()), uint64_t(obj.header->oid.value));
-					obj.header->oid.dictId = dicts.size();
-					auto iit = dicts.emplace(uint8_t(dicts.size()), DictData(int64_t(obj.header->oid.value), hashBytes, obj.pages)).first;
-					storageDicts.emplace(it.second, iit->first);
+					if (t.getMode() != OpenMode::Read) {
+						auto obj = stack.emplaceCell(OidType::Dictionary, OidFlags::None, dict);
+						dictIds.emplace(uint8_t(dicts.size()), uint64_t(obj.header->oid.value));
+						obj.header->oid.dictId = dicts.size();
+						auto iit = dicts.emplace(uint8_t(dicts.size()), DictData(int64_t(obj.header->oid.value), hashBytes, obj.pages)).first;
+						storageDicts.emplace(it.second, iit->first);
+					} else {
+						return false;
+					}
 				} else {
 					stappler::log::text("minidb", "More than 255 dicts is not supported");
 					return false;
@@ -303,23 +307,27 @@ static bool Storage_init(const Transaction &t, const mem::Map<mem::StringView, c
 
 		auto schemeIt = schemesData.find(it.second->getName());
 		if (schemeIt == schemesData.end()) {
-			auto obj = stack.emplaceScheme();
-			if (obj.value) {
-				auto &map = schemesData.emplace(it.second->getName(), obj,
-						mem::Map<mem::StringView, OidPosition>()).first->second.second;
+			if (t.getMode() != OpenMode::Read) {
+				auto obj = stack.emplaceScheme();
+				if (obj.value) {
+					auto &map = schemesData.emplace(it.second->getName(), obj,
+							mem::Map<mem::StringView, OidPosition>()).first->second.second;
 
-				auto &m = storageSchemes.emplace(it.second, obj,
-						mem::Map<const Field *, OidPosition>()).first->second.second;
+					auto &m = storageSchemes.emplace(it.second, obj,
+							mem::Map<const Field *, OidPosition>()).first->second.second;
 
-				for (auto &f : it.second->getFields()) {
-					if (f.second.isIndexed()) {
-						auto idx = stack.emplaceIndex(obj.value);
-						if (idx.value) {
-							map.emplace(f.second.getName(), idx);
-							m.emplace(&f.second, idx);
+					for (auto &f : it.second->getFields()) {
+						if (f.second.isIndexed()) {
+							auto idx = stack.emplaceIndex(obj.value);
+							if (idx.value) {
+								map.emplace(f.second.getName(), idx);
+								m.emplace(&f.second, idx);
+							}
 						}
 					}
 				}
+			} else {
+				return false;
 			}
 		} else {
 			auto &map = schemeIt->second.second;
@@ -331,10 +339,14 @@ static bool Storage_init(const Transaction &t, const mem::Map<mem::StringView, c
 				if (f.second.isIndexed()) {
 					auto iit = map.find(f.second.getName());
 					if (iit == map.end()) {
-						auto idx = stack.emplaceIndex(schemeIt->second.first.value);
-						if (idx.value) {
-							map.emplace(f.second.getName(), idx);
-							m.emplace(&f.second, idx);
+						if (t.getMode() != OpenMode::Read) {
+							auto idx = stack.emplaceIndex(schemeIt->second.first.value);
+							if (idx.value) {
+								map.emplace(f.second.getName(), idx);
+								m.emplace(&f.second, idx);
+							}
+						} else {
+							return false;
 						}
 					} else {
 						m.emplace(&f.second, iit->second);
@@ -375,21 +387,29 @@ static bool Storage_init(const Transaction &t, const mem::Map<mem::StringView, c
 	}
 
 	if (manifest != manifestData) {
+		if (t.getMode() == OpenMode::Read) {
+			return false;
+		}
+
 		auto bytes = mem::writeData(manifest, mem::EncodeFormat::Cbor);
 		auto realPageSize = ManifestPageSize - OidHeaderSize;
 		auto pagesCount = (bytes.size() + (realPageSize - 1)) / realPageSize;
 
 		while (pagesCount > cells.size()) {
-			if (auto obj = stack.emplaceCell(realPageSize)) {
-				obj.header->oid.type = stappler::toInt(OidType::Manifest);
-				obj.header->oid.flags = stappler::toInt(cells.empty() ? OidFlags::None : OidFlags::Chain);
-				obj.header->oid.dictId = 0;
-				if (!cells.empty()) {
-					cells.back().header->nextObject = obj.header->oid.value;
+			if (t.getMode() != OpenMode::Read) {
+				if (auto obj = stack.emplaceCell(realPageSize)) {
+					obj.header->oid.type = stappler::toInt(OidType::Manifest);
+					obj.header->oid.flags = stappler::toInt(cells.empty() ? OidFlags::None : OidFlags::Chain);
+					obj.header->oid.dictId = 0;
+					if (!cells.empty()) {
+						cells.back().header->nextObject = obj.header->oid.value;
+					}
+					cells.emplace_back(obj);
+				} else {
+					stappler::log::text("minidb", "Fail to allocate manifest pages");
+					return false;
 				}
-				cells.emplace_back(obj);
 			} else {
-				stappler::log::text("minidb", "Fail to allocate manifest pages");
 				return false;
 			}
 		}
@@ -417,12 +437,24 @@ static bool Storage_init(const Transaction &t, const mem::Map<mem::StringView, c
 bool Storage::init(const mem::Map<mem::StringView, const db::Scheme *> &map) {
 	Transaction t;
 	bool ret = false;
-	if (t.open(*this, OpenMode::Write)) {
+	if (t.open(*this, OpenMode::Read)) {
 		std::unique_lock<std::shared_mutex> lock(t.getMutex());
 		mem::pool::push(t.getPool());
-		Storage_init(t, map, _dicts, _dictsIds, _schemes);
+		ret = Storage_init(t, map, _dicts, _dictsIds, _schemes);
 		mem::pool::pop();
-		ret = true;
+		t.close();
+	}
+	if (!ret) {
+		_dicts.clear();
+		_dictsIds.clear();
+		_schemes.clear();
+		if (t.open(*this, OpenMode::Write)) {
+			std::unique_lock<std::shared_mutex> lock(t.getMutex());
+			mem::pool::push(t.getPool());
+			ret = Storage_init(t, map, _dicts, _dictsIds, _schemes);
+			mem::pool::pop();
+			t.close();
+		}
 	}
 	return ret;
 }
@@ -444,9 +476,15 @@ Storage::Storage(mem::pool_t *p, mem::StringView path, StorageParams params)
 		return;
 	}
 
-	::flock(fd, LOCK_EX);
+	::flock(fd, LOCK_SH);
 	auto fileSize = ::lseek(fd, 0, SEEK_END);
+	if (fileSize > 0) {
+		::flock(fd, LOCK_UN);
+		return;
+	}
 
+	::flock(fd, LOCK_EX);
+	fileSize = ::lseek(fd, 0, SEEK_END);
 	if (fileSize == 0) {
 		uint8_t buf[sizeof(StorageHeader) + sizeof(OidTreePageHeader)] = { 0 };
 

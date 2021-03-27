@@ -43,6 +43,12 @@ struct TransactionContext {
 
 Handle::Handle(const Storage &storage, OpenMode mode) : _storage(&storage), _mode(mode) { }
 
+Handle::Handle(Transaction &t) : _storage(t.getStorage()), _mode(t.getMode()), _external(&t) { }
+
+minidb::Transaction &Handle::getTransaction() {
+	return _external ? *_external : _transaction;
+}
+
 bool Handle::init(const Config &serv, const mem::Map<mem::StringView, const Scheme *> &) {
 	stappler::log::vtext("MiniDB", "Not implemented: ", __PRETTY_FUNCTION__);
 	return false;
@@ -84,32 +90,32 @@ int64_t Handle::getDeltaValue(const Scheme &scheme, const db::FieldView &view, u
 
 mem::Value Handle::select(Worker &w, const db::Query &q) {
 	TransactionContext ctx(this);
-	return _transaction.select(w, q);
+	return getTransaction().select(w, q);
 }
 
 mem::Value Handle::create(Worker &w, mem::Value &val) {
 	TransactionContext ctx(this);
-	return _transaction.create(w, val);
+	return getTransaction().create(w, val);
 }
 
 mem::Value Handle::save(Worker &w, uint64_t oid, const mem::Value &obj, const mem::Vector<mem::String> &fields) {
 	TransactionContext ctx(this);
-	return _transaction.save(w, oid, obj, fields);
+	return getTransaction().save(w, oid, obj, fields);
 }
 
 mem::Value Handle::patch(Worker &w, uint64_t oid, const mem::Value &patch) {
 	TransactionContext ctx(this);
-	return _transaction.patch(w, oid, patch);
+	return getTransaction().patch(w, oid, patch);
 }
 
 bool Handle::remove(Worker &w, uint64_t oid) {
 	TransactionContext ctx(this);
-	return _transaction.remove(w, oid);
+	return getTransaction().remove(w, oid);
 }
 
 size_t Handle::count(Worker &w, const db::Query &query) {
 	TransactionContext ctx(this);
-	return _transaction.count(w, query);
+	return getTransaction().count(w, query);
 }
 
 mem::Value Handle::field(db::Action, Worker &, uint64_t oid, const Field &, mem::Value &&) {
@@ -148,6 +154,9 @@ mem::Vector<int64_t> Handle::getReferenceParents(const Scheme &, uint64_t oid, c
 }
 
 bool Handle::beginTransaction() {
+	if (_external) {
+		return true;
+	}
 	if (_transactionCounter == 0) {
 		if (_transaction.open(*_storage, _mode)) {
 			++ _transactionCounter;
@@ -161,6 +170,9 @@ bool Handle::beginTransaction() {
 }
 
 bool Handle::endTransaction() {
+	if (_external) {
+		return true;
+	}
 	if (_transactionCounter == 0) {
 		return false;
 	} else if (_transactionCounter == 1) {

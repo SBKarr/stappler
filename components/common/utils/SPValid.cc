@@ -312,6 +312,15 @@ bool validateEmail(String &str) {
 	return false;
 }
 
+bool validateEmail(memory::StandartInterface::StringType &str) {
+	String istr = StringView(str).str<memory::PoolInterface>();
+	if (validateEmail(istr)) {
+		str = StringView(istr).str<memory::StandartInterface>();
+		return true;
+	}
+	return false;
+}
+
 bool validateUrl(String &str) {
 	UrlView url;
 	if (!url.parse(str)) {
@@ -335,6 +344,15 @@ bool validateUrl(String &str) {
 	auto newUrl = url.get<memory::PoolInterface>();
 	str = String(newUrl.data(), newUrl.size());
 	return true;
+}
+
+bool validateUrl(memory::StandartInterface::StringType &str) {
+	String istr = StringView(str).str<memory::PoolInterface>();
+	if (validateUrl(istr)) {
+		str = StringView(istr).str<memory::StandartInterface>();
+		return true;
+	}
+	return false;
 }
 
 bool validateNumber(const StringView &str) {

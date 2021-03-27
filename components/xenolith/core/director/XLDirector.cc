@@ -23,6 +23,7 @@
 #include "XLDirector.h"
 #include "XLVkView.h"
 #include "XLPipeline.h"
+#include "XLScene.h"
 
 namespace stappler::xenolith {
 
@@ -36,16 +37,7 @@ Director::Director() { }
 Director::~Director() { }
 
 bool Director::init() {
-	onEvent(vk::PresentationDevice::onSwapChainInvalidated, [this] (const Event &) {
-		invalidate();
-	}, false);
-
-	onEvent(vk::PresentationDevice::onSwapChainCreated, [this] (const Event &) {
-		invalidate();
-	}, false);
-
-	_pipelineCache = Rc<PipelineCache>::create();
-
+	_pipelineCache = Rc<PipelineCache>::create(this);
 	return true;
 }
 
@@ -55,11 +47,20 @@ void Director::setView(vk::View *view) {
 	}
 }
 
-bool Director::mainLoop(double t) {
+bool Director::mainLoop(uint64_t t) {
+	if (_nextScene) {
+		if (_scene) {
+			_scene->onExit();
+		}
+		_scene = _nextScene;
+		_scene->onEnter();
+		_nextScene = nullptr;
+	}
+
 	update(t);
 
 	Rc<DrawFlow> df = construct();
-	Rc<DrawFlow> tmp;
+	Rc<DrawFlow> tmp; // temporary storage for refcounting
 
 	do {
 		std::unique_lock<Mutex> lock(_mutex);
@@ -72,12 +73,34 @@ bool Director::mainLoop(double t) {
 	return true;
 }
 
-void Director::update(double t) {
+void Director::update(uint64_t t) {
 
 }
 
 Rc<DrawFlow> Director::construct() {
+	if (!_scene) {
+		return nullptr;
+	}
+
 	auto df = Rc<DrawFlow>::create();
+
+	auto p = df->getPool();
+	memory::pool::push(p);
+
+	do {
+		RenderFrameInfo info;
+		info.director = this;
+		info.scene = _scene;
+		info.pool = df->getPool();
+		info.scheme = df->getScheme();
+		info.transformStack.reserve(8);
+		info.zPath.reserve(8);
+		info.transformStack.push_back(Mat4::IDENTITY);
+
+		_scene->render(info);
+	} while (0);
+
+	memory::pool::pop();
 
 	// update draw flow from scene graph
 
@@ -85,6 +108,11 @@ Rc<DrawFlow> Director::construct() {
 }
 
 void Director::end() {
+	if (_scene) {
+		_scene->onExit();
+		_nextScene = _scene;
+		_scene = nullptr;
+	}
 	_view = nullptr;
 }
 
@@ -93,6 +121,14 @@ Rc<DrawFlow> Director::swapDrawFlow() {
 	Rc<DrawFlow> ret = _drawFlow;
 	_drawFlow = nullptr;
 	return ret;
+}
+
+Size Director::getScreenSize() const {
+	return _view->getScreenSize();
+}
+
+void Director::runScene(Rc<Scene> scene) {
+	_nextScene = scene;
 }
 
 void Director::invalidate() {

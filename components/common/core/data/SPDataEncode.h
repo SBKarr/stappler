@@ -48,8 +48,7 @@ struct EncodeFormat {
 		NoCompression			= 0b0000 << 4,
 		LZ4Compression			= 0b0001 << 4,
 		LZ4HCCompression		= 0b0011 << 4,
-		BrotliLowCompression	= 0b0100 << 4,
-		BrotliHighCompression	= 0b1100 << 4,
+		Brotli					= 0b0100 << 4,
 
 		DefaultCompress = NoCompression
 	};

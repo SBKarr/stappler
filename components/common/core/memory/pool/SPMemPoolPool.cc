@@ -28,6 +28,8 @@ static SPUNUSED Allocator *s_global_allocator = nullptr;
 static SPUNUSED Pool *s_global_pool = nullptr;
 static SPUNUSED int s_global_init = 0;
 
+static std::atomic<size_t> s_nPools = 0;
+
 void *Pool::alloc(size_t &sizeInBytes) {
 	std::unique_lock<Pool> lock(*this);
 	if (sizeInBytes >= BlockThreshold) {
@@ -187,11 +189,15 @@ void Pool::destroy(Pool *pool) {
 	pool->~Pool();
 }
 
-Pool::Pool() : allocmngr{this} { }
+size_t Pool::getPoolsCount() {
+	return s_nPools.load();
+}
+
+Pool::Pool() : allocmngr{this} { ++ s_nPools; }
 
 Pool::Pool(Allocator *alloc, MemNode *node, bool threadSafe)
 : allocator(alloc), active(node), self(node), allocmngr{this}, threadSafe(threadSafe) {
-
+	++ s_nPools;
 }
 
 Pool::Pool(Pool *p, Allocator *alloc, MemNode *node, bool threadSafe)
@@ -206,6 +212,7 @@ Pool::Pool(Pool *p, Allocator *alloc, MemNode *node, bool threadSafe)
 		parent->child = this;
 		ref = &parent->child;
 	}
+	++ s_nPools;
 }
 
 Pool::~Pool() {
@@ -243,6 +250,8 @@ Pool::~Pool() {
 	if (allocator->owner == this) {
 		delete allocator;
 	}
+
+	-- s_nPools;
 }
 
 

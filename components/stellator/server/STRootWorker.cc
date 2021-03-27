@@ -70,7 +70,9 @@ protected:
 	Root *_root = nullptr;
 
 	std::atomic<size_t> _taskCounter;
-	moodycamel::ConcurrentQueue<Task *> _taskQueue;
+	// moodycamel::ConcurrentQueue<Task *> _taskQueue;
+	std::deque<Task *> _taskDeque;
+	std::mutex _taskMutex;
 
 	int _pipe[2] = { -1, -1 };
 	int _eventFd = -1;
@@ -302,7 +304,9 @@ void ConnectionQueue::pushTask(Task *task) {
 		g->onAdded(task);
 	}
 	uint64_t value = 1;
-	_taskQueue.enqueue(task);
+	_taskMutex.lock();
+	_taskDeque.push_back(task);
+	_taskMutex.unlock();
 	++ _taskCounter;
 	write(_eventFd, &value, sizeof(uint64_t));
 }
@@ -310,10 +314,15 @@ void ConnectionQueue::pushTask(Task *task) {
 Task * ConnectionQueue::popTask() {
 	Task *t = nullptr;
 
-	if (_taskQueue.try_dequeue(t)) {
+	_taskMutex.lock();
+	t = _taskDeque.front();
+	_taskDeque.pop_front();
+	_taskMutex.unlock();
+
+	/*if (_taskQueue.try_dequeue(t)) {
 		return t;
-	}
-	return nullptr;
+	}*/
+	return t;
 }
 
 void ConnectionQueue::releaseTask(Task *task) {
@@ -365,11 +374,16 @@ bool ConnectionWorker::worker() {
 	ConnectionHandler_setNonblocking(signalFd);
 
 	int epollFd = epoll_create1(0);
-	auto err = epoll_ctl(epollFd, EPOLL_CTL_ADD, _inputFd, &sockEvent.event);
-	if (err == -1) {
-		char buf[256] = { 0 };
-		std::cout << "Failed to start thread worker with socket epoll_ctl("
-				<< _inputFd << ", EPOLL_CTL_ADD): " << strerror_r(errno, buf, 255) << "\n";
+
+	int err = 0;
+
+	if (_inputFd >= 0) {
+		err = epoll_ctl(epollFd, EPOLL_CTL_ADD, _inputFd, &sockEvent.event);
+		if (err == -1) {
+			char buf[256] = { 0 };
+			std::cout << "Failed to start thread worker with socket epoll_ctl("
+					<< _inputFd << ", EPOLL_CTL_ADD): " << strerror_r(errno, buf, 255) << "\n";
+		}
 	}
 
 	err = epoll_ctl(epollFd, EPOLL_CTL_ADD, _cancelFd, &pipeEvent.event);
@@ -431,10 +445,12 @@ bool ConnectionWorker::poll(int epollFd) {
 						auto ev = _queue->popTask();
 						if (value > 1) {
 							value -= 1;
-							// forward event
+							// forward event to another worker
 							write(_eventFd, &value, sizeof(uint64_t));
 						}
-						runTask(ev);
+						if (ev) {
+							runTask(ev);
+						}
 					}
 				}
 			}
@@ -714,7 +730,7 @@ ConnectionWorker::Generation *ConnectionWorker::makeGeneration() {
 	return new (p) Generation(p);
 }
 
-bool Root::run(const mem::StringView &_addr, int _port, size_t nWorkers) {
+bool Root::run(mem::StringView _addr, int _port, size_t nWorkers) {
 	struct sigaction s_sharedSigAction;
 	struct sigaction s_sharedSigOldUsr1Action;
 	struct sigaction s_sharedSigOldUsr2Action;
@@ -735,40 +751,43 @@ bool Root::run(const mem::StringView &_addr, int _port, size_t nWorkers) {
 	sigaddset(&mask, SIGPIPE);
 	::sigprocmask(SIG_BLOCK, &mask, &oldmask);
 
-	int socket = ::socket(AF_INET, SOCK_STREAM, 0);
-	if (socket == -1) {
-		messages::error("Root:Socket", "Fail to open socket");
-		return false;
-	}
+	int socket = -1;
+	if (_addr != "none") {
+		int socket = ::socket(AF_INET, SOCK_STREAM, 0);
+		if (socket == -1) {
+			messages::error("Root:Socket", "Fail to open socket");
+			return false;
+		}
 
-	int enable = 1;
-	if (setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable)) == -1) {
-		messages::error("Root:Socket", "Fail to set socket option");
-		close(socket);
-		return false;
-	}
+		int enable = 1;
+		if (setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(enable)) == -1) {
+			messages::error("Root:Socket", "Fail to set socket option");
+			close(socket);
+			return false;
+		}
 
-	struct sockaddr_in addr;
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = !_addr.empty() ? inet_addr(_addr.data()) : htonl(INADDR_LOOPBACK);
-	addr.sin_port = htons(_port);
-	if (::bind(socket, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		messages::error("Root:Socket", "Fail to bind socket");
-		close(socket);
-		return false;
-	}
+		struct sockaddr_in addr;
+		memset(&addr, 0, sizeof(addr));
+		addr.sin_family = AF_INET;
+		addr.sin_addr.s_addr = !_addr.empty() ? inet_addr(_addr.data()) : htonl(INADDR_LOOPBACK);
+		addr.sin_port = htons(_port);
+		if (::bind(socket, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+			messages::error("Root:Socket", "Fail to bind socket");
+			close(socket);
+			return false;
+		}
 
-	if (!ConnectionHandler_setNonblocking(socket)) {
-		messages::error("Root:Socket", "Fail to set socket nonblock");
-		close(socket);
-		return false;
-	}
+		if (!ConnectionHandler_setNonblocking(socket)) {
+			messages::error("Root:Socket", "Fail to set socket nonblock");
+			close(socket);
+			return false;
+		}
 
-	if (::listen(socket, SOMAXCONN) < 0) {
-		messages::error("Root:Socket", "Fail to listen on socket");
-		close(socket);
-		return false;
+		if (::listen(socket, SOMAXCONN) < 0) {
+			messages::error("Root:Socket", "Fail to listen on socket");
+			close(socket);
+			return false;
+		}
 	}
 
 	auto p = mem::pool::create(_pool);

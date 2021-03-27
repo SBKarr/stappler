@@ -78,11 +78,17 @@ bool Root::run(const mem::Value &config) {
 		}
 
 		auto del = l.rfind(":");
-		if (del != stappler::maxOf<size_t>()) {
-			auto port = mem::StringView(l, del + 1, l.size() - del - 1).readInteger().get();
-			if (port == 0) {
-				std::cout << "Invalid port: " << port << "\n";
-				return false;
+		if (del != stappler::maxOf<size_t>() || l == "none") {
+			mem::StringView addr;
+			int port = 0;
+			if (l != "none") {
+				port = mem::StringView(l, del + 1, l.size() - del - 1).readInteger().get();
+				if (port == 0) {
+					std::cout << "Invalid port: " << port << "\n";
+					return false;
+				}
+
+				addr =  mem::StringView(l, del);
 			}
 
 			_internal->dbDriver = db::pq::Driver::open(db.empty() ? "libpq.so" : db);
@@ -91,14 +97,13 @@ bool Root::run(const mem::Value &config) {
 				return false;
 			}
 
-			auto addr =  mem::StringView(l, del);
 
 			auto &servs = config.getValue("hosts");
 			for (auto &it : servs.asArray()) {
 				addServer(it);
 			}
 
-			auto ret = run(addr, port, workers);
+			auto ret = run((l == "none") ? l : addr, port, workers);
 			_internal->dbDriver->release();
 			_internal->dbDriver = nullptr;
 			return ret;

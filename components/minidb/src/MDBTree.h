@@ -46,12 +46,10 @@ struct TreePageIterator {
 			data = node->bytes.data() + *index;
 		} else {
 			switch (node->type) {
-			case PageType::SchemeContent:
-				data = ((OidPosition *)data) + 1;
-				break;
-			default:
-				data = ((OidIndexCell *)data) + 1;
-				break;
+			case PageType::SchemeContent: data = ((OidPosition *)data) + 1; break;
+			case PageType::IntIndexTable: data = ((IntegerIndexCell *)data) + 1; break;
+			case PageType::IntIndexContent: data = ((IntegerIndexPayload *)data) + 1; break;
+			default: data = ((OidIndexCell *)data) + 1; break;
 			}
 		}
 		return *this;
@@ -64,12 +62,10 @@ struct TreePageIterator {
 			data = node->bytes.data() + *index;
 		} else {
 			switch (node->type) {
-			case PageType::SchemeContent:
-				data = ((OidPosition *)data) - 1;
-				break;
-			default:
-				data = ((OidIndexCell *)data) - 1;
-				break;
+			case PageType::SchemeContent: data = ((OidPosition *)data) - 1; break;
+			case PageType::IntIndexTable: data = ((IntegerIndexCell *)data) - 1; break;
+			case PageType::IntIndexContent: data = ((IntegerIndexPayload *)data) - 1; break;
+			default: data = ((OidIndexCell *)data) - 1; break;
 			}
 		}
 		return *this;
@@ -81,9 +77,9 @@ struct TreePageIterator {
 			return TreePageIterator(node, node->bytes.data() + *(index - v), index - v);
 		} else {
 			switch (node->type) {
-			case PageType::SchemeContent:
-				return TreePageIterator(node, ((OidPosition *)data) + v, nullptr);
-				break;
+			case PageType::SchemeContent: return TreePageIterator(node, ((OidPosition *)data) + v, nullptr); break;
+			case PageType::IntIndexTable: return TreePageIterator(node, ((IntegerIndexCell *)data) + v, nullptr); break;
+			case PageType::IntIndexContent: return TreePageIterator(node, ((IntegerIndexPayload *)data) + v, nullptr); break;
 			default:
 				break;
 			}
@@ -96,9 +92,9 @@ struct TreePageIterator {
 			return TreePageIterator(node, node->bytes.data() + *(index + v), index + v);
 		} else {
 			switch (node->type) {
-			case PageType::SchemeContent:
-				return TreePageIterator(node, ((OidPosition *)data) - v, nullptr);
-				break;
+			case PageType::SchemeContent: return TreePageIterator(node, ((OidPosition *)data) - v, nullptr); break;
+			case PageType::IntIndexTable: return TreePageIterator(node, ((IntegerIndexCell *)data) - v, nullptr); break;
+			case PageType::IntIndexContent: return TreePageIterator(node, ((IntegerIndexPayload *)data) - v, nullptr); break;
 			default:
 				break;
 			}
@@ -135,9 +131,12 @@ struct TreePage {
 
 	TreePageIterator find(uint64_t oid) const;
 
-	uint32_t findTargetPage(uint64_t oid) const;
+	TreePageIterator findValue(int64_t oid, bool forward) const;
+	uint32_t findTargetPage(int64_t oid, bool front = false) const;
 
-	bool pushOidIndex(const Transaction &, uint32_t page, uint64_t oid);
+	bool pushOidIndex(const Transaction &, uint32_t page, int64_t oid, bool balanced = false);
+
+	int64_t getSplitValue(uint32_t) const;
 
 	// TreeTableInteriorCell getTableInteriorCell(uint16_t off) const;
 	// TreeTableLeafCell getTableLeafCell(uint16_t off) const;
@@ -148,20 +147,27 @@ struct TreeStack {
 	mem::Vector<TreePage> frames;
 	mem::Vector<const PageNode *> nodes;
 	uint32_t root = 0;
+	uint32_t cellLimit = stappler::maxOf<uint32_t>();
+	mem::Function<const PageNode *(PageType)> allocOverload;
 
 	TreeStack(const Transaction &t, uint32_t root);
 	~TreeStack();
 
 	TreePageIterator openOnOid(uint64_t oid = 0, OpenMode = OpenMode::Read);
-	TreePageIterator open();
+	TreePageIterator open(bool forward = true);
+	TreePageIterator open(bool forward, int64_t hint);
 	bool openLastPage(uint32_t);
+	bool openIntegerIndexPage(uint32_t, int64_t, bool front);
 
 	void close();
 
 	OidCell pushCell(size_t payloadSize, uint64_t oid);
 	bool addToScheme(SchemeCell *, uint64_t oid, uint32_t page, uint32_t offset);
+	bool addToIntegerIndex(IndexCell *, uint64_t oid, uint32_t page, uint32_t offset, int64_t value);
+	bool replaceIntegerIndex(IndexCell *, mem::SpanView<IntegerIndexPayload>);
 
-	TreePage * splitPage(TreePage *, uint64_t oidValue, PageType type, uint32_t *rootPageLocation = nullptr);
+	TreePage * splitPage(TreePage *, int64_t oidValue, PageType type, uint32_t *rootPageLocation = nullptr);
+	TreePage * splitPageBalanced(TreePage *, int64_t oidValue, PageType type, uint32_t *rootPageLocation = nullptr);
 
 	OidCell getOidCell(uint64_t, bool writable = false);
 	OidCell getOidCell(const OidPosition &, bool writable = false);
@@ -171,10 +177,12 @@ struct TreeStack {
 	OidPosition emplaceScheme();
 	OidPosition emplaceIndex(uint64_t oid);
 
+	const PageNode *allocatePage(PageType);
 	const PageNode *openPage(uint32_t idx, OpenMode);
 	void closePage(const PageNode *, bool force = false);
 
 	TreePageIterator next(TreePageIterator, bool close = false);
+	TreePageIterator prev(TreePageIterator, bool close = false);
 };
 
 }

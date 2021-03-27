@@ -30,31 +30,55 @@
 
 namespace stappler::xenolith {
 
-class Pipeline : public Ref {
+class Pipeline final : public Ref {
 public:
+	virtual ~Pipeline();
+
+	bool init(PipelineCache *, Rc<vk::Pipeline>);
+	bool init(PipelineCache *, const draw::PipelineParams &);
+
+	void set(Rc<vk::Pipeline>);
+
+	StringView getName() const;
+
 protected:
-	StringView _name;
+	friend class PipelineCache;
+
+	PipelineCache *_source;
 	draw::PipelineParams _params;
 	Rc<vk::Pipeline> _pipeline;
 };
 
 class PipelineCache final : public Ref {
 public:
-	using Callback = Function<void(Pipeline *)>;
+	using PipelineResponse = draw::PipelineResponse;
+	using PipelineRequest = draw::PipelineRequest;
+
+	using Callback = Function<void(StringView, PipelineResponse *)>;
 	using CallbackMap = Map<String, Vector<Callback>>;
 
-	bool init();
-	void invalidate();
+	bool init(Director *);
 	void reload();
 
-	void addPipeline(StringView, draw::PipelineParams, const Callback &cb);
+	/** Request pipeline compilation */
+	bool request(PipelineRequest &&);
+
+	/** Drop pipeline request result, unload pipelines
+	 * It's only request for graphics core to unload, not actual unload */
+	bool revoke(StringView requestName);
+
+	Rc<Pipeline> get(StringView);
 
 protected:
+	friend class Pipeline;
 
+	void purge(Pipeline *);
 
-	Map<String, Rc<Pipeline>> _pipelines;
+	Director *_director = nullptr;
+	Map<String, PipelineRequest> _requests;
+	Map<String, PipelineResponse> _pipelines;
+	Map<String, Pipeline *> _objects;
 	CallbackMap _callbackMap;
-	thread::TaskQueue _queue;
 };
 
 }

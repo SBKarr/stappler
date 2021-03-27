@@ -87,6 +87,13 @@ void ThreadInfo::setMainThread() {
 	tl_threadInfo.managed = true;
 }
 
+void ThreadInfo::setThreadInfo(uint32_t t, uint32_t w, StringView name, bool m) {
+	tl_threadInfo.threadId = t;
+	tl_threadInfo.workerId = w;
+	tl_threadInfo.name = name;
+	tl_threadInfo.managed = m;
+}
+
 class _SingleTaskWorker : public ThreadHandlerInterface {
 public:
 	_SingleTaskWorker(const Rc<TaskQueue> &q, Rc<Task> &&task, memory::pool_t *p)
@@ -114,7 +121,9 @@ public:
 			memory::pool::pop();
 
 			_task->setSuccessful(ret);
-			_queue->onMainThread(std::move(_task));
+			if (!_task->getCompleteTasks().empty()) {
+				_queue->onMainThread(std::move(_task));
+			}
 
 			memory::pool::destroy(pool);
 			memory::pool::terminate();
@@ -441,6 +450,10 @@ void Worker::threadInit() {
 	tl_threadInfo.workerId = _workerId;
 	tl_threadInfo.name = _name;
 	tl_threadInfo.managed = true;
+
+#if LINUX
+	pthread_setname_np(pthread_self(), _name.data());
+#endif
 }
 
 bool Worker::worker() {

@@ -31,6 +31,7 @@ XENOLITH_SRCS_DIRS += \
 	components/layout \
 	components/xenolith/core \
 	components/xenolith/gl \
+	components/xenolith/nodes \
 
 XENOLITH_SRCS_OBJS += \
 	components/xenolith/platform/XLPlatform.scu.cpp

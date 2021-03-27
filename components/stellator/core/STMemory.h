@@ -61,8 +61,10 @@ inline auto perform(const Callback &cb) {
 	struct Context {
 		Context() {
 			pool = pool::create(pool::acquire());
+			pool::push(pool);
 		}
 		~Context() {
+			pool::pop();
 			pool::destroy(pool);
 		}
 

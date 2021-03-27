@@ -88,9 +88,9 @@ struct DrawBufferTask {
 class DrawDevice : public VirtualDevice {
 public:
 	virtual ~DrawDevice();
-	bool init(Rc<Instance>, Rc<Allocator>, VkQueue, uint32_t qIdx);
+	bool init(Rc<Instance>, Rc<Allocator>, VkQueue, uint32_t qIdx, VkFormat format);
 
-	bool spawnWorkers(thread::TaskQueue &, size_t, const Instance::PresentationOptions &, VkFormat format);
+	bool spawnWorkers(thread::TaskQueue &, size_t);
 	void invalidate();
 
 	Vector<VkCommandBuffer> fillBuffers(thread::TaskQueue &, DrawFrameInfo &frame);
@@ -99,13 +99,16 @@ public:
 
 	RenderPass *getDefaultRenderPass() const { return _defaultRenderPass; }
 
-protected:
-	friend class PresentationDevice;
+	Rc<ProgramModule> getProgram(StringView);
+	Rc<ProgramModule> addProgram(Rc<ProgramModule>);
+
+	Rc<Pipeline> getPipeline(StringView);
+	Rc<Pipeline> addPipeline(Rc<Pipeline>);
 
 	PipelineOptions getPipelineOptions(const draw::PipelineParams &) const;
 
-	void addProgram(Rc<ProgramModule>);
-	void addPipeline(StringView, Rc<Pipeline>);
+protected:
+	friend class PresentationDevice;
 
 	DrawBufferTask getTaskForWorker(Vector<DrawBufferTask> &, DrawWorker *);
 
@@ -133,6 +136,46 @@ protected:
 	Rc<Pipeline> _defaultPipeline;
 	Rc<RenderPass> _defaultRenderPass;
 	Rc<DrawWorker> _defaultWorker;
+};
+
+class PipelineCompiler : public Ref {
+public:
+	using Callback = Function<void(draw::PipelineResponse &&)>;
+
+	struct CompilationProcess : public Ref {
+		CompilationProcess(Rc<DrawDevice> dev, Rc<PipelineCompiler> compiler, const draw::PipelineRequest &req, Callback &&cb);
+
+		void runShaders();
+		void runPipelines();
+		void complete();
+
+		std::atomic<size_t> programsInQueue = 0;
+		Map<StringView, Pair<Rc<ProgramModule>, draw::ProgramParams *>> loadedPrograms;
+
+		std::atomic<size_t> pipelineInQueue = 0;
+		Map<StringView, Pair<Rc<Pipeline>, draw::PipelineParams *>> loadedPipelines;
+
+		Rc<DrawDevice> draw;
+		Rc<PipelineCompiler> compiler;
+		draw::PipelineRequest req;
+		Callback onComplete;
+		Rc<CompilationProcess> next;
+	};
+
+	virtual ~PipelineCompiler();
+	bool init();
+
+	void compile(Rc<DrawDevice> dev, const draw::PipelineRequest &req, Callback &&cb);
+	void update();
+	void compileNext(Rc<CompilationProcess>);
+	void invalidate();
+
+	Rc<thread::TaskQueue> getQueue() const { return _queue; }
+
+protected:
+	Mutex _processMutex;
+	Rc<CompilationProcess> _process;
+	Rc<thread::TaskQueue> _queue;
 };
 
 }

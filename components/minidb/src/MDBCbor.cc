@@ -24,6 +24,10 @@ THE SOFTWARE.
 #include "MDBTransaction.h"
 #include "MDBCbor.h"
 
+#define LZ4_HC_STATIC_LINKING_ONLY 1
+#include "lz4hc.h"
+#include "brotli/decode.h"
+
 namespace db::minidb {
 
 struct MapEncoder {
@@ -374,6 +378,295 @@ mem::Value readPayload(uint8_p ptr, const mem::Vector<mem::StringView> &filter, 
 		ret.setInteger(oid, "__oid");
 	}
 	return ret;
+}
+
+void compressData(const mem::Value &data, mem::BytesView dict, const mem::Callback<void(OidType, mem::BytesView)> &cb) {
+	struct SubAlloc {
+		~SubAlloc() {
+			for (auto &it : suballocs) {
+				free(it);
+			}
+
+			suballocs.clear();
+		}
+
+		void *alloc(size_t s) { auto ret = malloc(s); suballocs.emplace_back(ret); return ret; }
+
+		mem::Vector<void *> suballocs;
+	};
+
+	SubAlloc sub;
+#define SUBALLOC(nbytes) (((nbytes) < 1_MiB) ? alloca(nbytes) : sub.alloc(nbytes))
+//#define SUBALLOC(nbytes) sub.alloc(nbytes)
+
+	uint8_t *compressed = nullptr;
+	size_t compressedSize = 0;
+	bool compressedWithDict = false;
+
+	auto payloadSize = getPayloadSize(PageType::OidContent, data);
+	uint8_p sourceBytes = uint8_p(SUBALLOC(payloadSize));
+	writePayload(PageType::OidContent, sourceBytes, data);
+
+	auto c = stappler::data::EncodeFormat::Compression::LZ4HCCompression;
+	auto bufferSize = stappler::data::getCompressBounds(payloadSize, c);
+	uint8_p compressBytes = uint8_p(SUBALLOC(bufferSize + 4));
+
+	if (dict.empty()) {
+		auto encodeSize = stappler::data::compressData(sourceBytes, payloadSize, compressBytes + 4, bufferSize, c);
+
+		if (size_t(encodeSize + 4) / 4 >= payloadSize / 5) {
+			auto bc = stappler::data::EncodeFormat::Compression::Brotli;
+			auto bufferSize = stappler::data::getCompressBounds(payloadSize, bc);
+			auto brotliCompressBytes = uint8_p(SUBALLOC(bufferSize + 4));
+			auto brotliEncodeSize = stappler::data::compressData(sourceBytes, payloadSize, brotliCompressBytes + 4, bufferSize, bc);
+			if (brotliEncodeSize < size_t(encodeSize)) {
+				compressBytes = brotliCompressBytes;
+				encodeSize = int(brotliEncodeSize);
+				c = bc;
+			}
+		}
+
+		if (encodeSize == 0 || (encodeSize + 4 > payloadSize)) {
+			compressed = sourceBytes;
+			compressedSize = payloadSize;
+		} else {
+			stappler::data::writeCompressionMark(compressBytes, payloadSize, c);
+			compressed = compressBytes;
+			compressedSize = encodeSize + 4;
+		}
+	} else {
+		auto state = stappler::data::getLZ4EncodeState();
+		LZ4_streamHC_t *const ctx = LZ4_initStreamHC(state, sizeof(*ctx));
+		LZ4_resetStreamHC_fast(ctx, LZ4HC_CLEVEL_MAX);
+		LZ4_loadDictHC(ctx, (const char*) dict.data(), int(dict.size()));
+
+		const int offSize = ((payloadSize <= 0xFFFF) ? 2 : 4);
+		int encodeSize = LZ4_compress_HC_continue(ctx,
+				(const char *)sourceBytes, (char *)compressBytes + 4 + offSize, payloadSize, bufferSize - offSize);
+		if (encodeSize > 0) {
+			if (payloadSize <= 0xFFFF) {
+				uint16_t sz = payloadSize;
+				memcpy(compressBytes + 4, &sz, sizeof(uint16_t));
+			} else {
+				uint32_t sz = payloadSize;
+				memcpy(compressBytes + 4, &sz, sizeof(uint32_t));
+			}
+			encodeSize += offSize;
+
+			if (size_t(encodeSize + 4) / 4 >= payloadSize / 5) {
+				auto bc = stappler::data::EncodeFormat::Compression::Brotli;
+				auto bufferSize = stappler::data::getCompressBounds(payloadSize, bc);
+				auto brotliCompressBytes = uint8_p(SUBALLOC(bufferSize + 4));
+				auto brotliEncodeSize = stappler::data::compressData(sourceBytes, payloadSize, brotliCompressBytes + 4, bufferSize, bc);
+				if (brotliEncodeSize < size_t(encodeSize)) {
+					compressBytes = brotliCompressBytes;
+					encodeSize = int(brotliEncodeSize);
+					c = bc;
+				} else {
+					compressedWithDict = true;
+				}
+			} else {
+				compressedWithDict = true;
+			}
+
+			if (encodeSize == 0 || (size_t(encodeSize + 4) > payloadSize)) {
+				compressed = sourceBytes;
+				compressedSize = payloadSize;
+			} else {
+				stappler::data::writeCompressionMark(compressBytes, payloadSize, c);
+				compressed = compressBytes;
+				compressedSize = encodeSize + 4;
+			}
+		}
+	}
+#undef SUBALLOC
+
+	if (!compressedSize) {
+		cb(OidType::Object, mem::BytesView(sourceBytes, payloadSize));
+	} else {
+		cb(compressedWithDict ? OidType::ObjectCompressedWithDictionary : OidType::ObjectCompressed,
+				mem::BytesView(compressed, compressedSize));
+	}
+}
+
+static bool decompressWithDict(mem::BytesView dict, const char *src, char *dest, size_t srcSize, size_t destSize) {
+	if (!dict.empty()) {
+		if (LZ4_decompress_safe_usingDict(src, dest, srcSize, destSize, (const char *)dict.data(), dict.size()) > 0) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+mem::Value decodeData(const OidCell &cell, mem::BytesView dict, const mem::Vector<mem::StringView> &names) {
+	struct SubAlloc {
+		~SubAlloc() {
+			for (auto &it : suballocs) {
+				free(it);
+			}
+
+			suballocs.clear();
+		}
+
+		void *alloc(size_t s) { auto ret = malloc(s); suballocs.emplace_back(ret); return ret; }
+
+		mem::Vector<void *> suballocs;
+	};
+
+	SubAlloc sub;
+
+#define SUBALLOC(nbytes) (((nbytes) < 1_MiB) ? alloca(nbytes) : sub.alloc(nbytes))
+
+	size_t dataSize = 0, offset = 0, uncompressSize = 0;
+	uint8_p b = nullptr, u = nullptr;
+	stappler::data::DataFormat ff = stappler::data::DataFormat::Unknown;
+	switch (OidType(cell.header->oid.type)) {
+	case OidType::Object:
+		if (cell.pages.size() == 1) {
+			return readPayload(uint8_p(cell.pages.front().data()), names, cell.header->oid.value);
+		} else {
+			for (auto &iit : cell.pages) {
+				dataSize += iit.size();
+			}
+			b = uint8_p(SUBALLOC(dataSize));
+			for (auto &iit : cell.pages) {
+				memcpy(b + offset, iit.data(), iit.size());
+				offset += iit.size();
+			}
+			return readPayload(b, names, cell.header->oid.value);
+		}
+		break;
+	case OidType::ObjectCompressed: {
+		for (auto &iit : cell.pages) {
+			dataSize += iit.size();
+		}
+		if (cell.pages.size() == 1) {
+			b = uint8_p(cell.pages.front().data());
+		} else {
+			b = uint8_p(SUBALLOC(dataSize));
+			for (auto &iit : cell.pages) {
+				memcpy(b + offset, iit.data(), iit.size());
+				offset += iit.size();
+			}
+		}
+
+		ff = stappler::data::detectDataFormat(b, dataSize);
+		switch (ff) {
+		case stappler::data::DataFormat::Cbor: {
+			return readPayload(b, names, cell.header->oid.value);
+			break;
+		}
+		case stappler::data::DataFormat::LZ4_Short: {
+			b += 4; dataSize -= 4;
+			uncompressSize = mem::BytesView(b, dataSize).readUnsigned16(); b += 2; dataSize -= 2;
+			u = uint8_p(SUBALLOC(uncompressSize));
+			auto err = LZ4_decompress_safe((const char *)b, (char *)u, dataSize, uncompressSize);
+			if (err > 0) {
+				return readPayload(u, names, cell.header->oid.value);
+			} else {
+				std::cout << "Fail to decompress payload for " << cell.header->oid.value << "\n";
+			}
+			break;
+		}
+		case stappler::data::DataFormat::LZ4_Word: {
+			b += 4; dataSize -= 4;
+			uncompressSize = mem::BytesView(b, dataSize - 4).readUnsigned32(); b += 4; dataSize -= 4;
+			u = uint8_p(SUBALLOC(uncompressSize));
+			auto err = LZ4_decompress_safe((const char *)b, (char *)u, dataSize, uncompressSize);
+			if (err > 0) {
+				return readPayload(u, names, cell.header->oid.value);
+			} else {
+				std::cout << "Fail to decompress payload for " << cell.header->oid.value << "\n";
+			}
+			break;
+		}
+		case stappler::data::DataFormat::Brotli_Short: {
+			b += 4; dataSize -= 4;
+			uncompressSize = mem::BytesView(b, dataSize).readUnsigned16(); b += 2; dataSize -= 2;
+			u = uint8_p(SUBALLOC(uncompressSize));
+
+			size_t ret = uncompressSize;
+			auto err = BrotliDecoderDecompress(dataSize, b, &ret, u);
+			if (err == BROTLI_DECODER_RESULT_SUCCESS) {
+				return readPayload(u, names, cell.header->oid.value);
+			} else {
+				std::cout << "Fail to decompress payload\n";
+			}
+			break;
+		}
+		case stappler::data::DataFormat::Brotli_Word: {
+			b += 4; dataSize -= 4;
+			uncompressSize = mem::BytesView(b, dataSize - 4).readUnsigned32(); b += 4; dataSize -= 4;
+			u = uint8_p(SUBALLOC(uncompressSize));
+
+			size_t ret = uncompressSize;
+			auto err = BrotliDecoderDecompress(dataSize, b, &ret, u);
+			if (err == BROTLI_DECODER_RESULT_SUCCESS) {
+				return readPayload(u, names, cell.header->oid.value);
+			} else {
+				std::cout << "Fail to decompress payload\n";
+			}
+			break;
+		}
+		default:
+			std::cout << "Invalid payload data format\n";
+			break;
+		}
+		break;
+	}
+	case OidType::ObjectCompressedWithDictionary:
+		for (auto &iit : cell.pages) {
+			dataSize += iit.size();
+		}
+		if (cell.pages.size() == 1) {
+			b = uint8_p(cell.pages.front().data());
+		} else {
+			b = uint8_p(SUBALLOC(dataSize));
+			for (auto &iit : cell.pages) {
+				memcpy(b + offset, iit.data(), iit.size());
+				offset += iit.size();
+			}
+		}
+
+		ff = stappler::data::detectDataFormat(b, dataSize);
+		switch (ff) {
+			case stappler::data::DataFormat::Cbor: {
+				return readPayload(b, names, cell.header->oid.value);
+				break;
+			}
+			case stappler::data::DataFormat::LZ4_Short: {
+				b += 4; dataSize -= 4;
+				uncompressSize = mem::BytesView(b, dataSize).readUnsigned16(); b += 2; dataSize -= 2;
+				u = uint8_p(SUBALLOC(uncompressSize));
+				if (decompressWithDict(dict, (const char *)b, (char *)u, dataSize, uncompressSize) > 0) {
+					return readPayload(u, names, cell.header->oid.value);
+				} else {
+					std::cout << "Fail to decompress payload\n";
+				}
+				break;
+			}
+			case stappler::data::DataFormat::LZ4_Word: {
+				b += 4; dataSize -= 4;
+				uncompressSize = mem::BytesView(b, dataSize).readUnsigned32(); b += 4; dataSize -= 4;
+				u = uint8_p(SUBALLOC(uncompressSize));
+				if (decompressWithDict(dict, (const char *)b, (char *)u, dataSize, uncompressSize) > 0) {
+					return readPayload(u, names, cell.header->oid.value);
+				} else {
+					std::cout << "Fail to decompress payload\n";
+				}
+				break;
+			default:
+				std::cout << "Invalid payload data format\n";
+				break;
+			}
+		}
+		break;
+	default:
+		break;
+	}
+#undef SUBALLOC
+	return mem::Value();
 }
 
 }

@@ -174,7 +174,7 @@ size_t writeVarUint(uint8_t *p, uint64_t id) {
 	return 0;
 }
 
-const mem::Callback<void(mem::StringView)> &operator<<(const mem::Callback<void(mem::StringView)> &cb, mem::BytesView v) {
+const mem::Function<void(mem::StringView)> &operator<<(const mem::Function<void(mem::StringView)> &cb, mem::BytesView v) {
 	for (size_t i = 0; i < v.size(); ++ i) {
 		cb << stappler::base16::charToHex(*((const char *)(v.data() + i))) << " ";
 	}
@@ -196,18 +196,20 @@ const mem::Callback<void(mem::StringView)> &operator<<(const mem::Callback<void(
 	return cb;
 }*/
 
-const mem::Callback<void(mem::StringView)> &operator << (const mem::Callback<void(mem::StringView)> &cb, PageType t) {
+const mem::Function<void(mem::StringView)> &operator << (const mem::Function<void(mem::StringView)> &cb, PageType t) {
 	switch (t) {
 	case PageType::OidTable: cb("OidTable"); break;
 	case PageType::OidContent: cb("OidContent"); break;
 	case PageType::SchemeTable: cb("SchemeTable"); break;
 	case PageType::SchemeContent: cb("SchemeContent"); break;
+	case PageType::IntIndexTable: cb("IntIndexTable"); break;
+	case PageType::IntIndexContent: cb("IntIndexContent"); break;
 	default: cb("Unknown"); break;
 	}
 	return cb;
 }
 
-const mem::Callback<void(mem::StringView)> &operator << (const mem::Callback<void(mem::StringView)> &cb, OidType t) {
+const mem::Function<void(mem::StringView)> &operator << (const mem::Function<void(mem::StringView)> &cb, OidType t) {
 	switch (t) {
 	case OidType::Object: cb("Object"); break;
 	case OidType::ObjectCompressed: cb("ObjectCompressed"); break;
@@ -222,12 +224,14 @@ const mem::Callback<void(mem::StringView)> &operator << (const mem::Callback<voi
 	return cb;
 }
 
-void inspectTree(const Transaction &t, uint32_t root, const mem::Callback<void(mem::StringView)> &cb, uint32_t depth) {
-	mem::Map<uint64_t, uint32_t> pages;
+void inspectTree(const Transaction &t, uint32_t root, const InspectOptions &opts) {
+	mem::Vector<mem::Pair<int64_t, uint32_t>> pages;
+
+	uint32_t depth = opts.depth;
 
 	auto page = t.openPage(root,  OpenMode::Read);
-	cb << "<< Inspect root: " << uint64_t(root) << " >>\n";
-	inspectTreePage(cb, page->bytes.data(), page->bytes.size(), &pages);
+	opts.cb << "<< Inspect root: " << uint64_t(root) << " >>\n";
+	inspectTreePage(opts, page->bytes.data(), page->bytes.size(), &pages);
 	t.closePage(page);
 
 	size_t xdepth = 1;
@@ -237,8 +241,8 @@ void inspectTree(const Transaction &t, uint32_t root, const mem::Callback<void(m
 
 		for (auto &it : tmp) {
 			auto page = t.openPage(it.second,  OpenMode::Read);
-			cb << "<< Inspect depth " << uint64_t(xdepth) << " page: " << uint64_t(it.second) << " >>\n";
-			inspectTreePage(cb, page->bytes.data(), page->bytes.size(), &pages, false);
+			opts.cb << "<< Inspect depth " << uint64_t(xdepth) << " page: " << uint64_t(it.second) << " >>\n";
+			inspectTreePage(opts, page->bytes.data(), page->bytes.size(), &pages);
 			t.closePage(page);
 		}
 
@@ -247,11 +251,17 @@ void inspectTree(const Transaction &t, uint32_t root, const mem::Callback<void(m
 	}
 }
 
-void inspectTreePage(const mem::Callback<void(mem::StringView)> &cb, const void *iptr, size_t size, mem::Map<uint64_t, uint32_t> *pages, bool deepInspect) {
+void inspectTreePage(const InspectOptions &opts, const void *iptr, size_t size, mem::Vector<mem::Pair<int64_t, uint32_t>> *pages) {
 	auto PageNumber = [] (uint32_t v) -> mem::String {
 		return (v == UndefinedPage) ? "Undefined" : stappler::toString(v);
 	};
 
+	bool hideData = !opts.dataInspect;
+	auto WriteData = [hideData] (mem::BytesView view) {
+		return hideData ? mem::BytesView() : view;
+	};
+
+	uint32_t right = UndefinedPage;
 	uint8_p ptr = uint8_p(iptr);
 
 	PageType type = PageType::None;
@@ -260,69 +270,64 @@ void inspectTreePage(const mem::Callback<void(mem::StringView)> &cb, const void 
 		auto h = (StorageHeader *)ptr;
 		auto tree = (OidTreePageHeader *)(uint8_p(ptr) + sizeof(StorageHeader));
 
-		cb << "StorageHeader:\n";
-		cb << "\t" << mem::BytesView((const uint8_p)h->title, 6) << mem::StringView((const char *)h->title, 6) << " - title - (0 - 6)\n";
-		cb << "\t" << mem::BytesView(ptr + 6, 1) << "- " << uint64_t(h->version) << " - version - (6 - 7)\n";
-		cb << "\t" << mem::BytesView(ptr + 7, 1) << "- " << uint64_t(h->pageSize) << " (" << uint64_t(1 << h->pageSize) << " bytes) - pageSize - (7 - 8)\n";
-		cb << "\t" << mem::BytesView(ptr + 8, 8) << "- " << uint64_t(h->mtime) << " - mtime - (8 - 16)\n";
-		cb << "\t" << mem::BytesView(ptr + 16, 8) << "- " << h->oid << " - oid - (16 - 24)\n";
-		cb << "\t" << mem::BytesView(ptr + 24, 4) << "- " << uint64_t(h->pageCount) << " - pageCount - (24 - 28)\n";
-		cb << "\t" << mem::BytesView(ptr + 28, 4) << "- " << uint64_t(h->root) << " - root - (28 - 32)\n";
-		cb << "OidTreeHeader:\n";
-		cb << "\t" << mem::BytesView(ptr + 32, 1) << "- " << uint64_t(tree->type) << " " << PageType(tree->type) << " - type - (32 - 33)\n";
-		cb << "\t" << mem::BytesView(ptr + 33, 3) << "- " << uint64_t(tree->ncells) << " - ncells - (33 - 36)\n";
-		cb << "\t" << mem::BytesView(ptr + 36, 4) << "- " << PageNumber(tree->root) << " - root - (36 - 40)\n";
-		cb << "\t" << mem::BytesView(ptr + 40, 4) << "- " << PageNumber(tree->prev) << " - prev - (40 - 44)\n";
-		cb << "\t" << mem::BytesView(ptr + 44, 4) << "- " << PageNumber(tree->next) << " - next - (44 - 48)\n";
-		cb << "\t" << mem::BytesView(ptr + 48, 4) << "- " << PageNumber(tree->right) << " - right - (48 - 52)\n";
+		opts.cb << "StorageHeader:\n";
+		opts.cb << "\t" << WriteData(mem::BytesView((const uint8_p)h->title, 6)) << mem::StringView((const char *)h->title, 6) << " - title - (0 - 6)\n";
+		opts.cb << "\t" << WriteData(mem::BytesView(ptr + 6, 1)) << "- " << uint64_t(h->version) << " - version - (6 - 7)\n";
+		opts.cb << "\t" << WriteData(mem::BytesView(ptr + 7, 1)) << "- " << uint64_t(h->pageSize) << " (" << uint64_t(1 << h->pageSize) << " bytes) - pageSize - (7 - 8)\n";
+		opts.cb << "\t" << WriteData(mem::BytesView(ptr + 8, 8)) << "- " << uint64_t(h->mtime) << " - mtime - (8 - 16)\n";
+		opts.cb << "\t" << WriteData(mem::BytesView(ptr + 16, 8)) << "- " << h->oid << " - oid - (16 - 24)\n";
+		opts.cb << "\t" << WriteData(mem::BytesView(ptr + 24, 4)) << "- " << uint64_t(h->pageCount) << " - pageCount - (24 - 28)\n";
+		opts.cb << "\t" << WriteData(mem::BytesView(ptr + 28, 4)) << "- " << uint64_t(h->root) << " - root - (28 - 32)\n";
+		opts.cb << "OidTreeHeader:\n";
+		opts.cb << "\t" << WriteData(mem::BytesView(ptr + 32, 1)) << "- " << uint64_t(tree->type) << " " << PageType(tree->type) << " - type - (32 - 33)\n";
+		opts.cb << "\t" << WriteData(mem::BytesView(ptr + 33, 3)) << "- " << uint64_t(tree->ncells) << " - ncells - (33 - 36)\n";
+		opts.cb << "\t" << WriteData(mem::BytesView(ptr + 36, 4)) << "- " << PageNumber(tree->root) << " - root - (36 - 40)\n";
+		opts.cb << "\t" << WriteData(mem::BytesView(ptr + 40, 4)) << "- " << PageNumber(tree->prev) << " - prev - (40 - 44)\n";
+		opts.cb << "\t" << WriteData(mem::BytesView(ptr + 44, 4)) << "- " << PageNumber(tree->next) << " - next - (44 - 48)\n";
+		opts.cb << "\t" << WriteData(mem::BytesView(ptr + 48, 4)) << "- " << PageNumber(tree->right) << " - right - (48 - 52)\n";
 
 		if (pages) {
-			pages->emplace(stappler::maxOf<uint64_t>(), tree->right);
+			right = tree->right;
 		}
 
 		type = PageType(tree->type);
 		ncells = tree->ncells;
 		ptr += sizeof(StorageHeader) + sizeof(OidTreePageHeader);
 	} else {
-		cb << "Header:\n";
+		opts.cb << "Header:\n";
 		auto h = (VirtualPageHeader *)ptr;
-		cb << "\t" << mem::BytesView(ptr, 1) << "- " << uint64_t(h->type) << " " << PageType(h->type) << " - type - (0 - 1)\n";
-		cb << "\t" << mem::BytesView(ptr + 1, 3) << "- " << uint64_t(h->ncells) << " - ncells - (1 - 4)\n";
+		opts.cb << "\t" << WriteData(mem::BytesView(ptr, 1)) << "- " << uint64_t(h->type) << " " << PageType(h->type) << " - type - (0 - 1)\n";
+		opts.cb << "\t" << WriteData(mem::BytesView(ptr + 1, 3)) << "- " << uint64_t(h->ncells) << " - ncells - (1 - 4)\n";
 
 		type = PageType(h->type);
 		ncells = h->ncells;
 		switch (type) {
 		case PageType::None:
-			cb << "\tUdefined page type\n";
+			opts.cb << "\tUdefined page type\n";
 			break;
 		case PageType::OidTable:
-		case PageType::SchemeTable: {
+		case PageType::SchemeTable:
+		case PageType::IntIndexTable: {
 			auto tree = (OidTreePageHeader *)h;
-			cb << "\t" << mem::BytesView(ptr + 4, 4) << "- " << PageNumber(tree->root) << " - root - (4 - 8)\n";
-			cb << "\t" << mem::BytesView(ptr + 8, 4) << "- " << PageNumber(tree->prev) << " - prev - (8 - 12)\n";
-			cb << "\t" << mem::BytesView(ptr + 12, 4) << "- " << PageNumber(tree->next) << " - next - (12 - 16)\n";
-			cb << "\t" << mem::BytesView(ptr + 16, 4) << "- " << PageNumber(tree->right) << " - right - (16 - 20)\n";
+			opts.cb << "\t" << WriteData(mem::BytesView(ptr + 4, 4)) << "- " << PageNumber(tree->root) << " - root - (4 - 8)\n";
+			opts.cb << "\t" << WriteData(mem::BytesView(ptr + 8, 4)) << "- " << PageNumber(tree->prev) << " - prev - (8 - 12)\n";
+			opts.cb << "\t" << WriteData(mem::BytesView(ptr + 12, 4)) << "- " << PageNumber(tree->next) << " - next - (12 - 16)\n";
+			opts.cb << "\t" << WriteData(mem::BytesView(ptr + 16, 4)) << "- " << PageNumber(tree->right) << " - right - (16 - 20)\n";
 			ptr += sizeof(OidTreePageHeader);
 
 			if (pages) {
-				pages->emplace(stappler::maxOf<uint64_t>(), tree->right);
+				right = tree->right;
 			}
 			break;
 		}
-		case PageType::OidContent: {
+		case PageType::OidContent:
+		case PageType::SchemeContent:
+		case PageType::IntIndexContent: {
 			auto tree = (OidContentPageHeader *)h;
-			cb << "\t" << mem::BytesView(ptr + 4, 4) << "- " << PageNumber(tree->root) << " - root - (4 - 8)\n";
-			cb << "\t" << mem::BytesView(ptr + 8, 4) << "- " << PageNumber(tree->prev) << " - prev - (8 - 12)\n";
-			cb << "\t" << mem::BytesView(ptr + 12, 4) << "- " << PageNumber(tree->next) << " - next - (12 - 16)\n";
+			opts.cb << "\t" << WriteData(mem::BytesView(ptr + 4, 4)) << "- " << PageNumber(tree->root) << " - root - (4 - 8)\n";
+			opts.cb << "\t" << WriteData(mem::BytesView(ptr + 8, 4)) << "- " << PageNumber(tree->prev) << " - prev - (8 - 12)\n";
+			opts.cb << "\t" << WriteData(mem::BytesView(ptr + 12, 4)) << "- " << PageNumber(tree->next) << " - next - (12 - 16)\n";
 			ptr += sizeof(OidContentPageHeader);
-			break;
-		}
-		case PageType::SchemeContent: {
-			auto tree = (SchemeContentPageHeader *)h;
-			cb << "\t" << mem::BytesView(ptr + 4, 4) << "- " << PageNumber(tree->root) << " - root - (4 - 8)\n";
-			cb << "\t" << mem::BytesView(ptr + 8, 4) << "- " << PageNumber(tree->prev) << " - prev - (8 - 12)\n";
-			cb << "\t" << mem::BytesView(ptr + 12, 4) << "- " << PageNumber(tree->next) << " - next - (12 - 16)\n";
-			ptr += sizeof(SchemeContentPageHeader);
 			break;
 		}
 		}
@@ -333,28 +338,49 @@ void inspectTreePage(const mem::Callback<void(mem::StringView)> &cb, const void 
 		break;
 	case PageType::OidTable:
 	case PageType::SchemeTable: {
-		cb << "Cells:\n";
+		opts.cb << "Cells:\n";
 
 		for (uint32_t i = 0; i < ncells; ++ i) {
 			auto cell = (OidIndexCell *)ptr;
-			cb << "\t" << mem::BytesView((uint8_t *)cell, sizeof(OidIndexCell))
+			opts.cb << "\t" << WriteData(mem::BytesView((uint8_t *)cell, sizeof(OidIndexCell)))
 					<< " Cell: (page) " << uint64_t(cell->page) << " - (oid) " << uint64_t(cell->value) << "\n";
 			ptr += sizeof(OidIndexCell);
 
 			if (pages) {
-				pages->emplace(uint64_t(cell->value), uint32_t(cell->page));
+				pages->emplace_back(int64_t(cell->value), uint32_t(cell->page));
 			}
 		}
 
 		auto unallocated = size - (ptr - uint8_p(iptr));
 
-		cb << "Unallocated:\n";
-		cb << "\tUnallocated: " << uint64_t(unallocated) << "\n";
+		opts.cb << "Unallocated:\n";
+		opts.cb << "\tUnallocated: " << uint64_t(unallocated) << "\n";
+
+		break;
+	}
+	case PageType::IntIndexTable: {
+		opts.cb << "Cells:\n";
+
+		for (uint32_t i = 0; i < ncells; ++ i) {
+			auto cell = (IntegerIndexCell *)ptr;
+			opts.cb << "\t" << WriteData(mem::BytesView((uint8_t *)cell, sizeof(IntegerIndexCell)))
+					<< " Cell:  (value) " << uint64_t(cell->value) << "  (page) " << uint64_t(cell->page) << "\n";
+			ptr += sizeof(IntegerIndexCell);
+
+			if (pages) {
+				pages->emplace_back(int64_t(cell->value), uint32_t(cell->page));
+			}
+		}
+
+		auto unallocated = size - (ptr - uint8_p(iptr));
+
+		opts.cb << "Unallocated:\n";
+		opts.cb << "\tUnallocated: " << uint64_t(unallocated) << "\n";
 
 		break;
 	}
 	case PageType::OidContent: {
-		cb << "Objects:\n";
+		opts.cb << "Objects:\n";
 
 		uint32_p cells = uint32_p(uint8_p(iptr) + size - sizeof(uint32_t));
 
@@ -367,67 +393,67 @@ void inspectTreePage(const mem::Callback<void(mem::StringView)> &cb, const void 
 		uint8_p last = ptr;
 		for (auto &it : ptrs) {
 			auto h = (OidCellHeader *)(uint8_p(iptr) + it);
-			cb << "\t(" << uint64_t(it) << " - " << uint64_t(it + sizeof(OidCellHeader)) << " - "
+			opts.cb << "\t(" << uint64_t(it) << " - " << uint64_t(it + sizeof(OidCellHeader)) << " - "
 					<< uint64_t(it + sizeof(OidCellHeader) + h->size) << ") "
 					<< "Cell: (oid) " << uint64_t(h->oid.value) << "  (type) " << uint64_t(h->oid.type) << "  (flags) " << uint64_t(h->oid.flags);
 			switch (OidType(h->oid.type)) {
 			case OidType::Object:
 			case OidType::ObjectCompressed:
 			case OidType::ObjectCompressedWithDictionary:
-				cb << "\t\t" << OidType(h->oid.type) << "  (size) " << uint64_t(h->size) << "  (nextObject) "
+				opts.cb << "\t\t" << OidType(h->oid.type) << "  (size) " << uint64_t(h->size) << "  (nextObject) "
 						<< uint64_t(h->nextObject);
 				if (h->nextPage != UndefinedPage) {
-					cb << "  (nextPage) " << PageNumber(h->nextPage);
+					opts.cb << "  (nextPage) " << PageNumber(h->nextPage);
 				}
-				cb << "\n";
+				opts.cb << "\n";
 				break;
 			case OidType::Scheme:
-				cb << "\t\t" << OidType(h->oid.type) << "  (root) " << PageNumber(h->nextPage) << "  (counter) "
+				opts.cb << "\t\t" << OidType(h->oid.type) << "  (root) " << PageNumber(h->nextPage) << "  (counter) "
 						<< uint64_t(h->nextObject) << "\n";
 				break;
 			case OidType::Index:
-				cb << "\t\t" << OidType(h->oid.type) << "  (root) " << PageNumber(h->nextPage) << "  (scheme) "
+				opts.cb << "\t\t" << OidType(h->oid.type) << "  (root) " << PageNumber(h->nextPage) << "  (scheme) "
 						<< uint64_t(h->nextObject) << "\n";
 				break;
 			case OidType::Dictionary:
-				cb << "\t\t" << OidType(h->oid.type) << "  (id) " << uint64_t(h->oid.dictId);
+				opts.cb << "\t\t" << OidType(h->oid.type) << "  (id) " << uint64_t(h->oid.dictId);
 				if (h->nextPage != UndefinedPage) {
-					cb << "  (nextPage) " << PageNumber(h->nextPage);
+					opts.cb << "  (nextPage) " << PageNumber(h->nextPage);
 				}
-				cb << "\n";
+				opts.cb << "\n";
 				break;
 			case OidType::Manifest:
-				cb << "\t\t" << OidType(h->oid.type);
+				opts.cb << "\t\t" << OidType(h->oid.type);
 				if (h->nextPage != UndefinedPage) {
-					cb << "  (nextPage) " << PageNumber(h->nextPage);
+					opts.cb << "  (nextPage) " << PageNumber(h->nextPage);
 				}
-				cb << "\n";
+				opts.cb << "\n";
 				break;
 			case OidType::Continuation:
-				cb << "\t\t" << OidType(h->oid.type) << "  (object) " << uint64_t(h->nextObject);
+				opts.cb << "\t\t" << OidType(h->oid.type) << "  (object) " << uint64_t(h->nextObject);
 				if (h->nextPage != UndefinedPage) {
-					cb << "  (nextPage) " << PageNumber(h->nextPage);
+					opts.cb << "  (nextPage) " << PageNumber(h->nextPage);
 				}
-				cb << "\n";
+				opts.cb << "\n";
 				break;
 			}
 			last = uint8_p(iptr) + it + sizeof(OidCellHeader) + h->size;
 		}
 
 		auto unallocated = size - (last - uint8_p(iptr)) - sizeof(uint32_t) * ncells;
-		cb << "Unallocated:\n";
+		opts.cb << "Unallocated:\n";
 		if (unallocated) {
-			cb << "\t" << "(" << uint64_t(last - uint8_p(iptr)) << " - " << uint64_t(last - uint8_p(iptr) + unallocated) << ") "
+			opts.cb << "\t" << "(" << uint64_t(last - uint8_p(iptr)) << " - " << uint64_t(last - uint8_p(iptr) + unallocated) << ") "
 					<< "Unallocated: " << uint64_t(unallocated) << "\n";
 		} else {
-			cb << "\tUnallocated: " << uint64_t(unallocated) << "\n";
+			opts.cb << "\tUnallocated: " << uint64_t(unallocated) << "\n";
 		}
 
 		cells = uint32_p(uint8_p(iptr) + size) - ncells;
 
-		cb << "Cells:\n";
+		opts.cb << "Cells:\n";
 		for (size_t i = 0; i < ncells; ++ i) {
-			cb << "\t" << "(" << uint64_t(uint8_p(cells) - uint8_p(iptr)) << " - " << uint64_t(uint8_p(cells) - uint8_p(iptr) + sizeof(uint32_t)) << ") "
+			opts.cb << "\t" << "(" << uint64_t(uint8_p(cells) - uint8_p(iptr)) << " - " << uint64_t(uint8_p(cells) - uint8_p(iptr) + sizeof(uint32_t)) << ") "
 					<< "Cell: (offset) " << uint64_t(*cells) << "\n";
 
 			ptrs.emplace_back(*cells);
@@ -437,11 +463,11 @@ void inspectTreePage(const mem::Callback<void(mem::StringView)> &cb, const void 
 		break;
 	}
 	case PageType::SchemeContent: {
-		cb << "Cells:\n";
+		opts.cb << "Cells:\n";
 
 		for (uint32_t i = 0; i < ncells; ++ i) {
 			auto cell = (OidPosition *)ptr;
-			cb << "\t" << mem::BytesView((uint8_t *)cell, sizeof(OidPosition))
+			opts.cb << "\t" << WriteData(mem::BytesView((uint8_t *)cell, sizeof(OidPosition)))
 					<< " Cell: (page) " << uint64_t(cell->page) << "  (offset) " << uint64_t(cell->offset)
 					<< "  (oid) " << uint64_t(cell->value) << "\n";
 			ptr += sizeof(OidPosition);
@@ -449,15 +475,37 @@ void inspectTreePage(const mem::Callback<void(mem::StringView)> &cb, const void 
 
 		auto unallocated = size - (ptr - uint8_p(iptr));
 
-		cb << "Unallocated:\n";
-		cb << "\tUnallocated: " << uint64_t(unallocated) << "\n";
+		opts.cb << "Unallocated:\n";
+		opts.cb << "\tUnallocated: " << uint64_t(unallocated) << "\n";
 
 		break;
+	}
+	case PageType::IntIndexContent: {
+		opts.cb << "Cells:\n";
+
+		for (uint32_t i = 0; i < ncells; ++ i) {
+			auto cell = (IntegerIndexPayload *)ptr;
+			opts.cb << "\t" << WriteData(mem::BytesView((uint8_t *)cell, sizeof(IntegerIndexPayload)))
+					<< " Cell:  (value) " << cell->value << "  (oid) " << uint64_t(cell->position.value)
+					<< "  (page) " << uint64_t(cell->position.page)
+					<< "  (offset) " << uint64_t(cell->position.offset) << "\n";
+			ptr += sizeof(IntegerIndexPayload);
+		}
+
+		auto unallocated = size - (ptr - uint8_p(iptr));
+
+		opts.cb << "Unallocated:\n";
+		opts.cb << "\tUnallocated: " << uint64_t(unallocated) << "\n";
+
 		break;
 	}
 	}
 
-	cb << "\n";
+	opts.cb << "\n";
+
+	if (right != UndefinedPage && pages) {
+		pages->emplace_back(stappler::maxOf<int64_t>(), right);
+	}
 }
 
 mem::Map<PageType, uint32_t> inspectPages(const Transaction &t) {
@@ -466,6 +514,8 @@ mem::Map<PageType, uint32_t> inspectPages(const Transaction &t) {
 	ret.emplace(PageType::OidContent, 0);
 	ret.emplace(PageType::SchemeContent, 0);
 	ret.emplace(PageType::SchemeTable, 0);
+	ret.emplace(PageType::IntIndexContent, 0);
+	ret.emplace(PageType::IntIndexTable, 0);
 
 	auto root = t.getRoot();
 
@@ -493,14 +543,26 @@ mem::Map<PageType, uint32_t> inspectPages(const Transaction &t) {
 				switch (type) {
 				case PageType::OidTable:
 				case PageType::SchemeTable: {
-					if (((OidTreePageHeader *)ptr)->right != UndefinedPage) {
-						tmp.emplace_back(((OidTreePageHeader *)ptr)->right);
-					}
 					ptr += sizeof(OidTreePageHeader);
 					for (uint32_t i = 0; i < ncells; ++ i) {
 						auto cell = (OidIndexCell *)ptr;
 						tmp.emplace_back(uint32_t(cell->page));
 						ptr += sizeof(OidIndexCell);
+					}
+					if (((OidTreePageHeader *)ptr)->right != UndefinedPage) {
+						tmp.emplace_back(((OidTreePageHeader *)ptr)->right);
+					}
+					break;
+				}
+				case PageType::IntIndexTable: {
+					ptr += sizeof(IntIndexTreePageHeader);
+					for (uint32_t i = 0; i < ncells; ++ i) {
+						auto cell = (IntegerIndexCell *)ptr;
+						tmp.emplace_back(uint32_t(cell->page));
+						ptr += sizeof(IntegerIndexCell);
+					}
+					if (((IntIndexTreePageHeader *)ptr)->right != UndefinedPage) {
+						tmp.emplace_back(((IntIndexTreePageHeader *)ptr)->right);
 					}
 					break;
 				}
@@ -530,52 +592,92 @@ mem::Map<PageType, uint32_t> inspectPages(const Transaction &t) {
 	return ret;
 }
 
+static mem::Vector<uint32_t> processContentPages(const Transaction &t, const mem::Vector<uint32_t> &pages,
+		mem::Vector<uint32_t> *ret = nullptr, uint32_t *target = nullptr) {
+	mem::Vector<uint32_t> tmp;
+	for (auto &it : pages) {
+		if (target && *target != UndefinedPage) {
+			break;
+		}
+		if (auto page = t.openPage(it,  OpenMode::Read)) {
+			auto ptr = page->bytes.data();
+			auto pageSize = page->bytes.size();
+
+			if (memcmp(ptr, "minidb", 6) == 0) {
+				ptr += sizeof(StorageHeader); pageSize -= sizeof(StorageHeader);
+			}
+
+			auto type = PageType(((VirtualPageHeader *)ptr)->type);
+			auto ncells = ((VirtualPageHeader *)ptr)->ncells;
+
+			switch (type) {
+			case PageType::OidTable:
+			case PageType::SchemeTable: {
+				auto h = ((OidTreePageHeader *)ptr);
+				ptr += sizeof(OidTreePageHeader);
+				for (uint32_t i = 0; i < ncells; ++ i) {
+					auto cell = (OidIndexCell *)ptr;
+					tmp.emplace_back(uint32_t(cell->page));
+					ptr += sizeof(OidIndexCell);
+				}
+				if (h->right != UndefinedPage) {
+					tmp.emplace_back(h->right);
+				}
+				break;
+			}
+			case PageType::IntIndexTable: {
+				auto h = ((IntIndexTreePageHeader *)ptr);
+				ptr += sizeof(IntIndexTreePageHeader);
+				for (uint32_t i = 0; i < ncells; ++ i) {
+					auto cell = (IntegerIndexCell *)ptr;
+					tmp.emplace_back(uint32_t(cell->page));
+					ptr += sizeof(IntegerIndexCell);
+				}
+				if (h->right != UndefinedPage) {
+					tmp.emplace_back(h->right);
+				}
+				break;
+			}
+			default:
+				if (ret) {
+					ret->emplace_back(it);
+				}
+				if (target) {
+					if (*target == UndefinedPage) {
+						*target = it;
+					}
+				}
+				break;
+			}
+			t.closePage(page);
+		}
+	}
+	return tmp;
+}
+
 mem::Vector<uint32_t> getContentPages(const Transaction &t, int64_t root) {
 	mem::Vector<uint32_t> ret;
 
-	auto process = [&] (const mem::Vector<uint32_t> &pages) -> mem::Vector<uint32_t> {
-		mem::Vector<uint32_t> tmp;
-		for (auto &it : pages) {
-			if (auto page = t.openPage(it,  OpenMode::Read)) {
-				auto ptr = page->bytes.data();
-				auto pageSize = page->bytes.size();
-
-				if (memcmp(ptr, "minidb", 6) == 0) {
-					ptr += sizeof(StorageHeader); pageSize -= sizeof(StorageHeader);
-				}
-
-				auto type = PageType(((VirtualPageHeader *)ptr)->type);
-				auto ncells = ((VirtualPageHeader *)ptr)->ncells;
-
-				switch (type) {
-				case PageType::OidTable:
-				case PageType::SchemeTable: {
-					if (((OidTreePageHeader *)ptr)->right != UndefinedPage) {
-						tmp.emplace_back(((OidTreePageHeader *)ptr)->right);
-					}
-					ptr += sizeof(OidTreePageHeader);
-					for (uint32_t i = 0; i < ncells; ++ i) {
-						auto cell = (OidIndexCell *)ptr;
-						tmp.emplace_back(uint32_t(cell->page));
-						ptr += sizeof(OidIndexCell);
-					}
-					break;
-				}
-				default:
-					ret.emplace_back(it);
-					break;
-				}
-				t.closePage(page);
-			}
-		}
-		return tmp;
-	};
-
 	mem::Vector<uint32_t> pages; pages.emplace_back(root);
 	while (!pages.empty()) {
-		pages = process(pages);
+		pages = processContentPages(t, pages, &ret);
 	}
 
+	return ret;
+}
+
+uint32_t getPageList(const Transaction &t, int64_t root, mem::Vector<uint32_t> &out) {
+	uint32_t ret = UndefinedPage;
+	if (root != UndefinedPage) {
+		out.emplace_back(root);
+		mem::Vector<uint32_t> pages; pages.emplace_back(root);
+		while (!pages.empty()) {
+			pages = processContentPages(t, pages, nullptr, &ret);
+			for (auto &it : pages) {
+				out.emplace_back(it);
+			}
+		}
+	}
 	return ret;
 }
 
