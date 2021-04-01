@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2016-2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2021 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -30,76 +30,197 @@ THE SOFTWARE.
 
 NS_SA_EXT_BEGIN(websocket)
 
-Handler::Handler(Manager *m, const Request &req, TimeInterval ttl, size_t max)
-: _request(req), _connection(req.connection()), _manager(m), _ttl(ttl)
-, _reader(req, _connection.pool(), max), _writer(req, _connection.pool())
-, _clientCloseCode(StatusCode::None), _serverCloseCode(StatusCode::Auto)
-, _broadcastMutex(_connection.pool()) {
-	_socket = (apr_socket_t *)ap_get_module_config (req.request()->connection->conn_config, &core_module);
+constexpr auto WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+constexpr auto WEBSOCKET_GUID_LEN = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"_len;
 
-	apr_pool_t *pool = _connection.pool();
-	apr_pollset_create(&_poll, 1, pool, APR_POLLSET_WAKEABLE | APR_POLLSET_NOCOPY);
+static String makeAcceptKey(const String &key) {
+	apr_byte_t digest[APR_SHA1_DIGESTSIZE];
+	apr_sha1_ctx_t context;
 
-	if (_poll && _socket && _manager && _broadcastMutex) {
-		memset((void *)&_pollfd, 0, sizeof(apr_pollfd_t));
-		_pollfd.p = pool;
-		_pollfd.reqevents = APR_POLLIN;
-		_pollfd.desc_type = APR_POLL_SOCKET;
-		_pollfd.desc.s = _socket;
-		apr_pollset_add(_poll, &_pollfd);
-		_valid = true;
+	apr_sha1_init(&context);
+	apr_sha1_update(&context, key.c_str(), key.size());
+	apr_sha1_update(&context, (const char *)WEBSOCKET_GUID, (unsigned int)WEBSOCKET_GUID_LEN);
+	apr_sha1_final(digest, &context);
+
+	return base64::encode(CoderSource(digest, APR_SHA1_DIGESTSIZE));
+}
+
+apr_status_t Manager::filterFunc(ap_filter_t *f, apr_bucket_brigade *bb) {
+	// Block any output
+	return APR_SUCCESS;
+}
+
+int Manager::filterInit(ap_filter_t *f) {
+	return apr::pool::perform([&] () -> apr_status_t {
+		return OK;
+	}, f->c);
+}
+
+void Manager::filterRegister() {
+	ap_register_output_filter(WEBSOCKET_FILTER, &(filterFunc),
+			&(filterInit), ap_filter_type(AP_FTYPE_NETWORK - 1));
+	ap_register_output_filter(WEBSOCKET_FILTER_OUT, &(Connection::outputFilterFunc),
+			&(Connection::outputFilterInit), ap_filter_type(AP_FTYPE_NETWORK - 1));
+	ap_register_input_filter(WEBSOCKET_FILTER_IN, &(Connection::inputFilterFunc),
+			&(Connection::inputFilterInit), ap_filter_type(AP_FTYPE_NETWORK - 1));
+}
+
+Manager::Manager(Server serv) : _pool(getCurrentPool()), _mutex(_pool), _server(serv) { }
+Manager::~Manager() { }
+
+Handler * Manager::onAccept(const Request &req, mem::pool_t *) {
+	return nullptr;
+}
+bool Manager::onBroadcast(const data::Value & val) {
+	return false;
+}
+
+size_t Manager::size() const {
+	return _count.load();
+}
+
+void Manager::receiveBroadcast(const data::Value &val) {
+	if (onBroadcast(val)) {
+		_mutex.lock();
+		for (auto &it : _handlers) {
+			it->receiveBroadcast(val);
+		}
+		_mutex.unlock();
 	}
+}
+
+void *Manager_spawnThread(apr_thread_t *self, void *data) {
+#if LINUX
+	pthread_setname_np(pthread_self(), "WebSocketThread");
+#endif
+
+	Handler *h = (Handler *)data;
+	Manager *m = h->manager();
+	mem::perform([&] {
+		mem::perform([&] {
+			m->run(h);
+		}, h->pool());
+	}, m->server());
+
+	Connection::destroy(h->connection());
+
+	return NULL;
+}
+
+static int Manager_abortfn(int retcode) {
+	std::cout << "WebSocket Handle allocation failed with code: " << retcode << "\n";
+	return retcode;
+}
+
+int Manager::accept(Request &req) {
+	auto h = req.getRequestHeaders();
+	auto &version = h.at("sec-websocket-version");
+	auto &key = h.at("sec-websocket-key");
+	auto decKey = base64::decode(key);
+	if (decKey.size() != 16 || version != "13") {
+		req.getErrorHeaders().emplace("Sec-WebSocket-Version", "13");
+		return HTTP_BAD_REQUEST;
+	}
+
+	apr_allocator_t *alloc = nullptr;
+	apr_pool_t *pool = nullptr;
+
+	auto FailCleanup = [&] (int code) -> int {
+		if (pool) {
+			apr_pool_destroy(pool);
+		}
+
+		if (alloc) {
+			apr_allocator_destroy(alloc);
+		}
+
+		return code;
+	};
+
+	if (apr_allocator_create(&alloc) != APR_SUCCESS) { return FailCleanup(HTTP_INTERNAL_SERVER_ERROR); }
+	if (apr_pool_create_unmanaged_ex(&pool, Manager_abortfn, alloc) != APR_SUCCESS) { return FailCleanup(HTTP_INTERNAL_SERVER_ERROR); }
+
+	apr_allocator_max_free_set(alloc, 20_MiB);
+
+	auto orig = mem::pool::acquire();
+	auto handler = onAccept(req, pool);
+
+	if (handler) {
+		auto hout = req.getResponseHeaders();
+
+		hout.clear();
+		hout.emplace("Upgrade", "websocket");
+		hout.emplace("Connection", "Upgrade");
+		hout.emplace("Sec-WebSocket-Accept", makeAcceptKey(key));
+
+		auto r = req.request();
+		auto sock = ap_get_conn_socket(r->connection);
+
+		// send HTTP_SWITCHING_PROTOCOLS right f*cking NOW!
+		apr_socket_timeout_set(sock, -1);
+		req.setStatus(HTTP_SWITCHING_PROTOCOLS);
+		ap_send_interim_response(req.request(), 1);
+
+		// block any other output
+	    ap_add_output_filter(WEBSOCKET_FILTER, (void *)handler, r, r->connection);
+
+	    // duplicate connection
+	    if (auto conn = Connection::create(alloc, pool, req)) {
+			handler->setConnection(conn);
+			apr_thread_t *thread = nullptr;
+			apr_threadattr_t *attr = nullptr;
+			apr_status_t error = apr_threadattr_create(&attr, orig);
+			if (error == APR_SUCCESS) {
+				apr_threadattr_detach_set(attr, 1);
+				conn->prepare(sock);
+				if (apr_thread_create(&thread, attr,
+						Manager_spawnThread, handler, orig) == APR_SUCCESS) {
+				    return HTTP_OK;
+				}
+			} else {
+				conn->drop();
+			}
+	    }
+	}
+	if (req.getStatus() == HTTP_OK) {
+		return FailCleanup(HTTP_BAD_REQUEST);
+	}
+	return FailCleanup(req.getStatus());
+}
+
+void Manager::run(Handler *h) {
+	auto c = h->connection();
+	addHandler(h);
+	c->run(h);
+	removeHandler(h);
+	c->close();
+}
+
+void Manager::addHandler(Handler * h) {
+	_mutex.lock();
+	_handlers.emplace_back(h);
+	++ _count;
+	_mutex.unlock();
+}
+
+void Manager::removeHandler(Handler * h) {
+	_mutex.lock();
+	auto it = _handlers.begin();
+	while (it != _handlers.end() && *it != h) {
+		++ it;
+	}
+	if (it != _handlers.end()) {
+		_handlers.erase(it);
+	}
+	-- _count;
+	_mutex.unlock();
+}
+
+Handler::Handler(Manager *m, mem::pool_t *p, StringView url, TimeInterval ttl, size_t max)
+: _pool(p), _manager(m), _url(url.pdup(_pool)), _ttl(ttl), _maxInputFrameSize(max), _broadcastMutex(_pool) {
 }
 
 Handler::~Handler() { }
-
-void Handler::run() {
-	if (!_valid) {
-		_serverReason = "Fail to initialize connection";
-		_serverCloseCode = StatusCode::UnexceptedCondition;
-		cancel();
-		return;
-	}
-
-	apr_socket_opt_set(_socket, APR_SO_NONBLOCK, 1);
-	apr_socket_timeout_set(_socket, 0);
-
-	apr::pool::perform([&] {
-		onBegin();
-	}, _reader.pool, memory::pool::Socket);
-
-	while (true) {
-		apr_int32_t num = 0;
-		const apr_pollfd_t *fds = nullptr;
-		_pollfd.rtnevents = 0;
-		if (_fdchanged) {
-			apr_pollset_remove(_poll, &_pollfd);
-			apr_pollset_add(_poll, &_pollfd);
-		}
-		auto err = apr_pollset_poll(_poll, _ttl.toMicroseconds(), &num, &fds);
-		if (err == APR_EINTR) {
-			// wakeup was used
-			if (!processBroadcasts()) {
-				break;
-			}
-		} else if (num == 0) {
-			// timeout
-			_serverCloseCode = StatusCode::Away;
-			break;
-		} else {
-			if (!processSocket(fds)) {
-				break;
-			}
-		}
-	}
-
-	apr::pool::perform([&] {
-		onEnd();
-	}, _reader.pool, memory::pool::Socket);
-	memory::pool::clear(_reader.pool);
-
-	cancel();
-}
 
 // Data frame was received from network
 bool Handler::onFrame(FrameType, const Bytes &) { return true; }
@@ -109,8 +230,8 @@ bool Handler::onMessage(const data::Value &) { return true; }
 
 void Handler::sendBroadcast(data::Value &&val) const {
 	data::Value bcast {
-		std::make_pair("server", data::Value(_request.server().getDefaultName())),
-		std::make_pair("url", data::Value(_request.getUri())),
+		std::make_pair("server", data::Value(_manager->server().getDefaultName())),
+		std::make_pair("url", data::Value(_url)),
 		std::make_pair("data", data::Value(std::move(val))),
 	};
 
@@ -118,21 +239,15 @@ void Handler::sendBroadcast(data::Value &&val) const {
 	s.broadcast(bcast);
 }
 
-void Handler::setStatusCode(StatusCode s, const String &r) {
-	_serverCloseCode = s;
-	if (!r.empty()) {
-		_serverReason = r;
-	}
-}
 void Handler::setEncodeFormat(const data::EncodeFormat &fmt) {
 	_format = fmt;
 }
 
-bool Handler::send(const String &str) {
-	return trySend(FrameType::Text, (const uint8_t *)str.data(), str.size());
+bool Handler::send(StringView str) {
+	return _conn->write(FrameType::Text, (const uint8_t *)str.data(), str.size());
 }
-bool Handler::send(const Bytes &bytes) {
-	return trySend(FrameType::Binary, bytes.data(), bytes.size());
+bool Handler::send(BytesView bytes) {
+	return _conn->write(FrameType::Binary, bytes.data(), bytes.size());
 }
 bool Handler::send(const data::Value &data) {
 	if (_format.isTextual()) {
@@ -144,39 +259,14 @@ bool Handler::send(const data::Value &data) {
 	}
 }
 
-bool Handler::trySend(FrameType t, const uint8_t *bytes, size_t count) {
-	size_t offset = 0;
-	StackBuffer<32> buf;
-	makeHeader(buf, count, FrameType::Text);
-
-	offset = buf.size();
-
-	auto bb = _writer.tmpbb;
-	auto r = _request.request();
-	auto of = r->connection->output_filters;
-
-	auto err = ap_fwrite(of, bb, (const char *)buf.data(), offset);
-	if (count > 0) {
-		err = ap_fwrite(of, bb, (const char *)bytes, count);
-	}
-
-	err = ap_fflush(of, bb);
-	apr_brigade_cleanup(bb);
-
-	if (err != APR_SUCCESS) {
-		return false;
-	}
-	return true;
-}
-
 storage::Adapter Handler::storage() const {
 	auto pool = apr::pool::acquire();
 
 	db::pq::Handle *db = nullptr;
 	apr_pool_userdata_get((void **)&db, (const char *)config::getSerenityWebsocketDatabaseName(), pool);
 	if (!db) {
-		db = new (pool) db::pq::Handle(db::pq::Driver::open(), db::pq::Driver::Handle(Root::getInstance()->dbdPoolAcquire(_request.server(), pool)));
-		auto cfg = (Server::Config *)_request.server().getConfig();
+		db = new (pool) db::pq::Handle(db::pq::Driver::open(), db::pq::Driver::Handle(Root::getInstance()->dbdPoolAcquire(_manager->server(), pool)));
+		auto cfg = (Server::Config *)_manager->server().getConfig();
 		db->setStorageTypeMap(&cfg->storageTypes);
 		db->setCustomTypeMap(&cfg->customTypes);
 		apr_pool_userdata_set(db, (const char *)config::getSerenityWebsocketDatabaseName(), NULL, pool);
@@ -184,21 +274,22 @@ storage::Adapter Handler::storage() const {
 	return db;
 }
 
-const Request &Handler::request() const {
-	return _request;
+mem::pool_t *Handler::pool() const {
+	return _conn->getHandlePool();
 }
-Manager *Handler::manager() const {
-	return _manager;
-}
-bool Handler::isEnabled() const {
-	return _valid && !_ended;
+
+void Handler::setConnection(Connection *c) {
+	_conn = c;
+	serenity::Connection cctx(c->getConnection());
+	serenity::Connection::Config *ccfg = (serenity::Connection::Config *)cctx.getConfig();
+	ccfg->_handler = this;
 }
 
 void Handler::receiveBroadcast(const data::Value &data) {
-	if (_valid) {
+	if (_conn->isEnabled()) {
 		_broadcastMutex.lock();
 		if (!_broadcastsPool) {
-			_broadcastsPool = memory::pool::create(_connection.pool());
+			_broadcastsPool = memory::pool::create(_pool);
 		}
 		if (_broadcastsPool) {
 			apr::pool::perform([&] {
@@ -210,7 +301,7 @@ void Handler::receiveBroadcast(const data::Value &data) {
 			}, _broadcastsPool, memory::pool::Broadcast);
 		}
 		_broadcastMutex.unlock();
-		apr_pollset_wakeup(_poll);
+		_conn->wakeup();
 	}
 }
 
@@ -230,9 +321,13 @@ bool Handler::processBroadcasts() {
 
 	bool ret = true;
 	if (pool) {
-		apr_pool_userdata_set(this, config::getSerenityWebsocketHandleName(), nullptr, pool);
+		auto conn = _conn->getConnection();
+		// temporary replace connection pool to hack serenity's pool stack
+		auto tmp = conn->pool;
+		conn->pool = pool;
 		apr::pool::perform([&] {
-			pushNotificator(pool);
+			conn->pool = tmp;
+			sendPendingNotifications(pool);
 			if (vec) {
 				for (auto & it : (*vec)) {
 					if (!onMessage(it)) {
@@ -241,293 +336,26 @@ bool Handler::processBroadcasts() {
 					}
 				}
 			}
-		}, pool, memory::pool::Broadcast);
+		}, conn);
+		conn->pool = tmp;
 		apr_pool_destroy(pool);
 	}
 
 	return ret;
 }
 
-bool Handler::processSocket(const apr_pollfd_t *fd) {
-	if ((fd->rtnevents & APR_POLLOUT) != 0) {
-		if (!writeSocket(fd)) {
-			return false;
-		}
-	}
-	if ((fd->rtnevents & APR_POLLIN) != 0) {
-		if (!readSocket(fd)) {
-			return false;
-		}
-	}
-	_pollfd.rtnevents = 0;
-	return true;
-}
-
-static apr_status_t Handler_readSocket_request(Request &req, apr_bucket_brigade *bb, apr_pool_t *pool, char *buf, size_t *len) {
-	auto r = req.request();
-    apr_status_t rv = APR_SUCCESS;
-    apr_size_t readbufsiz = *len;
-	ap_filter_t *f = r->input_filters;
-	if (f->frec && f->frec->name && !strcasecmp(f->frec->name, "reqtimeout")) {
-		f = f->next;
-	}
-
-	if (bb != NULL) {
-		rv = ap_get_brigade(f, bb, AP_MODE_READBYTES, APR_NONBLOCK_READ, readbufsiz);
-		if (rv == APR_SUCCESS) {
-			if ((rv = apr_brigade_flatten(bb, buf, len)) == APR_SUCCESS) {
-				readbufsiz = *len;
-			}
-		}
-		apr_brigade_cleanup(bb);
-	}
-
-    if (readbufsiz == 0 && (rv == APR_SUCCESS || APR_STATUS_IS_EAGAIN(rv))) {
-    	return APR_EAGAIN;
-    }
-    return rv;
-}
-
-bool Handler::readSocket(const apr_pollfd_t *fd) {
-	apr_status_t err = APR_SUCCESS;
-	while (err == APR_SUCCESS) {
-		if (_reader) {
-			size_t len = _reader.getRequiredBytes();
-			uint8_t *buf = _reader.prepare(len);
-
-			err = Handler_readSocket_request(_request, _reader.tmpbb, _reader.pool, (char *)buf, &len);
-			if (err == APR_SUCCESS && !_reader.save(buf, len)) {
-				return false;
-			} else if (err != APR_SUCCESS && !APR_STATUS_IS_EAGAIN(err)) {
-				return false;
-			}
-
-			if (_reader.isControlReady()) {
-				auto ret = onControlFrame(_reader.type, _reader.buffer);
-				_reader.popFrame();
-				if (!ret) {
-					return false;
-				}
-			} else if (_reader.isFrameReady()) {
-				auto ret = apr::pool::perform([&] {
-					pushNotificator(_reader.pool);
-					apr_pool_userdata_set(this, config::getSerenityWebsocketHandleName(), nullptr, _reader.pool);
-					if (!onFrame(_reader.type, _reader.frame.buffer)) {
-						return false;
-					}
-					return true;
-				}, _reader.pool, memory::pool::Socket);
-				_reader.popFrame();
-				if (!ret) {
-					return false;
-				}
-			}
-		} else {
-			return false;
-		}
-	}
-	_pollfd.reqevents |= APR_POLLIN;
-	return true;
-}
-
-bool Handler::writeSocket(const apr_pollfd_t *fd) {
-	while (!_writer.empty()) {
-		auto slot = _writer.nextReadSlot();
-
-		while (!slot->empty()) {
-			auto len = slot->getNextLength();
-			auto ptr = slot->getNextBytes();
-
-			auto written = writeNonBlock(ptr, len);
-			if (written > 0) {
-				slot->pop(written);
-			}
-			if (written != len) {
-				break;
-			}
-		}
-
-		if (slot->empty()) {
-			_writer.popReadSlot();
-		} else {
-			break;
-		}
-	}
-
-	if (_writer.empty()) {
-		if (_pollfd.reqevents & APR_POLLOUT) {
-			_pollfd.reqevents &= ~APR_POLLOUT;
-			_fdchanged = true;
-		}
-	} else {
-		if ((_pollfd.reqevents & APR_POLLOUT) == 0) {
-			_pollfd.reqevents |= APR_POLLOUT;
-			_fdchanged = true;
-		}
-	}
-
-	return true;
-}
-
-bool Handler::writeToSocket(apr_bucket_brigade *bb, const uint8_t *bytes, size_t &count) {
-	auto r = _request.request();
-	auto of = r->connection->output_filters;
-
-	ap_fwrite(of, bb, (const char *)bytes, count);
-	ap_fflush(of, bb);
-	apr_brigade_cleanup(bb);
-
- 	return true;
-}
-
-bool Handler::writeBrigade(apr_bucket_brigade *bb) {
-	bool ret = true;
-	size_t offset = 0;
-	auto e = APR_BRIGADE_FIRST(bb);
-	if (_writer.empty()) {
-		for (; e != APR_BRIGADE_SENTINEL(bb); e = APR_BUCKET_NEXT(e)) {
-			if (!APR_BUCKET_IS_METADATA(e)) {
-				const char * ptr = nullptr;
-				apr_size_t len = 0;
-
-				apr_bucket_read(e, &ptr, &len, APR_BLOCK_READ);
-
-				auto written = writeNonBlock((const uint8_t *)ptr, len);
-				if (written != len) {
-					offset = written;
-					break;
-				}
-			}
-		}
-	}
-
-	if (e != APR_BRIGADE_SENTINEL(bb)) {
-		ret = writeBrigadeCache(bb, e, offset);
-	}
-
-    apr_brigade_cleanup(bb);
-	return ret;
-}
-
-size_t Handler::writeNonBlock(const uint8_t *data, size_t len) {
-	apr_socket_send(_socket, (const char *)data, &len);
-	return len;
-}
-
-static size_t Handler_writeBrigadeSize(apr_bucket_brigade *bb, apr_bucket *e, size_t off) {
-	size_t ret = 0;
-	for (; e != APR_BRIGADE_SENTINEL(bb); e = APR_BUCKET_NEXT(e)) {
-		if (!APR_BUCKET_IS_METADATA(e) && e->length != apr_size_t(-1)) {
-			ret += e->length;
-		}
-	}
-	return ret - off;
-}
-
-bool Handler::writeBrigadeCache(apr_bucket_brigade *bb, apr_bucket *e, size_t off) {
-	auto size = Handler_writeBrigadeSize(bb, e, off);
-	if (size == 0) {
-		return true;
-	}
-
-	auto slot = _writer.nextEmplaceSlot(size);
-	for (; e != APR_BRIGADE_SENTINEL(bb); e = APR_BUCKET_NEXT(e)) {
-		if (!APR_BUCKET_IS_METADATA(e)) {
-			const char * ptr = nullptr;
-			apr_size_t len = 0;
-
-			apr_bucket_read(e, &ptr, &len, APR_BLOCK_READ);
-			if (off) {
-				ptr += off;
-				len -= off;
-				off = 0;
-			}
-
-			slot->emplace((const uint8_t *)ptr, len);
-		}
-	}
-
-	_pollfd.reqevents |= APR_POLLOUT;
-	_fdchanged = true;
-
-	return true;
-}
-
-Handler::StatusCode Handler::resolveStatus(StatusCode code) {
-	if (code == StatusCode::Auto) {
-		switch (_reader.error) {
-		case FrameReader::Error::NotInitialized: return StatusCode::UnexceptedCondition; break;
-		case FrameReader::Error::ExtraIsNotEmpty: return StatusCode::ProtocolError; break;
-		case FrameReader::Error::NotMasked: return StatusCode::ProtocolError; break;
-		case FrameReader::Error::UnknownOpcode: return StatusCode::ProtocolError; break;
-		case FrameReader::Error::InvalidSegment: return StatusCode::ProtocolError; break;
-		case FrameReader::Error::InvalidSize: return StatusCode::TooLarge; break;
-		case FrameReader::Error::InvalidAction: return StatusCode::UnexceptedCondition; break;
-		default: return StatusCode::Ok; break;
-		}
-	} else if (code == StatusCode::None) {
-		return StatusCode::Ok;
-	}
-	return code;
-}
-
-void Handler::pushNotificator(apr_pool_t *pool) {
+void Handler::sendPendingNotifications(apr_pool_t *pool) {
 	apr::pool::perform([&] {
 		messages::setNotifications(pool, [this] (data::Value && data) {
-			send(data::Value{
+			send(data::Value({
 				std::make_pair("error", data::Value(std::move(data)))
-			});
+			}));
 		}, [this] (data::Value && data) {
-			send(data::Value{
+			send(data::Value({
 				std::make_pair("debug", data::Value(std::move(data)))
-			});
+			}));
 		});
 	}, pool, memory::pool::Broadcast);
-}
-
-void Handler::cancel() {
-	_ended = true;
-	// drain all data
-	StackBuffer<(size_t)1_KiB> sbuf;
-
-	if (_valid) {
-		apr_status_t err = APR_SUCCESS;
-		while (err == APR_SUCCESS) {
-			size_t len = 1_KiB;
-			err = Handler_readSocket_request(_request, _reader.tmpbb, _reader.pool, (char *)sbuf.data(), &len);
-			sbuf.clear();
-		}
-
-		apr_socket_opt_set(_socket, APR_SO_NONBLOCK, 0);
-		apr_socket_timeout_set(_socket, -1);
-
-		writeSocket(&_pollfd);
-	}
-
-	sbuf.clear();
-
-	StatusCode nstatus = resolveStatus(_serverCloseCode);
-	uint16_t status = ByteOrder::HostToNetwork(_clientCloseCode==StatusCode::None?(uint16_t)nstatus:(uint16_t)_clientCloseCode);
-	size_t memSize = std::min((size_t)123, _serverReason.size());
-	size_t frameSize = 4 + memSize;
-	sbuf[0] = (0b10000000 | 0x8);
-	sbuf[1] = ((uint8_t)(memSize + 2));
-	memcpy(sbuf.data() + 2, &status, sizeof(uint16_t));
-	if (!_serverReason.empty()) {
-		memcpy(sbuf.data() + 4, _serverReason.data(), memSize);
-	}
-
-	writeToSocket(_writer.tmpbb, sbuf.data(), frameSize);
-}
-
-bool Handler::onControlFrame(FrameType type, const StackBuffer<128> &b) {
-	if (type == FrameType::Close) {
-		_clientCloseCode = (StatusCode)(b.get<BytesViewNetwork>().readUnsigned16());
-		return false;
-	} else if (type == FrameType::Ping) {
-		trySend(FrameType::Pong, nullptr, 0);
-	}
-	return true;
 }
 
 NS_SA_EXT_END(websocket)

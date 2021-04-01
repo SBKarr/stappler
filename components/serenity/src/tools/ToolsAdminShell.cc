@@ -41,7 +41,7 @@ public:
 		Html,
 	};
 
-	ShellSocketHandler(Manager *m, const Request &req, User *user);
+	ShellSocketHandler(Manager *m, mem::pool_t *pool, StringView url, int64_t userId);
 
 	void setShellMode(ShellMode m) { _mode = m; }
 	ShellMode getShellMode() const { return _mode; }
@@ -68,7 +68,8 @@ protected:
 	Vector<SocketCommand *> _cmds;
 	Vector<Pair<StringView, const Map<String, ServerComponent::Command> *>> _external;
 	ShellMode _mode = ShellMode::Plain;
-	User *_user;
+	User *_user = nullptr;
+	int64_t _userId = 0;
 };
 
 struct SocketCommand : AllocBase {
@@ -147,14 +148,14 @@ struct ListCmd : SocketCommand {
 	virtual bool run(ShellSocketHandler &h, StringView &r) override {
 		if (r.empty()) {
 			data::Value ret;
-			auto &schemes = h.request().server().getSchemes();
+			auto &schemes = h.manager()->server().getSchemes();
 			for (auto &it : schemes) {
 				ret.addString(it.first);
 			}
 			h.sendData(ret);
 		} else if (r == "all") {
 			data::Value ret;
-			auto &schemes = h.request().server().getSchemes();
+			auto &schemes = h.manager()->server().getSchemes();
 			for (auto &it : schemes) {
 				auto &val = ret.emplace(it.first);
 				auto &fields = it.second->getFields();
@@ -166,7 +167,7 @@ struct ListCmd : SocketCommand {
 		} else {
 			data::Value ret;
 			auto cmd = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-			auto scheme =  h.request().server().getScheme(cmd.str());
+			auto scheme = h.manager()->server().getScheme(cmd.str());
 			if (scheme) {
 				auto &fields = scheme->getFields();
 				for (auto &fit : fields) {
@@ -190,7 +191,7 @@ struct ResourceCmd : SocketCommand {
 	ResourceCmd(const String &str) : SocketCommand(str) { }
 
 	const storage::Scheme *acquireScheme(ShellSocketHandler &h, const StringView &scheme) {
-		return h.request().server().getScheme(scheme.str());
+		return h.manager()->server().getScheme(scheme.str());
 	}
 
 	Resource *acquireResource(ShellSocketHandler &h, const StringView &scheme, const StringView &path,
@@ -508,7 +509,7 @@ struct UploadCmd : ResourceCmd {
 				auto tv = Time::now().toMicros();
 				StringStream str;
 				str << "<p id=\"tmp" << tv << "\"><input type=\"file\" name=\"content\" onchange=\""
-							"upload(this.files[0], '" << toString(h.request().getUri(), "/upload/", key) << "', 'content');"
+							"upload(this.files[0], '" << toString(h.getUrl(), "/upload/", key) << "', 'content');"
 							"var elem = document.getElementById('tmp" << tv << "');elem.parentNode.removeChild(elem);"
 						"\"></p>";
 
@@ -656,7 +657,7 @@ struct HandlersCmd : SocketCommand {
 	HandlersCmd() : SocketCommand("handlers") { }
 
 	virtual bool run(ShellSocketHandler &h, StringView &r) override {
-		auto serv = h.request().server();
+		auto serv = h.manager()->server();
 		auto &hdl = serv.getRequestHandlers();
 
 		data::Value ret;
@@ -741,11 +742,11 @@ struct MsgCmd : SocketCommand {
 	MsgCmd() : SocketCommand("msg") { }
 
 	virtual bool run(ShellSocketHandler &h, StringView &r) override {
-		h.sendBroadcast(data::Value{
+		h.sendBroadcast(data::Value({
 			std::make_pair("user", data::Value(h.getUser()->getName())),
 			std::make_pair("event", data::Value("message")),
 			std::make_pair("message", data::Value(r.str())),
-		});
+		}));
 		return true;
 	}
 
@@ -784,7 +785,7 @@ struct HelpCmd : SocketCommand {
 		StringStream stream;
 		if (r.empty()) {
 			stream << "Loaded components:\n";
-			for (auto &it : h.request().server().getComponents()) {
+			for (auto &it : h.manager()->server().getComponents()) {
 				stream << "  " << it.second->getName() << " - " << it.second->getVersion() << "\n";
 			}
 
@@ -950,12 +951,8 @@ struct StatCmd : SocketCommand {
 	}
 };
 
-ShellSocketHandler::ShellSocketHandler(Manager *m, const Request &req, User *user) : Handler(m, req, 600_sec), _user(user) {
-	sendBroadcast(data::Value{
-		std::make_pair("user", data::Value(_user->getName())),
-		std::make_pair("event", data::Value("enter")),
-	});
-
+ShellSocketHandler::ShellSocketHandler(Manager *m, mem::pool_t *pool, StringView url, int64_t userId)
+: Handler(m, pool, url, 600_sec), _userId(userId) {
 	_cmds.push_back(new ListCmd());
 	_cmds.push_back(new HandlersCmd());
 	_cmds.push_back(new HistoryCmd());
@@ -981,7 +978,7 @@ ShellSocketHandler::ShellSocketHandler(Manager *m, const Request &req, User *use
 	_cmds.push_back(new TimeCmd());
 	_cmds.push_back(new StatCmd());
 
-	auto serv = req.server();
+	auto serv = m->server();
 	_external.reserve(serv.getComponents().size());
 	for (auto &it : serv.getComponents()) {
 		if (!it.second->getCommands().empty()) {
@@ -1015,6 +1012,13 @@ bool ShellSocketHandler::onCommand(StringView &r) {
 }
 
 void ShellSocketHandler::onBegin() {
+	_user = User::get(storage(), _userId);
+
+	sendBroadcast(data::Value({
+		std::make_pair("user", data::Value(_user->getName())),
+		std::make_pair("event", data::Value("enter")),
+	}));
+
 	StringStream resp;
 	resp << "Serenity: Welcome. " << _user->getName() << "!";
 	send(resp.weak());
@@ -1066,7 +1070,7 @@ bool ShellSocketHandler::onMessage(const data::Value &val) {
 
 void ShellSocketHandler::sendCmd(const StringView &v) {
 	StringStream stream;
-	stream << _user->getName() << "@" << _request.getHostname() << ": " << v;
+	stream << _user->getName() << "@" << _manager->server().getServerHostname() << ": " << v;
 	send(stream.weak());
 }
 
@@ -1089,7 +1093,8 @@ void ShellSocketHandler::sendData(const data::Value & data) {
 }
 
 
-ShellSocket::Handler * ShellSocket::onAccept(const Request &req) {
+ShellSocket::Handler * ShellSocket::onAccept(const Request &req, mem::pool_t *pool) {
+	ShellSocket::Handler *ret = nullptr;
 	Request rctx(req);
 	if (!req.isSecureAuthAllowed()) {
 		rctx.setStatus(HTTP_FORBIDDEN);
@@ -1101,7 +1106,9 @@ ShellSocket::Handler * ShellSocket::onAccept(const Request &req) {
 			if (!user || !user->isAdmin()) {
 				rctx.setStatus(HTTP_FORBIDDEN);
 			} else {
-				return new ShellSocketHandler(this, req, user);
+				mem::perform([&] {
+					ret = new ShellSocketHandler(this, pool, req.getUri(), user->getObjectId());
+				}, pool);
 			}
 		}
 	}
@@ -1117,11 +1124,13 @@ ShellSocket::Handler * ShellSocket::onAccept(const Request &req) {
 				rctx.setStatus(HTTP_FORBIDDEN);
 			} else {
 				rctx.setUser(user);
-				return new ShellSocketHandler(this, req, user);
+				mem::perform([&] {
+					ret = new ShellSocketHandler(this, pool, req.getUri(), user->getObjectId());
+				}, pool);
 			}
 		}
 	}
-	return nullptr;
+	return ret;
 }
 
 bool ShellSocket::onBroadcast(const data::Value &) {

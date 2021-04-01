@@ -126,6 +126,7 @@ NS_SA_EXT_BEGIN(websocket)
 
 class Handler;
 class Manager;
+class Connection;
 
 NS_SA_EXT_END(websocket)
 

@@ -42,10 +42,8 @@ APLOG_USE_MODULE(serenity);
 #include "MultipartParser.cc"
 #include "UrlEncodeParser.cc"
 
+#include "WebSocketConnection.cc"
 #include "WebSocket.cc"
-#include "WebSocketManager.cc"
-#include "WebSocketReader.cc"
-#include "WebSocketWriter.cc"
 
 #include "brotli_compress.cc"
 #include "mod_serenity.cc"

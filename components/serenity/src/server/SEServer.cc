@@ -1106,80 +1106,87 @@ bool Server::isSecureAuthAllowed(const Request &rctx) const {
 	return false;
 }
 
-static int Server_onRequestRecieved(Request &rctx, RequestHandler &h) {
-	auto auth = rctx.getRequestHeaders().at("Authorization");
-	if (!auth.empty()) {
-		mem::StringView r(auth);
+static bool Server_processAuth(Request &rctx, StringView auth) {
+	mem::StringView r(auth);
+	r.skipChars<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>();
+	auto method = r.readUntil<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>().str();
+	stappler::string::tolower(method);
+	if (method == "basic" && rctx.isSecureAuthAllowed()) {
 		r.skipChars<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>();
-		auto method = r.readUntil<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>().str();
-		stappler::string::tolower(method);
-		if (method == "basic" && rctx.isSecureAuthAllowed()) {
-			r.skipChars<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>();
-			auto str = stappler::base64::decode(r);
-			mem::StringView source((const char *)str.data(), str.size());
-			mem::StringView user = source.readUntil<mem::StringView::Chars<':'>>();
-			if (source.is(':')) {
-				++ source;
+		auto str = stappler::base64::decode(r);
+		mem::StringView source((const char *)str.data(), str.size());
+		mem::StringView user = source.readUntil<mem::StringView::Chars<':'>>();
+		if (source.is(':')) {
+			++ source;
 
-				if (!user.empty() && !source.empty()) {
-					auto storage = rctx.storage();
-					auto u = db::User::get(storage, mem::String::make_weak(user.data(), user.size()),
-							mem::String::make_weak(source.data(), source.size()));
-					if (u) {
-						rctx.setUser(u);
-					}
+			if (!user.empty() && !source.empty()) {
+				auto storage = rctx.storage();
+				auto u = db::User::get(storage, mem::String::make_weak(user.data(), user.size()),
+						mem::String::make_weak(source.data(), source.size()));
+				if (u) {
+					rctx.setUser(u);
+					return true;
 				}
 			}
-		} else if (method == "pkey") {
-			r.skipChars<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>();
-			auto d = stappler::data::read(stappler::base64::decode(r));
-			if (d.isArray() && d.size() == 2 && d.isBytes(0) && d.isBytes(1)) {
-				auto &key = d.getBytes(0);
-				auto &sig = d.getBytes(1);
+		}
+	} else if (method == "pkey") {
+		r.skipChars<mem::StringView::CharGroup<stappler::CharGroupId::WhiteSpace>>();
+		auto d = stappler::data::read(stappler::base64::decode(r));
+		if (d.isArray() && d.size() == 2 && d.isBytes(0) && d.isBytes(1)) {
+			auto &key = d.getBytes(0);
+			auto &sig = d.getBytes(1);
 
-				mbedtls_pk_context pk;
-				mbedtls_pk_init( &pk );
+			mbedtls_pk_context pk;
+			mbedtls_pk_init( &pk );
 
-				do {
-					if (key.size() < 128 || sig.size() < 128) {
-						break;
-					}
+			do {
+				if (key.size() < 128 || sig.size() < 128) {
+					break;
+				}
 
-					if (memcmp(key.data(), "ssh-", 4) == 0) {
-						auto derKey = stappler::valid::convertOpenSSHKey(mem::StringView((const char *)key.data(), key.size()));
-						if (!derKey.empty()) {
-							if (mbedtls_pk_parse_public_key(&pk, (const uint8_t *)derKey.data(), derKey.size()) != 0) {
-								break;
-							}
-						} else {
+				if (memcmp(key.data(), "ssh-", 4) == 0) {
+					auto derKey = stappler::valid::convertOpenSSHKey(mem::StringView((const char *)key.data(), key.size()));
+					if (!derKey.empty()) {
+						if (mbedtls_pk_parse_public_key(&pk, (const uint8_t *)derKey.data(), derKey.size()) != 0) {
 							break;
 						}
 					} else {
-						if (mbedtls_pk_parse_public_key(&pk, (const uint8_t *)key.data(), key.size()) != 0) {
-							break;
-						}
-					}
-
-					auto hash = stappler::string::Sha512().update(key).final();
-					if (mbedtls_pk_verify(&pk, MBEDTLS_MD_SHA512, hash.data(), hash.size(), sig.data(), sig.size()) != 0) {
 						break;
 					}
-
-					uint8_t out[2_KiB];
-					auto bytesCount = mbedtls_pk_write_pubkey_der(&pk, out, sizeof(out));
-					if (bytesCount <= 0) {
+				} else {
+					if (mbedtls_pk_parse_public_key(&pk, (const uint8_t *)key.data(), key.size()) != 0) {
 						break;
 					}
+				}
 
-					auto searchKey = mem::BytesView(out + sizeof(out) - bytesCount, bytesCount);
-					if (auto u = db::User::get(rctx.storage(), *db::internals::getUserScheme(), searchKey)) {
-						rctx.setUser(u);
-					}
-				} while (0);
+				auto hash = stappler::string::Sha512().update(key).final();
+				if (mbedtls_pk_verify(&pk, MBEDTLS_MD_SHA512, hash.data(), hash.size(), sig.data(), sig.size()) != 0) {
+					break;
+				}
 
-				mbedtls_pk_free( &pk );
-			}
+				uint8_t out[2_KiB];
+				auto bytesCount = mbedtls_pk_write_pubkey_der(&pk, out, sizeof(out));
+				if (bytesCount <= 0) {
+					break;
+				}
+
+				auto searchKey = mem::BytesView(out + sizeof(out) - bytesCount, bytesCount);
+				if (auto u = db::User::get(rctx.storage(), *db::internals::getUserScheme(), searchKey)) {
+					rctx.setUser(u);
+					return true;
+				}
+			} while (0);
+
+			mbedtls_pk_free( &pk );
 		}
+	}
+	return false;
+}
+
+static int Server_onRequestRecieved(Request &rctx, RequestHandler &h) {
+	auto auth = rctx.getRequestHeaders().at("Authorization");
+	if (!auth.empty()) {
+		Server_processAuth(rctx, auth);
 	}
 
 	auto &origin = rctx.getRequestHeaders().at("Origin");
@@ -1288,6 +1295,10 @@ int Server::onRequest(Request &req) {
 		// try websocket
 		auto it = Server_resolvePath(_config->websockets, path);
 		if (it != _config->websockets.end() && it->second) {
+			auto auth = req.getRequestHeaders().at("Authorization");
+			if (!auth.empty()) {
+				Server_processAuth(req, auth);
+			}
 			return it->second->accept(req);
 		}
 		return DECLINED;
@@ -1557,6 +1568,9 @@ bool Server::scheduleTask(Task *task, TimeInterval t) const {
 }
 
 void Server::runErrorReportTask(request_rec *req, const Vector<data::Value> &errors) {
+	if (errors.empty()) {
+		return;
+	}
 	if (!_config->childInit) {
 		for (auto &it : errors) {
 			std::cout << data::EncodeFormat::Pretty << it << "\n";

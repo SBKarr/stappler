@@ -289,6 +289,9 @@ MemNode *Allocator::alloc(uint32_t in_size) {
 			return nullptr;
 		}
 		allocated += size;
+		if (allocationTracker) {
+			allocationTracker(node, size);
+		}
 	}
 #else
 	if (lock.owns_lock()) {
@@ -299,6 +302,9 @@ MemNode *Allocator::alloc(uint32_t in_size) {
 		return nullptr;
 	}
 	allocated += size;
+	if (allocationTracker) {
+		allocationTracker(node, size);
+	}
 #endif
 
 	node->next = nullptr;

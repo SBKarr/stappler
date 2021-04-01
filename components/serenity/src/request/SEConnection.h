@@ -43,6 +43,8 @@ public:
 	operator conn_rec *() const { return _conn; }
 	operator bool () const { return _conn != nullptr; }
 
+	void *getConfig() const { return (void *)_config; }
+
 public:
 	bool isSecureConnection() const;
 
@@ -58,9 +60,12 @@ public:
 	Server server() const;
 	apr_pool_t *pool() const;
 
-protected:
+	websocket::Connection *getWebsocketConnection() const;
+	websocket::Handler *getWebsocketHandler() const;
+
 	struct Config;
 
+protected:
 	conn_rec *_conn = nullptr;
 	Config *_config = nullptr;
 };

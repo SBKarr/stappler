@@ -331,7 +331,7 @@ struct ObjectCompressor {
 	ObjectCompressor(const Transaction *t, mem::pool_t *p, mem::Value *objects, mem::BytesView dict, const Scheme *s, const Worker *w)
 	: transaction(t), objects(objects), pool(p), dict(dict), scheme(s), worker(w) {
 		if (!mem::pool::isThreadSafeAsParent(pool)) {
-			// utility is threaded, so, pool should be thread-safe, but we cat create new one
+			// utility is threaded, so, pool should be thread-safe, but we can create new one
 			// it's less efficient from memory allocation speed side, but it's compensating by threading
 			pool = mem::pool::create(mem::pool::PoolFlags::Custom | mem::pool::PoolFlags::ThreadSafeAllocator);
 			poolOwner = true;

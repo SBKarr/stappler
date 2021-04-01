@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2021 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -28,25 +28,62 @@ THE SOFTWARE.
 
 NS_SA_EXT_BEGIN(websocket)
 
-uint8_t Handler::getOpcodeFromType(Handler::FrameType opcode) {
+struct WriteSlot : AllocPool {
+	struct Slice {
+		uint8_t *data;
+		size_t size;
+		Slice *next;
+	};
+
+	apr_pool_t *pool;
+	size_t alloc = 0;
+	size_t offset = 0;
+	Slice *firstData = nullptr;
+	Slice *lastData = nullptr;
+
+	WriteSlot *next = nullptr;
+
+	WriteSlot(apr_pool_t *p) : pool(p) { }
+
+	bool empty() const { return firstData == nullptr; }
+
+	void emplace(const uint8_t *data, size_t size);
+	void pop(size_t);
+
+	uint8_t * getNextBytes() const { return firstData->data + offset; }
+	size_t getNextLength() const { return firstData->size - offset; }
+};
+
+struct FrameWriter : AllocPool {
+	apr_pool_t *pool = nullptr;
+	apr_bucket_brigade *tmpbb = nullptr;
+	WriteSlot *firstSlot = nullptr;
+	WriteSlot *lastSlot = nullptr;
+
+	FrameWriter(apr_pool_t *, apr_bucket_alloc_t *alloc);
+
+	bool empty() const { return firstSlot == nullptr; }
+
+	WriteSlot *nextReadSlot() const { return firstSlot; }
+	void popReadSlot();
+
+	WriteSlot *nextEmplaceSlot(size_t sizeOfData);
+};
+
+static uint8_t getOpcodeFromType(FrameType opcode) {
 	switch (opcode) {
-	case Handler::FrameType::Continue: return 0x0; break;
-	case Handler::FrameType::Text: return 0x1; break;
-	case Handler::FrameType::Binary: return 0x2; break;
-	case Handler::FrameType::Close: return 0x8; break;
-	case Handler::FrameType::Ping: return 0x9; break;
-	case Handler::FrameType::Pong: return 0xA; break;
+	case FrameType::Continue: return 0x0; break;
+	case FrameType::Text: return 0x1; break;
+	case FrameType::Binary: return 0x2; break;
+	case FrameType::Close: return 0x8; break;
+	case FrameType::Ping: return 0x9; break;
+	case FrameType::Pong: return 0xA; break;
 	default: break;
 	}
 	return 0;
 }
 
-bool Handler::isControl(Handler::FrameType t) {
-	return t == Handler::FrameType::Close || t == Handler::FrameType::Continue
-			|| t == Handler::FrameType::Ping || t == Handler::FrameType::Pong;
-}
-
-void Handler::makeHeader(StackBuffer<32> &buf, size_t dataSize, Handler::FrameType t) {
+static void makeHeader(StackBuffer<32> &buf, size_t dataSize, FrameType t) {
 	size_t sizeSize = (dataSize <= 125) ? 0 : ((dataSize > (size_t)maxOf<uint16_t>())? 8 : 2);
 	size_t frameSize = 2 + sizeSize;
 
@@ -68,13 +105,7 @@ void Handler::makeHeader(StackBuffer<32> &buf, size_t dataSize, Handler::FrameTy
 	buf.save(nullptr, frameSize);
 }
 
-Handler::WriteSlot::WriteSlot(apr_pool_t *p) : pool(p) { }
-
-bool Handler::WriteSlot::empty() const {
-	return firstData == nullptr;
-}
-
-void Handler::WriteSlot::emplace(const uint8_t *data, size_t size) {
+void WriteSlot::emplace(const uint8_t *data, size_t size) {
 	auto mem = memory::pool::palloc(pool, sizeof(Slice) + size);
 	Slice *next = (Slice *)mem;
 	next->data = (uint8_t *)mem + sizeof(Slice);
@@ -94,7 +125,7 @@ void Handler::WriteSlot::emplace(const uint8_t *data, size_t size) {
 	alloc += size + sizeof(Slice);
 }
 
-void Handler::WriteSlot::pop(size_t size) {
+void WriteSlot::pop(size_t size) {
 	if (size >= firstData->size - offset) {
 		firstData = firstData->next;
 		if (!firstData) {
@@ -106,26 +137,11 @@ void Handler::WriteSlot::pop(size_t size) {
 	}
 }
 
-uint8_t * Handler::WriteSlot::getNextBytes() const {
-	return firstData->data + offset;
-}
-size_t Handler::WriteSlot::getNextLength() const {
-	return firstData->size - offset;
+FrameWriter::FrameWriter(apr_pool_t *p, apr_bucket_alloc_t *alloc) : pool(p) {
+	tmpbb = apr_brigade_create(p, alloc);
 }
 
-Handler::FrameWriter::FrameWriter(const Request &req, apr_pool_t *pool) : pool(pool) {
-	tmpbb = apr_brigade_create(pool, req.request()->connection->bucket_alloc);
-}
-
-bool Handler::FrameWriter::empty() const {
-	return firstSlot == nullptr;
-}
-
-Handler::WriteSlot *Handler::FrameWriter::nextReadSlot() const {
-	return firstSlot;
-}
-
-void Handler::FrameWriter::popReadSlot() {
+void FrameWriter::popReadSlot() {
 	if (firstSlot->empty()) {
 		memory::pool::destroy(firstSlot->pool);
 		firstSlot = firstSlot->next;
@@ -135,7 +151,7 @@ void Handler::FrameWriter::popReadSlot() {
 	}
 }
 
-Handler::WriteSlot *Handler::FrameWriter::nextEmplaceSlot(size_t sizeOfData) {
+WriteSlot *FrameWriter::nextEmplaceSlot(size_t sizeOfData) {
 	if (!lastSlot || lastSlot->alloc + sizeOfData > 16_KiB) {
 		auto p = memory::pool::create(pool);
 		WriteSlot *slot = new (p) WriteSlot(p);

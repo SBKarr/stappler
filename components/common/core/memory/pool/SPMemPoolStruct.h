@@ -123,6 +123,7 @@ struct Allocator {
 	bool run_mmap(uint32_t);
 #endif
 
+	AllocManager::AllocFn allocationTracker = nullptr;
 };
 
 struct Pool {

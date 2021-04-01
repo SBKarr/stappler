@@ -2,7 +2,7 @@
 // PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
 
 /**
-Copyright (c) 2017 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2017-2021 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,77 @@ THE SOFTWARE.
 
 NS_SA_EXT_BEGIN(websocket)
 
+struct Frame {
+	bool fin; // fin value inside current frame
+	FrameType type; // opcode from first frame
+	Bytes buffer; // common data buffer
+	size_t block; // size of completely written block when segmented
+	size_t offset; // offset inside current frame
+};
+
+struct FrameReader : AllocPool {
+	enum class Status : uint8_t {
+		Head,
+		Size16,
+		Size64,
+		Mask,
+		Body,
+		Control
+	};
+
+	enum class Error : uint8_t {
+		None,
+		NotInitialized, // error in reader initialization
+		ExtraIsNotEmpty,// rsv 1-3 is not empty
+		NotMasked,// input frame is not masked
+		UnknownOpcode,// unknown opcode in frame
+		InvalidSegment,// invalid FIN or OPCODE sequence in segmented frames
+		InvalidSize,// frame (or sequence) is larger then max size
+		InvalidAction,// Handler tries to perform invalid reading action
+	};
+
+	bool fin = false;
+	bool masked = false;
+
+	Status status = Status::Head;
+	Error error = Error::None;
+	FrameType type = FrameType::None;
+	uint8_t extra = 0;
+	uint32_t mask = 0;
+	size_t size = 0;
+	size_t max = config::getDefaultWebsocketMax(); // absolute maximum (even for segmented frames)
+
+	Frame frame;
+	apr_pool_t *pool;
+	StackBuffer<128> buffer;
+	apr_bucket_alloc_t *bucket_alloc;
+	apr_bucket_brigade *tmpbb;
+
+	FrameReader(apr_pool_t *p, apr_bucket_alloc_t *alloc);
+
+	operator bool() const {  return error == Error::None; }
+
+	size_t getRequiredBytes() const;
+	uint8_t * prepare(size_t &len);
+	bool save(uint8_t *, size_t nbytes);
+
+	bool isFrameReady() const;
+	bool isControlReady() const;
+	void popFrame();
+
+	bool updateState();
+};
+
+struct NetworkReader : AllocPool {
+	apr_pool_t *pool = nullptr;
+	apr_bucket_alloc_t *bucket_alloc;
+    apr_bucket_brigade *b = nullptr;
+    apr_bucket_brigade *tmpbb = nullptr;
+
+    NetworkReader(apr_pool_t *, apr_bucket_alloc_t *alloc);
+    void drop();
+};
+
 template <typename B>
 static size_t FrameReader_requiredBytes(const B &buffer, size_t max) {
 	return (buffer.size() < max) ? (max - buffer.size()) : 0;
@@ -41,37 +112,63 @@ static void FrameReader_unmask(uint32_t mask, size_t offset, uint8_t *data, size
 	}
 }
 
-static Handler::FrameType FrameReader_getTypeFromOpcode(uint8_t opcode) {
+static FrameType FrameReader_getTypeFromOpcode(uint8_t opcode) {
 	switch (opcode) {
-	case 0x0: return Handler::FrameType::Continue; break;
-	case 0x1: return Handler::FrameType::Text; break;
-	case 0x2: return Handler::FrameType::Binary; break;
-	case 0x8: return Handler::FrameType::Close; break;
-	case 0x9: return Handler::FrameType::Ping; break;
-	case 0xA: return Handler::FrameType::Pong; break;
+	case 0x0: return FrameType::Continue; break;
+	case 0x1: return FrameType::Text; break;
+	case 0x2: return FrameType::Binary; break;
+	case 0x8: return FrameType::Close; break;
+	case 0x9: return FrameType::Ping; break;
+	case 0xA: return FrameType::Pong; break;
 	}
-	return Handler::FrameType::None;
+	return FrameType::None;
 }
 
-Handler::FrameReader::FrameReader(const Request &req, apr_pool_t *p, size_t maxFrameSize)
-: fin(false), masked(false), status(Status::Head), error(Error::None), type(FrameType::None), extra(0)
-, mask(0) , size(0), max(maxFrameSize), frame(Frame{false, FrameType::None, Bytes(), 0, 0})
-, pool(nullptr), bucket_alloc(nullptr), tmpbb(nullptr) {
-	pool = memory::pool::create(p);
+static bool isControlFrameType(FrameType t) {
+	switch (t) {
+	case FrameType::Close:
+	case FrameType::Continue:
+	case FrameType::Ping:
+	case FrameType::Pong:
+		return true;
+		break;
+	default:
+		return false;
+		break;
+	}
+	return false;
+}
+
+StatusCode Connection::resolveStatus(StatusCode code) {
+	if (code == StatusCode::Auto) {
+		switch (_reader->error) {
+		case FrameReader::Error::NotInitialized: return StatusCode::UnexceptedCondition; break;
+		case FrameReader::Error::ExtraIsNotEmpty: return StatusCode::ProtocolError; break;
+		case FrameReader::Error::NotMasked: return StatusCode::ProtocolError; break;
+		case FrameReader::Error::UnknownOpcode: return StatusCode::ProtocolError; break;
+		case FrameReader::Error::InvalidSegment: return StatusCode::ProtocolError; break;
+		case FrameReader::Error::InvalidSize: return StatusCode::TooLarge; break;
+		case FrameReader::Error::InvalidAction: return StatusCode::UnexceptedCondition; break;
+		default: return StatusCode::Ok; break;
+		}
+	} else if (code == StatusCode::None) {
+		return StatusCode::Ok;
+	}
+	return code;
+}
+
+FrameReader::FrameReader(apr_pool_t *p, apr_bucket_alloc_t *alloc)
+: frame(Frame{false, FrameType::None, Bytes(), 0, 0})
+, pool(memory::pool::create(p)), bucket_alloc(alloc) {
 	if (!pool) {
 		error = Error::NotInitialized;
 	} else {
-		bucket_alloc = req.request()->connection->bucket_alloc;
 	    tmpbb = apr_brigade_create(pool, bucket_alloc);
 		new (&frame.buffer) Bytes(pool); // switch allocator
 	}
 }
 
-Handler::FrameReader::operator bool() const {
-	return error == Error::None;
-}
-
-size_t Handler::FrameReader::getRequiredBytes() const {
+size_t FrameReader::getRequiredBytes() const {
 	switch (status) {
 	case Status::Head: return FrameReader_requiredBytes(buffer, 2); break;
 	case Status::Size16: return FrameReader_requiredBytes(buffer, 2); break;
@@ -83,7 +180,8 @@ size_t Handler::FrameReader::getRequiredBytes() const {
 	}
 	return 0;
 }
-uint8_t * Handler::FrameReader::prepare(size_t &len) {
+
+uint8_t * FrameReader::prepare(size_t &len) {
 	switch (status) {
 	case Status::Head:
 	case Status::Size16:
@@ -97,7 +195,8 @@ uint8_t * Handler::FrameReader::prepare(size_t &len) {
 	}
 	return nullptr;
 }
-bool Handler::FrameReader::save(uint8_t *b, size_t nbytes) {
+
+bool FrameReader::save(uint8_t *b, size_t nbytes) {
 	switch (status) {
 	case Status::Head:
 	case Status::Size16:
@@ -118,7 +217,7 @@ bool Handler::FrameReader::save(uint8_t *b, size_t nbytes) {
 	return true;
 }
 
-bool Handler::FrameReader::updateState() {
+bool FrameReader::updateState() {
 	bool shouldPrepareBody = false;
 	switch (status) {
 	case Status::Head:
@@ -145,7 +244,7 @@ bool Handler::FrameReader::updateState() {
 		}
 
 		if (!frame.buffer.empty()) {
-			if (!isControl(type)) {
+			if (!isControlFrameType(type)) {
 				error = Error::InvalidSegment;
 				return false;
 			}
@@ -209,7 +308,7 @@ bool Handler::FrameReader::updateState() {
 	}
 
 	if (shouldPrepareBody && status == Status::Body) {
-		if (isControl(type)) {
+		if (isControlFrameType(type)) {
 			status = Status::Control;
 		} else {
 			if (size + frame.block > max) {
@@ -222,19 +321,19 @@ bool Handler::FrameReader::updateState() {
 	return true;
 }
 
-bool Handler::FrameReader::isControlReady() const {
+bool FrameReader::isControlReady() const {
 	if (status == Status::Control && getRequiredBytes() == 0) {
 		return true;
 	}
 	return false;
 }
-bool Handler::FrameReader::isFrameReady() const {
+bool FrameReader::isFrameReady() const {
 	if (status == Status::Body && getRequiredBytes() == 0 && frame.fin) {
 		return true;
 	}
 	return false;
 }
-void Handler::FrameReader::popFrame() {
+void FrameReader::popFrame() {
 	switch (status) {
 	case Status::Control:
 		buffer.clear();
@@ -243,8 +342,10 @@ void Handler::FrameReader::popFrame() {
 	case Status::Body:
 		frame.buffer.force_clear();
 		frame.buffer.clear();
-		apr_brigade_cleanup(tmpbb);
+		//apr_brigade_cleanup(tmpbb);
 		memory::pool::clear(pool); // clear frame-related data
+
+		// recreate cleared bb
 	    tmpbb = apr_brigade_create(pool, bucket_alloc);
 		status = Status::Head;
 		frame.block = 0;
@@ -255,6 +356,20 @@ void Handler::FrameReader::popFrame() {
 	default:
 		error = Error::InvalidAction;
 		break;
+	}
+}
+
+NetworkReader::NetworkReader(apr_pool_t *p, apr_bucket_alloc_t *alloc) : bucket_alloc(alloc) {
+	pool = mem::pool::create(p);
+}
+
+void NetworkReader::drop() {
+	if (tmpbb && b) {
+		if (APR_BRIGADE_EMPTY(tmpbb) && APR_BRIGADE_FIRST(b) == APR_BRIGADE_LAST(b)) {
+			mem::pool::clear(pool);
+			b = nullptr;
+			tmpbb = nullptr;
+		}
 	}
 }
 

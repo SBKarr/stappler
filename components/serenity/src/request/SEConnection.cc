@@ -54,6 +54,8 @@ struct Connection::Config : public AllocPool {
 
 	apr::vector<apr::string> _path;
 	data::Value _data;
+	websocket::Connection *_websocket = nullptr;
+	websocket::Handler *_handler = nullptr;
 };
 
 Connection::Connection() : _conn(nullptr), _config(nullptr) { }
@@ -109,6 +111,14 @@ Server Connection::server() const {
 
 apr_pool_t *Connection::pool() const {
 	return _conn->pool;
+}
+
+websocket::Connection *Connection::getWebsocketConnection() const {
+	return _config->_websocket;
+}
+
+websocket::Handler *Connection::getWebsocketHandler() const {
+	return _config->_handler;
 }
 
 NS_SA_END

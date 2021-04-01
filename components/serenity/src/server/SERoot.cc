@@ -326,6 +326,10 @@ static bool sa_server_timer_thread_poll(int epollFd) {
 }
 
 void *sa_server_timer_thread_fn(apr_thread_t *self, void *data) {
+#if LINUX
+	pthread_setname_np(pthread_self(), "RootHeartbeat");
+#endif
+
 	Root *serv = (Root *)data;
 	apr_sleep(config::getHeartbeatPause().toMicroseconds());
 
@@ -878,6 +882,10 @@ struct TaskContext : AllocPool {
 };
 
 static void *Root_performTask(apr_thread_t *, void *ptr) {
+#if LINUX
+	pthread_setname_np(pthread_self(), "RootWorker");
+#endif
+
 	auto ctx = (TaskContext *)ptr;
 	apr::pool::perform([&] {
 		apr::pool::perform([&] {
@@ -947,8 +955,13 @@ Server Root::getRootServer() const {
 	return _rootServerContext;
 }
 
+void Root::setThreadsCount(StringView init, StringView max) {
+	_initThreads = std::max(size_t(init.readInteger(10).get(1)), size_t(1));
+	_maxThreads = std::max(size_t(max.readInteger(10).get(1)), _initThreads);
+}
+
 void Root::onChildInit() {
-	if (apr_thread_pool_create(&_threadPool, std::thread::hardware_concurrency() / 2, std::thread::hardware_concurrency(), _pool) == APR_SUCCESS) {
+	if (apr_thread_pool_create(&_threadPool, _initThreads, _maxThreads, _pool) == APR_SUCCESS) {
 		apr_thread_pool_idle_wait_set(_threadPool, (5_sec).toMicroseconds());
 		apr_thread_pool_threshold_set(_threadPool, 2);
 	} else {

@@ -93,7 +93,6 @@ constexpr auto getServerVirtualFilesystem() { return "/virtual/"; }
 constexpr auto getSerenityErrorNotificatorName() { return "Serenity.ErrorNotificator"; }
 constexpr auto getSerenityDBDHandleName() { return "Serenity.DBD.Handle"; }
 constexpr auto getSerenityWebsocketDatabaseName() { return "Serenity.Websocket.Database"; }
-constexpr auto getSerenityWebsocketHandleName() { return "Serenity.Websocket.Handle"; }
 
 constexpr auto getStorageInterfaceKey() { return "ST.StorageInterface"; }
 constexpr auto getTransactionPrefixKey() { return "ST.Tr."; } // limit for 6 chars to use with SOO opts (6 + 16 < 23)

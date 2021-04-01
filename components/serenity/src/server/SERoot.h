@@ -111,6 +111,8 @@ public:
 
 	Server getRootServer() const;
 
+	void setThreadsCount(StringView, StringView);
+
 protected:
 	static Root *s_sharedServer;
 
@@ -156,6 +158,9 @@ protected:
 	std::atomic<bool> _debug = false;
 
 	apr_hash_t *_extensions = nullptr;
+
+	size_t _initThreads = std::thread::hardware_concurrency() / 2;
+	size_t _maxThreads = std::thread::hardware_concurrency();
 };
 
 /* Also export them as optional functions for modules that prefer it */

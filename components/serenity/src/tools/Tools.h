@@ -53,7 +53,9 @@ public:
 /* WebSocket shell interface */
 class ShellSocket : public websocket::Manager {
 public:
-	virtual Handler * onAccept(const Request &) override;
+	ShellSocket(Server serv) : Manager(serv) { }
+
+	virtual Handler * onAccept(const Request &, mem::pool_t *) override;
 	virtual bool onBroadcast(const data::Value &) override;
 };
 

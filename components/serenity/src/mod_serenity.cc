@@ -140,6 +140,13 @@ static const char *mod_serenity_set_server_key_params(cmd_parms *parms, void *mc
 	return NULL;
 }
 
+static const char *mod_serenity_set_root_threads_count(cmd_parms *parms, void *mconfig, const char *w1, const char *w2) {
+	apr::pool::perform([&] {
+		Root::getInstance()->setThreadsCount(StringView(w1), StringView(w2));
+	}, parms->pool, memory::pool::Config);
+	return NULL;
+}
+
 static const char *mod_serenity_set_webhook_params(cmd_parms *parms, void *mconfig, const char *w) {
 	apr::pool::perform([&] {
 		Server(parms->server).setWebHookParams(apr::string::make_weak(w));
@@ -203,7 +210,11 @@ static const command_rec mod_serenity_directives[] = {
 	AP_INIT_RAW_ARGS("SerenityServerNames", (cmd_func)mod_serenity_set_server_names, NULL, RSRC_CONF,
 		"Space-separated list of server names (first would be ServerName, others - ServerAliases)"),
 	AP_INIT_RAW_ARGS("SerenityAllowIp", (cmd_func)mod_serenity_add_allow, NULL, RSRC_CONF,
-			"Additional IPv4 masks to thrust whed admin access is requested"),
+		"Additional IPv4 masks to thrust whed admin access is requested"),
+
+	AP_INIT_TAKE2("SerenityRootThreadsCount", (cmd_func)mod_serenity_set_root_threads_count, NULL, RSRC_CONF,
+			"<init> <max> - size of root thread pool for async tasks"),
+
     { NULL }
 };
 
