@@ -99,7 +99,7 @@ void *Manager_spawnThread(apr_thread_t *self, void *data) {
 	mem::perform([&] {
 		mem::perform([&] {
 			m->run(h);
-		}, h->pool());
+		}, h->connection()->getConnection());
 	}, m->server());
 
 	Connection::destroy(h->connection());
@@ -190,10 +190,11 @@ int Manager::accept(Request &req) {
 
 void Manager::run(Handler *h) {
 	auto c = h->connection();
-	addHandler(h);
-	c->run(h);
-	removeHandler(h);
-	c->close();
+	c->run(h, [&] {
+		addHandler(h);
+	}, [&] {
+		removeHandler(h);
+	});
 }
 
 void Manager::addHandler(Handler * h) {
@@ -235,8 +236,9 @@ void Handler::sendBroadcast(data::Value &&val) const {
 		std::make_pair("data", data::Value(std::move(val))),
 	};
 
-	auto s = storage();
-	s.broadcast(bcast);
+	performWithStorage([&] (const db::Transaction &t) {
+		t.getAdapter().broadcast(bcast);
+	});
 }
 
 void Handler::setEncodeFormat(const data::EncodeFormat &fmt) {
@@ -259,19 +261,34 @@ bool Handler::send(const data::Value &data) {
 	}
 }
 
-storage::Adapter Handler::storage() const {
-	auto pool = apr::pool::acquire();
+void Handler::performWithStorage(const Callback<void(const db::Transaction &)> &cb) const {
+	_manager->server().performWithStorage(cb);
+}
 
-	db::pq::Handle *db = nullptr;
-	apr_pool_userdata_get((void **)&db, (const char *)config::getSerenityWebsocketDatabaseName(), pool);
-	if (!db) {
-		db = new (pool) db::pq::Handle(db::pq::Driver::open(), db::pq::Driver::Handle(Root::getInstance()->dbdPoolAcquire(_manager->server(), pool)));
-		auto cfg = (Server::Config *)_manager->server().getConfig();
+bool Handler::performAsync(const Callback<void(Task &)> &cb) const {
+	return _conn->performAsync(cb);
+}
+
+storage::Adapter Handler::storage() const {
+	auto pool = mem::pool::acquire();
+
+	db::Interface *iface = nullptr;
+	apr_pool_userdata_get((void **)&iface, (const char *)config::getStorageInterfaceKey(), pool);
+
+	if (!iface) {
+		auto dbd = Root::getInstance()->dbdPoolAcquire(_manager->server().server(), mem::pool::acquire());
+		auto db = new (pool) db::pq::Handle(db::pq::Driver::open(), db::pq::Driver::Handle(dbd));
+		iface = db;
+
+		Server::Config *cfg = (Server::Config *)_manager->server().getConfig();
+
 		db->setStorageTypeMap(&cfg->storageTypes);
 		db->setCustomTypeMap(&cfg->customTypes);
-		apr_pool_userdata_set(db, (const char *)config::getSerenityWebsocketDatabaseName(), NULL, pool);
+
+		mem::pool::userdata_set((void *)iface, config::getStorageInterfaceKey(), nullptr, pool);
 	}
-	return db;
+
+	return storage::Adapter(iface);
 }
 
 mem::pool_t *Handler::pool() const {

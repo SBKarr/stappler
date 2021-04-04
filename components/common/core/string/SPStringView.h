@@ -126,6 +126,16 @@ public:
 	template <CharGroupId Group>
 	using MatchCharGroup = chars::CharGroup<CharType, Group>;
 
+	// CharGroup shortcuts
+	using Numbers = MatchCharGroup<CharGroupId::Numbers>;
+	using Latin = MatchCharGroup<CharGroupId::Latin>;
+	using WhiteSpace = MatchCharGroup<CharGroupId::WhiteSpace>;
+	using LatinLowercase = MatchCharGroup<CharGroupId::LatinLowercase>;
+	using LatinUppercase = MatchCharGroup<CharGroupId::LatinUppercase>;
+	using Alphanumeric = MatchCharGroup<CharGroupId::Alphanumeric>;
+	using Hexadecimial = MatchCharGroup<CharGroupId::Hexadecimial>;
+	using Base64 = MatchCharGroup<CharGroupId::Base64>;
+
 	template <typename ... Args>
 	static auto merge(Args && ... args) -> memory::DefaultInterface::template BasicStringType<CharType>;
 
@@ -263,6 +273,16 @@ public:
 
 	template <typename ... Args>
 	using Compose = chars::Compose<MatchCharType, Args ...>;
+
+	// CharGroup shortcuts
+	using Numbers = MatchCharGroup<CharGroupId::Numbers>;
+	using Latin = MatchCharGroup<CharGroupId::Latin>;
+	using WhiteSpace = MatchCharGroup<CharGroupId::WhiteSpace>;
+	using LatinLowercase = MatchCharGroup<CharGroupId::LatinLowercase>;
+	using LatinUppercase = MatchCharGroup<CharGroupId::LatinUppercase>;
+	using Alphanumeric = MatchCharGroup<CharGroupId::Alphanumeric>;
+	using Hexadecimial = MatchCharGroup<CharGroupId::Hexadecimial>;
+	using Base64 = MatchCharGroup<CharGroupId::Base64>;
 
 	StringViewUtf8();
 	StringViewUtf8(const char *ptr, size_t len = maxOf<size_t>());

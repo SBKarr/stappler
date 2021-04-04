@@ -107,6 +107,8 @@ Transaction Transaction::acquire(const Adapter &adapter) {
 			stappler::apr::pool::store(pool, d, key);
 			if (auto req = stappler::apr::pool::request()) {
 				d->role = stappler::serenity::Request(req).getAccessRole();
+			} else if (auto conn = stappler::apr::pool::connection()) {
+				d->role = stappler::serenity::Connection(conn).getAccessRole();
 			} else {
 				d->role = AccessRoleId::Nobody;
 			}
@@ -128,8 +130,9 @@ Adapter getAdapterFromContext() {
 	if (log.first == uint32_t(stappler::apr::pool::Info::Request)) {
 		return stappler::serenity::Request((request_rec *)log.second).storage();
 	} else if (log.first == uint32_t(stappler::apr::pool::Info::Connection)) {
-		if (auto h = stappler::serenity::Connection((conn_rec *)log.second).getWebsocketHandler()) {
-			return h->storage();
+		stappler::serenity::Connection ctx((conn_rec *)log.second);
+		if (auto ws = ctx.getWebsocketHandler()) {
+			return ws->storage();
 		}
 	}
 	return Adapter(nullptr);

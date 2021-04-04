@@ -114,6 +114,13 @@ public:
 	void setThreadsCount(StringView, StringView);
 
 protected:
+	struct PendingTask {
+		Server server;
+		Task *task;
+		TimeInterval interval = nullptr;
+		bool performFirst;
+	};
+
 	static Root *s_sharedServer;
 
 	static void *logWriterInit(apr_pool_t *p, server_rec *s, const char *name);
@@ -161,6 +168,8 @@ protected:
 
 	size_t _initThreads = std::thread::hardware_concurrency() / 2;
 	size_t _maxThreads = std::thread::hardware_concurrency();
+
+	Vector<PendingTask> *_pending = nullptr;
 };
 
 /* Also export them as optional functions for modules that prefer it */

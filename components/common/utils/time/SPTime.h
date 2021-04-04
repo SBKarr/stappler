@@ -120,9 +120,9 @@ public:
 	TimeStorage & operator= (const TimeStorage &) = default;
 	TimeStorage & operator= (TimeStorage &&) = default;
 
-protected:
     constexpr TimeStorage(uint64_t v) : _value(v) { }
 
+protected:
 	uint64_t _value = 0;
 };
 

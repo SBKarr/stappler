@@ -85,6 +85,7 @@ struct FrameReader : AllocPool {
 	bool isFrameReady() const;
 	bool isControlReady() const;
 	void popFrame();
+	void clear();
 
 	bool updateState();
 };
@@ -340,23 +341,27 @@ void FrameReader::popFrame() {
 		status = Status::Head;
 		break;
 	case Status::Body:
-		frame.buffer.force_clear();
-		frame.buffer.clear();
-		//apr_brigade_cleanup(tmpbb);
-		memory::pool::clear(pool); // clear frame-related data
-
-		// recreate cleared bb
-	    tmpbb = apr_brigade_create(pool, bucket_alloc);
-		status = Status::Head;
-		frame.block = 0;
-		frame.offset = 0;
-		frame.fin = true;
-		frame.type = FrameType::None;
+		clear();
 		break;
 	default:
 		error = Error::InvalidAction;
 		break;
 	}
+}
+
+void FrameReader::clear() {
+	frame.buffer.force_clear();
+	frame.buffer.clear();
+	apr_brigade_cleanup(tmpbb);
+	memory::pool::clear(pool); // clear frame-related data
+
+	// recreate cleared bb
+    tmpbb = apr_brigade_create(pool, bucket_alloc);
+	status = Status::Head;
+	frame.block = 0;
+	frame.offset = 0;
+	frame.fin = true;
+	frame.type = FrameType::None;
 }
 
 NetworkReader::NetworkReader(apr_pool_t *p, apr_bucket_alloc_t *alloc) : bucket_alloc(alloc) {

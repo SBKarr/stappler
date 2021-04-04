@@ -41,6 +41,11 @@ TaskGroup::TaskGroup(Server serv) {
 	_server = serv;
 }
 
+TaskGroup::TaskGroup(Server serv, std::function<void()> &&fn) {
+	_server = serv;
+	_notifyFn = fn;
+}
+
 void TaskGroup::onAdded(Task *task) {
 	++ _added;
 
@@ -57,6 +62,10 @@ void TaskGroup::onPerformed(Task *task) {
     _mutex.unlock();
 
 	_condition.notify_one();
+
+	if (_notifyFn) {
+		_notifyFn();
+	}
 }
 
 void TaskGroup::update() {

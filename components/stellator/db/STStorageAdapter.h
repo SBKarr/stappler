@@ -54,8 +54,9 @@ public:
 
 	User * authorizeUser(const Auth &, const mem::StringView &name, const mem::StringView &password) const;
 
-	void broadcast(const mem::Bytes &);
-	void broadcast(const mem::Value &val);
+	void broadcast(const mem::Bytes &) const;
+	void broadcast(const mem::Value &val) const;
+	void broadcast(mem::StringView url, mem::Value &&val, bool exclusive) const;
 
 	template <typename Callback>
 	bool performInTransaction(Callback && t);

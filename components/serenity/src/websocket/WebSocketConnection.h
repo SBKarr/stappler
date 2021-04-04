@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "Request.h"
 #include "Connection.h"
 #include "SPBuffer.h"
+#include "Task.h"
 
 NS_SA_EXT_BEGIN(websocket)
 
@@ -97,22 +98,24 @@ public:
 
 	bool isEnabled() const { return _enabled; }
 
-	bool run(Handler *);
-
-	void cancel(StringView reason = StringView());
+	bool run(Handler *, const Callback<void()> &beginCb, const Callback<void()> &endCb);
 
 	void wakeup();
+	void terminate();
 
 	void setStatusCode(StatusCode, StringView = StringView());
-
-	void close();
 
 	mem::pool_t *getPool() const { return _pool; }
 	conn_rec * getConnection() const { return _connection; }
 
 	mem::pool_t *getHandlePool() const;
 
+	bool performAsync(const Callback<void(Task &)> &cb) const;
+
 protected:
+	void cancel(StringView reason = StringView());
+	void close();
+
 	apr_status_t read(apr_bucket_brigade *bb, char *buf, size_t *len);
 
 	bool processSocket(const apr_pollfd_t *fd, Handler *h);
@@ -131,6 +134,7 @@ protected:
 	apr_pool_t *_pool;
 	conn_rec *_connection;
 	apr_socket_t *_socket;
+	std::atomic_flag _shouldTerminate;
 
 	FrameWriter *_writer = nullptr;
 	FrameReader *_reader = nullptr;
@@ -140,6 +144,7 @@ protected:
 
 	apr_pollset_t *_poll = nullptr;
 	apr_pollfd_t _pollfd;
+	apr_pollfd_t _eventPollfd;
 	bool _fdchanged = false;
 
 	String _serverReason;
@@ -148,6 +153,9 @@ protected:
 
 	int _sslIdx = -1;
 	void *_ssl = nullptr;
+
+	mutable TaskGroup _group;
+	int _eventFd = -1; // eventfd used to ensure that we processed all async updated and broadcasts in time
 };
 
 NS_SA_EXT_END(websocket)

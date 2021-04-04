@@ -33,6 +33,7 @@ public:
 
 	TaskGroup();
 	TaskGroup(Server);
+	TaskGroup(Server, std::function<void()> &&);
 
 	void onAdded(Task *);
 	void onPerformed(Task *);
@@ -55,6 +56,8 @@ protected:
 	std::atomic<size_t> _added = 0;
 	std::atomic<size_t> _completed = 0;
 	Server _server;
+
+	std::function<void()> _notifyFn = nullptr;
 };
 
 class Task : public mem::AllocBase {

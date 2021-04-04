@@ -42,6 +42,8 @@ public:
 	template< class InputIt >
 	SpanView( InputIt first, InputIt last) : ptr(&(*first)), len(std::distance(first, last)) { }
 
+	SpanView(InitializerList<Type> il) : ptr(il.begin()), len(il.size()) { }
+
 	SpanView(const std::vector<Type> &vec) : ptr(vec.data()), len(vec.size()) { }
 	SpanView(const std::vector<Type> &vec, size_t count) : ptr(vec.data()), len(std::min(vec.size(), count)) { }
 	SpanView(const std::vector<Type> &vec, size_t off, size_t count) : ptr(vec.data() + off), len(std::min(vec.size() - off, count)) { }

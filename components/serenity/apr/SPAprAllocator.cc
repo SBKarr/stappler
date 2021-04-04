@@ -69,6 +69,19 @@ request_rec *request() {
 	return ret;
 }
 
+conn_rec *connection() {
+	conn_rec *ret = nullptr;
+	foreach_info(&ret, [] (void *ud, pool_t *p, uint32_t tag, const void *data) -> bool {
+		if (tag == uint32_t(Connection)) {
+			*((conn_rec **)ud) = (conn_rec *)data;
+			return false;
+		}
+
+		return true;
+	});
+	return ret;
+}
+
 }
 
 NS_SP_EXT_END(apr)

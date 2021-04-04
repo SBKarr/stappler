@@ -56,6 +56,7 @@ struct Connection::Config : public AllocPool {
 	data::Value _data;
 	websocket::Connection *_websocket = nullptr;
 	websocket::Handler *_handler = nullptr;
+	db::AccessRoleId _accessRole = db::AccessRoleId::Nobody;
 };
 
 Connection::Connection() : _conn(nullptr), _config(nullptr) { }
@@ -119,6 +120,10 @@ websocket::Connection *Connection::getWebsocketConnection() const {
 
 websocket::Handler *Connection::getWebsocketHandler() const {
 	return _config->_handler;
+}
+
+db::AccessRoleId Connection::getAccessRole() const {
+	return _config->_accessRole;
 }
 
 NS_SA_END

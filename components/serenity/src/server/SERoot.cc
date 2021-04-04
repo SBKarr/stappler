@@ -49,9 +49,6 @@ THE SOFTWARE.
 
 // Hidden control interfaces for stats
 
-#include <sys/epoll.h>
-#include <sys/inotify.h>
-
 NS_DB_PQ_BEGIN
 void setDbCtrl(mem::Function<void(bool)> &&cb);
 NS_DB_PQ_END
@@ -187,20 +184,6 @@ NS_SA_END
 NS_SA_BEGIN
 
 static std::atomic_flag s_timerExitFlag;
-
-struct PollClient : mem::AllocBase {
-	enum Type {
-		None,
-		INotify,
-		Postgres,
-	};
-
-	Server server;
-	void *ptr = nullptr;
-	Type type = None;
-	int fd = -1;
-    struct epoll_event event;
-};
 
 static void sa_server_timer_push_notify(PollClient *cl, int fd) {
 	apr::pool::perform([&] {
@@ -847,12 +830,17 @@ void Root::performStorage(apr_pool_t *pool, const Server &serv, const Callback<v
 			db::Adapter storage(&h);
 			mem::pool::userdata_set((void *)iface, config::getStorageInterfaceKey(), nullptr, pool);
 
+			Server::Config *cfg = (Server::Config *)serv.getConfig();
+
+			h.setStorageTypeMap(&cfg->storageTypes);
+			h.setCustomTypeMap(&cfg->customTypes);
+
 			cb(storage);
 
 			auto stack = stappler::memory::pool::get<db::Transaction::Stack>(pool, config::getTransactionStackKey());
 			for (auto &it : stack->stack) {
 				if (it->adapter == storage) {
-					it->adapter == db::Adapter(nullptr);
+					it->adapter = db::Adapter(nullptr);
 					messages::error("Root", "Incomplete transaction found");
 				}
 			}
@@ -901,18 +889,24 @@ static void *Root_performTask(apr_thread_t *, void *ptr) {
 }
 
 bool Root::performTask(const Server &serv, Task *task, bool performFirst) {
-	if (_threadPool && task) {
-		_tasksRunned += 1;
-		task->setServer(serv);
-		memory::pool::store(task->pool(), serv.server(), "Apr.Server");
-		if (auto g = task->getGroup()) {
-			g->onAdded(task);
-		}
-		auto ctx = new (task->pool()) TaskContext( task, serv.server() );
-		if (performFirst) {
-			return apr_thread_pool_top(_threadPool, &Root_performTask, ctx, apr_byte_t(task->getPriority()), nullptr) == APR_SUCCESS;
-		} else {
-			return apr_thread_pool_push(_threadPool, &Root_performTask, ctx, apr_byte_t(task->getPriority()), nullptr) == APR_SUCCESS;
+	if (task) {
+		if (_threadPool) {
+			_tasksRunned += 1;
+			task->setServer(serv);
+			memory::pool::store(task->pool(), serv.server(), "Apr.Server");
+			if (auto g = task->getGroup()) {
+				g->onAdded(task);
+			}
+			auto ctx = new (task->pool()) TaskContext( task, serv.server() );
+			if (performFirst) {
+				return apr_thread_pool_top(_threadPool, &Root_performTask, ctx, apr_byte_t(task->getPriority()), nullptr) == APR_SUCCESS;
+			} else {
+				return apr_thread_pool_push(_threadPool, &Root_performTask, ctx, apr_byte_t(task->getPriority()), nullptr) == APR_SUCCESS;
+			}
+		} else if (_pending) {
+			mem::perform([&] {
+				_pending->emplace_back(PendingTask{serv, task, performFirst, TimeInterval()});
+			}, _pending->get_allocator());
 		}
 	}
 	return false;
@@ -920,14 +914,20 @@ bool Root::performTask(const Server &serv, Task *task, bool performFirst) {
 
 bool Root::scheduleTask(const Server &serv, Task *task, TimeInterval interval) {
 	if (_threadPool && task) {
-		_tasksRunned += 1;
-		task->setServer(serv);
-		memory::pool::store(task->pool(), serv.server(), "Apr.Server");
-		if (auto g = task->getGroup()) {
-			g->onAdded(task);
+		if (_threadPool) {
+			_tasksRunned += 1;
+			task->setServer(serv);
+			memory::pool::store(task->pool(), serv.server(), "Apr.Server");
+			if (auto g = task->getGroup()) {
+				g->onAdded(task);
+			}
+			auto ctx = new (task->pool()) TaskContext( task, serv.server() );
+			return apr_thread_pool_schedule(_threadPool, &Root_performTask, ctx, interval.toMicroseconds(), nullptr) == APR_SUCCESS;
+		} else if (_pending) {
+			mem::perform([&] {
+				_pending->emplace_back(PendingTask{serv, task, false, interval});
+			}, _pending->get_allocator());
 		}
-		auto ctx = new (task->pool()) TaskContext( task, serv.server() );
-		return apr_thread_pool_schedule(_threadPool, &Root_performTask, ctx, interval.toMicroseconds(), nullptr) == APR_SUCCESS;
 	}
 	return false;
 }
@@ -964,6 +964,17 @@ void Root::onChildInit() {
 	if (apr_thread_pool_create(&_threadPool, _initThreads, _maxThreads, _pool) == APR_SUCCESS) {
 		apr_thread_pool_idle_wait_set(_threadPool, (5_sec).toMicroseconds());
 		apr_thread_pool_threshold_set(_threadPool, 2);
+
+		if (!_pending->empty()) {
+			for (auto &it : *_pending) {
+				if (it.interval) {
+					scheduleTask(it.server, it.task, it.interval);
+				} else {
+					performTask(it.server, it.task, it.performFirst);
+				}
+			}
+			_pending->clear();
+		}
 	} else {
 		_threadPool = nullptr;
 	}
@@ -1000,6 +1011,8 @@ void Root::onHeartBeat() {
 
 void Root::onServerChildInit(apr_pool_t *p, server_rec* s) {
 	apr::pool::perform([&] {
+		_pending = new Vector<PendingTask>();
+
 		memset(&s_sharedSigAction, 0, sizeof(s_sharedSigAction));
 		s_sharedSigAction.sa_sigaction = &s_sigAction;
 		s_sharedSigAction.sa_flags = SA_SIGINFO;
@@ -1013,7 +1026,6 @@ void Root::onServerChildInit(apr_pool_t *p, server_rec* s) {
 		websocket::Manager::filterRegister();
 
 		setProcPool(p);
-		onChildInit();
 
 		_rootServerContext = s;
 		auto serv = _rootServerContext;
@@ -1024,6 +1036,8 @@ void Root::onServerChildInit(apr_pool_t *p, server_rec* s) {
 			}, servPtr);
 			serv = serv.next();
 		}
+
+		onChildInit();
 
 		s_timerExitFlag.test_and_set();
 		apr_threadattr_t *attr;

@@ -63,6 +63,8 @@ public:
 	websocket::Connection *getWebsocketConnection() const;
 	websocket::Handler *getWebsocketHandler() const;
 
+	db::AccessRoleId getAccessRole() const;
+
 	struct Config;
 
 protected:

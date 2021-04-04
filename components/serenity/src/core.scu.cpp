@@ -25,15 +25,38 @@ THE SOFTWARE.
 
 #include "Define.h"
 
+#include <sys/epoll.h>
+#include <sys/inotify.h>
+
+#include "Server.h"
+
 APLOG_USE_MODULE(serenity);
+
+NS_SA_BEGIN
+
+struct PollClient : mem::AllocBase {
+	enum Type {
+		None,
+		INotify,
+		Postgres,
+	};
+
+	Server server;
+	void *ptr = nullptr;
+	Type type = None;
+	int fd = -1;
+    struct epoll_event event;
+};
+
+NS_SA_END
 
 #include "SPAprAllocator.cc"
 #include "SPAprFileStream.cc"
 #include "SPAprFilesystem.cc"
 #include "SEForward.cc"
+#include "SEServer.cc"
 #include "SERoot.cc"
 #include "SERootMime.cc"
-#include "SEServer.cc"
 
 #include "SEConnection.cc"
 #include "SERequest.cc"

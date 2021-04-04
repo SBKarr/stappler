@@ -27,10 +27,15 @@ THE SOFTWARE.
 
 NS_SA_BEGIN
 
-Resource::Resource(ResourceType t, const Adapter &a, QueryList &&list) : _type(t), _transaction(Transaction::acquire(a)), _queries(move(list)) {
+Resource::Resource(ResourceType t, const Adapter &a, QueryList &&list)
+: _type(t), _transaction(Transaction::acquire(a)), _queries(move(list)) {
 	if (_queries.isDeltaApplicable()) {
 		_delta = Time::microseconds(_transaction.getDeltaValue(*_queries.getScheme()));
 	}
+}
+
+Resource::~Resource() {
+	_transaction.release();
 }
 
 ResourceType Resource::getType() const {

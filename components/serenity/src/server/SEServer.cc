@@ -670,10 +670,6 @@ void Server::performWithStorage(const Callback<void(const db::Transaction &)> &c
 
 	auto targetPool = mem::pool::acquire();
 	Root::getInstance()->performStorage(targetPool, *this, [&] (const db::Adapter &ad) {
-		auto h = dynamic_cast<db::pq::Handle *>(ad.interface());
-		h->setStorageTypeMap(&_config->storageTypes);
-		h->setCustomTypeMap(&_config->customTypes);
-
 		if (auto t = db::Transaction::acquire(ad)) {
 			cb(t);
 			t.release();
@@ -1068,7 +1064,7 @@ void Server::onBroadcast(const data::Value &val) {
 		return;
 	}
 
-	if (val.getBool("message")) {
+	if (val.getBool("message") && !val.getBool("exclusive")) {
 		String url = String(config::getServerToolsPrefix()) + config::getServerToolsShell();
 		auto it = Server_resolvePath(_config->websockets, url);
 		if (it != _config->websockets.end() && it->second) {

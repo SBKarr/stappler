@@ -50,7 +50,7 @@ public:
 	/* PathVec should be inverted (so, first selectors should be last in vector */
 	static Resource *resolve(const Adapter &, const Scheme &scheme, Vector<StringView> &path);
 
-	virtual ~Resource() { }
+	virtual ~Resource();
 	Resource(ResourceType, const Adapter &, QueryList &&);
 
 	ResourceType getType() const;

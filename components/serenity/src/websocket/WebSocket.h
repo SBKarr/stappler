@@ -102,7 +102,6 @@ public:
 	bool send(const data::Value &);
 
 	// get default storage adapter, that binds to current call context
-	storage::Adapter storage() const;
 	Manager *manager() const { return _manager; }
 	Connection *connection() const { return _conn; }
 	mem::pool_t *pool() const;
@@ -115,12 +114,18 @@ public:
 
 	void sendPendingNotifications(apr_pool_t *);
 
+	void performWithStorage(const Callback<void(const db::Transaction &)> &cb) const;
+
+	bool performAsync(const Callback<void(Task &)> &cb) const;
+
+	storage::Adapter storage() const;
+
 protected:
 	friend class websocket::Manager;
 	friend class websocket::Connection;
 
 	void setConnection(Connection *);
-	void receiveBroadcast(const data::Value &);
+	virtual void receiveBroadcast(const data::Value &);
 	bool processBroadcasts();
 
 	mem::pool_t *_pool = nullptr;

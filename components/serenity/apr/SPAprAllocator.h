@@ -86,6 +86,7 @@ inline auto perform(const Callback &cb) {
 
 server_rec *server();
 request_rec *request();
+conn_rec *connection();
 
 }
 

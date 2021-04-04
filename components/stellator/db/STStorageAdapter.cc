@@ -100,12 +100,20 @@ User * Adapter::authorizeUser(const Auth &auth, const mem::StringView &name, con
 	return nullptr;
 }
 
-void Adapter::broadcast(const mem::Bytes &data) {
+void Adapter::broadcast(const mem::Bytes &data) const {
 	_interface->broadcast(data);
 }
 
-void Adapter::broadcast(const mem::Value &val) {
+void Adapter::broadcast(const mem::Value &val) const {
 	broadcast(mem::writeData(val, mem::EncodeFormat::Cbor));
+}
+
+void Adapter::broadcast(mem::StringView url, mem::Value &&val, bool exclusive) const {
+	broadcast(mem::Value({
+		stappler::pair("url", mem::Value(url)),
+		stappler::pair("exclusive", mem::Value(exclusive)),
+		stappler::pair("data", std::move(val)),
+	}));
 }
 
 int64_t Adapter::getDeltaValue(const Scheme &s) {

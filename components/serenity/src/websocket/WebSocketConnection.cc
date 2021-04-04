@@ -22,6 +22,9 @@ THE SOFTWARE.
 
 #include "WebSocketConnection.h"
 #include "WebSocket.h"
+
+#include <sys/eventfd.h>
+
 #include "WebSocketWriter.cc"
 #include "WebSocketReader.cc"
 #include "WebSocketSsl.cc"
@@ -144,6 +147,9 @@ Connection *Connection::create(apr_allocator_t *alloc, apr_pool_t *pool, const R
 	wsConn->master = nullptr;
 
 	ap_get_core_module_config(wsConn->conn_config) = (void *)wsSock;
+
+	serenity::Connection::Config *ccfg = (serenity::Connection::Config *)serenity::Connection(wsConn).getConfig();
+	ccfg->_accessRole = rctx.getAccessRole();
 
 	Connection *ret = nullptr;
 	mem::perform([&] {
@@ -317,6 +323,10 @@ int Connection::inputFilterInit(ap_filter_t *f) {
 }
 
 bool Connection::write(FrameType t, const uint8_t *bytes, size_t count) {
+	if (!_enabled) {
+		return false;
+	}
+
 	size_t offset = 0;
 	StackBuffer<32> buf;
 	makeHeader(buf, count, t);
@@ -428,8 +438,8 @@ size_t Connection::send(const uint8_t *data, size_t len) {
 	return len;
 }
 
-bool Connection::run(Handler *h) {
-	apr_pollset_create(&_poll, 1, _pool, APR_POLLSET_WAKEABLE | APR_POLLSET_NOCOPY);
+bool Connection::run(Handler *h, const Callback<void()> &beginCb, const Callback<void()> &endCb) {
+	apr_pollset_create(&_poll, 1, _pool, APR_POLLSET_NOCOPY);
 
 	if (!_socket || !_poll) {
 		_serverReason = "Fail to initialize connection";
@@ -448,18 +458,31 @@ bool Connection::run(Handler *h) {
 	_pollfd.desc.s = _socket;
 	apr_pollset_add(_poll, &_pollfd);
 
+	apr_file_t *eventFile = nullptr;
+	apr_os_file_put(&eventFile, &_eventFd, APR_FOPEN_READ | APR_FOPEN_WRITE, _pool);
+
+	memset((void *)&_eventPollfd, 0, sizeof(apr_pollfd_t));
+	_eventPollfd.p = _pool;
+	_eventPollfd.reqevents = APR_POLLIN;
+	_eventPollfd.desc_type = APR_POLL_FILE;
+	_eventPollfd.desc.f = eventFile;
+	apr_pollset_add(_poll, &_eventPollfd);
+
 	apr_socket_opt_set(_socket, APR_SO_NONBLOCK, 1);
 	apr_socket_timeout_set(_socket, 0);
 
 	_enabled = true;
 
+	_shouldTerminate.test_and_set();
+
 	apr::pool::perform([&] {
 		h->onBegin();
 	}, _reader->pool, memory::pool::Socket);
-	mem::pool::clear(_reader->pool);
+	_reader->clear();
 
 	auto ttl = h->getTtl().toMicroseconds();
 
+	beginCb();
 	while (true) {
 		apr_int32_t num = 0;
 		const apr_pollfd_t *fds = nullptr;
@@ -470,11 +493,10 @@ bool Connection::run(Handler *h) {
 		}
 		auto now = Time::now();
 		auto err = apr_pollset_poll(_poll, ttl, &num, &fds);
-		if (err == APR_EINTR) {
-			// wakeup was used
-			if (!h->processBroadcasts()) {
-				break;
-			}
+
+		if (!_shouldTerminate.test_and_set()) {
+			// terminated
+			break;
 		} else if (num == 0) {
 			// timeout
 			auto t = (Time::now() - now).toMicros();
@@ -486,12 +508,35 @@ bool Connection::run(Handler *h) {
 				break;
 			}
 		} else {
-			if (!processSocket(fds, h)) {
-				break;
+			for (int i = 0; i < num; ++ i) {
+				if (fds[i].desc_type == APR_POLL_FILE) {
+					// wakeup is pessimistic but accurate, can be called when no pending events or broadcasts
+					_group.update();
+
+					if (!h->processBroadcasts()) {
+						_shouldTerminate.clear();
+						break;
+					}
+
+					char buf[8] = { 0 };
+					::read(_eventFd, buf, 8); // decrement by 1 (EFD_SEMAPHORE)
+				} else {
+					if (!processSocket(&fds[i], h)) {
+						_shouldTerminate.clear();
+						break;
+					}
+				}
 			}
+		}
+
+		if (!_shouldTerminate.test_and_set()) {
+			break;
 		}
 	}
 
+	_enabled = false;
+	endCb();
+	_group.waitForAll();
 	apr::pool::perform([&] {
 		h->onEnd();
 	}, _reader->pool, memory::pool::Socket);
@@ -503,7 +548,13 @@ bool Connection::run(Handler *h) {
 }
 
 void Connection::wakeup() {
-	apr_pollset_wakeup(_poll);
+	uint64_t value = 1;
+	::write(_eventFd, &value, sizeof(uint64_t));
+}
+
+void Connection::terminate() {
+	_shouldTerminate.clear();
+	wakeup();
 }
 
 void Connection::cancel(StringView reason) {
@@ -539,18 +590,26 @@ void Connection::cancel(StringView reason) {
 
 	write(_writer->tmpbb, sbuf.data(), frameSize);
 	ap_shutdown_conn(_connection, 1);
-	_enabled = false;
 	_connected = false;
 
 	clearSslCtx();
+	close();
 }
 
 void Connection::close() {
 	apr_socket_close(_socket);
+	::close(_eventFd);
 }
 
 mem::pool_t *Connection::getHandlePool() const {
 	return _reader->pool;
+}
+
+bool Connection::performAsync(const Callback<void(Task &)> &cb) const {
+	if (!_enabled) {
+		return false;
+	}
+	return _group.perform(cb);
 }
 
 void Connection::setStatusCode(StatusCode s, StringView r) {
@@ -570,6 +629,9 @@ bool Connection::processSocket(const apr_pollfd_t *fd, Handler *h) {
 		if (!readSocket(fd, h)) {
 			return false;
 		}
+	}
+	if ((fd->rtnevents & APR_POLLHUP) != 0) {
+		return false;
 	}
 	_pollfd.rtnevents = 0;
 	return true;
@@ -694,7 +756,9 @@ bool Connection::writeSocket(const apr_pollfd_t *fd) {
 }
 
 Connection::Connection(apr_allocator_t *a, apr_pool_t *p, conn_rec *c, apr_socket_t *s)
-: _allocator(a), _pool(p), _connection(c), _socket(s) {
+: _allocator(a), _pool(p), _connection(c), _socket(s), _group(Server(c->base_server), [this] {
+	wakeup();
+}) {
 	ap_add_output_filter(WEBSOCKET_FILTER_OUT, (void *)this, nullptr, c);
 	ap_add_input_filter(WEBSOCKET_FILTER_IN, (void *)this, nullptr, c);
 
@@ -705,6 +769,8 @@ Connection::Connection(apr_allocator_t *a, apr_pool_t *p, conn_rec *c, apr_socke
 	serenity::Connection cctx(_connection);
 	serenity::Connection::Config *ccfg = (serenity::Connection::Config *)cctx.getConfig();
 	ccfg->_websocket = this;
+
+	_eventFd = eventfd(0, EFD_NONBLOCK | EFD_SEMAPHORE);
 }
 
 NS_SA_EXT_END(websocket)

@@ -194,31 +194,31 @@ struct ResourceCmd : SocketCommand {
 		return h.manager()->server().getScheme(scheme.str());
 	}
 
-	Resource *acquireResource(ShellSocketHandler &h, const StringView &scheme, const StringView &path,
+	Resource *acquireResource(const db::Transaction &t, ShellSocketHandler &h, const StringView &scheme, const StringView &path,
 			const StringView &resolve, const data::Value &val = data::Value()) {
+		Resource *ret = nullptr;
 		if (!scheme.empty()) {
 			auto s =  acquireScheme(h, scheme);
 			if (s) {
-				Resource *r =  Resource::resolve(h.storage(), *s,
+				ret =  Resource::resolve(t.getAdapter(), *s,
 						path.empty()
 						? String("/")
 						: (path.is<StringView::CharGroup<CharGroupId::Numbers>>())
-						 	? toString("/id", path)
-						 	: path.str());
-				if (r) {
-					r->setUser(h.getUser());
+							? toString("/id", path)
+							: path.str());
+				if (ret) {
+					ret->setUser(h.getUser());
 					if (!resolve.empty()) {
 						if (resolve.front() == '(') {
-							r->applyQuery(data::read(resolve));
+							ret->applyQuery(data::read(resolve));
 						} else {
-							r->setResolveOptions(data::Value(resolve.str()));
+							ret->setResolveOptions(data::Value(resolve.str()));
 						}
 					}
 					if (!val.empty()) {
-						r->applyQuery(val);
+						ret->applyQuery(val);
 					}
-					r->prepare();
-					return r;
+					ret->prepare();
 				} else {
 					h.sendError(toString("Fail to resolve resource \"", path, "\" for scheme ", scheme));
 				}
@@ -228,7 +228,7 @@ struct ResourceCmd : SocketCommand {
 		} else {
 			h.sendError(toString("Scheme is not defined"));
 		}
-		return nullptr;
+		return ret;
 	}
 };
 
@@ -246,10 +246,14 @@ struct GetCmd : ResourceCmd {
 		}
 
 		auto resolve = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-		if (auto r = acquireResource(h, schemeName, path, resolve)) {
-			auto data = r->getResultObject();
-			h.sendData(data);
-		}
+
+		h.performWithStorage([&] (const db::Transaction &t) {
+			if (auto r = acquireResource(t, h, schemeName, path, resolve)) {
+				auto data = r->getResultObject();
+				h.sendData(data);
+				delete r;
+			}
+		});
 		return true;
 	}
 
@@ -265,6 +269,7 @@ struct HistoryCmd : ResourceCmd {
 	HistoryCmd() : ResourceCmd("history") { }
 
 	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		bool ret = false;
 		auto schemeName = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
@@ -289,20 +294,22 @@ struct HistoryCmd : ResourceCmd {
 		}
 
 		if (auto s = acquireScheme(h, schemeName)) {
-			if (auto a = dynamic_cast<db::pq::Handle *>(h.storage().interface())) {
-				if (field.empty()) {
-					h.sendData(a->getHistory(*s, Time::microseconds(time), true));
-				} else if (auto f = s->getField(field)) {
-					if (f->getType() == db::Type::View) {
-						h.sendData(a->getHistory(*static_cast<const storage::FieldView *>(f->getSlot()), s, tag, Time::microseconds(time), true));
+			h.performWithStorage([&] (const db::Transaction &t) {
+				if (auto a = dynamic_cast<db::pq::Handle *>(t.getAdapter().interface())) {
+					if (field.empty()) {
+						h.sendData(a->getHistory(*s, Time::microseconds(time), true));
+					} else if (auto f = s->getField(field)) {
+						if (f->getType() == db::Type::View) {
+							h.sendData(a->getHistory(*static_cast<const storage::FieldView *>(f->getSlot()), s, tag, Time::microseconds(time), true));
+						}
 					}
+					ret = true;
 				}
-				return true;
-			}
+			});
 		}
 
 		h.sendError(toString("Scheme is not defined"));
-		return false;
+		return ret;
 	}
 
 	virtual StringView desc() const {
@@ -319,6 +326,7 @@ struct DeltaCmd : ResourceCmd {
 	DeltaCmd() : ResourceCmd("delta") { }
 
 	virtual bool run(ShellSocketHandler &h, StringView &r) override {
+		bool ret = false;
 		auto schemeName = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 
@@ -340,20 +348,22 @@ struct DeltaCmd : ResourceCmd {
 		}
 
 		if (auto s = acquireScheme(h, schemeName)) {
-			if (auto a = dynamic_cast<db::pq::Handle *>(h.storage().interface())) {
-				if (field.empty()) {
-					h.sendData(a->getDeltaData(*s, Time::microseconds(time)));
-				} else if (auto f = s->getField(field)) {
-					if (f->getType() == db::Type::View) {
-						h.sendData(a->getDeltaData(*s, *static_cast<const db::FieldView *>(f->getSlot()), Time::microseconds(time), tag));
+			h.performWithStorage([&] (const db::Transaction &t) {
+				if (auto a = dynamic_cast<db::pq::Handle *>(t.getAdapter().interface())) {
+					if (field.empty()) {
+						h.sendData(a->getDeltaData(*s, Time::microseconds(time)));
+					} else if (auto f = s->getField(field)) {
+						if (f->getType() == db::Type::View) {
+							h.sendData(a->getDeltaData(*s, *static_cast<const db::FieldView *>(f->getSlot()), Time::microseconds(time), tag));
+						}
 					}
+					ret = true;
 				}
-				return true;
-			}
+			});
 		}
 
 		h.sendError(toString("Scheme is not defined"));
-		return false;
+		return ret;
 	}
 
 	virtual StringView desc() const {
@@ -382,9 +392,12 @@ struct MultiCmd : ResourceCmd {
 						++ path;
 					}
 
-					if (auto r = acquireResource(h, scheme, path, StringView(), it.second)) {
-						result.setValue(r->getResultObject(), it.first);
-					}
+					h.performWithStorage([&] (const db::Transaction &t) {
+						if (auto r = acquireResource(t, h, scheme, path, StringView(), it.second)) {
+							result.setValue(r->getResultObject(), it.first);
+							delete r;
+						}
+					});
 				}
 			}
 			h.sendData(result);
@@ -415,16 +428,18 @@ struct CreateCmd : ResourceCmd {
 		}
 
 		data::Value patch = (r.is('{') || r.is('[') || r.is('(')) ? data::read(r) : UrlView::parseArgs(r, 1_KiB);
-		if (auto r = acquireResource(h, schemeName, path, StringView())) {
-			apr::array<db::InputFile> f;
-			if (r->prepareCreate()) {
-				auto ret = r->createObject(patch, f);
-				h.sendData(ret);
-				return true;
-			} else {
-				h.sendError(toString("Action for scheme ", schemeName, " is forbidden for ", h.getUser()->getName()));
+		h.performWithStorage([&] (const db::Transaction &t) {
+			if (auto r = acquireResource(t, h, schemeName, path, StringView())) {
+				apr::array<db::InputFile> f;
+				if (r->prepareCreate()) {
+					auto ret = r->createObject(patch, f);
+					h.sendData(ret);
+				} else {
+					h.sendError(toString("Action for scheme ", schemeName, " is forbidden for ", h.getUser()->getName()));
+				}
+				delete r;
 			}
-		}
+		});
 
 		h.sendData(patch);
 		h.sendError("Fail to create object with data:");
@@ -454,16 +469,18 @@ struct UpdateCmd : ResourceCmd {
 		}
 
 		data::Value patch = (r.is('{') || r.is('[') || r.is('(')) ? data::read(r) : UrlView::parseArgs(r, 1_KiB);
-		if (auto r = acquireResource(h, schemeName, path, StringView())) {
-			apr::array<db::InputFile> f;
-			if (r->prepareUpdate()) {
-				auto ret = r->updateObject(patch, f);
-				h.sendData(ret);
-				return true;
-			} else {
-				h.sendError(toString("Action for scheme ", schemeName, " is forbidden for ", h.getUser()->getName()));
+		h.performWithStorage([&] (const db::Transaction &t) {
+			if (auto r = acquireResource(t, h, schemeName, path, StringView())) {
+				apr::array<db::InputFile> f;
+				if (r->prepareUpdate()) {
+					auto ret = r->updateObject(patch, f);
+					h.sendData(ret);
+				} else {
+					h.sendError(toString("Action for scheme ", schemeName, " is forbidden for ", h.getUser()->getName()));
+				}
+				delete r;
 			}
-		}
+		});
 
 		h.sendData(patch);
 		h.sendError("Fail to update object with data:");
@@ -492,36 +509,35 @@ struct UploadCmd : ResourceCmd {
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		}
 
-		if (auto r = acquireResource(h, schemeName, path, StringView())) {
-			if (r->prepareCreate()) {
-				Bytes bkey = valid::makeRandomBytes(8);
-				String key = base16::encode(bkey);
+		h.performWithStorage([&] (const db::Transaction &t) {
+			if (auto r = acquireResource(t, h, schemeName, path, StringView())) {
+				if (r->prepareCreate()) {
+					Bytes bkey = valid::makeRandomBytes(8);
+					String key = base16::encode(bkey);
 
-				data::Value token {
-					pair("scheme", data::Value(schemeName)),
-					pair("path", data::Value(path)),
-					pair("resolve", data::Value("")),
-					pair("user", data::Value(h.getUser()->getObjectId())),
-				};
+					data::Value token {
+						pair("scheme", data::Value(schemeName)),
+						pair("path", data::Value(path)),
+						pair("resolve", data::Value("")),
+						pair("user", data::Value(h.getUser()->getObjectId())),
+					};
 
-				h.storage().set(key, token, TimeInterval::seconds(5));
+					h.performWithStorage([&] (const db::Transaction &t) {
+						t.getAdapter().set(key, token, TimeInterval::seconds(5));
+					});
 
-				auto tv = Time::now().toMicros();
-				StringStream str;
-				str << "<p id=\"tmp" << tv << "\"><input type=\"file\" name=\"content\" onchange=\""
-							"upload(this.files[0], '" << toString(h.getUrl(), "/upload/", key) << "', 'content');"
-							"var elem = document.getElementById('tmp" << tv << "');elem.parentNode.removeChild(elem);"
-						"\"></p>";
+					auto tv = Time::now().toMicros();
+					StringStream str;
+					str << "<p id=\"tmp" << tv << "\"><input type=\"file\" name=\"content\" onchange=\""
+								"upload(this.files[0], '" << toString(h.getUrl(), "/upload/", key) << "', 'content');"
+								"var elem = document.getElementById('tmp" << tv << "');elem.parentNode.removeChild(elem);"
+							"\"></p>";
 
-				/*StringStream str;
-				str << ":upload:" << data::Value{
-					pair("url", data::Value(toString(h.request().getUri(), "/upload/", key))),
-					pair("name", data::Value("content")),
-				};*/
-				h.send(str.str());
-				return true;
+					h.send(str.str());
+				}
+				delete r;
 			}
-		}
+		});
 
 		h.sendError("Fail to prepare upload");
 		return true;
@@ -549,15 +565,17 @@ struct AppendCmd : ResourceCmd {
 		}
 
 		data::Value patch = (r.is('{') || r.is('[') || r.is('(')) ? data::read(r) : UrlView::parseArgs(r, 1_KiB);
-		if (auto r = acquireResource(h, schemeName, path, StringView())) {
-			if (r->prepareAppend()) {
-				auto ret = r->appendObject(patch);
-				h.sendData(ret);
-				return true;
-			} else {
-				h.sendError(toString("Action for scheme ", schemeName, " is forbidden for ", h.getUser()->getName()));
+		h.performWithStorage([&] (const db::Transaction &t) {
+			if (auto r = acquireResource(t, h, schemeName, path, StringView())) {
+				if (r->prepareAppend()) {
+					auto ret = r->appendObject(patch);
+					h.sendData(ret);
+				} else {
+					h.sendError(toString("Action for scheme ", schemeName, " is forbidden for ", h.getUser()->getName()));
+				}
+				delete r;
 			}
-		}
+		});
 
 		h.sendData(patch);
 		h.sendError("Fail to update object with data:");
@@ -586,14 +604,16 @@ struct DeleteCmd : ResourceCmd {
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		}
 
-		if (auto r = acquireResource(h, schemeName, path, StringView())) {
-			if (r->removeObject()) {
-				h.sendData(data::Value(true));
-				return true;
-			} else {
-				h.sendError(toString("Action for scheme ", schemeName, " is forbidden for ", h.getUser()->getName()));
+		h.performWithStorage([&] (const db::Transaction &t) {
+			if (auto r = acquireResource(t, h, schemeName, path, StringView())) {
+				if (r->removeObject()) {
+					h.sendData(data::Value(true));
+				} else {
+					h.sendError(toString("Action for scheme ", schemeName, " is forbidden for ", h.getUser()->getName()));
+				}
+				delete r;
 			}
-		}
+		});
 
 		h.sendError("Fail to delete object");
 
@@ -630,15 +650,16 @@ struct SearchCmd : ResourceCmd {
 			data.setString(r, "search");
 		}
 
-		if (auto res = acquireResource(h, schemeName, path, StringView(), data)) {
-			if (auto val = res->getResultObject()) {
-				h.sendData(val);
-				return true;
-			} else {
-				h.sendError(toString(schemeName, ": nothing is found"));
-				return true;
+		h.performWithStorage([&] (const db::Transaction &t) {
+			if (auto res = acquireResource(t, h, schemeName, path, StringView(), data)) {
+				if (auto val = res->getResultObject()) {
+					h.sendData(val);
+				} else {
+					h.sendError(toString(schemeName, ": nothing is found"));
+				}
+				delete res;
 			}
-		}
+		});
 
 		h.sendError("Fail run search");
 
@@ -1012,7 +1033,11 @@ bool ShellSocketHandler::onCommand(StringView &r) {
 }
 
 void ShellSocketHandler::onBegin() {
-	_user = User::get(storage(), _userId);
+	performWithStorage([&] (const db::Transaction &t) {
+		mem::perform([&] {
+			_user = User::get(t.getAdapter(), _userId);
+		}, _pool);
+	});
 
 	sendBroadcast(data::Value({
 		std::make_pair("user", data::Value(_user->getName())),
