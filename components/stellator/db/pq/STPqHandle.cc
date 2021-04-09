@@ -423,6 +423,7 @@ public:
 		auto s = handle->getTypeById(t);
 		switch (s) {
 		case Interface::StorageType::Unknown:
+		case Interface::StorageType::TsVector:
 			std::cout << "Unknown type conversion: " << handle->getTypeNameById(t) << "\n";
 			messages::error("DB", "Unknown type conversion", mem::Value(handle->getTypeNameById(t)));
 			return mem::Value();
@@ -715,7 +716,7 @@ bool Handle::performSimpleSelect(const mem::StringView &query, const stappler::C
 		return false;
 	}
 
-	PgResultInterface res(this, driver, driver->exec(conn, query.data()));
+	PgResultInterface res(this, driver, driver->exec(conn, query.data(), 0, nullptr, nullptr, nullptr, 1));
 	lastError = res.getError();
 
 	if (res.isSuccess()) {

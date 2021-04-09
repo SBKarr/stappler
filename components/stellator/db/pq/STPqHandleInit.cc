@@ -47,24 +47,18 @@ struct ConstraintRec {
 };
 
 struct ColRec {
-	enum class Type {
-		None,
-		Binary,
-		Integer,
-		Serial,
-		Float,
-		Boolean,
-		Text,
-		TsVector,
-		Custom
-	};
+	using Type = Interface::StorageType;
 
-	Type type = Type::Custom;
+	Type type = Type::Unknown;
 	mem::String custom;
 	bool notNull = false;
+	bool serial = false;
+	int64_t oid = 0;
 
-	ColRec(Type t, bool notNull = false) : type(t), notNull(notNull) { }
+	ColRec(Type t, bool notNull = false, bool serial = false) : type(t), notNull(notNull), serial(serial) { }
+	ColRec(Type t, int64_t oid, bool notNull = false, bool serial = false) : type(t), notNull(notNull), serial(serial), oid(oid) { }
 	ColRec(const mem::StringView &t, bool notNull = false) : custom(t.str<mem::Interface>()), notNull(notNull) { }
+	ColRec(const mem::StringView &t, int64_t oid, bool notNull = false) : custom(t.str<mem::Interface>()), notNull(notNull), oid(oid) { }
 };
 
 struct TableRec {
@@ -72,7 +66,8 @@ struct TableRec {
 
 	static mem::String getNameForDelta(const Scheme &);
 
-	static mem::Map<mem::StringView, TableRec> parse(const db::Interface::Config &cfg, const mem::Map<mem::StringView, const Scheme *> &s);
+	static mem::Map<mem::StringView, TableRec> parse(const db::Interface::Config &cfg,
+			const mem::Map<mem::StringView, const Scheme *> &s, const mem::Vector<mem::Pair<mem::StringView, int64_t>> &);
 	static mem::Map<mem::StringView, TableRec> get(Handle &h, mem::StringStream &stream);
 
 	static void writeCompareResult(mem::StringStream &stream,
@@ -80,7 +75,8 @@ struct TableRec {
 			const mem::Map<mem::StringView, const db::Scheme *> &s);
 
 	TableRec();
-	TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme);
+	TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme,
+			const mem::Vector<mem::Pair<mem::StringView, int64_t>> &customs);
 
 	mem::Map<mem::String, ColRec> cols;
 	mem::Map<mem::String, ConstraintRec> constraints;
@@ -158,6 +154,13 @@ WHERE pg_class.oid = ix.indrelid
 	AND a.attnum = ANY(ix.indkey)
 	AND pg_class.relkind = 'r'
 GROUP BY pg_class.relname, i.relname ORDER BY pg_class.relname, i.relname;)Sql";
+
+constexpr static const char * COL_QUERY = R"Sql(
+SELECT table_name, column_name, is_nullable::text, data_type, atttypid::integer as col_oid, oid::integer as table_oid, attname
+FROM information_schema.columns
+	INNER JOIN pg_class ON (table_name = relname)
+	INNER JOIN pg_attribute ON (attrelid = pg_class.oid AND pg_attribute.attname = column_name)
+			WHERE table_schema='public';)Sql";
 
 static void writeFileUpdateTrigger(mem::StringStream &stream, const db::Scheme *s, const db::Field &obj) {
 	stream << "\t\tIF (NEW.\"" << obj.getName() << "\" IS NULL OR OLD.\"" << obj.getName() << "\" <> NEW.\"" << obj.getName() << "\") THEN\n"
@@ -349,11 +352,11 @@ void TableRec::writeCompareResult(mem::StringStream &stream,
 					auto &ex_col = ex_col_it.second;
 
 					auto req_type = req_col.type;
-					if (req_type == ColRec::Type::Serial) { req_type = ColRec::Type::Integer; }
 
-					if (ex_col.type == ColRec::Type::None || req_type != ex_col.type) {
+					if (req_type != ex_col.type) {
 						stream << "ALTER TABLE " << ex_it.first << " DROP COLUMN IF EXISTS \"" << ex_col_it.first << "\";\n";
-					} else if (ex_col.type == ColRec::Type::Custom && req_type == ColRec::Type::Custom && ex_col.custom != req_col.custom) {
+					} else if (ex_col.type == ColRec::Type::Unknown && req_type == ColRec::Type::Unknown
+							&& ((req_col.oid && ex_col.oid != req_col.oid) || (!req_col.oid && ex_col.custom != req_col.custom))) {
 						stream << "ALTER TABLE " << ex_it.first << " DROP COLUMN IF EXISTS \"" << ex_col_it.first << "\";\n";
 					} else {
 						if (ex_col.notNull != req_col.notNull) {
@@ -390,16 +393,25 @@ void TableRec::writeCompareResult(mem::StringStream &stream,
 			for (auto cit = t.cols.begin(); cit != t.cols.end(); cit ++) {
 				if (first) { first = false; } else { stream << ",\n"; }
 				stream << "\t\"" << cit->first << "\" ";
-				switch(cit->second.type) {
-				case ColRec::Type::Binary:	stream << "bytea"; break;
-				case ColRec::Type::Integer:	stream << "bigint"; break;
-				case ColRec::Type::Serial:	stream << "bigserial"; break;
-				case ColRec::Type::Float:	stream << "double precision"; break;
-				case ColRec::Type::Boolean:	stream << "boolean"; break;
-				case ColRec::Type::Text: 	stream << "text"; break;
-				case ColRec::Type::TsVector:stream << "tsvector"; break;
-				case ColRec::Type::Custom:  stream << cit->second.custom; break;
-				default: break;
+				if (cit->second.serial) {
+					stream << "bigserial";
+				} else {
+					switch(cit->second.type) {
+					case ColRec::Type::Unknown: stream << cit->second.custom; break;
+					case ColRec::Type::Bool:	stream << "boolean"; break;
+					case ColRec::Type::Char:	stream << "\"char\""; break;
+					case ColRec::Type::Float4:	stream << "real"; break;
+					case ColRec::Type::Float8:	stream << "double precision"; break;
+					case ColRec::Type::Int2:	stream << "smallint"; break;
+					case ColRec::Type::Int4:	stream << "integer"; break;
+					case ColRec::Type::Int8:	stream << "bigint"; break;
+					case ColRec::Type::Text: 	stream << "text"; break;
+					case ColRec::Type::VarChar: stream << "varchar"; break;
+					case ColRec::Type::Numeric: stream << "numeric"; break;
+					case ColRec::Type::Bytes:	stream << "bytea"; break;
+					case ColRec::Type::TsVector:stream << "tsvector"; break;
+					default: break;
+					}
 				}
 
 				if (cit->second.notNull) {
@@ -426,16 +438,25 @@ void TableRec::writeCompareResult(mem::StringStream &stream,
 			for (auto cit : t.cols) {
 				if (cit.first != "__oid") {
 					stream << "ALTER TABLE " << it.first << " ADD COLUMN \"" << cit.first << "\" ";
-					switch(cit.second.type) {
-					case ColRec::Type::Binary:	stream << "bytea"; break;
-					case ColRec::Type::Integer:	stream << "bigint"; break;
-					case ColRec::Type::Serial:	stream << "bigserial"; break;
-					case ColRec::Type::Float:	stream << "double precision"; break;
-					case ColRec::Type::Boolean:	stream << "boolean"; break;
-					case ColRec::Type::Text: 	stream << "text"; break;
-					case ColRec::Type::TsVector:stream << "tsvector"; break;
-					case ColRec::Type::Custom:  stream << cit.second.custom; break;
-					default: break;
+					if (cit.second.serial) {
+						stream << "bigserial";
+					} else {
+						switch(cit.second.type) {
+						case ColRec::Type::Unknown: stream << cit.second.custom; break;
+						case ColRec::Type::Bool:	stream << "boolean"; break;
+						case ColRec::Type::Char:	stream << "\"char\""; break;
+						case ColRec::Type::Float4:	stream << "real"; break;
+						case ColRec::Type::Float8:	stream << "double precision"; break;
+						case ColRec::Type::Int2:	stream << "smallint"; break;
+						case ColRec::Type::Int4:	stream << "integer"; break;
+						case ColRec::Type::Int8:	stream << "bigint"; break;
+						case ColRec::Type::Text: 	stream << "text"; break;
+						case ColRec::Type::VarChar: stream << "varchar"; break;
+						case ColRec::Type::Numeric: stream << "numeric"; break;
+						case ColRec::Type::Bytes:	stream << "bytea"; break;
+						case ColRec::Type::TsVector:stream << "tsvector"; break;
+						default: break;
+						}
 					}
 					if (cit.second.notNull) {
 						stream << " NOT NULL";
@@ -523,11 +544,12 @@ mem::String TableRec::getNameForDelta(const Scheme &scheme) {
 	return mem::toString("__delta_", scheme.getName());
 }
 
-mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config &cfg, const mem::Map<mem::StringView, const db::Scheme *> &s) {
+mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config &cfg,
+		const mem::Map<mem::StringView, const db::Scheme *> &s, const mem::Vector<mem::Pair<mem::StringView, int64_t>> &customs) {
 	mem::Map<mem::StringView, TableRec> tables;
 	for (auto &it : s) {
 		auto scheme = it.second;
-		tables.emplace(scheme->getName(), TableRec(cfg, scheme));
+		tables.emplace(scheme->getName(), TableRec(cfg, scheme, customs));
 
 		// check for extra tables
 		for (auto &fit : scheme->getFields()) {
@@ -541,8 +563,8 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 					auto & source = it.first;
 					auto target = ref->scheme->getName();
 					TableRec table;
-					table.cols.emplace(mem::toString(source, "_id"), ColRec(ColRec::Type::Integer, true));
-					table.cols.emplace(mem::toString(target, "_id"), ColRec(ColRec::Type::Integer, true));
+					table.cols.emplace(mem::toString(source, "_id"), ColRec(ColRec::Type::Int8, true));
+					table.cols.emplace(mem::toString(target, "_id"), ColRec(ColRec::Type::Int8, true));
 
 					table.constraints.emplace(mem::toString(name, "_ref_", source), ConstraintRec(
 							ConstraintRec::Reference, mem::toString(source, "_id"), source, db::RemovePolicy::Cascade));
@@ -564,16 +586,16 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 					auto & source = it.first;
 
 					TableRec table;
-					table.cols.emplace("id", ColRec(ColRec::Type::Serial, true));
-					table.cols.emplace(mem::toString(source, "_id"), ColRec(ColRec::Type::Integer));
+					table.cols.emplace("id", ColRec(ColRec::Type::Int8, true, true));
+					table.cols.emplace(mem::toString(source, "_id"), ColRec(ColRec::Type::Int8));
 
 					auto type = slot->tfield.getType();
 					switch (type) {
 					case db::Type::Float:
-						table.cols.emplace("data", ColRec(ColRec::Type::Float));
+						table.cols.emplace("data", ColRec(ColRec::Type::Float8));
 						break;
 					case db::Type::Boolean:
-						table.cols.emplace("data", ColRec(ColRec::Type::Boolean));
+						table.cols.emplace("data", ColRec(ColRec::Type::Bool));
 						break;
 					case db::Type::Text:
 						table.cols.emplace("data", ColRec(ColRec::Type::Text));
@@ -581,10 +603,10 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 					case db::Type::Data:
 					case db::Type::Bytes:
 					case db::Type::Extra:
-						table.cols.emplace("data", ColRec(ColRec::Type::Binary));
+						table.cols.emplace("data", ColRec(ColRec::Type::Bytes));
 						break;
 					case db::Type::Integer:
-						table.cols.emplace("data", ColRec(ColRec::Type::Integer));
+						table.cols.emplace("data", ColRec(ColRec::Type::Int8));
 						break;
 					default:
 						break;
@@ -611,9 +633,9 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 				TableRec table;
 				table.viewScheme = it.second;
 				table.viewField = slot;
-				table.cols.emplace("__vid", ColRec(ColRec::Type::Serial, true));
-				table.cols.emplace(mem::toString(source, "_id"), ColRec(ColRec::Type::Integer, true));
-				table.cols.emplace(mem::toString(target, "_id"), ColRec(ColRec::Type::Integer, true));
+				table.cols.emplace("__vid", ColRec(ColRec::Type::Int8, true));
+				table.cols.emplace(mem::toString(source, "_id"), ColRec(ColRec::Type::Int8, true));
+				table.cols.emplace(mem::toString(target, "_id"), ColRec(ColRec::Type::Int8, true));
 
 				table.constraints.emplace(name + "_ref_" + source, ConstraintRec(
 						ConstraintRec::Reference, mem::toString(source, "_id"), source, db::RemovePolicy::Cascade));
@@ -636,11 +658,11 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 					tblIt->second.triggers.emplace(mem::StringView(hashStream.weak()).sub(0, 56).str<mem::Interface>());
 
 					mem::String name = mem::toString(it.first, "_f_", fit.first, "_delta");
-					table.cols.emplace("id", ColRec(ColRec::Type::Serial, true));
-					table.cols.emplace("tag", ColRec(ColRec::Type::Integer, true));
-					table.cols.emplace("object", ColRec(ColRec::Type::Integer, true));
-					table.cols.emplace("time", ColRec(ColRec::Type::Integer, true));
-					table.cols.emplace("user", ColRec(ColRec::Type::Integer));
+					table.cols.emplace("id", ColRec(ColRec::Type::Int8, true, true));
+					table.cols.emplace("tag", ColRec(ColRec::Type::Int8, true));
+					table.cols.emplace("object", ColRec(ColRec::Type::Int8, true));
+					table.cols.emplace("time", ColRec(ColRec::Type::Int8, true));
+					table.cols.emplace("user", ColRec(ColRec::Type::Int8));
 
 					table.pkey.emplace_back("id");
 					table.indexes.emplace(name + "_idx_tag", "tag");
@@ -653,11 +675,11 @@ mem::Map<mem::StringView, TableRec> TableRec::parse(const db::Interface::Config 
 			if (scheme->hasDelta()) {
 				auto name = getNameForDelta(*scheme);
 				TableRec table;
-				table.cols.emplace("id", ColRec(ColRec::Type::Serial, true));
-				table.cols.emplace("object", ColRec(ColRec::Type::Integer, true));
-				table.cols.emplace("time", ColRec(ColRec::Type::Integer, true));
-				table.cols.emplace("action", ColRec(ColRec::Type::Integer, true));
-				table.cols.emplace("user", ColRec(ColRec::Type::Integer));
+				table.cols.emplace("id", ColRec(ColRec::Type::Int8, true, true));
+				table.cols.emplace("object", ColRec(ColRec::Type::Int8, true));
+				table.cols.emplace("time", ColRec(ColRec::Type::Int8, true));
+				table.cols.emplace("action", ColRec(ColRec::Type::Int8, true));
+				table.cols.emplace("user", ColRec(ColRec::Type::Int8));
 
 				table.pkey.emplace_back("id");
 				table.indexes.emplace(name + "_idx_object", "object");
@@ -682,9 +704,7 @@ mem::Map<mem::StringView, TableRec> TableRec::get(Handle &h, mem::StringStream &
 		tables.clear();
 	});
 
-	h.performSimpleSelect("SELECT table_name, column_name, is_nullable, data_type, udt_name::regtype FROM information_schema.columns "
-			"WHERE table_schema='public';"_weak,
-			[&] (db::sql::Result &columns) {
+	h.performSimpleSelect(COL_QUERY, [&] (db::sql::Result &columns) {
 		for (auto it : columns) {
 			auto tname = it.at(0).str<mem::Interface>();
 			auto f = ret.find(tname);
@@ -693,27 +713,17 @@ mem::Map<mem::StringView, TableRec> TableRec::get(Handle &h, mem::StringStream &
 				bool isNullable = (it.at(2) == "YES");
 				auto type = it.at(3);
 				if (it.at(1) != "__oid") {
-					if (type == "bigint") {
-						table.cols.emplace(it.at(1).str<mem::Interface>(), ColRec(ColRec::Type::Integer, !isNullable));
-					} else if (type == "boolean") {
-						table.cols.emplace(it.at(1).str<mem::Interface>(), ColRec(ColRec::Type::Boolean, !isNullable));
-					} else if (type == "double precision") {
-						table.cols.emplace(it.at(1).str<mem::Interface>(), ColRec(ColRec::Type::Float, !isNullable));
-					} else if (type == "text") {
-						table.cols.emplace(it.at(1).str<mem::Interface>(), ColRec(ColRec::Type::Text, !isNullable));
-					} else if (type == "bytea") {
-						table.cols.emplace(it.at(1).str<mem::Interface>(), ColRec(ColRec::Type::Binary, !isNullable));
-					} else if (type == "tsvector") {
-						table.cols.emplace(it.at(1).str<mem::Interface>(), ColRec(ColRec::Type::TsVector, !isNullable));
-					} else {
-						if (type == "ARRAY") {
-							table.cols.emplace(it.at(1).str<mem::Interface>(), ColRec(it.at(4), !isNullable));
-						} else {
-							table.cols.emplace(it.at(1).str<mem::Interface>(), ColRec(type, !isNullable));
-						}
+					auto storageType = h.getTypeById(it.toInteger(4));
+					switch (storageType) {
+					case Interface::StorageType::Unknown:
+						table.cols.emplace(it.at(1).str<mem::Interface>(), ColRec(type, it.toInteger(4), !isNullable));
+						break;
+					default:
+						table.cols.emplace(it.at(1).str<mem::Interface>(), ColRec(storageType, it.toInteger(4), !isNullable));
+						break;
 					}
 				}
-				stream << "COLUMNS " << it.at(0) << " " << it.at(1) << " " << it.at(2) << " " << it.at(3) << " (" <<  it.at(4) << ")\n";
+				stream << "COLUMNS " << it.at(0) << " " << it.at(1) << " " << it.at(2) << " " << it.at(3) << " (" <<  it.toInteger(4) << ")\n";
 			}
 		}
 		columns.clear();
@@ -776,7 +786,8 @@ mem::Map<mem::StringView, TableRec> TableRec::get(Handle &h, mem::StringStream &
 }
 
 TableRec::TableRec() : objects(false) { }
-TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme) {
+TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme,
+		const mem::Vector<mem::Pair<mem::StringView, int64_t>> &customs) {
 	mem::StringStream hashStreamAfter; hashStreamAfter << getDefaultFunctionVersion();
 	mem::StringStream hashStreamBefore; hashStreamBefore << getDefaultFunctionVersion();
 
@@ -808,12 +819,12 @@ TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme) {
 			break;
 
 		case db::Type::Float:
-			cols.emplace(it.first, ColRec(ColRec::Type::Float, f.hasFlag(db::Flags::Required)));
+			cols.emplace(it.first, ColRec(ColRec::Type::Float8, f.hasFlag(db::Flags::Required)));
 			emplaced = true;
 			break;
 
 		case db::Type::Boolean:
-			cols.emplace(it.first, ColRec(ColRec::Type::Boolean, f.hasFlag(db::Flags::Required)));
+			cols.emplace(it.first, ColRec(ColRec::Type::Bool, f.hasFlag(db::Flags::Required)));
 			emplaced = true;
 			break;
 
@@ -825,14 +836,14 @@ TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme) {
 		case db::Type::Data:
 		case db::Type::Bytes:
 		case db::Type::Extra:
-			cols.emplace(it.first, ColRec(ColRec::Type::Binary, f.hasFlag(db::Flags::Required)));
+			cols.emplace(it.first, ColRec(ColRec::Type::Bytes, f.hasFlag(db::Flags::Required)));
 			emplaced = true;
 			break;
 
 		case db::Type::Integer:
 		case db::Type::File:
 		case db::Type::Image:
-			cols.emplace(it.first, ColRec(ColRec::Type::Integer, f.hasFlag(db::Flags::Required)));
+			cols.emplace(it.first, ColRec(ColRec::Type::Int8, f.hasFlag(db::Flags::Required)));
 			emplaced = true;
 			break;
 
@@ -842,7 +853,7 @@ TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme) {
 			break;
 
 		case db::Type::Object:
-			cols.emplace(it.first, ColRec(ColRec::Type::Integer, f.hasFlag(db::Flags::Required)));
+			cols.emplace(it.first, ColRec(ColRec::Type::Int8, f.hasFlag(db::Flags::Required)));
 			if (f.isReference()) {
 				auto objSlot = static_cast<const db::FieldObject *>(f.getSlot());
 				if (objSlot->onRemove == db::RemovePolicy::StrongReference) {
@@ -864,9 +875,22 @@ TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme) {
 			break;
 
 		case db::Type::Custom:
-			auto objSlot = f.getSlot<db::FieldCustom>();
-			cols.emplace(it.first, ColRec(objSlot->getTypeName(), f.hasFlag(db::Flags::Required)));
-			emplaced = true;
+			if (auto objSlot = f.getSlot<db::FieldCustom>()) {
+				auto name = objSlot->getTypeName();
+				int64_t oid = 0;
+				for (auto &it : customs) {
+					if (it.first == name) {
+						oid = it.second;
+						break;
+					}
+				}
+				if (oid) {
+					cols.emplace(it.first, ColRec(objSlot->getTypeName(), oid, f.hasFlag(db::Flags::Required)));
+				} else {
+					cols.emplace(it.first, ColRec(objSlot->getTypeName(), f.hasFlag(db::Flags::Required)));
+				}
+				emplaced = true;
+			}
 			break;
 		}
 
@@ -929,7 +953,7 @@ TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme) {
 	}
 
 	if (scheme->isDetouched()) {
-		cols.emplace("__oid", ColRec(ColRec::Type::Serial, true));
+		cols.emplace("__oid", ColRec(ColRec::Type::Int8, true, true));
 		objects = false;
 	}
 
@@ -951,18 +975,25 @@ TableRec::TableRec(const db::Interface::Config &cfg, const db::Scheme *scheme) {
 }
 
 
-void Handle_insert_sorted(mem::Vector<mem::Pair<uint32_t, Interface::StorageType>> & vec, uint32_t oid, Interface::StorageType type) {
+static void Handle_insert_sorted(mem::Vector<mem::Pair<uint32_t, Interface::StorageType>> & vec, uint32_t oid, Interface::StorageType type) {
 	auto it = std::upper_bound(vec.begin(), vec.end(), oid, [] (uint32_t l, const mem::Pair<uint32_t, Interface::StorageType> &r) -> bool {
 		return l < r.first;
 	});
 	vec.emplace(it, oid, type);
 }
 
-void Handle_insert_sorted(mem::Vector<mem::Pair<uint32_t, mem::String>> & vec, uint32_t oid, mem::StringView type) {
+static void Handle_insert_sorted(mem::Vector<mem::Pair<uint32_t, mem::String>> & vec, uint32_t oid, mem::StringView type) {
 	auto it = std::upper_bound(vec.begin(), vec.end(), oid, [] (uint32_t l, const mem::Pair<uint32_t, mem::String> &r) -> bool {
 		return l < r.first;
 	});
 	vec.emplace(it, oid, type.str<mem::Interface>());
+}
+
+static void Handle_insert_sorted(mem::Vector<mem::Pair<mem::StringView, int64_t>> & vec, mem::StringView type) {
+	auto it = std::upper_bound(vec.begin(), vec.end(), type, [] (const mem::StringView &l, const mem::Pair<mem::StringView, int64_t> &r) -> bool {
+		return l < r.first;
+	});
+	vec.emplace(it, type, 0);
 }
 
 bool Handle::init(const Interface::Config &cfg, const mem::Map<mem::StringView, const Scheme *> &s) {
@@ -1002,6 +1033,8 @@ bool Handle::init(const Interface::Config &cfg, const mem::Map<mem::StringView, 
 						Handle_insert_sorted(*cfg.storageTypes, uint32_t(tid), Interface::StorageType::Text);
 					} else if (tname == "numeric") {
 						Handle_insert_sorted(*cfg.storageTypes, uint32_t(tid), Interface::StorageType::Numeric);
+					} else if (tname == "tsvector") {
+						Handle_insert_sorted(*cfg.storageTypes, uint32_t(tid), Interface::StorageType::TsVector);
 					} else if (cfg.customTypes) {
 						Handle_insert_sorted(*cfg.customTypes, uint32_t(tid), tname);
 					}
@@ -1019,7 +1052,46 @@ bool Handle::init(const Interface::Config &cfg, const mem::Map<mem::StringView, 
 	mem::StringStream tables;
 	tables << "Server: " << cfg.name << "\n";
 
-	auto requiredTables = TableRec::parse(cfg, s);
+	mem::Vector<mem::Pair<mem::StringView, int64_t>> customFields;
+
+	for (auto &it : s) {
+		for (auto &f : it.second->getFields()) {
+			if (f.second.getType() == Type::Custom) {
+				auto objSlot = f.second.getSlot<db::FieldCustom>();
+				Handle_insert_sorted(customFields, objSlot->getTypeName());
+			}
+		}
+	}
+
+	if (!customFields.empty()) {
+		mem::StringStream tempTable;
+		tempTable << "CREATE TEMPORARY TABLE custom_fields (\n\tid integer primary key";
+		size_t idx = 0;
+		for (auto &it : customFields) {
+			tempTable << ",\n\tfield" << idx << " " << it.first;
+			++ idx;
+		}
+		tempTable << "\n);";
+
+		performSimpleQuery(tempTable.weak());
+
+		performSimpleSelect("SELECT attname, atttypid::integer FROM pg_attribute WHERE attrelid = (SELECT oid FROM pg_class WHERE relname = 'custom_fields');",
+				[&] (db::sql::Result &result) {
+			for (auto it : result) {
+				auto n = it.at(0);
+				if (n.starts_with("field")) {
+					n += "field"_len;
+					auto idx = n.readInteger(10).get(0);
+					customFields[idx].second = it.toInteger(1);
+				}
+			}
+			tables.clear();
+		});
+
+		performSimpleQuery("DROP TABLE custom_fields;");
+	}
+
+	auto requiredTables = TableRec::parse(cfg, s, customFields);
 	auto existedTables = TableRec::get(*this, tables);
 
 	mem::StringStream stream;

@@ -42,6 +42,7 @@ public:
 		VarChar,
 		Numeric,
 		Bytes,
+		TsVector,
 	};
 
 	struct Config {

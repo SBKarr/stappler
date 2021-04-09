@@ -29,6 +29,9 @@ THE SOFTWARE.
 #include "Networking.h"
 #include "Tools.h"
 
+#include "STFieldIntArray.h"
+#include "STFieldPoint.h"
+
 #include "PugTest.cc"
 #include "UploadTest.cc"
 #include "TestMap.cc"
@@ -148,7 +151,10 @@ TestHandler::TestHandler(Server &serv, const String &name, const data::Value &di
 	_test.define({
 		Field::Text("key"),
 		Field::Integer("time", storage::Flags::Indexed),
-		Field::Data("data")
+		Field::Data("data"),
+		Field::Custom(new FieldBigIntArray("clusters")),
+		Field::Custom(new FieldIntArray("refs")), // PkkId
+		Field::Custom(new FieldPoint("coords")),
 	});
 }
 
