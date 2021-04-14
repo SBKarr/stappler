@@ -411,9 +411,20 @@ bool NetworkHandle::setupUserAgent(CURL *curl, const StringView &agent) {
 	return check;
 }
 
-bool NetworkHandle::setupUser(CURL *curl, const StringView &user, const StringView &password) {
+bool NetworkHandle::setupUser(CURL *curl, const StringView &user, const StringView &password, AuthMethod m) {
 	bool check = true;
 	if (!user.empty()) {
+		switch (m) {
+		case AuthMethod::Basic:
+			SetOpt(check, curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+			break;
+		case AuthMethod::Digest:
+			SetOpt(check, curl, CURLOPT_HTTPAUTH, CURLAUTH_DIGEST);
+			break;
+		default:
+			return false;
+			break;
+		}
 		SetOpt(check, curl, CURLOPT_USERNAME, SP_TERMINATED_DATA(user));
 		if (!password.empty()) {
 			SetOpt(check, curl, CURLOPT_PASSWORD, SP_TERMINATED_DATA(password));
@@ -654,9 +665,15 @@ void NetworkHandle::setMailFrom(const StringView &from) {
 void NetworkHandle::addMailTo(const StringView &to) {
 	_recv.push_back(to.str());
 }
-void NetworkHandle::setAuthority(const StringView &user, const StringView &passwd) {
+bool NetworkHandle::setAuthority(const StringView &user, const StringView &passwd, AuthMethod method) {
+	if (method == AuthMethod::PKey) {
+		return false;
+	}
+
 	_user = user.str();
 	_password = passwd.str();
+	_authMethod = method;
+	return true;
 }
 bool NetworkHandle::setPrivateKeyAuth(const BytesView &priv) {
 	mbedtls_pk_context pk;
@@ -704,7 +721,12 @@ bool NetworkHandle::setPrivateKeyAuth(const BytesView &priv) {
 	mbedtls_entropy_free( &entropy );
 	mbedtls_ctr_drbg_free( &ctr_drbg );
 
-	return !_keySign.empty();
+	if (!_keySign.empty()) {
+		_authMethod = AuthMethod::PKey;
+		return true;
+	}
+
+	return false;
 }
 
 void NetworkHandle::setProxy(const StringView &proxy, const StringView &auth) {

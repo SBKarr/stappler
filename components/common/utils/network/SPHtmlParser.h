@@ -73,7 +73,7 @@ template <typename ReaderType, typename StringReader = StringViewUtf8,
 		html::Tag<StringReader>,
 		typename ReaderType::Tag
 	>::type>
-void parse(ReaderType &r, const StringReader &s, bool rootOnly = true);
+void parse(ReaderType &r, const StringReader &s, bool rootOnly = true, bool lowercase = true);
 
 template <typename T>
 struct ParserTraits {
@@ -428,8 +428,9 @@ struct Parser {
 };
 
 template <typename ReaderType, typename StringReader, typename TagType>
-void parse(ReaderType &r, const StringReader &s, bool rootOnly) {
+void parse(ReaderType &r, const StringReader &s, bool rootOnly, bool lowercase) {
 	html::Parser<ReaderType, StringReader, TagType> p(r);
+	p.lowercase = lowercase;
 	p.parse(s, rootOnly);
 }
 

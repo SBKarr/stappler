@@ -309,6 +309,9 @@ struct Server::Config : public mem::AllocBase {
 		db::Field::Data("data"),
 		db::Field::Integer("time"),
 	});
+
+	mem::Vector<mem::Pair<uint32_t, db::Interface::StorageType>> storageTypes;
+	mem::Vector<mem::Pair<uint32_t, mem::String>> customTypes;
 };
 
 
@@ -400,7 +403,8 @@ void Server::Config::onChildInit(Server &serv) {
 			auto db = root->dbdOpen(pool, serv);
 			if (db.get()) {
 				db::pq::Handle hdb(dbConnList.driver, db);
-				if (!hdb.init(db::Interface::Config{serv.getServerHostname().str<mem::Interface>(), serv.getFileScheme()}, schemes)) {
+				if (!hdb.init(db::Interface::Config{serv.getServerHostname().str<mem::Interface>(),
+						serv.getFileScheme(),&storageTypes, &customTypes}, schemes)) {
 					loadingFalled = true;
 					return;
 				}

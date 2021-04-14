@@ -241,7 +241,7 @@ struct CoderSource {
 	CoderSource(const typename memory::PoolInterface::StringType &d) : _data((const uint8_t *)d.data(), d.size()) { }
 	CoderSource(const typename memory::StandartInterface::StringType &d) : _data((const uint8_t *)d.data(), d.size()) { }
 
-	template <ByteOrder::Endian Order>
+	template <Endian Order>
 	CoderSource(const BytesViewTemplate<Order> &d) : _data(d.data(), d.size()) { }
 
 	CoderSource(const BytesReader<uint8_t> &d) : _data(d.data(), d.size()) { }
@@ -255,7 +255,7 @@ struct CoderSource {
 
 	CoderSource() { }
 
-	BytesViewTemplate<ByteOrder::Network> _data;
+	BytesViewTemplate<Endian::Network> _data;
 	size_t _offset = 0;
 
 	CoderSource(const CoderSource &) = delete;

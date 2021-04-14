@@ -129,19 +129,19 @@ uint8_t Data::getUnsigned() const {
 uint16_t Data::getUnsigned16() const {
 	uint16_t ret = 0;
 	memcpy(&ret, ptr, sizeof(uint16_t));
-	return stappler::intrinsics::bswap16(ret);
+	return stappler::byteorder::bswap16(ret);
 }
 
 uint32_t Data::getUnsigned32() const {
 	uint32_t ret = 0;
 	memcpy(&ret, ptr, sizeof(uint32_t));
-	return stappler::intrinsics::bswap32(ret);
+	return stappler::byteorder::bswap32(ret);
 }
 
 uint64_t Data::getUnsigned64() const {
 	uint64_t ret = 0;
 	memcpy(&ret, ptr, sizeof(uint64_t));
-	return stappler::intrinsics::bswap64(ret);
+	return stappler::byteorder::bswap64(ret);
 }
 
 float Data::getFloat16() const {

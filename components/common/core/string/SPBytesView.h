@@ -29,11 +29,11 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
-template <ByteOrder::Endian Endianess = ByteOrder::Endian::Network>
+template <Endian Endianess = Endian::Network>
 class BytesViewTemplate : public BytesReader<uint8_t> {
 public:
 	template <class T>
-	using Converter = ConverterTraits<Endianess, T>;
+	using Converter = byteorder::ConverterTraits<Endianess, T>;
 
 	using Self = BytesViewTemplate<Endianess>;
 
@@ -48,7 +48,7 @@ public:
 	template <size_t Size>
 	BytesViewTemplate(const std::array<uint8_t, Size> &arr);
 
-	template<ByteOrder::Endian OtherEndianess>
+	template<Endian OtherEndianess>
 	BytesViewTemplate(const BytesViewTemplate<OtherEndianess> &vec);
 
 	Self & operator =(const PoolBytes &b);
@@ -87,83 +87,83 @@ public:
 	StringView readString(); // read null-terminated string
 	StringView readString(size_t s); // read fixed-size string
 
-	template<ByteOrder::Endian OtherEndianess = Endianess>
+	template<Endian OtherEndianess = Endianess>
 	auto readBytes(size_t s) -> BytesViewTemplate<OtherEndianess>; // read fixed-size string
 };
 
-using BytesView = BytesViewTemplate<ByteOrder::Endian::Host>;
-using BytesViewNetwork = BytesViewTemplate<ByteOrder::Endian::Network>;
-using BytesViewHost = BytesViewTemplate<ByteOrder::Endian::Host>;
+using BytesView = BytesViewTemplate<Endian::Host>;
+using BytesViewNetwork = BytesViewTemplate<Endian::Network>;
+using BytesViewHost = BytesViewTemplate<Endian::Host>;
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 BytesViewTemplate<Endianess>::BytesViewTemplate() { }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 BytesViewTemplate<Endianess>::BytesViewTemplate(const uint8_t *p, size_t l)
 : BytesReader(p, l) { }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 BytesViewTemplate<Endianess>::BytesViewTemplate(const PoolBytes &vec)
 : BytesReader(vec.data(), vec.size()) { }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 BytesViewTemplate<Endianess>::BytesViewTemplate(const StdBytes &vec)
 : BytesReader(vec.data(), vec.size()) { }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 template <size_t Size>
 BytesViewTemplate<Endianess>::BytesViewTemplate(const std::array<uint8_t, Size> &arr) : BytesReader(arr.data(), Size) { }
 
-template <ByteOrder::Endian Endianess>
-template<ByteOrder::Endian OtherEndianess>
+template <Endian Endianess>
+template<Endian OtherEndianess>
 BytesViewTemplate<Endianess>::BytesViewTemplate(const BytesViewTemplate<OtherEndianess> &data)
 : BytesReader(data.data(), data.size()) { }
 
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::operator =(const PoolBytes &b) -> Self & {
 	return set(b);
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::operator =(const StdBytes &b) -> Self & {
 	return set(b);
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::operator =(const Self &b) -> Self & {
 	return set(b);
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::set(const PoolBytes &vec) -> Self & {
 	ptr = vec.data();
 	len = vec.size();
 	return *this;
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::set(const StdBytes &vec) -> Self & {
 	ptr = vec.data();
 	len = vec.size();
 	return *this;
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::set(const Self &vec) -> Self & {
 	ptr = vec.data();
 	len = vec.size();
 	return *this;
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::set(const uint8_t *p, size_t l) -> Self & {
 	ptr = p;
 	len = l;
 	return *this;
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::operator ++ () -> Self & {
 	if (len > 0) {
 		ptr ++; len --;
@@ -171,7 +171,7 @@ auto BytesViewTemplate<Endianess>::operator ++ () -> Self & {
 	return *this;
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::operator ++ (int) -> Self & {
 	if (len > 0) {
 		ptr ++; len --;
@@ -179,7 +179,7 @@ auto BytesViewTemplate<Endianess>::operator ++ (int) -> Self & {
 	return *this;
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::operator += (size_t l) -> Self & {
 	if (len > 0) {
 		offset(l);
@@ -187,17 +187,17 @@ auto BytesViewTemplate<Endianess>::operator += (size_t l) -> Self & {
 	return *this;
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::operator == (const Self &other) const -> bool {
 	return len == other.len && (ptr == other.ptr || memcmp(ptr, other.ptr, len * sizeof(CharType)) == 0);
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::operator != (const Self &other) const -> bool {
 	return !(*this == other);
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::pdup(memory::pool_t *p) const -> Self {
 	if (!p) {
 		p = memory::pool::acquire();
@@ -209,7 +209,7 @@ auto BytesViewTemplate<Endianess>::pdup(memory::pool_t *p) const -> Self {
 }
 
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 template <typename T>
 auto BytesViewTemplate<Endianess>::convert(const uint8_t *data) -> T {
 	T res;
@@ -217,7 +217,7 @@ auto BytesViewTemplate<Endianess>::convert(const uint8_t *data) -> T {
 	return Converter<T>::Swap(res);
 };
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::readUnsigned64() -> uint64_t {
 	uint64_t ret = 0;
 	if (len >= 8) {
@@ -227,7 +227,7 @@ auto BytesViewTemplate<Endianess>::readUnsigned64() -> uint64_t {
 	return ret;
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::readUnsigned32() -> uint32_t {
 	uint32_t ret = 0;
 	if (len >= 4) {
@@ -237,7 +237,7 @@ auto BytesViewTemplate<Endianess>::readUnsigned32() -> uint32_t {
 	return ret;
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::readUnsigned24() -> uint32_t {
 	uint32_t ret = 0;
 	if (len >= 3) {
@@ -247,7 +247,7 @@ auto BytesViewTemplate<Endianess>::readUnsigned24() -> uint32_t {
 	return ret;
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::readUnsigned16() -> uint16_t {
 	uint16_t ret = 0;
 	if (len >= 2) {
@@ -257,14 +257,14 @@ auto BytesViewTemplate<Endianess>::readUnsigned16() -> uint16_t {
 	return ret;
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::readUnsigned() -> uint8_t {
 	uint8_t ret = 0;
 	if (len > 0) { ret = *ptr; ++ ptr; -- len; }
 	return ret;
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::readFloat64() -> double{
 	double ret = 0;
 	if (len >= 8) {
@@ -274,7 +274,7 @@ auto BytesViewTemplate<Endianess>::readFloat64() -> double{
 	return ret;
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::readFloat32() -> float {
 	float ret = 0; if (len >= 4) {
 		ret = convert<float>(ptr);
@@ -283,13 +283,13 @@ auto BytesViewTemplate<Endianess>::readFloat32() -> float {
 	return ret;
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::readFloat16() -> float {
 	return halffloat::decode(readUnsigned16());
 }
 
 // read null-terminated string
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::readString() -> StringView {
 	size_t offset = 0; while (len - offset && ptr[offset]) { offset ++; }
 	StringView ret((const char *)ptr, offset);
@@ -299,7 +299,7 @@ auto BytesViewTemplate<Endianess>::readString() -> StringView {
 }
 
 // read fixed-size string
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 auto BytesViewTemplate<Endianess>::readString(size_t s) -> StringView {
 	if (len < s) {
 		s = len;
@@ -309,8 +309,8 @@ auto BytesViewTemplate<Endianess>::readString(size_t s) -> StringView {
 	return ret;
 }
 
-template <ByteOrder::Endian Endianess>
-template <ByteOrder::Endian Target>
+template <Endian Endianess>
+template <Endian Target>
 auto BytesViewTemplate<Endianess>::readBytes(size_t s) -> BytesViewTemplate<Target> {
 	if (len < s) {
 		s = len;
@@ -327,147 +327,147 @@ inline int compareDataRanges(const uint8_t *l, size_t __lsize,  const uint8_t *r
 	return std::lexicographical_compare(l, l + __lsize, r, r + __rsize, cmp);
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator== (const memory::PoolInterface::BytesType &l, const BytesViewTemplate<Endianess> &r) {
 	return BytesViewTemplate<Endianess>(l) == r;
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator== (const memory::StandartInterface::BytesType &l, const BytesViewTemplate<Endianess> &r) {
 	return BytesViewTemplate<Endianess>(l) == r;
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator== (const BytesViewTemplate<Endianess> &l, const memory::PoolInterface::BytesType &r) {
 	return l == BytesViewTemplate<Endianess>(r);
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator== (const BytesViewTemplate<Endianess> &l, const memory::StandartInterface::BytesType &r) {
 	return l == BytesViewTemplate<Endianess>(r);
 }
 
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator!= (const memory::PoolInterface::BytesType &l, const BytesViewTemplate<Endianess> &r) {
 	return BytesViewTemplate<Endianess>(l) != r;
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator!= (const memory::StandartInterface::BytesType &l, const BytesViewTemplate<Endianess> &r) {
 	return BytesViewTemplate<Endianess>(l) != r;
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator!= (const BytesViewTemplate<Endianess> &l, const memory::PoolInterface::BytesType &r) {
 	return l != BytesViewTemplate<Endianess>(r);
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator!= (const BytesViewTemplate<Endianess> &l, const memory::StandartInterface::BytesType &r) {
 	return l != BytesViewTemplate<Endianess>(r);
 }
 
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator< (const BytesViewTemplate<Endianess> &l, const BytesViewTemplate<Endianess> &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less<uint8_t>());
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator< (const memory::PoolInterface::BytesType &l, const BytesViewTemplate<Endianess> &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less<uint8_t>());
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator< (const memory::StandartInterface::BytesType &l, const BytesViewTemplate<Endianess> &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less<uint8_t>());
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator< (const BytesViewTemplate<Endianess> &l, const memory::PoolInterface::BytesType &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less<uint8_t>());
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator< (const BytesViewTemplate<Endianess> &l, const memory::StandartInterface::BytesType &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less<uint8_t>());
 }
 
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator<= (const BytesViewTemplate<Endianess> &l, const BytesViewTemplate<Endianess> &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less_equal<uint8_t>());
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator<= (const memory::PoolInterface::BytesType &l, const BytesViewTemplate<Endianess> &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less_equal<uint8_t>());
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator<= (const memory::StandartInterface::BytesType &l, const BytesViewTemplate<Endianess> &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less_equal<uint8_t>());
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator<= (const BytesViewTemplate<Endianess> &l, const memory::PoolInterface::BytesType &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less_equal<uint8_t>());
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator<= (const BytesViewTemplate<Endianess> &l, const memory::StandartInterface::BytesType &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::less_equal<uint8_t>());
 }
 
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator> (const BytesViewTemplate<Endianess> &l, const BytesViewTemplate<Endianess> &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater<uint8_t>());
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator> (const memory::PoolInterface::BytesType &l, const BytesViewTemplate<Endianess> &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater<uint8_t>());
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator> (const memory::StandartInterface::BytesType &l, const BytesViewTemplate<Endianess> &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater<uint8_t>());
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator> (const BytesViewTemplate<Endianess> &l, const memory::PoolInterface::BytesType &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater<uint8_t>());
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator> (const BytesViewTemplate<Endianess> &l, const memory::StandartInterface::BytesType &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater<uint8_t>());
 }
 
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator>= (const BytesViewTemplate<Endianess> &l, const BytesViewTemplate<Endianess> &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater_equal<uint8_t>());
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator>= (const memory::PoolInterface::BytesType &l, const BytesViewTemplate<Endianess> &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater_equal<uint8_t>());
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator>= (const memory::StandartInterface::BytesType &l, const BytesViewTemplate<Endianess> &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater_equal<uint8_t>());
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator>= (const BytesViewTemplate<Endianess> &l, const memory::PoolInterface::BytesType &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater_equal<uint8_t>());
 }
 
-template <ByteOrder::Endian Endianess>
+template <Endian Endianess>
 inline bool operator>= (const BytesViewTemplate<Endianess> &l, const memory::StandartInterface::BytesType &r) {
 	return std::lexicographical_compare(l.data(), l.data() + l.size(), r.data(), r.data() + r.size(), std::greater_equal<uint8_t>());
 }

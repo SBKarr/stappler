@@ -138,8 +138,13 @@ THE SOFTWARE.
 #define SP_TEMPLATE_MARK
 #endif
 
+#if __CDT_PARSER__
+#define SPUNUSED
+#define SPINLINE
+#else
 #define SPUNUSED __attribute__((unused))
 #define SPINLINE __attribute__((always_inline))
+#endif
 
 #if defined(__GNUC__) && (__GNUC__ >= 4)
 #define SPPRINTF(formatPos, argPos) __attribute__((__format__(printf, formatPos, argPos)))
@@ -189,57 +194,7 @@ using _spChar = char;
  *   - _c8 / _c16         - convert integer literal to character
  */
 
-namespace stappler::hash {
-
-// see https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function#FNV-1_hash
-// parameters from http://www.boost.org/doc/libs/1_38_0/libs/unordered/examples/fnv1.hpp
-
-template <class T> constexpr  T _fnv_offset_basis();
-template <class T> constexpr  T _fnv_prime();
-
-template <> constexpr uint64_t _fnv_offset_basis<uint64_t>() { return uint64_t(14695981039346656037llu); }
-template <> constexpr uint64_t _fnv_prime<uint64_t>() { return uint64_t(1099511628211llu); }
-
-template <> constexpr uint32_t _fnv_offset_basis<uint32_t>() { return uint32_t(2166136261llu); }
-template <> constexpr uint32_t _fnv_prime<uint32_t>() { return uint32_t(16777619llu); }
-
-template <class T>
-constexpr T _fnv1(const uint8_t* ptr, size_t len) {
-	T hash = _fnv_offset_basis<T>();
-	for (size_t i = 0; i < len; i++) {
-	     hash *= _fnv_prime<T>();
-	     hash ^= ptr[i];
-	}
-	return hash;
-}
-
-template <class T>
-constexpr T _fnv1Signed(const char* ptr, size_t len) {
-	T hash = _fnv_offset_basis<T>();
-	for (size_t i = 0; i < len; i++) {
-	     hash *= _fnv_prime<T>();
-	     if constexpr (std::numeric_limits<char>::is_signed) {
-		     if (ptr[i] >= 0) {
-			     hash ^= ptr[i];
-		     } else {
-		    	 hash ^= -ptr[i] + 127;
-		     }
-	     } else {
-		     hash ^= ptr[i];
-	     }
-	}
-	return hash;
-}
-
-constexpr uint32_t hash32(const char* str, size_t len) {
-    return _fnv1Signed<uint32_t>(str, len);
-}
-
-constexpr uint64_t hash64(const char* str, size_t len) {
-    return _fnv1Signed<uint64_t>(str, len);
-}
-
-}
+#include "SPHash.h"
 
 // used for naming/hashing (like "MyTag"_tag)
 constexpr uint32_t operator"" _hash ( const char* str, size_t len) {

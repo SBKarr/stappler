@@ -185,10 +185,22 @@ NS_SA_BEGIN
 
 static std::atomic_flag s_timerExitFlag;
 
-static void sa_server_timer_push_notify(PollClient *cl, int fd) {
+static void sa_server_timer_push_notify(PollClient *cl, int fd, int mask) {
 	apr::pool::perform([&] {
-		auto c = (pug::Cache *)cl->ptr;
-		c->update(fd);
+		switch (cl->type) {
+		case PollClient::Type::INotify: {
+			auto c = (pug::Cache *)cl->ptr;
+			c->update(fd, (mask & IN_IGNORED) != 0);
+			break;
+		}
+		case PollClient::Type::TemplateINotify: {
+			auto c = (tpl::Cache *)cl->ptr;
+			c->update(fd, (mask & IN_IGNORED) != 0);
+			break;
+		}
+		default:
+			break;
+		}
 	}, cl->server);
 }
 
@@ -273,17 +285,17 @@ static bool sa_server_timer_thread_poll(int epollFd) {
 		return true;
 	}
 
-	/// process high-priority events
 	for (int i = 0; i < nevents; i++) {
 		PollClient *client = (PollClient *)_events[i].data.ptr;
 		switch (client->type) {
 		case PollClient::INotify:
+		case PollClient::TemplateINotify:
 			if ((_events[i].events & EPOLLIN)) {
 				struct inotify_event event;
 				int nbytes = 0;
 				do {
 					nbytes = read(client->fd, &event, sizeof(event));
-					sa_server_timer_push_notify(client, event.wd);
+					sa_server_timer_push_notify(client, event.wd, event.mask);
 					if (nbytes == sizeof(event)) {
 						if (event.len > 0) {
 							char buf[event.len] = { 0 };

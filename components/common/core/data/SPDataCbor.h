@@ -210,7 +210,7 @@ inline void _writeId(Writer &w) {
 
 template <class Writer, class T>
 inline void _writeNumeric(Writer &w, T value, MajorTypeEncoded m, Flags f) {
-	value = ByteOrder::HostToNetwork(value);
+	value = byteorder::HostToNetwork(value);
 	w.emplace(toInt(m) | toInt(f));
 	w.emplace((uint8_t *)&value, sizeof(T));
 }
@@ -357,7 +357,7 @@ inline void _writeBytes(Writer &w, const Bytes &data) {
 }
 
 template <class Writer>
-inline void _writeBytes(Writer &w, const BytesViewTemplate<ByteOrder::Network> &data) {
+inline void _writeBytes(Writer &w, const BytesViewTemplate<Endian::Network> &data) {
 	auto size = data.size();
 	_writeInt(w, size, MajorTypeEncoded::ByteString);
 	w.emplace(data.data(), size);
@@ -372,7 +372,7 @@ inline void _writeNumber(Writer &w, float n) {
 	}
 };
 
-inline uint64_t _readIntValue(BytesViewTemplate<ByteOrder::Network> &r, uint8_t type) {
+inline uint64_t _readIntValue(BytesViewTemplate<Endian::Network> &r, uint8_t type) {
 	if (type < toInt(Flags::MaxAdditionalNumber)) {
 		return type;
 	} else if (type == toInt(Flags::AdditionalNumber8Bit)) {
@@ -388,7 +388,7 @@ inline uint64_t _readIntValue(BytesViewTemplate<ByteOrder::Network> &r, uint8_t 
 	}
 }
 
-inline int64_t _readInt(BytesViewTemplate<ByteOrder::Network> &r) {
+inline int64_t _readInt(BytesViewTemplate<Endian::Network> &r) {
 	uint8_t type = r.readUnsigned();
 	MajorTypeEncoded majorType = (MajorTypeEncoded)(type & toInt(Flags::MajorTypeMaskEncoded));;
 	type = type & toInt(Flags::AdditionalInfoMask);
@@ -401,7 +401,7 @@ inline int64_t _readInt(BytesViewTemplate<ByteOrder::Network> &r) {
 	return 0;
 }
 
-inline float _readNumber(BytesViewTemplate<ByteOrder::Network> &r) {
+inline float _readNumber(BytesViewTemplate<Endian::Network> &r) {
 	uint8_t type = r.readUnsigned();
 	MajorTypeEncoded majorType = (MajorTypeEncoded)(type & toInt(Flags::MajorTypeMaskEncoded));;
 	type = type & toInt(Flags::AdditionalInfoMask);

@@ -121,6 +121,15 @@ const Template::Options &FileRef::getOpts() const {
 	return _opts;
 }
 
+int FileRef::regenerate(int notify, StringView fpath) {
+	if (_watch >= 0) {
+		inotify_rm_watch(notify, _watch);
+		_watch = inotify_add_watch(notify, SP_TERMINATED_DATA(fpath), IN_CLOSE_WRITE);
+		return _watch;
+	}
+	return 0;
+}
+
 Cache::Cache(Template::Options opts, const Function<void(const StringView &)> &err)
 : _pool(memory::pool::acquire()), _opts(opts), _errorCallback(err) {
 #if LINUX
@@ -146,14 +155,27 @@ Cache::~Cache() {
 	}
 }
 
-void Cache::update(int watch) {
+void Cache::update(int watch, bool regenerate) {
 	std::unique_lock<Mutex> lock(_mutex);
 	auto it = _watches.find(watch);
 	if (it != _watches.end()) {
 		auto tIt = _templates.find(it->second);
 		if (tIt != _templates.end()) {
-			if (auto tpl = openTemplate(it->second, tIt->second->getWatch(), tIt->second->getOpts())) {
-				tIt->second = tpl;
+			if (regenerate) {
+				_watches.erase(it);
+				if (auto tpl = openTemplate(it->second, -1, tIt->second->getOpts())) {
+					tIt->second = tpl;
+					watch = tIt->second->getWatch();
+					if (watch < 0) {
+						_inotifyAvailable = false;
+					} else {
+						_watches.emplace(watch, tIt->first);
+					}
+				}
+			} else {
+				if (auto tpl = openTemplate(it->second, tIt->second->getWatch(), tIt->second->getOpts())) {
+					tIt->second = tpl;
+				}
 			}
 		}
 	}

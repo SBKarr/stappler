@@ -24,7 +24,6 @@ THE SOFTWARE.
 #define COMMON_MEMORY_SPMEMSTRING_H_
 
 #include "SPMemStorageMem.h"
-#include "city.h"
 
 NS_SP_EXT_BEGIN(memory)
 
@@ -942,9 +941,9 @@ template<>
 struct hash<stappler::memory::basic_string<char>> {
 	size_t operator() (const stappler::memory::basic_string<char> & s) const noexcept {
 		if (sizeof(size_t) == 8) {
-			return CityHash64(s.data(), s.size());
+			return stappler::hash::hash64(s.data(), s.size());
 		} else {
-			return CityHash32(s.data(), s.size());
+			return stappler::hash::hash32(s.data(), s.size());
 		}
 	}
 };
@@ -953,9 +952,9 @@ template<>
 struct hash<stappler::memory::basic_string<char16_t>> {
 	size_t operator() (const stappler::memory::basic_string<char16_t> & s) const noexcept {
 		if (sizeof(size_t) == 8) {
-			return CityHash64((char *)s.data(), s.size() * sizeof(char16_t));
+			return stappler::hash::hash64((char *)s.data(), s.size() * sizeof(char16_t));
 		} else {
-			return CityHash32((char *)s.data(), s.size() * sizeof(char16_t));
+			return stappler::hash::hash32((char *)s.data(), s.size() * sizeof(char16_t));
 		}
 	}
 };

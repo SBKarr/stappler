@@ -24,7 +24,7 @@
 #define COMPONENTS_XENOLITH_GL_XLVKPIPELINE_H_
 
 #include "XLVkDevice.h"
-#include "XLDrawPipeline.h"
+#include "XLPipelineData.h"
 
 namespace stappler::xenolith::vk {
 
@@ -38,16 +38,16 @@ class Pipeline : public Ref {
 public:
 	virtual ~Pipeline();
 
-	bool init(VirtualDevice &dev, const PipelineOptions &, const draw::PipelineParams &);
+	bool init(VirtualDevice &dev, const PipelineOptions &, const PipelineParams &);
 	void invalidate(VirtualDevice &dev);
 
 	VkPipeline getPipeline() const { return _pipeline; }
-	const draw::PipelineParams &getParams() const { return _params; }
+	const PipelineParams &getParams() const { return _params; }
 
 	StringView getName() const { return _params.key; }
 
 protected:
-	draw::PipelineParams _params;
+	PipelineParams _params;
 	VkPipeline _pipeline = VK_NULL_HANDLE;
 };
 

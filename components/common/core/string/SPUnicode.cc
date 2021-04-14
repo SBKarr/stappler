@@ -155,6 +155,10 @@ char16_t utf8Decode(char_const_ptr_ref_t ptr) {
 	uint8_t len = 0;
 	auto ret = unicode::utf8Decode(ptr, len);
 	ptr += len;
+	if (len > 3) {
+		// non-UCS2 char
+		return u' ';
+	}
 	return ret;
 }
 

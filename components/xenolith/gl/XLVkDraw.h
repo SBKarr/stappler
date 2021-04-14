@@ -105,7 +105,7 @@ public:
 	Rc<Pipeline> getPipeline(StringView);
 	Rc<Pipeline> addPipeline(Rc<Pipeline>);
 
-	PipelineOptions getPipelineOptions(const draw::PipelineParams &) const;
+	PipelineOptions getPipelineOptions(const PipelineParams &) const;
 
 protected:
 	friend class PresentationDevice;
@@ -140,24 +140,24 @@ protected:
 
 class PipelineCompiler : public Ref {
 public:
-	using Callback = Function<void(draw::PipelineResponse &&)>;
+	using Callback = Function<void(PipelineResponse &&)>;
 
 	struct CompilationProcess : public Ref {
-		CompilationProcess(Rc<DrawDevice> dev, Rc<PipelineCompiler> compiler, const draw::PipelineRequest &req, Callback &&cb);
+		CompilationProcess(Rc<DrawDevice> dev, Rc<PipelineCompiler> compiler, const PipelineRequest &req, Callback &&cb);
 
 		void runShaders();
 		void runPipelines();
 		void complete();
 
 		std::atomic<size_t> programsInQueue = 0;
-		Map<StringView, Pair<Rc<ProgramModule>, draw::ProgramParams *>> loadedPrograms;
+		Map<StringView, Pair<Rc<ProgramModule>, ProgramParams *>> loadedPrograms;
 
 		std::atomic<size_t> pipelineInQueue = 0;
-		Map<StringView, Pair<Rc<Pipeline>, draw::PipelineParams *>> loadedPipelines;
+		Map<StringView, Pair<Rc<Pipeline>, PipelineParams *>> loadedPipelines;
 
 		Rc<DrawDevice> draw;
 		Rc<PipelineCompiler> compiler;
-		draw::PipelineRequest req;
+		PipelineRequest req;
 		Callback onComplete;
 		Rc<CompilationProcess> next;
 	};
@@ -165,7 +165,7 @@ public:
 	virtual ~PipelineCompiler();
 	bool init();
 
-	void compile(Rc<DrawDevice> dev, const draw::PipelineRequest &req, Callback &&cb);
+	void compile(Rc<DrawDevice> dev, const PipelineRequest &req, Callback &&cb);
 	void update();
 	void compileNext(Rc<CompilationProcess>);
 	void invalidate();

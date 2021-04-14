@@ -98,7 +98,7 @@ bool DrawDevice::init(Rc<Instance> inst, Rc<Allocator> alloc, VkQueue q, uint32_
 		PipelineOptions({_defaultPipelineLayout->getPipelineLayout(), _defaultRenderPass->getRenderPass(), {
 			pair(vert->getStage(), vert->getModule()), pair(frag->getStage(), frag->getModule())
 		}}),
-		draw::PipelineParams({
+		PipelineParams({
 			draw::VertexFormat::None,
 			draw::LayoutFormat::Default,
 			draw::RenderPassBind::Default,
@@ -198,7 +198,7 @@ bool DrawDevice::spawnWorkers(thread::TaskQueue &q, size_t nImages) {
 	for (auto &it : _pipelines) {
 		auto target = &it.second;
 		q.perform(Rc<Task>::create([this, target] (const thread::Task &) -> bool {
-			(*target)->init(*this, getPipelineOptions((*target)->getParams()), move(const_cast<draw::PipelineParams &>((*target)->getParams())));
+			(*target)->init(*this, getPipelineOptions((*target)->getParams()), move(const_cast<PipelineParams &>((*target)->getParams())));
 			return true;
 		}));
 	}
@@ -284,7 +284,7 @@ bool DrawDevice::drawFrame(thread::TaskQueue &q, DrawFrameInfo &frame) {
 	return true;
 }
 
-PipelineOptions DrawDevice::getPipelineOptions(const draw::PipelineParams &params) const {
+PipelineOptions DrawDevice::getPipelineOptions(const PipelineParams &params) const {
 	PipelineOptions ret;
 	for (auto &it : params.shaders) {
 		auto sIt = _shaders.find(it);
@@ -373,7 +373,7 @@ DrawBufferTask DrawDevice::getTaskForWorker(Vector<DrawBufferTask> &tasks, DrawW
 }
 
 PipelineCompiler::CompilationProcess::CompilationProcess(Rc<DrawDevice> dev, Rc<PipelineCompiler> compiler,
-		const draw::PipelineRequest &req, Callback &&cb) : draw(dev), compiler(compiler), req(req), onComplete(move(cb)) {
+		const PipelineRequest &req, Callback &&cb) : draw(dev), compiler(compiler), req(req), onComplete(move(cb)) {
 
 }
 

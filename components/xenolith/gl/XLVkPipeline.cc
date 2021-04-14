@@ -30,7 +30,7 @@ Pipeline::~Pipeline() {
 	}
 }
 
-bool Pipeline::init(VirtualDevice &dev, const PipelineOptions &opts, const draw::PipelineParams &params) {
+bool Pipeline::init(VirtualDevice &dev, const PipelineOptions &opts, const PipelineParams &params) {
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vertexInputInfo.vertexBindingDescriptionCount = 0;

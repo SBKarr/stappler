@@ -37,8 +37,6 @@ THE SOFTWARE.
 #include "renderer/CCTexture2D.h"
 #include "renderer/ccGLStateCache.h"
 
-#include "xxhash.h"
-
 NS_SP_BEGIN
 
 DynamicBatchCommand::DynamicBatchCommand(bool b) {
@@ -173,7 +171,7 @@ uint32_t DynamicBatchCommand::getMaterialId(int32_t groupId) const {
 		intArray.push_back(i);
 	}
 
-	return XXH32((const void*)intArray.data(), sizeof(int32_t) * (int32_t)intArray.size(), 0);
+	return stappler::hash::hash32((const char *)intArray.data(), sizeof(int32_t) * (int32_t)intArray.size(), 0);
 }
 
 uint8_t DynamicBatchCommand::getStencilIndex() const {

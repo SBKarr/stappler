@@ -53,7 +53,7 @@ struct TemplateFileParser : public AllocBase, public ReaderClassBase<char> {
 	void flush(File &f);
 };
 
-File::File(const String &ipath) {
+File::File(const String &ipath) : _file(ipath) {
 	StringView view(ipath);
 	if (view.is("virtual://")) {
 		view += "virtual:/"_len;
@@ -74,10 +74,12 @@ File::File(const String &ipath) {
 			_stack.reserve(10);
 			_stack.push_back(&_root);
 			TemplateFileParser p;
-			auto file = filesystem::openForReading(path);
-			io::read(file, [&] (const io::Buffer &buf) {
-				p.parse(*this, (const char *)buf.data(), buf.size());
-			});
+			if (auto file = filesystem::openForReading(path)) {
+				io::read(file, [&] (const io::Buffer &buf) {
+					p.parse(*this, (const char *)buf.data(), buf.size());
+				});
+				file.close();
+			}
 		}
 	}
 }

@@ -341,6 +341,9 @@ void PageCache::writeIndexData(const Transaction &t, const SchemeCell &scheme, I
 	} else {
 		auto view = mem::SpanView<IntegerIndexPayload>(data.data(), counter);
 		if (!std::is_sorted(view.data(), view.data() + view.size())) {
+			for (auto &it : view) {
+				std::cout << "Value: " << it.value << "\n";
+			}
 			std::cout << "Range is not sorted\n";
 		}
 
@@ -374,6 +377,7 @@ void PageCache::writeIndexes(const Transaction &t) {
 			closePage(indexPage);
 		}
 	}
+	_intIndex.clear();
 	mem::pool::destroy(p);
 }
 

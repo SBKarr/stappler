@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #include "XLDefine.h"
 
+#include "XLComponent.cc"
 #include "XLNode.cc"
 #include "XLScene.cc"
 

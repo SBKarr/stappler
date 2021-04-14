@@ -56,6 +56,7 @@ public:
 
 	time_t mtime() const { return _mtime; }
 	const Chunk &root() const { return _root; }
+	const String file() const { return _file; }
 	operator bool() const { return _mtime != 0 && !_root.chunks.empty(); }
 
 protected:

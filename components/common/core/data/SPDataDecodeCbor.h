@@ -39,7 +39,7 @@ struct Decoder : public Interface::AllocBaseType {
 	using ArrayType = typename ValueType::ArrayType;
 	using DictionaryType = typename ValueType::DictionaryType;
 
-	Decoder(BytesViewTemplate<ByteOrder::Endian::Network> &r) : r(r), back(nullptr) {
+	Decoder(BytesViewTemplate<Endian::Network> &r) : r(r), back(nullptr) {
 		stack.reserve(10);
 	}
 
@@ -70,7 +70,7 @@ struct Decoder : public Interface::AllocBaseType {
 	void parseValue(ValueType &current);
 	void parse(ValueType &val);
 
-	BytesViewTemplate<ByteOrder::Endian::Network> r;
+	BytesViewTemplate<Endian::Network> r;
 	StringType buf;
 	ValueType *back;
 	typename InterfaceType::template ArrayType<ValueType *> stack;
@@ -372,13 +372,13 @@ void Decoder<Interface>::decode(ValueType &ret) {
 }
 
 template <typename Interface>
-auto read(BytesViewTemplate<ByteOrder::Endian::Network> &data) -> ValueTemplate<Interface> {
+auto read(BytesViewTemplate<Endian::Network> &data) -> ValueTemplate<Interface> {
 	// read CBOR id ( 0xd9d9f7 )
 	if (data.size() <= 3 || data[0] != 0xd9 || data[1] != 0xd9 || data[2] != 0xf7) {
 		return ValueTemplate<Interface>();
 	}
 
-	BytesViewTemplate<ByteOrder::Endian::Network> reader(data);
+	BytesViewTemplate<Endian::Network> reader(data);
 	reader.offset(3);
 
 	ValueTemplate<Interface> ret;
@@ -389,13 +389,13 @@ auto read(BytesViewTemplate<ByteOrder::Endian::Network> &data) -> ValueTemplate<
 }
 
 template <typename Interface>
-auto read(BytesViewTemplate<ByteOrder::Endian::Little> &data) -> ValueTemplate<Interface> {
+auto read(BytesViewTemplate<Endian::Little> &data) -> ValueTemplate<Interface> {
 	// read CBOR id ( 0xd9d9f7 )
 	if (data.size() <= 3 || data[0] != 0xd9 || data[1] != 0xd9 || data[2] != 0xf7) {
 		return ValueTemplate<Interface>();
 	}
 
-	BytesViewTemplate<ByteOrder::Endian::Network> reader(data);
+	BytesViewTemplate<Endian::Network> reader(data);
 	reader.offset(3);
 
 	ValueTemplate<Interface> ret;
@@ -407,7 +407,7 @@ auto read(BytesViewTemplate<ByteOrder::Endian::Little> &data) -> ValueTemplate<I
 
 template <typename Interface, typename Container>
 auto read(const Container &data) -> ValueTemplate<Interface> {
-	BytesViewTemplate<ByteOrder::Endian::Network> reader((const uint8_t*)data.data(), data.size());
+	BytesViewTemplate<Endian::Network> reader((const uint8_t*)data.data(), data.size());
 	return read<Interface>(reader);
 }
 

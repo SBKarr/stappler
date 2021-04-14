@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2017-2019 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2021 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,41 +20,62 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "SPCommon.h"
+#include "XLComponent.h"
 
-#include "SPIO.cc"
-#include "SPMemAlloc.cc"
+namespace stappler::xenolith {
 
-#include "SPMemPoolApr.cc"
-#include "SPMemPoolAllocator.cc"
-#include "SPMemPoolHash.cc"
-#include "SPMemPoolInterface.cc"
-#include "SPMemPoolPool.cc"
-#include "SPMemPoolUtils.cc"
+Component::Component(void)
+: _owner(nullptr), _enabled(true) { }
 
-#include "SPMemRbtree.cc"
-#include "SPMemUuid.cc"
+Component::~Component(void) { }
 
-#include "SPBase64.cc"
-#include "SPCharGroup.cc"
-#include "SPSha2.cc"
-#include "SPString.cc"
-#include "SPUnicode.cc"
+bool Component::init() {
+	return true;
+}
 
-#include "SPData.cc"
-#include "SPDataDecompressBuffer.cc"
-#include "SPDataDecryptBuffer.cc"
-#include "SPDataStream.cc"
+void Component::onAdded() { }
+void Component::onRemoved() { }
 
-#include "SPMemUserData.cc"
+void Component::onEnter() {
+	_running = true;
+}
 
-#include "cygwin/SPFilesystem.cc"
-#include "cygwin/SPProc.cc"
+void Component::onExit() {
+	_running = false;
+}
 
-#include "msys/SPFilesystem.cc"
-#include "msys/SPProc.cc"
+void Component::visit(RenderFrameInfo &, NodeFlags parentFlags) { }
 
-#include "linux/SPFilesystem.cc"
-#include "linux/SPProc.cc"
+void Component::onContentSizeDirty() { }
+void Component::onTransformDirty() { }
+void Component::onReorderChildDirty() { }
 
-#include "mac/SPProc.cc"
+bool Component::isRunning() const {
+	return _running;
+}
+
+Node* Component::getOwner() const {
+	return _owner;
+}
+
+void Component::setOwner(Node *owner) {
+	_owner = owner;
+}
+
+bool Component::isEnabled() const {
+	return _enabled;
+}
+
+void Component::setEnabled(bool b) {
+	_enabled = b;
+}
+
+void Component::setTag(uint64_t tag) {
+	_tag = tag;
+}
+
+uint64_t Component::getTag() const {
+	return _tag;
+}
+
+}

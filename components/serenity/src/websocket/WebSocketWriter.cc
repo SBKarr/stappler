@@ -94,11 +94,11 @@ static void makeHeader(StackBuffer<32> &buf, size_t dataSize, FrameType t) {
 		buf[1] = ((uint8_t)dataSize);
 	} else if (sizeSize == 2) {
 		buf[1] = ((uint8_t)126);
-		uint16_t size = ByteOrder::HostToNetwork((uint16_t)dataSize);
+		uint16_t size = byteorder::HostToNetwork((uint16_t)dataSize);
 		memcpy(buf.data() + 2, &size, sizeof(uint16_t));
 	} else if (sizeSize == 8) {
 		buf[1] = ((uint8_t)127);
-		uint64_t size = ByteOrder::HostToNetwork((uint64_t)dataSize);
+		uint64_t size = byteorder::HostToNetwork((uint64_t)dataSize);
 		memcpy(buf.data() + 2, &size, sizeof(uint64_t));
 	}
 

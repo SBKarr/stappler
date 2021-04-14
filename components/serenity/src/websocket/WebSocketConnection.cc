@@ -578,7 +578,7 @@ void Connection::cancel(StringView reason) {
 	sbuf.clear();
 
 	StatusCode nstatus = resolveStatus(_serverCloseCode);
-	uint16_t status = ByteOrder::HostToNetwork(_clientCloseCode==StatusCode::None?(uint16_t)nstatus:(uint16_t)_clientCloseCode);
+	uint16_t status = byteorder::HostToNetwork(_clientCloseCode==StatusCode::None?(uint16_t)nstatus:(uint16_t)_clientCloseCode);
 	size_t memSize = std::min((size_t)123, _serverReason.size());
 	size_t frameSize = 4 + memSize;
 	sbuf[0] = (0b10000000 | 0x8);

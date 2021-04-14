@@ -58,10 +58,10 @@ using User = db::User;
 using Buffer = stappler::BufferTemplate<mem::Interface>;
 using UrlView = stappler::UrlView;
 
-using ByteOrder = stappler::ByteOrder;
+using Endian = stappler::Endian;
 using CharGroupId = stappler::CharGroupId;
 
-template <ByteOrder::Endian Endianess = ByteOrder::Endian::Network>
+template <Endian Endianess = Endian::Network>
 using DataReader = stappler::BytesViewTemplate<Endianess>;
 
 using BytesView = stappler::BytesView;

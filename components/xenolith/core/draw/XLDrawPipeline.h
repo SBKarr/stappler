@@ -27,36 +27,6 @@ THE SOFTWARE.
 
 namespace stappler::xenolith::draw {
 
-struct ProgramParams {
-	vk::ProgramSource source;
-	vk::ProgramStage stage;
-	FilePath path;
-	BytesView data;
-	StringView key;
-	Map<String, String> defs;
-};
-
-struct PipelineParams {
-	VertexFormat vertexFormat = VertexFormat::None;
-	LayoutFormat layoutFormat = LayoutFormat::Default;
-	RenderPassBind renderPass = RenderPassBind::Default;
-	DynamicState dynamicState = DynamicState::Default;
-
-	Vector<String> shaders;
-	StringView key;
-};
-
-struct PipelineResponse {
-	Map<String, Rc<vk::Pipeline>> pipelines;
-};
-
-struct PipelineRequest {
-	StringView name;
-	Vector<draw::ProgramParams> programs;
-	Vector<draw::PipelineParams> pipelines;
-	Function<void(StringView, const PipelineResponse &)> callback;
-};
-
 }
 
 #endif /* COMPONENTS_XENOLITH_CORE_DRAW_XLDRAWPIPELINE_H_ */

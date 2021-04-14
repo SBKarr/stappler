@@ -107,6 +107,7 @@ class Pipeline;
 
 using Task = thread::Task;
 
+class Component;
 class Node;
 class Scene;
 

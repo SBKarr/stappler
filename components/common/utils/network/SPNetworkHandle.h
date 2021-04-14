@@ -46,6 +46,12 @@ public:
 		Smtp
 	};
 
+	enum class AuthMethod {
+		Basic,
+		Digest,
+		PKey, // custom serenity method
+	};
+
 	using ProgressCallback = Function<int(int64_t, int64_t)>;
 	using IOCallback = Function<size_t(char *data, size_t size)>;
 
@@ -72,7 +78,7 @@ public:
 
 	void setMailFrom(const StringView &);
 	void addMailTo(const StringView &);
-	void setAuthority(const StringView &user, const StringView &passwd = StringView());
+	bool setAuthority(const StringView &user, const StringView &passwd = StringView(), AuthMethod = AuthMethod::Basic);
 	bool setPrivateKeyAuth(const BytesView &priv);
 
 	// user: [proxyhost]:[port], auth: [name]:[passwd]
@@ -127,6 +133,7 @@ protected:
 	friend struct Network;
 	friend class NetworkMultiHandle;
 
+	AuthMethod _authMethod = AuthMethod::Basic;
 	String _user;
 	String _password;
 	String _from;
@@ -206,7 +213,7 @@ protected:
 	bool setupRootCert(CURL *curl, const StringView &certPath);
 	bool setupHeaders(CURL *curl, const Vector<String> &vec, curl_slist **headers, const StringView &);
 	bool setupUserAgent(CURL *curl, const StringView &agent);
-	bool setupUser(CURL *curl, const StringView &user, const StringView &password);
+	bool setupUser(CURL *curl, const StringView &user, const StringView &password, AuthMethod);
 	bool setupFrom(CURL *curl, const StringView &from);
 	bool setupRecv(CURL *curl, const Vector<String> &vec, curl_slist **mailTo);
 	bool setupProgress(CURL *curl, bool progress);

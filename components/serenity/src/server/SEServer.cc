@@ -965,6 +965,24 @@ void Server::initHeartBeat(apr_pool_t *, int epoll) {
 		}
 	}
 
+	auto t = _config->_templateCache.getNotify();
+	if (t >= 0) {
+		auto c = new (getPool()) PollClient();
+		c->type = PollClient::TemplateINotify;
+		c->ptr = &_config->_templateCache;
+		c->fd = t;
+		c->server = Server(*this);
+		c->event.data.ptr = c;
+		c->event.events = EPOLLIN;
+
+		auto err = epoll_ctl(epoll, EPOLL_CTL_ADD, t, &c->event);
+		if (err == -1) {
+			char buf[256] = { 0 };
+			std::cout << "Failed to start thread worker with socket epoll_ctl("
+					<< p << ", EPOLL_CTL_ADD): " << strerror_r(errno, buf, 255) << "\n";
+		}
+	}
+
 	auto root = Root::getInstance();
 	if (auto dbd = root->dbdOpen(getPool(), _server)) {
 		auto conn = (PGconn *)db::pq::Driver::open()->getConnection(db::pq::Driver::Handle(dbd)).get();
@@ -1026,7 +1044,9 @@ void Server::onHeartBeat(apr_pool_t *pool) {
 			}
 		}
 		if (now - _config->lastTemplateUpdate > config::getDefaultPugTemplateUpdateInterval()) {
-			_config->_templateCache.update(pool);
+			if (!_config->_templateCache.isNotifyAvailable()) {
+				_config->_templateCache.update(pool);
+			}
 			if (!_config->_pugCache.isNotifyAvailable()) {
 				_config->_pugCache.update(pool);
 			}

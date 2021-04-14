@@ -29,15 +29,19 @@ NS_SA_EXT_BEGIN(tpl)
 
 class FileRef : public AllocPool {
 public:
-	FileRef(mem::pool_t *, const String &);
+	FileRef(mem::pool_t *, const String &, int watch, int wId);
 
 	void retain(Request &);
 	void release();
 
+	int regenerate(int notify);
+
 	const File &getFile() const;
 	time_t getMtime() const;
+	int getWatch() const { return _watch; }
 
 protected:
+	int _watch = -1;
 	mem::pool_t * _pool = nullptr;
 	File _file;
 	std::atomic<uint32_t> _refCount;
@@ -49,14 +53,24 @@ public:
 	using RunCallback = Function<void(Exec &, Request &)>;
 
 	Cache();
+	~Cache();
 
+	int getNotify() const { return _inotify; }
+
+	void update(int, bool regenerate);
 	void update(apr_pool_t *);
+
+	bool isNotifyAvailable();
 
 	void runTemplate(const String &, Request &, const RunCallback &);
 
 protected:
 	FileRef *acquireTemplate(const String &, Request &);
-	FileRef *openTemplate(const String &);
+	FileRef *openTemplate(const String &, int wId);
+
+	int _inotify = -1;
+	bool _inotifyAvailable = false;
+	Map<int, String> _watches;
 
 	apr_pool_t *_pool = nullptr;
 	apr::mutex _mutex;

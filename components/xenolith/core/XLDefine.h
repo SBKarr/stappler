@@ -137,4 +137,21 @@ enum class AllocationType {
 
 }
 
+
+namespace stappler::xenolith {
+
+static constexpr uint64_t InvalidTag = maxOf<uint64_t>();
+
+enum class NodeFlags {
+	None,
+	TransformDirty = 1 << 0,
+	ContentSizeDirty = 1 << 1,
+
+	DirtyMask = TransformDirty | ContentSizeDirty
+};
+
+SP_DEFINE_ENUM_AS_MASK(NodeFlags)
+
+}
+
 #endif /* COMPONENTS_XENOLITH_CORE_XLDEFINE_H_ */

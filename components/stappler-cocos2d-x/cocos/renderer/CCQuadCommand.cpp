@@ -29,10 +29,9 @@
 #include "renderer/CCGLProgram.h"
 #include "renderer/CCRenderer.h"
 
-#include "xxhash.h"
+#include "SPHash.h"
 
 NS_CC_BEGIN
-
 
 QuadCommand::QuadCommand()
 :_materialID(0)
@@ -81,7 +80,7 @@ void QuadCommand::generateMaterialID()
         int glProgram = (int)_glProgramState->getGLProgram()->getProgram();
         int intArray[4] = { glProgram, (int)_textureID, (int)_blendType.src, (int)_blendType.dst};
 
-        _materialID = XXH32((const void*)intArray, sizeof(intArray), 0);
+        _materialID = stappler::hash::hash32((const char *)intArray, sizeof(intArray), 0);
     }
     else
     {

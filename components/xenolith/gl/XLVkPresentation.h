@@ -24,7 +24,7 @@
 #define COMPONENTS_XENOLITH_GL_XLVKPRESENTATION_H_
 
 #include "XLVkDevice.h"
-#include "XLDrawPipeline.h"
+#include "XLPipelineData.h"
 
 namespace stappler::xenolith::vk {
 
@@ -106,7 +106,7 @@ public:
 
 	Rc<thread::TaskQueue> getQueue() const { return _queue; }
 
-	void requestPipeline(const draw::PipelineRequest &, Function<void(draw::PipelineResponse &&)> &&);
+	void requestPipeline(const PipelineRequest &, Function<void(PipelineResponse &&)> &&);
 
 protected:
 	std::atomic_flag _swapChainFlag;

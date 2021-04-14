@@ -108,10 +108,10 @@ struct UniChar {
 
 template <typename CharType, CharType ... Args>
 struct Chars {
-	static inline bool match(CharType c) SPINLINE;
+	static SPINLINE bool match(CharType c);
 
 	template <typename Func>
-	static inline void foreach(const Func &) SPINLINE;
+	static SPINLINE void foreach(const Func &);
 };
 
 template <typename CharType, CharType First, CharType Last>

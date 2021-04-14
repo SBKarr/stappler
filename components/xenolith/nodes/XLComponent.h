@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2017-2018 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2021 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,51 +20,49 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
-#include "Define.h"
+#ifndef COMPONENTS_XENOLITH_NODES_XLCOMPONENT_H_
+#define COMPONENTS_XENOLITH_NODES_XLCOMPONENT_H_
 
-#include <sys/epoll.h>
-#include <sys/inotify.h>
+#include "XLDefine.h"
 
-#include "Server.h"
+namespace stappler::xenolith {
 
-APLOG_USE_MODULE(serenity);
+class Component : public Ref {
+public:
+	Component(void);
+	virtual ~Component(void);
+	virtual bool init();
 
-NS_SA_BEGIN
+	virtual void onAdded();
+	virtual void onRemoved();
 
-struct PollClient : mem::AllocBase {
-	enum Type {
-		None,
-		INotify,
-		Postgres,
-		TemplateINotify,
-	};
+	virtual void onEnter();
+	virtual void onExit();
 
-	Server server;
-	void *ptr = nullptr;
-	Type type = None;
-	int fd = -1;
-    struct epoll_event event;
+    virtual void visit(RenderFrameInfo &, NodeFlags parentFlags);
+
+	virtual void onContentSizeDirty();
+	virtual void onTransformDirty();
+	virtual void onReorderChildDirty();
+
+	virtual bool isRunning() const;
+
+	virtual bool isEnabled() const;
+	virtual void setEnabled(bool b);
+
+	void setOwner(Node *pOwner);
+	Node* getOwner() const;
+
+	void setTag(uint64_t);
+	uint64_t getTag() const;
+
+protected:
+	Node *_owner = nullptr;
+	bool _enabled = true;
+	bool _running = false;
+	uint64_t _tag = InvalidTag;
 };
 
-NS_SA_END
+}
 
-#include "SPAprAllocator.cc"
-#include "SPAprFileStream.cc"
-#include "SPAprFilesystem.cc"
-#include "SEForward.cc"
-#include "SEServer.cc"
-#include "SERoot.cc"
-#include "SERootMime.cc"
-
-#include "SEConnection.cc"
-#include "SERequest.cc"
-#include "SEInputFilter.cc"
-#include "OutputFilter.cc"
-#include "MultipartParser.cc"
-#include "UrlEncodeParser.cc"
-
-#include "WebSocketConnection.cc"
-#include "WebSocket.cc"
-
-#include "brotli_compress.cc"
-#include "mod_serenity.cc"
+#endif /* COMPONENTS_XENOLITH_NODES_XLCOMPONENT_H_ */

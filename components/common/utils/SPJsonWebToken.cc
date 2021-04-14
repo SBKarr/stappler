@@ -55,7 +55,7 @@ static size_t asn1_writeSize(uint8_t **ptr, size_t s) {
 	} else {
 		**ptr = uint8_t(0x82);
 		++ (*ptr);
-		uint16_t d = stappler::intrinsics::bswap16(uint16_t(s));
+		uint16_t d = stappler::byteorder::bswap16(uint16_t(s));
 		memcpy(*ptr, &d, sizeof(uint16_t));
 		(*ptr) += 2;
 		return 3;

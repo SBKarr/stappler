@@ -44,6 +44,8 @@ public:
 
 	const Template::Options &getOpts() const;
 
+	int regenerate(int notify, StringView);
+
 	FileRef(memory::pool_t *, const FilePath &path, Template::Options opts, const Callback<void(const StringView &)> &cb, int watch, int wId);
 	FileRef(memory::pool_t *, String && content, bool isTemplate, Template::Options opts, const Callback<void(const StringView &)> &cb);
 
@@ -77,7 +79,7 @@ public:
 
 	Rc<FileRef> get(const StringView &key) const;
 
-	void update(int watch);
+	void update(int watch, bool regenerate);
 	void update(memory::pool_t *);
 
 	int getNotify() const;

@@ -35,6 +35,7 @@ inline void encodeString(OutputStream &stream, const StringType &str) {
 	for (auto &i : str) {
 		switch (i) {
 		case '\n' : stream << "\\n"; break;
+		case '\r' : stream << "\\r"; break;
 		case '\t' : stream << "\\t"; break;
 		case '\f' : stream << "\\f"; break;
 		case '\b' : stream << "\\b"; break;
@@ -93,7 +94,11 @@ struct PrettyEncoder : public Interface::AllocBaseType {
 	void write(int64_t value) {
 		(*stream) << value; offsetted = false;
 		if (timeMarkers
-			&& (lastKey.find("time") != maxOf<size_t>() || lastKey.find("Time") != maxOf<size_t>() || lastKey.find("TIME") != maxOf<size_t>())
+			&& (lastKey.find("time") != maxOf<size_t>()
+					|| lastKey.find("Time") != maxOf<size_t>()
+					|| lastKey.find("TIME") != maxOf<size_t>()
+					|| lastKey.find("date") != maxOf<size_t>()
+					|| lastKey.find("Date") != maxOf<size_t>())
 			&& (value > 1000000000000000 && value < 10000000000000000)) {
 			(*stream) << " /* " << Time::microseconds(value).toHttp() << " */";
 		}

@@ -94,7 +94,7 @@ bool NetworkHandle::prepare(Context *ctx, const Callback<bool(CURL *)> &onBefore
 	check = (check) ? setupRootCert(ctx->curl, _rootCertFile) : false;
 	check = (check) ? setupHeaders(ctx->curl, _sendedHeaders, &ctx->headers, _user.empty() ? _keySign : StringView()) : false;
 	check = (check) ? setupUserAgent(ctx->curl, _userAgent) : false;
-	check = (check) ? setupUser(ctx->curl, _user, _password) : false;
+	check = (check) ? setupUser(ctx->curl, _user, _password, _authMethod) : false;
 	check = (check) ? setupFrom(ctx->curl, _from) : false;
 	check = (check) ? setupRecv(ctx->curl, _recv, &ctx->mailTo) : false;
 	check = (check) ? setupProgress(ctx->curl, _method != Method::Head && (_uploadProgress || _downloadProgress)) : false;

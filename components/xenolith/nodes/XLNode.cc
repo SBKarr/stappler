@@ -21,6 +21,7 @@ THE SOFTWARE.
 **/
 
 #include "XLNode.h"
+#include "XLComponent.h"
 
 namespace stappler::xenolith {
 
@@ -236,7 +237,7 @@ void Node::addChildNode(Node *child, int32_t localZOrder) {
 	addChildNode(child, localZOrder, child->_tag);
 }
 
-void Node::addChildNode(Node *child, int32_t localZOrder, uint32_t tag) {
+void Node::addChildNode(Node *child, int32_t localZOrder, uint64_t tag) {
 	XLASSERT( child != nullptr, "Argument must be non-nil");
 	XLASSERT( child->_parent == nullptr, "child already added. It can't be added again");
 
@@ -249,7 +250,7 @@ void Node::addChildNode(Node *child, int32_t localZOrder, uint32_t tag) {
 	_reorderChildDirty = true;
 	_children.push_back(child);
 	child->setLocalZOrder(localZOrder);
-	if (tag != INVALID_TAG) {
+	if (tag != InvalidTag) {
 		child->setTag(tag);
 	}
 	child->setParent(this);
@@ -267,8 +268,8 @@ void Node::addChildNode(Node *child, int32_t localZOrder, uint32_t tag) {
 	}
 }
 
-Node* Node::getChildByTag(uint32_t tag) const {
-	XLASSERT( tag != Node::INVALID_TAG, "Invalid tag");
+Node* Node::getChildByTag(uint64_t tag) const {
+	XLASSERT( tag != InvalidTag, "Invalid tag");
 	for (const auto &child : _children) {
 		if (child && child->_tag == tag) {
 			return child;
@@ -313,12 +314,12 @@ void Node::removeChild(Node *child, bool cleanup) {
 	}
 }
 
-void Node::removeChildByTag(uint32_t tag, bool cleanup) {
-	XLASSERT( tag != Node::INVALID_TAG, "Invalid tag");
+void Node::removeChildByTag(uint64_t tag, bool cleanup) {
+	XLASSERT( tag != InvalidTag, "Invalid tag");
 
 	Node *child = this->getChildByTag(tag);
 	if (child == nullptr) {
-		stappler::log::format("Node", "removeChildByTag(tag = %d): child not found!", tag);
+		stappler::log::format("Node", "removeChildByTag(tag = %ld): child not found!", tag);
 	} else {
 		this->removeChild(child, cleanup);
 	}
@@ -356,13 +357,117 @@ void Node::sortAllChildren() {
 	}
 }
 
-void Node::setTag(uint32_t tag) {
+void Node::setTag(uint64_t tag) {
 	_tag = tag;
+}
+
+
+bool Node::addComponentItem(Component *com) {
+	XLASSERT(com != nullptr, "Argument must be non-nil");
+	XLASSERT(com->getOwner() == nullptr, "Component already added. It can't be added again");
+
+	com->setOwner(this);
+	_components.push_back(com);
+	com->onAdded();
+	if (this->isRunning()) {
+		com->onEnter();
+	}
+
+	return true;
+}
+
+bool Node::removeComponent(Component *com) {
+	if (_components.empty()) {
+		return false;
+	}
+
+	for (auto iter = _components.begin(); iter != _components.end(); ++iter) {
+		if ((*iter) == com) {
+			if (this->isRunning()) {
+				com->onExit();
+			}
+			com->onRemoved();
+			com->setOwner(nullptr);
+			_components.erase(iter);
+			return true;
+		}
+	}
+    return false;
+}
+
+bool Node::removeComponentByTag(uint64_t tag) {
+	if (_components.empty()) {
+		return false;
+	}
+
+	for (auto iter = _components.begin(); iter != _components.end(); ++iter) {
+		if ((*iter)->getTag() == tag) {
+			auto com = (*iter);
+			if (this->isRunning()) {
+				com->onExit();
+			}
+			com->onRemoved();
+			com->setOwner(nullptr);
+			_components.erase(iter);
+			return true;
+		}
+	}
+    return false;
+}
+
+bool Node::removeAllComponentByTag(uint64_t tag) {
+	if (_components.empty()) {
+		return false;
+	}
+
+	auto iter = _components.begin();
+	while (iter != _components.end()) {
+		if ((*iter)->getTag() == tag) {
+			auto com = (*iter);
+			if (this->isRunning()) {
+				com->onExit();
+			}
+			com->onRemoved();
+			com->setOwner(nullptr);
+			iter = _components.erase(iter);
+		} else {
+			++ iter;
+		}
+	}
+	for (; iter != _components.end(); ++iter) {
+		if ((*iter)->getTag() == tag) {
+			auto com = (*iter);
+			if (this->isRunning()) {
+				com->onExit();
+			}
+			com->onRemoved();
+			com->setOwner(nullptr);
+			_components.erase(iter);
+			return true;
+		}
+	}
+    return false;
+}
+
+void Node::removeAllComponents() {
+	for (auto iter : _components) {
+		if (this->isRunning()) {
+			iter->onExit();
+		}
+		iter->onRemoved();
+		iter->setOwner(nullptr);
+	}
+
+	_components.clear();
 }
 
 void Node::onEnter() {
 	if (_onEnterCallback) {
 		_onEnterCallback();
+	}
+
+	for (auto &it : _components) {
+		it->onEnter();
 	}
 
 	for (auto &child : _children) {
@@ -374,16 +479,20 @@ void Node::onEnter() {
 }
 
 void Node::onExit() {
-	this->pause();
+	// In reverse order from onEnter()
 
+	this->pause();
 	_running = false;
+	for (auto &child : _children) {
+		child->onExit();
+	}
+
+	for (auto &it : _components) {
+		it->onExit();
+	}
 
 	if (_onExitCallback) {
 		_onExitCallback();
-	}
-
-	for (auto &child : _children) {
-		child->onExit();
 	}
 }
 
@@ -391,17 +500,29 @@ void Node::onContentSizeDirty() {
 	if (_onContentSizeDirtyCallback) {
 		_onContentSizeDirtyCallback();
 	}
+
+	for (auto &it : _components) {
+		it->onContentSizeDirty();
+	}
 }
 
 void Node::onTransformDirty() {
 	if (_onTransformDirtyCallback) {
 		_onTransformDirtyCallback();
 	}
+
+	for (auto &it : _components) {
+		it->onTransformDirty();
+	}
 }
 
 void Node::onReorderChildDirty() {
 	if (_onReorderChildDirtyCallback) {
 		_onReorderChildDirtyCallback();
+	}
+
+	for (auto &it : _components) {
+		it->onReorderChildDirty();
 	}
 }
 
@@ -679,6 +800,11 @@ void Node::visit(RenderFrameInfo &info, NodeFlags parentFlags) {
 			else
 				break;
 		}
+
+		for (auto &it : _components) {
+			it->visit(info, parentFlags);
+		}
+
 		// self draw
 		if (visibleByCamera) {
 			this->draw(info, flags);
@@ -688,6 +814,10 @@ void Node::visit(RenderFrameInfo &info, NodeFlags parentFlags) {
 			(*it)->visit(info, flags);
 		}
 	} else {
+		for (auto &it : _components) {
+			it->visit(info, parentFlags);
+		}
+
 		if (visibleByCamera) {
 			this->draw(info, flags);
 		}

@@ -27,20 +27,8 @@ THE SOFTWARE.
 
 namespace stappler::xenolith {
 
-enum class NodeFlags {
-	None,
-	TransformDirty = 1 << 0,
-	ContentSizeDirty = 1 << 1,
-
-	DirtyMask = TransformDirty | ContentSizeDirty
-};
-
-SP_DEFINE_ENUM_AS_MASK(NodeFlags)
-
 class Node : public Ref {
 public:
-	static constexpr uint32_t INVALID_TAG = maxOf<uint32_t>();
-
 	Node();
 	virtual ~Node();
 
@@ -122,9 +110,9 @@ public:
 
 	virtual void addChildNode(Node *child);
 	virtual void addChildNode(Node *child, int32_t localZOrder);
-	virtual void addChildNode(Node *child, int32_t localZOrder, uint32_t tag);
+	virtual void addChildNode(Node *child, int32_t localZOrder, uint64_t tag);
 
-	virtual Node* getChildByTag(uint32_t tag) const;
+	virtual Node* getChildByTag(uint64_t tag) const;
 
 	virtual const Vector<Rc<Node>>& getChildren() const { return _children; }
 	virtual ssize_t getChildrenCount() const { return _children.size(); }
@@ -134,7 +122,7 @@ public:
 
 	virtual void removeFromParent(bool cleanup = true);
 	virtual void removeChild(Node *child, bool cleanup = true);
-	virtual void removeChildByTag(uint32_t tag, bool cleanup = true);
+	virtual void removeChildByTag(uint64_t tag, bool cleanup = true);
 	virtual void removeAllChildren(bool cleanup = true);
 
 	virtual void reorderChild(Node *child, int32_t localZOrder);
@@ -146,8 +134,30 @@ public:
 	 */
 	virtual void sortAllChildren();
 
-	virtual uint32_t getTag() const { return _tag; }
-	virtual void setTag(uint32_t tag);
+    template <typename C>
+    auto addComponent(C *component) -> C * {
+    	if (addComponentItem(component)) {
+    		return component;
+    	}
+    	return nullptr;
+    }
+
+    template <typename C>
+    auto addComponent(const Rc<C> &component) -> C * {
+    	if (addComponentItem(component.get())) {
+    		return component.get();
+    	}
+    	return nullptr;
+    }
+
+    virtual bool addComponentItem(Component *);
+    virtual bool removeComponent(Component *);
+    virtual bool removeComponentByTag(uint64_t);
+    virtual bool removeAllComponentByTag(uint64_t);
+    virtual void removeAllComponents();
+
+	virtual uint64_t getTag() const { return _tag; }
+	virtual void setTag(uint64_t tag);
 
 	virtual bool isRunning() const { return _running; }
 
@@ -160,11 +170,6 @@ public:
 
 	virtual void cleanup();
 
-	/**
-	 * Returns an AABB (axis-aligned bounding-box) in its parent's coordinate system.
-	 *
-	 * @return An AABB (axis-aligned bounding-box) in its parent's coordinate system
-	 */
 	virtual Rect getBoundingBox() const;
 
 	virtual void resume();
@@ -229,7 +234,7 @@ protected:
 	mutable bool _transformInverseDirty = true; // dynamic value
 	bool _transformDirty = true;
 
-	uint32_t _tag = INVALID_TAG;
+	uint64_t _tag = InvalidTag;
 	int32_t _zOrder = 0;
 
 	Vec2 _skew;
@@ -259,7 +264,7 @@ protected:
 	Function<void()> _onTransformDirtyCallback;
 	Function<void()> _onReorderChildDirtyCallback;
 
-	String _name;
+    Vector<Rc<Component>> _components;
 };
 
 }

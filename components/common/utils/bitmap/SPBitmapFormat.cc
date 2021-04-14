@@ -1039,7 +1039,7 @@ static bool BitmapFormat_isWebpLossless(const uint8_t * data, size_t dataLen) {
 
 static bool BitmapFormat_getWebpLosslessImageSize(const io::Producer &file, StackBuffer<512> &data, size_t &width, size_t &height) {
 	if (BitmapFormat_isWebpLossless(data.data(), data.size())) {
-		auto reader = BytesViewTemplate<ByteOrder::Big>(data.data() + 21, 4);
+		auto reader = BytesViewTemplate<Endian::Big>(data.data() + 21, 4);
 
 		auto b0 = reader.readUnsigned();
 		auto b1 = reader.readUnsigned();
@@ -1070,7 +1070,7 @@ static bool BitmapFormat_isWebp(const uint8_t * data, size_t dataLen) {
 
 static bool BitmapFormat_getWebpImageSize(const io::Producer &file, StackBuffer<512> &data, size_t &width, size_t &height) {
 	if (BitmapFormat_isWebp(data.data(), data.size())) {
-		auto reader = BytesViewTemplate<ByteOrder::Little>(data.data() + 24, 6);
+		auto reader = BytesViewTemplate<Endian::Little>(data.data() + 24, 6);
 
 		auto b0 = reader.readUnsigned();
 		auto b1 = reader.readUnsigned();
@@ -1192,7 +1192,7 @@ static bool BitmapFormat_isGif(const uint8_t * data, size_t dataLen) {
 
 static bool BitmapFormat_getGifImageSize(const io::Producer &file, StackBuffer<512> &data, size_t &width, size_t &height) {
 	if (BitmapFormat_isGif(data.data(), data.size())) {
-		auto reader = BytesViewTemplate<ByteOrder::Little>(data.data() + 6, 4);
+		auto reader = BytesViewTemplate<Endian::Little>(data.data() + 6, 4);
 
 		width = reader.readUnsigned16();
 		height = reader.readUnsigned16();
@@ -1273,11 +1273,11 @@ static bool BitmapFormat_getTiffImageSizeImpl(const io::Producer &file, StackBuf
 static bool BitmapFormat_getTiffImageSize(const io::Producer &file, StackBuffer<512> &data, size_t &width, size_t &height) {
 	if (BitmapFormat_isTiff(data.data(), data.size())) {
 		if (memcmp(data.data(), "II", 2) == 0) {
-			if (BitmapFormat_getTiffImageSizeImpl<BytesViewTemplate<ByteOrder::Little>>(file, data, width, height)) {
+			if (BitmapFormat_getTiffImageSizeImpl<BytesViewTemplate<Endian::Little>>(file, data, width, height)) {
 				return true;
 			}
 		} else {
-			if (BitmapFormat_getTiffImageSizeImpl<BytesViewTemplate<ByteOrder::Big>>(file, data, width, height)) {
+			if (BitmapFormat_getTiffImageSizeImpl<BytesViewTemplate<Endian::Big>>(file, data, width, height)) {
 				return true;
 			}
 		}
