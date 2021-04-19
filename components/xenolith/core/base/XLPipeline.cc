@@ -28,16 +28,11 @@ Pipeline::~Pipeline() {
 	_source->purge(this);
 }
 
-bool Pipeline::init(PipelineCache *s, Rc<vk::Pipeline> pipeline) {
-	_params = pipeline->getParams();
-	_pipeline = pipeline;
-	_source = s;
-	return true;
-}
-
-bool Pipeline::init(PipelineCache *s, const draw::PipelineParams &params) {
+bool Pipeline::init(PipelineCache *cache, Rc<PipelineRequest> req, const PipelineParams *params, Rc<vk::Pipeline> pipeline) {
+	_source = cache;
+	_request = req;
 	_params = params;
-	_source = s;
+	_pipeline = pipeline;
 	return true;
 }
 
@@ -46,7 +41,7 @@ void Pipeline::set(Rc<vk::Pipeline> pipeline) {
 }
 
 StringView Pipeline::getName() const {
-	return _params.key;
+	return _params->key;
 }
 
 bool PipelineCache::init(Director *dir) {
@@ -59,16 +54,26 @@ void PipelineCache::reload() {
 }
 
 /** Request pipeline compilation */
-bool PipelineCache::request(PipelineRequest &&req) {
+bool PipelineCache::request(Rc<PipelineRequest> req) {
 	if (auto loop = _director->getView()->getLoop()) {
-		auto &it = _requests.emplace(req.name.str(), move(req)).first->second;
-		loop->requestPipeline(it, [this, name = it.name] (PipelineResponse &&resp) {
-			auto iit = _pipelines.emplace(name.str(), move(resp)).first;
-			for (auto &it : iit->second.pipelines) {
-				auto pIt = _objects.find(it.second->getName());
-				if (pIt != _objects.end()) {
-					pIt->second->set(it.second);
+		req->setInUse(true);
+		req->setInProcess(true);
+		auto &it = _requests.emplace(req->getName().str(), req).first->second;
+		loop->requestPipeline(it, [this, req] (const Vector<Rc<vk::Pipeline>> &resp) {
+			auto iit = _revoke.find(req.get());
+			if (iit == _revoke.end()) {
+				req->setCompiled(resp);
+				for (auto &it : req->getCompiled()) {
+					auto pIt = _objects.find(it.second->getName());
+					if (pIt != _objects.end()) {
+						pIt->second->set(it.second);
+					}
 				}
+				req->setInProcess(false);
+			} else {
+				req->setInProcess(false);
+				_revoke.erase(req.get());
+				revoke(req->getName());
 			}
 		});
 		return true;
@@ -82,44 +87,53 @@ bool PipelineCache::revoke(StringView requestName) {
 	do {
 		auto it = _requests.find(requestName);
 		if (it != _requests.end()) {
-			it->second.callback = [this] (StringView name, const PipelineResponse &resp) {
-				this->revoke(name);
-			};
+			if (it->second->isInProcess()) {
+				_revoke.emplace(it->second.get());
+			}
+			it->second->clear();
+			_requests.erase(it);
 			return true;
 		}
 	} while (0);
-
-	do {
-		auto it = _pipelines.find(requestName);
-		if (it != _pipelines.end()) {
-			_pipelines.erase(it);
-			return true;
-		}
-	} while (0);
-
 	return false;
 }
 
-Rc<Pipeline> PipelineCache::get(StringView name) {
+Rc<Pipeline> PipelineCache::get(StringView req, StringView name) {
 	auto it = _objects.find(name);
 	if (it != _objects.end()) {
 		return Rc<Pipeline>(it->second);
 	}
 
-	// find loaded
-	for (auto &p : _pipelines) {
-		auto it = p.second.pipelines.find(name);
-		if (it != p.second.pipelines.end()) {
-			auto ret = Rc<Pipeline>::create(this, it->second);
+	auto reqIt = _requests.find(req);
+	if (reqIt == _requests.end()) {
+		return nullptr;
+	}
+
+	if (reqIt->second->isCompiled()) {
+
+	} else {
+		auto pipeIt = reqIt->second->getPipelines().find(name);
+		if (pipeIt == reqIt->second->getPipelines().end()) {
+			return nullptr;
+		}
+
+		auto ret = Rc<Pipeline>::alloc();
+		if (ret->init(this, reqIt->second, &pipeIt->second, nullptr)) {
 			_objects.emplace(name.str(), ret.get());
 			return ret;
 		}
 	}
 
+	return nullptr;
+
 	// find requested
-	for (auto &p : _requests) {
-		for (auto &it : p.second.pipelines) {
-			if (it.key == name) {
+	/*for (auto &p : _requests) {
+		auto &compiled = p.second->getCompiled();
+		auto iit = compiled.find(name);
+		if (iit != compiled.end()) {
+		}
+		for (auto &it : p.second->getCompiled()) {
+			if (it. == name) {
 				auto ret = Rc<Pipeline>::create(this, it);
 				_objects.emplace(name.str(), ret.get());
 				return ret;
@@ -127,7 +141,7 @@ Rc<Pipeline> PipelineCache::get(StringView name) {
 		}
 	}
 
-	return nullptr;
+	return nullptr;*/
 }
 
 void PipelineCache::purge(Pipeline *p) {

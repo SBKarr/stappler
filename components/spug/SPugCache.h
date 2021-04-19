@@ -89,7 +89,7 @@ protected:
 	Rc<FileRef> acquireTemplate(StringView, bool readOnly, const Template::Options &);
 	Rc<FileRef> openTemplate(StringView, int wId, const Template::Options &);
 
-	bool runTemplate(Rc<FileRef>, StringView ipath, const RunCallback &cb, std::ostream &out);
+	bool runTemplate(Rc<FileRef>, StringView ipath, const RunCallback &cb, std::ostream &out, Template::Options opts);
 	void onError(const StringView &);
 
 	int _inotify = -1;

@@ -32,6 +32,10 @@ XL_DECLARE_EVENT_CLASS(Director, onAfterUpdate);
 XL_DECLARE_EVENT_CLASS(Director, onAfterVisit);
 XL_DECLARE_EVENT_CLASS(Director, onAfterDraw);
 
+Rc<Director> Director::getInstance() {
+	return Application::getInstance()->getDirector();
+}
+
 Director::Director() { }
 
 Director::~Director() { }
@@ -125,6 +129,10 @@ Rc<DrawFlow> Director::swapDrawFlow() {
 
 Size Director::getScreenSize() const {
 	return _view->getScreenSize();
+}
+
+Rc<PipelineCache> Director::getPipelineCache() const {
+	return _pipelineCache;
 }
 
 void Director::runScene(Rc<Scene> scene) {

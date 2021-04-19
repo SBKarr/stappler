@@ -27,7 +27,6 @@ THE SOFTWARE.
 #include "XLEventHeader.h"
 #include "XLVk.h"
 #include "SPThreadTaskQueue.h"
-#include "XLDrawPipeline.h"
 
 namespace stappler::xenolith {
 

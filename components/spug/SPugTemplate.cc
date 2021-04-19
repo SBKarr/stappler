@@ -56,7 +56,8 @@ struct TemplateRender {
 	Template::Chunk *runCode(Token *);
 	bool runCode(Expression *, Token::Type);
 
-	void flushBuffer();
+	Template::Chunk * flushBuffer(Template::ChunkType = Template::HtmlEntity);
+	void end();
 
 	bool pushChunk(Template::Chunk *);
 	bool popChunk();
@@ -245,6 +246,7 @@ bool TemplateRender::renderToken(Token *tok) {
 		} else {
 			_buffer << "<!DOCTYPE " << tok->data << ">\n";
 		}
+		flushBuffer();
 		return true;
 		break;
 	default: break;
@@ -322,12 +324,16 @@ bool TemplateRender::renderTag(Token *tok, Token *nextTok, bool interpolated) {
 	Token *tagEval = nullptr;
 
 	if (!isOutput) {
+		flushBuffer();
+
 		_buffer << "<" << (tok->data.empty() ? StringView("div") : tok->data); // it's a tag
+		auto tagChunk = flushBuffer(Template::HtmlTag);
 
 		// read attributes
 		tagEval = renderTagAttributes(tok->next);
 		if ((tagEval && tagEval->type == Token::TagTrailingSlash) || isSelfClosing(tok->data)) {
 			_buffer << "/>";
+			tagChunk->type = Template::HtmlInlineTag;
 			return true;
 		}
 
@@ -359,8 +365,11 @@ bool TemplateRender::renderTag(Token *tok, Token *nextTok, bool interpolated) {
 	}
 
 	if (!isOutput) {
+		flushBuffer();
 		_buffer << "</" << (tok->data.empty() ? StringView("div") : tok->data) << ">";
+		flushBuffer(Template::HtmlTag);
 	}
+
 	return shouldIndent;
 }
 
@@ -545,12 +554,17 @@ bool TemplateRender::runCode(Expression *expr, Token::Type type) {
 	return true;
 }
 
-void TemplateRender::flushBuffer() {
+Template::Chunk * TemplateRender::flushBuffer(Template::ChunkType type) {
 	if (!_buffer.empty() && _current) {
-		_current->chunks.emplace_back(new Template::Chunk{Template::Text, _buffer.str(), nullptr});
+		auto c = new Template::Chunk{type, _buffer.str(), nullptr};
+		_current->chunks.emplace_back(c);
 		_buffer.clear();
+		return c;
 	}
+	return nullptr;
 }
+
+void TemplateRender::end() { }
 
 bool TemplateRender::pushChunk(Template::Chunk *c) {
 	if (_stackSize == _chunkStack.size()) {
@@ -618,12 +632,30 @@ Template::Template(memory::pool_t *p, const StringView &str, const Options &opts
 		TemplateRender renderer(&_root, opts.hasFlag(Options::Pretty));
 		renderer.renderToken(&_lexer.root);
 		renderer.flushBuffer();
+		renderer.end();
 		_includes = move(renderer.extractIncludes());
 	}
 }
 
 bool Template::run(Context &ctx, std::ostream &out) const {
-	return runChunk(_root, ctx, out);
+	return run(ctx, out, _opts);
+}
+
+bool Template::run(Context &ctx, std::ostream &out, const Options &opts) const {
+	RunContext rctx;
+	rctx.tagStack.reserve(8);
+	rctx.opts = opts;
+	auto ret = runChunk(_root, ctx, out, rctx);
+	if (ret) {
+		while (!rctx.tagStack.empty() && rctx.tagStack.back()->type == VirtualTag) {
+			out << rctx.tagStack.back()->value;
+			rctx.tagStack.pop_back();
+		}
+		if (!rctx.tagStack.empty()) {
+			return false;
+		}
+	}
+	return ret;
 }
 
 static void Template_describeChunk(std::ostream &stream, const Template::Chunk &chunk, size_t depth) {
@@ -632,7 +664,9 @@ static void Template_describeChunk(std::ostream &stream, const Template::Chunk &
 	case Template::Block:
 		stream << "<block> of " << chunk.chunks.size() << "\n";
 		break;
-	case Template::Text: stream << "<text>\n"; break;
+	case Template::HtmlTag: stream << "<html-tag> " << chunk.value << "\n"; break;
+	case Template::HtmlInlineTag: stream << "<html-inline-tag> " << chunk.value << "\n"; break;
+	case Template::HtmlEntity: stream << "<html-entity>\n"; break;
 	case Template::OutputEscaped: stream << "<escaped output expression>\n"; break;
 	case Template::OutputUnescaped: stream << "<unescaped output expression>\n"; break;
 	case Template::AttributeEscaped: stream << "<escaped attribute expression>\n"; break;
@@ -659,6 +693,7 @@ static void Template_describeChunk(std::ostream &stream, const Template::Chunk &
 	case Template::Include: stream << "<include> " << chunk.value << "\n"; break;
 	case Template::ControlMixin: stream << "<mixin> " << chunk.value << "\n"; break;
 	case Template::MixinCall: stream << "<mixin-call> " << chunk.value << "\n"; break;
+	case Template::VirtualTag: stream << "<virtual-tag> " << chunk.value << "\n"; break;
 	}
 	for (auto &it : chunk.chunks) {
 		Template_describeChunk(stream, *it, depth + 1);
@@ -687,7 +722,7 @@ static void Template_readMixinArgs(Vector<Expression *> &vars, Expression *expr)
 	}
 }
 
-bool Template::runChunk(const Chunk &chunk, Context &exec, std::ostream &out) const {
+bool Template::runChunk(const Chunk &chunk, Context &exec, std::ostream &out, RunContext &tagStack) const {
 	auto onError = [&] (const StringView &err) {
 		if (&out != &std::cout) {
 			out << "Context error: " << err << "\n";
@@ -709,7 +744,7 @@ bool Template::runChunk(const Chunk &chunk, Context &exec, std::ostream &out) co
 				auto &v = var.readValue();
 				auto val = (v.getType() == Value::Type::DICTIONARY || v.getType() == Value::Type::ARRAY) ? !v.empty() : v.asBool();
 				if ((!allowElseIf && !val) || val) {
-					if (!runChunk(**it, exec, out)) {
+					if (!runChunk(**it, exec, out, tagStack)) {
 						r = false;
 					}
 					return true;
@@ -742,7 +777,7 @@ bool Template::runChunk(const Chunk &chunk, Context &exec, std::ostream &out) co
 		}
 
 		if (!success && it != chunk.chunks.end() && (*it)->type == ControlElse) {
-			if (!runChunk(**it, exec, out)) {
+			if (!runChunk(**it, exec, out, tagStack)) {
 				success = true;
 				r = false;
 			}
@@ -774,7 +809,7 @@ bool Template::runChunk(const Chunk &chunk, Context &exec, std::ostream &out) co
 					if (val.size() > 0) {
 						for (auto &v_it : val.asArray()) {
 							cb(Value(uint32_t(i)), &v_it, isConst);
-							if (!runChunk(**it, exec, out) && _opts.hasFlag(Options::StopOnError)) {
+							if (!runChunk(**it, exec, out, tagStack) && _opts.hasFlag(Options::StopOnError)) {
 								return false;
 							}
 							scope.namedVars.clear();
@@ -787,7 +822,7 @@ bool Template::runChunk(const Chunk &chunk, Context &exec, std::ostream &out) co
 					if (val.size() > 0) {
 						for (auto &v_it : val.asDict()) {
 							cb(Value(v_it.first), &v_it.second, isConst);
-							if (!runChunk(**it, exec, out) && _opts.hasFlag(Options::StopOnError)) {
+							if (!runChunk(**it, exec, out, tagStack) && _opts.hasFlag(Options::StopOnError)) {
 								return false;
 							}
 							scope.namedVars.clear();
@@ -799,7 +834,7 @@ bool Template::runChunk(const Chunk &chunk, Context &exec, std::ostream &out) co
 					if (!hasElse) {
 						if (val) {
 							cb(Value(0), &val, isConst);
-							if (!runChunk(**it, exec, out) && _opts.hasFlag(Options::StopOnError)) {
+							if (!runChunk(**it, exec, out, tagStack) && _opts.hasFlag(Options::StopOnError)) {
 								return false;
 							}
 						}
@@ -823,7 +858,7 @@ bool Template::runChunk(const Chunk &chunk, Context &exec, std::ostream &out) co
 		if (hasElse) {
 			++ it;
 			if (runElse) {
-				if (!runChunk(**it, exec, out) && _opts.hasFlag(Options::StopOnError)) {
+				if (!runChunk(**it, exec, out, tagStack) && _opts.hasFlag(Options::StopOnError)) {
 					return false;
 				}
 			}
@@ -875,7 +910,7 @@ bool Template::runChunk(const Chunk &chunk, Context &exec, std::ostream &out) co
 					scope.namedVars.clear();
 					scope.mixins.clear();
 					exec.pushVarScope(scope);
-					if (!runChunk(ch, exec, out)) {
+					if (!runChunk(ch, exec, out, tagStack)) {
 						exec.popVarScope();
 						return false;
 					}
@@ -929,7 +964,7 @@ bool Template::runChunk(const Chunk &chunk, Context &exec, std::ostream &out) co
 
 		exec.pushVarScope(scope);
 
-		if (!runChunk(*mixin->chunk, exec, out) && _opts.hasFlag(Options::StopOnError)) {
+		if (!runChunk(*mixin->chunk, exec, out, tagStack) && _opts.hasFlag(Options::StopOnError)) {
 			return false;
 		}
 
@@ -941,7 +976,80 @@ bool Template::runChunk(const Chunk &chunk, Context &exec, std::ostream &out) co
 	while (it != chunk.chunks.end()) {
 		auto &c = **it;
 		switch (c.type) {
-		case Text:
+		case HtmlTag:
+			if (StringView(c.value).starts_with("</")) {
+				while (!tagStack.tagStack.empty() && tagStack.tagStack.back()->type == VirtualTag) {
+					auto name = string::tolower(StringView(tagStack.tagStack.back()->value, 5));
+					out << tagStack.tagStack.back()->value;
+					if (name == "</body") {
+						tagStack.withinBody = false;
+					}
+					tagStack.tagStack.pop_back();
+				}
+				if (tagStack.tagStack.empty()) {
+					return false;
+				}
+				auto name = string::tolower(StringView(tagStack.tagStack.back()->value, 5));
+				if (name == "<head") {
+					tagStack.withinHead = false;
+				} else if (name == "<body") {
+					tagStack.withinBody = false;
+				}
+				out << c.value;
+				tagStack.tagStack.pop_back();
+				if (tagStack.opts.hasFlag(Options::LineFeeds) && !tagStack.tagStack.empty()) {
+					out << "\n";
+				}
+			} else if (!StringView(c.value).ends_with("/>")) {
+				if (tagStack.opts.hasFlag(Options::LineFeeds) && !tagStack.tagStack.empty()) {
+					out << "\n";
+				}
+				if (tagStack.tagStack.empty() && string::tolower(StringView(c.value, 5)) != "<html") {
+					out << "<html>";
+					tagStack.tagStack.push_back(new Template::Chunk{VirtualTag, String("</html>"), nullptr});
+				}
+				if (string::tolower(StringView(c.value, 5)) == "<head") {
+					tagStack.withinHead = true;
+				} else if (!tagStack.withinHead) {
+					if (string::tolower(StringView(c.value, 5)) == "<body") {
+						tagStack.withinBody = true;
+					} else if (!tagStack.withinBody) {
+						out << "<body>";
+						tagStack.tagStack.push_back(new Template::Chunk{VirtualTag, String("</body>"), nullptr});
+						tagStack.withinBody = true;
+					}
+				}
+				tagStack.tagStack.push_back(&c);
+				out << c.value;
+			} else {
+				if (tagStack.opts.hasFlag(Options::LineFeeds) && !tagStack.tagStack.empty()) {
+					out << "\n";
+				}
+				out << c.value;
+			}
+			++ it;
+			break;
+		case HtmlInlineTag:
+
+			if (tagStack.tagStack.empty() && string::tolower(StringView(c.value, 5)) != "<html") {
+				out << "<html>";
+				tagStack.tagStack.push_back(new Template::Chunk{VirtualTag, String("</html>"), nullptr});
+			}
+			if (string::tolower(StringView(c.value, 5)) != "<head" && !tagStack.withinHead) {
+				if (string::tolower(StringView(c.value, 5)) != "<body" && !tagStack.withinBody) {
+					out << "<body>";
+					tagStack.tagStack.push_back(new Template::Chunk{VirtualTag, String("</body>"), nullptr});
+					tagStack.withinBody = true;
+				}
+			}
+
+			if (tagStack.opts.hasFlag(Options::LineFeeds) && !tagStack.tagStack.empty()) {
+				out << "\n";
+			}
+			out << c.value;
+			++ it;
+			break;
+		case HtmlEntity:
 			out << c.value;
 			++ it;
 			break;
@@ -968,7 +1076,7 @@ bool Template::runChunk(const Chunk &chunk, Context &exec, std::ostream &out) co
 		case Block:
 		case ControlWhen:
 		case ControlDefault:
-			runChunk(c, exec, out);
+			runChunk(c, exec, out, tagStack);
 			++ it;
 			break;
 		case Code:
@@ -978,7 +1086,7 @@ bool Template::runChunk(const Chunk &chunk, Context &exec, std::ostream &out) co
 			++ it;
 			break;
 		case ControlCase:
-			if (!runCase(c, exec, out) && _opts.hasFlag(Options::StopOnError)) {
+			if (!runCase(c, exec, out, tagStack) && _opts.hasFlag(Options::StopOnError)) {
 				return false;
 			}
 			++ it;
@@ -1041,7 +1149,10 @@ bool Template::runChunk(const Chunk &chunk, Context &exec, std::ostream &out) co
 			}
 			++ it;
 			break;
-		default:
+		case ControlElseIf:
+		case ControlElse:
+		case VirtualTag:
+			// should not be in this context
 			return false;
 			break;
 		}
@@ -1050,15 +1161,15 @@ bool Template::runChunk(const Chunk &chunk, Context &exec, std::ostream &out) co
 	return true;
 }
 
-bool Template::runCase(const Chunk &chunk, Context &exec, std::ostream &out) const {
+bool Template::runCase(const Chunk &chunk, Context &exec, std::ostream &out, RunContext &tagStack) const {
 	auto runWhenChunk = [&] (auto it) -> bool {
 		if ((*it)->chunks.size() > 0) {
-			return runChunk(**it, exec, out);
+			return runChunk(**it, exec, out, tagStack);
 		} else {
 			++ it;
 			while (it != chunk.chunks.end() && (*it)->type == Template::ControlWhen) {
 				if ((*it)->chunks.size() > 0) {
-					return runChunk(**it, exec, out);
+					return runChunk(**it, exec, out, tagStack);
 				}
 			}
 		}
@@ -1088,7 +1199,7 @@ bool Template::runCase(const Chunk &chunk, Context &exec, std::ostream &out) con
 					++ it;
 				}
 				if (def) {
-					return runChunk(*def, exec, out);
+					return runChunk(*def, exec, out, tagStack);
 				} else {
 					return true;
 				}

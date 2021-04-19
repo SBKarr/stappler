@@ -32,11 +32,11 @@ public:
 	virtual ~ProgramModule();
 
 	bool init(VirtualDevice &dev, ProgramSource, ProgramStage, FilePath,
-			StringView key = StringView(), const Map<String, String> & = Map<String, String>());
+			StringView key = StringView(), const Map<StringView, StringView> & = Map<StringView, StringView>());
 	bool init(VirtualDevice &dev, ProgramSource, ProgramStage, StringView data,
-			StringView key, const Map<String, String> & = Map<String, String>());
+			StringView key, const Map<StringView, StringView> & = Map<StringView, StringView>());
 	bool init(VirtualDevice &dev, ProgramSource, ProgramStage, BytesView data,
-			StringView key, const Map<String, String> & = Map<String, String>());
+			StringView key, const Map<StringView, StringView> & = Map<StringView, StringView>());
 
 	void invalidate(VirtualDevice &dev);
 

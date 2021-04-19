@@ -67,7 +67,7 @@ bool TransferDevice::init(Rc<Instance> instance, Rc<Allocator> alloc, VkQueue qu
 		return false;
 	}
 
-	_queue = queue;
+	_table->vkGetDeviceQueue(_device, qIdx, 0, &_queue);
 	_commandPool = Rc<CommandPool>::create(*this, qIdx);
 	if (!_commandPool) {
 		return false;

@@ -372,17 +372,19 @@ DrawBufferTask DrawDevice::getTaskForWorker(Vector<DrawBufferTask> &tasks, DrawW
 	return DrawBufferTask({0, nullptr});
 }
 
+PipelineCompiler::CompilationProcess::~CompilationProcess() { }
+
 PipelineCompiler::CompilationProcess::CompilationProcess(Rc<DrawDevice> dev, Rc<PipelineCompiler> compiler,
-		const PipelineRequest &req, Callback &&cb) : draw(dev), compiler(compiler), req(req), onComplete(move(cb)) {
+		Rc<PipelineRequest> req, Callback &&cb) : draw(dev), compiler(compiler), req(req), onComplete(move(cb)) {
 
 }
 
 void PipelineCompiler::CompilationProcess::runShaders() {
-	for (auto &it : req.programs) {
-		if (auto v = draw->getProgram(it.key)) {
-			loadedPrograms.emplace(it.key, pair(v, nullptr));
+	for (auto &it : req->getPrograms()) {
+		if (auto v = draw->getProgram(it.second.key)) {
+			loadedPrograms.emplace(it.second.key, pair(v, nullptr));
 		} else {
-			loadedPrograms.emplace(it.key, pair(Rc<ProgramModule>::alloc(), &it));
+			loadedPrograms.emplace(it.second.key, pair(Rc<ProgramModule>::alloc(), &it.second));
 			++ programsInQueue;
 		}
 	}
@@ -411,24 +413,25 @@ void PipelineCompiler::CompilationProcess::runShaders() {
 }
 
 void PipelineCompiler::CompilationProcess::runPipelines() {
-	for (auto &it : req.pipelines) {
-		if (auto v = draw->getPipeline(it.key)) {
-			loadedPipelines.emplace(it.key, pair(v, nullptr));
+	for (auto &it : req->getPipelines()) {
+		if (auto v = draw->getPipeline(it.second.key)) {
+			loadedPipelines.emplace(it.second.key, pair(v, nullptr));
 		} else {
-			loadedPipelines.emplace(it.key, pair(Rc<Pipeline>::alloc(), &it));
+			loadedPipelines.emplace(it.second.key, pair(Rc<Pipeline>::alloc(), &it.second));
 			++ pipelineInQueue;
 		}
 	}
 
 	for (auto &it : loadedPipelines) {
 		if (it.second.second) {
-			compiler->getQueue()->perform(Rc<Task>::create([this, pipeline = &it.second.first, req = it.second.second] (const thread::Task &) -> bool {
-				if (!(*pipeline)->init(*draw, draw->getPipelineOptions(*req), *req)) {
-					log::vtext("vk", "Fail to compile pipeline ", req->key);
+			auto request = it.second.second;
+			compiler->getQueue()->perform(Rc<Task>::create([this, pipeline = &it.second.first, request] (const thread::Task &) -> bool {
+				if (!(*pipeline)->init(*draw, draw->getPipelineOptions(*request), *request)) {
+					log::vtext("vk", "Fail to compile pipeline ", request->key);
 					return false;
 				} else {
 					*pipeline = draw->addPipeline(*pipeline);
-					if (programsInQueue.fetch_sub(1) == 1) {
+					if (pipelineInQueue.fetch_sub(1) == 1) {
 						complete();
 					}
 				}
@@ -439,9 +442,9 @@ void PipelineCompiler::CompilationProcess::runPipelines() {
 }
 
 void PipelineCompiler::CompilationProcess::complete() {
-	draw::PipelineResponse resp;
+	Vector<Rc<vk::Pipeline>> resp; resp.reserve(loadedPipelines.size());
 	for (auto &it : loadedPipelines) {
-		resp.pipelines.emplace(it.second.first->getName().str(), it.second.first);
+		resp.emplace_back(it.second.first);
 	}
 	onComplete(move(resp));
 	compiler->compileNext(next);
@@ -458,8 +461,8 @@ bool PipelineCompiler::init() {
 	return true;
 }
 
-void PipelineCompiler::compile(Rc<DrawDevice> dev, const draw::PipelineRequest &req, Function<void(draw::PipelineResponse &&)> &&cb) {
-	auto p = new CompilationProcess(dev, this, req, move(cb));
+void PipelineCompiler::compile(Rc<DrawDevice> dev, Rc<PipelineRequest> req, Function<void(Vector<Rc<vk::Pipeline>> &&resp)> &&cb) {
+	auto p = new CompilationProcess(dev, this, req, std::move(cb));
 	_queue->perform(Rc<Task>::create([this, p] (const thread::Task &) -> bool {
 		std::unique_lock<Mutex> lock(_processMutex);
 		if (_process) {
@@ -479,7 +482,9 @@ void PipelineCompiler::compileNext(Rc<CompilationProcess> proc) {
 		_process = nullptr;
 	} else {
 		_process = proc;
-		_process->runShaders();
+		if (_process) {
+			_process->runShaders();
+		}
 	}
 }
 

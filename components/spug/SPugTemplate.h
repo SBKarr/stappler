@@ -31,7 +31,9 @@ class Template : public memory::AllocPool {
 public:
 	enum ChunkType {
 		Block,
-		Text,
+		HtmlTag,
+		HtmlInlineTag,
+		HtmlEntity,
 		OutputEscaped,
 		OutputUnescaped,
 		AttributeEscaped,
@@ -58,6 +60,8 @@ public:
 		ControlMixin,
 
 		MixinCall,
+
+		VirtualTag,
 	};
 
 	struct Chunk {
@@ -72,6 +76,7 @@ public:
 		enum Flags {
 			Pretty,
 			StopOnError,
+			LineFeeds,
 		};
 
 		static Options getDefault();
@@ -82,7 +87,7 @@ public:
 
 		bool hasFlag(Flags) const;
 
-		std::bitset<toInt(Flags::StopOnError) + 1> flags;
+		std::bitset<toInt(Flags::LineFeeds) + 1> flags;
 	};
 
 	static Template *read(const StringView &, const Options & = Options::getDefault(),
@@ -91,15 +96,25 @@ public:
 	static Template *read(memory::pool_t *, const StringView &, const Options & = Options::getDefault(),
 			const Callback<void(const StringView &)> &err = nullptr);
 
+	Options getOptions() const { return _opts; }
+
 	bool run(Context &, std::ostream &) const;
+	bool run(Context &, std::ostream &, const Options &opts) const;
 
 	void describe(std::ostream &stream, bool tokens = false) const;
 
 protected:
+	struct RunContext {
+		Vector<Template::Chunk *> tagStack;
+		bool withinHead = false;
+		bool withinBody = false;
+		Options opts;
+	};
+
 	Template(memory::pool_t *, const StringView &, const Options &opts, const Callback<void(const StringView &)> &err);
 
-	bool runChunk(const Chunk &chunk, Context &, std::ostream &) const;
-	bool runCase(const Chunk &chunk, Context &, std::ostream &) const;
+	bool runChunk(const Chunk &chunk, Context &, std::ostream &, RunContext &) const;
+	bool runCase(const Chunk &chunk, Context &, std::ostream &, RunContext &) const;
 
 	void pushWithPrettyFilter(memory::ostringstream &, size_t indent, std::ostream &) const;
 

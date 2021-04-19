@@ -47,18 +47,18 @@ ProgramModule::~ProgramModule() {
 }
 
 bool ProgramModule::init(VirtualDevice &dev, ProgramSource source, ProgramStage stage, FilePath path,
-		StringView key, const Map<String, String> &defs) {
+		StringView key, const Map<StringView, StringView> &defs) {
 	auto data = filesystem::readIntoMemory(path.get());
 	return init(dev, source, stage, data, key.empty() ? path.get() : key, defs);
 }
 
 bool ProgramModule::init(VirtualDevice &dev, ProgramSource source, ProgramStage stage, StringView data,
-		StringView name, const Map<String, String> &defs) {
+		StringView name, const Map<StringView, StringView> &defs) {
 	return init(dev, source, stage, BytesView((const uint8_t *)data.data(), data.size()), name, defs);
 }
 
 bool ProgramModule::init(VirtualDevice &dev, ProgramSource source, ProgramStage stage, BytesView data,
-		StringView name, const Map<String, String> &defs) {
+		StringView name, const Map<StringView, StringView> &defs) {
 	_stage = stage;
 	_name = name.str();
 

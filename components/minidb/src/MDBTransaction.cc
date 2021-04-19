@@ -1234,6 +1234,42 @@ bool Transaction::foreach(const db::Scheme &scheme, const mem::Function<void(uin
 		}
 		cond.wait(lock);
 		return true;
+	} else {
+		for (auto &it : pages) {
+			auto pool = mem::pool::create(mem::pool::acquire());
+			if (auto p = openPage(it, OpenMode::Read)) {
+				auto h = (SchemeContentPageHeader *)p->bytes.data();
+				auto ptr = p->bytes.data() + sizeof(SchemeContentPageHeader);
+
+				for (uint32_t i = 0; i < h->ncells; ++ i) {
+					auto pos = (OidPosition *)(ptr + sizeof(OidPosition) * i);
+					if (!ids.empty()) {
+						auto lb = std::lower_bound(ids.begin(), ids.end(), pos->value);
+						if (lb != ids.end()) {
+							-- counter;
+							continue;
+						}
+					}
+
+					auto number = index.fetch_add(1);
+					db::minidb::TreeStack nstack(*this, getRoot());
+					if (auto cell = nstack.getOidCell(*pos, false)) {
+						mem::Value *value = nullptr;
+						perform([&] {
+							if (auto c = decodeValue(scheme, cell, mem::Vector<mem::StringView>())) {
+								value = new mem::Value(std::move(c));
+							}
+						}, pool);
+						if (value) {
+							cb(counter.load(), number, *value);
+						}
+						mem::pool::clear(pool);
+					}
+				}
+
+				closePage(p);
+			}
+		}
 	}
 	return false;
 }

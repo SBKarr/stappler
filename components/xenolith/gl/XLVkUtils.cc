@@ -27,6 +27,15 @@ namespace stappler::xenolith::vk {
 // minimum for Android devices;
 DescriptorCount DescriptorCount::Common(64, 96, 4, 4);
 
+QueueOperations getQueueOperations(VkQueueFlags flags, bool present) {
+	QueueOperations ret = QueueOperations(flags) &
+			(QueueOperations::Graphics | QueueOperations::Compute | QueueOperations::Transfer | QueueOperations::SparceBinding);
+	if (present) {
+		ret |= QueueOperations::Present;
+	}
+	return ret;
+}
+
 VkShaderStageFlagBits getVkStageBits(ProgramStage stage) {
 	switch (stage) {
 	case ProgramStage::Vertex: return VK_SHADER_STAGE_VERTEX_BIT; break;
@@ -457,10 +466,11 @@ Instance::Properties &Instance::Properties::operator=(const Properties &p) {
 
 Instance::PresentationOptions::PresentationOptions() { }
 
-Instance::PresentationOptions::PresentationOptions(VkPhysicalDevice dev, uint32_t gr, uint32_t pres, uint32_t tr,
+Instance::PresentationOptions::PresentationOptions(VkPhysicalDevice dev,
+		QueueFamilyInfo gr, QueueFamilyInfo pres, QueueFamilyInfo tr, QueueFamilyInfo comp,
 		const VkSurfaceCapabilitiesKHR &cap, Vector<VkSurfaceFormatKHR> &&fmt, Vector<VkPresentModeKHR> &&modes,
 		Vector<StringView> &&optionals, Vector<StringView> &&promoted)
-: device(dev), graphicsFamily(gr), presentFamily(pres), transferFamily(tr), formats(move(fmt)), presentModes(move(modes))
+: device(dev), graphicsFamily(gr), presentFamily(pres), transferFamily(tr), computeFamily(comp), formats(move(fmt)), presentModes(move(modes))
 , optionalExtensions(move(optionals)), promotedExtensions(move(promoted)) {
 	memcpy(&capabilities, &cap, sizeof(VkSurfaceCapabilitiesKHR));
 }
@@ -469,6 +479,8 @@ Instance::PresentationOptions::PresentationOptions(const PresentationOptions &op
 	device = opts.device;
 	graphicsFamily = opts.graphicsFamily;
 	presentFamily = opts.presentFamily;
+	transferFamily = opts.transferFamily;
+	computeFamily = opts.computeFamily;
 	formats = opts.formats;
 	presentModes = opts.presentModes;
 	optionalExtensions = opts.optionalExtensions;
@@ -483,6 +495,8 @@ Instance::PresentationOptions &Instance::PresentationOptions::operator=(const Pr
 	device = opts.device;
 	graphicsFamily = opts.graphicsFamily;
 	presentFamily = opts.presentFamily;
+	transferFamily = opts.transferFamily;
+	computeFamily = opts.computeFamily;
 	formats = opts.formats;
 	presentModes = opts.presentModes;
 	optionalExtensions = opts.optionalExtensions;
@@ -498,6 +512,8 @@ Instance::PresentationOptions::PresentationOptions(PresentationOptions &&opts) {
 	device = opts.device;
 	graphicsFamily = opts.graphicsFamily;
 	presentFamily = opts.presentFamily;
+	transferFamily = opts.transferFamily;
+	computeFamily = opts.computeFamily;
 	formats = move(opts.formats);
 	presentModes = move(opts.presentModes);
 	optionalExtensions = move(opts.optionalExtensions);
@@ -512,6 +528,8 @@ Instance::PresentationOptions &Instance::PresentationOptions::operator=(Presenta
 	device = opts.device;
 	graphicsFamily = opts.graphicsFamily;
 	presentFamily = opts.presentFamily;
+	transferFamily = opts.transferFamily;
+	computeFamily = opts.computeFamily;
 	formats = move(opts.formats);
 	presentModes = move(opts.presentModes);
 	optionalExtensions = move(opts.optionalExtensions);
@@ -538,7 +556,8 @@ String Instance::PresentationOptions::description() const {
 	stream << ") " << properties.device10.properties.deviceName
 			<< " (API: " << getVersionDescription(properties.device10.properties.apiVersion)
 			<< ", Driver: " << getVersionDescription(properties.device10.properties.driverVersion) << ")\n";
-	stream << "\t[Queue] Graphics: [" << graphicsFamily << "]; Presentation: [" << presentFamily << "]; Transfer: [" << transferFamily << "];\n";
+	stream << "\t[Queue] Graphics: [" << graphicsFamily.index << "]; Presentation: [" << presentFamily.index
+			<< "]; Transfer: [" << transferFamily.index << "]; Compute: [" << computeFamily.index << "];\n";
 	stream << "\tImageCount: " << capabilities.minImageCount << "-" << capabilities.maxImageCount << "\n";
 	stream << "\tExtent: " << capabilities.currentExtent.width << "x" << capabilities.currentExtent.height
 			<< " (" << capabilities.minImageExtent.width << "x" << capabilities.minImageExtent.height

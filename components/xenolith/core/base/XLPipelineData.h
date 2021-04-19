@@ -30,7 +30,7 @@ namespace stappler::xenolith {
 struct ProgramParams {
 	vk::ProgramSource source;
 	vk::ProgramStage stage;
-	FilePath path;
+	FilePath path = FilePath("");
 	BytesView data;
 	StringView key;
 	Map<StringView, StringView> defs;
@@ -46,10 +46,6 @@ struct PipelineParams {
 	StringView key;
 };
 
-struct PipelineResponse {
-	Map<String, Rc<vk::Pipeline>> pipelines;
-};
-
 class PipelineRequest : public Ref {
 public:
 	PipelineRequest();
@@ -57,31 +53,113 @@ public:
 
 	bool init(StringView name);
 
+	StringView getName() const { return _name; }
+
+	const Map<StringView, ProgramParams> &getPrograms() const;
+	const Map<StringView, PipelineParams> &getPipelines() const;
+	const Map<String, Rc<vk::Pipeline>> &getCompiled() const;
+
+	bool isInUse() const { return _inUse; }
+	bool isInProcess() const { return _inProcess; }
+	bool isCompiled() const { return _isCompiled; }
+
 	// add program, copy all data
-	void addProgram(StringView key, vk::ProgramSource, vk::ProgramStage, FilePath,
+	bool addProgram(StringView key, vk::ProgramSource, vk::ProgramStage, FilePath,
 			const Map<StringView, StringView> & = Map<StringView, StringView>());
-	void addProgram(StringView key, vk::ProgramSource, vk::ProgramStage, BytesView,
+	bool addProgram(StringView key, vk::ProgramSource, vk::ProgramStage, BytesView,
 			const Map<StringView, StringView> & = Map<StringView, StringView>());
 
 	// add program, take all by ref, ref should exists for all request lifetime
-	void addProgramByRef(StringView key, vk::ProgramSource, vk::ProgramStage, FilePath,
+	bool addProgramByRef(StringView key, vk::ProgramSource, vk::ProgramStage, FilePath,
 			const Map<StringView, StringView> & = Map<StringView, StringView>());
-	void addProgramByRef(StringView key, vk::ProgramSource, vk::ProgramStage, BytesView,
+	bool addProgramByRef(StringView key, vk::ProgramSource, vk::ProgramStage, BytesView,
 			const Map<StringView, StringView> & = Map<StringView, StringView>());
 
 	template <typename ... Args>
-	void addPipeline(StringView key, Args && ...);
+	bool addPipeline(StringView key, Args && ...args) {
+		if (_inUse) {
+			log::vtext("PipelineRequest", _name, ": Fail tom add pipeline: ", key, ", request already in use");
+			return false;
+		}
+
+		auto iit = _pipelines.find(key);
+		if (iit != _pipelines.end()) {
+			log::vtext("PipelineRequest", _name, ": Pipeline already added: ", key);
+			return false;
+		}
+
+		PipelineParams ret;
+		if (!_pool) {
+			_pool = memory::pool::create((memory::pool_t *)nullptr);
+		}
+		ret.key = key.pdup(_pool);
+		if (!setPipelineOptions(ret, false, std::forward<Args>(args)...)) {
+			return false;
+		}
+		_pipelines.emplace(ret.key, move(ret));
+		return true;
+	}
 
 	template <typename ... Args>
-	void addPipelineByRef(StringView key, Args && ...);
+	bool addPipelineByRef(StringView key, Args && ...args) {
+		if (_inUse) {
+			log::vtext("PipelineRequest", _name, ": Fail tom add pipeline: ", key, ", request already in use");
+			return false;
+		}
+
+		auto iit = _pipelines.find(key);
+		if (iit != _pipelines.end()) {
+			log::vtext("PipelineRequest", _name, ": Pipeline already added: ", key);
+			return false;
+		}
+
+		PipelineParams ret;
+		ret.key = key;
+		if (!setPipelineOptions(ret, true, std::forward<Args>(args)...)) {
+			return false;
+		}
+		_pipelines.emplace(key, move(ret));
+		return true;
+	}
 
 protected:
+	friend class PipelineCache;
+
+	void setInUse(bool);
+	void setInProcess(bool);
+
+	void setCompiled(const Vector<Rc<vk::Pipeline>> &);
+	void clear();
+
+	bool setPipelineOption(PipelineParams &f, bool byRef, draw::VertexFormat);
+	bool setPipelineOption(PipelineParams &f, bool byRef, draw::LayoutFormat);
+	bool setPipelineOption(PipelineParams &f, bool byRef, draw::RenderPassBind);
+	bool setPipelineOption(PipelineParams &f, bool byRef, draw::DynamicState);
+	bool setPipelineOption(PipelineParams &f, bool byRef, const Vector<StringView> &);
+
+	template <typename T>
+	bool setPipelineOptions(PipelineParams &f, bool byRef, T && t) {
+		return setPipelineOption(f, byRef, std::forward<T>(t));
+	}
+
+	template <typename T, typename ... Args>
+	bool setPipelineOptions(PipelineParams &f, bool byRef, T && t, Args && ... args) {
+		if (!setPipelineOption(f, byRef, std::forward<T>(t))) {
+			return false;
+		}
+		return setPipelineOptions(f, byRef, std::forward<Args>(args)...);
+	}
+
+	bool _inUse = false;
+	bool _inProcess = false;
+	bool _isCompiled = false;
 	memory::pool_t *_pool = nullptr;
 	String _name;
 
-	Vector<ProgramParams> _programs;
-	Vector<PipelineParams> _pipelines;
-	Function<void(StringView, const PipelineResponse &)> _callback;
+	Map<StringView, ProgramParams> _programs;
+	Map<StringView, PipelineParams> _pipelines;
+	Map<String, Rc<vk::Pipeline>> _compiled;
+	Function<void(Rc<PipelineRequest>)> _callback;
 };
 
 }

@@ -44,6 +44,8 @@ public:
 		Default = Euclid,
 	};
 
+	static Rc<Director> getInstance();
+
 	Director();
 
 	virtual ~Director();
@@ -62,6 +64,7 @@ public:
 	Rc<DrawFlow> swapDrawFlow();
 
 	Size getScreenSize() const;
+	Rc<PipelineCache> getPipelineCache() const;
 
 	void runScene(Rc<Scene>);
 

@@ -25,7 +25,6 @@
 
 #include "XLDefine.h"
 #include "XLVkPipeline.h"
-#include "XLDrawPipeline.h"
 #include "SPThreadTaskQueue.h"
 
 namespace stappler::xenolith {
@@ -34,40 +33,38 @@ class Pipeline final : public Ref {
 public:
 	virtual ~Pipeline();
 
-	bool init(PipelineCache *, Rc<vk::Pipeline>);
-	bool init(PipelineCache *, const draw::PipelineParams &);
-
 	void set(Rc<vk::Pipeline>);
 
+	bool isLoaded() const;
 	StringView getName() const;
 
 protected:
 	friend class PipelineCache;
 
+	bool init(PipelineCache *, Rc<PipelineRequest>, const PipelineParams *, Rc<vk::Pipeline>);
+
 	PipelineCache *_source;
-	draw::PipelineParams _params;
+	Rc<PipelineRequest> _request;
+	const PipelineParams *_params;
 	Rc<vk::Pipeline> _pipeline;
 };
 
 class PipelineCache final : public Ref {
 public:
-	using PipelineResponse = draw::PipelineResponse;
-	using PipelineRequest = draw::PipelineRequest;
-
-	using Callback = Function<void(StringView, PipelineResponse *)>;
+	using Callback = Function<void(StringView, Rc<PipelineRequest>)>;
 	using CallbackMap = Map<String, Vector<Callback>>;
 
 	bool init(Director *);
 	void reload();
 
 	/** Request pipeline compilation */
-	bool request(PipelineRequest &&);
+	bool request(Rc<PipelineRequest>);
 
 	/** Drop pipeline request result, unload pipelines
 	 * It's only request for graphics core to unload, not actual unload */
 	bool revoke(StringView requestName);
 
-	Rc<Pipeline> get(StringView);
+	Rc<Pipeline> get(StringView req, StringView pipeline);
 
 protected:
 	friend class Pipeline;
@@ -75,10 +72,9 @@ protected:
 	void purge(Pipeline *);
 
 	Director *_director = nullptr;
-	Map<String, PipelineRequest> _requests;
-	Map<String, PipelineResponse> _pipelines;
+	Map<String, Rc<PipelineRequest>> _requests;
 	Map<String, Pipeline *> _objects;
-	CallbackMap _callbackMap;
+	Set<PipelineRequest *> _revoke;
 };
 
 }

@@ -55,7 +55,7 @@ PresentationDevice::~PresentationDevice() {
 
 bool PresentationDevice::init(Rc<Instance> inst, Rc<View> v, VkSurfaceKHR surface, Instance::PresentationOptions && opts,
 		const Features &features) {
-	Set<uint32_t> uniqueQueueFamilies = { opts.graphicsFamily, opts.presentFamily };
+	Set<uint32_t> uniqueQueueFamilies = { opts.graphicsFamily.index, opts.presentFamily.index, opts.transferFamily.index, opts.computeFamily.index };
 
 	Vector<const char *> extensions;
 	for (auto &it : s_requiredDeviceExtensions) {
@@ -98,11 +98,11 @@ bool PresentationDevice::init(Rc<Instance> inst, Rc<View> v, VkSurfaceKHR surfac
 		}, nullptr, this);
 	}
 
-	_table->vkGetDeviceQueue(_device, _options.graphicsFamily, 0, &_graphicsQueue);
-	_table->vkGetDeviceQueue(_device, _options.presentFamily, 0, &_presentQueue);
+	_table->vkGetDeviceQueue(_device, _options.graphicsFamily.index, 0, &_graphicsQueue);
+	_table->vkGetDeviceQueue(_device, _options.presentFamily.index, 0, &_presentQueue);
 
-	_transfer = Rc<TransferDevice>::create(_instance, _allocator, _graphicsQueue, _options.graphicsFamily);
-	_draw = Rc<DrawDevice>::create(_instance, _allocator, _graphicsQueue, _options.graphicsFamily, _options.formats.front().format);
+	_transfer = Rc<TransferDevice>::create(_instance, _allocator, _graphicsQueue, _options.transferFamily.index);
+	_draw = Rc<DrawDevice>::create(_instance, _allocator, _graphicsQueue, _options.graphicsFamily.index, _options.formats.front().format);
 
 	VkSemaphoreCreateInfo semaphoreInfo{};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -213,9 +213,9 @@ bool PresentationDevice::createSwapChain(VkSurfaceKHR surface) {
 	swapChainCreateInfo.imageArrayLayers = _options.capabilities.maxImageArrayLayers;
 	swapChainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	uint32_t queueFamilyIndices[] = { _options.graphicsFamily, _options.presentFamily };
+	uint32_t queueFamilyIndices[] = { _options.graphicsFamily.index, _options.presentFamily.index };
 
-	if (_options.graphicsFamily != _options.presentFamily) {
+	if (_options.graphicsFamily.index != _options.presentFamily.index) {
 		swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		swapChainCreateInfo.queueFamilyIndexCount = 2;
 		swapChainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
@@ -493,9 +493,9 @@ void PresentationLoop::reset() {
 	_cond.notify_all();
 }
 
-void PresentationLoop::requestPipeline(const draw::PipelineRequest &req, Function<void(draw::PipelineResponse &&)> &&cb) {
-	_compiler->compile(_device->getDraw(), req, [cb = move(cb), app = _application] (draw::PipelineResponse &&resp) {
-		auto tmp = new draw::PipelineResponse(move(resp));
+void PresentationLoop::requestPipeline(Rc<PipelineRequest> req, Function<void(const Vector<Rc<vk::Pipeline>> &)> &&cb) {
+	_compiler->compile(_device->getDraw(), req, [cb = move(cb), app = _application] (Vector<Rc<vk::Pipeline>> &&resp) {
+		auto tmp = new Vector<Rc<vk::Pipeline>>(move(resp));
 		app->performOnMainThread([tmp, cb] () {
 			cb(move(*tmp));
 			delete tmp;

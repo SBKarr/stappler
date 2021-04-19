@@ -28,11 +28,21 @@ THE SOFTWARE.
 
 namespace stappler::xenolith {
 
-
-
 class RequisiteComponent : public Component {
 public:
+	virtual ~RequisiteComponent() { }
+
+	bool init(Rc<PipelineRequest>);
+
+	void setRequest(Rc<PipelineRequest>);
+	Rc<PipelineRequest> getRequest() const;
+
+	virtual void onEnter();
+	virtual void onExit();
+
 protected:
+	PipelineCache *_cache = nullptr;
+	Rc<PipelineRequest> _request;
 };
 
 }

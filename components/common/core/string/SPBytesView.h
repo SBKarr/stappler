@@ -44,6 +44,7 @@ public:
 	BytesViewTemplate(const uint8_t *p, size_t l);
 	BytesViewTemplate(const PoolBytes &vec);
 	BytesViewTemplate(const StdBytes &vec);
+	BytesViewTemplate(StringView);
 
 	template <size_t Size>
 	BytesViewTemplate(const std::array<uint8_t, Size> &arr);
@@ -109,6 +110,10 @@ BytesViewTemplate<Endianess>::BytesViewTemplate(const PoolBytes &vec)
 template <Endian Endianess>
 BytesViewTemplate<Endianess>::BytesViewTemplate(const StdBytes &vec)
 : BytesReader(vec.data(), vec.size()) { }
+
+template <Endian Endianess>
+BytesViewTemplate<Endianess>::BytesViewTemplate(StringView str)
+: BytesReader((const uint8_t *)str.data(), str.size()) { }
 
 template <Endian Endianess>
 template <size_t Size>

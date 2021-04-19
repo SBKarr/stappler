@@ -286,13 +286,6 @@ Instance::Instance(VkInstance inst, const PFN_vkGetInstanceProcAddr getInstanceP
 	if (deviceCount) {
 		_hasDevices = true;
 	}
-
-	if constexpr (s_printVkInfo) {
-		Application::getInstance()->perform([this] (const Task &) {
-			printDevicesInfo();
-			return true;
-		}, nullptr, this);
-	}
 }
 
 Instance::~Instance() {
@@ -334,25 +327,36 @@ Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurface
 		uint32_t graphicsFamily = maxOf<uint32_t>();
 		uint32_t presentFamily = maxOf<uint32_t>();
 		uint32_t transferFamily = maxOf<uint32_t>();
+		uint32_t computeFamily = maxOf<uint32_t>();
 
 		uint32_t queueFamilyCount = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
+		Vector<QueueFamilyInfo> queueInfo(queueFamilyCount);
 		Vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
 		int i = 0;
 		for (const VkQueueFamilyProperties &queueFamily : queueFamilies) {
+			VkBool32 presentSupport = false;
+			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+
+			queueInfo[i].index = i;
+			queueInfo[i].ops = getQueueOperations(queueFamily.queueFlags, presentSupport);
+			queueInfo[i].count = queueFamily.queueCount;
+			queueInfo[i].used = 0;
+
 			if ((queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) && graphicsFamily == maxOf<uint32_t>()) {
 				graphicsFamily = i;
 			}
 
-			if ((queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) && ((queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) && transferFamily == maxOf<uint32_t>()) {
+			if ((queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) && transferFamily == maxOf<uint32_t>()) {
 				transferFamily = i;
 			}
 
-			VkBool32 presentSupport = false;
-			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+			if ((queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) && computeFamily == maxOf<uint32_t>()) {
+				computeFamily = i;
+			}
 
 			if (availableQueues) {
 				if (((1 << i) & availableQueues) != 0) {
@@ -369,12 +373,34 @@ Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurface
 			i++;
 		}
 
+		// try to select different families for transfer and compute (for more concurrency)
+		if (computeFamily == graphicsFamily) {
+			for (auto &it : queueInfo) {
+				if (it.index != graphicsFamily && ((it.ops & QueueOperations::Compute) != QueueOperations::None)) {
+					computeFamily = it.index;
+				}
+			}
+		}
+
+		if (transferFamily == computeFamily || transferFamily == graphicsFamily) {
+			for (auto &it : queueInfo) {
+				if (it.index != graphicsFamily && it.index != computeFamily && ((it.ops & QueueOperations::Transfer) != QueueOperations::None)) {
+					transferFamily = it.index;
+				}
+			}
+		}
+
 		if (presentFamily == maxOf<uint32_t>() || graphicsFamily == maxOf<uint32_t>()) {
 			return;
 		}
 
+		// fallback
 		if (transferFamily == maxOf<uint32_t>()) {
 			transferFamily = graphicsFamily;
+		}
+
+		if (computeFamily == maxOf<uint32_t>()) {
+			computeFamily = graphicsFamily;
 		}
 
 		uint32_t extensionCount;
@@ -465,7 +491,8 @@ Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurface
 
 				auto req = Features::getRequired();
 				if (features.canEnable(req)) {
-					ret.emplace_back(Instance::PresentationOptions(device, graphicsFamily, presentFamily, transferFamily,
+					ret.emplace_back(Instance::PresentationOptions(device,
+							queueInfo[graphicsFamily], queueInfo[presentFamily], queueInfo[transferFamily], queueInfo[computeFamily],
 							capabilities, move(formats), move(presentModes), move(enabledOptionals), move(promotedOptionals)));
 					if (vkGetPhysicalDeviceProperties2) {
 						vkGetPhysicalDeviceProperties2(device, &ret.back().properties.device10);
@@ -500,7 +527,7 @@ VkInstance Instance::getInstance() const {
 	return instance;
 }
 
-void Instance::printDevicesInfo() const {
+void Instance::printDevicesInfo(VkSurfaceKHR surface) const {
 	StringStream out; out << "\n";
 	uint32_t deviceCount = 0;
 	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
@@ -559,6 +586,16 @@ void Instance::printDevicesInfo() const {
 					if (!empty) { out << ", "; } else { empty = false; }
 					out << "Protected";
 				}
+
+				if (surface) {
+					VkBool32 presentSupport = false;
+					vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+					if (presentSupport) {
+						if (!empty) { out << ", "; } else { empty = false; }
+						out << "Present";
+					}
+				}
+
 				out << "; Count: " << queueFamily.queueCount << "\n";
 
 	            i++;

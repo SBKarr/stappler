@@ -538,6 +538,13 @@ bool ViewImpl::init(Rc<Instance> instance, StringView viewName, URect rect) {
 		return false;
 	}
 
+	if constexpr (s_printVkInfo) {
+		Application::getInstance()->perform([instance, surface = _surface] (const Task &) {
+			instance->printDevicesInfo(surface);
+			return true;
+		}, nullptr, this);
+	}
+
 	auto opts = instance->getPresentationOptions(_surface, nullptr, devs);
 	if (opts.empty()) {
 		log::text("VkView", "No available Vulkan devices for presentation on surface");

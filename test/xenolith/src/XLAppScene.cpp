@@ -26,7 +26,13 @@
 namespace stappler::xenolith::app {
 
 bool AppScene::init(Rc<Director> dir) {
-	return Scene::init(dir);
+	if (!Scene::init(dir)) {
+		return false;
+	}
+
+	addComponent(Rc<AppSceneRequisite>::create());
+
+	return true;
 }
 
 void AppScene::onEnter() {

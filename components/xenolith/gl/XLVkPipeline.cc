@@ -153,7 +153,7 @@ bool Pipeline::init(VirtualDevice &dev, const PipelineOptions &opts, const Pipel
 
 	if (dev.getTable()->vkCreateGraphicsPipelines(dev.getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_pipeline) == VK_SUCCESS) {
 		if (&_params != &params) {
-			_params = move(params);
+			_params = params;
 		}
 		return true;
 	}

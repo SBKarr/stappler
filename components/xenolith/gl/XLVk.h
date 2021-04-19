@@ -52,6 +52,17 @@ enum class AllocationUsage {
 
 SP_DEFINE_ENUM_AS_MASK(AllocationUsage)
 
+enum class QueueOperations : uint32_t {
+	None,
+	Graphics = VK_QUEUE_GRAPHICS_BIT,
+	Compute = VK_QUEUE_COMPUTE_BIT,
+	Transfer = VK_QUEUE_TRANSFER_BIT,
+	SparceBinding = VK_QUEUE_SPARSE_BINDING_BIT,
+	Present = 0x8000'0000,
+};
+
+SP_DEFINE_ENUM_AS_MASK(QueueOperations)
+
 struct DescriptorCount {
 	static DescriptorCount Common;
 
@@ -68,6 +79,7 @@ struct DescriptorCount {
 	: samplers(Sm), sampledImages(I), storageBuffers(St), uniformBuffers(U), vertexBuffers(0) { }
 };
 
+QueueOperations getQueueOperations(VkQueueFlags, bool present);
 VkShaderStageFlagBits getVkStageBits(ProgramStage);
 
 StringView getVkFormatName(VkFormat fmt);

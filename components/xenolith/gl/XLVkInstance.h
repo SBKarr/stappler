@@ -67,11 +67,19 @@ public:
 		Properties &operator=(const Properties &);
 	};
 
+	struct QueueFamilyInfo {
+		QueueOperations ops = QueueOperations::None;
+		uint32_t index = 0;
+		uint32_t count = 0;
+		uint32_t used = 0;
+	};
+
 	struct PresentationOptions {
 		VkPhysicalDevice device = VK_NULL_HANDLE;
-		uint32_t graphicsFamily = 0;
-		uint32_t presentFamily = 0;
-		uint32_t transferFamily = 0;
+		QueueFamilyInfo graphicsFamily;
+		QueueFamilyInfo presentFamily;
+		QueueFamilyInfo transferFamily;
+		QueueFamilyInfo computeFamily;
 
         VkSurfaceCapabilitiesKHR capabilities;
         Vector<VkSurfaceFormatKHR> formats;
@@ -83,7 +91,8 @@ public:
 		Features features;
 
 		PresentationOptions();
-		PresentationOptions(VkPhysicalDevice, uint32_t, uint32_t, uint32_t,const VkSurfaceCapabilitiesKHR &,
+		PresentationOptions(VkPhysicalDevice,
+				QueueFamilyInfo, QueueFamilyInfo, QueueFamilyInfo, QueueFamilyInfo, const VkSurfaceCapabilitiesKHR &,
 				Vector<VkSurfaceFormatKHR> &&, Vector<VkPresentModeKHR> &&, Vector<StringView> &&, Vector<StringView> &&);
 		PresentationOptions(const PresentationOptions &);
 		PresentationOptions &operator=(const PresentationOptions &);
@@ -106,9 +115,9 @@ public:
 
 	bool hasDevices() const { return _hasDevices; }
 
-private:
-	void printDevicesInfo() const;
+	void printDevicesInfo(VkSurfaceKHR surface = VK_NULL_HANDLE) const;
 
+private:
 	friend class VirtualDevice;
 	friend class DrawDevice;
 	friend class PresentationDevice;

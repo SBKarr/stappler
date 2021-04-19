@@ -1,5 +1,5 @@
 /**
- Copyright (c) 2020 Roman Katuntsev <sbkarr@stappler.org>
+ Copyright (c) 2021 Roman Katuntsev <sbkarr@stappler.org>
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -20,23 +20,14 @@
  THE SOFTWARE.
  **/
 
-#ifndef COMPONENTS_XENOLITH_CORE_DIRECTOR_XLFRAMEREQUISITE_H_
-#define COMPONENTS_XENOLITH_CORE_DIRECTOR_XLFRAMEREQUISITE_H_
+#include "XLVertexArray.h"
 
-#include "XLDefine.h"
-
-namespace stappler::xenolith {
-
-struct FrameRequisite {
-	struct DrawData {
-
-	};
-
-	Vector<uint32_t> indexes;
-	Vector<Vertex_V4F_C4F_T2F> dynamicVertexes;
-	Vector<Vertex_V4F_C4F_T2F> staticVertexes;
-};
+XLVertexArray::XLVertexArray() {
+	// TODO Auto-generated constructor stub
 
 }
 
-#endif /* COMPONENTS_XENOLITH_CORE_DIRECTOR_XLFRAMEREQUISITE_H_ */
+XLVertexArray::~XLVertexArray() {
+	// TODO Auto-generated destructor stub
+}
+

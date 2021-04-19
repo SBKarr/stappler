@@ -25,4 +25,4 @@ THE SOFTWARE.
 #include "XLComponent.cc"
 #include "XLNode.cc"
 #include "XLScene.cc"
-
+#include "XLRequisiteComponent.cc"

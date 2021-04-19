@@ -1,5 +1,5 @@
 /**
- Copyright (c) 2020 Roman Katuntsev <sbkarr@stappler.org>
+ Copyright (c) 2021 Roman Katuntsev <sbkarr@stappler.org>
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -20,14 +20,19 @@
  THE SOFTWARE.
  **/
 
-#include "XLFrameRequisite.h"
+#ifndef COMPONENTS_XENOLITH_CORE_BASE_XLVERTEXARRAY_H_
+#define COMPONENTS_XENOLITH_CORE_BASE_XLVERTEXARRAY_H_
 
-XLFrameRequisite::XLFrameRequisite() {
-	// TODO Auto-generated constructor stub
+#include "XLDefine.h"
+
+namespace stappler::xenolith {
+
+class VertexArray : public Ref {
+public:
+	virtual ~VertexArray() { }
+
+protected:
+};
 
 }
-
-XLFrameRequisite::~XLFrameRequisite() {
-	// TODO Auto-generated destructor stub
-}
-
+#endif /* COMPONENTS_XENOLITH_CORE_BASE_XLVERTEXARRAY_H_ */

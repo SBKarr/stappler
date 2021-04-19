@@ -25,6 +25,7 @@
 
 #include "XLVkDevice.h"
 #include "XLPipelineData.h"
+#include "XLVkPipeline.h"
 
 namespace stappler::xenolith::vk {
 
@@ -106,7 +107,7 @@ public:
 
 	Rc<thread::TaskQueue> getQueue() const { return _queue; }
 
-	void requestPipeline(const PipelineRequest &, Function<void(PipelineResponse &&)> &&);
+	void requestPipeline(Rc<PipelineRequest>, Function<void(const Vector<Rc<vk::Pipeline>> &)> &&);
 
 protected:
 	std::atomic_flag _swapChainFlag;

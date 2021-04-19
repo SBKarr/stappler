@@ -24,7 +24,8 @@
 #define COMPONENTS_XENOLITH_GL_XLVKDRAW_H_
 
 #include "XLVkDevice.h"
-#include "XLDrawPipeline.h"
+#include "XLPipelineData.h"
+#include "XLVkPipeline.h"
 
 namespace stappler::xenolith::vk {
 
@@ -140,24 +141,25 @@ protected:
 
 class PipelineCompiler : public Ref {
 public:
-	using Callback = Function<void(PipelineResponse &&)>;
+	using Callback = Function<void(Vector<Rc<vk::Pipeline>> &&resp)>;
 
 	struct CompilationProcess : public Ref {
-		CompilationProcess(Rc<DrawDevice> dev, Rc<PipelineCompiler> compiler, const PipelineRequest &req, Callback &&cb);
+		virtual ~CompilationProcess();
+		CompilationProcess(Rc<DrawDevice> dev, Rc<PipelineCompiler> compiler, Rc<PipelineRequest> req, Callback &&cb);
 
 		void runShaders();
 		void runPipelines();
 		void complete();
 
 		std::atomic<size_t> programsInQueue = 0;
-		Map<StringView, Pair<Rc<ProgramModule>, ProgramParams *>> loadedPrograms;
+		Map<StringView, Pair<Rc<ProgramModule>, const ProgramParams *>> loadedPrograms;
 
 		std::atomic<size_t> pipelineInQueue = 0;
-		Map<StringView, Pair<Rc<Pipeline>, PipelineParams *>> loadedPipelines;
+		Map<StringView, Pair<Rc<Pipeline>, const PipelineParams *>> loadedPipelines;
 
 		Rc<DrawDevice> draw;
 		Rc<PipelineCompiler> compiler;
-		PipelineRequest req;
+		Rc<PipelineRequest> req;
 		Callback onComplete;
 		Rc<CompilationProcess> next;
 	};
@@ -165,7 +167,7 @@ public:
 	virtual ~PipelineCompiler();
 	bool init();
 
-	void compile(Rc<DrawDevice> dev, const PipelineRequest &req, Callback &&cb);
+	void compile(Rc<DrawDevice> dev, Rc<PipelineRequest> req, Callback &&cb);
 	void update();
 	void compileNext(Rc<CompilationProcess>);
 	void invalidate();

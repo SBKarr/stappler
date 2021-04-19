@@ -210,7 +210,7 @@ bool Cache::runTemplate(const StringView &ipath, const RunCallback &cb, std::ost
 		tpl = acquireTemplate(filesystem::writablePath(ipath), false, _opts);
 	}
 
-	return runTemplate(tpl, ipath, cb, out);
+	return runTemplate(tpl, ipath, cb, out, tpl->getTemplate()->getOptions());
 }
 
 bool Cache::runTemplate(const StringView &ipath, const RunCallback &cb, std::ostream &out, Template::Options opts) {
@@ -219,7 +219,7 @@ bool Cache::runTemplate(const StringView &ipath, const RunCallback &cb, std::ost
 		tpl = acquireTemplate(filesystem::writablePath(ipath), false, opts);
 	}
 
-	return runTemplate(tpl, ipath, cb, out);
+	return runTemplate(tpl, ipath, cb, out, opts);
 }
 
 bool Cache::addFile(StringView path) {
@@ -303,7 +303,7 @@ Rc<FileRef> Cache::openTemplate(StringView path, int wId, const Template::Option
 	return nullptr;
 }
 
-bool Cache::runTemplate(Rc<FileRef> tpl, StringView ipath, const RunCallback &cb, std::ostream &out) {
+bool Cache::runTemplate(Rc<FileRef> tpl, StringView ipath, const RunCallback &cb, std::ostream &out, Template::Options opts) {
 	if (tpl) {
 		if (auto t = tpl->getTemplate()) {
 			auto iopts = tpl->getOpts();
@@ -334,7 +334,7 @@ bool Cache::runTemplate(Rc<FileRef> tpl, StringView ipath, const RunCallback &cb
 					return false;
 				}
 			}
-			return t->run(exec, out);
+			return t->run(exec, out, opts);
 		} else {
 			onError(toString("File '", ipath, "' is not executable"));
 		}

@@ -2,31 +2,30 @@ include virtual://html/components.pug
 include virtual://html/header.pug
 
 doctype html
-html
-	head
-		title Serenity Server Page
-		link(rel="stylesheet",href="/__server/virtual/css/style.css")
-		link(rel="stylesheet",href="/__server/virtual/css/kawaiJson.css")
-		link(rel="stylesheet",type="text/css",href="https://fonts.googleapis.com/css?family=Roboto:400,100,100italic,300,300italic,400italic,500,500italic,700,700italic,900italic,900")
-		script(src="/__server/virtual/js/shell.js")
-	body(onload="init(\"/shell\");")
-		.body
-			+header("Server")
-			.main
-				if setup && auth
-					+components
-					div.console
-						#login
-							button(onclick="return connect();") Run server console
-							pre: code= resStat + memStat
-						#main(style="visibility:hidden")
-							input#input(type="text",name="message",value="",size="80")
-							button(onclick="return closeSocket();") Close
-							br
-							#output
-						input#fileSelector(type="file",style="visibility:hidden")
-				else if !setup
-					form#setup(method="post")
-						input#name(type="text",name="name",placeholder="User name",value="")
-						input#passwd(type="password",name="passwd",placeholder="Password",value="")
-						input(type="submit",value="Setup")
+head
+	title Serenity Server Page
+	link(rel="stylesheet",href="/__server/virtual/css/style.css")
+	link(rel="stylesheet",href="/__server/virtual/css/kawaiJson.css")
+	link(rel="stylesheet",type="text/css",href="https://fonts.googleapis.com/css?family=Roboto:400,100,100italic,300,300italic,400italic,500,500italic,700,700italic,900italic,900")
+	script(src="/__server/virtual/js/shell.js")
+body(onload="init(\"/shell\");")
+	.body
+		+header("Server")
+		.main
+			if setup && auth
+				+components
+				div.console
+					#login
+						button(onclick="return connect();") Run server console
+						pre: code= resStat + memStat
+					#main(style="visibility:hidden")
+						input#input(type="text",name="message",value="",size="80")
+						button(onclick="return closeSocket();") Close
+						br
+						#output
+					input#fileSelector(type="file",style="visibility:hidden")
+			else if !setup
+				form#setup(method="post")
+					input#name(type="text",name="name",placeholder="User name",value="")
+					input#passwd(type="password",name="passwd",placeholder="Password",value="")
+					input(type="submit",value="Setup")

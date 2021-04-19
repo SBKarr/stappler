@@ -32,3 +32,4 @@ THE SOFTWARE.
 #include "XLDrawScheme.cc"
 
 #include "XLPipeline.cc"
+#include "XLPipelineData.cc"

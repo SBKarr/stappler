@@ -1,51 +1,50 @@
 include virtual://html/header.pug
 
 doctype html
-html
-	head
-		title Serenity Errors Page
-		link(rel="stylesheet",href="/__server/virtual/css/style.css")
-		link(rel="stylesheet",type="text/css",href="https://fonts.googleapis.com/css?family=Roboto:400,100,100italic,300,300italic,400italic,500,500italic,700,700italic,900italic,900")
-		script(src="/__server/virtual/js/shell.js")
-	body
-		.body
-			+header("Errors")
-			.main
-				p#cursor
-					if cursor.prev
-						a.nav(href=window.location.pathname+"?c="+cursor.prev+"#cursor") Prev
-						|
-						|
-					span= cursor.start + " - " + cursor.end + " из " + cursor.total
-					if cursor.next
-						|
-						|
-						a.nav(href=window.location.pathname+"?c="+cursor.next+"#cursor") Next
+head
+	title Serenity Errors Page
+	link(rel="stylesheet",href="/__server/virtual/css/style.css")
+	link(rel="stylesheet",type="text/css",href="https://fonts.googleapis.com/css?family=Roboto:400,100,100italic,300,300italic,400italic,500,500italic,700,700italic,900italic,900")
+	script(src="/__server/virtual/js/shell.js")
 
-				each val in errors
-					div.error_item
-						p.header
-							span.
-								[#[span.time= "#" + val.__oid]] [#[span.time= serenity.timeToHttp(val.time)]] [#[span.ip= val.ip]] #[span.server= val.name] #[span.request= val.request]
-							|
-							|
-							a(href="?delete="+val.__oid+"&c="+cursor.current) Remove
-						.headers
-							each value, key in val.headers
-								p.code #[= key]: #[= value]
-						.data
-							pre: code.code= serenity.prettify(val.data)
-				
-				p
-					if cursor.prev
-						a.nav(href=window.location.pathname+"?c="+cursor.prev+"#cursor") Prev
-						|
-						|
-					span= cursor.start + " - " + cursor.end + " из " + cursor.total
-					if cursor.next
-						|
-						|
-						a.nav(href=window.location.pathname+"?c="+cursor.next+"#cursor") Next
+.body
+	+header("Errors")
+	.main
+		p#cursor
+			if cursor.prev
+				a.nav(href=window.location.pathname+"?c="+cursor.prev+"#cursor") Prev
+				|
+				|
+			span= cursor.start + " - " + cursor.end + " из " + cursor.total
+			if cursor.next
+				|
+				|
+				a.nav(href=window.location.pathname+"?c="+cursor.next+"#cursor") Next
 
-				else
-					p No errors found
+		each val in errors
+			div.error_item
+				p.header
+					span.
+						[#[span.time= "#" + val.__oid]] [#[span.time= serenity.timeToHttp(val.time)]] [#[span.ip= val.ip]] #[span.server= val.name] #[span.request= val.request]
+					|
+					|
+					a(href="?delete="+val.__oid+"&c="+cursor.current) Remove
+				.headers
+					each value, key in val.headers
+						p.code #[= key]: #[= value]
+				.data
+					pre: code.code= serenity.prettify(val.data)
+		
+		p
+			if cursor.prev
+				a.nav(href=window.location.pathname+"?c="+cursor.prev+"#cursor") Prev
+				|
+				|
+			span= cursor.start + " - " + cursor.end + " из " + cursor.total
+			if cursor.next
+				|
+				|
+				a.nav(href=window.location.pathname+"?c="+cursor.next+"#cursor") Next
+
+		else
+			p No errors found
