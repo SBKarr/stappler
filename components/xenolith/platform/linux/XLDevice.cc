@@ -90,7 +90,7 @@ float _density() {
 static clockid_t getClockSource() {
 	struct timespec ts;
 
-	auto minFrameNano = (_minFrameTime() * 1000) / 2; // clock should have at least 1/2 frame resolution
+	auto minFrameNano = (_minFrameTime() * 1000) / 5; // clock should have at least 1/2 frame resolution
 	if (clock_getres(CLOCK_MONOTONIC_COARSE, &ts) == 0) {
 		if (ts.tv_sec == 0 && uint64_t(ts.tv_nsec) < minFrameNano) {
 			return CLOCK_MONOTONIC_COARSE;

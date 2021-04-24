@@ -112,7 +112,7 @@ Connection *Connection::create(apr_allocator_t *alloc, apr_pool_t *pool, const R
 
 	conn_rec *wsConn = (conn_rec *)apr_pcalloc(pool, sizeof(conn_rec));
 	wsConn->pool = pool;
-	wsConn->base_server = conn->base_server;
+	wsConn->base_server = req->server;
 	wsConn->vhost_lookup_data = nullptr;
 
 	if (apr_socket_addr_get(&wsConn->local_addr, APR_LOCAL, wsSock) != APR_SUCCESS) { return nullptr; }
@@ -519,7 +519,9 @@ bool Connection::run(Handler *h, const Callback<void()> &beginCb, const Callback
 					}
 
 					char buf[8] = { 0 };
-					::read(_eventFd, buf, 8); // decrement by 1 (EFD_SEMAPHORE)
+					if (::read(_eventFd, buf, 8) > 0) { // decrement by 1 (EFD_SEMAPHORE)
+						continue;
+					}
 				} else {
 					if (!processSocket(&fds[i], h)) {
 						_shouldTerminate.clear();
@@ -549,7 +551,9 @@ bool Connection::run(Handler *h, const Callback<void()> &beginCb, const Callback
 
 void Connection::wakeup() {
 	uint64_t value = 1;
-	::write(_eventFd, &value, sizeof(uint64_t));
+	if (::write(_eventFd, &value, sizeof(uint64_t)) > 0) {
+		return;
+	}
 }
 
 void Connection::terminate() {

@@ -315,7 +315,7 @@ bool XcbView::run(Rc<PresentationLoop> loop, const Callback<bool(uint64_t)> &cb)
 				stappler::log::vtext("XcbView", "epoll_wait() failed with errno ", errno, " (", strerror_r(errno, buf, 255), ")");
 				return false;
 			} else if (nevents <= 0 && errno == EINTR) {
-				return true;
+				continue;
 			}
 
 			for (int i = 0; i < nevents; i++) {
@@ -335,8 +335,11 @@ bool XcbView::run(Rc<PresentationLoop> loop, const Callback<bool(uint64_t)> &cb)
 								_shouldClose = true;
 								continue;
 							}
-							if ((evVal & ViewEvent::SwapchainRecreation) != 0) {
-								_view->getDevice()->recreateSwapChain();
+							if ((evVal & ViewEvent::SwapchainRecreationBest) != 0) {
+								_view->getDevice()->recreateSwapChain(false);
+								_loop->reset();
+							} else if ((evVal & ViewEvent::SwapchainRecreation) != 0) {
+								_view->getDevice()->recreateSwapChain(true);
 								_loop->reset();
 							}
 							if ((evVal & ViewEvent::Update) != 0) {
@@ -459,8 +462,8 @@ bool XcbView::pollForEvents() {
 		}
 		case XCB_CONFIGURE_NOTIFY : {
 			xcb_configure_notify_event_t *ev = (xcb_configure_notify_event_t*) e;
-			// printf("XCB_CONFIGURE_NOTIFY: %d (%d) rect:%d,%d,%d,%d border:%d override:%d\n", ev->event, ev->window,
-			//		ev->x, ev->y, ev->width, ev->height, uint32_t(ev->border_width), uint32_t(ev->override_redirect));
+			printf("XCB_CONFIGURE_NOTIFY: %d (%d) rect:%d,%d,%d,%d border:%d override:%d\n", ev->event, ev->window,
+					ev->x, ev->y, ev->width, ev->height, uint32_t(ev->border_width), uint32_t(ev->override_redirect));
 			if (ev->width != _width || ev->height != _height) {
 				_width = ev->width; _height = ev->height;
 				_loop->recreateSwapChain();
@@ -469,7 +472,7 @@ bool XcbView::pollForEvents() {
 		}
 		case XCB_RESIZE_REQUEST: {
 			xcb_resize_request_event_t *ev = (xcb_resize_request_event_t*) e;
-			// printf("XCB_RESIZE_REQUEST: %d width:%d height:%d\n", ev->window, ev->width, ev->height);
+			printf("XCB_RESIZE_REQUEST: %d width:%d height:%d\n", ev->window, ev->width, ev->height);
 			if (ev->width != _width || ev->height != _height) {
 				_width = ev->width; _height = ev->height;
 				_loop->recreateSwapChain();

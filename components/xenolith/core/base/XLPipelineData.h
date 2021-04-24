@@ -122,13 +122,14 @@ public:
 		return true;
 	}
 
+	void setCompiled(const Vector<Rc<vk::Pipeline>> &);
+
 protected:
 	friend class PipelineCache;
 
 	void setInUse(bool);
 	void setInProcess(bool);
 
-	void setCompiled(const Vector<Rc<vk::Pipeline>> &);
 	void clear();
 
 	bool setPipelineOption(PipelineParams &f, bool byRef, draw::VertexFormat);

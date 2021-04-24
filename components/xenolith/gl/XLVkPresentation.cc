@@ -45,10 +45,13 @@ PresentationDevice::~PresentationDevice() {
 			cleanupSwapChain();
 		}
 
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			_table->vkDestroySemaphore(_device, _renderFinishedSemaphores[i], nullptr);
-			_table->vkDestroySemaphore(_device, _imageAvailableSemaphores[i], nullptr);
-			_table->vkDestroyFence(_device, _inFlightFences[i], nullptr);
+		if (_oldSwapChain) {
+			_table->vkDestroySwapchainKHR(_device, _oldSwapChain, nullptr);
+			_oldSwapChain = VK_NULL_HANDLE;
+		}
+
+		for (auto &it : _sync) {
+			it->invalidate(*this);
 		}
 	}
 }
@@ -80,74 +83,193 @@ bool PresentationDevice::init(Rc<Instance> inst, Rc<View> v, VkSurfaceKHR surfac
 
 	_surface = surface;
 	_view = v;
-	_options = move(opts);
+	_options = Rc<OptionsContainer>::alloc(move(opts));
 	_enabledFeatures = features;
 
-	if (_options.formats.empty()) {
-		_options.formats.emplace_back(VkSurfaceFormatKHR { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
+	if (_options->options.formats.empty()) {
+		_options->options.formats.emplace_back(VkSurfaceFormatKHR { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
 	}
 
-	if (_options.presentModes.empty()) {
-		_options.presentModes.emplace_back(VK_PRESENT_MODE_FIFO_KHR);
+	if (_options->options.presentModes.empty()) {
+		_options->options.presentModes.emplace_back(VK_PRESENT_MODE_FIFO_KHR);
 	}
 
 	if constexpr (s_printVkInfo) {
 		Application::getInstance()->perform([this, opts = _options] (const Task &) {
-			log::vtext("Vk-Info", "Presentation options: ", _options.description());
+			log::vtext("Vk-Info", "Presentation options: ", opts->options.description());
 			return true;
 		}, nullptr, this);
 	}
 
-	_table->vkGetDeviceQueue(_device, _options.graphicsFamily.index, 0, &_graphicsQueue);
-	_table->vkGetDeviceQueue(_device, _options.presentFamily.index, 0, &_presentQueue);
+	_table->vkGetDeviceQueue(_device, _options->options.graphicsFamily.index, 0, &_graphicsQueue);
+	_table->vkGetDeviceQueue(_device, _options->options.presentFamily.index, 0, &_presentQueue);
 
-	_transfer = Rc<TransferDevice>::create(_instance, _allocator, _graphicsQueue, _options.transferFamily.index);
-	_draw = Rc<DrawDevice>::create(_instance, _allocator, _graphicsQueue, _options.graphicsFamily.index, _options.formats.front().format);
+	_transfer = Rc<TransferDevice>::create(_instance, _allocator, _graphicsQueue, _options->options.transferFamily.index);
+	_draw = Rc<DrawDevice>::create(_instance, _allocator, _graphicsQueue, _options->options.graphicsFamily.index, _options->options.formats.front().format);
 
-	VkSemaphoreCreateInfo semaphoreInfo{};
-	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-	VkFenceCreateInfo fenceInfo{};
-	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-	_imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-	_renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-	_inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		if (_table->vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_imageAvailableSemaphores[i]) != VK_SUCCESS ||
-				_table->vkCreateSemaphore(_device, &semaphoreInfo, nullptr, &_renderFinishedSemaphores[i]) != VK_SUCCESS ||
-				_table->vkCreateFence(_device, &fenceInfo, nullptr, &_inFlightFences[i]) != VK_SUCCESS) {
-			return false;
-		}
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		_sync.emplace_back(Rc<FrameSync>::alloc(*this, i));
 	}
 
 	return true;
 }
 
-bool PresentationDevice::drawFrame(Rc<Director> dir, thread::TaskQueue &q) {
-	if (!_swapChain) {
-		log::vtext("VK-Error", "No available swapchain");
+Rc<FrameData> PresentationDevice::beginFrame(Rc<DrawFlow> df) {
+	auto ret = Rc<FrameData>::alloc();
+	ret->device = this;
+	ret->options = _options;
+	ret->sync = _sync[_currentFrame];
+
+	//ret->wait = {_imageAvailableSemaphores[_currentFrame]};
+	//ret->signal = {_renderFinishedSemaphores[_currentFrame]};
+	ret->waitStages = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+	//ret->fence = _inFlightFences[_currentFrame];
+	//ret->frameIdx = _currentFrame;
+	ret->flow = df;
+	ret->gen = _gen;
+
+	_currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+
+	return ret;
+}
+
+void PresentationDevice::prepareImage(const Rc<PresentationLoop> &loop, const Rc<thread::TaskQueue> &queue, const Rc<FrameData> &frame) {
+	auto status = _table->vkGetFenceStatus(_device, frame->sync->inFlight);
+	if (status == VK_SUCCESS) {
+		loop->pushTask(PresentationEvent::FrameImageReady, frame.get());
+		return;
+	}
+
+	queue->perform(Rc<thread::Task>::create([this, frame, loop] (const thread::Task &) -> bool {
+		_table->vkWaitForFences(_device, 1, &frame->sync->inFlight, VK_TRUE, UINT64_MAX);
+		loop->pushTask(PresentationEvent::FrameImageReady, frame.get());
+		return true;
+	}));
+}
+
+bool PresentationDevice::acquireImage(const Rc<PresentationLoop> &loop, const Rc<thread::TaskQueue> &queue, const Rc<FrameData> &frame) {
+	if (frame->sync->imageAvailableEnabled) {
+		// protect imageAvailable sem
+		auto tmp = frame->sync->renderFinishedEnabled;
+		frame->sync->renderFinishedEnabled = false;
+
+		// then reset
+		frame->sync->reset(*this);
+
+		// restore protected state
+		frame->sync->renderFinishedEnabled = tmp;
+	}
+
+	VkResult result = _table->vkAcquireNextImageKHR(_device, _swapChain, UINT64_MAX, frame->sync->imageAvailable, VK_NULL_HANDLE, &frame->imageIdx);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+		cleanupSwapChain();
+		log::vtext("VK-Error", "vkAcquireNextImageKHR: VK_ERROR_OUT_OF_DATE_KHR");
+		return false;
+	} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+		log::vtext("VK-Error", "Fail to vkAcquireNextImageKHR");
 		return false;
 	}
 
-	_transfer->wait(VK_NULL_HANDLE);
+	frame->sync->imageAvailableEnabled = true;
 
-	if (auto df = dir->swapDrawFlow()) {
-		_drawFlow = df;
-		_view->resetFrame();
-	}
-
-	if (_drawFlow) {
-		if (!performDrawFlow(_drawFlow, q)) {
-			return false;
+	auto targetFence = _imagesInFlight[frame->imageIdx];
+	if (targetFence != VK_NULL_HANDLE) {
+		auto status = _table->vkGetFenceStatus(_device, targetFence);
+		if (status == VK_SUCCESS) {
+			loop->pushTask(PresentationEvent::FrameImageAcquired, frame.get());
+			return true;
 		}
+
+		queue->perform(Rc<thread::Task>::create([this, frame, loop, targetFence] (const thread::Task &) -> bool {
+			if (targetFence != VK_NULL_HANDLE) {
+				_table->vkWaitForFences(_device, 1, &targetFence, VK_TRUE, UINT64_MAX);
+			}
+			loop->pushTask(PresentationEvent::FrameImageAcquired, frame.get());
+			return true;
+		}));
+	} else {
+		loop->pushTask(PresentationEvent::FrameImageAcquired, frame.get());
+	}
+	return true;
+}
+
+void PresentationDevice::prepareCommands(const Rc<PresentationLoop> &loop, const Rc<thread::TaskQueue> &queue, const Rc<FrameData> &frame) {
+	// Mark the image as now being in use by this frame
+	_imagesInFlight[frame->imageIdx] = frame->sync->inFlight;
+	frame->framebuffer = _swapChainFramebuffers[frame->imageIdx];
+	_draw->prepare(loop, queue, frame);
+	frame->status = FrameStatus::CommandsStarted;
+}
+
+bool PresentationDevice::present(const Rc<FrameData> &frame) {
+	if (frame->status == FrameStatus::Presented) {
+		return true;
 	}
 
-	_transfer->performTransfer(q);
+	VkPresentInfoKHR presentInfo{};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = &frame->sync->renderFinished;
+
+	VkSwapchainKHR swapChains[] = {_swapChain};
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = swapChains;
+	presentInfo.pImageIndices = &frame->imageIdx;
+	presentInfo.pResults = nullptr; // Optional
+
+	// log::text("Vk-Present", "vkQueuePresentKHR");
+	auto result = _table->vkQueuePresentKHR(_presentQueue, &presentInfo);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+		log::vtext("VK-Error", "vkQueuePresentKHR: VK_ERROR_OUT_OF_DATE_KHR");
+		frame->status = FrameStatus::Presented;
+		frame->sync->renderFinishedEnabled = false;
+		return false;
+	} else if (result != VK_SUCCESS) {
+		log::vtext("VK-Error", "Fail to vkQueuePresentKHR");
+	}
+
+	frame->status = FrameStatus::Presented;
+	frame->sync->renderFinishedEnabled = false;
 	return true;
+}
+
+void PresentationDevice::dismiss(FrameData *data) {
+	switch (data->status) {
+	case FrameStatus::Recieved:
+		// log::vtext("Vk-Frame", "Frame dismissed with Recieved");
+		break;
+	case FrameStatus::TransferStarted:
+		log::vtext("Vk-Frame", "Frame dismissed with TransferStarted");
+		break;
+	case FrameStatus::TransferPending:
+		log::vtext("Vk-Frame", "Frame dismissed with TransferPending");
+		break;
+	case FrameStatus::TransferSubmitted:
+		log::vtext("Vk-Frame", "Frame dismissed with TransferSubmitted");
+		break;
+	case FrameStatus::TransferComplete:
+		log::vtext("Vk-Frame", "Frame dismissed with TransferComplete");
+		break;
+	case FrameStatus::ImageReady:
+		log::vtext("Vk-Frame", "Frame dismissed with ImageReady");
+		break;
+	case FrameStatus::ImageAcquired:
+		log::vtext("Vk-Frame", "Frame dismissed with ImageAcquired");
+		break;
+	case FrameStatus::CommandsStarted:
+		log::vtext("Vk-Frame", "Frame dismissed with CommandsStarted");
+		break;
+	case FrameStatus::CommandsPending:
+		log::vtext("Vk-Frame", "Frame dismissed with CommandsPending");
+		break;
+	case FrameStatus::CommandsSubmitted:
+		log::vtext("Vk-Frame", "Frame dismissed with CommandsSubmitted");
+		break;
+	case FrameStatus::Presented:
+		// log::vtext("Vk-Frame", "Frame dismissed with Presented");
+		break;
+	}
 }
 
 Rc<Allocator> PresentationDevice::getAllocator() const {
@@ -169,15 +291,17 @@ void PresentationDevice::reset(thread::TaskQueue &q) {
 	_draw->spawnWorkers(q, _swapChainImageViews.size());
 }
 
-bool PresentationDevice::recreateSwapChain() {
-	auto opts = _instance->getPresentationOptions(_surface, &_options.properties.device10.properties);
+bool PresentationDevice::recreateSwapChain(bool resize) {
+	log::vtext("Vk-Event", "RecreateSwapChain: ", resize ? "Fast": "Best");
+
+	auto opts = _instance->getPresentationOptions(_surface, &_options->options.properties.device10.properties);
 
 	if (!opts.empty()) {
 		_view->selectPresentationOptions(opts.at(0));
-		_options = opts.at(0);
+		_options = Rc<OptionsContainer>::alloc(move(opts.at(0)));
 	}
 
-	VkExtent2D extent = _options.capabilities.currentExtent;
+	VkExtent2D extent = _options->options.capabilities.currentExtent;
 	if (extent.width == 0 || extent.height == 0) {
 		return false;
 	}
@@ -188,18 +312,45 @@ bool PresentationDevice::recreateSwapChain() {
 		_table->vkDeviceWaitIdle(_device);
 	}
 
-	createSwapChain(_surface);
-	return true;
+	if (resize) {
+		VkPresentModeKHR presentMode = _options->options.presentModes.front();
+		for (auto &it : _options->options.presentModes) {
+			if (it == VK_PRESENT_MODE_MAILBOX_KHR) {
+				presentMode = it;
+				break;
+			} else if (it == VK_PRESENT_MODE_IMMEDIATE_KHR) {
+				presentMode = it;
+				break;
+			}
+		}
+
+		if (presentMode != VK_PRESENT_MODE_MAILBOX_KHR) {
+			for (auto &it : _options->options.presentModes) {
+				if (it == VK_PRESENT_MODE_IMMEDIATE_KHR) {
+					presentMode = it;
+					break;
+				}
+			}
+		}
+
+		return createSwapChain(_surface, presentMode);
+	} else {
+		return createSwapChain(_surface, _options->options.presentModes.front());
+	}
 }
 
 bool PresentationDevice::createSwapChain(VkSurfaceKHR surface) {
-	VkSurfaceFormatKHR surfaceFormat = _options.formats.front();
-	VkPresentModeKHR presentMode = _options.presentModes.front();
+	return createSwapChain(surface, _options->options.presentModes.front());
+}
 
-	VkExtent2D extent = _options.capabilities.currentExtent;
-	uint32_t imageCount = _options.capabilities.minImageCount + 1;
-	if (_options.capabilities.maxImageCount > 0 && imageCount > _options.capabilities.maxImageCount) {
-		imageCount = _options.capabilities.maxImageCount;
+bool PresentationDevice::createSwapChain(VkSurfaceKHR surface, VkPresentModeKHR presentMode) {
+	VkSurfaceFormatKHR surfaceFormat = _options->options.formats.front();
+	//VkPresentModeKHR presentMode = _options->options.presentModes.front();
+
+	VkExtent2D extent = _options->options.capabilities.currentExtent;
+	uint32_t imageCount = _options->options.capabilities.minImageCount + 1;
+	if (_options->options.capabilities.maxImageCount > 0 && imageCount > _options->options.capabilities.maxImageCount) {
+		imageCount = _options->options.capabilities.maxImageCount;
 	}
 
 	VkSwapchainCreateInfoKHR swapChainCreateInfo = { };
@@ -210,12 +361,12 @@ bool PresentationDevice::createSwapChain(VkSurfaceKHR surface) {
 	swapChainCreateInfo.imageFormat = surfaceFormat.format;
 	swapChainCreateInfo.imageColorSpace = surfaceFormat.colorSpace;
 	swapChainCreateInfo.imageExtent = extent;
-	swapChainCreateInfo.imageArrayLayers = _options.capabilities.maxImageArrayLayers;
+	swapChainCreateInfo.imageArrayLayers = _options->options.capabilities.maxImageArrayLayers;
 	swapChainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	uint32_t queueFamilyIndices[] = { _options.graphicsFamily.index, _options.presentFamily.index };
+	uint32_t queueFamilyIndices[] = { _options->options.graphicsFamily.index, _options->options.presentFamily.index };
 
-	if (_options.graphicsFamily.index != _options.presentFamily.index) {
+	if (_options->options.graphicsFamily.index != _options->options.presentFamily.index) {
 		swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		swapChainCreateInfo.queueFamilyIndexCount = 2;
 		swapChainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
@@ -223,15 +374,28 @@ bool PresentationDevice::createSwapChain(VkSurfaceKHR surface) {
 		swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	}
 
-	swapChainCreateInfo.preTransform = _options.capabilities.currentTransform;
+	swapChainCreateInfo.preTransform = _options->options.capabilities.currentTransform;
 	swapChainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	swapChainCreateInfo.presentMode = presentMode;
 	swapChainCreateInfo.clipped = VK_TRUE;
 
-	swapChainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
+	if (_oldSwapChain) {
+		swapChainCreateInfo.oldSwapchain = _oldSwapChain;
+	} else {
+		swapChainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
+	}
 
 	if (_table->vkCreateSwapchainKHR(_device, &swapChainCreateInfo, nullptr, &_swapChain) != VK_SUCCESS) {
 		return false;
+	}
+
+	if (_oldSwapChain) {
+		_table->vkDestroySwapchainKHR(_device, _oldSwapChain, nullptr);
+		_oldSwapChain = VK_NULL_HANDLE;
+	}
+
+	for (auto &it : _sync) {
+		it->reset(*this);
 	}
 
 	_table->vkGetSwapchainImagesKHR(_device, _swapChain, &imageCount, nullptr);
@@ -241,7 +405,7 @@ bool PresentationDevice::createSwapChain(VkSurfaceKHR surface) {
 	_swapChainImageViews.reserve(_swapChainImages.size());
 
 	for (size_t i = 0; i < _swapChainImages.size(); i++) {
-		if (auto iv = Rc<ImageView>::create(*this, _swapChainImages[i], _options.formats.front().format)) {
+		if (auto iv = Rc<ImageView>::create(*this, _swapChainImages[i], _options->options.formats.front().format)) {
 			_swapChainImageViews.emplace_back(iv);
 		} else {
 			return false;
@@ -258,10 +422,12 @@ bool PresentationDevice::createSwapChain(VkSurfaceKHR surface) {
 		}
 	}
 
-	_imagesInFlight.clear();
 	_imagesInFlight.resize(_swapChainImages.size(), VK_NULL_HANDLE);
 
 	onSwapChainCreated(this);
+
+	++ _gen;
+	_presentMode = presentMode;
 
 	return true;
 }
@@ -285,7 +451,8 @@ void PresentationDevice::cleanupSwapChain() {
 	_swapChainImageViews.clear();
 
 	if (_swapChain) {
-		_table->vkDestroySwapchainKHR(_device, _swapChain, nullptr);
+		_oldSwapChain = _swapChain;
+		//_table->vkDestroySwapchainKHR(_device, _swapChain, nullptr);
 		_swapChain = VK_NULL_HANDLE;
 	}
 
@@ -297,90 +464,17 @@ Rc<DrawDevice> PresentationDevice::getDraw() const {
 	return _draw;
 }
 
-void PresentationDevice::prepareDrawScheme(draw::DrawScheme *scheme, thread::TaskQueue &q) {
-	auto memPool = Rc<DeviceAllocPool>::create(_allocator);
-
-	//memPool->upload(scheme->draw);
-	//memPool->upload(scheme->drawCount);
-
-	memPool->retain();
-	memory::pool::userdata_set(memPool.get(), "VK::Pool", [] (void *ptr) -> memory::status_t {
-		((DeviceAllocPool *)ptr)->release();
-		return 0;
-	}, scheme->pool);
+Rc<TransferDevice> PresentationDevice::getTransfer() const {
+	return _transfer;
 }
 
-bool PresentationDevice::performDrawFlow(Rc<DrawFlow> df, thread::TaskQueue &q) {
-	auto scheme = df->getScheme();
-	prepareDrawScheme(scheme, q);
-
-	_table->vkWaitForFences(_device, 1, &_inFlightFences[_currentFrame], VK_TRUE, UINT64_MAX);
-
-	uint32_t imageIndex;
-	VkResult result = _table->vkAcquireNextImageKHR(_device, _swapChain, UINT64_MAX, _imageAvailableSemaphores[_currentFrame], VK_NULL_HANDLE, &imageIndex);
-	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-		cleanupSwapChain();
-		log::vtext("VK-Error", "vkAcquireNextImageKHR: VK_ERROR_OUT_OF_DATE_KHR");
-		return false;
-	} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-		log::vtext("VK-Error", "Fail to vkAcquireNextImageKHR");
-		return false;
+bool PresentationDevice::isBestPresentMode() const {
+	if (_swapChain == VK_NULL_HANDLE) {
+		return true;
+	} else {
+		return _presentMode == _options->options.presentModes.front();
 	}
-
-	// Check if a previous frame is using this image (i.e. there is its fence to wait on)
-	if (_imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
-		_table->vkWaitForFences(_device, 1, &_imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
-	}
-
-	// Mark the image as now being in use by this frame
-	_imagesInFlight[imageIndex] = _inFlightFences[_currentFrame];
-
-	_table->vkResetFences(_device, 1, &_inFlightFences[_currentFrame]);
-
-	VkSemaphore waitSemaphores[] = {_imageAvailableSemaphores[_currentFrame]};
-	VkSemaphore signalSemaphores[] = {_renderFinishedSemaphores[_currentFrame]};
-
-	DrawFrameInfo info({
-		&_options,
-		_swapChainFramebuffers[imageIndex],
-		waitSemaphores,
-		signalSemaphores,
-		_inFlightFences[_currentFrame],
-		_currentFrame,
-		imageIndex,
-		nullptr//, _drawFlow->getScheme()
-	});
-
-	if (!_draw->drawFrame(q, info)) {
-		log::vtext("VK-Error", "drawFrame: VK_ERROR_OUT_OF_DATE_KHR");
-		return false;
-	}
-
-	VkPresentInfoKHR presentInfo{};
-	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = signalSemaphores;
-
-	VkSwapchainKHR swapChains[] = {_swapChain};
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = swapChains;
-	presentInfo.pImageIndices = &imageIndex;
-	presentInfo.pResults = nullptr; // Optional
-
-	result = _table->vkQueuePresentKHR(_presentQueue, &presentInfo);
-	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-		cleanupSwapChain();
-		log::vtext("VK-Error", "vkQueuePresentKHR: VK_ERROR_OUT_OF_DATE_KHR");
-		return false;
-	} else if (result != VK_SUCCESS) {
-		log::vtext("VK-Error", "Fail to vkQueuePresentKHR");
-	}
-
-	_currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-	return true;
 }
-
 
 
 PresentationLoop::PresentationLoop(Application *app, Rc<View> v, Rc<PresentationDevice> dev, Rc<Director> dir, uint64_t frameMicroseconds)
@@ -403,105 +497,278 @@ void PresentationLoop::threadInit() {
 
 	memory::pool::push(_pool);
 
-	_queue = Rc<thread::TaskQueue>::alloc(
+	_frameQueue = Rc<thread::TaskQueue>::alloc(
 			math::clamp(uint16_t(std::thread::hardware_concurrency()), uint16_t(4), uint16_t(16)), nullptr, "VkCommand");
-	_queue->spawnWorkers();
-	_device->begin(_application, *_queue);
-	_queue->waitForAll();
+	_frameQueue->spawnWorkers();
+	_device->begin(_application, *_frameQueue);
+	_frameQueue->waitForAll();
+
+	_dataQueue = Rc<thread::TaskQueue>::alloc(
+			math::clamp(uint16_t(std::thread::hardware_concurrency() / 4), uint16_t(1), uint16_t(4)), nullptr, "VkData");
+	_dataQueue->spawnWorkers();
+
+	tasks.emplace_back(PresentationEvent::Update, nullptr, data::Value(), nullptr);
 
 	memory::pool::pop();
 }
 
 bool PresentationLoop::worker() {
-	if (!_exitFlag.test_and_set()) {
-		memory::pool::push(_pool);
-		_device->end(*_queue);
-		memory::pool::pop();
+	auto now = platform::device::_clock();
+	uint64_t interval = _frameTimeMicroseconds.load();
+	uint64_t timer = 0;
+	uint32_t low = 0;
+	bool exit = false;
+	bool swapchainValid = true;
 
-		_queue->waitForAll();
-		_queue->cancelWorkers();
+	auto update = [&] {
+		if (low > 0) {
+			-- low;
+			if (low == 0) {
+				if (!_device->isBestPresentMode()) {
+					pushTask(PresentationEvent::SwapChainForceRecreate);
+				}
+			}
+		}
+		_view->pushEvent(ViewEvent::Update);
+		_frameQueue->update();
+		_dataQueue->update();
+	};
 
-		memory::pool::destroy(_pool);
-		memory::pool::terminate();
-		return false;
-	} else {
+	auto incrementTime = [&] {
+		auto t = platform::device::_clock();
+		auto tmp = now;
+		now = t;
+		return now - tmp;
+	};
+
+	auto checkTimer = [] (uint32_t timer, uint32_t interval, uint32_t &low) {
+		if (low) {
+			return timer >= interval * 2;
+		} else {
+			return timer >= interval;
+		}
+	};
+
+	auto invalidateSwapchain = [&] (ViewEvent::Value event) {
+		if (swapchainValid) {
+			timer += incrementTime();
+			log::vtext("Vk-Event", "InvalidateSwapChain: ", timer, " ", interval, " ", low);
+			swapchainValid = false;
+			/*if (_pendingFrame) {
+				auto frame = _pendingFrame;
+				_pendingFrame = nullptr;
+				_device->present(frame);
+			}*/
+			_frameQueue->waitForAll();
+			_dataQueue->waitForAll();
+			// _device->cleanupSwapChain();
+			_view->pushEvent(event);
+			_pendingFrame = nullptr;
+			low = 20;
+			update();
+		}
+	};
+
+	std::unique_lock<std::mutex> lock(_mutex);
+	while (!exit) {
+		Vector<PresentationTask> t;
+		do {
+			if (!tasks.empty()) {
+				t = std::move(tasks);
+				tasks.clear();
+				timer += incrementTime();
+				if (checkTimer(timer, interval, low)) {
+					t.emplace_back(PresentationEvent::FrameTimeoutPassed, nullptr, data::Value(), nullptr);
+				}
+				break;
+			} else {
+				timer += incrementTime();
+				auto tm = checkTimer(timer, interval, low);
+				if (interval > 0 && !tm) {
+					if (!_cond.wait_for(lock, std::chrono::microseconds(low ? (interval * 2 - timer) : (interval - timer)), [&] {
+						return !tasks.empty();
+					})) {
+						t.emplace_back(PresentationEvent::FrameTimeoutPassed, nullptr, data::Value(), nullptr);
+					} else {
+						t = std::move(tasks);
+						tasks.clear();
+					}
+				} else if (tm && _pendingFrame && swapchainValid) {
+					t = std::move(tasks);
+					tasks.clear();
+					t.emplace_back(PresentationEvent::FrameTimeoutPassed, nullptr, data::Value(), nullptr);
+				} else {
+					// no framerate - just run when ready
+					_cond.wait(lock, [&] {
+						return !tasks.empty();
+					});
+					t = std::move(tasks);
+					tasks.clear();
+				}
+			}
+		} while (0);
+		lock.unlock();
+
+		memory::pool::context<memory::pool_t *> ctx(_pool);
+		for (auto &it : t) {
+			switch (it.event) {
+			case PresentationEvent::Update:
+				_view->pushEvent(ViewEvent::Update);
+				break;
+			case PresentationEvent::FrameTimeoutPassed:
+				if (_pendingFrame && swapchainValid && _pendingFrame->gen == _device->getGen()) {
+					auto frame = _pendingFrame;
+					_pendingFrame = nullptr;
+					//log::vtext("Vk-Event", "Present[T}: ", timer + incrementTime(), " ", interval, " ", low);
+					if (!_device->present(frame)) {
+						invalidateSwapchain(ViewEvent::SwapchainRecreation);
+					} else {
+						update();
+					}
+					timer = 0;
+				}
+				break;
+			case PresentationEvent::SwapChainDeprecated:
+				invalidateSwapchain(ViewEvent::SwapchainRecreation);
+				break;
+			case PresentationEvent::SwapChainRecreated:
+				swapchainValid = true; // resume drawing
+				timer = interval * 2;
+				_device->reset(*_frameQueue);
+				_pendingFrame = nullptr;
+				_view->pushEvent(ViewEvent::Update);
+				break;
+			case PresentationEvent::SwapChainForceRecreate:
+				invalidateSwapchain(ViewEvent::SwapchainRecreationBest);
+				break;
+			case PresentationEvent::FrameDataRecieved:
+				// draw data available from main thread - run transfer
+				if (swapchainValid) {
+					_device->getTransfer()->prepare(this, _dataQueue, _device->beginFrame(it.data.cast<DrawFlow>()));
+				}
+				break;
+			case PresentationEvent::FrameDataTransferred:
+				if (swapchainValid && ((FrameData *)it.data.get())->gen == _device->getGen()) {
+					auto frame = it.data.cast<FrameData>();
+					frame->status = FrameStatus::TransferPending;
+					if (_device->getTransfer()->submit(frame)) {
+						_device->prepareImage(this, _frameQueue, frame);
+					} else {
+						invalidateSwapchain(ViewEvent::SwapchainRecreation);
+					}
+				}
+				break;
+			case PresentationEvent::FrameImageReady:
+				if (swapchainValid && ((FrameData *)it.data.get())->gen == _device->getGen()) {
+					auto frame = it.data.cast<FrameData>();
+					frame->status = FrameStatus::ImageReady;
+					if (!_device->acquireImage(this, _frameQueue, frame)) {
+						invalidateSwapchain(ViewEvent::SwapchainRecreation);
+					}
+				}
+				break;
+			case PresentationEvent::FrameImageAcquired:
+				if (swapchainValid && ((FrameData *)it.data.get())->gen == _device->getGen()) {
+					auto frame = it.data.cast<FrameData>();
+					frame->status = FrameStatus::ImageAcquired;
+					_device->prepareCommands(this, _frameQueue, frame);
+				}
+				break;
+			case PresentationEvent::FrameCommandBufferReady:
+				// command buffers constructed - wait for next frame slot (or run immediately if framerate is low)
+				if (swapchainValid && _pendingFrame) {
+					_pendingFrame = nullptr;
+				}
+				if (swapchainValid && ((FrameData *)it.data.get())->gen == _device->getGen()) {
+					auto frame = it.data.cast<FrameData>();
+					frame->status = FrameStatus::CommandsPending;
+					if (_device->getDraw()->submit(frame)) {
+						if (interval == 0 || checkTimer(timer, interval, low)) {
+							//log::vtext("Vk-Event", "Present[C}: ", timer + incrementTime(), " ", interval, " ", low);
+							if (!_device->present(frame)) {
+								invalidateSwapchain(ViewEvent::SwapchainRecreation);
+							} else {
+								update();
+							}
+							_pendingFrame = nullptr;
+							timer = 0;
+						} else {
+							_pendingFrame = frame;
+						}
+					} else {
+						invalidateSwapchain(ViewEvent::SwapchainRecreation);
+					}
+				}
+				break;
+			case PresentationEvent::UpdateFrameInterval:
+				// view want us to change frame interval
+				interval = uint64_t(it.value.getInteger());
+				if (interval == 0) {
+					timer = 0;
+				}
+				break;
+			case PresentationEvent::PipelineRequest:
+				_device->getDraw()->compilePipeline(_dataQueue, it.data.cast<PipelineRequest>(), move(it.complete));
+				break;
+			case PresentationEvent::ExclusiveTransfer:
+				break;
+			case PresentationEvent::Exit:
+				exit = true;
+				break;
+			}
+		}
 		memory::pool::clear(_pool);
+		lock.lock();
 	}
 
-	memory::pool::context<memory::pool_t *> ctx(_pool);
+	lock.unlock();
 
-	bool immidiate = false;
-	if (!_resetFlag.test_and_set()) {
-		_device->reset(*_queue);
-		_swapChainFlag.test_and_set();
-		immidiate = true;
-	}
+	memory::pool::push(_pool);
+	_device->end(*_frameQueue);
+	memory::pool::pop();
 
-	const auto iv = _frameTimeMicroseconds.load();
-	const auto t = platform::device::_clock();
-	const auto dt = t - _time;
-	if (!immidiate && dt > 0 && dt < iv) { // limit FPS
-		platform::device::_sleep(iv - dt);
-		_time = platform::device::_clock();
-	} else {
-		_time = t;
-	}
+	_frameQueue->waitForAll();
+	_frameQueue->cancelWorkers();
 
-	bool swapChainFlag = !_swapChainFlag.test_and_set();
-	bool drawSuccess = (swapChainFlag) ? false : _device->drawFrame(_director, *_queue);
-	if (swapChainFlag || !drawSuccess) {
-		_rate.store(platform::device::_clock() - _time);
-		_device->cleanupSwapChain();
-		std::unique_lock<std::mutex> lock(_mutex);
-		_view->pushEvent(ViewEvent::SwapchainRecreation);
-		_cond.wait(lock);
-	} else {
-		_rate.store(platform::device::_clock() - _time);
-	}
+	_dataQueue->waitForAll();
+	_dataQueue->cancelWorkers();
 
-	if (_compiler) {
-		_compiler->update();
-	}
-	_view->pushEvent(ViewEvent::Update);
+	memory::pool::destroy(_pool);
+	memory::pool::terminate();
 
-	return true;
+	return false;
+}
+
+void PresentationLoop::pushTask(PresentationEvent event, Rc<Ref> && data, data::Value &&value, Function<void()> &&complete) {
+	std::unique_lock<std::mutex> lock(_mutex);
+	tasks.emplace_back(event, move(data), move(value), move(complete));
+	_cond.notify_all();
 }
 
 void PresentationLoop::setInterval(uint64_t iv) {
 	_frameTimeMicroseconds.store(iv);
+	pushTask(PresentationEvent::UpdateFrameInterval, nullptr, data::Value(iv));
 }
 
 void PresentationLoop::recreateSwapChain() {
-	_swapChainFlag.clear();
+	pushTask(PresentationEvent::SwapChainDeprecated, nullptr, data::Value(), nullptr);
 }
 
 void PresentationLoop::begin() {
-	_compiler = Rc<PipelineCompiler>::create();
 	_thread = StdThread(thread::ThreadHandlerInterface::workerThread, this, nullptr);
 }
 
-void PresentationLoop::end() {
-	_exitFlag.clear();
+void PresentationLoop::end(bool success) {
+	pushTask(PresentationEvent::Exit, nullptr, data::Value(success));
 	_thread.join();
-	_compiler->invalidate();
-	_compiler = nullptr;
 }
 
 void PresentationLoop::reset() {
-	_resetFlag.clear();
-	std::unique_lock<std::mutex> lock(_mutex);
-	_cond.notify_all();
+	pushTask(PresentationEvent::SwapChainRecreated, nullptr, data::Value(), nullptr);
 }
 
-void PresentationLoop::requestPipeline(Rc<PipelineRequest> req, Function<void(const Vector<Rc<vk::Pipeline>> &)> &&cb) {
-	_compiler->compile(_device->getDraw(), req, [cb = move(cb), app = _application] (Vector<Rc<vk::Pipeline>> &&resp) {
-		auto tmp = new Vector<Rc<vk::Pipeline>>(move(resp));
-		app->performOnMainThread([tmp, cb] () {
-			cb(move(*tmp));
-			delete tmp;
-			return true;
-		});
-	});
+void PresentationLoop::requestPipeline(Rc<PipelineRequest> req, Function<void()> &&cb) {
+	pushTask(PresentationEvent::PipelineRequest, req, data::Value(), move(cb));
 }
 
 }

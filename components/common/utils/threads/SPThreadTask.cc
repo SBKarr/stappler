@@ -34,6 +34,14 @@ bool Task::init(const CompleteCallback &c, Ref *t) {
 	return true;
 }
 
+bool Task::init(CompleteCallback &&c, Ref *t) {
+	_target = t;
+	if (c) {
+		_complete.emplace_back(move(c));
+	}
+	return true;
+}
+
 /* creates regular async task without initialization phase */
 bool Task::init(const ExecuteCallback &e, const CompleteCallback &c, Ref *t) {
 	_target = t;
@@ -42,6 +50,17 @@ bool Task::init(const ExecuteCallback &e, const CompleteCallback &c, Ref *t) {
 	}
 	if (c) {
 		_complete.push_back(c);
+	}
+	return true;
+}
+
+bool Task::init(ExecuteCallback &&e, CompleteCallback &&c, Ref *t) {
+	_target = t;
+	if (e) {
+		_execute.emplace_back(move(e));
+	}
+	if (c) {
+		_complete.emplace_back(move(c));
 	}
 	return true;
 }
@@ -61,10 +80,30 @@ bool Task::init(const PrepareCallback &p, const ExecuteCallback &e, const Comple
 	return true;
 }
 
+bool Task::init(PrepareCallback &&p, ExecuteCallback &&e, CompleteCallback &&c, Ref *t) {
+	_target = t;
+	if (p) {
+		_prepare.emplace_back(move(p));
+	}
+	if (e) {
+		_execute.emplace_back(move(e));
+	}
+	if (c) {
+		_complete.emplace_back(move(c));
+	}
+	return true;
+}
+
 /* adds one more function to be executed before task is added to queue, functions executed as FIFO */
 void Task::addPrepareCallback(const PrepareCallback &cb) {
 	if (cb) {
 		_prepare.push_back(cb);
+	}
+}
+
+void Task::addPrepareCallback(PrepareCallback &&cb) {
+	if (cb) {
+		_prepare.emplace_back(move(cb));
 	}
 }
 
@@ -75,10 +114,22 @@ void Task::addExecuteCallback(const ExecuteCallback &cb) {
 	}
 }
 
+void Task::addExecuteCallback(ExecuteCallback &&cb) {
+	if (cb) {
+		_execute.emplace_back(move(cb));
+	}
+}
+
 /* adds one more function to be executed when task is performed, functions executed as FIFO */
 void Task::addCompleteCallback(const CompleteCallback &cb) {
 	if (cb) {
 		_complete.push_back(cb);
+	}
+}
+
+void Task::addCompleteCallback(CompleteCallback &&cb) {
+	if (cb) {
+		_complete.emplace_back(move(cb));
 	}
 }
 

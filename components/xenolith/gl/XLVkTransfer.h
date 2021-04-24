@@ -65,7 +65,12 @@ public:
 	void performTransfer(thread::TaskQueue &);
 	void wait(VkFence f);
 
+	void prepare(const Rc<PresentationLoop> &, const Rc<thread::TaskQueue> &, const Rc<FrameData> &);
+	bool submit(const Rc<FrameData> &);
+
 protected:
+	bool doPrepareFrame(const Rc<FrameData> &);
+
 	Vector<Rc<TransferGeneration>> _generations;
 	VkQueue _queue = VK_NULL_HANDLE;
 	VkFence _fence = VK_NULL_HANDLE;

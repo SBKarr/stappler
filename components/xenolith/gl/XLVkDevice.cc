@@ -26,6 +26,52 @@ THE SOFTWARE.
 
 namespace stappler::xenolith::vk {
 
+FrameSync::FrameSync(VirtualDevice &dev, uint32_t idx) : idx(idx) {
+	VkFenceCreateInfo fenceInfo{};
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceInfo.pNext = nullptr;
+	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+	dev.getTable()->vkCreateFence(dev.getDevice(), &fenceInfo, nullptr, &inFlight);
+
+	VkSemaphoreCreateInfo semaphoreInfo{};
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	semaphoreInfo.pNext = nullptr;
+	semaphoreInfo.flags = 0;
+
+	dev.getTable()->vkCreateSemaphore(dev.getDevice(), &semaphoreInfo, nullptr, &renderFinished);
+	dev.getTable()->vkCreateSemaphore(dev.getDevice(), &semaphoreInfo, nullptr, &imageAvailable);
+}
+
+void FrameSync::invalidate(VirtualDevice &dev) {
+	dev.getTable()->vkDestroyFence(dev.getDevice(), inFlight, nullptr);
+	dev.getTable()->vkDestroySemaphore(dev.getDevice(), renderFinished, nullptr);
+	dev.getTable()->vkDestroySemaphore(dev.getDevice(), imageAvailable, nullptr);
+}
+
+void FrameSync::reset(VirtualDevice &dev) {
+	VkSemaphoreCreateInfo semaphoreInfo{};
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	semaphoreInfo.pNext = nullptr;
+	semaphoreInfo.flags = 0;
+
+	if (renderFinishedEnabled) {
+		dev.getTable()->vkDestroySemaphore(dev.getDevice(), renderFinished, nullptr);
+		dev.getTable()->vkCreateSemaphore(dev.getDevice(), &semaphoreInfo, nullptr, &renderFinished);
+		renderFinishedEnabled = false;
+	}
+
+	if (imageAvailableEnabled) {
+		dev.getTable()->vkDestroySemaphore(dev.getDevice(), imageAvailable, nullptr);
+		dev.getTable()->vkCreateSemaphore(dev.getDevice(), &semaphoreInfo, nullptr, &imageAvailable);
+		imageAvailableEnabled = false;
+	}
+}
+
+FrameData::~FrameData() {
+	device->dismiss(this);
+}
+
 VirtualDevice::~VirtualDevice() {
 	if (_instance && _device && _managedDevice) {
 		_allocator->invalidate(*this);

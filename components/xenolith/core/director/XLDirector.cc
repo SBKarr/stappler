@@ -64,15 +64,8 @@ bool Director::mainLoop(uint64_t t) {
 	update(t);
 
 	Rc<DrawFlow> df = construct();
-	Rc<DrawFlow> tmp; // temporary storage for refcounting
 
-	do {
-		std::unique_lock<Mutex> lock(_mutex);
-		if (_drawFlow) {
-			tmp = _drawFlow;
-		}
-		_drawFlow = df;
-	} while(0);
+	_view->getLoop()->pushTask(vk::PresentationEvent::FrameDataRecieved, df);
 
 	return true;
 }
@@ -118,13 +111,6 @@ void Director::end() {
 		_scene = nullptr;
 	}
 	_view = nullptr;
-}
-
-Rc<DrawFlow> Director::swapDrawFlow() {
-	std::unique_lock<Mutex> lock(_mutex);
-	Rc<DrawFlow> ret = _drawFlow;
-	_drawFlow = nullptr;
-	return ret;
 }
 
 Size Director::getScreenSize() const {

@@ -145,6 +145,14 @@ public:
 
 	inline Base * operator->() const { return _Rc_PtrCast<Base>::cast(_ptr); }
 
+	template <typename Target>
+	inline RcBase<Target> cast() const {
+		if (auto v = dynamic_cast<Target *>(_ptr)) {
+			return RcBase<Target>(v);
+		}
+		return RcBase<Target>(nullptr);
+	}
+
 	inline bool operator == (const Self & other) const { return _ptr == other._ptr; }
 	inline bool operator == (const Base * & other) const { return _ptr == other; }
 	inline bool operator == (typename std::remove_const<Base>::type * other) const { return _ptr == other; }

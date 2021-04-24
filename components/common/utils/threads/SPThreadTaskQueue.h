@@ -60,7 +60,7 @@ public:
 	void update();
 	void onMainThread(Rc<Task> &&task);
 
-	void wait();
+	void wait(std::unique_lock<std::mutex> &);
 	bool spawnWorkers();
 
 	// maxOf<uint32_t> - set id to next available
@@ -81,7 +81,6 @@ protected:
 	Rc<Task> popTask(uint32_t idx);
 	void onMainThreadWorker(Rc<Task> &&task);
 
-	std::mutex _sleepMutex;
 	std::condition_variable _sleepCondition;
 
 	std::mutex _inputMutex;

@@ -299,7 +299,9 @@ static bool sa_server_timer_thread_poll(int epollFd) {
 					if (nbytes == sizeof(event)) {
 						if (event.len > 0) {
 							char buf[event.len] = { 0 };
-							read(client->fd, buf, event.len);
+							if (read(client->fd, buf, event.len) == 0) {
+								break;
+							}
 						}
 					}
 				} while (nbytes == sizeof(event));

@@ -61,8 +61,6 @@ public:
 
 	void end();
 
-	Rc<DrawFlow> swapDrawFlow();
-
 	Size getScreenSize() const;
 	Rc<PipelineCache> getPipelineCache() const;
 
@@ -76,7 +74,6 @@ protected:
 	Rc<vk::View> _view;
 
 	Mutex _mutex;
-	Rc<DrawFlow> _drawFlow;
 	Rc<PipelineCache> _pipelineCache;
 
 	Rc<Scene> _scene;

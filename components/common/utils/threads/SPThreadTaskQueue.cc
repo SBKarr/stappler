@@ -338,20 +338,25 @@ void TaskQueue::onMainThreadWorker(Rc<Task> &&task) {
         return;
     }
 
-    _outputMutex.lock();
-    _outputQueue.push_back(std::move(task));
-	_outputMutex.unlock();
-	_flag.clear();
+	if (!task->getCompleteTasks().empty()) {
+		_outputMutex.lock();
+		_outputQueue.push_back(std::move(task));
+		_outputMutex.unlock();
+		_flag.clear();
 
-	if (tasksCounter.fetch_sub(1) == 1) {
-		_exitCondition.notify_one();
+		if (tasksCounter.fetch_sub(1) == 1) {
+			_exitCondition.notify_one();
+		}
+	} else {
+		if (tasksCounter.fetch_sub(1) == 1) {
+			_exitCondition.notify_one();
+		}
 	}
 }
 
-void TaskQueue::wait() {
+void TaskQueue::wait(std::unique_lock<std::mutex> &lock) {
 	if (_finalized.load() != true) {
-		std::unique_lock<std::mutex> sleepLock(_sleepMutex);
-		_sleepCondition.wait(sleepLock);
+		_sleepCondition.wait(lock);
 	}
 }
 
@@ -479,7 +484,11 @@ bool Worker::worker() {
 	}
 
 	if (!task) {
-		_queue->wait();
+		std::unique_lock<std::mutex> lock(_localMutex);
+		if (!_localQueue.empty()) {
+			return true;
+		}
+		_queue->wait(lock);
 		return true;
 	}
 

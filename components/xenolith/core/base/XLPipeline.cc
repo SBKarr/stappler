@@ -59,10 +59,9 @@ bool PipelineCache::request(Rc<PipelineRequest> req) {
 		req->setInUse(true);
 		req->setInProcess(true);
 		auto &it = _requests.emplace(req->getName().str(), req).first->second;
-		loop->requestPipeline(it, [this, req] (const Vector<Rc<vk::Pipeline>> &resp) {
+		loop->requestPipeline(it, [this, req] () {
 			auto iit = _revoke.find(req.get());
 			if (iit == _revoke.end()) {
-				req->setCompiled(resp);
 				for (auto &it : req->getCompiled()) {
 					auto pIt = _objects.find(it.second->getName());
 					if (pIt != _objects.end()) {

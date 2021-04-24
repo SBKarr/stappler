@@ -22,6 +22,7 @@
 
 #include "XLVkTransfer.h"
 #include "XLVkFramebuffer.h"
+#include "XLVkPresentation.h"
 
 namespace stappler::xenolith::vk {
 
@@ -54,7 +55,6 @@ void TransferGeneration::invalidate() {
 	_transfer.clear();
 	_pool = nullptr;
 }
-
 
 TransferDevice::~TransferDevice() {
 	if (_commandPool) {
@@ -138,6 +138,46 @@ void TransferDevice::wait(VkFence f) {
 		it->invalidate();
 	}
 	_generations.clear();
+}
+
+void TransferDevice::prepare(const Rc<PresentationLoop> &loop, const Rc<thread::TaskQueue> &queue, const Rc<FrameData> &frame) {
+	// load frame buffers into gl memory, we can use multiple threads for mapping and transfer
+	// after all transfers in complete - we notify PresentationLoop about it
+	frame->status = FrameStatus::TransferStarted;
+	queue->perform(Rc<Task>::create([this, loop, frame] (const thread::Task &) -> bool {
+		if (doPrepareFrame(frame)) {
+			loop->pushTask(PresentationEvent::FrameDataTransferred, frame.get());
+		}
+		return true;
+	}));
+}
+
+bool TransferDevice::submit(const Rc<FrameData> &data) {
+	if (!data->buffers.empty()) {
+		data->status = FrameStatus::TransferSubmitted;
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+		submitInfo.waitSemaphoreCount = 0;
+		submitInfo.pWaitSemaphores = nullptr;
+		submitInfo.pWaitDstStageMask = nullptr;
+		submitInfo.commandBufferCount = data->buffers.size();
+		submitInfo.pCommandBuffers = data->buffers.data();
+		submitInfo.signalSemaphoreCount = 0;
+		submitInfo.pSignalSemaphores = nullptr;
+
+		if (_table->vkQueueSubmit(_queue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+			stappler::log::vtext("VK-Error", "Fail to vkQueueSubmit");
+			return false;
+		}
+	}
+	// transfer commands should contain internal barrier, so, no external sync required, mark as complete
+	data->status = FrameStatus::TransferComplete;
+	return true;
+}
+
+bool TransferDevice::doPrepareFrame(const Rc<FrameData> &frame) {
+	return true;
 }
 
 }

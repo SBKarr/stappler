@@ -62,30 +62,6 @@ protected:
 	Vector<Rc<CommandPool>> _pools;
 };
 
-struct DrawFrameInfo {
-	Instance::PresentationOptions *options;
-	Framebuffer *framebuffer;
-	SpanView<VkSemaphore> wait;
-	SpanView<VkSemaphore> signal;
-	VkFence fence;
-	uint32_t frameIdx;
-	uint32_t imageIdx;
-	draw::DrawScheme *scheme;
-};
-
-struct DrawBufferTask {
-	static constexpr uint32_t HardTask = 0;
-	static constexpr uint32_t MediumTask = 0;
-	static constexpr uint32_t EasyTask = 0;
-
-	uint32_t index = 0;
-	Function<bool(const DrawFrameInfo &, VkCommandBuffer)> callback;
-
-	DrawBufferTask(uint32_t idx, Function<bool(const DrawFrameInfo &, VkCommandBuffer)> &&cb) : index(idx), callback(move(cb)) { }
-
-	operator bool () const { return callback != nullptr; }
-};
-
 class DrawDevice : public VirtualDevice {
 public:
 	virtual ~DrawDevice();
@@ -94,9 +70,8 @@ public:
 	bool spawnWorkers(thread::TaskQueue &, size_t);
 	void invalidate();
 
-	Vector<VkCommandBuffer> fillBuffers(thread::TaskQueue &, DrawFrameInfo &frame);
-
-	bool drawFrame(thread::TaskQueue &, DrawFrameInfo &frame);
+	void prepare(const Rc<PresentationLoop> &, const Rc<thread::TaskQueue> &, const Rc<FrameData> &);
+	bool submit(const Rc<FrameData> &);
 
 	RenderPass *getDefaultRenderPass() const { return _defaultRenderPass; }
 
@@ -107,6 +82,8 @@ public:
 	Rc<Pipeline> addPipeline(Rc<Pipeline>);
 
 	PipelineOptions getPipelineOptions(const PipelineParams &) const;
+
+	void compilePipeline(Rc<thread::TaskQueue> queue, Rc<PipelineRequest> req, Function<void()> &&cb);
 
 protected:
 	friend class PresentationDevice;
@@ -137,47 +114,6 @@ protected:
 	Rc<Pipeline> _defaultPipeline;
 	Rc<RenderPass> _defaultRenderPass;
 	Rc<DrawWorker> _defaultWorker;
-};
-
-class PipelineCompiler : public Ref {
-public:
-	using Callback = Function<void(Vector<Rc<vk::Pipeline>> &&resp)>;
-
-	struct CompilationProcess : public Ref {
-		virtual ~CompilationProcess();
-		CompilationProcess(Rc<DrawDevice> dev, Rc<PipelineCompiler> compiler, Rc<PipelineRequest> req, Callback &&cb);
-
-		void runShaders();
-		void runPipelines();
-		void complete();
-
-		std::atomic<size_t> programsInQueue = 0;
-		Map<StringView, Pair<Rc<ProgramModule>, const ProgramParams *>> loadedPrograms;
-
-		std::atomic<size_t> pipelineInQueue = 0;
-		Map<StringView, Pair<Rc<Pipeline>, const PipelineParams *>> loadedPipelines;
-
-		Rc<DrawDevice> draw;
-		Rc<PipelineCompiler> compiler;
-		Rc<PipelineRequest> req;
-		Callback onComplete;
-		Rc<CompilationProcess> next;
-	};
-
-	virtual ~PipelineCompiler();
-	bool init();
-
-	void compile(Rc<DrawDevice> dev, Rc<PipelineRequest> req, Callback &&cb);
-	void update();
-	void compileNext(Rc<CompilationProcess>);
-	void invalidate();
-
-	Rc<thread::TaskQueue> getQueue() const { return _queue; }
-
-protected:
-	Mutex _processMutex;
-	Rc<CompilationProcess> _process;
-	Rc<thread::TaskQueue> _queue;
 };
 
 }

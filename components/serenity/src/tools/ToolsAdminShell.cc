@@ -468,6 +468,7 @@ struct UpdateCmd : ResourceCmd {
 			r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		}
 
+		bool success = false;
 		data::Value patch = (r.is('{') || r.is('[') || r.is('(')) ? data::read(r) : UrlView::parseArgs(r, 1_KiB);
 		h.performWithStorage([&] (const db::Transaction &t) {
 			if (auto r = acquireResource(t, h, schemeName, path, StringView())) {
@@ -475,6 +476,7 @@ struct UpdateCmd : ResourceCmd {
 				if (r->prepareUpdate()) {
 					auto ret = r->updateObject(patch, f);
 					h.sendData(ret);
+					success = true;
 				} else {
 					h.sendError(toString("Action for scheme ", schemeName, " is forbidden for ", h.getUser()->getName()));
 				}
@@ -482,8 +484,10 @@ struct UpdateCmd : ResourceCmd {
 			}
 		});
 
-		h.sendData(patch);
-		h.sendError("Fail to update object with data:");
+		if (!success) {
+			h.sendData(patch);
+			h.sendError("Fail to update object with data:");
+		}
 
 		return true;
 	}

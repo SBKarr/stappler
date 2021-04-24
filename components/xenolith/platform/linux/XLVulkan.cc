@@ -133,6 +133,7 @@ Rc<vk::Instance> create(Application *app) {
 	}
 
 	if constexpr (vk::s_enableValidationLayers) {
+#if DEBUG
 		for (const char *layerName : vk::s_validationLayers) {
 			bool layerFound = false;
 
@@ -148,6 +149,7 @@ Rc<vk::Instance> create(Application *app) {
 				return nullptr;
 			}
 		}
+#endif
 	}
 
 	const char *waylandExt = nullptr;
@@ -265,6 +267,7 @@ Rc<vk::Instance> create(Application *app) {
 
 	enum VkResult ret = VK_SUCCESS;
 	if constexpr (vk::s_enableValidationLayers) {
+#if DEBUG
 	    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = {};
 	    debugCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 	    debugCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
@@ -276,6 +279,7 @@ Rc<vk::Instance> create(Application *app) {
 		createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &debugCreateInfo;
 
 		ret = table.pfnCreateInstance(&createInfo, nullptr, &instance);
+#endif
 	} else {
 		createInfo.enabledLayerCount = 0;
 		createInfo.pNext = nullptr;

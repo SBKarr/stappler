@@ -44,7 +44,8 @@ namespace ViewEvent {
 	constexpr uint32_t None = 0;
 	constexpr uint32_t Terminate = 1;
 	constexpr uint32_t SwapchainRecreation = 2;
-	constexpr uint32_t Update = 4;
+	constexpr uint32_t SwapchainRecreationBest = 4;
+	constexpr uint32_t Update = 8;
 }
 
 class View : public Ref {

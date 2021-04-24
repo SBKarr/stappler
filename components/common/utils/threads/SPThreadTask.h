@@ -41,21 +41,27 @@ public: /* typedefs */
 public: /* interface */
 	/* creates empty task with only complete function to be used as callback from other thread */
 	bool init(const CompleteCallback &, Ref * = nullptr);
+	bool init(CompleteCallback &&, Ref * = nullptr);
 
 	/* creates regular async task without initialization phase */
 	bool init(const ExecuteCallback &, const CompleteCallback & = nullptr, Ref * = nullptr);
+	bool init(ExecuteCallback &&, CompleteCallback && = nullptr, Ref * = nullptr);
 
 	/* creates regular async task with initialization phase */
 	bool init(const PrepareCallback &, const ExecuteCallback &, const CompleteCallback & = nullptr, Ref * = nullptr);
+	bool init(PrepareCallback &&, ExecuteCallback &&, CompleteCallback && = nullptr, Ref * = nullptr);
 
 	/* adds one more function to be executed before task is added to queue, functions executed as FIFO */
 	void addPrepareCallback(const PrepareCallback &);
+	void addPrepareCallback(PrepareCallback &&);
 
 	/* adds one more function to be executed in other thread, functions executed as FIFO */
 	void addExecuteCallback(const ExecuteCallback &);
+	void addExecuteCallback(ExecuteCallback &&);
 
 	/* adds one more function to be executed when task is performed, functions executed as FIFO */
 	void addCompleteCallback(const CompleteCallback &);
+	void addCompleteCallback(CompleteCallback &&);
 
 	/* mark this task with tag */
 	void setTag(int tag) { _tag = tag; }

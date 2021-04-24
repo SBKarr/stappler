@@ -63,7 +63,7 @@ protected:
 
 	uint32_t _frameWidth = 0;
 	uint32_t _frameHeight = 0;
-	uint64_t _frameTimeMicroseconds = 1000'000 / 120;
+	uint64_t _frameTimeMicroseconds = 1000'000 / 60;
 };
 
 }

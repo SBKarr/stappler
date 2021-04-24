@@ -108,7 +108,7 @@ bool DrawDevice::init(Rc<Instance> inst, Rc<Allocator> alloc, VkQueue q, uint32_
 	_shaders.emplace(vert->getName().str(), vert);
 	_shaders.emplace(frag->getName().str(), frag);
 
-	_frameTasks.emplace_back(DrawBufferTask(DrawBufferTask::HardTask, [&] (const DrawFrameInfo &frame, VkCommandBuffer buf) -> bool {
+	_frameTasks.emplace_back(DrawBufferTask(DrawBufferTask::HardTask, [&] (FrameData *frame, VkCommandBuffer buf) -> bool {
 		VkCommandBufferBeginInfo beginInfo { };
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -121,15 +121,15 @@ bool DrawDevice::init(Rc<Instance> inst, Rc<Allocator> alloc, VkQueue q, uint32_
 		VkRenderPassBeginInfo renderPassInfo { };
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassInfo.renderPass = _defaultRenderPass->getRenderPass();
-		renderPassInfo.framebuffer = frame.framebuffer->getFramebuffer();
+		renderPassInfo.framebuffer = frame->framebuffer->getFramebuffer();
 		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = frame.options->capabilities.currentExtent;
+		renderPassInfo.renderArea.extent = frame->options->options.capabilities.currentExtent;
 		VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
 		renderPassInfo.clearValueCount = 1;
 		renderPassInfo.pClearValues = &clearColor;
 		_table->vkCmdBeginRenderPass(buf, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		auto currentExtent = frame.options->capabilities.currentExtent;
+		auto currentExtent = frame->options->options.capabilities.currentExtent;
 
 		VkViewport viewport{ 0.0f, 0.0f, float(currentExtent.width), float(currentExtent.height), 0.0f, 1.0f };
 		_table->vkCmdSetViewport(buf, 0, 1, &viewport);
@@ -212,75 +212,79 @@ void DrawDevice::invalidate() {
 	_workers.clear();
 }
 
-Vector<VkCommandBuffer> DrawDevice::fillBuffers(thread::TaskQueue &q, DrawFrameInfo &frame) {
+void DrawDevice::prepare(const Rc<PresentationLoop> &loop, const Rc<thread::TaskQueue> &queue, const Rc<FrameData> &frame) {
 	Vector<VkCommandBuffer> ret;
 
-	Vector<DrawBufferTask> tasks(_frameTasks);
-	std::sort(_frameTasks.begin(), _frameTasks.end(), [&] (const DrawBufferTask &l, const DrawBufferTask &r) {
+	frame->tasks = _frameTasks;
+	std::sort(frame->tasks.begin(), frame->tasks.end(), [&] (const DrawBufferTask &l, const DrawBufferTask &r) {
 		return l.index < r.index;
 	});
 
-	// std::cout << frame.imageIdx << "\n";
-
-	/*_defaultWorker->reset(frame.imageIdx);
-	while (auto t = getTaskForWorker(tasks, _defaultWorker)) {
-		auto buf = _defaultWorker->spawnPool(frame.imageIdx);
-		if (t.callback(frame, buf)) {
-			ret.emplace_back(buf);
-		}
-	}*/
-
+	auto control = new std::atomic<uint32_t>();
+	control->store(queue->getThreadsCount());
 	Map<uint32_t, Vector<Rc<Task>>> threadTasks;
-	for (size_t i = 0; i < q.getThreadsCount(); ++ i) {
-		Vector<VkCommandBuffer> * cmds = new Vector<VkCommandBuffer>;
-
+	for (size_t i = 0; i < queue->getThreadsCount(); ++ i) {
 		threadTasks.emplace(i, Vector<Rc<thread::Task>>({
-			Rc<thread::Task>::create([this, &tasks, cmds, &frame] (const thread::Task &) -> bool {
+			Rc<thread::Task>::create([this, frame, control, loop] (const thread::Task &) -> bool {
 				if (DrawWorker * w = _workers[std::this_thread::get_id()]) {
-					w->reset(frame.imageIdx);
-					while (auto t = getTaskForWorker(tasks, w)) {
-						auto buf = w->spawnPool(frame.imageIdx);
+					w->reset(frame->imageIdx);
+					while (auto t = getTaskForWorker(frame->tasks, w)) {
+						auto buf = w->spawnPool(frame->imageIdx);
 						if (t.callback(frame, buf)) {
-							cmds->emplace_back(buf);
+							frame->mutex.lock();
+							frame->buffers.emplace_back(buf);
+							frame->mutex.unlock();
 						}
 					}
 				}
-				return true;
-			}, [this, cmds, &ret] (const thread::Task &, bool success) {
-				for (VkCommandBuffer it : *cmds) {
-					ret.emplace_back(it);
+				if (control->fetch_sub(1) == 1) {
+					delete control;
+					loop->pushTask(PresentationEvent::FrameCommandBufferReady, frame.get());
 				}
-				delete cmds;
+				return true;
 			})
 		}));
 	}
 
-	q.perform(move(threadTasks));
-	q.waitForAll(TimeInterval::microseconds(2000));
-
-	return ret;
+	queue->perform(move(threadTasks));
 }
 
-bool DrawDevice::drawFrame(thread::TaskQueue &q, DrawFrameInfo &frame) {
-	auto bufs = fillBuffers(q, frame);
+bool DrawDevice::submit(const Rc<FrameData> &frame) {
+	_table->vkResetFences(_device, 1, &frame->sync->inFlight);
 
 	VkSubmitInfo submitInfo{};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-	submitInfo.waitSemaphoreCount = frame.wait.size();
-	submitInfo.pWaitSemaphores = frame.wait.data();
-	submitInfo.pWaitDstStageMask = waitStages;
-	submitInfo.commandBufferCount = bufs.size();
-	submitInfo.pCommandBuffers = bufs.data();
-	submitInfo.signalSemaphoreCount = frame.signal.size();
-	submitInfo.pSignalSemaphores = frame.signal.data();
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = &frame->sync->imageAvailable;
+	submitInfo.pWaitDstStageMask = frame->waitStages.data();
+	submitInfo.commandBufferCount = frame->buffers.size();
+	submitInfo.pCommandBuffers = frame->buffers.data();
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &frame->sync->renderFinished;
 
-	if (_table->vkQueueSubmit(_queue, 1, &submitInfo, frame.fence) != VK_SUCCESS) {
+	if (frame->sync->renderFinishedEnabled) {
+		// lost frame, dropped when swapchain was recreated before presentation
+
+		// protect imageAvailable sem
+		auto tmp = frame->sync->imageAvailableEnabled;
+		frame->sync->imageAvailableEnabled = false;
+
+		// then reset
+		frame->sync->reset(*this);
+
+		// restore protected state
+		frame->sync->imageAvailableEnabled = tmp;
+	}
+
+	if (_table->vkQueueSubmit(_queue, 1, &submitInfo, frame->sync->inFlight) != VK_SUCCESS) {
 		stappler::log::vtext("VK-Error", "Fail to vkQueueSubmit");
 		return false;
 	}
 
+	frame->sync->imageAvailableEnabled = false;
+	frame->sync->renderFinishedEnabled = true;
+	frame->status = FrameStatus::CommandsSubmitted;
 	return true;
 }
 
@@ -311,6 +315,117 @@ PipelineOptions DrawDevice::getPipelineOptions(const PipelineParams &params) con
 	}
 
 	return ret;
+}
+
+struct CompilationProcess : public Ref {
+	virtual ~CompilationProcess() { }
+	CompilationProcess(Rc<DrawDevice> dev, Rc<PipelineRequest> req, Function<void()> &&cb)
+	 : draw(dev), req(req), onComplete(move(cb)) { }
+
+	void runShaders(Rc<thread::TaskQueue>);
+	void runPipelines(Rc<thread::TaskQueue>);
+	void complete();
+
+	std::atomic<size_t> programsInQueue = 0;
+	Map<StringView, Pair<Rc<ProgramModule>, const ProgramParams *>> loadedPrograms;
+
+	std::atomic<size_t> pipelineInQueue = 0;
+	Map<StringView, Pair<Rc<Pipeline>, const PipelineParams *>> loadedPipelines;
+
+	Rc<DrawDevice> draw;
+	Rc<PipelineRequest> req;
+	Function<void()> onComplete;
+	Rc<CompilationProcess> next;
+};
+
+void CompilationProcess::runShaders(Rc<thread::TaskQueue> queue) {
+	retain(); // release in complete;
+	for (auto &it : req->getPrograms()) {
+		if (auto v = draw->getProgram(it.second.key)) {
+			loadedPrograms.emplace(it.second.key, pair(v, nullptr));
+		} else {
+			loadedPrograms.emplace(it.second.key, pair(Rc<ProgramModule>::alloc(), &it.second));
+			++ programsInQueue;
+		}
+	}
+	if (programsInQueue > 0) {
+		for (auto &it : loadedPrograms) {
+			if (it.second.second) {
+				queue->perform(Rc<Task>::create([this, program = &it.second.first, req = it.second.second, queue] (const thread::Task &) -> bool {
+					bool ret = false;
+					if (req->path.get().empty()) {
+						ret = (*program)->init(*draw, req->source, req->stage, req->data, req->key, req->defs);
+					} else {
+						ret = (*program)->init(*draw, req->source, req->stage, req->path, req->key, req->defs);
+					}
+					if (!ret) {
+						log::vtext("vk", "Fail to compile shader program ", req->key);
+						return false;
+					} else {
+						*program = draw->addProgram(*program);
+						if (programsInQueue.fetch_sub(1) == 1) {
+							runPipelines(queue);
+						}
+					}
+					return true;
+				}));
+			}
+		}
+	} else {
+		runPipelines(queue);
+	}
+}
+
+void CompilationProcess::runPipelines(Rc<thread::TaskQueue> queue) {
+	for (auto &it : req->getPipelines()) {
+		if (auto v = draw->getPipeline(it.second.key)) {
+			loadedPipelines.emplace(it.second.key, pair(v, nullptr));
+		} else {
+			loadedPipelines.emplace(it.second.key, pair(Rc<Pipeline>::alloc(), &it.second));
+			++ pipelineInQueue;
+		}
+	}
+
+	if (pipelineInQueue > 0) {
+		for (auto &it : loadedPipelines) {
+			if (it.second.second) {
+				auto request = it.second.second;
+				queue->perform(Rc<Task>::create([this, pipeline = &it.second.first, request] (const thread::Task &) -> bool {
+					if (!(*pipeline)->init(*draw, draw->getPipelineOptions(*request), *request)) {
+						log::vtext("vk", "Fail to compile pipeline ", request->key);
+						return false;
+					} else {
+						*pipeline = draw->addPipeline(*pipeline);
+						if (pipelineInQueue.fetch_sub(1) == 1) {
+							complete();
+						}
+					}
+					return true;
+				}));
+			}
+		}
+	} else {
+		complete();
+	}
+}
+
+void CompilationProcess::complete() {
+	Vector<Rc<vk::Pipeline>> resp; resp.reserve(loadedPipelines.size());
+	for (auto &it : loadedPipelines) {
+		resp.emplace_back(it.second.first);
+	}
+	Application::getInstance()->performOnMainThread([fn = move(onComplete), req = req, resp = move(resp)] {
+		if (req) {
+			req->setCompiled(resp);
+			fn();
+		}
+	});
+	release(); // release in complete;
+}
+
+void DrawDevice::compilePipeline(Rc<thread::TaskQueue> queue, Rc<PipelineRequest> req, Function<void()> &&cb) {
+	auto p = Rc<CompilationProcess>::alloc(this, req, std::move(cb));
+	p->runShaders(queue);
 }
 
 Rc<ProgramModule> DrawDevice::getProgram(StringView name) {
@@ -370,130 +485,6 @@ DrawBufferTask DrawDevice::getTaskForWorker(Vector<DrawBufferTask> &tasks, DrawW
 	}
 
 	return DrawBufferTask({0, nullptr});
-}
-
-PipelineCompiler::CompilationProcess::~CompilationProcess() { }
-
-PipelineCompiler::CompilationProcess::CompilationProcess(Rc<DrawDevice> dev, Rc<PipelineCompiler> compiler,
-		Rc<PipelineRequest> req, Callback &&cb) : draw(dev), compiler(compiler), req(req), onComplete(move(cb)) {
-
-}
-
-void PipelineCompiler::CompilationProcess::runShaders() {
-	for (auto &it : req->getPrograms()) {
-		if (auto v = draw->getProgram(it.second.key)) {
-			loadedPrograms.emplace(it.second.key, pair(v, nullptr));
-		} else {
-			loadedPrograms.emplace(it.second.key, pair(Rc<ProgramModule>::alloc(), &it.second));
-			++ programsInQueue;
-		}
-	}
-	for (auto &it : loadedPrograms) {
-		if (it.second.second) {
-			compiler->getQueue()->perform(Rc<Task>::create([this, program = &it.second.first, req = it.second.second] (const thread::Task &) -> bool {
-				bool ret = false;
-				if (req->path.get().empty()) {
-					ret = (*program)->init(*draw, req->source, req->stage, req->data, req->key, req->defs);
-				} else {
-					ret = (*program)->init(*draw, req->source, req->stage, req->path, req->key, req->defs);
-				}
-				if (!ret) {
-					log::vtext("vk", "Fail to compile shader program ", req->key);
-					return false;
-				} else {
-					*program = draw->addProgram(*program);
-					if (programsInQueue.fetch_sub(1) == 1) {
-						runPipelines();
-					}
-				}
-				return true;
-			}));
-		}
-	}
-}
-
-void PipelineCompiler::CompilationProcess::runPipelines() {
-	for (auto &it : req->getPipelines()) {
-		if (auto v = draw->getPipeline(it.second.key)) {
-			loadedPipelines.emplace(it.second.key, pair(v, nullptr));
-		} else {
-			loadedPipelines.emplace(it.second.key, pair(Rc<Pipeline>::alloc(), &it.second));
-			++ pipelineInQueue;
-		}
-	}
-
-	for (auto &it : loadedPipelines) {
-		if (it.second.second) {
-			auto request = it.second.second;
-			compiler->getQueue()->perform(Rc<Task>::create([this, pipeline = &it.second.first, request] (const thread::Task &) -> bool {
-				if (!(*pipeline)->init(*draw, draw->getPipelineOptions(*request), *request)) {
-					log::vtext("vk", "Fail to compile pipeline ", request->key);
-					return false;
-				} else {
-					*pipeline = draw->addPipeline(*pipeline);
-					if (pipelineInQueue.fetch_sub(1) == 1) {
-						complete();
-					}
-				}
-				return true;
-			}));
-		}
-	}
-}
-
-void PipelineCompiler::CompilationProcess::complete() {
-	Vector<Rc<vk::Pipeline>> resp; resp.reserve(loadedPipelines.size());
-	for (auto &it : loadedPipelines) {
-		resp.emplace_back(it.second.first);
-	}
-	onComplete(move(resp));
-	compiler->compileNext(next);
-}
-
-PipelineCompiler::~PipelineCompiler() {
-	_queue = nullptr;
-}
-
-bool PipelineCompiler::init() {
-	_queue = Rc<thread::TaskQueue>::alloc(
-			math::clamp(uint16_t(std::thread::hardware_concurrency() / 2), uint16_t(2), uint16_t(8)), nullptr, "VkPipeline");
-	_queue->spawnWorkers();
-	return true;
-}
-
-void PipelineCompiler::compile(Rc<DrawDevice> dev, Rc<PipelineRequest> req, Function<void(Vector<Rc<vk::Pipeline>> &&resp)> &&cb) {
-	auto p = new CompilationProcess(dev, this, req, std::move(cb));
-	_queue->perform(Rc<Task>::create([this, p] (const thread::Task &) -> bool {
-		std::unique_lock<Mutex> lock(_processMutex);
-		if (_process) {
-			_process->next = p;
-		} else {
-			_process = p;
-			_process->runShaders();
-		}
-		p->release();
-		return true;
-	}));
-}
-
-void PipelineCompiler::compileNext(Rc<CompilationProcess> proc) {
-	std::unique_lock<Mutex> lock(_processMutex);
-	if (proc) {
-		_process = nullptr;
-	} else {
-		_process = proc;
-		if (_process) {
-			_process->runShaders();
-		}
-	}
-}
-
-void PipelineCompiler::update() {
-	_queue->update();
-}
-
-void PipelineCompiler::invalidate() {
-	_queue->waitForAll();
 }
 
 }

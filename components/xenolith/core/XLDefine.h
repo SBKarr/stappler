@@ -95,6 +95,7 @@ class Instance;
 class PresentationDevice;
 class TransferDevice;
 class DrawDevice;
+class PresentationLoop;
 class View;
 class ProgramModule;
 class Pipeline;
@@ -110,7 +111,6 @@ struct AllocatorBufferBlock;
 class Buffer;
 class TransferGeneration;
 class DescriptorSetLayout;
-class PipelineCompiler;
 
 enum class ProgramStage {
 	None = 0,
