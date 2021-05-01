@@ -241,9 +241,9 @@ void Node::addChildNode(Node *child, int32_t localZOrder, uint64_t tag) {
 	XLASSERT( child != nullptr, "Argument must be non-nil");
 	XLASSERT( child->_parent == nullptr, "child already added. It can't be added again");
 
-	if constexpr (config::NODE_PREALLOCATE_CHILDS > 1) {
+	if constexpr (config::NodePreallocateChilds > 1) {
 		if (_children.empty()) {
-			_children.reserve(config::NODE_PREALLOCATE_CHILDS);
+			_children.reserve(config::NodePreallocateChilds);
 		}
 	}
 

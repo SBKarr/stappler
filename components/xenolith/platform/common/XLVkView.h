@@ -23,9 +23,10 @@ THE SOFTWARE.
 #ifndef COMPONENTS_XENOLITH_PLATFORM_COMMON_XLVKVIEW_H_
 #define COMPONENTS_XENOLITH_PLATFORM_COMMON_XLVKVIEW_H_
 
+#include "XLVkPresentationDevice.h"
+#include "XLVkPresentationLoop.h"
 #include "XLGestureData.h"
 #include "XLEventHeader.h"
-#include "XLVkPresentation.h"
 
 namespace stappler::xenolith::vk {
 

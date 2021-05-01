@@ -22,7 +22,7 @@
 
 #include "XLVkTransfer.h"
 #include "XLVkFramebuffer.h"
-#include "XLVkPresentation.h"
+#include "XLVkPresentationDevice.h"
 
 namespace stappler::xenolith::vk {
 

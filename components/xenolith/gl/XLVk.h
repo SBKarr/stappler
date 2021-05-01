@@ -63,6 +63,22 @@ enum class QueueOperations : uint32_t {
 
 SP_DEFINE_ENUM_AS_MASK(QueueOperations)
 
+enum class PresentationEvent {
+	Update, // force-update
+	FrameTimeoutPassed, // framerate heartbeat
+	SwapChainDeprecated, // swapchain was deprecated by view
+	SwapChainRecreated, // swapchain was recreated by view
+	SwapChainForceRecreate, // force engine to recreate swapchain with best params
+	FrameDataRecieved, // frame data was collected from application
+	FrameDataTransferred, // frame data was successfully transferred to GPU
+	FrameImageAcquired, // image from swapchain successfully acquired
+	FrameCommandBufferReady, // frame command buffers was constructed
+	UpdateFrameInterval, // view wants us to update frame interval
+	ExclusiveTransfer, // application want to upload some data to GPU
+	PipelineRequest, // some new pipeline required by applications
+	Exit,
+};
+
 struct DescriptorCount {
 	static DescriptorCount Common;
 

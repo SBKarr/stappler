@@ -91,7 +91,13 @@ struct AlphaTest {
 
 namespace stappler::xenolith::vk {
 
+struct FrameData;
+struct FrameSync;
+struct OptionsContainer;
+struct DrawBufferTask;
+
 class Instance;
+class VirtualDevice;
 class PresentationDevice;
 class TransferDevice;
 class DrawDevice;

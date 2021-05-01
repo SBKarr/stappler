@@ -61,10 +61,15 @@ void TaskGroup::onPerformed(Task *task) {
     _queue.push_back(task);
     _mutex.unlock();
 
+    std::function<void()> tmp;
+    if (_notifyFn) {
+    	tmp = _notifyFn;
+    }
+
 	_condition.notify_one();
 
-	if (_notifyFn) {
-		_notifyFn();
+	if (tmp) {
+		tmp();
 	}
 }
 

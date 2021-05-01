@@ -156,7 +156,7 @@ WHERE pg_class.oid = ix.indrelid
 GROUP BY pg_class.relname, i.relname ORDER BY pg_class.relname, i.relname;)Sql";
 
 constexpr static const char * COL_QUERY = R"Sql(
-SELECT table_name, column_name, is_nullable::text, data_type, atttypid::integer as col_oid, oid::integer as table_oid, attname
+SELECT table_name, column_name, is_nullable::text, data_type, atttypid::integer as col_oid, pg_class.oid::integer as table_oid, attname
 FROM information_schema.columns
 	INNER JOIN pg_class ON (table_name = relname)
 	INNER JOIN pg_attribute ON (attrelid = pg_class.oid AND pg_attribute.attname = column_name)

@@ -88,6 +88,9 @@ void ThreadInfo::setMainThread() {
 }
 
 void ThreadInfo::setThreadInfo(uint32_t t, uint32_t w, StringView name, bool m) {
+#if LINUX
+	pthread_setname_np(pthread_self(), name.data());
+#endif
 	tl_threadInfo.threadId = t;
 	tl_threadInfo.workerId = w;
 	tl_threadInfo.name = name;

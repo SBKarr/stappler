@@ -263,19 +263,7 @@ bool DrawDevice::submit(const Rc<FrameData> &frame) {
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &frame->sync->renderFinished;
 
-	if (frame->sync->renderFinishedEnabled) {
-		// lost frame, dropped when swapchain was recreated before presentation
-
-		// protect imageAvailable sem
-		auto tmp = frame->sync->imageAvailableEnabled;
-		frame->sync->imageAvailableEnabled = false;
-
-		// then reset
-		frame->sync->reset(*this);
-
-		// restore protected state
-		frame->sync->imageAvailableEnabled = tmp;
-	}
+	frame->sync->resetRenderFinished(*this);
 
 	if (_table->vkQueueSubmit(_queue, 1, &submitInfo, frame->sync->inFlight) != VK_SUCCESS) {
 		stappler::log::vtext("VK-Error", "Fail to vkQueueSubmit");

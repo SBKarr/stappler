@@ -72,6 +72,7 @@ public:
 
 	void invalidate() const;
 	void commit();
+	void unlink();
 
 	SchemeCell getSchemeCell(const db::Scheme *) const;
 	SchemeCell getSchemeCell(uint64_t) const;

@@ -23,13 +23,14 @@ THE SOFTWARE.
 #include "XLDefine.h"
 
 #include "XLVkUtils.cc"
-
 #include "XLVkAllocator.cc"
 #include "XLVkProgram.cc"
 #include "XLVkPipeline.cc"
 #include "XLVkFramebuffer.cc"
 #include "XLVkInstance.cc"
 #include "XLVkDevice.cc"
+#include "XLVkFrame.cc"
 #include "XLVkDraw.cc"
-#include "XLVkPresentation.cc"
+#include "XLVkPresentationDevice.cc"
+#include "XLVkPresentationLoop.cc"
 #include "XLVkTransfer.cc"

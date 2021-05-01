@@ -23,10 +23,15 @@ THE SOFTWARE.
 #ifndef COMPONENTS_XENOLITH_CORE_XLCONFIG_H_
 #define COMPONENTS_XENOLITH_CORE_XLCONFIG_H_
 
+#include <stdint.h>
+
 namespace stappler::xenolith::config {
 
 /* Number of child slot, that will be preallocated on first child addition (not on node creation!) */
-static constexpr size_t NODE_PREALLOCATE_CHILDS = 4;
+static constexpr size_t NodePreallocateChilds = 4;
+
+/* Presentation Scheduler interval, used for non-blocking vkWaitForFence */
+static constexpr uint64_t PresentationSchedulerInterval = 500; // 500 ms or 1/32 of 60fps frame
 
 }
 

@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2020 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2020-2021 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -132,7 +132,6 @@ int Application::run(Director *director) {
 	if (!glview) {
 		return -1;
 	}
-
 
 	glview->run(this, director, [&] (uint64_t val) -> bool {
 		update(val);

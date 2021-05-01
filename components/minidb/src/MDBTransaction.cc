@@ -146,6 +146,12 @@ void Transaction::commit() {
 	}
 }
 
+void Transaction::unlink() {
+	if (_fd > 0) {
+		::unlink(_storage->getSourceName().data());
+	}
+}
+
 SchemeCell Transaction::getSchemeCell(const db::Scheme *scheme) const {
 	auto schemeIt = _storage->getSchemes().find(scheme);
 	if (schemeIt != _storage->getSchemes().end()) {
