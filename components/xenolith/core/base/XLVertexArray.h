@@ -27,6 +27,12 @@
 
 namespace stappler::xenolith {
 
+struct VertexData : public Ref {
+	Bytes data;
+	Vector<uint16_t> indexes;
+	draw::VertexFormat format = draw::VertexFormat::None;
+};
+
 class VertexArray : public Ref {
 public:
 	virtual ~VertexArray() { }

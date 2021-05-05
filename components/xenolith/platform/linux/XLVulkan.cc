@@ -195,6 +195,23 @@ Rc<vk::Instance> create(Application *app) {
 	}
 
 	bool completeExt = true;
+
+	for (auto &it : vk::s_requiredExtension) {
+		if (it) {
+			bool found = false;
+			for (auto &extension : s_InstanceAvailableExtensions) {
+				if (strcmp(it, extension.extensionName) == 0) {
+					found = true;
+					requiredExtensions.emplace_back(it);
+				}
+			}
+			if (!found) {
+				log::format("Vk", "Required extension not found: %s", it);
+				completeExt = false;
+			}
+		}
+	}
+
 	if (!surfaceExt) {
 		log::format("Vk", "Required extension not found: %s", VK_KHR_SURFACE_EXTENSION_NAME);
 		completeExt = false;

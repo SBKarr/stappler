@@ -48,6 +48,7 @@ bool Director::init() {
 void Director::setView(vk::View *view) {
 	if (view != _view) {
 		_view = view;
+		_formats = _view->getDevice()->getVertexFormats();
 	}
 }
 

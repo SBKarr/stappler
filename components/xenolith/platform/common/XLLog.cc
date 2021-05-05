@@ -51,6 +51,8 @@ static void __log2(const StringView &tag, const StringView &text) {
 			stream << "[Native:" << xenolith::Application::getInstance()->getNativeThreadId() << "] ";
 		} else if (local->threadId == thread::ThreadInfo::mainThreadId) {
 			stream << "[MainThread] ";
+		} else if (local->detouched) {
+			stream << "[" << local->name << "] ";
 		} else {
 			stream << "[" << local->name << ":" << local->threadId << ":" << local->workerId << "] ";
 		}

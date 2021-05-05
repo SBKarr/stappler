@@ -97,6 +97,17 @@ void ThreadInfo::setThreadInfo(uint32_t t, uint32_t w, StringView name, bool m) 
 	tl_threadInfo.managed = m;
 }
 
+void ThreadInfo::setThreadInfo(StringView name) {
+#if LINUX
+	pthread_setname_np(pthread_self(), name.data());
+#endif
+	tl_threadInfo.threadId = 0;
+	tl_threadInfo.workerId = 0;
+	tl_threadInfo.name = name;
+	tl_threadInfo.managed = true;
+	tl_threadInfo.detouched = true;
+}
+
 class _SingleTaskWorker : public ThreadHandlerInterface {
 public:
 	_SingleTaskWorker(const Rc<TaskQueue> &q, Rc<Task> &&task, memory::pool_t *p)

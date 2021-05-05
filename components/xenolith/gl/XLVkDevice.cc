@@ -35,7 +35,7 @@ VirtualDevice::~VirtualDevice() {
 }
 
 bool VirtualDevice::init(Rc<Instance> instance, VkPhysicalDevice p, const Properties &prop, const Set<uint32_t> &uniqueQueueFamilies,
-		const Features &features, const Vector<const char *> &requiredExtension) {
+		Features &features, const Vector<const char *> &requiredExtension) {
 	_instance = instance;
 	_allocator = Rc<Allocator>::create(*this, p);
 	if (!_allocator) {
@@ -57,9 +57,33 @@ bool VirtualDevice::init(Rc<Instance> instance, VkPhysicalDevice p, const Proper
 	VkDeviceCreateInfo deviceCreateInfo = { };
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	if (prop.device10.properties.apiVersion >= VK_VERSION_1_2) {
+		features.device12.pNext = nullptr;
+		features.device11.pNext = &features.device12;
+		features.device10.pNext = &features.device11;
 		deviceCreateInfo.pNext = &features.device11;
 	} else {
-		deviceCreateInfo.pNext = nullptr;
+		void *next = nullptr;
+		if ((features.flags & ExtensionFlags::Storage16Bit) != ExtensionFlags::None) {
+			features.device16bitStorage.pNext = next;
+			next = &features.device16bitStorage;
+		}
+		if ((features.flags & ExtensionFlags::Storage8Bit) != ExtensionFlags::None) {
+			features.device8bitStorage.pNext = next;
+			next = &features.device8bitStorage;
+		}
+		if ((features.flags & ExtensionFlags::ShaderFloat16) != ExtensionFlags::None || (features.flags & ExtensionFlags::ShaderInt8) != ExtensionFlags::None) {
+			features.deviceShaderFloat16Int8.pNext = next;
+			next = &features.deviceShaderFloat16Int8;
+		}
+		if ((features.flags & ExtensionFlags::DescriptorIndexing) != ExtensionFlags::None) {
+			features.deviceDescriptorIndexing.pNext = next;
+			next = &features.deviceDescriptorIndexing;
+		}
+		if ((features.flags & ExtensionFlags::DeviceAddress) != ExtensionFlags::None) {
+			features.deviceBufferDeviceAddress.pNext = next;
+			next = &features.deviceBufferDeviceAddress;
+		}
+		deviceCreateInfo.pNext = next;
 	}
 	deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
 	deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();

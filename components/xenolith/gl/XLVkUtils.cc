@@ -333,134 +333,358 @@ String getVkMemoryPropertyFlags(VkMemoryPropertyFlags flags) {
 	return ret.str();
 }
 
-bool Instance::Features::canEnable(const Features &features) const {
-	SpanView<VkBool32> src_f0(&device10.features.robustBufferAccess, sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32));
-	SpanView<VkBool32> trg_f0(&features.device10.features.robustBufferAccess, sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32));
+bool Instance::Features::canEnable(const Features &features, uint32_t version) const {
+	auto doCheck = [] (SpanView<VkBool32> src, SpanView<VkBool32> trg) {
+		for (size_t i = 0; i < src.size(); ++ i) {
+			if (trg[i] && !src[i]) {
+				return false;
+			}
+		}
+		return true;
+	};
 
-	for (size_t i = 0; i < src_f0.size(); ++ i) {
-		if (trg_f0[i] && !src_f0[i]) {
+	if (!doCheck(
+			SpanView<VkBool32>(&device10.features.robustBufferAccess, sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32)),
+			SpanView<VkBool32>(&features.device10.features.robustBufferAccess, sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32)))) {
+		return false;
+	}
+
+#define SP_VK_BOOL_ARRAY(source, field, type) \
+		SpanView<VkBool32>(&source.field, (sizeof(type) - offsetof(type, field)) / sizeof(VkBool32))
+
+#if VK_VERSION_1_2
+	if (version >= VK_API_VERSION_1_2) {
+		if (!doCheck(
+				SP_VK_BOOL_ARRAY(device11, storageBuffer16BitAccess, VkPhysicalDeviceVulkan11Features),
+				SP_VK_BOOL_ARRAY(features.device11, storageBuffer16BitAccess, VkPhysicalDeviceVulkan11Features))) {
+			return false;
+		}
+
+		if (!doCheck(
+				SP_VK_BOOL_ARRAY(device12, samplerMirrorClampToEdge, VkPhysicalDeviceVulkan12Features),
+				SP_VK_BOOL_ARRAY(features.device12, samplerMirrorClampToEdge, VkPhysicalDeviceVulkan12Features))) {
 			return false;
 		}
 	}
+#endif
 
-	SpanView<VkBool32> src_f1(&device11.storageBuffer16BitAccess, (sizeof(VkPhysicalDeviceVulkan11Features) - offsetof(VkPhysicalDeviceVulkan11Features, storageBuffer16BitAccess)) / sizeof(VkBool32));
-	SpanView<VkBool32> trg_f1(&features.device11.storageBuffer16BitAccess, (sizeof(VkPhysicalDeviceVulkan11Features) - offsetof(VkPhysicalDeviceVulkan11Features, storageBuffer16BitAccess)) / sizeof(VkBool32));
-
-	for (size_t i = 0; i < src_f1.size(); ++ i) {
-		if (trg_f1[i] && !src_f1[i]) {
-			return false;
-		}
+	if (!doCheck(
+			SP_VK_BOOL_ARRAY(device16bitStorage, storageBuffer16BitAccess, VkPhysicalDevice16BitStorageFeaturesKHR),
+			SP_VK_BOOL_ARRAY(features.device16bitStorage, storageBuffer16BitAccess, VkPhysicalDevice16BitStorageFeaturesKHR))) {
+		return false;
 	}
 
-	SpanView<VkBool32> src_f2(&device12.samplerMirrorClampToEdge, (sizeof(VkPhysicalDeviceVulkan12Features) - offsetof(VkPhysicalDeviceVulkan12Features, samplerMirrorClampToEdge)) / sizeof(VkBool32));
-	SpanView<VkBool32> trg_f2(&features.device12.samplerMirrorClampToEdge, (sizeof(VkPhysicalDeviceVulkan12Features) - offsetof(VkPhysicalDeviceVulkan12Features, samplerMirrorClampToEdge)) / sizeof(VkBool32));
-
-	for (size_t i = 0; i < src_f2.size(); ++ i) {
-		if (trg_f2[i] && !src_f2[i]) {
-			return false;
-		}
+	if (!doCheck(
+			SP_VK_BOOL_ARRAY(device8bitStorage, storageBuffer8BitAccess, VkPhysicalDevice8BitStorageFeaturesKHR),
+			SP_VK_BOOL_ARRAY(features.device8bitStorage, storageBuffer8BitAccess, VkPhysicalDevice8BitStorageFeaturesKHR))) {
+		return false;
 	}
+
+	if (!doCheck(
+			SP_VK_BOOL_ARRAY(deviceDescriptorIndexing, shaderInputAttachmentArrayDynamicIndexing, VkPhysicalDeviceDescriptorIndexingFeaturesEXT),
+			SP_VK_BOOL_ARRAY(features.deviceDescriptorIndexing, shaderInputAttachmentArrayDynamicIndexing, VkPhysicalDeviceDescriptorIndexingFeaturesEXT))) {
+		return false;
+	}
+
+	if (!doCheck(
+			SP_VK_BOOL_ARRAY(deviceBufferDeviceAddress, bufferDeviceAddress, VkPhysicalDeviceBufferDeviceAddressFeaturesKHR),
+			SP_VK_BOOL_ARRAY(features.deviceBufferDeviceAddress, bufferDeviceAddress, VkPhysicalDeviceBufferDeviceAddressFeaturesKHR))) {
+		return false;
+	}
+	if (!doCheck(
+			SP_VK_BOOL_ARRAY(deviceShaderFloat16Int8, shaderFloat16, VkPhysicalDeviceShaderFloat16Int8FeaturesKHR),
+			SP_VK_BOOL_ARRAY(features.deviceShaderFloat16Int8, shaderFloat16, VkPhysicalDeviceShaderFloat16Int8FeaturesKHR))) {
+		return false;
+	}
+#undef SP_VK_BOOL_ARRAY
 
 	return true;
 }
 
 void Instance::Features::enableFromFeatures(const Features &features) {
-	SpanView<VkBool32> src_f0(&device10.features.robustBufferAccess, sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32));
-	SpanView<VkBool32> trg_f0(&features.device10.features.robustBufferAccess, sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32));
-
-	for (size_t i = 0; i < src_f0.size(); ++ i) {
-		if (trg_f0[i]) {
-			const_cast<VkBool32 &>(src_f0[i]) = trg_f0[i];
+	auto doCheck = [] (SpanView<VkBool32> src, SpanView<VkBool32> trg) {
+		for (size_t i = 0; i < src.size(); ++ i) {
+			if (trg[i]) {
+				const_cast<VkBool32 &>(src[i]) = trg[i];
+			}
 		}
-	}
+	};
 
-	SpanView<VkBool32> src_f1(&device11.storageBuffer16BitAccess, (sizeof(VkPhysicalDeviceVulkan11Features) - offsetof(VkPhysicalDeviceVulkan11Features, storageBuffer16BitAccess)) / sizeof(VkBool32));
-	SpanView<VkBool32> trg_f1(&features.device11.storageBuffer16BitAccess, (sizeof(VkPhysicalDeviceVulkan11Features) - offsetof(VkPhysicalDeviceVulkan11Features, storageBuffer16BitAccess)) / sizeof(VkBool32));
+	doCheck(
+			SpanView<VkBool32>(&device10.features.robustBufferAccess, sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32)),
+			SpanView<VkBool32>(&features.device10.features.robustBufferAccess, sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32)));
 
-	for (size_t i = 0; i < src_f1.size(); ++ i) {
-		if (trg_f1[i]) {
-			const_cast<VkBool32 &>(src_f1[i]) = trg_f1[i];
-		}
-	}
+#define SP_VK_BOOL_ARRAY(source, field, type) \
+		SpanView<VkBool32>(&source.field, (sizeof(type) - offsetof(type, field)) / sizeof(VkBool32))
 
-	SpanView<VkBool32> src_f2(&device12.samplerMirrorClampToEdge, (sizeof(VkPhysicalDeviceVulkan12Features) - offsetof(VkPhysicalDeviceVulkan12Features, samplerMirrorClampToEdge)) / sizeof(VkBool32));
-	SpanView<VkBool32> trg_f2(&features.device12.samplerMirrorClampToEdge, (sizeof(VkPhysicalDeviceVulkan12Features) - offsetof(VkPhysicalDeviceVulkan12Features, samplerMirrorClampToEdge)) / sizeof(VkBool32));
+#if VK_VERSION_1_2
+	doCheck(
+			SP_VK_BOOL_ARRAY(device11, storageBuffer16BitAccess, VkPhysicalDeviceVulkan11Features),
+			SP_VK_BOOL_ARRAY(features.device11, storageBuffer16BitAccess, VkPhysicalDeviceVulkan11Features));
 
-	for (size_t i = 0; i < src_f2.size(); ++ i) {
-		if (trg_f2[i]) {
-			const_cast<VkBool32 &>(src_f2[i]) = trg_f2[i];
-		}
-	}
+	doCheck(
+			SP_VK_BOOL_ARRAY(device12, samplerMirrorClampToEdge, VkPhysicalDeviceVulkan12Features),
+			SP_VK_BOOL_ARRAY(features.device12, samplerMirrorClampToEdge, VkPhysicalDeviceVulkan12Features));
+#endif
+
+	doCheck(
+			SP_VK_BOOL_ARRAY(device16bitStorage, storageBuffer16BitAccess, VkPhysicalDevice16BitStorageFeaturesKHR),
+			SP_VK_BOOL_ARRAY(features.device16bitStorage, storageBuffer16BitAccess, VkPhysicalDevice16BitStorageFeaturesKHR));
+
+	doCheck(
+			SP_VK_BOOL_ARRAY(device8bitStorage, storageBuffer8BitAccess, VkPhysicalDevice8BitStorageFeaturesKHR),
+			SP_VK_BOOL_ARRAY(features.device8bitStorage, storageBuffer8BitAccess, VkPhysicalDevice8BitStorageFeaturesKHR));
+
+	doCheck(
+			SP_VK_BOOL_ARRAY(deviceDescriptorIndexing, shaderInputAttachmentArrayDynamicIndexing, VkPhysicalDeviceDescriptorIndexingFeaturesEXT),
+			SP_VK_BOOL_ARRAY(features.deviceDescriptorIndexing, shaderInputAttachmentArrayDynamicIndexing, VkPhysicalDeviceDescriptorIndexingFeaturesEXT));
+
+	doCheck(
+			SP_VK_BOOL_ARRAY(deviceBufferDeviceAddress, bufferDeviceAddress, VkPhysicalDeviceBufferDeviceAddressFeaturesKHR),
+			SP_VK_BOOL_ARRAY(features.deviceBufferDeviceAddress, bufferDeviceAddress, VkPhysicalDeviceBufferDeviceAddressFeaturesKHR));
+
+	doCheck(
+			SP_VK_BOOL_ARRAY(deviceShaderFloat16Int8, shaderFloat16, VkPhysicalDeviceShaderFloat16Int8FeaturesKHR),
+			SP_VK_BOOL_ARRAY(features.deviceShaderFloat16Int8, shaderFloat16, VkPhysicalDeviceShaderFloat16Int8FeaturesKHR));
+#undef SP_VK_BOOL_ARRAY
 }
 
 void Instance::Features::disableFromFeatures(const Features &features) {
-	SpanView<VkBool32> src_f0(&device10.features.robustBufferAccess, sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32));
-	SpanView<VkBool32> trg_f0(&features.device10.features.robustBufferAccess, sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32));
-
-	for (size_t i = 0; i < src_f0.size(); ++ i) {
-		if (!trg_f0[i]) {
-			const_cast<VkBool32 &>(src_f0[i]) = trg_f0[i];
+	auto doCheck = [] (SpanView<VkBool32> src, SpanView<VkBool32> trg) {
+		for (size_t i = 0; i < src.size(); ++ i) {
+			if (!trg[i]) {
+				const_cast<VkBool32 &>(src[i]) = trg[i];
+			}
 		}
-	}
+	};
 
-	SpanView<VkBool32> src_f1(&device11.storageBuffer16BitAccess, (sizeof(VkPhysicalDeviceVulkan11Features) - offsetof(VkPhysicalDeviceVulkan11Features, storageBuffer16BitAccess)) / sizeof(VkBool32));
-	SpanView<VkBool32> trg_f1(&features.device11.storageBuffer16BitAccess, (sizeof(VkPhysicalDeviceVulkan11Features) - offsetof(VkPhysicalDeviceVulkan11Features, storageBuffer16BitAccess)) / sizeof(VkBool32));
+	doCheck(
+			SpanView<VkBool32>(&device10.features.robustBufferAccess, sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32)),
+			SpanView<VkBool32>(&features.device10.features.robustBufferAccess, sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32)));
 
-	for (size_t i = 0; i < src_f1.size(); ++ i) {
-		if (!trg_f1[i]) {
-			const_cast<VkBool32 &>(src_f1[i]) = trg_f1[i];
-		}
-	}
+#define SP_VK_BOOL_ARRAY(source, field, type) \
+		SpanView<VkBool32>(&source.field, (sizeof(type) - offsetof(type, field)) / sizeof(VkBool32))
 
-	SpanView<VkBool32> src_f2(&device12.samplerMirrorClampToEdge, (sizeof(VkPhysicalDeviceVulkan12Features) - offsetof(VkPhysicalDeviceVulkan12Features, samplerMirrorClampToEdge)) / sizeof(VkBool32));
-	SpanView<VkBool32> trg_f2(&features.device12.samplerMirrorClampToEdge, (sizeof(VkPhysicalDeviceVulkan12Features) - offsetof(VkPhysicalDeviceVulkan12Features, samplerMirrorClampToEdge)) / sizeof(VkBool32));
+#if VK_VERSION_1_2
+	doCheck(
+			SP_VK_BOOL_ARRAY(device11, storageBuffer16BitAccess, VkPhysicalDeviceVulkan11Features),
+			SP_VK_BOOL_ARRAY(features.device11, storageBuffer16BitAccess, VkPhysicalDeviceVulkan11Features));
 
-	for (size_t i = 0; i < src_f2.size(); ++ i) {
-		if (!trg_f2[i]) {
-			const_cast<VkBool32 &>(src_f2[i]) = trg_f2[i];
-		}
-	}
+	doCheck(
+			SP_VK_BOOL_ARRAY(device12, samplerMirrorClampToEdge, VkPhysicalDeviceVulkan12Features),
+			SP_VK_BOOL_ARRAY(features.device12, samplerMirrorClampToEdge, VkPhysicalDeviceVulkan12Features));
+#endif
+
+	doCheck(
+			SP_VK_BOOL_ARRAY(device16bitStorage, storageBuffer16BitAccess, VkPhysicalDevice16BitStorageFeaturesKHR),
+			SP_VK_BOOL_ARRAY(features.device16bitStorage, storageBuffer16BitAccess, VkPhysicalDevice16BitStorageFeaturesKHR));
+
+	doCheck(
+			SP_VK_BOOL_ARRAY(device8bitStorage, storageBuffer8BitAccess, VkPhysicalDevice8BitStorageFeaturesKHR),
+			SP_VK_BOOL_ARRAY(features.device8bitStorage, storageBuffer8BitAccess, VkPhysicalDevice8BitStorageFeaturesKHR));
+
+	doCheck(
+			SP_VK_BOOL_ARRAY(deviceDescriptorIndexing, shaderInputAttachmentArrayDynamicIndexing, VkPhysicalDeviceDescriptorIndexingFeaturesEXT),
+			SP_VK_BOOL_ARRAY(features.deviceDescriptorIndexing, shaderInputAttachmentArrayDynamicIndexing, VkPhysicalDeviceDescriptorIndexingFeaturesEXT));
+
+	doCheck(
+			SP_VK_BOOL_ARRAY(deviceBufferDeviceAddress, bufferDeviceAddress, VkPhysicalDeviceBufferDeviceAddressFeaturesKHR),
+			SP_VK_BOOL_ARRAY(features.deviceBufferDeviceAddress, bufferDeviceAddress, VkPhysicalDeviceBufferDeviceAddressFeaturesKHR));
+
+	doCheck(
+			SP_VK_BOOL_ARRAY(deviceShaderFloat16Int8, shaderFloat16, VkPhysicalDeviceShaderFloat16Int8FeaturesKHR),
+			SP_VK_BOOL_ARRAY(features.deviceShaderFloat16Int8, shaderFloat16, VkPhysicalDeviceShaderFloat16Int8FeaturesKHR));
+#undef SP_VK_BOOL_ARRAY
 }
 
-Instance::Features::Features() {
-	memset(this, 0, sizeof(Features));
+void Instance::Features::updateFrom12() {
+#if VK_VERSION_1_2
+	if (device11.storageBuffer16BitAccess == VK_TRUE) {
+		flags |= ExtensionFlags::Storage16Bit;
+	} else {
+		flags &= (~ExtensionFlags::Storage16Bit);
+	}
 
-	device12 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES, nullptr };
-	device11 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES, &device12 };
-	device10 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &device11 };
+	device16bitStorage.storageBuffer16BitAccess = device11.storageBuffer16BitAccess;
+	device16bitStorage.uniformAndStorageBuffer16BitAccess = device11.uniformAndStorageBuffer16BitAccess;
+	device16bitStorage.storagePushConstant16 = device11.storagePushConstant16;
+	device16bitStorage.storageInputOutput16 = device11.storageInputOutput16;
+
+	if (device12.drawIndirectCount == VK_TRUE) {
+		flags |= ExtensionFlags::DrawIndirectCount;
+	} else {
+		flags &= (~ExtensionFlags::DrawIndirectCount);
+	}
+
+	if (device12.storageBuffer8BitAccess == VK_TRUE) {
+		flags |= ExtensionFlags::Storage8Bit;
+	} else {
+		flags &= (~ExtensionFlags::Storage8Bit);
+	}
+
+	device8bitStorage.storageBuffer8BitAccess = device12.storageBuffer8BitAccess;
+	device8bitStorage.uniformAndStorageBuffer8BitAccess = device12.uniformAndStorageBuffer8BitAccess;
+	device8bitStorage.storagePushConstant8 = device12.storagePushConstant8;
+
+	deviceShaderFloat16Int8.shaderFloat16 = device12.shaderFloat16;
+	deviceShaderFloat16Int8.shaderInt8 = device12.shaderInt8;
+
+	if (device12.shaderFloat16 == VK_TRUE) {
+		flags |= ExtensionFlags::ShaderFloat16;
+	} else {
+		flags &= (~ExtensionFlags::ShaderFloat16);
+	}
+
+	if (device12.shaderInt8 == VK_TRUE) {
+		flags |= ExtensionFlags::ShaderInt8;
+	} else {
+		flags &= (~ExtensionFlags::ShaderInt8);
+	}
+
+	if (device12.descriptorIndexing == VK_TRUE) {
+		flags |= ExtensionFlags::DescriptorIndexing;
+	} else {
+		flags &= (~ExtensionFlags::DescriptorIndexing);
+	}
+
+	deviceDescriptorIndexing.shaderInputAttachmentArrayDynamicIndexing = device12.shaderInputAttachmentArrayDynamicIndexing;
+	deviceDescriptorIndexing.shaderUniformTexelBufferArrayDynamicIndexing = device12.shaderUniformTexelBufferArrayDynamicIndexing;
+	deviceDescriptorIndexing.shaderStorageTexelBufferArrayDynamicIndexing = device12.shaderStorageTexelBufferArrayDynamicIndexing;
+	deviceDescriptorIndexing.shaderUniformBufferArrayNonUniformIndexing = device12.shaderUniformBufferArrayNonUniformIndexing;
+	deviceDescriptorIndexing.shaderSampledImageArrayNonUniformIndexing = device12.shaderSampledImageArrayNonUniformIndexing;
+	deviceDescriptorIndexing.shaderStorageBufferArrayNonUniformIndexing = device12.shaderStorageBufferArrayNonUniformIndexing;
+	deviceDescriptorIndexing.shaderStorageImageArrayNonUniformIndexing = device12.shaderStorageImageArrayNonUniformIndexing;
+	deviceDescriptorIndexing.shaderInputAttachmentArrayNonUniformIndexing = device12.shaderInputAttachmentArrayNonUniformIndexing;
+	deviceDescriptorIndexing.shaderUniformTexelBufferArrayNonUniformIndexing = device12.shaderUniformTexelBufferArrayNonUniformIndexing;
+	deviceDescriptorIndexing.shaderStorageTexelBufferArrayNonUniformIndexing = device12.shaderStorageTexelBufferArrayNonUniformIndexing;
+	deviceDescriptorIndexing.descriptorBindingUniformBufferUpdateAfterBind = device12.descriptorBindingUniformBufferUpdateAfterBind;
+	deviceDescriptorIndexing.descriptorBindingSampledImageUpdateAfterBind = device12.descriptorBindingSampledImageUpdateAfterBind;
+	deviceDescriptorIndexing.descriptorBindingStorageImageUpdateAfterBind = device12.descriptorBindingStorageImageUpdateAfterBind;
+	deviceDescriptorIndexing.descriptorBindingStorageBufferUpdateAfterBind = device12.descriptorBindingStorageBufferUpdateAfterBind;
+	deviceDescriptorIndexing.descriptorBindingUniformTexelBufferUpdateAfterBind = device12.descriptorBindingUniformTexelBufferUpdateAfterBind;
+	deviceDescriptorIndexing.descriptorBindingStorageTexelBufferUpdateAfterBind = device12.descriptorBindingStorageTexelBufferUpdateAfterBind;
+	deviceDescriptorIndexing.descriptorBindingUpdateUnusedWhilePending = device12.descriptorBindingUpdateUnusedWhilePending;
+	deviceDescriptorIndexing.descriptorBindingPartiallyBound = device12.descriptorBindingPartiallyBound;
+	deviceDescriptorIndexing.descriptorBindingVariableDescriptorCount = device12.descriptorBindingVariableDescriptorCount;
+	deviceDescriptorIndexing.runtimeDescriptorArray = device12.runtimeDescriptorArray;
+
+	if (device12.bufferDeviceAddress == VK_TRUE) {
+		flags |= ExtensionFlags::DeviceAddress;
+	} else {
+		flags &= (~ExtensionFlags::DeviceAddress);
+	}
+
+	deviceBufferDeviceAddress.bufferDeviceAddress = device12.bufferDeviceAddress;
+	deviceBufferDeviceAddress.bufferDeviceAddressCaptureReplay = device12.bufferDeviceAddressCaptureReplay;
+	deviceBufferDeviceAddress.bufferDeviceAddressMultiDevice = device12.bufferDeviceAddressMultiDevice;
+#endif
 }
+
+void Instance::Features::updateTo12(bool updateFlags) {
+	if (updateFlags) {
+		if ((flags & ExtensionFlags::Storage16Bit) != ExtensionFlags::None) {
+			if (device16bitStorage.storageBuffer16BitAccess == VK_TRUE) {
+				flags |= ExtensionFlags::Storage16Bit;
+			} else {
+				flags &= (~ExtensionFlags::Storage16Bit);
+			}
+		}
+		if ((flags & ExtensionFlags::Storage8Bit) != ExtensionFlags::None) {
+			if (device8bitStorage.storageBuffer8BitAccess == VK_TRUE) {
+				flags |= ExtensionFlags::Storage8Bit;
+			} else {
+				flags &= (~ExtensionFlags::Storage8Bit);
+			}
+		}
+
+		if ((flags & ExtensionFlags::ShaderFloat16) != ExtensionFlags::None || (flags & ExtensionFlags::ShaderInt8) != ExtensionFlags::None) {
+			if (deviceShaderFloat16Int8.shaderInt8 == VK_TRUE) {
+				flags |= ExtensionFlags::ShaderInt8;
+			} else {
+				flags &= (~ExtensionFlags::ShaderInt8);
+			}
+			if (deviceShaderFloat16Int8.shaderFloat16 == VK_TRUE) {
+				flags |= ExtensionFlags::ShaderFloat16;
+			} else {
+				flags &= (~ExtensionFlags::ShaderFloat16);
+			}
+		}
+
+		if ((flags & ExtensionFlags::DeviceAddress) != ExtensionFlags::None) {
+			if (deviceBufferDeviceAddress.bufferDeviceAddress == VK_TRUE) {
+				flags |= ExtensionFlags::DeviceAddress;
+			} else {
+				flags &= (~ExtensionFlags::DeviceAddress);
+			}
+		}
+	}
+
+#if VK_VERSION_1_2
+	device11.storageBuffer16BitAccess = device16bitStorage.storageBuffer16BitAccess;
+	device11.uniformAndStorageBuffer16BitAccess = device16bitStorage.storageBuffer16BitAccess;
+	device11.storagePushConstant16 = device16bitStorage.storageBuffer16BitAccess;
+	device11.storageInputOutput16 = device16bitStorage.storageBuffer16BitAccess;
+
+	if ((flags & ExtensionFlags::DrawIndirectCount) != ExtensionFlags::None) {
+		device12.drawIndirectCount = VK_TRUE;
+	}
+
+	device12.storageBuffer8BitAccess = device8bitStorage.storageBuffer8BitAccess;
+	device12.uniformAndStorageBuffer8BitAccess = device8bitStorage.uniformAndStorageBuffer8BitAccess;
+	device12.storagePushConstant8 = device8bitStorage.storagePushConstant8;
+
+	device12.shaderFloat16 = deviceShaderFloat16Int8.shaderFloat16;
+	device12.shaderInt8 = deviceShaderFloat16Int8.shaderInt8;
+
+	if ((flags & ExtensionFlags::DescriptorIndexing) != ExtensionFlags::None) {
+		device12.descriptorIndexing = VK_TRUE;
+	}
+
+	device12.shaderInputAttachmentArrayDynamicIndexing = deviceDescriptorIndexing.shaderInputAttachmentArrayDynamicIndexing;
+	device12.shaderUniformTexelBufferArrayDynamicIndexing = deviceDescriptorIndexing.shaderUniformTexelBufferArrayDynamicIndexing;
+	device12.shaderStorageTexelBufferArrayDynamicIndexing = deviceDescriptorIndexing.shaderStorageTexelBufferArrayDynamicIndexing;
+	device12.shaderUniformBufferArrayNonUniformIndexing = deviceDescriptorIndexing.shaderUniformBufferArrayNonUniformIndexing;
+	device12.shaderSampledImageArrayNonUniformIndexing = deviceDescriptorIndexing.shaderSampledImageArrayNonUniformIndexing;
+	device12.shaderStorageBufferArrayNonUniformIndexing = deviceDescriptorIndexing.shaderStorageBufferArrayNonUniformIndexing;
+	device12.shaderStorageImageArrayNonUniformIndexing = deviceDescriptorIndexing.shaderStorageImageArrayNonUniformIndexing;
+	device12.shaderInputAttachmentArrayNonUniformIndexing = deviceDescriptorIndexing.shaderInputAttachmentArrayNonUniformIndexing;
+	device12.shaderUniformTexelBufferArrayNonUniformIndexing = deviceDescriptorIndexing.shaderUniformTexelBufferArrayNonUniformIndexing;
+	device12.shaderStorageTexelBufferArrayNonUniformIndexing = deviceDescriptorIndexing.shaderStorageTexelBufferArrayNonUniformIndexing;
+	device12.descriptorBindingUniformBufferUpdateAfterBind = deviceDescriptorIndexing.descriptorBindingUniformBufferUpdateAfterBind;
+	device12.descriptorBindingSampledImageUpdateAfterBind = deviceDescriptorIndexing.descriptorBindingSampledImageUpdateAfterBind;
+	device12.descriptorBindingStorageImageUpdateAfterBind = deviceDescriptorIndexing.descriptorBindingStorageImageUpdateAfterBind;
+	device12.descriptorBindingStorageBufferUpdateAfterBind = deviceDescriptorIndexing.descriptorBindingStorageBufferUpdateAfterBind;
+	device12.descriptorBindingUniformTexelBufferUpdateAfterBind = deviceDescriptorIndexing.descriptorBindingUniformTexelBufferUpdateAfterBind;
+	device12.descriptorBindingStorageTexelBufferUpdateAfterBind = deviceDescriptorIndexing.descriptorBindingStorageTexelBufferUpdateAfterBind;
+	device12.descriptorBindingUpdateUnusedWhilePending = deviceDescriptorIndexing.descriptorBindingUpdateUnusedWhilePending;
+	device12.descriptorBindingPartiallyBound = deviceDescriptorIndexing.descriptorBindingPartiallyBound;
+	device12.descriptorBindingVariableDescriptorCount = deviceDescriptorIndexing.descriptorBindingVariableDescriptorCount;
+	device12.runtimeDescriptorArray = deviceDescriptorIndexing.runtimeDescriptorArray;
+
+	device12.bufferDeviceAddress = deviceBufferDeviceAddress.bufferDeviceAddress;
+	device12.bufferDeviceAddressCaptureReplay = deviceBufferDeviceAddress.bufferDeviceAddressCaptureReplay;
+	device12.bufferDeviceAddressMultiDevice = deviceBufferDeviceAddress.bufferDeviceAddressMultiDevice;
+#endif
+}
+
+Instance::Features::Features() { }
 
 Instance::Features::Features(const Features &f) {
 	memcpy(this, &f, sizeof(Features));
-	device11.pNext = &device12;
-	device10.pNext = &device11;
 }
 
 Instance::Features &Instance::Features::operator=(const Features &f) {
 	memcpy(this, &f, sizeof(Features));
-	device11.pNext = &device12;
-	device10.pNext = &device11;
 	return *this;
 }
 
-Instance::Properties::Properties() {
-	memset(this, 0, sizeof(Properties));
-
-	device12 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES, nullptr };
-	device11 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES, &device12 };
-	device10 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, &device11 };
-}
+Instance::Properties::Properties() { }
 
 Instance::Properties::Properties(const Properties &p) {
-	memcpy(this, &p, sizeof(Properties));
-	device11.pNext = &device12;
-	device10.pNext = &device11;
-}
+	memcpy(this, &p, sizeof(Properties)); }
 
 Instance::Properties &Instance::Properties::operator=(const Properties &p) {
 	memcpy(this, &p, sizeof(Properties));
-	device11.pNext = &device12;
-	device10.pNext = &device11;
 	return *this;
 }
 
@@ -632,58 +856,58 @@ String Instance::PresentationOptions::description() const {
 
 	stream << "\t[Limits: Samplers]"
 			" PerSet: " << properties.device10.properties.limits.maxDescriptorSetSamplers
-			<< " (updatable: " << properties.device12.maxDescriptorSetUpdateAfterBindSamplers << ");"
+			<< " (updatable: " << properties.deviceDescriptorIndexing.maxDescriptorSetUpdateAfterBindSamplers << ");"
 			" PerStage: " << properties.device10.properties.limits.maxPerStageDescriptorSamplers
-			<< " (updatable: " << properties.device12.maxPerStageDescriptorUpdateAfterBindSamplers << ");"
+			<< " (updatable: " << properties.deviceDescriptorIndexing.maxPerStageDescriptorUpdateAfterBindSamplers << ");"
 			"\n";
 
 	stream << "\t[Limits: UniformBuffers]"
 			" PerSet: " << properties.device10.properties.limits.maxDescriptorSetUniformBuffers
 			<< " dyn: " << properties.device10.properties.limits.maxDescriptorSetUniformBuffersDynamic
-			<< " (updatable: " << properties.device12.maxDescriptorSetUpdateAfterBindUniformBuffers
-			<< " dyn: " << properties.device12.maxDescriptorSetUpdateAfterBindUniformBuffersDynamic << ");"
+			<< " (updatable: " << properties.deviceDescriptorIndexing.maxDescriptorSetUpdateAfterBindUniformBuffers
+			<< " dyn: " << properties.deviceDescriptorIndexing.maxDescriptorSetUpdateAfterBindUniformBuffersDynamic << ");"
 			" PerStage: " << properties.device10.properties.limits.maxPerStageDescriptorUniformBuffers
-			<< " (updatable: " << properties.device12.maxPerStageDescriptorUpdateAfterBindUniformBuffers << ");"
-			<< (properties.device12.shaderUniformBufferArrayNonUniformIndexingNative ? StringView(" NonUniformIndexingNative;") : StringView())
+			<< " (updatable: " << properties.deviceDescriptorIndexing.maxPerStageDescriptorUpdateAfterBindUniformBuffers << ");"
+			<< (properties.deviceDescriptorIndexing.shaderUniformBufferArrayNonUniformIndexingNative ? StringView(" NonUniformIndexingNative;") : StringView())
 			<< "\n";
 
 	stream << "\t[Limits: StorageBuffers]"
 			" PerSet: " << properties.device10.properties.limits.maxDescriptorSetStorageBuffers
 			<< " dyn: " << properties.device10.properties.limits.maxDescriptorSetStorageBuffersDynamic
-			<< " (updatable: " << properties.device12.maxDescriptorSetUpdateAfterBindStorageBuffers
-			<< " dyn: " << properties.device12.maxDescriptorSetUpdateAfterBindStorageBuffersDynamic << ");"
+			<< " (updatable: " << properties.deviceDescriptorIndexing.maxDescriptorSetUpdateAfterBindStorageBuffers
+			<< " dyn: " << properties.deviceDescriptorIndexing.maxDescriptorSetUpdateAfterBindStorageBuffersDynamic << ");"
 			" PerStage: " << properties.device10.properties.limits.maxPerStageDescriptorStorageBuffers
-			<< " (updatable: " << properties.device12.maxPerStageDescriptorUpdateAfterBindStorageBuffers << ");"
-			<< (properties.device12.shaderStorageBufferArrayNonUniformIndexingNative ? StringView(" NonUniformIndexingNative;") : StringView())
+			<< " (updatable: " << properties.deviceDescriptorIndexing.maxPerStageDescriptorUpdateAfterBindStorageBuffers << ");"
+			<< (properties.deviceDescriptorIndexing.shaderStorageBufferArrayNonUniformIndexingNative ? StringView(" NonUniformIndexingNative;") : StringView())
 			<< "\n";
 
 	stream << "\t[Limits: SampledImages]"
 			" PerSet: " << properties.device10.properties.limits.maxDescriptorSetSampledImages
-			<< " (updatable: " << properties.device12.maxDescriptorSetUpdateAfterBindSampledImages << ");"
+			<< " (updatable: " << properties.deviceDescriptorIndexing.maxDescriptorSetUpdateAfterBindSampledImages << ");"
 			" PerStage: " << properties.device10.properties.limits.maxPerStageDescriptorSampledImages
-			<< " (updatable: " << properties.device12.maxPerStageDescriptorUpdateAfterBindSampledImages << ");"
-			<< (properties.device12.shaderSampledImageArrayNonUniformIndexingNative ? StringView(" NonUniformIndexingNative;") : StringView())
+			<< " (updatable: " << properties.deviceDescriptorIndexing.maxPerStageDescriptorUpdateAfterBindSampledImages << ");"
+			<< (properties.deviceDescriptorIndexing.shaderSampledImageArrayNonUniformIndexingNative ? StringView(" NonUniformIndexingNative;") : StringView())
 			<< "\n";
 
 	stream << "\t[Limits: StorageImages]"
 			" PerSet: " << properties.device10.properties.limits.maxDescriptorSetStorageImages
-			<< " (updatable: " << properties.device12.maxDescriptorSetUpdateAfterBindStorageImages << ");"
+			<< " (updatable: " << properties.deviceDescriptorIndexing.maxDescriptorSetUpdateAfterBindStorageImages << ");"
 			" PerStage: " << properties.device10.properties.limits.maxPerStageDescriptorStorageImages
-			<< " (updatable: " << properties.device12.maxPerStageDescriptorUpdateAfterBindStorageImages << ");"
-			<< (properties.device12.shaderStorageImageArrayNonUniformIndexingNative ? StringView(" NonUniformIndexingNative;") : StringView())
+			<< " (updatable: " << properties.deviceDescriptorIndexing.maxPerStageDescriptorUpdateAfterBindStorageImages << ");"
+			<< (properties.deviceDescriptorIndexing.shaderStorageImageArrayNonUniformIndexingNative ? StringView(" NonUniformIndexingNative;") : StringView())
 			<< "\n";
 
 	stream << "\t[Limits: InputAttachments]"
 			" PerSet: " << properties.device10.properties.limits.maxDescriptorSetInputAttachments
-			<< " (updatable: " << properties.device12.maxDescriptorSetUpdateAfterBindInputAttachments << ");"
+			<< " (updatable: " << properties.deviceDescriptorIndexing.maxDescriptorSetUpdateAfterBindInputAttachments << ");"
 			" PerStage: " << properties.device10.properties.limits.maxPerStageDescriptorInputAttachments
-			<< " (updatable: " << properties.device12.maxPerStageDescriptorUpdateAfterBindInputAttachments << ");"
-			<< (properties.device12.shaderInputAttachmentArrayNonUniformIndexingNative ? StringView(" NonUniformIndexingNative;") : StringView())
+			<< " (updatable: " << properties.deviceDescriptorIndexing.maxPerStageDescriptorUpdateAfterBindInputAttachments << ");"
+			<< (properties.deviceDescriptorIndexing.shaderInputAttachmentArrayNonUniformIndexingNative ? StringView(" NonUniformIndexingNative;") : StringView())
 			<< "\n";
 
 	stream << "\t[Limits: Resources]"
 			" PerStage: " << properties.device10.properties.limits.maxPerStageDescriptorInputAttachments
-			<< " (updatable: " << properties.device12.maxPerStageUpdateAfterBindResources << ");"
+			<< " (updatable: " << properties.deviceDescriptorIndexing.maxPerStageUpdateAfterBindResources << ");"
 			"\n";
 	stream << "\t[Limits: Allocations] " << properties.device10.properties.limits.maxMemoryAllocationCount << " blocks, "
 			<< properties.device10.properties.limits.maxSamplerAllocationCount << " samplers;\n";
@@ -715,12 +939,38 @@ static void s_destroyDebugUtilsMessengerEXT(VkInstance instance, const PFN_vkGet
 
 #endif
 
+static ExtensionFlags getFlagForExtension(const char *name) {
+	if (strcmp(name, VK_KHR_MAINTENANCE3_EXTENSION_NAME) == 0) {
+		return ExtensionFlags::Maintenance3;
+	} else if (strcmp(name, VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME) == 0) {
+		return ExtensionFlags::DescriptorIndexing;
+	} else if (strcmp(name, VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME) == 0) {
+		return ExtensionFlags::DrawIndirectCount;
+	} else if (strcmp(name, VK_KHR_16BIT_STORAGE_EXTENSION_NAME) == 0) {
+		return ExtensionFlags::Storage16Bit;
+	} else if (strcmp(name, VK_KHR_8BIT_STORAGE_EXTENSION_NAME) == 0) {
+		return ExtensionFlags::Storage8Bit;
+	} else if (strcmp(name, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME) == 0) {
+		return ExtensionFlags::DeviceAddress;
+	} else if (strcmp(name, VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME) == 0) {
+		return ExtensionFlags::ShaderInt8 | ExtensionFlags::ShaderFloat16;
+	}
+	return ExtensionFlags::None;
+}
+
 bool checkIfExtensionAvailable(uint32_t apiVersion, const char *name, const Vector<VkExtensionProperties> &available,
-		Vector<StringView> &optionals, Vector<StringView> &promoted) {
+		Vector<StringView> &optionals, Vector<StringView> &promoted, ExtensionFlags &flags) {
+	auto flag = getFlagForExtension(name);
+	if (flag == ExtensionFlags::None) {
+		log::format("Vk", "Extension is not registered as optional: %s", name);
+		return false;
+	}
+
 	if (apiVersion >= VK_API_VERSION_1_2) {
 		for (auto &it : s_promotedVk12Extensions) {
 			if (it) {
 				if (strcmp(name, it) == 0) {
+					flags |= flag;
 					promoted.emplace_back(StringView(name));
 					return true;
 				}
@@ -731,6 +981,7 @@ bool checkIfExtensionAvailable(uint32_t apiVersion, const char *name, const Vect
 		for (auto &it : s_promotedVk11Extensions) {
 			if (it) {
 				if (strcmp(name, it) == 0) {
+					flags |= flag;
 					promoted.emplace_back(StringView(name));
 					return true;
 				}
@@ -740,6 +991,7 @@ bool checkIfExtensionAvailable(uint32_t apiVersion, const char *name, const Vect
 
 	for (auto &it : available) {
 		if (strcmp(name, it.extensionName) == 0) {
+			flags |= flag;
 			optionals.emplace_back(StringView(name));
 			return true;
 		}

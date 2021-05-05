@@ -77,14 +77,14 @@ bool PresentationDevice::init(Rc<Instance> inst, Rc<View> v, VkSurfaceKHR surfac
 		}
 	}
 
-	if (!VirtualDevice::init(inst, opts.device, opts.properties, uniqueQueueFamilies, features, extensions)) {
+	_enabledFeatures = features;
+	if (!VirtualDevice::init(inst, opts.device, opts.properties, uniqueQueueFamilies, _enabledFeatures, extensions)) {
 		return false;
 	}
 
 	_surface = surface;
 	_view = v;
 	_options = Rc<OptionsContainer>::alloc(move(opts));
-	_enabledFeatures = features;
 
 	if (_options->options.formats.empty()) {
 		_options->options.formats.emplace_back(VkSurfaceFormatKHR { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
@@ -285,7 +285,7 @@ void PresentationDevice::prepareCommands(const Rc<PresentationLoop> &loop, const
 }
 
 bool PresentationDevice::present(const Rc<FrameData> &frame) {
-	if (frame->status == FrameStatus::Presented) {
+	if (frame->status == FrameStatus::Presented || !isFrameUsable(frame)) {
 		return true;
 	}
 
@@ -314,11 +314,18 @@ bool PresentationDevice::present(const Rc<FrameData> &frame) {
 
 	frame->status = FrameStatus::Presented;
 	frame->sync->renderFinishedEnabled = false;
+	frame->sync->inUse = false;
+	frame->sync = nullptr;
+
+	_presentOrder = frame->order;
+
 	return true;
 }
 
 void PresentationDevice::dismiss(FrameData *data) {
-	data->sync->inUse.store(false);
+	if (data->sync) {
+		data->sync->inUse.store(false);
+	}
 	switch (data->status) {
 	case FrameStatus::Recieved:
 	case FrameStatus::TransferStarted:
@@ -353,8 +360,19 @@ Rc<Allocator> PresentationDevice::getAllocator() const {
 	return _allocator;
 }
 
+draw::VertexFormatSupport PresentationDevice::getVertexFormats() const {
+	draw::VertexFormatSupport ret;
+	ret |= draw::VertexFormatSupport::V4F_C4F;
+	ret |= draw::VertexFormatSupport::V4F_C4F_T2F;
+	if ((_enabledFeatures.flags & ExtensionFlags::Storage8Bit) != ExtensionFlags::None) {
+		ret |= draw::VertexFormatSupport::V4F_C4B;
+		ret |= draw::VertexFormatSupport::V4F_C4B_T2F;
+	}
+	return ret;
+}
+
 bool PresentationDevice::isFrameUsable(const FrameData *data) const {
-	return data->gen == _gen;
+	return data->gen == _gen && data->order >= _presentOrder;
 }
 
 void PresentationDevice::begin(Application *app, thread::TaskQueue &q) {

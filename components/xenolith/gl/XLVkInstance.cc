@@ -64,21 +64,39 @@ Instance::Features Instance::Features::getOptional() {
 	ret.device10.features.shaderSampledImageArrayDynamicIndexing = VK_TRUE;
 	ret.device10.features.shaderStorageBufferArrayDynamicIndexing = VK_TRUE;
 	ret.device10.features.shaderStorageBufferArrayDynamicIndexing = VK_TRUE;
-	ret.device12.drawIndirectCount = VK_TRUE;
-	ret.device12.descriptorIndexing = VK_TRUE;
-	ret.device12.shaderUniformBufferArrayNonUniformIndexing = VK_TRUE;
-	ret.device12.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
-	ret.device12.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE;
-	ret.device12.shaderStorageImageArrayNonUniformIndexing = VK_TRUE;
-	// ret.device12.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
-	ret.device12.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
-	ret.device12.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
-	ret.device12.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
-	ret.device12.descriptorBindingUpdateUnusedWhilePending = VK_TRUE;
-	ret.device12.descriptorBindingPartiallyBound = VK_TRUE;
-	ret.device12.descriptorBindingVariableDescriptorCount = VK_TRUE;
-	ret.device12.runtimeDescriptorArray = VK_TRUE;
-	ret.device12.bufferDeviceAddress = VK_TRUE;
+	ret.device10.features.shaderFloat64 = VK_TRUE;
+	ret.device10.features.shaderInt64 = VK_TRUE;
+	ret.device10.features.shaderInt16 = VK_TRUE;
+	ret.deviceShaderFloat16Int8.shaderFloat16 = VK_TRUE;
+	ret.deviceShaderFloat16Int8.shaderInt8 = VK_TRUE;
+	ret.device16bitStorage.storageBuffer16BitAccess = VK_TRUE;
+	//ret.device16bitStorage.uniformAndStorageBuffer16BitAccess = VK_TRUE;
+	//ret.device16bitStorage.storageInputOutput16 = VK_TRUE;
+	ret.device8bitStorage.storageBuffer8BitAccess = VK_TRUE;
+	//ret.device8bitStorage.uniformAndStorageBuffer8BitAccess = VK_TRUE;
+	ret.deviceDescriptorIndexing.shaderUniformBufferArrayNonUniformIndexing = VK_TRUE;
+	ret.deviceDescriptorIndexing.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+	ret.deviceDescriptorIndexing.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE;
+	ret.deviceDescriptorIndexing.shaderStorageImageArrayNonUniformIndexing = VK_TRUE;
+	// ret.deviceDescriptorIndexing.descriptorBindingUniformBufferUpdateAfterBind = VK_TRUE;
+	ret.deviceDescriptorIndexing.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+	ret.deviceDescriptorIndexing.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
+	ret.deviceDescriptorIndexing.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
+	ret.deviceDescriptorIndexing.descriptorBindingUpdateUnusedWhilePending = VK_TRUE;
+	ret.deviceDescriptorIndexing.descriptorBindingPartiallyBound = VK_TRUE;
+	ret.deviceDescriptorIndexing.descriptorBindingVariableDescriptorCount = VK_TRUE;
+	ret.deviceDescriptorIndexing.runtimeDescriptorArray = VK_TRUE;
+
+	ret.flags = ExtensionFlags::Maintenance3
+		| ExtensionFlags::DescriptorIndexing
+		| ExtensionFlags::DrawIndirectCount
+		| ExtensionFlags::Storage16Bit
+		| ExtensionFlags::Storage8Bit
+		| ExtensionFlags::DeviceAddress
+		| ExtensionFlags::ShaderFloat16
+		| ExtensionFlags::ShaderInt8;
+
+	ret.updateTo12();
 	return ret;
 }
 
@@ -420,6 +438,8 @@ Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurface
 		Properties deviceProperties;
 		if (vkGetPhysicalDeviceProperties2) {
 			vkGetPhysicalDeviceProperties2(device, &deviceProperties.device10);
+		} else if (vkGetPhysicalDeviceProperties2KHR) {
+			vkGetPhysicalDeviceProperties2KHR(device, &deviceProperties.device10);
 		} else {
 			vkGetPhysicalDeviceProperties(device, &deviceProperties.device10.properties);
 		}
@@ -455,6 +475,7 @@ Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurface
 			return;
 		}
 
+		ExtensionFlags extensionFlags = ExtensionFlags::None;
 		Vector<StringView> enabledOptionals;
 		Vector<StringView> promotedOptionals;
 		for (auto &extensionName : s_optionalDeviceExtensions) {
@@ -463,7 +484,7 @@ Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurface
 			}
 
 			checkIfExtensionAvailable(deviceProperties.device10.properties.apiVersion,
-					extensionName, availableExtensions, enabledOptionals, promotedOptionals);
+					extensionName, availableExtensions, enabledOptionals, promotedOptionals, extensionFlags);
 		}
 
 		VkSurfaceCapabilitiesKHR capabilities;
@@ -491,28 +512,16 @@ Vector<Instance::PresentationOptions> Instance::getPresentationOptions(VkSurface
 		if (!formats.empty() && !presentModes.empty()) {
 			if (!ptr || isMatch(deviceProperties, ptr)) {
 				Features features;
-				if (vkGetPhysicalDeviceFeatures2) {
-					vkGetPhysicalDeviceFeatures2(device, &features.device10);
-				} else {
-					vkGetPhysicalDeviceFeatures(device, &features.device10.features);
-				}
+				getDeviceFeatures(device, features, extensionFlags, deviceProperties.device10.properties.apiVersion);
 
 				auto req = Features::getRequired();
-				if (features.canEnable(req)) {
+				if (features.canEnable(req, deviceProperties.device10.properties.apiVersion)) {
 					ret.emplace_back(Instance::PresentationOptions(device,
 							queueInfo[graphicsFamily], queueInfo[presentFamily], queueInfo[transferFamily], queueInfo[computeFamily],
 							capabilities, move(formats), move(presentModes), move(enabledOptionals), move(promotedOptionals)));
-					if (vkGetPhysicalDeviceProperties2) {
-						vkGetPhysicalDeviceProperties2(device, &ret.back().properties.device10);
-					} else {
-						vkGetPhysicalDeviceProperties(device, &ret.back().properties.device10.properties);
-					}
 
-					if (vkGetPhysicalDeviceFeatures2) {
-						vkGetPhysicalDeviceFeatures2(device, &ret.back().features.device10);
-					} else {
-						vkGetPhysicalDeviceFeatures(device, &ret.back().features.device10.features);
-					}
+					getDeviceProperties(device, ret.back().properties, extensionFlags, deviceProperties.device10.properties.apiVersion);
+					getDeviceFeatures(device, ret.back().features, extensionFlags, deviceProperties.device10.properties.apiVersion);
 				}
 			}
         }
@@ -611,6 +620,82 @@ void Instance::printDevicesInfo(VkSurfaceKHR surface) const {
 		}
 	}
 	log::text("Vk-Info", out.str());
+}
+
+void Instance::getDeviceFeatures(const VkPhysicalDevice &device, Features &features, ExtensionFlags flags, uint32_t api) const {
+	if (api >= VK_API_VERSION_1_2) {
+		features.flags = flags;
+		features.device12.pNext = nullptr;
+		features.device11.pNext = &features.device12;
+		features.device10.pNext = &features.device11;
+
+		if (vkGetPhysicalDeviceFeatures2) {
+			vkGetPhysicalDeviceFeatures2(device, &features.device10);
+		} else if (vkGetPhysicalDeviceFeatures2KHR) {
+			vkGetPhysicalDeviceFeatures2KHR(device, &features.device10);
+		} else {
+			vkGetPhysicalDeviceFeatures(device, &features.device10.features);
+		}
+
+		features.updateFrom12();
+	} else {
+		features.flags = flags;
+
+		void *next = nullptr;
+		if ((flags & ExtensionFlags::Storage16Bit) != ExtensionFlags::None) {
+			features.device16bitStorage.pNext = next;
+			next = &features.device16bitStorage;
+		}
+		if ((flags & ExtensionFlags::Storage8Bit) != ExtensionFlags::None) {
+			features.device8bitStorage.pNext = next;
+			next = &features.device8bitStorage;
+		}
+		if ((flags & ExtensionFlags::ShaderFloat16) != ExtensionFlags::None || (flags & ExtensionFlags::ShaderInt8) != ExtensionFlags::None) {
+			features.deviceShaderFloat16Int8.pNext = next;
+			next = &features.deviceShaderFloat16Int8;
+		}
+		if ((flags & ExtensionFlags::DescriptorIndexing) != ExtensionFlags::None) {
+			features.deviceDescriptorIndexing.pNext = next;
+			next = &features.deviceDescriptorIndexing;
+		}
+		if ((flags & ExtensionFlags::DeviceAddress) != ExtensionFlags::None) {
+			features.deviceBufferDeviceAddress.pNext = next;
+			next = &features.deviceBufferDeviceAddress;
+		}
+		features.device10.pNext = next;
+
+		if (vkGetPhysicalDeviceFeatures2) {
+			vkGetPhysicalDeviceFeatures2(device, &features.device10);
+		} else if (vkGetPhysicalDeviceFeatures2KHR) {
+			vkGetPhysicalDeviceFeatures2KHR(device, &features.device10);
+		} else {
+			vkGetPhysicalDeviceFeatures(device, &features.device10.features);
+		}
+
+		features.updateTo12(true);
+	}
+}
+
+void Instance::getDeviceProperties(const VkPhysicalDevice &device, Properties &properties, ExtensionFlags flags, uint32_t api) const {
+	void *next = nullptr;
+	if ((flags & ExtensionFlags::Maintenance3) != ExtensionFlags::None) {
+		properties.deviceMaintenance3.pNext = next;
+		next = &properties.deviceMaintenance3;
+	}
+	if ((flags & ExtensionFlags::DescriptorIndexing) != ExtensionFlags::None) {
+		properties.deviceDescriptorIndexing.pNext = next;
+		next = &properties.deviceDescriptorIndexing;
+	}
+
+	properties.device10.pNext = next;
+
+	if (vkGetPhysicalDeviceProperties2) {
+		vkGetPhysicalDeviceProperties2(device, &properties.device10);
+	} else if (vkGetPhysicalDeviceProperties2KHR) {
+		vkGetPhysicalDeviceProperties2KHR(device, &properties.device10);
+	} else {
+		vkGetPhysicalDeviceProperties(device, &properties.device10.properties);
+	}
 }
 
 }

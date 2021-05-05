@@ -105,10 +105,17 @@ const mem::Value &Transaction::getValue(const mem::StringView &key) const {
 	return mem::Value::Null;
 }
 
-const mem::Value &Transaction::setObject(int64_t id, mem::Value &&val) const {
-	return _data->objects.emplace(id, std::move(val)).first->second;
+mem::Value Transaction::setObject(int64_t id, mem::Value &&val) const {
+	mem::Value ret;
+	mem::pool::push(_data->objects.get_allocator());
+	do {
+		ret = _data->objects.emplace(id, std::move(val)).first->second;
+	} while (0);
+	mem::pool::pop();
+	return ret;
 }
-const mem::Value &Transaction::getObject(int64_t id) const {
+
+mem::Value Transaction::getObject(int64_t id) const {
 	auto it = _data->objects.find(id);
 	if (it != _data->objects.end()) {
 		return it->second;
@@ -229,7 +236,7 @@ bool Transaction::remove(Worker &w, uint64_t oid) const {
 	bool hasD = (d && d->onRemove);
 
 	if (hasR || hasD) {
-		if (auto &obj = acquireObject(w.scheme(), oid)) {
+		if (auto obj = acquireObject(w.scheme(), oid)) {
 			if ((!hasD || d->onRemove(w, obj)) && (!hasR || r->onRemove(w, obj))) {
 				return _data->adapter.remove(w, oid);
 			}
@@ -319,7 +326,7 @@ mem::Value Transaction::save(Worker &w, uint64_t oid, const mem::Value &obj, con
 		bool hasD = (d && d->onSave);
 
 		if (hasR || hasD) {
-			if (auto &curObj = acquireObject(w.scheme(), oid)) {
+			if (auto curObj = acquireObject(w.scheme(), oid)) {
 				mem::Value newObj(obj);
 				mem::Vector<mem::String> newFields(fields);
 				if ((hasD && !d->onSave(w, curObj, newObj, newFields)) || (hasR && !r->onSave(w, curObj, newObj, newFields))) {
@@ -665,7 +672,7 @@ bool Transaction::processReturnField(const Scheme &scheme, const mem::Value &obj
 	auto slot = field.getSlot();
 	if (slot->readFilterFn) {
 		if (obj.isInteger()) {
-			if (auto &tmpObj = acquireObject(scheme, obj.getInteger())) {
+			if (auto tmpObj = acquireObject(scheme, obj.getInteger())) {
 				if (!slot->readFilterFn(scheme, tmpObj, val)) {
 					return false;
 				}
@@ -749,16 +756,21 @@ bool Transaction::isOpAllowed(const Scheme &scheme, Op op, const Field *f) const
 Transaction::Data::Data(const Adapter &adapter, stappler::memory::pool_t *p) : adapter(adapter), pool(p) { }
 
 
-const mem::Value &Transaction::acquireObject(const Scheme &scheme, uint64_t oid) const {
-	auto it = _data->objects.find(oid);
-	if (it == _data->objects.end()) {
-		if (auto obj = Worker(scheme, *this).asSystem().get(oid)) {
-			return _data->objects.emplace(oid, std::move(obj)).first->second;
+mem::Value Transaction::acquireObject(const Scheme &scheme, uint64_t oid) const {
+	mem::Value ret;
+	mem::pool::push(_data->objects.get_allocator());
+	do {
+		auto it = _data->objects.find(oid);
+		if (it == _data->objects.end()) {
+			if (auto obj = Worker(scheme, *this).asSystem().get(oid)) {
+				ret = _data->objects.emplace(oid, std::move(obj)).first->second;
+			}
+		} else {
+			ret = it->second;
 		}
-	} else {
-		return it->second;
-	}
-	return mem::Value::Null;
+	} while (0);
+	mem::pool::pop();
+	return ret;
 }
 
 AccessRole &AccessRole::define(Transaction::Op op) {

@@ -107,15 +107,15 @@ public:
 	const mem::Value &setValue(const mem::StringView &, mem::Value &&);
 	const mem::Value &getValue(const mem::StringView &) const;
 
-	const mem::Value &setObject(int64_t, mem::Value &&) const;
-	const mem::Value &getObject(int64_t) const;
+	mem::Value setObject(int64_t, mem::Value &&) const;
+	mem::Value getObject(int64_t) const;
 
 	void setAdapter(const Adapter &);
 	const Adapter &getAdapter() const;
 
 	operator bool () const { return _data != nullptr && _data->adapter; }
 
-	const mem::Value &acquireObject(const Scheme &, uint64_t oid) const;
+	mem::Value acquireObject(const Scheme &, uint64_t oid) const;
 
 public: // adapter interface
 	bool perform(const mem::Callback<bool()> & cb) const;

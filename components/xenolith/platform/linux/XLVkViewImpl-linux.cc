@@ -563,7 +563,7 @@ bool ViewImpl::init(Rc<Instance> instance, StringView viewName, URect rect) {
 	auto requiredFeatures = Instance::Features::getOptional();
 	requiredFeatures.enableFromFeatures(Instance::Features::getRequired());
 	requiredFeatures.disableFromFeatures(targetOpts.features);
-	if (targetOpts.features.canEnable(requiredFeatures)) {
+	if (targetOpts.features.canEnable(requiredFeatures, targetOpts.properties.device10.properties.apiVersion)) {
 		auto device = Rc<PresentationDevice>::create(instance, this, _surface, move(targetOpts), requiredFeatures);
 		if (!device) {
 			log::text("VkView", "Fail to create Vulkan presentation device");

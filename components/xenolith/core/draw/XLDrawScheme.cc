@@ -77,9 +77,9 @@ void DrawScheme::pushDrawIndexed(CommandGroup *g, vk::Pipeline *p, SpanView<Vert
 		++ cmdData->drawCount;
 	}
 
-	auto it = vertex.find(VertexFormat::Vertex_V4F_C4F_T2F);
+	auto it = vertex.find(VertexFormat::V4F_C4F_T2F);
 	if (it == vertex.end()) {
-		it = vertex.emplace(VertexFormat::Vertex_V4F_C4F_T2F).first;
+		it = vertex.emplace(VertexFormat::V4F_C4F_T2F).first;
 	}
 
 	CmdDrawIndexedIndirectData data;

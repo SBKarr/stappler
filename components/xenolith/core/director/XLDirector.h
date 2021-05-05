@@ -71,6 +71,7 @@ protected:
 	void invalidate();
 
 	bool _running = false;
+	draw::VertexFormatSupport _formats = draw::VertexFormatSupport::None;
 	Rc<vk::View> _view;
 
 	Mutex _mutex;

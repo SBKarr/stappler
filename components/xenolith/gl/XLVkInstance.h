@@ -40,11 +40,19 @@ public:
 		static Features getRequired();
 		static Features getOptional();
 
+		VkPhysicalDevice16BitStorageFeaturesKHR device16bitStorage = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES_KHR, nullptr };
+		VkPhysicalDevice8BitStorageFeaturesKHR device8bitStorage = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR, nullptr };
+		VkPhysicalDeviceShaderFloat16Int8FeaturesKHR deviceShaderFloat16Int8 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES_KHR, nullptr };
+		VkPhysicalDeviceDescriptorIndexingFeaturesEXT deviceDescriptorIndexing = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT, nullptr };
+		VkPhysicalDeviceBufferDeviceAddressFeaturesKHR deviceBufferDeviceAddress = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR, nullptr };
+#if VK_VERSION_1_2
 		VkPhysicalDeviceVulkan12Features device12 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES, nullptr };
 		VkPhysicalDeviceVulkan11Features device11 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES, nullptr };
-		VkPhysicalDeviceFeatures2 device10 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, nullptr };
+#endif
+		VkPhysicalDeviceFeatures2KHR device10 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR, nullptr };
+		ExtensionFlags flags = ExtensionFlags::None;
 
-		bool canEnable(const Features &) const;
+		bool canEnable(const Features &, uint32_t version) const;
 
 		// enables all features, that enabled in f
 		void enableFromFeatures(const Features &);
@@ -52,15 +60,18 @@ public:
 		// disables all features, that disabled in f
 		void disableFromFeatures(const Features &f);
 
+		void updateFrom12();
+		void updateTo12(bool updateFlags = false);
+
 		Features();
 		Features(const Features &);
 		Features &operator=(const Features &);
 	};
 
 	struct Properties {
-		VkPhysicalDeviceVulkan12Properties device12 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES, nullptr };
-		VkPhysicalDeviceVulkan11Properties device11 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES, nullptr };
-		VkPhysicalDeviceProperties2 device10 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, nullptr };
+		VkPhysicalDeviceDescriptorIndexingPropertiesEXT deviceDescriptorIndexing = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT, nullptr };
+		VkPhysicalDeviceMaintenance3PropertiesKHR deviceMaintenance3 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES_KHR, nullptr };
+		VkPhysicalDeviceProperties2KHR device10 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR, nullptr };
 
 		Properties();
 		Properties(const Properties &);
@@ -118,6 +129,9 @@ public:
 	void printDevicesInfo(VkSurfaceKHR surface = VK_NULL_HANDLE) const;
 
 private:
+	void getDeviceFeatures(const VkPhysicalDevice &device, Features &, ExtensionFlags, uint32_t) const;
+	void getDeviceProperties(const VkPhysicalDevice &device, Properties &, ExtensionFlags, uint32_t) const;
+
 	friend class VirtualDevice;
 	friend class DrawDevice;
 	friend class PresentationDevice;

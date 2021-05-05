@@ -56,6 +56,8 @@ public:
 	VkSwapchainKHR getSwapChain() const { return _swapChain; }
 	Rc<Allocator> getAllocator() const;
 
+	draw::VertexFormatSupport getVertexFormats() const;
+
 	uint64_t getOrder() const { return _order; }
 
 	bool isFrameUsable(const FrameData *) const;
@@ -109,6 +111,7 @@ private:
 	VkPresentModeKHR _presentMode = VK_PRESENT_MODE_FIFO_KHR;
 	uint32_t _gen = 0;
 	uint64_t _order = 0;
+	uint64_t _presentOrder = 0;
 };
 
 }

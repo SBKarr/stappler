@@ -1,5 +1,5 @@
 /**
-Copyright (c) 2020 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2020-2021 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -38,8 +38,21 @@ enum class CommandType {
 
 enum class VertexFormat {
 	None,
-	Vertex_V4F_C4F_T2F,
+	V4F_C4F, // textureless surface - default
+	V4F_C4F_T2F, // texture surface - default
+	V4F_C4B, // textureless surface - 8-bit color, should be supported by driver
+	V4F_C4B_T2F, // textureless surface - 8-bit color, should be supported by driver
 };
+
+enum class VertexFormatSupport {
+	None,
+	V4F_C4F = 1 << 0,
+	V4F_C4F_T2F = 1 << 1,
+	V4F_C4B = 1 << 2,
+	V4F_C4B_T2F = 1 << 3,
+};
+
+SP_DEFINE_ENUM_AS_MASK(VertexFormatSupport)
 
 enum class LayoutFormat {
 	None,

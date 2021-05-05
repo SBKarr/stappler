@@ -119,13 +119,18 @@ static constexpr bool s_enableValidationLayers = false;
 static const char * const * s_validationLayers = nullptr;
 #endif
 
-static const char * const s_optionalExtension[] = {
+static const char * const s_requiredExtension[] = {
 	VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
+	nullptr
+};
+
+static const char * const s_optionalExtension[] = {
 	nullptr
 };
 
 static const char * const s_requiredDeviceExtensions[] = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+	VK_KHR_STORAGE_BUFFER_STORAGE_CLASS_EXTENSION_NAME,
 	nullptr
 };
 
@@ -137,10 +142,29 @@ static const char * const s_optionalDeviceExtensions[] = {
 	// DrawInderectCount
 	VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME,
 
+	// 16-bit, 8-bit shader storage
+	VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
+	VK_KHR_8BIT_STORAGE_EXTENSION_NAME,
+	VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME,
+
 	// BufferDeviceAddress
 	VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
 	nullptr
 };
+
+enum class ExtensionFlags {
+	None,
+	Maintenance3 = 1 << 0,
+	DescriptorIndexing = 1 << 1,
+	DrawIndirectCount = 1 << 2,
+	Storage16Bit =  1 << 3,
+	Storage8Bit = 1 << 4,
+	DeviceAddress = 1 << 5,
+	ShaderFloat16 = 1 << 6,
+	ShaderInt8 = 1 << 7
+};
+
+SP_DEFINE_ENUM_AS_MASK(ExtensionFlags);
 
 static const char * const s_promotedVk11Extensions[] = {
 	VK_KHR_16BIT_STORAGE_EXTENSION_NAME,

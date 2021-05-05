@@ -34,7 +34,7 @@ public:
 	using Properties = Instance::Properties;
 
 	virtual ~VirtualDevice();
-	virtual bool init(Rc<Instance>, VkPhysicalDevice, const Properties &, const Set<uint32_t> &, const Features &,
+	virtual bool init(Rc<Instance>, VkPhysicalDevice, const Properties &, const Set<uint32_t> &, Features &,
 			const Vector<const char *> & exts = Vector<const char *>());
 	virtual bool init(Rc<Instance>, Rc<Allocator>);
 

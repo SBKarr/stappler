@@ -93,7 +93,7 @@ PresentationLoop::PresentationLoop(Application *app, Rc<View> v, Rc<Presentation
 : _application(app), _view(v), _device(dev), _director(dir), _frameTimeMicroseconds(frameMicroseconds) { }
 
 void PresentationLoop::threadInit() {
-	thread::ThreadInfo::setThreadInfo(0, 0, "PresentLoop", false);
+	thread::ThreadInfo::setThreadInfo("PresentLoop");
 
 	memory::pool::initialize();
 	_pool = memory::pool::createTagged("Xenolith::PresentationLoop", mempool::custom::PoolFlags::ThreadSafeAllocator);
@@ -210,10 +210,11 @@ bool PresentationLoop::worker() {
 						auto frame = it.data.cast<FrameData>();
 						auto clock = platform::device::_clock();
 						pushUpdate(frame, "Present[T]");
+						auto syncIdx = frame->sync->idx;
 						auto ret = _device->present(frame);
 						log::vtext("Vk-Event", "Present[T}: ", platform::device::_clock() - clock, " ",
 								data.getLastFrameInterval(), " ", data.now - data.frame, " ", data.getFrameInterval(), " ", data.low, " ",
-								frame->sync->idx, ":", frame->imageIdx);
+								syncIdx, ":", frame->imageIdx, " - ", frame->order);
 						if (!ret) {
 							invalidateSwapchain(ViewEvent::SwapchainRecreation);
 						} else {
@@ -273,10 +274,11 @@ bool PresentationLoop::worker() {
 							if (data.frameInterval == 0 || data.now - data.frame > data.getFrameInterval() - data.updateInterval) {
 								auto clock = platform::device::_clock();
 								pushUpdate(frame, "Present[C]");
+								auto syncIdx = frame->sync->idx;
 								auto ret = _device->present(frame);
 								log::vtext("Vk-Event", "Present[C}: ", platform::device::_clock() - clock, " ",
 										data.getLastFrameInterval(), " ", data.now - data.frame, " ", data.getFrameInterval(), " ", data.low, " ",
-										frame->sync->idx, ":", frame->imageIdx);
+										syncIdx, ":", frame->imageIdx, " - ", frame->order);
 								if (!ret) {
 									invalidateSwapchain(ViewEvent::SwapchainRecreation);
 								} else {

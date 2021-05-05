@@ -35,11 +35,13 @@ struct ThreadInfo {
 	static ThreadInfo *getThreadLocal();
 	static void setMainThread();
 	static void setThreadInfo(uint32_t, uint32_t, StringView, bool);
+	static void setThreadInfo(StringView);
 
 	uint32_t threadId = 0;
 	uint32_t workerId = 0;
 	StringView name;
 	bool managed = false;
+	bool detouched = false;
 };
 
 class TaskQueue : public Ref {
