@@ -207,9 +207,8 @@ auto BytesViewTemplate<Endianess>::pdup(memory::pool_t *p) const -> Self {
 	if (!p) {
 		p = memory::pool::acquire();
 	}
-	auto buf = (uint8_t *)memory::pool::palloc(p, (this->size() + 1) * sizeof(uint8_t));
+	auto buf = (uint8_t *)memory::pool::palloc(p, this->size() * sizeof(uint8_t));
 	memcpy(buf, this->data(), this->size() * sizeof(uint8_t));
-	buf[this->size()] = 0;
 	return Self(buf, this->size());
 }
 

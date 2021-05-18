@@ -63,7 +63,7 @@ public:
 	/**
 	 * Constructs a new vector initialized to all zeros.
 	 */
-	Vec2();
+	constexpr Vec2() : x(0.0f), y(0.0f) { }
 
 	/**
 	 * Constructs a new vector initialized to the specified values.
@@ -71,7 +71,7 @@ public:
 	 * @param xx The x coordinate.
 	 * @param yy The y coordinate.
 	 */
-	Vec2(float xx, float yy);
+	constexpr Vec2(float xx, float yy) : x(xx), y(yy) { }
 
 	/**
 	 * Constructs a new vector from the values in the specified array.
@@ -93,14 +93,9 @@ public:
 	 *
 	 * @param copy The vector to copy.
 	 */
-	Vec2(const Vec2& copy);
+	constexpr Vec2(const Vec2& copy) : x(copy.x), y(copy.y) { }
 
-	explicit Vec2(const Size &);
-
-	/**
-	 * Destructor.
-	 */
-	~Vec2();
+	explicit Vec2(const Size2 &);
 
 	/**
 	 * Indicates whether this vector contains all zeros.

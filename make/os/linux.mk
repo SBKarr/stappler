@@ -44,8 +44,5 @@ OSTYPE_STELLATOR_LIBS += $(OSTYPE_COMMON_LIBS) -l:libsqlite3.a -l:libhyphen.a -l
 OSTYPE_STAPPLER_LIBS += $(OSTYPE_CLI_LIBS) -l:libhyphen.a -l:libglfw3.a -l:libfreetype.a \
 	-lGLEW -lGL -lX11 -lXrandr -lXi -lXinerama -lXcursor
 
-OSTYPE_XENOLITH_LIBS += $(OSTYPE_CLI_LIBS) -l:libhyphen.a -l:libfreetype.a \
-	-l:libshaderc_combined.a -lX11 -lXrandr -lXi -lXinerama -lXcursor -lxcb
-
 OSTYPE_LDFLAGS := -Wl,-z,defs -rdynamic -fuse-ld=gold
 OSTYPE_EXEC_FLAGS := -fuse-ld=gold

@@ -33,15 +33,18 @@ namespace stappler::platform::interaction {
 	bool _dialogOpened = false;
 	void _goToUrl(const StringView &url, bool external) {
 		log::format("Interaction", "GoTo url: %s", url.data());
-		::system(toString("xdg-open ", url).data());
+		auto ret = ::system(toString("xdg-open ", url).data());
+		(void) ret;
 	}
 	void _makePhoneCall(const StringView &str) {
 		log::format("Interaction", "phone: %s", str.data());
-		::system(toString("xdg-open ", str).data());
+		auto ret = ::system(toString("xdg-open ", str).data());
+		(void) ret;
 	}
 	void _mailTo(const StringView &address) {
 		log::format("Interaction", "MailTo: %s", address.data());
-		::system(toString("xdg-open ", address).data());
+		auto ret = ::system(toString("xdg-open ", address).data());
+		(void) ret;
 	}
 	void _backKey() { }
 	void _notification(const StringView &title, const StringView &text) {

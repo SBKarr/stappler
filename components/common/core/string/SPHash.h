@@ -172,11 +172,11 @@ private:
 	}
 };
 
-static constexpr uint32_t hash32(const char* str, size_t len, uint32_t seed = 0) {
+inline constexpr uint32_t hash32(const char* str, size_t len, uint32_t seed = 0) {
     return xxh32::hash(str, len, seed);
 }
 
-static constexpr uint64_t hash64(const char* str, size_t len, uint64_t seed = 0) {
+inline constexpr uint64_t hash64(const char* str, size_t len, uint64_t seed = 0) {
     return xxh64::hash(str, len, seed);
 }
 

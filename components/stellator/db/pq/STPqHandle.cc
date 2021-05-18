@@ -658,7 +658,8 @@ void Handle::makeQuery(const stappler::Callback<void(sql::SqlQuery &)> &cb) {
 	cb(query);
 }
 
-bool Handle::selectQuery(const sql::SqlQuery &query, const stappler::Callback<void(sql::Result &)> &cb) {
+bool Handle::selectQuery(const sql::SqlQuery &query, const stappler::Callback<void(sql::Result &)> &cb,
+		const mem::Callback<void(const mem::Value &)> &errCb) {
 	if (!conn.get() || getTransactionStatus() == db::TransactionStatus::Rollback) {
 		return false;
 	}
@@ -681,6 +682,9 @@ bool Handle::selectQuery(const sql::SqlQuery &query, const stappler::Callback<vo
 		std::cout << mem::EncodeFormat::Pretty << info << "\n";
 		info.setString(query.getQuery().str(), "query");
 #endif
+		if (errCb) {
+			errCb(info);
+		}
 		messages::debug("Database", "Fail to perform query", std::move(info));
 		messages::error("Database", "Fail to perform query");
 		cancelTransaction_pg();
@@ -693,7 +697,7 @@ bool Handle::selectQuery(const sql::SqlQuery &query, const stappler::Callback<vo
 	return res.isSuccess();
 }
 
-bool Handle::performSimpleQuery(const mem::StringView &query) {
+bool Handle::performSimpleQuery(const mem::StringView &query, const mem::Callback<void(const mem::Value &)> &errCb) {
 	if (getTransactionStatus() == db::TransactionStatus::Rollback) {
 		return false;
 	}
@@ -702,6 +706,9 @@ bool Handle::performSimpleQuery(const mem::StringView &query) {
 	lastError = res.getError();
 	if (!res.isSuccess()) {
 		auto info = res.getInfo();
+		if (errCb) {
+			errCb(info);
+		}
 		s_logMutex.lock();
 		std::cout << query << "\n";
 		std::cout << info << "\n";
@@ -711,7 +718,8 @@ bool Handle::performSimpleQuery(const mem::StringView &query) {
 	return res.isSuccess();
 }
 
-bool Handle::performSimpleSelect(const mem::StringView &query, const stappler::Callback<void(sql::Result &)> &cb) {
+bool Handle::performSimpleSelect(const mem::StringView &query, const stappler::Callback<void(sql::Result &)> &cb,
+		const mem::Callback<void(const mem::Value &)> &errCb) {
 	if (getTransactionStatus() == db::TransactionStatus::Rollback) {
 		return false;
 	}
@@ -725,6 +733,9 @@ bool Handle::performSimpleSelect(const mem::StringView &query, const stappler::C
 		return true;
 	} else {
 		auto info = res.getInfo();
+		if (errCb) {
+			errCb(info);
+		}
 		s_logMutex.lock();
 		std::cout << query << "\n";
 		std::cout << info << "\n";

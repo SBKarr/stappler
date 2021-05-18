@@ -45,10 +45,6 @@ TOOLKIT_TITLE := material
 
 include $(GLOBAL_ROOT)/make/utils/toolkit.mk
 
-$(MATERIAL_OUTPUT_DIR)/include/%.h : /%.h
-	@$(GLOBAL_MKDIR) $(dir $(MATERIAL_OUTPUT_DIR)/include/$*.h)
-	@cp -f $< $(MATERIAL_OUTPUT_DIR)/include/$*.h
-
 $(MATERIAL_OUTPUT_STATIC) : $(MATERIAL_H_GCH) $(MATERIAL_GCH) $(MATERIAL_OBJS)
 	$(GLOBAL_QUIET_LINK) $(GLOBAL_AR) $(MATERIAL_OUTPUT_STATIC) $(MATERIAL_OBJS)
 

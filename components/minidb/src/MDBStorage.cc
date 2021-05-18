@@ -84,19 +84,7 @@ void Storage::closePage(mem::BytesView mem) const {
 bool Storage::writePage(PageCache *cache, uint32_t idx, int fd, mem::BytesView bytes) const {
 	auto s = cache ? cache->getPageSize() : _params.pageSize;
 	if (_sourceMemory.empty()) {
-		if (idx >= (cache ? cache->getPageCount() : 0)) {
-			off64_t offset = idx; offset = offset * s + s - 1;
-			if (::lseek(fd, offset, SEEK_SET) == -1 || ::write(fd, "", 1) == -1) {
-				return false;
-			}
-		}
-		off64_t offset = idx; offset *= s;
-		auto mem = ::mmap(nullptr, bytes.size(), PROT_WRITE, MAP_SHARED | MAP_NONBLOCK, fd, offset);
-		if (mem != MAP_FAILED) {
-			memcpy(mem, bytes.data(), bytes.size());
-			::msync(mem, bytes.size(), MS_SYNC);
-			::munmap(mem, bytes.size());
-		}
+		writePageTarget(idx, fd, bytes, s, cache ? cache->getPageCount() : 0);
 	} else {
 		if (idx >= _sourceMemory.size()) {
 			auto current = _sourceMemory.size();
@@ -435,15 +423,25 @@ static bool Storage_init(const Transaction &t, const mem::Map<mem::StringView, c
 }
 
 bool Storage::init(const mem::Map<mem::StringView, const db::Scheme *> &map) {
+	bool shouldApplyWal = false;
+	if (!_sourceName.empty()) {
+		auto walMapPath = toString(_sourceName, ".wal");
+		if (stappler::filesystem::exists(walMapPath)) {
+			shouldApplyWal = true;
+		}
+	}
+
 	Transaction t;
 	bool ret = false;
-	if (t.open(*this, OpenMode::Read)) {
-		std::unique_lock<std::shared_mutex> lock(t.getMutex());
-		mem::pool::push(t.getPool());
-		ret = Storage_init(t, map, _dicts, _dictsIds, _schemes);
-		mem::pool::pop();
-		t.close();
-	}
+	// if (!shouldApplyWal) {
+		if (t.open(*this, OpenMode::Read)) {
+			std::unique_lock<std::shared_mutex> lock(t.getMutex());
+			mem::pool::push(t.getPool());
+			ret = Storage_init(t, map, _dicts, _dictsIds, _schemes);
+			mem::pool::pop();
+			t.close();
+		}
+	// }
 	if (!ret) {
 		_dicts.clear();
 		_dictsIds.clear();
@@ -537,6 +535,8 @@ Storage::Storage(mem::pool_t *p, mem::StringView path, StorageParams params)
 			t.close();
 		}
 	} else {
+		// try to apply existed WAL
+		applyWal(_sourceName, fd);
 		::flock(fd, LOCK_UN);
 	}
 
@@ -596,6 +596,65 @@ Storage::Storage(mem::pool_t *p, mem::BytesView data, StorageParams params)
 			t.close();
 		}
 	}
+}
+
+void Storage::applyWal(mem::StringView path, int sfd) const {
+	auto walMapPath = toString(path, ".wal");
+	if (!stappler::filesystem::exists(walMapPath)) {
+		return;
+	}
+
+	auto storagefileSize = ::lseek(sfd, 0, SEEK_END);
+
+	auto wfd = ::open(walMapPath.data(), O_RDONLY, 0);
+	auto fileSize = ::lseek(wfd, 0, SEEK_END);
+
+	auto origin = (uint8_t *)::mmap(nullptr, fileSize, PROT_READ, MAP_PRIVATE | MAP_NONBLOCK, wfd, 0);
+
+	WalHeader *h = (WalHeader *)origin;
+	if (memcmp(h->title, WalTitle.data(), WalTitle.size()) != 0 || h->version != WalVersion) {
+		unlink(walMapPath.data());
+		close(wfd);
+		return;
+	}
+
+	uint32_t pageSize = 1 << h->pageSize;
+	uint32_t targetSize = h->count * pageSize + h->offset;
+	if (fileSize != targetSize) {
+		unlink(walMapPath.data());
+		close(wfd);
+		return;
+	}
+
+	uint32_t *pageMap = (uint32_t *)(origin + sizeof(WalHeader));
+
+	uint8_t *page = origin + h->offset;
+
+	auto storagePageCount = storagefileSize / pageSize;
+
+	for (size_t i = 0; i < h->count; ++ i) {
+		writePageTarget(pageMap[i], sfd, mem::BytesView(page + i * pageSize, pageSize), pageSize, storagePageCount);
+	}
+
+	unlink(walMapPath.data());
+	close(wfd);
+}
+
+bool Storage::writePageTarget(uint32_t idx, int fd, mem::BytesView bytes, uint32_t pageSize, uint32_t pageCount) const {
+	if (idx >= pageCount) {
+		off64_t offset = idx; offset = offset * pageSize + pageSize - 1;
+		if (::lseek(fd, offset, SEEK_SET) == -1 || ::write(fd, "", 1) == -1) {
+			return false;
+		}
+	}
+	off64_t offset = idx; offset *= pageSize;
+	auto mem = ::mmap(nullptr, bytes.size(), PROT_WRITE, MAP_SHARED | MAP_NONBLOCK, fd, offset);
+	if (mem != MAP_FAILED) {
+		memcpy(mem, bytes.data(), bytes.size());
+		::msync(mem, bytes.size(), MS_SYNC);
+		::munmap(mem, bytes.size());
+	}
+	return true;
 }
 
 }

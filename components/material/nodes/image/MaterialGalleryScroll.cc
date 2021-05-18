@@ -281,7 +281,6 @@ bool GalleryScroll::onSwipeEnd(const Vec2 &velocity) {
 }
 
 bool GalleryScroll::onPinch(const Vec2 &point, float scale, float velocity, bool isEnded) {
-	auto vec = _primary->getTexturePosition();
 	return _primary->onPinch(point, scale, velocity, isEnded);
 }
 

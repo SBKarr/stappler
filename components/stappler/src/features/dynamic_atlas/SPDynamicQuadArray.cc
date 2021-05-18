@@ -142,6 +142,7 @@ void DynamicQuadArray::setGeometry(size_t index, const Vec2 &pos, const Size &si
 
 	_quadsDirty = true;
 }
+
 void DynamicQuadArray::setColor(size_t index, const cocos2d::Color4B &color) {
 	_quads[index].bl.colors = color;
 	_quads[index].br.colors = color;
@@ -150,6 +151,7 @@ void DynamicQuadArray::setColor(size_t index, const cocos2d::Color4B &color) {
 
 	_quadsDirty = true;
 }
+
 void DynamicQuadArray::setColor(size_t index, cocos2d::Color4B colors[4]) {
 	_quads[index].bl.colors = colors[0];
 	_quads[index].br.colors = colors[1];

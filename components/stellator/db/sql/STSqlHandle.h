@@ -71,9 +71,12 @@ public:
 public: // interface
 	virtual void makeQuery(const stappler::Callback<void(SqlQuery &)> &cb) = 0;
 
-	virtual bool selectQuery(const SqlQuery &, const stappler::Callback<void(Result &)> &cb) = 0;
-	virtual bool performSimpleQuery(const mem::StringView &) = 0;
-	virtual bool performSimpleSelect(const mem::StringView &, const stappler::Callback<void(Result &)> &cb) = 0;
+	virtual bool selectQuery(const SqlQuery &, const stappler::Callback<void(Result &)> &cb,
+			const mem::Callback<void(const mem::Value &)> &err = nullptr) = 0;
+	virtual bool performSimpleQuery(const mem::StringView &,
+			const mem::Callback<void(const mem::Value &)> &err = nullptr) = 0;
+	virtual bool performSimpleSelect(const mem::StringView &, const stappler::Callback<void(Result &)> &cb,
+			const mem::Callback<void(const mem::Value &)> &err = nullptr) = 0;
 
 	virtual bool isSuccess() const = 0;
 

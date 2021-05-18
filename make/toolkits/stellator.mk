@@ -53,10 +53,6 @@ TOOLKIT_TITLE := stellator
 
 include $(GLOBAL_ROOT)/make/utils/toolkit.mk
 
-$(STELLATOR_OUTPUT_DIR)/include/%.h : /%.h
-	@$(GLOBAL_MKDIR) $(dir $(STELLATOR_OUTPUT_DIR)/include/$*.h)
-	@cp -f $< $(STELLATOR_OUTPUT_DIR)/include/$*.h
-
 $(STELLATOR_OUTPUT_STATIC) : $(STELLATOR_H_GCH) $(STELLATOR_GCH) $(STELLATOR_OBJS)
 	$(GLOBAL_QUIET_LINK) $(GLOBAL_AR) $(STELLATOR_OUTPUT_STATIC) $(STELLATOR_OBJS)
 

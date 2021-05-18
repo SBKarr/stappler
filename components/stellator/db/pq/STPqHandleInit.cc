@@ -1099,7 +1099,10 @@ bool Handle::init(const Interface::Config &cfg, const mem::Map<mem::StringView, 
 
 	auto name = mem::toString(".serenity/update.", stappler::Time::now().toMilliseconds(), ".sql");
 	if (stream.size() > 3) {
-		if (performSimpleQuery(stream.weak())) {
+		if (performSimpleQuery(stream.weak(), [&] (const mem::Value &errInfo) {
+			stream << "Server: " << cfg.name << "\n";
+			stream << "\nErrorInfo: " << mem::EncodeFormat::Pretty << errInfo << "\n";
+		})) {
 			performSimpleQuery("COMMIT;"_weak);
 		} else {
 			stappler::log::format("Database", "Fail to perform update %s", name.c_str());

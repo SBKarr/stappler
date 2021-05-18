@@ -40,7 +40,7 @@ public:
 		if ((++_current) >= Count) _current = 0;
 	}
 	T getAverage(bool exceptZero = false) {
-		size_t c;
+		size_t c = 0;
 		T s = 0;
 		for (size_t i = 0; i < Count; i++) {
 			if (!exceptZero || _values[i] != 0) {

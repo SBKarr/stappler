@@ -104,8 +104,9 @@ class Image;
 
 using FilePath = ValueWrapper<StringView, class FilePathTag>;
 
-class Size;
-class Rect;
+struct Size2;
+struct Size3;
+struct Rect;
 
 NS_LAYOUT_END
 

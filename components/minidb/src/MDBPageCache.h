@@ -59,6 +59,9 @@ protected:
 	void writeIndexData(const Transaction &t, const SchemeCell &scheme, IndexCell *cell, mem::Vector<IntegerIndexPayload> &payload);
 	void writeIndexes(const Transaction &);
 
+	bool makeWal() const;
+	void clearWal() const;
+
 	const Storage *_storage = nullptr;
 	int _fd = -1;
 	bool _writable = false;

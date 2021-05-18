@@ -84,7 +84,6 @@ bool SidebarLayout::init(Position pos) {
 		}
 
     	if (ev == gesture::Event::Began) {
-			auto loc = convertToNodeSpace(s.location());
     		if (fabsf(s.delta.y) < fabsf(s.delta.x) && !node::isTouched(_node, s.location())) {
     			stopNodeActions();
 				onSwipeDelta(s.delta.x / stappler::screen::density());

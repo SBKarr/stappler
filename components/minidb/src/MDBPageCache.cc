@@ -152,9 +152,17 @@ void PageCache::clear(const Transaction &t, bool commit) {
 		*((StorageHeader *)page->bytes.data()) = _header;
 		closePage(page);
 	}
+
+	bool hasWal = false;
 	std::unique_lock<mem::Mutex> lock(_mutex);
+	if (commit && _writable) {
+		hasWal = makeWal();
+	}
+
+	bool success = true;
+
 	auto it = _pages.begin();
-	while (it != _pages.end()) {
+	while (it != _pages.end() && success) {
 		if (it->second.refCount.load() == 0) {
 			switch (it->second.mode) {
 			case OpenMode::Read:
@@ -169,7 +177,9 @@ void PageCache::clear(const Transaction &t, bool commit) {
 							return;
 						}
 					}
-					_storage->writePage(this, it->second.number, _fd, it->second.bytes);
+					if (!_storage->writePage(this, it->second.number, _fd, it->second.bytes)) {
+						success = false;
+					}
 				}
 
 				pages::free(it->second.bytes);
@@ -179,6 +189,10 @@ void PageCache::clear(const Transaction &t, bool commit) {
 		} else {
 			++ it;
 		}
+	}
+
+	if (commit && _writable && success && hasWal) {
+		clearWal();
 	}
 }
 
@@ -380,5 +394,102 @@ void PageCache::writeIndexes(const Transaction &t) {
 	_intIndex.clear();
 	mem::pool::destroy(p);
 }
+
+bool PageCache::makeWal() const {
+	if (_storage->isMemoryStorage()) {
+		return true;
+	}
+
+	size_t walFileSize = 0;
+	mem::Vector<uint32_t> pageMap;
+
+	for (auto &it : _pages) {
+		if (it.second.refCount.load() == 0) {
+			switch (it.second.mode) {
+			case OpenMode::Read:
+				break;
+			case OpenMode::Write:
+				pageMap.emplace_back(it.second.number);
+				walFileSize += getPageSize();
+				break;
+			}
+		}
+	}
+
+	auto path = _storage->getSourceName();
+	auto walMapPath = toString(path, ".wal");
+	if (stappler::filesystem::exists(walMapPath)) {
+		return false;
+	}
+
+	WalHeader header;
+	memcpy((void *)header.title, WalTitle.data(), WalTitle.size());
+	header.version = 0; // WalVersion; - make WAL invalid, so, write fail will not produce processeble WAL
+	header.pageSize = getPageSizeByte(_pageSize);
+	header.mtime = mem::Time::now().toMicros();
+	header.count = pageMap.size();
+
+	uint32_t mapSize = sizeof(uint32_t) * pageMap.size() + sizeof(WalHeader);
+
+	header.offset = (mapSize + _pageSize - 1) & ~(_pageSize - 1);
+
+	auto extraPages = header.offset / _pageSize;
+
+	auto fd = ::open(walMapPath.data(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
+	if (fd < 0) {
+		return false;
+	}
+
+	auto fileSize = _pageSize * (extraPages + pageMap.size());
+	if (::lseek(fd, fileSize - 1, SEEK_SET) == -1 || ::write(fd, "", 1) == -1) {
+		close(fd);
+		return false;
+	}
+
+	auto origin = (uint8_t *)::mmap(nullptr, fileSize, PROT_WRITE, MAP_SHARED | MAP_NONBLOCK, fd, 0);
+	if (!origin) {
+		return false;
+	}
+
+	uint8_t *mem = origin;
+	memcpy(mem, (void *)&header, sizeof(WalHeader)); mem += sizeof(WalHeader);
+	memcpy(mem, pageMap.data(), pageMap.size() * sizeof(uint32_t));
+
+	mem = origin + header.offset;
+
+	for (auto &it : _pages) {
+		if (it.second.refCount.load() == 0) {
+			switch (it.second.mode) {
+			case OpenMode::Read:
+				break;
+			case OpenMode::Write:
+				memcpy(mem, it.second.bytes.data(), it.second.bytes.size());
+				mem += it.second.bytes.size();
+				break;
+			}
+		}
+	}
+
+	::msync(origin, fileSize, MS_SYNC);
+	::munmap(origin, fileSize);
+
+	// activate WAL
+	header.version = WalVersion;
+	::lseek(fd, 0, SEEK_SET);
+	::write(fd, &header, sizeof(WalHeader));
+	::close(fd);
+	return true;
+}
+
+void PageCache::clearWal() const {
+	if (_storage->isMemoryStorage()) {
+		return;
+	}
+
+	auto path = _storage->getSourceName();
+	auto walMapPath = toString(path, ".wal");
+	::unlink(walMapPath.data());
+}
+
 
 }

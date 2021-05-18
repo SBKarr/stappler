@@ -95,6 +95,15 @@ struct StorageHeader {
 	uint32_t root; // 28 - 31
 };
 
+struct WalHeader {
+	uint8_t title[6]; // 0 - 5
+	uint8_t version; // 6
+	uint8_t pageSize; // 7 ( size = 1 << value)
+	uint64_t mtime; // 8 - 15
+	uint32_t count; // 16 - 19
+	uint32_t offset; // 20 - 23
+};
+
 struct PageNode {
 	uint32_t number = 0;
 	mem::BytesView bytes;
@@ -198,6 +207,9 @@ constexpr uint32_t PageCacheLimit = 24;
 
 constexpr auto FormatTitle = mem::StringView("minidb");
 constexpr uint8_t FormatVersion = 1;
+
+constexpr auto WalTitle = mem::StringView("mdbwal");
+constexpr uint8_t WalVersion = 1;
 
 template <typename T>
 inline constexpr bool has_single_bit(T x) noexcept {

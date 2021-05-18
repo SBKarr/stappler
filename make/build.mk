@@ -41,11 +41,37 @@ else
 GLOBAL_PREBUILT_LIBS_PATH := $(realpath $(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH))
 endif
 
+ifdef LOCAL_TOOLKIT
+ifeq ($(LOCAL_TOOLKIT),material)
+-include $(GLOBAL_ROOT)/$(COCOS2D_ROOT)/cocos2d.mk
+include $(GLOBAL_ROOT)/make/toolkits/material.mk
+include $(GLOBAL_ROOT)/make/toolkits/stappler.mk
+endif
+ifeq ($(LOCAL_TOOLKIT),stappler)
+-include $(GLOBAL_ROOT)/$(COCOS2D_ROOT)/cocos2d.mk
+include $(GLOBAL_ROOT)/make/toolkits/stappler.mk
+endif
+ifeq ($(LOCAL_TOOLKIT),cli)
+-include $(GLOBAL_ROOT)/$(COCOS2D_ROOT)/cocos2d.mk
+include $(GLOBAL_ROOT)/make/toolkits/cli.mk
+endif
+ifeq ($(LOCAL_TOOLKIT),common)
+include $(GLOBAL_ROOT)/make/toolkits/common.mk
+endif
+ifeq ($(LOCAL_TOOLKIT),serenity)
+include $(GLOBAL_ROOT)/make/toolkits/serenity.mk
+endif
+ifeq ($(LOCAL_TOOLKIT),stellator)
+include $(GLOBAL_ROOT)/make/toolkits/stellator.mk
+endif
+ifeq ($(LOCAL_TOOLKIT),none)
+ifdef LOCAL_TOOLKIT_EXTERNAL
+include $(LOCAL_TOOLKIT_EXTERNAL)
+endif
+endif
+else
 # cocos2d deps
 -include $(GLOBAL_ROOT)/$(COCOS2D_ROOT)/cocos2d.mk
-
-# libxenolith
-include $(GLOBAL_ROOT)/make/toolkits/xenolith.mk
 
 # libstappler + libcocos2d
 include $(GLOBAL_ROOT)/make/toolkits/stappler.mk
@@ -65,6 +91,7 @@ include $(GLOBAL_ROOT)/make/toolkits/serenity.mk
 
 # stellator - minimal http server library
 include $(GLOBAL_ROOT)/make/toolkits/stellator.mk
+endif
 endif
 
 ifeq (4.1,$(firstword $(sort $(MAKE_VERSION) 4.1)))

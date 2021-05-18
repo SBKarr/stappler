@@ -184,6 +184,14 @@ public:
 	Self operator - (const Self &) const;
 	Self& operator -= (const Self &) const;
 
+	uint64_t hash() const {
+		return hash::hash64((const char *)this->data(), this->size() * sizeof(CharType));
+	}
+
+	uint64_t hash32() const {
+		return hash::hash32((const char *)this->data(), this->size() * sizeof(CharType));
+	}
+
 public:
 	Result<float> readFloat();
 	Result<double> readDouble();
@@ -343,6 +351,14 @@ public:
 	size_t code_size() const;
 
 	operator StringViewBase<char> () const;
+
+	uint64_t hash() const {
+		return hash::hash64((const char *)data(), size() * sizeof(CharType));
+	}
+
+	uint64_t hash32() const {
+		return hash::hash32((const char *)data(), size() * sizeof(CharType));
+	}
 
 public:
 	Result<float> readFloat();

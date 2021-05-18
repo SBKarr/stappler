@@ -44,6 +44,12 @@ $(foreach obj,$($(TOOLKIT_NAME)_GCH) $($(TOOLKIT_NAME)_OBJS),$(eval $(call count
 -include $(patsubst %.h.gch,%.h.gch.d,$($(TOOLKIT_NAME)_GCH))
 
 # $(1) is a parameter to substitute. The $$ will expand as $.
+
+define $(TOOLKIT_NAME)_include_rule
+$(1): $(subst $(2)/,/,$(1))
+	$$(call sp_copy_header,$(1),$(2))
+endef
+
 define $(TOOLKIT_NAME)_gch_rule
 $(1): $(patsubst %.h.gch,%.h,$(1)) $(call sp_make_dep,$(1))
 	$$(call sp_compile_gch,$(2))
@@ -66,6 +72,8 @@ $(abspath $(addprefix $(2),$(patsubst %.mm,%.o,$(1)))): $(1) $$($$(TOOLKIT_NAME)
 		$(call sp_make_dep,$(abspath $(addprefix $(2),$(patsubst %.mm,%.o,$(1)))))
 	$$(call sp_compile_mm,$(3))
 endef
+
+$(foreach target,$(patsubst %.h.gch,%.h,$($(TOOLKIT_NAME)_GCH)),$(eval $(call $(TOOLKIT_NAME)_include_rule,$(target),$($(TOOLKIT_NAME)_OUTPUT_DIR)/include)))
 
 $(foreach target,$($(TOOLKIT_NAME)_GCH),$(eval $(call $(TOOLKIT_NAME)_gch_rule,$(target),$($(TOOLKIT_NAME)_CXXFLAGS))))
 

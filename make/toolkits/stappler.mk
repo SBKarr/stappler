@@ -90,10 +90,6 @@ TOOLKIT_TITLE := stappler
 
 include $(GLOBAL_ROOT)/make/utils/toolkit.mk
 
-$(STAPPLER_OUTPUT_DIR)/include/%.h : /%.h
-	@$(GLOBAL_MKDIR) $(dir $(STAPPLER_OUTPUT_DIR)/include/$*.h)
-	@cp -f $< $(STAPPLER_OUTPUT_DIR)/include/$*.h
-
 $(STAPPLER_OUTPUT_STATIC) : $(STAPPLER_H_GCH) $(STAPPLER_GCH) $(STAPPLER_OBJS)
 	$(GLOBAL_QUIET_LINK) $(GLOBAL_AR) $(STAPPLER_OUTPUT_STATIC) $(STAPPLER_OBJS)
 

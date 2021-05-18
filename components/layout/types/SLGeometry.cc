@@ -31,73 +31,81 @@ THE SOFTWARE.
 
 NS_LAYOUT_BEGIN
 
-Size::Size(void) : width(0), height(0) { }
-
-Size::Size(float w, float h) : width(w), height(h) { }
-
-Size::Size(const Size& other) : width(other.width), height(other.height) { }
-
-Size::Size(const Vec2& point) : width(point.x), height(point.y) { }
-
-Size& Size::operator= (const Size& other) {
-	setSize(other.width, other.height);
-	return *this;
-}
-
-Size& Size::operator= (const Vec2& point) {
+Size2& Size2::operator= (const Vec2& point) {
 	setSize(point.x, point.y);
 	return *this;
 }
 
-Size Size::operator+(const Size& right) const {
+Size2 Size2::operator+(const Size2& right) const {
 	return Size(this->width + right.width, this->height + right.height);
 }
 
-Size Size::operator-(const Size& right) const {
+Size2 Size2::operator-(const Size2& right) const {
 	return Size(this->width - right.width, this->height - right.height);
 }
 
-Size Size::operator*(float a) const {
-	return Size(this->width * a, this->height * a);
+Size2 Size2::operator*(float a) const {
+	return Size2(this->width * a, this->height * a);
 }
 
-Size Size::operator/(float a) const {
+Size2 Size2::operator/(float a) const {
 	SPASSERT(a!=0, "CCSize division by 0.");
-	return Size(this->width / a, this->height / a);
+	return Size2(this->width / a, this->height / a);
 }
 
-void Size::setSize(float w, float h) {
+void Size2::setSize(float w, float h) {
 	this->width = w;
 	this->height = h;
 }
 
-bool Size::equals(const Size& target) const {
-	return (fabs(this->width - target.width) < NumericLimits<float>::epsilon())
-	&& (fabs(this->height - target.height) < NumericLimits<float>::epsilon());
+bool Size2::equals(const Size2& target) const {
+	return
+			(fabs(this->width - target.width) < NumericLimits<float>::epsilon()) &&
+			(fabs(this->height - target.height) < NumericLimits<float>::epsilon());
 }
 
-const Size Size::ZERO = Size(0, 0);
-
-// implementation of Rect
-
-Rect::Rect(void) {
-	setRect(0.0f, 0.0f, 0.0f, 0.0f);
-}
-
-Rect::Rect(float x, float y, float width, float height) {
-	setRect(x, y, width, height);
-}
-
-Rect::Rect(const Vec2 &o, const Size &s) : origin(o), size(s) {}
-
-Rect::Rect(const Rect& other) {
-	setRect(other.origin.x, other.origin.y, other.size.width, other.size.height);
-}
-
-Rect& Rect::operator= (const Rect& other) {
-	setRect(other.origin.x, other.origin.y, other.size.width, other.size.height);
+Size3& Size3::operator=(const Vec3& point) {
+	width = point.x;
+	height = point.y;
+	depth = point.z;
 	return *this;
 }
+
+Size3 Size3::operator+(const Size3& right) const {
+	Size3 ret(*this);
+	ret.width += right.width;
+	ret.height += right.height;
+	ret.depth += right.depth;
+	return ret;
+}
+Size3 Size3::operator-(const Size3& right) const {
+	Size3 ret(*this);
+	ret.width -= right.width;
+	ret.height -= right.height;
+	ret.depth -= right.depth;
+	return ret;
+}
+Size3 Size3::operator*(float a) const {
+	Size3 ret(*this);
+	ret.width *= a;
+	ret.height *= a;
+	ret.depth *= a;
+	return ret;
+}
+Size3 Size3::operator/(float a) const {
+	Size3 ret(*this);
+	ret.width /= a;
+	ret.height /= a;
+	ret.depth /= a;
+	return ret;
+}
+
+bool Size3::equals(const Size3& target) const {
+	return
+			(fabs(this->width - target.width) < NumericLimits<float>::epsilon()) &&
+			(fabs(this->height - target.height) < NumericLimits<float>::epsilon());
+}
+
 
 void Rect::setRect(float x, float y, float width, float height) {
 	// CGRect can support width<0 or height<0

@@ -60,6 +60,8 @@ public:
 	uint8_t getDictId(const db::Scheme *) const;
 	uint64_t getDictOid(uint8_t) const;
 
+	bool isMemoryStorage() const { return !_sourceMemory.empty(); }
+
 protected:
 	friend class Transaction;
 
@@ -67,6 +69,9 @@ protected:
 
 	Storage(mem::pool_t *, mem::StringView path, StorageParams params);
 	Storage(mem::pool_t *, mem::BytesView data, StorageParams params);
+
+	void applyWal(mem::StringView, int) const;
+	bool writePageTarget(uint32_t idx, int fd, mem::BytesView, uint32_t pageSize, uint32_t pageCount) const;
 
 	mem::pool_t *_pool = nullptr;
 	mem::StringView _sourceName;

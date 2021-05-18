@@ -75,16 +75,10 @@ SERENITY_VIRTUAL_SRCS := \
 	$(shell find $(GLOBAL_ROOT)/components/serenity/virtual/html -name '*.html') \
 	$(shell find $(GLOBAL_ROOT)/components/serenity/virtual/html -name '*.pug')
 
-# Progress counter
-
 TOOLKIT_NAME := SERENITY
 TOOLKIT_TITLE := serenity
 
 include $(GLOBAL_ROOT)/make/utils/toolkit.mk
-
-$(SERENITY_OUTPUT_DIR)/include/%.h : /%.h
-	@$(GLOBAL_MKDIR) $(dir $(SERENITY_OUTPUT_DIR)/include/$*.h)
-	@cp -f $< $(SERENITY_OUTPUT_DIR)/include/$*.h
 
 $(abspath $(GLOBAL_ROOT)/components/serenity/gen/__Virtual.cpp): $(SERENITY_VIRTUAL_SRCS)
 	@mkdir -p $(GLOBAL_ROOT)/components/serenity/gen

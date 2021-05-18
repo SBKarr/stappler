@@ -58,10 +58,6 @@ TOOLKIT_TITLE := cli
 
 include $(GLOBAL_ROOT)/make/utils/toolkit.mk
 
-$(CLI_OUTPUT_DIR)/include/%.h : /%.h
-	@$(GLOBAL_MKDIR) $(dir $(CLI_OUTPUT_DIR)/include/$*.h)
-	@cp -f $< $(CLI_OUTPUT_DIR)/include/$*.h
-
 $(CLI_OUTPUT_STATIC) : $(CLI_H_GCH) $(CLI_GCH) $(CLI_OBJS)
 	$(GLOBAL_QUIET_LINK) $(GLOBAL_AR) $(CLI_OUTPUT_STATIC) $(CLI_OBJS)
 

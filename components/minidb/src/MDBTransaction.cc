@@ -85,6 +85,10 @@ bool Transaction::open(const Storage &storage, OpenMode mode) {
 
 	::flock(_fd, mode == OpenMode::Read ? LOCK_SH : LOCK_EX);
 
+	if (mode == OpenMode::Write) {
+		storage.applyWal(storage.getSourceName(), _fd);
+	}
+
 	_fileSize = ::lseek(_fd, 0, SEEK_END);
 	if (_fileSize > 0) {
 		_mode = mode;

@@ -36,10 +36,6 @@ TOOLKIT_TITLE := common
 
 include $(GLOBAL_ROOT)/make/utils/toolkit.mk
 
-$(COMMON_OUTPUT_DIR)/include/%.h : /%.h
-	@$(GLOBAL_MKDIR) $(dir $(COMMON_OUTPUT_DIR)/include/$*.h)
-	@cp -f $< $(COMMON_OUTPUT_DIR)/include/$*.h
-
 $(COMMON_OUTPUT_STATIC) : $(COMMON_H_GCH) $(COMMON_GCH) $(COMMON_OBJS)
 	$(GLOBAL_QUIET_LINK) $(GLOBAL_AR) $(COMMON_OUTPUT_STATIC) $(COMMON_OBJS)
 

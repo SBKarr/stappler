@@ -34,180 +34,155 @@ NS_LAYOUT_BEGIN
  * stappler-cocos2d-x fork use this sources as a replacement of original
  */
 
-class Size : public AllocBase {
-public:
-	/**Width of the Size.*/
-	float width;
-	/**Height of the Size.*/
-	float height;
+struct Size2 {
+	static const Size2 ZERO;
 
-	/**Size(0,0).*/
-	static const Size ZERO;
+	float width = 0.0f;
+	float height = 0.0f;
 
-public:
-	/**Conversion from Vec2 to Size.*/
+	constexpr Size2() = default;
+	constexpr Size2(float w, float h) : width(w), height(h) { }
+	constexpr Size2(const Size2 &other) = default;
+	constexpr explicit Size2(const Vec2 &point) : width(point.x), height(point.y) { }
+
 	operator Vec2() const {return Vec2(width, height);}
 
-	bool operator==(const Size &s) const { return s.width == width && s.height == height; }
-	bool operator!=(const Size &s) const { return s.width != width || s.height != height; }
+	bool operator==(const Size2 &s) const { return equals(s); }
+	bool operator!=(const Size2 &s) const { return !equals(s); }
 
-public:
-	/**
-	 @{
-	 Constructor.
-	 @param width Width of the size.
-	 @param height Height of the size.
-	 @param other Copy constructor.
-	 @param point Conversion from a point.
-	 */
-	Size();
-	Size(float width, float height);
-	Size(const Size& other);
-	explicit Size(const Vec2& point);
-	/**@}*/
+	Size2& operator= (const Size2 &other) = default;
+	Size2& operator= (const Vec2 &point);
 
-	/**
-	 * @js NA
-	 * @lua NA
-	 */
-	Size& operator= (const Size& other);
-	/**
-	 * @js NA
-	 * @lua NA
-	 */
-	Size& operator= (const Vec2& point);
-	/**
-	 * @js NA
-	 * @lua NA
-	 */
-	Size operator+(const Size& right) const;
-	/**
-	 * @js NA
-	 * @lua NA
-	 */
-	Size operator-(const Size& right) const;
-	/**
-	 * @js NA
-	 * @lua NA
-	 */
-	Size operator*(float a) const;
-	/**
-	 * @js NA
-	 * @lua NA
-	 */
-	Size operator/(float a) const;
-	/**
-	 Set the width and height of Size.
-	 * @js NA
-	 * @lua NA
-	 */
+	Size2 operator+(const Size2 &right) const;
+	Size2 operator-(const Size2 &right) const;
+	Size2 operator*(float a) const;
+	Size2 operator/(float a) const;
+
 	void setSize(float width, float height);
-	/**
-	 Check if two size is the same.
-	 * @js NA
-	 */
-	bool equals(const Size& target) const;
+
+	bool equals(const Size2 &target) const;
 };
 
-/**Rectangle area.*/
-class Rect : public AllocBase {
-public:
-	/**Low left point of rect.*/
-	Vec2 origin;
-	/**Width and height of the rect.*/
-	Size size;
+inline constexpr Size2 Size2::ZERO(0.0f, 0.0f);
 
-	/**An empty Rect.*/
+
+struct Size3 {
+	static const Size3 ZERO;
+
+	float width = 0.0f;
+	float height = 0.0f;
+	float depth = 0.0f;
+
+	constexpr Size3() = default;
+	constexpr Size3(float w, float h, float d) : width(w), height(h), depth(d) { }
+	constexpr Size3(const Size3& other) = default;
+	constexpr explicit Size3(const Vec3& point) : width(point.x), height(point.y), depth(point.z) { }
+
+	operator Vec3() const { return Vec3(width, height, depth); }
+
+	bool operator==(const Size3 &s) const { return equals(s); }
+	bool operator!=(const Size3 &s) const { return !equals(s); }
+
+	Size3& operator= (const Size3& other) = default;
+	Size3& operator= (const Vec3& point);
+
+	Size3 operator+(const Size3& right) const;
+	Size3 operator-(const Size3& right) const;
+	Size3 operator*(float a) const;
+	Size3 operator/(float a) const;
+
+	bool equals(const Size3& target) const;
+};
+
+inline constexpr Size3 Size3::ZERO = Size3(0.0f, 0.0f, 0.0f);
+
+
+struct Extent2 {
+	static const Extent2 ZERO;
+
+	uint32_t width = 0;
+	uint32_t height = 0;
+
+	constexpr Extent2() = default;
+	constexpr Extent2(uint32_t w, uint32_t h) : width(w), height(h) { }
+
+	constexpr Extent2(const Extent2 &other) = default;
+	Extent2& operator= (const Extent2 &other) = default;
+
+	constexpr explicit Extent2(const Size2 &size) : width(size.width), height(size.height) { }
+	constexpr explicit Extent2(const Vec2 &point) : width(point.x), height(point.y) { }
+
+	Extent2& operator= (const Size2 &size) { width = size.width; height = size.width; return *this; }
+	Extent2& operator= (const Vec2 &other) { width = other.x; height = other.y; return *this; }
+
+	operator Size2 () const { return Size2(width, height); }
+};
+
+inline constexpr Extent2 Extent2::ZERO = Extent2(0, 0);
+
+
+struct Extent3 {
+	static const Extent3 ZERO;
+
+	uint32_t width = 0;
+	uint32_t height = 0;
+	uint32_t depth = 0;
+
+	constexpr Extent3() = default;
+	constexpr Extent3(uint32_t w, uint32_t h, uint32_t d) : width(w), height(h), depth(d) { }
+
+	constexpr Extent3(const Extent3& other) = default;
+	Extent3& operator= (const Extent3& other) = default;
+
+	constexpr explicit Extent3(const Size3 &size) : width(size.width), height(size.height), depth(size.depth) { }
+	constexpr explicit Extent3(const Vec3 &point) : width(point.x), height(point.y), depth(point.z) { }
+
+	Extent3& operator= (const Size3 &size) { width = size.width; height = size.width; depth = size.depth; return *this; }
+	Extent3& operator= (const Vec3 &other) { width = other.x; height = other.y; depth = other.z; return *this; }
+
+	operator Size3 () const { return Size3(width, height, depth); }
+};
+
+inline constexpr Extent3 Extent3::ZERO = Extent3(0, 0, 0);
+
+
+struct Rect {
 	static const Rect ZERO;
 
-public:
-	/**
-	 Constructor an empty Rect.
-	 * @js NA
-	 */
-	Rect();
-	/**
-	 Constructor a rect.
-	 * @js NA
-	 */
-	Rect(float x, float y, float width, float height);
-	Rect(const Vec2 &origin, const Size &size);
-	/**
-	 Copy constructor.
-	 * @js NA
-	 * @lua NA
-	 */
-	Rect(const Rect& other);
-	/**
-	 * @js NA
-	 * @lua NA
-	 */
-	Rect& operator= (const Rect& other);
-	/**
-	 Set the x, y, width and height of Rect.
-	 * @js NA
-	 * @lua NA
-	 */
+	Vec2 origin;
+	Size2 size;
+
+	constexpr Rect() = default;
+	constexpr Rect(float x, float y, float width, float height) : origin(x, y), size(width, height) { }
+	constexpr Rect(const Vec2 &origin, const Size2 &size) : origin(origin), size(size) { }
+	constexpr Rect(const Rect& other) = default;
+
+	Rect& operator= (const Rect& other) = default;
+
 	void setRect(float x, float y, float width, float height);
-	/**
-	 Get the left of the rect.
-	 * @js NA
-	 */
+
 	float getMinX() const; /// return the leftmost x-value of current rect
-	/**
-	 Get the X coordinate of center point.
-	 * @js NA
-	 */
 	float getMidX() const; /// return the midpoint x-value of current rect
-	/**
-	 Get the right of rect.
-	 * @js NA
-	 */
 	float getMaxX() const; /// return the rightmost x-value of current rect
-	/**
-	 Get the bottom of rect.
-	 * @js NA
-	 */
 	float getMinY() const; /// return the bottommost y-value of current rect
-	/**
-	 Get the Y coordinate of center point.
-	 * @js NA
-	 */
 	float getMidY() const; /// return the midpoint y-value of current rect
-	/**
-	 Get top of rect.
-	 * @js NA
-	 */
 	float getMaxY() const; /// return the topmost y-value of current rect
-	/**
-	 Compare two rects.
-	 * @js NA
-	 */
+
 	bool equals(const Rect& rect) const;
-	/**
-	 Check if the points is contained in the rect.
-	 * @js NA
-	 */
+
 	bool containsPoint(const Vec2& point) const;
-	/**
-	 Check the intersect status of two rects.
-	 * @js NA
-	 */
 	bool intersectsRect(const Rect& rect) const;
-	/**
-	 Check the intersect status of the rect and a circle.
-	 * @js NA
-	 */
 	bool intersectsCircle(const Vec2& center, float radius) const;
-	/**
-	 Get the min rect which can contain this and rect.
-	 * @js NA
-	 * @lua NA
-	 */
+
+	/** Get the min rect which can contain this and rect. */
 	Rect unionWithRect(const Rect & rect) const;
-	/**Compute the min rect which can contain this and rect, assign it to this.*/
+
+	/** Compute the min rect which can contain this and rect, assign it to this. */
 	void merge(const Rect& rect);
 };
+
+inline constexpr Rect Rect::ZERO = Rect(0.0f, 0.0f, 0.0f, 0.0f);
+
 
 Rect TransformRect(const Rect& rect, const Mat4& transform);
 Vec2 TransformPoint(const Vec2& point, const Mat4& transform);
@@ -218,10 +193,12 @@ inline std::ostream & operator<<(std::ostream & stream, const Rect & obj) {
 	return stream;
 }
 
-inline std::ostream & operator<<(std::ostream & stream, const Size & obj) {
+inline std::ostream & operator<<(std::ostream & stream, const Size2 & obj) {
 	stream << "Size(width:" << obj.width << " height:" << obj.height << ");";
 	return stream;
 }
+
+using Size = Size2;
 
 NS_LAYOUT_END
 

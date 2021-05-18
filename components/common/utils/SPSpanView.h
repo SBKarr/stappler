@@ -60,12 +60,12 @@ public:
 
 	SpanView(const Self &v) : ptr(v.data()), len(v.size()) { }
 
-	Self &operator=(const memory::vector<Type> &vec) { ptr = vec.data(); len = vec.size(); }
-	Self &operator=(const std::vector<Type> &vec) { ptr = vec.data(); len = vec.size();}
+	Self &operator=(const memory::vector<Type> &vec) { ptr = vec.data(); len = vec.size(); return *this; }
+	Self &operator=(const std::vector<Type> &vec) { ptr = vec.data(); len = vec.size(); return *this; }
 
 	template <size_t Size>
-	Self &operator=(const std::array<Type, Size> &arr) { ptr = arr.data(); len = arr.size();}
-	Self &operator=(const Self &v) { ptr = v.data(); len = v.size(); }
+	Self &operator=(const std::array<Type, Size> &arr) { ptr = arr.data(); len = arr.size(); return *this; }
+	Self &operator=(const Self &v) { ptr = v.data(); len = v.size(); return *this; }
 
 	Self & set(const Type *p, size_t l) { ptr = p; len = l; return *this; }
 
@@ -116,6 +116,16 @@ public:
 	BytesView bytes() const {
 		return BytesView((uint8_t *)ptr, len * sizeof(Type));
 	}
+
+	Self pdup(memory::pool_t *p = nullptr) const {
+		if (!p) {
+			p = memory::pool::acquire();
+		}
+		auto buf = (Type *)memory::pool::palloc(p, this->size() * sizeof(Type));
+		memcpy(buf, this->data(), this->size() * sizeof(Type));
+		return Self(buf, this->size());
+	}
+
 
 protected:
 	const Type *ptr = nullptr;
