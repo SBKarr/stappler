@@ -64,6 +64,7 @@ public:
 
 protected:
 	friend class Transaction;
+	friend class PageCache;
 
 	void free();
 

@@ -161,33 +161,55 @@ void PageCache::clear(const Transaction &t, bool commit) {
 
 	bool success = true;
 
-	auto it = _pages.begin();
-	while (it != _pages.end() && success) {
-		if (it->second.refCount.load() == 0) {
-			switch (it->second.mode) {
-			case OpenMode::Read:
-				_storage->closePage(it->second.bytes);
-				-- _nmapping;
-				break;
-			case OpenMode::Write:
-				if (commit) {
-					if (it->second.number == 0) {
-						if (memcmp(it->second.bytes.data(), "minidb", 6) != 0) {
-							stappler::log::text("minidb", "Broken first page detected");
-							return;
+	if (hasWal) {
+		auto it = _pages.begin();
+		while (it != _pages.end() && success) {
+			if (it->second.refCount.load() == 0) {
+				switch (it->second.mode) {
+				case OpenMode::Read:
+					_storage->closePage(it->second.bytes);
+					-- _nmapping;
+					break;
+				case OpenMode::Write:
+					pages::free(it->second.bytes);
+					break;
+				}
+				it = _pages.erase(it);
+			} else {
+				++ it;
+			}
+		}
+
+		_storage->applyWal(_storage->getSourceName(), _fd);
+	} else {
+		auto it = _pages.begin();
+		while (it != _pages.end() && success) {
+			if (it->second.refCount.load() == 0) {
+				switch (it->second.mode) {
+				case OpenMode::Read:
+					_storage->closePage(it->second.bytes);
+					-- _nmapping;
+					break;
+				case OpenMode::Write:
+					if (commit) {
+						if (it->second.number == 0) {
+							if (memcmp(it->second.bytes.data(), "minidb", 6) != 0) {
+								stappler::log::text("minidb", "Broken first page detected");
+								return;
+							}
+						}
+						if (!_storage->writePage(this, it->second.number, _fd, it->second.bytes)) {
+							success = false;
 						}
 					}
-					if (!_storage->writePage(this, it->second.number, _fd, it->second.bytes)) {
-						success = false;
-					}
-				}
 
-				pages::free(it->second.bytes);
-				break;
+					pages::free(it->second.bytes);
+					break;
+				}
+				it = _pages.erase(it);
+			} else {
+				++ it;
 			}
-			it = _pages.erase(it);
-		} else {
-			++ it;
 		}
 	}
 
@@ -400,18 +422,24 @@ bool PageCache::makeWal() const {
 		return true;
 	}
 
+	using MapType = mem::Pair<uint32_t, uint32_t>;
+
 	size_t walFileSize = 0;
-	mem::Vector<uint32_t> pageMap;
+	mem::Vector<MapType> pageMap;
 
 	for (auto &it : _pages) {
 		if (it.second.refCount.load() == 0) {
 			switch (it.second.mode) {
 			case OpenMode::Read:
 				break;
-			case OpenMode::Write:
-				pageMap.emplace_back(it.second.number);
+			case OpenMode::Write: {
+				uint32_t h = stappler::hash::hash32((const char *)it.second.bytes.data(), it.second.bytes.size());
+				pageMap.emplace_back(it.second.number, h);
 				walFileSize += getPageSize();
+				// std::cout << "WAL page init:  " << it.second.number << " "
+				//		<< stappler::base16::encode(mem::BytesView((const uint8_t *)&h, sizeof(uint32_t))) << "\n";
 				break;
+			}
 			}
 		}
 	}
@@ -429,7 +457,7 @@ bool PageCache::makeWal() const {
 	header.mtime = mem::Time::now().toMicros();
 	header.count = pageMap.size();
 
-	uint32_t mapSize = sizeof(uint32_t) * pageMap.size() + sizeof(WalHeader);
+	uint32_t mapSize = sizeof(MapType) * pageMap.size() + sizeof(WalHeader);
 
 	header.offset = (mapSize + _pageSize - 1) & ~(_pageSize - 1);
 
@@ -453,7 +481,7 @@ bool PageCache::makeWal() const {
 
 	uint8_t *mem = origin;
 	memcpy(mem, (void *)&header, sizeof(WalHeader)); mem += sizeof(WalHeader);
-	memcpy(mem, pageMap.data(), pageMap.size() * sizeof(uint32_t));
+	memcpy(mem, pageMap.data(), pageMap.size() * sizeof(MapType));
 
 	mem = origin + header.offset;
 

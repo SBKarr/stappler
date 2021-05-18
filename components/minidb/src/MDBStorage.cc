@@ -213,6 +213,8 @@ static bool Storage_init(const Transaction &t, const mem::Map<mem::StringView, c
 					iit->second.pages = obj.pages;
 				}
 
+				// std::cout << "Dict found: " << oid << " " << stappler::base16::encode(hash) << "\n";
+
 				++ idx;
 			}
 		}
@@ -242,7 +244,7 @@ static bool Storage_init(const Transaction &t, const mem::Map<mem::StringView, c
 		auto dict = it.second->getCompressDict();
 		if (!dict.empty()) {
 			auto hash = stappler::string::Sha512().init().update(dict).final();
-			auto hashBytes = mem::BytesView(hash);
+			auto hashBytes = mem::BytesView(hash).pdup();
 
 			bool found = false;
 
@@ -283,7 +285,10 @@ static bool Storage_init(const Transaction &t, const mem::Map<mem::StringView, c
 						obj.header->oid.dictId = dicts.size();
 						auto iit = dicts.emplace(uint8_t(dicts.size()), DictData(int64_t(obj.header->oid.value), hashBytes, obj.pages)).first;
 						storageDicts.emplace(it.second, iit->first);
+
+						// std::cout << "New dict: " << obj.header->oid.dictId << " " << stappler::base16::encode(hashBytes) << "\n";
 					} else {
+						// std::cout << "Dict not found: " << stappler::base16::encode(hashBytes) << "\n";
 						return false;
 					}
 				} else {
@@ -626,14 +631,26 @@ void Storage::applyWal(mem::StringView path, int sfd) const {
 		return;
 	}
 
-	uint32_t *pageMap = (uint32_t *)(origin + sizeof(WalHeader));
+	mem::Pair<uint32_t, uint32_t> *pageMap = (mem::Pair<uint32_t, uint32_t> *)(origin + sizeof(WalHeader));
 
 	uint8_t *page = origin + h->offset;
 
 	auto storagePageCount = storagefileSize / pageSize;
 
 	for (size_t i = 0; i < h->count; ++ i) {
-		writePageTarget(pageMap[i], sfd, mem::BytesView(page + i * pageSize, pageSize), pageSize, storagePageCount);
+		auto id = pageMap[i].first;
+		auto bytes = mem::BytesView(page + i * pageSize, pageSize);
+		uint32_t h = stappler::hash::hash32((const char *)bytes.data(), bytes.size());
+
+		if (h == pageMap[i].second) {
+			// std::cout << "WAL page write: " << id << " "
+			//		<< stappler::base16::encode(mem::BytesView((const uint8_t *)&h, sizeof(uint32_t))) << "\n";
+			writePageTarget(id, sfd, bytes, pageSize, storagePageCount);
+		} else {
+			std::cout << "WAL page invalid: " << id << " "
+					<< stappler::base16::encode(mem::BytesView((const uint8_t *)&h, sizeof(uint32_t))) << " vs. "
+					<< stappler::base16::encode(mem::BytesView((const uint8_t *)&pageMap[i].second, sizeof(uint32_t))) << "\n";
+		}
 	}
 
 	unlink(walMapPath.data());
