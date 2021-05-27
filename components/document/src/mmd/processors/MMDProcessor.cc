@@ -312,7 +312,9 @@ Content::Footnote *Processor::parseAbbrBracket(token * t) {
 		}
 
 		if (label) {
-			Content::Footnote * temp = new Content::Footnote(source, label, label->next, false, Content::Footnote::Note); // force to Note
+			auto p = used_citations.get_allocator().getPool();
+			memory::pool::push(p);
+			Content::Footnote * temp = new (p) Content::Footnote(source, label, label->next, false, Content::Footnote::Note); // force to Note
 
 			// Adjust the properties
 			temp->label_text = temp->clean_text;
@@ -325,6 +327,7 @@ Content::Footnote *Processor::parseAbbrBracket(token * t) {
 			used_abbreviations.push_back(temp);
 			temp->count = used_abbreviations.size();
 			temp->reference = false;
+			memory::pool::pop();
 			return temp;
 		}
 		return nullptr;
@@ -347,11 +350,14 @@ Content::Footnote *Processor::parseCitationBracket(token * t) {
 		t->child->type = TEXT_EMPTY;
 		t->child->mate->type = TEXT_EMPTY;
 
+		auto p = used_citations.get_allocator().getPool();
+		memory::pool::push(p);
 		// Create citation
-		Content::Footnote * temp = new Content::Footnote(source, t, t->child, true, Content::Footnote::Citation);
+		Content::Footnote * temp = new (p) Content::Footnote(source, t, t->child, true, Content::Footnote::Citation);
 		used_citations.push_back(temp);
 		temp->count = used_citations.size();
 		temp->reference = false;
+		memory::pool::pop();
 		return temp;
 	} else {
 		if (citation_id->count == maxOf<size_t>()) {
@@ -372,10 +378,13 @@ Content::Footnote *Processor::parseFootnoteBracket(token * t) {
 		t->child->mate->type = TEXT_EMPTY;
 
 		// Create footnote
-		Content::Footnote * temp = new Content::Footnote(source, NULL, t->child, true, Content::Footnote::Note);
+		auto p = used_citations.get_allocator().getPool();
+		memory::pool::push(p);
+		Content::Footnote * temp = new (p) Content::Footnote(source, NULL, t->child, true, Content::Footnote::Note);
 		used_footnotes.push_back(temp);
 		temp->count = used_footnotes.size();
 		temp->reference = false;
+		memory::pool::pop();
 		return temp;
 	} else {
 		if (footnote_id->count == maxOf<size_t>()) {
@@ -414,10 +423,13 @@ Content::Footnote *Processor::parseGlossaryBracket(token * t) {
 		}
 
 		if (label) {
-			Content::Footnote * temp = new Content::Footnote(source, label, label->next, false, Content::Footnote::Note); // forced as Note
+			auto p = used_citations.get_allocator().getPool();
+			memory::pool::push(p);
+			Content::Footnote * temp = new (p) Content::Footnote(source, label, label->next, false, Content::Footnote::Note); // forced as Note
 			used_glossaries.push_back(temp);
 			temp->count = used_glossaries.size();
 			temp->reference = false;
+			memory::pool::pop();
 			return temp;
 		} else {
 			return nullptr;

@@ -835,29 +835,85 @@ static StringView extractCharset(StringView s) {
 }
 
 int Root::onPostConfig(apr_pool_t *p, server_rec *s) {
-    _extensions = apr_hash_make(p);
+	mem::perform([&] {
+		initExtensions(_pool);
 
-    StringView r(MIME_TYPES);
-    while (!r.empty()) {
-    	auto str = r.readUntil<StringView::Chars<'\n', '\r'>>();
-    	r.skipChars<StringView::Chars<'\n', '\r'>>();
-    	if (!str.empty()) {
-    		auto type = str.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-    		str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-    		if (!str.empty()) {
-    			type = type.pdup(p);
-        		while (!str.empty()) {
-        			auto value = str.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-        			if (!value.empty()) {
-        				apr_hash_set(_extensions, value.data(), value.size(), type.data());
-        			}
-        			str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-        		}
-    		}
-    	}
-    }
+		if (!_dbDriver) {
+			_dbDriver = db::pq::Driver::open(StringView("pgsql"));
+			_dbDriver->setDbCtrl([this] (bool complete) {
+				if (complete) {
+					_dbQueriesReleased += 1;
+				} else {
+					_dbQueriesPerformed += 1;
+				}
+			});
 
+			if (_dbDriver && _dbs && _dbParams) {
+				Vector<const char *> keywords; keywords.reserve(_dbParams->size());
+				Vector<const char *> values; values.reserve(_dbParams->size());
+				auto toCreate = *_dbs;
+
+				for (auto &it : *_dbParams) {
+					keywords.emplace_back(it.first.data());
+					values.emplace_back(it.second.data());
+				}
+				keywords.emplace_back(nullptr);
+				values.emplace_back(nullptr);
+
+				auto ret = _dbDriver->connect(keywords.data(), values.data(), 0);
+				auto res = _dbDriver->exec(_dbDriver->getConnection(ret), "SELECT datname FROM pg_database;");
+
+				for (size_t i = 0; i < _dbDriver->getNTuples(res); ++ i) {
+					auto name = StringView(_dbDriver->getValue(res, i, 0), _dbDriver->getLength(res, i, 0));
+					auto it = std::find(toCreate.begin(), toCreate.end(), name);
+					if (it != toCreate.end()) {
+						toCreate.erase(it);
+					}
+				}
+
+				_dbDriver->clearResult(res);
+
+				if (!toCreate.empty()) {
+					for (auto &it : toCreate) {
+						StringStream query;
+						query << "CREATE DATABASE " << it << ";";
+						auto q = query.weak().data();
+						auto res = _dbDriver->exec(_dbDriver->getConnection(ret), q);
+						_dbDriver->clearResult(res);
+					}
+				}
+
+				_dbDriver->finish(ret);
+			}
+		}
+	}, _pool);
     return OK;
+}
+
+void Root::initExtensions(mem::pool_t *p) {
+	if (!_extensions) {
+		_extensions = apr_hash_make(p);
+
+		StringView r(MIME_TYPES);
+		while (!r.empty()) {
+			auto str = r.readUntil<StringView::Chars<'\n', '\r'>>();
+			r.skipChars<StringView::Chars<'\n', '\r'>>();
+			if (!str.empty()) {
+				auto type = str.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+				str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+				if (!str.empty()) {
+					type = type.pdup(p);
+					while (!str.empty()) {
+						auto value = str.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+						if (!value.empty()) {
+							apr_hash_set(_extensions, value.data(), value.size(), type.data());
+						}
+						str.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+					}
+				}
+			}
+		}
+	}
 }
 
 int Root::onTypeChecker(request_rec *r) {

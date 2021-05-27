@@ -29,7 +29,7 @@ namespace db::minidb {
 
 class PageCache : public mem::AllocBase {
 public:
-	PageCache(const Storage *, int fd, bool writable);
+	PageCache(const Storage *, File & fd, bool writable);
 	~PageCache();
 
 	const PageNode * openPage(uint32_t idx, OpenMode);
@@ -63,7 +63,7 @@ protected:
 	void clearWal() const;
 
 	const Storage *_storage = nullptr;
-	int _fd = -1;
+	File * _fd = nullptr;
 	bool _writable = false;
 	mem::Vector<mem::BytesView> _alloc;
 	mem::Map<uint32_t, PageNode> _pages;

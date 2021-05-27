@@ -49,11 +49,11 @@ public:
 	bool isValid() const;
 	operator bool() const;
 
-	bool openHeader(int fd, const mem::Callback<bool(StorageHeader &)> &, OpenMode) const;
+	bool openHeader(File & fd, const mem::Callback<bool(StorageHeader &)> &, OpenMode) const;
 
-	mem::BytesView openPage(PageCache *cache, uint32_t idx, int fd) const;
-	void closePage(mem::BytesView) const;
-	bool writePage(PageCache *cache, uint32_t idx, int fd, mem::BytesView) const;
+	mem::BytesView openPage(PageCache *cache, uint32_t idx, File & fd) const;
+	void closePage(mem::BytesView, File & fd) const;
+	bool writePage(PageCache *cache, uint32_t idx, File & fd, mem::BytesView) const;
 
 	const SchemeMap &getSchemes() const { return _schemes; }
 
@@ -71,8 +71,8 @@ protected:
 	Storage(mem::pool_t *, mem::StringView path, StorageParams params);
 	Storage(mem::pool_t *, mem::BytesView data, StorageParams params);
 
-	void applyWal(mem::StringView, int) const;
-	bool writePageTarget(uint32_t idx, int fd, mem::BytesView, uint32_t pageSize, uint32_t pageCount) const;
+	void applyWal(mem::StringView, File &) const;
+	bool writePageTarget(uint32_t idx, File & fd, mem::BytesView, uint32_t pageSize, uint32_t pageCount) const;
 
 	mem::pool_t *_pool = nullptr;
 	mem::StringView _sourceName;

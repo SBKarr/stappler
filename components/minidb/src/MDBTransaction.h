@@ -57,7 +57,7 @@ public:
 	void closePage(const PageNode *) const;
 
 	OpenMode getMode() const { return _mode; }
-	int getFd() const { return _fd; }
+	File & getFd() { return _fd; }
 	size_t getFileSize() const { return _fileSize; }
 	const Storage *getStorage() const { return _storage; }
 	PageCache *getPageCache() const { return _pageCache; }
@@ -130,7 +130,7 @@ protected:
 
 	mem::pool_t *_pool = nullptr;
 	OpenMode _mode = OpenMode::Read;
-	int _fd = -1;
+	File _fd;
 	const Storage *_storage = nullptr;
 	size_t _fileSize = 0;
 	mutable bool _success = true;

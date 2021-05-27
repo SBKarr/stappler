@@ -183,6 +183,7 @@ public:
 	mem::Value create(const mem::Value &data, UpdateFlags);
 	mem::Value create(const mem::Value &data, UpdateFlags, const Conflict &);
 	mem::Value create(const mem::Value &data, UpdateFlags, const mem::Vector<Conflict> &);
+	mem::Value create(const mem::Value &data, Conflict::Flags);
 	mem::Value create(const mem::Value &data, const Conflict &);
 	mem::Value create(const mem::Value &data, const mem::Vector<Conflict> &);
 

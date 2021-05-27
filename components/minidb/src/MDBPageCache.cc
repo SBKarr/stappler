@@ -30,8 +30,8 @@ THE SOFTWARE.
 
 namespace db::minidb {
 
-PageCache::PageCache(const Storage *s, int fd, bool writable)
-: _storage(s), _fd(fd), _writable(writable) {
+PageCache::PageCache(const Storage *s, File & fd, bool writable)
+: _storage(s), _fd(&fd), _writable(writable) {
 	_storage->openHeader(fd, [&] (StorageHeader &header) {
 		_header = header;
 		_pageSize = 1 << header.pageSize;
@@ -71,7 +71,7 @@ const PageNode * PageCache::openPage(uint32_t idx, OpenMode mode) {
 
 		nodes.resize(std::min(_pages.size() - shouldRemains, nodes.size()));
 		for (auto &it : nodes) {
-			_storage->closePage(it->bytes);
+			_storage->closePage(it->bytes, *_fd);
 			_pages.erase(it->number);
 			-- _nmapping;
 		}
@@ -87,7 +87,7 @@ const PageNode * PageCache::openPage(uint32_t idx, OpenMode mode) {
 		return &it->second;
 	}
 
-	mem::BytesView mem = _storage->openPage(this, idx, _fd);
+	mem::BytesView mem = _storage->openPage(this, idx, *_fd);
 	if (mem.empty()) {
 		if (_writable) {
 			std::unique_lock<mem::Mutex> lock(_headerMutex);
@@ -112,7 +112,7 @@ const PageNode * PageCache::openPage(uint32_t idx, OpenMode mode) {
 			ret = &_pages.try_emplace(idx,
 					idx, ptr, OpenMode::Write, PageType(((VirtualPageHeader *)mem.data())->type), mem::Time::now()).first->second;
 		}
-		_storage->closePage(mem);
+		_storage->closePage(mem, *_fd);
 		return ret;
 		break;
 	}
@@ -167,7 +167,7 @@ void PageCache::clear(const Transaction &t, bool commit) {
 			if (it->second.refCount.load() == 0) {
 				switch (it->second.mode) {
 				case OpenMode::Read:
-					_storage->closePage(it->second.bytes);
+					_storage->closePage(it->second.bytes, *_fd);
 					-- _nmapping;
 					break;
 				case OpenMode::Write:
@@ -180,14 +180,14 @@ void PageCache::clear(const Transaction &t, bool commit) {
 			}
 		}
 
-		_storage->applyWal(_storage->getSourceName(), _fd);
+		_storage->applyWal(_storage->getSourceName(), *_fd);
 	} else {
 		auto it = _pages.begin();
 		while (it != _pages.end() && success) {
 			if (it->second.refCount.load() == 0) {
 				switch (it->second.mode) {
 				case OpenMode::Read:
-					_storage->closePage(it->second.bytes);
+					_storage->closePage(it->second.bytes, *_fd);
 					-- _nmapping;
 					break;
 				case OpenMode::Write:
@@ -198,7 +198,7 @@ void PageCache::clear(const Transaction &t, bool commit) {
 								return;
 							}
 						}
-						if (!_storage->writePage(this, it->second.number, _fd, it->second.bytes)) {
+						if (!_storage->writePage(this, it->second.number, *_fd, it->second.bytes)) {
 							success = false;
 						}
 					}
@@ -252,7 +252,7 @@ void PageCache::promote(PageNode &node) {
 	auto mem = pages::alloc(_pageSize);
 	memcpy((void *)mem.data(), node.bytes.data(), mem.size());
 	node.mode = OpenMode::Write;
-	_storage->closePage(node.bytes);
+	_storage->closePage(node.bytes, *_fd);
 	node.bytes = mem;
 	node.access = mem::Time::now();
 	-- _nmapping;

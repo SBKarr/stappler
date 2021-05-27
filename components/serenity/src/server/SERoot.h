@@ -113,6 +113,9 @@ public:
 
 	void setThreadsCount(StringView, StringView);
 
+	void addDb(mem::pool_t *p, StringView);
+	void setDbParams(mem::pool_t *p, StringView);
+
 protected:
 	struct PendingTask {
 		Server server;
@@ -132,6 +135,8 @@ protected:
 	StringView onTypeCheckerCharset(request_rec *r, StringView ext) const;
 	StringView onTypeCheckerContentLanguage(request_rec *r, StringView ext) const;
 	StringView onTypeCheckerContentEncoding(request_rec *r, StringView ext) const;
+
+	void initExtensions(mem::pool_t *);
 
 	apr_pool_t *_pool = nullptr;
 	apr_pool_t *_heartBeatPool = nullptr;
@@ -164,12 +169,15 @@ protected:
 
 	std::atomic<bool> _debug = false;
 
-	apr_hash_t *_extensions = nullptr;
-
 	size_t _initThreads = std::thread::hardware_concurrency() / 2;
 	size_t _maxThreads = std::thread::hardware_concurrency();
 
 	Vector<PendingTask> *_pending = nullptr;
+
+	apr_hash_t *_extensions = nullptr;
+	Map<StringView, StringView> *_dbParams = nullptr;
+	Vector<StringView> *_dbs = nullptr;
+	db::pq::Driver *_dbDriver = nullptr;
 };
 
 /* Also export them as optional functions for modules that prefer it */

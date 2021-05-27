@@ -750,4 +750,122 @@ void free(mem::BytesView mem) {
 
 }
 
+
+File::File(mem::StringView filename, int flags, mode_t mode) {
+	if (!filename.empty()) {
+		fd = ::open(filename.data(), flags, mode);
+	}
+}
+
+File::~File() {
+	close();
+}
+
+bool File::open(mem::StringView filename, int flags, mode_t mode) {
+	fd = ::open(filename.data(), flags, mode);
+	if (fd >= 0) {
+		return true;
+	}
+	fd = -1;
+	return false;
+}
+
+void File::close() {
+	if (!mapped.empty()) {
+		for (auto &it : mapped) {
+			::munmap(it.first, it.second);
+		}
+		mapped.clear();
+	}
+	if (fd >= 0) {
+		unlock();
+		::close(fd);
+		fd = -1;
+	}
+}
+
+off_t File::seek(off_t offset, int whence) const {
+	if (fd >= 0) {
+		return ::lseek(fd, offset, whence);
+	}
+	return 0;
+}
+
+ssize_t File::write(const void *buf, size_t n) const {
+	if (fd >= 0) {
+		return ::write(fd, buf, n);
+	}
+	return 0;
+}
+
+ssize_t File::read(void *buf, size_t n) const {
+	if (fd >= 0) {
+		return ::read(fd, buf, n);
+	}
+	return 0;
+}
+
+void File::lock_shared() {
+	if (locked != LOCK_UN && locked != LOCK_SH) {
+		unlock();
+	}
+	if (fd >= 0) {
+		::flock(fd, LOCK_SH);
+		locked = LOCK_SH;
+	}
+}
+
+void File::lock_exclusive() {
+	if (locked != LOCK_UN && locked != LOCK_EX) {
+		unlock();
+	}
+	if (fd >= 0) {
+		::flock(fd, LOCK_EX);
+		locked = LOCK_EX;
+	}
+}
+
+void File::unlock() {
+	if (fd >= 0 && locked != LOCK_UN) {
+		::flock(fd, LOCK_UN);
+		locked = LOCK_UN;
+	}
+}
+
+void *File::mmap(size_t len, off_t offset, int prot, int flags) {
+	if (fd >= 0) {
+		auto ret = ::mmap(nullptr, len, prot, flags, fd, offset);
+		if (ret != MAP_FAILED) {
+			auto lb = std::lower_bound(mapped.begin(), mapped.end(), ret, [] (const mem::Pair<void *, size_t> &l, void *r) {
+				return l.first < r;
+			});
+			if (lb == mapped.end()) {
+				mapped.emplace_back(ret, len);
+			} else {
+				mapped.emplace(lb, ret, len);
+			}
+			return ret;
+		} else {
+			std::cout << "[MDB-File] Fail to map: MAP_FAILED\n";
+		}
+	}
+	return nullptr;
+}
+
+void File::munmap(void *ptr, int sync) {
+	auto lb = std::lower_bound(mapped.begin(), mapped.end(), ptr, [] (const mem::Pair<void *, size_t> &l, void *r) {
+		return l.first < r;
+	});
+
+	if (lb != mapped.end() && lb->first == ptr) {
+		if (sync > 0) {
+			::msync(ptr, lb->second, sync);
+		}
+		::munmap(ptr, lb->second);
+		mapped.erase(lb);
+	} else {
+		std::cout << "[MDB-File] Fail to unmap: page not found\n";
+	}
+}
+
 }

@@ -285,6 +285,32 @@ void free(mem::BytesView);
 
 }
 
+struct File {
+	File(mem::StringView filename, int flags, mode_t mode);
+	File() = default;
+	~File();
+
+	operator bool () { return fd >= 0; }
+
+	bool open(mem::StringView filename, int flags, mode_t mode);
+	void close();
+
+	off_t seek(off_t offset, int whence) const;
+	ssize_t write(const void *buf, size_t n) const;
+	ssize_t read (void *buf, size_t n) const;
+
+	void lock_shared();
+	void lock_exclusive();
+	void unlock();
+
+	void *mmap(size_t len, off_t offset, int prot, int flags);
+	void munmap(void *ptr, int sync);
+
+	int fd = -1;
+	int locked = LOCK_UN;
+	std::vector<mem::Pair<void *, size_t>> mapped;
+};
+
 }
 
 #endif /* COMPONENTS_MINIDB_SRC_MDB_H_ */

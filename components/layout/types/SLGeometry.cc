@@ -245,8 +245,6 @@ Rect Rect::unionWithRect(const Rect & rect) const {
 	return Rect(combinedLeftX, combinedBottomY, combinedRightX - combinedLeftX, combinedTopY - combinedBottomY);
 }
 
-const Rect Rect::ZERO = Rect(0, 0, 0, 0);
-
 Vec2 TransformPoint(const Vec2& point, const Mat4& transform) {
 	Vec3 vec(point.x, point.y, 0);
 	transform.transformPoint(&vec);

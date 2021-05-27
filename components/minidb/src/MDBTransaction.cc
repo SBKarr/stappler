@@ -63,33 +63,41 @@ Transaction::Transaction(const Storage &storage, OpenMode m) {
 }
 
 Transaction::~Transaction() {
-	close();
+	if (_fd >= 0 || _storage) {
+		close();
+	}
 	if (_pool) {
 		mem::pool::destroy(_pool);
 	}
 }
 
 bool Transaction::open(const Storage &storage, OpenMode mode) {
-	close();
+	if (_fd) {
+		close();
+	}
 
 	_mode = mode;
 
 	switch (mode) {
-	case OpenMode::Read: _fd = ::open(storage.getSourceName().data(), O_RDONLY); break;
-	case OpenMode::Write: _fd = ::open(storage.getSourceName().data(), O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH ); break;
+	case OpenMode::Read: _fd.open(storage.getSourceName().data(), O_RDONLY, 0); break;
+	case OpenMode::Write: _fd.open(storage.getSourceName().data(), O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH ); break;
 	}
 
-	if (_fd < 0) {
+	if (!_fd) {
 		return false;
 	}
 
-	::flock(_fd, mode == OpenMode::Read ? LOCK_SH : LOCK_EX);
+	if (mode == OpenMode::Read) {
+		_fd.lock_shared();
+	} else {
+		_fd.lock_exclusive();
+	}
 
 	if (mode == OpenMode::Write) {
 		storage.applyWal(storage.getSourceName(), _fd);
 	}
 
-	_fileSize = ::lseek(_fd, 0, SEEK_END);
+	_fileSize = _fd.seek(0, SEEK_END);
 	if (_fileSize > 0) {
 		_mode = mode;
 		_storage = &storage;
@@ -104,15 +112,13 @@ bool Transaction::open(const Storage &storage, OpenMode mode) {
 }
 
 void Transaction::close() {
-	if (_fd >= 0) {
+	if (_fd) {
 		if (_pageCache) {
 			_pageCache->clear(*this, _success);
 			delete _pageCache;
 			_pageCache = nullptr;
 		}
-		::flock(_fd, LOCK_UN);
-		::close(_fd);
-		_fd = -1;
+		_fd.close();
 	}
 	if (_storage) {
 		_storage = nullptr;
@@ -229,10 +235,10 @@ bool Transaction::isModeAllowed(OpenMode mode) const {
 
 bool Transaction::readHeader(StorageHeader *target) const {
 	if (isModeAllowed(OpenMode::Read)) {
-		::lseek(_fd, 0, SEEK_SET);
+		_fd.seek(0, SEEK_SET);
 
 		if (_fileSize > sizeof(StorageHeader)) {
-			if (::read(_fd, target, sizeof(StorageHeader)) == sizeof(StorageHeader)) {
+			if (_fd.read(target, sizeof(StorageHeader)) == sizeof(StorageHeader)) {
 				return true;
 			}
 		}

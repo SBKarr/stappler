@@ -733,14 +733,6 @@ Root::Root() {
 #if SPAPR && DEBUG
 	//serenity_set_node_ctrl_fn(Root_node_alloc, Root_node_free, (void *)this);
 #endif
-
-	db::pq::Driver::open(StringView())->setDbCtrl([this] (bool complete) {
-		if (complete) {
-			_dbQueriesReleased += 1;
-		} else {
-			_dbQueriesPerformed += 1;
-		}
-	});
 }
 
 Root::~Root() {
@@ -1261,6 +1253,45 @@ void Root::onBroadcast(const data::Value &res) {
 			}, servPtr);
 			serv = serv.next();
 		}
+	}
+}
+
+void Root::addDb(mem::pool_t *p, StringView str) {
+	if (!_dbs) {
+		_dbs = new (_pool) Vector<StringView>;
+	}
+
+	_dbs->emplace_back(str.pdup(_pool));
+}
+
+void Root::setDbParams(mem::pool_t *p, StringView str) {
+	_dbParams = new (_pool) Map<StringView, StringView>;
+
+	StringView r(str);
+	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+	while (!r.empty()) {
+		StringView params, n, v;
+		if (r.is('"')) {
+			++ r;
+			params = r.readUntil<StringView::Chars<'"'>>();
+			if (r.is('"')) {
+				++ r;
+			}
+		} else {
+			params = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+		}
+
+		if (!params.empty()) {
+			n = params.readUntil<StringView::Chars<'='>>();
+			++ params;
+			v = params;
+
+			if (!n.empty() && ! v.empty()) {
+				_dbParams->emplace(n.pdup(_pool), v.pdup(_pool));
+			}
+		}
+
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 	}
 }
 

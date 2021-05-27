@@ -669,6 +669,9 @@ mem::Value Worker::create(const mem::Value &data, UpdateFlags flags, const mem::
 	}
 	return _scheme->createWithWorker(*this, data, (flags & UpdateFlags::Protected) != UpdateFlags::None);
 }
+mem::Value Worker::create(const mem::Value &data, Conflict::Flags flags) {
+	return create(data, Conflict(flags));
+}
 mem::Value Worker::create(const mem::Value &data, const Conflict &c) {
 	if (!addConflict(c)) {
 		return mem::Value();

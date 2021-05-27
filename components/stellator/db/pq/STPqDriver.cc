@@ -27,18 +27,60 @@ THE SOFTWARE.
 #include "mod_dbd.h"
 #include <postgresql/libpq-fe.h>
 
+struct apr_dbd_transaction_t {
+    int mode;
+    int errnum;
+    apr_dbd_t *handle;
+};
+
+struct apr_dbd_t {
+    PGconn *conn;
+    apr_dbd_transaction_t *trans;
+};
+
 NS_DB_PQ_BEGIN
 
 Driver *Driver::open(const mem::StringView &path) {
-	static Driver s_tmp = Driver(mem::StringView());
+	static Driver s_tmp = Driver(path);
 	return &s_tmp;
 }
 
 Driver::Handle Driver::connect(const char * const *keywords, const char * const *values, int expand_dbname) const {
+	auto p = mem::pool::create(mem::pool::acquire());
+
+	ConnStatusType status = CONNECTION_OK;
+	PGconn * ret = PQconnectdbParams(keywords, values, expand_dbname);
+	if (ret) {
+		status = PQstatus(ret);
+	}
+	if (ret && status == CONNECTION_OK) {
+		apr_dbd_t *dbd = (apr_dbd_t *)mem::pool::palloc(p, sizeof(apr_dbd_t));
+		dbd->conn = ret;
+		dbd->trans = (apr_dbd_transaction_t *)mem::pool::palloc(p, sizeof(apr_dbd_transaction_t));
+		dbd->trans->mode = 0;
+		dbd->trans->errnum = CONNECTION_OK;
+		dbd->trans->handle = dbd;
+
+		ap_dbd_t *db = (ap_dbd_t *)mem::pool::palloc(p, sizeof(ap_dbd_t));
+		db->handle = dbd;
+		db->driver = (const apr_dbd_driver_t *)_handle;
+		db->pool = p;
+		db->prepared = nullptr;
+
+		return Driver::Handle(db);
+	}
 	return Driver::Handle(nullptr);
 }
 
-void Driver::finish(Handle) const { }
+void Driver::finish(Handle h) const {
+	if (auto conn = (PGconn *)getConnection(h).get()) {
+		PQfinish(conn);
+	}
+	ap_dbd_t *db = (ap_dbd_t *)h.get();
+	if (db && db->pool) {
+		mem::pool::destroy(db->pool);
+	}
+}
 
 Driver::Connection Driver::getConnection(Handle _h) const {
 	ap_dbd_t *h = (ap_dbd_t *)_h.get();
@@ -164,7 +206,12 @@ Driver::Result Driver::exec(Connection conn, const char *command, int nParams, c
 
 Driver::~Driver() { }
 
-Driver::Driver(const mem::StringView &) { }
+Driver::Driver(const mem::StringView &name) {
+	const apr_dbd_driver_t *driver = nullptr;
+	if (apr_dbd_get_driver(mem::pool::acquire(), name.data(), &driver) == APR_SUCCESS) {
+		_handle = (void *)driver;
+	}
+}
 
 void Driver::release() { }
 

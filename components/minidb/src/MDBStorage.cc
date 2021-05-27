@@ -31,7 +31,7 @@ THE SOFTWARE.
 
 namespace db::minidb {
 
-bool Storage::openHeader(int fd, const mem::Callback<bool(StorageHeader &)> &cb, OpenMode mode) const {
+bool Storage::openHeader(File & fd, const mem::Callback<bool(StorageHeader &)> &cb, OpenMode mode) const {
 	if (!_sourceMemory.empty()) {
 		auto headPage = _sourceMemory.front();
 
@@ -42,15 +42,15 @@ bool Storage::openHeader(int fd, const mem::Callback<bool(StorageHeader &)> &cb,
 			memcpy((void *)headPage.data(), (const void *)&h, sizeof(StorageHeader));
 		}
 		return true;
-	} else if (fd > 0) {
-		lseek(fd, 0, SEEK_SET);
+	} else if (fd) {
+		fd.seek(0, SEEK_SET);
 
 		StorageHeader h;
-		if (read(fd, &h, sizeof(StorageHeader)) == sizeof(StorageHeader)) {
+		if (fd.read(&h, sizeof(StorageHeader)) == sizeof(StorageHeader)) {
 			auto ret = cb(h);
 			if (mode == OpenMode::Write && ret) {
-				lseek(fd, 0, SEEK_SET);
-				return write(fd, &h, sizeof(StorageHeader)) == sizeof(StorageHeader);
+				fd.seek(0, SEEK_SET);
+				return fd.write(&h, sizeof(StorageHeader)) == sizeof(StorageHeader);
 			}
 			return true;
 		}
@@ -58,7 +58,7 @@ bool Storage::openHeader(int fd, const mem::Callback<bool(StorageHeader &)> &cb,
 	return false;
 }
 
-mem::BytesView Storage::openPage(PageCache *cache, uint32_t idx, int fd) const {
+mem::BytesView Storage::openPage(PageCache *cache, uint32_t idx, File & fd) const {
 	if (!_sourceMemory.empty()) {
 		if (idx < _sourceMemory.size()) {
 			return _sourceMemory.at(idx);
@@ -66,7 +66,7 @@ mem::BytesView Storage::openPage(PageCache *cache, uint32_t idx, int fd) const {
 	} else {
 		auto s = cache->getPageSize();
 		off64_t offset = idx; offset *= s;
-		auto mem = ::mmap(nullptr, s, PROT_READ, MAP_PRIVATE | MAP_NONBLOCK, fd, offset);
+		auto mem = fd.mmap(s, offset, PROT_READ, MAP_PRIVATE | MAP_NONBLOCK);
 		if (mem != MAP_FAILED) {
 			return mem::BytesView(uint8_p(mem), s);
 		}
@@ -75,13 +75,13 @@ mem::BytesView Storage::openPage(PageCache *cache, uint32_t idx, int fd) const {
 	return mem::BytesView();
 }
 
-void Storage::closePage(mem::BytesView mem) const {
+void Storage::closePage(mem::BytesView mem, File & fd) const {
 	if (_sourceMemory.empty()) {
-		::munmap((void *)mem.data(), mem.size());
+		fd.munmap((void *)mem.data(), 0);
 	}
 }
 
-bool Storage::writePage(PageCache *cache, uint32_t idx, int fd, mem::BytesView bytes) const {
+bool Storage::writePage(PageCache *cache, uint32_t idx, File & fd, mem::BytesView bytes) const {
 	auto s = cache ? cache->getPageSize() : _params.pageSize;
 	if (_sourceMemory.empty()) {
 		writePageTarget(idx, fd, bytes, s, cache ? cache->getPageCount() : 0);
@@ -428,25 +428,15 @@ static bool Storage_init(const Transaction &t, const mem::Map<mem::StringView, c
 }
 
 bool Storage::init(const mem::Map<mem::StringView, const db::Scheme *> &map) {
-	bool shouldApplyWal = false;
-	if (!_sourceName.empty()) {
-		auto walMapPath = toString(_sourceName, ".wal");
-		if (stappler::filesystem::exists(walMapPath)) {
-			shouldApplyWal = true;
-		}
-	}
-
 	Transaction t;
 	bool ret = false;
-	// if (!shouldApplyWal) {
-		if (t.open(*this, OpenMode::Read)) {
-			std::unique_lock<std::shared_mutex> lock(t.getMutex());
-			mem::pool::push(t.getPool());
-			ret = Storage_init(t, map, _dicts, _dictsIds, _schemes);
-			mem::pool::pop();
-			t.close();
-		}
-	// }
+	if (t.open(*this, OpenMode::Read)) {
+		std::unique_lock<std::shared_mutex> lock(t.getMutex());
+		mem::pool::push(t.getPool());
+		ret = Storage_init(t, map, _dicts, _dictsIds, _schemes);
+		mem::pool::pop();
+		t.close();
+	}
 	if (!ret) {
 		_dicts.clear();
 		_dictsIds.clear();
@@ -474,20 +464,19 @@ Storage::Storage(mem::pool_t *p, mem::StringView path, StorageParams params)
 	mem::pool::context ctx(_pool);
 	_sourceName = mem::StringView(stappler::filesystem::writablePath(path)).pdup();
 
-	auto fd = ::open(_sourceName.data(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
-	if (fd < 0) {
+	auto fd = File(_sourceName.data(), O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
+	if (!fd) {
 		return;
 	}
 
-	::flock(fd, LOCK_SH);
-	auto fileSize = ::lseek(fd, 0, SEEK_END);
+	fd.lock_shared();
+	auto fileSize = fd.seek(0, SEEK_END);
 	if (fileSize > 0) {
-		::flock(fd, LOCK_UN);
 		return;
 	}
 
-	::flock(fd, LOCK_EX);
-	fileSize = ::lseek(fd, 0, SEEK_END);
+	fd.lock_exclusive();
+	fileSize = fd.seek(0, SEEK_END);
 	if (fileSize == 0) {
 		uint8_t buf[sizeof(StorageHeader) + sizeof(OidTreePageHeader)] = { 0 };
 
@@ -517,14 +506,14 @@ Storage::Storage(mem::pool_t *p, mem::StringView path, StorageParams params)
 		content->prev = UndefinedPage;
 		content->next = UndefinedPage;
 
-		if (::lseek(fd, params.pageSize * 2 - 1, SEEK_SET) == -1 || ::write(fd, "", 1) == -1) {
+		if (fd.seek(params.pageSize * 2 - 1, SEEK_SET) == -1 || fd.write("", 1) == -1) {
 			return;
 		}
 
 		writePage(nullptr, 0, fd, mem::BytesView(buf, sizeof(StorageHeader) + sizeof(OidTreePageHeader)));
 		writePage(nullptr, 1, fd, mem::BytesView(contentBuf, sizeof(OidContentPageHeader)));
 
-		::flock(fd, LOCK_UN);
+		fd.unlock();
 
 		Transaction t;
 		if (t.open(*this, db::minidb::OpenMode::Write)) {
@@ -542,10 +531,7 @@ Storage::Storage(mem::pool_t *p, mem::StringView path, StorageParams params)
 	} else {
 		// try to apply existed WAL
 		applyWal(_sourceName, fd);
-		::flock(fd, LOCK_UN);
 	}
-
-	::close(fd);
 }
 
 Storage::Storage(mem::pool_t *p, mem::BytesView data, StorageParams params)
@@ -584,8 +570,9 @@ Storage::Storage(mem::pool_t *p, mem::BytesView data, StorageParams params)
 		_sourceMemory.emplace_back(pages::alloc(_params.pageSize));
 		_sourceMemory.emplace_back(pages::alloc(_params.pageSize));
 
-		writePage(nullptr, 0, -1, mem::BytesView(buf, sizeof(StorageHeader) + sizeof(OidTreePageHeader)));
-		writePage(nullptr, 1, -1, mem::BytesView(contentBuf, sizeof(OidContentPageHeader)));
+		File none;
+		writePage(nullptr, 0, none, mem::BytesView(buf, sizeof(StorageHeader) + sizeof(OidTreePageHeader)));
+		writePage(nullptr, 1, none, mem::BytesView(contentBuf, sizeof(OidContentPageHeader)));
 
 		Transaction t;
 		if (t.open(*this, db::minidb::OpenMode::Write)) {
@@ -603,23 +590,22 @@ Storage::Storage(mem::pool_t *p, mem::BytesView data, StorageParams params)
 	}
 }
 
-void Storage::applyWal(mem::StringView path, int sfd) const {
+void Storage::applyWal(mem::StringView path, File &sfd) const {
 	auto walMapPath = toString(path, ".wal");
 	if (!stappler::filesystem::exists(walMapPath)) {
 		return;
 	}
 
-	auto storagefileSize = ::lseek(sfd, 0, SEEK_END);
+	auto storagefileSize = sfd.seek(0, SEEK_END);
 
-	auto wfd = ::open(walMapPath.data(), O_RDONLY, 0);
-	auto fileSize = ::lseek(wfd, 0, SEEK_END);
+	auto wfd = File(walMapPath.data(), O_RDONLY, 0);
+	auto fileSize = wfd.seek(0, SEEK_END);
 
-	auto origin = (uint8_t *)::mmap(nullptr, fileSize, PROT_READ, MAP_PRIVATE | MAP_NONBLOCK, wfd, 0);
+	auto origin = (uint8_t *)wfd.mmap(fileSize, 0, PROT_READ, MAP_PRIVATE | MAP_NONBLOCK);
 
 	WalHeader *h = (WalHeader *)origin;
 	if (memcmp(h->title, WalTitle.data(), WalTitle.size()) != 0 || h->version != WalVersion) {
 		unlink(walMapPath.data());
-		close(wfd);
 		return;
 	}
 
@@ -627,7 +613,6 @@ void Storage::applyWal(mem::StringView path, int sfd) const {
 	uint32_t targetSize = h->count * pageSize + h->offset;
 	if (fileSize != targetSize) {
 		unlink(walMapPath.data());
-		close(wfd);
 		return;
 	}
 
@@ -654,22 +639,20 @@ void Storage::applyWal(mem::StringView path, int sfd) const {
 	}
 
 	unlink(walMapPath.data());
-	close(wfd);
 }
 
-bool Storage::writePageTarget(uint32_t idx, int fd, mem::BytesView bytes, uint32_t pageSize, uint32_t pageCount) const {
+bool Storage::writePageTarget(uint32_t idx, File & fd, mem::BytesView bytes, uint32_t pageSize, uint32_t pageCount) const {
 	if (idx >= pageCount) {
 		off64_t offset = idx; offset = offset * pageSize + pageSize - 1;
-		if (::lseek(fd, offset, SEEK_SET) == -1 || ::write(fd, "", 1) == -1) {
+		if (fd.seek(offset, SEEK_SET) == -1 || fd.write("", 1) == -1) {
 			return false;
 		}
 	}
 	off64_t offset = idx; offset *= pageSize;
-	auto mem = ::mmap(nullptr, bytes.size(), PROT_WRITE, MAP_SHARED | MAP_NONBLOCK, fd, offset);
+	auto mem = fd.mmap(bytes.size(), offset, PROT_WRITE, MAP_SHARED | MAP_NONBLOCK);
 	if (mem != MAP_FAILED) {
 		memcpy(mem, bytes.data(), bytes.size());
-		::msync(mem, bytes.size(), MS_SYNC);
-		::munmap(mem, bytes.size());
+		fd.munmap(mem, MS_SYNC);
 	}
 	return true;
 }

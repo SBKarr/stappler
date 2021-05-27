@@ -124,8 +124,6 @@ static const char *mod_serenity_add_allow(cmd_parms *parms, void *mconfig, const
 	return NULL;
 }
 
-
-
 static const char *mod_serenity_set_session_params(cmd_parms *parms, void *mconfig, const char *w) {
 	apr::pool::perform([&] {
 		Server(parms->server).setSessionParams(apr::string::make_weak(w));
@@ -192,6 +190,24 @@ static const char *mod_serenity_set_server_names(cmd_parms *parms, void *mconfig
     return NULL;
 }
 
+static const char *mod_serenity_set_root_db_params(cmd_parms *parms, void *mconfig, const char *w) {
+	apr::pool::perform([&] {
+		Root::getInstance()->setDbParams(parms->pool, StringView(w));
+	}, parms->pool, memory::pool::Config);
+	return NULL;
+}
+
+static const char *mod_serenity_add_create_db(cmd_parms *parms, void *mconfig, const char *arg) {
+	apr::pool::perform([&] {
+		while (*arg) {
+			char *name = ap_getword_conf(parms->pool, &arg);
+			Root::getInstance()->addDb(parms->pool, StringView(name));
+		}
+	}, parms->pool, memory::pool::Config);
+	return NULL;
+}
+
+
 static const command_rec mod_serenity_directives[] = {
 	AP_INIT_TAKE1("SerenitySourceRoot", (cmd_func)mod_serenity_set_source_root, NULL, RSRC_CONF,
 		"Serenity root dir for source handlers"),
@@ -211,9 +227,13 @@ static const command_rec mod_serenity_directives[] = {
 		"Space-separated list of server names (first would be ServerName, others - ServerAliases)"),
 	AP_INIT_RAW_ARGS("SerenityAllowIp", (cmd_func)mod_serenity_add_allow, NULL, RSRC_CONF,
 		"Additional IPv4 masks to thrust whed admin access is requested"),
-
 	AP_INIT_TAKE2("SerenityRootThreadsCount", (cmd_func)mod_serenity_set_root_threads_count, NULL, RSRC_CONF,
-			"<init> <max> - size of root thread pool for async tasks"),
+		"<init> <max> - size of root thread pool for async tasks"),
+
+	AP_INIT_RAW_ARGS("SerenityRootDbParams", (cmd_func)mod_serenity_set_root_db_params, NULL, RSRC_CONF,
+		"Serenity database parameters for root connections (host, dbname, user, password)"),
+	AP_INIT_RAW_ARGS("SerenityRootCreateDb", (cmd_func)mod_serenity_add_create_db, NULL, RSRC_CONF,
+		"Space-separated list of databases, that need to be created"),
 
     { NULL }
 };
