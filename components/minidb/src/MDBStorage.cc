@@ -472,6 +472,7 @@ Storage::Storage(mem::pool_t *p, mem::StringView path, StorageParams params)
 	fd.lock_shared();
 	auto fileSize = fd.seek(0, SEEK_END);
 	if (fileSize > 0) {
+		applyWal(_sourceName, fd);
 		return;
 	}
 
@@ -616,6 +617,7 @@ void Storage::applyWal(mem::StringView path, File &sfd) const {
 		return;
 	}
 
+	sfd.lock_exclusive();
 	mem::Pair<uint32_t, uint32_t> *pageMap = (mem::Pair<uint32_t, uint32_t> *)(origin + sizeof(WalHeader));
 
 	uint8_t *page = origin + h->offset;

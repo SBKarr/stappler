@@ -44,6 +44,7 @@ public:
 	uint64_t getOid() const;
 	uint64_t getNextOid();
 	void setRoot(uint32_t);
+	void setOid(uint64_t);
 
 	uint32_t getPageSize() const { return _pageSize; }
 	uint32_t getPageCount() const { return _pageCount; }
@@ -74,6 +75,8 @@ protected:
 	mem::Mutex _indexMutex;
 	uint32_t _pageSize = 0;
 	uint32_t _pageCount = 0;
+
+	bool _headerDirty = false;
 	StorageHeader _header;
 
 	size_t _nmapping = 0;

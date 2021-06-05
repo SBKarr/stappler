@@ -808,8 +808,9 @@ ssize_t File::read(void *buf, size_t n) const {
 void File::lock_shared() {
 	if (locked != LOCK_UN && locked != LOCK_SH) {
 		unlock();
+		locked = LOCK_UN;
 	}
-	if (fd >= 0) {
+	if (fd >= 0 && locked == LOCK_UN) {
 		::flock(fd, LOCK_SH);
 		locked = LOCK_SH;
 	}
@@ -818,8 +819,9 @@ void File::lock_shared() {
 void File::lock_exclusive() {
 	if (locked != LOCK_UN && locked != LOCK_EX) {
 		unlock();
+		locked = LOCK_UN;
 	}
-	if (fd >= 0) {
+	if (fd >= 0 && locked == LOCK_UN) {
 		::flock(fd, LOCK_EX);
 		locked = LOCK_EX;
 	}

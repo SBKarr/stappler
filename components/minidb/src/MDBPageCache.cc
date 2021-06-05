@@ -129,6 +129,7 @@ const PageNode * PageCache::allocatePage(PageType t) {
 	std::unique_lock<mem::Mutex> hlock(_headerMutex);
 	auto idx = _header.pageCount;
 	++ _header.pageCount;
+	_headerDirty = true;
 	lock.unlock();
 
 	auto ptr = pages::alloc(_pageSize);
@@ -145,8 +146,19 @@ void PageCache::closePage(const PageNode *node) {
 }
 
 void PageCache::clear(const Transaction &t, bool commit) {
-	if (commit && _writable) {
-		writeIndexes(t);
+	bool hasUpdates = !_intIndex.empty() || _headerDirty;
+	if (!hasUpdates) {
+		for (auto &it : _pages) {
+			if (it.second.mode == OpenMode::Write) {
+				hasUpdates = true;
+			}
+		}
+	}
+
+	if (hasUpdates && commit && _writable) {
+		if (!_intIndex.empty()) {
+			writeIndexes(t);
+		}
 		_header.mtime = mem::Time::now().toMicros();
 		auto page = openPage(0, OpenMode::Write);
 		*((StorageHeader *)page->bytes.data()) = _header;
@@ -155,7 +167,7 @@ void PageCache::clear(const Transaction &t, bool commit) {
 
 	bool hasWal = false;
 	std::unique_lock<mem::Mutex> lock(_mutex);
-	if (commit && _writable) {
+	if (hasUpdates && commit && _writable) {
 		hasWal = makeWal();
 	}
 
@@ -236,12 +248,20 @@ uint64_t PageCache::getNextOid() {
 	std::unique_lock<mem::Mutex> lock(_headerMutex);
 	uint64_t ret = _header.oid;
 	++ _header.oid;
+	_headerDirty = true;
 	return ret;
 }
 
 void PageCache::setRoot(uint32_t root) {
 	std::unique_lock<mem::Mutex> lock(_headerMutex);
 	_header.root = root;
+	_headerDirty = true;
+}
+
+void PageCache::setOid(uint64_t oid) {
+	std::unique_lock<mem::Mutex> lock(_headerMutex);
+	_header.oid = oid;
+	_headerDirty = true;
 }
 
 void PageCache::promote(PageNode &node) {
@@ -300,8 +320,8 @@ void PageCache::writeIndexData(const Transaction &t, const SchemeCell &scheme, I
 
 	size_t counter = 0;
 	auto data = (cell->root == UndefinedPage) ? mem::SpanView<IntegerIndexPayload>() : stappler::makeSpanView(
-			(IntegerIndexPayload *)mem::pool::palloc(mem::pool::acquire(), (scheme.counter + inputPayload.size()) * sizeof(IntegerIndexPayload)),
-			scheme.counter);
+			(IntegerIndexPayload *)mem::pool::palloc(mem::pool::acquire(), (scheme.counter + inputPayload.size() + 255) * sizeof(IntegerIndexPayload)),
+			scheme.counter + inputPayload.size() + 255);
 	auto dataView = data;
 
 	auto inputIt = inputPayload.begin();
@@ -313,6 +333,7 @@ void PageCache::writeIndexData(const Transaction &t, const SchemeCell &scheme, I
 		firstPage = h->next;
 
 		auto begin = (const IntegerIndexPayload *)(page->bytes.data() + sizeof(IntIndexContentPageHeader));
+		auto last = begin + h->ncells - 1;
 		auto end = begin + h->ncells;
 
 		while (begin != end) {
@@ -322,6 +343,14 @@ void PageCache::writeIndexData(const Transaction &t, const SchemeCell &scheme, I
 				counter += (end - begin);
 				begin = end;
 			} else {
+				if (last->value < inputIt->value) {
+					memcpy((void *)dataView.data(), begin, (end - begin) * sizeof(IntegerIndexPayload));
+					dataView += (end - begin);
+					counter += (end - begin);
+					begin = end;
+					continue;
+				}
+
 				auto cell = std::upper_bound(begin, end, *inputIt);
 
 				if (cell != begin) {
@@ -337,9 +366,10 @@ void PageCache::writeIndexData(const Transaction &t, const SchemeCell &scheme, I
 
 				auto tarIt = std::upper_bound(inputIt, inputPayload.end(), *begin);
 				if (tarIt != inputIt) {
-					memcpy((void *)dataView.data(), &(*inputIt), (tarIt - inputIt) * sizeof(IntegerIndexPayload));
-					dataView += (tarIt - inputIt);
-					counter += (tarIt - inputIt);
+					auto size = tarIt - inputIt;
+					memcpy((void *)dataView.data(), &(*inputIt), size * sizeof(IntegerIndexPayload));
+					dataView += size;
+					counter += size;
 					inputIt = tarIt;
 				}
 			}
@@ -353,6 +383,10 @@ void PageCache::writeIndexData(const Transaction &t, const SchemeCell &scheme, I
 		counter += (inputPayload.end() - inputIt);
 		inputIt = inputPayload.end();
 	}
+
+	/*if (counter != scheme.counter) {
+		counter = PageCache_fixIndexData(data, counter);
+	}*/
 
 	std::sort(pagePool.begin(), pagePool.end(), std::greater<>());
 
@@ -377,10 +411,21 @@ void PageCache::writeIndexData(const Transaction &t, const SchemeCell &scheme, I
 	} else {
 		auto view = mem::SpanView<IntegerIndexPayload>(data.data(), counter);
 		if (!std::is_sorted(view.data(), view.data() + view.size())) {
+			int64_t value = stappler::minOf<int64_t>();
+			size_t idx = 0;
+			for (auto &it : view) {
+				if (it.value > value) {
+					value = it.value;
+				} else if (it.value < value) {
+					std::cout << "[" << idx << "] Value: " << value << " vs " << it.value << "\n";
+				}
+				++ idx;
+			}
+
+			std::cout << "Range is not sorted\n";
 			for (auto &it : view) {
 				std::cout << "Value: " << it.value << "\n";
 			}
-			std::cout << "Range is not sorted\n";
 		}
 
 		/*for (auto &it : view) {

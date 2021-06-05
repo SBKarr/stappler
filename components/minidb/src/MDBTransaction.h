@@ -81,6 +81,11 @@ public:
 	uint32_t getRoot() const;
 	uint32_t getSchemeRoot(const db::Scheme *) const;
 
+	size_t validateScheme(const SchemeCell &) const;
+	size_t validateIndex(const SchemeCell &schemeCell, const IndexCell &) const;
+
+	bool fixScheme(const db::Scheme *) const;
+
 public: // CRUD
 	mem::Value select(Worker &, const db::Query &);
 	mem::Value create(Worker &, mem::Value &);

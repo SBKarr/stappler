@@ -59,6 +59,7 @@ Transaction::Transaction() {
 }
 
 Transaction::Transaction(const Storage &storage, OpenMode m) {
+	_pool = mem::pool::create(mem::pool::acquire());
 	open(storage, m);
 }
 
@@ -222,6 +223,169 @@ uint32_t Transaction::getRoot() const {
 uint32_t Transaction::getSchemeRoot(const db::Scheme *scheme) const {
 	auto cell = getSchemeCell(scheme);
 	return cell.root;
+}
+
+size_t Transaction::validateScheme(const SchemeCell &cell) const {
+	mem::Vector<uint32_t> pagePool;
+	auto firstPage = getPageList(*this, cell.root, pagePool);
+	uint64_t value = 0;
+	size_t ret = 0;
+
+	mem::Vector<uint64_t> values; values.reserve(cell.counter);
+	while (firstPage != UndefinedPage) {
+		if (auto page = openPage(firstPage, OpenMode::Read)) {
+			auto h = (const SchemeContentPageHeader *)page->bytes.data();
+			firstPage = h->next;
+
+			ret += h->ncells;
+			auto begin = (const OidPosition *)(page->bytes.data() + sizeof(OidPosition));
+			auto end = begin + h->ncells;
+
+			while (begin != end) {
+				if (values.empty() || begin->value > values.back()) {
+					values.emplace_back(begin->value);
+				} else {
+					auto lb = std::lower_bound(values.begin(), values.end(), begin->value);
+					if (lb == values.end()) {
+						values.emplace_back(begin->value);
+					} else if (*lb != begin->value) {
+						values.emplace(lb, begin->value);
+					} else {
+
+					}
+				}
+				if (begin->value > value) {
+					if (value == 0) {
+						// std::cout << "Initial value is " << begin->value << "\n";
+					}
+					value = begin->value;
+				} else if (begin->value < value) {
+					closePage(page);
+					return 0;
+				}
+				++ begin;
+			}
+
+			closePage(page);
+		}
+	}
+	if (values.size() == ret) {
+		return ret;
+	}
+	// std::cout << "End value is " << value << "\n";
+	std::cout << "Counter: " << ret << " vs. " << values.size() << "\n";
+	return 0;
+}
+
+size_t Transaction::validateIndex(const SchemeCell &schemeCell, const IndexCell &cell) const {
+	mem::Vector<uint32_t> pagePool;
+	auto firstPage = getPageList(*this, cell.root, pagePool);
+	int64_t value = stappler::minOf<int64_t>();
+	size_t ret = 0;
+	mem::Vector<uint64_t> values; values.reserve(schemeCell.counter);
+	while (firstPage != UndefinedPage) {
+		if (auto page = openPage(firstPage, OpenMode::Read)) {
+			auto h = (const IntIndexContentPageHeader *)page->bytes.data();
+			firstPage = h->next;
+
+			ret += h->ncells;
+			auto begin = (const IntegerIndexPayload *)(page->bytes.data() + sizeof(IntIndexContentPageHeader));
+			auto end = begin + h->ncells;
+
+			while (begin != end) {
+				if (values.empty() || begin->position.value > values.back()) {
+					values.emplace_back(begin->position.value);
+				} else {
+					auto lb = std::lower_bound(values.begin(), values.end(), begin->position.value);
+					if (lb == values.end()) {
+						values.emplace_back(begin->position.value);
+					} else if (*lb != begin->position.value) {
+						values.emplace(lb, begin->position.value);
+					} else {
+
+					}
+				}
+				if (begin->value > value) {
+					if (value == stappler::minOf<int64_t>()) {
+						// std::cout << "Initial value is " << begin->value << "\n";
+					}
+					value = begin->value;
+				} else if (begin->value < value) {
+					closePage(page);
+					return 0;
+				}
+				++ begin;
+			}
+
+			closePage(page);
+		}
+	}
+	if (values.size() == ret) {
+		return ret;
+	}
+	// std::cout << "End value is " << value << "\n";
+	std::cout << "Counter: " << ret << " vs. " << values.size() << "\n";
+	return 0;
+}
+
+bool Transaction::fixScheme(const db::Scheme *scheme) const {
+	if (_mode == OpenMode::Read) {
+		return false;
+	}
+
+	auto cell = getSchemeCell(scheme);
+	mem::Vector<uint32_t> pagePool;
+	auto firstPage = getPageList(*this, cell.root, pagePool);
+	uint64_t value = 0;
+	size_t ret = 0;
+	while (firstPage != UndefinedPage) {
+		if (auto page = openPage(firstPage, OpenMode::Read)) {
+			auto h = (const SchemeContentPageHeader *)page->bytes.data();
+			firstPage = h->next;
+
+			ret += h->ncells;
+			auto begin = (const OidPosition *)(page->bytes.data() + sizeof(OidPosition));
+			auto end = begin + h->ncells;
+
+			while (begin != end) {
+				if (begin->value > value) {
+					value = begin->value;
+				} else if (begin->value < value) {
+					closePage(page);
+					return false;
+				}
+				++ begin;
+			}
+
+			closePage(page);
+		}
+	}
+
+	for (auto &it : scheme->getFields()) {
+		if (it.second.isIndexed()) {
+			auto idx = getIndexCell(scheme, mem::StringView(it.first));
+			auto counter = validateIndex(cell, idx);
+			if (counter != ret) {
+				return false;
+			}
+		}
+	}
+
+	auto oid = _pageCache->getOid();
+	if (oid <= value) {
+		_pageCache->setOid(value + 1);
+	}
+
+	auto schemeIt = _storage->getSchemes().find(scheme);
+	if (schemeIt != _storage->getSchemes().end()) {
+		if (auto schemePage = openPage(schemeIt->second.first.page, OpenMode::Write)) {
+			auto d = (SchemeCell *)(schemePage->bytes.data() + schemeIt->second.first.offset);
+			d->counter = ret;
+			closePage(schemePage);
+			return true;
+		}
+	}
+	return false;
 }
 
 bool Transaction::isModeAllowed(OpenMode mode) const {
@@ -604,6 +768,7 @@ OidPosition Transaction::pushObjectData(const IndexMap &map, mem::BytesView data
 	std::unique_lock<std::shared_mutex> lock(_mutex);
 	TreeStack stack({*this, _pageCache->getRoot()});
 	if (!checkUnique(map)) {
+		std::cout << "Unique check failed" << "\n";
 		return OidPosition({ 0, 0, 0 });
 	}
 
@@ -633,6 +798,7 @@ OidPosition Transaction::pushObject(const IndexMap &map, const mem::Value &data)
 	// lock sheme on write
 	std::unique_lock<std::shared_mutex> lock(_mutex);
 	if (!checkUnique(map)) {
+		std::cout << "Unique check failed for " << mem::EncodeFormat::Pretty << data << "\n";
 		return OidPosition({ 0, 0, 0 });
 	}
 
