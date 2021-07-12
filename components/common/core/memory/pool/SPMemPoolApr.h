@@ -75,6 +75,8 @@ status_t userdata_get(void **data, const char *key, pool_t *pool);
 size_t get_allocated_bytes(pool_t *p);
 size_t get_return_bytes(pool_t *p);
 
+allocator_t *get_allocator(pool_t *p);
+
 void *pmemdup(pool_t *a, const void *m, size_t n);
 char *pstrdup(pool_t *a, const char *s);
 

@@ -111,6 +111,14 @@ struct DbConnList : public mem::AllocBase {
 		}
 	}
 
+	const char * *getKeywords() const {
+		return keywords;
+	}
+
+	const char * *getValues() const {
+		return values;
+	}
+
 	void parseParams(mem::pool_t *p, const mem::Map<mem::String, mem::String> &params) {
 		keywords = (const char * *)mem::pool::palloc(p, sizeof(const char *) * (params.size() + 1));
 		memset((void *)keywords, 0, sizeof(const char *) * (params.size() + 1));

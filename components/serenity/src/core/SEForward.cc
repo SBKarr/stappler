@@ -252,6 +252,9 @@ void _addErrorMessage(data::Value &&data) {
 			log::text("Error", data::toString(data, false));
 		}
 	}
+#if DEBUG
+	std::cout << data::EncodeFormat::Pretty << data << "\n";
+#endif
 }
 
 void _addDebugMessage(data::Value &&data) {
@@ -288,6 +291,7 @@ void _addDebugMessage(data::Value &&data) {
 	}
 #if DEBUG
 	log::text("Debug", data::toString(data, false));
+	std::cout << data::EncodeFormat::Pretty << data << "\n";
 #endif
 }
 

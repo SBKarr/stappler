@@ -28,6 +28,10 @@ THE SOFTWARE.
 #include "STStorageField.h"
 #include <shared_mutex>
 
+#ifndef LOCK_UN
+#define LOCK_UN	8	/* Remove lock.  */
+#endif
+
 namespace db::minidb {
 
 using uint64_p = uint64_t *;

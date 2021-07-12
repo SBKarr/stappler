@@ -162,6 +162,10 @@ size_t get_return_bytes(pool_t *p) {
 	return allocmngr_get(p)->get_return();
 }
 
+allocator_t *get_allocator(pool_t *p) {
+	return apr_pool_allocator_get(p);
+}
+
 void *pmemdup(pool_t *a, const void *m, size_t n) { return apr_pmemdup(a, m, n); }
 char *pstrdup(pool_t *a, const char *s) { return apr_pstrdup(a, s); }
 
@@ -218,6 +222,7 @@ static inline custom::Status userdata_setn(const void *data, const char *key, cu
 static inline custom::Status userdata_get(void **data, const char *key, custom::Pool *pool) { return custom::SUCCESS; }
 static inline size_t get_allocated_bytes(custom::Pool *p) { return 0; }
 static inline size_t get_return_bytes(custom::Pool *p) { return 0; }
+static inline custom::Allocator *get_allocator(custom::Pool *p) { return nullptr; }
 static inline void *pmemdup(custom::Pool *a, const void *m, size_t n) { return nullptr; }
 static inline char *pstrdup(custom::Pool *a, const char *s) { return nullptr; }
 static inline void setPoolInfo(custom::Pool *p, uint32_t tag, const void *ptr) { }

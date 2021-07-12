@@ -193,7 +193,11 @@ public:
 
 	void reserve(size_t c) { _tree.reserve(c); }
 
+#if MEM_RBTREE_DEBUG
+public:
+#else
 protected:
+#endif
 	rbtree::Tree<Value, Value, Comp> _tree;
 };
 

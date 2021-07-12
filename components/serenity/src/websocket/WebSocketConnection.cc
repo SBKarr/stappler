@@ -336,6 +336,7 @@ bool Connection::write(FrameType t, const uint8_t *bytes, size_t count) {
 	auto bb = _writer->tmpbb;
 	auto of = _connection->output_filters;
 
+	_mutex.lock();
 	auto err = ap_fwrite(of, bb, (const char *)buf.data(), offset);
 	if (count > 0) {
 		err = ap_fwrite(of, bb, (const char *)bytes, count);
@@ -344,6 +345,7 @@ bool Connection::write(FrameType t, const uint8_t *bytes, size_t count) {
 	err = ap_fflush(of, bb);
 	apr_brigade_cleanup(bb);
 
+	_mutex.unlock();
 	if (err != APR_SUCCESS) {
 		return false;
 	}
@@ -351,10 +353,12 @@ bool Connection::write(FrameType t, const uint8_t *bytes, size_t count) {
 }
 
 bool Connection::write(apr_bucket_brigade *bb, const uint8_t *bytes, size_t &count) {
+	_mutex.lock();
 	auto of = _connection->output_filters;
 	ap_fwrite(of, bb, (const char *)bytes, count);
 	ap_fflush(of, bb);
 	apr_brigade_cleanup(bb);
+	_mutex.unlock();
  	return true;
 }
 

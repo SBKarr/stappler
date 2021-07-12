@@ -440,6 +440,15 @@ size_t get_return_bytes(pool_t *pool) {
 	return ((custom::Pool *)pool)->allocmngr.returned;
 }
 
+allocator_t *get_allocator(pool_t *pool) {
+	if constexpr (apr::SPAprDefined) {
+		if (!isCustom(pool)) {
+			return apr::pool::get_allocator(pool);
+		}
+	}
+	return (allocator_t *)(((custom::Pool *)pool)->allocator);
+}
+
 void *pmemdup(pool_t *pool, const void *m, size_t n) {
 	if constexpr (apr::SPAprDefined) {
 		if (!isCustom(pool)) {

@@ -104,26 +104,11 @@ static void expand_array(HashTable *ht) {
 }
 
 static uint32_t s_hashfunc_default(const char *char_key, ssize_t *klen, uint32_t hash) {
-	const unsigned char *key = (const unsigned char *)char_key;
-	const unsigned char *p;
-	ssize_t i;
-
 	if (*klen == -1) {
-		for (p = key; *p; p++) {
-			hash = hash * 33 + *p;
-		}
-		*klen = p - key;
-	} else {
-		for (p = key, i = *klen; i; i--, p++) {
-			hash = hash * 33 + *p;
-		}
+		*klen = strlen(char_key);
 	}
 
-	return hash;
-}
-
-uint32_t hashfunc_default(const char *char_key, ssize_t *klen) {
-	return s_hashfunc_default(char_key, klen, 0);
+	return hash::hash32(char_key, *klen, 0);
 }
 
 static HashEntry **find_entry(HashTable *ht, const void *key, ssize_t klen, const void *val) {

@@ -28,6 +28,27 @@ THE SOFTWARE.
 
 NS_SP_BEGIN
 
+struct MemMapIntTest {
+	int64_t first;
+	int64_t second;
+
+	bool operator == (const MemMapIntTest &r) const {
+		return first == r.first && second == r.second;
+	}
+	bool operator != (const MemMapIntTest &r) const {
+		return first != r.first || second != r.second;
+	}
+};
+
+bool operator < (const MemMapIntTest &l, const MemMapIntTest &r) {
+	return (l.first == r.first) ? l.second < r.second : (l.first < r.first);
+}
+
+std::ostream &operator<<(std::ostream &out, const MemMapIntTest &loc) {
+	out << "(" << loc.first << "," << loc.second << ")";
+	return out;
+}
+
 struct MemMapTest : MemPoolTest {
 	MemMapTest() : MemPoolTest("MemMapTest") { }
 
@@ -36,6 +57,63 @@ struct MemMapTest : MemPoolTest {
 		size_t count = 0;
 		size_t passed = 0;
 		stream << "\n";
+
+		/*memory::set<String> setTest;
+		setTest.emplace("One");
+		setTest.emplace("Two");
+		setTest.emplace("FourFour");
+		setTest.emplace("Five");
+		setTest.emplace("Nine");
+
+		memory::rbtree::TreeDebug::visit(setTest._tree, std::cout);
+
+		do { auto it = setTest.find("One"); if (it == setTest.end()) { std::cout << "Failed One\n"; } } while (0);
+		do { auto it = setTest.find("Two"); if (it == setTest.end()) { std::cout << "Failed Two\n"; } } while (0);
+		do { auto it = setTest.find("FourFour"); if (it == setTest.end()) { std::cout << "Failed FourFour\n"; } } while (0);
+		do { auto it = setTest.find("Five"); if (it == setTest.end()) { std::cout << "Failed Five\n"; } } while (0);
+		do { auto it = setTest.find("Nine"); if (it == setTest.end()) { std::cout << "Failed Nine\n"; } } while (0);*/
+
+		memory::set<int64_t> intSetTest;
+		intSetTest.emplace(2);
+		intSetTest.emplace(4);
+		intSetTest.emplace(1);
+		do {
+			//memory::rbtree::TreeDebug::visit(intSetTest._tree, std::cout);
+			auto it1 = intSetTest.find(2);
+			if (it1 == intSetTest.end()) {
+				std::cout << "Failed 1\n";
+			}
+
+			auto it2 = intSetTest.find(4);
+			if (it2 == intSetTest.end()) {
+				std::cout << "Failed 2\n";
+			}
+
+			auto it3 = intSetTest.find(1);
+			if (it3 == intSetTest.end()) {
+				std::cout << "Failed 3\n";
+			}
+		} while(0);
+
+		memory::set<MemMapIntTest> empTest;
+		empTest.emplace(MemMapIntTest{420532968332,16623061247});
+		empTest.emplace(MemMapIntTest{421702536327,0});
+		empTest.emplace(MemMapIntTest{0,0});
+
+		auto it1 = empTest.find(MemMapIntTest{420532968332,16623061247});
+		if (it1 == empTest.end()) {
+			std::cout << "Failed 1\n";
+		}
+
+		auto it2 = empTest.find(MemMapIntTest{421702536327,0});
+		if (it2 == empTest.end()) {
+			std::cout << "Failed 2\n";
+		}
+
+		auto it3 = empTest.find(MemMapIntTest{0,0});
+		if (it3 == empTest.end()) {
+			std::cout << "Failed 3\n";
+		}
 
 		memory::map<size_t, String> vec; vec.reserve(5);
 		vec.emplace(1, "One");

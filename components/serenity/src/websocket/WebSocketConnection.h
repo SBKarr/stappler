@@ -134,6 +134,7 @@ protected:
 	apr_pool_t *_pool;
 	conn_rec *_connection;
 	apr_socket_t *_socket;
+	apr::mutex _mutex;
 	std::atomic_flag _shouldTerminate;
 
 	FrameWriter *_writer = nullptr;

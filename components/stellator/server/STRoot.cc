@@ -97,9 +97,52 @@ bool Root::run(const mem::Value &config) {
 				return false;
 			}
 
-
 			auto &servs = config.getValue("hosts");
 			for (auto &it : servs.asArray()) {
+				auto &params = it.getValue("db");
+
+				const char * keywords[params.size() + 1] = { 0 };
+				const char * values[params.size() + 1] = { 0 };
+
+				bool existed = false;
+				mem::StringView dbName;
+				size_t i = 0;
+				for (auto &it : params.asDict()) {
+					keywords[i] = it.first.data();
+					if (it.first == "dbname") {
+						values[i] = "postgres";
+						dbName = mem::StringView(it.second.getString());
+					} else {
+						values[i] = it.second.getString().data();
+					}
+					++ i;
+				}
+
+				auto handle = _internal->dbDriver->connect(keywords, values, 0);
+				if (handle.get()) {
+					auto conn = _internal->dbDriver->getConnection(handle);
+					auto res = _internal->dbDriver->exec(conn, "SELECT datname FROM pg_database;");
+
+					for (size_t i = 0; i < _internal->dbDriver->getNTuples(res); ++ i) {
+						auto name = mem::StringView(_internal->dbDriver->getValue(res, i, 0), _internal->dbDriver->getLength(res, i, 0));
+						if (name == dbName) {
+							existed = true;
+						}
+					}
+
+					_internal->dbDriver->clearResult(res);
+
+					if (!existed) {
+						mem::StringStream query;
+						query << "CREATE DATABASE " << dbName << ";";
+						auto q = query.weak().data();
+						auto res = _internal->dbDriver->exec(conn, q);
+						_internal->dbDriver->clearResult(res);
+					}
+
+					_internal->dbDriver->finish(handle);
+				}
+
 				addServer(it);
 			}
 

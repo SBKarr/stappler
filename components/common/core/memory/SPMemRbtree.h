@@ -29,9 +29,9 @@ NS_SP_EXT_BEGIN(memory)
 
 namespace rbtree {
 
-enum NodeColor : bool {
-	Red = false,
-	Black = true
+enum NodeColor : uintptr_t {
+	Red = 0,
+	Black = 1
 };
 
 template <typename Value>
@@ -1092,7 +1092,7 @@ NS_SP_EXT_END(memory)
 
 #if MEM_RBTREE_DEBUG
 
-NS_SP_BEGIN_END(memory)
+NS_SP_EXT_BEGIN(memory)
 
 namespace rbtree {
 
@@ -1108,7 +1108,8 @@ public:
 	template <class T>
 	static void visit(const T & tree, std::ostream &stream) {
 		typename T::const_node_ptr r = tree.root();
-		stream << "visit " << (void *)r << "\n";
+		stream << "visit " << (void *)r << "  header: " << tree._header.left << " | " << tree._header.right << " | " << tree._header.parent;
+		stream << "\n";
 		if (r) {
 			visit(tree, stream, static_cast<typename T::const_node_ptr>(r), 0);
 		}
@@ -1116,21 +1117,21 @@ public:
 
 	template <class T>
 	static Validation validate(const T & tree) {
-		if (tree._header.left && tree._header.left->color == NodeColor::Red) {
+		if (tree._header.left && tree._header.left->flag.color == NodeColor::Red) {
 			return Validation::RootIsNotBlack;
 		} else {
 			auto counter = 0;
 			auto root = tree._header.left;
 			while (root) {
-				if (root->color == NodeColor::Black) ++counter;
+				if (root->flag.color == NodeColor::Black) ++counter;
 				root = root->left;
 			}
 			return validate(counter, tree._header.left, 0);
 		}
 	}
 
-	static bool make_test(std::ostream &stream, int size = 128);
-	static bool make_test(std::ostream &stream, const apr::array<int> &insert, const apr::array<int> &erase);
+	//static bool make_test(std::ostream &stream, int size = 128);
+	//static bool make_test(std::ostream &stream, const apr::array<int> &insert, const apr::array<int> &erase);
 
 	static bool make_hint_test(std::ostream &stream, int size = 128);
 protected:
@@ -1143,7 +1144,7 @@ protected:
 			stream << "--";
 		}
 		stream << (void *)node << " l:" << (void *)node->left << " r:" << (void *)node->right	<< " p:"
-				<< (void *)node->parent << " v:" << *(node->value.ptr()) << (node->color?" black":" red") << "\n";
+				<< (void *)node->parent << " v:" << *(node->value.ptr()) << (node->flag.color?" black":" red") << "\n";
 		if (node->right) {
 			visit(tree, stream, static_cast<typename T::const_node_ptr>(node->right), depth + 1);
 		}
@@ -1156,15 +1157,15 @@ protected:
 			}
 			return Validation::Valid;
 		} else {
-			if (node->color == NodeColor::Black) {
+			if (node->flag.color == NodeColor::Black) {
 				auto res = validate(counter, node->left, path + 1);
 				if (res == Validation::Valid) {
 					res = validate(counter, node->right, path + 1);
 				}
 				return res;
 			} else {
-				if ((node->left && node->left->color == NodeColor::Red)
-						|| (node->right && node->right->color == NodeColor::Red)) {
+				if ((node->left && node->left->flag.color == NodeColor::Red)
+						|| (node->right && node->right->flag.color == NodeColor::Red)) {
 					return Validation::RedChildIntoRedNode;
 				} else {
 					auto res = validate(counter, node->left, path);

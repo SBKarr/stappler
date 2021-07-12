@@ -93,6 +93,8 @@ public:
 
 	void setDbCtrl(mem::Function<void(bool)> &&);
 
+	operator bool () const { return _handle != nullptr; }
+
 protected:
 	Driver(const mem::StringView &);
 
