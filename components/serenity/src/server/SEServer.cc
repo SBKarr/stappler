@@ -384,7 +384,7 @@ struct Server::Config : public AllocPool {
 
 	void onError(const StringView &str) {
 #if DEBUG
-		std::cout << str << "\n";
+		std::cout << "[Template]: " << str << "\n";
 #endif
 		messages::error("Template", "Template compilation error", data::Value(str));
 	}
@@ -990,13 +990,13 @@ void Server::initHeartBeat(apr_pool_t *, int epoll) {
 		auto query = toString("LISTEN ", config::getSerenityBroadcastChannelName(), ";");
 		int querySent = PQsendQuery(conn, query.data());
 		if (querySent == 0) {
-			std::cout << PQerrorMessage(conn) << "\n";
+			std::cout << "[Postgres]: " << PQerrorMessage(conn) << "\n";
 			root->dbdClose(_server, dbd);
 			return;
 		}
 
 		if (PQsetnonblocking(conn, 1) == -1) {
-			std::cout << PQerrorMessage(conn) << "\n";
+			std::cout << "[Postgres]: " << PQerrorMessage(conn) << "\n";
 			root->dbdClose(_server, dbd);
 			return;
 		} else {
@@ -1362,7 +1362,11 @@ int Server::onRequest(Request &req) {
 		}
 	} else {
 		if (path.size() > 1 && path.back() == '/') {
-			return req.redirectTo(toString(path.substr(0, path.size() - 1)));
+			auto name = toString(path.substr(0, path.size() - 1));
+			auto it = _config->requests.find(name);
+			if (it != _config->requests.end()) {
+				return req.redirectTo(String(name));
+			}
 		}
 	}
 
@@ -1589,7 +1593,7 @@ void Server::runErrorReportTask(request_rec *req, const Vector<data::Value> &err
 	}
 	if (!_config->childInit) {
 		for (auto &it : errors) {
-			std::cout << data::EncodeFormat::Pretty << it << "\n";
+			std::cout << "[Error]: " << data::EncodeFormat::Pretty << it << "\n";
 		}
 		return;
 	}

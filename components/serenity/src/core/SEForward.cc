@@ -239,6 +239,10 @@ void _addErrorMessage(data::Value &&data) {
 		serv.reportError(data);
 	}
 
+#if DEBUG
+	std::cout << "[Error]: " << data::EncodeFormat::Pretty << data << "\n";
+#endif
+
 	Request rctx(apr::pool::request());
 	if (rctx) {
 		rctx.addErrorMessage(std::move(data));
@@ -252,9 +256,6 @@ void _addErrorMessage(data::Value &&data) {
 			log::text("Error", data::toString(data, false));
 		}
 	}
-#if DEBUG
-	std::cout << data::EncodeFormat::Pretty << data << "\n";
-#endif
 }
 
 void _addDebugMessage(data::Value &&data) {

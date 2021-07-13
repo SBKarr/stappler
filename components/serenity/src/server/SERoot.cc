@@ -217,13 +217,13 @@ static void sa_server_timer_postgres_error(PollClient *cl, int epoll) {
 		auto query = toString("LISTEN ", config::getSerenityBroadcastChannelName(), ";");
 		int querySent = PQsendQuery(conn, query.data());
 		if (querySent == 0) {
-			std::cout << PQerrorMessage(conn);
+			std::cout << "[Postgres]: " << PQerrorMessage(conn) << "\n";
 			root->dbdClose(cl->server, (ap_dbd_t *)cl->ptr);
 			return;
 		}
 
 		if (PQsetnonblocking(conn, 1) == -1) {
-			std::cout << PQerrorMessage(conn) << "\n";
+			std::cout << "[Postgres]: " << PQerrorMessage(conn) << "\n";
 			root->dbdClose(cl->server, (ap_dbd_t *)cl->ptr);
 			return;
 		} else {
@@ -254,7 +254,7 @@ static void sa_server_timer_postgres_process(PollClient *cl, int epoll) {
 
 	int rc = PQconsumeInput(conn);
 	if (rc == 0) {
-		std::cout << PQerrorMessage(conn) << "\n";
+		std::cout << "[Postgres]: " << PQerrorMessage(conn) << "\n";
 		sa_server_timer_postgres_error(cl, epoll);
 		return;
 	}
