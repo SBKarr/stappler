@@ -82,7 +82,7 @@ public:
 	uint32_t getSchemeRoot(const db::Scheme *) const;
 
 	size_t validateScheme(const SchemeCell &) const;
-	size_t validateIndex(const SchemeCell &schemeCell, const IndexCell &) const;
+	size_t validateIndex(const SchemeCell &schemeCell, const IndexCell &, bool unique) const;
 
 	bool fixScheme(const db::Scheme *) const;
 

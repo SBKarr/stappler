@@ -23,7 +23,7 @@ THE SOFTWARE.
 #ifndef COMMON_UTILS_SPHALFFLOAT_H_
 #define COMMON_UTILS_SPHALFFLOAT_H_
 
-#include "SPCommon.h"
+#include "SPCore.h"
 
 NS_SP_EXT_BEGIN(halffloat)
 

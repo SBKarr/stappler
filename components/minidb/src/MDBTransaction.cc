@@ -277,11 +277,12 @@ size_t Transaction::validateScheme(const SchemeCell &cell) const {
 	return 0;
 }
 
-size_t Transaction::validateIndex(const SchemeCell &schemeCell, const IndexCell &cell) const {
+size_t Transaction::validateIndex(const SchemeCell &schemeCell, const IndexCell &cell, bool checkUnique) const {
 	mem::Vector<uint32_t> pagePool;
 	auto firstPage = getPageList(*this, cell.root, pagePool);
 	int64_t value = stappler::minOf<int64_t>();
 	size_t ret = 0;
+	mem::Vector<int64_t> unique;
 	mem::Vector<uint64_t> values; values.reserve(schemeCell.counter);
 	while (firstPage != UndefinedPage) {
 		if (auto page = openPage(firstPage, OpenMode::Read)) {
@@ -293,6 +294,22 @@ size_t Transaction::validateIndex(const SchemeCell &schemeCell, const IndexCell 
 			auto end = begin + h->ncells;
 
 			while (begin != end) {
+				if (checkUnique) {
+					if (unique.empty() || begin->value > unique.back()) {
+						unique.emplace_back(begin->value);
+					} else {
+						auto lb = std::lower_bound(unique.begin(), unique.end(), begin->value);
+						if (lb == unique.end()) {
+							unique.emplace_back(begin->value);
+						} else if (*lb != begin->value) {
+							unique.emplace(lb, begin->value);
+						} else {
+							std::cout << "Non-Unique value: " << begin->value << "\n";
+							return 0;
+						}
+					}
+				}
+
 				if (values.empty() || begin->position.value > values.back()) {
 					values.emplace_back(begin->position.value);
 				} else {
@@ -364,7 +381,7 @@ bool Transaction::fixScheme(const db::Scheme *scheme) const {
 	for (auto &it : scheme->getFields()) {
 		if (it.second.isIndexed()) {
 			auto idx = getIndexCell(scheme, mem::StringView(it.first));
-			auto counter = validateIndex(cell, idx);
+			auto counter = validateIndex(cell, idx, it.second.hasFlag(db::Flags::Unique));
 			if (counter != ret) {
 				return false;
 			}
@@ -1385,7 +1402,7 @@ bool Transaction::foreach(const db::Scheme &scheme, const mem::Function<void(uin
 						auto pos = (OidPosition *)(ptr + sizeof(OidPosition) * i);
 						if (!ids.empty()) {
 							auto lb = std::lower_bound(ids.begin(), ids.end(), pos->value);
-							if (lb != ids.end()) {
+							if (lb != ids.end() && *lb == pos->value) {
 								-- counter;
 								continue;
 							}
