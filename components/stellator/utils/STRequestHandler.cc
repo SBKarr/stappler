@@ -337,7 +337,7 @@ bool HandlerMap::Handler::processInputFields(InputFilter *f) {
 	}
 
 	bool success = true;
-	for (auto &it : _info->getQueryScheme().getFields()) {
+	for (auto &it : _info->getInputScheme().getFields()) {
 		auto &val = _inputFields.getValue(it.first);
 		if (val.isNull() && it.second.hasFlag(db::Flags::Required)) {
 			messages::error("HandlerMap", "No value for required field",
