@@ -38,6 +38,8 @@ public:
 		Function<void(Node *, StringView)> onMath;
 		Function<style::Style *(style::Style *, StringView, StringView)> onClass;
 		StringStream *errorStream = nullptr;
+		bool mimeExt = false;
+		bool videoAlt = false;
 
 		Config() = default;
 		Config(Document *, Node *,

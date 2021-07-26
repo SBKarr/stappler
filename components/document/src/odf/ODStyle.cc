@@ -596,11 +596,12 @@ Style::ListLevel &Style::addListLevel(ListLevel::Type t, Style *s) {
 Style::Parameter::Parameter(Name name) : name(name) { }
 
 void Style::write(const WriteCallback &cb, const Callback<StringView(StringId)> &stringIdCb, bool pretty) const {
-	if (pretty) { cb << "\t"; }
 	if (type != Default) {
 		if (family == Family::PageLayout) {
+			if (pretty) { cb << "\t"; }
 			cb << "<style:page-layout style:name=\"" << Escaped(name) << "\"";
 		} else if (family == Family::Note) {
+			if (pretty) { cb << "\t"; }
 			cb << "<text:notes-configuration text:note-class=\"" << Escaped(name) << "\"";
 			if (parent) { cb << " text:citation-style-name=\"" << Escaped(parent->getName()) << "\""; }
 			writeNoteProperties(cb, stringIdCb, pretty);
@@ -608,14 +609,11 @@ void Style::write(const WriteCallback &cb, const Callback<StringView(StringId)> 
 			if (pretty) { cb << "\n"; }
 			return;
 		} else if (family == Family::List) {
+			if (pretty) { cb << "\t"; }
 			cb << "<text:list-style style:name=\"" << Escaped(name) << "\" text:consecutive-numbering=\"" << consecutiveNumbering << "\"";
 		} else {
-			cb << "<style:style style:name=\"" << Escaped(name) << "\" style:family=\"" << family << "\"";
-
-			if (master) { cb << " style:master-page-name=\"" << Escaped(master->getName()) << "\""; }
-			if (defaultOutline) {
-				cb << " style:default-outline-level=\"" << uint32_t(defaultOutline) << "\"";
-			}
+			writeCustomStyle(cb, stringIdCb, pretty);
+			return;
 		}
 
 		if (parent) { cb << " style:parent-style-name=\"" << Escaped(parent->getName()) << "\""; }
@@ -628,7 +626,8 @@ void Style::write(const WriteCallback &cb, const Callback<StringView(StringId)> 
 			std::cout << "Default list styles is not supported\n";
 			return;
 		} else {
-			cb << "<style:default-style style:family=\"" << family << "\"";
+			writeDefaultStyle(cb, stringIdCb, pretty);
+			return;
 		}
 	}
 
@@ -675,6 +674,71 @@ void Style::write(const WriteCallback &cb, const Callback<StringView(StringId)> 
 	if (pretty) { cb << "\n"; }
 }
 
+void Style::writeDefaultStyle(const WriteCallback &cb, const Callback<StringView(StringId)> &stringIdCb, bool pretty) const {
+	auto writeStyle = [&] (Family target) {
+		if (pretty) { cb << "\t"; }
+		cb << "<style:default-style style:family=\"" << target << "\">";
+		if (pretty) { cb << "\n"; }
+		writeStyleProperties(cb, stringIdCb, pretty, target);
+		if (target == Paragraph) {
+			if (!text.empty()) { writeStyleProperties(cb, stringIdCb, pretty, Text); }
+		}
+		if (pretty) { cb << "\t"; }
+		cb << "</style:default-style>";
+		if (pretty) { cb << "\n"; }
+	};
+
+	if (!text.empty()) { writeStyle(Text); }
+	if (!paragraph.empty()) { writeStyle(Paragraph); }
+	if (!table.empty()) { writeStyle(Table); }
+	if (!tableColumn.empty()) { writeStyle(TableColumn); }
+	if (!tableRow.empty()) { writeStyle(TableRow); }
+	if (!tableCell.empty()) { writeStyle(TableCell); }
+	if (!graphic.empty()) { writeStyle(Graphic); }
+}
+
+void Style::writeCustomStyle(const WriteCallback &cb, const Callback<StringView(StringId)> &stringIdCb, bool pretty) const {
+	auto writeStyle = [&] (Family target) {
+		if (pretty) { cb << "\t"; }
+		cb << "<style:style style:name=\"" << Escaped(name) << "\" style:family=\"" << target << "\"";
+
+		if (target == Paragraph || target == Table) {
+			if (master) { cb << " style:master-page-name=\"" << Escaped(master->getName()) << "\""; }
+		}
+		if (target == Paragraph && defaultOutline) {
+			cb << " style:default-outline-level=\"" << uint32_t(defaultOutline) << "\"";
+		}
+
+		if (parent) { cb << " style:parent-style-name=\"" << Escaped(parent->getName()) << "\""; }
+		if (!styleClass.empty()) { cb << " style:class=\"" << Escaped(styleClass) << "\""; }
+		cb << ">";
+		if (pretty) { cb << "\n"; }
+
+		if (target == Paragraph) {
+			if (!paragraph.empty()) { writeStyleProperties(cb, stringIdCb, pretty, Paragraph); }
+			if (!text.empty()) { writeStyleProperties(cb, stringIdCb, pretty, Text); }
+		} else {
+			writeStyleProperties(cb, stringIdCb, pretty, target);
+		}
+
+		if (pretty) { cb << "\t"; }
+		cb << "</style:style>";
+		if (pretty) { cb << "\n"; }
+	};
+
+	if (family == Paragraph) {
+		if (!paragraph.empty() || !text.empty()) { writeStyle(Paragraph); }
+	} else {
+		if (!text.empty()) { writeStyle(Text); }
+		if (!paragraph.empty()) { writeStyle(Paragraph); }
+	}
+
+	if (!table.empty()) { writeStyle(Table); }
+	if (!tableColumn.empty()) { writeStyle(TableColumn); }
+	if (!tableRow.empty()) { writeStyle(TableRow); }
+	if (!tableCell.empty()) { writeStyle(TableCell); }
+	if (!graphic.empty()) { writeStyle(Graphic); }
+}
 
 Style & Style::setDefaultOutlineLevel(uint32_t size) {
 	defaultOutline = size;
@@ -983,12 +1047,12 @@ void Style::writeNoteProperties(const WriteCallback &cb, const Callback<StringVi
 	}
 }
 
-void Style::writeStyleProperties(const WriteCallback &cb, const Callback<StringView(StringId)> &stringIdCb, bool pretty) const {
-	if (!text.empty()) {
+void Style::writeStyleProperties(const WriteCallback &cb, const Callback<StringView(StringId)> &stringIdCb, bool pretty, Family target) const {
+	if (!text.empty() && (target == Undefined || target == Text)) {
 		writeTextProperties(cb, stringIdCb, pretty, text);
 	}
 
-	if (!paragraph.empty()) {
+	if (!paragraph.empty() && (target == Undefined || target == Paragraph)) {
 		if (pretty) { cb << "\t\t"; }
 		cb << "<style:paragraph-properties";
 		Border borderleft, borderright, bordertop, borderbottom;
@@ -1080,7 +1144,7 @@ void Style::writeStyleProperties(const WriteCallback &cb, const Callback<StringV
 		if (pretty) { cb << "\n"; }
 	}
 
-	if (!table.empty()) {
+	if (!table.empty() && (target == Undefined || target == Table)) {
 		if (pretty) { cb << "\t\t"; }
 		cb << "<style:table-properties";
 
@@ -1118,7 +1182,7 @@ void Style::writeStyleProperties(const WriteCallback &cb, const Callback<StringV
 		if (pretty) { cb << "\n"; }
 	}
 
-	if (!tableColumn.empty()) {
+	if (!tableColumn.empty() && (target == Undefined || target == TableColumn)) {
 		if (pretty) { cb << "\t\t"; }
 		cb << "<style:table-column-properties";
 
@@ -1137,7 +1201,7 @@ void Style::writeStyleProperties(const WriteCallback &cb, const Callback<StringV
 		if (pretty) { cb << "\n"; }
 	}
 
-	if (!tableRow.empty()) {
+	if (!tableRow.empty() && (target == Undefined || target == TableRow)) {
 		if (pretty) { cb << "\t\t"; }
 		cb << "<style:table-row-properties";
 
@@ -1158,7 +1222,7 @@ void Style::writeStyleProperties(const WriteCallback &cb, const Callback<StringV
 		if (pretty) { cb << "\n"; }
 	}
 
-	if (!tableCell.empty()) {
+	if (!tableCell.empty() && (target == Undefined || target == TableCell)) {
 		if (pretty) { cb << "\t\t"; }
 		cb << "<style:table-cell-properties";
 
@@ -1210,7 +1274,7 @@ void Style::writeStyleProperties(const WriteCallback &cb, const Callback<StringV
 		cb << "/>";
 		if (pretty) { cb << "\n"; }
 
-	} else if (!graphic.empty()) {
+	} else if (!graphic.empty() && (target == Undefined || target == Graphic)) {
 		if (pretty) { cb << "\t\t"; }
 		cb << "<style:graphic-properties";
 		Border borderleft, borderright, bordertop, borderbottom;
@@ -1859,6 +1923,7 @@ const WriteCallback &operator<<(const WriteCallback &cb, const style::Style::Fam
 	case style::Style::Family::PageLayout: break;
 	case style::Style::Family::List: break;
 	case style::Style::Family::Note: break;
+	case style::Style::Family::Undefined: break;
 	}
 	return cb;
 }

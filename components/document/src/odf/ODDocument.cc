@@ -117,15 +117,13 @@ StringView Document::getUserMeta(const StringView &key) const {
 	return StringView();
 }
 
-style::Style *Document::getDefaultStyle(style::Style::Family f) {
-	auto it = _defaultStyles.find(f);
-	if (it != _defaultStyles.end()) {
-		return &it->second;
-	} else {
-		return &_defaultStyles.emplace(f, style::Style(style::Style::Default, f, StringView(), nullptr, [this] (const StringView &str) {
+style::Style *Document::getDefaultStyle() {
+	if (!_defaultStyle) {
+		_defaultStyle = new style::Style(style::Style::Default, style::Style::Paragraph, StringView(), nullptr, [this] (const StringView &str) {
 			_stringPool.emplace(style::StringId{stappler::hash::hash32(str.data(), str.size())}, str.str<Interface>());
-		}, StringView())).first->second;
+		}, StringView());
 	}
+	return _defaultStyle;
 }
 
 style::Style *Document::addCommonStyle(const StringView &name, style::Style::Family f, const StringView &cl) {
@@ -412,12 +410,12 @@ void Document::writeStyles(const WriteCallback &cb, bool pretty, bool withConten
 	};
 
 	if (pretty) { cb << "\n"; }
-	if (!_defaultStyles.empty() || !_commonStyles.empty()) {
+	if (_defaultStyle || !_commonStyles.empty()) {
 		cb << "<office:styles>";
 		if (pretty) { cb << "\n"; }
 
-		for (auto &it : _defaultStyles) {
-			it.second.write(cb, stringCb, pretty);
+		if (_defaultStyle) {
+			_defaultStyle->write(cb, stringCb, pretty);
 		}
 
 		for (auto &it : _commonStyles) {
@@ -566,7 +564,7 @@ const File & Document::addNetworkFile(StringView name, StringView url) {
 }
 
 static auto s_manifestBegin = R"(<?xml version="1.0" encoding="UTF-8"?>
-<manifest:manifest manifest:version="1.2">
+<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.2">
 )";
 
 static auto s_manifestEnd = R"(</manifest:manifest>

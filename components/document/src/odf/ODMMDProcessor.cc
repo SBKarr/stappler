@@ -73,7 +73,7 @@ Node *MmdProcessor::makeNode(const StringView &name, InitList &&attr, VecList &&
 			}
 		}
 		if (!cl.empty() && _config.onClass) {
-			auto s = _config.document->getDefaultStyle(style::Style::Family::Paragraph);
+			auto s = _config.document->getDefaultStyle();
 			if (s) {
 				s = _config.onClass(s, name, cl);
 				if (!s) {
@@ -189,10 +189,20 @@ Node *MmdProcessor::makeNode(const StringView &name, InitList &&attr, VecList &&
 		}
 	}
 	if (name == "figure") {
-		return _nodeStack.back()->addNode("text:p")->addNode("draw:frame", {
-			stappler::pair("draw:z-index", "0"),
-			stappler::pair("svg:width", "100%")
-		}, getFigureStyle())->addNode("draw:text-box")->addNode("text:p", getFigureContentStyle());
+		auto p = _nodeStack.back();
+		if (p->getTag() == "text:p") {
+			return p->addNode("draw:frame", {
+				stappler::pair("draw:z-index", "0"),
+				//stappler::pair("svg:width", "100%")
+				stappler::pair("svg:width", "190.0mm")
+			}, getFigureStyle())->addNode("draw:text-box")->addNode("text:p", getFigureContentStyle());
+		} else {
+			return p->addNode("text:p")->addNode("draw:frame", {
+				stappler::pair("draw:z-index", "0"),
+				//stappler::pair("svg:width", "100%")
+				stappler::pair("svg:width", "190.0mm")
+			}, getFigureStyle())->addNode("draw:text-box")->addNode("text:p", getFigureContentStyle());
+		}
 	}
 	if (name == "img") {
 		if (auto node = makeImageNode(name, std::move(attr), std::move(vec))) {
@@ -200,9 +210,35 @@ Node *MmdProcessor::makeNode(const StringView &name, InitList &&attr, VecList &&
 		}
 	}
 	if (name == "figcaption") {
-		auto ret = _nodeStack.back()->addNode("text:span", getFigureLabelStyle());
-		ret->addNode("text:line-break");
-		return ret;
+		if (_config.videoAlt) {
+			StringView type;
+			StringView url;
+
+			for (auto &it : attr) {
+				if (it.first == "data-type") {
+					type = it.second;
+				} else if (it.first == "data-src") {
+					url = it.second;
+				}
+			}
+
+			if (type == "video" && !url.empty()) {
+				auto ret = _nodeStack.back()->addNode("text:span", getFigureLabelStyle())->addNode("text:a", {
+					stappler::pair("xlink:href", url.str<Interface>()),
+					stappler::pair("xlink:type", "simple")
+				}, getLinkStyle());
+				ret->addNode("text:line-break");
+				return ret;
+			} else {
+				auto ret = _nodeStack.back()->addNode("text:span", getFigureLabelStyle());
+				ret->addNode("text:line-break");
+				return ret;
+			}
+		} else {
+			auto ret = _nodeStack.back()->addNode("text:span", getFigureLabelStyle());
+			ret->addNode("text:line-break");
+			return ret;
+		}
 	}
 
 	if (name == "table") {
@@ -288,14 +324,22 @@ Node *MmdProcessor::makeLinkNode(const StringView &name, InitList &&attr, VecLis
 		_config.onInsert(_nodeStack.back(), href);
 		return &_tmpNode;
 	} else if (href.starts_with("http://") || href.starts_with("https://")) {
+		if (href.starts_with("(") && href.ends_with(")")) {
+			href.trimChars<StringView::Chars<'(', ')'>>();
+		}
 		return _nodeStack.back()->addNode("text:a", {
-			stappler::pair("xlink:href", href.str<Interface>())
+			stappler::pair("xlink:href", href.str<Interface>()),
+			stappler::pair("xlink:type", "simple")
 		}, getLinkStyle());
 	}
 
 	if (!href.empty() && attr.size() == 0 && vec.size() == 1) {
+		if (href.starts_with("(") && href.ends_with(")")) {
+			href.trimChars<StringView::Chars<'(', ')'>>();
+		}
 		return _nodeStack.back()->addNode("text:a", {
-			stappler::pair("xlink:href", _config.onLink(href))
+			stappler::pair("xlink:href", _config.onLink(href)),
+			stappler::pair("xlink:type", "simple")
 		}, getLinkStyle());
 	}
 	return nullptr;
@@ -319,15 +363,28 @@ Node *MmdProcessor::makeImageNode(const StringView &name, InitList &&attr, VecLi
 
 			float scale = std::min(width / img.width, height / img.height);
 
-			return _nodeStack.back()->addNode("draw:frame", {
-				stappler::pair("draw:z-index", "1"),
-				stappler::pair("svg:width", toString(img.width * scale, "mm")),
-				stappler::pair("svg:height", toString(img.height * scale, "mm")),
-				stappler::pair("text:anchor-type" ,"frame")
-			}, getImageStyle())->addNode("draw:image", {
-				stappler::pair("xlink:href", img.name),
-				stappler::pair("loext:mime-type", img.type)
-			});
+			if (_config.mimeExt) {
+				return _nodeStack.back()->addNode("draw:frame", {
+					stappler::pair("draw:z-index", "1"),
+					stappler::pair("svg:width", toString(img.width * scale, "mm")),
+					stappler::pair("svg:height", toString(img.height * scale, "mm")),
+					stappler::pair("text:anchor-type" ,"frame")
+				}, getImageStyle())->addNode("draw:image", {
+					stappler::pair("xlink:href", img.name),
+					stappler::pair("loext:mime-type", img.type),
+					stappler::pair("xlink:type", "simple")
+				});
+			} else {
+				return _nodeStack.back()->addNode("draw:frame", {
+					stappler::pair("draw:z-index", "1"),
+					stappler::pair("svg:width", toString(img.width * scale, "mm")),
+					stappler::pair("svg:height", toString(img.height * scale, "mm")),
+					stappler::pair("text:anchor-type" ,"frame")
+				}, getImageStyle())->addNode("draw:image", {
+					stappler::pair("xlink:href", img.name),
+					stappler::pair("xlink:type", "simple")
+				});
+			}
 		}
 	} else if (type == "video" || StringView(src).starts_with("https://www.youtube.com") || StringView(src).starts_with("https://youtube.com")) {
 		if (auto img = _config.onVideo(src)) {
@@ -339,37 +396,91 @@ Node *MmdProcessor::makeImageNode(const StringView &name, InitList &&attr, VecLi
 			auto wStr = toString(img.width * scale, "mm");
 			auto hStr = toString(img.height * scale, "mm");
 
-			auto imageNode = _nodeStack.back()->addNode("draw:a", {
-					stappler::pair("xlink:href", src)
-			})->addNode("draw:frame", {
-				stappler::pair("draw:z-index", "1"),
-				stappler::pair("svg:width", wStr),
-				stappler::pair("svg:height", hStr),
-				stappler::pair("text:anchor-type" ,"paragraph")
-			}, getImageStyle())->addNode("draw:image", {
-				stappler::pair("xlink:href", img.name),
-				stappler::pair("loext:mime-type", img.type),
+			StringView url(src);
+			if (url.starts_with("(") && url.ends_with(")")) {
+				url.trimChars<StringView::Chars<'(', ')'>>();
+			}
+
+			auto ref = _nodeStack.back()->addNode("draw:a", {
+				stappler::pair("xlink:href", url.str<Interface>()),
+				stappler::pair("xlink:type", "simple")
 			});
 
-			float iconScale = 20.0f / 1024.0f;
-			float iconWidth = 1024.0f * iconScale;
-			float iconHeight = 721.0f * iconScale;
-			float iconY = (img.height * scale - iconHeight) / 2.0f;
-			float iconX = (img.width * scale - iconWidth) / 2.0f;
+			Node *imageNode = nullptr;
+			if (_config.videoAlt) {
+				imageNode = ref->addNode("draw:frame", {
+					stappler::pair("draw:z-index", "1"),
+					stappler::pair("svg:width", wStr),
+					stappler::pair("svg:height", hStr),
+					stappler::pair("text:anchor-type" ,"paragraph")
+				}, getImageStyle())->addNode("draw:image", {
+					stappler::pair("xlink:href", img.name),
+					stappler::pair("loext:mime-type", img.type),
+					stappler::pair("xlink:type", "simple")
+				});
+			} else {
+				if (_config.mimeExt) {
+					imageNode = ref->addNode("draw:frame", {
+						stappler::pair("draw:z-index", "1"),
+						stappler::pair("svg:width", wStr),
+						stappler::pair("svg:height", hStr),
+						stappler::pair("text:anchor-type" ,"paragraph")
+					}, getImageStyle())->addNode("draw:image", {
+						stappler::pair("xlink:href", img.name),
+						stappler::pair("loext:mime-type", img.type),
+						stappler::pair("xlink:type", "simple")
+					});
+				} else {
+					imageNode = ref->addNode("draw:frame", {
+						stappler::pair("draw:z-index", "1"),
+						stappler::pair("svg:width", wStr),
+						stappler::pair("svg:height", hStr),
+						stappler::pair("text:anchor-type" ,"paragraph")
+					}, getImageStyle())->addNode("draw:image", {
+						stappler::pair("xlink:href", img.name),
+						stappler::pair("xlink:type", "simple")
+					});
+				}
 
-			_nodeStack.back()->addNode("draw:a", {
-				stappler::pair("xlink:href", src)
-			})->addNode("draw:frame", {
-				stappler::pair("draw:z-index", "2"),
-				stappler::pair("svg:width", toString(iconWidth, "mm")),
-				stappler::pair("svg:height", toString(iconHeight, "mm")),
-				stappler::pair("svg:x", toString(iconX, "mm")),
-				stappler::pair("svg:y", toString(iconY, "mm")),
-				stappler::pair("text:anchor-type" ,"paragraph")
-			}, getImageStyle())->addNode("draw:image", {
-				stappler::pair("xlink:href", "Pictures/youtube.svg"),
-				stappler::pair("loext:mime-type", "image/svg+xml"),
-			});
+				float iconScale = 20.0f / 1024.0f;
+				float iconWidth = 1024.0f * iconScale;
+				float iconHeight = 721.0f * iconScale;
+				float iconY = (img.height * scale - iconHeight) / 2.0f;
+				float iconX = (img.width * scale - iconWidth) / 2.0f;
+
+				if (_config.mimeExt) {
+					_nodeStack.back()->addNode("draw:a", {
+						stappler::pair("xlink:href", src),
+						stappler::pair("xlink:type", "simple")
+					})->addNode("draw:frame", {
+						stappler::pair("draw:z-index", "2"),
+						stappler::pair("svg:width", toString(iconWidth, "mm")),
+						stappler::pair("svg:height", toString(iconHeight, "mm")),
+						stappler::pair("svg:x", toString(iconX, "mm")),
+						stappler::pair("svg:y", toString(iconY, "mm")),
+						stappler::pair("text:anchor-type" ,"paragraph")
+					}, getImageStyle())->addNode("draw:image", {
+						stappler::pair("xlink:href", "Pictures/youtube.svg"),
+						stappler::pair("loext:mime-type", "image/svg+xml"),
+						stappler::pair("xlink:type", "simple")
+					});
+				} else {
+					_nodeStack.back()->addNode("draw:a", {
+						stappler::pair("xlink:href", src),
+						stappler::pair("xlink:type", "simple")
+					})->addNode("draw:frame", {
+						stappler::pair("draw:z-index", "2"),
+						stappler::pair("svg:width", toString(iconWidth, "mm")),
+						stappler::pair("svg:height", toString(iconHeight, "mm")),
+						stappler::pair("svg:x", toString(iconX, "mm")),
+						stappler::pair("svg:y", toString(iconY, "mm")),
+						stappler::pair("text:anchor-type" ,"paragraph")
+					}, getImageStyle())->addNode("draw:image", {
+						stappler::pair("xlink:href", "Pictures/youtube.svg"),
+						stappler::pair("xlink:type", "simple")
+					});
+				}
+			}
 			return imageNode;
 		} else {
 			(_config.errorStream ? *_config.errorStream : std::cout) << "Invalid url:" << src << "\n";

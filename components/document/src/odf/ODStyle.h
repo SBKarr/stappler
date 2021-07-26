@@ -886,6 +886,7 @@ public:
 	};
 
 	enum Family {
+		Undefined,
 		Chart,
 		DrawingPage,
 		Graphic,
@@ -1002,6 +1003,9 @@ public:
 
 	void write(const WriteCallback &, const Callback<StringView(StringId)> &, bool pretty) const;
 
+	void writeDefaultStyle(const WriteCallback &, const Callback<StringView(StringId)> &, bool pretty) const;
+	void writeCustomStyle(const WriteCallback &, const Callback<StringView(StringId)> &, bool pretty) const;
+
 	Style & setDefaultOutlineLevel(uint32_t);
 	Style & setMasterPage(const MasterPage *);
 
@@ -1015,7 +1019,7 @@ public:
 protected:
 	void writePageProperties(const WriteCallback &cb, const Callback<StringView(StringId)> &stringIdCb, bool pretty) const;
 	void writeListProperties(const WriteCallback &cb, const Callback<StringView(StringId)> &stringIdCb, bool pretty, const ListLevel &) const;
-	void writeStyleProperties(const WriteCallback &cb, const Callback<StringView(StringId)> &stringIdCb, bool pretty) const;
+	void writeStyleProperties(const WriteCallback &cb, const Callback<StringView(StringId)> &stringIdCb, bool pretty, Family = Family::Undefined) const;
 	void writeNoteProperties(const WriteCallback &cb, const Callback<StringView(StringId)> &stringIdCb, bool pretty) const;
 
 	Type type = Type::Common;

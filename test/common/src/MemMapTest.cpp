@@ -174,5 +174,4 @@ struct MemMapTest : MemPoolTest {
 	}
 } _MemMapTest;
 
-
 NS_SP_END

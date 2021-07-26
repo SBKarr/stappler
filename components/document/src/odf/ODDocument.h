@@ -66,7 +66,7 @@ public: // meta
 
 	StringView getUserMeta(const StringView &) const;
 
-	style::Style *getDefaultStyle(style::Style::Family);
+	style::Style *getDefaultStyle();
 
 	style::Style *addCommonStyle(const StringView &, style::Style::Family, const StringView & = StringView());
 	style::Style *addCommonStyle(const StringView &, const style::Style *, const StringView & = StringView());
@@ -99,7 +99,7 @@ protected:
 	Vector<File> _files;
 	Map<style::StringId, String> _stringPool;
 
-	Map<style::Style::Family, style::Style> _defaultStyles;
+	style::Style *_defaultStyle = nullptr;
 	Vector<style::Style *> _autoStyles;
 	Vector<style::Style *> _contentStyles;
 	Map<String, style::Style *> _commonStyles;

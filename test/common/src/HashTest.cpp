@@ -24,333 +24,624 @@
 #include "SPTime.h"
 #include "SPString.h"
 #include "SPData.h"
+#include "SPRef.h"
 #include "Test.h"
 
 NS_SP_BEGIN
 
-template <typename _Bucket, typename _HashTraits>
-struct HashTable {
-	using Type = _Bucket;
-	using Hash = _HashTraits;
-	using Self = HashTable<Type, Hash>;
+class NamedRef : public Ref {
+public:
+	virtual ~NamedRef() { }
+	virtual StringView getName() const = 0;
+};
+
+using HashFunc = uint32_t (*)(const char *key, ssize_t *klen);
+
+template <typename Value>
+class HashTable;
+
+template <typename Value>
+struct HashTraits;
+
+template <>
+struct HashTraits<NamedRef *> {
+	static uint32_t hash(uint32_t salt, const NamedRef *value) {
+		auto name = value->getName();
+		return hash::hash32(name.data(), name.size(), salt);
+	}
+
+	static bool equal(const NamedRef *l, const NamedRef *r) {
+		return l == r;
+	}
+};
+
+template <>
+struct HashTraits<Rc<NamedRef>> {
+	static uint32_t hash(uint32_t salt, const NamedRef *value) {
+		auto name = value->getName();
+		return hash::hash32(name.data(), name.size(), salt);
+	}
+
+	static uint32_t hash(uint32_t salt, StringView value) {
+		return hash::hash32(value.data(), value.size(), salt);
+	}
+
+	static bool equal(const NamedRef *l, const NamedRef *r) {
+		return l == r;
+	}
+
+	static bool equal(const NamedRef *l, StringView value) {
+		return l->getName() == value;
+	}
+};
+
+template <typename Value>
+struct HashTraitDiscovery;
+
+template <typename Value>
+struct HashTraitDiscovery<Rc<Value>> {
+	using type = typename std::conditional<
+			std::is_base_of<NamedRef, Value>::value,
+			HashTraits<Rc<NamedRef>>,
+			HashTraitDiscovery<Value *>>::type;
+};
+
+template <typename Value>
+struct HashEntry {
+	using Type = typename std::remove_cv<typename std::remove_reference<Value>::type>::type;
+	using Traits = typename HashTraitDiscovery<Value>::type;
+
+	template <typename ... Args>
+	static uint32_t getHash(uint32_t salt, Args && ... args) {
+		return Traits::hash(salt, std::forward<Args>(args)...);
+	}
+
+	template <typename ... Args>
+	static bool isEqual(const Value &l, Args && ... args) {
+		return Traits::equal(l, std::forward<Args>(args)...);
+	}
+
+	HashEntry *next;
+	uint32_t hash;
+	std::array<uint8_t, sizeof(Value)> data;
+
+	Value *get() { return (Value *)data.data(); }
+	const Value *get() const { return (const Value *)data.data(); }
+};
+
+template <typename Value>
+struct HashIndex {
+	using Type = typename std::remove_cv<typename std::remove_reference<Value>::type>::type;
+
+	HashTable<Value> *ht;
+	HashEntry<Type> *_self;
+	HashEntry<Type> *_next;
+	uint32_t index;
+
+	HashIndex * next() {
+		_self = _next;
+		while (!_self) {
+			if (index > ht->max) {
+				_self = _next = nullptr;
+				return nullptr;
+			}
+			_self = ht->array[index++];
+		}
+		_next = _self->next;
+		return this;
+	}
+
+	bool operator==(const HashIndex &l) const { return l.ht == ht && l._self == _self && l._next == _next && l.index == index; }
+	bool operator!=(const HashIndex &l) const { return l.ht != ht || l._self != _self || l._next != _next || l.index != index; }
+
+	HashIndex& operator++() { this->next(); return *this; }
+	HashIndex operator++(int) { auto tmp = *this; this->next(); return tmp; }
+
+	Type & operator*() const { return *_self->get(); }
+	Type * operator->() const { return _self->get(); }
+};
+
+template <typename Value>
+struct ConstHashIndex {
+	using Type = typename std::remove_cv<typename std::remove_reference<Value>::type>::type;
+
+	const HashTable<Value> *ht;
+	const HashEntry<Type> *_self;
+	const HashEntry<Type> *_next;
+	uint32_t index;
+
+	ConstHashIndex * next() {
+		_self = _next;
+		while (!_self) {
+			if (index > ht->max) {
+				_self = _next = nullptr;
+				return nullptr;
+			}
+			_self = ht->array[index++];
+		}
+		_next = _self->next;
+		return this;
+	}
+
+	bool operator==(const ConstHashIndex &l) const { return l.ht == ht && l._self == _self && l._next == _next && l.index == index; }
+	bool operator!=(const ConstHashIndex &l) const { return l.ht != ht || l._self != _self || l._next != _next || l.index != index; }
+
+	ConstHashIndex& operator++() { this->next(); return *this; }
+	ConstHashIndex operator++(int) { auto tmp = *this; this->next(); return tmp; }
+
+	const Type & operator*() const { return *_self->get(); }
+	const Type * operator->() const { return _self->get(); }
+};
+
+template <typename Value>
+class HashTable {
+public:
 	using Pool = memory::pool_t;
-	using Key = typename Type::Key;
-	using Value = typename Type::Value;
+	using ValueType = HashEntry<Value>;
 
-	constexpr auto INITIAL_MAX = 15; /* tunable == 2^n - 1 */
+	using merge_fn = void *(*)(Pool *p, const void *key, ssize_t klen, const void *h1_val, const void *h2_val, const void *data);
+	using foreach_fn = bool (*)(void *rec, const void *key, ssize_t klen, const void *value);
 
-	struct Entry {
-		Entry *next;
-		uint32_t hash;
-		Type bucket;
-	};
+	static constexpr auto INITIAL_MAX = 15; /* tunable == 2^n - 1 */
 
-	struct Index {
-		Self *ht;
-		Entry *_self, *_next;
-		uint32_t index;
+	using iterator = HashIndex<Value>;
+	using const_iterator = ConstHashIndex<Value>;
 
-		Index * next() {
-			_self = _next;
-			while (!_self) {
-				if (index > ht->max) {
-					return nullptr;
-				}
-				_self = ht->array[index++];
-			}
-			_next = _self->next;
-			return this;
+	HashTable(Pool *p = nullptr) {
+		if (!p) {
+			p = memory::pool::acquire();
 		}
 
-		Type * self() {
-			return &_self->bucket;
-		}
-	};
-
-	Pool *pool;
-	Entry **array;
-	Index iterator; /* For apr_hash_first(NULL, ...) */
-	uint32_t count, max, seed;
-	Entry *free; /* List of recycled entries */
-
-	static Entry **alloc_array(HashTable *ht, uint32_t max) {
-		return (Entry **)memory::pool::calloc(ht->pool, max + 1, sizeof(*ht->array));
+		auto now = Time::now().toMicros();
+		this->pool = p;
+		this->free = nullptr;
+		this->count = 0;
+		this->max = INITIAL_MAX;
+		this->seed = (unsigned int)((now >> 32) ^ now ^ (uintptr_t)pool ^ (uintptr_t)this ^ (uintptr_t)&now) - 1;
+		this->array = alloc_array(this, max);
 	}
 
-	static Entry **find_key(const HashTable *ht, const Key &key) const {
-		Entry **hep = nullptr, *he = nullptr;
-		uint32_t hash = Hash::hash(key);
-
-		for (hep = &ht->array[hash & ht->max], he = *hep; he; hep = &he->next, he = *hep) {
-			if (he->hash == hash && Hash::is_match(he->bucket, key)) {
-				break;
-			}
+	HashTable(const HashTable &copy, Pool *p = nullptr) {
+		if (!p) {
+			p = memory::pool::acquire();
 		}
 
-		return hep;
+		this->pool = p;
+		this->free = nullptr;
+		this->count = copy.count;
+		this->max = copy.max;
+		this->seed = copy.seed;
+		this->array = alloc_array(this, copy.max);
+
+		auto new_vals = (HashEntry<Value> *)memory::pool::palloc(this->pool, sizeof(ValueType) * this->count);
+
+		size_t j = 0;
+		for (size_t i = 0; i <= copy.max; i++) {
+			auto target = &this->array[i];
+			auto orig_entry = copy.array[i];
+			while (orig_entry) {
+				auto new_entry = &new_vals[j++];
+				new_entry->next = nullptr;
+				new_entry->hash = orig_entry->hash;
+				new (new_entry->data.data()) Value(*orig_entry->get());
+				*target = new_entry;
+				target = &new_entry->next;
+				orig_entry = orig_entry->next;
+			}
+		}
 	}
 
-	static Entry **emplace_key(HashTable *ht, const Key &key, Type &&val) {
-		Entry **hep, *he;
-		uint32_t hash = Hash::hash(key);
+	template <typename ... Args>
+	Pair<iterator, bool> assign(Args && ... args) {
+		iterator iter;
+		auto ret = set_value(true, std::forward<Args>(args)...);
 
-		for (hep = &ht->array[hash & ht->max], he = *hep; he; hep = &he->next, he = *hep) {
-			if (he->hash == hash && Hash::is_match(he->bucket, key)) {
+		iter._self = ret.first;
+		iter._next = ret.first->next;
+		iter.index = (ret.first->hash & this->max);
+		iter.ht = this;
+		return pair(iter, ret.second);
+	}
+
+	template <typename ... Args>
+	Pair<iterator, bool> emplace(Args && ... args) {
+		iterator iter;
+		auto ret = set_value(false, std::forward<Args>(args)...);
+		iter._self = ret.first;
+		iter._next = ret.first->next;
+		iter.index = (ret.first->hash & this->max);
+		iter.ht = this;
+		return pair(iter, ret.second);
+	}
+
+	template <typename ... Args>
+	bool contains(Args && ... args) const {
+		if (auto ret = get_value(std::forward<Args>(args)...)) {
+			return true;
+		}
+		return false;
+	}
+
+	template <typename ... Args>
+	iterator find(Args && ... args) {
+		if (auto ret = get_value(std::forward<Args>(args)...)) {
+			iterator iter;
+			iter._self = ret;
+			iter._next = ret->next;
+			iter.index = (ret->hash & this->max);
+			iter.ht = this;
+			return iter;
+		}
+		return end();
+	}
+
+	template <typename ... Args>
+	const_iterator find(Args && ... args) const {
+		if (auto ret = get_value(std::forward<Args>(args)...)) {
+			const_iterator iter;
+			iter._self = ret;
+			iter._next = ret->next;
+			iter.index = (ret->hash & this->max);
+			iter.ht = this;
+			return iter;
+		}
+		return end();
+	}
+
+	template <typename ... Args>
+	iterator erase(Args && ... args) {
+		ValueType **hep, *he;
+		const auto hash = ValueType::getHash(seed, std::forward<Args>(args)...);
+		const auto idx = hash & this->max;
+
+		/* scan linked list */
+		for (hep = &this->array[idx], he = *hep; he; hep = &he->next, he = *hep) {
+			if (he->hash == hash && ValueType::isEqual(*he->get(), std::forward<Args>(args)...)) {
 				break;
 			}
 		}
 
 		if (he) {
-			return hep;
-		}
+			iterator iter;
+			iter._self = he;
+			iter._next = he->next;
+			iter.index = (he->hash & this->max);
+			iter.ht = this;
+			iter.next();
 
-		/* add a new entry for non-NULL values */
-		if ((he = ht->free) != NULL) {
-			ht->free = he->next;
+			ValueType *old = *hep;
+			*hep = (*hep)->next;
+			old->next = this->free;
+			this->free = old;
+			--this->count;
+
+			return iter;
 		} else {
-			he = (Entry *)memory::pool::palloc(pool, sizeof(*he));
+			return end();
 		}
-		he->next = NULL;
-		he->hash = hash;
-		new (&he->bucket) Type(move(val));
-		*hep = he;
-		ht->count++;
-		return hep;
 	}
 
-	static void expand_array(HashTable *ht) {
-		Index *hi;
-		Entry **new_array;
-		uint32_t new_max;
+	size_t size() const { return count; }
+	bool empty() const { return count == 0; }
 
-		new_max = ht->max * 2 + 1;
+	void reserve(size_t c) {
+		if (c <= this->count) {
+			return;
+		}
+
+		if (c > this->max) {
+			expand_array(this, c);
+		}
+
+		auto mem = (ValueType *)memory::pool::palloc(this->pool, sizeof(ValueType) * (c - this->count));
+
+		for (size_t i = this->count; i < c; ++ i) {
+			mem->next = free;
+			free = mem;
+			++ mem;
+		}
+	}
+
+	void clear() {
+		for (size_t i = 0; i <= max; ++ i) {
+			auto v = array[i];
+			while (v) {
+				auto tmp = v;
+				v = v->next;
+
+				tmp->next = free;
+				free = tmp;
+				tmp->get()->~ValueType();
+			}
+			array[i] = nullptr;
+		}
+		count = 0;
+	}
+
+	iterator begin() { return begin_index(); }
+	iterator end() { return end_index(); }
+
+	const_iterator begin() const {
+		ConstHashIndex<Value> hi;
+		hi.ht = this;
+		hi.index = 0;
+		hi._self = nullptr;
+		hi._next = nullptr;
+		hi.next();
+		return hi;
+	}
+
+	const_iterator end() const {
+		ConstHashIndex<Value> hi;
+		hi.ht = this;
+		hi.index = this->max + 1;
+		hi._self = nullptr;
+		hi._next = nullptr;
+		return hi;
+	}
+
+	size_t get_cell_count() const {
+		size_t count = 0;
+		for (size_t i = 0; i <= max; ++ i) {
+			if (array[i]) {
+				++ count;
+			}
+		}
+		return count;
+	}
+
+	size_t get_free_count() const {
+		size_t count = 0;
+		auto f = free;
+		while (f) {
+			f = f->next;
+			++ count;
+		}
+		return count;
+	}
+
+private:
+	friend class HashIndex<Value>;
+
+	static HashEntry<Value> **alloc_array(HashTable *ht, uint32_t max) {
+		return (ValueType **)memory::pool::calloc(ht->pool, max + 1, sizeof(ValueType));
+	}
+
+	static void expand_array(HashTable *ht, uint32_t new_max = 0) {
+		HashEntry<Value> **new_array;
+
+		if (!new_max) {
+			new_max = ht->max * 2 + 1;
+		} else {
+			new_max = math::npot(new_max) - 1;
+			if (new_max <= ht->max) {
+				return;
+			}
+		}
+
 		new_array = alloc_array(ht, new_max);
-		for (hi = ht->first(); hi; hi = hi->next()) {
-			uint32_t i = hi->_self->hash & new_max;
-			hi->_self->next = new_array[i];
-			new_array[i] = hi->_self;
+
+		auto end = ht->end_index();
+		auto hi = ht->begin_index();
+		while (hi != end) {
+			uint32_t i = hi._self->hash & new_max;
+			hi._self->next = new_array[i];
+			new_array[i] = hi._self;
+			++ hi;
 		}
 		ht->array = new_array;
 		ht->max = new_max;
 	}
 
-	static void init(HashTable *t, Pool *p) {
-		auto now = Time::now().toMicros();
-		pool = p;
-		free = NULL;
-		count = 0;
-		max = INITIAL_MAX;
-		seed = (unsigned int)((now >> 32) ^ now ^ (uintptr_t)pool ^ (uintptr_t)this ^ (uintptr_t)&now) - 1;
-		array = alloc_array(this, max);
-	}
+	template <typename ... Args>
+	ValueType * get_value(Args &&  ... args) const {
+		ValueType **hep, *he;
+		const auto hash = ValueType::getHash(seed, std::forward<Args>(args)...);
+		const auto idx = hash & this->max;
 
-	HashTable(Pool *p) {
-		init(this, p);
-	}
-
-	HashTable(const HashTable &t, Pool *p) {
-		pool = p;
-		t.copy_to(this, (uint8_t *)memory::pool::palloc(pool, sizeof(*t.array) * (t.max + 1) + sizeof(Entry) * t.count));
-	}
-
-	HashTable(HashTable &&t, Pool *p) {
-		if (p == t.pool) {
-			pool = p;
-			free = t.free;
-			count = t.count;
-			max = t.max;
-			seed = t.seed;
-			array = t.array;
-
-			init(&t, t.pool);
-		} else {
-			pool = p;
-			t.copy_to(this, (uint8_t *)memory::pool::palloc(pool, sizeof(*t.array) * (t.max + 1) + sizeof(Entry) * t.count));
-		}
-	}
-
-	Index first() const {
-		Index hi;
-		hi.ht = this;
-		hi.index = 0;
-		hi._self = nullptr;
-		hi._next = nullptr;
-		return hi.next();
-	}
-
-	void copy_to(HashTable *ht, uint8_t *mem) const {
-		Entry *new_vals;
-		uint32_t i, j;
-
-		ht->free = nullptr;
-		ht->count = count;
-		ht->max = max;
-		ht->seed = seed;
-		ht->array = (Entry **)(mem);
-
-		new_vals = (Entry *)(mem + sizeof(*ht->array) * (max + 1));
-		j = 0;
-		for (i = 0; i <= ht->max; i++) {
-			Entry **new_entry = &(ht->array[i]);
-			Entry *orig_entry = array[i];
-			while (orig_entry) {
-				*new_entry = &new_vals[j++];
-				(*new_entry)->hash = orig_entry->hash;
-				new (&(*new_entry)->bucket) Type(orig_entry->bucket);
-				new_entry = &((*new_entry)->next);
-				orig_entry = orig_entry->next;
+		/* scan linked list */
+		for (hep = &this->array[idx], he = *hep; he; hep = &he->next, he = *hep) {
+			if (he->hash == hash && ValueType::isEqual(*he->get(), std::forward<Args>(args)...)) {
+				break;
 			}
-			*new_entry = nullptr;
 		}
+
+		return he;
 	}
 
-	HashTable *copy(Pool *pool) const {
-		HashTable *ht;
-		ht = (HashTable *)memory::pool::palloc(pool, sizeof(HashTable) + sizeof(*ht->array) * (max + 1) + sizeof(Entry) * count);
-		ht->pool = pool;
+	template <typename ... Args>
+	Pair<ValueType *, bool> set_value(bool replace, Args &&  ... args) {
+		ValueType **hep, *he;
+		const auto hash = ValueType::getHash(seed, std::forward<Args>(args)...);
+		const auto idx = hash & this->max;
 
-		copy_to(ht, (uint8_t *)ht + sizeof(HashTable));
-		return ht;
-	}
+		/* scan linked list */
+		for (hep = &this->array[idx], he = *hep; he; hep = &he->next, he = *hep) {
+			if (he->hash == hash && ValueType::isEqual(*he->get(), std::forward<Args>(args)...)) {
+				break;
+			}
+		}
 
-	Type *get(const Key &key) const {
-		Entry *he = *find_key(this, key);
 		if (he) {
-			return &he->bucket;
-		}
-		return nullptr;
-	}
+			if (replace) {
+				he->get()->~Value();
+				new (he->data.data()) Value(std::forward<Args>(args)...);
+			}
+			return pair(he, false);
+		} else {
+			/* add a new entry for non-NULL values */
+			if ((he = this->free) != NULL) {
+				this->free = he->next;
+			} else {
+				he = (ValueType *)memory::pool::palloc(this->pool, sizeof(*he));
+			}
 
-	Type *set(const Key &key, Type &&value){
-		Entry **hep = emplace_key(this, key, move(value));
-		if (*hep) {
+			this->count++;
+			he->next = NULL;
+			he->hash = hash;
+			new (he->data.data()) Value(std::forward<Args>(args)...);
+
+			*hep = he;
+
 			/* check that the collision rate isn't too high */
 			if (this->count > this->max) {
 				expand_array(this);
 			}
-			return &((*hep)->bucket);
-		}
-		return nullptr;
-	}
-
-	void remove(const Key &key) {
-		Entry **hep = find_key(this, key);
-		if (*hep) {
-			/* delete entry */
-			Entry *old = *hep;
-			*hep = (*hep)->next;
-			old->next = this->free;
-			this->free = old;
-			this->free->bucket.~Type();
-			--this->count;
+			return pair(he, true);
 		}
 	}
 
-	size_t size() const {
-		return count;
+	HashIndex<Value> begin_index() {
+		HashIndex<Value> hi;
+		hi.ht = this;
+		hi.index = 0;
+		hi._self = nullptr;
+		hi._next = nullptr;
+		hi.next();
+		return hi;
 	}
 
-	void clear() {
-		Index *hi;
-		for (hi = first(); hi; hi = hi->next()) {
-			remove(Hash::key(hi->_self->bucket));
-		}
+	HashIndex<Value> end_index() {
+		HashIndex<Value> hi;
+		hi.ht = this;
+		hi.index = this->max + 1;
+		hi._self = nullptr;
+		hi._next = nullptr;
+		return hi;
 	}
 
-	bool foreach(const Callback<bool(const Type &)> &cb) const {
-		Index hix;
-		Index *hi;
-		bool rv, dorv = false;
-
-		hix.ht  = (HashTable *)this;
-		hix.index = 0;
-		hix._self = nullptr;
-		hix._next = nullptr;
-
-		if ((hi = hix.next())) {
-			/* Scan the entire table */
-			do {
-				rv = cb(Hash::value(hi->_self->bucket));
-			} while (rv && (hi = hi->next()));
-
-			if (rv) {
-				dorv = true;
-			}
-		}
-		return dorv;
-	}
+	Pool *pool = nullptr;
+	HashEntry<Value> **array;
+	uint32_t count, max, seed;
+	HashEntry<Value> *free = nullptr; /* List of recycled entries */
 };
 
-template <typename T>
-class HashTraits;
 
-template <typename T>
-class Hash : public memory::AllocPool {
+class TestNamedRef : public NamedRef {
 public:
-	using Traits = HashTraits<T>;
-	using HashTableType = HashTable<typename Traits::Type, Traits>;
-	using Type = typename Traits::Type;
+	virtual ~TestNamedRef() { }
+	virtual StringView getName() const { return _name; }
 
-	~Hash() {
-		clear();
-	}
-
-	Hash() : Hash(memory::pool::acquire()) { }
-
-	Hash(memory::pool_t *p) {
-		memory::pool::push(p);
-		table = HashTableType::make(p);
-		memory::pool::pop();
-	}
-
-	Hash(const Hash &hash) : Hash(hash, memory::pool::acquire()) { }
-	Hash(const Hash &hash, memory::pool_t *p) {
-		memory::pool::push(p);
-		table = hash.table->copy(p);
-		memory::pool::pop();
-	}
-
-	Hash(Hash &&hash) : Hash(move(hash), memory::pool::acquire()) { }
-	Hash(Hash &&hash, memory::pool_t *p) {
-		memory::pool::push(p);
-		if (p == hash.table->pool) {
-			table = hash.table;
-			hash.table = HashTableType::make(p);
-		} else {
-			table = hash.table->copy(p);
-		}
-		memory::pool::pop();
-	}
-
-	Hash &operator=(const Hash &hash) {
-		auto p = table->pool;
-		clear();
-		memory::pool::push(p);
-		hash.table->foreach([&] (const Type &t) {
-			table->set(Traits::key(t), Type(t));
-		});
-		memory::pool::pop();
-	}
-
-	Hash &operator=(Hash &&hash) {
-		if (hash.table->pool == table->pool) {
-
-		}
-		auto p = table->pool;
-		clear();
-		memory::pool::push(p);
-		hash.table->foreach([&] (const Type &t) {
-			table->set(Traits::key(t), Type(t));
-		});
-		memory::pool::pop();
-	}
-
-	void clear() {
-		table->clear();
-	}
+	TestNamedRef(StringView name) : _name(name) { }
 
 protected:
-	HashTableType *table = nullptr;
+	StringView _name;
 };
+
+
+struct HashMapTest : MemPoolTest {
+	HashMapTest() : MemPoolTest("HashMapTest") { }
+
+	virtual bool run(pool_t *pool) {
+		StringStream stream;
+		size_t count = 0;
+		size_t passed = 0;
+		stream << "\n";
+
+		auto emplace = [&] (HashTable<Rc<TestNamedRef>> &t, std::set<StringView> &control, StringView str) {
+			control.emplace(str);
+			t.emplace(Rc<TestNamedRef>::alloc(str));
+		};
+
+		auto fill = [&] (HashTable<Rc<TestNamedRef>> &t, std::set<StringView> &control) {
+			emplace(t, control, "One");
+			emplace(t, control, "Two");
+			emplace(t, control, "3");
+			emplace(t, control, "Four");
+			emplace(t, control, "Five");
+			emplace(t, control, "Six");
+			emplace(t, control, "Seven");
+			emplace(t, control, "8");
+			emplace(t, control, "Nine");
+			emplace(t, control, "10");
+			emplace(t, control, "11");
+			emplace(t, control, "12");
+			emplace(t, control, "13");
+			emplace(t, control, "14");
+			emplace(t, control, "15");
+			emplace(t, control, "16");
+			emplace(t, control, "17");
+			emplace(t, control, "18");
+			emplace(t, control, "19");
+			emplace(t, control, "20");
+		};
+
+		runTest(stream, "emplace", count, passed, [&] {
+			HashTable<Rc<TestNamedRef>> t;
+			std::set<StringView> control;
+			t.reserve(30);
+			fill(t, control);
+
+			for (auto &it : control) {
+				auto iit = t.find(it);
+				if (iit == t.end() || (*iit)->getName() != it) {
+					std::cout << "Not found: " << it << "\n";
+					return false;
+				}
+			}
+
+			stream << t.get_cell_count() << " / " << t.size();
+
+			auto it = t.begin();
+			while (it != t.end()) {
+				control.erase((*it)->getName());
+				++ it;
+			}
+
+			return control.empty();
+		});
+
+		runTest(stream, "erase", count, passed, [&] {
+			HashTable<Rc<TestNamedRef>> t;
+			std::set<StringView> control;
+			fill(t, control);
+
+			auto it = control.begin();
+			while (it != control.end()) {
+				auto iit = t.find(*it);
+				if (iit == t.end() || (*iit)->getName() != *it) {
+					std::cout << "Not found: " << *it << "\n";
+					return false;
+				}
+
+				iit = t.erase(*it);
+				it = control.erase(it);
+			}
+
+			stream << t.get_free_count();
+			return control.empty() && t.empty();
+		});
+
+		runTest(stream, "copy", count, passed, [&] {
+			HashTable<Rc<TestNamedRef>> tmp;
+			std::set<StringView> control;
+			fill(tmp, control);
+
+			HashTable<Rc<TestNamedRef>> copy(tmp);
+
+			for (auto &it : control) {
+				auto iit = copy.find(it);
+				if (iit == copy.end() || (*iit)->getName() != it) {
+					std::cout << "Not found: " << it << "\n";
+					return false;
+				}
+			}
+
+			stream << copy.get_cell_count() << " / " << copy.size();
+
+			auto it = copy.begin();
+			while (it != copy.end()) {
+				control.erase((*it)->getName());
+				++ it;
+			}
+
+			return control.empty();
+		});
+
+		_desc = stream.str();
+
+		return count == passed;
+	}
+} _HashMapTest;
 
 NS_SP_END

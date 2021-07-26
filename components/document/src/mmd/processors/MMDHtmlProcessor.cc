@@ -407,7 +407,17 @@ void HtmlProcessor::exportImage(std::ostream &out, token * text, Content::Link *
 			if (!spExt) { out << "\n"; }
 			if (spExt && !align.empty()) {
 				auto idStr = toString("figcaption_", figureId);
-				pushNode(text, "figcaption", { pair("class", align), pair("id", idStr) });
+				pushNode(text, "figcaption", {
+					pair("class", align),
+					pair("id", idStr),
+					pair("data-type", type),
+					pair("data-src", link->url)
+				});
+			} else if (link && !link->url.empty()) {
+				pushNode(text, "figcaption", {
+					pair("data-type", type),
+					pair("data-src", link->url)
+				});
 			} else {
 				pushNode(text, "figcaption");
 			}
