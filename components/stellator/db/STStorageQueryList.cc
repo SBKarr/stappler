@@ -310,9 +310,11 @@ void QueryList::readFields(const Scheme &scheme, const mem::Set<const Field *> &
 		}
 		auto &forced = scheme.getForceInclude();
 		for (auto &it : scheme.getFields()) {
-			if ((it.second.hasFlag(db::Flags::ForceInclude) || (!isSimpleGet && forced.find(&it.second) != forced.end()))
-					&& fields.find(&it.second) == fields.end()) {
-				cb(it.first, &it.second);
+			if (it.second.getType() != Type::Virtual) {
+				if ((it.second.hasFlag(db::Flags::ForceInclude) || (!isSimpleGet && forced.find(&it.second) != forced.end()))
+						&& fields.find(&it.second) == fields.end()) {
+					cb(it.first, &it.second);
+				}
 			}
 		}
 	} else {
