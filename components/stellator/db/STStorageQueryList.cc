@@ -541,9 +541,9 @@ void QueryList::decodeSelect(const Scheme &scheme, Query &q, const mem::Value &v
 			if (iit.isArray() && iit.size() >= 3) {
 				auto field = iit.getValue(0).asString();
 				if (auto f = scheme.getField(field)) {
-					if (f->isIndexed()) {
-						auto cmp = iit.getValue(1).asString();
-						auto d = decodeComparation(cmp);
+					auto cmp = iit.getValue(1).asString();
+					auto d = decodeComparation(cmp);
+					if (f->isIndexed() || d.first == Comparation::IsNotNull || d.first == Comparation::IsNull) {
 						auto &val = iit.getValue(2);
 						if (d.second && iit.size() >= 4) {
 							auto &val2 = iit.getValue(4);

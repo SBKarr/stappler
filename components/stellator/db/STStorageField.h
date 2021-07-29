@@ -281,7 +281,7 @@ struct AutoFieldScheme : mem::AllocBase {
 	using ReqVec = mem::Vector<mem::String>;
 
 	const Scheme &scheme;
-	ReqVec requiresForAuto;
+	ReqVec requiresForAuto; // fields, that should be updated to trigger auto field update
 
 	ViewLinkageFn linkage;
 	ReqVec requiresForLinking;
@@ -293,7 +293,7 @@ struct AutoFieldScheme : mem::AllocBase {
 struct AutoFieldDef {
 	mem::Vector<AutoFieldScheme> schemes;
 	DefaultFn defaultFn;
-	mem::Vector<mem::String> requires;
+	mem::Vector<mem::String> requires; // fields to acquire from field's scheme object when defaultFn is called
 };
 
 // definition for scheme's unique constraints

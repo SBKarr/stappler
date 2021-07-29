@@ -335,11 +335,12 @@ mem::Value SqlHandle::save(Worker &worker, uint64_t oid, const mem::Value &data,
 		auto count = performQuery(query);
 		if (count == 1) {
 			if (worker.shouldIncludeNone() && worker.scheme().hasForceExclude()) {
-				ret.setInteger(oid, "__oid");
+				ret = mem::Value(mem::Value::Type::DICTIONARY);
 				ret.asDict().reserve(data.size() + 1);
+				ret.setInteger(oid, "__oid");
 				for (auto &it : worker.scheme().getFields()) {
 					if (!it.second.hasFlag(db::Flags::ForceExclude) && data.hasValue(it.first)) {
-						ret.setValue(data.getValue(it.first));
+						ret.setValue(data.getValue(it.first), it.second.getName());
 					}
 				}
 			} else {
