@@ -85,10 +85,10 @@ void PrintBacktrace(FILE *f, int len) {
             		extraBuf = new char[str.size() + 1];
             	}
 
-        		memcpy(tmpBuf, str.data(), str.size());
-        		tmpBuf[str.size()] = 0;
+        		memcpy(extraBuf, str.data(), str.size());
+        		extraBuf[str.size()] = 0;
 
-            	auto ptr = abi::__cxa_demangle (tmpBuf, nullptr, nullptr, &status);
+            	auto ptr = abi::__cxa_demangle (extraBuf, nullptr, nullptr, &status);
             	if (ptr) {
     		    	fprintf(f, "\t[%d] %s [%s]\n", i - 3, (const char *)ptr, bt_syms[i]);
     				free(ptr);

@@ -21,6 +21,14 @@ THE SOFTWARE.
 **/
 
 #include "SPMemPoolInterface.h"
+#include "SPFilesystem.h"
+
+// requires libbacktrace
+#define DEBUG_BACKTRACE 0
+
+#if DEBUG_BACKTRACE
+#include <backtrace.h>
+#endif
 
 namespace stappler::mempool::base::pool {
 
@@ -254,6 +262,111 @@ void max_free_set(allocator_t *alloc, size_t size) {
 
 namespace stappler::mempool::base::pool {
 
+static std::atomic<size_t> s_activePools = 0;
+static std::atomic<bool> s_poolDebug = 0;
+static std::mutex s_poolDebugMutex;
+static pool_t *s_poolDebugTarget = nullptr;
+static std::map<pool_t *, const char **> s_poolDebugInfo;
+
+#if DEBUG_BACKTRACE
+static ::backtrace_state *s_backtraceState;
+
+struct debug_bt_info {
+	pool_t *pool;
+	const char **target;
+	size_t index;
+};
+
+static void debug_backtrace_error(void *data, const char *msg, int errnum) {
+	std::cout << "Backtrace error: " << msg << "\n";
+}
+
+static int debug_backtrace_full_callback(void *data, uintptr_t pc, const char *filename, int lineno, const char *function) {
+	auto ptr = (debug_bt_info *)data;
+
+	std::ostringstream f;
+	f << "[" << ptr->index << " - 0x" << std::hex << pc << std::dec << "]";
+
+	if (filename) {
+		auto name = filepath::name(filename);
+		f << " " << name << ":" << lineno;
+	}
+	if (function) {
+		f << " - ";
+		int status = 0;
+		auto ptr = abi::__cxa_demangle (function, nullptr, nullptr, &status);
+    	if (ptr) {
+    		f << (const char *)ptr;
+			::free(ptr);
+		} else {
+			f << function;
+		}
+	}
+
+	auto tmp = f.str();
+	*ptr->target = pstrdup(ptr->pool, tmp.data());
+	++ ptr->target;
+	++ ptr->index;
+
+	if (ptr->index > 20) {
+		return 1;
+	}
+
+	return 0;
+}
+
+static const char **getPoolInfo(pool_t *pool) {
+	static constexpr size_t len = 20;
+	static constexpr size_t offset = 2;
+	const char **ret = (const char **)calloc(s_poolDebugTarget, len + offset + 2, sizeof(const char *));
+	size_t retIt = 0;
+
+	do {
+		std::ostringstream f;
+		f << "Pool " << (void *)pool << " (" << s_activePools.load() << ")";
+		auto tmp = f.str();
+		ret[retIt] = pstrdup(s_poolDebugTarget, tmp.data()); ++ retIt;
+	} while(0);
+
+	debug_bt_info info;
+	info.pool = s_poolDebugTarget;
+	info.target = ret + 1;
+	info.index = 0;
+
+	backtrace_full(s_backtraceState, 2, debug_backtrace_full_callback, debug_backtrace_error, &info);
+	return ret;
+}
+#else
+static const char **getPoolInfo(pool_t *pool) {
+	return nullptr;
+}
+#endif
+
+static pool_t *pushPoolInfo(pool_t *pool) {
+	if (pool) {
+		++ s_activePools;
+		if (s_poolDebug.load()) {
+			if (auto ret = getPoolInfo(pool)) {
+				s_poolDebugMutex.lock();
+				s_poolDebugInfo.emplace(pool, ret);
+				s_poolDebugMutex.unlock();
+			}
+		}
+	}
+	return pool;
+}
+
+static void popPoolInfo(pool_t *pool) {
+	if (pool) {
+		if (s_poolDebug.load()) {
+			s_poolDebugMutex.lock();
+			s_poolDebugInfo.erase(pool);
+			s_poolDebugMutex.unlock();
+		}
+		-- s_activePools;
+	}
+}
+
 void initialize() {
 	if constexpr (apr::SPAprDefined) { apr::pool::initialize(); }
 	custom::initialize();
@@ -267,45 +380,45 @@ void terminate() {
 pool_t *create(PoolFlags flags) {
 	if constexpr (apr::SPAprDefined) {
 		if ((flags & PoolFlags::Custom) == PoolFlags::None) {
-			return apr::pool::create();
+			return pushPoolInfo(apr::pool::create());
 		}
 	}
-	return (pool_t *)custom::Pool::create(nullptr, flags);
+	return pushPoolInfo((pool_t *)custom::Pool::create(nullptr, flags));
 }
 
 pool_t *create(allocator_t *alloc, PoolFlags flags) {
 	if constexpr (apr::SPAprDefined) {
 		if (isCustom(alloc)) {
-			return (pool_t *)custom::Pool::create((custom::Allocator *)alloc, flags);
+			return pushPoolInfo((pool_t *)custom::Pool::create((custom::Allocator *)alloc, flags));
 		} else if ((flags & PoolFlags::ThreadSafePool) == PoolFlags::None) {
-			return apr::pool::create(alloc);
+			return pushPoolInfo(apr::pool::create(alloc));
 		} else {
 			abort(); // thread-safe APR pools is not supported
 		}
 	}
-	return (pool_t *)custom::Pool::create((custom::Allocator *)alloc, flags);
+	return pushPoolInfo((pool_t *)custom::Pool::create((custom::Allocator *)alloc, flags));
 }
 
 // creates managed pool (managed by root, if parent in mullptr)
 pool_t *create(pool_t *pool) {
 	if constexpr (apr::SPAprDefined) {
 		if (!isCustom(pool)) {
-			return apr::pool::create(pool);
+			return pushPoolInfo(apr::pool::create(pool));
 		}
 	}
-	return (pool_t *)custom::create((custom::Pool *)pool);
+	return pushPoolInfo((pool_t *)custom::create((custom::Pool *)pool));
 }
 
 // creates unmanaged pool
 pool_t *createTagged(const char *tag, PoolFlags flags) {
 	if constexpr (apr::SPAprDefined) {
 		if ((flags & PoolFlags::Custom) == PoolFlags::None) {
-			return apr::pool::createTagged(tag);
+			return pushPoolInfo(apr::pool::createTagged(tag));
 		}
 	}
 	if (auto ret = custom::Pool::create(nullptr, flags)) {
 		ret->tag = tag;
-		return (pool_t *)ret;
+		return pushPoolInfo((pool_t *)ret);
 	}
 	return nullptr;
 }
@@ -313,17 +426,18 @@ pool_t *createTagged(const char *tag, PoolFlags flags) {
 pool_t *createTagged(pool_t *p, const char *tag) {
 	if constexpr (apr::SPAprDefined) {
 		if (!isCustom(p)) {
-			return apr::pool::createTagged(p, tag);
+			return pushPoolInfo(apr::pool::createTagged(p, tag));
 		}
 	}
 	if (auto ret = custom::create((custom::Pool *)p)) {
 		ret->tag = tag;
-		return (pool_t *)ret;
+		return pushPoolInfo((pool_t *)ret);
 	}
 	return nullptr;
 }
 
 void destroy(pool_t *p) {
+	popPoolInfo(p);
 	if constexpr (apr::SPAprDefined) {
 		if (!isCustom(p)) {
 			apr::pool::destroy(p);
@@ -516,6 +630,41 @@ static status_t cleanup_register_fn(void *ptr) {
 void cleanup_register(pool_t *p, memory::function<void()> &&cb) {
 	auto fn = new (p) memory::function<void()>(move(cb));
 	pool::cleanup_register(p, fn, &cleanup_register_fn);
+}
+
+size_t get_active_count() {
+	return s_activePools.load();
+}
+
+bool debug_begin(pool_t *pool) {
+	if (!pool) {
+		pool = acquire();
+	}
+	bool expected = false;
+	if (s_poolDebug.compare_exchange_strong(expected, true)) {
+		s_poolDebugMutex.lock();
+		s_poolDebugTarget = pool;
+#if DEBUG_BACKTRACE
+		if (!s_backtraceState) {
+			s_backtraceState = backtrace_create_state(nullptr, 1, debug_backtrace_error, nullptr);
+		}
+#endif
+		s_poolDebugInfo.clear();
+		s_poolDebugMutex.unlock();
+		return true;
+	}
+	return false;
+}
+
+std::map<pool_t *, const char **> debug_end() {
+	std::map<pool_t *, const char **> ret;
+	s_poolDebugMutex.lock();
+	ret = std::move(s_poolDebugInfo);
+	s_poolDebugInfo.clear();
+	s_poolDebugTarget = nullptr;
+	s_poolDebugMutex.unlock();
+	s_poolDebug.store(false);
+	return ret;
 }
 
 }

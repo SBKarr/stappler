@@ -142,6 +142,14 @@ char *pstrdup(pool_t *a, const char *s);
 bool isThreadSafeForAllocations(pool_t *pool);
 bool isThreadSafeAsParent(pool_t *pool);
 
+size_t get_active_count();
+
+// start recording additional pool info on creation
+bool debug_begin(pool_t *pool = nullptr);
+
+// stop recording and return info
+std::map<pool_t *, const char **> debug_end();
+
 }
 
 #endif /* COMPONENTS_COMMON_CORE_MEMORY_POOL_SPMEMPOOLINTERFACE_H_ */

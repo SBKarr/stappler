@@ -1426,6 +1426,7 @@ bool Transaction::foreach(const db::Scheme &scheme, const mem::Function<void(uin
 
 					closePage(p);
 				}
+				mem::pool::destroy(pool);
 				if (threads.fetch_sub(1) == 1) {
 					cond.notify_all();
 				}
@@ -1468,6 +1469,7 @@ bool Transaction::foreach(const db::Scheme &scheme, const mem::Function<void(uin
 
 				closePage(p);
 			}
+			mem::pool::destroy(pool);
 		}
 	}
 	return false;
