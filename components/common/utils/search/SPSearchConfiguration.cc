@@ -908,6 +908,16 @@ SearchQuery Configuration::parseQuery(StringView str) const {
 		return isComplexWord(tok) ? ParserStatus::PreventSubdivide : ParserStatus::Continue;
 	});
 
+	if (stack.back()->block == SearchQuery::Block::Quoted && stack.back()->op == SearchOp::Follow && stack.back()->args.empty()) {
+		auto v = stack.back();
+		stack.pop_back();
+		if (!stack.empty()) {
+			if (&stack.back()->args.back() == v) {
+				stack.back()->args.pop_back();
+			}
+		}
+	}
+
 	return query;
 }
 

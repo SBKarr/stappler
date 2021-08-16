@@ -502,10 +502,10 @@ static void Root_free(void *alloc, void *mem, size_t s, void *) {
 	free(mem);
 }
 
-#if 0 && DEBUG
+#if DEBUG
 static void Root_node_alloc(void *alloc, void *node, size_t s, void *owner, void *) {
 	if (alloc) {
-		s_allocMutex.lock();
+		/*s_allocMutex.lock();
 		//std::cout << "Alloc: ( " << alloc << ") " << node << "\n";
 		auto it = s_allocators.find(alloc);
 		if (it != s_allocators.end()) {
@@ -522,13 +522,13 @@ static void Root_node_alloc(void *alloc, void *node, size_t s, void *owner, void
 				//std::cout << "Node not found\n";
 			}
 		}
-		s_allocMutex.unlock();
+		s_allocMutex.unlock();*/
 	}
 }
 
 static void Root_node_free(void *alloc, void *node, size_t s, void *) {
 	if (alloc) {
-		s_allocMutex.lock();
+		/*s_allocMutex.lock();
 		//std::cout << "Free: ( " << alloc << ") " << node << "\n";
 		auto it = s_allocators.find(alloc);
 		if (it != s_allocators.end()) {
@@ -544,7 +544,7 @@ static void Root_node_free(void *alloc, void *node, size_t s, void *) {
 				// std::cout << "Node not found\n";
 			}
 		}
-		s_allocMutex.unlock();
+		s_allocMutex.unlock();*/
 	}
 }
 
@@ -565,6 +565,7 @@ static String Root_writeMemoryMap(bool full) {
 	size_t freeAllocSize = s_free_allocated.load();
 	std::ostringstream ret;
 
+	ret << "Active pools: " << mem::pool::get_active_count() << "\n";
 	ret << "Allocated (free) : ";
 	formatSize(ret, freeAllocSize);
 	ret << " ( " << freeAllocSize << " )\n";
@@ -731,7 +732,7 @@ Root::Root() {
 	serenity_set_alloc_fn(Root_alloc, Root_free, (void *)this);
 
 #if SPAPR && DEBUG
-	//serenity_set_node_ctrl_fn(Root_node_alloc, Root_node_free, (void *)this);
+	serenity_set_node_ctrl_fn(Root_node_alloc, Root_node_free, (void *)this);
 #endif
 }
 

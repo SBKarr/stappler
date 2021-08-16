@@ -115,6 +115,9 @@ struct Extent2 {
 	Extent2& operator= (const Size2 &size) { width = size.width; height = size.width; return *this; }
 	Extent2& operator= (const Vec2 &other) { width = other.x; height = other.y; return *this; }
 
+	bool operator==(const Extent2 &other) const { return width == other.width && height == other.height; }
+	bool operator!=(const Extent2 &other) const { return width != other.width || height != other.height; }
+
 	operator Size2 () const { return Size2(width, height); }
 };
 
@@ -139,6 +142,9 @@ struct Extent3 {
 
 	Extent3& operator= (const Size3 &size) { width = size.width; height = size.width; depth = size.depth; return *this; }
 	Extent3& operator= (const Vec3 &other) { width = other.x; height = other.y; depth = other.z; return *this; }
+
+	bool operator==(const Extent3 &other) const { return width == other.width && height == other.height && depth == other.depth; }
+	bool operator!=(const Extent3 &other) const { return width != other.width || height != other.height || depth != other.depth; }
 
 	operator Size3 () const { return Size3(width, height, depth); }
 };

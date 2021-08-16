@@ -420,9 +420,9 @@ struct ValueWrapper {
 	static constexpr ValueWrapper<T, Flag> epsilon() { return ValueWrapper<T, Flag>(NumericLimits<T>::epsilon()); }
 	static constexpr ValueWrapper<T, Flag> zero() { return ValueWrapper<T, Flag>(0); }
 
-	inline ValueWrapper() : value(0) { }
-	inline explicit ValueWrapper(const T &val) : value(val) { }
-	inline explicit ValueWrapper(T &&val) : value(std::move(val)) { }
+	inline constexpr ValueWrapper() : value(0) { }
+	inline explicit constexpr ValueWrapper(const T &val) : value(val) { }
+	inline explicit constexpr ValueWrapper(T &&val) : value(std::move(val)) { }
 
 	inline ValueWrapper(const ValueWrapper<T, Flag> &other) { value = other.value; }
 	inline ValueWrapper<T, Flag> &operator=(const ValueWrapper<T, Flag> &other) { value = other.value; return *this; }
