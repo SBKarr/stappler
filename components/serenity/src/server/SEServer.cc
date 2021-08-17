@@ -341,7 +341,7 @@ struct Server::Config : public AllocPool {
 		}
 	}
 
-	void onChildInit(Server &serv) {
+	void onChildInit(Server &serv, mem::pool_t *p) {
 		for (auto &it : components) {
 			currentComponent = it.second->getName();
 			it.second->onChildInit(serv);
@@ -349,6 +349,7 @@ struct Server::Config : public AllocPool {
 		}
 
 		childInit = true;
+		rootPool = p;
 
 		if (!loadingFalled) {
 			db::Scheme::initSchemes(schemes);
@@ -470,6 +471,7 @@ struct Server::Config : public AllocPool {
 	mem::Vector<mem::Pair<uint32_t, mem::String>> customTypes;
 
 	Vector<Pair<uint32_t, uint32_t>> allowedIps;
+	mem::pool_t *rootPool = nullptr;
 };
 
 void * Server::merge(void *base, void *add) {
@@ -560,9 +562,9 @@ Server & Server::operator =(const Server &other) {
 	return *this;
 }
 
-void Server::onChildInit() {
+void Server::onChildInit(mem::pool_t *rootPool) {
 	_config->init(*this);
-	_config->onChildInit(*this);
+	_config->onChildInit(*this, rootPool);
 
 	filesystem::mkdir(filepath::merge(getDocumentRoot(), "/.serenity"));
 	filesystem::mkdir(filepath::merge(getDocumentRoot(), "/uploads"));
@@ -902,6 +904,10 @@ int Server::getMaxHeaders() const {
 	return _server->limit_req_fields;
 }
 
+mem::pool_t *Server::getThreadPool() const {
+	return _config->rootPool;
+}
+
 const String &Server::getSessionKey() const {
 	return _config->sessionKey;
 }
@@ -949,7 +955,7 @@ auto Server_resolvePath(Map<String, T> &map, const String &path) -> typename Map
 void Server::initHeartBeat(apr_pool_t *, int epoll) {
 	auto p = _config->_pugCache.getNotify();
 	if (p >= 0) {
-		auto c = new (getPool()) PollClient();
+		auto c = new (getProcessPool()) PollClient();
 		c->type = PollClient::INotify;
 		c->ptr = &_config->_pugCache;
 		c->fd = p;
@@ -967,7 +973,7 @@ void Server::initHeartBeat(apr_pool_t *, int epoll) {
 
 	auto t = _config->_templateCache.getNotify();
 	if (t >= 0) {
-		auto c = new (getPool()) PollClient();
+		auto c = new (getProcessPool()) PollClient();
 		c->type = PollClient::TemplateINotify;
 		c->ptr = &_config->_templateCache;
 		c->fd = t;
@@ -984,7 +990,7 @@ void Server::initHeartBeat(apr_pool_t *, int epoll) {
 	}
 
 	auto root = Root::getInstance();
-	if (auto dbd = root->dbdOpen(getPool(), _server)) {
+	if (auto dbd = root->dbdOpen(getProcessPool(), _server)) {
 		auto conn = (PGconn *)db::pq::Driver::open()->getConnection(db::pq::Driver::Handle(dbd)).get();
 
 		auto query = toString("LISTEN ", config::getSerenityBroadcastChannelName(), ";");
@@ -1002,7 +1008,7 @@ void Server::initHeartBeat(apr_pool_t *, int epoll) {
 		} else {
 			int sock = PQsocket(conn);
 
-			auto c = new (getPool()) PollClient();
+			auto c = new (getProcessPool()) PollClient();
 			c->type = PollClient::Postgres;
 			c->ptr = dbd;
 			c->fd = sock;

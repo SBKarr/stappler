@@ -211,7 +211,7 @@ static void sa_server_timer_postgres_error(PollClient *cl, int epoll) {
 	root->dbdClose(cl->server, (ap_dbd_t *)cl->ptr);
 
 	// reopen connection
-	if (auto dbd = root->dbdOpen(cl->server.getPool(), cl->server)) {
+	if (auto dbd = root->dbdOpen(cl->server.getProcessPool(), cl->server)) {
 		auto conn = (PGconn *)db::pq::Driver::open()->getConnection(db::pq::Driver::Handle(dbd)).get();
 
 		auto query = toString("LISTEN ", config::getSerenityBroadcastChannelName(), ";");
@@ -422,6 +422,7 @@ struct Alloc {
 		void *owner = nullptr;
 		std::vector<std::string> backtrace;
 	};
+	size_t allocated = 0;
 	std::array<std::vector<MemNode>, 20> nodes;
 };
 
@@ -429,6 +430,13 @@ static std::unordered_map<void *, Alloc> s_allocators;
 static std::atomic<size_t> s_alloc_allocated = 0;
 static std::atomic<size_t> s_free_allocated = 0;
 static std::mutex s_allocMutex;
+static std::vector<apr_pool_t *> s_RootPoolList;
+
+struct root_debug_allocator_t {
+    apr_size_t max_index;
+    apr_size_t max_free_index;
+    apr_size_t current_free_index;
+};
 
 static void *Root_alloc(void *alloc, size_t s, void *) {
 	void *ret = nullptr;
@@ -465,6 +473,13 @@ static void *Root_alloc(void *alloc, size_t s, void *) {
 #else
 	if (alloc) {
 		s_alloc_allocated += s;
+		s_allocMutex.lock();
+		auto it = s_allocators.find(alloc);
+		if (it == s_allocators.end()) {
+			it = s_allocators.emplace((void *)alloc, Alloc()).first;
+		}
+		it->second.allocated += s;
+		s_allocMutex.unlock();
 	} else {
 		s_free_allocated += s;
 	}
@@ -473,7 +488,7 @@ static void *Root_alloc(void *alloc, size_t s, void *) {
 }
 
 static void Root_free(void *alloc, void *mem, size_t s, void *) {
-#if DEBUG
+#if DEBUG && 0
 	if (alloc) {
 		s_alloc_allocated -= s;
 		s_allocMutex.lock();
@@ -495,6 +510,12 @@ static void Root_free(void *alloc, void *mem, size_t s, void *) {
 #else
 	if (alloc) {
 		s_alloc_allocated -= s;
+		s_allocMutex.lock();
+		auto it = s_allocators.find(alloc);
+		if (it != s_allocators.end()) {
+			it->second.allocated -= s;
+		}
+		s_allocMutex.unlock();
 	} else {
 		s_free_allocated -= s;
 	}
@@ -550,32 +571,73 @@ static void Root_node_free(void *alloc, void *node, size_t s, void *) {
 
 #endif // DEBUG
 
-static String Root_writeMemoryMap(bool full) {
-	auto formatSize = [&] (std::ostringstream &out, size_t val) {
-		if (val > size_t(1_MiB)) {
-			out << std::setprecision(4) << double(val) / 1_MiB << " MiB";
-		} else if (val > size_t(1_KiB)) {
-			out << std::setprecision(4) << double(val) / 1_KiB << " KiB";
-		} else {
-			out << val << " bytes";
-		}
-	};
+static void Root_formatSize(std::ostringstream &out, size_t val) {
+	if (val > size_t(1_MiB)) {
+		out << std::setprecision(4) << double(val) / 1_MiB << " MiB";
+	} else if (val > size_t(1_KiB)) {
+		out << std::setprecision(4) << double(val) / 1_KiB << " KiB";
+	} else {
+		out << val << " bytes";
+	}
+};
 
+static String Root_writeMemoryMap(bool full) {
 	size_t allocSize = s_alloc_allocated.load();
 	size_t freeAllocSize = s_free_allocated.load();
 	std::ostringstream ret;
 
+	s_allocMutex.lock();
+	ret << "Allocators: " << s_allocators.size() << "\n";
+	for (auto &it : s_allocators) {
+		ret << "\t" << (void *)it.first << ": ";
+		root_debug_allocator_t *alloc = (root_debug_allocator_t *)it.first;
+		Root_formatSize(ret, it.second.allocated);
+		ret << " ( " << it.second.allocated << " ) max: " << alloc->max_free_index << "\n";
+	}
+	s_allocMutex.unlock();
+
+
 	ret << "Active pools: " << mem::pool::get_active_count() << "\n";
+	mem::pool::debug_foreach(&ret, [] (void *ptr, mem::pool_t *pool) {
+		std::ostringstream *ret = (std::ostringstream *)ptr;
+		auto tag = mem::pool::get_tag(pool);
+		auto size = mem::pool::get_allocated_bytes(pool);
+		(*ret) << "\t[" << (tag ? tag : "null") << "] ";
+		Root_formatSize(*ret, size);
+		(*ret) << " ( " << size << " )\n";
+	});
+
+	s_allocMutex.lock();
+	ret << "Tracked pools: " << s_RootPoolList.size() << "\n";
+	size_t calculated = 0;
+	size_t idx = 0;
+	for (auto &pool : s_RootPoolList) {
+		auto size = mem::pool::get_allocated_bytes(pool);
+		if (size) {
+			calculated += size;
+			auto tag = mem::pool::get_tag(pool);
+			ret << "\t" << idx << ": [" << (tag ? tag : "null") << "] ";
+			Root_formatSize(ret, size);
+			ret << " ( " << size << " )\n";
+		}
+		++ idx;
+	}
+	s_allocMutex.unlock();
+
+	ret << "Allocated (by active) : ";
+	Root_formatSize(ret, calculated);
+	ret << " ( " << calculated << " )\n";
+
 	ret << "Allocated (free) : ";
-	formatSize(ret, freeAllocSize);
+	Root_formatSize(ret, freeAllocSize);
 	ret << " ( " << freeAllocSize << " )\n";
 
 	ret << "Allocated (counter) : ";
-	formatSize(ret, allocSize);
+	Root_formatSize(ret, allocSize);
 	ret << " ( " << allocSize << " )\n";
 
 #if DEBUG
-	size_t fullSize = 0;
+	/*size_t fullSize = 0;
 	s_allocMutex.lock();
 	ret << "Allocators:\n";
 	for (auto &it : s_allocators) {
@@ -592,7 +654,7 @@ static String Root_writeMemoryMap(bool full) {
 		}
 
 		fullSize += size;
-		formatSize(ret, size);
+		Root_formatSize(ret, size);
 		ret << " ( " << size << " )\n";
 
 		if (full) {
@@ -608,12 +670,12 @@ static String Root_writeMemoryMap(bool full) {
 						size = it.second.nodes[i].size() * ((i + 1) * 4_KiB);
 					}
 
-					formatSize(ret, size);
+					Root_formatSize(ret, size);
 					ret << " ( " << size << " )\n";
 
 					for (auto &iit : it.second.nodes[i]) {
 						ret << "\t\t\t[ " << iit.ptr  << " ] : ";
-						formatSize(ret, iit.size);
+						Root_formatSize(ret, iit.size);
 						ret << " ( " << iit.size << " ) ";
 						if (iit.status) {
 							ret << " [allocated]\n";
@@ -627,9 +689,9 @@ static String Root_writeMemoryMap(bool full) {
 	}
 
 	ret << "Allocated (calculated) : ";
-	formatSize(ret, fullSize);
+	Root_formatSize(ret, fullSize);
 	ret << " ( " << fullSize << " )\n";
-	s_allocMutex.unlock();
+	s_allocMutex.unlock();*/
 #endif
 	ret << "\n";
 
@@ -716,6 +778,21 @@ static String Root_writeAllocatorMemoryMap(void *alloc) {
 #endif
 }
 
+void Root_poolCreate(apr_pool_t *pool, void *ctx) {
+	s_allocMutex.lock();
+	s_RootPoolList.emplace_back(pool);
+	s_allocMutex.unlock();
+}
+
+void Root_poolDestroy(apr_pool_t *pool, void *ctx) {
+	s_allocMutex.lock();
+	auto it = std::find(s_RootPoolList.begin(), s_RootPoolList.end(), pool);
+	if (it != s_RootPoolList.end()) {
+		s_RootPoolList.erase(it);
+	}
+	s_allocMutex.unlock();
+}
+
 Root::Root() {
     assert(! s_sharedServer);
     s_sharedServer = this;
@@ -730,16 +807,31 @@ Root::Root() {
 
 	// memory interface binding
 	serenity_set_alloc_fn(Root_alloc, Root_free, (void *)this);
+	serenity_set_pool_ctrl_fn(Root_poolCreate, Root_poolDestroy, (void *)this);
 
 #if SPAPR && DEBUG
 	serenity_set_node_ctrl_fn(Root_node_alloc, Root_node_free, (void *)this);
 #endif
+
+	_allocator = memory::allocator::create((void *)_mutex.ptr());
+	memory::allocator::max_free_set(_allocator, 20_MiB);
+
+	_rootPool = memory::pool::create(_allocator, memory::PoolFlags::None);
 }
 
 Root::~Root() {
     s_sharedServer = 0;
 
     s_timerExitFlag.clear();
+    if (_heartBeatPool) {
+        memory::pool::destroy(_heartBeatPool);
+        _heartBeatPool = nullptr;
+    }
+    if (_rootPool) {
+        memory::pool::destroy(_rootPool);
+        _rootPool = nullptr;
+    }
+    memory::allocator::destroy(_allocator);
 }
 
 void Root::setProcPool(apr_pool_t *pool) {
@@ -988,7 +1080,7 @@ void Root::onChildInit() {
 }
 
 void Root::initHeartBeat(int epollfd) {
-	_heartBeatPool = apr::pool::create(_pool);
+	_heartBeatPool = apr::pool::create(_allocator, memory::PoolFlags::None);
 
 	auto serv = _rootServerContext;
 	while (serv) {
@@ -1039,7 +1131,7 @@ void Root::onServerChildInit(apr_pool_t *p, server_rec* s) {
 		while (serv) {
 			server_rec *servPtr = serv.server();
 			apr::pool::perform([&] {
-				serv.onChildInit();
+				serv.onChildInit(_rootPool);
 			}, servPtr);
 			serv = serv.next();
 		}

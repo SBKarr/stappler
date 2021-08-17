@@ -148,7 +148,8 @@ public: // httpd server info
 
 	void *server() const { return (void *)_config; }
 	void *getConfig() const { return (void *)_config; }
-	mem::pool_t *getPool() const;
+	mem::pool_t *getProcessPool() const;
+	mem::pool_t *getThreadPool() const;
 
 	stappler::pug::Cache *getPugCache() const;
 

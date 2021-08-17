@@ -25,6 +25,7 @@ THE SOFTWARE.
 
 // requires libbacktrace
 #define DEBUG_BACKTRACE 0
+#define DEBUG_POOL_LIST 0
 
 #if DEBUG_BACKTRACE
 #include <backtrace.h>
@@ -268,6 +269,10 @@ static std::mutex s_poolDebugMutex;
 static pool_t *s_poolDebugTarget = nullptr;
 static std::map<pool_t *, const char **> s_poolDebugInfo;
 
+#if DEBUG_POOL_LIST
+static std::vector<pool_t *> s_poolList;
+#endif
+
 #if DEBUG_BACKTRACE
 static ::backtrace_state *s_backtraceState;
 
@@ -352,6 +357,13 @@ static pool_t *pushPoolInfo(pool_t *pool) {
 				s_poolDebugMutex.unlock();
 			}
 		}
+#if DEBUG_POOL_LIST
+		if (isCustom(pool)) {
+			s_poolDebugMutex.lock();
+			s_poolList.emplace_back(pool);
+			s_poolDebugMutex.unlock();
+		}
+#endif
 	}
 	return pool;
 }
@@ -363,6 +375,16 @@ static void popPoolInfo(pool_t *pool) {
 			s_poolDebugInfo.erase(pool);
 			s_poolDebugMutex.unlock();
 		}
+#if DEBUG_POOL_LIST
+		if (isCustom(pool)) {
+			s_poolDebugMutex.lock();
+			auto it = std::find(s_poolList.begin(), s_poolList.end(), pool);
+			if (it != s_poolList.end()) {
+				s_poolList.erase(it);
+			}
+			s_poolDebugMutex.unlock();
+		}
+#endif
 		-- s_activePools;
 	}
 }
@@ -604,6 +626,18 @@ bool isThreadSafeAsParent(pool_t *pool) {
 	}
 }
 
+const char *get_tag(pool_t *pool) {
+	if constexpr (apr::SPAprDefined) {
+		if (isCustom(pool)) {
+			return ((custom::Pool *)pool)->tag;
+		} else {
+			return apr::pool::get_tag(pool);
+		}
+	} else {
+		return ((custom::Pool *)pool)->tag;
+	}
+}
+
 void setPoolInfo(pool_t *pool, uint32_t tag, const void *ptr) {
 	if constexpr (apr::SPAprDefined) {
 		if (!isCustom(pool)) {
@@ -665,6 +699,16 @@ std::map<pool_t *, const char **> debug_end() {
 	s_poolDebugMutex.unlock();
 	s_poolDebug.store(false);
 	return ret;
+}
+
+void debug_foreach(void *ptr, void(*cb)(void *, pool_t *)) {
+#if DEBUG_POOL_LIST
+	s_poolDebugMutex.lock();
+	for (auto &it : s_poolList) {
+		cb(ptr, it);
+	}
+	s_poolDebugMutex.unlock();
+#endif
 }
 
 }

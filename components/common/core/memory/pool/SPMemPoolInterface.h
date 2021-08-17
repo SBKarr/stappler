@@ -130,10 +130,6 @@ status_t userdata_set(const void *data, const char *key, cleanup_fn, pool_t *);
 status_t userdata_setn(const void *data, const char *key, cleanup_fn, pool_t *);
 status_t userdata_get(void **data, const char *key, pool_t *);
 
-// debug counters
-size_t get_allocated_bytes(pool_t *);
-size_t get_return_bytes(pool_t *);
-
 allocator_t *get_allocator(pool_t *);
 
 void *pmemdup(pool_t *a, const void *m, size_t n);
@@ -142,6 +138,11 @@ char *pstrdup(pool_t *a, const char *s);
 bool isThreadSafeForAllocations(pool_t *pool);
 bool isThreadSafeAsParent(pool_t *pool);
 
+const char *get_tag(pool_t *);
+
+// debug counters
+size_t get_allocated_bytes(pool_t *);
+size_t get_return_bytes(pool_t *);
 size_t get_active_count();
 
 // start recording additional pool info on creation
@@ -149,6 +150,8 @@ bool debug_begin(pool_t *pool = nullptr);
 
 // stop recording and return info
 std::map<pool_t *, const char **> debug_end();
+
+void debug_foreach(void *, void(*)(void *, pool_t *));
 
 }
 

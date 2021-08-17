@@ -42,7 +42,7 @@ public:
 	CallableContext(pool_t *p) : pool(p) { pool::push(pool, uint32_t(Info::Pool), p); }
 	CallableContext(const stellator::Request &r) : pool(r.pool()) { pool::push(pool, uint32_t(Info::Request), r.getConfig()); }
 	//CallableContext(const stellator::Connection &c) : type(&c), pool(c.getPool()) { pool::push(pool, uint32_t(Connection), type); }
-	CallableContext(const stellator::Server &s) : pool(s.getPool()) { pool::push(pool, uint32_t(Info::Server), s.getConfig()); }
+	CallableContext(const stellator::Server &s) : pool(s.getProcessPool()) { pool::push(pool, uint32_t(Info::Server), s.getConfig()); }
 	~CallableContext() { pool::pop(); }
 
 protected:

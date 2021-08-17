@@ -128,14 +128,14 @@ Task *Task::prepare(mem::pool_t *rootPool, const mem::Callback<void(Task &)> &cb
 
 Task *Task::prepare(const mem::Callback<void(Task &)> &cb, TaskGroup *g) {
 	if (auto serv = Server(mem::server())) {
-		return prepare(serv.getPool(), cb, g);
+		return prepare(serv.getThreadPool(), cb, g);
 	}
 	return nullptr;
 }
 
 bool Task::perform(const Server &serv, const mem::Callback<void(Task &)> &cb, TaskGroup *g) {
 	if (serv) {
-		if (auto t = prepare(serv.getPool(), cb, g)) {
+		if (auto t = prepare(serv.getThreadPool(), cb, g)) {
 			return serv.performTask(t);
 		}
 	}

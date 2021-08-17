@@ -185,6 +185,10 @@ bool isThreadSafeAsParent(pool_t *pool) {
 	return false;
 }
 
+const char *get_tag(pool_t *pool) {
+	return serenity_pool_get_tag(pool);
+}
+
 }
 
 #else
@@ -227,6 +231,8 @@ static inline void *pmemdup(custom::Pool *a, const void *m, size_t n) { return n
 static inline char *pstrdup(custom::Pool *a, const char *s) { return nullptr; }
 static inline void setPoolInfo(custom::Pool *p, uint32_t tag, const void *ptr) { }
 static inline bool isThreadSafeAsParent(custom::Pool *pool) { return false; }
+static inline const char *get_tag(custom::Pool *pool) { return nullptr; }
+
 
 }
 

@@ -225,6 +225,8 @@ Pool::~Pool() {
 		this->child->~Pool();
 	}
 
+	memory::pool::popPoolInfo((memory::pool_t *)this);
+
 	stappler::memory::pool::push((stappler::memory::pool_t *)this);
 	Cleanup::run(&this->cleanups);
 	stappler::memory::pool::pop();

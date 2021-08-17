@@ -140,6 +140,7 @@ protected:
 
 	apr_pool_t *_pool = nullptr;
 	apr_pool_t *_heartBeatPool = nullptr;
+	apr_pool_t *_rootPool = nullptr;
 
 	Server _rootServerContext;
 
@@ -178,6 +179,9 @@ protected:
 	Map<StringView, StringView> *_dbParams = nullptr;
 	Vector<StringView> *_dbs = nullptr;
 	db::pq::Driver *_dbDriver = nullptr;
+
+	Mutex _mutex = Mutex(mem::pool::create());
+	memory::allocator_t *_allocator = nullptr;
 };
 
 /* Also export them as optional functions for modules that prefer it */

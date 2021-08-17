@@ -43,7 +43,7 @@ public:
 	Server(const Server &);
 	Server & operator =(const Server &);
 
-	void onChildInit();
+	void onChildInit(mem::pool_t *rootPool);
 	void initHeartBeat(apr_pool_t *, int);
 	void onHeartBeat(apr_pool_t *);
 	void checkBroadcasts();
@@ -152,7 +152,8 @@ public: // httpd server info
 	operator server_rec *() const { return _server; }
 	operator bool () const { return _server != nullptr; }
 
-	mem::pool_t *getPool() const { return _server->process->pconf; }
+	mem::pool_t *getProcessPool() const { return _server->process->pconf; }
+	mem::pool_t *getThreadPool() const;
 
 	Server next() const { return Server(_server->next); }
 

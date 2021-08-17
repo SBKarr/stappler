@@ -183,7 +183,7 @@ stappler::Rc<T> SharedObject::create(mem::pool_t *rootPool, const Callback &cb) 
 template <typename T, typename Callback>
 stappler::Rc<T> SharedObject::create(const Callback &cb) {
 	if (auto serv = Server(mem::server())) {
-		return create<T>(serv.getPool(), cb);
+		return create<T>(serv.getThreadPool(), cb);
 	}
 	return stappler::Rc<T>(nullptr);
 }

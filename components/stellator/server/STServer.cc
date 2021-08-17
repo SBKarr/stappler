@@ -682,7 +682,11 @@ bool Server::isSessionSecure() const {
 	return _config->isSessionSecure;
 }
 
-mem::pool_t *Server::getPool() const {
+mem::pool_t *Server::getThreadPool() const {
+	return _config->pool;
+}
+
+mem::pool_t *Server::getProcessPool() const {
 	return _config->pool;
 }
 
