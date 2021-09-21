@@ -915,8 +915,8 @@ void FontController::updateSource() {
 	if (_urls.empty()) {
 		performSourceUpdate();
 	} else {
-		retain();
-		resource::acquireFontAsset(_urls, std::bind(&FontController::onAssets, this, std::placeholders::_1));
+		auto id = retain();
+		resource::acquireFontAsset(_urls, std::bind(&FontController::onAssets, this, id, std::placeholders::_1));
 	}
 
 	_dirty = false;
@@ -995,7 +995,7 @@ void FontController::onSourceUpdated(FontSource *s) {
 	onSource(this, s);
 }
 
-void FontController::onAssets(const Vector<Rc<Asset>> &assets) {
+void FontController::onAssets(uint64_t callId, const Vector<Rc<Asset>> &assets) {
 	auto oldAssets = std::move(_assets);
 	_assets.clear();
 	for (auto &it : assets) {
@@ -1022,7 +1022,7 @@ void FontController::onAssets(const Vector<Rc<Asset>> &assets) {
 			}
 		}
 	}
-	release();
+	release(callId);
 }
 
 void FontController::onAssetUpdated(Asset *a) {

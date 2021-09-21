@@ -338,7 +338,7 @@ void Director::setOpenGLView(GLView *openGLView)
         CCLOG("%s\n",conf->getInfo().c_str());
 
         if(_openGLView)
-            _openGLView->release();
+            _openGLView->release(0);
         _openGLView = openGLView;
         _openGLView->retain();
 
@@ -876,7 +876,7 @@ void Director::reset()
     {
         _runningScene->onExit();
         _runningScene->cleanup();
-        _runningScene->release();
+        _runningScene->release(0);
     }
 
     _runningScene = nullptr;
@@ -932,7 +932,7 @@ void Director::purgeDirector()
     }
 
     // delete Director
-    release();
+    release(0);
 }
 
 void Director::restartDirector()
@@ -970,7 +970,7 @@ void Director::setNextScene()
 
     if (_runningScene)
     {
-        _runningScene->release();
+        _runningScene->release(0);
     }
     _runningScene = _nextScene;
     _nextScene->retain();

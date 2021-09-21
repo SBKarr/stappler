@@ -156,7 +156,7 @@ void ContentLayer::popNode(Layout *node) {
 		return;
 	}
 
-	node->retain();
+	auto linkId = node->retain();
 	_nodes.erase(it);
 
 	node->onPopTransitionBegan(this, false);
@@ -164,13 +164,13 @@ void ContentLayer::popNode(Layout *node) {
 		_nodes.back()->onForegroundTransitionBegan(this, node);
 	}
 
-	auto fn = [this, node] {
+	auto fn = [this, node, linkId] {
 		eraseNode(node);
 		node->onPop(this, false);
 		if (!_nodes.empty()) {
 			_nodes.back()->onForeground(this, node);
 		}
-		node->release();
+		node->release(linkId);
 	};
 
 	auto tit = _nodeExit.find(node);
@@ -371,14 +371,14 @@ bool ContentLayer::popOverlayNode(OverlayLayout *l) {
 		return false;
 	}
 
-	l->retain();
+	auto linkId = l->retain();
 	_overlays.erase(it);
 	l->onPopTransitionBegan(this, false);
 
-	auto fn = [this, l] {
+	auto fn = [this, l, linkId] {
 		eraseOverlay(l);
 		l->onPop(this, false);
-		l->release();
+		l->release(linkId);
 	};
 
 	auto tit = _overlayExit.find(l);

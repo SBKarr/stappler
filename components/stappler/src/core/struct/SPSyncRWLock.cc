@@ -70,10 +70,10 @@ void SyncRWLock::retainReadLock(LockPtr ptr, const Vector<SyncRWLock *> &vec, co
 
 
 void SyncRWLock::retainReadLock(Ref *ref, const Vector<SyncRWLock *> &vec, const LockAcquiredCallback &cb) {
-	ref->retain();
-	retainReadLock((void *)ref, vec, [ref, cb] {
+	auto callId = ref->retain();
+	retainReadLock((void *)ref, vec, [ref, cb, callId] {
 		cb();
-		ref->release();
+		ref->release(callId);
 	});
 }
 
@@ -82,7 +82,6 @@ void SyncRWLock::releaseReadLock(LockPtr ptr, const Vector<SyncRWLock *> &vec) {
 		it->releaseReadLock(ptr);
 	}
 }
-
 
 bool SyncRWLock::tryReadLock(LockPtr ptr) {
 	return retainLock(ptr, Lock::Read);
@@ -165,7 +164,7 @@ bool SyncRWLock::releaseLock(LockPtr ref, Lock value) {
 			if (_lockers.empty()) {
 				onLockFinished();
 			}
-			release();
+			release(0);
 			return true;
 		}
 	}
@@ -182,7 +181,7 @@ void SyncRWLock::queueLock(LockPtr ptr, const LockAcquiredCallback &cb, Lock val
 
 void SyncRWLock::onReferenceLocked(Ref *ref, const LockAcquiredCallback &cb) {
 	cb();
-	ref->release();
+	ref->release(0);
 }
 void SyncRWLock::onLockFinished() {
 	_lock = Lock::None;

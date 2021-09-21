@@ -342,6 +342,7 @@ struct Server::Config : public AllocPool {
 	}
 
 	void onChildInit(Server &serv, mem::pool_t *p) {
+		rootPool = p;
 		for (auto &it : components) {
 			currentComponent = it.second->getName();
 			it.second->onChildInit(serv);
@@ -349,7 +350,6 @@ struct Server::Config : public AllocPool {
 		}
 
 		childInit = true;
-		rootPool = p;
 
 		if (!loadingFalled) {
 			db::Scheme::initSchemes(schemes);

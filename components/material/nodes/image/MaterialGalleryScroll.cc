@@ -55,12 +55,12 @@ bool GalleryImage::init(const String &file, const ImageCallback &cb) {
 	_loader = addChildNode(loader);
 
 	if (cb) {
-		retain();
-		cb(file, [this] (cocos2d::Texture2D *tex) {
+		auto linkId = retain();
+		cb(file, [this, linkId] (cocos2d::Texture2D *tex) {
 			setTexture(tex);
 			_loader->removeFromParent();
 			_loader = nullptr;
-			release();
+			release(linkId);
 		});
 	}
 

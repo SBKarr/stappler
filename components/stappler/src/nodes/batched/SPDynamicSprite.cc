@@ -234,12 +234,12 @@ void DynamicSprite::updateQuads() {
 void DynamicSprite::acquireTexture(const StringView &file) {
 	_textureTime = Time::now();
 	auto time = _textureTime;
-	retain();
-	TextureCache::getInstance()->addTexture(file, _density * _textureDensity, [this, time] (cocos2d::Texture2D *tex) {
+	auto callId = retain();
+	TextureCache::getInstance()->addTexture(file, _density * _textureDensity, [this, time, callId] (cocos2d::Texture2D *tex) {
 		if (time == _textureTime) {
 			onTextureRecieved(tex);
 		}
-		release();
+		release(callId);
 	});
 }
 

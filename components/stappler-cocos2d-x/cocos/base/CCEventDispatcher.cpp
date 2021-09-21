@@ -369,7 +369,7 @@ void EventDispatcher::removeEventListenersForTarget(Node* target, bool recursive
         {
             listener->setAssociatedNode(nullptr);   // Ensure no dangling ptr to the target node.
             listener->setRegistered(false);
-            listener->release();
+            listener->release(0);
             iter = _toAddedListeners.erase(iter);
         }
         else
@@ -676,7 +676,7 @@ void EventDispatcher::removeEventListener(EventListener* listener)
             if (*iter == listener)
             {
                 listener->setRegistered(false);
-                listener->release();
+                listener->release(0);
                 _toAddedListeners.erase(iter);
                 break;
             }
@@ -1059,7 +1059,7 @@ void EventDispatcher::updateListeners(Event* event)
                 if (!l->isRegistered())
                 {
                     iter = sceneGraphPriorityListeners->erase(iter);
-                    l->release();
+                    l->release(0);
                 }
                 else
                 {
@@ -1076,7 +1076,7 @@ void EventDispatcher::updateListeners(Event* event)
                 if (!l->isRegistered())
                 {
                     iter = fixedPriorityListeners->erase(iter);
-                    l->release();
+                    l->release(0);
                 }
                 else
                 {
@@ -1321,7 +1321,7 @@ void EventDispatcher::removeEventListenersForListenerID(const EventListener::Lis
         if ((*iter)->getListenerID() == listenerID)
         {
             (*iter)->setRegistered(false);
-            (*iter)->release();
+            (*iter)->release(0);
             iter = _toAddedListeners.erase(iter);
         }
         else

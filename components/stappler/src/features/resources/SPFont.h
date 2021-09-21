@@ -134,7 +134,7 @@ protected:
 	virtual void performSourceUpdate();
 	virtual void onSourceUpdated(FontSource *);
 
-	virtual void onAssets(const Vector<Rc<Asset>> &);
+	virtual void onAssets(uint64_t callId, const Vector<Rc<Asset>> &);
 	virtual void onAssetUpdated(Asset *);
 
 	virtual Rc<FontSource> makeSource(AssetMap &&, bool schedule = true);

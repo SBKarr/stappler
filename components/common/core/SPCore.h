@@ -587,6 +587,12 @@ inline uint64_t npot(uint64_t n) {
     return n + 1;
 }
 
+// Align on a power of 2 boundary
+template <typename T = uint64_t>
+static constexpr auto align(T size, T boundary) -> T {
+	return (((size) + ((boundary) - 1)) & ~((boundary) - 1));
+}
+
 }
 
 }

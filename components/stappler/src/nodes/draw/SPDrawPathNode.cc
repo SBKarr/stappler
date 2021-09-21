@@ -212,8 +212,8 @@ void PathNode::updateCanvas(layout::Subscription::Flags f) {
 	auto currentTex = getTexture();
 	if (!f.empty() || !currentTex || (uint32_t)currentTex->getPixelsWide() != width || (uint32_t)currentTex->getPixelsHigh() != height) {
 		_renderRequested = true;
-		retain();
-		TextureCache::getInstance()->renderImageInBackground([this] (cocos2d::Texture2D *tex) {
+		auto callId = retain();
+		TextureCache::getInstance()->renderImageInBackground([this, callId] (cocos2d::Texture2D *tex) {
 			_renderRequested = false;
 			auto off = _offscreenTexture;
 			_offscreenTexture = getTexture();
@@ -227,7 +227,7 @@ void PathNode::updateCanvas(layout::Subscription::Flags f) {
 			} else {
 				setTexture(tex);
 			}
-			release();
+			release(callId);
 		}, _offscreenTexture.get(), _format, *_image.get(), _contentSize, _autofit, _autofitPos, _density);
 	}
 }

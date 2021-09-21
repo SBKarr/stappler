@@ -127,6 +127,8 @@ struct Color4F : public AllocBase {
 		return (*this == other);
 	}
 
+	operator Vec4() const { return Vec4(r, g, b, a); }
+
 	float r;
 	float g;
 	float b;
@@ -216,9 +218,9 @@ public:
 
 	inline Color4F asColor4F() const {
 		return Color4F(
-				((float)0xFF) / ((_value >> 16) & 0xFF),
-				((float)0xFF) / ((_value >> 8) & 0xFF),
-				((float)0xFF) / (_value & 0xFF),
+				float((_value >> 16) & 0xFF) / float(0xFF),
+				float((_value >> 8) & 0xFF) / float(0xFF),
+				float(_value & 0xFF) / float(0xFF),
 				1.0f);
 	}
 

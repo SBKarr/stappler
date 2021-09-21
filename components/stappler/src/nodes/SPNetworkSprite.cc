@@ -88,10 +88,10 @@ void NetworkSprite::updateSprite(bool force) {
 		_filePath = getPathForUrl(_url);
 		uint64_t assetId = lib->getAssetId(_url, _filePath);
 		if (!_asset || _asset->getId() != assetId) {
-			retain();
-			lib->getAsset([this, force] (Asset *a) {
+			auto callId = retain();
+			lib->getAsset([this, force, callId] (Asset *a) {
 				onAsset(a, force);
-				release();
+				release(callId);
 			}, _url, _filePath, config::getNetworkSpriteAssetTtl());
 		}
 	} else {
@@ -125,12 +125,12 @@ void NetworkSprite::loadTexture() {
 
 		Asset * asset = _asset;
 
-		retain();
-		cache->addTexture(_asset, [this, asset] (cocos2d::Texture2D *tex) {
+		auto linkId = retain();
+		cache->addTexture(_asset, [this, asset, linkId] (cocos2d::Texture2D *tex) {
 			if (asset == _asset && tex) {
 				setTexture(tex, Rect(0, 0, tex->getContentSize().width, tex->getContentSize().height));
 			}
-			release();
+			release(linkId);
 		}, _texture != nullptr);
 	} else {
 		setTexture(nullptr, Rect::ZERO);

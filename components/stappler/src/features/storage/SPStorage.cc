@@ -524,35 +524,29 @@ Scheme::Scheme(const String &name, FieldsList &&list, AliasesList &&aliases, Han
 	_storage = storage;
 }
 
-Scheme::~Scheme() {
-	CC_SAFE_RELEASE_NULL(_internal);
-}
+Scheme::~Scheme() { }
 
 Scheme::Scheme(const Scheme &other) {
-	CC_SAFE_RELEASE_NULL(_internal);
 	_internal = other._internal;
-	CC_SAFE_RETAIN(_internal);
 	_storage = other._storage;
 }
 Scheme &Scheme::operator= (const Scheme &other) {
-	CC_SAFE_RELEASE_NULL(_internal);
 	_internal = other._internal;
-	CC_SAFE_RETAIN(_internal);
 	_storage = other._storage;
 	return *this;
 }
 
 Scheme::Scheme(Scheme &&other) {
-	auto tmp = other._internal;
-	other._internal = _internal;
 	_storage = other._storage;
-	_internal = tmp;
+	_internal = move(other._internal);
+	other._storage = nullptr;
+	other._internal = nullptr;
 }
 Scheme &Scheme::operator= (Scheme &&other) {
-	auto tmp = other._internal;
-	other._internal = _internal;
 	_storage = other._storage;
-	_internal = tmp;
+	_internal = move(other._internal);
+	other._storage = nullptr;
+	other._internal = nullptr;
 	return *this;
 }
 

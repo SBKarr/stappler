@@ -316,7 +316,7 @@ protected:
 	};
 
 	class Internal;
-	Internal *_internal = nullptr;
+	Rc<Internal> _internal;
 
 	Handle *_storage = nullptr;
 };

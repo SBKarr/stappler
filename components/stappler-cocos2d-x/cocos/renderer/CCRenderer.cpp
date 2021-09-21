@@ -210,7 +210,7 @@ Renderer::Renderer(GroupCommandManager *g) {
 
 Renderer::~Renderer()
 {
-    _groupCommandManager->release();
+    _groupCommandManager->release(0);
 }
 
 void Renderer::addCommand(RenderCommand* command)

@@ -493,7 +493,7 @@ void GLViewImpl::end()
         _mainWindow = nullptr;
     }
     // Release self. Otherwise, GLViewImpl could not be freed.
-    release();
+    release(0);
 }
 
 void GLViewImpl::swapBuffers()

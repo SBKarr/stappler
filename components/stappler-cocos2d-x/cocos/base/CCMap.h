@@ -288,7 +288,7 @@ public:
     iterator erase(const_iterator position)
     {
         CCASSERT(position != _data.cend(), "Invalid iterator!");
-        position->second->release();
+        position->second->release(0);
         return _data.erase(position);
     }
     
@@ -304,7 +304,7 @@ public:
         auto iter = _data.find(k);
         if (iter != _data.end())
         {
-            iter->second->release();
+            iter->second->release(0);
             _data.erase(iter);
             return 1;
         }
@@ -333,7 +333,7 @@ public:
     {
         for (auto iter = _data.cbegin(); iter != _data.cend(); ++iter)
         {
-            iter->second->release();
+            iter->second->release(0);
         }
         
         _data.clear();

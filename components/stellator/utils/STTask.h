@@ -150,8 +150,8 @@ public:
 
 	virtual ~SharedObject() { }
 
-	void retain() { _counter.increment(); }
-	void release() { if (_counter.decrement()) { destroy(this); } }
+	uint64_t retain() { _counter.increment(); return 0; }
+	void release(uint64_t) { if (_counter.decrement()) { destroy(this); } }
 	uint32_t getReferenceCount() const { return _counter.get(); }
 
 	mem::pool_t *pool() const { return _pool; }
@@ -172,7 +172,7 @@ stappler::Rc<T> SharedObject::create(mem::pool_t *rootPool, const Callback &cb) 
 				auto obj = new (p) T(p);
 				cb(*obj);
 				ret = stappler::Rc<T>(obj);
-				obj->release();
+				obj->release(0);
 			}, p);
 			return ret;
 		}

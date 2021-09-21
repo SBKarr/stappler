@@ -74,7 +74,7 @@ void ActionManager::deleteHashElement(tHashElement *element)
 {
     ccArrayFree(element->actions);
     HASH_DEL(_targets, element);
-    element->target->release();
+    element->target->release(0);
     free(element);
 }
 
@@ -410,7 +410,7 @@ void ActionManager::update(float dt)
                     // The currentAction told the node to remove it. To prevent the action from
                     // accidentally deallocating itself before finishing its step, we retained
                     // it. Now that step is done, it's safe to release it.
-                    _currentTarget->currentAction->release();
+                    _currentTarget->currentAction->release(0);
                 } else
                 if (_currentTarget->currentAction->isDone())
                 {

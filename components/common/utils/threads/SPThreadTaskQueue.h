@@ -48,14 +48,15 @@ class TaskQueue : public Ref {
 public:
 	static const TaskQueue *getOwner();
 
-	TaskQueue(memory::pool_t *p = nullptr, StringView name = StringView());
-	TaskQueue(uint16_t count, memory::pool_t *p = nullptr, StringView name = StringView());
+	TaskQueue(memory::pool_t *p = nullptr, StringView name = StringView(), std::function<void()> && = std::function<void()>());
+	TaskQueue(uint16_t count, memory::pool_t *p = nullptr, StringView name = StringView(), std::function<void()> && = std::function<void()>());
 	~TaskQueue();
 
 	void finalize();
 
 	void performAsync(Rc<Task> &&task);
 	void perform(Rc<Task> &&task);
+	void perform(Function<void()> &&, Ref * = nullptr);
 	void perform(Map<uint32_t, Vector<Rc<Task>>> &&tasks);
 	void performWithPriority(Rc<Task> &&task, bool performFirst);
 
@@ -77,6 +78,8 @@ public:
 
 	StdVector<std::thread::id> getThreadIds() const;
 
+	size_t getOutputCounter() const { return outputCounter.load(); }
+
 protected:
 	friend class Worker;
 
@@ -91,7 +94,6 @@ protected:
 
 	std::mutex _outputMutex;
 	StdVector<Rc<Task>> _outputQueue;
-	std::atomic_flag _flag;
 
 	std::mutex _exitMutex;
 	std::condition_variable _exitCondition;
@@ -100,10 +102,13 @@ protected:
 
 	uint16_t _threadsCount = std::thread::hardware_concurrency();
 
+	std::atomic<size_t> outputCounter = 0;
 	std::atomic<size_t> tasksCounter = 0;
 
 	memory::pool_t *_pool = nullptr;
 	StringView _name = StringView("TaskQueue");
+
+	std::function<void()> _wakeup;
 };
 
 /* Interface for thread workers or handlers */

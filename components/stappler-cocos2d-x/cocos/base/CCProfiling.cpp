@@ -58,7 +58,7 @@ ProfilingTimer* Profiler::createAndAddTimerWithName(const char* timerName)
     ProfilingTimer *t = new (std::nothrow) ProfilingTimer();
     t->initWithName(timerName);
     _activeTimers.insert(timerName, t);
-    t->release();
+    t->release(0);
 
     return t;
 }

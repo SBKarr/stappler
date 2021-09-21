@@ -278,7 +278,7 @@ bool CallFunc::initWithTarget(Ref* target) {
 
     if (_selectorTarget)
     {
-        _selectorTarget->release();
+        _selectorTarget->release(0);
     }
 
     _selectorTarget = target;

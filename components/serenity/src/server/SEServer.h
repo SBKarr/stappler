@@ -153,6 +153,7 @@ public: // httpd server info
 	operator bool () const { return _server != nullptr; }
 
 	mem::pool_t *getProcessPool() const { return _server->process->pconf; }
+	mem::pool_t *getPool() const { return _server->process->pconf; }
 	mem::pool_t *getThreadPool() const;
 
 	Server next() const { return Server(_server->next); }

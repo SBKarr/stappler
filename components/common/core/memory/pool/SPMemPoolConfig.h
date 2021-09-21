@@ -48,7 +48,7 @@ using Status = int;
 static constexpr uint32_t BlockThreshold = 256;
 
 // Align on a power of 2 boundary
-static constexpr size_t SPALIGN(size_t size, uint32_t boundary) { return (((size) + ((boundary) - 1)) & ~((boundary) - 1)); }
+static constexpr size_t SPALIGN(size_t size, uint32_t boundary) { return math::align<size_t>(size, boundary); }
 
 // Default alignment
 static constexpr size_t SPALIGN_DEFAULT(size_t size) { return SPALIGN(size, 8); }

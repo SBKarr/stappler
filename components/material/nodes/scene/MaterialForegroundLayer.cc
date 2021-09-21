@@ -236,7 +236,7 @@ void ForegroundLayer::onContentSizeDirty() {
 	Node::onContentSizeDirty();
 	if (!_nodes.empty()) {
 		for (auto &it : _nodes) {
-			it->retain();
+			auto linkId = it->retain();
 			auto cbIt = _callbacks.find(it);
 			if (cbIt != _callbacks.end()) {
 				cbIt->second();
@@ -247,7 +247,7 @@ void ForegroundLayer::onContentSizeDirty() {
 			if (it->isRunning()) {
 				it->removeFromParent();
 			}
-			it->release();
+			it->release(linkId);
 		}
 		_nodes.clear();
 		if (auto scene = Scene::getRunningScene()) {
@@ -261,7 +261,7 @@ void ForegroundLayer::onContentSizeDirty() {
 	_snackbar->setPosition(Vec2(_contentSize.width / 2, -48.0f));
 
 	for (auto &it : _pendingPush) {
-		it->release();
+		it->release(0);
 	}
 	_pendingPush.clear();
 	_background->setContentSize(_contentSize);
@@ -280,10 +280,10 @@ void ForegroundLayer::onExit() {
 
 void ForegroundLayer::pushNode(cocos2d::Node *node, const Function<void()> &func) {
 	if (node && !node->isRunning() && _pendingPush.find(node) == _pendingPush.end()) {
-		node->retain();
+		auto linkId = node->retain();
 		_listener->setEnabled(true);
 		_pendingPush.insert(node);
-		runAction(action::sequence(0.3f, [this, node, func] {
+		runAction(action::sequence(0.3f, [this, node, func, linkId] {
 			if (!_nodes.empty()) {
 				int zIndex = -(int)_nodes.size();
 				for (auto node : _nodes) {
@@ -306,12 +306,12 @@ void ForegroundLayer::pushNode(cocos2d::Node *node, const Function<void()> &func
 				}
 			}
 			_pendingPush.erase(node);
-			node->release();
+			node->release(linkId);
 		}));
 	}
 }
 void ForegroundLayer::popNode(cocos2d::Node *node) {
-	node->retain();
+	auto linkId = node->retain();
 	if (_nodes.find(node) != _nodes.end()) {
 		if (node == _pressNode) {
 			_pressNode = nullptr;
@@ -338,7 +338,7 @@ void ForegroundLayer::popNode(cocos2d::Node *node) {
 	} else if (node->getParent() == this) {
 		node->removeFromParent();
 	}
-	node->release();
+	node->release(linkId);
 }
 
 void ForegroundLayer::pushFloatNode(cocos2d::Node *n, int z) {

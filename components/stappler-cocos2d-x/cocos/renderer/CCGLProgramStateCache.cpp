@@ -65,7 +65,7 @@ GLProgramState* GLProgramStateCache::getGLProgramState(GLProgram* glprogram)
     auto ret = new (std::nothrow) GLProgramState;
     if(ret && ret->init(glprogram)) {
         _glProgramStates.insert(glprogram, ret);
-        ret->release();
+        ret->release(0);
         return ret;
     }
     

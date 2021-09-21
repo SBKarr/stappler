@@ -260,14 +260,14 @@ bool TapRecognizer::addTouch(cocos2d::Touch *touch) {
 
 bool TapRecognizer::removeTouch(cocos2d::Touch *touch) {
 	bool ret = false;
-	touch->retain();
+	auto linkId = touch->retain();
 	if (Recognizer::removeTouch(touch)) {
 		if (_successfulEnd && _gesture.touch.startPoint.getDistance(touch->getLocation()) <= SP_TAP_GESTURE_DISTANCE_ALLOWED) {
 			registerTap();
 		}
 		ret = true;
 	}
-	touch->release();
+	touch->release(linkId);
 	return ret;
 }
 
@@ -380,7 +380,7 @@ bool PressRecognizer::addTouch(cocos2d::Touch *touch) {
 
 bool PressRecognizer::removeTouch(cocos2d::Touch *touch) {
 	bool ret = false;
-	touch->retain();
+	auto linkId = touch->retain();
 	if (Recognizer::removeTouch(touch)) {
 		float distance = _gesture.touch.startPoint.getDistance(touch->getLocation());
 		_gesture.time = Time::now() - _lastTime;
@@ -399,7 +399,7 @@ bool PressRecognizer::removeTouch(cocos2d::Touch *touch) {
 		_notified = true;
 		ret = true;
 	}
-	touch->release();
+	touch->release(linkId);
 	return ret;
 }
 
@@ -456,7 +456,7 @@ bool SwipeRecognizer::addTouch(cocos2d::Touch *touch) {
 
 bool SwipeRecognizer::removeTouch(cocos2d::Touch *touch) {
 	bool ret = false;
-	touch->retain();
+	auto linkId = touch->retain();
 	if (Recognizer::removeTouch(touch)) {
 		if (_touches.size() > 0) {
 			_currentTouch = _touches.back();
@@ -482,7 +482,7 @@ bool SwipeRecognizer::removeTouch(cocos2d::Touch *touch) {
 		}
 		ret = true;
 	}
-	touch->release();
+	touch->release(linkId);
 	return ret;
 }
 
@@ -648,7 +648,7 @@ bool PinchRecognizer::addTouch(cocos2d::Touch *touch) {
 }
 bool PinchRecognizer::removeTouch(cocos2d::Touch *touch) {
 	bool ret = false;
-	touch->retain();
+	auto linkId = touch->retain();
 	if (Recognizer::removeTouch(touch)) {
 		if (_touches.size() == 1) {
 			_event = Event::Ended;
@@ -667,7 +667,7 @@ bool PinchRecognizer::removeTouch(cocos2d::Touch *touch) {
 		}
 		ret = true;
 	}
-	touch->release();
+	touch->release(linkId);
 	return ret;
 }
 

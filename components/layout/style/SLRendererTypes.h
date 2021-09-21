@@ -75,15 +75,15 @@ struct MediaParameters {
 	bool shouldRenderImages() const;
 };
 
-
+/* Memory storage with persistent pointers
+ * Linked list of preallocated memory blocks
+ */
 template <typename T, size_t BytesSize>
 struct MemoryStorage {
-	static constexpr size_t ALIGN_BASE = 16;
-	static constexpr size_t ALIGN_VALUE(size_t size) { return (((size) + ((ALIGN_BASE) - 1)) & ~((ALIGN_BASE) - 1)); }
-	static constexpr size_t ALIGN_SIZE = ALIGN_VALUE(sizeof(T));
+	static constexpr size_t ALIGN_SIZE = math::align<size_t>(sizeof(T), 16);
 
 	struct alignas(16) Bytes {
-		std::array<uint8_t, BytesSize - ALIGN_VALUE(sizeof(size_t))> data;
+		std::array<uint8_t, BytesSize - math::align<size_t>(sizeof(size_t), 16)> data;
 	};
 
 	struct Storage {

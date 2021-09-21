@@ -233,11 +233,11 @@ bool Listener::onTouchBegan(cocos2d::Touch *pTouch) {
 	auto rec = _recognizers; // copy to prevent removal in enumeration
 	for (auto &it : rec) {
 		if (it.second->isTouchSupported() && shouldProcessGesture(pTouch->getLocation(), it.first)) {
-			it.second->retain();
+			auto linkId = it.second->retain();
 			if (it.second->onTouchBegan(pTouch)) {
 				ret = true;
 			}
-			it.second->release();
+			it.second->release(linkId);
 		}
 	}
 	return ret;
@@ -249,9 +249,9 @@ void Listener::onTouchMoved(cocos2d::Touch *pTouch) {
 
 	auto rec = _recognizers; // copy to prevent removal in enumaration
 	for (auto &it : rec) {
-		it.second->retain();
+		auto linkId = it.second->retain();
 		it.second->onTouchMoved(pTouch);
-		it.second->release();
+		it.second->release(linkId);
 	}
 }
 void Listener::onTouchEnded(cocos2d::Touch *pTouch) {
@@ -261,9 +261,9 @@ void Listener::onTouchEnded(cocos2d::Touch *pTouch) {
 
 	auto rec = _recognizers; // copy to prevent removal in enumaration
 	for (auto &it : rec) {
-		it.second->retain();
+		auto linkId = it.second->retain();
 		it.second->onTouchEnded(pTouch);
-		it.second->release();
+		it.second->release(linkId);
 	}
 }
 void Listener::onTouchCancelled(cocos2d::Touch *pTouch) {
@@ -273,9 +273,9 @@ void Listener::onTouchCancelled(cocos2d::Touch *pTouch) {
 
 	auto rec = _recognizers; // copy to prevent removal in enumaration
 	for (auto &it : rec) {
-		it.second->retain();
+		auto linkId = it.second->retain();
 		it.second->onTouchCancelled(pTouch);
-		it.second->release();
+		it.second->release(linkId);
 	}
 }
 
@@ -288,9 +288,9 @@ void Listener::onMouseUp(cocos2d::Event *ev) {
 	auto rec = _recognizers; // copy to prevent removal in enumeration
 	for (auto &it : rec) {
 		if (it.second->isMouseSupported() && shouldProcessGesture(mev->getLocation(), it.first)) {
-			it.second->retain();
+			auto linkId = it.second->retain();
 			it.second->onMouseUp(mev);
-			it.second->release();
+			it.second->release(linkId);
 		}
 	}
 }
@@ -304,9 +304,9 @@ void Listener::onMouseDown(cocos2d::Event *ev) {
 	auto rec = _recognizers; // copy to prevent removal in enumeration
 	for (auto &it : rec) {
 		if (it.second->isMouseSupported() && shouldProcessGesture(mev->getLocation(), it.first)) {
-			it.second->retain();
+			auto linkId = it.second->retain();
 			it.second->onMouseDown(mev);
-			it.second->release();
+			it.second->release(linkId);
 		}
 	}
 }
@@ -320,9 +320,9 @@ void Listener::onMouseMove(cocos2d::Event *ev) {
 	auto rec = _recognizers; // copy to prevent removal in enumeration
 	for (auto &it : rec) {
 		if (it.second->isMouseSupported() && shouldProcessGesture(mev->getLocation(), it.first)) {
-			it.second->retain();
+			auto linkId = it.second->retain();
 			it.second->onMouseMove(mev);
-			it.second->release();
+			it.second->release(linkId);
 		}
 	}
 }
@@ -336,9 +336,9 @@ void Listener::onMouseScroll(cocos2d::Event *ev) {
 	auto rec = _recognizers; // copy to prevent removal in enumeration
 	for (auto &it : rec) {
 		if (it.second->isMouseSupported() && shouldProcessGesture(mev->getLocation(), it.first)) {
-			it.second->retain();
+			auto linkId = it.second->retain();
 			it.second->onMouseScroll(mev);
-			it.second->release();
+			it.second->release(linkId);
 		}
 	}
 }
@@ -458,12 +458,12 @@ void Listener::setGestureFilter(const GestureFilter &cb) {
 }
 
 void Listener::update(float dt) {
-	_owner->retain();
+	auto linkId = _owner->retain();
 	auto tmpRec = _recognizers;
 	for (auto &it : tmpRec) {
 		it.second->update(dt);
 	}
-	_owner->release();
+	_owner->release(linkId);
 }
 
 void Listener::onTouch(TouchRecognizer *r, Event ev, const Touch &g) {

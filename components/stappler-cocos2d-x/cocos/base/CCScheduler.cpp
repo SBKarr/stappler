@@ -325,7 +325,7 @@ void Scheduler::schedule(const ccSchedulerFunc& callback, void *target, float in
     TimerTargetCallback *timer = new (std::nothrow) TimerTargetCallback();
     timer->initWithCallback(this, callback, target, key, interval, repeat, delay);
     ccArrayAppendObject(element->timers, timer);
-    timer->release();
+    timer->release(0);
 }
 
 void Scheduler::unschedule(const std::string &key, void *target)
@@ -891,7 +891,7 @@ void Scheduler::update(float dt)
                     // The currentTimer told the remove itself. To prevent the timer from
                     // accidentally deallocating itself before finishing its step, we retained
                     // it. Now that step is done, it's safe to release it.
-                    elt->currentTimer->release();
+                    elt->currentTimer->release(0);
                 }
 
                 elt->currentTimer = nullptr;
@@ -1026,7 +1026,7 @@ void Scheduler::schedule(SEL_SCHEDULE selector, Ref *target, float interval, uns
     TimerTargetSelector *timer = new (std::nothrow) TimerTargetSelector();
     timer->initWithSelector(this, selector, target, interval, repeat, delay);
     ccArrayAppendObject(element->timers, timer);
-    timer->release();
+    timer->release(0);
 }
 
 void Scheduler::schedule(SEL_SCHEDULE selector, Ref *target, float interval, bool paused)

@@ -105,7 +105,7 @@ int Application::run()
         director->mainLoop();
         director = nullptr;
     }
-    glview->release();
+    glview->release(0);
     return -1;
 }
 

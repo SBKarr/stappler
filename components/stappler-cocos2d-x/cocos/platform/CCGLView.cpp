@@ -418,7 +418,7 @@ void GLView::handleTouchesOfEndOrCancel(EventTouch::EventCode eventCode, int num
     for (auto& touch : touchEvent._touches)
     {
         // release the touch object.
-        touch->release();
+        touch->release(0);
     }
 }
 

@@ -137,12 +137,12 @@ Asset::Asset(const data::Value &val, const DownloadCallback &dcb) {
 
 	_downloadFunction = dcb;
 
-	retain();
-	Thread::onMainThread([this] {
+	auto callId = retain();
+	Thread::onMainThread([this, callId] {
 		if (_fileExisted) {
 			download();
 		}
-		release();
+		release(callId);
 	});
 }
 

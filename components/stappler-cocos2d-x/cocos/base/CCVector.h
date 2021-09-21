@@ -356,7 +356,7 @@ public:
         CCASSERT(!_data.empty(), "no objects added");
         auto last = _data.back();
         _data.pop_back();
-        last->release();
+        last->release(0);
     }
     
     /** Remove a certain object in Vector.
@@ -375,7 +375,7 @@ public:
                 if ((*iter) == object)
                 {
                     iter = _data.erase(iter);
-                    object->release();
+                    object->release(0);
                 }
                 else
                 {
@@ -389,7 +389,7 @@ public:
             if (iter != _data.end())
             {
                 _data.erase(iter);
-                object->release();
+                object->release(0);
             }
         }
     }
@@ -402,7 +402,7 @@ public:
     iterator erase(iterator position)
     {
         CCASSERT(position >= _data.begin() && position < _data.end(), "Invalid position!");
-        (*position)->release();
+        (*position)->release(0);
         return _data.erase(position);
     }
     
@@ -430,7 +430,7 @@ public:
     {
         CCASSERT(!_data.empty() && index >=0 && index < size(), "Invalid index!");
         auto it = std::next( begin(), index );
-        (*it)->release();
+        (*it)->release(0);
         return _data.erase(it);
     }
 
@@ -440,7 +440,7 @@ public:
     void clear()
     {
         for( auto it = std::begin(_data); it != std::end(_data); ++it ) {
-            (*it)->release();
+            (*it)->release(0);
         }
         _data.clear();
     }
@@ -472,7 +472,7 @@ public:
         CCASSERT(index >= 0 && index < size(), "Invalid index!");
         CCASSERT(object != nullptr, "The object should not be nullptr");
         
-        _data[index]->release();
+        _data[index]->release(0);
         _data[index] = object;
         object->retain();
     }

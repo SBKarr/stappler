@@ -283,7 +283,7 @@ struct TextureCache::AssetDownloader : public Ref {
 				callback(nullptr);
 			}
 			enabled = false;
-			release();
+			release(0);
 		}
 	}
 

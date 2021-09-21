@@ -60,17 +60,17 @@ struct Source::SliceRequest : public Ref {
 			auto ptr = &it;
 			auto cat = it.cat;
 
-			retain();
-			cat->retain();
-			cat->onSliceRequest([this, ptr, cat] (std::map<Id, data::Value> &val) {
+			auto callId = retain();
+			auto linkId = cat->retain();
+			cat->onSliceRequest([this, ptr, cat, linkId, callId] (std::map<Id, data::Value> &val) {
 				onSliceData(ptr, val);
-				cat->release();
-				release();
+				cat->release(linkId);
+				release(callId);
 			}, it.idx, it.len);
 			ret += it.len;
 		}
 		// this will destroy (*this), if direct data access available
-		release(); // free or decrement ref-count
+		release(0); // free or decrement ref-count
 		return ret;
 	}
 

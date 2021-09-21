@@ -67,7 +67,7 @@ void AutoreleasePool::clear()
 #endif
     for (const auto &obj : _managedObjectArray)
     {
-        obj->release();
+        obj->release(0);
     }
     _managedObjectArray.clear();
 #if defined(COCOS2D_DEBUG) && (COCOS2D_DEBUG > 0)
