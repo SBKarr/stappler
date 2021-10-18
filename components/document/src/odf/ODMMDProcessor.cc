@@ -320,27 +320,33 @@ Node *MmdProcessor::makeLinkNode(const StringView &name, InitList &&attr, VecLis
 		}
 	}
 
+	if (href.starts_with("(") && href.ends_with(")")) {
+		href.trimChars<StringView::Chars<'(', ')'>>();
+	}
+
 	if (type == "insert") {
 		_config.onInsert(_nodeStack.back(), href);
 		return &_tmpNode;
 	} else if (href.starts_with("http://") || href.starts_with("https://")) {
-		if (href.starts_with("(") && href.ends_with(")")) {
-			href.trimChars<StringView::Chars<'(', ')'>>();
+		auto link = _config.onLink(href);
+		if (!link.empty()) {
+			return _nodeStack.back()->addNode("text:a", {
+				stappler::pair("xlink:href", link),
+				stappler::pair("xlink:type", "simple")
+			}, getLinkStyle());
+		} else {
+			return nullptr;
 		}
-		return _nodeStack.back()->addNode("text:a", {
-			stappler::pair("xlink:href", href.str<Interface>()),
-			stappler::pair("xlink:type", "simple")
-		}, getLinkStyle());
 	}
 
 	if (!href.empty() && attr.size() == 0 && vec.size() == 1) {
-		if (href.starts_with("(") && href.ends_with(")")) {
-			href.trimChars<StringView::Chars<'(', ')'>>();
+		auto link = _config.onLink(href);
+		if (!link.empty()) {
+			return _nodeStack.back()->addNode("text:a", {
+				stappler::pair("xlink:href", link),
+				stappler::pair("xlink:type", "simple")
+			}, getLinkStyle());
 		}
-		return _nodeStack.back()->addNode("text:a", {
-			stappler::pair("xlink:href", _config.onLink(href)),
-			stappler::pair("xlink:type", "simple")
-		}, getLinkStyle());
 	}
 	return nullptr;
 }
