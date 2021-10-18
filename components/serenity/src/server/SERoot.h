@@ -103,6 +103,7 @@ public:
 
 		uint64_t dbQueriesPerformed = 0;
 		uint64_t dbQueriesReleased = 0;
+		uint64_t activeNetworkHandles = 0;
 	};
 
 	Stat getStat() const;

@@ -62,15 +62,19 @@ namespace stappler {
 
 #define SP_TERMINATED_DATA(view) (view.terminated()?view.data():view.str().data())
 
+static std::atomic<size_t> s_activeHandles = 0;
+
 struct NetworkHandle::Network {
 #ifndef SPAPR
 	class CurlHandle {
 	public:
 		CurlHandle() {
+			++ s_activeHandles;
 			_curl = curl_easy_init();
 		}
 		~CurlHandle() {
 			if (_curl) {
+				-- s_activeHandles;
 				curl_easy_cleanup(_curl);
 				_curl = nullptr;
 			}
@@ -155,12 +159,14 @@ struct NetworkHandle::Network {
 			auto t = s_localCurl.get();
 			return t->get();
 		} else {
+			++ s_activeHandles;
 			return curl_easy_init();
 		}
 	}
 
 	static void releaseHandle(CURL *curl, bool reuse, bool success) {
 		if (!reuse) {
+			-- s_activeHandles;
 			curl_easy_cleanup(curl);
 		} else {
 			if (!success) {
@@ -172,10 +178,12 @@ struct NetworkHandle::Network {
 	}
 #else
 	static CURL * getHandle(bool reuse) {
+		++ s_activeHandles;
 		return curl_easy_init();
 	}
 
 	static void releaseHandle(CURL *curl, bool reuse, bool success) {
+		-- s_activeHandles;
 		curl_easy_cleanup(curl);
 	}
 #endif
@@ -265,6 +273,10 @@ static String NetworkHandle_getUserMime(const StringView &filename) {
 #ifndef SPAPR
 NetworkHandle::Network::CurlThreadLocalKey NetworkHandle::Network::s_localCurl;
 #endif
+
+size_t NetworkHandle::getActiveHandles() {
+	return s_activeHandles.load();
+}
 
 NetworkHandle::NetworkHandle() {
     _method = Method::Unknown;

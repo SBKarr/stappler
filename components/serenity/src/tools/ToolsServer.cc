@@ -95,6 +95,7 @@ int ServerGui::onTranslateName(Request &rctx) {
 				ret << "\tTasks runned: " << stat.tasksRunned << "\n";
 				ret << "\tHeartbeat counter: " << stat.heartbeatCounter << "\n";
 				ret << "\tDB queries performed: " << stat.dbQueriesPerformed << " (" << stat.dbQueriesReleased << " " << stat.dbQueriesPerformed - stat.dbQueriesReleased << ")\n";
+				ret << "\tActive network handles: " << stat.activeNetworkHandles << "\n";
 				ret << "\n";
 
 				exec.set("resStat", data::Value(ret.str()));

@@ -1039,6 +1039,7 @@ Root::Stat Root::getStat() const {
 		_heartbeatCounter.load(),
 		_dbQueriesPerformed.load(),
 		_dbQueriesReleased.load(),
+		NetworkHandle::getActiveHandles()
 	});
 }
 
