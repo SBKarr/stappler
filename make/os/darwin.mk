@@ -22,9 +22,10 @@ ifeq ($(UNAME),Darwin)
 
 OSTYPE_PREBUILT_PATH := libs/mac/x86_64/lib
 OSTYPE_INCLUDE :=  libs/mac/x86_64/include
-OSTYPE_CFLAGS := -DMACOSX  -DUSE_FILE32API -DGL_SILENCE_DEPRECATION -Wall -fPIC -Wno-gnu-string-literal-operator-template
+OSTYPE_CFLAGS := -DMACOSX  -DUSE_FILE32API -DGL_SILENCE_DEPRECATION -Wall -fPIC \
+		-Wno-gnu-string-literal-operator-template -arch arm64
 OSTYPE_CPPFLAGS :=  -Wno-overloaded-virtual -frtti
-OSTYPE_COMMON_LIBS := -lpthread \
+OSTYPE_COMMON_LIBS := -arch arm64 -lpthread \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libcurl.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libbrotlicommon.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libbrotlienc.a \
@@ -37,7 +38,7 @@ OSTYPE_COMMON_LIBS := -lpthread \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libmbedx509.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libmbedcrypto.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libmbedtls.a \
-	-framework Foundation -lz -framework Security -lunistring -liconv
+	-framework Foundation -lz -framework Security -liconv
 
 OSTYPE_CLI_LIBS += $(OSTYPE_COMMON_LIBS) \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libsqlite3.a \

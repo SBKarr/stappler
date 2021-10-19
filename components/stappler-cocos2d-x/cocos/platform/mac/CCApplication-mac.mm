@@ -76,7 +76,7 @@ int Application::run()
     auto glview = director->getOpenGLView();
     
     // Retain glview to avoid glview being released in the while loop
-    glview->retain();
+    auto linkId = glview->retain();
     
     while (!glview->windowShouldClose())
     {
@@ -103,7 +103,7 @@ int Application::run()
         director->mainLoop();
     }
     
-    glview->release();
+    glview->release(linkId);
     
     return 0;
 }

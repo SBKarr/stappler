@@ -123,9 +123,11 @@ const Template::Options &FileRef::getOpts() const {
 
 int FileRef::regenerate(int notify, StringView fpath) {
 	if (_watch >= 0) {
+#if LINUX
 		inotify_rm_watch(notify, _watch);
 		_watch = inotify_add_watch(notify, SP_TERMINATED_DATA(fpath), IN_CLOSE_WRITE);
 		return _watch;
+#endif
 	}
 	return 0;
 }
@@ -142,14 +144,14 @@ Cache::Cache(Template::Options opts, const Function<void(const StringView &)> &e
 
 Cache::~Cache() {
 	if (_inotify > 0) {
-		for (auto &it : _templates) {
 #if LINUX
+		for (auto &it : _templates) {
 			auto fd = it.second->getWatch();
 			if (fd >= 0) {
 				inotify_rm_watch(_inotify, fd);
 			}
-#endif
 		}
+#endif
 
 		close(_inotify);
 	}

@@ -32,8 +32,8 @@ public:
 	Worker(TaskQueue *queue, uint32_t threadId, uint32_t workerId, StringView name, memory::pool_t *p);
 	virtual ~Worker();
 
-	uint64_t retain();
-	void release(uint64_t);
+	uint64_t retain() override;
+	void release(uint64_t) override;
 
 	bool execute(Task *task);
 
