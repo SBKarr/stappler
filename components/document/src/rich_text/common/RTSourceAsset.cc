@@ -99,10 +99,10 @@ bool SourceFileAsset::getImageSize(size_t &w, size_t &h) const {
 
 bool SourceNetworkAsset::init(const String &url, const String &path, TimeInterval ttl,
 		const String &cacheDir, const Asset::DownloadCallback &dcb) {
-	retain();
-	AssetLibrary::getInstance()->getAsset([this] (Asset *a) {
+	auto linkId = retain();
+	AssetLibrary::getInstance()->getAsset([this, linkId] (Asset *a) {
 		onAsset(a);
-		release();
+		release(linkId);
 	}, url, path, ttl, cacheDir, dcb);
 
 	return true;
@@ -114,10 +114,10 @@ bool SourceNetworkAsset::init(Asset *a) {
 }
 
 bool SourceNetworkAsset::init(const AssetCallback &cb) {
-	retain();
-	cb([this] (Asset *a) {
+	auto linkId = retain();
+	cb([this, linkId] (Asset *a) {
 		onAsset(a);
-		release();
+		release(linkId);
 	});
 	return true;
 }
@@ -127,10 +127,10 @@ void SourceNetworkAsset::setAsset(Asset *a) {
 }
 
 void SourceNetworkAsset::setAsset(const AssetCallback &cb) {
-	retain();
-	cb([this] (Asset *a) {
+	auto linkId = retain();
+	cb([this, linkId] (Asset *a) {
 		onAsset(a);
-		release();
+		release(linkId);
 	});
 }
 
@@ -176,7 +176,7 @@ void SourceNetworkAsset::releaseDocument() {
 	_asset->releaseReadLock(this);
 	_savedFilePath.clear();
 	_savedType.clear();
-	release();
+	release(0);
 }
 
 bool SourceNetworkAsset::tryReadLock() {
@@ -189,7 +189,7 @@ bool SourceNetworkAsset::tryReadLock() {
 
 void SourceNetworkAsset::releaseReadLock() {
 	_asset->releaseReadLock(this);
-	release();
+	release(0);
 }
 
 bool SourceNetworkAsset::download() { return _asset->download(); }

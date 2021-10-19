@@ -199,8 +199,8 @@ bool FileNavigator::init() {
 	setBaseNode(scroll);
 	_scroll = scroll;
 
-	retain();
-	storage::get("FileNavigator.Path", [this] (const StringView &, data::Value &&val) {
+	auto linkId = retain();
+	storage::get("FileNavigator.Path", [this, linkId] (const StringView &, data::Value &&val) {
 		std::string path;
 		if (val.isDictionary()) {
 			path = val.getString("path");
@@ -209,7 +209,7 @@ bool FileNavigator::init() {
 			filesystem::mkdir(path);
 		}
 		updateData(path);
-		release();
+		release(linkId);
 	});
 
 	return true;
@@ -362,12 +362,12 @@ void FileNavigator::onForeground(material::ContentLayer *l, Layout *overlay) {
 }
 
 void FileNavigator::openDirectory() {
-	retain();
-	dialog::open(_path, [this] (const std::string &path) {
+	auto linkId = retain();
+	dialog::open(_path, [this, linkId] (const std::string &path) {
 		if (!path.empty()) {
 			updateData(path);
 		}
-		release();
+		release(linkId);
 	});
 }
 

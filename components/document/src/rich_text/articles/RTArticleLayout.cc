@@ -352,12 +352,12 @@ bool ArticleLayout::onBackButton() {
 		_richTextView->disableSelection();
 		return true;
 	}
-	retain();
+	auto linkId = retain();
 	if (_cancelCallback) {
 		_cancelCallback();
 	}
 	bool ret = FlexibleLayout::onBackButton();
-	release();
+	release(linkId);
 	return ret;
 }
 

@@ -331,10 +331,10 @@ void CommonSource::acquireAsset(const String &url, const Function<void(SourceAss
 	if (urlView.is("http://") || urlView.is("https://")) {
 		auto path = getPathForUrl(url);
 		auto lib = AssetLibrary::getInstance();
-		retain();
-		lib->getAsset([this, fn] (Asset *a) {
+		auto linkId = retain();
+		lib->getAsset([this, fn, linkId] (Asset *a) {
 			fn(Rc<SourceNetworkAsset>::create(a));
-			release();
+			release(linkId);
 		}, url, path, config::getDocumentAssetTtl());
 	} else {
 		fn(nullptr);

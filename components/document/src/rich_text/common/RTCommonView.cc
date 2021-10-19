@@ -379,13 +379,13 @@ Rc<cocos2d::Node> CommonView::onPageNode(size_t idx) {
 	if (result->getMedia().flags & layout::RenderFlag::PaginatedLayout) {
 		auto page = onConstructPageNode(data, result->getMedia().density);
 		if (idx < result->getNumPages()) {
-			page->retain();
+			auto linkId = page->retain();
 
-			drawer->draw(source, result, data.texRect, [page] (cocos2d::Texture2D *tex) {
+			drawer->draw(source, result, data.texRect, [page, linkId] (cocos2d::Texture2D *tex) {
 				if (page->isRunning()) {
 					page->setTexture(tex);
 				}
-				page->release();
+				page->release(linkId);
 			}, this);
 		}
 

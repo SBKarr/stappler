@@ -42,10 +42,10 @@ public:
 	virtual int64_t getMTime() const { return 0; }
 
 	virtual bool tryLockDocument(int64_t mtime) { retain(); return true; }
-	virtual void releaseDocument() { release(); }
+	virtual void releaseDocument() { release(0); }
 
 	virtual bool tryReadLock() { retain(); return true; }
-	virtual void releaseReadLock() { release(); }
+	virtual void releaseReadLock() { release(0); }
 
 	virtual bool download() { return false; }
 

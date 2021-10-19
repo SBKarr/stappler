@@ -29,3 +29,5 @@ _Pragma( "GCC optimize (\"O2\")" )
 #include "lz4.cc"
 
 #include "SPSnowballStemmerImpl.cc"
+
+#include "hyphen.cc"

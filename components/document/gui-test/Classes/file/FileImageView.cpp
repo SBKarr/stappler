@@ -120,7 +120,7 @@ void FileImageView::refresh() {
 		retain();
 		TextureCache::getInstance()->addTexture(_filePath, [this] (cocos2d::Texture2D *tex) {
 			onImage(tex);
-			release();
+			release(0);
 		}, true);
 	}
 }

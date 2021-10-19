@@ -249,6 +249,7 @@ bool NetworkMultiHandle::perform(const Callback<bool(NetworkHandle *, void *)> &
 
 	auto initPending = [&] {
 		for (auto &it : pending) {
+			++ s_activeHandles;
 			auto h = curl_easy_init();
 			auto i = handles.emplace(h, NetworkHandle::Context()).first;
 			i->second.userdata = it.second;
@@ -266,6 +267,8 @@ bool NetworkMultiHandle::perform(const Callback<bool(NetworkHandle *, void *)> &
 		for (auto &it : handles) {
 			curl_multi_remove_handle(m, it.first);
 			it.second.handle->finalize(&it.second, nullptr, CURLE_FAILED_INIT);
+
+			-- s_activeHandles;
 			curl_easy_cleanup(it.first);
 		}
 		curl_multi_cleanup(m);
@@ -309,6 +312,8 @@ bool NetworkMultiHandle::perform(const Callback<bool(NetworkHandle *, void *)> &
 					}
 					handles.erase(it);
 				}
+
+				-- s_activeHandles;
 				curl_easy_cleanup(e);
 			}
 		} while (msg);

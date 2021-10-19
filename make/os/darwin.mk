@@ -44,7 +44,6 @@ OSTYPE_CLI_LIBS += $(OSTYPE_COMMON_LIBS) \
 	-ldl -framework SystemConfiguration
 
 OSTYPE_STAPPLER_LIBS += $(OSTYPE_CLI_LIBS) \
-	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libhyphen.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libglfw3.a \
 	$(GLOBAL_ROOT)/$(OSTYPE_PREBUILT_PATH)/libfreetype.a \
 	-framework OpenGL -framework CoreGraphics -framework Cocoa -framework IOKit -framework CoreVideo

@@ -185,14 +185,14 @@ public:
 			page->addChild(sprite);
 
 			if (idx < _result->getNumPages()) {
-				page->retain();
+				auto linkId = page->retain();
 
-				drawer->thumbnail(source, _result, data.texRect, _scale, [page, sprite] (cocos2d::Texture2D *tex) {
+				drawer->thumbnail(source, _result, data.texRect, _scale, [page, sprite, linkId] (cocos2d::Texture2D *tex) {
 					if (page->isRunning()) {
 						sprite->setTexture(tex);
 						sprite->runAction(cocos2d::FadeIn::create(0.1f));
 					}
-					page->release();
+					page->release(linkId);
 				}, this);
 			}
 
@@ -214,15 +214,15 @@ public:
 			auto sprite = Rc<DynamicSprite>::create(nullptr, Rect::ZERO, _result->getMedia().density);
 			sprite->setNormalized(true);
 			sprite->setOpacity(0);
-			sprite->retain();
+			auto linkId = sprite->retain();
 			sprite->setFlippedY(true);
 
-			drawer->thumbnail(source, _result, data.texRect, _scale, [sprite] (cocos2d::Texture2D *tex) {
+			drawer->thumbnail(source, _result, data.texRect, _scale, [sprite, linkId] (cocos2d::Texture2D *tex) {
 				if (sprite->isRunning()) {
 					sprite->setTexture(tex);
 					sprite->runAction(cocos2d::FadeIn::create(0.1f));
 				}
-				sprite->release();
+				sprite->release(linkId);
 			}, this);
 
 			return sprite;

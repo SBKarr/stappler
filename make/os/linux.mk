@@ -39,9 +39,7 @@ OSTYPE_SERENITY_LIBS := \
 
 OSTYPE_CLI_LIBS += $(OSTYPE_COMMON_LIBS) -l:libsqlite3.a -ldl
 
-OSTYPE_STELLATOR_LIBS += $(OSTYPE_COMMON_LIBS) -l:libsqlite3.a -l:libhyphen.a -l:libfreetype.a -ldl
-
-OSTYPE_STAPPLER_LIBS += $(OSTYPE_CLI_LIBS) -l:libhyphen.a -l:libglfw3.a -l:libfreetype.a \
+OSTYPE_STAPPLER_LIBS += $(OSTYPE_CLI_LIBS) -l:libglfw3.a -l:libfreetype.a \
 	-lGLEW -lGL -lX11 -lXrandr -lXi -lXinerama -lXcursor
 
 OSTYPE_LDFLAGS := -Wl,-z,defs -rdynamic -fuse-ld=gold

@@ -292,17 +292,17 @@ bool Renderer::requestRendering() {
 			_renderingCallback(nullptr, true);
 		}
 
-		retain();
+		auto linkId = retain();
 		auto &thread = resource::thread();
 		thread.perform([impl] (const thread::Task &) -> bool {
 			impl->render();
 			return true;
-		}, [this, impl] (const thread::Task &, bool) {
+		}, [this, impl, linkId] (const thread::Task &, bool) {
 			auto result = impl->getResult();
 			if (result) {
 				onResult(result);
 			}
-			release();
+			release(linkId);
 			delete impl;
 		}, this);
 
