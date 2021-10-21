@@ -198,10 +198,10 @@ using _spChar = char;
 
 // used for naming/hashing (like "MyTag"_tag)
 constexpr uint32_t operator"" _hash ( const char* str, size_t len) {
-	return stappler::hash::hash32(str, len);
+	return stappler::hash::hash32(str, uint32_t(len));
 }
 constexpr uint32_t operator"" _tag ( const char* str, size_t len) {
-	return stappler::hash::hash32(str, len);
+	return stappler::hash::hash32(str, uint32_t(len));
 }
 
 constexpr uint64_t operator"" _hash64 ( const char* str, size_t len) {
@@ -328,10 +328,10 @@ constexpr typename std::underlying_type<E>::type toInt(const E &e) {
     return static_cast<typename std::underlying_type<E>::type>(e);
 }
 
-template <typename T> auto StringToNumber(const char *ptr, char ** tail, size_t base) -> T;
+template <typename T> auto StringToNumber(const char *ptr, char ** tail, int base) -> T;
 
 template <> inline auto
-StringToNumber<unsigned int>(const char *ptr, char ** tail, size_t base) -> unsigned int {
+StringToNumber<unsigned int>(const char *ptr, char ** tail, int base) -> unsigned int {
 	if (ptr) {
 		return (unsigned int)strtoul(ptr, tail, base);
 	}
@@ -339,7 +339,7 @@ StringToNumber<unsigned int>(const char *ptr, char ** tail, size_t base) -> unsi
 }
 
 template <> inline auto
-StringToNumber<unsigned long>(const char *ptr, char ** tail, size_t base) -> unsigned long {
+StringToNumber<unsigned long>(const char *ptr, char ** tail, int base) -> unsigned long {
 	if (ptr) {
 		return strtoul(ptr, tail, base);
 	}
@@ -347,7 +347,7 @@ StringToNumber<unsigned long>(const char *ptr, char ** tail, size_t base) -> uns
 }
 
 template <> inline auto
-StringToNumber<unsigned long long>(const char *ptr, char ** tail, size_t base) -> unsigned long long {
+StringToNumber<unsigned long long>(const char *ptr, char ** tail, int base) -> unsigned long long {
 	if (ptr) {
 		return strtoull(ptr, tail, base);
 	}
@@ -355,7 +355,7 @@ StringToNumber<unsigned long long>(const char *ptr, char ** tail, size_t base) -
 }
 
 template <> inline auto
-StringToNumber<int>(const char *ptr, char ** tail, size_t base) -> int {
+StringToNumber<int>(const char *ptr, char ** tail, int base) -> int {
 	if (ptr) {
 		return (int)strtol(ptr, tail, base);
 	}
@@ -363,7 +363,7 @@ StringToNumber<int>(const char *ptr, char ** tail, size_t base) -> int {
 }
 
 template <> inline auto
-StringToNumber<long>(const char *ptr, char ** tail, size_t base) -> long {
+StringToNumber<long>(const char *ptr, char ** tail, int base) -> long {
 	if (ptr) {
 		return strtol(ptr, tail, base);
 	}
@@ -371,7 +371,7 @@ StringToNumber<long>(const char *ptr, char ** tail, size_t base) -> long {
 }
 
 template <> inline auto
-StringToNumber<long long>(const char *ptr, char ** tail, size_t base) -> long long {
+StringToNumber<long long>(const char *ptr, char ** tail, int base) -> long long {
 	if (ptr) {
 		return strtoll(ptr, tail, base);
 	}
@@ -379,7 +379,7 @@ StringToNumber<long long>(const char *ptr, char ** tail, size_t base) -> long lo
 }
 
 template <> inline auto
-StringToNumber<float>(const char *ptr, char ** tail, size_t base) -> float {
+StringToNumber<float>(const char *ptr, char ** tail, int base) -> float {
 	if (ptr) {
 		return strtof(ptr, tail);
 	}
@@ -387,7 +387,7 @@ StringToNumber<float>(const char *ptr, char ** tail, size_t base) -> float {
 }
 
 template <> inline auto
-StringToNumber<double>(const char *ptr, char ** tail, size_t base) -> double {
+StringToNumber<double>(const char *ptr, char ** tail, int base) -> double {
 	if (ptr) {
 		return strtod(ptr, tail);
 	}

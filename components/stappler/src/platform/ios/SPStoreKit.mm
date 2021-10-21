@@ -531,7 +531,7 @@ void StoreKitIOS::parseValidationReceipt(const data::Value & info, Set<String> &
 			purchaseDate = info.getInteger("purchase_date_ms");
 		}
 
-		if (purchaseDate != 0 && purchaseDate != product->purchaseDate) {
+		if (purchaseDate != 0 && purchaseDate != product->purchaseDate.toMicros()) {
 			product->purchaseDate = Time::milliseconds(purchaseDate);
 			updated.emplace(product->productId);
 		}

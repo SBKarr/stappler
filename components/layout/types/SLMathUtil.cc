@@ -37,7 +37,7 @@ This file was modified to fit the stappler project
 //#define USE_SSE           : SSE code used
 //#define INCLUDE_SSE       : SSE code included
 
-#if (__APPLE__ && TARGET_OS_IPHONE)
+#if (IOS)
 
 #if defined (__arm64__)
 #define USE_NEON64

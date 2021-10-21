@@ -172,7 +172,7 @@ private:
 	}
 };
 
-inline constexpr uint32_t hash32(const char* str, size_t len, uint32_t seed = 0) {
+inline constexpr uint32_t hash32(const char* str, uint32_t len, uint32_t seed = 0) {
     return xxh32::hash(str, len, seed);
 }
 

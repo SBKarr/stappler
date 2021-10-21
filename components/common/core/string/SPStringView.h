@@ -35,7 +35,7 @@ using const_char_ptr = const char *;
 using const_char16_ptr = const char16_t *;
 
 template <typename T>
-inline auto StringView_readNumber(const_char_ptr &ptr, size_t &len, size_t base) -> Result<T> {
+inline auto StringView_readNumber(const_char_ptr &ptr, size_t &len, int base) -> Result<T> {
 	char * ret = nullptr;
 	char buf[32] = { 0 }; // int64_t/scientific double character length max
 	size_t m = min(size_t(31), len);
@@ -53,7 +53,7 @@ inline auto StringView_readNumber(const_char_ptr &ptr, size_t &len, size_t base)
 }
 
 template <typename T>
-inline auto StringView_readNumber(const_char16_ptr &ptr, size_t &len, size_t base) -> Result<T> {
+inline auto StringView_readNumber(const_char16_ptr &ptr, size_t &len, int base) -> Result<T> {
 	char * ret = nullptr;
 	char buf[32] = { 0 }; // int64_t/scientific double character length max
 	size_t m = min(size_t(31), len);
@@ -189,13 +189,13 @@ public:
 	}
 
 	uint64_t hash32() const {
-		return hash::hash32((const char *)this->data(), this->size() * sizeof(CharType));
+		return hash::hash32((const char *)this->data(), uint32_t(this->size() * sizeof(CharType)));
 	}
 
 public:
 	Result<float> readFloat();
 	Result<double> readDouble();
-	Result<int64_t> readInteger(size_t base = 0);
+	Result<int64_t> readInteger(int base = 0);
 
 public:
 	template<typename ... Args> void skipChars();
@@ -357,13 +357,13 @@ public:
 	}
 
 	uint64_t hash32() const {
-		return hash::hash32((const char *)data(), size() * sizeof(CharType));
+		return hash::hash32((const char *)data(), uint32_t(size() * sizeof(CharType)));
 	}
 
 public:
 	Result<float> readFloat();
 	Result<double> readDouble();
-	Result<int64_t> readInteger(size_t base = 0);
+	Result<int64_t> readInteger(int base = 0);
 
 public:
 	template<typename ... Args> void skipChars();
@@ -873,7 +873,7 @@ auto StringViewBase<_CharType>::readDouble() -> Result<double> {
 }
 
 template <typename _CharType>
-auto StringViewBase<_CharType>::readInteger(size_t base) -> Result<int64_t> {
+auto StringViewBase<_CharType>::readInteger(int base) -> Result<int64_t> {
 	Self tmp = *this;
 	tmp.skipChars<typename Self::template CharGroup<CharGroupId::WhiteSpace>>();
 	auto targetPtr = tmp.ptr; auto targetLen = tmp.len;
@@ -1236,7 +1236,7 @@ inline Result<double> StringViewUtf8::readDouble() {
 	this->ptr = targetPtr; this->len = targetLen;
 	return ret;
 }
-inline Result<int64_t> StringViewUtf8::readInteger(size_t base) {
+inline Result<int64_t> StringViewUtf8::readInteger(int base) {
 	Self tmp = *this;
 	tmp.skipChars<CharGroup<CharGroupId::WhiteSpace>>();
 	auto targetPtr = tmp.ptr; auto targetLen = tmp.len;

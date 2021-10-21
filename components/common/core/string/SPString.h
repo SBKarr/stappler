@@ -344,7 +344,7 @@ NS_SP_EXT_END(io)
 NS_SP_EXT_BEGIN(string)
 
 /* Very simple and quick hasher, do NOT use it in collision-sensative cases */
-inline uint32_t hash32(const StringView &key) { return hash::hash32(key.data(), key.size()); }
+inline uint32_t hash32(const StringView &key) { return hash::hash32(key.data(), uint32_t(key.size())); }
 inline uint64_t hash64(const StringView &key) { return hash::hash64(key.data(), key.size()); }
 
 /* default stdlib hash 32/64-bit, platform depended, unsigned variant (do NOT use for storage) */

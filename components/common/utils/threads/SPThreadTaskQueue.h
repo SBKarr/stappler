@@ -86,7 +86,7 @@ protected:
 	Rc<Task> popTask(uint32_t idx);
 	void onMainThreadWorker(Rc<Task> &&task);
 
-	std::condition_variable _sleepCondition;
+	std::condition_variable_any _sleepCondition;
 
 	std::mutex _inputMutex;
 	StdVector<Rc<Task>> _inputQueue;

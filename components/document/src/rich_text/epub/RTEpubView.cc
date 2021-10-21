@@ -518,7 +518,7 @@ void EpubView::onTextViewTapCallback(int count, const Vec2 &loc) {
 	}
 	setFlexibleLevelAnimated(1.0f, 0.25f);
 	if (_view->getLayout() == ScrollView::Horizontal) {
-		auto pos = _view->convertToNodeSpace(loc);
+		// auto pos = _view->convertToNodeSpace(loc);
 	}
 }
 

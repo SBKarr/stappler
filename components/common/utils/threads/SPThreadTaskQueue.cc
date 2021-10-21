@@ -520,7 +520,11 @@ bool Worker::worker() {
 		if (!_localQueue.empty()) {
 			return true;
 		}
+		try {
 		_queue->wait(lock);
+		} catch (const std::exception &e) {
+			std::cout << "[Exception]: " << e.what() << "\n";
+		}
 		return true;
 	}
 
@@ -535,9 +539,8 @@ std::thread &Worker::getThread() {
 }
 
 void Worker::perform(Rc<Task> &&task) {
-	_localMutex.lock();
+	std::unique_lock<std::mutex> lock(_localMutex);
 	_localQueue.emplace_back(std::move(task));
-	_localMutex.unlock();
 }
 
 NS_SP_EXT_END(thread)

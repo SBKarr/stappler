@@ -79,7 +79,10 @@ ios-export:
 	@echo '\nMATERIAL_INCLUDES = $(call ios_make_material_includes)' >> $(IOS_EXPORT_PATH)/export.xcconfig
 	@echo '\nBUILD_INCLUDES = $(call ios_make_build_includes)' >> $(IOS_EXPORT_PATH)/export.xcconfig
 	@echo '\nSTAPPLER_LDFLAGS = $(call ios_make_library) -lc++ $(IOS_LIBS)' >> $(IOS_EXPORT_PATH)/export.xcconfig
-	@echo '\nSTAPPLER_LIBPATH_DEBUG = $(abspath $(IOS_EXPORT_PATH))/debug/$$(CURRENT_ARCH)' >> $(IOS_EXPORT_PATH)/export.xcconfig
-	@echo '\nSTAPPLER_LIBPATH_RELEASE = $(abspath $(IOS_EXPORT_PATH))/release/$$(CURRENT_ARCH)' >> $(IOS_EXPORT_PATH)/export.xcconfig
+	@echo '\nSTAPPLER_LIBPATH_DEBUG[sdk=iphoneos*] = $(abspath $(IOS_EXPORT_PATH))/debug/$$(CURRENT_ARCH)' >> $(IOS_EXPORT_PATH)/export.xcconfig
+	@echo '\nSTAPPLER_LIBPATH_RELEASE[sdk=iphoneos*] = $(abspath $(IOS_EXPORT_PATH))/release/$$(CURRENT_ARCH)' >> $(IOS_EXPORT_PATH)/export.xcconfig
+	@echo '\nSTAPPLER_LIBPATH_DEBUG[sdk=iphonesimulator*] = $(abspath $(IOS_EXPORT_PATH))/debug/x86_64' >> $(IOS_EXPORT_PATH)/export.xcconfig
+	@echo '\nSTAPPLER_LIBPATH_RELEASE[sdk=iphonesimulator*] = $(abspath $(IOS_EXPORT_PATH))/release/x86_64' >> $(IOS_EXPORT_PATH)/export.xcconfig
+	@echo '\nEXCLUDED_ARCHS[sdk=iphonesimulator*] = arm64' >> $(IOS_EXPORT_PATH)/export.xcconfig
 
 .PHONY: ios ios-clean ios-export ios-armv7 ios-armv7s ios-arm64 ios-i386 ios-x86_64

@@ -77,6 +77,14 @@ ios-release:
 ios-release-clean:
 	@$(MAKE) STAPPLER_TARGET=ios RELEASE=1 ios-clean
 
+ios-all:
+	@$(MAKE) STAPPLER_TARGET=ios ios
+	@$(MAKE) STAPPLER_TARGET=ios RELEASE=1 ios
+
+ios-all-clean:
+	@$(MAKE) STAPPLER_TARGET=ios ios-clean
+	@$(MAKE) STAPPLER_TARGET=ios RELEASE=1 ios-clean
+
 .PHONY: clean install
 .PHONY: host host-clean host-debug host-debug-clean host-release host-release-clean host-install
 .PHONY: android android-clean android-mk android-debug android-debug-clean android-release android-release-clean

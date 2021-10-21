@@ -419,9 +419,9 @@ cocos2d::ActionInterval *CommonView::onSwipeFinalizeAction(float velocity) {
 	float acceleration = (velocity > 0)?-3500.0f:3500.0f;
 	float boundary = (velocity > 0)?_scrollMax:_scrollMin;
 
-	Vec2 normal = (isVertical())
-			?(Vec2(0.0f, (velocity > 0)?1.0f:-1.0f))
-			:(Vec2((velocity > 0)?-1.0f:1.0f, 0.0f));
+	//Vec2 normal = (isVertical())
+	//		?(Vec2(0.0f, (velocity > 0)?1.0f:-1.0f))
+	//		:(Vec2((velocity > 0)?-1.0f:1.0f, 0.0f));
 
 	cocos2d::ActionInterval *a = nullptr;
 
