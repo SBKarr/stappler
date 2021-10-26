@@ -1039,7 +1039,8 @@ Root::Stat Root::getStat() const {
 		_heartbeatCounter.load(),
 		_dbQueriesPerformed.load(),
 		_dbQueriesReleased.load(),
-		NetworkHandle::getActiveHandles()
+		NetworkHandle::getActiveHandles(),
+		stappler::mempool::base::get_mapped_regions_count()
 	});
 }
 

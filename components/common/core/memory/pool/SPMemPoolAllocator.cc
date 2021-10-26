@@ -26,6 +26,33 @@ THE SOFTWARE.
 #include <sys/mman.h>
 #endif
 
+namespace stappler::mempool::base {
+
+static std::atomic<size_t> s_mappedRegions = 0;
+
+size_t get_mapped_regions_count() {
+	return s_mappedRegions.load();
+}
+
+void *sp_mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+	auto ret = ::mmap(addr, length, prot, flags, fd, offset);
+	if (ret && ret != MAP_FAILED) {
+		++ s_mappedRegions;
+		return ret;
+	}
+	return ret;
+}
+
+int sp_munmap(void *addr, size_t length) {
+	auto ret = ::munmap(addr, length);
+	if (ret == 0) {
+		-- s_mappedRegions;
+	}
+	return ret;
+}
+
+}
+
 namespace stappler::mempool::custom {
 
 static std::atomic<size_t> s_nAllocators = 0;
@@ -55,7 +82,7 @@ static uint32_t allocator_mmap_realloc(int filedes, void *ptr, uint32_t idx, uin
 		return 0;
 	}
 
-	munmap((char *)ptr + oldSize, newSize - oldSize);
+	base::sp_munmap((char *)ptr + oldSize, newSize - oldSize);
 	auto err = mremap(ptr, oldSize, newSize, 0);
 	if (err != MAP_FAILED) {
 		return newSize / BOUNDARY_SIZE;
@@ -102,10 +129,10 @@ bool Allocator::run_mmap(uint32_t idx) {
 		return false;
 	}
 
-	void *reserveMem = mmap(NULL, ALLOCATOR_MMAP_RESERVED, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+	void *reserveMem = base::sp_mmap(NULL, ALLOCATOR_MMAP_RESERVED, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 
 	// Now the file is ready to be mmapped.
-	void *map = mmap(reserveMem, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED | MAP_NORESERVE, mmapdes, 0);
+	void *map = base::sp_mmap(reserveMem, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED | MAP_NORESERVE, mmapdes, 0);
 	if (map == MAP_FAILED) {
 		close(mmapdes);
 		perror("Error mmapping the file");
@@ -141,7 +168,7 @@ Allocator::~Allocator() {
 
 #if LINUX
 	if (mmapPtr) {
-		munmap(mmapPtr, mmapMax * BOUNDARY_SIZE);
+		base::sp_munmap(mmapPtr, mmapMax * BOUNDARY_SIZE);
 		close(mmapdes);
 		return;
 	}

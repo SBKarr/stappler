@@ -722,12 +722,12 @@ mem::BytesView alloc(size_t pageSize) {
 	void *ptr = nullptr;
 	if (pageSize >= 2_MiB) {
 		// try MAP_HUGETLB
-		ptr = ::mmap(nullptr, pageSize, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, 0, 0);
+		ptr = stappler::mempool::base::sp_mmap(nullptr, pageSize, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, 0, 0);
 		if (ptr == MAP_FAILED) {
-			ptr = ::mmap(nullptr, pageSize, prot, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+			ptr = stappler::mempool::base::sp_mmap(nullptr, pageSize, prot, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
 		}
 	} else {
-		ptr = ::mmap(nullptr, pageSize, prot, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+		ptr = stappler::mempool::base::sp_mmap(nullptr, pageSize, prot, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
 	}
 	if (!ptr || ptr == MAP_FAILED) {
 		return mem::BytesView();
@@ -745,7 +745,7 @@ mem::BytesView alloc(mem::BytesView src) {
 }
 
 void free(mem::BytesView mem) {
-	::munmap((void *)mem.data(), mem.size());
+	stappler::mempool::base::sp_munmap((void *)mem.data(), mem.size());
 }
 
 }
@@ -773,7 +773,7 @@ bool File::open(mem::StringView filename, int flags, mode_t mode) {
 void File::close() {
 	if (!mapped.empty()) {
 		for (auto &it : mapped) {
-			::munmap(it.first, it.second);
+			stappler::mempool::base::sp_munmap(it.first, it.second);
 		}
 		mapped.clear();
 	}
@@ -836,7 +836,7 @@ void File::unlock() {
 
 void *File::mmap(size_t len, off_t offset, int prot, int flags) {
 	if (fd >= 0) {
-		auto ret = ::mmap(nullptr, len, prot, flags, fd, offset);
+		auto ret = stappler::mempool::base::sp_mmap(nullptr, len, prot, flags, fd, offset);
 		if (ret != MAP_FAILED) {
 			auto lb = std::lower_bound(mapped.begin(), mapped.end(), ret, [] (const mem::Pair<void *, size_t> &l, void *r) {
 				return l.first < r;
@@ -863,7 +863,7 @@ void File::munmap(void *ptr, int sync) {
 		if (sync > 0) {
 			::msync(ptr, lb->second, sync);
 		}
-		::munmap(ptr, lb->second);
+		stappler::mempool::base::sp_munmap(ptr, lb->second);
 		mapped.erase(lb);
 	} else {
 		std::cout << "[MDB-File] Fail to unmap: page not found\n";

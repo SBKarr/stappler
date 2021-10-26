@@ -519,7 +519,7 @@ bool PageCache::makeWal() const {
 		return false;
 	}
 
-	auto origin = (uint8_t *)::mmap(nullptr, fileSize, PROT_WRITE, MAP_SHARED | MAP_NONBLOCK, fd, 0);
+	auto origin = (uint8_t *)stappler::mempool::base::sp_mmap(nullptr, fileSize, PROT_WRITE, MAP_SHARED | MAP_NONBLOCK, fd, 0);
 	if (!origin) {
 		return false;
 	}
@@ -544,7 +544,7 @@ bool PageCache::makeWal() const {
 	}
 
 	::msync(origin, fileSize, MS_SYNC);
-	::munmap(origin, fileSize);
+	stappler::mempool::base::sp_munmap(origin, fileSize);
 
 	// activate WAL
 	header.version = WalVersion;
