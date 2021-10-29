@@ -28,6 +28,8 @@ THE SOFTWARE.
 
 NS_SA_BEGIN
 
+class DbdModule;
+
 class Root {
 public:
 	static Root *getInstance();
@@ -118,6 +120,12 @@ public:
 	void addDb(mem::pool_t *p, StringView);
 	void setDbParams(mem::pool_t *p, StringView);
 
+	void incrementReleasedQueries();
+	void incrementPerformedQueries();
+
+	void enableCustomDbd(StringView dbname);
+	void disableCustomDbd();
+
 protected:
 	struct PendingTask {
 		Server server;
@@ -181,6 +189,8 @@ protected:
 	Map<StringView, StringView> *_dbParams = nullptr;
 	Vector<StringView> *_dbs = nullptr;
 	db::pq::Driver *_dbDriver = nullptr;
+
+	DbdModule *_customDbd = nullptr;
 
 	Mutex _mutex = Mutex(mem::pool::create());
 	memory::allocator_t *_allocator = nullptr;

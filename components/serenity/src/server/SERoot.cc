@@ -39,6 +39,7 @@ THE SOFTWARE.
 
 #include "STPqHandle.h"
 #include "SPugCache.h"
+#include "SEDbdModule.h"
 
 #ifdef LINUX
 
@@ -845,28 +846,43 @@ apr_pool_t *Root::getProcPool() const {
 }
 
 ap_dbd_t * Root::dbdOpen(apr_pool_t *p, server_rec *s) {
-	if (_dbdOpen) {
-		auto ret = _dbdOpen(p, s);
-		if (!ret) {
-			messages::debug("Root", "Failed to open DBD");
+	if (_customDbd) {
+		return _customDbd->openConnection(p);
+	} else {
+		if (_dbdOpen) {
+			auto ret = _dbdOpen(p, s);
+			if (!ret) {
+				messages::debug("Root", "Failed to open DBD");
+			}
+			return ret;
 		}
-		return ret;
+		return nullptr;
 	}
-	return nullptr;
 }
 
 void Root::dbdClose(server_rec *s, ap_dbd_t *d) {
-	if (_dbdClose) {
-		return _dbdClose(s, d);
+	if (_customDbd) {
+		_customDbd->closeConnection(d);
+	} else {
+		if (_dbdClose) {
+			return _dbdClose(s, d);
+		}
 	}
 }
+
 ap_dbd_t * Root::dbdRequestAcquire(request_rec *r) {
+	if (_customDbd) {
+		return nullptr;
+	}
 	if (_dbdRequestAcquire) {
 		return _dbdRequestAcquire(r);
 	}
 	return nullptr;
 }
 ap_dbd_t * Root::dbdConnectionAcquire(conn_rec *c) {
+	if (_customDbd) {
+		return nullptr;
+	}
 	if (_dbdConnectionAcquire) {
 		return _dbdConnectionAcquire(c);
 	}
@@ -1388,6 +1404,30 @@ void Root::setDbParams(mem::pool_t *p, StringView str) {
 
 		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 	}
+}
+
+void Root::incrementReleasedQueries() {
+	_dbQueriesReleased += 1;
+}
+
+void Root::incrementPerformedQueries() {
+	_dbQueriesPerformed += 1;
+}
+
+void Root::enableCustomDbd(StringView dbname) {
+	if (_customDbd) {
+		DbdModule::destroy(_customDbd);
+	}
+
+	DbdModule::Config cfg;
+	cfg.nmax = _maxThreads * 2;
+	cfg.persistent = false;
+
+	_customDbd = DbdModule::create(_rootPool, cfg, _dbParams, dbname);
+}
+
+void Root::disableCustomDbd() {
+	_customDbd = nullptr;
 }
 
 NS_SA_END

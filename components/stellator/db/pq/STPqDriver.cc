@@ -91,8 +91,22 @@ Driver::Connection Driver::getConnection(Handle _h) const {
 	return Driver::Connection(nullptr);
 }
 
+bool Driver::isValid(Handle handle) const {
+	auto conn = getConnection(handle);
+	if (conn.get()) {
+		return isValid(conn);
+	}
+	return false;
+}
+
 bool Driver::isValid(Connection conn) const {
-	return PQstatus((const PGconn *)conn.get()) == CONNECTION_OK;
+	if (PQstatus((const PGconn *)conn.get()) != CONNECTION_OK) {
+		PQreset((PGconn *)conn.get());
+		if (PQstatus((const PGconn *)conn.get()) != CONNECTION_OK) {
+			return false;
+		}
+	}
+	return true;
 }
 
 Driver::TransactionStatus Driver::getTransactionStatus(Connection conn) const {
@@ -209,6 +223,7 @@ Driver::~Driver() { }
 Driver::Driver(const mem::StringView &name) {
 	const apr_dbd_driver_t *driver = nullptr;
 	if (apr_dbd_get_driver(mem::pool::acquire(), name.data(), &driver) == APR_SUCCESS) {
+		_driverName = name;
 		_handle = (void *)driver;
 	}
 }

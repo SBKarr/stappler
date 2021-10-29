@@ -42,7 +42,7 @@ THE SOFTWARE.
 
 #define NS_SA_EXT_BEGIN(v)		namespace stellator::serenity::v {
 #define NS_SA_EXT_END(v)		}
-#define USING_NS_SA_EXT(v)		using namespace stappler::serenity::v
+#define USING_NS_SA_EXT(v)		using namespace stellator::serenity::v
 
 
 namespace stellator::serenity {

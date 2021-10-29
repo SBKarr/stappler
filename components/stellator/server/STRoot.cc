@@ -190,6 +190,9 @@ void Root::performStorage(mem::pool_t *pool, const Server &serv, const mem::Call
 		auto dbd = dbdOpen(pool, serv);
 		if (dbd.get()) {
 			db::pq::Handle h(_internal->dbDriver, dbd);
+			h.setStorageTypeMap(&((Server::Config *)serv.getConfig())->storageTypes);
+			h.setCustomTypeMap(&((Server::Config *)serv.getConfig())->customTypes);
+
 			db::Interface *iface = &h;
 			db::Adapter storage(&h);
 			mem::pool::userdata_set((void *)iface, config::getStorageInterfaceKey(), nullptr, pool);

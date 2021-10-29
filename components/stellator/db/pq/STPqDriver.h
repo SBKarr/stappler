@@ -58,12 +58,16 @@ public:
 
 	virtual ~Driver();
 
+	mem::StringView getDriverName() const { return _driverName; }
+
 	Handle connect(const char * const *keywords, const char * const *values, int expand_dbname) const;
 	void finish(Handle) const;
 
 	Connection getConnection(Handle h) const;
 
+	bool isValid(Handle) const;
 	bool isValid(Connection) const;
+
 	TransactionStatus getTransactionStatus(Connection) const;
 
 	Status getStatus(Result res) const;
@@ -98,6 +102,7 @@ public:
 protected:
 	Driver(const mem::StringView &);
 
+	mem::StringView _driverName;
 	void *_handle = nullptr;
 	mem::Function<void(bool)> _dbCtrl = nullptr;
 };

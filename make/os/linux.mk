@@ -42,5 +42,12 @@ OSTYPE_CLI_LIBS += $(OSTYPE_COMMON_LIBS) -l:libsqlite3.a -ldl
 OSTYPE_STAPPLER_LIBS += $(OSTYPE_CLI_LIBS) -l:libglfw3.a -l:libfreetype.a \
 	-lGLEW -lGL -lX11 -lXrandr -lXi -lXinerama -lXcursor
 
+OSTYPE_STELLATOR_LIBS :=  \
+	-lpthread -l:libcurl.a -l:libidn2.a \
+	-l:libbrotlidec.a -l:libbrotlienc.a -l:libbrotlicommon.a \
+	-l:libmbedtls.a -l:libmbedx509.a -l:libmbedcrypto.a \
+	-l:libpng.a -l:libgif.a -l:libjpeg.a -l:libwebp.a \
+	-l:libfreetype.a -lz -lpq -ldl
+
 OSTYPE_LDFLAGS := -Wl,-z,defs -rdynamic -fuse-ld=gold
 OSTYPE_EXEC_FLAGS := -fuse-ld=gold
