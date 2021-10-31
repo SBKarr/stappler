@@ -93,4 +93,14 @@ inline bool Mat4::operator!=(const Mat4 &t) const {
 	return memcmp(this, &t, sizeof(Mat4)) != 0;
 }
 
+inline std::basic_ostream<char> &
+operator << (std::basic_ostream<char> & os, const Mat4 & m) {
+	os << "{\n\t( " << m.m[0] << ", " << m.m[4] << ", " << m.m[8] << ", " << m.m[12] << ")\n"
+		  << "\t( " << m.m[1] << ", " << m.m[5] << ", " << m.m[9] << ", " << m.m[13] << ")\n"
+		  << "\t( " << m.m[2] << ", " << m.m[6] << ", " << m.m[10] << ", " << m.m[14] << ")\n"
+		  << "\t( " << m.m[3] << ", " << m.m[7] << ", " << m.m[11] << ", " << m.m[15] << ")\n"
+		<< "}";
+	return os;
+}
+
 NS_LAYOUT_END
