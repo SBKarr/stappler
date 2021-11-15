@@ -62,8 +62,10 @@ public:
 
 	static Bytes acquireFontData(const layout::FontSource *, const String &, const ReceiptCallback &);
 
-	static Metrics requestMetrics(const layout::FontSource *source, const Vector<FontFace::FontFaceSource> &, uint16_t, const ReceiptCallback &);
-	static Rc<FontData> requestLayoutUpgrade(const layout::FontSource *source, const Vector<FontFace::FontFaceSource> &, const Rc<FontData> &, const Vector<char16_t> &, const ReceiptCallback &);
+	static Metrics requestMetrics(const layout::FontSource *source, const Vector<FontFace::FontFaceSource> &,
+			layout::FontSize, const ReceiptCallback &);
+	static Rc<FontData> requestLayoutUpgrade(const layout::FontSource *source, const Vector<FontFace::FontFaceSource> &,
+			const Rc<FontData> &, const Vector<char16_t> &, const ReceiptCallback &);
 
 	virtual ~FontSource();
 

@@ -32,7 +32,7 @@ NS_SP_BEGIN
 
 LabelParameters::DescriptionStyle::DescriptionStyle() {
 	font.fontFamily = StringView("default");
-	font.fontSize = 14;
+	font.fontSize = FontSize(14);
 	text.opacity = 222;
 	text.color = Color3B::BLACK;
 	text.whiteSpace = layout::style::WhiteSpace::PreWrap;
@@ -298,14 +298,14 @@ LabelParameters::VerticalAlign LabelParameters::getVerticalAlign() const {
 	return _style.text.verticalAlign;
 }
 
-void LabelParameters::setFontSize(const uint8_t &value) {
-	if (value != _style.font.fontSize) {
-		_style.font.fontSize = value;
+void LabelParameters::setFontSize(const uint16_t &value) {
+	if (value != _style.font.fontSize.get()) {
+		_style.font.fontSize = FontSize(value);
 		_labelDirty = true;
 	}
 }
-uint8_t LabelParameters::getFontSize() const {
-	return _style.font.fontSize;
+uint16_t LabelParameters::getFontSize() const {
+	return _style.font.fontSize.get();
 }
 
 void LabelParameters::setFontStyle(const FontStyle &value) {

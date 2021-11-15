@@ -141,9 +141,9 @@ static FontStructMap::iterator processFile(FontStructMap & openedFiles, Bytes &&
 	}
 }
 
-static Metrics getMetrics(FT_Face face, uint16_t size) {
+static Metrics getMetrics(FT_Face face, FontSize size) {
 	Metrics ret;
-	ret.size = size;
+	ret.size = size.get();
 	ret.height = face->size->metrics.height >> 6;
 	ret.ascender = face->size->metrics.ascender >> 6;
 	ret.descender = face->size->metrics.descender >> 6;
@@ -256,7 +256,7 @@ void LayoutNode::finalize(uint8_t tex) {
 	}
 }
 
-FT_Face FreeTypeInterface::openFontFace(const BytesView &data, const String &font, uint16_t fontSize) {
+FT_Face FreeTypeInterface::openFontFace(const BytesView &data, const String &font, FontSize fontSize) {
 	FT_Face face;
 
 	if (data.empty()) {
@@ -278,7 +278,7 @@ FT_Face FreeTypeInterface::openFontFace(const BytesView &data, const String &fon
 	}
 
 	// set the requested font size
-	err = FT_Set_Pixel_Sizes(face, fontSize, fontSize);
+	err = FT_Set_Pixel_Sizes(face, fontSize.get(), fontSize.get());
 	if (err != FT_Err_Ok) {
 		FT_Done_Face(face);
 		return nullptr;
@@ -323,9 +323,10 @@ FontStructMap::iterator FreeTypeInterface::openFile(const FontSource *source, co
 	return openedFiles.end();
 }
 
-FT_Face FreeTypeInterface::getFace(const FontSource *source, const ReceiptCallback &cb, const FontFace::FontFaceSource &file, uint16_t size) {
+FT_Face FreeTypeInterface::getFace(const FontSource *source, const ReceiptCallback &cb,
+		const FontFace::FontFaceSource &file, FontSize size) {
 	if (!file.bytes.empty()) {
-		String fontname = toString("bytes://", (void *)file.bytes.data(), ":", size);
+		String fontname = toString("bytes://", (void *)file.bytes.data(), ":", size.get());
 		auto it = openedFaces.find(fontname);
 		if (it != openedFaces.end()) {
 			return it->second;
@@ -338,7 +339,7 @@ FT_Face FreeTypeInterface::getFace(const FontSource *source, const ReceiptCallba
 			}
 		}
 	} else if (!file.file.empty()) {
-		String fontname = toString(file.file, ":", size);
+		String fontname = toString(file.file, ":", size.get());
 		auto it = openedFaces.find(fontname);
 		if (it != openedFaces.end()) {
 			return it->second;
@@ -354,7 +355,8 @@ FT_Face FreeTypeInterface::getFace(const FontSource *source, const ReceiptCallba
 	return nullptr;
 }
 
-void FreeTypeInterface::requestCharUpdate(const FontSource *source, const ReceiptCallback &cb, const Vector<FontFace::FontFaceSource> &srcs, uint16_t size,
+void FreeTypeInterface::requestCharUpdate(const FontSource *source, const ReceiptCallback &cb,
+		const Vector<FontFace::FontFaceSource> &srcs, FontSize size,
 		Vector<FT_Face> &faces, Vector<CharLayout> &layout, char16_t theChar) {
 	for (uint32_t i = 0; i <= srcs.size(); ++ i) {
 		FT_Face face = nullptr;
@@ -460,7 +462,8 @@ void FreeTypeInterface::clear() {
 	openedFaces.clear();
 }
 
-Metrics FreeTypeInterface::requestMetrics(const FontSource *source, const Vector<FontFace::FontFaceSource> &srcs, uint16_t size, const ReceiptCallback &cb) {
+Metrics FreeTypeInterface::requestMetrics(const FontSource *source, const Vector<FontFace::FontFaceSource> &srcs,
+		FontSize size, const ReceiptCallback &cb) {
 	for (auto &it : srcs) {
 		if (auto face = getFace(source, cb, it, size)) {
 			return getMetrics(face, size);
@@ -505,7 +508,7 @@ Rc<FontData> FreeTypeInterface::requestLayoutUpgrade(const FontSource *source, c
 
 		// calculate layouts
 		for (auto &c : charsToUpdate) {
-			requestCharUpdate(source, cb, srcs, ret->metrics.size, faces, ret->chars, c);
+			requestCharUpdate(source, cb, srcs, FontSize(ret->metrics.size), faces, ret->chars, c);
 		}
 
 		// kerning

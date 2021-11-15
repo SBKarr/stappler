@@ -24,30 +24,26 @@ OSTYPE_CFLAGS := -DLINUX -Wall -fPIC
 OSTYPE_CPPFLAGS :=  -Wno-overloaded-virtual -Wno-class-memaccess -frtti
 
 OSTYPE_COMMON_LIBS := -lpthread \
-	-l:libcurl.a -l:libidn2.a \
+	-l:libcurl.a \
+	-l:libgnutls.a -l:libhogweed.a -l:libnettle.a -l:libgmp.a -l:libidn2.a -l:libunistring.a \
+	-l:libngtcp2.a -l:libngtcp2_crypto_gnutls.a -l:libnghttp3.a \
 	-l:libbrotlidec.a -l:libbrotlienc.a -l:libbrotlicommon.a \
-	-l:libmbedtls.a -l:libmbedx509.a -l:libmbedcrypto.a \
-	-l:libpng.a -l:libgif.a -l:libjpeg.a -l:libwebp.a \
+	-l:libpng16.a -l:libgif.a -l:libjpeg.a -l:libwebp.a \
 	-lz
 
-OSTYPE_SERENITY_LIBS := \
-	-l:libcurl.a -l:libidn2.a \
+OSTYPE_SERENITY_LIBS := -lpthread \
+	-l:libcurl.a -l:libfreetype.a -l:libngtcp2.a  -l:libnghttp3.a -l:libngtcp2_crypto_gnutls.a \
+	-l:libgnutls.a -l:libhogweed.a -l:libnettle.a -l:libgmp.a -l:libidn2.a -l:libunistring.a \
 	-l:libbrotlidec.a -l:libbrotlienc.a -l:libbrotlicommon.a \
-	-l:libmbedtls.a -l:libmbedx509.a -l:libmbedcrypto.a \
-	-l:libpng.a -l:libgif.a -l:libjpeg.a -l:libwebp.a \
-	-l:libfreetype.a -lz -lpq
+	-l:libpng16.a -l:libgif.a -l:libjpeg.a -l:libwebp.a \
+	-lz -lpq
 
 OSTYPE_CLI_LIBS += $(OSTYPE_COMMON_LIBS) -l:libsqlite3.a -ldl
 
 OSTYPE_STAPPLER_LIBS += $(OSTYPE_CLI_LIBS) -l:libglfw3.a -l:libfreetype.a \
 	-lGLEW -lGL -lX11 -lXrandr -lXi -lXinerama -lXcursor
 
-OSTYPE_STELLATOR_LIBS :=  \
-	-lpthread -l:libcurl.a -l:libidn2.a \
-	-l:libbrotlidec.a -l:libbrotlienc.a -l:libbrotlicommon.a \
-	-l:libmbedtls.a -l:libmbedx509.a -l:libmbedcrypto.a \
-	-l:libpng.a -l:libgif.a -l:libjpeg.a -l:libwebp.a \
-	-l:libfreetype.a -lz -lpq -ldl
+OSTYPE_STELLATOR_LIBS := $(OSTYPE_COMMON_LIBS) -l:libfreetype.a -lpq -ldl
 
 OSTYPE_LDFLAGS := -Wl,-z,defs -rdynamic -fuse-ld=gold
 OSTYPE_EXEC_FLAGS := -fuse-ld=gold

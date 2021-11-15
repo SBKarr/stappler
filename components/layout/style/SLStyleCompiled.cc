@@ -30,23 +30,23 @@ NS_LAYOUT_BEGIN
 
 namespace style {
 
-	inline static uint8_t increment(uint8_t current) {
-		if (current < 16) {
-			return current + 2;
+	inline static FontSize increment(FontSize current) {
+		if (current < FontSize(16)) {
+			return FontSize(current.get() + 2);
 		} else {
-			return current + 4;
+			return FontSize(current.get() + 4);
 		}
 	}
 
-	inline static uint8_t decrement(uint8_t current) {
-		if (current <= 16) {
-			return current - 2;
+	inline static FontSize decrement(FontSize current) {
+		if (current <= FontSize(16)) {
+			return FontSize(current.get() - 2);
 		} else {
-			return current - 4;
+			return FontSize(current.get() - 4);
 		}
 	}
 
-	static uint8_t modifySize(uint8_t current, FontSizeIncrement inc) {
+	static FontSize modifySize(FontSize current, FontSizeIncrement inc) {
 		switch (inc) {
 		case FontSizeIncrement::Larger: current = increment(current); break;
 		case FontSizeIncrement::Smaller: current = decrement(current); break;
@@ -346,14 +346,15 @@ namespace style {
 				break; // enum
 			case ParameterName::FontSize:
 				stream << "font-size: ";
-				switch (it.value.fontSize) {
-				case FontSize::XXSmall: stream << "xx-small"; break;
-				case FontSize::XSmall: stream << "x-small"; break;
-				case FontSize::Small: stream << "small"; break;
-				case FontSize::Medium: stream << "medium"; break;
-				case FontSize::Large: stream << "large"; break;
-				case FontSize::XLarge: stream << "x-large"; break;
-				case FontSize::XXLarge: stream << "xx-large"; break;
+				switch (it.value.fontSize.get()) {
+				case FontSize::XXSmall.get(): stream << "xx-small"; break;
+				case FontSize::XSmall.get(): stream << "x-small"; break;
+				case FontSize::Small.get(): stream << "small"; break;
+				case FontSize::Medium.get(): stream << "medium"; break;
+				case FontSize::Large.get(): stream << "large"; break;
+				case FontSize::XLarge.get(): stream << "x-large"; break;
+				case FontSize::XXLarge.get(): stream << "xx-large"; break;
+				default: stream << "-" << it.value.fontSize.get() << "-"; break;
 				};
 				break; // enum
 			case ParameterName::FontSizeNumeric:
@@ -853,7 +854,7 @@ namespace style {
 				else if (r.is("l")) {ret.fontSize = style::FontSize::Large; }
 				else if (r.is("xl")) { ret.fontSize = style::FontSize::XLarge; }
 				else if (r.is("xxl")) { ret.fontSize = style::FontSize::XXLarge; }
-				else { r.readInteger().unwrap([&] (int64_t value) { ret.fontSize = uint8_t(value); }); }
+				else { r.readInteger().unwrap([&] (int64_t value) { ret.fontSize = FontSize(value); }); }
 				state = Style;
 				break;
 			case Style:
@@ -900,7 +901,7 @@ namespace style {
 
 	FontStyleParameters FontStyleParameters::getSmallCaps() const {
 		FontStyleParameters ret = *this;
-		ret.fontSize -= ret.fontSize / 5;
+		ret.fontSize -= FontSize(ret.fontSize.get() / 5);
 		return ret;
 	}
 
@@ -935,11 +936,11 @@ namespace style {
 		}
 	}
 
-	String FontFace::getConfigName(const StringView &family, uint8_t size) const {
+	String FontFace::getConfigName(const StringView &family, FontSize size) const {
 		return getFontConfigName(family, size, fontStyle, fontWeight, fontStretch, FontVariant::Normal, false);
 	}
 
-	FontStyleParameters FontFace::getStyle(const StringView &family, uint8_t size) const {
+	FontStyleParameters FontFace::getStyle(const StringView &family, FontSize size) const {
 		FontStyleParameters ret;
 		ret.fontFamily = family;
 		ret.fontSize = size;
@@ -949,7 +950,7 @@ namespace style {
 		return ret;
 	}
 
-	String getFontConfigName(const StringView &fontFamily, uint8_t fontSize, FontStyle fontStyle, FontWeight fontWeight,
+	String getFontConfigName(const StringView &fontFamily, FontSize fontSize, FontStyle fontStyle, FontWeight fontWeight,
 			FontStretch fontStretch, FontVariant fontVariant, bool caps) {
 		auto size = fontSize;
 		String name;
@@ -957,7 +958,7 @@ namespace style {
 		name += fontFamily.str();
 
 		if (caps && fontVariant == style::FontVariant::SmallCaps) {
-			size -= size / 5;
+			size -= FontSize(size.get() / 5);
 		}
 		if (size == style::FontSize::XXSmall) {
 			name += ".xxs";
@@ -974,7 +975,7 @@ namespace style {
 		} else if (size == style::FontSize::XXLarge) {
 			name += ".xxl";
 		} else {
-			name += "." + toString(size);
+			name += "." + toString(size.get());
 		}
 
 		switch (fontStyle) {

@@ -55,7 +55,8 @@ struct JsonWebToken {
 	static JsonWebToken make(const StringView &iss, const StringView &aud, TimeInterval maxage = TimeInterval(), const StringView &sub = StringView());
 
 	bool validate(const KeyData &key);
-	bool validate(SigAlg, const StringView &key);
+	bool validate(SigAlg, StringView key);
+	bool validate(SigAlg, BytesView key);
 
 	bool validatePayload(const StringView &issuer, const StringView &aud);
 	bool validatePayload();
@@ -115,7 +116,7 @@ protected:
 
 	Bytes encryptAes(const string::Sha256::Buf &, const data::Value &) const;
 	static data::Value decryptAes(const string::Sha256::Buf &, BytesView);
-	static string::Sha256::Buf makeAesKey(BytesView, StringView priv);
+	static string::Sha256::Buf makeAesKey(BytesView, StringView priv, uint32_t version);
 
 	AesToken();
 	AesToken(Keys keys);

@@ -21,88 +21,15 @@ THE SOFTWARE.
 **/
 
 #include "SPJsonWebToken.h"
-
-#include "mbedtls/config.h"
-#include "mbedtls/pk.h"
-#include "mbedtls/error.h"
-#include "mbedtls/pem.h"
-#include "mbedtls/entropy.h"
-#include "mbedtls/ctr_drbg.h"
+#include "SPCrypto.h"
 
 namespace stappler {
 
-static size_t asn1_size(size_t s) {
-	if (s < 0x80) {
-		return 1;
-	} else if (s <= 0xFF) {
-		return 2;
-	} else {
-		return 3;
-	}
-}
-
-static size_t asn1_writeSize(uint8_t **ptr, size_t s) {
-	if (s < 0x80) {
-		**ptr = uint8_t(s);
-		++ (*ptr);
-		return 1;
-	} else if (s <= 0xFF) {
-		**ptr = uint8_t(0x81);
-		++ (*ptr);
-		**ptr = uint8_t(s);
-		++ (*ptr);
-		return 2;
-	} else {
-		**ptr = uint8_t(0x82);
-		++ (*ptr);
-		uint16_t d = stappler::byteorder::bswap16(uint16_t(s));
-		memcpy(*ptr, &d, sizeof(uint16_t));
-		(*ptr) += 2;
-		return 3;
-	}
-}
-
-static size_t asn1_writeLongInt(uint8_t **ptr, size_t s, const uint8_t *data, bool prefix = false) {
-	size_t ret = 1;
-	**ptr = uint8_t(0x02);
-	++ (*ptr);
-	ret += asn1_writeSize(ptr, s + (prefix?1:0));
-	if (prefix) {
-		**ptr = 0;
-		++ (*ptr);
-	}
-	memcpy(*ptr, data, s);
-	(*ptr) += s;
-	return ret + s;
-}
-
-
-static uint8_t asn1_rsaConstant[] = { 0x30, 0x0D, 0x06, 0x09, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x01, 0x05, 0x00 };
-
 JsonWebToken::KeyData::KeyData(SigAlg a, const Bytes &n, const Bytes &e) : alg(a) {
-	auto keySize = n.size() + asn1_size(n.size()) + e.size() + asn1_size(e.size()) + 3;
-	auto keySeqSize = keySize + 1 + asn1_size(keySize);
-	auto keyStringSize = keySeqSize + 2 + asn1_size(keySeqSize);
-
-	auto rsaSize = keyStringSize + sizeof(asn1_rsaConstant);
-	auto fullSize = rsaSize + 1 + asn1_size(rsaSize);
-	key.resize(fullSize);
-
-	auto ptr = key.data();
-
-	*ptr = uint8_t(0x30); ++ ptr;
-	asn1_writeSize(&ptr, rsaSize);
-	memcpy(ptr, asn1_rsaConstant, sizeof(asn1_rsaConstant));
-	ptr += sizeof(asn1_rsaConstant);
-
-	*ptr = uint8_t(0x03); ++ ptr;
-	asn1_writeSize(&ptr, keySeqSize + 1);
-	*ptr = uint8_t(0x00); ++ ptr;
-
-	*ptr = uint8_t(0x30); ++ ptr;
-	asn1_writeSize(&ptr, keySize);
-	asn1_writeLongInt(&ptr, n.size(), n.data(), true);
-	asn1_writeLongInt(&ptr, e.size(), e.data());
+	crypto::PublicKey pk;
+	if (pk.import(n, e)) {
+		key = pk.exportDer();
+	}
 }
 
 JsonWebToken::SigAlg JsonWebToken::getAlg(const StringView &name) {
@@ -188,10 +115,14 @@ void JsonWebToken::setMaxAge(TimeInterval maxage) {
 }
 
 bool JsonWebToken::validate(const KeyData &key) {
-	return validate(key.alg, StringView((const char *)key.key.data(), key.key.size() - 1));
+	return validate(key.alg, key.key);
 }
 
-bool JsonWebToken::validate(SigAlg a, const StringView &key) {
+bool JsonWebToken::validate(SigAlg a, StringView key) {
+	return validate(a, BytesView((const uint8_t *)key.data(), key.size() + 1));
+}
+
+bool JsonWebToken::validate(SigAlg a, BytesView key) {
 	if (key.empty()) {
 		return false;
 	}
@@ -216,42 +147,24 @@ bool JsonWebToken::validate(SigAlg a, const StringView &key) {
 		break;
 	}
 	default: {
-		mbedtls_pk_context ctx;
-		mbedtls_pk_init(&ctx);
-
-		auto err = mbedtls_pk_parse_public_key(&ctx, (const unsigned char *)key.data(), key.size() + 1);
-		if (err == 0) {
-			switch (alg) {
-			case RS256:
-			case ES256: {
-				auto hash = string::Sha256().update(message).final();
-				if (mbedtls_pk_verify(&ctx, MBEDTLS_MD_SHA256, hash.data(), hash.size(), sig.data(), sig.size()) == 0) {
-					mbedtls_pk_free(&ctx);
-					return true;
-				}
-				break;
-			}
-			case RS512:
-			case ES512: {
-				auto hash = string::Sha512().update(message).final();
-				if (mbedtls_pk_verify(&ctx, MBEDTLS_MD_SHA512, hash.data(), hash.size(), sig.data(), sig.size()) == 0) {
-					mbedtls_pk_free(&ctx);
-					return true;
-				}
-				break;
-			}
-			default:
-				mbedtls_pk_free(&ctx);
-				return false;
-				break;
-			}
-		} else {
-			char buf[256] = { 0 };
-			mbedtls_strerror(err, buf, 255);
-			std::cout << buf << "\n";
+		crypto::PublicKey pk(key);
+		if (!pk) {
+			return false;
 		}
 
-		mbedtls_pk_free(&ctx);
+		crypto::SignAlgorithm algo = crypto::SignAlgorithm::RSA_SHA512;
+		switch (alg) {
+		case RS256: algo = crypto::SignAlgorithm::RSA_SHA256; break;
+		case ES256: algo = crypto::SignAlgorithm::ECDSA_SHA256; break;
+		case RS512: algo = crypto::SignAlgorithm::RSA_SHA512; break;
+		case ES512: algo = crypto::SignAlgorithm::ECDSA_SHA512; break;
+		default: break;
+		}
+
+		if (pk.verify(BytesView((const uint8_t *)message.data(), message.size()), sig, algo)) {
+			return true;
+		}
+
 		break;
 	}
 	}
@@ -314,61 +227,22 @@ String JsonWebToken::exportSigned(SigAlg alg, const StringView &key, const Coder
 		break;
 
 	default: {
-		bool success = false;
-		mbedtls_pk_context ctx;
-		mbedtls_entropy_context entropy;
-		mbedtls_ctr_drbg_context ctr_drbg;
+		crypto::PrivateKey pk(BytesView((const uint8_t *)key.data(), key.size()), passwd);
+		auto mes = out.weak();
 
-		mbedtls_pk_init(&ctx);
-		mbedtls_entropy_init( &entropy );
-		mbedtls_ctr_drbg_init( &ctr_drbg );
-
-		auto pers = valid::makeRandomBytes(16);
-
-		if (mbedtls_ctr_drbg_seed( &ctr_drbg, mbedtls_entropy_func, &entropy, pers.data(), pers.size()) == 0) {
-			auto err = passwd.empty()
-					? mbedtls_pk_parse_key(&ctx, (const unsigned char *)key.data(), key.size() + 1, nullptr, 0)
-					: mbedtls_pk_parse_key(&ctx, (const unsigned char *)key.data(), key.size() + 1, passwd.data(), passwd.size());
-
-			if (err == 0) {
-				switch (alg) {
-				case RS256:
-				case ES256: {
-					std::array<uint8_t, 1_KiB> buf;
-					size_t writeLen = buf.size();
-					auto hash = string::Sha256().update(out.weak()).final();
-					if (mbedtls_pk_sign(&ctx, MBEDTLS_MD_SHA256, hash.data(), hash.size(), buf.data(), &writeLen, mbedtls_ctr_drbg_random, &ctr_drbg) == 0) {
-						out << "." << base64url::encode(BytesView(buf.data(), writeLen));
-						success = true;
-					}
-					break;
-				}
-				case RS512:
-				case ES512: {
-					std::array<uint8_t, 1_KiB> buf;
-					size_t writeLen = buf.size();
-					auto hash = string::Sha512().update(out.weak()).final();
-					if (mbedtls_pk_sign(&ctx, MBEDTLS_MD_SHA512, hash.data(), hash.size(), buf.data(), &writeLen, mbedtls_ctr_drbg_random, &ctr_drbg) == 0) {
-						out << "." << base64url::encode(BytesView(buf.data(), writeLen));
-						success = true;
-					}
-					break;
-				}
-				default:
-					break;
-				}
-			} else {
-				char buf[1_KiB] = { 0 };
-				mbedtls_strerror(err, buf, 1_KiB);
-				std::cout << buf << "\n";
-			}
+		crypto::SignAlgorithm algo = crypto::SignAlgorithm::RSA_SHA512;
+		switch (alg) {
+		case RS256: algo = crypto::SignAlgorithm::RSA_SHA256; break;
+		case ES256: algo = crypto::SignAlgorithm::ECDSA_SHA256; break;
+		case RS512: algo = crypto::SignAlgorithm::RSA_SHA512; break;
+		case ES512: algo = crypto::SignAlgorithm::ECDSA_SHA512; break;
+		default: break;
 		}
 
-		mbedtls_pk_free(&ctx);
-		mbedtls_entropy_free( &entropy );
-		mbedtls_ctr_drbg_free( &ctr_drbg );
-
-		if (!success) {
+		auto data = pk.sign(BytesView((const uint8_t *)mes.data(), mes.size()), algo);
+		if (!data.empty()) {
+			out << "." << base64url::encode(data);
+		} else {
 			return String();
 		}
 		break;
@@ -389,7 +263,8 @@ AesToken AesToken::parse(StringView token, const Fingerprint &fpb, StringView is
 		auto fp = getFingerprint(fpb, tf, keys.secret);
 
 		if (BytesView(fp.data(), fp.size()) == BytesView(input.payload.getBytes("fp"))) {
-			auto aesKey = makeAesKey(BytesView(fp.data(), fp.size()), keys.priv);
+			auto v = crypto::getAesVersion(input.payload.getBytes("p"));
+			auto aesKey = makeAesKey(BytesView(fp.data(), fp.size()), keys.priv, v);
 			auto p = decryptAes(aesKey, input.payload.getBytes("p"));
 			if (p) {
 				return AesToken(move(p), keys);
@@ -404,7 +279,8 @@ AesToken AesToken::parse(const data::Value &payload, const Fingerprint &fpb, Key
 	auto fp = getFingerprint(fpb, tf, keys.secret);
 
 	if (BytesView(fp.data(), fp.size()) == BytesView(payload.getBytes("fp"))) {
-		auto aesKey = makeAesKey(BytesView(fp.data(), fp.size()), keys.priv);
+		auto v = crypto::getAesVersion(payload.getBytes("p"));
+		auto aesKey = makeAesKey(BytesView(fp.data(), fp.size()), keys.priv, v);
 		auto p = decryptAes(aesKey, payload.getBytes("p"));
 		if (p) {
 			return AesToken(move(p), keys);
@@ -430,7 +306,7 @@ String AesToken::exportToken(StringView iss, const Fingerprint &fpb, TimeInterva
 	token.payload.setBytes(BytesView(fp.data(), fp.size()), "fp");
 	token.payload.setInteger(t.toMicros(), "tf");
 
-	auto aesKey = makeAesKey(BytesView(fp.data(), fp.size()), _keys.priv);
+	auto aesKey = makeAesKey(BytesView(fp.data(), fp.size()), _keys.priv, 1);
 
 	token.payload.setBytes(encryptAes(aesKey, _data), "p");
 	return token.exportSigned(JsonWebToken::RS512, _keys.priv, CoderSource(), data::EncodeFormat::Cbor);
@@ -444,7 +320,7 @@ data::Value AesToken::exportData(const Fingerprint &fpb) const {
 	payload.setBytes(BytesView(fp.data(), fp.size()), "fp");
 	payload.setInteger(t.toMicros(), "tf");
 
-	auto aesKey = makeAesKey(BytesView(fp.data(), fp.size()), _keys.priv);
+	auto aesKey = makeAesKey(BytesView(fp.data(), fp.size()), _keys.priv, 1);
 
 	payload.setBytes(encryptAes(aesKey, _data), "p");
 	return payload;
@@ -472,79 +348,18 @@ string::Sha512::Buf AesToken::getFingerprint(const Fingerprint &fp, Time t, Byte
 	}
 }
 
-static constexpr size_t DATA_ALIGN_BOUNDARY ( 16 );
-
 Bytes AesToken::encryptAes(const string::Sha256::Buf &key, const data::Value &val) const {
 	auto d = data::write(val, data::EncodeFormat::CborCompressed);
-	auto dataSize = d.size();
-	auto blockSize = math::align<size_t>(dataSize, DATA_ALIGN_BOUNDARY);
-
-	Bytes input; input.resize(blockSize);
-	Bytes output; output.resize(blockSize + 16);
-	memcpy(input.data(), d.data(), d.size());
-	memcpy(output.data(), &dataSize, sizeof(dataSize));
-
-	mbedtls_aes_context aes;
-	unsigned char iv[16] = { 0 };
-
-	mbedtls_aes_setkey_enc( &aes, key.data(), 256 );
-	mbedtls_aes_crypt_cbc( &aes, MBEDTLS_AES_ENCRYPT, blockSize, iv, input.data(), output.data() + 16 );
-
-	return output;
+	return crypto::encryptAes(key, d, 1);
 }
 
 data::Value AesToken::decryptAes(const string::Sha256::Buf &key, BytesView val) {
-	auto dataSize = val.readUnsigned64();
-	auto blockSize = math::align<size_t>(dataSize, DATA_ALIGN_BOUNDARY);
-
-	val.offset(8);
-
-	Bytes output; output.resize(blockSize);
-
-	mbedtls_aes_context aes;
-	unsigned char iv[16] = { 0 };
-
-	mbedtls_aes_setkey_dec( &aes, key.data(), 256 );
-	mbedtls_aes_crypt_cbc( &aes, MBEDTLS_AES_DECRYPT, blockSize, iv, val.data(), output.data() );
-
-	return data::read(BytesView(output.data(), dataSize));
+	auto output = crypto::decryptAes(key, val);
+	return data::read(output);
 }
 
-string::Sha256::Buf AesToken::makeAesKey(BytesView hash, StringView priv) {
-	string::Sha256::Buf ret;
-	mbedtls_pk_context ctx;
-	mbedtls_entropy_context entropy;
-	mbedtls_ctr_drbg_context ctr_drbg;
-
-	mbedtls_pk_init(&ctx);
-	mbedtls_entropy_init( &entropy );
-	mbedtls_ctr_drbg_init( &ctr_drbg );
-
-	bool success = false;
-	StringView key(priv);
-	auto pers = valid::makeRandomBytes(16);
-
-	if (mbedtls_ctr_drbg_seed( &ctr_drbg, mbedtls_entropy_func, &entropy, pers.data(), pers.size()) == 0) {
-		auto err = mbedtls_pk_parse_key(&ctx, (const unsigned char *)key.data(), key.size() + 1, nullptr, 0);
-		if (err == 0) {
-			std::array<uint8_t, 256> buf;
-			size_t writeLen = buf.size();
-			if (mbedtls_pk_sign(&ctx, MBEDTLS_MD_SHA512, hash.data(), hash.size(), buf.data(), &writeLen, mbedtls_ctr_drbg_random, &ctr_drbg) == 0) {
-				ret = string::Sha256().update(CoderSource(buf.data(), writeLen)).final();
-				success = true;
-			}
-		}
-	}
-
-	if (!success) {
-		ret = string::Sha256().update(hash).update(key).final();
-	}
-
-	mbedtls_pk_free(&ctx);
-	mbedtls_entropy_free( &entropy );
-	mbedtls_ctr_drbg_free( &ctr_drbg );
-
-	return ret;
+string::Sha256::Buf AesToken::makeAesKey(BytesView hash, StringView priv, uint32_t version) {
+	return crypto::makeAesKey(BytesView((const uint8_t *)priv.data(), priv.size()), hash, version);
 }
 
 AesToken::AesToken() { }

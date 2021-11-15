@@ -22,11 +22,9 @@ THE SOFTWARE.
 
 #include "SPString.h"
 #include "SPMemUuid.h"
+#include "SPCrypto.h"
 #include "STStorageField.h"
 #include "STStorageScheme.h"
-
-#include "mbedtls/config.h"
-#include "mbedtls/pk.h"
 
 NS_DB_BEGIN
 
@@ -451,41 +449,23 @@ bool FieldText::transformValue(const Scheme &scheme, const mem::Value &obj, mem:
 					return false;
 				}
 
-				mbedtls_pk_context pk;
-				mbedtls_pk_init( &pk );
-
-				if (mbedtls_pk_parse_public_key(&pk, (const uint8_t *)str.data(), str.size() + 1) != 0) {
-					mbedtls_pk_free( &pk );
+				stappler::crypto::PublicKey pk(mem::BytesView((const uint8_t *)str.data(), str.size()));
+				if (!pk) {
 					return false;
 				}
 
-				uint8_t out[2_KiB];
-				auto bytesCount = mbedtls_pk_write_pubkey_der(&pk, out, sizeof(out));
-				mbedtls_pk_free( &pk );
-				if (bytesCount <= 0) {
-					return false;
-				}
-				val.setBytes(mem::Bytes(out + sizeof(out) - bytesCount, out + sizeof(out)));
+				val.setBytes(pk.exportDer());
 				return true;
 			}
 		} else if (val.isBytes()) {
 			auto &bytes = val.getBytes();
 			if (transform == Transform::PublicKey) {
-				mbedtls_pk_context pk;
-				mbedtls_pk_init( &pk );
-
-				if (mbedtls_pk_parse_public_key(&pk, bytes.data(), bytes.size()) != 0) {
-					mbedtls_pk_free( &pk );
+				stappler::crypto::PublicKey pk(bytes);
+				if (!pk) {
 					return false;
 				}
 
-				uint8_t out[2_KiB];
-				auto bytesCount = mbedtls_pk_write_pubkey_der(&pk, out, sizeof(out));
-				mbedtls_pk_free( &pk );
-				if (bytesCount <= 0) {
-					return false;
-				}
-				val.setBytes(mem::Bytes(out + sizeof(out) - bytesCount, out + sizeof(out)));
+				val.setBytes(pk.exportDer());
 				return true;
 			}
 

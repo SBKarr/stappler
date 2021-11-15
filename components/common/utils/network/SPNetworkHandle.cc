@@ -32,6 +32,7 @@ THE SOFTWARE.
 #include "SPLog.h"
 #include "SPBitmap.h"
 #include "SPValid.h"
+#include "SPCrypto.h"
 
 #ifdef LINUX
 #include <sys/types.h>
@@ -39,13 +40,6 @@ THE SOFTWARE.
 #include <sys/stat.h>
 #include <fcntl.h>
 #endif
-
-#include "mbedtls/config.h"
-#include "mbedtls/pk.h"
-#include "mbedtls/error.h"
-#include "mbedtls/pem.h"
-#include "mbedtls/entropy.h"
-#include "mbedtls/ctr_drbg.h"
 
 #ifdef __MINGW32__
 #define CURL_STATICLIB 1
@@ -688,56 +682,30 @@ bool NetworkHandle::setAuthority(const StringView &user, const StringView &passw
 	return true;
 }
 bool NetworkHandle::setPrivateKeyAuth(const BytesView &priv) {
-	mbedtls_pk_context pk;
-	mbedtls_pk_init( &pk );
-
-	if (mbedtls_pk_parse_key(&pk, (const uint8_t *)priv.data(), priv.size(), nullptr, 0) != 0) {
-		mbedtls_pk_free( &pk );
+	crypto::PrivateKey pk(priv);
+	if (!pk) {
 		return false;
 	}
 
-	uint8_t out[2_KiB];
-	auto bytesCount = mbedtls_pk_write_pubkey_der(&pk, out, sizeof(out));
-	if (bytesCount <= 0) {
-		mbedtls_pk_free( &pk );
+	auto pub = pk.exportPublic();
+	if (!pub) {
 		return false;
 	}
 
-	BytesView outView(out + sizeof(out) - bytesCount, bytesCount);
-
-	mbedtls_entropy_context entropy;
-	mbedtls_ctr_drbg_context ctr_drbg;
-
-	mbedtls_entropy_init( &entropy );
-	mbedtls_ctr_drbg_init( &ctr_drbg );
-
-	auto msec = Time::now().toMicroseconds();
-	Bytes pers; pers.reserve(22);
-	valid::makeRandomBytes(pers.data(), 14);
-	memcpy(pers.data() + 14, &msec, sizeof(msec));
-
-	if (mbedtls_ctr_drbg_seed( &ctr_drbg, mbedtls_entropy_func, &entropy, pers.data(), pers.size()) == 0) {
-		std::array<uint8_t, 1_KiB> buf;
-		size_t writeLen = buf.size();
-		auto hash = string::Sha512().update(outView).final();
-		if (mbedtls_pk_sign(&pk, MBEDTLS_MD_SHA512, hash.data(), hash.size(), buf.data(), &writeLen, mbedtls_ctr_drbg_random, &ctr_drbg) == 0) {
-			auto sign = BytesView(buf.data(), writeLen);
-			_keySign = base64::encode(data::write(data::Value({
-				data::Value(outView),
-				data::Value(sign)
-			})));
-		}
+	auto pubData = pub.exportDer();
+	if (pubData.empty()) {
+		return false;
 	}
 
-	mbedtls_pk_free(&pk);
-	mbedtls_entropy_free( &entropy );
-	mbedtls_ctr_drbg_free( &ctr_drbg );
-
-	if (!_keySign.empty()) {
+	auto sign = pk.sign(pubData);
+	if (!sign.empty()) {
+		_keySign = base64::encode(data::write(data::Value({
+			data::Value(pubData),
+			data::Value(sign)
+		})));
 		_authMethod = AuthMethod::PKey;
 		return true;
 	}
-
 	return false;
 }
 

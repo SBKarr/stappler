@@ -520,11 +520,7 @@ bool Worker::worker() {
 		if (!_localQueue.empty()) {
 			return true;
 		}
-		try {
 		_queue->wait(lock);
-		} catch (const std::exception &e) {
-			std::cout << "[Exception]: " << e.what() << "\n";
-		}
 		return true;
 	}
 

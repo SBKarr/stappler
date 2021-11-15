@@ -51,8 +51,13 @@ struct FontInfo {
 void readFontDir(const StringView &dirPath, Map<String, stappler::app::FontInfo> &icons) {
 	filesystem::ftw(dirPath, [&] (const StringView &path, bool isFile) {
 		if (isFile) {
-			auto bytes = filesystem::readFile(path);
-			icons.emplace(filepath::name(path).str(), FontInfo{filepath::name(path).str(), std::move(bytes)});
+			auto bytes = filesystem::readIntoMemory(path);
+
+			auto d = data::compress<memory::StandartInterface>(bytes.data(), bytes.size(), data::EncodeFormat::LZ4HCCompression, false);
+
+			std::cout << "Compress: " << path << " - " << d.size() << " vs. " << bytes.size() << "\n";
+
+			icons.emplace(filepath::name(path).str(), FontInfo{filepath::name(path).str(), std::move(d)});
 		}
 	}, 1);
 }
@@ -68,7 +73,7 @@ R"Text(fontgen <path-to-fonts-dir>
 
 auto LICENSE_STRING =
 R"Text(/**
-Copyright (c) 2019 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2022 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -115,6 +120,11 @@ void sp_android_terminate () {
 int _spMain(argc, argv) {
 	std::set_terminate(sp_android_terminate);
 
+	String filePrefix = "XLFont";
+	String namespaceBegin = "namespace stappler::xenolith {";
+	String namespaceEnd = "}";
+	String rootInclude = "XLDefine.h";
+
 	data::Value opts = data::parseCommandLineOptions(argc, argv, &parseOptionSwitch, &parseOptionString);
 	if (opts.getBool("help")) {
 		std::cout << HELP_STRING << "\n";
@@ -150,14 +160,14 @@ int _spMain(argc, argv) {
 		filesystem::mkdir(dir);
 
 		for (auto &it : fonts) {
-			it.second.path = toString(dir, "/MaterialFont-", it.second.name, ".cc");
+			it.second.path = toString(dir, "/", filePrefix, "-", it.second.name, ".cc");
 			it.second.title = makeVarName(it.second.name);
 
 			auto text = base16::encode(CoderSource(it.second.data));
 			auto d = text.data();
 
 			StringStream fileData;
-			fileData << LICENSE_STRING << "#include \"Material.h\"\n\nNS_MD_BEGIN\n";
+			fileData << LICENSE_STRING << "#include \"" << rootInclude << "\"\n\n" << namespaceBegin << "\n";
 
 			bool first = false;
 			fileData << "static const unsigned char s_font_" << it.second.title << "[] = {";
@@ -172,8 +182,7 @@ int _spMain(argc, argv) {
 				}
 				fileData << "0x" << d[i * 2] << d[i * 2 + 1];
 			}
-			fileData << "\n};\n";
-			fileData << "NS_MD_END\n";
+			fileData << "\n};\n" << namespaceEnd << "\n";
 			std::cout << "File: " << it.second.path << "\n";
 
 			filesystem::remove(it.second.path);
@@ -181,13 +190,13 @@ int _spMain(argc, argv) {
 		}
 
 		StringStream sourceFile;
-		sourceFile << LICENSE_STRING << "#include \"Material.h\"\n#include \"MaterialFontSource.h\"\n\n";
+		sourceFile << LICENSE_STRING << "#include \"" << rootInclude << "\"\n\n";
 
 		for (auto &it : fonts) {
 			sourceFile << "#include \"" << filepath::lastComponent(it.second.path) << "\"\n";
 		}
 
-		sourceFile << "\nNS_MD_BEGIN\n\nBytesView getSystemFont(SystemFontName name) {\n"
+		sourceFile << "\n" << namespaceBegin << "\n\nBytesView getSystemFont(SystemFontName name) {\n"
 				"\tswitch (name) {\n";
 
 		for (auto &it : fonts) {
@@ -195,15 +204,16 @@ int _spMain(argc, argv) {
 					<< ": return BytesView(s_font_" << it.second.title << ", " << it.second.data.size() << "); break;\n";
 		}
 
-		sourceFile << "\t}\n\n\treturn BytesView();\n}\n\nNS_MD_END\n";
+		sourceFile << "\t}\n\n\treturn BytesView();\n}\n\n" << namespaceEnd << "\n";
 
-		auto sourcePath = toString(dir, "/MaterialFontSource.cpp");
+		auto sourcePath = toString(dir, "/", filePrefix, "Source.cpp");
 
 		filesystem::remove(sourcePath);
 		filesystem::write(sourcePath, sourceFile.str());
 
 		StringStream headerFile;
-		headerFile << LICENSE_STRING << "#include \"Material.h\"\n\nNS_MD_BEGIN\n\nenum class SystemFontName {";
+		headerFile << LICENSE_STRING << "#include \"" << rootInclude << "\"\n\n" << namespaceBegin
+				<< "\n\n\nenum class SystemFontName {";
 		bool first = true;
 		for (auto &it : fonts) {
 			if (first) { first = false; } else { headerFile << ","; }
@@ -211,9 +221,9 @@ int _spMain(argc, argv) {
 		}
 		headerFile << "\n};\n\n"
 				"BytesView getSystemFont(SystemFontName);\n"
-				"\nNS_MD_END\n";
+				"\n" << namespaceEnd << "\n";
 
-		auto headerPath = toString(dir, "/MaterialFontSource.h");
+		auto headerPath = toString(dir, "/", filePrefix, "Source.h");
 
 		filesystem::remove(headerPath);
 		filesystem::write(headerPath, headerFile.str());

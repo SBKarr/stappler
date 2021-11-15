@@ -518,11 +518,11 @@ static int _zip_unchange(zip_t *, zip_uint64_t, int);
 static void _zip_unchange_data(zip_entry_t *);
 static int _zip_write(zip_t *za, const void *data, zip_uint64_t length);
 
-#include <mbedtls/aes.h>
-#include <mbedtls/md.h>
+// #include <mbedtls/aes.h>
+// #include <mbedtls/md.h>
 
-typedef mbedtls_aes_context _zip_crypto_aes_t;
-typedef mbedtls_md_context_t _zip_crypto_hmac_t;
+// typedef mbedtls_aes_context _zip_crypto_aes_t;
+// typedef mbedtls_md_context_t _zip_crypto_hmac_t;
 
 static int zip_source_remove(zip_source_t *src);
 static zip_int64_t zip_source_supports(zip_source_t *src);

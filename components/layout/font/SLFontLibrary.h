@@ -68,7 +68,7 @@ public: /* fonts interface */
 	/**
 	 * Request metrics data for specific font size and sources
 	 */
-	Metrics requestMetrics(const FontSource *, const Vector<FontFace::FontFaceSource> &, uint16_t size, const ReceiptCallback &cb);
+	Metrics requestMetrics(const FontSource *, const Vector<FontFace::FontFaceSource> &, FontSize size, const ReceiptCallback &cb);
 
 	/**
 	 * Reqeust data for new chars in layout
@@ -96,18 +96,18 @@ protected:
 	 * Open Freetype face from data in memory
 	 * Returns iterator, that points to cached file data
 	 */
-	FT_Face openFontFace(const BytesView &data, const String &font, uint16_t fontSize);
+	FT_Face openFontFace(const BytesView &data, const String &font, FontSize fontSize);
 
 	/**
 	 * Open FreeType face for specific filename and font size
 	 */
-	FT_Face getFace(const FontSource *source, const ReceiptCallback &cb, const FontFace::FontFaceSource &file, uint16_t size);
+	FT_Face getFace(const FontSource *source, const ReceiptCallback &cb, const FontFace::FontFaceSource &file, FontSize size);
 
 	/**
 	 * Update layout data for specific font and char
 	 * Also, updates provided FreeType face cache
 	 */
-	void requestCharUpdate(const FontSource *source, const ReceiptCallback &cb, const Vector<FontFace::FontFaceSource> &srcs, uint16_t size,
+	void requestCharUpdate(const FontSource *source, const ReceiptCallback &cb, const Vector<FontFace::FontFaceSource> &srcs, FontSize size,
 			Vector<FT_Face> &faces, Vector<CharLayout> &layout, char16_t theChar);
 
 	/**

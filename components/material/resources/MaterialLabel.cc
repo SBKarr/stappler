@@ -40,80 +40,80 @@ DynamicLabel::DescriptionStyle Label::getFontStyle(FontType t, DescriptionStyle 
 	ret.tag = Label_systemFontTag;
 	switch (t) {
 	case FontType::Headline:
-		ret.font.fontSize = 24;
+		ret.font.fontSize = FontSize(24);
 		ret.text.opacity = 222;
 		break;
 	case FontType::Title:
-		ret.font.fontSize = 20;
+		ret.font.fontSize = FontSize(20);
 		ret.font.fontWeight = font::FontWeight::W500;
 		ret.text.opacity = 222;
 		break;
 	case FontType::Subhead:
-		ret.font.fontSize = 16;
+		ret.font.fontSize = FontSize(16);
 		ret.text.opacity = 222;
 		break; // 16sp Regular 87%
 	case FontType::Body_1:
-		ret.font.fontSize = 14;
+		ret.font.fontSize = FontSize(14);
 		ret.font.fontWeight = font::FontWeight::W500;
 		ret.text.opacity = 222;
 		break; // 14sp Medium 87%
 	case FontType::Body_2:
-		ret.font.fontSize = 14;
+		ret.font.fontSize = FontSize(14);
 		ret.text.opacity = 222;
 		break; // 14sp Regular 87%
 	case FontType::BodySmall:
-		ret.font.fontSize = 12;
+		ret.font.fontSize = FontSize(12);
 		ret.text.opacity = 222;
 		break; // 12sp Regular 87%
 	case FontType::Caption:
-		ret.font.fontSize = 12;
+		ret.font.fontSize = FontSize(12);
 		ret.text.opacity = 138;
 		break; // 12sp Regular 54%
 	case FontType::Button:
-		ret.font.fontSize = 14;
+		ret.font.fontSize = FontSize(14);
 		ret.font.fontWeight = font::FontWeight::W500;
 		ret.text.opacity = 222;
 		ret.text.textTransform = font::TextTransform::Uppercase;
 		break;
 	case FontType::ButtonSmall:
-		ret.font.fontSize = 12;
+		ret.font.fontSize = FontSize(12);
 		ret.font.fontWeight = font::FontWeight::W500;
 		ret.text.opacity = 222;
 		ret.text.textTransform = font::TextTransform::Uppercase;
 		break;
 	case FontType::InputDense:
-		ret.font.fontSize = 13;
+		ret.font.fontSize = FontSize(13);
 		ret.text.opacity = 222;
 		break; // 13sp Regular 87%
 	case FontType::Tab_Large:
-		ret.font.fontSize = 14;
+		ret.font.fontSize = FontSize(14);
 		ret.text.opacity = 222;
 		ret.text.textTransform = font::TextTransform::Uppercase;
 		break;
 	case FontType::Tab_Large_Selected:
-		ret.font.fontSize = 14;
+		ret.font.fontSize = FontSize(14);
 		ret.font.fontWeight = font::FontWeight::W500;
 		ret.text.textTransform = font::TextTransform::Uppercase;
 		ret.text.opacity = 222;
 		break;
 	case FontType::Tab_Small:
-		ret.font.fontSize = 12;
+		ret.font.fontSize = FontSize(12);
 		ret.text.opacity = 222;
 		ret.text.textTransform = font::TextTransform::Uppercase;
 		break;
 	case FontType::Tab_Small_Selected:
-		ret.font.fontSize = 12;
+		ret.font.fontSize = FontSize(12);
 		ret.font.fontWeight = font::FontWeight::W500;
 		ret.text.textTransform = font::TextTransform::Uppercase;
 		ret.text.opacity = 222;
 		break;
 	case FontType::Tab_Caption:
-		ret.font.fontSize = 10;
+		ret.font.fontSize = FontSize(10);
 		ret.text.opacity = 222;
 		ret.text.textTransform = font::TextTransform::Uppercase;
 		break;
 	case FontType::Tab_Caption_Selected:
-		ret.font.fontSize = 10;
+		ret.font.fontSize = FontSize(10);
 		ret.font.fontWeight = font::FontWeight::W500;
 		ret.text.textTransform = font::TextTransform::Uppercase;
 		ret.text.opacity = 222;

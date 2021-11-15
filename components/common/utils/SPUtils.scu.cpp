@@ -49,6 +49,7 @@ THE SOFTWARE.
 #include "SPSearchIndex.cc"
 #include "SPSearchConfiguration.cc"
 #include "SPSerenityPathQuery.cc"
+#include "SPCrypto.cc"
 #include "SPValid.cc"
 
 #include "SPThreadTask.cc"

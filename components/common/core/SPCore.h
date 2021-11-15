@@ -420,20 +420,20 @@ struct ValueWrapper {
 	static constexpr ValueWrapper<T, Flag> epsilon() { return ValueWrapper<T, Flag>(NumericLimits<T>::epsilon()); }
 	static constexpr ValueWrapper<T, Flag> zero() { return ValueWrapper<T, Flag>(0); }
 
-	inline constexpr ValueWrapper() : value(0) { }
+	inline constexpr ValueWrapper() = default;
 	inline explicit constexpr ValueWrapper(const T &val) : value(val) { }
 	inline explicit constexpr ValueWrapper(T &&val) : value(std::move(val)) { }
 
-	inline ValueWrapper(const ValueWrapper<T, Flag> &other) { value = other.value; }
-	inline ValueWrapper<T, Flag> &operator=(const ValueWrapper<T, Flag> &other) { value = other.value; return *this; }
+	inline ValueWrapper(const ValueWrapper<T, Flag> &other) = default;
+	inline ValueWrapper<T, Flag> &operator=(const ValueWrapper<T, Flag> &other) = default;
 
-	inline ValueWrapper(ValueWrapper<T, Flag> &&other) { value = std::move(other.value); }
-	inline ValueWrapper<T, Flag> &operator=(ValueWrapper<T, Flag> &&other) { value = std::move(other.value); return *this; }
+	inline ValueWrapper(ValueWrapper<T, Flag> &&other) = default;
+	inline ValueWrapper<T, Flag> &operator=(ValueWrapper<T, Flag> &&other) = default;
 
 	inline void set(const T &val) { value = val; }
 	inline void set(T &&val) { value = std::move(val); }
-	inline T & get() { return value; }
-	inline const T & get() const { return value; }
+	inline constexpr T & get() { return value; }
+	inline constexpr const T & get() const { return value; }
 	inline bool empty() const { return value == 0; }
 
 	inline bool operator == (const ValueWrapper<T, Flag> & other) const { return value == other.value; }

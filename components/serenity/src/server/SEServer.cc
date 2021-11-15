@@ -28,6 +28,7 @@ THE SOFTWARE.
 
 #include "Networking.h"
 #include "SPFilesystem.h"
+#include "SPCrypto.h"
 #include "Request.h"
 #include "RequestHandler.h"
 #include "Root.h"
@@ -42,59 +43,12 @@ THE SOFTWARE.
 #include "SPugCache.h"
 #include "ExternalSession.h"
 
-#include "mbedtls/config.h"
-#include "mbedtls/pk.h"
-#include "mbedtls/entropy.h"
-#include "mbedtls/ctr_drbg.h"
-#include "mbedtls/rsa.h"
-#include "mbedtls/pk.h"
-
 NS_SA_BEGIN
 
 static constexpr auto SA_SERVER_FILE_SCHEME_NAME = "__files";
 static constexpr auto SA_SERVER_USER_SCHEME_NAME = "__users";
 static constexpr auto SA_SERVER_ERROR_SCHEME_NAME = "__error";
 static constexpr auto DEV_RANDOM_THRESHOLD = 32;
-
-static int dev_random_entropy_poll(void *data, unsigned char *output, size_t len, size_t *olen) {
-	FILE *file;
-	size_t ret, left = len;
-	unsigned char *p = output;
-	((void) data);
-
-	*olen = 0;
-
-	file = fopen( "/dev/random", "rb" );
-	if (file == NULL) {
-		valid::makeRandomBytes(output, left);
-		return 0;
-	}
-
-	size_t limit = 0;
-	while (left > 0 && limit < 5) {
-		/* /dev/random can return much less than requested. If so, try again */
-		ret = fread(p, 1, left, file);
-		if (ret == 0 && ferror(file)) {
-			fclose(file);
-			return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
-		}
-
-		p += ret;
-		left -= ret;
-		++ limit;
-		if (left > 0) {
-			sleep(1);
-		}
-	}
-
-	if (left > 0) {
-		valid::makeRandomBytes(p, left);
-	}
-
-	fclose(file);
-	*olen = len;
-	return 0;
-}
 
 struct Server::Config : public AllocPool {
 	static Config *get(server_rec *server) {
@@ -268,41 +222,14 @@ struct Server::Config : public AllocPool {
 	bool initKeyPair(Server &serv, const db::Adapter &a, BytesView fp) {
 		auto pers = serv.getServerHostname();
 
-		mbedtls_pk_context key;
-		mbedtls_entropy_context entropy;
-		mbedtls_ctr_drbg_context ctr_drbg;
-		mbedtls_entropy_init( &entropy );
+		crypto::PrivateKey pk;
+		if (pk.generate()) {
+			auto priv = pk.exportPem();
+			auto pub = pk.exportPublic().exportPem();
 
-		mbedtls_entropy_add_source(&entropy, dev_random_entropy_poll, NULL, DEV_RANDOM_THRESHOLD, MBEDTLS_ENTROPY_SOURCE_STRONG);
-		if (mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, (void *)&entropy, (const unsigned char *)pers.data(), pers.size()) != 0) {
-			return false;
+			privateSessionKey = StringView((const char *)priv.data(), priv.size()).str();
+			publicSessionKey = StringView((const char *)pub.data(), pub.size()).str();
 		}
-
-		if (mbedtls_pk_setup(&key, mbedtls_pk_info_from_type(mbedtls_pk_type_t(MBEDTLS_PK_RSA))) != 0) {
-			return false;
-		}
-
-		if (mbedtls_rsa_gen_key(mbedtls_pk_rsa(key), mbedtls_ctr_drbg_random, &ctr_drbg, 4096, 65537) != 0) {
-			return false;
-		}
-
-		unsigned char priv_buf[16_KiB] = { 0 };
-		unsigned char pub_buf[16_KiB] = { 0 };
-
-		if (mbedtls_pk_write_key_pem( &key, priv_buf, 16_KiB) != 0) {
-			return false;
-		}
-
-		if (mbedtls_pk_write_pubkey_pem( &key, pub_buf, 16_KiB) != 0) {
-			return false;
-		}
-
-		privateSessionKey = (const char *)priv_buf;
-		publicSessionKey = (const char *)pub_buf;
-
-	    mbedtls_pk_free( &key );
-	    mbedtls_ctr_drbg_free( &ctr_drbg );
-	    mbedtls_entropy_free( &entropy );
 
 	    auto tok = AesToken::create(AesToken::Keys{ StringView(), StringView(config::INTERNAL_PRIVATE_KEY), BytesView(serverKey) });
 		tok.setString(privateSessionKey, "priv");
@@ -1158,8 +1085,7 @@ static bool Server_processAuth(Request &rctx, StringView auth) {
 			auto &key = d.getBytes(0);
 			auto &sig = d.getBytes(1);
 
-			mbedtls_pk_context pk;
-			mbedtls_pk_init( &pk );
+			crypto::PublicKey pk;
 
 			do {
 				if (key.size() < 128 || sig.size() < 128) {
@@ -1169,37 +1095,28 @@ static bool Server_processAuth(Request &rctx, StringView auth) {
 				if (memcmp(key.data(), "ssh-", 4) == 0) {
 					auto derKey = stappler::valid::convertOpenSSHKey(mem::StringView((const char *)key.data(), key.size()));
 					if (!derKey.empty()) {
-						if (mbedtls_pk_parse_public_key(&pk, (const uint8_t *)derKey.data(), derKey.size()) != 0) {
+						if (!pk.import(derKey)) {
 							break;
 						}
 					} else {
 						break;
 					}
 				} else {
-					if (mbedtls_pk_parse_public_key(&pk, (const uint8_t *)key.data(), key.size()) != 0) {
+					if (!pk.import(key)) {
 						break;
 					}
 				}
 
-				auto hash = stappler::string::Sha512().update(key).final();
-				if (mbedtls_pk_verify(&pk, MBEDTLS_MD_SHA512, hash.data(), hash.size(), sig.data(), sig.size()) != 0) {
+				if (!pk.verify(key, sig, crypto::SignAlgorithm::RSA_SHA512)) {
 					break;
 				}
 
-				uint8_t out[2_KiB];
-				auto bytesCount = mbedtls_pk_write_pubkey_der(&pk, out, sizeof(out));
-				if (bytesCount <= 0) {
-					break;
-				}
-
-				auto searchKey = mem::BytesView(out + sizeof(out) - bytesCount, bytesCount);
+				auto searchKey = pk.exportDer();
 				if (auto u = db::User::get(rctx.storage(), *db::internals::getUserScheme(), searchKey)) {
 					rctx.setUser(u);
 					return true;
 				}
 			} while (0);
-
-			mbedtls_pk_free( &pk );
 		}
 	}
 	return false;

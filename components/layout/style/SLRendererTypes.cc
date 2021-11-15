@@ -31,7 +31,7 @@ THE SOFTWARE.
 NS_LAYOUT_BEGIN
 
 float MediaParameters::getDefaultFontSize() const {
-	return style::FontSize::Medium * fontScale;
+	return style::FontSize::Medium.get() * fontScale;
 }
 
 void MediaParameters::addOption(const String &str) {

@@ -145,10 +145,10 @@ void DynamicLabel::updateLabel(FormatSpec *format) {
 	_style.text.opacity = _displayedOpacity;
 	_style.text.whiteSpace = layout::style::WhiteSpace::PreWrap;
 
-	auto adjustValue = 255;
+	uint16_t adjustValue = maxOf<uint16_t>();
 
 	do {
-		if (adjustValue == 255) {
+		if (adjustValue == maxOf<uint16_t>()) {
 			adjustValue = 0;
 		} else {
 			adjustValue += 1;
@@ -179,7 +179,7 @@ void DynamicLabel::updateLabel(FormatSpec *format) {
 		for (auto &it : _compiledStyles) {
 			DescriptionStyle params = _style.merge(_source, it.style);
 			if (adjustValue > 0) {
-				params.font.fontSize -= adjustValue;
+				params.font.fontSize -= FontSize(adjustValue);
 			}
 
 			auto start = _string16.c_str() + it.start;

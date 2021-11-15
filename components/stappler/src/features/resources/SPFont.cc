@@ -518,21 +518,21 @@ Bytes FontSource::acquireFontData(const layout::FontSource *lsource, const Strin
 bool FontSource::init(FontFaceMap &&map, const ReceiptCallback &cb, float scale, SearchDirs &&dirs, AssetMap &&assets, bool scheduled) {
 	if (!layout::FontSource::init(std::move(map),
 			std::bind(&FontSource::acquireFontData, std::placeholders::_1, std::placeholders::_2, cb),
-			scale, std::move(dirs))) {
+			scale * screen::density(), std::move(dirs))) {
 		return false;
 	}
-
-	_density = screen::density();
 
 	_updateCallback = [this] (uint32_t v, const Map<String, Vector<char16_t>> &m) {
 		updateTexture(v, m);
 	};
 
-	_metricCallback = [] (const layout::FontSource *source, const Vector<FontFace::FontFaceSource> &srcs, uint16_t size, const ReceiptCallback &cb) {
+	_metricCallback = [] (const layout::FontSource *source, const Vector<FontFace::FontFaceSource> &srcs,
+			layout::FontSize size, const ReceiptCallback &cb) {
 		return requestMetrics(source, srcs, size, cb);
 	};
 
-	_layoutCallback = [] (const layout::FontSource *source, const Vector<FontFace::FontFaceSource> &srcs, const Rc<FontData> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
+	_layoutCallback = [] (const layout::FontSource *source, const Vector<FontFace::FontFaceSource> &srcs,
+			const Rc<FontData> &data, const Vector<char16_t> &chars, const ReceiptCallback &cb) {
 		return requestLayoutUpgrade(source, srcs, data, chars, cb);
 	};
 
@@ -754,7 +754,8 @@ void FontSource::clone(FontSource *source, const Function<void(FontSource *)> &c
 	}, this);
 }
 
-Metrics FontSource::requestMetrics(const layout::FontSource *source, const Vector<FontFace::FontFaceSource> &srcs, uint16_t size, const ReceiptCallback &cb) {
+Metrics FontSource::requestMetrics(const layout::FontSource *source, const Vector<FontFace::FontFaceSource> &srcs,
+		layout::FontSize size, const ReceiptCallback &cb) {
 	auto cache = FontLibrary::getInstance()->getCache();
 	return cache->requestMetrics(source, srcs, size, cb);
 }

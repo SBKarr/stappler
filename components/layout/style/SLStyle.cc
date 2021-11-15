@@ -49,7 +49,7 @@ Tag::Type Tag::getType(const String &tagName) {
 
 template<> void Parameter::set<ParameterName::FontStyle, FontStyle>(const FontStyle &v) { value.fontStyle = v; }
 template<> void Parameter::set<ParameterName::FontWeight, FontWeight>(const FontWeight &v) { value.fontWeight = v; }
-template<> void Parameter::set<ParameterName::FontSize, uint8_t>(const uint8_t &v) { value.fontSize = v; }
+template<> void Parameter::set<ParameterName::FontSize, FontSize>(const FontSize &v) { value.fontSize = v; }
 template<> void Parameter::set<ParameterName::FontStretch, FontStretch>(const FontStretch &v) { value.fontStretch = v; }
 template<> void Parameter::set<ParameterName::FontVariant, FontVariant>(const FontVariant &v) { value.fontVariant = v; }
 template<> void Parameter::set<ParameterName::FontSizeNumeric, Metric>(const style::Metric &v) { value.sizeValue = v; }
@@ -159,13 +159,13 @@ ParameterList getStyleForTag(const StringView &tag, const StringView &parent) {
 
 	if (tag == "h1") {
 		style.set(Parameter::create<ParameterName::MarginTop>(Metric(0.8f, Metric::Units::Em)), true);
-		style.data.push_back(Parameter::create<ParameterName::FontSize>(uint8_t(32)));
+		style.data.push_back(Parameter::create<ParameterName::FontSize>(FontSize(32)));
 		style.data.push_back(Parameter::create<ParameterName::FontWeight>(FontWeight::W200));
 		style.data.push_back(Parameter::create<ParameterName::Opacity>(uint8_t(222)));
 
 	} else if (tag == "h2") {
 		style.set(Parameter::create<ParameterName::MarginTop>(Metric(0.8f, Metric::Units::Em)), true);
-		style.data.push_back(Parameter::create<ParameterName::FontSize>(uint8_t(28)));
+		style.data.push_back(Parameter::create<ParameterName::FontSize>(FontSize(28)));
 		style.data.push_back(Parameter::create<ParameterName::FontWeight>(FontWeight::W400));
 		style.data.push_back(Parameter::create<ParameterName::Opacity>(uint8_t(222)));
 
@@ -183,7 +183,7 @@ ParameterList getStyleForTag(const StringView &tag, const StringView &parent) {
 
 	} else if (tag == "h5") {
 		style.set(Parameter::create<ParameterName::MarginTop>(Metric(0.8f, Metric::Units::Em)), true);
-		style.data.push_back(Parameter::create<ParameterName::FontSize>(uint8_t(18)));
+		style.data.push_back(Parameter::create<ParameterName::FontSize>(FontSize(18)));
 		style.data.push_back(Parameter::create<ParameterName::FontWeight>(FontWeight::W400));
 		style.data.push_back(Parameter::create<ParameterName::Opacity>(uint8_t(222)));
 
@@ -557,9 +557,9 @@ void ParameterList::read(const StringView &name, const StringView &value, MediaQ
 			style::Metric fontSize;
 			if (readStyleValue(value, fontSize)) {
 				if (fontSize.metric == style::Metric::Units::Px) {
-					set<ParameterName::FontSize>((uint8_t)fontSize.value, mediaQuary);
+					set<ParameterName::FontSize>(FontSize(fontSize.value), mediaQuary);
 				} else if (fontSize.metric == style::Metric::Units::Em) {
-					set<ParameterName::FontSize>((uint8_t)(FontSize::Medium * fontSize.value), mediaQuary);
+					set<ParameterName::FontSize>(FontSize(FontSize::Medium.get() * fontSize.value), mediaQuary);
 				}
 			}
 		}

@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2021 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,8 +20,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 **/
 
+/*
+ * Sha2 source code in public domain
+ * */
+
 #include "SPCommon.h"
-#include "SPString.h"
+#include "SPCrypto.h"
 
 #ifndef SP_SECURE_KEY
 #define SP_SECURE_KEY "Nev3rseenany0nesoequalinth1sscale"
@@ -32,7 +33,7 @@ THE SOFTWARE.
 
 namespace sha256 {
 
-using sha256_state = stappler::string::Sha256::_Ctx;
+using sha256_state = stappler::crypto::Sha256::_Ctx;
 
 typedef uint32_t u32;
 typedef uint64_t u64;
@@ -188,7 +189,7 @@ static void sha_done(sha256_state& md, void* out) {
 
 namespace sha512 {
 
-using sha512_state = stappler::string::Sha512::_Ctx;
+using sha512_state = stappler::crypto::Sha512::_Ctx;
 
 typedef uint32_t u32;
 typedef uint64_t u64;
@@ -351,7 +352,7 @@ static void sha_done(sha512_state& md, void *out) {
 
 }
 
-NS_SP_EXT_BEGIN(string)
+NS_SP_EXT_BEGIN(crypto)
 
 constexpr uint32_t SHA256_BLOCK_SIZE = 64;
 constexpr uint32_t SHA512_BLOCK_SIZE = 128;
@@ -466,4 +467,4 @@ void Sha256::final(uint8_t *buf) {
 	sha256::sha_done(ctx, buf);
 }
 
-NS_SP_EXT_END(string)
+NS_SP_EXT_END(crypto)

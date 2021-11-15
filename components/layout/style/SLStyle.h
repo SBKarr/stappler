@@ -195,14 +195,16 @@ namespace style {
 		UltraExpanded
 	};
 
-	namespace FontSize {
-		constexpr uint8_t XXSmall = 8;
-		constexpr uint8_t XSmall = 10;
-		constexpr uint8_t Small = 12;
-		constexpr uint8_t Medium = 14;
-		constexpr uint8_t Large = 16;
-		constexpr uint8_t XLarge = 20;
-		constexpr uint8_t XXLarge = 24;
+	struct FontSize : ValueWrapper<uint16_t, class FontSizeFlag> {
+		static const FontSize XXSmall;
+		static const FontSize XSmall;
+		static const FontSize Small;
+		static const FontSize Medium;
+		static const FontSize Large;
+		static const FontSize XLarge;
+		static const FontSize XXLarge;
+
+		using ValueWrapper::ValueWrapper;
 	};
 
 	enum class FontVariant : EnumSize {
@@ -501,7 +503,7 @@ namespace style {
 		BorderCollapse borderCollapse;
 		CaptionSide captionSide;
 		Color3B color;
-		uint8_t fontSize;
+		FontSize fontSize;
 		uint8_t opacity;
 		Color4B color4;
 		Metric sizeValue;
@@ -537,7 +539,7 @@ namespace style {
 		FontStretch fontStretch = FontStretch::Normal;
 		FontVariant fontVariant = FontVariant::Normal;
 		ListStyleType listStyleType = ListStyleType::None;
-		uint8_t fontSize = FontSize::Medium;
+		FontSize fontSize = FontSize::Medium;
 		StringView fontFamily;
 
 		String getConfigName(bool caps = false) const;
@@ -743,6 +745,18 @@ namespace style {
 		static Vector<MediaQuery> getDefaultQueries(Map<CssStringId, String> &);
 	};
 
+	/** Single font face definition
+	 *
+	 * Font face is combination of:
+	 * - font style (Normal/Italic)
+	 * - font weight (Normal/Bold/100-900)
+	 * - font stretch (Condensed/Normal/Extended)
+	 *
+	 * Font face defined with sources stack
+	 * - if char face was not found in front source, it can be found in next source
+	 * - search continues until char face is found or all sources is processed
+	 * - if char face was not found, engine-wide fallback font can be used
+	 */
 	struct FontFace {
 		struct FontFaceSource {
 			String file;
@@ -760,9 +774,9 @@ namespace style {
 		FontWeight fontWeight = FontWeight::Normal;
 		FontStretch fontStretch = FontStretch::Normal;
 
-		String getConfigName(const StringView &family, uint8_t size) const;
+		String getConfigName(const StringView &family, FontSize size) const;
 
-		FontStyleParameters getStyle(const StringView &family, uint8_t size) const;
+		FontStyleParameters getStyle(const StringView &family, FontSize size) const;
 
 		FontFace() = default;
 
@@ -793,9 +807,10 @@ namespace style {
 
 	bool readMediaParameter(Vector<Parameter> &params, const String &name, const StringView &value, const CssStringFunction &cb);
 
-	String getFontConfigName(const StringView &, uint8_t, FontStyle, FontWeight, FontStretch, FontVariant, bool caps);
+	String getFontConfigName(const StringView &, FontSize, FontStyle, FontWeight, FontStretch, FontVariant, bool caps);
 
 	template<ParameterName Name, class Value> Parameter Parameter::create(const Value &v, MediaQueryId query) {
+		static_assert(Name != ParameterName::FontSize || !std::is_same_v<Value, uint8_t>, "uint8_t as FontSize is deprecated");
 		Parameter p(Name, query);
 		p.set<Name>(v);
 		return p;
@@ -814,6 +829,14 @@ namespace style {
 
 		data.push_back(Parameter::create<Name>(value, mediaQuery));
 	}
+
+	constexpr FontSize FontSize::XXSmall = FontSize(uint16_t(8));
+	constexpr FontSize FontSize::XSmall = FontSize(uint16_t(10));
+	constexpr FontSize FontSize::Small = FontSize(uint16_t(12));
+	constexpr FontSize FontSize::Medium = FontSize(uint16_t(14));
+	constexpr FontSize FontSize::Large = FontSize(uint16_t(16));
+	constexpr FontSize FontSize::XLarge = FontSize(uint16_t(20));
+	constexpr FontSize FontSize::XXLarge = FontSize(uint16_t(24));
 }
 
 NS_LAYOUT_END

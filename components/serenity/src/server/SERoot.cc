@@ -821,6 +821,8 @@ Root::Root() {
 }
 
 Root::~Root() {
+	// gnutls_global_deinit();
+
     s_sharedServer = 0;
 
     s_timerExitFlag.clear();
@@ -1127,6 +1129,10 @@ void Root::onHeartBeat() {
 }
 
 void Root::onServerChildInit(apr_pool_t *p, server_rec* s) {
+
+	// Prevent GnuTLS reinitializing
+	::setenv("GNUTLS_NO_IMPLICIT_INIT", "1", 0);
+
 	apr::pool::perform([&] {
 		_pending = new Vector<PendingTask>();
 

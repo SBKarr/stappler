@@ -219,7 +219,7 @@ void FormField::onActivated(bool active) {
 			_placeholder->runAction(cocos2d::EaseQuadraticActionInOut::create(
 					Rc<ProgressAction>::create(0.15f, [this, origPos, size] (ProgressAction *, float p) {
 				_placeholder->setPosition(progress(origPos, _node->getPosition() + Vec2(0.0f, _node->getContentSize().height + (_dense?4.0f:8.0f)), p));
-				_placeholder->setFontSize(progress(size, uint8_t(12), p));
+				_placeholder->setFontSize(progress(size, uint16_t(12), p));
 			})));
 		} else {
 			_underlineLayer->setOpacity(64);
@@ -231,7 +231,7 @@ void FormField::onActivated(bool active) {
 				_placeholder->runAction(cocos2d::EaseQuadraticActionInOut::create(
 						Rc<ProgressAction>::create(0.15f, [this] (ProgressAction *, float p) {
 					_placeholder->setPosition(_node->getPosition() + progress(Vec2(0.0f, _node->getContentSize().height + (_dense?4.0f:8.0f)), Vec2(0.0f, 0.0f), p));
-					_placeholder->setFontSize(progress(uint8_t(12), _label->getFontSize(), p));
+					_placeholder->setFontSize(progress(uint16_t(12), _label->getFontSize(), p));
 				})));
 			} else {
 				_placeholder->setPosition(_node->getPosition() + Vec2(0.0f, _node->getContentSize().height + (_dense?4.0f:8.0f)));

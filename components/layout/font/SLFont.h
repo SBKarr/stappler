@@ -29,6 +29,7 @@ THE SOFTWARE.
 
 NS_LAYOUT_BEGIN
 
+using FontSize = style::FontSize;
 using FontFace = style::FontFace;
 using FontParameters = style::FontStyleParameters;
 
@@ -37,16 +38,16 @@ using FontWeight = style::FontWeight;
 using FontStretch = style::FontStretch;
 using ReceiptCallback = Function<Bytes(const FontSource *, const String &)>;
 
-struct Metrics {
-	uint16_t size = 0;
-	uint16_t height = 0;
-	int16_t ascender = 0;
-	int16_t descender = 0;
+struct Metrics final {
+	uint16_t size = 0; // font size in pixels
+	uint16_t height = 0; // default font line height
+	int16_t ascender = 0; // The distance from the baseline to the highest coordinate used to place an outline point
+	int16_t descender = 0; // The distance from the baseline to the lowest grid coordinate used to place an outline point
 	int16_t underlinePosition = 0;
 	int16_t underlineThickness = 0;
 };
 
-struct CharLayout {
+struct CharLayout final {
 	char16_t charID = 0;
 	int16_t xOffset = 0;
 	int16_t yOffset = 0;
@@ -55,13 +56,13 @@ struct CharLayout {
 	operator char16_t() const { return charID; }
 };
 
-struct CharSpec { // 8 bytes
+struct CharSpec final {
 	char16_t charID = 0;
 	int16_t pos = 0;
 	uint16_t advance = 0;
 };
 
-struct CharTexture {
+struct CharTexture final {
 	char16_t charID = 0;
 	uint16_t x = 0;
 	uint16_t y = 0;
@@ -72,7 +73,7 @@ struct CharTexture {
 	operator char16_t() const { return charID; }
 };
 
-struct FontCharString {
+struct FontCharString final {
 	void addChar(char16_t);
 	void addString(const String &);
 	void addString(const WideString &);
@@ -88,6 +89,13 @@ struct FontTextureInterface {
 	Function<bool(size_t, const void *data, uint16_t offsetX, uint16_t offsetY, uint16_t width, uint16_t height)> draw;
 };
 
+/* Font layout data
+ *
+ * this immutable struct stores data about
+ * - basic fonts metric
+ * - char layout for formatting
+ * - kerning data for formatting
+ */
 struct FontData final : public Ref {
 	bool init();
 	bool init(const FontData &data);
@@ -106,12 +114,19 @@ struct FontData final : public Ref {
 	Map<uint32_t, int16_t> kerning;
 };
 
+/* FontLayout - Copy-on-write wrapper for FontData
+ *
+ */
 class FontLayout final : public Ref {
 public:
-	using MetricCallback = Function<Metrics(const FontSource *, const Vector<FontFace::FontFaceSource> &, uint16_t, const ReceiptCallback &)>;
-	using UpdateCallback = Function<Rc<FontData>(const FontSource *, const Vector<FontFace::FontFaceSource> &, const Rc<FontData> &, const Vector<char16_t> &, const ReceiptCallback &)>;
+	// Callback to acquire metrics from font source and size
+	using MetricCallback = Function<Metrics(const FontSource *,
+			const Vector<FontFace::FontFaceSource> &, FontSize, const ReceiptCallback &)>;
 
-	bool init(const FontSource *, const String &name, const StringView &family, uint8_t size, const FontFace &, const ReceiptCallback &,
+	using UpdateCallback = Function<Rc<FontData>(const FontSource *,
+			const Vector<FontFace::FontFaceSource> &, const Rc<FontData> &, const Vector<char16_t> &, const ReceiptCallback &)>;
+
+	bool init(const FontSource *, const String &name, const StringView &family, FontSize size, const FontFace &, const ReceiptCallback &,
 			const MetricCallback &, const UpdateCallback &);
 	virtual ~FontLayout();
 
@@ -133,18 +148,16 @@ public:
 	const ReceiptCallback &getCallback() const;
 	const FontFace &getFontFace() const;
 
-	//uint8_t getOriginalSize() const;
-	uint16_t getSize() const;
+	FontSize getSize() const;
 
 	FontParameters getStyle() const;
 
 protected:
 	void merge(const Vector<char16_t> &);
 
-	//float _density;
 	String _name;
 	String _family;
-	uint16_t _dsize;
+	FontSize _dsize;
 	FontFace _face;
 	Rc<FontData> _data;
 	ReceiptCallback _callback = nullptr;
@@ -157,12 +170,21 @@ protected:
 class FontSource : public Ref {
 public:
 	using UpdateCallback = Function<void(uint32_t, const Map<String, Vector<char16_t>> &)>;
+
+	/* Font face map defines association between font name and specific font faces with sources */
 	using FontFaceMap = Map<String, Vector<FontFace>>;
+
 	using SearchDirs = Vector<String>;
 
+	/* Heuristical scoring for required font parameters and existed font faces
+	 *
+	 * This function can be used to find most appropriate FontFace for drawing with parameters */
 	static size_t getFontFaceScore(const FontParameters &label, const FontFace &file);
-	static void mergeFontFace(FontFaceMap &target, const FontFaceMap &);
 
+	/* Merge source FontFaceMap into target */
+	static void mergeFontFace(FontFaceMap &target, const FontFaceMap &source);
+
+	/* Construct FontParameters struct from name, size and styling enums (FontStyle/FontWeight/FontStretch) */
 	template <typename ... Args>
 	static FontParameters getFontParameters(const String &family, uint8_t size, Args && ... args) {
 		FontParameters p;
@@ -174,7 +196,7 @@ public:
 
 	virtual ~FontSource();
 
-	/* face map and scale is persistent within source,
+	/* face map and scale are persistent within source,
 	 * you should create another source object, if you want another map or scale */
 	virtual bool init(FontFaceMap &&, const ReceiptCallback &, float scale = 1.0f, SearchDirs && = SearchDirs());
 

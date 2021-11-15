@@ -42,7 +42,7 @@ public:
 	using FontStretch = layout::style::FontStretch;
 
 	using Opacity = ValueWrapper<uint8_t, class OpacityTag>;
-	using FontSize = ValueWrapper<uint8_t, class FontSizeTag>;
+	using FontSize = layout::style::FontSize;
 	using FontFamily = ValueWrapper<uint32_t, class FontFamilyTag>;
 
 	using Source = font::FontSource;
@@ -70,7 +70,7 @@ public:
 			VerticalAlign verticalAlign;
 			Color3B color;
 			uint8_t opacity;
-			uint8_t fontSize;
+			FontSize fontSize;
 			FontStyle fontStyle;
 			FontWeight fontWeight;
 			FontStretch fontStretch;
@@ -90,7 +90,7 @@ public:
 			Param(const Color3B &val) : name(Name::Color) { value.color = val; }
 			Param(const layout::Color &val) : name(Name::Color) { value.color = val; }
 			Param(const Opacity &val) : name(Name::Opacity) { value.opacity = val.get(); }
-			Param(const FontSize &val) : name(Name::FontSize) { value.fontSize = val.get(); }
+			Param(const FontSize &val) : name(Name::FontSize) { value.fontSize = val; }
 			Param(const FontStyle &val) : name(Name::FontStyle) { value.fontStyle = val; }
 			Param(const FontWeight &val) : name(Name::FontWeight) { value.fontWeight = val; }
 			Param(const FontStretch &val) : name(Name::FontStretch) { value.fontStretch = val; }
@@ -159,7 +159,7 @@ public:
 		static void readParameter(DescriptionStyle &p, VerticalAlign value) { p.text.verticalAlign = value; }
 		static void readParameter(DescriptionStyle &p, Opacity value) { p.text.opacity = value.get(); }
 		static void readParameter(DescriptionStyle &p, const Color3B &value) { p.text.color = value; }
-		static void readParameter(DescriptionStyle &p, FontSize value) { p.font.fontSize = value.get(); }
+		static void readParameter(DescriptionStyle &p, FontSize value) { p.font.fontSize = value; }
 		static void readParameter(DescriptionStyle &p, FontStyle value) { p.font.fontStyle = value; }
 		static void readParameter(DescriptionStyle &p, FontWeight value) { p.font.fontWeight = value; }
 		static void readParameter(DescriptionStyle &p, FontStretch value) { p.font.fontStretch = value; }
@@ -279,8 +279,8 @@ public:
 	void setVerticalAlign(const VerticalAlign &);
 	VerticalAlign getVerticalAlign() const;
 
-	void setFontSize(const uint8_t &);
-	uint8_t getFontSize() const;
+	void setFontSize(const uint16_t &);
+	uint16_t getFontSize() const;
 
 	void setFontStyle(const FontStyle &);
 	FontStyle getFontStyle() const;

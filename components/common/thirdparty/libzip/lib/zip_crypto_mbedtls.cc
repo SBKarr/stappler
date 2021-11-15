@@ -32,37 +32,9 @@
 */
 
 #include "libzip_impl.h"
-
-#include <mbedtls/ctr_drbg.h>
-#include <mbedtls/entropy.h>
-#include <mbedtls/pkcs5.h>
-#include <mbedtls/md.h>
-
-typedef struct {
-    mbedtls_entropy_context entropy;
-    mbedtls_ctr_drbg_context ctr_drbg;
-} zip_random_context_t;
+#include <gnutls/crypto.h>
 
 ZIP_EXTERN bool
 zip_secure_random(zip_uint8_t *buffer, zip_uint16_t length) {
-    static zip_random_context_t *ctx = NULL;
-    const char *pers = "zip_crypto_mbedtls";
-
-    if (!ctx) {
-	ctx = (zip_random_context_t *)malloc(sizeof(zip_random_context_t));
-	if (!ctx) {
-	    return false;
-	}
-	mbedtls_entropy_init(&ctx->entropy);
-	mbedtls_ctr_drbg_init(&ctx->ctr_drbg);
-	if (mbedtls_ctr_drbg_seed(&ctx->ctr_drbg, mbedtls_entropy_func, &ctx->entropy, (const unsigned char *)pers, strlen((const char *)pers)) != 0) {
-	    mbedtls_ctr_drbg_free(&ctx->ctr_drbg);
-	    mbedtls_entropy_free(&ctx->entropy);
-	    free(ctx);
-	    ctx = NULL;
-	    return false;
-	}
-    }
-
-    return mbedtls_ctr_drbg_random(&ctx->ctr_drbg, (unsigned char *)buffer, (size_t)length) == 0;
+	return gnutls_rnd(GNUTLS_RND_KEY, buffer, length) == GNUTLS_E_SUCCESS;
 }

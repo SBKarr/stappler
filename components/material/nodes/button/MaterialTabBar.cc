@@ -515,7 +515,7 @@ float TabBar::getItemSize(const String &name, bool extended, bool selected) cons
 		WideString str = string::toUtf16(name);
 		float width = Label::getStringWidth(style, str, 0.0f, true);
 		if (width > 72.0f) {
-			style.font.fontSize = 8;
+			style.font.fontSize = layout::FontSize(8);
 			width = ceilf(Label::getStringWidth(style, str, 0.0f, true));
 		}
 		return std::max(width + 16.0f, metrics::tabMinWidth());

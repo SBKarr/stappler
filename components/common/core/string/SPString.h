@@ -23,8 +23,7 @@ THE SOFTWARE.
 #ifndef COMMON_STRING_SPSTRING_H_
 #define COMMON_STRING_SPSTRING_H_
 
-#include "SPBytesView.h"
-#include "SPIO.h"
+#include "SPCrypto.h"
 
 NS_SP_EXT_BEGIN(string)
 
@@ -227,121 +226,10 @@ struct ToStringTraits<memory::PoolInterface> {
 NS_SP_EXT_END(string)
 
 
-NS_SP_BEGIN
-
-struct CoderSource {
-	CoderSource(const uint8_t *d, size_t len) : _data(d, len) { }
-	CoderSource(const char *d, size_t len) : _data((uint8_t *)d, len) { }
-	CoderSource(const char *d) : _data((uint8_t *)d, strlen(d)) { }
-	CoderSource(const StringView &d) : _data((uint8_t *)d.data(), d.size()) { }
-
-	CoderSource(const typename memory::PoolInterface::BytesType &d) : _data(d.data(), d.size()) { }
-	CoderSource(const typename memory::StandartInterface::BytesType &d) : _data(d.data(), d.size()) { }
-
-	CoderSource(const typename memory::PoolInterface::StringType &d) : _data((const uint8_t *)d.data(), d.size()) { }
-	CoderSource(const typename memory::StandartInterface::StringType &d) : _data((const uint8_t *)d.data(), d.size()) { }
-
-	template <Endian Order>
-	CoderSource(const BytesViewTemplate<Order> &d) : _data(d.data(), d.size()) { }
-
-	CoderSource(const BytesReader<uint8_t> &d) : _data(d.data(), d.size()) { }
-	CoderSource(const BytesReader<char> &d) : _data((const uint8_t *)d.data(), d.size()) { }
-
-	template <size_t Size>
-	CoderSource(const std::array<uint8_t, Size> &d) : _data(d.data(), Size) { }
-
-	template <typename Container>
-	CoderSource(const Container &d) : _data((const uint8_t *)d.data(), d.size()) { }
-
-	CoderSource() { }
-
-	BytesViewTemplate<Endian::Network> _data;
-	size_t _offset = 0;
-
-	CoderSource(const CoderSource &) = delete;
-	CoderSource(CoderSource &&) = delete;
-
-	CoderSource& operator=(const CoderSource &) = delete;
-	CoderSource& operator=(CoderSource &&) = delete;
-
-	const uint8_t *data() const { return _data.data() + _offset; }
-	size_t size() const { return _data.size() - _offset; }
-	bool empty() const { return _data.empty() || _offset == _data.size(); }
-
-	uint8_t operator[] (size_t s) const { return _data[s + _offset]; }
-
-	size_t read(uint8_t *buf, size_t nbytes) {
-		const auto remains = _data.size() - _offset;
-		if (nbytes > remains) {
-			nbytes = remains;
-		}
-		memcpy(buf, _data.data() + _offset, nbytes);
-		_offset += nbytes;
-		return nbytes;
-	}
-
-	size_t seek(int64_t offset, io::Seek s) {
-		switch (s) {
-		case io::Seek::Current:
-			if (offset + _offset > _data.size()) {
-				_offset = _data.size();
-			} else if (offset + int64_t(_offset) < 0) {
-				_offset = 0;
-			} else {
-				_offset += offset;
-			}
-			break;
-		case io::Seek::End:
-			if (offset > 0) {
-				_offset = _data.size();
-			} else if (size_t(-offset) > _data.size()) {
-				_offset = 0;
-			} else {
-				_offset = size_t(-offset);
-			}
-			break;
-		case io::Seek::Set:
-			if (offset < 0) {
-				_offset = 0;
-			} else if (size_t(offset) <= _data.size()) {
-				_offset = size_t(offset);
-			} else {
-				_offset = _data.size();
-			}
-			break;
-		}
-		return _offset;
-	}
-
-	size_t tell() const {
-		return _offset;
-	}
-};
-
-NS_SP_END
-
-
-NS_SP_EXT_BEGIN(io)
-
-template <>
-struct ProducerTraits<CoderSource> {
-	using type = CoderSource;
-	static size_t ReadFn(void *ptr, uint8_t *buf, size_t nbytes) {
-		return ((type *)ptr)->read(buf, nbytes);
-	}
-
-	static size_t SeekFn(void *ptr, int64_t offset, Seek s) {
-		return ((type *)ptr)->seek(offset, s);
-	}
-	static size_t TellFn(void *ptr) {
-		return ((type *)ptr)->tell();
-	}
-};
-
-NS_SP_EXT_END(io)
-
-
 NS_SP_EXT_BEGIN(string)
+
+using Sha256 = crypto::Sha256;
+using Sha512 = crypto::Sha512;
 
 /* Very simple and quick hasher, do NOT use it in collision-sensative cases */
 inline uint32_t hash32(const StringView &key) { return hash::hash32(key.data(), uint32_t(key.size())); }
@@ -356,81 +244,8 @@ template <typename StringType>
 inline int64_t stdlibHashSigned(const StringType &key) { return reinterpretValue<int64_t>(stdlibHashUnsigned(key)); }
 
 
-/* SHA-2 512-bit context
- * designed for chain use: Sha512().update(input).final() */
-struct Sha512 {
-	struct _Ctx {
-		uint64_t length;
-		uint64_t state[8];
-		uint32_t curlen;
-		uint8_t buf[128];
-	};
-
-	constexpr static uint32_t Length = 64;
-	using Buf = std::array<uint8_t, Length>;
-
-	static Buf make(const CoderSource &, const StringView &salt = StringView());
-	static Buf hmac(const CoderSource &data, const CoderSource &key);
-
-	template <typename ... Args>
-	static Buf perform(Args && ... args);
-
-	Sha512();
-	Sha512 & init();
-
-	Sha512 & update(const uint8_t *, size_t);
-	Sha512 & update(const CoderSource &);
-
-	template  <typename T, typename ... Args>
-	void _update(T && t, Args && ... args);
-
-	template  <typename T>
-	void _update(T && t);
-
-	Buf final();
-	void final(uint8_t *);
-
-	_Ctx ctx;
-};
-
-/* SHA-2 256-bit context
- * designed for chain use: Sha256().update(input).final() */
-struct Sha256 {
-	struct _Ctx {
-		uint64_t length;
-		uint32_t state[8];
-		uint32_t curlen;
-		uint8_t buf[64];
-	};
-
-	constexpr static uint32_t Length = 32;
-	using Buf = std::array<uint8_t, Length>;
-
-	static Buf make(const CoderSource &, const StringView &salt = StringView());
-	static Buf hmac(const CoderSource &data, const CoderSource &key);
-
-	template <typename ... Args>
-	static Buf perform(Args && ... args);
-
-	Sha256();
-	Sha256 & init();
-
-	Sha256 & update(const uint8_t *, size_t);
-	Sha256 & update(const CoderSource &);
-
-	template  <typename T, typename ... Args>
-	void _update(T && t, Args && ... args);
-
-	template  <typename T>
-	void _update(T && t);
-
-	Buf final();
-	void final(uint8_t *);
-
-	_Ctx ctx;
-};
-
 NS_SP_EXT_END(string)
+
 
 NS_SP_EXT_BEGIN(base16)
 
@@ -922,43 +737,6 @@ inline uint8_t utf8Encode(OutputStream &str, char16_t c) {
 		str << ((char)(0x80 | (c & 0x3f)));
 		return 3;
 	}
-}
-
-
-template <typename ... Args>
-inline Sha512::Buf Sha512::perform(Args && ... args) {
-	Sha512 ctx;
-	ctx._update(std::forward<Args>(args)...);
-	return ctx.final();
-}
-
-template  <typename T, typename ... Args>
-inline void Sha512::_update(T && t, Args && ... args) {
-	update(std::forward<T>(t));
-	_update(std::forward<Args>(args)...);
-}
-
-template  <typename T>
-inline void Sha512::_update(T && t) {
-	update(std::forward<T>(t));
-}
-
-template <typename ... Args>
-inline Sha256::Buf Sha256::perform(Args && ... args) {
-	Sha256 ctx;
-	ctx._update(std::forward<Args>(args)...);
-	return ctx.final();
-}
-
-template  <typename T, typename ... Args>
-inline void Sha256::_update(T && t, Args && ... args) {
-	update(std::forward<T>(t));
-	_update(std::forward<Args>(args)...);
-}
-
-template  <typename T>
-inline void Sha256::_update(T && t) {
-	update(std::forward<T>(t));
 }
 
 NS_SP_EXT_END(string)

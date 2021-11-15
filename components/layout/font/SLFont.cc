@@ -101,9 +101,8 @@ int16_t FontData::kerningAmount(char16_t first, char16_t second) const {
 	return 0;
 }
 
-bool FontLayout::init(const FontSource * source, const String &name, const StringView &family, uint8_t size, const FontFace &face,
+bool FontLayout::init(const FontSource * source, const String &name, const StringView &family, FontSize size, const FontFace &face,
 		const ReceiptCallback &cb, const MetricCallback &mcb, const UpdateCallback &ucb) {
-	//_density = d;
 	_name = name;
 	_family = family.str();
 	_dsize = size;
@@ -200,7 +199,7 @@ const FontFace &FontLayout::getFontFace() const {
 //	return _size;
 //}
 
-uint16_t FontLayout::getSize() const {
+FontSize FontLayout::getSize() const {
 	return _dsize;
 }
 
@@ -274,9 +273,10 @@ Rc<FontLayout> FontSource::getLayout(const FontParameters &style, float scale) {
 	if (isnan(scale)) {
 		scale = _fontScale;
 	}
+
 	auto face = getFontFace(family, style);
 	if (face) {
-		auto dsize = uint16_t(roundf(style.fontSize * _density * scale));
+		auto dsize = FontSize(roundf(style.fontSize.get() * _density * scale));
 		auto name = face->getConfigName(family, dsize);
 		_mutex.lock();
 		auto l_it = _layouts.find(name);

@@ -23,11 +23,6 @@ THE SOFTWARE.
 #include "ExternalSession.h"
 #include "JsonWebToken.h"
 
-#include "mbedtls/pk.h"
-#include "mbedtls/aes.h"
-#include "mbedtls/entropy.h"
-#include "mbedtls/ctr_drbg.h"
-
 NS_SA_BEGIN
 
 static data::Value Session_getStorageData(const Request &rctx, const mem::uuid &t) {
