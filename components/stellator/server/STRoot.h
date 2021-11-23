@@ -45,19 +45,8 @@ public:
 
 	bool runFollowedTask(const Server &server, Task *task);
 
-	db::pq::Driver::Handle dbdOpen(mem::pool_t *, const Server &) const;
-	void dbdClose(mem::pool_t *, const Server &, const db::pq::Driver::Handle &);
-
-	db::pq::Handle dbOpenHandle(mem::pool_t *, const Server &);
-	void dbCloseHandle(const Server &, db::pq::Handle &);
-
-	//ap_dbd_t * dbdRequestAcquire(request_rec *);
-	//ap_dbd_t * dbdConnectionAcquire(conn_rec *);
-	//ap_dbd_t * dbdPoolAcquire(server_rec *, apr_pool_t *);
-
-	void performStorage(mem::pool_t *, const Server &, const mem::Callback<void(const db::Adapter &)> &);
-
-	db::pq::Driver * getDbDriver() const;
+	db::sql::Driver * getDbDriver(mem::StringView);
+	db::sql::Driver * getRootDbDriver() const;
 
 	void scheduleCancel();
 
@@ -75,8 +64,6 @@ protected:
 
 	void onChildInit();
 	void onHeartBeat();
-
-	bool addServer(const mem::Value &);
 
 	mem::pool_t *_pool = nullptr;
 	Internal *_internal = nullptr;

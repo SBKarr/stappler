@@ -39,7 +39,7 @@ class Handle : public db::sql::SqlHandle {
 public:
 	using Value = mem::Value;
 
-	Handle(Driver *, Driver::Handle);
+	Handle(const Driver *, Driver::Handle);
 
 	Handle(const Handle &) = delete;
 	Handle &operator=(const Handle &) = delete;
@@ -49,11 +49,9 @@ public:
 
 	operator bool () const;
 
+	const Driver *getDriver() const { return driver; }
 	Driver::Handle getHandle() const;
 	Driver::Connection getConnection() const;
-
-	void setStorageTypeMap(const mem::Vector<mem::Pair<uint32_t, Interface::StorageType>> *);
-	void setCustomTypeMap(const mem::Vector<mem::Pair<uint32_t, mem::String>> *);
 
 	virtual void makeQuery(const mem::Callback<void(sql::SqlQuery &)> &cb) override;
 
@@ -65,9 +63,6 @@ public:
 			const mem::Callback<void(const mem::Value &)> &err = nullptr) override;
 
 	virtual bool isSuccess() const override;
-
-	Interface::StorageType getTypeById(uint32_t) const;
-	mem::StringView getTypeNameById(uint32_t) const;
 
 	void close();
 
@@ -84,15 +79,12 @@ protected:
 
 	using ViewIdVec = mem::Vector<stappler::Pair<const Scheme::ViewScheme *, int64_t>>;
 
-	Driver *driver = nullptr;
+	const Driver *driver = nullptr;
 	Driver::Handle handle = Driver::Handle(nullptr);
 	Driver::Connection conn = Driver::Connection(nullptr);
 	Driver::Status lastError = Driver::Status::Empty;
 	mem::Value lastErrorInfo;
 	TransactionLevel level = TransactionLevel::ReadCommited;
-
-	const mem::Vector<mem::Pair<uint32_t, StorageType>> *storageTypes = nullptr;
-	const mem::Vector<mem::Pair<uint32_t, mem::String>> *customTypes = nullptr;
 };
 
 NS_DB_PQ_END

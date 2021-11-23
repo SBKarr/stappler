@@ -52,6 +52,12 @@ using namespace stappler::serenity::config;
 
 }
 
+namespace sql {
+
+class Driver;
+
+}
+
 NS_DB_END
 
 #elif STELLATOR

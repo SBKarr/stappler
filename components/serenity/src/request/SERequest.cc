@@ -92,17 +92,9 @@ struct Request::Config : public AllocPool {
 		return _path;
 	}
 
-	db::pq::Handle *acquireDatabase(request_rec *r) {
+	db::Interface *acquireDatabase(request_rec *r) {
 		if (!_database) {
-			auto handle = Root::getInstance()->dbdRequestAcquire(r);
-			if (handle) {
-				_database = new db::pq::Handle(db::pq::Driver::open(), db::pq::Driver::Handle(handle));
-				if (_database) {
-					auto conf = (Server::Config *)Request(r).server().getConfig();
-					_database->setStorageTypeMap(&conf->storageTypes);
-					_database->setCustomTypeMap(&conf->customTypes);
-				}
-			}
+			return Server(r->server).acquireDbForRequest(r);
 		}
 		return _database;
 	}
@@ -118,7 +110,7 @@ struct Request::Config : public AllocPool {
 	Vector<data::Value> _errors;
 	db::InputConfig _config;
 
-	db::pq::Handle *_database = nullptr;
+	db::Interface *_database = nullptr;
 	RequestHandler *_handler = nullptr;
 	Session *_session = nullptr;
 	User *_user = nullptr;

@@ -269,28 +269,6 @@ bool Handler::performAsync(const Callback<void(Task &)> &cb) const {
 	return _conn->performAsync(cb);
 }
 
-storage::Adapter Handler::storage() const {
-	auto pool = mem::pool::acquire();
-
-	db::Interface *iface = nullptr;
-	apr_pool_userdata_get((void **)&iface, (const char *)config::getStorageInterfaceKey(), pool);
-
-	if (!iface) {
-		auto dbd = Root::getInstance()->dbdPoolAcquire(_manager->server().server(), mem::pool::acquire());
-		auto db = new (pool) db::pq::Handle(db::pq::Driver::open(), db::pq::Driver::Handle(dbd));
-		iface = db;
-
-		Server::Config *cfg = (Server::Config *)_manager->server().getConfig();
-
-		db->setStorageTypeMap(&cfg->storageTypes);
-		db->setCustomTypeMap(&cfg->customTypes);
-
-		mem::pool::userdata_set((void *)iface, config::getStorageInterfaceKey(), nullptr, pool);
-	}
-
-	return storage::Adapter(iface);
-}
-
 mem::pool_t *Handler::pool() const {
 	return _conn->getHandlePool();
 }

@@ -46,10 +46,8 @@ public:
 	};
 
 	struct Config {
-		mem::String name;
+		mem::StringView name;
 		const Scheme *fileScheme = nullptr;
-		mem::Vector<mem::Pair<uint32_t, StorageType>> *storageTypes = nullptr;
-		mem::Vector<mem::Pair<uint32_t, mem::String>> *customTypes = nullptr;
 	};
 
 	virtual ~Interface() { }
@@ -65,6 +63,9 @@ public: // resource requests
 
 public:
 	virtual bool init(const Config &serv, const mem::Map<mem::StringView, const Scheme *> &) = 0;
+
+	virtual void makeSessionsCleanup() { }
+	virtual int64_t processBroadcasts(const mem::Callback<void(stappler::BytesView)> &, int64_t value) { return 0; }
 
 	virtual mem::Value select(Worker &, const Query &) = 0;
 

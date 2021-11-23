@@ -33,35 +33,32 @@ public:
 		int nmin = 1;
 		int nkeep = 2;
 		int nmax = 10;
-		apr_interval_time_t exptime = 300;
+		int64_t exptime = 300;
 		bool persistent = true;
 	};
 
-	static DbdModule *create(mem::pool_t *root, const Config &, Map<StringView, StringView> *params, StringView dbName);
+	static DbdModule *create(mem::pool_t *root, Map<StringView, StringView> *params);
 	static void destroy(DbdModule *);
 
-	ap_dbd_t *connect(apr_pool_t *) const;
-
-	ap_dbd_t *openConnection(apr_pool_t *);
-	void closeConnection(ap_dbd_t *);
+	db::sql::Driver::Handle openConnection(apr_pool_t *);
+	void closeConnection(db::sql::Driver::Handle);
 
 	void close();
 
 	mem::pool_t *getPool() const { return _pool; }
 	bool isDestroyed() const { return _destroyed; }
-	db::pq::Driver *getDriver() const { return _dbDriver; }
+	db::sql::Driver *getDriver() const { return _dbDriver; }
 	Map<StringView, StringView> *getParams() const { return _dbParams; }
 
 protected:
-	DbdModule(mem::pool_t *root, const Config &, Map<StringView, StringView> *params, StringView dbName);
+	DbdModule(mem::pool_t *root, const Config &, db::sql::Driver *, Map<StringView, StringView> *params);
 
 	mem::pool_t *_pool = nullptr;
 	Config _config;
 	Map<StringView, StringView> *_dbParams = nullptr;
-	StringView _dbName;
 	bool _destroyed = true;
 	apr_reslist_t *_reslist = nullptr;
-	db::pq::Driver *_dbDriver = nullptr;
+	db::sql::Driver *_dbDriver = nullptr;
 
 	Vector<const char *> _keywords;
 	Vector<const char *> _values;

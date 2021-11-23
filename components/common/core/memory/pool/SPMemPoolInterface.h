@@ -125,6 +125,7 @@ void *palloc(pool_t *, size_t);
 void *calloc(pool_t *, size_t count, size_t eltsize);
 void free(pool_t *, void *ptr, size_t size);
 
+void cleanup_kill(pool_t *, void *, cleanup_fn);
 void cleanup_register(pool_t *, void *, cleanup_fn);
 void cleanup_register(pool_t *p, memory::function<void()> &&cb);
 

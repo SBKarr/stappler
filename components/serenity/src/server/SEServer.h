@@ -24,6 +24,7 @@ THE SOFTWARE.
 #define SERENITY_SRC_SERVER_SESERVER_H_
 
 #include "Define.h"
+#include "STSqlDriver.h"
 
 NS_SA_BEGIN
 
@@ -61,6 +62,7 @@ public:
 	void setWebHookParams(StringView w);
 	void setForceHttps();
 	void setProtectedList(StringView w);
+	void setDbParams(StringView w);
 
 	void addProtectedLocation(const StringView &);
 
@@ -125,6 +127,11 @@ public:
 
 	void performWithStorage(const Callback<void(const db::Transaction &)> &cb, bool openNewConnecton = false) const;
 
+	db::Interface *acquireDbForRequest(request_rec *) const;
+
+	db::sql::Driver::Handle openDbConnection(mem::pool_t *) const;
+	void closeDbConnection(db::sql::Driver::Handle) const;
+
 public: // httpd server info
 	apr::weak_string getDefaultName() const;
 
@@ -167,6 +174,7 @@ public: // httpd server info
 
 	tpl::Cache *getTemplateCache() const;
 	pug::Cache *getPugCache() const;
+	db::sql::Driver *getDbDriver() const;
 
 	void setSessionKeys(StringView pub, StringView priv) const;
 	StringView getSessionPublicKey() const;

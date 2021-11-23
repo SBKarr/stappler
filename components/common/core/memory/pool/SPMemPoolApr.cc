@@ -139,6 +139,10 @@ void *calloc(pool_t *p, size_t count, size_t eltsize) {
 	return ptr;
 }
 
+void cleanup_kill(pool_t *p, void *ptr, status_t(*cb)(void *)) {
+	apr_pool_cleanup_kill(p, ptr, cb);
+}
+
 void cleanup_register(pool_t *p, void *ptr, status_t(*cb)(void *)) {
 	apr_pool_cleanup_register(p, ptr, cb, apr_pool_cleanup_null);
 }
@@ -220,6 +224,7 @@ static inline void *alloc(custom::Pool *p, size_t &size) { return nullptr; }
 static inline void free(custom::Pool *p, void *ptr, size_t size) { }
 static inline void *palloc(custom::Pool *p, size_t size) { return nullptr; }
 static inline void *calloc(custom::Pool *p, size_t count, size_t eltsize) { return nullptr; }
+static inline void cleanup_kill(custom::Pool *p, void *ptr, custom::Status(*cb)(void *)) { }
 static inline void cleanup_register(custom::Pool *p, void *ptr, custom::Status(*cb)(void *)) { }
 static inline custom::Status userdata_set(const void *data, const char *key, custom::Status(*cb)(void *), custom::Pool *pool) { return custom::SUCCESS; }
 static inline custom::Status userdata_setn(const void *data, const char *key, custom::Status(*cb)(void *), custom::Pool *pool) { return custom::SUCCESS; }

@@ -87,6 +87,10 @@ using Array = Value::ArrayType;
 using Dictionary = Value::DictionaryType;
 using EncodeFormat = stappler::data::EncodeFormat;
 
+using Mutex = toolkit::TypeTraits::mutex_type;
+
+using stappler::makeSpanView;
+
 inline auto writeData(const Value &data, EncodeFormat fmt = EncodeFormat()) -> Bytes {
 	return stappler::data::EncodeTraits<stappler::memory::PoolInterface>::write(data, fmt);
 }
@@ -95,9 +99,32 @@ inline bool writeData(std::ostream &stream, const Value &data, EncodeFormat fmt 
 	return stappler::data::EncodeTraits<stappler::memory::PoolInterface>::write(stream, data, fmt);
 }
 
-using Mutex = toolkit::TypeTraits::mutex_type;
+template <typename T>
+inline bool emplace_ordered(Vector<T> &vec, T val) {
+	auto lb = std::lower_bound(vec.begin(), vec.end(), val);
+	if (lb == vec.end()) {
+		vec.emplace_back(val);
+		return true;
+	} else if (*lb != val) {
+		vec.emplace(lb, val);
+		return true;
+	}
+	return false;
+}
 
-using stappler::makeSpanView;
+inline bool emplace_ordered(Vector<Value> &vec, const Value &val) {
+	auto lb = std::lower_bound(vec.begin(), vec.end(), val, [&] (const Value &l, const Value &r) {
+		return l.getInteger() < r.getInteger();
+	});
+	if (lb == vec.end()) {
+		vec.emplace_back(val);
+		return true;
+	} else if (*lb != val) {
+		vec.emplace(lb, val);
+		return true;
+	}
+	return false;
+}
 
 }
 
@@ -153,6 +180,10 @@ using Array = Value::ArrayType;
 using Dictionary = Value::DictionaryType;
 using EncodeFormat = stappler::data::EncodeFormat;
 
+using Mutex = std::mutex;
+
+using stappler::makeSpanView;
+
 inline auto writeData(const Value &data, EncodeFormat fmt = EncodeFormat()) -> Bytes {
 	return stappler::data::EncodeTraits<stappler::memory::StandartInterface>::write(data, fmt);
 }
@@ -161,7 +192,32 @@ inline bool writeData(std::ostream &stream, const Value &data, EncodeFormat fmt 
 	return stappler::data::EncodeTraits<stappler::memory::StandartInterface>::write(stream, data, fmt);
 }
 
-using Mutex = std::mutex;
+template <typename T>
+inline bool emplace_ordered(Vector<T> &vec, T val) {
+	auto lb = std::lower_bound(vec.begin(), vec.end(), val);
+	if (lb == vec.end()) {
+		vec.emplace_back(val);
+		return true;
+	} else if (*lb != val) {
+		vec.emplace(lb, val);
+		return true;
+	}
+	return false;
+}
+
+inline bool emplace_ordered(Vector<Value> &vec, const Value &val) {
+	auto lb = std::lower_bound(vec.begin(), vec.end(), val, [&] (const Value &l, const Value &r) {
+		return l.getInteger() < r.getInteger();
+	});
+	if (lb == vec.end()) {
+		vec.emplace_back(val);
+		return true;
+	} else if (*lb != val) {
+		vec.emplace(lb, val);
+		return true;
+	}
+	return false;
+}
 
 }
 

@@ -66,6 +66,7 @@ void free(pool_t *p, void *ptr, size_t size);
 void *palloc(pool_t *p, size_t size);
 void *calloc(pool_t *p, size_t count, size_t eltsize);
 
+void cleanup_kill(custom::Pool *p, void *ptr, status_t(*cb)(void *));
 void cleanup_register(pool_t *p, void *ptr, status_t(*cb)(void *));
 
 status_t userdata_set(const void *data, const char *key, cleanup_fn cb, pool_t *pool);

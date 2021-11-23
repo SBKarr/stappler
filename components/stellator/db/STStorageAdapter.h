@@ -50,7 +50,9 @@ public: // key-value storage
 	bool clear(const stappler::CoderSource &) const;
 
 public:
-	bool init(const Interface::Config &cfg, const mem::Map<mem::StringView, const Scheme *> &);
+	bool init(const Interface::Config &cfg, const mem::Map<mem::StringView, const Scheme *> &) const;
+
+	void makeSessionsCleanup() const;
 
 	User * authorizeUser(const Auth &, const mem::StringView &name, const mem::StringView &password) const;
 

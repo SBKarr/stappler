@@ -118,8 +118,6 @@ public:
 
 	bool performAsync(const Callback<void(Task &)> &cb) const;
 
-	storage::Adapter storage() const;
-
 protected:
 	friend class websocket::Manager;
 	friend class websocket::Connection;

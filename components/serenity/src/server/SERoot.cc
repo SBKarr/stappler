@@ -41,757 +41,42 @@ THE SOFTWARE.
 #include "SPugCache.h"
 #include "SEDbdModule.h"
 
-#ifdef LINUX
-
-#include <sstream>
-#include <execinfo.h>
-#include <cxxabi.h>
-#include <signal.h>
-
-// Hidden control interfaces for stats
-
-NS_DB_PQ_BEGIN
-void setDbCtrl(mem::Function<void(bool)> &&cb);
-NS_DB_PQ_END
-
-
 NS_SA_BEGIN
-
-void PrintBacktrace(FILE *f, int len) {
-    void *bt[len + 2];
-    char **bt_syms;
-    int bt_size;
-    char tmpBuf[1_KiB] = { 0 };
-
-    bt_size = backtrace(bt, len + 2);
-    bt_syms = backtrace_symbols(bt, bt_size);
-
-    for (int i = 3; i < bt_size; i++) {
-    	StringView str = bt_syms[i];
-    	auto first = str.rfind('(');
-    	auto second = str.rfind('+');
-    	if (first != maxOf<size_t>()) {
-    		if (second == maxOf<size_t>()) {
-    			second = str.size();
-    		}
-        	str = str.sub(first + 1, second - first - 1);
-
-        	if (!str.empty()) {
-            	int status = 0;
-
-            	char *extraBuf = nullptr;
-            	if (str.size() < 1_KiB) {
-            		extraBuf = tmpBuf;
-            	} else {
-            		extraBuf = new char[str.size() + 1];
-            	}
-
-        		memcpy(extraBuf, str.data(), str.size());
-        		extraBuf[str.size()] = 0;
-
-            	auto ptr = abi::__cxa_demangle (extraBuf, nullptr, nullptr, &status);
-            	if (ptr) {
-    		    	fprintf(f, "\t[%d] %s [%s]\n", i - 3, (const char *)ptr, bt_syms[i]);
-    				free(ptr);
-    			} else {
-    		    	fprintf(f, "\t[%d] %s [%s]\n", i - 3, (const char *)tmpBuf, bt_syms[i]);
-    			}
-            	if (str.size() >= 1_KiB) {
-            		delete [] extraBuf;
-            	}
-				continue;
-        	}
-    	}
-
-    	fprintf(f, "\t[%d] %s\n", i - 3, bt_syms[i]);
-    }
-
-    free(bt_syms);
-}
-
-std::vector<std::string> GetBacktrace(int len) {
-	std::vector<std::string> ret; ret.reserve(len);
-
-    void *bt[len + 5];
-    char **bt_syms;
-    int bt_size;
-    char tmpBuf[1_KiB] = { 0 };
-
-    bt_size = backtrace(bt, len + 5);
-    bt_syms = backtrace_symbols(bt, bt_size);
-
-    for (int i = 4; i < bt_size; i++) {
-    	StringView str = bt_syms[i];
-    	auto first = str.rfind('(');
-    	auto second = str.rfind('+');
-    	if (first != maxOf<size_t>()) {
-    		if (second == maxOf<size_t>()) {
-    			second = str.size();
-    		}
-        	str = str.sub(first + 1, second - first - 1);
-
-        	if (!str.empty()) {
-            	int status = 0;
-
-            	char *extraBuf = nullptr;
-            	if (str.size() < 1_KiB) {
-            		extraBuf = tmpBuf;
-            	} else {
-            		extraBuf = new char[str.size() + 1];
-            	}
-
-        		memcpy(tmpBuf, str.data(), str.size());
-        		tmpBuf[str.size()] = 0;
-
-            	auto ptr = abi::__cxa_demangle (tmpBuf, nullptr, nullptr, &status);
-            	if (ptr) {
-            		std::ostringstream f;
-            		f << "[" << i - 4 << "] " << (const char *)ptr << " [" << bt_syms[i] << "]";
-            		ret.emplace_back(f.str());
-    				free(ptr);
-    			} else {
-            		std::ostringstream f;
-            		f << "[" << i - 4 << "] " << (const char *)tmpBuf << " [" << bt_syms[i] << "]";
-            		ret.emplace_back(f.str());
-    			}
-            	if (str.size() >= 1_KiB) {
-            		delete [] extraBuf;
-            	}
-				continue;
-        	}
-    	}
-
-		std::ostringstream f;
-    	f << "[" << i - 4 << "] " << bt_syms[i];
-		ret.emplace_back(f.str());
-    }
-
-    free(bt_syms);
-    return ret;
-}
-
-NS_SA_END
-
-#else
-
-NS_SA_BEGIN
-void PrintBacktrace(FILE *f, int len) {
-
-}
-NS_SA_END
-
-#endif
-
-NS_SA_BEGIN
-
-static std::atomic_flag s_timerExitFlag;
-
-static void sa_server_timer_push_notify(PollClient *cl, int fd, int mask) {
-	apr::pool::perform([&] {
-		switch (cl->type) {
-		case PollClient::Type::INotify: {
-			auto c = (pug::Cache *)cl->ptr;
-			c->update(fd, (mask & IN_IGNORED) != 0);
-			break;
-		}
-		case PollClient::Type::TemplateINotify: {
-			auto c = (tpl::Cache *)cl->ptr;
-			c->update(fd, (mask & IN_IGNORED) != 0);
-			break;
-		}
-		default:
-			break;
-		}
-	}, cl->server);
-}
-
-static void sa_server_timer_postgres_error(PollClient *cl, int epoll) {
-	auto root = Root::getInstance();
-
-	epoll_ctl(epoll, EPOLL_CTL_DEL, cl->fd, &cl->event);
-	root->dbdClose(cl->server, (ap_dbd_t *)cl->ptr);
-
-	// reopen connection
-	if (auto dbd = root->dbdOpen(cl->server.getProcessPool(), cl->server)) {
-		auto conn = (PGconn *)db::pq::Driver::open()->getConnection(db::pq::Driver::Handle(dbd)).get();
-
-		auto query = toString("LISTEN ", config::getSerenityBroadcastChannelName(), ";");
-		int querySent = PQsendQuery(conn, query.data());
-		if (querySent == 0) {
-			std::cout << "[Postgres]: " << PQerrorMessage(conn) << "\n";
-			root->dbdClose(cl->server, (ap_dbd_t *)cl->ptr);
-			return;
-		}
-
-		if (PQsetnonblocking(conn, 1) == -1) {
-			std::cout << "[Postgres]: " << PQerrorMessage(conn) << "\n";
-			root->dbdClose(cl->server, (ap_dbd_t *)cl->ptr);
-			return;
-		} else {
-			int sock = PQsocket(conn);
-
-			cl->ptr = dbd;
-			cl->fd = sock;
-
-			auto err = epoll_ctl(epoll, EPOLL_CTL_ADD, sock, &cl->event);
-			if (err == -1) {
-				char buf[256] = { 0 };
-				std::cout << "Failed to start thread worker with socket epoll_ctl("
-						<< sock << ", EPOLL_CTL_ADD): " << strerror_r(errno, buf, 255) << "\n";
-				root->dbdClose(cl->server, dbd);
-			}
-		}
-	}
-}
-
-static void sa_server_timer_postgres_process(PollClient *cl, int epoll) {
-	auto conn = (PGconn *)db::pq::Driver::open()->getConnection(db::pq::Driver::Handle(cl->ptr)).get();
-
-	const ConnStatusType &connStatusType = PQstatus(conn);
-	if (connStatusType == CONNECTION_BAD) {
-		sa_server_timer_postgres_error(cl, epoll);
-		return;
-	}
-
-	int rc = PQconsumeInput(conn);
-	if (rc == 0) {
-		std::cout << "[Postgres]: " << PQerrorMessage(conn) << "\n";
-		sa_server_timer_postgres_error(cl, epoll);
-		return;
-	}
-	PGnotify *notify;
-	while ((notify = PQnotifies(conn)) != NULL) {
-		if (StringView(notify->relname) == config::getSerenityBroadcastChannelName()) {
-			cl->server.checkBroadcasts();
-		}
-		PQfreemem(notify);
-	}
-	if (PQisBusy(conn) == 0) {
-		PGresult *result;
-		while ((result = PQgetResult(conn)) != NULL) {
-			PQclear(result);
-		}
-	}
-}
-
-static bool sa_server_timer_thread_poll(int epollFd) {
-	std::array<struct epoll_event, 64> _events;
-
-	int nevents = epoll_wait(epollFd, _events.data(), 64, config::getHeartbeatTime().toMillis());
-	if (nevents == -1 && errno != EINTR) {
-		char buf[256] = { 0 };
-		std::cout << mem::toString("epoll_wait() failed with errno ", errno, " (", strerror_r(errno, buf, 255), ")") << "\n";
-		return false;
-	} else if (nevents == 0 || errno == EINTR) {
-		return true;
-	}
-
-	for (int i = 0; i < nevents; i++) {
-		PollClient *client = (PollClient *)_events[i].data.ptr;
-		switch (client->type) {
-		case PollClient::INotify:
-		case PollClient::TemplateINotify:
-			if ((_events[i].events & EPOLLIN)) {
-				struct inotify_event event;
-				int nbytes = 0;
-				do {
-					nbytes = read(client->fd, &event, sizeof(event));
-					sa_server_timer_push_notify(client, event.wd, event.mask);
-					if (nbytes == sizeof(event)) {
-						if (event.len > 0) {
-							char buf[event.len] = { 0 };
-							if (read(client->fd, buf, event.len) == 0) {
-								break;
-							}
-						}
-					}
-				} while (nbytes == sizeof(event));
-			}
-			break;
-		case PollClient::Postgres:
-			if (_events[i].events & EPOLLERR) {
-				sa_server_timer_postgres_error(client, epollFd);
-			} else if (_events[i].events & EPOLLIN) {
-				sa_server_timer_postgres_process(client, epollFd);
-			}
-			break;
-		default:
-			break;
-		}
-	}
-
-	return false;
-}
-
-void *sa_server_timer_thread_fn(apr_thread_t *self, void *data) {
-#if LINUX
-	pthread_setname_np(pthread_self(), "RootHeartbeat");
-#endif
-
-	Root *serv = (Root *)data;
-	apr_sleep(config::getHeartbeatPause().toMicroseconds());
-
-	int epollFd = epoll_create1(0);
-	serv->initHeartBeat(epollFd);
-
-	Time t = Time::now();
-	while (s_timerExitFlag.test_and_set()) {
-		if (sa_server_timer_thread_poll(epollFd)) {
-			serv->onHeartBeat();
-		} else {
-			auto nt = Time::now();
-			if (nt - t > config::getHeartbeatTime()) {
-				serv->onHeartBeat();
-				t = nt;
-			}
-		}
-	}
-
-	close(epollFd);
-	return NULL;
-}
 
 Root *Root::s_sharedServer = 0;
 
-static struct sigaction s_sharedSigAction;
-static struct sigaction s_sharedSigOldAction;
-
-static void s_sigAction(int sig, siginfo_t *info, void *ucontext) {
-	if (auto serv = apr::pool::server()) {
-		Server s(serv);
-		auto root = s.getDocumentRoot();
-		auto filePath = toString(s.getDocumentRoot(), "/.serenity/crash.", Time::now().toMicros(), ".txt");
-		if (auto f = ::fopen(filePath.data(), "w+")) {
-			::fputs("Server:\n\tDocumentRoot: ", f);
-			::fputs(root.data(), f);
-			::fputs("\n\tName: ", f);
-			::fputs(serv->server_hostname, f);
-			::fputs("\n\tDate: ", f);
-			::fputs(Time::now().toHttp().data(), f);
-
-			if (auto req = apr::pool::request()) {
-				::fputs("\nRequest:\n", f);
-				::fprintf(f, "\tUrl: %s%s\n", req->hostname, req->unparsed_uri);
-				::fprintf(f, "\tRequest: %s\n", req->the_request);
-				::fprintf(f, "\tIp: %s\n", req->useragent_ip);
-
-				::fputs("\tHeaders:\n", f);
-				apr::table t(req->headers_in);
-				for (auto &it : t) {
-					::fprintf(f, "\t\t%s: %s\n", it.key, it.val);
-				}
+void Root::parseParameterList(Map<StringView, StringView> &target, StringView str) {
+	StringView r(str);
+	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+	while (!r.empty()) {
+		StringView params, n, v;
+		if (r.is('"')) {
+			++ r;
+			params = r.readUntil<StringView::Chars<'"'>>();
+			if (r.is('"')) {
+				++ r;
 			}
-
-			::fputs("\nBacktrace:\n", f);
-			PrintBacktrace(f, 100);
-			::fclose(f);
+		} else {
+			params = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 		}
-	}
 
-	if ((s_sharedSigOldAction.sa_flags & SA_SIGINFO) != 0) {
-		if (s_sharedSigOldAction.sa_sigaction) {
-			s_sharedSigOldAction.sa_sigaction(sig, info, ucontext);
-		}
-	} else {
-		if (s_sharedSigOldAction.sa_handler == SIG_DFL) {
-			if (SIGURG == sig || SIGWINCH == sig || SIGCONT == sig) return;
+		if (!params.empty()) {
+			n = params.readUntil<StringView::Chars<'='>>();
+			++ params;
+			v = params;
 
-			static struct sigaction tmpSig;
-			tmpSig.sa_handler = SIG_DFL;
-			::sigemptyset(&tmpSig.sa_mask);
-		    ::sigaction(sig, &tmpSig, nullptr);
-		    ::kill(getpid(), sig);
-			::sigaction(sig, &s_sharedSigAction, nullptr);
-		} else if (s_sharedSigOldAction.sa_handler == SIG_IGN) {
-			return;
-		} else if (s_sharedSigOldAction.sa_handler) {
-			s_sharedSigOldAction.sa_handler(sig);
+			if (!n.empty() && ! v.empty()) {
+				target.emplace(n.pdup(target.get_allocator()), v.pdup(target.get_allocator()));
+			}
 		}
+
+		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 	}
 }
 
 Root *Root::getInstance() {
     assert(s_sharedServer);
     return s_sharedServer;
-}
-
-struct Alloc {
-	struct MemNode {
-		void *ptr = nullptr;
-		uint32_t status = 0;
-		uint32_t size = 0;
-		void *owner = nullptr;
-		std::vector<std::string> backtrace;
-	};
-	size_t allocated = 0;
-	std::array<std::vector<MemNode>, 20> nodes;
-};
-
-static std::unordered_map<void *, Alloc> s_allocators;
-static std::atomic<size_t> s_alloc_allocated = 0;
-static std::atomic<size_t> s_free_allocated = 0;
-static std::mutex s_allocMutex;
-static std::vector<apr_pool_t *> s_RootPoolList;
-
-struct root_debug_allocator_t {
-    apr_size_t max_index;
-    apr_size_t max_free_index;
-    apr_size_t current_free_index;
-};
-
-static void *Root_alloc(void *alloc, size_t s, void *) {
-	void *ret = nullptr;
-
-	ret = (void *)malloc(s);
-
-#if DEBUG && 0
-	if (alloc) {
-		s_alloc_allocated += s;
-		s_allocMutex.lock();
-		auto it = s_allocators.find(alloc);
-		if (it == s_allocators.end()) {
-			it = s_allocators.emplace((void *)alloc, Alloc()).first;
-		}
-
-		if (it != s_allocators.end()) {
-			auto slot = (s <= 4_KiB * 20) ? s / 4_KiB - 1 : 0;
-			if (it->second.nodes[slot].empty() || ret > it->second.nodes[slot].back().ptr) {
-				it->second.nodes[slot].emplace_back(Alloc::MemNode{ret, 0, uint32_t(s)});
-			} else {
-				it->second.nodes[slot].emplace(
-					std::upper_bound( it->second.nodes[slot].begin(), it->second.nodes[slot].end(), ret,
-					[] (void *l, const Alloc::MemNode &node) {
-						return l < node.ptr;
-				}), Alloc::MemNode{ret, 0, uint32_t(s)});
-			}
-		} else {
-			std::cout << "Fail to associate memory with allocator: " << ret << " ( " << s << " )\n";
-		}
-		s_allocMutex.unlock();
-	} else {
-		s_free_allocated += s;
-	}
-#else
-	if (alloc) {
-		s_alloc_allocated += s;
-		s_allocMutex.lock();
-		auto it = s_allocators.find(alloc);
-		if (it == s_allocators.end()) {
-			it = s_allocators.emplace((void *)alloc, Alloc()).first;
-		}
-		it->second.allocated += s;
-		s_allocMutex.unlock();
-	} else {
-		s_free_allocated += s;
-	}
-#endif // DEBUG
-	return ret;
-}
-
-static void Root_free(void *alloc, void *mem, size_t s, void *) {
-#if DEBUG && 0
-	if (alloc) {
-		s_alloc_allocated -= s;
-		s_allocMutex.lock();
-		auto it = s_allocators.find(alloc);
-		if (it != s_allocators.end()) {
-			auto slot = (s <= 4_KiB * 20) ? s / 4_KiB - 1 : 0;
-			auto iit = std::lower_bound( it->second.nodes[slot].begin(), it->second.nodes[slot].end(), mem,
-				[] (const Alloc::MemNode &node, void *r) {
-					return node.ptr < r;
-			});
-			if (iit != it->second.nodes[slot].end() && iit->ptr == mem) {
-				it->second.nodes[slot].erase(iit);
-			}
-		}
-		s_allocMutex.unlock();
-	} else {
-		s_free_allocated -= s;
-	}
-#else
-	if (alloc) {
-		s_alloc_allocated -= s;
-		s_allocMutex.lock();
-		auto it = s_allocators.find(alloc);
-		if (it != s_allocators.end()) {
-			it->second.allocated -= s;
-		}
-		s_allocMutex.unlock();
-	} else {
-		s_free_allocated -= s;
-	}
-#endif // DEBUG
-	free(mem);
-}
-
-#if DEBUG
-static void Root_node_alloc(void *alloc, void *node, size_t s, void *owner, void *) {
-	if (alloc) {
-		/*s_allocMutex.lock();
-		//std::cout << "Alloc: ( " << alloc << ") " << node << "\n";
-		auto it = s_allocators.find(alloc);
-		if (it != s_allocators.end()) {
-			auto slot = (s <= 4_KiB * 20) ? s / 4_KiB - 1 : 0;
-			auto iit = std::lower_bound( it->second.nodes[slot].begin(), it->second.nodes[slot].end(), node,
-				[] (const Alloc::MemNode &node, void *r) {
-					return node.ptr < r;
-			});
-			if (iit != it->second.nodes[slot].end() && iit->ptr == node) {
-				iit->backtrace = GetBacktrace(30);
-				iit->status = 1;
-				iit->owner = owner;
-			} else if (iit == it->second.nodes[slot].end()) {
-				//std::cout << "Node not found\n";
-			}
-		}
-		s_allocMutex.unlock();*/
-	}
-}
-
-static void Root_node_free(void *alloc, void *node, size_t s, void *) {
-	if (alloc) {
-		/*s_allocMutex.lock();
-		//std::cout << "Free: ( " << alloc << ") " << node << "\n";
-		auto it = s_allocators.find(alloc);
-		if (it != s_allocators.end()) {
-			auto slot = (s <= 4_KiB * 20) ? s / 4_KiB - 1 : 0;
-			auto iit = std::lower_bound( it->second.nodes[slot].begin(), it->second.nodes[slot].end(), node,
-				[] (const Alloc::MemNode &node, void *r) {
-					return node.ptr < r;
-			});
-			if (iit != it->second.nodes[slot].end() && iit->ptr == node) {
-				iit->backtrace.clear();
-				iit->status = 0;
-			} else if (iit == it->second.nodes[slot].end()) {
-				// std::cout << "Node not found\n";
-			}
-		}
-		s_allocMutex.unlock();*/
-	}
-}
-
-#endif // DEBUG
-
-static void Root_formatSize(std::ostringstream &out, size_t val) {
-	if (val > size_t(1_MiB)) {
-		out << std::setprecision(4) << double(val) / 1_MiB << " MiB";
-	} else if (val > size_t(1_KiB)) {
-		out << std::setprecision(4) << double(val) / 1_KiB << " KiB";
-	} else {
-		out << val << " bytes";
-	}
-};
-
-static String Root_writeMemoryMap(bool full) {
-	size_t allocSize = s_alloc_allocated.load();
-	size_t freeAllocSize = s_free_allocated.load();
-	std::ostringstream ret;
-
-	s_allocMutex.lock();
-	ret << "Allocators: " << s_allocators.size() << "\n";
-	for (auto &it : s_allocators) {
-		ret << "\t" << (void *)it.first << ": ";
-		root_debug_allocator_t *alloc = (root_debug_allocator_t *)it.first;
-		Root_formatSize(ret, it.second.allocated);
-		ret << " ( " << it.second.allocated << " ) max: " << alloc->max_free_index << "\n";
-	}
-	s_allocMutex.unlock();
-
-
-	ret << "Active pools: " << mem::pool::get_active_count() << "\n";
-	mem::pool::debug_foreach(&ret, [] (void *ptr, mem::pool_t *pool) {
-		std::ostringstream *ret = (std::ostringstream *)ptr;
-		auto tag = mem::pool::get_tag(pool);
-		auto size = mem::pool::get_allocated_bytes(pool);
-		(*ret) << "\t[" << (tag ? tag : "null") << "] ";
-		Root_formatSize(*ret, size);
-		(*ret) << " ( " << size << " )\n";
-	});
-
-	s_allocMutex.lock();
-	ret << "Tracked pools: " << s_RootPoolList.size() << "\n";
-	size_t calculated = 0;
-	size_t idx = 0;
-	for (auto &pool : s_RootPoolList) {
-		auto size = mem::pool::get_allocated_bytes(pool);
-		if (size) {
-			calculated += size;
-			auto tag = mem::pool::get_tag(pool);
-			ret << "\t" << idx << ": [" << (tag ? tag : "null") << "] ";
-			Root_formatSize(ret, size);
-			ret << " ( " << size << " )\n";
-		}
-		++ idx;
-	}
-	s_allocMutex.unlock();
-
-	ret << "Allocated (by active) : ";
-	Root_formatSize(ret, calculated);
-	ret << " ( " << calculated << " )\n";
-
-	ret << "Allocated (free) : ";
-	Root_formatSize(ret, freeAllocSize);
-	ret << " ( " << freeAllocSize << " )\n";
-
-	ret << "Allocated (counter) : ";
-	Root_formatSize(ret, allocSize);
-	ret << " ( " << allocSize << " )\n";
-
-#if DEBUG
-	/*size_t fullSize = 0;
-	s_allocMutex.lock();
-	ret << "Allocators:\n";
-	for (auto &it : s_allocators) {
-		ret << "\t [ " << it.first << " ] : ";
-		size_t size = 0;
-		for (size_t i = 0; i < it.second.nodes.size(); ++ i) {
-			if (i == 0) {
-				for (auto &iit : it.second.nodes[i]) {
-					size += iit.size;
-				}
-			} else {
-				size += it.second.nodes[i].size() * ((i + 1) * 4_KiB);
-			}
-		}
-
-		fullSize += size;
-		Root_formatSize(ret, size);
-		ret << " ( " << size << " )\n";
-
-		if (full) {
-			for (size_t i = 0; i < it.second.nodes.size(); ++ i) {
-				if (!it.second.nodes[i].empty()) {
-					size_t size = 0;
-					ret << "\t\t[ " << i  << " ] : ";
-					if (i == 0) {
-						for (auto &iit : it.second.nodes[i]) {
-							size += iit.size;
-						}
-					} else {
-						size = it.second.nodes[i].size() * ((i + 1) * 4_KiB);
-					}
-
-					Root_formatSize(ret, size);
-					ret << " ( " << size << " )\n";
-
-					for (auto &iit : it.second.nodes[i]) {
-						ret << "\t\t\t[ " << iit.ptr  << " ] : ";
-						Root_formatSize(ret, iit.size);
-						ret << " ( " << iit.size << " ) ";
-						if (iit.status) {
-							ret << " [allocated]\n";
-						} else {
-							ret << " [free]\n";
-						}
-					}
-				}
-			}
-		}
-	}
-
-	ret << "Allocated (calculated) : ";
-	Root_formatSize(ret, fullSize);
-	ret << " ( " << fullSize << " )\n";
-	s_allocMutex.unlock();*/
-#endif
-	ret << "\n";
-
-	auto str = ret.str();
-
-	return String(str.data(), str.size());
-}
-
-static String Root_writeAllocatorMemoryMap(void *alloc) {
-#if DEBUG
-	auto formatSize = [&] (std::ostringstream &out, size_t val) {
-		if (val > size_t(1_MiB)) {
-			out << std::setprecision(4) << double(val) / 1_MiB << " MiB";
-		} else if (val > size_t(1_KiB)) {
-			out << std::setprecision(4) << double(val) / 1_KiB << " KiB";
-		} else {
-			out << val << " bytes";
-		}
-	};
-
-	size_t fullSize = 0;
-	std::ostringstream ret;
-
-	s_allocMutex.lock();
-
-	auto it = s_allocators.find(alloc);
-	if (it != s_allocators.end()) {
-		size_t size = 0;
-		for (size_t i = 0; i < it->second.nodes.size(); ++ i) {
-			if (i == 0) {
-				for (auto &iit : it->second.nodes[i]) {
-					size += iit.size;
-				}
-			} else {
-				size += it->second.nodes[i].size() * ((i + 1) * 4_KiB);
-			}
-		}
-
-		fullSize += size;
-		ret << "Allocator: " << it->first << " ";
-		formatSize(ret, size);
-		ret << " ( " << size << " )\n";
-
-		for (size_t i = 0; i < it->second.nodes.size(); ++ i) {
-			if (!it->second.nodes[i].empty()) {
-				size_t size = 0;
-				ret << "[ " << i  << " ] : ";
-				if (i == 0) {
-					for (auto &iit : it->second.nodes[i]) {
-						size += iit.size;
-					}
-				} else {
-					size = it->second.nodes[i].size() * ((i + 1) * 4_KiB);
-				}
-
-				formatSize(ret, size);
-				ret << " ( " << size << " )\n";
-
-				for (auto &iit : it->second.nodes[i]) {
-					ret << "\t[ " << iit.ptr  << " ] : ";
-					formatSize(ret, iit.size);
-					ret << " ( " << iit.size << " ) ";
-					if (iit.owner) {
-						ret << " owner: [ " << iit.owner  << " ]";
-					}
-					if (iit.status) {
-						ret << " [allocated]\n";
-						for (auto &ibt : iit.backtrace) {
-							ret << "\t\t" << ibt << "\n";
-						}
-					} else {
-						ret << " [free]\n";
-					}
-				}
-			}
-		}
-	}
-
-	auto str = ret.str();
-	s_allocMutex.unlock();
-	return String(str.data(), str.size());
-#else
-	return "Available only in debug mode\n";
-#endif
-}
-
-void Root_poolCreate(apr_pool_t *pool, void *ctx) {
-	s_allocMutex.lock();
-	s_RootPoolList.emplace_back(pool);
-	s_allocMutex.unlock();
-}
-
-void Root_poolDestroy(apr_pool_t *pool, void *ctx) {
-	s_allocMutex.lock();
-	auto it = std::find(s_RootPoolList.begin(), s_RootPoolList.end(), pool);
-	if (it != s_RootPoolList.end()) {
-		s_RootPoolList.erase(it);
-	}
-	s_allocMutex.unlock();
 }
 
 Root::Root() {
@@ -806,13 +91,7 @@ Root::Root() {
 	_dbQueriesPerformed.store(0);
 	_dbQueriesReleased.store(0);
 
-	// memory interface binding
-	serenity_set_alloc_fn(Root_alloc, Root_free, (void *)this);
-	serenity_set_pool_ctrl_fn(Root_poolCreate, Root_poolDestroy, (void *)this);
-
-#if SPAPR && DEBUG
-	serenity_set_node_ctrl_fn(Root_node_alloc, Root_node_free, (void *)this);
-#endif
+	debugInit();
 
 	_allocator = memory::allocator::create((void *)_mutex.ptr());
 	memory::allocator::max_free_set(_allocator, 20_MiB);
@@ -821,11 +100,10 @@ Root::Root() {
 }
 
 Root::~Root() {
-	// gnutls_global_deinit();
-
     s_sharedServer = 0;
 
-    s_timerExitFlag.clear();
+	debugDeinit();
+
     if (_heartBeatPool) {
         memory::pool::destroy(_heartBeatPool);
         _heartBeatPool = nullptr;
@@ -847,125 +125,28 @@ apr_pool_t *Root::getProcPool() const {
 	return _pool;
 }
 
-ap_dbd_t * Root::dbdOpen(apr_pool_t *p, server_rec *s) {
-	if (_customDbd) {
-		return _customDbd->openConnection(p);
-	} else {
-		if (_dbdOpen) {
-			auto ret = _dbdOpen(p, s);
-			if (!ret) {
-				messages::debug("Root", "Failed to open DBD");
-			}
-			return ret;
+db::sql::Driver::Handle Root::dbdOpen(apr_pool_t *p, server_rec *s) {
+	if (_dbdOpen) {
+		auto ret = _dbdOpen(p, s);
+		if (!ret) {
+			messages::debug("Root", "Failed to open DBD");
 		}
-		return nullptr;
+		return db::sql::Driver::Handle(ret);
+	}
+	return db::sql::Driver::Handle(nullptr);
+}
+
+void Root::dbdClose(server_rec *s, db::sql::Driver::Handle d) {
+	if (_dbdClose) {
+		return _dbdClose(s, (ap_dbd_t *)d.get());
 	}
 }
 
-void Root::dbdClose(server_rec *s, ap_dbd_t *d) {
-	if (_customDbd) {
-		_customDbd->closeConnection(d);
-	} else {
-		if (_dbdClose) {
-			return _dbdClose(s, d);
-		}
-	}
-}
-
-ap_dbd_t * Root::dbdRequestAcquire(request_rec *r) {
-	if (_customDbd) {
-		return nullptr;
-	}
+db::sql::Driver::Handle Root::dbdAcquire(request_rec *r) {
 	if (_dbdRequestAcquire) {
-		return _dbdRequestAcquire(r);
+		return db::sql::Driver::Handle(_dbdRequestAcquire(r));
 	}
-	return nullptr;
-}
-ap_dbd_t * Root::dbdConnectionAcquire(conn_rec *c) {
-	if (_customDbd) {
-		return nullptr;
-	}
-	if (_dbdConnectionAcquire) {
-		return _dbdConnectionAcquire(c);
-	}
-	return nullptr;
-}
-
-struct sa_dbd_t {
-	ap_dbd_t *dbd;
-	server_rec *serv;
-};
-
-apr_status_t Root_pool_dbd_release(void *ptr) {
-	sa_dbd_t *ret = (sa_dbd_t *)ptr;
-	if (ret) {
-		if (ret->serv && ret->dbd) {
-			Root::getInstance()->dbdClose(ret->serv, ret->dbd);
-		}
-		ret->serv = nullptr;
-		ret->dbd = nullptr;
-	}
-	return APR_SUCCESS;
-}
-
-ap_dbd_t * Root::dbdPoolAcquire(server_rec *serv, apr_pool_t *p) {
-	sa_dbd_t *ret = nullptr;
-	apr_pool_userdata_get((void **)&ret, (const char *)config::getSerenityDBDHandleName(), p);
-	if (!ret) {
-		ret = (sa_dbd_t *)apr_pcalloc(p, sizeof(sa_dbd_t));
-		ret->serv = serv;
-		ret->dbd = dbdOpen(p, serv);
-		apr_pool_userdata_set(ret, (const char *)config::getSerenityDBDHandleName(), &Root_pool_dbd_release, p);
-	}
-	return ret->dbd;
-}
-void Root::dbdPrepare(server_rec *s, const char *l, const char *q) {
-	if (_dbdPrepare) {
-		return _dbdPrepare(s, l, q);
-	}
-}
-
-db::pq::Handle Root::dbOpenHandle(mem::pool_t *p, const Server &serv) {
-	if (auto dbd = dbdOpen(p, serv.server())) {
-		return db::pq::Handle(db::pq::Driver::open(), db::pq::Driver::Handle(dbd));
-	}
-	return db::pq::Handle(db::pq::Driver::open(), db::pq::Driver::Handle(nullptr));
-}
-
-void Root::dbCloseHandle(const Server &serv, db::pq::Handle &h) {
-	if (h) {
-		dbdClose(serv, (ap_dbd_t *)h.getHandle().get());
-		h.close();
-	}
-}
-
-void Root::performStorage(apr_pool_t *pool, const Server &serv, const Callback<void(const storage::Adapter &)> &cb) {
-	apr::pool::perform([&] {
-		if (auto dbd = dbdOpen(pool, serv.server())) {
-			db::pq::Handle h(db::pq::Driver::open(), db::pq::Driver::Handle(dbd));
-			db::Interface *iface = &h;
-			db::Adapter storage(&h);
-			mem::pool::userdata_set((void *)iface, config::getStorageInterfaceKey(), nullptr, pool);
-
-			Server::Config *cfg = (Server::Config *)serv.getConfig();
-
-			h.setStorageTypeMap(&cfg->storageTypes);
-			h.setCustomTypeMap(&cfg->customTypes);
-
-			cb(storage);
-
-			auto stack = stappler::memory::pool::get<db::Transaction::Stack>(pool, config::getTransactionStackKey());
-			for (auto &it : stack->stack) {
-				if (it->adapter == storage) {
-					it->adapter = db::Adapter(nullptr);
-					messages::error("Root", "Incomplete transaction found");
-				}
-			}
-			mem::pool::userdata_set((void *)nullptr, storage.getTransactionKey().data(), nullptr, pool);
-			mem::pool::userdata_set((void *)nullptr, config::getStorageInterfaceKey(), nullptr, pool);
-			dbdClose(serv.server(), dbd);
-		}
-	}, pool);
+	return db::sql::Driver::Handle(nullptr);
 }
 
 bool Root::isDebugEnabled() const {
@@ -1062,14 +243,6 @@ Root::Stat Root::getStat() const {
 	});
 }
 
-String Root::getMemoryMap(bool full) const {
-	return Root_writeMemoryMap(full);
-}
-
-String Root::getAllocatorMemoryMap(uint64_t ptr) const {
-	return Root_writeAllocatorMemoryMap((void *)ptr);
-}
-
 Server Root::getRootServer() const {
 	return _rootServerContext;
 }
@@ -1077,26 +250,6 @@ Server Root::getRootServer() const {
 void Root::setThreadsCount(StringView init, StringView max) {
 	_initThreads = std::max(size_t(init.readInteger(10).get(1)), size_t(1));
 	_maxThreads = std::max(size_t(max.readInteger(10).get(1)), _initThreads);
-}
-
-void Root::onChildInit() {
-	if (apr_thread_pool_create(&_threadPool, _initThreads, _maxThreads, _pool) == APR_SUCCESS) {
-		apr_thread_pool_idle_wait_set(_threadPool, (5_sec).toMicroseconds());
-		apr_thread_pool_threshold_set(_threadPool, 2);
-
-		if (!_pending->empty()) {
-			for (auto &it : *_pending) {
-				if (it.interval) {
-					scheduleTask(it.server, it.task, it.interval);
-				} else {
-					performTask(it.server, it.task, it.performFirst);
-				}
-			}
-			_pending->clear();
-		}
-	} else {
-		_threadPool = nullptr;
-	}
 }
 
 void Root::initHeartBeat(int epollfd) {
@@ -1128,21 +281,136 @@ void Root::onHeartBeat() {
 	}
 }
 
-void Root::onServerChildInit(apr_pool_t *p, server_rec* s) {
+int Root::onPostConfig(apr_pool_t *, server_rec *s) {
+	mem::perform([&] {
+		_sslIsHttps = APR_RETRIEVE_OPTIONAL_FN(ssl_is_https);
 
-	// Prevent GnuTLS reinitializing
-	::setenv("GNUTLS_NO_IMPLICIT_INIT", "1", 0);
+		_dbdOpen = APR_RETRIEVE_OPTIONAL_FN(ap_dbd_open);
+		_dbdClose = APR_RETRIEVE_OPTIONAL_FN(ap_dbd_close);
+		_dbdRequestAcquire = APR_RETRIEVE_OPTIONAL_FN(ap_dbd_acquire);
+		_dbdConnectionAcquire = APR_RETRIEVE_OPTIONAL_FN(ap_dbd_cacquire);
+
+		initExtensions(_pool);
+
+		_dbDrivers = new (_pool) Map<StringView, db::sql::Driver *>();
+	}, _pool);
+
+	auto p = mem::pool::create(_pool);
+	mem::perform([&] {
+		auto createDriver = [&] (StringView driverName) -> db::sql::Driver * {
+			if (auto d = db::sql::Driver::open(_pool, driverName)) {
+				d->setDbCtrl([this] (bool complete) {
+					if (complete) {
+						_dbQueriesReleased += 1;
+					} else {
+						_dbQueriesPerformed += 1;
+					}
+				});
+				return d;
+			}
+
+			messages::error("Root", "Fail to initialize driver", data::Value(driverName));
+			return nullptr;
+		};
+
+		Map<db::sql::Driver *, Vector<StringView>> databases;
+
+		db::sql::Driver *rootDriver = nullptr;
+
+		if (_dbParams) {
+			StringView driver;
+			StringView dbname;
+
+			for (auto &it : *_dbParams) {
+				if (it.first == "driver") {
+					driver = it.second;
+				} else if (it.first == "dbname") {
+					dbname = it.second;
+				}
+			}
+
+			if (auto d = createDriver(driver)) {
+				_dbDrivers->emplace(driver, d);
+				auto dit = databases.emplace(d, Vector<StringView>()).first;
+				if (!dbname.empty()) {
+					mem::emplace_ordered(dit->second, dbname);
+				}
+				if (_dbs) {
+					for (auto &it : *_dbs) {
+						mem::emplace_ordered(dit->second, it);
+					}
+				}
+				rootDriver = d;
+			}
+		}
+
+		Server serv(s);
+		while (serv) {
+			auto config = (Server::Config *)serv.getConfig();
+			if (config->dbParams) {
+				StringView driver;
+				StringView dbname;
+				for (auto &it : *config->dbParams) {
+					if (it.first == "driver") {
+						driver = it.second;
+					} else if (it.first == "dbname") {
+						dbname = it.second;
+					}
+				}
+
+				auto iit = _dbDrivers->find(driver);
+				if (iit == _dbDrivers->end()) {
+					if (auto d = createDriver(driver)) {
+						_dbDrivers->emplace(driver, d);
+						auto dit = databases.emplace(d, Vector<StringView>()).first;
+						if (!dbname.empty()) {
+							mem::emplace_ordered(dit->second, dbname);
+						}
+					}
+				} else if (!dbname.empty()) {
+					auto dit = databases.find(iit->second);
+					if (dit != databases.end()) {
+						mem::emplace_ordered(dit->second, dbname);
+					}
+				}
+			}
+
+			serv = serv.next();
+		}
+
+		if (rootDriver && _dbParams) {
+			bool init = false;
+			auto dIt = databases.find(rootDriver);
+			if (dIt != databases.end()) {
+				if (!dIt->second.empty()) {
+					auto handle = rootDriver->connect(*_dbParams);
+					if (handle.get()) {
+						rootDriver->init(handle, dIt->second);
+						rootDriver->finish(handle);
+						init = true;
+					}
+				}
+			}
+			if (!init) {
+				auto handle = rootDriver->connect(*_dbParams);
+				if (handle.get()) {
+					rootDriver->init(handle, mem::Vector<mem::StringView>());
+					rootDriver->finish(handle);
+					init = true;
+				}
+			}
+		}
+	}, p);
+
+	mem::pool::destroy(p);
+    return OK;
+}
+
+void Root::onServerChildInit(apr_pool_t *p, server_rec* s) {
+	signalInit();
 
 	apr::pool::perform([&] {
 		_pending = new Vector<PendingTask>();
-
-		memset(&s_sharedSigAction, 0, sizeof(s_sharedSigAction));
-		s_sharedSigAction.sa_sigaction = &s_sigAction;
-		s_sharedSigAction.sa_flags = SA_SIGINFO;
-		sigemptyset(&s_sharedSigAction.sa_mask);
-		//sigaddset(&s_sharedSigAction.sa_mask, SIGSEGV);
-
-	    ::sigaction(SIGSEGV, &s_sharedSigAction, &s_sharedSigOldAction);
 
 		InputFilter::filterRegister();
 		OutputFilter::filterRegister();
@@ -1160,41 +428,8 @@ void Root::onServerChildInit(apr_pool_t *p, server_rec* s) {
 			serv = serv.next();
 		}
 
-		onChildInit();
-
-		s_timerExitFlag.test_and_set();
-		apr_threadattr_t *attr;
-		apr_status_t error = apr_threadattr_create(&attr, _pool);
-		if (error == APR_SUCCESS) {
-			apr_threadattr_detach_set(attr, 1);
-			apr_thread_create(&_timerThread, attr,
-					sa_server_timer_thread_fn, this, _pool);
-		}
+		onThreadInit();
 	}, p, memory::pool::Config);
-}
-
-void *Root::logWriterInit(apr_pool_t *p, server_rec *s, const char *name) {
-	return s_sharedServer->_defaultInit(p, s, name);
-}
-apr_status_t Root::logWriter(request_rec *r, void *handle, const char **portions,
-		int *lengths, int nelts, apr_size_t len) {
-	return s_sharedServer->_defaultWriter(r, handle, portions, lengths, nelts, len);
-}
-
-void Root::onOpenLogs(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s) {
-	_sslIsHttps = APR_RETRIEVE_OPTIONAL_FN(ssl_is_https);
-
-	_dbdOpen = APR_RETRIEVE_OPTIONAL_FN(ap_dbd_open);
-	_dbdClose = APR_RETRIEVE_OPTIONAL_FN(ap_dbd_close);
-	_dbdRequestAcquire = APR_RETRIEVE_OPTIONAL_FN(ap_dbd_acquire);
-	_dbdConnectionAcquire = APR_RETRIEVE_OPTIONAL_FN(ap_dbd_cacquire);
-	_dbdPrepare = APR_RETRIEVE_OPTIONAL_FN(ap_dbd_prepare);
-
-	auto setWriterInit = APR_RETRIEVE_OPTIONAL_FN(ap_log_set_writer_init);
-	auto setWriter = APR_RETRIEVE_OPTIONAL_FN(ap_log_set_writer);
-
-	_defaultInit = setWriterInit(Root::logWriterInit);
-	_defaultWriter = setWriter(Root::logWriter);
 }
 
 int Root::onPreConnection(conn_rec* c, void* csd) {
@@ -1384,56 +619,17 @@ void Root::addDb(mem::pool_t *p, StringView str) {
 void Root::setDbParams(mem::pool_t *p, StringView str) {
 	_dbParams = new (_pool) Map<StringView, StringView>;
 
-	StringView r(str);
-	r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
-	while (!r.empty()) {
-		StringView params, n, v;
-		if (r.is('"')) {
-			++ r;
-			params = r.readUntil<StringView::Chars<'"'>>();
-			if (r.is('"')) {
-				++ r;
-			}
-		} else {
-			params = r.readUntil<StringView::CharGroup<CharGroupId::WhiteSpace>>();
+	parseParameterList(*_dbParams, str);
+}
+
+db::sql::Driver *Root::getDbDriver(StringView name) const {
+	if (_dbDrivers) {
+		auto it = _dbDrivers->find(name);
+		if (it != _dbDrivers->end()) {
+			return it->second;
 		}
-
-		if (!params.empty()) {
-			n = params.readUntil<StringView::Chars<'='>>();
-			++ params;
-			v = params;
-
-			if (!n.empty() && ! v.empty()) {
-				_dbParams->emplace(n.pdup(_pool), v.pdup(_pool));
-			}
-		}
-
-		r.skipChars<StringView::CharGroup<CharGroupId::WhiteSpace>>();
 	}
-}
-
-void Root::incrementReleasedQueries() {
-	_dbQueriesReleased += 1;
-}
-
-void Root::incrementPerformedQueries() {
-	_dbQueriesPerformed += 1;
-}
-
-void Root::enableCustomDbd(StringView dbname) {
-	if (_customDbd) {
-		DbdModule::destroy(_customDbd);
-	}
-
-	DbdModule::Config cfg;
-	cfg.nmax = _maxThreads * 2;
-	cfg.persistent = false;
-
-	_customDbd = DbdModule::create(_rootPool, cfg, _dbParams, dbname);
-}
-
-void Root::disableCustomDbd() {
-	_customDbd = nullptr;
+	return nullptr;
 }
 
 NS_SA_END

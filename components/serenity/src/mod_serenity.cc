@@ -52,10 +52,6 @@ static int mod_serenity_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t 
 static void mod_serenity_child_init(apr_pool_t *p, server_rec *s) {
 	Root::getInstance()->onServerChildInit(p, s);
 }
-static int mod_serenity_open_logs(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s) {
-	Root::getInstance()->onOpenLogs(pconf, plog, ptemp, s);
-	return OK;
-}
 
 static int mod_serenity_check_access_ex(request_rec *r) {
 	return Root::getInstance()->onCheckAccess(r);
@@ -88,7 +84,6 @@ static apr_status_t mod_serenity_compress(ap_filter_t *f, apr_bucket_brigade *bb
 static void mod_serenity_register_hooks(apr_pool_t *pool) {
     ap_hook_post_config(mod_serenity_post_config, NULL,NULL,APR_HOOK_MIDDLE);
 	ap_hook_child_init(mod_serenity_child_init, NULL, NULL, APR_HOOK_MIDDLE);
-    ap_hook_open_logs(mod_serenity_open_logs, NULL, NULL, APR_HOOK_FIRST);
 
     ap_hook_check_access_ex(mod_serenity_check_access_ex, NULL, NULL, APR_HOOK_FIRST, AP_AUTH_INTERNAL_PER_URI);
 
@@ -191,6 +186,10 @@ static const char *mod_serenity_set_server_names(cmd_parms *parms, void *mconfig
 }
 
 static const char *mod_serenity_set_root_db_params(cmd_parms *parms, void *mconfig, const char *w) {
+	if (parms->server->is_virtual) {
+		return NULL;
+	}
+
 	apr::pool::perform([&] {
 		Root::getInstance()->setDbParams(parms->pool, StringView(w));
 	}, parms->pool, memory::pool::Config);
@@ -198,6 +197,10 @@ static const char *mod_serenity_set_root_db_params(cmd_parms *parms, void *mconf
 }
 
 static const char *mod_serenity_add_create_db(cmd_parms *parms, void *mconfig, const char *arg) {
+	if (parms->server->is_virtual) {
+		return NULL;
+	}
+
 	apr::pool::perform([&] {
 		while (*arg) {
 			char *name = ap_getword_conf(parms->pool, &arg);
@@ -207,6 +210,12 @@ static const char *mod_serenity_add_create_db(cmd_parms *parms, void *mconfig, c
 	return NULL;
 }
 
+static const char *mod_serenity_set_db_params(cmd_parms *parms, void *mconfig, const char *w) {
+	apr::pool::perform([&] {
+		Server(parms->server).setDbParams(StringView(w));
+	}, parms->pool, memory::pool::Config);
+	return NULL;
+}
 
 static const command_rec mod_serenity_directives[] = {
 	AP_INIT_TAKE1("SerenitySourceRoot", (cmd_func)mod_serenity_set_source_root, NULL, RSRC_CONF,
@@ -220,20 +229,24 @@ static const command_rec mod_serenity_directives[] = {
 	AP_INIT_RAW_ARGS("SerenityWebHook", (cmd_func)mod_serenity_set_webhook_params, NULL, RSRC_CONF,
 		"Serenity webhook error reporter address in format: SerenityWebHook name=<name> url=<url>"),
 	AP_INIT_NO_ARGS("SerenityForceHttps", (cmd_func)mod_serenity_set_force_https, NULL, RSRC_CONF,
-		"Host should forward requests to secure connection"),
+		"Host should forward insecure requests to secure connection"),
 	AP_INIT_RAW_ARGS("SerenityProtected", (cmd_func)mod_serenity_set_protected, NULL, RSRC_CONF,
 		"Space-separated list of location prefixes, which should be invisible for clients"),
 	AP_INIT_RAW_ARGS("SerenityServerNames", (cmd_func)mod_serenity_set_server_names, NULL, RSRC_CONF,
 		"Space-separated list of server names (first would be ServerName, others - ServerAliases)"),
 	AP_INIT_RAW_ARGS("SerenityAllowIp", (cmd_func)mod_serenity_add_allow, NULL, RSRC_CONF,
-		"Additional IPv4 masks to thrust whed admin access is requested"),
+		"Additional IPv4 masks to thrust when admin access is requested"),
 	AP_INIT_TAKE2("SerenityRootThreadsCount", (cmd_func)mod_serenity_set_root_threads_count, NULL, RSRC_CONF,
 		"<init> <max> - size of root thread pool for async tasks"),
 
 	AP_INIT_RAW_ARGS("SerenityRootDbParams", (cmd_func)mod_serenity_set_root_db_params, NULL, RSRC_CONF,
-		"Serenity database parameters for root connections (host, dbname, user, password)"),
+		"Serenity database parameters for root connections (driver, host, dbname, user, password, other driver-defined params), has no effect in vhost"),
 	AP_INIT_RAW_ARGS("SerenityRootCreateDb", (cmd_func)mod_serenity_add_create_db, NULL, RSRC_CONF,
 		"Space-separated list of databases, that need to be created"),
+	AP_INIT_RAW_ARGS("SerenityDbParams", (cmd_func)mod_serenity_set_db_params, NULL, RSRC_CONF,
+		"Enable custom dbd connections for server with parameters (driver, host, dbname, user, password, other driver-defined params). "
+		"Driver and parameters, that was not defined, inherited from SerenityRootDbParams. "
+		"Parameter dbname will be automatically added to CreateDb list"),
 
     { NULL }
 };

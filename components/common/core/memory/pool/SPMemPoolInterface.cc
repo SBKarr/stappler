@@ -520,6 +520,16 @@ void free(pool_t *pool, void *ptr, size_t size) {
 	((custom::Pool *)pool)->free(ptr, size);
 }
 
+void cleanup_kill(pool_t *pool, void *ptr, cleanup_fn cb) {
+	if constexpr (apr::SPAprDefined) {
+		if (!isCustom(pool)) {
+			apr::pool::cleanup_kill(pool, ptr, cb);
+			return;
+		}
+	}
+	((custom::Pool *)pool)->cleanup_kill(ptr, (custom::Cleanup::Callback)cb);
+}
+
 void cleanup_register(pool_t *pool, void *ptr, cleanup_fn cb) {
 	if constexpr (apr::SPAprDefined) {
 		if (!isCustom(pool)) {

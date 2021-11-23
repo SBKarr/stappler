@@ -28,6 +28,7 @@ namespace stellator {
 class ConnectionQueue;
 
 struct Root::Internal : mem::AllocBase {
+	mem::pool_t *pool = nullptr;
 	mem::Map<mem::String, Server> servers;
 	mem::Vector<Task *> scheduled;
 	mem::Vector<Task *> followed;
@@ -37,7 +38,9 @@ struct Root::Internal : mem::AllocBase {
 
 	mem::pool_t *heartBeatPool = nullptr;
 
-	db::pq::Driver *dbDriver = nullptr;
+	mem::Map<mem::StringView, mem::StringView> rootDbParams;
+	mem::Map<mem::StringView, db::sql::Driver *> dbDrivers;
+	db::sql::Driver *rootDbDriver = nullptr;
 
 	bool shouldClose = false;
 	std::mutex mutex;
@@ -59,6 +62,7 @@ Root::Root() {
 	_pool = mem::pool::create((mem::pool_t *)nullptr);
 	mem::pool::push(_pool);
 	_internal = new (_pool) Internal;
+	_internal->pool = _pool;
 	mem::pool::pop();
 }
 
@@ -68,13 +72,71 @@ Root::~Root() {
 
 bool Root::run(const mem::Value &config) {
 	return mem::perform([&] {
-		auto db = mem::StringView(config.getString("libpq"));
 		auto l = mem::StringView(config.getString("listen"));
 		auto w = config.getInteger("workers");
 
 		size_t workers = std::thread::hardware_concurrency();
 		if (w >= 2 && w <= 256) {
 			workers = size_t(w);
+		}
+
+		if (config.hasValue("db")) {
+			for (auto &it : config.getDict("db")) {
+				_internal->rootDbParams.emplace(mem::StringView(it.first).pdup(), mem::StringView(it.second.getString()).pdup());
+			}
+		}
+
+		if (!_internal->rootDbParams.empty()) {
+			auto it = _internal->rootDbParams.find(mem::StringView("driver"));
+			if (it == _internal->rootDbParams.end()) {
+				_internal->rootDbDriver = db::sql::Driver::open(_internal->pool, "pgsql");
+				_internal->dbDrivers.emplace(mem::StringView("pgsql"), _internal->rootDbDriver);
+			} else {
+				_internal->rootDbDriver = db::sql::Driver::open(_internal->pool, it->second);
+				_internal->dbDrivers.emplace(it->second, _internal->rootDbDriver);
+			}
+		}
+
+		if (!_internal->rootDbDriver) {
+			_internal->rootDbDriver = db::sql::Driver::open(_internal->pool, "pgsql");
+		}
+
+		mem::Map<db::sql::Driver *, mem::Vector<mem::StringView>> databases;
+		auto &servs = config.getValue("hosts");
+
+		for (auto &it : servs.asArray()) {
+			auto p = mem::pool::create(_pool);
+			mem::pool::push(p);
+
+			auto serv = new (p) Server::Config(this, workers, it);
+			_internal->servers.emplace(serv->name, Server(serv));
+
+			auto driver = serv->getDbDriver();
+			auto dbName = serv->getDbName();
+			if (!dbName.empty()) {
+				auto it = databases.find(driver);
+				if (it != databases.end()) {
+					mem::emplace_ordered(it->second, dbName);
+				} else {
+					auto iit = databases.emplace(driver, mem::Vector<mem::StringView>()).first;
+					iit->second.emplace_back(dbName);
+				}
+			}
+
+			mem::pool::pop();
+		}
+
+		if (_internal->rootDbDriver) {
+			auto h = _internal->rootDbDriver->connect(_internal->rootDbParams);
+			if (h.get()) {
+				auto dbsIt = databases.find(_internal->rootDbDriver);
+				if (dbsIt != databases.end()) {
+					_internal->rootDbDriver->init(h, dbsIt->second);
+				} else {
+					_internal->rootDbDriver->init(h, mem::Vector<mem::StringView>());
+				}
+				_internal->rootDbDriver->finish(h);
+			}
 		}
 
 		auto del = l.rfind(":");
@@ -91,65 +153,7 @@ bool Root::run(const mem::Value &config) {
 				addr =  mem::StringView(l, del);
 			}
 
-			_internal->dbDriver = db::pq::Driver::open(db.empty() ? "libpq.so" : db);
-			if (!_internal->dbDriver) {
-				std::cout << "Invalid libpq id: " << db << "\n";
-				return false;
-			}
-
-			auto &servs = config.getValue("hosts");
-			for (auto &it : servs.asArray()) {
-				auto &params = it.getValue("db");
-
-				const char * keywords[params.size() + 1] = { 0 };
-				const char * values[params.size() + 1] = { 0 };
-
-				bool existed = false;
-				mem::StringView dbName;
-				size_t i = 0;
-				for (auto &it : params.asDict()) {
-					keywords[i] = it.first.data();
-					if (it.first == "dbname") {
-						values[i] = "postgres";
-						dbName = mem::StringView(it.second.getString());
-					} else {
-						values[i] = it.second.getString().data();
-					}
-					++ i;
-				}
-
-				auto handle = _internal->dbDriver->connect(keywords, values, 0);
-				if (handle.get()) {
-					auto conn = _internal->dbDriver->getConnection(handle);
-					auto res = _internal->dbDriver->exec(conn, "SELECT datname FROM pg_database;");
-
-					for (size_t i = 0; i < _internal->dbDriver->getNTuples(res); ++ i) {
-						auto name = mem::StringView(_internal->dbDriver->getValue(res, i, 0), _internal->dbDriver->getLength(res, i, 0));
-						if (name == dbName) {
-							existed = true;
-						}
-					}
-
-					_internal->dbDriver->clearResult(res);
-
-					if (!existed) {
-						mem::StringStream query;
-						query << "CREATE DATABASE " << dbName << ";";
-						auto q = query.weak().data();
-						auto res = _internal->dbDriver->exec(conn, q);
-						_internal->dbDriver->clearResult(res);
-					}
-
-					_internal->dbDriver->finish(handle);
-				}
-
-				addServer(it);
-			}
-
-			auto ret = run((l == "none") ? l : addr, port, workers);
-			_internal->dbDriver->release();
-			_internal->dbDriver = nullptr;
-			return ret;
+			return run((l == "none") ? l : addr, port, workers);
 		}
 		std::cout << "Invalid listen string: " << l << "\n";
 		return false;
@@ -160,61 +164,19 @@ void Root::onBroadcast(const mem::Value &) {
 
 }
 
-db::pq::Driver::Handle Root::dbdOpen(mem::pool_t *p, const Server &serv) const {
-	mem::pool::push(p);
-	auto ret = ((Server::Config *)serv.getConfig())->openDb();
-	mem::pool::pop();
-	return ret;
-}
-
-void Root::dbdClose(mem::pool_t *p, const Server &serv, const db::pq::Driver::Handle &ad) {
-	mem::pool::push(p);
-	((Server::Config *)serv.getConfig())->closeDb(ad);
-	mem::pool::pop();
-}
-
-db::pq::Handle Root::dbOpenHandle(mem::pool_t *p, const Server &serv) {
-	auto dbd = dbdOpen(p, serv);
-	if (dbd.get()) {
-		return db::pq::Handle(getDbDriver(), dbd);
+db::sql::Driver * Root::getDbDriver(mem::StringView driver) {
+	auto it = _internal->dbDrivers.find(driver);
+	if (it != _internal->dbDrivers.end()) {
+		return it->second;
+	} else {
+		auto d = db::sql::Driver::open(_internal->pool, driver);
+		_internal->dbDrivers.emplace(driver, d);
+		return d;
 	}
-	return db::pq::Handle(getDbDriver(), db::pq::Driver::Handle(nullptr));
 }
 
-void Root::dbCloseHandle(const Server &serv, db::pq::Handle &h) {
-	dbdClose(mem::pool::acquire(), serv, h.getHandle());
-}
-
-void Root::performStorage(mem::pool_t *pool, const Server &serv, const mem::Callback<void(const db::Adapter &)> &cb) {
-	mem::perform([&] {
-		auto dbd = dbdOpen(pool, serv);
-		if (dbd.get()) {
-			db::pq::Handle h(_internal->dbDriver, dbd);
-			h.setStorageTypeMap(&((Server::Config *)serv.getConfig())->storageTypes);
-			h.setCustomTypeMap(&((Server::Config *)serv.getConfig())->customTypes);
-
-			db::Interface *iface = &h;
-			db::Adapter storage(&h);
-			mem::pool::userdata_set((void *)iface, config::getStorageInterfaceKey(), nullptr, pool);
-
-			cb(storage);
-
-			auto stack = stappler::memory::pool::get<db::Transaction::Stack>(pool, config::getTransactionStackKey());
-			for (auto &it : stack->stack) {
-				if (it->adapter == storage) {
-					it->adapter == db::Adapter(nullptr);
-					messages::error("Root", "Incomplete transaction found");
-				}
-			}
-			mem::pool::userdata_set((void *)nullptr, storage.getTransactionKey().data(), nullptr, pool);
-			mem::pool::userdata_set((void *)nullptr, config::getStorageInterfaceKey(), nullptr, pool);
-			dbdClose(pool, serv, dbd);
-		}
-	}, pool);
-}
-
-db::pq::Driver * Root::getDbDriver() const {
-	return _internal->dbDriver;
+db::sql::Driver * Root::getRootDbDriver() const {
+	return _internal->rootDbDriver;
 }
 
 bool Root::scheduleTask(const Server &serv, Task *task, mem::TimeInterval ival) {
@@ -275,17 +237,6 @@ void Root::onHeartBeat() {
 		}
 	}, _internal->heartBeatPool);
 	mem::pool::clear(_internal->heartBeatPool);
-}
-
-bool Root::addServer(const mem::Value &val) {
-	auto p = mem::pool::create(_pool);
-	mem::pool::push(p);
-
-	auto serv = new (p) Server::Config(p, _internal->dbDriver, val);
-	_internal->servers.emplace(serv->name, Server(serv));
-
-	mem::pool::pop();
-	return false;
 }
 
 void Root::scheduleCancel() {

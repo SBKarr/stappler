@@ -23,18 +23,14 @@ THE SOFTWARE.
 #ifndef COMMON_DB_PQ_SPDBPQDRIVER_H_
 #define COMMON_DB_PQ_SPDBPQDRIVER_H_
 
-#include "STStorage.h"
+#include "STSqlDriver.h"
 
 NS_DB_PQ_BEGIN
 
-class Driver : public mem::AllocBase {
+struct DriverSym;
+
+class Driver : public sql::Driver {
 public:
-	using Handle = stappler::ValueWrapper<void *, class HandleClass>;
-	using Result = stappler::ValueWrapper<void *, class ResultClass>;
-	using Connection = stappler::ValueWrapper<void *, class ConnectionClass>;
-
-	static Driver *open(const mem::StringView &path = mem::StringView());
-
 	enum class Status {
 		Empty = 0,
 		CommandOk,
@@ -56,17 +52,28 @@ public:
 		Unknown
 	};
 
+	static Driver *open(mem::StringView path = mem::StringView(), const void *external = nullptr);
+
 	virtual ~Driver();
 
-	mem::StringView getDriverName() const { return _driverName; }
+	virtual bool init(Handle handle, const mem::Vector<mem::StringView> &) override;
 
-	Handle connect(const char * const *keywords, const char * const *values, int expand_dbname) const;
-	void finish(Handle) const;
+	virtual void performWithStorage(Handle handle, const mem::Callback<void(const db::Adapter &)> &cb) const;
+	virtual Interface *acquireInterface(Handle handle, mem::pool_t *) const;
 
-	Connection getConnection(Handle h) const;
+	virtual Handle connect(const mem::Map<mem::StringView, mem::StringView> &) const;
+	virtual void finish(Handle) const;
 
-	bool isValid(Handle) const;
-	bool isValid(Connection) const;
+	virtual Connection getConnection(Handle h) const;
+
+	virtual bool isValid(Handle) const;
+	virtual bool isValid(Connection) const;
+	virtual bool isIdle(Connection) const;
+
+	virtual int listenForNotifications(Handle) const override;
+	virtual bool consumeNotifications(Handle, const mem::Callback<void(mem::StringView)> &) const override;
+
+	virtual bool isNotificationsSupported() const override { return true; }
 
 	TransactionStatus getTransactionStatus(Connection) const;
 
@@ -89,22 +96,61 @@ public:
 
 	void clearResult(Result res) const;
 
-	Result exec(Connection conn, const char *query);
+	Result exec(Connection conn, const char *query) const;
 	Result exec(Connection conn, const char *command, int nParams, const char *const *paramValues,
-			const int *paramLengths, const int *paramFormats, int resultFormat);
-
-	void release();
-
-	void setDbCtrl(mem::Function<void(bool)> &&);
+			const int *paramLengths, const int *paramFormats, int resultFormat) const;
 
 	operator bool () const { return _handle != nullptr; }
 
-protected:
-	Driver(const mem::StringView &);
+	Interface::StorageType getTypeById(uint32_t) const;
+	mem::StringView getTypeNameById(uint32_t) const;
 
-	mem::StringView _driverName;
-	void *_handle = nullptr;
-	mem::Function<void(bool)> _dbCtrl = nullptr;
+protected:
+	Driver(mem::StringView, const void *external);
+
+	Handle doConnect(const char * const *keywords, const char * const *values, int expand_dbname) const;
+
+	bool _init = false;
+	mem::StringView _driverPath;
+
+	mem::Vector<mem::Pair<uint32_t, db::Interface::StorageType>> _storageTypes;
+	mem::Vector<mem::Pair<uint32_t, mem::String>> _customTypes;
+
+	DriverSym *_handle = nullptr;
+	const void *_external = nullptr;
+};
+
+class ResultInterface : public db::ResultInterface {
+public:
+	inline static constexpr bool pgsql_is_success(Driver::Status x) {
+		return (x == Driver::Status::Empty) || (x == Driver::Status::CommandOk) || (x == Driver::Status::TuplesOk) || (x == Driver::Status::SingleTuple);
+	}
+
+	ResultInterface(const Driver *d, Driver::Result res);
+
+	virtual ~ResultInterface();
+	virtual bool isBinaryFormat(size_t field) const override;
+	virtual bool isNull(size_t row, size_t field) override;
+	virtual mem::StringView toString(size_t row, size_t field) override;
+	virtual mem::BytesView toBytes(size_t row, size_t field) override;
+	virtual int64_t toInteger(size_t row, size_t field) override;
+	virtual double toDouble(size_t row, size_t field) override;
+	virtual bool toBool(size_t row, size_t field) override;
+	virtual mem::Value toTypedData(size_t row, size_t field) override;
+	virtual int64_t toId() override;
+	virtual mem::StringView getFieldName(size_t field) override;
+	virtual bool isSuccess() const override;
+	virtual size_t getRowsCount() const override;
+	virtual size_t getFieldsCount() const override;
+	virtual size_t getAffectedRows() const override;
+	virtual mem::Value getInfo() const override;
+	virtual void clear() override;
+	Driver::Status getError() const;
+
+public:
+	const Driver *driver = nullptr;
+	Driver::Result result = Driver::Result(nullptr);
+	Driver::Status err = Driver::Status::Empty;
 };
 
 NS_DB_PQ_END

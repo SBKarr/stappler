@@ -54,9 +54,9 @@ public:
 
 	virtual db::User * authorizeUser(const db::Auth &auth, const mem::StringView &iname, const mem::StringView &password) override;
 
-	void makeSessionsCleanup();
+	virtual void makeSessionsCleanup() override;
 	void finalizeBroadcast();
-	int64_t processBroadcasts(const stappler::Callback<void(stappler::BytesView)> &, int64_t value);
+	virtual int64_t processBroadcasts(const mem::Callback<void(stappler::BytesView)> &, int64_t value) override;
 	virtual void broadcast(const mem::Bytes &) override;
 
 	virtual int64_t getDeltaValue(const Scheme &scheme) override;

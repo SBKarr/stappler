@@ -26,13 +26,13 @@ NS_SA_BEGIN
 
 static apr_status_t DbdModule_construct(void **data_ptr, void *params, mem::pool_t *pool) {
 	DbdModule *group = (DbdModule *)params;
-	ap_dbd_t *rec = group->connect(pool);
 
-	mem::pool::cleanup_register(rec->pool, [rec] {
-		apr_dbd_close(rec->driver, rec->handle);
-	});
+	db::sql::Driver::Handle rec;
+	mem::perform([&] {
+		rec = group->getDriver()->connect(*group->getParams());
+	}, pool);
 
-    *data_ptr = rec;
+    *data_ptr = rec.get();
     return APR_SUCCESS;
 }
 
@@ -40,18 +40,65 @@ static apr_status_t DbdModule_destruct(void *data, void *params, mem::pool_t *po
 	DbdModule *group = (DbdModule *)params;
 
 	if (!group->isDestroyed()) {
-		ap_dbd_t *rec = (ap_dbd_t *)data;
-		apr_pool_destroy(rec->pool);
+		group->getDriver()->finish(db::sql::Driver::Handle(data));
 	}
 
 	return APR_SUCCESS;
 }
 
-DbdModule *DbdModule::create(mem::pool_t *root, const Config &cfg, Map<StringView, StringView> *params, StringView dbName) {
+DbdModule *DbdModule::create(mem::pool_t *root, Map<StringView, StringView> *params) {
 	auto pool = mem::pool::create(root);
 	DbdModule *m = nullptr;
+
 	mem::perform([&] {
-		m = new (pool) DbdModule(pool, cfg, params, dbName.pdup(pool));
+		db::sql::Driver *driver = nullptr;
+
+		StringView driverName;
+		Config cfg;
+		for (auto &it : *params) {
+			if (it.first == "nmin") {
+				if (int v = StringView(it.second).readInteger(10).get(0)) {
+					cfg.nmin = stappler::math::clamp(v, 1, config::getMaxDatabaseConnections());
+				} else {
+					std::cout << "[DbdModule] invalid value for nmin: " << it.second << "\n";
+				}
+			} else if (it.first == "nkeep") {
+				if (int v = StringView(it.second).readInteger(10).get(0)) {
+					cfg.nkeep = stappler::math::clamp(v, 1, config::getMaxDatabaseConnections());
+				} else {
+					std::cout << "[DbdModule] invalid value for nkeep: " << it.second << "\n";
+				}
+			} else if (it.first == "nmax") {
+				if (int v = StringView(it.second).readInteger(10).get(0)) {
+					cfg.nmax = stappler::math::clamp(v, 1, config::getMaxDatabaseConnections());
+				} else {
+					std::cout << "[DbdModule] invalid value for nmax: " << it.second << "\n";
+				}
+			} else if (it.first == "exptime") {
+				if (auto v = StringView(it.second).readInteger(10).get(0)) {
+					cfg.exptime = v;
+				} else {
+					std::cout << "[DbdModule] invalid value for exptime: " << it.second << "\n";
+				}
+			} else if (it.first == "persistent") {
+				if (it.second == "1" || it.second == "yes") {
+					cfg.persistent = true;
+				} else if (it.second == "0" || it.second == "no") {
+					cfg.persistent = false;
+				} else {
+					std::cout << "[DbdModule] invalid value for persistent: " << it.second << "\n";
+				}
+			} else if (it.first == "driver") {
+				driverName = it.second;
+				driver = Root::getInstance()->getDbDriver(it.second);
+			}
+		}
+
+		if (driver) {
+			m = new (pool) DbdModule(pool, cfg, driver, params);
+		} else {
+			std::cout << "[DbdModule] driver not found: " << driverName << "\n";
+		}
 	}, pool);
 	return m;
 }
@@ -64,16 +111,8 @@ void DbdModule::destroy(DbdModule *module) {
 	mem::pool::destroy(p);
 }
 
-ap_dbd_t *DbdModule::connect(apr_pool_t *pool) const {
-	ap_dbd_t *ret = nullptr;
-	mem::perform([&] {
-		ret = (ap_dbd_t *)_dbDriver->connect(_keywords.data(), _values.data(), 0).get();
-	}, pool);
-	return ret;
-}
-
-ap_dbd_t *DbdModule::openConnection(apr_pool_t *pool) {
-	ap_dbd_t *rec = NULL;
+db::sql::Driver::Handle DbdModule::openConnection(apr_pool_t *pool) {
+	db::sql::Driver::Handle rec;
 
 	if (!_config.persistent) {
 		DbdModule_construct((void**) &rec, this, pool);
@@ -82,22 +121,22 @@ ap_dbd_t *DbdModule::openConnection(apr_pool_t *pool) {
 
 	auto rv = apr_reslist_acquire(_reslist, (void**) &rec);
 	if (rv != APR_SUCCESS) {
-		return NULL;
+		return db::sql::Driver::Handle(nullptr);
 	}
 
-	if (!_dbDriver->isValid(db::pq::Driver::Handle(rec))) {
-		apr_reslist_invalidate(_reslist, rec);
-		return nullptr;
+	if (!_dbDriver->isValid(rec)) {
+		apr_reslist_invalidate(_reslist, rec.get());
+		return db::sql::Driver::Handle(nullptr);
 	}
 
 	return rec;
 }
 
-void DbdModule::closeConnection(ap_dbd_t *rec) {
+void DbdModule::closeConnection(db::sql::Driver::Handle rec) {
 	if (!_config.persistent) {
-		apr_pool_destroy(rec->pool);
+		_dbDriver->finish(rec);
 	} else {
-		apr_reslist_release(_reslist, rec);
+		apr_reslist_release(_reslist, rec.get());
 	}
 }
 
@@ -111,32 +150,15 @@ void DbdModule::close() {
 	}
 }
 
-DbdModule::DbdModule(mem::pool_t *pool, const Config &cfg, Map<StringView, StringView> *params, StringView dbName)
-: _pool(pool), _config(cfg), _dbParams(params), _dbName(dbName) {
-
-	_dbDriver = db::pq::Driver::open(StringView("pgsql"));
-	_dbDriver->setDbCtrl([this] (bool complete) {
-		if (complete) {
-			Root::getInstance()->incrementReleasedQueries();
-		} else {
-			Root::getInstance()->incrementPerformedQueries();
-		}
-	});
-
-	_keywords.reserve(params->size());
-	_values.reserve(params->size());
-
-	for (auto &it : *_dbParams) {
-		if (it.first == "dbname") {
-			_keywords.emplace_back(it.first.data());
-			_values.emplace_back(_dbName.data());
-		} else {
-			_keywords.emplace_back(it.first.data());
-			_values.emplace_back(it.second.data());
-		}
+DbdModule::DbdModule(mem::pool_t *pool, const Config &cfg, db::sql::Driver *driver, Map<StringView, StringView> *params)
+: _pool(pool), _config(cfg), _dbParams(params), _dbDriver(driver) {
+	auto handle = _dbDriver->connect(*_dbParams);
+	if (handle.get()) {
+		_dbDriver->init(handle, mem::Vector<mem::StringView>());
+		_dbDriver->finish(handle);
+	} else {
+		std::cout << "[DbdModule] fail to initialize connection with driver " << _dbDriver->getDriverName() << "\n";
 	}
-	_keywords.emplace_back(nullptr);
-	_keywords.emplace_back(nullptr);
 
 	if (_config.persistent) {
 		auto rv = apr_reslist_create(&_reslist, _config.nmin, _config.nkeep, _config.nmax,
@@ -145,6 +167,10 @@ DbdModule::DbdModule(mem::pool_t *pool, const Config &cfg, Map<StringView, Strin
 			_destroyed = false;
 		}
 	}
+
+	mem::pool::cleanup_register(_pool, [this] {
+		_destroyed = true;
+	});
 }
 
 NS_SA_END

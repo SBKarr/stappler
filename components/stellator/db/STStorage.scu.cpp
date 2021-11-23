@@ -39,6 +39,7 @@ THE SOFTWARE.
 #include "STStorageWorker.cc"
 #include "STStorageScheme.cc"
 
+#include "STSqlDriver.cc"
 #include "STSqlHandle.cc"
 #include "STSqlHandleObject.cc"
 #include "STSqlHandleProp.cc"

@@ -42,8 +42,8 @@ constexpr size_t getMaxVarSize() { return 255; }
 constexpr size_t getMaxRequestSize() { return 0; }
 constexpr size_t getMaxFileSize() { return 0; }
 
-constexpr size_t getMaxInputPostSize() { return 500_MiB; }
-constexpr size_t getMaxInputFileSize() { return 500_MiB; }
+constexpr size_t getMaxInputPostSize() { return 2_GiB; }
+constexpr size_t getMaxInputFileSize() { return 2_GiB; }
 constexpr size_t getMaxInputVarSize() { return 8_KiB; }
 
 constexpr size_t getMaxExtraFieldSize() { return 8_KiB; }
@@ -101,6 +101,8 @@ constexpr uint16_t getResourceResolverMaxDepth() { return 4; }
 
 inline TimeInterval getKeyValueStorageTime() { return TimeInterval::seconds(60 * 60 * 24 * 365); } // one year
 inline TimeInterval getInternalsStorageTime() { return TimeInterval::seconds(60 * 60 * 24 * 30); }
+
+constexpr int getMaxDatabaseConnections() { return 1024; }
 
 // this key used only with custom SerenityServerKey to protect database entry with real generated private key
 static constexpr auto INTERNAL_PRIVATE_KEY =

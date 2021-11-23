@@ -29,6 +29,7 @@ THE SOFTWARE.
 #include "STTask.h"
 #include "STPqHandle.h"
 
+#include "SPJsonWebToken.h"
 #include "SPugCache.h"
 
 namespace stellator {
@@ -68,134 +69,38 @@ static constexpr auto SA_SERVER_FILE_SCHEME_NAME = "__files";
 static constexpr auto SA_SERVER_USER_SCHEME_NAME = "__users";
 static constexpr auto SA_SERVER_ERROR_SCHEME_NAME = "__error";
 
-
 struct DbConnection : public mem::AllocBase {
-	db::pq::Driver::Handle handle;
+	db::sql::Driver::Handle handle;
 	DbConnection *next = nullptr;
 };
 
 struct DbConnList : public mem::AllocBase {
-	std::array<DbConnection, 16> array;
+	struct Config {
+		int nmin = 1;
+		int nkeep = 2;
+		int nmax = 10;
+		int64_t exptime = 300;
+		bool persistent = true;
+	};
+
+	mem::pool_t *pool = nullptr;
+	mem::Vector<DbConnection> array;
 
 	DbConnection *opened = nullptr;
 	DbConnection *free = nullptr;
 
+	Config _config;
 	size_t count = 0;
 	std::mutex mutex;
 
-	const char * *keywords = nullptr;
-	const char * *values = nullptr;
+	db::sql::Driver *driver = nullptr;
+	mem::Map<mem::StringView, mem::StringView> params;
 
-	db::pq::Driver *driver = nullptr;
+	DbConnList(Root *, size_t nWorkers, const mem::Value &db);
+	~DbConnList();
 
-	DbConnList(mem::pool_t *p, db::pq::Driver *d) : driver(d) {
-		memset((void *)array.data(), 0, sizeof(DbConnection) * array.size());
-
-		DbConnection *target = nullptr;
-		for (auto &it : array) {
-			it.next = target;
-			target = &it;
-		}
-		free = target;
-
-		registerCleanupDestructor(this, p);
-	}
-
-	~DbConnList() {
-		while (opened) {
-			auto ret = opened->handle;
-			opened->handle = db::pq::Driver::Handle(nullptr);
-			opened = opened->next;
-
-			driver->finish(ret);
-		}
-	}
-
-	const char * *getKeywords() const {
-		return keywords;
-	}
-
-	const char * *getValues() const {
-		return values;
-	}
-
-	void parseParams(mem::pool_t *p, const mem::Map<mem::String, mem::String> &params) {
-		keywords = (const char * *)mem::pool::palloc(p, sizeof(const char *) * (params.size() + 1));
-		memset((void *)keywords, 0, sizeof(const char *) * (params.size() + 1));
-
-		values = (const char * *)mem::pool::palloc(p, sizeof(const char *) * (params.size() + 1));
-		memset((void *)values, 0, sizeof(const char *) * (params.size() + 1));
-
-		size_t i = 0;
-		for (auto &it : params) {
-			keywords[i] = it.first.data();
-			values[i] = it.second.data();
-			++ i;
-		}
-	}
-
-	db::pq::Driver::Handle open() {
-		db::pq::Driver::Handle ret(nullptr);
-		mutex.lock();
-		while (opened) {
-			auto tmpOpened = opened;
-			ret = opened->handle;
-			opened->handle = db::pq::Driver::Handle(nullptr);
-			opened = opened->next;
-
-			tmpOpened->next = free;
-			free = tmpOpened;
-
-			auto conn = driver->getConnection(ret);
-			if (driver->isValid(conn)) {
-				break;
-			} else {
-				driver->finish(ret);
-				ret = db::pq::Driver::Handle(nullptr);
-			}
-		}
-		mutex.unlock();
-
-		if (ret.get()) {
-			return ret;
-		} else {
-			auto ret = driver->connect(keywords, values, 0);
-			if (ret.get()) {
-				auto key = mem::toString("pq", uintptr_t(ret.get()));
-				mem::pool::store(ret.get(), key, [d = driver, ret] () {
-					d->finish(ret);
-				});
-			}
-			return ret;
-		}
-	}
-
-	void close(db::pq::Driver::Handle h) {
-		if (h.get()) {
-			auto key = mem::toString("pq", uintptr_t(h.get()));
-			mem::pool::store(h.get(), key, nullptr);
-		}
-
-		auto conn = driver->getConnection(h);
-		bool valid = driver->isValid(conn) && (driver->getTransactionStatus(conn) == db::pq::Driver::TransactionStatus::Idle);
-		if (!valid) {
-			driver->finish(h);
-		} else {
-			mutex.lock();
-			if (free) {
-				auto tmpfree = free;
-				free->handle = h;
-				free = free->next;
-
-				tmpfree->next = opened;
-				opened = tmpfree;
-				mutex.unlock();
-			} else {
-				mutex.unlock();
-				driver->finish(h);
-			}
-		}
-	}
+	db::sql::Driver::Handle open();
+	void close(db::pq::Driver::Handle h);
 };
 
 struct Server::Config : public mem::AllocBase {
@@ -205,13 +110,14 @@ struct Server::Config : public mem::AllocBase {
 		ServerComponent::Symbol symbol;
 	};
 
-	Config(mem::pool_t *, db::pq::Driver *, const mem::Value &config);
+	Config(Root *, size_t nWorkers, const mem::Value &config);
 
 	void setSessionParams(mem::Value &val);
 	void setForceHttps();
 
 	void init(Server &serv);
-
+	bool initKeyPair(Server &serv, const db::Adapter &a, mem::BytesView fp);
+	void initServerKeys(Server &serv, const db::Adapter &a);
 	void onChildInit(Server &serv);
 	void onStorageTransaction(db::Transaction &t);
 	void onError(const mem::StringView &str);
@@ -221,6 +127,9 @@ struct Server::Config : public mem::AllocBase {
 
 	db::pq::Driver::Handle openDb();
 	void closeDb(db::pq::Driver::Handle);
+
+	db::sql::Driver *getDbDriver() const;
+	mem::StringView getDbName() const;
 
 	mem::pool_t *pool = nullptr;
 	DbConnList dbConnList;
@@ -244,8 +153,6 @@ struct Server::Config : public mem::AllocBase {
 	bool childInit = false;
 
 	mem::Vector<ComponentScheme> componentLoaders;
-
-	mem::Map<mem::String, mem::String> dbParams;
 
 	mem::StringView currentComponent;
 	mem::Vector<mem::Function<int(Request &)>> preRequest;
@@ -286,11 +193,11 @@ struct Server::Config : public mem::AllocBase {
 		db::Field::Bytes("pubkey", db::Transform::PublicKey, db::Flags::Indexed),
 		db::Field::Password("password", db::PasswordSalt(stellator::config::getDefaultPasswordSalt()), db::Flags::Required | db::Flags::Protected),
 		db::Field::Boolean("isAdmin", mem::Value(false)),
-		db::Field::Extra("data", mem::Vector<db::Field>{
+		db::Field::Extra("data", mem::Vector<db::Field>({
 			db::Field::Text("email", db::Transform::Email),
 			db::Field::Text("public"),
 			db::Field::Text("desc"),
-		}),
+		})),
 		db::Field::Text("email", db::Transform::Email, db::Flags::Unique),
 	});
 
@@ -322,11 +229,139 @@ struct Server::Config : public mem::AllocBase {
 	mem::Vector<mem::Pair<uint32_t, mem::String>> customTypes;
 };
 
+DbConnList::DbConnList(Root *root, size_t nWorkers, const mem::Value &db)
+: pool(mem::pool::acquire()) {
+	array.resize(nWorkers);
 
+	memset((void *)array.data(), 0, sizeof(DbConnection) * array.size());
 
-Server::Config::Config(mem::pool_t *p, db::pq::Driver *driver, const mem::Value &config)
-: pool(p)
-, dbConnList(p, driver)
+	DbConnection *target = nullptr;
+	for (auto &it : array) {
+		it.next = target;
+		target = &it;
+	}
+	free = target;
+
+	for (auto &it : db.asDict()) {
+		if (it.first == "nmin") {
+			if (int v = it.second.getInteger()) {
+				_config.nmin = stappler::math::clamp(v, 1, config::getMaxDatabaseConnections());
+			} else {
+				std::cout << "[DbdModule] invalid value for nmin: " << it.second << "\n";
+			}
+		} else if (it.first == "nkeep") {
+			if (int v = it.second.getInteger()) {
+				_config.nkeep = stappler::math::clamp(v, 1, config::getMaxDatabaseConnections());
+			} else {
+				std::cout << "[DbdModule] invalid value for nkeep: " << it.second << "\n";
+			}
+		} else if (it.first == "nmax") {
+			if (int v = it.second.getInteger()) {
+				_config.nmax = stappler::math::clamp(v, 1, config::getMaxDatabaseConnections());
+			} else {
+				std::cout << "[DbdModule] invalid value for nmax: " << it.second << "\n";
+			}
+		} else if (it.first == "exptime") {
+			if (auto v = it.second.getInteger()) {
+				_config.exptime = v;
+			} else {
+				std::cout << "[DbdModule] invalid value for exptime: " << it.second << "\n";
+			}
+		} else if (it.first == "persistent") {
+			if (it.second == "1" || it.second == "yes") {
+				_config.persistent = true;
+			} else if (it.second == "0" || it.second == "no") {
+				_config.persistent = false;
+			} else {
+				std::cout << "[DbdModule] invalid value for persistent: " << it.second << "\n";
+			}
+		} else if (it.first == "driver") {
+			driver = root->getDbDriver(it.second.getString());
+		} else {
+			params.emplace(mem::StringView(it.first).pdup(), mem::StringView(it.second.getString()).pdup());
+		}
+	}
+
+	if (!driver) {
+		driver = root->getRootDbDriver();
+	}
+}
+
+DbConnList::~DbConnList() { }
+
+db::sql::Driver::Handle DbConnList::open() {
+	db::pq::Driver::Handle ret(nullptr);
+	mutex.lock();
+	while (opened) {
+		auto tmpOpened = opened;
+		ret = opened->handle;
+		opened->handle = db::pq::Driver::Handle(nullptr);
+		opened = opened->next;
+
+		tmpOpened->next = free;
+		free = tmpOpened;
+
+		auto conn = driver->getConnection(ret);
+		if (driver->isValid(conn)) {
+			break;
+		} else {
+			driver->finish(ret);
+			ret = db::pq::Driver::Handle(nullptr);
+		}
+	}
+	mutex.unlock();
+
+	if (ret.get()) {
+		return ret;
+	} else {
+		db::sql::Driver::Handle ret;
+		mem::perform([&] {
+			ret = driver->connect(params);
+		}, pool);
+		if (ret.get()) {
+			auto key = mem::toString("pq", uintptr_t(ret.get()));
+			mem::pool::store(ret.get(), key, [d = driver, ret] () {
+				d->finish(ret);
+			});
+		}
+		return ret;
+	}
+}
+
+void DbConnList::close(db::pq::Driver::Handle h) {
+	if (h.get()) {
+		auto key = mem::toString("pq", uintptr_t(h.get()));
+		mem::pool::store(h.get(), key, nullptr);
+	}
+
+	auto conn = driver->getConnection(h);
+	bool valid = driver->isValid(conn) && driver->isIdle(conn);
+	if (!valid) {
+		mem::perform([&] {
+			driver->finish(h);
+		}, pool);
+	} else {
+		mutex.lock();
+		if (free) {
+			auto tmpfree = free;
+			free->handle = h;
+			free = free->next;
+
+			tmpfree->next = opened;
+			opened = tmpfree;
+			mutex.unlock();
+		} else {
+			mutex.unlock();
+			mem::perform([&] {
+				driver->finish(h);
+			}, pool);
+		}
+	}
+}
+
+Server::Config::Config(Root *root, size_t nWorkers, const mem::Value &config)
+: pool(mem::pool::acquire())
+, dbConnList(root, nWorkers, config.getValue("db"))
 #if DEBUG
 , pugCache(pug::Template::Options::getPretty(), [this] (const mem::StringView &str) { onError(str); })
 #else
@@ -344,11 +379,6 @@ Server::Config::Config(mem::pool_t *p, db::pq::Driver *driver, const mem::Value 
 			for (auto &iit : it.second.asArray()) {
 				addComponent(iit);
 			}
-		} else if (it.first == "db") {
-			for (auto &iit : it.second.asDict()) {
-				dbParams.emplace(iit.first, iit.second.asString());
-			}
-			dbConnList.parseParams(pool, dbParams);
 		}
 	}
 
@@ -362,6 +392,8 @@ Server::Config::Config(mem::pool_t *p, db::pq::Driver *driver, const mem::Value 
 			pugCache.addContent(mem::toString("virtual:/", d[i].name), d[i].content.str<mem::Interface>());
 		}
 	}
+
+	registerCleanupDestructor(this, mem::pool::acquire());
 }
 
 void Server::Config::setSessionParams(mem::Value &val) {
@@ -390,6 +422,54 @@ void Server::Config::init(Server &serv) {
 	}
 }
 
+bool Server::Config::initKeyPair(Server &serv, const db::Adapter &a, mem::BytesView fp) {
+	stappler::crypto::PrivateKey pk;
+	if (pk.generate()) {
+		auto priv = pk.exportPem();
+		auto pub = pk.exportPublic().exportPem();
+
+		privateSessionKey = mem::StringView((const char *)priv.data(), priv.size()).str();
+		publicSessionKey = mem::StringView((const char *)pub.data(), pub.size()).str();
+	}
+
+    auto tok = stappler::AesToken::create(stappler::AesToken::Keys{ mem::StringView(), mem::StringView(config::INTERNAL_PRIVATE_KEY), mem::BytesView(serverKey) });
+	tok.setString(privateSessionKey, "priv");
+	tok.setString(publicSessionKey, "pub");
+	if (auto d = tok.exportData(fp)) {
+		std::array<uint8_t, stappler::string::Sha512::Length + 4> data;
+		memcpy(data.data(), "srv:", 4);
+		memcpy(data.data() + 4, fp.data(), fp.size());
+
+		a.set(data, d, mem::TimeInterval::seconds(60 * 60 * 365 * 100)); // 100 years
+		return true;
+	}
+    return false;
+}
+
+void Server::Config::initServerKeys(Server &serv, const db::Adapter &a) {
+	if (!privateSessionKey.empty() || !publicSessionKey.empty()) {
+		return;
+	}
+
+	auto fp = stappler::string::Sha512::hmac(serv.getServerHostname(), serverKey);
+
+	std::array<uint8_t, stappler::string::Sha512::Length + 4> data;
+	memcpy(data.data(), "srv:", 4);
+	memcpy(data.data() + 4, fp.data(), fp.size());
+
+	if (auto d = a.get(data)) {
+		if (auto tok = stappler::AesToken::parse(d, mem::BytesView(fp), stappler::AesToken::Keys{
+				mem::StringView(), mem::StringView(config::INTERNAL_PRIVATE_KEY), mem::BytesView(serverKey) })) {
+			privateSessionKey = tok.getString("priv");
+			publicSessionKey = tok.getString("pub");
+		}
+	}
+
+	if (privateSessionKey.empty()) {
+		initKeyPair(serv, a, fp);
+	}
+}
+
 void Server::Config::onChildInit(Server &serv) {
 	for (auto &it : components) {
 		currentComponent = it.second->getName();
@@ -406,25 +486,23 @@ void Server::Config::onChildInit(Server &serv) {
 		}
 
 		mem::perform([&] {
-			auto root = Root::getInstance();
-			auto pool = getCurrentPool();
-			auto db = root->dbdOpen(pool, serv);
-			if (db.get()) {
-				db::pq::Handle hdb(dbConnList.driver, db);
-				if (!hdb.init(db::Interface::Config{serv.getServerHostname().str<mem::Interface>(),
-						serv.getFileScheme(),&storageTypes, &customTypes}, schemes)) {
-					loadingFalled = true;
-					return;
-				}
+			auto db = dbConnList.open();
+			if (!db.empty()) {
+				dbConnList.driver->init(db, mem::Vector<mem::StringView>());
+				dbConnList.driver->performWithStorage(db, [&] (const db::Adapter &storage) {
+					storage.init(db::Interface::Config{serv.getServerHostname(), serv.getFileScheme()}, schemes);
 
-				for (auto &it : components) {
-					currentComponent = it.second->getName();
-					it.second->onStorageInit(serv, &hdb);
-					currentComponent = mem::String();
-				}
-				root->dbdClose(pool, serv, db);
-			} else {
-				loadingFalled = true;
+					if (serverKey != stappler::string::Sha512::Buf{0}) {
+						initServerKeys(serv, storage);
+					}
+
+					for (auto &it : components) {
+						currentComponent = it.second->getName();
+						it.second->onStorageInit(serv, storage);
+						currentComponent = mem::String();
+					}
+				});
+				dbConnList.close(db);
 			}
 		});
 	}
@@ -470,6 +548,18 @@ void Server::Config::closeDb(db::pq::Driver::Handle h) {
 	dbConnList.close(h);
 }
 
+db::sql::Driver *Server::Config::getDbDriver() const {
+	return dbConnList.driver;
+}
+
+mem::StringView Server::Config::getDbName() const {
+	auto it = dbConnList.params.find(mem::StringView("dbname"));
+	if (it != dbConnList.params.end()) {
+		return it->second;
+	}
+	return mem::StringView();
+}
+
 Server::Server() : _config(nullptr) { }
 Server::Server(Config *cfg) : _config(cfg) { }
 Server & Server::operator =(Config *c) { _config = c; return *this; }
@@ -512,23 +602,24 @@ void Server::onHeartBeat(mem::pool_t *pool) {
 	mem::perform([&] {
 		auto now = mem::Time::now();
 		if (!_config->loadingFalled) {
-			auto root = Root::getInstance();
-			auto dbd = root->dbdOpen(pool, *this);
-			if (dbd.get()) {
-				db::pq::Handle hdb(_config->dbConnList.driver, dbd);
-				if (now - _config->lastDatabaseCleanup > config::getDefaultDatabaseCleanupInterval()) {
-					_config->lastDatabaseCleanup = now;
-					hdb.makeSessionsCleanup();
-				}
 
-				_config->broadcastId = hdb.processBroadcasts([&] (mem::BytesView bytes) {
-					onBroadcast(bytes);
-				}, _config->broadcastId);
-				root->dbdClose(pool, *this, dbd);
+			auto db = _config->dbConnList.open();
+			if (!db.empty()) {
+				_config->dbConnList.driver->performWithStorage(db, [&] (const db::Adapter &storage) {
+					if (now - _config->lastDatabaseCleanup > config::getDefaultDatabaseCleanupInterval()) {
+						_config->lastDatabaseCleanup = now;
+						storage.makeSessionsCleanup();
+					}
 
-				for (auto &it : _config->components) {
-					it.second->onHeartbeat(*this);
-				}
+					_config->broadcastId = storage.interface()->processBroadcasts([&] (mem::BytesView bytes) {
+						onBroadcast(bytes);
+					}, _config->broadcastId);
+
+					for (auto &it : _config->components) {
+						it.second->onHeartbeat(*this);
+					}
+				});
+				_config->dbConnList.close(db);
 			}
 		}
 		if (now - _config->lastTemplateUpdate > config::getDefaultPugTemplateUpdateInterval()) {
@@ -708,12 +799,18 @@ void Server::performWithStorage(const mem::Callback<void(const db::Transaction &
 	}
 
 	auto targetPool = mem::pool::acquire();
-	Root::getInstance()->performStorage(targetPool, *this, [&] (const db::Adapter &ad) {
-		if (auto t = db::Transaction::acquire(ad)) {
-			cb(t);
-			t.release();
+	mem::perform([&] {
+		db::sql::Driver::Handle handle = _config->dbConnList.open();
+		if (handle.get()) {
+			_config->dbConnList.driver->performWithStorage(handle, [&] (const db::Adapter &a) {
+				if (auto t = db::Transaction::acquire(a)) {
+					cb(t);
+					t.release();
+				}
+			});
+			_config->dbConnList.close(handle);
 		}
-	});
+	}, targetPool);
 }
 
 void Server::setSessionKeys(mem::StringView pub, mem::StringView priv) const {

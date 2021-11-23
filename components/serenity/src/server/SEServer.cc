@@ -1,8 +1,5 @@
-// This is an open source non-commercial project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++ and C#: http://www.viva64.com
-
 /**
-Copyright (c) 2016-2019 Roman Katuntsev <sbkarr@stappler.org>
+Copyright (c) 2016-2021 Roman Katuntsev <sbkarr@stappler.org>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -42,13 +39,13 @@ THE SOFTWARE.
 #include "TemplateCache.h"
 #include "SPugCache.h"
 #include "ExternalSession.h"
+#include "SEDbdModule.h"
 
 NS_SA_BEGIN
 
 static constexpr auto SA_SERVER_FILE_SCHEME_NAME = "__files";
 static constexpr auto SA_SERVER_USER_SCHEME_NAME = "__users";
 static constexpr auto SA_SERVER_ERROR_SCHEME_NAME = "__error";
-static constexpr auto DEV_RANDOM_THRESHOLD = 32;
 
 struct Server::Config : public AllocPool {
 	static Config *get(server_rec *server) {
@@ -68,6 +65,7 @@ struct Server::Config : public AllocPool {
 	: _pugCache(pug::Template::Options::getDefault(), [this] (const StringView &str) { onError(str); })
 #endif
 	{
+		rootPool = mem::pool::acquire();
 		// add virtual files to template engine
 		size_t count = 0;
 		auto d = tools::VirtualFile::getList(count);
@@ -278,29 +276,54 @@ struct Server::Config : public AllocPool {
 
 		childInit = true;
 
+		auto root = Root::getInstance();
+		auto pool = getCurrentPool();
+
+		db::sql::Driver::Handle db;
+ 		if (dbParams) {
+			// run custom dbd
+			customDbd = DbdModule::create(rootPool, dbParams);
+			dbDriver = customDbd->getDriver();
+			db = customDbd->openConnection(pool);
+		} else {
+			// setup apache httpd dbd
+			db = root->dbdOpen(pool, serv);
+			if (db.get()) {
+				dbDriver = db::sql::Driver::open(p, apr_dbd_name(((ap_dbd_t *)db.get())->driver), ((ap_dbd_t *)db.get())->driver);
+				dbDriver->init(db, mem::Vector<mem::StringView>());
+			}
+		}
+
+ 		if (!schemes.empty() && !db.get()) {
+ 			loadingFalled = true;
+ 		}
+
 		if (!loadingFalled) {
 			db::Scheme::initSchemes(schemes);
 
 			apr::pool::perform([&] {
-				auto root = Root::getInstance();
-				auto pool = getCurrentPool();
-				auto db = root->dbdOpen(pool, serv);
-				if (db) {
-					db::pq::Handle h(db::pq::Driver::open(), db::pq::Driver::Handle(db));
-					h.init(db::Interface::Config{serv.getServerHostname(), serv.getFileScheme(), &storageTypes, &customTypes}, schemes);
+				dbDriver->performWithStorage(db, [&] (const db::Adapter &storage) {
+					storage.init(db::Interface::Config{StringView(serv.server()->server_hostname), serv.getFileScheme()}, schemes);
 
 					if (serverKey != string::Sha512::Buf{0}) {
-						initServerKeys(serv, &h);
+						initServerKeys(serv, storage);
 					}
 
 					for (auto &it : components) {
 						currentComponent = it.second->getName();
-						it.second->onStorageInit(serv, &h);
+						it.second->onStorageInit(serv, storage);
 						currentComponent = String();
 					}
-					root->dbdClose(serv, db);
-				}
+				});
 			});
+		}
+
+		if (db.get()) {
+			if (customDbd) {
+				customDbd->closeConnection(db);
+			} else {
+				root->dbdClose(serv, db);
+			}
 		}
 	}
 
@@ -308,6 +331,13 @@ struct Server::Config : public AllocPool {
 		for (auto &it : components) {
 			it.second->onStorageTransaction(t);
 		}
+	}
+
+	void setDbParams(StringView str) {
+		mem::perform([&] {
+			dbParams = new (rootPool) Map<StringView, StringView>;
+			Root::parseParameterList(*dbParams, str);
+		}, rootPool);
 	}
 
 	void onError(const StringView &str) {
@@ -394,11 +424,11 @@ struct Server::Config : public AllocPool {
 	String privateSessionKey;
 	string::Sha512::Buf serverKey;
 
-	mem::Vector<mem::Pair<uint32_t, db::Interface::StorageType>> storageTypes;
-	mem::Vector<mem::Pair<uint32_t, mem::String>> customTypes;
-
 	Vector<Pair<uint32_t, uint32_t>> allowedIps;
+	Map<StringView, StringView> *dbParams = nullptr;
+	DbdModule *customDbd = nullptr;
 	mem::pool_t *rootPool = nullptr;
+	db::sql::Driver *dbDriver = nullptr;
 };
 
 void * Server::merge(void *base, void *add) {
@@ -598,12 +628,39 @@ void Server::performWithStorage(const Callback<void(const db::Transaction &)> &c
 	}
 
 	auto targetPool = mem::pool::acquire();
-	Root::getInstance()->performStorage(targetPool, *this, [&] (const db::Adapter &ad) {
-		if (auto t = db::Transaction::acquire(ad)) {
-			cb(t);
-			t.release();
+
+	apr::pool::perform([&] {
+		db::sql::Driver::Handle handle = openDbConnection(targetPool);
+		if (handle.get()) {
+			_config->dbDriver->performWithStorage(handle, [&] (const db::Adapter &a) {
+				if (auto t = db::Transaction::acquire(a)) {
+					cb(t);
+					t.release();
+				}
+			});
+			closeDbConnection(handle);
 		}
-	});
+	}, targetPool);
+}
+
+db::Interface * Server::acquireDbForRequest(request_rec *r) const {
+	if (_config->customDbd) {
+		auto handle = _config->customDbd->openConnection(r->pool);
+		if (handle.get()) {
+			mem::pool::cleanup_register(r->pool, [handle, dbd = _config->customDbd] {
+				dbd->closeConnection(handle);
+			});
+
+			return _config->dbDriver->acquireInterface(handle, r->pool);
+		}
+	} else {
+		auto handle = Root::getInstance()->dbdAcquire(r);
+		if (handle.get()) {
+			return _config->dbDriver->acquireInterface(handle, r->pool);
+		}
+	}
+
+	return nullptr;
 }
 
 void Server::setSessionKeys(StringView pub, StringView priv) const {
@@ -771,6 +828,10 @@ void Server::setProtectedList(StringView str) {
 	});
 }
 
+void Server::setDbParams(StringView w) {
+	_config->setDbParams(w);
+}
+
 void Server::addProtectedLocation(const StringView &value) {
 	_config->protectedList.emplace(value.str());
 }
@@ -856,6 +917,10 @@ pug::Cache *Server::getPugCache() const {
 	return &_config->_pugCache;
 }
 
+db::sql::Driver *Server::getDbDriver() const {
+	return _config->dbDriver;
+}
+
 template <typename T>
 auto Server_resolvePath(Map<String, T> &map, const String &path) -> typename Map<String, T>::iterator {
 	auto it = map.begin();
@@ -916,28 +981,13 @@ void Server::initHeartBeat(apr_pool_t *, int epoll) {
 		}
 	}
 
-	auto root = Root::getInstance();
-	if (auto dbd = root->dbdOpen(getProcessPool(), _server)) {
-		auto conn = (PGconn *)db::pq::Driver::open()->getConnection(db::pq::Driver::Handle(dbd)).get();
-
-		auto query = toString("LISTEN ", config::getSerenityBroadcastChannelName(), ";");
-		int querySent = PQsendQuery(conn, query.data());
-		if (querySent == 0) {
-			std::cout << "[Postgres]: " << PQerrorMessage(conn) << "\n";
-			root->dbdClose(_server, dbd);
-			return;
-		}
-
-		if (PQsetnonblocking(conn, 1) == -1) {
-			std::cout << "[Postgres]: " << PQerrorMessage(conn) << "\n";
-			root->dbdClose(_server, dbd);
-			return;
-		} else {
-			int sock = PQsocket(conn);
-
+	if (_config->dbDriver && _config->dbDriver->isNotificationsSupported()) {
+		auto handle = openDbConnection(getProcessPool());
+		int sock = _config->dbDriver->listenForNotifications(handle);
+		if (sock >= 0) {
 			auto c = new (getProcessPool()) PollClient();
 			c->type = PollClient::Postgres;
-			c->ptr = dbd;
+			c->ptr = handle.get();
 			c->fd = sock;
 			c->server = Server(*this);
 			c->event.data.ptr = c;
@@ -948,9 +998,10 @@ void Server::initHeartBeat(apr_pool_t *, int epoll) {
 				char buf[256] = { 0 };
 				std::cout << "Failed to start thread worker with socket epoll_ctl("
 						<< sock << ", EPOLL_CTL_ADD): " << strerror_r(errno, buf, 255) << "\n";
-				root->dbdClose(_server, dbd);
-				return;
+				closeDbConnection(handle);
 			}
+		} else {
+			closeDbConnection(handle);
 		}
 	}
 }
@@ -960,15 +1011,14 @@ void Server::onHeartBeat(apr_pool_t *pool) {
 	apr::pool::perform([&] {
 		auto now = Time::now();
 		if (!_config->loadingFalled) {
-			auto root = Root::getInstance();
 			if (now - _config->lastDatabaseCleanup > config::getDefaultDatabaseCleanupInterval()) {
-				if (auto dbd = root->dbdOpen(pool, _server)) {
-					db::pq::Handle h(db::pq::Driver::open(), db::pq::Driver::Handle(dbd));
-					h.setStorageTypeMap(&_config->storageTypes);
-					h.setCustomTypeMap(&_config->customTypes);
-					_config->lastDatabaseCleanup = now;
-					h.makeSessionsCleanup();
-					root->dbdClose(_server, dbd);
+				db::sql::Driver::Handle handle = openDbConnection(pool);
+				if (handle.get()) {
+					_config->dbDriver->performWithStorage(handle, [&] (const db::Adapter &a) {
+						_config->lastDatabaseCleanup = now;
+						a.makeSessionsCleanup();
+					});
+					closeDbConnection(handle);
 				}
 			}
 
@@ -992,15 +1042,14 @@ void Server::onHeartBeat(apr_pool_t *pool) {
 void Server::checkBroadcasts() {
 	Task::perform(*this, [&] (Task &task) {
 		task.addExecuteFn([this] (const Task &task) -> bool {
-			auto root = Root::getInstance();
-			if (auto dbd = root->dbdOpen(task.pool(), *this)) {
-				db::pq::Handle h(db::pq::Driver::open(), db::pq::Driver::Handle(dbd));
-				h.setStorageTypeMap(&_config->storageTypes);
-				h.setCustomTypeMap(&_config->customTypes);
-				_config->broadcastId = h.processBroadcasts([&] (BytesView bytes) {
-					onBroadcast(bytes);
-				}, _config->broadcastId);
-				root->dbdClose(*this, dbd);
+			auto handle = openDbConnection(task.pool());
+			if (handle.get()) {
+				_config->dbDriver->performWithStorage(handle, [&] (const db::Adapter &a) {
+					_config->broadcastId = a.interface()->processBroadcasts([&] (BytesView bytes) {
+						onBroadcast(bytes);
+					}, _config->broadcastId);
+				});
+				closeDbConnection(handle);
 			}
 			return true;
 		});
@@ -1521,6 +1570,11 @@ void Server::runErrorReportTask(request_rec *req, const Vector<data::Value> &err
 		return;
 	}
 	auto serv = req ? req->server : apr::pool::server();
+
+	if (Server(serv)._config->loadingFalled) {
+		return;
+	}
+
 	Task::perform(Server(serv), [&] (Task &task) {
 		data::Value *err = nullptr;
 		if (req) {
@@ -1550,7 +1604,7 @@ void Server::runErrorReportTask(request_rec *req, const Vector<data::Value> &err
 		for (auto &it : errors) {
 			d.addValue(it);
 		}
-		task.addExecuteFn([err] (const Task &task) -> bool {
+		task.addExecuteFn([err, driver = _config->dbDriver] (const Task &task) -> bool {
 			Server_ErrorReporterFlags *obj = apr::pool::get<Server_ErrorReporterFlags>("Server_ErrorReporterFlags");
 			if (obj) {
 				obj->isProtected = true;
@@ -1559,32 +1613,53 @@ void Server::runErrorReportTask(request_rec *req, const Vector<data::Value> &err
 				apr::pool::store(obj, "Server_ErrorReporterFlags");
 			}
 
-			auto root = Root::getInstance();
 			auto pool = apr::pool::acquire();
-			auto serv = apr::pool::server();
-			if (auto dbd = root->dbdOpen(pool, serv)) {
-				db::pq::Handle h(db::pq::Driver::open(), db::pq::Driver::Handle(dbd));
-				storage::Adapter storage(&h);
+			auto serv = Server(mem::server());
 
-				auto serv = Server(apr::pool::server());
-				if (auto t = db::Transaction::acquire(storage)) {
-					t.performAsSystem([&] () -> bool {
-						if (auto errScheme = serv.getErrorScheme()) {
-							if (errScheme->create(storage, *err)) {
-								return true;
+			if (Server(serv)._config->loadingFalled) {
+				return false;
+			}
+
+			auto handle = serv.openDbConnection(pool);
+			if (handle.get()) {
+				serv.getDbDriver()->performWithStorage(handle, [&] (const db::Adapter &storage) {
+					auto serv = Server(apr::pool::server());
+					if (auto t = db::Transaction::acquire(storage)) {
+						t.performAsSystem([&] () -> bool {
+							if (auto errScheme = serv.getErrorScheme()) {
+								if (errScheme->create(storage, *err)) {
+									return true;
+								}
 							}
-						}
-						std::cout << "Fail to report error: " << *err << "\n";
-						return false;
-					});
-					t.release();
-				}
-
-				root->dbdClose(serv, dbd);
+							std::cout << "Fail to report error: " << *err << "\n";
+							return false;
+						});
+						t.release();
+					}
+				});
+				serv.closeDbConnection(handle);
 			}
 			return true;
 		});
 	});
+}
+
+db::sql::Driver::Handle Server::openDbConnection(mem::pool_t *pool) const {
+	db::sql::Driver::Handle handle;
+	if (_config->customDbd) {
+		handle = _config->customDbd->openConnection(pool);
+	} else {
+		handle = Root::getInstance()->dbdOpen(pool, server());
+	}
+	return handle;
+}
+
+void Server::closeDbConnection(db::sql::Driver::Handle handle) const {
+	if (_config->customDbd) {
+		_config->customDbd->closeConnection(handle);
+	} else {
+		Root::getInstance()->dbdClose(server(), handle);
+	}
 }
 
 NS_SA_END

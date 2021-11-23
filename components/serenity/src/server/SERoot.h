@@ -24,7 +24,7 @@ THE SOFTWARE.
 #define	SASERVER_H
 
 #include "Server.h"
-#include "STPqHandle.h"
+#include "STSqlDriver.h"
 
 NS_SA_BEGIN
 
@@ -32,18 +32,17 @@ class DbdModule;
 
 class Root {
 public:
+	static void parseParameterList(Map<StringView, StringView> &target, StringView params);
+
 	static Root *getInstance();
 
 	Root();
 	~Root();
 
-	void onChildInit();
-
 	/* Server Handling */
 
 	int onPostConfig(apr_pool_t *p, server_rec *s);
 	void onServerChildInit(apr_pool_t *p, server_rec *s);
-	void onOpenLogs(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s);
 
 	void initHeartBeat(int epollfd);
 	void onHeartBeat();
@@ -79,17 +78,9 @@ public:
 	void setProcPool(apr_pool_t *);
 	apr_pool_t *getProcPool() const;
 
-	ap_dbd_t * dbdOpen(apr_pool_t *, server_rec *);
-	void dbdClose(server_rec *, ap_dbd_t *);
-	ap_dbd_t * dbdRequestAcquire(request_rec *);
-	ap_dbd_t * dbdConnectionAcquire(conn_rec *);
-	ap_dbd_t * dbdPoolAcquire(server_rec *, apr_pool_t *);
-	void dbdPrepare(server_rec *, const char *, const char *);
-
-	db::pq::Handle dbOpenHandle(mem::pool_t *, const Server &);
-	void dbCloseHandle(const Server &, db::pq::Handle &);
-
-	void performStorage(apr_pool_t *, const Server &, const Callback<void(const storage::Adapter &)> &);
+	db::sql::Driver::Handle dbdOpen(apr_pool_t *, server_rec *);
+	void dbdClose(server_rec *, db::sql::Driver::Handle);
+	db::sql::Driver::Handle dbdAcquire(request_rec *);
 
 	bool isDebugEnabled() const;
 	void setDebugEnabled(bool);
@@ -120,11 +111,7 @@ public:
 	void addDb(mem::pool_t *p, StringView);
 	void setDbParams(mem::pool_t *p, StringView);
 
-	void incrementReleasedQueries();
-	void incrementPerformedQueries();
-
-	void enableCustomDbd(StringView dbname);
-	void disableCustomDbd();
+	db::sql::Driver *getDbDriver(StringView) const;
 
 protected:
 	struct PendingTask {
@@ -136,9 +123,10 @@ protected:
 
 	static Root *s_sharedServer;
 
-	static void *logWriterInit(apr_pool_t *p, server_rec *s, const char *name);
-	static apr_status_t logWriter(request_rec *r, void *handle, const char **portions,
-			int *lengths, int nelts, apr_size_t len);
+	void debugInit();
+	void debugDeinit();
+	void signalInit();
+	void onThreadInit();
 
 	// callbacks for mod_mime replacement
 	StringView onTypeCheckerContentType(request_rec *r, StringView ext) const;
@@ -160,13 +148,9 @@ protected:
 	APR_OPTIONAL_FN_TYPE(ap_dbd_close) * _dbdClose = nullptr;
 	APR_OPTIONAL_FN_TYPE(ap_dbd_acquire) * _dbdRequestAcquire = nullptr;
 	APR_OPTIONAL_FN_TYPE(ap_dbd_cacquire) * _dbdConnectionAcquire = nullptr;
-	APR_OPTIONAL_FN_TYPE(ap_dbd_prepare) * _dbdPrepare = nullptr;
 
 	apr_thread_t *_timerThread = nullptr;
 	apr_time_t _timerValue = 0;
-
-	ap_log_writer_init *_defaultInit = nullptr;
-	ap_log_writer *_defaultWriter = nullptr;
 
 	apr_thread_pool_t *_threadPool = nullptr;
 
@@ -188,9 +172,7 @@ protected:
 	apr_hash_t *_extensions = nullptr;
 	Map<StringView, StringView> *_dbParams = nullptr;
 	Vector<StringView> *_dbs = nullptr;
-	db::pq::Driver *_dbDriver = nullptr;
-
-	DbdModule *_customDbd = nullptr;
+	Map<StringView, db::sql::Driver *> *_dbDrivers;
 
 	Mutex _mutex = Mutex(mem::pool::create());
 	memory::allocator_t *_allocator = nullptr;

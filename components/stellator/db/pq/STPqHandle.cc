@@ -337,192 +337,6 @@ public:
 	mem::Vector<bool> binary;
 };
 
-class PgResultInterface : public db::ResultInterface {
-public:
-	inline static constexpr bool pgsql_is_success(Driver::Status x) {
-		return (x == Driver::Status::Empty) || (x == Driver::Status::CommandOk) || (x == Driver::Status::TuplesOk) || (x == Driver::Status::SingleTuple);
-	}
-
-	PgResultInterface(const Handle *h, Driver *d, Driver::Result res) : handle(h), driver(d), result(res) {
-		err = result.get() ? driver->getStatus(result) : Driver::Status::FatalError;
-	}
-	virtual ~PgResultInterface() {
-		clear();
-	}
-
-	virtual bool isBinaryFormat(size_t field) const override {
-		return driver->isBinaryFormat(result, field) != 0;
-	}
-
-	virtual bool isNull(size_t row, size_t field) override {
-		return driver->isNull(result, row, field);
-	}
-
-	virtual mem::StringView toString(size_t row, size_t field) override {
-		return mem::StringView(driver->getValue(result, row, field), driver->getLength(result, row, field));
-	}
-	virtual mem::BytesView toBytes(size_t row, size_t field) override {
-		if (isBinaryFormat(field)) {
-			return mem::BytesView((uint8_t *)driver->getValue(result, row, field), driver->getLength(result, row, field));
-		} else {
-			auto val = driver->getValue(result, row, field);
-			auto len = driver->getLength(result, row, field);
-			if (len > 2 && memcmp(val, "\\x", 2) == 0) {
-				auto d = new mem::Bytes(stappler::base16::decode<mem::Interface>(stappler::CoderSource(val + 2, len - 2)));
-				return mem::BytesView(*d);
-			}
-			return mem::BytesView((uint8_t *)val, len);
-		}
-	}
-	virtual int64_t toInteger(size_t row, size_t field) override {
-		if (isBinaryFormat(field)) {
-			stappler::BytesViewNetwork r((const uint8_t *)driver->getValue(result, row, field), driver->getLength(result, row, field));
-			switch (r.size()) {
-			case 1: return r.readUnsigned(); break;
-			case 2: return r.readUnsigned16(); break;
-			case 4: return r.readUnsigned32(); break;
-			case 8: return r.readUnsigned64(); break;
-			default: break;
-			}
-			return 0;
-		} else {
-			auto val = driver->getValue(result, row, field);
-			return stappler::StringToNumber<int64_t>(val, nullptr, 0);
-		}
-	}
-	virtual double toDouble(size_t row, size_t field) override {
-		if (isBinaryFormat(field)) {
-			stappler::BytesViewNetwork r((const uint8_t *)driver->getValue(result, row, field), driver->getLength(result, row, field));
-			switch (r.size()) {
-			case 2: return r.readFloat16(); break;
-			case 4: return r.readFloat32(); break;
-			case 8: return r.readFloat64(); break;
-			default: break;
-			}
-			return 0;
-		} else {
-			auto val = driver->getValue(result, row, field);
-			return stappler::StringToNumber<double>(val, nullptr, 0);
-		}
-	}
-	virtual bool toBool(size_t row, size_t field) override {
-		auto val = driver->getValue(result, row, field);
-		if (!isBinaryFormat(field)) {
-			if (val) {
-				if (*val == 'T' || *val == 't' || *val == 'y') {
-					return true;
-				}
-			}
-			return false;
-		} else {
-			return val && *val != 0;
-		}
-	}
-	virtual mem::Value toTypedData(size_t row, size_t field) override {
-		auto t = driver->getType(result, field);
-		auto s = handle->getTypeById(t);
-		switch (s) {
-		case Interface::StorageType::Unknown:
-		case Interface::StorageType::TsVector:
-			std::cout << "Unknown type conversion: " << handle->getTypeNameById(t) << "\n";
-			messages::error("DB", "Unknown type conversion", mem::Value(handle->getTypeNameById(t)));
-			return mem::Value();
-			break;
-		case Interface::StorageType::Bool:
-			return mem::Value(toBool(row, field));
-			break;
-		case Interface::StorageType::Char:
-			break;
-		case Interface::StorageType::Float4:
-		case Interface::StorageType::Float8:
-			return mem::Value(toDouble(row, field));
-			break;
-		case Interface::StorageType::Int2:
-		case Interface::StorageType::Int4:
-		case Interface::StorageType::Int8:
-			return mem::Value(toInteger(row, field));
-			break;
-		case Interface::StorageType::Text:
-		case Interface::StorageType::VarChar:
-			return mem::Value(toString(row, field));
-			break;
-		case Interface::StorageType::Numeric: {
-			stappler::BytesViewNetwork r((const uint8_t *)driver->getValue(result, row, field), driver->getLength(result, row, field));
-			auto str = pg_numeric_to_string(r);
-
-			auto v = mem::StringView(str).readDouble();
-			if (v.valid()) {
-				return mem::Value(v.get());
-			} else {
-				return mem::Value(str);
-			}
-			break;
-		}
-		case Interface::StorageType::Bytes:
-			return mem::Value(toBytes(row, field));
-			break;
-		}
-		return mem::Value();
-	}
-	virtual int64_t toId() override {
-		if (isBinaryFormat(0)) {
-			stappler::BytesViewNetwork r((const uint8_t *)driver->getValue(result, 0, 0), driver->getLength(result, 0, 0));
-			switch (r.size()) {
-			case 1: return int64_t(r.readUnsigned()); break;
-			case 2: return int64_t(r.readUnsigned16()); break;
-			case 4: return int64_t(r.readUnsigned32()); break;
-			case 8: return int64_t(r.readUnsigned64()); break;
-			default: break;
-			}
-			return 0;
-		} else {
-			auto val = driver->getValue(result, 0, 0);
-			return stappler::StringToNumber<int64_t>(val, nullptr, 0);
-		}
-	}
-	virtual mem::StringView getFieldName(size_t field) override {
-		auto ptr = driver->getName(result, field);
-		if (ptr) {
-			return mem::StringView(ptr);
-		}
-		return mem::StringView();
-	}
-	virtual bool isSuccess() const override {
-		return result.get() && pgsql_is_success(err);
-	}
-	virtual size_t getRowsCount() const override {
-		return driver->getNTuples(result);
-	}
-	virtual size_t getFieldsCount() const override {
-		return driver->getNFields(result);
-	}
-	virtual size_t getAffectedRows() const override {
-		return driver->getCmdTuples(result);
-	}
-	virtual mem::Value getInfo() const override {
-		return mem::Value({
-			stappler::pair("error", mem::Value(stappler::toInt(err))),
-			stappler::pair("status", mem::Value(driver->getStatusMessage(err))),
-			stappler::pair("desc", mem::Value(result.get() ? driver->getResultErrorMessage(result) : "Fatal database error")),
-		});
-	}
-	virtual void clear() {
-		if (result.get()) {
-			driver->clearResult(result);
-	        result = Driver::Result(nullptr);
-		}
-	}
-
-	Driver::Status getError() const {
-		return err;
-	}
-
-public:
-	const Handle *handle = nullptr;
-	Driver *driver = nullptr;
-	Driver::Result result = Driver::Result(nullptr);
-	Driver::Status err = Driver::Status::Empty;
-};
 
 struct ExecParamData {
 	std::array<const char *, 64> values;
@@ -574,7 +388,7 @@ struct ExecParamData {
 	}
 };
 
-Handle::Handle(Driver *d, Driver::Handle h) : driver(d), handle(h) {
+Handle::Handle(const Driver *d, Driver::Handle h) : driver(d), handle(h) {
 	if (h.get()) {
 		auto c = d->getConnection(h);
 		if (c.get()) {
@@ -617,37 +431,6 @@ Driver::Connection Handle::getConnection() const {
 	return conn;
 }
 
-void Handle::setStorageTypeMap(const mem::Vector<mem::Pair<uint32_t, Interface::StorageType>> *vec) {
-	storageTypes = vec;
-}
-void Handle::setCustomTypeMap(const mem::Vector<mem::Pair<uint32_t, mem::String>> *vec) {
-	customTypes = vec;
-}
-
-Interface::StorageType Handle::getTypeById(uint32_t oid) const {
-	if (storageTypes) {
-		auto it = std::lower_bound(storageTypes->begin(), storageTypes->end(), oid, [] (const mem::Pair<uint32_t, Interface::StorageType> &l, uint32_t r) -> bool {
-			return l.first < r;
-		});
-		if (it != storageTypes->end() && it->first == oid) {
-			return it->second;
-		}
-	}
-	return Interface::StorageType::Unknown;
-}
-
-mem::StringView Handle::getTypeNameById(uint32_t oid) const {
-	if (customTypes) {
-		auto it = std::lower_bound(customTypes->begin(), customTypes->end(), oid, [] (const mem::Pair<uint32_t, mem::String> &l, uint32_t r) -> bool {
-			return l.first < r;
-		});
-		if (it != customTypes->end() && it->first == oid) {
-			return it->second;
-		}
-	}
-	return mem::StringView();
-}
-
 void Handle::close() {
 	conn = Driver::Connection(nullptr);
 }
@@ -673,7 +456,7 @@ bool Handle::selectQuery(const sql::SqlQuery &query, const stappler::Callback<vo
 	}
 
 	ExecParamData data(query);
-	PgResultInterface res(this, driver, driver->exec(conn, query.getQuery().weak().data(), queryInterface->params.size(),
+	ResultInterface res(driver, driver->exec(conn, query.getQuery().weak().data(), queryInterface->params.size(),
 			data.paramValues, data.paramLengths, data.paramFormats, 1));
 	if (!res.isSuccess()) {
 		auto info = res.getInfo();
@@ -702,7 +485,7 @@ bool Handle::performSimpleQuery(const mem::StringView &query, const mem::Callbac
 		return false;
 	}
 
-	PgResultInterface res(this, driver, driver->exec(conn, query.data()));
+	ResultInterface res(driver, driver->exec(conn, query.data()));
 	lastError = res.getError();
 	if (!res.isSuccess()) {
 		auto info = res.getInfo();
@@ -724,7 +507,7 @@ bool Handle::performSimpleSelect(const mem::StringView &query, const stappler::C
 		return false;
 	}
 
-	PgResultInterface res(this, driver, driver->exec(conn, query.data(), 0, nullptr, nullptr, nullptr, 1));
+	ResultInterface res(driver, driver->exec(conn, query.data(), 0, nullptr, nullptr, nullptr, 1));
 	lastError = res.getError();
 
 	if (res.isSuccess()) {
@@ -747,7 +530,7 @@ bool Handle::performSimpleSelect(const mem::StringView &query, const stappler::C
 }
 
 bool Handle::isSuccess() const {
-	return PgResultInterface::pgsql_is_success(lastError);
+	return ResultInterface::pgsql_is_success(lastError);
 }
 
 bool Handle::beginTransaction_pg(TransactionLevel l) {

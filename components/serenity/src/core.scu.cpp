@@ -57,6 +57,7 @@ NS_SA_END
 #include "SEForward.cc"
 #include "SEServer.cc"
 #include "SERoot.cc"
+#include "SERootDebug.cc"
 #include "SERootMime.cc"
 #include "SEDbdModule.cc"
 

@@ -89,8 +89,12 @@ mem::Value Adapter::performQueryList(const QueryList &ql, size_t count, bool for
 	return mem::Value();
 }
 
-bool Adapter::init(const Interface::Config &cfg, const mem::Map<mem::StringView, const Scheme *> &schemes) {
+bool Adapter::init(const Interface::Config &cfg, const mem::Map<mem::StringView, const Scheme *> &schemes) const {
 	return _interface->init(cfg, schemes);
+}
+
+void Adapter::makeSessionsCleanup() const {
+	_interface->makeSessionsCleanup();
 }
 
 User * Adapter::authorizeUser(const Auth &auth, const mem::StringView &name, const mem::StringView &password) const {
