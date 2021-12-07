@@ -225,7 +225,11 @@ Result::Iter Result::begin() {
 		_cursor->reset();
 		_row = 0;
 	}
-	return Result::Iter(this, _row);
+	if (_cursor->isEmpty()) {
+		return Result::Iter(this, stappler::maxOf<size_t>());
+	} else {
+		return Result::Iter(this, _row);
+	}
 }
 
 Result::Iter Result::end() {

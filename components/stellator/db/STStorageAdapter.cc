@@ -164,11 +164,81 @@ mem::Value Adapter::select(Worker &w, const Query &q) const {
 }
 
 mem::Value Adapter::create(Worker &w, mem::Value &d) const {
-	return _interface->create(w, d);
+	auto ret = _interface->create(w, d);
+	if (ret) {
+		auto updateData = [&] (mem::Value &value) -> bool {
+			for (auto &it : value.asDict()) {
+				auto f = w.scheme().getField(it.first);
+				if (f && f->getType() == Type::Virtual) {
+					auto slot = f->getSlot<FieldVirtual>();
+					if (slot->writeFn) {
+						if (!slot->writeFn(w.scheme(), ret, it.second)) {
+							return false;
+						}
+					} else {
+						return false;
+					}
+				}
+			}
+			return true;
+		};
+
+		if (ret.isArray()) {
+			for (auto &it : ret.asArray()) {
+				if (!updateData(it)) {
+					_interface->cancelTransaction();
+					return mem::Value();
+				}
+			}
+		} else if (ret.isDictionary()) {
+			if (!updateData(ret)) {
+				_interface->cancelTransaction();
+				return mem::Value();
+			}
+		}
+	}
+	return ret;
 }
 
 mem::Value Adapter::save(Worker &w, uint64_t oid, const mem::Value &obj, const mem::Vector<mem::String> &fields) const {
-	return _interface->save(w, oid, obj, fields);
+	bool hasNonVirtualUpdates = false;
+	mem::Map<const FieldVirtual *, mem::Value> virtualWrites;
+	auto &dict = obj.asDict();
+	auto it = dict.begin();
+	while (it != dict.end()) {
+		if (auto f = w.scheme().getField(it->first)) {
+			if (std::find(fields.begin(), fields.end(), f->getName()) != fields.end()) {
+				if (f->getType() == Type::Virtual) {
+					virtualWrites.emplace(f->getSlot<FieldVirtual>(), it->second);
+				} else {
+					hasNonVirtualUpdates = true;
+				}
+			}
+		}
+		++ it;
+	}
+	mem::Value ret;
+	if (hasNonVirtualUpdates) {
+		ret = _interface->save(w, oid, obj, fields);
+	} else {
+		ret = obj;
+	}
+	if (ret) {
+		for (auto &it : virtualWrites) {
+			if (it.first->writeFn) {
+				if (it.first->writeFn(w.scheme(), obj, it.second)) {
+					ret.setValue(std::move(it.second), it.first->getName());
+				} else {
+					_interface->cancelTransaction();
+					return mem::Value();
+				}
+			} else {
+				_interface->cancelTransaction();
+				return mem::Value();
+			}
+		}
+	}
+	return ret;
 }
 
 mem::Value Adapter::patch(Worker &w, uint64_t oid, const mem::Value &patch) const {

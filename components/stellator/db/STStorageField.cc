@@ -712,4 +712,16 @@ mem::Vector<FullTextData> FieldFullTextView::parseQuery(const mem::Value &data) 
 	return mem::Vector<FullTextData>();
 }
 
+bool FieldVirtual::transformValue(const Scheme &scheme, const mem::Value &obj, mem::Value &value, bool isCreate) const {
+	if (!writeFn) {
+		messages::error("FieldVirtual", "Fail to write into virtual fields", mem::Value({
+			stappler::pair("object", mem::Value(obj)),
+			stappler::pair("value", mem::Value(value)),
+		}));
+		return false;
+	}
+
+	return true;
+}
+
 NS_DB_END

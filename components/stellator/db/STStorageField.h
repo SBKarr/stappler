@@ -275,7 +275,7 @@ using FullTextQueryFn = mem::Function<mem::Vector<FullTextData>(const mem::Value
 
 using VirtualReadFn = mem::Function<mem::Value(const Scheme &objScheme, const mem::Value &)>;
 
-using VirtualWriteFn = mem::Function<bool(const Scheme &objScheme, mem::Value &)>;
+using VirtualWriteFn = mem::Function<bool(const Scheme &objScheme, const mem::Value &, mem::Value &)>;
 
 struct AutoFieldScheme : mem::AllocBase {
 	using ReqVec = mem::Vector<mem::String>;
@@ -617,6 +617,7 @@ struct FieldVirtual : Field::Slot {
 	}
 
 	virtual void hash(mem::StringStream &stream, ValidationLevel l) const override { }
+	virtual bool transformValue(const Scheme &, const mem::Value &, mem::Value &, bool isCreate) const override;
 
 	mem::Vector<mem::String> requires;
 	VirtualReadFn readFn;

@@ -317,11 +317,24 @@ bool Scheme::isAtomicPatch(const mem::Value &val) const {
 		for (auto &it : val.asDict()) {
 			auto f = getField(it.first);
 
-			if (f && (f->getType() == Type::Extra // extra field should use select-update
-					|| forceInclude.find(f) != forceInclude.end() // force-includes used to update views, so, we need select-update
-					|| fullTextFields.find(f) != fullTextFields.end() // for full-text views update
+			if (f && (
+					// extra field should use select-update
+					f->getType() == Type::Extra
+
+					// virtual field should use select-update
+					|| f->getType() == Type::Virtual
+
+					 // force-includes used to update views, so, we need select-update
+					|| forceInclude.find(f) != forceInclude.end()
+
+					// for full-text views update
+					|| fullTextFields.find(f) != fullTextFields.end()
+
+					// auto fields requires select-update
 					|| autoFieldReq.find(f) != autoFieldReq.end()
-					|| f->getSlot()->replaceFilterFn)) { //
+
+					// select-update required for replace filters
+					|| f->getSlot()->replaceFilterFn)) {
 				return false;
 			}
 		}

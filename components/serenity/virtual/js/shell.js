@@ -312,69 +312,73 @@ function SaveEditorContent(editor) {
 }
 
 var simplemde = null;
-var editorButtons = [
-	"bold", "italic", "heading", "|", "code", "unordered-list", "ordered-list", "|", "link",
-	{
-		name: "toc",
-		action: SimpleMDE.drawHorizontalRule,
-		className: "fa fa-list-alt",
-		title: "Insert TOC"
-	},
-	"|",
-	{
-		name: "save",
-		action: function saveContent(editor) {
-			SaveEditorContent(editor)
-		},
-		className: "fa fa-floppy-o",
-		title: "Save",
-	},
-	{
-		name: "cancel",
-		action: function cancel(editor) {
-			var editor = document.getElementById("editblock")
-			var source = document.getElementById("sourceblock")
-			if (!editor.classList.contains("editorclosed")) {
-				editor.classList.add("editorclosed");
-				if (simplemde != null) {
-					simplemde.toTextArea();
-					simplemde = null;
-				}
-				source.classList.remove("editorclosed");
-			}
-		},
-		className: "fa fa-times",
-		title: "Cancel",
-	},
-];
 
 function ToggleEditor() {
 	var editor = document.getElementById("editblock")
 	var source = document.getElementById("sourceblock")
-	if (editor.classList.contains("editorclosed")) {
-		editor.classList.remove("editorclosed");
-		if (simplemde == null) {
-			simplemde = new SimpleMDE({
-				element: document.getElementById("editor"),
-				spellChecker: false,
-				toolbar: editorButtons,
-				insertTexts: {
-					horizontalRule: ["{{TOC}}"],
+	
+	if (SimpleMDE) {
+		var editorButtons = [
+			"bold", "italic", "heading", "|", "code", "unordered-list", "ordered-list", "|", "link",
+			{
+				name: "toc",
+				action: SimpleMDE.drawHorizontalRule,
+				className: "fa fa-list-alt",
+				title: "Insert TOC"
+			},
+			"|",
+			{
+				name: "save",
+				action: function saveContent(editor) {
+					SaveEditorContent(editor)
 				},
-				indentWithTabs: true,
-				tabSize: 4,
-				renderingConfig: {
-					codeSyntaxHighlighting: true
-				}
-			})
-		}
-		source.classList.add("editorclosed");
-	} else {
-		source.classList.remove("editorclosed");
-		editor.classList.add("editorclosed");
-		if (simplemde != null) {
-			simplemde.toTextArea();
-			simplemde = null;
+				className: "fa fa-floppy-o",
+				title: "Save",
+			},
+			{
+				name: "cancel",
+				action: function cancel(editor) {
+					var editor = document.getElementById("editblock")
+					var source = document.getElementById("sourceblock")
+					if (!editor.classList.contains("editorclosed")) {
+						editor.classList.add("editorclosed");
+						if (simplemde != null) {
+							simplemde.toTextArea();
+							simplemde = null;
+						}
+						source.classList.remove("editorclosed");
+					}
+				},
+				className: "fa fa-times",
+				title: "Cancel",
+			},
+		];
+
+		if (editor.classList.contains("editorclosed")) {
+			editor.classList.remove("editorclosed");
+			if (simplemde == null) {
+				simplemde = new SimpleMDE({
+					element: document.getElementById("editor"),
+					spellChecker: false,
+					toolbar: editorButtons,
+					insertTexts: {
+						horizontalRule: ["{{TOC}}"],
+					},
+					indentWithTabs: true,
+					tabSize: 4,
+					renderingConfig: {
+						codeSyntaxHighlighting: true
+					}
+				})
+			}
+			source.classList.add("editorclosed");
+		} else {
+			source.classList.remove("editorclosed");
+			editor.classList.add("editorclosed");
+			if (simplemde != null) {
+				simplemde.toTextArea();
+				simplemde = null;
+			}
 		}
 	}
 	return false;
